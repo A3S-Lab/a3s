@@ -10,3 +10,9 @@
 [submodule "crates/context"]
 	path = crates/context
 	url = git@github.com:A3S-Lab/Context.git
+[submodule "crates/tools-core"]
+	path = crates/tools-core
+	url = git@github.com:A3S-Lab/Tools-Core.git
+[submodule "crates/tools"]
+	path = crates/tools
+	url = git@github.com:A3S-Lab/Tools.git

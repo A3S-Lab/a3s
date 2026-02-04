@@ -15,6 +15,14 @@ build:
 release:
     cargo build --workspace --release
 
+# Build tools binary
+build-tools:
+    cargo build -p a3s-tools --release
+
+# Install tools binary to PATH
+install-tools:
+    cargo install --path crates/tools
+
 # Build box (separate workspace)
 build-box:
     cd crates/box/src && cargo build --workspace
@@ -59,9 +67,10 @@ test:
     # Test each crate with correct package names
     test_crate() {
         local pkg=$1
+        local extra_args=$2
         echo -ne "${CYAN}▶${RESET} ${BOLD}${pkg}${RESET} "
 
-        if OUTPUT=$(cargo test -p "$pkg" --lib 2>&1); then
+        if OUTPUT=$(cargo test -p "$pkg" --lib $extra_args 2>&1); then
             RESULT=$(echo "$OUTPUT" | grep -E "^test result:" | tail -1)
             PASSED=$(echo "$RESULT" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' || echo "0")
             FAILED=$(echo "$RESULT" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+' || echo "0")
@@ -83,6 +92,26 @@ test:
     test_crate "a3s-lane"
     test_crate "a3s-code"
     test_crate "a3s_context"
+    test_crate "a3s-tools-core"
+    # a3s-tools is binary-only, test with different command
+    echo -ne "${CYAN}▶${RESET} ${BOLD}a3s-tools${RESET} "
+    if OUTPUT=$(cargo test -p a3s-tools -- --test-threads=1 2>&1); then
+        RESULT=$(echo "$OUTPUT" | grep -E "^test result:" | tail -1)
+        PASSED=$(echo "$RESULT" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' || echo "0")
+        FAILED=$(echo "$RESULT" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+' || echo "0")
+
+        TOTAL_PASSED=$((TOTAL_PASSED + PASSED))
+        TOTAL_FAILED=$((TOTAL_FAILED + FAILED))
+
+        if [ "$FAILED" -gt 0 ]; then
+            echo -e "${RED}✗${RESET} ${DIM}$PASSED passed, $FAILED failed${RESET}"
+        else
+            echo -e "${GREEN}✓${RESET} ${DIM}$PASSED passed${RESET}"
+        fi
+    else
+        echo -e "${RED}✗${RESET} ${DIM}failed${RESET}"
+        TOTAL_FAILED=$((TOTAL_FAILED + 1))
+    fi
 
     echo ""
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"

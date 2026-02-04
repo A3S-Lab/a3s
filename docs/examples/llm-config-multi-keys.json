@@ -1,0 +1,88 @@
+{
+  "defaultProvider": "kimi",
+  "defaultModel": "kimi-k2-5",
+  "providers": [
+    {
+      "name": "anthropic",
+      "type": "anthropic",
+      "apiKey": "${env:ANTHROPIC_API_KEY}",
+      "baseUrl": "https://api.anthropic.com",
+      "models": [
+        {
+          "name": "claude-sonnet-4-20250514",
+          "displayName": "Claude Sonnet 4",
+          "contextWindow": 200000,
+          "maxOutputTokens": 8192
+        }
+      ]
+    },
+    {
+      "name": "kimi",
+      "type": "openai-compatible",
+      "baseUrl": "http://35.220.164.252:3888/v1",
+      "models": [
+        {
+          "name": "kimi-k2-5",
+          "displayName": "Kimi K2.5",
+          "apiKey": "${env:KIMI_API_KEY}",
+          "contextWindow": 128000,
+          "maxOutputTokens": 4096,
+          "supportsStreaming": true,
+          "supportsToolCalling": true
+        },
+        {
+          "name": "kimi-k1-5",
+          "displayName": "Kimi K1.5",
+          "apiKey": "${env:KIMI_API_KEY}",
+          "contextWindow": 128000,
+          "maxOutputTokens": 4096,
+          "supportsStreaming": true,
+          "supportsToolCalling": true
+        }
+      ]
+    },
+    {
+      "name": "openai",
+      "type": "openai",
+      "models": [
+        {
+          "name": "gpt-4o-personal",
+          "displayName": "GPT-4o (Personal Account)",
+          "apiKey": "${env:OPENAI_API_KEY_PERSONAL}",
+          "baseUrl": "https://api.openai.com/v1",
+          "contextWindow": 128000,
+          "maxOutputTokens": 16384
+        },
+        {
+          "name": "gpt-4o-work",
+          "displayName": "GPT-4o (Work Account)",
+          "apiKey": "${env:OPENAI_API_KEY_WORK}",
+          "baseUrl": "https://api.openai.com/v1",
+          "contextWindow": 128000,
+          "maxOutputTokens": 16384
+        }
+      ]
+    },
+    {
+      "name": "deepseek",
+      "type": "openai-compatible",
+      "baseUrl": "https://api.deepseek.com/v1",
+      "models": [
+        {
+          "name": "deepseek-chat",
+          "displayName": "DeepSeek Chat",
+          "apiKey": "${env:DEEPSEEK_API_KEY}",
+          "contextWindow": 64000,
+          "maxOutputTokens": 4096
+        },
+        {
+          "name": "deepseek-coder",
+          "displayName": "DeepSeek Coder",
+          "apiKey": "${env:DEEPSEEK_API_KEY}",
+          "contextWindow": 64000,
+          "maxOutputTokens": 4096
+        }
+      ]
+    }
+  ]
+}
