@@ -22,3 +22,6 @@ lcov.info
 .claude/settings.local.json
 .claude/sessions/
 .claude/cache/
+
+# Local config (contains API keys)
+config.json
