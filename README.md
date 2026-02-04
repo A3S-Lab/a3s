@@ -31,13 +31,15 @@ A3S is a collection of Rust crates that work together to provide a complete infr
 
 ## Crates
 
-| Crate | Description | crates.io |
-|-------|-------------|-----------|
-| [`a3s-lane`](crates/lane) | Priority-based command queue for async task scheduling | [![crates.io](https://img.shields.io/crates/v/a3s-lane.svg)](https://crates.io/crates/a3s-lane) |
-| [`a3s_context`](crates/context) | Hierarchical context management for AI memory/knowledge | [![crates.io](https://img.shields.io/crates/v/a3s_context.svg)](https://crates.io/crates/a3s_context) |
-| [`a3s-code`](crates/code) | AI coding agent with tool execution | [![crates.io](https://img.shields.io/crates/v/a3s-code.svg)](https://crates.io/crates/a3s-code) |
-| [`a3s-box-core`](crates/box) | Core types for MicroVM sandbox | [![crates.io](https://img.shields.io/crates/v/a3s-box-core.svg)](https://crates.io/crates/a3s-box-core) |
-| [`a3s-box-runtime`](crates/box) | MicroVM sandbox runtime | [![crates.io](https://img.shields.io/crates/v/a3s-box-runtime.svg)](https://crates.io/crates/a3s-box-runtime) |
+| Crate | Description | crates.io | Tests |
+|-------|-------------|-----------|-------|
+| [`a3s-lane`](crates/lane) | Priority-based command queue for async task scheduling | [![crates.io](https://img.shields.io/crates/v/a3s-lane.svg)](https://crates.io/crates/a3s-lane) | - |
+| [`a3s_context`](crates/context) | Hierarchical context management for AI memory/knowledge | [![crates.io](https://img.shields.io/crates/v/a3s_context.svg)](https://crates.io/crates/a3s_context) | - |
+| [`a3s-code`](crates/code) | AI coding agent with tool execution | [![crates.io](https://img.shields.io/crates/v/a3s-code.svg)](https://crates.io/crates/a3s-code) | 359 ✅ |
+| [`a3s-box-core`](crates/box) | Core types for MicroVM sandbox | [![crates.io](https://img.shields.io/crates/v/a3s-box-core.svg)](https://crates.io/crates/a3s-box-core) | - |
+| [`a3s-box-runtime`](crates/box) | MicroVM sandbox runtime | [![crates.io](https://img.shields.io/crates/v/a3s-box-runtime.svg)](https://crates.io/crates/a3s-box-runtime) | - |
+| [`a3s-tools-core`](crates/tools-core) | Core types for tool execution | [![crates.io](https://img.shields.io/crates/v/a3s-tools-core.svg)](https://crates.io/crates/a3s-tools-core) | - |
+| [`a3s-tools`](crates/tools) | Built-in tools binary (bash, read, write, edit, grep, glob, ls) | [![crates.io](https://img.shields.io/crates/v/a3s-tools.svg)](https://crates.io/crates/a3s-tools) | - |
 
 ## Quick Start
 
