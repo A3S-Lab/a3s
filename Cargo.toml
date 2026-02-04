@@ -1,0 +1,43 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/lane",
+    "crates/code",
+    "crates/context",
+]
+
+# Box is a separate workspace (nested workspaces not supported)
+# It's included as a submodule for coordination but not in this workspace
+exclude = [
+    "crates/box",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/a3s-lab/a3s"
+authors = ["A3S Lab"]
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Async utilities
+async-trait = "0.1"
+futures = "0.3"
+
+# Testing
+tokio-test = "0.4"

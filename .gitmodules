@@ -1,0 +1,12 @@
+[submodule "crates/box"]
+	path = crates/box
+	url = ../box
+[submodule "crates/code"]
+	path = crates/code
+	url = ../code
+[submodule "crates/lane"]
+	path = crates/lane
+	url = ../lane
+[submodule "crates/context"]
+	path = crates/context
+	url = ../context
