@@ -1,10 +1,10 @@
 ---
 name: builtin-tools
-description: Built-in file operation and shell tools
+description: Built-in file operation and shell tools for A3S
 version: 1.0.0
 tools:
   - name: read
-    description: Read the contents of a file. Returns line-numbered output. Supports text files and images.
+    description: Read file contents with line numbers
     backend:
       type: binary
       path: a3s-tools
@@ -14,18 +14,18 @@ tools:
       properties:
         file_path:
           type: string
-          description: Path to the file to read (absolute or relative to workspace)
+          description: Path to the file to read
         offset:
           type: integer
-          description: Line number to start reading from (0-indexed, default 0)
+          description: Line offset (0-indexed)
         limit:
           type: integer
-          description: Maximum number of lines to read (default 2000)
+          description: Max lines to read
       required:
         - file_path
 
   - name: write
-    description: Write content to a file. Creates the file and parent directories if they don't exist.
+    description: Write content to a file
     backend:
       type: binary
       path: a3s-tools
@@ -44,7 +44,7 @@ tools:
         - content
 
   - name: edit
-    description: Edit a file by replacing a specific string with another. The old_string must be unique in the file unless replace_all is true.
+    description: Edit a file with string replacement
     backend:
       type: binary
       path: a3s-tools
@@ -57,10 +57,10 @@ tools:
           description: Path to the file to edit
         old_string:
           type: string
-          description: The exact string to replace (must be unique unless replace_all=true)
+          description: String to find and replace
         new_string:
           type: string
-          description: The string to replace it with
+          description: Replacement string
         replace_all:
           type: boolean
           description: Replace all occurrences (default false)
@@ -70,7 +70,7 @@ tools:
         - new_string
 
   - name: bash
-    description: Execute a bash command in the workspace directory. Use for running commands, installing packages, running tests, etc.
+    description: Execute a bash command
     backend:
       type: binary
       path: a3s-tools
@@ -80,15 +80,15 @@ tools:
       properties:
         command:
           type: string
-          description: The bash command to execute
+          description: Command to execute
         timeout:
           type: integer
-          description: Timeout in milliseconds (default 120000)
+          description: Timeout in milliseconds
       required:
         - command
 
   - name: grep
-    description: Search for a pattern in files using ripgrep. Returns matching lines with file paths and line numbers.
+    description: Search file contents with ripgrep-style patterns
     backend:
       type: binary
       path: a3s-tools
@@ -98,24 +98,24 @@ tools:
       properties:
         pattern:
           type: string
-          description: Regular expression pattern to search for
+          description: Search pattern (regex)
         path:
           type: string
-          description: Directory or file to search in (default workspace root)
+          description: Path to search in (default current directory)
         glob:
           type: string
-          description: Glob pattern to filter files (e.g., '*.rs', '*.{ts,tsx}')
+          description: File glob pattern to filter files
         context:
           type: integer
-          description: Number of context lines to show before and after matches
-        -i:
+          description: Number of context lines to show
+        ignore_case:
           type: boolean
-          description: Case insensitive search
+          description: Case-insensitive search
       required:
         - pattern
 
   - name: glob
-    description: Find files matching a glob pattern. Returns a list of file paths.
+    description: Find files matching a glob pattern
     backend:
       type: binary
       path: a3s-tools
@@ -125,15 +125,15 @@ tools:
       properties:
         pattern:
           type: string
-          description: Glob pattern to match (e.g., '**/*.rs', 'src/**/*.ts')
+          description: Glob pattern to match files
         path:
           type: string
-          description: Base directory for the search (default workspace root)
+          description: Base path to search from (default current directory)
       required:
         - pattern
 
   - name: ls
-    description: List contents of a directory with file types and sizes.
+    description: List directory contents
     backend:
       type: binary
       path: a3s-tools
@@ -143,7 +143,13 @@ tools:
       properties:
         path:
           type: string
-          description: Directory path to list (default workspace root)
+          description: Path to list (default current directory)
+        all:
+          type: boolean
+          description: Show hidden files
+        long:
+          type: boolean
+          description: Use long listing format
       required: []
 ---
 
@@ -153,16 +159,23 @@ Core file operation and shell tools for A3S.
 
 ## Tools
 
-- **read**: Read file contents with line numbers
-- **write**: Write content to files
-- **edit**: Edit files with string replacement
-- **bash**: Execute shell commands
-- **grep**: Search file contents with ripgrep
-- **glob**: Find files by pattern
-- **ls**: List directory contents
+### read
+Read file contents with line numbers. Supports offset and limit for pagination.
 
-## Usage
+### write
+Write content to a file. Creates parent directories if needed.
 
-These tools are automatically loaded when A3S starts. They are implemented as a unified binary (`a3s-tools`) with subcommands for each tool.
+### edit
+Edit a file by replacing strings. Supports single or all occurrences.
 
-Parameters are passed via the `TOOL_ARGS` environment variable as JSON, and the workspace is determined from the current directory.
+### bash
+Execute shell commands with timeout support.
+
+### grep
+Search file contents using regex patterns. Supports context lines and case-insensitive search.
+
+### glob
+Find files matching glob patterns.
+
+### ls
+List directory contents with optional hidden files and long format.
