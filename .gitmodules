@@ -1,12 +1,12 @@
 [submodule "crates/box"]
 	path = crates/box
-	url = ../box
+	url = git@github.com:A3S-Lab/Box.git
 [submodule "crates/code"]
 	path = crates/code
-	url = ../code
+	url = git@github.com:A3S-Lab/Code.git
 [submodule "crates/lane"]
 	path = crates/lane
-	url = ../lane
+	url = git@github.com:A3S-Lab/Lane.git
 [submodule "crates/context"]
 	path = crates/context
-	url = ../context
+	url = git@github.com:A3S-Lab/Context.git
