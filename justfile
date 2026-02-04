@@ -56,10 +56,12 @@ test:
     TOTAL_PASSED=0
     TOTAL_FAILED=0
 
-    for crate in lane code context; do
-        echo -ne "${CYAN}▶${RESET} ${BOLD}a3s-${crate}${RESET} "
+    # Test each crate with correct package names
+    test_crate() {
+        local pkg=$1
+        echo -ne "${CYAN}▶${RESET} ${BOLD}${pkg}${RESET} "
 
-        if OUTPUT=$(cargo test -p a3s-${crate} 2>&1 || cargo test -p a3s_${crate} 2>&1); then
+        if OUTPUT=$(cargo test -p "$pkg" --lib 2>&1); then
             RESULT=$(echo "$OUTPUT" | grep -E "^test result:" | tail -1)
             PASSED=$(echo "$RESULT" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' || echo "0")
             FAILED=$(echo "$RESULT" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+' || echo "0")
@@ -76,7 +78,11 @@ test:
             echo -e "${RED}✗${RESET} ${DIM}failed${RESET}"
             TOTAL_FAILED=$((TOTAL_FAILED + 1))
         fi
-    done
+    }
+
+    test_crate "a3s-lane"
+    test_crate "a3s-code"
+    test_crate "a3s_context"
 
     echo ""
     echo -e "${BOLD}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
