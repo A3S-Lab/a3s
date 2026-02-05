@@ -264,7 +264,7 @@ a3s/
 └── crates/
     ├── box/                # [submodule] MicroVM sandbox runtime
     ├── code/               # [submodule] AI coding agent
-    ├── cron/               # Cron scheduling library
+    ├── cron/               # [submodule] Cron scheduling library
     ├── lane/               # [submodule] Priority command queue
     ├── context/            # [submodule] Context management
     ├── tools/              # Built-in tools binary
