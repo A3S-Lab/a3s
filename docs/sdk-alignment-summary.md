@@ -265,13 +265,17 @@ The stub implementations need to be replaced with full functionality:
 - Add per-session memory isolation
 - Implement persistent storage backend
 
-### 2. SDK Examples
+### 2. SDK Examples ✅
 
-Create example files demonstrating the new features:
-- `sdk/typescript/examples/src/planning-example.ts`
-- `sdk/typescript/examples/src/memory-example.ts`
-- `sdk/python/examples/planning_example.py`
-- `sdk/python/examples/memory_example.py`
+Example files demonstrating the new features have been created:
+- ✅ `sdk/typescript/examples/src/planning-example.ts` (173 lines)
+- ✅ `sdk/typescript/examples/src/memory-example.ts` (234 lines)
+- ✅ `sdk/python/examples/planning_example.py` (157 lines)
+- ✅ `sdk/python/examples/memory_example.py` (223 lines)
+
+Each example demonstrates:
+- **Planning Examples**: Creating plans, extracting goals, checking achievement, event streaming
+- **Memory Examples**: Storing memories, searching, retrieving, statistics, clearing, using memory in generation
 
 ### 3. Documentation
 
@@ -300,6 +304,7 @@ Add new event types for planning and memory:
 - [x] Python SDK regenerated
 - [x] Integration tests created (16 tests)
 - [x] All tests passing (441 total)
+- [x] SDK examples created (4 files)
 - [x] Documentation updated
 
 ## Test Statistics
@@ -324,6 +329,7 @@ Successfully completed SDK alignment for Phase 2 & 3 features:
 3. ✅ **SDK Updates**: Updated and regenerated both TypeScript and Python SDKs
 4. ✅ **Integration Tests**: Created 16 comprehensive integration tests
 5. ✅ **Test Coverage**: All 441 tests passing (425 lib + 16 integration)
+6. ✅ **SDK Examples**: Created 4 example files demonstrating planning and memory features
 
 The new features are now fully aligned with the SDK and ready for client integration. Full implementation of the RPC handlers can be completed in a future phase.
 
