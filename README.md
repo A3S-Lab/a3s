@@ -154,6 +154,33 @@ runtime.start_agent("a3s-code").await;
 
 ---
 
+### a3s-cron — Cron Scheduling Library
+
+**Role**: Utility layer - task scheduling with cron syntax and natural language support.
+
+| Feature | Description |
+|---------|-------------|
+| **Cron Syntax** | Standard 5-field cron expressions (minute hour day month weekday) |
+| **Natural Language** | Parse schedules from English/Chinese ("every 5 minutes", "每天凌晨2点") |
+| **Persistence** | JSON file-based storage with pluggable backends |
+| **CRUD Operations** | Create, pause, resume, update, and remove scheduled jobs |
+| **Execution History** | Track job runs with output and status |
+
+```rust
+use a3s_cron::{CronManager, parse_natural};
+
+// Parse natural language to cron expression
+let cron = parse_natural("every day at 2am")?;  // "0 2 * * *"
+
+// Create and manage jobs
+let manager = CronManager::new(store);
+manager.add_job("backup", "0 2 * * *", "backup.sh").await?;
+```
+
+📦 [crates.io](https://crates.io/crates/a3s-cron) · 📖 [Documentation](crates/cron/README.md)
+
+---
+
 ### a3s-tools — Built-in Tools Binary
 
 **Role**: Utility - standalone binary providing core tools for the agent.
@@ -167,6 +194,7 @@ runtime.start_agent("a3s-code").await;
 | `grep` | Search files with ripgrep |
 | `glob` | Find files by pattern |
 | `ls` | List directory contents |
+| `cron` | Manage scheduled tasks |
 
 📦 [crates.io](https://crates.io/crates/a3s-tools) · 📖 [Documentation](crates/tools/README.md)
 
@@ -236,6 +264,7 @@ a3s/
 └── crates/
     ├── box/                # [submodule] MicroVM sandbox runtime
     ├── code/               # [submodule] AI coding agent
+    ├── cron/               # Cron scheduling library
     ├── lane/               # [submodule] Priority command queue
     ├── context/            # [submodule] Context management
     ├── tools/              # Built-in tools binary
