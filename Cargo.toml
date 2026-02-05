@@ -6,6 +6,7 @@ members = [
     "crates/context",
     "crates/tools-core",
     "crates/tools",
+    "crates/search",
 ]
 
 # Box is a separate workspace (nested workspaces not supported)

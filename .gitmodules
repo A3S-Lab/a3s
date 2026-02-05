@@ -25,3 +25,6 @@
 [submodule "homebrew-tap"]
 	path = homebrew-tap
 	url = git@github.com:A3S-Lab/homebrew-tap.git
+[submodule "crates/search"]
+	path = crates/search
+	url = git@github.com:A3S-Lab/Search.git
