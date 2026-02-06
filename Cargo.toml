@@ -16,6 +16,7 @@ members = [
 # It's included as a submodule for coordination but not in this workspace
 exclude = [
     "crates/box",
+    "crates/safeclaw/ui/src-tauri",
 ]
 
 [workspace.package]
