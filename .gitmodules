@@ -34,3 +34,6 @@
 [submodule "crates/safeclaw"]
 	path = crates/safeclaw
 	url = git@github.com:A3S-Lab/SafeClaw.git
+[submodule "crates/power"]
+	path = crates/power
+	url = git@github.com:A3S-Lab/Power.git

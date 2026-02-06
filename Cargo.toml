@@ -9,6 +9,7 @@ members = [
     "crates/search",
     "crates/cron",
     "crates/safeclaw",
+    "crates/power",
 ]
 
 # Box is a separate workspace (nested workspaces not supported)

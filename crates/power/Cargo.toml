@@ -1,0 +1,72 @@
+[package]
+name = "a3s-power"
+version = "0.1.0"
+edition = "2021"
+authors = ["A3S Lab"]
+license = "MIT"
+repository = "https://github.com/A3S-Lab/Power"
+description = "A3S Power - Local model management and serving with OpenAI-compatible API"
+
+[lib]
+name = "a3s_power"
+path = "src/lib.rs"
+
+[[bin]]
+name = "a3s-power"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Error handling
+thiserror = "1"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Async utilities
+async-trait = "0.1"
+futures = "0.3"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# HTTP server
+axum = { version = "0.7", features = ["macros"] }
+axum-extra = { version = "0.9", features = ["typed-header"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# HTTP client (for model downloads)
+reqwest = { version = "0.12", features = ["stream", "json"] }
+
+# Progress reporting
+indicatif = "0.17"
+
+# Async channels for streaming
+tokio-util = { version = "0.7", features = ["io"] }
+
+# UUID for request IDs
+uuid = { version = "1", features = ["v4"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Directories
+dirs = "5"
+
+# SHA256 for model integrity
+sha2 = "0.10"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3"

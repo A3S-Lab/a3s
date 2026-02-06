@@ -94,6 +94,7 @@ test:
     test_crate "a3s_context"
     test_crate "a3s-cron"
     test_crate "a3s-tools-core"
+    test_crate "a3s-power"
     # a3s-tools is binary-only, test with different command
     echo -ne "${CYAN}▶${RESET} ${BOLD}a3s-tools${RESET} "
     if OUTPUT=$(cargo test -p a3s-tools -- --test-threads=1 2>&1); then
