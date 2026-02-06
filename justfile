@@ -236,9 +236,10 @@ publish:
     echo -e "    1. a3s-lane      (utility, no internal deps)"
     echo -e "    2. a3s_context   (utility, no internal deps)"
     echo -e "    3. a3s-cron      (utility, no internal deps)"
-    echo -e "    4. a3s-box-core  (box foundation)"
-    echo -e "    5. a3s-box-runtime (depends on core)"
-    echo -e "    6. a3s-code      (may depend on others)"
+    echo -e "    4. a3s-power     (infrastructure, no internal deps)"
+    echo -e "    5. a3s-box-core  (box foundation)"
+    echo -e "    6. a3s-box-runtime (depends on core)"
+    echo -e "    7. a3s-code      (may depend on others)"
     echo ""
 
     # Pre-publish checks
@@ -269,6 +270,7 @@ publish:
     publish_crate "a3s-lane" "crates/lane" 30
     publish_crate "a3s_context" "crates/context" 30
     publish_crate "a3s-cron" "crates/cron" 30
+    publish_crate "a3s-power" "crates/power" 30
     publish_crate "a3s-box-core" "crates/box/src/core" 30
     publish_crate "a3s-box-runtime" "crates/box/src/runtime" 30
     publish_crate "a3s-code" "crates/code" 0
@@ -287,7 +289,7 @@ publish-dry:
     echo "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
     echo ""
 
-    for crate in a3s-lane a3s_context a3s-cron a3s-code; do
+    for crate in a3s-lane a3s_context a3s-cron a3s-power a3s-code; do
         echo "=== ${crate} ==="
         cargo publish -p "$crate" --dry-run 2>/dev/null || echo "  (checking in submodule)"
         echo ""
@@ -323,6 +325,7 @@ version:
     echo "  a3s-lane:        $(grep '^version' crates/lane/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     echo "  a3s_context:     $(grep '^version' crates/context/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     echo "  a3s-cron:        $(grep '^version' crates/cron/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
+    echo "  a3s-power:       $(grep '^version' crates/power/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     echo "  a3s-code:        $(grep '^version' crates/code/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     # Box uses workspace version inheritance
     BOX_VERSION=$(grep '^version' crates/box/src/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')
