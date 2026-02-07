@@ -1,0 +1,105 @@
+---
+title: Architecture
+description: Understanding the A3S ecosystem architecture
+---
+
+# Architecture
+
+A3S is organized into three distinct layers, each serving a specific purpose in the ecosystem.
+
+## System Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           A3S Ecosystem                                 │
+│                                                                         │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  Application Layer                                                │  │
+│  │  ┌─────────────────────────────────────────────────────────────┐  │  │
+│  │  │  a3s-code (AI Coding Agent)                                 │  │  │
+│  │  │  - Multi-session management    - Permission system          │  │  │
+│  │  │  - Tool execution (8 tools)    - Human-in-the-loop          │  │  │
+│  │  │  - Skills system               - Subagent delegation        │  │  │
+│  │  │  - LSP integration             - MCP support                │  │  │
+│  │  └─────────────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                    │                                    │
+│                                    ▼                                    │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  Utility Layer                                                    │  │
+│  │  ┌─────────────────────────┐  ┌─────────────────────────────────┐ │  │
+│  │  │  a3s-lane               │  │  a3s-context                    │ │  │
+│  │  │  - Priority queues      │  │  - Hierarchical memory          │ │  │
+│  │  │  - Async scheduling     │  │  - Knowledge management         │ │  │
+│  │  │  - Dead letter queue    │  │  - Context providers            │ │  │
+│  │  └─────────────────────────┘  └─────────────────────────────────┘ │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                    │                                    │
+│                                    ▼                                    │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  Infrastructure Layer                                             │  │
+│  │  ┌─────────────────────────────────────────────────────────────┐  │  │
+│  │  │  a3s-box (MicroVM Sandbox)                                  │  │  │
+│  │  │  - Hardware-level isolation   - Secure agent execution      │  │  │
+│  │  │  - Resource limits            - Network isolation           │  │  │
+│  │  └─────────────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## Application Layer
+
+### a3s-code
+
+The main AI coding agent that interacts with users and executes tasks.
+
+**Key Features:**
+- Multi-session management for concurrent conversations
+- 8 built-in tools (bash, read, write, edit, grep, glob, ls, web_fetch)
+- Fine-grained permission system
+- Human-in-the-loop confirmations
+- Skills framework for custom tools
+- Subagent delegation
+- LSP and MCP integration
+
+## Utility Layer
+
+### a3s-lane
+
+Priority-based command queue for async task scheduling.
+
+**Key Features:**
+- Multiple priority levels
+- Tokio-based async runtime
+- Dead letter queue for failed tasks
+- Built-in metrics
+
+### a3s-context
+
+Hierarchical context management for AI memory and knowledge.
+
+**Key Features:**
+- Three-tier memory (Working/Short-term/Long-term)
+- Pluggable context providers
+- Automatic compaction
+
+## Infrastructure Layer
+
+### a3s-box
+
+MicroVM sandbox runtime for secure agent execution.
+
+**Key Features:**
+- Hardware-level isolation
+- Resource limits (CPU, memory, disk)
+- Network isolation
+- Secure execution environment
+
+## Communication Flow
+
+1. **User Request** → Application Layer (a3s-code)
+2. **Task Scheduling** → Utility Layer (a3s-lane)
+3. **Memory Management** → Utility Layer (a3s-context)
+4. **Secure Execution** → Infrastructure Layer (a3s-box)
+
+Each layer is independent and can be used separately or as part of the full stack.

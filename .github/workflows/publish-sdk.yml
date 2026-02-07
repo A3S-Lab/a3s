@@ -1,0 +1,136 @@
+name: Publish SDKs
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk:
+        description: 'Which SDK to publish'
+        required: true
+        type: choice
+        options:
+          - typescript
+          - python
+          - both
+      version:
+        description: 'Version to publish (leave empty to use current version)'
+        required: false
+        type: string
+
+  release:
+    types: [published]
+
+jobs:
+  publish-typescript:
+    name: Publish TypeScript SDK to npm
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.sdk == 'typescript' || github.event.inputs.sdk == 'both')) ||
+      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/sdk-ts-'))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: |
+          cd sdk/typescript
+          npm ci
+
+      - name: Run tests
+        run: |
+          cd sdk/typescript
+          npm test
+
+      - name: Build package
+        run: |
+          cd sdk/typescript
+          npm run build
+
+      - name: Publish to npm
+        run: |
+          cd sdk/typescript
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Get version
+        id: version
+        run: |
+          cd sdk/typescript
+          VERSION=$(grep '"version"' package.json | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create summary
+        run: |
+          echo "### ✅ TypeScript SDK Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: @a3s-lab/code" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Registry**: npm" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: https://www.npmjs.com/package/@a3s-lab/code" >> $GITHUB_STEP_SUMMARY
+
+  publish-python:
+    name: Publish Python SDK to PyPI
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.sdk == 'python' || github.event.inputs.sdk == 'both')) ||
+      (github.event_name == 'release' && startsWith(github.ref, 'refs/tags/sdk-py-'))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine pytest pytest-asyncio
+
+      - name: Run tests
+        run: |
+          cd sdk/python
+          pytest tests/ -v
+
+      - name: Build package
+        run: |
+          cd sdk/python
+          python -m build
+
+      - name: Check package
+        run: |
+          cd sdk/python
+          twine check dist/*
+
+      - name: Publish to PyPI
+        run: |
+          cd sdk/python
+          twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+      - name: Get version
+        id: version
+        run: |
+          cd sdk/python
+          VERSION=$(grep '^version' pyproject.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create summary
+        run: |
+          echo "### ✅ Python SDK Published" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: a3s-code" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Registry**: PyPI" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: https://pypi.org/project/a3s-code/" >> $GITHUB_STEP_SUMMARY

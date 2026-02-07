@@ -1,0 +1,10 @@
+import { toRuntime } from "fumadocs-mdx"
+import * as file_0 from "../content/docs/architecture.mdx?collection=docs&hash=ce6455ff36d8a5791d4f12e61d1a6706498ba6407c08a6211b67d204620a867e"
+import * as file_1 from "../content/docs/box.mdx?collection=docs&hash=ce6455ff36d8a5791d4f12e61d1a6706498ba6407c08a6211b67d204620a867e"
+import * as file_2 from "../content/docs/code.mdx?collection=docs&hash=ce6455ff36d8a5791d4f12e61d1a6706498ba6407c08a6211b67d204620a867e"
+import * as file_3 from "../content/docs/context.mdx?collection=docs&hash=ce6455ff36d8a5791d4f12e61d1a6706498ba6407c08a6211b67d204620a867e"
+import * as file_4 from "../content/docs/index.mdx?collection=docs&hash=ce6455ff36d8a5791d4f12e61d1a6706498ba6407c08a6211b67d204620a867e"
+import * as file_5 from "../content/docs/lane.mdx?collection=docs&hash=ce6455ff36d8a5791d4f12e61d1a6706498ba6407c08a6211b67d204620a867e"
+import * as file_6 from "../content/docs/meta.json?collection=meta&hash=ce6455ff36d8a5791d4f12e61d1a6706498ba6407c08a6211b67d204620a867e"
+export const docs = [toRuntime("doc", file_0, {"path":"architecture.mdx","absolutePath":"/Users/roylin/Desktop/ai-lab/a3s/docs-site/content/docs/architecture.mdx"}),toRuntime("doc", file_1, {"path":"box.mdx","absolutePath":"/Users/roylin/Desktop/ai-lab/a3s/docs-site/content/docs/box.mdx"}),toRuntime("doc", file_2, {"path":"code.mdx","absolutePath":"/Users/roylin/Desktop/ai-lab/a3s/docs-site/content/docs/code.mdx"}),toRuntime("doc", file_3, {"path":"context.mdx","absolutePath":"/Users/roylin/Desktop/ai-lab/a3s/docs-site/content/docs/context.mdx"}),toRuntime("doc", file_4, {"path":"index.mdx","absolutePath":"/Users/roylin/Desktop/ai-lab/a3s/docs-site/content/docs/index.mdx"}),toRuntime("doc", file_5, {"path":"lane.mdx","absolutePath":"/Users/roylin/Desktop/ai-lab/a3s/docs-site/content/docs/lane.mdx"})]
+export const meta = [toRuntime("meta", file_6, {"path":"meta.json","absolutePath":"/Users/roylin/Desktop/ai-lab/a3s/docs-site/content/docs/meta.json"})]

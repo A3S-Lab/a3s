@@ -1,0 +1,89 @@
+---
+title: a3s-lane
+description: Priority Command Queue Documentation
+---
+
+# a3s-lane
+
+**a3s-lane** is a priority-based command queue for async task scheduling, built on Tokio.
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Priority Lanes** | Multiple priority levels for task scheduling |
+| **Async Runtime** | Built on Tokio for high-performance async execution |
+| **Dead Letter Queue** | Failed tasks are preserved for retry or inspection |
+| **Metrics** | Built-in metrics for monitoring queue health |
+
+## Installation
+
+```bash
+cargo add a3s-lane
+```
+
+## Usage
+
+```rust
+use a3s_lane::{Lane, Priority};
+
+#[tokio::main]
+async fn main() {
+    let lane = Lane::new();
+
+    // Push tasks with different priorities
+    lane.push(Priority::High, async {
+        // High priority task
+        Ok(())
+    }).await;
+
+    lane.push(Priority::Low, async {
+        // Low priority task
+        Ok(())
+    }).await;
+
+    // Pop and execute tasks (high priority first)
+    while let Some(task) = lane.pop().await {
+        task.execute().await;
+    }
+}
+```
+
+## Priority Levels
+
+Tasks are processed in priority order:
+
+1. **Critical** - Immediate execution
+2. **High** - High priority
+3. **Normal** - Default priority
+4. **Low** - Background tasks
+
+## Dead Letter Queue
+
+Failed tasks are automatically moved to the dead letter queue for inspection:
+
+```rust
+// Get failed tasks
+let failed = lane.dead_letter_queue().await;
+
+// Retry failed tasks
+for task in failed {
+    lane.retry(task).await;
+}
+```
+
+## Metrics
+
+Built-in metrics for monitoring:
+
+```rust
+let metrics = lane.metrics();
+println!("Pending: {}", metrics.pending_count);
+println!("Processed: {}", metrics.processed_count);
+println!("Failed: {}", metrics.failed_count);
+```
+
+## Links
+
+- [GitHub Repository](https://github.com/A3S-Lab/Lane)
+- [crates.io](https://crates.io/crates/a3s-lane)

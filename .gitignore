@@ -25,3 +25,8 @@ lcov.info
 
 # Local config (contains API keys)
 config.json
+.a3s/
+
+# Docs site build artifacts
+docs-site/node_modules/
+docs-site/.next/
