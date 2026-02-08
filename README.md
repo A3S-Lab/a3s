@@ -32,7 +32,7 @@
 │  │  ┌─────────────────────────────────────────────────────────────┐  │  │
 │  │  │  a3s-code (AI Coding Agent)                                 │  │  │
 │  │  │  - Multi-session management    - Permission system          │  │  │
-│  │  │  - Tool execution (8 tools)    - Human-in-the-loop          │  │  │
+│  │  │  - Tool execution (10 tools)   - Human-in-the-loop          │  │  │
 │  │  │  - Skills system               - Subagent delegation        │  │  │
 │  │  │  - LSP integration             - MCP support                │  │  │
 │  │  └─────────────────────────────────────────────────────────────┘  │  │
@@ -47,16 +47,37 @@
 │  │  │  - Async scheduling     │  │  - Knowledge management         │ │  │
 │  │  │  - Dead letter queue    │  │  - Context providers            │ │  │
 │  │  └─────────────────────────┘  └─────────────────────────────────┘ │  │
+│  │  ┌─────────────────────────┐  ┌─────────────────────────────────┐ │  │
+│  │  │  a3s-cron               │  │  a3s-search                     │ │  │
+│  │  │  - Cron scheduling      │  │  - Meta search engine           │ │  │
+│  │  │  - Natural language     │  │  - Multi-engine aggregation     │ │  │
+│  │  └─────────────────────────┘  └─────────���───────────────────────┘ │  │
 │  └───────────────────────────────────────────────────────────────────┘  │
 │                                    │                                    │
 │                                    ▼                                    │
 │  ┌───────────────────────────────────────────────────────────────────┐  │
 │  │  Infrastructure Layer                                             │  │
-│  │  ┌─────────────────────────────────────────────────────────────┐  │  │
-│  │  │  a3s-box (MicroVM Sandbox)                                  │  │  │
-│  │  │  - Hardware-level isolation   - Secure agent execution      │  │  │
-│  │  │  - Resource limits            - Network isolation           │  │  │
-│  │  └─────────────────────────────────────────────────────────────┘  │  │
+│  │  ┌──────────────────────────────┐  ┌────────────────────────────┐ │  │
+│  │  │  a3s-box (MicroVM Sandbox)   │  │  a3s-power (LLM Engine)   │ │  │
+│  │  │  - Hardware-level isolation  │  │  - OpenAI + Ollama API    │ │  │
+│  │  │  - VM snapshot/restore       │  │  - llama.cpp backend      │ │  │
+│  │  │  - Warm pool management      │  │  - Cost tracking          │ │  │
+│  │  └──────────────────────────────┘  └────────────────────────────┘ │  │
+│  │  ┌──────────────────────────────┐                                 │  │
+│  │  │  SafeClaw (Security Gateway) │                                 │  │
+│  │  │  - 7-layer defense           │                                 │  │
+│  │  │  - Runtime audit pipeline    │                                 │  │
+│  │  │  - TEE support               │                                 │  │
+│  │  └──────────────────────────────┘                                 │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                    │                                    │
+│                                    ▼                                    │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  Observability Layer (OpenTelemetry)                               │  │
+│  │  - End-to-end distributed tracing across all components           │  │
+│  │  - LLM cost tracking (model / tokens / cost per call)             │  │
+│  │  - Metrics export: Prometheus / OTLP → SigNoz                     │  │
+│  │  - Security audit event pipeline → NATS Stream                    │  │
 │  └───────────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -70,7 +91,7 @@
 | Feature | Description |
 |---------|-------------|
 | **Multi-Session** | Run multiple independent AI conversations |
-| **Tool System** | 8 built-in tools (bash, read, write, edit, grep, glob, ls, web_fetch) |
+| **Tool System** | 10 built-in tools (bash, read, write, edit, grep, glob, ls, web_fetch, cron, parse) |
 | **Permissions** | Fine-grained Allow/Deny/Ask rules for tool access |
 | **HITL** | Human-in-the-loop confirmation for sensitive operations |
 | **Skills** | Extend with custom tools via Markdown definitions |
@@ -151,6 +172,62 @@ runtime.start_agent("a3s-code").await;
 ```
 
 📦 [crates.io](https://crates.io/crates/a3s-box-runtime) · 📖 [Documentation](crates/box/README.md)
+
+---
+
+### a3s-power — Local LLM Inference Engine
+
+**Role**: Infrastructure layer - local model management and serving with dual-protocol API.
+
+| Feature | Description |
+|---------|-------------|
+| **Ollama-Compatible API** | Drop-in replacement with 12+ endpoints |
+| **OpenAI-Compatible API** | `/v1/chat/completions`, `/v1/models`, `/v1/embeddings` |
+| **llama.cpp Backend** | GGUF inference via Rust bindings |
+| **Multi-Model** | Concurrent model loading with LRU eviction |
+| **Cost Tracking** | Per-call token counting and cost recording |
+
+```bash
+a3s-power pull llama3.2:3b
+a3s-power serve  # Start HTTP server
+```
+
+📖 [Documentation](crates/power/README.md)
+
+---
+
+### SafeClaw — Security Gateway with TEE Support
+
+**Role**: Infrastructure layer - privacy-focused security gateway with hardware-isolated execution.
+
+| Feature | Description |
+|---------|-------------|
+| **7-Layer Defense** | Hardware → namespace → container → permission → HITL → data → network |
+| **PII Detection** | Regex + ML-augmented sensitive data detection |
+| **Taint Tracking** | Track sensitive data flow through the system |
+| **Runtime Audit** | Audit event pipeline → NATS Stream → alerting + persistence |
+| **TEE Support** | AMD SEV-SNP encrypted execution environment |
+
+📖 [Documentation](crates/safeclaw/README.md)
+
+---
+
+### a3s-search — Meta Search Engine
+
+**Role**: Utility layer - aggregate search results from multiple engines.
+
+| Feature | Description |
+|---------|-------------|
+| **Multi-Engine** | 8 built-in engines (DuckDuckGo, Wikipedia, Baidu, etc.) |
+| **Consensus Ranking** | Results found by multiple engines rank higher |
+| **Proxy Pool** | Dynamic proxy IP rotation |
+| **Async-First** | Parallel search with per-engine timeout |
+
+```bash
+a3s-search "Rust programming" -e ddg,wiki,baidu
+```
+
+�� [Documentation](crates/search/README.md)
 
 ---
 
@@ -267,9 +344,27 @@ a3s/
     ├── cron/               # [submodule] Cron scheduling library
     ├── lane/               # [submodule] Priority command queue
     ├── context/            # [submodule] Context management
+    ├── power/              # [submodule] Local LLM inference engine
+    ├── safeclaw/           # [submodule] Security gateway with TEE
+    ├── search/             # [submodule] Meta search engine
     ├── tools/              # Built-in tools binary
     └── tools-core/         # Core types for tools
 ```
+
+## Roadmap
+
+### Cross-Cutting Optimization Priorities
+
+| Priority | Optimization | Scope | Timeline |
+|----------|-------------|-------|----------|
+| 🔴 P0 | **MicroVM Cold Start** — VM snapshot/restore + warm pool + layered model cache | a3s-box | 4-6 weeks |
+| 🟡 P1 | **OpenTelemetry Integration** — End-to-end tracing across all crates | all crates | 2-3 weeks |
+| 🟡 P1 | **LLM Cost Tracking** — Per-call token/cost recording → Cost Dashboard | a3s-power, a3s-code | 2-3 weeks |
+| 🟡 P1 | **Runtime Security Audit** — Audit pipeline + drift detection + panic elimination | SafeClaw | 2-3 weeks |
+| 🟢 P2 | **Distributed Scheduling** — Multi-node job distribution with leader election | a3s-cron | 3-4 weeks |
+| 🟢 P2 | **ML-based Search Ranking** — Learning-to-rank for result quality | a3s-search | 3-4 weeks |
+
+See each crate's README for detailed per-component roadmaps.
 
 ## Development
 
