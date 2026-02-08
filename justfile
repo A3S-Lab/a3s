@@ -209,16 +209,16 @@ publish:
         echo ""
 
         print_step "Verifying ${crate_name}..."
-        if cargo publish -p "$crate_name" --dry-run 2>/dev/null || \
-           (cd "$crate_path" && cargo publish --dry-run); then
+        if cargo publish -p "$crate_name" --dry-run --allow-dirty 2>/dev/null || \
+           (cd "$crate_path" && cargo publish --dry-run --allow-dirty); then
             print_success "Verification OK"
         else
             print_error "Verification failed for ${crate_name}"
         fi
 
         print_step "Publishing ${crate_name}..."
-        if cargo publish -p "$crate_name" 2>/dev/null || \
-           (cd "$crate_path" && cargo publish); then
+        if cargo publish -p "$crate_name" --allow-dirty 2>/dev/null || \
+           (cd "$crate_path" && cargo publish --allow-dirty); then
             print_success "Published ${crate_name} v${VERSION}"
         else
             print_error "Publish failed for ${crate_name}"
@@ -233,47 +233,49 @@ publish:
     print_header "📦 Publishing A3S Crates to crates.io"
     echo ""
     echo -e "  ${DIM}Publishing order:${RESET}"
-    echo -e "    1. a3s-lane      (utility, no internal deps)"
-    echo -e "    2. a3s_context   (utility, no internal deps)"
-    echo -e "    3. a3s-cron      (utility, no internal deps)"
-    echo -e "    4. a3s-power     (infrastructure, no internal deps)"
-    echo -e "    5. a3s-box-core  (box foundation)"
-    echo -e "    6. a3s-box-runtime (depends on core)"
-    echo -e "    7. a3s-code      (may depend on others)"
+    echo -e "    1. a3s-tools-core (foundation, no internal deps)"
+    echo -e "    2. a3s-search     (utility, no internal deps)"
+    echo -e "    3. a3s-lane       (utility, no internal deps)"
+    echo -e "    4. a3s_context    (utility, no internal deps)"
+    echo -e "    5. a3s-cron       (utility, no internal deps)"
+    echo -e "    6. a3s-power      (infrastructure, no internal deps)"
+    echo -e "    7. a3s-code       (depends on tools-core, lane, cron)"
+    echo -e "    8. a3s-tools      (depends on tools-core, search, cron)"
     echo ""
 
     # Pre-publish checks
     print_step "Running pre-publish checks..."
 
     print_step "Checking formatting..."
-    if cargo fmt --all -- --check && (cd crates/box/src && cargo fmt --all -- --check); then
+    if cargo fmt --all -- --check; then
         print_success "Formatting OK"
     else
         print_error "Formatting check failed. Run 'just fmt' first."
     fi
 
     print_step "Running clippy..."
-    if cargo clippy --workspace -- -D warnings && (cd crates/box/src && cargo clippy --all-targets -- -D warnings); then
+    if cargo clippy --workspace -- -D warnings; then
         print_success "Clippy OK"
     else
         print_error "Clippy check failed."
     fi
 
     print_step "Running tests..."
-    if cargo test --workspace && (cd crates/box/src && cargo test -p a3s-box-core -p a3s-box-runtime --lib); then
+    if cargo test --workspace; then
         print_success "Tests OK"
     else
         print_error "Tests failed."
     fi
 
-    # Publish in order (utilities first, then box, then code)
+    # Publish in dependency order
+    publish_crate "a3s-tools-core" "crates/tools-core" 30
+    publish_crate "a3s-search" "crates/search" 30
     publish_crate "a3s-lane" "crates/lane" 30
     publish_crate "a3s_context" "crates/context" 30
     publish_crate "a3s-cron" "crates/cron" 30
     publish_crate "a3s-power" "crates/power" 30
-    publish_crate "a3s-box-core" "crates/box/src/core" 30
-    publish_crate "a3s-box-runtime" "crates/box/src/runtime" 30
-    publish_crate "a3s-code" "crates/code" 0
+    publish_crate "a3s-code" "crates/code" 30
+    publish_crate "a3s-tools" "crates/tools" 0
 
     print_header "✓ All crates published successfully!"
     echo ""
@@ -289,21 +291,11 @@ publish-dry:
     echo "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
     echo ""
 
-    for crate in a3s-lane a3s_context a3s-cron a3s-power a3s-code; do
+    for crate in a3s-tools-core a3s-search a3s-lane a3s_context a3s-cron a3s-power a3s-code a3s-tools; do
         echo "=== ${crate} ==="
-        cargo publish -p "$crate" --dry-run 2>/dev/null || echo "  (checking in submodule)"
+        cargo publish -p "$crate" --dry-run --allow-dirty 2>/dev/null || echo "  (dry-run failed for ${crate})"
         echo ""
     done
-
-    echo "=== a3s-box-core ==="
-    cd crates/box/src && cargo publish -p a3s-box-core --dry-run
-    cd ../../..
-    echo ""
-
-    echo "=== a3s-box-runtime ==="
-    cd crates/box/src && cargo publish -p a3s-box-runtime --dry-run
-    cd ../../..
-    echo ""
 
     echo "✓ Dry run complete. Ready to publish with 'just publish'"
     echo ""
@@ -313,8 +305,8 @@ publish-crate CRATE:
     #!/usr/bin/env bash
     set -e
     echo "Publishing {{CRATE}}..."
-    cargo publish -p {{CRATE}} 2>/dev/null || \
-        (cd crates/box/src && cargo publish -p {{CRATE}})
+    cargo publish -p {{CRATE}} --allow-dirty 2>/dev/null || \
+        (cd crates/box/src && cargo publish -p {{CRATE}} --allow-dirty)
     echo "✓ Published {{CRATE}}"
 
 # Show all crate versions
@@ -322,15 +314,15 @@ version:
     #!/usr/bin/env bash
     echo ""
     echo "A3S Crate Versions:"
+    echo "  a3s-tools-core:  $(grep '^version' crates/tools-core/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
+    echo "  a3s-search:      $(grep '^version' crates/search/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     echo "  a3s-lane:        $(grep '^version' crates/lane/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     echo "  a3s_context:     $(grep '^version' crates/context/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     echo "  a3s-cron:        $(grep '^version' crates/cron/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     echo "  a3s-power:       $(grep '^version' crates/power/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     echo "  a3s-code:        $(grep '^version' crates/code/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
-    # Box uses workspace version inheritance
-    BOX_VERSION=$(grep '^version' crates/box/src/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')
-    echo "  a3s-box-core:    ${BOX_VERSION}"
-    echo "  a3s-box-runtime: ${BOX_VERSION}"
+    echo "  a3s-tools:       $(grep '^version' crates/tools/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
+    echo "  safeclaw:        $(grep '^version' crates/safeclaw/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     echo ""
 
 # ============================================================================
