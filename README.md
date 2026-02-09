@@ -385,7 +385,7 @@ a3s/
 |----------|-------------|-------|--------|-----------|
 | 🔴 P0 | **MicroVM Cold Start** — Rootfs cache + warm pool + layered model cache | a3s-box | ~70% | RootfsCache, LayerCache, WarmPool implemented with tests; VM snapshot/restore pending (requires libkrun API support) |
 | 🟡 P1 | **OpenTelemetry (Cross-Crate)** — End-to-end tracing across all crates | all crates | ~40% | Tracing implemented in a3s-code; remaining crates (lane, context, cron, search, power, box, safeclaw) need OTLP integration |
-| 🟡 P1 | **LLM Cost Dashboard** — Unified cost aggregation and visualization | a3s-power, a3s-code | ~60% | Per-call token/cost recording works in both crates; cross-crate aggregation and dashboard UI not yet built |
+| 🟡 P1 | **LLM Cost Dashboard** — Unified cost aggregation and visualization | a3s-power, a3s-code | ~60% | Per-call token/cost recording works in both crates; cross-crate aggregation endpoint not yet built |
 
 ### Planned
 
