@@ -37,3 +37,6 @@
 [submodule "crates/power"]
 	path = crates/power
 	url = git@github.com:A3S-Lab/Power.git
+[submodule "crates/updater"]
+	path = crates/updater
+	url = git@github.com:A3S-Lab/Updater.git
