@@ -10,6 +10,7 @@ members = [
     "crates/cron",
     "crates/safeclaw",
     "crates/power",
+    "crates/updater",
 ]
 
 # Box is a separate workspace (nested workspaces not supported)
@@ -17,6 +18,7 @@ members = [
 exclude = [
     "crates/box",
     "crates/safeclaw/ui/src-tauri",
+    "crates/power/ui",
 ]
 
 [workspace.package]

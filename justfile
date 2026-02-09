@@ -95,6 +95,7 @@ test:
     test_crate "a3s-cron"
     test_crate "a3s-tools-core"
     test_crate "a3s-power"
+    test_crate "a3s-updater"
     # a3s-tools is binary-only, test with different command
     echo -ne "${CYAN}▶${RESET} ${BOLD}a3s-tools${RESET} "
     if OUTPUT=$(cargo test -p a3s-tools -- --test-threads=1 2>&1); then
@@ -234,13 +235,14 @@ publish:
     echo ""
     echo -e "  ${DIM}Publishing order:${RESET}"
     echo -e "    1. a3s-tools-core (foundation, no internal deps)"
-    echo -e "    2. a3s-search     (utility, no internal deps)"
-    echo -e "    3. a3s-lane       (utility, no internal deps)"
-    echo -e "    4. a3s_context    (utility, no internal deps)"
-    echo -e "    5. a3s-cron       (utility, no internal deps)"
-    echo -e "    6. a3s-power      (infrastructure, no internal deps)"
-    echo -e "    7. a3s-code       (depends on tools-core, lane, cron)"
-    echo -e "    8. a3s-tools      (depends on tools-core, search, cron)"
+    echo -e "    2. a3s-updater    (utility, no internal deps)"
+    echo -e "    3. a3s-search     (utility, no internal deps)"
+    echo -e "    4. a3s-lane       (utility, no internal deps)"
+    echo -e "    5. a3s_context    (utility, no internal deps)"
+    echo -e "    6. a3s-cron       (utility, no internal deps)"
+    echo -e "    7. a3s-power      (infrastructure, no internal deps)"
+    echo -e "    8. a3s-code       (depends on tools-core, lane, cron)"
+    echo -e "    9. a3s-tools      (depends on tools-core, search, cron)"
     echo ""
 
     # Pre-publish checks
@@ -269,6 +271,7 @@ publish:
 
     # Publish in dependency order
     publish_crate "a3s-tools-core" "crates/tools-core" 30
+    publish_crate "a3s-updater" "crates/updater" 30
     publish_crate "a3s-search" "crates/search" 30
     publish_crate "a3s-lane" "crates/lane" 30
     publish_crate "a3s_context" "crates/context" 30
@@ -291,7 +294,7 @@ publish-dry:
     echo "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛"
     echo ""
 
-    for crate in a3s-tools-core a3s-search a3s-lane a3s_context a3s-cron a3s-power a3s-code a3s-tools; do
+    for crate in a3s-tools-core a3s-updater a3s-search a3s-lane a3s_context a3s-cron a3s-power a3s-code a3s-tools; do
         echo "=== ${crate} ==="
         cargo publish -p "$crate" --dry-run --allow-dirty 2>/dev/null || echo "  (dry-run failed for ${crate})"
         echo ""
@@ -315,6 +318,7 @@ version:
     echo ""
     echo "A3S Crate Versions:"
     echo "  a3s-tools-core:  $(grep '^version' crates/tools-core/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
+    echo "  a3s-updater:     $(grep '^version' crates/updater/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     echo "  a3s-search:      $(grep '^version' crates/search/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     echo "  a3s-lane:        $(grep '^version' crates/lane/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
     echo "  a3s_context:     $(grep '^version' crates/context/Cargo.toml | head -1 | sed 's/.*\"\(.*\)\".*/\1/')"
