@@ -18,7 +18,6 @@ members = [
 exclude = [
     "crates/box",
     "crates/safeclaw/ui/src-tauri",
-    "crates/power/ui",
 ]
 
 [workspace.package]
