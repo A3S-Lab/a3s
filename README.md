@@ -353,16 +353,49 @@ a3s/
 
 ## Roadmap
 
-### Cross-Cutting Optimization Priorities
+### Completed ✅
+
+| Feature | Scope | Description |
+|---------|-------|-------------|
+| **AI Coding Agent** | a3s-code | Multi-session management, 10 built-in tools, permission system, HITL confirmation |
+| **Skills & Subagents** | a3s-code | Markdown/YAML skill definitions, agent registry with 5 built-in agents, isolated child sessions |
+| **LSP Integration** | a3s-code | 5 language servers (Rust, Go, TS/JS, Python, C/C++), hover/definition/references/symbols/diagnostics |
+| **MCP Support** | a3s-code | Model Context Protocol with stdio transport, OAuth config, `mcp__<server>__<tool>` naming |
+| **Hooks System** | a3s-code | 8 lifecycle events (PreToolUse, PostToolUse, GenerateStart/End, SessionStart/End, SkillLoad/Unload) |
+| **Reflection & Adaptive Strategies** | a3s-code | 10 error categories, 4 execution strategies (Direct/Planned/Iterative/Parallel), retry policies |
+| **Memory System** | a3s-code | Episodic/Semantic/Procedural memory with importance scoring, access tracking |
+| **Planning & Goal Tracking** | a3s-code | LLM-based planning, execution plans, complexity assessment |
+| **Session Persistence** | a3s-code | `FileSessionStore` with pluggable `SessionStore` trait, JSON serialization |
+| **Prompt Injection Defense** | a3s-code | Output sanitizer, taint tracking, tool interceptor, audit logging (via SafeClaw module) |
+| **OpenTelemetry (a3s-code)** | a3s-code | OTLP exporter, structured spans (agent → turn → llm → tool), LLM cost tracking with model pricing |
+| **Priority Command Queue** | a3s-lane | 4 phases complete: core scheduling, reliability (retry/DLQ/persistence), scalability (parallelism/partitioning/rate limiting), observability (metrics/histograms/alerts) |
+| **Hierarchical Context** | a3s-context | Pathway URI addressing, multi-level digests, namespace system, embedding support, 4 reranker providers (Cohere/Jina/OpenAI/Mock) |
+| **Cron Scheduling** | a3s-cron | Standard 5-field cron + natural language (EN/CN), pluggable storage, execution history |
+| **Meta Search Engine** | a3s-search | 8 engines, consensus ranking, dynamic proxy pool, async parallel search |
+| **Local LLM Engine** | a3s-power | Ollama-compatible (12+ endpoints) + OpenAI-compatible API, llama.cpp backend, model management, Prometheus metrics |
+| **MicroVM Sandbox** | a3s-box | VM management, OCI image handling, Docker-like CLI, CRI (Kubernetes Container Runtime Interface), TEE support (SEV-SNP) |
+| **Security Gateway** | SafeClaw | 7 channel adapters, session routing, PII classification, TEE client/manager, crypto key management, Tauri desktop UI |
+| **Built-in Tools** | a3s-tools | 10 subcommands with JSON parameter passing, workspace sandboxing |
+| **SDKs** | Python, TypeScript | Full client libraries with types, examples, tests, proto definitions |
+| **Infrastructure** | CI/CD | GitHub Actions (CI + SDK publish), crates.io publishing pipeline, Homebrew tap, Next.js docs site |
+
+### In Progress 🚧
+
+| Priority | Optimization | Scope | Status | Remaining |
+|----------|-------------|-------|--------|-----------|
+| 🔴 P0 | **MicroVM Cold Start** — Rootfs cache + warm pool + layered model cache | a3s-box | ~70% | RootfsCache, LayerCache, WarmPool implemented with tests; VM snapshot/restore pending (requires libkrun API support) |
+| 🟡 P1 | **OpenTelemetry (Cross-Crate)** — End-to-end tracing across all crates | all crates | ~40% | Tracing implemented in a3s-code; remaining crates (lane, context, cron, search, power, box, safeclaw) need OTLP integration |
+| 🟡 P1 | **LLM Cost Dashboard** — Unified cost aggregation and visualization | a3s-power, a3s-code | ~60% | Per-call token/cost recording works in both crates; cross-crate aggregation and dashboard UI not yet built |
+
+### Planned
 
 | Priority | Optimization | Scope | Timeline |
 |----------|-------------|-------|----------|
-| 🔴 P0 | **MicroVM Cold Start** — VM snapshot/restore + warm pool + layered model cache | a3s-box | 4-6 weeks |
-| 🟡 P1 | **OpenTelemetry Integration** — End-to-end tracing across all crates | all crates | 2-3 weeks |
-| 🟡 P1 | **LLM Cost Tracking** — Per-call token/cost recording → Cost Dashboard | a3s-power, a3s-code | 2-3 weeks |
-| 🟡 P1 | **Runtime Security Audit** — Audit pipeline + drift detection + panic elimination | SafeClaw | 2-3 weeks |
+| 🟡 P1 | **Runtime Security Audit** — NATS Stream audit pipeline + drift detection + panic elimination | SafeClaw | 2-3 weeks |
 | 🟢 P2 | **Distributed Scheduling** — Multi-node job distribution with leader election | a3s-cron | 3-4 weeks |
 | 🟢 P2 | **ML-based Search Ranking** — Learning-to-rank for result quality | a3s-search | 3-4 weeks |
+| 🟢 P2 | **Distributed Queue Backend** — Real multi-machine backend (Redis/NATS) for a3s-lane | a3s-lane | 3-4 weeks |
+| 🟢 P2 | **Context Remote Storage** — Remote storage backend + session persistence for a3s-context | a3s-context | 2-3 weeks |
 
 See each crate's README for detailed per-component roadmaps.
 

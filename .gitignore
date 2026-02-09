@@ -12,6 +12,7 @@ Cargo.lock
 # OS
 .DS_Store
 Thumbs.db
+os/
 
 # Coverage
 lcov.info
