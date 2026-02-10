@@ -379,7 +379,7 @@ a3s/
 | **Built-in Tools** | a3s-tools | 10 subcommands with JSON parameter passing, workspace sandboxing |
 | **SDKs** | Python, TypeScript | Full client libraries with types, examples, tests, proto definitions |
 | **Infrastructure** | CI/CD | GitHub Actions (CI + SDK publish), crates.io publishing pipeline, Homebrew tap, Next.js docs site |
-| **Test Coverage** | a3s-code | 862 unit tests, 82% line coverage across service, agent, LLM, memory, session queue, convert, store, tools, permissions, sessions, planning |
+| **Test Coverage** | a3s-code | 1,276 unit tests, 87% line coverage across service, agent, LLM, memory, session queue, convert, store, tools, permissions, sessions, planning, reflection, telemetry, MCP, LSP |
 
 ### In Progress 🚧
 
@@ -403,15 +403,16 @@ See each crate's README for detailed per-component roadmaps.
 
 ## Test Coverage
 
-**Total: 1,700 tests | a3s-code line coverage: 82%**
+**Total: 2,493 tests | a3s-code line coverage: 87%**
 
 | Crate | Tests | Status |
 |-------|------:|--------|
-| a3s-code | 862 | ✅ |
-| a3s-power | 429 | ✅ |
+| a3s-code | 1,276 | ✅ |
+| a3s-power | 861 | ✅ |
 | a3s-lane | 212 | ✅ |
 | a3s-context | 104 | ✅ |
 | a3s-cron | 71 | ✅ |
+| a3s-tools | 51 | ✅ |
 | a3s-tools-core | 14 | ✅ |
 | a3s-updater | 8 | ✅ |
 
