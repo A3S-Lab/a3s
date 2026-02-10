@@ -16,12 +16,6 @@
 [submodule "crates/tools"]
 	path = crates/tools
 	url = git@github.com:A3S-Lab/Tools.git
-[submodule "sdk/typescript"]
-	path = sdk/typescript
-	url = git@github.com:A3S-Lab/TypeScript-SDK.git
-[submodule "sdk/python"]
-	path = sdk/python
-	url = git@github.com:A3S-Lab/Python-SDK.git
 [submodule "homebrew-tap"]
 	path = homebrew-tap
 	url = git@github.com:A3S-Lab/homebrew-tap.git
