@@ -181,11 +181,12 @@ runtime.start_agent("a3s-code").await;
 
 | Feature | Description |
 |---------|-------------|
-| **Ollama-Compatible API** | Drop-in replacement with 12+ endpoints |
+| **Ollama Registry** | Pull any model from `registry.ollama.ai` by name with auto-resolved metadata |
+| **Ollama-Compatible API** | Drop-in replacement with 12+ endpoints and NDJSON streaming |
 | **OpenAI-Compatible API** | `/v1/chat/completions`, `/v1/models`, `/v1/embeddings` |
-| **llama.cpp Backend** | GGUF inference via Rust bindings |
-| **Multi-Model** | Concurrent model loading with LRU eviction |
-| **Cost Tracking** | Per-call token counting and cost recording |
+| **llama.cpp Backend** | GGUF inference via Rust bindings with KV cache reuse |
+| **Multi-Model** | Concurrent model loading with LRU eviction and keep-alive |
+| **Cost Tracking** | Per-call token counting, cost recording, and Prometheus metrics |
 
 ```bash
 a3s-power pull llama3.2:3b
@@ -372,12 +373,13 @@ a3s/
 | **Hierarchical Context** | a3s-context | Pathway URI addressing, multi-level digests, namespace system, embedding support, 4 reranker providers (Cohere/Jina/OpenAI/Mock) |
 | **Cron Scheduling** | a3s-cron | Standard 5-field cron + natural language (EN/CN), pluggable storage, execution history |
 | **Meta Search Engine** | a3s-search | 8 engines, consensus ranking, dynamic proxy pool, async parallel search |
-| **Local LLM Engine** | a3s-power | Ollama-compatible (12+ endpoints) + OpenAI-compatible API, llama.cpp backend, model management, Prometheus metrics |
+| **Local LLM Engine** | a3s-power | Ollama Registry integration (primary model source), Ollama-compatible (12+ endpoints) + OpenAI-compatible API, llama.cpp backend, model management, Prometheus metrics |
 | **MicroVM Sandbox** | a3s-box | VM management, OCI image handling, Docker-like CLI, CRI (Kubernetes Container Runtime Interface), TEE support (SEV-SNP) |
 | **Security Gateway** | SafeClaw | 7 channel adapters, session routing, PII classification, TEE client/manager, crypto key management, Tauri desktop UI |
 | **Built-in Tools** | a3s-tools | 10 subcommands with JSON parameter passing, workspace sandboxing |
 | **SDKs** | Python, TypeScript | Full client libraries with types, examples, tests, proto definitions |
 | **Infrastructure** | CI/CD | GitHub Actions (CI + SDK publish), crates.io publishing pipeline, Homebrew tap, Next.js docs site |
+| **Test Coverage** | a3s-code | 862 unit tests, 82% line coverage across service, agent, LLM, memory, session queue, convert, store, tools, permissions, sessions, planning |
 
 ### In Progress 🚧
 
@@ -398,6 +400,20 @@ a3s/
 | 🟢 P2 | **Context Remote Storage** — Remote storage backend + session persistence for a3s-context | a3s-context | 2-3 weeks |
 
 See each crate's README for detailed per-component roadmaps.
+
+## Test Coverage
+
+**Total: 1,700 tests | a3s-code line coverage: 82%**
+
+| Crate | Tests | Status |
+|-------|------:|--------|
+| a3s-code | 862 | ✅ |
+| a3s-power | 429 | ✅ |
+| a3s-lane | 212 | ✅ |
+| a3s-context | 104 | ✅ |
+| a3s-cron | 71 | ✅ |
+| a3s-tools-core | 14 | ✅ |
+| a3s-updater | 8 | ✅ |
 
 ## Development
 
