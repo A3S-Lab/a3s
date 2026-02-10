@@ -66,40 +66,61 @@ All documentation files MUST be written in English:
 
 ## Documentation Maintenance
 
-**MANDATORY: Update documentation after completing major features.**
+**MANDATORY: Update documentation EVERY TIME a feature is completed. No exceptions.**
 
-### After Completing a Feature Module
+A feature is NOT considered complete until its documentation is updated. This is a blocking requirement — code changes without corresponding documentation updates will be treated as incomplete work.
 
-When a significant feature or module is completed, you MUST:
+### Rule: Documentation Update Is Part of Feature Completion
 
-1. **Update README.md**:
-   - Update the Features section if new capabilities were added
-   - Update the Roadmap to mark completed items with ✅
-   - Update test counts if they changed
-   - Update API Reference if new public APIs were added
-   - Update code examples if behavior changed
+**Every** completed feature (not just "major" ones) MUST trigger the following documentation updates before the feature can be considered done:
 
-2. **Remove Obsolete Content**:
+1. **Update README.md Features section**:
+   - Add new capabilities to the Features list
+   - Update descriptions of changed capabilities
+   - A feature that isn't listed in Features doesn't exist to users
+
+2. **Update README.md Roadmap**:
+   - Mark completed items with ✅ and `[x]`
+   - Add a brief description of what was implemented (e.g., `(JSON file default, pluggable SessionStore trait)`)
+   - Update phase status emoji (🚧 → ✅) when all items in a phase are done
+
+3. **Update Related Usage Documentation**:
+   - Update `docs/*.md` files that reference the changed functionality
+   - Update code examples and usage guides to reflect new behavior
+   - Update API Reference if public APIs were added or changed
+   - Update configuration documentation if new options were introduced
+
+4. **Remove Obsolete Content**:
    - Delete outdated documentation that no longer reflects reality
    - Remove TODO comments for completed work
    - Update or remove examples that use deprecated APIs
    - Clean up roadmap items that are no longer planned
 
-3. **Keep Consistent**:
+5. **Keep Consistent**:
    - Ensure code comments match actual behavior
    - Ensure README examples are runnable
    - Ensure version numbers and statistics are accurate
+   - Update test counts (run `just test` to get count)
 
-### Checklist
+### Mandatory Checklist (MUST complete for EVERY feature)
 
 ```markdown
-After completing a major feature:
+Feature completion checklist (ALL items required):
 - [ ] README.md Features section updated
 - [ ] README.md Roadmap updated (mark ✅, update descriptions)
 - [ ] README.md test count updated (run `just test` to get count)
+- [ ] Related docs/*.md files updated
 - [ ] README.md API Reference updated (if public API changed)
+- [ ] Usage examples updated to reflect new behavior
 - [ ] Obsolete documentation removed
 - [ ] Code examples verified to work
+```
+
+### Workflow
+
+```
+1. Implement feature  →  2. Tests pass  →  3. Update documentation  →  4. Feature complete ✓
+                                              ↑ YOU ARE NOT DONE WITHOUT THIS STEP
 ```
 
 ### Example
@@ -113,6 +134,12 @@ After completing a major feature:
 ### Phase 2: Reliability ✅
 - [x] Session persistence (JSON file default, pluggable SessionStore trait)
 ```
+
+### What Happens If You Skip This
+
+- ❌ The feature is **NOT complete** — do not move on to the next task
+- ❌ Users cannot discover or use undocumented features
+- ❌ Future development will be based on outdated assumptions
 
 ---
 

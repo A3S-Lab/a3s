@@ -18,6 +18,10 @@ os/
 lcov.info
 *.profraw
 *.profdata
+.coverage
+
+# Backup files
+*.bak
 
 # Claude Code
 .claude/settings.local.json
