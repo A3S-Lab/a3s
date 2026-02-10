@@ -1,6 +1,7 @@
 # Build artifacts
 /target/
 Cargo.lock
+.cargo/
 
 # IDE
 .idea/
