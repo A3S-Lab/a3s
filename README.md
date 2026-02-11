@@ -427,17 +427,18 @@ See each crate's README for detailed per-component roadmaps.
 
 ## Test Coverage
 
-**Total: 2,597 tests | a3s-code line coverage: 87%**
+**Total: 2,809 tests | a3s-code line coverage: 87%**
 
 | Crate | Tests | Status |
 |-------|------:|--------|
-| a3s-code | 1,276 | ✅ |
+| a3s-code | 1,276 | ✅ (+3 ignored) |
 | a3s-power | 861 | ✅ |
+| a3s-search | 267 | ✅ |
 | a3s-lane | 212 | ✅ |
-| a3s-context | 104 | ⚠️ (2 env-dependent) |
 | a3s-cron | 71 | ✅ |
-| a3s-tools | 51 | ✅ |
-| a3s-tools-core | 14 | ✅ |
+| a3s-tools | 51 | ⚠️ (1 failing) |
+| a3s-tools-core | 32 | ✅ |
+| a3s-context | 31 | ✅ (+20 ignored) |
 | a3s-updater | 8 | ✅ |
 
 ## Development
