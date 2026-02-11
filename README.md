@@ -276,6 +276,29 @@ manager.add_job("backup", "0 2 * * *", "backup.sh").await?;
 
 📦 [crates.io](https://crates.io/crates/a3s-tools) · 📖 [Documentation](crates/tools/README.md)
 
+---
+
+### a3s-updater — Self-Update Library
+
+**Role**: Utility - self-update for A3S CLI binaries via GitHub Releases.
+
+| Feature | Description |
+|---------|-------------|
+| **GitHub Releases** | Fetch latest release from GitHub API |
+| **Binary Replacement** | Download and replace running binary in-place |
+| **Semver Check** | Skip update if already on latest version |
+
+```rust
+use a3s_updater::check_update;
+
+let update = check_update("a3s-code", current_version).await?;
+if update.available {
+    update.apply().await?;
+}
+```
+
+📖 [Source](crates/updater/)
+
 ## Quick Start
 
 ### Clone Repository
@@ -336,20 +359,20 @@ a3s/
 ├── Cargo.toml              # Workspace definition
 ├── justfile                # Build commands
 ├── README.md
-├── sdk/
-│   ├── python/             # Python SDK
-│   └── typescript/         # TypeScript SDK
 └── crates/
     ├── box/                # [submodule] MicroVM sandbox runtime
     ├── code/               # [submodule] AI coding agent
+    │   └── sdk/            #   Python & TypeScript SDKs
     ├── cron/               # [submodule] Cron scheduling library
     ├── lane/               # [submodule] Priority command queue
     ├── context/            # [submodule] Context management
     ├── power/              # [submodule] Local LLM inference engine
     ├── safeclaw/           # [submodule] Security gateway with TEE
     ├── search/             # [submodule] Meta search engine
+    │   └── sdk/            #   Python & Node.js SDKs
     ├── tools/              # Built-in tools binary
-    └── tools-core/         # Core types for tools
+    ├── tools-core/         # Core types for tools
+    └── updater/            # Self-update via GitHub Releases
 ```
 
 ## Roadmap
@@ -377,8 +400,9 @@ a3s/
 | **MicroVM Sandbox** | a3s-box | VM management, OCI image handling, Docker-like CLI, CRI (Kubernetes Container Runtime Interface), TEE support (SEV-SNP) |
 | **Security Gateway** | SafeClaw | 7 channel adapters, session routing, PII classification, TEE client/manager, crypto key management, Tauri desktop UI |
 | **Built-in Tools** | a3s-tools | 10 subcommands with JSON parameter passing, workspace sandboxing |
-| **SDKs** | Python, TypeScript | Full client libraries with types, examples, tests, proto definitions |
-| **Infrastructure** | CI/CD | GitHub Actions (CI + SDK publish), crates.io publishing pipeline, Homebrew tap, Next.js docs site |
+| **Self-Updater** | a3s-updater | GitHub Releases-based self-update for CLI binaries |
+| **SDKs** | Python, TypeScript, Node.js | a3s-code: Python & TypeScript; a3s-search: Python & Node.js — full client libraries with types, examples, tests |
+| **Infrastructure** | CI/CD | GitHub Actions (CI + SDK publish), crates.io publishing pipeline, Homebrew tap |
 | **Test Coverage** | a3s-code | 1,276 unit tests, 87% line coverage across service, agent, LLM, memory, session queue, convert, store, tools, permissions, sessions, planning, reflection, telemetry, MCP, LSP |
 
 ### In Progress 🚧
@@ -403,14 +427,14 @@ See each crate's README for detailed per-component roadmaps.
 
 ## Test Coverage
 
-**Total: 2,493 tests | a3s-code line coverage: 87%**
+**Total: 2,597 tests | a3s-code line coverage: 87%**
 
 | Crate | Tests | Status |
 |-------|------:|--------|
 | a3s-code | 1,276 | ✅ |
 | a3s-power | 861 | ✅ |
 | a3s-lane | 212 | ✅ |
-| a3s-context | 104 | ✅ |
+| a3s-context | 104 | ⚠️ (2 env-dependent) |
 | a3s-cron | 71 | ✅ |
 | a3s-tools | 51 | ✅ |
 | a3s-tools-core | 14 | ✅ |
@@ -439,10 +463,12 @@ See each crate's README for detailed per-component roadmaps.
 
 ## SDKs
 
-| Language | Package | Installation |
-|----------|---------|--------------|
-| TypeScript | `@a3s-lab/code` | `npm install @a3s-lab/code` |
-| Python | `a3s-code` | `pip install a3s-code` |
+| Crate | Language | Package | Location |
+|-------|----------|---------|----------|
+| a3s-code | TypeScript | `@a3s-lab/code` | `crates/code/sdk/typescript/` |
+| a3s-code | Python | `a3s-code` | `crates/code/sdk/python/` |
+| a3s-search | Node.js | `@a3s-lab/search` | `crates/search/sdk/node/` |
+| a3s-search | Python | `a3s-search` | `crates/search/sdk/python/` |
 
 ## License
 
