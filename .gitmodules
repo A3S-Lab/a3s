@@ -1,0 +1,36 @@
+[submodule "crates/box"]
+	path = crates/box
+	url = git@github.com:A3S-Lab/Box.git
+[submodule "crates/code"]
+	path = crates/code
+	url = git@github.com:A3S-Lab/Code.git
+[submodule "crates/lane"]
+	path = crates/lane
+	url = git@github.com:A3S-Lab/Lane.git
+[submodule "crates/context"]
+	path = crates/context
+	url = git@github.com:A3S-Lab/Context.git
+[submodule "homebrew-tap"]
+	path = homebrew-tap
+	url = git@github.com:A3S-Lab/homebrew-tap.git
+[submodule "crates/search"]
+	path = crates/search
+	url = git@github.com:A3S-Lab/Search.git
+[submodule "crates/cron"]
+	path = crates/cron
+	url = git@github.com:A3S-Lab/Cron.git
+[submodule "crates/safeclaw"]
+	path = crates/safeclaw
+	url = git@github.com:A3S-Lab/SafeClaw.git
+[submodule "crates/safeclaw/ui"]
+	path = crates/safeclaw/ui
+	url = git@github.com:A3S-Lab/SafeClawUI.git
+[submodule "crates/power"]
+	path = crates/power
+	url = git@github.com:A3S-Lab/Power.git
+[submodule "crates/gateway"]
+	path = crates/gateway
+	url = git@github.com:A3S-Lab/Gateway.git
+[submodule "crates/event"]
+	path = crates/event
+	url = git@github.com:A3S-Lab/Event.git
