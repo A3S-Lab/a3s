@@ -21,6 +21,20 @@ pub struct Event {
     /// Top-level category for grouping (e.g., "market", "system")
     pub category: String,
 
+    /// Event type identifier (e.g., "forex.rate_change", "deploy.completed")
+    ///
+    /// Used by schema registry to look up validation rules.
+    /// Defaults to empty string for untyped events.
+    #[serde(default)]
+    pub event_type: String,
+
+    /// Schema version for this event type (e.g., 1, 2, 3)
+    ///
+    /// Incremented when the payload schema changes.
+    /// Defaults to 1 for new events.
+    #[serde(default = "default_version")]
+    pub version: u32,
+
     /// Event payload — arbitrary JSON data
     pub payload: serde_json::Value,
 
@@ -38,6 +52,10 @@ pub struct Event {
     pub metadata: HashMap<String, String>,
 }
 
+fn default_version() -> u32 {
+    1
+}
+
 impl Event {
     /// Create a new event with auto-generated id and timestamp
     pub fn new(
@@ -51,6 +69,32 @@ impl Event {
             id: format!("evt-{}", uuid::Uuid::new_v4()),
             subject: subject.into(),
             category: category.into(),
+            event_type: String::new(),
+            version: 1,
+            payload,
+            summary: summary.into(),
+            source: source.into(),
+            timestamp: now_millis(),
+            metadata: HashMap::new(),
+        }
+    }
+
+    /// Create a typed event with explicit event_type and version
+    pub fn typed(
+        subject: impl Into<String>,
+        category: impl Into<String>,
+        event_type: impl Into<String>,
+        version: u32,
+        summary: impl Into<String>,
+        source: impl Into<String>,
+        payload: serde_json::Value,
+    ) -> Self {
+        Self {
+            id: format!("evt-{}", uuid::Uuid::new_v4()),
+            subject: subject.into(),
+            category: category.into(),
+            event_type: event_type.into(),
+            version,
             payload,
             summary: summary.into(),
             source: source.into(),
@@ -405,5 +449,75 @@ mod tests {
 
         let parsed: DeliverPolicy = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed, DeliverPolicy::ByStartTime { timestamp: ts });
+    }
+
+    #[test]
+    fn test_event_default_version() {
+        let event = Event::new(
+            "events.test.a",
+            "test",
+            "Test",
+            "test",
+            serde_json::json!({}),
+        );
+        assert_eq!(event.version, 1);
+        assert_eq!(event.event_type, "");
+    }
+
+    #[test]
+    fn test_event_typed() {
+        let event = Event::typed(
+            "events.market.forex",
+            "market",
+            "forex.rate_change",
+            2,
+            "USD/CNY rate change",
+            "reuters",
+            serde_json::json!({"rate": 7.35}),
+        );
+
+        assert!(event.id.starts_with("evt-"));
+        assert_eq!(event.event_type, "forex.rate_change");
+        assert_eq!(event.version, 2);
+        assert_eq!(event.category, "market");
+    }
+
+    #[test]
+    fn test_event_version_serialization() {
+        let event = Event::typed(
+            "events.test.a",
+            "test",
+            "test.created",
+            3,
+            "Test",
+            "test",
+            serde_json::json!({}),
+        );
+
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(json.contains("\"eventType\":\"test.created\""));
+        assert!(json.contains("\"version\":3"));
+
+        let parsed: Event = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.event_type, "test.created");
+        assert_eq!(parsed.version, 3);
+    }
+
+    #[test]
+    fn test_event_version_backward_compat() {
+        // Old events without event_type/version should deserialize with defaults
+        let json = r#"{
+            "id": "evt-123",
+            "subject": "events.test.a",
+            "category": "test",
+            "payload": {},
+            "summary": "Test",
+            "source": "test",
+            "timestamp": 1700000000000
+        }"#;
+
+        let event: Event = serde_json::from_str(json).unwrap();
+        assert_eq!(event.event_type, "");
+        assert_eq!(event.version, 1);
     }
 }

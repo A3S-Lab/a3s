@@ -5,6 +5,7 @@
 
 use crate::error::{EventError, Result};
 use crate::provider::{EventProvider, ProviderInfo, Subscription};
+use crate::schema::SchemaRegistry;
 use crate::types::{Event, EventCounts, PublishOptions, SubscriptionFilter};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -14,11 +15,16 @@ use tokio::sync::RwLock;
 ///
 /// Wraps any `EventProvider` with subscription tracking and convenience
 /// methods. Thread-safe via internal locks.
+///
+/// Optionally validates events against a `SchemaRegistry` before publishing.
 pub struct EventBus {
     provider: Box<dyn EventProvider>,
 
     /// Tracked subscriptions (subscriber_id → filter)
     subscriptions: Arc<RwLock<HashMap<String, SubscriptionFilter>>>,
+
+    /// Optional schema registry for publish-time validation
+    schema_registry: Option<Arc<dyn SchemaRegistry>>,
 }
 
 impl EventBus {
@@ -27,7 +33,25 @@ impl EventBus {
         Self {
             provider: Box::new(provider),
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
+            schema_registry: None,
         }
+    }
+
+    /// Create a new event bus with schema validation
+    pub fn with_schema_registry(
+        provider: impl EventProvider + 'static,
+        registry: Arc<dyn SchemaRegistry>,
+    ) -> Self {
+        Self {
+            provider: Box::new(provider),
+            subscriptions: Arc::new(RwLock::new(HashMap::new())),
+            schema_registry: Some(registry),
+        }
+    }
+
+    /// Get the schema registry (if configured)
+    pub fn schema_registry(&self) -> Option<&dyn SchemaRegistry> {
+        self.schema_registry.as_deref()
     }
 
     /// Get the provider name
@@ -46,12 +70,14 @@ impl EventBus {
     ) -> Result<Event> {
         let subject = self.provider.build_subject(category, topic);
         let event = Event::new(subject, category, summary, source, payload);
+        self.validate_if_configured(&event)?;
         self.provider.publish(&event).await?;
         Ok(event)
     }
 
     /// Publish a pre-built event
     pub async fn publish_event(&self, event: &Event) -> Result<u64> {
+        self.validate_if_configured(event)?;
         self.provider.publish(event).await
     }
 
@@ -61,6 +87,7 @@ impl EventBus {
         event: &Event,
         opts: &PublishOptions,
     ) -> Result<u64> {
+        self.validate_if_configured(event)?;
         self.provider.publish_with_options(event, opts).await
     }
 
@@ -190,5 +217,13 @@ impl EventBus {
     /// Get a reference to the underlying provider
     pub fn provider(&self) -> &dyn EventProvider {
         self.provider.as_ref()
+    }
+
+    /// Validate event against schema registry (if configured)
+    fn validate_if_configured(&self, event: &Event) -> Result<()> {
+        if let Some(ref registry) = self.schema_registry {
+            registry.validate(event)?;
+        }
+        Ok(())
     }
 }

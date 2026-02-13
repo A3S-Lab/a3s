@@ -419,15 +419,18 @@ Expose provider-native capabilities through the abstraction layer without re-imp
 - [x] `SubscriptionFilter` carries optional `SubscribeOptions`
 - [x] `EventBus` threads options through `create_subscriber()`
 
-### Phase 2: Event Versioning & Schema 🚧
+### Phase 2: Event Versioning & Schema ✅
 
 Application-level schema management that no provider handles.
 
-- [ ] Add `version` field to `Event` struct
-- [ ] `SchemaRegistry` trait — register, validate, migrate event schemas
-- [ ] In-memory schema registry for development
-- [ ] Publish-time validation (optional, via `EventBus` config)
-- [ ] Schema evolution rules (backward/forward compatibility)
+- [x] Add `event_type` and `version` fields to `Event` struct (backward-compatible defaults)
+- [x] `Event::typed()` constructor for versioned events
+- [x] `SchemaRegistry` trait — register, validate, query schemas
+- [x] `MemorySchemaRegistry` — in-memory registry for development
+- [x] `EventSchema` — required fields validation per event type + version
+- [x] Publish-time validation (optional, via `EventBus::with_schema_registry()`)
+- [x] `Compatibility` enum — Backward, Forward, Full, None
+- [x] Schema evolution checks (`check_compatibility()`) between versions
 
 ### Phase 3: Operational Hardening 🚧
 

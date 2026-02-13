@@ -46,12 +46,14 @@
 
 pub mod error;
 pub mod provider;
+pub mod schema;
 pub mod store;
 pub mod types;
 
 // Re-export core types
 pub use error::{EventError, Result};
 pub use provider::{EventProvider, PendingEvent, ProviderInfo, Subscription};
+pub use schema::{Compatibility, EventSchema, MemorySchemaRegistry, SchemaRegistry};
 pub use store::EventBus;
 pub use types::{
     DeliverPolicy, Event, EventCounts, PublishOptions, ReceivedEvent, SubscribeOptions,

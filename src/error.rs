@@ -58,6 +58,14 @@ pub enum EventError {
     /// Provider not supported or not available
     #[error("Provider error: {0}")]
     Provider(String),
+
+    /// Schema validation failure
+    #[error("Schema validation failed for event type '{event_type}' v{version}: {reason}")]
+    SchemaValidation {
+        event_type: String,
+        version: u32,
+        reason: String,
+    },
 }
 
 /// Result type alias for event operations
