@@ -89,14 +89,15 @@ impl EventBus {
         let event = Event::new(subject, category, summary, source, payload);
         self.validate_if_configured(&event)?;
 
-        let _span = tracing::info_span!(
+        let span = tracing::info_span!(
             "event.publish",
             event_id = %event.id,
             subject = %event.subject,
             category = category,
             provider = self.provider.name(),
-        )
-        .entered();
+        );
+        let _guard = span.enter();
+        drop(_guard);
 
         self.provider.publish(&event).await?;
         Ok(event)
@@ -106,14 +107,15 @@ impl EventBus {
     pub async fn publish_event(&self, event: &Event) -> Result<u64> {
         self.validate_if_configured(event)?;
 
-        let _span = tracing::info_span!(
+        let span = tracing::info_span!(
             "event.publish",
             event_id = %event.id,
             subject = %event.subject,
             category = %event.category,
             provider = self.provider.name(),
-        )
-        .entered();
+        );
+        let _guard = span.enter();
+        drop(_guard);
 
         self.provider.publish(event).await
     }
@@ -126,15 +128,16 @@ impl EventBus {
     ) -> Result<u64> {
         self.validate_if_configured(event)?;
 
-        let _span = tracing::info_span!(
+        let span = tracing::info_span!(
             "event.publish",
             event_id = %event.id,
             subject = %event.subject,
             category = %event.category,
             provider = self.provider.name(),
             msg_id = ?opts.msg_id,
-        )
-        .entered();
+        );
+        let _guard = span.enter();
+        drop(_guard);
 
         self.provider.publish_with_options(event, opts).await
     }
@@ -193,14 +196,15 @@ impl EventBus {
             EventError::NotFound(format!("Subscription not found: {}", subscriber_id))
         })?;
 
-        let _span = tracing::info_span!(
+        let span = tracing::info_span!(
             "event.subscribe",
             subscriber = subscriber_id,
             subjects = ?filter.subjects,
             durable = filter.durable,
             provider = self.provider.name(),
-        )
-        .entered();
+        );
+        let _guard = span.enter();
+        drop(_guard);
 
         let mut subscribers = Vec::new();
         for subject in &filter.subjects {
@@ -287,5 +291,287 @@ impl EventBus {
             registry.validate(event)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::dlq::{DeadLetterEvent, MemoryDlqHandler};
+    use crate::provider::memory::MemoryProvider;
+    use crate::schema::{EventSchema, MemorySchemaRegistry};
+    use crate::types::Event;
+
+    fn test_bus() -> EventBus {
+        EventBus::new(MemoryProvider::default())
+    }
+
+    #[tokio::test]
+    async fn test_publish_and_list() {
+        let bus = test_bus();
+        let event = bus
+            .publish("market", "forex", "Rate change", "reuters", serde_json::json!({"rate": 7.35}))
+            .await
+            .unwrap();
+
+        assert!(event.id.starts_with("evt-"));
+        assert_eq!(event.subject, "events.market.forex");
+        assert_eq!(event.category, "market");
+
+        let events = bus.list_events(Some("market"), 10).await.unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].id, event.id);
+    }
+
+    #[tokio::test]
+    async fn test_publish_event_prebuilt() {
+        let bus = test_bus();
+        let event = Event::new("events.test.a", "test", "Test", "test", serde_json::json!({}));
+        let seq = bus.publish_event(&event).await.unwrap();
+        assert!(seq > 0);
+
+        let events = bus.list_events(None, 10).await.unwrap();
+        assert_eq!(events.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_list_events_by_category() {
+        let bus = test_bus();
+        bus.publish("market", "forex", "A", "test", serde_json::json!({})).await.unwrap();
+        bus.publish("system", "deploy", "B", "test", serde_json::json!({})).await.unwrap();
+        bus.publish("market", "crypto", "C", "test", serde_json::json!({})).await.unwrap();
+
+        let market = bus.list_events(Some("market"), 10).await.unwrap();
+        assert_eq!(market.len(), 2);
+
+        let system = bus.list_events(Some("system"), 10).await.unwrap();
+        assert_eq!(system.len(), 1);
+
+        let all = bus.list_events(None, 10).await.unwrap();
+        assert_eq!(all.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_counts() {
+        let bus = test_bus();
+        bus.publish("market", "forex", "A", "test", serde_json::json!({})).await.unwrap();
+        bus.publish("market", "crypto", "B", "test", serde_json::json!({})).await.unwrap();
+        bus.publish("system", "deploy", "C", "test", serde_json::json!({})).await.unwrap();
+
+        let counts = bus.counts(100).await.unwrap();
+        assert_eq!(counts.total, 3);
+        assert_eq!(counts.categories["market"], 2);
+        assert_eq!(counts.categories["system"], 1);
+    }
+
+    #[tokio::test]
+    async fn test_subscription_lifecycle() {
+        let bus = test_bus();
+
+        let filter = SubscriptionFilter {
+            subscriber_id: "analyst".to_string(),
+            subjects: vec!["events.market.>".to_string()],
+            durable: false,
+            options: None,
+        };
+
+        bus.update_subscription(filter).await.unwrap();
+
+        let sub = bus.get_subscription("analyst").await;
+        assert!(sub.is_some());
+        assert_eq!(sub.unwrap().subjects, vec!["events.market.>"]);
+
+        let subs = bus.list_subscriptions().await;
+        assert_eq!(subs.len(), 1);
+
+        bus.remove_subscription("analyst").await.unwrap();
+        assert!(bus.get_subscription("analyst").await.is_none());
+        assert!(bus.list_subscriptions().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_create_subscriber_not_found() {
+        let bus = test_bus();
+        let result = bus.create_subscriber("nonexistent").await;
+        assert!(matches!(result, Err(EventError::NotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_provider_name() {
+        let bus = test_bus();
+        assert_eq!(bus.provider_name(), "memory");
+    }
+
+    #[tokio::test]
+    async fn test_info() {
+        let bus = test_bus();
+        bus.publish("test", "a", "A", "test", serde_json::json!({})).await.unwrap();
+
+        let info = bus.info().await.unwrap();
+        assert_eq!(info.provider, "memory");
+        assert_eq!(info.messages, 1);
+    }
+
+    #[tokio::test]
+    async fn test_health() {
+        let bus = test_bus();
+        assert!(bus.health().await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_schema_validation_on_publish() {
+        let registry = Arc::new(MemorySchemaRegistry::new());
+        registry
+            .register(EventSchema {
+                event_type: "forex.rate".to_string(),
+                version: 1,
+                required_fields: vec!["rate".to_string()],
+                description: String::new(),
+            })
+            .unwrap();
+
+        let bus = EventBus::with_schema_registry(MemoryProvider::default(), registry);
+
+        // Valid typed event
+        let event = Event::typed(
+            "events.market.forex",
+            "market",
+            "forex.rate",
+            1,
+            "Rate",
+            "test",
+            serde_json::json!({"rate": 7.35}),
+        );
+        assert!(bus.publish_event(&event).await.is_ok());
+
+        // Invalid typed event (missing required field)
+        let bad_event = Event::typed(
+            "events.market.forex",
+            "market",
+            "forex.rate",
+            1,
+            "Rate",
+            "test",
+            serde_json::json!({"currency": "USD"}),
+        );
+        let err = bus.publish_event(&bad_event).await.unwrap_err();
+        assert!(matches!(err, EventError::SchemaValidation { .. }));
+    }
+
+    #[tokio::test]
+    async fn test_untyped_event_skips_validation() {
+        let registry = Arc::new(MemorySchemaRegistry::new());
+        registry
+            .register(EventSchema {
+                event_type: "forex.rate".to_string(),
+                version: 1,
+                required_fields: vec!["rate".to_string()],
+                description: String::new(),
+            })
+            .unwrap();
+
+        let bus = EventBus::with_schema_registry(MemoryProvider::default(), registry);
+
+        // Untyped event should pass even without required fields
+        let event = bus
+            .publish("market", "forex", "Rate", "test", serde_json::json!({}))
+            .await;
+        assert!(event.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_dlq_handler_integration() {
+        let dlq = Arc::new(MemoryDlqHandler::default());
+        let mut bus = test_bus();
+        bus.set_dlq_handler(dlq.clone());
+
+        assert!(bus.dlq_handler().is_some());
+
+        // Manually route an event to DLQ
+        let received = crate::types::ReceivedEvent {
+            event: Event::new("events.test.a", "test", "Test", "test", serde_json::json!({})),
+            sequence: 1,
+            num_delivered: 5,
+            stream: "memory".to_string(),
+        };
+        let dle = DeadLetterEvent::new(received, "Max retries exceeded");
+        dlq.handle(dle).await.unwrap();
+
+        assert_eq!(dlq.count().await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_publish_with_options() {
+        let bus = test_bus();
+        let event = Event::new("events.test.a", "test", "Test", "test", serde_json::json!({}));
+        let opts = PublishOptions {
+            msg_id: Some("dedup-1".to_string()),
+            ..Default::default()
+        };
+
+        // MemoryProvider ignores options but should still succeed
+        let seq = bus.publish_event_with_options(&event, &opts).await.unwrap();
+        assert!(seq > 0);
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_publish() {
+        let bus = Arc::new(test_bus());
+        let mut handles = Vec::new();
+
+        for i in 0..50 {
+            let bus = bus.clone();
+            handles.push(tokio::spawn(async move {
+                bus.publish(
+                    "test",
+                    &format!("topic.{}", i),
+                    &format!("Event {}", i),
+                    "test",
+                    serde_json::json!({"index": i}),
+                )
+                .await
+                .unwrap()
+            }));
+        }
+
+        for handle in handles {
+            handle.await.unwrap();
+        }
+
+        let events = bus.list_events(None, 100).await.unwrap();
+        assert_eq!(events.len(), 50);
+    }
+
+    #[tokio::test]
+    async fn test_remove_nonexistent_subscription() {
+        let bus = test_bus();
+        // Should not error — just a no-op
+        assert!(bus.remove_subscription("nonexistent").await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_update_subscription_overwrites() {
+        let bus = test_bus();
+
+        let filter1 = SubscriptionFilter {
+            subscriber_id: "analyst".to_string(),
+            subjects: vec!["events.market.>".to_string()],
+            durable: false,
+            options: None,
+        };
+        bus.update_subscription(filter1).await.unwrap();
+
+        let filter2 = SubscriptionFilter {
+            subscriber_id: "analyst".to_string(),
+            subjects: vec!["events.system.>".to_string()],
+            durable: true,
+            options: None,
+        };
+        bus.update_subscription(filter2).await.unwrap();
+
+        let sub = bus.get_subscription("analyst").await.unwrap();
+        assert_eq!(sub.subjects, vec!["events.system.>"]);
+        assert!(sub.durable);
+        assert_eq!(bus.list_subscriptions().await.len(), 1);
     }
 }

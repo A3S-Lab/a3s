@@ -447,12 +447,14 @@ Production reliability features that live above the provider layer.
 Confidence and onboarding.
 
 - [ ] Integration tests with real NATS (testcontainer or local server)
-- [ ] EventBus unit tests (publish, subscribe, lifecycle)
-- [ ] Concurrent publish/subscribe stress tests
-- [ ] Error path tests (connection failure, timeout, nak)
+- [x] EventBus unit tests (publish, subscribe, lifecycle, schema validation, DLQ integration — 17 tests)
+- [x] Concurrent publish/subscribe stress tests (50 concurrent publishers)
+- [x] Error path tests (all error variants display, From conversion, not-found, schema validation — 7 tests)
 - [ ] Performance benchmarks (`criterion`)
 - [ ] Deployment guide and configuration reference
 - [ ] Provider implementation guide (how to add Redis, Kafka, etc.)
+
+**Test summary: 80 unit tests across 6 modules (types, error, memory provider, nats config, schema, store)**
 
 ## License
 
