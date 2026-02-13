@@ -31,6 +31,9 @@
 [submodule "crates/event"]
 	path = crates/event
 	url = git@github.com:A3S-Lab/Event.git
-[submodule "crates/safeclaw-ui"]
-	path = crates/safeclaw-ui
+[submodule "safeclaw-ui"]
+	path = safeclaw-ui
 	url = git@github.com:A3S-Lab/SafeClawUI.git
+[submodule "a3s-deep"]
+	path = a3s-deep
+	url = git@github.com:A3S-Lab/Deep.git
