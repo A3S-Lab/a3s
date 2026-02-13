@@ -68,6 +68,7 @@ async fn main() -> a3s_event::Result<()> {
 - **In-Memory Provider**: Zero-dependency provider for testing and single-process deployments
 - **NATS JetStream Provider**: Distributed, persistent event streaming with configurable retention
 - **Payload Encryption**: AES-256-GCM encrypt/decrypt with key rotation — protect sensitive payloads at the application layer
+- **State Persistence**: Subscription filters survive restarts via pluggable `StateStore` (JSON file or custom)
 
 ## Providers
 
@@ -169,6 +170,8 @@ Wildcard patterns:
 | `EventEncryptor` | Trait for payload encrypt/decrypt |
 | `Aes256GcmEncryptor` | AES-256-GCM encryptor with key rotation |
 | `EncryptedPayload` | Encrypted envelope (key_id, nonce, ciphertext) |
+| `StateStore` | Trait for persisting subscription state |
+| `FileStateStore` | JSON file-based state persistence |
 
 ## API Reference
 
@@ -467,7 +470,7 @@ Confidence and onboarding.
 - [x] Deployment guide and configuration reference (`docs/deployment.md`)
 - [x] Provider implementation guide (`docs/custom-providers.md`)
 
-**Test summary: 94 unit tests + 9 integration tests across 8 modules**
+**Test summary: 106 unit tests + 9 integration tests across 9 modules**
 
 ### Phase 5: Payload Encryption ✅
 
@@ -482,14 +485,16 @@ Application-level encrypt/decrypt for sensitive event payloads.
 - [x] Schema validation runs on plaintext before encryption
 - [x] 10 crypto tests + 4 EventBus encryption integration tests
 
-### Phase 6: EventBus State Persistence 🚧
+### Phase 6: EventBus State Persistence ✅
 
 Subscription filter durability across restarts.
 
-- [ ] `StateStore` trait — save/load subscription filters
-- [ ] `FileStateStore` — JSON file persistence
-- [ ] `EventBus` auto-save on subscription changes, auto-load on creation
-- [ ] Tests for persistence lifecycle
+- [x] `StateStore` trait — save/load subscription filters
+- [x] `FileStateStore` — JSON file persistence with atomic writes (temp + rename)
+- [x] `MemoryStateStore` — in-memory store for testing
+- [x] `EventBus::set_state_store()` — auto-loads persisted subscriptions on setup
+- [x] Auto-save on `update_subscription()` and `remove_subscription()`
+- [x] 7 state store tests + 5 EventBus persistence integration tests
 
 ### Phase 7: Observability Integration 🚧
 

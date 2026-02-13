@@ -7,6 +7,7 @@ use crate::crypto::EventEncryptor;
 use crate::error::{EventError, Result};
 use crate::provider::{EventProvider, ProviderInfo, Subscription};
 use crate::schema::SchemaRegistry;
+use crate::state::StateStore;
 use crate::types::{Event, EventCounts, PublishOptions, SubscriptionFilter};
 use crate::dlq::DlqHandler;
 use std::collections::HashMap;
@@ -20,6 +21,7 @@ use tokio::sync::RwLock;
 ///
 /// Optionally validates events against a `SchemaRegistry` before publishing.
 /// Optionally encrypts event payloads via an `EventEncryptor`.
+/// Optionally persists subscription state via a `StateStore`.
 /// Optionally routes failed events to a `DlqHandler`.
 pub struct EventBus {
     provider: Box<dyn EventProvider>,
@@ -35,6 +37,9 @@ pub struct EventBus {
 
     /// Optional payload encryptor
     encryptor: Option<Arc<dyn EventEncryptor>>,
+
+    /// Optional state store for subscription persistence
+    state_store: Option<Arc<dyn StateStore>>,
 }
 
 impl EventBus {
@@ -46,6 +51,7 @@ impl EventBus {
             schema_registry: None,
             dlq_handler: None,
             encryptor: None,
+            state_store: None,
         }
     }
 
@@ -60,6 +66,7 @@ impl EventBus {
             schema_registry: Some(registry),
             dlq_handler: None,
             encryptor: None,
+            state_store: None,
         }
     }
 
@@ -71,6 +78,28 @@ impl EventBus {
     /// Set the payload encryptor
     pub fn set_encryptor(&mut self, encryptor: Arc<dyn EventEncryptor>) {
         self.encryptor = Some(encryptor);
+    }
+
+    /// Set the state store and load persisted subscriptions
+    ///
+    /// Any previously persisted subscriptions are loaded immediately.
+    pub fn set_state_store(&mut self, store: Arc<dyn StateStore>) -> Result<()> {
+        let loaded = store.load()?;
+        if !loaded.is_empty() {
+            tracing::info!(count = loaded.len(), "Restored subscriptions from state store");
+            // Use try_write to avoid async — this is called during setup
+            let mut subs = self.subscriptions.try_write().map_err(|_| {
+                EventError::Config("Failed to acquire subscription lock during state restore".to_string())
+            })?;
+            *subs = loaded;
+        }
+        self.state_store = Some(store);
+        Ok(())
+    }
+
+    /// Get the state store (if configured)
+    pub fn state_store(&self) -> Option<&dyn StateStore> {
+        self.state_store.as_deref()
     }
 
     /// Get the encryptor (if configured)
@@ -192,12 +221,15 @@ impl EventBus {
     }
 
     /// Register or update a subscription
+    ///
+    /// Auto-saves to state store if configured.
     pub async fn update_subscription(&self, filter: SubscriptionFilter) -> Result<()> {
         let subscriber_id = filter.subscriber_id.clone();
 
         {
             let mut subs = self.subscriptions.write().await;
             subs.insert(subscriber_id.clone(), filter.clone());
+            self.persist_state(&subs);
         }
 
         tracing::info!(
@@ -260,10 +292,14 @@ impl EventBus {
     }
 
     /// Remove a subscription
+    ///
+    /// Auto-saves to state store if configured.
     pub async fn remove_subscription(&self, subscriber_id: &str) -> Result<()> {
         let filter = {
             let mut subs = self.subscriptions.write().await;
-            subs.remove(subscriber_id)
+            let removed = subs.remove(subscriber_id);
+            self.persist_state(&subs);
+            removed
         };
 
         if let Some(filter) = filter {
@@ -346,6 +382,15 @@ impl EventBus {
                         event.payload = decrypted;
                     }
                 }
+            }
+        }
+    }
+
+    /// Persist subscription state (best-effort, logs on failure)
+    fn persist_state(&self, subs: &HashMap<String, SubscriptionFilter>) {
+        if let Some(ref store) = self.state_store {
+            if let Err(e) = store.save(subs) {
+                tracing::warn!(error = %e, "Failed to persist subscription state");
             }
         }
     }
@@ -691,5 +736,123 @@ mod tests {
         bus.set_encryptor(enc);
         assert!(bus.encryptor().is_some());
         assert_eq!(bus.encryptor().unwrap().active_key_id(), "k1");
+    }
+
+    #[tokio::test]
+    async fn test_state_store_persists_subscriptions() {
+        let store = Arc::new(crate::state::MemoryStateStore::default());
+        let mut bus = test_bus();
+        bus.set_state_store(store.clone()).unwrap();
+
+        let filter = SubscriptionFilter {
+            subscriber_id: "analyst".to_string(),
+            subjects: vec!["events.market.>".to_string()],
+            durable: true,
+            options: None,
+        };
+        bus.update_subscription(filter).await.unwrap();
+
+        // Verify state was persisted
+        let loaded = store.load().unwrap();
+        assert_eq!(loaded.len(), 1);
+        assert!(loaded.contains_key("analyst"));
+    }
+
+    #[tokio::test]
+    async fn test_state_store_remove_persists() {
+        let store = Arc::new(crate::state::MemoryStateStore::default());
+        let mut bus = test_bus();
+        bus.set_state_store(store.clone()).unwrap();
+
+        let filter = SubscriptionFilter {
+            subscriber_id: "analyst".to_string(),
+            subjects: vec!["events.market.>".to_string()],
+            durable: false,
+            options: None,
+        };
+        bus.update_subscription(filter).await.unwrap();
+        bus.remove_subscription("analyst").await.unwrap();
+
+        let loaded = store.load().unwrap();
+        assert!(loaded.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_state_store_restores_on_set() {
+        let store = Arc::new(crate::state::MemoryStateStore::default());
+
+        // Pre-populate the store
+        let mut initial = std::collections::HashMap::new();
+        initial.insert(
+            "monitor".to_string(),
+            SubscriptionFilter {
+                subscriber_id: "monitor".to_string(),
+                subjects: vec!["events.system.>".to_string()],
+                durable: true,
+                options: None,
+            },
+        );
+        store.save(&initial).unwrap();
+
+        // Create bus and set store — should restore
+        let mut bus = test_bus();
+        bus.set_state_store(store).unwrap();
+
+        let sub = bus.get_subscription("monitor").await;
+        assert!(sub.is_some());
+        assert_eq!(sub.unwrap().subjects, vec!["events.system.>"]);
+    }
+
+    #[tokio::test]
+    async fn test_state_store_accessor() {
+        let mut bus = test_bus();
+        assert!(bus.state_store().is_none());
+
+        let store = Arc::new(crate::state::MemoryStateStore::default());
+        bus.set_state_store(store).unwrap();
+        assert!(bus.state_store().is_some());
+    }
+
+    #[tokio::test]
+    async fn test_file_state_store_lifecycle() {
+        let dir = std::env::temp_dir().join(format!("a3s-event-bus-{}", uuid::Uuid::new_v4()));
+        let path = dir.join("bus-state.json");
+        let store = Arc::new(crate::state::FileStateStore::new(&path));
+
+        // Bus 1: add subscriptions
+        {
+            let mut bus = test_bus();
+            bus.set_state_store(store.clone()).unwrap();
+
+            bus.update_subscription(SubscriptionFilter {
+                subscriber_id: "a".to_string(),
+                subjects: vec!["events.market.>".to_string()],
+                durable: true,
+                options: None,
+            })
+            .await
+            .unwrap();
+
+            bus.update_subscription(SubscriptionFilter {
+                subscriber_id: "b".to_string(),
+                subjects: vec!["events.system.>".to_string()],
+                durable: false,
+                options: None,
+            })
+            .await
+            .unwrap();
+        }
+
+        // Bus 2: restore from same file
+        {
+            let mut bus = test_bus();
+            bus.set_state_store(store).unwrap();
+
+            assert_eq!(bus.list_subscriptions().await.len(), 2);
+            assert!(bus.get_subscription("a").await.is_some());
+            assert!(bus.get_subscription("b").await.is_some());
+        }
+
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

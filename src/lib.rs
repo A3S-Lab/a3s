@@ -49,6 +49,7 @@ pub mod dlq;
 pub mod error;
 pub mod provider;
 pub mod schema;
+pub mod state;
 pub mod store;
 pub mod types;
 
@@ -58,6 +59,7 @@ pub use dlq::{DeadLetterEvent, DlqHandler, MemoryDlqHandler};
 pub use error::{EventError, Result};
 pub use provider::{EventProvider, PendingEvent, ProviderInfo, Subscription};
 pub use schema::{Compatibility, EventSchema, MemorySchemaRegistry, SchemaRegistry};
+pub use state::{FileStateStore, MemoryStateStore, StateStore};
 pub use store::EventBus;
 pub use types::{
     DeliverPolicy, Event, EventCounts, PublishOptions, ReceivedEvent, SubscribeOptions,
