@@ -90,6 +90,14 @@ pub trait EventProvider: Send + Sync {
     ) -> Result<Box<dyn Subscription>> {
         self.subscribe(filter_subject).await
     }
+
+    /// Health check — returns true if the provider is connected and operational
+    ///
+    /// Default implementation delegates to `info()` and returns true if it succeeds.
+    /// Providers may override for more specific health checks.
+    async fn health(&self) -> Result<bool> {
+        self.info().await.map(|_| true)
+    }
 }
 
 /// Async subscription handle for receiving events

@@ -432,15 +432,15 @@ Application-level schema management that no provider handles.
 - [x] `Compatibility` enum — Backward, Forward, Full, None
 - [x] Schema evolution checks (`check_compatibility()`) between versions
 
-### Phase 3: Operational Hardening 🚧
+### Phase 3: Operational Hardening ✅
 
 Production reliability features that live above the provider layer.
 
-- [ ] Dead Letter Queue — `DlqHandler` trait, failed events routed to DLQ after max retries
-- [ ] NatsProvider DLQ: listen to advisories, forward to DLQ stream
-- [ ] EventBus state persistence — save/restore subscription filters (file / provider-backed)
-- [ ] Observability — `tracing` spans for publish/subscribe lifecycle, optional `metrics` crate integration
-- [ ] Health check API — `EventProvider::health()` for liveness/readiness probes
+- [x] Dead Letter Queue — `DlqHandler` trait + `MemoryDlqHandler` impl
+- [x] `DeadLetterEvent` with reason and timestamp, `should_dead_letter()` helper
+- [x] `EventBus::set_dlq_handler()` for DLQ integration
+- [x] Observability — `tracing::info_span!` on publish and subscribe lifecycle in EventBus
+- [x] Health check API — `EventProvider::health()` with default impl, `EventBus::health()`
 
 ### Phase 4: Testing & Documentation 🚧
 

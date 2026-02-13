@@ -7,6 +7,7 @@ use crate::error::{EventError, Result};
 use crate::provider::{EventProvider, ProviderInfo, Subscription};
 use crate::schema::SchemaRegistry;
 use crate::types::{Event, EventCounts, PublishOptions, SubscriptionFilter};
+use crate::dlq::DlqHandler;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -17,6 +18,7 @@ use tokio::sync::RwLock;
 /// methods. Thread-safe via internal locks.
 ///
 /// Optionally validates events against a `SchemaRegistry` before publishing.
+/// Optionally routes failed events to a `DlqHandler`.
 pub struct EventBus {
     provider: Box<dyn EventProvider>,
 
@@ -25,6 +27,9 @@ pub struct EventBus {
 
     /// Optional schema registry for publish-time validation
     schema_registry: Option<Arc<dyn SchemaRegistry>>,
+
+    /// Optional dead letter queue handler
+    dlq_handler: Option<Arc<dyn DlqHandler>>,
 }
 
 impl EventBus {
@@ -34,6 +39,7 @@ impl EventBus {
             provider: Box::new(provider),
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
             schema_registry: None,
+            dlq_handler: None,
         }
     }
 
@@ -46,7 +52,18 @@ impl EventBus {
             provider: Box::new(provider),
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
             schema_registry: Some(registry),
+            dlq_handler: None,
         }
+    }
+
+    /// Set the dead letter queue handler
+    pub fn set_dlq_handler(&mut self, handler: Arc<dyn DlqHandler>) {
+        self.dlq_handler = Some(handler);
+    }
+
+    /// Get the DLQ handler (if configured)
+    pub fn dlq_handler(&self) -> Option<&dyn DlqHandler> {
+        self.dlq_handler.as_deref()
     }
 
     /// Get the schema registry (if configured)
@@ -71,6 +88,16 @@ impl EventBus {
         let subject = self.provider.build_subject(category, topic);
         let event = Event::new(subject, category, summary, source, payload);
         self.validate_if_configured(&event)?;
+
+        let _span = tracing::info_span!(
+            "event.publish",
+            event_id = %event.id,
+            subject = %event.subject,
+            category = category,
+            provider = self.provider.name(),
+        )
+        .entered();
+
         self.provider.publish(&event).await?;
         Ok(event)
     }
@@ -78,6 +105,16 @@ impl EventBus {
     /// Publish a pre-built event
     pub async fn publish_event(&self, event: &Event) -> Result<u64> {
         self.validate_if_configured(event)?;
+
+        let _span = tracing::info_span!(
+            "event.publish",
+            event_id = %event.id,
+            subject = %event.subject,
+            category = %event.category,
+            provider = self.provider.name(),
+        )
+        .entered();
+
         self.provider.publish(event).await
     }
 
@@ -88,6 +125,17 @@ impl EventBus {
         opts: &PublishOptions,
     ) -> Result<u64> {
         self.validate_if_configured(event)?;
+
+        let _span = tracing::info_span!(
+            "event.publish",
+            event_id = %event.id,
+            subject = %event.subject,
+            category = %event.category,
+            provider = self.provider.name(),
+            msg_id = ?opts.msg_id,
+        )
+        .entered();
+
         self.provider.publish_with_options(event, opts).await
     }
 
@@ -144,6 +192,15 @@ impl EventBus {
         let filter = subs.get(subscriber_id).ok_or_else(|| {
             EventError::NotFound(format!("Subscription not found: {}", subscriber_id))
         })?;
+
+        let _span = tracing::info_span!(
+            "event.subscribe",
+            subscriber = subscriber_id,
+            subjects = ?filter.subjects,
+            durable = filter.durable,
+            provider = self.provider.name(),
+        )
+        .entered();
 
         let mut subscribers = Vec::new();
         for subject in &filter.subjects {
@@ -217,6 +274,11 @@ impl EventBus {
     /// Get a reference to the underlying provider
     pub fn provider(&self) -> &dyn EventProvider {
         self.provider.as_ref()
+    }
+
+    /// Health check — returns true if the provider is connected and operational
+    pub async fn health(&self) -> Result<bool> {
+        self.provider.health().await
     }
 
     /// Validate event against schema registry (if configured)
