@@ -20,3 +20,17 @@ box-test:
 #        just box-test-vm test_alpine_full_lifecycle  # run a specific test
 box-test-vm *ARGS:
     cd crates/box && just test-vm {{ARGS}}
+
+# Run a3s-box TEE integration tests (requires built binary + HVF/KVM)
+# Usage: just box-test-tee                              # run all TEE tests
+#        just box-test-tee test_tee_seal_unseal_lifecycle  # run a specific test
+box-test-tee *ARGS:
+    cd crates/box && just test-tee {{ARGS}}
+
+# ============================================================================
+# A3S Code
+# ============================================================================
+
+# Start a3s-code server (dev mode)
+code:
+    cd crates/code && just serve
