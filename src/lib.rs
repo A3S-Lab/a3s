@@ -53,7 +53,10 @@ pub mod types;
 pub use error::{EventError, Result};
 pub use provider::{EventProvider, PendingEvent, ProviderInfo, Subscription};
 pub use store::EventBus;
-pub use types::{Event, EventCounts, ReceivedEvent, SubscriptionFilter};
+pub use types::{
+    DeliverPolicy, Event, EventCounts, PublishOptions, ReceivedEvent, SubscribeOptions,
+    SubscriptionFilter,
+};
 
 // Re-export providers for convenience
 pub use provider::memory::{MemoryConfig, MemoryProvider};

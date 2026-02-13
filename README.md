@@ -406,15 +406,18 @@ A3S Event is the application-level event abstraction. It does NOT re-implement c
 | Provider config passthrough | **A3S Event** | Expose provider-native knobs (MaxDeliver, BackOff, etc.) |
 | Integration tests | **A3S Event** | End-to-end verification with real providers. |
 
-### Phase 1: Provider Config Passthrough 🚧
+### Phase 1: Provider Config Passthrough ✅
 
 Expose provider-native capabilities through the abstraction layer without re-implementing them.
 
-- [ ] `SubscribeOptions` struct — `max_deliver`, `backoff`, `max_ack_pending`, `deliver_policy`
-- [ ] `PublishOptions` struct — `msg_id` (dedup), `expected_sequence`, `timeout`
-- [ ] Pass options through `EventProvider::subscribe_durable()` and `publish()`
-- [ ] NatsProvider maps options to JetStream consumer/publish config
-- [ ] MemoryProvider ignores unsupported options gracefully
+- [x] `SubscribeOptions` struct — `max_deliver`, `backoff`, `max_ack_pending`, `deliver_policy`, `ack_wait`
+- [x] `PublishOptions` struct — `msg_id` (dedup), `expected_sequence`, `timeout`
+- [x] `DeliverPolicy` enum — `All`, `Last`, `New`, `ByStartSequence`, `ByStartTime`, `LastPerSubject`
+- [x] `EventProvider` trait extended with `publish_with_options()`, `subscribe_with_options()`, `subscribe_durable_with_options()` (default impls for backward compatibility)
+- [x] NatsProvider maps options to JetStream consumer/publish config (headers, backoff, max_deliver, deliver_policy, etc.)
+- [x] MemoryProvider uses default impls (ignores unsupported options gracefully)
+- [x] `SubscriptionFilter` carries optional `SubscribeOptions`
+- [x] `EventBus` threads options through `create_subscriber()`
 
 ### Phase 2: Event Versioning & Schema 🚧
 

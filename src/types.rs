@@ -94,6 +94,10 @@ pub struct SubscriptionFilter {
 
     /// Whether this is a durable subscription (survives reconnects)
     pub durable: bool,
+
+    /// Provider-specific subscription options (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub options: Option<SubscribeOptions>,
 }
 
 /// Event counts grouped by category
@@ -105,6 +109,94 @@ pub struct EventCounts {
 
     /// Total event count
     pub total: u64,
+}
+
+/// Delivery policy for subscriptions
+///
+/// Controls where a new consumer starts reading from the stream.
+/// Maps to provider-native delivery policies (e.g., NATS `DeliverPolicy`).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum DeliverPolicy {
+    /// Deliver all available messages
+    #[default]
+    All,
+    /// Deliver starting from the last message
+    Last,
+    /// Deliver only new messages published after subscription
+    New,
+    /// Deliver starting from a specific sequence number
+    ByStartSequence { sequence: u64 },
+    /// Deliver starting from a specific timestamp (Unix milliseconds)
+    ByStartTime { timestamp: u64 },
+    /// Deliver the last message per subject
+    LastPerSubject,
+}
+
+/// Options for publishing events
+///
+/// Exposes provider-native publish capabilities. Unsupported options
+/// are ignored by providers that don't support them.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PublishOptions {
+    /// Deduplication message ID (NATS: `Nats-Msg-Id` header)
+    ///
+    /// If set, the provider uses this to deduplicate messages within
+    /// its deduplication window.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub msg_id: Option<String>,
+
+    /// Expected last sequence number (optimistic concurrency)
+    ///
+    /// Publish fails if the stream's last sequence doesn't match.
+    /// NATS: `Nats-Expected-Last-Sequence` header.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expected_sequence: Option<u64>,
+
+    /// Publish timeout in seconds (overrides provider default)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout_secs: Option<u64>,
+}
+
+/// Options for creating subscriptions
+///
+/// Exposes provider-native consumer capabilities. Unsupported options
+/// are ignored by providers that don't support them.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubscribeOptions {
+    /// Maximum delivery attempts before giving up (NATS: `MaxDeliver`)
+    ///
+    /// After this many failed deliveries, the message is dropped or
+    /// routed to a dead letter queue (if configured).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_deliver: Option<i64>,
+
+    /// Backoff intervals in seconds between redelivery attempts
+    ///
+    /// NATS: maps to consumer `BackOff` durations.
+    /// Example: `vec![1, 5, 30]` — retry after 1s, 5s, 30s.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub backoff_secs: Vec<u64>,
+
+    /// Maximum number of unacknowledged messages in flight
+    ///
+    /// Provides backpressure — consumer won't receive new messages
+    /// until pending acks drop below this limit.
+    /// NATS: `MaxAckPending`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_ack_pending: Option<i64>,
+
+    /// Where to start consuming from
+    #[serde(default)]
+    pub deliver_policy: DeliverPolicy,
+
+    /// How long to wait for an ack before redelivery (seconds)
+    ///
+    /// NATS: `AckWait`. Default depends on provider.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ack_wait_secs: Option<u64>,
 }
 
 /// Current time in Unix milliseconds
@@ -188,6 +280,7 @@ mod tests {
             subscriber_id: "financial-analyst".to_string(),
             subjects: vec!["events.market.>".to_string()],
             durable: true,
+            options: None,
         };
 
         let json = serde_json::to_string(&filter).unwrap();
@@ -197,5 +290,120 @@ mod tests {
         let parsed: SubscriptionFilter = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed.subscriber_id, "financial-analyst");
         assert!(parsed.durable);
+    }
+
+    #[test]
+    fn test_publish_options_default() {
+        let opts = PublishOptions::default();
+        assert!(opts.msg_id.is_none());
+        assert!(opts.expected_sequence.is_none());
+        assert!(opts.timeout_secs.is_none());
+    }
+
+    #[test]
+    fn test_publish_options_serialization() {
+        let opts = PublishOptions {
+            msg_id: Some("dedup-123".to_string()),
+            expected_sequence: Some(42),
+            timeout_secs: Some(5),
+        };
+
+        let json = serde_json::to_string(&opts).unwrap();
+        assert!(json.contains("\"msgId\":\"dedup-123\""));
+        assert!(json.contains("\"expectedSequence\":42"));
+        assert!(json.contains("\"timeoutSecs\":5"));
+
+        let parsed: PublishOptions = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.msg_id.unwrap(), "dedup-123");
+        assert_eq!(parsed.expected_sequence.unwrap(), 42);
+    }
+
+    #[test]
+    fn test_publish_options_skip_none_fields() {
+        let opts = PublishOptions::default();
+        let json = serde_json::to_string(&opts).unwrap();
+        assert!(!json.contains("msgId"));
+        assert!(!json.contains("expectedSequence"));
+        assert!(!json.contains("timeoutSecs"));
+    }
+
+    #[test]
+    fn test_subscribe_options_default() {
+        let opts = SubscribeOptions::default();
+        assert!(opts.max_deliver.is_none());
+        assert!(opts.backoff_secs.is_empty());
+        assert!(opts.max_ack_pending.is_none());
+        assert_eq!(opts.deliver_policy, DeliverPolicy::All);
+        assert!(opts.ack_wait_secs.is_none());
+    }
+
+    #[test]
+    fn test_subscribe_options_serialization() {
+        let opts = SubscribeOptions {
+            max_deliver: Some(5),
+            backoff_secs: vec![1, 5, 30],
+            max_ack_pending: Some(1000),
+            deliver_policy: DeliverPolicy::New,
+            ack_wait_secs: Some(30),
+        };
+
+        let json = serde_json::to_string(&opts).unwrap();
+        assert!(json.contains("\"maxDeliver\":5"));
+        assert!(json.contains("\"backoffSecs\":[1,5,30]"));
+        assert!(json.contains("\"maxAckPending\":1000"));
+        assert!(json.contains("\"ackWaitSecs\":30"));
+
+        let parsed: SubscribeOptions = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.max_deliver.unwrap(), 5);
+        assert_eq!(parsed.backoff_secs, vec![1, 5, 30]);
+        assert_eq!(parsed.max_ack_pending.unwrap(), 1000);
+        assert_eq!(parsed.deliver_policy, DeliverPolicy::New);
+    }
+
+    #[test]
+    fn test_subscribe_options_skip_empty_fields() {
+        let opts = SubscribeOptions::default();
+        let json = serde_json::to_string(&opts).unwrap();
+        assert!(!json.contains("maxDeliver"));
+        assert!(!json.contains("backoffSecs"));
+        assert!(!json.contains("maxAckPending"));
+        assert!(!json.contains("ackWaitSecs"));
+    }
+
+    #[test]
+    fn test_deliver_policy_variants() {
+        let cases = vec![
+            (DeliverPolicy::All, "All"),
+            (DeliverPolicy::Last, "Last"),
+            (DeliverPolicy::New, "New"),
+            (DeliverPolicy::LastPerSubject, "LastPerSubject"),
+        ];
+
+        for (policy, _) in &cases {
+            let json = serde_json::to_string(policy).unwrap();
+            let parsed: DeliverPolicy = serde_json::from_str(&json).unwrap();
+            assert_eq!(&parsed, policy);
+        }
+    }
+
+    #[test]
+    fn test_deliver_policy_by_start_sequence() {
+        let policy = DeliverPolicy::ByStartSequence { sequence: 100 };
+        let json = serde_json::to_string(&policy).unwrap();
+        assert!(json.contains("\"sequence\":100"));
+
+        let parsed: DeliverPolicy = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, DeliverPolicy::ByStartSequence { sequence: 100 });
+    }
+
+    #[test]
+    fn test_deliver_policy_by_start_time() {
+        let ts = 1700000000000u64;
+        let policy = DeliverPolicy::ByStartTime { timestamp: ts };
+        let json = serde_json::to_string(&policy).unwrap();
+        assert!(json.contains(&format!("\"timestamp\":{}", ts)));
+
+        let parsed: DeliverPolicy = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, DeliverPolicy::ByStartTime { timestamp: ts });
     }
 }

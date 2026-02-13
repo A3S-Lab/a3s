@@ -13,7 +13,7 @@ pub use subscriber::NatsSubscription;
 
 use crate::error::Result;
 use crate::provider::{EventProvider, ProviderInfo, Subscription};
-use crate::types::Event;
+use crate::types::{Event, PublishOptions, SubscribeOptions};
 use async_trait::async_trait;
 
 /// NATS JetStream event provider
@@ -91,5 +91,34 @@ impl EventProvider for NatsProvider {
 
     fn name(&self) -> &str {
         "nats"
+    }
+
+    async fn publish_with_options(&self, event: &Event, opts: &PublishOptions) -> Result<u64> {
+        self.client.publish_with_options(event, opts).await
+    }
+
+    async fn subscribe_durable_with_options(
+        &self,
+        consumer_name: &str,
+        filter_subject: &str,
+        opts: &SubscribeOptions,
+    ) -> Result<Box<dyn Subscription>> {
+        let sub = self
+            .client
+            .subscribe_durable_with_options(consumer_name, filter_subject, opts)
+            .await?;
+        Ok(Box::new(sub))
+    }
+
+    async fn subscribe_with_options(
+        &self,
+        filter_subject: &str,
+        opts: &SubscribeOptions,
+    ) -> Result<Box<dyn Subscription>> {
+        let sub = self
+            .client
+            .subscribe_with_options(filter_subject, opts)
+            .await?;
+        Ok(Box::new(sub))
     }
 }

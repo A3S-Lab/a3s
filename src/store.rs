@@ -5,7 +5,7 @@
 
 use crate::error::{EventError, Result};
 use crate::provider::{EventProvider, ProviderInfo, Subscription};
-use crate::types::{Event, EventCounts, SubscriptionFilter};
+use crate::types::{Event, EventCounts, PublishOptions, SubscriptionFilter};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -53,6 +53,15 @@ impl EventBus {
     /// Publish a pre-built event
     pub async fn publish_event(&self, event: &Event) -> Result<u64> {
         self.provider.publish(event).await
+    }
+
+    /// Publish a pre-built event with provider-specific options
+    pub async fn publish_event_with_options(
+        &self,
+        event: &Event,
+        opts: &PublishOptions,
+    ) -> Result<u64> {
+        self.provider.publish_with_options(event, opts).await
     }
 
     /// Fetch recent events, optionally filtered by category
@@ -112,12 +121,25 @@ impl EventBus {
         let mut subscribers = Vec::new();
         for subject in &filter.subjects {
             let consumer_name = format!("{}-{}", subscriber_id, subject.replace('.', "-"));
-            let sub = if filter.durable {
-                self.provider
-                    .subscribe_durable(&consumer_name, subject)
-                    .await?
-            } else {
-                self.provider.subscribe(subject).await?
+            let sub = match (&filter.options, filter.durable) {
+                (Some(opts), true) => {
+                    self.provider
+                        .subscribe_durable_with_options(&consumer_name, subject, opts)
+                        .await?
+                }
+                (Some(opts), false) => {
+                    self.provider
+                        .subscribe_with_options(subject, opts)
+                        .await?
+                }
+                (None, true) => {
+                    self.provider
+                        .subscribe_durable(&consumer_name, subject)
+                        .await?
+                }
+                (None, false) => {
+                    self.provider.subscribe(subject).await?
+                }
             };
             subscribers.push(sub);
         }

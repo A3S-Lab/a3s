@@ -4,7 +4,7 @@
 //! `EventProvider` to provide a uniform API for publish, subscribe, and query.
 
 use crate::error::Result;
-use crate::types::{Event, ReceivedEvent};
+use crate::types::{Event, PublishOptions, ReceivedEvent, SubscribeOptions};
 use async_trait::async_trait;
 
 pub mod memory;
@@ -56,6 +56,40 @@ pub trait EventProvider: Send + Sync {
 
     /// Provider name (e.g., "nats", "memory", "redis")
     fn name(&self) -> &str;
+
+    /// Publish an event with provider-specific options
+    ///
+    /// Default implementation ignores options and delegates to `publish()`.
+    /// Providers that support deduplication, expected sequence, or custom
+    /// timeouts should override this.
+    async fn publish_with_options(&self, event: &Event, _opts: &PublishOptions) -> Result<u64> {
+        self.publish(event).await
+    }
+
+    /// Create a durable subscription with provider-specific options
+    ///
+    /// Default implementation ignores options and delegates to `subscribe_durable()`.
+    /// Providers that support max_deliver, backoff, max_ack_pending, or
+    /// deliver_policy should override this.
+    async fn subscribe_durable_with_options(
+        &self,
+        consumer_name: &str,
+        filter_subject: &str,
+        _opts: &SubscribeOptions,
+    ) -> Result<Box<dyn Subscription>> {
+        self.subscribe_durable(consumer_name, filter_subject).await
+    }
+
+    /// Create an ephemeral subscription with provider-specific options
+    ///
+    /// Default implementation ignores options and delegates to `subscribe()`.
+    async fn subscribe_with_options(
+        &self,
+        filter_subject: &str,
+        _opts: &SubscribeOptions,
+    ) -> Result<Box<dyn Subscription>> {
+        self.subscribe(filter_subject).await
+    }
 }
 
 /// Async subscription handle for receiving events
