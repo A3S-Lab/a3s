@@ -151,6 +151,22 @@ test-nats:
 test-store:
     cargo test --lib -- store::tests
 
+# NATS integration tests (requires running NATS server: nats-server -js)
+test-integration:
+    cargo test --test nats_integration
+
+# ============================================================================
+# Benchmarks (requires: cargo install criterion)
+# ============================================================================
+
+# Run all benchmarks
+bench:
+    cargo bench
+
+# Run specific benchmark
+bench-one NAME:
+    cargo bench -- {{NAME}}
+
 # ============================================================================
 # Coverage (requires: cargo install cargo-llvm-cov, brew install lcov)
 # ============================================================================

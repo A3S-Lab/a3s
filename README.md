@@ -338,19 +338,22 @@ bus.publish("market", "forex", "Rate change", "source", payload).await?;
 ### Commands
 
 ```bash
-just build          # Build the project
-just test           # Run all tests with progress display
-just test-v         # Run tests with verbose output
-just test-one NAME  # Run a specific test
-just test-cov       # Run tests with coverage report
-just cov            # Coverage with lcov summary
-just cov-html       # Coverage with HTML report (opens browser)
-just cov-table      # Coverage with file-by-file table
-just cov-ci         # Generate lcov.info for CI
-just lint           # Run clippy
-just fmt            # Format code
-just ci             # Full CI check (fmt + lint + test)
-just doc            # Generate and open docs
+just build              # Build the project
+just test               # Run all tests with progress display
+just test-v             # Run tests with verbose output
+just test-one NAME      # Run a specific test
+just test-integration   # NATS integration tests (requires nats-server -js)
+just bench              # Run performance benchmarks
+just bench-one NAME     # Run specific benchmark
+just test-cov           # Run tests with coverage report
+just cov                # Coverage with lcov summary
+just cov-html           # Coverage with HTML report (opens browser)
+just cov-table          # Coverage with file-by-file table
+just cov-ci             # Generate lcov.info for CI
+just lint               # Run clippy
+just fmt                # Format code
+just ci                 # Full CI check (fmt + lint + test)
+just doc                # Generate and open docs
 ```
 
 ### Test Modules
@@ -359,9 +362,12 @@ just doc            # Generate and open docs
 |--------|-------------|
 | `types` | Event creation, serialization, metadata |
 | `error` | Error type construction and display |
+| `schema` | Schema registry, validation, compatibility |
+| `dlq` | Dead letter queue handler |
 | `provider::memory` | In-memory provider: publish, subscribe, history, wildcards |
 | `provider::nats` | NATS provider: client, config, subscriber (requires NATS) |
 | `store` | EventBus high-level operations |
+| `nats_integration` | End-to-end NATS tests: publish, dedup, durable sub, manual ack |
 
 ### Running Tests
 
@@ -371,7 +377,10 @@ just test
 
 # NATS integration tests (requires running NATS server)
 nats-server -js
-just test
+just test-integration
+
+# Performance benchmarks
+just bench
 
 # Test specific modules
 just test-memory     # In-memory provider tests
@@ -442,19 +451,19 @@ Production reliability features that live above the provider layer.
 - [x] Observability — `tracing::info_span!` on publish and subscribe lifecycle in EventBus
 - [x] Health check API — `EventProvider::health()` with default impl, `EventBus::health()`
 
-### Phase 4: Testing & Documentation 🚧
+### Phase 4: Testing & Documentation ✅
 
 Confidence and onboarding.
 
-- [ ] Integration tests with real NATS (testcontainer or local server)
+- [x] Integration tests with real NATS (9 tests — publish, history, dedup, durable subscription, options, concurrent, manual ack, health, info)
 - [x] EventBus unit tests (publish, subscribe, lifecycle, schema validation, DLQ integration — 17 tests)
 - [x] Concurrent publish/subscribe stress tests (50 concurrent publishers)
 - [x] Error path tests (all error variants display, From conversion, not-found, schema validation — 7 tests)
-- [ ] Performance benchmarks (`criterion`)
-- [ ] Deployment guide and configuration reference
-- [ ] Provider implementation guide (how to add Redis, Kafka, etc.)
+- [x] Performance benchmarks (`criterion` — event creation, serialization, publish throughput, history query)
+- [x] Deployment guide and configuration reference (`docs/deployment.md`)
+- [x] Provider implementation guide (`docs/custom-providers.md`)
 
-**Test summary: 80 unit tests across 6 modules (types, error, memory provider, nats config, schema, store)**
+**Test summary: 80 unit tests + 9 integration tests across 7 modules**
 
 ## License
 
