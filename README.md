@@ -380,6 +380,74 @@ just test-types      # Event type tests
 just test-store      # EventBus tests
 ```
 
+## Roadmap
+
+A3S Event is the application-level event abstraction. It does NOT re-implement capabilities that providers (NATS, Kafka, etc.) already offer natively. The roadmap focuses on what only the abstraction layer should own.
+
+### Responsibility Boundary
+
+| Capability | Owner | Notes |
+|------------|-------|-------|
+| Retry / backoff | **Provider** | NATS: `MaxDeliver` + `BackOff`. Kafka: consumer retry topic. |
+| Backpressure | **Provider** | NATS: pull consumer + `MaxAckPending`. Kafka: consumer poll. |
+| Connection resilience | **Provider** | NATS: async-nats auto-reconnect. Kafka: librdkafka reconnect. |
+| Consumer lag monitoring | **Provider** | NATS: `consumer.info().num_pending`. Kafka: consumer group lag. |
+| Event replay by timestamp | **Provider** | NATS: `DeliverPolicy::ByStartTime`. Kafka: `offsetsForTimes`. |
+| Exactly-once delivery | **Provider** | NATS: `Nats-Msg-Id` dedup + double ack. Kafka: idempotent producer + transactions. |
+| Partitioning / sharding | **Provider** | NATS: subject-based routing. Kafka: partition key. |
+| Stream mirroring | **Provider** | NATS: Mirror/Source config. Kafka: MirrorMaker. |
+| Metrics (server-side) | **Provider** | NATS: `/metrics` endpoint. Kafka: JMX metrics. |
+| Transport encryption | **Provider** | NATS/Kafka: TLS configuration. |
+| Event versioning / schema | **A3S Event** | Provider-agnostic, application-level concern. |
+| Payload encryption | **A3S Event** | Application-level encrypt/decrypt before publish. |
+| Dead letter queue | **A3S Event** | Unified DLQ abstraction across providers. |
+| EventBus state persistence | **A3S Event** | Subscription filter durability across restarts. |
+| Observability integration | **A3S Event** | Bridge provider metrics into app-level tracing/metrics. |
+| Provider config passthrough | **A3S Event** | Expose provider-native knobs (MaxDeliver, BackOff, etc.) |
+| Integration tests | **A3S Event** | End-to-end verification with real providers. |
+
+### Phase 1: Provider Config Passthrough 🚧
+
+Expose provider-native capabilities through the abstraction layer without re-implementing them.
+
+- [ ] `SubscribeOptions` struct — `max_deliver`, `backoff`, `max_ack_pending`, `deliver_policy`
+- [ ] `PublishOptions` struct — `msg_id` (dedup), `expected_sequence`, `timeout`
+- [ ] Pass options through `EventProvider::subscribe_durable()` and `publish()`
+- [ ] NatsProvider maps options to JetStream consumer/publish config
+- [ ] MemoryProvider ignores unsupported options gracefully
+
+### Phase 2: Event Versioning & Schema 🚧
+
+Application-level schema management that no provider handles.
+
+- [ ] Add `version` field to `Event` struct
+- [ ] `SchemaRegistry` trait — register, validate, migrate event schemas
+- [ ] In-memory schema registry for development
+- [ ] Publish-time validation (optional, via `EventBus` config)
+- [ ] Schema evolution rules (backward/forward compatibility)
+
+### Phase 3: Operational Hardening 🚧
+
+Production reliability features that live above the provider layer.
+
+- [ ] Dead Letter Queue — `DlqHandler` trait, failed events routed to DLQ after max retries
+- [ ] NatsProvider DLQ: listen to advisories, forward to DLQ stream
+- [ ] EventBus state persistence — save/restore subscription filters (file / provider-backed)
+- [ ] Observability — `tracing` spans for publish/subscribe lifecycle, optional `metrics` crate integration
+- [ ] Health check API — `EventProvider::health()` for liveness/readiness probes
+
+### Phase 4: Testing & Documentation 🚧
+
+Confidence and onboarding.
+
+- [ ] Integration tests with real NATS (testcontainer or local server)
+- [ ] EventBus unit tests (publish, subscribe, lifecycle)
+- [ ] Concurrent publish/subscribe stress tests
+- [ ] Error path tests (connection failure, timeout, nak)
+- [ ] Performance benchmarks (`criterion`)
+- [ ] Deployment guide and configuration reference
+- [ ] Provider implementation guide (how to add Redis, Kafka, etc.)
+
 ## License
 
 MIT License — see [LICENSE](LICENSE) for details.
