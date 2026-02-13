@@ -67,6 +67,7 @@ async fn main() -> a3s_event::Result<()> {
 - **Category-Based Routing**: Subscribe to all events in a category with wildcard subjects (`events.market.>`)
 - **In-Memory Provider**: Zero-dependency provider for testing and single-process deployments
 - **NATS JetStream Provider**: Distributed, persistent event streaming with configurable retention
+- **Payload Encryption**: AES-256-GCM encrypt/decrypt with key rotation — protect sensitive payloads at the application layer
 
 ## Providers
 
@@ -165,6 +166,9 @@ Wildcard patterns:
 | `Event` | Provider-agnostic message envelope (id, subject, category, payload) |
 | `ReceivedEvent` | Event with delivery context (sequence, num_delivered, stream) |
 | `ProviderInfo` | Backend status (message count, bytes, consumers) |
+| `EventEncryptor` | Trait for payload encrypt/decrypt |
+| `Aes256GcmEncryptor` | AES-256-GCM encryptor with key rotation |
+| `EncryptedPayload` | Encrypted envelope (key_id, nonce, ciphertext) |
 
 ## API Reference
 
@@ -463,7 +467,38 @@ Confidence and onboarding.
 - [x] Deployment guide and configuration reference (`docs/deployment.md`)
 - [x] Provider implementation guide (`docs/custom-providers.md`)
 
-**Test summary: 80 unit tests + 9 integration tests across 7 modules**
+**Test summary: 94 unit tests + 9 integration tests across 8 modules**
+
+### Phase 5: Payload Encryption ✅
+
+Application-level encrypt/decrypt for sensitive event payloads.
+
+- [x] `EventEncryptor` trait — `encrypt(payload) → Value`, `decrypt(encrypted) → Value`
+- [x] `Aes256GcmEncryptor` — AES-256-GCM with random nonce per message
+- [x] `EncryptedPayload` envelope — key_id, nonce, ciphertext (base64), encrypted marker
+- [x] Key rotation — `add_key()`, `rotate_to()`, decrypt with any registered key
+- [x] `EventBus::set_encryptor()` — transparent encrypt on publish, decrypt on `list_events()`
+- [x] `EncryptedPayload::is_encrypted()` — detect encrypted payloads for selective decryption
+- [x] Schema validation runs on plaintext before encryption
+- [x] 10 crypto tests + 4 EventBus encryption integration tests
+
+### Phase 6: EventBus State Persistence 🚧
+
+Subscription filter durability across restarts.
+
+- [ ] `StateStore` trait — save/load subscription filters
+- [ ] `FileStateStore` — JSON file persistence
+- [ ] `EventBus` auto-save on subscription changes, auto-load on creation
+- [ ] Tests for persistence lifecycle
+
+### Phase 7: Observability Integration 🚧
+
+Bridge provider metrics into application-level tracing/metrics.
+
+- [ ] `EventMetrics` struct — publish count, error count, latency histogram, DLQ depth
+- [ ] `EventBus` emits metrics on publish/subscribe/error
+- [ ] `metrics()` accessor for scraping
+- [ ] Integration with `tracing` and `metrics` crates
 
 ## License
 

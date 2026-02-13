@@ -3,6 +3,7 @@
 //! `EventBus` provides a convenient API for event publishing, querying,
 //! and subscription management on top of any `EventProvider` implementation.
 
+use crate::crypto::EventEncryptor;
 use crate::error::{EventError, Result};
 use crate::provider::{EventProvider, ProviderInfo, Subscription};
 use crate::schema::SchemaRegistry;
@@ -18,6 +19,7 @@ use tokio::sync::RwLock;
 /// methods. Thread-safe via internal locks.
 ///
 /// Optionally validates events against a `SchemaRegistry` before publishing.
+/// Optionally encrypts event payloads via an `EventEncryptor`.
 /// Optionally routes failed events to a `DlqHandler`.
 pub struct EventBus {
     provider: Box<dyn EventProvider>,
@@ -30,6 +32,9 @@ pub struct EventBus {
 
     /// Optional dead letter queue handler
     dlq_handler: Option<Arc<dyn DlqHandler>>,
+
+    /// Optional payload encryptor
+    encryptor: Option<Arc<dyn EventEncryptor>>,
 }
 
 impl EventBus {
@@ -40,6 +45,7 @@ impl EventBus {
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
             schema_registry: None,
             dlq_handler: None,
+            encryptor: None,
         }
     }
 
@@ -53,12 +59,23 @@ impl EventBus {
             subscriptions: Arc::new(RwLock::new(HashMap::new())),
             schema_registry: Some(registry),
             dlq_handler: None,
+            encryptor: None,
         }
     }
 
     /// Set the dead letter queue handler
     pub fn set_dlq_handler(&mut self, handler: Arc<dyn DlqHandler>) {
         self.dlq_handler = Some(handler);
+    }
+
+    /// Set the payload encryptor
+    pub fn set_encryptor(&mut self, encryptor: Arc<dyn EventEncryptor>) {
+        self.encryptor = Some(encryptor);
+    }
+
+    /// Get the encryptor (if configured)
+    pub fn encryptor(&self) -> Option<&dyn EventEncryptor> {
+        self.encryptor.as_deref()
     }
 
     /// Get the DLQ handler (if configured)
@@ -86,8 +103,9 @@ impl EventBus {
         payload: serde_json::Value,
     ) -> Result<Event> {
         let subject = self.provider.build_subject(category, topic);
-        let event = Event::new(subject, category, summary, source, payload);
+        let mut event = Event::new(subject, category, summary, source, payload);
         self.validate_if_configured(&event)?;
+        self.encrypt_if_configured(&mut event)?;
 
         let span = tracing::info_span!(
             "event.publish",
@@ -106,6 +124,7 @@ impl EventBus {
     /// Publish a pre-built event
     pub async fn publish_event(&self, event: &Event) -> Result<u64> {
         self.validate_if_configured(event)?;
+        let event = self.maybe_encrypt_clone(event)?;
 
         let span = tracing::info_span!(
             "event.publish",
@@ -117,7 +136,7 @@ impl EventBus {
         let _guard = span.enter();
         drop(_guard);
 
-        self.provider.publish(event).await
+        self.provider.publish(&event).await
     }
 
     /// Publish a pre-built event with provider-specific options
@@ -127,6 +146,7 @@ impl EventBus {
         opts: &PublishOptions,
     ) -> Result<u64> {
         self.validate_if_configured(event)?;
+        let event = self.maybe_encrypt_clone(event)?;
 
         let span = tracing::info_span!(
             "event.publish",
@@ -139,19 +159,23 @@ impl EventBus {
         let _guard = span.enter();
         drop(_guard);
 
-        self.provider.publish_with_options(event, opts).await
+        self.provider.publish_with_options(&event, opts).await
     }
 
     /// Fetch recent events, optionally filtered by category
+    ///
+    /// If an encryptor is configured, encrypted payloads are decrypted automatically.
     pub async fn list_events(
         &self,
         category: Option<&str>,
         limit: usize,
     ) -> Result<Vec<Event>> {
         let filter = category.map(|c| self.provider.category_subject(c));
-        self.provider
+        let mut events = self.provider
             .history(filter.as_deref(), limit)
-            .await
+            .await?;
+        self.decrypt_events(&mut events);
+        Ok(events)
     }
 
     /// Get event counts by category
@@ -291,6 +315,39 @@ impl EventBus {
             registry.validate(event)?;
         }
         Ok(())
+    }
+
+    /// Encrypt event payload in-place (if encryptor configured)
+    fn encrypt_if_configured(&self, event: &mut Event) -> Result<()> {
+        if let Some(ref encryptor) = self.encryptor {
+            event.payload = encryptor.encrypt(&event.payload)?;
+        }
+        Ok(())
+    }
+
+    /// Clone event and encrypt payload if encryptor is configured
+    fn maybe_encrypt_clone(&self, event: &Event) -> Result<Event> {
+        match self.encryptor {
+            Some(ref encryptor) => {
+                let mut cloned = event.clone();
+                cloned.payload = encryptor.encrypt(&cloned.payload)?;
+                Ok(cloned)
+            }
+            None => Ok(event.clone()),
+        }
+    }
+
+    /// Decrypt event payloads in-place (best-effort, skips failures)
+    fn decrypt_events(&self, events: &mut [Event]) {
+        if let Some(ref encryptor) = self.encryptor {
+            for event in events.iter_mut() {
+                if crate::crypto::EncryptedPayload::is_encrypted(&event.payload) {
+                    if let Ok(decrypted) = encryptor.decrypt(&event.payload) {
+                        event.payload = decrypted;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -573,5 +630,66 @@ mod tests {
         assert_eq!(sub.subjects, vec!["events.system.>"]);
         assert!(sub.durable);
         assert_eq!(bus.list_subscriptions().await.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_encrypted_publish_and_list() {
+        let enc = Arc::new(crate::crypto::Aes256GcmEncryptor::new("k1", &[0x42; 32]));
+        let mut bus = test_bus();
+        bus.set_encryptor(enc.clone());
+
+        let event = bus
+            .publish("market", "forex", "Rate", "test", serde_json::json!({"rate": 7.35}))
+            .await
+            .unwrap();
+
+        // The stored payload should be encrypted
+        assert!(crate::crypto::EncryptedPayload::is_encrypted(&event.payload));
+
+        // list_events should auto-decrypt
+        let events = bus.list_events(Some("market"), 10).await.unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].payload, serde_json::json!({"rate": 7.35}));
+    }
+
+    #[tokio::test]
+    async fn test_encrypted_publish_event_prebuilt() {
+        let enc = Arc::new(crate::crypto::Aes256GcmEncryptor::new("k1", &[0x42; 32]));
+        let mut bus = test_bus();
+        bus.set_encryptor(enc);
+
+        let event = Event::new("events.test.a", "test", "Test", "test", serde_json::json!({"secret": "data"}));
+        let seq = bus.publish_event(&event).await.unwrap();
+        assert!(seq > 0);
+
+        // Original event should NOT be mutated
+        assert_eq!(event.payload, serde_json::json!({"secret": "data"}));
+
+        // list_events should decrypt
+        let events = bus.list_events(None, 10).await.unwrap();
+        assert_eq!(events[0].payload, serde_json::json!({"secret": "data"}));
+    }
+
+    #[tokio::test]
+    async fn test_no_encryptor_passthrough() {
+        let bus = test_bus();
+        let event = bus
+            .publish("test", "a", "Test", "test", serde_json::json!({"plain": true}))
+            .await
+            .unwrap();
+
+        // Without encryptor, payload is plain
+        assert!(!crate::crypto::EncryptedPayload::is_encrypted(&event.payload));
+        assert_eq!(event.payload, serde_json::json!({"plain": true}));
+    }
+
+    #[tokio::test]
+    async fn test_encryptor_accessor() {
+        let enc = Arc::new(crate::crypto::Aes256GcmEncryptor::new("k1", &[0x42; 32]));
+        let mut bus = test_bus();
+        assert!(bus.encryptor().is_none());
+        bus.set_encryptor(enc);
+        assert!(bus.encryptor().is_some());
+        assert_eq!(bus.encryptor().unwrap().active_key_id(), "k1");
     }
 }

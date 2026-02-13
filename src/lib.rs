@@ -44,6 +44,7 @@
 //! - **Subscription** trait — async event stream from any provider
 //! - **Event** — provider-agnostic message envelope
 
+pub mod crypto;
 pub mod dlq;
 pub mod error;
 pub mod provider;
@@ -52,6 +53,7 @@ pub mod store;
 pub mod types;
 
 // Re-export core types
+pub use crypto::{Aes256GcmEncryptor, EncryptedPayload, EventEncryptor};
 pub use dlq::{DeadLetterEvent, DlqHandler, MemoryDlqHandler};
 pub use error::{EventError, Result};
 pub use provider::{EventProvider, PendingEvent, ProviderInfo, Subscription};

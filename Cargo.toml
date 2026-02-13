@@ -29,6 +29,8 @@ tracing = "0.1"
 time = "0.3"
 futures = "0.3"
 bytes = "1.5"
+aes-gcm = "0.10"
+base64 = "0.22"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
