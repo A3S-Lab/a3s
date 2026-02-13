@@ -148,10 +148,11 @@ Download from [GitHub Releases](https://github.com/A3S-Lab/a3s/releases) for you
 Execution layer — the individual AI agent that SafeClaw orchestrates. Multiple a3s-code instances run in-process within SafeClaw, each with its own session, priority queue, and reflection system.
 
 - **Multi-Session Management**: Run multiple independent AI conversations with file/memory storage
-- **10 Built-in Tools**: bash, read, write, edit, grep, glob, ls, web_fetch, cron, parse — all workspace-sandboxed
+- **11 Built-in Tools**: bash, read, write, edit, patch, grep, glob, ls, web_fetch, web_search, cron — all workspace-sandboxed
 - **Permission System**: Fine-grained Allow/Deny/Ask rules for tool access
 - **HITL Confirmation**: Human-in-the-loop for sensitive operations with configurable timeout policies
-- **Skills & Subagents**: Extend with Markdown skill definitions; delegate tasks to 5 built-in specialized child agents
+- **Skills & Subagents**: Extend with Markdown skill definitions (Claude Code Skills format); delegate tasks to 5 built-in specialized child agents
+- **Server-Side Agentic Loop**: Full agentic loop execution on server with streaming events; server-side delegation to subagents
 - **LSP Integration**: Code intelligence (hover, definition, references, symbols, diagnostics) for Rust, Go, TypeScript, Python, C/C++
 - **MCP Support**: Model Context Protocol with stdio/HTTP transport, OAuth config, `mcp__<server>__<tool>` naming
 - **Reflection System**: 10 error categories, 4 adaptive strategies (Direct/Planned/Iterative/Parallel), confidence tracking
@@ -161,8 +162,8 @@ Execution layer — the individual AI agent that SafeClaw orchestrates. Multiple
 - **Structured Generation**: JSON Schema constrained output, both unary and streaming
 - **Cron Scheduling**: 10 cron RPCs for scheduled task management
 - **OpenTelemetry**: OTLP spans (agent → turn → llm → tool → subagent), LLM cost tracking, cross-session cost aggregation
-- **SDKs**: Python (20 examples) & TypeScript (28 examples) covering all 65+ RPCs
-- **1,786 unit tests** with 90% line coverage
+- **SDKs**: Python & TypeScript covering all 85 RPCs
+- **3,086 unit tests**
 
 ```bash
 # Install
@@ -457,22 +458,22 @@ async with A3sClient(address="localhost:4088") as client:
 
 ## SDKs
 
-| Crate | Language | Package | Examples | Location |
-|-------|----------|---------|----------|----------|
-| a3s-code | Python | `a3s-code` | 20 examples, 65+ RPCs | `crates/code/sdk/python/` |
-| a3s-code | TypeScript | `@a3s-lab/code` | 28 examples, 65+ RPCs | `crates/code/sdk/typescript/` |
+| Crate | Language | Package | RPCs | Location |
+|-------|----------|---------|------|----------|
+| a3s-code | Python | `a3s-code` | 85 RPCs | `crates/code/sdk/python/` |
+| a3s-code | TypeScript | `@a3s-lab/code` | 85 RPCs | `crates/code/sdk/typescript/` |
 | a3s-search | Python | `a3s-search` | — | `crates/search/sdk/python/` |
 | a3s-search | Node.js | `@a3s-lab/search` | — | `crates/search/sdk/node/` |
 
-SDK examples cover every feature category: sessions, generation, structured output, skills, permissions, HITL, events, context, todos, providers, planning, memory, MCP, LSP, cron, and observability.
+SDK documentation covers every feature category: sessions, generation, structured output, skills, permissions, HITL, events, context, todos, providers, planning, memory, MCP, LSP, cron, and observability.
 
 ## Test Coverage
 
-**Total: 3,812 tests**
+**Total: 5,216+ tests**
 
 | Crate | Tests | Coverage | Status |
 |-------|------:|----------|--------|
-| a3s-code | 1,682 | 90% line | ✅ |
+| a3s-code | 3,086 | — | ✅ |
 | a3s-power | 888 | — | ✅ |
 | a3s-gateway | 625 | — | ✅ |
 | a3s-search | 267 | — | ✅ |
@@ -500,7 +501,7 @@ just test-all   # Run everything including box
 
 ### Completed ✅
 
-- [x] AI Coding Agent — multi-session, 10 tools, permissions, HITL, skills, subagents, LSP, MCP, reflection, memory, planning
+- [x] AI Coding Agent — multi-session, 11 tools, permissions, HITL, skills, subagents, LSP, MCP, reflection, memory, planning, server-side agentic loop
 - [x] Per-Session Priority Queue — 6 lanes, concurrency, retry/DLQ, rate limiting, priority boosting, metrics, OpenTelemetry
 - [x] MicroVM Sandbox — VM management, OCI images, Docker CLI (29 commands), WarmPool, CRI, TEE, networking, volumes
 - [x] OS Main Application — 7 channel adapters, multi-agent coordination, privacy escalation, A3sfile DSL, Tauri desktop UI
@@ -511,7 +512,7 @@ just test-all   # Run everything including box
 - [x] Event System — pluggable pub/sub with NATS JetStream and in-memory providers, AES-256-GCM payload encryption, state persistence, observability
 - [x] Cron Scheduling — standard cron + natural language (EN/CN), pluggable storage, execution history, OpenTelemetry
 - [x] OpenTelemetry Cross-Crate — structured spans and OTLP metrics in a3s-cron, a3s-lane, a3s-context, a3s-event
-- [x] SDKs — Python & TypeScript with full RPC coverage, observability methods
+- [x] SDKs — Python & TypeScript with full 85 RPC coverage, unified skill API
 - [x] Infrastructure — GitHub Actions CI/CD, crates.io publishing, Homebrew tap
 - [x] Session Merge, Shared Privacy Types, Security Module Rename, Box Networking, Box Volumes, Box Registry Push, Box Resource Limits, Box Dockerfile Completion
 
