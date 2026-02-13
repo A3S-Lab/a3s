@@ -378,6 +378,7 @@ just doc                # Generate and open docs
 | `provider::nats` | NATS provider: client, config, subscriber (requires NATS) |
 | `store` | EventBus high-level operations |
 | `metrics` | Lock-free counters, latency tracking, concurrent access |
+| `memory_integration` | End-to-end memory provider: publish, subscribe, encryption, schema, DLQ, state, metrics, concurrency |
 | `nats_integration` | End-to-end NATS tests: publish, dedup, durable sub, manual ack |
 
 ### Running Tests
@@ -474,7 +475,7 @@ Confidence and onboarding.
 - [x] Deployment guide and configuration reference (`docs/deployment.md`)
 - [x] Provider implementation guide (`docs/custom-providers.md`)
 
-**Test summary: 122 unit tests + 9 integration tests across 10 modules**
+**Test summary: 122 unit tests + 24 memory integration tests + 9 NATS integration tests across 10 modules**
 
 ### Phase 5: Payload Encryption ✅
 
