@@ -2,6 +2,129 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Repository Structure (MANDATORY — DO NOT MODIFY)
+
+**CRITICAL: This is the A3S monorepo. The root directory contains ONLY the following files and directories. DO NOT add Rust source code, Cargo.toml, or any crate-specific files to the root.**
+
+```
+a3s/                            ← THIS IS THE MONOREPO ROOT
+├── .gitignore                  # Git ignore rules
+├── .gitmodules                 # Submodule registry (ALL crates listed here)
+├── CLAUDE.md                   # This file
+├── LICENSE                     # MIT license
+├── README.md                   # Project overview, module list, roadmap
+├── crates/                     # ALL Rust crates live here as git submodules
+│   ├── box/                    # [submodule] git@github.com:A3S-Lab/Box.git
+│   ├── code/                   # [submodule] git@github.com:A3S-Lab/Code.git
+│   ├── context/                # [submodule] git@github.com:A3S-Lab/Context.git
+│   ├── cron/                   # [submodule] git@github.com:A3S-Lab/Cron.git
+│   ├── event/                  # [submodule] git@github.com:A3S-Lab/Event.git
+│   ├── gateway/                # [submodule] git@github.com:A3S-Lab/Gateway.git
+│   ├── lane/                   # [submodule] git@github.com:A3S-Lab/Lane.git
+│   ├── power/                  # [submodule] git@github.com:A3S-Lab/Power.git
+│   ├── safeclaw/               # [submodule] git@github.com:A3S-Lab/SafeClaw.git
+│   ├── safeclaw-ui/            # [submodule] git@github.com:A3S-Lab/SafeClawUI.git
+│   └── search/                 # [submodule] git@github.com:A3S-Lab/Search.git
+├── homebrew-tap/               # [submodule] git@github.com:A3S-Lab/homebrew-tap.git
+└── os/                         # A3S platform (NestJS backend + React frontend + CLI)
+```
+
+### Root Directory Protection Rules
+
+**⛔ NEVER do any of the following in the root directory:**
+
+1. **NEVER add `Cargo.toml` to root** — Each crate has its own `Cargo.toml` inside its submodule
+2. **NEVER add `src/`, `tests/`, `benches/`, `docs/` to root** — Source code belongs in `crates/<name>/`
+3. **NEVER add `justfile` to root** — Each crate has its own build commands
+4. **NEVER run `cargo init` or `cargo new` in root** — This is not a Rust workspace
+5. **NEVER change `git remote` of root** — It MUST point to `git@github.com:A3S-Lab/a3s.git`
+
+**The root directory is a pure orchestration layer. It contains ONLY:**
+- `.gitignore`, `.gitmodules`, `CLAUDE.md`, `LICENSE`, `README.md`
+- `crates/` directory with submodules
+- `homebrew-tap/` submodule
+- `os/` directory
+
+**If you find yourself adding Rust source files to the root, STOP. You are doing it wrong.**
+
+---
+
+## Adding a New Crate (MANDATORY Procedure)
+
+**CRITICAL: Every new Rust crate MUST follow this exact procedure. No exceptions.**
+
+### Step-by-Step
+
+```bash
+# 1. Create the new repo on GitHub first (under A3S-Lab org)
+#    Repository name convention: PascalCase (e.g., MyNewCrate)
+#    URL: git@github.com:A3S-Lab/<RepoName>.git
+
+# 2. Initialize the crate locally (in a temp directory, NOT in a3s root)
+cd /tmp
+cargo new my-new-crate --lib   # or --bin
+cd my-new-crate
+git init && git add -A && git commit -m "feat: initial <crate-name>"
+git remote add origin git@github.com:A3S-Lab/<RepoName>.git
+git push -u origin main
+
+# 3. Add as submodule in A3S (from the a3s root)
+cd /path/to/a3s
+git submodule add git@github.com:A3S-Lab/<RepoName>.git crates/<crate-name>
+
+# 4. Verify .gitmodules was updated
+cat .gitmodules | grep -A2 <crate-name>
+
+# 5. Commit in A3S
+git add .gitmodules crates/<crate-name>
+git commit -m "chore: add <crate-name> submodule"
+git push origin main
+
+# 6. Update README.md — add to Modules table, Roadmap, Repository Structure, Test Coverage
+```
+
+### Naming Conventions
+
+| Item | Convention | Example |
+|------|-----------|---------|
+| GitHub repo | PascalCase | `A3S-Lab/MyNewCrate` |
+| Submodule path | kebab-case | `crates/my-new-crate` |
+| Rust crate name | kebab-case with `a3s-` prefix | `a3s-my-new-crate` |
+| Rust lib name | snake_case with `a3s_` prefix | `a3s_my_new_crate` |
+
+### Checklist for New Crate
+
+```markdown
+New crate checklist (ALL items required):
+- [ ] GitHub repo created under A3S-Lab org
+- [ ] Crate initialized with Cargo.toml, src/, README.md
+- [ ] Added as git submodule at crates/<name> (NOT in root)
+- [ ] .gitmodules updated and committed in A3S root
+- [ ] NO Cargo.toml, src/, tests/, or other crate files in A3S root
+- [ ] A3S README.md updated (Modules table, Roadmap, Repository Structure, Test Coverage)
+- [ ] git remote of A3S root still points to git@github.com:A3S-Lab/a3s.git
+```
+
+### What NOT To Do
+
+```bash
+# ❌ WRONG: Creating a crate directly in the A3S root
+cd /path/to/a3s
+cargo init --name a3s-event    # This pollutes the root with Cargo.toml + src/
+
+# ❌ WRONG: Adding source files to root
+cp -r /tmp/my-crate/src /path/to/a3s/src    # Root must NOT have src/
+
+# ❌ WRONG: Changing root remote to the new crate's repo
+git remote set-url origin git@github.com:A3S-Lab/Event.git   # DESTROYS the monorepo
+
+# ✅ CORRECT: Always work inside the submodule
+cd /path/to/a3s/crates/event
+# ... develop here, commit here, push here
+```
+
+---
+
 ## Code Style
 
 **Rust:** Follow [Microsoft Rust Guidelines](https://microsoft.github.io/rust-guidelines). `cargo fmt` for formatting, `cargo clippy` for linting (enforced in CI).
