@@ -1,11 +1,11 @@
 # A3S
 
 <p align="center">
-  <strong>Autonomous Agent Adaptive System</strong>
+  <strong>Agentic Adaptive Augmentation System</strong>
 </p>
 
 <p align="center">
-  <em>An Agent Operating System — from hardware-isolated execution to multi-agent orchestration and autonomous evolution</em>
+  <em>An Agent Operating System — from hardware-isolated execution to multi-agent orchestration and agentic evolution</em>
 </p>
 
 <p align="center">
@@ -13,6 +13,7 @@
   <a href="#architecture">Architecture</a> •
   <a href="#projects">Projects</a> •
   <a href="#quick-start">Quick Start</a> •
+  <a href="#a3s-deep--agentic-deep-research-agent">Deep Research</a> •
   <a href="#sdks">SDKs</a> •
   <a href="#development">Development</a>
 </p>
@@ -374,6 +375,41 @@ manager.add_job("backup", "0 2 * * *", "backup.sh").await?;
 
 ---
 
+### A3S Deep — Agentic Deep Research Agent
+
+Application layer — a TypeScript agent that leverages A3S Code (with built-in Search + Lane) to perform iterative deep research and produce comprehensive reports.
+
+- **Iterative Research Loop**: Plan → Search+Analyze → Reflect → repeat until confident
+- **Interactive Clarification**: Multi-round questioning to refine ambiguous queries (`-i` mode)
+- **Real-Time Steering**: Control Lane (P0) commands during research: `/focus`, `/add`, `/adjust`, `/skip`, `/stop`
+- **Workspace Persistence**: All artifacts saved as `.md` files (plan, iterations, report)
+- **Project Configuration**: `.a3s/config.json` for LLM/server settings, `.a3s/skills/` for custom skills, `.a3s/agents/` for subagents
+- **Pluggable Output**: Built-in Markdown/JSON + skill-based renderers for Word, PDF, PPT, Remotion, HTML
+- **Single SDK**: Only depends on `@a3s-lab/code` — Search, Lane, Tools, Skills all built-in
+
+```bash
+# Install
+npm install @a3s-lab/deep
+
+# Basic research
+a3s-deep -q "What are the latest advances in quantum error correction?"
+
+# Interactive mode with workspace
+a3s-deep -q "Compare modern AI frameworks" -i -w ~/research/ai
+
+# Output as PDF via skill
+a3s-deep -q "State of WebAssembly in 2025" -o pdf
+
+# Real-time steering (in interactive mode, type while running):
+#   /focus quantum error correction with topological codes
+#   /add "surface code threshold 2024 paper"
+#   /skip
+```
+
+📦 [npm](https://www.npmjs.com/package/@a3s-lab/deep) · 📖 [Documentation](a3s-deep/README.md)
+
+---
+
 ### a3s-tools — Built-in Tools Binary
 
 Utility — standalone binary providing core tools for the agent.
@@ -464,6 +500,7 @@ async with A3sClient(address="localhost:4088") as client:
 | a3s-code | TypeScript | `@a3s-lab/code` | 85 RPCs | `crates/code/sdk/typescript/` |
 | a3s-search | Python | `a3s-search` | — | `crates/search/sdk/python/` |
 | a3s-search | Node.js | `@a3s-lab/search` | — | `crates/search/sdk/node/` |
+| a3s-deep | TypeScript | `@a3s-lab/deep` | — | `a3s-deep/` |
 
 SDK documentation covers every feature category: sessions, generation, structured output, skills, permissions, HITL, events, context, todos, providers, planning, memory, MCP, LSP, cron, and observability.
 
@@ -513,6 +550,7 @@ just test-all   # Run everything including box
 - [x] Cron Scheduling — standard cron + natural language (EN/CN), pluggable storage, execution history, OpenTelemetry
 - [x] OpenTelemetry Cross-Crate — structured spans and OTLP metrics in a3s-cron, a3s-lane, a3s-context, a3s-event
 - [x] SDKs — Python & TypeScript with full 85 RPC coverage, unified skill API
+- [x] Deep Research Agent — iterative research with interactive steering, workspace persistence, pluggable output formats
 - [x] Infrastructure — GitHub Actions CI/CD, crates.io publishing, Homebrew tap
 - [x] Session Merge, Shared Privacy Types, Security Module Rename, Box Networking, Box Volumes, Box Registry Push, Box Resource Limits, Box Dockerfile Completion
 
@@ -555,6 +593,9 @@ a3s/
 │   ├── tools/              # Built-in tools binary
 │   ├── tools-core/         # Core types for tools
 │   └── updater/            # Self-update via GitHub Releases
+├── a3s-deep/               # Agentic deep research agent (TypeScript)
+│   ├── .a3s/               #   Project config, skills, agents
+│   └── src/                #   Agent source (planner, analyzer, synthesizer, etc.)
 └── os/                     # [submodule] Agent OS platform
     ├── src/apps/cli/       #   A3S CLI (a3s up/deploy/logs)
     ├── src/apps/api/       #   Platform API (NestJS)
