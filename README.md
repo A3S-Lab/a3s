@@ -160,11 +160,13 @@ Execution layer — the individual AI agent that SafeClaw orchestrates. Multiple
 - **Memory System**: Episodic/Semantic/Procedural memory with importance scoring and access tracking
 - **Planning & Goals**: LLM-based execution plans, goal extraction, achievement tracking
 - **Hooks System**: 8 lifecycle events (PreToolUse, PostToolUse, GenerateStart/End, SessionStart/End, SkillLoad/Unload)
+- **Enhanced Health Check**: Subsystem diagnostics (version, uptime, session count, store health)
+- **Pluggable Session Persistence**: `SessionStore` trait with `Custom` backend for external stores (PostgreSQL, etc.)
 - **Structured Generation**: JSON Schema constrained output, both unary and streaming
 - **Cron Scheduling**: 10 cron RPCs for scheduled task management
 - **OpenTelemetry**: OTLP spans (agent → turn → llm → tool → subagent), LLM cost tracking, cross-session cost aggregation
-- **SDKs**: Python & TypeScript covering all 85 RPCs
-- **3,086 unit tests**
+- **SDKs**: Python & TypeScript covering all 85 RPCs, with high-level `Session` API (`send()`, `stream()`, `delegate()`)
+- **1,716 unit tests**
 
 ```bash
 # Install
@@ -481,15 +483,41 @@ a3s-code --config ~/.a3s/config.json
 
 ```python
 # pip install a3s-code
-from a3s_code import A3sClient
+from a3s_code import A3sClient, create_provider
+
+anthropic = create_provider(name="anthropic", api_key="YOUR_API_KEY")
 
 async with A3sClient(address="localhost:4088") as client:
-    session = await client.create_session(name="demo", workspace="/tmp/demo")
-    response = await client.generate(
-        session_id=session["session_id"],
-        messages=[{"role": "ROLE_USER", "content": "Write hello world in Rust"}],
-    )
-    print(response["message"]["content"])
+    async with await client.session(
+        model=anthropic("claude-sonnet-4-20250514"),
+        workspace="/tmp/demo",
+        system="You are a helpful coding assistant.",
+    ) as session:
+        # Simple question
+        result = await session.send("Write hello world in Rust")
+        print(result.text)
+
+        # Streaming
+        async for event in session.stream("Explain this codebase"):
+            if event.type == "text":
+                print(event.content, end="", flush=True)
+```
+
+```typescript
+// npm install @a3s-lab/code
+import { A3sClient, createProvider } from '@a3s-lab/code';
+
+const client = new A3sClient({ address: 'localhost:4088' });
+const anthropic = createProvider({ name: 'anthropic', apiKey: 'YOUR_API_KEY' });
+
+await using session = await client.createSession({
+  model: anthropic('claude-sonnet-4-20250514'),
+  workspace: '/tmp/demo',
+  system: 'You are a helpful coding assistant.',
+});
+
+const { text } = await session.send('Write hello world in Rust');
+console.log(text);
 ```
 
 ## SDKs
@@ -502,15 +530,15 @@ async with A3sClient(address="localhost:4088") as client:
 | a3s-search | Node.js | `@a3s-lab/search` | — | `crates/search/sdk/node/` |
 | a3s-deep | TypeScript | `@a3s-lab/deep` | — | `a3s-deep/` |
 
-SDK documentation covers every feature category: sessions, generation, structured output, skills, permissions, HITL, events, context, todos, providers, planning, memory, MCP, LSP, cron, and observability.
+SDK documentation covers every feature category: sessions, generation, structured output, skills, permissions, HITL, events, context, todos, providers, planning, memory, MCP, LSP, cron, and observability. Both Python and TypeScript SDKs provide a high-level `Session` API with `send()`, `stream()`, `delegate()`, and `async with` / `await using` auto-cleanup.
 
 ## Test Coverage
 
-**Total: 5,216+ tests**
+**Total: 3,846+ tests**
 
 | Crate | Tests | Coverage | Status |
 |-------|------:|----------|--------|
-| a3s-code | 3,086 | — | ✅ |
+| a3s-code | 1,716 | — | ✅ |
 | a3s-power | 888 | — | ✅ |
 | a3s-gateway | 625 | — | ✅ |
 | a3s-search | 267 | — | ✅ |
@@ -549,7 +577,7 @@ just test-all   # Run everything including box
 - [x] Event System — pluggable pub/sub with NATS JetStream and in-memory providers, AES-256-GCM payload encryption, state persistence, observability
 - [x] Cron Scheduling — standard cron + natural language (EN/CN), pluggable storage, execution history, OpenTelemetry
 - [x] OpenTelemetry Cross-Crate — structured spans and OTLP metrics in a3s-cron, a3s-lane, a3s-context, a3s-event
-- [x] SDKs — Python & TypeScript with full 85 RPC coverage, unified skill API
+- [x] SDKs — Python & TypeScript with full 85 RPC coverage, unified skill API, aligned high-level Session API (`send()`, `stream()`, `delegate()`)
 - [x] Deep Research Agent — iterative research with interactive steering, workspace persistence, pluggable output formats
 - [x] Infrastructure — GitHub Actions CI/CD, crates.io publishing, Homebrew tap
 - [x] Session Merge, Shared Privacy Types, Security Module Rename, Box Networking, Box Volumes, Box Registry Push, Box Resource Limits, Box Dockerfile Completion
