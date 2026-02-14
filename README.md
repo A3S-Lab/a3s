@@ -165,8 +165,9 @@ Execution layer — the individual AI agent that SafeClaw orchestrates. Multiple
 - **Structured Generation**: JSON Schema constrained output, both unary and streaming
 - **Cron Scheduling**: 10 cron RPCs for scheduled task management
 - **OpenTelemetry**: OTLP spans (agent → turn → llm → tool → subagent), LLM cost tracking, cross-session cost aggregation
-- **SDKs**: Python & TypeScript covering all 85 RPCs, with high-level `Session` API (`send()`, `stream()`, `delegate()`)
-- **1,716 unit tests**
+- **SDKs**: Python & TypeScript covering all 86 RPCs, with high-level `Session` API (`send()`, `stream()`, `delegate()`)
+- **Externalized Prompt Registry**: All 25 LLM-facing prompts in `prompts/` directory — full agentic design visible in one place
+- **1,721 unit tests**
 
 ```bash
 # Install
@@ -524,8 +525,8 @@ console.log(text);
 
 | Crate | Language | Package | RPCs | Location |
 |-------|----------|---------|------|----------|
-| a3s-code | Python | `a3s-code` | 85 RPCs | `crates/code/sdk/python/` |
-| a3s-code | TypeScript | `@a3s-lab/code` | 85 RPCs | `crates/code/sdk/typescript/` |
+| a3s-code | Python | `a3s-code` | 86 RPCs | `crates/code/sdk/python/` |
+| a3s-code | TypeScript | `@a3s-lab/code` | 86 RPCs | `crates/code/sdk/typescript/` |
 | a3s-search | Python | `a3s-search` | — | `crates/search/sdk/python/` |
 | a3s-search | Node.js | `@a3s-lab/search` | — | `crates/search/sdk/node/` |
 | a3s-deep | TypeScript | `@a3s-lab/deep` | — | `a3s-deep/` |
@@ -534,11 +535,11 @@ SDK documentation covers every feature category: sessions, generation, structure
 
 ## Test Coverage
 
-**Total: 3,846+ tests**
+**Total: 3,851+ tests**
 
 | Crate | Tests | Coverage | Status |
 |-------|------:|----------|--------|
-| a3s-code | 1,716 | — | ✅ |
+| a3s-code | 1,721 | — | ✅ |
 | a3s-power | 888 | — | ✅ |
 | a3s-gateway | 625 | — | ✅ |
 | a3s-search | 267 | — | ✅ |
@@ -577,7 +578,7 @@ just test-all   # Run everything including box
 - [x] Event System — pluggable pub/sub with NATS JetStream and in-memory providers, AES-256-GCM payload encryption, state persistence, observability
 - [x] Cron Scheduling — standard cron + natural language (EN/CN), pluggable storage, execution history, OpenTelemetry
 - [x] OpenTelemetry Cross-Crate — structured spans and OTLP metrics in a3s-cron, a3s-lane, a3s-context, a3s-event
-- [x] SDKs — Python & TypeScript with full 85 RPC coverage, unified skill API, aligned high-level Session API (`send()`, `stream()`, `delegate()`)
+- [x] SDKs — Python & TypeScript with full 86 RPC coverage, unified skill API, aligned high-level Session API (`send()`, `stream()`, `delegate()`)
 - [x] Deep Research Agent — iterative research with interactive steering, workspace persistence, pluggable output formats
 - [x] Infrastructure — GitHub Actions CI/CD, crates.io publishing, Homebrew tap
 - [x] Session Merge, Shared Privacy Types, Security Module Rename, Box Networking, Box Volumes, Box Registry Push, Box Resource Limits, Box Dockerfile Completion
