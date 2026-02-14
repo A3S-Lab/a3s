@@ -37,3 +37,6 @@
 [submodule "packages/a3s-deep"]
 	path = packages/a3s-deep
 	url = git@github.com:A3S-Lab/Deep.git
+[submodule "crates/updater"]
+	path = crates/updater
+	url = git@github.com:A3S-Lab/Updater.git
