@@ -1,0 +1,178 @@
+---
+title: Scheduling
+description: Cron expressions, natural language parsing, and schedule calculation
+---
+
+# Scheduling
+
+A3S Cron supports three ways to define schedules: standard 5-field cron expressions, English natural language, and Chinese natural language.
+
+## Cron Expressions
+
+Standard 5-field format:
+
+```
+┌───────────── minute (0-59)
+│ ┌───────────── hour (0-23)
+│ │ ┌───────────── day of month (1-31)
+│ │ │ ┌───────────── month (1-12)
+│ │ │ │ ┌───────────── day of week (0-6, Sun=0)
+│ │ │ │ │
+* * * * *
+```
+
+### Special Characters
+
+| Character | Meaning | Example |
+|-----------|---------|---------|
+| `*` | Any value | `* * * * *` (every minute) |
+| `,` | Value list | `1,15 * * * *` (at minute 1 and 15) |
+| `-` | Range | `0 9-17 * * *` (every hour 9-17) |
+| `/` | Step | `*/5 * * * *` (every 5 minutes) |
+
+### Common Expressions
+
+| Expression | Description |
+|------------|-------------|
+| `* * * * *` | Every minute |
+| `*/5 * * * *` | Every 5 minutes |
+| `0 * * * *` | Every hour at minute 0 |
+| `0 */2 * * *` | Every 2 hours |
+| `30 2 * * *` | Daily at 2:30 AM |
+| `0 9 * * 1-5` | Weekdays at 9:00 AM |
+| `0 0 1 * *` | First day of every month at midnight |
+| `0 0 15 * *` | 15th of every month at midnight |
+| `0 10 * * 0,6` | Weekends at 10:00 AM |
+
+### CronExpression API
+
+```rust
+use a3s_cron::CronExpression;
+use chrono::Utc;
+
+// Parse and validate
+let expr = CronExpression::parse("*/5 * * * *")?;
+
+// Check if a datetime matches
+let now = Utc::now();
+if expr.matches(&now) {
+    println!("Schedule matches current time");
+}
+
+// Calculate next run time
+if let Some(next) = expr.next_after(now) {
+    println!("Next run: {}", next);
+}
+
+// Human-readable description
+println!("{}", expr.describe());  // "Every 5 minutes"
+```
+
+## Natural Language (English)
+
+```rust
+use a3s_cron::parse_natural;
+
+let cron = parse_natural("every 5 minutes")?;   // "*/5 * * * *"
+```
+
+### Supported Patterns
+
+**Intervals:**
+
+| Input | Output |
+|-------|--------|
+| `every minute` | `* * * * *` |
+| `every 5 minutes` | `*/5 * * * *` |
+| `every hour` | `0 * * * *` |
+| `every 2 hours` | `0 */2 * * *` |
+
+**Daily:**
+
+| Input | Output |
+|-------|--------|
+| `daily` / `every day` / `midnight` | `0 0 * * *` |
+| `daily at 2am` | `0 2 * * *` |
+| `every day at 14:30` | `30 14 * * *` |
+
+**Weekly:**
+
+| Input | Output |
+|-------|--------|
+| `every monday at 9am` | `0 9 * * 1` |
+| `every friday at 5pm` | `0 17 * * 5` |
+| `every weekday at 8am` | `0 8 * * 1-5` |
+| `every weekend at 10am` | `0 10 * * 0,6` |
+
+**Monthly / Yearly:**
+
+| Input | Output |
+|-------|--------|
+| `monthly` | `0 0 1 * *` |
+| `monthly on the 15th` | `0 0 15 * *` |
+| `yearly` / `annually` | `0 0 1 1 *` |
+
+## Natural Language (Chinese)
+
+```rust
+let cron = parse_natural("每5分钟")?;   // "*/5 * * * *"
+```
+
+### Supported Patterns
+
+**Intervals:**
+
+| Input | Output |
+|-------|--------|
+| `每分钟` | `* * * * *` |
+| `每5分钟` | `*/5 * * * *` |
+| `每小时` | `0 * * * *` |
+| `每2小时` | `0 */2 * * *` |
+
+**Daily with time of day:**
+
+| Input | Output |
+|-------|--------|
+| `每天凌晨2点` | `0 2 * * *` |
+| `每天上午9点` | `0 9 * * *` |
+| `每天下午3点` | `0 15 * * *` |
+| `每天晚上8点` | `0 20 * * *` |
+| `每天上午9点30分` | `30 9 * * *` |
+| `每天下午2点半` | `30 14 * * *` |
+
+**Weekly:**
+
+| Input | Output |
+|-------|--------|
+| `每周一上午9点` | `0 9 * * 1` |
+| `每周五下午5点` | `0 17 * * 5` |
+| `每星期三下午3点` | `0 15 * * 3` |
+| `工作日上午9点` | `0 9 * * 1-5` |
+| `周末上午10点` | `0 10 * * 0,6` |
+
+**Monthly:**
+
+| Input | Output |
+|-------|--------|
+| `每月1号` | `0 0 1 * *` |
+| `每月15日凌晨2点` | `0 2 15 * *` |
+
+## Pass-Through
+
+If the input is already a valid 5-field cron expression, `parse_natural()` returns it unchanged:
+
+```rust
+let cron = parse_natural("*/5 * * * *")?;  // "*/5 * * * *"
+```
+
+## Validation
+
+Invalid expressions produce descriptive errors:
+
+```rust
+let result = CronExpression::parse("60 * * * *");
+// Error: InvalidExpression("minute value 60 out of range 0-59")
+
+let result = parse_natural("every purple minutes");
+// Error: InvalidExpression("unrecognized natural language: every purple minutes")
+```

@@ -1,0 +1,114 @@
+---
+title: Telemetry
+description: OpenTelemetry spans, counters, and histograms for job execution monitoring
+---
+
+# Telemetry
+
+A3S Cron integrates with OpenTelemetry for distributed tracing and metrics collection. Spans are emitted for each job execution and scheduler tick. Counters and histograms track job throughput and latency.
+
+## Initialization
+
+```rust
+use a3s_cron::telemetry::init_cron_metrics;
+
+// Initialize metrics (call once at startup)
+init_cron_metrics();
+```
+
+This registers three OpenTelemetry instruments:
+
+| Instrument | Type | Name | Description |
+|------------|------|------|-------------|
+| Counter | `u64` | `a3s.cron.jobs_executed_total` | Total job executions |
+| Histogram | `f64` | `a3s.cron.job_duration_seconds` | Execution duration distribution |
+| Counter | `u64` | `a3s.cron.scheduler_ticks_total` | Scheduler loop iterations |
+
+## Spans
+
+### Job Execution Span
+
+Each job execution creates a span with job metadata:
+
+| Span Name | Attributes |
+|-----------|------------|
+| `a3s.cron.execute_job` | `a3s.cron.job_id`, `a3s.cron.job_name`, `a3s.cron.job_status`, `a3s.cron.job_duration_ms` |
+
+### Scheduler Tick Span
+
+Each scheduler loop iteration creates a span:
+
+| Span Name | Attributes |
+|-----------|------------|
+| `a3s.cron.scheduler_tick` | — |
+
+## Metrics Recording
+
+The `CronManager` automatically records metrics after each execution. You can also record manually:
+
+```rust
+use a3s_cron::telemetry::{record_job_execution, record_scheduler_tick};
+
+// Record a job execution
+record_job_execution(
+    "db-backup",    // job_name
+    "success",      // status: "success", "failed", "timeout"
+    12.5,           // duration in seconds
+);
+
+// Record a scheduler tick
+record_scheduler_tick();
+```
+
+## Attributes
+
+| Constant | Value | Used In |
+|----------|-------|---------|
+| `ATTR_JOB_ID` | `a3s.cron.job_id` | Job execution spans |
+| `ATTR_JOB_NAME` | `a3s.cron.job_name` | Metrics labels, spans |
+| `ATTR_JOB_STATUS` | `a3s.cron.job_status` | Metrics labels, spans |
+| `ATTR_JOB_DURATION_MS` | `a3s.cron.job_duration_ms` | Spans |
+
+## Example: Prometheus Export
+
+```rust
+use opentelemetry::global;
+use opentelemetry_sdk::metrics::MeterProvider;
+use opentelemetry_prometheus::exporter;
+
+// Setup Prometheus exporter
+let exporter = exporter().build()?;
+let provider = MeterProvider::builder()
+    .with_reader(exporter.clone())
+    .build();
+global::set_meter_provider(provider);
+
+// Initialize cron metrics
+init_cron_metrics();
+
+// Start cron manager
+let manager = CronManager::new("/workspace").await?;
+manager.start().await?;
+
+// Expose /metrics endpoint
+// GET /metrics returns:
+//   a3s_cron_jobs_executed_total{job_name="db-backup",status="success"} 42
+//   a3s_cron_job_duration_seconds_bucket{job_name="db-backup",le="1"} 38
+//   a3s_cron_scheduler_ticks_total 720
+```
+
+## Example: Grafana Dashboard Queries
+
+```text
+# Job execution rate (per minute)
+rate(a3s_cron_jobs_executed_total[5m])
+
+# Failure rate by job
+rate(a3s_cron_jobs_executed_total{status="failed"}[5m])
+
+# P95 execution duration
+histogram_quantile(0.95, rate(a3s_cron_job_duration_seconds_bucket[5m]))
+
+# Scheduler health (ticks per minute, should be ~1)
+rate(a3s_cron_scheduler_ticks_total[5m]) * 60
+```

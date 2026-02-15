@@ -1,0 +1,177 @@
+---
+title: Execution
+description: Job execution lifecycle, manual triggers, history, and event monitoring
+---
+
+# Execution
+
+A3S Cron tracks every job run as a `JobExecution` record with status, timing, output, and exit code.
+
+## Execution Lifecycle
+
+```
+Scheduler tick / run_job()
+        │
+        ▼
+  Create JobExecution (status: running)
+        │
+  Update job status → Running
+        │
+  Emit JobStarted event
+        │
+  Execute shell command (with timeout)
+        │
+   ┌────┴────┐
+   │         │
+success    failure
+   │         │
+   ▼         ▼
+exit=0    exit!=0 / error / timeout
+   │         │
+   ▼         ▼
+JobCompleted  JobFailed / JobTimeout
+   │         │
+   └────┬────┘
+        │
+  Update job stats (run_count / fail_count)
+  Calculate next_run
+  Save execution to store
+  Record telemetry
+```
+
+## Manual Execution
+
+Trigger a job immediately, regardless of its schedule:
+
+```rust
+let execution = manager.run_job(&job.id).await?;
+
+println!("Status: {:?}", execution.status);
+println!("Exit code: {:?}", execution.exit_code);
+println!("Duration: {:?}ms", execution.duration_ms);
+println!("Stdout: {}", execution.stdout);
+println!("Stderr: {}", execution.stderr);
+```
+
+Manual runs update the job's `last_run`, `run_count`/`fail_count`, and create a history record.
+
+## Execution Status
+
+```rust
+pub enum ExecutionStatus {
+    Success,     // Exit code 0
+    Failed,      // Non-zero exit code or execution error
+    Timeout,     // Command exceeded timeout_ms
+    Cancelled,   // Execution was cancelled
+}
+```
+
+## JobExecution Structure
+
+```rust
+pub struct JobExecution {
+    pub id: String,                    // Execution ID (UUID)
+    pub job_id: String,                // Associated job
+    pub status: ExecutionStatus,
+    pub started_at: DateTime<Utc>,
+    pub ended_at: Option<DateTime<Utc>>,
+    pub duration_ms: Option<u64>,
+    pub exit_code: Option<i32>,
+    pub stdout: String,                // Max 10 KB
+    pub stderr: String,                // Max 10 KB
+    pub error: Option<String>,         // Error message (for failures)
+}
+```
+
+Output (stdout/stderr) is truncated to 10 KB per field to prevent unbounded storage growth.
+
+## Execution History
+
+Query past executions for a job:
+
+```rust
+// Get the last 20 executions
+let history = manager.get_history(&job.id, 20).await?;
+
+for exec in &history {
+    let status = match exec.status {
+        ExecutionStatus::Success => "OK",
+        ExecutionStatus::Failed => "FAIL",
+        ExecutionStatus::Timeout => "TIMEOUT",
+        ExecutionStatus::Cancelled => "CANCEL",
+    };
+
+    println!("[{}] {} - {}ms (exit: {:?})",
+        status,
+        exec.started_at,
+        exec.duration_ms.unwrap_or(0),
+        exec.exit_code);
+
+    if !exec.stderr.is_empty() {
+        println!("  stderr: {}", exec.stderr);
+    }
+    if let Some(ref error) = exec.error {
+        println!("  error: {}", error);
+    }
+}
+```
+
+## Scheduler Events
+
+Subscribe to real-time events for all job executions:
+
+```rust
+use a3s_cron::SchedulerEvent;
+
+let mut rx = manager.subscribe();
+
+while let Ok(event) = rx.recv().await {
+    match event {
+        SchedulerEvent::Started =>
+            println!("Scheduler started"),
+        SchedulerEvent::Stopped =>
+            println!("Scheduler stopped"),
+        SchedulerEvent::JobStarted { job_id, execution_id } =>
+            println!("Job {} started (exec: {})", job_id, execution_id),
+        SchedulerEvent::JobCompleted { job_id, execution_id } =>
+            println!("Job {} completed (exec: {})", job_id, execution_id),
+        SchedulerEvent::JobFailed { job_id, execution_id, error } =>
+            println!("Job {} failed: {} (exec: {})", job_id, error, execution_id),
+        SchedulerEvent::JobTimeout { job_id, execution_id } =>
+            println!("Job {} timed out (exec: {})", job_id, execution_id),
+    }
+}
+```
+
+### Event Types
+
+| Event | Fields | Description |
+|-------|--------|-------------|
+| `Started` | — | Scheduler background loop started |
+| `Stopped` | — | Scheduler background loop stopped |
+| `JobStarted` | `job_id`, `execution_id` | Job execution began |
+| `JobCompleted` | `job_id`, `execution_id` | Job succeeded (exit code 0) |
+| `JobFailed` | `job_id`, `execution_id`, `error` | Job failed |
+| `JobTimeout` | `job_id`, `execution_id` | Job exceeded timeout |
+
+## Scheduler Control
+
+```rust
+// Start the background scheduler (checks every 60 seconds)
+manager.start().await?;
+
+// Check if scheduler is running
+if manager.is_running().await {
+    println!("Scheduler is active");
+}
+
+// Stop the scheduler
+manager.stop().await;
+```
+
+The scheduler loop:
+1. Runs every 60 seconds
+2. Iterates all jobs with `status == Active`
+3. Checks if `next_run <= now`
+4. Executes matching jobs concurrently
+5. Updates `next_run` after each execution
