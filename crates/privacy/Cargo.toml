@@ -2,6 +2,12 @@
 name = "a3s-privacy"
 version = "0.1.0"
 edition = "2021"
+authors = ["A3S Lab"]
+license = "MIT"
+description = "Privacy classification and data protection for A3S"
+repository = "https://github.com/A3S-Lab/a3s"
+keywords = ["a3s", "privacy", "classification", "redaction"]
+categories = ["text-processing"]
 
 [dependencies]
 regex = "1"

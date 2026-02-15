@@ -1,0 +1,221 @@
+// A3S Agent Operating System - Views
+
+views {
+
+  // ═══════════════════════════════════════════
+  //  1. System Landscape — 全景总览
+  // ═══════════════════════════════════════════
+
+  view index {
+    title 'A3S Agent OS — System Landscape'
+    description 'Full panoramic view of the A3S ecosystem'
+
+    include *
+    include a3s.*
+
+    exclude a3s.gw.*
+    exclude a3s.box.*
+    exclude a3s.safeclaw.*
+    exclude a3s.code.*
+    exclude a3s.power.*
+    exclude a3s.privacy
+    exclude a3s.transport
+    exclude a3s.toolsCore
+    exclude a3s.updater
+
+    autoLayout TopBottom
+  }
+
+  // ═══════════════════════════════════════════
+  //  2. Gateway Layer — 网关层详情
+  // ═══════════════════════════════════════════
+
+  view gatewayView of a3s.gw {
+    title 'Gateway Layer — a3s-gateway'
+    description 'Reverse proxy, load balancing, webhook normalization, TLS, metering'
+
+    include *
+    include channels
+    include channels.*
+    include a3s.box
+
+    autoLayout TopBottom
+  }
+
+  // ═══════════════════════════════════════════
+  //  3. Sandbox Layer — 沙箱层详情
+  // ═══════════════════════════════════════════
+
+  view sandboxView of a3s.box {
+    title 'Sandbox Layer — a3s-box MicroVM'
+    description 'Hardware-isolated execution: libkrun, WarmPool, OCI, TEE'
+
+    include *
+    include a3s.gw
+    include a3s.safeclaw
+    include a3s.transport
+
+    autoLayout TopBottom
+  }
+
+  // ═══════════════════════════════════════════
+  //  4. Application Layer — 应用层详情
+  // ═══════════════════════════════════════════
+
+  view appView of a3s.safeclaw {
+    title 'Application Layer — SafeClaw'
+    description 'Multi-agent coordinator: channel routing, A3sfile DSL, privacy escalation'
+
+    include *
+    include a3s.box
+    include a3s.code
+    include a3s.lane
+
+    autoLayout TopBottom
+  }
+
+  // ═══════════════════════════════════════════
+  //  5. Execution Layer — 执行层详情
+  // ═══════════════════════════════════════════
+
+  view execView of a3s.code {
+    title 'Execution Layer — a3s-code + a3s-lane'
+    description 'AI agent execution: tools, sessions, reflection, memory, priority scheduling'
+
+    include *
+    include a3s.safeclaw.agentEngine
+    include a3s.lane
+    include a3s.power
+    include a3s.search
+    include a3s.context
+    include a3s.event
+    include a3s.cron
+    include a3s.pythonSdk
+    include a3s.tsSdk
+    include a3s.deep
+
+    autoLayout TopBottom
+  }
+
+  // ═══════════════════════════════════════════
+  //  6. Infrastructure Layer — 基础设施层
+  // ═══════════════════════════════════════════
+
+  view infraView {
+    title 'Infrastructure Layer'
+    description 'LLM inference, search, context, events, cron'
+
+    include a3s.power
+    include a3s.power.*
+    include a3s.search
+    include a3s.context
+    include a3s.event
+    include a3s.cron
+    include a3s.code
+
+    autoLayout LeftRight
+  }
+
+  // ═══════════════════════════════════════════
+  //  7. SDK & Client Apps — SDK 与客户端
+  // ═══════════════════════════════════════════
+
+  view sdkView {
+    title 'SDKs & Client Applications'
+    description 'Python SDK, TypeScript SDK, a3s-deep, Ell Chat, Vibe Companion'
+
+    include developer
+    include a3s.pythonSdk
+    include a3s.tsSdk
+    include a3s.deep
+    include a3s.code
+    include a3s.gw
+
+    autoLayout TopBottom
+  }
+
+  // ═══════════════════════════════════════════
+  //  8. Security Architecture — 安全架构
+  // ═══════════════════════════════════════════
+
+  view securityView {
+    title 'Security Architecture — 4-Layer Defense'
+    description 'Hardware TEE → Channel encryption → Protocol auth → Application classification'
+
+    include a3s.box.teeSupport
+    include a3s.box.vmRuntime
+    include a3s.gw.tls
+    include a3s.gw.mw
+    include a3s.gw.meter
+    include a3s.safeclaw.privacyEsc
+    include a3s.code.permissions
+    include a3s.privacy
+
+    autoLayout TopBottom
+  }
+
+  // ═══════════════════════════════════════════
+  //  9. Dynamic View — 用户消息处理流程
+  // ═══════════════════════════════════════════
+
+  dynamic view messageFlow {
+    title 'Message Processing Flow'
+    description 'End-to-end: user → channel → gateway → sandbox → agent → response'
+
+    endUser -> channels 'sends message'
+    channels -> a3s.gw 'webhook payload'
+    a3s.gw -> a3s.box 'routes to MicroVM'
+    a3s.box -> a3s.safeclaw 'delivers via vsock'
+    a3s.safeclaw -> a3s.code 'dispatches to agent'
+    a3s.code -> a3s.lane 'enqueues task'
+
+    parallel {
+      a3s.code -> a3s.power 'LLM inference'
+      a3s.code -> a3s.search 'web search'
+      a3s.code -> a3s.context 'context retrieval'
+    }
+
+    a3s.code -> a3s.safeclaw 'returns result'
+    a3s.safeclaw -> a3s.gw 'sends response'
+    a3s.gw -> channels 'delivers reply'
+
+    autoLayout TopBottom
+  }
+
+  // ═══════════════════════════════════════════
+  //  10. Dynamic View — Agent 执行流程
+  // ═══════════════════════════════════════════
+
+  dynamic view agentExecFlow {
+    title 'Agent Execution Flow'
+    description 'a3s-code: queue → LLM → tools → reflection → memory'
+
+    a3s.safeclaw.agentEngine -> a3s.code 'assigns task'
+    a3s.code -> a3s.lane 'enqueue with priority'
+    a3s.lane -> a3s.code 'dequeue next task'
+    a3s.code -> a3s.power 'LLM reasoning'
+    a3s.code -> a3s.search 'tool: web search'
+    a3s.code -> a3s.context 'tool: context retrieval'
+    a3s.code -> a3s.safeclaw.agentEngine 'return result'
+
+    autoLayout TopBottom
+  }
+
+  // ═══════════════════════════════════════════
+  //  11. Dynamic View — 隐私升级流程
+  // ═══════════════════════════════════════════
+
+  dynamic view privacyFlow {
+    title 'Privacy Escalation Flow'
+    description 'PII detection → classification → escalation → TEE isolation'
+
+    endUser -> a3s.gw 'sends sensitive data'
+    a3s.gw -> a3s.privacy 'classify PII level'
+    a3s.privacy -> a3s.safeclaw.privacyEsc 'PII classification'
+    a3s.safeclaw.privacyEsc -> a3s.box.teeSupport 'escalate to TEE'
+    a3s.box.teeSupport -> a3s.code 'secure execution'
+    a3s.code -> a3s.safeclaw.privacyEsc 'encrypted result'
+
+    autoLayout TopBottom
+  }
+}

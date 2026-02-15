@@ -34,3 +34,23 @@ box-test-tee *ARGS:
 # Start a3s-code server (dev mode)
 code:
     cd crates/code && just serve
+
+# ============================================================================
+# Architecture Diagrams
+# ============================================================================
+
+# Start LikeC4 architecture diagram dev server
+arch:
+    npx likec4 serve docs/architecture
+
+# Export architecture diagrams to PNG
+arch-export-png:
+    npx likec4 export png -o docs/architecture/output docs/architecture
+
+# Export architecture diagrams to SVG
+arch-export-svg:
+    npx likec4 export svg -o docs/architecture/output docs/architecture
+
+# Build architecture diagrams as static site
+arch-build:
+    npx likec4 build -o docs/architecture/dist docs/architecture

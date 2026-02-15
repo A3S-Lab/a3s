@@ -29,3 +29,9 @@ Thumbs.db
 .claude/settings.local.json
 .claude/sessions/
 .claude/cache/
+
+# Apps
+apps/os/
+
+# A3S
+.a3s/config.json
