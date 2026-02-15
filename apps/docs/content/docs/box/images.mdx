@@ -1,0 +1,175 @@
+---
+title: Images
+description: OCI image pulling, building, caching, and registry management
+---
+
+# Images
+
+A3S Box supports standard OCI container images with a full pull/build/cache pipeline compatible with Docker registries.
+
+## Image Reference Format
+
+```rust
+pub struct ImageReference {
+    pub registry: Option<String>,     // e.g., "ghcr.io"
+    pub namespace: Option<String>,    // e.g., "a3s-lab"
+    pub name: String,                 // e.g., "box"
+    pub tag: Option<String>,          // e.g., "v0.1.0"
+    pub digest: Option<String>,       // e.g., "sha256:abc123..."
+}
+```
+
+Examples:
+
+| Reference | Registry | Namespace | Name | Tag |
+|-----------|----------|-----------|------|-----|
+| `alpine:latest` | Docker Hub | — | `alpine` | `latest` |
+| `ghcr.io/a3s-lab/box:v0.1.0` | `ghcr.io` | `a3s-lab` | `box` | `v0.1.0` |
+| `alpine@sha256:abc...` | Docker Hub | — | `alpine` | (by digest) |
+
+## Pulling Images
+
+```bash
+# Pull from Docker Hub
+a3s-box pull alpine:latest
+
+# Pull from private registry
+a3s-box pull ghcr.io/a3s-lab/my-image:v1
+
+# Pull by digest
+a3s-box pull alpine@sha256:abc123...
+```
+
+### Registry Authentication
+
+```bash
+# Login to a registry
+a3s-box login ghcr.io -u USERNAME
+
+# Login with token via stdin
+echo $GITHUB_TOKEN | a3s-box login ghcr.io -u USERNAME --password-stdin
+
+# Logout
+a3s-box logout ghcr.io
+```
+
+Credentials are stored in `~/.a3s/auth.json`.
+
+## Building Images
+
+Build OCI images from Dockerfiles:
+
+```bash
+# Build from current directory
+a3s-box build -t my-app:v1 .
+
+# Build with specific Dockerfile
+a3s-box build -t my-app:v1 -f Dockerfile.prod .
+
+# Build with build arguments
+a3s-box build -t my-app:v1 --build-arg VERSION=1.0 .
+```
+
+### Supported Dockerfile Instructions
+
+| Instruction | Description |
+|-------------|-------------|
+| `FROM` | Base image |
+| `RUN` | Execute command in build layer |
+| `CMD` | Default command |
+| `ENTRYPOINT` | Container entrypoint |
+| `ENV` | Set environment variable |
+| `WORKDIR` | Set working directory |
+| `COPY` | Copy files from build context |
+| `ADD` | Copy files (supports URLs, tar extraction) |
+| `EXPOSE` | Declare exposed ports |
+| `VOLUME` | Declare volume mount points |
+| `USER` | Set user for RUN/CMD/ENTRYPOINT |
+| `ARG` | Build-time variables |
+| `LABEL` | Add metadata |
+
+## Image Configuration
+
+Each image carries its OCI configuration:
+
+```rust
+pub struct OciImageConfig {
+    pub architecture: String,
+    pub os: String,
+    pub env: HashMap<String, String>,
+    pub cmd: Vec<String>,
+    pub entrypoint: Vec<String>,
+    pub workdir: String,
+    pub user: String,
+    pub expose_ports: Vec<String>,
+    pub volumes: Vec<String>,
+}
+```
+
+## Caching Pipeline
+
+```
+RegistryPuller
+    ↓ fetch manifest + layers
+Layer Cache (~/.a3s/images/)
+    ↓ content-addressed by layer digest
+OciRootfsBuilder
+    ↓ compose layers into rootfs
+Rootfs Cache
+    ↓ content-addressed by combined SHA256
+Ready for VM boot
+```
+
+### Cache Behavior
+
+- **Layer cache**: Stores compressed layer blobs indexed by digest. Shared across images that use the same base layers.
+- **Rootfs cache**: Stores the composed filesystem indexed by the combined digest of all layers. Avoids re-extraction on repeated runs.
+- **Cache directory**: `~/.a3s/cache/` by default (configurable via `CacheConfig.cache_dir`)
+- **Size limit**: 10 GB default (configurable via `max_cache_bytes` or `A3S_IMAGE_CACHE_SIZE`)
+- **Entry limit**: 10 rootfs entries by default (`max_rootfs_entries`)
+- **Eviction**: LRU when limits are exceeded
+
+## Image Management Commands
+
+```bash
+# List local images
+a3s-box images
+
+# Inspect image metadata
+a3s-box image-inspect alpine:latest
+
+# Show layer history
+a3s-box history alpine:latest
+
+# Tag an image
+a3s-box tag alpine:latest my-alpine:v1
+
+# Push to registry
+a3s-box push ghcr.io/a3s-lab/my-image:v1
+
+# Save image to tar archive
+a3s-box save alpine:latest -o alpine.tar
+
+# Load image from tar archive
+a3s-box load -i alpine.tar
+
+# Remove an image
+a3s-box rmi alpine:latest
+
+# Remove unused images
+a3s-box image-prune
+
+# Create image from box changes
+a3s-box commit my-box my-snapshot:v1
+```
+
+## StoredImage
+
+```rust
+pub struct StoredImage {
+    pub reference: ImageReference,
+    pub digest: String,           // Full SHA256 digest
+    pub size: u64,                // Size in bytes
+    pub created_at: DateTime<Utc>,
+}
+```

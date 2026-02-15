@@ -1,39 +1,98 @@
 ---
 title: A3S Box
-description: Lightweight MicroVM runtime with TEE support and Docker-compatible CLI
+description: Lightweight MicroVM runtime with Docker-like CLI, Kubernetes CRI, and hardware-based TEE security
 ---
 
 # A3S Box
 
-A3S Box is a lightweight MicroVM runtime built on libkrun, providing Docker-compatible CLI commands with hardware-level isolation via TEE (Trusted Execution Environment) support.
-
-## Key Features
-
-- **MicroVM Runtime** — Fast boot times with libkrun/libkrun-SEV backends
-- **Docker-Compatible CLI** — 47 commands matching Docker CLI conventions
-- **TEE Support** — AMD SEV-SNP confidential computing with remote attestation
-- **CRI Integration** — Kubernetes-compatible Container Runtime Interface
-- **vsock Communication** — Host-guest communication via virtio-vsock
+A3S Box is a lightweight MicroVM runtime that provides container-like UX with VM-level isolation. Built on [libkrun](https://github.com/containers/libkrun), it boots full Linux VMs in under 200ms with a Docker-compatible CLI, Kubernetes CRI integration, and AMD SEV-SNP confidential computing support.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│              a3s box CLI                │
-│         (47 Docker-compatible cmds)     │
-├─────────────────────────────────────────┤
-│            Runtime Layer                │
-│  ┌──────────┐  ┌──────────────────┐     │
-│  │  libkrun │  │  libkrun-sev     │     │
-│  │ (normal) │  │ (confidential)   │     │
-│  └──────────┘  └──────────────────┘     │
-├─────────────────────────────────────────┤
-│         Guest Agent (vsock)             │
-│   File transfer · Exec · Signals       │
-├─────────────────────────────────────────┤
-│            State Store                  │
-│    JSON persistence · Image mgmt       │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│                Host (a3s-box CLI)                     │
+│  ┌────────────────────────────────────────────────┐  │
+│  │              CLI (47 commands)                  │  │
+│  │  run, create, exec, logs, ps, network...       │  │
+│  └───────────────────┬────────────────────────────┘  │
+│                      │                                │
+│  ┌───────────────────▼────────────────────────────┐  │
+│  │         State (~/.a3s/)                         │  │
+│  │  boxes.json · images/ · volumes/               │  │
+│  └───────────────────┬────────────────────────────┘  │
+│                      │                                │
+│  ┌───────────────────▼────────────────────────────┐  │
+│  │         Runtime Engine                          │  │
+│  │  VmManager · OCI · WarmPool · TEE · Network    │  │
+│  │  gRPC Clients (Exec, PTY, Attestation)         │  │
+│  └───────────────────┬────────────────────────────┘  │
+│                      │ vsock                          │
+└──────────────────────┼───────────────────────────────┘
+                       │
+┌──────────────────────▼───────────────────────────────┐
+│              Guest VM (aarch64-linux)                  │
+│  ┌────────────────────────────────────────────────┐  │
+│  │         guest-init (PID 1)                      │  │
+│  │  Exec server (:4089) · PTY server (:4090)      │  │
+│  │  Attestation server (:4091)                     │  │
+│  └───────────────────┬────────────────────────────┘  │
+│                      │                                │
+│  ┌───────────────────▼────────────────────────────┐  │
+│  │         User Container (namespaces)             │  │
+│  │  /a3s/workspace/ · /a3s/skills/ · /run/secrets │  │
+│  └────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────┘
 ```
 
-> Full documentation coming soon. See the [Box README](https://github.com/A3S-Lab/Box) for current details.
+## Crate Structure
+
+A3S Box is composed of 6 crates, each with a focused responsibility:
+
+| Crate | Purpose |
+|-------|---------|
+| `a3s-box-core` | Shared types: config, errors, events, network modes, volume/PTY/DNS types |
+| `a3s-box-runtime` | VM lifecycle, OCI images, warm pool, TEE, networking, gRPC clients |
+| `a3s-box-cli` | Docker-like CLI with 47 commands, state persistence, output formatting |
+| `a3s-box-cri` | Kubernetes Container Runtime Interface (CRI) over gRPC |
+| `a3s-box-shim` | VM subprocess that bridges host and VM via libkrun (HVF/KVM) |
+| `a3s-box-guest-init` | Guest PID 1: mounts filesystems, starts servers, spawns user entrypoint |
+
+## VM Lifecycle
+
+```
+Created ──→ Ready ──→ Busy ──→ Compacting ──→ Ready ──→ Stopped
+ (create)   (boot)   (exec)   (context gc)    (done)    (kill)
+```
+
+| State | Description |
+|-------|-------------|
+| `Created` | Config captured, no VM started |
+| `Ready` | VM booted, agent initialized, gRPC healthy |
+| `Busy` | A session is actively processing |
+| `Compacting` | Context compression in progress |
+| `Stopped` | VM terminated, resources freed |
+
+## Vsock Communication
+
+Host and guest communicate over vsock (virtio socket) with dedicated ports:
+
+| Port | Service | Protocol |
+|------|---------|----------|
+| 4088 | Agent control | gRPC (health, metrics) |
+| 4089 | Exec server | gRPC (command execution) |
+| 4090 | PTY server | gRPC (terminal I/O) |
+| 4091 | Attestation server | gRPC + RA-TLS (TEE operations) |
+
+## Key Features
+
+- **Sub-200ms cold start** via libkrun (Apple HVF / Linux KVM)
+- **Docker-compatible CLI** with 47 commands (`run`, `exec`, `logs`, `ps`, `build`, etc.)
+- **OCI image support** with pull, build, cache, and registry authentication
+- **Warm pool** for instant VM allocation with pre-booted instances
+- **Three network modes**: TSI (default), Bridge (inter-container), None
+- **AMD SEV-SNP** confidential computing with attestation, sealing, and RA-TLS
+- **Kubernetes CRI** for using Box as a RuntimeClass
+- **Resource controls**: CPU pinning, memory limits, PID limits, cgroup v2
+- **Volume management**: named volumes, bind mounts, tmpfs
+- **Docker-compatible logging**: JSON file driver with rotation

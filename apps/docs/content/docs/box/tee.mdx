@@ -1,0 +1,194 @@
+---
+title: TEE Security
+description: AMD SEV-SNP attestation, sealed storage, RA-TLS, and secret injection
+---
+
+# TEE Security
+
+A3S Box supports AMD SEV-SNP (Secure Encrypted Virtualization - Secure Nested Paging) for confidential computing. This provides hardware-based memory encryption, remote attestation, sealed storage, and secure secret injection.
+
+## TEE Architecture
+
+```
+┌────────────────────────────────────────────┐
+│          Host (a3s-box CLI)                │
+│  attest, seal, unseal, inject-secret       │
+│  Verifies attestation reports              │
+└──────────────────┬─────────────────────────┘
+                   │ RA-TLS (vsock:4091)
+┌──────────────────▼─────────────────────────┐
+│          Guest VM (SEV-SNP encrypted)      │
+│  Attestation Server (port 4091)            │
+│  Generates SNP reports                     │
+│  Signs with ECDSA-P384                     │
+└────────────────────────────────────────────┘
+                   │
+┌──────────────────▼─────────────────────────┐
+│          AMD Hardware                       │
+│  SEV-SNP firmware · PSP (Platform          │
+│  Security Processor) · Memory encryption   │
+└────────────────────────────────────────────┘
+```
+
+## Configuration
+
+```rust
+pub enum TeeConfig {
+    None,
+    SevSnp {
+        workload_id: String,
+        generation: SevSnpGeneration,
+        simulate: bool,
+    },
+}
+
+pub enum SevSnpGeneration {
+    Milan,  // AMD EPYC 3rd gen
+    Genoa,  // AMD EPYC 4th gen
+}
+```
+
+### Enable TEE
+
+```bash
+# Run with SEV-SNP on Milan hardware
+a3s-box run --tee --tee-generation milan alpine:latest
+
+# Run with SEV-SNP on Genoa hardware
+a3s-box run --tee --tee-generation genoa alpine:latest
+
+# Simulation mode (development only)
+a3s-box run --tee --tee-simulate alpine:latest
+```
+
+## Remote Attestation
+
+Verify that a VM is running inside genuine AMD SEV-SNP hardware with a specific software measurement:
+
+```bash
+# Request attestation report
+a3s-box attest my-box
+
+# Attestation with RA-TLS
+a3s-box attest my-box --ratls
+
+# Allow simulated reports (dev only)
+a3s-box attest my-box --ratls --allow-simulated
+```
+
+### Attestation Report
+
+```rust
+pub struct AttestationReport {
+    pub report_data: [u8; 64],
+    pub measurement: String,          // SHA256 of guest image
+    pub policy: u64,                  // Guest policy flags
+    pub signature: Vec<u8>,           // ECDSA-P384 signature
+    pub cert_chain: CertificateChain, // VCEK, ASK, ARK
+}
+```
+
+### Verification Chain
+
+```
+/dev/sev-guest (Linux kernel device)
+    ↓
+SNP Report (64 bytes report_data, ECDSA-P384 signature)
+    ↓
+AMD KDS Client (fetches VCEK, ASK, ARK certificates)
+    ↓
+Certificate Chain Validation
+    VCEK (chip key) → ASK (AMD signing key) → ARK (AMD root key)
+    ↓
+Report Data Binding (optionally bound to TLS public key)
+```
+
+## RA-TLS (Remote Attestation TLS)
+
+RA-TLS embeds the SNP attestation report inside an X.509 certificate during the TLS handshake:
+
+1. Guest generates a TLS key pair
+2. Guest creates SNP report with `report_data = SHA256(TLS public key)`
+3. Guest embeds the SNP report in the X.509 certificate extension
+4. Host connects via TLS and verifies both the certificate and the SNP report
+
+This binds the TLS channel to the hardware attestation in a single verification step. RA-TLS is used for secret injection.
+
+## Secret Injection
+
+Inject secrets into a running TEE-protected VM over RA-TLS:
+
+```bash
+# Inject a secret as a file
+a3s-box inject-secret my-box --secret "API_KEY=my-secret-value"
+
+# Inject and set as environment variable
+a3s-box inject-secret my-box --secret "DB_PASSWORD=s3cret" --set-env
+```
+
+Process:
+1. Host connects to guest attestation server (vsock:4091) via RA-TLS
+2. Host verifies the SNP attestation report embedded in the TLS certificate
+3. Host sends secret encrypted within the RA-TLS channel
+4. Guest writes secret to `/run/secrets/API_KEY` (mode 0400, read-only by root)
+5. If `--set-env` is used, the secret is also set as an environment variable
+
+## Sealed Storage
+
+Encrypt data that can only be decrypted within the same TEE context:
+
+```bash
+# Seal data
+a3s-box seal my-box --data "sensitive data" --context myapp
+
+# Seal with specific policy
+a3s-box seal my-box --data "secret" --context myapp --policy measurement-and-chip
+
+# Unseal data
+a3s-box unseal my-box --context myapp
+```
+
+### Sealing Policies
+
+```rust
+pub enum SealingPolicy {
+    MeasurementAndChip,   // Tied to image + specific hardware
+    MeasurementOnly,      // Portable across hardware (same image)
+    ChipOnly,             // Portable across images (same hardware)
+}
+```
+
+| Policy | Portable Across Hardware | Portable Across Images |
+|--------|------------------------|----------------------|
+| `MeasurementAndChip` | No | No |
+| `MeasurementOnly` | Yes | No |
+| `ChipOnly` | No | Yes |
+
+### Sealing Implementation
+
+```rust
+pub struct SealedData {
+    pub ciphertext: Vec<u8>,    // AES-256-GCM encrypted
+    pub nonce: Vec<u8>,         // HKDF-SHA256 derived
+    pub tag: Vec<u8>,           // GCM authentication tag
+    pub policy: SealingPolicy,
+}
+```
+
+Key derivation: `HKDF-SHA256(measurement || chip_id, context_string)` produces a unique 256-bit key. The `context` parameter acts as a domain separator, allowing multiple independent sealed data stores within the same VM.
+
+## Simulation Mode
+
+For development without AMD hardware:
+
+```bash
+export A3S_TEE_SIMULATE=1
+a3s-box run --tee --tee-simulate alpine:latest
+a3s-box attest my-box --ratls --allow-simulated
+```
+
+Simulation mode:
+- Generates structurally valid but cryptographically insecure SNP reports
+- Uses deterministic keys instead of hardware-derived keys
+- Allows testing the full TEE workflow on non-AMD hardware (including Apple Silicon)
+- **Not production-safe**: no real hardware attestation guarantee

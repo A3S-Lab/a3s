@@ -1,0 +1,154 @@
+---
+title: Quick Start
+description: Run your first MicroVM with A3S Box in minutes
+---
+
+# Quick Start
+
+## Run a MicroVM
+
+Start a container image as a MicroVM:
+
+```bash
+# Run Alpine interactively
+a3s-box run -it alpine:latest /bin/sh
+
+# Run in background (detached)
+a3s-box run -d --name my-app nginx:latest
+
+# Run with resource limits
+a3s-box run -d --name worker \
+  --cpus 4 --memory 2048 \
+  --timeout 3600 \
+  my-image:latest
+```
+
+## Lifecycle Commands
+
+```bash
+# List running boxes
+a3s-box ps
+
+# List all boxes (including stopped)
+a3s-box ps -a
+
+# Stop a box gracefully
+a3s-box stop my-app
+
+# Start a stopped box
+a3s-box start my-app
+
+# Remove a box
+a3s-box rm my-app
+
+# Force remove a running box
+a3s-box rm -f my-app
+```
+
+## Execute Commands
+
+```bash
+# Run a command inside a running box
+a3s-box exec my-app ls /app
+
+# Interactive shell
+a3s-box exec -it my-app /bin/bash
+
+# With environment variables
+a3s-box exec -e KEY=value my-app env
+
+# With working directory
+a3s-box exec -w /app my-app ./run.sh
+```
+
+## View Logs
+
+```bash
+# View logs
+a3s-box logs my-app
+
+# Follow logs in real-time
+a3s-box logs -f my-app
+
+# Last 100 lines
+a3s-box logs --tail 100 my-app
+```
+
+## Image Management
+
+```bash
+# Pull an image
+a3s-box pull alpine:latest
+
+# List local images
+a3s-box images
+
+# Build from Dockerfile
+a3s-box build -t my-image:v1 .
+
+# Remove an image
+a3s-box rmi alpine:latest
+```
+
+## Volumes and Files
+
+```bash
+# Run with a bind mount
+a3s-box run -v /host/data:/app/data my-image
+
+# Create a named volume
+a3s-box volume create my-data
+
+# Run with named volume
+a3s-box run -v my-data:/app/data my-image
+
+# Copy files between host and box
+a3s-box cp my-app:/app/output.txt ./output.txt
+a3s-box cp ./config.json my-app:/app/config.json
+```
+
+## Networking
+
+```bash
+# Default: TSI (Transparent Socket Impersonation)
+a3s-box run -d --name web -p 8080:80 nginx:latest
+
+# Create a user-defined network
+a3s-box network create my-net
+
+# Run boxes on the same network
+a3s-box run -d --name db --network my-net postgres:latest
+a3s-box run -d --name app --network my-net my-app:latest
+
+# Containers on the same network can reach each other by name
+# app can connect to "db:5432"
+```
+
+## Inspection
+
+```bash
+# Detailed box info (JSON)
+a3s-box inspect my-app
+
+# Live resource usage
+a3s-box stats
+
+# Show processes inside a box
+a3s-box top my-app
+
+# Stream events
+a3s-box events --json
+```
+
+## Cleanup
+
+```bash
+# Remove all stopped boxes and unused images
+a3s-box system-prune -f
+
+# Remove unused images only
+a3s-box image-prune
+
+# Remove unused volumes
+a3s-box volume prune
+```

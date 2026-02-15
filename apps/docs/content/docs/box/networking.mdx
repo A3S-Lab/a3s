@@ -1,0 +1,179 @@
+---
+title: Networking
+description: TSI, bridge networking, passt, vsock ports, and DNS
+---
+
+# Networking
+
+A3S Box supports three network modes: TSI (default), Bridge (for inter-container communication), and None (air-gapped).
+
+## Network Modes
+
+```rust
+pub enum NetworkMode {
+    Tsi,                            // Default
+    Bridge { network: String },     // Passt-based bridge
+    None,                           // No networking
+}
+```
+
+## TSI (Transparent Socket Impersonation)
+
+The default network mode. Socket syscalls inside the VM are transparently proxied to the host over vsock, without a real network interface inside the guest.
+
+```bash
+# TSI is the default
+a3s-box run -d --name web -p 8080:80 nginx:latest
+```
+
+Characteristics:
+- No `eth0` inside the VM
+- Stateless and works everywhere
+- Host's network stack handles all connections
+- Port mapping (`-p`) maps host ports to guest ports
+- No inter-container networking (containers can't reach each other by name)
+
+## Bridge Networking
+
+For inter-container communication, bridge mode gives each VM a real `eth0` via [passt](https://passt.top/) (userspace network stack).
+
+### Create a Network
+
+```bash
+# Create a user-defined bridge network
+a3s-box network create my-net
+
+# Create with specific subnet
+a3s-box network create --subnet 10.88.0.0/24 --gateway 10.88.0.1 my-net
+```
+
+### Run Boxes on a Network
+
+```bash
+# Start a database
+a3s-box run -d --name postgres --network my-net postgres:15
+
+# Start an application on the same network
+a3s-box run -d --name app --network my-net my-app:latest
+
+# "app" can reach "postgres" by container name
+# e.g., connect to postgres:5432
+```
+
+### Connect/Disconnect
+
+```bash
+# Connect a running box to a network
+a3s-box network connect my-net my-box
+
+# Disconnect
+a3s-box network disconnect my-net my-box
+```
+
+### Network Configuration
+
+```rust
+pub struct NetworkConfig {
+    pub name: String,
+    pub subnet: String,                             // CIDR (e.g., "10.88.0.0/24")
+    pub gateway: Ipv4Addr,
+    pub driver: String,                             // "bridge" only
+    pub labels: HashMap<String, String>,
+    pub endpoints: HashMap<String, NetworkEndpoint>,
+    pub created_at: String,
+}
+
+pub struct NetworkEndpoint {
+    pub box_id: String,
+    pub box_name: String,
+    pub ip_address: Ipv4Addr,
+    pub mac_address: String,
+}
+```
+
+### IPAM (IP Address Management)
+
+```rust
+pub struct Ipam {
+    network: Ipv4Addr,
+    prefix_len: u8,
+    gateway: Ipv4Addr,
+}
+```
+
+The IPAM automatically assigns IPs to containers joining a network. It tracks used addresses and allocates the next available IP within the subnet.
+
+| Method | Description |
+|--------|-------------|
+| `gateway()` | Returns the gateway IP |
+| `cidr()` | Returns the CIDR string (e.g., `"10.88.0.0/24"`) |
+| `broadcast()` | Returns the broadcast address |
+| `capacity()` | Returns the number of available host addresses |
+| `next_ip()` | Allocates the next available IP |
+
+### Passt Manager
+
+The `PasstManager` manages passt instances for each network:
+
+- Creates Unix sockets for passt communication
+- Generates unique MAC addresses per container
+- Manages the guest's `eth0` via virtio-net
+- Enables DNS resolution by container name within a network
+
+## No Networking
+
+Completely air-gapped mode:
+
+```bash
+a3s-box run --network none alpine:latest
+```
+
+No network interface is created inside the VM. No outbound or inbound connections are possible.
+
+## Port Mapping
+
+Map host ports to guest ports (works with TSI and Bridge):
+
+```bash
+# Map host 8080 to guest 80
+a3s-box run -p 8080:80 nginx:latest
+
+# Map multiple ports
+a3s-box run -p 8080:80 -p 8443:443 nginx:latest
+
+# View port mappings for a box
+a3s-box port my-box
+```
+
+## DNS Configuration
+
+```bash
+# Use custom DNS servers
+a3s-box run --dns 8.8.8.8 --dns 1.1.1.1 alpine:latest
+```
+
+## Network Management Commands
+
+```bash
+# List all networks
+a3s-box network ls
+
+# Inspect a network
+a3s-box network inspect my-net
+
+# Remove a network
+a3s-box network rm my-net
+```
+
+## Vsock Communication
+
+Regardless of network mode, host-guest control communication always uses vsock:
+
+| Port | Service | Purpose |
+|------|---------|---------|
+| 4088 | Agent control | Health checks, metrics |
+| 4089 | Exec server | Command execution |
+| 4090 | PTY server | Terminal I/O |
+| 4091 | Attestation server | TEE operations (RA-TLS) |
+
+Vsock provides a reliable, low-latency channel that does not depend on network configuration.

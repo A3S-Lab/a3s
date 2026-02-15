@@ -1,4 +1,16 @@
 {
-  "title": "Box",
-  "pages": ["index"]
+  "title": "A3S Box",
+  "pages": [
+    "index",
+    "quick-start",
+    "---Core---",
+    "configuration",
+    "images",
+    "networking",
+    "---Security---",
+    "tee",
+    "---Operations---",
+    "cri",
+    "cli"
+  ]
 }

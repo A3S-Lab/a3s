@@ -1,0 +1,229 @@
+---
+title: Configuration
+description: BoxConfig, resource limits, caching, warm pool, and logging options
+---
+
+# Configuration
+
+A3S Box uses `BoxConfig` as the central configuration struct, controlling resources, networking, caching, warm pool, TEE, and logging.
+
+## BoxConfig
+
+```rust
+pub struct BoxConfig {
+    pub agent: AgentType,
+    pub business: BusinessType,
+    pub workspace: PathBuf,
+    pub skills: Vec<PathBuf>,
+    pub resources: ResourceConfig,
+    pub log_level: LogLevel,
+    pub tee: TeeConfig,
+    pub cmd: Vec<String>,
+    pub entrypoint_override: Option<Vec<String>>,
+    pub volumes: Vec<String>,
+    pub extra_env: Vec<(String, String)>,
+    pub cache: CacheConfig,
+    pub pool: PoolConfig,
+    pub port_map: Vec<String>,
+    pub dns: Vec<String>,
+    pub network: NetworkMode,
+    pub tmpfs: Vec<String>,
+    pub resource_limits: ResourceLimits,
+}
+```
+
+## Resource Configuration
+
+Control CPU, memory, disk, and lifetime for each VM:
+
+```rust
+pub struct ResourceConfig {
+    pub vcpus: u32,       // Default: 2
+    pub memory_mb: u32,   // Default: 1024
+    pub disk_mb: u32,     // Default: 4096
+    pub timeout: u64,     // Lifetime in seconds (0 = unlimited, default: 3600)
+}
+```
+
+CLI usage:
+
+```bash
+a3s-box run --cpus 4 --memory 2048 --timeout 7200 alpine:latest
+```
+
+## Resource Limits
+
+Fine-grained control via cgroup v2 and rlimits:
+
+```rust
+pub struct ResourceLimits {
+    pub pids_limit: Option<u64>,
+    pub cpuset_cpus: Option<String>,
+    pub ulimits: Vec<String>,
+    pub cpu_shares: Option<u64>,
+    pub cpu_quota: Option<i64>,
+    pub cpu_period: Option<u64>,
+    pub memory_reservation: Option<u64>,
+    pub memory_swap: Option<i64>,
+}
+```
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| `pids_limit` | Max processes (RLIMIT_NPROC) | `1000` |
+| `cpuset_cpus` | Pin to specific CPUs | `"0,1,3"` |
+| `cpu_shares` | cgroup v2 cpu.weight | `512` |
+| `cpu_quota` | cgroup v2 cpu.max (microseconds) | `50000` |
+| `cpu_period` | cgroup v2 period (default 100000 us) | `100000` |
+| `memory_reservation` | cgroup v2 memory.low | `536870912` |
+| `memory_swap` | cgroup v2 memory.swap.max (-1 = unlimited) | `-1` |
+| `ulimits` | Custom rlimits (RESOURCE=SOFT:HARD) | `"nofile=1024:4096"` |
+
+```bash
+a3s-box run --pids-limit 500 --cpuset-cpus "0,1" alpine:latest
+```
+
+## Agent Type
+
+Controls how the coding agent is loaded into the VM:
+
+```rust
+pub enum AgentType {
+    A3sCode,                                        // Built-in (default)
+    OciImage { path: PathBuf },                     // Local OCI image
+    LocalBinary { path: PathBuf, args: Vec<String> },
+    RemoteBinary { url: String, checksum: String },
+    OciRegistry { reference: String },              // Registry image
+}
+```
+
+## Business Type
+
+Controls how user code is loaded:
+
+```rust
+pub enum BusinessType {
+    None,                           // No business code (default)
+    OciImage { path: PathBuf },     // Packaged OCI image
+    Directory { path: PathBuf },    // Mount directory as workspace
+}
+```
+
+## Cache Configuration
+
+OCI image and rootfs caching settings:
+
+```rust
+pub struct CacheConfig {
+    pub enabled: bool,              // Default: true
+    pub cache_dir: Option<PathBuf>, // Default: ~/.a3s/cache
+    pub max_rootfs_entries: usize,  // Default: 10
+    pub max_cache_bytes: u64,       // Default: 10 GB
+}
+```
+
+The caching pipeline:
+
+```
+Registry → Layer Cache (compressed blobs) → Rootfs Cache (composed filesystem)
+```
+
+- **Layer cache**: Content-addressable by compressed layer digest
+- **Rootfs cache**: Content-addressable by combined layer digest (SHA256)
+- **Eviction**: LRU when `max_rootfs_entries` or `max_cache_bytes` exceeded
+- **Override**: Set `A3S_IMAGE_CACHE_SIZE` environment variable
+
+## Warm Pool Configuration
+
+Pre-boot VMs for instant allocation:
+
+```rust
+pub struct PoolConfig {
+    pub enabled: bool,          // Default: false
+    pub min_idle: usize,        // Pre-warmed VMs to keep (default: 1)
+    pub max_size: usize,        // Pool capacity limit (default: 5)
+    pub idle_ttl_secs: u64,     // Idle VM time-to-live (default: 300s)
+}
+```
+
+How it works:
+
+1. `WarmPool::start()` spawns `min_idle` VMs in background
+2. Replenishment loop runs every second, keeping idle count at `min_idle`
+3. `pool.acquire()` pops an idle VM instantly (no boot latency)
+4. `pool.release(vm)` returns VM to pool or destroys if at capacity
+5. VMs exceeding `idle_ttl_secs` are evicted automatically
+
+```rust
+pub struct PoolStats {
+    pub idle_count: usize,
+    pub total_created: u64,
+    pub total_acquired: u64,
+    pub total_released: u64,
+    pub total_evicted: u64,
+}
+```
+
+## Log Configuration
+
+Docker-compatible JSON file logging with rotation:
+
+```rust
+pub struct LogConfig {
+    pub driver: LogDriver,
+    pub options: HashMap<String, String>,
+}
+
+pub enum LogDriver {
+    JsonFile,   // Docker-compatible JSON lines (default)
+    None,       // Disable logging
+}
+```
+
+Log format:
+
+```json
+{"log":"hello\n","stream":"stdout","time":"2026-02-12T06:00:00.000000000Z"}
+```
+
+Options:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `max-size` | `10m` | Maximum log file size before rotation |
+| `max-file` | `3` | Number of rotated files to keep |
+
+```bash
+a3s-box run --log-driver json-file \
+  --log-opt max-size=50m \
+  --log-opt max-file=5 \
+  my-image:latest
+```
+
+## State Persistence
+
+All box state is persisted to `~/.a3s/boxes.json`:
+
+```rust
+pub struct BoxRecord {
+    pub id: String,             // Full UUID
+    pub short_id: String,       // 12-char hex
+    pub name: String,
+    pub image: String,
+    pub status: String,         // "created", "running", "stopped", "dead"
+    pub pid: Option<u32>,       // Shim process PID
+    pub created_at: DateTime<Utc>,
+    pub started_at: Option<DateTime<Utc>>,
+    // ... 30+ additional fields
+}
+```
+
+Boxes can be referenced by full ID, short ID (12-char prefix), or name.
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `A3S_IMAGE_CACHE_SIZE` | Override max cache size in bytes |
+| `A3S_TEE_SIMULATE` | Enable TEE simulation mode (development only) |
+| `RUST_LOG` | Control log verbosity (`debug`, `info`, `warn`, `error`) |
