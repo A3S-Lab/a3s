@@ -1,0 +1,117 @@
+---
+title: Architecture
+description: System architecture, data flow, and design decisions
+---
+
+# Architecture
+
+## System Overview
+
+A3S Code is a gRPC service (port 4088) that manages multiple AI coding sessions. Each session has its own context, permissions, and tool access. The server handles the full agentic loop — LLM calls, tool execution, confirmation, and streaming — so SDK clients only need to send prompts and receive events.
+
+```
+SDK (Python/TS/CLI)
+    │
+    ▼ gRPC (86 RPCs)
+┌─────────────────────────────────────────────────────────────┐
+│  CodeAgentService                                           │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │  SessionManager                                         ││
+│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐ ││
+│  │  │ Session A │ │ Session B │ │ Session C │ │    ...    │ ││
+│  │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └───────────┘ ││
+│  └───────┼─────────────┼───────────┼───────────────────────┘│
+│          ▼             ▼           ▼                         │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │  Agent Loop (per session)                               ││
+│  │  1. Send prompt + context to LLM                        ││
+│  │  2. LLM returns text or tool_use                        ││
+│  │  3. If tool_use → check permissions → HITL → execute    ││
+│  │  4. Feed tool result back to LLM                        ││
+│  │  5. Repeat until LLM returns text-only (max 50 rounds)  ││
+│  └─────────────────────────────────────────────────────────┘│
+│          │                                                   │
+│  ┌───────▼─────────────────────────────────────────────────┐│
+│  │  Shared Infrastructure                                  ││
+│  │  ToolExecutor │ HookEngine │ SecurityGuard │ MemoryStore││
+│  └─────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Agent Loop
+
+The core execution cycle runs server-side. Each round:
+
+1. **GenerateStart hook** fires — injection detector scans the prompt
+2. **LLM call** — streaming SSE to Anthropic or OpenAI-compatible API
+3. **GenerateEnd hook** fires — output sanitizer redacts PII
+4. If LLM returns `tool_use`:
+   - **PreToolUse hook** fires — taint tracker and interceptor check for data leakage
+   - **Permission check** — Deny → Allow → Ask → Default evaluation
+   - **HITL confirmation** — if required, wait for SDK client approval (with timeout)
+   - **Guard policy** — defense-in-depth check on ToolExecutor
+   - **Tool execution** — run the tool, capture output
+   - **PostToolUse hook** fires — audit logging
+5. Feed tool result back to LLM, go to step 1
+6. If LLM returns text-only → done
+
+Maximum 50 rounds per generation to prevent infinite loops.
+
+## Defense-in-Depth Security
+
+Five independent security layers, each capable of blocking a request:
+
+| Layer | Component | What it does |
+|-------|-----------|-------------|
+| 1 | Permission Policy | Deny → Allow → Ask → Default rule evaluation with glob patterns |
+| 2 | HITL Confirmation | Independent of permissions — even `Allow` goes through HITL check |
+| 3 | Hook-based Security | SecurityGuard registers at priority 1 (highest): taint tracking, injection detection, output sanitization |
+| 4 | Guard Policy | Defense-in-depth check on ToolExecutor before every execution |
+| 5 | Skill Tool Filters | Per-skill `allowed_tools` restrictions enforced in agent loop |
+
+## Session Lifecycle
+
+```
+Created → Active → Paused → Active → Completed
+                ↘ Error
+```
+
+- **Active**: Accepting prompts, running agent loop
+- **Paused**: Temporarily suspended, can resume
+- **Completed**: Finished, read-only
+- **Error**: Unrecoverable failure
+
+## Persistence
+
+Three storage backends:
+
+| Backend | Use case |
+|---------|----------|
+| `memory` | Default, no persistence across restarts |
+| `file` | JSONL files in `~/.a3s/sessions/` |
+| `custom` | Inject external store (PostgreSQL, Redis) via `start_server_with_store()` |
+
+Session state includes conversation history, configuration, and metadata. API keys are excluded from persistence — they must be re-provided on session restore.
+
+## Context Management
+
+When context usage exceeds the threshold (default 80% of model's context window):
+
+1. Keep first 2 messages (system context)
+2. Keep last 20 messages (recent context)
+3. Summarize middle messages via LLM call
+4. Insert summary as a synthetic message
+
+This keeps the session within context limits while preserving important context.
+
+## Subagent System
+
+The `task` tool delegates work to child agents with restricted tool access:
+
+| Agent Type | Available Tools | Use Case |
+|------------|----------------|----------|
+| `explore` | read, grep, glob, ls | Find code, understand structure |
+| `general` | all except task | Complex multi-step tasks |
+| `plan` | read, grep, glob, ls | Design implementation approach |
+
+Child sessions inherit the parent's confirmation policy.

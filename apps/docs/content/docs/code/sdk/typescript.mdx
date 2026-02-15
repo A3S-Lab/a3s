@@ -1,0 +1,151 @@
+---
+title: TypeScript SDK
+description: Full-featured TypeScript client for A3S Code with 86 RPC coverage
+---
+
+# TypeScript SDK
+
+The TypeScript SDK provides a high-level API with auto-dispose sessions and a low-level client with full 86 RPC coverage.
+
+## Installation
+
+```bash
+npm install @a3s-lab/code
+```
+
+## High-Level API
+
+The recommended way to use A3S Code. Sessions auto-cleanup with `await using`.
+
+```typescript
+import { A3sClient, createProvider } from '@a3s-lab/code';
+
+const client = new A3sClient({ address: 'localhost:4088' });
+const anthropic = createProvider({ name: 'anthropic', apiKey: 'sk-ant-...' });
+
+// Auto-dispose session
+await using session = await client.createSession({
+  model: anthropic('claude-sonnet-4-20250514'),
+  workspace: '/project',
+  system: 'You are a senior engineer.',
+  autoCompact: true,
+});
+
+// Server-side agentic loop with streaming
+for await (const event of session.stream('Refactor the auth module')) {
+  if (event.textDelta) process.stdout.write(event.textDelta);
+  if (event.toolStart) console.log(`\nTool: ${event.toolStart.name}`);
+  if (event.toolEnd) console.log(`Result: ${event.toolEnd.output.slice(0, 100)}`);
+}
+```
+
+## Provider Helpers
+
+```typescript
+import { createProvider } from '@a3s-lab/code';
+
+const anthropic = createProvider({ name: 'anthropic', apiKey: 'sk-ant-...' });
+const openai = createProvider({ name: 'openai', apiKey: 'sk-...', baseUrl: 'https://api.openai.com' });
+const kimi = createProvider({ name: 'kimi', apiKey: 'sk-...', baseUrl: 'http://your-kimi-endpoint/v1' });
+
+// Use with session creation
+await client.createSession({ model: anthropic('claude-sonnet-4-20250514') });
+await client.createSession({ model: openai('gpt-4o') });
+await client.createSession({ model: kimi('kimi-k2.5') });
+```
+
+## Permissions
+
+```typescript
+await session.setPermissions({
+  defaultAction: 'ask',
+  rules: [
+    { tool: 'Bash', pattern: 'rm -rf:*', action: 'deny' },
+    { tool: 'Read', pattern: 'src/**', action: 'allow' },
+    { tool: 'Grep', pattern: 'src/**', action: 'allow' },
+    { tool: 'Bash', pattern: '*', action: 'ask' },
+    { tool: 'Write', pattern: '*', action: 'ask' },
+  ],
+});
+```
+
+## HITL Confirmation
+
+```typescript
+await session.setConfirmation({
+  autoApprove: ['read', 'grep', 'glob', 'ls'],
+  requireConfirmation: ['bash', 'write', 'edit'],
+  timeout: 30000,
+  timeoutAction: 'reject',
+});
+
+// Respond to confirmation requests
+await session.confirm(confirmationId, true, 'Approved');
+```
+
+## Skills
+
+```typescript
+await session.loadSkill('deploy');
+await session.loadSkills('~/.a3s/skills');
+const skills = await session.listSkills();
+```
+
+## LSP
+
+```typescript
+await client.startLspServer('rust', 'file:///path/to/project');
+
+const hover = await client.lspHover('/path/to/file.rs', 10, 5);
+const defs = await client.lspDefinition('/path/to/file.rs', 15, 10);
+const refs = await client.lspReferences('/path/to/file.rs', 20, 8);
+const symbols = await client.lspSymbols('main');
+const diags = await client.lspDiagnostics('/path/to/file.rs');
+```
+
+## MCP
+
+```typescript
+await client.registerMcpServer({
+  name: 'filesystem',
+  transport: { stdio: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] } },
+  enabled: true,
+  env: {},
+});
+
+await client.connectMcpServer('filesystem');
+const tools = await client.getMcpTools();
+```
+
+## Cron
+
+```typescript
+const result = await client.createCronJob('backup', 'every day at 2am', 'backup.sh');
+const jobs = await client.listCronJobs();
+await client.runCronJob(result.job.id);
+const history = await client.getCronHistory(result.job.id);
+
+const parsed = await client.parseCronSchedule('every 5 minutes');
+// { cronExpression: '*/5 * * * *', description: 'every 5 minutes' }
+```
+
+## Low-Level Client
+
+For full control, use the client API directly:
+
+```typescript
+const { sessionId } = await client.createSession({
+  workspace: '/project',
+  llm: {
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-20250514',
+    apiKey: 'sk-ant-...',
+  },
+});
+
+for await (const event of client.streamAgenticGenerate(sessionId, 'Explain this codebase')) {
+  if (event.textDelta) process.stdout.write(event.textDelta);
+}
+
+await client.destroySession(sessionId);
+```

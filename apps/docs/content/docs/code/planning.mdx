@@ -1,0 +1,60 @@
+---
+title: Planning & Goals
+description: Create execution plans and track goal achievement
+---
+
+# Planning & Goal Tracking
+
+A3S Code can create structured execution plans before starting work and track progress toward goals. Planning is configurable per session.
+
+## Create a Plan
+
+```typescript
+const plan = await client.createPlan(sessionId, 'Refactor auth module');
+// Returns structured plan with steps, complexity analysis, and estimated effort
+```
+
+```python
+plan = await client.create_plan(session_id, "Refactor auth module")
+```
+
+The planner analyzes the prompt, assesses complexity, and generates a step-by-step plan. Two modes:
+
+| Mode | How it works |
+|------|-------------|
+| LLM-powered | Calls the LLM for complexity analysis and plan creation |
+| Heuristic fallback | Uses prompt length as complexity proxy (Simple < 50 words, Medium < 150, Complex < 300, VeryComplex ≥ 300) |
+
+## Goal Tracking
+
+Extract goals from prompts and check progress:
+
+```typescript
+const goal = await client.extractGoal(sessionId, 'Improve test coverage to 90%');
+const check = await client.checkGoalAchievement(sessionId, goal, 'Current coverage: 85%');
+```
+
+```python
+goal = await client.extract_goal(session_id, "Improve test coverage to 90%")
+check = await client.check_goal_achievement(session_id, goal, "Current coverage: 85%")
+```
+
+## Configuration
+
+Enable or disable planning per session:
+
+```typescript
+await client.configureSession(sessionId, {
+  planningEnabled: true,
+  goalTracking: true,
+});
+```
+
+## RPCs
+
+| RPC | Description |
+|-----|-------------|
+| `createPlan(sessionId, prompt, context)` | Create an execution plan |
+| `getPlan(sessionId, planId)` | Get an existing plan |
+| `extractGoal(sessionId, prompt)` | Extract goal from prompt |
+| `checkGoalAchievement(sessionId, goal, currentState)` | Check goal progress |

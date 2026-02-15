@@ -1,0 +1,40 @@
+---
+title: A3S Gateway
+description: AI-native reverse proxy with multi-protocol support and dynamic configuration
+---
+
+# A3S Gateway
+
+A3S Gateway is an AI-native reverse proxy inspired by Traefik, supporting HTTP, gRPC, TCP, UDP, WebSocket, and SSE protocols with a dynamic middleware chain.
+
+## Key Features
+
+- **Multi-Protocol** — HTTP/HTTPS, gRPC, TCP, UDP, WebSocket, SSE
+- **Dynamic Configuration** — File-based and API-driven config with hot reload
+- **Middleware Chain** — Authentication, rate limiting, CORS, compression, and more
+- **AI Features** — Prompt routing, token-aware load balancing, AI-specific middleware
+- **Auto TLS** — ACME/Let's Encrypt with automatic certificate management
+- **Dashboard** — Built-in web UI for monitoring and configuration
+
+## Architecture
+
+```
+┌───────────────────────────────────────────┐
+│              Entrypoints                  │
+│   HTTP · HTTPS · gRPC · TCP · UDP · WS   │
+├───────────────────────────────────────────┤
+│            Router Layer                   │
+│  Host matching · Path routing · SNI       │
+├───────────────────────────────────────────┤
+│          Middleware Chain                  │
+│  Auth · RateLimit · CORS · Compress · ... │
+├───────────────────────────────────────────┤
+│           Service Layer                   │
+│  LoadBalancer · Failover · Mirror         │
+├───────────────────────────────────────────┤
+│          Provider System                  │
+│   File · Docker · API · Kubernetes        │
+└───────────────────────────────────────────┘
+```
+
+> Full documentation coming soon. See the [Gateway README](https://github.com/A3S-Lab/Gateway) for current details.

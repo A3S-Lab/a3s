@@ -1,0 +1,33 @@
+---
+title: A3S Documentation
+description: Documentation for the A3S ecosystem — secure AI infrastructure
+---
+
+# A3S Documentation
+
+Welcome to the A3S documentation. A3S is a secure AI infrastructure ecosystem built in Rust.
+
+## Projects
+
+- [A3S Code](/docs/code) — Multi-session AI coding agent framework with gRPC service, 11 built-in tools, skills, MCP/LSP integration, and defense-in-depth security
+- [A3S Box](/docs/box) — MicroVM runtime with TEE support, Docker-compatible CLI, and Kubernetes CRI integration
+- [A3S Gateway](/docs/gateway) — AI-native reverse proxy with multi-protocol support, privacy-aware routing, and token metering
+- [SafeClaw](/docs/safeclaw) — Privacy-focused security proxy for AI agents with PII classification, taint tracking, and TEE integration
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│              A3S Gateway                     │
+│         (traffic routing, TLS, auth)         │
+└──────────────────┬──────────────────────────┘
+                   │
+┌──────────────────▼──────────────────────────┐
+│              A3S Box VM                      │
+│  ┌─────────────────┐  ┌──────────────────┐  │
+│  │    SafeClaw      │  │    A3S Code      │  │
+│  │  (security proxy)│◄─│  (agent service) │  │
+│  └─────────────────┘  └──────────────────┘  │
+│         TEE memory encryption (optional)     │
+└──────────────────────────────────────────────┘
+```

@@ -1,0 +1,82 @@
+---
+title: A3S Code
+description: Production-ready AI coding agent framework — multi-session gRPC service with 86 RPCs, 11 built-in tools, and defense-in-depth security
+---
+
+# A3S Code
+
+A3S Code is a high-performance Rust framework for building AI coding agents. It provides a complete gRPC-based service with 86 RPCs for tool execution, multi-session management, and extensible integrations.
+
+All subsystems — hooks, security, memory, MCP/LSP tools, subagent delegation, planning — are wired into the core execution path and active by default.
+
+## Key Features
+
+- **Multi-Session Management** — Run multiple independent AI conversations with isolated context and permissions
+- **11 Built-in Tools** — bash, read, write, edit, patch, grep, glob, ls, web_fetch, web_search, cron
+- **Permission System** — Allow/Deny/Ask rules for fine-grained tool access control
+- **Human-in-the-Loop** — Require user confirmation before sensitive operations
+- **Skills System** — Extend the agent with Markdown-based prompt-injection skills
+- **Subagent Delegation** — Delegate specialized tasks to focused child agents
+- **Server-Side Agentic Loop** — Full agentic loop on the server with streaming events
+- **LSP & MCP Integration** — Code intelligence and external tool protocols
+- **Security Guards** — Output sanitization, taint tracking, injection detection, tool interception
+- **Observability** — OpenTelemetry spans, per-session cost tracking, tool metrics
+
+## Quick Example
+
+```typescript
+import { A3sClient, createProvider } from '@a3s-lab/code';
+
+const client = new A3sClient({ address: 'localhost:4088' });
+const anthropic = createProvider({ name: 'anthropic', apiKey: 'sk-ant-...' });
+
+await using session = await client.createSession({
+  model: anthropic('claude-sonnet-4-20250514'),
+  workspace: '/project',
+  system: 'You are a senior engineer.',
+});
+
+for await (const event of session.stream('Refactor the auth module')) {
+  if (event.textDelta) process.stdout.write(event.textDelta);
+  if (event.toolStart) console.log(`\nTool: ${event.toolStart.name}`);
+}
+```
+
+```python
+from a3s_code import A3sClient, create_provider
+
+anthropic = create_provider(name="anthropic", api_key="sk-ant-...")
+
+async with A3sClient(address="localhost:4088") as client:
+    async with await client.session(
+        model=anthropic("claude-sonnet-4-20250514"),
+        workspace="/project",
+        system="You are a senior engineer.",
+    ) as session:
+        async for event in session.stream("Refactor the auth module"):
+            if event.type == "text":
+                print(event.content, end="", flush=True)
+```
+
+## Architecture at a Glance
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Your Application (SDK Client)                              │
+│  - TypeScript / Python                                      │
+├─────────────────────────────────────────────────────────────┤
+│  A3S Code (gRPC Server :4088)                               │
+│  ┌─────────────┬─────────────┬─────────────┬──────────────┐ │
+│  │   Session   │    Tool     │ Permission  │     LLM      │ │
+│  │   Manager   │  Executor   │   System    │   Provider   │ │
+│  └─────────────┴─────────────┴─────────────┴──────────────┘ │
+│  ┌──────────���──┬─────────────┬─────────────┬──────────────┐ │
+│  │   Skills    │  Subagent   │     LSP     │     MCP      │ │
+│  │   System    │  Task Tool  │   (auto)    │   (auto)     │ │
+│  └─────────────┴─────────────┴─────────────┴──────────────┘ │
+│  ┌─────────────┬─────────────┬─────────────┬──────────────┐ │
+│  │    Hooks    │  Security   │   Memory    │  Planning    │ │
+│  │   Engine    │   Guard     │  (Context)  │   & Goals    │ │
+│  └─────────────┴─────────────┴─────────────┴──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```

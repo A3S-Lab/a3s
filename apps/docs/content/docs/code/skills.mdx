@@ -1,0 +1,89 @@
+---
+title: Skills System
+description: Extend agent behavior with Markdown-based prompt-injection skills
+---
+
+# Skills System
+
+Skills are Markdown files that extend agent behavior. They can inject system prompts, define custom tools, or create specialized agent personas. Compatible with Claude Code Skills format.
+
+## Skill Format
+
+```markdown
+# ~/.a3s/skills/deploy.md
+---
+name: deploy
+description: Deploy to production
+allowed_tools: Bash(kubectl:*)
+---
+You are a deployment specialist. Run kubectl apply to deploy the application.
+Always verify the deployment status after applying changes.
+```
+
+### Frontmatter Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | yes | Unique skill identifier |
+| `description` | yes | What the skill does |
+| `allowed_tools` | no | Restrict which tools this skill can use (glob patterns) |
+
+### Skill Kinds
+
+Skills are automatically classified into three kinds:
+
+| Kind | Description |
+|------|-------------|
+| `instruction` | Injects system prompt context (no tools) |
+| `tool` | Defines custom tool backends (binary, HTTP, script) |
+| `agent` | Creates a specialized agent persona |
+
+## Loading Skills
+
+```typescript
+// Load a single skill by name
+await session.loadSkill('deploy');
+
+// Load all skills from a directory
+await session.loadSkills('~/.a3s/skills');
+
+// List loaded skills
+const skills = await session.listSkills();
+```
+
+```python
+await session.load_skill("deploy")
+await session.load_skills("~/.a3s/skills")
+skills = await session.list_skills()
+```
+
+## On-Demand Loading
+
+The agent has three native tools for skill management:
+
+| Tool | Description |
+|------|-------------|
+| `search_skills` | Search for skills on GitHub (zero-dependency API) |
+| `install_skill` | Download and install a skill from GitHub |
+| `load_skill` | Load an installed skill into the current session |
+
+The agent can autonomously discover and load skills when it needs capabilities beyond its built-in tools.
+
+## Skill Tool Filters
+
+When a skill specifies `allowed_tools`, the agent loop enforces these restrictions. A skill with `allowed_tools: Bash(kubectl:*)` can only use bash commands starting with `kubectl`.
+
+This provides per-skill sandboxing — a deployment skill can't accidentally run `rm -rf /`, even if the session's permission policy would allow it.
+
+## Skill Directories
+
+Configure skill directories in `config.json`:
+
+```json
+{
+  "skillDirs": ["~/.a3s/skills", "/shared/team-skills"],
+  "agentDirs": ["~/.a3s/agents"]
+}
+```
+
+Skills in these directories are available for loading but not automatically active — they must be explicitly loaded into a session.

@@ -1,0 +1,111 @@
+---
+title: LSP Integration
+description: Code intelligence via Language Server Protocol
+---
+
+# LSP Integration
+
+A3S Code integrates with Language Server Protocol (LSP) servers to provide code intelligence. LSP tools are automatically registered in the ToolExecutor when a server starts.
+
+## Supported Languages
+
+| Language | Server |
+|----------|--------|
+| Rust | rust-analyzer |
+| Go | gopls |
+| TypeScript/JavaScript | typescript-language-server |
+| Python | pyright |
+| C/C++ | clangd |
+
+## Start a Language Server
+
+```typescript
+await client.startLspServer('rust', 'file:///path/to/project');
+```
+
+```python
+await client.start_lsp_server("rust", "file:///path/to/project")
+```
+
+## Available Operations
+
+### Hover
+
+Get type information and documentation at a position:
+
+```typescript
+const hover = await client.lspHover('/path/to/file.rs', 10, 5);
+```
+
+```python
+hover = await client.lsp_hover("/path/to/file.rs", 10, 5)
+```
+
+### Go to Definition
+
+Find where a symbol is defined:
+
+```typescript
+const defs = await client.lspDefinition('/path/to/file.rs', 15, 10);
+```
+
+```python
+defs = await client.lsp_definition("/path/to/file.rs", 15, 10)
+```
+
+### Find References
+
+Find all usages of a symbol:
+
+```typescript
+const refs = await client.lspReferences('/path/to/file.rs', 20, 8);
+```
+
+```python
+refs = await client.lsp_references("/path/to/file.rs", 20, 8)
+```
+
+### Workspace Symbols
+
+Search for symbols across the workspace:
+
+```typescript
+const symbols = await client.lspSymbols('main');
+```
+
+```python
+symbols = await client.lsp_symbols("main")
+```
+
+### Diagnostics
+
+Get errors and warnings for a file:
+
+```typescript
+const diags = await client.lspDiagnostics('/path/to/file.rs');
+```
+
+```python
+diags = await client.lsp_diagnostics("/path/to/file.rs")
+```
+
+## Lifecycle RPCs
+
+| RPC | Description |
+|-----|-------------|
+| `startLspServer(language, rootUri)` | Start a language server |
+| `stopLspServer(language)` | Stop a language server |
+| `listLspServers()` | List running servers |
+| `lspHover(filePath, line, column)` | Get hover information |
+| `lspDefinition(filePath, line, column)` | Go to definition |
+| `lspReferences(filePath, line, column)` | Find all references |
+| `lspSymbols(query, limit)` | Search workspace symbols |
+| `lspDiagnostics(filePath)` | Get diagnostics |
+
+## Agent Integration
+
+When an LSP server is running, the agent can use code intelligence tools automatically. For example, when asked to refactor a function, the agent can:
+
+1. Use `lsp_references` to find all callers
+2. Use `lsp_definition` to understand the implementation
+3. Use `lsp_diagnostics` to verify changes compile correctly

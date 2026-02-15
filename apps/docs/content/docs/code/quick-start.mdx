@@ -1,0 +1,138 @@
+---
+title: Quick Start
+description: Install and run A3S Code in minutes
+---
+
+# Quick Start
+
+## Installation
+
+```bash
+# Homebrew (macOS / Linux) — prebuilt binary, installs in seconds
+brew tap a3s-lab/tap
+brew install a3s-code
+
+# Cargo (builds from source)
+cargo install a3s-code
+
+# From source
+cargo build --release
+```
+
+## Run the Server
+
+```bash
+# Start with default settings
+a3s-code
+
+# With config file
+a3s-code --config ~/.a3s/config.json
+
+# With JSON structured logging
+a3s-code --json-log
+
+# With custom listen address and OTLP tracing
+a3s-code --listen-addr 0.0.0.0:4088 --otlp-endpoint http://localhost:4317
+
+# Self-update to latest version
+a3s-code update
+```
+
+## CLI Options
+
+| Flag | Env Var | Default | Description |
+|------|---------|---------|-------------|
+| `-c, --config` | `A3S_CONFIG` | — | Path to config.json file |
+| `-l, --listen-addr` | `LISTEN_ADDR` | `0.0.0.0:4088` | gRPC server listen address |
+| `--otlp-endpoint` | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | OpenTelemetry OTLP endpoint |
+| `--json-log` | `A3S_LOG_FORMAT` | `false` | Output logs in JSON format |
+
+## Server Configuration
+
+Create `~/.a3s/config.json` (optional — LLM can also be configured per-session via `ConfigureSession` RPC):
+
+```json
+{
+  "defaultProvider": "anthropic",
+  "defaultModel": "claude-sonnet-4-20250514",
+  "providers": [
+    {
+      "name": "anthropic",
+      "apiKey": "sk-ant-...",
+      "models": [
+        {
+          "id": "claude-sonnet-4-20250514",
+          "name": "Claude Sonnet 4",
+          "family": "claude-sonnet",
+          "toolCall": true,
+          "temperature": true,
+          "reasoning": false,
+          "cost": { "input": 3.0, "output": 15.0, "cacheRead": 0.3, "cacheWrite": 3.75 },
+          "limit": { "context": 200000, "output": 16384 }
+        }
+      ]
+    },
+    {
+      "name": "openai",
+      "apiKey": "sk-...",
+      "baseUrl": "https://api.openai.com",
+      "models": [
+        {
+          "id": "gpt-4o",
+          "name": "GPT-4o",
+          "family": "gpt-4o",
+          "toolCall": true,
+          "temperature": true,
+          "cost": { "input": 2.5, "output": 10.0 },
+          "limit": { "context": 128000, "output": 16384 }
+        }
+      ]
+    }
+  ],
+  "storageBackend": "file",
+  "sessionsDir": "~/.a3s/sessions",
+  "skillDirs": ["~/.a3s/skills"],
+  "agentDirs": ["~/.a3s/agents"]
+}
+```
+
+## Per-Session LLM Configuration
+
+LLM can be configured per-session via `ConfigureSession` RPC — no server-level config needed:
+
+```typescript
+await client.configureSession(sessionId, {
+  llm: {
+    provider: 'openai',
+    model: 'gpt-4o',
+    apiKey: 'sk-...',
+    baseUrl: 'https://api.openai.com',
+    temperature: 0.7,
+    maxTokens: 4096,
+  },
+  workspace: '/path/to/project',
+  systemPrompt: 'You are a helpful coding assistant.',
+  maxContextLength: 200000,
+  autoCompact: true,
+  autoCompactThreshold: 0.8,
+});
+```
+
+```python
+from a3s_code import SessionConfig, LLMConfig
+
+await client.configure_session(session_id, SessionConfig(
+    llm=LLMConfig(
+        provider="openai",
+        model="gpt-4o",
+        api_key="sk-...",
+        base_url="https://api.openai.com",
+        temperature=0.7,
+        max_tokens=4096,
+    ),
+    workspace="/path/to/project",
+    system_prompt="You are a helpful coding assistant.",
+    max_context_length=200000,
+    auto_compact=True,
+))
+```

@@ -1,0 +1,20 @@
+{
+  "title": "A3S Code",
+  "pages": [
+    "index",
+    "quick-start",
+    "architecture",
+    "tools",
+    "permissions",
+    "skills",
+    "mcp",
+    "lsp",
+    "memory",
+    "planning",
+    "---SDK---",
+    "sdk/typescript",
+    "sdk/python",
+    "---Reference---",
+    "api-reference"
+  ]
+}

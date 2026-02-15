@@ -1,0 +1,98 @@
+---
+title: MCP Support
+description: Extend the agent with external tools via Model Context Protocol
+---
+
+# MCP Support
+
+A3S Code supports the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) for integrating external tool servers. MCP tools are automatically registered in the ToolExecutor when a server connects and unregistered when it disconnects.
+
+## Register and Connect
+
+```typescript
+// Register an MCP server
+await client.registerMcpServer({
+  name: 'filesystem',
+  transport: {
+    stdio: {
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-filesystem'],
+    },
+  },
+  enabled: true,
+  env: {},
+});
+
+// Connect (starts the server process)
+await client.connectMcpServer('filesystem');
+
+// List available tools from all connected servers
+const tools = await client.getMcpTools();
+```
+
+```python
+await client.register_mcp_server({
+    "name": "filesystem",
+    "transport": {
+        "stdio": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+        },
+    },
+    "enabled": True,
+    "env": {},
+})
+
+await client.connect_mcp_server("filesystem")
+tools = await client.get_mcp_tools()
+```
+
+## Transport Types
+
+MCP servers communicate via stdio (stdin/stdout). The server is spawned as a child process.
+
+```json
+{
+  "transport": {
+    "stdio": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem"]
+    }
+  }
+}
+```
+
+## Tool Naming
+
+MCP tools are namespaced with the server name to avoid collisions:
+
+```
+mcp__<server_name>__<tool_name>
+```
+
+For example, a tool `read_file` from server `filesystem` becomes `mcp__filesystem__read_file`.
+
+## Lifecycle
+
+| RPC | Description |
+|-----|-------------|
+| `registerMcpServer(config)` | Register server configuration |
+| `connectMcpServer(name)` | Start server process and discover tools |
+| `disconnectMcpServer(name)` | Stop server and unregister tools |
+| `listMcpServers()` | List all registered servers with status |
+| `getMcpTools(serverName?)` | List tools from connected servers |
+
+## Permission Integration
+
+MCP tools respect the same permission system as built-in tools. Use the full namespaced name in permission rules:
+
+```typescript
+await session.setPermissions({
+  rules: [
+    { tool: 'mcp__filesystem', pattern: '*', action: 'allow' },
+    { tool: 'mcp__dangerous_server', pattern: '*', action: 'deny' },
+  ],
+});
+```
+
+MCP prefix matching is supported — `mcp__filesystem` matches all tools from the `filesystem` server.

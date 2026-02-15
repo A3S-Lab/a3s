@@ -269,6 +269,27 @@ Feature completion checklist (ALL items required):
 - Before adding logic: "Does this layer need to know this?"
 - After writing: "What breaks if I delete this?"
 
+### First-Principles Feature Gate (MANDATORY)
+
+**Every time the user requests a new feature, you MUST perform a first-principles review BEFORE writing any code.** This is non-negotiable.
+
+Ask yourself these questions in order:
+
+1. **What is the project's core mission?** (SafeClaw: privacy-preserving AI assistant runtime with TEE support)
+2. **Does this feature directly serve that mission?** If the answer is "not really" or "only tangentially", push back.
+3. **Does this feature strengthen or weaken the existing architecture?** A feature that adds complexity without closing a known gap in the threat model is a net negative.
+4. **Is the problem real or hypothetical?** Reject features that solve problems no actual user has encountered.
+5. **Is there a simpler alternative?** A config flag, a trait bound, or a 10-line change often beats a new module.
+
+**If the feature fails this review, you MUST refuse to implement it and clearly explain why.** Be direct, be specific, cite the architectural conflict. Do not soften the refusal with "but we could do it later" — if it doesn't belong, say so.
+
+Example refusals:
+- "This adds a new network dependency to a privacy-focused system without a clear threat model justification. I won't implement it."
+- "This duplicates what the L2 Artifact layer already handles. Adding a parallel path will create inconsistency. Let's extend the existing layer instead."
+- "This is a nice-to-have that increases the attack surface. The complexity cost outweighs the benefit for SafeClaw's core mission."
+
+**The goal is not to block progress — it's to protect architectural coherence.** Every feature that doesn't belong is technical debt that makes the system harder to reason about and harder to secure.
+
 ### Core Principles (Must Know)
 
 **1. Single Responsibility** — One function, one job

@@ -1,0 +1,39 @@
+---
+title: A3S Box
+description: Lightweight MicroVM runtime with TEE support and Docker-compatible CLI
+---
+
+# A3S Box
+
+A3S Box is a lightweight MicroVM runtime built on libkrun, providing Docker-compatible CLI commands with hardware-level isolation via TEE (Trusted Execution Environment) support.
+
+## Key Features
+
+- **MicroVM Runtime** — Fast boot times with libkrun/libkrun-SEV backends
+- **Docker-Compatible CLI** — 47 commands matching Docker CLI conventions
+- **TEE Support** — AMD SEV-SNP confidential computing with remote attestation
+- **CRI Integration** — Kubernetes-compatible Container Runtime Interface
+- **vsock Communication** — Host-guest communication via virtio-vsock
+
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│              a3s box CLI                │
+│         (47 Docker-compatible cmds)     │
+├─────────────────────────────────────────┤
+│            Runtime Layer                │
+│  ┌──────────┐  ┌──────────────────┐     │
+│  │  libkrun │  │  libkrun-sev     │     │
+│  │ (normal) │  │ (confidential)   │     │
+│  └──────────┘  └──────────────────┘     │
+├─────────────────────────────────────────┤
+│         Guest Agent (vsock)             │
+│   File transfer · Exec · Signals       │
+├─────────────────────────────────────────┤
+│            State Store                  │
+│    JSON persistence · Image mgmt       │
+└─────────────────────────────────────────┘
+```
+
+> Full documentation coming soon. See the [Box README](https://github.com/A3S-Lab/Box) for current details.

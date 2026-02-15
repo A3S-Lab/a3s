@@ -1,0 +1,177 @@
+---
+title: Built-in Tools
+description: 11 built-in tools for file operations, shell execution, and web access
+---
+
+# Built-in Tools
+
+A3S Code ships with 11 built-in tools that cover file operations, shell execution, search, and web access. Tools are defined declaratively in Markdown and parsed at startup.
+
+## Tool Reference
+
+| Tool | Purpose | Example |
+|------|---------|---------|
+| `bash` | Execute shell commands | `git status`, `npm install` |
+| `read` | Read files with line numbers | View source code |
+| `write` | Create/overwrite files | Create new files |
+| `edit` | String replacement editing | Modify existing code |
+| `patch` | Apply unified diff patches | Complex multi-line edits |
+| `grep` | Search file contents (ripgrep) | Find function definitions |
+| `glob` | Find files by pattern | `**/*.ts`, `src/**/*.rs` |
+| `ls` | List directory contents | Explore project structure |
+| `web_fetch` | Fetch web content | Download documentation |
+| `web_search` | Search the web | Query multiple search engines |
+| `cron` | Manage scheduled tasks | Create/list/run cron jobs |
+
+## File Operations
+
+### `read`
+
+Read file contents with line numbers. Supports offset and limit for large files.
+
+```json
+{
+  "path": "src/main.rs",
+  "offset": 0,
+  "limit": 100
+}
+```
+
+### `write`
+
+Create or overwrite a file. The tool automatically creates parent directories.
+
+```json
+{
+  "path": "src/config.rs",
+  "content": "pub struct Config {\n    pub port: u16,\n}\n"
+}
+```
+
+### `edit`
+
+Replace a specific string in a file. Useful for targeted modifications.
+
+```json
+{
+  "path": "src/main.rs",
+  "old_string": "fn main() {",
+  "new_string": "fn main() -> Result<()> {"
+}
+```
+
+### `patch`
+
+Apply a unified diff patch. Best for complex multi-line edits.
+
+```json
+{
+  "path": "src/lib.rs",
+  "diff": "--- a/src/lib.rs\n+++ b/src/lib.rs\n@@ -1,3 +1,4 @@\n+use anyhow::Result;\n use std::io;\n"
+}
+```
+
+## Search
+
+### `grep`
+
+Search file contents using ripgrep patterns. Supports regex, globs, and context lines.
+
+```json
+{
+  "pattern": "fn.*async",
+  "path": "src/",
+  "glob": "*.rs",
+  "context": 2
+}
+```
+
+### `glob`
+
+Find files matching a glob pattern.
+
+```json
+{
+  "pattern": "src/**/*.rs"
+}
+```
+
+### `ls`
+
+List directory contents with file sizes and types.
+
+```json
+{
+  "path": "src/"
+}
+```
+
+## Shell
+
+### `bash`
+
+Execute shell commands. Commands run in the session's workspace directory.
+
+```json
+{
+  "command": "cargo test --lib -- test_name"
+}
+```
+
+## Web
+
+### `web_fetch`
+
+Fetch content from a URL. Returns text content extracted from HTML.
+
+```json
+{
+  "url": "https://docs.rs/tokio/latest/tokio/"
+}
+```
+
+### `web_search`
+
+Search the web using multiple search engines.
+
+```json
+{
+  "query": "rust async trait object",
+  "engine": "google"
+}
+```
+
+## Scheduling
+
+### `cron`
+
+Manage scheduled tasks with cron expressions or natural language.
+
+```json
+{
+  "action": "create",
+  "name": "backup",
+  "schedule": "every day at 2am",
+  "command": "backup.sh"
+}
+```
+
+Supported natural language formats:
+- English: `every 5 minutes`, `daily at 2am`, `every monday at 9:30`
+- Chinese: `每5分钟`, `每天凌晨2点`, `每周一上午9点30分`
+
+## File Version History
+
+All file-modifying tools (`write`, `edit`, `patch`) automatically capture a snapshot before making changes. You can:
+
+- View the diff between versions
+- Restore any previous version
+- Track all modifications made during a session
+
+## Extending with Custom Tools
+
+Beyond built-in tools, A3S Code supports:
+
+- [Skills](/docs/code/skills) — Markdown-based prompt extensions with tool permissions
+- [MCP](/docs/code/mcp) — External tools via Model Context Protocol
+- [LSP](/docs/code/lsp) — Code intelligence via Language Server Protocol

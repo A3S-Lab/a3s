@@ -1,0 +1,161 @@
+---
+title: Python SDK
+description: Full-featured Python client for A3S Code with 86 RPC coverage
+---
+
+# Python SDK
+
+The Python SDK provides async-first APIs with context manager support for automatic session cleanup.
+
+## Installation
+
+```bash
+pip install a3s-code
+```
+
+## High-Level API
+
+The recommended way to use A3S Code. Sessions auto-cleanup with `async with`.
+
+```python
+from a3s_code import A3sClient, create_provider
+
+anthropic = create_provider(name="anthropic", api_key="sk-ant-...")
+
+async with A3sClient(address="localhost:4088") as client:
+    async with await client.session(
+        model=anthropic("claude-sonnet-4-20250514"),
+        workspace="/project",
+        system="You are a senior engineer.",
+        auto_compact=True,
+    ) as session:
+        # Server-side agentic loop with streaming
+        async for event in session.stream("Refactor the auth module"):
+            if event.type == "text":
+                print(event.content, end="", flush=True)
+
+        # Non-streaming
+        result = await session.send("Explain this codebase")
+        print(result.text)
+
+        # Delegate to subagent
+        explore = await session.delegate("explore", "Find all API endpoints")
+        print(explore.text)
+```
+
+## Provider Helpers
+
+```python
+from a3s_code import create_provider
+
+anthropic = create_provider(name="anthropic", api_key="sk-ant-...")
+openai = create_provider(name="openai", api_key="sk-...", base_url="https://api.openai.com")
+kimi = create_provider(name="kimi", api_key="sk-...", base_url="http://your-kimi-endpoint/v1")
+```
+
+## Permissions
+
+```python
+await session.set_permissions(
+    default_action="ask",
+    allow=["Read(src/**)", "Grep(src/**)"],
+    deny=["Bash(rm -rf:*)"],
+    ask=["Bash(*)", "Write(*)"],
+)
+```
+
+## HITL Confirmation
+
+```python
+await session.set_confirmation(
+    auto_approve=["read", "grep", "glob", "ls"],
+    require_confirmation=["bash", "write", "edit"],
+    timeout=30000,
+    timeout_action="reject",
+)
+
+# Respond to confirmation request
+await session.confirm(confirmation_id, True, "Approved")
+```
+
+## Skills
+
+```python
+await session.load_skill("deploy")
+await session.load_skills("~/.a3s/skills")
+skills = await session.list_skills()
+```
+
+## LSP
+
+```python
+await client.start_lsp_server("rust", "file:///path/to/project")
+
+hover = await client.lsp_hover("/path/to/file.rs", 10, 5)
+defs = await client.lsp_definition("/path/to/file.rs", 15, 10)
+refs = await client.lsp_references("/path/to/file.rs", 20, 8)
+symbols = await client.lsp_symbols("main")
+diags = await client.lsp_diagnostics("/path/to/file.rs")
+```
+
+## MCP
+
+```python
+await client.register_mcp_server({
+    "name": "filesystem",
+    "transport": {"stdio": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem"]}},
+    "enabled": True,
+    "env": {},
+})
+
+await client.connect_mcp_server("filesystem")
+tools = await client.get_mcp_tools()
+```
+
+## Cron
+
+```python
+result = await client.create_cron_job("backup", "every day at 2am", "backup.sh")
+jobs = await client.list_cron_jobs()
+await client.run_cron_job(result["job"]["id"])
+history = await client.get_cron_history(result["job"]["id"])
+
+parsed = await client.parse_cron_schedule("every 5 minutes")
+# {"cron_expression": "*/5 * * * *", "description": "every 5 minutes"}
+```
+
+## Memory
+
+```python
+await client.store_memory(session_id, {
+    "content": "User prefers TypeScript over JavaScript",
+    "importance": 0.8,
+    "tags": ["preference", "language"],
+    "memory_type": "MEMORY_TYPE_SEMANTIC",
+})
+
+results = await client.search_memories(session_id, "TypeScript", ["preference"], 10)
+stats = await client.get_memory_stats(session_id)
+```
+
+## Low-Level Client
+
+For full control, use the client API directly:
+
+```python
+result = await client.create_session(
+    workspace="/project",
+    llm={
+        "provider": "anthropic",
+        "model": "claude-sonnet-4-20250514",
+        "api_key": "sk-ant-...",
+    },
+)
+session_id = result["session_id"]
+
+async for event in client.stream_agentic_generate(session_id, "Explain this codebase"):
+    if event.get("text_delta"):
+        print(event["text_delta"], end="", flush=True)
+
+await client.destroy_session(session_id)
+```

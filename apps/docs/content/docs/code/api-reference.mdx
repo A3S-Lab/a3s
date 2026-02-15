@@ -1,0 +1,193 @@
+---
+title: API Reference
+description: Complete gRPC API reference — 86 RPCs across 17 categories
+---
+
+# API Reference
+
+A3S Code exposes 86 gRPC RPCs organized into 17 categories. The server listens on port 4088 by default.
+
+## Lifecycle (4 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `healthCheck()` | Check agent health (version, uptime, sessions, store health) |
+| `getCapabilities()` | Get agent capabilities, tools, and models |
+| `initialize(workspace, env)` | Initialize agent with workspace |
+| `shutdown()` | Graceful shutdown |
+
+## Session Management (6 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `createSession(config, sessionId, initialContext)` | Create a new session |
+| `destroySession(sessionId)` | Destroy a session |
+| `listSessions()` | List all sessions |
+| `getSession(sessionId)` | Get session details |
+| `configureSession(sessionId, config)` | Update session configuration |
+| `getMessages(sessionId, limit, offset)` | Get conversation history |
+
+## Code Generation (4 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `generate(sessionId, messages)` | Generate response (unary) |
+| `streamGenerate(sessionId, messages)` | Generate response (streaming) |
+| `generateStructured(sessionId, messages, schema)` | Generate structured output (unary) |
+| `streamGenerateStructured(sessionId, messages, schema)` | Generate structured output (streaming) |
+
+## Server-Side Agentic Loop (2 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `agenticGenerate(sessionId, prompt, strategy, maxSteps)` | Run full agentic loop on server (unary) |
+| `streamAgenticGenerate(sessionId, prompt, strategy, maxSteps)` | Run full agentic loop on server (streaming) |
+
+## Server-Side Delegation (2 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `delegate(sessionId, agentType, prompt)` | Delegate task to subagent (unary) |
+| `streamDelegate(sessionId, agentType, prompt)` | Delegate task to subagent (streaming) |
+
+## Skill Management (5 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `loadSkill(sessionId, skillName, skillContent)` | Load a skill (global) |
+| `unloadSkill(sessionId, skillName)` | Unload a skill |
+| `listSkills(sessionId)` | List all loaded skills |
+| `getSkill(name)` | Get skill by name or all skills |
+| `loadSkillsFromDir(sessionId, directory, recursive)` | Load all skills from a directory |
+
+## Context Management (3 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `getContextUsage(sessionId)` | Get token usage |
+| `compactContext(sessionId)` | Compact conversation context |
+| `clearContext(sessionId)` | Clear all context |
+
+## Event Streaming (1 RPC)
+
+| Method | Description |
+|--------|-------------|
+| `subscribeEvents(sessionId, eventTypes)` | Subscribe to agent events |
+
+## Control Operations (3 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `cancel(sessionId, operationId)` | Cancel an operation |
+| `pause(sessionId)` | Pause a session |
+| `resume(sessionId)` | Resume a session |
+
+## Human-in-the-Loop (3 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `confirmToolExecution(sessionId, toolId, approved, reason)` | Confirm or reject tool execution |
+| `setConfirmationPolicy(sessionId, policy)` | Set HITL confirmation policy |
+| `getConfirmationPolicy(sessionId)` | Get current confirmation policy |
+
+## External Task Handling (4 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `setLaneHandler(sessionId, lane, config)` | Set lane handler mode |
+| `getLaneHandler(sessionId, lane)` | Get lane handler config |
+| `completeExternalTask(sessionId, taskId, success, result, error)` | Complete an external task |
+| `listPendingExternalTasks(sessionId)` | List pending external tasks |
+
+## Permission System (4 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `setPermissionPolicy(sessionId, policy)` | Set permission policy |
+| `getPermissionPolicy(sessionId)` | Get permission policy |
+| `checkPermission(sessionId, toolName, args)` | Check tool permission |
+| `addPermissionRule(sessionId, ruleType, rule)` | Add a permission rule |
+
+## Todo Tracking (2 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `getTodos(sessionId)` | Get todos for session |
+| `setTodos(sessionId, todos)` | Set todos for session |
+
+## Provider Configuration (7 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `listProviders()` | List all providers |
+| `getProvider(name)` | Get provider details |
+| `addProvider(provider)` | Add a new provider |
+| `updateProvider(provider)` | Update a provider |
+| `removeProvider(name)` | Remove a provider |
+| `setDefaultModel(provider, model)` | Set default model |
+| `getDefaultModel()` | Get default model |
+
+## Planning & Goal Tracking (4 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `createPlan(sessionId, prompt, context)` | Create an execution plan |
+| `getPlan(sessionId, planId)` | Get an existing plan |
+| `extractGoal(sessionId, prompt)` | Extract goal from prompt |
+| `checkGoalAchievement(sessionId, goal, currentState)` | Check goal progress |
+
+## Memory System (5 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `storeMemory(sessionId, memory)` | Store a memory item |
+| `retrieveMemory(sessionId, memoryId)` | Retrieve memory by ID |
+| `searchMemories(sessionId, query, tags, limit)` | Search memories |
+| `getMemoryStats(sessionId)` | Get memory statistics |
+| `clearMemories(sessionId, options)` | Clear memories |
+
+## MCP (5 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `registerMcpServer(config)` | Register an MCP server |
+| `connectMcpServer(name)` | Connect to MCP server |
+| `disconnectMcpServer(name)` | Disconnect from MCP server |
+| `listMcpServers()` | List all MCP servers |
+| `getMcpTools(serverName?)` | Get available MCP tools |
+
+## LSP (8 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `startLspServer(language, rootUri)` | Start language server |
+| `stopLspServer(language)` | Stop language server |
+| `listLspServers()` | List running servers |
+| `lspHover(filePath, line, column)` | Get hover information |
+| `lspDefinition(filePath, line, column)` | Go to definition |
+| `lspReferences(filePath, line, column)` | Find all references |
+| `lspSymbols(query, limit)` | Search workspace symbols |
+| `lspDiagnostics(filePath)` | Get diagnostics |
+
+## Cron (10 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `listCronJobs()` | List all cron jobs |
+| `createCronJob(name, schedule, command, timeoutMs)` | Create a cron job |
+| `getCronJob(id, name)` | Get cron job by ID or name |
+| `updateCronJob(id, schedule, command, timeoutMs)` | Update a cron job |
+| `pauseCronJob(id)` | Pause a cron job |
+| `resumeCronJob(id)` | Resume a cron job |
+| `deleteCronJob(id)` | Delete a cron job |
+| `getCronHistory(id, limit)` | Get execution history |
+| `runCronJob(id)` | Manually trigger a job |
+| `parseCronSchedule(input)` | Parse natural language to cron |
+
+## Observability (3 RPCs)
+
+| Method | Description |
+|--------|-------------|
+| `getToolMetrics(sessionId, toolName)` | Per-tool execution metrics |
+| `getCostSummary(sessionId)` | Per-session token cost summary |
+| `getQueueStats(sessionId)` | Lane queue statistics |

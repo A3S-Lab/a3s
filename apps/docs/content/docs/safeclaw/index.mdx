@@ -1,0 +1,40 @@
+---
+title: SafeClaw
+description: Privacy-preserving AI assistant runtime with TEE support
+---
+
+# SafeClaw
+
+SafeClaw is a privacy-preserving AI assistant runtime that provides PII classification, taint tracking, and confidential computing support across 7 chat platform adapters.
+
+## Key Features
+
+- **PII Classification** — Multi-level sensitivity detection (L1–L4) with pluggable classifiers
+- **Taint Tracking** — Track data lineage through the processing pipeline
+- **TEE Integration** — Confidential computing via AMD SEV-SNP enclaves
+- **Platform Adapters** — Telegram, Discord, Slack, WeChat, LINE, WhatsApp, Web
+- **Encrypted Storage** — AES-256-GCM encrypted conversation persistence
+- **Memory System** — Cross-session semantic and episodic memory
+
+## Architecture
+
+```
+┌───────────────────────────────────────────┐
+│           Chat Platform Adapters          │
+│  Telegram · Discord · Slack · WeChat · ...│
+├───────────────────────────────────────────┤
+│           Privacy Pipeline                │
+│  PII Scan → Classify → Taint → Redact    │
+├───────────────────────────────────────────┤
+│            LLM Gateway                    │
+│  Provider routing · Token management      │
+├───────────────────────────────────────────┤
+│          Storage Layer                    │
+│  Encrypted state · Memory · Artifacts     │
+├───────────────────────────────────────────┤
+│        TEE Runtime (Optional)             │
+│  SEV-SNP enclave · Attestation            │
+└───────────────────────────────────────────┘
+```
+
+> Full documentation coming soon. See the [SafeClaw README](https://github.com/A3S-Lab/SafeClaw) for current details.
