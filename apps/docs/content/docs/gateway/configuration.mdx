@@ -1,11 +1,20 @@
 ---
 title: Configuration
-description: TOML-based configuration for entrypoints, routers, services, middlewares, and providers
+description: TOML and HCL configuration for entrypoints, routers, services, middlewares, and providers
 ---
 
 # Configuration
 
-A3S Gateway uses TOML configuration with four top-level sections: entrypoints, routers, services, and middlewares. Configuration supports hot reload via file watching.
+A3S Gateway supports both TOML and HCL (HashiCorp Configuration Language) configuration formats. The format is auto-detected by file extension (`.toml` or `.hcl`). Configuration has four top-level sections: entrypoints, routers, services, and middlewares, and supports hot reload via file watching.
+
+## File Formats
+
+| Format | Extension | Use Case |
+|--------|-----------|----------|
+| TOML | `.toml` | Default, familiar to Rust ecosystem |
+| HCL | `.hcl` | Terraform/Consul users, block-based syntax |
+
+Both formats are fully equivalent — every configuration option works in either format.
 
 ## GatewayConfig
 
@@ -22,11 +31,15 @@ pub struct GatewayConfig {
 ### Loading Configuration
 
 ```rust
-// From file
+// From file (auto-detects format by extension)
 let config = GatewayConfig::from_file("gateway.toml").await?;
+let config = GatewayConfig::from_file("gateway.hcl").await?;
 
 // From TOML string
 let config = GatewayConfig::from_toml(toml_content)?;
+
+// From HCL string
+let config = GatewayConfig::from_hcl(hcl_content)?;
 
 // Validate
 config.validate()?;
@@ -43,6 +56,8 @@ pub struct EntrypointConfig {
     pub tls: Option<TlsConfig>,
 }
 ```
+
+TOML:
 
 ```toml
 # HTTP listener
@@ -66,6 +81,28 @@ protocol = "tcp"
 [entrypoints.dns]
 address = "0.0.0.0:53"
 protocol = "udp"
+```
+
+HCL:
+
+```hcl
+entrypoints "web" {
+  address = "0.0.0.0:80"
+}
+
+entrypoints "websecure" {
+  address  = "0.0.0.0:443"
+  tls {
+    cert_file   = "/etc/certs/cert.pem"
+    key_file    = "/etc/certs/key.pem"
+    min_version = "1.2"
+  }
+}
+
+entrypoints "tcp" {
+  address  = "0.0.0.0:5432"
+  protocol = "tcp"
+}
 ```
 
 ### TLS Configuration
@@ -95,6 +132,8 @@ pub struct RouterConfig {
 }
 ```
 
+TOML:
+
 ```toml
 [routers.api]
 rule = "Host(`api.example.com`) && PathPrefix(`/v1`)"
@@ -108,6 +147,25 @@ rule = "Host(`www.example.com`)"
 service = "web-service"
 entrypoints = ["web", "websecure"]
 priority = 10
+```
+
+HCL:
+
+```hcl
+routers "api" {
+  rule        = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+  service     = "api-service"
+  entrypoints = ["websecure"]
+  middlewares  = ["auth-jwt", "rate-limit"]
+  priority    = 0
+}
+
+routers "web" {
+  rule        = "Host(`www.example.com`)"
+  service     = "web-service"
+  entrypoints = ["web", "websecure"]
+  priority    = 10
+}
 ```
 
 Lower `priority` values are matched first. See [Routing](./routing) for rule syntax details.
@@ -128,6 +186,8 @@ pub struct LoadBalancerConfig {
     pub sticky: Option<StickyConfig>,
 }
 ```
+
+TOML:
 
 ```toml
 [services.api-service.load_balancer]
@@ -153,11 +213,40 @@ cookie = "srv_id"
 ttl = "1h"
 ```
 
+HCL:
+
+```hcl
+services "api-service" {
+  load_balancer {
+    strategy = "weighted"
+    servers  = [
+      { url = "http://127.0.0.1:8001", weight = 3 },
+      { url = "http://127.0.0.1:8002", weight = 1 }
+    ]
+
+    health_check {
+      path                = "/health"
+      interval            = "10s"
+      timeout             = "5s"
+      unhealthy_threshold = 3
+      healthy_threshold   = 1
+    }
+
+    sticky {
+      cookie = "srv_id"
+      ttl    = "1h"
+    }
+  }
+}
+```
+
 See [Services](./services) for load balancing strategies and health check details.
 
 ## Middlewares
 
 Middlewares are defined globally and referenced by name in routers:
+
+TOML:
 
 ```toml
 [middlewares.auth-jwt]
@@ -178,6 +267,31 @@ allowed_methods = ["GET", "POST", "PUT", "DELETE"]
 type = "compress"
 ```
 
+HCL:
+
+```hcl
+middlewares "auth-jwt" {
+  type  = "jwt"
+  value = "${JWT_SECRET}"
+}
+
+middlewares "rate-limit" {
+  type  = "rate-limit"
+  rate  = 100
+  burst = 50
+}
+
+middlewares "cors" {
+  type            = "cors"
+  allowed_origins = ["https://example.com"]
+  allowed_methods = ["GET", "POST", "PUT", "DELETE"]
+}
+
+middlewares "compress" {
+  type = "compress"
+}
+```
+
 See [Middleware](./middleware) for all 10 built-in middleware types.
 
 ## Providers
@@ -186,13 +300,26 @@ Configuration providers supply dynamic configuration:
 
 ### File Provider
 
+TOML:
+
 ```toml
 [providers.file]
 watch = true
 directory = "/etc/gateway/conf.d/"
 ```
 
-When `watch = true`, the gateway monitors the config file and directory for changes using inotify (Linux) or kqueue (macOS), and hot-reloads without downtime.
+HCL:
+
+```hcl
+providers {
+  file {
+    watch     = true
+    directory = "/etc/gateway/conf.d/"
+  }
+}
+```
+
+When `watch = true`, the gateway monitors the config file and directory for changes using inotify (Linux) or kqueue (macOS), and hot-reloads without downtime. Both `.toml` and `.hcl` files in the watch directory are supported.
 
 ### Environment Variable Substitution
 
@@ -211,8 +338,8 @@ key_file = "${TLS_KEY_PATH}"
 ## Hot Reload
 
 ```rust
-// Programmatic reload
-let new_config = GatewayConfig::from_file("gateway.toml").await?;
+// Programmatic reload (auto-detects format)
+let new_config = GatewayConfig::from_file("gateway.hcl").await?;
 gateway.reload(new_config).await?;
 ```
 
@@ -224,6 +351,8 @@ During reload:
 5. Gateway transitions back to `Running`
 
 ## Full Example
+
+### TOML (`gateway.toml`)
 
 ```toml
 # Entrypoints
@@ -282,4 +411,82 @@ allowed_methods = ["GET", "POST"]
 # Providers
 [providers.file]
 watch = true
+```
+
+### HCL (`gateway.hcl`)
+
+```hcl
+# Entrypoints
+entrypoints "web" {
+  address = "0.0.0.0:80"
+}
+
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
+  tls {
+    cert_file = "/etc/certs/cert.pem"
+    key_file  = "/etc/certs/key.pem"
+  }
+}
+
+# Routers
+routers "api" {
+  rule        = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+  service     = "api-service"
+  entrypoints = ["websecure"]
+  middlewares  = ["auth-jwt", "rate-limit", "cors"]
+}
+
+routers "web" {
+  rule        = "Host(`www.example.com`)"
+  service     = "web-service"
+  entrypoints = ["web", "websecure"]
+}
+
+# Services
+services "api-service" {
+  load_balancer {
+    strategy = "least-connections"
+    servers  = [
+      { url = "http://127.0.0.1:8001" },
+      { url = "http://127.0.0.1:8002" }
+    ]
+    health_check {
+      path     = "/health"
+      interval = "10s"
+    }
+  }
+}
+
+services "web-service" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:3000" }]
+  }
+}
+
+# Middlewares
+middlewares "auth-jwt" {
+  type  = "jwt"
+  value = "${JWT_SECRET}"
+}
+
+middlewares "rate-limit" {
+  type  = "rate-limit"
+  rate  = 100
+  burst = 50
+}
+
+middlewares "cors" {
+  type            = "cors"
+  allowed_origins = ["https://example.com"]
+  allowed_methods = ["GET", "POST"]
+}
+
+# Providers
+providers {
+  file {
+    watch = true
+  }
+}
 ```

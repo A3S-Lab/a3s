@@ -7,7 +7,9 @@ description: Get A3S Gateway running with a basic reverse proxy configuration
 
 ## Minimal Configuration
 
-Create a `gateway.toml` file:
+A3S Gateway supports both TOML and HCL configuration formats. Create a `gateway.toml` or `gateway.hcl` file:
+
+TOML:
 
 ```toml
 [entrypoints.web]
@@ -24,11 +26,35 @@ strategy = "round-robin"
 url = "http://127.0.0.1:8001"
 ```
 
+HCL:
+
+```hcl
+entrypoints "web" {
+  address = "0.0.0.0:80"
+}
+
+routers "my-api" {
+  rule        = "PathPrefix(`/api`)"
+  service     = "api-backend"
+  entrypoints = ["web"]
+}
+
+services "api-backend" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+}
+```
+
 ## Start the Gateway
 
 ```bash
-# Start with config file
+# Start with TOML config
 a3s-gateway --config gateway.toml
+
+# Start with HCL config
+a3s-gateway --config gateway.hcl
 
 # Start with debug logging
 a3s-gateway --config gateway.toml --log-level debug
