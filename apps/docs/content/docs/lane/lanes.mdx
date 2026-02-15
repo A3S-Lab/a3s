@@ -1,0 +1,169 @@
+---
+title: Lanes
+description: Priority-based lanes with configurable concurrency, timeout, retry, rate limiting, and priority boosting
+---
+
+# Lanes
+
+A lane is a priority queue that holds pending commands and enforces concurrency limits. Each lane has a unique ID, a priority level, and a configuration that controls timeout, retry, rate limiting, and priority boosting behavior.
+
+## Built-in Lanes
+
+Call `with_default_lanes()` on the builder to register the 6 standard lanes:
+
+```rust
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .build()
+    .await?;
+```
+
+| Lane | Priority | Min | Max | Use Case |
+|------|----------|-----|-----|----------|
+| `system` | 0 | 1 | 5 | System-level operations |
+| `control` | 1 | 1 | 3 | Pause, resume, cancel |
+| `query` | 2 | 1 | 10 | Read-only queries |
+| `session` | 3 | 1 | 5 | Session management |
+| `skill` | 4 | 1 | 3 | Skill/tool execution |
+| `prompt` | 5 | 1 | 2 | LLM prompt processing |
+
+## Custom Lanes
+
+Register lanes with custom priorities and configuration:
+
+```rust
+let manager = QueueManagerBuilder::new(emitter)
+    .with_lane("critical", LaneConfig::new(2, 8), 0)
+    .with_lane("normal", LaneConfig::new(1, 16), 1)
+    .with_lane("background", LaneConfig::new(1, 4), 2)
+    .build()
+    .await?;
+```
+
+You can mix built-in and custom lanes:
+
+```rust
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .with_lane("batch", LaneConfig::new(1, 20), 6)
+    .build()
+    .await?;
+```
+
+## LaneConfig
+
+`LaneConfig` controls all per-lane behavior. Create with `new(min, max)` and chain builder methods:
+
+```rust
+use std::time::Duration;
+
+let config = LaneConfig::new(2, 10)
+    .with_timeout(Duration::from_secs(30))
+    .with_retry_policy(RetryPolicy::exponential(3))
+    .with_rate_limit(RateLimitConfig::per_second(100))
+    .with_priority_boost(PriorityBoostConfig::standard(Duration::from_secs(60)));
+```
+
+### Concurrency
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `min_concurrency` | `usize` | Reserved concurrency slots (advisory) |
+| `max_concurrency` | `usize` | Hard limit enforced by semaphore |
+
+The semaphore ensures no more than `max_concurrency` commands from a lane execute simultaneously.
+
+### Timeout
+
+Set a default timeout for all commands in a lane:
+
+```rust
+let config = LaneConfig::new(1, 10)
+    .with_timeout(Duration::from_secs(30));
+```
+
+Commands that exceed the timeout receive a `LaneError::Timeout` error. If retries are configured, the command is re-enqueued.
+
+### Retry Policy
+
+Three strategies are available:
+
+```rust
+// Exponential backoff: 100ms -> 200ms -> 400ms -> 800ms (max 30s)
+let config = LaneConfig::new(1, 10)
+    .with_retry_policy(RetryPolicy::exponential(3));
+
+// Fixed delay: 1s between each retry
+let config = LaneConfig::new(1, 10)
+    .with_retry_policy(RetryPolicy::fixed(5, Duration::from_secs(1)));
+
+// No retries (default)
+let config = LaneConfig::new(1, 10)
+    .with_retry_policy(RetryPolicy::none());
+```
+
+| Strategy | Initial Delay | Max Delay | Multiplier |
+|----------|---------------|-----------|------------|
+| Exponential | 100ms | 30s | 2x |
+| Fixed | User-defined | - | - |
+| None | - | - | - |
+
+### Rate Limiting
+
+Limit command throughput per lane:
+
+```rust
+// Token bucket: 100 commands per second
+let config = LaneConfig::new(1, 10)
+    .with_rate_limit(RateLimitConfig::per_second(100));
+
+// Per-minute or per-hour
+let config = LaneConfig::new(1, 10)
+    .with_rate_limit(RateLimitConfig::per_minute(1000));
+```
+
+### Priority Boosting
+
+Automatically escalate priority for aging commands as their deadline approaches:
+
+```rust
+// Standard: boost at 25%, 50%, 75% of deadline
+let config = LaneConfig::new(1, 10)
+    .with_priority_boost(PriorityBoostConfig::standard(Duration::from_secs(60)));
+
+// Aggressive: more frequent escalation
+let config = LaneConfig::new(1, 10)
+    .with_priority_boost(PriorityBoostConfig::aggressive(Duration::from_secs(30)));
+```
+
+## Lane Status
+
+Check the current state of each lane:
+
+```rust
+let stats = manager.stats().await?;
+for (lane_id, status) in &stats.lanes {
+    println!("{}: {} pending, {} active (max {})",
+        lane_id, status.pending, status.active, status.max);
+}
+```
+
+### LaneStatus Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pending` | `usize` | Commands waiting in queue |
+| `active` | `usize` | Commands currently executing |
+| `min` | `usize` | Minimum concurrency (advisory) |
+| `max` | `usize` | Maximum concurrency (enforced) |
+
+## Scheduling Behavior
+
+The scheduler runs a background loop (10ms interval) that:
+
+1. Iterates lanes in priority order (lowest number first)
+2. Skips lanes at max concurrency
+3. Dequeues and spawns the first available command
+4. Repeats until no lanes have pending work
+
+This guarantees that higher-priority lanes are always serviced before lower-priority ones, while ensuring fair scheduling when all priorities are equal.

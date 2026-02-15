@@ -1,0 +1,151 @@
+---
+title: Events
+description: Real-time event system for monitoring command lifecycle and queue state
+---
+
+# Events
+
+A3S Lane includes a broadcast pub/sub event system that emits events for every stage of the command lifecycle. Use events for logging, monitoring dashboards, and custom integrations.
+
+## EventEmitter
+
+The `EventEmitter` is a Tokio broadcast channel shared across the queue:
+
+```rust
+use a3s_lane::EventEmitter;
+
+// Create with channel capacity
+let emitter = EventEmitter::new(100);
+```
+
+The capacity determines how many events can be buffered before slow subscribers start losing events (lagging).
+
+## Subscribing to Events
+
+### Subscribe to All Events
+
+```rust
+let mut rx = emitter.subscribe();
+
+tokio::spawn(async move {
+    while let Ok(event) = rx.recv().await {
+        println!("[{}] {}", event.timestamp, event.key);
+    }
+});
+```
+
+### Filtered Subscription
+
+Subscribe only to events matching a predicate:
+
+```rust
+let mut stream = emitter.subscribe_filtered(|event| {
+    event.key.starts_with("queue.command")
+});
+
+tokio::spawn(async move {
+    while let Ok(event) = stream.recv().await {
+        println!("Command event: {}", event.key);
+    }
+});
+```
+
+## Event Structure
+
+```rust
+pub struct LaneEvent {
+    pub key: EventKey,           // Dot-separated event identifier
+    pub payload: EventPayload,   // Event data
+    pub timestamp: DateTime<Utc>,
+}
+
+pub enum EventPayload {
+    Empty,
+    String(String),
+    Map(HashMap<String, serde_json::Value>),
+}
+```
+
+## Event Types
+
+### Command Lifecycle
+
+| Event Key | Payload | Description |
+|-----------|---------|-------------|
+| `queue.command.submitted` | Map: `lane_id`, `command_type` | Command added to queue |
+| `queue.command.started` | Map: `lane_id`, `command_type` | Execution began |
+| `queue.command.completed` | Map: `lane_id`, `command_type`, `duration_ms` | Execution succeeded |
+| `queue.command.failed` | Map: `lane_id`, `command_type`, `error` | Execution failed |
+| `queue.command.timeout` | Map: `lane_id`, `duration` | Command timed out |
+| `queue.command.retry` | Map: `lane_id`, `attempt`, `delay_ms` | Command being retried |
+| `queue.command.dead_lettered` | Map: `lane_id`, `command_type`, `error` | Command moved to DLQ |
+
+### Lane State
+
+| Event Key | Payload | Description |
+|-----------|---------|-------------|
+| `queue.lane.pressure` | Map: `lane_id`, `pending`, `active` | Lane approaching capacity |
+| `queue.lane.idle` | Map: `lane_id` | Lane has no pending work |
+
+### Shutdown
+
+| Event Key | Payload | Description |
+|-----------|---------|-------------|
+| `queue.shutdown.started` | Empty | Shutdown initiated |
+| `queue.shutdown.complete` | Empty | All commands drained |
+
+## Emitting Custom Events
+
+You can emit your own events through the same channel:
+
+```rust
+use a3s_lane::{LaneEvent, EventPayload};
+use chrono::Utc;
+
+emitter.emit(LaneEvent {
+    key: "app.custom.event".into(),
+    payload: EventPayload::String("custom data".into()),
+    timestamp: Utc::now(),
+});
+```
+
+## Example: Command Lifecycle Logger
+
+```rust
+let emitter = EventEmitter::new(100);
+let mut rx = emitter.subscribe();
+
+tokio::spawn(async move {
+    while let Ok(event) = rx.recv().await {
+        match event.key.as_str() {
+            "queue.command.submitted" => {
+                if let EventPayload::Map(m) = &event.payload {
+                    println!("+ Submitted {} to {}",
+                        m.get("command_type").unwrap(),
+                        m.get("lane_id").unwrap());
+                }
+            }
+            "queue.command.completed" => {
+                if let EventPayload::Map(m) = &event.payload {
+                    println!("  Completed {} in {}ms",
+                        m.get("command_type").unwrap(),
+                        m.get("duration_ms").unwrap());
+                }
+            }
+            "queue.command.failed" => {
+                if let EventPayload::Map(m) = &event.payload {
+                    println!("! Failed {}: {}",
+                        m.get("command_type").unwrap(),
+                        m.get("error").unwrap());
+                }
+            }
+            _ => {}
+        }
+    }
+});
+
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .build()
+    .await?;
+```

@@ -1,0 +1,211 @@
+---
+title: Observability
+description: Metrics collection, latency histograms, and configurable alerts
+---
+
+# Observability
+
+A3S Lane provides built-in metrics collection and alerting for production monitoring. Track command throughput, latency percentiles, queue depth, and set threshold-based alerts.
+
+## Metrics
+
+### Enable Metrics
+
+```rust
+use a3s_lane::QueueMetrics;
+
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .with_metrics(QueueMetrics::local())
+    .build()
+    .await?;
+```
+
+`QueueMetrics::local()` uses an in-memory backend. For production, implement a custom `MetricsBackend` (e.g., Prometheus, Datadog).
+
+### Reading Metrics
+
+```rust
+let metrics = manager.metrics().unwrap();
+let snapshot = metrics.snapshot().await;
+
+// Counters
+println!("Submitted: {:?}", snapshot.counters.get("lane.commands.submitted"));
+println!("Completed: {:?}", snapshot.counters.get("lane.commands.completed"));
+println!("Failed: {:?}", snapshot.counters.get("lane.commands.failed"));
+
+// Gauges
+println!("Queue depth: {:?}", snapshot.gauges.get("lane.queue.depth.query"));
+println!("Active: {:?}", snapshot.gauges.get("lane.queue.active.query"));
+
+// Histograms
+if let Some(latency) = snapshot.histograms.get("lane.command.latency_ms.query") {
+    println!("Latency p50: {}ms", latency.percentiles.p50);
+    println!("Latency p95: {}ms", latency.percentiles.p95);
+    println!("Latency p99: {}ms", latency.percentiles.p99);
+}
+```
+
+### Available Metrics
+
+**Counters** (monotonically increasing):
+
+| Metric | Description |
+|--------|-------------|
+| `lane.commands.submitted` | Total commands submitted |
+| `lane.commands.completed` | Successfully completed |
+| `lane.commands.failed` | Execution failures |
+| `lane.commands.timeout` | Timed out commands |
+| `lane.commands.retried` | Retry attempts |
+| `lane.commands.dead_lettered` | Moved to DLQ |
+
+**Gauges** (point-in-time values):
+
+| Metric | Description |
+|--------|-------------|
+| `lane.queue.depth.<lane_id>` | Pending commands per lane |
+| `lane.queue.active.<lane_id>` | Active commands per lane |
+
+**Histograms** (distributions):
+
+| Metric | Description |
+|--------|-------------|
+| `lane.command.latency_ms.<lane_id>` | Execution time distribution |
+| `lane.command.wait_time_ms.<lane_id>` | Queue wait time distribution |
+
+### Histogram Percentiles
+
+```rust
+pub struct HistogramStats {
+    pub count: u64,
+    pub sum: f64,
+    pub min: f64,
+    pub max: f64,
+    pub mean: f64,
+    pub percentiles: HistogramPercentiles,
+}
+
+pub struct HistogramPercentiles {
+    pub p50: f64,
+    pub p90: f64,
+    pub p95: f64,
+    pub p99: f64,
+}
+```
+
+### Custom Metrics Backend
+
+Implement the `MetricsBackend` trait to push metrics to your monitoring system:
+
+```rust
+use a3s_lane::MetricsBackend;
+
+#[async_trait]
+impl MetricsBackend for PrometheusBackend {
+    async fn increment_counter(&self, name: &str, value: u64) {
+        // Push to Prometheus
+    }
+    async fn set_gauge(&self, name: &str, value: f64) { /* ... */ }
+    async fn record_histogram(&self, name: &str, value: f64) { /* ... */ }
+    async fn get_counter(&self, name: &str) -> Option<u64> { /* ... */ }
+    async fn get_gauge(&self, name: &str) -> Option<f64> { /* ... */ }
+    async fn get_histogram_stats(&self, name: &str) -> Option<HistogramStats> { /* ... */ }
+    async fn reset(&self) { /* ... */ }
+    async fn snapshot(&self) -> MetricsSnapshot { /* ... */ }
+}
+
+let metrics = QueueMetrics::new(Arc::new(PrometheusBackend::new()));
+```
+
+## Alerts
+
+### Enable Alerts
+
+```rust
+use a3s_lane::AlertManager;
+
+// Queue depth alerts
+let alerts = Arc::new(AlertManager::with_queue_depth_alerts(100, 500));
+
+// Latency alerts (in milliseconds)
+let alerts = Arc::new(AlertManager::with_latency_alerts(500.0, 2000.0));
+
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .with_alerts(alerts)
+    .build()
+    .await?;
+```
+
+### Alert Levels
+
+| Level | Queue Depth Trigger | Latency Trigger |
+|-------|---------------------|-----------------|
+| `Warning` | >= warning threshold | >= warning threshold |
+| `Critical` | >= critical threshold | >= critical threshold |
+
+### Alert Callbacks
+
+Register callbacks to handle alerts (send to Slack, PagerDuty, etc.):
+
+```rust
+let alerts = Arc::new(AlertManager::with_queue_depth_alerts(100, 500));
+
+alerts.add_callback(|alert| {
+    println!("[{:?}] Lane '{}': {}",
+        alert.level, alert.lane_id, alert.message);
+}).await;
+```
+
+### Alert Fields
+
+```rust
+pub struct Alert {
+    pub lane_id: String,
+    pub level: AlertLevel,      // Warning | Critical
+    pub message: String,
+    pub timestamp: DateTime<Utc>,
+}
+```
+
+### Configure Thresholds at Runtime
+
+```rust
+use a3s_lane::{QueueDepthAlertConfig, LatencyAlertConfig};
+
+let alerts = manager.alerts().unwrap();
+
+alerts.set_queue_depth_config(QueueDepthAlertConfig {
+    warning_threshold: 200,
+    critical_threshold: 1000,
+}).await;
+
+alerts.set_latency_config(LatencyAlertConfig {
+    warning_threshold: 1000.0,
+    critical_threshold: 5000.0,
+}).await;
+```
+
+## Monitoring
+
+For continuous health monitoring, use `QueueMonitor`:
+
+```rust
+use a3s_lane::{QueueMonitor, MonitorConfig};
+use std::time::Duration;
+
+let monitor = QueueMonitor::with_config(
+    manager.queue(),
+    MonitorConfig {
+        interval: Duration::from_secs(5),
+        pending_warning_threshold: 50,
+        active_warning_threshold: 20,
+    },
+);
+
+// Start background monitoring
+monitor.start().await;
+
+// Check stats on demand
+let stats = monitor.stats().await;
+```

@@ -1,0 +1,193 @@
+---
+title: Reliability
+description: Timeout, retry, dead letter queue, persistent storage, and graceful shutdown
+---
+
+# Reliability
+
+A3S Lane provides multiple layers of reliability: per-command timeouts, configurable retry policies, a dead letter queue for permanently failed commands, persistent storage for crash recovery, and graceful shutdown with draining.
+
+## Timeout
+
+Set a per-lane timeout so no command runs indefinitely:
+
+```rust
+let config = LaneConfig::new(1, 10)
+    .with_timeout(Duration::from_secs(30));
+```
+
+When a command exceeds the timeout, it receives `LaneError::Timeout(duration)`. If retries are configured, the command is retried. Otherwise it goes to the dead letter queue (if enabled) or the error is returned to the caller.
+
+## Retry Policies
+
+### Exponential Backoff
+
+Delays increase exponentially between retries, with a cap at 30 seconds:
+
+```rust
+let config = LaneConfig::new(1, 10)
+    .with_retry_policy(RetryPolicy::exponential(3));
+```
+
+| Attempt | Delay |
+|---------|-------|
+| 1 | 100ms |
+| 2 | 200ms |
+| 3 | 400ms |
+| 4+ | Capped at 30s |
+
+### Fixed Delay
+
+Constant delay between retries:
+
+```rust
+let config = LaneConfig::new(1, 10)
+    .with_retry_policy(RetryPolicy::fixed(5, Duration::from_secs(1)));
+```
+
+### No Retries (Default)
+
+```rust
+let config = LaneConfig::new(1, 10)
+    .with_retry_policy(RetryPolicy::none());
+```
+
+## Dead Letter Queue
+
+Commands that exhaust all retries are moved to the dead letter queue (DLQ) for inspection and debugging.
+
+### Enable DLQ
+
+```rust
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .with_dlq(100)  // Max 100 dead letters
+    .build()
+    .await?;
+```
+
+### Inspect Dead Letters
+
+```rust
+if let Some(dlq) = manager.queue().dlq() {
+    let letters = dlq.list().await;
+    for letter in &letters {
+        println!("[{}] {} in lane '{}': {}",
+            letter.failed_at,
+            letter.command_type,
+            letter.lane_id,
+            letter.error,
+        );
+        println!("  Attempts: {}", letter.attempts);
+    }
+}
+```
+
+### DeadLetter Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `command_id` | `String` | Unique command identifier |
+| `command_type` | `String` | From `Command::command_type()` |
+| `lane_id` | `String` | Lane where the command failed |
+| `error` | `String` | Last error message |
+| `attempts` | `u32` | Total execution attempts |
+| `failed_at` | `DateTime<Utc>` | Timestamp of final failure |
+
+### DLQ Operations
+
+```rust
+// Pop one dead letter (for retry or inspection)
+let letter = dlq.pop().await;
+
+// Clear all dead letters
+dlq.clear().await;
+
+// Check size
+let count = dlq.len().await;
+let empty = dlq.is_empty().await;
+```
+
+## Persistent Storage
+
+Enable storage so pending commands survive process restarts.
+
+### Local Filesystem Storage
+
+```rust
+use std::path::PathBuf;
+
+let storage = Arc::new(
+    LocalStorage::new(PathBuf::from("./queue-data")).await?
+);
+
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .with_storage(storage)
+    .with_dlq(100)
+    .build()
+    .await?;
+```
+
+`LocalStorage` persists commands as JSON files with an in-memory cache for fast reads.
+
+### Custom Storage Backend
+
+Implement the `Storage` trait for any backend (Redis, PostgreSQL, etc.):
+
+```rust
+use a3s_lane::Storage;
+
+#[async_trait]
+impl Storage for MyRedisStorage {
+    async fn save_command(&self, cmd: StoredCommand) -> Result<()> { /* ... */ }
+    async fn load_commands(&self) -> Result<Vec<StoredCommand>> { /* ... */ }
+    async fn remove_command(&self, id: &str) -> Result<()> { /* ... */ }
+    async fn save_dead_letter(&self, letter: StoredDeadLetter) -> Result<()> { /* ... */ }
+    async fn load_dead_letters(&self) -> Result<Vec<StoredDeadLetter>> { /* ... */ }
+    async fn clear_dead_letters(&self) -> Result<()> { /* ... */ }
+    async fn clear_all(&self) -> Result<()> { /* ... */ }
+}
+```
+
+### StoredCommand Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `String` | Unique identifier |
+| `command_type` | `String` | Command type string |
+| `lane_id` | `String` | Target lane |
+| `payload` | `Value` | Serialized command data |
+| `retry_count` | `u32` | Current retry count |
+| `created_at` | `DateTime<Utc>` | Submission time |
+| `last_attempt_at` | `Option<DateTime<Utc>>` | Last execution attempt |
+
+## Graceful Shutdown
+
+Shut down the queue cleanly by stopping new submissions and draining pending commands:
+
+```rust
+// 1. Stop accepting new commands
+manager.shutdown().await;
+
+// 2. Wait for in-flight commands to complete (with timeout)
+match manager.drain(Duration::from_secs(30)).await {
+    Ok(()) => println!("All commands completed"),
+    Err(e) => println!("Drain timed out: {}", e),
+}
+```
+
+### Shutdown Behavior
+
+1. `shutdown()` sets an internal flag - new `submit()` calls return `LaneError::ShutdownInProgress`
+2. In-flight commands continue executing normally
+3. `drain(timeout)` polls every 100ms until all lanes report `pending == 0` and `active == 0`
+4. If the timeout expires before draining completes, an error is returned
+
+Check shutdown status:
+
+```rust
+if manager.is_shutting_down() {
+    println!("Queue is shutting down");
+}
+```

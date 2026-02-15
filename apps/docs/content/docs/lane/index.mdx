@@ -1,0 +1,66 @@
+---
+title: A3S Lane
+description: High-performance, priority-based command queue system for async task scheduling
+---
+
+# A3S Lane
+
+A3S Lane is a high-performance, priority-based command queue system designed for async task scheduling. It provides multi-lane priority scheduling, retry policies, dead letter queues, persistent storage, and comprehensive observability — all in a single Rust crate.
+
+## Key Features
+
+- **Priority-Based Scheduling** — 6 built-in lanes with configurable priorities. Higher-priority commands always execute first.
+- **Concurrency Control** — Per-lane semaphore-based limits with min/max concurrency settings.
+- **Retry Policies** — Exponential backoff and fixed-delay strategies with configurable max retries.
+- **Dead Letter Queue** — Failed commands are captured with full context for inspection and replay.
+- **Persistent Storage** — Pluggable storage backend (local filesystem included) for crash recovery.
+- **Event System** — Broadcast pub/sub for real-time monitoring of command lifecycle events.
+- **Rate Limiting** — Token bucket and sliding window rate limiters per lane.
+- **Priority Boosting** — Deadline-based automatic priority escalation for aging commands.
+- **Queue Partitioning** — Round-robin and hash-based partitioning for multi-core parallelism.
+- **Metrics & Alerts** — Latency histograms, queue depth tracking, and configurable alert thresholds.
+- **Graceful Shutdown** — Drain pending commands before stopping, with configurable timeout.
+
+## Architecture
+
+```
+QueueManager
+├── EventEmitter          ← Broadcast pub/sub event system
+├── CommandQueue           ← Central scheduler (10ms poll loop)
+│   ├── Lanes              ← HashMap<LaneId, Lane>
+│   │   └── Lane           ← Priority queue + concurrency semaphore
+│   │       ├── Pending    ← VecDeque (FIFO within priority)
+│   │       └── Config     ← Timeout, retry, rate limit, boost
+│   ├── DeadLetterQueue    ← Failed commands storage
+│   └── Storage            ← Optional persistence backend
+├── Metrics                ← Optional observability
+└── Alerts                 ← Optional monitoring
+```
+
+## Built-in Lanes
+
+| Lane | Priority | Max Concurrency | Use Case |
+|------|----------|-----------------|----------|
+| `system` | 0 (highest) | 5 | System-level operations |
+| `control` | 1 | 3 | Pause, resume, cancel |
+| `query` | 2 | 10 | Read-only queries |
+| `session` | 3 | 5 | Session management |
+| `skill` | 4 | 3 | Skill/tool execution |
+| `prompt` | 5 (lowest) | 2 | LLM prompt processing |
+
+Lower priority number = higher priority. The scheduler always picks commands from the highest-priority lane with pending work.
+
+## Performance
+
+Benchmarked on Apple Silicon (M-series):
+
+| Scenario | Throughput |
+|----------|------------|
+| Full lifecycle (10 commands) | ~93 ops/sec |
+| Concurrent (10 lanes) | 33,000-50,000 ops/sec |
+| Priority scheduling overhead | ~3-5% |
+| Metrics collection overhead | ~3-5% |
+
+## Test Coverage
+
+212 tests with **96.48% line coverage**. Key modules at 98-100% coverage.

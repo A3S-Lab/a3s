@@ -1,0 +1,134 @@
+---
+title: Quick Start
+description: Get started with A3S Lane in under 5 minutes
+---
+
+# Quick Start
+
+## Installation
+
+Add A3S Lane to your `Cargo.toml`:
+
+```toml
+[dependencies]
+a3s-lane = "0.1"
+tokio = { version = "1", features = ["full"] }
+serde_json = "1"
+```
+
+## Basic Usage
+
+### 1. Define a Command
+
+Implement the `Command` trait for your task:
+
+```rust
+use a3s_lane::{Command, Result};
+use async_trait::async_trait;
+use serde_json::Value;
+
+struct FetchData {
+    url: String,
+}
+
+#[async_trait]
+impl Command for FetchData {
+    async fn execute(&self) -> Result<Value> {
+        let response = reqwest::get(&self.url).await?;
+        let body = response.text().await?;
+        Ok(serde_json::json!({ "body": body }))
+    }
+
+    fn command_type(&self) -> &str {
+        "fetch_data"
+    }
+}
+```
+
+### 2. Create a Queue Manager
+
+Use the builder with default lanes:
+
+```rust
+use a3s_lane::{EventEmitter, QueueManagerBuilder};
+
+let emitter = EventEmitter::new(100);
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .build()
+    .await?;
+
+manager.start().await?;
+```
+
+### 3. Submit Commands
+
+Submit a command to a lane and await the result:
+
+```rust
+let cmd = Box::new(FetchData {
+    url: "https://api.example.com/data".into(),
+});
+
+// Submit returns a oneshot receiver
+let rx = manager.submit("query", cmd).await?;
+
+// Await the result
+let result = rx.await??;
+println!("Result: {}", result);
+```
+
+### 4. Graceful Shutdown
+
+```rust
+manager.shutdown().await;
+manager.drain(Duration::from_secs(10)).await?;
+```
+
+## With Reliability
+
+Add timeout, retry, dead letter queue, and persistent storage:
+
+```rust
+use a3s_lane::*;
+use std::time::Duration;
+use std::path::PathBuf;
+
+let emitter = EventEmitter::new(100);
+let storage = Arc::new(LocalStorage::new(PathBuf::from("./queue")).await?);
+
+let manager = QueueManagerBuilder::new(emitter)
+    .with_lane(
+        "api",
+        LaneConfig::new(1, 10)
+            .with_timeout(Duration::from_secs(30))
+            .with_retry_policy(RetryPolicy::exponential(3)),
+        0,
+    )
+    .with_dlq(100)
+    .with_storage(storage)
+    .build()
+    .await?;
+```
+
+## With Observability
+
+Add metrics and alerts:
+
+```rust
+use a3s_lane::*;
+
+let alerts = Arc::new(AlertManager::with_queue_depth_alerts(100, 500));
+
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .with_metrics(QueueMetrics::local())
+    .with_alerts(alerts)
+    .build()
+    .await?;
+
+// Check metrics later
+let snapshot = manager.metrics().unwrap().snapshot().await;
+println!("Total submitted: {:?}",
+    snapshot.counters.get("lane.commands.submitted"));
+```
