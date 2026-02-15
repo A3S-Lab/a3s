@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <em>An Agent Operating System — from hardware-isolated execution to multi-agent orchestration and agentic evolution</em>
+  <em>An Agent Operating System — VM-isolated execution, privacy-aware security proxy, and agentic evolution</em>
 </p>
 
 <p align="center">
@@ -24,17 +24,21 @@
 
 **A3S** is not just a collection of crates — it is an **Agent Operating System**. It provides the full stack for declaring, packaging, deploying, securing, and evolving AI agents at scale.
 
-The core data flow:
+The core deployment model:
 
 ```
-a3s-gateway (OS external gateway, single entry point for all traffic)
-    → SafeClaw (OS main application, runs inside a3s-box MicroVM)
-        → A3sfile DSL (orchestrates multiple a3s-code agents + models + tools)
-            → a3s-code instances (each with its own a3s-lane priority queue)
-                → Reflection system (error classification, adaptive strategy, memory-based evolution)
+a3s-box (VM runtime — standalone CLI or K8s RuntimeClass)
+  └── MicroVM (TEE hardware encryption when available, VM isolation always)
+      ├── SafeClaw (security proxy — classify, sanitize, audit)
+      └── A3S Code  (agent service — runtime, tools, LLM calls)
+          └── a3s-lane (per-session priority queue)
+
+a3s-gateway (K8s Ingress Controller — routes traffic, app-agnostic)
 ```
 
-Each component can also be used independently as a standalone Rust crate.
+A3S OS provides two infrastructure components: **A3S Gateway** (traffic routing) and
+**A3S Box** (VM runtime management). It is application-agnostic — it doesn't know
+or care what runs inside the VM. Each component can also be used independently as a standalone Rust crate.
 
 ## Installation
 
@@ -83,46 +87,38 @@ Download from [GitHub Releases](https://github.com/A3S-Lab/a3s/releases) for you
           └───┬───┴───┬───┴───┬───┴───┬───┴───┬───┴────┬─────┘
               └───────┴───────┴───────┴───────┘        │
                               │                        │
+       Standalone: direct     │     A3S OS: via Ingress│
+                              │                        │
                 ┌─────────────▼────────────────────────▼───────┐
-                │              a3s-gateway                      │
-                │           (OS External Gateway)               │
-                │  TLS/ACME · Auth/JWT · Rate Limit · CORS     │
-                │  7-Platform Webhook Normalization              │
-                │  Privacy-Aware Routing · Token Metering        │
-                │  Load Balancing · Agent Health Probe            │
+                │            a3s-gateway (optional)             │
+                │         K8s Ingress Controller                │
+                │  TLS/ACME · Auth · Rate Limit · CORS         │
+                │  Privacy Routing · Load Balancing             │
+                │  App-agnostic: doesn't know what's behind it  │
                 └──────────────────┬───────────────────────────┘
                                    │
                 ┌──────────────────▼───────────────────────────┐
-                │              a3s-box MicroVM                  │
-                │         (Hardware-Level Sandbox)              │
+                │                a3s-box MicroVM                │
+                │  VM isolation always · TEE when hardware OK   │
                 │                                              │
                 │  ┌────────────────────────────────────────┐  │
-                │  │          SafeClaw (OS Application)      │  │
-                │  │   Message Routing · Multi-Agent Coord   │  │
-                │  │   Privacy Escalation · TEE Upgrade      │  │
-                │  │                                        │  │
-                │  │  ┌── A3sfile (Agent Resource DSL) ──┐  │  │
-                │  │  │  model "qwen3" { ... }           │  │  │
-                │  │  │  tool "search" { ... }           │  │  │
-                │  │  │  agent "architect" { ... }       │  │  │
-                │  │  │  agent "coder" { ... }           │  │  │
-                │  │  │  orchestration { hierarchical }  │  │  │
-                │  │  └──────────────────────────────────┘  │  │
-                │  │               │                        │  │
-                │  │    ┌──────────┼──────────┐             │  │
-                │  │    ▼          ▼          ▼             │  │
-                │  │ ┌────────┐┌────────┐┌────────┐        │  │
-                │  │ │a3s-code││a3s-code││a3s-code│        │  │
-                │  │ │Agent A ││Agent B ││Agent C │        │  │
-                │  │ │a3s-lane││a3s-lane││a3s-lane│        │  │
-                │  │ └────────┘└────────┘└────────┘        │  │
+                │  │       SafeClaw (security proxy)         │  │
+                │  │  Channels(7) · Classify · Inject Detect │  │
+                │  │  Taint Track · Output Sanitize · Audit  │  │
+                │  │  TeeRuntime (self-detect /dev/sev-guest) │  │
+                │  └──────────────────┬─────────────────────┘  │
+                │                     │ gRPC / unix socket      │
+                │  ┌──────────────────▼─────────────────────┐  │
+                │  │     A3S Code (agent service)            │  │
+                │  │  Agent Runtime · Tool Execution         │  │
+                │  │  LLM API Calls · a3s-lane (scheduling)  │  │
                 │  └────────────────────────────────────────┘  │
                 └──────────────────────────────────────────────┘
-                       │              │              │
-                 ┌─────▼────┐  ┌─────▼────┐  ┌─────▼────┐
-                 │ a3s-power│  │a3s-search│  │a3s-context│
-                 │ LLM Eng. │  │ Search   │  │ Context  │
-                 └──────────┘  └──────────┘  └──────────┘
+                       │              │
+                 ┌─────▼────┐  ┌─────▼────┐
+                 │ a3s-power│  │a3s-search│
+                 │ LLM Eng. │  │ Search   │
+                 └──────────┘  └──────────┘
 
   Shared: a3s-privacy (PII classification) · a3s-transport (vsock framing)
   Observability: OpenTelemetry spans · Prometheus metrics · SigNoz dashboards
@@ -132,13 +128,12 @@ Download from [GitHub Releases](https://github.com/A3S-Lab/a3s/releases) for you
 
 | Layer | Component | Role |
 |-------|-----------|------|
-| Gateway | a3s-gateway | OS single entry point: TLS, auth, 7-platform webhook normalization, privacy routing, token metering, load balancing, agent health probes |
-| Sandbox | a3s-box | MicroVM hardware isolation, WarmPool, CRI for Kubernetes |
-| Application | SafeClaw | OS main application: message channel routing, multi-agent session management, privacy escalation, TEE upgrade |
-| Orchestration | A3sfile DSL + Super Factory | Agent resource DSL for SafeClaw's underlying a3s-code agents: declares models, tools, agents, and collaboration topology |
-| Execution | a3s-code | Individual AI agent: tool calling, reflection, adaptive strategy, skills, subagents |
-| Scheduling | a3s-lane | Per-session priority queue: 6 lanes, concurrency control, retry, dead letter |
-| Infrastructure | a3s-power / a3s-search / a3s-context / a3s-cron | LLM inference / meta search / context management / cron scheduling |
+| Ingress | a3s-gateway | K8s Ingress Controller (app-agnostic): TLS, auth, privacy routing, load balancing, token metering |
+| VM Runtime | a3s-box | MicroVM isolation (always) + TEE hardware encryption (when available), CRI for K8s |
+| Security Proxy | SafeClaw | Inside VM: 7-channel routing, privacy classification, injection detection, taint tracking, output sanitization, audit |
+| Agent Service | a3s-code | Inside VM: AI agent runtime, tool calling, reflection, skills, subagents. Called by SafeClaw via local gRPC |
+| Scheduling | a3s-lane | Per-session priority queue inside a3s-code: 6 lanes, concurrency, retry, dead letter |
+| Infrastructure | a3s-power / a3s-search / a3s-cron | LLM inference / meta search / cron scheduling |
 | Shared | a3s-privacy / a3s-transport | PII classification & redaction / vsock frame protocol |
 | Observability | OpenTelemetry + Prometheus | OTLP spans, metrics, W3C/B3 trace propagation, SigNoz dashboards |
 
@@ -146,20 +141,21 @@ Download from [GitHub Releases](https://github.com/A3S-Lab/a3s/releases) for you
 
 ### a3s-code — AI Coding Agent
 
-Execution layer — the individual AI agent that SafeClaw orchestrates. Multiple a3s-code instances run in-process within SafeClaw, each with its own session, priority queue, and reflection system.
+Agent service — runs as a local service inside the same A3S Box VM as SafeClaw. SafeClaw calls it via gRPC/unix socket. Each session gets its own priority queue and reflection system.
 
 - **Multi-Session Management**: Run multiple independent AI conversations with file/memory storage
 - **11 Built-in Tools**: bash, read, write, edit, patch, grep, glob, ls, web_fetch, web_search, cron — all workspace-sandboxed
 - **Permission System**: Fine-grained Allow/Deny/Ask rules for tool access
 - **HITL Confirmation**: Human-in-the-loop for sensitive operations with configurable timeout policies
-- **Skills & Subagents**: Extend with Markdown skill definitions (Claude Code Skills format); delegate tasks to 5 built-in specialized child agents
-- **Server-Side Agentic Loop**: Full agentic loop execution on server with streaming events; server-side delegation to subagents
-- **LSP Integration**: Code intelligence (hover, definition, references, symbols, diagnostics) for Rust, Go, TypeScript, Python, C/C++
-- **MCP Support**: Model Context Protocol with stdio/HTTP transport, OAuth config, `mcp__<server>__<tool>` naming
+- **Skills & Subagents**: Extend with Markdown skill definitions (Claude Code Skills format); SkillKind classification (instruction/tool/agent); on-demand `load_skill` tool; native `search_skills` and `install_skill` via GitHub API; delegate tasks to specialized child agents via `task` tool
+- **Server-Side Agentic Loop**: Full agentic loop with active hooks, security, memory context, and planning — all subsystems wired into every session by default
+- **LSP Integration**: Code intelligence (hover, definition, references, symbols, diagnostics) for Rust, Go, TypeScript, Python, C/C++; tools auto-registered in ToolExecutor on server start
+- **MCP Support**: Model Context Protocol with stdio/HTTP transport, OAuth config, `mcp__<server>__<tool>` naming; tools auto-registered/unregistered on connect/disconnect
 - **Reflection System**: 10 error categories, 4 adaptive strategies (Direct/Planned/Iterative/Parallel), confidence tracking
-- **Memory System**: Episodic/Semantic/Procedural memory with importance scoring and access tracking
-- **Planning & Goals**: LLM-based execution plans, goal extraction, achievement tracking
-- **Hooks System**: 8 lifecycle events (PreToolUse, PostToolUse, GenerateStart/End, SessionStart/End, SkillLoad/Unload)
+- **Memory System**: Episodic/Semantic/Procedural memory with importance scoring and access tracking; auto-registered as ContextProvider in every session
+- **Planning & Goals**: LLM-based execution plans, goal extraction, achievement tracking — configurable per session via `planning_enabled` / `goal_tracking`
+- **Hooks System**: 8 lifecycle events (PreToolUse, PostToolUse, GenerateStart/End, SessionStart/End, SkillLoad/Unload) — fired from agent loop and service layer; shared HookEngine across all sessions
+- **Security**: SecurityGuard with output sanitization, taint tracking, injection detection, tool interception — wired via shared HookEngine
 - **Enhanced Health Check**: Subsystem diagnostics (version, uptime, session count, store health)
 - **Pluggable Session Persistence**: `SessionStore` trait with `Custom` backend for external stores (PostgreSQL, etc.)
 - **Structured Generation**: JSON Schema constrained output, both unary and streaming
@@ -167,7 +163,7 @@ Execution layer — the individual AI agent that SafeClaw orchestrates. Multiple
 - **OpenTelemetry**: OTLP spans (agent → turn → llm → tool → subagent), LLM cost tracking, cross-session cost aggregation
 - **SDKs**: Python & TypeScript covering all 86 RPCs, with high-level `Session` API (`send()`, `stream()`, `delegate()`)
 - **Externalized Prompt Registry**: All 25 LLM-facing prompts in `prompts/` directory — full agentic design visible in one place
-- **1,721 unit tests**
+- **1,859 unit tests**
 
 ```bash
 # Install
@@ -214,7 +210,7 @@ manager.start().await?;
 
 ### a3s-box — MicroVM Sandbox Runtime
 
-Sandbox layer — hardware-isolated execution environment. SafeClaw runs inside a3s-box MicroVMs, providing hardware-level security boundaries for all agent operations.
+VM runtime — hardware-isolated execution environment. SafeClaw and A3S Code run inside a3s-box MicroVMs. Usable standalone (`a3s-box run`) or as K8s RuntimeClass (`a3s-box-shim`). TEE support via AMD SEV-SNP: if hardware is present, VM memory is encrypted by CPU; if not, VM isolation still applies.
 
 - **MicroVM Isolation**: Each sandbox runs in its own MicroVM via libkrun (~200ms cold start)
 - **Docker-like CLI**: 29 commands: run, stop, exec, cp, images, build, push, network, volume, attest...
@@ -235,26 +231,28 @@ a3s-box build -t my-agent .
 
 ---
 
-### SafeClaw — OS Main Application
+### SafeClaw — Security Proxy for AI Agents
 
-The central application of the A3S operating system. Runs inside a3s-box MicroVM, proxies message channels, and coordinates multiple a3s-code agent instances.
+Lightweight security proxy that runs inside an A3S Box VM alongside a local A3S Code agent service. Classifies messages, blocks attacks, sanitizes outputs, and audits everything — then forwards to A3S Code for LLM processing.
 
-- **Multi-Channel Routing**: 7 platform adapters (Telegram, Feishu, DingTalk, WeCom, Slack, Discord, WebChat) via a3s-gateway
-- **Multi-Agent Coordination**: In-process a3s-code library integration via `AgentEngine`
-- **Privacy Escalation**: Session-level sensitivity ratchet (Normal → Sensitive → HighlySensitive → Critical → TEE upgrade)
-- **A3sfile Orchestration**: Declares and orchestrates underlying a3s-code agents, models, tools, and collaboration topology
-- **4-Layer Security**: Hardware TEE → Channel encryption → Protocol auth → Application classification
-- **Distributed TEE**: Split-Process-Merge: Coordinator TEE decomposes tasks, Workers process, Validator verifies
-- **Taint Tracking**: Follow sensitive data through base64/hex transformations, block leakage vectors
+- **Multi-Channel Routing**: 7 platform adapters (Telegram, Feishu, DingTalk, WeCom, Slack, Discord, WebChat)
+- **Privacy Classification**: Regex + semantic + compliance (HIPAA, PCI-DSS, GDPR) PII detection via `a3s-privacy`
+- **Taint Tracking**: Follow sensitive data through base64/hex/URL transformations, block all leakage vectors
+- **Output Sanitization**: Scan agent responses for tainted data, auto-redact before delivery
+- **Injection Detection**: Block prompt injection attacks (role override, delimiter injection, encoded payloads)
+- **Audit Pipeline**: Centralized event bus with real-time alerting (rate-based anomaly detection)
+- **TEE Graceful Degradation**: If AMD SEV-SNP present → sealed storage + attestation; if not → VM isolation + application security
+- **3-Layer Defense**: VM isolation (a3s-box, always) → Application security (SafeClaw, always) → Hardware TEE (when available)
 - **Desktop UI**: Tauri v2 + React + TypeScript native desktop application
+- **527 tests**
 
 📖 [Documentation](crates/safeclaw/README.md)
 
 ---
 
-### a3s-gateway — OS External Gateway
+### a3s-gateway — K8s Ingress Controller
 
-The single entry point for all external traffic into the A3S operating system. SafeClaw and agent backends are never exposed to the public network.
+Application-agnostic Ingress Controller for A3S OS (K8s). Routes all external traffic — doesn't know or care what application runs behind it. Optional in standalone deployments.
 
 - **Reverse Proxy**: HTTP/HTTPS/WebSocket/gRPC/TCP/UDP/SSE proxying
 - **Dynamic Routing**: Traefik-style rule engine (`Host()`, `PathPrefix()`, `Headers()`, `HostSNI()`)
@@ -310,21 +308,6 @@ a3s-search "Rust programming" -e ddg,wiki,baidu
 ```
 
 📖 [Documentation](crates/search/README.md)
-
----
-
-### a3s-context — Hierarchical Context Management
-
-Utility layer — memory and knowledge management for AI agents.
-
-- **Hierarchical Memory**: Working / Short-term / Long-term memory tiers
-- **Pathway URI Addressing**: Structured content organization with namespace system
-- **Multi-level Digests**: Automatic summarization for long conversations
-- **Embedding Support**: Pluggable embedders with 4 reranker providers (Cohere/Jina/OpenAI/Mock)
-- **OpenTelemetry**: OTLP spans on ingest/query/embed/rerank/digest, metrics for query latency and node ingestion
-- **114 tests**
-
-📖 [Documentation](crates/context/README.md)
 
 ---
 
@@ -535,16 +518,16 @@ SDK documentation covers every feature category: sessions, generation, structure
 
 ## Test Coverage
 
-**Total: 3,851+ tests**
+**Total: 4,516+ tests**
 
 | Crate | Tests | Coverage | Status |
 |-------|------:|----------|--------|
-| a3s-code | 1,721 | — | ✅ |
+| a3s-code | 1,859 | — | ✅ |
 | a3s-power | 888 | — | ✅ |
 | a3s-gateway | 625 | — | ✅ |
+| safeclaw | 527 | — | ✅ |
 | a3s-search | 267 | — | ✅ |
 | a3s-lane | 230 | 96% line | ✅ |
-| a3s-context | 114 | — | ✅ |
 | a3s-event | 83 | — | ✅ |
 | a3s-cron | 79 | — | ✅ |
 | a3s-tools | 51 | — | ✅ |
@@ -560,39 +543,35 @@ just test-all   # Run everything including box
 
 ### In Progress 🚧
 
-- [ ] **Unified Transport Layer** (P0, ~50%) — `a3s-transport` crate with `Transport` trait, frame protocol, MockTransport. Consumer migration (safeclaw TeeClient, box exec/PTY) pending.
+- [ ] **Unified Transport Layer** (P0, ~50%) — `a3s-transport` crate with `Transport` trait, frame protocol, MockTransport. Consumer migration (box exec/PTY) pending.
 - [ ] **MicroVM Cold Start** (P0, ~70%) — RootfsCache, LayerCache, WarmPool implemented; VM snapshot/restore pending (requires libkrun API support).
-- [ ] **Gateway Integration Reversal** (P1, ~0%) — Replace SafeClaw's TOML config generation with health-based service discovery in a3s-gateway.
+- [ ] **SafeClaw Architecture Correction** (P0) — Replace in-process `AgentEngine` with local a3s-code service client; replace `TeeOrchestrator` with `TeeRuntime` self-detection; remove `a3s-box-runtime` dependency (SafeClaw is guest, not host).
 - [ ] **LLM Cost Dashboard** (P1, ~80%) — a3s-code complete (per-call recording, cross-session aggregation, OTLP, SigNoz dashboard); a3s-power needs aggregation endpoint.
 
 ### Completed ✅
 
-- [x] AI Coding Agent — multi-session, 11 tools, permissions, HITL, skills, subagents, LSP, MCP, reflection, memory, planning, server-side agentic loop
+- [x] AI Coding Agent — multi-session, 11 tools, permissions, HITL, skills (kind classification, on-demand loading, native discovery), subagent delegation (task tool), LSP, MCP, reflection, memory (auto ContextProvider), planning, hooks (all lifecycle events active), security (shared HookEngine), server-side agentic loop (all subsystems wired)
 - [x] Per-Session Priority Queue — 6 lanes, concurrency, retry/DLQ, rate limiting, priority boosting, metrics, OpenTelemetry
 - [x] MicroVM Sandbox — VM management, OCI images, Docker CLI (29 commands), WarmPool, CRI, TEE, networking, volumes
-- [x] OS Main Application — 7 channel adapters, multi-agent coordination, privacy escalation, A3sfile DSL, Tauri desktop UI
-- [x] OS External Gateway — reverse proxy, 10 middlewares, 7-platform webhooks, privacy routing, token metering, TLS/ACME
+- [x] Security Proxy — 7 channel adapters, privacy classification (regex + semantic + compliance), taint tracking, output sanitization, injection detection, audit event pipeline with real-time alerting, 527 tests
+- [x] K8s Ingress Controller — reverse proxy, 10 middlewares, 7-platform webhooks, privacy routing, token metering, TLS/ACME
 - [x] Local LLM Engine — Ollama + OpenAI compatible API, llama.cpp backend, multi-model, multi-GPU, tool calling, cost tracking
 - [x] Meta Search Engine — 8 engines, consensus ranking, proxy pool, async parallel search
-- [x] Hierarchical Context — pathway URI, multi-level digests, namespace system, embedding, 4 reranker providers, OpenTelemetry
 - [x] Event System — pluggable pub/sub with NATS JetStream and in-memory providers, AES-256-GCM payload encryption, state persistence, observability
 - [x] Cron Scheduling — standard cron + natural language (EN/CN), pluggable storage, execution history, OpenTelemetry
-- [x] OpenTelemetry Cross-Crate — structured spans and OTLP metrics in a3s-cron, a3s-lane, a3s-context, a3s-event
+- [x] OpenTelemetry Cross-Crate — structured spans and OTLP metrics in a3s-cron, a3s-lane, a3s-event
 - [x] SDKs — Python & TypeScript with full 86 RPC coverage, unified skill API, aligned high-level Session API (`send()`, `stream()`, `delegate()`)
 - [x] Deep Research Agent — iterative research with interactive steering, workspace persistence, pluggable output formats
 - [x] Infrastructure — GitHub Actions CI/CD, crates.io publishing, Homebrew tap
-- [x] Session Merge, Shared Privacy Types, Security Module Rename, Box Networking, Box Volumes, Box Registry Push, Box Resource Limits, Box Dockerfile Completion
+- [x] Shared Privacy Types, Box Networking, Box Volumes, Box Registry Push, Box Resource Limits, Box Dockerfile Completion
 
 ### Planned
 
-- [ ] Box TeeRuntime API — high-level `spawn_verified()` combining VM boot + attestation + secure channel (P1)
-- [ ] Runtime Security Audit — NATS Stream audit pipeline + drift detection + panic elimination (P1)
 - [ ] Box Logging Drivers — json-file/syslog/journald drivers, log rotation, structured JSON output (P2)
 - [ ] Box Security Hardening — Seccomp profiles, Linux capabilities, read-only rootfs, no-new-privileges (P2)
 - [ ] Distributed Scheduling — multi-node job distribution with leader election (P2)
 - [ ] ML-based Search Ranking — learning-to-rank for result quality (P2)
 - [ ] Distributed Queue Backend — real multi-machine backend (Redis/NATS) for a3s-lane (P2)
-- [ ] Context Remote Storage — remote storage backend + session persistence for a3s-context (P2)
 
 See each crate's README for detailed per-component roadmaps.
 
@@ -604,16 +583,15 @@ a3s/
 ├── justfile                # Build commands
 ├── README.md
 ├── crates/
-│   ├── box/                # [submodule] MicroVM sandbox runtime (runs SafeClaw)
-│   ├── code/               # [submodule] AI coding agent (orchestrated by SafeClaw)
+│   ├── box/                # [submodule] MicroVM runtime (VM isolation + TEE)
+│   ├── code/               # [submodule] AI agent service (runs in same VM as SafeClaw)
 │   │   └── sdk/            #   Python & TypeScript SDKs
 │   ├── cron/               # [submodule] Cron scheduling library
 │   ├── event/              # [submodule] Pluggable event system
-│   ├── gateway/            # [submodule] OS external gateway
-│   ├── lane/               # [submodule] Per-session priority queue (used by a3s-code)
-│   ├── context/            # [submodule] Context management
+│   ├── gateway/            # [submodule] K8s Ingress Controller (app-agnostic)
+│   ├── lane/               # [submodule] Per-session priority queue (inside a3s-code)
 │   ├── power/              # [submodule] Local LLM inference engine
-│   ├── safeclaw/           # [submodule] OS main application (multi-agent coordination)
+│   ├── safeclaw/           # [submodule] Security proxy for AI agents
 │   ├── safeclaw-ui/        # [submodule] SafeClaw desktop UI (React + Tauri)
 │   ├── search/             # [submodule] Meta search engine
 │   │   └── sdk/            #   Python & Node.js SDKs
