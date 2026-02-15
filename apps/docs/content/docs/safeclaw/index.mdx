@@ -1,40 +1,83 @@
 ---
-title: SafeClaw
-description: Privacy-preserving AI assistant runtime with TEE support
+title: A3S SafeClaw
+description: Security proxy for AI agents with PII classification, taint tracking, and confidential computing
 ---
 
-# SafeClaw
+# A3S SafeClaw
 
-SafeClaw is a privacy-preserving AI assistant runtime that provides PII classification, taint tracking, and confidential computing support across 7 chat platform adapters.
-
-## Key Features
-
-- **PII Classification** — Multi-level sensitivity detection (L1–L4) with pluggable classifiers
-- **Taint Tracking** — Track data lineage through the processing pipeline
-- **TEE Integration** — Confidential computing via AMD SEV-SNP enclaves
-- **Platform Adapters** — Telegram, Discord, Slack, WeChat, LINE, WhatsApp, Web
-- **Encrypted Storage** — AES-256-GCM encrypted conversation persistence
-- **Memory System** — Cross-session semantic and episodic memory
+SafeClaw is a security proxy for AI agents that runs inside an A3S Box VM. It classifies messages for PII, detects prompt injection attacks, sanitizes outputs, tracks data taint, and audits everything — with optional hardware-level memory encryption via TEE.
 
 ## Architecture
 
 ```
-┌───────────────────────────────────────────┐
-│           Chat Platform Adapters          │
-│  Telegram · Discord · Slack · WeChat · ...│
-├───────────────────────────────────────────┤
-│           Privacy Pipeline                │
-│  PII Scan → Classify → Taint → Redact    │
-├───────────────────────────────────────────┤
-│            LLM Gateway                    │
-│  Provider routing · Token management      │
-├───────────────────────────────────────────┤
-│          Storage Layer                    │
-│  Encrypted state · Memory · Artifacts     │
-├───────────────────────────────────────────┤
-│        TEE Runtime (Optional)             │
-│  SEV-SNP enclave · Attestation            │
-└───────────────────────────────────────────┘
+User Input
+    ↓
+┌─────────────────────────────────────────────────────┐
+│ ZONE 1: Untrusted (Gateway)                         │
+│  Privacy Classifier (detect PII)                    │
+│  Injection Detector (block prompt injection)        │
+│  Route decision: Local or TEE?                      │
+└──────────────────┬──────────────────────────────────┘
+                   │ Encrypted Channel (AES-256-GCM)
+┌──────────────────▼──────────────────────────────────┐
+│ ZONE 2: Trusted (TEE - Hardware Isolated)           │
+│  Decrypt message                                    │
+│  Process with AI agent (a3s-code)                   │
+│  Output Sanitizer (redact tainted data)             │
+│  Tool Interceptor (block dangerous commands)        │
+└──────────────────┬──────────────────────────────────┘
+                   ↓
+Safe Output (PII redacted, audit logged)
 ```
 
-> Full documentation coming soon. See the [SafeClaw README](https://github.com/A3S-Lab/SafeClaw) for current details.
+## Defense in Depth
+
+| Layer | Components |
+|-------|------------|
+| L4: Application Security | Privacy Classifier, Policy Engine, Audit Logging, Session Isolation |
+| L3: Protocol Security | Message Authentication (MAC), Replay Protection, Taint Tracking |
+| L2: Channel Security | X25519 Key Exchange, AES-256-GCM Encryption, Forward Secrecy, Network Firewall |
+| L1: Hardware Security (TEE) | Memory Isolation, Remote Attestation, Sealed Storage, CPU-level Encryption |
+
+## Core Components
+
+| Component | Purpose |
+|-----------|---------|
+| Privacy Classifier | Regex + semantic PII detection with pluggable backends |
+| Policy Engine | Route decisions based on sensitivity level |
+| Taint Registry | Track sensitive data through processing pipeline |
+| Output Sanitizer | Redact tainted data from AI outputs |
+| Injection Detector | Block prompt injection attacks |
+| Tool Interceptor | Block dangerous tool calls (curl, wget, etc.) |
+| Network Firewall | Whitelist-only outbound network access |
+| Audit System | Forensic logging with severity levels and alerting |
+| Session Manager | Per-session isolation with secure memory wipe |
+| Channel Adapters | 7 messaging platform integrations |
+| Memory System | Three-layer memory with privacy gates |
+| Secure Channel | X25519 + AES-256-GCM encrypted communication |
+
+## Key Statistics
+
+| Metric | Value |
+|--------|-------|
+| Source files | 80+ |
+| Lines of Rust | 28,248 |
+| Tests | 609 |
+| API endpoints | 34 (33 REST + 1 WebSocket) |
+| Channel adapters | 7 |
+| Sensitivity levels | 5 |
+| Middleware integrations | a3s-gateway, a3s-lane, a3s-cron, a3s-event |
+
+## Key Features
+
+- **Multi-level PII classification** with regex, semantic, and compliance backends
+- **Taint tracking** with variant detection (base64, hex, URL-encoded, reversed)
+- **Prompt injection detection** with 5 attack categories
+- **Tool call interception** blocking dangerous commands
+- **Whitelist-only network firewall** with domain and protocol rules
+- **Per-session isolation** with secure memory erasure
+- **7 channel adapters**: Telegram, Slack, Discord, Feishu, DingTalk, WeCom, WebChat
+- **Three-layer memory**: Resources → Artifacts → Insights with privacy gates
+- **TEE integration**: AMD SEV-SNP, Intel SGX, ARM CCA support
+- **Compliance engine**: HIPAA, PCI-DSS, GDPR rule sets
+- **Cumulative risk tracking** across conversation turns

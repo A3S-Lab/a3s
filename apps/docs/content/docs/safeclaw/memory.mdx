@@ -1,0 +1,139 @@
+---
+title: Memory System
+description: Three-layer memory with resources, artifacts, insights, and privacy gates
+---
+
+# Memory System
+
+SafeClaw implements a three-layer memory system that progressively distills raw content into structured knowledge, with privacy gates controlling access at each layer.
+
+## Three Layers
+
+```
+Layer 1: Resources (raw content)
+    ↓ Extractor
+Layer 2: Artifacts (structured knowledge)
+    ↓ Synthesizer
+Layer 3: Insights (cross-conversation synthesis)
+```
+
+### Layer 1: Resources
+
+Raw content from conversations:
+
+```rust
+pub enum ContentType {
+    Text,
+    Code,
+    Data,
+}
+
+pub enum StorageLocation {
+    Local,
+    Tee,
+}
+
+pub struct Resource {
+    pub id: String,
+    pub content_type: ContentType,
+    pub content: String,
+    pub storage_location: StorageLocation,
+    pub created_at: i64,
+}
+```
+
+Resources containing sensitive data are stored in TEE memory (`StorageLocation::Tee`).
+
+### Layer 2: Artifacts
+
+Structured knowledge extracted from resources:
+
+```rust
+pub enum ArtifactType {
+    Summary,
+    CodeSnippet,
+    DataPoint,
+}
+
+pub struct Artifact {
+    pub id: String,
+    pub artifact_type: ArtifactType,
+    pub content: String,
+    pub source_resources: Vec<String>,
+    pub created_at: i64,
+}
+```
+
+The `Extractor` processes resources into artifacts — summarizing conversations, extracting code snippets, and identifying data points.
+
+### Layer 3: Insights
+
+Cross-conversation synthesis:
+
+```rust
+pub enum InsightType {
+    Pattern,
+    Recommendation,
+    Synthesis,
+}
+
+pub struct Insight {
+    pub id: String,
+    pub insight_type: InsightType,
+    pub content: String,
+    pub source_artifacts: Vec<String>,
+    pub created_at: i64,
+}
+```
+
+The `Synthesizer` combines artifacts across conversations to identify patterns, generate recommendations, and create higher-level understanding.
+
+## Bounded Store
+
+All memory layers use a bounded LRU store with secure erasure:
+
+```rust
+pub trait HasId {
+    fn id(&self) -> &str;
+}
+
+pub trait Erasable {
+    fn erase(&mut self);
+}
+
+pub struct BoundedStore<T: HasId + Erasable> {
+    // LRU eviction with secure memory wipe
+}
+```
+
+When the store reaches capacity, the least recently used entries are evicted. Evicted entries are securely erased (memory zeroed via `zeroize`) before deallocation.
+
+## Privacy Gate
+
+Controls access to memory based on sensitivity:
+
+```rust
+pub struct PrivacyGate {
+    // Memory access control
+}
+```
+
+The privacy gate enforces:
+- **Read access**: Only sessions with appropriate sensitivity level can read sensitive memories
+- **Write access**: Sensitive data is automatically routed to TEE storage
+- **Cross-session access**: Insights are sanitized before being shared across sessions
+- **Erasure**: When a session terminates, its sensitive resources are securely wiped
+
+## Storage
+
+```rust
+pub struct ResourceStore { /* ... */ }
+pub struct ArtifactStore { /* ... */ }
+pub struct InsightStore { /* ... */ }
+```
+
+Each store manages its layer independently with:
+- Bounded capacity (LRU eviction)
+- Secure erasure on eviction and session termination
+- Privacy-aware access control
+- TEE-aware storage location selection

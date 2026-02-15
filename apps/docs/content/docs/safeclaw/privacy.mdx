@@ -1,0 +1,212 @@
+---
+title: Privacy Classification
+description: PII detection, sensitivity levels, policy engine, and compliance checks
+---
+
+# Privacy Classification
+
+SafeClaw provides multi-level PII classification with pluggable backends, a policy engine for routing decisions, and compliance checks for HIPAA, PCI-DSS, and GDPR.
+
+## Sensitivity Levels
+
+```rust
+pub enum SensitivityLevel {
+    Public,              // No PII detected
+    Normal,              // General data
+    Sensitive,           // Email, phone, address
+    HighlySensitive,     // Credit card, SSN, API key
+    Critical,            // Medical records, passwords
+}
+```
+
+## Classifier
+
+The primary classifier uses regex-based pattern matching:
+
+```rust
+pub struct Classifier {
+    inner: a3s_privacy::RegexClassifier,
+}
+
+pub struct ClassificationResult {
+    pub level: SensitivityLevel,
+    pub matches: Vec<Match>,
+    pub requires_tee: bool,
+}
+
+pub struct Match {
+    pub rule_name: String,
+    pub level: SensitivityLevel,
+    pub start: usize,
+    pub end: usize,
+    pub redacted: String,
+}
+```
+
+### Usage
+
+```bash
+curl -X POST http://localhost:18790/api/v1/privacy/classify \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Call me at 555-0123 or email john@example.com"}'
+```
+
+Response:
+
+```json
+{
+  "level": "Sensitive",
+  "matches": [
+    {
+      "rule_name": "phone",
+      "level": "Sensitive",
+      "start": 14,
+      "end": 22,
+      "redacted": "[PHONE]"
+    },
+    {
+      "rule_name": "email",
+      "level": "Sensitive",
+      "start": 32,
+      "end": 48,
+      "redacted": "[EMAIL]"
+    }
+  ],
+  "requires_tee": false
+}
+```
+
+## Pluggable Backends
+
+```rust
+#[async_trait]
+pub trait ClassifierBackend: Send + Sync {
+    async fn classify(&self, text: &str) -> Vec<PiiMatch>;
+    fn confidence_floor(&self) -> f64;
+    fn name(&self) -> &str;
+}
+
+pub struct CompositeClassifier {
+    backends: Vec<Box<dyn ClassifierBackend>>,
+}
+
+pub struct PiiMatch {
+    pub rule_name: String,
+    pub level: SensitivityLevel,
+    pub start: usize,
+    pub end: usize,
+    pub confidence: f64,
+    pub backend: String,
+}
+```
+
+The `CompositeClassifier` chains multiple backends in order:
+1. **Regex** — Fast pattern matching (phone, email, SSN, credit card, etc.)
+2. **Semantic** — Context-aware analysis (detects PII in natural language)
+3. **LLM** — (extensible) LLM-based classification for ambiguous cases
+
+## Semantic Analyzer
+
+Context-aware PII detection beyond simple regex:
+
+```bash
+curl -X POST http://localhost:18790/api/v1/privacy/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"text": "My name is John and I live at 123 Main Street"}'
+```
+
+The semantic analyzer detects PII that regex alone would miss, such as names in context, addresses without standard formatting, and implicit personal information.
+
+## Policy Engine
+
+Routes messages based on sensitivity classification:
+
+```rust
+pub enum PolicyDecision {
+    ProcessLocal,           // No TEE required
+    ProcessInTee,           // Route to TEE
+    Reject,                 // Block entirely
+    RequireConfirmation,    // Ask user first
+}
+
+pub struct DataPolicy {
+    pub name: String,
+    pub tee_threshold: SensitivityLevel,
+    pub allow_highly_sensitive: bool,
+    pub type_rules: HashMap<String, PolicyDecision>,
+}
+
+pub struct PolicyEngine {
+    policies: HashMap<String, DataPolicy>,
+    default_policy: DataPolicy,
+}
+```
+
+### Policy Evaluation
+
+```rust
+impl PolicyEngine {
+    pub fn evaluate(
+        &self,
+        level: SensitivityLevel,
+        data_type: Option<&str>,
+        policy_name: Option<&str>,
+    ) -> PolicyDecision;
+
+    pub fn requires_tee(&self, level: SensitivityLevel) -> bool;
+}
+```
+
+Default behavior:
+- `Public` / `Normal` → `ProcessLocal`
+- `Sensitive` → `ProcessLocal` (with taint tracking)
+- `HighlySensitive` → `ProcessInTee`
+- `Critical` → `ProcessInTee` (or `Reject` if TEE unavailable)
+
+## Compliance Engine
+
+Built-in compliance rule sets:
+
+```rust
+pub struct ComplianceEngine {
+    // HIPAA, PCI-DSS, GDPR rule sets
+}
+```
+
+```bash
+curl -X POST http://localhost:18790/api/v1/privacy/scan \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Patient diagnosis: diabetes. Card: 4111-1111-1111-1111"}'
+```
+
+| Standard | Detects |
+|----------|---------|
+| HIPAA | Medical records, diagnoses, patient IDs, health insurance numbers |
+| PCI-DSS | Credit card numbers, CVVs, expiration dates |
+| GDPR | Personal data, consent indicators, data subject identifiers |
+
+## Cumulative Risk Tracking
+
+Tracks PII exposure across conversation turns:
+
+```rust
+pub struct CumulativeRiskDecision {
+    // Per-session PII accumulation tracking
+}
+```
+
+A single message might be `Sensitive`, but if a conversation accumulates multiple PII types (name + address + phone + email), the cumulative risk escalates to `HighlySensitive` or `Critical`, triggering TEE routing.
+
+## Configuration
+
+```toml
+[privacy]
+default_sensitivity = "Normal"
+enable_semantic_analysis = true
+enable_compliance_checks = true
+
+[[privacy.classification_rules]]
+name = "custom-api-key"
+pattern = "sk-[a-zA-Z0-9]{48}"
+level = "HighlySensitive"
+```

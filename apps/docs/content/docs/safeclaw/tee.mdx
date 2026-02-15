@@ -1,0 +1,125 @@
+---
+title: TEE Integration
+description: Trusted Execution Environment support with AMD SEV-SNP, Intel SGX, and ARM CCA
+---
+
+# TEE Integration
+
+SafeClaw integrates with hardware Trusted Execution Environments (TEE) for memory encryption, remote attestation, and sealed storage. When TEE is enabled, sensitive data is processed inside a hardware-isolated enclave that even the host OS cannot access.
+
+## Supported Platforms
+
+| Platform | Technology | Status |
+|----------|-----------|--------|
+| AMD | SEV-SNP (Secure Encrypted Virtualization) | Primary support |
+| Intel | SGX (Software Guard Extensions) | Supported |
+| ARM | CCA (Confidential Compute Architecture) | Supported |
+| Apple | Secure Enclave | Planned |
+
+## Configuration
+
+```toml
+[tee]
+enabled = true
+
+[tee.network_policy]
+enabled = true
+default_deny = true
+allowed_protocols = ["https"]
+
+[[tee.network_policy.allowed_domains]]
+domain = "api.anthropic.com"
+ports = [443]
+```
+
+```rust
+pub struct TeeConfig {
+    pub enabled: bool,
+    pub network_policy: NetworkPolicy,
+}
+```
+
+## TEE Runtime
+
+The `TeeRuntime` detects the available TEE hardware at startup:
+
+```rust
+pub struct TeeRuntime {
+    // Guest-side TEE detection and operations
+}
+
+impl TeeRuntime {
+    pub fn detect() -> Self;
+    pub fn mode_description(&self) -> &str;
+}
+```
+
+Detection order:
+1. Check for AMD SEV-SNP (`/dev/sev-guest`)
+2. Check for Intel SGX (`/dev/sgx_enclave`)
+3. Check for ARM CCA
+4. Fall back to VM isolation (no hardware TEE)
+
+## TEE Communication
+
+SafeClaw communicates with the TEE enclave using a frame-based protocol over vsock:
+
+```rust
+pub struct TeeClient {
+    // Frame-based TEE client
+}
+
+pub struct TeeMessage {
+    // Envelope for TEE communication
+}
+
+pub struct TeeRequest {
+    // Request to TEE enclave
+}
+
+pub struct TeeResponse {
+    // Response from TEE enclave
+}
+```
+
+## Data Flow with TEE
+
+When a message is classified as `HighlySensitive` or `Critical`:
+
+1. **Gateway** encrypts the message via the secure channel (AES-256-GCM)
+2. **TEE enclave** decrypts and processes with the AI agent
+3. **Output sanitizer** runs inside the TEE, redacting any tainted data
+4. **Tool interceptor** runs inside the TEE, blocking dangerous commands
+5. **Encrypted response** is sent back to the gateway
+6. **Gateway** decrypts and delivers to the user
+
+The plaintext of sensitive data never exists outside the TEE's encrypted memory.
+
+## Graceful Degradation
+
+SafeClaw degrades gracefully when TEE hardware is unavailable:
+
+| TEE Available | Behavior |
+|---------------|----------|
+| Yes (SEV-SNP/SGX/CCA) | Full hardware memory encryption + attestation |
+| No (VM only) | VM-level isolation via A3S Box (still secure, no hardware encryption) |
+| Simulation mode | Fake TEE for development (`mock-tee` feature flag) |
+
+```rust
+// Feature flags
+#[cfg(feature = "mock-tee")]     // MockTransport fallback for testing
+#[cfg(feature = "tee-guest")]    // Guest-side TEE integration
+```
+
+## Session TEE Tracking
+
+Each session tracks whether TEE is active:
+
+```rust
+impl Session {
+    pub async fn mark_tee_active(&self);
+    pub async fn uses_tee(&self) -> bool;
+}
+```
+
+Sessions can dynamically escalate to TEE processing when cumulative risk increases during a conversation.

@@ -1,0 +1,185 @@
+---
+title: Observability
+description: Audit logging, alerting, event bus, and API endpoints for monitoring
+---
+
+# Observability
+
+SafeClaw provides comprehensive audit logging, real-time alerting, and a centralized event bus for security monitoring.
+
+## Audit System
+
+### Audit Events
+
+```rust
+pub enum AuditSeverity {
+    Info,
+    Warning,
+    High,
+    Critical,
+}
+
+pub enum LeakageVector {
+    OutputChannel,       // AI output contained tainted data
+    ToolCall,            // Tool call arguments contained tainted data
+    DangerousCommand,    // Dangerous command pattern detected
+    NetworkExfil,        // Network exfiltration attempt
+    FileExfil,           // File write with tainted data
+    AuthFailure,         // Channel authentication failure
+}
+
+pub struct AuditEvent {
+    pub id: String,
+    pub session_id: String,
+    pub severity: AuditSeverity,
+    pub vector: LeakageVector,
+    pub description: String,
+    pub taint_labels: Vec<String>,
+    pub timestamp: i64,
+}
+```
+
+### Audit Log
+
+```rust
+pub struct AuditLog {
+    events: VecDeque<AuditEvent>,
+    capacity: usize,
+    total_count: u64,
+}
+
+impl AuditLog {
+    pub fn record(&mut self, event: AuditEvent);
+    pub fn recent(&self, limit: usize) -> Vec<&AuditEvent>;
+    pub fn by_session(&self, session_id: &str) -> Vec<&AuditEvent>;
+    pub fn by_severity(&self, severity: AuditSeverity) -> Vec<&AuditEvent>;
+}
+```
+
+Default capacity is 10,000 events (configurable via `audit.log_capacity`).
+
+## Event Bus
+
+Centralized event distribution for all security subsystems:
+
+```rust
+pub struct AuditEventBus {
+    // Broadcast channel for audit events
+}
+```
+
+All components publish to the event bus:
+- Privacy classifier → PII detection events
+- Taint registry → Taint registration events
+- Output sanitizer → Redaction events
+- Injection detector → Injection detection events
+- Tool interceptor → Tool block events
+- Network firewall → Network block events
+- Channel auth → Authentication events
+
+## Alerting
+
+```rust
+pub struct AlertMonitor {
+    // Monitors audit events and triggers alerts
+}
+
+pub struct Alert {
+    // Alert with severity, message, and context
+}
+
+pub struct AlertConfig {
+    // Alert thresholds and notification targets
+}
+```
+
+Alerts are triggered when:
+- `Critical` severity events occur (immediate)
+- `High` severity events exceed a threshold within a time window
+- Multiple `Warning` events from the same session (cumulative risk)
+
+## REST API
+
+### Audit Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/audit/events` | GET | List recent audit events |
+| `/api/v1/audit/stats` | GET | Audit statistics summary |
+| `/api/v1/audit/events/:session_id` | GET | Events for a specific session |
+
+### Events Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/events` | GET | List system events |
+| `/api/v1/events/:id` | GET | Get event by ID |
+| `/api/v1/events/subscribe` | GET | SSE event stream |
+
+### Health and Status
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/api/v1/gateway/status` | GET | Gateway status with session counts |
+| `/.well-known/a3s-service.json` | GET | Service discovery |
+
+### Example: Audit Events Response
+
+```json
+{
+  "events": [
+    {
+      "id": "evt-001",
+      "session_id": "sess-abc",
+      "severity": "High",
+      "vector": "OutputChannel",
+      "description": "Tainted email detected in AI output, redacted",
+      "taint_labels": ["taint-email-001"],
+      "timestamp": 1707734460
+    },
+    {
+      "id": "evt-002",
+      "session_id": "sess-abc",
+      "severity": "Critical",
+      "vector": "DangerousCommand",
+      "description": "Blocked curl command with tainted API key in arguments",
+      "taint_labels": ["taint-apikey-003"],
+      "timestamp": 1707734465
+    }
+  ],
+  "total_count": 2
+}
+```
+
+## Configuration
+
+```toml
+[audit]
+enabled = true
+log_capacity = 10000
+
+[audit.alert_config]
+# Alert thresholds and notification settings
+```
+
+## Structured Logging
+
+SafeClaw uses the `tracing` crate for structured logging:
+
+```bash
+# Set log level
+safeclaw --config safeclaw.toml --log-level debug
+
+# Environment variable
+RUST_LOG=safeclaw=debug safeclaw --config safeclaw.toml
+```
+
+Log output includes:
+- Session ID for correlation
+- Sensitivity level for each message
+- Routing decisions (local vs. TEE)
+- Taint registration and detection events
+- Injection detection results
+- Tool interception decisions
+- Network firewall decisions

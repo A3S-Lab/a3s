@@ -1,0 +1,99 @@
+---
+title: Cryptography
+description: X25519 key exchange, AES-256-GCM encryption, forward secrecy, and secure channels
+---
+
+# Cryptography
+
+SafeClaw uses modern cryptographic primitives for secure communication between the untrusted gateway zone and the trusted TEE zone.
+
+## Secure Channel
+
+The secure channel provides end-to-end encryption with forward secrecy:
+
+```
+Gateway (Zone 1)                    TEE (Zone 2)
+    │                                    │
+    │── X25519 ephemeral key ──────────→ │
+    │← X25519 ephemeral key ────────── │
+    │                                    │
+    │   HKDF-SHA256(shared_secret)       │
+    │   → AES-256-GCM session key        │
+    │                                    │
+    │── Encrypted message ─────────────→ │
+    │← Encrypted response ────────────  │
+```
+
+### Key Exchange
+
+```rust
+pub struct KeyPair {
+    // X25519 static key pair
+}
+
+pub struct EphemeralKeyPair {
+    // X25519 ephemeral key pair (per-session)
+}
+
+pub struct PublicKey {
+    // X25519 public key
+}
+
+pub struct SharedSecret {
+    // Derived via X25519 Diffie-Hellman
+    // Expanded via HKDF-SHA256
+}
+```
+
+### Channel Builder
+
+```rust
+pub struct SecureChannelBuilder {
+    // Configure and build a secure channel
+}
+
+pub struct SecureChannel {
+    // AES-256-GCM encrypted bidirectional channel
+}
+```
+
+### Encryption
+
+```rust
+// AES-256-GCM encryption/decryption
+pub fn encrypt(key: &[u8; 32], plaintext: &[u8]) -> Result<Vec<u8>>;
+pub fn decrypt(key: &[u8; 32], ciphertext: &[u8]) -> Result<Vec<u8>>;
+pub fn generate_key() -> [u8; 32];
+```
+
+## Forward Secrecy
+
+Each session uses ephemeral X25519 key pairs. Even if a long-term key is compromised, past session data cannot be decrypted because:
+
+1. Ephemeral keys are generated per-session
+2. Shared secrets are derived from ephemeral keys only
+3. Ephemeral private keys are securely erased after key exchange
+4. Session keys are wiped on session termination
+
+## Memory Safety
+
+All cryptographic material uses `zeroize` for secure erasure:
+
+- Private keys are zeroed when dropped
+- Session keys are zeroed on session termination
+- Shared secrets are zeroed after key derivation
+- Plaintext buffers are zeroed after encryption
+
+This prevents sensitive key material from lingering in memory after use.
+
+## Dependencies
+
+| Library | Purpose |
+|---------|---------|
+| `x25519-dalek` | X25519 Diffie-Hellman key exchange |
+| `aes-gcm` | AES-256-GCM authenticated encryption |
+| `hkdf` | HKDF-SHA256 key derivation |
+| `ed25519-dalek` | Ed25519 signatures (channel authentication) |
+| `ring` | Additional cryptographic operations |
+| `zeroize` | Secure memory erasure |
+| `sha2` | SHA-256 hashing |

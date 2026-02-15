@@ -1,0 +1,220 @@
+---
+title: Leakage Prevention
+description: Taint tracking, output sanitization, injection detection, tool interception, and network firewall
+---
+
+# Leakage Prevention
+
+SafeClaw prevents data leakage through five complementary mechanisms: taint tracking, output sanitization, injection detection, tool call interception, and network firewalling.
+
+## Taint Registry
+
+Tracks sensitive data and all its variants through the processing pipeline:
+
+```rust
+pub enum TaintType {
+    CreditCard,
+    Ssn,
+    Email,
+    Phone,
+    ApiKey,
+    Password,
+    Custom(String),
+}
+
+pub struct TaintEntry {
+    pub id: String,
+    pub original: String,
+    pub taint_type: TaintType,
+    pub variants: Vec<String>,
+    pub similarity_threshold: f64,
+    pub created_at: i64,
+}
+
+pub struct TaintRegistry {
+    entries: HashMap<String, TaintEntry>,
+}
+```
+
+### Variant Detection
+
+When a value is registered, the registry automatically generates variants:
+
+| Variant | Example (for `user@example.com`) |
+|---------|----------------------------------|
+| Original | `user@example.com` |
+| Base64 | `dXNlckBleGFtcGxlLmNvbQ==` |
+| Hex | `75736572406578616d706c652e636f6d` |
+| URL-encoded | `user%40example.com` |
+| Reversed | `moc.elpmaxe@resu` |
+
+This catches attempts to exfiltrate data through encoding transformations.
+
+### API
+
+```rust
+impl TaintRegistry {
+    pub fn register(&mut self, value: &str, taint_type: TaintType) -> String;
+    pub fn detect(&self, text: &str) -> Vec<TaintMatch>;
+    pub fn contains_tainted(&self, text: &str) -> bool;
+    pub fn redact(&self, text: &str) -> String;
+}
+
+pub struct TaintMatch {
+    pub taint_id: String,
+    pub matched_variant: String,
+    pub taint_type: TaintType,
+    pub start: usize,
+    pub end: usize,
+}
+```
+
+## Output Sanitizer
+
+Scans AI outputs for tainted data and redacts it:
+
+```rust
+pub struct SanitizeResult {
+    pub sanitized_text: String,
+    pub was_redacted: bool,
+    pub redaction_count: usize,
+    pub audit_events: Vec<AuditEvent>,
+    pub matches: Vec<TaintMatch>,
+}
+
+impl OutputSanitizer {
+    pub fn sanitize(
+        registry: &TaintRegistry,
+        output: &str,
+        session_id: &str,
+    ) -> SanitizeResult;
+
+    pub fn contains_leakage(
+        registry: &TaintRegistry,
+        output: &str,
+    ) -> bool;
+}
+```
+
+If the AI output contains `user@example.com` (or any variant), it's replaced with `[REDACTED:email]` and an audit event is generated.
+
+## Injection Detector
+
+Detects prompt injection attacks across 5 categories:
+
+```rust
+pub enum InjectionVerdict {
+    Clean,
+    Suspicious,
+    Blocked,
+}
+
+pub enum InjectionCategory {
+    RoleOverride,           // "Ignore previous instructions..."
+    DataExtraction,         // "List all user data..."
+    DelimiterInjection,     // Markdown/XML delimiter tricks
+    EncodingTrick,          // Base64/hex encoded payloads
+    SafetyBypass,           // "You are now DAN..."
+}
+
+pub struct InjectionDetector {
+    custom_blocking: Vec<PatternDef>,
+    custom_suspicious: Vec<PatternDef>,
+    detect_encoded: bool,
+}
+```
+
+### Usage
+
+```rust
+impl InjectionDetector {
+    pub fn new() -> Self;
+    pub fn add_blocking_pattern(&mut self, pattern: &str, category: InjectionCategory);
+    pub fn scan(&self, input: &str, session_id: &str) -> InjectionResult;
+}
+```
+
+`Blocked` inputs are rejected immediately. `Suspicious` inputs are logged and may trigger additional scrutiny.
+
+## Tool Interceptor
+
+Blocks dangerous tool calls that could exfiltrate data:
+
+```rust
+pub enum InterceptDecision {
+    Allow,
+    BlockTainted,       // Tainted data in arguments
+    BlockDangerous,     // Dangerous command pattern
+}
+
+pub struct InterceptResult {
+    pub decision: InterceptDecision,
+    pub reason: Option<String>,
+    pub matches: Vec<TaintMatch>,
+    pub audit_events: Vec<AuditEvent>,
+}
+
+impl ToolInterceptor {
+    pub fn intercept(
+        registry: &TaintRegistry,
+        tool_name: &str,
+        arguments: &str,
+        session_id: &str,
+    ) -> InterceptResult;
+}
+```
+
+Blocked command patterns include: `curl`, `wget`, `nc`, `netcat`, `ssh`, `scp`, `rsync`, `ftp`, `sftp`, `python -m http`, and similar network exfiltration tools.
+
+## Network Firewall
+
+Whitelist-only outbound network access:
+
+```rust
+pub enum FirewallDecision {
+    Allow,
+    BlockDomain,
+    BlockPort,
+    BlockProtocol,
+}
+
+pub struct NetworkPolicy {
+    pub enabled: bool,
+    pub allowed_domains: Vec<AllowedDomain>,
+    pub allowed_protocols: Vec<String>,
+    pub default_deny: bool,
+}
+
+pub struct NetworkFirewall {
+    policy: NetworkPolicy,
+}
+
+impl NetworkFirewall {
+    pub fn check_url(&self, url: &str, session_id: &str) -> FirewallResult;
+}
+```
+
+### Default Allowed Domains
+
+When `default_deny = true`, only explicitly allowed domains are reachable:
+
+```toml
+[tee.network_policy]
+enabled = true
+default_deny = true
+allowed_protocols = ["https"]
+
+[[tee.network_policy.allowed_domains]]
+domain = "api.anthropic.com"
+ports = [443]
+
+[[tee.network_policy.allowed_domains]]
+domain = "api.openai.com"
+ports = [443]
+
+[[tee.network_policy.allowed_domains]]
+domain = "*.openai.azure.com"
+ports = [443]
+```
+
+All other outbound connections are blocked and logged as audit events.

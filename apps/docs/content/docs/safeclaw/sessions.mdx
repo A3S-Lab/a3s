@@ -1,0 +1,141 @@
+---
+title: Sessions
+description: Session management, routing decisions, per-session isolation, and secure memory wipe
+---
+
+# Sessions
+
+SafeClaw manages per-user sessions with state tracking, sensitivity-aware routing, and secure isolation.
+
+## Session
+
+```rust
+pub enum SessionState {
+    Creating,
+    Active,
+    Processing,
+    Paused,
+    Terminating,
+    Terminated,
+}
+
+pub struct Session {
+    pub id: String,
+    pub user_id: String,
+    pub channel_id: String,
+    pub chat_id: String,
+    state: Arc<RwLock<SessionState>>,
+    sensitivity_level: Arc<RwLock<SensitivityLevel>>,
+    pub created_at: i64,
+    last_activity: Arc<RwLock<i64>>,
+    message_count: Arc<RwLock<u64>>,
+    metadata: Arc<RwLock<HashMap<String, serde_json::Value>>>,
+    tee_active: Arc<RwLock<bool>>,
+}
+```
+
+### Session API
+
+```rust
+impl Session {
+    pub async fn state(&self) -> SessionState;
+    pub async fn set_state(&self, state: SessionState);
+    pub async fn is_active(&self) -> bool;
+    pub async fn touch(&self);
+    pub async fn increment_messages(&self);
+    pub async fn update_sensitivity(&self, level: SensitivityLevel);
+    pub async fn mark_tee_active(&self);
+    pub async fn uses_tee(&self) -> bool;
+}
+```
+
+## Session Manager
+
+```rust
+pub struct SessionManager {
+    sessions: Arc<RwLock<HashMap<String, Arc<Session>>>>,
+    user_sessions: Arc<RwLock<HashMap<String, String>>>,
+    tee_config: TeeConfig,
+    tee_runtime: Arc<TeeRuntime>,
+    isolation: Arc<SessionIsolation>,
+    injection_detector: Arc<InjectionDetector>,
+    network_firewall: Arc<NetworkFirewall>,
+    audit_bus: Arc<AuditEventBus>,
+}
+
+impl SessionManager {
+    pub fn new(tee_config: TeeConfig, audit_bus: Arc<AuditEventBus>) -> Self;
+    pub async fn init_tee(&self) -> Result<()>;
+    pub async fn shutdown_tee(&self) -> Result<()>;
+    pub fn is_tee_enabled(&self) -> bool;
+}
+```
+
+The session manager coordinates all security subsystems — each incoming message passes through the injection detector, privacy classifier, and policy engine before reaching the AI agent.
+
+## Session Routing
+
+The `SessionRouter` decides how to process each message based on its sensitivity:
+
+```rust
+pub enum RoutingDecision {
+    ProcessLocal,           // Handle without TEE
+    ProcessInTee,           // Route to TEE enclave
+    Reject,                 // Block the message
+    RequireConfirmation,    // Ask user for consent
+}
+```
+
+Routing flow:
+1. Classify message for PII → `SensitivityLevel`
+2. Check cumulative risk for the session
+3. Evaluate policy engine → `RoutingDecision`
+4. If `ProcessInTee`, encrypt and forward via secure channel
+5. Register tainted values in the session's taint registry
+
+## Session Isolation
+
+Each session has its own isolated security context:
+
+```rust
+pub struct SessionIsolation {
+    // Per-session taint registries
+    // Per-session audit logs
+    // Per-session secure memory wipe
+}
+
+impl SessionIsolation {
+    pub async fn wipe_all(&self);
+}
+```
+
+When a session terminates:
+1. All taint entries are securely erased (zeroed memory via `zeroize`)
+2. Session audit log is finalized
+3. Memory buffers are wiped
+4. Session metadata is cleared
+
+This prevents data leakage between sessions, even within the same process.
+
+## REST API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/gateway/sessions` | GET | List all active sessions |
+| `/api/v1/gateway/sessions/:id` | GET | Get session details |
+
+### Session Detail Response
+
+```json
+{
+  "id": "sess-abc123",
+  "user_id": "user-1",
+  "channel_id": "telegram",
+  "state": "Active",
+  "sensitivity_level": "Sensitive",
+  "tee_active": false,
+  "message_count": 12,
+  "created_at": 1707734400,
+  "last_activity": 1707734460
+}
+```

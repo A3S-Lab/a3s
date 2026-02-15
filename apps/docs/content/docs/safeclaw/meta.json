@@ -1,4 +1,18 @@
 {
-  "title": "SafeClaw",
-  "pages": ["index"]
+  "title": "A3S SafeClaw",
+  "pages": [
+    "index",
+    "quick-start",
+    "---Core---",
+    "privacy",
+    "leakage",
+    "sessions",
+    "---Security---",
+    "crypto",
+    "tee",
+    "---Capabilities---",
+    "channels",
+    "memory",
+    "observability"
+  ]
 }
