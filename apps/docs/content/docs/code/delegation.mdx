@@ -1,0 +1,83 @@
+---
+title: Delegation
+description: Delegate tasks to specialized subagents with isolated sessions
+---
+
+# Server-Side Delegation
+
+Delegation spawns a subagent in an isolated child session to handle a specific task. The parent session's context is not shared — the subagent operates independently with its own permissions and tool access.
+
+## Basic Usage
+
+```typescript
+const result = await client.delegate(sessionId, {
+  agentName: 'explore',
+  task: 'Find all API endpoints and list their HTTP methods',
+  maxSteps: 20,
+});
+
+console.log(result.text);            // Subagent's final output
+console.log(result.agentSessionId);  // Child session ID
+console.log(result.steps.length);    // Steps taken by subagent
+console.log(result.usage);           // Token usage
+```
+
+```python
+result = await client.delegate(session_id, "explore", "Find all API endpoints")
+print(result["text"])
+```
+
+## Streaming
+
+```typescript
+for await (const event of client.streamDelegate(sessionId, {
+  agentName: 'plan',
+  task: 'Design the database migration strategy',
+})) {
+  if (event.type === 'text') process.stdout.write(event.content);
+  if (event.type === 'subagent_start') console.log(`\nSubagent started: ${event.agentName}`);
+  if (event.type === 'subagent_end') console.log(`\nSubagent done: ${event.agentResult.slice(0, 200)}`);
+  if (event.type === 'done') console.log(`\nFinished: ${event.finishReason}`);
+}
+```
+
+```python
+async for event in client.stream_delegate(session_id, "explore", "Find all endpoints"):
+    if event.get("type") == "text":
+        print(event["content"], end="", flush=True)
+```
+
+## Built-in Agent Types
+
+| Agent | Description | Default Max Steps |
+|-------|-------------|-------------------|
+| `explore` | Codebase exploration — find files, search code, read structure | 20 |
+| `plan` | Architecture and planning — design implementation strategies | 30 |
+| `general` | General-purpose — full tool access for diverse tasks | 50 |
+
+## Tool Filtering
+
+Restrict which tools the subagent can use:
+
+```typescript
+await client.delegate(sessionId, {
+  agentName: 'explore',
+  task: 'Find all test files',
+  allowedTools: ['Read', 'Glob', 'Grep'],  // Only these tools
+});
+```
+
+## How Delegation Works
+
+1. A child session is created with its own context
+2. The agent definition's permissions are applied to the child
+3. The task is executed as an agentic loop within the child session
+4. Results are returned to the parent
+5. The child session ID is included in the response for reference
+
+## RPCs
+
+| RPC | Description |
+|-----|-------------|
+| `delegate(sessionId, agentType, prompt)` | Delegate task to subagent (unary) |
+| `streamDelegate(sessionId, agentType, prompt)` | Delegate task to subagent (streaming) |

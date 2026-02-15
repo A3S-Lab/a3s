@@ -1,0 +1,150 @@
+---
+title: Code Generation
+description: Generate responses and structured output with streaming support
+---
+
+# Code Generation
+
+The generation RPCs send messages to the LLM and return responses. These are low-level RPCs — for most use cases, prefer the [Agentic Loop](/docs/code/agentic) which handles tool execution automatically.
+
+## Generate (Unary)
+
+Send messages and receive a single response. The LLM may return tool calls that need client-side execution.
+
+```typescript
+const result = await client.generate(sessionId, [
+  { role: 'user', content: 'What files are in the src/ directory?' },
+]);
+
+console.log(result.message.content);    // Assistant response text
+console.log(result.toolCalls);          // Tool calls to execute client-side
+console.log(result.usage.totalTokens);  // Token usage
+console.log(result.finishReason);       // 'stop' | 'length' | 'tool_calls'
+```
+
+```python
+result = await client.generate(session_id, [
+    {"role": "user", "content": "What files are in the src/ directory?"},
+])
+print(result["message"]["content"])
+print(result["usage"]["total_tokens"])
+```
+
+## Stream Generate
+
+Same as `generate`, but streams response chunks as they arrive.
+
+```typescript
+for await (const chunk of client.streamGenerate(sessionId, [
+  { role: 'user', content: 'Explain the auth module' },
+])) {
+  switch (chunk.type) {
+    case 'content':
+      process.stdout.write(chunk.content);
+      break;
+    case 'tool_call':
+      console.log(`\nTool: ${chunk.toolCall.name}(${chunk.toolCall.arguments})`);
+      break;
+    case 'tool_result':
+      console.log(`Result: ${chunk.toolResult.output}`);
+      break;
+    case 'done':
+      console.log(`\nFinish: ${chunk.finishReason}`);
+      break;
+  }
+}
+```
+
+```python
+async for chunk in client.stream_generate(session_id, [
+    {"role": "user", "content": "Explain the auth module"},
+]):
+    if chunk.get("content"):
+        print(chunk["content"], end="", flush=True)
+    if chunk.get("tool_call"):
+        print(f"\nTool: {chunk['tool_call']['name']}")
+```
+
+### Chunk Types
+
+| Type | Fields | Description |
+|------|--------|-------------|
+| `content` | `content` | Text delta from assistant |
+| `tool_call` | `toolCall` | Tool call request (id, name, arguments) |
+| `tool_result` | `toolResult` | Tool execution result |
+| `metadata` | `metadata` | Additional metadata |
+| `done` | `finishReason` | Stream complete |
+
+## Generate Structured
+
+Generate output conforming to a JSON Schema. The schema is injected into the prompt, and the response is parsed and validated.
+
+```typescript
+const result = await client.generateStructured(sessionId, [
+  { role: 'user', content: 'Analyze the complexity of src/auth.ts' },
+], {
+  schema: JSON.stringify({
+    type: 'object',
+    properties: {
+      file: { type: 'string' },
+      complexity: { type: 'string', enum: ['low', 'medium', 'high'] },
+      lines: { type: 'number' },
+      functions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            complexity: { type: 'string' },
+          },
+        },
+      },
+    },
+    required: ['file', 'complexity', 'lines', 'functions'],
+  }),
+});
+
+const analysis = JSON.parse(result.data);
+console.log(analysis.complexity);  // 'medium'
+console.log(analysis.functions);   // [{ name: 'login', complexity: 'high' }, ...]
+```
+
+```python
+import json
+
+result = await client.generate_structured(session_id, [
+    {"role": "user", "content": "Analyze the complexity of src/auth.ts"},
+], schema=json.dumps({
+    "type": "object",
+    "properties": {
+        "file": {"type": "string"},
+        "complexity": {"type": "string", "enum": ["low", "medium", "high"]},
+        "lines": {"type": "number"},
+    },
+    "required": ["file", "complexity", "lines"],
+}))
+
+analysis = json.loads(result["data"])
+```
+
+## Stream Structured
+
+Streaming variant of structured generation. Currently wraps the unary call and emits a single chunk.
+
+```typescript
+for await (const chunk of client.streamGenerateStructured(sessionId, messages, { schema })) {
+  if (chunk.done) {
+    const data = JSON.parse(chunk.data);
+    console.log(data);
+  }
+}
+```
+
+## RPCs
+
+| RPC | Description |
+|-----|-------------|
+| `generate(sessionId, messages)` | Generate response (unary) |
+| `streamGenerate(sessionId, messages)` | Generate response (streaming) |
+| `generateStructured(sessionId, messages, schema)` | Generate structured output (unary) |
+| `streamGenerateStructured(sessionId, messages, schema)` | Generate structured output (streaming) |

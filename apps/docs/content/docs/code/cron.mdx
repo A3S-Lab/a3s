@@ -1,0 +1,194 @@
+---
+title: Cron
+description: Schedule recurring tasks with cron expressions or natural language
+---
+
+# Cron (Scheduled Tasks)
+
+A3S Code includes a built-in cron system for scheduling recurring tasks. Schedules can be defined as standard cron expressions or natural language.
+
+## Create Job
+
+```typescript
+const { job } = await client.createCronJob({
+  name: 'daily-backup',
+  schedule: 'every day at 2am',     // Natural language
+  command: '/opt/scripts/backup.sh',
+  timeoutMs: 120000,                 // 2 minute timeout
+});
+console.log(`Created job ${job.id}: ${job.name}`);
+```
+
+```python
+result = await client.create_cron_job("daily-backup", "every day at 2am", "backup.sh")
+print(f"Created: {result['job']['id']}")
+```
+
+Cron expressions are also supported:
+
+```typescript
+await client.createCronJob({
+  name: 'health-check',
+  schedule: '*/5 * * * *',  // Every 5 minutes
+  command: 'curl -f http://localhost:8080/health',
+  timeoutMs: 10000,
+});
+```
+
+## List Jobs
+
+```typescript
+const { jobs } = await client.listCronJobs();
+for (const job of jobs) {
+  console.log(`${job.name} [${job.status}]: ${job.schedule}`);
+}
+```
+
+```python
+result = await client.list_cron_jobs()
+for job in result["jobs"]:
+    print(f"{job['name']}: {job['schedule']}")
+```
+
+## Get Job
+
+Look up a job by ID or name.
+
+```typescript
+const { job } = await client.getCronJob({ id: 'job-abc-123' });
+// or by name:
+const { job } = await client.getCronJob({ name: 'daily-backup' });
+```
+
+```python
+result = await client.get_cron_job(id="job-abc-123")
+# or by name:
+result = await client.get_cron_job(name="daily-backup")
+```
+
+## Update Job
+
+```typescript
+await client.updateCronJob({
+  id: job.id,
+  schedule: 'every day at 3am',
+  timeoutMs: 180000,
+});
+```
+
+```python
+await client.update_cron_job(job_id, schedule="every day at 3am", timeout_ms=180000)
+```
+
+## Pause / Resume
+
+```typescript
+await client.pauseCronJob(job.id);   // Prevents future executions
+await client.resumeCronJob(job.id);  // Re-enables scheduling
+```
+
+```python
+await client.pause_cron_job(job_id)
+await client.resume_cron_job(job_id)
+```
+
+## Delete Job
+
+```typescript
+await client.deleteCronJob(job.id);
+```
+
+```python
+await client.delete_cron_job(job_id)
+```
+
+## Run Job Manually
+
+Trigger a job execution immediately, regardless of schedule.
+
+```typescript
+const { execution } = await client.runCronJob(job.id);
+console.log(`Exit code: ${execution.exitCode}`);
+console.log(`Duration: ${execution.durationMs}ms`);
+console.log(`stdout: ${execution.stdout}`);
+console.log(`stderr: ${execution.stderr}`);
+```
+
+```python
+result = await client.run_cron_job(job_id)
+print(f"Exit: {result['execution']['exit_code']}")
+print(f"Output: {result['execution']['stdout']}")
+```
+
+## Execution History
+
+```typescript
+const { executions } = await client.getCronHistory(job.id, { limit: 10 });
+for (const exec of executions) {
+  console.log(`${exec.startedAt} → ${exec.status} (${exec.durationMs}ms)`);
+  if (exec.error) console.log(`  Error: ${exec.error}`);
+}
+```
+
+```python
+result = await client.get_cron_history(job_id, limit=10)
+for ex in result["executions"]:
+    print(f"{ex['started_at']}: {ex['status']} ({ex['duration_ms']}ms)")
+```
+
+### Execution Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Execution ID |
+| `jobId` | string | Parent job ID |
+| `status` | string | Execution status |
+| `startedAt` | string | Start timestamp |
+| `endedAt` | string | End timestamp |
+| `durationMs` | number | Duration in milliseconds |
+| `exitCode` | number | Process exit code |
+| `stdout` | string | Standard output |
+| `stderr` | string | Standard error |
+| `error` | string | Error message (if failed) |
+
+## Parse Schedule
+
+Convert natural language to cron expressions without creating a job.
+
+```typescript
+const parsed = await client.parseCronSchedule('every 5 minutes');
+console.log(parsed.cronExpression);  // '*/5 * * * *'
+console.log(parsed.description);     // 'every 5 minutes'
+```
+
+```python
+parsed = await client.parse_cron_schedule("every weekday at 9am")
+print(parsed["cron_expression"])  # '0 9 * * 1-5'
+print(parsed["description"])
+```
+
+### Supported Natural Language
+
+| Input | Cron Expression |
+|-------|----------------|
+| `every 5 minutes` | `*/5 * * * *` |
+| `every hour` | `0 * * * *` |
+| `every day at 2am` | `0 2 * * *` |
+| `every weekday at 9am` | `0 9 * * 1-5` |
+| `every monday at noon` | `0 12 * * 1` |
+| `every month on the 1st` | `0 0 1 * *` |
+
+## RPCs
+
+| RPC | Description |
+|-----|-------------|
+| `createCronJob(name, schedule, command, timeoutMs)` | Create a cron job |
+| `listCronJobs()` | List all cron jobs |
+| `getCronJob(id, name)` | Get cron job by ID or name |
+| `updateCronJob(id, schedule, command, timeoutMs)` | Update a cron job |
+| `pauseCronJob(id)` | Pause a cron job |
+| `resumeCronJob(id)` | Resume a cron job |
+| `deleteCronJob(id)` | Delete a cron job |
+| `runCronJob(id)` | Manually trigger a job |
+| `getCronHistory(id, limit)` | Get execution history |
+| `parseCronSchedule(input)` | Parse natural language to cron |

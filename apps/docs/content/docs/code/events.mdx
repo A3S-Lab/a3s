@@ -1,0 +1,90 @@
+---
+title: Events
+description: Subscribe to real-time agent events across sessions
+---
+
+# Event Streaming
+
+Subscribe to real-time events from the agent. Events cover session lifecycle, generation progress, tool execution, confirmations, memory operations, and more.
+
+## Subscribe
+
+```typescript
+for await (const event of client.subscribeEvents({
+  sessionId: sessionId,    // Optional: filter to one session
+  eventTypes: ['TOOL_CALLED', 'TOOL_COMPLETED', 'ERROR'],  // Optional: filter event types
+})) {
+  console.log(`[${event.type}] ${event.message}`);
+  console.log(`  Session: ${event.sessionId}`);
+  console.log(`  Data: ${JSON.stringify(event.data)}`);
+}
+```
+
+```python
+async for event in client.subscribe_events(
+    session_id=session_id,
+    event_types=["TOOL_CALLED", "TOOL_COMPLETED"],
+):
+    print(f"[{event['type']}] {event['message']}")
+```
+
+## Event Types
+
+| Event | Value | Description |
+|-------|-------|-------------|
+| `SESSION_CREATED` | 1 | New session created |
+| `SESSION_DESTROYED` | 2 | Session destroyed |
+| `GENERATION_STARTED` | 3 | LLM generation started |
+| `GENERATION_COMPLETED` | 4 | LLM generation completed |
+| `TOOL_CALLED` | 5 | Tool execution started |
+| `TOOL_COMPLETED` | 6 | Tool execution completed |
+| `ERROR` | 7 | Error occurred |
+| `WARNING` | 8 | Warning emitted |
+| `INFO` | 9 | Informational event |
+| `CONFIRMATION_REQUIRED` | 10 | HITL approval needed |
+| `CONFIRMATION_RECEIVED` | 11 | HITL response received |
+| `CONFIRMATION_TIMEOUT` | 12 | HITL confirmation timed out |
+| `EXTERNAL_TASK_PENDING` | 13 | External task waiting |
+| `EXTERNAL_TASK_COMPLETED` | 14 | External task completed |
+| `PERMISSION_DENIED` | 15 | Tool blocked by permission policy |
+| `MEMORY_STORED` | 16 | Memory item stored |
+| `MEMORY_RECALLED` | 17 | Memory item recalled |
+| `MEMORIES_SEARCHED` | 18 | Memory search performed |
+| `MEMORY_CLEARED` | 19 | Memories cleared |
+| `CONTEXT_COMPACTED` | 20 | Context auto-compacted |
+
+## Event Structure
+
+Each event contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `type` | EventType | Event type enum |
+| `sessionId` | string | Associated session (if applicable) |
+| `timestamp` | number | Unix timestamp (ms) |
+| `message` | string | Human-readable description |
+| `data` | map | Additional event-specific data |
+
+## Filtering
+
+Both `sessionId` and `eventTypes` are optional filters:
+
+- **No filters**: receive all events from all sessions
+- **sessionId only**: receive all events from one session
+- **eventTypes only**: receive specific event types from all sessions
+- **Both**: receive specific event types from one session
+
+```typescript
+// Monitor all errors across all sessions
+for await (const event of client.subscribeEvents({
+  eventTypes: ['ERROR', 'WARNING'],
+})) {
+  console.error(`[${event.sessionId}] ${event.message}`);
+}
+```
+
+## RPC
+
+| RPC | Description |
+|-----|-------------|
+| `subscribeEvents(sessionId, eventTypes)` | Subscribe to agent events |

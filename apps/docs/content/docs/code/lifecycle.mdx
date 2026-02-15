@@ -1,0 +1,105 @@
+---
+title: Lifecycle
+description: Agent health checks, capabilities discovery, initialization, and shutdown
+---
+
+# Lifecycle
+
+The Lifecycle RPCs manage the agent process — check health, discover capabilities, initialize, and shut down.
+
+## Health Check
+
+Check agent health status including version, uptime, active sessions, and store health.
+
+```typescript
+const health = await client.healthCheck();
+// health.status: 'HEALTHY' | 'DEGRADED' | 'UNHEALTHY'
+// health.message: 'Agent is healthy'
+// health.details: { version, uptime_seconds, 'sessions.active', 'store.json': 'healthy' }
+```
+
+```python
+health = await client.health_check()
+print(health["status"])   # HEALTHY
+print(health["details"])  # {'version': '0.5.0', 'uptime_seconds': '120', ...}
+```
+
+**Status conditions:**
+
+| Status | Condition |
+|--------|-----------|
+| `HEALTHY` | Agent initialized, store healthy |
+| `DEGRADED` | Agent not initialized, or store unhealthy |
+| `UNHEALTHY` | Critical failure |
+
+## Get Capabilities
+
+Discover agent capabilities, available tools, supported models, and resource limits.
+
+```typescript
+const caps = await client.getCapabilities();
+
+console.log(caps.info);
+// { name: 'a3s-code', version: '0.5.0', description: '...', author: 'A3S Lab' }
+
+console.log(caps.features);
+// ['streaming', 'tool_calling', 'structured_output', 'skills']
+
+console.log(caps.tools);
+// [{ name: 'Read', description: '...', parameters: '...', async: false }, ...]
+
+console.log(caps.limits);
+// { maxContextTokens: 200000, maxConcurrentSessions: 100, maxToolsPerRequest: 50 }
+```
+
+```python
+caps = await client.get_capabilities()
+for tool in caps["tools"]:
+    print(f"{tool['name']}: {tool['description']}")
+```
+
+## Initialize
+
+Initialize the agent with a workspace directory and optional environment variables.
+
+```typescript
+const result = await client.initialize({
+  workspace: '/path/to/project',
+  env: {
+    NODE_ENV: 'development',
+    DEBUG: 'true',
+  },
+});
+// result.success: true
+// result.info: { name: 'a3s-code', version: '0.5.0', ... }
+```
+
+```python
+result = await client.initialize(
+    workspace="/path/to/project",
+    env={"NODE_ENV": "development"},
+)
+```
+
+## Shutdown
+
+Gracefully shut down the agent. Marks the agent as uninitialized.
+
+```typescript
+const result = await client.shutdown();
+// result.success: true
+// result.message: 'Agent shut down'
+```
+
+```python
+result = await client.shutdown()
+```
+
+## RPCs
+
+| RPC | Description |
+|-----|-------------|
+| `healthCheck()` | Check agent health (version, uptime, sessions, store health) |
+| `getCapabilities()` | Get agent capabilities, tools, and models |
+| `initialize(workspace, env)` | Initialize agent with workspace |
+| `shutdown()` | Graceful shutdown |

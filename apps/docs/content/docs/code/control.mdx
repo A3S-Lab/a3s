@@ -1,0 +1,85 @@
+---
+title: Control Operations
+description: Cancel, pause, and resume agent operations
+---
+
+# Control Operations
+
+Control in-flight operations — cancel a running generation, pause a session, or resume it.
+
+## Cancel
+
+Cancel an in-progress operation for a session.
+
+```typescript
+await client.cancel(sessionId);
+```
+
+```python
+await client.cancel(session_id)
+```
+
+With a specific operation ID:
+
+```typescript
+await client.cancel(sessionId, { operationId: 'op-123' });
+```
+
+Cancellation causes the agentic loop to emit a `done` event with `finishReason: 'cancelled'`.
+
+## Pause
+
+Pause all operations in a session. Pending tool executions are suspended.
+
+```typescript
+await client.pause(sessionId);
+```
+
+```python
+await client.pause(session_id)
+```
+
+The session state changes to `PAUSED`. New generation requests to a paused session will be queued until resumed.
+
+## Resume
+
+Resume a paused session. Queued and suspended operations continue.
+
+```typescript
+await client.resume(sessionId);
+```
+
+```python
+await client.resume(session_id)
+```
+
+## Example: Pause/Resume During Streaming
+
+```typescript
+const stream = client.streamAgenticGenerate(sessionId, {
+  prompt: 'Refactor the entire codebase',
+  maxSteps: 100,
+});
+
+// Start consuming events
+for await (const event of stream) {
+  if (event.type === 'text') process.stdout.write(event.content);
+
+  // Pause after 10 steps to review
+  if (event.type === 'step_finish' && event.stepIndex === 10) {
+    await client.pause(sessionId);
+    console.log('\n--- Paused. Review changes, then resume. ---');
+
+    // Resume after review
+    await client.resume(sessionId);
+  }
+}
+```
+
+## RPCs
+
+| RPC | Description |
+|-----|-------------|
+| `cancel(sessionId, operationId)` | Cancel an operation |
+| `pause(sessionId)` | Pause a session |
+| `resume(sessionId)` | Resume a session |

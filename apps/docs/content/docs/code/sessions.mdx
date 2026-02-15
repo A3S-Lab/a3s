@@ -1,0 +1,175 @@
+---
+title: Sessions
+description: Create, configure, and manage isolated agent sessions
+---
+
+# Session Management
+
+Each session is an isolated agent context with its own conversation history, LLM configuration, permissions, and tools. Sessions auto-generate a UUID if no ID is provided.
+
+## Create Session
+
+```typescript
+const { sessionId, session } = await client.createSession({
+  workspace: '/project',
+  llm: {
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-20250514',
+    apiKey: 'sk-ant-...',
+  },
+  systemPrompt: 'You are a senior engineer.',
+  autoCompact: true,
+  autoCompactThreshold: 80,
+  planningEnabled: true,
+  goalTracking: true,
+});
+```
+
+```python
+result = await client.create_session(
+    workspace="/project",
+    llm={
+        "provider": "anthropic",
+        "model": "claude-sonnet-4-20250514",
+        "api_key": "sk-ant-...",
+    },
+    system_prompt="You are a senior engineer.",
+    auto_compact=True,
+)
+session_id = result["session_id"]
+```
+
+### Session Config
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `workspace` | string | Working directory for file operations |
+| `llm` | LLMConfig | Provider, model, API key, base URL, temperature, max tokens |
+| `systemPrompt` | string | System message prepended to all conversations |
+| `autoCompact` | bool | Auto-compact context when threshold is exceeded |
+| `autoCompactThreshold` | number | Token usage percentage to trigger compaction (default: 80) |
+| `storageType` | enum | `MEMORY` (default), `FILE`, or `CUSTOM` |
+| `planningEnabled` | bool | Enable execution planning |
+| `goalTracking` | bool | Enable goal extraction and progress tracking |
+
+### LLM Config
+
+```typescript
+{
+  provider: 'anthropic',      // Provider name
+  model: 'claude-sonnet-4-20250514',  // Model ID
+  apiKey: 'sk-ant-...',       // API key
+  baseUrl: 'https://...',     // Custom base URL (optional)
+  temperature: 0.7,           // Sampling temperature (optional)
+  maxTokens: 4096,            // Max output tokens (optional)
+}
+```
+
+## Get Session
+
+```typescript
+const { session } = await client.getSession(sessionId);
+console.log(session.state);  // 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ERROR'
+console.log(session.contextUsage);
+// { totalTokens: 1234, promptTokens: 800, completionTokens: 434, messageCount: 6 }
+```
+
+```python
+result = await client.get_session(session_id)
+print(result["session"]["state"])  # ACTIVE
+```
+
+## List Sessions
+
+```typescript
+const { sessions } = await client.listSessions();
+for (const s of sessions) {
+  console.log(`${s.id}: ${s.state} (${s.contextUsage.totalTokens} tokens)`);
+}
+```
+
+```python
+result = await client.list_sessions()
+for s in result["sessions"]:
+    print(f"{s['id']}: {s['state']}")
+```
+
+## Configure Session
+
+Update session configuration after creation. Commonly used to switch models mid-session.
+
+```typescript
+await client.configureSession(sessionId, {
+  llm: {
+    provider: 'openai',
+    model: 'gpt-4o',
+    apiKey: 'sk-...',
+  },
+  planningEnabled: true,
+});
+```
+
+```python
+await client.configure_session(session_id, {
+    "llm": {
+        "provider": "openai",
+        "model": "gpt-4o",
+        "api_key": "sk-...",
+    },
+})
+```
+
+## Get Messages
+
+Retrieve conversation history with pagination.
+
+```typescript
+const { messages, totalCount, hasMore } = await client.getMessages(sessionId, {
+  limit: 20,
+  offset: 0,
+});
+
+for (const msg of messages) {
+  console.log(`[${msg.role}] ${msg.content[0]?.text ?? ''}`);
+}
+```
+
+```python
+result = await client.get_messages(session_id, limit=20, offset=0)
+for msg in result["messages"]:
+    print(f"[{msg['role']}] {msg['content']}")
+print(f"Total: {result['total_count']}, Has more: {result['has_more']}")
+```
+
+### Message Content Blocks
+
+Each message contains `content` as an array of content blocks:
+
+| Type | Fields | Description |
+|------|--------|-------------|
+| `TextContent` | `text` | Plain text content |
+| `ToolUseContent` | `id`, `name`, `input` | Tool call request |
+| `ToolResultContent` | `toolUseId`, `content`, `isError` | Tool execution result |
+
+## Destroy Session
+
+```typescript
+await client.destroySession(sessionId);
+```
+
+```python
+await client.destroy_session(session_id)
+```
+
+Fires a `SESSION_DESTROYED` event and collects final session statistics (total tokens, duration) before cleanup.
+
+## RPCs
+
+| RPC | Description |
+|-----|-------------|
+| `createSession(config, sessionId, initialContext)` | Create a new session |
+| `getSession(sessionId)` | Get session details |
+| `listSessions()` | List all sessions |
+| `configureSession(sessionId, config)` | Update session configuration |
+| `getMessages(sessionId, limit, offset)` | Get conversation history |
+| `destroySession(sessionId)` | Destroy a session |

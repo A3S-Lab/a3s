@@ -1,0 +1,65 @@
+---
+title: Todo Tracking
+description: Track task progress with session-scoped todo lists
+---
+
+# Todo Tracking
+
+Each session has a todo list for tracking work items. The agent can create, update, and complete todos as it works through a task.
+
+## Get Todos
+
+```typescript
+const { todos } = await client.getTodos(sessionId);
+for (const todo of todos) {
+  const icon = todo.status === 'completed' ? '✅' :
+               todo.status === 'in_progress' ? '🔄' : '⬚';
+  console.log(`${icon} [${todo.priority}] ${todo.content}`);
+}
+```
+
+```python
+result = await client.get_todos(session_id)
+for todo in result["todos"]:
+    print(f"[{todo['status']}] ({todo['priority']}) {todo['content']}")
+```
+
+## Set Todos
+
+Replace the entire todo list for a session.
+
+```typescript
+await client.setTodos(sessionId, {
+  todos: [
+    { id: '1', content: 'Analyze existing auth module', status: 'completed', priority: 'high' },
+    { id: '2', content: 'Write JWT utility functions', status: 'in_progress', priority: 'high' },
+    { id: '3', content: 'Update middleware chain', status: 'pending', priority: 'medium' },
+    { id: '4', content: 'Add unit tests', status: 'pending', priority: 'medium' },
+    { id: '5', content: 'Update documentation', status: 'pending', priority: 'low' },
+  ],
+});
+```
+
+```python
+await client.set_todos(session_id, [
+    {"id": "1", "content": "Analyze existing auth module", "status": "completed", "priority": "high"},
+    {"id": "2", "content": "Write JWT utility functions", "status": "in_progress", "priority": "high"},
+    {"id": "3", "content": "Update middleware chain", "status": "pending", "priority": "medium"},
+])
+```
+
+## Todo Fields
+
+| Field | Type | Values |
+|-------|------|--------|
+| `id` | string | Unique identifier |
+| `content` | string | Task description |
+| `status` | string | `pending`, `in_progress`, `completed`, `cancelled` |
+| `priority` | string | `high`, `medium`, `low` |
+
+## RPCs
+
+| RPC | Description |
+|-----|-------------|
+| `getTodos(sessionId)` | Get todos for session |
+| `setTodos(sessionId, todos)` | Set todos for session |

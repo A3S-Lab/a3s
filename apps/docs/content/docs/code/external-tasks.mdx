@@ -1,0 +1,147 @@
+---
+title: External Tasks
+description: Route tool execution to external handlers with lane-based task management
+---
+
+# External Task Handling
+
+A3S Code uses a lane-based architecture to route operations. Each lane can be configured to handle tasks internally (default), externally (SDK handles execution), or in hybrid mode.
+
+## Lanes
+
+| Lane | Purpose |
+|------|---------|
+| `CONTROL` | Session lifecycle operations |
+| `QUERY` | Read-only operations (Read, Grep, Glob) |
+| `EXECUTE` | Write operations (Write, Edit, Bash) |
+| `GENERATE` | LLM generation calls |
+
+## Set Lane Handler
+
+Configure a lane to use external handling. When set to `EXTERNAL`, the agent pauses and sends the task to the SDK client.
+
+```typescript
+await client.setLaneHandler(sessionId, {
+  lane: 'EXECUTE',
+  config: {
+    mode: 'EXTERNAL',   // 'INTERNAL' | 'EXTERNAL' | 'HYBRID'
+    timeoutMs: 30000,
+  },
+});
+```
+
+```python
+await client.set_lane_handler(session_id, "EXECUTE", {
+    "mode": "EXTERNAL",
+    "timeout_ms": 30000,
+})
+```
+
+### Handler Modes
+
+| Mode | Behavior |
+|------|----------|
+| `INTERNAL` | Agent handles tasks directly (default) |
+| `EXTERNAL` | Tasks are sent to SDK, agent waits for callback |
+| `HYBRID` | Agent handles internally, SDK receives notification |
+
+## Get Lane Handler
+
+```typescript
+const { config } = await client.getLaneHandler(sessionId, { lane: 'EXECUTE' });
+console.log(config.mode);       // 'EXTERNAL'
+console.log(config.timeoutMs);  // 30000
+```
+
+```python
+result = await client.get_lane_handler(session_id, "EXECUTE")
+print(result["config"]["mode"])
+```
+
+## List Pending Tasks
+
+List all tasks waiting for external completion.
+
+```typescript
+const { tasks } = await client.listPendingExternalTasks(sessionId);
+for (const task of tasks) {
+  console.log(`${task.taskId}: ${task.commandType} on ${task.lane}`);
+  console.log(`  Payload: ${task.payload}`);
+  console.log(`  Remaining: ${task.remainingMs}ms`);
+}
+```
+
+```python
+result = await client.list_pending_external_tasks(session_id)
+for task in result["tasks"]:
+    print(f"{task['task_id']}: {task['command_type']} ({task['remaining_ms']}ms left)")
+```
+
+## Complete External Task
+
+Provide the result for a pending external task to resume the agent.
+
+```typescript
+await client.completeExternalTask(sessionId, {
+  taskId: 'task-abc-123',
+  success: true,
+  result: JSON.stringify({ output: 'File written successfully' }),
+});
+```
+
+```python
+await client.complete_external_task(session_id, "task-abc-123", {
+    "success": True,
+    "result": '{"output": "File written successfully"}',
+})
+```
+
+To report a failure:
+
+```typescript
+await client.completeExternalTask(sessionId, {
+  taskId: 'task-abc-123',
+  success: false,
+  error: 'Permission denied: cannot write to /etc/hosts',
+});
+```
+
+## Example: External Bash Execution
+
+Route all Bash commands through your own execution environment:
+
+```typescript
+// 1. Set EXECUTE lane to external
+await client.setLaneHandler(sessionId, {
+  lane: 'EXECUTE',
+  config: { mode: 'EXTERNAL', timeoutMs: 60000 },
+});
+
+// 2. Subscribe to external task events
+for await (const event of client.subscribeEvents({
+  sessionId,
+  eventTypes: ['EXTERNAL_TASK_PENDING'],
+})) {
+  const task = event.data;
+
+  // 3. Execute in your sandbox
+  const result = await mySecureSandbox.execute(task.payload);
+
+  // 4. Report result back
+  await client.completeExternalTask(sessionId, {
+    taskId: task.taskId,
+    success: result.exitCode === 0,
+    result: JSON.stringify({ stdout: result.stdout, stderr: result.stderr }),
+    error: result.exitCode !== 0 ? result.stderr : '',
+  });
+}
+```
+
+## RPCs
+
+| RPC | Description |
+|-----|-------------|
+| `setLaneHandler(sessionId, lane, config)` | Set lane handler mode |
+| `getLaneHandler(sessionId, lane)` | Get lane handler config |
+| `listPendingExternalTasks(sessionId)` | List pending external tasks |
+| `completeExternalTask(sessionId, taskId, success, result, error)` | Complete an external task |
