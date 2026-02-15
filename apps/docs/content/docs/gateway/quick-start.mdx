@@ -1,0 +1,143 @@
+---
+title: Quick Start
+description: Get A3S Gateway running with a basic reverse proxy configuration
+---
+
+# Quick Start
+
+## Minimal Configuration
+
+Create a `gateway.toml` file:
+
+```toml
+[entrypoints.web]
+address = "0.0.0.0:80"
+
+[routers.my-api]
+rule = "PathPrefix(`/api`)"
+service = "api-backend"
+entrypoints = ["web"]
+
+[services.api-backend.load_balancer]
+strategy = "round-robin"
+[[services.api-backend.load_balancer.servers]]
+url = "http://127.0.0.1:8001"
+```
+
+## Start the Gateway
+
+```bash
+# Start with config file
+a3s-gateway --config gateway.toml
+
+# Start with debug logging
+a3s-gateway --config gateway.toml --log-level debug
+
+# Start with custom listen address
+a3s-gateway --config gateway.toml --listen 0.0.0.0:8080
+```
+
+## Add HTTPS
+
+```toml
+[entrypoints.web]
+address = "0.0.0.0:80"
+
+[entrypoints.websecure]
+address = "0.0.0.0:443"
+[entrypoints.websecure.tls]
+cert_file = "/etc/certs/cert.pem"
+key_file = "/etc/certs/key.pem"
+
+[routers.my-api]
+rule = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+service = "api-backend"
+entrypoints = ["websecure"]
+
+[services.api-backend.load_balancer]
+strategy = "round-robin"
+[[services.api-backend.load_balancer.servers]]
+url = "http://127.0.0.1:8001"
+```
+
+## Add Middleware
+
+```toml
+[routers.my-api]
+rule = "Host(`api.example.com`)"
+service = "api-backend"
+entrypoints = ["websecure"]
+middlewares = ["auth", "rate-limit"]
+
+[middlewares.auth]
+type = "jwt"
+value = "my-jwt-secret"
+
+[middlewares.rate-limit]
+type = "rate-limit"
+rate = 100
+burst = 50
+
+[services.api-backend.load_balancer]
+strategy = "round-robin"
+[[services.api-backend.load_balancer.servers]]
+url = "http://127.0.0.1:8001"
+[[services.api-backend.load_balancer.servers]]
+url = "http://127.0.0.1:8002"
+```
+
+## Health Check
+
+```toml
+[services.api-backend.load_balancer]
+strategy = "least-connections"
+
+[[services.api-backend.load_balancer.servers]]
+url = "http://127.0.0.1:8001"
+[[services.api-backend.load_balancer.servers]]
+url = "http://127.0.0.1:8002"
+
+[services.api-backend.load_balancer.health_check]
+path = "/health"
+interval = "10s"
+timeout = "5s"
+unhealthy_threshold = 3
+healthy_threshold = 1
+```
+
+## Dashboard API
+
+The gateway exposes a built-in dashboard API:
+
+```bash
+# Health status
+curl http://localhost:80/api/gateway/health
+
+# Prometheus metrics
+curl http://localhost:80/api/gateway/metrics
+
+# Current configuration
+curl http://localhost:80/api/gateway/config
+```
+
+## Programmatic Usage
+
+```rust
+use a3s_gateway::{Gateway, config::GatewayConfig};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let config = GatewayConfig::from_file("gateway.toml").await?;
+    let gateway = Gateway::new(config)?;
+
+    gateway.start().await?;
+
+    // Check health
+    let health = gateway.health();
+    println!("State: {:?}, Uptime: {}s", health.state, health.uptime_secs);
+
+    // Wait for shutdown signal
+    gateway.wait_for_shutdown().await;
+    Ok(())
+}
+```

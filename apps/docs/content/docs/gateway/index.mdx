@@ -1,40 +1,75 @@
 ---
 title: A3S Gateway
-description: AI-native reverse proxy with multi-protocol support and dynamic configuration
+description: AI-native API gateway with reverse proxy, multi-protocol support, and agent orchestration
 ---
 
 # A3S Gateway
 
-A3S Gateway is an AI-native reverse proxy inspired by Traefik, supporting HTTP, gRPC, TCP, UDP, WebSocket, and SSE protocols with a dynamic middleware chain.
-
-## Key Features
-
-- **Multi-Protocol** — HTTP/HTTPS, gRPC, TCP, UDP, WebSocket, SSE
-- **Dynamic Configuration** — File-based and API-driven config with hot reload
-- **Middleware Chain** — Authentication, rate limiting, CORS, compression, and more
-- **AI Features** — Prompt routing, token-aware load balancing, AI-specific middleware
-- **Auto TLS** — ACME/Let's Encrypt with automatic certificate management
-- **Dashboard** — Built-in web UI for monitoring and configuration
+A3S Gateway is an AI-native API gateway and reverse proxy built on [hyper](https://hyper.rs/) and [rustls](https://github.com/rustls/rustls). It supports HTTP/1.1, HTTP/2, WebSocket, SSE, gRPC, TCP, and UDP with a Traefik-compatible rule syntax, composable middleware pipeline, and AI-specific extensions for agent orchestration.
 
 ## Architecture
 
 ```
-┌───────────────────────────────────────────┐
-│              Entrypoints                  │
-│   HTTP · HTTPS · gRPC · TCP · UDP · WS   │
-├───────────────────────────────────────────┤
-│            Router Layer                   │
-│  Host matching · Path routing · SNI       │
-├───────────────────────────────────────────┤
-│          Middleware Chain                  │
-│  Auth · RateLimit · CORS · Compress · ... │
-├───────────────────────────────────────────┤
-│           Service Layer                   │
-│  LoadBalancer · Failover · Mirror         │
-├───────────────────────────────────────────┤
-│          Provider System                  │
-│   File · Docker · API · Kubernetes        │
-└───────────────────────────────────────────┘
+Client Request
+    ↓
+Entrypoint (HTTP/HTTPS/TCP/UDP listener)
+    ↓
+TLS Termination (rustls, ACME)
+    ↓
+Router (Host/Path/Headers/Method/SNI matching)
+    ↓
+Middleware Pipeline (Auth → RateLimit → CORS → Headers → ...)
+    ↓
+Load Balancer (RoundRobin/Weighted/LeastConn/Random)
+    ↓
+Proxy (HTTP/WebSocket/gRPC/TCP/UDP)
+    ↓
+Backend Service
 ```
 
-> Full documentation coming soon. See the [Gateway README](https://github.com/A3S-Lab/Gateway) for current details.
+## Core Components
+
+| Component | Purpose |
+|-----------|---------|
+| Entrypoint | Listeners on ports (HTTP, HTTPS, TCP, UDP) |
+| Router | Request matching by Host, Path, Headers, Method, SNI |
+| Middleware | Composable request/response transformations (10 built-in) |
+| Service | Backend pool with load balancing and health checks |
+| Proxy | Request forwarding across 7 protocols |
+| Provider | Dynamic config sources (file with hot reload, DNS) |
+| Agent | AI-specific extensions (webhooks, privacy routing, token metering) |
+
+## Protocol Support
+
+| Protocol | Features |
+|----------|----------|
+| HTTP/1.1 & HTTP/2 | Full proxy with hop-by-hop header filtering |
+| WebSocket | Upgrade detection, bidirectional relay |
+| SSE / Streaming | Chunked transfer for LLM outputs |
+| gRPC | HTTP/2 h2c forwarding |
+| TCP | Raw byte relay with SNI routing |
+| UDP | Session-based datagram relay |
+
+## Gateway Lifecycle
+
+```rust
+pub enum GatewayState {
+    Created,     // Created but not started
+    Starting,    // Initializing listeners
+    Running,     // Actively proxying
+    Reloading,   // Hot-reloading config
+    Stopping,    // Draining connections
+    Stopped,     // Fully stopped
+}
+```
+
+## Key Features
+
+- **Traefik-compatible rule syntax** for routing (`Host`, `PathPrefix`, `Headers`, `Method`)
+- **10 built-in middlewares**: API key, Basic Auth, JWT, rate limit, CORS, headers, strip-prefix, retry, circuit breaker, IP allowlist
+- **4 load balancing strategies**: Round Robin, Weighted, Least Connections, Random
+- **Pure Rust TLS** via rustls with ACME/Let's Encrypt support
+- **Hot reload** via file watcher (inotify/kqueue)
+- **AI agent extensions**: multi-platform webhooks, privacy-aware routing, token metering, conversation affinity
+- **Built-in dashboard API** with health, metrics, and config endpoints
+- **Prometheus metrics** export

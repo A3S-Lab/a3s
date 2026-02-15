@@ -1,0 +1,253 @@
+---
+title: Middleware
+description: 10 built-in middlewares for authentication, rate limiting, CORS, and more
+---
+
+# Middleware
+
+A3S Gateway provides 10 built-in middlewares that can be composed into pipelines. Each middleware can inspect and modify requests and responses.
+
+## Middleware Trait
+
+```rust
+#[async_trait]
+pub trait Middleware: Send + Sync {
+    async fn handle_request(
+        &self,
+        req: &mut http::request::Parts,
+        ctx: &RequestContext,
+    ) -> Result<Option<Response<Vec<u8>>>>;
+
+    async fn handle_response(
+        &self,
+        resp: &mut http::response::Parts,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    fn name(&self) -> &str;
+}
+
+pub struct RequestContext {
+    pub client_ip: String,
+    pub entrypoint: String,
+    pub router: String,
+}
+```
+
+Returning `Some(Response)` from `handle_request` short-circuits the pipeline and returns that response directly to the client.
+
+## Pipeline
+
+```rust
+pub struct Pipeline {
+    middlewares: Vec<Arc<dyn Middleware>>,
+}
+
+impl Pipeline {
+    pub fn from_config(
+        names: &[String],
+        configs: &HashMap<String, MiddlewareConfig>,
+    ) -> Result<Self>;
+
+    pub async fn process_request(
+        &self,
+        parts: &mut http::request::Parts,
+        ctx: &RequestContext,
+    ) -> Result<Option<Response<Vec<u8>>>>;
+
+    pub async fn process_response(
+        &self,
+        parts: &mut http::response::Parts,
+    ) -> Result<()>;
+}
+```
+
+## Built-in Middlewares
+
+### JWT Authentication
+
+Validates JWT tokens in the `Authorization: Bearer` header using HS256:
+
+```toml
+[middlewares.auth-jwt]
+type = "jwt"
+value = "${JWT_SECRET}"
+```
+
+Returns `401 Unauthorized` if the token is missing, expired, or invalid.
+
+### API Key Authentication
+
+Validates API keys from a request header:
+
+```toml
+[middlewares.auth-apikey]
+type = "api-key"
+header = "X-API-Key"
+keys = ["key-1", "key-2", "key-3"]
+```
+
+Returns `401 Unauthorized` if the key is missing or not in the allowed list.
+
+### Basic Authentication
+
+HTTP Basic Auth with username/password:
+
+```toml
+[middlewares.auth-basic]
+type = "basic-auth"
+username = "admin"
+password = "secret"
+```
+
+Returns `401 Unauthorized` with `WWW-Authenticate` header on failure.
+
+### Rate Limiting
+
+Token bucket rate limiter:
+
+```toml
+[middlewares.rate-limit]
+type = "rate-limit"
+rate = 100    # tokens per second
+burst = 50    # max burst size
+```
+
+Returns `429 Too Many Requests` when the bucket is empty. The bucket refills at `rate` tokens per second up to `burst` capacity.
+
+### CORS
+
+Cross-Origin Resource Sharing headers:
+
+```toml
+[middlewares.cors]
+type = "cors"
+allowed_origins = ["https://example.com", "https://app.example.com"]
+allowed_methods = ["GET", "POST", "PUT", "DELETE"]
+```
+
+Handles preflight `OPTIONS` requests automatically and adds `Access-Control-*` headers to responses.
+
+### Headers
+
+Add, set, or remove request/response headers:
+
+```toml
+[middlewares.custom-headers]
+type = "headers"
+request_headers = { "X-Forwarded-Proto" = "https" }
+response_headers = { "X-Frame-Options" = "DENY", "X-Content-Type-Options" = "nosniff" }
+```
+
+### Strip Prefix
+
+Remove path prefixes before forwarding to the backend:
+
+```toml
+[middlewares.strip-api]
+type = "strip-prefix"
+prefixes = ["/api/v1", "/api/v2"]
+```
+
+A request to `/api/v1/users` is forwarded as `/users` to the backend.
+
+### Retry
+
+Retry failed requests:
+
+```toml
+[middlewares.retry]
+type = "retry"
+max_retries = 3
+retry_interval_ms = 100
+```
+
+Retries on connection errors and 5xx responses, with a fixed delay between attempts.
+
+### Circuit Breaker
+
+Prevents cascading failures with a state machine:
+
+```toml
+[middlewares.circuit-breaker]
+type = "circuit-breaker"
+```
+
+States:
+- **Closed** (normal): Requests pass through. Transitions to Open after consecutive failures.
+- **Open** (tripped): All requests immediately return `503 Service Unavailable`. Transitions to Half-Open after a timeout.
+- **Half-Open** (probing): Allows a single request through. Success → Closed, failure → Open.
+
+### IP Allowlist
+
+Restrict access by client IP (supports CIDR notation):
+
+```toml
+[middlewares.ip-allow]
+type = "ip-allow"
+allowed_ips = ["10.0.0.0/8", "192.168.1.0/24", "203.0.113.42"]
+```
+
+Returns `403 Forbidden` for IPs not in the allowlist.
+
+### Compression
+
+gzip/deflate response compression:
+
+```toml
+[middlewares.compress]
+type = "compress"
+```
+
+Compresses responses based on the client's `Accept-Encoding` header.
+
+## Middleware Ordering
+
+Middlewares execute in the order listed in the router config:
+
+```toml
+[routers.api]
+middlewares = ["ip-allow", "auth-jwt", "rate-limit", "cors", "compress"]
+```
+
+Recommended ordering:
+1. IP allowlist (reject early)
+2. Authentication (reject unauthorized)
+3. Rate limiting (protect backends)
+4. CORS (add headers)
+5. Headers / Strip prefix (transform)
+6. Compression (compress response)
+7. Retry / Circuit breaker (resilience)
+
+## Custom Middleware
+
+Implement the `Middleware` trait:
+
+```rust
+use a3s_gateway::middleware::{Middleware, RequestContext};
+use async_trait::async_trait;
+
+struct LoggingMiddleware;
+
+#[async_trait]
+impl Middleware for LoggingMiddleware {
+    async fn handle_request(
+        &self,
+        req: &mut http::request::Parts,
+        ctx: &RequestContext,
+    ) -> Result<Option<Response<Vec<u8>>>> {
+        tracing::info!(
+            client_ip = %ctx.client_ip,
+            method = %req.method,
+            path = %req.uri.path(),
+            "incoming request"
+        );
+        Ok(None) // Continue pipeline
+    }
+
+    fn name(&self) -> &str {
+        "logging"
+    }
+}
+```

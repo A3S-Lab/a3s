@@ -1,0 +1,285 @@
+---
+title: Configuration
+description: TOML-based configuration for entrypoints, routers, services, middlewares, and providers
+---
+
+# Configuration
+
+A3S Gateway uses TOML configuration with four top-level sections: entrypoints, routers, services, and middlewares. Configuration supports hot reload via file watching.
+
+## GatewayConfig
+
+```rust
+pub struct GatewayConfig {
+    pub entrypoints: HashMap<String, EntrypointConfig>,
+    pub routers: HashMap<String, RouterConfig>,
+    pub services: HashMap<String, ServiceConfig>,
+    pub middlewares: HashMap<String, MiddlewareConfig>,
+    pub providers: ProviderConfig,
+}
+```
+
+### Loading Configuration
+
+```rust
+// From file
+let config = GatewayConfig::from_file("gateway.toml").await?;
+
+// From TOML string
+let config = GatewayConfig::from_toml(toml_content)?;
+
+// Validate
+config.validate()?;
+```
+
+## Entrypoints
+
+Entrypoints define network listeners:
+
+```rust
+pub struct EntrypointConfig {
+    pub address: String,
+    pub protocol: Protocol,
+    pub tls: Option<TlsConfig>,
+}
+```
+
+```toml
+# HTTP listener
+[entrypoints.web]
+address = "0.0.0.0:80"
+
+# HTTPS listener with TLS
+[entrypoints.websecure]
+address = "0.0.0.0:443"
+[entrypoints.websecure.tls]
+cert_file = "/etc/certs/cert.pem"
+key_file = "/etc/certs/key.pem"
+min_version = "1.2"
+
+# TCP listener
+[entrypoints.tcp]
+address = "0.0.0.0:5432"
+protocol = "tcp"
+
+# UDP listener
+[entrypoints.dns]
+address = "0.0.0.0:53"
+protocol = "udp"
+```
+
+### TLS Configuration
+
+```rust
+pub struct TlsConfig {
+    pub cert_file: String,
+    pub key_file: String,
+    pub min_version: Option<String>,   // "1.2" or "1.3"
+    pub acme: Option<bool>,            // Let's Encrypt auto-cert
+}
+```
+
+TLS is handled by rustls (pure Rust, no OpenSSL dependency). ACME support enables automatic certificate provisioning from Let's Encrypt.
+
+## Routers
+
+Routers match incoming requests to services:
+
+```rust
+pub struct RouterConfig {
+    pub rule: String,
+    pub service: String,
+    pub entrypoints: Vec<String>,
+    pub middlewares: Vec<String>,
+    pub priority: i32,
+}
+```
+
+```toml
+[routers.api]
+rule = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+service = "api-service"
+entrypoints = ["websecure"]
+middlewares = ["auth-jwt", "rate-limit"]
+priority = 0
+
+[routers.web]
+rule = "Host(`www.example.com`)"
+service = "web-service"
+entrypoints = ["web", "websecure"]
+priority = 10
+```
+
+Lower `priority` values are matched first. See [Routing](./routing) for rule syntax details.
+
+## Services
+
+Services define backend pools with load balancing:
+
+```rust
+pub struct ServiceConfig {
+    pub load_balancer: LoadBalancerConfig,
+}
+
+pub struct LoadBalancerConfig {
+    pub strategy: Strategy,
+    pub servers: Vec<ServerConfig>,
+    pub health_check: Option<HealthCheckConfig>,
+    pub sticky: Option<StickyConfig>,
+}
+```
+
+```toml
+[services.api-service.load_balancer]
+strategy = "weighted"
+
+[[services.api-service.load_balancer.servers]]
+url = "http://127.0.0.1:8001"
+weight = 3
+
+[[services.api-service.load_balancer.servers]]
+url = "http://127.0.0.1:8002"
+weight = 1
+
+[services.api-service.load_balancer.health_check]
+path = "/health"
+interval = "10s"
+timeout = "5s"
+unhealthy_threshold = 3
+healthy_threshold = 1
+
+[services.api-service.load_balancer.sticky]
+cookie = "srv_id"
+ttl = "1h"
+```
+
+See [Services](./services) for load balancing strategies and health check details.
+
+## Middlewares
+
+Middlewares are defined globally and referenced by name in routers:
+
+```toml
+[middlewares.auth-jwt]
+type = "jwt"
+value = "${JWT_SECRET}"
+
+[middlewares.rate-limit]
+type = "rate-limit"
+rate = 100
+burst = 50
+
+[middlewares.cors]
+type = "cors"
+allowed_origins = ["https://example.com"]
+allowed_methods = ["GET", "POST", "PUT", "DELETE"]
+
+[middlewares.compress]
+type = "compress"
+```
+
+See [Middleware](./middleware) for all 10 built-in middleware types.
+
+## Providers
+
+Configuration providers supply dynamic configuration:
+
+### File Provider
+
+```toml
+[providers.file]
+watch = true
+directory = "/etc/gateway/conf.d/"
+```
+
+When `watch = true`, the gateway monitors the config file and directory for changes using inotify (Linux) or kqueue (macOS), and hot-reloads without downtime.
+
+### Environment Variable Substitution
+
+Configuration values support environment variable references:
+
+```toml
+[middlewares.auth-jwt]
+type = "jwt"
+value = "${JWT_SECRET}"
+
+[entrypoints.websecure.tls]
+cert_file = "${TLS_CERT_PATH}"
+key_file = "${TLS_KEY_PATH}"
+```
+
+## Hot Reload
+
+```rust
+// Programmatic reload
+let new_config = GatewayConfig::from_file("gateway.toml").await?;
+gateway.reload(new_config).await?;
+```
+
+During reload:
+1. Gateway transitions to `Reloading` state
+2. New configuration is validated
+3. Routers, services, and middlewares are rebuilt
+4. Existing connections continue on old config until complete
+5. Gateway transitions back to `Running`
+
+## Full Example
+
+```toml
+# Entrypoints
+[entrypoints.web]
+address = "0.0.0.0:80"
+
+[entrypoints.websecure]
+address = "0.0.0.0:443"
+[entrypoints.websecure.tls]
+cert_file = "/etc/certs/cert.pem"
+key_file = "/etc/certs/key.pem"
+
+# Routers
+[routers.api]
+rule = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+service = "api-service"
+entrypoints = ["websecure"]
+middlewares = ["auth-jwt", "rate-limit", "cors"]
+
+[routers.web]
+rule = "Host(`www.example.com`)"
+service = "web-service"
+entrypoints = ["web", "websecure"]
+
+# Services
+[services.api-service.load_balancer]
+strategy = "least-connections"
+[[services.api-service.load_balancer.servers]]
+url = "http://127.0.0.1:8001"
+[[services.api-service.load_balancer.servers]]
+url = "http://127.0.0.1:8002"
+[services.api-service.load_balancer.health_check]
+path = "/health"
+interval = "10s"
+
+[services.web-service.load_balancer]
+strategy = "round-robin"
+[[services.web-service.load_balancer.servers]]
+url = "http://127.0.0.1:3000"
+
+# Middlewares
+[middlewares.auth-jwt]
+type = "jwt"
+value = "${JWT_SECRET}"
+
+[middlewares.rate-limit]
+type = "rate-limit"
+rate = 100
+burst = 50
+
+[middlewares.cors]
+type = "cors"
+allowed_origins = ["https://example.com"]
+allowed_methods = ["GET", "POST"]
+
+# Providers
+[providers.file]
+watch = true
+```

@@ -1,4 +1,15 @@
 {
-  "title": "Gateway",
-  "pages": ["index"]
+  "title": "A3S Gateway",
+  "pages": [
+    "index",
+    "quick-start",
+    "---Core---",
+    "configuration",
+    "routing",
+    "middleware",
+    "services",
+    "---Capabilities---",
+    "agent",
+    "observability"
+  ]
 }
