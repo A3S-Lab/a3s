@@ -27,6 +27,8 @@
     "providers",
     "cron",
     "observability",
+    "---Guides---",
+    "building-agents",
     "---SDK---",
     "sdk/typescript",
     "sdk/python",
