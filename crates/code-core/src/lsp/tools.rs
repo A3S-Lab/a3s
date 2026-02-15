@@ -414,7 +414,7 @@ impl Tool for LspDiagnosticsTool {
 // Formatting Helpers
 // ============================================================================
 
-fn format_hover_contents(contents: &HoverContents) -> String {
+pub fn format_hover_contents(contents: &HoverContents) -> String {
     match contents {
         HoverContents::Scalar(marked) => format_marked_string(marked),
         HoverContents::Array(items) => items
@@ -426,7 +426,7 @@ fn format_hover_contents(contents: &HoverContents) -> String {
     }
 }
 
-fn format_marked_string(marked: &MarkedString) -> String {
+pub fn format_marked_string(marked: &MarkedString) -> String {
     match marked {
         MarkedString::String(s) => s.clone(),
         MarkedString::LanguageString { language, value } => {
