@@ -582,6 +582,18 @@ a3s/
 ├── Cargo.toml              # Workspace definition
 ├── justfile                # Build commands
 ├── README.md
+├── apps/                   # Frontend apps and non-Rust projects
+│   ├── a3s-deep/           # [submodule] Agentic deep research agent (TypeScript)
+│   │   ├── .a3s/           #   Project config, skills, agents
+│   │   └── src/            #   Agent source (planner, analyzer, synthesizer, etc.)
+│   ├── os/                 # A3S platform (NestJS backend + React frontend + CLI)
+│   │   ├── src/apps/cli/   #   A3S CLI (a3s up/deploy/logs)
+│   │   ├── src/apps/api/   #   Platform API (NestJS)
+│   │   ├── src/apps/ui/    #   Platform UI (React, Super Factory 3D visualization)
+│   │   ├── python/agents/  #   Agent templates with A3sfile
+│   │   ├── docs/architecture/  #   A3sfile DSL spec
+│   │   └── infra/dev/helm/ #   Kubernetes Helm charts
+│   └── safeclaw-ui/        # [submodule] SafeClaw desktop UI (React + Tauri)
 ├── crates/
 │   ├── box/                # [submodule] MicroVM runtime (VM isolation + TEE)
 │   ├── code/               # [submodule] AI agent service (runs in same VM as SafeClaw)
@@ -591,25 +603,16 @@ a3s/
 │   ├── gateway/            # [submodule] K8s Ingress Controller (app-agnostic)
 │   ├── lane/               # [submodule] Per-session priority queue (inside a3s-code)
 │   ├── power/              # [submodule] Local LLM inference engine
+│   ├── privacy/            # Shared PII classification types
 │   ├── safeclaw/           # [submodule] Security proxy for AI agents
-│   ├── safeclaw-ui/        # [submodule] SafeClaw desktop UI (React + Tauri)
 │   ├── search/             # [submodule] Meta search engine
 │   │   └── sdk/            #   Python & Node.js SDKs
-│   ├── privacy/            # Shared PII classification types
-│   ├── transport/          # Shared vsock transport protocol
-│   ├── tools/              # Built-in tools binary
 │   ├── tools-core/         # Core types for tools
-│   └── updater/            # Self-update via GitHub Releases
-├── a3s-deep/               # Agentic deep research agent (TypeScript)
-│   ├── .a3s/               #   Project config, skills, agents
-│   └── src/                #   Agent source (planner, analyzer, synthesizer, etc.)
-└── os/                     # [submodule] Agent OS platform
-    ├── src/apps/cli/       #   A3S CLI (a3s up/deploy/logs)
-    ├── src/apps/api/       #   Platform API (NestJS)
-    ├── src/apps/ui/        #   Platform UI (React, Super Factory 3D visualization)
-    ├── python/agents/      #   Agent templates with A3sfile
-    ├── docs/architecture/  #   A3sfile DSL spec
-    └── infra/dev/helm/     #   Kubernetes Helm charts
+│   ├── transport/          # Shared vsock transport protocol
+│   └── updater/            # [submodule] Self-update via GitHub Releases
+├── docs/
+│   └── architecture/       # LikeC4 architecture diagrams
+└── homebrew-tap/           # [submodule] Homebrew formula
 ```
 
 ## Development

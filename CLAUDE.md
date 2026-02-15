@@ -13,7 +13,11 @@ a3s/                            ← THIS IS THE MONOREPO ROOT
 ├── CLAUDE.md                   # This file
 ├── LICENSE                     # MIT license
 ├── README.md                   # Project overview, module list, roadmap
-├── crates/                     # ALL Rust crates live here as git submodules
+├── apps/                       # Frontend apps and non-Rust projects
+│   ├── a3s-deep/               # [submodule] git@github.com:A3S-Lab/Deep.git
+│   ├── os/                     # A3S platform (NestJS backend + React frontend + CLI)
+│   └── safeclaw-ui/            # [submodule] git@github.com:A3S-Lab/SafeClawUI.git
+├── crates/                     # ALL Rust crates live here (submodules or local)
 │   ├── box/                    # [submodule] git@github.com:A3S-Lab/Box.git
 │   ├── code/                   # [submodule] git@github.com:A3S-Lab/Code.git
 │   ├── cron/                   # [submodule] git@github.com:A3S-Lab/Cron.git
@@ -21,11 +25,15 @@ a3s/                            ← THIS IS THE MONOREPO ROOT
 │   ├── gateway/                # [submodule] git@github.com:A3S-Lab/Gateway.git
 │   ├── lane/                   # [submodule] git@github.com:A3S-Lab/Lane.git
 │   ├── power/                  # [submodule] git@github.com:A3S-Lab/Power.git
+│   ├── privacy/                # Shared PII classification types
 │   ├── safeclaw/               # [submodule] git@github.com:A3S-Lab/SafeClaw.git
-│   ├── safeclaw-ui/            # [submodule] git@github.com:A3S-Lab/SafeClawUI.git
-│   └── search/                 # [submodule] git@github.com:A3S-Lab/Search.git
-├── homebrew-tap/               # [submodule] git@github.com:A3S-Lab/homebrew-tap.git
-└── os/                         # A3S platform (NestJS backend + React frontend + CLI)
+│   ├── search/                 # [submodule] git@github.com:A3S-Lab/Search.git
+│   ├── tools-core/             # Core types for tools
+│   ├── transport/              # Shared vsock transport protocol
+│   └── updater/                # [submodule] git@github.com:A3S-Lab/Updater.git
+├── docs/                       # Documentation and architecture diagrams
+│   └── architecture/           # LikeC4 architecture diagrams
+└── homebrew-tap/               # [submodule] git@github.com:A3S-Lab/homebrew-tap.git
 ```
 
 ### Root Directory Protection Rules
@@ -33,16 +41,17 @@ a3s/                            ← THIS IS THE MONOREPO ROOT
 **⛔ NEVER do any of the following in the root directory:**
 
 1. **NEVER add `Cargo.toml` to root** — Each crate has its own `Cargo.toml` inside its submodule
-2. **NEVER add `src/`, `tests/`, `benches/`, `docs/` to root** — Source code belongs in `crates/<name>/`
+2. **NEVER add `src/`, `tests/`, `benches/` to root** — Source code belongs in `crates/<name>/`
 3. **NEVER add `justfile` to root** — Each crate has its own build commands
 4. **NEVER run `cargo init` or `cargo new` in root** — This is not a Rust workspace
 5. **NEVER change `git remote` of root** — It MUST point to `git@github.com:A3S-Lab/a3s.git`
 
 **The root directory is a pure orchestration layer. It contains ONLY:**
-- `.gitignore`, `.gitmodules`, `CLAUDE.md`, `LICENSE`, `README.md`
-- `crates/` directory with submodules
+- `.gitignore`, `.gitmodules`, `CLAUDE.md`, `LICENSE`, `README.md`, `justfile`
+- `apps/` directory (frontend apps and non-Rust projects)
+- `crates/` directory (Rust crates — submodules or local)
+- `docs/` directory (documentation and architecture diagrams)
 - `homebrew-tap/` submodule
-- `os/` directory
 
 **If you find yourself adding Rust source files to the root, STOP. You are doing it wrong.**
 
