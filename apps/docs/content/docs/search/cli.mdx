@@ -1,0 +1,143 @@
+---
+title: CLI
+description: Command-line interface for quick searches with multiple output formats
+---
+
+# CLI
+
+A3S Search includes a command-line tool for quick searches from the terminal.
+
+## Installation
+
+```bash
+# From crates.io
+cargo install a3s-search
+
+# From source
+cd crates/search && cargo install --path .
+
+# Via Homebrew
+brew install a3s-lab/tap/a3s-search
+```
+
+## Basic Search
+
+```bash
+# Default search (DuckDuckGo + Wikipedia)
+a3s-search "rust programming"
+
+# Specific engines
+a3s-search "rust" -e ddg,wiki,brave
+
+# Chinese engines
+a3s-search "人工智能" -e sogou,360
+```
+
+## Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-e, --engines` | Comma-separated engine shortcuts | `ddg,wiki` |
+| `-l, --limit` | Max number of results | `10` |
+| `-t, --timeout` | Timeout in seconds | `10` |
+| `-p, --proxy` | Proxy URL | None |
+| `-f, --format` | Output format: `default`, `json`, `compact` | `default` |
+| `-v, --verbose` | Enable verbose logging | `false` |
+
+## Output Formats
+
+### Default
+
+```bash
+$ a3s-search "rust language"
+
+[1] The Rust Programming Language
+    https://www.rust-lang.org/
+    A language empowering everyone to build reliable and efficient software.
+    Score: 4.50 | Engines: ddg, wiki, brave
+
+[2] Rust (programming language) - Wikipedia
+    https://en.wikipedia.org/wiki/Rust_(programming_language)
+    Rust is a multi-paradigm, general-purpose programming language...
+    Score: 2.40 | Engines: wiki, ddg
+```
+
+### JSON
+
+```bash
+$ a3s-search "rust language" -f json
+```
+
+```json
+{
+  "count": 15,
+  "duration_ms": 1234,
+  "results": [
+    {
+      "url": "https://www.rust-lang.org/",
+      "title": "The Rust Programming Language",
+      "content": "A language empowering everyone...",
+      "score": 4.5,
+      "engines": ["ddg", "wiki", "brave"],
+      "result_type": "Web"
+    }
+  ],
+  "suggestions": [],
+  "answers": [],
+  "errors": []
+}
+```
+
+### Compact
+
+```bash
+$ a3s-search "rust language" -f compact
+
+The Rust Programming Language - https://www.rust-lang.org/
+Rust (programming language) - https://en.wikipedia.org/wiki/Rust_(programming_language)
+```
+
+## Subcommands
+
+### List Available Engines
+
+```bash
+$ a3s-search engines
+
+HTTP Engines:
+  ddg       DuckDuckGo      weight=1.0  paging=yes  safesearch=yes
+  brave     Brave Search    weight=1.0  paging=yes  safesearch=yes
+  wiki      Wikipedia       weight=1.2  paging=no   safesearch=no
+  sogou     Sogou           weight=1.0  paging=no   safesearch=no
+  360       360 Search      weight=1.0  paging=no   safesearch=no
+
+Headless Engines (requires Chrome):
+  g         Google          weight=1.5  paging=yes  safesearch=yes
+  baidu     Baidu           weight=1.0  paging=no   safesearch=no
+  bing_cn   Bing China      weight=1.0  paging=no   safesearch=no
+```
+
+### Update
+
+```bash
+$ a3s-search update
+```
+
+## Examples
+
+```bash
+# Search with proxy
+a3s-search "openai api" -e ddg,brave -p http://127.0.0.1:8080
+
+# Get 20 results in JSON
+a3s-search "machine learning" -l 20 -f json
+
+# Verbose mode for debugging
+a3s-search "test query" -v
+
+# Use Google (headless, requires Chrome)
+a3s-search "rust async" -e g,ddg
+
+# Pipeline with jq
+a3s-search "rust" -f json | jq '.results[].url'
+```

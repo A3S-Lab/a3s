@@ -1,0 +1,160 @@
+---
+title: Proxy
+description: Proxy pool with rotation strategies and dynamic providers
+---
+
+# Proxy
+
+A3S Search includes a proxy pool for rotating proxies across requests. Useful for avoiding rate limits and IP bans when scraping search engines.
+
+## Static Proxy List
+
+Configure a fixed list of proxies:
+
+```rust
+use a3s_search::proxy::{ProxyPool, ProxyConfig, ProxyProtocol, ProxyStrategy};
+
+let pool = ProxyPool::with_proxies(vec![
+    ProxyConfig::new("proxy1.example.com", 8080),
+    ProxyConfig::new("proxy2.example.com", 8080)
+        .with_protocol(ProxyProtocol::Socks5),
+    ProxyConfig::new("proxy3.example.com", 3128)
+        .with_auth("username", "password"),
+]);
+
+let mut search = Search::new();
+search.set_proxy_pool(pool);
+```
+
+## Dynamic Provider
+
+Implement `ProxyProvider` to fetch proxies from an API:
+
+```rust
+use a3s_search::proxy::{ProxyProvider, ProxyConfig};
+use async_trait::async_trait;
+use std::time::Duration;
+
+struct MyProxyApi {
+    url: String,
+}
+
+#[async_trait]
+impl ProxyProvider for MyProxyApi {
+    async fn fetch_proxies(&self) -> a3s_search::Result<Vec<ProxyConfig>> {
+        let client = reqwest::Client::new();
+        let resp: Vec<ProxyEntry> = client
+            .get(&self.url)
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        Ok(resp.iter().map(|p| {
+            ProxyConfig::new(&p.host, p.port)
+        }).collect())
+    }
+
+    fn refresh_interval(&self) -> Duration {
+        Duration::from_secs(60) // Refresh every minute
+    }
+}
+
+let pool = ProxyPool::with_provider(MyProxyApi {
+    url: "https://api.example.com/proxies".into(),
+});
+
+// Initial fetch
+pool.refresh().await?;
+```
+
+## Rotation Strategies
+
+```rust
+use a3s_search::proxy::ProxyStrategy;
+
+// Round-robin: rotate sequentially (default)
+let pool = ProxyPool::with_proxies(proxies)
+    .with_strategy(ProxyStrategy::RoundRobin);
+
+// Random: pick randomly
+let pool = ProxyPool::with_proxies(proxies)
+    .with_strategy(ProxyStrategy::Random);
+```
+
+## ProxyConfig
+
+```rust
+pub struct ProxyConfig {
+    pub host: String,
+    pub port: u16,
+    pub protocol: ProxyProtocol,
+    pub username: Option<String>,
+    pub password: Option<String>,
+}
+```
+
+### Protocols
+
+```rust
+pub enum ProxyProtocol {
+    Http,     // HTTP proxy (default)
+    Https,    // HTTPS proxy
+    Socks5,   // SOCKS5 proxy
+}
+```
+
+### Builder Methods
+
+```rust
+let proxy = ProxyConfig::new("proxy.example.com", 8080)
+    .with_protocol(ProxyProtocol::Socks5)
+    .with_auth("user", "pass");
+
+// Get the full URL string
+let url = proxy.url();
+// -> "socks5://user:pass@proxy.example.com:8080"
+```
+
+## ProxyPool API
+
+```rust
+let pool = ProxyPool::with_proxies(vec![...]);
+
+// Get the next proxy (based on strategy)
+if let Some(proxy) = pool.get_proxy().await {
+    println!("Using: {}", proxy.url());
+}
+
+// Add/remove proxies at runtime
+pool.add_proxy(ProxyConfig::new("new.proxy.com", 8080)).await;
+pool.remove_proxy("old.proxy.com", 8080).await;
+
+// Create a reqwest client with the next proxy
+let client = pool.create_client("Mozilla/5.0 ...").await?;
+
+// Pool status
+println!("Proxies: {}", pool.len().await);
+println!("Enabled: {}", pool.is_enabled());
+
+// Enable/disable
+pool.set_enabled(false);
+```
+
+## Using with Browser Engines
+
+Pass a proxy URL to `BrowserPoolConfig`:
+
+```rust
+use a3s_search::browser::BrowserPoolConfig;
+
+let config = BrowserPoolConfig {
+    max_tabs: 4,
+    headless: true,
+    chrome_path: None,
+    proxy_url: Some("http://proxy.example.com:8080".into()),
+    launch_args: vec![],
+};
+```
+
+All browser traffic (including headless engines) will route through the proxy.

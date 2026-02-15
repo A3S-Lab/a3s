@@ -1,0 +1,15 @@
+{
+  "title": "A3S Search",
+  "pages": [
+    "index",
+    "quick-start",
+    "---Core---",
+    "engines",
+    "queries",
+    "results",
+    "---Capabilities---",
+    "browser",
+    "proxy",
+    "cli"
+  ]
+}

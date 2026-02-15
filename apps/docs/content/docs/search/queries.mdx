@@ -1,0 +1,117 @@
+---
+title: Queries
+description: Construct search queries with filters, categories, language, and pagination
+---
+
+# Queries
+
+`SearchQuery` defines what to search for and how to filter results.
+
+## Creating a Query
+
+```rust
+use a3s_search::SearchQuery;
+
+let query = SearchQuery::new("rust programming");
+```
+
+## Builder Methods
+
+Chain builder methods to customize the query:
+
+```rust
+use a3s_search::*;
+
+let query = SearchQuery::new("machine learning")
+    .with_categories(vec![EngineCategory::General, EngineCategory::Science])
+    .with_language("en-US")
+    .with_safesearch(SafeSearch::Moderate)
+    .with_page(1)
+    .with_time_range(TimeRange::Month)
+    .with_engines(vec!["ddg".into(), "wiki".into(), "brave".into()]);
+```
+
+## Query Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `query` | `String` | (required) | Search terms |
+| `categories` | `Vec<EngineCategory>` | `[]` | Target categories |
+| `language` | `Option<String>` | `None` | Language/locale (e.g., `en-US`) |
+| `safesearch` | `SafeSearch` | `Off` | Safe search filtering level |
+| `page` | `u32` | `1` | Page number (1-indexed) |
+| `time_range` | `Option<TimeRange>` | `None` | Filter results by recency |
+| `engines` | `Vec<String>` | `[]` | Target specific engines by shortcut |
+
+## Categories
+
+```rust
+pub enum EngineCategory {
+    General,
+    Images,
+    Videos,
+    News,
+    Maps,
+    Music,
+    Files,
+    Science,
+    Social,
+}
+```
+
+When categories are specified, only engines that support those categories will be queried. An empty list means all engines.
+
+## Safe Search
+
+```rust
+pub enum SafeSearch {
+    Off = 0,        // No filtering
+    Moderate = 1,   // Moderate filtering
+    Strict = 2,     // Strict filtering
+}
+```
+
+Only engines with `safesearch: true` in their config respond to this setting (DuckDuckGo, Brave, Google).
+
+## Time Range
+
+Filter results by publication date:
+
+```rust
+pub enum TimeRange {
+    Day,    // Past 24 hours
+    Week,   // Past 7 days
+    Month,  // Past 30 days
+    Year,   // Past 365 days
+}
+```
+
+## Targeting Specific Engines
+
+Use engine shortcuts to limit which engines are queried:
+
+```rust
+// Only DuckDuckGo and Wikipedia
+let query = SearchQuery::new("rust")
+    .with_engines(vec!["ddg".into(), "wiki".into()]);
+
+// Only Chinese engines
+let query = SearchQuery::new("人工智能")
+    .with_engines(vec!["sogou".into(), "360".into(), "baidu".into()]);
+```
+
+If `engines` is empty, all registered engines are used.
+
+## Pagination
+
+Engines that support paging (`paging: true`) will fetch the requested page:
+
+```rust
+// Page 1 (default)
+let query = SearchQuery::new("rust").with_page(1);
+
+// Page 2
+let query = SearchQuery::new("rust").with_page(2);
+```
+
+Engines without paging support always return their first page regardless of this setting.

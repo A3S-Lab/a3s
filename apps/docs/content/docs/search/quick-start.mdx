@@ -1,0 +1,162 @@
+---
+title: Quick Start
+description: Get started with A3S Search — basic search, multi-engine aggregation, and output formats
+---
+
+# Quick Start
+
+## Installation
+
+Add A3S Search to your `Cargo.toml`:
+
+```toml
+[dependencies]
+a3s-search = "0.1"
+tokio = { version = "1", features = ["full"] }
+```
+
+To disable headless browser engines (smaller binary):
+
+```toml
+[dependencies]
+a3s-search = { version = "0.1", default-features = false }
+```
+
+## Basic Search
+
+```rust
+use a3s_search::{Search, SearchQuery};
+use a3s_search::engines::DuckDuckGo;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let mut search = Search::new();
+    search.add_engine(DuckDuckGo::new());
+
+    let query = SearchQuery::new("rust programming");
+    let results = search.search(query).await?;
+
+    println!("Found {} results in {}ms", results.count, results.duration_ms);
+
+    for result in results.items().iter().take(10) {
+        println!("{}", result.title);
+        println!("  {}", result.url);
+        println!("  {}", result.content);
+        println!("  Score: {:.2} (engines: {:?})", result.score, result.engines);
+        println!();
+    }
+
+    Ok(())
+}
+```
+
+## Multi-Engine Aggregation
+
+Add multiple engines for better results through consensus ranking:
+
+```rust
+use a3s_search::{Search, SearchQuery};
+use a3s_search::engines::{DuckDuckGo, Brave, Wikipedia};
+
+let mut search = Search::new();
+search.add_engine(DuckDuckGo::new());
+search.add_engine(Brave::new());
+search.add_engine(Wikipedia::new());
+
+let results = search.search(SearchQuery::new("quantum computing")).await?;
+
+// Results found by multiple engines rank higher
+for result in results.items().iter().take(5) {
+    println!("[{:.2}] {} (found by: {})",
+        result.score,
+        result.title,
+        result.engines.iter().cloned().collect::<Vec<_>>().join(", "));
+}
+```
+
+## Search with Options
+
+```rust
+use a3s_search::{SearchQuery, SafeSearch, TimeRange, EngineCategory};
+
+let query = SearchQuery::new("rust async")
+    .with_language("en-US")
+    .with_safesearch(SafeSearch::Moderate)
+    .with_page(1)
+    .with_time_range(TimeRange::Month)
+    .with_categories(vec![EngineCategory::General]);
+```
+
+## Target Specific Engines
+
+Use engine shortcuts to limit which engines are queried:
+
+```rust
+let query = SearchQuery::new("rust")
+    .with_engines(vec!["ddg".into(), "wiki".into()]);
+```
+
+## Chinese Search Engines
+
+```rust
+use a3s_search::engines::{Sogou, So360};
+
+let mut search = Search::new();
+search.add_engine(Sogou::new());
+search.add_engine(So360::new());
+
+let results = search.search(SearchQuery::new("Rust 编程语言")).await?;
+```
+
+## With Headless Browser Engines
+
+Google, Baidu, and Bing China require headless Chrome (enabled by default with the `headless` feature):
+
+```rust
+#[cfg(feature = "headless")]
+{
+    use a3s_search::browser::{BrowserPool, BrowserPoolConfig, BrowserFetcher};
+    use a3s_search::engines::Google;
+    use a3s_search::WaitStrategy;
+    use std::sync::Arc;
+
+    let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
+        max_tabs: 4,
+        headless: true,
+        chrome_path: None,  // Auto-detect or auto-download
+        proxy_url: None,
+        launch_args: vec![],
+    }));
+
+    let fetcher = Arc::new(
+        BrowserFetcher::new(pool.clone())
+            .with_wait(WaitStrategy::Selector {
+                css: "div.g".into(),
+                timeout_ms: 5000,
+            })
+    );
+
+    search.add_engine(Google::new(fetcher));
+}
+```
+
+## Error Handling
+
+Each engine runs independently — one failure doesn't block others:
+
+```rust
+let results = search.search(query).await?;
+
+// Check per-engine errors
+for (engine, error) in results.errors() {
+    eprintln!("Engine '{}' failed: {}", engine, error);
+}
+
+// Suggestions and direct answers
+for suggestion in results.suggestions() {
+    println!("Did you mean: {}", suggestion);
+}
+for answer in results.answers() {
+    println!("Answer: {}", answer);
+}
+```

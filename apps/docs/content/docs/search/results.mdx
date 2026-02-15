@@ -1,0 +1,168 @@
+---
+title: Results
+description: Search results, scoring, deduplication, and result types
+---
+
+# Results
+
+`SearchResults` contains the aggregated, deduplicated, and ranked output from a search operation.
+
+## SearchResults
+
+```rust
+let results = search.search(query).await?;
+
+println!("Found {} results in {}ms", results.count, results.duration_ms);
+```
+
+### Accessing Results
+
+```rust
+// Iterate over ranked results
+for result in results.items() {
+    println!("[{:.2}] {}", result.score, result.title);
+    println!("  URL: {}", result.url);
+    println!("  {}", result.content);
+    println!("  Engines: {:?}", result.engines);
+}
+
+// Query suggestions (e.g., "Did you mean...")
+for suggestion in results.suggestions() {
+    println!("Suggestion: {}", suggestion);
+}
+
+// Direct answers
+for answer in results.answers() {
+    println!("Answer: {}", answer);
+}
+
+// Per-engine errors
+for (engine, error) in results.errors() {
+    eprintln!("{} failed: {}", engine, error);
+}
+```
+
+### SearchResults Fields
+
+| Field / Method | Type | Description |
+|----------------|------|-------------|
+| `count` | `usize` | Number of results |
+| `duration_ms` | `u64` | Total search duration in milliseconds |
+| `items()` | `&[SearchResult]` | Ranked result list |
+| `suggestions()` | `&[String]` | Query suggestions |
+| `answers()` | `&[String]` | Direct answers |
+| `errors()` | `&[(String, String)]` | Per-engine error messages |
+
+## SearchResult
+
+Each individual result contains:
+
+```rust
+pub struct SearchResult {
+    pub url: String,
+    pub title: String,
+    pub content: String,
+    pub result_type: ResultType,
+    pub engines: HashSet<String>,
+    pub positions: Vec<u32>,
+    pub score: f64,
+    pub thumbnail: Option<String>,
+    pub published_date: Option<String>,
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | `String` | Result URL |
+| `title` | `String` | Result title |
+| `content` | `String` | Snippet / description |
+| `result_type` | `ResultType` | Type of result |
+| `engines` | `HashSet<String>` | Set of engines that found this result |
+| `positions` | `Vec<u32>` | Position in each engine's results |
+| `score` | `f64` | Calculated ranking score |
+| `thumbnail` | `Option<String>` | Thumbnail URL |
+| `published_date` | `Option<String>` | Publication date |
+
+### Result Types
+
+```rust
+pub enum ResultType {
+    Web,         // Standard web result (default)
+    Image,       // Image result
+    Video,       // Video result
+    News,        // News article
+    Map,         // Map/location result
+    File,        // File download
+    Answer,      // Direct answer
+    Infobox,     // Rich information panel
+    Suggestion,  // Query suggestion
+}
+```
+
+## Deduplication
+
+Results from different engines are merged by normalized URL:
+
+```rust
+// URL normalization:
+// "https://example.com/path/"  ->  "example.com/path"
+// "HTTP://EXAMPLE.COM/PATH"   ->  "example.com/path"
+```
+
+When two engines return the same URL:
+- Engine names are merged into the `engines` set
+- Positions are appended to the `positions` vec
+- The longer title and content are kept
+- Thumbnail and published_date are filled from whichever engine provides them
+
+## Scoring Algorithm
+
+The consensus-based scoring algorithm rewards results found by multiple engines:
+
+```
+For each result:
+    weight = 1.0
+    for each engine that found this result:
+        weight *= engine.weight    // e.g., Google = 1.5, Wikipedia = 1.2
+    weight *= number_of_engines    // consensus bonus
+
+    score = sum(weight / position) for each engine position
+```
+
+### Example
+
+A result found by DuckDuckGo (position 3, weight 1.0) and Google (position 1, weight 1.5):
+
+```
+weight = 1.0 * 1.5 * 2 = 3.0   (2 engines)
+score  = 3.0/3 + 3.0/1 = 1.0 + 3.0 = 4.0
+```
+
+A result found only by DuckDuckGo (position 1, weight 1.0):
+
+```
+weight = 1.0 * 1 = 1.0          (1 engine)
+score  = 1.0/1 = 1.0
+```
+
+The multi-engine result scores 4x higher despite being at position 3 in DuckDuckGo.
+
+## Error Handling
+
+```rust
+pub enum SearchError {
+    Http(reqwest::Error),          // Network error
+    Parse(String),                 // HTML/JSON parsing error
+    EngineSuspended(String, String), // Engine temporarily suspended
+    Timeout,                       // Search timed out
+    NoEngines,                     // No engines registered
+    InvalidQuery(String),          // Invalid query parameters
+    UrlParse(url::ParseError),     // URL parsing error
+    Browser(String),               // Headless browser error
+    Other(String),                 // Other errors
+}
+```
+
+Engine errors are collected per-engine and do not fail the entire search. If DuckDuckGo times out but Brave and Wikipedia succeed, you still get results from those two engines plus an error entry for DuckDuckGo.
