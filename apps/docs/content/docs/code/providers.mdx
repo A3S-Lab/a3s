@@ -3,12 +3,16 @@ title: Providers
 description: Configure LLM providers, models, and defaults
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Provider Configuration
 
 A3S Code supports multiple LLM providers. Providers and their models are configured globally and persisted to disk.
 
 ## List Providers
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { providers, defaultProvider, defaultModel } = await client.listProviders();
 for (const p of providers) {
@@ -19,15 +23,20 @@ for (const p of providers) {
 }
 console.log(`Default: ${defaultProvider}/${defaultModel}`);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.list_providers()
 for p in result["providers"]:
     print(f"{p['name']}: {len(p['models'])} models")
 ```
+</Tab>
+</Tabs>
 
 ## Add Provider
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.addProvider({
   provider: {
@@ -54,7 +63,8 @@ await client.addProvider({
   },
 });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.add_provider({
     "name": "anthropic",
@@ -69,22 +79,31 @@ await client.add_provider({
     ],
 })
 ```
+</Tab>
+</Tabs>
 
 ## Get Provider
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { provider } = await client.getProvider('anthropic');
 console.log(provider.models.map(m => m.id));
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.get_provider("anthropic")
 ```
+</Tab>
+</Tabs>
 
 ## Update Provider
 
 Replace an existing provider's configuration entirely.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.updateProvider({
   provider: {
@@ -94,7 +113,8 @@ await client.updateProvider({
   },
 });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.update_provider({
     "name": "anthropic",
@@ -102,16 +122,23 @@ await client.update_provider({
     "models": [{"id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "tool_call": True}],
 })
 ```
+</Tab>
+</Tabs>
 
 ## Remove Provider
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.removeProvider('openai');
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.remove_provider("openai")
 ```
+</Tab>
+</Tabs>
 
 If the removed provider was the default, the default is cleared.
 
@@ -119,30 +146,40 @@ If the removed provider was the default, the default is cleared.
 
 Set the default provider and model used for new sessions that don't specify an LLM config.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.setDefaultModel({
   provider: 'anthropic',
   model: 'claude-sonnet-4-20250514',
 });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.set_default_model("anthropic", "claude-sonnet-4-20250514")
 ```
+</Tab>
+</Tabs>
 
 Both provider and model must exist. The configuration is persisted to disk.
 
 ## Get Default Model
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { provider, model } = await client.getDefaultModel();
 console.log(`${provider}/${model}`);  // 'anthropic/claude-sonnet-4-20250514'
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.get_default_model()
 print(f"{result['provider']}/{result['model']}")
 ```
+</Tab>
+</Tabs>
 
 ## Model Fields
 

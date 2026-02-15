@@ -3,6 +3,8 @@ title: Quick Start
 description: Install and run A3S Code in minutes
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Quick Start
 
 ## Installation
@@ -100,6 +102,8 @@ Create `~/.a3s/config.json` (optional — LLM can also be configured per-session
 
 LLM can be configured per-session via `ConfigureSession` RPC — no server-level config needed:
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.configureSession(sessionId, {
   llm: {
@@ -117,7 +121,8 @@ await client.configureSession(sessionId, {
   autoCompactThreshold: 0.8,
 });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 from a3s_code import SessionConfig, LLMConfig
 
@@ -136,3 +141,5 @@ await client.configure_session(session_id, SessionConfig(
     auto_compact=True,
 ))
 ```
+</Tab>
+</Tabs>

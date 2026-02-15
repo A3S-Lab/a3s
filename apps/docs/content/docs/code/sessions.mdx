@@ -3,12 +3,16 @@ title: Sessions
 description: Create, configure, and manage isolated agent sessions
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Session Management
 
 Each session is an isolated agent context with its own conversation history, LLM configuration, permissions, and tools. Sessions auto-generate a UUID if no ID is provided.
 
 ## Create Session
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { sessionId, session } = await client.createSession({
   workspace: '/project',
@@ -24,7 +28,8 @@ const { sessionId, session } = await client.createSession({
   goalTracking: true,
 });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.create_session(
     workspace="/project",
@@ -38,6 +43,8 @@ result = await client.create_session(
 )
 session_id = result["session_id"]
 ```
+</Tab>
+</Tabs>
 
 ### Session Config
 
@@ -67,37 +74,49 @@ session_id = result["session_id"]
 
 ## Get Session
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { session } = await client.getSession(sessionId);
 console.log(session.state);  // 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ERROR'
 console.log(session.contextUsage);
 // { totalTokens: 1234, promptTokens: 800, completionTokens: 434, messageCount: 6 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.get_session(session_id)
 print(result["session"]["state"])  # ACTIVE
 ```
+</Tab>
+</Tabs>
 
 ## List Sessions
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { sessions } = await client.listSessions();
 for (const s of sessions) {
   console.log(`${s.id}: ${s.state} (${s.contextUsage.totalTokens} tokens)`);
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.list_sessions()
 for s in result["sessions"]:
     print(f"{s['id']}: {s['state']}")
 ```
+</Tab>
+</Tabs>
 
 ## Configure Session
 
 Update session configuration after creation. Commonly used to switch models mid-session.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.configureSession(sessionId, {
   llm: {
@@ -108,7 +127,8 @@ await client.configureSession(sessionId, {
   planningEnabled: true,
 });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.configure_session(session_id, {
     "llm": {
@@ -118,11 +138,15 @@ await client.configure_session(session_id, {
     },
 })
 ```
+</Tab>
+</Tabs>
 
 ## Get Messages
 
 Retrieve conversation history with pagination.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { messages, totalCount, hasMore } = await client.getMessages(sessionId, {
   limit: 20,
@@ -133,13 +157,16 @@ for (const msg of messages) {
   console.log(`[${msg.role}] ${msg.content[0]?.text ?? ''}`);
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.get_messages(session_id, limit=20, offset=0)
 for msg in result["messages"]:
     print(f"[{msg['role']}] {msg['content']}")
 print(f"Total: {result['total_count']}, Has more: {result['has_more']}")
 ```
+</Tab>
+</Tabs>
 
 ### Message Content Blocks
 
@@ -153,13 +180,18 @@ Each message contains `content` as an array of content blocks:
 
 ## Destroy Session
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.destroySession(sessionId);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.destroy_session(session_id)
 ```
+</Tab>
+</Tabs>
 
 Fires a `SESSION_DESTROYED` event and collects final session statistics (total tokens, duration) before cleanup.
 

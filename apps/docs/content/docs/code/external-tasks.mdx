@@ -3,6 +3,8 @@ title: External Tasks
 description: Route tool execution to external handlers with lane-based task management
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # External Task Handling
 
 A3S Code uses a lane-based architecture to route operations. Each lane can be configured to handle tasks internally (default), externally (SDK handles execution), or in hybrid mode.
@@ -20,6 +22,8 @@ A3S Code uses a lane-based architecture to route operations. Each lane can be co
 
 Configure a lane to use external handling. When set to `EXTERNAL`, the agent pauses and sends the task to the SDK client.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.setLaneHandler(sessionId, {
   lane: 'EXECUTE',
@@ -29,13 +33,16 @@ await client.setLaneHandler(sessionId, {
   },
 });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.set_lane_handler(session_id, "EXECUTE", {
     "mode": "EXTERNAL",
     "timeout_ms": 30000,
 })
 ```
+</Tab>
+</Tabs>
 
 ### Handler Modes
 
@@ -47,21 +54,28 @@ await client.set_lane_handler(session_id, "EXECUTE", {
 
 ## Get Lane Handler
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { config } = await client.getLaneHandler(sessionId, { lane: 'EXECUTE' });
 console.log(config.mode);       // 'EXTERNAL'
 console.log(config.timeoutMs);  // 30000
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.get_lane_handler(session_id, "EXECUTE")
 print(result["config"]["mode"])
 ```
+</Tab>
+</Tabs>
 
 ## List Pending Tasks
 
 List all tasks waiting for external completion.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { tasks } = await client.listPendingExternalTasks(sessionId);
 for (const task of tasks) {
@@ -70,17 +84,22 @@ for (const task of tasks) {
   console.log(`  Remaining: ${task.remainingMs}ms`);
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.list_pending_external_tasks(session_id)
 for task in result["tasks"]:
     print(f"{task['task_id']}: {task['command_type']} ({task['remaining_ms']}ms left)")
 ```
+</Tab>
+</Tabs>
 
 ## Complete External Task
 
 Provide the result for a pending external task to resume the agent.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.completeExternalTask(sessionId, {
   taskId: 'task-abc-123',
@@ -88,13 +107,16 @@ await client.completeExternalTask(sessionId, {
   result: JSON.stringify({ output: 'File written successfully' }),
 });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.complete_external_task(session_id, "task-abc-123", {
     "success": True,
     "result": '{"output": "File written successfully"}',
 })
 ```
+</Tab>
+</Tabs>
 
 To report a failure:
 

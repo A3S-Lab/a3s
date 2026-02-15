@@ -3,12 +3,16 @@ title: Agentic Loop
 description: Server-side autonomous agent loop with tool execution, planning, and reflection
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Server-Side Agentic Loop
 
 The agentic loop is the primary way to use A3S Code. Unlike raw [generation](/docs/code/generation), the agentic loop automatically executes tools, handles multi-step reasoning, and optionally plans before acting.
 
 ## Basic Usage
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 // Unary — wait for complete result
 const result = await client.agenticGenerate(sessionId, {
@@ -21,17 +25,22 @@ console.log(result.steps.length);      // Number of steps taken
 console.log(result.finishReason);      // 'stop' | 'max_steps' | 'cancelled' | 'error'
 console.log(result.usage.totalTokens); // Total tokens used
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.agentic_generate(session_id, "Refactor the auth module to use JWT")
 print(result["text"])
 print(result["finish_reason"])
 ```
+</Tab>
+</Tabs>
 
 ## Streaming
 
 Stream events as the agent works — text output, tool calls, results, and more.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 for await (const event of client.streamAgenticGenerate(sessionId, {
   prompt: 'Add unit tests for the user service',
@@ -68,7 +77,8 @@ for await (const event of client.streamAgenticGenerate(sessionId, {
   }
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 async for event in client.stream_agentic_generate(session_id, "Add unit tests"):
     if event.get("type") == "text":
@@ -78,6 +88,8 @@ async for event in client.stream_agentic_generate(session_id, "Add unit tests"):
     elif event.get("type") == "done":
         print(f"\nDone: {event['finish_reason']}")
 ```
+</Tab>
+</Tabs>
 
 ## Strategies
 

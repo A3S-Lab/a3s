@@ -3,6 +3,8 @@ title: Context Management
 description: Monitor, compact, and clear conversation context
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Context Management
 
 Each session maintains a conversation context with a token budget. When the context grows too large, it can be compacted (summarized) or cleared entirely.
@@ -11,47 +13,62 @@ Each session maintains a conversation context with a token budget. When the cont
 
 Check current token consumption for a session.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { usage } = await client.getContextUsage(sessionId);
 console.log(`Total: ${usage.totalTokens} tokens`);
 console.log(`Prompt: ${usage.promptTokens}, Completion: ${usage.completionTokens}`);
 console.log(`Messages: ${usage.messageCount}`);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.get_context_usage(session_id)
 usage = result["usage"]
 print(f"Total: {usage['total_tokens']} tokens, Messages: {usage['message_count']}")
 ```
+</Tab>
+</Tabs>
 
 ## Compact Context
 
 Summarize the conversation history to reduce token usage while preserving essential context. Returns before/after token counts.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const result = await client.compactContext(sessionId);
 console.log(`Before: ${result.before.totalTokens} tokens`);
 console.log(`After: ${result.after.totalTokens} tokens`);
 console.log(`Saved: ${result.before.totalTokens - result.after.totalTokens} tokens`);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.compact_context(session_id)
 saved = result["before"]["total_tokens"] - result["after"]["total_tokens"]
 print(f"Compacted: saved {saved} tokens")
 ```
+</Tab>
+</Tabs>
 
 ## Clear Context
 
 Remove all messages from the session context. The session remains active with an empty conversation.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.clearContext(sessionId);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.clear_context(session_id)
 ```
+</Tab>
+</Tabs>
 
 ## Auto-Compaction
 

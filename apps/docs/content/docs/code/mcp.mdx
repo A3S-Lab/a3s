@@ -3,12 +3,16 @@ title: MCP Support
 description: Extend the agent with external tools via Model Context Protocol
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # MCP Support
 
 A3S Code supports the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) for integrating external tool servers. MCP tools are automatically registered in the ToolExecutor when a server connects and unregistered when it disconnects.
 
 ## Register and Connect
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 // Register an MCP server
 await client.registerMcpServer({
@@ -29,7 +33,8 @@ await client.connectMcpServer('filesystem');
 // List available tools from all connected servers
 const tools = await client.getMcpTools();
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.register_mcp_server({
     "name": "filesystem",
@@ -46,6 +51,8 @@ await client.register_mcp_server({
 await client.connect_mcp_server("filesystem")
 tools = await client.get_mcp_tools()
 ```
+</Tab>
+</Tabs>
 
 ## Transport Types
 

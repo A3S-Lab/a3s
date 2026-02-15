@@ -3,6 +3,8 @@ title: Code Generation
 description: Generate responses and structured output with streaming support
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Code Generation
 
 The generation RPCs send messages to the LLM and return responses. These are low-level RPCs — for most use cases, prefer the [Agentic Loop](/docs/code/agentic) which handles tool execution automatically.
@@ -11,6 +13,8 @@ The generation RPCs send messages to the LLM and return responses. These are low
 
 Send messages and receive a single response. The LLM may return tool calls that need client-side execution.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const result = await client.generate(sessionId, [
   { role: 'user', content: 'What files are in the src/ directory?' },
@@ -21,7 +25,8 @@ console.log(result.toolCalls);          // Tool calls to execute client-side
 console.log(result.usage.totalTokens);  // Token usage
 console.log(result.finishReason);       // 'stop' | 'length' | 'tool_calls'
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.generate(session_id, [
     {"role": "user", "content": "What files are in the src/ directory?"},
@@ -29,11 +34,15 @@ result = await client.generate(session_id, [
 print(result["message"]["content"])
 print(result["usage"]["total_tokens"])
 ```
+</Tab>
+</Tabs>
 
 ## Stream Generate
 
 Same as `generate`, but streams response chunks as they arrive.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 for await (const chunk of client.streamGenerate(sessionId, [
   { role: 'user', content: 'Explain the auth module' },
@@ -54,7 +63,8 @@ for await (const chunk of client.streamGenerate(sessionId, [
   }
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 async for chunk in client.stream_generate(session_id, [
     {"role": "user", "content": "Explain the auth module"},
@@ -64,6 +74,8 @@ async for chunk in client.stream_generate(session_id, [
     if chunk.get("tool_call"):
         print(f"\nTool: {chunk['tool_call']['name']}")
 ```
+</Tab>
+</Tabs>
 
 ### Chunk Types
 
@@ -79,6 +91,8 @@ async for chunk in client.stream_generate(session_id, [
 
 Generate output conforming to a JSON Schema. The schema is injected into the prompt, and the response is parsed and validated.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const result = await client.generateStructured(sessionId, [
   { role: 'user', content: 'Analyze the complexity of src/auth.ts' },
@@ -108,7 +122,8 @@ const analysis = JSON.parse(result.data);
 console.log(analysis.complexity);  // 'medium'
 console.log(analysis.functions);   // [{ name: 'login', complexity: 'high' }, ...]
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 import json
 
@@ -126,6 +141,8 @@ result = await client.generate_structured(session_id, [
 
 analysis = json.loads(result["data"])
 ```
+</Tab>
+</Tabs>
 
 ## Stream Structured
 

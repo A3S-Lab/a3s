@@ -3,6 +3,8 @@ title: Control Operations
 description: Cancel, pause, and resume agent operations
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Control Operations
 
 Control in-flight operations — cancel a running generation, pause a session, or resume it.
@@ -11,13 +13,18 @@ Control in-flight operations — cancel a running generation, pause a session, o
 
 Cancel an in-progress operation for a session.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.cancel(sessionId);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.cancel(session_id)
 ```
+</Tab>
+</Tabs>
 
 With a specific operation ID:
 
@@ -31,13 +38,18 @@ Cancellation causes the agentic loop to emit a `done` event with `finishReason: 
 
 Pause all operations in a session. Pending tool executions are suspended.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.pause(sessionId);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.pause(session_id)
 ```
+</Tab>
+</Tabs>
 
 The session state changes to `PAUSED`. New generation requests to a paused session will be queued until resumed.
 
@@ -45,13 +57,18 @@ The session state changes to `PAUSED`. New generation requests to a paused sessi
 
 Resume a paused session. Queued and suspended operations continue.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.resume(sessionId);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.resume(session_id)
 ```
+</Tab>
+</Tabs>
 
 ## Example: Pause/Resume During Streaming
 

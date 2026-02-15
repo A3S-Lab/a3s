@@ -3,12 +3,16 @@ title: Events
 description: Subscribe to real-time agent events across sessions
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Event Streaming
 
 Subscribe to real-time events from the agent. Events cover session lifecycle, generation progress, tool execution, confirmations, memory operations, and more.
 
 ## Subscribe
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 for await (const event of client.subscribeEvents({
   sessionId: sessionId,    // Optional: filter to one session
@@ -19,7 +23,8 @@ for await (const event of client.subscribeEvents({
   console.log(`  Data: ${JSON.stringify(event.data)}`);
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 async for event in client.subscribe_events(
     session_id=session_id,
@@ -27,6 +32,8 @@ async for event in client.subscribe_events(
 ):
     print(f"[{event['type']}] {event['message']}")
 ```
+</Tab>
+</Tabs>
 
 ## Event Types
 

@@ -3,6 +3,8 @@ title: Permissions & HITL
 description: Fine-grained tool access control and human-in-the-loop confirmation
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Permissions & HITL
 
 A3S Code provides two independent layers of access control: a rule-based permission system and a human-in-the-loop (HITL) confirmation system. They work together but are evaluated independently.
@@ -34,6 +36,8 @@ Tool(pattern)
 
 ### Configuration
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await session.setPermissions({
   defaultAction: 'ask',
@@ -46,7 +50,8 @@ await session.setPermissions({
   ],
 });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await session.set_permissions(
     default_action="ask",
@@ -55,6 +60,8 @@ await session.set_permissions(
     ask=["Bash(*)", "Write(*)"],
 )
 ```
+</Tab>
+</Tabs>
 
 ## Human-in-the-Loop (HITL)
 
@@ -62,6 +69,8 @@ HITL is independent of the permission system. Even if a tool is `allow`-ed by pe
 
 ### Configuration
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await session.setConfirmation({
   autoApprove: ['read', 'grep', 'glob', 'ls'],
@@ -70,7 +79,8 @@ await session.setConfirmation({
   timeoutAction: 'reject', // reject on timeout (safer default)
 });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await session.set_confirmation(
     auto_approve=["read", "grep", "glob", "ls"],
@@ -79,11 +89,15 @@ await session.set_confirmation(
     timeout_action="reject",
 )
 ```
+</Tab>
+</Tabs>
 
 ### Responding to Confirmation Requests
 
 When a tool requires confirmation, the SDK client receives a confirmation event:
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 // Listen for confirmation requests
 for await (const event of session.stream('Deploy to production')) {
@@ -96,13 +110,16 @@ for await (const event of session.stream('Deploy to production')) {
   }
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 async for event in session.stream("Deploy to production"):
     if event.type == "confirmation_request":
         print(f"Tool {event.tool_name} wants to run: {event.args}")
         await session.confirm(event.id, True, "Approved by operator")
 ```
+</Tab>
+</Tabs>
 
 ### Timeout Behavior
 

@@ -3,6 +3,8 @@ title: A3S Code
 description: Production-ready AI coding agent framework — multi-session gRPC service with 86 RPCs, 11 built-in tools, and defense-in-depth security
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # A3S Code
 
 A3S Code is a high-performance Rust framework for building AI coding agents. It provides a complete gRPC-based service with 86 RPCs for tool execution, multi-session management, and extensible integrations.
@@ -24,6 +26,8 @@ All subsystems — hooks, security, memory, MCP/LSP tools, subagent delegation, 
 
 ## Quick Example
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 import { A3sClient, createProvider } from '@a3s-lab/code';
 
@@ -41,7 +45,8 @@ for await (const event of session.stream('Refactor the auth module')) {
   if (event.toolStart) console.log(`\nTool: ${event.toolStart.name}`);
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 from a3s_code import A3sClient, create_provider
 
@@ -57,6 +62,8 @@ async with A3sClient(address="localhost:4088") as client:
             if event.type == "text":
                 print(event.content, end="", flush=True)
 ```
+</Tab>
+</Tabs>
 
 ## Architecture at a Glance
 

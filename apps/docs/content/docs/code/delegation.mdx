@@ -3,12 +3,16 @@ title: Delegation
 description: Delegate tasks to specialized subagents with isolated sessions
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Server-Side Delegation
 
 Delegation spawns a subagent in an isolated child session to handle a specific task. The parent session's context is not shared — the subagent operates independently with its own permissions and tool access.
 
 ## Basic Usage
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const result = await client.delegate(sessionId, {
   agentName: 'explore',
@@ -21,14 +25,19 @@ console.log(result.agentSessionId);  // Child session ID
 console.log(result.steps.length);    // Steps taken by subagent
 console.log(result.usage);           // Token usage
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.delegate(session_id, "explore", "Find all API endpoints")
 print(result["text"])
 ```
+</Tab>
+</Tabs>
 
 ## Streaming
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 for await (const event of client.streamDelegate(sessionId, {
   agentName: 'plan',
@@ -40,12 +49,15 @@ for await (const event of client.streamDelegate(sessionId, {
   if (event.type === 'done') console.log(`\nFinished: ${event.finishReason}`);
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 async for event in client.stream_delegate(session_id, "explore", "Find all endpoints"):
     if event.get("type") == "text":
         print(event["content"], end="", flush=True)
 ```
+</Tab>
+</Tabs>
 
 ## Built-in Agent Types
 

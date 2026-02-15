@@ -3,6 +3,8 @@ title: Observability
 description: Tool metrics, cost tracking, and queue statistics
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Observability
 
 Monitor agent performance with per-tool metrics, cost summaries, and task queue statistics.
@@ -11,6 +13,8 @@ Monitor agent performance with per-tool metrics, cost summaries, and task queue 
 
 Get execution metrics for tools — call counts, success/failure rates, and timing.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const metrics = await client.getToolMetrics(sessionId);
 console.log(`Total calls: ${metrics.totalCalls}`);
@@ -23,12 +27,15 @@ for (const tool of metrics.tools) {
   console.log(`  Last called: ${tool.lastCalledAt}`);
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.get_tool_metrics(session_id)
 for tool in result["tools"]:
     print(f"{tool['tool_name']}: {tool['total_calls']} calls, avg {tool['avg_duration_ms']}ms")
 ```
+</Tab>
+</Tabs>
 
 Filter by tool name:
 
@@ -54,6 +61,8 @@ const bashMetrics = await client.getToolMetrics(sessionId, { toolName: 'Bash' })
 
 Get token cost breakdown by model and day. Supports filtering by session, model, and date range.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const cost = await client.getCostSummary({
   sessionId: sessionId,       // Optional: filter to session
@@ -76,13 +85,16 @@ for (const d of cost.byDay) {
   console.log(`  ${d.date}: $${d.cost.toFixed(4)} (${d.calls} calls)`);
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.get_cost_summary(session_id=session_id)
 print(f"Total: ${result['total_cost_usd']:.4f}")
 for m in result["by_model"]:
     print(f"  {m['model']}: ${m['cost']:.4f} ({m['calls']} calls)")
 ```
+</Tab>
+</Tabs>
 
 ### Cost Summary Fields
 
@@ -100,6 +112,8 @@ for m in result["by_model"]:
 
 Get task queue depth per lane. Useful for monitoring backpressure.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const stats = await client.getQueueStats(sessionId);
 console.log('Lane stats:');
@@ -113,13 +127,16 @@ for (const [lane, s] of Object.entries({
 }
 console.log(`Dead letters: ${stats.deadLetters}`);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.get_queue_stats(session_id)
 for lane in ["control", "query", "execute", "generate"]:
     s = result[lane]
     print(f"{lane}: {s['pending']} pending, {s['active']} active")
 ```
+</Tab>
+</Tabs>
 
 ### Lane Stats Fields
 

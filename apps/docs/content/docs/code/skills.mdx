@@ -3,6 +3,8 @@ title: Skills System
 description: Extend agent behavior with Markdown-based prompt-injection skills
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Skills System
 
 Skills are Markdown files that extend agent behavior. They can inject system prompts, define custom tools, or create specialized agent personas. Compatible with Claude Code Skills format.
@@ -40,6 +42,8 @@ Skills are automatically classified into three kinds:
 
 ## Loading Skills
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 // Load a single skill by name
 await session.loadSkill('deploy');
@@ -50,12 +54,15 @@ await session.loadSkills('~/.a3s/skills');
 // List loaded skills
 const skills = await session.listSkills();
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await session.load_skill("deploy")
 await session.load_skills("~/.a3s/skills")
 skills = await session.list_skills()
 ```
+</Tab>
+</Tabs>
 
 ## On-Demand Loading
 

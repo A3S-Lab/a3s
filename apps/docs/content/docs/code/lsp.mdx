@@ -3,6 +3,8 @@ title: LSP Integration
 description: Code intelligence via Language Server Protocol
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # LSP Integration
 
 A3S Code integrates with Language Server Protocol (LSP) servers to provide code intelligence. LSP tools are automatically registered in the ToolExecutor when a server starts.
@@ -19,13 +21,18 @@ A3S Code integrates with Language Server Protocol (LSP) servers to provide code 
 
 ## Start a Language Server
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.startLspServer('rust', 'file:///path/to/project');
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.start_lsp_server("rust", "file:///path/to/project")
 ```
+</Tab>
+</Tabs>
 
 ## Available Operations
 
@@ -33,61 +40,86 @@ await client.start_lsp_server("rust", "file:///path/to/project")
 
 Get type information and documentation at a position:
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const hover = await client.lspHover('/path/to/file.rs', 10, 5);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 hover = await client.lsp_hover("/path/to/file.rs", 10, 5)
 ```
+</Tab>
+</Tabs>
 
 ### Go to Definition
 
 Find where a symbol is defined:
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const defs = await client.lspDefinition('/path/to/file.rs', 15, 10);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 defs = await client.lsp_definition("/path/to/file.rs", 15, 10)
 ```
+</Tab>
+</Tabs>
 
 ### Find References
 
 Find all usages of a symbol:
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const refs = await client.lspReferences('/path/to/file.rs', 20, 8);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 refs = await client.lsp_references("/path/to/file.rs", 20, 8)
 ```
+</Tab>
+</Tabs>
 
 ### Workspace Symbols
 
 Search for symbols across the workspace:
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const symbols = await client.lspSymbols('main');
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 symbols = await client.lsp_symbols("main")
 ```
+</Tab>
+</Tabs>
 
 ### Diagnostics
 
 Get errors and warnings for a file:
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const diags = await client.lspDiagnostics('/path/to/file.rs');
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 diags = await client.lsp_diagnostics("/path/to/file.rs")
 ```
+</Tab>
+</Tabs>
 
 ## Lifecycle RPCs
 

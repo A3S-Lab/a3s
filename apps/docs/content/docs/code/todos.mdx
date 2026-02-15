@@ -3,12 +3,16 @@ title: Todo Tracking
 description: Track task progress with session-scoped todo lists
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Todo Tracking
 
 Each session has a todo list for tracking work items. The agent can create, update, and complete todos as it works through a task.
 
 ## Get Todos
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { todos } = await client.getTodos(sessionId);
 for (const todo of todos) {
@@ -17,17 +21,22 @@ for (const todo of todos) {
   console.log(`${icon} [${todo.priority}] ${todo.content}`);
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.get_todos(session_id)
 for todo in result["todos"]:
     print(f"[{todo['status']}] ({todo['priority']}) {todo['content']}")
 ```
+</Tab>
+</Tabs>
 
 ## Set Todos
 
 Replace the entire todo list for a session.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.setTodos(sessionId, {
   todos: [
@@ -39,7 +48,8 @@ await client.setTodos(sessionId, {
   ],
 });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.set_todos(session_id, [
     {"id": "1", "content": "Analyze existing auth module", "status": "completed", "priority": "high"},
@@ -47,6 +57,8 @@ await client.set_todos(session_id, [
     {"id": "3", "content": "Update middleware chain", "status": "pending", "priority": "medium"},
 ])
 ```
+</Tab>
+</Tabs>
 
 ## Todo Fields
 

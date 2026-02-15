@@ -3,6 +3,8 @@ title: Memory System
 description: Persistent knowledge across sessions with episodic, semantic, procedural, and working memory
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Memory System
 
 A3S Code provides a four-type memory system for persistent knowledge. Memory is auto-registered as a ContextProvider in every session, so relevant memories are automatically included in the LLM context.
@@ -18,6 +20,8 @@ A3S Code provides a four-type memory system for persistent knowledge. Memory is 
 
 ## Store and Retrieve
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 // Store a memory
 await client.storeMemory(sessionId, {
@@ -33,7 +37,8 @@ const results = await client.searchMemories(sessionId, 'TypeScript', ['preferenc
 // Get memory statistics
 const stats = await client.getMemoryStats(sessionId);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.store_memory(session_id, {
     "content": "User prefers TypeScript over JavaScript",
@@ -45,6 +50,8 @@ await client.store_memory(session_id, {
 results = await client.search_memories(session_id, "TypeScript", ["preference"], 10)
 stats = await client.get_memory_stats(session_id)
 ```
+</Tab>
+</Tabs>
 
 ## RPCs
 

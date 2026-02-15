@@ -3,12 +3,16 @@ title: Cron
 description: Schedule recurring tasks with cron expressions or natural language
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Cron (Scheduled Tasks)
 
 A3S Code includes a built-in cron system for scheduling recurring tasks. Schedules can be defined as standard cron expressions or natural language.
 
 ## Create Job
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { job } = await client.createCronJob({
   name: 'daily-backup',
@@ -18,11 +22,14 @@ const { job } = await client.createCronJob({
 });
 console.log(`Created job ${job.id}: ${job.name}`);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.create_cron_job("daily-backup", "every day at 2am", "backup.sh")
 print(f"Created: {result['job']['id']}")
 ```
+</Tab>
+</Tabs>
 
 Cron expressions are also supported:
 
@@ -37,37 +44,49 @@ await client.createCronJob({
 
 ## List Jobs
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { jobs } = await client.listCronJobs();
 for (const job of jobs) {
   console.log(`${job.name} [${job.status}]: ${job.schedule}`);
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.list_cron_jobs()
 for job in result["jobs"]:
     print(f"{job['name']}: {job['schedule']}")
 ```
+</Tab>
+</Tabs>
 
 ## Get Job
 
 Look up a job by ID or name.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { job } = await client.getCronJob({ id: 'job-abc-123' });
 // or by name:
 const { job } = await client.getCronJob({ name: 'daily-backup' });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.get_cron_job(id="job-abc-123")
 # or by name:
 result = await client.get_cron_job(name="daily-backup")
 ```
+</Tab>
+</Tabs>
 
 ## Update Job
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.updateCronJob({
   id: job.id,
@@ -75,37 +94,52 @@ await client.updateCronJob({
   timeoutMs: 180000,
 });
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.update_cron_job(job_id, schedule="every day at 3am", timeout_ms=180000)
 ```
+</Tab>
+</Tabs>
 
 ## Pause / Resume
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.pauseCronJob(job.id);   // Prevents future executions
 await client.resumeCronJob(job.id);  // Re-enables scheduling
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.pause_cron_job(job_id)
 await client.resume_cron_job(job_id)
 ```
+</Tab>
+</Tabs>
 
 ## Delete Job
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 await client.deleteCronJob(job.id);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 await client.delete_cron_job(job_id)
 ```
+</Tab>
+</Tabs>
 
 ## Run Job Manually
 
 Trigger a job execution immediately, regardless of schedule.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { execution } = await client.runCronJob(job.id);
 console.log(`Exit code: ${execution.exitCode}`);
@@ -113,15 +147,20 @@ console.log(`Duration: ${execution.durationMs}ms`);
 console.log(`stdout: ${execution.stdout}`);
 console.log(`stderr: ${execution.stderr}`);
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.run_cron_job(job_id)
 print(f"Exit: {result['execution']['exit_code']}")
 print(f"Output: {result['execution']['stdout']}")
 ```
+</Tab>
+</Tabs>
 
 ## Execution History
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const { executions } = await client.getCronHistory(job.id, { limit: 10 });
 for (const exec of executions) {
@@ -129,12 +168,15 @@ for (const exec of executions) {
   if (exec.error) console.log(`  Error: ${exec.error}`);
 }
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 result = await client.get_cron_history(job_id, limit=10)
 for ex in result["executions"]:
     print(f"{ex['started_at']}: {ex['status']} ({ex['duration_ms']}ms)")
 ```
+</Tab>
+</Tabs>
 
 ### Execution Fields
 
@@ -155,17 +197,22 @@ for ex in result["executions"]:
 
 Convert natural language to cron expressions without creating a job.
 
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
 ```typescript
 const parsed = await client.parseCronSchedule('every 5 minutes');
 console.log(parsed.cronExpression);  // '*/5 * * * *'
 console.log(parsed.description);     // 'every 5 minutes'
 ```
-
+</Tab>
+<Tab value="Python">
 ```python
 parsed = await client.parse_cron_schedule("every weekday at 9am")
 print(parsed["cron_expression"])  # '0 9 * * 1-5'
 print(parsed["description"])
 ```
+</Tab>
+</Tabs>
 
 ### Supported Natural Language
 
