@@ -1,0 +1,272 @@
+---
+title: Custom Tools
+description: Define and register custom tools via Skills, MCP, Binary, HTTP, and Script backends
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Custom Tools
+
+Beyond the 11 built-in tools, A3S Code supports four ways to add custom tools: Skill files, MCP servers, dynamic backends (Binary/HTTP/Script), and the Rust API.
+
+## 1. Skill-Based Tools
+
+Define tools in Markdown skill files with YAML frontmatter. This is the simplest way to add custom tools.
+
+```markdown
+# ~/.a3s/skills/my-tools.md
+---
+name: my-tools
+description: Custom tools for my workflow
+tools:
+  - name: deploy
+    description: Deploy the application to production
+    backend:
+      type: binary
+      path: /usr/local/bin/deploy.sh
+      args_template: "--env ${environment} --tag ${tag}"
+    parameters:
+      type: object
+      properties:
+        environment:
+          type: string
+          enum: [staging, production]
+        tag:
+          type: string
+          description: Docker image tag
+      required: [environment, tag]
+
+  - name: check_status
+    description: Check deployment status via API
+    backend:
+      type: http
+      url: "https://api.example.com/status/${service}"
+      method: GET
+      headers:
+        Authorization: "Bearer ${API_TOKEN}"
+      timeout_ms: 5000
+    parameters:
+      type: object
+      properties:
+        service:
+          type: string
+      required: [service]
+
+  - name: lint
+    description: Run custom linter
+    backend:
+      type: script
+      interpreter: python3
+      script: |
+        import sys, json
+        args = json.loads(sys.argv[1])
+        # ... linting logic
+        print(json.dumps({"issues": []}))
+    parameters:
+      type: object
+      properties:
+        path:
+          type: string
+      required: [path]
+---
+Use these tools for deployment and monitoring tasks.
+```
+
+Load the skill into a session:
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// Load skill (tools are automatically registered)
+await session.loadSkill('my-tools');
+
+// Or load all skills from a directory
+await session.loadSkills('~/.a3s/skills');
+
+// The agent can now use deploy, check_status, lint tools
+const result = await session.send('Deploy the app to staging with tag v1.2.3');
+```
+</Tab>
+<Tab value="Python">
+```python
+await session.load_skill("my-tools")
+await session.load_skills("~/.a3s/skills")
+
+result = await session.send("Deploy the app to staging with tag v1.2.3")
+```
+</Tab>
+</Tabs>
+
+## 2. MCP Server Tools
+
+Register external [Model Context Protocol](https://modelcontextprotocol.io/) servers. All tools exposed by the server are automatically available to the agent.
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// Register an MCP server
+await client.registerMcpServer({
+  name: 'github',
+  transport: {
+    stdio: {
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-github'],
+    },
+  },
+  enabled: true,
+  env: { GITHUB_TOKEN: process.env.GITHUB_TOKEN },
+});
+
+// Connect and discover tools
+await client.connectMcpServer('github');
+const tools = await client.getMcpTools();
+// Tools are named: mcp__github__create_issue, mcp__github__search_repos, etc.
+```
+</Tab>
+<Tab value="Python">
+```python
+await client.register_mcp_server({
+    "name": "github",
+    "transport": {
+        "stdio": {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-github"],
+        }
+    },
+    "enabled": True,
+    "env": {"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
+})
+
+await client.connect_mcp_server("github")
+tools = await client.get_mcp_tools()
+```
+</Tab>
+</Tabs>
+
+MCP tools are namespaced as `mcp__<server>__<tool>` to avoid name collisions.
+
+## 3. Tool Backend Types
+
+Custom tools support three execution backends:
+
+### Binary
+
+Execute an external binary with templated arguments:
+
+```yaml
+backend:
+  type: binary
+  path: /usr/local/bin/my-tool    # Path to executable
+  url: https://example.com/tool   # Or download URL (optional)
+  args_template: "--input ${input} --format json"
+```
+
+The binary receives arguments via command-line flags. Stdout is captured as the tool output.
+
+### HTTP
+
+Make HTTP API calls with templated URL, headers, and body:
+
+```yaml
+backend:
+  type: http
+  url: "https://api.example.com/v1/${endpoint}"
+  method: POST
+  headers:
+    Authorization: "Bearer ${API_KEY}"
+    Content-Type: application/json
+  body_template: '{"query": "${query}"}'
+  timeout_ms: 10000
+```
+
+### Script
+
+Run inline scripts with any interpreter:
+
+```yaml
+backend:
+  type: script
+  interpreter: python3
+  interpreter_args: ["-u"]
+  script: |
+    import sys, json
+    args = json.loads(sys.argv[1])
+    result = process(args)
+    print(json.dumps(result))
+```
+
+Supported interpreters: `python3`, `node`, `bash`, `ruby`, `deno`, or any executable.
+
+## 4. Rust API
+
+For embedding A3S Code as a library, register tools programmatically:
+
+```rust
+use a3s_code_core::tools::{Tool, ToolContext, ToolOutput};
+use async_trait::async_trait;
+
+struct MyTool;
+
+#[async_trait]
+impl Tool for MyTool {
+    fn name(&self) -> &str { "my_tool" }
+
+    fn description(&self) -> &str { "Does something useful" }
+
+    fn parameters(&self) -> serde_json::Value {
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "input": { "type": "string", "description": "Input text" }
+            },
+            "required": ["input"]
+        })
+    }
+
+    async fn execute(
+        &self,
+        args: &serde_json::Value,
+        ctx: &ToolContext,
+    ) -> Result<ToolOutput> {
+        let input = args["input"].as_str().unwrap_or_default();
+        Ok(ToolOutput {
+            content: format!("Processed: {}", input),
+            success: true,
+            metadata: None,
+        })
+    }
+}
+
+// Register at runtime
+tool_executor.register_dynamic_tool(Arc::new(MyTool));
+
+// Or via Agent builder
+let agent = Agent::builder()
+    .model("claude-sonnet-4-20250514")
+    .workspace("/project")
+    .extra_tools(vec![tool_definition])
+    .build()
+    .await?;
+```
+
+## Tool Permissions
+
+Custom tools respect the session's permission policy. You can restrict which tools a skill can use:
+
+```markdown
+---
+name: deploy
+allowed_tools: Bash(kubectl:*), Bash(docker:*)
+---
+```
+
+This ensures the deploy skill can only run `kubectl` and `docker` commands, even if the session allows broader bash access.
+
+## Summary
+
+| Method | Registration | Best For |
+|--------|-------------|----------|
+| Skill files | `session.loadSkill()` | Declarative tools with prompt context |
+| MCP servers | `client.registerMcpServer()` | External tool ecosystems |
+| Rust API | `register_dynamic_tool()` | Embedded library usage |
+| Agent builder | `.extra_tools()` | One-off tool injection |
