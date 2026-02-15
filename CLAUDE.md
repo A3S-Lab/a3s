@@ -154,6 +154,8 @@ Key guidelines:
 
 **Python SDK:** Async/await for all I/O. Context managers (`async with`) for automatic cleanup. Type hints encouraged.
 
+**Configuration Format:** All crates that require configuration files MUST prefer HCL (HashiCorp Configuration Language) as the primary format. TOML may be supported as a secondary format. Use `.hcl` file extension by default. When adding configuration support to a new or existing crate, implement HCL parsing first (via `hcl-rs`) and auto-detect format by file extension.
+
 ---
 
 ## Language Policy
