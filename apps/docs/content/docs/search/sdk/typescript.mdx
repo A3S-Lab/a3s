@@ -1,0 +1,214 @@
+---
+title: TypeScript SDK
+description: Native Node.js bindings for A3S Search via NAPI-RS
+---
+
+# TypeScript SDK
+
+The TypeScript SDK provides native Node.js bindings to the A3S Search engine via [NAPI-RS](https://napi.rs/). Pre-built binaries are available for major platforms.
+
+## Installation
+
+```bash
+npm install @a3s-lab/search
+```
+
+Pre-built binaries are available for:
+- Windows x64
+- macOS x64 / ARM64 (Apple Silicon)
+- Linux x64 / ARM64 (glibc and musl)
+
+### Build from Source
+
+```bash
+cd crates/search/sdk/node
+npm run build
+```
+
+## Quick Start
+
+```typescript
+import { A3SSearch } from "@a3s-lab/search";
+
+const search = new A3SSearch();
+
+const response = await search.search("rust programming");
+for (const r of response.results) {
+  console.log(`${r.title}: ${r.url}`);
+  console.log(`  score: ${r.score}, engines: ${r.engines.join(", ")}`);
+}
+```
+
+## A3SSearch
+
+The main client class:
+
+```typescript
+class A3SSearch {
+  constructor();
+  async search(query: string, options?: SearchOptions): Promise<SearchResponse>;
+}
+```
+
+### SearchOptions
+
+```typescript
+interface SearchOptions {
+  /** Engine shortcuts to use. Defaults to ["ddg", "wiki"]. */
+  engines?: string[];
+  /** Maximum number of results to return. */
+  limit?: number;
+  /** Per-engine timeout in seconds. Defaults to 10. */
+  timeout?: number;
+  /** HTTP/SOCKS5 proxy URL. */
+  proxy?: string;
+}
+```
+
+### Engine Shortcuts
+
+| Shortcut | Engine |
+|----------|--------|
+| `ddg` / `duckduckgo` | DuckDuckGo |
+| `brave` | Brave Search |
+| `wiki` / `wikipedia` | Wikipedia |
+| `sogou` | Sogou (Chinese) |
+| `360` / `so360` | 360 Search (Chinese) |
+
+## Types
+
+### SearchResponse
+
+```typescript
+interface SearchResponse {
+  /** The search results. */
+  results: SearchResult[];
+  /** Total number of results. */
+  count: number;
+  /** Search duration in milliseconds. */
+  durationMs: number;
+  /** Engine errors that occurred during search. */
+  errors: EngineError[];
+}
+```
+
+### SearchResult
+
+```typescript
+interface SearchResult {
+  /** Result URL. */
+  url: string;
+  /** Result title. */
+  title: string;
+  /** Result description/snippet. */
+  content: string;
+  /** Type of result (e.g. "web", "image", "video"). */
+  resultType: string;
+  /** Names of engines that returned this result. */
+  engines: string[];
+  /** Calculated relevance score. */
+  score: number;
+  /** Thumbnail URL, if available. */
+  thumbnail?: string;
+  /** Published date, if available. */
+  publishedDate?: string;
+}
+```
+
+### EngineError
+
+```typescript
+interface EngineError {
+  /** Name of the engine that failed. */
+  engine: string;
+  /** Error message. */
+  message: string;
+}
+```
+
+## Error Handling
+
+```typescript
+import { A3SSearch, SearchError, A3SSearchError } from "@a3s-lab/search";
+
+const search = new A3SSearch();
+
+try {
+  const response = await search.search("query");
+} catch (err) {
+  if (err instanceof SearchError) {
+    console.error(`Search failed: ${err.message}`);
+  } else if (err instanceof A3SSearchError) {
+    console.error(`SDK error: ${err.message}`);
+  }
+}
+
+// Check for partial engine failures
+const response = await search.search("query", {
+  engines: ["ddg", "brave", "wiki"],
+});
+for (const err of response.errors) {
+  console.warn(`Engine ${err.engine} failed: ${err.message}`);
+}
+```
+
+### Error Classes
+
+| Class | Description |
+|-------|-------------|
+| `A3SSearchError` | Base error for all SDK errors |
+| `NativeModuleError` | Native module failed to load |
+| `SearchError` | Search operation failed |
+
+## Examples
+
+### Multi-Engine Search
+
+```typescript
+const response = await search.search("machine learning", {
+  engines: ["ddg", "brave", "wiki"],
+  limit: 20,
+  timeout: 15,
+});
+
+console.log(`Found ${response.count} results in ${response.durationMs}ms`);
+for (const r of response.results) {
+  console.log(`[${r.score.toFixed(2)}] ${r.title}`);
+  console.log(`  ${r.url}`);
+  console.log(`  engines: ${r.engines.join(", ")}`);
+}
+```
+
+### Chinese Search
+
+```typescript
+const response = await search.search("人工智能", {
+  engines: ["sogou", "360"],
+});
+```
+
+### With Proxy
+
+```typescript
+const response = await search.search("privacy tools", {
+  proxy: "socks5://127.0.0.1:1080",
+});
+```
+
+## Exports
+
+```typescript
+import {
+  A3SSearch,          // Main client class
+  A3SSearchError,     // Base error
+  NativeModuleError,  // Native module load error
+  SearchError,        // Search operation error
+} from "@a3s-lab/search";
+
+import type {
+  SearchResult,       // Result interface
+  SearchOptions,      // Options interface
+  SearchResponse,     // Response interface
+  EngineError,        // Engine error interface
+} from "@a3s-lab/search";
+```
