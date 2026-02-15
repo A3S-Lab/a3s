@@ -1,0 +1,145 @@
+---
+title: Session Persistence
+description: Pluggable session storage backends for conversation persistence
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Session Persistence
+
+A3S Code supports pluggable session storage backends. Sessions can be stored in memory, on disk, or in a custom external store.
+
+## Storage Types
+
+| Type | Enum | Description |
+|------|------|-------------|
+| Memory | `STORAGE_TYPE_MEMORY` | In-memory only, lost on restart |
+| File | `STORAGE_TYPE_FILE` | JSON files on disk (default) |
+| Custom | `STORAGE_TYPE_CUSTOM` | External store via `SessionStore` trait |
+
+## Configuring Storage
+
+Set the storage type when creating a session:
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const { sessionId } = await client.createSession({
+  workspace: '/project',
+  storageType: 'FILE',  // or 'MEMORY', 'CUSTOM'
+  llm: { provider: 'anthropic', model: 'claude-sonnet-4-20250514', apiKey: '...' },
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+session = await client.create_session(
+    workspace="/project",
+    storage_type="FILE",  # or "MEMORY", "CUSTOM"
+    llm={"provider": "anthropic", "model": "claude-sonnet-4-20250514", "api_key": "..."},
+)
+```
+</Tab>
+</Tabs>
+
+## File Storage
+
+The default backend. Sessions are persisted as JSON files in the configured sessions directory.
+
+```
+~/.a3s/code/sessions/
+├── <session-id-1>.json
+├── <session-id-2>.json
+└── ...
+```
+
+Configure the directory via `config.json`:
+
+```json
+{
+  "storageBackend": "file",
+  "sessionsDir": "/path/to/sessions"
+}
+```
+
+Sessions are automatically saved after each generation and can be restored across server restarts.
+
+## Custom Storage Backend
+
+For production deployments (PostgreSQL, Redis, S3, etc.), implement the `SessionStore` trait and pass it when starting the server.
+
+### Rust API
+
+```rust
+use a3s_code_core::store::SessionStore;
+
+#[async_trait]
+impl SessionStore for PostgresStore {
+    async fn save(&self, id: &str, data: &SessionData) -> Result<()> {
+        // Save to PostgreSQL
+    }
+
+    async fn load(&self, id: &str) -> Result<Option<SessionData>> {
+        // Load from PostgreSQL
+    }
+
+    async fn delete(&self, id: &str) -> Result<()> {
+        // Delete from PostgreSQL
+    }
+
+    async fn list(&self) -> Result<Vec<String>> {
+        // List all session IDs
+    }
+
+    async fn exists(&self, id: &str) -> Result<bool> {
+        // Check if session exists
+    }
+}
+```
+
+### Starting with Custom Store
+
+```rust
+use a3s_code::start_server_with_store;
+
+let store = PostgresStore::new("postgresql://localhost/a3s").await?;
+start_server_with_store(config, Box::new(store)).await?;
+```
+
+## Session Restore
+
+Restore a previously saved session:
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const { session } = await client.restoreSession({
+  sessionId: 'previous-session-id',
+});
+// Conversation history and context are restored
+```
+</Tab>
+<Tab value="Python">
+```python
+session = await client.restore_session(session_id="previous-session-id")
+# Conversation history and context are restored
+```
+</Tab>
+</Tabs>
+
+## Persistence Events
+
+When persistence operations fail, a `PersistenceFailed` event is emitted:
+
+```json
+{
+  "type": "PERSISTENCE_FAILED",
+  "sessionId": "...",
+  "data": {
+    "operation": "save",
+    "error": "disk full"
+  }
+}
+```
+
+Subscribe to these events to monitor storage health in production.

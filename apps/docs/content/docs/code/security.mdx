@@ -1,0 +1,107 @@
+---
+title: Security
+description: Security hardening, injection defense, workspace boundaries, and secret management
+---
+
+# Security
+
+A3S Code includes multiple layers of security hardening to protect against prompt injection, tool misuse, and data leakage. The `SecurityGuard` orchestrates all security checks per-session.
+
+## Security Architecture
+
+```
+User Prompt → SecurityGuard
+                ├── InjectionDetector (pre-LLM)
+                ├── PermissionPolicy (pre-tool)
+                ├── ToolInterceptor (pre-tool)
+                ├── WorkspaceBoundary (pre-tool)
+                ├── OutputSanitizer (post-LLM)
+                ├── TaintTracker (runtime)
+                └── AuditLog (all events)
+```
+
+## Indirect Prompt Injection Defense
+
+A3S Code scans tool outputs for injection attempts using a `PostToolUse` hook. When a tool returns content that contains suspicious patterns (e.g., instructions to the LLM embedded in file contents), the scanner flags it before the content reaches the LLM.
+
+```
+Tool Output → PostToolUse Hook → Injection Scanner
+                                    ├── Clean → pass to LLM
+                                    └── Suspicious → flag + warn
+```
+
+This protects against attacks where malicious content in files, web pages, or API responses tries to hijack the agent's behavior.
+
+## Builtin Tool Shadowing Prevention
+
+Custom tools and MCP tools cannot shadow built-in tool names. If a skill or MCP server registers a tool with the same name as a built-in (e.g., `Bash`, `Read`, `Write`), the registration is rejected. This prevents malicious tools from intercepting sensitive operations.
+
+## Workspace Boundary Enforcement
+
+All file operations are restricted to the session's workspace directory. The boundary check resolves symlinks to prevent escape via symbolic links:
+
+```
+Read("/project/src/main.rs")     → ✅ within workspace
+Read("/project/link-to-etc")     → resolves symlink → /etc/passwd → ❌ blocked
+Read("../../etc/passwd")         → resolves to /etc/passwd → ❌ blocked
+```
+
+Path traversal patterns (`../`) are also validated with `validate_path_safe_id()` to prevent directory escape in identifiers.
+
+## SecretString
+
+API keys and sensitive credentials are wrapped in `SecretString`, which redacts the value in `Debug` and `Display` output:
+
+```rust
+let key = SecretString::new("sk-ant-api03-...");
+println!("{:?}", key);  // SecretString("***")
+println!("{}", key);    // ***
+key.expose()            // "sk-ant-api03-..." (explicit access only)
+```
+
+This prevents accidental leakage of API keys in logs, error messages, and debug output.
+
+## Output Sanitizer
+
+The output sanitizer scans LLM responses for PII (personally identifiable information) and redacts it before returning to the user. Integrated with `a3s-privacy` for classification.
+
+## Taint Tracking
+
+The taint tracker monitors sensitive values as they flow through the system. When a secret value is used in a tool argument, the tracker ensures it doesn't leak into logs or responses.
+
+## Tool Interceptor
+
+The tool interceptor blocks dangerous tool invocations based on configurable rules. It runs before the permission system and provides a hard block on known-dangerous patterns:
+
+| Pattern | Blocked |
+|---------|---------|
+| `rm -rf /` | Destructive filesystem operations |
+| `curl \| sh` | Remote code execution |
+| `chmod 777` | Overly permissive file permissions |
+
+## MCP Tool Timeout
+
+MCP tool executions have a configurable timeout (default: 60 seconds). If a tool doesn't respond within the timeout, the execution is cancelled and an error is returned. This prevents hanging MCP servers from blocking the agent.
+
+## HITL Timeout Behavior
+
+When a human-in-the-loop confirmation times out, the default action is **Reject** (not approve). This ensures that unattended agents don't silently approve dangerous operations.
+
+Configure via `ConfirmationPolicy`:
+
+```
+timeout_action: REJECT    // Default: reject on timeout
+default_timeout_ms: 30000 // 30 seconds
+```
+
+## Audit Log
+
+All security-relevant events are recorded in an in-memory audit log (10,000 entry ring buffer):
+
+- Permission checks (allow/deny/ask)
+- Tool executions and results
+- Injection detection alerts
+- Workspace boundary violations
+- HITL confirmations and timeouts
+
+Access via the `SecurityGuard` API or through agent events.

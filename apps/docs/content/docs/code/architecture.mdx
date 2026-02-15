@@ -5,9 +5,13 @@ description: System architecture, data flow, and design decisions
 
 # Architecture
 
-## System Overview
+## Deployment Modes
 
-A3S Code is a gRPC service (port 4088) that manages multiple AI coding sessions. Each session has its own context, permissions, and tool access. The server handles the full agentic loop — LLM calls, tool execution, confirmation, and streaming — so SDK clients only need to send prompts and receive events.
+A3S Code supports two deployment modes: as a standalone gRPC server, or as an embedded library with zero IPC overhead.
+
+### Server Mode (gRPC)
+
+A gRPC service (port 4088) that manages multiple AI coding sessions. SDK clients connect over the network.
 
 ```
 SDK (Python/TS/CLI)
@@ -37,6 +41,37 @@ SDK (Python/TS/CLI)
 │  └─────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Library Mode (Embedded)
+
+Use `a3s-code-core` directly in Rust, Python, or Node.js without running a server. Zero IPC overhead.
+
+```
+Your Application
+    │
+    ▼ Direct function calls
+┌─────────────────────────────────────┐
+│  a3s-code-core                      │
+│  Agent::builder()                   │
+│    .workspace("/project")           │
+│    .provider("anthropic")           │
+│    .model("claude-sonnet-4-...")     │
+│    .extra_tools(my_tools)           │
+│    .build()                         │
+│                                     │
+│  agent.generate("Fix the bug")      │
+│  agent.read_file("src/main.rs")     │
+│  agent.bash("cargo test")           │
+└─────────────────────────────────────┘
+```
+
+Native bindings:
+
+| Language | Package | Binding |
+|----------|---------|---------|
+| Rust | `a3s-code-core` | Native |
+| Python | `a3s-code` | PyO3 |
+| Node.js | `@a3s-lab/code` | napi-rs |
 
 ## Agent Loop
 

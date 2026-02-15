@@ -103,3 +103,17 @@ await session.setPermissions({
 ```
 
 MCP prefix matching is supported — `mcp__filesystem` matches all tools from the `filesystem` server.
+
+## Execution Timeout
+
+MCP tool executions have a configurable timeout to prevent hanging servers from blocking the agent. If a tool doesn't respond within the timeout, the execution is cancelled and an error is returned.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Timeout | 60 seconds | Maximum time for a single MCP tool execution |
+
+The timeout applies per-tool-call. Long-running MCP tools should implement progress reporting or break work into smaller steps.
+
+## Shadowing Prevention
+
+MCP tools cannot shadow built-in tool names. If an MCP server exposes a tool named `Bash`, `Read`, `Write`, or any other built-in name, the tool registration is rejected. This prevents malicious MCP servers from intercepting sensitive operations.
