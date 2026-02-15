@@ -1,13 +1,50 @@
 ---
 title: Configuration
-description: TOML configuration and Ollama-compatible environment variables
+description: HCL/TOML configuration and Ollama-compatible environment variables
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Configuration
 
-A3S Power uses TOML configuration with full Ollama-compatible environment variable overrides.
+A3S Power supports both HCL and TOML configuration formats with full Ollama-compatible environment variable overrides. HCL is the preferred format.
+
+## Supported Formats
+
+| Format | Extension | Priority |
+|--------|-----------|----------|
+| HCL | `.hcl` | Primary (checked first) |
+| TOML | `.toml` | Secondary (fallback) |
+
+The config file is auto-detected by extension. When using the default path (`~/.a3s/power/`), Power checks for `config.hcl` first, then falls back to `config.toml`.
 
 ## Config File
+
+### HCL (Recommended)
+
+Default location: `~/.a3s/power/config.hcl`
+
+```hcl
+host             = "127.0.0.1"    # HTTP server bind address
+port             = 11434          # HTTP server port
+max_loaded_models = 1             # Max concurrent loaded models
+keep_alive       = "5m"           # Auto-unload idle models
+use_mlock        = false          # Lock model weights in memory
+num_thread       = 8              # Threads for generation
+flash_attention  = false          # Enable flash attention
+num_parallel     = 1              # Concurrent request slots
+origins          = []             # Custom CORS origins
+noprune          = false          # Disable automatic blob pruning
+sched_spread     = false          # Spread layers across all GPUs
+
+gpu {
+  gpu_layers   = -1               # GPU offloading (0=CPU, -1=all)
+  main_gpu     = 0                # Primary GPU index
+  tensor_split = []               # Multi-GPU work distribution
+}
+```
+
+### TOML
 
 Default location: `~/.a3s/power/config.toml`
 
@@ -45,6 +82,20 @@ Controls how long idle models stay loaded in memory:
 
 Power auto-detects GPU capabilities (Metal on macOS, CUDA on Linux/Windows):
 
+<Tabs items={["HCL", "TOML"]}>
+<Tab value="HCL">
+```hcl
+gpu {
+  gpu_layers   = -1            # -1 = offload all layers to GPU
+                               #  0 = CPU only
+                               # 20 = offload first 20 layers
+
+  main_gpu     = 0             # Primary GPU for single-GPU inference
+  tensor_split = [0.7, 0.3]   # Split work 70/30 across 2 GPUs
+}
+```
+</Tab>
+<Tab value="TOML">
 ```toml
 [gpu]
 gpu_layers = -1       # -1 = offload all layers to GPU
@@ -54,6 +105,8 @@ gpu_layers = -1       # -1 = offload all layers to GPU
 main_gpu = 0          # Primary GPU for single-GPU inference
 tensor_split = [0.7, 0.3]  # Split work 70/30 across 2 GPUs
 ```
+</Tab>
+</Tabs>
 
 GPU memory is estimated before loading to prevent OOM errors. If a model doesn't fit in VRAM, layers are automatically kept on CPU.
 

@@ -3,10 +3,47 @@ title: Quick Start
 description: Get SafeClaw running as a security proxy for your AI agent
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Quick Start
 
 ## Configuration
 
+SafeClaw supports both HCL (recommended) and TOML configuration formats. The format is auto-detected by file extension.
+
+<Tabs items={["HCL", "TOML"]}>
+<Tab value="HCL">
+Create a `safeclaw.hcl` configuration file:
+
+```hcl
+gateway {
+  host = "127.0.0.1"
+  port = 18790
+}
+
+agent {
+  socket_path         = "/run/safeclaw/code-agent.sock"
+  connect_timeout_secs = 10
+  wait_for_service    = true
+}
+
+tee {
+  enabled = false
+}
+
+privacy {
+  default_sensitivity      = "Normal"
+  enable_semantic_analysis  = true
+  enable_compliance_checks = true
+}
+
+audit {
+  enabled      = true
+  log_capacity = 10000
+}
+```
+</Tab>
+<Tab value="TOML">
 Create a `safeclaw.toml` configuration file:
 
 ```toml
@@ -31,15 +68,20 @@ enable_compliance_checks = true
 enabled = true
 log_capacity = 10000
 ```
+</Tab>
+</Tabs>
 
 ## Start SafeClaw
 
 ```bash
-# Start with config file
+# Start with HCL config (recommended)
+safeclaw --config safeclaw.hcl
+
+# Start with TOML config
 safeclaw --config safeclaw.toml
 
 # Start with debug logging
-safeclaw --config safeclaw.toml --log-level debug
+safeclaw --config safeclaw.hcl --log-level debug
 ```
 
 ## Send a Message
@@ -110,6 +152,31 @@ curl http://localhost:18790/.well-known/a3s-service.json
 
 For hardware-level memory encryption:
 
+<Tabs items={["HCL", "TOML"]}>
+<Tab value="HCL">
+```hcl
+tee {
+  enabled = true
+
+  network_policy {
+    enabled      = true
+    default_deny = true
+    allowed_protocols = ["https"]
+
+    allowed_domains {
+      domain = "api.anthropic.com"
+      ports  = [443]
+    }
+
+    allowed_domains {
+      domain = "api.openai.com"
+      ports  = [443]
+    }
+  }
+}
+```
+</Tab>
+<Tab value="TOML">
 ```toml
 [tee]
 enabled = true
@@ -127,9 +194,32 @@ ports = [443]
 domain = "api.openai.com"
 ports = [443]
 ```
+</Tab>
+</Tabs>
 
 ## Add Channel Adapters
 
+<Tabs items={["HCL", "TOML"]}>
+<Tab value="HCL">
+```hcl
+channels {
+  telegram {
+    bot_token = "${TELEGRAM_BOT_TOKEN}"
+  }
+
+  slack {
+    bot_token      = "${SLACK_BOT_TOKEN}"
+    signing_secret = "${SLACK_SIGNING_SECRET}"
+  }
+
+  discord {
+    bot_token  = "${DISCORD_BOT_TOKEN}"
+    public_key = "${DISCORD_PUBLIC_KEY}"
+  }
+}
+```
+</Tab>
+<Tab value="TOML">
 ```toml
 [channels.telegram]
 bot_token = "${TELEGRAM_BOT_TOKEN}"
@@ -142,6 +232,8 @@ signing_secret = "${SLACK_SIGNING_SECRET}"
 bot_token = "${DISCORD_BOT_TOKEN}"
 public_key = "${DISCORD_PUBLIC_KEY}"
 ```
+</Tab>
+</Tabs>
 
 Webhooks are received at `/api/v1/gateway/webhook/:channel` (e.g., `/api/v1/gateway/webhook/telegram`).
 
@@ -152,7 +244,8 @@ use safeclaw::{Gateway, GatewayBuilder, config::SafeClawConfig};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let config = SafeClawConfig::from_file("safeclaw.toml")?;
+    // Supports both .hcl and .toml — format is auto-detected
+    let config = SafeClawConfig::from_file("safeclaw.hcl")?;
     let gateway = GatewayBuilder::new(config).build().await?;
 
     gateway.start().await?;
