@@ -1,0 +1,219 @@
+---
+title: Rust SDK (Native)
+description: Embed A3S Code directly in Rust with zero IPC overhead
+---
+
+# Rust SDK (Native)
+
+The Rust SDK (`a3s-code-core`) embeds the full agent runtime directly in your application. No gRPC server, no serialization — just direct function calls with the same 11 built-in tools, security guards, and agentic loop.
+
+## Installation
+
+```toml
+[dependencies]
+a3s-code-core = "0.6"
+tokio = { version = "1", features = ["full"] }
+```
+
+## Agent Builder
+
+```rust
+use a3s_code_core::{Agent, AgentEvent, AgentResult};
+
+let agent = Agent::builder()
+    .model("claude-sonnet-4-20250514")           // Required
+    .api_key("sk-ant-...")                       // Required
+    .workspace("/my-project")                    // Optional (defaults to cwd)
+    .system_prompt("You are a helpful assistant.") // Optional
+    .base_url("https://custom-api.com")          // Optional (custom endpoint)
+    .thinking_budget(4096)                       // Optional (reasoning tokens)
+    .max_tool_rounds(10)                         // Optional (default: 50)
+    .with_hooks(Arc::new(HookEngine::new()))     // Optional (hook engine)
+    .extra_tools(vec![my_tool_def])              // Optional (custom tools)
+    .build()
+    .await?;
+```
+
+### Model Auto-Detection
+
+The builder auto-detects the provider from the model name:
+
+| Model prefix | Provider |
+|-------------|----------|
+| `claude-*` | Anthropic |
+| `gpt-*`, `o1-*`, `o3-*` | OpenAI |
+| Custom `base_url` | OpenAI-compatible |
+
+## Send (Non-Streaming)
+
+```rust
+let result = agent.send("What files handle authentication?").await?;
+
+println!("{}", result.text);                    // Final response
+println!("Tools called: {}", result.tool_calls_count);
+println!("Tokens: {}", result.usage.total_tokens);
+```
+
+## Stream
+
+```rust
+let (mut rx, handle) = agent.stream("Refactor the auth module").await?;
+
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::Start { prompt } => {
+            println!("Starting: {prompt}");
+        }
+        AgentEvent::TurnStart { turn } => {
+            println!("--- Turn {turn} ---");
+        }
+        AgentEvent::TextDelta { text } => {
+            print!("{text}");
+        }
+        AgentEvent::ToolStart { id, name } => {
+            println!("\n🔧 {name} ({id})");
+        }
+        AgentEvent::ToolEnd { id, name, output, exit_code } => {
+            println!("  → [{exit_code}] {}", &output[..200.min(output.len())]);
+        }
+        AgentEvent::TurnEnd { turn, usage } => {
+            println!("\n--- Turn {turn} done ({} tokens) ---", usage.total_tokens);
+        }
+        AgentEvent::End { text, usage } => {
+            println!("\n✅ Done: {} tokens", usage.total_tokens);
+        }
+        AgentEvent::Error { message } => {
+            eprintln!("❌ {message}");
+        }
+    }
+}
+
+// Wait for completion
+let result = handle.await??;
+```
+
+## Conversation History
+
+Maintain multi-turn conversations by passing history:
+
+```rust
+use a3s_code_core::llm::Message;
+
+let history = vec![
+    Message::user("What's in src/?"),
+    Message::assistant("The src/ directory contains main.rs and lib.rs."),
+];
+
+// Continue the conversation
+let result = agent.send_with_history(&history, "Now explain main.rs").await?;
+
+// Or stream with history
+let (mut rx, handle) = agent.stream_with_history(&history, "Refactor main.rs").await?;
+```
+
+## Direct Tool Execution
+
+Call tools directly without going through the LLM:
+
+```rust
+// Generic tool call
+let result = agent.tool("bash", serde_json::json!({
+    "command": "cargo test --lib"
+})).await?;
+println!("Exit: {}, Output: {}", result.exit_code, result.output);
+
+// Convenience wrappers
+let content = agent.read_file("src/main.rs").await?;
+let output = agent.bash("git status").await?;
+let files = agent.glob("**/*.rs").await?;
+let matches = agent.grep("fn main").await?;
+```
+
+## Custom Tools
+
+Register custom tools via the `Tool` trait:
+
+```rust
+use a3s_code_core::tools::{Tool, ToolContext, ToolOutput};
+use async_trait::async_trait;
+
+struct DeployTool;
+
+#[async_trait]
+impl Tool for DeployTool {
+    fn name(&self) -> &str { "deploy" }
+    fn description(&self) -> &str { "Deploy to production" }
+
+    fn parameters(&self) -> serde_json::Value {
+        serde_json::json!({
+            "type": "object",
+            "properties": {
+                "env": { "type": "string", "enum": ["staging", "production"] },
+                "tag": { "type": "string" }
+            },
+            "required": ["env", "tag"]
+        })
+    }
+
+    async fn execute(&self, args: &serde_json::Value, ctx: &ToolContext) -> Result<ToolOutput> {
+        let env = args["env"].as_str().unwrap_or("staging");
+        let tag = args["tag"].as_str().unwrap_or("latest");
+        Ok(ToolOutput {
+            content: format!("Deployed {tag} to {env}"),
+            success: true,
+            metadata: None,
+        })
+    }
+}
+
+// Inject via builder
+let agent = Agent::builder()
+    .model("claude-sonnet-4-20250514")
+    .api_key("sk-ant-...")
+    .extra_tools(vec![Arc::new(DeployTool)])
+    .build()
+    .await?;
+```
+
+## Return Types
+
+```rust
+pub struct AgentResult {
+    pub text: String,
+    pub tool_calls_count: usize,
+    pub usage: TokenUsage,
+}
+
+pub struct TokenUsage {
+    pub prompt_tokens: usize,
+    pub completion_tokens: usize,
+    pub total_tokens: usize,
+}
+
+pub struct ToolResult {
+    pub name: String,
+    pub output: String,
+    pub exit_code: i32,
+}
+
+pub enum AgentEvent {
+    Start { prompt: String },
+    TurnStart { turn: usize },
+    TextDelta { text: String },
+    ToolStart { id: String, name: String },
+    ToolEnd { id: String, name: String, output: String, exit_code: i32 },
+    TurnEnd { turn: usize, usage: TokenUsage },
+    End { text: String, usage: TokenUsage },
+    Error { message: String },
+}
+```
+
+## When to Use Native vs gRPC
+
+| | Native (Library) | gRPC (Server) |
+|---|---|---|
+| Latency | Zero IPC overhead | Network round-trip |
+| Sessions | Single agent instance | Multi-session management |
+| Concurrency | Your app manages it | Built-in session isolation |
+| Features | Core agent loop + tools | Full 86 RPCs (HITL, cron, memory, etc.) |
+| Best for | Embedded agents, CLIs, pipelines | Multi-tenant services, IDEs |

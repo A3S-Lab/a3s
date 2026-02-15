@@ -3,9 +3,11 @@ title: Built-in Tools
 description: 11 built-in tools for file operations, shell execution, and web access
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Built-in Tools
 
-A3S Code ships with 11 built-in tools that cover file operations, shell execution, search, and web access. Tools are defined declaratively in Markdown and parsed at startup.
+A3S Code ships with 11 built-in tools that cover file operations, shell execution, search, and web access. Tools are available in both native (library) and gRPC (server) modes.
 
 ## Tool Reference
 
@@ -159,6 +161,64 @@ Manage scheduled tasks with cron expressions or natural language.
 Supported natural language formats:
 - English: `every 5 minutes`, `daily at 2am`, `every monday at 9:30`
 - Chinese: `每5分钟`, `每天凌晨2点`, `每周一上午9点30分`
+
+## Direct Tool Execution (Native)
+
+In native mode, call tools directly without going through the LLM:
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+// Convenience wrappers
+let content = agent.read_file("src/main.rs").await?;
+let output = agent.bash("cargo test --lib").await?;
+let files = agent.glob("**/*.rs").await?;
+let matches = agent.grep("fn main").await?;
+
+// Generic tool call with JSON args
+let result = agent.tool("edit", serde_json::json!({
+    "path": "src/main.rs",
+    "old_string": "fn main() {",
+    "new_string": "fn main() -> Result<()> {"
+})).await?;
+println!("[{}] {}", result.exit_code, result.output);
+```
+</Tab>
+<Tab value="Python">
+```python
+# Convenience wrappers
+content = agent.read_file("src/main.rs")
+output = agent.bash("cargo test --lib")
+files = agent.glob("**/*.rs")
+matches = agent.grep("fn main")
+
+# Generic tool call with dict args
+result = agent.tool("edit", {
+    "path": "src/main.rs",
+    "old_string": "fn main() {",
+    "new_string": "fn main() -> Result<()> {"
+})
+print(f"[{result['exit_code']}] {result['output']}")
+```
+</Tab>
+<Tab value="Node.js">
+```typescript
+// Convenience wrappers
+const content = await agent.readFile('src/main.rs');
+const output = await agent.bash('cargo test --lib');
+const files = await agent.glob('**/*.rs');
+const matches = await agent.grep('fn main');
+
+// Generic tool call
+const result = await agent.tool('edit', {
+  path: 'src/main.rs',
+  old_string: 'fn main() {',
+  new_string: 'fn main() -> Result<()> {',
+});
+console.log(`[${result.exit_code}] ${result.output}`);
+```
+</Tab>
+</Tabs>
 
 ## File Version History
 

@@ -1,11 +1,16 @@
 ---
 title: Python SDK
-description: Full-featured Python client for A3S Code with 86 RPC coverage
+description: Native PyO3 bindings and gRPC client for A3S Code
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Python SDK
 
-The Python SDK provides async-first APIs with context manager support for automatic session cleanup.
+The `a3s-code` package provides two APIs:
+
+- **Native mode** — Direct PyO3 bindings to `a3s-code-core`. Zero IPC, synchronous API.
+- **gRPC mode** — Async client connecting to a running `a3s-code` server. Multi-session, 86 RPCs.
 
 ## Installation
 
@@ -13,9 +18,103 @@ The Python SDK provides async-first APIs with context manager support for automa
 pip install a3s-code
 ```
 
-## High-Level API
+## Native Mode
 
-The recommended way to use A3S Code. Sessions auto-cleanup with `async with`.
+Use the `Agent` class for embedded usage — no server required.
+
+### Basic Usage
+
+```python
+from a3s_code import Agent
+
+agent = Agent(
+    model="claude-sonnet-4-20250514",
+    api_key="sk-ant-...",
+    workspace="/project",
+    system_prompt="You are a senior engineer.",
+    max_tool_rounds=30,
+)
+
+# Non-streaming (blocking)
+result = agent.send("What files handle authentication?")
+print(result.text)
+print(f"Tools: {result.tool_calls_count}, Tokens: {result.total_tokens}")
+
+# Streaming (iterator)
+for event in agent.stream("Refactor the auth module"):
+    if event.event_type == "text_delta":
+        print(event.text, end="", flush=True)
+    elif event.event_type == "tool_start":
+        print(f"\n🔧 {event.tool_name}")
+    elif event.event_type == "tool_end":
+        print(f"  → {event.tool_output[:100]}")
+```
+
+### Direct Tool Execution
+
+```python
+# Generic tool call
+result = agent.tool("bash", {"command": "cargo test"})
+print(f"[{result['exit_code']}] {result['output']}")
+
+# Convenience wrappers
+content = agent.read_file("src/main.rs")
+output = agent.bash("git status")
+files = agent.glob("**/*.py")
+matches = agent.grep("def main")
+```
+
+### Return Types
+
+```python
+class AgentResult:
+    text: str                    # Final response text
+    tool_calls_count: int        # Number of tool calls
+    prompt_tokens: int           # Prompt tokens used
+    completion_tokens: int       # Completion tokens used
+    total_tokens: int            # Total tokens used
+
+class AgentEvent:
+    event_type: str              # "start", "text_delta", "tool_start", etc.
+    text: str | None             # For text_delta, end
+    tool_name: str | None        # For tool_start, tool_end
+    tool_id: str | None          # For tool_start, tool_end
+    tool_output: str | None      # For tool_end
+    exit_code: int | None        # For tool_end
+    turn: int | None             # For turn_start, turn_end
+    prompt: str | None           # For start
+    error: str | None            # For error
+    total_tokens: int | None     # For turn_end, end
+```
+
+### Model Auto-Detection
+
+The provider is auto-detected from the model name:
+
+| Model prefix | Provider |
+|-------------|----------|
+| `claude-*` | Anthropic |
+| `gpt-*`, `o1-*`, `o3-*` | OpenAI |
+| Custom `base_url` | OpenAI-compatible |
+
+```python
+# Anthropic (auto-detected)
+agent = Agent(model="claude-sonnet-4-20250514", api_key="sk-ant-...")
+
+# OpenAI (auto-detected)
+agent = Agent(model="gpt-4o", api_key="sk-...")
+
+# Custom endpoint
+agent = Agent(model="kimi-k2.5", api_key="sk-...", base_url="http://your-endpoint/v1")
+```
+
+---
+
+## gRPC Mode
+
+Use `A3sClient` for multi-session management against a running `a3s-code` server.
+
+### High-Level API
 
 ```python
 from a3s_code import A3sClient, create_provider
@@ -43,7 +142,7 @@ async with A3sClient(address="localhost:4088") as client:
         print(explore.text)
 ```
 
-## Provider Helpers
+### Provider Helpers
 
 ```python
 from a3s_code import create_provider
@@ -53,7 +152,7 @@ openai = create_provider(name="openai", api_key="sk-...", base_url="https://api.
 kimi = create_provider(name="kimi", api_key="sk-...", base_url="http://your-kimi-endpoint/v1")
 ```
 
-## Permissions
+### Permissions
 
 ```python
 await session.set_permissions(
@@ -64,7 +163,7 @@ await session.set_permissions(
 )
 ```
 
-## HITL Confirmation
+### HITL Confirmation
 
 ```python
 await session.set_confirmation(
@@ -74,11 +173,10 @@ await session.set_confirmation(
     timeout_action="reject",
 )
 
-# Respond to confirmation request
 await session.confirm(confirmation_id, True, "Approved")
 ```
 
-## Skills
+### Skills
 
 ```python
 await session.load_skill("deploy")
@@ -86,7 +184,7 @@ await session.load_skills("~/.a3s/skills")
 skills = await session.list_skills()
 ```
 
-## LSP
+### LSP
 
 ```python
 await client.start_lsp_server("rust", "file:///path/to/project")
@@ -98,7 +196,7 @@ symbols = await client.lsp_symbols("main")
 diags = await client.lsp_diagnostics("/path/to/file.rs")
 ```
 
-## MCP
+### MCP
 
 ```python
 await client.register_mcp_server({
@@ -112,7 +210,7 @@ await client.connect_mcp_server("filesystem")
 tools = await client.get_mcp_tools()
 ```
 
-## Cron
+### Cron
 
 ```python
 result = await client.create_cron_job("backup", "every day at 2am", "backup.sh")
@@ -124,7 +222,7 @@ parsed = await client.parse_cron_schedule("every 5 minutes")
 # {"cron_expression": "*/5 * * * *", "description": "every 5 minutes"}
 ```
 
-## Memory
+### Memory
 
 ```python
 await client.store_memory(session_id, {
@@ -138,9 +236,7 @@ results = await client.search_memories(session_id, "TypeScript", ["preference"],
 stats = await client.get_memory_stats(session_id)
 ```
 
-## Low-Level Client
-
-For full control, use the client API directly:
+### Low-Level Client
 
 ```python
 result = await client.create_session(

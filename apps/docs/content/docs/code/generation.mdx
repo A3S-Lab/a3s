@@ -7,14 +7,39 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Code Generation
 
-The generation RPCs send messages to the LLM and return responses. These are low-level RPCs — for most use cases, prefer the [Agentic Loop](/docs/code/agentic) which handles tool execution automatically.
+The generation APIs send messages to the LLM and return responses. For most use cases, prefer the [Agentic Loop](/docs/code/agentic) which handles tool execution automatically.
 
-## Generate (Unary)
+## Send (Non-Streaming)
 
-Send messages and receive a single response. The LLM may return tool calls that need client-side execution.
+<Tabs groupId="lang" items={['Rust (Native)', 'Python (Native)', 'Node.js (Native)', 'TypeScript (gRPC)', 'Python (gRPC)']}>
+<Tab value="Rust (Native)">
+```rust
+let result = agent.send("What files are in the src/ directory?").await?;
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
+println!("{}", result.text);                    // Assistant response
+println!("Tools: {}", result.tool_calls_count); // Tool calls made
+println!("Tokens: {}", result.usage.total_tokens);
+```
+</Tab>
+<Tab value="Python (Native)">
+```python
+result = agent.send("What files are in the src/ directory?")
+
+print(result.text)
+print(f"Tools: {result.tool_calls_count}")
+print(f"Tokens: {result.total_tokens}")
+```
+</Tab>
+<Tab value="Node.js (Native)">
+```typescript
+const result = await agent.send('What files are in the src/ directory?');
+
+console.log(result.text);
+console.log(`Tools: ${result.tool_calls_count}`);
+console.log(`Tokens: ${result.total_tokens}`);
+```
+</Tab>
+<Tab value="TypeScript (gRPC)">
 ```typescript
 const result = await client.generate(sessionId, [
   { role: 'user', content: 'What files are in the src/ directory?' },
@@ -26,7 +51,7 @@ console.log(result.usage.totalTokens);  // Token usage
 console.log(result.finishReason);       // 'stop' | 'length' | 'tool_calls'
 ```
 </Tab>
-<Tab value="Python">
+<Tab value="Python (gRPC)">
 ```python
 result = await client.generate(session_id, [
     {"role": "user", "content": "What files are in the src/ directory?"},
@@ -37,12 +62,54 @@ print(result["usage"]["total_tokens"])
 </Tab>
 </Tabs>
 
-## Stream Generate
+## Stream
 
-Same as `generate`, but streams response chunks as they arrive.
+<Tabs groupId="lang" items={['Rust (Native)', 'Python (Native)', 'Node.js (Native)', 'TypeScript (gRPC)', 'Python (gRPC)']}>
+<Tab value="Rust (Native)">
+```rust
+let (mut rx, handle) = agent.stream("Explain the auth module").await?;
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::TextDelta { text } => print!("{text}"),
+        AgentEvent::ToolStart { name, .. } => println!("\n🔧 {name}"),
+        AgentEvent::ToolEnd { output, .. } => {
+            println!("  → {}", &output[..200.min(output.len())]);
+        }
+        AgentEvent::End { usage, .. } => {
+            println!("\n✅ {} tokens", usage.total_tokens);
+        }
+        _ => {}
+    }
+}
+let result = handle.await??;
+```
+</Tab>
+<Tab value="Python (Native)">
+```python
+for event in agent.stream("Explain the auth module"):
+    if event.event_type == "text_delta":
+        print(event.text, end="", flush=True)
+    elif event.event_type == "tool_start":
+        print(f"\n🔧 {event.tool_name}")
+    elif event.event_type == "tool_end":
+        print(f"  → {event.tool_output[:200]}")
+    elif event.event_type == "end":
+        print(f"\n✅ {event.total_tokens} tokens")
+```
+</Tab>
+<Tab value="Node.js (Native)">
+```typescript
+const events = await agent.stream('Explain the auth module');
+for (const event of events) {
+  if (event.type === 'text_delta') process.stdout.write(event.text);
+  if (event.type === 'tool_start') console.log(`\n🔧 ${event.tool_name}`);
+  if (event.type === 'tool_end') console.log(`  → ${event.tool_output?.slice(0, 200)}`);
+  if (event.type === 'end') console.log(`\n✅ ${event.total_tokens} tokens`);
+}
+```
+</Tab>
+<Tab value="TypeScript (gRPC)">
 ```typescript
 for await (const chunk of client.streamGenerate(sessionId, [
   { role: 'user', content: 'Explain the auth module' },
@@ -64,7 +131,7 @@ for await (const chunk of client.streamGenerate(sessionId, [
 }
 ```
 </Tab>
-<Tab value="Python">
+<Tab value="Python (gRPC)">
 ```python
 async for chunk in client.stream_generate(session_id, [
     {"role": "user", "content": "Explain the auth module"},
@@ -77,19 +144,37 @@ async for chunk in client.stream_generate(session_id, [
 </Tab>
 </Tabs>
 
-### Chunk Types
+## Conversation History (Native)
 
-| Type | Fields | Description |
-|------|--------|-------------|
-| `content` | `content` | Text delta from assistant |
-| `tool_call` | `toolCall` | Tool call request (id, name, arguments) |
-| `tool_result` | `toolResult` | Tool execution result |
-| `metadata` | `metadata` | Additional metadata |
-| `done` | `finishReason` | Stream complete |
+Native mode supports multi-turn conversations by passing history:
 
-## Generate Structured
+<Tabs groupId="lang" items={['Rust', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::llm::Message;
 
-Generate output conforming to a JSON Schema. The schema is injected into the prompt, and the response is parsed and validated.
+let history = vec![
+    Message::user("What's in src/?"),
+    Message::assistant("The src/ directory contains main.rs and lib.rs."),
+];
+
+let result = agent.send_with_history(&history, "Now explain main.rs").await?;
+let (rx, handle) = agent.stream_with_history(&history, "Refactor main.rs").await?;
+```
+</Tab>
+<Tab value="Python">
+```python
+# Python native mode maintains internal conversation state
+# Each send/stream call continues the conversation
+result = agent.send("What's in src/?")
+result = agent.send("Now explain main.rs")  # Continues from previous
+```
+</Tab>
+</Tabs>
+
+## Structured Output (gRPC)
+
+Generate output conforming to a JSON Schema. Available in gRPC mode.
 
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
@@ -120,7 +205,6 @@ const result = await client.generateStructured(sessionId, [
 
 const analysis = JSON.parse(result.data);
 console.log(analysis.complexity);  // 'medium'
-console.log(analysis.functions);   // [{ name: 'login', complexity: 'high' }, ...]
 ```
 </Tab>
 <Tab value="Python">
@@ -144,20 +228,30 @@ analysis = json.loads(result["data"])
 </Tab>
 </Tabs>
 
-## Stream Structured
+## Event Types (Native)
 
-Streaming variant of structured generation. Currently wraps the unary call and emits a single chunk.
+| Event | Fields | Description |
+|-------|--------|-------------|
+| `start` | `prompt` | Generation started |
+| `turn_start` | `turn` | New agent turn |
+| `text_delta` | `text` | Text chunk from assistant |
+| `tool_start` | `tool_id`, `tool_name` | Tool execution started |
+| `tool_end` | `tool_id`, `tool_name`, `tool_output`, `exit_code` | Tool execution completed |
+| `turn_end` | `turn`, `total_tokens` | Turn completed |
+| `end` | `text`, `total_tokens` | Generation finished |
+| `error` | `error` | Error occurred |
 
-```typescript
-for await (const chunk of client.streamGenerateStructured(sessionId, messages, { schema })) {
-  if (chunk.done) {
-    const data = JSON.parse(chunk.data);
-    console.log(data);
-  }
-}
-```
+## Chunk Types (gRPC)
 
-## RPCs
+| Type | Fields | Description |
+|------|--------|-------------|
+| `content` | `content` | Text delta from assistant |
+| `tool_call` | `toolCall` | Tool call request (id, name, arguments) |
+| `tool_result` | `toolResult` | Tool execution result |
+| `metadata` | `metadata` | Additional metadata |
+| `done` | `finishReason` | Stream complete |
+
+## RPCs (gRPC)
 
 | RPC | Description |
 |-----|-------------|

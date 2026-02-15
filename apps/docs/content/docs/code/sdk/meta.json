@@ -1,4 +1,4 @@
 {
   "title": "SDK",
-  "pages": ["typescript", "python"]
+  "pages": ["rust", "typescript", "python"]
 }

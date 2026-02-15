@@ -1,11 +1,16 @@
 ---
 title: TypeScript SDK
-description: Full-featured TypeScript client for A3S Code with 86 RPC coverage
+description: Native napi-rs bindings and gRPC client for A3S Code
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # TypeScript SDK
 
-The TypeScript SDK provides a high-level API with auto-dispose sessions and a low-level client with full 86 RPC coverage.
+The `@a3s-lab/code` package provides two APIs:
+
+- **Native mode** — Direct napi-rs bindings to `a3s-code-core`. Zero IPC, single agent instance.
+- **gRPC mode** — Full-featured client connecting to a running `a3s-code` server. Multi-session, 86 RPCs.
 
 ## Installation
 
@@ -13,9 +18,84 @@ The TypeScript SDK provides a high-level API with auto-dispose sessions and a lo
 npm install @a3s-lab/code
 ```
 
-## High-Level API
+## Native Mode
 
-The recommended way to use A3S Code. Sessions auto-cleanup with `await using`.
+Use the `Agent` class for embedded usage — no server required.
+
+### Basic Usage
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = new Agent({
+  model: 'claude-sonnet-4-20250514',
+  apiKey: 'sk-ant-...',
+  workspace: '/project',
+  systemPrompt: 'You are a senior engineer.',
+  maxToolRounds: 30,
+});
+
+// Non-streaming
+const result = await agent.send('What files handle authentication?');
+console.log(result.text);
+console.log(`Tools: ${result.tool_calls_count}, Tokens: ${result.total_tokens}`);
+
+// Streaming (returns all events)
+const events = await agent.stream('Refactor the auth module');
+for (const event of events) {
+  if (event.type === 'text_delta') process.stdout.write(event.text);
+  if (event.type === 'tool_start') console.log(`\n🔧 ${event.tool_name}`);
+  if (event.type === 'tool_end') console.log(`  → ${event.tool_output?.slice(0, 100)}`);
+}
+```
+
+### Direct Tool Execution
+
+```typescript
+// Generic tool call
+const result = await agent.tool('bash', { command: 'cargo test' });
+console.log(`[${result.exit_code}] ${result.output}`);
+
+// Convenience wrappers
+const content = await agent.readFile('src/main.rs');
+const output = await agent.bash('git status');
+const files = await agent.glob('**/*.ts');
+const matches = await agent.grep('export function');
+```
+
+### Return Types
+
+```typescript
+interface AgentResult {
+  text: string;
+  tool_calls_count: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+interface AgentEvent {
+  type: 'start' | 'text_delta' | 'tool_start' | 'tool_end'
+      | 'turn_start' | 'turn_end' | 'end' | 'error';
+  text?: string;
+  tool_name?: string;
+  tool_id?: string;
+  tool_output?: string;
+  exit_code?: number;
+  turn?: number;
+  prompt?: string;
+  error?: string;
+  total_tokens?: number;
+}
+```
+
+---
+
+## gRPC Mode
+
+Use `A3sClient` for multi-session management against a running `a3s-code` server.
+
+### High-Level API
 
 ```typescript
 import { A3sClient, createProvider } from '@a3s-lab/code';
@@ -39,7 +119,7 @@ for await (const event of session.stream('Refactor the auth module')) {
 }
 ```
 
-## Provider Helpers
+### Provider Helpers
 
 ```typescript
 import { createProvider } from '@a3s-lab/code';
@@ -48,13 +128,12 @@ const anthropic = createProvider({ name: 'anthropic', apiKey: 'sk-ant-...' });
 const openai = createProvider({ name: 'openai', apiKey: 'sk-...', baseUrl: 'https://api.openai.com' });
 const kimi = createProvider({ name: 'kimi', apiKey: 'sk-...', baseUrl: 'http://your-kimi-endpoint/v1' });
 
-// Use with session creation
 await client.createSession({ model: anthropic('claude-sonnet-4-20250514') });
 await client.createSession({ model: openai('gpt-4o') });
 await client.createSession({ model: kimi('kimi-k2.5') });
 ```
 
-## Permissions
+### Permissions
 
 ```typescript
 await session.setPermissions({
@@ -69,7 +148,7 @@ await session.setPermissions({
 });
 ```
 
-## HITL Confirmation
+### HITL Confirmation
 
 ```typescript
 await session.setConfirmation({
@@ -79,11 +158,10 @@ await session.setConfirmation({
   timeoutAction: 'reject',
 });
 
-// Respond to confirmation requests
 await session.confirm(confirmationId, true, 'Approved');
 ```
 
-## Skills
+### Skills
 
 ```typescript
 await session.loadSkill('deploy');
@@ -91,7 +169,7 @@ await session.loadSkills('~/.a3s/skills');
 const skills = await session.listSkills();
 ```
 
-## LSP
+### LSP
 
 ```typescript
 await client.startLspServer('rust', 'file:///path/to/project');
@@ -103,7 +181,7 @@ const symbols = await client.lspSymbols('main');
 const diags = await client.lspDiagnostics('/path/to/file.rs');
 ```
 
-## MCP
+### MCP
 
 ```typescript
 await client.registerMcpServer({
@@ -117,7 +195,7 @@ await client.connectMcpServer('filesystem');
 const tools = await client.getMcpTools();
 ```
 
-## Cron
+### Cron
 
 ```typescript
 const result = await client.createCronJob('backup', 'every day at 2am', 'backup.sh');
@@ -129,9 +207,7 @@ const parsed = await client.parseCronSchedule('every 5 minutes');
 // { cronExpression: '*/5 * * * *', description: 'every 5 minutes' }
 ```
 
-## Low-Level Client
-
-For full control, use the client API directly:
+### Low-Level Client
 
 ```typescript
 const { sessionId } = await client.createSession({

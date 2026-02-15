@@ -1,27 +1,158 @@
 ---
 title: Quick Start
-description: Install and run A3S Code in minutes
+description: Install and run A3S Code in minutes — native library or gRPC server
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 # Quick Start
 
+A3S Code runs in two modes: as a native library embedded in your app, or as a standalone gRPC server.
+
 ## Installation
 
+### Native Library (Recommended)
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```toml
+[dependencies]
+a3s-code-core = "0.6"
+tokio = { version = "1", features = ["full"] }
+```
+</Tab>
+<Tab value="Python">
 ```bash
-# Homebrew (macOS / Linux) — prebuilt binary, installs in seconds
+pip install a3s-code
+```
+</Tab>
+<Tab value="Node.js">
+```bash
+npm install @a3s-lab/code
+```
+</Tab>
+</Tabs>
+
+### gRPC Server
+
+```bash
+# Homebrew (macOS / Linux) — prebuilt binary
 brew tap a3s-lab/tap
 brew install a3s-code
 
 # Cargo (builds from source)
 cargo install a3s-code
 
-# From source
-cargo build --release
+# Self-update
+a3s-code update
 ```
 
-## Run the Server
+## Native Mode — Hello World
+
+No server needed. Create an agent and start coding.
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, AgentEvent};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Agent::builder()
+        .model("claude-sonnet-4-20250514")
+        .api_key(std::env::var("ANTHROPIC_API_KEY")?)
+        .workspace(".")
+        .build()
+        .await?;
+
+    // Non-streaming
+    let result = agent.send("What does this project do?").await?;
+    println!("{}", result.text);
+
+    // Streaming
+    let (mut rx, handle) = agent.stream("List all source files").await?;
+    while let Some(event) = rx.recv().await {
+        if let AgentEvent::TextDelta { text } = event {
+            print!("{text}");
+        }
+    }
+    handle.await??;
+
+    // Direct tool calls
+    let files = agent.glob("**/*.rs").await?;
+    println!("Found {} Rust files", files.len());
+
+    let output = agent.bash("cargo test --lib 2>&1 | tail -5").await?;
+    println!("{output}");
+
+    Ok(())
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+import os
+from a3s_code import Agent
+
+agent = Agent(
+    model="claude-sonnet-4-20250514",
+    api_key=os.environ["ANTHROPIC_API_KEY"],
+    workspace=".",
+)
+
+# Non-streaming
+result = agent.send("What does this project do?")
+print(result.text)
+
+# Streaming
+for event in agent.stream("List all source files"):
+    if event.event_type == "text_delta":
+        print(event.text, end="", flush=True)
+
+# Direct tool calls
+files = agent.glob("**/*.py")
+print(f"\nFound {len(files)} Python files")
+
+output = agent.bash("python -m pytest --co -q 2>&1 | tail -5")
+print(output)
+```
+</Tab>
+<Tab value="Node.js">
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = new Agent({
+  model: 'claude-sonnet-4-20250514',
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+  workspace: '.',
+});
+
+// Non-streaming
+const result = await agent.send('What does this project do?');
+console.log(result.text);
+
+// Streaming
+const events = await agent.stream('List all source files');
+for (const event of events) {
+  if (event.type === 'text_delta') process.stdout.write(event.text);
+}
+
+// Direct tool calls
+const files = await agent.glob('**/*.ts');
+console.log(`\nFound ${files.length} TypeScript files`);
+
+const output = await agent.bash('npm test 2>&1 | tail -5');
+console.log(output);
+```
+</Tab>
+</Tabs>
+
+## Server Mode
+
+For multi-session management, run the gRPC server and connect with SDK clients.
+
+### Run the Server
 
 ```bash
 # Start with default settings
@@ -35,12 +166,9 @@ a3s-code --json-log
 
 # With custom listen address and OTLP tracing
 a3s-code --listen-addr 0.0.0.0:4088 --otlp-endpoint http://localhost:4317
-
-# Self-update to latest version
-a3s-code update
 ```
 
-## CLI Options
+### CLI Options
 
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
@@ -49,9 +177,47 @@ a3s-code update
 | `--otlp-endpoint` | `OTEL_EXPORTER_OTLP_ENDPOINT` | — | OpenTelemetry OTLP endpoint |
 | `--json-log` | `A3S_LOG_FORMAT` | `false` | Output logs in JSON format |
 
-## Server Configuration
+### Connect with SDK
 
-Create `~/.a3s/config.json` (optional — LLM can also be configured per-session via `ConfigureSession` RPC):
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { A3sClient, createProvider } from '@a3s-lab/code';
+
+const client = new A3sClient({ address: 'localhost:4088' });
+const anthropic = createProvider({ name: 'anthropic', apiKey: 'sk-ant-...' });
+
+await using session = await client.createSession({
+  model: anthropic('claude-sonnet-4-20250514'),
+  workspace: '/project',
+});
+
+for await (const event of session.stream('What does this project do?')) {
+  if (event.textDelta) process.stdout.write(event.textDelta);
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import A3sClient, create_provider
+
+anthropic = create_provider(name="anthropic", api_key="sk-ant-...")
+
+async with A3sClient(address="localhost:4088") as client:
+    async with await client.session(
+        model=anthropic("claude-sonnet-4-20250514"),
+        workspace="/project",
+    ) as session:
+        async for event in session.stream("What does this project do?"):
+            if event.type == "text":
+                print(event.content, end="", flush=True)
+```
+</Tab>
+</Tabs>
+
+### Server Configuration
+
+Create `~/.a3s/config.json` (optional — LLM can also be configured per-session via SDK):
 
 ```json
 {
@@ -98,9 +264,7 @@ Create `~/.a3s/config.json` (optional — LLM can also be configured per-session
 }
 ```
 
-## Per-Session LLM Configuration
-
-LLM can be configured per-session via `ConfigureSession` RPC — no server-level config needed:
+### Per-Session LLM Configuration
 
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
@@ -143,3 +307,13 @@ await client.configure_session(session_id, SessionConfig(
 ```
 </Tab>
 </Tabs>
+
+## Choosing a Mode
+
+| | Native (Library) | gRPC (Server) |
+|---|---|---|
+| Setup | Add dependency, no server | Install binary, start server |
+| Latency | Zero IPC | Network round-trip |
+| Sessions | Single agent | Multi-session with isolation |
+| Features | Core loop + 11 tools + custom tools | Full 86 RPCs (HITL, cron, memory, LSP, MCP) |
+| Best for | CLIs, pipelines, embedded agents | IDEs, multi-tenant services, complex workflows |
