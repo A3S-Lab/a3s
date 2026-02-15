@@ -158,11 +158,14 @@ Agent service — runs as a local service inside the same A3S Box VM as SafeClaw
 - **Security**: SecurityGuard with output sanitization, taint tracking, injection detection, tool interception — wired via shared HookEngine
 - **Enhanced Health Check**: Subsystem diagnostics (version, uptime, session count, store health)
 - **Pluggable Session Persistence**: `SessionStore` trait with `Custom` backend for external stores (PostgreSQL, etc.)
+- **Context Store**: Semantic context storage with A3SContextProvider auto-registered per session
+- **Checkpoint Manager**: Session state snapshots with diff and restore
 - **Structured Generation**: JSON Schema constrained output, both unary and streaming
 - **Cron Scheduling**: 10 cron RPCs for scheduled task management
 - **OpenTelemetry**: OTLP spans (agent → turn → llm → tool → subagent), LLM cost tracking, cross-session cost aggregation
 - **SDKs**: Python & TypeScript covering all 86 RPCs, with high-level `Session` API (`send()`, `stream()`, `delegate()`)
 - **Externalized Prompt Registry**: All 25 LLM-facing prompts in `prompts/` directory — full agentic design visible in one place
+- **CI Release Pipeline**: Prebuilt binaries for 4 platforms — `brew install` in seconds, no Rust/protobuf needed
 - **1,859 unit tests**
 
 ```bash
