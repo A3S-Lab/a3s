@@ -1,0 +1,110 @@
+---
+title: Quick Start
+description: Get A3S Power running with local model inference in minutes
+---
+
+# Quick Start
+
+## Install
+
+```bash
+# Via Homebrew
+brew install a3s-lab/tap/a3s-power
+
+# Or build from source
+cargo install a3s-power
+```
+
+## Pull a Model
+
+```bash
+# Pull from Ollama registry
+a3s-power pull llama3.2
+
+# Pull a specific size
+a3s-power pull qwen2.5:7b
+
+# Pull from HuggingFace (GGUF)
+a3s-power pull hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF
+```
+
+## Interactive Chat
+
+```bash
+# Start interactive chat
+a3s-power run llama3.2
+
+# Single prompt
+a3s-power run llama3.2 "Explain quicksort in 3 sentences"
+
+# With parameters
+a3s-power run llama3.2 --temperature 0.7 --num-predict 256 "Write a haiku"
+```
+
+## Start the Server
+
+```bash
+# Start on default port (11434)
+a3s-power serve
+
+# Custom host and port
+a3s-power serve --host 0.0.0.0 --port 8080
+```
+
+## Use the API
+
+Ollama-compatible:
+
+```bash
+# Chat completion
+curl http://localhost:11434/api/chat -d '{
+  "model": "llama3.2",
+  "messages": [{"role": "user", "content": "Hello!"}]
+}'
+
+# List models
+curl http://localhost:11434/api/tags
+```
+
+OpenAI-compatible (works with any OpenAI SDK):
+
+```bash
+# Chat completion
+curl http://localhost:11434/v1/chat/completions -d '{
+  "model": "llama3.2",
+  "messages": [{"role": "user", "content": "Hello!"}]
+}'
+```
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:11434/v1", api_key="unused")
+response = client.chat.completions.create(
+    model="llama3.2",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)
+```
+
+## Manage Models
+
+```bash
+# List local models
+a3s-power list
+
+# Show model details
+a3s-power show llama3.2
+
+# Delete a model
+a3s-power delete llama3.2
+
+# Copy/alias
+a3s-power cp llama3.2 my-model
+
+# List running models
+a3s-power ps
+
+# Stop a running model
+a3s-power stop llama3.2
+```

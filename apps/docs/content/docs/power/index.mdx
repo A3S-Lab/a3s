@@ -1,0 +1,77 @@
+---
+title: A3S Power
+description: Local LLM model management and serving — an Ollama-compatible inference server
+---
+
+# A3S Power
+
+A3S Power is a local LLM model management and serving infrastructure. It provides an Ollama-compatible CLI and HTTP server for downloading, managing, and running language models with GGUF format support.
+
+## Why Power?
+
+- Drop-in Ollama replacement with identical API and wire format
+- OpenAI SDK compatible (`/v1/chat/completions`, `/v1/embeddings`)
+- Local-first inference with no cloud dependency
+- Infrastructure layer for the A3S ecosystem (used by a3s-code and other agents)
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                   CLI Layer                      │
+│  pull · run · list · show · serve · ps · stop    │
+├─────────────────────────────────────────────────┤
+│                  HTTP Server                     │
+│  ┌──────────────┐  ┌───────────────────────┐    │
+│  │  Ollama API   │  │    OpenAI API          │    │
+│  │  /api/*       │  │    /v1/*               │    │
+│  └──────┬───────┘  └──────────┬────────────┘    │
+├─────────┴──────────────────────┴────────────────┤
+│                Backend Layer                     │
+│  ┌────────────┐  ┌────────────┐  ┌───────────┐ │
+│  │ llama.cpp   │  │ Chat       │  │ Tool Call  │ │
+│  │ Backend     │  │ Templates  │  │ Parser     │ │
+│  └────────────┘  └────────────┘  └───────────┘ │
+├─────────────────────────────────────────────────┤
+│                Model Layer                       │
+│  ┌────────────┐  ┌────────────┐  ┌───────────┐ │
+│  │ Registry    │  │ Storage    │  │ Resolver   │ │
+│  │ (manifests) │  │ (SHA-256)  │  │ (Ollama/HF)│ │
+│  └────────────┘  └────────────┘  └───────────┘ │
+└─────────────────────────────────────────────────┘
+```
+
+## Key Components
+
+| Component | Description |
+|-----------|-------------|
+| `cli` | 12 commands: pull, run, list, show, delete, serve, ps, stop, push, cp, create |
+| `api` | 14 Ollama-native + 5 OpenAI-compatible endpoints |
+| `backend` | Pluggable inference engine with llama.cpp implementation |
+| `model` | Content-addressed storage, registry, resolution, GGUF reader |
+| `server` | Axum HTTP server with CORS, tracing, Prometheus metrics |
+| `config` | TOML configuration with Ollama-compatible environment variables |
+
+## Features
+
+- GGUF model format with llama.cpp backend (Metal/CUDA acceleration)
+- Streaming token generation (NDJSON for Ollama, SSE for OpenAI)
+- Vision/multimodal support (base64 images and URLs)
+- Tool/function calling (XML, Mistral, JSON formats)
+- JSON Schema structured output via GBNF grammar
+- KV cache reuse with prefix matching for multi-turn speedup
+- LRU model eviction with configurable keep-alive
+- Content-addressed blob storage with SHA-256 deduplication
+- Model resolution: Ollama registry → built-in catalog → HuggingFace
+- Modelfile support (FROM, PARAMETER, SYSTEM, TEMPLATE, ADAPTER)
+- GPU auto-detection and memory estimation
+- Prometheus metrics and usage dashboard
+
+## Default Paths
+
+| Path | Description |
+|------|-------------|
+| `~/.a3s/power/` | Base directory (override with `$A3S_POWER_HOME`) |
+| `~/.a3s/power/config.toml` | Configuration file |
+| `~/.a3s/power/models/manifests/` | Model manifest files |
+| `~/.a3s/power/models/blobs/` | Content-addressed blob storage |

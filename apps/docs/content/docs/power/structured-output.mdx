@@ -1,0 +1,186 @@
+---
+title: Structured Output
+description: JSON Schema constrained generation via GBNF grammar
+---
+
+# Structured Output
+
+A3S Power supports structured output by converting JSON Schema definitions into GBNF (GGML BNF) grammars, which constrain the model's token generation to produce valid JSON matching the schema.
+
+## Basic Usage
+
+### Ollama API
+
+```bash
+curl http://localhost:11434/api/chat -d '{
+  "model": "llama3.2",
+  "messages": [{"role": "user", "content": "List 3 programming languages"}],
+  "format": {
+    "type": "object",
+    "properties": {
+      "languages": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {"type": "string"},
+            "year": {"type": "integer"},
+            "paradigm": {"type": "string"}
+          },
+          "required": ["name", "year"]
+        }
+      }
+    },
+    "required": ["languages"]
+  },
+  "stream": false
+}'
+```
+
+Guaranteed output:
+
+```json
+{
+  "languages": [
+    {"name": "Rust", "year": 2010, "paradigm": "systems"},
+    {"name": "Python", "year": 1991, "paradigm": "multi-paradigm"},
+    {"name": "Go", "year": 2009, "paradigm": "concurrent"}
+  ]
+}
+```
+
+### OpenAI API
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:11434/v1", api_key="unused")
+
+response = client.chat.completions.create(
+    model="llama3.2",
+    messages=[{"role": "user", "content": "List 3 colors with hex codes"}],
+    response_format={
+        "type": "json_schema",
+        "json_schema": {
+            "name": "colors",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "colors": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "hex": {"type": "string"}
+                            },
+                            "required": ["name", "hex"]
+                        }
+                    }
+                },
+                "required": ["colors"]
+            }
+        }
+    }
+)
+```
+
+## How It Works
+
+1. JSON Schema is received in the request
+2. Power converts the schema to a GBNF grammar
+3. The grammar constrains token sampling during generation
+4. Every generated token is validated against the grammar
+5. Output is guaranteed to be valid JSON matching the schema
+
+## Supported Schema Types
+
+| JSON Schema Type | GBNF Rule |
+|-----------------|-----------|
+| `string` | Quoted string with escape handling |
+| `integer` | Integer number |
+| `number` | Floating-point number |
+| `boolean` | `true` or `false` |
+| `null` | `null` |
+| `array` | Array with typed items |
+| `object` | Object with typed properties |
+| `enum` | One of the specified values |
+
+### Nested Objects
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "user": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "address": {
+          "type": "object",
+          "properties": {
+            "city": {"type": "string"},
+            "country": {"type": "string"}
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Arrays with Constraints
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"}
+    },
+    "scores": {
+      "type": "array",
+      "items": {"type": "number"}
+    }
+  }
+}
+```
+
+### Enums
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["active", "inactive", "pending"]
+    }
+  }
+}
+```
+
+## Simple JSON Mode
+
+For unstructured JSON output (no schema), use `"format": "json"`:
+
+```bash
+curl http://localhost:11434/api/chat -d '{
+  "model": "llama3.2",
+  "messages": [{"role": "user", "content": "Describe Rust as JSON"}],
+  "format": "json",
+  "stream": false
+}'
+```
+
+This constrains output to valid JSON but without a specific schema.
+
+## CLI Usage
+
+```bash
+# JSON mode
+a3s-power run llama3.2 --format json "List 3 colors"
+
+# The --format flag accepts "json" for simple JSON mode
+```

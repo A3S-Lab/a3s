@@ -1,0 +1,208 @@
+---
+title: OpenAI API
+description: OpenAI-compatible API endpoints for SDK integration
+---
+
+# OpenAI API
+
+A3S Power provides OpenAI-compatible endpoints, allowing you to use any OpenAI SDK (Python, TypeScript, Go, etc.) with local models.
+
+## Chat Completions
+
+`POST /v1/chat/completions` — Chat completion with streaming support.
+
+```bash
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Hello!"}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 256,
+    "stream": true
+  }'
+```
+
+### Python SDK
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:11434/v1",
+    api_key="unused"  # Required by SDK but not validated
+)
+
+# Non-streaming
+response = client.chat.completions.create(
+    model="llama3.2",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Explain quicksort"}
+    ],
+    temperature=0.7,
+    max_tokens=512
+)
+print(response.choices[0].message.content)
+
+# Streaming
+stream = client.chat.completions.create(
+    model="llama3.2",
+    messages=[{"role": "user", "content": "Hello!"}],
+    stream=True
+)
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+### TypeScript SDK
+
+```typescript
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "http://localhost:11434/v1",
+  apiKey: "unused",
+});
+
+const response = await client.chat.completions.create({
+  model: "llama3.2",
+  messages: [{ role: "user", content: "Hello!" }],
+});
+
+console.log(response.choices[0].message.content);
+```
+
+### Vision
+
+```python
+response = client.chat.completions.create(
+    model="llava",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What is in this image?"},
+            {"type": "image_url", "image_url": {
+                "url": "https://example.com/photo.jpg"
+            }}
+        ]
+    }]
+)
+```
+
+### Tool Calling
+
+```python
+response = client.chat.completions.create(
+    model="llama3.2",
+    messages=[{"role": "user", "content": "What's the weather in Tokyo?"}],
+    tools=[{
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get current weather for a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string", "description": "City name"}
+                },
+                "required": ["location"]
+            }
+        }
+    }]
+)
+
+tool_call = response.choices[0].message.tool_calls[0]
+print(f"{tool_call.function.name}({tool_call.function.arguments})")
+```
+
+### JSON Mode
+
+```python
+response = client.chat.completions.create(
+    model="llama3.2",
+    messages=[{"role": "user", "content": "List 3 colors as JSON"}],
+    response_format={"type": "json_object"}
+)
+```
+
+## Completions
+
+`POST /v1/completions` — Text completion (legacy).
+
+```bash
+curl http://localhost:11434/v1/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2",
+    "prompt": "The quick brown fox",
+    "max_tokens": 50,
+    "temperature": 0.0
+  }'
+```
+
+## Models
+
+`GET /v1/models` — List available models.
+
+```bash
+curl http://localhost:11434/v1/models
+```
+
+Response:
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "llama3.2",
+      "object": "model",
+      "created": 1700000000,
+      "owned_by": "library"
+    }
+  ]
+}
+```
+
+## Embeddings
+
+`POST /v1/embeddings` — Generate embeddings.
+
+```python
+response = client.embeddings.create(
+    model="llama3.2",
+    input=["Hello world", "Goodbye world"]
+)
+for embedding in response.data:
+    print(f"Dimension: {len(embedding.embedding)}")
+```
+
+## Usage
+
+`GET /v1/usage` — Usage dashboard with date range and model filtering.
+
+```bash
+# All usage
+curl http://localhost:11434/v1/usage
+
+# Filter by date range and model
+curl "http://localhost:11434/v1/usage?start=2024-01-01&end=2024-01-31&model=llama3.2"
+```
+
+Response includes token counts, request counts, and cost estimates per model.
+
+## Streaming Format
+
+The OpenAI API uses Server-Sent Events (SSE) for streaming, while the Ollama API uses NDJSON:
+
+| API | Format | Content-Type |
+|-----|--------|-------------|
+| Ollama (`/api/*`) | NDJSON | `application/x-ndjson` |
+| OpenAI (`/v1/*`) | SSE | `text/event-stream` |
+
+Both formats deliver tokens incrementally as they're generated.

@@ -1,0 +1,257 @@
+---
+title: Ollama API
+description: 14 Ollama-compatible native API endpoints
+---
+
+# Ollama API
+
+A3S Power implements the full Ollama HTTP API for drop-in compatibility. All endpoints use NDJSON streaming by default.
+
+## Generate
+
+`POST /api/generate` — Text completion.
+
+```bash
+curl http://localhost:11434/api/generate -d '{
+  "model": "llama3.2",
+  "prompt": "Why is the sky blue?",
+  "stream": true,
+  "options": {
+    "temperature": 0.7,
+    "num_predict": 256
+  }
+}'
+```
+
+Response (streaming NDJSON):
+
+```json
+{"model":"llama3.2","response":"The","done":false}
+{"model":"llama3.2","response":" sky","done":false}
+{"model":"llama3.2","response":"","done":true,"total_duration":1234567890,"eval_count":42}
+```
+
+Set `"stream": false` for a single JSON response.
+
+## Chat
+
+`POST /api/chat` — Chat completion with multi-turn conversation.
+
+```bash
+curl http://localhost:11434/api/chat -d '{
+  "model": "llama3.2",
+  "messages": [
+    {"role": "system", "content": "You are a helpful assistant."},
+    {"role": "user", "content": "What is Rust?"}
+  ],
+  "stream": true
+}'
+```
+
+### Vision Support
+
+```bash
+curl http://localhost:11434/api/chat -d '{
+  "model": "llava",
+  "messages": [{
+    "role": "user",
+    "content": "Describe this image",
+    "images": ["iVBORw0KGgo..."]
+  }]
+}'
+```
+
+### Tool Calling
+
+```bash
+curl http://localhost:11434/api/chat -d '{
+  "model": "llama3.2",
+  "messages": [{"role": "user", "content": "What is the weather in Tokyo?"}],
+  "tools": [{
+    "type": "function",
+    "function": {
+      "name": "get_weather",
+      "description": "Get current weather",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {"type": "string"}
+        },
+        "required": ["location"]
+      }
+    }
+  }]
+}'
+```
+
+## Pull
+
+`POST /api/pull` — Download a model with streaming progress.
+
+```bash
+curl http://localhost:11434/api/pull -d '{
+  "name": "llama3.2",
+  "stream": true
+}'
+```
+
+Response:
+
+```json
+{"status":"pulling manifest"}
+{"status":"pulling a1b2c3d4","digest":"sha256:a1b2c3d4...","total":2000000000,"completed":500000000}
+{"status":"success"}
+```
+
+## Push
+
+`POST /api/push` — Upload a model to a remote registry.
+
+```bash
+curl http://localhost:11434/api/push -d '{
+  "name": "my-model",
+  "destination": "https://registry.example.com",
+  "stream": true
+}'
+```
+
+## Tags
+
+`GET /api/tags` — List all local models.
+
+```bash
+curl http://localhost:11434/api/tags
+```
+
+Response:
+
+```json
+{
+  "models": [
+    {
+      "name": "llama3.2",
+      "model": "llama3.2",
+      "size": 2000000000,
+      "digest": "sha256:a1b2c3d4...",
+      "details": {
+        "format": "gguf",
+        "parameter_size": "3B",
+        "quantization_level": "Q4_K_M"
+      }
+    }
+  ]
+}
+```
+
+## Show
+
+`POST /api/show` — Show model details.
+
+```bash
+curl http://localhost:11434/api/show -d '{
+  "name": "llama3.2",
+  "verbose": true
+}'
+```
+
+Returns model info including parameters, template, system prompt, license, and (with `verbose: true`) full GGUF metadata.
+
+## Delete
+
+`DELETE /api/delete` — Delete a model.
+
+```bash
+curl http://localhost:11434/api/delete -d '{"name": "llama3.2"}'
+```
+
+## Embeddings
+
+`POST /api/embeddings` — Generate embeddings (legacy).
+
+```bash
+curl http://localhost:11434/api/embeddings -d '{
+  "model": "llama3.2",
+  "prompt": "Hello world"
+}'
+```
+
+## Embed
+
+`POST /api/embed` — Generate embeddings (batch).
+
+```bash
+curl http://localhost:11434/api/embed -d '{
+  "model": "llama3.2",
+  "input": ["Hello world", "Goodbye world"]
+}'
+```
+
+## Process Status
+
+`GET /api/ps` — List currently loaded models.
+
+```bash
+curl http://localhost:11434/api/ps
+```
+
+Response:
+
+```json
+{
+  "models": [
+    {
+      "name": "llama3.2",
+      "model": "llama3.2",
+      "size": 2000000000,
+      "size_vram": 1800000000,
+      "expires_at": "2024-01-01T00:05:00Z"
+    }
+  ]
+}
+```
+
+## Copy
+
+`POST /api/copy` — Copy/alias a model.
+
+```bash
+curl http://localhost:11434/api/copy -d '{
+  "source": "llama3.2",
+  "destination": "my-llama"
+}'
+```
+
+## Create
+
+`POST /api/create` — Create a model from a Modelfile.
+
+```bash
+curl http://localhost:11434/api/create -d '{
+  "name": "my-model",
+  "modelfile": "FROM llama3.2\nSYSTEM You are a pirate.",
+  "stream": true
+}'
+```
+
+## Version
+
+`GET /api/version` — Server version.
+
+```bash
+curl http://localhost:11434/api/version
+```
+
+```json
+{"version": "0.1.4"}
+```
+
+## Blobs
+
+Blob management for content-addressed storage:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `HEAD` | `/api/blobs/:digest` | Check if blob exists |
+| `POST` | `/api/blobs/:digest` | Upload blob |
+| `GET` | `/api/blobs/:digest` | Download blob |
+| `DELETE` | `/api/blobs/:digest` | Delete blob |

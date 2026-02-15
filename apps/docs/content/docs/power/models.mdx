@@ -1,0 +1,165 @@
+---
+title: Models
+description: Model management, storage, resolution, and Modelfile support
+---
+
+# Models
+
+A3S Power uses content-addressed storage with SHA-256 deduplication for efficient model management.
+
+## Model Resolution
+
+When you reference a model by name, Power resolves it through three sources in order:
+
+1. Ollama Registry — `registry.ollama.ai` (default, largest catalog)
+2. Built-in Catalog — 10 popular models as offline fallback
+3. HuggingFace — GGUF files via `hf.co/` prefix
+
+```bash
+# Ollama registry (default)
+a3s-power pull llama3.2
+a3s-power pull qwen2.5:7b
+
+# HuggingFace GGUF
+a3s-power pull hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF
+```
+
+## Storage Layout
+
+```
+~/.a3s/power/models/
+├── manifests/           # Model metadata (JSON)
+│   ├── llama3.2.json
+│   └── qwen2.5-7b.json
+└── blobs/               # Content-addressed blobs (SHA-256)
+    ├── sha256-a1b2c3...  # Model weights (GGUF)
+    ├── sha256-d4e5f6...  # Chat template
+    └── sha256-789abc...  # System prompt
+```
+
+Blobs are stored by SHA-256 hash. If two models share the same weights (e.g., different quantizations of the same base), the shared layers are stored only once.
+
+## Model Manifest
+
+Each model has a JSON manifest describing its components:
+
+```rust
+pub struct ModelManifest {
+    pub name: String,
+    pub format: ModelFormat,        // Gguf or SafeTensors
+    pub size: u64,                  // Total size in bytes
+    pub digest: String,             // SHA-256 of weights
+    pub parameters: ModelParameters,
+    pub system: Option<String>,     // Default system prompt
+    pub template: Option<String>,   // Chat template (Jinja2)
+    pub adapter: Option<String>,    // LoRA adapter path
+    pub projector: Option<String>,  // Vision projector path
+    pub messages: Vec<Message>,     // Default conversation
+}
+
+pub struct ModelParameters {
+    pub context_length: u64,
+    pub embedding_length: u64,
+    pub parameter_count: u64,
+    pub quantization: Option<String>,
+}
+```
+
+## Pull with Progress
+
+Model downloads show per-layer progress with resumption support:
+
+```bash
+$ a3s-power pull llama3.2
+pulling manifest
+pulling a1b2c3d4e5f6... 100% ▓████████████████████████████████▓ 2.0 GB
+pulling 7f8e9d0c1b2a...  45% ▓████████████████░░░░░░░░░░░░░░░░▓ 128 MB
+```
+
+If a download is interrupted, it resumes from where it left off.
+
+## GGUF Metadata
+
+Power includes a lightweight GGUF binary parser to read model metadata without loading the full model:
+
+```bash
+# Show model details
+a3s-power show llama3.2
+
+# Verbose mode shows GGUF metadata
+a3s-power show llama3.2 --verbose
+```
+
+Metadata includes architecture, context length, embedding dimensions, quantization type, vocabulary size, and more.
+
+## Modelfile
+
+Create custom models using a Modelfile (Ollama-compatible):
+
+```dockerfile
+# Base model
+FROM llama3.2
+
+# Override parameters
+PARAMETER temperature 0.7
+PARAMETER num_ctx 4096
+PARAMETER stop "<|eot_id|>"
+
+# System prompt
+SYSTEM """You are a helpful coding assistant. Always provide code examples."""
+
+# Chat template (Jinja2)
+TEMPLATE """{{ if .System }}<|start_header_id|>system<|end_header_id|>
+{{ .System }}<|eot_id|>{{ end }}{{ range .Messages }}<|start_header_id|>{{ .Role }}<|end_header_id|>
+{{ .Content }}<|eot_id|>{{ end }}<|start_header_id|>assistant<|end_header_id|>
+"""
+
+# LoRA adapter
+ADAPTER ./my-lora.gguf
+
+# License
+LICENSE "MIT"
+
+# Default conversation
+MESSAGE user "Hello"
+MESSAGE assistant "Hi! How can I help you today?"
+```
+
+```bash
+# Create from Modelfile
+a3s-power create my-model -f Modelfile
+
+# Run the custom model
+a3s-power run my-model
+```
+
+### Modelfile Directives
+
+| Directive | Description |
+|-----------|-------------|
+| `FROM` | Base model name or path |
+| `PARAMETER` | Override generation parameter |
+| `SYSTEM` | Default system prompt |
+| `TEMPLATE` | Chat template (Jinja2) |
+| `ADAPTER` | LoRA adapter path |
+| `LICENSE` | License text |
+| `MESSAGE` | Default conversation message |
+
+## Copy and Alias
+
+```bash
+# Create an alias
+a3s-power cp llama3.2 my-llama
+
+# Both names point to the same blobs (no disk duplication)
+a3s-power run my-llama
+```
+
+## Delete
+
+```bash
+# Delete a model
+a3s-power delete llama3.2
+
+# Orphaned blobs are automatically pruned (unless noprune=true)
+```

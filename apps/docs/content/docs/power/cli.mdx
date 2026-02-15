@@ -1,0 +1,214 @@
+---
+title: CLI Reference
+description: Complete command reference for a3s-power
+---
+
+# CLI Reference
+
+A3S Power provides 12 commands for model management, inference, and server operations.
+
+## Global Options
+
+```bash
+a3s-power [OPTIONS] <COMMAND>
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+```
+
+## Model Management
+
+### pull
+
+Download a model from a registry.
+
+```bash
+a3s-power pull <MODEL>
+
+# Examples
+a3s-power pull llama3.2
+a3s-power pull qwen2.5:7b
+a3s-power pull hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF
+a3s-power pull --insecure my-registry.local/model
+```
+
+| Option | Description |
+|--------|-------------|
+| `--insecure` | Skip TLS verification |
+
+### list
+
+List all local models.
+
+```bash
+a3s-power list
+```
+
+Output:
+
+```
+NAME              SIZE      FORMAT    QUANTIZATION  MODIFIED
+llama3.2          2.0 GB    gguf      Q4_K_M        2 hours ago
+qwen2.5:7b        4.7 GB    gguf      Q4_K_M        1 day ago
+```
+
+### show
+
+Show model details.
+
+```bash
+a3s-power show <MODEL> [OPTIONS]
+
+# Examples
+a3s-power show llama3.2
+a3s-power show llama3.2 --verbose
+```
+
+| Option | Description |
+|--------|-------------|
+| `--verbose` | Show full GGUF metadata |
+
+### delete
+
+Delete a local model.
+
+```bash
+a3s-power delete <MODEL>
+
+# Example
+a3s-power delete llama3.2
+```
+
+### cp
+
+Copy or alias a model.
+
+```bash
+a3s-power cp <SOURCE> <DESTINATION>
+
+# Example
+a3s-power cp llama3.2 my-llama
+```
+
+### create
+
+Create a model from a Modelfile.
+
+```bash
+a3s-power create <NAME> -f <MODELFILE>
+
+# Example
+a3s-power create my-model -f Modelfile
+```
+
+### push
+
+Push a model to a remote registry.
+
+```bash
+a3s-power push <MODEL> --destination <URL>
+
+# Example
+a3s-power push my-model --destination https://registry.example.com
+```
+
+| Option | Description |
+|--------|-------------|
+| `--destination` | Remote registry URL |
+| `--insecure` | Skip TLS verification |
+
+## Inference
+
+### run
+
+Interactive chat or single prompt execution.
+
+```bash
+a3s-power run <MODEL> [OPTIONS] [PROMPT]
+
+# Interactive chat
+a3s-power run llama3.2
+
+# Single prompt
+a3s-power run llama3.2 "Explain quicksort"
+
+# With options
+a3s-power run llama3.2 --temperature 0.7 --num-predict 256 "Write a haiku"
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--temperature` | 0.8 | Sampling temperature |
+| `--top-p` | 0.9 | Nucleus sampling |
+| `--top-k` | 40 | Top-K sampling |
+| `--num-predict` | -1 | Max tokens to generate |
+| `--num-ctx` | 2048 | Context window size |
+| `--repeat-penalty` | 1.1 | Repetition penalty |
+| `--seed` | — | Random seed |
+| `--format` | — | Output format (`json`) |
+| `--system` | — | Override system prompt |
+| `--template` | — | Override chat template |
+| `--keep-alive` | `5m` | Model keep-alive duration |
+| `--verbose` | — | Show timing and token stats |
+| `--insecure` | — | Skip TLS verification |
+
+In interactive mode, type your messages and press Enter. Use `/bye` or Ctrl+C to exit.
+
+## Server
+
+### serve
+
+Start the HTTP server.
+
+```bash
+a3s-power serve [OPTIONS]
+
+# Default (127.0.0.1:11434)
+a3s-power serve
+
+# Custom bind
+a3s-power serve --host 0.0.0.0 --port 8080
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--host` | `127.0.0.1` | Bind address |
+| `--port` | `11434` | Bind port |
+
+### ps
+
+List currently loaded/running models.
+
+```bash
+a3s-power ps
+```
+
+Output:
+
+```
+NAME          SIZE      VRAM       UNTIL
+llama3.2      2.0 GB    1.8 GB     4 minutes from now
+```
+
+### stop
+
+Stop/unload a running model.
+
+```bash
+a3s-power stop <MODEL>
+
+# Example
+a3s-power stop llama3.2
+```
+
+## Environment Variables
+
+All CLI behavior can be configured via environment variables. See [Configuration](./configuration) for the full list.
+
+```bash
+# Common overrides
+OLLAMA_HOST=0.0.0.0:8080 a3s-power serve
+OLLAMA_KEEP_ALIVE=1h a3s-power run llama3.2
+OLLAMA_NUM_GPU=0 a3s-power run llama3.2  # CPU only
+```

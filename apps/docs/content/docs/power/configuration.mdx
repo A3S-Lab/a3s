@@ -1,0 +1,149 @@
+---
+title: Configuration
+description: TOML configuration and Ollama-compatible environment variables
+---
+
+# Configuration
+
+A3S Power uses TOML configuration with full Ollama-compatible environment variable overrides.
+
+## Config File
+
+Default location: `~/.a3s/power/config.toml`
+
+```toml
+host = "127.0.0.1"           # HTTP server bind address
+port = 11434                  # HTTP server port
+max_loaded_models = 1         # Max concurrent loaded models
+keep_alive = "5m"             # Auto-unload idle models
+use_mlock = false             # Lock model weights in memory
+num_thread = 8                # Threads for generation
+flash_attention = false       # Enable flash attention
+num_parallel = 1              # Concurrent request slots
+origins = []                  # Custom CORS origins
+noprune = false               # Disable automatic blob pruning
+sched_spread = false          # Spread layers across all GPUs
+
+[gpu]
+gpu_layers = -1               # GPU offloading (0=CPU, -1=all)
+main_gpu = 0                  # Primary GPU index
+tensor_split = []             # Multi-GPU work distribution
+```
+
+## Keep-Alive Duration
+
+Controls how long idle models stay loaded in memory:
+
+| Value | Behavior |
+|-------|----------|
+| `"5m"` | Unload after 5 minutes idle (default) |
+| `"1h"` | Unload after 1 hour idle |
+| `"0"` | Unload immediately after request |
+| `"-1"` | Never unload (keep forever) |
+
+## GPU Configuration
+
+Power auto-detects GPU capabilities (Metal on macOS, CUDA on Linux/Windows):
+
+```toml
+[gpu]
+gpu_layers = -1       # -1 = offload all layers to GPU
+                      #  0 = CPU only
+                      # 20 = offload first 20 layers
+
+main_gpu = 0          # Primary GPU for single-GPU inference
+tensor_split = [0.7, 0.3]  # Split work 70/30 across 2 GPUs
+```
+
+GPU memory is estimated before loading to prevent OOM errors. If a model doesn't fit in VRAM, layers are automatically kept on CPU.
+
+## Environment Variables
+
+All Ollama environment variables are supported for drop-in compatibility:
+
+| Variable | Config Equivalent | Description |
+|----------|-------------------|-------------|
+| `OLLAMA_HOST` | `host` + `port` | Server bind address (e.g., `0.0.0.0:11434`) |
+| `OLLAMA_MODELS` | — | Model storage directory |
+| `OLLAMA_KEEP_ALIVE` | `keep_alive` | Default keep-alive duration |
+| `OLLAMA_MAX_LOADED_MODELS` | `max_loaded_models` | Max concurrent models |
+| `OLLAMA_NUM_GPU` | `gpu.gpu_layers` | GPU layers to offload |
+| `OLLAMA_NUM_PARALLEL` | `num_parallel` | Concurrent request slots |
+| `OLLAMA_DEBUG` | — | Enable debug logging |
+| `OLLAMA_ORIGINS` | `origins` | Custom CORS origins (comma-separated) |
+| `OLLAMA_FLASH_ATTENTION` | `flash_attention` | Global flash attention |
+| `OLLAMA_TMPDIR` | — | Custom temporary directory |
+| `OLLAMA_NOPRUNE` | `noprune` | Disable blob pruning |
+| `OLLAMA_SCHED_SPREAD` | `sched_spread` | Spread layers across GPUs |
+
+Power-specific:
+
+| Variable | Description |
+|----------|-------------|
+| `A3S_POWER_HOME` | Base directory (default: `~/.a3s/power/`) |
+
+Environment variables take precedence over config file values.
+
+## Per-Request Options
+
+Generation parameters can be set per-request via the API:
+
+```json
+{
+  "model": "llama3.2",
+  "messages": [{"role": "user", "content": "Hello"}],
+  "options": {
+    "temperature": 0.7,
+    "top_p": 0.9,
+    "top_k": 40,
+    "num_predict": 256,
+    "num_ctx": 4096,
+    "repeat_penalty": 1.1,
+    "seed": 42,
+    "stop": ["\n\n"],
+    "num_gpu": 99,
+    "flash_attention": true
+  }
+}
+```
+
+### Sampling Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `temperature` | 0.8 | Randomness (0 = deterministic) |
+| `top_p` | 0.9 | Nucleus sampling threshold |
+| `top_k` | 40 | Top-K sampling |
+| `min_p` | 0.0 | Minimum probability threshold |
+| `typical_p` | 1.0 | Typical sampling |
+| `seed` | — | Random seed for reproducibility |
+
+### Penalty Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `repeat_penalty` | 1.1 | Repetition penalty |
+| `repeat_last_n` | 64 | Tokens to consider for penalty |
+| `frequency_penalty` | 0.0 | Frequency-based penalty |
+| `presence_penalty` | 0.0 | Presence-based penalty |
+| `penalize_newline` | true | Apply penalty to newlines |
+
+### Context Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `num_ctx` | 2048 | Context window size |
+| `num_predict` | -1 | Max tokens to generate (-1 = unlimited) |
+| `num_keep` | 4 | Tokens to keep from initial prompt |
+| `stop` | — | Stop sequences |
+
+### Performance Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `num_batch` | 512 | Batch size for prompt processing |
+| `num_thread` | — | CPU threads (auto-detected) |
+| `num_gpu` | -1 | GPU layers to offload |
+| `use_mmap` | true | Memory-map model file |
+| `use_mlock` | false | Lock model in memory |
+| `flash_attention` | false | Enable flash attention |

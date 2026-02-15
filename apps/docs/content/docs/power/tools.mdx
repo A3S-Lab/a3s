@@ -1,0 +1,145 @@
+---
+title: Tool Calling
+description: Function calling with XML, Mistral, and JSON tool call formats
+---
+
+# Tool Calling
+
+A3S Power supports function/tool calling for models that have been trained with tool-use capabilities. The tool call parser handles multiple output formats automatically.
+
+## Defining Tools
+
+Tools are defined using the standard OpenAI function calling schema:
+
+```json
+{
+  "tools": [{
+    "type": "function",
+    "function": {
+      "name": "get_weather",
+      "description": "Get current weather for a location",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "City name"
+          },
+          "unit": {
+            "type": "string",
+            "enum": ["celsius", "fahrenheit"]
+          }
+        },
+        "required": ["location"]
+      }
+    }
+  }]
+}
+```
+
+## Tool Choice
+
+Control how the model uses tools:
+
+| Value | Behavior |
+|-------|----------|
+| `"auto"` | Model decides whether to call a tool (default) |
+| `"none"` | Model must not call any tool |
+| `{"type": "function", "function": {"name": "..."}}` | Force a specific tool |
+
+## Conversation Flow
+
+A complete tool-calling conversation:
+
+```bash
+# 1. User asks a question, model returns tool call
+curl http://localhost:11434/api/chat -d '{
+  "model": "llama3.2",
+  "messages": [
+    {"role": "user", "content": "What is the weather in Tokyo?"}
+  ],
+  "tools": [{"type": "function", "function": {"name": "get_weather", ...}}],
+  "stream": false
+}'
+
+# Response includes tool_calls:
+# {"message": {"role": "assistant", "tool_calls": [{"function": {"name": "get_weather", "arguments": {"location": "Tokyo"}}}]}}
+
+# 2. Execute the tool and send result back
+curl http://localhost:11434/api/chat -d '{
+  "model": "llama3.2",
+  "messages": [
+    {"role": "user", "content": "What is the weather in Tokyo?"},
+    {"role": "assistant", "tool_calls": [{"function": {"name": "get_weather", "arguments": {"location": "Tokyo"}}}]},
+    {"role": "tool", "content": "{\"temperature\": 22, \"condition\": \"sunny\"}"}
+  ],
+  "stream": false
+}'
+
+# Response: "The weather in Tokyo is 22°C and sunny."
+```
+
+## Supported Formats
+
+Power's tool call parser automatically detects and parses three output formats:
+
+### XML Format
+
+Used by Llama 3.x and similar models:
+
+```xml
+<tool_call>
+{"name": "get_weather", "arguments": {"location": "Tokyo"}}
+</tool_call>
+```
+
+### Mistral Format
+
+Used by Mistral and Mixtral models:
+
+```
+[TOOL_CALLS] [{"name": "get_weather", "arguments": {"location": "Tokyo"}}]
+```
+
+### JSON Format
+
+Direct JSON output:
+
+```json
+{"name": "get_weather", "arguments": {"location": "Tokyo"}}
+```
+
+The parser tries each format in order and returns the first successful parse. This means tool calling works across different model families without configuration.
+
+## OpenAI SDK Example
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:11434/v1", api_key="unused")
+
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "search",
+        "description": "Search the web",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"}
+            },
+            "required": ["query"]
+        }
+    }
+}]
+
+response = client.chat.completions.create(
+    model="llama3.2",
+    messages=[{"role": "user", "content": "Search for Rust programming language"}],
+    tools=tools
+)
+
+if response.choices[0].message.tool_calls:
+    tool_call = response.choices[0].message.tool_calls[0]
+    print(f"Call: {tool_call.function.name}({tool_call.function.arguments})")
+```

@@ -1,0 +1,19 @@
+{
+  "title": "Power",
+  "pages": [
+    "index",
+    "quick-start",
+    "---Core---",
+    "configuration",
+    "models",
+    "inference",
+    "---API---",
+    "ollama-api",
+    "openai-api",
+    "---Capabilities---",
+    "tools",
+    "structured-output",
+    "observability",
+    "cli"
+  ]
+}
