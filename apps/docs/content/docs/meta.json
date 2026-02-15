@@ -1,4 +1,4 @@
 {
   "title": "A3S Docs",
-  "pages": ["---Code---", "code", "---Infrastructure---", "lane", "search", "box", "gateway", "safeclaw"]
+  "pages": ["---Code---", "code", "---Infrastructure---", "lane", "search", "event", "box", "gateway", "safeclaw"]
 }

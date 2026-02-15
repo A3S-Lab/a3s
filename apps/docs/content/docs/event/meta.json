@@ -1,0 +1,16 @@
+{
+  "title": "A3S Event",
+  "pages": [
+    "index",
+    "quick-start",
+    "---Core---",
+    "eventbus",
+    "providers",
+    "schema",
+    "---Capabilities---",
+    "encryption",
+    "dlq",
+    "state",
+    "observability"
+  ]
+}

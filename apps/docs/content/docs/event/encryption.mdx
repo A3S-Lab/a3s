@@ -1,0 +1,106 @@
+---
+title: Encryption
+description: AES-256-GCM payload encryption with key rotation
+---
+
+# Encryption
+
+A3S Event provides transparent AES-256-GCM payload encryption. Events are encrypted before publishing and decrypted when reading history. Key rotation is supported with multiple active decryption keys.
+
+## Enable Encryption
+
+```rust
+use a3s_event::{EventBus, MemoryProvider, Aes256GcmEncryptor};
+use std::sync::Arc;
+
+let provider = MemoryProvider::new();
+let mut bus = EventBus::new(provider);
+
+// 32-byte key for AES-256
+let key = b"0123456789abcdef0123456789abcdef";
+let encryptor = Aes256GcmEncryptor::new("key-v1", key);
+
+bus.set_encryptor(Arc::new(encryptor));
+```
+
+Once set, all `publish()` and `publish_typed()` calls automatically encrypt the payload. `history()` calls automatically decrypt.
+
+## Encrypted Payload Format
+
+Encrypted events use a sealed envelope:
+
+```json
+{
+  "encrypted": true,
+  "key_id": "key-v1",
+  "nonce": "base64-encoded-12-byte-nonce",
+  "ciphertext": "base64-encoded-ciphertext"
+}
+```
+
+Each message gets a unique random 12-byte nonce, ensuring that identical payloads produce different ciphertext.
+
+## Key Rotation
+
+Add new keys and rotate without downtime:
+
+```rust
+let mut encryptor = Aes256GcmEncryptor::new("key-v1", &old_key);
+
+// Add a new key
+encryptor.add_key("key-v2", &new_key);
+
+// Rotate: new publishes use key-v2, old messages still decrypt with key-v1
+encryptor.rotate_to("key-v2");
+```
+
+### Rotation Workflow
+
+1. `add_key("key-v2", &new_key)` — Register the new key (both keys can decrypt)
+2. `rotate_to("key-v2")` — New publishes encrypt with `key-v2`
+3. Old events encrypted with `key-v1` remain readable (the key is still registered)
+4. After all old events expire, optionally remove `key-v1`
+
+## EventEncryptor Trait
+
+Implement custom encryption backends:
+
+```rust
+use a3s_event::EventEncryptor;
+
+pub trait EventEncryptor: Send + Sync {
+    fn encrypt(&self, payload: &serde_json::Value) -> Result<serde_json::Value>;
+    fn decrypt(&self, payload: &serde_json::Value) -> Result<serde_json::Value>;
+}
+```
+
+The `encrypt()` method receives the plaintext payload and returns the encrypted envelope. The `decrypt()` method receives the envelope and returns the original payload.
+
+## Detecting Encrypted Payloads
+
+```rust
+use a3s_event::EncryptedPayload;
+
+if EncryptedPayload::is_encrypted(&payload) {
+    println!("This payload is encrypted");
+}
+```
+
+## Processing Order
+
+When both schema validation and encryption are enabled:
+
+```
+Publish:   payload → schema validate → encrypt → provider.publish()
+History:   provider.history() → decrypt → return plaintext events
+```
+
+Schema validation always runs on plaintext, never on encrypted data.
+
+## Security Notes
+
+- **Algorithm**: AES-256-GCM (authenticated encryption with associated data)
+- **Nonce**: Random 12-byte nonce per message (never reused)
+- **Encoding**: Base64 for JSON serialization of binary data
+- **Key storage**: Keys are held in memory. Use a secrets manager for production key material.
+- **Scope**: Application-layer encryption. For transport encryption, configure TLS on the provider (e.g., NATS TLS).

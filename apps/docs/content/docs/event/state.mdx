@@ -1,0 +1,113 @@
+---
+title: State Persistence
+description: Save and restore subscription filters across restarts
+---
+
+# State Persistence
+
+A3S Event can persist subscription filters to disk so that subscriptions are automatically restored after a process restart.
+
+## Enable State Persistence
+
+### File-Based (Production)
+
+```rust
+use a3s_event::{EventBus, MemoryProvider, FileStateStore};
+use std::sync::Arc;
+
+let provider = MemoryProvider::new();
+let mut bus = EventBus::new(provider);
+
+let store = FileStateStore::new("./state/event-bus.json").await?;
+bus.set_state_store(Arc::new(store));
+```
+
+`FileStateStore` uses atomic writes (write to temp file, then rename) to prevent corruption.
+
+### Memory-Based (Testing)
+
+```rust
+use a3s_event::MemoryStateStore;
+
+let store = MemoryStateStore::new();
+bus.set_state_store(Arc::new(store));
+```
+
+## How It Works
+
+1. **On `set_state_store()`** — Loads any saved subscriptions from disk and re-subscribes
+2. **On `update_subscription()`** — Saves the updated filter set to disk
+3. **On `remove_subscription()`** — Saves the updated filter set to disk
+
+```
+Process start → load state → re-subscribe → ready
+                                ↓
+Process running → subscribe/update/remove → auto-save
+```
+
+## StateStore Trait
+
+Implement custom state backends:
+
+```rust
+use a3s_event::{StateStore, SubscriptionFilter};
+use async_trait::async_trait;
+
+#[async_trait]
+pub trait StateStore: Send + Sync {
+    async fn save(&self, filters: &[SubscriptionFilter]) -> Result<()>;
+    async fn load(&self) -> Result<Vec<SubscriptionFilter>>;
+}
+```
+
+### Custom Example: Redis State Store
+
+```rust
+struct RedisStateStore {
+    client: redis::Client,
+    key: String,
+}
+
+#[async_trait]
+impl StateStore for RedisStateStore {
+    async fn save(&self, filters: &[SubscriptionFilter]) -> Result<()> {
+        let json = serde_json::to_string(filters)?;
+        self.client.set(&self.key, &json).await?;
+        Ok(())
+    }
+
+    async fn load(&self) -> Result<Vec<SubscriptionFilter>> {
+        let json: Option<String> = self.client.get(&self.key).await?;
+        match json {
+            Some(data) => Ok(serde_json::from_str(&data)?),
+            None => Ok(vec![]),
+        }
+    }
+}
+```
+
+## FileStateStore Details
+
+- **Format**: Pretty-printed JSON
+- **Atomicity**: Writes to a `.tmp` file then renames (prevents partial writes on crash)
+- **Directory**: Auto-creates parent directories if they don't exist
+- **Path**: Configurable, e.g., `./state/event-bus.json`
+
+Example persisted state:
+
+```json
+[
+  {
+    "subject": "orders.>",
+    "categories": ["orders"],
+    "options": {
+      "deliver_policy": "New",
+      "max_deliver": 3
+    }
+  },
+  {
+    "subject": "payments.*",
+    "categories": ["payments"]
+  }
+]
+```

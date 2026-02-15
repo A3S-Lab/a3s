@@ -1,0 +1,134 @@
+---
+title: Dead Letter Queue
+description: Capture permanently failed events for inspection and debugging
+---
+
+# Dead Letter Queue
+
+Events that exceed the maximum delivery count are moved to a dead letter queue (DLQ) for inspection and debugging.
+
+## Enable DLQ
+
+```rust
+use a3s_event::{EventBus, MemoryProvider, MemoryDlqHandler};
+use std::sync::Arc;
+
+let provider = MemoryProvider::new();
+let mut bus = EventBus::new(provider);
+
+let dlq = MemoryDlqHandler::new(100); // Max 100 dead letters
+bus.set_dlq_handler(Arc::new(dlq));
+```
+
+## How It Works
+
+When a message has been delivered `max_deliver` times without a successful ack, `should_dead_letter()` returns `true` and the event is routed to the DLQ handler:
+
+```
+Event delivered → processing fails → redelivered → fails again
+    → max_deliver reached → DLQ handler receives the event
+```
+
+The `max_deliver` threshold is configured via `SubscribeOptions`:
+
+```rust
+let options = SubscribeOptions {
+    max_deliver: Some(3),  // After 3 failed deliveries, send to DLQ
+    ..Default::default()
+};
+```
+
+## DeadLetterEvent
+
+```rust
+pub struct DeadLetterEvent {
+    pub event: Event,              // The original event
+    pub reason: String,            // Why it was dead-lettered
+    pub timestamp: DateTime<Utc>,  // When it was dead-lettered
+}
+```
+
+## Inspecting Dead Letters
+
+```rust
+let dlq = bus.dlq_handler().unwrap();
+
+// List recent dead letters
+let letters = dlq.list().await;
+for letter in &letters {
+    println!("[{}] {}: {}",
+        letter.timestamp,
+        letter.event.subject,
+        letter.reason);
+    println!("  Payload: {}", letter.event.payload);
+}
+```
+
+## DlqHandler Trait
+
+Implement custom DLQ backends (e.g., persist to database, forward to alerting):
+
+```rust
+use a3s_event::{DlqHandler, DeadLetterEvent};
+use async_trait::async_trait;
+
+#[async_trait]
+pub trait DlqHandler: Send + Sync {
+    async fn handle(&self, dead_letter: DeadLetterEvent) -> Result<()>;
+    async fn list(&self) -> Vec<DeadLetterEvent>;
+}
+```
+
+### Custom Example: Forward to Slack
+
+```rust
+struct SlackDlqHandler {
+    webhook_url: String,
+    memory: MemoryDlqHandler,
+}
+
+#[async_trait]
+impl DlqHandler for SlackDlqHandler {
+    async fn handle(&self, dead_letter: DeadLetterEvent) -> Result<()> {
+        // Store locally
+        self.memory.handle(dead_letter.clone()).await?;
+
+        // Forward to Slack
+        reqwest::Client::new()
+            .post(&self.webhook_url)
+            .json(&serde_json::json!({
+                "text": format!("DLQ: {} - {}",
+                    dead_letter.event.subject,
+                    dead_letter.reason)
+            }))
+            .send()
+            .await?;
+
+        Ok(())
+    }
+
+    async fn list(&self) -> Vec<DeadLetterEvent> {
+        self.memory.list().await
+    }
+}
+```
+
+## MemoryDlqHandler
+
+The built-in in-memory implementation with capacity management:
+
+```rust
+let dlq = MemoryDlqHandler::new(100);
+// When capacity is reached, oldest dead letters are evicted
+```
+
+## Helper Function
+
+```rust
+use a3s_event::should_dead_letter;
+
+// Check if an event should be dead-lettered
+if should_dead_letter(delivery_count, max_deliver) {
+    dlq.handle(dead_letter_event).await?;
+}
+```

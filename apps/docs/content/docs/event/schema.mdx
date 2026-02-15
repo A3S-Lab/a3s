@@ -1,0 +1,142 @@
+---
+title: Schema Validation
+description: Event schemas with required fields validation and version compatibility checking
+---
+
+# Schema Validation
+
+A3S Event supports optional schema validation on publish. Register event schemas with required fields, and the `EventBus` validates payloads before they reach the provider.
+
+## Enable Schema Validation
+
+```rust
+use a3s_event::{EventBus, MemoryProvider, MemorySchemaRegistry, EventSchema};
+use std::sync::Arc;
+
+let provider = MemoryProvider::new();
+let mut bus = EventBus::new(provider);
+
+let mut registry = MemorySchemaRegistry::new();
+
+registry.register(EventSchema {
+    event_type: "order.created".into(),
+    version: 1,
+    required_fields: vec!["order_id".into(), "total".into()],
+});
+
+registry.register(EventSchema {
+    event_type: "order.shipped".into(),
+    version: 1,
+    required_fields: vec!["order_id".into(), "tracking_number".into()],
+});
+
+bus.set_schema_registry(Arc::new(registry));
+```
+
+## Validation on Publish
+
+When a schema registry is set, `publish_typed()` validates the payload against the registered schema:
+
+```rust
+// Passes validation (has order_id and total)
+bus.publish_typed(
+    "orders.created",
+    "order.created",
+    1,
+    serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
+).await?;
+
+// Fails validation (missing "total" field)
+let result = bus.publish_typed(
+    "orders.created",
+    "order.created",
+    1,
+    serde_json::json!({ "order_id": "ORD-001" }),
+).await;
+assert!(result.is_err());
+```
+
+Non-typed `publish()` calls skip schema validation since they have no `event_type` or `version`.
+
+## Schema Evolution
+
+Register multiple versions of the same event type:
+
+```rust
+// Version 1: original schema
+registry.register(EventSchema {
+    event_type: "order.created".into(),
+    version: 1,
+    required_fields: vec!["order_id".into(), "total".into()],
+});
+
+// Version 2: added "currency" field
+registry.register(EventSchema {
+    event_type: "order.created".into(),
+    version: 2,
+    required_fields: vec!["order_id".into(), "total".into(), "currency".into()],
+});
+```
+
+## Compatibility Checking
+
+Check whether a new schema version is compatible with an existing one:
+
+```rust
+use a3s_event::Compatibility;
+
+let compat = registry.check_compatibility(
+    "order.created",
+    1,  // old version
+    2,  // new version
+);
+
+match compat {
+    Compatibility::Backward => println!("New version can read old data"),
+    Compatibility::Forward => println!("Old version can read new data"),
+    Compatibility::Full => println!("Fully compatible in both directions"),
+    Compatibility::None => println!("Breaking change"),
+}
+```
+
+### Compatibility Rules
+
+| Type | Meaning | Example |
+|------|---------|---------|
+| `Backward` | New schema can read old data | Added optional field |
+| `Forward` | Old schema can read new data | Removed optional field |
+| `Full` | Compatible both ways | No field changes |
+| `None` | Breaking change | Added required field |
+
+## SchemaRegistry Trait
+
+Implement custom registries (e.g., backed by a database):
+
+```rust
+use a3s_event::{SchemaRegistry, EventSchema, Compatibility};
+
+pub trait SchemaRegistry: Send + Sync {
+    fn register(&mut self, schema: EventSchema);
+    fn validate(&self, event_type: &str, version: u32, payload: &serde_json::Value) -> Result<()>;
+    fn get(&self, event_type: &str, version: u32) -> Option<&EventSchema>;
+    fn check_compatibility(&self, event_type: &str, old: u32, new: u32) -> Compatibility;
+}
+```
+
+## EventSchema Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `event_type` | `String` | Event type identifier (e.g., `order.created`) |
+| `version` | `u32` | Schema version number |
+| `required_fields` | `Vec<String>` | Fields that must be present in the payload |
+
+## Validation Order
+
+When both schema validation and encryption are enabled, the order is:
+
+1. Schema validation (on plaintext payload)
+2. Encryption (payload becomes ciphertext)
+3. Publish to provider
+
+This ensures schemas always validate the actual data, not encrypted blobs.

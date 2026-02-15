@@ -1,0 +1,176 @@
+---
+title: Providers
+description: MemoryProvider for development and NatsProvider for production
+---
+
+# Providers
+
+A3S Event uses the `EventProvider` trait to abstract the underlying messaging system. Two implementations are included: `MemoryProvider` for development and `NatsProvider` for production.
+
+## EventProvider Trait
+
+```rust
+#[async_trait]
+pub trait EventProvider: Send + Sync {
+    async fn publish(&self, subject: &str, event: Event) -> Result<()>;
+    async fn subscribe(&self, filter: &SubscriptionFilter)
+        -> Result<mpsc::Receiver<ReceivedEvent>>;
+    async fn subscribe_durable(&self, filter: &SubscriptionFilter, group: &str)
+        -> Result<mpsc::Receiver<ReceivedEvent>>;
+    async fn history(&self, subject: &str, limit: usize) -> Result<Vec<Event>>;
+    async fn count(&self, category: &str) -> Result<EventCounts>;
+
+    // Default implementations (can be overridden):
+    async fn publish_with_options(&self, subject: &str, event: Event, opts: PublishOptions)
+        -> Result<()> { self.publish(subject, event).await }
+    async fn subscribe_with_options(&self, filter: &SubscriptionFilter, opts: SubscribeOptions)
+        -> Result<mpsc::Receiver<ReceivedEvent>> { self.subscribe(filter).await }
+    async fn subscribe_durable_with_options(&self, filter: &SubscriptionFilter, group: &str, opts: SubscribeOptions)
+        -> Result<mpsc::Receiver<ReceivedEvent>> { self.subscribe_durable(filter, group).await }
+    async fn health(&self) -> Result<bool> { Ok(true) }
+}
+```
+
+## MemoryProvider
+
+In-process event bus using `tokio::sync::broadcast`. Zero external dependencies.
+
+```rust
+use a3s_event::MemoryProvider;
+
+let provider = MemoryProvider::new();
+```
+
+**Characteristics:**
+- Events are stored in an in-memory buffer (configurable size)
+- Broadcast channel for pub/sub
+- Wildcard matching (`>`, `*`) implemented in Rust
+- No durable subscriptions (gracefully falls back to ephemeral)
+- Publish/subscribe options are accepted but ignored
+- Health check always returns `true`
+- Ideal for unit tests and local development
+
+## NatsProvider
+
+Production-grade provider using [NATS JetStream](https://docs.nats.io/nats-concepts/jetstream).
+
+```rust
+use a3s_event::{NatsProvider, NatsConfig};
+
+let config = NatsConfig {
+    url: "nats://localhost:4222".into(),
+    stream: "EVENTS".into(),
+    subjects: vec!["events.>".into()],
+    storage: StorageType::File,    // File or Memory
+    max_messages: 1_000_000,
+    max_bytes: 1_073_741_824,      // 1 GB
+    max_age: Duration::from_secs(7 * 24 * 3600), // 7 days
+    ..Default::default()
+};
+
+let provider = NatsProvider::new(config).await?;
+```
+
+### NatsConfig Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `url` | `String` | `nats://localhost:4222` | NATS server URL |
+| `stream` | `String` | `EVENTS` | JetStream stream name |
+| `subjects` | `Vec<String>` | `["events.>"]` | Subjects to capture |
+| `storage` | `StorageType` | `File` | `File` or `Memory` storage |
+| `max_messages` | `i64` | `1_000_000` | Max messages in stream |
+| `max_bytes` | `i64` | `1 GB` | Max stream size in bytes |
+| `max_age` | `Duration` | `7 days` | Max message age |
+
+### NATS-Specific Features
+
+**Deduplication:**
+```rust
+bus.publish_with_options(
+    "orders.created",
+    payload,
+    PublishOptions { msg_id: Some("order-001".into()), ..Default::default() },
+).await?;
+// Duplicate publishes with the same msg_id are ignored within the dedup window
+```
+
+**Manual Acknowledgement:**
+```rust
+let mut rx = bus.subscribe_durable("orders.>", "processor").await?;
+while let Some(event) = rx.recv().await {
+    match process(&event).await {
+        Ok(()) => event.ack().await?,    // Acknowledge success
+        Err(e) => event.nak().await?,    // Negative ack (triggers redelivery)
+    }
+}
+```
+
+**Delivery Policies:**
+```rust
+let options = SubscribeOptions {
+    deliver_policy: Some(DeliverPolicy::ByStartTime(
+        Utc::now() - chrono::Duration::hours(1)
+    )),
+    ..Default::default()
+};
+let mut rx = bus.subscribe_durable_with_options("orders.>", "replay", options).await?;
+```
+
+## Custom Provider
+
+Implement `EventProvider` for any messaging backend:
+
+```rust
+use a3s_event::*;
+use async_trait::async_trait;
+
+struct RedisProvider {
+    client: redis::Client,
+}
+
+#[async_trait]
+impl EventProvider for RedisProvider {
+    async fn publish(&self, subject: &str, event: Event) -> Result<()> {
+        let payload = serde_json::to_string(&event)?;
+        self.client.publish(subject, &payload).await?;
+        Ok(())
+    }
+
+    async fn subscribe(&self, filter: &SubscriptionFilter)
+        -> Result<mpsc::Receiver<ReceivedEvent>> {
+        // Subscribe to Redis Pub/Sub channel
+        // ...
+    }
+
+    async fn subscribe_durable(&self, filter: &SubscriptionFilter, group: &str)
+        -> Result<mpsc::Receiver<ReceivedEvent>> {
+        // Use Redis Streams with consumer groups
+        // ...
+    }
+
+    async fn history(&self, subject: &str, limit: usize) -> Result<Vec<Event>> {
+        // XRANGE on Redis Stream
+        // ...
+    }
+
+    async fn count(&self, category: &str) -> Result<EventCounts> {
+        // XLEN on Redis Stream
+        // ...
+    }
+}
+```
+
+## Provider Responsibility Boundaries
+
+These capabilities are delegated to the provider, not the `EventBus` abstraction:
+
+| Capability | Where It Lives |
+|------------|----------------|
+| Retry / backoff | Provider (NATS: MaxDeliver + BackOff) |
+| Backpressure | Provider (NATS: MaxAckPending) |
+| Connection resilience | Provider (NATS: auto-reconnect) |
+| Transport encryption | Provider (TLS config) |
+| Exactly-once delivery | Provider (dedup + double ack) |
+| Stream mirroring | Provider (NATS Mirror/Source config) |
+| Partitioning | Provider (subject routing) |

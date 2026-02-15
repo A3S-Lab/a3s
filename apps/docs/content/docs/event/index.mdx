@@ -1,0 +1,71 @@
+---
+title: A3S Event
+description: Provider-agnostic event bus with schema validation, encryption, dead letter queues, and observability
+---
+
+# A3S Event
+
+A3S Event is a provider-agnostic event bus abstraction for Rust. It supports publishing, subscribing (ephemeral and durable), schema validation, AES-256-GCM payload encryption, dead letter queues, state persistence, and lock-free observability metrics — all behind a single `EventBus` API.
+
+## Key Features
+
+- **Provider-Agnostic** — Swap between in-memory and NATS JetStream without changing application code.
+- **Schema Validation** — Register event schemas with required fields and compatibility checking. Validation runs before publish.
+- **Payload Encryption** — AES-256-GCM encryption with key rotation. Transparent encrypt-on-publish, decrypt-on-read.
+- **Dead Letter Queue** — Capture permanently failed events with reason and timestamp for inspection.
+- **Durable Subscriptions** — Survive process restarts via NATS JetStream consumer groups.
+- **Delivery Policies** — All, Last, New, ByStartSequence, ByStartTime, LastPerSubject.
+- **State Persistence** — Save and restore subscription filters across restarts with atomic file writes.
+- **Observability** — Lock-free atomic counters for publish/subscribe/error/DLQ/latency, plus `tracing` spans.
+- **Health Checks** — Built-in health check API for readiness probes.
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                        EventBus                          │
+│                                                          │
+│  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │ SchemaReg   │  │  Encryptor   │  │  DLQ Handler  │  │
+│  │ validate()  │  │ AES-256-GCM  │  │ MemoryDlq     │  │
+│  │ compat()    │  │ key rotation │  │ max_deliver    │  │
+│  └──────┬──────┘  └──────┬───────┘  └──────┬────────┘  │
+│         │                │                  │            │
+│         └────── publish ─┴── subscribe ─────┘            │
+│                       │                                  │
+│  ┌────────────────────┴────────────────────────────┐    │
+│  │              EventProvider (trait)                │    │
+│  │  publish · subscribe · durable · history · ack   │    │
+│  └──────────────┬──────────────────┬───────────────┘    │
+│                 │                  │                      │
+│  ┌──────────────┴───┐  ┌──────────┴──────────┐         │
+│  │  MemoryProvider   │  │   NatsProvider      │         │
+│  │  tokio::broadcast │  │   JetStream + KV    │         │
+│  │  zero deps        │  │   durable subs      │         │
+│  └──────────────────┘  └─────────────────────┘         │
+│                                                          │
+│  ┌──────────────┐  ┌──────────────┐                     │
+│  │ StateStore   │  │ EventMetrics │                     │
+│  │ File / Memory│  │ lock-free    │                     │
+│  └──────────────┘  └──────────────┘                     │
+└──────────────────────────────────────────────────────────┘
+```
+
+## Provider Comparison
+
+| Capability | MemoryProvider | NatsProvider |
+|------------|---------------|--------------|
+| Publish/Subscribe | Yes | Yes |
+| History/Replay | In-memory buffer | JetStream stream |
+| Durable Subscriptions | No | Yes |
+| Wildcards | Yes (`>`, `*`) | Yes (NATS subjects) |
+| Deduplication | No | Yes (msg_id) |
+| Manual Ack | No | Yes |
+| Backpressure | No | Yes (max_ack_pending) |
+| Health Check | Always healthy | Connection check |
+| Persistence | None | File or memory storage |
+| Use Case | Development, testing | Production |
+
+## Test Coverage
+
+155+ tests (122 unit + 24 memory integration + 9 NATS integration), all passing.

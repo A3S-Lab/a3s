@@ -1,0 +1,159 @@
+---
+title: Observability
+description: Lock-free metrics, tracing spans, and health checks
+---
+
+# Observability
+
+A3S Event provides three layers of observability: lock-free atomic metrics for dashboards, `tracing` spans for structured logging, and a health check API for readiness probes.
+
+## Metrics
+
+`EventMetrics` uses lock-free atomic counters for zero-contention metric collection.
+
+### Reading Metrics
+
+```rust
+let metrics = bus.metrics();
+let snapshot = metrics.snapshot();
+
+println!("Published: {}", snapshot.publish_count);
+println!("Subscribed: {}", snapshot.subscribe_count);
+println!("Unsubscribed: {}", snapshot.unsubscribe_count);
+println!("Errors: {}", snapshot.error_count);
+println!("Dead lettered: {}", snapshot.dlq_count);
+println!("Encrypted: {}", snapshot.encrypt_count);
+println!("Decrypted: {}", snapshot.decrypt_count);
+println!("Validated: {}", snapshot.validation_count);
+println!("Total latency: {}ms", snapshot.publish_latency_ms);
+println!("Max latency: {}ms", snapshot.max_publish_latency_ms);
+```
+
+### MetricsSnapshot Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `publish_count` | `u64` | Total events published |
+| `subscribe_count` | `u64` | Total subscriptions created |
+| `unsubscribe_count` | `u64` | Total subscriptions removed |
+| `error_count` | `u64` | Total errors across all operations |
+| `dlq_count` | `u64` | Events sent to dead letter queue |
+| `encrypt_count` | `u64` | Encryption operations |
+| `decrypt_count` | `u64` | Decryption operations |
+| `validation_count` | `u64` | Schema validation operations |
+| `publish_latency_ms` | `u64` | Cumulative publish latency |
+| `max_publish_latency_ms` | `u64` | Maximum single-publish latency |
+
+### JSON Serialization
+
+`MetricsSnapshot` serializes with camelCase field names for dashboard consumption:
+
+```rust
+let snapshot = bus.metrics().snapshot();
+let json = serde_json::to_string_pretty(&snapshot)?;
+```
+
+```json
+{
+  "publishCount": 1042,
+  "subscribeCount": 5,
+  "unsubscribeCount": 1,
+  "errorCount": 3,
+  "dlqCount": 2,
+  "encryptCount": 1042,
+  "decryptCount": 500,
+  "validationCount": 1042,
+  "publishLatencyMs": 15234,
+  "maxPublishLatencyMs": 87
+}
+```
+
+### Reset Metrics
+
+```rust
+bus.metrics().reset();
+```
+
+Zeroes all counters. Useful for periodic scraping where you want delta values.
+
+### Implementation Details
+
+- All counters use `AtomicU64` with `Ordering::Relaxed` for minimal overhead
+- Max latency uses a lock-free CAS loop (compare-and-swap)
+- Publish latency is measured end-to-end (validation + encryption + provider publish)
+- Error count increments on any failed operation (publish, subscribe, validation, encryption)
+
+## Tracing Spans
+
+A3S Event emits structured `tracing` spans on key operations:
+
+```rust
+use tracing_subscriber;
+
+// Enable tracing output
+tracing_subscriber::init();
+```
+
+### Span Events
+
+| Operation | Span | Fields |
+|-----------|------|--------|
+| Publish | `event.publish` | `subject`, `event_type`, `version` |
+| Subscribe | `event.subscribe` | `subject`, `filter` |
+| Unsubscribe | `event.unsubscribe` | `subject` |
+| Schema Validate | `event.validate` | `event_type`, `version` |
+| Encrypt | `event.encrypt` | `key_id` |
+| Decrypt | `event.decrypt` | `key_id` |
+| DLQ | `event.dlq` | `subject`, `reason` |
+
+Example output with `tracing-subscriber`:
+
+```
+INFO event.publish{subject="orders.created" event_type="order.created" version=1}: a3s_event: publishing event
+INFO event.validate{event_type="order.created" version=1}: a3s_event: schema validation passed
+INFO event.encrypt{key_id="key-v1"}: a3s_event: payload encrypted
+```
+
+## Health Check
+
+```rust
+let is_healthy = bus.health().await?;
+```
+
+| Provider | Behavior |
+|----------|----------|
+| MemoryProvider | Always returns `true` |
+| NatsProvider | Checks NATS connection status |
+
+Use in Kubernetes readiness probes or load balancer health checks:
+
+```rust
+async fn health_handler(bus: &EventBus) -> impl Reply {
+    match bus.health().await {
+        Ok(true) => StatusCode::OK,
+        _ => StatusCode::SERVICE_UNAVAILABLE,
+    }
+}
+```
+
+## Combining All Three
+
+```rust
+use a3s_event::*;
+
+// 1. Tracing for structured logs
+tracing_subscriber::init();
+
+// 2. EventBus with metrics
+let bus = EventBus::new(provider);
+
+// 3. Expose metrics endpoint
+async fn metrics_handler(bus: &EventBus) -> String {
+    serde_json::to_string(&bus.metrics().snapshot()).unwrap()
+}
+
+// 4. Expose health endpoint
+async fn health_handler(bus: &EventBus) -> bool {
+    bus.health().await.unwrap_or(false)
+}
+```

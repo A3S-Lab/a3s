@@ -1,0 +1,120 @@
+---
+title: Quick Start
+description: Get started with A3S Event — publish, subscribe, and query events
+---
+
+# Quick Start
+
+## Installation
+
+```toml
+[dependencies]
+a3s-event = "0.1"
+tokio = { version = "1", features = ["full"] }
+serde_json = "1"
+```
+
+## In-Memory (Development)
+
+```rust
+use a3s_event::{EventBus, MemoryProvider};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let provider = MemoryProvider::new();
+    let bus = EventBus::new(provider);
+
+    // Subscribe
+    let mut rx = bus.subscribe("orders.>").await?;
+
+    // Publish
+    bus.publish(
+        "orders.created",
+        serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
+    ).await?;
+
+    // Receive
+    if let Some(event) = rx.recv().await {
+        println!("Received: {} -> {}", event.subject, event.payload);
+    }
+
+    Ok(())
+}
+```
+
+## NATS JetStream (Production)
+
+```rust
+use a3s_event::{EventBus, NatsProvider, NatsConfig};
+
+let config = NatsConfig {
+    url: "nats://localhost:4222".into(),
+    stream: "EVENTS".into(),
+    ..Default::default()
+};
+
+let provider = NatsProvider::new(config).await?;
+let bus = EventBus::new(provider);
+
+// Durable subscription (survives restarts)
+let mut rx = bus.subscribe_durable("orders.>", "order-processor").await?;
+
+// Publish
+bus.publish(
+    "orders.created",
+    serde_json::json!({ "order_id": "ORD-001" }),
+).await?;
+
+// Receive with manual ack
+while let Some(event) = rx.recv().await {
+    println!("Processing: {}", event.subject);
+    // ... process event ...
+    event.ack().await?;
+}
+```
+
+## With All Features
+
+```rust
+use a3s_event::*;
+use std::sync::Arc;
+
+let provider = MemoryProvider::new();
+let mut bus = EventBus::new(provider);
+
+// Schema validation
+let mut registry = MemorySchemaRegistry::new();
+registry.register(EventSchema {
+    event_type: "order.created".into(),
+    version: 1,
+    required_fields: vec!["order_id".into(), "total".into()],
+});
+bus.set_schema_registry(Arc::new(registry));
+
+// Encryption
+let mut encryptor = Aes256GcmEncryptor::new("key-1", &encryption_key);
+bus.set_encryptor(Arc::new(encryptor));
+
+// Dead letter queue
+let dlq = MemoryDlqHandler::new(100);
+bus.set_dlq_handler(Arc::new(dlq));
+
+// State persistence
+let store = FileStateStore::new("./state/event-bus.json").await?;
+bus.set_state_store(Arc::new(store));
+
+// Publish a typed, versioned event
+bus.publish_typed(
+    "orders.created",
+    "order.created",
+    1,
+    serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
+).await?;
+
+// Check metrics
+let snapshot = bus.metrics().snapshot();
+println!("Published: {}, Errors: {}", snapshot.publish_count, snapshot.error_count);
+
+// Health check
+let healthy = bus.health().await?;
+```
