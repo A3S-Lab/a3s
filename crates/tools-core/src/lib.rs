@@ -38,44 +38,47 @@ use std::path::{Path, PathBuf};
 /// Resolve a path relative to workspace, ensuring it's within bounds
 pub fn resolve_path(workspace: &Path, path: &str) -> Result<PathBuf, String> {
     let resolved = workspace.join(path);
-    
+
     // Canonicalize to resolve .. and symlinks
     let canonical = resolved
         .canonicalize()
         .map_err(|e| format!("Failed to resolve path: {}", e))?;
-    
+
     // Ensure the path is within workspace
     if !canonical.starts_with(workspace) {
         return Err(format!("Path escapes workspace: {}", path));
     }
-    
+
     Ok(canonical)
 }
 
 /// Resolve a path for writing (allows non-existent files)
 pub fn resolve_path_for_write(workspace: &Path, path: &str) -> Result<PathBuf, String> {
     let resolved = workspace.join(path);
-    
+
     // Check parent directory exists and is within workspace
     if let Some(parent) = resolved.parent() {
         if parent.exists() {
             let canonical = parent
                 .canonicalize()
                 .map_err(|e| format!("Failed to resolve parent: {}", e))?;
-            
+
             if !canonical.starts_with(workspace) {
                 return Err(format!("Path escapes workspace: {}", path));
             }
-            
+
             // Return the resolved path with the filename
             if let Some(filename) = resolved.file_name() {
                 return Ok(canonical.join(filename));
             }
         }
     }
-    
+
     // If parent doesn't exist or path is invalid, return error
-    Err(format!("Invalid path or parent directory doesn't exist: {}", path))
+    Err(format!(
+        "Invalid path or parent directory doesn't exist: {}",
+        path
+    ))
 }
 
 #[cfg(test)]
@@ -88,10 +91,10 @@ mod tests {
         let temp = std::env::temp_dir();
         let workspace = temp.join("test_workspace");
         fs::create_dir_all(&workspace).unwrap();
-        
+
         let result = resolve_path(&workspace, ".");
         assert!(result.is_ok());
-        
+
         fs::remove_dir_all(&workspace).ok();
     }
 }

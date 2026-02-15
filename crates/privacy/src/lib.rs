@@ -436,7 +436,7 @@ mod tests {
             tee_threshold: SensitivityLevel::HighlySensitive,
         };
         let matcher = KeywordMatcher::new(config);
-        
+
         assert!(matcher.matches("This is a secret message"));
         assert!(matcher.matches("Enter your password"));
         assert!(!matcher.matches("This is a normal message"));
@@ -451,8 +451,11 @@ mod tests {
             tee_threshold: SensitivityLevel::HighlySensitive,
         };
         let matcher = KeywordMatcher::new(config);
-        
-        assert_eq!(matcher.classify("This is confidential"), SensitivityLevel::HighlySensitive);
+
+        assert_eq!(
+            matcher.classify("This is confidential"),
+            SensitivityLevel::HighlySensitive
+        );
         assert_eq!(matcher.classify("This is public"), SensitivityLevel::Normal);
     }
 }
