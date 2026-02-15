@@ -26,6 +26,10 @@ A3S Box implements the Kubernetes [Container Runtime Interface (CRI)](https://ku
 │  │  Pull → ImagePuller      │    │
 │  │  Status → ImageStore     │    │
 │  ├──────────────────────────┤    │
+│  │    Streaming Server      │    │
+│  │  Exec · Attach · PF      │    │
+│  │  HTTP :18800             │    │
+│  ├──────────────────────────┤    │
 │  │    State Stores          │    │
 │  │  SandboxStore (in-memory)│    │
 │  │  ContainerStore          │    │
@@ -51,6 +55,8 @@ A3S Box implements the Kubernetes [Container Runtime Interface (CRI)](https://ku
 
 Maps CRI pod and container lifecycle to Box VM management:
 
+### Lifecycle
+
 | CRI Method | Box Action |
 |------------|------------|
 | `RunPodSandbox` | Create and boot a new VmManager |
@@ -64,6 +70,79 @@ Maps CRI pod and container lifecycle to Box VM management:
 | `RemoveContainer` | Remove from ContainerStore |
 | `ContainerStatus` | Return container state |
 | `ListContainers` | List containers in a sandbox |
+
+### Exec & Attach
+
+| CRI Method | Box Action |
+|------------|------------|
+| `ExecSync` | Execute command via ExecClient, return stdout/stderr/exit code |
+| `Exec` | Register streaming session, return URL for interactive exec |
+| `Attach` | Register streaming session, return URL for container attach |
+
+### Port Forward & Resources
+
+| CRI Method | Box Action |
+|------------|------------|
+| `PortForward` | Register streaming session, return URL for TCP port proxy |
+| `UpdateContainerResources` | Acknowledge (microVM resources are fixed at boot) |
+| `ReopenContainerLog` | Truncate container log file for rotation |
+
+## Streaming Server
+
+CRI uses a two-phase protocol for interactive operations (`kubectl exec`, `kubectl attach`, `kubectl port-forward`):
+
+1. Kubelet calls the gRPC method (e.g., `Exec`) → returns a streaming URL
+2. Kubelet connects to the URL via HTTP → bidirectional I/O
+
+A3S Box runs an HTTP streaming server (default `127.0.0.1:18800`) that bridges these connections to the existing vsock exec/PTY infrastructure inside the MicroVM.
+
+```
+kubectl exec -it pod -- /bin/sh
+    │
+    ▼
+kubelet → gRPC Exec() → returns http://127.0.0.1:18800/exec/<token>
+    │
+    ▼
+kubelet → HTTP connect to streaming URL
+    │
+    ▼
+Streaming Server → PTY Unix socket → vsock → Guest PTY Server
+    │                                              │
+    └──────── bidirectional terminal I/O ──────────┘
+```
+
+### Exec Modes
+
+| Mode | TTY | Transport | Use Case |
+|------|-----|-----------|----------|
+| Non-interactive | No | ExecClient (HTTP/JSON) | `kubectl exec pod -- ls -la` |
+| Interactive | Yes | PtyClient (frame protocol) | `kubectl exec -it pod -- /bin/sh` |
+
+### Attach
+
+Attach connects to a shell (`/bin/sh`) in the container via the PTY server. This provides the same experience as `kubectl attach -it`.
+
+### Port Forward
+
+Port forwarding proxies TCP connections to guest ports. The streaming server establishes a `socat` bridge inside the guest VM:
+
+```
+kubectl port-forward pod 8080:80
+    │
+    ▼
+Streaming Server → exec "socat STDIO TCP:127.0.0.1:80" in guest
+    │
+    └── bidirectional TCP proxy ──→ guest port 80
+```
+
+### Configuration
+
+The streaming server address can be configured when creating the CRI server:
+
+```rust
+let server = CriServer::new(socket_path, image_store, auth)
+    .with_streaming_addr("0.0.0.0:18800".parse().unwrap());
+```
 
 ## ImageService
 
@@ -183,3 +262,4 @@ metadata:
 | Single node | No multi-node coordination (handled by Kubernetes) |
 | No live migration | VMs cannot be migrated between nodes |
 | Bridge networking | Required for pod-to-pod communication within a node |
+| Fixed resources | `UpdateContainerResources` is acknowledged but microVM CPU/memory cannot be changed after boot |
