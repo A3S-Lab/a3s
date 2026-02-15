@@ -7,9 +7,6 @@
 [submodule "crates/lane"]
 	path = crates/lane
 	url = git@github.com:A3S-Lab/Lane.git
-[submodule "crates/context"]
-	path = crates/context
-	url = git@github.com:A3S-Lab/Context.git
 [submodule "homebrew-tap"]
 	path = homebrew-tap
 	url = git@github.com:A3S-Lab/homebrew-tap.git

@@ -16,7 +16,6 @@ a3s/                            ← THIS IS THE MONOREPO ROOT
 ├── crates/                     # ALL Rust crates live here as git submodules
 │   ├── box/                    # [submodule] git@github.com:A3S-Lab/Box.git
 │   ├── code/                   # [submodule] git@github.com:A3S-Lab/Code.git
-│   ├── context/                # [submodule] git@github.com:A3S-Lab/Context.git
 │   ├── cron/                   # [submodule] git@github.com:A3S-Lab/Cron.git
 │   ├── event/                  # [submodule] git@github.com:A3S-Lab/Event.git
 │   ├── gateway/                # [submodule] git@github.com:A3S-Lab/Gateway.git
