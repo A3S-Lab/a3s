@@ -35,3 +35,7 @@ apps/os/
 
 # A3S
 .a3s/config.json
+# Build artifacts
+crates/code-core/target/
+crates/code-py/target/
+crates/code-node/target/
