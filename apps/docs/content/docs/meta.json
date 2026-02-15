@@ -1,5 +1,6 @@
 {
   "title": "A3S Docs",
+  "root": true,
   "pages": [
     "---Agent---",
     "code",

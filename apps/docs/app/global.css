@@ -1,3 +1,24 @@
 @import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/ocean.css';
 @import 'fumadocs-ui/css/preset.css';
+
+:root {
+  --fd-banner-height: 0px;
+}
+
+/* Custom accent for A3S brand */
+:root:is(.dark) {
+  --color-fd-primary: oklch(0.72 0.19 230);
+  --color-fd-primary-foreground: oklch(0.98 0 0);
+}
+
+/* Refined code blocks */
+[data-rehype-pretty-code-figure] pre {
+  border: 1px solid var(--color-fd-border);
+  border-radius: 0.75rem;
+}
+
+/* Smoother sidebar transitions */
+[data-sidebar] a {
+  transition: color 0.15s, background-color 0.15s;
+}
