@@ -46,7 +46,7 @@ or care what runs inside the VM. Each component can also be used independently a
 
 ```bash
 # Add the A3S tap
-brew tap a3s-lab/tap
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
 
 # Install individual components
 brew install a3s-code       # AI coding agent
@@ -440,7 +440,7 @@ if update.available {
 ### 1. Install
 
 ```bash
-brew tap a3s-lab/tap && brew install a3s-code
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap && brew install a3s-code
 ```
 
 ### 2. Configure
