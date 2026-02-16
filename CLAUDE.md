@@ -332,14 +332,14 @@ grep -rn "pub fn\|pub struct\|pub enum\|pub trait" src/changed_module/ | wc -l
 
 ### Supporting Principles (Reference When Needed)
 
-**7. Minimal Knowledge** — Components only know interfaces, not internals
-**8. No Premature Optimization** — Measure first, optimize later
-**9. Explicit Paths** — Calculate from known roots, never assume
-**10. Prepare Before Execute** — Setup before irreversible operations
-**11. Validate Early** — Check preconditions before expensive work
-**12. Thoughtful Naming** — Consider 5+ alternatives, choose the clearest
-**13. Structured Code** — Organized hierarchy, clear layers, predictable organization
-**14. Idiomatic by Default** — Follow each language's standard patterns and libraries first; only diverge with a clear, documented reason
+**8. Minimal Knowledge** — Components only know interfaces, not internals
+**9. No Premature Optimization** — Measure first, optimize later
+**10. Explicit Paths** — Calculate from known roots, never assume
+**11. Prepare Before Execute** — Setup before irreversible operations
+**12. Validate Early** — Check preconditions before expensive work
+**13. Thoughtful Naming** — Consider 5+ alternatives, choose the clearest
+**14. Structured Code** — Organized hierarchy, clear layers, predictable organization
+**15. Idiomatic by Default** — Follow each language's standard patterns and libraries first; only diverge with a clear, documented reason
 
 ### Quick Examples
 
