@@ -168,38 +168,3 @@
   color: var(--term-green);
   font-size: 0.75rem;
 }
-
-/* Terminal homepage: style Fumadocs nav to match */
-.term-home-wrapper {
-  background: var(--term-bg);
-}
-
-.term-home-wrapper nav,
-.term-home-wrapper header {
-  background: var(--term-bg) !important;
-  border-color: var(--term-muted) !important;
-}
-
-.term-home-wrapper nav a,
-.term-home-wrapper header a,
-.term-home-wrapper nav span,
-.term-home-wrapper header span {
-  color: var(--term-green) !important;
-  font-family: 'JetBrains Mono', monospace !important;
-}
-
-.term-home-wrapper nav a:hover,
-.term-home-wrapper header a:hover {
-  color: var(--term-green) !important;
-  text-shadow: var(--term-glow);
-}
-
-.term-home-wrapper nav svg,
-.term-home-wrapper header svg {
-  color: var(--term-green) !important;
-}
-
-.term-home-wrapper nav button,
-.term-home-wrapper header button {
-  color: var(--term-green) !important;
-}

@@ -80,8 +80,24 @@ export default function HomePage() {
     <main className="term-font" style={{ background: 'var(--term-bg)', color: 'var(--term-green)', minHeight: '100vh' }}>
       <div className="crt-overlay" />
 
+      {/* Terminal Nav */}
+      <nav className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-4 pb-2 flex items-center justify-between text-xs" style={{ borderBottom: '1px solid var(--term-muted)' }}>
+        <Link href="/" className="term-glow font-bold tracking-wider uppercase">
+          &gt; A3S_
+          <span className="animate-blink">█</span>
+        </Link>
+        <div className="flex gap-4">
+          <Link href="/docs/code" className="hover-glitch" style={{ color: 'var(--term-muted)' }}>
+            [docs]
+          </Link>
+          <Link href="https://github.com/A3S-Lab" className="hover-glitch" style={{ color: 'var(--term-muted)' }}>
+            [github]
+          </Link>
+        </div>
+      </nav>
+
       {/* Hero */}
-      <section className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-16 sm:pt-24 pb-12">
+      <section className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-12 sm:pt-20 pb-12">
         <pre
           className="term-glow text-[0.45rem] sm:text-xs leading-tight mb-6 select-none"
           style={{ color: 'var(--term-green)' }}
