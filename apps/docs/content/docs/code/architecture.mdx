@@ -5,64 +5,40 @@ description: System architecture, data flow, and design decisions
 
 # Architecture
 
-## Deployment Modes
+## Library-First Design
 
-A3S Code supports two deployment modes: as a standalone gRPC server, or as an embedded library with zero IPC overhead.
-
-### Server Mode (gRPC)
-
-A gRPC service (port 4088) that manages multiple AI coding sessions. SDK clients connect over the network.
+A3S Code is a library-first framework. The core (`a3s-code-core`) embeds directly in your application via native bindings — no server, no IPC overhead.
 
 ```
-SDK (Python/TS/CLI)
+Your Application (Rust / TypeScript / Python)
     │
-    ▼ gRPC (86 RPCs)
-┌─────────────────────────────────────────────────────────────┐
-│  CodeAgentService                                           │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │  SessionManager                                         ││
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐ ││
-│  │  │ Session A │ │ Session B │ │ Session C │ │    ...    │ ││
-│  │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └───────────┘ ││
-│  └───────┼─────────────┼───────────┼───────────────────────┘│
-│          ▼             ▼           ▼                         │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │  Agent Loop (per session)                               ││
-│  │  1. Send prompt + context to LLM                        ││
-│  │  2. LLM returns text or tool_use                        ││
-│  │  3. If tool_use → check permissions → HITL → execute    ││
-│  │  4. Feed tool result back to LLM                        ││
-│  │  5. Repeat until LLM returns text-only (max 50 rounds)  ││
-│  └─────────────────────────────────────────────────────────┘│
-│          │                                                   │
-│  ┌───────▼─────────────────────────────────────────────────┐│
-│  │  Shared Infrastructure                                  ││
-│  │  ToolExecutor │ HookEngine │ SecurityGuard │ MemoryStore││
-│  └─────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Library Mode (Embedded)
-
-Use `a3s-code-core` directly in Rust, Python, or Node.js without running a server. Zero IPC overhead.
-
-```
-Your Application
-    │
-    ▼ Direct function calls
-┌─────────────────────────────────────┐
-│  a3s-code-core                      │
-│  Agent::builder()                   │
-│    .workspace("/project")           │
-│    .provider("anthropic")           │
-│    .model("claude-sonnet-4-...")     │
-│    .extra_tools(my_tools)           │
-│    .build()                         │
-│                                     │
-│  agent.generate("Fix the bug")      │
-│  agent.read_file("src/main.rs")     │
-│  agent.bash("cargo test")           │
-└─────────────────────────────────────┘
+    ▼ Agent::new("agent.hcl") / Agent.create("agent.hcl")
+┌──────────────────────────────────────────────────────┐
+│  Agent (config-driven, workspace-independent)         │
+│  ┌────────────┬──────────────┬─────────────────────┐ │
+│  │ LlmClient  │  CodeConfig  │   SessionManager    │ │
+│  └────────────┴──────────────┴─────────────────────┘ │
+│                       │                               │
+│        agent.session("/workspace", options?)           │
+│                       ▼                               │
+│  ┌──────────────────────────────────────────────┐    │
+│  │  AgentSession (workspace-bound)               │    │
+│  │  ┌─────────┬──────────┬──────────┬─────────┐ │    │
+│  │  │ Agent   │ Tool     │Permission│  LLM    │ │    │
+│  │  │ Loop    │ Executor │ System   │ Provider│ │    │
+│  │  │         │ (14)     │          │         │ │    │
+│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
+│  │  │ Skills  │ Subagent │  Hook    │  MCP    │ │    │
+│  │  │         │          │  Engine  │         │ │    │
+│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
+│  │  │ Llm     │ Security │ Memory   │ File    │ │    │
+│  │  │ Planner │          │          │ History │ │    │
+│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
+│  │  │ Context │ Cost     │ Cron     │ Session │ │    │
+│  │  │Compactor│ Tracking │Scheduler │ Store   │ │    │
+│  │  └─────────┴──────────┴──────────┴─────────┘ │    │
+│  └──────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────┘
 ```
 
 Native bindings:
@@ -73,24 +49,36 @@ Native bindings:
 | Python | `a3s-code` | PyO3 |
 | Node.js | `@a3s-lab/code` | napi-rs |
 
+## Core Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Agent** | Config-driven top-level object. Holds LLM client and config. Workspace-independent. |
+| **AgentSession** | Bound to a specific workspace. All LLM interaction and tool execution happens here. |
+| **SessionOptions** | Optional per-session override: model (`provider/model` format). |
+| **AgentLoop** | Core execution engine driving the LLM ↔ tool multi-turn loop. |
+| **ToolExecutor** | Tool registry and execution. Manages 14 tools (11 core + 3 skill discovery). |
+| **LlmPlanner** | JSON-structured planning — decomposes complex tasks into execution plans. |
+| **AgentEvent** | `#[non_exhaustive]` event enum emitted during streaming — safe for SDK evolution. |
+
 ## Agent Loop
 
-The core execution cycle runs server-side. Each round:
+The core execution cycle. Each round:
 
 1. **GenerateStart hook** fires — injection detector scans the prompt
-2. **LLM call** — streaming SSE to Anthropic or OpenAI-compatible API
+2. **LLM call** — streaming to Anthropic or OpenAI-compatible API
 3. **GenerateEnd hook** fires — output sanitizer redacts PII
 4. If LLM returns `tool_use`:
    - **PreToolUse hook** fires — taint tracker and interceptor check for data leakage
    - **Permission check** — Deny → Allow → Ask → Default evaluation
-   - **HITL confirmation** — if required, wait for SDK client approval (with timeout)
+   - **HITL confirmation** — if required, wait for user approval (with timeout)
    - **Guard policy** — defense-in-depth check on ToolExecutor
    - **Tool execution** — run the tool, capture output
    - **PostToolUse hook** fires — audit logging
 5. Feed tool result back to LLM, go to step 1
 6. If LLM returns text-only → done
 
-Maximum 50 rounds per generation to prevent infinite loops.
+Maximum rounds per generation configurable via `max_tool_rounds` (default: 50).
 
 ## Defense-in-Depth Security
 
@@ -103,30 +91,6 @@ Five independent security layers, each capable of blocking a request:
 | 3 | Hook-based Security | SecurityGuard registers at priority 1 (highest): taint tracking, injection detection, output sanitization |
 | 4 | Guard Policy | Defense-in-depth check on ToolExecutor before every execution |
 | 5 | Skill Tool Filters | Per-skill `allowed_tools` restrictions enforced in agent loop |
-
-## Session Lifecycle
-
-```
-Created → Active → Paused → Active → Completed
-                ↘ Error
-```
-
-- **Active**: Accepting prompts, running agent loop
-- **Paused**: Temporarily suspended, can resume
-- **Completed**: Finished, read-only
-- **Error**: Unrecoverable failure
-
-## Persistence
-
-Three storage backends:
-
-| Backend | Use case |
-|---------|----------|
-| `memory` | Default, no persistence across restarts |
-| `file` | JSONL files in `~/.a3s/sessions/` |
-| `custom` | Inject external store (PostgreSQL, Redis) via `start_server_with_store()` |
-
-Session state includes conversation history, configuration, and metadata. API keys are excluded from persistence — they must be re-provided on session restore.
 
 ## Context Management
 
@@ -149,4 +113,12 @@ The `task` tool delegates work to child agents with restricted tool access:
 | `general` | all except task | Complex multi-step tasks |
 | `plan` | read, grep, glob, ls | Design implementation approach |
 
-Child sessions inherit the parent's confirmation policy.
+## Persistence
+
+Three storage backends:
+
+| Backend | Use case |
+|---------|----------|
+| `memory` | Default, no persistence across restarts |
+| `file` | JSONL files in configured `sessions_dir` |
+| `custom` | Inject external store (PostgreSQL, Redis) |

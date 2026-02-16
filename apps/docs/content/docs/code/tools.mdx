@@ -1,13 +1,13 @@
 ---
 title: Built-in Tools
-description: 11 built-in tools for file operations, shell execution, and web access
+description: 14 built-in tools for file operations, shell execution, web access, and skill discovery
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Built-in Tools
 
-A3S Code ships with 11 built-in tools that cover file operations, shell execution, search, and web access. Tools are available in both native (library) and gRPC (server) modes.
+A3S Code ships with 14 built-in tools: 11 core tools covering file operations, shell execution, search, and web access, plus 3 skill discovery tools for runtime skill management. All tools are available through the session's agent loop or via direct tool execution.
 
 ## Tool Reference
 
@@ -162,21 +162,21 @@ Supported natural language formats:
 - English: `every 5 minutes`, `daily at 2am`, `every monday at 9:30`
 - Chinese: `每5分钟`, `每天凌晨2点`, `每周一上午9点30分`
 
-## Direct Tool Execution (Native)
+## Direct Tool Execution
 
-In native mode, call tools directly without going through the LLM:
+Call tools directly on the session without going through the LLM:
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 ```rust
 // Convenience wrappers
-let content = agent.read_file("src/main.rs").await?;
-let output = agent.bash("cargo test --lib").await?;
-let files = agent.glob("**/*.rs").await?;
-let matches = agent.grep("fn main").await?;
+let content = session.read_file("src/main.rs").await?;
+let output = session.bash("cargo test --lib").await?;
+let files = session.glob("**/*.rs").await?;
+let matches = session.grep("fn main").await?;
 
 // Generic tool call with JSON args
-let result = agent.tool("edit", serde_json::json!({
+let result = session.tool("edit", serde_json::json!({
     "path": "src/main.rs",
     "old_string": "fn main() {",
     "new_string": "fn main() -> Result<()> {"
@@ -184,16 +184,33 @@ let result = agent.tool("edit", serde_json::json!({
 println!("[{}] {}", result.exit_code, result.output);
 ```
 </Tab>
+<Tab value="TypeScript">
+```typescript
+// Convenience wrappers
+const content = await session.readFile('src/main.rs');
+const output = await session.bash('cargo test --lib');
+const files = await session.glob('**/*.rs');
+const matches = await session.grep('fn main');
+
+// Generic tool call
+const result = await session.tool('edit', {
+  path: 'src/main.rs',
+  old_string: 'fn main() {',
+  new_string: 'fn main() -> Result<()> {',
+});
+console.log(`[${result.exitCode}] ${result.output}`);
+```
+</Tab>
 <Tab value="Python">
 ```python
 # Convenience wrappers
-content = agent.read_file("src/main.rs")
-output = agent.bash("cargo test --lib")
-files = agent.glob("**/*.rs")
-matches = agent.grep("fn main")
+content = session.read_file("src/main.rs")
+output = session.bash("cargo test --lib")
+files = session.glob("**/*.rs")
+matches = session.grep("fn main")
 
 # Generic tool call with dict args
-result = agent.tool("edit", {
+result = session.tool("edit", {
     "path": "src/main.rs",
     "old_string": "fn main() {",
     "new_string": "fn main() -> Result<()> {"
@@ -201,24 +218,19 @@ result = agent.tool("edit", {
 print(f"[{result['exit_code']}] {result['output']}")
 ```
 </Tab>
-<Tab value="Node.js">
-```typescript
-// Convenience wrappers
-const content = await agent.readFile('src/main.rs');
-const output = await agent.bash('cargo test --lib');
-const files = await agent.glob('**/*.rs');
-const matches = await agent.grep('fn main');
-
-// Generic tool call
-const result = await agent.tool('edit', {
-  path: 'src/main.rs',
-  old_string: 'fn main() {',
-  new_string: 'fn main() -> Result<()> {',
-});
-console.log(`[${result.exit_code}] ${result.output}`);
-```
-</Tab>
 </Tabs>
+
+## Skill Discovery
+
+Three native Rust tools for runtime skill management:
+
+| Tool | Purpose |
+|------|---------|
+| `search_skills` | Search GitHub for available skills |
+| `install_skill` | Install a skill from GitHub |
+| `load_skill` | Load and register an installed skill |
+
+These tools allow the agent to discover, install, and activate new skills during a session without requiring a restart.
 
 ## File Version History
 
@@ -233,5 +245,4 @@ All file-modifying tools (`write`, `edit`, `patch`) automatically capture a snap
 Beyond built-in tools, A3S Code supports:
 
 - [Skills](/docs/code/skills) — Markdown-based prompt extensions with tool permissions
-- [MCP](/docs/code/mcp) — External tools via Model Context Protocol
-- [LSP](/docs/code/lsp) — Code intelligence via Language Server Protocol
+- [Custom Tools](/docs/code/custom-tools) — Binary, HTTP, Script backends and MCP servers

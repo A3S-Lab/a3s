@@ -1,131 +1,97 @@
 ---
 title: A3S Code
-description: Production-ready AI coding agent framework — embeddable Rust core with native bindings, gRPC server mode, 11 built-in tools, and defense-in-depth security
+description: Library-first AI coding agent framework — embeddable Rust core with native Node.js and Python bindings, config-driven multi-provider LLM, 14 built-in tools, and defense-in-depth security
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # A3S Code
 
-A3S Code is a high-performance Rust framework for building AI coding agents. It ships as an embeddable library (`a3s-code-core`) with native Python and Node.js bindings, and optionally as a gRPC server with 86 RPCs for multi-session management.
+A3S Code is a high-performance Rust framework for building AI coding agents. It ships as an embeddable library (`a3s-code-core`) with native Python and Node.js bindings.
 
-All subsystems — hooks, security, memory, MCP/LSP tools, subagent delegation, planning — are wired into the core execution path and active by default.
+All subsystems — hooks, security, memory, MCP, subagent delegation, planning — are wired into the core and active by default.
 
 ## Key Features
 
-- **Dual Mode** — Embed as a library (zero IPC) or run as a gRPC server (multi-session)
-- **Native Bindings** — Rust, Python (PyO3), Node.js (napi-rs) — no serialization overhead
-- **11 Built-in Tools** — bash, read, write, edit, patch, grep, glob, ls, web_fetch, web_search, cron
+- **Library-First** — Embeddable Rust library, no server needed
+- **Native SDKs** — Node.js (napi-rs) and Python (PyO3) bindings
+- **Config-Driven** — Multi-provider LLM config via HCL or JSON
+- **Session-Per-Workspace** — One Agent serves many workspaces
+- **Per-Session Model Override** — Use different models per session via `provider/model`
+- **14 Built-in Tools** — 11 core tools + 3 skill discovery tools (search_skills, install_skill, load_skill)
 - **Permission System** — Allow/Deny/Ask rules for fine-grained tool access control
 - **Human-in-the-Loop** — Require user confirmation before sensitive operations
-- **Skills System** — Extend the agent with Markdown-based prompt-injection skills
+- **Skills System** — Markdown-based prompt-injection skills with runtime discovery and installation
 - **Subagent Delegation** — Delegate specialized tasks to focused child agents
-- **Server-Side Agentic Loop** — Full agentic loop with streaming events
-- **LSP & MCP Integration** — Code intelligence and external tool protocols
-- **Security Guards** — Output sanitization, taint tracking, injection detection, tool interception
-- **Observability** — OpenTelemetry spans, per-session cost tracking, tool metrics
+- **MCP Integration** — External tools via Model Context Protocol (JSON-RPC 2.0, stdio + HTTP+SSE)
+- **8 Lifecycle Hooks** — Pre/post events for tool calls, sessions, messages, and errors
+- **Security** — 5 layers: sanitizer, taint tracking, interceptor, injection detection, audit logging
+- **Memory** — 4 types: episodic, semantic, procedural, working memory
+- **JSON-Structured Planning** — Execution plans and goal tracking via LlmPlanner
+- **Context Compaction** — Auto-summarize long conversations (80% threshold)
+- **File History** — Auto-snapshots (500-snapshot capacity) with diff and restore
+- **Cost Tracking** — Per-session token cost calculation with per-model pricing
+- **`#[non_exhaustive]` Events** — AgentEvent uses `#[non_exhaustive]` for safe SDK evolution
 
 ## Quick Example
 
-<Tabs groupId="lang" items={['Rust (Native)', 'Python (Native)', 'Node.js (Native)', 'TypeScript (gRPC)', 'Python (gRPC)']}>
-<Tab value="Rust (Native)">
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
 ```rust
-use a3s_code_core::Agent;
+use a3s_code_core::{Agent, AgentEvent, SessionOptions};
 
-let agent = Agent::builder()
-    .model("claude-sonnet-4-20250514")
-    .api_key("sk-ant-...")
-    .workspace("/project")
-    .system_prompt("You are a senior engineer.")
-    .build()
-    .await?;
+// Create agent from config file
+let agent = Agent::new("agent.hcl").await?;
 
-// Streaming
-let (mut rx, handle) = agent.stream("Refactor the auth module").await?;
+// Bind session to workspace
+let session = agent.session("/my-project", None)?;
+
+// Streaming (AgentEvent is #[non_exhaustive] — always include a wildcard arm)
+let (mut rx, _handle) = session.stream("Refactor the auth module").await?;
 while let Some(event) = rx.recv().await {
     match event {
         AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::ToolStart { name, .. } => println!("\nTool: {name}"),
-        AgentEvent::ToolEnd { name, output, .. } => {
-            println!("  → {}", &output[..100.min(output.len())]);
-        }
-        _ => {}
+        AgentEvent::ToolCall { name, .. } => println!("\nTool: {name}"),
+        AgentEvent::End { .. } => break,
+        _ => {} // required: AgentEvent is #[non_exhaustive]
     }
 }
-let result = handle.await??;
-println!("\nTokens: {}", result.usage.total_tokens);
 ```
 </Tab>
-<Tab value="Python (Native)">
+<Tab value="TypeScript">
+```typescript
+const { Agent } = require('@a3s-lab/code');
+
+// Create agent from config file
+const agent = await Agent.create('agent.hcl');
+
+// Bind session to workspace
+const session = agent.session('/my-project');
+
+// Streaming
+const events = await session.stream('Refactor the auth module');
+for (const event of events) {
+  if (event.type === 'text_delta') process.stdout.write(event.text);
+  if (event.type === 'tool_start') console.log(`\nTool: ${event.toolName}`);
+}
+```
+</Tab>
+<Tab value="Python">
 ```python
 from a3s_code import Agent
 
-agent = Agent(
-    model="claude-sonnet-4-20250514",
-    api_key="sk-ant-...",
-    workspace="/project",
-    system_prompt="You are a senior engineer.",
-)
+# Create agent from config file
+agent = Agent.create("agent.hcl")
 
-for event in agent.stream("Refactor the auth module"):
+# Bind session to workspace
+session = agent.session("/my-project")
+
+# Streaming
+for event in session.stream("Refactor the auth module"):
     if event.event_type == "text_delta":
         print(event.text, end="", flush=True)
     elif event.event_type == "tool_start":
         print(f"\nTool: {event.tool_name}")
-```
-</Tab>
-<Tab value="Node.js (Native)">
-```typescript
-import { Agent } from '@a3s-lab/code';
-
-const agent = new Agent({
-  model: 'claude-sonnet-4-20250514',
-  apiKey: 'sk-ant-...',
-  workspace: '/project',
-  systemPrompt: 'You are a senior engineer.',
-});
-
-const events = await agent.stream('Refactor the auth module');
-for (const event of events) {
-  if (event.type === 'text_delta') process.stdout.write(event.text);
-  if (event.type === 'tool_start') console.log(`\nTool: ${event.tool_name}`);
-}
-```
-</Tab>
-<Tab value="TypeScript (gRPC)">
-```typescript
-import { A3sClient, createProvider } from '@a3s-lab/code';
-
-const client = new A3sClient({ address: 'localhost:4088' });
-const anthropic = createProvider({ name: 'anthropic', apiKey: 'sk-ant-...' });
-
-await using session = await client.createSession({
-  model: anthropic('claude-sonnet-4-20250514'),
-  workspace: '/project',
-  system: 'You are a senior engineer.',
-});
-
-for await (const event of session.stream('Refactor the auth module')) {
-  if (event.textDelta) process.stdout.write(event.textDelta);
-  if (event.toolStart) console.log(`\nTool: ${event.toolStart.name}`);
-}
-```
-</Tab>
-<Tab value="Python (gRPC)">
-```python
-from a3s_code import A3sClient, create_provider
-
-anthropic = create_provider(name="anthropic", api_key="sk-ant-...")
-
-async with A3sClient(address="localhost:4088") as client:
-    async with await client.session(
-        model=anthropic("claude-sonnet-4-20250514"),
-        workspace="/project",
-        system="You are a senior engineer.",
-    ) as session:
-        async for event in session.stream("Refactor the auth module"):
-            if event.type == "text":
-                print(event.content, end="", flush=True)
 ```
 </Tab>
 </Tabs>
@@ -133,28 +99,33 @@ async with A3sClient(address="localhost:4088") as client:
 ## Architecture at a Glance
 
 ```
-Native Mode (Library)                    Server Mode (gRPC)
-─────────────────────                    ──────────────────
-Your App                                 SDK Client (TS/Python)
-  │                                        │
-  ▼ Direct calls                           ▼ gRPC :4088
-┌──────────────────┐                     ┌──────────────────────────────┐
-│ a3s-code-core    │                     │ CodeAgentService             │
-│ Agent::builder() │                     │ SessionManager → Agent Loop  │
-│ .send() .stream()│                     │ 86 RPCs, multi-session       │
-└──────────────────┘                     └──────────────────────────────┘
-        │                                          │
-        └──────────────┬───────────────────────────┘
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Shared Core                                                │
-│  ┌─────────────┬─────────────┬─────────────┬──────────────┐ │
-│  │    Tool     │ Permission  │     LLM     │   Security   │ │
-│  │  Executor   │   System    │   Provider  │    Guard     │ │
-│  └─────────────┴─────────────┴─────────────┴──────────────┘ │
-│  ┌─────────────┬─────────────┬─────────────┬──────────────┐ │
-│  │   Skills    │  Subagent   │   LSP/MCP   │   Memory     │ │
-│  │   System    │  Task Tool  │   (auto)    │  & Planning  │ │
-│  └─────────────┴─────────────┴─────────────┴──────────────┘ │
-└─────────────────────────────────────────────────────────────┘
+Your App (Rust / TypeScript / Python)
+  │
+  ▼ Agent.create("agent.hcl")
+┌──────────────────────────────────────────────────────┐
+│  Agent (config-driven, workspace-independent)         │
+│  ┌────────────┬──────────────┬─────────────────────┐ │
+│  │ LlmClient  │  CodeConfig  │   SessionManager    │ │
+│  └────────────┴──────────────┴─────────────────────┘ │
+│                       │                               │
+│        agent.session("/workspace", options)            │
+│                       ▼                               │
+│  ┌──────────────────────────────────────────────┐    │
+│  │  AgentSession (workspace-bound)               │    │
+│  │  ┌─────────┬──────────┬──────────┬─────────┐ │    │
+│  │  │ Agent   │ Tool     │Permission│  LLM    │ │    │
+│  │  │ Loop    │ Executor │ System   │ Provider│ │    │
+│  │  │         │ (14)     │          │         │ │    │
+│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
+│  │  │ Skills  │ Subagent │  Hook    │  MCP    │ │    │
+│  │  │         │          │  Engine  │         │ │    │
+│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
+│  │  │ Llm     │ Security │ Memory   │ File    │ │    │
+│  │  │ Planner │          │          │ History │ │    │
+│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
+│  │  │ Context │ Cost     │ Cron     │ Session │ │    │
+│  │  │Compactor│ Tracking │Scheduler │ Store   │ │    │
+│  │  └─────────┴──────────┴──────────┴─────────┘ │    │
+│  └──────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────┘
 ```

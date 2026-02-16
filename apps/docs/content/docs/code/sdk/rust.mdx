@@ -1,55 +1,54 @@
 ---
-title: Rust SDK (Native)
-description: Embed A3S Code directly in Rust with zero IPC overhead
+title: Rust SDK
+description: Embed A3S Code directly in Rust — the native core library
 ---
 
-# Rust SDK (Native)
+# Rust SDK
 
-The Rust SDK (`a3s-code-core`) embeds the full agent runtime directly in your application. No gRPC server, no serialization — just direct function calls with the same 11 built-in tools, security guards, and agentic loop.
+The Rust SDK (`a3s-code-core`) is the native core library. All other SDKs are bindings to this crate.
 
 ## Installation
 
 ```toml
 [dependencies]
-a3s-code-core = "0.6"
+a3s-code-core = "0.1"
 tokio = { version = "1", features = ["full"] }
 ```
 
-## Agent Builder
+## Create Agent
 
 ```rust
-use a3s_code_core::{Agent, AgentEvent, AgentResult};
+use a3s_code_core::{Agent, AgentEvent, SessionOptions};
 
-let agent = Agent::builder()
-    .model("claude-sonnet-4-20250514")           // Required
-    .api_key("sk-ant-...")                       // Required
-    .workspace("/my-project")                    // Optional (defaults to cwd)
-    .system_prompt("You are a helpful assistant.") // Optional
-    .base_url("https://custom-api.com")          // Optional (custom endpoint)
-    .thinking_budget(4096)                       // Optional (reasoning tokens)
-    .max_tool_rounds(10)                         // Optional (default: 50)
-    .with_hooks(Arc::new(HookEngine::new()))     // Optional (hook engine)
-    .extra_tools(vec![my_tool_def])              // Optional (custom tools)
-    .build()
-    .await?;
+// From config file (.hcl or .json)
+let agent = Agent::new("agent.hcl").await?;
+
+// From inline JSON
+let agent = Agent::new(r#"{"defaultModel": "anthropic/claude-sonnet-4-20250514", ...}"#).await?;
+
+// From CodeConfig struct
+let agent = Agent::from_config(config).await?;
 ```
 
-### Model Auto-Detection
+## Create Session
 
-The builder auto-detects the provider from the model name:
+```rust
+// Default session (uses config's default model)
+let session = agent.session("/my-project", None)?;
 
-| Model prefix | Provider |
-|-------------|----------|
-| `claude-*` | Anthropic |
-| `gpt-*`, `o1-*`, `o3-*` | OpenAI |
-| Custom `base_url` | OpenAI-compatible |
+// Override model for this session
+let session = agent.session("/my-project", Some(
+    SessionOptions::new()
+        .with_model("openai/gpt-4o")
+))?;
+```
 
 ## Send (Non-Streaming)
 
 ```rust
-let result = agent.send("What files handle authentication?").await?;
+let result = session.send("What files handle authentication?").await?;
 
-println!("{}", result.text);                    // Final response
+println!("{}", result.text);
 println!("Tools called: {}", result.tool_calls_count);
 println!("Tokens: {}", result.usage.total_tokens);
 ```
@@ -57,7 +56,8 @@ println!("Tokens: {}", result.usage.total_tokens);
 ## Stream
 
 ```rust
-let (mut rx, handle) = agent.stream("Refactor the auth module").await?;
+// AgentEvent is #[non_exhaustive] — always include a wildcard arm
+let (mut rx, _handle) = session.stream("Refactor the auth module").await?;
 
 while let Some(event) = rx.recv().await {
     match event {
@@ -70,10 +70,10 @@ while let Some(event) = rx.recv().await {
         AgentEvent::TextDelta { text } => {
             print!("{text}");
         }
-        AgentEvent::ToolStart { id, name } => {
+        AgentEvent::ToolCall { id, name } => {
             println!("\n🔧 {name} ({id})");
         }
-        AgentEvent::ToolEnd { id, name, output, exit_code } => {
+        AgentEvent::ToolResult { id, name, output, exit_code } => {
             println!("  → [{exit_code}] {}", &output[..200.min(output.len())]);
         }
         AgentEvent::TurnEnd { turn, usage } => {
@@ -81,15 +81,14 @@ while let Some(event) = rx.recv().await {
         }
         AgentEvent::End { text, usage } => {
             println!("\n✅ Done: {} tokens", usage.total_tokens);
+            break;
         }
         AgentEvent::Error { message } => {
             eprintln!("❌ {message}");
         }
+        _ => {} // required: AgentEvent is #[non_exhaustive]
     }
 }
-
-// Wait for completion
-let result = handle.await??;
 ```
 
 ## Conversation History
@@ -105,10 +104,7 @@ let history = vec![
 ];
 
 // Continue the conversation
-let result = agent.send_with_history(&history, "Now explain main.rs").await?;
-
-// Or stream with history
-let (mut rx, handle) = agent.stream_with_history(&history, "Refactor main.rs").await?;
+let result = session.send_with_history(&history, "Now explain main.rs").await?;
 ```
 
 ## Direct Tool Execution
@@ -117,62 +113,16 @@ Call tools directly without going through the LLM:
 
 ```rust
 // Generic tool call
-let result = agent.tool("bash", serde_json::json!({
+let result = session.tool("bash", serde_json::json!({
     "command": "cargo test --lib"
 })).await?;
 println!("Exit: {}, Output: {}", result.exit_code, result.output);
 
 // Convenience wrappers
-let content = agent.read_file("src/main.rs").await?;
-let output = agent.bash("git status").await?;
-let files = agent.glob("**/*.rs").await?;
-let matches = agent.grep("fn main").await?;
-```
-
-## Custom Tools
-
-Register custom tools via the `Tool` trait:
-
-```rust
-use a3s_code_core::tools::{Tool, ToolContext, ToolOutput};
-use async_trait::async_trait;
-
-struct DeployTool;
-
-#[async_trait]
-impl Tool for DeployTool {
-    fn name(&self) -> &str { "deploy" }
-    fn description(&self) -> &str { "Deploy to production" }
-
-    fn parameters(&self) -> serde_json::Value {
-        serde_json::json!({
-            "type": "object",
-            "properties": {
-                "env": { "type": "string", "enum": ["staging", "production"] },
-                "tag": { "type": "string" }
-            },
-            "required": ["env", "tag"]
-        })
-    }
-
-    async fn execute(&self, args: &serde_json::Value, ctx: &ToolContext) -> Result<ToolOutput> {
-        let env = args["env"].as_str().unwrap_or("staging");
-        let tag = args["tag"].as_str().unwrap_or("latest");
-        Ok(ToolOutput {
-            content: format!("Deployed {tag} to {env}"),
-            success: true,
-            metadata: None,
-        })
-    }
-}
-
-// Inject via builder
-let agent = Agent::builder()
-    .model("claude-sonnet-4-20250514")
-    .api_key("sk-ant-...")
-    .extra_tools(vec![Arc::new(DeployTool)])
-    .build()
-    .await?;
+let content = session.read_file("src/main.rs").await?;
+let output = session.bash("git status").await?;
+let files = session.glob("**/*.rs").await?;
+let matches = session.grep("fn main").await?;
 ```
 
 ## Return Types
@@ -190,30 +140,23 @@ pub struct TokenUsage {
     pub total_tokens: usize,
 }
 
-pub struct ToolResult {
+pub struct ToolCallResult {
     pub name: String,
     pub output: String,
     pub exit_code: i32,
 }
 
+#[non_exhaustive]
 pub enum AgentEvent {
     Start { prompt: String },
     TurnStart { turn: usize },
     TextDelta { text: String },
-    ToolStart { id: String, name: String },
-    ToolEnd { id: String, name: String, output: String, exit_code: i32 },
+    ToolCall { id: String, name: String },
+    ToolResult { id: String, name: String, output: String, exit_code: i32 },
+    ToolOutputDelta { id: String, name: String, delta: String },
     TurnEnd { turn: usize, usage: TokenUsage },
     End { text: String, usage: TokenUsage },
     Error { message: String },
+    // ... future variants may be added
 }
 ```
-
-## When to Use Native vs gRPC
-
-| | Native (Library) | gRPC (Server) |
-|---|---|---|
-| Latency | Zero IPC overhead | Network round-trip |
-| Sessions | Single agent instance | Multi-session management |
-| Concurrency | Your app manages it | Built-in session isolation |
-| Features | Core agent loop + tools | Full 86 RPCs (HITL, cron, memory, etc.) |
-| Best for | Embedded agents, CLIs, pipelines | Multi-tenant services, IDEs |

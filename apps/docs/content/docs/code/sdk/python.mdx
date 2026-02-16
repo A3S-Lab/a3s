@@ -1,16 +1,11 @@
 ---
 title: Python SDK
-description: Native PyO3 bindings and gRPC client for A3S Code
+description: Native PyO3 bindings for A3S Code
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Python SDK
 
-The `a3s-code` package provides two APIs:
-
-- **Native mode** — Direct PyO3 bindings to `a3s-code-core`. Zero IPC, synchronous API.
-- **gRPC mode** — Async client connecting to a running `a3s-code` server. Multi-session, 86 RPCs.
+The `a3s-code` package provides native PyO3 bindings to `a3s-code-core`. Synchronous API — all calls block until completion.
 
 ## Installation
 
@@ -18,30 +13,40 @@ The `a3s-code` package provides two APIs:
 pip install a3s-code
 ```
 
-## Native Mode
-
-Use the `Agent` class for embedded usage — no server required.
-
-### Basic Usage
+## Create Agent
 
 ```python
 from a3s_code import Agent
 
-agent = Agent(
-    model="claude-sonnet-4-20250514",
-    api_key="sk-ant-...",
-    workspace="/project",
-    system_prompt="You are a senior engineer.",
-    max_tool_rounds=30,
-)
+# From config file (.hcl or .json)
+agent = Agent.create("agent.hcl")
 
-# Non-streaming (blocking)
-result = agent.send("What files handle authentication?")
+# From inline JSON string
+agent = Agent.create('{"defaultModel": "anthropic/claude-sonnet-4-20250514", ...}')
+```
+
+## Create Session
+
+```python
+# Default session (uses config's default model)
+session = agent.session("/my-project")
+
+# Override model for this session
+session = agent.session("/my-project", model="openai/gpt-4o")
+```
+
+## Send (Non-Streaming)
+
+```python
+result = session.send("What files handle authentication?")
 print(result.text)
 print(f"Tools: {result.tool_calls_count}, Tokens: {result.total_tokens}")
+```
 
-# Streaming (iterator)
-for event in agent.stream("Refactor the auth module"):
+## Stream
+
+```python
+for event in session.stream("Refactor the auth module"):
     if event.event_type == "text_delta":
         print(event.text, end="", flush=True)
     elif event.event_type == "tool_start":
@@ -50,21 +55,21 @@ for event in agent.stream("Refactor the auth module"):
         print(f"  → {event.tool_output[:100]}")
 ```
 
-### Direct Tool Execution
+## Direct Tool Execution
 
 ```python
 # Generic tool call
-result = agent.tool("bash", {"command": "cargo test"})
+result = session.tool("bash", {"command": "cargo test"})
 print(f"[{result['exit_code']}] {result['output']}")
 
 # Convenience wrappers
-content = agent.read_file("src/main.rs")
-output = agent.bash("git status")
-files = agent.glob("**/*.py")
-matches = agent.grep("def main")
+content = session.read_file("src/main.rs")
+output = session.bash("git status")
+files = session.glob("**/*.py")
+matches = session.grep("def main")
 ```
 
-### Return Types
+## Return Types
 
 ```python
 class AgentResult:
@@ -87,171 +92,6 @@ class AgentEvent:
     total_tokens: int | None     # For turn_end, end
 ```
 
-### Model Auto-Detection
+## Notes
 
-The provider is auto-detected from the model name:
-
-| Model prefix | Provider |
-|-------------|----------|
-| `claude-*` | Anthropic |
-| `gpt-*`, `o1-*`, `o3-*` | OpenAI |
-| Custom `base_url` | OpenAI-compatible |
-
-```python
-# Anthropic (auto-detected)
-agent = Agent(model="claude-sonnet-4-20250514", api_key="sk-ant-...")
-
-# OpenAI (auto-detected)
-agent = Agent(model="gpt-4o", api_key="sk-...")
-
-# Custom endpoint
-agent = Agent(model="kimi-k2.5", api_key="sk-...", base_url="http://your-endpoint/v1")
-```
-
----
-
-## gRPC Mode
-
-Use `A3sClient` for multi-session management against a running `a3s-code` server.
-
-### High-Level API
-
-```python
-from a3s_code import A3sClient, create_provider
-
-anthropic = create_provider(name="anthropic", api_key="sk-ant-...")
-
-async with A3sClient(address="localhost:4088") as client:
-    async with await client.session(
-        model=anthropic("claude-sonnet-4-20250514"),
-        workspace="/project",
-        system="You are a senior engineer.",
-        auto_compact=True,
-    ) as session:
-        # Server-side agentic loop with streaming
-        async for event in session.stream("Refactor the auth module"):
-            if event.type == "text":
-                print(event.content, end="", flush=True)
-
-        # Non-streaming
-        result = await session.send("Explain this codebase")
-        print(result.text)
-
-        # Delegate to subagent
-        explore = await session.delegate("explore", "Find all API endpoints")
-        print(explore.text)
-```
-
-### Provider Helpers
-
-```python
-from a3s_code import create_provider
-
-anthropic = create_provider(name="anthropic", api_key="sk-ant-...")
-openai = create_provider(name="openai", api_key="sk-...", base_url="https://api.openai.com")
-kimi = create_provider(name="kimi", api_key="sk-...", base_url="http://your-kimi-endpoint/v1")
-```
-
-### Permissions
-
-```python
-await session.set_permissions(
-    default_action="ask",
-    allow=["Read(src/**)", "Grep(src/**)"],
-    deny=["Bash(rm -rf:*)"],
-    ask=["Bash(*)", "Write(*)"],
-)
-```
-
-### HITL Confirmation
-
-```python
-await session.set_confirmation(
-    auto_approve=["read", "grep", "glob", "ls"],
-    require_confirmation=["bash", "write", "edit"],
-    timeout=30000,
-    timeout_action="reject",
-)
-
-await session.confirm(confirmation_id, True, "Approved")
-```
-
-### Skills
-
-```python
-await session.load_skill("deploy")
-await session.load_skills("~/.a3s/skills")
-skills = await session.list_skills()
-```
-
-### LSP
-
-```python
-await client.start_lsp_server("rust", "file:///path/to/project")
-
-hover = await client.lsp_hover("/path/to/file.rs", 10, 5)
-defs = await client.lsp_definition("/path/to/file.rs", 15, 10)
-refs = await client.lsp_references("/path/to/file.rs", 20, 8)
-symbols = await client.lsp_symbols("main")
-diags = await client.lsp_diagnostics("/path/to/file.rs")
-```
-
-### MCP
-
-```python
-await client.register_mcp_server({
-    "name": "filesystem",
-    "transport": {"stdio": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem"]}},
-    "enabled": True,
-    "env": {},
-})
-
-await client.connect_mcp_server("filesystem")
-tools = await client.get_mcp_tools()
-```
-
-### Cron
-
-```python
-result = await client.create_cron_job("backup", "every day at 2am", "backup.sh")
-jobs = await client.list_cron_jobs()
-await client.run_cron_job(result["job"]["id"])
-history = await client.get_cron_history(result["job"]["id"])
-
-parsed = await client.parse_cron_schedule("every 5 minutes")
-# {"cron_expression": "*/5 * * * *", "description": "every 5 minutes"}
-```
-
-### Memory
-
-```python
-await client.store_memory(session_id, {
-    "content": "User prefers TypeScript over JavaScript",
-    "importance": 0.8,
-    "tags": ["preference", "language"],
-    "memory_type": "MEMORY_TYPE_SEMANTIC",
-})
-
-results = await client.search_memories(session_id, "TypeScript", ["preference"], 10)
-stats = await client.get_memory_stats(session_id)
-```
-
-### Low-Level Client
-
-```python
-result = await client.create_session(
-    workspace="/project",
-    llm={
-        "provider": "anthropic",
-        "model": "claude-sonnet-4-20250514",
-        "api_key": "sk-ant-...",
-    },
-)
-session_id = result["session_id"]
-
-async for event in client.stream_agentic_generate(session_id, "Explain this codebase"):
-    if event.get("text_delta"):
-        print(event["text_delta"], end="", flush=True)
-
-await client.destroy_session(session_id)
-```
+The Python SDK uses synchronous blocking calls via `py.allow_threads(|| runtime.block_on(...))`. This is the standard PyO3 pattern — the GIL is released during Rust execution, so other Python threads can run concurrently.

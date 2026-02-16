@@ -7,7 +7,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Custom Tools
 
-Beyond the 11 built-in tools, A3S Code supports four ways to add custom tools: Skill files, MCP servers, dynamic backends (Binary/HTTP/Script), and the Rust API.
+Beyond the 14 built-in tools, A3S Code supports four ways to add custom tools: Skill files, MCP servers, dynamic backends (Binary/HTTP/Script), and the Rust API.
 
 ## 1. Skill-Based Tools
 
@@ -72,78 +72,45 @@ tools:
 Use these tools for deployment and monitoring tasks.
 ```
 
-Load the skill into a session:
+Skills are loaded automatically from directories specified in your config or session options:
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Load skill (tools are automatically registered)
-await session.loadSkill('my-tools');
-
-// Or load all skills from a directory
-await session.loadSkills('~/.a3s/skills');
-
-// The agent can now use deploy, check_status, lint tools
-const result = await session.send('Deploy the app to staging with tag v1.2.3');
+```hcl
+skill_dirs = ["./skills", "~/.a3s/skills"]
 ```
-</Tab>
-<Tab value="Python">
-```python
-await session.load_skill("my-tools")
-await session.load_skills("~/.a3s/skills")
 
-result = await session.send("Deploy the app to staging with tag v1.2.3")
+The agent can then use the custom tools in any session:
+
+```rust
+let session = agent.session("/my-project", None)?;
+let result = session.send("Deploy the app to staging with tag v1.2.3").await?;
 ```
-</Tab>
-</Tabs>
 
 ## 2. MCP Server Tools
 
-Register external [Model Context Protocol](https://modelcontextprotocol.io/) servers. All tools exposed by the server are automatically available to the agent.
+Register external [Model Context Protocol](https://modelcontextprotocol.io/) servers in your agent config. All tools exposed by the server are automatically available to the agent.
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Register an MCP server
-await client.registerMcpServer({
-  name: 'github',
-  transport: {
-    stdio: {
-      command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-github'],
-    },
-  },
-  enabled: true,
-  env: { GITHUB_TOKEN: process.env.GITHUB_TOKEN },
-});
+```hcl
+mcp_servers {
+  name      = "github"
+  transport = "stdio"
+  command   = "npx"
+  args      = ["-y", "@modelcontextprotocol/server-github"]
+  enabled   = true
+  env = {
+    GITHUB_TOKEN = "ghp_..."
+  }
+}
 
-// Connect and discover tools
-await client.connectMcpServer('github');
-const tools = await client.getMcpTools();
-// Tools are named: mcp__github__create_issue, mcp__github__search_repos, etc.
+mcp_servers {
+  name      = "filesystem"
+  transport = "stdio"
+  command   = "npx"
+  args      = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+  enabled   = true
+}
 ```
-</Tab>
-<Tab value="Python">
-```python
-await client.register_mcp_server({
-    "name": "github",
-    "transport": {
-        "stdio": {
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-github"],
-        }
-    },
-    "enabled": True,
-    "env": {"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
-})
 
-await client.connect_mcp_server("github")
-tools = await client.get_mcp_tools()
-```
-</Tab>
-</Tabs>
-
-MCP tools are namespaced as `mcp__<server>__<tool>` to avoid name collisions.
+MCP tools are namespaced as `mcp__<server>__<tool>` to avoid name collisions. For example, tools from the GitHub MCP server are exposed as `mcp__github__create_issue`, `mcp__github__search_repos`, etc.
 
 ## 3. Tool Backend Types
 
@@ -199,7 +166,7 @@ Supported interpreters: `python3`, `node`, `bash`, `ruby`, `deno`, or any execut
 
 ## 4. Rust API
 
-For embedding A3S Code as a library, register tools programmatically:
+For embedding A3S Code as a library, register custom tools programmatically:
 
 ```rust
 use a3s_code_core::tools::{Tool, ToolContext, ToolOutput};
@@ -237,16 +204,10 @@ impl Tool for MyTool {
     }
 }
 
-// Register at runtime
-tool_executor.register_dynamic_tool(Arc::new(MyTool));
-
-// Or via Agent builder
-let agent = Agent::builder()
-    .model("claude-sonnet-4-20250514")
-    .workspace("/project")
-    .extra_tools(vec![tool_definition])
-    .build()
-    .await?;
+// Register via CodeConfig
+let mut config = CodeConfig::from_file("agent.hcl")?;
+config.extra_tools = vec![Arc::new(MyTool)];
+let agent = Agent::from_config(config).await?;
 ```
 
 ## Tool Permissions
@@ -266,7 +227,6 @@ This ensures the deploy skill can only run `kubectl` and `docker` commands, even
 
 | Method | Registration | Best For |
 |--------|-------------|----------|
-| Skill files | `session.loadSkill()` | Declarative tools with prompt context |
-| MCP servers | `client.registerMcpServer()` | External tool ecosystems |
-| Rust API | `register_dynamic_tool()` | Embedded library usage |
-| Agent builder | `.extra_tools()` | One-off tool injection |
+| Skill files | `skill_dirs` in config | Declarative tools with prompt context |
+| MCP servers | `mcp_servers` in config | External tool ecosystems |
+| Rust API | `config.extra_tools` | Embedded library usage |

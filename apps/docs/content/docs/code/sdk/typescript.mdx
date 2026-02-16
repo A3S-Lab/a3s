@@ -1,16 +1,11 @@
 ---
 title: TypeScript SDK
-description: Native napi-rs bindings and gRPC client for A3S Code
+description: Native napi-rs bindings for A3S Code
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # TypeScript SDK
 
-The `@a3s-lab/code` package provides two APIs:
-
-- **Native mode** — Direct napi-rs bindings to `a3s-code-core`. Zero IPC, single agent instance.
-- **gRPC mode** — Full-featured client connecting to a running `a3s-code` server. Multi-session, 86 RPCs.
+The `@a3s-lab/code` package provides native napi-rs bindings to `a3s-code-core`. Zero IPC overhead, direct function calls.
 
 ## Installation
 
@@ -18,210 +13,95 @@ The `@a3s-lab/code` package provides two APIs:
 npm install @a3s-lab/code
 ```
 
-## Native Mode
-
-Use the `Agent` class for embedded usage — no server required.
-
-### Basic Usage
+## Create Agent
 
 ```typescript
-import { Agent } from '@a3s-lab/code';
+const { Agent } = require('@a3s-lab/code');
 
-const agent = new Agent({
-  model: 'claude-sonnet-4-20250514',
-  apiKey: 'sk-ant-...',
-  workspace: '/project',
-  systemPrompt: 'You are a senior engineer.',
-  maxToolRounds: 30,
+// From config file (.hcl or .json)
+const agent = await Agent.create('agent.hcl');
+
+// From inline JSON string
+const agent = await Agent.create('{"defaultModel": "anthropic/claude-sonnet-4-20250514", ...}');
+```
+
+## Create Session
+
+```typescript
+// Default session (uses config's default model)
+const session = agent.session('/my-project');
+
+// Override model for this session
+const session = agent.session('/my-project', {
+  model: 'openai/gpt-4o',
 });
+```
 
-// Non-streaming
-const result = await agent.send('What files handle authentication?');
+## Send (Non-Streaming)
+
+```typescript
+const result = await session.send('What files handle authentication?');
 console.log(result.text);
-console.log(`Tools: ${result.tool_calls_count}, Tokens: ${result.total_tokens}`);
+console.log(`Tools: ${result.toolCallsCount}, Tokens: ${result.totalTokens}`);
+```
 
-// Streaming (returns all events)
-const events = await agent.stream('Refactor the auth module');
+## Stream
+
+```typescript
+const events = await session.stream('Refactor the auth module');
 for (const event of events) {
   if (event.type === 'text_delta') process.stdout.write(event.text);
-  if (event.type === 'tool_start') console.log(`\n🔧 ${event.tool_name}`);
-  if (event.type === 'tool_end') console.log(`  → ${event.tool_output?.slice(0, 100)}`);
+  if (event.type === 'tool_start') console.log(`\n🔧 ${event.toolName}`);
+  if (event.type === 'tool_end') console.log(`  → ${event.toolOutput?.slice(0, 100)}`);
 }
 ```
 
-### Direct Tool Execution
+## Direct Tool Execution
 
 ```typescript
 // Generic tool call
-const result = await agent.tool('bash', { command: 'cargo test' });
-console.log(`[${result.exit_code}] ${result.output}`);
+const result = await session.tool('bash', { command: 'cargo test' });
+console.log(`[${result.exitCode}] ${result.output}`);
 
 // Convenience wrappers
-const content = await agent.readFile('src/main.rs');
-const output = await agent.bash('git status');
-const files = await agent.glob('**/*.ts');
-const matches = await agent.grep('export function');
+const content = await session.readFile('src/main.rs');
+const output = await session.bash('git status');
+const files = await session.glob('**/*.ts');
+const matches = await session.grep('export function');
 ```
 
-### Return Types
+## Return Types
 
 ```typescript
 interface AgentResult {
   text: string;
-  tool_calls_count: number;
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
+  toolCallsCount: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
 }
 
 interface AgentEvent {
   type: 'start' | 'text_delta' | 'tool_start' | 'tool_end'
-      | 'turn_start' | 'turn_end' | 'end' | 'error';
+      | 'tool_output_delta' | 'turn_start' | 'turn_end' | 'end' | 'error';
   text?: string;
-  tool_name?: string;
-  tool_id?: string;
-  tool_output?: string;
-  exit_code?: number;
+  toolName?: string;
+  toolId?: string;
+  toolOutput?: string;
+  exitCode?: number;
   turn?: number;
   prompt?: string;
   error?: string;
-  total_tokens?: number;
-}
-```
-
----
-
-## gRPC Mode
-
-Use `A3sClient` for multi-session management against a running `a3s-code` server.
-
-### High-Level API
-
-```typescript
-import { A3sClient, createProvider } from '@a3s-lab/code';
-
-const client = new A3sClient({ address: 'localhost:4088' });
-const anthropic = createProvider({ name: 'anthropic', apiKey: 'sk-ant-...' });
-
-// Auto-dispose session
-await using session = await client.createSession({
-  model: anthropic('claude-sonnet-4-20250514'),
-  workspace: '/project',
-  system: 'You are a senior engineer.',
-  autoCompact: true,
-});
-
-// Server-side agentic loop with streaming
-for await (const event of session.stream('Refactor the auth module')) {
-  if (event.textDelta) process.stdout.write(event.textDelta);
-  if (event.toolStart) console.log(`\nTool: ${event.toolStart.name}`);
-  if (event.toolEnd) console.log(`Result: ${event.toolEnd.output.slice(0, 100)}`);
-}
-```
-
-### Provider Helpers
-
-```typescript
-import { createProvider } from '@a3s-lab/code';
-
-const anthropic = createProvider({ name: 'anthropic', apiKey: 'sk-ant-...' });
-const openai = createProvider({ name: 'openai', apiKey: 'sk-...', baseUrl: 'https://api.openai.com' });
-const kimi = createProvider({ name: 'kimi', apiKey: 'sk-...', baseUrl: 'http://your-kimi-endpoint/v1' });
-
-await client.createSession({ model: anthropic('claude-sonnet-4-20250514') });
-await client.createSession({ model: openai('gpt-4o') });
-await client.createSession({ model: kimi('kimi-k2.5') });
-```
-
-### Permissions
-
-```typescript
-await session.setPermissions({
-  defaultAction: 'ask',
-  rules: [
-    { tool: 'Bash', pattern: 'rm -rf:*', action: 'deny' },
-    { tool: 'Read', pattern: 'src/**', action: 'allow' },
-    { tool: 'Grep', pattern: 'src/**', action: 'allow' },
-    { tool: 'Bash', pattern: '*', action: 'ask' },
-    { tool: 'Write', pattern: '*', action: 'ask' },
-  ],
-});
-```
-
-### HITL Confirmation
-
-```typescript
-await session.setConfirmation({
-  autoApprove: ['read', 'grep', 'glob', 'ls'],
-  requireConfirmation: ['bash', 'write', 'edit'],
-  timeout: 30000,
-  timeoutAction: 'reject',
-});
-
-await session.confirm(confirmationId, true, 'Approved');
-```
-
-### Skills
-
-```typescript
-await session.loadSkill('deploy');
-await session.loadSkills('~/.a3s/skills');
-const skills = await session.listSkills();
-```
-
-### LSP
-
-```typescript
-await client.startLspServer('rust', 'file:///path/to/project');
-
-const hover = await client.lspHover('/path/to/file.rs', 10, 5);
-const defs = await client.lspDefinition('/path/to/file.rs', 15, 10);
-const refs = await client.lspReferences('/path/to/file.rs', 20, 8);
-const symbols = await client.lspSymbols('main');
-const diags = await client.lspDiagnostics('/path/to/file.rs');
-```
-
-### MCP
-
-```typescript
-await client.registerMcpServer({
-  name: 'filesystem',
-  transport: { stdio: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem'] } },
-  enabled: true,
-  env: {},
-});
-
-await client.connectMcpServer('filesystem');
-const tools = await client.getMcpTools();
-```
-
-### Cron
-
-```typescript
-const result = await client.createCronJob('backup', 'every day at 2am', 'backup.sh');
-const jobs = await client.listCronJobs();
-await client.runCronJob(result.job.id);
-const history = await client.getCronHistory(result.job.id);
-
-const parsed = await client.parseCronSchedule('every 5 minutes');
-// { cronExpression: '*/5 * * * *', description: 'every 5 minutes' }
-```
-
-### Low-Level Client
-
-```typescript
-const { sessionId } = await client.createSession({
-  workspace: '/project',
-  llm: {
-    provider: 'anthropic',
-    model: 'claude-sonnet-4-20250514',
-    apiKey: 'sk-ant-...',
-  },
-});
-
-for await (const event of client.streamAgenticGenerate(sessionId, 'Explain this codebase')) {
-  if (event.textDelta) process.stdout.write(event.textDelta);
+  totalTokens?: number;
 }
 
-await client.destroySession(sessionId);
+interface ToolResult {
+  name: string;
+  output: string;
+  exitCode: number;
+}
+
+interface SessionOptions {
+  model?: string;  // "provider/model" format
+}
 ```

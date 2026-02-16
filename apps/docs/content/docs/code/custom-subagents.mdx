@@ -3,8 +3,6 @@ title: Custom Subagents
 description: Define specialized subagents with isolated permissions, custom prompts, and model overrides
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-
 # Custom Subagents
 
 Subagents are specialized agents that run in isolated child sessions with their own permissions, system prompts, and tool access. A3S Code ships with 5 built-in subagents and supports user-defined subagents via YAML or Markdown files.
@@ -18,43 +16,6 @@ Subagents are specialized agents that run in isolated child sessions with their 
 | `plan` | Architecture and planning (read-only) | 30 | read, grep, glob |
 | `title` | Session title generation (hidden) | 1 | None |
 | `summary` | Session summarization (hidden) | 5 | read |
-
-## Invoking Subagents
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Delegate to a built-in subagent
-const result = await session.delegate('explore', 'Find all API endpoints');
-console.log(result.text);
-
-// Streaming delegation
-for await (const event of session.streamDelegate('plan', 'Design the migration strategy')) {
-  if (event.textDelta) process.stdout.write(event.textDelta);
-}
-
-// With tool filtering
-const result = await client.delegate(sessionId, {
-  agentName: 'general',
-  task: 'Run the test suite and fix failures',
-  allowedTools: ['Read', 'Bash', 'Edit'],
-  maxSteps: 30,
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-# Delegate to a built-in subagent
-result = await session.delegate("explore", "Find all API endpoints")
-print(result.text)
-
-# Streaming delegation
-async for event in session.stream_delegate("plan", "Design the migration strategy"):
-    if event.get("type") == "text":
-        print(event["content"], end="", flush=True)
-```
-</Tab>
-</Tabs>
 
 ## Defining Custom Subagents
 
@@ -108,16 +69,8 @@ description: Database migration specialist
 mode: subagent
 max_steps: 40
 permissions:
-  allow:
-    - read
-    - write
-    - edit
-    - bash
-    - grep
-    - glob
-  deny:
-    - web_fetch
-    - web_search
+  allow: [read, write, edit, bash, grep, glob]
+  deny: [web_fetch, web_search]
 ---
 You are a database migration specialist. You can:
 - Generate migration files (SQL or ORM-specific)
@@ -134,16 +87,14 @@ Always check for:
 
 ### With Model Override
 
-Use a different (cheaper/faster) model for specific subagents:
+Use a different model for specific subagents via `provider/model` format:
 
 ```yaml
 name: quick-search
 description: Fast search agent using a smaller model
 mode: subagent
 max_steps: 10
-model:
-  provider: anthropic
-  model: claude-haiku-4-20250514
+model: anthropic/claude-haiku-4-20250514
 permissions:
   allow: [read, grep, glob, ls]
 prompt: |
@@ -151,68 +102,15 @@ prompt: |
   quickly and return concise results. Do not explain — just find.
 ```
 
-## Loading Custom Subagents
+## Loading Subagents
 
-### From Configuration
+Configure agent directories in your agent config:
 
-Configure agent directories in your config:
-
-```json
-{
-  "agentDirs": ["~/.a3s/agents", "/shared/team-agents"]
-}
+```hcl
+agent_dirs = ["~/.a3s/agents", "/shared/team-agents"]
 ```
 
 All `.yaml` and `.md` files in these directories are automatically loaded into the `AgentRegistry` at startup.
-
-### Rust API
-
-For embedded usage, register agents programmatically:
-
-```rust
-use a3s_code_core::subagent::{AgentDefinition, AgentMode, AgentRegistry};
-
-let agent = AgentDefinition::new("security-reviewer", "Reviews code for vulnerabilities")
-    .with_mode(AgentMode::Subagent)
-    .with_permissions(PermissionPolicy::new().allow_all(&["read", "grep", "glob"]))
-    .with_max_steps(25)
-    .with_prompt("You are a security code reviewer...");
-
-let registry = AgentRegistry::new();
-registry.register(agent);
-
-// Or load from a directory
-let agents = AgentDefinition::load_from_dir(Path::new("~/.a3s/agents"));
-for agent in agents {
-    registry.register(agent);
-}
-```
-
-## Invoking Custom Subagents
-
-Once registered, custom subagents are invoked the same way as built-in ones:
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Use your custom subagent
-const review = await session.delegate('security-reviewer', 'Review the auth module');
-console.log(review.text);
-
-// The agent can also autonomously delegate via the task tool
-const result = await session.send(
-  'Review the authentication code for security issues'
-);
-// The agent may choose to delegate to security-reviewer if it's registered
-```
-</Tab>
-<Tab value="Python">
-```python
-review = await session.delegate("security-reviewer", "Review the auth module")
-print(review.text)
-```
-</Tab>
-</Tabs>
 
 ## How Delegation Works
 
@@ -250,5 +148,5 @@ Key isolation guarantees:
 | `can_spawn_subagents` | bool | no | Allow recursive delegation (default: `false`) |
 | `permissions.allow` | string[] | no | Allowed tool names |
 | `permissions.deny` | string[] | no | Denied tool names |
-| `model` | object | no | Model override (`provider`, `model`, `api_key`) |
+| `model` | string | no | Model override in `provider/model` format |
 | `prompt` | string | no | System prompt for the agent |

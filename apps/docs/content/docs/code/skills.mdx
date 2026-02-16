@@ -3,8 +3,6 @@ title: Skills System
 description: Extend agent behavior with Markdown-based prompt-injection skills
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-
 # Skills System
 
 Skills are Markdown files that extend agent behavior. They can inject system prompts, define custom tools, or create specialized agent personas. Compatible with Claude Code Skills format.
@@ -42,115 +40,28 @@ Skills are automatically classified into three kinds:
 
 ## Loading Skills
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Load a single skill by name
-await session.loadSkill('deploy');
+Skills are loaded from directories specified in your agent config:
 
-// Load all skills from a directory
-await session.loadSkills('~/.a3s/skills');
-
-// List loaded skills
-const skills = await session.listSkills();
+```hcl
+skill_dirs = ["~/.a3s/skills", "/shared/team-skills"]
 ```
-</Tab>
-<Tab value="Python">
-```python
-await session.load_skill("deploy")
-await session.load_skills("~/.a3s/skills")
-skills = await session.list_skills()
-```
-</Tab>
-</Tabs>
 
-## Skill Discovery & Installation
+Skills in these directories are available for loading but not automatically active — they must be referenced or triggered during a session.
 
-The agent has three native tools for discovering and managing skills at runtime:
+## Runtime Skill Discovery
 
-| Tool | Description |
-|------|-------------|
-| `search_skills` | Search for skills on GitHub via the GitHub Search API |
-| `install_skill` | Download and install a skill from a GitHub repository |
-| `load_skill` | Load an installed skill into the current session |
+The agent can also discover and install skills at runtime using the built-in skill discovery tools:
 
-### Searching Skills
+| Tool | Purpose |
+|------|---------|
+| `search_skills` | Search GitHub for available skills |
+| `install_skill` | Install a skill from GitHub |
+| `load_skill` | Load and register an installed skill |
 
-The `search_skills` tool queries GitHub for repositories containing A3S-compatible skill files. No authentication required.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const { skills } = await client.searchSkills({
-  sessionId,
-  query: 'kubernetes deployment',
-});
-// Returns matching skills with name, description, repo URL
-```
-</Tab>
-<Tab value="Python">
-```python
-result = await client.search_skills(
-    session_id=session_id,
-    query="kubernetes deployment",
-)
-```
-</Tab>
-</Tabs>
-
-### Installing Skills
-
-Install a skill from GitHub by specifying `owner/repo` or `owner/repo@skill-name`:
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Install all skills from a repo
-await client.installSkill({
-  source: 'a3s-lab/skills',
-  global: true,  // Install to ~/.a3s/skills/ (false = project-local)
-});
-
-// Install a specific skill
-await client.installSkill({
-  source: 'a3s-lab/skills@deploy',
-  global: false,
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-await client.install_skill(source="a3s-lab/skills", global_install=True)
-await client.install_skill(source="a3s-lab/skills@deploy", global_install=False)
-```
-</Tab>
-</Tabs>
-
-### Autonomous Discovery
-
-The agent can autonomously discover and load skills when it encounters tasks beyond its built-in capabilities. For example, if asked to deploy to Kubernetes and no deployment skill is loaded, the agent may:
-
-1. Call `search_skills("kubernetes deploy")`
-2. Find a matching skill
-3. Call `install_skill("owner/repo@k8s-deploy")`
-4. Call `load_skill("k8s-deploy")`
-5. Proceed with the deployment task
+This allows the agent to extend its own capabilities on-demand without requiring a restart or config change.
 
 ## Skill Tool Filters
 
 When a skill specifies `allowed_tools`, the agent loop enforces these restrictions. A skill with `allowed_tools: Bash(kubectl:*)` can only use bash commands starting with `kubectl`.
 
 This provides per-skill sandboxing — a deployment skill can't accidentally run `rm -rf /`, even if the session's permission policy would allow it.
-
-## Skill Directories
-
-Configure skill directories in `config.json`:
-
-```json
-{
-  "skillDirs": ["~/.a3s/skills", "/shared/team-skills"],
-  "agentDirs": ["~/.a3s/agents"]
-}
-```
-
-Skills in these directories are available for loading but not automatically active — they must be explicitly loaded into a session.

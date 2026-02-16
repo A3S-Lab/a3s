@@ -3,68 +3,31 @@ title: MCP Support
 description: Extend the agent with external tools via Model Context Protocol
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-
 # MCP Support
 
-A3S Code supports the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) for integrating external tool servers. MCP tools are automatically registered in the ToolExecutor when a server connects and unregistered when it disconnects.
+A3S Code supports the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) for integrating external tool servers. MCP tools are automatically registered in the ToolExecutor when a server connects.
 
-## Register and Connect
+## Configuration
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Register an MCP server
-await client.registerMcpServer({
-  name: 'filesystem',
-  transport: {
-    stdio: {
-      command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-filesystem'],
-    },
-  },
-  enabled: true,
-  env: {},
-});
+Register MCP servers in your agent config:
 
-// Connect (starts the server process)
-await client.connectMcpServer('filesystem');
+```hcl
+mcp_servers {
+  name      = "filesystem"
+  transport = "stdio"
+  command   = "npx"
+  args      = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+  enabled   = true
+}
 
-// List available tools from all connected servers
-const tools = await client.getMcpTools();
-```
-</Tab>
-<Tab value="Python">
-```python
-await client.register_mcp_server({
-    "name": "filesystem",
-    "transport": {
-        "stdio": {
-            "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-filesystem"],
-        },
-    },
-    "enabled": True,
-    "env": {},
-})
-
-await client.connect_mcp_server("filesystem")
-tools = await client.get_mcp_tools()
-```
-</Tab>
-</Tabs>
-
-## Transport Types
-
-MCP servers communicate via stdio (stdin/stdout). The server is spawned as a child process.
-
-```json
-{
-  "transport": {
-    "stdio": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem"]
-    }
+mcp_servers {
+  name      = "github"
+  transport = "stdio"
+  command   = "npx"
+  args      = ["-y", "@modelcontextprotocol/server-github"]
+  enabled   = true
+  env = {
+    GITHUB_TOKEN = "ghp_..."
   }
 }
 ```
@@ -79,41 +42,19 @@ mcp__<server_name>__<tool_name>
 
 For example, a tool `read_file` from server `filesystem` becomes `mcp__filesystem__read_file`.
 
-## Lifecycle
-
-| RPC | Description |
-|-----|-------------|
-| `registerMcpServer(config)` | Register server configuration |
-| `connectMcpServer(name)` | Start server process and discover tools |
-| `disconnectMcpServer(name)` | Stop server and unregister tools |
-| `listMcpServers()` | List all registered servers with status |
-| `getMcpTools(serverName?)` | List tools from connected servers |
-
 ## Permission Integration
 
-MCP tools respect the same permission system as built-in tools. Use the full namespaced name in permission rules:
+MCP tools respect the same permission system as built-in tools. Use the namespaced prefix in permission rules:
 
-```typescript
-await session.setPermissions({
-  rules: [
-    { tool: 'mcp__filesystem', pattern: '*', action: 'allow' },
-    { tool: 'mcp__dangerous_server', pattern: '*', action: 'deny' },
-  ],
-});
 ```
-
-MCP prefix matching is supported — `mcp__filesystem` matches all tools from the `filesystem` server.
-
-## Execution Timeout
-
-MCP tool executions have a configurable timeout to prevent hanging servers from blocking the agent. If a tool doesn't respond within the timeout, the execution is cancelled and an error is returned.
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| Timeout | 60 seconds | Maximum time for a single MCP tool execution |
-
-The timeout applies per-tool-call. Long-running MCP tools should implement progress reporting or break work into smaller steps.
+mcp__filesystem  → matches all tools from the filesystem server
+mcp__github      → matches all tools from the github server
+```
 
 ## Shadowing Prevention
 
 MCP tools cannot shadow built-in tool names. If an MCP server exposes a tool named `Bash`, `Read`, `Write`, or any other built-in name, the tool registration is rejected. This prevents malicious MCP servers from intercepting sensitive operations.
+
+## Execution Timeout
+
+MCP tool executions have a configurable timeout (default: 60 seconds). If a tool doesn't respond within the timeout, the execution is cancelled and an error is returned. This prevents hanging MCP servers from blocking the agent.

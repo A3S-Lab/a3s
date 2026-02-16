@@ -1,77 +1,50 @@
 ---
 title: Todo Tracking
-description: Track task progress with session-scoped todo lists
+description: Session-scoped task lists for tracking multi-step work
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Todo Tracking
 
-Each session has a todo list for tracking work items. The agent can create, update, and complete todos as it works through a task.
+Each session maintains a todo list for tracking multi-step tasks. The agent creates, updates, and completes todos as it works through complex requests.
 
-## Get Todos
+## Todo Structure
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const { todos } = await client.getTodos(sessionId);
-for (const todo of todos) {
-  const icon = todo.status === 'completed' ? '✅' :
-               todo.status === 'in_progress' ? '🔄' : '⬚';
-  console.log(`${icon} [${todo.priority}] ${todo.content}`);
-}
-```
-</Tab>
-<Tab value="Python">
-```python
-result = await client.get_todos(session_id)
-for todo in result["todos"]:
-    print(f"[{todo['status']}] ({todo['priority']}) {todo['content']}")
-```
-</Tab>
-</Tabs>
-
-## Set Todos
-
-Replace the entire todo list for a session.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-await client.setTodos(sessionId, {
-  todos: [
-    { id: '1', content: 'Analyze existing auth module', status: 'completed', priority: 'high' },
-    { id: '2', content: 'Write JWT utility functions', status: 'in_progress', priority: 'high' },
-    { id: '3', content: 'Update middleware chain', status: 'pending', priority: 'medium' },
-    { id: '4', content: 'Add unit tests', status: 'pending', priority: 'medium' },
-    { id: '5', content: 'Update documentation', status: 'pending', priority: 'low' },
-  ],
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-await client.set_todos(session_id, [
-    {"id": "1", "content": "Analyze existing auth module", "status": "completed", "priority": "high"},
-    {"id": "2", "content": "Write JWT utility functions", "status": "in_progress", "priority": "high"},
-    {"id": "3", "content": "Update middleware chain", "status": "pending", "priority": "medium"},
-])
-```
-</Tab>
-</Tabs>
-
-## Todo Fields
-
-| Field | Type | Values |
-|-------|------|--------|
+| Field | Type | Description |
+|-------|------|-------------|
 | `id` | string | Unique identifier |
 | `content` | string | Task description |
-| `status` | string | `pending`, `in_progress`, `completed`, `cancelled` |
-| `priority` | string | `high`, `medium`, `low` |
+| `status` | enum | `pending`, `in_progress`, `completed`, `blocked` |
+| `priority` | enum | `high`, `medium`, `low` |
+| `created_at` | timestamp | When the todo was created |
+| `completed_at` | timestamp | When the todo was completed |
 
-## RPCs
+## How It Works
 
-| RPC | Description |
-|-----|-------------|
-| `getTodos(sessionId)` | Get todos for session |
-| `setTodos(sessionId, todos)` | Set todos for session |
+When the agent receives a complex task, it may decompose it into todos:
+
+```
+User: "Set up CI/CD for this project"
+
+Agent creates todos:
+  ☐ [high] Create GitHub Actions workflow file
+  ☐ [high] Add build and test steps
+  ☐ [medium] Add linting step
+  ☐ [medium] Configure deployment to staging
+  ☐ [low] Add badge to README
+```
+
+As the agent works, it updates todo status:
+
+```
+  ✅ [high] Create GitHub Actions workflow file
+  ✅ [high] Add build and test steps
+  🔄 [medium] Add linting step          ← in_progress
+  ☐ [medium] Configure deployment to staging
+  ☐ [low] Add badge to README
+```
+
+## Context Integration
+
+The todo list is included in the agent's context, so it always knows what work remains. This prevents the agent from losing track of subtasks in long-running sessions.
+
+Todos persist with the session — if a session is restored from storage, the todo list is restored too.

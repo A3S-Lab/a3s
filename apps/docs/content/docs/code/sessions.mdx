@@ -1,207 +1,297 @@
 ---
 title: Sessions
-description: Create, configure, and manage isolated agent sessions
+description: Create and configure workspace-bound agent sessions
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
-# Session Management
+# Sessions
 
-Each session is an isolated agent context with its own conversation history, LLM configuration, permissions, and tools. Sessions auto-generate a UUID if no ID is provided.
+Each session is bound to a workspace directory. The Agent creates sessions via `agent.session(workspace, options?)`. Sessions hold their own LLM client, conversation history, and tool context.
 
 ## Create Session
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let agent = Agent::new("agent.hcl").await?;
+
+// Default session (uses config's default model)
+let session = agent.session("/my-project", None)?;
+
+// Session with model override
+let session = agent.session("/my-project", Some(
+    SessionOptions::new()
+        .with_model("openai/gpt-4o")
+))?;
+```
+</Tab>
 <Tab value="TypeScript">
 ```typescript
-const { sessionId, session } = await client.createSession({
-  workspace: '/project',
-  llm: {
-    provider: 'anthropic',
-    model: 'claude-sonnet-4-20250514',
-    apiKey: 'sk-ant-...',
-  },
-  systemPrompt: 'You are a senior engineer.',
-  autoCompact: true,
-  autoCompactThreshold: 80,
-  planningEnabled: true,
-  goalTracking: true,
+const { Agent } = require('@a3s-lab/code');
+
+const agent = await Agent.create('agent.hcl');
+
+// Default session
+const session = agent.session('/my-project');
+
+// Session with model override
+const session = agent.session('/my-project', {
+  model: 'openai/gpt-4o',
 });
 ```
 </Tab>
 <Tab value="Python">
 ```python
-result = await client.create_session(
-    workspace="/project",
-    llm={
-        "provider": "anthropic",
-        "model": "claude-sonnet-4-20250514",
-        "api_key": "sk-ant-...",
-    },
-    system_prompt="You are a senior engineer.",
-    auto_compact=True,
-)
-session_id = result["session_id"]
+from a3s_code import Agent
+
+agent = Agent.create("agent.hcl")
+
+# Default session
+session = agent.session("/my-project")
+
+# Session with model override
+session = agent.session("/my-project", model="openai/gpt-4o")
 ```
 </Tab>
 </Tabs>
 
-### Session Config
+## SessionOptions
+
+| Parameter | Rust | TypeScript | Python | Description |
+|-----------|------|-----------|--------|-------------|
+| Model override | `with_model("provider/model")` | `model: "provider/model"` | `model="provider/model"` | Format: `provider/model` (e.g., `openai/gpt-4o`) |
+
+The model must be defined in the agent's config file under `providers`. The format is `provider_name/model_id`.
+
+> **Note:** `skill_dirs` and `agent_dirs` are configured at the agent level via `CodeConfig`, not per-session. See [Configuration](#configuration) below.
+
+## Send (Non-Streaming)
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+let result = session.send("What files handle authentication?").await?;
+println!("{}", result.text);
+println!("Tools: {}, Tokens: {}", result.tool_calls_count, result.usage.total_tokens);
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const result = await session.send('What files handle authentication?');
+console.log(result.text);
+console.log(`Tools: ${result.toolCallsCount}, Tokens: ${result.totalTokens}`);
+```
+</Tab>
+<Tab value="Python">
+```python
+result = session.send("What files handle authentication?")
+print(result.text)
+print(f"Tools: {result.tool_calls_count}, Tokens: {result.total_tokens}")
+```
+</Tab>
+</Tabs>
+
+## Stream
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::AgentEvent;
+
+// AgentEvent is #[non_exhaustive] — always include a wildcard arm
+let (mut rx, _handle) = session.stream("Refactor the auth module").await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::TextDelta { text } => print!("{text}"),
+        AgentEvent::ToolCall { name, .. } => println!("\n🔧 {name}"),
+        AgentEvent::End { text, usage } => {
+            println!("\n✅ Done: {} tokens", usage.total_tokens);
+            break;
+        }
+        _ => {} // required: AgentEvent is #[non_exhaustive]
+    }
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const events = await session.stream('Refactor the auth module');
+for (const event of events) {
+  if (event.type === 'text_delta') process.stdout.write(event.text);
+  if (event.type === 'tool_start') console.log(`\n🔧 ${event.toolName}`);
+  if (event.type === 'tool_end') console.log(`  → ${event.toolOutput?.slice(0, 100)}`);
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+for event in session.stream("Refactor the auth module"):
+    if event.event_type == "text_delta":
+        print(event.text, end="", flush=True)
+    elif event.event_type == "tool_start":
+        print(f"\n🔧 {event.tool_name}")
+    elif event.event_type == "tool_end":
+        print(f"  → {event.tool_output[:100]}")
+```
+</Tab>
+</Tabs>
+
+## Conversation History (Rust)
+
+Maintain multi-turn conversations by passing history:
+
+```rust
+use a3s_code_core::llm::Message;
+
+let history = vec![
+    Message::user("What's in src/?"),
+    Message::assistant("The src/ directory contains main.rs and lib.rs."),
+];
+
+// Continue the conversation
+let result = session.send_with_history(&history, "Now explain main.rs").await?;
+```
+
+## Direct Tool Execution
+
+Call tools directly without going through the LLM:
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+session.read_file("src/main.rs").await?;
+session.bash("cargo test").await?;
+session.glob("**/*.rs").await?;
+session.grep("fn main").await?;
+session.tool("write", serde_json::json!({"path": "x.rs", "content": "..."})).await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+await session.readFile('src/main.rs');
+await session.bash('cargo test');
+await session.glob('**/*.rs');
+await session.grep('fn main');
+await session.tool('write', { path: 'x.rs', content: '...' });
+```
+</Tab>
+<Tab value="Python">
+```python
+session.read_file("src/main.rs")
+session.bash("cargo test")
+session.glob("**/*.rs")
+session.grep("fn main")
+session.tool("write", {"path": "x.rs", "content": "..."})
+```
+</Tab>
+</Tabs>
+
+## Configuration
+
+Full HCL configuration reference:
+
+```hcl
+# === LLM (required) ===
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+# === Agent Behavior ===
+max_tool_rounds  = 20          # default: 50
+thinking_budget  = 4096        # reasoning token budget
+
+# === Extensions ===
+skill_dirs = ["./skills"]      # *.md skill files
+agent_dirs = ["./agents"]      # *.yaml/*.md agent files
+
+# === Storage ===
+storage_backend = "file"       # "memory" | "file" | "custom"
+sessions_dir    = "/tmp/a3s"   # session persistence path
+storage_url     = "redis://localhost:6379"
+
+# === Providers ===
+providers {
+  name    = "anthropic"
+  api_key = "sk-ant-..."
+
+  models {
+    id          = "claude-sonnet-4-20250514"
+    name        = "Claude Sonnet 4"
+    family      = "claude-sonnet"
+    tool_call   = true
+    temperature = true
+    reasoning   = false
+    cost {
+      input       = 3.0
+      output      = 15.0
+      cache_read  = 0.3
+      cache_write = 3.75
+    }
+    limit {
+      context = 200000
+      output  = 8192
+    }
+  }
+}
+
+providers {
+  name    = "openai"
+  api_key = "sk-..."
+
+  models {
+    id        = "gpt-4o"
+    name      = "GPT-4o"
+    tool_call = true
+  }
+
+  models {
+    id        = "gpt-4o-proxy"
+    name      = "GPT-4o (via Proxy)"
+    api_key   = "sk-proxy-key..."                 # per-model override
+    base_url  = "https://proxy.example.com/v1"    # per-model override
+    tool_call = true
+  }
+}
+```
+
+Provider-level `api_key` and `base_url` are defaults. Model-level values override them. See [Providers](/docs/code/providers) for details.
+
+### Config Options
+
+| Field | HCL | JSON | Type | Default |
+|-------|-----|------|------|---------|
+| Default model | `default_model` | `defaultModel` | `string` | — (required, `provider/model` format) |
+| Max tool rounds | `max_tool_rounds` | `maxToolRounds` | `int?` | `50` |
+| Thinking budget | `thinking_budget` | `thinkingBudget` | `int?` | `null` |
+| Skill dirs | `skill_dirs` | `skillDirs` | `string[]` | `[]` |
+| Agent dirs | `agent_dirs` | `agentDirs` | `string[]` | `[]` |
+| Storage backend | `storage_backend` | `storageBackend` | `string` | `"file"` |
+| Sessions dir | `sessions_dir` | `sessionsDir` | `string?` | `null` |
+| Storage URL | `storage_url` | `storageUrl` | `string?` | `null` |
+
+## Return Types
+
+### AgentResult
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `workspace` | string | Working directory for file operations |
-| `llm` | LLMConfig | Provider, model, API key, base URL, temperature, max tokens |
-| `systemPrompt` | string | System message prepended to all conversations |
-| `autoCompact` | bool | Auto-compact context when threshold is exceeded |
-| `autoCompactThreshold` | number | Token usage percentage to trigger compaction (default: 80) |
-| `storageType` | enum | `MEMORY` (default), `FILE`, or `CUSTOM` |
-| `planningEnabled` | bool | Enable execution planning |
-| `goalTracking` | bool | Enable goal extraction and progress tracking |
+| `text` | `string` | Final LLM response text |
+| `tool_calls_count` | `u32` | Number of tool calls |
+| `prompt_tokens` | `u32` | Input tokens |
+| `completion_tokens` | `u32` | Output tokens |
+| `total_tokens` | `u32` | Total tokens |
 
-### LLM Config
+### AgentEvent
 
-```typescript
-{
-  provider: 'anthropic',      // Provider name
-  model: 'claude-sonnet-4-20250514',  // Model ID
-  apiKey: 'sk-ant-...',       // API key
-  baseUrl: 'https://...',     // Custom base URL (optional)
-  temperature: 0.7,           // Sampling temperature (optional)
-  maxTokens: 4096,            // Max output tokens (optional)
-}
-```
-
-## Get Session
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const { session } = await client.getSession(sessionId);
-console.log(session.state);  // 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'ERROR'
-console.log(session.contextUsage);
-// { totalTokens: 1234, promptTokens: 800, completionTokens: 434, messageCount: 6 }
-```
-</Tab>
-<Tab value="Python">
-```python
-result = await client.get_session(session_id)
-print(result["session"]["state"])  # ACTIVE
-```
-</Tab>
-</Tabs>
-
-## List Sessions
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const { sessions } = await client.listSessions();
-for (const s of sessions) {
-  console.log(`${s.id}: ${s.state} (${s.contextUsage.totalTokens} tokens)`);
-}
-```
-</Tab>
-<Tab value="Python">
-```python
-result = await client.list_sessions()
-for s in result["sessions"]:
-    print(f"{s['id']}: {s['state']}")
-```
-</Tab>
-</Tabs>
-
-## Configure Session
-
-Update session configuration after creation. Commonly used to switch models mid-session.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-await client.configureSession(sessionId, {
-  llm: {
-    provider: 'openai',
-    model: 'gpt-4o',
-    apiKey: 'sk-...',
-  },
-  planningEnabled: true,
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-await client.configure_session(session_id, {
-    "llm": {
-        "provider": "openai",
-        "model": "gpt-4o",
-        "api_key": "sk-...",
-    },
-})
-```
-</Tab>
-</Tabs>
-
-## Get Messages
-
-Retrieve conversation history with pagination.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const { messages, totalCount, hasMore } = await client.getMessages(sessionId, {
-  limit: 20,
-  offset: 0,
-});
-
-for (const msg of messages) {
-  console.log(`[${msg.role}] ${msg.content[0]?.text ?? ''}`);
-}
-```
-</Tab>
-<Tab value="Python">
-```python
-result = await client.get_messages(session_id, limit=20, offset=0)
-for msg in result["messages"]:
-    print(f"[{msg['role']}] {msg['content']}")
-print(f"Total: {result['total_count']}, Has more: {result['has_more']}")
-```
-</Tab>
-</Tabs>
-
-### Message Content Blocks
-
-Each message contains `content` as an array of content blocks:
-
-| Type | Fields | Description |
-|------|--------|-------------|
-| `TextContent` | `text` | Plain text content |
-| `ToolUseContent` | `id`, `name`, `input` | Tool call request |
-| `ToolResultContent` | `toolUseId`, `content`, `isError` | Tool execution result |
-
-## Destroy Session
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-await client.destroySession(sessionId);
-```
-</Tab>
-<Tab value="Python">
-```python
-await client.destroy_session(session_id)
-```
-</Tab>
-</Tabs>
-
-Fires a `SESSION_DESTROYED` event and collects final session statistics (total tokens, duration) before cleanup.
-
-## RPCs
-
-| RPC | Description |
-|-----|-------------|
-| `createSession(config, sessionId, initialContext)` | Create a new session |
-| `getSession(sessionId)` | Get session details |
-| `listSessions()` | List all sessions |
-| `configureSession(sessionId, config)` | Update session configuration |
-| `getMessages(sessionId, limit, offset)` | Get conversation history |
-| `destroySession(sessionId)` | Destroy a session |
+| Event Type | Fields | Description |
+|-----------|--------|-------------|
+| `start` | `prompt` | Processing started |
+| `text_delta` | `text` | Text increment |
+| `turn_start` | `turn` | New turn started |
+| `turn_end` | `turn`, `total_tokens` | Turn completed |
+| `tool_start` | `tool_id`, `tool_name` | Tool call started |
+| `tool_end` | `tool_id`, `tool_name`, `tool_output`, `exit_code` | Tool call completed |
+| `tool_output_delta` | `tool_id`, `tool_name`, `text` | Tool output increment |
+| `end` | `text`, `total_tokens` | Completed |
+| `error` | `error` | Error occurred |

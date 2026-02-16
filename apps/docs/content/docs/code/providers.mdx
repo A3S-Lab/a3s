@@ -1,212 +1,186 @@
 ---
 title: Providers
-description: Configure LLM providers, models, and defaults
+description: Configure LLM providers, models, and per-model API key/base URL overrides
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Provider Configuration
 
-A3S Code supports multiple LLM providers. Providers and their models are configured globally and persisted to disk.
+All LLM providers and models are defined in the agent config file (HCL or JSON). Models are selected at runtime via `provider/model` format.
 
-## List Providers
+## Basic Configuration
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const { providers, defaultProvider, defaultModel } = await client.listProviders();
-for (const p of providers) {
-  console.log(`${p.name} (${p.models.length} models)`);
-  for (const m of p.models) {
-    console.log(`  - ${m.id}: tool_call=${m.toolCall}, reasoning=${m.reasoning}`);
+```hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = "sk-ant-..."
+
+  models {
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    family    = "claude-sonnet"
+    tool_call = true
   }
 }
-console.log(`Default: ${defaultProvider}/${defaultModel}`);
 ```
-</Tab>
-<Tab value="Python">
-```python
-result = await client.list_providers()
-for p in result["providers"]:
-    print(f"{p['name']}: {len(p['models'])} models")
+
+## Multiple Providers
+
+Define as many providers as needed. Switch between them at session creation via `provider/model`:
+
+```hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = "sk-ant-..."
+
+  models {
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    tool_call = true
+  }
+
+  models {
+    id        = "claude-haiku-4-20250514"
+    name      = "Claude Haiku 4"
+    tool_call = true
+  }
+}
+
+providers {
+  name    = "openai"
+  api_key = "sk-..."
+
+  models {
+    id        = "gpt-4o"
+    name      = "GPT-4o"
+    tool_call = true
+  }
+
+  models {
+    id        = "gpt-4o-mini"
+    name      = "GPT-4o Mini"
+    tool_call = true
+  }
+}
 ```
-</Tab>
-</Tabs>
 
-## Add Provider
+Then select at runtime:
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-await client.addProvider({
-  provider: {
-    name: 'anthropic',
-    apiKey: 'sk-ant-...',
-    models: [
-      {
-        id: 'claude-sonnet-4-20250514',
-        name: 'Claude Sonnet 4',
-        family: 'claude',
-        toolCall: true,
-        reasoning: true,
-        temperature: true,
-      },
-      {
-        id: 'claude-haiku-4-20250514',
-        name: 'Claude Haiku 4',
-        family: 'claude',
-        toolCall: true,
-        reasoning: false,
-        temperature: true,
-      },
-    ],
-  },
-});
+```rust
+// Use default model (anthropic/claude-sonnet-4-20250514)
+let session = agent.session("/project", None)?;
+
+// Use a different model
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_model("openai/gpt-4o")
+))?;
 ```
-</Tab>
-<Tab value="Python">
-```python
-await client.add_provider({
-    "name": "anthropic",
-    "api_key": "sk-ant-...",
-    "models": [
-        {
-            "id": "claude-sonnet-4-20250514",
-            "name": "Claude Sonnet 4",
-            "tool_call": True,
-            "reasoning": True,
-        },
-    ],
-})
+
+## Per-Model API Key & Base URL
+
+Models under the same provider can have different `api_key` and `base_url`. This is useful for:
+
+- **API key rotation** — different keys for different models
+- **Proxy endpoints** — route specific models through a proxy or gateway
+- **Regional endpoints** — different base URLs for latency or compliance
+
+```hcl
+providers {
+  name     = "anthropic"
+  api_key  = "sk-ant-default-key..."          # default for all models
+  base_url = "https://api.anthropic.com"      # default base URL
+
+  models {
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    tool_call = true
+    # inherits provider api_key and base_url
+  }
+
+  models {
+    id        = "claude-sonnet-4-20250514-eu"
+    name      = "Claude Sonnet 4 (EU)"
+    api_key   = "sk-ant-eu-key..."              # override
+    base_url  = "https://eu.api.anthropic.com"  # override
+    tool_call = true
+  }
+}
+
+providers {
+  name    = "openai"
+  api_key = "sk-team-key..."
+
+  models {
+    id        = "gpt-4o"
+    name      = "GPT-4o"
+    tool_call = true
+    # inherits provider api_key
+  }
+
+  models {
+    id        = "gpt-4o-mini"
+    name      = "GPT-4o Mini"
+    api_key   = "sk-personal-key..."   # different key for this model
+    tool_call = true
+  }
+}
 ```
-</Tab>
-</Tabs>
 
-## Get Provider
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const { provider } = await client.getProvider('anthropic');
-console.log(provider.models.map(m => m.id));
-```
-</Tab>
-<Tab value="Python">
-```python
-result = await client.get_provider("anthropic")
-```
-</Tab>
-</Tabs>
-
-## Update Provider
-
-Replace an existing provider's configuration entirely.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-await client.updateProvider({
-  provider: {
-    name: 'anthropic',
-    apiKey: 'sk-ant-new-key-...',
-    models: [/* updated model list */],
-  },
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-await client.update_provider({
-    "name": "anthropic",
-    "api_key": "sk-ant-new-key-...",
-    "models": [{"id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "tool_call": True}],
-})
-```
-</Tab>
-</Tabs>
-
-## Remove Provider
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-await client.removeProvider('openai');
-```
-</Tab>
-<Tab value="Python">
-```python
-await client.remove_provider("openai")
-```
-</Tab>
-</Tabs>
-
-If the removed provider was the default, the default is cleared.
-
-## Set Default Model
-
-Set the default provider and model used for new sessions that don't specify an LLM config.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-await client.setDefaultModel({
-  provider: 'anthropic',
-  model: 'claude-sonnet-4-20250514',
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-await client.set_default_model("anthropic", "claude-sonnet-4-20250514")
-```
-</Tab>
-</Tabs>
-
-Both provider and model must exist. The configuration is persisted to disk.
-
-## Get Default Model
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const { provider, model } = await client.getDefaultModel();
-console.log(`${provider}/${model}`);  // 'anthropic/claude-sonnet-4-20250514'
-```
-</Tab>
-<Tab value="Python">
-```python
-result = await client.get_default_model()
-print(f"{result['provider']}/{result['model']}")
-```
-</Tab>
-</Tabs>
+Provider-level `api_key` and `base_url` are defaults. Model-level values override them.
 
 ## Model Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string | Model identifier (e.g., `claude-sonnet-4-20250514`) |
-| `name` | string | Display name |
-| `family` | string | Model family (e.g., `claude`, `gpt`) |
-| `apiKey` | string | Per-model API key override (optional) |
-| `baseUrl` | string | Per-model base URL override (optional) |
-| `toolCall` | bool | Supports tool calling |
-| `reasoning` | bool | Supports extended reasoning |
-| `attachment` | bool | Supports file attachments |
-| `temperature` | bool | Supports temperature parameter |
-| `releaseDate` | string | Model release date |
-| `modalities` | string | Supported modalities |
-| `cost` | string | Cost information |
-| `limit` | string | Rate limit information |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | yes | Model identifier (e.g., `claude-sonnet-4-20250514`) |
+| `name` | string | yes | Display name |
+| `family` | string | no | Model family (e.g., `claude-sonnet`, `gpt`) |
+| `api_key` | string | no | Per-model API key (overrides provider) |
+| `base_url` | string | no | Per-model base URL (overrides provider) |
+| `tool_call` | bool | no | Supports tool calling |
+| `reasoning` | bool | no | Supports extended reasoning |
+| `temperature` | bool | no | Supports temperature parameter |
+| `attachment` | bool | no | Supports file attachments |
+| `cost` | object | no | `{ input, output, cache_read, cache_write }` per million tokens |
+| `limit` | object | no | `{ context, output }` token limits |
 
-## RPCs
+## Provider Fields
 
-| RPC | Description |
-|-----|-------------|
-| `listProviders()` | List all providers |
-| `getProvider(name)` | Get provider details |
-| `addProvider(provider)` | Add a new provider |
-| `updateProvider(provider)` | Update a provider |
-| `removeProvider(name)` | Remove a provider |
-| `setDefaultModel(provider, model)` | Set default model |
-| `getDefaultModel()` | Get default model |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | yes | Provider identifier (used in `provider/model` format) |
+| `api_key` | string | yes | Default API key for all models |
+| `base_url` | string | no | Default base URL for all models |
+
+## JSON Format
+
+The same config in JSON:
+
+```json
+{
+  "defaultModel": "anthropic/claude-sonnet-4-20250514",
+  "providers": [
+    {
+      "name": "anthropic",
+      "apiKey": "sk-ant-...",
+      "models": [
+        {
+          "id": "claude-sonnet-4-20250514",
+          "name": "Claude Sonnet 4",
+          "toolCall": true
+        },
+        {
+          "id": "claude-sonnet-4-20250514-eu",
+          "name": "Claude Sonnet 4 (EU)",
+          "apiKey": "sk-ant-eu-key...",
+          "baseUrl": "https://eu.api.anthropic.com",
+          "toolCall": true
+        }
+      ]
+    }
+  ]
+}
+```
