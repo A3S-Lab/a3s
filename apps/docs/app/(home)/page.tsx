@@ -262,32 +262,28 @@ export default function HomePage() {
           <div className="term-pane-header">┌─ QUICK INSTALL ─┐</div>
           <div className="p-4 space-y-3 text-xs">
             <div>
-              <span style={{ color: 'var(--term-muted)' }}># homebrew</span>
+              <span style={{ color: 'var(--term-muted)' }}># homebrew (CLI tools)</span>
               <div>
                 <span style={{ color: 'var(--term-amber)' }}>$ </span>
-                brew tap a3s-lab/tap
-              </div>
-              <div>
-                <span style={{ color: 'var(--term-amber)' }}>$ </span>
-                brew install a3s-code a3s-search a3s-power
+                brew tap a3s-lab/tap &amp;&amp; brew install a3s-search a3s-power
               </div>
             </div>
             <div>
-              <span style={{ color: 'var(--term-muted)' }}># cargo</span>
+              <span style={{ color: 'var(--term-muted)' }}># rust</span>
               <div>
                 <span style={{ color: 'var(--term-amber)' }}>$ </span>
-                cargo install a3s-code a3s-search
+                cargo add a3s-code-core
               </div>
             </div>
             <div>
-              <span style={{ color: 'var(--term-muted)' }}># python sdk</span>
+              <span style={{ color: 'var(--term-muted)' }}># python</span>
               <div>
                 <span style={{ color: 'var(--term-amber)' }}>$ </span>
                 pip install a3s-code a3s-lane a3s-search
               </div>
             </div>
             <div>
-              <span style={{ color: 'var(--term-muted)' }}># node sdk</span>
+              <span style={{ color: 'var(--term-muted)' }}># node</span>
               <div>
                 <span style={{ color: 'var(--term-amber)' }}>$ </span>
                 npm install @a3s-lab/code @a3s-lab/lane @a3s-lab/search
