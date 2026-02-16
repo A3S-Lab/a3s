@@ -1,0 +1,67 @@
+---
+title: Memory System
+description: 4 memory types for context-aware agent behavior — episodic, semantic, procedural, working
+---
+
+# Memory System
+
+A3S Code includes a memory system with four distinct memory types. Memory items are stored per-session and used to provide relevant context to the agent during generation.
+
+## Memory Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `Episodic` | Past events and interactions | "User prefers TypeScript over JavaScript" |
+| `Semantic` | Facts and knowledge | "The project uses PostgreSQL for persistence" |
+| `Procedural` | How-to knowledge and patterns | "To deploy, run `just release` then `gh release create`" |
+| `Working` | Short-term task context | "Currently refactoring the auth module in src/auth/" |
+
+## MemoryItem Structure
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier |
+| `content` | string | The memory content |
+| `memory_type` | MemoryType | `Episodic`, `Semantic`, `Procedural`, or `Working` |
+| `importance` | f32 | 0.0–1.0 importance score |
+| `tags` | string[] | Categorization tags |
+| `metadata` | map | Arbitrary key-value metadata |
+| `timestamp` | DateTime | When the memory was created |
+| `access_count` | u32 | Number of times retrieved |
+| `last_accessed` | DateTime | Last retrieval timestamp |
+
+## Relevance Scoring
+
+When the agent needs context, the memory system scores each item by combining importance and recency:
+
+```
+relevance = importance * recency_factor
+
+recency_factor = 1.0 / (1.0 + hours_since_creation * decay_rate)
+```
+
+Higher-relevance memories are included in the agent's context window, ensuring the most useful information is always available.
+
+## How Memory Is Used
+
+1. **During generation** — The agent loop queries the memory system for relevant context before each LLM call
+2. **After tool execution** — Important observations (e.g., project structure, user preferences) can be stored as memories
+3. **Across turns** — Working memory tracks the current task state within a session
+4. **Across sessions** — Episodic and semantic memories persist with the session store, available when a session is restored
+
+## Context Integration
+
+Memory items are injected into the system prompt as structured context blocks. The agent sees them as additional context alongside the conversation history:
+
+```
+System Prompt
+├── Base instructions
+├── Skill instructions
+├── Memory context:
+│   ├── [semantic] Project uses PostgreSQL
+│   ├── [procedural] Deploy via `just release`
+│   └── [working] Refactoring auth module
+└── Tool definitions
+```
+
+The number of memory items included is bounded by the context window — when space is limited, only the highest-relevance items are retained.

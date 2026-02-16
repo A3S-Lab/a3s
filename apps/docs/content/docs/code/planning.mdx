@@ -14,17 +14,43 @@ When the agent receives a complex task, the planning system can decompose it int
 ### Plan Structure
 
 ```
-Plan
+ExecutionPlan
 ├── goal: "Refactor auth module to use JWT"
-├── steps:
-│   ├── 1. Analyze current auth implementation
-│   ├── 2. Design JWT token structure
-│   ├── 3. Implement JWT generation and validation
-│   ├── 4. Update middleware to use JWT
-│   ├── 5. Update tests
-│   └── 6. Verify all tests pass
+├── tasks:
+│   ├── 1. Analyze current auth implementation     [Completed]
+│   ├── 2. Design JWT token structure              [InProgress]
+│   ├── 3. Implement JWT generation and validation [Pending]
+│   ├── 4. Update middleware to use JWT            [Pending]
+│   ├── 5. Update tests                           [Pending]
+│   └── 6. Verify all tests pass                  [Pending]
 └── context: current file structure, dependencies
 ```
+
+### Task Model
+
+Each step in the plan is a unified `Task` with the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique task identifier |
+| `title` | string | Short task description |
+| `description` | string | Detailed task description |
+| `status` | TaskStatus | Current task status |
+| `priority` | enum | `high`, `medium`, `low` |
+| `dependencies` | string[] | Task IDs that must complete first |
+| `created_at` | timestamp | When the task was created |
+| `completed_at` | timestamp | When the task was completed |
+
+### TaskStatus
+
+| Status | Description |
+|--------|-------------|
+| `Pending` | Not yet started |
+| `InProgress` | Currently being executed |
+| `Completed` | Successfully finished |
+| `Failed` | Execution failed |
+| `Skipped` | Skipped (dependency failed or no longer needed) |
+| `Cancelled` | Manually cancelled |
 
 ### Strategy Selection
 

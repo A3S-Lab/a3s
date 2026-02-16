@@ -9,14 +9,29 @@ Each session maintains a todo list for tracking multi-step tasks. The agent crea
 
 ## Todo Structure
 
+Todos use the unified Task model shared with the [planning system](/docs/code/planning).
+
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | string | Unique identifier |
-| `content` | string | Task description |
-| `status` | enum | `pending`, `in_progress`, `completed`, `blocked` |
+| `title` | string | Short task description |
+| `description` | string | Detailed task description |
+| `status` | TaskStatus | Current status |
 | `priority` | enum | `high`, `medium`, `low` |
+| `dependencies` | string[] | Task IDs that must complete first |
 | `created_at` | timestamp | When the todo was created |
 | `completed_at` | timestamp | When the todo was completed |
+
+### TaskStatus
+
+| Status | Description |
+|--------|-------------|
+| `Pending` | Not yet started |
+| `InProgress` | Currently being executed |
+| `Completed` | Successfully finished |
+| `Failed` | Execution failed |
+| `Skipped` | Skipped (dependency failed or no longer needed) |
+| `Cancelled` | Manually cancelled |
 
 ## How It Works
 
@@ -36,11 +51,11 @@ Agent creates todos:
 As the agent works, it updates todo status:
 
 ```
-  ✅ [high] Create GitHub Actions workflow file
-  ✅ [high] Add build and test steps
-  🔄 [medium] Add linting step          ← in_progress
-  ☐ [medium] Configure deployment to staging
-  ☐ [low] Add badge to README
+  ✅ [high] Create GitHub Actions workflow file       Completed
+  ✅ [high] Add build and test steps                  Completed
+  🔄 [medium] Add linting step                       InProgress
+  ☐ [medium] Configure deployment to staging          Pending
+  ☐ [low] Add badge to README                        Pending
 ```
 
 ## Context Integration

@@ -10,6 +10,8 @@
     "planning",
     "todos",
     "persistence",
+    "memory",
+    "hooks",
     "---Tools & Capabilities---",
     "tools",
     "custom-tools",

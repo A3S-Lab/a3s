@@ -119,6 +119,6 @@ Three storage backends:
 
 | Backend | Use case |
 |---------|----------|
-| `memory` | Default, no persistence across restarts |
-| `file` | JSONL files in configured `sessions_dir` |
+| `memory` | In-memory only, no persistence across restarts |
+| `file` | JSON files in configured `sessions_dir` (default) |
 | `custom` | Inject external store (PostgreSQL, Redis) |

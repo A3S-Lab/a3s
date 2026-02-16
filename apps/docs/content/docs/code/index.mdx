@@ -29,8 +29,11 @@ All subsystems — hooks, security, memory, MCP, subagent delegation, planning �
 - **Memory** — 4 types: episodic, semantic, procedural, working memory
 - **JSON-Structured Planning** — Execution plans and goal tracking via LlmPlanner
 - **Context Compaction** — Auto-summarize long conversations (80% threshold)
+- **Context Store** — Persistent semantic search with embeddings (feature-gated: `context-store`)
 - **File History** — Auto-snapshots (500-snapshot capacity) with diff and restore
 - **Cost Tracking** — Per-session token cost calculation with per-model pricing
+- **Thinking Models** — Extended reasoning with `reasoning_content` support
+- **API Retry** — Exponential backoff for transient errors
 - **`#[non_exhaustive]` Events** — AgentEvent uses `#[non_exhaustive]` for safe SDK evolution
 
 ## Quick Example

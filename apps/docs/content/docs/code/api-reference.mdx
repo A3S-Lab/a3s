@@ -297,6 +297,7 @@ pub enum AgentEvent {
     ToolOutputDelta { id: String, name: String, delta: String },
     TurnEnd { turn: usize, usage: TokenUsage },
     End { text: String, usage: TokenUsage },
+    ConfirmationRequired { tool_id: String, tool_name: String, description: String },
     Error { message: String },
     // ... future variants may be added
 }
@@ -306,7 +307,8 @@ pub enum AgentEvent {
 ```typescript
 interface AgentEvent {
   type: 'start' | 'text_delta' | 'tool_start' | 'tool_end'
-      | 'tool_output_delta' | 'turn_start' | 'turn_end' | 'end' | 'error';
+      | 'tool_output_delta' | 'turn_start' | 'turn_end'
+      | 'end' | 'confirmation_required' | 'error';
   text?: string;
   toolName?: string;
   toolId?: string;
@@ -314,6 +316,7 @@ interface AgentEvent {
   exitCode?: number;
   turn?: number;
   prompt?: string;
+  description?: string;
   error?: string;
   totalTokens?: number;
 }
@@ -330,6 +333,7 @@ class AgentEvent:
     exit_code: int | None
     turn: int | None
     prompt: str | None
+    description: str | None  # For confirmation_required
     error: str | None
     total_tokens: int | None
 ```
@@ -409,6 +413,7 @@ interface SessionOptions {
 | `tool_output_delta` | `tool_id`, `tool_name`, `text` | Tool output increment |
 | `turn_end` | `turn`, `total_tokens` | Turn completed |
 | `end` | `text`, `total_tokens` | Generation finished |
+| `confirmation_required` | `tool_id`, `tool_name`, `description` | HITL confirmation needed |
 | `error` | `error` | Error occurred |
 
 ## Configuration

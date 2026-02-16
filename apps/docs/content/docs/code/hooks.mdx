@@ -1,0 +1,109 @@
+---
+title: Lifecycle Hooks
+description: 8 lifecycle hooks for intercepting tool calls, LLM generations, sessions, and skills
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Lifecycle Hooks
+
+A3S Code provides 8 lifecycle hooks for intercepting and reacting to events during agent execution. Hooks enable logging, security enforcement, telemetry, and custom behavior without modifying the core agent loop.
+
+## Hook Events
+
+| Hook | Fires | Use Case |
+|------|-------|----------|
+| `PreToolUse` | Before tool execution | Validate args, taint tracking, block dangerous calls |
+| `PostToolUse` | After tool execution | Audit logging, injection scanning, output filtering |
+| `GenerateStart` | Before LLM call | Injection detection, prompt logging |
+| `GenerateEnd` | After LLM response | Output sanitization, PII redaction |
+| `SessionStart` | Session created | Initialize session resources |
+| `SessionEnd` | Session destroyed | Cleanup, persist state |
+| `SkillLoad` | Skill loaded | Validate skill, log activation |
+| `SkillUnload` | Skill unloaded | Cleanup skill resources |
+
+## How Hooks Work
+
+Hooks are registered on the `HookEngine` and fire at specific points in the agent loop. Multiple hooks can listen to the same event — they execute in priority order (lower number = higher priority).
+
+```
+Agent Loop
+  ├── GenerateStart hooks fire
+  ├── LLM call
+  ├── GenerateEnd hooks fire
+  └── For each tool_use:
+      ├── PreToolUse hooks fire
+      ├── Permission check
+      ├── HITL check
+      ├── Tool execution
+      └── PostToolUse hooks fire
+```
+
+## Built-in SecurityGuard
+
+The `SecurityGuard` registers hooks at priority 1 (highest) automatically:
+
+| Hook | SecurityGuard Behavior |
+|------|----------------------|
+| `PreToolUse` | Taint tracking — checks if sensitive values leak into tool arguments |
+| `PostToolUse` | Injection scanning — detects prompt injection in tool outputs |
+| `GenerateStart` | Injection detection — scans user prompt for injection patterns |
+| `GenerateEnd` | Output sanitization — redacts PII from LLM responses |
+
+## Hook Registration (Rust)
+
+Register custom hooks via the `HookEngine`:
+
+```rust
+use a3s_code_core::hooks::{HookEngine, HookEvent, HookResult};
+
+let mut engine = HookEngine::new();
+
+// Log all tool calls
+engine.on(HookEvent::PreToolUse, 10, |ctx| {
+    println!("Tool: {} Args: {:?}", ctx.tool_name, ctx.tool_args);
+    HookResult::Continue
+});
+
+// Block dangerous patterns
+engine.on(HookEvent::PreToolUse, 5, |ctx| {
+    if ctx.tool_name == "bash" && ctx.tool_args.contains("rm -rf") {
+        return HookResult::Block("Dangerous command blocked".into());
+    }
+    HookResult::Continue
+});
+
+// Log LLM responses
+engine.on(HookEvent::GenerateEnd, 10, |ctx| {
+    println!("LLM response: {} tokens", ctx.total_tokens);
+    HookResult::Continue
+});
+```
+
+## Hook Priority
+
+Hooks execute in priority order. Lower numbers run first.
+
+| Priority | Convention |
+|----------|-----------|
+| 1 | SecurityGuard (built-in, always runs first) |
+| 2-9 | Critical custom hooks (validation, blocking) |
+| 10-49 | Standard hooks (logging, telemetry) |
+| 50+ | Low-priority hooks (analytics, optional processing) |
+
+If any hook returns `HookResult::Block`, the operation is cancelled and subsequent hooks for that event are skipped.
+
+## Hook Context
+
+Each hook receives a context object with event-specific data:
+
+| Event | Context Fields |
+|-------|---------------|
+| `PreToolUse` | `tool_name`, `tool_args`, `session_id`, `workspace` |
+| `PostToolUse` | `tool_name`, `tool_args`, `tool_output`, `exit_code`, `session_id` |
+| `GenerateStart` | `prompt`, `model`, `session_id` |
+| `GenerateEnd` | `response_text`, `total_tokens`, `model`, `session_id` |
+| `SessionStart` | `session_id`, `workspace`, `model` |
+| `SessionEnd` | `session_id`, `workspace` |
+| `SkillLoad` | `skill_name`, `skill_kind` |
+| `SkillUnload` | `skill_name` |

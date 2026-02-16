@@ -12,7 +12,7 @@ const modules = [
   {
     name: 'CODE',
     tag: 'agent',
-    description: 'AI coding agent — multi-session, 11 tools, skills, subagents, LSP, MCP',
+    description: 'AI coding agent — multi-session, 14 tools, skills, subagents, hooks, MCP',
     href: '/docs/code',
     status: 'ACTIVE',
     tests: 1859,
@@ -126,7 +126,7 @@ export default function HomePage() {
         </p>
 
         <div className="mt-2 mb-8 text-xs" style={{ color: 'var(--term-muted)' }}>
-          version 0.6.0 · 12 crates · 4,516+ tests · MIT license
+          version 0.7.0 · 12 crates · 4,516+ tests · MIT license
         </div>
 
         <div className="flex flex-wrap gap-3">

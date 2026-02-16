@@ -9,11 +9,11 @@ A3S Code supports pluggable session storage backends. Sessions can be stored in 
 
 ## Storage Types
 
-| Type | Description |
-|------|-------------|
-| `memory` | In-memory only, lost on restart |
-| `file` | JSON files on disk (default) |
-| `custom` | External store via `SessionStore` trait |
+| Type | Default | Description |
+|------|---------|-------------|
+| `memory` | | In-memory only, lost on restart |
+| `file` | Yes | JSON files on disk |
+| `custom` | | External store via `SessionStore` trait |
 
 ## Configuration
 

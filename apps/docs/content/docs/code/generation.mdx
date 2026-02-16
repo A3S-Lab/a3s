@@ -115,4 +115,5 @@ let result = session.send_with_history(&history, "Now explain main.rs").await?;
 | `tool_output_delta` | `tool_id`, `tool_name`, `text` | Tool output increment |
 | `turn_end` | `turn`, `total_tokens` | Turn completed |
 | `end` | `text`, `total_tokens` | Generation finished |
+| `confirmation_required` | `tool_id`, `tool_name`, `description` | HITL confirmation needed |
 | `error` | `error` | Error occurred |

@@ -11,7 +11,7 @@ The Rust SDK (`a3s-code-core`) is the native core library. All other SDKs are bi
 
 ```toml
 [dependencies]
-a3s-code-core = "0.1"
+a3s-code-core = "0.7"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -156,6 +156,7 @@ pub enum AgentEvent {
     ToolOutputDelta { id: String, name: String, delta: String },
     TurnEnd { turn: usize, usage: TokenUsage },
     End { text: String, usage: TokenUsage },
+    ConfirmationRequired { tool_id: String, tool_name: String, description: String },
     Error { message: String },
     // ... future variants may be added
 }
