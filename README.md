@@ -53,10 +53,8 @@ or care what runs inside the VM. Each component can also be used independently a
 brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
 
 # Install individual components
-brew install a3s-code       # AI coding agent framework
 brew install a3s-search     # Meta search engine
 brew install a3s-power      # Local LLM inference engine
-brew install a3s-tools      # Built-in tools binary
 
 # Or install everything
 brew install a3s
@@ -74,7 +72,6 @@ just release        # Release build
 ### Cargo
 
 ```bash
-cargo install a3s-code
 cargo install a3s-search
 ```
 
@@ -178,7 +175,7 @@ let result = session.send("What files handle auth?").await?;
 println!("{}", result.text);
 ```
 
-📦 [crates.io](https://crates.io/crates/a3s-code) · 📖 [Documentation](crates/code/README.md)
+📦 [crates.io](https://crates.io/crates/a3s-code-core) · 📖 [Documentation](crates/code/README.md)
 
 ---
 
