@@ -30,11 +30,15 @@ The core deployment model:
 a3s-box (VM runtime — standalone CLI or K8s RuntimeClass)
   └── MicroVM (TEE hardware encryption when available, VM isolation always)
       ├── SafeClaw (security proxy — classify, sanitize, audit)
-      └── A3S Code  (agent service — runtime, tools, LLM calls)
-          └── a3s-lane (per-session priority queue)
+      └── Your Agent (built with a3s-code framework + a3s-lane scheduling)
 
 a3s-gateway (K8s Ingress Controller — routes traffic, app-agnostic)
 ```
+
+**A3S Code** is a coding agent framework — not a standalone service. Import it as a library
+(`a3s-code-core`) and build agents with config-driven `Agent::builder().with_config(config)`.
+All subsystems (tools, hooks, security, memory, MCP/LSP, planning, subagents) are embedded
+in the library and active by default. Configure via HCL or JSON.
 
 A3S OS provides two infrastructure components: **A3S Gateway** (traffic routing) and
 **A3S Box** (VM runtime management). It is application-agnostic — it doesn't know
@@ -49,7 +53,7 @@ or care what runs inside the VM. Each component can also be used independently a
 brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
 
 # Install individual components
-brew install a3s-code       # AI coding agent
+brew install a3s-code       # AI coding agent framework
 brew install a3s-search     # Meta search engine
 brew install a3s-power      # Local LLM inference engine
 brew install a3s-tools      # Built-in tools binary
@@ -107,11 +111,11 @@ Download from [GitHub Releases](https://github.com/A3S-Lab/a3s/releases) for you
                 │  │  Taint Track · Output Sanitize · Audit  │  │
                 │  │  TeeRuntime (self-detect /dev/sev-guest) │  │
                 │  └──────────────────┬─────────────────────┘  │
-                │                     │ gRPC / unix socket      │
+                │                     │ library API / unix socket │
                 │  ┌──────────────────▼─────────────────────┐  │
-                │  │     A3S Code (agent service)            │  │
-                │  │  Agent Runtime · Tool Execution         │  │
-                │  │  LLM API Calls · a3s-lane (scheduling)  │  │
+                │  │  Your Agent (built with a3s-code)        │  │
+                │  │  Agent::builder() · Tools · LLM Calls    │  │
+                │  │  a3s-lane scheduling · Skills · Memory   │  │
                 │  └────────────────────────────────────────┘  │
                 └──────────────────────────────────────────────┘
                        │              │
@@ -131,49 +135,47 @@ Download from [GitHub Releases](https://github.com/A3S-Lab/a3s/releases) for you
 | Ingress | a3s-gateway | K8s Ingress Controller (app-agnostic): TLS, auth, privacy routing, load balancing, token metering |
 | VM Runtime | a3s-box | MicroVM isolation (always) + TEE hardware encryption (when available), CRI for K8s |
 | Security Proxy | SafeClaw | Inside VM: 7-channel routing, privacy classification, injection detection, taint tracking, output sanitization, audit |
-| Agent Service | a3s-code | Inside VM: AI agent runtime, tool calling, reflection, skills, subagents. Called by SafeClaw via local gRPC |
-| Scheduling | a3s-lane | Per-session priority queue inside a3s-code: 6 lanes, concurrency, retry, dead letter |
+| Agent Framework | a3s-code | Embeddable library (`a3s-code-core`): config-driven Agent/AgentSession, 11 tools, skills, subagents, memory, planning. Not a standalone service |
+| Scheduling | a3s-lane | Per-session priority queue embedded in a3s-code: 6 lanes, concurrency, retry, dead letter |
 | Infrastructure | a3s-power / a3s-search / a3s-cron | LLM inference / meta search / cron scheduling |
 | Shared | a3s-privacy / a3s-transport | PII classification & redaction / vsock frame protocol |
 | Observability | OpenTelemetry + Prometheus | OTLP spans, metrics, W3C/B3 trace propagation, SigNoz dashboards |
 
 ## Projects
 
-### a3s-code — AI Coding Agent
+### a3s-code — AI Coding Agent Framework
 
-Agent service — runs as a local service inside the same A3S Box VM as SafeClaw. SafeClaw calls it via gRPC/unix socket. Each session gets its own priority queue and reflection system.
+Embeddable Rust library (`a3s-code-core`) for building AI coding agents. Configure via HCL or JSON, create an `Agent`, bind sessions to workspaces with `agent.session("/path")`, and go. All subsystems are wired into the core and active by default.
 
-- **Multi-Session Management**: Run multiple independent AI conversations with file/memory storage
-- **11 Built-in Tools**: bash, read, write, edit, patch, grep, glob, ls, web_fetch, web_search, cron — all workspace-sandboxed
-- **Permission System**: Fine-grained Allow/Deny/Ask rules for tool access
-- **HITL Confirmation**: Human-in-the-loop for sensitive operations with configurable timeout policies
-- **Skills & Subagents**: Extend with Markdown skill definitions (Claude Code Skills format); SkillKind classification (instruction/tool/agent); on-demand `load_skill` tool; native `search_skills` and `install_skill` via GitHub API; delegate tasks to specialized child agents via `task` tool
-- **Server-Side Agentic Loop**: Full agentic loop with active hooks, security, memory context, and planning — all subsystems wired into every session by default
-- **LSP Integration**: Code intelligence (hover, definition, references, symbols, diagnostics) for Rust, Go, TypeScript, Python, C/C++; tools auto-registered in ToolExecutor on server start
-- **MCP Support**: Model Context Protocol with stdio/HTTP transport, OAuth config, `mcp__<server>__<tool>` naming; tools auto-registered/unregistered on connect/disconnect
-- **Reflection System**: 10 error categories, 4 adaptive strategies (Direct/Planned/Iterative/Parallel), confidence tracking
-- **Memory System**: Episodic/Semantic/Procedural memory with importance scoring and access tracking; auto-registered as ContextProvider in every session
-- **Planning & Goals**: LLM-based execution plans, goal extraction, achievement tracking — configurable per session via `planning_enabled` / `goal_tracking`
-- **Hooks System**: 8 lifecycle events (PreToolUse, PostToolUse, GenerateStart/End, SessionStart/End, SkillLoad/Unload) — fired from agent loop and service layer; shared HookEngine across all sessions
-- **Security**: SecurityGuard with output sanitization, taint tracking, injection detection, tool interception — wired via shared HookEngine
-- **Enhanced Health Check**: Subsystem diagnostics (version, uptime, session count, store health)
-- **Pluggable Session Persistence**: `SessionStore` trait with `Custom` backend for external stores (PostgreSQL, etc.)
-- **Context Store**: Semantic context storage with A3SContextProvider auto-registered per session
-- **Checkpoint Manager**: Session state snapshots with diff and restore
-- **Structured Generation**: JSON Schema constrained output, both unary and streaming
-- **Cron Scheduling**: 10 cron RPCs for scheduled task management
-- **OpenTelemetry**: OTLP spans (agent → turn → llm → tool → subagent), LLM cost tracking, cross-session cost aggregation
-- **SDKs**: Python & TypeScript covering all 86 RPCs, with high-level `Session` API (`send()`, `stream()`, `delegate()`)
-- **Externalized Prompt Registry**: All 25 LLM-facing prompts in `prompts/` directory — full agentic design visible in one place
-- **CI Release Pipeline**: Prebuilt binaries for 4 platforms — `brew install` in seconds, no Rust/protobuf needed
-- **1,859 unit tests**
+- **Library-First**: `Agent` / `AgentSession` facade — no server, no serialization
+- **Config-Driven**: Multi-provider LLM configuration via HCL or JSON, auto-detected by file extension
+- **Session-Per-Workspace**: `Agent` holds LLM config; `AgentSession` binds to a workspace directory
+- **Native SDKs**: TypeScript (`@a3s-lab/code`) and Python (`a3s-code`) via napi-rs / PyO3
+- **11 Built-in Tools**: bash, read, write, edit, patch, grep, glob, ls, web_fetch, web_search, cron
+- **Permission System**: Allow/Deny/Ask rules for tool access control
+- **HITL**: Human-in-the-loop confirmation for sensitive operations
+- **Skills & Subagents**: Markdown skill definitions + delegate tasks to child agents (explore, general, plan)
+- **LSP / MCP**: Code intelligence via LSP; extend with external tools via MCP
+- **Hooks**: 8 lifecycle events (PreToolUse, PostToolUse, GenerateStart/End, SessionStart/End, SkillLoad/Unload)
+- **Security**: Output sanitization, taint tracking, injection detection, workspace boundary enforcement
+- **Memory**: Episodic, semantic, procedural, and working memory for persistent knowledge
+- **Planning & Goals**: Execution plans and goal achievement tracking
+- **Context Compaction**: Auto-summarize long conversations at configurable threshold
+- **OpenTelemetry**: OTLP spans, LLM cost tracking, per-session cost aggregation
+- **1,492 unit tests**
 
-```bash
-# Install
-brew install a3s-code
+```rust
+use a3s_code_core::{Agent, AgentSession, CodeConfig};
 
-# Run
-a3s-code --config ~/.a3s/config.json
+let config = CodeConfig::from_file("agent.hcl")?;
+let agent = Agent::builder()
+    .with_config(config)
+    .build()
+    .await?;
+
+let session = agent.session("/my-project");
+let result = session.send("What files handle auth?").await?;
+println!("{}", result.text);
 ```
 
 📦 [crates.io](https://crates.io/crates/a3s-code) · 📖 [Documentation](crates/code/README.md)
@@ -367,7 +369,7 @@ manager.add_job("backup", "0 2 * * *", "backup.sh").await?;
 
 ### A3S Deep — Agentic Deep Research Agent
 
-Application layer — a TypeScript agent that leverages A3S Code (with built-in Search + Lane) to perform iterative deep research and produce comprehensive reports.
+Application layer — a TypeScript agent built on the a3s-code framework (via `@a3s-lab/code` SDK) to perform iterative deep research and produce comprehensive reports.
 
 - **Iterative Research Loop**: Plan → Search+Analyze → Reflect → repeat until confident
 - **Interactive Clarification**: Multi-round questioning to refine ambiguous queries (`-i` mode)
@@ -438,97 +440,95 @@ if update.available {
 
 ## Quick Start
 
-### 1. Install
+### Rust
 
 ```bash
-brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap && brew install a3s-code
+cargo add a3s-code-core
 ```
 
-### 2. Configure
+```rust
+use a3s_code_core::{Agent, AgentSession, CodeConfig};
 
-```bash
-mkdir -p ~/.a3s
-cat > ~/.a3s/config.json << 'EOF'
-{
-  "defaultProvider": "anthropic",
-  "defaultModel": "claude-sonnet-4-20250514",
-  "providers": [{
-    "name": "anthropic",
-    "apiKey": "YOUR_API_KEY",
-    "models": [{"id": "claude-sonnet-4-20250514", "toolCall": true}]
-  }]
+// Load config (HCL or JSON — auto-detected by extension)
+let config = CodeConfig::from_file("agent.hcl")?;
+
+let agent = Agent::builder()
+    .with_config(config)
+    .build()
+    .await?;
+
+// Create a workspace-bound session
+let session = agent.session("/my-project");
+
+// Non-streaming
+let result = session.send("Write hello world in Rust").await?;
+println!("{}", result.text);
+
+// Streaming
+let (mut rx, _handle) = session.stream("Explain this codebase").await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::TextDelta { text } => print!("{text}"),
+        AgentEvent::End { .. } => break,
+        _ => {}
+    }
 }
-EOF
 ```
 
-### 3. Run
+### TypeScript
 
 ```bash
-a3s-code --config ~/.a3s/config.json
-```
-
-### 4. Use the SDK
-
-```python
-# pip install a3s-code
-from a3s_code import A3sClient, create_provider
-
-anthropic = create_provider(name="anthropic", api_key="YOUR_API_KEY")
-
-async with A3sClient(address="localhost:4088") as client:
-    async with await client.session(
-        model=anthropic("claude-sonnet-4-20250514"),
-        workspace="/tmp/demo",
-        system="You are a helpful coding assistant.",
-    ) as session:
-        # Simple question
-        result = await session.send("Write hello world in Rust")
-        print(result.text)
-
-        # Streaming
-        async for event in session.stream("Explain this codebase"):
-            if event.type == "text":
-                print(event.content, end="", flush=True)
+npm install @a3s-lab/code
 ```
 
 ```typescript
-// npm install @a3s-lab/code
-import { A3sClient, createProvider } from '@a3s-lab/code';
+import { Agent } from '@a3s-lab/code';
 
-const client = new A3sClient({ address: 'localhost:4088' });
-const anthropic = createProvider({ name: 'anthropic', apiKey: 'YOUR_API_KEY' });
-
-await using session = await client.createSession({
-  model: anthropic('claude-sonnet-4-20250514'),
-  workspace: '/tmp/demo',
-  system: 'You are a helpful coding assistant.',
-});
+const agent = new Agent({ config: 'agent.hcl' });
+const session = agent.session('/my-project');
 
 const { text } = await session.send('Write hello world in Rust');
 console.log(text);
 ```
 
+### Python
+
+```bash
+pip install a3s-code
+```
+
+```python
+from a3s_code import Agent
+
+agent = Agent(config="agent.hcl")
+session = agent.session("/my-project")
+
+result = await session.send("Write hello world in Rust")
+print(result.text)
+```
+
 ## SDKs
 
-| Crate | Language | Package | RPCs | Location |
+| Crate | Language | Package | Type | Location |
 |-------|----------|---------|------|----------|
-| a3s-code | Python | `a3s-code` | 86 RPCs | `crates/code/sdk/python/` |
-| a3s-code | TypeScript | `@a3s-lab/code` | 86 RPCs | `crates/code/sdk/typescript/` |
-| a3s-lane | Python | `a3s-lane` | — | `crates/lane/sdk/python/` |
-| a3s-lane | Node.js | `@a3s-lab/lane` | — | `crates/lane/sdk/node/` |
-| a3s-search | Python | `a3s-search` | — | `crates/search/sdk/python/` |
-| a3s-search | Node.js | `@a3s-lab/search` | — | `crates/search/sdk/node/` |
-| a3s-deep | TypeScript | `@a3s-lab/deep` | — | `a3s-deep/` |
+| a3s-code | Rust | `a3s-code-core` | Native library | `crates/code/` |
+| a3s-code | TypeScript | `@a3s-lab/code` | Native binding (napi-rs) | `crates/code/sdk/typescript/` |
+| a3s-code | Python | `a3s-code` | Native binding (PyO3) | `crates/code/sdk/python/` |
+| a3s-lane | Python | `a3s-lane` | Native binding | `crates/lane/sdk/python/` |
+| a3s-lane | Node.js | `@a3s-lab/lane` | Native binding | `crates/lane/sdk/node/` |
+| a3s-search | Python | `a3s-search` | Native binding | `crates/search/sdk/python/` |
+| a3s-search | Node.js | `@a3s-lab/search` | Native binding | `crates/search/sdk/node/` |
+| a3s-deep | TypeScript | `@a3s-lab/deep` | Application | `a3s-deep/` |
 
-SDK documentation covers every feature category: sessions, generation, structured output, skills, permissions, HITL, events, context, todos, providers, planning, memory, MCP, LSP, cron, and observability. Both Python and TypeScript SDKs provide a high-level `Session` API with `send()`, `stream()`, `delegate()`, and `async with` / `await using` auto-cleanup.
+A3S Code SDKs are native bindings — they embed the Rust core directly via napi-rs (TypeScript) and PyO3 (Python). No server needed. All subsystems (tools, hooks, security, memory, MCP/LSP, planning, subagents) are available through the `Agent` / `AgentSession` API with `send()`, `stream()`, and `delegate()`.
 
 ## Test Coverage
 
-**Total: 4,516+ tests**
+**Total: 4,149+ tests**
 
 | Crate | Tests | Coverage | Status |
 |-------|------:|----------|--------|
-| a3s-code | 1,859 | — | ✅ |
+| a3s-code | 1,492 | — | ✅ |
 | a3s-power | 888 | — | ✅ |
 | a3s-gateway | 625 | — | ✅ |
 | safeclaw | 527 | — | ✅ |
@@ -551,12 +551,13 @@ just test-all   # Run everything including box
 
 - [ ] **Unified Transport Layer** (P0, ~50%) — `a3s-transport` crate with `Transport` trait, frame protocol, MockTransport. Consumer migration (box exec/PTY) pending.
 - [ ] **MicroVM Cold Start** (P0, ~70%) — RootfsCache, LayerCache, WarmPool implemented; VM snapshot/restore pending (requires libkrun API support).
-- [ ] **SafeClaw Architecture Correction** (P0) — Replace in-process `AgentEngine` with local a3s-code service client; replace `TeeOrchestrator` with `TeeRuntime` self-detection; remove `a3s-box-runtime` dependency (SafeClaw is guest, not host).
+- [ ] **SafeClaw Architecture Correction** (P0) — Embed a3s-code as library instead of calling external service; replace `TeeOrchestrator` with `TeeRuntime` self-detection; remove `a3s-box-runtime` dependency (SafeClaw is guest, not host).
 - [ ] **LLM Cost Dashboard** (P1, ~80%) — a3s-code complete (per-call recording, cross-session aggregation, OTLP, SigNoz dashboard); a3s-power needs aggregation endpoint.
+- [ ] **Multi-Model Routing** (P1) — Smart model router in a3s-code: auto-select model by task complexity, cost-aware routing, fallback chain across providers.
 
 ### Completed ✅
 
-- [x] AI Coding Agent — multi-session, 11 tools, permissions, HITL, skills (kind classification, on-demand loading, native discovery), subagent delegation (task tool), LSP, MCP, reflection, memory (auto ContextProvider), planning, hooks (all lifecycle events active), security (shared HookEngine), server-side agentic loop (all subsystems wired)
+- [x] AI Coding Agent Framework — library-first architecture (`Agent` / `AgentSession` with config-driven builder), HCL + JSON config, multi-session, 11 tools, permissions, HITL, skills, subagent delegation (task tool), LSP, MCP, memory, planning, hooks, security, context compaction, native SDKs (TypeScript via napi-rs, Python via PyO3)
 - [x] Per-Session Priority Queue — 6 lanes, concurrency, retry/DLQ, rate limiting, priority boosting, metrics, OpenTelemetry, Python & Node.js SDKs
 - [x] MicroVM Sandbox — VM management, OCI images, Docker CLI (29 commands), WarmPool, CRI, TEE, networking, volumes
 - [x] Security Proxy — 7 channel adapters, privacy classification (regex + semantic + compliance), taint tracking, output sanitization, injection detection, audit event pipeline with real-time alerting, 527 tests
@@ -566,7 +567,7 @@ just test-all   # Run everything including box
 - [x] Event System — pluggable pub/sub with NATS JetStream and in-memory providers, AES-256-GCM payload encryption, state persistence, observability
 - [x] Cron Scheduling — standard cron + natural language (EN/CN), pluggable storage, execution history, OpenTelemetry
 - [x] OpenTelemetry Cross-Crate — structured spans and OTLP metrics in a3s-cron, a3s-lane, a3s-event
-- [x] SDKs — Python & TypeScript with full 86 RPC coverage, unified skill API, aligned high-level Session API (`send()`, `stream()`, `delegate()`)
+- [x] SDKs — TypeScript (napi-rs) & Python (PyO3) native bindings with `Agent` / `AgentSession` API (`send()`, `stream()`, `delegate()`)
 - [x] Deep Research Agent — iterative research with interactive steering, workspace persistence, pluggable output formats
 - [x] Infrastructure — GitHub Actions CI/CD, crates.io publishing, Homebrew tap
 - [x] Shared Privacy Types, Box Networking, Box Volumes, Box Registry Push, Box Resource Limits, Box Dockerfile Completion
@@ -585,7 +586,7 @@ See each crate's README for detailed per-component roadmaps.
 
 ```
 a3s/
-├── Cargo.toml              # Workspace definition
+├── CLAUDE.md               # AI assistant guidelines
 ├── justfile                # Build commands
 ├── README.md
 ├── apps/                   # Frontend apps and non-Rust projects
@@ -602,7 +603,7 @@ a3s/
 │   └── safeclaw-ui/        # [submodule] SafeClaw desktop UI (React + Tauri)
 ├── crates/
 │   ├── box/                # [submodule] MicroVM runtime (VM isolation + TEE)
-│   ├── code/               # [submodule] AI agent service (runs in same VM as SafeClaw)
+│   ├── code/               # [submodule] AI coding agent framework (library-first, imported via SDK)
 │   │   └── sdk/            #   Python & TypeScript SDKs
 │   ├── cron/               # [submodule] Cron scheduling library
 │   ├── event/              # [submodule] Pluggable event system
