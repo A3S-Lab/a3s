@@ -194,6 +194,7 @@ Scheduling layer — each a3s-code agent session gets its own a3s-lane instance 
 - **Priority Boosting**: Deadline-based automatic priority escalation
 - **Metrics & Alerts**: Latency histograms (p50/p90/p95/p99), queue depth alerts
 - **OpenTelemetry**: OTLP spans on submit/execute/retry, OtelMetricsBackend bridging MetricsBackend trait
+- **SDKs**: Python (`pip install a3s-lane`) & Node.js (`npm install @a3s-lab/lane`) with multi-platform binaries
 - **230 tests** with 96% line coverage
 
 ```rust
@@ -513,6 +514,8 @@ console.log(text);
 |-------|----------|---------|------|----------|
 | a3s-code | Python | `a3s-code` | 86 RPCs | `crates/code/sdk/python/` |
 | a3s-code | TypeScript | `@a3s-lab/code` | 86 RPCs | `crates/code/sdk/typescript/` |
+| a3s-lane | Python | `a3s-lane` | — | `crates/lane/sdk/python/` |
+| a3s-lane | Node.js | `@a3s-lab/lane` | — | `crates/lane/sdk/node/` |
 | a3s-search | Python | `a3s-search` | — | `crates/search/sdk/python/` |
 | a3s-search | Node.js | `@a3s-lab/search` | — | `crates/search/sdk/node/` |
 | a3s-deep | TypeScript | `@a3s-lab/deep` | — | `a3s-deep/` |
@@ -554,7 +557,7 @@ just test-all   # Run everything including box
 ### Completed ✅
 
 - [x] AI Coding Agent — multi-session, 11 tools, permissions, HITL, skills (kind classification, on-demand loading, native discovery), subagent delegation (task tool), LSP, MCP, reflection, memory (auto ContextProvider), planning, hooks (all lifecycle events active), security (shared HookEngine), server-side agentic loop (all subsystems wired)
-- [x] Per-Session Priority Queue — 6 lanes, concurrency, retry/DLQ, rate limiting, priority boosting, metrics, OpenTelemetry
+- [x] Per-Session Priority Queue — 6 lanes, concurrency, retry/DLQ, rate limiting, priority boosting, metrics, OpenTelemetry, Python & Node.js SDKs
 - [x] MicroVM Sandbox — VM management, OCI images, Docker CLI (29 commands), WarmPool, CRI, TEE, networking, volumes
 - [x] Security Proxy — 7 channel adapters, privacy classification (regex + semantic + compliance), taint tracking, output sanitization, injection detection, audit event pipeline with real-time alerting, 527 tests
 - [x] K8s Ingress Controller — reverse proxy, 10 middlewares, 7-platform webhooks, privacy routing, token metering, TLS/ACME
@@ -605,6 +608,7 @@ a3s/
 │   ├── event/              # [submodule] Pluggable event system
 │   ├── gateway/            # [submodule] K8s Ingress Controller (app-agnostic)
 │   ├── lane/               # [submodule] Per-session priority queue (inside a3s-code)
+│   │   └── sdk/            #   Python & Node.js SDKs
 │   ├── power/              # [submodule] Local LLM inference engine
 │   ├── privacy/            # Shared PII classification types
 │   ├── safeclaw/           # [submodule] Security proxy for AI agents
