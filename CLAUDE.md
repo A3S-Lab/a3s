@@ -300,6 +300,35 @@ Example refusals:
 **4. Only What's Used** — No future-proofing, delete dead code immediately
 **5. DRY** — Don't Repeat Yourself (single source of truth)
 **6. Explicit Errors** — Self-documenting error messages
+**7. Periodic Pruning** — After every feature, audit for organic cruft
+
+### Periodic Pruning (MANDATORY — Rule 7)
+
+**Code grows organically. Wrappers accumulate. Abstractions overlap. Nobody goes back to clean up. This rule forces it.**
+
+After completing any feature that touches an existing module, you MUST perform a pruning audit:
+
+1. **Wrapper audit**: Does any struct/module exist solely to wrap another type with zero added logic? If the wrapper adds nothing (no extra fields, no extra methods, no trait impl), inline it and delete the wrapper.
+2. **Dead export audit**: `grep` for every `pub` type/function in the changed files. If something is exported but has zero external callers, make it `pub(crate)` or delete it.
+3. **Redundant module audit**: If a module re-exports everything from another module and adds < 10 lines of logic, merge it into the caller or the source.
+4. **Stale integration layer audit**: When crate A wraps crate B's types just to "adapt" them, check if the adaptation is still needed. If crate B's API evolved to match, delete the glue layer.
+5. **Orphaned test audit**: If you deleted or renamed code, search for tests that reference the old names. Delete or update them.
+
+**The rule is simple: every feature commit should leave the module cleaner than you found it.** If you added a new abstraction, check whether an old one became redundant. If you changed an API, check whether a wrapper layer lost its reason to exist.
+
+```bash
+# Quick pruning commands
+grep -rn "pub struct.*Wrapper\|pub struct.*Enhanced\|pub struct.*Adapter" src/
+grep -rn "pub fn\|pub struct\|pub enum\|pub trait" src/changed_module/ | wc -l
+# For each pub item: grep -rn "TypeName" src/ — if only 1 hit (the definition), it's dead
+```
+
+**Signs of organic cruft to watch for:**
+- `EnhancedFoo` wrapping `Foo` with only passthrough methods
+- `foo_integration.rs` that just re-exports `foo` crate types with trivial conversions
+- Two modules with 80%+ overlapping functionality
+- `pub` items with zero external callers
+- Config structs with fields that are always set to the same value
 
 ### Supporting Principles (Reference When Needed)
 
@@ -406,6 +435,7 @@ std::fs::create_dir_all(&socket_dir).map_err(|e| {
 - [ ] Only code that's actually used exists (no future-proofing, no dead code)
 - [ ] No duplicated knowledge (DRY - single source of truth)
 - [ ] Every error has full context (self-documenting)
+- [ ] Pruning audit done: no dead wrappers, no orphaned exports, no redundant modules
 
 **Supporting Principles:**
 
