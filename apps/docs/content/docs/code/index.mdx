@@ -30,6 +30,7 @@ All subsystems — hooks, security, memory, MCP, subagent delegation, planning �
 - **JSON-Structured Planning** — Execution plans with dependency graphs and goal tracking via LlmPlanner
 - **Parallel Plan Execution** — Independent plan steps execute concurrently via wave-based scheduling (`tokio::JoinSet`); dependent steps wait automatically
 - **Lane Queue** — Priority-based tool routing with parallel reads (Query lane) and sequential writes (Execute lane)
+- **External Task Offloading** — Route any lane to `External` mode; tool calls become `ExternalTask` objects that remote workers poll, execute, and complete via callback — enabling multi-machine parallel execution
 - **Context Compaction** — Auto-summarize long conversations (80% threshold)
 - **Context Store** — Persistent semantic search with embeddings (feature-gated: `context-store`)
 - **File History** — Auto-snapshots (500-snapshot capacity) with diff and restore
@@ -218,3 +219,91 @@ for event in session.stream("Refactor auth to use JWT and update all tests"):
 ```
 </Tab>
 </Tabs>
+
+## External Task Offloading
+
+Route any [lane](/docs/code/lane-queue) to **External** mode to offload tool calls to remote worker machines. The agent loop blocks until your SDK code polls the task, dispatches it to a worker, and feeds the result back.
+
+```
+Coordinator (agent session)          Workers (remote machines)
+  Agent Loop → Lane Queue              ┌─ Worker A ─┐
+    ├─ Query  [Internal] → local       │  bash exec  │
+    ├─ Execute [External] ────────────→│  write exec │
+    └─ Generate [Internal] → local     └─────────────┘
+       pending_external_tasks() → dispatch → complete_external_task()
+```
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{
+    Agent, AgentEvent, SessionOptions, SessionQueueConfig,
+    SessionLane, LaneHandlerConfig, TaskHandlerMode, ExternalTaskResult,
+};
+
+let session = agent.session("/project", Some(
+    SessionOptions::new()
+        .with_queue_config(SessionQueueConfig::default().with_lane_features())
+))?;
+
+// Route Execute lane to remote workers
+session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
+    mode: TaskHandlerMode::External,
+    timeout_ms: 60_000,
+}).await;
+
+let (mut rx, _handle) = session.stream("Run tests and deploy").await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::ExternalTaskPending { .. } => {
+            for task in session.pending_external_tasks().await {
+                let session = session.clone();
+                tokio::spawn(async move {
+                    let result = dispatch_to_worker(&task).await;
+                    session.complete_external_task(&task.task_id, result.into()).await;
+                });
+            }
+        }
+        AgentEvent::End { .. } => break,
+        _ => {}
+    }
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/project', {
+  queueConfig: { enableAllFeatures: true },
+});
+
+await session.setLaneHandler('execute', { mode: 'external', timeoutMs: 60000 });
+
+const events = await session.stream('Run tests and deploy');
+for (const event of events) {
+  if (event.type === 'external_task_pending') {
+    const tasks = await session.pendingExternalTasks();
+    await Promise.all(tasks.map(async (task) => {
+      const result = await dispatchToWorker(task);
+      await session.completeExternalTask(task.task_id, result);
+    }));
+  }
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/project",
+    queue_config=SessionQueueConfig().with_lane_features())
+
+session.set_lane_handler("execute", mode="external", timeout_ms=60000)
+
+for event in session.stream("Run tests and deploy"):
+    if event.event_type == "external_task_pending":
+        for task in session.pending_external_tasks():
+            result = dispatch_to_worker(task)
+            session.complete_external_task(task["task_id"], result)
+```
+</Tab>
+</Tabs>
+
+Three handler modes: **Internal** (local default), **External** (block for callback), **Hybrid** (local + notify). Lanes switch at runtime. See the full guide: [Lane Queue → External Task Handling](/docs/code/lane-queue#external-task-handling).

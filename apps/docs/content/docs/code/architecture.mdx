@@ -120,6 +120,57 @@ The scheduler loop:
 
 Each parallel step runs its own independent agent loop (LLM calls + tool execution). Results are merged via a sorted summary message so subsequent steps see all prior work.
 
+## External Task Offloading
+
+Any [lane](/docs/code/lane-queue) can be switched to **External** mode at runtime. When a tool call enters an External lane, the queue creates an `ExternalTask` that **blocks the agent loop** until your SDK code polls it, dispatches it to a remote worker, and feeds the result back via `complete_external_task()`.
+
+This enables **multi-machine parallel execution** without changing the agent's planning or tool logic:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ Coordinator (runs agent session)                     │
+│                                                      │
+│  Agent Loop ──→ Lane Queue                           │
+│                   ├─ Query lane  [Internal]           │
+│                   │   └─ read, glob, grep → local     │
+│                   ├─ Execute lane [External]           │
+│                   │   └─ bash, write → ExternalTask   │
+│                   └─ Generate lane [Internal]          │
+│                       └─ LLM calls → local            │
+│                                                      │
+│  pending_external_tasks() ──→ task queue ──→ workers  │
+│  complete_external_task()  ←── results ←── workers    │
+└──────────────────────────┬──────────────────────────┘
+                           │ network (gRPC, HTTP, Redis, etc.)
+          ┌────────────────┼────────────────┐
+          ▼                ▼                ▼
+   ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+   │  Worker A   │ │  Worker B   │ │  Worker C   │
+   └─────────────┘ └─────────────┘ └─────────────┘
+```
+
+### Key APIs
+
+| API | Description |
+|-----|-------------|
+| `set_lane_handler(lane, config)` | Switch a lane to Internal / External / Hybrid mode |
+| `pending_external_tasks()` | Poll for tasks waiting for external execution |
+| `complete_external_task(id, result)` | Feed a worker's result back to the blocked agent loop |
+
+### Handler Modes
+
+| Mode | Behavior |
+|------|----------|
+| **Internal** | Execute within the runtime (default) |
+| **External** | Emit task to SDK, block until callback |
+| **Hybrid** | Execute locally AND notify externally (audit, shadow) |
+
+Lanes can be switched at runtime — start Internal, switch to External when workers come online, switch back when they go offline. See the full guide in [Lane Queue → External Task Handling](/docs/code/lane-queue#external-task-handling).
+
+### Planning + External Execution
+
+When [planning](/docs/code/tasks) is enabled, each plan step goes through the same agent loop and lane queue. External-mode lanes work transparently with execution plans — the planner decomposes the task, the wave scheduler groups independent steps, and each step's tool calls route through the lane queue where External lanes offload to workers.
+
 ## Defense-in-Depth Security
 
 Five independent security layers, each capable of blocking a request:

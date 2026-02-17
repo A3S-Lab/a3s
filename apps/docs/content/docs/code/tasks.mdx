@@ -444,6 +444,121 @@ Task-related events emitted during execution:
 | `GoalProgress` | `goal`, `progress`, `completed_steps`, `total_steps` | Fires after each wave completes. `progress` is 0.0–1.0. |
 | `TaskUpdated` | `session_id`, `tasks` | Task list changed (added, status change, completed). Includes the full current task list. |
 
+## External Task Offloading
+
+Plan steps execute tool calls through the [Lane Queue](/docs/code/lane-queue). Any lane can be switched to **External** mode, where tool calls become `ExternalTask` objects that remote workers poll and execute. This means multi-machine parallel execution works transparently with the planning system:
+
+```
+Planner decomposes task → Wave scheduler groups steps
+    │
+    ├─ Wave 1: [step 1, step 2] parallel
+    │   ├─ step 1 tool calls → Lane Queue → External → Worker A
+    │   └─ step 2 tool calls → Lane Queue → External → Worker B
+    │
+    ├─ Wave 2: [step 3] (depends on 1, 2)
+    │   └─ step 3 tool calls → Lane Queue → External → Worker C
+    │
+    └─ Results flow back via complete_external_task()
+```
+
+No changes to the planning config are needed — enable planning as usual, and configure lane handlers to route execution to external workers:
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{
+    Agent, AgentEvent, SessionOptions, SessionQueueConfig,
+    SessionLane, LaneHandlerConfig, TaskHandlerMode,
+};
+
+let session = agent.session("/project", Some(
+    SessionOptions::new()
+        .with_planning(true)
+        .with_goal_tracking(true)
+        .with_queue_config(SessionQueueConfig::default().with_lane_features())
+))?;
+
+// Route Execute lane to remote workers
+session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
+    mode: TaskHandlerMode::External,
+    timeout_ms: 120_000,
+}).await;
+
+let (mut rx, _handle) = session.stream("Refactor auth, update tests, verify CI").await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::StepStart { description, step_number, total_steps, .. } => {
+            println!("[{step_number}/{total_steps}] {description}");
+        }
+        AgentEvent::ExternalTaskPending { .. } => {
+            for task in session.pending_external_tasks().await {
+                let session = session.clone();
+                tokio::spawn(async move {
+                    let result = dispatch_to_worker(&task).await;
+                    session.complete_external_task(&task.task_id, result.into()).await;
+                });
+            }
+        }
+        AgentEvent::GoalProgress { progress, completed_steps, total_steps, .. } => {
+            println!("Progress: {:.0}% ({completed_steps}/{total_steps})", progress * 100.0);
+        }
+        AgentEvent::End { .. } => break,
+        _ => {}
+    }
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/project', {
+  planning: true,
+  goalTracking: true,
+  queueConfig: { enableAllFeatures: true },
+});
+
+// Route Execute lane to remote workers
+await session.setLaneHandler('execute', { mode: 'external', timeoutMs: 120000 });
+
+const events = await session.stream('Refactor auth, update tests, verify CI');
+for (const event of events) {
+  if (event.type === 'step_start')
+    console.log(`[${event.stepNumber}/${event.totalSteps}] ${event.description}`);
+  if (event.type === 'external_task_pending') {
+    const tasks = await session.pendingExternalTasks();
+    await Promise.all(tasks.map(async (task) => {
+      const result = await dispatchToWorker(task);
+      await session.completeExternalTask(task.task_id, result);
+    }));
+  }
+  if (event.type === 'goal_progress')
+    console.log(`Progress: ${(event.progress * 100).toFixed(0)}%`);
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/project", planning=True, goal_tracking=True,
+                        queue_config=SessionQueueConfig().with_lane_features())
+
+# Route Execute lane to remote workers
+session.set_lane_handler("execute", mode="external", timeout_ms=120000)
+
+for event in session.stream("Refactor auth, update tests, verify CI"):
+    if event.event_type == "step_start":
+        print(f"[{event.step_number}/{event.total_steps}] {event.description}")
+    elif event.event_type == "external_task_pending":
+        tasks = session.pending_external_tasks()
+        for task in tasks:
+            result = dispatch_to_worker(task)
+            session.complete_external_task(task["task_id"], result)
+    elif event.event_type == "goal_progress":
+        print(f"Progress: {event.progress:.0%}")
+```
+</Tab>
+</Tabs>
+
+For the full external task handling API, handler modes, worker process examples, and dynamic lane switching, see [Lane Queue → External Task Handling](/docs/code/lane-queue#external-task-handling).
+
 ## Storage
 
 Tasks are stored in `SessionData` alongside conversation history and memory. The `tasks` field uses `#[serde(alias = "todos")]` for backward compatibility with sessions persisted before the type unification.
