@@ -11,7 +11,7 @@ The Rust SDK (`a3s-code-core`) is the native core library. All other SDKs are bi
 
 ```toml
 [dependencies]
-a3s-code-core = "0.7.1"
+a3s-code-core = "0.7.2"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -40,6 +40,13 @@ let session = agent.session("/my-project", None)?;
 let session = agent.session("/my-project", Some(
     SessionOptions::new()
         .with_model("openai/gpt-4o")
+))?;
+
+// With custom skill and agent directories
+let session = agent.session("/my-project", Some(
+    SessionOptions::new()
+        .with_skill_dir("~/.a3s/skills")
+        .with_agent_dir("~/.a3s/agents")
 ))?;
 ```
 
@@ -129,6 +136,84 @@ let content = session.read_file("src/main.rs").await?;
 let output = session.bash("git status").await?;
 let files = session.glob("**/*.rs").await?;
 let matches = session.grep("fn main").await?;
+```
+
+## Built-in Skills
+
+Query skills compiled into the library:
+
+```rust
+use a3s_code_core::tools::{builtin_skills, SkillKind};
+
+let skills = builtin_skills();
+for skill in &skills {
+    println!("{} ({:?}): {}", skill.name, skill.kind, skill.description);
+}
+// Output:
+//   find-skills (Instruction): Helps users discover and install agent skills...
+//   delegate-task (Instruction): Delegate complex or multi-step tasks to specialized sub-agents...
+```
+
+## Queue Configuration
+
+Enable lane-based tool execution with parallel read operations:
+
+```rust
+use a3s_code_core::{SessionOptions, SessionQueueConfig, SessionLane, LaneHandlerConfig, TaskHandlerMode};
+
+// Create session with queue enabled
+let session = agent.session("/my-project", Some(
+    SessionOptions::new()
+        .with_queue_config(
+            SessionQueueConfig::default()
+                .with_lane_features()  // DLQ + metrics + alerts
+        )
+))?;
+
+// Query-lane tools (read, glob, grep) now execute in parallel automatically
+let result = session.send("Read all config files and summarize them", None).await?;
+```
+
+### External Task Handling
+
+Route specific lanes to external handlers for multi-machine parallelization:
+
+```rust
+// Set Execute lane to External mode
+session.set_lane_handler(
+    SessionLane::Execute,
+    LaneHandlerConfig {
+        mode: TaskHandlerMode::External,
+        timeout_ms: 30_000,
+    },
+).await;
+
+// External tasks appear as events — complete them from your handler
+let tasks = session.pending_external_tasks().await;
+for task in tasks {
+    let result = ExternalTaskResult {
+        success: true,
+        result: serde_json::json!({"output": "done"}),
+        error: None,
+    };
+    session.complete_external_task(&task.task_id, result).await;
+}
+```
+
+### Queue Observability
+
+```rust
+// Get queue statistics
+let stats = session.queue_stats().await;
+println!("Pending: {}, Active: {}", stats.total_pending, stats.total_active);
+
+// Get metrics snapshot (if metrics enabled)
+if let Some(metrics) = session.queue_metrics().await {
+    println!("Metrics: {:?}", metrics);
+}
+
+// Get dead letters (if DLQ enabled)
+let dead = session.dead_letters().await;
 ```
 
 ## Return Types
