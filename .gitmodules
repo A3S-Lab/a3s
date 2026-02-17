@@ -1,9 +1,6 @@
 [submodule "apps/safeclaw-ui"]
 	path = apps/safeclaw-ui
 	url = git@github.com:A3S-Lab/SafeClawUI.git
-[submodule "apps/a3s-deep"]
-	path = apps/a3s-deep
-	url = git@github.com:A3S-Lab/Deep.git
 [submodule "crates/box"]
 	path = crates/box
 	url = git@github.com:A3S-Lab/Box.git
@@ -34,6 +31,3 @@
 [submodule "crates/event"]
 	path = crates/event
 	url = git@github.com:A3S-Lab/Event.git
-[submodule "crates/updater"]
-	path = crates/updater
-	url = git@github.com:A3S-Lab/Updater.git
