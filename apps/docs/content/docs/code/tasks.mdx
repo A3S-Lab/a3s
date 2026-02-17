@@ -1,0 +1,189 @@
+---
+title: Tasks
+description: Unified task system for planning, tracking, and execution
+---
+
+# Tasks
+
+A3S Code uses a unified `Task` struct for both planning and todo tracking. The `Task` type replaces the former separate `PlanStep` and `Todo` types — whether the agent is decomposing a complex request into an execution plan or maintaining a session-scoped task list, the same model is used throughout.
+
+## Task Model
+
+Each task has the following fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `String` | Unique task identifier |
+| `content` | `String` | Task description |
+| `status` | `TaskStatus` | Current lifecycle state |
+| `priority` | `TaskPriority` | `High`, `Medium`, or `Low` |
+| `tool` | `Option<String>` | Suggested tool for execution |
+| `dependencies` | `Vec<String>` | Task IDs that must complete first |
+| `success_criteria` | `Option<String>` | How to verify completion |
+
+### TaskStatus
+
+| Status | Description |
+|--------|-------------|
+| `Pending` | Not yet started |
+| `InProgress` | Currently being executed |
+| `Completed` | Successfully finished |
+| `Failed` | Execution failed |
+| `Skipped` | Skipped (dependency failed or no longer needed) |
+| `Cancelled` | Manually cancelled |
+
+### TaskPriority
+
+| Priority | Description |
+|----------|-------------|
+| `High` | Execute first |
+| `Medium` | Default priority |
+| `Low` | Execute after higher-priority tasks |
+
+## Task Lifecycle
+
+Tasks transition through statuses as the agent works:
+
+```
+Pending → InProgress → Completed
+                     → Failed
+                     → Skipped
+                     → Cancelled
+```
+
+The agent emits a `TaskUpdated` event whenever the task list changes, so streaming consumers can track progress in real time.
+
+## Execution Plans
+
+For complex tasks, the planning system creates an `ExecutionPlan` — an ordered set of tasks with dependency awareness.
+
+### Plan Structure
+
+```
+ExecutionPlan
+├── goal: "Refactor auth module to use JWT"
+├── complexity: Complex
+├── steps:
+│   ├── 1. Analyze current auth implementation     [Completed]
+│   ├── 2. Design JWT token structure              [InProgress]
+│   ├── 3. Implement JWT generation and validation [Pending]     (depends on 2)
+│   ├── 4. Update middleware to use JWT            [Pending]     (depends on 3)
+│   ├── 5. Update tests                           [Pending]     (depends on 4)
+│   └── 6. Verify all tests pass                  [Pending]     (depends on 5)
+└── estimated_steps: 6
+```
+
+### Complexity Levels
+
+The planner evaluates task complexity to choose an execution strategy:
+
+| Complexity | Strategy | When Used |
+|-----------|----------|-----------|
+| `Simple` | `DIRECT` | Single generation, no planning needed |
+| `Medium` | `ITERATIVE` | Generate → tool → reflect → repeat |
+| `Complex` | `PLANNED` | Create plan first, then execute steps |
+| `VeryComplex` | `PARALLEL` | Independent subtasks executed in parallel |
+
+The `AUTO` strategy uses task analysis to dynamically select the best approach.
+
+### Dependency-Aware Execution
+
+`ExecutionPlan::get_ready_steps()` returns only tasks whose dependencies are all `Completed`. This ensures correct execution order without manual sequencing:
+
+```rust
+let ready = plan.get_ready_steps();
+// Returns tasks where all dependencies are satisfied
+```
+
+Progress is calculated automatically:
+
+```rust
+let progress = plan.progress(); // 0.0 to 1.0
+```
+
+## Planning Mode
+
+Enable planning with the `planning_enabled` flag in `AgentConfig`:
+
+```rust
+let config = AgentConfig {
+    planning_enabled: true,
+    // ...
+};
+```
+
+When enabled, the `LlmPlanner` generates a structured plan before execution begins. If the LLM planner fails (e.g., malformed response), a heuristic fallback creates a reasonable default plan.
+
+### LLM Planner
+
+The `LlmPlanner` sends a structured prompt to the LLM asking it to decompose the task into steps. The response is parsed as JSON:
+
+```json
+{
+  "goal": "Add input validation to all API endpoints",
+  "complexity": "Complex",
+  "steps": [
+    { "content": "Identify all API endpoints", "priority": "high", "tool": "Grep" },
+    { "content": "Add validation middleware", "priority": "high" },
+    { "content": "Write tests for validation", "priority": "medium" }
+  ]
+}
+```
+
+### Fallback Planner
+
+When the LLM planner fails, the fallback heuristic creates a 3-step plan:
+
+1. **Analyze** — Understand the current state (priority: high)
+2. **Implement** — Make the required changes (priority: high)
+3. **Verify** — Confirm the changes work (priority: medium)
+
+## Goal Tracking
+
+When `goal_tracking` is enabled, the agent extracts a measurable goal from the user's prompt and monitors progress throughout execution.
+
+### Goal Structure
+
+```rust
+pub struct AgentGoal {
+    pub description: String,
+    pub success_criteria: Vec<String>,
+    pub progress: f32,          // 0.0 to 1.0
+    pub achieved: bool,
+    pub created_at: DateTime<Utc>,
+    pub achieved_at: Option<DateTime<Utc>>,
+}
+```
+
+### How It Works
+
+1. **Goal extraction** — The planner analyzes the user prompt and extracts a goal with success criteria
+2. **Progress monitoring** — After each agent turn, the goal tracker evaluates completion
+3. **Achievement check** — Compares current state against success criteria, reports remaining work
+
+```
+User prompt: "Add input validation to all API endpoints"
+  │
+  ├── Goal: "All API endpoints validate their input parameters"
+  ├── Success criteria:
+  │   ├── Each endpoint has validation middleware
+  │   ├── Invalid input returns 400 with error details
+  │   └── Tests cover validation edge cases
+  └── Progress: 0% → 33% → 66% → 100%
+```
+
+## Events
+
+Task-related events emitted during execution:
+
+| Event | Fields | Description |
+|-------|--------|-------------|
+| `TaskUpdated` | `session_id`, `tasks` | Task list changed (added, status change, completed) |
+
+The `TaskUpdated` event includes the full current task list, so consumers always have the latest state.
+
+## Storage
+
+Tasks are stored in `SessionData` alongside conversation history and memory. The `tasks` field uses `#[serde(alias = "todos")]` for backward compatibility with sessions persisted before the type unification.
+
+When a session is restored from storage, its task list is restored too — the agent picks up where it left off.

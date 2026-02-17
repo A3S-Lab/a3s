@@ -1,6 +1,6 @@
 ---
 title: Sessions
-description: Create and configure workspace-bound agent sessions
+description: Create sessions, send prompts, stream responses, and manage conversation history
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -8,6 +8,8 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 # Sessions
 
 Each session is bound to a workspace directory. The Agent creates sessions via `agent.session(workspace, options?)`. Sessions hold their own LLM client, conversation history, and tool context.
+
+The generation APIs — `send()` and `stream()` — send prompts to the LLM and return responses. The agent loop handles tool execution automatically.
 
 ## Create Session
 
@@ -299,21 +301,55 @@ Provider-level `api_key` and `base_url` are defaults. Model-level values overrid
 
 ### AgentEvent
 
-| Event Type | Fields | Description |
-|-----------|--------|-------------|
-| `start` | `prompt` | Processing started |
-| `text_delta` | `text` | Text increment |
-| `turn_start` | `turn` | New turn started |
-| `turn_end` | `turn`, `total_tokens` | Turn completed |
-| `tool_start` | `tool_id`, `tool_name` | Tool call started |
-| `tool_end` | `tool_id`, `tool_name`, `tool_output`, `exit_code` | Tool call completed |
-| `tool_output_delta` | `tool_id`, `tool_name`, `text` | Tool output increment |
-| `end` | `text`, `total_tokens` | Completed |
-| `confirmation_required` | `tool_id`, `tool_name`, `args`, `timeout_ms` | HITL confirmation needed |
-| `confirmation_received` | `tool_id`, `approved`, `reason` | HITL confirmation received |
-| `confirmation_timeout` | `tool_id`, `action_taken` | HITL confirmation timed out |
-| `permission_denied` | `tool_id`, `tool_name`, `args`, `reason` | Tool blocked by permission policy |
-| `context_resolving` | `providers` | Context resolution started |
-| `context_resolved` | `total_items`, `total_tokens` | Context resolution completed |
-| `task_updated` | `session_id`, `tasks` | Task list updated |
-| `error` | `error` | Error occurred |
+`AgentEvent` is `#[non_exhaustive]` — always include a wildcard arm when matching in Rust.
+
+**Agent lifecycle:**
+
+| Event | Fields | Description |
+|-------|--------|-------------|
+| `Start` | `prompt` | Processing started |
+| `TurnStart` | `turn` | New turn started |
+| `TextDelta` | `text` | Text chunk from assistant |
+| `TurnEnd` | `turn`, `total_tokens` | Turn completed |
+| `End` | `text`, `total_tokens` | Generation finished |
+| `Error` | `error` | Error occurred |
+
+**Tool execution:**
+
+| Event | Fields | Description |
+|-------|--------|-------------|
+| `ToolStart` | `tool_id`, `tool_name` | Tool call started |
+| `ToolEnd` | `tool_id`, `tool_name`, `tool_output`, `exit_code` | Tool call completed |
+| `ToolOutputDelta` | `tool_id`, `tool_name`, `text` | Tool output increment |
+
+**HITL and permissions:**
+
+| Event | Fields | Description |
+|-------|--------|-------------|
+| `ConfirmationRequired` | `tool_id`, `tool_name`, `args`, `timeout_ms` | HITL confirmation needed |
+| `ConfirmationReceived` | `tool_id`, `approved`, `reason` | HITL confirmation received |
+| `ConfirmationTimeout` | `tool_id`, `action_taken` | HITL confirmation timed out |
+| `PermissionDenied` | `tool_id`, `tool_name`, `args`, `reason` | Tool blocked by permission policy |
+
+**Context and memory:**
+
+| Event | Fields | Description |
+|-------|--------|-------------|
+| `ContextResolving` | `providers` | Context resolution started |
+| `ContextResolved` | `total_items`, `total_tokens` | Context resolution completed |
+| `MemoryStored` | — | Memory item stored |
+| `MemoryRecalled` | — | Memory item recalled |
+| `MemoriesSearched` | — | Memory search completed |
+| `MemoryCleared` | — | Memory cleared |
+
+**Tasks, subagents, and lane queue:**
+
+| Event | Fields | Description |
+|-------|--------|-------------|
+| `TaskUpdated` | `session_id`, `tasks` | Task list changed |
+| `SubagentStart` | — | Subagent execution started |
+| `ExternalTaskPending` | — | External task queued |
+| `ExternalTaskCompleted` | — | External task finished |
+| `CommandDeadLettered` | — | Lane command dead-lettered |
+| `CommandRetry` | — | Lane command retried |
+| `QueueAlert` | — | Queue alert emitted |

@@ -1,7 +1,9 @@
 ---
 title: Custom Subagents
-description: Define specialized subagents with isolated permissions, custom prompts, and model overrides
+description: Define specialized subagents with isolated permissions, custom prompts, and parallel delegation
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Custom Subagents
 
@@ -112,12 +114,23 @@ agent_dirs = ["~/.a3s/agents", "/shared/team-agents"]
 
 All `.yaml` and `.md` files in these directories are automatically loaded into the `AgentRegistry` at startup.
 
+## The `delegate-task` Built-in Skill
+
+A3S Code includes a built-in `delegate-task` skill (Instruction kind) that is automatically injected into the system prompt. It teaches the LLM:
+
+- When to delegate work to sub-agents
+- Which built-in agents are available and their capabilities
+- How to invoke the `task` and `parallel_task` tools correctly
+- Best practices for prompt design and parallelization
+
+This means the LLM can delegate tasks to sub-agents without any additional configuration. See the [Skills System](/docs/code/skills) page for more on built-in skills.
+
 ## How Delegation Works
 
 ```
 Parent Session
   │
-  ├─ delegate("security-reviewer", "Review auth module")
+  ├─ task("security-reviewer", "Review auth module")
   │    │
   │    ├─ 1. Look up AgentDefinition in AgentRegistry
   │    ├─ 2. Create child session with agent's permissions
@@ -150,3 +163,310 @@ Key isolation guarantees:
 | `permissions.deny` | string[] | no | Denied tool names |
 | `model` | string | no | Model override in `provider/model` format |
 | `prompt` | string | no | System prompt for the agent |
+
+## Tool Invocation
+
+The LLM delegates to sub-agents via two tools: `task` (single) and `parallel_task` (concurrent). Both are also callable from SDK code via `session.tool()`.
+
+### `task` Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `agent` | string | yes | Agent name (built-in or custom) |
+| `description` | string | yes | Short task description |
+| `prompt` | string | yes | Detailed prompt for the subagent |
+| `background` | bool | no | Run without waiting for result (default: `false`) |
+| `max_steps` | int | no | Override agent's default max steps |
+
+### `task` Result
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `output` | string | Subagent response text |
+| `session_id` | string | Child session ID |
+| `agent` | string | Agent name used |
+| `success` | bool | Whether execution succeeded |
+| `task_id` | string | Unique task identifier |
+
+### Single Delegation
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+let result = session.tool("task", serde_json::json!({
+    "agent": "explore",
+    "description": "Find auth handlers",
+    "prompt": "Search for files that handle user authentication and list them with line numbers."
+})).await?;
+
+println!("{}", result.output);
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const result = await session.tool('task', {
+  agent: 'explore',
+  description: 'Find auth handlers',
+  prompt: 'Search for files that handle user authentication and list them with line numbers.',
+});
+
+console.log(result.output);
+```
+</Tab>
+<Tab value="Python">
+```python
+result = session.tool("task", {
+    "agent": "explore",
+    "description": "Find auth handlers",
+    "prompt": "Search for files that handle user authentication and list them with line numbers.",
+})
+
+print(result.output)
+```
+</Tab>
+</Tabs>
+
+### Parallel Delegation
+
+`parallel_task` spawns multiple subagents concurrently via `tokio::JoinSet` and waits for all to complete. Results are returned as an array.
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+let result = session.tool("parallel_task", serde_json::json!({
+    "tasks": [
+        {
+            "agent": "explore",
+            "description": "Find API routes",
+            "prompt": "List all API route definitions with their HTTP methods."
+        },
+        {
+            "agent": "explore",
+            "description": "Find DB models",
+            "prompt": "List all database model definitions with their fields."
+        },
+        {
+            "agent": "security-reviewer",
+            "description": "Review auth module",
+            "prompt": "Check src/auth/ for security vulnerabilities."
+        }
+    ]
+})).await?;
+
+println!("{}", result.output);
+// Each task's result is included with its agent name and success status
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const result = await session.tool('parallel_task', {
+  tasks: [
+    {
+      agent: 'explore',
+      description: 'Find API routes',
+      prompt: 'List all API route definitions with their HTTP methods.',
+    },
+    {
+      agent: 'explore',
+      description: 'Find DB models',
+      prompt: 'List all database model definitions with their fields.',
+    },
+    {
+      agent: 'security-reviewer',
+      description: 'Review auth module',
+      prompt: 'Check src/auth/ for security vulnerabilities.',
+    },
+  ],
+});
+
+console.log(result.output);
+```
+</Tab>
+<Tab value="Python">
+```python
+result = session.tool("parallel_task", {
+    "tasks": [
+        {
+            "agent": "explore",
+            "description": "Find API routes",
+            "prompt": "List all API route definitions with their HTTP methods.",
+        },
+        {
+            "agent": "explore",
+            "description": "Find DB models",
+            "prompt": "List all database model definitions with their fields.",
+        },
+        {
+            "agent": "security-reviewer",
+            "description": "Review auth module",
+            "prompt": "Check src/auth/ for security vulnerabilities.",
+        },
+    ],
+})
+
+print(result.output)
+```
+</Tab>
+</Tabs>
+
+### Subagent Events
+
+When streaming, subagent lifecycle events are emitted on the parent session's event channel:
+
+```rust
+let (mut rx, _handle) = session.stream("Analyze this codebase thoroughly").await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::SubagentStart { task_id, agent, description, .. } => {
+            println!("▶ [{agent}] {description} (task: {task_id})");
+        }
+        AgentEvent::SubagentEnd { agent, success, output, .. } => {
+            let status = if success { "✓" } else { "✗" };
+            println!("{status} [{agent}] {}", output.chars().take(100).collect::<String>());
+        }
+        AgentEvent::End { .. } => break,
+        _ => {}
+    }
+}
+```
+
+## Multi-Session Parallelism
+
+For workloads that go beyond subagent delegation — e.g., processing multiple repositories or running the same analysis across different workspaces — you can create multiple independent sessions and drive them concurrently using language-native primitives.
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::Agent;
+use tokio::task::JoinSet;
+
+let agent = Agent::new("agent.hcl").await?;
+
+let workspaces = vec![
+    "/repos/service-auth",
+    "/repos/service-billing",
+    "/repos/service-gateway",
+];
+
+// Spawn one session per workspace, all running concurrently
+let mut join_set = JoinSet::new();
+for workspace in workspaces {
+    let agent = agent.clone();
+    join_set.spawn(async move {
+        let session = agent.session(workspace, None)?;
+        let result = session.send("Find all TODO comments and summarize them").await?;
+        Ok::<_, a3s_code_core::CodeError>((workspace.to_string(), result.text))
+    });
+}
+
+// Collect results as they complete
+while let Some(result) = join_set.join_next().await {
+    match result? {
+        Ok((workspace, text)) => println!("=== {workspace} ===\n{text}\n"),
+        Err(e) => eprintln!("Error: {e}"),
+    }
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const { Agent } = require('@a3s-lab/code');
+
+const agent = await Agent.create('agent.hcl');
+
+const workspaces = [
+  '/repos/service-auth',
+  '/repos/service-billing',
+  '/repos/service-gateway',
+];
+
+// Run all sessions concurrently with Promise.all
+const results = await Promise.all(
+  workspaces.map(async (workspace) => {
+    const session = agent.session(workspace);
+    const result = await session.send('Find all TODO comments and summarize them');
+    return { workspace, text: result.text };
+  })
+);
+
+for (const { workspace, text } of results) {
+  console.log(`=== ${workspace} ===\n${text}\n`);
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+import asyncio
+from a3s_code import Agent
+
+agent = Agent.create("agent.hcl")
+
+workspaces = [
+    "/repos/service-auth",
+    "/repos/service-billing",
+    "/repos/service-gateway",
+]
+
+async def analyze(workspace: str) -> tuple[str, str]:
+    session = agent.session(workspace)
+    result = session.send("Find all TODO comments and summarize them")
+    return workspace, result.text
+
+# Run all sessions concurrently
+results = asyncio.run(asyncio.gather(*[analyze(ws) for ws in workspaces]))
+
+for workspace, text in results:
+    print(f"=== {workspace} ===\n{text}\n")
+```
+</Tab>
+</Tabs>
+
+> **Note:** Each session is independent — separate conversation history, tool context, and workspace boundary. There is no shared state between parallel sessions.
+
+### Combining Both Patterns
+
+For fan-out/fan-in workflows, combine multi-session parallelism with subagent delegation:
+
+```rust
+use a3s_code_core::Agent;
+use tokio::task::JoinSet;
+
+let agent = Agent::new("agent.hcl").await?;
+
+// Phase 1: Parallel exploration across workspaces
+let mut join_set = JoinSet::new();
+for workspace in &["/repos/frontend", "/repos/backend", "/repos/infra"] {
+    let agent = agent.clone();
+    let ws = workspace.to_string();
+    join_set.spawn(async move {
+        let session = agent.session(&ws, None)?;
+        // Each session uses parallel_task internally to fan out further
+        let result = session.tool("parallel_task", serde_json::json!({
+            "tasks": [
+                { "agent": "explore", "description": "Find dependencies", "prompt": "List all external dependencies." },
+                { "agent": "security-reviewer", "description": "Security scan", "prompt": "Scan for known vulnerability patterns." }
+            ]
+        })).await?;
+        Ok::<_, a3s_code_core::CodeError>((ws, result.output))
+    });
+}
+
+// Phase 2: Collect and summarize
+let mut findings = Vec::new();
+while let Some(result) = join_set.join_next().await {
+    if let Ok(Ok((ws, output))) = result {
+        findings.push(format!("## {ws}\n{output}"));
+    }
+}
+
+// Phase 3: Feed combined results into a summary session
+let summary_session = agent.session("/repos", None)?;
+let summary = summary_session.send(&format!(
+    "Summarize these findings into a single security report:\n\n{}",
+    findings.join("\n\n")
+)).await?;
+
+println!("{}", summary.text);
+```
+
+Both built-in and custom agents are available by name. Custom agents loaded from `agent_dirs` appear alongside built-in agents automatically.

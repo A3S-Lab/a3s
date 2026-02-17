@@ -1,6 +1,6 @@
 ---
 title: Security
-description: Security hardening, injection defense, workspace boundaries, and secret management
+description: Permissions, HITL confirmation, injection defense, workspace boundaries, and secret management
 ---
 
 # Security
@@ -9,16 +9,127 @@ A3S Code includes multiple layers of security hardening to protect against promp
 
 ## Security Architecture
 
+When the agent wants to execute a tool, the following checks happen in order. Any layer can block the call — all layers must pass for execution to proceed.
+
 ```
 User Prompt → SecurityGuard
                 ├── InjectionDetector (pre-LLM)
-                ├── PermissionPolicy (pre-tool)
-                ├── ToolInterceptor (pre-tool)
+                ├── PermissionPolicy (pre-tool)       ← Deny → Allow → Ask → Default
+                ├── HITL Confirmation (pre-tool)       ← independent of permissions
+                ├── ToolInterceptor (pre-tool)         ← hard-block dangerous patterns
                 ├── WorkspaceBoundary (pre-tool)
                 ├── OutputSanitizer (post-LLM)
                 ├── TaintTracker (runtime)
                 └── AuditLog (all events)
 ```
+
+## Permission Policy
+
+The permission system controls which tools the agent can use. Rules are evaluated in order: **Deny → Allow → Ask → Default**.
+
+### Rule Types
+
+| Action | Behavior |
+|--------|----------|
+| `deny` | Block the tool call immediately |
+| `allow` | Permit the tool call |
+| `ask` | Prompt the user for confirmation (via HITL) |
+
+### Pattern Matching
+
+Rules use glob-style pattern matching on tool names and arguments:
+
+```
+Tool(pattern)
+```
+
+| Pattern | Matches |
+|---------|---------|
+| `Bash(rm -rf:*)` | Any bash command starting with `rm -rf` |
+| `Read(src/**)` | Read operations on any file under `src/` |
+| `Write(*)` | All write operations |
+| `mcp__pencil` | All `mcp__pencil__*` tools (prefix matching) |
+
+Wildcards: `*` matches any character except `/`, `**` matches including `/`, `:*` matches any suffix.
+
+### Preset Policies
+
+| Preset | Behavior |
+|--------|----------|
+| `PermissionPolicy::permissive()` | Allow all tools by default |
+| `PermissionPolicy::strict()` | Deny all tools by default |
+
+### Building a Custom Policy
+
+```rust
+use a3s_code_core::permissions::{PermissionPolicy, PermissionRule};
+
+let policy = PermissionPolicy::new()
+    .deny(PermissionRule::new("Bash(rm -rf:*)"))
+    .deny(PermissionRule::new("Bash(curl:*|sh)"))
+    .allow(PermissionRule::new("Read(src/**)"))
+    .allow(PermissionRule::new("Glob(*)"))
+    .ask(PermissionRule::new("Write(*)"))
+    .ask(PermissionRule::new("Bash(*)"));
+```
+
+Tool-specific argument extraction: `Bash` matches on command, `Read`/`Write`/`Edit` match on file_path, `Glob` matches on pattern, `Grep` matches on pattern and path.
+
+## Human-in-the-Loop (HITL)
+
+HITL is **independent** of the permission system. Even if a tool is `allow`-ed by permissions, it still goes through the HITL check when `ConfirmationPolicy` is enabled. This provides defense-in-depth.
+
+### ConfirmationPolicy
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | bool | `false` | Whether HITL is active |
+| `default_timeout_ms` | u64 | `30000` | Timeout for user response (30s) |
+| `timeout_action` | TimeoutAction | `Reject` | What to do on timeout |
+| `yolo_lanes` | HashSet&lt;SessionLane&gt; | `{}` | Lanes that skip confirmation |
+
+### Timeout Actions
+
+| Action | Behavior |
+|--------|----------|
+| `Reject` | Reject the tool call on timeout (default, recommended) |
+| `AutoApprove` | Auto-approve on timeout (use with caution) |
+
+### Confirmation Flow
+
+When a tool requires confirmation, the agent:
+
+1. Emits `ConfirmationRequired` event with tool name, args, and timeout
+2. Waits for user response or timeout
+3. Emits `ConfirmationReceived` (approved/denied with reason) or `ConfirmationTimeout` (with action taken)
+
+```rust
+use a3s_code_core::hitl::{ConfirmationPolicy, TimeoutAction};
+
+let hitl = ConfirmationPolicy {
+    enabled: true,
+    default_timeout_ms: 30_000,
+    timeout_action: TimeoutAction::Reject,
+    yolo_lanes: HashSet::new(),
+};
+```
+
+### YOLO Mode
+
+Tools executed in YOLO lanes skip HITL confirmation even when the permission policy returns `Ask`. This is useful for lane-based automation where human oversight isn't practical.
+
+```rust
+use a3s_code_core::queue::SessionLane;
+
+let hitl = ConfirmationPolicy {
+    enabled: true,
+    yolo_lanes: HashSet::from([SessionLane::Execute, SessionLane::Query]),
+    ..Default::default()
+};
+// Tools in Execute and Query lanes auto-approve without confirmation
+```
+
+Available lanes: `Control`, `Query`, `Execute`, `Generate`.
 
 ## Indirect Prompt Injection Defense
 
@@ -82,17 +193,6 @@ The tool interceptor blocks dangerous tool invocations based on configurable rul
 ## MCP Tool Timeout
 
 MCP tool executions have a configurable timeout (default: 60 seconds). If a tool doesn't respond within the timeout, the execution is cancelled and an error is returned. This prevents hanging MCP servers from blocking the agent.
-
-## HITL Timeout Behavior
-
-When a human-in-the-loop confirmation times out, the default action is **Reject** (not approve). This ensures that unattended agents don't silently approve dangerous operations.
-
-Configure via `ConfirmationPolicy`:
-
-```
-timeout_action: REJECT    // Default: reject on timeout
-default_timeout_ms: 30000 // 30 seconds
-```
 
 ## Audit Log
 

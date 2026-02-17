@@ -35,12 +35,22 @@ A3S Code includes a memory system with four distinct memory types. Memory items 
 When the agent needs context, the memory system scores each item by combining importance and recency:
 
 ```
-relevance = importance * recency_factor
+relevance = importance_weight * importance + recency_weight * recency_factor
 
-recency_factor = 1.0 / (1.0 + hours_since_creation * decay_rate)
+recency_factor = 1.0 / (1.0 + days_since_creation / decay_days)
 ```
 
 Higher-relevance memories are included in the agent's context window, ensuring the most useful information is always available.
+
+### RelevanceConfig
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `decay_days` | f32 | `30.0` | Days until recency factor halves |
+| `importance_weight` | f32 | `0.6` | Weight of importance score |
+| `recency_weight` | f32 | `0.4` | Weight of recency factor |
+
+Configure relevance scoring to prioritize importance vs. recency based on your use case. For long-lived sessions, increase `decay_days` to retain older memories longer.
 
 ## How Memory Is Used
 
@@ -49,19 +59,45 @@ Higher-relevance memories are included in the agent's context window, ensuring t
 3. **Across turns** — Working memory tracks the current task state within a session
 4. **Across sessions** — Episodic and semantic memories persist with the session store, available when a session is restored
 
+## Storage
+
+Memory items are persisted as JSONL (one JSON object per line) at:
+
+```
+.a3s/memories/{session_id}.jsonl
+```
+
+Each line is a serialized `MemoryItem`. When a session is restored, its memory file is loaded and all items become available for relevance scoring.
+
 ## Context Integration
 
-Memory items are injected into the system prompt as structured context blocks. The agent sees them as additional context alongside the conversation history:
+Memory items are injected into the system prompt as structured context blocks via the `MemoryContextProvider`. This provider is automatically registered when the memory system is active — no additional configuration needed.
 
 ```
 System Prompt
 ├── Base instructions
+├── Context blocks:
+│   ├── [memory] User prefers TypeScript           ← from MemoryContextProvider
+│   ├── [memory] Deploy via `just release`         ← from MemoryContextProvider
+│   ├── [resource] Related code snippets           ← from other providers
+│   └── [memory] Refactoring auth module           ← from MemoryContextProvider
 ├── Skill instructions
-├── Memory context:
-│   ├── [semantic] Project uses PostgreSQL
-│   ├── [procedural] Deploy via `just release`
-│   └── [working] Refactoring auth module
 └── Tool definitions
 ```
 
 The number of memory items included is bounded by the context window — when space is limited, only the highest-relevance items are retained.
+
+The `MemoryContextProvider` also implements `on_turn_complete()` to extract and store new memories from conversation turns automatically.
+
+See [Context Providers](/docs/code/context) for details on the provider system.
+
+## Events
+
+Memory-related events emitted during execution:
+
+| Event | Description |
+|-------|-------------|
+| `MemoryStored` | A new memory item was persisted |
+| `MemoryRecalled` | A memory item was retrieved for context |
+| `MemoriesSearched` | A memory search was performed |
+| `MemoryCleared` | Session memory was cleared |

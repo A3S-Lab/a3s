@@ -1,0 +1,147 @@
+---
+title: Telemetry
+description: Tracing spans, cost tracking, and tool execution metrics
+---
+
+# Telemetry
+
+A3S Code emits structured telemetry via OpenTelemetry-compatible tracing spans. Every LLM call, tool execution, and agent turn is instrumented with detailed attributes for observability, cost tracking, and performance analysis.
+
+## Span Hierarchy
+
+The agent produces a nested span tree for each execution:
+
+```
+a3s.agent.execute                    ← top-level span per send()/stream()
+├── a3s.agent.turn                   ← one per agent turn (LLM call + tool loop)
+│   ├── a3s.context.resolve          ← context provider resolution
+│   ├── a3s.llm.completion           ← LLM API call
+│   ├── a3s.tool.execute             ← tool execution (one per tool call)
+│   ├── a3s.llm.completion           ← follow-up LLM call after tool results
+│   └── a3s.tool.execute             ← ...
+├── a3s.agent.turn                   ← next turn
+│   └── ...
+└── (end)
+```
+
+Each span carries attributes that describe what happened during that phase.
+
+## Span Attributes
+
+### Agent-level (`a3s.agent.execute`, `a3s.agent.turn`)
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `a3s.session_id` | string | Session identifier |
+| `a3s.turn` | int | Current turn number |
+| `a3s.max_turns` | int | Maximum turns allowed |
+| `a3s.tool_calls_count` | int | Total tool calls in this scope |
+
+### LLM-level (`a3s.llm.completion`)
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `a3s.llm.model` | string | Model ID (e.g., `claude-sonnet-4-20250514`) |
+| `a3s.llm.provider` | string | Provider name (e.g., `anthropic`) |
+| `a3s.llm.streaming` | bool | Whether this was a streaming call |
+| `a3s.llm.prompt_tokens` | int | Input tokens consumed |
+| `a3s.llm.completion_tokens` | int | Output tokens generated |
+| `a3s.llm.total_tokens` | int | Total tokens |
+| `a3s.llm.cache_read_tokens` | int | Cached input tokens read |
+| `a3s.llm.cache_write_tokens` | int | Cached input tokens written |
+| `a3s.llm.stop_reason` | string | Why generation stopped |
+
+### Tool-level (`a3s.tool.execute`)
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `a3s.tool.name` | string | Tool name (e.g., `Bash`, `Read`) |
+| `a3s.tool.id` | string | Tool call ID |
+| `a3s.tool.exit_code` | int | Exit code (0 = success) |
+| `a3s.tool.success` | bool | Whether the tool succeeded |
+| `a3s.tool.duration_ms` | int | Execution time in milliseconds |
+| `a3s.tool.permission` | string | Permission decision (`allow`, `deny`, `ask`) |
+
+### Context-level (`a3s.context.resolve`)
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `a3s.context.providers` | string | Comma-separated provider names |
+| `a3s.context.items` | int | Number of context items returned |
+| `a3s.context.tokens` | int | Total tokens from context items |
+
+## Cost Tracking
+
+The telemetry module tracks LLM costs per-call using `LlmCostRecord`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `model` | string | Model ID |
+| `provider` | string | Provider name |
+| `prompt_tokens` | u64 | Input tokens |
+| `completion_tokens` | u64 | Output tokens |
+| `total_tokens` | u64 | Total tokens |
+| `cost_usd` | f64 | Estimated cost in USD |
+| `timestamp` | DateTime | When the call was made |
+| `session_id` | string | Associated session |
+
+### Model Pricing
+
+Cost is calculated using `ModelPricing`:
+
+```
+cost_usd = (prompt_tokens * input_per_million / 1_000_000)
+         + (completion_tokens * output_per_million / 1_000_000)
+```
+
+A built-in pricing registry (`default_model_pricing()`) covers common models from Anthropic, OpenAI, and others. Custom pricing can be specified in the agent config's `cost` block per model.
+
+### Cost Aggregation
+
+`CostSummary` provides aggregated cost data with breakdowns:
+
+- **By model** — cost per model across all sessions
+- **By day** — daily cost trends
+- **Total** — overall cost across the aggregation window
+
+Use `aggregate_cost_records()` to produce summaries from a collection of `LlmCostRecord` entries, with optional session and time-range filters.
+
+## Tool Metrics
+
+`ToolMetrics` tracks per-tool execution statistics within a session:
+
+| Metric | Description |
+|--------|-------------|
+| Call count | Total invocations |
+| Success count | Successful executions |
+| Failure count | Failed executions |
+| Total duration | Cumulative execution time |
+| Average duration | Mean execution time per call |
+
+These metrics are recorded on tracing spans via `record_tool_result()` and can be aggregated for dashboards and alerting.
+
+## Integration
+
+The telemetry module uses standard `tracing` spans and attributes. To collect telemetry data:
+
+1. **Configure a tracing subscriber** — Any OpenTelemetry-compatible collector works (Jaeger, Zipkin, OTLP exporters)
+2. **Spans are emitted automatically** — No additional code needed beyond subscriber setup
+3. **Cost records** — Available via the `LlmCostRecord` type for custom aggregation
+
+```rust
+use tracing_subscriber::prelude::*;
+
+// Example: export to OTLP collector
+let tracer = opentelemetry_otlp::new_pipeline()
+    .tracing()
+    .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+
+tracing_subscriber::registry()
+    .with(tracing_opentelemetry::layer().with_tracer(tracer))
+    .init();
+
+// All agent operations now emit structured spans
+let result = session.send("Analyze this codebase").await?;
+```
+
+Helper functions `record_llm_usage()` and `record_tool_result()` record metrics on the current active span. The `TimedSpan` guard automatically measures elapsed time for any scoped operation.
