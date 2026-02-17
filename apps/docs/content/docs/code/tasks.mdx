@@ -101,6 +101,59 @@ Progress is calculated automatically:
 let progress = plan.progress(); // 0.0 to 1.0
 ```
 
+### Parallel Wave-Based Execution
+
+Plan steps execute in **waves** based on the dependency graph. Steps with no unmet dependencies are grouped into a wave and executed concurrently via `tokio::task::JoinSet`. This is automatic — no configuration required.
+
+```
+ExecutionPlan:
+  step 1: Analyze auth module           (no deps)
+  step 2: Analyze database schema       (no deps)
+  step 3: Implement JWT integration     (depends on 1, 2)
+  step 4: Write tests                   (depends on 3)
+
+Execution:
+  Wave 1: [step 1, step 2]  ← parallel (independent)
+  Wave 2: [step 3]          ← sequential (waits for wave 1)
+  Wave 3: [step 4]          ← sequential (waits for wave 2)
+```
+
+**How it works:**
+
+1. Each iteration, `get_ready_steps()` identifies steps whose dependencies are all `Completed`
+2. **Single step ready** → executes sequentially, preserving the full history chain
+3. **Multiple steps ready** → spawns all into a `JoinSet`, each with a clone of the base history
+4. After a parallel wave completes, results are merged back into the shared history
+5. **Failed steps** → marked `Failed`, dependent steps become unreachable (deadlock detection breaks the loop)
+
+**History merging for parallel steps:**
+
+```
+Sequential:  step1.result → context for step2 → context for step3
+Parallel:    step1.result + step2.result → merged context for step3
+```
+
+Parallel steps each start from the same base history. They cannot see each other's intermediate results, which is correct — the planner explicitly declared them independent.
+
+**Helper methods on `ExecutionPlan`:**
+
+```rust
+// Update step status by ID
+plan.mark_status("step-1", TaskStatus::Completed);
+
+// Count remaining pending steps
+let remaining = plan.pending_count();
+
+// Detect deadlock (pending steps with unresolvable dependencies)
+if plan.has_deadlock() {
+    // Circular deps or all dependencies failed
+}
+```
+
+**Deadlock detection:** If pending steps remain but no steps are ready (all dependencies failed or circular), the executor breaks out of the loop and returns what it has.
+
+**Fallback planner compatibility:** The fallback planner creates linear chains (analyze → implement → verify), so it always produces one step per wave — effectively sequential execution.
+
 ## Planning Mode
 
 Enable planning with the `planning_enabled` flag in `AgentConfig`:
