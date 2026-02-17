@@ -1,7 +1,9 @@
 ---
 title: Tasks
-description: Unified task system for planning, tracking, and execution
+description: Unified task system for planning, tracking, and parallel execution
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Tasks
 
@@ -103,7 +105,7 @@ let progress = plan.progress(); // 0.0 to 1.0
 
 ### Parallel Wave-Based Execution
 
-Plan steps execute in **waves** based on the dependency graph. Steps with no unmet dependencies are grouped into a wave and executed concurrently via `tokio::task::JoinSet`. This is automatic — no configuration required.
+Plan steps execute in **waves** based on the dependency graph. Steps with no unmet dependencies are grouped into a wave and executed concurrently via `tokio::task::JoinSet`. This is automatic — no extra configuration beyond enabling planning is required.
 
 ```
 ExecutionPlan:
@@ -114,45 +116,251 @@ ExecutionPlan:
 
 Execution:
   Wave 1: [step 1, step 2]  ← parallel (independent)
-  Wave 2: [step 3]          ← sequential (waits for wave 1)
-  Wave 3: [step 4]          ← sequential (waits for wave 2)
+  Wave 2: [step 3]          ← waits for wave 1
+  Wave 3: [step 4]          ← waits for wave 2
 ```
 
-**How it works:**
+#### How It Works
 
 1. Each iteration, `get_ready_steps()` identifies steps whose dependencies are all `Completed`
 2. **Single step ready** → executes sequentially, preserving the full history chain
 3. **Multiple steps ready** → spawns all into a `JoinSet`, each with a clone of the base history
-4. After a parallel wave completes, results are merged back into the shared history
+4. After a parallel wave completes, results are **sorted and merged** back into the shared history
 5. **Failed steps** → marked `Failed`, dependent steps become unreachable (deadlock detection breaks the loop)
 
-**History merging for parallel steps:**
+#### History Merging
 
 ```
 Sequential:  step1.result → context for step2 → context for step3
 Parallel:    step1.result + step2.result → merged context for step3
 ```
 
-Parallel steps each start from the same base history. They cannot see each other's intermediate results, which is correct — the planner explicitly declared them independent.
+Parallel steps each start from the same base history. They cannot see each other's intermediate results, which is correct — the planner explicitly declared them independent. After the wave completes, a deterministically sorted summary of all parallel results is injected into the shared history so subsequent steps can reference everything.
 
-**Helper methods on `ExecutionPlan`:**
+#### Streaming Parallel Execution Events
 
+The executor emits `StepStart`, `StepEnd`, and `GoalProgress` events during wave-based execution. Streaming consumers can track which steps are running in parallel and monitor overall progress.
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
 ```rust
-// Update step status by ID
-plan.mark_status("step-1", TaskStatus::Completed);
+use a3s_code_core::{Agent, AgentEvent, SessionOptions};
 
-// Count remaining pending steps
-let remaining = plan.pending_count();
+let agent = Agent::new("agent.hcl").await?;
+let session = agent.session("/my-project", Some(
+    SessionOptions::new()
+        .with_planning(true)
+        .with_goal_tracking(true)
+))?;
 
-// Detect deadlock (pending steps with unresolvable dependencies)
-if plan.has_deadlock() {
-    // Circular deps or all dependencies failed
+let (mut rx, _handle) = session.stream("Refactor auth to use JWT and update all tests").await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::StepStart { step_id, description, step_number, total_steps } => {
+            // During parallel waves, multiple StepStart events fire before any StepEnd
+            println!("[{step_number}/{total_steps}] Starting: {description}");
+        }
+        AgentEvent::StepEnd { step_id, status, step_number, total_steps } => {
+            println!("[{step_number}/{total_steps}] {status}");
+        }
+        AgentEvent::GoalProgress { goal, progress, completed_steps, total_steps } => {
+            // Fires after each wave completes
+            println!("Goal: {goal}");
+            println!("Progress: {:.0}% ({completed_steps}/{total_steps})", progress * 100.0);
+        }
+        AgentEvent::TextDelta { text } => print!("{text}"),
+        AgentEvent::End { .. } => break,
+        _ => {} // required: AgentEvent is #[non_exhaustive]
+    }
 }
 ```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const { Agent } = require('@a3s-lab/code');
 
-**Deadlock detection:** If pending steps remain but no steps are ready (all dependencies failed or circular), the executor breaks out of the loop and returns what it has.
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/my-project', {
+  planning: true,
+  goalTracking: true,
+});
 
-**Fallback planner compatibility:** The fallback planner creates linear chains (analyze → implement → verify), so it always produces one step per wave — effectively sequential execution.
+const events = await session.stream('Refactor auth to use JWT and update all tests');
+for (const event of events) {
+  switch (event.type) {
+    case 'step_start':
+      // During parallel waves, multiple step_start events fire before any step_end
+      console.log(`[${event.stepNumber}/${event.totalSteps}] Starting: ${event.description}`);
+      break;
+    case 'step_end':
+      console.log(`[${event.stepNumber}/${event.totalSteps}] ${event.status}`);
+      break;
+    case 'goal_progress':
+      // Fires after each wave completes
+      console.log(`Progress: ${(event.progress * 100).toFixed(0)}% (${event.completedSteps}/${event.totalSteps})`);
+      break;
+    case 'text_delta':
+      process.stdout.write(event.text);
+      break;
+  }
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent
+
+agent = Agent.create("agent.hcl")
+session = agent.session("/my-project", planning=True, goal_tracking=True)
+
+for event in session.stream("Refactor auth to use JWT and update all tests"):
+    if event.event_type == "step_start":
+        # During parallel waves, multiple step_start events fire before any step_end
+        print(f"[{event.step_number}/{event.total_steps}] Starting: {event.description}")
+    elif event.event_type == "step_end":
+        print(f"[{event.step_number}/{event.total_steps}] {event.status}")
+    elif event.event_type == "goal_progress":
+        # Fires after each wave completes
+        print(f"Progress: {event.progress:.0%} ({event.completed_steps}/{event.total_steps})")
+    elif event.event_type == "text_delta":
+        print(event.text, end="", flush=True)
+```
+</Tab>
+</Tabs>
+
+**Example output for the plan above:**
+
+```
+[1/4] Starting: Analyze auth module        ← wave 1 (parallel)
+[2/4] Starting: Analyze database schema    ← wave 1 (parallel)
+[2/4] completed                            ← step 2 finishes first
+[1/4] completed                            ← step 1 finishes
+Progress: 50% (2/4)                        ← wave 1 done
+[3/4] Starting: Implement JWT integration  ← wave 2
+[3/4] completed
+Progress: 75% (3/4)
+[4/4] Starting: Write tests                ← wave 3
+[4/4] completed
+Progress: 100% (4/4)
+```
+
+Note how steps 1 and 2 emit `StepStart` events simultaneously — they are running in parallel. The order of `StepEnd` events for parallel steps is non-deterministic (whichever finishes first).
+
+#### Dependency Graph API
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::planning::{ExecutionPlan, Task, TaskStatus, Complexity};
+
+let mut plan = ExecutionPlan::new("Refactor auth", Complexity::Complex);
+
+// Independent steps — will run in parallel (Wave 1)
+plan.add_step(Task::new("s1", "Analyze auth module"));
+plan.add_step(Task::new("s2", "Analyze database schema"));
+
+// Dependent step — waits for Wave 1 (Wave 2)
+plan.add_step(
+    Task::new("s3", "Implement JWT")
+        .with_dependencies(vec!["s1".to_string(), "s2".to_string()])
+);
+
+// Wave 1: both s1 and s2 are ready
+assert_eq!(plan.get_ready_steps().len(), 2);
+
+// Simulate completing wave 1
+plan.mark_status("s1", TaskStatus::Completed);
+plan.mark_status("s2", TaskStatus::Completed);
+
+// Wave 2: s3 is now ready
+assert_eq!(plan.get_ready_steps().len(), 1);
+assert_eq!(plan.get_ready_steps()[0].id, "s3");
+
+// Progress tracking
+assert!((plan.progress() - 0.666).abs() < 0.01); // 2/3
+
+// Deadlock detection
+assert!(!plan.has_deadlock());
+
+// Count remaining work
+assert_eq!(plan.pending_count(), 1);
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// The dependency graph is built by the LLM planner automatically.
+// In TypeScript, you configure planning and observe events:
+
+const session = agent.session('/my-project', {
+  planning: true,       // LLM decomposes task into steps with dependencies
+  goalTracking: true,   // track progress against success criteria
+});
+
+// The planner produces a JSON plan like:
+// {
+//   "goal": "Refactor auth",
+//   "complexity": "Complex",
+//   "steps": [
+//     { "id": "s1", "content": "Analyze auth module", "dependencies": [] },
+//     { "id": "s2", "content": "Analyze database schema", "dependencies": [] },
+//     { "id": "s3", "content": "Implement JWT", "dependencies": ["s1", "s2"] }
+//   ]
+// }
+//
+// The executor automatically parallelizes s1 + s2, then runs s3.
+```
+</Tab>
+<Tab value="Python">
+```python
+# The dependency graph is built by the LLM planner automatically.
+# In Python, you configure planning and observe events:
+
+session = agent.session("/my-project", planning=True, goal_tracking=True)
+
+# The planner produces a JSON plan like:
+# {
+#   "goal": "Refactor auth",
+#   "complexity": "Complex",
+#   "steps": [
+#     {"id": "s1", "content": "Analyze auth module", "dependencies": []},
+#     {"id": "s2", "content": "Analyze database schema", "dependencies": []},
+#     {"id": "s3", "content": "Implement JWT", "dependencies": ["s1", "s2"]}
+#   ]
+# }
+#
+# The executor automatically parallelizes s1 + s2, then runs s3.
+```
+</Tab>
+</Tabs>
+
+#### Helper Methods on `ExecutionPlan`
+
+| Method | Description |
+|--------|-------------|
+| `get_ready_steps()` | Returns steps with all dependencies `Completed` |
+| `mark_status(id, status)` | Update a step's status by ID |
+| `pending_count()` | Count remaining `Pending` steps |
+| `has_deadlock()` | Detect circular deps or all deps failed |
+| `progress()` | Completion fraction (0.0 to 1.0) |
+
+#### Deadlock Detection
+
+If pending steps remain but no steps are ready (all dependencies failed or circular), the executor detects the deadlock and breaks out of the loop, returning partial results.
+
+```rust
+// Circular dependency — immediate deadlock
+plan.add_step(Task::new("a", "Step A").with_dependencies(vec!["b".to_string()]));
+plan.add_step(Task::new("b", "Step B").with_dependencies(vec!["a".to_string()]));
+assert!(plan.has_deadlock()); // true — neither step can start
+
+// Failed dependency — cascading deadlock
+plan.mark_status("s1", TaskStatus::Failed);
+// Steps depending on s1 can never start → has_deadlock() returns true
+```
+
+#### Fallback Planner Compatibility
+
+The fallback planner creates linear chains (analyze → implement → verify), so it always produces one step per wave — effectively sequential execution. Parallel execution only activates when the LLM planner creates steps with non-overlapping dependencies.
 
 ## Planning Mode
 
@@ -231,9 +439,10 @@ Task-related events emitted during execution:
 
 | Event | Fields | Description |
 |-------|--------|-------------|
-| `TaskUpdated` | `session_id`, `tasks` | Task list changed (added, status change, completed) |
-
-The `TaskUpdated` event includes the full current task list, so consumers always have the latest state.
+| `StepStart` | `step_id`, `description`, `step_number`, `total_steps` | A plan step began execution. During parallel waves, multiple `StepStart` events fire before any `StepEnd`. |
+| `StepEnd` | `step_id`, `status`, `step_number`, `total_steps` | A plan step finished. `status` is `Completed` or `Failed`. |
+| `GoalProgress` | `goal`, `progress`, `completed_steps`, `total_steps` | Fires after each wave completes. `progress` is 0.0–1.0. |
+| `TaskUpdated` | `session_id`, `tasks` | Task list changed (added, status change, completed). Includes the full current task list. |
 
 ## Storage
 

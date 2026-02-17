@@ -34,8 +34,8 @@ Your Application (Rust / TypeScript / Python)
 │  │  │ Llm     │ Security │ Memory   │ File    │ │    │
 │  │  │ Planner │          │          │ History │ │    │
 │  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
-│  │  │ Context │ Cost     │ Cron     │ Session │ │    │
-│  │  │Compactor│ Tracking │Scheduler │ Store   │ │    │
+│  │  │ Wave    │ Context  │ Cost     │ Cron    │ │    │
+│  │  │Scheduler│Compactor │ Tracking │Scheduler│ │    │
 │  │  └─────────┴──────────┴──────────┴─────────┘ │    │
 │  └──────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────┘
@@ -58,7 +58,8 @@ Native bindings:
 | **SessionOptions** | Optional per-session override: model (`provider/model` format). |
 | **AgentLoop** | Core execution engine driving the LLM ↔ tool multi-turn loop. |
 | **ToolExecutor** | Tool registry and execution. Manages 14 tools (11 core + 3 skill discovery). |
-| **LlmPlanner** | JSON-structured planning — decomposes complex tasks into execution plans. |
+| **LlmPlanner** | JSON-structured planning — decomposes complex tasks into execution plans with dependency graphs. |
+| **WaveScheduler** | Groups independent plan steps into waves and executes them in parallel via `JoinSet`. |
 | **AgentEvent** | `#[non_exhaustive]` event enum emitted during streaming — safe for SDK evolution. |
 
 ## Agent Loop
@@ -79,6 +80,45 @@ The core execution cycle. Each round:
 6. If LLM returns text-only → done
 
 Maximum rounds per generation configurable via `max_tool_rounds` (default: 50).
+
+## Parallel Plan Execution
+
+When planning is enabled, the `LlmPlanner` decomposes a complex task into steps with a dependency graph. The wave scheduler then executes independent steps concurrently:
+
+```
+User: "Refactor auth to use JWT and update all tests"
+  │
+  ▼  LlmPlanner decomposes into dependency graph
+┌─────────────────────────────────────────────────┐
+│  ExecutionPlan                                   │
+│                                                  │
+│  ┌──────────────┐  ┌──────────────────┐         │
+│  │ s1: Analyze  │  │ s2: Analyze DB   │  Wave 1 │
+│  │ auth module  │  │ schema           │ (parallel)
+│  └──────┬───────┘  └────────┬─────────┘         │
+│         │                   │                    │
+│         └─────────┬─────────┘                    │
+│                   ▼                              │
+│         ┌─────────────────┐                      │
+│         │ s3: Implement   │              Wave 2  │
+│         │ JWT integration │                      │
+│         └────────┬────────┘                      │
+│                  ▼                               │
+│         ┌─────────────────┐                      │
+│         │ s4: Write tests │              Wave 3  │
+│         └─────────────────┘                      │
+└─────────────────────────────────────────────────┘
+```
+
+The scheduler loop:
+1. `get_ready_steps()` → find steps with all dependencies `Completed`
+2. Single step ready → execute sequentially (full history chain preserved)
+3. Multiple steps ready → spawn all into `tokio::JoinSet` with cloned base history
+4. Collect results → sort deterministically → merge into shared history
+5. Failed steps → dependents become unreachable (deadlock detection breaks the loop)
+6. Emit `GoalProgress` event after each wave
+
+Each parallel step runs its own independent agent loop (LLM calls + tool execution). Results are merged via a sorted summary message so subsequent steps see all prior work.
 
 ## Defense-in-Depth Security
 
