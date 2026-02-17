@@ -52,32 +52,63 @@ The `SecurityGuard` registers hooks at priority 1 (highest) automatically:
 
 ## Hook Registration (Rust)
 
-Register custom hooks via the `HookEngine`:
+Register hooks and handlers via the `HookEngine`:
 
 ```rust
-use a3s_code_core::hooks::{HookEngine, HookEvent, HookResult};
+use a3s_code_core::hooks::{
+    Hook, HookConfig, HookEngine, HookEvent, HookEventType,
+    HookHandler, HookResult, HookResponse, HookMatcher,
+};
+use std::sync::Arc;
 
-let mut engine = HookEngine::new();
+let engine = HookEngine::new();
 
-// Log all tool calls
-engine.on(HookEvent::PreToolUse, 10, |ctx| {
-    println!("Tool: {} Args: {:?}", ctx.tool_name, ctx.tool_args);
-    HookResult::Continue
-});
+// 1. Register a hook definition (what to listen for)
+engine.register(
+    Hook::new("log-tools", HookEventType::PreToolUse)
+        .with_config(HookConfig { priority: 10, ..Default::default() })
+);
+
+// 2. Register a handler (what to do when fired)
+struct LogHandler;
+impl HookHandler for LogHandler {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        if let HookEvent::PreToolUse(e) = event {
+            println!("Tool: {} Args: {:?}", e.tool, e.args);
+        }
+        HookResponse::continue_()
+    }
+}
+engine.register_handler("log-tools", Arc::new(LogHandler));
 
 // Block dangerous patterns
-engine.on(HookEvent::PreToolUse, 5, |ctx| {
-    if ctx.tool_name == "bash" && ctx.tool_args.contains("rm -rf") {
-        return HookResult::Block("Dangerous command blocked".into());
-    }
-    HookResult::Continue
-});
+engine.register(
+    Hook::new("block-dangerous", HookEventType::PreToolUse)
+        .with_matcher(HookMatcher::tool("bash"))
+        .with_config(HookConfig { priority: 5, ..Default::default() })
+);
 
-// Log LLM responses
-engine.on(HookEvent::GenerateEnd, 10, |ctx| {
-    println!("LLM response: {} tokens", ctx.total_tokens);
-    HookResult::Continue
-});
+struct BlockHandler;
+impl HookHandler for BlockHandler {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        if let HookEvent::PreToolUse(e) = event {
+            if e.args.to_string().contains("rm -rf") {
+                return HookResponse::block("Dangerous command blocked");
+            }
+        }
+        HookResponse::continue_()
+    }
+}
+engine.register_handler("block-dangerous", Arc::new(BlockHandler));
+
+// Fire a hook (done automatically by the agent loop)
+let result = engine.fire(&event).await;
+match result {
+    HookResult::Continue(None) => { /* proceed */ }
+    HookResult::Continue(Some(modified)) => { /* proceed with modified data */ }
+    HookResult::Block(reason) => { /* stop execution */ }
+    _ => {}
+}
 ```
 
 ## Hook Priority
@@ -93,17 +124,17 @@ Hooks execute in priority order. Lower numbers run first.
 
 If any hook returns `HookResult::Block`, the operation is cancelled and subsequent hooks for that event are skipped.
 
-## Hook Context
+## Hook Event Payloads
 
-Each hook receives a context object with event-specific data:
+Each hook event carries a typed payload with event-specific data:
 
-| Event | Context Fields |
-|-------|---------------|
-| `PreToolUse` | `tool_name`, `tool_args`, `session_id`, `workspace` |
-| `PostToolUse` | `tool_name`, `tool_args`, `tool_output`, `exit_code`, `session_id` |
-| `GenerateStart` | `prompt`, `model`, `session_id` |
-| `GenerateEnd` | `response_text`, `total_tokens`, `model`, `session_id` |
-| `SessionStart` | `session_id`, `workspace`, `model` |
-| `SessionEnd` | `session_id`, `workspace` |
-| `SkillLoad` | `skill_name`, `skill_kind` |
-| `SkillUnload` | `skill_name` |
+| Event | Payload Type | Fields |
+|-------|-------------|--------|
+| `PreToolUse` | `PreToolUseEvent` | `session_id`, `tool`, `args`, `working_directory`, `recent_tools` |
+| `PostToolUse` | `PostToolUseEvent` | `session_id`, `tool`, `args`, `result` (`success`, `output`, `exit_code`, `duration_ms`) |
+| `GenerateStart` | `GenerateStartEvent` | `session_id`, `prompt`, `system_prompt`, `model_provider`, `model_name`, `available_tools` |
+| `GenerateEnd` | `GenerateEndEvent` | `session_id`, `prompt`, `response_text`, `tool_calls`, `usage`, `duration_ms` |
+| `SessionStart` | `SessionStartEvent` | `session_id`, `system_prompt`, `model_provider`, `model_name` |
+| `SessionEnd` | `SessionEndEvent` | `session_id`, `total_tokens`, `total_tool_calls`, `duration_ms` |
+| `SkillLoad` | `SkillLoadEvent` | `skill_name`, `tool_names`, `version`, `description`, `loaded_at` |
+| `SkillUnload` | `SkillUnloadEvent` | `skill_name`, `tool_names`, `duration_ms` |

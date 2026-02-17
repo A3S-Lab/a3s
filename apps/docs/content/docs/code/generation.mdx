@@ -52,7 +52,7 @@ let (mut rx, _handle) = session.stream("Explain the auth module").await?;
 while let Some(event) = rx.recv().await {
     match event {
         AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::ToolCall { name, .. } => println!("\n🔧 {name}"),
+        AgentEvent::ToolStart { name, .. } => println!("\n🔧 {name}"),
         AgentEvent::End { usage, .. } => {
             println!("\n✅ {} tokens", usage.total_tokens);
             break;
@@ -93,11 +93,17 @@ for event in session.stream("Explain the auth module"):
 Maintain multi-turn conversations by passing history:
 
 ```rust
-use a3s_code_core::llm::Message;
+use a3s_code_core::llm::{ContentBlock, Message};
 
 let history = vec![
     Message::user("What's in src/?"),
-    Message::assistant("The src/ directory contains main.rs and lib.rs."),
+    Message {
+        role: "assistant".to_string(),
+        content: vec![ContentBlock::Text {
+            text: "The src/ directory contains main.rs and lib.rs.".to_string(),
+        }],
+        reasoning_content: None,
+    },
 ];
 
 let result = session.send_with_history(&history, "Now explain main.rs").await?;
@@ -115,5 +121,11 @@ let result = session.send_with_history(&history, "Now explain main.rs").await?;
 | `tool_output_delta` | `tool_id`, `tool_name`, `text` | Tool output increment |
 | `turn_end` | `turn`, `total_tokens` | Turn completed |
 | `end` | `text`, `total_tokens` | Generation finished |
-| `confirmation_required` | `tool_id`, `tool_name`, `description` | HITL confirmation needed |
+| `confirmation_required` | `tool_id`, `tool_name`, `args`, `timeout_ms` | HITL confirmation needed |
+| `confirmation_received` | `tool_id`, `approved`, `reason` | HITL confirmation received |
+| `confirmation_timeout` | `tool_id`, `action_taken` | HITL confirmation timed out |
+| `permission_denied` | `tool_id`, `tool_name`, `args`, `reason` | Tool blocked by permission policy |
+| `context_resolving` | `providers` | Context resolution started |
+| `context_resolved` | `total_items`, `total_tokens` | Context resolution completed |
+| `task_updated` | `session_id`, `tasks` | Task list updated |
 | `error` | `error` | Error occurred |

@@ -33,7 +33,7 @@ Read file contents with line numbers. Supports offset and limit for large files.
 
 ```json
 {
-  "path": "src/main.rs",
+  "file_path": "src/main.rs",
   "offset": 0,
   "limit": 100
 }
@@ -45,7 +45,7 @@ Create or overwrite a file. The tool automatically creates parent directories.
 
 ```json
 {
-  "path": "src/config.rs",
+  "file_path": "src/config.rs",
   "content": "pub struct Config {\n    pub port: u16,\n}\n"
 }
 ```
@@ -56,7 +56,7 @@ Replace a specific string in a file. Useful for targeted modifications.
 
 ```json
 {
-  "path": "src/main.rs",
+  "file_path": "src/main.rs",
   "old_string": "fn main() {",
   "new_string": "fn main() -> Result<()> {"
 }
@@ -68,7 +68,7 @@ Apply a unified diff patch. Best for complex multi-line edits.
 
 ```json
 {
-  "path": "src/lib.rs",
+  "file_path": "src/lib.rs",
   "diff": "--- a/src/lib.rs\n+++ b/src/lib.rs\n@@ -1,3 +1,4 @@\n+use anyhow::Result;\n use std::io;\n"
 }
 ```
@@ -177,7 +177,7 @@ let matches = session.grep("fn main").await?;
 
 // Generic tool call with JSON args
 let result = session.tool("edit", serde_json::json!({
-    "path": "src/main.rs",
+    "file_path": "src/main.rs",
     "old_string": "fn main() {",
     "new_string": "fn main() -> Result<()> {"
 })).await?;
@@ -194,7 +194,7 @@ const matches = await session.grep('fn main');
 
 // Generic tool call
 const result = await session.tool('edit', {
-  path: 'src/main.rs',
+  file_path: 'src/main.rs',
   old_string: 'fn main() {',
   new_string: 'fn main() -> Result<()> {',
 });
@@ -211,7 +211,7 @@ matches = session.grep("fn main")
 
 # Generic tool call with dict args
 result = session.tool("edit", {
-    "path": "src/main.rs",
+    "file_path": "src/main.rs",
     "old_string": "fn main() {",
     "new_string": "fn main() -> Result<()> {"
 })

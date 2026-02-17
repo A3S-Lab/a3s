@@ -164,51 +164,45 @@ backend:
 
 Supported interpreters: `python3`, `node`, `bash`, `ruby`, `deno`, or any executable.
 
-## 4. Rust API
+## 4. Rust Tool Trait
 
-For embedding A3S Code as a library, register custom tools programmatically:
+A3S Code defines a `Tool` trait for all tools. Custom tools are currently registered via skill files or MCP servers (not programmatically at the `Agent` level). The trait is useful for understanding how built-in tools work:
 
 ```rust
 use a3s_code_core::tools::{Tool, ToolContext, ToolOutput};
 use async_trait::async_trait;
 
-struct MyTool;
-
 #[async_trait]
-impl Tool for MyTool {
-    fn name(&self) -> &str { "my_tool" }
+pub trait Tool: Send + Sync {
+    /// Tool name (must be unique within registry)
+    fn name(&self) -> &str;
 
-    fn description(&self) -> &str { "Does something useful" }
+    /// Human-readable description for LLM
+    fn description(&self) -> &str;
 
-    fn parameters(&self) -> serde_json::Value {
-        serde_json::json!({
-            "type": "object",
-            "properties": {
-                "input": { "type": "string", "description": "Input text" }
-            },
-            "required": ["input"]
-        })
-    }
+    /// JSON Schema for tool parameters
+    fn parameters(&self) -> serde_json::Value;
 
+    /// Execute the tool with given arguments
     async fn execute(
         &self,
         args: &serde_json::Value,
         ctx: &ToolContext,
-    ) -> Result<ToolOutput> {
-        let input = args["input"].as_str().unwrap_or_default();
-        Ok(ToolOutput {
-            content: format!("Processed: {}", input),
-            success: true,
-            metadata: None,
-        })
-    }
+    ) -> Result<ToolOutput>;
 }
-
-// Register via CodeConfig
-let mut config = CodeConfig::from_file("agent.hcl")?;
-config.extra_tools = vec![Arc::new(MyTool)];
-let agent = Agent::from_config(config).await?;
 ```
+
+`ToolOutput` is the return type for all tool executions:
+
+```rust
+pub struct ToolOutput {
+    pub content: String,           // Output text
+    pub success: bool,             // Whether execution succeeded
+    pub metadata: Option<Value>,   // Optional metadata
+}
+```
+
+> **Note:** In v0.7.1, custom tools are registered via skill files (`skill_dirs`) or MCP servers (`mcp_servers`), not via a Rust API on `CodeConfig`. Programmatic tool registration is planned for a future release.
 
 ## Tool Permissions
 
@@ -229,4 +223,3 @@ This ensures the deploy skill can only run `kubectl` and `docker` commands, even
 |--------|-------------|----------|
 | Skill files | `skill_dirs` in config | Declarative tools with prompt context |
 | MCP servers | `mcp_servers` in config | External tool ecosystems |
-| Rust API | `config.extra_tools` | Embedded library usage |

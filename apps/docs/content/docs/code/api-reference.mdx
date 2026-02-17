@@ -130,7 +130,7 @@ let (mut rx, _handle) = session.stream("Explain the auth module").await?;
 while let Some(event) = rx.recv().await {
     match event {
         AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::ToolCall { name, .. } => println!("\n🔧 {name}"),
+        AgentEvent::ToolStart { name, .. } => println!("\n🔧 {name}"),
         AgentEvent::End { usage, .. } => { println!("\n✅ {} tokens", usage.total_tokens); break; }
         _ => {} // required: AgentEvent is #[non_exhaustive]
     }
@@ -168,11 +168,17 @@ for event in session.stream("Explain the auth module"):
 Continue a conversation with explicit history:
 
 ```rust
-use a3s_code_core::llm::Message;
+use a3s_code_core::llm::{ContentBlock, Message};
 
 let history = vec![
     Message::user("What's in src/?"),
-    Message::assistant("The src/ directory contains main.rs and lib.rs."),
+    Message {
+        role: "assistant".to_string(),
+        content: vec![ContentBlock::Text {
+            text: "The src/ directory contains main.rs and lib.rs.".to_string(),
+        }],
+        reasoning_content: None,
+    },
 ];
 
 let result = session.send_with_history(&history, "Now explain main.rs").await?;
@@ -212,7 +218,7 @@ session.read_file("src/main.rs").await?;
 session.bash("cargo test").await?;
 session.glob("**/*.rs").await?;
 session.grep("fn main").await?;
-session.tool("write", serde_json::json!({"path": "x.rs", "content": "..."})).await?;
+session.tool("write", serde_json::json!({"file_path": "x.rs", "content": "..."})).await?;
 ```
 </Tab>
 <Tab value="TypeScript">
@@ -221,7 +227,7 @@ await session.readFile('src/main.rs');
 await session.bash('cargo test');
 await session.glob('**/*.rs');
 await session.grep('fn main');
-await session.tool('write', { path: 'x.rs', content: '...' });
+await session.tool('write', { file_path: 'x.rs', content: '...' });
 ```
 </Tab>
 <Tab value="Python">
@@ -230,7 +236,7 @@ session.read_file("src/main.rs")
 session.bash("cargo test")
 session.glob("**/*.rs")
 session.grep("fn main")
-session.tool("write", {"path": "x.rs", "content": "..."})
+session.tool("write", {"file_path": "x.rs", "content": "..."})
 ```
 </Tab>
 </Tabs>
@@ -246,14 +252,17 @@ Returned by `send()`.
 ```rust
 pub struct AgentResult {
     pub text: String,
-    pub tool_calls_count: usize,
+    pub messages: Vec<Message>,       // Full conversation history
     pub usage: TokenUsage,
+    pub tool_calls_count: usize,
 }
 
 pub struct TokenUsage {
     pub prompt_tokens: usize,
     pub completion_tokens: usize,
     pub total_tokens: usize,
+    pub cache_read_tokens: Option<usize>,
+    pub cache_write_tokens: Option<usize>,
 }
 ```
 </Tab>
@@ -292,14 +301,20 @@ pub enum AgentEvent {
     Start { prompt: String },
     TurnStart { turn: usize },
     TextDelta { text: String },
-    ToolCall { id: String, name: String },
-    ToolResult { id: String, name: String, output: String, exit_code: i32 },
+    ToolStart { id: String, name: String },
+    ToolEnd { id: String, name: String, output: String, exit_code: i32 },
     ToolOutputDelta { id: String, name: String, delta: String },
     TurnEnd { turn: usize, usage: TokenUsage },
     End { text: String, usage: TokenUsage },
-    ConfirmationRequired { tool_id: String, tool_name: String, description: String },
+    ConfirmationRequired { tool_id: String, tool_name: String, args: Value, timeout_ms: u64 },
+    ConfirmationReceived { tool_id: String, approved: bool, reason: Option<String> },
+    ConfirmationTimeout { tool_id: String, action_taken: String },
+    PermissionDenied { tool_id: String, tool_name: String, args: Value, reason: String },
+    ContextResolving { providers: Vec<String> },
+    ContextResolved { total_items: usize, total_tokens: usize },
+    TaskUpdated { session_id: String, tasks: Vec<Task> },
     Error { message: String },
-    // ... future variants may be added
+    // ... future variants may be added (use _ => {} in match)
 }
 ```
 </Tab>
@@ -308,15 +323,18 @@ pub enum AgentEvent {
 interface AgentEvent {
   type: 'start' | 'text_delta' | 'tool_start' | 'tool_end'
       | 'tool_output_delta' | 'turn_start' | 'turn_end'
-      | 'end' | 'confirmation_required' | 'error';
+      | 'end' | 'confirmation_required' | 'permission_denied'
+      | 'error';
   text?: string;
   toolName?: string;
   toolId?: string;
   toolOutput?: string;
+  toolArgs?: object;
   exitCode?: number;
   turn?: number;
   prompt?: string;
-  description?: string;
+  timeoutMs?: number;
+  reason?: string;
   error?: string;
   totalTokens?: number;
 }
@@ -330,10 +348,12 @@ class AgentEvent:
     tool_name: str | None
     tool_id: str | None
     tool_output: str | None
+    tool_args: dict | None       # For confirmation_required, permission_denied
     exit_code: int | None
     turn: int | None
     prompt: str | None
-    description: str | None  # For confirmation_required
+    timeout_ms: int | None       # For confirmation_required
+    reason: str | None           # For permission_denied
     error: str | None
     total_tokens: int | None
 ```
@@ -413,7 +433,13 @@ interface SessionOptions {
 | `tool_output_delta` | `tool_id`, `tool_name`, `text` | Tool output increment |
 | `turn_end` | `turn`, `total_tokens` | Turn completed |
 | `end` | `text`, `total_tokens` | Generation finished |
-| `confirmation_required` | `tool_id`, `tool_name`, `description` | HITL confirmation needed |
+| `confirmation_required` | `tool_id`, `tool_name`, `args`, `timeout_ms` | HITL confirmation needed |
+| `confirmation_received` | `tool_id`, `approved`, `reason` | HITL confirmation received |
+| `confirmation_timeout` | `tool_id`, `action_taken` | HITL confirmation timed out |
+| `permission_denied` | `tool_id`, `tool_name`, `args`, `reason` | Tool blocked by permission policy |
+| `context_resolving` | `providers` | Context resolution started |
+| `context_resolved` | `total_items`, `total_tokens` | Context resolution completed |
+| `task_updated` | `session_id`, `tasks` | Task list updated |
 | `error` | `error` | Error occurred |
 
 ## Configuration

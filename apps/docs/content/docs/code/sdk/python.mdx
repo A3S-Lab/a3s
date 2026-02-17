@@ -82,12 +82,15 @@ class AgentResult:
 class AgentEvent:
     event_type: str              # "start", "text_delta", "tool_start", etc.
     text: str | None             # For text_delta, end
-    tool_name: str | None        # For tool_start, tool_end
-    tool_id: str | None          # For tool_start, tool_end
+    tool_name: str | None        # For tool_start, tool_end, permission_denied
+    tool_id: str | None          # For tool_start, tool_end, confirmation_required
     tool_output: str | None      # For tool_end
+    tool_args: dict | None       # For confirmation_required, permission_denied
     exit_code: int | None        # For tool_end
     turn: int | None             # For turn_start, turn_end
     prompt: str | None           # For start
+    timeout_ms: int | None       # For confirmation_required
+    reason: str | None           # For permission_denied
     error: str | None            # For error
     total_tokens: int | None     # For turn_end, end
 ```

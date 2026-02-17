@@ -106,7 +106,7 @@ let (mut rx, _handle) = session.stream("Refactor the auth module").await?;
 while let Some(event) = rx.recv().await {
     match event {
         AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::ToolCall { name, .. } => println!("\n🔧 {name}"),
+        AgentEvent::ToolStart { name, .. } => println!("\n🔧 {name}"),
         AgentEvent::End { text, usage } => {
             println!("\n✅ Done: {} tokens", usage.total_tokens);
             break;
@@ -144,11 +144,17 @@ for event in session.stream("Refactor the auth module"):
 Maintain multi-turn conversations by passing history:
 
 ```rust
-use a3s_code_core::llm::Message;
+use a3s_code_core::llm::{ContentBlock, Message};
 
 let history = vec![
     Message::user("What's in src/?"),
-    Message::assistant("The src/ directory contains main.rs and lib.rs."),
+    Message {
+        role: "assistant".to_string(),
+        content: vec![ContentBlock::Text {
+            text: "The src/ directory contains main.rs and lib.rs.".to_string(),
+        }],
+        reasoning_content: None,
+    },
 ];
 
 // Continue the conversation
@@ -166,7 +172,7 @@ session.read_file("src/main.rs").await?;
 session.bash("cargo test").await?;
 session.glob("**/*.rs").await?;
 session.grep("fn main").await?;
-session.tool("write", serde_json::json!({"path": "x.rs", "content": "..."})).await?;
+session.tool("write", serde_json::json!({"file_path": "x.rs", "content": "..."})).await?;
 ```
 </Tab>
 <Tab value="TypeScript">
@@ -175,7 +181,7 @@ await session.readFile('src/main.rs');
 await session.bash('cargo test');
 await session.glob('**/*.rs');
 await session.grep('fn main');
-await session.tool('write', { path: 'x.rs', content: '...' });
+await session.tool('write', { file_path: 'x.rs', content: '...' });
 ```
 </Tab>
 <Tab value="Python">
@@ -184,7 +190,7 @@ session.read_file("src/main.rs")
 session.bash("cargo test")
 session.glob("**/*.rs")
 session.grep("fn main")
-session.tool("write", {"path": "x.rs", "content": "..."})
+session.tool("write", {"file_path": "x.rs", "content": "..."})
 ```
 </Tab>
 </Tabs>
@@ -277,10 +283,19 @@ Provider-level `api_key` and `base_url` are defaults. Model-level values overrid
 | Field | Type | Description |
 |-------|------|-------------|
 | `text` | `string` | Final LLM response text |
-| `tool_calls_count` | `u32` | Number of tool calls |
-| `prompt_tokens` | `u32` | Input tokens |
-| `completion_tokens` | `u32` | Output tokens |
-| `total_tokens` | `u32` | Total tokens |
+| `messages` | `Vec<Message>` | Full conversation history (Rust only) |
+| `usage` | `TokenUsage` | Token usage statistics |
+| `tool_calls_count` | `usize` | Number of tool calls |
+
+### TokenUsage
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `prompt_tokens` | `usize` | Input tokens |
+| `completion_tokens` | `usize` | Output tokens |
+| `total_tokens` | `usize` | Total tokens |
+| `cache_read_tokens` | `Option<usize>` | Cached input tokens read |
+| `cache_write_tokens` | `Option<usize>` | Cached input tokens written |
 
 ### AgentEvent
 
@@ -294,5 +309,11 @@ Provider-level `api_key` and `base_url` are defaults. Model-level values overrid
 | `tool_end` | `tool_id`, `tool_name`, `tool_output`, `exit_code` | Tool call completed |
 | `tool_output_delta` | `tool_id`, `tool_name`, `text` | Tool output increment |
 | `end` | `text`, `total_tokens` | Completed |
-| `confirmation_required` | `tool_id`, `tool_name`, `description` | HITL confirmation needed |
+| `confirmation_required` | `tool_id`, `tool_name`, `args`, `timeout_ms` | HITL confirmation needed |
+| `confirmation_received` | `tool_id`, `approved`, `reason` | HITL confirmation received |
+| `confirmation_timeout` | `tool_id`, `action_taken` | HITL confirmation timed out |
+| `permission_denied` | `tool_id`, `tool_name`, `args`, `reason` | Tool blocked by permission policy |
+| `context_resolving` | `providers` | Context resolution started |
+| `context_resolved` | `total_items`, `total_tokens` | Context resolution completed |
+| `task_updated` | `session_id`, `tasks` | Task list updated |
 | `error` | `error` | Error occurred |

@@ -54,8 +54,8 @@ API keys and sensitive credentials are wrapped in `SecretString`, which redacts 
 
 ```rust
 let key = SecretString::new("sk-ant-api03-...");
-println!("{:?}", key);  // SecretString("***")
-println!("{}", key);    // ***
+println!("{:?}", key);  // [REDACTED]
+println!("{}", key);    // [REDACTED]
 key.expose()            // "sk-ant-api03-..." (explicit access only)
 ```
 
@@ -63,7 +63,7 @@ This prevents accidental leakage of API keys in logs, error messages, and debug 
 
 ## Output Sanitizer
 
-The output sanitizer scans LLM responses for PII (personally identifiable information) and redacts it before returning to the user. Integrated with `a3s-privacy` for classification.
+The output sanitizer scans LLM responses for PII (personally identifiable information) and redacts it before returning to the user. Integrated with `a3s-common` for classification.
 
 ## Taint Tracking
 

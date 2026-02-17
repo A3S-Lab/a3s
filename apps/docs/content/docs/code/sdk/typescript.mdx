@@ -83,14 +83,19 @@ interface AgentResult {
 
 interface AgentEvent {
   type: 'start' | 'text_delta' | 'tool_start' | 'tool_end'
-      | 'tool_output_delta' | 'turn_start' | 'turn_end' | 'end' | 'error';
+      | 'tool_output_delta' | 'turn_start' | 'turn_end'
+      | 'end' | 'confirmation_required' | 'permission_denied'
+      | 'error';
   text?: string;
   toolName?: string;
   toolId?: string;
   toolOutput?: string;
+  toolArgs?: object;
   exitCode?: number;
   turn?: number;
   prompt?: string;
+  timeoutMs?: number;
+  reason?: string;
   error?: string;
   totalTokens?: number;
 }

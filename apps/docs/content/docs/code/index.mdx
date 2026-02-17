@@ -54,7 +54,7 @@ let (mut rx, _handle) = session.stream("Refactor the auth module").await?;
 while let Some(event) = rx.recv().await {
     match event {
         AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::ToolCall { name, .. } => println!("\nTool: {name}"),
+        AgentEvent::ToolStart { name, .. } => println!("\nTool: {name}"),
         AgentEvent::End { .. } => break,
         _ => {} // required: AgentEvent is #[non_exhaustive]
     }
