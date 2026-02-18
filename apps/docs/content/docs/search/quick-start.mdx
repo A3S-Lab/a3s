@@ -9,7 +9,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 ## Installation
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js', 'Homebrew']}>
 <Tab value="Rust">
 
 ```toml
@@ -41,6 +41,24 @@ npm install @a3s-lab/search
 ```
 
 Node.js 16+. Native binary for Linux, macOS, and Windows (x64/arm64).
+
+</Tab>
+<Tab value="Homebrew">
+
+```bash
+# Install
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
+brew install a3s-search
+
+# Update
+brew update && brew upgrade a3s-search
+
+# Uninstall
+brew uninstall a3s-search
+brew untap a3s-lab/tap   # optional: remove the tap
+```
+
+macOS and Linux. Installs the `a3s-search` CLI binary. See [CLI](/docs/search/cli) for usage.
 
 </Tab>
 </Tabs>

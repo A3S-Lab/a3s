@@ -186,3 +186,66 @@ for answer in results.answers() {
 | `count` | `number` | Number of results |
 | `durationMs` | `number` | Search duration in ms |
 | `errors` | `EngineError[]` | Per-engine errors |
+
+## Error Handling
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+match search.search(query).await {
+    Ok(results) => {
+        // Per-engine failures don't block — check errors()
+        for (engine, error) in results.errors() {
+            eprintln!("Engine '{}' failed: {}", engine, error);
+        }
+    }
+    Err(e) => eprintln!("Search failed: {}", e),
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+try:
+    response = await search.search('query')
+except SearchError as e:
+    print(f'Search failed: {e}')
+
+# Per-engine failures don't raise — check response.errors
+for err in response.errors:
+    print(f"Engine '{err.engine}' failed: {err.message}")
+```
+
+| Exception | Description |
+|-----------|-------------|
+| `A3SSearchError` | Base exception for all SDK errors |
+| `SearchError` | Search operation failed |
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+try {
+  const response = await search.search('query');
+} catch (err) {
+  if (err instanceof SearchError) {
+    console.error(`Search failed: ${err.message}`);
+  }
+}
+
+// Per-engine failures don't throw — check response.errors
+for (const err of response.errors) {
+  console.warn(`Engine '${err.engine}' failed: ${err.message}`);
+}
+```
+
+| Class | Description |
+|-------|-------------|
+| `A3SSearchError` | Base error for all SDK errors |
+| `NativeModuleError` | Native module failed to load |
+| `SearchError` | Search operation failed |
+
+</Tab>
+</Tabs>

@@ -11,9 +11,6 @@
     "proxy",
     "configuration",
     "browser",
-    "cli",
-    "---SDK---",
-    "sdk/typescript",
-    "sdk/python"
+    "cli"
   ]
 }
