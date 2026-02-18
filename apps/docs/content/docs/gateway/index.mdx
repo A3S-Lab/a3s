@@ -1,28 +1,30 @@
 ---
 title: A3S Gateway
-description: AI-native API gateway with reverse proxy, multi-protocol support, and agent orchestration
+description: AI-native API gateway with reverse proxy, multi-protocol support, and Knative-style autoscaling
 ---
 
 # A3S Gateway
 
-A3S Gateway is an AI-native API gateway and reverse proxy built on [hyper](https://hyper.rs/) and [rustls](https://github.com/rustls/rustls). It supports HTTP/1.1, HTTP/2, WebSocket, SSE, gRPC, TCP, and UDP with a Traefik-compatible rule syntax, composable middleware pipeline, and AI-specific extensions for agent orchestration.
+A3S Gateway is an AI-native API gateway and reverse proxy built on [hyper](https://hyper.rs/) and [rustls](https://github.com/rustls/rustls). It routes HTTP/1.1, HTTP/2, WebSocket, SSE, gRPC, TCP, and UDP traffic through a composable middleware pipeline using Traefik-compatible rule syntax. Configuration is defined exclusively in HCL (HashiCorp Configuration Language). The gateway includes Knative-style autoscaling, traffic mirroring, failover, gradual rollouts, and a built-in dashboard API — all in a single statically-linked binary with 872 tests.
 
 ## Architecture
 
 ```
 Client Request
     ↓
-Entrypoint (HTTP/HTTPS/TCP/UDP listener)
+Entrypoint (HTTP / HTTPS / TCP / UDP listener)
     ↓
-TLS Termination (rustls, ACME)
+TLS Termination (rustls, ACME / Let's Encrypt)
     ↓
-Router (Host/Path/Headers/Method/SNI matching)
+Router (Host / Path / Headers / Method / SNI matching)
     ↓
 Middleware Pipeline (Auth → RateLimit → CORS → Headers → ...)
     ↓
-Load Balancer (RoundRobin/Weighted/LeastConn/Random)
+Service (Load Balancer + Health Check + Failover + Mirror)
     ↓
-Proxy (HTTP/WebSocket/gRPC/TCP/UDP)
+Scaling (Knative autoscaler, request buffer, revision router)
+    ↓
+Proxy (HTTP / WebSocket / gRPC / TCP / UDP)
     ↓
 Backend Service
 ```
@@ -31,45 +33,51 @@ Backend Service
 
 | Component | Purpose |
 |-----------|---------|
-| Entrypoint | Listeners on ports (HTTP, HTTPS, TCP, UDP) |
-| Router | Request matching by Host, Path, Headers, Method, SNI |
-| Middleware | Composable request/response transformations (10 built-in) |
-| Service | Backend pool with load balancing and health checks |
-| Proxy | Request forwarding across 7 protocols |
-| Provider | Dynamic config sources (file with hot reload, DNS) |
-| Agent | AI-specific extensions (webhooks, privacy routing, token metering) |
+| Gateway | Top-level orchestrator — ties configuration, listeners, routing, scaling, and observability into a single unit |
+| Entrypoint | Named listeners on ports with optional TLS (HTTP, HTTPS, TCP, UDP) |
+| Router | Request matching by Host, Path, PathPrefix, Headers, Method, and SNI |
+| Middleware | Composable request/response transformations (15 built-in) |
+| Service | Backend pool with load balancing, health checks, failover, and traffic mirroring |
+| Provider | Dynamic configuration sources (file watcher with hot reload, DNS discovery, Kubernetes) |
+| Proxy | Protocol-specific request forwarding (HTTP, WebSocket, gRPC, SSE, TCP, UDP) |
+| Scaling | Knative-style autoscaler with concurrency limiting, request buffering, revision routing, and gradual rollouts |
 
 ## Protocol Support
 
 | Protocol | Features |
 |----------|----------|
-| HTTP/1.1 & HTTP/2 | Full proxy with hop-by-hop header filtering |
-| WebSocket | Upgrade detection, bidirectional relay |
-| SSE / Streaming | Chunked transfer for LLM outputs |
-| gRPC | HTTP/2 h2c forwarding |
-| TCP | Raw byte relay with SNI routing |
+| HTTP/1.1 & HTTP/2 | Full reverse proxy with hop-by-hop header filtering |
+| WebSocket | Upgrade detection, bidirectional relay, multiplexing |
+| SSE / Streaming | Chunked transfer for LLM outputs and event streams |
+| gRPC | HTTP/2 h2c forwarding with header translation |
+| TCP | Raw byte relay with SNI-based routing and IP filtering |
 | UDP | Session-based datagram relay |
 
 ## Gateway Lifecycle
 
 ```rust
 pub enum GatewayState {
-    Created,     // Created but not started
-    Starting,    // Initializing listeners
-    Running,     // Actively proxying
-    Reloading,   // Hot-reloading config
-    Stopping,    // Draining connections
+    Created,     // Gateway created but not yet started
+    Starting,    // Initializing listeners and loading configuration
+    Running,     // Actively accepting and proxying requests
+    Reloading,   // Hot-reloading configuration without downtime
+    Stopping,    // Draining connections and shutting down
     Stopped,     // Fully stopped
 }
 ```
 
 ## Key Features
 
-- **Traefik-compatible rule syntax** for routing (`Host`, `PathPrefix`, `Headers`, `Method`)
-- **10 built-in middlewares**: API key, Basic Auth, JWT, rate limit, CORS, headers, strip-prefix, retry, circuit breaker, IP allowlist
-- **4 load balancing strategies**: Round Robin, Weighted, Least Connections, Random
-- **Pure Rust TLS** via rustls with ACME/Let's Encrypt support
-- **Hot reload** via file watcher (inotify/kqueue)
-- **AI agent extensions**: multi-platform webhooks, privacy-aware routing, token metering, conversation affinity
-- **Built-in dashboard API** with health, metrics, and config endpoints
-- **Prometheus metrics** export
+- **Traefik-compatible rule syntax** — route on `Host()`, `PathPrefix()`, `Headers()`, `Method()`, and SNI
+- **15 built-in middlewares** — API Key, Basic Auth, JWT, Forward Auth, Rate Limit, Rate Limit (Redis), CORS, Headers, Strip Prefix, Retry, Circuit Breaker, Compress, Body Limit, IP Allowlist, TCP Filter
+- **4 load balancing strategies** — Round Robin, Weighted, Least Connections, Random
+- **Pure Rust TLS** via rustls with automatic ACME / Let's Encrypt certificate provisioning
+- **Hot reload** — file watcher (inotify / kqueue) reloads configuration without dropping connections
+- **Traffic mirroring** — copy a configurable percentage of live traffic to a shadow backend (fire-and-forget)
+- **Failover** — automatic fallback to a secondary backend pool when the primary has zero healthy backends
+- **Knative-style autoscaling** — `desired = ceil((in_flight + queue_depth) / (concurrency × target_utilization))`, scale-to-zero with request buffering, revision-based traffic splitting, and gradual rollouts with automatic rollback on error rate or latency thresholds
+- **Helm deployment** — production-ready Helm chart for Kubernetes
+- **Built-in dashboard API** — health, metrics, configuration, routes, and services endpoints
+- **Prometheus metrics** — request counts, latencies, backend health, and autoscaler state exported in Prometheus format
+- **HCL-only configuration** — all gateway configuration uses HashiCorp Configuration Language exclusively
+- **872 tests** — unit, integration, and property-based tests across all modules

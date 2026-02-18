@@ -12,13 +12,13 @@ Engines like Google, Baidu, and Bing China require JavaScript rendering. A3S Sea
 Headless browser support is enabled by default via the `headless` Cargo feature:
 
 ```toml
-# Enabled by default
+# Enabled by default (9 engines)
 [dependencies]
-a3s-search = "0.1"
+a3s-search = "0.7"
 
-# Disable headless for smaller binary
+# Disable headless for smaller binary (6 engines)
 [dependencies]
-a3s-search = { version = "0.1", default-features = false }
+a3s-search = { version = "0.7", default-features = false }
 ```
 
 ## BrowserPool
@@ -30,11 +30,11 @@ use a3s_search::browser::{BrowserPool, BrowserPoolConfig};
 use std::sync::Arc;
 
 let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
-    max_tabs: 4,                  // Max concurrent tabs
-    headless: true,               // Headless mode
-    chrome_path: None,            // Auto-detect or auto-download
-    proxy_url: None,              // Optional proxy for browser
-    launch_args: vec![],          // Additional Chrome args
+    max_tabs: 4,
+    headless: true,
+    chrome_path: None,
+    proxy_url: None,
+    launch_args: vec![],
 }));
 ```
 
@@ -53,13 +53,7 @@ let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
 The browser is lazily initialized on the first `acquire_browser()` call:
 
 ```rust
-// First call launches Chrome
 let browser = pool.acquire_browser().await?;
-
-// Subsequent calls reuse the same process
-let browser = pool.acquire_browser().await?;
-
-// Graceful shutdown
 pool.shutdown().await;
 ```
 
@@ -81,40 +75,24 @@ let fetcher = Arc::new(
 );
 ```
 
-### Wait Strategies
+## Wait Strategies
 
 Control when a page is considered "loaded":
-
-```rust
-pub enum WaitStrategy {
-    // Wait for the page load event
-    Load,
-
-    // Wait until no network activity for idle_ms
-    NetworkIdle { idle_ms: u64 },
-
-    // Wait for a CSS selector to appear
-    Selector {
-        css: String,
-        timeout_ms: u64,
-    },
-
-    // Fixed delay after page load
-    Delay { ms: u64 },
-}
-```
 
 | Strategy | Best For |
 |----------|----------|
 | `Load` | Fast pages, APIs |
-| `NetworkIdle` | Complex SPAs |
-| `Selector` | Waiting for specific content (recommended for search engines) |
-| `Delay` | Fallback when nothing else works |
+| `NetworkIdle { idle_ms }` | Complex SPAs |
+| `Selector { css, timeout_ms }` | Waiting for specific content (recommended) |
+| `Delay { ms }` | Fallback when nothing else works |
 
 Each built-in headless engine uses an appropriate strategy:
-- **Google**: `Selector { css: "div.g", timeout_ms: 5000 }`
-- **Baidu**: `Selector { css: "div.c-container", timeout_ms: 5000 }`
-- **Bing China**: `Delay { ms: 2000 }`
+
+| Engine | Strategy |
+|--------|----------|
+| Google | `Selector { css: "div.g", timeout_ms: 5000 }` |
+| Baidu | `Selector { css: "div.c-container", timeout_ms: 5000 }` |
+| Bing China | `Delay { ms: 2000 }` |
 
 ## Chrome Auto-Detection
 
@@ -122,13 +100,11 @@ When `chrome_path` is `None`, A3S Search looks for Chrome in this order:
 
 1. `CHROME` environment variable
 2. System PATH (`google-chrome`, `chromium`, `chrome`, etc.)
-3. Well-known install paths:
-   - macOS: `/Applications/Google Chrome.app/...`
-   - Linux: `/usr/bin/google-chrome`, `/usr/bin/chromium-browser`
+3. Well-known install paths (macOS `/Applications/...`, Linux `/usr/bin/...`)
 4. Auto-download Chrome for Testing from Google CDN
-5. Cache downloaded Chrome in `~/.a3s/chromium/`
+5. Cache in `~/.a3s/chromium/`
 
-The first run with headless engines may download ~150MB of Chrome.
+Supported platforms: macOS (arm64, x64) and Linux (x64). The first run may download ~150MB.
 
 ## Using Headless Engines
 
@@ -164,19 +140,17 @@ let baidu_fetcher = Arc::new(
 );
 
 let mut search = Search::new();
-search.add_engine(DuckDuckGo::new());           // HTTP engine
-search.add_engine(Google::new(google_fetcher));  // Browser engine
-search.add_engine(Baidu::new(baidu_fetcher));    // Browser engine
+search.add_engine(DuckDuckGo::new());
+search.add_engine(Google::new(google_fetcher));
+search.add_engine(Baidu::new(baidu_fetcher));
 
 let results = search.search(SearchQuery::new("rust programming")).await?;
-
-// Shutdown browser when done
 pool.shutdown().await;
 ```
 
 ## PageFetcher Trait
 
-Both `HttpFetcher` and `BrowserFetcher` implement this trait:
+All fetchers implement this trait:
 
 ```rust
 #[async_trait]
@@ -185,4 +159,8 @@ pub trait PageFetcher: Send + Sync {
 }
 ```
 
-You can implement custom fetchers (e.g., caching fetcher, rate-limited fetcher) by wrapping existing ones.
+| Implementation | Description |
+|----------------|-------------|
+| `HttpFetcher` | Plain HTTP via reqwest, optional single proxy |
+| `PooledHttpFetcher` | Proxy pool rotation per request |
+| `BrowserFetcher` | Headless Chrome via BrowserPool |

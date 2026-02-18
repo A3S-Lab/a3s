@@ -1,58 +1,56 @@
 ---
 title: Quick Start
-description: Get started with A3S Search — basic search, multi-engine aggregation, and output formats
+description: Get up and running with A3S Search in any supported language
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Quick Start
 
 ## Installation
 
-Add A3S Search to your `Cargo.toml`:
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
 
 ```toml
 [dependencies]
-a3s-search = "0.1"
+a3s-search = "0.7"
 tokio = { version = "1", features = ["full"] }
 ```
 
-To disable headless browser engines (smaller binary):
+Headless browser engines (Google, Baidu, Bing China) are enabled by default. HTTP-only:
 
 ```toml
-[dependencies]
-a3s-search = { version = "0.1", default-features = false }
+a3s-search = { version = "0.7", default-features = false }
 ```
 
-## Basic Search
+</Tab>
+<Tab value="Python">
 
-```rust
-use a3s_search::{Search, SearchQuery};
-use a3s_search::engines::DuckDuckGo;
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let mut search = Search::new();
-    search.add_engine(DuckDuckGo::new());
-
-    let query = SearchQuery::new("rust programming");
-    let results = search.search(query).await?;
-
-    println!("Found {} results in {}ms", results.count, results.duration_ms);
-
-    for result in results.items().iter().take(10) {
-        println!("{}", result.title);
-        println!("  {}", result.url);
-        println!("  {}", result.content);
-        println!("  Score: {:.2} (engines: {:?})", result.score, result.engines);
-        println!();
-    }
-
-    Ok(())
-}
+```bash
+pip install a3s-search
 ```
 
-## Multi-Engine Aggregation
+Python 3.9–3.13. Pre-built wheels for Linux (glibc/musl), macOS, and Windows.
 
-Add multiple engines for better results through consensus ranking:
+</Tab>
+<Tab value="Node.js">
+
+```bash
+npm install @a3s-lab/search
+```
+
+Node.js 16+. Native binary for Linux, macOS, and Windows (x64/arm64).
+
+</Tab>
+</Tabs>
+
+## Basic Usage
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+### 1. Create and Configure
 
 ```rust
 use a3s_search::{Search, SearchQuery};
@@ -62,19 +60,72 @@ let mut search = Search::new();
 search.add_engine(DuckDuckGo::new());
 search.add_engine(Brave::new());
 search.add_engine(Wikipedia::new());
+```
 
-let results = search.search(SearchQuery::new("quantum computing")).await?;
+### 2. Search
 
-// Results found by multiple engines rank higher
-for result in results.items().iter().take(5) {
-    println!("[{:.2}] {} (found by: {})",
-        result.score,
-        result.title,
-        result.engines.iter().cloned().collect::<Vec<_>>().join(", "));
+```rust
+let query = SearchQuery::new("rust programming");
+let results = search.search(query).await?;
+
+for result in results.items().iter().take(10) {
+    println!("{}: {}", result.title, result.url);
+    println!("  Score: {:.2}, Engines: {:?}", result.score, result.engines);
 }
 ```
 
+### 3. Error Handling
+
+Each engine runs independently — one failure doesn't block others:
+
+```rust
+for (engine, error) in results.errors() {
+    eprintln!("Engine '{}' failed: {}", engine, error);
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_search import A3SSearch
+
+search = A3SSearch()
+
+# Default engines: DuckDuckGo + Wikipedia
+response = await search.search("rust programming")
+
+for r in response.results:
+    print(f"{r.title}: {r.url} (score: {r.score})")
+
+print(f"{response.count} results in {response.duration_ms}ms")
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+import { A3SSearch } from '@a3s-lab/search';
+
+const search = new A3SSearch();
+
+// Default engines: DuckDuckGo + Wikipedia
+const response = await search.search('rust programming');
+
+for (const r of response.results) {
+  console.log(`${r.title}: ${r.url} (score: ${r.score})`);
+}
+
+console.log(`${response.count} results in ${response.durationMs}ms`);
+```
+
+</Tab>
+</Tabs>
+
 ## Search with Options
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
 
 ```rust
 use a3s_search::{SearchQuery, SafeSearch, TimeRange, EngineCategory};
@@ -84,19 +135,39 @@ let query = SearchQuery::new("rust async")
     .with_safesearch(SafeSearch::Moderate)
     .with_page(1)
     .with_time_range(TimeRange::Month)
-    .with_categories(vec![EngineCategory::General]);
+    .with_categories(vec![EngineCategory::General])
+    .with_engines(vec!["ddg".into(), "brave".into(), "bing".into()]);
 ```
 
-## Target Specific Engines
+</Tab>
+<Tab value="Python">
 
-Use engine shortcuts to limit which engines are queried:
-
-```rust
-let query = SearchQuery::new("rust")
-    .with_engines(vec!["ddg".into(), "wiki".into()]);
+```python
+response = await search.search("rust async",
+    engines=["ddg", "brave", "bing"],
+    limit=5,
+    timeout=15,
+)
 ```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+const response = await search.search('rust async', {
+  engines: ['ddg', 'brave', 'bing'],
+  limit: 5,
+  timeout: 15,
+});
+```
+
+</Tab>
+</Tabs>
 
 ## Chinese Search Engines
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
 
 ```rust
 use a3s_search::engines::{Sogou, So360};
@@ -108,55 +179,68 @@ search.add_engine(So360::new());
 let results = search.search(SearchQuery::new("Rust 编程语言")).await?;
 ```
 
-## With Headless Browser Engines
+</Tab>
+<Tab value="Python">
 
-Google, Baidu, and Bing China require headless Chrome (enabled by default with the `headless` feature):
-
-```rust
-#[cfg(feature = "headless")]
-{
-    use a3s_search::browser::{BrowserPool, BrowserPoolConfig, BrowserFetcher};
-    use a3s_search::engines::Google;
-    use a3s_search::WaitStrategy;
-    use std::sync::Arc;
-
-    let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
-        max_tabs: 4,
-        headless: true,
-        chrome_path: None,  // Auto-detect or auto-download
-        proxy_url: None,
-        launch_args: vec![],
-    }));
-
-    let fetcher = Arc::new(
-        BrowserFetcher::new(pool.clone())
-            .with_wait(WaitStrategy::Selector {
-                css: "div.g".into(),
-                timeout_ms: 5000,
-            })
-    );
-
-    search.add_engine(Google::new(fetcher));
-}
+```python
+response = await search.search("Rust 编程语言", engines=["sogou", "360"])
 ```
 
-## Error Handling
+</Tab>
+<Tab value="Node.js">
 
-Each engine runs independently — one failure doesn't block others:
+```typescript
+const response = await search.search('Rust 编程语言', {
+  engines: ['sogou', '360'],
+});
+```
+
+</Tab>
+</Tabs>
+
+## With Proxy Pool (Rust)
+
+Rotate proxies per request for anti-crawler protection:
 
 ```rust
-let results = search.search(query).await?;
+use std::sync::Arc;
+use a3s_search::{Search, SearchQuery, PooledHttpFetcher, PageFetcher};
+use a3s_search::engines::{DuckDuckGo, DuckDuckGoParser};
+use a3s_search::proxy::{ProxyPool, ProxyConfig, ProxyProtocol, ProxyStrategy};
 
-// Check per-engine errors
-for (engine, error) in results.errors() {
-    eprintln!("Engine '{}' failed: {}", engine, error);
-}
+let pool = Arc::new(ProxyPool::with_proxies(vec![
+    ProxyConfig::new("proxy1.example.com", 8080),
+    ProxyConfig::new("proxy2.example.com", 8080)
+        .with_protocol(ProxyProtocol::Socks5),
+]).with_strategy(ProxyStrategy::RoundRobin));
 
-// Suggestions and direct answers
-for suggestion in results.suggestions() {
-    println!("Did you mean: {}", suggestion);
-}
-for answer in results.answers() {
-    println!("Answer: {}", answer);
-}
+let fetcher: Arc<dyn PageFetcher> = Arc::new(PooledHttpFetcher::new(Arc::clone(&pool)));
+let mut search = Search::new();
+search.add_engine(DuckDuckGo::with_fetcher(DuckDuckGoParser, fetcher));
+
+let results = search.search(SearchQuery::new("rust programming")).await?;
+
+// Toggle at runtime (thread-safe via AtomicBool)
+pool.set_enabled(false);  // direct connection
+pool.set_enabled(true);   // re-enable rotation
 ```
+
+See [Proxy](/docs/search/proxy) for dynamic providers and SDK usage.
+
+## With Health Monitor (Rust)
+
+Automatically suspend engines after repeated failures:
+
+```rust
+use a3s_search::{Search, HealthConfig};
+use std::time::Duration;
+
+let mut search = Search::with_health_config(HealthConfig {
+    max_failures: 3,
+    suspend_duration: Duration::from_secs(120),
+});
+search.add_engine(DuckDuckGo::new());
+search.add_engine(Brave::new());
+```
+
+See [Configuration](/docs/search/configuration) for HCL config files.

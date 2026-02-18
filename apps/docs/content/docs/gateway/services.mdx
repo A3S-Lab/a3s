@@ -1,177 +1,208 @@
 ---
 title: Services
-description: Load balancing strategies, health checks, sticky sessions, and backend management
+description: Load balancing, health checks, sticky sessions, traffic mirroring, failover, and autoscaling
 ---
 
 # Services
 
-Services define backend pools with load balancing, health checks, and sticky sessions.
-
-## Service Configuration
-
-```rust
-pub struct ServiceConfig {
-    pub load_balancer: LoadBalancerConfig,
-}
-
-pub struct LoadBalancerConfig {
-    pub strategy: Strategy,
-    pub servers: Vec<ServerConfig>,
-    pub health_check: Option<HealthCheckConfig>,
-    pub sticky: Option<StickyConfig>,
-}
-
-pub struct ServerConfig {
-    pub url: String,
-    pub weight: u32,
-}
-```
+Services define backend pools with load balancing, health checks, sticky sessions, traffic mirroring, failover, and optional Knative-style autoscaling.
 
 ## Load Balancing Strategies
 
-```rust
-pub enum Strategy {
-    RoundRobin,
-    Weighted,
-    LeastConnections,
-    Random,
+| Strategy | Description |
+|----------|-------------|
+| `round-robin` | Cycles through healthy backends sequentially |
+| `weighted` | Distributes traffic proportionally by weight |
+| `least-connections` | Routes to the backend with fewest active connections |
+| `random` | Selects a random healthy backend |
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "weighted"
+    servers  = [
+      { url = "http://127.0.0.1:8001", weight = 3 },
+      { url = "http://127.0.0.1:8002", weight = 1 }
+    ]
+  }
 }
 ```
-
-### Round Robin
-
-Cycles through healthy backends sequentially:
-
-```toml
-[services.my-service.load_balancer]
-strategy = "round-robin"
-[[services.my-service.load_balancer.servers]]
-url = "http://127.0.0.1:8001"
-[[services.my-service.load_balancer.servers]]
-url = "http://127.0.0.1:8002"
-[[services.my-service.load_balancer.servers]]
-url = "http://127.0.0.1:8003"
-```
-
-### Weighted
-
-Distributes traffic proportionally by weight:
-
-```toml
-[services.my-service.load_balancer]
-strategy = "weighted"
-[[services.my-service.load_balancer.servers]]
-url = "http://127.0.0.1:8001"
-weight = 3
-[[services.my-service.load_balancer.servers]]
-url = "http://127.0.0.1:8002"
-weight = 1
-```
-
-Server 8001 receives ~75% of traffic, server 8002 receives ~25%.
-
-### Least Connections
-
-Routes to the backend with the fewest active connections:
-
-```toml
-[services.my-service.load_balancer]
-strategy = "least-connections"
-```
-
-### Random
-
-Selects a random healthy backend:
-
-```toml
-[services.my-service.load_balancer]
-strategy = "random"
-```
-
-## Backend
-
-```rust
-pub struct Backend {
-    pub url: String,
-    pub weight: u32,
-    healthy: AtomicBool,
-    active_connections: AtomicUsize,
-}
-
-impl Backend {
-    pub fn is_healthy(&self) -> bool;
-    pub fn set_healthy(&self, healthy: bool);
-    pub fn inc_connections(&self);
-    pub fn dec_connections(&self);
-    pub fn connections(&self) -> usize;
-}
-```
-
-Unhealthy backends are automatically excluded from load balancing.
 
 ## Health Checks
 
-```rust
-pub struct HealthCheckConfig {
-    pub path: String,
-    pub interval: String,
-    pub timeout: String,
-    pub unhealthy_threshold: u32,
-    pub healthy_threshold: u32,
+Active HTTP probes with configurable thresholds. Unhealthy backends are automatically excluded from load balancing.
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [
+      { url = "http://127.0.0.1:8001" },
+      { url = "http://127.0.0.1:8002" }
+    ]
+    health_check {
+      path                = "/health"
+      interval            = "10s"
+      timeout             = "5s"
+      unhealthy_threshold = 3
+      healthy_threshold   = 1
+    }
+  }
 }
 ```
 
-```toml
-[services.my-service.load_balancer.health_check]
-path = "/health"
-interval = "10s"
-timeout = "5s"
-unhealthy_threshold = 3
-healthy_threshold = 1
-```
+| Field | Default | Description |
+|-------|---------|-------------|
+| `path` | — | HTTP GET path to probe |
+| `interval` | `10s` | Time between checks |
+| `timeout` | `5s` | Max wait for response |
+| `unhealthy_threshold` | `3` | Consecutive failures before marking unhealthy |
+| `healthy_threshold` | `1` | Consecutive successes before marking healthy |
 
-| Field | Description |
-|-------|-------------|
-| `path` | HTTP GET path to probe |
-| `interval` | Time between checks |
-| `timeout` | Max wait for response |
-| `unhealthy_threshold` | Consecutive failures before marking unhealthy |
-| `healthy_threshold` | Consecutive successes before marking healthy |
-
-A backend is marked unhealthy after `unhealthy_threshold` consecutive failed checks, and healthy again after `healthy_threshold` consecutive successes.
+Passive health checks also track error counts and automatically remove backends that exceed the failure threshold.
 
 ## Sticky Sessions
 
 Route the same client to the same backend using cookies:
 
-```rust
-pub struct StickyConfig {
-    pub cookie: String,
-    pub ttl: Option<String>,
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+    sticky {
+      cookie = "srv_id"
+    }
+  }
 }
 ```
 
-```toml
-[services.my-service.load_balancer.sticky]
-cookie = "srv_id"
-ttl = "1h"
-```
+On the first request, the gateway selects a backend and sets a `Set-Cookie` header. Subsequent requests with that cookie are routed to the same backend. Sessions are evicted on TTL expiry or when max sessions is reached.
 
-On the first request, the gateway selects a backend and sets a `Set-Cookie` header. Subsequent requests with that cookie are routed to the same backend.
+## Traffic Mirroring
 
-## Service Registry
+Copy a percentage of live traffic to a shadow service for testing without affecting the primary response:
 
-```rust
-pub struct ServiceRegistry {
-    services: HashMap<String, Arc<LoadBalancer>>,
-}
-
-impl ServiceRegistry {
-    pub fn from_config(services: &HashMap<String, ServiceConfig>) -> Result<Self>;
-    pub async fn start_health_checks(&self, configs: &HashMap<String, ServiceConfig>);
-    pub fn get(&self, name: &str) -> Option<Arc<LoadBalancer>>;
-    pub fn len(&self) -> usize;
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+  mirror {
+    service    = "shadow-backend"
+    percentage = 10
+  }
 }
 ```
 
-The registry is rebuilt on configuration reload. Health check tasks are spawned as background Tokio tasks.
+| Field | Default | Description |
+|-------|---------|-------------|
+| `service` | — | Target shadow service name |
+| `percentage` | `100` | Percentage of traffic to mirror (0–100) |
+
+## Failover
+
+Automatic fallback to a secondary backend pool when the primary has zero healthy backends:
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+    health_check {
+      path = "/health"
+    }
+  }
+  failover {
+    service = "backup-pool"
+  }
+}
+
+services "backup-pool" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://10.0.0.1:8001" }]
+  }
+}
+```
+
+## Knative-Style Autoscaling
+
+Optional autoscaling with scale-to-zero, request buffering, and concurrency-based decisions:
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+  scaling {
+    min_replicas          = 0
+    max_replicas          = 10
+    container_concurrency = 50
+    target_utilization    = 0.7
+    scale_down_delay_secs = 300
+    buffer_enabled        = true
+    buffer_timeout_secs   = 30
+    buffer_size           = 100
+    executor              = "box"
+  }
+}
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `min_replicas` | `0` | Minimum replicas (0 enables scale-to-zero) |
+| `max_replicas` | `10` | Maximum replicas |
+| `container_concurrency` | `0` | Max concurrent requests per container (0 = unlimited) |
+| `target_utilization` | `0.7` | Target utilization ratio for scaling decisions |
+| `scale_down_delay_secs` | `300` | Seconds after last request before scaling down |
+| `buffer_enabled` | `false` | Enable request buffering during scale-from-zero |
+| `buffer_timeout_secs` | `30` | Max wait for a backend during cold start |
+| `buffer_size` | `100` | Max buffered requests |
+| `executor` | `box` | Scale executor: `box` (HTTP) or `k8s` (kube-rs) |
+
+## Revision Traffic Splitting
+
+Split traffic across named revisions for canary deployments:
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+  revisions = [
+    { name = "v1", traffic_percent = 90, strategy = "round-robin",
+      servers = [{ url = "http://127.0.0.1:8001" }] },
+    { name = "v2", traffic_percent = 10, strategy = "round-robin",
+      servers = [{ url = "http://127.0.0.1:8003" }] }
+  ]
+}
+```
+
+Traffic percentages must sum to 100.
+
+## Gradual Rollout
+
+Automatically shift traffic from one revision to another with safety guardrails:
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+  rollout {
+    from                 = "v1"
+    to                   = "v2"
+    step_percent         = 10
+    step_interval_secs   = 60
+    error_rate_threshold = 0.05
+    latency_threshold_ms = 5000
+  }
+}
+```
+
+The rollout shifts `step_percent` of traffic every `step_interval_secs`. If the error rate exceeds `error_rate_threshold` or p99 latency exceeds `latency_threshold_ms`, the rollout automatically rolls back.

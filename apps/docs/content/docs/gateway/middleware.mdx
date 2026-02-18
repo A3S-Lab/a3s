@@ -1,253 +1,214 @@
 ---
 title: Middleware
-description: 10 built-in middlewares for authentication, rate limiting, CORS, and more
+description: 15 built-in middlewares for authentication, rate limiting, CORS, and more
 ---
 
 # Middleware
 
-A3S Gateway provides 10 built-in middlewares that can be composed into pipelines. Each middleware can inspect and modify requests and responses.
-
-## Middleware Trait
-
-```rust
-#[async_trait]
-pub trait Middleware: Send + Sync {
-    async fn handle_request(
-        &self,
-        req: &mut http::request::Parts,
-        ctx: &RequestContext,
-    ) -> Result<Option<Response<Vec<u8>>>>;
-
-    async fn handle_response(
-        &self,
-        resp: &mut http::response::Parts,
-    ) -> Result<()> {
-        Ok(())
-    }
-
-    fn name(&self) -> &str;
-}
-
-pub struct RequestContext {
-    pub client_ip: String,
-    pub entrypoint: String,
-    pub router: String,
-}
-```
-
-Returning `Some(Response)` from `handle_request` short-circuits the pipeline and returns that response directly to the client.
-
-## Pipeline
-
-```rust
-pub struct Pipeline {
-    middlewares: Vec<Arc<dyn Middleware>>,
-}
-
-impl Pipeline {
-    pub fn from_config(
-        names: &[String],
-        configs: &HashMap<String, MiddlewareConfig>,
-    ) -> Result<Self>;
-
-    pub async fn process_request(
-        &self,
-        parts: &mut http::request::Parts,
-        ctx: &RequestContext,
-    ) -> Result<Option<Response<Vec<u8>>>>;
-
-    pub async fn process_response(
-        &self,
-        parts: &mut http::response::Parts,
-    ) -> Result<()>;
-}
-```
+A3S Gateway provides 15 built-in middlewares that can be composed into ordered pipelines. Returning a response from `handle_request` short-circuits the pipeline.
 
 ## Built-in Middlewares
 
 ### JWT Authentication
 
-Validates JWT tokens in the `Authorization: Bearer` header using HS256:
+Validates `Authorization: Bearer` tokens using HS256. Returns `401` on failure.
 
-```toml
-[middlewares.auth-jwt]
-type = "jwt"
-value = "${JWT_SECRET}"
+```hcl
+middlewares "auth-jwt" {
+  type  = "jwt"
+  value = "${JWT_SECRET}"
+}
 ```
-
-Returns `401 Unauthorized` if the token is missing, expired, or invalid.
 
 ### API Key Authentication
 
-Validates API keys from a request header:
+Validates a header value against an allowlist. Returns `401` on failure.
 
-```toml
-[middlewares.auth-apikey]
-type = "api-key"
-header = "X-API-Key"
-keys = ["key-1", "key-2", "key-3"]
+```hcl
+middlewares "auth-apikey" {
+  type   = "api-key"
+  header = "X-API-Key"
+  keys   = ["key-1", "key-2", "key-3"]
+}
 ```
-
-Returns `401 Unauthorized` if the key is missing or not in the allowed list.
 
 ### Basic Authentication
 
-HTTP Basic Auth with username/password:
+HTTP Basic Auth. Returns `401` with `WWW-Authenticate` header on failure.
 
-```toml
-[middlewares.auth-basic]
-type = "basic-auth"
-username = "admin"
-password = "secret"
+```hcl
+middlewares "auth-basic" {
+  type     = "basic-auth"
+  username = "admin"
+  password = "secret"
+}
 ```
 
-Returns `401 Unauthorized` with `WWW-Authenticate` header on failure.
+### Forward Authentication
 
-### Rate Limiting
+Delegates auth to an external service. Copies specified headers from the auth response to the upstream request. Returns `401` if the auth service rejects.
 
-Token bucket rate limiter:
-
-```toml
-[middlewares.rate-limit]
-type = "rate-limit"
-rate = 100    # tokens per second
-burst = 50    # max burst size
+```hcl
+middlewares "ext-auth" {
+  type                          = "forward-auth"
+  forward_auth_url              = "http://auth.internal:9090/verify"
+  forward_auth_response_headers = ["X-User-Id", "X-User-Role"]
+}
 ```
 
-Returns `429 Too Many Requests` when the bucket is empty. The bucket refills at `rate` tokens per second up to `burst` capacity.
+### Rate Limiting (In-Memory)
+
+Token bucket rate limiter. Returns `429 Too Many Requests` when exhausted.
+
+```hcl
+middlewares "rate-limit" {
+  type  = "rate-limit"
+  rate  = 100
+  burst = 50
+}
+```
+
+### Rate Limiting (Redis)
+
+Distributed rate limiting via Redis. Requires `--features redis`.
+
+```hcl
+middlewares "rate-limit-distributed" {
+  type      = "rate-limit-redis"
+  rate      = 200
+  burst     = 100
+  redis_url = "redis://127.0.0.1:6379"
+}
+```
 
 ### CORS
 
-Cross-Origin Resource Sharing headers:
+Sets CORS response headers. Handles preflight `OPTIONS` requests automatically.
 
-```toml
-[middlewares.cors]
-type = "cors"
-allowed_origins = ["https://example.com", "https://app.example.com"]
-allowed_methods = ["GET", "POST", "PUT", "DELETE"]
+```hcl
+middlewares "cors" {
+  type            = "cors"
+  allowed_origins = ["https://example.com", "https://app.example.com"]
+  allowed_methods = ["GET", "POST", "PUT", "DELETE"]
+  allowed_headers = ["Content-Type", "Authorization"]
+  max_age         = 3600
+}
 ```
-
-Handles preflight `OPTIONS` requests automatically and adds `Access-Control-*` headers to responses.
 
 ### Headers
 
-Add, set, or remove request/response headers:
+Add or override request/response headers.
 
-```toml
-[middlewares.custom-headers]
-type = "headers"
-request_headers = { "X-Forwarded-Proto" = "https" }
-response_headers = { "X-Frame-Options" = "DENY", "X-Content-Type-Options" = "nosniff" }
+```hcl
+middlewares "custom-headers" {
+  type = "headers"
+  request_headers = {
+    "X-Forwarded-Proto" = "https"
+  }
+  response_headers = {
+    "X-Frame-Options" = "DENY"
+    "Strict-Transport-Security" = "max-age=31536000"
+  }
+}
 ```
 
 ### Strip Prefix
 
-Remove path prefixes before forwarding to the backend:
+Removes path prefixes before forwarding to the backend.
 
-```toml
-[middlewares.strip-api]
-type = "strip-prefix"
-prefixes = ["/api/v1", "/api/v2"]
+```hcl
+middlewares "strip-api" {
+  type     = "strip-prefix"
+  prefixes = ["/api/v1", "/api/v2"]
+}
 ```
 
-A request to `/api/v1/users` is forwarded as `/users` to the backend.
+### Body Limit
+
+Rejects requests exceeding the body size limit. Returns `413 Payload Too Large`.
+
+```hcl
+middlewares "body-limit" {
+  type           = "body-limit"
+  max_body_bytes = 1048576
+}
+```
 
 ### Retry
 
-Retry failed requests:
+Retries failed requests with a configurable interval.
 
-```toml
-[middlewares.retry]
-type = "retry"
-max_retries = 3
-retry_interval_ms = 100
+```hcl
+middlewares "retry" {
+  type              = "retry"
+  max_retries       = 3
+  retry_interval_ms = 500
+}
 ```
-
-Retries on connection errors and 5xx responses, with a fixed delay between attempts.
 
 ### Circuit Breaker
 
-Prevents cascading failures with a state machine:
+Closed → Open → HalfOpen state machine. Opens after consecutive failures, tries half-open after cooldown.
 
-```toml
-[middlewares.circuit-breaker]
-type = "circuit-breaker"
+```hcl
+middlewares "circuit-breaker" {
+  type              = "circuit-breaker"
+  failure_threshold = 5
+  cooldown_secs     = 30
+  success_threshold = 2
+}
 ```
-
-States:
-- **Closed** (normal): Requests pass through. Transitions to Open after consecutive failures.
-- **Open** (tripped): All requests immediately return `503 Service Unavailable`. Transitions to Half-Open after a timeout.
-- **Half-Open** (probing): Allows a single request through. Success → Closed, failure → Open.
 
 ### IP Allowlist
 
-Restrict access by client IP (supports CIDR notation):
+Rejects requests from IPs not in the allowlist. Supports CIDR notation. Returns `403`.
 
-```toml
-[middlewares.ip-allow]
-type = "ip-allow"
-allowed_ips = ["10.0.0.0/8", "192.168.1.0/24", "203.0.113.42"]
-```
-
-Returns `403 Forbidden` for IPs not in the allowlist.
-
-### Compression
-
-gzip/deflate response compression:
-
-```toml
-[middlewares.compress]
-type = "compress"
-```
-
-Compresses responses based on the client's `Accept-Encoding` header.
-
-## Middleware Ordering
-
-Middlewares execute in the order listed in the router config:
-
-```toml
-[routers.api]
-middlewares = ["ip-allow", "auth-jwt", "rate-limit", "cors", "compress"]
-```
-
-Recommended ordering:
-1. IP allowlist (reject early)
-2. Authentication (reject unauthorized)
-3. Rate limiting (protect backends)
-4. CORS (add headers)
-5. Headers / Strip prefix (transform)
-6. Compression (compress response)
-7. Retry / Circuit breaker (resilience)
-
-## Custom Middleware
-
-Implement the `Middleware` trait:
-
-```rust
-use a3s_gateway::middleware::{Middleware, RequestContext};
-use async_trait::async_trait;
-
-struct LoggingMiddleware;
-
-#[async_trait]
-impl Middleware for LoggingMiddleware {
-    async fn handle_request(
-        &self,
-        req: &mut http::request::Parts,
-        ctx: &RequestContext,
-    ) -> Result<Option<Response<Vec<u8>>>> {
-        tracing::info!(
-            client_ip = %ctx.client_ip,
-            method = %req.method,
-            path = %req.uri.path(),
-            "incoming request"
-        );
-        Ok(None) // Continue pipeline
-    }
-
-    fn name(&self) -> &str {
-        "logging"
-    }
+```hcl
+middlewares "ip-allow" {
+  type        = "ip-allow"
+  allowed_ips = ["192.168.1.0/24", "10.0.0.0/8"]
 }
 ```
+
+### Compress
+
+Compresses responses using brotli (preferred), gzip, or deflate based on `Accept-Encoding`.
+
+```hcl
+middlewares "compress" {
+  type = "compress"
+}
+```
+
+### TCP Filter
+
+Connection-level filtering for TCP entrypoints: in-flight connection limit and IP allowlist. Configured via entrypoint fields:
+
+```hcl
+entrypoints "tcp-db" {
+  address         = "0.0.0.0:5432"
+  protocol        = "tcp"
+  max_connections  = 1000
+  tcp_allowed_ips  = ["10.0.0.0/8", "192.168.1.0/24"]
+}
+```
+
+## Summary
+
+| Type | Returns | Description |
+|------|---------|-------------|
+| `jwt` | 401 | JWT Bearer token validation |
+| `api-key` | 401 | Header-based API key check |
+| `basic-auth` | 401 | HTTP Basic authentication |
+| `forward-auth` | 401 | External auth delegation |
+| `rate-limit` | 429 | In-memory token bucket |
+| `rate-limit-redis` | 429 | Distributed token bucket (Redis) |
+| `cors` | — | CORS headers + preflight |
+| `headers` | — | Request/response header manipulation |
+| `strip-prefix` | — | Path prefix removal |
+| `body-limit` | 413 | Max request body size |
+| `retry` | — | Retry on backend failure |
+| `circuit-breaker` | 503 | Closed/Open/HalfOpen state machine |
+| `ip-allow` | 403 | CIDR/IP allowlist |
+| `compress` | — | brotli/gzip/deflate compression |
+| `tcp-filter` | — | TCP connection limit + IP filter |

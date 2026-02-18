@@ -5,7 +5,7 @@ description: Native Python bindings for A3S Search via PyO3
 
 # Python SDK
 
-The Python SDK provides native bindings to the A3S Search engine via [PyO3](https://pyo3.rs/) and [maturin](https://www.maturin.rs/). It wraps the Rust search engine directly — no HTTP server or subprocess needed.
+Native Python bindings via [PyO3](https://pyo3.rs/) and [maturin](https://www.maturin.rs/). The Rust search engine runs in-process — no HTTP server or subprocess.
 
 ## Installation
 
@@ -15,170 +15,115 @@ cd crates/search/sdk/python
 maturin develop --release
 ```
 
-## Quick Start
+## A3SSearch
 
 ```python
 from a3s_search import A3SSearch
 
 search = A3SSearch()
-
-# Basic search
-response = await search.search("rust programming")
-for r in response.results:
-    print(f"{r.title}: {r.url}")
-    print(f"  score: {r.score}, engines: {r.engines}")
+response = await search.search('rust programming')
 ```
 
-## A3SSearch
+### Methods
 
-The main client class:
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `search` | `(query, *, engines?, limit?, timeout?, proxy?, proxy_pool?) → SearchResponse` | Run a search |
+| `set_proxy_pool` | `(proxies: list[str]) → None` | Set instance-level proxy pool |
+| `set_proxy_pool_enabled` | `(enabled: bool) → None` | Enable or disable proxy rotation |
+| `is_proxy_pool_enabled` | `() → bool` | Check if proxy pool is active |
+| `proxy_pool_size` | `() → int` | Number of proxies in pool |
 
-```python
-class A3SSearch:
-    def __init__(self) -> None: ...
+All methods are `async` except `set_proxy_pool_enabled` and `is_proxy_pool_enabled`.
 
-    async def search(
-        self,
-        query: str,
-        *,
-        engines: list[str] | None = None,
-        limit: int | None = None,
-        timeout: int | None = None,
-        proxy: str | None = None,
-    ) -> SearchResponse: ...
-```
+### search() Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `query` | `str` | (required) | Search query string |
-| `engines` | `list[str]` | `["ddg", "wiki"]` | Engine shortcuts to use |
-| `limit` | `int` | `None` (all) | Maximum results to return |
+| `engines` | `list[str]` | `['ddg', 'wiki']` | Engine shortcuts to use |
+| `limit` | `int` | `None` | Max results to return |
 | `timeout` | `int` | `10` | Per-engine timeout in seconds |
-| `proxy` | `str` | `None` | HTTP/SOCKS5 proxy URL |
+| `proxy` | `str` | `None` | Single proxy URL for this request |
+| `proxy_pool` | `list[str]` | `None` | Per-request proxy pool (overrides instance pool) |
 
-### Engine Shortcuts
+## Engine Shortcuts
 
-| Shortcut | Engine |
-|----------|--------|
-| `ddg` / `duckduckgo` | DuckDuckGo |
-| `brave` | Brave Search |
-| `wiki` / `wikipedia` | Wikipedia |
-| `sogou` | Sogou (Chinese) |
-| `360` / `so360` | 360 Search (Chinese) |
+| Shortcut | Engine | Method |
+|----------|--------|--------|
+| `ddg` | DuckDuckGo | HTTP |
+| `brave` | Brave Search | HTTP |
+| `bing` | Bing | HTTP |
+| `wiki` | Wikipedia | JSON API |
+| `sogou` | Sogou (搜狗) | HTTP |
+| `360` | 360 Search | HTTP |
+| `g` | Google | Headless |
+| `baidu` | Baidu (百度) | Headless |
+| `bing_cn` | Bing China (必应) | Headless |
+
+Headless engines (`g`, `baidu`, `bing_cn`) require Chrome. See [Headless Browser](/docs/search/browser).
 
 ## Types
 
 ### SearchResponse
 
-```python
-@dataclass
-class SearchResponse:
-    results: list[SearchResult]     # Search results
-    count: int                      # Total number of results
-    duration_ms: int                # Search duration in milliseconds
-    errors: list[EngineErrorInfo]   # Engine errors (partial failures)
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `results` | `list[SearchResult]` | Ranked, deduplicated results |
+| `count` | `int` | Number of results |
+| `duration_ms` | `int` | Search duration in ms |
+| `errors` | `list[EngineErrorInfo]` | Per-engine errors |
 
 ### SearchResult
 
-```python
-@dataclass
-class SearchResult:
-    url: str                        # Result URL
-    title: str                      # Result title
-    content: str                    # Description/snippet
-    result_type: str                # "web", "image", "video", etc.
-    engines: list[str]              # Engines that returned this result
-    score: float                    # Relevance score
-    thumbnail: str | None           # Thumbnail URL
-    published_date: str | None      # Published date
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | `str` | Result URL |
+| `title` | `str` | Result title |
+| `content` | `str` | Snippet or description |
+| `result_type` | `str` | `'web'`, `'image'`, `'video'`, `'news'`, `'answer'` |
+| `engines` | `list[str]` | Engine shortcuts that found this result |
+| `score` | `float` | Consensus score |
+| `thumbnail` | `str \| None` | Thumbnail URL |
+| `published_date` | `str \| None` | Publication date |
 
 ### EngineErrorInfo
 
-```python
-@dataclass
-class EngineErrorInfo:
-    engine: str                     # Engine name
-    message: str                    # Error message
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `engine` | `str` | Engine shortcut |
+| `message` | `str` | Error message |
 
 ## Error Handling
 
 ```python
-from a3s_search import A3SSearch, SearchError, A3SSearchError
-
-search = A3SSearch()
-
 try:
-    response = await search.search("query")
+    response = await search.search('query')
 except SearchError as e:
-    print(f"Search failed: {e}")
-except A3SSearchError as e:
-    print(f"SDK error: {e}")
+    print(f'Search failed: {e}')
 
-# Check for partial engine failures
-response = await search.search("query", engines=["ddg", "brave", "wiki"])
+# Per-engine failures don't raise — check response.errors
 for err in response.errors:
-    print(f"Engine {err.engine} failed: {err.message}")
+    print(f"Engine '{err.engine}' failed: {err.message}")
 ```
-
-### Exception Hierarchy
 
 | Exception | Description |
 |-----------|-------------|
 | `A3SSearchError` | Base exception for all SDK errors |
 | `SearchError` | Search operation failed |
-| `EngineError` | A specific engine encountered an error |
-
-## Examples
-
-### Multi-Engine Search
-
-```python
-response = await search.search(
-    "machine learning",
-    engines=["ddg", "brave", "wiki"],
-    limit=20,
-    timeout=15,
-)
-
-print(f"Found {response.count} results in {response.duration_ms}ms")
-for r in response.results:
-    print(f"[{r.score:.2f}] {r.title}")
-    print(f"  {r.url}")
-    print(f"  engines: {', '.join(r.engines)}")
-```
-
-### Chinese Search
-
-```python
-response = await search.search(
-    "人工智能",
-    engines=["sogou", "360"],
-)
-```
-
-### With Proxy
-
-```python
-response = await search.search(
-    "privacy tools",
-    proxy="socks5://127.0.0.1:1080",
-)
-```
 
 ## Exports
 
 ```python
 from a3s_search import (
-    A3SSearch,          # Main client
-    SearchResult,       # Result dataclass
-    SearchOptions,      # Options dataclass
-    SearchResponse,     # Response dataclass
-    EngineErrorInfo,    # Engine error info
-    A3SSearchError,     # Base exception
-    SearchError,        # Search exception
-    EngineError,        # Engine exception
+    A3SSearch,
+    A3SSearchError,
+    SearchError,
+)
+
+from a3s_search import (
+    SearchResponse,
+    SearchResult,
+    EngineErrorInfo,
 )
 ```

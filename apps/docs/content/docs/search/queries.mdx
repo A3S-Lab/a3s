@@ -3,45 +3,160 @@ title: Queries
 description: Construct search queries with filters, categories, language, and pagination
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Queries
 
-`SearchQuery` defines what to search for and how to filter results.
+`SearchQuery` controls what to search for and how. All fields except `query` are optional.
 
-## Creating a Query
+## Basic Query
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
 
 ```rust
 use a3s_search::SearchQuery;
 
 let query = SearchQuery::new("rust programming");
+let results = search.search(query).await?;
 ```
 
-## Builder Methods
+</Tab>
+<Tab value="Python">
 
-Chain builder methods to customize the query:
+```python
+response = await search.search("rust programming")
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+const response = await search.search('rust programming');
+```
+
+</Tab>
+</Tabs>
+
+## Search with Options
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
 
 ```rust
-use a3s_search::*;
+use a3s_search::{SearchQuery, SafeSearch, TimeRange, EngineCategory};
 
-let query = SearchQuery::new("machine learning")
-    .with_categories(vec![EngineCategory::General, EngineCategory::Science])
+let query = SearchQuery::new("rust async runtime")
+    .with_categories(vec![EngineCategory::General])
     .with_language("en-US")
     .with_safesearch(SafeSearch::Moderate)
     .with_page(1)
     .with_time_range(TimeRange::Month)
-    .with_engines(vec!["ddg".into(), "wiki".into(), "brave".into()]);
+    .with_engines(vec!["ddg".into(), "brave".into(), "bing".into()]);
 ```
 
-## Query Fields
+`SearchQuery` builder methods:
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `query` | `String` | (required) | Search terms |
-| `categories` | `Vec<EngineCategory>` | `[]` | Target categories |
-| `language` | `Option<String>` | `None` | Language/locale (e.g., `en-US`) |
-| `safesearch` | `SafeSearch` | `Off` | Safe search filtering level |
-| `page` | `u32` | `1` | Page number (1-indexed) |
-| `time_range` | `Option<TimeRange>` | `None` | Filter results by recency |
-| `engines` | `Vec<String>` | `[]` | Target specific engines by shortcut |
+| Method | Description |
+|--------|-------------|
+| `new(query)` | Create a new query |
+| `with_categories(cats)` | Set target categories |
+| `with_language(lang)` | Set language/locale |
+| `with_safesearch(level)` | Set safe search level |
+| `with_page(page)` | Set page number |
+| `with_time_range(range)` | Set time range filter |
+| `with_engines(engines)` | Limit to specific engine shortcuts |
+
+</Tab>
+<Tab value="Python">
+
+```python
+response = await search.search("rust async runtime",
+    engines=["ddg", "brave", "bing"],
+    limit=5,
+    timeout=15,
+)
+```
+
+SDK search options:
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `engines` | `list[str]` | Engine shortcuts to use |
+| `limit` | `int` | Max results to return |
+| `timeout` | `int` | Per-engine timeout in seconds |
+| `proxy` | `str` | Single proxy URL |
+| `proxy_pool` | `list[str]` | Proxy pool URLs for this request |
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+const response = await search.search('rust async runtime', {
+  engines: ['ddg', 'brave', 'bing'],
+  limit: 5,
+  timeout: 15,
+});
+```
+
+SDK search options:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `engines` | `string[]` | Engine shortcuts to use |
+| `limit` | `number` | Max results to return |
+| `timeout` | `number` | Per-engine timeout in seconds |
+| `proxy` | `string` | Single proxy URL |
+| `proxyPool` | `string[]` | Proxy pool URLs for this request |
+
+</Tab>
+</Tabs>
+
+## Target Specific Engines
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+// Only DuckDuckGo and Bing
+let query = SearchQuery::new("rust")
+    .with_engines(vec!["ddg".into(), "bing".into()]);
+
+// Only Chinese engines
+let query = SearchQuery::new("Rust 编程")
+    .with_engines(vec!["sogou".into(), "360".into()]);
+```
+
+Engines not in the list are skipped for this query. If `with_engines` is not called, all registered engines are queried.
+
+</Tab>
+<Tab value="Python">
+
+```python
+# International engines
+response = await search.search("rust", engines=["ddg", "brave", "bing", "wiki"])
+
+# Chinese engines
+response = await search.search("Rust 编程", engines=["sogou", "360"])
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+// International engines
+const response = await search.search('rust', {
+  engines: ['ddg', 'brave', 'bing', 'wiki'],
+});
+
+// Chinese engines
+const response2 = await search.search('Rust 编程', {
+  engines: ['sogou', '360'],
+});
+```
+
+</Tab>
+</Tabs>
 
 ## Categories
 
@@ -49,69 +164,66 @@ let query = SearchQuery::new("machine learning")
 pub enum EngineCategory {
     General,
     Images,
-    Videos,
     News,
-    Maps,
-    Music,
-    Files,
+    Videos,
     Science,
-    Social,
 }
 ```
 
-When categories are specified, only engines that support those categories will be queried. An empty list means all engines.
+Engines declare which categories they support via `EngineConfig.categories`. When a query specifies categories, only engines matching those categories are queried.
 
 ## Safe Search
 
 ```rust
 pub enum SafeSearch {
-    Off = 0,        // No filtering
-    Moderate = 1,   // Moderate filtering
-    Strict = 2,     // Strict filtering
+    Off,
+    Moderate,
+    Strict,
 }
 ```
 
-Only engines with `safesearch: true` in their config respond to this setting (DuckDuckGo, Brave, Google).
+Only engines with `safesearch: true` in their config respect this setting. Currently supported by DuckDuckGo, Brave, Bing, and Google.
 
 ## Time Range
 
-Filter results by publication date:
-
 ```rust
 pub enum TimeRange {
-    Day,    // Past 24 hours
-    Week,   // Past 7 days
-    Month,  // Past 30 days
-    Year,   // Past 365 days
+    Day,
+    Week,
+    Month,
+    Year,
 }
 ```
 
-## Targeting Specific Engines
-
-Use engine shortcuts to limit which engines are queried:
-
-```rust
-// Only DuckDuckGo and Wikipedia
-let query = SearchQuery::new("rust")
-    .with_engines(vec!["ddg".into(), "wiki".into()]);
-
-// Only Chinese engines
-let query = SearchQuery::new("人工智能")
-    .with_engines(vec!["sogou".into(), "360".into(), "baidu".into()]);
-```
-
-If `engines` is empty, all registered engines are used.
+Filters results by recency. Engine support varies.
 
 ## Pagination
 
-Engines that support paging (`paging: true`) will fetch the requested page:
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
 
 ```rust
-// Page 1 (default)
-let query = SearchQuery::new("rust").with_page(1);
-
-// Page 2
-let query = SearchQuery::new("rust").with_page(2);
+let page1 = SearchQuery::new("rust").with_page(1);
+let page2 = SearchQuery::new("rust").with_page(2);
 ```
 
-Engines without paging support always return their first page regardless of this setting.
+Only engines with `paging: true` support pagination (DuckDuckGo, Brave, Bing, Google).
+
+</Tab>
+<Tab value="Python">
+
+```python
+# Python SDK does not expose a page parameter directly.
+# Use the Rust crate for paginated queries.
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+// Node.js SDK does not expose a page parameter directly.
+// Use the Rust crate for paginated queries.
+```
+
+</Tab>
+</Tabs>

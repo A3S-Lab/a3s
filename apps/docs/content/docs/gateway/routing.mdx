@@ -1,11 +1,11 @@
 ---
 title: Routing
-description: Rule-based request matching with Host, Path, Headers, and Method matchers
+description: Rule-based request matching with Host, Path, Headers, Method, and SNI matchers
 ---
 
 # Routing
 
-A3S Gateway uses a Traefik-compatible rule syntax for matching incoming requests to services. Rules support Host, Path, Headers, and Method matchers combined with `&&` (AND).
+A3S Gateway uses a Traefik-compatible rule syntax for matching incoming requests to services.
 
 ## Rule Syntax
 
@@ -22,140 +22,107 @@ rule = "Matcher(`value`) && Matcher(`value`)"
 | `Path` | Match exact path | `Path(\`/health\`)` |
 | `Headers` | Match by header key/value | `Headers(\`X-Api-Version\`, \`v2\`)` |
 | `Method` | Match by HTTP method | `Method(\`POST\`)` |
+| `HostSNI` | Match TCP by TLS SNI | `HostSNI(\`db.example.com\`)` |
 
 ### Combining Matchers
 
 Use `&&` to combine multiple matchers (AND logic):
 
-```toml
-# Match api.example.com with /v1 prefix
-[routers.api-v1]
-rule = "Host(`api.example.com`) && PathPrefix(`/v1`)"
-service = "api-v1"
+```hcl
+routers "api-v1" {
+  rule    = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+  service = "api-v1"
+}
 
-# Match POST requests to /webhooks
-[routers.webhooks]
-rule = "Method(`POST`) && PathPrefix(`/webhooks`)"
-service = "webhook-handler"
+routers "webhooks" {
+  rule    = "Method(`POST`) && PathPrefix(`/webhooks`)"
+  service = "webhook-handler"
+}
 
-# Match specific header + path
-[routers.internal]
-rule = "Headers(`X-Internal`, `true`) && PathPrefix(`/admin`)"
-service = "admin-service"
-```
-
-## Router Configuration
-
-```rust
-pub struct RouterConfig {
-    pub rule: String,              // Matching rule
-    pub service: String,           // Target service name
-    pub entrypoints: Vec<String>,  // Which entrypoints to listen on
-    pub middlewares: Vec<String>,   // Middleware chain (ordered)
-    pub priority: i32,             // Lower = matched first
+routers "internal" {
+  rule    = "Headers(`X-Internal`, `true`) && PathPrefix(`/admin`)"
+  service = "admin-service"
 }
 ```
 
 ## Priority
 
-When multiple routers match a request, the one with the lowest `priority` value wins:
+When multiple routers match, the lowest `priority` value wins (default: `0`):
 
-```toml
-# Matched first (priority 0)
-[routers.specific]
-rule = "Host(`api.example.com`) && Path(`/health`)"
-service = "health-service"
-priority = 0
+```hcl
+routers "specific" {
+  rule     = "Host(`api.example.com`) && Path(`/health`)"
+  service  = "health-service"
+  priority = 0
+}
 
-# Matched second (priority 10)
-[routers.general]
-rule = "Host(`api.example.com`)"
-service = "api-service"
-priority = 10
+routers "general" {
+  rule     = "Host(`api.example.com`)"
+  service  = "api-service"
+  priority = 10
+}
 ```
-
-Default priority is `0`. More specific rules should have lower priority values.
 
 ## Entrypoint Binding
 
 Routers only receive traffic from their bound entrypoints:
 
-```toml
-[entrypoints.web]
-address = "0.0.0.0:80"
+```hcl
+entrypoints "web" {
+  address = "0.0.0.0:80"
+}
 
-[entrypoints.websecure]
-address = "0.0.0.0:443"
-[entrypoints.websecure.tls]
-cert_file = "cert.pem"
-key_file = "key.pem"
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
+  tls {
+    cert_file = "cert.pem"
+    key_file  = "key.pem"
+  }
+}
 
-# Only HTTPS traffic
-[routers.api]
-rule = "Host(`api.example.com`)"
-service = "api-service"
-entrypoints = ["websecure"]
+# HTTPS only
+routers "api" {
+  rule        = "Host(`api.example.com`)"
+  service     = "api-service"
+  entrypoints = ["websecure"]
+}
 
 # Both HTTP and HTTPS
-[routers.web]
-rule = "Host(`www.example.com`)"
-service = "web-service"
-entrypoints = ["web", "websecure"]
+routers "web" {
+  rule        = "Host(`www.example.com`)"
+  service     = "web-service"
+  entrypoints = ["web", "websecure"]
+}
 ```
 
 ## Middleware Chain
 
-Middlewares are applied in the order listed:
+Middlewares are applied in the order listed. If any middleware rejects the request, the pipeline short-circuits immediately.
 
-```toml
-[routers.api]
-rule = "Host(`api.example.com`)"
-service = "api-service"
-middlewares = ["ip-allow", "auth-jwt", "rate-limit", "cors"]
-# Order: IP check → JWT auth → rate limit → CORS headers
-```
-
-If any middleware rejects the request (e.g., auth failure, rate limit exceeded), the pipeline short-circuits and returns an error response immediately.
-
-## Router Table
-
-```rust
-pub struct RouterTable {
-    routers: Vec<(String, Arc<Rule>)>,
-}
-
-impl RouterTable {
-    pub fn from_config(routers: &HashMap<String, RouterConfig>) -> Result<Self>;
-    pub fn match_request(&self, req: &http::Request<()>) -> Option<(String, Arc<Rule>)>;
-    pub fn len(&self) -> usize;
+```hcl
+routers "api" {
+  rule        = "Host(`api.example.com`)"
+  service     = "api-service"
+  middlewares = ["ip-allow", "auth-jwt", "rate-limit", "cors"]
+  # Order: IP check → JWT auth → rate limit → CORS headers
 }
 ```
-
-The router table is sorted by priority at construction time. `match_request` iterates in priority order and returns the first match.
-
-## Rule Trait
-
-```rust
-pub trait Rule: Send + Sync {
-    fn matches(&self, req: &http::Request<()>) -> bool;
-}
-```
-
-The rule engine parses the string rule into a tree of `Rule` trait objects. Each matcher implements `Rule`, and `&&` creates an `AndRule` that combines two sub-rules.
 
 ## TCP/UDP Routing
 
-For TCP entrypoints, routing uses SNI (Server Name Indication) from the TLS ClientHello:
+TCP entrypoints use SNI from the TLS ClientHello:
 
-```toml
-[entrypoints.tcp-secure]
-address = "0.0.0.0:5432"
-protocol = "tcp"
+```hcl
+entrypoints "tcp-secure" {
+  address  = "0.0.0.0:5432"
+  protocol = "tcp"
+}
 
-[routers.postgres]
-rule = "HostSNI(`db.example.com`)"
-service = "postgres-service"
-entrypoints = ["tcp-secure"]
+routers "postgres" {
+  rule        = "HostSNI(`db.example.com`)"
+  service     = "postgres-service"
+  entrypoints = ["tcp-secure"]
+}
 ```
 
 UDP routing is port-based — each UDP entrypoint maps to a single service.
@@ -164,45 +131,52 @@ UDP routing is port-based — each UDP entrypoint maps to a single service.
 
 ### API Versioning
 
-```toml
-[routers.api-v2]
-rule = "Host(`api.example.com`) && PathPrefix(`/v2`)"
-service = "api-v2"
-priority = 0
+```hcl
+routers "api-v2" {
+  rule     = "Host(`api.example.com`) && PathPrefix(`/v2`)"
+  service  = "api-v2"
+  priority = 0
+}
 
-[routers.api-v1]
-rule = "Host(`api.example.com`) && PathPrefix(`/v1`)"
-service = "api-v1"
-priority = 1
+routers "api-v1" {
+  rule     = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+  service  = "api-v1"
+  priority = 1
+}
 
-[routers.api-fallback]
-rule = "Host(`api.example.com`)"
-service = "api-v2"
-priority = 100
+routers "api-fallback" {
+  rule     = "Host(`api.example.com`)"
+  service  = "api-v2"
+  priority = 100
+}
 ```
 
 ### Multi-Tenant
 
-```toml
-[routers.tenant-a]
-rule = "Host(`a.example.com`)"
-service = "tenant-a-backend"
+```hcl
+routers "tenant-a" {
+  rule    = "Host(`a.example.com`)"
+  service = "tenant-a-backend"
+}
 
-[routers.tenant-b]
-rule = "Host(`b.example.com`)"
-service = "tenant-b-backend"
+routers "tenant-b" {
+  rule    = "Host(`b.example.com`)"
+  service = "tenant-b-backend"
+}
 ```
 
-### Header-Based Routing
+### Header-Based Canary
 
-```toml
-[routers.canary]
-rule = "Headers(`X-Canary`, `true`) && PathPrefix(`/api`)"
-service = "canary-backend"
-priority = 0
+```hcl
+routers "canary" {
+  rule     = "Headers(`X-Canary`, `true`) && PathPrefix(`/api`)"
+  service  = "canary-backend"
+  priority = 0
+}
 
-[routers.stable]
-rule = "PathPrefix(`/api`)"
-service = "stable-backend"
-priority = 10
+routers "stable" {
+  rule     = "PathPrefix(`/api`)"
+  service  = "stable-backend"
+  priority = 10
+}
 ```

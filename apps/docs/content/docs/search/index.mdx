@@ -1,94 +1,85 @@
 ---
 title: A3S Search
-description: Embeddable meta search engine library with multi-engine aggregation, consensus ranking, and headless browser support
+description: Embeddable meta search engine — multi-engine aggregation, consensus ranking, proxy pool, and headless browser support
 ---
 
 # A3S Search
 
-A3S Search is an embeddable meta search engine library that aggregates results from multiple search engines, deduplicates them, and ranks them using a consensus-based scoring algorithm inspired by [SearXNG](https://github.com/searxng/searxng).
+A3S Search is an embeddable meta search engine library inspired by [SearXNG](https://github.com/searxng/searxng). It aggregates results from multiple search engines in parallel, deduplicates by normalized URL, and ranks them using a consensus-based scoring algorithm. Available as a Rust crate, Python package, and Node.js module.
 
 ## Key Features
 
-- **Multi-Engine Aggregation** — Parallel async search across 8 built-in engines with configurable timeouts.
+- **Multi-Engine Aggregation** — 9 built-in engines queried in parallel with configurable per-engine timeouts.
 - **Consensus Ranking** — Results found by multiple engines rank higher. Per-engine weight multipliers.
-- **Smart Deduplication** — Merges duplicate results by normalized URL, keeping the best title, snippet, and metadata.
-- **Headless Browser** — JavaScript-capable rendering for Google, Baidu, and Bing via Chrome DevTools Protocol.
-- **Proxy Pool** — Round-robin and random proxy rotation with dynamic provider support.
-- **Custom Engines** — Implement the `Engine` trait to add any search source.
-- **CLI Tool** — Command-line interface for quick searches with multiple output formats.
-- **Native SDKs** — TypeScript (NAPI-RS) and Python (PyO3) bindings.
+- **Smart Deduplication** — Merges duplicates by normalized URL, keeping the best title, snippet, and metadata.
+- **Dynamic Proxy Pool** — Round-robin and random rotation with pluggable `ProxyProvider` trait and `spawn_auto_refresh`.
+- **Health Monitor** — Automatic engine suspension after repeated failures with configurable recovery.
+- **HCL Configuration** — Load engine weights, health settings, and timeouts from `.hcl` config files.
+- **Headless Browser** — Chrome DevTools Protocol for JS-rendered engines (Google, Baidu, Bing China).
+- **Auto-Install Chrome** — Detects or downloads Chrome for Testing when no browser is found.
+- **PageFetcher Abstraction** — Pluggable fetching: `HttpFetcher`, `PooledHttpFetcher`, or `BrowserFetcher`.
+- **CLI Tool** — Command-line interface with multiple output formats and Homebrew distribution.
+- **Native SDKs** — TypeScript (NAPI-RS) and Python (PyO3) bindings with async support and dynamic proxy pool management.
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                        Search                            │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │                Engine Registry                     │  │
-│  │  ┌─────────┐ ┌───────┐ ┌─────────┐ ┌──────────┐  │  │
-│  │  │DuckDuck │ │ Brave │ │Wikipedia│ │ Sogou    │  │  │
-│  │  │  Go     │ │       │ │  (API)  │ │ / 360    │  │  │
-│  │  └────┬────┘ └───┬───┘ └────┬────┘ └─────┬────┘  │  │
-│  │       │          │          │             │        │  │
-│  │       └──── HttpFetcher ────┘             │        │  │
-│  │                                           │        │  │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐  │        │  │
-│  │  │ Google   │ │  Baidu   │ │ Bing CN  │  │        │  │
-│  │  │(wt: 1.5) │ │          │ │          │  │        │  │
-│  │  └────┬─────┘ └─────┬────┘ └─────┬────┘  │        │  │
-│  │       │              │            │        │        │  │
-│  │       └── BrowserFetcher ─────────┘        │        │  │
-│  │               └─ BrowserPool               │        │  │
-│  └────────────────────────────────────────────┘        │  │
-│                        │ parallel search                  │
-│  ┌────────────────────────────────────────────────────┐  │
-│  │                   Aggregator                       │  │
-│  │  • Deduplicate by normalized URL                   │  │
-│  │  • Merge results from multiple engines             │  │
-│  │  • Calculate consensus-based scores                │  │
-│  │  • Sort by score (descending)                      │  │
-│  └────────────────────────────────────────────────────┘  │
-│                        │                                  │
-│                  SearchResults                            │
-└──────────────────────────────────────────────────────────┘
+Search
+├── HealthMonitor         ← auto-suspend/recover engines by failure count
+├── Engine Registry       ← 9 built-in engines (5 HTTP + 1 API + 3 headless)
+│   ├── DuckDuckGo        ← HttpFetcher / PooledHttpFetcher
+│   ├── Brave             ← HttpFetcher / PooledHttpFetcher
+│   ├── Bing              ← HttpFetcher / PooledHttpFetcher
+│   ├── Sogou / 360       ← HttpFetcher / PooledHttpFetcher
+│   ├── Wikipedia         ← JSON API (no fetcher)
+│   ├── Google            ← BrowserFetcher → BrowserPool
+│   ├── Baidu             ← BrowserFetcher → BrowserPool
+│   └── Bing China        ← BrowserFetcher → BrowserPool
+├── ProxyPool             ← round-robin / random rotation, AtomicBool toggle
+│   ├── PooledHttpFetcher ← per-request proxy from pool
+│   └── ProxyProvider     ← trait for dynamic proxy sources + auto-refresh
+├── Aggregator            ← deduplicate, merge, consensus score, sort
+└── SearchResults         ← ranked output
 ```
 
 ## Built-in Engines
 
-### HTTP Engines (fast, no JavaScript)
+### HTTP Engines
 
-| Engine | Shortcut | Weight | Paging | SafeSearch | Language |
-|--------|----------|--------|--------|------------|----------|
-| DuckDuckGo | `ddg` | 1.0 | Yes | Yes | International |
-| Brave | `brave` | 1.0 | Yes | Yes | International |
-| Wikipedia | `wiki` | 1.2 | No | No | Multi-language |
-| Sogou | `sogou` | 1.0 | No | No | Chinese |
-| 360 Search | `360` | 1.0 | No | No | Chinese |
+| Engine | Shortcut | Weight | Paging | SafeSearch |
+|--------|----------|--------|--------|------------|
+| DuckDuckGo | `ddg` | 1.0 | Yes | Yes |
+| Brave | `brave` | 1.0 | Yes | Yes |
+| Bing | `bing` | 1.0 | Yes | Yes |
+| Wikipedia | `wiki` | 1.2 | No | No |
+| Sogou | `sogou` | 1.0 | No | No |
+| 360 Search | `360` | 1.0 | No | No |
 
-### Headless Browser Engines (JavaScript rendering, `headless` feature)
+### Headless Browser Engines (`headless` feature)
 
-| Engine | Shortcut | Weight | Paging | SafeSearch | Language |
-|--------|----------|--------|--------|------------|----------|
-| Google | `g` | 1.5 | Yes | Yes | International |
-| Baidu | `baidu` | 1.0 | No | No | Chinese |
-| Bing China | `bing_cn` | 1.0 | No | No | Chinese |
+| Engine | Shortcut | Weight | Paging | SafeSearch |
+|--------|----------|--------|--------|------------|
+| Google | `g` | 1.5 | Yes | Yes |
+| Baidu | `baidu` | 1.0 | No | No |
+| Bing China | `bing_cn` | 1.0 | No | No |
+
+## Supported Languages
+
+| Language | Package | Install |
+|----------|---------|---------|
+| Rust | [`a3s-search`](https://crates.io/crates/a3s-search) | `a3s-search = "0.7"` in Cargo.toml |
+| Python | [`a3s-search`](https://pypi.org/project/a3s-search/) | `pip install a3s-search` |
+| Node.js | [`@a3s-lab/search`](https://www.npmjs.com/package/@a3s-lab/search) | `npm install @a3s-lab/search` |
 
 ## Ranking Algorithm
 
-A3S Search uses a consensus-based scoring algorithm:
-
 ```
-For each result:
-    weight = 1.0
-    for each engine that found this result:
-        weight *= engine.weight
-    weight *= number_of_engines
-
-    score = sum(weight / position) for each engine position
+score = Σ (weight / position) for each engine that found this result
+weight = engine_weight × number_of_engines_found
 ```
 
 Results found by multiple engines receive a significant score boost. Higher-weighted engines (Google at 1.5, Wikipedia at 1.2) contribute more to the final score.
 
 ## Test Coverage
 
-401 total tests (298 lib + 31 CLI + 103 SDK) with **91.15% Rust line coverage**.
+288 Rust tests (244 lib + 31 CLI + 13 integration) + 103 SDK tests (49 Node.js + 54 Python).

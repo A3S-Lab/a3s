@@ -1,0 +1,152 @@
+---
+title: Deployment
+description: Deploy A3S Gateway with Helm, Docker, or as a standalone binary
+---
+
+# Deployment
+
+## Helm (Kubernetes)
+
+A3S Gateway ships with a production-ready Helm chart at `deploy/helm/a3s-gateway/`.
+
+### Install
+
+```bash
+helm install gateway deploy/helm/a3s-gateway
+```
+
+### Custom Configuration
+
+Pass a custom `gateway.hcl` via `--set-file`:
+
+```bash
+helm install gateway deploy/helm/a3s-gateway \
+  --set-file config=my-gateway.hcl
+```
+
+Or override individual values:
+
+```bash
+helm install gateway deploy/helm/a3s-gateway \
+  --set replicaCount=3 \
+  --set service.type=LoadBalancer \
+  --set image.tag=0.1.0
+```
+
+### Autoscaling
+
+```bash
+helm install gateway deploy/helm/a3s-gateway \
+  --set autoscaling.enabled=true \
+  --set autoscaling.minReplicas=2 \
+  --set autoscaling.maxReplicas=10 \
+  --set autoscaling.targetCPUUtilizationPercentage=70
+```
+
+### Ingress
+
+```bash
+helm install gateway deploy/helm/a3s-gateway \
+  --set ingress.enabled=true \
+  --set ingress.className=nginx \
+  --set ingress.hosts[0].host=api.example.com \
+  --set ingress.hosts[0].paths[0].path=/ \
+  --set ingress.hosts[0].paths[0].pathType=Prefix
+```
+
+### Dashboard
+
+The dashboard is enabled by default on port 9090:
+
+```bash
+kubectl port-forward svc/gateway-a3s-gateway 9090:9090
+curl http://127.0.0.1:9090/api/gateway/health
+```
+
+### Helm Values
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `replicaCount` | `1` | Number of replicas |
+| `image.repository` | `ghcr.io/a3s-lab/gateway` | Container image |
+| `image.tag` | Chart appVersion | Image tag |
+| `service.type` | `ClusterIP` | Service type |
+| `service.port` | `8080` | HTTP port |
+| `dashboard.enabled` | `true` | Enable dashboard port |
+| `dashboard.port` | `9090` | Dashboard port |
+| `config` | minimal HCL | Gateway HCL configuration |
+| `resources.requests.cpu` | `100m` | CPU request |
+| `resources.requests.memory` | `64Mi` | Memory request |
+| `resources.limits.cpu` | `500m` | CPU limit |
+| `resources.limits.memory` | `256Mi` | Memory limit |
+| `autoscaling.enabled` | `false` | Enable HPA |
+| `ingress.enabled` | `false` | Enable Ingress |
+
+### Chart Structure
+
+```
+deploy/helm/a3s-gateway/
+├── Chart.yaml
+├── values.yaml
+└── templates/
+    ├── _helpers.tpl
+    ├── configmap.yaml       # gateway.hcl from values.config
+    ├── deployment.yaml      # Pod spec with config volume
+    ├── service.yaml         # ClusterIP with http + dashboard
+    ├── serviceaccount.yaml
+    ├── ingress.yaml         # Optional
+    ├── hpa.yaml             # Optional
+    └── NOTES.txt
+```
+
+The ConfigMap checksum is included as a pod annotation, so config changes trigger a rolling restart automatically.
+
+## Docker
+
+```bash
+docker run -d \
+  -v $(pwd)/gateway.hcl:/etc/a3s-gateway/gateway.hcl \
+  -p 8080:8080 \
+  -p 9090:9090 \
+  ghcr.io/a3s-lab/gateway:latest \
+  --config /etc/a3s-gateway/gateway.hcl
+```
+
+## Binary
+
+```bash
+# Download
+curl -L https://github.com/A3S-Lab/Gateway/releases/latest/download/a3s-gateway -o a3s-gateway
+chmod +x a3s-gateway
+
+# Run
+./a3s-gateway --config gateway.hcl
+
+# Validate config
+./a3s-gateway validate --config gateway.hcl
+
+# Systemd service
+cat > /etc/systemd/system/a3s-gateway.service << EOF
+[Unit]
+Description=A3S Gateway
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/a3s-gateway --config /etc/a3s-gateway/gateway.hcl
+Restart=always
+User=a3s-gateway
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable --now a3s-gateway
+```
+
+## Homebrew
+
+```bash
+brew tap a3s-lab/tap
+brew install a3s-gateway
+a3s-gateway --config gateway.hcl
+```

@@ -1,20 +1,11 @@
 ---
 title: Configuration
-description: TOML and HCL configuration for entrypoints, routers, services, middlewares, and providers
+description: HCL configuration for entrypoints, routers, services, middlewares, and providers
 ---
 
 # Configuration
 
-A3S Gateway supports both TOML and HCL (HashiCorp Configuration Language) configuration formats. The format is auto-detected by file extension (`.toml` or `.hcl`). Configuration has four top-level sections: entrypoints, routers, services, and middlewares, and supports hot reload via file watching.
-
-## File Formats
-
-| Format | Extension | Use Case |
-|--------|-----------|----------|
-| TOML | `.toml` | Default, familiar to Rust ecosystem |
-| HCL | `.hcl` | Terraform/Consul users, block-based syntax |
-
-Both formats are fully equivalent — every configuration option works in either format.
+A3S Gateway uses HCL (HashiCorp Configuration Language) exclusively for configuration. The format is auto-detected by `.hcl` file extension. Configuration supports hot reload via file watching.
 
 ## GatewayConfig
 
@@ -25,83 +16,69 @@ pub struct GatewayConfig {
     pub services: HashMap<String, ServiceConfig>,
     pub middlewares: HashMap<String, MiddlewareConfig>,
     pub providers: ProviderConfig,
+    pub shutdown_timeout_secs: u64, // default: 30
 }
 ```
 
 ### Loading Configuration
 
 ```rust
-// From file (auto-detects format by extension)
-let config = GatewayConfig::from_file("gateway.toml").await?;
+// Load from file
 let config = GatewayConfig::from_file("gateway.hcl").await?;
 
-// From TOML string
-let config = GatewayConfig::from_toml(toml_content)?;
-
-// From HCL string
+// Parse from HCL string
 let config = GatewayConfig::from_hcl(hcl_content)?;
 
-// Validate
+// Validate (checks router→service, router→middleware, router→entrypoint references)
 config.validate()?;
 ```
 
 ## Entrypoints
 
-Entrypoints define network listeners:
+Entrypoints define network listeners.
 
 ```rust
 pub struct EntrypointConfig {
     pub address: String,
-    pub protocol: Protocol,
+    pub protocol: Protocol,          // http (default), tcp, udp
     pub tls: Option<TlsConfig>,
+    pub max_connections: Option<u32>, // TCP only
+    pub tcp_allowed_ips: Vec<String>, // TCP only, CIDR or single IP
+    pub udp_session_timeout_secs: Option<u64>,  // UDP only
+    pub udp_max_sessions: Option<usize>,        // UDP only
 }
 ```
 
-TOML:
-
-```toml
-# HTTP listener
-[entrypoints.web]
-address = "0.0.0.0:80"
-
-# HTTPS listener with TLS
-[entrypoints.websecure]
-address = "0.0.0.0:443"
-[entrypoints.websecure.tls]
-cert_file = "/etc/certs/cert.pem"
-key_file = "/etc/certs/key.pem"
-min_version = "1.2"
-
-# TCP listener
-[entrypoints.tcp]
-address = "0.0.0.0:5432"
-protocol = "tcp"
-
-# UDP listener
-[entrypoints.dns]
-address = "0.0.0.0:53"
-protocol = "udp"
-```
-
-HCL:
-
 ```hcl
+# HTTP listener
 entrypoints "web" {
   address = "0.0.0.0:80"
 }
 
+# HTTPS listener with TLS
 entrypoints "websecure" {
-  address  = "0.0.0.0:443"
+  address = "0.0.0.0:443"
   tls {
     cert_file   = "/etc/certs/cert.pem"
     key_file    = "/etc/certs/key.pem"
-    min_version = "1.2"
+    min_version = "1.3"
   }
 }
 
+# TCP listener with connection limits
 entrypoints "tcp" {
-  address  = "0.0.0.0:5432"
-  protocol = "tcp"
+  address         = "0.0.0.0:5432"
+  protocol        = "tcp"
+  max_connections  = 1000
+  tcp_allowed_ips  = ["10.0.0.0/8", "192.168.1.0/24"]
+}
+
+# UDP listener
+entrypoints "dns" {
+  address                  = "0.0.0.0:53"
+  protocol                 = "udp"
+  udp_session_timeout_secs = 60
+  udp_max_sessions         = 5000
 }
 ```
 
@@ -111,16 +88,35 @@ entrypoints "tcp" {
 pub struct TlsConfig {
     pub cert_file: String,
     pub key_file: String,
-    pub min_version: Option<String>,   // "1.2" or "1.3"
-    pub acme: Option<bool>,            // Let's Encrypt auto-cert
+    pub min_version: String,              // "1.2" (default) or "1.3"
+    pub acme: bool,                       // Let's Encrypt auto-cert
+    pub acme_email: Option<String>,       // required when acme = true
+    pub acme_domains: Vec<String>,        // defaults to Host rules if empty
+    pub acme_staging: bool,               // use staging environment
+    pub acme_storage_path: Option<String>,// default: /etc/gateway/acme
 }
 ```
 
 TLS is handled by rustls (pure Rust, no OpenSSL dependency). ACME support enables automatic certificate provisioning from Let's Encrypt.
 
+```hcl
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
+  tls {
+    cert_file          = "/etc/certs/cert.pem"
+    key_file           = "/etc/certs/key.pem"
+    acme               = true
+    acme_email         = "admin@example.com"
+    acme_domains       = ["example.com", "api.example.com"]
+    acme_staging       = false
+    acme_storage_path  = "/etc/gateway/acme"
+  }
+}
+```
+
 ## Routers
 
-Routers match incoming requests to services:
+Routers match incoming requests to services.
 
 ```rust
 pub struct RouterConfig {
@@ -128,28 +124,9 @@ pub struct RouterConfig {
     pub service: String,
     pub entrypoints: Vec<String>,
     pub middlewares: Vec<String>,
-    pub priority: i32,
+    pub priority: i32, // lower = higher priority, default: 0
 }
 ```
-
-TOML:
-
-```toml
-[routers.api]
-rule = "Host(`api.example.com`) && PathPrefix(`/v1`)"
-service = "api-service"
-entrypoints = ["websecure"]
-middlewares = ["auth-jwt", "rate-limit"]
-priority = 0
-
-[routers.web]
-rule = "Host(`www.example.com`)"
-service = "web-service"
-entrypoints = ["web", "websecure"]
-priority = 10
-```
-
-HCL:
 
 ```hcl
 routers "api" {
@@ -172,48 +149,22 @@ Lower `priority` values are matched first. See [Routing](./routing) for rule syn
 
 ## Services
 
-Services define backend pools with load balancing:
+Services define backend pools with load balancing.
 
 ```rust
 pub struct ServiceConfig {
     pub load_balancer: LoadBalancerConfig,
+    pub mirror: Option<MirrorConfig>,
+    pub failover: Option<FailoverConfig>,
 }
 
 pub struct LoadBalancerConfig {
-    pub strategy: Strategy,
+    pub strategy: Strategy,  // round-robin, weighted, least-connections, random
     pub servers: Vec<ServerConfig>,
     pub health_check: Option<HealthCheckConfig>,
     pub sticky: Option<StickyConfig>,
 }
 ```
-
-TOML:
-
-```toml
-[services.api-service.load_balancer]
-strategy = "weighted"
-
-[[services.api-service.load_balancer.servers]]
-url = "http://127.0.0.1:8001"
-weight = 3
-
-[[services.api-service.load_balancer.servers]]
-url = "http://127.0.0.1:8002"
-weight = 1
-
-[services.api-service.load_balancer.health_check]
-path = "/health"
-interval = "10s"
-timeout = "5s"
-unhealthy_threshold = 3
-healthy_threshold = 1
-
-[services.api-service.load_balancer.sticky]
-cookie = "srv_id"
-ttl = "1h"
-```
-
-HCL:
 
 ```hcl
 services "api-service" {
@@ -234,8 +185,40 @@ services "api-service" {
 
     sticky {
       cookie = "srv_id"
-      ttl    = "1h"
     }
+  }
+}
+```
+
+### Traffic Mirroring
+
+Copy a percentage of live traffic to a shadow backend for testing.
+
+```hcl
+services "api-service" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+  mirror {
+    service    = "shadow-backend"
+    percentage = 10
+  }
+}
+```
+
+### Failover
+
+Automatic fallback when the primary service has zero healthy backends.
+
+```hcl
+services "api-service" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+  failover {
+    service = "backup-pool"
   }
 }
 ```
@@ -244,30 +227,7 @@ See [Services](./services) for load balancing strategies and health check detail
 
 ## Middlewares
 
-Middlewares are defined globally and referenced by name in routers:
-
-TOML:
-
-```toml
-[middlewares.auth-jwt]
-type = "jwt"
-value = "${JWT_SECRET}"
-
-[middlewares.rate-limit]
-type = "rate-limit"
-rate = 100
-burst = 50
-
-[middlewares.cors]
-type = "cors"
-allowed_origins = ["https://example.com"]
-allowed_methods = ["GET", "POST", "PUT", "DELETE"]
-
-[middlewares.compress]
-type = "compress"
-```
-
-HCL:
+Middlewares are defined globally and referenced by name in routers.
 
 ```hcl
 middlewares "auth-jwt" {
@@ -285,30 +245,48 @@ middlewares "cors" {
   type            = "cors"
   allowed_origins = ["https://example.com"]
   allowed_methods = ["GET", "POST", "PUT", "DELETE"]
+  allowed_headers = ["Content-Type", "Authorization"]
+  max_age         = 3600
 }
 
 middlewares "compress" {
   type = "compress"
 }
+
+middlewares "circuit-breaker" {
+  type              = "circuit-breaker"
+  failure_threshold = 3
+  cooldown_secs     = 60
+  success_threshold = 2
+}
 ```
 
-See [Middleware](./middleware) for all 10 built-in middleware types.
+See [Middleware](./middleware) for all 15 built-in middleware types.
+
+### Environment Variable Substitution
+
+Configuration values support environment variable references:
+
+```hcl
+middlewares "auth-jwt" {
+  type  = "jwt"
+  value = "${JWT_SECRET}"
+}
+
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
+  tls {
+    cert_file = "${TLS_CERT_PATH}"
+    key_file  = "${TLS_KEY_PATH}"
+  }
+}
+```
 
 ## Providers
 
-Configuration providers supply dynamic configuration:
+Configuration providers supply dynamic configuration.
 
 ### File Provider
-
-TOML:
-
-```toml
-[providers.file]
-watch = true
-directory = "/etc/gateway/conf.d/"
-```
-
-HCL:
 
 ```hcl
 providers {
@@ -319,26 +297,58 @@ providers {
 }
 ```
 
-When `watch = true`, the gateway monitors the config file and directory for changes using inotify (Linux) or kqueue (macOS), and hot-reloads without downtime. Both `.toml` and `.hcl` files in the watch directory are supported.
+When `watch = true`, the gateway monitors the config file and directory for changes using inotify (Linux) or kqueue (macOS), and hot-reloads without downtime.
 
-### Environment Variable Substitution
+### Discovery Provider
 
-Configuration values support environment variable references:
+Health-based service discovery that polls backend seed URLs for `/.well-known/a3s-service.json` metadata.
 
-```toml
-[middlewares.auth-jwt]
-type = "jwt"
-value = "${JWT_SECRET}"
+```hcl
+providers {
+  discovery {
+    poll_interval_secs = 30
+    timeout_secs       = 5
+    seeds = [
+      { url = "http://10.0.0.5:8080" },
+      { url = "http://10.0.0.6:8080" }
+    ]
+  }
+}
+```
 
-[entrypoints.websecure.tls]
-cert_file = "${TLS_CERT_PATH}"
-key_file = "${TLS_KEY_PATH}"
+### Docker Provider
+
+Auto-discover services from container labels.
+
+```hcl
+providers {
+  docker {
+    host               = "/var/run/docker.sock"
+    label_prefix       = "a3s"
+    poll_interval_secs = 10
+  }
+}
+```
+
+### Kubernetes Provider
+
+Watch Ingress and IngressRoute CRD resources.
+
+```hcl
+providers {
+  kubernetes {
+    namespace           = "default"
+    label_selector      = "app=my-service"
+    watch_interval_secs = 30
+    ingress_route_crd   = true
+  }
+}
 ```
 
 ## Hot Reload
 
 ```rust
-// Programmatic reload (auto-detects format)
+// Programmatic reload
 let new_config = GatewayConfig::from_file("gateway.hcl").await?;
 gateway.reload(new_config).await?;
 ```
@@ -351,69 +361,6 @@ During reload:
 5. Gateway transitions back to `Running`
 
 ## Full Example
-
-### TOML (`gateway.toml`)
-
-```toml
-# Entrypoints
-[entrypoints.web]
-address = "0.0.0.0:80"
-
-[entrypoints.websecure]
-address = "0.0.0.0:443"
-[entrypoints.websecure.tls]
-cert_file = "/etc/certs/cert.pem"
-key_file = "/etc/certs/key.pem"
-
-# Routers
-[routers.api]
-rule = "Host(`api.example.com`) && PathPrefix(`/v1`)"
-service = "api-service"
-entrypoints = ["websecure"]
-middlewares = ["auth-jwt", "rate-limit", "cors"]
-
-[routers.web]
-rule = "Host(`www.example.com`)"
-service = "web-service"
-entrypoints = ["web", "websecure"]
-
-# Services
-[services.api-service.load_balancer]
-strategy = "least-connections"
-[[services.api-service.load_balancer.servers]]
-url = "http://127.0.0.1:8001"
-[[services.api-service.load_balancer.servers]]
-url = "http://127.0.0.1:8002"
-[services.api-service.load_balancer.health_check]
-path = "/health"
-interval = "10s"
-
-[services.web-service.load_balancer]
-strategy = "round-robin"
-[[services.web-service.load_balancer.servers]]
-url = "http://127.0.0.1:3000"
-
-# Middlewares
-[middlewares.auth-jwt]
-type = "jwt"
-value = "${JWT_SECRET}"
-
-[middlewares.rate-limit]
-type = "rate-limit"
-rate = 100
-burst = 50
-
-[middlewares.cors]
-type = "cors"
-allowed_origins = ["https://example.com"]
-allowed_methods = ["GET", "POST"]
-
-# Providers
-[providers.file]
-watch = true
-```
-
-### HCL (`gateway.hcl`)
 
 ```hcl
 # Entrypoints

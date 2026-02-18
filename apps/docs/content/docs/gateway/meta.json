@@ -8,8 +8,8 @@
     "routing",
     "middleware",
     "services",
-    "---Capabilities---",
-    "agent",
-    "observability"
+    "---Operations---",
+    "observability",
+    "deployment"
   ]
 }

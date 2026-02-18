@@ -10,14 +10,36 @@ A3S Search includes a command-line tool for quick searches from the terminal.
 ## Installation
 
 ```bash
+# Homebrew (macOS / Linux)
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
+brew install a3s-search
+
 # From crates.io
 cargo install a3s-search
 
 # From source
 cd crates/search && cargo install --path .
+```
 
-# Via Homebrew
-brew install a3s-lab/tap/a3s-search
+## Update
+
+```bash
+# Homebrew
+brew update && brew upgrade a3s-search
+
+# cargo install (re-installs latest from crates.io)
+cargo install a3s-search
+```
+
+## Uninstall
+
+```bash
+# Homebrew
+brew uninstall a3s-search
+brew untap a3s-lab/tap   # optional: remove the tap itself
+
+# cargo
+cargo uninstall a3s-search
 ```
 
 ## Basic Search
@@ -27,10 +49,16 @@ brew install a3s-lab/tap/a3s-search
 a3s-search "rust programming"
 
 # Specific engines
-a3s-search "rust" -e ddg,wiki,brave
+a3s-search "rust" -e ddg,wiki,brave,bing
 
 # Chinese engines
 a3s-search "人工智能" -e sogou,360
+
+# Google (Chrome auto-installed if needed)
+a3s-search "rust" -e g,ddg
+
+# Chinese headless engines
+a3s-search "Rust 编程" -e baidu,bing_cn
 ```
 
 ## Options
@@ -40,7 +68,7 @@ a3s-search "人工智能" -e sogou,360
 | `-e, --engines` | Comma-separated engine shortcuts | `ddg,wiki` |
 | `-l, --limit` | Max number of results | `10` |
 | `-t, --timeout` | Timeout in seconds | `10` |
-| `-p, --proxy` | Proxy URL | None |
+| `-p, --proxy` | Proxy URL (HTTP/HTTPS/SOCKS5) | None |
 | `-f, --format` | Output format: `default`, `json`, `compact` | `default` |
 | `-v, --verbose` | Enable verbose logging | `false` |
 
@@ -48,96 +76,80 @@ a3s-search "人工智能" -e sogou,360
 
 ### Default
 
+Human-readable output with title, URL, snippet, and metadata:
+
 ```bash
 $ a3s-search "rust language"
 
-[1] The Rust Programming Language
-    https://www.rust-lang.org/
-    A language empowering everyone to build reliable and efficient software.
-    Score: 4.50 | Engines: ddg, wiki, brave
+1. The Rust Programming Language
+   https://www.rust-lang.org/
+   A language empowering everyone to build reliable and efficient software.
+   Score: 3.50 | Engines: ddg, brave, bing
 
-[2] Rust (programming language) - Wikipedia
-    https://en.wikipedia.org/wiki/Rust_(programming_language)
-    Rust is a multi-paradigm, general-purpose programming language...
-    Score: 2.40 | Engines: wiki, ddg
+2. Rust (programming language) - Wikipedia
+   https://en.wikipedia.org/wiki/Rust_(programming_language)
+   Rust is a multi-paradigm, general-purpose programming language...
+   Score: 2.70 | Engines: wiki, ddg
 ```
 
 ### JSON
 
 ```bash
-$ a3s-search "rust language" -f json
+$ a3s-search "rust" -f json
 ```
 
-```json
-{
-  "count": 15,
-  "duration_ms": 1234,
-  "results": [
-    {
-      "url": "https://www.rust-lang.org/",
-      "title": "The Rust Programming Language",
-      "content": "A language empowering everyone...",
-      "score": 4.5,
-      "engines": ["ddg", "wiki", "brave"],
-      "result_type": "Web"
-    }
-  ],
-  "suggestions": [],
-  "answers": [],
-  "errors": []
-}
-```
+Machine-readable JSON with full result metadata.
 
 ### Compact
 
 ```bash
-$ a3s-search "rust language" -f compact
-
-The Rust Programming Language - https://www.rust-lang.org/
-Rust (programming language) - https://en.wikipedia.org/wiki/Rust_(programming_language)
+$ a3s-search "rust" -f compact
 ```
 
-## Subcommands
+Tab-separated output: `score\ttitle\turl` — useful for piping to other tools.
 
-### List Available Engines
+## Available Engines
 
 ```bash
-$ a3s-search engines
-
-HTTP Engines:
-  ddg       DuckDuckGo      weight=1.0  paging=yes  safesearch=yes
-  brave     Brave Search    weight=1.0  paging=yes  safesearch=yes
-  wiki      Wikipedia       weight=1.2  paging=no   safesearch=no
-  sogou     Sogou           weight=1.0  paging=no   safesearch=no
-  360       360 Search      weight=1.0  paging=no   safesearch=no
-
-Headless Engines (requires Chrome):
-  g         Google          weight=1.5  paging=yes  safesearch=yes
-  baidu     Baidu           weight=1.0  paging=no   safesearch=no
-  bing_cn   Bing China      weight=1.0  paging=no   safesearch=no
+# List all available engines
+a3s-search engines
 ```
 
-### Update
+| Shortcut | Engine | Method |
+|----------|--------|--------|
+| `ddg` | DuckDuckGo | HTTP |
+| `brave` | Brave Search | HTTP |
+| `bing` | Bing International | HTTP |
+| `wiki` | Wikipedia | JSON API |
+| `sogou` | Sogou (搜狗) | HTTP |
+| `360` | 360 Search (360搜索) | HTTP |
+| `g` | Google | Headless |
+| `baidu` | Baidu (百度) | Headless |
+| `bing_cn` | Bing China (必应中国) | Headless |
+
+## Proxy
 
 ```bash
-$ a3s-search update
+# HTTP proxy
+a3s-search "rust" -p http://127.0.0.1:8080
+
+# SOCKS5 proxy
+a3s-search "rust" -p socks5://127.0.0.1:1080
 ```
 
-## Examples
+## Chrome Auto-Install
+
+When using headless engines (`g`, `baidu`, `bing_cn`), Chrome is required. A3S Search handles this automatically:
 
 ```bash
-# Search with proxy
-a3s-search "openai api" -e ddg,brave -p http://127.0.0.1:8080
+# First run: Chrome is auto-downloaded if not installed
+a3s-search "rust" -e g
+# Downloading Chrome for Testing v145.0.7632.46 (mac-arm64)...
+# Chrome for Testing installed successfully!
 
-# Get 20 results in JSON
-a3s-search "machine learning" -l 20 -f json
+# Subsequent runs: uses cached Chrome instantly
+a3s-search "rust" -e g
 
-# Verbose mode for debugging
-a3s-search "test query" -v
-
-# Use Google (headless, requires Chrome)
-a3s-search "rust async" -e g,ddg
-
-# Pipeline with jq
-a3s-search "rust" -f json | jq '.results[].url'
+# Or set CHROME env var to use a specific binary
+CHROME=/usr/bin/chromium a3s-search "rust" -e g
 ```

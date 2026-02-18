@@ -1,11 +1,11 @@
 ---
 title: Engines
-description: Built-in search engines and the Engine trait for custom implementations
+description: 9 built-in search engines and the Engine trait for custom implementations
 ---
 
 # Engines
 
-A3S Search ships with 8 built-in engines and an `Engine` trait for adding custom search sources.
+A3S Search ships with 9 built-in engines and an `Engine` trait for adding custom search sources.
 
 ## Engine Trait
 
@@ -14,10 +14,7 @@ Every search engine implements this trait:
 ```rust
 #[async_trait]
 pub trait Engine: Send + Sync {
-    /// Engine configuration (name, shortcut, weight, etc.)
     fn config(&self) -> &EngineConfig;
-
-    /// Execute a search and return results
     async fn search(&self, query: &SearchQuery) -> Result<Vec<SearchResult>>;
 
     // Default implementations derived from config:
@@ -30,18 +27,16 @@ pub trait Engine: Send + Sync {
 
 ## EngineConfig
 
-```rust
-pub struct EngineConfig {
-    pub name: String,                      // Display name
-    pub shortcut: String,                  // Short identifier (e.g., "ddg")
-    pub categories: Vec<EngineCategory>,   // Supported categories
-    pub weight: f64,                       // Ranking weight (default: 1.0)
-    pub timeout: u64,                      // Timeout in seconds (default: 5)
-    pub enabled: bool,                     // Whether engine is active
-    pub paging: bool,                      // Supports pagination
-    pub safesearch: bool,                  // Supports safe search filtering
-}
-```
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `name` | `String` | — | Display name |
+| `shortcut` | `String` | — | Short identifier (e.g., `ddg`) |
+| `categories` | `Vec<EngineCategory>` | `[General]` | Supported categories |
+| `weight` | `f64` | `1.0` | Ranking weight multiplier |
+| `timeout` | `u64` | `5` | Timeout in seconds |
+| `enabled` | `bool` | `true` | Whether engine is active |
+| `paging` | `bool` | `false` | Supports pagination |
+| `safesearch` | `bool` | `false` | Supports safe search filtering |
 
 ## Built-in Engines
 
@@ -74,6 +69,23 @@ search.add_engine(Brave::new());
 | Property | Value |
 |----------|-------|
 | Shortcut | `brave` |
+| Weight | 1.0 |
+| Method | HTTP / HTML scraping |
+| Paging | Yes |
+| SafeSearch | Yes |
+
+### Bing
+
+Bing International via HTML scraping with query parameter extraction.
+
+```rust
+use a3s_search::engines::Bing;
+search.add_engine(Bing::new());
+```
+
+| Property | Value |
+|----------|-------|
+| Shortcut | `bing` |
 | Weight | 1.0 |
 | Method | HTTP / HTML scraping |
 | Paging | Yes |
@@ -148,7 +160,6 @@ search.add_engine(Google::new(fetcher));
 | Shortcut | `g` |
 | Weight | 1.5 |
 | Method | Headless browser |
-| Timeout | 10s |
 | Paging | Yes |
 | SafeSearch | Yes |
 
@@ -186,6 +197,20 @@ search.add_engine(BingChina::new(fetcher));
 | Method | Headless browser |
 | Language | Chinese |
 
+## Engine Shortcuts
+
+| Shortcut | Aliases | Engine | Method |
+|----------|---------|--------|--------|
+| `ddg` | `duckduckgo` | DuckDuckGo | HTTP |
+| `brave` | — | Brave Search | HTTP |
+| `bing` | — | Bing International | HTTP |
+| `wiki` | `wikipedia` | Wikipedia | JSON API |
+| `sogou` | — | Sogou | HTTP |
+| `360` | `so360` | 360 Search | HTTP |
+| `g` | `google` | Google | Headless |
+| `baidu` | — | Baidu | Headless |
+| `bing_cn` | — | Bing China | Headless |
+
 ## Custom Engine
 
 Implement the `Engine` trait to add any search source:
@@ -219,24 +244,18 @@ impl MyApiEngine {
 
 #[async_trait]
 impl Engine for MyApiEngine {
-    fn config(&self) -> &EngineConfig {
-        &self.config
-    }
+    fn config(&self) -> &EngineConfig { &self.config }
 
     async fn search(&self, query: &SearchQuery) -> Result<Vec<SearchResult>> {
         let client = reqwest::Client::new();
-        let resp = client
+        let resp: serde_json::Value = client
             .get("https://api.example.com/search")
             .query(&[("q", &query.query), ("key", &self.api_key)])
-            .send()
-            .await
-            .map_err(SearchError::Http)?;
-
-        let data: serde_json::Value = resp.json().await
-            .map_err(SearchError::Http)?;
+            .send().await.map_err(SearchError::Http)?
+            .json().await.map_err(SearchError::Http)?;
 
         let mut results = vec![];
-        if let Some(items) = data["items"].as_array() {
+        if let Some(items) = resp["items"].as_array() {
             for (i, item) in items.iter().enumerate() {
                 results.push(
                     SearchResult::new(
@@ -248,24 +267,23 @@ impl Engine for MyApiEngine {
                 );
             }
         }
-
         Ok(results)
     }
 }
-
-// Register
-search.add_engine(MyApiEngine::new("sk-...".into()));
 ```
 
-## Engine Shortcuts
+## Custom Engine Weight
 
-| Shortcut | Aliases | Engine |
-|----------|---------|--------|
-| `ddg` | `duckduckgo` | DuckDuckGo |
-| `brave` | - | Brave Search |
-| `wiki` | `wikipedia` | Wikipedia |
-| `sogou` | - | Sogou |
-| `360` | `so360` | 360 Search |
-| `g` | `google` | Google |
-| `baidu` | - | Baidu |
-| `bing_cn` | `bing` | Bing China |
+Override the default weight for any built-in engine:
+
+```rust
+use a3s_search::{EngineConfig, engines::Wikipedia};
+
+let wiki = Wikipedia::new().with_config(EngineConfig {
+    name: "Wikipedia".to_string(),
+    shortcut: "wiki".to_string(),
+    weight: 1.5,
+    ..Default::default()
+});
+search.add_engine(wiki);
+```

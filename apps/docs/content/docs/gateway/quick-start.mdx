@@ -7,26 +7,7 @@ description: Get A3S Gateway running with a basic reverse proxy configuration
 
 ## Minimal Configuration
 
-A3S Gateway supports both TOML and HCL configuration formats. Create a `gateway.toml` or `gateway.hcl` file:
-
-TOML:
-
-```toml
-[entrypoints.web]
-address = "0.0.0.0:80"
-
-[routers.my-api]
-rule = "PathPrefix(`/api`)"
-service = "api-backend"
-entrypoints = ["web"]
-
-[services.api-backend.load_balancer]
-strategy = "round-robin"
-[[services.api-backend.load_balancer.servers]]
-url = "http://127.0.0.1:8001"
-```
-
-HCL:
+Create a `gateway.hcl` file with an entrypoint, a router, and a service:
 
 ```hcl
 entrypoints "web" {
@@ -50,90 +31,113 @@ services "api-backend" {
 ## Start the Gateway
 
 ```bash
-# Start with TOML config
-a3s-gateway --config gateway.toml
-
 # Start with HCL config
 a3s-gateway --config gateway.hcl
 
 # Start with debug logging
-a3s-gateway --config gateway.toml --log-level debug
+a3s-gateway --config gateway.hcl --log-level debug
 
-# Start with custom listen address
-a3s-gateway --config gateway.toml --listen 0.0.0.0:8080
+# Validate configuration without starting
+a3s-gateway validate --config gateway.hcl
 ```
 
 ## Add HTTPS
 
-```toml
-[entrypoints.web]
-address = "0.0.0.0:80"
+```hcl
+entrypoints "web" {
+  address = "0.0.0.0:80"
+}
 
-[entrypoints.websecure]
-address = "0.0.0.0:443"
-[entrypoints.websecure.tls]
-cert_file = "/etc/certs/cert.pem"
-key_file = "/etc/certs/key.pem"
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
 
-[routers.my-api]
-rule = "Host(`api.example.com`) && PathPrefix(`/v1`)"
-service = "api-backend"
-entrypoints = ["websecure"]
+  tls {
+    cert_file = "/etc/certs/cert.pem"
+    key_file  = "/etc/certs/key.pem"
+  }
+}
 
-[services.api-backend.load_balancer]
-strategy = "round-robin"
-[[services.api-backend.load_balancer.servers]]
-url = "http://127.0.0.1:8001"
+routers "my-api" {
+  rule        = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+  service     = "api-backend"
+  entrypoints = ["websecure"]
+}
+
+services "api-backend" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+}
 ```
 
 ## Add Middleware
 
-```toml
-[routers.my-api]
-rule = "Host(`api.example.com`)"
-service = "api-backend"
-entrypoints = ["websecure"]
-middlewares = ["auth", "rate-limit"]
+```hcl
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
 
-[middlewares.auth]
-type = "jwt"
-value = "my-jwt-secret"
+  tls {
+    cert_file = "/etc/certs/cert.pem"
+    key_file  = "/etc/certs/key.pem"
+  }
+}
 
-[middlewares.rate-limit]
-type = "rate-limit"
-rate = 100
-burst = 50
+routers "my-api" {
+  rule        = "Host(`api.example.com`)"
+  service     = "api-backend"
+  entrypoints = ["websecure"]
+  middlewares  = ["auth", "rate-limit"]
+}
 
-[services.api-backend.load_balancer]
-strategy = "round-robin"
-[[services.api-backend.load_balancer.servers]]
-url = "http://127.0.0.1:8001"
-[[services.api-backend.load_balancer.servers]]
-url = "http://127.0.0.1:8002"
+middlewares "auth" {
+  type  = "jwt"
+  value = "my-jwt-secret"
+}
+
+middlewares "rate-limit" {
+  type  = "rate-limit"
+  rate  = 100
+  burst = 50
+}
+
+services "api-backend" {
+  load_balancer {
+    strategy = "round-robin"
+    servers = [
+      { url = "http://127.0.0.1:8001" },
+      { url = "http://127.0.0.1:8002" },
+    ]
+  }
+}
 ```
 
 ## Health Check
 
-```toml
-[services.api-backend.load_balancer]
-strategy = "least-connections"
+```hcl
+services "api-backend" {
+  load_balancer {
+    strategy = "least-connections"
 
-[[services.api-backend.load_balancer.servers]]
-url = "http://127.0.0.1:8001"
-[[services.api-backend.load_balancer.servers]]
-url = "http://127.0.0.1:8002"
+    servers = [
+      { url = "http://127.0.0.1:8001" },
+      { url = "http://127.0.0.1:8002" },
+    ]
 
-[services.api-backend.load_balancer.health_check]
-path = "/health"
-interval = "10s"
-timeout = "5s"
-unhealthy_threshold = 3
-healthy_threshold = 1
+    health_check {
+      path                = "/health"
+      interval            = "10s"
+      timeout             = "5s"
+      unhealthy_threshold = 3
+      healthy_threshold   = 1
+    }
+  }
+}
 ```
 
 ## Dashboard API
 
-The gateway exposes a built-in dashboard API:
+The gateway exposes a built-in dashboard API for health, metrics, and live configuration:
 
 ```bash
 # Health status
@@ -144,6 +148,12 @@ curl http://localhost:80/api/gateway/metrics
 
 # Current configuration
 curl http://localhost:80/api/gateway/config
+
+# Active routes
+curl http://localhost:80/api/gateway/routes
+
+# Registered services
+curl http://localhost:80/api/gateway/services
 ```
 
 ## Programmatic Usage
@@ -152,8 +162,8 @@ curl http://localhost:80/api/gateway/config
 use a3s_gateway::{Gateway, config::GatewayConfig};
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let config = GatewayConfig::from_file("gateway.toml").await?;
+async fn main() -> a3s_gateway::Result<()> {
+    let config = GatewayConfig::from_file("gateway.hcl").await?;
     let gateway = Gateway::new(config)?;
 
     gateway.start().await?;

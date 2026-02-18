@@ -5,39 +5,31 @@ description: Prometheus metrics, structured logging, distributed tracing, and da
 
 # Observability
 
-A3S Gateway provides built-in metrics, structured access logging, distributed tracing, and a dashboard API for monitoring.
+A3S Gateway provides built-in Prometheus metrics, structured access logging, distributed tracing, and a dashboard API.
 
-## Metrics
+## Dashboard API
 
-```rust
-pub struct GatewayMetrics {
-    total_requests: AtomicU64,
-    status_2xx: AtomicU64,
-    status_3xx: AtomicU64,
-    status_4xx: AtomicU64,
-    status_5xx: AtomicU64,
-    total_response_bytes: AtomicU64,
-    active_connections: AtomicI64,
-    router_requests: Arc<RwLock<HashMap<String, u64>>>,
-    backend_requests: Arc<RwLock<HashMap<String, u64>>>,
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/gateway/health` | Health status (JSON) |
+| `GET /api/gateway/metrics` | Prometheus metrics (text) |
+| `GET /api/gateway/config` | Current configuration (JSON) |
+| `GET /api/gateway/routes` | Active routes (JSON) |
+| `GET /api/gateway/services` | Active services and backends (JSON) |
+| `GET /api/gateway/version` | Build version info (JSON) |
+
+### Health Response
+
+```json
+{
+  "state": "Running",
+  "uptime_secs": 3600,
+  "active_connections": 42,
+  "total_requests": 12345
 }
 ```
 
-### Recording
-
-```rust
-impl GatewayMetrics {
-    pub fn record_request(&self, status: u16, response_bytes: u64);
-    pub fn record_router_request(&self, router: &str);
-    pub fn record_backend_request(&self, backend: &str);
-    pub fn inc_connections(&self);
-    pub fn dec_connections(&self);
-    pub fn snapshot(&self) -> MetricsSnapshot;
-    pub fn render_prometheus(&self) -> String;
-}
-```
-
-### Prometheus Export
+## Prometheus Metrics
 
 ```text
 gateway_requests_total 12345
@@ -53,47 +45,27 @@ gateway_backend_requests{backend="http://127.0.0.1:8001"} 6000
 gateway_backend_requests{backend="http://127.0.0.1:8002"} 6345
 ```
 
-### Metrics Snapshot
+### Grafana Queries
 
-```rust
-pub struct MetricsSnapshot {
-    pub total_requests: u64,
-    pub status_classes: HashMap<String, u64>,
-    pub total_response_bytes: u64,
-    pub active_connections: i64,
-    pub router_requests: HashMap<String, u64>,
-    pub backend_requests: HashMap<String, u64>,
-}
-```
+```text
+# Request rate
+rate(gateway_requests_total[5m])
 
-## Dashboard API
+# Error rate (4xx + 5xx)
+rate(gateway_responses_total{status_class=~"4xx|5xx"}[5m])
 
-The gateway exposes a built-in REST API for monitoring:
+# Success rate %
+rate(gateway_responses_total{status_class="2xx"}[5m])
+  / rate(gateway_requests_total[5m]) * 100
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/gateway/health` | Health status (JSON) |
-| `GET /api/gateway/metrics` | Prometheus text format |
-| `GET /api/gateway/config` | Current configuration (JSON) |
+# Active connections
+gateway_active_connections
 
-### Health Response
+# Traffic by router
+rate(gateway_router_requests[5m])
 
-```json
-{
-  "state": "Running",
-  "uptime_secs": 3600,
-  "active_connections": 42,
-  "total_requests": 12345
-}
-```
-
-```rust
-pub struct HealthStatus {
-    pub state: GatewayState,
-    pub uptime_secs: u64,
-    pub active_connections: usize,
-    pub total_requests: u64,
-}
+# Throughput (bytes/sec)
+rate(gateway_response_bytes_total[5m])
 ```
 
 ## Access Logging
@@ -118,11 +90,11 @@ Structured JSON access logs via the `tracing` crate:
 ### Log Levels
 
 ```bash
-# Set via CLI
-a3s-gateway --config gateway.toml --log-level debug
+# Via CLI
+a3s-gateway --config gateway.hcl --log-level debug
 
-# Set via environment
-RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.toml
+# Via environment
+RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.hcl
 ```
 
 | Level | Description |
@@ -130,7 +102,7 @@ RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.toml
 | `error` | Failures, backend errors, TLS errors |
 | `warn` | Rate limit hits, unhealthy backends, config issues |
 | `info` | Startup, shutdown, reload, access logs |
-| `debug` | Request routing decisions, middleware execution |
+| `debug` | Routing decisions, middleware execution |
 | `trace` | Raw bytes, header details, connection lifecycle |
 
 ## Distributed Tracing
@@ -140,33 +112,4 @@ A3S Gateway propagates trace context across services:
 - **W3C Trace Context**: `traceparent` / `tracestate` headers
 - **B3/Zipkin**: `X-B3-TraceId` / `X-B3-SpanId` headers
 
-Spans are created for:
-- Request lifecycle (entrypoint → router → middleware → proxy → response)
-- Backend connections
-- Health check probes
-
-## Grafana Dashboard Queries
-
-```text
-# Request rate (per second)
-rate(gateway_requests_total[5m])
-
-# Error rate (4xx + 5xx)
-rate(gateway_responses_total{status_class=~"4xx|5xx"}[5m])
-
-# Success rate percentage
-rate(gateway_responses_total{status_class="2xx"}[5m])
-  / rate(gateway_requests_total[5m]) * 100
-
-# Active connections
-gateway_active_connections
-
-# Traffic by router
-rate(gateway_router_requests[5m])
-
-# Backend distribution
-rate(gateway_backend_requests[5m])
-
-# Throughput (bytes/sec)
-rate(gateway_response_bytes_total[5m])
-```
+Spans are created for request lifecycle, backend connections, and health check probes.
