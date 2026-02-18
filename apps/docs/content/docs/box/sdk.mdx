@@ -1,0 +1,268 @@
+---
+title: Sandbox SDK
+description: Programmatic MicroVM sandbox management via Rust, Python, and TypeScript SDKs
+---
+
+# Sandbox SDK
+
+A3S Box provides embedded SDKs for creating, executing, and managing MicroVM sandboxes programmatically — no CLI or daemon required.
+
+| SDK | Package | Version |
+|-----|---------|---------|
+| Rust | `a3s-box-sdk` crate | 0.5.0 |
+| Python | `pip install a3s-box` | 0.5.0 |
+| TypeScript | `npm install @a3s-lab/box` | 0.5.0 |
+
+## Rust SDK
+
+### Basic Usage
+
+```rust
+use a3s_box_sdk::{BoxSdk, SandboxOptions};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let sdk = BoxSdk::new()?;
+
+    // Create a sandbox
+    let sandbox = sdk.create(SandboxOptions {
+        image: "python:3.12-slim".into(),
+        cpus: 2,
+        memory_mb: 1024,
+        ..Default::default()
+    }).await?;
+
+    // Execute a command
+    let result = sandbox.exec("python", &["-c", "print('hello from sandbox')"]).await?;
+    println!("stdout: {}", result.stdout);
+    println!("exit code: {}", result.exit_code);
+
+    // Stop and clean up
+    sandbox.stop().await?;
+    Ok(())
+}
+```
+
+### Streaming Exec
+
+Stream stdout/stderr in real-time as the command runs:
+
+```rust
+use a3s_box_sdk::{BoxSdk, SandboxOptions};
+use futures::StreamExt;
+
+let sdk = BoxSdk::new()?;
+let sandbox = sdk.create(SandboxOptions {
+    image: "ubuntu:22.04".into(),
+    ..Default::default()
+}).await?;
+
+let mut stream = sandbox.exec_stream("bash", &["-c", "for i in 1 2 3; do echo $i; sleep 1; done"]).await?;
+
+while let Some(event) = stream.next().await {
+    match event {
+        ExecEvent::Stdout(data) => print!("{}", String::from_utf8_lossy(&data)),
+        ExecEvent::Stderr(data) => eprint!("{}", String::from_utf8_lossy(&data)),
+        ExecEvent::Exit(code) => println!("\nExited with code: {}", code),
+    }
+}
+```
+
+### File Transfer
+
+Upload and download files between host and sandbox:
+
+```rust
+// Upload a file
+sandbox.upload("./config.yaml", "/app/config.yaml").await?;
+
+// Download results
+sandbox.download("/app/output.json", "./output.json").await?;
+```
+
+### Port Forwarding
+
+Expose sandbox ports to the host:
+
+```rust
+let sandbox = sdk.create(SandboxOptions {
+    image: "nginx:alpine".into(),
+    port_forwards: vec![
+        PortForward { host: 8080, guest: 80 },
+    ],
+    ..Default::default()
+}).await?;
+
+// nginx is now accessible at http://localhost:8080
+```
+
+### Persistent Workspaces
+
+Workspaces survive sandbox restarts:
+
+```rust
+let sandbox = sdk.create(SandboxOptions {
+    image: "node:20-slim".into(),
+    workspace: Some("/app/project".into()),
+    ..Default::default()
+}).await?;
+
+// Files in /app/project persist across sandbox.stop() / sdk.create()
+```
+
+### Pause / Resume
+
+Suspend and resume sandbox execution:
+
+```rust
+sandbox.pause().await?;
+// ... sandbox is frozen (SIGSTOP) ...
+sandbox.resume().await?;
+// ... sandbox continues running ...
+```
+
+### Interactive PTY
+
+Open an interactive terminal session:
+
+```rust
+let pty = sandbox.pty().await?;
+// pty provides read/write streams for terminal I/O
+```
+
+### Embedded Shim
+
+Compile the shim binary into your application:
+
+```toml
+# Cargo.toml
+[dependencies]
+a3s-box-sdk = { version = "0.5.0", features = ["embed-shim"] }
+```
+
+With `embed-shim`, the SDK bundles `a3s-box-shim` into your binary and auto-extracts it to `~/.a3s/bin/` on first use. No separate installation needed.
+
+## Python SDK
+
+### Install
+
+```bash
+pip install a3s-box
+```
+
+### Basic Usage
+
+```python
+import asyncio
+from a3s_box import BoxSdk, SandboxOptions
+
+async def main():
+    sdk = BoxSdk()
+
+    # Create a sandbox
+    sandbox = await sdk.create(SandboxOptions(
+        image="python:3.12-slim",
+        cpus=2,
+        memory_mb=1024,
+    ))
+
+    # Execute a command
+    result = await sandbox.exec("python", ["-c", "print('hello from sandbox')"])
+    print(f"stdout: {result.stdout}")
+    print(f"exit code: {result.exit_code}")
+
+    # Stop
+    await sandbox.stop()
+
+asyncio.run(main())
+```
+
+### Streaming Exec
+
+```python
+async for event in sandbox.exec_stream("bash", ["-c", "for i in 1 2 3; do echo $i; sleep 1; done"]):
+    if event.stdout:
+        print(event.stdout, end="")
+    elif event.stderr:
+        print(event.stderr, end="", file=sys.stderr)
+```
+
+### File Transfer
+
+```python
+await sandbox.upload("./input.csv", "/app/input.csv")
+await sandbox.download("/app/output.csv", "./output.csv")
+```
+
+### Context Manager
+
+```python
+async with sdk.create(SandboxOptions(image="alpine:latest")) as sandbox:
+    result = await sandbox.exec("echo", ["hello"])
+    print(result.stdout)
+# sandbox is automatically stopped on exit
+```
+
+## TypeScript SDK
+
+### Install
+
+```bash
+npm install @a3s-lab/box
+```
+
+### Basic Usage
+
+```typescript
+import { BoxSdk, SandboxOptions } from '@a3s-lab/box';
+
+const sdk = new BoxSdk();
+
+// Create a sandbox
+const sandbox = await sdk.create({
+  image: 'node:20-slim',
+  cpus: 2,
+  memoryMb: 1024,
+});
+
+// Execute a command
+const result = await sandbox.exec('node', ['-e', 'console.log("hello from sandbox")']);
+console.log(`stdout: ${result.stdout}`);
+console.log(`exit code: ${result.exitCode}`);
+
+// Stop
+await sandbox.stop();
+```
+
+### Streaming Exec
+
+```typescript
+const stream = await sandbox.execStream('bash', ['-c', 'for i in 1 2 3; do echo $i; sleep 1; done']);
+
+for await (const event of stream) {
+  if (event.stdout) process.stdout.write(event.stdout);
+  if (event.stderr) process.stderr.write(event.stderr);
+}
+```
+
+### File Transfer
+
+```typescript
+await sandbox.upload('./input.json', '/app/input.json');
+await sandbox.download('/app/output.json', './output.json');
+```
+
+## SDK Capabilities Summary
+
+| Feature | Rust | Python | TypeScript |
+|---------|:----:|:------:|:----------:|
+| Create / Stop | ✅ | ✅ | ✅ |
+| Exec (sync) | ✅ | ✅ | ✅ |
+| Exec (streaming) | ✅ | ✅ | ✅ |
+| File upload/download | ✅ | ✅ | ✅ |
+| Port forwarding | ✅ | ✅ | ✅ |
+| Persistent workspaces | ✅ | ✅ | ✅ |
+| Pause / Resume | ✅ | ✅ | ✅ |
+| Interactive PTY | ✅ | — | — |
+| Embedded shim | ✅ | — | — |
+| Per-exec metrics | ✅ | ✅ | ✅ |

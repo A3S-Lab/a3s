@@ -13,7 +13,7 @@ A3S Box is a lightweight MicroVM runtime that provides container-like UX with VM
 ┌──────────────────────────────────────────────────────┐
 │                Host (a3s-box CLI)                     │
 │  ┌────────────────────────────────────────────────┐  │
-│  │              CLI (47 commands)                  │  │
+│  │              CLI (52 commands)                  │  │
 │  │  run, create, exec, logs, ps, network...       │  │
 │  └───────────────────┬────────────────────────────┘  │
 │                      │                                │
@@ -47,16 +47,17 @@ A3S Box is a lightweight MicroVM runtime that provides container-like UX with VM
 
 ## Crate Structure
 
-A3S Box is composed of 6 crates, each with a focused responsibility:
+A3S Box is composed of 7 crates, each with a focused responsibility:
 
 | Crate | Purpose |
 |-------|---------|
 | `a3s-box-core` | Shared types: config, errors, events, network modes, volume/PTY/DNS types |
 | `a3s-box-runtime` | VM lifecycle, OCI images, warm pool, TEE, networking, gRPC clients |
-| `a3s-box-cli` | Docker-like CLI with 47 commands, state persistence, output formatting |
+| `a3s-box-cli` | Docker-like CLI with 52 commands, state persistence, output formatting |
 | `a3s-box-cri` | Kubernetes Container Runtime Interface (CRI) over gRPC |
 | `a3s-box-shim` | VM subprocess that bridges host and VM via libkrun (HVF/KVM) |
 | `a3s-box-guest-init` | Guest PID 1: mounts filesystems, starts servers, spawns user entrypoint |
+| `a3s-box-sdk` | Embedded sandbox SDK: create, exec, stop MicroVMs from Rust code |
 
 ## VM Lifecycle
 
@@ -87,12 +88,16 @@ Host and guest communicate over vsock (virtio socket) with dedicated ports:
 ## Key Features
 
 - **Sub-200ms cold start** via libkrun (Apple HVF / Linux KVM)
-- **Docker-compatible CLI** with 47 commands (`run`, `exec`, `logs`, `ps`, `build`, etc.)
+- **Docker-compatible CLI** with 52 commands (`run`, `exec`, `logs`, `ps`, `build`, etc.)
 - **OCI image support** with pull, build, cache, and registry authentication
 - **Warm pool** for instant VM allocation with pre-booted instances
 - **Three network modes**: TSI (default), Bridge (inter-container), None
-- **AMD SEV-SNP** confidential computing with attestation, sealing, and RA-TLS
-- **Kubernetes CRI** for using Box as a RuntimeClass
+- **AMD SEV-SNP + Intel TDX** confidential computing with attestation, sealing, and RA-TLS
+- **Kubernetes CRI** for using Box as a RuntimeClass, with Helm chart deployment
 - **Resource controls**: CPU pinning, memory limits, PID limits, cgroup v2
+- **Namespace isolation**: mount, PID, IPC, UTS, user, cgroup within each VM
+- **Security**: seccomp BPF with arch validation, capability dropping (bounding + ambient), cosign image signing
 - **Volume management**: named volumes, bind mounts, tmpfs
-- **Docker-compatible logging**: JSON file driver with rotation
+- **Logging**: JSON file driver with gzip-compressed rotation, syslog driver (UDP/TCP)
+- **Embedded SDK**: Rust, Python, and TypeScript SDKs for programmatic sandbox management
+- **Observability**: 18 Prometheus metrics, OpenTelemetry tracing spans, audit logging

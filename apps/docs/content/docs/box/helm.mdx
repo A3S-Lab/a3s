@@ -1,0 +1,179 @@
+---
+title: Helm Deployment
+description: Deploy A3S Box as a Kubernetes RuntimeClass using Helm
+---
+
+# Helm Deployment
+
+Deploy A3S Box as a Kubernetes CRI runtime using the official Helm chart. The chart installs a DaemonSet, RuntimeClass, RBAC, and ConfigMap.
+
+## Prerequisites
+
+- Kubernetes 1.26+
+- Helm 3.x
+- Nodes with KVM support (`/dev/kvm` accessible)
+- Node label: `a3s-box.io/runtime: "true"`
+
+## Install
+
+```bash
+helm install a3s-box deploy/helm/a3s-box/ \
+  -n a3s-box-system --create-namespace
+```
+
+### Custom Values
+
+```bash
+helm install a3s-box deploy/helm/a3s-box/ \
+  -n a3s-box-system --create-namespace \
+  --set image.tag=v0.5.0 \
+  --set config.logLevel=debug \
+  --set config.imageCacheSize=21474836480 \
+  --set resources.limits.memory=1Gi
+```
+
+### Uninstall
+
+```bash
+helm uninstall a3s-box -n a3s-box-system
+```
+
+## Chart Values
+
+| Value | Description | Default |
+|-------|-------------|---------|
+| `image.repository` | CRI container image | `ghcr.io/a3s-lab/a3s-box-cri` |
+| `image.tag` | Image tag | `latest` |
+| `image.pullPolicy` | Pull policy | `IfNotPresent` |
+| `nodeSelector` | DaemonSet node selector | `a3s-box.io/runtime: "true"` |
+| `config.socketPath` | CRI socket path | `/var/run/a3s-box/a3s-box.sock` |
+| `config.imageCacheSize` | Image cache size (bytes) | `10737418240` (10 GB) |
+| `config.logLevel` | Log level | `info` |
+| `overhead.memory` | Per-pod VM memory overhead | `30Mi` |
+| `overhead.cpu` | Per-pod VM CPU overhead | `50m` |
+| `resources.requests.cpu` | CRI pod CPU request | `100m` |
+| `resources.requests.memory` | CRI pod memory request | `128Mi` |
+| `resources.limits.cpu` | CRI pod CPU limit | `500m` |
+| `resources.limits.memory` | CRI pod memory limit | `512Mi` |
+| `runtimeHandler` | RuntimeClass handler name | `a3s-box` |
+| `serviceAccount.create` | Create ServiceAccount | `true` |
+| `serviceAccount.name` | ServiceAccount name | `a3s-box-cri` |
+
+## What Gets Deployed
+
+### DaemonSet
+
+Runs `a3s-box-cri` on every labeled node. The pod mounts:
+- `/dev/kvm` — hardware virtualization
+- `/var/run/a3s-box/` — CRI socket directory
+- Host network for kubelet communication
+
+```yaml
+securityContext:
+  privileged: true  # Required for /dev/kvm access
+```
+
+### RuntimeClass
+
+```yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: a3s-box
+handler: a3s-box
+overhead:
+  podFixed:
+    memory: "30Mi"
+    cpu: "50m"
+```
+
+### RBAC
+
+- ServiceAccount: `a3s-box-cri`
+- ClusterRole with permissions for node status, pods, and events
+
+## Running Pods
+
+Once deployed, schedule pods on A3S Box by setting `runtimeClassName`:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello
+spec:
+  runtimeClassName: a3s-box
+  containers:
+    - name: alpine
+      image: alpine:latest
+      command: ["sleep", "3600"]
+```
+
+### TEE-Enabled Pod
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-workload
+  annotations:
+    a3s.box/tee: "sev-snp"
+    a3s.box/tee-generation: "genoa"
+    a3s.box/workload-id: "secure-inference"
+spec:
+  runtimeClassName: a3s-box
+  containers:
+    - name: app
+      image: my-app:latest
+      resources:
+        limits:
+          cpu: "2"
+          memory: "1Gi"
+```
+
+### TDX-Enabled Pod
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tdx-workload
+  annotations:
+    a3s.box/tee: "tdx"
+    a3s.box/workload-id: "my-tdx-workload"
+spec:
+  runtimeClassName: a3s-box
+  containers:
+    - name: app
+      image: my-app:latest
+```
+
+> Intel TDX has config support but runtime is pending. Use `sev-snp` for production TEE workloads.
+
+## Health Checks
+
+The Helm chart configures liveness and readiness probes:
+
+```yaml
+livenessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+readinessProbe:
+  initialDelaySeconds: 3
+  periodSeconds: 5
+```
+
+## Node Labeling
+
+Label nodes that should run A3S Box:
+
+```bash
+kubectl label node <node-name> a3s-box.io/runtime=true
+```
+
+To remove:
+
+```bash
+kubectl label node <node-name> a3s-box.io/runtime-
+```
