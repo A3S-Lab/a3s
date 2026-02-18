@@ -1,0 +1,82 @@
+---
+title: CloudEvents
+description: CloudEvents v1.0 conversion for interoperability
+---
+
+# CloudEvents
+
+Requires the `cloudevents` feature (enabled by default).
+
+A3S Event supports lossless conversion to and from the [CloudEvents v1.0](https://cloudevents.io/) specification, enabling interoperability with external systems that use the CloudEvents standard.
+
+## CloudEvent Structure
+
+```rust
+pub struct CloudEvent {
+    pub spec_version: String,    // Always "1.0"
+    pub id: String,              // Event ID
+    pub source: String,          // Event source
+    pub event_type: String,      // Event type
+    pub subject: Option<String>, // Event subject
+    pub time: Option<String>,    // RFC 3339 timestamp
+    pub data: Option<serde_json::Value>,  // Event payload
+}
+```
+
+## Converting Events
+
+### Event → CloudEvent
+
+```rust
+use a3s_event::{Event, CloudEvent};
+
+let event = Event::typed(
+    "events.orders.created", "orders",
+    "order.created", 1,
+    "New order", "order-service",
+    serde_json::json!({"order_id": "ORD-001"}),
+);
+
+let cloud_event = CloudEvent::from_event(&event);
+
+println!("spec: {}", cloud_event.spec_version);  // "1.0"
+println!("type: {}", cloud_event.event_type);     // "order.created"
+println!("source: {}", cloud_event.source);       // "order-service"
+```
+
+### CloudEvent → Event
+
+```rust
+let event = cloud_event.to_event("orders")?;
+
+println!("subject: {}", event.subject);
+println!("category: {}", event.category);  // "orders"
+```
+
+## JSON Serialization
+
+CloudEvents serialize to the standard JSON format:
+
+```rust
+let json = serde_json::to_string_pretty(&cloud_event)?;
+```
+
+```json
+{
+  "specversion": "1.0",
+  "id": "evt-550e8400-e29b-41d4-a716-446655440000",
+  "source": "order-service",
+  "type": "order.created",
+  "subject": "events.orders.created",
+  "time": "2026-02-18T12:00:00Z",
+  "data": {
+    "order_id": "ORD-001"
+  }
+}
+```
+
+## Use Cases
+
+- **Webhook delivery**: Convert events to CloudEvents before sending to external HTTP endpoints
+- **Cross-system integration**: Exchange events with systems that speak CloudEvents (Knative, Azure Event Grid, etc.)
+- **Audit logging**: Store events in CloudEvents format for compliance

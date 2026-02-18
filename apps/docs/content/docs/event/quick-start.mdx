@@ -9,7 +9,7 @@ description: Get started with A3S Event — publish, subscribe, and query events
 
 ```toml
 [dependencies]
-a3s-event = "0.1"
+a3s-event = "0.3"
 tokio = { version = "1", features = ["full"] }
 serde_json = "1"
 ```
@@ -17,26 +17,27 @@ serde_json = "1"
 ## In-Memory (Development)
 
 ```rust
-use a3s_event::{EventBus, MemoryProvider};
+use a3s_event::{EventBus, Event, SubscriptionFilter};
+use a3s_event::provider::memory::MemoryProvider;
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let provider = MemoryProvider::new();
-    let bus = EventBus::new(provider);
+async fn main() -> a3s_event::Result<()> {
+    let bus = EventBus::new(MemoryProvider::default());
 
-    // Subscribe
-    let mut rx = bus.subscribe("orders.>").await?;
-
-    // Publish
-    bus.publish(
-        "orders.created",
+    // Publish an event
+    let event = bus.publish(
+        "orders",                                          // category
+        "created",                                         // topic
+        "New order ORD-001",                               // summary
+        "order-service",                                   // source
         serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
     ).await?;
 
-    // Receive
-    if let Some(event) = rx.recv().await {
-        println!("Received: {} -> {}", event.subject, event.payload);
-    }
+    println!("Published: {}", event.id);
+
+    // Query history
+    let events = bus.list_events(Some("orders"), 100).await?;
+    println!("Order events: {}", events.len());
 
     Ok(())
 }
@@ -44,32 +45,42 @@ async fn main() -> anyhow::Result<()> {
 
 ## NATS JetStream (Production)
 
+Requires the `nats` feature (enabled by default).
+
 ```rust
-use a3s_event::{EventBus, NatsProvider, NatsConfig};
+use a3s_event::{EventBus, NatsProvider, NatsConfig, SubscriptionFilter};
 
-let config = NatsConfig {
-    url: "nats://localhost:4222".into(),
-    stream: "EVENTS".into(),
+let provider = NatsProvider::connect(NatsConfig {
+    url: "nats://localhost:4222".to_string(),
+    stream_name: "A3S_EVENTS".to_string(),
     ..Default::default()
-};
+}).await?;
 
-let provider = NatsProvider::new(config).await?;
 let bus = EventBus::new(provider);
 
-// Durable subscription (survives restarts)
-let mut rx = bus.subscribe_durable("orders.>", "order-processor").await?;
+// Register a durable subscription
+bus.update_subscription(SubscriptionFilter {
+    subscriber_id: "order-processor".to_string(),
+    subjects: vec!["events.orders.>".to_string()],
+    durable: true,
+    options: None,
+}).await?;
+
+// Create subscriber handles
+let mut subs = bus.create_subscriber("order-processor").await?;
 
 // Publish
 bus.publish(
-    "orders.created",
+    "orders", "created",
+    "New order ORD-001", "order-service",
     serde_json::json!({ "order_id": "ORD-001" }),
 ).await?;
 
-// Receive with manual ack
-while let Some(event) = rx.recv().await {
-    println!("Processing: {}", event.subject);
-    // ... process event ...
-    event.ack().await?;
+// Receive events
+for sub in &mut subs {
+    if let Some(received) = sub.next().await? {
+        println!("{}: {}", received.event.subject, received.event.summary);
+    }
 }
 ```
 
@@ -79,8 +90,7 @@ while let Some(event) = rx.recv().await {
 use a3s_event::*;
 use std::sync::Arc;
 
-let provider = MemoryProvider::new();
-let mut bus = EventBus::new(provider);
+let mut bus = EventBus::new(MemoryProvider::default());
 
 // Schema validation
 let mut registry = MemorySchemaRegistry::new();
@@ -89,10 +99,11 @@ registry.register(EventSchema {
     version: 1,
     required_fields: vec!["order_id".into(), "total".into()],
 });
-bus.set_schema_registry(Arc::new(registry));
+let bus = EventBus::with_schema_registry(MemoryProvider::default(), Arc::new(registry));
 
-// Encryption
-let mut encryptor = Aes256GcmEncryptor::new("key-1", &encryption_key);
+// Encryption (requires `encryption` feature)
+let mut bus = bus;  // need mut for setters
+let encryptor = Aes256GcmEncryptor::new("key-v1", b"0123456789abcdef0123456789abcdef");
 bus.set_encryptor(Arc::new(encryptor));
 
 // Dead letter queue
@@ -100,16 +111,20 @@ let dlq = MemoryDlqHandler::new(100);
 bus.set_dlq_handler(Arc::new(dlq));
 
 // State persistence
-let store = FileStateStore::new("./state/event-bus.json").await?;
-bus.set_state_store(Arc::new(store));
+let store = FileStateStore::new("./state/event-bus.json")?;
+bus.set_state_store(Arc::new(store))?;
 
-// Publish a typed, versioned event
-bus.publish_typed(
-    "orders.created",
+// Publish a typed event (validated against schema)
+let event = Event::typed(
+    "events.orders.created",
+    "orders",
     "order.created",
     1,
+    "New order ORD-001",
+    "order-service",
     serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
-).await?;
+);
+let seq = bus.publish_event(&event).await?;
 
 // Check metrics
 let snapshot = bus.metrics().snapshot();

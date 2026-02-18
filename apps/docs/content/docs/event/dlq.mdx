@@ -10,11 +10,11 @@ Events that exceed the maximum delivery count are moved to a dead letter queue (
 ## Enable DLQ
 
 ```rust
-use a3s_event::{EventBus, MemoryProvider, MemoryDlqHandler};
+use a3s_event::{EventBus, MemoryDlqHandler};
+use a3s_event::provider::memory::MemoryProvider;
 use std::sync::Arc;
 
-let provider = MemoryProvider::new();
-let mut bus = EventBus::new(provider);
+let mut bus = EventBus::new(MemoryProvider::default());
 
 let dlq = MemoryDlqHandler::new(100); // Max 100 dead letters
 bus.set_dlq_handler(Arc::new(dlq));
@@ -32,6 +32,8 @@ Event delivered → processing fails → redelivered → fails again
 The `max_deliver` threshold is configured via `SubscribeOptions`:
 
 ```rust
+use a3s_event::SubscribeOptions;
+
 let options = SubscribeOptions {
     max_deliver: Some(3),  // After 3 failed deliveries, send to DLQ
     ..Default::default()
@@ -42,9 +44,13 @@ let options = SubscribeOptions {
 
 ```rust
 pub struct DeadLetterEvent {
-    pub event: Event,              // The original event
-    pub reason: String,            // Why it was dead-lettered
-    pub timestamp: DateTime<Utc>,  // When it was dead-lettered
+    pub event: Event,          // The original event
+    pub reason: String,        // Why it was dead-lettered
+    pub timestamp: u64,        // Unix milliseconds when dead-lettered
+    // Optional fields (for SinkDlqHandler, requires `routing` feature):
+    pub original_subject: Option<String>,
+    pub delivery_attempts: Option<u32>,
+    pub first_failure_at: Option<u64>,
 }
 ```
 
@@ -53,14 +59,16 @@ pub struct DeadLetterEvent {
 ```rust
 let dlq = bus.dlq_handler().unwrap();
 
+// Count dead letters
+let count = dlq.count().await;
+
 // List recent dead letters
-let letters = dlq.list().await;
+let letters = dlq.list(50).await;
 for letter in &letters {
     println!("[{}] {}: {}",
         letter.timestamp,
         letter.event.subject,
         letter.reason);
-    println!("  Payload: {}", letter.event.payload);
 }
 ```
 
@@ -75,7 +83,8 @@ use async_trait::async_trait;
 #[async_trait]
 pub trait DlqHandler: Send + Sync {
     async fn handle(&self, dead_letter: DeadLetterEvent) -> Result<()>;
-    async fn list(&self) -> Vec<DeadLetterEvent>;
+    async fn list(&self, limit: usize) -> Vec<DeadLetterEvent>;
+    async fn count(&self) -> usize;
 }
 ```
 
@@ -90,14 +99,12 @@ struct SlackDlqHandler {
 #[async_trait]
 impl DlqHandler for SlackDlqHandler {
     async fn handle(&self, dead_letter: DeadLetterEvent) -> Result<()> {
-        // Store locally
         self.memory.handle(dead_letter.clone()).await?;
 
-        // Forward to Slack
         reqwest::Client::new()
             .post(&self.webhook_url)
             .json(&serde_json::json!({
-                "text": format!("DLQ: {} - {}",
+                "text": format!("DLQ: {} — {}",
                     dead_letter.event.subject,
                     dead_letter.reason)
             }))
@@ -107,8 +114,12 @@ impl DlqHandler for SlackDlqHandler {
         Ok(())
     }
 
-    async fn list(&self) -> Vec<DeadLetterEvent> {
-        self.memory.list().await
+    async fn list(&self, limit: usize) -> Vec<DeadLetterEvent> {
+        self.memory.list(limit).await
+    }
+
+    async fn count(&self) -> usize {
+        self.memory.count().await
     }
 }
 ```

@@ -109,7 +109,7 @@ tracing_subscriber::init();
 Example output with `tracing-subscriber`:
 
 ```
-INFO event.publish{subject="orders.created" event_type="order.created" version=1}: a3s_event: publishing event
+INFO event.publish{subject="events.orders.created" event_type="order.created" version=1}: a3s_event: publishing event
 INFO event.validate{event_type="order.created" version=1}: a3s_event: schema validation passed
 INFO event.encrypt{key_id="key-v1"}: a3s_event: payload encrypted
 ```
@@ -123,12 +123,12 @@ let is_healthy = bus.health().await?;
 | Provider | Behavior |
 |----------|----------|
 | MemoryProvider | Always returns `true` |
-| NatsProvider | Checks NATS connection status |
+| NatsProvider | Checks NATS connection and stream status |
 
 Use in Kubernetes readiness probes or load balancer health checks:
 
 ```rust
-async fn health_handler(bus: &EventBus) -> impl Reply {
+async fn health_handler(bus: &EventBus) -> StatusCode {
     match bus.health().await {
         Ok(true) => StatusCode::OK,
         _ => StatusCode::SERVICE_UNAVAILABLE,
@@ -139,8 +139,6 @@ async fn health_handler(bus: &EventBus) -> impl Reply {
 ## Combining All Three
 
 ```rust
-use a3s_event::*;
-
 // 1. Tracing for structured logs
 tracing_subscriber::init();
 

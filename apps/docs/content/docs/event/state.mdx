@@ -12,11 +12,11 @@ A3S Event can persist subscription filters to disk so that subscriptions are aut
 ### File-Based (Production)
 
 ```rust
-use a3s_event::{EventBus, MemoryProvider, FileStateStore};
+use a3s_event::{EventBus, FileStateStore};
+use a3s_event::provider::memory::MemoryProvider;
 use std::sync::Arc;
 
-let provider = MemoryProvider::new();
-let mut bus = EventBus::new(provider);
+let mut bus = EventBus::new(MemoryProvider::default());
 
 let store = FileStateStore::new("./state/event-bus.json").await?;
 bus.set_state_store(Arc::new(store));
@@ -88,7 +88,7 @@ impl StateStore for RedisStateStore {
 
 ## FileStateStore Details
 
-- **Format**: Pretty-printed JSON
+- **Format**: Pretty-printed JSON (camelCase field names)
 - **Atomicity**: Writes to a `.tmp` file then renames (prevents partial writes on crash)
 - **Directory**: Auto-creates parent directories if they don't exist
 - **Path**: Configurable, e.g., `./state/event-bus.json`
@@ -98,16 +98,18 @@ Example persisted state:
 ```json
 [
   {
-    "subject": "orders.>",
-    "categories": ["orders"],
-    "options": {
-      "deliver_policy": "New",
-      "max_deliver": 3
-    }
+    "subscriberId": "order-processor",
+    "subjects": ["events.orders.>"],
+    "durable": true
   },
   {
-    "subject": "payments.*",
-    "categories": ["payments"]
+    "subscriberId": "analytics",
+    "subjects": ["events.market.>", "events.system.>"],
+    "durable": false,
+    "options": {
+      "deliverPolicy": {"type": "New"},
+      "maxDeliver": 3
+    }
   }
 ]
 ```

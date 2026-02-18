@@ -10,11 +10,11 @@ A3S Event supports optional schema validation on publish. Register event schemas
 ## Enable Schema Validation
 
 ```rust
-use a3s_event::{EventBus, MemoryProvider, MemorySchemaRegistry, EventSchema};
+use a3s_event::{EventBus, MemorySchemaRegistry, EventSchema, Compatibility};
+use a3s_event::provider::memory::MemoryProvider;
 use std::sync::Arc;
 
-let provider = MemoryProvider::new();
-let mut bus = EventBus::new(provider);
+let mut bus = EventBus::new(MemoryProvider::default());
 
 let mut registry = MemorySchemaRegistry::new();
 
@@ -22,12 +22,14 @@ registry.register(EventSchema {
     event_type: "order.created".into(),
     version: 1,
     required_fields: vec!["order_id".into(), "total".into()],
+    compatibility: Compatibility::Backward,
 });
 
 registry.register(EventSchema {
     event_type: "order.shipped".into(),
     version: 1,
     required_fields: vec!["order_id".into(), "tracking_number".into()],
+    compatibility: Compatibility::Backward,
 });
 
 bus.set_schema_registry(Arc::new(registry));
@@ -35,28 +37,32 @@ bus.set_schema_registry(Arc::new(registry));
 
 ## Validation on Publish
 
-When a schema registry is set, `publish_typed()` validates the payload against the registered schema:
+When a schema registry is set, typed events are validated against the registered schema:
 
 ```rust
+use a3s_event::Event;
+
 // Passes validation (has order_id and total)
-bus.publish_typed(
-    "orders.created",
-    "order.created",
-    1,
-    serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
-).await?;
+let event = Event::typed(
+    "events.orders.created", "orders",
+    "order.created", 1,
+    "New order", "order-service",
+    serde_json::json!({"order_id": "ORD-001", "total": 99.99}),
+);
+bus.publish_event(&event).await?;
 
 // Fails validation (missing "total" field)
-let result = bus.publish_typed(
-    "orders.created",
-    "order.created",
-    1,
-    serde_json::json!({ "order_id": "ORD-001" }),
-).await;
+let bad_event = Event::typed(
+    "events.orders.created", "orders",
+    "order.created", 1,
+    "New order", "order-service",
+    serde_json::json!({"order_id": "ORD-001"}),
+);
+let result = bus.publish_event(&bad_event).await;
 assert!(result.is_err());
 ```
 
-Non-typed `publish()` calls skip schema validation since they have no `event_type` or `version`.
+Events without an `event_type` (created via `Event::new()`) skip schema validation.
 
 ## Schema Evolution
 
@@ -68,6 +74,7 @@ registry.register(EventSchema {
     event_type: "order.created".into(),
     version: 1,
     required_fields: vec!["order_id".into(), "total".into()],
+    compatibility: Compatibility::Backward,
 });
 
 // Version 2: added "currency" field
@@ -75,6 +82,7 @@ registry.register(EventSchema {
     event_type: "order.created".into(),
     version: 2,
     required_fields: vec!["order_id".into(), "total".into(), "currency".into()],
+    compatibility: Compatibility::Backward,
 });
 ```
 
@@ -83,13 +91,7 @@ registry.register(EventSchema {
 Check whether a new schema version is compatible with an existing one:
 
 ```rust
-use a3s_event::Compatibility;
-
-let compat = registry.check_compatibility(
-    "order.created",
-    1,  // old version
-    2,  // new version
-);
+let compat = registry.check_compatibility("order.created", 1, 2);
 
 match compat {
     Compatibility::Backward => println!("New version can read old data"),
@@ -119,7 +121,8 @@ pub trait SchemaRegistry: Send + Sync {
     fn register(&mut self, schema: EventSchema);
     fn validate(&self, event_type: &str, version: u32, payload: &serde_json::Value) -> Result<()>;
     fn get(&self, event_type: &str, version: u32) -> Option<&EventSchema>;
-    fn check_compatibility(&self, event_type: &str, old: u32, new: u32) -> Compatibility;
+    fn check_compatibility(&self, event_type: &str, old_version: u32, new_version: u32) -> Compatibility;
+    fn all_schemas(&self) -> Vec<&EventSchema>;
 }
 ```
 
@@ -130,10 +133,11 @@ pub trait SchemaRegistry: Send + Sync {
 | `event_type` | `String` | Event type identifier (e.g., `order.created`) |
 | `version` | `u32` | Schema version number |
 | `required_fields` | `Vec<String>` | Fields that must be present in the payload |
+| `compatibility` | `Compatibility` | Compatibility mode for this schema |
 
 ## Validation Order
 
-When both schema validation and encryption are enabled, the order is:
+When both schema validation and encryption are enabled:
 
 1. Schema validation (on plaintext payload)
 2. Encryption (payload becomes ciphertext)

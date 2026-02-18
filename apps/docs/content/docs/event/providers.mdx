@@ -12,22 +12,39 @@ A3S Event uses the `EventProvider` trait to abstract the underlying messaging sy
 ```rust
 #[async_trait]
 pub trait EventProvider: Send + Sync {
-    async fn publish(&self, subject: &str, event: Event) -> Result<()>;
-    async fn subscribe(&self, filter: &SubscriptionFilter)
-        -> Result<mpsc::Receiver<ReceivedEvent>>;
-    async fn subscribe_durable(&self, filter: &SubscriptionFilter, group: &str)
-        -> Result<mpsc::Receiver<ReceivedEvent>>;
-    async fn history(&self, subject: &str, limit: usize) -> Result<Vec<Event>>;
-    async fn count(&self, category: &str) -> Result<EventCounts>;
+    /// Publish an event, returning the provider-assigned sequence number
+    async fn publish(&self, event: &Event) -> Result<u64>;
 
-    // Default implementations (can be overridden):
-    async fn publish_with_options(&self, subject: &str, event: Event, opts: PublishOptions)
-        -> Result<()> { self.publish(subject, event).await }
-    async fn subscribe_with_options(&self, filter: &SubscriptionFilter, opts: SubscribeOptions)
-        -> Result<mpsc::Receiver<ReceivedEvent>> { self.subscribe(filter).await }
-    async fn subscribe_durable_with_options(&self, filter: &SubscriptionFilter, group: &str, opts: SubscribeOptions)
-        -> Result<mpsc::Receiver<ReceivedEvent>> { self.subscribe_durable(filter, group).await }
-    async fn health(&self) -> Result<bool> { Ok(true) }
+    /// Create a durable subscription (survives reconnects)
+    async fn subscribe_durable(
+        &self, consumer_name: &str, filter_subject: &str,
+    ) -> Result<Box<dyn Subscription>>;
+
+    /// Create an ephemeral subscription
+    async fn subscribe(&self, filter_subject: &str) -> Result<Box<dyn Subscription>>;
+
+    /// Fetch historical events
+    async fn history(&self, filter_subject: Option<&str>, limit: usize) -> Result<Vec<Event>>;
+
+    /// Delete a durable subscription by consumer name
+    async fn unsubscribe(&self, consumer_name: &str) -> Result<()>;
+
+    /// Get provider info (message count, bytes, consumers)
+    async fn info(&self) -> Result<ProviderInfo>;
+
+    /// Subject prefix for this provider (e.g., "events")
+    fn subject_prefix(&self) -> &str;
+
+    /// Provider name (e.g., "nats", "memory")
+    fn name(&self) -> &str;
+
+    // Default implementations (override for provider-specific behavior):
+    fn build_subject(&self, category: &str, topic: &str) -> String { ... }
+    fn category_subject(&self, category: &str) -> String { ... }
+    async fn publish_with_options(&self, event: &Event, opts: &PublishOptions) -> Result<u64> { ... }
+    async fn subscribe_durable_with_options(...) -> Result<Box<dyn Subscription>> { ... }
+    async fn subscribe_with_options(...) -> Result<Box<dyn Subscription>> { ... }
+    async fn health(&self) -> Result<bool> { ... }
 }
 ```
 
@@ -38,83 +55,119 @@ In-process event bus using `tokio::sync::broadcast`. Zero external dependencies.
 ```rust
 use a3s_event::MemoryProvider;
 
-let provider = MemoryProvider::new();
+// Default configuration
+let provider = MemoryProvider::default();
 ```
 
-**Characteristics:**
-- Events are stored in an in-memory buffer (configurable size)
+With custom configuration:
+
+```rust
+use a3s_event::provider::memory::{MemoryProvider, MemoryConfig};
+
+let provider = MemoryProvider::new(MemoryConfig {
+    subject_prefix: "events".to_string(),
+    max_events: 100_000,
+    channel_capacity: 10_000,
+});
+```
+
+### MemoryConfig Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `subject_prefix` | `String` | `"events"` | Subject prefix for `build_subject()` |
+| `max_events` | `usize` | `100_000` | Max events in history buffer |
+| `channel_capacity` | `usize` | `10_000` | Broadcast channel capacity |
+
+### Characteristics
+
+- Events stored in an in-memory buffer (configurable size)
 - Broadcast channel for pub/sub
 - Wildcard matching (`>`, `*`) implemented in Rust
-- No durable subscriptions (gracefully falls back to ephemeral)
-- Publish/subscribe options are accepted but ignored
+- No durable subscriptions (falls back to ephemeral)
+- Publish/subscribe options accepted but ignored
 - Health check always returns `true`
 - Ideal for unit tests and local development
 
 ## NatsProvider
 
+Requires the `nats` feature (enabled by default).
+
 Production-grade provider using [NATS JetStream](https://docs.nats.io/nats-concepts/jetstream).
 
 ```rust
-use a3s_event::{NatsProvider, NatsConfig};
+use a3s_event::{NatsProvider, NatsConfig, StorageType};
 
-let config = NatsConfig {
-    url: "nats://localhost:4222".into(),
-    stream: "EVENTS".into(),
-    subjects: vec!["events.>".into()],
-    storage: StorageType::File,    // File or Memory
-    max_messages: 1_000_000,
-    max_bytes: 1_073_741_824,      // 1 GB
-    max_age: Duration::from_secs(7 * 24 * 3600), // 7 days
+let provider = NatsProvider::connect(NatsConfig {
+    url: "nats://localhost:4222".to_string(),
+    stream_name: "A3S_EVENTS".to_string(),
+    subject_prefix: "events".to_string(),
+    storage: StorageType::File,
+    max_events: 100_000,
+    max_age_secs: 604_800,  // 7 days
     ..Default::default()
-};
-
-let provider = NatsProvider::new(config).await?;
+}).await?;
 ```
 
 ### NatsConfig Fields
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `url` | `String` | `nats://localhost:4222` | NATS server URL |
-| `stream` | `String` | `EVENTS` | JetStream stream name |
-| `subjects` | `Vec<String>` | `["events.>"]` | Subjects to capture |
+| `url` | `String` | `nats://127.0.0.1:4222` | NATS server URL |
+| `token` | `Option<String>` | `None` | Authentication token |
+| `credentials_path` | `Option<String>` | `None` | NKey/JWT credentials file |
+| `stream_name` | `String` | `A3S_EVENTS` | JetStream stream name |
+| `subject_prefix` | `String` | `events` | Subject prefix |
 | `storage` | `StorageType` | `File` | `File` or `Memory` storage |
-| `max_messages` | `i64` | `1_000_000` | Max messages in stream |
-| `max_bytes` | `i64` | `1 GB` | Max stream size in bytes |
-| `max_age` | `Duration` | `7 days` | Max message age |
+| `max_events` | `i64` | `100_000` | Max messages in stream |
+| `max_age_secs` | `u64` | `604_800` (7 days) | Max message age |
+| `max_bytes` | `i64` | `0` (unlimited) | Max stream size in bytes |
+| `connect_timeout_secs` | `u64` | `5` | Connection timeout |
+| `request_timeout_secs` | `u64` | `10` | Request timeout |
 
 ### NATS-Specific Features
 
 **Deduplication:**
+
 ```rust
-bus.publish_with_options(
-    "orders.created",
-    payload,
-    PublishOptions { msg_id: Some("order-001".into()), ..Default::default() },
-).await?;
+use a3s_event::PublishOptions;
+
+let opts = PublishOptions {
+    msg_id: Some("order-001".into()),
+    ..Default::default()
+};
+bus.publish_event_with_options(&event, &opts).await?;
 // Duplicate publishes with the same msg_id are ignored within the dedup window
 ```
 
 **Manual Acknowledgement:**
+
 ```rust
-let mut rx = bus.subscribe_durable("orders.>", "processor").await?;
-while let Some(event) = rx.recv().await {
-    match process(&event).await {
-        Ok(()) => event.ack().await?,    // Acknowledge success
-        Err(e) => event.nak().await?,    // Negative ack (triggers redelivery)
+let mut subs = bus.create_subscriber("order-processor").await?;
+for sub in &mut subs {
+    while let Some(pending) = sub.next_manual_ack().await? {
+        match process(&pending.received.event).await {
+            Ok(()) => pending.ack().await?,
+            Err(_) => pending.nak().await?,  // triggers redelivery
+        }
     }
 }
 ```
 
 **Delivery Policies:**
+
 ```rust
-let options = SubscribeOptions {
-    deliver_policy: Some(DeliverPolicy::ByStartTime(
-        Utc::now() - chrono::Duration::hours(1)
-    )),
-    ..Default::default()
-};
-let mut rx = bus.subscribe_durable_with_options("orders.>", "replay", options).await?;
+use a3s_event::{SubscribeOptions, DeliverPolicy, SubscriptionFilter};
+
+bus.update_subscription(SubscriptionFilter {
+    subscriber_id: "replay".to_string(),
+    subjects: vec!["events.orders.>".to_string()],
+    durable: true,
+    options: Some(SubscribeOptions {
+        deliver_policy: DeliverPolicy::ByStartSequence { sequence: 100 },
+        ..Default::default()
+    }),
+}).await?;
 ```
 
 ## Custom Provider
@@ -122,53 +175,52 @@ let mut rx = bus.subscribe_durable_with_options("orders.>", "replay", options).a
 Implement `EventProvider` for any messaging backend:
 
 ```rust
-use a3s_event::*;
+use a3s_event::provider::{EventProvider, Subscription, ProviderInfo};
+use a3s_event::types::Event;
+use a3s_event::Result;
 use async_trait::async_trait;
 
-struct RedisProvider {
-    client: redis::Client,
-}
+pub struct RedisProvider { /* ... */ }
 
 #[async_trait]
 impl EventProvider for RedisProvider {
-    async fn publish(&self, subject: &str, event: Event) -> Result<()> {
-        let payload = serde_json::to_string(&event)?;
-        self.client.publish(subject, &payload).await?;
-        Ok(())
-    }
+    async fn publish(&self, event: &Event) -> Result<u64> { todo!() }
 
-    async fn subscribe(&self, filter: &SubscriptionFilter)
-        -> Result<mpsc::Receiver<ReceivedEvent>> {
-        // Subscribe to Redis Pub/Sub channel
-        // ...
-    }
+    async fn subscribe_durable(
+        &self, consumer_name: &str, filter_subject: &str,
+    ) -> Result<Box<dyn Subscription>> { todo!() }
 
-    async fn subscribe_durable(&self, filter: &SubscriptionFilter, group: &str)
-        -> Result<mpsc::Receiver<ReceivedEvent>> {
-        // Use Redis Streams with consumer groups
-        // ...
-    }
+    async fn subscribe(&self, filter_subject: &str) -> Result<Box<dyn Subscription>> { todo!() }
 
-    async fn history(&self, subject: &str, limit: usize) -> Result<Vec<Event>> {
-        // XRANGE on Redis Stream
-        // ...
-    }
+    async fn history(
+        &self, filter_subject: Option<&str>, limit: usize,
+    ) -> Result<Vec<Event>> { todo!() }
 
-    async fn count(&self, category: &str) -> Result<EventCounts> {
-        // XLEN on Redis Stream
-        // ...
-    }
+    async fn unsubscribe(&self, consumer_name: &str) -> Result<()> { todo!() }
+    async fn info(&self) -> Result<ProviderInfo> { todo!() }
+
+    // Only subject_prefix() and name() are required.
+    // build_subject() and category_subject() have default implementations.
+    fn subject_prefix(&self) -> &str { "events" }
+    fn name(&self) -> &str { "redis" }
 }
 ```
 
-## Provider Responsibility Boundaries
+Then use it like any other provider:
 
-These capabilities are delegated to the provider, not the `EventBus` abstraction:
+```rust
+let bus = EventBus::new(RedisProvider::new(config));
+bus.publish("orders", "created", "New order", "src", payload).await?;
+```
+
+## Responsibility Boundaries
+
+These capabilities are delegated to the provider, not the `EventBus`:
 
 | Capability | Where It Lives |
 |------------|----------------|
-| Retry / backoff | Provider (NATS: MaxDeliver + BackOff) |
-| Backpressure | Provider (NATS: MaxAckPending) |
+| Retry / backoff | Provider (NATS: `MaxDeliver` + `BackOff`) |
+| Backpressure | Provider (NATS: `MaxAckPending`) |
 | Connection resilience | Provider (NATS: auto-reconnect) |
 | Transport encryption | Provider (TLS config) |
 | Exactly-once delivery | Provider (dedup + double ack) |

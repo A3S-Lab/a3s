@@ -5,58 +5,93 @@ description: High-level API for publishing, subscribing, and managing events
 
 # EventBus
 
-`EventBus` is the primary API for working with events. It wraps an `EventProvider` and adds schema validation, encryption, DLQ handling, state persistence, and metrics.
+`EventBus` is the primary API for working with events. It wraps an `EventProvider` and adds schema validation, encryption, DLQ handling, state persistence, metrics, and optional broker routing.
 
 ## Creating an EventBus
 
 ```rust
 use a3s_event::{EventBus, MemoryProvider};
 
-let provider = MemoryProvider::new();
-let bus = EventBus::new(provider);
+let bus = EventBus::new(MemoryProvider::default());
+```
+
+With schema validation:
+
+```rust
+use a3s_event::{EventBus, MemoryProvider, MemorySchemaRegistry};
+use std::sync::Arc;
+
+let registry = Arc::new(MemorySchemaRegistry::new());
+let bus = EventBus::with_schema_registry(MemoryProvider::default(), registry);
 ```
 
 ## Publishing
 
-### Simple Publish
+### Convenience Publish
+
+Creates an `Event` automatically with generated id and timestamp:
 
 ```rust
-bus.publish(
-    "orders.created",
+let event = bus.publish(
+    "orders",           // category
+    "created",          // topic → subject becomes "events.orders.created"
+    "New order ORD-001", // summary
+    "order-service",    // source
     serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
 ).await?;
+
+println!("Event ID: {}", event.id);       // evt-<uuid>
+println!("Subject: {}", event.subject);    // events.orders.created
 ```
 
-### Typed / Versioned Publish
+The subject is built automatically using the provider's `build_subject(category, topic)` method.
 
-Attach an `event_type` and `version` for schema validation:
+### Publish a Pre-Built Event
 
 ```rust
-bus.publish_typed(
-    "orders.created",       // subject
-    "order.created",        // event_type
-    1,                      // version
+use a3s_event::Event;
+
+let event = Event::new(
+    "events.orders.created",
+    "orders",
+    "New order ORD-001",
+    "order-service",
+    serde_json::json!({ "order_id": "ORD-001" }),
+);
+
+let sequence = bus.publish_event(&event).await?;
+```
+
+### Typed Events (with Schema Validation)
+
+```rust
+let event = Event::typed(
+    "events.orders.created",  // subject
+    "orders",                 // category
+    "order.created",          // event_type (matched against schema registry)
+    1,                        // version
+    "New order ORD-001",      // summary
+    "order-service",          // source
     serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
-).await?;
+);
+
+let sequence = bus.publish_event(&event).await?;
 ```
 
 ### Publish with Options
 
+Provider-specific publish options (deduplication, optimistic concurrency, timeout):
+
 ```rust
 use a3s_event::PublishOptions;
-use std::time::Duration;
 
-let options = PublishOptions {
-    msg_id: Some("dedup-123".into()),        // Deduplication ID
-    expected_sequence: Some(42),              // Optimistic concurrency
-    timeout: Some(Duration::from_secs(5)),   // Publish timeout
+let opts = PublishOptions {
+    msg_id: Some("dedup-123".into()),     // Deduplication ID
+    expected_sequence: Some(42),           // Optimistic concurrency
+    timeout_secs: Some(5),                 // Publish timeout
 };
 
-bus.publish_with_options(
-    "orders.created",
-    serde_json::json!({ "order_id": "ORD-001" }),
-    options,
-).await?;
+let sequence = bus.publish_event_with_options(&event, &opts).await?;
 ```
 
 ### PublishOptions Fields
@@ -65,113 +100,147 @@ bus.publish_with_options(
 |-------|------|-------------|
 | `msg_id` | `Option<String>` | Deduplication ID (NATS dedup window) |
 | `expected_sequence` | `Option<u64>` | Expected stream sequence for optimistic concurrency |
-| `timeout` | `Option<Duration>` | Publish timeout |
+| `timeout_secs` | `Option<u64>` | Publish timeout in seconds |
 
 ## Subscribing
 
-### Ephemeral Subscription
+A3S Event uses a two-step subscription model: register a filter, then create subscriber handles.
 
-Cleaned up when the subscriber disconnects:
+### Step 1: Register a Subscription
 
 ```rust
-let mut rx = bus.subscribe("orders.>").await?;
+use a3s_event::SubscriptionFilter;
 
-while let Some(event) = rx.recv().await {
-    println!("{}: {}", event.subject, event.payload);
+bus.update_subscription(SubscriptionFilter {
+    subscriber_id: "order-processor".to_string(),
+    subjects: vec!["events.orders.>".to_string()],
+    durable: true,
+    options: None,
+}).await?;
+```
+
+### Step 2: Create Subscriber Handles
+
+```rust
+let mut subs = bus.create_subscriber("order-processor").await?;
+
+for sub in &mut subs {
+    // Auto-ack mode
+    while let Some(received) = sub.next().await? {
+        println!("{}: {}", received.event.subject, received.event.summary);
+    }
 }
 ```
 
-### Durable Subscription
-
-Survives process restarts (NATS JetStream only):
+### Manual Ack Mode (NATS)
 
 ```rust
-let mut rx = bus.subscribe_durable("orders.>", "order-processor").await?;
-
-while let Some(event) = rx.recv().await {
-    println!("{}: {}", event.subject, event.payload);
-    event.ack().await?;  // Manual acknowledgement
+for sub in &mut subs {
+    while let Some(pending) = sub.next_manual_ack().await? {
+        match process(&pending.received.event).await {
+            Ok(_) => pending.ack().await?,
+            Err(_) => pending.nak().await?,  // request redelivery
+        }
+    }
 }
 ```
 
 ### Subscribe with Options
 
 ```rust
-use a3s_event::{SubscribeOptions, DeliverPolicy};
-use std::time::Duration;
+use a3s_event::{SubscribeOptions, DeliverPolicy, SubscriptionFilter};
 
-let options = SubscribeOptions {
-    deliver_policy: Some(DeliverPolicy::New),
-    max_deliver: Some(3),
-    ack_wait: Some(Duration::from_secs(30)),
-    max_ack_pending: Some(100),
-    backoff: Some(vec![
-        Duration::from_secs(1),
-        Duration::from_secs(5),
-        Duration::from_secs(30),
-    ]),
-};
-
-let mut rx = bus.subscribe_with_options("orders.>", options).await?;
+bus.update_subscription(SubscriptionFilter {
+    subscriber_id: "replay-consumer".to_string(),
+    subjects: vec!["events.orders.>".to_string()],
+    durable: true,
+    options: Some(SubscribeOptions {
+        deliver_policy: DeliverPolicy::New,
+        max_deliver: Some(3),
+        ack_wait_secs: Some(30),
+        max_ack_pending: Some(100),
+        backoff_secs: vec![1, 5, 30],
+    }),
+}).await?;
 ```
 
 ### SubscribeOptions Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `deliver_policy` | `Option<DeliverPolicy>` | Where to start consuming |
+| `deliver_policy` | `DeliverPolicy` | Where to start consuming (default: `All`) |
 | `max_deliver` | `Option<i64>` | Max redelivery attempts before DLQ |
-| `ack_wait` | `Option<Duration>` | Time to wait for ack before redelivery |
+| `ack_wait_secs` | `Option<u64>` | Seconds to wait for ack before redelivery |
 | `max_ack_pending` | `Option<i64>` | Backpressure: max unacked messages |
-| `backoff` | `Option<Vec<Duration>>` | Redelivery backoff schedule |
+| `backoff_secs` | `Vec<u64>` | Redelivery backoff schedule in seconds |
 
 ### Delivery Policies
 
 ```rust
 pub enum DeliverPolicy {
-    All,                         // All messages from the beginning
-    Last,                        // Last message only
-    New,                         // Only new messages after subscribe
-    ByStartSequence(u64),        // From a specific stream sequence
-    ByStartTime(DateTime<Utc>),  // From a specific timestamp
-    LastPerSubject,              // Last message per subject
+    All,                              // All messages from the beginning
+    Last,                             // Last message only
+    New,                              // Only new messages after subscribe
+    ByStartSequence { sequence: u64 },// From a specific stream sequence
+    ByStartTime { timestamp: u64 },   // From a Unix timestamp (milliseconds)
+    LastPerSubject,                   // Last message per subject
 }
 ```
 
-## Wildcards
+## Subject Wildcards
 
 Both providers support NATS-style wildcards:
 
 | Pattern | Matches | Example |
 |---------|---------|---------|
-| `orders.>` | All subjects under `orders.` | `orders.created`, `orders.us.shipped` |
-| `orders.*` | One level under `orders.` | `orders.created` but not `orders.us.shipped` |
+| `events.orders.>` | All subjects under `events.orders.` at any depth | `events.orders.created`, `events.orders.us.shipped` |
+| `events.orders.*` | One level under `events.orders.` | `events.orders.created` but not `events.orders.us.shipped` |
 
 ## History & Querying
 
 ```rust
-// Get recent events for a subject
-let events = bus.history("orders.created", 100).await?;
+// Get recent events, optionally filtered by category
+let events = bus.list_events(Some("orders"), 100).await?;
 for event in &events {
-    println!("[{}] {}", event.timestamp, event.payload);
+    println!("[{}] {} — {}", event.timestamp, event.subject, event.summary);
 }
 
 // Count events by category
-let counts = bus.count("orders").await?;
-println!("Order events: {}", counts.total);
+let counts = bus.counts(1000).await?;
+println!("Total: {}, Orders: {:?}", counts.total, counts.categories.get("orders"));
 ```
 
 ## Subscription Management
 
 ```rust
-// List active subscriptions
-let filters = bus.subscriptions();
+// List all registered subscriptions
+let filters = bus.list_subscriptions().await;
 
-// Update a subscription filter
-bus.update_subscription("orders.>", new_filter).await?;
+// Get a specific subscription
+let filter = bus.get_subscription("order-processor").await;
 
-// Remove a subscription
-bus.remove_subscription("orders.>").await?;
+// Remove a subscription (also deletes the durable consumer)
+bus.remove_subscription("order-processor").await?;
+```
+
+## Configuration Setters
+
+All setters require `&mut self` and should be called during setup before publishing:
+
+```rust
+let mut bus = EventBus::new(MemoryProvider::default());
+
+// Optional: schema validation
+bus.set_dlq_handler(Arc::new(MemoryDlqHandler::new(100)));
+
+// Optional: encryption (requires `encryption` feature)
+bus.set_encryptor(Arc::new(encryptor));
+
+// Optional: state persistence
+bus.set_state_store(Arc::new(store))?;
+
+// Optional: broker routing (requires `routing` feature)
+bus.set_broker(Arc::new(broker));
 ```
 
 ## Health Check
@@ -180,4 +249,22 @@ bus.remove_subscription("orders.>").await?;
 let is_healthy = bus.health().await?;
 ```
 
-Returns `true` if the underlying provider is connected and operational. MemoryProvider always returns `true`. NatsProvider checks the NATS connection.
+| Provider | Behavior |
+|----------|----------|
+| MemoryProvider | Always returns `true` |
+| NatsProvider | Checks NATS connection via `info()` |
+
+## Accessors
+
+```rust
+bus.provider_name();                // "memory" | "nats"
+bus.provider();                     // &dyn EventProvider
+bus.provider_arc();                 // Arc<dyn EventProvider>
+bus.metrics();                      // &EventMetrics
+bus.schema_registry();              // Option<&dyn SchemaRegistry>
+bus.dlq_handler();                  // Option<&dyn DlqHandler>
+bus.state_store();                  // Option<&dyn StateStore>
+bus.encryptor();                    // Option<&dyn EventEncryptor> (encryption feature)
+bus.broker();                       // Option<&Broker> (routing feature)
+bus.info().await?;                  // ProviderInfo
+```
