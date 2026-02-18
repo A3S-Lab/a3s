@@ -14,7 +14,7 @@ Headless browser support is enabled by default via the `headless` Cargo feature:
 ```toml
 # Enabled by default (9 engines)
 [dependencies]
-a3s-search = "0.7"
+a3s-search = "0.8"
 
 # Disable headless for smaller binary (6 engines)
 [dependencies]
@@ -100,11 +100,11 @@ When `chrome_path` is `None`, A3S Search looks for Chrome in this order:
 
 1. `CHROME` environment variable
 2. System PATH (`google-chrome`, `chromium`, `chrome`, etc.)
-3. Well-known install paths (macOS `/Applications/...`, Linux `/usr/bin/...`)
+3. Well-known install paths (macOS `/Applications/...`, Linux `/usr/bin/...`, Windows `C:\Program Files\...`)
 4. Auto-download Chrome for Testing from Google CDN
 5. Cache in `~/.a3s/chromium/`
 
-Supported platforms: macOS (arm64, x64) and Linux (x64). The first run may download ~150MB.
+Supported platforms: macOS (arm64, x64), Linux (x64), and Windows (x64, x86). The first run may download ~150MB.
 
 ## Using Headless Engines
 

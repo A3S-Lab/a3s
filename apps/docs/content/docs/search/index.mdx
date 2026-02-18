@@ -19,7 +19,8 @@ A3S Search is an embeddable meta search engine library inspired by [SearXNG](htt
 - **Auto-Install Chrome** — Detects or downloads Chrome for Testing when no browser is found.
 - **PageFetcher Abstraction** — Pluggable fetching: `HttpFetcher`, `PooledHttpFetcher`, or `BrowserFetcher`.
 - **CLI Tool** — Command-line interface with multiple output formats and Homebrew distribution.
-- **Native SDKs** — TypeScript (NAPI-RS) and Python (PyO3) bindings with async support and dynamic proxy pool management.
+- **Native SDKs** — TypeScript (NAPI-RS) and Python (PyO3) bindings with async support, dynamic proxy pool management, and headless browser engines.
+- **Cross-Platform** — macOS (arm64, x64), Linux (x64), and Windows (x64, x86) with auto Chrome download.
 
 ## Architecture
 
@@ -67,7 +68,7 @@ Search
 
 | Language | Package | Install |
 |----------|---------|---------|
-| Rust | [`a3s-search`](https://crates.io/crates/a3s-search) | `a3s-search = "0.7"` in Cargo.toml |
+| Rust | [`a3s-search`](https://crates.io/crates/a3s-search) | `a3s-search = "0.8"` in Cargo.toml |
 | Python | [`a3s-search`](https://pypi.org/project/a3s-search/) | `pip install a3s-search` |
 | Node.js | [`@a3s-lab/search`](https://www.npmjs.com/package/@a3s-lab/search) | `npm install @a3s-lab/search` |
 | Homebrew | [`a3s-search`](https://github.com/A3S-Lab/homebrew-tap) | `brew install a3s-lab/tap/a3s-search` |
@@ -83,4 +84,4 @@ Results found by multiple engines receive a significant score boost. Higher-weig
 
 ## Test Coverage
 
-288 Rust tests (244 lib + 31 CLI + 13 integration) + 103 SDK tests (49 Node.js + 54 Python).
+288 Rust tests (244 lib + 31 CLI + 13 integration) + 103 SDK tests (49 Node.js + 54 Python). Cross-platform: macOS, Linux, and Windows.
