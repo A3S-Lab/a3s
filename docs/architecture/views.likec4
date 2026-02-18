@@ -18,9 +18,7 @@ views {
     exclude a3s.safeclaw.*
     exclude a3s.code.*
     exclude a3s.power.*
-    exclude a3s.privacy
-    exclude a3s.transport
-    exclude a3s.toolsCore
+    exclude a3s.common
     exclude a3s.updater
 
     autoLayout TopBottom
@@ -48,12 +46,12 @@ views {
 
   view sandboxView of a3s.box {
     title 'Sandbox Layer — a3s-box MicroVM'
-    description 'Hardware-isolated execution: libkrun, WarmPool, OCI, TEE'
+    description 'Hardware-isolated execution: libkrun, WarmPool, OCI, TEE (SEV-SNP/TDX), audit, metrics'
 
     include *
     include a3s.gw
     include a3s.safeclaw
-    include a3s.transport
+    include a3s.common
 
     autoLayout TopBottom
   }
@@ -92,7 +90,6 @@ views {
     include a3s.cron
     include a3s.pythonSdk
     include a3s.tsSdk
-    include a3s.deep
 
     autoLayout TopBottom
   }
@@ -122,12 +119,11 @@ views {
 
   view sdkView {
     title 'SDKs & Client Applications'
-    description 'Python SDK, TypeScript SDK, a3s-deep, Ell Chat, Vibe Companion'
+    description 'Python SDK, TypeScript SDK'
 
     include developer
     include a3s.pythonSdk
     include a3s.tsSdk
-    include a3s.deep
     include a3s.code
     include a3s.gw
 
@@ -139,17 +135,19 @@ views {
   // ═══════════════════════════════════════════
 
   view securityView {
-    title 'Security Architecture — 4-Layer Defense'
-    description 'Hardware TEE → Channel encryption → Protocol auth → Application classification'
+    title 'Security Architecture — 5-Layer Defense'
+    description 'Hardware TEE → Image signing → Channel encryption → Protocol auth → Application classification'
 
     include a3s.box.teeSupport
     include a3s.box.vmRuntime
+    include a3s.box.signing
+    include a3s.box.audit
     include a3s.gw.tls
     include a3s.gw.mw
     include a3s.gw.meter
     include a3s.safeclaw.privacyEsc
     include a3s.code.permissions
-    include a3s.privacy
+    include a3s.common
 
     autoLayout TopBottom
   }
@@ -210,8 +208,8 @@ views {
     description 'PII detection → classification → escalation → TEE isolation'
 
     endUser -> a3s.gw 'sends sensitive data'
-    a3s.gw -> a3s.privacy 'classify PII level'
-    a3s.privacy -> a3s.safeclaw.privacyEsc 'PII classification'
+    a3s.gw -> a3s.common 'classify PII level'
+    a3s.common -> a3s.safeclaw.privacyEsc 'PII classification'
     a3s.safeclaw.privacyEsc -> a3s.box.teeSupport 'escalate to TEE'
     a3s.box.teeSupport -> a3s.code 'secure execution'
     a3s.code -> a3s.safeclaw.privacyEsc 'encrypted result'

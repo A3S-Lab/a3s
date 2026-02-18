@@ -66,7 +66,7 @@ model {
     // ─── Sandbox Layer ───
 
     sandbox box 'a3s-box' {
-      description 'MicroVM sandbox runtime — hardware-isolated agent execution'
+      description 'MicroVM sandbox runtime — hardware-isolated execution, 52-command CLI, CRI for K8s'
       technology 'Rust / libkrun'
 
       service vmRuntime 'MicroVM Runtime' {
@@ -82,7 +82,16 @@ model {
         description 'passt-based networking'
       }
       service teeSupport 'TEE Support' {
-        description 'AMD SEV-SNP Trusted Execution Environment'
+        description 'AMD SEV-SNP + Intel TDX Trusted Execution Environment'
+      }
+      service signing 'Image Signing' {
+        description 'Cosign-compatible signature verification (key + keyless)'
+      }
+      service audit 'Audit Logging' {
+        description 'JSON-lines audit trail with rotation and query'
+      }
+      service metrics 'Observability' {
+        description 'Prometheus metrics (18) + OpenTelemetry tracing spans'
       }
       service cri 'CRI Integration' {
         description 'Kubernetes Container Runtime Interface'
@@ -178,21 +187,10 @@ model {
       technology 'Rust / NATS JetStream'
     }
 
-    service cron 'a3s-cron' {
-      description 'Cron scheduling — standard + natural language'
-      technology 'Rust'
-    }
-
     // ─── Shared Libraries ───
 
-    library privacy 'a3s-privacy' {
-      description 'PII classification types'
-    }
-    library transport 'a3s-transport' {
-      description 'vsock frame protocol'
-    }
-    library toolsCore 'a3s-tools-core' {
-      description 'Core types for tool definitions'
+    library common 'a3s-common' {
+      description 'Shared types: privacy classification, tool definitions, transport protocol'
     }
     library updater 'a3s-updater' {
       description 'Self-update via GitHub Releases'
@@ -207,10 +205,6 @@ model {
     sdk tsSdk 'TypeScript SDK' {
       description '@a3s-lab/code TypeScript SDK — 86 RPCs'
       technology 'TypeScript / gRPC'
-    }
-    sdk deep 'a3s-deep' {
-      description 'Agentic deep research — Plan → Search → Reflect'
-      technology 'TypeScript'
     }
   }
 
@@ -263,11 +257,11 @@ model {
 
   // --- Privacy flows ---
   a3s.safeclaw.privacyEsc -> a3s.box.teeSupport 'escalates to TEE'
-  a3s.gw -> a3s.privacy 'classifies PII'
+  a3s.gw -> a3s.common 'classifies PII'
 
   // --- Shared library usage ---
-  a3s.box -> a3s.transport 'uses vsock protocol'
-  a3s.code -> a3s.toolsCore 'uses tool types'
+  a3s.box -> a3s.common 'uses transport protocol'
+  a3s.code -> a3s.common 'uses tool types & privacy'
 
   // --- SDK → Execution ---
   a3s.pythonSdk -> a3s.code 'gRPC calls' {
@@ -276,6 +270,4 @@ model {
   a3s.tsSdk -> a3s.code 'gRPC calls' {
     technology 'gRPC / 86 RPCs'
   }
-  a3s.deep -> a3s.tsSdk 'depends on'
-  a3s.deep -> a3s.search 'research queries'
 }

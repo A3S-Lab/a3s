@@ -32,7 +32,7 @@ deployment {
           }
         }
 
-        microvm vm2 'MicroVM-2 (TEE)' {
+        microvm vm2 'MicroVM-2 (TEE: SEV-SNP / TDX)' {
           safeclaw2 = instanceOf a3s.safeclaw {
             title 'SafeClaw (TEE Mode)'
           }
@@ -58,9 +58,6 @@ deployment {
         }
         event = instanceOf a3s.event {
           title 'a3s-event (NATS)'
-        }
-        cron = instanceOf a3s.cron {
-          title 'a3s-cron'
         }
       }
     }
