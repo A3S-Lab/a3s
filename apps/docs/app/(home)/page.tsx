@@ -12,68 +12,45 @@ const modules = [
   {
     name: 'CODE',
     tag: 'agent',
-    description: 'AI coding agent — multi-session, 14 tools, skills, subagents, hooks, MCP',
+    description: 'AI coding agent library — multi-session, tools, skills, subagents, hooks, MCP',
     href: '/docs/code',
-    status: 'ACTIVE',
-    tests: 1859,
   },
   {
     name: 'BOX',
     tag: 'runtime',
     description: 'MicroVM sandbox — VM isolation, OCI images, Docker CLI, WarmPool, CRI, TEE',
     href: '/docs/box',
-    status: 'ACTIVE',
-    tests: null,
   },
   {
     name: 'POWER',
     tag: 'infra',
     description: 'Local LLM engine — Ollama + OpenAI API, llama.cpp, multi-GPU, tool calling',
     href: '/docs/power',
-    status: 'ACTIVE',
-    tests: 888,
   },
   {
     name: 'GATEWAY',
     tag: 'network',
-    description: 'K8s Ingress Controller — reverse proxy, 10 middlewares, 7 webhooks, TLS/ACME',
+    description: 'K8s Ingress Controller — reverse proxy, middlewares, webhooks, TLS/ACME',
     href: '/docs/gateway',
-    status: 'ACTIVE',
-    tests: 625,
   },
   {
     name: 'SAFECLAW',
     tag: 'security',
-    description: 'Security proxy — 7 channels, PII classification, taint tracking, injection detect',
+    description: 'Security proxy — PII classification, taint tracking, injection detection, audit',
     href: '/docs/safeclaw',
-    status: 'ACTIVE',
-    tests: 527,
   },
   {
     name: 'LANE',
     tag: 'scheduling',
-    description: 'Priority queue — 6 lanes, retry/DLQ, rate limiting, OpenTelemetry, Python/Node SDK',
+    description: 'Priority queue — multi-lane, retry/DLQ, rate limiting, OpenTelemetry',
     href: '/docs/lane',
-    status: 'ACTIVE',
-    tests: 230,
   },
 ];
 
 const libraries = [
-  { name: 'EVENT', description: 'Pluggable pub/sub with NATS + in-memory', href: '/docs/event', tests: 83 },
-  { name: 'CRON', description: 'Cron scheduling + natural language (EN/CN)', href: '/docs/cron', tests: 79 },
-  { name: 'SEARCH', description: 'Meta search — 8 engines, consensus ranking', href: '/docs/search', tests: 267 },
+  { name: 'EVENT', description: 'Pluggable pub/sub with NATS + in-memory', href: '/docs/event' },
+  { name: 'SEARCH', description: 'Meta search — multiple engines, consensus ranking', href: '/docs/search' },
 ];
-
-function ProgressBar({ value, max }: { value: number; max: number }) {
-  const filled = Math.round((value / max) * 20);
-  const empty = 20 - filled;
-  return (
-    <span className="term-progress">
-      [{'\u2588'.repeat(filled)}{'\u2591'.repeat(empty)}] {value.toLocaleString()}
-    </span>
-  );
-}
 
 export default function HomePage() {
   return (
@@ -126,7 +103,7 @@ export default function HomePage() {
         </p>
 
         <div className="mt-2 mb-8 text-xs" style={{ color: 'var(--term-muted)' }}>
-          version 0.7.0 · 12 crates · 4,516+ tests · MIT license
+          Rust · MIT license
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -155,14 +132,8 @@ export default function HomePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {modules.map((mod) => (
             <Link key={mod.name} href={mod.href} className="term-pane block hover-glitch group">
-              <div className="term-pane-header flex items-center justify-between">
+              <div className="term-pane-header">
                 <span>┌─ {mod.name} ─┐</span>
-                <span
-                  className="text-[0.625rem]"
-                  style={{ color: mod.status === 'ACTIVE' ? 'var(--term-green)' : 'var(--term-amber)' }}
-                >
-                  [{mod.status}]
-                </span>
               </div>
               <div className="p-3">
                 <div className="text-[0.625rem] mb-2" style={{ color: 'var(--term-muted)' }}>
@@ -171,11 +142,6 @@ export default function HomePage() {
                 <p className="text-xs leading-relaxed" style={{ color: 'var(--term-green)', opacity: 0.8 }}>
                   {mod.description}
                 </p>
-                {mod.tests && (
-                  <div className="mt-2 text-[0.625rem]" style={{ color: 'var(--term-muted)' }}>
-                    tests: {mod.tests.toLocaleString()} <span style={{ color: 'var(--term-green)' }}>[OK]</span>
-                  </div>
-                )}
               </div>
             </Link>
           ))}
@@ -194,7 +160,7 @@ export default function HomePage() {
           <span style={{ color: 'var(--term-amber)' }}>root@a3s</span>:~$ ls /lib/
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {libraries.map((lib) => (
             <Link key={lib.name} href={lib.href} className="term-pane block hover-glitch group">
               <div className="p-3 flex items-start gap-2">
@@ -204,45 +170,10 @@ export default function HomePage() {
                   <p className="text-[0.6875rem] mt-0.5" style={{ color: 'var(--term-muted)' }}>
                     {lib.description}
                   </p>
-                  <div className="text-[0.625rem] mt-1" style={{ color: 'var(--term-muted)' }}>
-                    tests: {lib.tests} <span style={{ color: 'var(--term-green)' }}>[OK]</span>
-                  </div>
                 </div>
               </div>
             </Link>
           ))}
-        </div>
-      </section>
-
-      {/* Stats */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="text-xs" style={{ color: 'var(--term-muted)' }}>
-          ────────────────────────────────────────────────────────────────────────
-        </div>
-      </div>
-
-      <section className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-10">
-        <div className="mb-4 text-xs" style={{ color: 'var(--term-muted)' }}>
-          <span style={{ color: 'var(--term-amber)' }}>root@a3s</span>:~$ cat /proc/stats
-        </div>
-
-        <div className="term-pane p-4 space-y-2">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-xs">
-            <span className="w-28 shrink-0" style={{ color: 'var(--term-muted)' }}>total_tests</span>
-            <ProgressBar value={4516} max={5000} />
-          </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-xs">
-            <span className="w-28 shrink-0" style={{ color: 'var(--term-muted)' }}>crates</span>
-            <ProgressBar value={12} max={20} />
-          </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-xs">
-            <span className="w-28 shrink-0" style={{ color: 'var(--term-muted)' }}>sdks</span>
-            <ProgressBar value={7} max={10} />
-          </div>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-xs">
-            <span className="w-28 shrink-0" style={{ color: 'var(--term-muted)' }}>platforms</span>
-            <ProgressBar value={7} max={10} />
-          </div>
         </div>
       </section>
 

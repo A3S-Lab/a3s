@@ -9,10 +9,14 @@ Welcome to the A3S documentation. A3S is a secure AI infrastructure ecosystem bu
 
 ## Projects
 
-- [A3S Code](/docs/code) — Multi-session AI coding agent framework with gRPC service, 11 built-in tools, skills, MCP/LSP integration, and defense-in-depth security
+- [A3S Code](/docs/code) — Embeddable AI coding agent library with multi-session support, built-in tools, skills, MCP integration, and defense-in-depth security
 - [A3S Box](/docs/box) — MicroVM runtime with TEE support, Docker-compatible CLI, and Kubernetes CRI integration
 - [A3S Gateway](/docs/gateway) — AI-native reverse proxy with multi-protocol support, privacy-aware routing, and token metering
 - [SafeClaw](/docs/safeclaw) — Privacy-focused security proxy for AI agents with PII classification, taint tracking, and TEE integration
+- [A3S Power](/docs/power) — Local LLM inference engine with Ollama and OpenAI compatible API
+- [A3S Lane](/docs/lane) — Per-session priority queue with multi-lane scheduling, retry/DLQ, and rate limiting
+- [A3S Event](/docs/event) — Pluggable event system with provider-agnostic pub/sub and encryption
+- [A3S Search](/docs/search) — Meta search engine with multiple engines and consensus ranking
 
 ## Architecture
 
@@ -26,7 +30,7 @@ Welcome to the A3S documentation. A3S is a secure AI infrastructure ecosystem bu
 │              A3S Box VM                      │
 │  ┌─────────────────┐  ┌──────────────────┐  │
 │  │    SafeClaw      │  │    A3S Code      │  │
-│  │  (security proxy)│◄─│  (agent service) │  │
+│  │  (security proxy)│◄─│  (agent library) │  │
 │  └─────────────────┘  └──────────────────┘  │
 │         TEE memory encryption (optional)     │
 └──────────────────────────────────────────────┘

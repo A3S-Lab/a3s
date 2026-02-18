@@ -51,7 +51,7 @@ independent steps execute **in parallel** via wave-based scheduling (`tokio::Joi
                 └──────────────────┬───────────────────────────┘
                                    │
                 ┌──────────────────▼───────────────────────────┐
-                │           a3s-box MicroVM (v0.4.0)            │
+                │              a3s-box MicroVM                   │
                 │  VM isolation always · TEE (SEV-SNP / TDX)    │
                 │                                              │
                 │  ┌────────────────────────────────────────┐  │
