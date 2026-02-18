@@ -157,10 +157,10 @@ Location: `crates/code/sdk/python/examples/`
 
 **File:** `integration_tests.py`
 
-Complete Python SDK test suite.
+Complete Python SDK test suite with 8 tests.
 
 ```python
-from a3s_code import Agent, SessionQueueConfig
+from a3s_code import Agent, SessionQueueConfig, builtin_skills
 
 # Create agent from config file
 agent = Agent.create("~/.a3s/config.hcl")
@@ -190,6 +190,39 @@ pip install -e .
 python examples/integration_tests.py
 ```
 
+### Built-in Skills
+
+```python
+from a3s_code import Agent, builtin_skills
+
+# List available skills
+skills = builtin_skills()
+print(f"Available skills: {len(skills)}")
+for skill in skills:
+    print(f"  - {skill.name} ({skill.kind}): {skill.description}")
+
+# Create session with builtin skills enabled
+agent = Agent.create("~/.a3s/config.hcl")
+session = agent.session(".", builtin_skills=True)
+
+# Use code-search skill
+result = session.send("Search for all functions named 'new' in Rust files")
+print(result.text)
+
+# Use builtin-tools skill
+result = session.send("What tools are available for file operations?")
+print(result.text)
+```
+
+**Available Skills:**
+- **code-search** - Search codebase for patterns, functions, or types
+- **code-review** - Review code for best practices and improvements
+- **explain-code** - Explain how code works in clear terms
+- **find-bugs** - Identify potential bugs and vulnerabilities
+- **builtin-tools** - Documentation for built-in tools
+- **delegate-task** - Guide for delegating tasks to sub-agents
+- **find-skills** - Discover and install agent skills
+
 ### Queue Configuration
 
 ```python
@@ -206,6 +239,40 @@ session = agent.session(".", queue_config=queue_config)
 if session.has_queue():
     stats = session.queue_stats()
     print(f"Queue stats: {stats}")
+```
+
+### Web Search Configuration
+
+**File:** `test_search_config.py`
+
+Configure A3S Search v0.7.0 engines.
+
+```python
+from a3s_code import Agent, SearchConfig, SearchEngineConfig, SearchHealthConfig
+
+# Create custom search config
+search_config = SearchConfig(timeout=30)
+
+# Configure health monitoring
+health = SearchHealthConfig(max_failures=3, suspend_seconds=60)
+search_config.health = health
+
+# Configure engines
+ddg_config = SearchEngineConfig(enabled=True, weight=1.5, timeout=None)
+search_config.set_engine("ddg", ddg_config)
+
+wiki_config = SearchEngineConfig(enabled=True, weight=1.2, timeout=None)
+search_config.set_engine("wiki", wiki_config)
+
+brave_config = SearchEngineConfig(enabled=True, weight=1.0, timeout=20)
+search_config.set_engine("brave", brave_config)
+
+print(f"Engines configured: {', '.join(search_config.engine_names())}")
+```
+
+**Run:**
+```bash
+python examples/test_search_config.py
 ```
 
 ### Conversation History
@@ -230,10 +297,10 @@ Location: `crates/code/sdk/node/examples/`
 
 **File:** `integration_tests.js`
 
-Complete Node.js SDK test suite.
+Complete Node.js SDK test suite with 8 tests.
 
 ```javascript
-const { Agent } = require('@a3s/code');
+const { Agent, builtinSkills } = require('@a3s/code');
 
 async function main() {
   // Create agent from config file
@@ -271,14 +338,111 @@ npm run build
 node examples/integration_tests.js
 ```
 
+### Built-in Skills
+
+```javascript
+const { Agent, builtinSkills } = require('@a3s/code');
+
+// List available skills
+const skills = builtinSkills();
+console.log(`Available skills: ${skills.length}`);
+skills.forEach(skill => {
+  console.log(`  - ${skill.name} (${skill.kind}): ${skill.description}`);
+});
+
+// Create session with builtin skills enabled
+const agent = await Agent.create('~/.a3s/config.hcl');
+const session = agent.session('.', { builtinSkills: true });
+
+// Use code-search skill
+const result1 = await session.send('Search for all functions named "new" in Rust files');
+console.log(result1.text);
+
+// Use builtin-tools skill
+const result2 = await session.send('What tools are available for file operations?');
+console.log(result2.text);
+```
+
+**Available Skills:**
+- **code-search** - Search codebase for patterns, functions, or types
+- **code-review** - Review code for best practices and improvements
+- **explain-code** - Explain how code works in clear terms
+- **find-bugs** - Identify potential bugs and vulnerabilities
+- **builtin-tools** - Documentation for built-in tools
+- **delegate-task** - Guide for delegating tasks to sub-agents
+- **find-skills** - Discover and install agent skills
+
+### Queue Configuration
+
+```javascript
+// Create session with queue configuration
+const session = agent.session('.', {
+  queueConfig: {
+    queryConcurrency: 5,
+    executeConcurrency: 2,
+    enableDlq: true,
+    enableMetrics: true,
+    enableAllFeatures: false
+  }
+});
+
+const result = await session.send('List all .rs files and count how many contain "async"');
+console.log(result.text);
+```
+
+### Web Search Configuration
+
+**File:** `test_search_config.js`
+
+Configure A3S Search v0.7.0 engines.
+
+```javascript
+// Create custom search config
+const searchConfig = {
+  timeout: 30,
+  health: {
+    maxFailures: 3,
+    suspendSeconds: 60
+  },
+  engines: {
+    ddg: {
+      enabled: true,
+      weight: 1.5,
+      timeout: null
+    },
+    wiki: {
+      enabled: true,
+      weight: 1.2,
+      timeout: null
+    },
+    brave: {
+      enabled: true,
+      weight: 1.0,
+      timeout: 20
+    }
+  }
+};
+
+console.log('Search config created:');
+console.log(`  Timeout: ${searchConfig.timeout}s`);
+console.log(`  Engines: ${Object.keys(searchConfig.engines).join(', ')}`);
+```
+
+**Run:**
+```bash
+node examples/test_search_config.js
+```
+
 ### Session Options
 
 ```javascript
 // Create session with custom options
 const session = agent.session('.', {
-  model: 'openai/gpt-4o',  // Override default model
-  skillDirs: ['./skills'], // Custom skill directories
-  agentDirs: ['./agents']  // Custom agent directories
+  model: 'openai/gpt-4o',      // Override default model
+  builtinSkills: true,         // Enable built-in skills
+  skillDirs: ['./skills'],     // Custom skill directories
+  agentDirs: ['./agents'],     // Custom agent directories
+  queueConfig: { /* ... */ }   // Queue configuration
 });
 ```
 
@@ -291,7 +455,8 @@ async function main() {
   const agent = await Agent.create('~/.a3s/config.hcl');
 
   const options: SessionOptions = {
-    model: 'openai/gpt-4o'
+    model: 'openai/gpt-4o',
+    builtinSkills: true
   };
 
   const session = agent.session('.', options);
