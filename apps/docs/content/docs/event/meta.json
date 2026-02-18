@@ -11,6 +11,9 @@
     "encryption",
     "dlq",
     "state",
-    "observability"
+    "observability",
+    "---Advanced---",
+    "routing",
+    "cloudevents"
   ]
 }
