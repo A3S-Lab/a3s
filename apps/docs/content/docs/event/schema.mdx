@@ -10,29 +10,26 @@ A3S Event supports optional schema validation on publish. Register event schemas
 ## Enable Schema Validation
 
 ```rust
-use a3s_event::{EventBus, MemorySchemaRegistry, EventSchema, Compatibility};
-use a3s_event::provider::memory::MemoryProvider;
+use a3s_event::{EventBus, MemoryProvider, MemorySchemaRegistry, EventSchema};
 use std::sync::Arc;
 
-let mut bus = EventBus::new(MemoryProvider::default());
-
-let mut registry = MemorySchemaRegistry::new();
+let registry = MemorySchemaRegistry::new();
 
 registry.register(EventSchema {
     event_type: "order.created".into(),
     version: 1,
     required_fields: vec!["order_id".into(), "total".into()],
-    compatibility: Compatibility::Backward,
-});
+    description: "Order creation event".into(),
+})?;
 
 registry.register(EventSchema {
     event_type: "order.shipped".into(),
     version: 1,
     required_fields: vec!["order_id".into(), "tracking_number".into()],
-    compatibility: Compatibility::Backward,
-});
+    description: "Order shipped event".into(),
+})?;
 
-bus.set_schema_registry(Arc::new(registry));
+let bus = EventBus::with_schema_registry(MemoryProvider::default(), Arc::new(registry));
 ```
 
 ## Validation on Publish
@@ -46,8 +43,8 @@ use a3s_event::Event;
 let event = Event::typed(
     "events.orders.created", "orders",
     "order.created", 1,
-    "New order", "order-service",
-    serde_json::json!({"order_id": "ORD-001", "total": 99.99}),
+    "New order ORD-001", "order-service",
+    serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
 );
 bus.publish_event(&event).await?;
 
@@ -55,14 +52,13 @@ bus.publish_event(&event).await?;
 let bad_event = Event::typed(
     "events.orders.created", "orders",
     "order.created", 1,
-    "New order", "order-service",
-    serde_json::json!({"order_id": "ORD-001"}),
+    "New order ORD-002", "order-service",
+    serde_json::json!({ "order_id": "ORD-002" }),
 );
-let result = bus.publish_event(&bad_event).await;
-assert!(result.is_err());
+assert!(bus.publish_event(&bad_event).await.is_err());
 ```
 
-Events without an `event_type` (created via `Event::new()`) skip schema validation.
+Events created with `Event::new()` have an empty `event_type` and skip schema validation.
 
 ## Schema Evolution
 
@@ -74,16 +70,16 @@ registry.register(EventSchema {
     event_type: "order.created".into(),
     version: 1,
     required_fields: vec!["order_id".into(), "total".into()],
-    compatibility: Compatibility::Backward,
-});
+    description: "Initial schema".into(),
+})?;
 
 // Version 2: added "currency" field
 registry.register(EventSchema {
     event_type: "order.created".into(),
     version: 2,
     required_fields: vec!["order_id".into(), "total".into(), "currency".into()],
-    compatibility: Compatibility::Backward,
-});
+    description: "Added currency field".into(),
+})?;
 ```
 
 ## Compatibility Checking
@@ -91,7 +87,9 @@ registry.register(EventSchema {
 Check whether a new schema version is compatible with an existing one:
 
 ```rust
-let compat = registry.check_compatibility("order.created", 1, 2);
+use a3s_event::Compatibility;
+
+let compat = registry.check_compatibility("order.created", 1, 2)?;
 
 match compat {
     Compatibility::Backward => println!("New version can read old data"),
@@ -115,14 +113,29 @@ match compat {
 Implement custom registries (e.g., backed by a database):
 
 ```rust
-use a3s_event::{SchemaRegistry, EventSchema, Compatibility};
+use a3s_event::{SchemaRegistry, EventSchema, Compatibility, Event};
+use a3s_event::Result;
 
 pub trait SchemaRegistry: Send + Sync {
-    fn register(&mut self, schema: EventSchema);
-    fn validate(&self, event_type: &str, version: u32, payload: &serde_json::Value) -> Result<()>;
-    fn get(&self, event_type: &str, version: u32) -> Option<&EventSchema>;
-    fn check_compatibility(&self, event_type: &str, old_version: u32, new_version: u32) -> Compatibility;
-    fn all_schemas(&self) -> Vec<&EventSchema>;
+    /// Register a schema for an event type at a specific version
+    fn register(&self, schema: EventSchema) -> Result<()>;
+
+    /// Get the schema for an event type at a specific version
+    fn get(&self, event_type: &str, version: u32) -> Result<Option<EventSchema>>;
+
+    /// Get the latest schema version for an event type
+    fn latest_version(&self, event_type: &str) -> Result<Option<u32>>;
+
+    /// List all registered event types
+    fn list_types(&self) -> Result<Vec<String>>;
+
+    /// Validate an event's payload against its registered schema
+    fn validate(&self, event: &Event) -> Result<()>;
+
+    /// Check compatibility between two schema versions
+    fn check_compatibility(
+        &self, event_type: &str, old_version: u32, new_version: u32,
+    ) -> Result<Compatibility>;
 }
 ```
 
@@ -133,7 +146,20 @@ pub trait SchemaRegistry: Send + Sync {
 | `event_type` | `String` | Event type identifier (e.g., `order.created`) |
 | `version` | `u32` | Schema version number |
 | `required_fields` | `Vec<String>` | Fields that must be present in the payload |
-| `compatibility` | `Compatibility` | Compatibility mode for this schema |
+| `description` | `String` | Description of this schema version |
+
+## Querying the Registry
+
+```rust
+// Get a specific schema
+let schema = registry.get("order.created", 1)?;
+
+// Get the latest version number
+let latest = registry.latest_version("order.created")?;
+
+// List all registered event types
+let types = registry.list_types()?;
+```
 
 ## Validation Order
 

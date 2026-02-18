@@ -12,17 +12,16 @@ A3S Event can persist subscription filters to disk so that subscriptions are aut
 ### File-Based (Production)
 
 ```rust
-use a3s_event::{EventBus, FileStateStore};
-use a3s_event::provider::memory::MemoryProvider;
+use a3s_event::{EventBus, MemoryProvider, FileStateStore};
 use std::sync::Arc;
 
 let mut bus = EventBus::new(MemoryProvider::default());
 
-let store = FileStateStore::new("./state/event-bus.json").await?;
-bus.set_state_store(Arc::new(store));
+let store = FileStateStore::new("./state/event-bus.json");
+bus.set_state_store(Arc::new(store))?;
 ```
 
-`FileStateStore` uses atomic writes (write to temp file, then rename) to prevent corruption.
+`set_state_store()` immediately loads any previously saved subscriptions and re-registers them.
 
 ### Memory-Based (Testing)
 
@@ -30,20 +29,20 @@ bus.set_state_store(Arc::new(store));
 use a3s_event::MemoryStateStore;
 
 let store = MemoryStateStore::new();
-bus.set_state_store(Arc::new(store));
+bus.set_state_store(Arc::new(store))?;
 ```
 
 ## How It Works
 
-1. **On `set_state_store()`** — Loads any saved subscriptions from disk and re-subscribes
-2. **On `update_subscription()`** — Saves the updated filter set to disk
-3. **On `remove_subscription()`** — Saves the updated filter set to disk
+```
+Process start → set_state_store() → load saved filters → re-register subscriptions → ready
+                                                                    ↓
+Process running → update_subscription() / remove_subscription() → auto-save to store
+```
 
-```
-Process start → load state → re-subscribe → ready
-                                ↓
-Process running → subscribe/update/remove → auto-save
-```
+1. On `set_state_store()` — Loads saved subscriptions from the store and populates the in-memory map
+2. On `update_subscription()` — Saves the full subscription map to the store
+3. On `remove_subscription()` — Saves the updated map to the store
 
 ## StateStore Trait
 
@@ -51,12 +50,15 @@ Implement custom state backends:
 
 ```rust
 use a3s_event::{StateStore, SubscriptionFilter};
-use async_trait::async_trait;
+use a3s_event::Result;
+use std::collections::HashMap;
 
-#[async_trait]
 pub trait StateStore: Send + Sync {
-    async fn save(&self, filters: &[SubscriptionFilter]) -> Result<()>;
-    async fn load(&self) -> Result<Vec<SubscriptionFilter>>;
+    /// Save all subscription filters (keyed by subscriber_id)
+    fn save(&self, subscriptions: &HashMap<String, SubscriptionFilter>) -> Result<()>;
+
+    /// Load all subscription filters
+    fn load(&self) -> Result<HashMap<String, SubscriptionFilter>>;
 }
 ```
 
@@ -68,19 +70,19 @@ struct RedisStateStore {
     key: String,
 }
 
-#[async_trait]
 impl StateStore for RedisStateStore {
-    async fn save(&self, filters: &[SubscriptionFilter]) -> Result<()> {
-        let json = serde_json::to_string(filters)?;
-        self.client.set(&self.key, &json).await?;
+    fn save(&self, subscriptions: &HashMap<String, SubscriptionFilter>) -> Result<()> {
+        let json = serde_json::to_string(subscriptions)?;
+        // redis SET (blocking — use in sync context or wrap with block_on)
+        self.client.set(&self.key, &json)?;
         Ok(())
     }
 
-    async fn load(&self) -> Result<Vec<SubscriptionFilter>> {
-        let json: Option<String> = self.client.get(&self.key).await?;
+    fn load(&self) -> Result<HashMap<String, SubscriptionFilter>> {
+        let json: Option<String> = self.client.get(&self.key)?;
         match json {
             Some(data) => Ok(serde_json::from_str(&data)?),
-            None => Ok(vec![]),
+            None => Ok(HashMap::new()),
         }
     }
 }
@@ -88,7 +90,7 @@ impl StateStore for RedisStateStore {
 
 ## FileStateStore Details
 
-- **Format**: Pretty-printed JSON (camelCase field names)
+- **Format**: Pretty-printed JSON (human-readable)
 - **Atomicity**: Writes to a `.tmp` file then renames (prevents partial writes on crash)
 - **Directory**: Auto-creates parent directories if they don't exist
 - **Path**: Configurable, e.g., `./state/event-bus.json`
@@ -96,20 +98,26 @@ impl StateStore for RedisStateStore {
 Example persisted state:
 
 ```json
-[
-  {
+{
+  "order-processor": {
     "subscriberId": "order-processor",
     "subjects": ["events.orders.>"],
     "durable": true
   },
-  {
+  "analytics": {
     "subscriberId": "analytics",
-    "subjects": ["events.market.>", "events.system.>"],
-    "durable": false,
-    "options": {
-      "deliverPolicy": {"type": "New"},
-      "maxDeliver": 3
-    }
+    "subjects": ["events.>"],
+    "durable": false
   }
-]
+}
+```
+
+## Accessors
+
+```rust
+// Check if a state store is configured
+if let Some(store) = bus.state_store() {
+    let filters = store.load()?;
+    println!("{} persisted subscriptions", filters.len());
+}
 ```

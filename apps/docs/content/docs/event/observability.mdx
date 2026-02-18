@@ -18,31 +18,31 @@ let metrics = bus.metrics();
 let snapshot = metrics.snapshot();
 
 println!("Published: {}", snapshot.publish_count);
+println!("Publish errors: {}", snapshot.publish_errors);
 println!("Subscribed: {}", snapshot.subscribe_count);
 println!("Unsubscribed: {}", snapshot.unsubscribe_count);
-println!("Errors: {}", snapshot.error_count);
 println!("Dead lettered: {}", snapshot.dlq_count);
+println!("Validation errors: {}", snapshot.validation_errors);
 println!("Encrypted: {}", snapshot.encrypt_count);
 println!("Decrypted: {}", snapshot.decrypt_count);
-println!("Validated: {}", snapshot.validation_count);
-println!("Total latency: {}ms", snapshot.publish_latency_ms);
-println!("Max latency: {}ms", snapshot.max_publish_latency_ms);
+println!("Avg latency: {}µs", snapshot.avg_publish_latency_us);
+println!("Max latency: {}µs", snapshot.max_publish_latency_us);
 ```
 
 ### MetricsSnapshot Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `publish_count` | `u64` | Total events published |
+| `publish_count` | `u64` | Total events published successfully |
+| `publish_errors` | `u64` | Total publish failures |
 | `subscribe_count` | `u64` | Total subscriptions created |
 | `unsubscribe_count` | `u64` | Total subscriptions removed |
-| `error_count` | `u64` | Total errors across all operations |
 | `dlq_count` | `u64` | Events sent to dead letter queue |
+| `validation_errors` | `u64` | Schema validation failures |
 | `encrypt_count` | `u64` | Encryption operations |
 | `decrypt_count` | `u64` | Decryption operations |
-| `validation_count` | `u64` | Schema validation operations |
-| `publish_latency_ms` | `u64` | Cumulative publish latency |
-| `max_publish_latency_ms` | `u64` | Maximum single-publish latency |
+| `avg_publish_latency_us` | `u64` | Average publish latency in microseconds |
+| `max_publish_latency_us` | `u64` | Maximum single-publish latency in microseconds |
 
 ### JSON Serialization
 
@@ -56,15 +56,15 @@ let json = serde_json::to_string_pretty(&snapshot)?;
 ```json
 {
   "publishCount": 1042,
+  "publishErrors": 3,
   "subscribeCount": 5,
   "unsubscribeCount": 1,
-  "errorCount": 3,
   "dlqCount": 2,
+  "validationErrors": 1,
   "encryptCount": 1042,
   "decryptCount": 500,
-  "validationCount": 1042,
-  "publishLatencyMs": 15234,
-  "maxPublishLatencyMs": 87
+  "avgPublishLatencyUs": 146,
+  "maxPublishLatencyUs": 8700
 }
 ```
 
@@ -81,7 +81,7 @@ Zeroes all counters. Useful for periodic scraping where you want delta values.
 - All counters use `AtomicU64` with `Ordering::Relaxed` for minimal overhead
 - Max latency uses a lock-free CAS loop (compare-and-swap)
 - Publish latency is measured end-to-end (validation + encryption + provider publish)
-- Error count increments on any failed operation (publish, subscribe, validation, encryption)
+- Average latency is computed from cumulative latency / publish count
 
 ## Tracing Spans
 
@@ -98,20 +98,15 @@ tracing_subscriber::init();
 
 | Operation | Span | Fields |
 |-----------|------|--------|
-| Publish | `event.publish` | `subject`, `event_type`, `version` |
-| Subscribe | `event.subscribe` | `subject`, `filter` |
-| Unsubscribe | `event.unsubscribe` | `subject` |
-| Schema Validate | `event.validate` | `event_type`, `version` |
-| Encrypt | `event.encrypt` | `key_id` |
-| Decrypt | `event.decrypt` | `key_id` |
-| DLQ | `event.dlq` | `subject`, `reason` |
+| Publish | `event.publish` | `event_id`, `subject`, `category`, `provider` |
+| Subscribe | `event.subscribe` | `subscriber`, `subjects`, `durable`, `provider` |
+| Unsubscribe | `event.unsubscribe` | `consumer`, `error` (on failure) |
 
 Example output with `tracing-subscriber`:
 
 ```
-INFO event.publish{subject="events.orders.created" event_type="order.created" version=1}: a3s_event: publishing event
-INFO event.validate{event_type="order.created" version=1}: a3s_event: schema validation passed
-INFO event.encrypt{key_id="key-v1"}: a3s_event: payload encrypted
+INFO event.publish{event_id="evt-abc" subject="events.orders.created" category="orders" provider="memory"}: a3s_event: publishing event
+INFO Subscription updated subscriber="order-processor" subjects=["events.orders.>"] durable=true
 ```
 
 ## Health Check

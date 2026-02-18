@@ -12,8 +12,7 @@ A3S Event provides transparent AES-256-GCM payload encryption. Events are encryp
 ## Enable Encryption
 
 ```rust
-use a3s_event::{EventBus, Aes256GcmEncryptor};
-use a3s_event::provider::memory::MemoryProvider;
+use a3s_event::{EventBus, MemoryProvider, Aes256GcmEncryptor};
 use std::sync::Arc;
 
 let mut bus = EventBus::new(MemoryProvider::default());
@@ -25,11 +24,11 @@ let encryptor = Aes256GcmEncryptor::new("key-v1", key);
 bus.set_encryptor(Arc::new(encryptor));
 ```
 
-Once set, all `publish()` and `publish_event()` calls automatically encrypt the payload. `list_events()` calls automatically decrypt.
+Once set, all `publish()` and `publish_event()` calls automatically encrypt the payload. `list_events()` automatically decrypts.
 
 ## Encrypted Payload Format
 
-Encrypted events use a sealed envelope:
+Encrypted events use a sealed envelope in the `payload` field:
 
 ```json
 {
@@ -40,7 +39,7 @@ Encrypted events use a sealed envelope:
 }
 ```
 
-Each message gets a unique random 12-byte nonce, ensuring that identical payloads produce different ciphertext.
+Each message gets a unique random 12-byte nonce, ensuring identical payloads produce different ciphertext.
 
 ## Key Rotation
 
@@ -71,11 +70,14 @@ Implement custom encryption backends:
 use a3s_event::EventEncryptor;
 
 pub trait EventEncryptor: Send + Sync {
+    /// Encrypt a JSON payload, returning an encrypted envelope as JSON
     fn encrypt(&self, payload: &serde_json::Value) -> Result<serde_json::Value>;
-    fn decrypt(&self, payload: &serde_json::Value) -> Result<serde_json::Value>;
-    fn is_encrypted(&self, payload: &serde_json::Value) -> bool;
+
+    /// Decrypt an encrypted envelope back to the original JSON payload
+    fn decrypt(&self, encrypted: &serde_json::Value) -> Result<serde_json::Value>;
+
+    /// The current active key ID used for encryption
     fn active_key_id(&self) -> &str;
-    fn key_ids(&self) -> Vec<String>;
 }
 ```
 
@@ -84,8 +86,10 @@ pub trait EventEncryptor: Send + Sync {
 ```rust
 use a3s_event::EncryptedPayload;
 
-if EncryptedPayload::is_encrypted(&payload) {
-    println!("This payload is encrypted");
+if EncryptedPayload::is_encrypted(&event.payload) {
+    println!("This payload is encrypted with key: {}",
+        serde_json::from_value::<EncryptedPayload>(event.payload.clone())
+            .unwrap().key_id);
 }
 ```
 

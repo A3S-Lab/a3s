@@ -10,8 +10,7 @@ Events that exceed the maximum delivery count are moved to a dead letter queue (
 ## Enable DLQ
 
 ```rust
-use a3s_event::{EventBus, MemoryDlqHandler};
-use a3s_event::provider::memory::MemoryProvider;
+use a3s_event::{EventBus, MemoryProvider, MemoryDlqHandler};
 use std::sync::Arc;
 
 let mut bus = EventBus::new(MemoryProvider::default());
@@ -22,7 +21,7 @@ bus.set_dlq_handler(Arc::new(dlq));
 
 ## How It Works
 
-When a message has been delivered `max_deliver` times without a successful ack, `should_dead_letter()` returns `true` and the event is routed to the DLQ handler:
+When a message has been delivered `max_deliver` times without a successful ack, the event is routed to the DLQ handler:
 
 ```
 Event delivered → processing fails → redelivered → fails again
@@ -44,12 +43,22 @@ let options = SubscribeOptions {
 
 ```rust
 pub struct DeadLetterEvent {
-    pub event: Event,          // The original event
-    pub reason: String,        // Why it was dead-lettered
-    pub timestamp: u64,        // Unix milliseconds when dead-lettered
-    // Optional fields (for SinkDlqHandler, requires `routing` feature):
+    /// The original received event (includes delivery context)
+    pub event: ReceivedEvent,
+
+    /// Reason the event was sent to DLQ
+    pub reason: String,
+
+    /// Unix timestamp in milliseconds when the event was dead-lettered
+    pub dead_lettered_at: u64,
+
+    /// Original subject the event was published to
     pub original_subject: Option<String>,
-    pub delivery_attempts: Option<u32>,
+
+    /// Number of delivery attempts before dead-lettering
+    pub delivery_attempts: Option<u64>,
+
+    /// Unix timestamp in milliseconds of the first delivery failure
     pub first_failure_at: Option<u64>,
 }
 ```
@@ -60,14 +69,14 @@ pub struct DeadLetterEvent {
 let dlq = bus.dlq_handler().unwrap();
 
 // Count dead letters
-let count = dlq.count().await;
+let count = dlq.count().await?;
 
 // List recent dead letters
-let letters = dlq.list(50).await;
+let letters = dlq.list(50).await?;
 for letter in &letters {
     println!("[{}] {}: {}",
-        letter.timestamp,
-        letter.event.subject,
+        letter.dead_lettered_at,
+        letter.event.event.subject,
         letter.reason);
 }
 ```
@@ -78,13 +87,19 @@ Implement custom DLQ backends (e.g., persist to database, forward to alerting):
 
 ```rust
 use a3s_event::{DlqHandler, DeadLetterEvent};
+use a3s_event::Result;
 use async_trait::async_trait;
 
 #[async_trait]
 pub trait DlqHandler: Send + Sync {
-    async fn handle(&self, dead_letter: DeadLetterEvent) -> Result<()>;
-    async fn list(&self, limit: usize) -> Vec<DeadLetterEvent>;
-    async fn count(&self) -> usize;
+    /// Handle a dead-lettered event
+    async fn handle(&self, event: DeadLetterEvent) -> Result<()>;
+
+    /// Get the number of events currently in the DLQ
+    async fn count(&self) -> Result<usize>;
+
+    /// List recent dead-lettered events
+    async fn list(&self, limit: usize) -> Result<Vec<DeadLetterEvent>>;
 }
 ```
 
@@ -105,21 +120,22 @@ impl DlqHandler for SlackDlqHandler {
             .post(&self.webhook_url)
             .json(&serde_json::json!({
                 "text": format!("DLQ: {} — {}",
-                    dead_letter.event.subject,
+                    dead_letter.event.event.subject,
                     dead_letter.reason)
             }))
             .send()
-            .await?;
+            .await
+            .map_err(|e| EventError::Other(e.to_string()))?;
 
         Ok(())
     }
 
-    async fn list(&self, limit: usize) -> Vec<DeadLetterEvent> {
-        self.memory.list(limit).await
+    async fn count(&self) -> Result<usize> {
+        self.memory.count().await
     }
 
-    async fn count(&self) -> usize {
-        self.memory.count().await
+    async fn list(&self, limit: usize) -> Result<Vec<DeadLetterEvent>> {
+        self.memory.list(limit).await
     }
 }
 ```
@@ -133,13 +149,8 @@ let dlq = MemoryDlqHandler::new(100);
 // When capacity is reached, oldest dead letters are evicted
 ```
 
-## Helper Function
+Default capacity is 1000:
 
 ```rust
-use a3s_event::should_dead_letter;
-
-// Check if an event should be dead-lettered
-if should_dead_letter(delivery_count, max_deliver) {
-    dlq.handle(dead_letter_event).await?;
-}
+let dlq = MemoryDlqHandler::default();
 ```
