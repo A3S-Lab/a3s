@@ -562,6 +562,8 @@ std::fs::create_dir_all(&socket_dir).map_err(|e| {
 
 **Rule 6: Feature-Gated Code Must Be Compiled and Tested** — `cargo build --all-features` must succeed.
 
+**Rule 7: Clean Up Test Artifacts** — Tests MUST NOT leave behind temporary files, directories, sockets, databases, or any other artifacts on the filesystem. Use `tempdir` / `tempfile` for scratch space, and ensure cleanup runs even on test failure (use RAII / `Drop` / `finally` / scope guards). After running tests, verify no leftover artifacts exist. If a test creates files in a known location, it must delete them in a cleanup step or use a directory that is automatically removed.
+
 ### Test File Organization
 
 ```
@@ -603,5 +605,6 @@ cd src && cargo test -p <crate> --lib -- test_name
 - [ ] `just test` passes with all green
 - [ ] No `#[ignore]` tests added for "later"
 - [ ] `cargo build --all-features` succeeds
+- [ ] No test artifacts left on filesystem (temp files, dirs, sockets cleaned up)
 - [ ] Integration tests exist for new service endpoints
 - [ ] Integration tests cover error paths (not found, invalid input)
