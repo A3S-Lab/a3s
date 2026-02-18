@@ -16,9 +16,6 @@
 [submodule "crates/search"]
 	path = crates/search
 	url = git@github.com:A3S-Lab/Search.git
-[submodule "crates/cron"]
-	path = crates/cron
-	url = git@github.com:A3S-Lab/Cron.git
 [submodule "crates/safeclaw"]
 	path = crates/safeclaw
 	url = git@github.com:A3S-Lab/SafeClaw.git

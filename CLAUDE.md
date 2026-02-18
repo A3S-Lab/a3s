@@ -12,24 +12,20 @@ a3s/                            ← THIS IS THE MONOREPO ROOT
 ├── .gitmodules                 # Submodule registry (ALL crates listed here)
 ├── CLAUDE.md                   # This file
 ├── LICENSE                     # MIT license
-├── README.md                   # Project overview, module list, roadmap
+├── README.md                   # Project overview, architecture, project index
 ├── apps/                       # Frontend apps and non-Rust projects
-│   ├── a3s-deep/               # [submodule] git@github.com:A3S-Lab/Deep.git
 │   ├── os/                     # A3S platform (NestJS backend + React frontend + CLI)
 │   └── safeclaw-ui/            # [submodule] git@github.com:A3S-Lab/SafeClawUI.git
 ├── crates/                     # ALL Rust crates live here (submodules or local)
 │   ├── box/                    # [submodule] git@github.com:A3S-Lab/Box.git
-│   ├── code/                   # [submodule] git@github.com:A3S-Lab/Code.git
-│   ├── cron/                   # [submodule] git@github.com:A3S-Lab/Cron.git
+│   ├── code/                   # [submodule] git@github.com:A3S-Lab/Code.git — AI coding agent framework (library, not service)
 │   ├── event/                  # [submodule] git@github.com:A3S-Lab/Event.git
 │   ├── gateway/                # [submodule] git@github.com:A3S-Lab/Gateway.git
 │   ├── lane/                   # [submodule] git@github.com:A3S-Lab/Lane.git
 │   ├── power/                  # [submodule] git@github.com:A3S-Lab/Power.git
-│   ├── privacy/                # Shared PII classification types
+│   ├── common/                 # Shared types: privacy, tools, transport
 │   ├── safeclaw/               # [submodule] git@github.com:A3S-Lab/SafeClaw.git
 │   ├── search/                 # [submodule] git@github.com:A3S-Lab/Search.git
-│   ├── tools-core/             # Core types for tools
-│   ├── transport/              # Shared vsock transport protocol
 │   └── updater/                # [submodule] git@github.com:A3S-Lab/Updater.git
 ├── docs/                       # Documentation and architecture diagrams
 │   └── architecture/           # LikeC4 architecture diagrams
@@ -294,15 +290,23 @@ Example refusals:
 
 ### Core Principles (Must Know)
 
-**1. Single Responsibility** — One function, one job
-**2. Boring Code** — Obvious > clever
-**3. Search Before Implement** — grep before writing, read before coding
-**4. Only What's Used** — No future-proofing, delete dead code immediately
-**5. DRY** — Don't Repeat Yourself (single source of truth)
-**6. Explicit Errors** — Self-documenting error messages
-**7. Periodic Pruning** — After every feature, audit for organic cruft
+**1. Minimal Core + External Extensions (First Principles Architecture)** — MANDATORY for all new modules and features
+   - **Core**: Minimal, stable, non-replaceable components (5-10 max)
+   - **Extensions**: Everything else is replaceable via traits with default implementations
+   - **Rule**: Before adding ANY code, ask "Is this core or extension?"
+   - **Example**: A3S Code has 5 core components (Agent, AgentSession, AgentLoop, ToolExecutor, LlmClient) + 14 extension points (Security, Permissions, Context, Memory, Skills, Hooks, etc.)
+   - **Test**: Can this be replaced without changing core? If yes, it's an extension. If no, justify why it must be core.
+   - **Default**: All extensions MUST have working default implementations — system works out of the box
 
-### Periodic Pruning (MANDATORY — Rule 7)
+**2. Single Responsibility** — One function, one job
+**3. Boring Code** — Obvious > clever
+**4. Search Before Implement** — grep before writing, read before coding
+**5. Only What's Used** — No future-proofing, delete dead code immediately
+**6. DRY** — Don't Repeat Yourself (single source of truth)
+**7. Explicit Errors** — Self-documenting error messages
+**8. Periodic Pruning** — After every feature, audit for organic cruft
+
+### Periodic Pruning (MANDATORY — Rule 8)
 
 **Code grows organically. Wrappers accumulate. Abstractions overlap. Nobody goes back to clean up. This rule forces it.**
 
@@ -332,14 +336,92 @@ grep -rn "pub fn\|pub struct\|pub enum\|pub trait" src/changed_module/ | wc -l
 
 ### Supporting Principles (Reference When Needed)
 
-**8. Minimal Knowledge** — Components only know interfaces, not internals
-**9. No Premature Optimization** — Measure first, optimize later
-**10. Explicit Paths** — Calculate from known roots, never assume
-**11. Prepare Before Execute** — Setup before irreversible operations
-**12. Validate Early** — Check preconditions before expensive work
-**13. Thoughtful Naming** — Consider 5+ alternatives, choose the clearest
-**14. Structured Code** — Organized hierarchy, clear layers, predictable organization
-**15. Idiomatic by Default** — Follow each language's standard patterns and libraries first; only diverge with a clear, documented reason
+**9. Minimal Knowledge** — Components only know interfaces, not internals
+**10. No Premature Optimization** — Measure first, optimize later
+**11. Explicit Paths** — Calculate from known roots, never assume
+**12. Prepare Before Execute** — Setup before irreversible operations
+**13. Validate Early** — Check preconditions before expensive work
+**14. Thoughtful Naming** — Consider 5+ alternatives, choose the clearest
+**15. Structured Code** — Organized hierarchy, clear layers, predictable organization
+**16. Idiomatic by Default** — Follow each language's standard patterns and libraries first; only diverge with a clear, documented reason
+
+### First Principles Architecture (MANDATORY — Rule 1)
+
+**Every new module or feature MUST follow the Minimal Core + External Extensions pattern.**
+
+#### The Rule
+
+When designing any new module, system, or feature:
+
+1. **Identify the minimal core** (5-10 components max)
+   - What MUST be stable and non-replaceable?
+   - What is the absolute minimum needed for the system to function?
+   - Core components should be simple, well-tested, and rarely change
+
+2. **Everything else is an extension**
+   - Can this be replaced without changing core? → Extension
+   - Does this add optional functionality? → Extension
+   - Is this a policy/strategy that might vary? → Extension
+
+3. **All extensions MUST be trait-based**
+   - Define clear trait interfaces
+   - Provide working default implementations
+   - System works out of the box, customization is optional
+
+4. **Document the architecture**
+   - Clearly list core components (with justification)
+   - Clearly list extension points (with trait definitions)
+   - Explain why each core component cannot be an extension
+
+#### Example: A3S Code Architecture
+
+**Core Components (5)** — Stable, non-replaceable:
+- `Agent` — Configuration and session management
+- `AgentSession` — Workspace-bound execution context
+- `AgentLoop` — Core execution engine (turn-based LLM interaction)
+- `ToolExecutor` — Tool execution coordinator
+- `LlmClient` — LLM provider abstraction
+
+**Extension Points (14)** — Replaceable via traits:
+- `SecurityProvider` — Input taint, output sanitization
+- `PermissionChecker` — Tool access control
+- `ConfirmationProvider` — Human-in-the-loop confirmation
+- `ContextProvider` — RAG retrieval
+- `SessionStore` — Session persistence
+- `MemoryStore` — Long-term memory
+- `Tool` — Custom tools
+- `Planner` — Task decomposition
+- `HookHandler` — Event handling
+- `HookExecutor` — Event execution
+- `McpTransport` — MCP protocol
+- `HttpClient` — HTTP requests
+- `SessionCommand` — Queue tasks
+- `SkillRegistry` — Skill management
+
+**Why this works:**
+- Core is stable (rarely changes)
+- Extensions can evolve independently
+- Users can replace any extension without touching core
+- System works with defaults, customization is opt-in
+
+#### Anti-Patterns to Avoid
+
+❌ **Everything is core** — No extensibility, hard to customize
+❌ **Everything is an extension** — No stable foundation, too complex
+❌ **Extensions without defaults** — System doesn't work out of the box
+❌ **Core components that should be extensions** — Unnecessary coupling
+
+#### Design Checklist
+
+Before implementing any new module or feature:
+
+- [ ] Identified minimal core (5-10 components max)
+- [ ] Justified why each core component cannot be an extension
+- [ ] Defined trait interfaces for all extensions
+- [ ] Provided working default implementations for all extensions
+- [ ] Verified system works out of the box with defaults
+- [ ] Documented core vs extensions in README/docs
+- [ ] Can explain the architecture in 2 minutes
 
 ### Quick Examples
 
@@ -427,6 +509,13 @@ std::fs::create_dir_all(&socket_dir).map_err(|e| {
 - [ ] Verified no duplicate logic exists
 - [ ] Questioned: "Does this component need to know this?"
 - [ ] Applied Rule #0 to OWN design (not just user's request)
+- [ ] **First Principles Architecture (Rule 1):**
+  - [ ] If new module: Identified minimal core (5-10 components max)
+  - [ ] If new module: Justified why each core component cannot be an extension
+  - [ ] If new module: Defined trait interfaces for all extensions
+  - [ ] If new module: Provided working default implementations
+  - [ ] If new feature: Determined if it's core or extension
+  - [ ] If new feature: If extension, implemented as trait with default
 
 **Core Principles:**
 

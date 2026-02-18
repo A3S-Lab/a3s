@@ -1,5 +1,6 @@
 # Rust
 /target/
+**/target/
 **/*.rs.bk
 *.pdb
 Cargo.lock
@@ -33,9 +34,6 @@ Thumbs.db
 # Apps
 apps/os/
 
-# A3S
-.a3s/config.json
-# Build artifacts
-crates/code-core/target/
-crates/code-py/target/
-crates/code-node/target/
+# A3S runtime data & config (contains API keys)
+.a3s/
+config.hcl
