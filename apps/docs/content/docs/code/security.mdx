@@ -1,26 +1,22 @@
 ---
 title: Security
-description: Permissions, HITL confirmation, injection defense, workspace boundaries, and secret management
+description: Permission system, HITL confirmation, and extensible security traits
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Security
 
-A3S Code includes multiple layers of security hardening to protect against prompt injection, tool misuse, and data leakage. The `SecurityGuard` orchestrates all security checks per-session.
+A3S Code provides two built-in security layers: **Permission Policy** and **Human-in-the-Loop (HITL) Confirmation**. Additional security logic can be implemented via the `SecurityProvider` trait and `HookEngine`.
 
 ## Security Architecture
 
-When the agent wants to execute a tool, the following checks happen in order. Any layer can block the call — all layers must pass for execution to proceed.
-
 ```
-User Prompt → SecurityGuard
-                ├── InjectionDetector (pre-LLM)
-                ├── PermissionPolicy (pre-tool)       ← Deny → Allow → Ask → Default
-                ├── HITL Confirmation (pre-tool)       ← independent of permissions
-                ├── ToolInterceptor (pre-tool)         ← hard-block dangerous patterns
-                ├── WorkspaceBoundary (pre-tool)
-                ├── OutputSanitizer (post-LLM)
-                ├── TaintTracker (runtime)
-                └── AuditLog (all events)
+User Prompt → Agent Loop
+  ├─ Permission Policy    ← Deny → Allow → Ask → Default
+  ├─ HITL Confirmation    ← Independent of permissions
+  ├─ Tool Execution
+  └─ SecurityProvider     ← Pluggable via trait (taint tracking, sanitization, etc.)
 ```
 
 ## Permission Policy
@@ -45,9 +41,9 @@ Tool(pattern)
 
 | Pattern | Matches |
 |---------|---------|
-| `Bash(rm -rf:*)` | Any bash command starting with `rm -rf` |
-| `Read(src/**)` | Read operations on any file under `src/` |
-| `Write(*)` | All write operations |
+| `bash(rm -rf:*)` | Any bash command starting with `rm -rf` |
+| `read(src/**)` | Read operations on any file under `src/` |
+| `write(*)` | All write operations |
 | `mcp__pencil` | All `mcp__pencil__*` tools (prefix matching) |
 
 Wildcards: `*` matches any character except `/`, `**` matches including `/`, `:*` matches any suffix.
@@ -56,53 +52,91 @@ Wildcards: `*` matches any character except `/`, `**` matches including `/`, `:*
 
 | Preset | Behavior |
 |--------|----------|
-| `PermissionPolicy::permissive()` | Allow all tools by default |
+| `PermissionPolicy::permissive()` | Allow all tools by default (default) |
 | `PermissionPolicy::strict()` | Deny all tools by default |
 
 ### Building a Custom Policy
 
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
 ```rust
-use a3s_code_core::permissions::{PermissionPolicy, PermissionRule};
+use a3s_code_core::permissions::PermissionPolicy;
 
 let policy = PermissionPolicy::new()
-    .deny(PermissionRule::new("Bash(rm -rf:*)"))
-    .deny(PermissionRule::new("Bash(curl:*|sh)"))
-    .allow(PermissionRule::new("Read(src/**)"))
-    .allow(PermissionRule::new("Glob(*)"))
-    .ask(PermissionRule::new("Write(*)"))
-    .ask(PermissionRule::new("Bash(*)"));
-```
+    .deny("bash(rm -rf:*)")
+    .deny("bash(curl:*|sh)")
+    .allow("read(*)")
+    .allow("glob(*)")
+    .allow("grep(*)")
+    .ask("write(*)")
+    .ask("bash(*)");
 
-Tool-specific argument extraction: `Bash` matches on command, `Read`/`Write`/`Edit` match on file_path, `Glob` matches on pattern, `Grep` matches on pattern and path.
+// Apply to session
+session.set_permission_policy(policy).await;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const { PermissionPolicy } = require('@a3s-lab/code');
+
+const policy = new PermissionPolicy()
+  .deny('bash(rm -rf:*)')
+  .deny('bash(curl:*|sh)')
+  .allow('read(*)')
+  .allow('glob(*)')
+  .allow('grep(*)')
+  .ask('write(*)')
+  .ask('bash(*)');
+
+await session.setPermissionPolicy(policy);
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import PermissionPolicy
+
+policy = PermissionPolicy()
+policy.deny("bash(rm -rf:*)")
+policy.deny("bash(curl:*|sh)")
+policy.allow("read(*)")
+policy.allow("glob(*)")
+policy.allow("grep(*)")
+policy.ask("write(*)")
+policy.ask("bash(*)")
+
+session.set_permission_policy(policy)
+```
+</Tab>
+</Tabs>
+
+### Evaluation Order
+
+Rules are evaluated in this order:
+
+1. **Deny rules** — If any deny rule matches, block immediately
+2. **Allow rules** — If any allow rule matches, permit
+3. **Ask rules** — If any ask rule matches, trigger HITL confirmation
+4. **Default policy** — If no rules match, use the default (permissive or strict)
+
+Example:
+
+```rust
+let policy = PermissionPolicy::new()
+    .deny("bash(rm -rf:*)")      // Block destructive commands
+    .allow("bash(git *)")         // Allow git commands
+    .ask("bash(*)")               // Ask for all other bash commands
+    .allow("read(*)")             // Allow all reads
+    .ask("write(*)");             // Ask for all writes
+```
 
 ## Human-in-the-Loop (HITL)
 
-HITL is **independent** of the permission system. Even if a tool is `allow`-ed by permissions, it still goes through the HITL check when `ConfirmationPolicy` is enabled. This provides defense-in-depth.
+HITL confirmation is **independent** of the permission system. Even if a tool is `allow`ed by permissions, HITL can still require user confirmation.
 
-### ConfirmationPolicy
+### Configuration
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | bool | `false` | Whether HITL is active |
-| `default_timeout_ms` | u64 | `30000` | Timeout for user response (30s) |
-| `timeout_action` | TimeoutAction | `Reject` | What to do on timeout |
-| `yolo_lanes` | HashSet&lt;SessionLane&gt; | `{}` | Lanes that skip confirmation |
-
-### Timeout Actions
-
-| Action | Behavior |
-|--------|----------|
-| `Reject` | Reject the tool call on timeout (default, recommended) |
-| `AutoApprove` | Auto-approve on timeout (use with caution) |
-
-### Confirmation Flow
-
-When a tool requires confirmation, the agent:
-
-1. Emits `ConfirmationRequired` event with tool name, args, and timeout
-2. Waits for user response or timeout
-3. Emits `ConfirmationReceived` (approved/denied with reason) or `ConfirmationTimeout` (with action taken)
-
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
 ```rust
 use a3s_code_core::hitl::{ConfirmationPolicy, TimeoutAction};
 
@@ -110,98 +144,189 @@ let hitl = ConfirmationPolicy {
     enabled: true,
     default_timeout_ms: 30_000,
     timeout_action: TimeoutAction::Reject,
-    yolo_lanes: HashSet::new(),
-};
-```
-
-### YOLO Mode
-
-Tools executed in YOLO lanes skip HITL confirmation even when the permission policy returns `Ask`. This is useful for lane-based automation where human oversight isn't practical.
-
-```rust
-use a3s_code_core::queue::SessionLane;
-
-let hitl = ConfirmationPolicy {
-    enabled: true,
-    yolo_lanes: HashSet::from([SessionLane::Execute, SessionLane::Query]),
     ..Default::default()
 };
-// Tools in Execute and Query lanes auto-approve without confirmation
+
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_confirmation_policy(hitl)
+))?;
 ```
-
-Available lanes: `Control`, `Query`, `Execute`, `Generate`.
-
-## Indirect Prompt Injection Defense
-
-A3S Code scans tool outputs for injection attempts using a `PostToolUse` hook. When a tool returns content that contains suspicious patterns (e.g., instructions to the LLM embedded in file contents), the scanner flags it before the content reaches the LLM.
-
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/project', {
+  confirmationPolicy: {
+    enabled: true,
+    timeoutMs: 30000,
+    timeoutAction: 'reject',
+  },
+});
 ```
-Tool Output → PostToolUse Hook → Injection Scanner
-                                    ├── Clean → pass to LLM
-                                    └── Suspicious → flag + warn
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import ConfirmationPolicy
+
+session = agent.session("/project",
+    confirmation_policy=ConfirmationPolicy(
+        enabled=True,
+        timeout_ms=30000,
+        timeout_action="reject",
+    ))
 ```
+</Tab>
+</Tabs>
 
-This protects against attacks where malicious content in files, web pages, or API responses tries to hijack the agent's behavior.
+### Handling Confirmation Events
 
-## Builtin Tool Shadowing Prevention
-
-Custom tools and MCP tools cannot shadow built-in tool names. If a skill or MCP server registers a tool with the same name as a built-in (e.g., `Bash`, `Read`, `Write`), the registration is rejected. This prevents malicious tools from intercepting sensitive operations.
-
-## Workspace Boundary Enforcement
-
-All file operations are restricted to the session's workspace directory. The boundary check resolves symlinks to prevent escape via symbolic links:
-
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+let (mut rx, _handle) = session.stream("Clean up old logs").await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::ConfirmationRequired { tool_id, tool_name, args, .. } => {
+            println!("🔒 Approve '{tool_name}'? {args:?}");
+            // Approve or reject
+            session.respond_confirmation(&tool_id, true, None).await;
+        }
+        AgentEvent::PermissionDenied { tool_name, reason, .. } => {
+            println!("🚫 {tool_name} blocked: {reason}");
+        }
+        AgentEvent::TextDelta { text } => print!("{text}"),
+        AgentEvent::End { .. } => break,
+        _ => {}
+    }
+}
 ```
-Read("/project/src/main.rs")     → ✅ within workspace
-Read("/project/link-to-etc")     → resolves symlink → /etc/passwd → ❌ blocked
-Read("../../etc/passwd")         → resolves to /etc/passwd → ❌ blocked
+</Tab>
+<Tab value="TypeScript">
+```typescript
+for await (const event of session.stream('Clean up old logs')) {
+  if (event.type === 'confirmation_required') {
+    console.log(`🔒 Approve '${event.toolName}'?`, event.toolArgs);
+    await session.respondConfirmation(event.toolId, { approved: true });
+  } else if (event.type === 'permission_denied') {
+    console.log(`🚫 ${event.toolName} blocked: ${event.reason}`);
+  } else if (event.type === 'text_delta') {
+    process.stdout.write(event.text);
+  }
+}
 ```
+</Tab>
+<Tab value="Python">
+```python
+for event in session.stream("Clean up old logs"):
+    if event.event_type == "confirmation_required":
+        print(f"🔒 Approve '{event.tool_name}'? {event.tool_args}")
+        session.respond_confirmation(event.tool_id, approved=True)
+    elif event.event_type == "permission_denied":
+        print(f"🚫 {event.tool_name} blocked: {event.reason}")
+    elif event.event_type == "text_delta":
+        print(event.text, end="", flush=True)
+```
+</Tab>
+</Tabs>
 
-Path traversal patterns (`../`) are also validated with `validate_path_safe_id()` to prevent directory escape in identifiers.
+### Timeout Behavior
 
-## SecretString
+| TimeoutAction | Behavior |
+|---------------|----------|
+| `Reject` | Reject the tool call if no response within timeout (default) |
+| `Approve` | Approve the tool call if no response within timeout |
 
-API keys and sensitive credentials are wrapped in `SecretString`, which redacts the value in `Debug` and `Display` output:
+## Workspace Boundaries
+
+All file operations are restricted to the session's workspace directory. Attempts to access files outside the workspace are blocked.
 
 ```rust
-let key = SecretString::new("sk-ant-api03-...");
-println!("{:?}", key);  // [REDACTED]
-println!("{}", key);    // [REDACTED]
-key.expose()            // "sk-ant-api03-..." (explicit access only)
+let session = agent.session("/my-project", None)?;
+
+// ✅ Allowed: within workspace
+session.read_file("src/main.rs").await?;
+
+// ❌ Blocked: outside workspace
+session.read_file("../other-project/secret.txt").await?;
 ```
 
-This prevents accidental leakage of API keys in logs, error messages, and debug output.
+## Extensible Security via Traits
 
-## Output Sanitizer
+A3S Code provides a `SecurityProvider` trait for implementing custom security logic:
 
-The output sanitizer scans LLM responses for PII (personally identifiable information) and redacts it before returning to the user. Integrated with `a3s-common` for classification.
+```rust
+pub trait SecurityProvider: Send + Sync {
+    /// Classify and register sensitive data found in input text
+    fn taint_input(&self, text: &str) {}
 
-## Taint Tracking
+    /// Sanitize output text by redacting sensitive data
+    fn sanitize_output(&self, text: &str) -> String {
+        text.to_string()
+    }
 
-The taint tracker monitors sensitive values as they flow through the system. When a secret value is used in a tool argument, the tracker ensures it doesn't leak into logs or responses.
+    /// Securely wipe all session security state
+    fn wipe(&self) {}
 
-## Tool Interceptor
+    /// Register security hooks with the given engine
+    fn register_hooks(&self, hook_engine: &HookEngine) {}
 
-The tool interceptor blocks dangerous tool invocations based on configurable rules. It runs before the permission system and provides a hard block on known-dangerous patterns:
+    /// Unregister all hooks from the engine
+    fn teardown(&self, hook_engine: &HookEngine) {}
+}
+```
 
-| Pattern | Blocked |
-|---------|---------|
-| `rm -rf /` | Destructive filesystem operations |
-| `curl \| sh` | Remote code execution |
-| `chmod 777` | Overly permissive file permissions |
+### Example: Custom Security Provider
 
-## MCP Tool Timeout
+```rust
+use a3s_code_core::security::SecurityProvider;
+use a3s_code_core::hooks::{HookEngine, HookEvent, HookResult};
 
-MCP tool executions have a configurable timeout (default: 60 seconds). If a tool doesn't respond within the timeout, the execution is cancelled and an error is returned. This prevents hanging MCP servers from blocking the agent.
+struct MySecurityProvider {
+    // Your security state
+}
 
-## Audit Log
+impl SecurityProvider for MySecurityProvider {
+    fn taint_input(&self, text: &str) {
+        // Detect and track sensitive data (SSN, API keys, etc.)
+    }
 
-All security-relevant events are recorded in an in-memory audit log (10,000 entry ring buffer):
+    fn sanitize_output(&self, text: &str) -> String {
+        // Redact sensitive data from LLM output
+        text.replace("sk-ant-", "[REDACTED]")
+    }
 
-- Permission checks (allow/deny/ask)
-- Tool executions and results
-- Injection detection alerts
-- Workspace boundary violations
-- HITL confirmations and timeouts
+    fn register_hooks(&self, hook_engine: &HookEngine) {
+        // Register pre/post tool use hooks for security checks
+        hook_engine.register(/* your hooks */);
+    }
+}
 
-Access via the `SecurityGuard` API or through agent events.
+// Use in session
+let security = Arc::new(MySecurityProvider { /* ... */ });
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_security_provider(security)
+))?;
+```
+
+See [Hooks](/docs/code/hooks) for lifecycle event integration.
+
+## Best Practices
+
+1. **Start with strict policy** — Use `PermissionPolicy::strict()` and explicitly allow only needed tools
+2. **Block dangerous patterns** — Always deny destructive bash commands: `bash(rm -rf:*)`, `bash(curl:*|sh)`
+3. **Enable HITL for writes** — Require confirmation for file modifications and bash execution
+4. **Use workspace boundaries** — Never disable workspace restrictions
+5. **Implement SecurityProvider** — Add custom taint tracking and output sanitization for sensitive data
+6. **Audit logs** — Use hooks to log all tool executions for security review
+
+## Security Events
+
+The agent emits security-related events during streaming:
+
+| Event | When |
+|-------|------|
+| `PermissionDenied` | Tool call blocked by permission policy |
+| `ConfirmationRequired` | HITL confirmation needed |
+| `ConfirmationTimeout` | User didn't respond within timeout |
+| `ConfirmationRejected` | User rejected the tool call |
+
+See [Sessions](/docs/code/sessions) for full event reference.

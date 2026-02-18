@@ -65,10 +65,12 @@ session = agent.session("/my-project", model="openai/gpt-4o")
 | Parameter | Rust | TypeScript | Python | Description |
 |-----------|------|-----------|--------|-------------|
 | Model override | `with_model("provider/model")` | `model: "provider/model"` | `model="provider/model"` | Format: `provider/model` (e.g., `openai/gpt-4o`) |
+| Skill dirs | `with_skill_dir("path")` | `skillDirs: ["path"]` | `skill_dirs=["path"]` | Extra directories to scan for skill files (merged with global `skill_dirs`) |
+| Agent dirs | `with_agent_dir("path")` | `agentDirs: ["path"]` | `agent_dirs=["path"]` | Extra directories to scan for agent files (merged with global `agent_dirs`) |
 
 The model must be defined in the agent's config file under `providers`. The format is `provider_name/model_id`.
 
-> **Note:** `skill_dirs` and `agent_dirs` are configured at the agent level via `CodeConfig`, not per-session. See [Configuration](#configuration) below.
+Global `skill_dirs` and `agent_dirs` are set in the agent config. Per-session dirs merge with the global ones — see [Skills](/docs/code/skills) for details.
 
 ## Send (Non-Streaming)
 

@@ -1,175 +1,45 @@
 ---
 title: A3S Code
-description: Library-first AI coding agent framework — embeddable Rust core with native Node.js and Python bindings, config-driven multi-provider LLM, 14 built-in tools, and defense-in-depth security
+description: Embeddable AI coding agent framework in Rust with native Node.js and Python bindings
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # A3S Code
 
-A3S Code is a high-performance Rust framework for building AI coding agents. It ships as an embeddable library (`a3s-code-core`) with native Python and Node.js bindings.
+**Embeddable AI coding agent framework in Rust** — Build AI agents that can read, write, and execute code with full tool access, planning, and multi-language SDKs.
 
-All subsystems — hooks, security, memory, MCP, subagent delegation, planning — are wired into the core and active by default.
+```rust
+let agent = Agent::new("agent.hcl").await?;
+let session = agent.session("/my-project", None)?;
+let result = session.send("Refactor auth to use JWT").await?;
+```
 
-## Key Features
+## Why A3S Code?
 
-- **Library-First** — Embeddable Rust library, no server needed
-- **Native SDKs** — Node.js (napi-rs) and Python (PyO3) bindings
-- **Config-Driven** — Multi-provider LLM config via HCL or JSON
-- **Session-Per-Workspace** — One Agent serves many workspaces
-- **Per-Session Model Override** — Use different models per session via `provider/model`
-- **14 Built-in Tools** — 11 core tools + 3 skill discovery tools (search_skills, install_skill, load_skill)
-- **Permission System** — Allow/Deny/Ask rules for fine-grained tool access control
-- **Human-in-the-Loop** — Require user confirmation before sensitive operations
-- **Skills System** — Markdown-based prompt-injection skills with runtime discovery and installation
-- **Subagent Delegation** — Delegate specialized tasks to focused child agents
-- **MCP Integration** — External tools via Model Context Protocol (JSON-RPC 2.0, stdio + HTTP+SSE)
-- **8 Lifecycle Hooks** — Pre/post events for tool calls, sessions, messages, and errors
-- **Security** — 5 layers: sanitizer, taint tracking, interceptor, injection detection, audit logging
-- **Memory** — 4 types: episodic, semantic, procedural, working memory
-- **JSON-Structured Planning** — Execution plans with dependency graphs and goal tracking via LlmPlanner
-- **Parallel Plan Execution** — Independent plan steps execute concurrently via wave-based scheduling (`tokio::JoinSet`); dependent steps wait automatically
-- **Lane Queue** — Priority-based tool routing with parallel reads (Query lane) and sequential writes (Execute lane)
-- **External Task Offloading** — Route any lane to `External` mode; tool calls become `ExternalTask` objects that remote workers poll, execute, and complete via callback — enabling multi-machine parallel execution
-- **Context Compaction** — Auto-summarize long conversations (80% threshold)
-- **Context Store** — Persistent semantic search with embeddings (feature-gated: `context-store`)
-- **File History** — Auto-snapshots (500-snapshot capacity) with diff and restore
-- **Cost Tracking** — Per-session token cost calculation with per-model pricing
-- **Thinking Models** — Extended reasoning with `reasoning_content` support
-- **API Retry** — Exponential backoff for transient errors
-- **`#[non_exhaustive]` Events** — AgentEvent uses `#[non_exhaustive]` for safe SDK evolution
+- **Embeddable** — Rust library with Node.js and Python bindings
+- **Production-Ready** — Permission system, HITL confirmation, cost tracking
+- **Extensible** — 10 built-in tools + MCP protocol for external tools
+- **Intelligent** — Parallel plan execution, goal tracking, memory system
 
-## Quick Example
+## Quick Start
 
 <Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 ```rust
-use a3s_code_core::{Agent, AgentEvent, SessionOptions};
+use a3s_code_core::{Agent, AgentEvent};
 
-// Create agent from config file
 let agent = Agent::new("agent.hcl").await?;
-
-// Bind session to workspace
 let session = agent.session("/my-project", None)?;
 
-// Streaming (AgentEvent is #[non_exhaustive] — always include a wildcard arm)
-let (mut rx, _handle) = session.stream("Refactor the auth module").await?;
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::ToolStart { name, .. } => println!("\nTool: {name}"),
-        AgentEvent::End { .. } => break,
-        _ => {} // required: AgentEvent is #[non_exhaustive]
-    }
-}
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-const { Agent } = require('@a3s-lab/code');
-
-// Create agent from config file
-const agent = await Agent.create('agent.hcl');
-
-// Bind session to workspace
-const session = agent.session('/my-project');
+// Non-streaming
+let result = session.send("What files handle auth?").await?;
+println!("{}", result.text);
 
 // Streaming
-const events = await session.stream('Refactor the auth module');
-for (const event of events) {
-  if (event.type === 'text_delta') process.stdout.write(event.text);
-  if (event.type === 'tool_start') console.log(`\nTool: ${event.toolName}`);
-}
-```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import Agent
-
-# Create agent from config file
-agent = Agent.create("agent.hcl")
-
-# Bind session to workspace
-session = agent.session("/my-project")
-
-# Streaming
-for event in session.stream("Refactor the auth module"):
-    if event.event_type == "text_delta":
-        print(event.text, end="", flush=True)
-    elif event.event_type == "tool_start":
-        print(f"\nTool: {event.tool_name}")
-```
-</Tab>
-</Tabs>
-
-## Architecture at a Glance
-
-```
-Your App (Rust / TypeScript / Python)
-  │
-  ▼ Agent.create("agent.hcl")
-┌──────────────────────────────────────────────────────┐
-│  Agent (config-driven, workspace-independent)         │
-│  ┌────────────┬──────────────┬─────────────────────┐ │
-│  │ LlmClient  │  CodeConfig  │   SessionManager    │ │
-│  └────────────┴──────────────┴─────────────────────┘ │
-│                       │                               │
-│        agent.session("/workspace", options)            │
-│                       ▼                               │
-│  ┌──────────────────────────────────────────────┐    │
-│  │  AgentSession (workspace-bound)               │    │
-│  │  ┌─────────┬──────────┬──────────┬─────────┐ │    │
-│  │  │ Agent   │ Tool     │Permission│  LLM    │ │    │
-│  │  │ Loop    │ Executor │ System   │ Provider│ │    │
-│  │  │         │ (14)     │          │         │ │    │
-│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
-│  │  │ Skills  │ Subagent │  Hook    │  MCP    │ │    │
-│  │  │         │          │  Engine  │         │ │    │
-│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
-│  │  │ Llm     │ Security │ Memory   │ File    │ │    │
-│  │  │ Planner │          │          │ History │ │    │
-│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
-│  │  │ Wave    │ Context  │ Cost     │ Cron    │ │    │
-│  │  │Scheduler│Compactor │ Tracking │Scheduler│ │    │
-│  │  └─────────┴──────────┴──────────┴─────────┘ │    │
-│  └──────────────────────────────────────────────┘    │
-└──────────────────────────────────────────────────────┘
-```
-
-## Parallel Plan Execution
-
-Enable planning to decompose complex tasks into steps with a dependency graph. Independent steps execute **in parallel** — no extra configuration needed.
-
-```
-Wave 1: [Analyze auth] + [Analyze DB schema]  ← parallel
-Wave 2: [Implement JWT integration]           ← waits for wave 1
-Wave 3: [Write tests]                         ← waits for wave 2
-```
-
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, AgentEvent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-let session = agent.session("/my-project", Some(
-    SessionOptions::new()
-        .with_planning(true)
-        .with_goal_tracking(true)
-))?;
-
-let (mut rx, _handle) = session.stream("Refactor auth to use JWT and update all tests").await?;
+let (mut rx, _) = session.stream("Refactor auth").await?;
 while let Some(event) = rx.recv().await {
     match event {
-        AgentEvent::StepStart { description, step_number, total_steps, .. } => {
-            println!("[{step_number}/{total_steps}] Starting: {description}");
-        }
-        AgentEvent::StepEnd { status, step_number, total_steps, .. } => {
-            println!("[{step_number}/{total_steps}] {status}");
-        }
-        AgentEvent::GoalProgress { progress, completed_steps, total_steps, .. } => {
-            println!("Progress: {:.0}% ({completed_steps}/{total_steps})", progress * 100.0);
-        }
         AgentEvent::TextDelta { text } => print!("{text}"),
         AgentEvent::End { .. } => break,
         _ => {}
@@ -182,128 +52,262 @@ while let Some(event) = rx.recv().await {
 const { Agent } = require('@a3s-lab/code');
 
 const agent = await Agent.create('agent.hcl');
-const session = agent.session('/my-project', {
-  planning: true,
-  goalTracking: true,
-});
+const session = agent.session('/my-project');
 
-const events = await session.stream('Refactor auth to use JWT and update all tests');
-for (const event of events) {
-  if (event.type === 'step_start')
-    console.log(`[${event.stepNumber}/${event.totalSteps}] Starting: ${event.description}`);
-  if (event.type === 'step_end')
-    console.log(`[${event.stepNumber}/${event.totalSteps}] ${event.status}`);
-  if (event.type === 'goal_progress')
-    console.log(`Progress: ${(event.progress * 100).toFixed(0)}%`);
-  if (event.type === 'text_delta')
+// Non-streaming
+const result = await session.send('What files handle auth?');
+console.log(result.text);
+
+// Streaming
+for await (const event of session.stream('Refactor auth')) {
+  if (event.type === 'text_delta') {
     process.stdout.write(event.text);
-}
-```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import Agent
-
-agent = Agent.create("agent.hcl")
-session = agent.session("/my-project", planning=True, goal_tracking=True)
-
-for event in session.stream("Refactor auth to use JWT and update all tests"):
-    if event.event_type == "step_start":
-        print(f"[{event.step_number}/{event.total_steps}] Starting: {event.description}")
-    elif event.event_type == "step_end":
-        print(f"[{event.step_number}/{event.total_steps}] {event.status}")
-    elif event.event_type == "goal_progress":
-        print(f"Progress: {event.progress:.0%}")
-    elif event.event_type == "text_delta":
-        print(event.text, end="", flush=True)
-```
-</Tab>
-</Tabs>
-
-## External Task Offloading
-
-Route any [lane](/docs/code/lane-queue) to **External** mode to offload tool calls to remote worker machines. The agent loop blocks until your SDK code polls the task, dispatches it to a worker, and feeds the result back.
-
-```
-Coordinator (agent session)          Workers (remote machines)
-  Agent Loop → Lane Queue              ┌─ Worker A ─┐
-    ├─ Query  [Internal] → local       │  bash exec  │
-    ├─ Execute [External] ────────────→│  write exec │
-    └─ Generate [Internal] → local     └─────────────┘
-       pending_external_tasks() → dispatch → complete_external_task()
-```
-
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{
-    Agent, AgentEvent, SessionOptions, SessionQueueConfig,
-    SessionLane, LaneHandlerConfig, TaskHandlerMode, ExternalTaskResult,
-};
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_queue_config(SessionQueueConfig::default().with_lane_features())
-))?;
-
-// Route Execute lane to remote workers
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::External,
-    timeout_ms: 60_000,
-}).await;
-
-let (mut rx, _handle) = session.stream("Run tests and deploy").await?;
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::ExternalTaskPending { .. } => {
-            for task in session.pending_external_tasks().await {
-                let session = session.clone();
-                tokio::spawn(async move {
-                    let result = dispatch_to_worker(&task).await;
-                    session.complete_external_task(&task.task_id, result.into()).await;
-                });
-            }
-        }
-        AgentEvent::End { .. } => break,
-        _ => {}
-    }
-}
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/project', {
-  queueConfig: { enableAllFeatures: true },
-});
-
-await session.setLaneHandler('execute', { mode: 'external', timeoutMs: 60000 });
-
-const events = await session.stream('Run tests and deploy');
-for (const event of events) {
-  if (event.type === 'external_task_pending') {
-    const tasks = await session.pendingExternalTasks();
-    await Promise.all(tasks.map(async (task) => {
-      const result = await dispatchToWorker(task);
-      await session.completeExternalTask(task.task_id, result);
-    }));
   }
 }
 ```
 </Tab>
 <Tab value="Python">
 ```python
-session = agent.session("/project",
-    queue_config=SessionQueueConfig().with_lane_features())
+from a3s_code import Agent
 
-session.set_lane_handler("execute", mode="external", timeout_ms=60000)
+agent = Agent.create("agent.hcl")
+session = agent.session("/my-project")
 
-for event in session.stream("Run tests and deploy"):
-    if event.event_type == "external_task_pending":
-        for task in session.pending_external_tasks():
-            result = dispatch_to_worker(task)
-            session.complete_external_task(task["task_id"], result)
+# Non-streaming
+result = session.send("What files handle auth?")
+print(result.text)
+
+# Streaming
+for event in session.stream("Refactor auth"):
+    if event.event_type == "text_delta":
+        print(event.text, end="", flush=True)
 ```
 </Tab>
 </Tabs>
 
-Three handler modes: **Internal** (local default), **External** (block for callback), **Hybrid** (local + notify). Lanes switch at runtime. See the full guide: [Lane Queue → External Task Handling](/docs/code/lane-queue#external-task-handling).
+## Core Features
+
+### Built-in Tools (10)
+
+**File Operations:** `read`, `write`, `edit`, `patch`, `grep`, `glob`, `ls`
+**Execution:** `bash`
+**Web:** `web_fetch`, `web_search`
+
+See [Tools](/docs/code/tools) for full reference.
+
+### Permission System
+
+```rust
+// Allow/Deny/Ask rules per tool
+session.set_permission_policy(PermissionPolicy::new()
+    .allow("read(*)")
+    .deny("bash(rm -rf:*)")
+    .ask("write(*)")
+).await;
+```
+
+See [Sessions → Permissions](/docs/code/sessions#permissions) for details.
+
+### Planning & Parallel Execution
+
+```rust
+let session = agent.session("/project", Some(
+    SessionOptions::new()
+        .with_planning(true)
+        .with_goal_tracking(true)
+))?;
+
+// Agent decomposes task into parallel steps
+session.send("Refactor auth + update tests").await?;
+```
+
+Independent steps execute in parallel automatically. See [Tasks](/docs/code/tasks) for details.
+
+### Multi-Machine Distribution
+
+```rust
+// Offload tool execution to remote workers
+session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
+    mode: TaskHandlerMode::External,
+    timeout_ms: 120_000,
+}).await;
+
+// Poll for tasks and dispatch to workers
+let tasks = session.pending_external_tasks().await;
+for task in tasks {
+    let result = send_to_remote_worker(&task).await;
+    session.complete_external_task(&task.task_id, result).await;
+}
+```
+
+See [Lane Queue → External Tasks](/docs/code/lane-queue#external-task-handling) for details.
+
+## Advanced Features
+
+<details>
+<summary><b>Human-in-the-Loop (HITL)</b></summary>
+
+```rust
+// Require confirmation before sensitive operations
+let session = agent.session("/project", Some(
+    SessionOptions::new()
+        .with_confirmation_policy(ConfirmationPolicy::enabled())
+))?;
+
+// Agent will emit ConfirmationRequired events
+// Respond via session.confirm_tool(tool_id, approved).await
+```
+
+See [Sessions → HITL](/docs/code/sessions#human-in-the-loop) for details.
+
+</details>
+
+<details>
+<summary><b>Lifecycle Hooks</b></summary>
+
+```rust
+// 8 hook events: PreToolUse, PostToolUse, GenerateStart, GenerateEnd, etc.
+let hook_engine = HookEngine::new();
+hook_engine.register(Hook::new("security-check", HookEventType::PreToolUse));
+
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_hook_engine(hook_engine)
+))?;
+```
+
+See [Hooks](/docs/code/hooks) for details.
+
+</details>
+
+<details>
+<summary><b>Memory System</b></summary>
+
+```rust
+// 4 memory types: episodic, semantic, procedural, working
+session.remember_success("Implemented JWT", &["auth", "security"]).await?;
+let memories = session.recall("authentication").await?;
+```
+
+See [Memory](/docs/code/memory) for details.
+
+</details>
+
+<details>
+<summary><b>MCP Integration</b></summary>
+
+```rust
+// Connect to external tools via Model Context Protocol
+let mcp_client = McpClient::connect_stdio("path/to/mcp-server").await?;
+session.add_mcp_client(mcp_client).await;
+```
+
+See [MCP](/docs/code/mcp) for details.
+
+</details>
+
+<details>
+<summary><b>Cost Tracking</b></summary>
+
+```rust
+// Per-session token cost calculation
+let usage = session.context_usage().await?;
+println!("Cost: ${:.4}", usage.total_cost);
+```
+
+See [Telemetry](/docs/code/telemetry) for details.
+
+</details>
+
+## Configuration
+
+Minimal config file (`agent.hcl`):
+
+```hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = "sk-ant-..."
+}
+```
+
+<details>
+<summary><b>Complete Configuration Example</b></summary>
+
+```hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+max_tool_rounds  = 20
+thinking_budget  = 4096
+storage_backend  = "file"
+sessions_dir     = "/tmp/a3s"
+
+providers {
+  name    = "anthropic"
+  api_key = "sk-ant-..."
+
+  models {
+    id          = "claude-sonnet-4-20250514"
+    name        = "Claude Sonnet 4"
+    tool_call   = true
+    cost {
+      input       = 3.0
+      output      = 15.0
+      cache_read  = 0.3
+      cache_write = 3.75
+    }
+    limit {
+      context = 200000
+      output  = 8192
+    }
+  }
+}
+
+providers {
+  name     = "openai"
+  api_key  = "sk-..."
+  base_url = "https://api.openai.com"
+
+  models {
+    id        = "gpt-4o"
+    name      = "GPT-4o"
+    tool_call = true
+  }
+}
+```
+
+See [Providers](/docs/code/providers) for full reference.
+
+</details>
+
+## Architecture
+
+```
+Agent (config-driven)
+  ├─ LlmClient (Anthropic/OpenAI)
+  ├─ SessionManager (multi-session)
+  └─ AgentSession (workspace-bound)
+       ├─ AgentLoop (execution engine)
+       ├─ ToolExecutor (10 tools)
+       ├─ LlmPlanner (parallel execution)
+       ├─ PermissionSystem
+       ├─ HookEngine (8 events)
+       ├─ Memory (4 types)
+       ├─ MCP (external tools)
+       └─ Cost Tracking
+```
+
+See [Architecture](/docs/code/architecture) for details.
+
+## Documentation
+
+- **[Sessions](/docs/code/sessions)** — Session management, permissions, HITL
+- **[Tasks](/docs/code/tasks)** — Planning, parallel execution, goal tracking
+- **[Tools](/docs/code/tools)** — Built-in tools reference
+- **[Lane Queue](/docs/code/lane-queue)** — Priority routing, external task offloading
+- **[Subagents](/docs/code/subagents)** — Delegate tasks to specialized agents
+- **[Hooks](/docs/code/hooks)** — Lifecycle events and custom logic
+- **[Memory](/docs/code/memory)** — Episodic, semantic, procedural, working memory
+- **[MCP](/docs/code/mcp)** — External tool integration via Model Context Protocol
+- **[Telemetry](/docs/code/telemetry)** — Cost tracking and usage metrics
+- **[Providers](/docs/code/providers)** — LLM provider configuration

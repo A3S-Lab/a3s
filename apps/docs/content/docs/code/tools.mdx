@@ -1,29 +1,28 @@
 ---
 title: Built-in Tools
-description: 14 built-in tools for file operations, shell execution, web access, and skill discovery
+description: 10 built-in tools for file operations, shell execution, search, and web access
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Built-in Tools
 
-A3S Code ships with 14 built-in tools: 11 core tools covering file operations, shell execution, search, and web access, plus 3 skill discovery tools for runtime skill management. All tools are available through the session's agent loop or via direct tool execution.
+A3S Code ships with 10 built-in tools covering file operations, shell execution, search, and web access. All tools execute in-process via native Rust implementations.
 
 ## Tool Reference
 
 | Tool | Purpose | Example |
 |------|---------|---------|
-| `bash` | Execute shell commands | `git status`, `npm install` |
 | `read` | Read files with line numbers | View source code |
 | `write` | Create/overwrite files | Create new files |
 | `edit` | String replacement editing | Modify existing code |
 | `patch` | Apply unified diff patches | Complex multi-line edits |
+| `bash` | Execute shell commands | `git status`, `npm install` |
 | `grep` | Search file contents (ripgrep) | Find function definitions |
 | `glob` | Find files by pattern | `**/*.ts`, `src/**/*.rs` |
 | `ls` | List directory contents | Explore project structure |
 | `web_fetch` | Fetch web content | Download documentation |
 | `web_search` | Search the web | Query multiple search engines |
-| `cron` | Manage scheduled tasks | Create/list/run cron jobs |
 
 ## File Operations
 
@@ -41,7 +40,7 @@ Read file contents with line numbers. Supports offset and limit for large files.
 
 ### `write`
 
-Create or overwrite a file. The tool automatically creates parent directories.
+Create or overwrite a file. Automatically creates parent directories.
 
 ```json
 {
@@ -120,6 +119,13 @@ Execute shell commands. Commands run in the session's workspace directory.
 }
 ```
 
+**Security:** Use [Permission System](/docs/code/sessions#permissions) to control bash access:
+
+```rust
+policy.deny("bash(rm -rf:*)");  // Block destructive commands
+policy.ask("bash(*)");          // Require confirmation for all bash
+```
+
 ## Web
 
 ### `web_fetch`
@@ -142,25 +148,6 @@ Search the web using multiple search engines.
   "engine": "google"
 }
 ```
-
-## Scheduling
-
-### `cron`
-
-Manage scheduled tasks with cron expressions or natural language.
-
-```json
-{
-  "action": "create",
-  "name": "backup",
-  "schedule": "every day at 2am",
-  "command": "backup.sh"
-}
-```
-
-Supported natural language formats:
-- English: `every 5 minutes`, `daily at 2am`, `every monday at 9:30`
-- Chinese: `每5分钟`, `每天凌晨2点`, `每周一上午9点30分`
 
 ## Direct Tool Execution
 
@@ -220,18 +207,6 @@ print(f"[{result['exit_code']}] {result['output']}")
 </Tab>
 </Tabs>
 
-## Skill Discovery
-
-Three native Rust tools for runtime skill management:
-
-| Tool | Purpose |
-|------|---------|
-| `search_skills` | Search GitHub for available skills |
-| `install_skill` | Install a skill from GitHub |
-| `load_skill` | Load and register an installed skill |
-
-These tools allow the agent to discover, install, and activate new skills during a session without requiring a restart.
-
 ## File Version History
 
 All file-modifying tools (`write`, `edit`, `patch`) automatically capture a snapshot before making changes. You can:
@@ -240,9 +215,13 @@ All file-modifying tools (`write`, `edit`, `patch`) automatically capture a snap
 - Restore any previous version
 - Track all modifications made during a session
 
+The file history maintains up to 500 snapshots per session.
+
 ## Extending with Custom Tools
 
-Beyond built-in tools, A3S Code supports:
+Beyond built-in tools, A3S Code supports external tool integration via:
 
-- [Skills](/docs/code/skills) — Markdown-based prompt extensions with tool permissions
-- [Custom Tools](/docs/code/custom-tools) — Binary, HTTP, Script backends and MCP servers
+- **[MCP](/docs/code/mcp)** — Connect external tool servers via Model Context Protocol (JSON-RPC 2.0, stdio + HTTP+SSE)
+- **Custom Tool Trait** — Implement the `Tool` trait in Rust and register with `ToolRegistry`
+
+See [MCP](/docs/code/mcp) for external tool integration examples.

@@ -26,16 +26,16 @@ Your Application (Rust / TypeScript / Python)
 │  │  ┌─────────┬──────────┬──────────┬─────────┐ │    │
 │  │  │ Agent   │ Tool     │Permission│  LLM    │ │    │
 │  │  │ Loop    │ Executor │ System   │ Provider│ │    │
-│  │  │         │ (14)     │          │         │ │    │
+│  │  │         │ (10)     │          │         │ │    │
 │  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
-│  │  │ Skills  │ Subagent │  Hook    │  MCP    │ │    │
+│  │  │ HITL    │ Subagent │  Hook    │  MCP    │ │    │
 │  │  │         │          │  Engine  │         │ │    │
 │  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
 │  │  │ Llm     │ Security │ Memory   │ File    │ │    │
-│  │  │ Planner │          │          │ History │ │    │
+│  │  │ Planner │ Provider │          │ History │ │    │
 │  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
-│  │  │ Wave    │ Context  │ Cost     │ Cron    │ │    │
-│  │  │Scheduler│Compactor │ Tracking │Scheduler│ │    │
+│  │  │ Wave    │ Context  │ Cost     │Telemetry│ │    │
+│  │  │Scheduler│Compactor │ Tracking │         │ │    │
 │  │  └─────────┴──────────┴──────────┴─────────┘ │    │
 │  └──────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────┘
@@ -55,9 +55,9 @@ Native bindings:
 |---------|-------------|
 | **Agent** | Config-driven top-level object. Holds LLM client and config. Workspace-independent. |
 | **AgentSession** | Bound to a specific workspace. All LLM interaction and tool execution happens here. |
-| **SessionOptions** | Optional per-session override: model (`provider/model` format). |
+| **SessionOptions** | Optional per-session override: model (`provider/model` format), planning, HITL, etc. |
 | **AgentLoop** | Core execution engine driving the LLM ↔ tool multi-turn loop. |
-| **ToolExecutor** | Tool registry and execution. Manages 14 tools (11 core + 3 skill discovery). |
+| **ToolExecutor** | Tool registry and execution. Manages 10 built-in tools. |
 | **LlmPlanner** | JSON-structured planning — decomposes complex tasks into execution plans with dependency graphs. |
 | **WaveScheduler** | Groups independent plan steps into waves and executes them in parallel via `JoinSet`. |
 | **AgentEvent** | `#[non_exhaustive]` event enum emitted during streaming — safe for SDK evolution. |
@@ -66,122 +66,34 @@ Native bindings:
 
 The core execution cycle. Each round:
 
-1. **GenerateStart hook** fires — injection detector scans the prompt
+1. **GenerateStart hook** fires (optional)
 2. **LLM call** — streaming to Anthropic or OpenAI-compatible API
-3. **GenerateEnd hook** fires — output sanitizer redacts PII
+3. **GenerateEnd hook** fires (optional)
 4. If LLM returns `tool_use`:
-   - **PreToolUse hook** fires — taint tracker and interceptor check for data leakage
+   - **PreToolUse hook** fires (optional)
    - **Permission check** — Deny → Allow → Ask → Default evaluation
    - **HITL confirmation** — if required, wait for user approval (with timeout)
-   - **Guard policy** — defense-in-depth check on ToolExecutor
+   - **SecurityProvider check** — pluggable security logic via trait
    - **Tool execution** — run the tool, capture output
-   - **PostToolUse hook** fires — audit logging
+   - **PostToolUse hook** fires (optional)
 5. Feed tool result back to LLM, go to step 1
 6. If LLM returns text-only → done
 
 Maximum rounds per generation configurable via `max_tool_rounds` (default: 50).
 
-## Parallel Plan Execution
+## Security Layers
 
-When planning is enabled, the `LlmPlanner` decomposes a complex task into steps with a dependency graph. The wave scheduler then executes independent steps concurrently:
-
-```
-User: "Refactor auth to use JWT and update all tests"
-  │
-  ▼  LlmPlanner decomposes into dependency graph
-┌─────────────────────────────────────────────────┐
-│  ExecutionPlan                                   │
-│                                                  │
-│  ┌──────────────┐  ┌──────────────────┐         │
-│  │ s1: Analyze  │  │ s2: Analyze DB   │  Wave 1 │
-│  │ auth module  │  │ schema           │ (parallel)
-│  └──────┬───────┘  └────────┬─────────┘         │
-│         │                   │                    │
-│         └─────────┬─────────┘                    │
-│                   ▼                              │
-│         ┌─────────────────┐                      │
-│         │ s3: Implement   │              Wave 2  │
-│         │ JWT integration │                      │
-│         └────────┬────────┘                      │
-│                  ▼                               │
-│         ┌─────────────────┐                      │
-│         │ s4: Write tests │              Wave 3  │
-│         └─────────────────┘                      │
-└─────────────────────────────────────────────────┘
-```
-
-The scheduler loop:
-1. `get_ready_steps()` → find steps with all dependencies `Completed`
-2. Single step ready → execute sequentially (full history chain preserved)
-3. Multiple steps ready → spawn all into `tokio::JoinSet` with cloned base history
-4. Collect results → sort deterministically → merge into shared history
-5. Failed steps → dependents become unreachable (deadlock detection breaks the loop)
-6. Emit `GoalProgress` event after each wave
-
-Each parallel step runs its own independent agent loop (LLM calls + tool execution). Results are merged via a sorted summary message so subsequent steps see all prior work.
-
-## External Task Offloading
-
-Any [lane](/docs/code/lane-queue) can be switched to **External** mode at runtime. When a tool call enters an External lane, the queue creates an `ExternalTask` that **blocks the agent loop** until your SDK code polls it, dispatches it to a remote worker, and feeds the result back via `complete_external_task()`.
-
-This enables **multi-machine parallel execution** without changing the agent's planning or tool logic:
-
-```
-┌─────────────────────────────────────────────────────┐
-│ Coordinator (runs agent session)                     │
-│                                                      │
-│  Agent Loop ──→ Lane Queue                           │
-│                   ├─ Query lane  [Internal]           │
-│                   │   └─ read, glob, grep → local     │
-│                   ├─ Execute lane [External]           │
-│                   │   └─ bash, write → ExternalTask   │
-│                   └─ Generate lane [Internal]          │
-│                       └─ LLM calls → local            │
-│                                                      │
-│  pending_external_tasks() ──→ task queue ──→ workers  │
-│  complete_external_task()  ←── results ←── workers    │
-└──────────────────────────┬──────────────────────────┘
-                           │ network (gRPC, HTTP, Redis, etc.)
-          ┌────────────────┼────────────────┐
-          ▼                ▼                ▼
-   ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-   │  Worker A   │ │  Worker B   │ │  Worker C   │
-   └─────────────┘ └─────────────┘ └─────────────┘
-```
-
-### Key APIs
-
-| API | Description |
-|-----|-------------|
-| `set_lane_handler(lane, config)` | Switch a lane to Internal / External / Hybrid mode |
-| `pending_external_tasks()` | Poll for tasks waiting for external execution |
-| `complete_external_task(id, result)` | Feed a worker's result back to the blocked agent loop |
-
-### Handler Modes
-
-| Mode | Behavior |
-|------|----------|
-| **Internal** | Execute within the runtime (default) |
-| **External** | Emit task to SDK, block until callback |
-| **Hybrid** | Execute locally AND notify externally (audit, shadow) |
-
-Lanes can be switched at runtime — start Internal, switch to External when workers come online, switch back when they go offline. See the full guide in [Lane Queue → External Task Handling](/docs/code/lane-queue#external-task-handling).
-
-### Planning + External Execution
-
-When [planning](/docs/code/tasks) is enabled, each plan step goes through the same agent loop and lane queue. External-mode lanes work transparently with execution plans — the planner decomposes the task, the wave scheduler groups independent steps, and each step's tool calls route through the lane queue where External lanes offload to workers.
-
-## Defense-in-Depth Security
-
-Five independent security layers, each capable of blocking a request:
+Two built-in layers, plus extensibility via traits:
 
 | Layer | Component | What it does |
 |-------|-----------|-------------|
 | 1 | Permission Policy | Deny → Allow → Ask → Default rule evaluation with glob patterns |
 | 2 | HITL Confirmation | Independent of permissions — even `Allow` goes through HITL check |
-| 3 | Hook-based Security | SecurityGuard registers at priority 1 (highest): taint tracking, injection detection, output sanitization |
-| 4 | Guard Policy | Defense-in-depth check on ToolExecutor before every execution |
-| 5 | Skill Tool Filters | Per-skill `allowed_tools` restrictions enforced in agent loop |
+| 3 | SecurityProvider | Pluggable trait for taint tracking, output sanitization, injection detection |
+| 4 | Workspace Boundary | All file operations restricted to session workspace |
+| 5 | HookEngine | Custom security logic via lifecycle hooks |
+
+See [Security](/docs/code/security) for details.
 
 ## Context Management
 
@@ -194,22 +106,59 @@ When context usage exceeds the threshold (default 80% of model's context window)
 
 This keeps the session within context limits while preserving important context.
 
-## Subagent System
+## Planning & Parallel Execution
 
-The `task` tool delegates work to child agents with restricted tool access:
+When planning is enabled:
 
-| Agent Type | Available Tools | Use Case |
-|------------|----------------|----------|
-| `explore` | read, grep, glob, ls | Find code, understand structure |
-| `general` | all except task | Complex multi-step tasks |
-| `plan` | read, grep, glob, ls | Design implementation approach |
+1. **LlmPlanner** decomposes the task into steps with dependencies
+2. **WaveScheduler** groups independent steps into waves
+3. Each wave executes in parallel via `tokio::JoinSet`
+4. Dependent steps wait for their dependencies to complete
 
-## Persistence
+```
+Wave 1: [Analyze auth] + [Analyze DB schema]  ← parallel
+Wave 2: [Implement JWT integration]           ← waits for wave 1
+Wave 3: [Write tests]                         ← waits for wave 2
+```
 
-Three storage backends:
+See [Tasks](/docs/code/tasks) for details.
 
-| Backend | Use case |
-|---------|----------|
-| `memory` | In-memory only, no persistence across restarts |
-| `file` | JSON files in configured `sessions_dir` (default) |
-| `custom` | Inject external store (PostgreSQL, Redis) |
+## Lane Queue System
+
+The lane queue routes tool calls to different execution strategies:
+
+| Lane | Purpose | Default Mode |
+|------|---------|--------------|
+| Query | Read-only operations (read, grep, glob, ls) | Internal (parallel) |
+| Execute | Write operations (write, edit, patch, bash) | Internal (sequential) |
+| Generate | LLM calls | Internal |
+
+Each lane can be switched to **External** mode to offload execution to remote workers. See [Lane Queue](/docs/code/lane-queue) for details.
+
+## Memory System
+
+Four memory types:
+
+| Type | Purpose | Storage |
+|------|---------|---------|
+| Episodic | Session events and interactions | In-memory |
+| Semantic | Facts and knowledge | In-memory |
+| Procedural | Successful patterns and workflows | In-memory |
+| Working | Current task context | In-memory |
+
+See [Memory](/docs/code/memory) for details.
+
+## Extensibility
+
+A3S Code is designed for extensibility:
+
+- **MCP Integration** — Connect external tool servers via Model Context Protocol
+- **Custom Tools** — Implement the `Tool` trait and register with `ToolRegistry`
+- **SecurityProvider** — Implement custom security logic via trait
+- **HookEngine** — Register custom logic at 8 lifecycle events
+- **Subagents** — Delegate specialized tasks to focused child agents
+- **PermissionChecker** — Implement custom permission logic via trait
+- **ConfirmationProvider** — Implement custom HITL logic via trait
+- **Planner** — Implement custom planning logic via trait
+
+All core systems use trait-based interfaces for maximum flexibility.

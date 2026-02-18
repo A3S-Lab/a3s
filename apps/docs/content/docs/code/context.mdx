@@ -1,13 +1,51 @@
 ---
-title: Context Providers
-description: Augment LLM prompts with external context via pluggable providers
+title: Context Management
+description: Context compaction and pluggable context providers for RAG
 ---
 
-# Context Providers
+# Context Management
+
+A3S Code provides two context management features: **automatic context compaction** when conversations grow long, and **pluggable context providers** for retrieval-augmented generation (RAG).
+
+## Context Compaction
+
+When context usage exceeds the threshold (default 80% of model's context window), the agent automatically summarizes the conversation to stay within limits.
+
+### How It Works
+
+1. Keep first 2 messages (system context)
+2. Keep last 20 messages (recent context)
+3. Summarize middle messages via LLM call
+4. Insert summary as a synthetic message
+
+This preserves important context while reducing token usage.
+
+### Configuration
+
+```rust
+use a3s_code_core::SessionOptions;
+
+let session = agent.session("/project", Some(
+    SessionOptions::new()
+        .with_context_threshold(0.8)  // Compact at 80% (default)
+))?;
+```
+
+### Events
+
+The agent emits events during compaction:
+
+| Event | When |
+|-------|------|
+| `ContextWarning` | Context usage exceeds threshold |
+| `ContextCompacting` | Compaction started |
+| `ContextCompacted` | Compaction completed |
+
+## Context Providers
 
 Context providers inject additional information into the LLM's system prompt before each generation. This enables RAG (retrieval-augmented generation), memory recall, and integration with external knowledge bases.
 
-## Overview
+### Overview
 
 The agent queries registered context providers before each LLM call. Providers return `ContextItem` entries that are formatted as XML blocks and prepended to the system prompt:
 
@@ -18,13 +56,12 @@ System Prompt
 │   ├── [resource] API docs for auth module
 │   ├── [memory] User prefers TypeScript
 │   └── [resource] Related code snippets
-├── Skill instructions
 └── Tool definitions
 ```
 
 Events are emitted during resolution: `ContextResolving` (with provider names) and `ContextResolved` (with total items and token count).
 
-## ContextProvider Trait
+### ContextProvider Trait
 
 ```rust
 #[async_trait]
@@ -41,7 +78,7 @@ pub trait ContextProvider: Send + Sync {
 
 The `query()` method receives a `ContextQuery` and returns matching `ContextItem` entries. The optional `on_turn_complete()` hook allows providers to extract and store information from conversation turns (e.g., memory extraction).
 
-## ContextQuery
+### ContextQuery
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -64,15 +101,14 @@ let query = ContextQuery::new("authentication flow")
     .with_session_id("session-123");
 ```
 
-### ContextType
+#### ContextType
 
 | Type | Description |
 |------|-------------|
 | `Memory` | Memory items (episodic, semantic, procedural, working) |
 | `Resource` | External resources (files, docs, code) — default |
-| `Skill` | Skill-related context |
 
-### ContextDepth
+#### ContextDepth
 
 | Depth | Token Budget | Description |
 |-------|-------------|-------------|
@@ -80,12 +116,12 @@ let query = ContextQuery::new("authentication flow")
 | `Overview` | ~2,000 tokens | Moderate detail (default) |
 | `Full` | Variable | Complete content |
 
-## ContextItem
+### ContextItem
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | `String` | Unique item identifier |
-| `context_type` | `ContextType` | Memory, Resource, or Skill |
+| `context_type` | `ContextType` | Memory or Resource |
 | `content` | `String` | The context content |
 | `token_count` | `usize` | Estimated token count |
 | `relevance` | `f32` | 0.0–1.0 relevance score |
@@ -94,116 +130,102 @@ let query = ContextQuery::new("authentication flow")
 
 Items are formatted as XML for injection into the system prompt via `to_xml()`.
 
-## Built-in Providers
+## Built-in Provider: MemoryContextProvider
 
-### MemoryContextProvider
+Bridges the [Memory](/docs/code/memory) system to the context provider interface. Performs semantic search over memory items and converts them to `ContextItem` entries with relevance scores.
 
-Automatically registered when the [memory system](/docs/code/memory) is active. Queries the session's memory store and returns relevant memories as context items. Memory type maps to `ContextType::Memory`.
+```rust
+use a3s_code_core::context::MemoryContextProvider;
+use a3s_code_core::memory::MemoryManager;
 
-### A3SContextProvider
+let memory = Arc::new(MemoryManager::new());
+let provider = Arc::new(MemoryContextProvider::new(memory));
 
-Bridges the context store (see below) to the agent's context system. Performs semantic search over ingested content and converts `MatchedNode` results to `ContextItem` entries with relevance scores.
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_context_provider(provider)
+))?;
+```
 
-## Custom Providers
-
-Implement the `ContextProvider` trait and register with the agent:
+## Custom Context Provider Example
 
 ```rust
 use a3s_code_core::context::{ContextProvider, ContextQuery, ContextResult, ContextItem, ContextType};
+use async_trait::async_trait;
 
-struct DocsProvider {
-    index: SearchIndex,
+struct DocsContextProvider {
+    docs_path: PathBuf,
 }
 
 #[async_trait]
-impl ContextProvider for DocsProvider {
+impl ContextProvider for DocsContextProvider {
     async fn query(&self, query: ContextQuery) -> Result<ContextResult> {
-        let results = self.index.search(&query.query, query.max_results).await?;
-        let items: Vec<ContextItem> = results.into_iter().map(|r| {
-            ContextItem {
-                id: r.id,
-                context_type: ContextType::Resource,
-                content: r.text,
-                token_count: r.text.len() / 4, // rough estimate
-                relevance: r.score,
-                source: Some("docs-index".to_string()),
-                metadata: HashMap::new(),
-            }
-        }).collect();
+        // Search documentation files
+        let matches = search_docs(&self.docs_path, &query.query)?;
 
-        let total_tokens = items.iter().map(|i| i.token_count).sum();
-        Ok(ContextResult {
-            items,
-            total_tokens,
-            provider: "docs".to_string(),
-            truncated: false,
-        })
+        let items: Vec<ContextItem> = matches.into_iter()
+            .map(|doc| ContextItem {
+                id: doc.path.to_string_lossy().to_string(),
+                context_type: ContextType::Resource,
+                content: doc.content,
+                token_count: doc.content.split_whitespace().count(),
+                relevance: doc.score,
+                source: Some(format!("docs:{}", doc.path.display())),
+                metadata: HashMap::new(),
+            })
+            .collect();
+
+        Ok(ContextResult { items })
     }
 }
+
+// Register with session
+let provider = Arc::new(DocsContextProvider {
+    docs_path: PathBuf::from("./docs"),
+});
+
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_context_provider(provider)
+))?;
 ```
 
-Register providers via `AgentConfig::context_providers`:
+## Multiple Providers
+
+Register multiple context providers to combine different sources:
 
 ```rust
-let config = AgentConfig {
-    context_providers: vec![Arc::new(DocsProvider { index })],
-    // ...
-};
+let memory_provider = Arc::new(MemoryContextProvider::new(memory));
+let docs_provider = Arc::new(DocsContextProvider { docs_path });
+let code_provider = Arc::new(CodeContextProvider { repo_path });
+
+let session = agent.session("/project", Some(
+    SessionOptions::new()
+        .with_context_provider(memory_provider)
+        .with_context_provider(docs_provider)
+        .with_context_provider(code_provider)
+))?;
 ```
 
-## Context Store
+All providers are queried in parallel, and results are merged before injection into the system prompt.
 
-The `context_store` module (feature-gated) provides a full semantic search pipeline for ingesting, embedding, and retrieving content.
+## Best Practices
 
-### Components
+1. **Set token budgets** — Use `max_tokens` to prevent context overflow
+2. **Filter by type** — Use `context_types` to retrieve only relevant context
+3. **Adjust depth** — Use `Abstract` for summaries, `Full` for detailed content
+4. **Implement relevance scoring** — Return items sorted by relevance (0.0–1.0)
+5. **Use on_turn_complete** — Extract and store information from conversations
+6. **Cache results** — Implement caching in your provider to reduce latency
 
-| Component | Description |
-|-----------|-------------|
-| **Embedder** | Generates vector embeddings from text |
-| **Storage** | Persists content nodes and their embeddings |
-| **Retriever** | Performs vector similarity search |
-| **Reranker** | Optional re-ranking of search results |
-| **Processor** | Ingestion pipeline: chunk, embed, store |
+## Events
 
-### A3SContextClient
+Context-related events emitted during streaming:
 
-The main entry point for the context store:
+| Event | When |
+|-------|------|
+| `ContextResolving` | Context providers queried |
+| `ContextResolved` | Context items retrieved |
+| `ContextWarning` | Context usage exceeds threshold |
+| `ContextCompacting` | Compaction started |
+| `ContextCompacted` | Compaction completed |
 
-```rust
-let client = A3SContextClient::new(config).await?;
-
-// Ingest content
-let result = client.ingest("docs/api.md", content).await?;
-// result.nodes_created, result.nodes_updated, result.errors
-
-// Query
-let options = QueryOptions {
-    namespace: Some("docs".to_string()),
-    limit: 10,
-    hierarchical: false,
-};
-let results = client.query("authentication flow", options).await?;
-for m in results.matches {
-    println!("{}: {} (score: {:.2})", m.pathway, m.content, m.score);
-}
-
-// Stats
-let stats = client.stats().await?;
-println!("Nodes: {}, Vectors: {}", stats.total_nodes, stats.total_vectors);
-```
-
-### Configuration
-
-Context providers are configured via `AgentConfig` or `SessionConfig`:
-
-```rust
-let config = AgentConfig {
-    context_providers: vec![
-        Arc::new(MemoryContextProvider::new(memory_store)),
-        Arc::new(A3SContextProvider::new(context_client)),
-    ],
-    // ...
-};
-```
-
-When context providers are registered, the agent automatically queries them before each LLM call and includes relevant results in the system prompt.
+See [Sessions](/docs/code/sessions) for full event reference.
