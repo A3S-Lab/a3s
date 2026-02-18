@@ -2,18 +2,16 @@
   "title": "A3S Docs",
   "root": true,
   "pages": [
-    "---Agent---",
+    "---Frameworks---",
     "code",
-    "---Runtime---",
+    "---Applications---",
     "box",
     "power",
+    "gateway",
+    "safeclaw",
     "---Libraries---",
     "lane",
     "event",
-    "cron",
-    "search",
-    "---Security---",
-    "gateway",
-    "safeclaw"
+    "search"
   ]
 }

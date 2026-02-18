@@ -4,10 +4,15 @@ description: Priority-based tool execution with parallel reads and multi-machine
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 # Lane Queue
 
-The Lane Queue system routes tool execution through a priority-based queue backed by [a3s-lane](/docs/lane). When enabled, read-only tools execute in parallel while write tools maintain sequential ordering.
+The Lane Queue system routes tool execution through a priority-based queue backed by [a3s-lane](/docs/lane) v0.4.0. When enabled, read-only tools execute in parallel while write tools maintain sequential ordering.
+
+<Callout type="info">
+Fully integrated with A3S Lane v0.4.0 — includes retry policies, rate limiting, priority boost, pressure monitoring, and per-lane timeouts.
+</Callout>
 
 ## How It Works
 
@@ -69,6 +74,192 @@ When enabled, the queue collects per-lane counters, gauges, and histograms (late
 ### Alerts
 
 Queue depth alerts fire when pending commands exceed thresholds (50 warning, 100 critical). These emit `AgentEvent::QueueAlert` events.
+
+## Advanced Features (A3S Lane v0.4.0)
+
+### 1. Retry Policy
+
+Automatically retry failed tasks with configurable strategies.
+
+**Configuration:**
+
+```hcl
+queue {
+  retry_policy {
+    strategy = "exponential"  # exponential, fixed, or none
+    max_retries = 3
+    initial_delay_ms = 100
+  }
+}
+```
+
+**Strategies:**
+
+- **`exponential`** — Exponential backoff (100ms → 200ms → 400ms)
+- **`fixed`** — Fixed delay between retries (requires `fixed_delay_ms`)
+- **`none`** — No automatic retries
+
+**Example (Fixed Delay):**
+
+```hcl
+queue {
+  retry_policy {
+    strategy = "fixed"
+    max_retries = 5
+    fixed_delay_ms = 1000  # 1 second between retries
+  }
+}
+```
+
+### 2. Rate Limiting
+
+Control the maximum number of operations per time window.
+
+**Configuration:**
+
+```hcl
+queue {
+  rate_limit {
+    limit_type = "per_second"  # per_second, per_minute, per_hour, unlimited
+    max_operations = 100
+  }
+}
+```
+
+**Limit Types:**
+
+- **`per_second`** — Maximum operations per second
+- **`per_minute`** — Maximum operations per minute
+- **`per_hour`** — Maximum operations per hour
+- **`unlimited`** — No rate limiting
+
+<Callout type="warn">
+Rate limiting requires the `distributed` feature in a3s-lane.
+</Callout>
+
+### 3. Priority Boost
+
+Automatically boost task priority as deadlines approach.
+
+**Configuration:**
+
+```hcl
+queue {
+  priority_boost {
+    strategy = "standard"  # standard, aggressive, or disabled
+    deadline_ms = 300000   # 5 minutes
+  }
+}
+```
+
+**Strategies:**
+
+- **`standard`** — Boost at 75%, 50%, 25% remaining time
+- **`aggressive`** — Boost earlier and more frequently
+- **`disabled`** — No priority boost
+
+<Callout type="warn">
+Priority boost requires the `distributed` feature in a3s-lane.
+</Callout>
+
+**How It Works:**
+
+```
+Task submitted with deadline_ms = 300000 (5 minutes)
+
+Time remaining: 225s (75%) → Priority +1
+Time remaining: 150s (50%) → Priority +2
+Time remaining: 75s (25%)  → Priority +3
+```
+
+### 4. Pressure Monitoring
+
+Emit events when queue pressure exceeds threshold.
+
+**Configuration:**
+
+```hcl
+queue {
+  pressure_threshold = 50  # Emit event when pending tasks >= 50
+}
+```
+
+**Events:**
+
+- **`queue.lane.pressure`** — Emitted when pending tasks >= threshold
+- **`queue.lane.idle`** — Emitted when queue becomes empty
+
+**Use Cases:**
+
+- Auto-scaling triggers
+- Alert notifications
+- Performance monitoring
+
+### 5. Per-Lane Timeouts
+
+Override default timeout for specific lanes.
+
+**Configuration:**
+
+```hcl
+queue {
+  default_timeout_ms = 60000  # Global default: 60 seconds
+
+  lane_timeouts {
+    query = 30000      # Query lane: 30 seconds
+    execute = 120000   # Execute lane: 2 minutes
+  }
+}
+```
+
+**Priority:** Lane-specific timeout > Default timeout
+
+### Complete Advanced Configuration
+
+```hcl
+queue {
+  # Concurrency limits
+  control_max_concurrency = 2
+  query_max_concurrency = 10
+  execute_max_concurrency = 5
+  generate_max_concurrency = 1
+
+  # Basic features
+  enable_metrics = true
+  enable_dlq = true
+  enable_alerts = true
+  storage_path = "./queue_data"
+  default_timeout_ms = 60000
+
+  # Advanced: Retry policy
+  retry_policy {
+    strategy = "exponential"
+    max_retries = 3
+    initial_delay_ms = 100
+  }
+
+  # Advanced: Rate limiting
+  rate_limit {
+    limit_type = "per_second"
+    max_operations = 100
+  }
+
+  # Advanced: Priority boost
+  priority_boost {
+    strategy = "standard"
+    deadline_ms = 300000
+  }
+
+  # Advanced: Pressure monitoring
+  pressure_threshold = 50
+
+  # Advanced: Per-lane timeouts
+  lane_timeouts {
+    query = 30000
+    execute = 120000
+  }
+}
+```
 
 ## Queue Status API
 
@@ -547,17 +738,46 @@ while let Some(event) = rx.recv().await {
 
 ```rust
 pub struct SessionQueueConfig {
+    // Concurrency limits
     pub control_max_concurrency: usize,    // Default: 2
     pub query_max_concurrency: usize,      // Default: 4
     pub execute_max_concurrency: usize,    // Default: 2
     pub generate_max_concurrency: usize,   // Default: 1
+
+    // Lane handlers
     pub lane_handlers: HashMap<SessionLane, LaneHandlerConfig>,  // Per-lane mode config
+
+    // Basic features
     pub enable_dlq: bool,                  // Default: false
     pub dlq_max_size: Option<usize>,       // Default: 1000 (when enabled)
     pub enable_metrics: bool,              // Default: false
     pub enable_alerts: bool,               // Default: false
     pub default_timeout_ms: Option<u64>,   // Default: 60000 (when enabled)
     pub storage_path: Option<PathBuf>,     // Default: None (in-memory only)
+
+    // Advanced features (A3S Lane v0.4.0)
+    pub retry_policy: Option<RetryPolicyConfig>,
+    pub rate_limit: Option<RateLimitConfig>,
+    pub priority_boost: Option<PriorityBoostConfig>,
+    pub pressure_threshold: Option<usize>,
+    pub lane_timeouts: HashMap<SessionLane, u64>,
+}
+
+pub struct RetryPolicyConfig {
+    pub strategy: String,        // "exponential", "fixed", "none"
+    pub max_retries: u32,
+    pub initial_delay_ms: u64,
+    pub fixed_delay_ms: Option<u64>,  // For "fixed" strategy
+}
+
+pub struct RateLimitConfig {
+    pub limit_type: String,      // "per_second", "per_minute", "per_hour", "unlimited"
+    pub max_operations: Option<u64>,
+}
+
+pub struct PriorityBoostConfig {
+    pub strategy: String,        // "standard", "aggressive", "disabled"
+    pub deadline_ms: Option<u64>,
 }
 
 pub struct LaneHandlerConfig {

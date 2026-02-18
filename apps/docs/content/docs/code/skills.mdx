@@ -1,0 +1,719 @@
+---
+title: Skills System
+description: Claude Code compatible skill system with instruction injection and tool permissions
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Skills System
+
+The Skills System provides a **Claude Code compatible** way to define specialized agent capabilities with automatic instruction injection and tool permission enforcement.
+
+<Callout type="info">
+**Built-in Skills:** 7 (4 code assistance + 3 tool documentation) | **Format:** Markdown + YAML frontmatter | **Tool Restrictions:** Yes
+</Callout>
+
+## Overview
+
+Skills are Markdown files with YAML frontmatter that define:
+
+1. **Instructions** — What the agent should do
+2. **Allowed Tools** — Which tools the agent can use
+3. **Metadata** — Name, description, tags, version
+
+### Key Features
+
+- ✅ **Automatic system prompt injection** — Skill content is injected into the system prompt
+- ✅ **Tool permission enforcement** — Skills restrict which tools can be used
+- ✅ **Claude Code format compatible** — Use existing Claude Code skills
+- ✅ **Load from directories** — Organize skills in folders
+- ✅ **Programmatic creation** — Create skills in code
+
+## Built-in Skills (7)
+
+A3S Code includes 7 production-ready skills:
+
+### Code Assistance Skills
+
+#### 1. code-search
+
+Search codebase for patterns, functions, or types.
+
+**Allowed Tools:** `read(*), grep(*), glob(*)`
+
+**Use case:** Find all authentication functions, locate API endpoints, search for TODO comments
+
+#### 2. code-review
+
+Review code for best practices, bugs, and security issues.
+
+**Allowed Tools:** `read(*), grep(*), glob(*)`
+
+**Use case:** Review pull requests, check for security vulnerabilities, ensure code quality
+
+#### 3. explain-code
+
+Explain how code works in clear, simple terms.
+
+**Allowed Tools:** `read(*), grep(*), glob(*)`
+
+**Use case:** Onboard new developers, document complex logic, create tutorials
+
+#### 4. find-bugs
+
+Identify potential bugs, vulnerabilities, and code smells.
+
+**Allowed Tools:** `read(*), grep(*), glob(*)`
+
+**Use case:** Pre-commit checks, security audits, code quality analysis
+
+### Tool Documentation Skills
+
+#### 5. builtin-tools
+
+Documentation for all built-in file operation and shell tools (read, write, edit, patch, bash, grep, glob, ls, web_fetch, web_search).
+
+**Allowed Tools:** None (documentation only)
+
+**Use case:** Reference for available tools and their parameters
+
+#### 6. delegate-task
+
+Guide for delegating complex or multi-step tasks to specialized sub-agents using the `task` tool.
+
+**Allowed Tools:** `task(*)`
+
+**Use case:** Parallelize work, focused exploration, isolated execution
+
+#### 7. find-skills
+
+Discover and install agent skills from the open skills ecosystem.
+
+**Allowed Tools:** `search_skills(*), install_skill(*), load_skill(*)`
+
+**Use case:** Extend agent capabilities, find domain-specific skills
+
+## Using Built-in Skills
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let agent = Agent::new("agent.hcl").await?;
+
+// Enable all built-in skills
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_builtin_skills()
+))?;
+
+// Now agent has 7 built-in skills:
+// Code assistance: code-search, code-review, explain-code, find-bugs
+// Tool docs: builtin-tools, delegate-task, find-skills
+let result = session.send("Review the auth code for security issues").await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+const session = agent.session('.', {
+  builtinSkills: true
+});
+
+const result = await session.send('Review the auth code for security issues');
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions
+
+agent = Agent.create("agent.hcl")
+
+session = agent.session(".", SessionOptions(
+    builtin_skills=True
+))
+
+result = session.send("Review the auth code for security issues")
+```
+</Tab>
+</Tabs>
+
+## Custom Skills
+
+### Skill File Format
+
+Skills are Markdown files with YAML frontmatter:
+
+```markdown
+---
+name: api-design
+description: Review API design for RESTful principles
+allowed-tools: "read(*), grep(*)"
+kind: instruction
+tags:
+  - api
+  - design
+  - rest
+version: 1.0.0
+---
+# API Design Review
+
+You are an API design expert. Check for:
+
+1. **RESTful Principles**
+   - Proper HTTP methods (GET, POST, PUT, DELETE)
+   - Correct status codes (200, 201, 400, 404, 500)
+   - Resource-based URLs (not action-based)
+
+2. **Naming Conventions**
+   - Consistent naming (camelCase or snake_case)
+   - Clear, descriptive names
+   - Plural for collections, singular for items
+
+3. **Error Handling**
+   - Proper error responses
+   - Meaningful error messages
+   - Error codes and types
+
+4. **Documentation**
+   - API documentation exists
+   - Request/response examples
+   - Authentication requirements
+
+5. **Versioning**
+   - API versioning strategy
+   - Backward compatibility
+
+Use `read` to examine API files and `grep` to search for patterns.
+```
+
+### Frontmatter Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Unique skill identifier (kebab-case) |
+| `description` | Yes | Brief description of what the skill does |
+| `allowed-tools` | No | Comma-separated list of allowed tools with wildcards |
+| `kind` | Yes | Skill type: `instruction`, `tool`, or `agent` |
+| `tags` | No | List of tags for categorization |
+| `version` | No | Semantic version (e.g., "1.0.0") |
+
+### Tool Permission Syntax
+
+The `allowed-tools` field supports wildcards:
+
+```yaml
+# Allow all operations on specific tools
+allowed-tools: "read(*), grep(*), glob(*)"
+
+# Allow specific operations
+allowed-tools: "read(*.rs), grep(TODO:*)"
+
+# Allow all tools (not recommended)
+allowed-tools: "*"
+```
+
+## Loading Custom Skills
+
+### From Directory
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let agent = Agent::new("agent.hcl").await?;
+
+// Load skills from directory
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_skills_from_dir("./skills")
+))?;
+
+// All .md files in ./skills/ are loaded as skills
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+const session = agent.session('.', {
+  skillsDir: './skills'
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions
+
+agent = Agent.create("agent.hcl")
+
+session = agent.session(".", SessionOptions(
+    skills_dir="./skills"
+))
+```
+</Tab>
+</Tabs>
+
+### Programmatically
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::skills::{Skill, SkillKind, SkillRegistry};
+use std::sync::Arc;
+
+// Create skill
+let skill = Skill {
+    name: "security-audit".to_string(),
+    description: "Audit code for security vulnerabilities".to_string(),
+    allowed_tools: Some("read(*), grep(*)".to_string()),
+    kind: SkillKind::Instruction,
+    content: r#"# Security Audit
+
+Check for:
+1. SQL injection vulnerabilities
+2. XSS vulnerabilities
+3. Hardcoded secrets
+4. Insecure authentication
+"#.to_string(),
+    tags: vec!["security".to_string(), "audit".to_string()],
+    version: Some("1.0.0".to_string()),
+};
+
+// Create registry and register skill
+let registry = SkillRegistry::new();
+registry.register(Arc::new(skill));
+
+// Use in session
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_skill_registry(Arc::new(registry))
+))?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { Skill, SkillRegistry } from '@a3s-lab/code';
+
+const skill = new Skill({
+  name: 'security-audit',
+  description: 'Audit code for security vulnerabilities',
+  allowedTools: 'read(*), grep(*)',
+  kind: 'instruction',
+  content: `# Security Audit
+
+Check for:
+1. SQL injection vulnerabilities
+2. XSS vulnerabilities
+3. Hardcoded secrets
+4. Insecure authentication
+`,
+  tags: ['security', 'audit'],
+  version: '1.0.0'
+});
+
+const registry = new SkillRegistry();
+registry.register(skill);
+
+const session = agent.session('.', {
+  skillRegistry: registry
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Skill, SkillKind, SkillRegistry, SessionOptions
+
+skill = Skill(
+    name="security-audit",
+    description="Audit code for security vulnerabilities",
+    allowed_tools="read(*), grep(*)",
+    kind=SkillKind.INSTRUCTION,
+    content="""# Security Audit
+
+Check for:
+1. SQL injection vulnerabilities
+2. XSS vulnerabilities
+3. Hardcoded secrets
+4. Insecure authentication
+""",
+    tags=["security", "audit"],
+    version="1.0.0"
+)
+
+registry = SkillRegistry()
+registry.register(skill)
+
+session = agent.session(".", SessionOptions(
+    skill_registry=registry
+))
+```
+</Tab>
+</Tabs>
+
+## How Skills Work
+
+### 1. Instruction Injection
+
+When a skill is registered, its content is automatically injected into the system prompt:
+
+```
+Original System Prompt:
+"You are a helpful coding assistant."
+
+After Adding Skills:
+"You are a helpful coding assistant.
+
+# Available Skills
+
+## code-search
+Search codebase for patterns, functions, or types.
+[skill content...]
+
+## api-design
+Review API design for RESTful principles.
+[skill content...]
+"
+```
+
+### 2. Tool Permission Enforcement
+
+When a skill defines `allowed-tools`, the agent can only use those tools:
+
+```rust
+// Skill with tool restrictions
+let skill = Skill {
+    name: "read-only".to_string(),
+    allowed_tools: Some("read(*), grep(*), glob(*), ls(*)".to_string()),
+    // ...
+};
+
+// Agent tries to use write
+session.send("Create a new file").await?;
+// ❌ Error: Tool 'write' is not allowed by any active skill
+```
+
+### 3. Multiple Skills
+
+When multiple skills are active, a tool is allowed if **any** skill allows it:
+
+```rust
+// Skill 1: read-only
+let skill1 = Skill {
+    allowed_tools: Some("read(*), grep(*)".to_string()),
+    // ...
+};
+
+// Skill 2: write-only
+let skill2 = Skill {
+    allowed_tools: Some("write(*), edit(*)".to_string()),
+    // ...
+};
+
+// Agent can use: read, grep, write, edit
+// (union of both skills)
+```
+
+## Skill Types
+
+### Instruction Skills
+
+Most common type. Provides instructions to the agent.
+
+```yaml
+kind: instruction
+```
+
+**Use case:** Code review, security audit, API design
+
+### Tool Skills
+
+Defines a custom tool that the agent can use.
+
+```yaml
+kind: tool
+```
+
+**Use case:** Custom integrations, specialized operations
+
+### Agent Skills
+
+Defines a sub-agent that can be delegated to.
+
+```yaml
+kind: agent
+```
+
+**Use case:** Specialized agents for specific domains
+
+## Examples
+
+### Read-Only Agent
+
+```rust
+let skill = Skill {
+    name: "read-only".to_string(),
+    description: "Read-only code analysis".to_string(),
+    allowed_tools: Some("read(*), grep(*), glob(*), ls(*)".to_string()),
+    kind: SkillKind::Instruction,
+    content: "You can only read files, not modify them.".to_string(),
+    tags: vec!["readonly".to_string()],
+    version: Some("1.0.0".to_string()),
+};
+
+let registry = SkillRegistry::new();
+registry.register(Arc::new(skill));
+
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_skill_registry(Arc::new(registry))
+))?;
+
+// Agent can only read, not write
+```
+
+### Security Auditor
+
+```markdown
+---
+name: security-auditor
+description: Comprehensive security audit
+allowed-tools: "read(*), grep(*), glob(*)"
+kind: instruction
+tags:
+  - security
+  - audit
+version: 1.0.0
+---
+# Security Auditor
+
+You are a security expert. Perform comprehensive security audits.
+
+## Check for:
+
+### 1. Injection Vulnerabilities
+- SQL injection
+- Command injection
+- LDAP injection
+- XPath injection
+
+### 2. Authentication Issues
+- Weak password policies
+- Missing authentication
+- Insecure session management
+- Hardcoded credentials
+
+### 3. Authorization Issues
+- Missing authorization checks
+- Privilege escalation
+- Insecure direct object references
+
+### 4. Data Exposure
+- Sensitive data in logs
+- Unencrypted data transmission
+- Insecure data storage
+
+### 5. Configuration Issues
+- Default credentials
+- Unnecessary services enabled
+- Insecure permissions
+
+Use `grep` to search for patterns and `read` to examine files.
+```
+
+### Documentation Generator
+
+```markdown
+---
+name: doc-generator
+description: Generate comprehensive documentation
+allowed-tools: "read(*), grep(*), glob(*), write(*)"
+kind: instruction
+tags:
+  - documentation
+  - writing
+version: 1.0.0
+---
+# Documentation Generator
+
+You are a technical writer. Generate clear, comprehensive documentation.
+
+## Documentation Structure:
+
+### 1. Overview
+- What the code does
+- Key features
+- Architecture overview
+
+### 2. Getting Started
+- Installation
+- Configuration
+- Quick start example
+
+### 3. API Reference
+- All public functions/classes
+- Parameters and return types
+- Examples for each
+
+### 4. Examples
+- Common use cases
+- Code snippets
+- Best practices
+
+### 5. Troubleshooting
+- Common issues
+- Solutions
+- FAQ
+
+Use `read` to examine code and `write` to create documentation files.
+```
+
+## Best Practices
+
+### 1. Clear Instructions
+
+Write clear, specific instructions:
+
+```markdown
+❌ Bad:
+"Review the code."
+
+✅ Good:
+"Review the code for:
+1. Security vulnerabilities (SQL injection, XSS)
+2. Performance issues (N+1 queries, inefficient algorithms)
+3. Code quality (naming, structure, comments)"
+```
+
+### 2. Appropriate Tool Restrictions
+
+Only allow tools that are needed:
+
+```yaml
+# For read-only analysis
+allowed-tools: "read(*), grep(*), glob(*), ls(*)"
+
+# For code modification
+allowed-tools: "read(*), write(*), edit(*), patch(*)"
+
+# For testing
+allowed-tools: "read(*), bash(*)"
+```
+
+### 3. Descriptive Names
+
+Use clear, descriptive names:
+
+```yaml
+❌ Bad:
+name: skill1
+
+✅ Good:
+name: api-design-review
+```
+
+### 4. Versioning
+
+Use semantic versioning:
+
+```yaml
+version: 1.0.0  # Major.Minor.Patch
+```
+
+### 5. Tags
+
+Use tags for organization:
+
+```yaml
+tags:
+  - security
+  - audit
+  - compliance
+```
+
+## Troubleshooting
+
+### Skill Not Loading
+
+**Problem:** Skill file not recognized
+
+**Solution:**
+- Check file extension is `.md`
+- Verify YAML frontmatter is valid
+- Ensure frontmatter is between `---` markers
+
+### Tool Permission Denied
+
+**Problem:** Agent can't use a tool
+
+**Solution:**
+- Check `allowed-tools` field in skill
+- Verify tool name matches exactly
+- Use wildcards: `read(*)` not just `read`
+
+### Multiple Skills Conflict
+
+**Problem:** Unclear which skill is active
+
+**Solution:**
+- Skills are additive (union of allowed tools)
+- If any skill allows a tool, it's allowed
+- Use specific tool restrictions per skill
+
+## API Reference
+
+### Skill
+
+```rust
+pub struct Skill {
+    pub name: String,
+    pub description: String,
+    pub allowed_tools: Option<String>,
+    pub kind: SkillKind,
+    pub content: String,
+    pub tags: Vec<String>,
+    pub version: Option<String>,
+}
+```
+
+### SkillKind
+
+```rust
+pub enum SkillKind {
+    Instruction,  // Provides instructions
+    Tool,         // Defines a custom tool
+    Agent,        // Defines a sub-agent
+}
+```
+
+### SkillRegistry
+
+```rust
+pub struct SkillRegistry {
+    // ...
+}
+
+impl SkillRegistry {
+    pub fn new() -> Self;
+    pub fn with_builtins() -> Self;
+    pub fn register(&self, skill: Arc<Skill>);
+    pub fn get(&self, name: &str) -> Option<Arc<Skill>>;
+    pub fn list(&self) -> Vec<String>;
+    pub fn by_kind(&self, kind: SkillKind) -> Vec<Arc<Skill>>;
+    pub fn to_system_prompt(&self) -> String;
+}
+```
+
+## Related
+
+- [Security](/docs/code/security) — Security features and permissions
+- [Tools](/docs/code/tools) — Built-in tools reference
+- [Sessions](/docs/code/sessions) — Session management

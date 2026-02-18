@@ -4,310 +4,667 @@ description: Embeddable AI coding agent framework in Rust with native Node.js an
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 # A3S Code
 
-**Embeddable AI coding agent framework in Rust** — Build AI agents that can read, write, and execute code with full tool access, planning, and multi-language SDKs.
+**Embeddable AI coding agent framework in Rust** — Build AI agents that read, write, and execute code with tool access, planning, safety controls, and multi-machine distribution.
 
 ```rust
 let agent = Agent::new("agent.hcl").await?;
-let session = agent.session("/my-project", None)?;
+let session = agent.session(".", None)?;
 let result = session.send("Refactor auth to use JWT").await?;
 ```
 
+<Callout type="info">
+**Test Coverage:** 1172 tests, 100% pass rate | **Extension Points:** 14 trait-based | **Built-in Tools:** 10
+</Callout>
+
 ## Why A3S Code?
 
-- **Embeddable** — Rust library with Node.js and Python bindings
-- **Production-Ready** — Permission system, HITL confirmation, cost tracking
-- **Extensible** — 10 built-in tools + MCP protocol for external tools
-- **Intelligent** — Parallel plan execution, goal tracking, memory system
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">🔧 Embeddable</h3>
+    <p className="text-sm text-muted-foreground">
+      Rust library, not a service. Integrate into your app with Node.js/Python bindings.
+    </p>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">🛡️ Production-Ready</h3>
+    <p className="text-sm text-muted-foreground">
+      Permission system, HITL confirmation, skill-based tool restrictions, audit logs.
+    </p>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">🔌 Extensible</h3>
+    <p className="text-sm text-muted-foreground">
+      14 trait-based extension points. Replace any policy with your own implementation.
+    </p>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">📈 Scalable</h3>
+    <p className="text-sm text-muted-foreground">
+      Multi-machine task distribution for horizontal scaling.
+    </p>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">🧠 Intelligent</h3>
+    <p className="text-sm text-muted-foreground">
+      Parallel execution, planning, goal tracking, context-aware memory.
+    </p>
+  </div>
+</div>
 
 ## Quick Start
+
+### Installation
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```bash
+cargo add a3s-code-core
+```
+</Tab>
+<Tab value="TypeScript">
+```bash
+npm install @a3s-lab/code
+```
+</Tab>
+<Tab value="Python">
+```bash
+pip install a3s-code
+```
+</Tab>
+</Tabs>
+
+### Configuration
+
+Create `agent.hcl` (HCL format only):
+
+```hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+}
+
+# Optional: Queue configuration (a3s-lane v0.4.0)
+queue {
+  query_max_concurrency = 10
+  enable_metrics = true
+  enable_dlq = true
+
+  # Advanced features
+  retry_policy {
+    strategy = "exponential"
+    max_retries = 3
+  }
+
+  rate_limit {
+    limit_type = "per_second"
+    max_operations = 100
+  }
+
+  priority_boost {
+    strategy = "standard"
+    deadline_ms = 300000
+  }
+}
+
+# Optional: Search configuration (a3s-search)
+search {
+  timeout = 30
+  engine {
+    google { enabled = true }
+  }
+}
+```
+
+<Callout type="info">
+A3S Code only supports HCL configuration format. Fully integrated with a3s-lane v0.4.0 (retry policies, rate limiting, priority boost) and a3s-search v0.6.0.
+</Callout>
+
+### Basic Usage
 
 <Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 ```rust
-use a3s_code_core::{Agent, AgentEvent};
+use a3s_code_core::{Agent, SessionOptions};
 
-let agent = Agent::new("agent.hcl").await?;
-let session = agent.session("/my-project", None)?;
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Agent::new("agent.hcl").await?;
 
-// Non-streaming
-let result = session.send("What files handle auth?").await?;
-println!("{}", result.text);
+    // Basic usage
+    let session = agent.session(".", None)?;
+    let result = session.send("What files handle authentication?").await?;
+    println!("{}", result.text);
 
-// Streaming
-let (mut rx, _) = session.stream("Refactor auth").await?;
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::End { .. } => break,
-        _ => {}
-    }
+    // With options
+    let session = agent.session(".", Some(
+        SessionOptions::new()
+            .with_default_security()      // Redact sensitive data
+            .with_builtin_skills()         // Enable code-search, code-review, etc.
+            .with_planning(true)           // Multi-step task decomposition
+    ))?;
+
+    let result = session.send("Refactor auth + update tests").await?;
+    println!("{}", result.text);
+
+    Ok(())
 }
 ```
 </Tab>
 <Tab value="TypeScript">
 ```typescript
-const { Agent } = require('@a3s-lab/code');
+import { Agent, SessionOptions } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
-const session = agent.session('/my-project');
+const session = agent.session('.', {
+  defaultSecurity: true,
+  builtinSkills: true,
+  planning: true,
+});
 
-// Non-streaming
-const result = await session.send('What files handle auth?');
+const result = await session.send('Refactor auth + update tests');
 console.log(result.text);
-
-// Streaming
-for await (const event of session.stream('Refactor auth')) {
-  if (event.type === 'text_delta') {
-    process.stdout.write(event.text);
-  }
-}
 ```
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent
+from a3s_code import Agent, SessionOptions
 
 agent = Agent.create("agent.hcl")
-session = agent.session("/my-project")
+session = agent.session(".", SessionOptions(
+    default_security=True,
+    builtin_skills=True,
+    planning=True,
+))
 
-# Non-streaming
-result = session.send("What files handle auth?")
+result = session.send("Refactor auth + update tests")
 print(result.text)
-
-# Streaming
-for event in session.stream("Refactor auth"):
-    if event.event_type == "text_delta":
-        print(event.text, end="", flush=True)
 ```
 </Tab>
 </Tabs>
 
 ## Core Features
 
-### Built-in Tools (10)
+### 🛠️ Built-in Tools (10)
 
-**File Operations:** `read`, `write`, `edit`, `patch`, `grep`, `glob`, `ls`
-**Execution:** `bash`
-**Web:** `web_fetch`, `web_search`
+| Category | Tools | Description |
+|----------|-------|-------------|
+| **File Operations** | `read`, `write`, `edit`, `patch` | Read/write files, apply diffs |
+| **Search** | `grep`, `glob`, `ls` | Search content, find files, list directories |
+| **Execution** | `bash` | Execute shell commands |
+| **Web** | `web_fetch`, `web_search` | Fetch URLs, search the web (configurable) |
 
 See [Tools](/docs/code/tools) for full reference.
 
-### Permission System
+### 🔒 Security & Safety
+
+**4 layers of security:**
+
+1. **Default Security Provider** — Auto-redact sensitive data (SSN, API keys, emails, etc.)
+2. **Permission System** — Allow/Deny/Ask rules per tool
+3. **Skill-Based Tool Restrictions** — Skills define allowed tools
+4. **HITL Confirmation** — Require human approval for sensitive operations
 
 ```rust
-// Allow/Deny/Ask rules per tool
-session.set_permission_policy(PermissionPolicy::new()
-    .allow("read(*)")
-    .deny("bash(rm -rf:*)")
-    .ask("write(*)")
-).await;
+SessionOptions::new()
+    .with_default_security()           // PII redaction
+    .with_permission_checker(policy)   // Tool permissions
+    .with_confirmation_manager(mgr)    // Human confirmation
 ```
 
-See [Sessions → Permissions](/docs/code/sessions#permissions) for details.
+See [Security](/docs/code/security) for details.
 
-### Planning & Parallel Execution
+### 🧠 Skills System
 
-```rust
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_planning(true)
-        .with_goal_tracking(true)
-))?;
+**Built-in Skills (7):**
 
-// Agent decomposes task into parallel steps
-session.send("Refactor auth + update tests").await?;
+**Code Assistance:**
+- `code-search` — Search codebase for patterns
+- `code-review` — Review code for best practices
+- `explain-code` — Explain how code works
+- `find-bugs` — Identify potential bugs
+
+**Tool Documentation:**
+- `builtin-tools` — Documentation for all built-in file operation and shell tools
+- `delegate-task` — Guide for delegating tasks to specialized sub-agents
+- `find-skills` — Discover and install agent skills from the ecosystem
+
+**Custom Skills** — Markdown files with YAML frontmatter (Claude Code compatible):
+
+```markdown
+---
+name: api-design
+description: Review API design
+allowed-tools: "read(*), grep(*)"
+kind: instruction
+---
+# API Design Review
+
+Check for RESTful principles, proper error handling, and documentation.
 ```
 
-Independent steps execute in parallel automatically. See [Tasks](/docs/code/tasks) for details.
+```rust
+SessionOptions::new()
+    .with_builtin_skills()              // Enable built-in skills
+    .with_skills_from_dir("./skills")   // Load custom skills
+```
 
-### Multi-Machine Distribution
+See [Skills](/docs/code/skills) for details.
+
+### 🎯 Planning & Execution
+
+**Parallel Execution** — Query-lane tools (read, grep, glob, ls) run in parallel automatically.
+
+**Planning Mode** — Decompose complex tasks into steps:
 
 ```rust
-// Offload tool execution to remote workers
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
+SessionOptions::new()
+    .with_planning(true)
+    .with_goal_tracking(true)
+```
+
+See [Tasks](/docs/code/tasks) for details.
+
+### 🌐 Multi-Machine Distribution
+
+Offload tool execution to external workers for horizontal scaling:
+
+```rust
+// Configure lane for external processing
+session.set_lane_handler(SessionLane::Query, LaneHandlerConfig {
     mode: TaskHandlerMode::External,
     timeout_ms: 120_000,
 }).await;
 
-// Poll for tasks and dispatch to workers
-let tasks = session.pending_external_tasks().await;
-for task in tasks {
-    let result = send_to_remote_worker(&task).await;
-    session.complete_external_task(&task.task_id, result).await;
+// Worker loop (can run on multiple machines)
+loop {
+    let tasks = session.pending_external_tasks().await;
+    for task in tasks {
+        let result = execute_on_worker(&task).await;
+        session.complete_external_task(&task.task_id, result).await;
+    }
 }
 ```
 
-See [Lane Queue → External Tasks](/docs/code/lane-queue#external-task-handling) for details.
+**Use cases:**
+- Parallel code search across multiple machines
+- Distributed test execution
+- Multi-region deployments
+- Custom execution environments (containers, VMs)
+
+See [Multi-Machine Distribution](/docs/code/multi-machine) for complete guide.
+
+### 🔌 Extensibility (14 Extension Points)
+
+All policies are replaceable via traits. Every extension point has a default implementation.
+
+| Extension Point | Purpose | Default Implementation |
+|----------------|---------|----------------------|
+| **SecurityProvider** | Input taint, output sanitization | DefaultSecurityProvider |
+| **PermissionChecker** | Tool access control | PermissionPolicy |
+| **ConfirmationProvider** | Human confirmation | ConfirmationManager |
+| **ContextProvider** | RAG retrieval | FileSystemContextProvider |
+| **SessionStore** | Session persistence | FileSessionStore |
+| **MemoryStore** | Long-term memory | InMemoryStore |
+| **Tool** | Custom tools | 10 built-in tools |
+| **Planner** | Task decomposition | LlmPlanner |
+| **HookHandler** | Event handling | HookEngine |
+| **HookExecutor** | Event execution | HookEngine |
+| **McpTransport** | MCP protocol | StdioTransport |
+| **HttpClient** | HTTP requests | ReqwestClient |
+| **SessionCommand** | Queue tasks | ToolCommand |
+| **LlmClient** | LLM interface | Anthropic/OpenAI |
+
+See [Architecture](/docs/code/architecture) for details.
+
+## Architecture
+
+A3S Code follows a **core + extensions** architecture:
+
+- **5 Core Components** (not replaceable): Agent, AgentSession, AgentLoop, ToolExecutor, LlmClient
+- **14 Extension Points** (replaceable via traits): Security, Permissions, HITL, Context, Memory, Skills, Hooks, etc.
+- **All extension points have default implementations** — works out of the box
+
+```
+Agent (config-driven, workspace-independent)
+  ├── LlmClient (Anthropic / OpenAI)
+  ├── SessionManager (multi-session support)
+  └── AgentSession (workspace-bound)
+        ├── AgentLoop (core execution engine)
+        │     ├── ToolExecutor (10 built-in tools)
+        │     ├── Planning (task decomposition)
+        │     └── HITL Confirmation
+        ├── SessionLaneQueue (a3s-lane backed)
+        │     ├── Control Lane (P0)
+        │     ├── Query Lane (P1)
+        │     ├── Execute Lane (P2)
+        │     └── Generate Lane (P3)
+        ├── HookEngine (8 lifecycle events)
+        ├── Security (sanitizer, taint tracking, injection detection)
+        ├── Skills (instruction injection + tool permissions)
+        ├── Context (RAG providers)
+        └── Memory (episodic, semantic, procedural, working)
+```
+
+See [Architecture](/docs/code/architecture) for detailed documentation.
 
 ## Advanced Features
 
-<details>
-<summary><b>Human-in-the-Loop (HITL)</b></summary>
+### Context Providers (RAG)
 
 ```rust
-// Require confirmation before sensitive operations
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_confirmation_policy(ConfirmationPolicy::enabled())
-))?;
+use a3s_code_core::context::{FileSystemContextProvider, FileSystemContextConfig};
 
-// Agent will emit ConfirmationRequired events
-// Respond via session.confirm_tool(tool_id, approved).await
+let fs_provider = Arc::new(FileSystemContextProvider::new(
+    FileSystemContextConfig::new(".")
+        .with_include_patterns(vec!["**/*.rs".to_string()])
+));
+
+SessionOptions::new()
+    .with_context_provider(fs_provider)
 ```
 
-See [Sessions → HITL](/docs/code/sessions#human-in-the-loop) for details.
+See [Context](/docs/code/context) for details.
 
-</details>
+### MCP Integration
 
-<details>
-<summary><b>Lifecycle Hooks</b></summary>
-
-```rust
-// 8 hook events: PreToolUse, PostToolUse, GenerateStart, GenerateEnd, etc.
-let hook_engine = HookEngine::new();
-hook_engine.register(Hook::new("security-check", HookEventType::PreToolUse));
-
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_hook_engine(hook_engine)
-))?;
-```
-
-See [Hooks](/docs/code/hooks) for details.
-
-</details>
-
-<details>
-<summary><b>Memory System</b></summary>
+Connect to external tools via Model Context Protocol:
 
 ```rust
-// 4 memory types: episodic, semantic, procedural, working
-session.remember_success("Implemented JWT", &["auth", "security"]).await?;
-let memories = session.recall("authentication").await?;
-```
-
-See [Memory](/docs/code/memory) for details.
-
-</details>
-
-<details>
-<summary><b>MCP Integration</b></summary>
-
-```rust
-// Connect to external tools via Model Context Protocol
 let mcp_client = McpClient::connect_stdio("path/to/mcp-server").await?;
 session.add_mcp_client(mcp_client).await;
 ```
 
 See [MCP](/docs/code/mcp) for details.
 
-</details>
+### Lifecycle Hooks
 
-<details>
-<summary><b>Cost Tracking</b></summary>
+8 hook events for custom logic:
 
 ```rust
-// Per-session token cost calculation
+let hook_engine = HookEngine::new();
+hook_engine.register(Hook::new("audit", HookEventType::PreToolUse));
+
+SessionOptions::new()
+    .with_hook_engine(hook_engine)
+```
+
+See [Hooks](/docs/code/hooks) for details.
+
+### Memory System
+
+4 memory types: episodic, semantic, procedural, working:
+
+```rust
+session.remember_success("Implemented JWT", &["auth", "security"]).await?;
+let memories = session.recall("authentication").await?;
+```
+
+See [Memory](/docs/code/memory) for details.
+
+### Cost Tracking
+
+Per-session token cost calculation:
+
+```rust
 let usage = session.context_usage().await?;
 println!("Cost: ${:.4}", usage.total_cost);
 ```
 
 See [Telemetry](/docs/code/telemetry) for details.
 
-</details>
-
 ## Configuration
 
-Minimal config file (`agent.hcl`):
+### Minimal Config
 
 ```hcl
 default_model = "anthropic/claude-sonnet-4-20250514"
 
 providers {
   name    = "anthropic"
-  api_key = "sk-ant-..."
+  api_key = env("ANTHROPIC_API_KEY")
 }
 ```
 
-<details>
-<summary><b>Complete Configuration Example</b></summary>
+### Full Config
 
 ```hcl
 default_model = "anthropic/claude-sonnet-4-20250514"
 
-max_tool_rounds  = 20
-thinking_budget  = 4096
-storage_backend  = "file"
-sessions_dir     = "/tmp/a3s"
-
 providers {
   name    = "anthropic"
-  api_key = "sk-ant-..."
-
-  models {
-    id          = "claude-sonnet-4-20250514"
-    name        = "Claude Sonnet 4"
-    tool_call   = true
-    cost {
-      input       = 3.0
-      output      = 15.0
-      cache_read  = 0.3
-      cache_write = 3.75
-    }
-    limit {
-      context = 200000
-      output  = 8192
-    }
-  }
+  api_key = env("ANTHROPIC_API_KEY")
 }
 
 providers {
-  name     = "openai"
-  api_key  = "sk-..."
-  base_url = "https://api.openai.com"
+  name    = "openai"
+  api_key = env("OPENAI_API_KEY")
+}
 
-  models {
-    id        = "gpt-4o"
-    name      = "GPT-4o"
-    tool_call = true
+system_prompt = "You are a helpful coding assistant."
+
+max_turns = 50
+
+# Queue configuration (a3s-lane v0.4.0)
+queue {
+  # Concurrency limits
+  query_max_concurrency = 10
+  execute_max_concurrency = 5
+
+  # Basic features
+  enable_metrics = true
+  enable_dlq = true
+  enable_alerts = true
+  storage_path = "./queue_data"
+  default_timeout_ms = 60000
+
+  # Advanced: Retry policy
+  retry_policy {
+    strategy = "exponential"  # exponential, fixed, or none
+    max_retries = 3
+    initial_delay_ms = 100
+  }
+
+  # Advanced: Rate limiting (requires 'distributed' feature)
+  rate_limit {
+    limit_type = "per_second"  # per_second, per_minute, per_hour, unlimited
+    max_operations = 100
+  }
+
+  # Advanced: Priority boost (requires 'distributed' feature)
+  priority_boost {
+    strategy = "standard"  # standard, aggressive, or disabled
+    deadline_ms = 300000   # 5 minutes
+  }
+
+  # Advanced: Pressure monitoring
+  pressure_threshold = 50
+
+  # Advanced: Per-lane timeouts
+  lane_timeouts {
+    query = 30000      # 30 seconds
+    execute = 120000   # 2 minutes
   }
 }
+
+# Search configuration (a3s-search v0.6.0)
+search {
+  timeout = 30
+
+  health {
+    max_failures = 3
+    suspend_seconds = 60
+  }
+
+  engine {
+    google {
+      enabled = true
+      weight = 1.5
+    }
+    bing {
+      enabled = true
+      weight = 1.0
+    }
+    duckduckgo {
+      enabled = true
+      weight = 1.2
+    }
+  }
+}
+
+# Storage backend
+storage_backend = "file"
+sessions_dir = "./sessions"
+
+# Skill and agent directories
+skill_dirs = ["./skills"]
+agent_dirs = ["./agents"]
+
+# Execution limits
+max_tool_rounds = 50
+thinking_budget = 10000
 ```
 
 See [Providers](/docs/code/providers) for full reference.
 
-</details>
+## Examples
 
-## Architecture
+### Basic Usage
 
-```
-Agent (config-driven)
-  ├─ LlmClient (Anthropic/OpenAI)
-  ├─ SessionManager (multi-session)
-  └─ AgentSession (workspace-bound)
-       ├─ AgentLoop (execution engine)
-       ├─ ToolExecutor (10 tools)
-       ├─ LlmPlanner (parallel execution)
-       ├─ PermissionSystem
-       ├─ HookEngine (8 events)
-       ├─ Memory (4 types)
-       ├─ MCP (external tools)
-       └─ Cost Tracking
+```rust
+let agent = Agent::new("agent.hcl").await?;
+let session = agent.session(".", None)?;
+let result = session.send("What files handle authentication?").await?;
+println!("{}", result.text);
 ```
 
-See [Architecture](/docs/code/architecture) for details.
+### With Security and Skills
+
+```rust
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_default_security()
+        .with_builtin_skills()
+))?;
+
+let result = session.send("Review the auth code for security issues").await?;
+```
+
+### With Planning
+
+```rust
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_planning(true)
+        .with_goal_tracking(true)
+))?;
+
+let result = session.send("Refactor auth + update tests + update docs").await?;
+```
+
+### With External Task Distribution
+
+```rust
+let queue_config = SessionQueueConfig {
+    query_max_concurrency: 10,
+    enable_metrics: true,
+    ..Default::default()
+};
+
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_queue_config(queue_config)
+))?;
+
+session.set_lane_handler(SessionLane::Query, LaneHandlerConfig {
+    mode: TaskHandlerMode::External,
+    timeout_ms: 120_000,
+}).await;
+
+// Worker loop
+tokio::spawn(async move {
+    loop {
+        let tasks = session.pending_external_tasks().await;
+        for task in tasks {
+            let result = execute_task(&task).await;
+            session.complete_external_task(&task.task_id, result).await;
+        }
+    }
+});
+```
 
 ## Documentation
 
-- **[Sessions](/docs/code/sessions)** — Session management, permissions, HITL
-- **[Tasks](/docs/code/tasks)** — Planning, parallel execution, goal tracking
+### Getting Started
+- **[Quick Start](#quick-start)** — Get started in 3 steps
+- **[Configuration](#configuration)** — Configure your agent
+- **[Examples](#examples)** — Common usage patterns
+
+### Core Concepts
+- **[Architecture](/docs/code/architecture)** — System design and components
+- **[Sessions](/docs/code/sessions)** — Session management and lifecycle
+- **[Tasks](/docs/code/tasks)** — Planning and parallel execution
+- **[Lane Queue](/docs/code/lane-queue)** — Priority routing and task distribution
+
+### Security & Safety
+- **[Security](/docs/code/security)** — Security features and best practices
+- **[Skills](/docs/code/skills)** — Skill system and tool restrictions
+
+### Tools & Capabilities
 - **[Tools](/docs/code/tools)** — Built-in tools reference
-- **[Lane Queue](/docs/code/lane-queue)** — Priority routing, external task offloading
-- **[Subagents](/docs/code/subagents)** — Delegate tasks to specialized agents
+- **[MCP](/docs/code/mcp)** — External tool integration
+- **[Subagents](/docs/code/subagents)** — Delegate to specialized agents
+
+### Extensions
+- **[Multi-Machine Distribution](/docs/code/multi-machine)** — Horizontal scaling guide
 - **[Hooks](/docs/code/hooks)** — Lifecycle events and custom logic
-- **[Memory](/docs/code/memory)** — Episodic, semantic, procedural, working memory
-- **[MCP](/docs/code/mcp)** — External tool integration via Model Context Protocol
-- **[Telemetry](/docs/code/telemetry)** — Cost tracking and usage metrics
+- **[Memory](/docs/code/memory)** — Long-term memory system
+- **[Context](/docs/code/context)** — RAG and context providers
+- **[Persistence](/docs/code/persistence)** — Session persistence
+- **[Telemetry](/docs/code/telemetry)** — Cost tracking and metrics
+
+### Configuration
 - **[Providers](/docs/code/providers)** — LLM provider configuration
+
+## Testing
+
+```bash
+# Run all tests
+cargo test
+
+# Run specific test suite
+cargo test --lib skills::
+cargo test --test integration
+```
+
+**Test Coverage:** 1172 tests, 100% pass rate
+
+## Contributing
+
+We welcome contributions! Please follow these guidelines:
+
+- Follow Rust API guidelines
+- Write tests for all new code
+- Use `cargo fmt` and `cargo clippy`
+- Update documentation
+- Use Conventional Commits
+
+## License
+
+MIT License
+
+## Related Projects
+
+- **[A3S Box](/docs/box)** — Secure sandbox runtime with TEE support
+- **[A3S Lane](/docs/lane)** — Priority-based task queue with DLQ
+- **[A3S Event](/docs/event)** — Event-driven architecture primitives
+- **[A3S Search](/docs/search)** — Multi-engine web search aggregator
