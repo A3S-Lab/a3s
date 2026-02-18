@@ -2,6 +2,7 @@
   "title": "A3S Code",
   "pages": [
     "index",
+    "examples",
     "---Internals---",
     "architecture",
     "lane-queue",
