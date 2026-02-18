@@ -1,11 +1,13 @@
 ---
 title: Lanes
-description: Priority-based lanes with configurable concurrency, timeout, retry, rate limiting, and priority boosting
+description: Priority-based lanes with configurable concurrency, timeout, retry, rate limiting, pressure tracking, and priority boosting
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Lanes
 
-A lane is a priority queue that holds pending commands and enforces concurrency limits. Each lane has a unique ID, a priority level, and a configuration that controls timeout, retry, rate limiting, and priority boosting behavior.
+A lane is a priority queue that holds pending commands and enforces concurrency limits. Each lane has a unique ID, a priority level, and a configuration that controls timeout, retry, rate limiting, priority boosting, and pressure tracking.
 
 ## Built-in Lanes
 
@@ -29,18 +31,21 @@ let manager = QueueManagerBuilder::new(emitter)
 
 ## Custom Lanes
 
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
 Register lanes with custom priorities and configuration:
 
 ```rust
 let manager = QueueManagerBuilder::new(emitter)
-    .with_lane("critical", LaneConfig::new(2, 8), 0)
-    .with_lane("normal", LaneConfig::new(1, 16), 1)
-    .with_lane("background", LaneConfig::new(1, 4), 2)
+    .with_lane("critical",   LaneConfig::new(2, 8),  0)
+    .with_lane("normal",     LaneConfig::new(1, 16), 1)
+    .with_lane("background", LaneConfig::new(1, 4),  2)
     .build()
     .await?;
 ```
 
-You can mix built-in and custom lanes:
+Mix built-in and custom lanes:
 
 ```rust
 let manager = QueueManagerBuilder::new(emitter)
@@ -50,7 +55,52 @@ let manager = QueueManagerBuilder::new(emitter)
     .await?;
 ```
 
-## LaneConfig
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_lane import Lane, LaneConfig
+
+# Default lanes
+lane = Lane()
+lane.start()
+
+# Custom lanes
+lane = Lane.with_lanes([
+    LaneConfig("critical",   priority=0, min_concurrency=2, max_concurrency=8),
+    LaneConfig("normal",     priority=1, min_concurrency=1, max_concurrency=16),
+    LaneConfig("background", priority=2, min_concurrency=1, max_concurrency=4),
+])
+lane.start()
+```
+
+`LaneConfig` fields: `lane_id`, `priority`, `min_concurrency`, `max_concurrency`, `timeout_secs` (optional), `pressure_threshold` (optional).
+
+</Tab>
+<Tab value="Node.js">
+
+```js
+const { Lane } = require('@a3s-lab/lane');
+
+// Default lanes
+const lane = new Lane();
+lane.start();
+
+// Custom lanes
+const lane = Lane.withLanes([
+  { laneId: 'critical',   priority: 0, minConcurrency: 2, maxConcurrency: 8  },
+  { laneId: 'normal',     priority: 1, minConcurrency: 1, maxConcurrency: 16 },
+  { laneId: 'background', priority: 2, minConcurrency: 1, maxConcurrency: 4  },
+]);
+lane.start();
+```
+
+Config fields: `laneId`, `priority`, `minConcurrency`, `maxConcurrency`, `timeoutSecs` (optional), `pressureThreshold` (optional).
+
+</Tab>
+</Tabs>
+
+## LaneConfig (Rust)
 
 `LaneConfig` controls all per-lane behavior. Create with `new(min, max)` and chain builder methods:
 
@@ -60,8 +110,11 @@ use std::time::Duration;
 let config = LaneConfig::new(2, 10)
     .with_timeout(Duration::from_secs(30))
     .with_retry_policy(RetryPolicy::exponential(3))
-    .with_rate_limit(RateLimitConfig::per_second(100))
-    .with_priority_boost(PriorityBoostConfig::standard(Duration::from_secs(60)));
+    .with_pressure_threshold(50)                        // emit queue.lane.pressure / queue.lane.idle
+    .with_rate_limit(RateLimitConfig::per_second(100))  // requires `distributed` feature
+    .with_priority_boost(PriorityBoostConfig::standard( // requires `distributed` feature
+        Duration::from_secs(60),
+    ));
 ```
 
 ### Concurrency
@@ -75,66 +128,70 @@ The semaphore ensures no more than `max_concurrency` commands from a lane execut
 
 ### Timeout
 
-Set a default timeout for all commands in a lane:
-
 ```rust
 let config = LaneConfig::new(1, 10)
     .with_timeout(Duration::from_secs(30));
 ```
 
-Commands that exceed the timeout receive a `LaneError::Timeout` error. If retries are configured, the command is re-enqueued.
+Commands exceeding the timeout receive `LaneError::Timeout`. If retries are configured, the command is re-enqueued; otherwise it moves to the DLQ (if enabled) or the error is returned to the caller.
 
 ### Retry Policy
 
-Three strategies are available:
-
 ```rust
-// Exponential backoff: 100ms -> 200ms -> 400ms -> 800ms (max 30s)
-let config = LaneConfig::new(1, 10)
-    .with_retry_policy(RetryPolicy::exponential(3));
+// Exponential backoff: 100ms → 200ms → 400ms (cap 30s)
+LaneConfig::new(1, 10).with_retry_policy(RetryPolicy::exponential(3))
 
 // Fixed delay: 1s between each retry
-let config = LaneConfig::new(1, 10)
-    .with_retry_policy(RetryPolicy::fixed(5, Duration::from_secs(1)));
+LaneConfig::new(1, 10).with_retry_policy(RetryPolicy::fixed(5, Duration::from_secs(1)))
 
 // No retries (default)
-let config = LaneConfig::new(1, 10)
-    .with_retry_policy(RetryPolicy::none());
+LaneConfig::new(1, 10).with_retry_policy(RetryPolicy::none())
 ```
 
 | Strategy | Initial Delay | Max Delay | Multiplier |
 |----------|---------------|-----------|------------|
 | Exponential | 100ms | 30s | 2x |
-| Fixed | User-defined | - | - |
-| None | - | - | - |
+| Fixed | User-defined | — | — |
+| None | — | — | — |
 
 ### Rate Limiting
 
-Limit command throughput per lane:
-
 ```rust
-// Token bucket: 100 commands per second
-let config = LaneConfig::new(1, 10)
-    .with_rate_limit(RateLimitConfig::per_second(100));
-
-// Per-minute or per-hour
-let config = LaneConfig::new(1, 10)
-    .with_rate_limit(RateLimitConfig::per_minute(1000));
+LaneConfig::new(1, 10).with_rate_limit(RateLimitConfig::per_second(100))
+LaneConfig::new(1, 10).with_rate_limit(RateLimitConfig::per_minute(1000))
+LaneConfig::new(1, 10).with_rate_limit(RateLimitConfig::per_hour(10_000))
 ```
+
+Requires the `distributed` feature (on by default). Rate is enforced at dequeue time — commands are held until a token is available.
 
 ### Priority Boosting
 
-Automatically escalate priority for aging commands as their deadline approaches:
-
 ```rust
-// Standard: boost at 25%, 50%, 75% of deadline
-let config = LaneConfig::new(1, 10)
-    .with_priority_boost(PriorityBoostConfig::standard(Duration::from_secs(60)));
+// Standard: boost at 75%, 50%, 25% of deadline remaining
+LaneConfig::new(1, 10).with_priority_boost(PriorityBoostConfig::standard(Duration::from_secs(60)))
 
 // Aggressive: more frequent escalation
-let config = LaneConfig::new(1, 10)
-    .with_priority_boost(PriorityBoostConfig::aggressive(Duration::from_secs(30)));
+LaneConfig::new(1, 10).with_priority_boost(PriorityBoostConfig::aggressive(Duration::from_secs(30)))
+
+// Disabled
+LaneConfig::new(1, 10).with_priority_boost(PriorityBoostConfig::disabled())
 ```
+
+Requires the `distributed` feature.
+
+### Pressure Tracking
+
+Emit `queue.lane.pressure` when the pending queue crosses a threshold, and `queue.lane.idle` when it drains back to zero:
+
+```rust
+LaneConfig::new(1, 10).with_pressure_threshold(50)
+```
+
+- `queue.lane.pressure` fires on the **first** crossing from below threshold to `pending >= 50`
+- `queue.lane.idle` fires when `pending` returns to 0 after being pressured
+- No threshold set → no pressure events emitted
+
+See [Events → Lane Pressure](/docs/lane/events#lane-pressure) for the full event spec.
 
 ## Lane Status
 
@@ -148,8 +205,6 @@ for (lane_id, status) in &stats.lanes {
 }
 ```
 
-### LaneStatus Fields
-
 | Field | Type | Description |
 |-------|------|-------------|
 | `pending` | `usize` | Commands waiting in queue |
@@ -159,11 +214,11 @@ for (lane_id, status) in &stats.lanes {
 
 ## Scheduling Behavior
 
-The scheduler runs a background loop (10ms interval) that:
+The scheduler runs a 10ms background loop:
 
-1. Iterates lanes in priority order (lowest number first)
-2. Skips lanes at max concurrency
-3. Dequeues and spawns the first available command
-4. Repeats until no lanes have pending work
+1. Sort lanes by priority (lowest number = highest priority)
+2. Skip lanes at max concurrency
+3. Dequeue and spawn the next command from the highest-priority lane with work
+4. Repeat until no lanes have pending commands
 
-This guarantees that higher-priority lanes are always serviced before lower-priority ones, while ensuring fair scheduling when all priorities are equal.
+Higher-priority lanes are always serviced first. Within a lane, commands execute in FIFO order.

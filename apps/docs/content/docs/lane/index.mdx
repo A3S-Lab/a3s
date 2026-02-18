@@ -1,40 +1,41 @@
 ---
 title: A3S Lane
-description: High-performance, priority-based command queue system for async task scheduling
+description: Priority-based command queue for async task scheduling — Rust, Python, and Node.js
 ---
 
 # A3S Lane
 
-A3S Lane is a high-performance, priority-based command queue system designed for async task scheduling. It provides multi-lane priority scheduling, retry policies, dead letter queues, persistent storage, and comprehensive observability — all in a single Rust crate.
+A3S Lane is a priority-based command queue for async task scheduling. Six built-in lanes with configurable concurrency ensure control commands always preempt LLM generation. Available as a Rust crate, Python package, and Node.js module.
 
 ## Key Features
 
-- **Priority-Based Scheduling** — 6 built-in lanes with configurable priorities. Higher-priority commands always execute first.
-- **Concurrency Control** — Per-lane semaphore-based limits with min/max concurrency settings.
-- **Retry Policies** — Exponential backoff and fixed-delay strategies with configurable max retries.
-- **Dead Letter Queue** — Failed commands are captured with full context for inspection and replay.
-- **Persistent Storage** — Pluggable storage backend (local filesystem included) for crash recovery.
-- **Event System** — Broadcast pub/sub for real-time monitoring of command lifecycle events.
-- **Rate Limiting** — Token bucket and sliding window rate limiters per lane.
-- **Priority Boosting** — Deadline-based automatic priority escalation for aging commands.
+- **Priority Scheduling** — 6 built-in lanes. The highest-priority lane with pending work is always scheduled next.
+- **Concurrency Control** — Per-lane semaphore limits with configurable min/max.
+- **Retry Policies** — Exponential backoff and fixed-delay strategies.
+- **Dead Letter Queue** — Failed commands captured with full context for inspection.
+- **Persistent Storage** — Pluggable storage backend (local filesystem included).
+- **Event Stream** — `EventStream` implements `futures_core::Stream`; subscribe directly from the manager without threading `EventEmitter` manually.
+- **Lane Pressure Events** — `queue.lane.pressure` / `queue.lane.idle` when queue depth crosses a configured threshold.
+- **Rate Limiting** — Token bucket per lane (`distributed` feature).
+- **Priority Boosting** — Deadline-based automatic priority escalation (`distributed` feature).
 - **Queue Partitioning** — Round-robin and hash-based partitioning for multi-core parallelism.
 - **Metrics & Alerts** — Latency histograms, queue depth tracking, and configurable alert thresholds.
-- **Graceful Shutdown** — Drain pending commands before stopping, with configurable timeout.
+- **Graceful Shutdown** — Drain pending commands before stopping.
 
 ## Architecture
 
 ```
 QueueManager
-├── EventEmitter          ← Broadcast pub/sub event system
-├── CommandQueue           ← Central scheduler (10ms poll loop)
+├── EventEmitter          ← broadcast pub/sub; subscribe() returns EventStream (Stream)
+├── CommandQueue           ← scheduler (10ms poll loop)
 │   ├── Lanes              ← HashMap<LaneId, Lane>
-│   │   └── Lane           ← Priority queue + concurrency semaphore
+│   │   └── Lane           ← priority queue + concurrency semaphore
 │   │       ├── Pending    ← VecDeque (FIFO within priority)
-│   │       └── Config     ← Timeout, retry, rate limit, boost
-│   ├── DeadLetterQueue    ← Failed commands storage
-│   └── Storage            ← Optional persistence backend
-├── Metrics                ← Optional observability
-└── Alerts                 ← Optional monitoring
+│   │       └── Config     ← timeout, retry, rate limit, boost, pressure threshold
+│   ├── DeadLetterQueue    ← failed commands
+│   └── Storage            ← optional persistence
+├── Metrics                ← optional observability
+└── Alerts                 ← optional monitoring
 ```
 
 ## Built-in Lanes
@@ -50,17 +51,25 @@ QueueManager
 
 Lower priority number = higher priority. The scheduler always picks commands from the highest-priority lane with pending work.
 
+## Supported Languages
+
+| Language | Package | Install |
+|----------|---------|---------|
+| Rust | [`a3s-lane`](https://crates.io/crates/a3s-lane) | `a3s-lane = "0.4"` in Cargo.toml |
+| Python | [`a3s-lane`](https://pypi.org/project/a3s-lane/) | `pip install a3s-lane` |
+| Node.js | [`@a3s-lab/lane`](https://www.npmjs.com/package/@a3s-lab/lane) | `npm install @a3s-lab/lane` |
+
 ## Performance
 
-Benchmarked on Apple Silicon (M-series):
+Benchmarked on Apple Silicon (M-series), release build:
 
 | Scenario | Throughput |
 |----------|------------|
-| Full lifecycle (10 commands) | ~93 ops/sec |
-| Concurrent (10 lanes) | 33,000-50,000 ops/sec |
-| Priority scheduling overhead | ~3-5% |
-| Metrics collection overhead | ~3-5% |
+| Concurrent (10 lanes) | 33,000–50,000 ops/sec |
+| Single lane | 6,600–10,000 ops/sec |
+| Full lifecycle (create/start/shutdown overhead) | ~85–93 ops/sec |
+| Metrics overhead | ~3–5% |
 
 ## Test Coverage
 
-212 tests with **96.48% line coverage**. Key modules at 98-100% coverage.
+246 tests (`--all-features`). Key modules at 98–100% line coverage.

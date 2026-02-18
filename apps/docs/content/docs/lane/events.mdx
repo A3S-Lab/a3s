@@ -1,151 +1,200 @@
 ---
 title: Events
-description: Real-time event system for monitoring command lifecycle and queue state
+description: Real-time event stream for monitoring command lifecycle and queue state
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Events
 
-A3S Lane includes a broadcast pub/sub event system that emits events for every stage of the command lifecycle. Use events for logging, monitoring dashboards, and custom integrations.
+A3S Lane emits events at every stage of the command lifecycle. `EventStream` implements `futures_core::Stream`, so it works with any stream combinator. Subscribe directly from the manager — no need to thread `EventEmitter` manually.
 
-## EventEmitter
-
-The `EventEmitter` is a Tokio broadcast channel shared across the queue:
+## Subscribe from the Manager
 
 ```rust
-use a3s_lane::EventEmitter;
+use tokio_stream::StreamExt;
 
-// Create with channel capacity
-let emitter = EventEmitter::new(100);
-```
+// All events
+let mut stream = manager.subscribe();
 
-The capacity determines how many events can be buffered before slow subscribers start losing events (lagging).
-
-## Subscribing to Events
-
-### Subscribe to All Events
-
-```rust
-let mut rx = emitter.subscribe();
+// Filtered — predicate runs on the subscriber side
+let mut failures = manager.subscribe_filtered(|e| {
+    e.key == "queue.command.failed" || e.key == "queue.command.timeout"
+});
 
 tokio::spawn(async move {
-    while let Ok(event) = rx.recv().await {
+    while let Some(event) = stream.next().await {
         println!("[{}] {}", event.timestamp, event.key);
     }
 });
 ```
 
-### Filtered Subscription
+Both `subscribe()` and `subscribe_filtered()` return `EventStream`, which implements `futures_core::Stream<Item = LaneEvent>`.
 
-Subscribe only to events matching a predicate:
+## EventStream as Stream
 
-```rust
-let mut stream = emitter.subscribe_filtered(|event| {
-    event.key.starts_with("queue.command")
-});
-
-tokio::spawn(async move {
-    while let Ok(event) = stream.recv().await {
-        println!("Command event: {}", event.key);
-    }
-});
-```
-
-## Event Structure
+Use `.next().await` directly, or any stream combinator from `StreamExt`:
 
 ```rust
-pub struct LaneEvent {
-    pub key: EventKey,           // Dot-separated event identifier
-    pub payload: EventPayload,   // Event data
-    pub timestamp: DateTime<Utc>,
+use tokio_stream::StreamExt;
+
+// Convenience recv() method — same as .next().await
+while let Some(event) = stream.recv().await {
+    println!("{}", event.key);
 }
 
-pub enum EventPayload {
-    Empty,
-    String(String),
-    Map(HashMap<String, serde_json::Value>),
+// Timeout per event
+while let Ok(Some(event)) = tokio::time::timeout(
+    Duration::from_secs(5),
+    stream.next(),
+).await {
+    println!("{}", event.key);
 }
+
+// Take first N
+let first_ten: Vec<_> = stream.take(10).collect().await;
 ```
 
-## Event Types
+## Subscribe from the Emitter
+
+If you need to subscribe before the manager is built:
+
+```rust
+// EventStream (implements Stream) — all events
+let mut stream = emitter.subscribe_stream();
+
+// EventStream — filtered
+let mut stream = emitter.subscribe_filtered(|e| e.key.starts_with("queue.command"));
+
+// Raw broadcast::Receiver — legacy API
+let mut rx = emitter.subscribe();
+while let Ok(event) = rx.recv().await { /* ... */ }
+```
+
+## Python and Node SDKs
+
+<Tabs groupId="lang" items={['Python', 'Node.js']}>
+<Tab value="Python">
+
+```python
+from a3s_lane import Lane
+
+lane = Lane()
+lane.start()
+
+# All events — returns EventStream
+stream = lane.subscribe()
+
+# recv() blocks until an event arrives; returns None on timeout
+event = stream.recv(timeout_ms=5000)
+if event:
+    print(f"[{event.timestamp}] {event.key}")
+    print(event.payload)  # dict
+
+# Filtered — exact key match
+failures = lane.subscribe_filtered([
+    "queue.command.failed",
+    "queue.command.timeout",
+])
+
+# Event loop
+while True:
+    event = failures.recv(timeout_ms=1000)
+    if event is None:
+        break
+    print(event.key, event.payload)
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```js
+const { Lane } = require('@a3s-lab/lane');
+
+const lane = new Lane();
+lane.start();
+
+// All events — callback receives (err, event) for every event
+lane.subscribe((err, event) => {
+  if (err) throw err;
+  console.log(`[${event.timestamp}] ${event.key}`);
+  console.log(JSON.parse(event.payload));  // event.payload is a JSON string
+});
+
+// Filtered — exact key match
+lane.subscribeFiltered(
+  ['queue.command.failed', 'queue.command.timeout'],
+  (err, event) => {
+    if (err) throw err;
+    console.error('failure:', event.key, JSON.parse(event.payload));
+  }
+);
+```
+
+</Tab>
+</Tabs>
+
+## Event Reference
 
 ### Command Lifecycle
 
-| Event Key | Payload | Description |
-|-----------|---------|-------------|
-| `queue.command.submitted` | Map: `lane_id`, `command_type` | Command added to queue |
-| `queue.command.started` | Map: `lane_id`, `command_type` | Execution began |
-| `queue.command.completed` | Map: `lane_id`, `command_type`, `duration_ms` | Execution succeeded |
-| `queue.command.failed` | Map: `lane_id`, `command_type`, `error` | Execution failed |
-| `queue.command.timeout` | Map: `lane_id`, `duration` | Command timed out |
-| `queue.command.retry` | Map: `lane_id`, `attempt`, `delay_ms` | Command being retried |
-| `queue.command.dead_lettered` | Map: `lane_id`, `command_type`, `error` | Command moved to DLQ |
+| Event key | When | Payload fields |
+|-----------|------|----------------|
+| `queue.command.submitted` | `submit()` accepted | `lane_id` |
+| `queue.command.started` | Scheduler dispatched | `lane_id`, `command_id`, `command_type` |
+| `queue.command.completed` | Returned `Ok` | `lane_id`, `command_id` |
+| `queue.command.retry` | Failed, will retry | `lane_id`, `command_id`, `attempt` |
+| `queue.command.dead_lettered` | Moved to DLQ | `lane_id`, `command_id`, `command_type` |
+| `queue.command.failed` | Terminal failure | `lane_id`, `command_id`, `error` |
+| `queue.command.timeout` | Timed out | `lane_id`, `command_id`, `error` |
 
-### Lane State
+### Lane Pressure
 
-| Event Key | Payload | Description |
-|-----------|---------|-------------|
-| `queue.lane.pressure` | Map: `lane_id`, `pending`, `active` | Lane approaching capacity |
-| `queue.lane.idle` | Map: `lane_id` | Lane has no pending work |
+| Event key | When | Payload fields |
+|-----------|------|----------------|
+| `queue.lane.pressure` | `pending >= threshold` (first crossing) | `lane_id` |
+| `queue.lane.idle` | `pending == 0` after being pressured | `lane_id` |
+
+These events require `with_pressure_threshold(n)` on the lane config. See [Lane pressure](/docs/lane/lanes#pressure-tracking).
 
 ### Shutdown
 
-| Event Key | Payload | Description |
-|-----------|---------|-------------|
-| `queue.shutdown.started` | Empty | Shutdown initiated |
-| `queue.shutdown.complete` | Empty | All commands drained |
+| Event key | When | Payload |
+|-----------|------|---------|
+| `queue.shutdown.started` | `shutdown()` called | — |
 
-## Emitting Custom Events
-
-You can emit your own events through the same channel:
+## LaneEvent Structure
 
 ```rust
-use a3s_lane::{LaneEvent, EventPayload};
-use chrono::Utc;
-
-emitter.emit(LaneEvent {
-    key: "app.custom.event".into(),
-    payload: EventPayload::String("custom data".into()),
-    timestamp: Utc::now(),
-});
+pub struct LaneEvent {
+    pub key: EventKey,            // dot-separated identifier
+    pub payload: EventPayload,    // Empty | String(String) | Map(HashMap<String, Value>)
+    pub timestamp: DateTime<Utc>,
+}
 ```
 
-## Example: Command Lifecycle Logger
+## Example: Lifecycle Logger
 
 ```rust
-let emitter = EventEmitter::new(100);
-let mut rx = emitter.subscribe();
+use tokio_stream::StreamExt;
+
+let mut stream = manager.subscribe();
 
 tokio::spawn(async move {
-    while let Ok(event) = rx.recv().await {
-        match event.key.as_str() {
-            "queue.command.submitted" => {
-                if let EventPayload::Map(m) = &event.payload {
-                    println!("+ Submitted {} to {}",
-                        m.get("command_type").unwrap(),
-                        m.get("lane_id").unwrap());
+    while let Some(event) = stream.next().await {
+        if let a3s_lane::EventPayload::Map(ref m) = event.payload {
+            let lane = m.get("lane_id").and_then(|v| v.as_str()).unwrap_or("?");
+            match event.key.as_str() {
+                "queue.command.submitted"  => println!("+ queued  → {lane}"),
+                "queue.command.started"    => println!("→ started → {lane}"),
+                "queue.command.completed"  => println!("✓ done    ← {lane}"),
+                "queue.command.failed"     => {
+                    let err = m.get("error").and_then(|v| v.as_str()).unwrap_or("?");
+                    println!("✗ failed  ← {lane}: {err}");
                 }
+                _ => {}
             }
-            "queue.command.completed" => {
-                if let EventPayload::Map(m) = &event.payload {
-                    println!("  Completed {} in {}ms",
-                        m.get("command_type").unwrap(),
-                        m.get("duration_ms").unwrap());
-                }
-            }
-            "queue.command.failed" => {
-                if let EventPayload::Map(m) = &event.payload {
-                    println!("! Failed {}: {}",
-                        m.get("command_type").unwrap(),
-                        m.get("error").unwrap());
-                }
-            }
-            _ => {}
         }
     }
 });
-
-let manager = QueueManagerBuilder::new(emitter)
-    .with_default_lanes()
-    .build()
-    .await?;
 ```

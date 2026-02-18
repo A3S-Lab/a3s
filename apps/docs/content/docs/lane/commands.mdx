@@ -3,11 +3,13 @@ title: Commands
 description: Define, submit, and track command execution through the queue
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Commands
 
-Commands are the unit of work in A3S Lane. Any struct that implements the `Command` trait can be submitted to a lane for async execution.
+Commands are the unit of work in A3S Lane. In Rust, any struct implementing the `Command` trait can be submitted. In Python and Node.js, you submit a `(lane_id, command_type, payload)` tuple directly — no trait implementation required.
 
-## Command Trait
+## Command Trait (Rust)
 
 ```rust
 use a3s_lane::Result;
@@ -16,17 +18,14 @@ use serde_json::Value;
 
 #[async_trait]
 pub trait Command: Send + Sync {
-    /// Execute the command and return a JSON result
     async fn execute(&self) -> Result<Value>;
-
-    /// Return a string identifier for this command type
     fn command_type(&self) -> &str;
 }
 ```
 
-Commands must be `Send + Sync` since they are executed on Tokio tasks. The return type is always `serde_json::Value`, providing a uniform interface regardless of the underlying work.
+Commands must be `Send + Sync` since they execute on Tokio tasks. The return type is always `serde_json::Value`.
 
-## Defining Commands
+### Defining Commands
 
 ```rust
 struct AnalyzeText {
@@ -45,95 +44,127 @@ impl Command for AnalyzeText {
         }))
     }
 
-    fn command_type(&self) -> &str {
-        "analyze_text"
-    }
+    fn command_type(&self) -> &str { "analyze_text" }
 }
 ```
 
-The `command_type()` return value is used in event payloads, dead letter queue entries, storage records, and metrics labels.
+`command_type()` labels the command in event payloads, dead letter queue entries, storage records, and metrics.
 
 ## Submitting Commands
 
-Submit a boxed command to a specific lane. Returns a oneshot receiver for the result:
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
 
 ```rust
-let cmd = Box::new(AnalyzeText {
+let rx = manager.submit("query", Box::new(AnalyzeText {
     text: "A3S Lane is fast".into(),
     model: "sentiment-v2".into(),
-});
+})).await?;
 
-let rx = manager.submit("query", cmd).await?;
-```
-
-### Awaiting Results
-
-```rust
 // Block until the command completes
 let result = rx.await??;
-println!("Analysis: {}", result);
+println!("{}", result);
 ```
 
-The double `?` unwraps both the oneshot channel (`RecvError`) and the command result (`LaneError`).
+`submit()` returns a `oneshot::Receiver<Result<Value>>`. The `??` unwraps the channel (`RecvError`) and the command result (`LaneError`).
 
-### Fire and Forget
-
-Drop the receiver if you don't need the result:
+**Fire and forget** (drop the receiver):
 
 ```rust
-let _ = manager.submit("background", cmd).await?;
+let _ = manager.submit("background", Box::new(MyCmd {})).await?;
 ```
 
-### Error Handling
+**Error handling**:
 
 ```rust
 match rx.await {
     Ok(Ok(value)) => println!("Success: {}", value),
     Ok(Err(e)) => match e {
-        LaneError::Timeout(d) => println!("Timed out after {:?}", d),
-        LaneError::CommandError(msg) => println!("Command failed: {}", msg),
-        LaneError::LaneNotFound(id) => println!("No such lane: {}", id),
-        LaneError::ShutdownInProgress => println!("Queue is shutting down"),
+        LaneError::Timeout(d)          => println!("Timed out after {:?}", d),
+        LaneError::CommandError(msg)   => println!("Command failed: {}", msg),
+        LaneError::LaneNotFound(id)    => println!("No such lane: {}", id),
+        LaneError::ShutdownInProgress  => println!("Queue is shutting down"),
         _ => println!("Error: {}", e),
     },
     Err(_) => println!("Channel dropped"),
 }
 ```
 
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_lane import Lane
+
+lane = Lane()
+lane.start()
+
+# submit(lane_id, command_type, payload) — blocks until the queue slot is acquired.
+# The queue enforces priority ordering and concurrency limits.
+# Returns the payload dict as confirmation.
+result = lane.submit("query", "analyze_text", {
+    "text": "A3S Lane is fast",
+    "model": "sentiment-v2",
+})
+print(result)
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```js
+const { Lane } = require('@a3s-lab/lane');
+
+const lane = new Lane();
+lane.start();
+
+// submit(laneId, commandType, jsonPayload) — blocks until the queue slot is acquired.
+// Returns a JSON string result.
+const result = JSON.parse(lane.submit(
+  'query',
+  'analyze_text',
+  JSON.stringify({ text: 'A3S Lane is fast', model: 'sentiment-v2' })
+));
+console.log(result);
+```
+
+</Tab>
+</Tabs>
+
 ## Execution Lifecycle
 
 ```
-submit() --> Pending Queue --> Scheduler --> Execute --> Result
-                                  |              |
-                                  |         (on failure)
-                                  |              |
-                                  |    Retry? --yes--> Re-enqueue with delay
-                                  |       |
-                                  |      no
-                                  |       |
-                                  |       v
-                                  |   Dead Letter Queue
-                                  |
-                             (on timeout)
-                                  |
-                                  v
-                          LaneError::Timeout
+submit() → Pending Queue → Scheduler → Execute → Result
+                               │             │
+                               │        on failure
+                               │             │
+                               │   Retry? ──yes──→ Re-enqueue with delay
+                               │      │
+                               │     no
+                               │      │
+                               │      ↓
+                               │   Dead Letter Queue
+                               │
+                          on timeout
+                               │
+                               ↓
+                        LaneError::Timeout
 ```
 
-1. **Submission** - Command is boxed and enqueued. Persisted to storage if configured.
-2. **Scheduling** - Background loop (10ms) picks the highest-priority lane with available capacity.
-3. **Execution** - `execute()` is called inside a Tokio task, wrapped with timeout if configured.
-4. **Completion** - Result sent to the oneshot receiver. Command removed from storage.
-5. **Retry** - On failure with retries remaining, re-enqueued after a delay.
-6. **Dead Letter** - If all retries exhausted, moved to the DLQ.
+1. **Submission** — Command enqueued. Persisted to storage if configured.
+2. **Scheduling** — Background loop (10ms) picks the highest-priority lane with available capacity.
+3. **Execution** — `execute()` runs in a Tokio task, wrapped with timeout if configured.
+4. **Completion** — Result sent to the oneshot receiver. Command removed from storage.
+5. **Retry** — On failure with retries remaining, re-enqueued after a delay.
+6. **Dead Letter** — If all retries exhausted, moved to the DLQ.
 
 ## Queue Stats
 
 ```rust
 let stats = manager.stats().await?;
 println!("Total pending: {}", stats.total_pending);
-println!("Total active: {}", stats.total_active);
-println!("Dead letters: {}", stats.dead_letter_count);
+println!("Total active:  {}", stats.total_active);
+println!("Dead letters:  {}", stats.dead_letter_count);
 ```
 
 | Field | Type | Description |

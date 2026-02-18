@@ -1,22 +1,55 @@
 ---
 title: Quick Start
-description: Get started with A3S Lane in under 5 minutes
+description: Get up and running with A3S Lane in any supported language
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Quick Start
 
 ## Installation
 
-Add A3S Lane to your `Cargo.toml`:
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
 
 ```toml
 [dependencies]
-a3s-lane = "0.1"
+a3s-lane = "0.4"
 tokio = { version = "1", features = ["full"] }
 serde_json = "1"
 ```
 
+All four features (`distributed`, `metrics`, `monitoring`, `telemetry`) are on by default. Core queue only:
+
+```toml
+a3s-lane = { version = "0.4", default-features = false }
+```
+
+</Tab>
+<Tab value="Python">
+
+```bash
+pip install a3s-lane
+```
+
+Python 3.9–3.13. Pre-built wheels for Linux (glibc/musl), macOS, and Windows.
+
+</Tab>
+<Tab value="Node.js">
+
+```bash
+npm install @a3s-lab/lane
+```
+
+Node.js 16+. Native binary for Linux, macOS, and Windows (x64/arm64).
+
+</Tab>
+</Tabs>
+
 ## Basic Usage
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
 
 ### 1. Define a Command
 
@@ -27,27 +60,19 @@ use a3s_lane::{Command, Result};
 use async_trait::async_trait;
 use serde_json::Value;
 
-struct FetchData {
-    url: String,
-}
+struct FetchData { url: String }
 
 #[async_trait]
 impl Command for FetchData {
     async fn execute(&self) -> Result<Value> {
-        let response = reqwest::get(&self.url).await?;
-        let body = response.text().await?;
-        Ok(serde_json::json!({ "body": body }))
+        // perform the actual work
+        Ok(serde_json::json!({ "url": self.url }))
     }
-
-    fn command_type(&self) -> &str {
-        "fetch_data"
-    }
+    fn command_type(&self) -> &str { "fetch_data" }
 }
 ```
 
-### 2. Create a Queue Manager
-
-Use the builder with default lanes:
+### 2. Build and Start
 
 ```rust
 use a3s_lane::{EventEmitter, QueueManagerBuilder};
@@ -55,46 +80,136 @@ use a3s_lane::{EventEmitter, QueueManagerBuilder};
 let emitter = EventEmitter::new(100);
 let manager = QueueManagerBuilder::new(emitter)
     .with_default_lanes()
-    .build()
-    .await?;
+    .build().await?;
 
 manager.start().await?;
 ```
 
-### 3. Submit Commands
-
-Submit a command to a lane and await the result:
+### 3. Submit and Await
 
 ```rust
-let cmd = Box::new(FetchData {
+let rx = manager.submit("query", Box::new(FetchData {
     url: "https://api.example.com/data".into(),
+})).await?;
+
+let result = rx.await??;
+println!("{result}");
+```
+
+`submit()` returns a `oneshot::Receiver<Result<Value>>`. The `??` unwraps the channel and the command result.
+
+### 4. Shutdown
+
+```rust
+use std::time::Duration;
+manager.shutdown().await;
+manager.drain(Duration::from_secs(30)).await?;
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_lane import Lane
+
+lane = Lane()   # default lanes: system, control, query, session, skill, prompt
+lane.start()
+
+# Submit schedules work in priority order and blocks until it runs.
+# Returns the payload as confirmation — the queue provides scheduling,
+# concurrency control, and rate limiting.
+result = lane.submit("query", "fetch_data", {"url": "https://api.example.com/data"})
+
+# Subscribe to lifecycle events
+stream = lane.subscribe()
+event = stream.recv(timeout_ms=1000)
+if event:
+    print(f"[{event.timestamp}] {event.key}")
+
+# Shutdown
+lane.shutdown()
+lane.drain(timeout_secs=30.0)
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```js
+const { Lane } = require('@a3s-lab/lane');
+
+const lane = new Lane();   // default lanes: system, control, query, session, skill, prompt
+lane.start();
+
+// Submit schedules work in priority order. Returns JSON string result.
+const result = JSON.parse(
+  lane.submit('query', 'fetch_data', JSON.stringify({ url: 'https://api.example.com/data' }))
+);
+
+// Subscribe to lifecycle events
+lane.subscribe((err, event) => {
+  if (err) throw err;
+  console.log(`[${event.timestamp}] ${event.key}`);
 });
 
-// Submit returns a oneshot receiver
-let rx = manager.submit("query", cmd).await?;
-
-// Await the result
-let result = rx.await??;
-println!("Result: {}", result);
+// Shutdown
+lane.shutdown();
+lane.drain(30_000);
 ```
 
-### 4. Graceful Shutdown
+</Tab>
+</Tabs>
+
+## Custom Lanes
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
 
 ```rust
-manager.shutdown().await;
-manager.drain(Duration::from_secs(10)).await?;
+use a3s_lane::{QueueManagerBuilder, LaneConfig};
+
+let manager = QueueManagerBuilder::new(emitter)
+    .with_lane("high",  LaneConfig::new(1, 4), 0)
+    .with_lane("low",   LaneConfig::new(1, 2), 1)
+    .build().await?;
 ```
 
-## With Reliability
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_lane import Lane, LaneConfig
+
+lane = Lane.with_lanes([
+    LaneConfig("high", priority=0, min_concurrency=1, max_concurrency=4),
+    LaneConfig("low",  priority=1, min_concurrency=1, max_concurrency=2),
+])
+lane.start()
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```js
+const { Lane } = require('@a3s-lab/lane');
+
+const lane = Lane.withLanes([
+  { laneId: 'high', priority: 0, minConcurrency: 1, maxConcurrency: 4 },
+  { laneId: 'low',  priority: 1, minConcurrency: 1, maxConcurrency: 2 },
+]);
+lane.start();
+```
+
+</Tab>
+</Tabs>
+
+## With Reliability (Rust)
 
 Add timeout, retry, dead letter queue, and persistent storage:
 
 ```rust
 use a3s_lane::*;
-use std::time::Duration;
-use std::path::PathBuf;
+use std::{sync::Arc, time::Duration, path::PathBuf};
 
-let emitter = EventEmitter::new(100);
 let storage = Arc::new(LocalStorage::new(PathBuf::from("./queue")).await?);
 
 let manager = QueueManagerBuilder::new(emitter)
@@ -107,28 +222,27 @@ let manager = QueueManagerBuilder::new(emitter)
     )
     .with_dlq(100)
     .with_storage(storage)
-    .build()
-    .await?;
+    .build().await?;
 ```
 
-## With Observability
+See [Reliability](/docs/lane/reliability) for details.
+
+## With Observability (Rust)
 
 Add metrics and alerts:
 
 ```rust
 use a3s_lane::*;
-
-let alerts = Arc::new(AlertManager::with_queue_depth_alerts(100, 500));
+use std::sync::Arc;
 
 let manager = QueueManagerBuilder::new(emitter)
     .with_default_lanes()
     .with_metrics(QueueMetrics::local())
-    .with_alerts(alerts)
-    .build()
-    .await?;
+    .with_alerts(Arc::new(AlertManager::with_queue_depth_alerts(100, 500)))
+    .build().await?;
 
-// Check metrics later
 let snapshot = manager.metrics().unwrap().snapshot().await;
-println!("Total submitted: {:?}",
-    snapshot.counters.get("lane.commands.submitted"));
+println!("Submitted: {:?}", snapshot.counters.get("lane.commands.submitted"));
 ```
+
+See [Observability](/docs/lane/observability) for details.

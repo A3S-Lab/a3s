@@ -3,9 +3,13 @@ title: Reliability
 description: Timeout, retry, dead letter queue, persistent storage, and graceful shutdown
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Reliability
 
-A3S Lane provides multiple layers of reliability: per-command timeouts, configurable retry policies, a dead letter queue for permanently failed commands, persistent storage for crash recovery, and graceful shutdown with draining.
+A3S Lane provides multiple reliability layers: per-command timeouts, configurable retry policies, a dead letter queue for permanently failed commands, persistent storage for crash recovery, and graceful shutdown.
+
+Timeout, retry, DLQ, and persistent storage are Rust-only features. Graceful shutdown (`drain`) is available in all SDKs.
 
 ## Timeout
 
@@ -22,8 +26,6 @@ When a command exceeds the timeout, it receives `LaneError::Timeout(duration)`. 
 
 ### Exponential Backoff
 
-Delays increase exponentially between retries, with a cap at 30 seconds:
-
 ```rust
 let config = LaneConfig::new(1, 10)
     .with_retry_policy(RetryPolicy::exponential(3));
@@ -37,8 +39,6 @@ let config = LaneConfig::new(1, 10)
 | 4+ | Capped at 30s |
 
 ### Fixed Delay
-
-Constant delay between retries:
 
 ```rust
 let config = LaneConfig::new(1, 10)
@@ -54,14 +54,14 @@ let config = LaneConfig::new(1, 10)
 
 ## Dead Letter Queue
 
-Commands that exhaust all retries are moved to the dead letter queue (DLQ) for inspection and debugging.
+Commands that exhaust all retries move to the dead letter queue (DLQ).
 
 ### Enable DLQ
 
 ```rust
 let manager = QueueManagerBuilder::new(emitter)
     .with_default_lanes()
-    .with_dlq(100)  // Max 100 dead letters
+    .with_dlq(100)  // max 100 dead letters
     .build()
     .await?;
 ```
@@ -70,15 +70,14 @@ let manager = QueueManagerBuilder::new(emitter)
 
 ```rust
 if let Some(dlq) = manager.queue().dlq() {
-    let letters = dlq.list().await;
-    for letter in &letters {
-        println!("[{}] {} in lane '{}': {}",
+    for letter in dlq.list().await {
+        println!("[{}] {} in '{}': {} (attempts: {})",
             letter.failed_at,
             letter.command_type,
             letter.lane_id,
             letter.error,
+            letter.attempts,
         );
-        println!("  Attempts: {}", letter.attempts);
     }
 }
 ```
@@ -97,13 +96,8 @@ if let Some(dlq) = manager.queue().dlq() {
 ### DLQ Operations
 
 ```rust
-// Pop one dead letter (for retry or inspection)
-let letter = dlq.pop().await;
-
-// Clear all dead letters
-dlq.clear().await;
-
-// Check size
+let letter = dlq.pop().await;    // pop one (for retry or inspection)
+dlq.clear().await;               // clear all
 let count = dlq.len().await;
 let empty = dlq.is_empty().await;
 ```
@@ -150,8 +144,6 @@ impl Storage for MyRedisStorage {
 }
 ```
 
-### StoredCommand Fields
-
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | `String` | Unique identifier |
@@ -164,7 +156,10 @@ impl Storage for MyRedisStorage {
 
 ## Graceful Shutdown
 
-Shut down the queue cleanly by stopping new submissions and draining pending commands:
+Stop accepting new commands and wait for in-flight work to complete:
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
 
 ```rust
 // 1. Stop accepting new commands
@@ -172,22 +167,46 @@ manager.shutdown().await;
 
 // 2. Wait for in-flight commands to complete (with timeout)
 match manager.drain(Duration::from_secs(30)).await {
-    Ok(()) => println!("All commands completed"),
-    Err(e) => println!("Drain timed out: {}", e),
+    Ok(())  => println!("All commands completed"),
+    Err(e)  => println!("Drain timed out: {}", e),
 }
-```
 
-### Shutdown Behavior
-
-1. `shutdown()` sets an internal flag - new `submit()` calls return `LaneError::ShutdownInProgress`
-2. In-flight commands continue executing normally
-3. `drain(timeout)` polls every 100ms until all lanes report `pending == 0` and `active == 0`
-4. If the timeout expires before draining completes, an error is returned
-
-Check shutdown status:
-
-```rust
 if manager.is_shutting_down() {
     println!("Queue is shutting down");
 }
 ```
+
+`shutdown()` sets an internal flag — new `submit()` calls return `LaneError::ShutdownInProgress`. `drain(timeout)` polls every 100ms until all lanes report `pending == 0` and `active == 0`.
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_lane import Lane
+
+lane = Lane()
+lane.start()
+
+# ... submit work ...
+
+lane.shutdown()                # stop accepting new submits
+lane.drain(timeout_secs=30.0) # wait for in-flight to complete
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```js
+const { Lane } = require('@a3s-lab/lane');
+
+const lane = new Lane();
+lane.start();
+
+// ... submit work ...
+
+lane.shutdown();       // stop accepting new submits
+lane.drain(30_000);    // wait for in-flight to complete (timeout in ms)
+```
+
+</Tab>
+</Tabs>
