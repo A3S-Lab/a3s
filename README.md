@@ -91,7 +91,6 @@ independent steps execute **in parallel** via wave-based scheduling (`tokio::Joi
 
 | Project | Description | Docs |
 |---------|-------------|------|
-| [Rava](docs/prd/rava.md) | Java AOT compiler & all-in-one toolchain written in Rust — `rava run`, `rava build`, `rava add`; 10 ms startup, 20 MB binary, zero-config reflection/proxy/JNI | [PRD + Architecture](docs/prd/rava.md) |
 | [a3s-code](crates/code/) | AI coding agent framework — parallel plan execution, 14 tools, skills, subagents, memory | [README](crates/code/README.md) |
 | [a3s-lane](crates/lane/) | Per-session priority queue — 6 lanes, concurrency, retry/DLQ | [README](crates/lane/README.md) |
 | [a3s-box](crates/box/) | MicroVM sandbox runtime — VM isolation + TEE (SEV-SNP/TDX), Docker-like CLI (52 commands), CRI for K8s, 1,466 tests | [README](crates/box/README.md) |
