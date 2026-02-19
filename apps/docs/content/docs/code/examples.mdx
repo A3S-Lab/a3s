@@ -537,7 +537,7 @@ async def test_streaming(agent):
 
     session = agent.session(".")
 
-    print("Testing: Stream events...")
+    print("Testing: Sync stream events...")
     event_count = 0
     text_deltas = 0
     tool_calls = 0
@@ -550,7 +550,16 @@ async def test_streaming(agent):
             tool_calls += 1
             print(f"  Tool called: {event.tool_name}")
 
-    print(f"✓ Received {event_count} events ({text_deltas} text deltas, {tool_calls} tool calls)")
+    print(f"✓ Sync: Received {event_count} events ({text_deltas} text deltas, {tool_calls} tool calls)")
+
+    print("\nTesting: Async stream events (async for)...")
+    event_count = 0
+    async for event in session.stream("List all .rs files in the current directory"):
+        event_count += 1
+        if event.event_type == "end":
+            break
+
+    print(f"✓ Async: Received {event_count} events")
     print("\n✅ Test 6 passed: Streaming works correctly")
 
 
@@ -1005,13 +1014,15 @@ async function testStreaming(agent) {
 
   const session = agent.session('.');
 
-  console.log('Testing: Stream events...');
-  const events = await session.stream('List all .rs files in the current directory');
+  console.log('Testing: Stream events with for await...of...');
+  const stream = await session.stream('List all .rs files in the current directory');
 
+  let eventCount = 0;
   let textDeltas = 0;
   let toolCalls = 0;
 
-  for (const event of events) {
+  for await (const event of stream) {
+    eventCount++;
     if (event.type === 'text_delta') {
       textDeltas++;
     } else if (event.type === 'tool_start') {
@@ -1020,7 +1031,7 @@ async function testStreaming(agent) {
     }
   }
 
-  console.log(`✓ Received ${events.length} events (${textDeltas} text deltas, ${toolCalls} tool calls)`);
+  console.log(`✓ Received ${eventCount} events (${textDeltas} text deltas, ${toolCalls} tool calls)`);
   console.log('\n✅ Test 6 passed: Streaming works correctly');
 }
 
@@ -1959,8 +1970,11 @@ const pollInterval = setInterval(async () => {
   }
 }, 200);
 
-// 4. Send the prompt (Node SDK stream() collects all events)
-const result = await session.send("Run: echo 'hello', date, uname -s");
+// 4. Stream the prompt, processing events as they arrive
+const stream = await session.stream("Run: echo 'hello', date, uname -s");
+for await (const event of stream) {
+  if (event.type === 'text_delta') process.stdout.write(event.text || '');
+}
 stopPolling = true;
 clearInterval(pollInterval);
 
