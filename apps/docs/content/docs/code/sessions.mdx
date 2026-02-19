@@ -71,6 +71,7 @@ session = agent.session("/my-project", model="openai/gpt-4o")
 | Tool timeout | `with_tool_timeout(ms)` | `toolTimeoutMs: ms` | `tool_timeout_ms=ms` | Per-tool execution timeout in ms; timeout → error fed back to LLM (default: none) |
 | Circuit breaker | `with_circuit_breaker(n)` | `circuitBreakerThreshold: n` | `circuit_breaker_threshold=n` | Max LLM API failures before abort in non-streaming mode (default: 3) |
 | Resilience bundle | `with_resilience_defaults()` | — | — | Enables parse_retries=2, tool_timeout=120s, circuit_breaker=3 |
+| Sandbox | `with_sandbox(SandboxConfig)` | — | — | Route `bash` tool through A3S Box MicroVM (requires `sandbox` feature) |
 
 The model must be defined in the agent's config file under `providers`. The format is `provider_name/model_id`.
 
@@ -326,6 +327,44 @@ Provider-level `api_key` and `base_url` are defaults. Model-level values overrid
 | Storage backend | `storage_backend` | `storageBackend` | `string` | `"file"` |
 | Sessions dir | `sessions_dir` | `sessionsDir` | `string?` | `null` |
 | Storage URL | `storage_url` | `storageUrl` | `string?` | `null` |
+
+## Sandbox Integration
+
+Route `bash` tool commands through an A3S Box MicroVM for isolated execution. Requires the `sandbox` Cargo feature.
+
+**5.1 Transparent Routing** — When `SandboxConfig` is set, the `bash` tool silently uses the sandbox:
+
+```rust
+use a3s_code_core::{SessionOptions, SandboxConfig};
+
+let session = agent.session(".", Some(
+    SessionOptions::new().with_sandbox(SandboxConfig {
+        image: "ubuntu:22.04".into(),
+        memory_mb: 512,
+        network: false,
+        ..SandboxConfig::default()
+    })
+))?;
+
+// bash commands run inside the MicroVM sandbox
+let result = session.send("Run the test suite", None).await?;
+```
+
+**5.2 Explicit `sandbox` Tool** — With the `sandbox` feature enabled, a `sandbox` built-in tool is registered so the LLM can choose to use it explicitly. The workspace is mounted at `/workspace` inside the sandbox.
+
+| `SandboxConfig` Field | Type | Default | Description |
+|----------------------|------|---------|-------------|
+| `image` | `string` | `"alpine:latest"` | OCI image reference |
+| `memory_mb` | `u32` | `512` | Memory limit in megabytes |
+| `cpus` | `u32` | `1` | Number of vCPUs |
+| `network` | `bool` | `false` | Enable outbound networking |
+| `env` | `HashMap<String,String>` | `{}` | Environment variables to inject |
+
+Enable the feature in `Cargo.toml`:
+
+```toml
+a3s-code-core = { version = "0.7", features = ["sandbox"] }
+```
 
 ## Return Types
 

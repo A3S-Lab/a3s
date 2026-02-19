@@ -17,7 +17,7 @@ let result = session.send("Refactor auth to use JWT", None).await?;
 ```
 
 <Callout type="info">
-**Test Coverage:** 1166 tests, 100% pass rate (includes 8 resilience tests) | **Extension Points:** 14 trait-based | **Built-in Tools:** 11
+**Test Coverage:** 1179 tests, 100% pass rate (includes 8 resilience tests) | **Extension Points:** 14 trait-based | **Built-in Tools:** 11 (12 with `sandbox` feature)
 </Callout>
 
 ## Why A3S Code?
@@ -146,13 +146,14 @@ print(result.text)
 
 ## Core Features
 
-### 🛠️ Built-in Tools (11)
+### 🛠️ Built-in Tools (11 + 1 optional)
 
 | Category | Tools | Description |
 |----------|-------|-------------|
 | **File Operations** | `read`, `write`, `edit`, `patch` | Read/write files, apply diffs |
 | **Search** | `grep`, `glob`, `ls` | Search content, find files, list directories |
 | **Execution** | `bash` | Execute shell commands |
+| **Sandbox** | `sandbox` | Execute in A3S Box MicroVM (`sandbox` feature) |
 | **Web** | `web_fetch`, `web_search` | Fetch URLs, search the web |
 | **Subagents** | `task` | Delegate to specialized child agents |
 
@@ -382,7 +383,7 @@ cargo test          # All tests
 cargo test --lib    # Unit tests only
 ```
 
-**Test Coverage:** 1158 tests, 100% pass rate
+**Test Coverage:** 1179 tests, 100% pass rate
 
 ## License
 
