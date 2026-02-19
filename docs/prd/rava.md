@@ -1,54 +1,56 @@
-# Rava — 产品需求文档
+# Rava — Product Requirements & Technical Architecture
 
-> 版本: 1.0 | 日期: 2026-02-19 | 作者: A3S Team
+> Version: 1.1 | Date: 2026-02-19 | Author: A3S Team
 
 ---
 
-## 1. 概述
+# Part I — Product Requirements
 
-### 1.1 问题陈述
+## 1. Overview
 
-Java 生态系统强大但笨重。开发者面临：
+### 1.1 Problem Statement
 
-- **启动慢**：JVM 冷启动需要数秒，不适合 CLI 工具、Serverless、边缘计算
-- **内存大**：即使一个 Hello World 也要占用 100MB+ 内存
-- **工具链碎片化**：Maven / Gradle / Ant 各自为政，配置冗长（XML / Groovy / Kotlin DSL）
-- **依赖管理痛苦**：`pom.xml` 动辄数百行，依赖冲突是日常噩梦
-- **部署复杂**：需要预装 JRE/JDK，Docker 镜像臃肿（200MB+）
-- **开发体验落后**：相比 Bun/Deno 对 TypeScript 的体验，Java 的开发工具链停留在上一个时代
+The Java ecosystem is powerful but unwieldy. Developers face:
 
-### 1.2 产品愿景
+- **Slow startup**: JVM cold-start takes seconds — unsuitable for CLI tools, serverless, and edge computing
+- **High memory footprint**: Even a Hello World consumes 100 MB+
+- **Fragmented toolchain**: Maven / Gradle / Ant each do things their own way, with verbose config (XML / Groovy / Kotlin DSL)
+- **Painful dependency management**: `pom.xml` files balloon to hundreds of lines; dependency conflicts are a daily headache
+- **Complex deployment**: Requires a pre-installed JRE/JDK; Docker images are bloated (200 MB+)
+- **Outdated developer experience**: Compared to what Bun/Deno deliver for TypeScript, the Java toolchain feels like the previous decade
 
-**Rava** 是一个用 Rust 编写的 Java AOT 编译器和一体化工具链。它之于 Java，就像 Bun 之于 TypeScript。
+### 1.2 Product Vision
+
+**Rava** is a Java AOT compiler and all-in-one toolchain written in Rust. It is to Java what Bun is to TypeScript.
 
 ```
 Bun : TypeScript = Rava : Java
 
-一个二进制文件，搞定一切：
-  rava run Main.java          → 直接运行 Java 源码
-  rava build                  → AOT 编译为原生二进制
-  rava init                   → 初始化项目（生成 rava.hcl）
-  rava add spring-boot-web    → 添加依赖
-  rava test                   → 运行测试
-  rava fmt                    → 格式化代码
+One binary. Everything included:
+  rava run Main.java          → run Java source directly
+  rava build                  → AOT-compile to a native binary
+  rava init                   → initialize a project (generates rava.hcl)
+  rava add spring-boot-web    → add a dependency
+  rava test                   → run tests
+  rava fmt                    → format code
 ```
 
-### 1.3 核心理念
+### 1.3 Core Principles
 
-**理念一：零配置即可运行。**
+**Principle 1: Zero-configuration out of the box.**
 
 ```bash
-# 不需要安装 JDK，不需要 pom.xml，不需要 build.gradle
-# 一个文件，直接跑
+# No JDK installation, no pom.xml, no build.gradle needed
+# One file, just run it
 echo 'class Main { public static void main(String[] args) { System.out.println("Hello"); } }' > Main.java
 rava run Main.java
 # → Hello
 ```
 
-**理念二：一个二进制，替代整个工具链。**
+**Principle 2: One binary replaces the entire toolchain.**
 
-| 传统 Java | Rava |
-|-----------|------|
+| Traditional Java | Rava |
+|-----------------|------|
 | JDK (javac) | `rava` |
 | Maven / Gradle | `rava` |
 | GraalVM native-image | `rava build` |
@@ -56,10 +58,10 @@ rava run Main.java
 | google-java-format | `rava fmt` |
 | jlink / jpackage | `rava build --bundle` |
 
-**理念三：HCL 替代 XML/Groovy，人类可读的项目配置。**
+**Principle 3: HCL replaces XML/Groovy — human-readable project config.**
 
 ```hcl
-# rava.hcl — 项目配置（类比 package.json / Cargo.toml）
+# rava.hcl — project configuration (analogous to package.json / Cargo.toml)
 project {
   name    = "my-api"
   version = "0.1.0"
@@ -80,9 +82,9 @@ dev_dependencies {
 }
 
 build {
-  target  = "native"       # native | jar | jlink
-  main    = "com.example.Main"
-  optimize = "speed"       # speed | size | debug
+  target   = "native"       # native | jar | jlink
+  main     = "com.example.Main"
+  optimize = "speed"        # speed | size | debug
 }
 
 run {
@@ -93,81 +95,81 @@ run {
 }
 ```
 
-**理念四：AOT 优先，JIT 可选。**
+**Principle 4: AOT-first, JIT optional.**
 
 ```
-传统 Java:  .java → javac → .class → JVM (JIT) → 机器码
-Rava:       .java → rava  → 原生二进制 (AOT)     → 直接执行
+Traditional Java:  .java → javac → .class → JVM (JIT) → machine code
+Rava:              .java → rava  → native binary (AOT)  → direct execution
 
-启动时间:   传统 ~2s  →  Rava ~10ms
-内存占用:   传统 ~200MB → Rava ~20MB
+Startup time:  traditional ~2s   →  Rava ~10ms
+Memory usage:  traditional ~200MB →  Rava ~20MB
 ```
 
-### 1.4 目标用户
+### 1.4 Target Users
 
-| 用户群 | 痛点 | Rava 价值 |
-|--------|------|-----------|
-| Java 后端开发者 | 工具链复杂、启动慢 | 一键运行、秒级启动 |
-| 云原生 / Serverless 开发者 | JVM 冷启动不适合 Lambda | AOT 编译，10ms 启动 |
-| CLI 工具开发者 | Java 不适合写 CLI | 编译为单文件原生二进制 |
-| 微服务开发者 | Docker 镜像臃肿 | 编译为 scratch 镜像（<20MB） |
-| Java 初学者 | 环境配置复杂 | 安装 rava 即可开始写代码 |
+| User Group | Pain Point | Rava Value |
+|------------|-----------|------------|
+| Java backend developers | Complex toolchain, slow startup | One-command run, instant startup |
+| Cloud-native / serverless developers | JVM cold-start unsuitable for Lambda | AOT compilation, 10 ms startup |
+| CLI tool developers | Java is awkward for CLI | Compile to single-file native binary |
+| Microservice developers | Bloated Docker images | Compile to scratch image (<20 MB) |
+| Java beginners | Complex environment setup | Install rava and start coding immediately |
 
 ---
 
-## 2. 核心能力
+## 2. Core Capabilities
 
-### 2.1 能力总览
+### 2.1 Capability Overview
 
-| # | 能力 | 命令 | 说明 |
-|---|------|------|------|
-| 1 | 直接运行 | `rava run` | 直接运行 .java 源码，无需预编译 |
-| 2 | AOT 编译 | `rava build` | 编译为原生二进制或优化 JAR |
-| 3 | 项目管理 | `rava init` | 初始化项目，生成 rava.hcl |
-| 4 | 依赖管理 | `rava add/remove/update` | 管理 Maven 依赖，自动解析传递依赖 |
-| 5 | 测试运行 | `rava test` | 运行 JUnit 测试 |
-| 6 | 代码格式化 | `rava fmt` | 格式化 Java 代码 |
-| 7 | 代码检查 | `rava lint` | 静态分析和代码质量检查 |
-| 8 | REPL | `rava repl` | 交互式 Java REPL |
-| 9 | 脚本模式 | `rava script` | 单文件脚本运行（自动推断 main） |
-| 10 | 打包发布 | `rava publish` | 发布到 Maven Central 或私有仓库 |
+| # | Capability | Command | Description |
+|---|-----------|---------|-------------|
+| 1 | Direct run | `rava run` | Run .java source directly, no pre-compilation |
+| 2 | AOT compile | `rava build` | Compile to native binary or optimized JAR |
+| 3 | Project management | `rava init` | Initialize project, generate rava.hcl |
+| 4 | Dependency management | `rava add/remove/update` | Manage Maven dependencies, auto-resolve transitive deps |
+| 5 | Test runner | `rava test` | Run JUnit tests |
+| 6 | Code formatter | `rava fmt` | Format Java code |
+| 7 | Linter | `rava lint` | Static analysis and code quality checks |
+| 8 | REPL | `rava repl` | Interactive Java REPL |
+| 9 | Script mode | `rava script` | Single-file script execution (auto-infers main) |
+| 10 | Publish | `rava publish` | Publish to Maven Central or private registry |
 
-### 2.2 能力 1：直接运行 (`rava run`)
+### 2.2 Capability 1: Direct Run (`rava run`)
 
-像运行脚本一样运行 Java，无需手动编译：
+Run Java like a script, no manual compilation:
 
 ```bash
-# 单文件运行
+# Single-file run
 rava run Main.java
 
-# 项目运行（读取 rava.hcl 中的 main 配置）
+# Project run (reads main class from rava.hcl)
 rava run
 
-# 带参数运行
+# Run with arguments
 rava run Main.java -- --port 8080
 
-# 监听文件变化，自动重启（开发模式）
+# Watch mode: restart on file changes (development)
 rava run --watch
 ```
 
-**运行策略**：
+**Run strategies:**
 
-| 场景 | 策略 | 说明 |
-|------|------|------|
-| 单文件，无依赖 | 直接 AOT 编译运行 | 最快路径，~100ms 启动 |
-| 单文件，有 import | 自动解析标准库 + rava.hcl 依赖 | 透明依赖注入 |
-| 项目目录（有 rava.hcl） | 增量编译 + 运行 | 只重编译变更文件 |
-| `--watch` 模式 | 文件监听 + 热重载 | 开发体验优先 |
-| `--jit` 标志 | 回退到 JIT 模式 | 兼容性优先（需要特定 JVM 特性时） |
+| Scenario | Strategy | Notes |
+|----------|----------|-------|
+| Single file, no dependencies | Direct AOT compile-and-run | Fastest path, ~100 ms startup |
+| Single file with imports | Auto-resolve stdlib + rava.hcl deps | Transparent dependency injection |
+| Project directory (rava.hcl present) | Incremental compile + run | Recompiles only changed files |
+| `--watch` mode | File watching + hot reload | Developer experience first |
+| `--jit` flag | Fall back to JIT mode | Compatibility first (when specific JVM features are needed) |
 
-**脚本模式**（无需 `public static void main`）：
+**Script mode** (no `public static void main` required):
 
 ```java
-// script.java — Rava 自动包装为可执行入口
+// script.java — Rava auto-wraps this as an executable entry point
 var name = "World";
 System.out.println("Hello, " + name + "!");
 
-// 自动可用的顶层 import
+// Top-level imports auto-available
 import java.util.*;
 import java.io.*;
 var list = List.of(1, 2, 3);
@@ -182,60 +184,60 @@ rava run script.java
 # → 3
 ```
 
-### 2.3 能力 2：AOT 编译 (`rava build`)
+### 2.3 Capability 2: AOT Compilation (`rava build`)
 
-将 Java 源码编译为原生二进制，无需 JVM 即可运行：
+Compile Java source to a native binary that runs without a JVM:
 
 ```bash
-# 编译为原生二进制（默认）
+# Compile to native binary (default)
 rava build
-# → target/my-api (原生可执行文件, ~15MB)
+# → target/my-api  (native executable, ~15 MB)
 
-# 编译为优化 JAR
+# Compile to optimized JAR
 rava build --target jar
 # → target/my-api.jar
 
-# 编译为 jlink 精简运行时
+# Compile to jlink slim runtime
 rava build --target jlink
-# → target/my-api/ (含精简 JRE, ~40MB)
+# → target/my-api/  (slim JRE included, ~40 MB)
 
-# 交叉编译
+# Cross-compilation
 rava build --platform linux-amd64
 rava build --platform linux-arm64
 rava build --platform macos-amd64
 rava build --platform windows-amd64
 
-# 优化选项
-rava build --optimize speed    # 优化执行速度（默认）
-rava build --optimize size     # 优化二进制体积
-rava build --optimize debug    # 保留调试信息
+# Optimization options
+rava build --optimize speed   # optimize for execution speed (default)
+rava build --optimize size    # optimize for binary size
+rava build --optimize debug   # retain debug information
 ```
 
-**编译产物对比**：
+**Output comparison:**
 
-| 目标 | 产物 | 体积 | 启动时间 | 需要 JVM |
-|------|------|------|----------|----------|
-| `native`（默认） | 单文件二进制 | ~15MB | ~10ms | 否 |
-| `jar` | 可执行 JAR | ~5MB + 依赖 | ~2s | 是 |
-| `jlink` | 精简 JRE + JAR | ~40MB | ~1s | 否（自带） |
-| `docker` | scratch 容器镜像 | ~20MB | ~10ms | 否 |
+| Target | Output | Size | Startup | Requires JVM |
+|--------|--------|------|---------|-------------|
+| `native` (default) | Single-file binary | ~15 MB | ~10 ms | No |
+| `jar` | Executable JAR | ~5 MB + deps | ~2 s | Yes |
+| `jlink` | Slim JRE + JAR | ~40 MB | ~1 s | No (bundled) |
+| `docker` | Scratch container image | ~20 MB | ~10 ms | No |
 
-**AOT 编译流水线**：
+**AOT compilation pipeline:**
 
 ```
-.java 源码
-  → Rava 前端（解析 → AST → 类型检查 → 语义分析）
-  → Rava 中间表示（RIR — Rava Intermediate Representation）
-  → 优化 Pass（逃逸分析、内联、死代码消除、常量折叠）
-  → 后端代码生成（LLVM / Cranelift）
-  → 链接（静态链接标准库 + 依赖）
-  → 原生二进制
+.java source
+  → Rava frontend (parse → AST → type check → semantic analysis)
+  → Rava Intermediate Representation (RIR)
+  → Optimization passes (escape analysis, inlining, dead code elimination, constant folding)
+  → Backend code generation (LLVM / Cranelift)
+  → Linking (static-link stdlib + dependencies)
+  → Native binary
 ```
 
-### 2.4 能力 3：项目管理 (`rava init`)
+### 2.4 Capability 3: Project Management (`rava init`)
 
 ```bash
-# 初始化空项目
+# Initialize empty project
 rava init my-project
 # → my-project/
 #   ├── rava.hcl
@@ -244,52 +246,55 @@ rava init my-project
 #   └── test/
 #       └── MainTest.java
 
-# 从模板初始化
+# Initialize from template
 rava init my-api --template spring-web
 rava init my-cli --template cli
 rava init my-lib --template library
 
-# 从现有 Maven/Gradle 项目迁移
-rava init --from-maven     # 读取 pom.xml，生成 rava.hcl
-rava init --from-gradle    # 读取 build.gradle，生成 rava.hcl
+# Migrate from existing Maven/Gradle project
+rava init --from-maven     # reads pom.xml, generates rava.hcl
+rava init --from-gradle    # reads build.gradle, generates rava.hcl
 ```
 
-**项目结构**：
+**Project layout:**
 
 ```
 my-project/
-├── rava.hcl                 # 项目配置（唯一配置文件）
-├── rava.lock                # 依赖锁定文件（自动生成）
-├── src/                     # 源码目录
+├── rava.hcl                 # project config (the only config file)
+├── rava.lock                # dependency lockfile (auto-generated)
+├── src/                     # source directory
 │   └── com/example/
 │       └── Main.java
-├── test/                    # 测试目录
+├── test/                    # test directory
 │   └── com/example/
 │       └── MainTest.java
-├── resources/               # 资源文件
+├── native/                  # native library bindings (.a, .so, .h) — optional
+│   ├── libsqlite3.a
+│   └── jni_bridge.c
+├── resources/               # resource files
 │   └── application.properties
-└── target/                  # 构建产物（自动生成）
-    ├── cache/               # 增量编译缓存
-    └── my-project           # 编译产物
+└── target/                  # build output (auto-generated)
+    ├── cache/               # incremental compilation cache
+    └── my-project           # compiled output
 ```
 
-### 2.5 能力 4：依赖管理 (`rava add/remove/update`)
+### 2.5 Capability 4: Dependency Management (`rava add/remove/update`)
 
 ```bash
-# 添加依赖
+# Add dependency
 rava add spring-boot-starter-web
 rava add com.google.guava:guava@33.0.0-jre
 rava add lombok --dev
 
-# 移除依赖
+# Remove dependency
 rava remove guava
 
-# 更新依赖
-rava update                  # 更新所有依赖到兼容最新版
-rava update guava            # 更新指定依赖
-rava update --latest         # 更新到绝对最新版（可能有 breaking change）
+# Update dependencies
+rava update                  # update all deps to latest compatible version
+rava update guava            # update specific dependency
+rava update --latest         # update to absolute latest (may have breaking changes)
 
-# 查看依赖树
+# View dependency tree
 rava deps tree
 # → com.example:my-api@0.1.0
 #   ├── org.springframework.boot:spring-boot-starter-web@3.2.0
@@ -298,104 +303,116 @@ rava deps tree
 #   │   └── org.springframework.boot:spring-boot-starter-tomcat@3.2.0
 #   └── com.google.guava:guava@33.0.0-jre
 
-# 检查过时依赖
+# Check outdated dependencies
 rava deps outdated
 
-# 审计安全漏洞
+# Audit for security vulnerabilities
 rava deps audit
 ```
 
-**依赖解析**：
+**Dependency resolution:**
 
-| 特性 | 说明 |
-|------|------|
-| 仓库源 | Maven Central（默认）、自定义私有仓库 |
-| 版本解析 | 语义化版本范围（`^3.2.0`、`~3.2.0`、`>=3.2.0,<4.0.0`） |
-| 传递依赖 | 自动解析，冲突时选择最高兼容版本 |
-| 锁定文件 | `rava.lock` 确保可重复构建 |
-| 本地缓存 | `~/.rava/cache/` 全局缓存，跨项目共享 |
-| 离线模式 | `rava add --offline` 仅使用本地缓存 |
-| 短名称 | 常用依赖支持短名称（`spring-boot-web` → `org.springframework.boot:spring-boot-starter-web`） |
+| Feature | Description |
+|---------|-------------|
+| Registries | Maven Central (default), custom private registries |
+| Version ranges | Semantic versioning (`^3.2.0`, `~3.2.0`, `>=3.2.0,<4.0.0`) |
+| Transitive deps | Auto-resolved; highest compatible version wins on conflict |
+| Lockfile | `rava.lock` guarantees reproducible builds |
+| Local cache | `~/.rava/cache/` global cache, shared across projects |
+| Offline mode | `rava add --offline` uses only local cache |
+| Short names | Common deps have aliases (`spring-boot-web` → `org.springframework.boot:spring-boot-starter-web`) |
 
-**rava.hcl 依赖配置**：
+**rava.hcl dependency config:**
 
 ```hcl
 dependencies {
-  # 标准格式
+  # Standard format
   "org.springframework.boot:spring-boot-starter-web" = "3.2.0"
 
-  # 版本范围
+  # Version range
   "com.google.guava:guava" = "^33.0.0-jre"
 
-  # 详细配置
+  # Detailed config
   "io.netty:netty-all" = {
     version  = "4.1.100.Final"
     exclude  = ["io.netty:netty-transport-native-epoll"]
   }
-}
 
-dev_dependencies {
-  "org.junit.jupiter:junit-jupiter" = "5.10.1"
-  "org.mockito:mockito-core"        = "5.8.0"
-}
+  # Local path dependency (monorepo)
+  "my-common" = { path = "../common" }
 
-repositories {
-  maven_central = { url = "https://repo1.maven.org/maven2" }
-  company       = {
-    url      = "https://maven.company.internal/releases"
-    username = env("MAVEN_USER")
-    password = env("MAVEN_PASS")
+  # Git dependency
+  "my-lib" = {
+    git    = "https://github.com/org/my-lib.git"
+    branch = "main"
   }
 }
 ```
 
-### 2.6 能力 5：测试运行 (`rava test`)
+**Built-in short name aliases:**
+
+| Short name | Full coordinates |
+|-----------|-----------------|
+| `spring-boot-web` | `org.springframework.boot:spring-boot-starter-web` |
+| `spring-boot-data-jpa` | `org.springframework.boot:spring-boot-starter-data-jpa` |
+| `lombok` | `org.projectlombok:lombok` |
+| `guava` | `com.google.guava:guava` |
+| `jackson` | `com.fasterxml.jackson.core:jackson-databind` |
+| `slf4j` | `org.slf4j:slf4j-api` |
+| `logback` | `ch.qos.logback:logback-classic` |
+| `junit` | `org.junit.jupiter:junit-jupiter` |
+| `mockito` | `org.mockito:mockito-core` |
+| `assertj` | `org.assertj:assertj-core` |
+
+The short-name registry is viewable via `rava alias list` and supports user-defined extensions.
+
+### 2.6 Capability 5: Test Runner (`rava test`)
 
 ```bash
-# 运行所有测试
+# Run all tests
 rava test
 
-# 运行指定测试类
+# Run a specific test class
 rava test MainTest
 
-# 运行指定测试方法
+# Run a specific test method
 rava test MainTest::testHello
 
-# 运行匹配模式的测试
+# Run tests matching a pattern
 rava test --filter "*.service.*"
 
-# 监听模式（文件变化自动重跑）
+# Watch mode (auto re-run on file changes)
 rava test --watch
 
-# 生成覆盖率报告
+# Generate coverage report
 rava test --coverage
 # → Coverage: 85.3% (lines), 78.2% (branches)
 # → Report: target/coverage/index.html
 ```
 
-**测试框架支持**：
+**Supported test frameworks:**
 
-| 框架 | 支持 | 说明 |
-|------|------|------|
-| JUnit 5 | 原生支持 | 默认测试框架 |
-| JUnit 4 | 兼容 | 自动检测并适配 |
-| TestNG | 插件 | 通过 rava.hcl 配置 |
-| 断言库 | 透明 | AssertJ、Hamcrest 等直接使用 |
+| Framework | Support | Notes |
+|-----------|---------|-------|
+| JUnit 5 | Native | Default test framework |
+| JUnit 4 | Compatible | Auto-detected and adapted |
+| TestNG | Plugin | Configured via rava.hcl |
+| Assertion libraries | Transparent | AssertJ, Hamcrest, etc. work directly |
 
-### 2.7 能力 6-7：代码格式化与检查 (`rava fmt` / `rava lint`)
+### 2.7 Capabilities 6–7: Format & Lint (`rava fmt` / `rava lint`)
 
 ```bash
-# 格式化
-rava fmt                     # 格式化所有 .java 文件
-rava fmt --check             # 仅检查，不修改（CI 用）
-rava fmt src/Main.java       # 格式化指定文件
+# Format
+rava fmt                     # format all .java files
+rava fmt --check             # check only, no changes (for CI)
+rava fmt src/Main.java       # format a specific file
 
-# 代码检查
-rava lint                    # 运行所有检查规则
-rava lint --fix              # 自动修复可修复的问题
+# Lint
+rava lint                    # run all lint rules
+rava lint --fix              # auto-fix fixable issues
 ```
 
-### 2.8 能力 8：交互式 REPL (`rava repl`)
+### 2.8 Capability 8: Interactive REPL (`rava repl`)
 
 ```bash
 rava repl
@@ -411,73 +428,73 @@ rava repl
 # rava> :quit
 ```
 
-### 2.9 能力 9-10：发布 (`rava publish`)
+### 2.9 Capabilities 9–10: Publish (`rava publish`)
 
 ```bash
-# 发布到 Maven Central
+# Publish to Maven Central
 rava publish
 
-# 发布到私有仓库
+# Publish to private registry
 rava publish --registry company
 
-# 干跑（不实际发布）
+# Dry run (no actual publish)
 rava publish --dry-run
 ```
 
 ---
 
-## 3. rava.hcl 完整规范
+## 3. rava.hcl Reference
 
-### 3.1 顶层结构
+### 3.1 Top-Level Structure
 
 ```hcl
-# rava.hcl — Rava 项目配置文件
+# rava.hcl — Rava project configuration file
 
 project {
-  # 项目基本信息
+  # Project metadata
 }
 
 dependencies {
-  # 运行时依赖
+  # Runtime dependencies
 }
 
 dev_dependencies {
-  # 开发/测试依赖
+  # Development/test dependencies
 }
 
 repositories {
-  # Maven 仓库源
+  # Maven repository sources
 }
 
 build {
-  # 编译配置
+  # Compilation config
 }
 
 run {
-  # 运行配置
+  # Run config
 }
 
 test {
-  # 测试配置
+  # Test config
 }
 
 publish {
-  # 发布配置
+  # Publish config
 }
 ```
 
-### 3.2 project 块
+### 3.2 `project` Block
 
 ```hcl
 project {
-  name        = "my-api"                    # 项目名称（必填）
-  group       = "com.example"               # 组织 ID（发布时必填）
-  version     = "0.1.0"                     # 语义化版本（必填）
-  java        = "21"                        # Java 版本（必填）
-  description = "My awesome API"            # 项目描述
-  license     = "MIT"                       # 许可证
-  homepage    = "https://github.com/..."    # 项目主页
-  repository  = "https://github.com/..."    # 源码仓库
+  name        = "my-api"                    # project name (required)
+  group       = "com.example"               # group ID (required for publishing)
+  version     = "0.1.0"                     # semantic version (required)
+  java        = "21"                        # Java version (required)
+  description = "My awesome API"            # project description
+  license     = "MIT"                       # license
+  homepage    = "https://github.com/..."    # project homepage
+  repository  = "https://github.com/..."    # source repository
 
   authors = [
     "[name] <[email]>"
@@ -485,21 +502,21 @@ project {
 }
 ```
 
-### 3.3 dependencies / dev_dependencies 块
+### 3.3 `dependencies` / `dev_dependencies` Blocks
 
 ```hcl
 dependencies {
-  # 简写：短名称 + 版本
+  # Short name + version
   "spring-boot-web" = "3.2.0"
 
-  # 标准格式：groupId:artifactId = version
+  # Standard format: groupId:artifactId = version
   "com.google.guava:guava" = "33.0.0-jre"
 
-  # 版本范围
+  # Version ranges
   "org.slf4j:slf4j-api" = "^2.0.0"        # >=2.0.0, <3.0.0
   "io.netty:netty-all"  = "~4.1.100"      # >=4.1.100, <4.2.0
 
-  # 详细配置
+  # Detailed config
   "com.fasterxml.jackson.core:jackson-databind" = {
     version = "2.16.0"
     exclude = [
@@ -507,10 +524,10 @@ dependencies {
     ]
   }
 
-  # 本地路径依赖（monorepo）
+  # Local path dependency (monorepo)
   "my-common" = { path = "../common" }
 
-  # Git 依赖
+  # Git dependency
   "my-lib" = {
     git    = "https://github.com/org/my-lib.git"
     branch = "main"
@@ -518,43 +535,26 @@ dependencies {
 }
 ```
 
-**短名称映射**（内置常用依赖别名）：
-
-| 短名称 | 完整坐标 |
-|--------|----------|
-| `spring-boot-web` | `org.springframework.boot:spring-boot-starter-web` |
-| `spring-boot-data-jpa` | `org.springframework.boot:spring-boot-starter-data-jpa` |
-| `lombok` | `org.projectlombok:lombok` |
-| `guava` | `com.google.guava:guava` |
-| `jackson` | `com.fasterxml.jackson.core:jackson-databind` |
-| `slf4j` | `org.slf4j:slf4j-api` |
-| `logback` | `ch.qos.logback:logback-classic` |
-| `junit` | `org.junit.jupiter:junit-jupiter` |
-| `mockito` | `org.mockito:mockito-core` |
-| `assertj` | `org.assertj:assertj-core` |
-
-短名称注册表可通过 `rava alias list` 查看，支持用户自定义扩展。
-
-### 3.4 build 块
+### 3.4 `build` Block
 
 ```hcl
 build {
   target   = "native"              # native | jar | jlink | docker
-  main     = "com.example.Main"    # 主类（自动检测，可覆盖）
+  main     = "com.example.Main"    # main class (auto-detected, overridable)
   optimize = "speed"               # speed | size | debug
 
-  # AOT 编译选项
+  # AOT compilation options
   aot {
-    reflection_config = "reflect-config.json"   # 反射配置（可选）
-    initialize_at_build_time = [                 # 构建时初始化的类
+    reflection_config = "reflect-config.json"   # reflection config (optional)
+    initialize_at_build_time = [                 # classes to initialize at build time
       "org.slf4j"
     ]
-    enable_preview = true                        # 启用预览特性
+    enable_preview = true                        # enable preview features
   }
 
-  # Docker 构建选项（target = "docker" 时）
+  # Docker build options (when target = "docker")
   docker {
-    base_image = "scratch"          # 基础镜像
+    base_image = "scratch"          # base image
     tag        = "my-api:latest"
     expose     = [8080]
     labels     = {
@@ -562,31 +562,39 @@ build {
     }
   }
 
-  # 交叉编译目标
+  # JNI native library config
+  jni {
+    link      = ["sqlite3", "z", "crypto"]    # link these native libraries
+    lib_paths = ["native/", "/usr/local/lib"] # search paths
+    static    = ["sqlite3"]                   # force static link (rest are dynamic)
+    # Dynamic libs are loaded at runtime via System.loadLibrary() / dlopen
+  }
+
+  # Cross-compilation targets
   platforms = ["linux-amd64", "linux-arm64", "macos-amd64"]
 }
 ```
 
-### 3.5 run 块
+### 3.5 `run` Block
 
 ```hcl
 run {
-  main = "com.example.Main"        # 主类（覆盖 build.main）
-  args = ["--server.port=8080"]    # 运行参数
+  main = "com.example.Main"        # main class (overrides build.main)
+  args = ["--server.port=8080"]    # program arguments
 
   env = {
     SPRING_PROFILES_ACTIVE = "dev"
     DATABASE_URL           = "jdbc:postgresql://localhost:5432/mydb"
   }
 
-  # 开发模式配置
+  # Development watch config
   watch {
     paths   = ["src/", "resources/"]
     exclude = ["*.class", "target/"]
     delay   = "500ms"
   }
 
-  # JIT 回退配置（rava run --jit 时使用）
+  # JIT fallback config (used with rava run --jit)
   jvm {
     heap_min = "256m"
     heap_max = "1g"
@@ -595,32 +603,32 @@ run {
 }
 ```
 
-### 3.6 test 块
+### 3.6 `test` Block
 
 ```hcl
 test {
   framework = "junit5"             # junit5 | junit4 | testng
-  parallel  = true                 # 并行执行测试
-  timeout   = "60s"                # 单个测试超时
+  parallel  = true                 # run tests in parallel
+  timeout   = "60s"                # per-test timeout
 
   coverage {
     enabled    = true
-    min_line   = 80                # 最低行覆盖率（%）
-    min_branch = 70                # 最低分支覆盖率（%）
+    min_line   = 80                # minimum line coverage (%)
+    min_branch = 70                # minimum branch coverage (%)
     exclude    = ["**/generated/**"]
   }
 }
 ```
 
-### 3.7 publish 块
+### 3.7 `publish` Block
 
 ```hcl
 publish {
-  registry = "maven_central"       # 发布目标仓库
-  sign     = true                  # GPG 签名
+  registry = "maven_central"       # target registry
+  sign     = true                  # GPG signing
 
   pom {
-    # 额外 POM 信息（发布到 Maven Central 需要）
+    # Extra POM info (required for Maven Central)
     scm {
       url        = "https://github.com/org/repo"
       connection = "scm:git:git://github.com/org/repo.git"
@@ -638,293 +646,917 @@ publish {
 
 ---
 
-## 4. Java 兼容性
+## 4. Java Compatibility
 
-### 4.1 语言版本支持
+### 4.1 Language Version Support
 
-| Java 版本 | 支持级别 | 说明 |
-|-----------|----------|------|
-| Java 21 (LTS) | 完整支持 | 首要目标，所有特性 |
-| Java 17 (LTS) | 完整支持 | 广泛使用的 LTS |
-| Java 11 (LTS) | 基本支持 | 旧项目迁移 |
-| Java 8 | 有限支持 | 仅编译，不保证 AOT 全特性 |
+| Java Version | Support Level | Notes |
+|-------------|--------------|-------|
+| Java 21 (LTS) | Full | Primary target — all features |
+| Java 17 (LTS) | Full | All features |
+| Java 11 (LTS) | Full | All features |
+| Java 8+ | Full | Lambda, generics, annotation processing, all features |
 
-### 4.2 语言特性支持
+### 4.2 Language Feature Support
 
-| 特性 | AOT 支持 | 说明 |
-|------|----------|------|
+| Feature | AOT Support | Notes |
+|---------|-------------|-------|
 | Records | ✅ | Java 16+ |
 | Sealed Classes | ✅ | Java 17+ |
 | Pattern Matching | ✅ | Java 21+ |
-| Virtual Threads | ✅ | Java 21+，AOT 原生支持 |
+| Virtual Threads | ✅ | Java 21+, natively supported in AOT |
 | Text Blocks | ✅ | Java 15+ |
 | Switch Expressions | ✅ | Java 14+ |
-| var 局部变量 | ✅ | Java 10+ |
+| `var` local variables | ✅ | Java 10+ |
 | Lambda / Stream | ✅ | Java 8+ |
-| 泛型 | ✅ | 类型擦除在编译期处理 |
-| 注解处理 | ✅ | 编译期执行（Lombok 等） |
-| 反射（静态可解析） | ✅ 完整 | AOT 元数据表，零配置，比 JVM 反射更快 |
-| 反射（动态不可解析） | ✅ 完整 | MicroRT 元数据引擎，自动降级，无需 reflect-config |
-| 动态代理（编译时已知接口） | ✅ 完整 | AOT 预生成代理类，零运行时开销 |
-| 动态代理（运行时接口） | ✅ 完整 | MicroRT 运行时生成，自动降级 |
-| 动态类加载 | ✅ 完整 | 嵌入式 MicroRT 字节码运行时，无需 JVM |
-| JNI | ⚠️ 有限 | 支持静态链接的 native 库 |
+| Generics | ✅ | Type erasure handled at compile time |
+| Annotation processing | ✅ | Compile-time execution (Lombok, etc.) |
+| Reflection (statically resolvable) | ✅ Full | AOT metadata table, zero config, faster than JVM reflection |
+| Reflection (dynamically unresolvable) | ✅ Full | MicroRT metadata engine, auto-fallback, no reflect-config needed |
+| Dynamic proxy (compile-time known interfaces) | ✅ Full | AOT pre-generated proxy classes, zero runtime overhead |
+| Dynamic proxy (runtime interfaces) | ✅ Full | MicroRT runtime generation, auto-fallback |
+| Dynamic class loading | ✅ Full | Embedded MicroRT bytecode runtime, no JVM required |
+| JNI — Outbound (Java → C) | ✅ Full | Phase 1: AOT generates native method stubs, `System.loadLibrary()` via dlopen, `.a` static linking via `rava.hcl` |
+| JNI — Inbound (C → JNIEnv\*) | ✅ Full | Phase 3: MicroRT provides full JNI function table (~230 functions), `JavaVM*` singleton, `JNI_OnLoad`/`JNI_OnUnload` lifecycle |
 
-### 4.3 框架兼容性
+### 4.3 Framework Compatibility
 
-| 框架 | 兼容级别 | 说明 |
-|------|----------|------|
-| Spring Boot 3.x | 一级支持 | 自动处理反射/代理配置 |
-| Quarkus | 一级支持 | 本身就是 AOT 友好的 |
-| Micronaut | 一级支持 | 编译时 DI，天然适合 AOT |
-| Vert.x | 一级支持 | 无反射依赖 |
-| Jakarta EE | 二级支持 | 部分特性需要配置 |
-| Hibernate | 二级支持 | 需要反射配置 |
-| MyBatis | 二级支持 | 需要反射配置 |
-| Lombok | 一级支持 | 编译期注解处理，完全兼容 |
+| Framework | Compatibility | Notes |
+|-----------|--------------|-------|
+| Spring Boot 3.x | Tier 1 | Reflection/proxy config handled automatically |
+| Quarkus | Tier 1 | AOT-friendly by design |
+| Micronaut | Tier 1 | Compile-time DI, naturally suited to AOT |
+| Vert.x | Tier 1 | No reflection dependency |
+| Jakarta EE | Tier 2 | Some features require configuration |
+| Hibernate | Tier 2 | Requires reflection config |
+| MyBatis | Tier 2 | Requires reflection config |
+| Lombok | Tier 1 | Compile-time annotation processing, fully compatible |
 
-### 4.4 反射自动检测
+### 4.4 Reflection Auto-Detection
 
-AOT 编译的最大挑战是反射。Rava 通过多层策略自动处理：
+The biggest challenge with AOT compilation is reflection. Rava handles it automatically through multiple layers:
 
 ```
-1. 静态分析：扫描源码中的 Class.forName()、.getMethod() 等调用
-2. 框架适配：内置 Spring/Hibernate/Jackson 等框架的反射规则
-3. 注解扫描：@Component、@Entity、@JsonProperty 等自动注册
-4. 运行时追踪：rava run --trace-reflection 记录实际反射调用
-5. 手动配置：reflect-config.json 兜底
+1. Static analysis:    scan source for Class.forName(), .getMethod(), etc.
+2. Framework adapters: built-in reflection rules for Spring/Hibernate/Jackson
+3. Annotation scan:    @Component, @Entity, @JsonProperty, etc. auto-registered
+4. Runtime tracing:    rava run --trace-reflection records actual reflection calls
+5. Manual override:    reflect-config.json as a last resort
 ```
 
-### 4.5 与现有项目互操作
+### 4.5 Interoperability with Existing Projects
 
 ```bash
-# 从 Maven 项目迁移
+# Migrate from Maven
 cd existing-maven-project
 rava init --from-maven
-# → 读取 pom.xml，生成 rava.hcl
-# → 保留 src/main/java 和 src/test/java 结构
-# → 或迁移到 src/ 和 test/ 扁平结构（可选）
+# → reads pom.xml, generates rava.hcl
+# → preserves src/main/java and src/test/java layout
+# → optionally migrates to flat src/ and test/ layout
 
-# 从 Gradle 项目迁移
+# Migrate from Gradle
 rava init --from-gradle
-# → 读取 build.gradle(.kts)，生成 rava.hcl
+# → reads build.gradle(.kts), generates rava.hcl
 
-# 生成 pom.xml（反向兼容）
+# Export pom.xml (reverse compatibility)
 rava export maven
-# → 生成 pom.xml，可在传统 Maven 环境中使用
+# → generates pom.xml for use in traditional Maven environments
 
-# 混合使用：Rava 管理依赖，Maven/Gradle 构建
+# Mixed use: Rava manages deps, Maven/Gradle builds
 rava export maven --sync
-# → 持续同步 rava.hcl → pom.xml
+# → continuously syncs rava.hcl → pom.xml
 ```
 
 ---
 
-## 5. CLI 命令参考
+## 5. CLI Reference
 
-### 5.1 命令总览
+### 5.1 Command Overview
 
 ```
 rava <command> [options] [args]
 
-项目管理:
-  init [name]              初始化新项目
-  run [file]               运行 Java 源码或项目
-  build                    编译项目
-  test [pattern]           运行测试
-  fmt [files...]           格式化代码
-  lint [files...]          代码检查
-  repl                     交互式 REPL
-  clean                    清理构建产物
+Project management:
+  init [name]              initialize a new project
+  run [file]               run Java source or project
+  build                    compile project
+  test [pattern]           run tests
+  fmt [files...]           format code
+  lint [files...]          lint code
+  repl                     interactive REPL
+  clean                    clean build artifacts
 
-依赖管理:
-  add <package>            添加依赖
-  remove <package>         移除依赖
-  update [package]         更新依赖
-  deps tree                显示依赖树
-  deps outdated            检查过时依赖
-  deps audit               安全漏洞审计
-  alias list               查看短名称映射
+Dependency management:
+  add <package>            add dependency
+  remove <package>         remove dependency
+  update [package]         update dependency
+  deps tree                show dependency tree
+  deps outdated            check for outdated deps
+  deps audit               security vulnerability audit
+  alias list               view short-name mappings
 
-发布:
-  publish                  发布到仓库
-  export maven             导出 pom.xml
+Publish:
+  publish                  publish to registry
+  export maven             export pom.xml
 
-工具:
-  upgrade                  升级 Rava 自身
-  doctor                   诊断环境问题
-  config                   管理全局配置
-  completions <shell>      生成 Shell 补全脚本
+Tools:
+  upgrade                  upgrade Rava itself
+  doctor                   diagnose environment issues
+  config                   manage global config
+  completions <shell>      generate shell completion scripts
 ```
 
-### 5.2 全局选项
+### 5.2 Global Options
 
-| 选项 | 说明 |
-|------|------|
-| `--verbose` / `-v` | 详细输出 |
-| `--quiet` / `-q` | 静默模式 |
-| `--color <auto\|always\|never>` | 颜色输出 |
-| `--help` / `-h` | 帮助信息 |
-| `--version` / `-V` | 版本信息 |
+| Option | Description |
+|--------|-------------|
+| `--verbose` / `-v` | Verbose output |
+| `--quiet` / `-q` | Silent mode |
+| `--color <auto\|always\|never>` | Color output |
+| `--help` / `-h` | Help |
+| `--version` / `-V` | Version |
 
-### 5.3 关键命令详解
+### 5.3 Key Command Reference
 
-**`rava run`**：
+**`rava run`:**
 
-| 选项 | 说明 |
-|------|------|
-| `--watch` / `-w` | 监听文件变化，自动重启 |
-| `--jit` | 使用 JIT 模式运行（回退到 JVM） |
-| `--release` | 以 release 优化级别运行 |
-| `--env <KEY=VALUE>` | 设置环境变量 |
-| `-- <args>` | 传递给程序的参数 |
+| Option | Description |
+|--------|-------------|
+| `--watch` / `-w` | Watch for file changes, auto-restart |
+| `--jit` | Run in JIT mode (fall back to JVM) |
+| `--release` | Run with release optimization level |
+| `--env <KEY=VALUE>` | Set environment variables |
+| `-- <args>` | Arguments passed to the program |
 
-**`rava build`**：
+**`rava build`:**
 
-| 选项 | 说明 |
-|------|------|
-| `--target <native\|jar\|jlink\|docker>` | 编译目标，默认 `native` |
-| `--optimize <speed\|size\|debug>` | 优化策略，默认 `speed` |
-| `--platform <target>` | 交叉编译目标平台 |
-| `--output` / `-o` | 输出路径 |
-| `--static` | 完全静态链接（Linux musl） |
+| Option | Description |
+|--------|-------------|
+| `--target <native\|jar\|jlink\|docker>` | Compile target, default `native` |
+| `--optimize <speed\|size\|debug>` | Optimization strategy, default `speed` |
+| `--platform <target>` | Cross-compilation target platform |
+| `--output` / `-o` | Output path |
+| `--static` | Fully static linking (Linux musl) |
 
-**`rava add`**：
+**`rava add`:**
 
-| 选项 | 说明 |
-|------|------|
-| `--dev` / `-D` | 添加为开发依赖 |
-| `--exact` | 使用精确版本（不加 `^`） |
-| `--offline` | 仅使用本地缓存 |
+| Option | Description |
+|--------|-------------|
+| `--dev` / `-D` | Add as dev dependency |
+| `--exact` | Use exact version (no `^`) |
+| `--offline` | Use local cache only |
 
 ---
 
-## 6. 全局配置
+## 6. Global Configuration
 
-### 6.1 配置文件位置
+### 6.1 Config File Locations
 
 ```
 ~/.rava/
-├── config.hcl              # 全局配置
-├── cache/                   # 依赖缓存
-│   └── repository/          # Maven 仓库缓存
-├── toolchains/              # JDK 工具链（JIT 回退用）
-└── aliases.hcl              # 用户自定义短名称
+├── config.hcl              # global config
+├── cache/                   # dependency cache
+│   └── repository/          # Maven repository cache
+├── toolchains/              # JDK toolchains (for JIT fallback)
+└── aliases.hcl              # user-defined short names
 ```
 
-### 6.2 全局配置 (`~/.rava/config.hcl`)
+### 6.2 Global Config (`~/.rava/config.hcl`)
 
 ```hcl
-# 默认 Java 版本
+# Default Java version
 default_java = "21"
 
-# 默认编译目标
+# Default compile target
 default_target = "native"
 
-# 代理配置
+# Proxy config
 proxy {
-  http  = "http://proxy.company.internal:8080"
-  https = "http://proxy.company.internal:8080"
+  http     = "http://proxy.company.internal:8080"
+  https    = "http://proxy.company.internal:8080"
   no_proxy = ["localhost", "*.internal"]
 }
 
-# 镜像仓库（加速国内下载）
+# Mirror registry (for faster downloads)
 mirror {
   maven_central = "https://maven.aliyun.com/repository/central"
 }
 
-# 遥测（可关闭）
+# Telemetry (can be disabled)
 telemetry = false
 ```
 
 ---
 
-## 7. 非功能需求
+## 7. Non-Functional Requirements
 
-### 7.1 性能目标
+### 7.1 Performance Targets
 
-| 指标 | 目标 | 对比 |
-|------|------|------|
-| 单文件运行启动 | < 200ms | javac + java: ~2s |
-| AOT 编译后启动 | < 20ms | JVM: ~2s, GraalVM native: ~50ms |
-| 增量编译速度 | < 1s（单文件变更） | Maven: ~5s |
-| 全量编译（中型项目） | < 30s | Maven: ~60s |
-| 内存占用（AOT 产物） | < 50MB（中型 Web 应用） | JVM: ~200MB |
-| 二进制体积 | < 30MB（中型 Web 应用） | GraalVM: ~60MB |
-| 依赖解析 | < 2s（有缓存） | Maven: ~10s |
-| Rava 自身二进制体积 | < 50MB | GraalVM: ~400MB |
+| Metric | Target | Comparison |
+|--------|--------|------------|
+| Single-file run startup | < 200 ms | javac + java: ~2 s |
+| AOT-compiled startup | < 20 ms | JVM: ~2 s, GraalVM native: ~50 ms |
+| Incremental build speed | < 1 s (single file change) | Maven: ~5 s |
+| Full build (mid-size project) | < 30 s | Maven: ~60 s |
+| Memory (AOT artifact) | < 50 MB (mid-size web app) | JVM: ~200 MB |
+| Binary size | < 30 MB (mid-size web app) | GraalVM: ~60 MB |
+| Dependency resolution | < 2 s (cached) | Maven: ~10 s |
+| Rava binary size | < 50 MB | GraalVM: ~400 MB |
 
-### 7.2 可靠性
+### 7.2 Reliability
 
-| 指标 | 目标 |
-|------|------|
-| 编译正确性 | 通过 Java TCK 核心子集 |
-| 依赖解析一致性 | rava.lock 保证 100% 可重复构建 |
-| 崩溃恢复 | 编译中断不损坏缓存 |
-| 错误信息 | 每个错误包含文件名、行号、修复建议 |
+| Metric | Target |
+|--------|--------|
+| Compilation correctness | Pass Java TCK core subset |
+| Dependency resolution consistency | rava.lock guarantees 100% reproducible builds |
+| Crash recovery | Interrupted builds do not corrupt cache |
+| Error messages | Every error includes filename, line number, and fix suggestion |
 
-### 7.3 平台支持
+### 7.3 Platform Support
 
-| 平台 | 支持级别 |
-|------|----------|
-| Linux x86_64 | 一级（CI 测试） |
-| Linux aarch64 | 一级（CI 测试） |
-| macOS x86_64 | 一级（CI 测试） |
-| macOS aarch64 (Apple Silicon) | 一级（CI 测试） |
-| Windows x86_64 | 二级（社区测试） |
+| Platform | Support Level |
+|----------|-------------|
+| Linux x86_64 | Tier 1 (CI-tested) |
+| Linux aarch64 | Tier 1 (CI-tested) |
+| macOS x86_64 | Tier 1 (CI-tested) |
+| macOS aarch64 (Apple Silicon) | Tier 1 (CI-tested) |
+| Windows x86_64 | Tier 2 (community-tested) |
 
-### 7.4 安装方式
+### 7.4 Installation
 
 ```bash
-# macOS / Linux（推荐）
+# macOS / Linux (recommended)
 curl -fsSL https://rava.dev/install.sh | sh
 
 # Homebrew
 brew install a3s-lab/tap/rava
 
-# Cargo（从源码编译）
+# Cargo (build from source)
 cargo install rava
 
-# 版本管理
-rava upgrade              # 自动升级到最新版
-rava upgrade --canary     # 升级到 canary 版本
+# Version management
+rava upgrade              # upgrade to latest release
+rava upgrade --canary     # upgrade to canary build
 ```
 
 ---
 
-## 8. 与 Bun 的类比对照
+## 8. Comparison with Bun
 
-| 维度 | Bun (TypeScript) | Rava (Java) |
-|------|-------------------|-------------|
-| 实现语言 | Zig + C++ | Rust |
-| 替代 | Node.js + npm + webpack | JDK + Maven/Gradle + GraalVM |
-| 运行 | `bun run index.ts` | `rava run Main.java` |
-| 编译 | `bun build` | `rava build` |
-| 包管理 | `bun add express` | `rava add spring-boot-web` |
-| 配置 | `package.json` | `rava.hcl` |
-| 锁文件 | `bun.lockb` | `rava.lock` |
-| 测试 | `bun test` | `rava test` |
-| REPL | `bun repl` (Node) | `rava repl` |
-| 包仓库 | npm | Maven Central |
-| 核心优势 | 极速 JS/TS 运行时 | 极速 Java AOT 编译 + 运行时 |
-
----
-
-## 9. 术语表
-
-| 术语 | 说明 |
-|------|------|
-| AOT | Ahead-of-Time 编译，在运行前将源码编译为原生机器码 |
-| JIT | Just-in-Time 编译，运行时将字节码编译为机器码（传统 JVM 方式） |
-| RIR | Rava Intermediate Representation，Rava 中间表示 |
-| rava.hcl | Rava 项目配置文件，类比 package.json / Cargo.toml |
-| rava.lock | 依赖锁定文件，确保可重复构建 |
-| 短名称 | 常用 Maven 依赖的别名（如 `guava` → `com.google.guava:guava`） |
-| 反射配置 | AOT 编译时需要的反射元数据，Rava 自动检测 + 手动兜底 |
-| TCK | Technology Compatibility Kit，Java 技术兼容性测试套件 |
-| LLVM | 编译器后端框架，用于生成原生机器码 |
-| Cranelift | Rust 生态的轻量级代码生成后端，编译速度快 |
+| Dimension | Bun (TypeScript) | Rava (Java) |
+|-----------|-----------------|-------------|
+| Implementation language | Zig + C++ | Rust |
+| Replaces | Node.js + npm + webpack | JDK + Maven/Gradle + GraalVM |
+| Run | `bun run index.ts` | `rava run Main.java` |
+| Build | `bun build` | `rava build` |
+| Package management | `bun add express` | `rava add spring-boot-web` |
+| Config | `package.json` | `rava.hcl` |
+| Lockfile | `bun.lockb` | `rava.lock` |
+| Test | `bun test` | `rava test` |
+| REPL | `bun repl` | `rava repl` |
+| Package registry | npm | Maven Central |
+| Core advantage | Blazing-fast JS/TS runtime | Blazing-fast Java AOT compiler + runtime |
 
 ---
 
-> Rava 的目标是让 Java 开发者拥有与 Bun/Deno 用户同等的开发体验：一个二进制文件，零配置运行，秒级编译，人类可读的项目配置。通过 Rust 实现的 AOT 编译器，Java 程序可以编译为 10ms 启动、20MB 内存的原生二进制，真正适合云原生、Serverless 和 CLI 场景。
+## 9. Glossary
+
+| Term | Description |
+|------|-------------|
+| AOT | Ahead-of-Time compilation — compiling source to native machine code before execution |
+| JIT | Just-in-Time compilation — compiling bytecode to machine code at runtime (traditional JVM approach) |
+| RIR | Rava Intermediate Representation — Rava's internal IR |
+| rava.hcl | Rava project config file, analogous to package.json / Cargo.toml |
+| rava.lock | Dependency lockfile guaranteeing reproducible builds |
+| Short name | Alias for a common Maven dependency (e.g. `guava` → `com.google.guava:guava`) |
+| Reflection config | Reflection metadata for AOT compilation; Rava auto-detects with manual override available |
+| TCK | Technology Compatibility Kit — Java compatibility test suite |
+| LLVM | Compiler backend framework used for native machine code generation |
+| Cranelift | Lightweight code-generation backend in the Rust ecosystem; faster compile times |
+| MicroRT | Rava's embedded bytecode runtime — handles the 5% of code AOT cannot statically resolve |
+| UnifiedHeap | Shared memory heap used by both AOT-compiled objects and MicroRT-interpreted objects |
+
+---
+
+# Part II — Technical Architecture
+
+## 10. Approach: AOT + Embedded Bytecode Runtime
+
+### 10.1 Executive Summary
+
+**All dynamic Java features can be implemented — but not the GraalVM way.**
+
+GraalVM's approach is "closed-world assumption + config fallback": every class must be known at compile time; anything unknown causes an error, and users must configure it manually. That is not solving the problem — it is avoiding it.
+
+Rava's approach: **AOT compilation as the primary path + embedded lightweight bytecode runtime as the escape hatch**. Everything resolvable at compile time is AOT-compiled. Everything that cannot be resolved at compile time automatically falls back to the embedded runtime. Users never observe this transition.
+
+```
+GraalVM:  AOT compile → hit reflection → error → user writes reflect-config.json → recompile
+Rava:     AOT compile → hit reflection → auto-mark → embedded runtime handles it → transparent to user
+```
+
+### 10.2 Why GraalVM's Approach Falls Short
+
+GraalVM native-image is built on the [Closed-World Assumption](https://www.marcobehler.com/guides/graalvm-aot-jit):
+
+> All classes, methods, and fields reachable by the program must be known at compile time. No class unseen at compile time may appear at runtime.
+
+This assumption directly causes:
+
+| Feature | GraalVM's handling | Problem |
+|---------|-------------------|---------|
+| Reflection | Requires [reflect-config.json](https://www.graalvm.org/22.1/reference-manual/native-image/Reflection/index.html) | Manual maintenance; framework upgrades can break it |
+| Dynamic proxy | Requires [proxy-config.json](https://www.graalvm.org/latest/reference-manual/native-image/dynamic-features/DynamicProxy/) | Interface combinations must be declared upfront |
+| Dynamic class loading | **Not supported** | `Class.forName()` can only find compile-time-known classes |
+| Runtime bytecode generation | **Not supported** | [ByteBuddy/CGLIB require special adaptation](https://github.com/raphw/byte-buddy/issues/1588) |
+
+**Why the config-file approach is a dead end:**
+
+```
+Typical reflection call chain in a Spring Boot project:
+
+@RestController → Spring scan → reflection creates Bean
+@Autowired      → reflection injects dependencies
+@RequestBody    → Jackson reflection serialization/deserialization
+@Transactional  → CGLIB dynamic proxy
+JPA @Entity     → Hibernate reflection + dynamic proxy
+
+A mid-size Spring Boot project's reflect-config.json can have 2,000+ entries.
+Every dependency upgrade can invalidate the config.
+This is not "limited support" — it is a maintenance nightmare.
+```
+
+**The Dart/Flutter lesson:**
+
+[Dart removed dart:mirrors entirely](https://github.com/flutter/flutter/issues/1150) because reflection is incompatible with AOT + tree shaking. The Flutter ecosystem was forced to abandon dynamic capabilities and switch to compile-time code generation (`json_serializable`, `freezed`, etc.).
+
+This is one "solution," but its cost is forcing the entire ecosystem to rewrite. Rava must not take this path — the core value of the Java ecosystem lies precisely in its dynamic capabilities. Removing reflection means removing Spring, Hibernate, and MyBatis.
+
+---
+
+## 11. First-Principles Analysis
+
+### 11.1 What Do These Features Actually Do?
+
+From the CPU's perspective, whether AOT or JIT, the end result is always machine code. The only difference is: **when is the machine code generated?**
+
+| Feature | Essence | Required capability |
+|---------|---------|-------------------|
+| Reflection | Look up a class/method/field by string name at runtime and invoke it | Runtime metadata query + method dispatch |
+| Dynamic proxy | Generate a new class at runtime that implements given interfaces and intercepts method calls | Runtime code generation + method interception |
+| Dynamic class loading | Load and execute .class bytecode unknown at compile time | Runtime bytecode interpretation or compilation |
+
+### 11.2 Three Levels of Complexity
+
+```
+Level 1 — Reflection (metadata query + call dispatch)
+  → No runtime code generation needed
+  → Only requires preserved metadata + function pointer table
+  → Solvable with pure AOT
+
+Level 2 — Dynamic proxy (generate a new class at runtime)
+  → Requires runtime code generation
+  → But generated code follows a fixed pattern: interface method → InvocationHandler.invoke()
+  → Solvable with template AOT pre-generation + runtime assembly
+
+Level 3 — Dynamic class loading (load arbitrary bytecode at runtime)
+  → Requires runtime interpretation or compilation of arbitrary bytecode
+  → Must embed a bytecode runtime
+  → The hardest — and the one GraalVM abandoned entirely
+```
+
+---
+
+## 12. Hybrid Runtime Architecture
+
+### 12.1 Core Design: AOT + MicroRT
+
+```
+┌─────────────────────────────────────────────────────┐
+│                  Rava Native Binary                   │
+│                                                       │
+│  ┌──────────────────────┐  ┌──────────────────────┐  │
+│  │   AOT-compiled code   │  │ Embedded bytecode RT  │  │
+│  │   (95%+ of code)      │  │   (Rava MicroRT)      │  │
+│  │                       │  │                       │  │
+│  │  • All statically     │  │  • Bytecode interpreter│  │
+│  │    analyzable code    │  │  • Lightweight JIT     │  │
+│  │  • Resolved reflection│  │    (optional)         │  │
+│  │  • Pre-generated      │  │  • Class loader       │  │
+│  │    proxy classes      │  │  • Reflection metadata │  │
+│  │  • Direct machine     │  │    engine             │  │
+│  │    code execution     │  │  • GC (shared)        │  │
+│  └──────────┬────────────┘  └──────────┬────────────┘  │
+│             │                          │               │
+│             └─────────┬────────────────┘               │
+│                       │                                │
+│             ┌─────────▼──────────┐                     │
+│             │   Unified Object    │                     │
+│             │   Model             │                     │
+│             │ (AOT objects and    │                     │
+│             │  interpreter objects│                     │
+│             │  share one heap)    │                     │
+│             └─────────────────────┘                    │
+└─────────────────────────────────────────────────────┘
+```
+
+**Key design decision: AOT code and interpreter code share a single object model and memory heap.**
+
+This means:
+- AOT-compiled methods can call objects running in the interpreter, and vice versa
+- A `Method` found via reflection can point to either AOT code or bytecode in the interpreter
+- Instances of dynamically loaded classes can be passed to AOT-compiled code
+
+### 12.2 Rava MicroRT: Embedded Bytecode Runtime
+
+MicroRT is not a full JVM. It is a lean runtime purpose-built as the escape hatch:
+
+| Component | Description | Size estimate |
+|-----------|-------------|--------------|
+| Bytecode interpreter | Interprets Java bytecode (~200 instructions) | ~500 KB |
+| Lightweight JIT | Compiles hot interpreter code (optional, uses Cranelift) | ~2 MB |
+| Class loader | Loads bytecode from .class / .jar files | ~200 KB |
+| Reflection metadata engine | Queries class/method/field metadata | ~100 KB |
+| Bytecode verifier | Validates loaded bytecode for safety | ~150 KB |
+| JNI environment layer | Provides `JNIEnv*` function table (~230 functions) and `JavaVM*` singleton for native library callbacks into Java | ~300 KB |
+| **Total** | | **~3.3 MB** |
+
+Final binary size: AOT code (~15 MB) + MicroRT (~3.3 MB) = **~18 MB** — still far smaller than a JVM (~200 MB).
+
+### 12.3 Compile-Time Decision: AOT vs MicroRT
+
+```
+Rava compiler analysis pipeline:
+
+1. Parse all source → AST → type check → semantic analysis
+
+2. Reflection analysis pass:
+   ├── Statically resolvable reflection calls → mark AOT (compile to function pointer calls)
+   │   e.g. Class.forName("com.example.User")  ← string constant, resolvable at compile time
+   │
+   └── Dynamically unresolvable reflection calls → mark MicroRT
+       e.g. Class.forName(config.get("className"))  ← only known at runtime
+
+3. Proxy analysis pass:
+   ├── Interface combination known at compile time → pre-generate proxy class, AOT compile
+   └── Interface combination only known at runtime → MicroRT runtime generation
+
+4. Class loading analysis pass:
+   ├── Classes known at compile time → AOT
+   └── Classes unknown at compile time (plugins, SPI) → MicroRT
+
+5. Code generation:
+   ├── AOT regions → LLVM/Cranelift → native machine code
+   └── MicroRT regions → preserve bytecode + generate bridging code
+```
+
+---
+
+## 13. Dynamic Features: Implementation
+
+### 13.1 Reflection: Metadata Table + Dual-Path Dispatch
+
+**Principle:** Reflection is fundamentally "find a function pointer by name and call it." After AOT compilation the function pointer is already known — we only need to retain a lookup table.
+
+```
+Compile-time metadata table (embedded in binary):
+
+ClassMetadata {
+  "com.example.User" → {
+    fields: [
+      { name: "id",   type: "long",   offset: 0,  getter: 0x7f001000 },
+      { name: "name", type: "String", offset: 8,  getter: 0x7f001040 },
+    ],
+    methods: [
+      { name: "getId",   signature: "()J",          ptr: 0x7f001000 },
+      { name: "setName", signature: "(Ljava/lang/String;)V", ptr: 0x7f001080 },
+    ],
+    constructors: [
+      { signature: "()V", ptr: 0x7f001100 },
+    ]
+  }
+}
+```
+
+**Dual-path dispatch:**
+
+```
+Class.forName("com.example.User").getMethod("getId").invoke(obj)
+
+Path A (AOT fast path):
+  1. Query metadata table → find "com.example.User"
+  2. Query method table  → find "getId" → function pointer 0x7f001000
+  3. Call the function pointer directly (same speed as a normal method call)
+
+Path B (MicroRT slow path):
+  1. Query metadata table → not found (class unknown at compile time)
+  2. Fall back to MicroRT → load .class file from classpath
+  3. Parse bytecode → interpret or JIT compile
+  4. Cache result → subsequent calls hit the cache
+```
+
+**Size impact:** The metadata table adds roughly 5–10% to binary size. Can be fully stripped with `rava build --strip-metadata` to trade reflection support for minimum size.
+
+### 13.2 Dynamic Proxy: Template Pre-generation + Runtime Assembly
+
+**Principle:** The code generated for a Java dynamic proxy follows a fixed pattern — every method is `handler.invoke(proxy, method, args)`. The only variation is the interface list and method signatures.
+
+```java
+// Java dynamic proxy in essence
+Object proxy = Proxy.newProxyInstance(
+    classLoader,
+    new Class<?>[] { UserService.class, Cacheable.class },
+    (proxy, method, args) -> {
+        // interception logic
+        return method.invoke(target, args);
+    }
+);
+
+// The generated proxy class is essentially:
+class $Proxy0 implements UserService, Cacheable {
+    InvocationHandler handler;
+
+    public User getUser(long id) {
+        Method m = UserService.class.getMethod("getUser", long.class);
+        return (User) handler.invoke(this, m, new Object[]{id});
+    }
+    // ... every interface method follows the same template
+}
+```
+
+**Rava's three-layer strategy:**
+
+```
+Layer 1 — Compile-time pre-generation (covers 90%+ of cases)
+  Compiler scans all Proxy.newProxyInstance() calls
+  If the interface list is a compile-time constant → generate proxy class → AOT compile
+  Spring @Transactional, MyBatis Mapper, etc. all fall here
+
+Layer 2 — Template instantiation (covers ~9% of cases)
+  Compiler generates a generic proxy template (AOT-compiled machine code)
+  Runtime only needs to fill in: interface method table + InvocationHandler
+  No new bytecode generation needed — only assembly of existing machine code fragments
+
+Layer 3 — MicroRT fallback (covers ~1% of extreme cases)
+  Runtime interface combination is completely unpredictable
+  Fall back to MicroRT to generate bytecode → interpret
+  Slow on first call; subsequent calls hit the cache
+```
+
+### 13.3 Dynamic Class Loading: Embedded Bytecode Runtime
+
+**Principle:** Dynamic class loading is fundamentally "introducing code unknown at compile time." This is the root tension with AOT — but it is not an unsolvable one.
+
+**Key insight: dynamically loaded classes do not need to be AOT-compiled. They can be interpreted.**
+
+```
+Scenario: SPI plugin loading
+
+// Implementations are unknown at compile time
+ServiceLoader<Plugin> plugins = ServiceLoader.load(Plugin.class);
+for (Plugin p : plugins) {
+    p.execute();  // calling code unknown at compile time
+}
+
+Rava's handling:
+
+1. Plugin interface → AOT compile (known at compile time)
+2. ServiceLoader.load() → scan META-INF/services/ at runtime
+3. Discover com.third.MyPlugin → unknown at compile time
+4. MicroRT loads MyPlugin.class → interprets bytecode
+5. p.execute() → dispatched via interface; AOT code calls interpreter method
+6. If MyPlugin.execute() becomes hot → MicroRT JIT-compiles it to machine code
+```
+
+**AOT ↔ MicroRT interop: the Unified Object Model**
+
+```
+┌─────────────────────────────────────────┐
+│              Unified Object Header        │
+│  ┌─────────┬──────────┬───────────────┐  │
+│  │ Mark    │ Type ptr │ Origin tag    │  │
+│  │ (GC)    │ (vtable) │ AOT/MicroRT   │  │
+│  └─────────┴──────────┴───────────────┘  │
+│                                          │
+│  AOT object:                             │
+│    Type ptr → AOT-compiled vtable        │
+│               (array of function ptrs)   │
+│                                          │
+│  MicroRT object:                         │
+│    Type ptr → Interpreter vtable         │
+│               (bytecode method table)    │
+│                                          │
+│  Both object types allocated on the same │
+│  heap and managed by the same GC         │
+└─────────────────────────────────────────┘
+```
+
+When AOT code calls a method on a MicroRT object:
+1. Read the type pointer from the object header
+2. Detect it is a MicroRT vtable → jump to the interpreter entry point
+3. Interpreter executes bytecode → returns result to AOT code
+
+When MicroRT code calls a method on an AOT object:
+1. Read the type pointer from the object header
+2. Detect it is an AOT vtable → call the function pointer directly
+3. Identical speed to a normal AOT call
+
+---
+
+## 14. JNI Subsystem
+
+### 14.1 Two Directions, Two Levels of Complexity
+
+JNI has two directions with very different complexity:
+
+**Outbound (Java → C) — Phase 1**
+
+Java declares `native` methods; C/C++ implements them:
+
+```java
+public class Database {
+    static { System.loadLibrary("sqlite3"); }  // triggers dlopen
+    public native long open(String path);      // AOT generates C call stub
+    public native void exec(long db, String sql);
+}
+```
+
+AOT compiler handling:
+- `native` keyword → generate a C function call stub (a direct `call` instruction, no JNI overhead)
+- `System.loadLibrary("sqlite3")` → runtime `dlopen` (Linux/macOS) or `LoadLibrary` (Windows)
+- `System.load("/path/to/lib.so")` → load by explicit absolute path
+- Static linking: merge `.a` archives at link time via `jni { static = ["sqlite3"] }` in `rava.hcl`
+
+This is just ordinary C function calling — Phase 1 can implement it without MicroRT.
+
+**Inbound (C → Java via JNIEnv\*) — Phase 3**
+
+Native code calls back into Java via the JNI API:
+
+```c
+jclass    cls = (*env)->FindClass(env, "com/example/Callback");
+jmethodID mid = (*env)->GetMethodID(env, cls, "onEvent", "(Ljava/lang/String;)V");
+(*env)->CallVoidMethod(env, obj, mid, str);
+```
+
+This requires MicroRT to implement the full JNI function table.
+
+### 14.2 MicroRT JNI Function Table (~230 Functions)
+
+| Function group | MicroRT mapping |
+|---------------|----------------|
+| `FindClass`, `GetSuperclass` | ClassLoader (reflection metadata engine) |
+| `GetMethodID`, `GetStaticMethodID` | Reflection metadata query |
+| `Call*Method`, `CallStatic*Method` | Virtual dispatch (vtable/itable) |
+| `NewObject`, `AllocObject` | UnifiedHeap allocation |
+| `Get/SetField`, `Get/SetStaticField` | Field offset table |
+| `NewStringUTF`, `GetStringUTFChars` | String interning |
+| `New*Array`, `Get/Set*ArrayRegion` | Array operations |
+| `NewGlobalRef`, `DeleteGlobalRef` | Reference counting |
+| `ExceptionOccurred`, `ThrowNew` | Exception model |
+| `AttachCurrentThread` | Thread registry |
+| `GetPrimitiveArrayCritical` | Zero-copy array access |
+| `JNI_OnLoad` / `JNI_OnUnload` | Library lifecycle hooks |
+
+`JNIEnv*` is a per-thread pointer; `JavaVM*` is a global singleton. Both are provided by MicroRT.
+
+### 14.3 JNI Type Mapping
+
+| JNI type | MicroRT internal representation |
+|----------|--------------------------------|
+| `jobject` | `HeapRef` (UnifiedHeap reference) |
+| `jstring` | `HeapRef` → Java `String` object |
+| `jclass` | `ClassRef` (class metadata pointer) |
+| `jarray` | `HeapRef` → Java array object |
+| `jint`, `jlong`, `jdouble` | Rust native types (`i32`, `i64`, `f64`) |
+| `jboolean` | `u8` (0 = false, 1 = true) |
+| `jbyteArray` | `HeapRef` → `byte[]` (zero-copy eligible) |
+
+### 14.4 Reference Management
+
+JNI defines three reference types; MicroRT supports all three:
+
+- **Local Ref**: valid within a single JNI call; auto-released when the function returns (Local Frame stack)
+- **Global Ref**: created via `NewGlobalRef`; must be freed explicitly via `DeleteGlobalRef`
+- **Weak Global Ref**: weak reference; GC may collect the referent; created via `NewWeakGlobalRef`
+
+### 14.5 Library Lifecycle
+
+```
+System.loadLibrary("foo")
+  → dlopen("libfoo.so")
+  → look up symbol JNI_OnLoad
+  → call JNI_OnLoad(JavaVM*, void*)   ← MicroRT provides JavaVM*
+  → library init (register native methods, cache jclass/jmethodID)
+  → return JNI version (e.g. JNI_VERSION_1_8)
+
+dlclose("libfoo.so")  (on program exit)
+  → call JNI_OnUnload(JavaVM*, void*)
+  → library cleanup
+```
+
+### 14.6 GraalVM Comparison
+
+| Capability | GraalVM native-image | Rava |
+|-----------|---------------------|------|
+| Outbound JNI (Java → C) | ✅ Supported (requires config) | ✅ Zero config, Phase 1 |
+| `System.loadLibrary()` | ✅ Supported | ✅ Zero config |
+| Inbound JNI (C → JNIEnv\*) | ⚠️ Limited, requires `@CEntryPoint` | ✅ Full function table, Phase 3 |
+| `AttachCurrentThread` | ❌ Not supported | ✅ Thread registry, Phase 3 |
+| `GetPrimitiveArrayCritical` | ✅ Supported | ✅ Zero-copy, Phase 3 |
+
+---
+
+## 15. Prior Art
+
+The hybrid runtime approach is not new; it has well-established precedents:
+
+### 15.1 GraalVM Truffle (Closest Precedent)
+
+GraalVM's [Truffle framework](https://www.graalvm.org/jdk21/graalvm-as-a-platform/language-implementation-framework/HostOptimization/) is the production-grade incarnation of this idea:
+
+- The Truffle interpreter itself is AOT-compiled into the native image
+- The interpreter can dynamically interpret any guest-language code at runtime
+- Hot guest code is JIT-compiled to machine code via Partial Evaluation
+- Host (AOT) code and guest (interpreter) code share the same heap
+
+Rava's MicroRT is essentially a Truffle-like embedded interpreter specialized for Java bytecode.
+
+### 15.2 LuaJIT (Embedded Interpreter + JIT)
+
+LuaJIT packages a Lua interpreter and JIT compiler into a ~500 KB single-file library. Any program that links against LuaJIT gains full Lua dynamic execution. Rava MicroRT does the same for Java bytecode.
+
+### 15.3 Android ART (AOT + JIT Hybrid)
+
+Android ART achieves:
+- Frequently used code: AOT-compiled (at install time)
+- Infrequently used or first-run code: JIT-executed
+- Both share the same object model and GC
+
+This proves that AOT + interpreter/JIT hybrid runtimes are production-viable.
+
+### 15.4 .NET NativeAOT + Partial Interpreter
+
+.NET NativeAOT faced the same reflection problem. .NET 9's solution:
+- Statically resolvable reflection → AOT
+- Unresolvable reflection → preserve metadata, handle at runtime via a built-in interpreter layer
+- Unlike GraalVM, it does not error out
+
+---
+
+## 16. Trade-offs
+
+This approach is not free. An honest accounting of costs:
+
+### 16.1 Implementation Complexity
+
+| Component | Complexity | Notes |
+|-----------|-----------|-------|
+| AOT compiler | High | Rava's core — required regardless |
+| Metadata table generation | Medium | Additional compiler pass |
+| MicroRT bytecode interpreter | High | ~100–200 K lines of Rust |
+| AOT↔MicroRT interop layer | High | Unified object model is the hardest part |
+| MicroRT JIT (optional) | Very high | Use Cranelift rather than building from scratch |
+| Unified GC | High | GC must manage both object types simultaneously |
+
+**This is a 2–3 year engineering project, not a 6-month deliverable.**
+
+### 16.2 Performance Impact
+
+| Scenario | Performance impact |
+|----------|------------------|
+| Pure AOT code (no reflection/proxy/dynamic loading) | Zero impact |
+| Reflection call to an AOT-known class | Near-zero (metadata table lookup, faster than JVM reflection) |
+| Reflection call to an unknown class | Slow on first call (MicroRT load); fast on cache hits thereafter |
+| Dynamic proxy (compile-time known interfaces) | Zero impact (AOT pre-generated) |
+| Dynamic proxy (runtime interfaces) | Small overhead on first call; normal thereafter |
+| Dynamic class loading | Interpreted execution 2–5× slower than AOT; approaches AOT speed after JIT |
+
+### 16.3 Binary Size
+
+```
+Final binary composition:
+  AOT-compiled application code   ~15 MB
+  AOT-compiled dependency code    ~10 MB
+  MicroRT (interpreter)           ~3.3 MB
+  Metadata table (for reflection) ~2 MB
+  ──────────────────────────────────────
+  Total                           ~30 MB   ← still far smaller than JVM 200 MB
+```
+
+### 16.4 Startup Time
+
+```
+Pure AOT code path:            ~10 ms   (no MicroRT initialization)
+MicroRT present but not triggered: ~12 ms   (MicroRT init is lightweight)
+Dynamic class loading triggered:   ~50 ms   (first bytecode load)
+Traditional JVM:               ~2,000 ms
+```
+
+---
+
+## 17. Phased Implementation Roadmap
+
+### Phase 1 — Basic AOT (no MicroRT)
+
+```
+Goal:    make 80% of Java code AOT-compilable and runnable
+Covers:  static code, Lambda, generics, stdlib, JNI Outbound
+Excludes: reflection, dynamic proxy, dynamic class loading, JNI Inbound
+
+Value delivered at this phase:
+  - A friendlier toolchain than GraalVM native-image
+  - HCL config, dependency management, rava run developer experience
+  - Pure static code (algorithm libraries, CLI tools) runs perfectly
+  - JNI Outbound: SQLite, OpenSSL, RocksDB, and any native library work out of the box
+```
+
+### Phase 2 — Reflection Support
+
+```
+Goal:    support reflection
+Impl:    compile-time metadata table generation + dual-path dispatch
+         (no MicroRT needed — reflection requires metadata, not an interpreter)
+
+Frameworks unlocked: Jackson, Lombok (most cases)
+Not yet: dynamic proxy, dynamic class loading, JNI Inbound
+```
+
+### Phase 3 — MicroRT v1 (Bytecode Interpreter)
+
+```
+Goal:    implement a Java bytecode interpreter
+Impl:    Java bytecode interpreter (Rust implementation)
+         Unified object model (AOT↔MicroRT interop)
+         Full JNI function table (JNIEnv*, JavaVM*)
+
+Unlocks: dynamic class loading, SPI, plugin systems, JNI Inbound
+Frameworks: MyBatis, Hibernate (via interpreter), any JNI-heavy library
+```
+
+### Phase 4 — Dynamic Proxy AOT Promotion
+
+```
+Goal:    lift dynamic proxy from interpreter to AOT
+Impl:    proxy template pre-generation + runtime assembly
+
+Frameworks unlocked: Spring @Transactional (fully AOT), JDK Proxy (common combos AOT)
+```
+
+### Phase 5 — MicroRT v2 (Hot JIT)
+
+```
+Goal:    JIT-compile hot code paths inside MicroRT
+Impl:    Cranelift as the JIT backend
+
+Result:  dynamic class hot paths reach near-AOT performance
+         Spring Boot + Hibernate runs fully, performance ~90% of JVM
+```
+
+---
+
+## 18. Technical Challenges
+
+An honest list of the three hardest problems:
+
+### 18.1 Unified Object Model (Hardest)
+
+AOT-compiled objects and MicroRT-interpreted objects must share the same memory representation and GC. This means Rava needs a custom GC capable of managing objects from both sources. Reference: Android ART. Estimated effort: 6–12 months.
+
+### 18.2 Java Standard Library Coverage in the Bytecode Interpreter
+
+The Java standard library contains thousands of classes. MicroRT cannot re-implement all of them. Solution: the vast majority of the standard library is already AOT-compiled into the binary; MicroRT only needs to be able to call those AOT-compiled stdlib methods (reverse interop). This is feasible but requires careful design.
+
+### 18.3 Security
+
+Dynamic class loading means arbitrary code can be loaded at runtime. A bytecode verifier is required to prevent malicious code. This is a mandatory component of MicroRT.
+
+---
+
+## 19. Feature Feasibility Summary
+
+| Feature | Feasible? | Approach | Cost |
+|---------|----------|----------|------|
+| Reflection | ✅ Fully | AOT metadata table + dual-path dispatch | Phase 2 |
+| Dynamic proxy | ✅ Fully | AOT pre-generation + MicroRT fallback | Phase 3–4 |
+| Dynamic class loading | ✅ Fully | Embedded MicroRT bytecode runtime | Phase 3, most complex |
+| JNI Outbound (Java → C) | ✅ Fully | AOT native method stubs + dlopen | Phase 1, low complexity |
+| JNI Inbound (C → JNIEnv\*) | ✅ Fully | MicroRT JNI function table (~230 functions) | Phase 3, parallel with dynamic class loading |
+
+**Rava's differentiation:** where GraalVM says "I can't do it — you configure it," Rava says "I handle it — you don't need to know." The cost is high engineering complexity and a long development timeline, but that is precisely Rava's core technical moat.
+
+The Rava that achieves this will mean:
+- Any Spring Boot / Hibernate / MyBatis / SQLite JNI project compiles to a native binary with zero code changes
+- 10 ms startup, 20 MB memory, single-file deployment
+- Something GraalVM cannot do — and the most urgent need in the entire Java ecosystem
+
+---
+
+*References:*
+- [GraalVM Reachability Metadata](https://docs.oracle.com/en/graalvm/jdk/21/docs/reference-manual/native-image/metadata/)
+- [GraalVM Dynamic Proxy](https://www.graalvm.org/latest/reference-manual/native-image/dynamic-features/DynamicProxy/)
+- [GraalVM Truffle Host Optimization](https://www.graalvm.org/jdk21/graalvm-as-a-platform/language-implementation-framework/HostOptimization/)
+- [ByteBuddy GraalVM Issue #1588](https://github.com/raphw/byte-buddy/issues/1588)
+- [Flutter dart:mirrors Issue #1150](https://github.com/flutter/flutter/issues/1150)
+- [OpenJDK JEP 8335368 — Ahead-of-Time Code Compilation](https://openjdk.org/jeps/8335368)
+- [Java 25 AOT Cache Deep Dive](https://andrewbaker.ninja/2025/12/23/java-25-aot-cache-a-deep-dive-into-ahead-of-time-compilation-and-training/)
