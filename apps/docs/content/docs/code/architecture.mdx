@@ -137,14 +137,16 @@ Each lane can be switched to **External** mode to offload execution to remote wo
 
 ## Memory System
 
-Four memory types:
+Four memory types with pluggable storage backends:
 
 | Type | Purpose | Storage |
 |------|---------|---------|
-| Episodic | Session events and interactions | In-memory |
-| Semantic | Facts and knowledge | In-memory |
-| Procedural | Successful patterns and workflows | In-memory |
-| Working | Current task context | In-memory |
+| Episodic | Session events and interactions | FileMemoryStore (default) |
+| Semantic | Facts and knowledge | FileMemoryStore (default) |
+| Procedural | Successful patterns and workflows | FileMemoryStore (default) |
+| Working | Current task context | In-memory (short-lived) |
+
+Default backend: `FileMemoryStore` — one JSON file per item + compact index. Custom backends via `MemoryStore` trait.
 
 See [Memory](/docs/code/memory) for details.
 

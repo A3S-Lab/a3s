@@ -3,6 +3,8 @@ title: Memory System
 description: 4 memory types for context-aware agent behavior — episodic, semantic, procedural, working
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
 # Memory System
 
 A3S Code includes a memory system with four distinct memory types. Memory items are stored per-session and used to provide relevant context to the agent during generation.
@@ -15,6 +17,53 @@ A3S Code includes a memory system with four distinct memory types. Memory items 
 | `Semantic` | Facts and knowledge | "The project uses PostgreSQL for persistence" |
 | `Procedural` | How-to knowledge and patterns | "To deploy, run `just release` then `gh release create`" |
 | `Working` | Short-term task context | "Currently refactoring the auth module in src/auth/" |
+
+## Quick Start
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let agent = Agent::new("agent.hcl").await?;
+
+// File-based memory (persists across restarts)
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_file_memory(".a3s/memory")
+))?;
+
+// Or bring your own MemoryStore implementation
+let store = Arc::new(FileMemoryStore::new(".a3s/memory").await?);
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_memory(store)
+))?;
+
+// Access memory from session
+if let Some(memory) = session.memory() {
+    memory.remember(MemoryItem::new("User prefers Rust")).await?;
+    let results = memory.recall("preferences", 5).await?;
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('.', {
+  fileMemory: '.a3s/memory',
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+agent = Agent("agent.hcl")
+session = agent.session(".", SessionOptions(
+    file_memory=".a3s/memory",
+))
+```
+</Tab>
+</Tabs>
 
 ## MemoryItem Structure
 
@@ -30,6 +79,45 @@ A3S Code includes a memory system with four distinct memory types. Memory items 
 | `access_count` | u32 | Number of times retrieved |
 | `last_accessed` | DateTime | Last retrieval timestamp |
 
+## Storage Backends
+
+### FileMemoryStore (Default)
+
+File-based storage with one JSON file per memory item and a compact index for fast search:
+
+```
+memory_dir/
+  index.json           # Lightweight index (id, tags, importance, timestamp)
+  items/
+    {id}.json          # Individual memory items (full content)
+```
+
+Key properties:
+- Atomic writes via temp file + rename (no corruption on crash)
+- Index loaded into memory on init for fast `search()` and `search_by_tags()`
+- Full content loaded on-demand from individual files
+- Path traversal prevention on memory IDs
+- Index rebuild from item files if index is corrupted
+
+### Custom MemoryStore
+
+Implement the `MemoryStore` trait for custom backends (Redis, SQLite, etc.):
+
+```rust
+#[async_trait]
+impl MemoryStore for MyStore {
+    async fn store(&self, item: MemoryItem) -> Result<()>;
+    async fn retrieve(&self, id: &str) -> Result<Option<MemoryItem>>;
+    async fn search(&self, query: &str, limit: usize) -> Result<Vec<MemoryItem>>;
+    async fn search_by_tags(&self, tags: &[String], limit: usize) -> Result<Vec<MemoryItem>>;
+    async fn get_recent(&self, limit: usize) -> Result<Vec<MemoryItem>>;
+    async fn get_important(&self, threshold: f32, limit: usize) -> Result<Vec<MemoryItem>>;
+    async fn delete(&self, id: &str) -> Result<()>;
+    async fn clear(&self) -> Result<()>;
+    async fn count(&self) -> Result<usize>;
+}
+```
+
 ## Relevance Scoring
 
 When the agent needs context, the memory system scores each item by combining importance and recency:
@@ -37,7 +125,7 @@ When the agent needs context, the memory system scores each item by combining im
 ```
 relevance = importance_weight * importance + recency_weight * recency_factor
 
-recency_factor = 1.0 / (1.0 + days_since_creation / decay_days)
+recency_factor = exp(-days_since_creation / decay_days)
 ```
 
 Higher-relevance memories are included in the agent's context window, ensuring the most useful information is always available.
@@ -57,17 +145,7 @@ Configure relevance scoring to prioritize importance vs. recency based on your u
 1. **During generation** — The agent loop queries the memory system for relevant context before each LLM call
 2. **After tool execution** — Important observations (e.g., project structure, user preferences) can be stored as memories
 3. **Across turns** — Working memory tracks the current task state within a session
-4. **Across sessions** — Episodic and semantic memories persist with the session store, available when a session is restored
-
-## Storage
-
-Memory items are persisted as JSONL (one JSON object per line) at:
-
-```
-.a3s/memories/{session_id}.jsonl
-```
-
-Each line is a serialized `MemoryItem`. When a session is restored, its memory file is loaded and all items become available for relevance scoring.
+4. **Across sessions** — Episodic and semantic memories persist via `FileMemoryStore`, available when a session is restored
 
 ## Context Integration
 

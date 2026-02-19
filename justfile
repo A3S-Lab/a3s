@@ -66,3 +66,19 @@ arch-export-svg:
 # Build architecture diagrams as static site
 arch-build:
     npx likec4 build -o docs/architecture/dist docs/architecture
+
+# ============================================================================
+# SafeClaw
+# ============================================================================
+
+# Start SafeClaw with local config
+safeclaw:
+    cd crates/safeclaw && just run
+
+# Start SafeClaw + ngrok tunnel (dev mode, auto-prints Feishu callback URL)
+safeclaw-dev:
+    cd crates/safeclaw && just dev
+
+# Start ngrok tunnel only (SafeClaw already running)
+safeclaw-tunnel:
+    cd crates/safeclaw && just tunnel

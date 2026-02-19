@@ -17,7 +17,7 @@ let result = session.send("Refactor auth to use JWT", None).await?;
 ```
 
 <Callout type="info">
-**Test Coverage:** 1133 tests, 100% pass rate | **Extension Points:** 14 trait-based | **Built-in Tools:** 11
+**Test Coverage:** 1148 tests, 100% pass rate | **Extension Points:** 14 trait-based | **Built-in Tools:** 11
 </Callout>
 
 ## Why A3S Code?
@@ -336,7 +336,12 @@ See [Hooks](/docs/code/hooks) for details.
 
 ### Memory System
 
-4 memory types: episodic, semantic, procedural, working.
+4 memory types: episodic, semantic, procedural, working. File-based persistence via `FileMemoryStore` (default) or custom backends via `MemoryStore` trait.
+
+```rust
+SessionOptions::new()
+    .with_file_memory(".a3s/memory")  // File-based persistence
+```
 
 See [Memory](/docs/code/memory) for details.
 
@@ -377,7 +382,7 @@ cargo test          # All tests
 cargo test --lib    # Unit tests only
 ```
 
-**Test Coverage:** 1133 tests, 100% pass rate
+**Test Coverage:** 1148 tests, 100% pass rate
 
 ## License
 
