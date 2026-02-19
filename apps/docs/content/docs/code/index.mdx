@@ -17,7 +17,7 @@ let result = session.send("Refactor auth to use JWT", None).await?;
 ```
 
 <Callout type="info">
-**Test Coverage:** 1179 tests, 100% pass rate (includes 8 resilience tests) | **Extension Points:** 14 trait-based | **Built-in Tools:** 11 (12 with `sandbox` feature)
+**Test Coverage:** 1214 tests, 100% pass rate (includes 8 resilience tests) | **Extension Points:** 14 trait-based | **Built-in Tools:** 11 (12 with `sandbox` feature)
 </Callout>
 
 ## Why A3S Code?
@@ -212,6 +212,44 @@ SessionOptions::new()
 
 See [Tasks](/docs/code/tasks) for details.
 
+### 🖼️ Multi-Modal Support (Vision)
+
+Send image attachments alongside text prompts. Requires a vision-capable model (Claude Sonnet, GPT-4o).
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::Attachment;
+
+let image = Attachment::from_file("screenshot.png")?;
+let result = session.send_with_attachments(
+    "What's in this screenshot?",
+    &[image],
+    None,
+).await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const image = await fs.readFile('screenshot.png');
+const result = await session.sendWithAttachments(
+  "What's in this screenshot?",
+  [{ data: image, mediaType: 'image/png' }],
+);
+```
+</Tab>
+<Tab value="Python">
+```python
+result = session.send_with_attachments(
+    "What's in this screenshot?",
+    [Attachment.from_file("screenshot.png")],
+)
+```
+</Tab>
+</Tabs>
+
+Supported formats: JPEG, PNG, GIF, WebP. Tools can also return images via `ToolOutput::with_images()`.
+
 ### 🚦 Lane-Based Priority Queue
 
 Tool execution is routed through a priority queue backed by [a3s-lane](/docs/lane):
@@ -383,7 +421,7 @@ cargo test          # All tests
 cargo test --lib    # Unit tests only
 ```
 
-**Test Coverage:** 1179 tests, 100% pass rate
+**Test Coverage:** 1214 tests, 100% pass rate
 
 ## License
 

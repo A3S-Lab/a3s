@@ -128,6 +128,78 @@ print(f"Tools: {result.tool_calls_count}, Tokens: {result.total_tokens}")
 </Tab>
 </Tabs>
 
+## Send with Attachments (Vision)
+
+Send image attachments alongside text prompts. Requires a vision-capable model (Claude Sonnet, GPT-4o).
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::Attachment;
+
+// From file (auto-detects media type from extension)
+let image = Attachment::from_file("screenshot.png")?;
+
+// Or from bytes
+let image = Attachment::jpeg(raw_bytes);
+
+let result = session.send_with_attachments(
+    "What's in this screenshot?",
+    &[image],
+    None,
+).await?;
+println!("{}", result.text);
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const image = await fs.readFile('screenshot.png');
+const result = await session.sendWithAttachments(
+  "What's in this screenshot?",
+  [{ data: image, mediaType: 'image/png' }],
+);
+console.log(result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Attachment
+
+image = Attachment.from_file("screenshot.png")
+result = session.send_with_attachments(
+    "What's in this screenshot?",
+    [image],
+)
+print(result.text)
+```
+</Tab>
+</Tabs>
+
+Supported image formats: JPEG, PNG, GIF, WebP.
+
+Streaming variant:
+
+```rust
+let (rx, handle) = session.stream_with_attachments(
+    "Describe this diagram",
+    &[Attachment::from_file("diagram.png")?],
+    None,
+).await?;
+```
+
+### Tool Image Output
+
+Tools can return images alongside text output. When a tool returns images, they are included as multi-modal content blocks in the tool result message sent to the LLM.
+
+```rust
+// In a custom tool implementation
+async fn execute(&self, args: &Value, ctx: &ToolContext) -> Result<ToolOutput> {
+    let screenshot_bytes = take_screenshot().await?;
+    Ok(ToolOutput::success("Screenshot captured")
+        .with_images(vec![Attachment::png(screenshot_bytes)]))
+}
+```
+
 ## Stream
 
 <Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
