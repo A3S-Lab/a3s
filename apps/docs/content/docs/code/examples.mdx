@@ -1,2014 +1,360 @@
 ---
 title: Examples
-description: Integration test examples for Rust, Python, and Node.js SDKs
+description: SDK examples and demo applications for Rust, Python, and Node.js
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 # Examples
 
-A3S Code provides comprehensive integration test examples for all three SDKs: Rust (core library), Python, and Node.js. These examples demonstrate real-world usage patterns and can be used as templates for your own applications.
+A3S Code provides runnable examples for all three SDKs. Each example uses real LLM configuration from `~/.a3s/config.hcl` or `$A3S_CONFIG`.
 
-## Overview
+## Agentic Loop Demo (Recommended)
 
-All examples use real LLM configuration from `~/.a3s/config.hcl` and test the same core features across all three SDKs:
+The flagship demo showcasing 6 core capabilities with real LLM interaction. Available in all three SDKs with identical behavior.
 
-- **Basic tool execution** - File operations, shell commands
-- **Search operations** - Grep, glob pattern matching
-- **Direct tool calls** - Bypass LLM for direct tool execution
-- **Streaming execution** - Real-time event streaming
-- **Queue configuration** - A3S Lane v0.4.0 advanced features
-- **Conversation history** - Multi-turn conversations
-- **Lane-based priority preemption** - High-priority tasks preempt queued low-priority tasks
-- **External task handling** - Multi-machine coordinator/worker pattern
+**What it demonstrates:**
 
-## Rust Examples
+| Demo | Feature | What Happens |
+|------|---------|-------------|
+| 1 | Autonomous Multi-Step Coding | Creates, reads, edits, and verifies a Rust file |
+| 2 | Streaming Events | Real-time event stream while agent reads JSON and writes summary |
+| 3 | Planning Mode | Task decomposition with goal tracking across multiple files |
+| 4 | Multi-Turn Conversation | Context preserved across 3 turns (create → query → modify) |
+| 5 | Skills-Augmented Code Review | Built-in skills detect style, security, and resource issues |
+| 6 | Resilient Session | Parse retries, tool timeout, and circuit breaker in action |
 
-Location: `crates/code/core/examples/`
+### Run
 
-### Integration Tests
-
-**File:** `integration_tests.rs`
-
-Complete feature test suite covering all major A3S Code features with 7 comprehensive tests.
-
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-use anyhow::Result;
-use std::path::PathBuf;
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    // Initialize tracing
-    tracing_subscriber::fmt()
-        .with_env_filter("info,a3s_code_core=debug")
-        .init();
-
-    println!("🚀 A3S Code Integration Tests\n");
-
-    // Load config from ~/.a3s/config.hcl or fallback to local
-    let config_path = dirs::home_dir()
-        .map(|h| h.join(".a3s/config.hcl"))
-        .filter(|p| p.exists())
-        .or_else(|| {
-            let project_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .parent()
-                .and_then(|p| p.parent())
-                .and_then(|p| p.parent())
-                .map(|p| p.join(".a3s/config.hcl"));
-            project_root.filter(|p| p.exists())
-        })
-        .expect("Config file not found");
-
-    println!("📄 Using config: {}", config_path.display());
-
-    let agent = Agent::new(config_path.to_str().unwrap()).await?;
-
-    // Test 1: Basic Tool Execution
-    test_basic_tools(&agent).await?;
-
-    // Test 2: Built-in Skills
-    test_builtin_skills(&agent).await?;
-
-    // Test 3: File Operations
-    test_file_operations(&agent).await?;
-
-    // Test 4: Search Operations
-    test_search_operations(&agent).await?;
-
-    // Test 5: Web Search (if configured)
-    test_web_search(&agent).await?;
-
-    // Test 6: Planning Mode
-    test_planning_mode(&agent).await?;
-
-    // Test 7: Queue Configuration
-    test_queue_config(&agent).await?;
-
-    println!("\n✅ All integration tests completed successfully!");
-
-    Ok(())
-}
-
-async fn test_basic_tools(agent: &Agent) -> Result<()> {
-    println!("\n📦 Test 1: Basic Tool Execution");
-    let session = agent.session(".", None)?;
-
-    println!("Testing: List current directory...");
-    let result = session.send("List the files in the current directory using ls", None).await?;
-    println!("✓ Result preview: {}", truncate(&result.text, 200));
-
-    println!("\nTesting: Read a file...");
-    let result = session.send("Read the Cargo.toml file", None).await?;
-    println!("✓ Result preview: {}", truncate(&result.text, 200));
-
-    println!("\n✅ Test 1 passed");
-    Ok(())
-}
-
-async fn test_builtin_skills(agent: &Agent) -> Result<()> {
-    println!("\n🧠 Test 2: Built-in Skills (7 skills)");
-
-    let session = agent.session(".", Some(
-        SessionOptions::new().with_builtin_skills()
-    ))?;
-
-    println!("Testing: code-search skill...");
-    let result = session.send("Search for all functions named 'new' in Rust files", None).await?;
-    println!("✓ Result preview: {}", truncate(&result.text, 200));
-
-    println!("\n✅ Test 2 passed");
-    Ok(())
-}
-
-async fn test_file_operations(agent: &Agent) -> Result<()> {
-    println!("\n📝 Test 3: File Operations");
-    let session = agent.session(".", None)?;
-
-    println!("Testing: Create a test file...");
-    let result = session.send(
-        "Create a file named 'test_integration.txt' with content 'Hello from A3S Code!'",
-        None
-    ).await?;
-    println!("✓ Result: {}", truncate(&result.text, 200));
-
-    println!("\nCleaning up...");
-    let _ = std::fs::remove_file("test_integration.txt");
-
-    println!("\n✅ Test 3 passed");
-    Ok(())
-}
-
-async fn test_search_operations(agent: &Agent) -> Result<()> {
-    println!("\n🔍 Test 4: Search Operations");
-    let session = agent.session(".", None)?;
-
-    println!("Testing: grep search...");
-    let result = session.send("Search for 'Agent' in all Rust files using grep", None).await?;
-    println!("✓ Result preview: {}", truncate(&result.text, 200));
-
-    println!("\n✅ Test 4 passed");
-    Ok(())
-}
-
-async fn test_web_search(agent: &Agent) -> Result<()> {
-    println!("\n🌐 Test 5: Web Search");
-    let session = agent.session(".", None)?;
-
-    let result = session.send(
-        "Search the web for 'Rust async programming' and summarize",
-        None
-    ).await;
-
-    match result {
-        Ok(r) => println!("✓ Result preview: {}", truncate(&r.text, 300)),
-        Err(e) => println!("⚠️  Web search not available: {}", e),
-    }
-
-    Ok(())
-}
-
-async fn test_planning_mode(agent: &Agent) -> Result<()> {
-    println!("\n🎯 Test 6: Planning Mode");
-
-    let session = agent.session(".", Some(
-        SessionOptions::new()
-            .with_planning(true)
-            .with_goal_tracking(true)
-    ))?;
-
-    println!("Testing: Multi-step task with planning...");
-    let result = session.send(
-        "Create a file named 'plan_test.txt', write 'Step 1' to it, then read it back",
-        None
-    ).await?;
-    println!("✓ Result preview: {}", truncate(&result.text, 300));
-
-    let _ = std::fs::remove_file("plan_test.txt");
-    println!("\n✅ Test 6 passed");
-    Ok(())
-}
-
-async fn test_queue_config(agent: &Agent) -> Result<()> {
-    println!("\n⚡ Test 7: Queue Configuration (A3S Lane v0.4.0)");
-
-    use a3s_code_core::queue::{SessionQueueConfig, RetryPolicyConfig};
-
-    let queue_config = SessionQueueConfig {
-        query_max_concurrency: 5,
-        execute_max_concurrency: 2,
-        enable_metrics: true,
-        enable_dlq: true,
-        retry_policy: Some(RetryPolicyConfig {
-            strategy: "exponential".to_string(),
-            max_retries: 3,
-            initial_delay_ms: 100,
-            fixed_delay_ms: None,
-        }),
-        ..Default::default()
-    };
-
-    let session = agent.session(".", Some(
-        SessionOptions::new().with_queue_config(queue_config)
-    ))?;
-
-    println!("Testing: Parallel query operations with queue...");
-    let result = session.send(
-        "List all .rs files and count how many contain 'async'",
-        None
-    ).await?;
-    println!("✓ Result preview: {}", truncate(&result.text, 200));
-
-    println!("\n✅ Test 7 passed");
-    Ok(())
-}
-
-fn truncate(s: &str, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}... (truncated)", &s[..max_len])
-    }
-}
-```
-
-**Run:**
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
 ```bash
 cd crates/code/core
-cargo run --example integration_tests
+cargo run --example agentic_loop_demo
 ```
 
-**Expected Output:**
-```
-🚀 A3S Code Integration Tests
-
-📄 Using config: /Users/you/.a3s/config.hcl
-
-📦 Test 1: Basic Tool Execution
-Testing: List current directory...
-✓ Result preview: Here are the files in the current directory:...
-✓ Test 1 passed
-
-🧠 Test 2: Built-in Skills (7 skills)
-Testing: code-search skill...
-✓ Result preview: Found 15 functions named 'new' in Rust files...
-✓ Test 2 passed
-
-📝 Test 3: File Operations
-Testing: Create a test file...
-✓ Result: File created successfully...
-✓ Test 3 passed
-
-🔍 Test 4: Search Operations
-Testing: grep search...
-✓ Result preview: Found 42 matches for 'Agent' in 8 files...
-✓ Test 4 passed
-
-🌐 Test 5: Web Search
-✓ Result preview: Based on web search results, Rust async programming...
-
-🎯 Test 6: Planning Mode
-Testing: Multi-step task with planning...
-✓ Result preview: I'll complete this task in 3 steps...
-✓ Test 6 passed
-
-⚡ Test 7: Queue Configuration (A3S Lane v0.4.0)
-Testing: Parallel query operations with queue...
-✓ Result preview: Found 127 .rs files, 89 contain 'async'...
-✓ Test 7 passed
-
-✅ All integration tests completed successfully!
-```
-
-### Lane Features Test
-
-**File:** `test_lane_features.rs`
-
-Tests A3S Lane v0.4.0 advanced queue features.
-
-```rust
-use a3s_code_core::queue::{SessionQueueConfig, RetryPolicyConfig};
-
-let queue_config = SessionQueueConfig {
-    query_max_concurrency: 5,
-    execute_max_concurrency: 2,
-    enable_metrics: true,
-    enable_dlq: true,
-    retry_policy: Some(RetryPolicyConfig {
-        strategy: "exponential".to_string(),
-        max_retries: 3,
-        initial_delay_ms: 100,
-        fixed_delay_ms: None,
-    }),
-    ..Default::default()
-};
-
-let session = agent.session(".", Some(
-    SessionOptions::new().with_queue_config(queue_config)
-))?;
-```
-
-**Run:**
-```bash
-cargo run --example test_lane_features
-```
-
-### Search Configuration Test
-
-**File:** `test_search_config.rs`
-
-Tests A3S Search v0.7.0 configurable web search.
-
-```rust
-let config_hcl = r#"
-    default_model = "openai/gpt-4o"
-
-    providers { ... }
-
-    search {
-        timeout = 30
-
-        engine {
-            ddg {
-                enabled = true
-                weight = 1.5
-            }
-            wiki {
-                enabled = true
-                weight = 1.2
-            }
-        }
-    }
-"#;
-
-let agent = Agent::new(config_hcl).await?;
-```
-
-**Run:**
-```bash
-cargo run --example test_search_config
-```
-
-### Built-in Skills Test
-
-**File:** `test_builtin_skills.rs`
-
-Tests all 7 built-in skills individually.
-
-```rust
-let session = agent.session(".", Some(
-    SessionOptions::new().with_builtin_skills()
-))?;
-
-// Test code-search skill
-let result = session.send(
-    "Search for all functions named 'new' in Rust files",
-    None
-).await?;
-```
-
-**Run:**
-```bash
-cargo run --example test_builtin_skills
-```
-
-## Python Examples
-
-Location: `crates/code/sdk/python/examples/`
-
-### Integration Tests
-
-**File:** `integration_tests.py`
-
-Complete Python SDK test suite with 8 comprehensive tests.
-
-```python
-#!/usr/bin/env python3
-"""
-A3S Code Python SDK - Integration Tests
-
-Tests all major features using real LLM configuration from ~/.a3s/config.hcl
-
-Run with: python examples/integration_tests.py
-"""
-
-import asyncio
-import os
-from pathlib import Path
-from a3s_code import Agent, SessionQueueConfig, builtin_skills
-
-
-def find_config_path():
-    """Find config file in home directory or project root."""
-    home_config = Path.home() / ".a3s" / "config.hcl"
-    if home_config.exists():
-        return str(home_config)
-
-    # Try project root
-    project_config = Path(__file__).parent.parent.parent.parent.parent.parent / ".a3s" / "config.hcl"
-    if project_config.exists():
-        return str(project_config)
-
-    raise FileNotFoundError("Config file not found. Please create ~/.a3s/config.hcl")
-
-
-def truncate(text, max_len):
-    """Truncate text to max length."""
-    if len(text) <= max_len:
-        return text
-    return f"{text[:max_len]}... (truncated)"
-
-
-async def test_basic_tools(agent):
-    """Test 1: Basic tool execution."""
-    print("\n📦 Test 1: Basic Tool Execution")
-    print("-" * 80)
-
-    session = agent.session(".")
-
-    print("Testing: List current directory...")
-    result = session.send("List the files in the current directory using ls")
-    print(f"✓ Result preview: {truncate(result.text, 200)}")
-
-    print("\nTesting: Read a file...")
-    result = session.send("Read the Cargo.toml file")
-    print(f"✓ Result preview: {truncate(result.text, 200)}")
-
-    print("\n✅ Test 1 passed: Basic tools work correctly")
-
-
-async def test_builtin_skills(agent):
-    """Test 2: Built-in skills."""
-    print("\n🧠 Test 2: Built-in Skills (7 skills)")
-    print("-" * 80)
-
-    # List available skills
-    skills = builtin_skills()
-    print(f"Available skills: {len(skills)}")
-    for skill in skills[:3]:  # Show first 3
-        print(f"  - {skill.name} ({skill.kind}): {truncate(skill.description, 60)}")
-
-    # Create session with builtin skills enabled
-    session = agent.session(".", builtin_skills=True)
-
-    print("\nTesting: code-search skill...")
-    result = session.send("Search for all functions named 'new' in Rust files")
-    print(f"✓ Result preview: {truncate(result.text, 200)}")
-
-    print("\nTesting: builtin-tools skill...")
-    result = session.send("What tools are available for file operations?")
-    print(f"✓ Result preview: {truncate(result.text, 200)}")
-
-    print("\n✅ Test 2 passed: Built-in skills work correctly")
-
-
-async def test_file_operations(agent):
-    """Test 3: File operations."""
-    print("\n📝 Test 3: File Operations")
-    print("-" * 80)
-
-    session = agent.session(".")
-
-    print("Testing: Create a test file...")
-    result = session.send(
-        "Create a file named 'test_integration_py.txt' with content 'Hello from Python SDK!'"
-    )
-    print(f"✓ Result: {truncate(result.text, 200)}")
-
-    print("\nTesting: Read the test file...")
-    result = session.send("Read the file test_integration_py.txt")
-    print(f"✓ Result: {truncate(result.text, 200)}")
-
-    print("\nCleaning up: Remove test file...")
-    try:
-        os.remove("test_integration_py.txt")
-    except FileNotFoundError:
-        pass
-
-    print("\n✅ Test 3 passed: File operations work correctly")
-
-
-async def test_search_operations(agent):
-    """Test 4: Search operations."""
-    print("\n🔍 Test 4: Search Operations")
-    print("-" * 80)
-
-    session = agent.session(".")
-
-    print("Testing: grep search...")
-    result = session.send("Search for the word 'Agent' in all Rust files using grep")
-    print(f"✓ Result preview: {truncate(result.text, 200)}")
-
-    print("\nTesting: glob pattern matching...")
-    result = session.send("Find all .rs files in the src directory using glob")
-    print(f"✓ Result preview: {truncate(result.text, 200)}")
-
-    print("\n✅ Test 4 passed: Search operations work correctly")
-
-
-async def test_direct_tool_calls(agent):
-    """Test 5: Direct tool execution."""
-    print("\n🛠️  Test 5: Direct Tool Execution")
-    print("-" * 80)
-
-    session = agent.session(".")
-
-    print("Testing: Direct read_file call...")
-    content = session.read_file("Cargo.toml")
-    print(f"✓ Read {len(content)} bytes from Cargo.toml")
-
-    print("\nTesting: Direct bash call...")
-    output = session.bash("echo 'Hello from Python SDK'")
-    print(f"✓ Bash output: {output.strip()}")
-
-    print("\nTesting: Direct glob call...")
-    files = session.glob("src/*.rs")
-    print(f"✓ Found {len(files)} Rust files")
-
-    print("\nTesting: Direct grep call...")
-    matches = session.grep("Agent")
-    print(f"✓ Grep found {len(matches)} bytes of matches")
-
-    print("\n✅ Test 5 passed: Direct tool calls work correctly")
-
-
-async def test_streaming(agent):
-    """Test 6: Streaming execution."""
-    print("\n🌊 Test 6: Streaming Execution")
-    print("-" * 80)
-
-    session = agent.session(".")
-
-    print("Testing: Sync stream events...")
-    event_count = 0
-    text_deltas = 0
-    tool_calls = 0
-
-    for event in session.stream("List all .rs files in the current directory"):
-        event_count += 1
-        if event.event_type == "text_delta":
-            text_deltas += 1
-        elif event.event_type == "tool_start":
-            tool_calls += 1
-            print(f"  Tool called: {event.tool_name}")
-
-    print(f"✓ Sync: Received {event_count} events ({text_deltas} text deltas, {tool_calls} tool calls)")
-
-    print("\nTesting: Async stream events (async for)...")
-    event_count = 0
-    async for event in session.stream("List all .rs files in the current directory"):
-        event_count += 1
-        if event.event_type == "end":
-            break
-
-    print(f"✓ Async: Received {event_count} events")
-    print("\n✅ Test 6 passed: Streaming works correctly")
-
-
-async def test_queue_config(agent):
-    """Test 7: Queue configuration."""
-    print("\n⚡ Test 7: Queue Configuration (A3S Lane v0.4.0)")
-    print("-" * 80)
-
-    queue_config = SessionQueueConfig()
-    queue_config.set_query_concurrency(5)
-    queue_config.set_execute_concurrency(2)
-    queue_config.enable_dlq()
-    queue_config.enable_metrics()
-
-    session = agent.session(".", queue_config=queue_config)
-
-    print("Testing: Parallel query operations with queue...")
-    result = session.send("List all .rs files and count how many contain the word 'async'")
-    print(f"✓ Result preview: {truncate(result.text, 200)}")
-
-    if session.has_queue():
-        stats = session.queue_stats()
-        print(f"✓ Queue stats: {stats}")
-
-    print("\n✅ Test 7 passed: Queue configuration works correctly")
-
-
-async def test_conversation_history(agent):
-    """Test 8: Conversation history."""
-    print("\n💬 Test 8: Conversation History")
-    print("-" * 80)
-
-    session = agent.session(".")
-
-    print("Testing: Multi-turn conversation...")
-    result1 = session.send("What is 2 + 2?")
-    print(f"✓ Turn 1: {truncate(result1.text, 100)}")
-
-    result2 = session.send("What was my previous question?")
-    print(f"✓ Turn 2: {truncate(result2.text, 100)}")
-
-    history = session.history()
-    print(f"✓ History has {len(history)} messages")
-
-    print("\n✅ Test 8 passed: Conversation history works correctly")
-
-
-async def main():
-    """Run all integration tests."""
-    print("🚀 A3S Code Python SDK - Integration Tests\n")
-    print("=" * 80)
-
-    # Load config
-    config_path = find_config_path()
-    print(f"📄 Using config: {config_path}")
-    print("=" * 80)
-    print()
-
-    # Create agent
-    agent = Agent.create(config_path)
-
-    # Run tests
-    await test_basic_tools(agent)
-    await test_builtin_skills(agent)
-    await test_file_operations(agent)
-    await test_search_operations(agent)
-    await test_direct_tool_calls(agent)
-    await test_streaming(agent)
-    await test_queue_config(agent)
-    await test_conversation_history(agent)
-
-    print("\n" * 2)
-    print("=" * 80)
-    print("✅ All Python SDK integration tests completed successfully!")
-    print("=" * 80)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-**Run:**
+**Source:** [`crates/code/core/examples/agentic_loop_demo.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/agentic_loop_demo.rs)
+</Tab>
+<Tab value="Python">
 ```bash
 cd crates/code/sdk/python
 pip install -e .
-python examples/integration_tests.py
+python examples/agentic_loop_demo.py
 ```
 
-**Expected Output:**
-```
-🚀 A3S Code Python SDK - Integration Tests
-
-📄 Using config: /Users/you/.a3s/config.hcl
-
-📦 Test 1: Basic Tool Execution
-Testing: List current directory...
-✓ Result preview: Here are the files...
-✅ Test 1 passed
-
-🧠 Test 2: Built-in Skills (7 skills)
-Available skills: 7
-  - code-search (skill): Search codebase for patterns, functions...
-  - code-review (skill): Review code for best practices...
-  - explain-code (skill): Explain how code works...
-✅ Test 2 passed
-
-📝 Test 3: File Operations
-✅ Test 3 passed
-
-🔍 Test 4: Search Operations
-✅ Test 4 passed
-
-🛠️  Test 5: Direct Tool Execution
-✓ Read 653 bytes from Cargo.toml
-✓ Bash output: Hello from Python SDK
-✓ Found 42 Rust files
-✓ Grep found 15234 bytes of matches
-✅ Test 5 passed
-
-🌊 Test 6: Streaming Execution
-  Tool called: glob
-✓ Received 127 events (89 text deltas, 3 tool calls)
-✅ Test 6 passed
-
-⚡ Test 7: Queue Configuration (A3S Lane v0.4.0)
-✓ Queue stats: {'pending': 0, 'completed': 5}
-✅ Test 7 passed
-
-💬 Test 8: Conversation History
-✓ Turn 1: The answer is 4...
-✓ Turn 2: You asked "What is 2 + 2?"...
-✓ History has 4 messages
-✅ Test 8 passed
-
-✅ All Python SDK integration tests completed successfully!
-```
-
-### Built-in Skills
-
-```python
-from a3s_code import Agent, builtin_skills
-
-# List available skills
-skills = builtin_skills()
-print(f"Available skills: {len(skills)}")
-for skill in skills:
-    print(f"  - {skill.name} ({skill.kind}): {skill.description}")
-
-# Create session with builtin skills enabled
-agent = Agent.create("~/.a3s/config.hcl")
-session = agent.session(".", builtin_skills=True)
-
-# Use code-search skill
-result = session.send("Search for all functions named 'new' in Rust files")
-print(result.text)
-
-# Use builtin-tools skill
-result = session.send("What tools are available for file operations?")
-print(result.text)
-```
-
-**Available Skills:**
-- **code-search** - Search codebase for patterns, functions, or types
-- **code-review** - Review code for best practices and improvements
-- **explain-code** - Explain how code works in clear terms
-- **find-bugs** - Identify potential bugs and vulnerabilities
-- **builtin-tools** - Documentation for built-in tools
-- **delegate-task** - Guide for delegating tasks to sub-agents
-- **find-skills** - Discover and install agent skills
-
-### Queue Configuration
-
-```python
-# Configure A3S Lane queue
-queue_config = SessionQueueConfig()
-queue_config.set_query_concurrency(5)
-queue_config.set_execute_concurrency(2)
-queue_config.enable_dlq()
-queue_config.enable_metrics()
-
-session = agent.session(".", queue_config=queue_config)
-
-# Check queue status
-if session.has_queue():
-    stats = session.queue_stats()
-    print(f"Queue stats: {stats}")
-```
-
-### Web Search Configuration
-
-**File:** `test_search_config.py`
-
-Configure A3S Search v0.7.0 engines via HCL and test with real LLM.
-
-```python
-from a3s_code import Agent
-
-# Create agent with inline HCL config including search configuration
-config_hcl = """
-    default_model = "openai/gpt-4o"
-
-    providers {
-      name = "openai"
-      models {
-        id = "gpt-4o"
-        # ... model config ...
-      }
-    }
-
-    # Custom search configuration
-    search {
-      timeout = 30
-
-      health {
-        max_failures = 3
-        suspend_seconds = 60
-      }
-
-      engine {
-        ddg {
-          enabled = true
-          weight = 1.5
-        }
-
-        wiki {
-          enabled = true
-          weight = 1.2
-        }
-
-        brave {
-          enabled = true
-          weight = 1.0
-          timeout = 20
-        }
-      }
-    }
-"""
-
-# Create agent and session with search config
-agent = Agent.create(config_hcl)
-session = agent.session(".")
-
-# Test web search with custom configuration
-result = session.send("Search for 'Rust tokio tutorial' and summarize the findings")
-print(result.text)
-```
-
-**Run:**
-```bash
-python examples/test_search_config.py
-```
-
-### Conversation History
-
-```python
-# Multi-turn conversation
-session = agent.session(".")
-
-result1 = session.send("What is 2 + 2?")
-result2 = session.send("What was my previous question?")
-
-# Access history
-history = session.history()
-print(f"History has {len(history)} messages")
-```
-
-## Node.js Examples
-
-Location: `crates/code/sdk/node/examples/`
-
-### Integration Tests
-
-**File:** `integration_tests.js`
-
-Complete Node.js SDK test suite with 8 comprehensive tests.
-
-```javascript
-#!/usr/bin/env node
-/**
- * A3S Code Node.js SDK - Integration Tests
- *
- * Tests all major features using real LLM configuration from ~/.a3s/config.hcl
- *
- * Run with: node examples/integration_tests.js
- */
-
-const { Agent, builtinSkills } = require('../index.js');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-
-/**
- * Find config file in home directory or project root.
- */
-function findConfigPath() {
-  const homeConfig = path.join(os.homedir(), '.a3s', 'config.hcl');
-  if (fs.existsSync(homeConfig)) {
-    return homeConfig;
-  }
-
-  // Try project root
-  const projectConfig = path.join(__dirname, '..', '..', '..', '..', '..', '..', '.a3s', 'config.hcl');
-  if (fs.existsSync(projectConfig)) {
-    return projectConfig;
-  }
-
-  throw new Error('Config file not found. Please create ~/.a3s/config.hcl');
-}
-
-/**
- * Truncate text to max length.
- */
-function truncate(text, maxLen) {
-  if (text.length <= maxLen) {
-    return text;
-  }
-  return `${text.substring(0, maxLen)}... (truncated)`;
-}
-
-/**
- * Test 1: Basic tool execution.
- */
-async function testBasicTools(agent) {
-  console.log('\n📦 Test 1: Basic Tool Execution');
-  console.log('-'.repeat(80));
-
-  const session = agent.session('.');
-
-  console.log('Testing: List current directory...');
-  const result1 = await session.send('List the files in the current directory using ls');
-  console.log(`✓ Result preview: ${truncate(result1.text, 200)}`);
-
-  console.log('\nTesting: Read a file...');
-  const result2 = await session.send('Read the Cargo.toml file');
-  console.log(`✓ Result preview: ${truncate(result2.text, 200)}`);
-
-  console.log('\n✅ Test 1 passed: Basic tools work correctly');
-}
-
-/**
- * Test 2: Built-in skills.
- */
-async function testBuiltinSkills(agent) {
-  console.log('\n🧠 Test 2: Built-in Skills (7 skills)');
-  console.log('-'.repeat(80));
-
-  // List available skills
-  const skills = builtinSkills();
-  console.log(`Available skills: ${skills.length}`);
-  for (let i = 0; i < Math.min(3, skills.length); i++) {
-    const skill = skills[i];
-    console.log(`  - ${skill.name} (${skill.kind}): ${truncate(skill.description, 60)}`);
-  }
-
-  // Create session with builtin skills enabled
-  const session = agent.session('.', { builtinSkills: true });
-
-  console.log('\nTesting: code-search skill...');
-  const result1 = await session.send('Search for all functions named "new" in Rust files');
-  console.log(`✓ Result preview: ${truncate(result1.text, 200)}`);
-
-  console.log('\nTesting: builtin-tools skill...');
-  const result2 = await session.send('What tools are available for file operations?');
-  console.log(`✓ Result preview: ${truncate(result2.text, 200)}`);
-
-  console.log('\n✅ Test 2 passed: Built-in skills work correctly');
-}
-
-/**
- * Test 3: File operations.
- */
-async function testFileOperations(agent) {
-  console.log('\n📝 Test 3: File Operations');
-  console.log('-'.repeat(80));
-
-  const session = agent.session('.');
-
-  console.log('Testing: Create a test file...');
-  const result1 = await session.send(
-    "Create a file named 'test_integration_js.txt' with content 'Hello from Node.js SDK!'"
-  );
-  console.log(`✓ Result: ${truncate(result1.text, 200)}`);
-
-  console.log('\nTesting: Read the test file...');
-  const result2 = await session.send('Read the file test_integration_js.txt');
-  console.log(`✓ Result: ${truncate(result2.text, 200)}`);
-
-  console.log('\nCleaning up: Remove test file...');
-  try {
-    fs.unlinkSync('test_integration_js.txt');
-  } catch (err) {
-    // Ignore if file doesn't exist
-  }
-
-  console.log('\n✅ Test 3 passed: File operations work correctly');
-}
-
-/**
- * Test 4: Search operations.
- */
-async function testSearchOperations(agent) {
-  console.log('\n🔍 Test 4: Search Operations');
-  console.log('-'.repeat(80));
-
-  const session = agent.session('.');
-
-  console.log('Testing: grep search...');
-  const result1 = await session.send('Search for the word "Agent" in all Rust files using grep');
-  console.log(`✓ Result preview: ${truncate(result1.text, 200)}`);
-
-  console.log('\nTesting: glob pattern matching...');
-  const result2 = await session.send('Find all .rs files in the src directory using glob');
-  console.log(`✓ Result preview: ${truncate(result2.text, 200)}`);
-
-  console.log('\n✅ Test 4 passed: Search operations work correctly');
-}
-
-/**
- * Test 5: Direct tool execution.
- */
-async function testDirectToolCalls(agent) {
-  console.log('\n🛠️  Test 5: Direct Tool Execution');
-  console.log('-'.repeat(80));
-
-  const session = agent.session('.');
-
-  console.log('Testing: Direct readFile call...');
-  const content = await session.readFile('Cargo.toml');
-  console.log(`✓ Read ${content.length} bytes from Cargo.toml`);
-
-  console.log('\nTesting: Direct bash call...');
-  const output = await session.bash("echo 'Hello from Node.js SDK'");
-  console.log(`✓ Bash output: ${output.trim()}`);
-
-  console.log('\nTesting: Direct glob call...');
-  const files = await session.glob('src/*.rs');
-  console.log(`✓ Found ${files.length} Rust files`);
-
-  console.log('\nTesting: Direct grep call...');
-  const matches = await session.grep('Agent');
-  console.log(`✓ Grep found ${matches.length} bytes of matches`);
-
-  console.log('\n✅ Test 5 passed: Direct tool calls work correctly');
-}
-
-/**
- * Test 6: Streaming execution.
- */
-async function testStreaming(agent) {
-  console.log('\n🌊 Test 6: Streaming Execution');
-  console.log('-'.repeat(80));
-
-  const session = agent.session('.');
-
-  console.log('Testing: Stream events with for await...of...');
-  const stream = await session.stream('List all .rs files in the current directory');
-
-  let eventCount = 0;
-  let textDeltas = 0;
-  let toolCalls = 0;
-
-  for await (const event of stream) {
-    eventCount++;
-    if (event.type === 'text_delta') {
-      textDeltas++;
-    } else if (event.type === 'tool_start') {
-      toolCalls++;
-      console.log(`  Tool called: ${event.toolName}`);
-    }
-  }
-
-  console.log(`✓ Received ${eventCount} events (${textDeltas} text deltas, ${toolCalls} tool calls)`);
-  console.log('\n✅ Test 6 passed: Streaming works correctly');
-}
-
-/**
- * Test 7: Queue configuration.
- */
-async function testQueueConfig(agent) {
-  console.log('\n⚡ Test 7: Queue Configuration (A3S Lane v0.4.0)');
-  console.log('-'.repeat(80));
-
-  console.log('Testing: Session with queue configuration...');
-  const session = agent.session('.', {
-    queueConfig: {
-      queryConcurrency: 5,
-      executeConcurrency: 2,
-      enableDlq: true,
-      enableMetrics: true,
-      enableAllFeatures: false
-    }
-  });
-
-  const result = await session.send('List all .rs files and count how many contain the word "async"');
-  console.log(`✓ Result preview: ${truncate(result.text, 200)}`);
-
-  console.log('\n✅ Test 7 passed: Queue configuration works correctly');
-}
-
-/**
- * Test 8: Conversation history.
- */
-async function testConversationHistory(agent) {
-  console.log('\n💬 Test 8: Conversation History');
-  console.log('-'.repeat(80));
-
-  const session = agent.session('.');
-
-  console.log('Testing: Multi-turn conversation...');
-  const result1 = await session.send('What is 2 + 2?');
-  console.log(`✓ Turn 1: ${truncate(result1.text, 100)}`);
-
-  const result2 = await session.send('What was my previous question?');
-  console.log(`✓ Turn 2: ${truncate(result2.text, 100)}`);
-
-  const history = session.history();
-  console.log(`✓ History has ${history.length} messages`);
-
-  console.log('\n✅ Test 8 passed: Conversation history works correctly');
-}
-
-/**
- * Main test runner.
- */
-async function main() {
-  console.log('🚀 A3S Code Node.js SDK - Integration Tests\n');
-  console.log('='.repeat(80));
-
-  // Load config
-  const configPath = findConfigPath();
-  console.log(`📄 Using config: ${configPath}`);
-  console.log('='.repeat(80));
-  console.log();
-
-  // Create agent
-  const agent = await Agent.create(configPath);
-
-  // Run tests
-  await testBasicTools(agent);
-  await testBuiltinSkills(agent);
-  await testFileOperations(agent);
-  await testSearchOperations(agent);
-  await testDirectToolCalls(agent);
-  await testStreaming(agent);
-  await testQueueConfig(agent);
-  await testConversationHistory(agent);
-
-  console.log('\n\n');
-  console.log('='.repeat(80));
-  console.log('✅ All Node.js SDK integration tests completed successfully!');
-  console.log('='.repeat(80));
-}
-
-// Run tests
-main().catch((err) => {
-  console.error('❌ Test failed:', err);
-  process.exit(1);
-});
-```
-
-**Run:**
-```bash
-cd crates/code/sdk/node
-npm install
-npm run build
-node examples/integration_tests.js
-```
-
-**Expected Output:**
-```
-🚀 A3S Code Node.js SDK - Integration Tests
-
-📄 Using config: /Users/you/.a3s/config.hcl
-
-📦 Test 1: Basic Tool Execution
-Testing: List current directory...
-✓ Result preview: Here are the files...
-✅ Test 1 passed
-
-🧠 Test 2: Built-in Skills (7 skills)
-Available skills: 7
-  - code-search (skill): Search codebase for patterns...
-  - code-review (skill): Review code for best practices...
-  - explain-code (skill): Explain how code works...
-✅ Test 2 passed
-
-📝 Test 3: File Operations
-✅ Test 3 passed
-
-🔍 Test 4: Search Operations
-✅ Test 4 passed
-
-🛠️  Test 5: Direct Tool Execution
-✓ Read 653 bytes from Cargo.toml
-✓ Bash output: Hello from Node.js SDK
-✓ Found 42 Rust files
-✓ Grep found 15234 bytes of matches
-✅ Test 5 passed
-
-🌊 Test 6: Streaming Execution
-  Tool called: glob
-✓ Received 127 events (89 text deltas, 3 tool calls)
-✅ Test 6 passed
-
-⚡ Test 7: Queue Configuration (A3S Lane v0.4.0)
-✅ Test 7 passed
-
-💬 Test 8: Conversation History
-✓ Turn 1: The answer is 4...
-✓ Turn 2: You asked "What is 2 + 2?"...
-✓ History has 4 messages
-✅ Test 8 passed
-
-✅ All Node.js SDK integration tests completed successfully!
-```
-
-### Built-in Skills
-
-```javascript
-const { Agent, builtinSkills } = require('@a3s/code');
-
-// List available skills
-const skills = builtinSkills();
-console.log(`Available skills: ${skills.length}`);
-skills.forEach(skill => {
-  console.log(`  - ${skill.name} (${skill.kind}): ${skill.description}`);
-});
-
-// Create session with builtin skills enabled
-const agent = await Agent.create('~/.a3s/config.hcl');
-const session = agent.session('.', { builtinSkills: true });
-
-// Use code-search skill
-const result1 = await session.send('Search for all functions named "new" in Rust files');
-console.log(result1.text);
-
-// Use builtin-tools skill
-const result2 = await session.send('What tools are available for file operations?');
-console.log(result2.text);
-```
-
-**Available Skills:**
-- **code-search** - Search codebase for patterns, functions, or types
-- **code-review** - Review code for best practices and improvements
-- **explain-code** - Explain how code works in clear terms
-- **find-bugs** - Identify potential bugs and vulnerabilities
-- **builtin-tools** - Documentation for built-in tools
-- **delegate-task** - Guide for delegating tasks to sub-agents
-- **find-skills** - Discover and install agent skills
-
-### Queue Configuration
-
-```javascript
-// Create session with queue configuration
-const session = agent.session('.', {
-  queueConfig: {
-    queryConcurrency: 5,
-    executeConcurrency: 2,
-    enableDlq: true,
-    enableMetrics: true,
-    enableAllFeatures: false
-  }
-});
-
-const result = await session.send('List all .rs files and count how many contain "async"');
-console.log(result.text);
-```
-
-### Web Search Configuration
-
-**File:** `test_search_config.js`
-
-Configure A3S Search v0.7.0 engines via HCL and test with real LLM.
-
-```javascript
-const { Agent } = require('@a3s/code');
-
-// Create agent with inline HCL config including search configuration
-const configHcl = `
-  default_model = "openai/gpt-4o"
-
-  providers {
-    name = "openai"
-    models {
-      id = "gpt-4o"
-      # ... model config ...
-    }
-  }
-
-  # Custom search configuration
-  search {
-    timeout = 30
-
-    health {
-      max_failures = 3
-      suspend_seconds = 60
-    }
-
-    engine {
-      ddg {
-        enabled = true
-        weight = 1.5
-      }
-
-      wiki {
-        enabled = true
-        weight = 1.2
-      }
-
-      brave {
-        enabled = true
-        weight = 1.0
-        timeout = 20
-      }
-    }
-  }
-`;
-
-// Create agent and session with search config
-const agent = await Agent.create(configHcl);
-const session = agent.session('.');
-
-// Test web search with custom configuration
-const result = await session.send("Search for 'Rust tokio tutorial' and summarize the findings");
-console.log(result.text);
-```
-
-**Run:**
-```bash
-node examples/test_search_config.js
-```
-
-### Session Options
-
-```javascript
-// Create session with custom options
-const session = agent.session('.', {
-  model: 'openai/gpt-4o',      // Override default model
-  builtinSkills: true,         // Enable built-in skills
-  skillDirs: ['./skills'],     // Custom skill directories
-  agentDirs: ['./agents'],     // Custom agent directories
-  queueConfig: { /* ... */ }   // Queue configuration
-});
-```
-
-### TypeScript Support
-
-```typescript
-import { Agent, AgentResult, SessionOptions } from '@a3s/code';
-
-async function main() {
-  const agent = await Agent.create('~/.a3s/config.hcl');
-
-  const options: SessionOptions = {
-    model: 'openai/gpt-4o',
-    builtinSkills: true
-  };
-
-  const session = agent.session('.', options);
-  const result: AgentResult = await session.send('Hello!');
-
-  console.log(`Response: ${result.text}`);
-  console.log(`Tokens: ${result.totalTokens}`);
-  console.log(`Tool calls: ${result.toolCallsCount}`);
-}
-```
-
-## Configuration
-
-All examples require a configuration file at `~/.a3s/config.hcl`:
-
-```hcl
-default_model = "openai/gpt-4o"
-
-providers {
-  name = "openai"
-
-  models {
-    id          = "gpt-4o"
-    name        = "GPT-4o"
-    family      = "gpt"
-    api_key     = "your-api-key-here"
-    base_url    = "https://api.openai.com/v1"
-    attachment  = false
-    reasoning   = false
-    tool_call   = true
-    temperature = true
-
-    modalities {
-      input  = ["text"]
-      output = ["text"]
-    }
-
-    limit {
-      context = 128000
-      output  = 4096
-    }
-  }
-}
-
-# Optional: Configure web search
-search {
-  timeout = 30
-
-  engine {
-    ddg {
-      enabled = true
-      weight = 1.5
-    }
-    wiki {
-      enabled = true
-      weight = 1.2
-    }
-  }
-}
-```
-
-## Running All Tests
-
-### Rust
-
-```bash
-cd crates/code/core
-cargo run --example integration_tests
-cargo run --example test_lane_features
-cargo run --example test_search_config
-cargo run --example test_builtin_skills
-```
-
-### Python
-
-```bash
-cd crates/code/sdk/python
-pip install -e .
-python examples/integration_tests.py
-```
-
-### Node.js
-
+**Source:** [`crates/code/sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
+</Tab>
+<Tab value="Node.js">
 ```bash
 cd crates/code/sdk/node
 npm install && npm run build
+node examples/agentic_loop_demo.js
+```
+
+**Source:** [`crates/code/sdk/node/examples/agentic_loop_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.js)
+</Tab>
+</Tabs>
+
+### Sample Output (Rust)
+
+```
+╔══════════════════════════════════════════════════════════════════════╗
+║           A3S Code — Agentic Loop Demo (Real LLM)                  ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+  Config: /Users/you/.a3s/config.hcl
+  Agent:  ✓ created
+
+════════════════════════════════════════════════════════════════════════
+  Demo 1: Autonomous Multi-Step Coding
+════════════════════════════════════════════════════════════════════════
+
+  Workspace: /tmp/a3s-demo-xxxxx
+  Prompt:    Create a Rust file, then improve it
+
+  Tool calls: 5
+  Tokens:     13329 total
+  Response:   The code compiles and all tests pass! 🎉
+
+  ✓ File verified: add=true sub=true mul=true div=true
+
+════════════════════════════════════════════════════════════════════════
+  Demo 2: Streaming Events (Real-Time Agent Visibility)
+════════════════════════════════════════════════════════════════════════
+
+  --- Event Stream ---
+  ▶ Agent started
+  ┌─ Turn 1
+  │  🔧 read... ✓ (exit=0)
+  └─ Turn 1 done (1116 tokens)
+  ┌─ Turn 2
+  │  🔧 write... ✓ (exit=0)
+  └─ Turn 2 done (1400 tokens)
+
+  ■ Agent finished
+    Tools: 2, Response: 1356 chars, Tokens: 4173
+
+  ✓ summary.txt created (89 bytes)
+
+  ...
+
+════════════════════════════════════════════════════════════════════════
+  All Demos Complete ✓
+════════════════════════════════════════════════════════════════════════
+```
+
+### Key Patterns
+
+All demos use `permissive: true` to skip HITL confirmation (suitable for demos and testing). In production, configure proper [permission policies](/docs/code/security).
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+// Permissive session (no HITL confirmation needed)
+let options = SessionOptions::new().with_permissive_policy();
+let session = agent.session(&workspace, Some(options))?;
+let result = session.send("Create and verify a file", None).await?;
+
+// Planning + goal tracking
+let session = agent.session(&workspace, Some(
+    SessionOptions::new()
+        .with_permissive_policy()
+        .with_planning(true)
+        .with_goal_tracking(true)
+))?;
+
+// Resilient session with error recovery
+let session = agent.session(&workspace, Some(
+    SessionOptions::new()
+        .with_permissive_policy()
+        .with_parse_retries(2)
+        .with_tool_timeout(120_000)
+        .with_circuit_breaker(3)
+))?;
+```
+</Tab>
+<Tab value="Python">
+```python
+# Permissive session
+session = agent.session(workspace, permissive=True)
+result = session.send("Create and verify a file")
+
+# Planning + goal tracking
+session = agent.session(workspace, permissive=True, planning=True, goal_tracking=True)
+
+# Resilient session with error recovery
+session = agent.session(workspace,
+    permissive=True,
+    max_parse_retries=2,
+    tool_timeout_ms=120_000,
+    circuit_breaker_threshold=3,
+)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+// Permissive session
+const session = agent.session(workspace, { permissive: true });
+const result = await session.send('Create and verify a file');
+
+// Planning + goal tracking
+const session = agent.session(workspace, {
+  permissive: true,
+  planning: true,
+  goalTracking: true,
+});
+
+// Resilient session with error recovery
+const session = agent.session(workspace, {
+  permissive: true,
+  maxParseRetries: 2,
+  toolTimeoutMs: 120_000,
+  circuitBreakerThreshold: 3,
+});
+```
+</Tab>
+</Tabs>
+
+## Integration Tests
+
+Comprehensive test suites covering all SDK features. These are more granular than the agentic loop demo — useful as API reference examples.
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```bash
+cd crates/code/core
+cargo run --example integration_tests
+```
+
+**Source:** [`crates/code/core/examples/integration_tests.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/integration_tests.rs)
+
+Tests: basic tools, built-in skills, file operations, search, web search, planning mode, queue configuration.
+</Tab>
+<Tab value="Python">
+```bash
+cd crates/code/sdk/python
+python examples/integration_tests.py
+```
+
+**Source:** [`crates/code/sdk/python/examples/integration_tests.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/integration_tests.py)
+
+Tests: basic tools, built-in skills, file operations, search, direct tool calls, streaming, queue config, conversation history.
+</Tab>
+<Tab value="Node.js">
+```bash
+cd crates/code/sdk/node
 node examples/integration_tests.js
 ```
 
-## Test Coverage
+**Source:** [`crates/code/sdk/node/examples/integration_tests.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/integration_tests.js)
+
+Tests: basic tools, built-in skills, file operations, search, direct tool calls, streaming, queue config, conversation history.
+</Tab>
+</Tabs>
+
+## Specialized Examples
+
+### Lane Priority Preemption
+
+Demonstrates how the [lane-based priority system](/docs/code/lane-queue) allows high-priority tasks to preempt queued lower-priority tasks.
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```bash
+cargo run --example test_task_priority
+```
+**Source:** [`crates/code/core/examples/test_task_priority.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_task_priority.rs)
+</Tab>
+<Tab value="Python">
+```bash
+python examples/test_task_priority.py
+```
+**Source:** [`crates/code/sdk/python/examples/test_task_priority.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_task_priority.py)
+</Tab>
+<Tab value="Node.js">
+```bash
+node examples/test_task_priority.js
+```
+**Source:** [`crates/code/sdk/node/examples/test_task_priority.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_task_priority.js)
+</Tab>
+</Tabs>
+
+### External Task Handling
+
+Multi-machine coordinator/worker pattern using external task handlers. See [Multi-Machine Distribution](/docs/code/multi-machine) for the full guide.
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```bash
+cargo run --example test_external_tasks
+```
+**Source:** [`crates/code/core/examples/test_external_tasks.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_external_tasks.rs)
+</Tab>
+<Tab value="Python">
+```bash
+python examples/test_external_tasks.py
+```
+**Source:** [`crates/code/sdk/python/examples/test_external_tasks.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_external_tasks.py)
+</Tab>
+<Tab value="Node.js">
+```bash
+node examples/test_external_tasks.js
+```
+**Source:** [`crates/code/sdk/node/examples/test_external_tasks.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_external_tasks.js)
+</Tab>
+</Tabs>
+
+### Search Configuration
+
+Configure [A3S Search](/docs/search) engines via HCL.
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+**Source:** [`crates/code/core/examples/test_search_config.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_search_config.rs)
+</Tab>
+<Tab value="Python">
+**Source:** [`crates/code/sdk/python/examples/test_search_config.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_search_config.py)
+</Tab>
+<Tab value="Node.js">
+**Source:** [`crates/code/sdk/node/examples/test_search_config.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_search_config.js)
+</Tab>
+</Tabs>
+
+### Built-in Skills
+
+Test all 7 built-in skills individually.
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+**Source:** [`crates/code/core/examples/test_builtin_skills.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_builtin_skills.rs)
+</Tab>
+<Tab value="Python">
+**Source:** [`crates/code/sdk/python/examples/test_builtin_skills.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_builtin_skills.py)
+</Tab>
+<Tab value="Node.js">
+**Source:** [`crates/code/sdk/node/examples/test_builtin_skills.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_builtin_skills.js)
+</Tab>
+</Tabs>
+
+## Feature Coverage
 
 | Feature | Rust | Python | Node.js |
 |---------|------|--------|---------|
-| Basic tools | ✅ | ✅ | ✅ |
-| Built-in skills | ✅ | ✅ | ✅ |
-| File operations | ✅ | ✅ | ✅ |
-| Search operations | ✅ | ✅ | ✅ |
+| Autonomous coding | ✅ | ✅ | ✅ |
+| Streaming events | ✅ | ✅ | ✅ |
+| Planning mode | ✅ | ✅ | ✅ |
+| Multi-turn conversation | ✅ | ✅ | ✅ |
+| Skills-augmented review | ✅ | ✅ | ✅ |
+| Resilient session | ✅ | ✅ | ✅ |
 | Direct tool calls | ✅ | ✅ | ✅ |
-| Streaming | ✅ | ✅ | ✅ |
-| Queue config | ✅ | ✅ | ✅ |
+| Queue configuration | ✅ | ✅ | ✅ |
+| Lane priority preemption | ✅ | ✅ | ✅ |
+| External task handling | ✅ | ✅ | ✅ |
 | Web search config | ✅ | ✅ | ✅ |
-| Conversation history | ✅ | ✅ | ✅ |
 
-**All features now fully covered across all three SDKs!**
+## Configuration
+
+All examples require a configuration file. Set `$A3S_CONFIG` or create `~/.a3s/config.hcl`:
+
+```hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+
+  models {
+    id          = "claude-sonnet-4-20250514"
+    name        = "Claude Sonnet 4"
+    tool_call   = true
+    temperature = true
+  }
+}
+```
+
+See [Providers](/docs/code/providers) for multi-provider setup and full config reference.
 
 ## SDK Installation
 
-### Python SDK
-
-**Install from PyPI:**
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```bash
+cargo add a3s-code-core
+```
+</Tab>
+<Tab value="Python">
 ```bash
 pip install a3s-code
+# Or from source:
+cd crates/code/sdk/python && pip install -e .
 ```
-
-**Install from source:**
-```bash
-cd crates/code/sdk/python
-pip install -e .
-```
-
-**Verify installation:**
-```bash
-python -c "from a3s_code import Agent; print('A3S Code Python SDK installed successfully')"
-```
-
-### Node.js SDK
-
-**Install from npm:**
-```bash
-npm install @a3s/code
-```
-
-**Install from source:**
-```bash
-cd crates/code/sdk/node
-npm install
-npm run build
-```
-
-**Verify installation:**
-```bash
-node -e "const { Agent } = require('@a3s/code'); console.log('A3S Code Node.js SDK installed successfully')"
-```
-
-### TypeScript Support
-
-The Node.js SDK includes TypeScript definitions. For TypeScript projects:
-
-```typescript
-import { Agent, AgentResult, SessionOptions } from '@a3s/code';
-
-async function main() {
-  const agent = await Agent.create('~/.a3s/config.hcl');
-
-  const options: SessionOptions = {
-    model: 'openai/gpt-4o',
-    builtinSkills: true
-  };
-
-  const session = agent.session('.', options);
-  const result: AgentResult = await session.send('Hello!');
-
-  console.log(`Response: ${result.text}`);
-  console.log(`Tokens: ${result.totalTokens}`);
-  console.log(`Tool calls: ${result.toolCallsCount}`);
-}
-
-main();
-```
-
-## Troubleshooting
-
-### Config file not found
-
-**Error:**
-```
-Config file not found. Please create ~/.a3s/config.hcl
-```
-
-**Solution:**
-Create `~/.a3s/config.hcl` with your LLM configuration.
-
-### API key errors
-
-**Error:**
-```
-Failed to authenticate with LLM provider
-```
-
-**Solution:**
-1. Check your API key in `config.hcl`
-2. Ensure the API key is valid and has sufficient credits
-3. Verify the `base_url` is correct
-
-### Build errors (Rust)
-
-**Error:**
-```
-error: could not compile `a3s-code-core`
-```
-
-**Solution:**
-```bash
-cargo clean
-cargo build --examples
-```
-
-### Import errors (Python)
-
-**Error:**
-```
-ModuleNotFoundError: No module named 'a3s_code'
-```
-
-**Solution:**
-```bash
-pip install -e .
-```
-
-### Module not found (Node.js)
-
-**Error:**
-```
-Error: Cannot find module '@a3s/code'
-```
-
-**Solution:**
-```bash
-npm run build
-```
-
-## Lane-Based Priority Preemption Examples
-
-Demonstrates how the [lane-based priority system](/docs/code/lane-queue#lane-priority-system) allows high-priority tasks to preempt queued low-priority tasks. Each lane has its own concurrency limit and priority level:
-
-| Lane | Priority | Tools | Use Case |
-|------|----------|-------|----------|
-| **Control** | P0 (highest) | pause, resume, cancel | System operations |
-| **Query** | P1 | read, grep, glob, ls, web_fetch, web_search | Read operations |
-| **Execute** | P2 | bash, write, edit, delete | Write operations |
-| **Generate** | P3 (lowest) | LLM calls | Content generation |
-
-All three SDKs test the same three scenarios:
-1. **Query preempts Execute** — Query-lane task (P1) submitted after Execute-lane tasks (P2) completes first
-2. **Multi-level priority** — Execute vs Query with constrained concurrency
-3. **Late urgent insertion** — Urgent Query task injected into a busy Execute queue
-
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
-<Tab value="Rust">
-
-**File:** `crates/code/core/examples/test_task_priority.rs`
-
-```bash
-cd crates/code && cargo run --example test_task_priority
-```
-
-```rust
-use a3s_code_core::permissions::PermissionPolicy;
-use a3s_code_core::queue::SessionQueueConfig;
-use a3s_code_core::{Agent, AgentSession, SessionOptions};
-use std::sync::Arc;
-use tokio::sync::Mutex;
-use tokio::time::{Duration, Instant};
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let agent = Agent::new("~/.a3s/config.hcl").await?;
-
-    // Constrain Execute lane to 1 concurrent task (creates bottleneck)
-    // Query lane gets 2 slots (higher priority, separate capacity)
-    let queue_config = SessionQueueConfig {
-        execute_max_concurrency: 1,
-        query_max_concurrency: 2,
-        generate_max_concurrency: 1,
-        enable_metrics: true,
-        ..Default::default()
-    };
-
-    let mut opts = SessionOptions::new().with_queue_config(queue_config);
-    opts.permission_checker = Some(Arc::new(PermissionPolicy::permissive()));
-    let session = Arc::new(agent.session(".", Some(opts))?);
-
-    let start = Instant::now();
-
-    // Submit 3 Execute-lane tasks (bash → Execute lane P2)
-    let mut handles = Vec::new();
-    for i in 1..=3 {
-        let s = Arc::clone(&session);
-        let prompt = format!("Run: echo 'Task {} start' && sleep 1 && echo 'Task {} done'", i, i);
-        handles.push(tokio::spawn(async move {
-            let result = s.send(&prompt, None).await;
-            (format!("Execute-{}", i), start.elapsed(), result)
-        }));
-        tokio::time::sleep(Duration::from_millis(200)).await;
-    }
-
-    // Wait for queue to fill, then submit Query-lane task (read → P1)
-    tokio::time::sleep(Duration::from_millis(500)).await;
-    let s = Arc::clone(&session);
-    handles.push(tokio::spawn(async move {
-        let result = s.send("Read the Cargo.toml file and tell me the package name", None).await;
-        ("Query-Urgent".to_string(), start.elapsed(), result)
-    }));
-
-    // Collect results and print completion order
-    for handle in handles {
-        let (name, elapsed, result) = handle.await?;
-        let chars = result.map(|r| r.text.len()).unwrap_or(0);
-        println!("[{:.2}s] {} completed ({} chars)", elapsed.as_secs_f64(), name, chars);
-    }
-
-    Ok(())
-}
-```
-
-</Tab>
-<Tab value="Python">
-
-**File:** `crates/code/sdk/python/examples/test_task_priority.py`
-
-```bash
-cd crates/code/sdk/python && python examples/test_task_priority.py
-```
-
-```python
-import asyncio, time
-from a3s_code import Agent, SessionOptions, SessionQueueConfig
-
-async def main():
-    agent = Agent("~/.a3s/config.hcl")
-
-    # Constrain Execute lane to 1 concurrent task (creates bottleneck)
-    queue_config = SessionQueueConfig()
-    queue_config.execute_max_concurrency = 1
-    queue_config.query_max_concurrency = 2
-    queue_config.generate_max_concurrency = 1
-    queue_config.enable_metrics = True
-
-    opts = SessionOptions()
-    opts.queue_config = queue_config
-    opts.auto_approve = True
-    session = agent.session(".", opts)
-
-    start = time.monotonic()
-    completions = []
-
-    async def run_task(name, prompt, lane):
-        result = await asyncio.to_thread(session.send, prompt)
-        elapsed = time.monotonic() - start
-        completions.append((name, lane, elapsed, len(result.text)))
-        print(f"  [{elapsed:>6.2f}s] {name} [{lane}] ({len(result.text)} chars)")
-
-    # Submit 3 Execute-lane tasks (bash → P2)
-    tasks = []
-    for i in range(1, 4):
-        prompt = f"Run: echo 'Task {i} start' && sleep 1 && echo 'Task {i} done'"
-        tasks.append(asyncio.create_task(run_task(f"Execute-{i}", prompt, "P2")))
-        await asyncio.sleep(0.2)
-
-    # Wait, then submit Query-lane task (read → P1)
-    await asyncio.sleep(0.5)
-    tasks.append(asyncio.create_task(
-        run_task("Query-Urgent", "Read Cargo.toml and show the package name", "P1")
-    ))
-
-    await asyncio.gather(*tasks, return_exceptions=True)
-
-    # Print completion order
-    completions.sort(key=lambda x: x[2])
-    print("\n--- Completion Order ---")
-    for i, (name, lane, elapsed, chars) in enumerate(completions, 1):
-        print(f"  {i}. {name} [{lane}] — {elapsed:.2f}s")
-
-asyncio.run(main())
-```
-
 </Tab>
 <Tab value="Node.js">
-
-**File:** `crates/code/sdk/node/examples/test_task_priority.js`
-
 ```bash
-cd crates/code/sdk/node && node examples/test_task_priority.js
+npm install @a3s-lab/code
+# Or from source:
+cd crates/code/sdk/node && npm install && npm run build
 ```
-
-```javascript
-const { Agent } = require("a3s-code");
-const os = require("os");
-const path = require("path");
-
-async function main() {
-  const agent = await Agent.create(path.join(os.homedir(), ".a3s", "config.hcl"));
-
-  // Constrain Execute lane to 1 concurrent task (creates bottleneck)
-  const session = agent.session(".", {
-    queueConfig: {
-      executeMaxConcurrency: 1,
-      queryMaxConcurrency: 2,
-      generateMaxConcurrency: 1,
-      enableMetrics: true,
-    },
-    autoApprove: true,
-  });
-
-  const start = performance.now();
-  const completions = [];
-
-  async function runTask(name, prompt, lane) {
-    const result = await session.send(prompt);
-    const elapsed = (performance.now() - start) / 1000;
-    completions.push({ name, lane, elapsed, chars: result?.text?.length || 0 });
-    console.log(`  [${elapsed.toFixed(2).padStart(6)}s] ${name} [${lane}] (${result?.text?.length || 0} chars)`);
-  }
-
-  // Submit 3 Execute-lane tasks (bash → P2)
-  const tasks = [];
-  for (let i = 1; i <= 3; i++) {
-    tasks.push(runTask(`Execute-${i}`, `Run: echo 'Task ${i} start' && sleep 1 && echo 'Task ${i} done'`, "P2"));
-    await new Promise(r => setTimeout(r, 200));
-  }
-
-  // Wait, then submit Query-lane task (read → P1)
-  await new Promise(r => setTimeout(r, 500));
-  tasks.push(runTask("Query-Urgent", "Read Cargo.toml and show the package name", "P1"));
-
-  await Promise.allSettled(tasks);
-
-  // Print completion order
-  completions.sort((a, b) => a.elapsed - b.elapsed);
-  console.log("\n--- Completion Order ---");
-  completions.forEach((c, i) => {
-    console.log(`  ${i + 1}. ${c.name} [${c.lane}] — ${c.elapsed.toFixed(2)}s`);
-  });
-}
-
-main().catch(console.error);
-```
-
 </Tab>
 </Tabs>
-
-**Expected output:**
-```
-📋 Test 1: Query (P1) Preempts Execute (P2)
-  Execute lane concurrency: 1 (tasks must queue)
-  Query lane concurrency: 2 (higher priority, separate capacity)
-
-  [  0.00s] 📤 Submitting: Execute-1 (Execute (P2))
-  [  0.20s] 📤 Submitting: Execute-2 (Execute (P2))
-  [  0.40s] 📤 Submitting: Execute-3 (Execute (P2))
-
-  [  1.10s] 🚨 Submitting: Query-Urgent (Query (P1))
-  [  2.34s] 🚨 Completed: Query-Urgent (512 chars)
-  [  3.15s] ✅ Completed: Execute-1 (342 chars)
-  [  5.67s] ✅ Completed: Execute-2 (289 chars)
-  [  8.12s] ✅ Completed: Execute-3 (156 chars)
-
-  --- Completion Order ---
-  🚨 1. Query-Urgent [Query (P1)] — submitted 1.10s, completed 2.34s
-     2. Execute-1 [Execute (P2)] — submitted 0.00s, completed 3.15s
-     3. Execute-2 [Execute (P2)] — submitted 0.20s, completed 5.67s
-     4. Execute-3 [Execute (P2)] — submitted 0.40s, completed 8.12s
-
-  ✅ Priority preemption confirmed: Query-Urgent completed before remaining Execute tasks
-```
-
-## External Task Handler Examples
-
-Demonstrates the [Multi-Machine External Task](/docs/code/lane-queue#multi-machine-parallel-processing) pattern: coordinator creates a session with Execute lane set to External mode, agent streams a prompt that triggers bash/write/edit tool calls, coordinator polls pending tasks, processes them (simulating a remote worker), and completes them via `complete_external_task()`.
-
-All three SDKs test the same three scenarios:
-1. **External mode** — Execute lane tasks routed to external handler
-2. **Hybrid mode** — Local execution + external notification
-3. **Dynamic lane switching** — Switch between Internal/External/Hybrid at runtime
-
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
-<Tab value="Rust">
-
-**File:** `crates/code/core/examples/test_external_task_handler.rs`
-
-```bash
-cd crates/code && cargo run --example test_external_task_handler
-```
-
-```rust
-use a3s_code_core::agent::AgentEvent;
-use a3s_code_core::queue::{
-    ExternalTaskResult, LaneHandlerConfig, SessionLane, TaskHandlerMode,
-};
-use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig};
-
-// 1. Create session with queue enabled
-let queue_config = SessionQueueConfig::default()
-    .with_lane_features()
-    .with_timeout(60_000);
-let session = agent.session(".", Some(
-    SessionOptions::default().with_queue_config(queue_config)
-))?;
-
-// 2. Route Execute lane to External mode
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::External,
-    timeout_ms: 60_000,
-}).await;
-
-// 3. Stream a prompt that triggers bash tool calls
-let (mut rx, _handle) = session.stream(
-    "Run these bash commands: echo 'hello', date, uname -s", None
-).await?;
-
-// 4. Event loop: handle external tasks as they arrive
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::ExternalTaskPending { task_id, command_type, .. } => {
-            let tasks = session.pending_external_tasks().await;
-            for task in tasks {
-                // Simulate remote worker executing the task
-                let cmd = task.payload["command"].as_str().unwrap_or("");
-                let output = std::process::Command::new("sh")
-                    .arg("-c").arg(cmd).output()?;
-
-                session.complete_external_task(&task.task_id, ExternalTaskResult {
-                    success: output.status.success(),
-                    result: serde_json::json!({
-                        "output": String::from_utf8_lossy(&output.stdout),
-                        "exit_code": output.status.code().unwrap_or(1),
-                    }),
-                    error: None,
-                }).await;
-            }
-        }
-        AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::End { .. } => break,
-        _ => {}
-    }
-}
-
-// 5. Switch to Hybrid mode (local execution + external notification)
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::Hybrid,
-    timeout_ms: 60_000,
-}).await;
-
-// 6. Switch back to Internal mode
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::Internal,
-    timeout_ms: 60_000,
-}).await;
-```
-
-</Tab>
-<Tab value="Python">
-
-**File:** `crates/code/sdk/python/examples/test_external_task_handler.py`
-
-```bash
-cd crates/code/sdk/python && python examples/test_external_task_handler.py
-```
-
-```python
-import subprocess, time, threading
-from a3s_code import Agent, SessionQueueConfig
-
-agent = Agent.create("~/.a3s/config.hcl")
-
-# 1. Create session with queue enabled
-qc = SessionQueueConfig()
-qc.with_lane_features()
-qc.set_timeout(60000)
-session = agent.session(".", queue_config=qc)
-
-# 2. Route Execute lane to External mode
-session.set_lane_handler("execute", mode="external", timeout_ms=60000)
-
-# 3. Background poller for external tasks
-stop_polling = threading.Event()
-
-def poll_external_tasks():
-    while not stop_polling.is_set():
-        tasks = session.pending_external_tasks()
-        for task in tasks:
-            # Simulate remote worker
-            if task["command_type"] == "bash":
-                result = subprocess.run(
-                    ["sh", "-c", task["payload"]["command"]],
-                    capture_output=True, text=True
-                )
-                session.complete_external_task(
-                    task["task_id"],
-                    success=result.returncode == 0,
-                    result={"output": result.stdout, "exit_code": result.returncode},
-                )
-        time.sleep(0.2)
-
-poller = threading.Thread(target=poll_external_tasks, daemon=True)
-poller.start()
-
-# 4. Stream the prompt
-for event in session.stream("Run: echo 'hello', date, uname -s"):
-    if event.event_type == "text_delta":
-        print(event.text, end="", flush=True)
-    elif event.event_type == "end":
-        break
-
-stop_polling.set()
-
-# 5. Switch to Hybrid / Internal mode
-session.set_lane_handler("execute", mode="hybrid", timeout_ms=60000)
-session.set_lane_handler("execute", mode="internal", timeout_ms=60000)
-```
-
-</Tab>
-<Tab value="Node.js">
-
-**File:** `crates/code/sdk/node/examples/test_external_task_handler.js`
-
-```bash
-cd crates/code/sdk/node && node examples/test_external_task_handler.js
-```
-
-```javascript
-const { Agent } = require('@a3s-lab/code');
-const { execSync } = require('child_process');
-
-const agent = await Agent.create('~/.a3s/config.hcl');
-
-// 1. Create session with queue enabled
-const session = agent.session('.', {
-  queueConfig: { enableAllFeatures: true, timeoutMs: 60000 },
-});
-
-// 2. Route Execute lane to External mode
-await session.setLaneHandler('execute', { mode: 'external', timeoutMs: 60000 });
-
-// 3. Background poller for external tasks
-let stopPolling = false;
-const pollInterval = setInterval(async () => {
-  if (stopPolling) return;
-  const tasks = await session.pendingExternalTasks();
-  if (!Array.isArray(tasks)) return;
-
-  for (const task of tasks) {
-    // Simulate remote worker
-    let result;
-    try {
-      const output = execSync(task.payload?.command || 'echo ok', { encoding: 'utf-8' });
-      result = { success: true, result: { output, exit_code: 0 } };
-    } catch (e) {
-      result = { success: false, result: { output: '', exit_code: 1 }, error: e.message };
-    }
-    await session.completeExternalTask(task.task_id, result);
-  }
-}, 200);
-
-// 4. Stream the prompt, processing events as they arrive
-const stream = await session.stream("Run: echo 'hello', date, uname -s");
-for await (const event of stream) {
-  if (event.type === 'text_delta') process.stdout.write(event.text || '');
-}
-stopPolling = true;
-clearInterval(pollInterval);
-
-// 5. Switch to Hybrid / Internal mode
-await session.setLaneHandler('execute', { mode: 'hybrid', timeoutMs: 60000 });
-await session.setLaneHandler('execute', { mode: 'internal', timeoutMs: 60000 });
-```
-
-</Tab>
-</Tabs>
-
-**Expected output:**
-```
-📦 Test 1: External Task Handler (Execute Lane → External)
-✓ Session created with Execute lane → External mode
-  📥 ExternalTaskPending: a1b2c3d4 (bash)
-  🔧 Worker result: success=true, exit_code=0
-     Output: Hello from external worker
-  📤 Task a1b2c3d4 completed and returned to agent
-
-📦 Test 2: Hybrid Mode (Execute Lane → Hybrid)
-✓ Execute lane switched to Hybrid mode
-✓ Completed in 2.34s
-
-📦 Test 3: Dynamic Lane Switching
-✓ Execute lane switched back to Internal mode
-✓ Completed in 1.89s
-
-✅ All external task handler tests completed!
-```
-
-## Next Steps
-
-- [Sessions](/docs/code/sessions) - Learn about session management
-- [Tools](/docs/code/tools) - Explore available tools
-- [Skills](/docs/code/skills) - Understand the skill system
-- [Lane Queue](/docs/code/lane-queue) - Configure advanced queue features

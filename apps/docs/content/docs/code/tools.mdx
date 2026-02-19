@@ -1,13 +1,13 @@
 ---
 title: Built-in Tools
-description: 11 built-in tools for file operations, shell execution, search, web access, and subagent delegation
+description: 11 built-in tools (12 with sandbox) for file operations, shell execution, search, web access, and subagent delegation
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Built-in Tools
 
-A3S Code ships with 11 built-in tools covering file operations, shell execution, search, web access, and subagent delegation. All tools execute in-process via native Rust implementations.
+A3S Code ships with 11 built-in tools (12 with the `sandbox` feature) covering file operations, shell execution, search, web access, and subagent delegation. All tools execute in-process via native Rust implementations.
 
 ## Tool Reference
 
@@ -23,6 +23,8 @@ A3S Code ships with 11 built-in tools covering file operations, shell execution,
 | `ls` | List directory contents | Explore project structure |
 | `web_fetch` | Fetch web content | Download documentation |
 | `web_search` | Search the web | Query multiple search engines |
+| `task` | Delegate to subagents | Offload specialized work |
+| `sandbox` | Execute in MicroVM | Isolated execution (`sandbox` feature) |
 
 ## File Operations
 
@@ -119,7 +121,7 @@ Execute shell commands. Commands run in the session's workspace directory.
 }
 ```
 
-**Security:** Use [Permission System](/docs/code/sessions#permissions) to control bash access:
+**Security:** Use [Permission System](/docs/code/security) to control bash access:
 
 ```rust
 policy.deny("bash(rm -rf:*)");  // Block destructive commands
@@ -206,6 +208,59 @@ print(f"[{result['exit_code']}] {result['output']}")
 ```
 </Tab>
 </Tabs>
+
+## Subagent Delegation
+
+### `task`
+
+Delegate work to a specialized child agent. The child agent runs in its own session with its own conversation history. See [Subagents](/docs/code/subagents) for details.
+
+```json
+{
+  "description": "Write unit tests for the auth module",
+  "prompt": "Create comprehensive tests for src/auth.rs covering all edge cases"
+}
+```
+
+## Sandbox (Optional)
+
+### `sandbox`
+
+Execute commands in an isolated [A3S Box](/docs/box) MicroVM. Requires the `sandbox` Cargo feature.
+
+```toml
+a3s-code-core = { version = "0.7", features = ["sandbox"] }
+```
+
+Two modes of operation:
+
+**Transparent Routing** — When `SandboxConfig` is set on the session, the `bash` tool silently routes through the sandbox:
+
+```rust
+use a3s_code_core::{SessionOptions, SandboxConfig};
+
+let session = agent.session(".", Some(
+    SessionOptions::new().with_sandbox(SandboxConfig {
+        image: "ubuntu:22.04".into(),
+        memory_mb: 512,
+        network: false,
+        ..SandboxConfig::default()
+    })
+))?;
+
+// bash commands run inside the MicroVM sandbox
+let result = session.send("Run the test suite", None).await?;
+```
+
+**Explicit `sandbox` Tool** — With the feature enabled, a `sandbox` tool is registered so the LLM can choose to use it explicitly. The workspace is mounted at `/workspace` inside the sandbox.
+
+| `SandboxConfig` Field | Type | Default | Description |
+|----------------------|------|---------|-------------|
+| `image` | `string` | `"alpine:latest"` | OCI image reference |
+| `memory_mb` | `u32` | `512` | Memory limit in megabytes |
+| `cpus` | `u32` | `1` | Number of vCPUs |
+| `network` | `bool` | `false` | Enable outbound networking |
+| `env` | `HashMap<String,String>` | `{}` | Environment variables to inject |
 
 ## File Version History
 

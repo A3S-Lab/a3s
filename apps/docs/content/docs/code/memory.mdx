@@ -57,7 +57,7 @@ const session = agent.session('.', {
 </Tab>
 <Tab value="Python">
 ```python
-agent = Agent("agent.hcl")
+agent = Agent.create("agent.hcl")
 session = agent.session(".", SessionOptions(
     file_memory=".a3s/memory",
 ))

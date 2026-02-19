@@ -1,11 +1,17 @@
 ---
-title: Providers
-description: Configure LLM providers, models, and per-model API key/base URL overrides
+title: Providers & Configuration
+description: Full HCL configuration reference — LLM providers, models, queue, search, storage, and agent behavior
 ---
 
-# Provider Configuration
+import { Callout } from 'fumadocs-ui/components/callout';
 
-All LLM providers and models are defined in the agent config file (HCL or JSON). Models are selected at runtime via `provider/model` format.
+# Providers & Configuration
+
+All configuration is defined in a single HCL file (or JSON). This page is the canonical reference for every config field.
+
+<Callout type="info">
+A3S Code uses HCL configuration format exclusively. The `env()` function reads environment variables at parse time.
+</Callout>
 
 ## Basic Configuration
 
@@ -155,9 +161,142 @@ Provider-level `api_key` and `base_url` are defaults. Model-level values overrid
 | `api_key` | string | yes | Default API key for all models |
 | `base_url` | string | no | Default base URL for all models |
 
+## Full Configuration Reference
+
+Complete HCL config with all available fields:
+
+```hcl
+# === LLM (required) ===
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+# === Agent Behavior ===
+max_tool_rounds  = 20          # default: 50
+thinking_budget  = 4096        # reasoning token budget
+
+# === Extensions ===
+skill_dirs = ["./skills"]      # *.md skill files
+agent_dirs = ["./agents"]      # *.yaml/*.md agent files
+
+# === Storage ===
+storage_backend = "file"       # "memory" | "file" | "custom"
+sessions_dir    = "/tmp/a3s"   # session persistence path
+storage_url     = "redis://localhost:6379"
+
+# === Providers ===
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+
+  models {
+    id          = "claude-sonnet-4-20250514"
+    name        = "Claude Sonnet 4"
+    family      = "claude-sonnet"
+    tool_call   = true
+    temperature = true
+    reasoning   = false
+    cost {
+      input       = 3.0
+      output      = 15.0
+      cache_read  = 0.3
+      cache_write = 3.75
+    }
+    limit {
+      context = 200000
+      output  = 8192
+    }
+  }
+}
+
+providers {
+  name    = "openai"
+  api_key = env("OPENAI_API_KEY")
+
+  models {
+    id        = "gpt-4o"
+    name      = "GPT-4o"
+    tool_call = true
+  }
+
+  models {
+    id        = "gpt-4o-proxy"
+    name      = "GPT-4o (via Proxy)"
+    api_key   = "sk-proxy-key..."                 # per-model override
+    base_url  = "https://proxy.example.com/v1"    # per-model override
+    tool_call = true
+  }
+}
+
+# === Queue (optional) ===
+queue {
+  query_max_concurrency    = 5    # default: 5
+  execute_max_concurrency  = 2    # default: 2
+  generate_max_concurrency = 1    # default: 1
+  enable_metrics           = true
+  enable_dlq               = true
+
+  retry_policy {
+    strategy         = "exponential"  # "fixed" | "exponential"
+    max_retries      = 3
+    initial_delay_ms = 100
+  }
+}
+
+# === Search (optional) ===
+search {
+  timeout = 30
+
+  health {
+    max_failures    = 3
+    suspend_seconds = 60
+  }
+
+  engine {
+    ddg {
+      enabled = true
+      weight  = 1.5
+    }
+    wiki {
+      enabled = true
+      weight  = 1.2
+    }
+    brave {
+      enabled = true
+      weight  = 1.0
+      timeout = 20
+    }
+  }
+}
+```
+
+### Config Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `default_model` | `string` | — (required) | Default model in `provider/model` format |
+| `max_tool_rounds` | `int` | `50` | Max tool call rounds per turn |
+| `thinking_budget` | `int` | `null` | Reasoning token budget |
+| `skill_dirs` | `string[]` | `[]` | Directories to scan for `*.md` skill files |
+| `agent_dirs` | `string[]` | `[]` | Directories to scan for agent files |
+| `storage_backend` | `string` | `"file"` | `"memory"`, `"file"`, or `"custom"` |
+| `sessions_dir` | `string` | `null` | Session persistence path |
+| `storage_url` | `string` | `null` | Storage connection URL (for custom backends) |
+
+### The `env()` Function
+
+Use `env("VAR_NAME")` to read environment variables at config parse time:
+
+```hcl
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+}
+```
+
+This avoids hardcoding secrets in config files.
+
 ## JSON Format
 
-The same config in JSON:
+The same config in JSON (camelCase field names):
 
 ```json
 {

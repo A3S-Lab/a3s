@@ -80,7 +80,7 @@ providers {
 ```
 
 <Callout type="info">
-A3S Code uses HCL configuration format exclusively. See [Providers](/docs/code/providers) for multi-provider setup and [Lane Queue](/docs/code/lane-queue) for queue configuration.
+A3S Code uses HCL configuration format exclusively. See [Providers](/docs/code/providers) for multi-provider setup and full config reference.
 </Callout>
 
 ### Basic Usage
@@ -129,190 +129,16 @@ console.log(result.text);
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent, SessionOptions
+from a3s_code import Agent
 
-agent = Agent("agent.hcl")
-session = agent.session(".", SessionOptions(
-    default_security=True,
-    builtin_skills=True,
-    planning=True,
-))
+agent = Agent.create("agent.hcl")
+session = agent.session(".", default_security=True, builtin_skills=True, planning=True)
 
 result = session.send("Refactor auth + update tests")
 print(result.text)
 ```
 </Tab>
 </Tabs>
-
-## Core Features
-
-### 🛠️ Built-in Tools (11 + 1 optional)
-
-| Category | Tools | Description |
-|----------|-------|-------------|
-| **File Operations** | `read`, `write`, `edit`, `patch` | Read/write files, apply diffs |
-| **Search** | `grep`, `glob`, `ls` | Search content, find files, list directories |
-| **Execution** | `bash` | Execute shell commands |
-| **Sandbox** | `sandbox` | Execute in A3S Box MicroVM (`sandbox` feature) |
-| **Web** | `web_fetch`, `web_search` | Fetch URLs, search the web |
-| **Subagents** | `task` | Delegate to specialized child agents |
-
-See [Tools](/docs/code/tools) for full reference.
-
-### 🔒 Security & Safety
-
-4 layers of security:
-
-1. **Default Security Provider** — Auto-redact sensitive data (SSN, API keys, emails, etc.)
-2. **Permission System** — Allow/Deny/Ask rules per tool with wildcard matching
-3. **Skill-Based Tool Restrictions** — Skills define allowed tools via `allowed-tools`
-4. **HITL Confirmation** — Require human approval for sensitive operations
-
-```rust
-SessionOptions::new()
-    .with_default_security()           // PII redaction
-    .with_permission_checker(policy)   // Tool permissions
-    .with_confirmation_manager(mgr)    // Human confirmation
-```
-
-See [Security](/docs/code/security) for details.
-
-### 🧠 Skills System
-
-**7 built-in skills** (4 code assistance + 3 tool documentation). Custom skills are Markdown files with YAML frontmatter (Claude Code compatible):
-
-```markdown
----
-name: api-design
-description: Review API design
-allowed-tools: "read(*), grep(*)"
-kind: instruction
----
-# API Design Review
-Check for RESTful principles, proper error handling, and documentation.
-```
-
-```rust
-SessionOptions::new()
-    .with_builtin_skills()              // Enable built-in skills
-    .with_skills_from_dir("./skills")   // Load custom skills
-```
-
-See [Skills](/docs/code/skills) for details.
-
-### 🎯 Planning & Goal Tracking
-
-Decompose complex tasks into dependency-aware execution plans. Independent steps execute in parallel waves via `tokio::JoinSet`. Goal tracking monitors progress across multiple turns.
-
-```rust
-SessionOptions::new()
-    .with_planning(true)
-    .with_goal_tracking(true)
-```
-
-See [Tasks](/docs/code/tasks) for details.
-
-### 🖼️ Multi-Modal Support (Vision)
-
-Send image attachments alongside text prompts. Requires a vision-capable model (Claude Sonnet, GPT-4o).
-
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::Attachment;
-
-let image = Attachment::from_file("screenshot.png")?;
-let result = session.send_with_attachments(
-    "What's in this screenshot?",
-    &[image],
-    None,
-).await?;
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-const image = await fs.readFile('screenshot.png');
-const result = await session.sendWithAttachments(
-  "What's in this screenshot?",
-  [{ data: image, mediaType: 'image/png' }],
-);
-```
-</Tab>
-<Tab value="Python">
-```python
-result = session.send_with_attachments(
-    "What's in this screenshot?",
-    [Attachment.from_file("screenshot.png")],
-)
-```
-</Tab>
-</Tabs>
-
-Supported formats: JPEG, PNG, GIF, WebP. Tools can also return images via `ToolOutput::with_images()`.
-
-### 🚦 Lane-Based Priority Queue
-
-Tool execution is routed through a priority queue backed by [a3s-lane](/docs/lane):
-
-| Lane | Priority | Tools | Behavior |
-|------|----------|-------|----------|
-| **Control** | P0 (highest) | pause, resume, cancel | Sequential |
-| **Query** | P1 | read, glob, grep, ls, web_fetch, web_search | Parallel |
-| **Execute** | P2 | bash, write, edit, delete | Sequential |
-| **Generate** | P3 (lowest) | LLM calls | Sequential |
-
-Higher-priority tasks preempt queued lower-priority tasks. Advanced features include retry policies, rate limiting, priority boost, pressure monitoring, and DLQ.
-
-See [Lane Queue](/docs/code/lane-queue) for details.
-
-### 🌐 Multi-Machine Distribution
-
-Offload tool execution to external workers via three handler modes:
-
-| Mode | Behavior |
-|------|----------|
-| **Internal** (default) | Execute within agent process |
-| **External** | Send to external workers, wait for completion |
-| **Hybrid** | Execute internally + notify external observers |
-
-```rust
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::External,
-    timeout_ms: 120_000,
-}).await;
-
-// Worker loop (can run on multiple machines)
-let tasks = session.pending_external_tasks().await;
-for task in tasks {
-    let result = execute_on_worker(&task).await;
-    session.complete_external_task(&task.task_id, result).await;
-}
-```
-
-See [Multi-Machine Distribution](/docs/code/multi-machine) for complete guide.
-
-### 🔌 Extensibility (14 Extension Points)
-
-All policies are replaceable via traits with working defaults:
-
-| Extension Point | Purpose | Default |
-|----------------|---------|---------|
-| SecurityProvider | Input taint, output sanitization | DefaultSecurityProvider |
-| PermissionChecker | Tool access control | PermissionPolicy |
-| ConfirmationProvider | Human confirmation | ConfirmationManager |
-| ContextProvider | RAG retrieval | FileSystemContextProvider |
-| SessionStore | Session persistence | FileSessionStore |
-| MemoryStore | Long-term memory | InMemoryStore |
-| Tool | Custom tools | 11 built-in tools |
-| Planner | Task decomposition | LlmPlanner |
-| HookHandler | Event handling | HookEngine |
-| HookExecutor | Event execution | HookEngine |
-| McpTransport | MCP protocol | StdioTransport |
-| HttpClient | HTTP requests | ReqwestClient |
-| SessionCommand | Queue tasks | ToolCommand |
-| LlmClient | LLM interface | Anthropic/OpenAI |
-
-See [Architecture](/docs/code/architecture) for details.
 
 ## Architecture
 
@@ -337,82 +163,49 @@ Agent (config-driven)
 
 See [Architecture](/docs/code/architecture) for detailed documentation.
 
-## Advanced Features
-
-### Context Providers (RAG)
-
-```rust
-let fs_provider = Arc::new(FileSystemContextProvider::new(
-    FileSystemContextConfig::new(".")
-        .with_include_patterns(vec!["**/*.rs".to_string()])
-));
-
-SessionOptions::new().with_context_provider(fs_provider)
-```
-
-See [Context](/docs/code/context) for details.
-
-### MCP Integration
-
-```rust
-let mcp_client = McpClient::connect_stdio("path/to/mcp-server").await?;
-session.add_mcp_client(mcp_client).await;
-```
-
-See [MCP](/docs/code/mcp) for details.
-
-### Lifecycle Hooks
-
-8 hook events: PreToolUse, PostToolUse, GenerateStart, GenerateEnd, SessionStart, SessionEnd, SkillLoad, SkillUnload.
-
-```rust
-let hook_engine = HookEngine::new();
-hook_engine.register(Hook::new("audit", HookEventType::PreToolUse));
-SessionOptions::new().with_hook_engine(hook_engine)
-```
-
-See [Hooks](/docs/code/hooks) for details.
-
-### Memory System
-
-4 memory types: episodic, semantic, procedural, working. File-based persistence via `FileMemoryStore` (default) or custom backends via `MemoryStore` trait.
-
-```rust
-SessionOptions::new()
-    .with_file_memory(".a3s/memory")  // File-based persistence
-```
-
-See [Memory](/docs/code/memory) for details.
-
 ## Documentation
 
-### Getting Started
-- **[Quick Start](#quick-start)** — Get started in 3 steps
-- **[Examples](/docs/code/examples)** — Integration tests and usage patterns
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">Core</h3>
+    <ul className="text-sm text-muted-foreground space-y-1">
+      <li><a href="/docs/code/sessions">Sessions</a> — Lifecycle, send/stream, history, vision</li>
+      <li><a href="/docs/code/tools">Tools</a> — 11 built-in tools reference</li>
+      <li><a href="/docs/code/tasks">Tasks</a> — Planning and wave-based execution</li>
+      <li><a href="/docs/code/skills">Skills</a> — Skill system and tool restrictions</li>
+    </ul>
+  </div>
 
-### Core Concepts
-- **[Architecture](/docs/code/architecture)** — System design and components
-- **[Sessions](/docs/code/sessions)** — Session management and lifecycle
-- **[Tasks](/docs/code/tasks)** — Planning and wave-based execution
-- **[Lane Queue](/docs/code/lane-queue)** — Priority routing and queue features
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">Security & Safety</h3>
+    <ul className="text-sm text-muted-foreground space-y-1">
+      <li><a href="/docs/code/security">Security</a> — Permissions, PII redaction, HITL</li>
+    </ul>
+  </div>
 
-### Security & Safety
-- **[Security](/docs/code/security)** — Permission system, PII redaction, HITL
-- **[Skills](/docs/code/skills)** — Skill system and tool restrictions
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">Infrastructure</h3>
+    <ul className="text-sm text-muted-foreground space-y-1">
+      <li><a href="/docs/code/architecture">Architecture</a> — System design overview</li>
+      <li><a href="/docs/code/lane-queue">Lane Queue</a> — Priority routing and queue features</li>
+      <li><a href="/docs/code/multi-machine">Multi-Machine</a> — Horizontal scaling guide</li>
+    </ul>
+  </div>
 
-### Tools & Capabilities
-- **[Tools](/docs/code/tools)** — Built-in tools reference
-- **[MCP](/docs/code/mcp)** — External tool integration
-- **[Subagents](/docs/code/subagents)** — Delegate to specialized agents
-
-### Extensions
-- **[Multi-Machine](/docs/code/multi-machine)** — Horizontal scaling guide
-- **[Hooks](/docs/code/hooks)** — Lifecycle events
-- **[Memory](/docs/code/memory)** — Long-term memory
-- **[Context](/docs/code/context)** — RAG providers
-- **[Persistence](/docs/code/persistence)** — Session storage
-- **[Telemetry](/docs/code/telemetry)** — Cost tracking and metrics
-- **[Providers](/docs/code/providers)** — LLM provider configuration
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">Extensions</h3>
+    <ul className="text-sm text-muted-foreground space-y-1">
+      <li><a href="/docs/code/providers">Providers</a> — LLM providers and full config reference</li>
+      <li><a href="/docs/code/mcp">MCP</a> — External tool integration</li>
+      <li><a href="/docs/code/subagents">Subagents</a> — Delegate to specialized agents</li>
+      <li><a href="/docs/code/context">Context</a> — RAG providers</li>
+      <li><a href="/docs/code/memory">Memory</a> — Long-term memory</li>
+      <li><a href="/docs/code/hooks">Hooks</a> — Lifecycle events</li>
+      <li><a href="/docs/code/persistence">Persistence</a> — Session storage</li>
+      <li><a href="/docs/code/telemetry">Telemetry</a> — Cost tracking and metrics</li>
+    </ul>
+  </div>
+</div>
 
 ## Testing
 
