@@ -17,6 +17,7 @@ All examples use real LLM configuration from `~/.a3s/config.hcl` and test the sa
 - **Streaming execution** - Real-time event streaming
 - **Queue configuration** - A3S Lane v0.4.0 advanced features
 - **Conversation history** - Multi-turn conversations
+- **Lane-based priority preemption** - High-priority tasks preempt queued low-priority tasks
 - **External task handling** - Multi-machine coordinator/worker pattern
 
 ## Rust Examples
@@ -1535,1322 +1536,240 @@ Error: Cannot find module '@a3s/code'
 npm run build
 ```
 
-## Advanced Examples
+## Lane-Based Priority Preemption Examples
 
-### Manual Parallel Task Submission
-
-**File:** `test_parallel_processing.rs`
-
-**Note:** This test demonstrates **manual parallel task submission** (user spawns multiple independent tasks), which is different from internal parallelization above.
-
-Complete integration test demonstrating parallel task processing with A3S Lane queue. Tests 4 scenarios: sequential baseline, parallel processing, priority lanes, and retry policies.
-
-```rust
-//! A3S Code - Parallel Task Processing Integration Test
-//!
-//! Demonstrates parallel processing of multiple tasks using A3S Lane queue.
-//! Tests concurrent file analysis, code review, and documentation generation.
-//!
-//! Run with: cargo run --example test_parallel_processing
-
-use a3s_code_core::{Agent, RetryPolicyConfig, SessionOptions, SessionQueueConfig};
-use anyhow::Result;
-use std::time::Instant;
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    println!("🚀 A3S Code - Parallel Task Processing Integration Test\n");
-
-    let agent = Agent::new("~/.a3s/config.hcl").await?;
-
-    // Test 1: Sequential processing (baseline)
-    println!("📦 Test 1: Sequential Processing (Baseline)");
-    {
-        let session = agent.session(".", None)?;
-        let tasks = vec![
-            "Count the number of Rust files in this project",
-            "Find all TODO comments in Rust files",
-            "List all public functions in src/lib.rs",
-        ];
-
-        let start = Instant::now();
-        for task in tasks.iter() {
-            let result = session.send(task, None).await?;
-            println!("  ✓ Completed: {} chars", result.text.len());
-        }
-        println!("✓ Sequential: {:.2}s", start.elapsed().as_secs_f64());
-    }
-
-    // Test 2: Parallel processing with queue
-    println!("\n⚡ Test 2: Parallel Processing with Queue");
-    {
-        let queue_config = SessionQueueConfig {
-            query_max_concurrency: 3,   // 3 concurrent queries
-            execute_max_concurrency: 2, // 2 concurrent executions
-            enable_metrics: true,
-            enable_dlq: true,
-            retry_policy: Some(RetryPolicyConfig {
-                strategy: "exponential".to_string(),
-                max_retries: 3,
-                initial_delay_ms: 100,
-                fixed_delay_ms: None,
-            }),
-            ..Default::default()
-        };
-
-        let session = agent.session(".", Some(
-            SessionOptions::new().with_queue_config(queue_config)
-        ))?;
-
-        let tasks = vec![
-            "Count the number of Rust files",
-            "Find all TODO comments",
-            "List all public functions",
-            "Find all async functions",
-            "Count lines of code",
-        ];
-
-        let start = Instant::now();
-
-        // Spawn all tasks concurrently
-        let mut handles = vec![];
-        for (i, task) in tasks.iter().enumerate() {
-            let session_clone = session.clone();
-            let task_str = task.to_string();
-
-            let handle = tokio::spawn(async move {
-                session_clone.send(&task_str, None).await
-            });
-            handles.push((i + 1, handle));
-        }
-
-        // Wait for all tasks
-        for (task_num, handle) in handles {
-            match handle.await? {
-                Ok(r) => println!("  ✓ Task {} completed: {} chars", task_num, r.text.len()),
-                Err(e) => println!("  ✗ Task {} failed: {}", task_num, e),
-            }
-        }
-
-        println!("✓ Parallel: {:.2}s", start.elapsed().as_secs_f64());
-
-        // Check queue stats
-        if session.has_queue() {
-            let stats = session.queue_stats()?;
-            println!("\n📊 Queue Statistics:");
-            println!("  Total processed: {}", stats.total_processed);
-            println!("  Total failed: {}", stats.total_failed);
-            println!("  DLQ size: {}", stats.dlq_size);
-        }
-    }
-
-    // Test 3: Priority lanes
-    println!("\n🎯 Test 3: Priority Lanes");
-    {
-        let queue_config = SessionQueueConfig {
-            control_max_concurrency: 1,  // P0: Control
-            query_max_concurrency: 3,    // P1: Query (highest concurrency)
-            execute_max_concurrency: 2,  // P2: Execute
-            generate_max_concurrency: 1, // P3: Generate
-            enable_metrics: true,
-            ..Default::default()
-        };
-
-        let session = agent.session(".", Some(
-            SessionOptions::new().with_queue_config(queue_config)
-        ))?;
-
-        let tasks = vec![
-            ("Query", "How many Rust files?"),
-            ("Query", "What is the project structure?"),
-            ("Query", "List all dependencies"),
-            ("Execute", "Create a summary"),
-            ("Execute", "Analyze complexity"),
-        ];
-
-        let start = Instant::now();
-        let mut handles = vec![];
-
-        for (i, (task_type, task)) in tasks.iter().enumerate() {
-            println!("  Queuing {} task: {}", task_type, task);
-            let session_clone = session.clone();
-            let task_str = task.to_string();
-
-            let handle = tokio::spawn(async move {
-                session_clone.send(&task_str, None).await
-            });
-            handles.push((i + 1, handle));
-        }
-
-        for (task_num, handle) in handles {
-            match handle.await? {
-                Ok(r) => println!("  ✓ Task {} completed: {} chars", task_num, r.text.len()),
-                Err(e) => println!("  ✗ Task {} failed: {}", task_num, e),
-            }
-        }
-
-        println!("✓ Priority lanes: {:.2}s", start.elapsed().as_secs_f64());
-    }
-
-    // Test 4: Retry policy
-    println!("\n🔄 Test 4: Retry Policy");
-    {
-        let queue_config = SessionQueueConfig {
-            query_max_concurrency: 3,
-            enable_metrics: true,
-            enable_dlq: true,
-            retry_policy: Some(RetryPolicyConfig {
-                strategy: "exponential".to_string(),
-                max_retries: 3,
-                initial_delay_ms: 100,
-                fixed_delay_ms: None,
-            }),
-            ..Default::default()
-        };
-
-        let session = agent.session(".", Some(
-            SessionOptions::new().with_queue_config(queue_config)
-        ))?;
-
-        println!("Testing retry with exponential backoff...");
-        println!("  Max retries: 3, Initial delay: 100ms");
-
-        let tasks = vec![
-            "Analyze the main function",
-            "Find all error types",
-            "List all test functions",
-        ];
-
-        let start = Instant::now();
-        let mut handles = vec![];
-
-        for (i, task) in tasks.iter().enumerate() {
-            let session_clone = session.clone();
-            let task_str = task.to_string();
-
-            let handle = tokio::spawn(async move {
-                session_clone.send(&task_str, None).await
-            });
-            handles.push((i + 1, handle));
-        }
-
-        for (task_num, handle) in handles {
-            match handle.await? {
-                Ok(r) => println!("  ✓ Task {} completed: {} chars", task_num, r.text.len()),
-                Err(e) => println!("  ✗ Task {} failed: {}", task_num, e),
-            }
-        }
-
-        println!("✓ With retry: {:.2}s", start.elapsed().as_secs_f64());
-
-        if session.has_queue() {
-            let stats = session.queue_stats()?;
-            println!("\n📊 Final Statistics:");
-            println!("  Total processed: {}", stats.total_processed);
-            println!("  Total failed: {}", stats.total_failed);
-            println!("  DLQ size: {}", stats.dlq_size);
-        }
-    }
-
-    println!("\n✅ All parallel processing tests completed!");
-    Ok(())
-}
-```
-
-**Run:**
-```bash
-cd crates/code/core
-cargo run --example test_parallel_processing
-```
-
-**Expected Output:**
-```
-🚀 A3S Code - Parallel Task Processing Integration Test
-
-📦 Test 1: Sequential Processing (Baseline)
-  ✓ Completed: 342 chars
-  ✓ Completed: 156 chars
-  ✓ Completed: 289 chars
-✓ Sequential: 6.80s
-
-⚡ Test 2: Parallel Processing with Queue
-  ✓ Task 1 completed: 342 chars
-  ✓ Task 2 completed: 156 chars
-  ✓ Task 3 completed: 289 chars
-  ✓ Task 4 completed: 412 chars
-  ✓ Task 5 completed: 198 chars
-✓ Parallel: 2.30s
-
-📊 Queue Statistics:
-  Total processed: 5
-  Total failed: 0
-  DLQ size: 0
-
-🎯 Test 3: Priority Lanes
-  Queuing Query task: How many Rust files?
-  Queuing Query task: What is the project structure?
-  Queuing Query task: List all dependencies
-  Queuing Execute task: Create a summary
-  Queuing Execute task: Analyze complexity
-  ✓ Task 1 completed: 234 chars
-  ✓ Task 2 completed: 567 chars
-  ✓ Task 3 completed: 345 chars
-  ✓ Task 4 completed: 891 chars
-  ✓ Task 5 completed: 678 chars
-✓ Priority lanes: 3.45s
-
-🔄 Test 4: Retry Policy
-Testing retry with exponential backoff...
-  Max retries: 3, Initial delay: 100ms
-  ✓ Task 1 completed: 456 chars
-  ✓ Task 2 completed: 234 chars
-  ✓ Task 3 completed: 567 chars
-✓ With retry: 2.10s
-
-📊 Final Statistics:
-  Total processed: 3
-  Total failed: 0
-  DLQ size: 0
-
-✅ All parallel processing tests completed!
-```
-
-**Performance Comparison:**
-
-| Test | Configuration | Time | Speedup |
-|------|--------------|------|---------|
-| Test 1 | Sequential (baseline) | 6.80s | 1.0x |
-| Test 2 | Parallel (3 query, 2 execute) | 2.30s | 2.96x |
-| Test 3 | Priority lanes (3/2/1) | 3.45s | 1.97x |
-| Test 4 | With retry policy | 2.10s | 3.24x |
-
-### Task Priority Test
-
-**File:** `test_task_priority.rs`
-
-Demonstrates A3S Lane priority system with real LLM execution. Tests 3 scenarios: basic priority ordering, late high-priority preemption, and mixed priority workload.
-
-```rust
-//! Task Priority Test with Real LLM
-//!
-//! This example demonstrates how to use A3S Lane's priority system to control
-//! task execution order. Tasks submitted later with higher priority will execute
-//! before earlier tasks with lower priority.
-//!
-//! Run with: cargo run --example test_task_priority
-
-use a3s_code_core::queue::SessionQueueConfig;
-use a3s_code_core::{Agent, SessionOptions};
-use anyhow::Result;
-use tokio::time::{Duration, Instant};
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    println!("🚀 A3S Code - Task Priority Test with Real LLM\n");
-
-    let agent = Agent::new("~/.a3s/config.hcl").await?;
-
-    // Test 1: Basic priority ordering
-    test_basic_priority_ordering(&agent).await?;
-
-    // Test 2: Late high-priority task preempts queued low-priority tasks
-    test_late_high_priority_preemption(&agent).await?;
-
-    // Test 3: Mixed priority workload with real LLM
-    test_mixed_priority_workload(&agent).await?;
-
-    println!("\n✅ All task priority tests completed successfully!");
-    Ok(())
-}
-
-/// Test 1: Basic priority ordering
-async fn test_basic_priority_ordering(agent: &Agent) -> Result<()> {
-    println!("\n📋 Test 1: Basic Priority Ordering");
-    println!("Scenario: Submit 4 tasks in reverse priority order");
-    println!("Expected: Tasks execute in priority order (0 → 1 → 2 → 3)\n");
-
-    let queue_config = SessionQueueConfig {
-        query_max_concurrency: 2,
-        execute_max_concurrency: 2,
-        enable_metrics: true,
-        ..Default::default()
-    };
-
-    let session = agent.session(".", Some(
-        SessionOptions::new().with_queue_config(queue_config)
-    ))?;
-
-    let start_time = Instant::now();
-
-    println!("Submitting tasks in reverse priority order...\n");
-
-    // Submit tasks in REVERSE priority order
-    let task4 = session.send("List all .toml files in the current directory", None);
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    let task3 = session.send("Count the number of .md files", None);
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    let task2 = session.send("List all directories in the current directory", None);
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    let task1 = session.send("Read the Cargo.toml file and show the package name", None);
-
-    println!("Waiting for all tasks to complete...\n");
-
-    // Wait for all tasks
-    let result4 = task4.await?;
-    println!("[{:>6.2}s] ✓ Task 4: {} chars", start_time.elapsed().as_secs_f64(), result4.text.len());
-
-    let result3 = task3.await?;
-    println!("[{:>6.2}s] ✓ Task 3: {} chars", start_time.elapsed().as_secs_f64(), result3.text.len());
-
-    let result2 = task2.await?;
-    println!("[{:>6.2}s] ✓ Task 2: {} chars", start_time.elapsed().as_secs_f64(), result2.text.len());
-
-    let result1 = task1.await?;
-    println!("[{:>6.2}s] ✓ Task 1: {} chars", start_time.elapsed().as_secs_f64(), result1.text.len());
-
-    println!("\n--- Results ---");
-    println!("Task 1: {} chars, {} tools", result1.text.len(), result1.tool_calls_count);
-    println!("Task 2: {} chars, {} tools", result2.text.len(), result2.tool_calls_count);
-    println!("Task 3: {} chars, {} tools", result3.text.len(), result3.tool_calls_count);
-    println!("Task 4: {} chars, {} tools", result4.text.len(), result4.tool_calls_count);
-    println!("Total time: {:?}", start_time.elapsed());
-
-    println!("\n✅ Test 1 completed: All tasks executed with real LLM");
-    Ok(())
-}
-
-/// Test 2: Late high-priority task preempts queued low-priority tasks
-async fn test_late_high_priority_preemption(agent: &Agent) -> Result<()> {
-    println!("\n🚨 Test 2: Late High-Priority Task Preemption");
-    println!("Scenario: Queue 3 low-priority tasks, then submit 1 urgent high-priority task");
-    println!("Expected: High-priority task executes before queued low-priority tasks\n");
-
-    let queue_config = SessionQueueConfig {
-        query_max_concurrency: 2,
-        execute_max_concurrency: 2,
-        enable_metrics: true,
-        ..Default::default()
-    };
-
-    let session = agent.session(".", Some(
-        SessionOptions::new().with_queue_config(queue_config)
-    ))?;
-
-    println!("Step 1: Submitting 3 low-priority background tasks...\n");
-
-    let task1 = session.send("List all .md files in the current directory", None);
-    println!("  ✓ Submitted: Background task 1 (list .md files)");
-
-    let task2 = session.send("Count the number of .rs files", None);
-    println!("  ✓ Submitted: Background task 2 (count .rs files)");
-
-    let task3 = session.send("Find all TODO comments", None);
-    println!("  ✓ Submitted: Background task 3 (find TODOs)");
-
-    tokio::time::sleep(Duration::from_millis(100)).await;
-
-    println!("\nStep 2: Submitting URGENT high-priority task...\n");
-
-    let urgent_task = session.send("Read the Cargo.toml file (URGENT)", None);
-    println!("  🚨 Submitted: URGENT task (read Cargo.toml)");
-
-    println!("\nStep 3: Waiting for all tasks to complete...\n");
-
-    let start = Instant::now();
-    let result1 = task1.await?;
-    println!("  ✓ Completed: Background task 1 ({:?})", start.elapsed());
-
-    let result2 = task2.await?;
-    println!("  ✓ Completed: Background task 2 ({:?})", start.elapsed());
-
-    let result3 = task3.await?;
-    println!("  ✓ Completed: Background task 3 ({:?})", start.elapsed());
-
-    let urgent_result = urgent_task.await?;
-    println!("  🚨 Completed: URGENT task ({:?})", start.elapsed());
-
-    println!("\n--- Results ---");
-    println!("Background task 1: {} chars", result1.text.len());
-    println!("Background task 2: {} chars", result2.text.len());
-    println!("Background task 3: {} chars", result3.text.len());
-    println!("URGENT task: {} chars", urgent_result.text.len());
-
-    println!("\n✅ Test 2 completed: High-priority task handling demonstrated");
-    Ok(())
-}
-
-/// Test 3: Mixed priority workload with real LLM
-async fn test_mixed_priority_workload(agent: &Agent) -> Result<()> {
-    println!("\n🎯 Test 3: Mixed Priority Workload with Real LLM");
-    println!("Scenario: Realistic workload with multiple priority levels");
-    println!("Expected: Critical tasks execute first, then normal, then background\n");
-
-    let queue_config = SessionQueueConfig {
-        query_max_concurrency: 3,
-        execute_max_concurrency: 3,
-        enable_metrics: true,
-        ..Default::default()
-    };
-
-    let session = agent.session(".", Some(
-        SessionOptions::new().with_queue_config(queue_config)
-    ))?;
-
-    let start_time = Instant::now();
-
-    println!("Submitting mixed priority workload...\n");
-
-    // Background tasks (lowest priority)
-    println!("📦 Background tasks:");
-    let bg1 = session.send("Find all .toml files", None);
-    println!("  - Find all .toml files");
-
-    let bg2 = session.send("List all directories", None);
-    println!("  - List all directories");
-
-    // Normal priority tasks
-    println!("\n📋 Normal priority tasks:");
-    let normal1 = session.send("Read the README.md file", None);
-    println!("  - Read README.md");
-
-    let normal2 = session.send("Search for 'async' in Rust files", None);
-    println!("  - Search for 'async'");
-
-    // Critical tasks (highest priority)
-    println!("\n🚨 Critical tasks:");
-    let critical1 = session.send("Read Cargo.toml and show the package name", None);
-    println!("  - Read Cargo.toml (critical)");
-
-    println!("\nWaiting for all tasks to complete...\n");
-
-    // Collect results
-    let r = critical1.await?;
-    println!("  ✓ [{:>6.2}s] Critical task completed", start_time.elapsed().as_secs_f64());
-
-    let r1 = normal1.await?;
-    println!("  ✓ [{:>6.2}s] Normal task 1 completed", start_time.elapsed().as_secs_f64());
-
-    let r2 = normal2.await?;
-    println!("  ✓ [{:>6.2}s] Normal task 2 completed", start_time.elapsed().as_secs_f64());
-
-    let b1 = bg1.await?;
-    println!("  ✓ [{:>6.2}s] Background task 1 completed", start_time.elapsed().as_secs_f64());
-
-    let b2 = bg2.await?;
-    println!("  ✓ [{:>6.2}s] Background task 2 completed", start_time.elapsed().as_secs_f64());
-
-    println!("\n--- Summary ---");
-    println!("Critical: {} chars, {} tools", r.text.len(), r.tool_calls_count);
-    println!("Normal 1: {} chars, {} tools", r1.text.len(), r1.tool_calls_count);
-    println!("Normal 2: {} chars, {} tools", r2.text.len(), r2.tool_calls_count);
-    println!("Background 1: {} chars, {} tools", b1.text.len(), b1.tool_calls_count);
-    println!("Background 2: {} chars, {} tools", b2.text.len(), b2.tool_calls_count);
-    println!("Total time: {:?}", start_time.elapsed());
-
-    println!("\n✅ Test 3 completed: Mixed priority workload executed successfully");
-    Ok(())
-}
-```
-
-**Run:**
-```bash
-cd crates/code/core
-cargo run --example test_task_priority
-```
-
-**Expected Output:**
-```
-🚀 A3S Code - Task Priority Test with Real LLM
-
-📋 Test 1: Basic Priority Ordering
-Scenario: Submit 4 tasks in reverse priority order
-Expected: Tasks execute in priority order (0 → 1 → 2 → 3)
-
-Submitting tasks in reverse priority order...
-
-Waiting for all tasks to complete...
-
-[  2.15s] ✓ Task 4: 342 chars
-[  3.87s] ✓ Task 3: 156 chars
-[  5.23s] ✓ Task 2: 289 chars
-[  6.91s] ✓ Task 1: 512 chars
-
---- Results ---
-Task 1: 512 chars, 1 tools
-Task 2: 289 chars, 1 tools
-Task 3: 156 chars, 2 tools
-Task 4: 342 chars, 1 tools
-Total time: 6.91s
-
-✅ Test 1 completed: All tasks executed with real LLM
-
-🚨 Test 2: Late High-Priority Task Preemption
-Scenario: Queue 3 low-priority tasks, then submit 1 urgent high-priority task
-Expected: High-priority task executes before queued low-priority tasks
-
-Step 1: Submitting 3 low-priority background tasks...
-
-  ✓ Submitted: Background task 1 (list .md files)
-  ✓ Submitted: Background task 2 (count .rs files)
-  ✓ Submitted: Background task 3 (find TODOs)
-
-Step 2: Submitting URGENT high-priority task...
-
-  🚨 Submitted: URGENT task (read Cargo.toml)
-
-Step 3: Waiting for all tasks to complete...
-
-  ✓ Completed: Background task 1 (2.1s)
-  ✓ Completed: Background task 2 (3.8s)
-  ✓ Completed: Background task 3 (5.2s)
-  🚨 Completed: URGENT task (1.5s)
-
---- Results ---
-Background task 1: 234 chars
-Background task 2: 156 chars
-Background task 3: 289 chars
-URGENT task: 512 chars
-
-✅ Test 2 completed: High-priority task handling demonstrated
-
-🎯 Test 3: Mixed Priority Workload with Real LLM
-Scenario: Realistic workload with multiple priority levels
-Expected: Critical tasks execute first, then normal, then background
-
-Submitting mixed priority workload...
-
-📦 Background tasks:
-  - Find all .toml files
-  - List all directories
-
-📋 Normal priority tasks:
-  - Read README.md
-  - Search for 'async'
-
-🚨 Critical tasks:
-  - Read Cargo.toml (critical)
-
-Waiting for all tasks to complete...
-
-  ✓ [  1.23s] Critical task completed
-  ✓ [  2.45s] Normal task 1 completed
-  ✓ [  3.67s] Normal task 2 completed
-  ✓ [  4.89s] Background task 1 completed
-  ✓ [  6.12s] Background task 2 completed
-
---- Summary ---
-Critical: 512 chars, 1 tools
-Normal 1: 1234 chars, 1 tools
-Normal 2: 567 chars, 2 tools
-Background 1: 342 chars, 1 tools
-Background 2: 289 chars, 1 tools
-Total time: 6.12s
-
-✅ Test 3 completed: Mixed priority workload executed successfully
-
-✅ All task priority tests completed successfully!
-```
-
-**Key Features:**
-- Real LLM execution with priority control (13 total LLM calls)
-- Queue configuration with concurrency limits
-- Task submission and completion tracking
-- Performance metrics (chars, tool calls, timing)
-- Three comprehensive test scenarios
-
-### Parallel Task Processing Test
-
-**File:** `integration_tests.rs` (Test 7)
-
-Demonstrates parallel query operations with queue configuration.
-
-```rust
-use a3s_code_core::queue::{SessionQueueConfig, RetryPolicyConfig};
-use a3s_code_core::{Agent, SessionOptions};
-
-async fn test_parallel_processing(agent: &Agent) -> Result<()> {
-    println!("⚡ Parallel Task Processing Test");
-
-    // Configure queue for parallel execution
-    let queue_config = SessionQueueConfig {
-        query_max_concurrency: 10,      // Allow 10 parallel queries
-        execute_max_concurrency: 5,     // Allow 5 parallel executions
-        enable_metrics: true,
-        enable_dlq: true,
-        retry_policy: Some(RetryPolicyConfig {
-            strategy: "exponential".to_string(),
-            max_retries: 3,
-            initial_delay_ms: 100,
-            fixed_delay_ms: None,
-        }),
-        ..Default::default()
-    };
-
-    let session = agent.session(".", Some(
-        SessionOptions::new().with_queue_config(queue_config)
-    ))?;
-
-    // Submit multiple tasks that will execute in parallel
-    println!("Submitting parallel tasks...");
-
-    let start = std::time::Instant::now();
-
-    let result = session.send(
-        "List all .rs files and count how many contain 'async'",
-        None
-    ).await?;
-
-    let elapsed = start.elapsed();
-
-    println!("✓ Result: {}", truncate(&result.text, 200));
-    println!("✓ Execution time: {:?}", elapsed);
-    println!("✓ Tool calls: {}", result.tool_calls_count);
-
-    // Check queue metrics
-    if let Some(metrics) = session.queue_metrics().await {
-        println!("\nQueue Metrics:");
-        println!("  - Total tasks: {}", metrics.total_tasks);
-        println!("  - Completed: {}", metrics.completed_tasks);
-        println!("  - Failed: {}", metrics.failed_tasks);
-        println!("  - Average latency: {:?}", metrics.avg_latency);
-    }
-
-    Ok(())
-}
-```
-
-**Key Features:**
-- Parallel query execution (10 concurrent)
-- Retry policy with exponential backoff
-- Dead letter queue (DLQ) for failed tasks
-- Real-time metrics and monitoring
-- Performance tracking
-
-**Run:**
-```bash
-cargo run --example integration_tests
-```
-
-**Expected Output:**
-```
-⚡ Test 7: Queue Configuration (A3S Lane v0.4.0)
-Submitting parallel tasks...
-
-✓ Result: Found 127 .rs files, 89 contain 'async'... (truncated)
-✓ Execution time: 2.3s
-✓ Tool calls: 3
-
-Queue Metrics:
-  - Total tasks: 3
-  - Completed: 3
-  - Failed: 0
-  - Average latency: 766ms
-
-✅ Test 7 passed
-```
-
-**Performance Comparison:**
-
-| Configuration | Execution Time | Speedup |
-|--------------|----------------|---------|
-| Sequential (concurrency=1) | 6.8s | 1.0x |
-| Parallel (concurrency=4) | 4.2s | 1.6x |
-| Parallel (concurrency=10) | 2.3s | 2.9x |
-
-### Lane Priority System
-
-A3S Lane provides 4 priority levels for task routing:
+Demonstrates how the [lane-based priority system](/docs/code/lane-queue#lane-priority-system) allows high-priority tasks to preempt queued low-priority tasks. Each lane has its own concurrency limit and priority level:
 
 | Lane | Priority | Tools | Use Case |
 |------|----------|-------|----------|
-| **System** | P0 (highest) | Internal control | System operations |
-| **Control** | P1 | pause, resume, cancel | User control |
-| **Query** | P2 | read, grep, glob, ls | Read operations (parallel) |
-| **Execute** | P3 (lowest) | bash, write, edit | Write operations (sequential) |
+| **Control** | P0 (highest) | pause, resume, cancel | System operations |
+| **Query** | P1 | read, grep, glob, ls, web_fetch, web_search | Read operations |
+| **Execute** | P2 | bash, write, edit, delete | Write operations |
+| **Generate** | P3 (lowest) | LLM calls | Content generation |
 
-**Example: Priority-based routing**
+All three SDKs test the same three scenarios:
+1. **Query preempts Execute** — Query-lane task (P1) submitted after Execute-lane tasks (P2) completes first
+2. **Multi-level priority** — Execute vs Query with constrained concurrency
+3. **Late urgent insertion** — Urgent Query task injected into a busy Execute queue
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+**File:** `crates/code/core/examples/test_task_priority.rs`
+
+```bash
+cd crates/code && cargo run --example test_task_priority
+```
 
 ```rust
-use a3s_code_core::queue::{SessionLane, LaneHandlerConfig, TaskHandlerMode};
+use a3s_code_core::permissions::PermissionPolicy;
+use a3s_code_core::queue::SessionQueueConfig;
+use a3s_code_core::{Agent, AgentSession, SessionOptions};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use tokio::time::{Duration, Instant};
 
-// Configure Query lane for high concurrency
-session.set_lane_handler(SessionLane::Query, LaneHandlerConfig {
-    mode: TaskHandlerMode::Internal,
-    timeout_ms: 30_000,  // 30 seconds
-}).await;
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Agent::new("~/.a3s/config.hcl").await?;
 
-// Configure Execute lane for sequential execution
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::Internal,
-    timeout_ms: 120_000,  // 2 minutes
-}).await;
+    // Constrain Execute lane to 1 concurrent task (creates bottleneck)
+    // Query lane gets 2 slots (higher priority, separate capacity)
+    let queue_config = SessionQueueConfig {
+        execute_max_concurrency: 1,
+        query_max_concurrency: 2,
+        generate_max_concurrency: 1,
+        enable_metrics: true,
+        ..Default::default()
+    };
 
-// Query operations execute in parallel
-let search1 = session.send("Search for 'async' in all files", None);
-let search2 = session.send("Find all TODO comments", None);
-let search3 = session.send("List all .rs files", None);
+    let mut opts = SessionOptions::new().with_queue_config(queue_config);
+    opts.permission_checker = Some(Arc::new(PermissionPolicy::permissive()));
+    let session = Arc::new(agent.session(".", Some(opts))?);
 
-// All three searches execute concurrently
-let (r1, r2, r3) = tokio::join!(search1, search2, search3);
+    let start = Instant::now();
+
+    // Submit 3 Execute-lane tasks (bash → Execute lane P2)
+    let mut handles = Vec::new();
+    for i in 1..=3 {
+        let s = Arc::clone(&session);
+        let prompt = format!("Run: echo 'Task {} start' && sleep 1 && echo 'Task {} done'", i, i);
+        handles.push(tokio::spawn(async move {
+            let result = s.send(&prompt, None).await;
+            (format!("Execute-{}", i), start.elapsed(), result)
+        }));
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+
+    // Wait for queue to fill, then submit Query-lane task (read → P1)
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let s = Arc::clone(&session);
+    handles.push(tokio::spawn(async move {
+        let result = s.send("Read the Cargo.toml file and tell me the package name", None).await;
+        ("Query-Urgent".to_string(), start.elapsed(), result)
+    }));
+
+    // Collect results and print completion order
+    for handle in handles {
+        let (name, elapsed, result) = handle.await?;
+        let chars = result.map(|r| r.text.len()).unwrap_or(0);
+        println!("[{:.2}s] {} completed ({} chars)", elapsed.as_secs_f64(), name, chars);
+    }
+
+    Ok(())
+}
 ```
 
-## Python SDK Examples
+</Tab>
+<Tab value="Python">
 
-### Parallel Task Processing (Python)
+**File:** `crates/code/sdk/python/examples/test_task_priority.py`
 
-**File:** `test_parallel_processing.py`
-
-Complete Python SDK integration test demonstrating parallel task processing with A3S Lane queue.
+```bash
+cd crates/code/sdk/python && python examples/test_task_priority.py
+```
 
 ```python
-#!/usr/bin/env python3
-"""
-A3S Code Python SDK - Parallel Task Processing Integration Test
-
-Demonstrates parallel processing of multiple tasks using A3S Lane queue.
-Tests concurrent file analysis, code review, and documentation generation.
-
-Run with: python examples/test_parallel_processing.py
-"""
-
-import asyncio
-import time
-from pathlib import Path
-from a3s_code import Agent, SessionQueueConfig
-
-
-async def test_sequential_processing():
-    """Test 1: Sequential processing (baseline)."""
-    print("\n📦 Test 1: Sequential Processing (Baseline)")
-    print("-" * 80)
-
-    agent = Agent.create("~/.a3s/config.hcl")
-    session = agent.session(".")
-
-    tasks = [
-        "Count the number of Python files in this project",
-        "Find all TODO comments in Python files",
-        "List all classes in the main module",
-    ]
-
-    start = time.time()
-    print(f"Processing {len(tasks)} tasks sequentially...")
-
-    for i, task in enumerate(tasks, 1):
-        print(f"  Task {i}: {task}")
-        result = session.send(task)
-        print(f"  ✓ Completed: {len(result.text)} chars")
-
-    duration = time.time() - start
-    print(f"\n✓ Sequential processing took: {duration:.2f}s")
-    print("\n✅ Test 1 passed: Sequential processing works\n")
-
-
-async def test_parallel_processing():
-    """Test 2: Parallel processing with queue."""
-    print("⚡ Test 2: Parallel Processing with Queue")
-    print("-" * 80)
-
-    agent = Agent.create("~/.a3s/config.hcl")
-
-    # Configure queue for parallel processing
-    queue_config = SessionQueueConfig()
-    queue_config.set_query_concurrency(3)      # 3 concurrent queries
-    queue_config.set_execute_concurrency(2)    # 2 concurrent executions
-    queue_config.enable_metrics()              # Enable metrics
-    queue_config.enable_dlq()                  # Enable dead letter queue
-
-    session = agent.session(".", queue_config=queue_config)
-
-    tasks = [
-        "Count the number of Python files",
-        "Find all TODO comments",
-        "List all classes",
-        "Find all async functions",
-        "Count lines of code",
-    ]
-
-    start = time.time()
-    print(f"Processing {len(tasks)} tasks in parallel...")
-
-    # Create async tasks
-    async def process_task(task_num, task_text):
-        """Process a single task."""
-        result = session.send(task_text)
-        return task_num, result
-
-    # Queue all tasks
-    for i, task in enumerate(tasks, 1):
-        print(f"  Queuing task {i}: {task}")
-
-    print("\n  Waiting for all tasks to complete...")
-
-    # Process tasks concurrently using asyncio
-    async_tasks = [
-        asyncio.create_task(asyncio.to_thread(process_task, i, task))
-        for i, task in enumerate(tasks, 1)
-    ]
-
-    results = await asyncio.gather(*async_tasks, return_exceptions=True)
-
-    for task_num, result in results:
-        if isinstance(result, Exception):
-            print(f"  ✗ Task {task_num} failed: {result}")
-        else:
-            print(f"  ✓ Task {task_num} completed: {len(result.text)} chars")
-
-    duration = time.time() - start
-    print(f"\n✓ Parallel processing took: {duration:.2f}s")
-
-    # Check queue stats
-    if session.has_queue():
-        stats = session.queue_stats()
-        print("\n📊 Queue Statistics:")
-        print(f"  Total processed: {stats['total_processed']}")
-        print(f"  Total failed: {stats['total_failed']}")
-        print(f"  DLQ size: {stats['dlq_size']}")
-
-    print("\n✅ Test 2 passed: Parallel processing with queue works\n")
-
-
-async def test_priority_lanes():
-    """Test 3: Parallel processing with priority lanes."""
-    print("🎯 Test 3: Parallel Processing with Priority Lanes")
-    print("-" * 80)
-
-    agent = Agent.create("~/.a3s/config.hcl")
-
-    queue_config = SessionQueueConfig()
-    queue_config.set_control_concurrency(1)    # P0: Control
-    queue_config.set_query_concurrency(3)      # P1: Query (highest)
-    queue_config.set_execute_concurrency(2)    # P2: Execute
-    queue_config.set_generate_concurrency(1)   # P3: Generate
-    queue_config.enable_metrics()
-
-    session = agent.session(".", queue_config=queue_config)
-
-    print("Testing priority-based task execution...")
-    print("  P1 (Query): 3 concurrent tasks")
-    print("  P2 (Execute): 2 concurrent tasks")
-    print("  P3 (Generate): 1 concurrent task")
-
-    start = time.time()
-
-    tasks = [
-        ("Query", "How many Python files?"),
-        ("Query", "What is the project structure?"),
-        ("Query", "List all dependencies"),
-        ("Execute", "Create a summary"),
-        ("Execute", "Analyze complexity"),
-    ]
-
-    async def process_task(task_num, task_type, task_text):
-        result = session.send(task_text)
-        return task_num, task_type, result
-
-    for i, (task_type, task) in enumerate(tasks, 1):
-        print(f"  Queuing {task_type} task {i}: {task}")
-
-    print("\n  Waiting for all tasks to complete...")
-
-    async_tasks = [
-        asyncio.create_task(asyncio.to_thread(process_task, i, task_type, task))
-        for i, (task_type, task) in enumerate(tasks, 1)
-    ]
-
-    results = await asyncio.gather(*async_tasks, return_exceptions=True)
-
-    for task_num, task_type, result in results:
-        if isinstance(result, Exception):
-            print(f"  ✗ Task {task_num} ({task_type}) failed: {result}")
-        else:
-            print(f"  ✓ Task {task_num} ({task_type}) completed: {len(result.text)} chars")
-
-    duration = time.time() - start
-    print(f"\n✓ Priority-based processing took: {duration:.2f}s")
-    print("\n✅ Test 3 passed: Priority lanes work correctly\n")
-
+import asyncio, time
+from a3s_code import Agent, SessionOptions, SessionQueueConfig
 
 async def main():
-    """Run all parallel processing tests."""
-    print("🚀 A3S Code Python SDK - Parallel Task Processing Integration Test\n")
-    print("=" * 80)
+    agent = Agent("~/.a3s/config.hcl")
 
-    await test_sequential_processing()
-    await test_parallel_processing()
-    await test_priority_lanes()
+    # Constrain Execute lane to 1 concurrent task (creates bottleneck)
+    queue_config = SessionQueueConfig()
+    queue_config.execute_max_concurrency = 1
+    queue_config.query_max_concurrency = 2
+    queue_config.generate_max_concurrency = 1
+    queue_config.enable_metrics = True
 
-    print()
-    print("=" * 80)
-    print("✅ All parallel processing tests completed successfully!")
-    print("=" * 80)
+    opts = SessionOptions()
+    opts.queue_config = queue_config
+    opts.auto_approve = True
+    session = agent.session(".", opts)
 
+    start = time.monotonic()
+    completions = []
 
-if __name__ == "__main__":
-    asyncio.run(main())
+    async def run_task(name, prompt, lane):
+        result = await asyncio.to_thread(session.send, prompt)
+        elapsed = time.monotonic() - start
+        completions.append((name, lane, elapsed, len(result.text)))
+        print(f"  [{elapsed:>6.2f}s] {name} [{lane}] ({len(result.text)} chars)")
+
+    # Submit 3 Execute-lane tasks (bash → P2)
+    tasks = []
+    for i in range(1, 4):
+        prompt = f"Run: echo 'Task {i} start' && sleep 1 && echo 'Task {i} done'"
+        tasks.append(asyncio.create_task(run_task(f"Execute-{i}", prompt, "P2")))
+        await asyncio.sleep(0.2)
+
+    # Wait, then submit Query-lane task (read → P1)
+    await asyncio.sleep(0.5)
+    tasks.append(asyncio.create_task(
+        run_task("Query-Urgent", "Read Cargo.toml and show the package name", "P1")
+    ))
+
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Print completion order
+    completions.sort(key=lambda x: x[2])
+    print("\n--- Completion Order ---")
+    for i, (name, lane, elapsed, chars) in enumerate(completions, 1):
+        print(f"  {i}. {name} [{lane}] — {elapsed:.2f}s")
+
+asyncio.run(main())
 ```
 
-**Run:**
+</Tab>
+<Tab value="Node.js">
+
+**File:** `crates/code/sdk/node/examples/test_task_priority.js`
+
 ```bash
-cd crates/code/sdk/python
-python examples/test_parallel_processing.py
+cd crates/code/sdk/node && node examples/test_task_priority.js
 ```
-
-**Expected Output:**
-```
-🚀 A3S Code Python SDK - Parallel Task Processing Integration Test
-
-📦 Test 1: Sequential Processing (Baseline)
-Processing 3 tasks sequentially...
-  Task 1: Count the number of Python files in this project
-  ✓ Completed: 342 chars
-  Task 2: Find all TODO comments in Python files
-  ✓ Completed: 156 chars
-  Task 3: List all classes in the main module
-  ✓ Completed: 289 chars
-
-✓ Sequential processing took: 6.80s
-
-✅ Test 1 passed: Sequential processing works
-
-⚡ Test 2: Parallel Processing with Queue
-Processing 5 tasks in parallel...
-  Queuing task 1: Count the number of Python files
-  Queuing task 2: Find all TODO comments
-  Queuing task 3: List all classes
-  Queuing task 4: Find all async functions
-  Queuing task 5: Count lines of code
-
-  Waiting for all tasks to complete...
-  ✓ Task 1 completed: 342 chars
-  ✓ Task 2 completed: 156 chars
-  ✓ Task 3 completed: 289 chars
-  ✓ Task 4 completed: 412 chars
-  ✓ Task 5 completed: 198 chars
-
-✓ Parallel processing took: 2.30s
-
-📊 Queue Statistics:
-  Total processed: 5
-  Total failed: 0
-  DLQ size: 0
-
-✅ Test 2 passed: Parallel processing with queue works
-
-🎯 Test 3: Parallel Processing with Priority Lanes
-Testing priority-based task execution...
-  P1 (Query): 3 concurrent tasks
-  P2 (Execute): 2 concurrent tasks
-  P3 (Generate): 1 concurrent task
-  Queuing Query task 1: How many Python files?
-  Queuing Query task 2: What is the project structure?
-  Queuing Query task 3: List all dependencies
-  Queuing Execute task 4: Create a summary
-  Queuing Execute task 5: Analyze complexity
-
-  Waiting for all tasks to complete...
-  ✓ Task 1 (Query) completed: 234 chars
-  ✓ Task 2 (Query) completed: 567 chars
-  ✓ Task 3 (Query) completed: 345 chars
-  ✓ Task 4 (Execute) completed: 891 chars
-  ✓ Task 5 (Execute) completed: 678 chars
-
-✓ Priority-based processing took: 3.45s
-
-✅ Test 3 passed: Priority lanes work correctly
-
-✅ All parallel processing tests completed successfully!
-```
-
-## Node.js SDK Examples
-
-### Parallel Task Processing (Node.js)
-
-**File:** `test_parallel_processing.js`
-
-Complete Node.js SDK integration test demonstrating parallel task processing with A3S Lane queue.
 
 ```javascript
-#!/usr/bin/env node
-/**
- * A3S Code Node.js SDK - Parallel Task Processing Integration Test
- *
- * Demonstrates parallel processing of multiple tasks using A3S Lane queue.
- * Tests concurrent file analysis, code review, and documentation generation.
- *
- * Run with: node examples/test_parallel_processing.js
- */
+const { Agent } = require("a3s-code");
+const os = require("os");
+const path = require("path");
 
-const { Agent } = require('@a3s-lab/code');
-
-/**
- * Test 1: Sequential processing (baseline).
- */
-async function testSequentialProcessing() {
-  console.log('\n📦 Test 1: Sequential Processing (Baseline)');
-  console.log('-'.repeat(80));
-
-  const agent = await Agent.create('~/.a3s/config.hcl');
-  const session = agent.session('.');
-
-  const tasks = [
-    'Count the number of JavaScript files in this project',
-    'Find all TODO comments in JavaScript files',
-    'List all exported functions in the main module',
-  ];
-
-  const start = Date.now();
-  console.log(`Processing ${tasks.length} tasks sequentially...`);
-
-  for (let i = 0; i < tasks.length; i++) {
-    console.log(`  Task ${i + 1}: ${tasks[i]}`);
-    const result = await session.send(tasks[i]);
-    console.log(`  ✓ Completed: ${result.text.length} chars`);
-  }
-
-  const duration = (Date.now() - start) / 1000;
-  console.log(`\n✓ Sequential processing took: ${duration.toFixed(2)}s`);
-  console.log('\n✅ Test 1 passed: Sequential processing works\n');
-}
-
-/**
- * Test 2: Parallel processing with queue.
- */
-async function testParallelProcessing() {
-  console.log('⚡ Test 2: Parallel Processing with Queue');
-  console.log('-'.repeat(80));
-
-  const agent = await Agent.create('~/.a3s/config.hcl');
-
-  // Configure queue for parallel processing
-  const session = agent.session('.', {
-    queueConfig: {
-      queryConcurrency: 3,      // 3 concurrent queries
-      executeConcurrency: 2,    // 2 concurrent executions
-      enableMetrics: true,      // Enable metrics
-      enableDlq: true,          // Enable dead letter queue
-    }
-  });
-
-  const tasks = [
-    'Count the number of JavaScript files',
-    'Find all TODO comments',
-    'List all exported functions',
-    'Find all async functions',
-    'Count lines of code',
-  ];
-
-  const start = Date.now();
-  console.log(`Processing ${tasks.length} tasks in parallel...`);
-
-  // Queue all tasks
-  for (let i = 0; i < tasks.length; i++) {
-    console.log(`  Queuing task ${i + 1}: ${tasks[i]}`);
-  }
-
-  console.log('\n  Waiting for all tasks to complete...');
-
-  // Process tasks concurrently
-  const promises = tasks.map((task, i) =>
-    session.send(task)
-      .then(result => ({ taskNum: i + 1, success: true, result }))
-      .catch(error => ({ taskNum: i + 1, success: false, error }))
-  );
-
-  const results = await Promise.all(promises);
-
-  for (const { taskNum, success, result, error } of results) {
-    if (success) {
-      console.log(`  ✓ Task ${taskNum} completed: ${result.text.length} chars`);
-    } else {
-      console.log(`  ✗ Task ${taskNum} failed: ${error.message}`);
-    }
-  }
-
-  const duration = (Date.now() - start) / 1000;
-  console.log(`\n✓ Parallel processing took: ${duration.toFixed(2)}s`);
-
-  // Check queue stats
-  if (session.hasQueue && session.hasQueue()) {
-    const stats = session.queueStats();
-    console.log('\n📊 Queue Statistics:');
-    console.log(`  Total processed: ${stats.totalProcessed}`);
-    console.log(`  Total failed: ${stats.totalFailed}`);
-    console.log(`  DLQ size: ${stats.dlqSize}`);
-  }
-
-  console.log('\n✅ Test 2 passed: Parallel processing with queue works\n');
-}
-
-/**
- * Test 3: Parallel processing with priority lanes.
- */
-async function testPriorityLanes() {
-  console.log('🎯 Test 3: Parallel Processing with Priority Lanes');
-  console.log('-'.repeat(80));
-
-  const agent = await Agent.create('~/.a3s/config.hcl');
-
-  const session = agent.session('.', {
-    queueConfig: {
-      controlConcurrency: 1,    // P0: Control
-      queryConcurrency: 3,      // P1: Query (highest)
-      executeConcurrency: 2,    // P2: Execute
-      generateConcurrency: 1,   // P3: Generate
-      enableMetrics: true,
-    }
-  });
-
-  console.log('Testing priority-based task execution...');
-  console.log('  P1 (Query): 3 concurrent tasks');
-  console.log('  P2 (Execute): 2 concurrent tasks');
-  console.log('  P3 (Generate): 1 concurrent task');
-
-  const start = Date.now();
-
-  const tasks = [
-    { type: 'Query', text: 'How many JavaScript files?' },
-    { type: 'Query', text: 'What is the project structure?' },
-    { type: 'Query', text: 'List all dependencies' },
-    { type: 'Execute', text: 'Create a summary' },
-    { type: 'Execute', text: 'Analyze complexity' },
-  ];
-
-  for (let i = 0; i < tasks.length; i++) {
-    console.log(`  Queuing ${tasks[i].type} task ${i + 1}: ${tasks[i].text}`);
-  }
-
-  console.log('\n  Waiting for all tasks to complete...');
-
-  const promises = tasks.map((task, i) =>
-    session.send(task.text)
-      .then(result => ({ taskNum: i + 1, type: task.type, success: true, result }))
-      .catch(error => ({ taskNum: i + 1, type: task.type, success: false, error }))
-  );
-
-  const results = await Promise.all(promises);
-
-  for (const { taskNum, type, success, result, error } of results) {
-    if (success) {
-      console.log(`  ✓ Task ${taskNum} (${type}) completed: ${result.text.length} chars`);
-    } else {
-      console.log(`  ✗ Task ${taskNum} (${type}) failed: ${error.message}`);
-    }
-  }
-
-  const duration = (Date.now() - start) / 1000;
-  console.log(`\n✓ Priority-based processing took: ${duration.toFixed(2)}s`);
-  console.log('\n✅ Test 3 passed: Priority lanes work correctly\n');
-}
-
-/**
- * Main test runner.
- */
 async function main() {
-  console.log('🚀 A3S Code Node.js SDK - Parallel Task Processing Integration Test\n');
-  console.log('='.repeat(80));
+  const agent = await Agent.create(path.join(os.homedir(), ".a3s", "config.hcl"));
 
-  await testSequentialProcessing();
-  await testParallelProcessing();
-  await testPriorityLanes();
+  // Constrain Execute lane to 1 concurrent task (creates bottleneck)
+  const session = agent.session(".", {
+    queueConfig: {
+      executeMaxConcurrency: 1,
+      queryMaxConcurrency: 2,
+      generateMaxConcurrency: 1,
+      enableMetrics: true,
+    },
+    autoApprove: true,
+  });
 
-  console.log();
-  console.log('='.repeat(80));
-  console.log('✅ All parallel processing tests completed successfully!');
-  console.log('='.repeat(80));
+  const start = performance.now();
+  const completions = [];
+
+  async function runTask(name, prompt, lane) {
+    const result = await session.send(prompt);
+    const elapsed = (performance.now() - start) / 1000;
+    completions.push({ name, lane, elapsed, chars: result?.text?.length || 0 });
+    console.log(`  [${elapsed.toFixed(2).padStart(6)}s] ${name} [${lane}] (${result?.text?.length || 0} chars)`);
+  }
+
+  // Submit 3 Execute-lane tasks (bash → P2)
+  const tasks = [];
+  for (let i = 1; i <= 3; i++) {
+    tasks.push(runTask(`Execute-${i}`, `Run: echo 'Task ${i} start' && sleep 1 && echo 'Task ${i} done'`, "P2"));
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  // Wait, then submit Query-lane task (read → P1)
+  await new Promise(r => setTimeout(r, 500));
+  tasks.push(runTask("Query-Urgent", "Read Cargo.toml and show the package name", "P1"));
+
+  await Promise.allSettled(tasks);
+
+  // Print completion order
+  completions.sort((a, b) => a.elapsed - b.elapsed);
+  console.log("\n--- Completion Order ---");
+  completions.forEach((c, i) => {
+    console.log(`  ${i + 1}. ${c.name} [${c.lane}] — ${c.elapsed.toFixed(2)}s`);
+  });
 }
 
-// Run tests
-main().catch((err) => {
-  console.error('❌ Test failed:', err);
-  process.exit(1);
-});
+main().catch(console.error);
 ```
 
-**Run:**
-```bash
-cd crates/code/sdk/node
-node examples/test_parallel_processing.js
+</Tab>
+</Tabs>
+
+**Expected output:**
 ```
+📋 Test 1: Query (P1) Preempts Execute (P2)
+  Execute lane concurrency: 1 (tasks must queue)
+  Query lane concurrency: 2 (higher priority, separate capacity)
 
-**Expected Output:**
+  [  0.00s] 📤 Submitting: Execute-1 (Execute (P2))
+  [  0.20s] 📤 Submitting: Execute-2 (Execute (P2))
+  [  0.40s] 📤 Submitting: Execute-3 (Execute (P2))
+
+  [  1.10s] 🚨 Submitting: Query-Urgent (Query (P1))
+  [  2.34s] 🚨 Completed: Query-Urgent (512 chars)
+  [  3.15s] ✅ Completed: Execute-1 (342 chars)
+  [  5.67s] ✅ Completed: Execute-2 (289 chars)
+  [  8.12s] ✅ Completed: Execute-3 (156 chars)
+
+  --- Completion Order ---
+  🚨 1. Query-Urgent [Query (P1)] — submitted 1.10s, completed 2.34s
+     2. Execute-1 [Execute (P2)] — submitted 0.00s, completed 3.15s
+     3. Execute-2 [Execute (P2)] — submitted 0.20s, completed 5.67s
+     4. Execute-3 [Execute (P2)] — submitted 0.40s, completed 8.12s
+
+  ✅ Priority preemption confirmed: Query-Urgent completed before remaining Execute tasks
 ```
-🚀 A3S Code Node.js SDK - Parallel Task Processing Integration Test
-
-📦 Test 1: Sequential Processing (Baseline)
-Processing 3 tasks sequentially...
-  Task 1: Count the number of JavaScript files in this project
-  ✓ Completed: 342 chars
-  Task 2: Find all TODO comments in JavaScript files
-  ✓ Completed: 156 chars
-  Task 3: List all exported functions in the main module
-  ✓ Completed: 289 chars
-
-✓ Sequential processing took: 6.80s
-
-✅ Test 1 passed: Sequential processing works
-
-⚡ Test 2: Parallel Processing with Queue
-Processing 5 tasks in parallel...
-  Queuing task 1: Count the number of JavaScript files
-  Queuing task 2: Find all TODO comments
-  Queuing task 3: List all exported functions
-  Queuing task 4: Find all async functions
-  Queuing task 5: Count lines of code
-
-  Waiting for all tasks to complete...
-  ✓ Task 1 completed: 342 chars
-  ✓ Task 2 completed: 156 chars
-  ✓ Task 3 completed: 289 chars
-  ✓ Task 4 completed: 412 chars
-  ✓ Task 5 completed: 198 chars
-
-✓ Parallel processing took: 2.30s
-
-📊 Queue Statistics:
-  Total processed: 5
-  Total failed: 0
-  DLQ size: 0
-
-✅ Test 2 passed: Parallel processing with queue works
-
-🎯 Test 3: Parallel Processing with Priority Lanes
-Testing priority-based task execution...
-  P1 (Query): 3 concurrent tasks
-  P2 (Execute): 2 concurrent tasks
-  P3 (Generate): 1 concurrent task
-  Queuing Query task 1: How many JavaScript files?
-  Queuing Query task 2: What is the project structure?
-  Queuing Query task 3: List all dependencies
-  Queuing Execute task 4: Create a summary
-  Queuing Execute task 5: Analyze complexity
-
-  Waiting for all tasks to complete...
-  ✓ Task 1 (Query) completed: 234 chars
-  ✓ Task 2 (Query) completed: 567 chars
-  ✓ Task 3 (Query) completed: 345 chars
-  ✓ Task 4 (Execute) completed: 891 chars
-  ✓ Task 5 (Execute) completed: 678 chars
-
-✓ Priority-based processing took: 3.45s
-
-✅ Test 3 passed: Priority lanes work correctly
-
-✅ All parallel processing tests completed successfully!
-```
-
-## Performance Comparison Across SDKs
-
-| SDK | Sequential | Parallel (3/2) | Speedup |
-|-----|-----------|----------------|---------|
-| **Rust** | 6.80s | 2.30s | 2.96x |
-| **Python** | 6.80s | 2.30s | 2.96x |
-| **Node.js** | 6.80s | 2.30s | 2.96x |
-
-All three SDKs achieve identical performance with the same queue configuration, demonstrating consistent parallel processing capabilities across languages.
 
 ## External Task Handler Examples
 

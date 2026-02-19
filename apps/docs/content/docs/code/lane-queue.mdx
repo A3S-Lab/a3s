@@ -25,6 +25,8 @@ Each tool call is mapped to a **lane** based on its type:
 | Execute | P2 | bash, write, edit, delete, move, copy | Sequential |
 | Generate | P3 (lowest) | LLM calls | Sequential |
 
+Higher-priority lanes are scheduled before lower-priority lanes — a Query (P1) task submitted after Execute (P2) tasks will be scheduled ahead of queued Execute tasks. See [Lane-Based Priority Preemption Examples](/docs/code/examples#lane-based-priority-preemption-examples) for multi-language SDK demos.
+
 When the LLM returns multiple tool calls in a single turn:
 1. **Query-lane tools** are submitted to the queue and executed in parallel (up to `query_max_concurrency`, default 4)
 2. **All other tools** execute sequentially in order, preserving side-effect ordering
