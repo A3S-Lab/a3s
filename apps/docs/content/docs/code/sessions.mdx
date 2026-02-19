@@ -67,10 +67,39 @@ session = agent.session("/my-project", model="openai/gpt-4o")
 | Model override | `with_model("provider/model")` | `model: "provider/model"` | `model="provider/model"` | Format: `provider/model` (e.g., `openai/gpt-4o`) |
 | Skill dirs | `with_skill_dir("path")` | `skillDirs: ["path"]` | `skill_dirs=["path"]` | Extra directories to scan for skill files (merged with global `skill_dirs`) |
 | Agent dirs | `with_agent_dir("path")` | `agentDirs: ["path"]` | `agent_dirs=["path"]` | Extra directories to scan for agent files (merged with global `agent_dirs`) |
+| Parse retries | `with_parse_retries(n)` | `maxParseRetries: n` | `max_parse_retries=n` | Max consecutive malformed-tool-args errors before abort (default: 2) |
+| Tool timeout | `with_tool_timeout(ms)` | `toolTimeoutMs: ms` | `tool_timeout_ms=ms` | Per-tool execution timeout in ms; timeout → error fed back to LLM (default: none) |
+| Circuit breaker | `with_circuit_breaker(n)` | `circuitBreakerThreshold: n` | `circuit_breaker_threshold=n` | Max LLM API failures before abort in non-streaming mode (default: 3) |
+| Resilience bundle | `with_resilience_defaults()` | — | — | Enables parse_retries=2, tool_timeout=120s, circuit_breaker=3 |
 
 The model must be defined in the agent's config file under `providers`. The format is `provider_name/model_id`.
 
 Global `skill_dirs` and `agent_dirs` are set in the agent config. Per-session dirs merge with the global ones — see [Skills](/docs/code/skills) for details.
+
+## Error Recovery & Resilience
+
+Three layers of error recovery protect long-running sessions:
+
+**4.1 Parse Error Recovery** — When the LLM returns malformed tool arguments (`__parse_error`), the error is fed back as a tool result so the model can self-correct. After `max_parse_retries` consecutive failures the loop aborts.
+
+**4.2 Tool Execution Timeout** — Each tool call is wrapped in `tokio::time::timeout`. A timed-out tool produces an error message that is fed back to the LLM; the session continues.
+
+**4.3 Circuit Breaker** — Transient LLM API failures (network errors, rate limits) are retried up to `circuit_breaker_threshold` times in non-streaming mode with short exponential backoff. In streaming mode any failure is fatal (events cannot be replayed).
+
+```rust
+// Rust — individual controls
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_parse_retries(3)          // bail after 3 consecutive parse errors
+        .with_tool_timeout(30_000)      // 30s per tool
+        .with_circuit_breaker(5)        // retry LLM up to 5 times
+))?;
+
+// Rust — sensible bundle (parse=2, timeout=2min, circuit_breaker=3)
+let session = agent.session(".", Some(
+    SessionOptions::new().with_resilience_defaults()
+))?;
+```
 
 ## Send (Non-Streaming)
 

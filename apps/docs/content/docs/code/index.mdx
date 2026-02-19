@@ -17,7 +17,7 @@ let result = session.send("Refactor auth to use JWT", None).await?;
 ```
 
 <Callout type="info">
-**Test Coverage:** 1158 tests, 100% pass rate | **Extension Points:** 14 trait-based | **Built-in Tools:** 11
+**Test Coverage:** 1166 tests, 100% pass rate (includes 8 resilience tests) | **Extension Points:** 14 trait-based | **Built-in Tools:** 11
 </Callout>
 
 ## Why A3S Code?
@@ -30,7 +30,7 @@ let result = session.send("Refactor auth to use JWT", None).await?;
 
   <div className="border rounded-lg p-4">
     <h3 className="text-lg font-semibold mb-2">🛡️ Production-Ready</h3>
-    <span className="text-sm text-muted-foreground">Permission system, HITL confirmation, skill-based tool restrictions.</span>
+    <span className="text-sm text-muted-foreground">Permission system, HITL confirmation, skill-based tool restrictions, and error recovery (parse retries, tool timeout, circuit breaker).</span>
   </div>
 
   <div className="border rounded-lg p-4">
