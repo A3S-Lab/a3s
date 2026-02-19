@@ -18,6 +18,7 @@ All examples use real LLM configuration from `~/.a3s/config.hcl` and test the sa
 - **Queue configuration** - A3S Lane v0.4.0 advanced features
 - **Tool parallelization** - Query-lane parallel execution for network I/O
 - **Conversation history** - Multi-turn conversations
+- **External task handling** - Multi-machine coordinator/worker pattern
 
 ## Rust Examples
 
@@ -3175,6 +3176,227 @@ Testing priority-based task execution...
 | **Node.js** | 6.80s | 2.30s | 2.96x |
 
 All three SDKs achieve identical performance with the same queue configuration, demonstrating consistent parallel processing capabilities across languages.
+
+## External Task Handler Examples
+
+Demonstrates the [Multi-Machine External Task](/docs/code/lane-queue#multi-machine-parallel-processing) pattern: coordinator creates a session with Execute lane set to External mode, agent streams a prompt that triggers bash/write/edit tool calls, coordinator polls pending tasks, processes them (simulating a remote worker), and completes them via `complete_external_task()`.
+
+All three SDKs test the same three scenarios:
+1. **External mode** — Execute lane tasks routed to external handler
+2. **Hybrid mode** — Local execution + external notification
+3. **Dynamic lane switching** — Switch between Internal/External/Hybrid at runtime
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+**File:** `crates/code/core/examples/test_external_task_handler.rs`
+
+```bash
+cd crates/code && cargo run --example test_external_task_handler
+```
+
+```rust
+use a3s_code_core::agent::AgentEvent;
+use a3s_code_core::queue::{
+    ExternalTaskResult, LaneHandlerConfig, SessionLane, TaskHandlerMode,
+};
+use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig};
+
+// 1. Create session with queue enabled
+let queue_config = SessionQueueConfig::default()
+    .with_lane_features()
+    .with_timeout(60_000);
+let session = agent.session(".", Some(
+    SessionOptions::default().with_queue_config(queue_config)
+))?;
+
+// 2. Route Execute lane to External mode
+session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
+    mode: TaskHandlerMode::External,
+    timeout_ms: 60_000,
+}).await;
+
+// 3. Stream a prompt that triggers bash tool calls
+let (mut rx, _handle) = session.stream(
+    "Run these bash commands: echo 'hello', date, uname -s", None
+).await?;
+
+// 4. Event loop: handle external tasks as they arrive
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::ExternalTaskPending { task_id, command_type, .. } => {
+            let tasks = session.pending_external_tasks().await;
+            for task in tasks {
+                // Simulate remote worker executing the task
+                let cmd = task.payload["command"].as_str().unwrap_or("");
+                let output = std::process::Command::new("sh")
+                    .arg("-c").arg(cmd).output()?;
+
+                session.complete_external_task(&task.task_id, ExternalTaskResult {
+                    success: output.status.success(),
+                    result: serde_json::json!({
+                        "output": String::from_utf8_lossy(&output.stdout),
+                        "exit_code": output.status.code().unwrap_or(1),
+                    }),
+                    error: None,
+                }).await;
+            }
+        }
+        AgentEvent::TextDelta { text } => print!("{text}"),
+        AgentEvent::End { .. } => break,
+        _ => {}
+    }
+}
+
+// 5. Switch to Hybrid mode (local execution + external notification)
+session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
+    mode: TaskHandlerMode::Hybrid,
+    timeout_ms: 60_000,
+}).await;
+
+// 6. Switch back to Internal mode
+session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
+    mode: TaskHandlerMode::Internal,
+    timeout_ms: 60_000,
+}).await;
+```
+
+</Tab>
+<Tab value="Python">
+
+**File:** `crates/code/sdk/python/examples/test_external_task_handler.py`
+
+```bash
+cd crates/code/sdk/python && python examples/test_external_task_handler.py
+```
+
+```python
+import subprocess, time, threading
+from a3s_code import Agent, SessionQueueConfig
+
+agent = Agent.create("~/.a3s/config.hcl")
+
+# 1. Create session with queue enabled
+qc = SessionQueueConfig()
+qc.with_lane_features()
+qc.set_timeout(60000)
+session = agent.session(".", queue_config=qc)
+
+# 2. Route Execute lane to External mode
+session.set_lane_handler("execute", mode="external", timeout_ms=60000)
+
+# 3. Background poller for external tasks
+stop_polling = threading.Event()
+
+def poll_external_tasks():
+    while not stop_polling.is_set():
+        tasks = session.pending_external_tasks()
+        for task in tasks:
+            # Simulate remote worker
+            if task["command_type"] == "bash":
+                result = subprocess.run(
+                    ["sh", "-c", task["payload"]["command"]],
+                    capture_output=True, text=True
+                )
+                session.complete_external_task(
+                    task["task_id"],
+                    success=result.returncode == 0,
+                    result={"output": result.stdout, "exit_code": result.returncode},
+                )
+        time.sleep(0.2)
+
+poller = threading.Thread(target=poll_external_tasks, daemon=True)
+poller.start()
+
+# 4. Stream the prompt
+for event in session.stream("Run: echo 'hello', date, uname -s"):
+    if event.event_type == "text_delta":
+        print(event.text, end="", flush=True)
+    elif event.event_type == "end":
+        break
+
+stop_polling.set()
+
+# 5. Switch to Hybrid / Internal mode
+session.set_lane_handler("execute", mode="hybrid", timeout_ms=60000)
+session.set_lane_handler("execute", mode="internal", timeout_ms=60000)
+```
+
+</Tab>
+<Tab value="Node.js">
+
+**File:** `crates/code/sdk/node/examples/test_external_task_handler.js`
+
+```bash
+cd crates/code/sdk/node && node examples/test_external_task_handler.js
+```
+
+```javascript
+const { Agent } = require('@a3s-lab/code');
+const { execSync } = require('child_process');
+
+const agent = await Agent.create('~/.a3s/config.hcl');
+
+// 1. Create session with queue enabled
+const session = agent.session('.', {
+  queueConfig: { enableAllFeatures: true, timeoutMs: 60000 },
+});
+
+// 2. Route Execute lane to External mode
+await session.setLaneHandler('execute', { mode: 'external', timeoutMs: 60000 });
+
+// 3. Background poller for external tasks
+let stopPolling = false;
+const pollInterval = setInterval(async () => {
+  if (stopPolling) return;
+  const tasks = await session.pendingExternalTasks();
+  if (!Array.isArray(tasks)) return;
+
+  for (const task of tasks) {
+    // Simulate remote worker
+    let result;
+    try {
+      const output = execSync(task.payload?.command || 'echo ok', { encoding: 'utf-8' });
+      result = { success: true, result: { output, exit_code: 0 } };
+    } catch (e) {
+      result = { success: false, result: { output: '', exit_code: 1 }, error: e.message };
+    }
+    await session.completeExternalTask(task.task_id, result);
+  }
+}, 200);
+
+// 4. Send the prompt (Node SDK stream() collects all events)
+const result = await session.send("Run: echo 'hello', date, uname -s");
+stopPolling = true;
+clearInterval(pollInterval);
+
+// 5. Switch to Hybrid / Internal mode
+await session.setLaneHandler('execute', { mode: 'hybrid', timeoutMs: 60000 });
+await session.setLaneHandler('execute', { mode: 'internal', timeoutMs: 60000 });
+```
+
+</Tab>
+</Tabs>
+
+**Expected output:**
+```
+📦 Test 1: External Task Handler (Execute Lane → External)
+✓ Session created with Execute lane → External mode
+  📥 ExternalTaskPending: a1b2c3d4 (bash)
+  🔧 Worker result: success=true, exit_code=0
+     Output: Hello from external worker
+  📤 Task a1b2c3d4 completed and returned to agent
+
+📦 Test 2: Hybrid Mode (Execute Lane → Hybrid)
+✓ Execute lane switched to Hybrid mode
+✓ Completed in 2.34s
+
+📦 Test 3: Dynamic Lane Switching
+✓ Execute lane switched back to Internal mode
+✓ Completed in 1.89s
+
+✅ All external task handler tests completed!
+```
 
 ## Next Steps
 
