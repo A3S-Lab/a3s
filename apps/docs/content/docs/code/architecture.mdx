@@ -57,7 +57,7 @@ Native bindings:
 | **AgentSession** | Bound to a specific workspace. All LLM interaction and tool execution happens here. |
 | **SessionOptions** | Optional per-session override: model (`provider/model` format), planning, HITL, etc. |
 | **AgentLoop** | Core execution engine driving the LLM ↔ tool multi-turn loop. |
-| **ToolExecutor** | Tool registry and execution. Manages 10 built-in tools. |
+| **ToolExecutor** | Tool registry and execution. Manages 11 built-in tools. |
 | **LlmPlanner** | JSON-structured planning — decomposes complex tasks into execution plans with dependency graphs. |
 | **WaveScheduler** | Groups independent plan steps into waves and executes them in parallel via `JoinSet`. |
 | **AgentEvent** | `#[non_exhaustive]` event enum emitted during streaming — safe for SDK evolution. |
