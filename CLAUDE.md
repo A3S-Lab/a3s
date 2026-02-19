@@ -133,6 +133,8 @@ cd /path/to/a3s/crates/event
 
 **Rust:** Follow [Microsoft Rust Guidelines](https://microsoft.github.io/rust-guidelines). `cargo fmt` for formatting, `cargo clippy` for linting (enforced in CI).
 
+**MANDATORY: All Rust code MUST be formatted with `cargo fmt` before committing.** Run `cargo fmt --all` in the crate root before every commit. Unformatted code will not be accepted. This is a blocking pre-commit requirement — no exceptions.
+
 Key guidelines:
 - **M-PANIC-IS-STOP**: Panics terminate, don't use for error handling
 - **M-CONCISE-NAMES**: Avoid "Service", "Manager", "Factory" in type names

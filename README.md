@@ -89,17 +89,17 @@ independent steps execute **in parallel** via wave-based scheduling (`tokio::Joi
 
 ## Projects
 
-| Project | Description | Docs |
-|---------|-------------|------|
-| [a3s-code](crates/code/) | AI coding agent framework — parallel plan execution, 14 tools, skills, subagents, memory | [README](crates/code/README.md) |
-| [a3s-lane](crates/lane/) | Per-session priority queue — 6 lanes, concurrency, retry/DLQ | [README](crates/lane/README.md) |
-| [a3s-box](crates/box/) | MicroVM sandbox runtime — VM isolation + TEE (SEV-SNP/TDX), Docker-like CLI (52 commands), CRI for K8s, 1,466 tests | [README](crates/box/README.md) |
-| [SafeClaw](crates/safeclaw/) | Security proxy — privacy classification, taint tracking, injection detection | [README](crates/safeclaw/README.md) |
-| [a3s-gateway](crates/gateway/) | K8s Ingress Controller — reverse proxy, middlewares, privacy routing | [README](crates/gateway/README.md) |
-| [a3s-power](crates/power/) | Local LLM inference engine — Ollama + OpenAI compatible API | [README](crates/power/README.md) |
-| [a3s-search](crates/search/) | Meta search engine — 8 engines, consensus ranking | [README](crates/search/README.md) |
-| [a3s-event](crates/event/) | Pluggable event system — provider-agnostic pub/sub, encryption | [README](crates/event/README.md) |
-| [a3s-updater](crates/updater/) | Self-update for CLI binaries via GitHub Releases | [Source](crates/updater/) |
+| Project | Version | Description | Docs |
+|---------|---------|-------------|------|
+| [a3s-code](crates/code/) | 0.8.0 | AI coding agent framework — parallel plan execution, 14 tools, skills, subagents, memory | [README](crates/code/README.md) |
+| [a3s-lane](crates/lane/) | 0.4.0 | Per-session priority queue — 6 lanes, concurrency, retry/DLQ | [README](crates/lane/README.md) |
+| [a3s-box](crates/box/) | 0.5.2 | MicroVM sandbox runtime — VM isolation + TEE (SEV-SNP/TDX), Docker-like CLI (52 commands), CRI for K8s, 1,504 tests | [README](crates/box/README.md) |
+| [SafeClaw](crates/safeclaw/) | 0.1.0 | Security proxy — privacy classification, taint tracking, injection detection | [README](crates/safeclaw/README.md) |
+| [a3s-gateway](crates/gateway/) | 0.1.0 | K8s Ingress Controller — reverse proxy, middlewares, privacy routing | [README](crates/gateway/README.md) |
+| [a3s-power](crates/power/) | 0.2.0 | Local LLM inference engine — Ollama + OpenAI compatible API | [README](crates/power/README.md) |
+| [a3s-search](crates/search/) | 0.8.0 | Meta search engine — 8 engines, consensus ranking | [README](crates/search/README.md) |
+| [a3s-event](crates/event/) | 0.3.0 | Pluggable event system — provider-agnostic pub/sub, encryption | [README](crates/event/README.md) |
+| [a3s-updater](crates/updater/) | 0.2.0 | Self-update for CLI binaries via GitHub Releases | [Source](crates/updater/) |
 
 ## License
 
