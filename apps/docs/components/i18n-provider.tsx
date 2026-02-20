@@ -33,7 +33,6 @@ export function I18nProvider({
 
   return (
     <RootProvider
-      locale={locale}
       i18n={{
         locale,
         locales,
