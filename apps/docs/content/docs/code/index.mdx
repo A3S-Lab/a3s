@@ -5,6 +5,7 @@ description: Embeddable AI coding agent framework in Rust with native Node.js an
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 # A3S Code
 
@@ -46,6 +47,9 @@ let result = session.send("Refactor auth to use JWT", None).await?;
 
 ## Quick Start
 
+<Steps>
+<Step>
+
 ### Installation
 
 <Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
@@ -66,6 +70,9 @@ pip install a3s-code
 </Tab>
 </Tabs>
 
+</Step>
+<Step>
+
 ### Configuration
 
 Create `agent.hcl`:
@@ -82,6 +89,9 @@ providers {
 <Callout type="info">
 A3S Code uses HCL configuration format exclusively. See [Providers](/docs/code/providers) for multi-provider setup and full config reference.
 </Callout>
+
+</Step>
+<Step>
 
 ### Basic Usage
 
@@ -139,6 +149,9 @@ print(result.text)
 ```
 </Tab>
 </Tabs>
+
+</Step>
+</Steps>
 
 ## Architecture
 

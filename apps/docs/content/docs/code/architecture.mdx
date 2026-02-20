@@ -3,6 +3,10 @@ title: Architecture
 description: System architecture, data flow, and design decisions
 ---
 
+import { Files, File, Folder } from 'fumadocs-ui/components/files';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
 # Architecture
 
 ## Library-First Design
@@ -66,18 +70,24 @@ Native bindings:
 
 The core execution cycle. Each round:
 
-1. **GenerateStart hook** fires (optional)
-2. **LLM call** — streaming to Anthropic or OpenAI-compatible API
-3. **GenerateEnd hook** fires (optional)
-4. If LLM returns `tool_use`:
-   - **PreToolUse hook** fires (optional)
-   - **Permission check** — Deny → Allow → Ask → Default evaluation
-   - **HITL confirmation** — if required, wait for user approval (with timeout)
-   - **SecurityProvider check** — pluggable security logic via trait
-   - **Tool execution** — run the tool, capture output
-   - **PostToolUse hook** fires (optional)
-5. Feed tool result back to LLM, go to step 1
-6. If LLM returns text-only → done
+<Steps>
+<Step>**GenerateStart hook** fires (optional)</Step>
+<Step>**LLM call** — streaming to Anthropic or OpenAI-compatible API</Step>
+<Step>**GenerateEnd hook** fires (optional)</Step>
+<Step>
+
+If LLM returns `tool_use`:
+- **PreToolUse hook** fires (optional)
+- **Permission check** — Deny → Allow → Ask → Default evaluation
+- **HITL confirmation** — if required, wait for user approval (with timeout)
+- **SecurityProvider check** — pluggable security logic via trait
+- **Tool execution** — run the tool, capture output
+- **PostToolUse hook** fires (optional)
+
+</Step>
+<Step>Feed tool result back to LLM, go to step 1</Step>
+<Step>If LLM returns text-only → done</Step>
+</Steps>
 
 Maximum rounds per generation configurable via `max_tool_rounds` (default: 50).
 
@@ -99,10 +109,12 @@ See [Security](/docs/code/security) for details.
 
 When context usage exceeds the threshold (default 80% of model's context window):
 
-1. Keep first 2 messages (system context)
-2. Keep last 20 messages (recent context)
-3. Summarize middle messages via LLM call
-4. Insert summary as a synthetic message
+<Steps>
+<Step>Keep first 2 messages (system context)</Step>
+<Step>Keep last 20 messages (recent context)</Step>
+<Step>Summarize middle messages via LLM call</Step>
+<Step>Insert summary as a synthetic message</Step>
+</Steps>
 
 This keeps the session within context limits while preserving important context.
 
@@ -110,10 +122,12 @@ This keeps the session within context limits while preserving important context.
 
 When planning is enabled:
 
-1. **LlmPlanner** decomposes the task into steps with dependencies
-2. **WaveScheduler** groups independent steps into waves
-3. Each wave executes in parallel via `tokio::JoinSet`
-4. Dependent steps wait for their dependencies to complete
+<Steps>
+<Step>**LlmPlanner** decomposes the task into steps with dependencies</Step>
+<Step>**WaveScheduler** groups independent steps into waves</Step>
+<Step>Each wave executes in parallel via `tokio::JoinSet`</Step>
+<Step>Dependent steps wait for their dependencies to complete</Step>
+</Steps>
 
 ```
 Wave 1: [Analyze auth] + [Analyze DB schema]  ← parallel
@@ -154,13 +168,31 @@ See [Memory](/docs/code/memory) for details.
 
 A3S Code is designed for extensibility:
 
-- **MCP Integration** — Connect external tool servers via Model Context Protocol
-- **Custom Tools** — Implement the `Tool` trait and register with `ToolRegistry`
-- **SecurityProvider** — Implement custom security logic via trait
-- **HookEngine** — Register custom logic at 8 lifecycle events
-- **Subagents** — Delegate specialized tasks to focused child agents
-- **PermissionChecker** — Implement custom permission logic via trait
-- **ConfirmationProvider** — Implement custom HITL logic via trait
-- **Planner** — Implement custom planning logic via trait
+<Accordions>
+<Accordion title="MCP Integration">
+Connect external tool servers via Model Context Protocol. Any MCP-compatible server can expose tools to the agent. See [MCP](/docs/code/mcp).
+</Accordion>
+<Accordion title="Custom Tools">
+Implement the `Tool` trait and register with `ToolRegistry`. Tools receive typed arguments and return `ToolOutput`. See [Tools](/docs/code/tools).
+</Accordion>
+<Accordion title="SecurityProvider">
+Implement custom taint tracking, output sanitization, and injection detection via the `SecurityProvider` trait. See [Security](/docs/code/security).
+</Accordion>
+<Accordion title="HookEngine">
+Register custom logic at 8 lifecycle events: `PreToolUse`, `PostToolUse`, `PrePrompt`, `PostResponse`, `OnError`, `GenerateStart`, `GenerateEnd`, `SessionStart/End`. See [Hooks](/docs/code/hooks).
+</Accordion>
+<Accordion title="Subagents">
+Delegate specialized tasks to focused child agents defined in `.md` files. See [Subagents](/docs/code/subagents).
+</Accordion>
+<Accordion title="PermissionChecker">
+Implement custom permission logic via the `PermissionChecker` trait. Replace the default glob-based policy with any access control system.
+</Accordion>
+<Accordion title="ConfirmationProvider">
+Implement custom HITL logic via the `ConfirmationProvider` trait. Route confirmations to Slack, email, a web UI, or any approval system.
+</Accordion>
+<Accordion title="Planner">
+Implement custom planning logic via the `Planner` trait. Replace `LlmPlanner` with rule-based, graph-based, or any other decomposition strategy.
+</Accordion>
+</Accordions>
 
 All core systems use trait-based interfaces for maximum flexibility.

@@ -4,6 +4,8 @@ description: Create sessions, send prompts, stream responses, and manage convers
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 # Sessions
 
@@ -81,11 +83,17 @@ Global `skill_dirs` and `agent_dirs` are set in the agent config. Per-session di
 
 Three layers of error recovery protect long-running sessions:
 
-**4.1 Parse Error Recovery** — When the LLM returns malformed tool arguments (`__parse_error`), the error is fed back as a tool result so the model can self-correct. After `max_parse_retries` consecutive failures the loop aborts.
-
-**4.2 Tool Execution Timeout** — Each tool call is wrapped in `tokio::time::timeout`. A timed-out tool produces an error message that is fed back to the LLM; the session continues.
-
-**4.3 Circuit Breaker** — Transient LLM API failures (network errors, rate limits) are retried up to `circuit_breaker_threshold` times in non-streaming mode with short exponential backoff. In streaming mode any failure is fatal (events cannot be replayed).
+<Accordions>
+<Accordion title="Parse Error Recovery">
+When the LLM returns malformed tool arguments (`__parse_error`), the error is fed back as a tool result so the model can self-correct. After `max_parse_retries` consecutive failures the loop aborts.
+</Accordion>
+<Accordion title="Tool Execution Timeout">
+Each tool call is wrapped in `tokio::time::timeout`. A timed-out tool produces an error message that is fed back to the LLM; the session continues.
+</Accordion>
+<Accordion title="Circuit Breaker">
+Transient LLM API failures (network errors, rate limits) are retried up to `circuit_breaker_threshold` times in non-streaming mode with short exponential backoff. In streaming mode any failure is fatal (events cannot be replayed).
+</Accordion>
+</Accordions>
 
 ```rust
 // Rust — individual controls

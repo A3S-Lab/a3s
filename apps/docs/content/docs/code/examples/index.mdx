@@ -5,6 +5,8 @@ description: Runnable SDK examples for Rust, Python, and Node.js — each using 
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Files, File, Folder } from 'fumadocs-ui/components/files';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 # Examples
 
@@ -16,23 +18,73 @@ Set `A3S_CONFIG=/path/to/config.hcl` or create `~/.a3s/config.hcl` before runnin
 
 ## Quick Setup
 
+<Steps>
+<Step>
+
+**Rust**
 ```bash
-# Rust
 cd crates/code/core
 cargo run --example <name>
+```
 
-# Python
+</Step>
+<Step>
+
+**Python**
+```bash
 cd crates/code/sdk/python
 pip install -e .
 python examples/<name>.py
+```
 
-# Node.js
+</Step>
+<Step>
+
+**Node.js**
+```bash
 cd crates/code/sdk/node
 npm install && npm run build
 node examples/<name>.js
 ```
 
+</Step>
+</Steps>
+
 ## Example Index
+
+<Files>
+  <Folder name="core/examples" defaultOpen>
+    <File name="sdk_basic.rs" />
+    <File name="agentic_loop_demo.rs" />
+    <File name="test_auto_compact.rs" />
+    <File name="test_batch_tool.rs" />
+    <File name="test_builtin_skills.rs" />
+    <File name="test_custom_skills_agents.rs" />
+    <File name="test_external_task_handler.rs" />
+    <File name="test_hooks.rs" />
+    <File name="test_parallel_processing.rs" />
+    <File name="test_security.rs" />
+    <File name="test_task_priority.rs" />
+    <File name="test_vector_rag.rs" />
+    <File name="integration_tests.rs" />
+  </Folder>
+  <Folder name="sdk/python/examples">
+    <File name="agentic_loop_demo.py" />
+    <File name="test_advanced_features.py" />
+    <File name="test_custom_skills_agents.py" />
+    <File name="test_external_task_handler.py" />
+    <File name="test_parallel_processing.py" />
+    <File name="test_task_priority.py" />
+  </Folder>
+  <Folder name="sdk/node/examples">
+    <File name="agentic_loop_demo.js" />
+    <File name="test_advanced_features.js" />
+    <File name="test_custom_skills_agents.js" />
+    <File name="test_external_task_handler.js" />
+    <File name="test_parallel_processing.js" />
+    <File name="test_task_priority.js" />
+  </Folder>
+</Files>
 
 <Cards>
   <Card title="Quick Start" href="/docs/code/examples/quick-start" description="Basic send, streaming, and multi-turn conversation" />

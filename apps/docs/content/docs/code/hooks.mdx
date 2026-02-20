@@ -4,6 +4,7 @@ description: 8 lifecycle hooks for intercepting tool calls, LLM generations, ses
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 # Lifecycle Hooks
 
@@ -128,13 +129,66 @@ If any hook returns `HookResult::Block`, the operation is cancelled and subseque
 
 Each hook event carries a typed payload with event-specific data:
 
-| Event | Payload Type | Fields |
-|-------|-------------|--------|
-| `PreToolUse` | `PreToolUseEvent` | `session_id`, `tool`, `args`, `working_directory`, `recent_tools` |
-| `PostToolUse` | `PostToolUseEvent` | `session_id`, `tool`, `args`, `result` (`success`, `output`, `exit_code`, `duration_ms`) |
-| `GenerateStart` | `GenerateStartEvent` | `session_id`, `prompt`, `system_prompt`, `model_provider`, `model_name`, `available_tools` |
-| `GenerateEnd` | `GenerateEndEvent` | `session_id`, `prompt`, `response_text`, `tool_calls`, `usage`, `duration_ms` |
-| `SessionStart` | `SessionStartEvent` | `session_id`, `system_prompt`, `model_provider`, `model_name` |
-| `SessionEnd` | `SessionEndEvent` | `session_id`, `total_tokens`, `total_tool_calls`, `duration_ms` |
-| `SkillLoad` | `SkillLoadEvent` | `skill_name`, `tool_names`, `version`, `description`, `loaded_at` |
-| `SkillUnload` | `SkillUnloadEvent` | `skill_name`, `tool_names`, `duration_ms` |
+<Accordions>
+<Accordion title="PreToolUse — PreToolUseEvent">
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `session_id` | `String` | Session identifier |
+| `tool` | `String` | Tool name being called |
+| `args` | `Value` | Tool arguments |
+| `working_directory` | `String` | Current workspace path |
+| `recent_tools` | `Vec<String>` | Recently called tools |
+
+</Accordion>
+<Accordion title="PostToolUse — PostToolUseEvent">
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `session_id` | `String` | Session identifier |
+| `tool` | `String` | Tool name |
+| `args` | `Value` | Tool arguments |
+| `result.success` | `bool` | Whether tool succeeded |
+| `result.output` | `String` | Tool output text |
+| `result.exit_code` | `i32` | Exit code |
+| `result.duration_ms` | `u64` | Execution time |
+
+</Accordion>
+<Accordion title="GenerateStart — GenerateStartEvent">
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `session_id` | `String` | Session identifier |
+| `prompt` | `String` | User prompt |
+| `system_prompt` | `String` | System prompt |
+| `model_provider` | `String` | Provider name |
+| `model_name` | `String` | Model name |
+| `available_tools` | `Vec<String>` | Registered tool names |
+
+</Accordion>
+<Accordion title="GenerateEnd — GenerateEndEvent">
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `session_id` | `String` | Session identifier |
+| `response_text` | `String` | LLM response |
+| `tool_calls` | `Vec<String>` | Tools called this turn |
+| `usage.total_tokens` | `u32` | Token usage |
+| `duration_ms` | `u64` | Generation time |
+
+</Accordion>
+<Accordion title="SessionStart / SessionEnd">
+
+**SessionStartEvent:** `session_id`, `system_prompt`, `model_provider`, `model_name`
+
+**SessionEndEvent:** `session_id`, `total_tokens`, `total_tool_calls`, `duration_ms`
+
+</Accordion>
+<Accordion title="SkillLoad / SkillUnload">
+
+**SkillLoadEvent:** `skill_name`, `tool_names`, `version`, `description`, `loaded_at`
+
+**SkillUnloadEvent:** `skill_name`, `tool_names`, `duration_ms`
+
+</Accordion>
+</Accordions>

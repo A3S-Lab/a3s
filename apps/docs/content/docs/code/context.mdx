@@ -7,16 +7,21 @@ description: Context compaction and pluggable context providers for RAG
 
 A3S Code provides two context management features: **automatic context compaction** when conversations grow long, and **pluggable context providers** for retrieval-augmented generation (RAG).
 
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
 ## Context Compaction
 
 When context usage exceeds the threshold (default 80% of model's context window), the agent automatically summarizes the conversation to stay within limits.
 
 ### How It Works
 
-1. Keep first 2 messages (system context)
-2. Keep last 20 messages (recent context)
-3. Summarize middle messages via LLM call
-4. Insert summary as a synthetic message
+<Steps>
+<Step>Keep first 2 messages (system context)</Step>
+<Step>Keep last 20 messages (recent context)</Step>
+<Step>Summarize middle messages via LLM call</Step>
+<Step>Insert summary as a synthetic message</Step>
+</Steps>
 
 This preserves important context while reducing token usage.
 
@@ -209,12 +214,14 @@ All providers are queried in parallel, and results are merged before injection i
 
 ## Best Practices
 
-1. **Set token budgets** — Use `max_tokens` to prevent context overflow
-2. **Filter by type** — Use `context_types` to retrieve only relevant context
-3. **Adjust depth** — Use `Abstract` for summaries, `Full` for detailed content
-4. **Implement relevance scoring** — Return items sorted by relevance (0.0–1.0)
-5. **Use on_turn_complete** — Extract and store information from conversations
-6. **Cache results** — Implement caching in your provider to reduce latency
+<Steps>
+<Step>**Set token budgets** — Use `max_tokens` to prevent context overflow</Step>
+<Step>**Filter by type** — Use `context_types` to retrieve only relevant context</Step>
+<Step>**Adjust depth** — Use `Abstract` for summaries, `Full` for detailed content</Step>
+<Step>**Implement relevance scoring** — Return items sorted by relevance (0.0–1.0)</Step>
+<Step>**Use on_turn_complete** — Extract and store information from conversations</Step>
+<Step>**Cache results** — Implement caching in your provider to reduce latency</Step>
+</Steps>
 
 ## Events
 

@@ -3,6 +3,9 @@ title: Tasks
 description: Unified task system for planning, tracking, and parallel execution
 ---
 
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Tasks
@@ -122,11 +125,13 @@ Execution:
 
 #### How It Works
 
-1. Each iteration, `get_ready_steps()` identifies steps whose dependencies are all `Completed`
-2. **Single step ready** → executes sequentially, preserving the full history chain
-3. **Multiple steps ready** → spawns all into a `JoinSet`, each with a clone of the base history
-4. After a parallel wave completes, results are **sorted and merged** back into the shared history
-5. **Failed steps** → marked `Failed`, dependent steps become unreachable (deadlock detection breaks the loop)
+<Steps>
+<Step>Each iteration, `get_ready_steps()` identifies steps whose dependencies are all `Completed`</Step>
+<Step>**Single step ready** → executes sequentially, preserving the full history chain</Step>
+<Step>**Multiple steps ready** → spawns all into a `JoinSet`, each with a clone of the base history</Step>
+<Step>After a parallel wave completes, results are **sorted and merged** back into the shared history</Step>
+<Step>**Failed steps** → marked `Failed`, dependent steps become unreachable (deadlock detection breaks the loop)</Step>
+</Steps>
 
 #### History Merging
 
@@ -395,9 +400,11 @@ The `LlmPlanner` sends a structured prompt to the LLM asking it to decompose the
 
 When the LLM planner fails, the fallback heuristic creates a 3-step plan:
 
-1. **Analyze** — Understand the current state (priority: high)
-2. **Implement** — Make the required changes (priority: high)
-3. **Verify** — Confirm the changes work (priority: medium)
+<Steps>
+<Step>**Analyze** — Understand the current state (priority: high)</Step>
+<Step>**Implement** — Make the required changes (priority: high)</Step>
+<Step>**Verify** — Confirm the changes work (priority: medium)</Step>
+</Steps>
 
 ## Goal Tracking
 
@@ -418,9 +425,11 @@ pub struct AgentGoal {
 
 ### How It Works
 
-1. **Goal extraction** — The planner analyzes the user prompt and extracts a goal with success criteria
-2. **Progress monitoring** — After each agent turn, the goal tracker evaluates completion
-3. **Achievement check** — Compares current state against success criteria, reports remaining work
+<Steps>
+<Step>**Goal extraction** — The planner analyzes the user prompt and extracts a goal with success criteria</Step>
+<Step>**Progress monitoring** — After each agent turn, the goal tracker evaluates completion</Step>
+<Step>**Achievement check** — Compares current state against success criteria, reports remaining work</Step>
+</Steps>
 
 ```
 User prompt: "Add input validation to all API endpoints"

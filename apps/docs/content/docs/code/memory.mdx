@@ -3,6 +3,9 @@ title: Memory System
 description: 4 memory types for context-aware agent behavior — episodic, semantic, procedural, working
 ---
 
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Memory System
@@ -142,10 +145,12 @@ Configure relevance scoring to prioritize importance vs. recency based on your u
 
 ## How Memory Is Used
 
-1. **During generation** — The agent loop queries the memory system for relevant context before each LLM call
-2. **After tool execution** — Important observations (e.g., project structure, user preferences) can be stored as memories
-3. **Across turns** — Working memory tracks the current task state within a session
-4. **Across sessions** — Episodic and semantic memories persist via `FileMemoryStore`, available when a session is restored
+<Steps>
+<Step>**During generation** — The agent loop queries the memory system for relevant context before each LLM call</Step>
+<Step>**After tool execution** — Important observations (e.g., project structure, user preferences) can be stored as memories</Step>
+<Step>**Across turns** — Working memory tracks the current task state within a session</Step>
+<Step>**Across sessions** — Episodic and semantic memories persist via `FileMemoryStore`, available when a session is restored</Step>
+</Steps>
 
 ## Context Integration
 

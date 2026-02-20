@@ -4,6 +4,9 @@ description: Permission system, HITL confirmation, and extensible security trait
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 # Security
 
@@ -113,10 +116,12 @@ session.set_permission_policy(policy)
 
 Rules are evaluated in this order:
 
-1. **Deny rules** — If any deny rule matches, block immediately
-2. **Allow rules** — If any allow rule matches, permit
-3. **Ask rules** — If any ask rule matches, trigger HITL confirmation
-4. **Default policy** — If no rules match, use the default (permissive or strict)
+<Steps>
+<Step>**Deny rules** — If any deny rule matches, block immediately</Step>
+<Step>**Allow rules** — If any allow rule matches, permit</Step>
+<Step>**Ask rules** — If any ask rule matches, trigger HITL confirmation</Step>
+<Step>**Default policy** — If no rules match, use the default (permissive or strict)</Step>
+</Steps>
 
 Example:
 
@@ -311,12 +316,14 @@ See [Hooks](/docs/code/hooks) for lifecycle event integration.
 
 ## Best Practices
 
-1. **Start with strict policy** — Use `PermissionPolicy::strict()` and explicitly allow only needed tools
-2. **Block dangerous patterns** — Always deny destructive bash commands: `bash(rm -rf:*)`, `bash(curl:*|sh)`
-3. **Enable HITL for writes** — Require confirmation for file modifications and bash execution
-4. **Use workspace boundaries** — Never disable workspace restrictions
-5. **Implement SecurityProvider** — Add custom taint tracking and output sanitization for sensitive data
-6. **Audit logs** — Use hooks to log all tool executions for security review
+<Steps>
+<Step>**Start with strict policy** — Use `PermissionPolicy::strict()` and explicitly allow only needed tools</Step>
+<Step>**Block dangerous patterns** — Always deny destructive bash commands: `bash(rm -rf:*)`, `bash(curl:*|sh)`</Step>
+<Step>**Enable HITL for writes** — Require confirmation for file modifications and bash execution</Step>
+<Step>**Use workspace boundaries** — Never disable workspace restrictions</Step>
+<Step>**Implement SecurityProvider** — Add custom taint tracking and output sanitization for sensitive data</Step>
+<Step>**Audit logs** — Use hooks to log all tool executions for security review</Step>
+</Steps>
 
 ## Security Events
 
