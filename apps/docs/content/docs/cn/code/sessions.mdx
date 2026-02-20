@@ -68,13 +68,13 @@ session = agent.session("/my-project", model="openai/gpt-4o")
 <TypeTable
   type={{
     "模型覆盖": {
-      description: "Rust: with_model(&quot;provider/model&quot;) · TypeScript: model: &quot;provider/model&quot; · Python: model=&quot;provider/model&quot; · 描述: 格式：provider/model（例如 openai/gpt-4o）",
+      description: "Rust: with_model('provider/model') · TypeScript: model: 'provider/model' · Python: model='provider/model' · 描述: 格式：provider/model（例如 openai/gpt-4o）",
     },
     "Skill 目录": {
-      description: "Rust: with_skill_dir(&quot;path&quot;) · TypeScript: skillDirs: [&quot;path&quot;] · Python: skill_dirs=[&quot;path&quot;] · 描述: 额外的 skill 文件扫描目录（与全局 skill_dirs 合并）",
+      description: "Rust: with_skill_dir('path') · TypeScript: skillDirs: ['path'] · Python: skill_dirs=['path'] · 描述: 额外的 skill 文件扫描目录（与全局 skill_dirs 合并）",
     },
     "Agent 目录": {
-      description: "Rust: with_agent_dir(&quot;path&quot;) · TypeScript: agentDirs: [&quot;path&quot;] · Python: agent_dirs=[&quot;path&quot;] · 描述: 额外的 agent 文件扫描目录（与全局 agent_dirs 合并）",
+      description: "Rust: with_agent_dir('path') · TypeScript: agentDirs: ['path'] · Python: agent_dirs=['path'] · 描述: 额外的 agent 文件扫描目录（与全局 agent_dirs 合并）",
     },
     "解析重试": {
       description: "Rust: with_parse_retries(n) · TypeScript: maxParseRetries: n · Python: max_parse_retries=n · 描述: 连续工具参数格式错误的最大重试次数（默认：2）",
@@ -567,7 +567,7 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 <TypeTable
   type={{
     "模型": {
-      description: "Rust: .with_model(&quot;provider/model&quot;) · Python: model=&quot;provider/model&quot; · Node.js: model: &quot;provider/model&quot; · 默认值: 配置默认值",
+      description: "Rust: .with_model('provider/model') · Python: model='provider/model' · Node.js: model: 'provider/model' · 默认值: 配置默认值",
     },
     "宽松模式": {
       description: "Rust: .with_permissive_policy() · Python: permissive=True · Node.js: permissive: true · 默认值: false",

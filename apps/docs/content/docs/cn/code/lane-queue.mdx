@@ -389,7 +389,7 @@ for dl in &dead {
       description: "类型: string · 描述: 工具名称（例如 bash、read、write）",
     },
     "payload": {
-      description: "类型: JSON · 描述: 工具参数（例如 {&quot;command&quot;: &quot;cargo test&quot;}）",
+      description: "类型: JSON · 描述: 工具参数（例如 {'command': 'cargo test'}）",
     },
     "timeout_ms": {
       description: "类型: u64 · 描述: 队列等待超时前的时间",
@@ -409,7 +409,7 @@ for dl in &dead {
       description: "类型: bool · 描述: 执行是否成功",
     },
     "result": {
-      description: "类型: JSON · 描述: 结果载荷（{&quot;output&quot;: &quot;...&quot;, &quot;exit_code&quot;: 0}）",
+      description: "类型: JSON · 描述: 结果载荷（{'output': '...', 'exit_code': 0}）",
     },
     "error": {
       description: "类型: Option&lt;string&gt; · 描述: 失败时的错误消息",
@@ -581,7 +581,7 @@ session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
 <TypeTable
   type={{
     "strategy": {
-      description: "类型: string · 默认值: &quot;exponential&quot; · 描述: &quot;fixed&quot; 或 &quot;exponential&quot;",
+      description: "类型: string · 默认值: 'exponential' · 描述: 'fixed' 或 'exponential'",
     },
     "max_retries": {
       description: "类型: u32 · 默认值: 3 · 描述: 最大重试次数",
