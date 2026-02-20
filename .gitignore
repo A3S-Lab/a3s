@@ -34,6 +34,9 @@ Thumbs.db
 # Apps
 apps/os/
 
+# Docs (local only)
+/docs/
+
 # A3S runtime data & config (contains API keys)
 .a3s/
 config.hcl
