@@ -101,7 +101,7 @@ tracing_subscriber::init();
 ### Span Events
 
 <TypeTable
-  type={
+  type={{
     "Publish": {
       description: {`Span: \`event.publish\` · Fields: \`event_id\`, \`subject\`, \`category\`, \`provider\``},
     },
@@ -111,7 +111,7 @@ tracing_subscriber::init();
     "Unsubscribe": {
       description: {`Span: \`event.unsubscribe\` · Fields: \`consumer\`, \`error\` (on failure)`},
     },
-  }
+  }}
 />
 
 Example output with `tracing-subscriber`:
@@ -128,14 +128,14 @@ let is_healthy = bus.health().await?;
 ```
 
 <TypeTable
-  type={
+  type={{
     "MemoryProvider": {
       description: {`Always returns \`true\``},
     },
     "NatsProvider": {
       description: "Checks NATS connection and stream status",
     },
-  }
+  }}
 />
 
 Use in Kubernetes readiness probes or load balancer health checks:

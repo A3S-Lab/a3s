@@ -32,7 +32,7 @@ Each task has the following fields:
 ### TaskStatus
 
 <TypeTable
-  type={
+  type={{
     "Pending": {
       description: "Not yet started",
     },
@@ -51,13 +51,13 @@ Each task has the following fields:
     "Cancelled": {
       description: "Manually cancelled",
     },
-  }
+  }}
 />
 
 ### TaskPriority
 
 <TypeTable
-  type={
+  type={{
     "High": {
       description: "Execute first",
     },
@@ -67,7 +67,7 @@ Each task has the following fields:
     "Low": {
       description: "Execute after higher-priority tasks",
     },
-  }
+  }}
 />
 
 ## Task Lifecycle
@@ -108,7 +108,7 @@ ExecutionPlan
 The planner evaluates task complexity to choose an execution strategy:
 
 <TypeTable
-  type={
+  type={{
     "Simple": {
       type: "DIRECT",
       description: "Single generation, no planning needed",
@@ -125,7 +125,7 @@ The planner evaluates task complexity to choose an execution strategy:
       type: "PARALLEL",
       description: "Independent subtasks executed in parallel",
     },
-  }
+  }}
 />
 
 The `AUTO` strategy uses task analysis to dynamically select the best approach.
@@ -380,7 +380,7 @@ session = agent.session("/my-project", planning=True, goal_tracking=True)
 #### Helper Methods on `ExecutionPlan`
 
 <TypeTable
-  type={
+  type={{
     "get_ready_steps()": {
       description: {`Returns steps with all dependencies \`Completed\``},
     },
@@ -396,7 +396,7 @@ session = agent.session("/my-project", planning=True, goal_tracking=True)
     "progress()": {
       description: "Completion fraction (0.0 to 1.0)",
     },
-  }
+  }}
 />
 
 #### Deadlock Detection
@@ -498,7 +498,7 @@ User prompt: "Add input validation to all API endpoints"
 Task-related events emitted during execution:
 
 <TypeTable
-  type={
+  type={{
     "StepStart": {
       description: {`Fields: \`step_id\`, \`description\`, \`step_number\`, \`total_steps\` · Description: A plan step began execution. During parallel waves, multiple \`StepStart\` events fire before any \`StepEnd\`.`},
     },
@@ -511,7 +511,7 @@ Task-related events emitted during execution:
     "TaskUpdated": {
       description: {`Fields: \`session_id\`, \`tasks\` · Description: Task list changed (added, status change, completed). Includes the full current task list.`},
     },
-  }
+  }}
 />
 
 ## External Task Offloading
@@ -592,12 +592,12 @@ When a session is restored from storage, its task list is restored too — the a
 ### Planner trait (Rust)
 
 <TypeTable
-  type={
+  type={{
     "plan": {
       description: {`Signature: \`async fn plan(&self, prompt: &str, context: &PlanContext) -> Result<Vec<AgentTask>>\` · Description: Decompose prompt into tasks`},
     },
     "name": {
       description: {`Signature: \`fn name(&self) -> &str\` · Description: Planner identifier`},
     },
-  }
+  }}
 />

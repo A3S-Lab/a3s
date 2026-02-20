@@ -98,7 +98,7 @@ sessions_dir/
 ## Session API
 
 <TypeTable
-  type={
+  type={{
     "session_id()": {
       description: "Return the session's unique ID",
     },
@@ -108,7 +108,7 @@ sessions_dir/
     "agent.resume_session(id, opts)": {
       description: "Load a saved session and restore history",
     },
-  }
+  }}
 />
 
 ## Auto-Save
@@ -149,7 +149,7 @@ let session = agent.session(".", Some(
 What gets persisted per session:
 
 <TypeTable
-  type={
+  type={{
     "id": {
       description: "Session identifier",
     },
@@ -168,7 +168,7 @@ What gets persisted per session:
     "tool_names": {
       description: "Tool names (rebuilt on resume)",
     },
-  }
+  }}
 />
 
 ## API Reference
@@ -176,17 +176,17 @@ What gets persisted per session:
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "Custom store": {
       description: {`Rust: \`.with_session_store(Arc::new(s))\` · Python: _(Rust only)_ · Node.js: _(Rust only)_ · Default: \`FileSessionStore\``},
     },
-  }
+  }}
 />
 
 ### SessionStore trait (Rust)
 
 <TypeTable
-  type={
+  type={{
     "save": {
       description: {`Signature: \`async fn save(&self, data: &SessionData) -> Result<()>\` · Description: Persist session data`},
     },
@@ -199,7 +199,7 @@ What gets persisted per session:
     "list": {
       description: {`Signature: \`async fn list(&self) -> Result<Vec<String>>\` · Description: List all session IDs`},
     },
-  }
+  }}
 />
 
 ### SessionData fields
@@ -221,7 +221,7 @@ What gets persisted per session:
 ### Session management methods
 
 <TypeTable
-  type={
+  type={{
     "Save session": {
       description: {`Rust: \`session.save().await?\` · Description: Persist current state`},
     },
@@ -234,5 +234,5 @@ What gets persisted per session:
     "Delete session": {
       description: {`Rust: \`agent.delete_session(id).await?\` · Description: Remove stored session`},
     },
-  }
+  }}
 />

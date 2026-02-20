@@ -49,7 +49,7 @@ Your Application (Rust / TypeScript / Python)
 原生绑定：
 
 <TypeTable
-  type={
+  type={{
     "Rust": {
       description: {`包: \`a3s-code-core\` · 绑定方式: 原生`},
     },
@@ -59,13 +59,13 @@ Your Application (Rust / TypeScript / Python)
     "Node.js": {
       description: {`包: \`@a3s-lab/code\` · 绑定方式: napi-rs`},
     },
-  }
+  }}
 />
 
 ## 核心概念
 
 <TypeTable
-  type={
+  type={{
     "Agent": {
       description: "配置驱动的顶层对象。持有 LLM 客户端和配置。与工作区无关。",
     },
@@ -90,7 +90,7 @@ Your Application (Rust / TypeScript / Python)
     "AgentEvent": {
       description: {`\`#[non_exhaustive]\` 事件枚举，在流式传输期间发出 — 安全支持 SDK 演进。`},
     },
-  }
+  }}
 />
 
 ## Agent 循环
@@ -123,7 +123,7 @@ Your Application (Rust / TypeScript / Python)
 两个内置层，加上通过 trait 的可扩展性：
 
 <TypeTable
-  type={
+  type={{
     "1": {
       description: "组件: 权限策略 · 功能: Deny → Allow → Ask → Default 规则评估，支持 glob 模式",
     },
@@ -139,7 +139,7 @@ Your Application (Rust / TypeScript / Python)
     "5": {
       description: "组件: HookEngine · 功能: 通过生命周期 hooks 实现自定义安全逻辑",
     },
-  }
+  }}
 />
 
 参见 [安全](/cn/docs/code/security) 了解详情。
@@ -181,7 +181,7 @@ Wave 3: [Write tests]                         ← waits for wave 2
 Lane 队列将工具调用路由到不同的执行策略：
 
 <TypeTable
-  type={
+  type={{
     "Query": {
       description: "用途: 只读操作（read、grep、glob、ls） · 默认模式: 内部（并行）",
     },
@@ -191,7 +191,7 @@ Lane 队列将工具调用路由到不同的执行策略：
     "Generate": {
       description: "用途: LLM 调用 · 默认模式: 内部",
     },
-  }
+  }}
 />
 
 每个 lane 可以切换到 **External** 模式，将执行卸载到远程 worker。参见 [Lane 队列](/cn/docs/code/lane-queue) 了解详情。
@@ -201,7 +201,7 @@ Lane 队列将工具调用路由到不同的执行策略：
 四种记忆类型，支持可插拔的存储后端：
 
 <TypeTable
-  type={
+  type={{
     "Episodic": {
       description: "用途: 会话事件和交互 · 存储: FileMemoryStore（默认）",
     },
@@ -214,7 +214,7 @@ Lane 队列将工具调用路由到不同的执行策略：
     "Working": {
       description: "用途: 当前任务上下文 · 存储: 内存（短期）",
     },
-  }
+  }}
 />
 
 默认后端：`FileMemoryStore` — 每个条目一个 JSON 文件 + 紧凑索引。可通过 `MemoryStore` trait 自定义后端。

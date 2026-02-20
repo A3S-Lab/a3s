@@ -105,7 +105,7 @@ node examples/<name>.js
 ## Feature Coverage
 
 <TypeTable
-  type={
+  type={{
     "Basic send / multi-turn": {
       description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
     },
@@ -142,7 +142,7 @@ node examples/<name>.js
     "External task handling": {
       description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
     },
-  }
+  }}
 />
 
 ## Feature Overview
@@ -150,7 +150,7 @@ node examples/<name>.js
 ### Core (always available)
 
 <TypeTable
-  type={
+  type={{
     "Send prompt": {
       description: {`Key API: \`session.send(prompt)\` · Description: Single-turn prompt execution with tool loop`},
     },
@@ -166,13 +166,13 @@ node examples/<name>.js
     "Batch tool": {
       description: {`Key API: \`batch\` tool (auto-registered) · Description: Parallel tool dispatch in one turn`},
     },
-  }
+  }}
 />
 
 ### Session configuration
 
 <TypeTable
-  type={
+  type={{
     "Permissive policy": {
       description: {`Rust: \`.with_permissive_policy()\` · Python: \`permissive=True\` · Node.js: \`permissive: true\``},
     },
@@ -215,13 +215,13 @@ node examples/<name>.js
     "Vector context": {
       description: {`Rust: \`.with_context_provider(p)\` · Python: _(config-based)_ · Node.js: _(config-based)_`},
     },
-  }
+  }}
 />
 
 ### Extension points
 
 <TypeTable
-  type={
+  type={{
     "SecurityProvider": {
       description: "Input taint + output sanitization",
       default: "DefaultSecurityProvider",
@@ -278,5 +278,5 @@ node examples/<name>.js
       description: "Skill activation logic",
       default: "DefaultSkillValidator",
     },
-  }
+  }}
 />

@@ -40,7 +40,7 @@ let score = item.relevance_score_at(chrono::Utc::now(), &config);
 ## Decay behavior
 
 <TypeTable
-  type={
+  type={{
     "0 days": {
       description: "1.00",
     },
@@ -53,7 +53,7 @@ let score = item.relevance_score_at(chrono::Utc::now(), &config);
     "90 days": {
       description: "0.05",
     },
-  }
+  }}
 />
 
 A high-importance item (`importance = 1.0`) with default weights scores:
@@ -65,7 +65,7 @@ A low-importance item (`importance = 0.1`) decays much faster in practice becaus
 ## Tuning guidance
 
 <TypeTable
-  type={
+  type={{
     "Long-lived assistant": {
       description: "decay_days: 365\`, \`importance_weight: 0.9",
     },
@@ -75,5 +75,5 @@ A low-importance item (`importance = 0.1`) decays much faster in practice becaus
     "Equal weight": {
       description: "importance_weight: 0.5\`, \`recency_weight: 0.5",
     },
-  }
+  }}
 />

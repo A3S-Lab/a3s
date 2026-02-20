@@ -139,20 +139,20 @@ for await (const event of stream) {
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "Enable planning": {
       description: {`Rust: \`.with_planning(true)\` · Python: \`planning=True\` · Node.js: \`planning: true\` · Default: \`false\``},
     },
     "Enable goal tracking": {
       description: {`Rust: \`.with_goal_tracking(true)\` · Python: \`goal_tracking=True\` · Node.js: \`goalTracking: true\` · Default: \`false\``},
     },
-  }
+  }}
 />
 
 ### Planning Events
 
 <TypeTable
-  type={
+  type={{
     "Planning started": {
       description: {`Rust variant: \`AgentEvent::PlanningStart\` · Python/Node.js \`type\`: \`planning_start\` · Fields: \`prompt\``},
     },
@@ -168,5 +168,5 @@ for await (const event of stream) {
     "Goal updated": {
       description: {`Rust variant: \`AgentEvent::GoalUpdated\` · Python/Node.js \`type\`: \`goal_updated\` · Fields: \`goal\`, \`status\``},
     },
-  }
+  }}
 />

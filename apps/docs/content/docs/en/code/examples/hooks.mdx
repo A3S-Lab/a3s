@@ -14,7 +14,7 @@ Hooks let you intercept agent lifecycle events to audit, modify, or block operat
 ## Hook Event Types
 
 <TypeTable
-  type={
+  type={{
     "PreToolUse": {
       description: "Fires when: Before a tool executes · Can block?: ✅",
     },
@@ -39,7 +39,7 @@ Hooks let you intercept agent lifecycle events to audit, modify, or block operat
     "SessionStart\` / \`SessionEnd": {
       description: "Fires when: Session lifecycle · Can block?: ❌",
     },
-  }
+  }}
 />
 
 ## Audit Hook (Log All Tool Calls)
@@ -185,7 +185,7 @@ For persistent hook configuration across sessions, see [Hooks](/docs/code/hooks)
 ### Hook Registration
 
 <TypeTable
-  type={
+  type={{
     "Register hook": {
       description: {`Rust: \`session.register_hook(hook)\` · Python: \`session.register_hook(id, event, fn)\` · Node.js: \`session.registerHook(id, event, fn)\``},
     },
@@ -198,13 +198,13 @@ For persistent hook configuration across sessions, see [Hooks](/docs/code/hooks)
     "Count": {
       description: {`Rust: \`session.hook_count()\` · Python: \`session.hook_count()\` · Node.js: \`session.hookCount()\``},
     },
-  }
+  }}
 />
 
 ### HookResponse (Rust)
 
 <TypeTable
-  type={
+  type={{
     "HookResponse::continue_()": {
       description: "Allow the operation to proceed",
     },
@@ -214,13 +214,13 @@ For persistent hook configuration across sessions, see [Hooks](/docs/code/hooks)
     "HookResponse::modify(data)": {
       description: "Replace the event data before execution",
     },
-  }
+  }}
 />
 
 ### Hook Event Fields
 
 <TypeTable
-  type={
+  type={{
     "PreToolUse": {
       description: "tool: String\`, \`args: Value",
     },
@@ -236,5 +236,5 @@ For persistent hook configuration across sessions, see [Hooks](/docs/code/hooks)
     "OnError": {
       description: "error: String\`, \`turn: u32",
     },
-  }
+  }}
 />

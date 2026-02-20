@@ -14,7 +14,7 @@ Skills are reusable prompt templates that augment the agent's system prompt with
 ## Built-in Skills
 
 <TypeTable
-  type={
+  type={{
     "code-search": {
       description: "Semantic code search across the workspace",
     },
@@ -36,7 +36,7 @@ Skills are reusable prompt templates that augment the agent's system prompt with
     "find-skills": {
       description: "Discovers available skills dynamically",
     },
-  }
+  }}
 />
 
 ## Enable Built-in Skills
@@ -200,7 +200,7 @@ For full skills documentation, see [Skills](/docs/code/skills).
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "Built-in skills": {
       description: {`Rust: \`.with_builtin_skills()\` · Python: \`builtin_skills=True\` · Node.js: \`builtinSkills: true\` · Default: \`false\``},
     },
@@ -210,7 +210,7 @@ For full skills documentation, see [Skills](/docs/code/skills).
     "Custom registry": {
       description: {`Rust: \`.with_skill_registry(Arc::new(r))\` · Python: _(Rust only)_ · Node.js: _(Rust only)_ · Default: \`None\``},
     },
-  }
+  }}
 />
 
 ### Skill frontmatter fields
@@ -230,7 +230,7 @@ For full skills documentation, see [Skills](/docs/code/skills).
 ### Built-in skills
 
 <TypeTable
-  type={
+  type={{
     "code-search": {
       description: "Trigger phrases: &quot;find code&quot;, &quot;search for&quot; · Effect: Semantic code search",
     },
@@ -252,5 +252,5 @@ For full skills documentation, see [Skills](/docs/code/skills).
     "find-skills": {
       description: "Trigger phrases: &quot;what skills&quot;, &quot;find skill&quot; · Effect: Dynamic skill discovery",
     },
-  }
+  }}
 />

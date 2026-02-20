@@ -35,7 +35,7 @@ SessionOptions::new().with_file_memory("./memory")
 ## What's in this crate
 
 <TypeTable
-  type={
+  type={{
     "MemoryStore": {
       description: "Async trait — the only interface you need to implement or depend on",
     },
@@ -54,13 +54,13 @@ SessionOptions::new().with_file_memory("./memory")
     "FileMemoryStore": {
       description: "Persistent backend — atomic writes, in-memory index, index rebuild",
     },
-  }
+  }}
 />
 
 ## What's NOT in this crate
 
 <TypeTable
-  type={
+  type={{
     "Three-tier session memory (working / short-term / long-term)": {
       description: "a3s-code",
     },
@@ -70,7 +70,7 @@ SessionOptions::new().with_file_memory("./memory")
     "Context injection into agent prompts": {
       description: "a3s-code",
     },
-  }
+  }}
 />
 
 <Callout type="info">

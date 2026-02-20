@@ -20,7 +20,7 @@ Fully integrated with A3S Lane v0.4.0 — includes retry policies, rate limiting
 Each tool call is mapped to a **lane** based on its type:
 
 <TypeTable
-  type={
+  type={{
     "Control": {
       description: "Priority: P0 (highest) · Tools: pause, resume, cancel · Behavior: Sequential",
     },
@@ -33,7 +33,7 @@ Each tool call is mapped to a **lane** based on its type:
     "Generate": {
       description: "Priority: P3 (lowest) · Tools: LLM calls · Behavior: Sequential",
     },
-  }
+  }}
 />
 
 Higher-priority lanes are scheduled before lower-priority lanes — a Query (P1) task submitted after Execute (P2) tasks will be scheduled ahead of queued Execute tasks. See [Lane-Based Priority Preemption Examples](/docs/code/examples#lane-based-priority-preemption-examples) for multi-language SDK demos.
@@ -357,7 +357,7 @@ Any lane can be switched to **External** mode, where tool calls in that lane are
 ### Handler Modes
 
 <TypeTable
-  type={
+  type={{
     "Internal": {
       description: "Behavior: Execute within the runtime (default) · Use Case: Normal local execution",
     },
@@ -367,7 +367,7 @@ Any lane can be switched to **External** mode, where tool calls in that lane are
     "Hybrid": {
       description: "Behavior: Execute locally AND notify SDK · Use Case: Monitoring, audit, shadow execution",
     },
-  }
+  }}
 />
 
 ### ExternalTask

@@ -141,7 +141,7 @@ providers {
 ## 模型字段
 
 <TypeTable
-  type={
+  type={{
     "id": {
       description: {`类型: string · 必填: 是 · 描述: 模型标识符（例如 \`claude-sonnet-4-20250514\`）`},
     },
@@ -175,13 +175,13 @@ providers {
     "limit": {
       description: {`类型: object · 必填: 否 · 描述: \`{ context, output }\` token 限制`},
     },
-  }
+  }}
 />
 
 ## 提供商字段
 
 <TypeTable
-  type={
+  type={{
     "name": {
       description: {`类型: string · 必填: 是 · 描述: 提供商标识符（用于 \`provider/model\` 格式）`},
     },
@@ -191,7 +191,7 @@ providers {
     "base_url": {
       description: "类型: string · 必填: 否 · 描述: 所有模型的默认 base URL",
     },
-  }
+  }}
 />
 
 ## 完整配置参考
@@ -304,7 +304,7 @@ search {
 ### 配置字段
 
 <TypeTable
-  type={
+  type={{
     "default_model": {
       description: {`类型: \`string\` · 默认值: —（必填） · 描述: 默认模型，\`provider/model\` 格式`},
     },
@@ -329,7 +329,7 @@ search {
     "storage_url": {
       description: {`类型: \`string\` · 默认值: \`null\` · 描述: 存储连接 URL（用于自定义后端）`},
     },
-  }
+  }}
 />
 
 ### `env()` 函数

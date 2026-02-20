@@ -124,7 +124,7 @@ const session = agent.session('/my-project', {
 The `DefaultSecurityProvider` detects and redacts:
 
 <TypeTable
-  type={
+  type={{
     "Anthropic API key": {
       description: {`Example: \`sk-ant-api03-...\` · Redacted as: \`[REDACTED]\``},
     },
@@ -143,7 +143,7 @@ The `DefaultSecurityProvider` detects and redacts:
     "Credit card": {
       description: {`Example: \`4111 1111 1111 1111\` · Redacted as: \`[REDACTED]\``},
     },
-  }
+  }}
 />
 
 <Callout type="info">
@@ -155,20 +155,20 @@ For full security configuration, see [Security](/docs/code/security).
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "Default security": {
       description: {`Rust: \`.with_default_security()\` · Python: \`default_security=True\` · Node.js: \`defaultSecurity: true\` · Default: \`false\``},
     },
     "Custom provider": {
       description: {`Rust: \`.with_security_provider(Arc::new(p))\` · Python: _(Rust only)_ · Node.js: _(Rust only)_ · Default: \`None\``},
     },
-  }
+  }}
 />
 
 ### SecurityProvider trait (Rust)
 
 <TypeTable
-  type={
+  type={{
     "taint_input": {
       description: {`Signature: \`fn taint_input(&self, text: &str)\` · Description: Inspect/register sensitive patterns in user input`},
     },
@@ -184,13 +184,13 @@ For full security configuration, see [Security](/docs/code/security).
     "teardown": {
       description: {`Signature: \`fn teardown(&self)\` · Description: Called when session ends`},
     },
-  }
+  }}
 />
 
 ### DefaultSecurityProvider redaction patterns
 
 <TypeTable
-  type={
+  type={{
     "Anthropic API key": {
       description: {`Example match: \`sk-ant-api03-...\` · Replacement: \`[REDACTED]\``},
     },
@@ -209,5 +209,5 @@ For full security configuration, see [Security](/docs/code/security).
     "Credit card": {
       description: {`Example match: \`4111 1111 1111 1111\` · Replacement: \`[REDACTED]\``},
     },
-  }
+  }}
 />

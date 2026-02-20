@@ -13,7 +13,7 @@ Subagents are specialized agents that run in isolated child sessions with their 
 ## Built-in Subagents
 
 <TypeTable
-  type={
+  type={{
     "explore": {
       description: "Description: Fast codebase exploration (read-only) · Max Steps: 20 · Permissions: read, grep, glob, ls",
     },
@@ -29,7 +29,7 @@ Subagents are specialized agents that run in isolated child sessions with their 
     "summary": {
       description: "Description: Session summarization (hidden) · Max Steps: 5 · Permissions: read",
     },
-  }
+  }}
 />
 
 ## Defining Custom Subagents
@@ -518,7 +518,7 @@ Both built-in and custom agents are available by name. Custom agents loaded from
 ### Built-in agents
 
 <TypeTable
-  type={
+  type={{
     "code-reviewer": {
       description: "Reviews code for style, security, and correctness",
     },
@@ -534,5 +534,5 @@ Both built-in and custom agents are available by name. Custom agents loaded from
     "debugger": {
       description: "Diagnoses and fixes bugs",
     },
-  }
+  }}
 />

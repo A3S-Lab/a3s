@@ -14,7 +14,7 @@ Lane 队列提供基于优先级的任务调度，包含四个 lane。高优先�
 ## Lane（优先级从高到低）
 
 <TypeTable
-  type={
+  type={{
     "Control": {
       description: "优先级: 1（最高） · 使用场景: 停止/取消命令",
     },
@@ -27,7 +27,7 @@ Lane 队列提供基于优先级的任务调度，包含四个 lane。高优先�
     "Generate": {
       description: "优先级: 4（最低） · 使用场景: 长时间 LLM 生成",
     },
-  }
+  }}
 />
 
 ## 基本队列设置
@@ -157,7 +157,7 @@ await session.submitTask({
 ### SessionQueueConfig
 
 <TypeTable
-  type={
+  type={{
     "启用 lane 功能": {
       description: {`Rust: \`.with_lane_features()\` · Python: \`enable_all_features=True\` · Node.js: \`enableAllFeatures: true\` · 默认值: \`false\``},
     },
@@ -170,13 +170,13 @@ await session.submitTask({
     "Execute 并发数": {
       description: {`Rust: \`.execute_max_concurrency(n)\` · Python: \`execute_max_concurrency=n\` · Node.js: \`executeMaxConcurrency: n\` · 默认值: \`5\``},
     },
-  }
+  }}
 />
 
 ### ExternalTask 字段（Rust）
 
 <TypeTable
-  type={
+  type={{
     "id": {
       description: {`类型: \`String\` · 描述: 唯一任务标识符`},
     },
@@ -186,13 +186,13 @@ await session.submitTask({
     "payload": {
       description: {`类型: \`serde_json::Value\` · 描述: 任务数据（提示、参数等）`},
     },
-  }
+  }}
 />
 
 ### 队列管理方法
 
 <TypeTable
-  type={
+  type={{
     "提交任务": {
       description: {`Rust: \`session.submit_task(task).await?\` · Python: \`await session.submit_task({...})\` · Node.js: \`await session.submitTask({...})\``},
     },
@@ -205,5 +205,5 @@ await session.submitTask({
     "死信": {
       description: {`Rust: \`session.dead_letters().await\` · Python: \`await session.dead_letters()\` · Node.js: \`await session.deadLetters()\``},
     },
-  }
+  }}
 />

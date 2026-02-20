@@ -35,7 +35,7 @@ SessionOptions::new().with_file_memory("./memory")
 ## 本 crate 包含的内容
 
 <TypeTable
-  type={
+  type={{
     "MemoryStore": {
       description: "异步 trait——实现或依赖的唯一接口",
     },
@@ -54,13 +54,13 @@ SessionOptions::new().with_file_memory("./memory")
     "FileMemoryStore": {
       description: "持久化后端——原子写入、内存索引、索引重建",
     },
-  }
+  }}
 />
 
 ## 本 crate 不包含的内容
 
 <TypeTable
-  type={
+  type={{
     "三层会话记忆（工作 / 短期 / 长期）": {
       description: "a3s-code",
     },
@@ -70,7 +70,7 @@ SessionOptions::new().with_file_memory("./memory")
     "将记忆注入智能体提示词": {
       description: "a3s-code",
     },
-  }
+  }}
 />
 
 <Callout type="info">

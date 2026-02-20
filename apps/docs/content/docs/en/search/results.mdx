@@ -164,7 +164,7 @@ for answer in results.answers() {
 ### Rust (`SearchResults`)
 
 <TypeTable
-  type={
+  type={{
     "items()": {
       description: "Get result slice",
     },
@@ -183,13 +183,13 @@ for answer in results.answers() {
     "duration_ms": {
       description: "Search duration in ms",
     },
-  }
+  }}
 />
 
 ### Python (`SearchResponse`)
 
 <TypeTable
-  type={
+  type={{
     "results": {
       type: "list[SearchResult]",
       description: "Ranked results",
@@ -206,13 +206,13 @@ for answer in results.answers() {
       type: "list[EngineErrorInfo]",
       description: "Per-engine errors",
     },
-  }
+  }}
 />
 
 ### Node.js (`SearchResponse`)
 
 <TypeTable
-  type={
+  type={{
     "results": {
       type: "SearchResult[]",
       description: "Ranked results",
@@ -229,7 +229,7 @@ for answer in results.answers() {
       type: "EngineError[]",
       description: "Per-engine errors",
     },
-  }
+  }}
 />
 
 ## Error Handling
@@ -264,14 +264,14 @@ for err in response.errors:
 ```
 
 <TypeTable
-  type={
+  type={{
     "A3SSearchError": {
       description: "Base exception for all SDK errors",
     },
     "SearchError": {
       description: "Search operation failed",
     },
-  }
+  }}
 />
 
 </Tab>
@@ -293,7 +293,7 @@ for (const err of response.errors) {
 ```
 
 <TypeTable
-  type={
+  type={{
     "A3SSearchError": {
       description: "Base error for all SDK errors",
     },
@@ -303,7 +303,7 @@ for (const err of response.errors) {
     "SearchError": {
       description: "Search operation failed",
     },
-  }
+  }}
 />
 
 </Tab>

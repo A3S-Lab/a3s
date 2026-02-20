@@ -31,14 +31,14 @@ let fetcher: Arc<dyn PageFetcher> = Arc::new(
 ```
 
 <TypeTable
-  type={
+  type={{
     "new(pool)": {
       description: {`Create with \`Arc<ProxyPool>\` — rotates proxy per request`},
     },
     "with_timeout(duration)": {
       description: "Set request timeout (default: 30s)",
     },
-  }
+  }}
 />
 
 ## Static Proxy List
@@ -265,14 +265,14 @@ const response = await search.search('rust', {
 ## Rotation Strategies
 
 <TypeTable
-  type={
+  type={{
     "RoundRobin": {
       description: "Rotate through proxies sequentially (default)",
     },
     "Random": {
       description: "Select random proxy each time",
     },
-  }
+  }}
 />
 
 ```rust
@@ -293,7 +293,7 @@ proxy.url()  // -> "socks5://user:pass@proxy.example.com:8080"
 ```
 
 <TypeTable
-  type={
+  type={{
     "new(host, port)": {
       description: "Create HTTP proxy config",
     },
@@ -306,13 +306,13 @@ proxy.url()  // -> "socks5://user:pass@proxy.example.com:8080"
     "url()": {
       description: "Get proxy URL string",
     },
-  }
+  }}
 />
 
 ## ProxyPool API
 
 <TypeTable
-  type={
+  type={{
     "new()": {
       description: "Create empty pool (disabled)",
     },
@@ -346,7 +346,7 @@ proxy.url()  // -> "socks5://user:pass@proxy.example.com:8080"
     "len()": {
       description: "Number of proxies in pool",
     },
-  }
+  }}
 />
 
 ## With Browser Engines

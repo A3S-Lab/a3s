@@ -14,7 +14,7 @@ A3S Code provides 8 lifecycle hooks for intercepting and reacting to events duri
 ## Hook Events
 
 <TypeTable
-  type={
+  type={{
     "PreToolUse": {
       description: "Fires: Before tool execution · Use Case: Validate args, taint tracking, block dangerous calls",
     },
@@ -39,7 +39,7 @@ A3S Code provides 8 lifecycle hooks for intercepting and reacting to events duri
     "SkillUnload": {
       description: "Fires: Skill unloaded · Use Case: Cleanup skill resources",
     },
-  }
+  }}
 />
 
 ## How Hooks Work
@@ -64,7 +64,7 @@ Agent Loop
 The `SecurityGuard` registers hooks at priority 1 (highest) automatically:
 
 <TypeTable
-  type={
+  type={{
     "PreToolUse": {
       description: "Taint tracking — checks if sensitive values leak into tool arguments",
     },
@@ -77,7 +77,7 @@ The `SecurityGuard` registers hooks at priority 1 (highest) automatically:
     "GenerateEnd": {
       description: "Output sanitization — redacts PII from LLM responses",
     },
-  }
+  }}
 />
 
 ## Hook Registration (Rust)
@@ -146,7 +146,7 @@ match result {
 Hooks execute in priority order. Lower numbers run first.
 
 <TypeTable
-  type={
+  type={{
     "1": {
       description: "SecurityGuard (built-in, always runs first)",
     },
@@ -159,7 +159,7 @@ Hooks execute in priority order. Lower numbers run first.
     "50+": {
       description: "Low-priority hooks (analytics, optional processing)",
     },
-  }
+  }}
 />
 
 If any hook returns `HookResult::Block`, the operation is cancelled and subsequent hooks for that event are skipped.
@@ -314,7 +314,7 @@ Each hook event carries a typed payload with event-specific data:
 ### Hook registration
 
 <TypeTable
-  type={
+  type={{
     "Register hook": {
       description: {`Rust: \`session.register_hook(Hook::new(id, event_type))\` · Description: Register a hook listener`},
     },
@@ -327,7 +327,7 @@ Each hook event carries a typed payload with event-specific data:
     "Count": {
       description: {`Rust: \`session.hook_count()\` · Description: Number of registered hooks`},
     },
-  }
+  }}
 />
 
 ### HookHandler trait (Rust)
@@ -347,7 +347,7 @@ impl HookHandler for MyHandler {
 ### HookResponse values
 
 <TypeTable
-  type={
+  type={{
     "HookResponse::continue_()": {
       description: "Allow the operation to proceed",
     },
@@ -357,7 +357,7 @@ impl HookHandler for MyHandler {
     "HookResponse::modify(data)": {
       description: "Replace event data before execution",
     },
-  }
+  }}
 />
 
 ### Hook priority

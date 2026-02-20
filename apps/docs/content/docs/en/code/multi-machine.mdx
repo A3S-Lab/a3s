@@ -56,7 +56,7 @@ External task distribution enables:
 A3S Code supports 3 task handler modes per lane:
 
 <TypeTable
-  type={
+  type={{
     "Internal": {
       description: "Description: Tasks execute in agent process (default) · Use Case: Single-machine deployment, low latency",
     },
@@ -66,7 +66,7 @@ A3S Code supports 3 task handler modes per lane:
     "Hybrid": {
       description: "Description: Execute internally + notify external system · Use Case: Internal execution with external monitoring/logging",
     },
-  }
+  }}
 />
 
 ## Session Lanes
@@ -74,7 +74,7 @@ A3S Code supports 3 task handler modes per lane:
 Tasks are routed to 4 priority lanes:
 
 <TypeTable
-  type={
+  type={{
     "Control": {
       description: "Priority: P0 (Highest) · Tools: pause, resume, cancel · Best For: Control operations",
     },
@@ -87,7 +87,7 @@ Tasks are routed to 4 priority lanes:
     "Generate": {
       description: "Priority: P3 (Lowest) · Tools: LLM calls · Best For: AI generation",
     },
-  }
+  }}
 />
 
 **Query lane** is the best candidate for external distribution — read operations are naturally parallelizable and safe.

@@ -10,7 +10,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 ## 默认路径
 
 <TypeTable
-  type={
+  type={{
     "~/.a3s/": {
       description: {`基础目录（可通过 \`\$A3S_BOX_HOME\` 覆盖）`},
     },
@@ -23,13 +23,13 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
     "~/.a3s/volumes/": {
       description: "卷存储",
     },
-  }
+  }}
 />
 
 ## 环境变量
 
 <TypeTable
-  type={
+  type={{
     "A3S_BOX_HOME": {
       description: "覆盖基础目录",
     },
@@ -42,7 +42,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
     "A3S_BOX_WARM_POOL_TTL": {
       description: "热池空闲 VM 超时时间（秒）",
     },
-  }
+  }}
 />
 
 ## 配置文件

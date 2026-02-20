@@ -24,7 +24,7 @@ pub struct ImageReference {
 Examples:
 
 <TypeTable
-  type={
+  type={{
     "alpine:latest": {
       description: {`Registry: Docker Hub · Name: \`alpine\` · Tag: \`latest\``},
     },
@@ -34,7 +34,7 @@ Examples:
     "alpine@sha256:abc...": {
       description: {`Registry: Docker Hub · Name: \`alpine\` · Tag: (by digest)`},
     },
-  }
+  }}
 />
 
 ## Pulling Images
@@ -83,7 +83,7 @@ a3s-box build -t my-app:v1 --build-arg VERSION=1.0 .
 ### Supported Dockerfile Instructions
 
 <TypeTable
-  type={
+  type={{
     "FROM": {
       description: {`Base image (supports \`AS\` alias for multi-stage)`},
     },
@@ -135,7 +135,7 @@ a3s-box build -t my-app:v1 --build-arg VERSION=1.0 .
     "ONBUILD": {
       description: "Register trigger for child image builds",
     },
-  }
+  }}
 />
 
 ## Image Configuration

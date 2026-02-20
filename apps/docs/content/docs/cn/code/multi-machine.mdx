@@ -56,7 +56,7 @@ A3S Code 支持**外部任务分发**以实现水平扩展。将工具执行卸�
 A3S Code 支持每个 lane 3 种任务处理器模式：
 
 <TypeTable
-  type={
+  type={{
     "Internal": {
       description: "描述: 任务在 agent 进程中执行（默认） · 使用场景: 单机部署，低延迟",
     },
@@ -66,7 +66,7 @@ A3S Code 支持每个 lane 3 种任务处理器模式：
     "Hybrid": {
       description: "描述: 内部执行 + 通知外部系统 · 使用场景: 内部执行加外部监控/日志",
     },
-  }
+  }}
 />
 
 ## 会话 Lane
@@ -74,7 +74,7 @@ A3S Code 支持每个 lane 3 种任务处理器模式：
 任务路由到 4 个优先级 lane：
 
 <TypeTable
-  type={
+  type={{
     "Control": {
       description: "优先级: P0（最高） · 工具: pause, resume, cancel · 最适合: 控制操作",
     },
@@ -87,7 +87,7 @@ A3S Code 支持每个 lane 3 种任务处理器模式：
     "Generate": {
       description: "优先级: P3（最低） · 工具: LLM 调用 · 最适合: AI 生成",
     },
-  }
+  }}
 />
 
 **Query lane** 是外部分发的最佳候选 — 读操作天然可并行化且安全。
@@ -401,20 +401,20 @@ A3S Code 的外部任务分发支持：
 ### LaneHandlerConfig
 
 <TypeTable
-  type={
+  type={{
     "mode": {
       description: {`类型: \`TaskHandlerMode\` · 描述: \`Internal\`、\`External\` 或 \`Hybrid\``},
     },
     "timeout_ms": {
       description: {`类型: \`Option<u64>\` · 描述: 等待外部 worker 响应的最大时间`},
     },
-  }
+  }}
 />
 
 ### 外部任务方法
 
 <TypeTable
-  type={
+  type={{
     "设置处理器": {
       description: {`Rust: \`session.set_external_task_handler(fn).await\` · Python: \`session.set_external_task_handler(fn)\` · Node.js: \`session.setExternalTaskHandler(fn)\``},
     },
@@ -427,13 +427,13 @@ A3S Code 的外部任务分发支持：
     "设置 lane 处理器": {
       description: {`Rust: \`session.set_lane_handler(lane, cfg).await\` · Python: \`await session.set_lane_handler(lane, cfg)\` · Node.js: \`await session.setLaneHandler(lane, cfg)\``},
     },
-  }
+  }}
 />
 
 ### ExternalTask 字段
 
 <TypeTable
-  type={
+  type={{
     "task_id": {
       description: {`类型: \`String\` · 描述: 唯一任务标识符`},
     },
@@ -449,13 +449,13 @@ A3S Code 的外部任务分发支持：
     "timeout_ms": {
       description: {`类型: \`Option<u64>\` · 描述: 每任务超时覆盖`},
     },
-  }
+  }}
 />
 
 ### ExternalTaskResult 字段
 
 <TypeTable
-  type={
+  type={{
     "success": {
       description: {`类型: \`bool\` · 描述: 任务是否成功完成`},
     },
@@ -468,5 +468,5 @@ A3S Code 的外部任务分发支持：
     "duration_ms": {
       description: {`类型: \`Option<u64>\` · 描述: Worker 执行时间`},
     },
-  }
+  }}
 />

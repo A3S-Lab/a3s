@@ -14,7 +14,7 @@ The lane queue provides priority-based task scheduling with four lanes. High-pri
 ## Lanes (highest → lowest priority)
 
 <TypeTable
-  type={
+  type={{
     "Control": {
       description: "Priority: 1 (highest) · Use case: Stop/cancel commands",
     },
@@ -27,7 +27,7 @@ The lane queue provides priority-based task scheduling with four lanes. High-pri
     "Generate": {
       description: "Priority: 4 (lowest) · Use case: Long LLM generation",
     },
-  }
+  }}
 />
 
 ## Basic Queue Setup
@@ -157,7 +157,7 @@ For full lane queue documentation, see [Lane Queue](/docs/code/lane-queue).
 ### SessionQueueConfig
 
 <TypeTable
-  type={
+  type={{
     "Enable lane features": {
       description: {`Rust: \`.with_lane_features()\` · Python: \`enable_all_features=True\` · Node.js: \`enableAllFeatures: true\` · Default: \`false\``},
     },
@@ -170,7 +170,7 @@ For full lane queue documentation, see [Lane Queue](/docs/code/lane-queue).
     "Execute concurrency": {
       description: {`Rust: \`.execute_max_concurrency(n)\` · Python: \`execute_max_concurrency=n\` · Node.js: \`executeMaxConcurrency: n\` · Default: \`5\``},
     },
-  }
+  }}
 />
 
 ### ExternalTask fields (Rust)
@@ -186,7 +186,7 @@ For full lane queue documentation, see [Lane Queue](/docs/code/lane-queue).
 ### Queue management methods
 
 <TypeTable
-  type={
+  type={{
     "Submit task": {
       description: {`Rust: \`session.submit_task(task).await?\` · Python: \`await session.submit_task({...})\` · Node.js: \`await session.submitTask({...})\``},
     },
@@ -199,5 +199,5 @@ For full lane queue documentation, see [Lane Queue](/docs/code/lane-queue).
     "Dead letters": {
       description: {`Rust: \`session.dead_letters().await\` · Python: \`await session.dead_letters()\` · Node.js: \`await session.deadLetters()\``},
     },
-  }
+  }}
 />

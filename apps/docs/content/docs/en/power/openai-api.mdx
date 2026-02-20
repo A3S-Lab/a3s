@@ -203,7 +203,7 @@ Response includes token counts, request counts, and cost estimates per model.
 The OpenAI API uses Server-Sent Events (SSE) for streaming, while the Ollama API uses NDJSON:
 
 <TypeTable
-  type={
+  type={{
     "Ollama (/api/*)": {
       type: "NDJSON",
       description: "application/x-ndjson",
@@ -212,7 +212,7 @@ The OpenAI API uses Server-Sent Events (SSE) for streaming, while the Ollama API
       type: "SSE",
       description: "text/event-stream",
     },
-  }
+  }}
 />
 
 Both formats deliver tokens incrementally as they're generated.

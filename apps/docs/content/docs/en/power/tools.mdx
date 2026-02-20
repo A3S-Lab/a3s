@@ -44,7 +44,7 @@ Tools are defined using the standard OpenAI function calling schema:
 Control how the model uses tools:
 
 <TypeTable
-  type={
+  type={{
     ""auto"": {
       description: "Model decides whether to call a tool (default)",
     },
@@ -54,7 +54,7 @@ Control how the model uses tools:
     "{"type": "function", "function": {"name": "..."}}": {
       description: "Force a specific tool",
     },
-  }
+  }}
 />
 
 ## Conversation Flow

@@ -123,7 +123,7 @@ Use `aggregate_cost_records()` to produce summaries from a collection of `LlmCos
 `ToolMetrics` tracks per-tool execution statistics within a session:
 
 <TypeTable
-  type={
+  type={{
     "Call count": {
       description: "Total invocations",
     },
@@ -139,7 +139,7 @@ Use `aggregate_cost_records()` to produce summaries from a collection of `LlmCos
     "Average duration": {
       description: "Mean execution time per call",
     },
-  }
+  }}
 />
 
 These metrics are recorded on tracing spans via `record_tool_result()` and can be aggregated for dashboards and alerting.
@@ -175,7 +175,7 @@ Helper functions `record_llm_usage()` and `record_tool_result()` record metrics 
 ### Span hierarchy
 
 <TypeTable
-  type={
+  type={{
     "agent.session": {
       description: {`Parent: root · Key attributes: \`session.id\`, \`session.workspace\``},
     },
@@ -194,7 +194,7 @@ Helper functions `record_llm_usage()` and `record_tool_result()` record metrics 
     "agent.hook": {
       description: {`Parent: \`agent.turn\` · Key attributes: \`hook.id\`, \`hook.event\``},
     },
-  }
+  }}
 />
 
 ### Cost tracking fields
@@ -232,7 +232,7 @@ tracing_subscriber::registry()
 ### Environment variables
 
 <TypeTable
-  type={
+  type={{
     "OTEL_EXPORTER_OTLP_ENDPOINT": {
       description: "OTLP collector endpoint",
     },
@@ -242,5 +242,5 @@ tracing_subscriber::registry()
     "RUST_LOG": {
       description: {`Log level filter (e.g. \`a3s_code_core=debug\`)`},
     },
-  }
+  }}
 />

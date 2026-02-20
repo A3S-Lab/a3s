@@ -84,7 +84,7 @@ let fetcher = Arc::new(
 Control when a page is considered "loaded":
 
 <TypeTable
-  type={
+  type={{
     "Load": {
       description: "Fast pages, APIs",
     },
@@ -97,13 +97,13 @@ Control when a page is considered "loaded":
     "Delay { ms }": {
       description: "Fallback when nothing else works",
     },
-  }
+  }}
 />
 
 Each built-in headless engine uses an appropriate strategy:
 
 <TypeTable
-  type={
+  type={{
     "Google": {
       description: "Selector { css: "div.g", timeout_ms: 5000 }",
     },
@@ -113,7 +113,7 @@ Each built-in headless engine uses an appropriate strategy:
     "Bing China": {
       description: "Delay { ms: 2000 }",
     },
-  }
+  }}
 />
 
 ## Chrome Auto-Detection
@@ -182,7 +182,7 @@ pub trait PageFetcher: Send + Sync {
 ```
 
 <TypeTable
-  type={
+  type={{
     "HttpFetcher": {
       description: "Plain HTTP via reqwest, optional single proxy",
     },
@@ -192,5 +192,5 @@ pub trait PageFetcher: Send + Sync {
     "BrowserFetcher": {
       description: "Headless Chrome via BrowserPool",
     },
-  }
+  }}
 />

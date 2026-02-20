@@ -39,7 +39,7 @@ let item = MemoryItem::new("Auth 使用 JWT，有效期 24 小时")
 ## 构建器方法
 
 <TypeTable
-  type={
+  type={{
     ".with_importance(f32)": {
       description: "设置重要性，截断到 0.0–1.0",
     },
@@ -55,13 +55,13 @@ let item = MemoryItem::new("Auth 使用 JWT，有效期 24 小时")
     ".with_metadata(key, value)": {
       description: "插入元数据键值对",
     },
-  }
+  }}
 />
 
 ## 记忆类型
 
 <TypeTable
-  type={
+  type={{
     "Episodic": {
       description: "用途: 特定事件和交互 · 典型重要性: 0.5",
     },
@@ -74,5 +74,5 @@ let item = MemoryItem::new("Auth 使用 JWT，有效期 24 小时")
     "Working": {
       description: "用途: 当前任务的活跃上下文 · 典型重要性: 不固定",
     },
-  }
+  }}
 />

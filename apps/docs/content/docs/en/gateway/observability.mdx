@@ -12,7 +12,7 @@ A3S Gateway provides built-in Prometheus metrics, structured access logging, dis
 ## Dashboard API
 
 <TypeTable
-  type={
+  type={{
     "GET /api/gateway/health": {
       description: "Health status (JSON)",
     },
@@ -31,7 +31,7 @@ A3S Gateway provides built-in Prometheus metrics, structured access logging, dis
     "GET /api/gateway/version": {
       description: "Build version info (JSON)",
     },
-  }
+  }}
 />
 
 ### Health Response
@@ -114,7 +114,7 @@ RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.hcl
 ```
 
 <TypeTable
-  type={
+  type={{
     "error": {
       description: "Failures, backend errors, TLS errors",
     },
@@ -130,7 +130,7 @@ RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.hcl
     "trace": {
       description: "Raw bytes, header details, connection lifecycle",
     },
-  }
+  }}
 />
 
 ## Distributed Tracing

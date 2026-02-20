@@ -13,7 +13,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 ## 事件类型
 
 <TypeTable
-  type={
+  type={{
     "Start": {
       description: "Agent 开始处理",
     },
@@ -35,7 +35,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
     "End": {
       description: "Agent 完成",
     },
-  }
+  }}
 />
 
 ## 示例
@@ -147,7 +147,7 @@ The auth module has been refactored. Key changes:
 ### stream()
 
 <TypeTable
-  type={
+  type={{
     "启动流": {
       description: {`Rust: \`session.stream("prompt", None).await?\` · Python: \`session.stream("prompt")\` · Node.js: \`session.stream('prompt')\``},
     },
@@ -157,13 +157,13 @@ The auth module has been refactored. Key changes:
     "等待完成": {
       description: {`Rust: \`handle.await??\` · Python: _（自动）_ · Node.js: _（自动）_`},
     },
-  }
+  }}
 />
 
 ### AgentEvent 类型
 
 <TypeTable
-  type={
+  type={{
     "Agent 启动": {
       description: {`Rust 变体: \`AgentEvent::Start\` · Python/Node.js \`type\`: \`start\``},
     },
@@ -194,5 +194,5 @@ The auth module has been refactored. Key changes:
     "Agent 完成": {
       description: {`Rust 变体: \`AgentEvent::End\` · Python/Node.js \`type\`: \`end\` · 字段: \`text\`, \`usage\``},
     },
-  }
+  }}
 />

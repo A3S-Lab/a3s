@@ -191,7 +191,7 @@ Wave 分组:
 ## TaskStatus
 
 <TypeTable
-  type={
+  type={{
     "Pending": {
       description: "等待执行",
     },
@@ -204,7 +204,7 @@ Wave 分组:
     "Failed": {
       description: "执行失败",
     },
-  }
+  }}
 />
 
 ## 事件
@@ -212,11 +212,11 @@ Wave 分组:
 任务相关的流式事件：
 
 <TypeTable
-  type={
+  type={{
     "TaskUpdated": {
       description: "任务列表变更（新增、状态更新）",
     },
-  }
+  }}
 />
 
 参见 [会话](/cn/docs/code/sessions) 获取完整事件参考。
@@ -226,20 +226,20 @@ Wave 分组:
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "规划": {
       description: {`Rust: \`.with_planning(true)\` · Python: \`planning=True\` · Node.js: \`planning: true\` · 默认值: \`false\``},
     },
     "目标追踪": {
       description: {`Rust: \`.with_goal_tracking(true)\` · Python: \`goal_tracking=True\` · Node.js: \`goalTracking: true\` · 默认值: \`false\``},
     },
-  }
+  }}
 />
 
 ### TaskInfo
 
 <TypeTable
-  type={
+  type={{
     "id": {
       description: {`类型: \`String\` · 描述: 任务唯一标识`},
     },
@@ -252,5 +252,5 @@ Wave 分组:
     "dependencies": {
       description: {`类型: \`Vec<String>\` · 描述: 前置任务 ID 列表`},
     },
-  }
+  }}
 />

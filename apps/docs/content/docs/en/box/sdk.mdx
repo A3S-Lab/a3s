@@ -10,7 +10,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 Create, execute, and manage MicroVM sandboxes programmatically — no CLI or daemon required. All three SDKs wrap the same Rust runtime and provide identical capabilities.
 
 <TypeTable
-  type={
+  type={{
     "Rust": {
       description: {`Package: \`a3s-box-sdk\` crate · Version: 0.5.3`},
     },
@@ -20,7 +20,7 @@ Create, execute, and manage MicroVM sandboxes programmatically — no CLI or dae
     "TypeScript": {
       description: {`Package: \`npm install @a3s-lab/box\` · Version: 0.5.3`},
     },
-  }
+  }}
 />
 
 ---
@@ -529,7 +529,7 @@ await sandbox.stop();
 ## Capabilities Summary
 
 <TypeTable
-  type={
+  type={{
     "create\` / \`stop": {
       description: "Rust: ✅ · Python: ✅ · TypeScript: ✅",
     },
@@ -566,5 +566,5 @@ await sandbox.stop();
     "TEE (SEV-SNP)": {
       description: "Rust: ✅ · Python: ✅ · TypeScript: ✅",
     },
-  }
+  }}
 />

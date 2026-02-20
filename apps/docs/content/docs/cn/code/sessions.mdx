@@ -66,7 +66,7 @@ session = agent.session("/my-project", model="openai/gpt-4o")
 ## SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "模型覆盖": {
       description: {`Rust: \`with_model("provider/model")\` · TypeScript: \`model: "provider/model"\` · Python: \`model="provider/model"\` · 描述: 格式：\`provider/model\`（例如 \`openai/gpt-4o\`）`},
     },
@@ -91,7 +91,7 @@ session = agent.session("/my-project", model="openai/gpt-4o")
     "沙箱": {
       description: {`Rust: \`with_sandbox(SandboxConfig)\` · 描述: 通过 A3S Box MicroVM 路由 \`bash\` 工具（需要 \`sandbox\` feature）`},
     },
-  }
+  }}
 />
 
 模型必须在 agent 配置文件的 `providers` 中定义。格式为 `provider_name/model_id`。
@@ -355,7 +355,7 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 ### AgentResult
 
 <TypeTable
-  type={
+  type={{
     "text": {
       description: {`类型: \`string\` · 描述: LLM 最终响应文本`},
     },
@@ -368,13 +368,13 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
     "tool_calls_count": {
       description: {`类型: \`usize\` · 描述: 工具调用次数`},
     },
-  }
+  }}
 />
 
 ### TokenUsage
 
 <TypeTable
-  type={
+  type={{
     "prompt_tokens": {
       description: {`类型: \`usize\` · 描述: 输入 token 数`},
     },
@@ -390,7 +390,7 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
     "cache_write_tokens": {
       description: {`类型: \`Option<usize>\` · 描述: 缓存写入的输入 token 数`},
     },
-  }
+  }}
 />
 
 ### AgentEvent
@@ -400,7 +400,7 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 **Agent 生命周期：**
 
 <TypeTable
-  type={
+  type={{
     "Start": {
       description: {`字段: \`prompt\` · 描述: 开始处理`},
     },
@@ -419,13 +419,13 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
     "Error": {
       description: {`字段: \`error\` · 描述: 发生错误`},
     },
-  }
+  }}
 />
 
 **工具执行：**
 
 <TypeTable
-  type={
+  type={{
     "ToolStart": {
       description: {`字段: \`tool_id\`, \`tool_name\` · 描述: 工具调用开始`},
     },
@@ -435,13 +435,13 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
     "ToolOutputDelta": {
       description: {`字段: \`tool_id\`, \`tool_name\`, \`text\` · 描述: 工具输出增量`},
     },
-  }
+  }}
 />
 
 **HITL 和权限：**
 
 <TypeTable
-  type={
+  type={{
     "ConfirmationRequired": {
       description: {`字段: \`tool_id\`, \`tool_name\`, \`args\`, \`timeout_ms\` · 描述: 需要 HITL 确认`},
     },
@@ -454,13 +454,13 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
     "PermissionDenied": {
       description: {`字段: \`tool_id\`, \`tool_name\`, \`args\`, \`reason\` · 描述: 工具被权限策略阻止`},
     },
-  }
+  }}
 />
 
 **上下文和记忆：**
 
 <TypeTable
-  type={
+  type={{
     "ContextResolving": {
       description: {`字段: \`providers\` · 描述: 上下文解析开始`},
     },
@@ -479,13 +479,13 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
     "MemoryCleared": {
       description: "描述: 记忆已清除",
     },
-  }
+  }}
 />
 
 **任务、子代理和 Lane 队列：**
 
 <TypeTable
-  type={
+  type={{
     "TaskUpdated": {
       description: {`字段: \`session_id\`, \`tasks\` · 描述: 任务列表变更`},
     },
@@ -507,7 +507,7 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
     "QueueAlert": {
       description: "描述: 队列告警触发",
     },
-  }
+  }}
 />
 
 ## API 参考
@@ -515,7 +515,7 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 ### Agent
 
 <TypeTable
-  type={
+  type={{
     "new": {
       description: {`签名: \`Agent::new(config: &str) -> Result<Agent>\` · 描述: 从 HCL 文件或字符串加载`},
     },
@@ -525,13 +525,13 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
     "session": {
       description: {`签名: \`agent.session(workspace, options?) -> Result<AgentSession>\` · 描述: 创建绑定工作区的会话`},
     },
-  }
+  }}
 />
 
 ### AgentSession
 
 <TypeTable
-  type={
+  type={{
     "发送提示": {
       description: {`Rust: \`session.send(prompt, None).await?\` · Python: \`await session.send(prompt)\` · Node.js: \`await session.send(prompt)\``},
     },
@@ -559,13 +559,13 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
     "历史记录": {
       description: {`Rust: \`session.history()\` · Python: \`session.history()\` · Node.js: \`session.history()\``},
     },
-  }
+  }}
 />
 
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "模型": {
       description: {`Rust: \`.with_model("provider/model")\` · Python: \`model="provider/model"\` · Node.js: \`model: "provider/model"\` · 默认值: 配置默认值`},
     },
@@ -635,13 +635,13 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
     "Hook 引擎": {
       description: {`Rust: \`.with_hook_engine(h)\` · 默认值: \`HookEngine\``},
     },
-  }
+  }}
 />
 
 ### AgentResponse
 
 <TypeTable
-  type={
+  type={{
     "文本": {
       description: {`Rust: \`result.text\` · Python: \`result.text\` · Node.js: \`result.text\``},
     },
@@ -651,5 +651,5 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
     "工具调用次数": {
       description: {`Rust: \`result.tool_calls_count\` · Python: \`result.tool_calls_count\` · Node.js: \`result.toolCallsCount\``},
     },
-  }
+  }}
 />

@@ -99,7 +99,7 @@ let config = PartitionConfig::none();
 ### Strategy Comparison
 
 <TypeTable
-  type={
+  type={{
     "None": {
       description: "Distribution: Single queue · Ordering: Strict FIFO · Use Case: Simple workloads",
     },
@@ -112,7 +112,7 @@ let config = PartitionConfig::none();
     "Auto": {
       description: "Distribution: Per-core · Ordering: Per-partition FIFO · Use Case: Maximum parallelism",
     },
-  }
+  }}
 />
 
 ## Distributed Queue
@@ -212,7 +212,7 @@ let queue = LocalDistributedQueue::auto();
 ### Production Checklist
 
 <TypeTable
-  type={
+  type={{
     "Retry policies": {
       description: {`Always (at least \`exponential(2)\`)`},
     },
@@ -237,5 +237,5 @@ let queue = LocalDistributedQueue::auto();
     "Partitioning": {
       description: "CPU-bound, high-throughput",
     },
-  }
+  }}
 />

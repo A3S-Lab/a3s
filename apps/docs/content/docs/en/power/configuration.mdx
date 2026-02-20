@@ -13,14 +13,14 @@ A3S Power supports both HCL and TOML configuration formats with full Ollama-comp
 ## Supported Formats
 
 <TypeTable
-  type={
+  type={{
     "HCL": {
       description: {`Extension: \`.hcl\` · Priority: Primary (checked first)`},
     },
     "TOML": {
       description: {`Extension: \`.toml\` · Priority: Secondary (fallback)`},
     },
-  }
+  }}
 />
 
 The config file is auto-detected by extension. When using the default path (`~/.a3s/power/`), Power checks for `config.hcl` first, then falls back to `config.toml`.
@@ -79,7 +79,7 @@ tensor_split = []             # Multi-GPU work distribution
 Controls how long idle models stay loaded in memory:
 
 <TypeTable
-  type={
+  type={{
     ""5m"": {
       description: "Unload after 5 minutes idle (default)",
     },
@@ -92,7 +92,7 @@ Controls how long idle models stay loaded in memory:
     ""-1"": {
       description: "Never unload (keep forever)",
     },
-  }
+  }}
 />
 
 ## GPU Configuration
@@ -132,7 +132,7 @@ GPU memory is estimated before loading to prevent OOM errors. If a model doesn't
 All Ollama environment variables are supported for drop-in compatibility:
 
 <TypeTable
-  type={
+  type={{
     "OLLAMA_HOST": {
       description: {`Config Equivalent: \`host\` + \`port\` · Description: Server bind address (e.g., \`0.0.0.0:11434\`)`},
     },
@@ -169,17 +169,17 @@ All Ollama environment variables are supported for drop-in compatibility:
     "OLLAMA_SCHED_SPREAD": {
       description: {`Config Equivalent: \`sched_spread\` · Description: Spread layers across GPUs`},
     },
-  }
+  }}
 />
 
 Power-specific:
 
 <TypeTable
-  type={
+  type={{
     "A3S_POWER_HOME": {
       description: {`Base directory (default: \`~/.a3s/power/\`)`},
     },
-  }
+  }}
 />
 
 Environment variables take precedence over config file values.

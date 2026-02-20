@@ -34,7 +34,7 @@ Backend Service
 ## Core Components
 
 <TypeTable
-  type={
+  type={{
     "Gateway": {
       description: "Top-level orchestrator — ties configuration, listeners, routing, scaling, and observability into a single unit",
     },
@@ -59,13 +59,13 @@ Backend Service
     "Scaling": {
       description: "Knative-style autoscaler with concurrency limiting, request buffering, revision routing, and gradual rollouts",
     },
-  }
+  }}
 />
 
 ## Protocol Support
 
 <TypeTable
-  type={
+  type={{
     "HTTP/1.1 & HTTP/2": {
       description: "Full reverse proxy with hop-by-hop header filtering",
     },
@@ -84,7 +84,7 @@ Backend Service
     "UDP": {
       description: "Session-based datagram relay",
     },
-  }
+  }}
 />
 
 ## Gateway Lifecycle

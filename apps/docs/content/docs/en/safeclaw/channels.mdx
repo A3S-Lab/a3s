@@ -46,7 +46,7 @@ pub struct MessageAttachment {
 ## Supported Platforms
 
 <TypeTable
-  type={
+  type={{
     "Telegram": {
       description: "Webhook Format: JSON (Bot API) · Auth Method: Token verification · Features: Text, commands, inline queries",
     },
@@ -68,7 +68,7 @@ pub struct MessageAttachment {
     "WebChat": {
       description: "Webhook Format: JSON (custom) · Auth Method: API key · Features: Generic web chat interface",
     },
-  }
+  }}
 />
 
 ## Webhook Authentication
@@ -82,7 +82,7 @@ pub trait ChannelAuth: Send + Sync {
 Each platform has its own authentication implementation:
 
 <TypeTable
-  type={
+  type={{
     "Telegram": {
       description: {`\`TelegramAuth\` — Bot token verification`},
     },
@@ -101,7 +101,7 @@ Each platform has its own authentication implementation:
     "WeCom": {
       description: {`\`WeComAuth\` — Token + message signature`},
     },
-  }
+  }}
 />
 
 Failed authentication generates a `Critical` severity audit event with `LeakageVector::AuthFailure`.

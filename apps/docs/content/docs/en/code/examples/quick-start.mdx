@@ -182,7 +182,7 @@ const session = agent.session('/my-project', {
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "Permissive policy": {
       description: {`Rust: \`.with_permissive_policy()\` · Python: \`permissive=True\` · Node.js: \`permissive: true\` · Default: \`false\``},
     },
@@ -195,13 +195,13 @@ const session = agent.session('/my-project', {
     "Circuit breaker": {
       description: {`Rust: \`.with_circuit_breaker(n)\` · Python: \`circuit_breaker_threshold=n\` · Node.js: \`circuitBreakerThreshold: n\` · Default: \`5\``},
     },
-  }
+  }}
 />
 
 ### AgentResponse
 
 <TypeTable
-  type={
+  type={{
     "Final text": {
       description: {`Rust: \`result.text\` · Python: \`result.text\` · Node.js: \`result.text\``},
     },
@@ -214,5 +214,5 @@ const session = agent.session('/my-project', {
     "History": {
       description: {`Rust: \`session.history()\` · Python: \`session.history()\` · Node.js: \`session.history()\``},
     },
-  }
+  }}
 />

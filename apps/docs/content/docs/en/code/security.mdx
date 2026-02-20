@@ -30,7 +30,7 @@ The permission system controls which tools the agent can use. Rules are evaluate
 ### Rule Types
 
 <TypeTable
-  type={
+  type={{
     "deny": {
       description: "Block the tool call immediately",
     },
@@ -40,7 +40,7 @@ The permission system controls which tools the agent can use. Rules are evaluate
     "ask": {
       description: "Prompt the user for confirmation (via HITL)",
     },
-  }
+  }}
 />
 
 ### Pattern Matching
@@ -52,7 +52,7 @@ Tool(pattern)
 ```
 
 <TypeTable
-  type={
+  type={{
     "bash(rm -rf:*)": {
       description: {`Any bash command starting with \`rm -rf\``},
     },
@@ -65,7 +65,7 @@ Tool(pattern)
     "mcp__pencil": {
       description: {`All \`mcp__pencil__*\` tools (prefix matching)`},
     },
-  }
+  }}
 />
 
 Wildcards: `*` matches any character except `/`, `**` matches including `/`, `:*` matches any suffix.
@@ -73,14 +73,14 @@ Wildcards: `*` matches any character except `/`, `**` matches including `/`, `:*
 ### Preset Policies
 
 <TypeTable
-  type={
+  type={{
     "PermissionPolicy::permissive()": {
       description: "Allow all tools by default (default)",
     },
     "PermissionPolicy::strict()": {
       description: "Deny all tools by default",
     },
-  }
+  }}
 />
 
 ### Building a Custom Policy
@@ -261,14 +261,14 @@ for event in session.stream("Clean up old logs"):
 ### Timeout Behavior
 
 <TypeTable
-  type={
+  type={{
     "Reject": {
       description: "Reject the tool call if no response within timeout (default)",
     },
     "Approve": {
       description: "Approve the tool call if no response within timeout",
     },
-  }
+  }}
 />
 
 ## Workspace Boundaries
@@ -361,7 +361,7 @@ See [Hooks](/docs/code/hooks) for lifecycle event integration.
 The agent emits security-related events during streaming:
 
 <TypeTable
-  type={
+  type={{
     "PermissionDenied": {
       description: "Tool call blocked by permission policy",
     },
@@ -374,7 +374,7 @@ The agent emits security-related events during streaming:
     "ConfirmationRejected": {
       description: "User rejected the tool call",
     },
-  }
+  }}
 />
 
 See [Sessions](/docs/code/sessions) for full event reference.
@@ -384,7 +384,7 @@ See [Sessions](/docs/code/sessions) for full event reference.
 ### PermissionPolicy
 
 <TypeTable
-  type={
+  type={{
     "PermissionPolicy::new()": {
       description: "Create with permissive default",
     },
@@ -406,13 +406,13 @@ See [Sessions](/docs/code/sessions) for full event reference.
     "session.set_permission_policy(p).await": {
       description: "Apply to running session",
     },
-  }
+  }}
 />
 
 ### Pattern syntax
 
 <TypeTable
-  type={
+  type={{
     "bash(*)": {
       description: "All bash calls",
     },
@@ -428,7 +428,7 @@ See [Sessions](/docs/code/sessions) for full event reference.
     "mcp__github": {
       description: {`All \`mcp__github__*\` tools`},
     },
-  }
+  }}
 />
 
 ### ConfirmationPolicy
@@ -456,7 +456,7 @@ See [Sessions](/docs/code/sessions) for full event reference.
 ### SecurityProvider trait (Rust)
 
 <TypeTable
-  type={
+  type={{
     "taint_input": {
       description: {`Signature: \`fn taint_input(&self, text: &str)\` · Description: Inspect user input for sensitive patterns`},
     },
@@ -472,5 +472,5 @@ See [Sessions](/docs/code/sessions) for full event reference.
     "teardown": {
       description: {`Signature: \`fn teardown(&self)\` · Description: Called when session ends`},
     },
-  }
+  }}
 />

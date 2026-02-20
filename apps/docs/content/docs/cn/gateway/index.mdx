@@ -34,7 +34,7 @@ TLS 终止（rustls，ACME / Let's Encrypt）
 ## 核心组件
 
 <TypeTable
-  type={
+  type={{
     "Gateway": {
       description: "顶层编排器 — 将配置、监听器、路由、扩缩容和可观测性整合为一个单元",
     },
@@ -59,13 +59,13 @@ TLS 终止（rustls，ACME / Let's Encrypt）
     "Scaling": {
       description: "Knative 风格自动扩缩容，支持并发限制、请求缓冲、版本路由和灰度发布",
     },
-  }
+  }}
 />
 
 ## 协议支持
 
 <TypeTable
-  type={
+  type={{
     "HTTP/1.1 & HTTP/2": {
       description: "完整反向代理，过滤逐跳头",
     },
@@ -84,7 +84,7 @@ TLS 终止（rustls，ACME / Let's Encrypt）
     "UDP": {
       description: "基于会话的数据报中继",
     },
-  }
+  }}
 />
 
 ## 网关生命周期

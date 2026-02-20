@@ -224,7 +224,7 @@ bus.publish("orders", "created", "New order", "src", payload).await?;
 These capabilities are delegated to the provider, not the `EventBus`:
 
 <TypeTable
-  type={
+  type={{
     "Retry / backoff": {
       description: {`Provider (NATS: \`MaxDeliver\` + \`BackOff\`)`},
     },
@@ -246,5 +246,5 @@ These capabilities are delegated to the provider, not the `EventBus`:
     "Partitioning": {
       description: "Provider (subject routing)",
     },
-  }
+  }}
 />

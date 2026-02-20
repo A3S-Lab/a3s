@@ -33,7 +33,7 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
 ### Agent 级别（`a3s.agent.execute`、`a3s.agent.turn`）
 
 <TypeTable
-  type={
+  type={{
     "a3s.session_id": {
       description: "类型: string · 描述: 会话标识符",
     },
@@ -46,13 +46,13 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
     "a3s.tool_calls_count": {
       description: "类型: int · 描述: 此范围内的总工具调用次数",
     },
-  }
+  }}
 />
 
 ### LLM 级别（`a3s.llm.completion`）
 
 <TypeTable
-  type={
+  type={{
     "a3s.llm.model": {
       description: {`类型: string · 描述: 模型 ID（例如 \`claude-sonnet-4-20250514\`）`},
     },
@@ -80,13 +80,13 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
     "a3s.llm.stop_reason": {
       description: "类型: string · 描述: 生成停止的原因",
     },
-  }
+  }}
 />
 
 ### 工具级别（`a3s.tool.execute`）
 
 <TypeTable
-  type={
+  type={{
     "a3s.tool.name": {
       description: {`类型: string · 描述: 工具名称（例如 \`Bash\`、\`Read\`）`},
     },
@@ -105,13 +105,13 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
     "a3s.tool.permission": {
       description: {`类型: string · 描述: 权限决策（\`allow\`、\`deny\`、\`ask\`）`},
     },
-  }
+  }}
 />
 
 ### 上下文级别（`a3s.context.resolve`）
 
 <TypeTable
-  type={
+  type={{
     "a3s.context.providers": {
       description: "类型: string · 描述: 逗号分隔的提供者名称",
     },
@@ -121,7 +121,7 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
     "a3s.context.tokens": {
       description: "类型: int · 描述: 上下文条目的总 token 数",
     },
-  }
+  }}
 />
 
 ## 费用追踪
@@ -129,7 +129,7 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
 遥测模块使用 `LlmCostRecord` 追踪每次调用的 LLM 费用：
 
 <TypeTable
-  type={
+  type={{
     "model": {
       description: "类型: string · 描述: 模型 ID",
     },
@@ -154,7 +154,7 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
     "session_id": {
       description: "类型: string · 描述: 关联的会话",
     },
-  }
+  }}
 />
 
 ### 模型定价
@@ -183,7 +183,7 @@ cost_usd = (prompt_tokens * input_per_million / 1_000_000)
 `ToolMetrics` 追踪会话内每个工具的执行统计：
 
 <TypeTable
-  type={
+  type={{
     "调用次数": {
       description: "总调用次数",
     },
@@ -199,7 +199,7 @@ cost_usd = (prompt_tokens * input_per_million / 1_000_000)
     "平均时长": {
       description: "每次调用的平均执行时间",
     },
-  }
+  }}
 />
 
 这些指标通过 `record_tool_result()` 记录在追踪 span 上，可用于仪表板和告警聚合。
@@ -235,7 +235,7 @@ let result = session.send("Analyze this codebase").await?;
 ### Span 层级
 
 <TypeTable
-  type={
+  type={{
     "agent.session": {
       description: {`父级: root · 关键属性: \`session.id\`、\`session.workspace\``},
     },
@@ -254,13 +254,13 @@ let result = session.send("Analyze this codebase").await?;
     "agent.hook": {
       description: {`父级: \`agent.turn\` · 关键属性: \`hook.id\`、\`hook.event\``},
     },
-  }
+  }}
 />
 
 ### 费用追踪字段
 
 <TypeTable
-  type={
+  type={{
     "provider": {
       description: {`类型: \`String\` · 描述: LLM 提供商名称`},
     },
@@ -282,7 +282,7 @@ let result = session.send("Analyze this codebase").await?;
     "cost_usd": {
       description: {`类型: \`f64\` · 描述: 估计费用（美元）`},
     },
-  }
+  }}
 />
 
 ### 设置（Rust）
@@ -306,7 +306,7 @@ tracing_subscriber::registry()
 ### 环境变量
 
 <TypeTable
-  type={
+  type={{
     "OTEL_EXPORTER_OTLP_ENDPOINT": {
       description: "OTLP 收集器端点",
     },
@@ -316,5 +316,5 @@ tracing_subscriber::registry()
     "RUST_LOG": {
       description: {`日志级别过滤（例如 \`a3s_code_core=debug\`）`},
     },
-  }
+  }}
 />

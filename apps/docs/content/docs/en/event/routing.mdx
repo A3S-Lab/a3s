@@ -61,7 +61,7 @@ pub struct TriggerFilter {
 ```
 
 <TypeTable
-  type={
+  type={{
     "TriggerFilter::by_category("orders")": {
       description: {`Events with \`category == "orders"\``},
     },
@@ -71,7 +71,7 @@ pub struct TriggerFilter {
     "TriggerFilter::by_subject_prefix("events.market.")": {
       description: "Events whose subject starts with the prefix",
     },
-  }
+  }}
 />
 
 ## Event Sinks
@@ -79,7 +79,7 @@ pub struct TriggerFilter {
 ### Built-in Sinks
 
 <TypeTable
-  type={
+  type={{
     "TopicSink": {
       description: {`Re-publishes events to an \`EventProvider\` topic (fan-out)`},
     },
@@ -95,7 +95,7 @@ pub struct TriggerFilter {
     "FailingSink": {
       description: "Always fails delivery (testing error paths)",
     },
-  }
+  }}
 />
 
 ### Custom Sinks

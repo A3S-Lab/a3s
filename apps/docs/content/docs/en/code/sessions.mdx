@@ -482,7 +482,7 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
 ### Agent
 
 <TypeTable
-  type={
+  type={{
     "new": {
       description: {`Signature: \`Agent::new(config: &str) -> Result<Agent>\` · Description: Load from HCL file or string`},
     },
@@ -492,13 +492,13 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
     "session": {
       description: {`Signature: \`agent.session(workspace, options?) -> Result<AgentSession>\` · Description: Create a workspace-bound session`},
     },
-  }
+  }}
 />
 
 ### AgentSession
 
 <TypeTable
-  type={
+  type={{
     "Send prompt": {
       description: {`Rust: \`session.send(prompt, None).await?\` · Python: \`await session.send(prompt)\` · Node.js: \`await session.send(prompt)\``},
     },
@@ -526,7 +526,7 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
     "History": {
       description: {`Rust: \`session.history()\` · Python: \`session.history()\` · Node.js: \`session.history()\``},
     },
-  }
+  }}
 />
 
 ### SessionOptions
@@ -649,7 +649,7 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
 ### AgentResponse
 
 <TypeTable
-  type={
+  type={{
     "Text": {
       description: {`Rust: \`result.text\` · Python: \`result.text\` · Node.js: \`result.text\``},
     },
@@ -659,5 +659,5 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
     "Tool call count": {
       description: {`Rust: \`result.tool_calls_count\` · Python: \`result.tool_calls_count\` · Node.js: \`result.toolCallsCount\``},
     },
-  }
+  }}
 />

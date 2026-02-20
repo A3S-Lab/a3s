@@ -14,7 +14,7 @@ Skills 是可复用的提示模板，通过专业指令增强 agent 的系统提
 ## 内置 Skills
 
 <TypeTable
-  type={
+  type={{
     "code-search": {
       description: "工作区语义代码搜索",
     },
@@ -36,7 +36,7 @@ Skills 是可复用的提示模板，通过专业指令增强 agent 的系统提
     "find-skills": {
       description: "动态发现可用 skills",
     },
-  }
+  }}
 />
 
 ## 启用内置 Skills
@@ -200,7 +200,7 @@ const result = await session.send(
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "内置 skills": {
       description: {`Rust: \`.with_builtin_skills()\` · Python: \`builtin_skills=True\` · Node.js: \`builtinSkills: true\` · 默认值: \`false\``},
     },
@@ -210,13 +210,13 @@ const result = await session.send(
     "自定义注册表": {
       description: {`Rust: \`.with_skill_registry(Arc::new(r))\` · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: \`None\``},
     },
-  }
+  }}
 />
 
 ### Skill frontmatter 字段
 
 <TypeTable
-  type={
+  type={{
     "name": {
       description: {`类型: \`string\` · 必填: ✅ · 描述: 唯一 skill 标识符`},
     },
@@ -238,13 +238,13 @@ const result = await session.send(
     "version": {
       description: {`类型: \`string\` · 必填: ❌ · 描述: 语义版本字符串`},
     },
-  }
+  }}
 />
 
 ### 内置 skills
 
 <TypeTable
-  type={
+  type={{
     "code-search": {
       description: "触发短语: &quot;find code&quot;, &quot;search for&quot; · 效果: 语义代码搜索",
     },
@@ -266,5 +266,5 @@ const result = await session.send(
     "find-skills": {
       description: "触发短语: &quot;what skills&quot;, &quot;find skill&quot; · 效果: 动态 skill 发现",
     },
-  }
+  }}
 />

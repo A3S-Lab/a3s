@@ -140,7 +140,7 @@ lane.subscribeFiltered(
 ### Command Lifecycle
 
 <TypeTable
-  type={
+  type={{
     "queue.command.submitted": {
       description: {`When: \`submit()\` accepted · Payload fields: \`lane_id\``},
     },
@@ -162,20 +162,20 @@ lane.subscribeFiltered(
     "queue.command.timeout": {
       description: {`When: Timed out · Payload fields: \`lane_id\`, \`command_id\`, \`error\``},
     },
-  }
+  }}
 />
 
 ### Lane Pressure
 
 <TypeTable
-  type={
+  type={{
     "queue.lane.pressure": {
       description: {`When: \`pending >= threshold\` (first crossing) · Payload fields: \`lane_id\``},
     },
     "queue.lane.idle": {
       description: {`When: \`pending == 0\` after being pressured · Payload fields: \`lane_id\``},
     },
-  }
+  }}
 />
 
 These events require `with_pressure_threshold(n)` on the lane config. See [Lane pressure](/docs/lane/lanes#pressure-tracking).
@@ -183,11 +183,11 @@ These events require `with_pressure_threshold(n)` on the lane config. See [Lane 
 ### Shutdown
 
 <TypeTable
-  type={
+  type={{
     "queue.shutdown.started": {
       description: {`When: \`shutdown()\` called`},
     },
-  }
+  }}
 />
 
 ## LaneEvent Structure

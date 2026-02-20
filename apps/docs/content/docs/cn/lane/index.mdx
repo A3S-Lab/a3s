@@ -43,7 +43,7 @@ QueueManager
 ## 内置通道
 
 <TypeTable
-  type={
+  type={{
     "system": {
       description: "优先级: 0（最高） · 最大并发: 5 · 用途: 系统级操作",
     },
@@ -62,7 +62,7 @@ QueueManager
     "prompt": {
       description: "优先级: 5（最低） · 最大并发: 2 · 用途: LLM 提示处理",
     },
-  }
+  }}
 />
 
 优先级数字越小，优先级越高。调度器始终从有待处理任务的最高优先级通道取命令。
@@ -70,7 +70,7 @@ QueueManager
 ## 支持的语言
 
 <TypeTable
-  type={
+  type={{
     "Rust": {
       description: {`包: [\`a3s-lane\`](https://crates.io/crates/a3s-lane) · 安装: Cargo.toml 中添加 \`a3s-lane = "0.4"\``},
     },
@@ -80,7 +80,7 @@ QueueManager
     "Node.js": {
       description: {`包: [\`@a3s-lab/lane\`](https://www.npmjs.com/package/@a3s-lab/lane) · 安装: \`npm install @a3s-lab/lane\``},
     },
-  }
+  }}
 />
 
 ## 性能
@@ -88,7 +88,7 @@ QueueManager
 在 Apple Silicon（M 系列）release 构建下的基准测试：
 
 <TypeTable
-  type={
+  type={{
     "并发（10 通道）": {
       description: "33,000–50,000 ops/sec",
     },
@@ -101,7 +101,7 @@ QueueManager
     "指标开销": {
       description: "~3–5%",
     },
-  }
+  }}
 />
 
 ## 测试覆盖

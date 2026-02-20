@@ -21,7 +21,7 @@ A3S Code 提供 11 个内置工具，支持自定义工具注册和 MCP 集成�
 ### 文件操作
 
 <TypeTable
-  type={
+  type={{
     "read": {
       description: {`描述: 读取文件内容 · 参数: \`file_path\`, \`offset?\`, \`limit?\``},
     },
@@ -34,13 +34,13 @@ A3S Code 提供 11 个内置工具，支持自定义工具注册和 MCP 集成�
     "patch": {
       description: {`描述: 多处编辑（批量替换） · 参数: \`file_path\`, \`patches[]\``},
     },
-  }
+  }}
 />
 
 ### 搜索与导航
 
 <TypeTable
-  type={
+  type={{
     "glob": {
       description: {`描述: 按模式匹配文件 · 参数: \`pattern\`, \`path?\``},
     },
@@ -53,30 +53,30 @@ A3S Code 提供 11 个内置工具，支持自定义工具注册和 MCP 集成�
     "list_files": {
       description: {`描述: 递归列出所有文件 · 参数: \`path?\`, \`max_depth?\``},
     },
-  }
+  }}
 />
 
 ### 执行
 
 <TypeTable
-  type={
+  type={{
     "bash": {
       description: {`描述: 执行 shell 命令 · 参数: \`command\`, \`timeout?\``},
     },
-  }
+  }}
 />
 
 ### 网络
 
 <TypeTable
-  type={
+  type={{
     "web_fetch": {
       description: {`描述: 获取 URL 内容 · 参数: \`url\`, \`prompt?\``},
     },
     "web_search": {
       description: {`描述: 网络搜索 · 参数: \`query\`, \`domains?\``},
     },
-  }
+  }}
 />
 
 ## 直接工具调用
@@ -246,7 +246,7 @@ pub trait Tool: Send + Sync {
 ### ToolDefinition
 
 <TypeTable
-  type={
+  type={{
     "name": {
       description: {`类型: \`String\` · 描述: 工具名称`},
     },
@@ -256,13 +256,13 @@ pub trait Tool: Send + Sync {
     "parameters": {
       description: {`类型: \`Vec<ToolParameter>\` · 描述: 参数定义`},
     },
-  }
+  }}
 />
 
 ### ToolParameter
 
 <TypeTable
-  type={
+  type={{
     "name": {
       description: {`类型: \`String\` · 描述: 参数名称`},
     },
@@ -278,13 +278,13 @@ pub trait Tool: Send + Sync {
     "enum_values": {
       description: {`类型: \`Option<Vec<String>>\` · 描述: 可选的枚举值列表`},
     },
-  }
+  }}
 />
 
 ### ToolOutput
 
 <TypeTable
-  type={
+  type={{
     "ToolOutput::success(text)": {
       description: "创建成功输出",
     },
@@ -294,18 +294,18 @@ pub trait Tool: Send + Sync {
     ".with_images(attachments)": {
       description: "附加图片到输出",
     },
-  }
+  }}
 />
 
 ### ToolContext
 
 <TypeTable
-  type={
+  type={{
     "workspace": {
       description: {`类型: \`PathBuf\` · 描述: 当前工作区路径`},
     },
     "session_id": {
       description: {`类型: \`String\` · 描述: 当前会话 ID`},
     },
-  }
+  }}
 />

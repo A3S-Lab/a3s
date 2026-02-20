@@ -14,7 +14,7 @@ A3S Code 提供 8 个生命周期 hooks，用于在 agent 执行期间拦截和�
 ## Hook 事件
 
 <TypeTable
-  type={
+  type={{
     "PreToolUse": {
       description: "触发时机: 工具执行前 · 使用场景: 验证参数、污点追踪、阻止危险调用",
     },
@@ -39,7 +39,7 @@ A3S Code 提供 8 个生命周期 hooks，用于在 agent 执行期间拦截和�
     "SkillUnload": {
       description: "触发时机: Skill 卸载时 · 使用场景: 清理 skill 资源",
     },
-  }
+  }}
 />
 
 ## Hooks 工作原理
@@ -64,7 +64,7 @@ Agent 循环
 `SecurityGuard` 以优先级 1（最高）自动注册 hooks：
 
 <TypeTable
-  type={
+  type={{
     "PreToolUse": {
       description: "污点追踪 — 检查敏感值是否泄漏到工具参数中",
     },
@@ -77,7 +77,7 @@ Agent 循环
     "GenerateEnd": {
       description: "输出清洗 — 从 LLM 响应中脱敏 PII",
     },
-  }
+  }}
 />
 
 ## Hook 注册（Rust）
@@ -146,7 +146,7 @@ match result {
 Hooks 按优先级顺序执行。数字越小越先运行。
 
 <TypeTable
-  type={
+  type={{
     "1": {
       description: "SecurityGuard（内置，始终最先运行）",
     },
@@ -159,7 +159,7 @@ Hooks 按优先级顺序执行。数字越小越先运行。
     "50+": {
       description: "低优先级 hooks（分析、可选处理）",
     },
-  }
+  }}
 />
 
 如果任何 hook 返回 `HookResult::Block`，操作会被取消，该事件的后续 hooks 会被跳过。
@@ -172,7 +172,7 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 <Accordion title="PreToolUse — PreToolUseEvent">
 
 <TypeTable
-  type={
+  type={{
     "session_id": {
       description: {`类型: \`String\` · 描述: 会话标识符`},
     },
@@ -188,14 +188,14 @@ Hooks 按优先级顺序执行。数字越小越先运行。
     "recent_tools": {
       description: {`类型: \`Vec<String>\` · 描述: 最近调用的工具`},
     },
-  }
+  }}
 />
 
 </Accordion>
 <Accordion title="PostToolUse — PostToolUseEvent">
 
 <TypeTable
-  type={
+  type={{
     "session_id": {
       description: {`类型: \`String\` · 描述: 会话标识符`},
     },
@@ -217,14 +217,14 @@ Hooks 按优先级顺序执行。数字越小越先运行。
     "result.duration_ms": {
       description: {`类型: \`u64\` · 描述: 执行时间`},
     },
-  }
+  }}
 />
 
 </Accordion>
 <Accordion title="GenerateStart — GenerateStartEvent">
 
 <TypeTable
-  type={
+  type={{
     "session_id": {
       description: {`类型: \`String\` · 描述: 会话标识符`},
     },
@@ -243,14 +243,14 @@ Hooks 按优先级顺序执行。数字越小越先运行。
     "available_tools": {
       description: {`类型: \`Vec<String>\` · 描述: 已注册的工具名称`},
     },
-  }
+  }}
 />
 
 </Accordion>
 <Accordion title="GenerateEnd — GenerateEndEvent">
 
 <TypeTable
-  type={
+  type={{
     "session_id": {
       description: {`类型: \`String\` · 描述: 会话标识符`},
     },
@@ -266,7 +266,7 @@ Hooks 按优先级顺序执行。数字越小越先运行。
     "duration_ms": {
       description: {`类型: \`u64\` · 描述: 生成时间`},
     },
-  }
+  }}
 />
 
 </Accordion>
@@ -291,7 +291,7 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 ### Hook 注册
 
 <TypeTable
-  type={
+  type={{
     "注册 hook": {
       description: {`Rust: \`session.register_hook(Hook::new(id, event_type))\` · 描述: 注册 hook 监听器`},
     },
@@ -304,7 +304,7 @@ Hooks 按优先级顺序执行。数字越小越先运行。
     "计数": {
       description: {`Rust: \`session.hook_count()\` · 描述: 已注册的 hooks 数量`},
     },
-  }
+  }}
 />
 
 ### HookHandler trait（Rust）
@@ -324,7 +324,7 @@ impl HookHandler for MyHandler {
 ### HookResponse 值
 
 <TypeTable
-  type={
+  type={{
     "HookResponse::continue_()": {
       description: "允许操作继续",
     },
@@ -334,7 +334,7 @@ impl HookHandler for MyHandler {
     "HookResponse::modify(data)": {
       description: "在执行前替换事件数据",
     },
-  }
+  }}
 />
 
 ### Hook 优先级

@@ -12,7 +12,7 @@ SafeClaw integrates with hardware Trusted Execution Environments (TEE) for memor
 ## Supported Platforms
 
 <TypeTable
-  type={
+  type={{
     "AMD": {
       description: "Technology: SEV-SNP (Secure Encrypted Virtualization) · Status: Primary support",
     },
@@ -25,7 +25,7 @@ SafeClaw integrates with hardware Trusted Execution Environments (TEE) for memor
     "Apple": {
       description: "Technology: Secure Enclave · Status: Planned",
     },
-  }
+  }}
 />
 
 ## Configuration
@@ -112,7 +112,7 @@ The plaintext of sensitive data never exists outside the TEE's encrypted memory.
 SafeClaw degrades gracefully when TEE hardware is unavailable:
 
 <TypeTable
-  type={
+  type={{
     "Yes (SEV-SNP/SGX/CCA)": {
       description: "Full hardware memory encryption + attestation",
     },
@@ -122,7 +122,7 @@ SafeClaw degrades gracefully when TEE hardware is unavailable:
     "Simulation mode": {
       description: {`Fake TEE for development (\`mock-tee\` feature flag)`},
     },
-  }
+  }}
 />
 
 ```rust

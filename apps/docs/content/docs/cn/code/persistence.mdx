@@ -98,7 +98,7 @@ sessions_dir/
 ## 会话 API
 
 <TypeTable
-  type={
+  type={{
     "session_id()": {
       description: "返回会话的唯一 ID",
     },
@@ -108,7 +108,7 @@ sessions_dir/
     "agent.resume_session(id, opts)": {
       description: "加载已保存的会话并恢复历史",
     },
-  }
+  }}
 />
 
 ## 自动保存
@@ -149,7 +149,7 @@ let session = agent.session(".", Some(
 每个会话持久化的内容：
 
 <TypeTable
-  type={
+  type={{
     "id": {
       description: "会话标识符",
     },
@@ -168,7 +168,7 @@ let session = agent.session(".", Some(
     "tool_names": {
       description: "工具名称（恢复时重建）",
     },
-  }
+  }}
 />
 
 ## API 参考
@@ -176,17 +176,17 @@ let session = agent.session(".", Some(
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "自定义存储": {
       description: {`Rust: \`.with_session_store(Arc::new(s))\` · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: \`FileSessionStore\``},
     },
-  }
+  }}
 />
 
 ### SessionStore trait（Rust）
 
 <TypeTable
-  type={
+  type={{
     "save": {
       description: {`签名: \`async fn save(&self, data: &SessionData) -> Result<()>\` · 描述: 持久化会话数据`},
     },
@@ -199,13 +199,13 @@ let session = agent.session(".", Some(
     "list": {
       description: {`签名: \`async fn list(&self) -> Result<Vec<String>>\` · 描述: 列出所有会话 ID`},
     },
-  }
+  }}
 />
 
 ### SessionData 字段
 
 <TypeTable
-  type={
+  type={{
     "id": {
       description: {`类型: \`String\` · 描述: 会话标识符`},
     },
@@ -233,13 +233,13 @@ let session = agent.session(".", Some(
     "updated_at": {
       description: {`类型: \`DateTime<Utc>\` · 描述: 最后保存时间`},
     },
-  }
+  }}
 />
 
 ### 会话管理方法
 
 <TypeTable
-  type={
+  type={{
     "保存会话": {
       description: {`Rust: \`session.save().await?\` · 描述: 持久化当前状态`},
     },
@@ -252,5 +252,5 @@ let session = agent.session(".", Some(
     "删除会话": {
       description: {`Rust: \`agent.delete_session(id).await?\` · 描述: 删除已存储的会话`},
     },
-  }
+  }}
 />

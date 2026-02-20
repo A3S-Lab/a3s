@@ -14,7 +14,7 @@ A3S Code supports the [Model Context Protocol](https://modelcontextprotocol.io/)
 A3S Code supports two MCP transports:
 
 <TypeTable
-  type={
+  type={{
     "stdio": {
       type: "JSON-RPC 2.0 over stdin/stdout",
       description: "Local tools, CLI-based servers",
@@ -23,7 +23,7 @@ A3S Code supports two MCP transports:
       type: "JSON-RPC 2.0 over HTTP + Server-Sent Events",
       description: "Remote servers, shared infrastructure",
     },
-  }
+  }}
 />
 
 ## Configuration
@@ -133,7 +133,7 @@ mcp_servers {
 ### McpTransport trait (Rust)
 
 <TypeTable
-  type={
+  type={{
     "connect": {
       description: {`Signature: \`async fn connect(&mut self) -> Result<()>\` · Description: Establish connection to MCP server`},
     },
@@ -146,7 +146,7 @@ mcp_servers {
     "disconnect": {
       description: {`Signature: \`async fn disconnect(&mut self) -> Result<()>\` · Description: Close connection`},
     },
-  }
+  }}
 />
 
 ### Tool naming
@@ -154,7 +154,7 @@ mcp_servers {
 MCP tools are namespaced as `mcp__{server}__{tool}`. Use this prefix in permission rules:
 
 <TypeTable
-  type={
+  type={{
     "mcp__filesystem": {
       description: {`All tools from the \`filesystem\` server`},
     },
@@ -164,5 +164,5 @@ MCP tools are namespaced as `mcp__{server}__{tool}`. Use this prefix in permissi
     "mcp__*": {
       description: "All MCP tools",
     },
-  }
+  }}
 />

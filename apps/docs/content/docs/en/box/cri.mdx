@@ -47,7 +47,7 @@ A3S Box implements the Kubernetes [Container Runtime Interface (CRI)](https://ku
 ## CRI to Box Mapping
 
 <TypeTable
-  type={
+  type={{
     "Pod Sandbox": {
       description: "Box Equivalent: VmManager instance · Description: One MicroVM per pod",
     },
@@ -60,7 +60,7 @@ A3S Box implements the Kubernetes [Container Runtime Interface (CRI)](https://ku
     "Image Remove": {
       description: "Box Equivalent: ImageStore · Description: Remove from local cache",
     },
-  }
+  }}
 />
 
 ## RuntimeService
@@ -70,7 +70,7 @@ Maps CRI pod and container lifecycle to Box VM management:
 ### Lifecycle
 
 <TypeTable
-  type={
+  type={{
     "RunPodSandbox": {
       description: "Create and boot a new VmManager",
     },
@@ -104,13 +104,13 @@ Maps CRI pod and container lifecycle to Box VM management:
     "ListContainers": {
       description: "List containers in a sandbox",
     },
-  }
+  }}
 />
 
 ### Exec & Attach
 
 <TypeTable
-  type={
+  type={{
     "ExecSync": {
       description: "Execute command via ExecClient, return stdout/stderr/exit code",
     },
@@ -120,13 +120,13 @@ Maps CRI pod and container lifecycle to Box VM management:
     "Attach": {
       description: "Register streaming session, return URL for container attach",
     },
-  }
+  }}
 />
 
 ### Port Forward & Resources
 
 <TypeTable
-  type={
+  type={{
     "PortForward": {
       description: "Register streaming session, return URL for TCP port proxy",
     },
@@ -136,7 +136,7 @@ Maps CRI pod and container lifecycle to Box VM management:
     "ReopenContainerLog": {
       description: "Truncate container log file for rotation",
     },
-  }
+  }}
 />
 
 ## Streaming Server
@@ -166,14 +166,14 @@ Streaming Server → PTY Unix socket → vsock → Guest PTY Server
 ### Exec Modes
 
 <TypeTable
-  type={
+  type={{
     "Non-interactive": {
       description: {`TTY: No · Transport: ExecClient (HTTP/JSON) · Use Case: \`kubectl exec pod -- ls -la\``},
     },
     "Interactive": {
       description: {`TTY: Yes · Transport: PtyClient (frame protocol) · Use Case: \`kubectl exec -it pod -- /bin/sh\``},
     },
-  }
+  }}
 />
 
 ### Attach
@@ -205,7 +205,7 @@ let server = CriServer::new(socket_path, image_store, auth)
 ## ImageService
 
 <TypeTable
-  type={
+  type={{
     "PullImage": {
       description: "Pull OCI image via ImagePuller",
     },
@@ -218,7 +218,7 @@ let server = CriServer::new(socket_path, image_store, auth)
     "ListImages": {
       description: "List cached images",
     },
-  }
+  }}
 />
 
 ## Config Mapping
@@ -325,7 +325,7 @@ metadata:
 ## Limitations
 
 <TypeTable
-  type={
+  type={{
     "In-memory state": {
       description: "CRI server restart loses all sandbox/container tracking",
     },
@@ -341,5 +341,5 @@ metadata:
     "Fixed resources": {
       description: {`\`UpdateContainerResources\` is acknowledged but microVM CPU/memory cannot be changed after boot`},
     },
-  }
+  }}
 />

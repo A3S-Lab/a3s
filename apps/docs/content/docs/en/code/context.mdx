@@ -42,7 +42,7 @@ let session = agent.session("/project", Some(
 The agent emits events during compaction:
 
 <TypeTable
-  type={
+  type={{
     "ContextWarning": {
       description: "Context usage exceeds threshold",
     },
@@ -52,7 +52,7 @@ The agent emits events during compaction:
     "ContextCompacted": {
       description: "Compaction completed",
     },
-  }
+  }}
 />
 
 ## Context Providers
@@ -142,20 +142,20 @@ let query = ContextQuery::new("authentication flow")
 #### ContextType
 
 <TypeTable
-  type={
+  type={{
     "Memory": {
       description: "Memory items (episodic, semantic, procedural, working)",
     },
     "Resource": {
       description: "External resources (files, docs, code) — default",
     },
-  }
+  }}
 />
 
 #### ContextDepth
 
 <TypeTable
-  type={
+  type={{
     "Abstract": {
       description: "Token Budget: ~100 tokens · Description: Brief summary",
     },
@@ -165,7 +165,7 @@ let query = ContextQuery::new("authentication flow")
     "Full": {
       description: "Token Budget: Variable · Description: Complete content",
     },
-  }
+  }}
 />
 
 ### ContextItem
@@ -298,7 +298,7 @@ All providers are queried in parallel, and results are merged before injection i
 Context-related events emitted during streaming:
 
 <TypeTable
-  type={
+  type={{
     "ContextResolving": {
       description: "Context providers queried",
     },
@@ -314,7 +314,7 @@ Context-related events emitted during streaming:
     "ContextCompacted": {
       description: "Compaction completed",
     },
-  }
+  }}
 />
 
 See [Sessions](/docs/code/sessions) for full event reference.

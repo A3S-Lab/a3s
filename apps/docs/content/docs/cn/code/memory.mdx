@@ -69,7 +69,7 @@ result = session.send("记住：本项目部署在 AWS us-east-1")
 ## 记忆类型
 
 <TypeTable
-  type={
+  type={{
     "Episodic": {
       description: "用途: 具体事件和交互记录 · 默认重要性: 0.5",
     },
@@ -82,7 +82,7 @@ result = session.send("记住：本项目部署在 AWS us-east-1")
     "Working": {
       description: "用途: 当前任务的活跃上下文 · 默认重要性: 不固定",
     },
-  }
+  }}
 />
 
 失败记录以 `Episodic` 类型存储，重要性为 `0.9`，高于成功记录，确保 Agent 不会重蹈覆辙。
@@ -129,7 +129,7 @@ let item = MemoryItem::new("文件 I/O 优先使用 write_all 而非 write")
 ```
 
 <TypeTable
-  type={
+  type={{
     "id": {
       description: {`类型: \`String\` · 说明: UUID，自动生成`},
     },
@@ -157,7 +157,7 @@ let item = MemoryItem::new("文件 I/O 优先使用 write_all 而非 write")
     "last_accessed": {
       description: {`类型: \`Option<DateTime<Utc>>\` · 说明: 最近检索时间`},
     },
-  }
+  }}
 />
 
 ## 相关性评分
@@ -287,7 +287,7 @@ SessionOptions::new().with_memory(Arc::new(MyVectorStore::new()))
 ## 事件
 
 <TypeTable
-  type={
+  type={{
     "MemoryStored": {
       description: "记忆条目已持久化",
     },
@@ -300,7 +300,7 @@ SessionOptions::new().with_memory(Arc::new(MyVectorStore::new()))
     "MemoryCleared": {
       description: "所有记忆已清除",
     },
-  }
+  }}
 />
 
 ## API 参考
@@ -308,7 +308,7 @@ SessionOptions::new().with_memory(Arc::new(MyVectorStore::new()))
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     ".with_file_memory(path)": {
       description: {`在指定路径启用 \`FileMemoryStore\``},
     },
@@ -318,13 +318,13 @@ SessionOptions::new().with_memory(Arc::new(MyVectorStore::new()))
     ".with_memory_config(MemoryConfig)": {
       description: "配置相关性评分和各层容量",
     },
-  }
+  }}
 />
 
 ### MemoryStore trait
 
 <TypeTable
-  type={
+  type={{
     "store(item)": {
       description: "持久化记忆条目（按 ID upsert）",
     },
@@ -352,7 +352,7 @@ SessionOptions::new().with_memory(Arc::new(MyVectorStore::new()))
     "count()": {
       description: "记忆总数",
     },
-  }
+  }}
 />
 
 <Callout type="info">

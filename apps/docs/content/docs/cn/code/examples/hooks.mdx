@@ -14,7 +14,7 @@ Hooks 允许你拦截 agent 生命周期事件，用于审计、修改或阻止�
 ## Hook 事件类型
 
 <TypeTable
-  type={
+  type={{
     "PreToolUse": {
       description: "触发时机: 工具执行前 · 可阻止？: ✅",
     },
@@ -39,7 +39,7 @@ Hooks 允许你拦截 agent 生命周期事件，用于审计、修改或阻止�
     "SessionStart\` / \`SessionEnd": {
       description: "触发时机: 会话生命周期 · 可阻止？: ❌",
     },
-  }
+  }}
 />
 
 ## 审计 Hook（记录所有工具调用）
@@ -185,7 +185,7 @@ session.registerHook('no-bash', 'pre_tool_use', (event) => {
 ### Hook 注册
 
 <TypeTable
-  type={
+  type={{
     "注册 hook": {
       description: {`Rust: \`session.register_hook(hook)\` · Python: \`session.register_hook(id, event, fn)\` · Node.js: \`session.registerHook(id, event, fn)\``},
     },
@@ -198,13 +198,13 @@ session.registerHook('no-bash', 'pre_tool_use', (event) => {
     "计数": {
       description: {`Rust: \`session.hook_count()\` · Python: \`session.hook_count()\` · Node.js: \`session.hookCount()\``},
     },
-  }
+  }}
 />
 
 ### HookResponse（Rust）
 
 <TypeTable
-  type={
+  type={{
     "HookResponse::continue_()": {
       description: "允许操作继续",
     },
@@ -214,13 +214,13 @@ session.registerHook('no-bash', 'pre_tool_use', (event) => {
     "HookResponse::modify(data)": {
       description: "在执行前替换事件数据",
     },
-  }
+  }}
 />
 
 ### Hook 事件字段
 
 <TypeTable
-  type={
+  type={{
     "PreToolUse": {
       description: "tool: String\`, \`args: Value",
     },
@@ -236,5 +236,5 @@ session.registerHook('no-bash', 'pre_tool_use', (event) => {
     "OnError": {
       description: "error: String\`, \`turn: u32",
     },
-  }
+  }}
 />

@@ -12,7 +12,7 @@ Services define backend pools with load balancing, health checks, sticky session
 ## Load Balancing Strategies
 
 <TypeTable
-  type={
+  type={{
     "round-robin": {
       description: "Cycles through healthy backends sequentially",
     },
@@ -25,7 +25,7 @@ Services define backend pools with load balancing, health checks, sticky session
     "random": {
       description: "Selects a random healthy backend",
     },
-  }
+  }}
 />
 
 ```hcl

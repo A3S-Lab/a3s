@@ -60,7 +60,7 @@ let config = SearchConfig::parse(r#"
 ```
 
 <TypeTable
-  type={
+  type={{
     "SearchConfig::load(path)": {
       description: {`Load config from \`.hcl\` file`},
     },
@@ -73,7 +73,7 @@ let config = SearchConfig::parse(r#"
     "enabled_engines()": {
       description: "Get list of enabled engine shortcuts",
     },
-  }
+  }}
 />
 
 ## Health Monitor

@@ -42,7 +42,7 @@ let session = agent.session("/project", Some(
 Agent 在压缩期间发出事件：
 
 <TypeTable
-  type={
+  type={{
     "ContextWarning": {
       description: "上下文使用量超过阈值",
     },
@@ -52,7 +52,7 @@ Agent 在压缩期间发出事件：
     "ContextCompacted": {
       description: "压缩完成",
     },
-  }
+  }}
 />
 
 ## 上下文提供者
@@ -95,7 +95,7 @@ pub trait ContextProvider: Send + Sync {
 ### ContextQuery
 
 <TypeTable
-  type={
+  type={{
     "query": {
       description: {`类型: \`String\` · 描述: 搜索查询（通常是用户的提示）`},
     },
@@ -117,7 +117,7 @@ pub trait ContextProvider: Send + Sync {
     "params": {
       description: {`类型: \`HashMap<String, String>\` · 描述: 提供者特定的参数`},
     },
-  }
+  }}
 />
 
 Builder 方法使构造更便捷：
@@ -134,20 +134,20 @@ let query = ContextQuery::new("authentication flow")
 #### ContextType
 
 <TypeTable
-  type={
+  type={{
     "Memory": {
       description: "记忆条目（episodic、semantic、procedural、working）",
     },
     "Resource": {
       description: "外部资源（文件、文档、代码）— 默认",
     },
-  }
+  }}
 />
 
 #### ContextDepth
 
 <TypeTable
-  type={
+  type={{
     "Abstract": {
       description: "Token 预算: ~100 tokens · 描述: 简要摘要",
     },
@@ -157,13 +157,13 @@ let query = ContextQuery::new("authentication flow")
     "Full": {
       description: "Token 预算: 可变 · 描述: 完整内容",
     },
-  }
+  }}
 />
 
 ### ContextItem
 
 <TypeTable
-  type={
+  type={{
     "id": {
       description: {`类型: \`String\` · 描述: 唯一条目标识符`},
     },
@@ -185,7 +185,7 @@ let query = ContextQuery::new("authentication flow")
     "metadata": {
       description: {`类型: \`HashMap<String, String>\` · 描述: 额外元数据`},
     },
-  }
+  }}
 />
 
 条目通过 `to_xml()` 格式化为 XML 以注入系统提示。
@@ -283,7 +283,7 @@ let session = agent.session("/project", Some(
 流式传输期间发出的上下文相关事件：
 
 <TypeTable
-  type={
+  type={{
     "ContextResolving": {
       description: "上下文提供者被查询",
     },
@@ -299,7 +299,7 @@ let session = agent.session("/project", Some(
     "ContextCompacted": {
       description: "压缩完成",
     },
-  }
+  }}
 />
 
 参见 [会话](/cn/docs/code/sessions) 获取完整事件参考。
@@ -309,7 +309,7 @@ let session = agent.session("/project", Some(
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "文件系统上下文": {
       description: {`Rust: \`.with_fs_context(path)\` · Python: \`fs_context=path\` · Node.js: \`fsContext: path\` · 默认值: \`None\``},
     },
@@ -319,13 +319,13 @@ let session = agent.session("/project", Some(
     "压缩阈值": {
       description: {`Rust: \`.with_context_threshold(f)\` · Python: \`context_threshold=f\` · Node.js: \`contextThreshold: f\` · 默认值: \`0.8\``},
     },
-  }
+  }}
 />
 
 ### ContextProvider trait（Rust）
 
 <TypeTable
-  type={
+  type={{
     "retrieve": {
       description: {`签名: \`async fn retrieve(&self, query: &ContextQuery) -> Result<Vec<ContextItem>>\` · 描述: 获取相关上下文条目`},
     },
@@ -335,13 +335,13 @@ let session = agent.session("/project", Some(
     "name": {
       description: {`签名: \`fn name(&self) -> &str\` · 描述: 提供者标识符`},
     },
-  }
+  }}
 />
 
 ### ContextQuery 字段
 
 <TypeTable
-  type={
+  type={{
     "query": {
       description: {`类型: \`String\` · 描述: 自然语言查询`},
     },
@@ -354,13 +354,13 @@ let session = agent.session("/project", Some(
     "depth": {
       description: {`类型: \`ContextDepth\` · 描述: \`Abstract\` 或 \`Full\``},
     },
-  }
+  }}
 />
 
 ### ContextItem 字段
 
 <TypeTable
-  type={
+  type={{
     "content": {
       description: {`类型: \`String\` · 描述: 上下文文本`},
     },
@@ -373,13 +373,13 @@ let session = agent.session("/project", Some(
     "context_type": {
       description: {`类型: \`ContextType\` · 描述: \`File\`、\`Memory\`、\`Skill\`、\`Custom\``},
     },
-  }
+  }}
 />
 
 ### VectorContextConfig（Rust）
 
 <TypeTable
-  type={
+  type={{
     "VectorContextConfig::new(path)": {
       description: "描述: 设置工作区根目录",
     },
@@ -392,5 +392,5 @@ let session = agent.session("/project", Some(
     ".with_chunk_size(n)": {
       description: {`描述: 每块最大字符数 · 默认值: \`1500\``},
     },
-  }
+  }}
 />

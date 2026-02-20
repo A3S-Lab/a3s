@@ -22,7 +22,7 @@ a3s-box run [OPTIONS] IMAGE [-- COMMAND [ARGS...]]
 **Common flags:**
 
 <TypeTable
-  type={
+  type={{
     "-d, --detach": {
       description: "Description: Run in background",
     },
@@ -167,7 +167,7 @@ a3s-box run [OPTIONS] IMAGE [-- COMMAND [ARGS...]]
     "--tee-simulate": {
       description: "Description: TEE simulation mode (dev only)",
     },
-  }
+  }}
 />
 
 **Examples:**
@@ -225,11 +225,11 @@ a3s-box rm [OPTIONS] BOX [BOX...]
 ```
 
 <TypeTable
-  type={
+  type={{
     "-f, --force": {
       description: "Force remove running boxes",
     },
-  }
+  }}
 />
 
 ### pause / unpause
@@ -264,7 +264,7 @@ a3s-box container-update BOX [OPTIONS]
 ```
 
 <TypeTable
-  type={
+  type={{
     "--cpus N": {
       description: "Update vCPU count",
     },
@@ -274,7 +274,7 @@ a3s-box container-update BOX [OPTIONS]
     "--restart POLICY": {
       description: "Update restart policy",
     },
-  }
+  }}
 />
 
 ---
@@ -290,7 +290,7 @@ a3s-box exec [OPTIONS] BOX -- COMMAND [ARGS...]
 ```
 
 <TypeTable
-  type={
+  type={{
     "-i, --interactive": {
       description: "Description: Keep stdin open",
     },
@@ -309,7 +309,7 @@ a3s-box exec [OPTIONS] BOX -- COMMAND [ARGS...]
     "--timeout N": {
       description: {`Default: \`5\` · Description: Timeout in seconds`},
     },
-  }
+  }}
 />
 
 ```bash
@@ -347,7 +347,7 @@ a3s-box pull [OPTIONS] IMAGE
 ```
 
 <TypeTable
-  type={
+  type={{
     "--verify-key FILE": {
       description: "Verify cosign signature with public key",
     },
@@ -357,7 +357,7 @@ a3s-box pull [OPTIONS] IMAGE
     "--verify-identity IDENTITY": {
       description: "Verify keyless subject identity",
     },
-  }
+  }}
 />
 
 ```bash
@@ -382,7 +382,7 @@ a3s-box build [OPTIONS] PATH
 ```
 
 <TypeTable
-  type={
+  type={{
     "-t, --tag NAME:TAG": {
       description: "Image name and tag (repeatable)",
     },
@@ -401,7 +401,7 @@ a3s-box build [OPTIONS] PATH
     "--no-cache": {
       description: "Disable layer cache",
     },
-  }
+  }}
 />
 
 ```bash
@@ -422,14 +422,14 @@ a3s-box images [OPTIONS]
 ```
 
 <TypeTable
-  type={
+  type={{
     "-q, --quiet": {
       description: "Only show image IDs",
     },
     "--format FORMAT": {
       description: {`Go template format (\`{{.Repository}}\`, \`{{.Tag}}\`, \`{{.Digest}}\`, \`{{.Size}}\`, \`{{.CreatedAt}}\`)`},
     },
-  }
+  }}
 />
 
 ### rmi
@@ -484,7 +484,7 @@ a3s-box commit [OPTIONS] BOX IMAGE:TAG
 ```
 
 <TypeTable
-  type={
+  type={{
     "-m, --message MSG": {
       description: "Commit message",
     },
@@ -494,7 +494,7 @@ a3s-box commit [OPTIONS] BOX IMAGE:TAG
     "-c, --change INSTRUCTION": {
       description: "Apply Dockerfile instruction",
     },
-  }
+  }}
 />
 
 ### export
@@ -516,7 +516,7 @@ a3s-box ps [OPTIONS]
 ```
 
 <TypeTable
-  type={
+  type={{
     "-a, --all": {
       description: "Show all boxes (including stopped)",
     },
@@ -529,7 +529,7 @@ a3s-box ps [OPTIONS]
     "--format FORMAT": {
       description: {`Go template: \`{{.ID}}\`, \`{{.Name}}\`, \`{{.Image}}\`, \`{{.Status}}\`, \`{{.CreatedAt}}\`, \`{{.Health}}\``},
     },
-  }
+  }}
 />
 
 ```bash
@@ -552,7 +552,7 @@ a3s-box logs [OPTIONS] BOX
 ```
 
 <TypeTable
-  type={
+  type={{
     "-f, --follow": {
       description: "Follow log output",
     },
@@ -568,7 +568,7 @@ a3s-box logs [OPTIONS] BOX
     "-t, --timestamps": {
       description: "Show timestamps",
     },
-  }
+  }}
 />
 
 ### stats
@@ -590,14 +590,14 @@ a3s-box events [OPTIONS]
 ```
 
 <TypeTable
-  type={
+  type={{
     "--filter KEY=VALUE": {
       description: {`Filter by \`type=\`, \`action=\`, \`box=\``},
     },
     "--json": {
       description: "Output as JSON lines",
     },
-  }
+  }}
 />
 
 ### diff
@@ -635,7 +635,7 @@ a3s-box network create [OPTIONS] NAME
 ```
 
 <TypeTable
-  type={
+  type={{
     "--subnet CIDR": {
       description: {`Network subnet (e.g. \`10.88.0.0/24\`)`},
     },
@@ -645,7 +645,7 @@ a3s-box network create [OPTIONS] NAME
     "--isolation POLICY": {
       description: "none\` · \`strict\` · \`custom",
     },
-  }
+  }}
 />
 
 ### network ls / inspect / rm
@@ -732,7 +732,7 @@ a3s-box attest BOX [OPTIONS]
 ```
 
 <TypeTable
-  type={
+  type={{
     "--ratls": {
       description: "Use RA-TLS for attestation",
     },
@@ -751,7 +751,7 @@ a3s-box attest BOX [OPTIONS]
     "--allow-simulated": {
       description: "Accept simulated reports",
     },
-  }
+  }}
 />
 
 ### seal / unseal
@@ -762,7 +762,7 @@ a3s-box unseal BOX --context CTX [--allow-simulated]
 ```
 
 <TypeTable
-  type={
+  type={{
     "measurement-and-chip": {
       description: "Tied to image measurement + specific chip (default)",
     },
@@ -772,7 +772,7 @@ a3s-box unseal BOX --context CTX [--allow-simulated]
     "chip-only": {
       description: "Portable across images, same hardware",
     },
-  }
+  }}
 />
 
 ### inject-secret
@@ -798,7 +798,7 @@ a3s-box audit [OPTIONS]
 ```
 
 <TypeTable
-  type={
+  type={{
     "--action ACTION": {
       description: {`Filter by action (e.g. \`run\`, \`exec\`, \`stop\`)`},
     },
@@ -808,7 +808,7 @@ a3s-box audit [OPTIONS]
     "--outcome OUTCOME": {
       description: {`Filter by \`success\` or \`failure\``},
     },
-  }
+  }}
 />
 
 ---
@@ -855,7 +855,7 @@ Credentials stored in `~/.a3s/auth.json`.
 Boxes can be referenced by:
 
 <TypeTable
-  type={
+  type={{
     "Full UUID": {
       description: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     },
@@ -865,5 +865,5 @@ Boxes can be referenced by:
     "Name": {
       description: "my-box",
     },
-  }
+  }}
 />

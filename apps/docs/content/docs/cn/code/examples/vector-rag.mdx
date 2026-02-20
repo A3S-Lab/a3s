@@ -186,20 +186,20 @@ db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "文件系统上下文": {
       description: {`Rust: \`.with_fs_context(path)\` · Python: \`fs_context=path\` · Node.js: \`fsContext: path\` · 默认值: \`None\``},
     },
     "自定义上下文提供者": {
       description: {`Rust: \`.with_context_provider(Arc::new(p))\` · Python: _（基于配置）_ · Node.js: _（基于配置）_ · 默认值: \`None\``},
     },
-  }
+  }}
 />
 
 ### VectorContextConfig（Rust）
 
 <TypeTable
-  type={
+  type={{
     "VectorContextConfig::new(path)": {
       description: "描述: 设置工作区根目录",
     },
@@ -212,7 +212,7 @@ db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
     ".with_chunk_size(n)": {
       description: {`描述: 每个分块的最大字符数 · 默认值: \`1500\``},
     },
-  }
+  }}
 />
 
 ### HCL 配置（Python / Node.js）
@@ -229,12 +229,12 @@ context {
 ### codesearch 工具 schema
 
 <TypeTable
-  type={
+  type={{
     "query": {
       description: {`类型: \`string\` · 描述: 自然语言搜索查询`},
     },
     "limit": {
       description: {`类型: \`number\` · 描述: 最大结果数（默认：\`10\`）`},
     },
-  }
+  }}
 />

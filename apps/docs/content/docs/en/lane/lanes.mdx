@@ -22,7 +22,7 @@ let manager = QueueManagerBuilder::new(emitter)
 ```
 
 <TypeTable
-  type={
+  type={{
     "system": {
       description: "Priority: 0 · Min: 1 · Max: 5 · Use Case: System-level operations",
     },
@@ -41,7 +41,7 @@ let manager = QueueManagerBuilder::new(emitter)
     "prompt": {
       description: "Priority: 5 · Min: 1 · Max: 2 · Use Case: LLM prompt processing",
     },
-  }
+  }}
 />
 
 ## Custom Lanes
@@ -166,7 +166,7 @@ LaneConfig::new(1, 10).with_retry_policy(RetryPolicy::none())
 ```
 
 <TypeTable
-  type={
+  type={{
     "Exponential": {
       description: "Initial Delay: 100ms · Max Delay: 30s · Multiplier: 2x",
     },
@@ -174,7 +174,7 @@ LaneConfig::new(1, 10).with_retry_policy(RetryPolicy::none())
       description: "Initial Delay: User-defined",
     },
     "None": {},
-  }
+  }}
 />
 
 ### Rate Limiting

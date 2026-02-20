@@ -124,7 +124,7 @@ const session = agent.session('/my-project', {
 `DefaultSecurityProvider` 检测并脱敏以下内容：
 
 <TypeTable
-  type={
+  type={{
     "Anthropic API 密钥": {
       description: {`示例: \`sk-ant-api03-...\` · 脱敏为: \`[REDACTED]\``},
     },
@@ -143,7 +143,7 @@ const session = agent.session('/my-project', {
     "信用卡": {
       description: {`示例: \`4111 1111 1111 1111\` · 脱敏为: \`[REDACTED]\``},
     },
-  }
+  }}
 />
 
 <Callout type="info">
@@ -155,20 +155,20 @@ const session = agent.session('/my-project', {
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "默认安全": {
       description: {`Rust: \`.with_default_security()\` · Python: \`default_security=True\` · Node.js: \`defaultSecurity: true\` · 默认值: \`false\``},
     },
     "自定义提供者": {
       description: {`Rust: \`.with_security_provider(Arc::new(p))\` · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: \`None\``},
     },
-  }
+  }}
 />
 
 ### SecurityProvider trait（Rust）
 
 <TypeTable
-  type={
+  type={{
     "taint_input": {
       description: {`签名: \`fn taint_input(&self, text: &str)\` · 描述: 检查/注册用户输入中的敏感模式`},
     },
@@ -184,13 +184,13 @@ const session = agent.session('/my-project', {
     "teardown": {
       description: {`签名: \`fn teardown(&self)\` · 描述: 会话结束时调用`},
     },
-  }
+  }}
 />
 
 ### DefaultSecurityProvider 脱敏模式
 
 <TypeTable
-  type={
+  type={{
     "Anthropic API 密钥": {
       description: {`匹配示例: \`sk-ant-api03-...\` · 替换为: \`[REDACTED]\``},
     },
@@ -209,5 +209,5 @@ const session = agent.session('/my-project', {
     "信用卡": {
       description: {`匹配示例: \`4111 1111 1111 1111\` · 替换为: \`[REDACTED]\``},
     },
-  }
+  }}
 />

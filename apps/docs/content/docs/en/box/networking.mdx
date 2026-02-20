@@ -106,7 +106,7 @@ pub struct Ipam {
 The IPAM automatically assigns IPs to containers joining a network. It tracks used addresses and allocates the next available IP within the subnet.
 
 <TypeTable
-  type={
+  type={{
     "gateway()": {
       description: "Returns the gateway IP",
     },
@@ -122,7 +122,7 @@ The IPAM automatically assigns IPs to containers joining a network. It tracks us
     "next_ip()": {
       description: "Allocates the next available IP",
     },
-  }
+  }}
 />
 
 ### Passt Manager
@@ -184,7 +184,7 @@ a3s-box network rm my-net
 Regardless of network mode, host-guest control communication always uses vsock:
 
 <TypeTable
-  type={
+  type={{
     "4088": {
       description: "Service: Agent control · Purpose: Health checks, metrics",
     },
@@ -197,7 +197,7 @@ Regardless of network mode, host-guest control communication always uses vsock:
     "4091": {
       description: "Service: Attestation server · Purpose: TEE operations (RA-TLS)",
     },
-  }
+  }}
 />
 
 Vsock provides a reliable, low-latency channel that does not depend on network configuration.

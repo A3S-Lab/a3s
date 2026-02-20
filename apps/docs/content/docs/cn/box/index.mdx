@@ -52,7 +52,7 @@ A3S Box 是一个轻量级 MicroVM 运行时，提供类容器的使用体验和
 A3S Box 由 7 个 crate 组成，各司其职：
 
 <TypeTable
-  type={
+  type={{
     "a3s-box-core": {
       description: "共享类型：配置、错误、事件、网络模式、卷/PTY/DNS 类型",
     },
@@ -74,7 +74,7 @@ A3S Box 由 7 个 crate 组成，各司其职：
     "a3s-box-sdk": {
       description: "嵌入式沙箱 SDK：从 Rust 代码创建、执行、停止 MicroVM",
     },
-  }
+  }}
 />
 
 ## VM 生命周期
@@ -85,7 +85,7 @@ Created ──→ Ready ──→ Busy ──→ Compacting ──→ Ready ─�
 ```
 
 <TypeTable
-  type={
+  type={{
     "Created": {
       description: "配置已捕获，VM 尚未启动",
     },
@@ -101,7 +101,7 @@ Created ──→ Ready ──→ Busy ──→ Compacting ──→ Ready ─�
     "Stopped": {
       description: "VM 已终止，资源已释放",
     },
-  }
+  }}
 />
 
 ## Vsock 通信
@@ -109,7 +109,7 @@ Created ──→ Ready ──→ Busy ──→ Compacting ──→ Ready ─�
 宿主机与 Guest 通过 vsock（virtio socket）通信，各服务使用独立端口：
 
 <TypeTable
-  type={
+  type={{
     "4088": {
       description: "服务: Agent 控制 · 协议: gRPC（健康检查、指标）",
     },
@@ -122,7 +122,7 @@ Created ──→ Ready ──→ Busy ──→ Compacting ──→ Ready ─�
     "4091": {
       description: "服务: Attestation 服务 · 协议: gRPC + RA-TLS（TEE 操作）",
     },
-  }
+  }}
 />
 
 ## 主要特性

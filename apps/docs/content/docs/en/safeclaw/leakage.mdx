@@ -43,7 +43,7 @@ pub struct TaintRegistry {
 When a value is registered, the registry automatically generates variants:
 
 <TypeTable
-  type={
+  type={{
     "Original": {
       description: "user@example.com",
     },
@@ -59,7 +59,7 @@ When a value is registered, the registry automatically generates variants:
     "Reversed": {
       description: "moc.elpmaxe@resu",
     },
-  }
+  }}
 />
 
 This catches attempts to exfiltrate data through encoding transformations.

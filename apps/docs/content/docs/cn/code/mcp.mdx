@@ -14,14 +14,14 @@ A3S Code 支持 [Model Context Protocol](https://modelcontextprotocol.io/)（MCP
 A3S Code 支持两种 MCP 传输方式：
 
 <TypeTable
-  type={
+  type={{
     "stdio": {
       description: "协议: JSON-RPC 2.0 over stdin/stdout · 使用场景: 本地工具、基于 CLI 的服务器",
     },
     "http+sse": {
       description: "协议: JSON-RPC 2.0 over HTTP + Server-Sent Events · 使用场景: 远程服务器、共享基础设施",
     },
-  }
+  }}
 />
 
 ## 配置
@@ -118,7 +118,7 @@ mcp_servers {
 ### MCP 服务器配置字段
 
 <TypeTable
-  type={
+  type={{
     "name": {
       description: {`类型: \`string\` · 必填: ✅ · 描述: 服务器标识符（用于工具名称前缀）`},
     },
@@ -137,13 +137,13 @@ mcp_servers {
     "transport": {
       description: {`类型: \`string\` · 必填: ❌ · 描述: \`stdio\`（默认）或 \`http\``},
     },
-  }
+  }}
 />
 
 ### McpTransport trait（Rust）
 
 <TypeTable
-  type={
+  type={{
     "connect": {
       description: {`签名: \`async fn connect(&mut self) -> Result<()>\` · 描述: 建立到 MCP 服务器的连接`},
     },
@@ -156,7 +156,7 @@ mcp_servers {
     "disconnect": {
       description: {`签名: \`async fn disconnect(&mut self) -> Result<()>\` · 描述: 关闭连接`},
     },
-  }
+  }}
 />
 
 ### 工具命名
@@ -164,7 +164,7 @@ mcp_servers {
 MCP 工具命名为 `mcp__{server}__{tool}`。在权限规则中使用此前缀：
 
 <TypeTable
-  type={
+  type={{
     "mcp__filesystem": {
       description: {`\`filesystem\` 服务器的所有工具`},
     },
@@ -174,5 +174,5 @@ MCP 工具命名为 `mcp__{server}__{tool}`。在权限规则中使用此前缀�
     "mcp__*": {
       description: "所有 MCP 工具",
     },
-  }
+  }}
 />

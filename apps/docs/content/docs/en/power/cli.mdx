@@ -36,11 +36,11 @@ a3s-power pull --insecure my-registry.local/model
 ```
 
 <TypeTable
-  type={
+  type={{
     "--insecure": {
       description: "Skip TLS verification",
     },
-  }
+  }}
 />
 
 ### list
@@ -72,11 +72,11 @@ a3s-power show llama3.2 --verbose
 ```
 
 <TypeTable
-  type={
+  type={{
     "--verbose": {
       description: "Show full GGUF metadata",
     },
-  }
+  }}
 />
 
 ### delete
@@ -124,14 +124,14 @@ a3s-power push my-model --destination https://registry.example.com
 ```
 
 <TypeTable
-  type={
+  type={{
     "--destination": {
       description: "Remote registry URL",
     },
     "--insecure": {
       description: "Skip TLS verification",
     },
-  }
+  }}
 />
 
 ## Inference
@@ -154,7 +154,7 @@ a3s-power run llama3.2 --temperature 0.7 --num-predict 256 "Write a haiku"
 ```
 
 <TypeTable
-  type={
+  type={{
     "--temperature": {
       description: "Default: 0.8 · Description: Sampling temperature",
     },
@@ -194,7 +194,7 @@ a3s-power run llama3.2 --temperature 0.7 --num-predict 256 "Write a haiku"
     "--insecure": {
       description: "Description: Skip TLS verification",
     },
-  }
+  }}
 />
 
 In interactive mode, type your messages and press Enter. Use `/bye` or Ctrl+C to exit.
@@ -216,14 +216,14 @@ a3s-power serve --host 0.0.0.0 --port 8080
 ```
 
 <TypeTable
-  type={
+  type={{
     "--host": {
       description: {`Default: \`127.0.0.1\` · Description: Bind address`},
     },
     "--port": {
       description: {`Default: \`11434\` · Description: Bind port`},
     },
-  }
+  }}
 />
 
 ### ps

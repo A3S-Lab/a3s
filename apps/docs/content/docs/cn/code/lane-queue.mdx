@@ -20,7 +20,7 @@ Lane 队列系统通过基于优先级的队列路由工具执行，底层由 [a
 每个工具调用根据其类型映射到一个 **lane**：
 
 <TypeTable
-  type={
+  type={{
     "Control": {
       description: "优先级: P0（最高） · 工具: pause, resume, cancel · 行为: 顺序",
     },
@@ -33,7 +33,7 @@ Lane 队列系统通过基于优先级的队列路由工具执行，底层由 [a
     "Generate": {
       description: "优先级: P3（最低） · 工具: LLM 调用 · 行为: 顺序",
     },
-  }
+  }}
 />
 
 高优先级 lane 在低优先级 lane 之前调度 — 在 Execute（P2）任务之后提交的 Query（P1）任务会排在已排队的 Execute 任务之前。
@@ -357,7 +357,7 @@ for dl in &dead {
 ### 处理器模式
 
 <TypeTable
-  type={
+  type={{
     "Internal": {
       description: "行为: 在运行时内执行（默认） · 使用场景: 正常本地执行",
     },
@@ -367,7 +367,7 @@ for dl in &dead {
     "Hybrid": {
       description: "行为: 本地执行并通知 SDK · 使用场景: 监控、审计、影子执行",
     },
-  }
+  }}
 />
 
 ### ExternalTask
@@ -375,7 +375,7 @@ for dl in &dead {
 当工具调用进入 External 模式的 lane 时，队列创建一个 `ExternalTask`：
 
 <TypeTable
-  type={
+  type={{
     "task_id": {
       description: "类型: string · 描述: 唯一任务标识符（UUID）",
     },
@@ -394,7 +394,7 @@ for dl in &dead {
     "timeout_ms": {
       description: "类型: u64 · 描述: 队列等待超时前的时间",
     },
-  }
+  }}
 />
 
 方法：`is_timed_out()` 检查任务是否已过期，`remaining_ms()` 返回剩余时间。
@@ -404,7 +404,7 @@ for dl in &dead {
 通过提供以下内容完成任务：
 
 <TypeTable
-  type={
+  type={{
     "success": {
       description: "类型: bool · 描述: 执行是否成功",
     },
@@ -414,7 +414,7 @@ for dl in &dead {
     "error": {
       description: "类型: Option&lt;string&gt; · 描述: 失败时的错误消息",
     },
-  }
+  }}
 />
 
 ### 生命周期
@@ -510,7 +510,7 @@ session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
 ### SessionQueueConfig 字段
 
 <TypeTable
-  type={
+  type={{
     "query_max_concurrency": {
       description: {`类型: \`usize\` · 默认值: \`4\` · 描述: Query lane 最大并行任务数`},
     },
@@ -538,26 +538,26 @@ session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
     "pressure_threshold": {
       description: {`类型: \`usize\` · 默认值: \`50\` · 描述: 队列深度告警阈值`},
     },
-  }
+  }}
 />
 
 ### LaneHandlerConfig 字段
 
 <TypeTable
-  type={
+  type={{
     "mode": {
       description: {`类型: \`TaskHandlerMode\` · 描述: \`Internal\`、\`External\` 或 \`Hybrid\``},
     },
     "timeout_ms": {
       description: {`类型: \`Option<u64>\` · 描述: 外部任务超时`},
     },
-  }
+  }}
 />
 
 ### 队列管理方法
 
 <TypeTable
-  type={
+  type={{
     "提交任务": {
       description: {`Rust: \`session.submit_task(task).await?\` · Python: \`await session.submit_task({...})\` · Node.js: \`await session.submitTask({...})\``},
     },
@@ -573,13 +573,13 @@ session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
     "设置 lane 处理器": {
       description: {`Rust: \`session.set_lane_handler(lane, cfg).await\` · Python: \`await session.set_lane_handler(lane, cfg)\` · Node.js: \`await session.setLaneHandler(lane, cfg)\``},
     },
-  }
+  }}
 />
 
 ### RetryPolicy 字段
 
 <TypeTable
-  type={
+  type={{
     "strategy": {
       description: {`类型: \`string\` · 默认值: \`"exponential"\` · 描述: \`"fixed"\` 或 \`"exponential"\``},
     },
@@ -589,5 +589,5 @@ session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
     "initial_delay_ms": {
       description: {`类型: \`u64\` · 默认值: \`100\` · 描述: 初始重试延迟`},
     },
-  }
+  }}
 />

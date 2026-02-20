@@ -182,7 +182,7 @@ const session = agent.session('/my-project', {
 ### SessionOptions
 
 <TypeTable
-  type={
+  type={{
     "宽松策略": {
       description: {`Rust: \`.with_permissive_policy()\` · Python: \`permissive=True\` · Node.js: \`permissive: true\` · 默认值: \`false\``},
     },
@@ -195,13 +195,13 @@ const session = agent.session('/my-project', {
     "熔断器": {
       description: {`Rust: \`.with_circuit_breaker(n)\` · Python: \`circuit_breaker_threshold=n\` · Node.js: \`circuitBreakerThreshold: n\` · 默认值: \`5\``},
     },
-  }
+  }}
 />
 
 ### AgentResponse
 
 <TypeTable
-  type={
+  type={{
     "最终文本": {
       description: {`Rust: \`result.text\` · Python: \`result.text\` · Node.js: \`result.text\``},
     },
@@ -214,5 +214,5 @@ const session = agent.session('/my-project', {
     "历史记录": {
       description: {`Rust: \`session.history()\` · Python: \`session.history()\` · Node.js: \`session.history()\``},
     },
-  }
+  }}
 />

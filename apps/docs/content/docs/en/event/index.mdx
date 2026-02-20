@@ -14,7 +14,7 @@ A3S Event is a provider-agnostic event system for Rust. All backends implement t
 All optional modules are behind feature gates. The minimal core compiles with zero optional dependencies.
 
 <TypeTable
-  type={
+  type={{
     "nats": {
       description: "Default: ✅ · Description: NATS JetStream provider",
     },
@@ -27,7 +27,7 @@ All optional modules are behind feature gates. The minimal core compiles with ze
     "routing": {
       description: "Default: ✅ · Description: Broker/Trigger event routing + Event sinks",
     },
-  }
+  }}
 />
 
 ```toml
@@ -77,7 +77,7 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
 ## Provider Comparison
 
 <TypeTable
-  type={
+  type={{
     "Publish/Subscribe": {
       description: "MemoryProvider: ✅ · NatsProvider: ✅",
     },
@@ -108,13 +108,13 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
     "Use Case": {
       description: "MemoryProvider: Development, testing · NatsProvider: Production",
     },
-  }
+  }}
 />
 
 ## Core Types
 
 <TypeTable
-  type={
+  type={{
     "EventProvider": {
       description: "Core trait — all backends implement this",
     },
@@ -145,13 +145,13 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
     "DlqHandler": {
       description: "Dead letter queue trait",
     },
-  }
+  }}
 />
 
 ### Feature-Gated Types
 
 <TypeTable
-  type={
+  type={{
     "Aes256GcmEncryptor": {
       description: {`Feature: \`encryption\` · Description: AES-256-GCM with key rotation`},
     },
@@ -167,7 +167,7 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
     "NatsProvider": {
       description: {`Feature: \`nats\` · Description: NATS JetStream distributed provider`},
     },
-  }
+  }}
 />
 
 ## Test Coverage

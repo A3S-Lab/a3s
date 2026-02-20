@@ -105,7 +105,7 @@ Alerts are triggered when:
 ### Audit Endpoints
 
 <TypeTable
-  type={
+  type={{
     "/api/v1/audit/events": {
       type: "GET",
       description: "List recent audit events",
@@ -118,13 +118,13 @@ Alerts are triggered when:
       type: "GET",
       description: "Events for a specific session",
     },
-  }
+  }}
 />
 
 ### Events Endpoints
 
 <TypeTable
-  type={
+  type={{
     "/api/v1/events": {
       type: "GET",
       description: "List system events",
@@ -137,13 +137,13 @@ Alerts are triggered when:
       type: "GET",
       description: "SSE event stream",
     },
-  }
+  }}
 />
 
 ### Health and Status
 
 <TypeTable
-  type={
+  type={{
     "/health": {
       type: "GET",
       description: "Health check",
@@ -156,7 +156,7 @@ Alerts are triggered when:
       type: "GET",
       description: "Service discovery",
     },
-  }
+  }}
 />
 
 ### Example: Audit Events Response

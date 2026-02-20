@@ -59,7 +59,7 @@ let query = SearchQuery::new("rust async runtime")
 `SearchQuery` builder methods:
 
 <TypeTable
-  type={
+  type={{
     "new(query)": {
       description: "Create a new query",
     },
@@ -81,7 +81,7 @@ let query = SearchQuery::new("rust async runtime")
     "with_engines(engines)": {
       description: "Limit to specific engine shortcuts",
     },
-  }
+  }}
 />
 
 </Tab>
@@ -185,7 +185,7 @@ const response2 = await search.search('Rust 编程', {
 <Tab value="Python">
 
 <TypeTable
-  type={
+  type={{
     "search": {
       description: {`Signature: \`(query, *, engines?, limit?, timeout?, proxy?, proxy_pool?) → SearchResponse\` · Description: Run a search`},
     },
@@ -201,7 +201,7 @@ const response2 = await search.search('Rust 编程', {
     "proxy_pool_size": {
       description: {`Signature: \`() → int\` · Description: Number of proxies in pool`},
     },
-  }
+  }}
 />
 
 All methods are `async` except `set_proxy_pool_enabled` and `is_proxy_pool_enabled`.
@@ -210,7 +210,7 @@ All methods are `async` except `set_proxy_pool_enabled` and `is_proxy_pool_enabl
 <Tab value="Node.js">
 
 <TypeTable
-  type={
+  type={{
     "search": {
       description: {`Signature: \`(query: string, options?: SearchOptions) => Promise<SearchResponse>\` · Description: Run a search`},
     },
@@ -226,7 +226,7 @@ All methods are `async` except `set_proxy_pool_enabled` and `is_proxy_pool_enabl
     "proxyPoolSize": {
       description: {`Signature: \`() => Promise<number>\` · Description: Number of proxies in pool`},
     },
-  }
+  }}
 />
 
 </Tab>

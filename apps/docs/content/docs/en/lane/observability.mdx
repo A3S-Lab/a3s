@@ -53,7 +53,7 @@ if let Some(latency) = snapshot.histograms.get("lane.command.latency_ms.query") 
 **Counters** (monotonically increasing):
 
 <TypeTable
-  type={
+  type={{
     "lane.commands.submitted": {
       description: "Total commands submitted",
     },
@@ -72,33 +72,33 @@ if let Some(latency) = snapshot.histograms.get("lane.command.latency_ms.query") 
     "lane.commands.dead_lettered": {
       description: "Moved to DLQ",
     },
-  }
+  }}
 />
 
 **Gauges** (point-in-time values):
 
 <TypeTable
-  type={
+  type={{
     "lane.queue.depth.<lane_id>": {
       description: "Pending commands per lane",
     },
     "lane.queue.active.<lane_id>": {
       description: "Active commands per lane",
     },
-  }
+  }}
 />
 
 **Histograms** (distributions):
 
 <TypeTable
-  type={
+  type={{
     "lane.command.latency_ms.<lane_id>": {
       description: "Execution time distribution",
     },
     "lane.command.wait_time_ms.<lane_id>": {
       description: "Queue wait time distribution",
     },
-  }
+  }}
 />
 
 ### Histogram Percentiles
@@ -168,14 +168,14 @@ let manager = QueueManagerBuilder::new(emitter)
 ### Alert Levels
 
 <TypeTable
-  type={
+  type={{
     "Warning": {
       description: {`Queue Depth Trigger: >= warning threshold · Latency Trigger: >= warning threshold`},
     },
     "Critical": {
       description: {`Queue Depth Trigger: >= critical threshold · Latency Trigger: >= critical threshold`},
     },
-  }
+  }}
 />
 
 ### Alert Callbacks

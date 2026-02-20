@@ -40,7 +40,7 @@ let score = item.relevance_score_at(chrono::Utc::now(), &config);
 ## 衰减行为
 
 <TypeTable
-  type={
+  type={{
     "0 天": {
       description: "1.00",
     },
@@ -53,7 +53,7 @@ let score = item.relevance_score_at(chrono::Utc::now(), &config);
     "90 天": {
       description: "0.05",
     },
-  }
+  }}
 />
 
 高重要性记忆（`importance = 1.0`）在默认权重下的得分：
@@ -63,7 +63,7 @@ let score = item.relevance_score_at(chrono::Utc::now(), &config);
 ## 调优建议
 
 <TypeTable
-  type={
+  type={{
     "长期助手": {
       description: "decay_days: 365\`，\`importance_weight: 0.9",
     },
@@ -73,5 +73,5 @@ let score = item.relevance_score_at(chrono::Utc::now(), &config);
     "均等权重": {
       description: "importance_weight: 0.5\`，\`recency_weight: 0.5",
     },
-  }
+  }}
 />

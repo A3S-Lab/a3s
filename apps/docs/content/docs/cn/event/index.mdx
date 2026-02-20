@@ -14,7 +14,7 @@ A3S Event 是面向 Rust 的提供商无关事件系统。所有后端实现 `Ev
 所有可选模块都在特性门控后面，最小核心编译时零可选依赖。
 
 <TypeTable
-  type={
+  type={{
     "nats": {
       description: "默认: ✅ · 说明: NATS JetStream 提供商",
     },
@@ -27,7 +27,7 @@ A3S Event 是面向 Rust 的提供商无关事件系统。所有后端实现 `Ev
     "routing": {
       description: "默认: ✅ · 说明: Broker/Trigger 事件路由 + 事件 Sink",
     },
-  }
+  }}
 />
 
 ```toml
@@ -77,7 +77,7 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
 ## 提供商对比
 
 <TypeTable
-  type={
+  type={{
     "发布/订阅": {
       description: "MemoryProvider: ✅ · NatsProvider: ✅",
     },
@@ -108,13 +108,13 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
     "适用场景": {
       description: "MemoryProvider: 开发、测试 · NatsProvider: 生产",
     },
-  }
+  }}
 />
 
 ## 核心类型
 
 <TypeTable
-  type={
+  type={{
     "EventProvider": {
       description: "核心 trait — 所有后端实现此接口",
     },
@@ -145,7 +145,7 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
     "DlqHandler": {
       description: "死信队列 trait",
     },
-  }
+  }}
 />
 
 ## 测试覆盖

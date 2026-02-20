@@ -13,7 +13,7 @@ Subscribe to `AgentEvent` for real-time visibility into what the agent is doing 
 ## Event Types
 
 <TypeTable
-  type={
+  type={{
     "Start": {
       description: "Agent begins processing",
     },
@@ -35,7 +35,7 @@ Subscribe to `AgentEvent` for real-time visibility into what the agent is doing 
     "End": {
       description: "Agent finished",
     },
-  }
+  }}
 />
 
 ## Example
@@ -147,7 +147,7 @@ The auth module has been refactored. Key changes:
 ### stream()
 
 <TypeTable
-  type={
+  type={{
     "Start stream": {
       description: {`Rust: \`session.stream("prompt", None).await?\` · Python: \`session.stream("prompt")\` · Node.js: \`session.stream('prompt')\``},
     },
@@ -157,13 +157,13 @@ The auth module has been refactored. Key changes:
     "Await completion": {
       description: {`Rust: \`handle.await??\` · Python: _(auto)_ · Node.js: _(auto)_`},
     },
-  }
+  }}
 />
 
 ### AgentEvent types
 
 <TypeTable
-  type={
+  type={{
     "Agent started": {
       description: {`Rust variant: \`AgentEvent::Start\` · Python/Node.js \`type\`: \`start\``},
     },
@@ -194,5 +194,5 @@ The auth module has been refactored. Key changes:
     "Agent finished": {
       description: {`Rust variant: \`AgentEvent::End\` · Python/Node.js \`type\`: \`end\` · Fields: \`text\`, \`usage\``},
     },
-  }
+  }}
 />

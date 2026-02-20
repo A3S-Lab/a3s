@@ -49,7 +49,7 @@ Your Application (Rust / TypeScript / Python)
 Native bindings:
 
 <TypeTable
-  type={
+  type={{
     "Rust": {
       description: {`Package: \`a3s-code-core\` · Binding: Native`},
     },
@@ -59,13 +59,13 @@ Native bindings:
     "Node.js": {
       description: {`Package: \`@a3s-lab/code\` · Binding: napi-rs`},
     },
-  }
+  }}
 />
 
 ## Core Concepts
 
 <TypeTable
-  type={
+  type={{
     "Agent": {
       description: "Config-driven top-level object. Holds LLM client and config. Workspace-independent.",
     },
@@ -90,7 +90,7 @@ Native bindings:
     "AgentEvent": {
       description: {`\`#[non_exhaustive]\` event enum emitted during streaming — safe for SDK evolution.`},
     },
-  }
+  }}
 />
 
 ## Agent Loop
@@ -123,7 +123,7 @@ Maximum rounds per generation configurable via `max_tool_rounds` (default: 50).
 Two built-in layers, plus extensibility via traits:
 
 <TypeTable
-  type={
+  type={{
     "1": {
       description: "Component: Permission Policy · What it does: Deny → Allow → Ask → Default rule evaluation with glob patterns",
     },
@@ -139,7 +139,7 @@ Two built-in layers, plus extensibility via traits:
     "5": {
       description: "Component: HookEngine · What it does: Custom security logic via lifecycle hooks",
     },
-  }
+  }}
 />
 
 See [Security](/docs/code/security) for details.
@@ -181,7 +181,7 @@ See [Tasks](/docs/code/tasks) for details.
 The lane queue routes tool calls to different execution strategies:
 
 <TypeTable
-  type={
+  type={{
     "Query": {
       description: "Read-only operations (read, grep, glob, ls)",
       default: "Internal (parallel)",
@@ -194,7 +194,7 @@ The lane queue routes tool calls to different execution strategies:
       description: "LLM calls",
       default: "Internal",
     },
-  }
+  }}
 />
 
 Each lane can be switched to **External** mode to offload execution to remote workers. See [Lane Queue](/docs/code/lane-queue) for details.
@@ -204,7 +204,7 @@ Each lane can be switched to **External** mode to offload execution to remote wo
 Four memory types with pluggable storage backends:
 
 <TypeTable
-  type={
+  type={{
     "Episodic": {
       description: "Purpose: Session events and interactions · Storage: FileMemoryStore (default)",
     },
@@ -217,7 +217,7 @@ Four memory types with pluggable storage backends:
     "Working": {
       description: "Purpose: Current task context · Storage: In-memory (short-lived)",
     },
-  }
+  }}
 />
 
 Default backend: `FileMemoryStore` — one JSON file per item + compact index. Custom backends via `MemoryStore` trait.

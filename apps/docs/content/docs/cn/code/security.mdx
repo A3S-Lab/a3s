@@ -30,7 +30,7 @@ A3S Code 提供两个内置安全层：**权限策略** 和 **人机协同（HIT
 ### 规则类型
 
 <TypeTable
-  type={
+  type={{
     "deny": {
       description: "立即阻止工具调用",
     },
@@ -40,7 +40,7 @@ A3S Code 提供两个内置安全层：**权限策略** 和 **人机协同（HIT
     "ask": {
       description: "提示用户确认（通过 HITL）",
     },
-  }
+  }}
 />
 
 ### 模式匹配
@@ -52,7 +52,7 @@ Tool(pattern)
 ```
 
 <TypeTable
-  type={
+  type={{
     "bash(rm -rf:*)": {
       description: {`任何以 \`rm -rf\` 开头的 bash 命令`},
     },
@@ -65,7 +65,7 @@ Tool(pattern)
     "mcp__pencil": {
       description: {`所有 \`mcp__pencil__*\` 工具（前缀匹配）`},
     },
-  }
+  }}
 />
 
 通配符：`*` 匹配除 `/` 外的任何字符，`**` 匹配包括 `/` 的任何字符，`:*` 匹配任何后缀。
@@ -73,14 +73,14 @@ Tool(pattern)
 ### 预设策略
 
 <TypeTable
-  type={
+  type={{
     "PermissionPolicy::permissive()": {
       description: "默认允许所有工具（默认）",
     },
     "PermissionPolicy::strict()": {
       description: "默认拒绝所有工具",
     },
-  }
+  }}
 />
 
 ### 构建自定义策略
@@ -261,14 +261,14 @@ for event in session.stream("Clean up old logs"):
 ### 超时行为
 
 <TypeTable
-  type={
+  type={{
     "Reject": {
       description: "超时未响应则拒绝工具调用（默认）",
     },
     "Approve": {
       description: "超时未响应则批准工具调用",
     },
-  }
+  }}
 />
 
 ## 工作区边界
@@ -361,7 +361,7 @@ let session = agent.session("/project", Some(
 Agent 在流式传输期间发出安全相关事件：
 
 <TypeTable
-  type={
+  type={{
     "PermissionDenied": {
       description: "工具调用被权限策略阻止",
     },
@@ -374,7 +374,7 @@ Agent 在流式传输期间发出安全相关事件：
     "ConfirmationRejected": {
       description: "用户拒绝了工具调用",
     },
-  }
+  }}
 />
 
 参见 [会话](/cn/docs/code/sessions) 获取完整事件参考。
@@ -384,7 +384,7 @@ Agent 在流式传输期间发出安全相关事件：
 ### PermissionPolicy
 
 <TypeTable
-  type={
+  type={{
     "PermissionPolicy::new()": {
       description: "创建宽松默认策略",
     },
@@ -406,13 +406,13 @@ Agent 在流式传输期间发出安全相关事件：
     "session.set_permission_policy(p).await": {
       description: "应用到运行中的会话",
     },
-  }
+  }}
 />
 
 ### 模式语法
 
 <TypeTable
-  type={
+  type={{
     "bash(*)": {
       description: "所有 bash 调用",
     },
@@ -428,13 +428,13 @@ Agent 在流式传输期间发出安全相关事件：
     "mcp__github": {
       description: {`所有 \`mcp__github__*\` 工具`},
     },
-  }
+  }}
 />
 
 ### ConfirmationPolicy
 
 <TypeTable
-  type={
+  type={{
     "enabled": {
       description: {`类型: \`bool\` · 默认值: \`false\` · 描述: 启用 HITL`},
     },
@@ -444,13 +444,13 @@ Agent 在流式传输期间发出安全相关事件：
     "timeout_action": {
       description: {`类型: \`TimeoutAction\` · 默认值: \`Reject\` · 描述: 超时时 \`Reject\` 或 \`Allow\``},
     },
-  }
+  }}
 />
 
 ### SecurityProvider trait（Rust）
 
 <TypeTable
-  type={
+  type={{
     "taint_input": {
       description: {`签名: \`fn taint_input(&self, text: &str)\` · 描述: 检查用户输入中的敏感模式`},
     },
@@ -466,5 +466,5 @@ Agent 在流式传输期间发出安全相关事件：
     "teardown": {
       description: {`签名: \`fn teardown(&self)\` · 描述: 会话结束时调用`},
     },
-  }
+  }}
 />

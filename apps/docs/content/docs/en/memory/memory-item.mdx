@@ -39,7 +39,7 @@ let item = MemoryItem::new("Auth uses JWT with 24h expiry")
 ## Builder methods
 
 <TypeTable
-  type={
+  type={{
     ".with_importance(f32)": {
       description: "Set importance, clamped to 0.0–1.0",
     },
@@ -55,13 +55,13 @@ let item = MemoryItem::new("Auth uses JWT with 24h expiry")
     ".with_metadata(key, value)": {
       description: "Insert a metadata key-value pair",
     },
-  }
+  }}
 />
 
 ## Memory types
 
 <TypeTable
-  type={
+  type={{
     "Episodic": {
       description: "Purpose: Specific events and interactions · Typical importance: 0.5",
     },
@@ -74,5 +74,5 @@ let item = MemoryItem::new("Auth uses JWT with 24h expiry")
     "Working": {
       description: "Purpose: Active context for the current task · Typical importance: varies",
     },
-  }
+  }}
 />

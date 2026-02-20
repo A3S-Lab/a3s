@@ -18,7 +18,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 ## 处理器模式
 
 <TypeTable
-  type={
+  type={{
     "Internal": {
       description: "任务在进程内执行（默认）",
     },
@@ -28,7 +28,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
     "Hybrid": {
       description: "先尝试外部，失败后回退到内部",
     },
-  }
+  }}
 />
 
 ## 基本外部处理器
@@ -182,20 +182,20 @@ results.forEach((r) => console.log(r.text));
 ### LaneHandlerConfig
 
 <TypeTable
-  type={
+  type={{
     "mode": {
       description: {`类型: \`"internal"\` \\ · 描述: \`"external"\` \\`},
     },
     "timeout_ms": {
       description: {`类型: \`Option<u64>\` · 描述: 等待外部 worker 响应的最大时间`},
     },
-  }
+  }}
 />
 
 ### 外部任务方法
 
 <TypeTable
-  type={
+  type={{
     "设置处理器": {
       description: {`Rust: \`session.set_external_task_handler(fn).await\` · Python: \`session.set_external_task_handler(fn)\` · Node.js: \`session.setExternalTaskHandler(fn)\``},
     },
@@ -205,13 +205,13 @@ results.forEach((r) => console.log(r.text));
     "完成任务": {
       description: {`Rust: \`session.complete_external_task(id, result).await\` · Python: \`await session.complete_external_task(id, result)\` · Node.js: \`await session.completeExternalTask(id, result)\``},
     },
-  }
+  }}
 />
 
 ### ExternalTaskResult 字段
 
 <TypeTable
-  type={
+  type={{
     "success": {
       description: {`类型: \`bool\` · 描述: 任务是否成功完成`},
     },
@@ -221,5 +221,5 @@ results.forEach((r) => console.log(r.text));
     "error": {
       description: {`类型: \`Option<String>\` · 描述: \`success\` 为 \`false\` 时的错误消息`},
     },
-  }
+  }}
 />
