@@ -2,6 +2,8 @@ import type { MetadataRoute } from 'next';
 import { source } from '@/lib/source';
 import { blog } from '@/lib/blog';
 
+export const dynamic = 'force-static';
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://a3s.dev';
 
 function postSlug(path: string) {
