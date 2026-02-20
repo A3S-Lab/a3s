@@ -14,6 +14,7 @@
     "@types/mdx": "^2.0.13",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "codehike": "^1.0.7",
     "fumadocs-core": "^16.6.1",
     "fumadocs-mdx": "^14.2.7",
     "fumadocs-ui": "^16.6.1",

@@ -25,7 +25,7 @@ export default async function Page(props: PageProps) {
     <DocsPage toc={page.data.toc} full={page.data.full}>
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
-      <DocsBody>
+      <DocsBody className="dark:prose-invert">
         <MDX
           components={getMDXComponents({
             a: createRelativeLink(source, page),

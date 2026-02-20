@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
+import { ScrollToTop } from '@/components/scroll-to-top';
 import './global.css';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://a3s.dev';
@@ -87,6 +88,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="flex flex-col min-h-screen">
         {children}
+        <ScrollToTop />
       </body>
     </html>
   );

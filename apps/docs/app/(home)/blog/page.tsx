@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import { blog } from '@/lib/blog';
 import Link from 'next/link';
-import { ArrowRight, Github } from 'lucide-react';
-import { LangDropdown } from '@/components/lang-dropdown';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { ArrowRight } from 'lucide-react';
+import { SiteNav } from '@/components/site-nav';
 
 export const metadata: Metadata = {
   title: 'Blog',
@@ -29,35 +28,7 @@ export default async function BlogPage() {
       style={{ background: 'var(--ct-bg)', fontFamily: 'var(--ct-font)', color: 'var(--ct-text)' }}
     >
       {/* ── Nav ── */}
-      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-xl font-extrabold tracking-tight text-transparent">
-              A3S
-            </span>
-            <span className="text-sm font-medium text-slate-400 dark:text-slate-500">Blog</span>
-          </Link>
-          <div className="flex items-center gap-1">
-            <Link
-              href="/docs/code"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-            >
-              Docs
-            </Link>
-            <Link
-              href="https://github.com/A3S-Lab"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 sm:flex"
-            >
-              <Github className="h-4 w-4" />
-              GitHub
-            </Link>
-            <LangDropdown />
-            <ThemeToggle />
-          </div>
-        </div>
-      </nav>
+      <SiteNav section="Blog" />
 
       {/* ── Header ── */}
       <section className="px-4 py-16 sm:px-6 sm:py-20">

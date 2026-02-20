@@ -1,7 +1,4 @@
-'use client';
-
 import Link from 'next/link';
-import { useRef, useState, useEffect } from 'react';
 import {
   ArrowRight,
   Bot,
@@ -13,12 +10,13 @@ import {
   Radio,
   Search,
   Database,
-  Github,
   Package,
   Lock,
   Zap,
   Puzzle,
 } from 'lucide-react';
+import { GithubInfo } from 'fumadocs-ui/components/github-info';
+
 import { SiteNav } from '@/components/site-nav';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
@@ -31,7 +29,6 @@ const t = {
     heroSub:
       'A3S is a modular Rust ecosystem for production AI agents — hardware TEE isolation, privacy-aware security, and a full agent framework in one coherent stack.',
     getStarted: 'Get Started',
-    viewGithub: 'View on GitHub',
 
     // Why A3S
     whyLabel: 'Why A3S',
@@ -60,15 +57,6 @@ const t = {
       },
     ],
 
-    // Stats
-    statsLabel: 'By the numbers',
-    stats: [
-      { value: '3,700+', label: 'unit tests' },
-      { value: '~200ms', label: 'VM cold start' },
-      { value: '50k', label: 'ops/sec (Lane)' },
-      { value: '9', label: 'search engines' },
-    ],
-
     frameworkLabel: 'Framework',
     frameworkHeading: 'Build agents, not boilerplate',
     appsLabel: 'Applications',
@@ -80,7 +68,6 @@ const t = {
     ctaHeading: 'Ready to build?',
     ctaSub: 'Start with the Code framework and add modules as you need them.',
     readDocs: 'Read the Docs',
-    starGithub: 'Star on GitHub',
     docsLink: 'Documentation',
     footerLicense: '· MIT License · ©',
   },
@@ -91,7 +78,6 @@ const t = {
     heroSub:
       'A3S 是面向生产环境的模块化 Rust 生态 — 硬件 TEE 隔离、隐私感知安全和完整的 Agent 框架，构成一套连贯的技术栈。',
     getStarted: '快速开始',
-    viewGithub: '查看 GitHub',
 
     whyLabel: '为什么选 A3S',
     whyHeading: 'A3S 解决的核心问题',
@@ -119,14 +105,6 @@ const t = {
       },
     ],
 
-    statsLabel: '数字说话',
-    stats: [
-      { value: '3,700+', label: '单元测试' },
-      { value: '~200ms', label: 'VM 冷启动' },
-      { value: '50k', label: 'ops/sec（Lane）' },
-      { value: '9', label: '搜索引擎' },
-    ],
-
     frameworkLabel: '框架',
     frameworkHeading: '构建 Agent，而非样板代码',
     appsLabel: '应用',
@@ -138,7 +116,6 @@ const t = {
     ctaHeading: '准备好了吗？',
     ctaSub: '从 Code 框架开始，按需添加模块。',
     readDocs: '阅读文档',
-    starGithub: 'GitHub Star',
     docsLink: '文档',
     footerLicense: '· MIT 协议 · ©',
   },
@@ -278,54 +255,6 @@ const installSnippets = [
   { label: 'Homebrew', cmd: 'brew tap a3s-lab/tap && brew install a3s-search a3s-power' },
 ];
 
-// ─── CountUp ──────────────────────────────────────────────────────────────────
-
-function CountUp({ value, label }: { value: string; label: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [display, setDisplay] = useState('0');
-
-  // Parse numeric part and suffix (e.g. "3,700+" → num=3700, suffix="+")
-  const raw = value.replace(/,/g, '');
-  const match = raw.match(/^(~?)(\d+)(.*)$/);
-  const prefix = match?.[1] ?? '';
-  const target = match ? parseInt(match[2], 10) : 0;
-  const suffix = match?.[3] ?? '';
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
-        observer.disconnect();
-        const duration = 1200;
-        const start = performance.now();
-        const tick = (now: number) => {
-          const progress = Math.min((now - start) / duration, 1);
-          // ease-out cubic
-          const eased = 1 - Math.pow(1 - progress, 3);
-          const current = Math.round(eased * target);
-          setDisplay(prefix + current.toLocaleString() + suffix);
-          if (progress < 1) requestAnimationFrame(tick);
-        };
-        requestAnimationFrame(tick);
-      },
-      { threshold: 0.5 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [target, prefix, suffix]);
-
-  return (
-    <div ref={ref} className="text-center">
-      <div className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl tabular-nums">
-        {display}
-      </div>
-      <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">{label}</div>
-    </div>
-  );
-}
-
 // ─── ModuleCard ───────────────────────────────────────────────────────────────
 
 function ModuleCard({
@@ -394,21 +323,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
             <Link href={docsHref} className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-7 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5" style={{ boxShadow: 'var(--ct-shadow-btn)' }}>
               {tr.getStarted}<ArrowRight className="h-4 w-4" />
             </Link>
-            <Link href="https://github.com/A3S-Lab" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700">
-              <Github className="h-4 w-4" />{tr.viewGithub}
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Stats ── */}
-      <section className="border-y border-slate-100 bg-slate-50/60 px-4 py-10 dark:border-slate-800 dark:bg-slate-900/40 sm:px-6">
-        <div className="mx-auto max-w-7xl">
-          <p className="mb-6 text-center text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">{tr.statsLabel}</p>
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-            {tr.stats.map(({ value, label }) => (
-              <CountUp key={label} value={value} label={label} />
-            ))}
+            <GithubInfo owner="A3S-Lab" repo="a3s" className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700" />
           </div>
         </div>
       </section>
@@ -511,9 +426,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
                 <Link href={docsHref} className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-indigo-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-50">
                   {tr.readDocs}<ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link href="https://github.com/A3S-Lab" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-indigo-400/40 px-7 py-3.5 text-sm font-semibold text-indigo-200 transition-all duration-200 hover:border-indigo-300 hover:text-white">
-                  <Github className="h-4 w-4" />{tr.starGithub}
-                </Link>
+                <GithubInfo owner="A3S-Lab" repo="a3s" className="rounded-full border border-indigo-400/40 px-5 py-3 text-sm font-semibold text-indigo-200 transition-all duration-200 hover:border-indigo-300 hover:text-white [&_svg]:text-indigo-300" />
               </div>
             </div>
           </div>
