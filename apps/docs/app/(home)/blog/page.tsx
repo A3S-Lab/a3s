@@ -1,8 +1,18 @@
+import type { Metadata } from 'next';
 import { blog } from '@/lib/blog';
 import Link from 'next/link';
 import { ArrowRight, Github } from 'lucide-react';
 import { LangDropdown } from '@/components/lang-dropdown';
 import { ThemeToggle } from '@/components/theme-toggle';
+
+export const metadata: Metadata = {
+  title: 'Blog',
+  description: 'Engineering articles, release notes, and deep dives from the A3S team.',
+  openGraph: {
+    title: 'A3S Blog',
+    description: 'Engineering articles, release notes, and deep dives from the A3S team.',
+  },
+};
 
 function postSlug(path: string) {
   return path.replace(/^\//, '').replace(/\.mdx$/, '');
