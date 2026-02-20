@@ -1,7 +1,4 @@
-'use client';
-
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import {
   ArrowRight,
   Bot,
@@ -15,8 +12,8 @@ import {
   Database,
   Github,
   Package,
-  Languages,
 } from 'lucide-react';
+import { LangDropdown } from '@/components/lang-dropdown';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 
@@ -44,8 +41,6 @@ const t = {
     starGithub: 'Star on GitHub',
     docsLink: 'Documentation',
     footerLicense: '· MIT License · ©',
-    langSwitch: '中文',
-    langHref: '/cn',
   },
   cn: {
     badge: '开源 · MIT 协议 · Rust 构建',
@@ -70,8 +65,6 @@ const t = {
     starGithub: 'GitHub Star',
     docsLink: '文档',
     footerLicense: '· MIT 协议 · ©',
-    langSwitch: 'English',
-    langHref: '/',
   },
 } as const;
 
@@ -251,31 +244,6 @@ function ModuleCard({
   );
 }
 
-// ─── LangSwitcher ─────────────────────────────────────────────────────────────
-
-function LangSwitcher({ lang }: { lang: Lang }) {
-  const tr = t[lang];
-  const pathname = usePathname();
-
-  // For CN: swap /cn prefix out. For EN: swap / to /cn.
-  const targetHref =
-    lang === 'en'
-      ? pathname.replace(/^\//, '/cn/')  // / → /cn/  (won't match /docs/...)
-      : pathname.replace(/^\/cn/, '') || '/'; // /cn/... → /...
-
-  // Simpler: just use the static root switch
-  return (
-    <Link
-      href={tr.langHref}
-      className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
-      aria-label={lang === 'en' ? 'Switch to Chinese' : '切换为英文'}
-    >
-      <Languages className="h-4 w-4" />
-      {tr.langSwitch}
-    </Link>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
@@ -317,7 +285,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
               <Github className="h-4 w-4" />
               GitHub
             </Link>
-            <LangSwitcher lang={lang} />
+            <LangDropdown />
           </div>
         </div>
       </nav>
