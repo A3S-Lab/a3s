@@ -10,12 +10,12 @@ import {
   Radio,
   Search,
   Database,
+  Github,
   Package,
   Lock,
   Zap,
   Puzzle,
 } from 'lucide-react';
-import { GithubInfo } from 'fumadocs-ui/components/github-info';
 
 import { SiteNav } from '@/components/site-nav';
 
@@ -29,6 +29,7 @@ const t = {
     heroSub:
       'A3S is a modular Rust ecosystem for production AI agents — hardware TEE isolation, privacy-aware security, and a full agent framework in one coherent stack.',
     getStarted: 'Get Started',
+    viewGithub: 'View on GitHub',
 
     // Why A3S
     whyLabel: 'Why A3S',
@@ -68,6 +69,7 @@ const t = {
     ctaHeading: 'Ready to build?',
     ctaSub: 'Start with the Code framework and add modules as you need them.',
     readDocs: 'Read the Docs',
+    starGithub: 'Star on GitHub',
     docsLink: 'Documentation',
     footerLicense: '· MIT License · ©',
   },
@@ -78,6 +80,7 @@ const t = {
     heroSub:
       'A3S 是面向生产环境的模块化 Rust 生态 — 硬件 TEE 隔离、隐私感知安全和完整的 Agent 框架，构成一套连贯的技术栈。',
     getStarted: '快速开始',
+    viewGithub: '查看 GitHub',
 
     whyLabel: '为什么选 A3S',
     whyHeading: 'A3S 解决的核心问题',
@@ -116,6 +119,7 @@ const t = {
     ctaHeading: '准备好了吗？',
     ctaSub: '从 Code 框架开始，按需添加模块。',
     readDocs: '阅读文档',
+    starGithub: 'GitHub Star',
     docsLink: '文档',
     footerLicense: '· MIT 协议 · ©',
   },
@@ -323,7 +327,9 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
             <Link href={docsHref} className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-7 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5" style={{ boxShadow: 'var(--ct-shadow-btn)' }}>
               {tr.getStarted}<ArrowRight className="h-4 w-4" />
             </Link>
-            <GithubInfo owner="A3S-Lab" repo="a3s" className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700" />
+            <Link href="https://github.com/A3S-Lab" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700">
+              <Github className="h-4 w-4" />{tr.viewGithub}
+            </Link>
           </div>
         </div>
       </section>
@@ -426,7 +432,9 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
                 <Link href={docsHref} className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-indigo-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-50">
                   {tr.readDocs}<ArrowRight className="h-4 w-4" />
                 </Link>
-                <GithubInfo owner="A3S-Lab" repo="a3s" className="rounded-full border border-indigo-400/40 px-5 py-3 text-sm font-semibold text-indigo-200 transition-all duration-200 hover:border-indigo-300 hover:text-white [&_svg]:text-indigo-300" />
+                <Link href="https://github.com/A3S-Lab" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-indigo-400/40 px-7 py-3.5 text-sm font-semibold text-indigo-200 transition-all duration-200 hover:border-indigo-300 hover:text-white">
+                  <Github className="h-4 w-4" />{tr.starGithub}
+                </Link>
               </div>
             </div>
           </div>
