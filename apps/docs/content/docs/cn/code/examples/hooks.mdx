@@ -4,6 +4,7 @@ description: 生命周期事件拦截 — PreToolUse、PostToolUse、PrePrompt�
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Hooks
@@ -12,16 +13,34 @@ Hooks 允许你拦截 agent 生命周期事件，用于审计、修改或阻止�
 
 ## Hook 事件类型
 
-| 事件 | 触发时机 | 可阻止？ |
-|-------|-----------|-----------|
-| `PreToolUse` | 工具执行前 | ✅ |
-| `PostToolUse` | 工具完成后 | ❌ |
-| `PrePrompt` | 提示发送到 LLM 前 | ✅ |
-| `PostResponse` | LLM 响应后 | ❌ |
-| `OnError` | 任何 agent 错误时 | ❌ |
-| `GenerateStart` | LLM 生成开始 | ❌ |
-| `GenerateEnd` | LLM 生成结束 | ❌ |
-| `SessionStart` / `SessionEnd` | 会话生命周期 | ❌ |
+<TypeTable
+  type={
+    {`\`PreToolUse\``}: {
+      description: "触发时机: 工具执行前 · 可阻止？: ✅",
+    },
+    {`\`PostToolUse\``}: {
+      description: "触发时机: 工具完成后 · 可阻止？: ❌",
+    },
+    {`\`PrePrompt\``}: {
+      description: "触发时机: 提示发送到 LLM 前 · 可阻止？: ✅",
+    },
+    {`\`PostResponse\``}: {
+      description: "触发时机: LLM 响应后 · 可阻止？: ❌",
+    },
+    {`\`OnError\``}: {
+      description: "触发时机: 任何 agent 错误时 · 可阻止？: ❌",
+    },
+    {`\`GenerateStart\``}: {
+      description: "触发时机: LLM 生成开始 · 可阻止？: ❌",
+    },
+    {`\`GenerateEnd\``}: {
+      description: "触发时机: LLM 生成结束 · 可阻止？: ❌",
+    },
+    {`\`SessionStart\` / \`SessionEnd\``}: {
+      description: "触发时机: 会话生命周期 · 可阻止？: ❌",
+    },
+  }
+/>
 
 ## 审计 Hook（记录所有工具调用）
 
@@ -165,27 +184,57 @@ session.registerHook('no-bash', 'pre_tool_use', (event) => {
 
 ### Hook 注册
 
-| 操作 | Rust | Python | Node.js |
-|-----------|------|--------|---------|
-| 注册 hook | `session.register_hook(hook)` | `session.register_hook(id, event, fn)` | `session.registerHook(id, event, fn)` |
-| 注册处理器 | `session.register_hook_handler(id, Arc::new(h))` | _（与注册合并）_ | _（与注册合并）_ |
-| 注销 | `session.unregister_hook(id)` | `session.unregister_hook(id)` | `session.unregisterHook(id)` |
-| 计数 | `session.hook_count()` | `session.hook_count()` | `session.hookCount()` |
+<TypeTable
+  type={
+    "注册 hook": {
+      description: {`Rust: \`session.register_hook(hook)\` · Python: \`session.register_hook(id, event, fn)\` · Node.js: \`session.registerHook(id, event, fn)\``},
+    },
+    "注册处理器": {
+      description: {`Rust: \`session.register_hook_handler(id, Arc::new(h))\` · Python: _（与注册合并）_ · Node.js: _（与注册合并）_`},
+    },
+    "注销": {
+      description: {`Rust: \`session.unregister_hook(id)\` · Python: \`session.unregister_hook(id)\` · Node.js: \`session.unregisterHook(id)\``},
+    },
+    "计数": {
+      description: {`Rust: \`session.hook_count()\` · Python: \`session.hook_count()\` · Node.js: \`session.hookCount()\``},
+    },
+  }
+/>
 
 ### HookResponse（Rust）
 
-| 值 | 效果 |
-|-------|--------|
-| `HookResponse::continue_()` | 允许操作继续 |
-| `HookResponse::block(reason)` | 以原因字符串取消操作 |
-| `HookResponse::modify(data)` | 在执行前替换事件数据 |
+<TypeTable
+  type={
+    {`\`HookResponse::continue_()\``}: {
+      description: "允许操作继续",
+    },
+    {`\`HookResponse::block(reason)\``}: {
+      description: "以原因字符串取消操作",
+    },
+    {`\`HookResponse::modify(data)\``}: {
+      description: "在执行前替换事件数据",
+    },
+  }
+/>
 
 ### Hook 事件字段
 
-| 事件 | 关键字段 |
-|-------|-----------|
-| `PreToolUse` | `tool: String`, `args: Value` |
-| `PostToolUse` | `tool: String`, `output: String`, `exit_code: i32` |
-| `PrePrompt` | `prompt: String` |
-| `PostResponse` | `text: String`, `usage: Usage` |
-| `OnError` | `error: String`, `turn: u32` |
+<TypeTable
+  type={
+    {`\`PreToolUse\``}: {
+      description: {`\`tool: String\`, \`args: Value\``},
+    },
+    {`\`PostToolUse\``}: {
+      description: {`\`tool: String\`, \`output: String\`, \`exit_code: i32\``},
+    },
+    {`\`PrePrompt\``}: {
+      description: {`\`prompt: String\``},
+    },
+    {`\`PostResponse\``}: {
+      description: {`\`text: String\`, \`usage: Usage\``},
+    },
+    {`\`OnError\``}: {
+      description: {`\`error: String\`, \`turn: u32\``},
+    },
+  }
+/>

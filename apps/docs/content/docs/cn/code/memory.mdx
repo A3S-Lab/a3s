@@ -4,6 +4,7 @@ description: 可插拔的 Agent 长期记忆 — 跨会话存储、搜索和召�
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 
@@ -67,12 +68,22 @@ result = session.send("记住：本项目部署在 AWS us-east-1")
 
 ## 记忆类型
 
-| 类型 | 用途 | 默认重要性 |
-|------|------|-----------|
-| `Episodic` | 具体事件和交互记录 | 0.5 |
-| `Semantic` | 事实和领域知识 | 0.5–0.8 |
-| `Procedural` | 成功模式（turn 完成后自动存储） | 0.8 |
-| `Working` | 当前任务的活跃上下文 | 不固定 |
+<TypeTable
+  type={
+    {`\`Episodic\``}: {
+      description: "用途: 具体事件和交互记录 · 默认重要性: 0.5",
+    },
+    {`\`Semantic\``}: {
+      description: "用途: 事实和领域知识 · 默认重要性: 0.5–0.8",
+    },
+    {`\`Procedural\``}: {
+      description: "用途: 成功模式（turn 完成后自动存储） · 默认重要性: 0.8",
+    },
+    {`\`Working\``}: {
+      description: "用途: 当前任务的活跃上下文 · 默认重要性: 不固定",
+    },
+  }
+/>
 
 失败记录以 `Episodic` 类型存储，重要性为 `0.9`，高于成功记录，确保 Agent 不会重蹈覆辙。
 
@@ -117,17 +128,37 @@ let item = MemoryItem::new("文件 I/O 优先使用 write_all 而非 write")
     .with_metadata("source", "code-review");
 ```
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `id` | `String` | UUID，自动生成 |
-| `content` | `String` | 记忆内容 |
-| `memory_type` | `MemoryType` | `Episodic`、`Semantic`、`Procedural`、`Working` |
-| `importance` | `f32` | 0.0–1.0，自动截断 |
-| `tags` | `Vec<String>` | 分类标签 |
-| `metadata` | `HashMap<String, String>` | 任意键值对 |
-| `timestamp` | `DateTime<Utc>` | 创建时间 |
-| `access_count` | `u32` | 检索次数 |
-| `last_accessed` | `Option<DateTime<Utc>>` | 最近检索时间 |
+<TypeTable
+  type={
+    {`\`id\``}: {
+      description: {`类型: \`String\` · 说明: UUID，自动生成`},
+    },
+    {`\`content\``}: {
+      description: {`类型: \`String\` · 说明: 记忆内容`},
+    },
+    {`\`memory_type\``}: {
+      description: {`类型: \`MemoryType\` · 说明: \`Episodic\`、\`Semantic\`、\`Procedural\`、\`Working\``},
+    },
+    {`\`importance\``}: {
+      description: {`类型: \`f32\` · 说明: 0.0–1.0，自动截断`},
+    },
+    {`\`tags\``}: {
+      description: {`类型: \`Vec<String>\` · 说明: 分类标签`},
+    },
+    {`\`metadata\``}: {
+      description: {`类型: \`HashMap<String, String>\` · 说明: 任意键值对`},
+    },
+    {`\`timestamp\``}: {
+      description: {`类型: \`DateTime<Utc>\` · 说明: 创建时间`},
+    },
+    {`\`access_count\``}: {
+      description: {`类型: \`u32\` · 说明: 检索次数`},
+    },
+    {`\`last_accessed\``}: {
+      description: {`类型: \`Option<DateTime<Utc>>\` · 说明: 最近检索时间`},
+    },
+  }
+/>
 
 ## 相关性评分
 
@@ -255,36 +286,74 @@ SessionOptions::new().with_memory(Arc::new(MyVectorStore::new()))
 
 ## 事件
 
-| 事件 | 说明 |
-|------|------|
-| `MemoryStored` | 记忆条目已持久化 |
-| `MemoryRecalled` | 记忆条目已被检索用于上下文 |
-| `MemoriesSearched` | 执行了一次记忆搜索 |
-| `MemoryCleared` | 所有记忆已清除 |
+<TypeTable
+  type={
+    {`\`MemoryStored\``}: {
+      description: "记忆条目已持久化",
+    },
+    {`\`MemoryRecalled\``}: {
+      description: "记忆条目已被检索用于上下文",
+    },
+    {`\`MemoriesSearched\``}: {
+      description: "执行了一次记忆搜索",
+    },
+    {`\`MemoryCleared\``}: {
+      description: "所有记忆已清除",
+    },
+  }
+/>
 
 ## API 参考
 
 ### SessionOptions
 
-| 方法 | 说明 |
-|------|------|
-| `.with_file_memory(path)` | 在指定路径启用 `FileMemoryStore` |
-| `.with_memory(Arc<dyn MemoryStore>)` | 使用自定义后端 |
-| `.with_memory_config(MemoryConfig)` | 配置相关性评分和各层容量 |
+<TypeTable
+  type={
+    {`\`.with_file_memory(path)\``}: {
+      description: {`在指定路径启用 \`FileMemoryStore\``},
+    },
+    {`\`.with_memory(Arc<dyn MemoryStore>)\``}: {
+      description: "使用自定义后端",
+    },
+    {`\`.with_memory_config(MemoryConfig)\``}: {
+      description: "配置相关性评分和各层容量",
+    },
+  }
+/>
 
 ### MemoryStore trait
 
-| 方法 | 说明 |
-|------|------|
-| `store(item)` | 持久化记忆条目（按 ID upsert） |
-| `retrieve(id)` | 按 ID 获取单条记忆 |
-| `search(query, limit)` | 子串搜索，按相关性排序 |
-| `search_by_tags(tags, limit)` | 按标签过滤，按相关性排序 |
-| `get_recent(limit)` | 最近创建的记忆 |
-| `get_important(threshold, limit)` | 重要性高于阈值的记忆，降序排列 |
-| `delete(id)` | 删除单条记忆 |
-| `clear()` | 清除所有记忆 |
-| `count()` | 记忆总数 |
+<TypeTable
+  type={
+    {`\`store(item)\``}: {
+      description: "持久化记忆条目（按 ID upsert）",
+    },
+    {`\`retrieve(id)\``}: {
+      description: "按 ID 获取单条记忆",
+    },
+    {`\`search(query, limit)\``}: {
+      description: "子串搜索，按相关性排序",
+    },
+    {`\`search_by_tags(tags, limit)\``}: {
+      description: "按标签过滤，按相关性排序",
+    },
+    {`\`get_recent(limit)\``}: {
+      description: "最近创建的记忆",
+    },
+    {`\`get_important(threshold, limit)\``}: {
+      description: "重要性高于阈值的记忆，降序排列",
+    },
+    {`\`delete(id)\``}: {
+      description: "删除单条记忆",
+    },
+    {`\`clear()\``}: {
+      description: "清除所有记忆",
+    },
+    {`\`count()\``}: {
+      description: "记忆总数",
+    },
+  }
+/>
 
 <Callout type="info">
 `a3s-memory` 是独立 crate，无需完整 Agent 框架即可使用：`cargo add a3s-memory`

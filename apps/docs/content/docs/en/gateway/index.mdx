@@ -3,6 +3,8 @@ title: A3S Gateway
 description: AI-native API gateway with reverse proxy, multi-protocol support, and Knative-style autoscaling
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S Gateway
 
 A3S Gateway is an AI-native API gateway and reverse proxy built on [hyper](https://hyper.rs/) and [rustls](https://github.com/rustls/rustls). It routes HTTP/1.1, HTTP/2, WebSocket, SSE, gRPC, TCP, and UDP traffic through a composable middleware pipeline using Traefik-compatible rule syntax. Configuration is defined exclusively in HCL (HashiCorp Configuration Language). The gateway includes Knative-style autoscaling, traffic mirroring, failover, gradual rollouts, and a built-in dashboard API — all in a single statically-linked binary with 872 tests.
@@ -31,27 +33,59 @@ Backend Service
 
 ## Core Components
 
-| Component | Purpose |
-|-----------|---------|
-| Gateway | Top-level orchestrator — ties configuration, listeners, routing, scaling, and observability into a single unit |
-| Entrypoint | Named listeners on ports with optional TLS (HTTP, HTTPS, TCP, UDP) |
-| Router | Request matching by Host, Path, PathPrefix, Headers, Method, and SNI |
-| Middleware | Composable request/response transformations (15 built-in) |
-| Service | Backend pool with load balancing, health checks, failover, and traffic mirroring |
-| Provider | Dynamic configuration sources (file watcher with hot reload, DNS discovery, Kubernetes) |
-| Proxy | Protocol-specific request forwarding (HTTP, WebSocket, gRPC, SSE, TCP, UDP) |
-| Scaling | Knative-style autoscaler with concurrency limiting, request buffering, revision routing, and gradual rollouts |
+<TypeTable
+  type={
+    "Gateway": {
+      description: "Top-level orchestrator — ties configuration, listeners, routing, scaling, and observability into a single unit",
+    },
+    "Entrypoint": {
+      description: "Named listeners on ports with optional TLS (HTTP, HTTPS, TCP, UDP)",
+    },
+    "Router": {
+      description: "Request matching by Host, Path, PathPrefix, Headers, Method, and SNI",
+    },
+    "Middleware": {
+      description: "Composable request/response transformations (15 built-in)",
+    },
+    "Service": {
+      description: "Backend pool with load balancing, health checks, failover, and traffic mirroring",
+    },
+    "Provider": {
+      description: "Dynamic configuration sources (file watcher with hot reload, DNS discovery, Kubernetes)",
+    },
+    "Proxy": {
+      description: "Protocol-specific request forwarding (HTTP, WebSocket, gRPC, SSE, TCP, UDP)",
+    },
+    "Scaling": {
+      description: "Knative-style autoscaler with concurrency limiting, request buffering, revision routing, and gradual rollouts",
+    },
+  }
+/>
 
 ## Protocol Support
 
-| Protocol | Features |
-|----------|----------|
-| HTTP/1.1 & HTTP/2 | Full reverse proxy with hop-by-hop header filtering |
-| WebSocket | Upgrade detection, bidirectional relay, multiplexing |
-| SSE / Streaming | Chunked transfer for LLM outputs and event streams |
-| gRPC | HTTP/2 h2c forwarding with header translation |
-| TCP | Raw byte relay with SNI-based routing and IP filtering |
-| UDP | Session-based datagram relay |
+<TypeTable
+  type={
+    "HTTP/1.1 & HTTP/2": {
+      description: "Full reverse proxy with hop-by-hop header filtering",
+    },
+    "WebSocket": {
+      description: "Upgrade detection, bidirectional relay, multiplexing",
+    },
+    "SSE / Streaming": {
+      description: "Chunked transfer for LLM outputs and event streams",
+    },
+    "gRPC": {
+      description: "HTTP/2 h2c forwarding with header translation",
+    },
+    "TCP": {
+      description: "Raw byte relay with SNI-based routing and IP filtering",
+    },
+    "UDP": {
+      description: "Session-based datagram relay",
+    },
+  }
+/>
 
 ## Gateway Lifecycle
 

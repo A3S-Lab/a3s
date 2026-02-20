@@ -3,6 +3,8 @@ title: A3S Power
 description: Local LLM model management and serving — an Ollama-compatible inference server
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S Power
 
 A3S Power is a local LLM model management and serving infrastructure. It provides an Ollama-compatible CLI and HTTP server for downloading, managing, and running language models with GGUF format support.
@@ -43,14 +45,28 @@ A3S Power is a local LLM model management and serving infrastructure. It provide
 
 ## Key Components
 
-| Component | Description |
-|-----------|-------------|
-| `cli` | 12 commands: pull, run, list, show, delete, serve, ps, stop, push, cp, create |
-| `api` | 14 Ollama-native + 5 OpenAI-compatible endpoints |
-| `backend` | Pluggable inference engine with llama.cpp implementation |
-| `model` | Content-addressed storage, registry, resolution, GGUF reader |
-| `server` | Axum HTTP server with CORS, tracing, Prometheus metrics |
-| `config` | TOML configuration with Ollama-compatible environment variables |
+<TypeTable
+  type={
+    {`\`cli\``}: {
+      description: "12 commands: pull, run, list, show, delete, serve, ps, stop, push, cp, create",
+    },
+    {`\`api\``}: {
+      description: "14 Ollama-native + 5 OpenAI-compatible endpoints",
+    },
+    {`\`backend\``}: {
+      description: "Pluggable inference engine with llama.cpp implementation",
+    },
+    {`\`model\``}: {
+      description: "Content-addressed storage, registry, resolution, GGUF reader",
+    },
+    {`\`server\``}: {
+      description: "Axum HTTP server with CORS, tracing, Prometheus metrics",
+    },
+    {`\`config\``}: {
+      description: "TOML configuration with Ollama-compatible environment variables",
+    },
+  }
+/>
 
 ## Features
 
@@ -69,9 +85,19 @@ A3S Power is a local LLM model management and serving infrastructure. It provide
 
 ## Default Paths
 
-| Path | Description |
-|------|-------------|
-| `~/.a3s/power/` | Base directory (override with `$A3S_POWER_HOME`) |
-| `~/.a3s/power/config.toml` | Configuration file |
-| `~/.a3s/power/models/manifests/` | Model manifest files |
-| `~/.a3s/power/models/blobs/` | Content-addressed blob storage |
+<TypeTable
+  type={
+    {`\`~/.a3s/power/\``}: {
+      description: {`Base directory (override with \`\$A3S_POWER_HOME\`)`},
+    },
+    {`\`~/.a3s/power/config.toml\``}: {
+      description: "Configuration file",
+    },
+    {`\`~/.a3s/power/models/manifests/\``}: {
+      description: "Model manifest files",
+    },
+    {`\`~/.a3s/power/models/blobs/\``}: {
+      description: "Content-addressed blob storage",
+    },
+  }
+/>

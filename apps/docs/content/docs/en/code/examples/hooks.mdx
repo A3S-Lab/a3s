@@ -4,6 +4,7 @@ description: Lifecycle event interception — PreToolUse, PostToolUse, PrePrompt
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Hooks
@@ -12,16 +13,34 @@ Hooks let you intercept agent lifecycle events to audit, modify, or block operat
 
 ## Hook Event Types
 
-| Event | Fires when | Can block? |
-|-------|-----------|-----------|
-| `PreToolUse` | Before a tool executes | ✅ |
-| `PostToolUse` | After a tool completes | ❌ |
-| `PrePrompt` | Before prompt is sent to LLM | ✅ |
-| `PostResponse` | After LLM responds | ❌ |
-| `OnError` | On any agent error | ❌ |
-| `GenerateStart` | LLM generation begins | ❌ |
-| `GenerateEnd` | LLM generation ends | ❌ |
-| `SessionStart` / `SessionEnd` | Session lifecycle | ❌ |
+<TypeTable
+  type={
+    {`\`PreToolUse\``}: {
+      description: "Fires when: Before a tool executes · Can block?: ✅",
+    },
+    {`\`PostToolUse\``}: {
+      description: "Fires when: After a tool completes · Can block?: ❌",
+    },
+    {`\`PrePrompt\``}: {
+      description: "Fires when: Before prompt is sent to LLM · Can block?: ✅",
+    },
+    {`\`PostResponse\``}: {
+      description: "Fires when: After LLM responds · Can block?: ❌",
+    },
+    {`\`OnError\``}: {
+      description: "Fires when: On any agent error · Can block?: ❌",
+    },
+    {`\`GenerateStart\``}: {
+      description: "Fires when: LLM generation begins · Can block?: ❌",
+    },
+    {`\`GenerateEnd\``}: {
+      description: "Fires when: LLM generation ends · Can block?: ❌",
+    },
+    {`\`SessionStart\` / \`SessionEnd\``}: {
+      description: "Fires when: Session lifecycle · Can block?: ❌",
+    },
+  }
+/>
 
 ## Audit Hook (Log All Tool Calls)
 
@@ -165,27 +184,57 @@ For persistent hook configuration across sessions, see [Hooks](/docs/code/hooks)
 
 ### Hook Registration
 
-| Operation | Rust | Python | Node.js |
-|-----------|------|--------|---------|
-| Register hook | `session.register_hook(hook)` | `session.register_hook(id, event, fn)` | `session.registerHook(id, event, fn)` |
-| Register handler | `session.register_hook_handler(id, Arc::new(h))` | _(combined with register)_ | _(combined with register)_ |
-| Unregister | `session.unregister_hook(id)` | `session.unregister_hook(id)` | `session.unregisterHook(id)` |
-| Count | `session.hook_count()` | `session.hook_count()` | `session.hookCount()` |
+<TypeTable
+  type={
+    "Register hook": {
+      description: {`Rust: \`session.register_hook(hook)\` · Python: \`session.register_hook(id, event, fn)\` · Node.js: \`session.registerHook(id, event, fn)\``},
+    },
+    "Register handler": {
+      description: {`Rust: \`session.register_hook_handler(id, Arc::new(h))\` · Python: _(combined with register)_ · Node.js: _(combined with register)_`},
+    },
+    "Unregister": {
+      description: {`Rust: \`session.unregister_hook(id)\` · Python: \`session.unregister_hook(id)\` · Node.js: \`session.unregisterHook(id)\``},
+    },
+    "Count": {
+      description: {`Rust: \`session.hook_count()\` · Python: \`session.hook_count()\` · Node.js: \`session.hookCount()\``},
+    },
+  }
+/>
 
 ### HookResponse (Rust)
 
-| Value | Effect |
-|-------|--------|
-| `HookResponse::continue_()` | Allow the operation to proceed |
-| `HookResponse::block(reason)` | Cancel the operation with a reason |
-| `HookResponse::modify(data)` | Replace the event data before execution |
+<TypeTable
+  type={
+    {`\`HookResponse::continue_()\``}: {
+      description: "Allow the operation to proceed",
+    },
+    {`\`HookResponse::block(reason)\``}: {
+      description: "Cancel the operation with a reason",
+    },
+    {`\`HookResponse::modify(data)\``}: {
+      description: "Replace the event data before execution",
+    },
+  }
+/>
 
 ### Hook Event Fields
 
-| Event | Key fields |
-|-------|-----------|
-| `PreToolUse` | `tool: String`, `args: Value` |
-| `PostToolUse` | `tool: String`, `output: String`, `exit_code: i32` |
-| `PrePrompt` | `prompt: String` |
-| `PostResponse` | `text: String`, `usage: Usage` |
-| `OnError` | `error: String`, `turn: u32` |
+<TypeTable
+  type={
+    {`\`PreToolUse\``}: {
+      description: {`\`tool: String\`, \`args: Value\``},
+    },
+    {`\`PostToolUse\``}: {
+      description: {`\`tool: String\`, \`output: String\`, \`exit_code: i32\``},
+    },
+    {`\`PrePrompt\``}: {
+      description: {`\`prompt: String\``},
+    },
+    {`\`PostResponse\``}: {
+      description: {`\`text: String\`, \`usage: Usage\``},
+    },
+    {`\`OnError\``}: {
+      description: {`\`error: String\`, \`turn: u32\``},
+    },
+  }
+/>

@@ -3,6 +3,8 @@ title: Configuration
 description: HCL configuration files and health monitoring for engine management
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Configuration
 
 A3S Search supports HCL configuration files for engine settings and health monitoring. Load settings from a `.hcl` file instead of hardcoding them.
@@ -57,12 +59,22 @@ let config = SearchConfig::parse(r#"
 "#)?;
 ```
 
-| Method | Description |
-|--------|-------------|
-| `SearchConfig::load(path)` | Load config from `.hcl` file |
-| `SearchConfig::parse(content)` | Parse HCL string |
-| `health_config()` | Get `HealthConfig` from config |
-| `enabled_engines()` | Get list of enabled engine shortcuts |
+<TypeTable
+  type={
+    {`\`SearchConfig::load(path)\``}: {
+      description: {`Load config from \`.hcl\` file`},
+    },
+    {`\`SearchConfig::parse(content)\``}: {
+      description: "Parse HCL string",
+    },
+    {`\`health_config()\``}: {
+      description: {`Get \`HealthConfig\` from config`},
+    },
+    {`\`enabled_engines()\``}: {
+      description: "Get list of enabled engine shortcuts",
+    },
+  }
+/>
 
 ## Health Monitor
 

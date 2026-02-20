@@ -3,6 +3,8 @@ title: Schema Validation
 description: Event schemas with required fields validation and version compatibility checking
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Schema Validation
 
 A3S Event supports optional schema validation on publish. Register event schemas with required fields, and the `EventBus` validates payloads before they reach the provider.
@@ -101,12 +103,22 @@ match compat {
 
 ### Compatibility Rules
 
-| Type | Meaning | Example |
-|------|---------|---------|
-| `Backward` | New schema can read old data | Added optional field |
-| `Forward` | Old schema can read new data | Removed optional field |
-| `Full` | Compatible both ways | No field changes |
-| `None` | Breaking change | Added required field |
+<TypeTable
+  type={
+    {`\`Backward\``}: {
+      description: "Meaning: New schema can read old data · Example: Added optional field",
+    },
+    {`\`Forward\``}: {
+      description: "Meaning: Old schema can read new data · Example: Removed optional field",
+    },
+    {`\`Full\``}: {
+      description: "Meaning: Compatible both ways · Example: No field changes",
+    },
+    {`\`None\``}: {
+      description: "Meaning: Breaking change · Example: Added required field",
+    },
+  }
+/>
 
 ## SchemaRegistry Trait
 

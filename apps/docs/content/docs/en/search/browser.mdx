@@ -3,6 +3,8 @@ title: Headless Browser
 description: Chrome DevTools Protocol integration for JavaScript-rendering engines
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Headless Browser
 
 Engines like Google, Baidu, and Bing China require JavaScript rendering. A3S Search provides a `BrowserPool` that manages a shared headless Chrome instance with tab concurrency control.
@@ -81,20 +83,38 @@ let fetcher = Arc::new(
 
 Control when a page is considered "loaded":
 
-| Strategy | Best For |
-|----------|----------|
-| `Load` | Fast pages, APIs |
-| `NetworkIdle { idle_ms }` | Complex SPAs |
-| `Selector { css, timeout_ms }` | Waiting for specific content (recommended) |
-| `Delay { ms }` | Fallback when nothing else works |
+<TypeTable
+  type={
+    {`\`Load\``}: {
+      description: "Fast pages, APIs",
+    },
+    {`\`NetworkIdle { idle_ms }\``}: {
+      description: "Complex SPAs",
+    },
+    {`\`Selector { css, timeout_ms }\``}: {
+      description: "Waiting for specific content (recommended)",
+    },
+    {`\`Delay { ms }\``}: {
+      description: "Fallback when nothing else works",
+    },
+  }
+/>
 
 Each built-in headless engine uses an appropriate strategy:
 
-| Engine | Strategy |
-|--------|----------|
-| Google | `Selector { css: "div.g", timeout_ms: 5000 }` |
-| Baidu | `Selector { css: "div.c-container", timeout_ms: 5000 }` |
-| Bing China | `Delay { ms: 2000 }` |
+<TypeTable
+  type={
+    "Google": {
+      description: {`\`Selector { css: "div.g", timeout_ms: 5000 }\``},
+    },
+    "Baidu": {
+      description: {`\`Selector { css: "div.c-container", timeout_ms: 5000 }\``},
+    },
+    "Bing China": {
+      description: {`\`Delay { ms: 2000 }\``},
+    },
+  }
+/>
 
 ## Chrome Auto-Detection
 
@@ -161,8 +181,16 @@ pub trait PageFetcher: Send + Sync {
 }
 ```
 
-| Implementation | Description |
-|----------------|-------------|
-| `HttpFetcher` | Plain HTTP via reqwest, optional single proxy |
-| `PooledHttpFetcher` | Proxy pool rotation per request |
-| `BrowserFetcher` | Headless Chrome via BrowserPool |
+<TypeTable
+  type={
+    {`\`HttpFetcher\``}: {
+      description: "Plain HTTP via reqwest, optional single proxy",
+    },
+    {`\`PooledHttpFetcher\``}: {
+      description: "Proxy pool rotation per request",
+    },
+    {`\`BrowserFetcher\``}: {
+      description: "Headless Chrome via BrowserPool",
+    },
+  }
+/>

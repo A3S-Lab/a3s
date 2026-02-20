@@ -4,6 +4,7 @@ description: 基本 send、流式传输和多轮对话
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # 快速开始
@@ -180,18 +181,38 @@ const session = agent.session('/my-project', {
 
 ### SessionOptions
 
-| 选项 | Rust | Python | Node.js | 默认值 |
-|--------|------|--------|---------|---------|
-| 宽松策略 | `.with_permissive_policy()` | `permissive=True` | `permissive: true` | `false` |
-| 解析重试 | `.with_parse_retries(n)` | `max_parse_retries=n` | `maxParseRetries: n` | `3` |
-| 工具超时 | `.with_tool_timeout(ms)` | `tool_timeout_ms=ms` | `toolTimeoutMs: ms` | `30000` |
-| 熔断器 | `.with_circuit_breaker(n)` | `circuit_breaker_threshold=n` | `circuitBreakerThreshold: n` | `5` |
+<TypeTable
+  type={
+    "宽松策略": {
+      description: {`Rust: \`.with_permissive_policy()\` · Python: \`permissive=True\` · Node.js: \`permissive: true\` · 默认值: \`false\``},
+    },
+    "解析重试": {
+      description: {`Rust: \`.with_parse_retries(n)\` · Python: \`max_parse_retries=n\` · Node.js: \`maxParseRetries: n\` · 默认值: \`3\``},
+    },
+    "工具超时": {
+      description: {`Rust: \`.with_tool_timeout(ms)\` · Python: \`tool_timeout_ms=ms\` · Node.js: \`toolTimeoutMs: ms\` · 默认值: \`30000\``},
+    },
+    "熔断器": {
+      description: {`Rust: \`.with_circuit_breaker(n)\` · Python: \`circuit_breaker_threshold=n\` · Node.js: \`circuitBreakerThreshold: n\` · 默认值: \`5\``},
+    },
+  }
+/>
 
 ### AgentResponse
 
-| 字段 | Rust | Python | Node.js |
-|-------|------|--------|---------|
-| 最终文本 | `result.text` | `result.text` | `result.text` |
-| 总 token 数 | `result.usage.total_tokens` | `result.usage.total_tokens` | `result.usage.totalTokens` |
-| 工具调用次数 | `result.tool_calls_count` | `result.tool_calls_count` | `result.toolCallsCount` |
-| 历史记录 | `session.history()` | `session.history()` | `session.history()` |
+<TypeTable
+  type={
+    "最终文本": {
+      description: {`Rust: \`result.text\` · Python: \`result.text\` · Node.js: \`result.text\``},
+    },
+    "总 token 数": {
+      description: {`Rust: \`result.usage.total_tokens\` · Python: \`result.usage.total_tokens\` · Node.js: \`result.usage.totalTokens\``},
+    },
+    "工具调用次数": {
+      description: {`Rust: \`result.tool_calls_count\` · Python: \`result.tool_calls_count\` · Node.js: \`result.toolCallsCount\``},
+    },
+    "历史记录": {
+      description: {`Rust: \`session.history()\` · Python: \`session.history()\` · Node.js: \`session.history()\``},
+    },
+  }
+/>

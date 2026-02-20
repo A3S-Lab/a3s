@@ -3,6 +3,8 @@ title: A3S Event
 description: 提供商无关的事件总线，支持 Schema 验证、加密、死信队列和可观测性
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S Event
 
 A3S Event 是面向 Rust 的提供商无关事件系统。所有后端实现 `EventProvider` trait — 无需修改应用代码即可在 NATS JetStream 和内存模式之间切换。
@@ -11,12 +13,22 @@ A3S Event 是面向 Rust 的提供商无关事件系统。所有后端实现 `Ev
 
 所有可选模块都在特性门控后面，最小核心编译时零可选依赖。
 
-| 特性 | 默认 | 说明 |
-|------|------|------|
-| `nats` | ✅ | NATS JetStream 提供商 |
-| `encryption` | ✅ | AES-256-GCM 载荷加密，支持密钥轮换 |
-| `cloudevents` | ✅ | CloudEvents v1.0 转换 |
-| `routing` | ✅ | Broker/Trigger 事件路由 + 事件 Sink |
+<TypeTable
+  type={
+    {`\`nats\``}: {
+      description: "默认: ✅ · 说明: NATS JetStream 提供商",
+    },
+    {`\`encryption\``}: {
+      description: "默认: ✅ · 说明: AES-256-GCM 载荷加密，支持密钥轮换",
+    },
+    {`\`cloudevents\``}: {
+      description: "默认: ✅ · 说明: CloudEvents v1.0 转换",
+    },
+    {`\`routing\``}: {
+      description: "默认: ✅ · 说明: Broker/Trigger 事件路由 + 事件 Sink",
+    },
+  }
+/>
 
 ```toml
 # 完整版（默认）
@@ -64,33 +76,77 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
 
 ## 提供商对比
 
-| 能力 | MemoryProvider | NatsProvider |
-|------|---------------|--------------|
-| 发布/订阅 | ✅ | ✅ |
-| 历史/重放 | 内存缓冲 | JetStream 流 |
-| 持久订阅 | 否 | ✅ |
-| 通配符 | ✅（`>`、`*`） | ✅（NATS 主题） |
-| 去重 | 否 | ✅（msg_id） |
-| 手动 Ack/Nak | 否 | ✅ |
-| 背压 | 否 | ✅（max_ack_pending） |
-| 健康检查 | 始终健康 | 连接检查 |
-| 持久化 | 无 | 文件或内存存储 |
-| 适用场景 | 开发、测试 | 生产 |
+<TypeTable
+  type={
+    "发布/订阅": {
+      description: "MemoryProvider: ✅ · NatsProvider: ✅",
+    },
+    "历史/重放": {
+      description: "MemoryProvider: 内存缓冲 · NatsProvider: JetStream 流",
+    },
+    "持久订阅": {
+      description: "MemoryProvider: 否 · NatsProvider: ✅",
+    },
+    "通配符": {
+      description: {`MemoryProvider: ✅（\`>\`、\`*\`） · NatsProvider: ✅（NATS 主题）`},
+    },
+    "去重": {
+      description: "MemoryProvider: 否 · NatsProvider: ✅（msg_id）",
+    },
+    "手动 Ack/Nak": {
+      description: "MemoryProvider: 否 · NatsProvider: ✅",
+    },
+    "背压": {
+      description: "MemoryProvider: 否 · NatsProvider: ✅（max_ack_pending）",
+    },
+    "健康检查": {
+      description: "MemoryProvider: 始终健康 · NatsProvider: 连接检查",
+    },
+    "持久化": {
+      description: "MemoryProvider: 无 · NatsProvider: 文件或内存存储",
+    },
+    "适用场景": {
+      description: "MemoryProvider: 开发、测试 · NatsProvider: 生产",
+    },
+  }
+/>
 
 ## 核心类型
 
-| 类型 | 说明 |
-|------|------|
-| `EventProvider` | 核心 trait — 所有后端实现此接口 |
-| `EventBus` | 高级 API，带订阅管理 |
-| `Event` | 消息信封（id、subject、category、event_type、version、payload） |
-| `ReceivedEvent` | 带投递上下文的事件（sequence、num_delivered、stream） |
-| `Subscription` | 来自任意提供商的异步事件流 |
-| `PendingEvent` | 带 ack/nak 回调的事件，用于手动确认 |
-| `SchemaRegistry` | 事件类型验证，支持兼容性检查 |
-| `StateStore` | 持久化订阅状态的 trait |
-| `EventMetrics` | 无锁原子计数器 |
-| `DlqHandler` | 死信队列 trait |
+<TypeTable
+  type={
+    {`\`EventProvider\``}: {
+      description: "核心 trait — 所有后端实现此接口",
+    },
+    {`\`EventBus\``}: {
+      description: "高级 API，带订阅管理",
+    },
+    {`\`Event\``}: {
+      description: "消息信封（id、subject、category、event_type、version、payload）",
+    },
+    {`\`ReceivedEvent\``}: {
+      description: "带投递上下文的事件（sequence、num_delivered、stream）",
+    },
+    {`\`Subscription\``}: {
+      description: "来自任意提供商的异步事件流",
+    },
+    {`\`PendingEvent\``}: {
+      description: "带 ack/nak 回调的事件，用于手动确认",
+    },
+    {`\`SchemaRegistry\``}: {
+      description: "事件类型验证，支持兼容性检查",
+    },
+    {`\`StateStore\``}: {
+      description: "持久化订阅状态的 trait",
+    },
+    {`\`EventMetrics\``}: {
+      description: "无锁原子计数器",
+    },
+    {`\`DlqHandler\``}: {
+      description: "死信队列 trait",
+    },
+  }
+/>
 
 ## 测试覆盖
 

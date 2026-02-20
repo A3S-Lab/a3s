@@ -3,6 +3,8 @@ title: Cryptography
 description: X25519 key exchange, AES-256-GCM encryption, forward secrecy, and secure channels
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Cryptography
 
 SafeClaw uses modern cryptographic primitives for secure communication between the untrusted gateway zone and the trusted TEE zone.
@@ -88,12 +90,28 @@ This prevents sensitive key material from lingering in memory after use.
 
 ## Dependencies
 
-| Library | Purpose |
-|---------|---------|
-| `x25519-dalek` | X25519 Diffie-Hellman key exchange |
-| `aes-gcm` | AES-256-GCM authenticated encryption |
-| `hkdf` | HKDF-SHA256 key derivation |
-| `ed25519-dalek` | Ed25519 signatures (channel authentication) |
-| `ring` | Additional cryptographic operations |
-| `zeroize` | Secure memory erasure |
-| `sha2` | SHA-256 hashing |
+<TypeTable
+  type={
+    {`\`x25519-dalek\``}: {
+      description: "X25519 Diffie-Hellman key exchange",
+    },
+    {`\`aes-gcm\``}: {
+      description: "AES-256-GCM authenticated encryption",
+    },
+    {`\`hkdf\``}: {
+      description: "HKDF-SHA256 key derivation",
+    },
+    {`\`ed25519-dalek\``}: {
+      description: "Ed25519 signatures (channel authentication)",
+    },
+    {`\`ring\``}: {
+      description: "Additional cryptographic operations",
+    },
+    {`\`zeroize\``}: {
+      description: "Secure memory erasure",
+    },
+    {`\`sha2\``}: {
+      description: "SHA-256 hashing",
+    },
+  }
+/>

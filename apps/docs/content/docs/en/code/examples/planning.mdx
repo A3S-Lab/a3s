@@ -4,6 +4,7 @@ description: Task decomposition with goal tracking
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Planning
@@ -137,17 +138,35 @@ for await (const event of stream) {
 
 ### SessionOptions
 
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| Enable planning | `.with_planning(true)` | `planning=True` | `planning: true` | `false` |
-| Enable goal tracking | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` | `false` |
+<TypeTable
+  type={
+    "Enable planning": {
+      description: {`Rust: \`.with_planning(true)\` · Python: \`planning=True\` · Node.js: \`planning: true\` · Default: \`false\``},
+    },
+    "Enable goal tracking": {
+      description: {`Rust: \`.with_goal_tracking(true)\` · Python: \`goal_tracking=True\` · Node.js: \`goalTracking: true\` · Default: \`false\``},
+    },
+  }
+/>
 
 ### Planning Events
 
-| Event | Rust variant | Python/Node.js `type` | Fields |
-|-------|-------------|----------------------|--------|
-| Planning started | `AgentEvent::PlanningStart` | `planning_start` | `prompt` |
-| Plan generated | `AgentEvent::PlanReady` | `plan_ready` | `steps[]`, `wave_count` |
-| Step started | `AgentEvent::StepStart` | `step_start` | `step`, `index` |
-| Step completed | `AgentEvent::StepEnd` | `step_end` | `step`, `index`, `success` |
-| Goal updated | `AgentEvent::GoalUpdated` | `goal_updated` | `goal`, `status` |
+<TypeTable
+  type={
+    "Planning started": {
+      description: {`Rust variant: \`AgentEvent::PlanningStart\` · Python/Node.js \`type\`: \`planning_start\` · Fields: \`prompt\``},
+    },
+    "Plan generated": {
+      description: {`Rust variant: \`AgentEvent::PlanReady\` · Python/Node.js \`type\`: \`plan_ready\` · Fields: \`steps[]\`, \`wave_count\``},
+    },
+    "Step started": {
+      description: {`Rust variant: \`AgentEvent::StepStart\` · Python/Node.js \`type\`: \`step_start\` · Fields: \`step\`, \`index\``},
+    },
+    "Step completed": {
+      description: {`Rust variant: \`AgentEvent::StepEnd\` · Python/Node.js \`type\`: \`step_end\` · Fields: \`step\`, \`index\`, \`success\``},
+    },
+    "Goal updated": {
+      description: {`Rust variant: \`AgentEvent::GoalUpdated\` · Python/Node.js \`type\`: \`goal_updated\` · Fields: \`goal\`, \`status\``},
+    },
+  }
+/>

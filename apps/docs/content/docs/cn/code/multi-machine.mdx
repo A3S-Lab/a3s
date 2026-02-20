@@ -4,6 +4,7 @@ description: 通过外部任务分发实现水平扩展
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # 多机器分布
@@ -54,22 +55,40 @@ A3S Code 支持**外部任务分发**以实现水平扩展。将工具执行卸�
 
 A3S Code 支持每个 lane 3 种任务处理器模式：
 
-| 模式 | 描述 | 使用场景 |
-|------|-------------|----------|
-| **Internal** | 任务在 agent 进程中执行（默认） | 单机部署，低延迟 |
-| **External** | 任务发送到外部 worker，等待完成 | 多机器并行化，资源隔离 |
-| **Hybrid** | 内部执行 + 通知外部系统 | 内部执行加外部监控/日志 |
+<TypeTable
+  type={
+    "Internal": {
+      description: "描述: 任务在 agent 进程中执行（默认） · 使用场景: 单机部署，低延迟",
+    },
+    "External": {
+      description: "描述: 任务发送到外部 worker，等待完成 · 使用场景: 多机器并行化，资源隔离",
+    },
+    "Hybrid": {
+      description: "描述: 内部执行 + 通知外部系统 · 使用场景: 内部执行加外部监控/日志",
+    },
+  }
+/>
 
 ## 会话 Lane
 
 任务路由到 4 个优先级 lane：
 
-| Lane | 优先级 | 工具 | 最适合 |
-|------|----------|-------|----------|
-| **Control** | P0（最高） | pause, resume, cancel | 控制操作 |
-| **Query** | P1 | read, grep, glob, ls | 可并行化的读操作 |
-| **Execute** | P2 | bash, write, edit | 写操作、命令 |
-| **Generate** | P3（最低） | LLM 调用 | AI 生成 |
+<TypeTable
+  type={
+    "Control": {
+      description: "优先级: P0（最高） · 工具: pause, resume, cancel · 最适合: 控制操作",
+    },
+    "Query": {
+      description: "优先级: P1 · 工具: read, grep, glob, ls · 最适合: 可并行化的读操作",
+    },
+    "Execute": {
+      description: "优先级: P2 · 工具: bash, write, edit · 最适合: 写操作、命令",
+    },
+    "Generate": {
+      description: "优先级: P3（最低） · 工具: LLM 调用 · 最适合: AI 生成",
+    },
+  }
+/>
 
 **Query lane** 是外部分发的最佳候选 — 读操作天然可并行化且安全。
 
@@ -381,35 +400,73 @@ A3S Code 的外部任务分发支持：
 
 ### LaneHandlerConfig
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `mode` | `TaskHandlerMode` | `Internal`、`External` 或 `Hybrid` |
-| `timeout_ms` | `Option<u64>` | 等待外部 worker 响应的最大时间 |
+<TypeTable
+  type={
+    {`\`mode\``}: {
+      description: {`类型: \`TaskHandlerMode\` · 描述: \`Internal\`、\`External\` 或 \`Hybrid\``},
+    },
+    {`\`timeout_ms\``}: {
+      description: {`类型: \`Option<u64>\` · 描述: 等待外部 worker 响应的最大时间`},
+    },
+  }
+/>
 
 ### 外部任务方法
 
-| 方法 | Rust | Python | Node.js |
-|--------|------|--------|---------|
-| 设置处理器 | `session.set_external_task_handler(fn).await` | `session.set_external_task_handler(fn)` | `session.setExternalTaskHandler(fn)` |
-| 轮询待处理 | `session.pending_external_tasks().await` | `await session.pending_external_tasks()` | `await session.pendingExternalTasks()` |
-| 完成任务 | `session.complete_external_task(id, result).await` | `await session.complete_external_task(id, result)` | `await session.completeExternalTask(id, result)` |
-| 设置 lane 处理器 | `session.set_lane_handler(lane, cfg).await` | `await session.set_lane_handler(lane, cfg)` | `await session.setLaneHandler(lane, cfg)` |
+<TypeTable
+  type={
+    "设置处理器": {
+      description: {`Rust: \`session.set_external_task_handler(fn).await\` · Python: \`session.set_external_task_handler(fn)\` · Node.js: \`session.setExternalTaskHandler(fn)\``},
+    },
+    "轮询待处理": {
+      description: {`Rust: \`session.pending_external_tasks().await\` · Python: \`await session.pending_external_tasks()\` · Node.js: \`await session.pendingExternalTasks()\``},
+    },
+    "完成任务": {
+      description: {`Rust: \`session.complete_external_task(id, result).await\` · Python: \`await session.complete_external_task(id, result)\` · Node.js: \`await session.completeExternalTask(id, result)\``},
+    },
+    "设置 lane 处理器": {
+      description: {`Rust: \`session.set_lane_handler(lane, cfg).await\` · Python: \`await session.set_lane_handler(lane, cfg)\` · Node.js: \`await session.setLaneHandler(lane, cfg)\``},
+    },
+  }
+/>
 
 ### ExternalTask 字段
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `task_id` | `String` | 唯一任务标识符 |
-| `lane` | `SessionLane` | `Control`、`Query`、`Execute` 或 `Generate` |
-| `payload` | `Value` | 任务数据（提示、工具参数等） |
-| `created_at` | `DateTime<Utc>` | 入队时间戳 |
-| `timeout_ms` | `Option<u64>` | 每任务超时覆盖 |
+<TypeTable
+  type={
+    {`\`task_id\``}: {
+      description: {`类型: \`String\` · 描述: 唯一任务标识符`},
+    },
+    {`\`lane\``}: {
+      description: {`类型: \`SessionLane\` · 描述: \`Control\`、\`Query\`、\`Execute\` 或 \`Generate\``},
+    },
+    {`\`payload\``}: {
+      description: {`类型: \`Value\` · 描述: 任务数据（提示、工具参数等）`},
+    },
+    {`\`created_at\``}: {
+      description: {`类型: \`DateTime<Utc>\` · 描述: 入队时间戳`},
+    },
+    {`\`timeout_ms\``}: {
+      description: {`类型: \`Option<u64>\` · 描述: 每任务超时覆盖`},
+    },
+  }
+/>
 
 ### ExternalTaskResult 字段
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `success` | `bool` | 任务是否成功完成 |
-| `result` | `Option<Value>` | 任务输出载荷 |
-| `error` | `Option<String>` | `success` 为 `false` 时的错误消息 |
-| `duration_ms` | `Option<u64>` | Worker 执行时间 |
+<TypeTable
+  type={
+    {`\`success\``}: {
+      description: {`类型: \`bool\` · 描述: 任务是否成功完成`},
+    },
+    {`\`result\``}: {
+      description: {`类型: \`Option<Value>\` · 描述: 任务输出载荷`},
+    },
+    {`\`error\``}: {
+      description: {`类型: \`Option<String>\` · 描述: \`success\` 为 \`false\` 时的错误消息`},
+    },
+    {`\`duration_ms\``}: {
+      description: {`类型: \`Option<u64>\` · 描述: Worker 执行时间`},
+    },
+  }
+/>

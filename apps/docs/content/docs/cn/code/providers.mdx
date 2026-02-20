@@ -4,6 +4,7 @@ description: 完整的 HCL 配置参考 — LLM 提供商、模型、队列、�
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 提供商与配置
 
@@ -139,27 +140,59 @@ providers {
 
 ## 模型字段
 
-| 字段 | 类型 | 必填 | 描述 |
-|-------|------|----------|-------------|
-| `id` | string | 是 | 模型标识符（例如 `claude-sonnet-4-20250514`） |
-| `name` | string | 是 | 显示名称 |
-| `family` | string | 否 | 模型系列（例如 `claude-sonnet`、`gpt`） |
-| `api_key` | string | 否 | 每模型 API key（覆盖提供商） |
-| `base_url` | string | 否 | 每模型 base URL（覆盖提供商） |
-| `tool_call` | bool | 否 | 支持工具调用 |
-| `reasoning` | bool | 否 | 支持扩展推理 |
-| `temperature` | bool | 否 | 支持温度参数 |
-| `attachment` | bool | 否 | 支持文件附件 |
-| `cost` | object | 否 | `{ input, output, cache_read, cache_write }` 每百万 token 费用 |
-| `limit` | object | 否 | `{ context, output }` token 限制 |
+<TypeTable
+  type={
+    {`\`id\``}: {
+      description: {`类型: string · 必填: 是 · 描述: 模型标识符（例如 \`claude-sonnet-4-20250514\`）`},
+    },
+    {`\`name\``}: {
+      description: "类型: string · 必填: 是 · 描述: 显示名称",
+    },
+    {`\`family\``}: {
+      description: {`类型: string · 必填: 否 · 描述: 模型系列（例如 \`claude-sonnet\`、\`gpt\`）`},
+    },
+    {`\`api_key\``}: {
+      description: "类型: string · 必填: 否 · 描述: 每模型 API key（覆盖提供商）",
+    },
+    {`\`base_url\``}: {
+      description: "类型: string · 必填: 否 · 描述: 每模型 base URL（覆盖提供商）",
+    },
+    {`\`tool_call\``}: {
+      description: "类型: bool · 必填: 否 · 描述: 支持工具调用",
+    },
+    {`\`reasoning\``}: {
+      description: "类型: bool · 必填: 否 · 描述: 支持扩展推理",
+    },
+    {`\`temperature\``}: {
+      description: "类型: bool · 必填: 否 · 描述: 支持温度参数",
+    },
+    {`\`attachment\``}: {
+      description: "类型: bool · 必填: 否 · 描述: 支持文件附件",
+    },
+    {`\`cost\``}: {
+      description: {`类型: object · 必填: 否 · 描述: \`{ input, output, cache_read, cache_write }\` 每百万 token 费用`},
+    },
+    {`\`limit\``}: {
+      description: {`类型: object · 必填: 否 · 描述: \`{ context, output }\` token 限制`},
+    },
+  }
+/>
 
 ## 提供商字段
 
-| 字段 | 类型 | 必填 | 描述 |
-|-------|------|----------|-------------|
-| `name` | string | 是 | 提供商标识符（用于 `provider/model` 格式） |
-| `api_key` | string | 是 | 所有模型的默认 API key |
-| `base_url` | string | 否 | 所有模型的默认 base URL |
+<TypeTable
+  type={
+    {`\`name\``}: {
+      description: {`类型: string · 必填: 是 · 描述: 提供商标识符（用于 \`provider/model\` 格式）`},
+    },
+    {`\`api_key\``}: {
+      description: "类型: string · 必填: 是 · 描述: 所有模型的默认 API key",
+    },
+    {`\`base_url\``}: {
+      description: "类型: string · 必填: 否 · 描述: 所有模型的默认 base URL",
+    },
+  }
+/>
 
 ## 完整配置参考
 
@@ -270,16 +303,34 @@ search {
 
 ### 配置字段
 
-| 字段 | 类型 | 默认值 | 描述 |
-|-------|------|---------|-------------|
-| `default_model` | `string` | —（必填） | 默认模型，`provider/model` 格式 |
-| `max_tool_rounds` | `int` | `50` | 每轮最大工具调用次数 |
-| `thinking_budget` | `int` | `null` | 推理 token 预算 |
-| `skill_dirs` | `string[]` | `[]` | 扫描 `*.md` skill 文件的目录 |
-| `agent_dirs` | `string[]` | `[]` | 扫描 agent 文件的目录 |
-| `storage_backend` | `string` | `"file"` | `"memory"`、`"file"` 或 `"custom"` |
-| `sessions_dir` | `string` | `null` | 会话持久化路径 |
-| `storage_url` | `string` | `null` | 存储连接 URL（用于自定义后端） |
+<TypeTable
+  type={
+    {`\`default_model\``}: {
+      description: {`类型: \`string\` · 默认值: —（必填） · 描述: 默认模型，\`provider/model\` 格式`},
+    },
+    {`\`max_tool_rounds\``}: {
+      description: {`类型: \`int\` · 默认值: \`50\` · 描述: 每轮最大工具调用次数`},
+    },
+    {`\`thinking_budget\``}: {
+      description: {`类型: \`int\` · 默认值: \`null\` · 描述: 推理 token 预算`},
+    },
+    {`\`skill_dirs\``}: {
+      description: {`类型: \`string[]\` · 默认值: \`[]\` · 描述: 扫描 \`*.md\` skill 文件的目录`},
+    },
+    {`\`agent_dirs\``}: {
+      description: {`类型: \`string[]\` · 默认值: \`[]\` · 描述: 扫描 agent 文件的目录`},
+    },
+    {`\`storage_backend\``}: {
+      description: {`类型: \`string\` · 默认值: \`"file"\` · 描述: \`"memory"\`、\`"file"\` 或 \`"custom"\``},
+    },
+    {`\`sessions_dir\``}: {
+      description: {`类型: \`string\` · 默认值: \`null\` · 描述: 会话持久化路径`},
+    },
+    {`\`storage_url\``}: {
+      description: {`类型: \`string\` · 默认值: \`null\` · 描述: 存储连接 URL（用于自定义后端）`},
+    },
+  }
+/>
 
 ### `env()` 函数
 

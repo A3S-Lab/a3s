@@ -3,6 +3,8 @@ title: Engines
 description: 9 built-in search engines and the Engine trait for custom implementations
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Engines
 
 A3S Search ships with 9 built-in engines and an `Engine` trait for adding custom search sources.
@@ -51,13 +53,25 @@ use a3s_search::engines::DuckDuckGo;
 search.add_engine(DuckDuckGo::new());
 ```
 
-| Property | Value |
-|----------|-------|
-| Shortcut | `ddg` |
-| Weight | 1.0 |
-| Method | HTTP / HTML scraping |
-| Paging | Yes |
-| SafeSearch | Yes |
+<TypeTable
+  type={
+    "Shortcut": {
+      description: {`\`ddg\``},
+    },
+    "Weight": {
+      description: "1.0",
+    },
+    "Method": {
+      description: "HTTP / HTML scraping",
+    },
+    "Paging": {
+      description: "Yes",
+    },
+    "SafeSearch": {
+      description: "Yes",
+    },
+  }
+/>
 
 ### Brave Search
 
@@ -68,13 +82,25 @@ use a3s_search::engines::Brave;
 search.add_engine(Brave::new());
 ```
 
-| Property | Value |
-|----------|-------|
-| Shortcut | `brave` |
-| Weight | 1.0 |
-| Method | HTTP / HTML scraping |
-| Paging | Yes |
-| SafeSearch | Yes |
+<TypeTable
+  type={
+    "Shortcut": {
+      description: {`\`brave\``},
+    },
+    "Weight": {
+      description: "1.0",
+    },
+    "Method": {
+      description: "HTTP / HTML scraping",
+    },
+    "Paging": {
+      description: "Yes",
+    },
+    "SafeSearch": {
+      description: "Yes",
+    },
+  }
+/>
 
 ### Bing
 
@@ -85,13 +111,25 @@ use a3s_search::engines::Bing;
 search.add_engine(Bing::new());
 ```
 
-| Property | Value |
-|----------|-------|
-| Shortcut | `bing` |
-| Weight | 1.0 |
-| Method | HTTP / HTML scraping |
-| Paging | Yes |
-| SafeSearch | Yes |
+<TypeTable
+  type={
+    "Shortcut": {
+      description: {`\`bing\``},
+    },
+    "Weight": {
+      description: "1.0",
+    },
+    "Method": {
+      description: "HTTP / HTML scraping",
+    },
+    "Paging": {
+      description: "Yes",
+    },
+    "SafeSearch": {
+      description: "Yes",
+    },
+  }
+/>
 
 ### Wikipedia
 
@@ -107,13 +145,25 @@ search.add_engine(Wikipedia::new());
 search.add_engine(Wikipedia::with_language("zh"));
 ```
 
-| Property | Value |
-|----------|-------|
-| Shortcut | `wiki` |
-| Weight | 1.2 |
-| Method | HTTP / JSON API |
-| Paging | No |
-| SafeSearch | No |
+<TypeTable
+  type={
+    "Shortcut": {
+      description: {`\`wiki\``},
+    },
+    "Weight": {
+      description: "1.2",
+    },
+    "Method": {
+      description: "HTTP / JSON API",
+    },
+    "Paging": {
+      description: "No",
+    },
+    "SafeSearch": {
+      description: "No",
+    },
+  }
+/>
 
 ### Sogou
 
@@ -124,12 +174,22 @@ use a3s_search::engines::Sogou;
 search.add_engine(Sogou::new());
 ```
 
-| Property | Value |
-|----------|-------|
-| Shortcut | `sogou` |
-| Weight | 1.0 |
-| Method | HTTP / HTML scraping |
-| Language | Chinese |
+<TypeTable
+  type={
+    "Shortcut": {
+      description: {`\`sogou\``},
+    },
+    "Weight": {
+      description: "1.0",
+    },
+    "Method": {
+      description: "HTTP / HTML scraping",
+    },
+    "Language": {
+      description: "Chinese",
+    },
+  }
+/>
 
 ### 360 Search
 
@@ -140,12 +200,22 @@ use a3s_search::engines::So360;
 search.add_engine(So360::new());
 ```
 
-| Property | Value |
-|----------|-------|
-| Shortcut | `360` |
-| Weight | 1.0 |
-| Method | HTTP / HTML scraping |
-| Language | Chinese |
+<TypeTable
+  type={
+    "Shortcut": {
+      description: {`\`360\``},
+    },
+    "Weight": {
+      description: "1.0",
+    },
+    "Method": {
+      description: "HTTP / HTML scraping",
+    },
+    "Language": {
+      description: "Chinese",
+    },
+  }
+/>
 
 ### Google (headless)
 
@@ -157,13 +227,25 @@ use a3s_search::engines::Google;
 search.add_engine(Google::new(fetcher));
 ```
 
-| Property | Value |
-|----------|-------|
-| Shortcut | `g` |
-| Weight | 1.5 |
-| Method | Headless browser |
-| Paging | Yes |
-| SafeSearch | Yes |
+<TypeTable
+  type={
+    "Shortcut": {
+      description: {`\`g\``},
+    },
+    "Weight": {
+      description: "1.5",
+    },
+    "Method": {
+      description: "Headless browser",
+    },
+    "Paging": {
+      description: "Yes",
+    },
+    "SafeSearch": {
+      description: "Yes",
+    },
+  }
+/>
 
 ### Baidu (headless)
 
@@ -175,12 +257,22 @@ use a3s_search::engines::Baidu;
 search.add_engine(Baidu::new(fetcher));
 ```
 
-| Property | Value |
-|----------|-------|
-| Shortcut | `baidu` |
-| Weight | 1.0 |
-| Method | Headless browser |
-| Language | Chinese |
+<TypeTable
+  type={
+    "Shortcut": {
+      description: {`\`baidu\``},
+    },
+    "Weight": {
+      description: "1.0",
+    },
+    "Method": {
+      description: "Headless browser",
+    },
+    "Language": {
+      description: "Chinese",
+    },
+  }
+/>
 
 ### Bing China (headless)
 
@@ -192,26 +284,56 @@ use a3s_search::engines::BingChina;
 search.add_engine(BingChina::new(fetcher));
 ```
 
-| Property | Value |
-|----------|-------|
-| Shortcut | `bing_cn` |
-| Weight | 1.0 |
-| Method | Headless browser |
-| Language | Chinese |
+<TypeTable
+  type={
+    "Shortcut": {
+      description: {`\`bing_cn\``},
+    },
+    "Weight": {
+      description: "1.0",
+    },
+    "Method": {
+      description: "Headless browser",
+    },
+    "Language": {
+      description: "Chinese",
+    },
+  }
+/>
 
 ## Engine Shortcuts
 
-| Shortcut | Aliases | Engine | Method |
-|----------|---------|--------|--------|
-| `ddg` | `duckduckgo` | DuckDuckGo | HTTP |
-| `brave` | — | Brave Search | HTTP |
-| `bing` | — | Bing International | HTTP |
-| `wiki` | `wikipedia` | Wikipedia | JSON API |
-| `sogou` | — | Sogou | HTTP |
-| `360` | `so360` | 360 Search | HTTP |
-| `g` | `google` | Google | Headless |
-| `baidu` | — | Baidu | Headless |
-| `bing_cn` | — | Bing China | Headless |
+<TypeTable
+  type={
+    {`\`ddg\``}: {
+      description: {`Aliases: \`duckduckgo\` · Engine: DuckDuckGo · Method: HTTP`},
+    },
+    {`\`brave\``}: {
+      description: "Engine: Brave Search · Method: HTTP",
+    },
+    {`\`bing\``}: {
+      description: "Engine: Bing International · Method: HTTP",
+    },
+    {`\`wiki\``}: {
+      description: {`Aliases: \`wikipedia\` · Engine: Wikipedia · Method: JSON API`},
+    },
+    {`\`sogou\``}: {
+      description: "Engine: Sogou · Method: HTTP",
+    },
+    {`\`360\``}: {
+      description: {`Aliases: \`so360\` · Engine: 360 Search · Method: HTTP`},
+    },
+    {`\`g\``}: {
+      description: {`Aliases: \`google\` · Engine: Google · Method: Headless`},
+    },
+    {`\`baidu\``}: {
+      description: "Engine: Baidu · Method: Headless",
+    },
+    {`\`bing_cn\``}: {
+      description: "Engine: Bing China · Method: Headless",
+    },
+  }
+/>
 
 ## Custom Engine
 

@@ -3,6 +3,8 @@ title: Relevance Scoring
 description: How memories are ranked — importance, recency decay, and RelevanceConfig
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Relevance Scoring
 
 When searching or injecting memories into context, each item is scored by combining importance and recency:
@@ -37,12 +39,22 @@ let score = item.relevance_score_at(chrono::Utc::now(), &config);
 
 ## Decay behavior
 
-| Age | Recency factor (decay_days = 30) |
-|-----|----------------------------------|
-| 0 days | 1.00 |
-| 30 days | 0.37 |
-| 60 days | 0.14 |
-| 90 days | 0.05 |
+<TypeTable
+  type={
+    "0 days": {
+      description: "1.00",
+    },
+    "30 days": {
+      description: "0.37",
+    },
+    "60 days": {
+      description: "0.14",
+    },
+    "90 days": {
+      description: "0.05",
+    },
+  }
+/>
 
 A high-importance item (`importance = 1.0`) with default weights scores:
 - Fresh: `0.7 × 1.0 + 0.3 × 1.0 = 1.0`
@@ -52,8 +64,16 @@ A low-importance item (`importance = 0.1`) decays much faster in practice becaus
 
 ## Tuning guidance
 
-| Use case | Recommended config |
-|----------|--------------------|
-| Long-lived assistant | `decay_days: 365`, `importance_weight: 0.9` |
-| Short coding session | `decay_days: 1`, `recency_weight: 0.7` |
-| Equal weight | `importance_weight: 0.5`, `recency_weight: 0.5` |
+<TypeTable
+  type={
+    "Long-lived assistant": {
+      description: {`\`decay_days: 365\`, \`importance_weight: 0.9\``},
+    },
+    "Short coding session": {
+      description: {`\`decay_days: 1\`, \`recency_weight: 0.7\``},
+    },
+    "Equal weight": {
+      description: {`\`importance_weight: 0.5\`, \`recency_weight: 0.5\``},
+    },
+  }
+/>

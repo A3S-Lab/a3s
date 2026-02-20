@@ -4,6 +4,7 @@ description: 兼容 Claude Code 的 skill 系统，支持指令注入和工具�
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Skills 系统
@@ -194,14 +195,28 @@ Use `read` to examine API files and `grep` to search for patterns.
 
 ### Frontmatter 字段
 
-| 字段 | 必填 | 描述 |
-|-------|----------|-------------|
-| `name` | 是 | 唯一的 skill 标识符（kebab-case） |
-| `description` | 是 | skill 功能的简要描述 |
-| `allowed-tools` | 否 | 逗号分隔的允许工具列表，支持通配符 |
-| `kind` | 是 | Skill 类型：`instruction`、`tool` 或 `agent` |
-| `tags` | 否 | 用于分类的标签列表 |
-| `version` | 否 | 语义化版本（例如 "1.0.0"） |
+<TypeTable
+  type={
+    {`\`name\``}: {
+      description: "必填: 是 · 描述: 唯一的 skill 标识符（kebab-case）",
+    },
+    {`\`description\``}: {
+      description: "必填: 是 · 描述: skill 功能的简要描述",
+    },
+    {`\`allowed-tools\``}: {
+      description: "必填: 否 · 描述: 逗号分隔的允许工具列表，支持通配符",
+    },
+    {`\`kind\``}: {
+      description: {`必填: 是 · 描述: Skill 类型：\`instruction\`、\`tool\` 或 \`agent\``},
+    },
+    {`\`tags\``}: {
+      description: "必填: 否 · 描述: 用于分类的标签列表",
+    },
+    {`\`version\``}: {
+      description: "必填: 否 · 描述: 语义化版本（例如 &quot;1.0.0&quot;）",
+    },
+  }
+/>
 
 ### 工具权限语法
 

@@ -3,6 +3,8 @@ title: MemoryItem
 description: The unit of memory — fields, builder API, and memory types
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # MemoryItem
 
 Every memory is a `MemoryItem`. Build one with the fluent API:
@@ -36,19 +38,41 @@ let item = MemoryItem::new("Auth uses JWT with 24h expiry")
 
 ## Builder methods
 
-| Method | Behavior |
-|--------|----------|
-| `.with_importance(f32)` | Set importance, clamped to 0.0–1.0 |
-| `.with_tag(str)` | Append a single tag |
-| `.with_tags(Vec<String>)` | Replace all tags |
-| `.with_type(MemoryType)` | Set memory type |
-| `.with_metadata(key, value)` | Insert a metadata key-value pair |
+<TypeTable
+  type={
+    {`\`.with_importance(f32)\``}: {
+      description: "Set importance, clamped to 0.0–1.0",
+    },
+    {`\`.with_tag(str)\``}: {
+      description: "Append a single tag",
+    },
+    {`\`.with_tags(Vec<String>)\``}: {
+      description: "Replace all tags",
+    },
+    {`\`.with_type(MemoryType)\``}: {
+      description: "Set memory type",
+    },
+    {`\`.with_metadata(key, value)\``}: {
+      description: "Insert a metadata key-value pair",
+    },
+  }
+/>
 
 ## Memory types
 
-| Type | Purpose | Typical importance |
-|------|---------|-------------------|
-| `Episodic` | Specific events and interactions | 0.5 |
-| `Semantic` | Facts and domain knowledge | 0.5–0.8 |
-| `Procedural` | Successful patterns | 0.8 |
-| `Working` | Active context for the current task | varies |
+<TypeTable
+  type={
+    {`\`Episodic\``}: {
+      description: "Purpose: Specific events and interactions · Typical importance: 0.5",
+    },
+    {`\`Semantic\``}: {
+      description: "Purpose: Facts and domain knowledge · Typical importance: 0.5–0.8",
+    },
+    {`\`Procedural\``}: {
+      description: "Purpose: Successful patterns · Typical importance: 0.8",
+    },
+    {`\`Working\``}: {
+      description: "Purpose: Active context for the current task · Typical importance: varies",
+    },
+  }
+/>

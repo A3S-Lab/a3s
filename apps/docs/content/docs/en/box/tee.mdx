@@ -3,6 +3,8 @@ title: TEE Security
 description: AMD SEV-SNP attestation, sealed storage, RA-TLS, and secret injection
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # TEE Security
 
 A3S Box supports AMD SEV-SNP (Secure Encrypted Virtualization - Secure Nested Paging) for confidential computing. This provides hardware-based memory encryption, remote attestation, sealed storage, and secure secret injection.
@@ -158,11 +160,19 @@ pub enum SealingPolicy {
 }
 ```
 
-| Policy | Portable Across Hardware | Portable Across Images |
-|--------|------------------------|----------------------|
-| `MeasurementAndChip` | No | No |
-| `MeasurementOnly` | Yes | No |
-| `ChipOnly` | No | Yes |
+<TypeTable
+  type={
+    {`\`MeasurementAndChip\``}: {
+      description: "Portable Across Hardware: No · Portable Across Images: No",
+    },
+    {`\`MeasurementOnly\``}: {
+      description: "Portable Across Hardware: Yes · Portable Across Images: No",
+    },
+    {`\`ChipOnly\``}: {
+      description: "Portable Across Hardware: No · Portable Across Images: Yes",
+    },
+  }
+/>
 
 ### Sealing Implementation
 

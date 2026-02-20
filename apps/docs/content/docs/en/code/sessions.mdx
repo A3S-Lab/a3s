@@ -4,6 +4,7 @@ description: Create sessions, send prompts, stream responses, and manage convers
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
@@ -480,25 +481,53 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
 
 ### Agent
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `new` | `Agent::new(config: &str) -> Result<Agent>` | Load from HCL file or string |
-| `from_config` | `Agent::from_config(config: AgentConfig) -> Result<Agent>` | Load from struct |
-| `session` | `agent.session(workspace, options?) -> Result<AgentSession>` | Create a workspace-bound session |
+<TypeTable
+  type={
+    {`\`new\``}: {
+      description: {`Signature: \`Agent::new(config: &str) -> Result<Agent>\` · Description: Load from HCL file or string`},
+    },
+    {`\`from_config\``}: {
+      description: {`Signature: \`Agent::from_config(config: AgentConfig) -> Result<Agent>\` · Description: Load from struct`},
+    },
+    {`\`session\``}: {
+      description: {`Signature: \`agent.session(workspace, options?) -> Result<AgentSession>\` · Description: Create a workspace-bound session`},
+    },
+  }
+/>
 
 ### AgentSession
 
-| Method | Rust | Python | Node.js |
-|--------|------|--------|---------|
-| Send prompt | `session.send(prompt, None).await?` | `await session.send(prompt)` | `await session.send(prompt)` |
-| Stream events | `session.stream(prompt, None).await?` | `session.stream(prompt)` | `session.stream(prompt)` |
-| Send with image | `session.send_with_attachments(p, &[img], None).await?` | `await session.send_with_attachments(p, [img])` | `await session.sendWithAttachments(p, [img])` |
-| Read file | `session.read_file(path).await?` | `await session.read_file(path)` | `await session.readFile(path)` |
-| Run bash | `session.bash(cmd).await?` | `await session.bash(cmd)` | `await session.bash(cmd)` |
-| Glob | `session.glob(pattern).await?` | `await session.glob(pattern)` | `await session.glob(pattern)` |
-| Grep | `session.grep(pattern).await?` | `await session.grep(pattern)` | `await session.grep(pattern)` |
-| Call tool | `session.tool(name, args).await?` | `await session.tool(name, args)` | `await session.tool(name, args)` |
-| History | `session.history()` | `session.history()` | `session.history()` |
+<TypeTable
+  type={
+    "Send prompt": {
+      description: {`Rust: \`session.send(prompt, None).await?\` · Python: \`await session.send(prompt)\` · Node.js: \`await session.send(prompt)\``},
+    },
+    "Stream events": {
+      description: {`Rust: \`session.stream(prompt, None).await?\` · Python: \`session.stream(prompt)\` · Node.js: \`session.stream(prompt)\``},
+    },
+    "Send with image": {
+      description: {`Rust: \`session.send_with_attachments(p, &[img], None).await?\` · Python: \`await session.send_with_attachments(p, [img])\` · Node.js: \`await session.sendWithAttachments(p, [img])\``},
+    },
+    "Read file": {
+      description: {`Rust: \`session.read_file(path).await?\` · Python: \`await session.read_file(path)\` · Node.js: \`await session.readFile(path)\``},
+    },
+    "Run bash": {
+      description: {`Rust: \`session.bash(cmd).await?\` · Python: \`await session.bash(cmd)\` · Node.js: \`await session.bash(cmd)\``},
+    },
+    "Glob": {
+      description: {`Rust: \`session.glob(pattern).await?\` · Python: \`await session.glob(pattern)\` · Node.js: \`await session.glob(pattern)\``},
+    },
+    "Grep": {
+      description: {`Rust: \`session.grep(pattern).await?\` · Python: \`await session.grep(pattern)\` · Node.js: \`await session.grep(pattern)\``},
+    },
+    "Call tool": {
+      description: {`Rust: \`session.tool(name, args).await?\` · Python: \`await session.tool(name, args)\` · Node.js: \`await session.tool(name, args)\``},
+    },
+    "History": {
+      description: {`Rust: \`session.history()\` · Python: \`session.history()\` · Node.js: \`session.history()\``},
+    },
+  }
+/>
 
 ### SessionOptions
 
@@ -619,8 +648,16 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
 
 ### AgentResponse
 
-| Field | Rust | Python | Node.js |
-|-------|------|--------|---------|
-| Text | `result.text` | `result.text` | `result.text` |
-| Total tokens | `result.usage.total_tokens` | `result.usage.total_tokens` | `result.usage.totalTokens` |
-| Tool call count | `result.tool_calls_count` | `result.tool_calls_count` | `result.toolCallsCount` |
+<TypeTable
+  type={
+    "Text": {
+      description: {`Rust: \`result.text\` · Python: \`result.text\` · Node.js: \`result.text\``},
+    },
+    "Total tokens": {
+      description: {`Rust: \`result.usage.total_tokens\` · Python: \`result.usage.total_tokens\` · Node.js: \`result.usage.totalTokens\``},
+    },
+    "Tool call count": {
+      description: {`Rust: \`result.tool_calls_count\` · Python: \`result.tool_calls_count\` · Node.js: \`result.toolCallsCount\``},
+    },
+  }
+/>

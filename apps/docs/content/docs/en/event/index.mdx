@@ -3,6 +3,8 @@ title: A3S Event
 description: Provider-agnostic event bus with schema validation, encryption, dead letter queues, and observability
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S Event
 
 A3S Event is a provider-agnostic event system for Rust. All backends implement the `EventProvider` trait — swap between NATS JetStream and in-memory without changing application code.
@@ -11,12 +13,22 @@ A3S Event is a provider-agnostic event system for Rust. All backends implement t
 
 All optional modules are behind feature gates. The minimal core compiles with zero optional dependencies.
 
-| Feature | Default | Description |
-|---------|---------|-------------|
-| `nats` | ✅ | NATS JetStream provider |
-| `encryption` | ✅ | AES-256-GCM payload encryption with key rotation |
-| `cloudevents` | ✅ | CloudEvents v1.0 conversion |
-| `routing` | ✅ | Broker/Trigger event routing + Event sinks |
+<TypeTable
+  type={
+    {`\`nats\``}: {
+      description: "Default: ✅ · Description: NATS JetStream provider",
+    },
+    {`\`encryption\``}: {
+      description: "Default: ✅ · Description: AES-256-GCM payload encryption with key rotation",
+    },
+    {`\`cloudevents\``}: {
+      description: "Default: ✅ · Description: CloudEvents v1.0 conversion",
+    },
+    {`\`routing\``}: {
+      description: "Default: ✅ · Description: Broker/Trigger event routing + Event sinks",
+    },
+  }
+/>
 
 ```toml
 # Full (default)
@@ -64,43 +76,99 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
 
 ## Provider Comparison
 
-| Capability | MemoryProvider | NatsProvider |
-|------------|---------------|--------------|
-| Publish/Subscribe | ✅ | ✅ |
-| History/Replay | In-memory buffer | JetStream stream |
-| Durable Subscriptions | No | ✅ |
-| Wildcards | ✅ (`>`, `*`) | ✅ (NATS subjects) |
-| Deduplication | No | ✅ (msg_id) |
-| Manual Ack/Nak | No | ✅ |
-| Backpressure | No | ✅ (max_ack_pending) |
-| Health Check | Always healthy | Connection check |
-| Persistence | None | File or memory storage |
-| Use Case | Development, testing | Production |
+<TypeTable
+  type={
+    "Publish/Subscribe": {
+      description: "MemoryProvider: ✅ · NatsProvider: ✅",
+    },
+    "History/Replay": {
+      description: "MemoryProvider: In-memory buffer · NatsProvider: JetStream stream",
+    },
+    "Durable Subscriptions": {
+      description: "MemoryProvider: No · NatsProvider: ✅",
+    },
+    "Wildcards": {
+      description: {`MemoryProvider: ✅ (\`>\`, \`*\`) · NatsProvider: ✅ (NATS subjects)`},
+    },
+    "Deduplication": {
+      description: "MemoryProvider: No · NatsProvider: ✅ (msg_id)",
+    },
+    "Manual Ack/Nak": {
+      description: "MemoryProvider: No · NatsProvider: ✅",
+    },
+    "Backpressure": {
+      description: "MemoryProvider: No · NatsProvider: ✅ (max_ack_pending)",
+    },
+    "Health Check": {
+      description: "MemoryProvider: Always healthy · NatsProvider: Connection check",
+    },
+    "Persistence": {
+      description: "MemoryProvider: None · NatsProvider: File or memory storage",
+    },
+    "Use Case": {
+      description: "MemoryProvider: Development, testing · NatsProvider: Production",
+    },
+  }
+/>
 
 ## Core Types
 
-| Type | Description |
-|------|-------------|
-| `EventProvider` | Core trait — all backends implement this |
-| `EventBus` | High-level API with subscription management |
-| `Event` | Message envelope (id, subject, category, event_type, version, payload) |
-| `ReceivedEvent` | Event with delivery context (sequence, num_delivered, stream) |
-| `Subscription` | Async event stream from any provider |
-| `PendingEvent` | Event with ack/nak callbacks for manual acknowledgement |
-| `SchemaRegistry` | Event type validation with compatibility checks |
-| `StateStore` | Trait for persisting subscription state |
-| `EventMetrics` | Lock-free atomic counters |
-| `DlqHandler` | Dead letter queue trait |
+<TypeTable
+  type={
+    {`\`EventProvider\``}: {
+      description: "Core trait — all backends implement this",
+    },
+    {`\`EventBus\``}: {
+      description: "High-level API with subscription management",
+    },
+    {`\`Event\``}: {
+      description: "Message envelope (id, subject, category, event_type, version, payload)",
+    },
+    {`\`ReceivedEvent\``}: {
+      description: "Event with delivery context (sequence, num_delivered, stream)",
+    },
+    {`\`Subscription\``}: {
+      description: "Async event stream from any provider",
+    },
+    {`\`PendingEvent\``}: {
+      description: "Event with ack/nak callbacks for manual acknowledgement",
+    },
+    {`\`SchemaRegistry\``}: {
+      description: "Event type validation with compatibility checks",
+    },
+    {`\`StateStore\``}: {
+      description: "Trait for persisting subscription state",
+    },
+    {`\`EventMetrics\``}: {
+      description: "Lock-free atomic counters",
+    },
+    {`\`DlqHandler\``}: {
+      description: "Dead letter queue trait",
+    },
+  }
+/>
 
 ### Feature-Gated Types
 
-| Type | Feature | Description |
-|------|---------|-------------|
-| `Aes256GcmEncryptor` | `encryption` | AES-256-GCM with key rotation |
-| `CloudEvent` | `cloudevents` | CloudEvents v1.0 envelope |
-| `Broker` / `Trigger` | `routing` | Knative-inspired event routing |
-| `EventSink` | `routing` | Delivery targets: `TopicSink`, `InProcessSink`, `LogSink` |
-| `NatsProvider` | `nats` | NATS JetStream distributed provider |
+<TypeTable
+  type={
+    {`\`Aes256GcmEncryptor\``}: {
+      description: {`Feature: \`encryption\` · Description: AES-256-GCM with key rotation`},
+    },
+    {`\`CloudEvent\``}: {
+      description: {`Feature: \`cloudevents\` · Description: CloudEvents v1.0 envelope`},
+    },
+    {`\`Broker\` / \`Trigger\``}: {
+      description: {`Feature: \`routing\` · Description: Knative-inspired event routing`},
+    },
+    {`\`EventSink\``}: {
+      description: {`Feature: \`routing\` · Description: Delivery targets: \`TopicSink\`, \`InProcessSink\`, \`LogSink\``},
+    },
+    {`\`NatsProvider\``}: {
+      description: {`Feature: \`nats\` · Description: NATS JetStream distributed provider`},
+    },
+  }
+/>
 
 ## Test Coverage
 

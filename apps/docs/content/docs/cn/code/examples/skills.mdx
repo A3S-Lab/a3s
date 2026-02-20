@@ -4,6 +4,7 @@ description: 内置和自定义 skill 系统
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Skills
@@ -12,15 +13,31 @@ Skills 是可复用的提示模板，通过专业指令增强 agent 的系统提
 
 ## 内置 Skills
 
-| Skill | 功能 |
-|-------|-------------|
-| `code-search` | 工作区语义代码搜索 |
-| `code-review` | 风格、安全和资源问题检测 |
-| `explain-code` | 清晰解释复杂代码 |
-| `find-bugs` | Bug 检测和修复建议 |
-| `builtin-tools` | 指导 LLM 有效使用工具 |
-| `delegate-task` | 将任务拆分为并行子 agent |
-| `find-skills` | 动态发现可用 skills |
+<TypeTable
+  type={
+    {`\`code-search\``}: {
+      description: "工作区语义代码搜索",
+    },
+    {`\`code-review\``}: {
+      description: "风格、安全和资源问题检测",
+    },
+    {`\`explain-code\``}: {
+      description: "清晰解释复杂代码",
+    },
+    {`\`find-bugs\``}: {
+      description: "Bug 检测和修复建议",
+    },
+    {`\`builtin-tools\``}: {
+      description: "指导 LLM 有效使用工具",
+    },
+    {`\`delegate-task\``}: {
+      description: "将任务拆分为并行子 agent",
+    },
+    {`\`find-skills\``}: {
+      description: "动态发现可用 skills",
+    },
+  }
+/>
 
 ## 启用内置 Skills
 
@@ -182,32 +199,72 @@ const result = await session.send(
 
 ### SessionOptions
 
-| 选项 | Rust | Python | Node.js | 默认值 |
-|--------|------|--------|---------|---------|
-| 内置 skills | `.with_builtin_skills()` | `builtin_skills=True` | `builtinSkills: true` | `false` |
-| 从目录加载 skills | `.with_skills_from_dir(path)` | `skill_dirs=[path]` | `skillDirs: [path]` | `[]` |
-| 自定义注册表 | `.with_skill_registry(Arc::new(r))` | _（仅 Rust）_ | _（仅 Rust）_ | `None` |
+<TypeTable
+  type={
+    "内置 skills": {
+      description: {`Rust: \`.with_builtin_skills()\` · Python: \`builtin_skills=True\` · Node.js: \`builtinSkills: true\` · 默认值: \`false\``},
+    },
+    "从目录加载 skills": {
+      description: {`Rust: \`.with_skills_from_dir(path)\` · Python: \`skill_dirs=[path]\` · Node.js: \`skillDirs: [path]\` · 默认值: \`[]\``},
+    },
+    "自定义注册表": {
+      description: {`Rust: \`.with_skill_registry(Arc::new(r))\` · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: \`None\``},
+    },
+  }
+/>
 
 ### Skill frontmatter 字段
 
-| 字段 | 类型 | 必填 | 描述 |
-|-------|------|----------|-------------|
-| `name` | `string` | ✅ | 唯一 skill 标识符 |
-| `description` | `string` | ✅ | skill 的功能描述 |
-| `triggers` | `string[]` | ✅ | 激活 skill 的短语 |
-| `allowed-tools` | `string` | ❌ | 工具访问模式（例如 `"read(*), grep(*)"`) |
-| `kind` | `string` | ❌ | `instruction`（默认）或 `agent` |
-| `tags` | `string[]` | ❌ | 分类标签 |
-| `version` | `string` | ❌ | 语义版本字符串 |
+<TypeTable
+  type={
+    {`\`name\``}: {
+      description: {`类型: \`string\` · 必填: ✅ · 描述: 唯一 skill 标识符`},
+    },
+    {`\`description\``}: {
+      description: {`类型: \`string\` · 必填: ✅ · 描述: skill 的功能描述`},
+    },
+    {`\`triggers\``}: {
+      description: {`类型: \`string[]\` · 必填: ✅ · 描述: 激活 skill 的短语`},
+    },
+    {`\`allowed-tools\``}: {
+      description: {`类型: \`string\` · 必填: ❌ · 描述: 工具访问模式（例如 \`"read(*), grep(*)"\`)`},
+    },
+    {`\`kind\``}: {
+      description: {`类型: \`string\` · 必填: ❌ · 描述: \`instruction\`（默认）或 \`agent\``},
+    },
+    {`\`tags\``}: {
+      description: {`类型: \`string[]\` · 必填: ❌ · 描述: 分类标签`},
+    },
+    {`\`version\``}: {
+      description: {`类型: \`string\` · 必填: ❌ · 描述: 语义版本字符串`},
+    },
+  }
+/>
 
 ### 内置 skills
 
-| Skill ID | 触发短语 | 效果 |
-|----------|----------------|--------|
-| `code-search` | "find code", "search for" | 语义代码搜索 |
-| `code-review` | "review", "check code" | 风格 + 安全审查 |
-| `explain-code` | "explain", "what does" | 代码解释 |
-| `find-bugs` | "find bugs", "debug" | Bug 检测 |
-| `builtin-tools` | _（始终激活）_ | 工具使用指导 |
-| `delegate-task` | "delegate", "parallel" | 子 agent 委派 |
-| `find-skills` | "what skills", "find skill" | 动态 skill 发现 |
+<TypeTable
+  type={
+    {`\`code-search\``}: {
+      description: "触发短语: &quot;find code&quot;, &quot;search for&quot; · 效果: 语义代码搜索",
+    },
+    {`\`code-review\``}: {
+      description: "触发短语: &quot;review&quot;, &quot;check code&quot; · 效果: 风格 + 安全审查",
+    },
+    {`\`explain-code\``}: {
+      description: "触发短语: &quot;explain&quot;, &quot;what does&quot; · 效果: 代码解释",
+    },
+    {`\`find-bugs\``}: {
+      description: "触发短语: &quot;find bugs&quot;, &quot;debug&quot; · 效果: Bug 检测",
+    },
+    {`\`builtin-tools\``}: {
+      description: "触发短语: _（始终激活）_ · 效果: 工具使用指导",
+    },
+    {`\`delegate-task\``}: {
+      description: "触发短语: &quot;delegate&quot;, &quot;parallel&quot; · 效果: 子 agent 委派",
+    },
+    {`\`find-skills\``}: {
+      description: "触发短语: &quot;what skills&quot;, &quot;find skill&quot; · 效果: 动态 skill 发现",
+    },
+  }
+/>

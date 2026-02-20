@@ -3,6 +3,8 @@ title: Observability
 description: Lock-free metrics, tracing spans, and health checks
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Observability
 
 A3S Event provides three layers of observability: lock-free atomic metrics for dashboards, `tracing` spans for structured logging, and a health check API for readiness probes.
@@ -98,11 +100,19 @@ tracing_subscriber::init();
 
 ### Span Events
 
-| Operation | Span | Fields |
-|-----------|------|--------|
-| Publish | `event.publish` | `event_id`, `subject`, `category`, `provider` |
-| Subscribe | `event.subscribe` | `subscriber`, `subjects`, `durable`, `provider` |
-| Unsubscribe | `event.unsubscribe` | `consumer`, `error` (on failure) |
+<TypeTable
+  type={
+    "Publish": {
+      description: {`Span: \`event.publish\` · Fields: \`event_id\`, \`subject\`, \`category\`, \`provider\``},
+    },
+    "Subscribe": {
+      description: {`Span: \`event.subscribe\` · Fields: \`subscriber\`, \`subjects\`, \`durable\`, \`provider\``},
+    },
+    "Unsubscribe": {
+      description: {`Span: \`event.unsubscribe\` · Fields: \`consumer\`, \`error\` (on failure)`},
+    },
+  }
+/>
 
 Example output with `tracing-subscriber`:
 
@@ -117,10 +127,16 @@ INFO Subscription updated subscriber="order-processor" subjects=["events.orders.
 let is_healthy = bus.health().await?;
 ```
 
-| Provider | Behavior |
-|----------|----------|
-| MemoryProvider | Always returns `true` |
-| NatsProvider | Checks NATS connection and stream status |
+<TypeTable
+  type={
+    "MemoryProvider": {
+      description: {`Always returns \`true\``},
+    },
+    "NatsProvider": {
+      description: "Checks NATS connection and stream status",
+    },
+  }
+/>
 
 Use in Kubernetes readiness probes or load balancer health checks:
 

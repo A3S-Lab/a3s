@@ -3,6 +3,8 @@ title: A3S Search
 description: 可嵌入的元搜索引擎 — 多引擎聚合、共识排名、代理池和无头浏览器支持
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S Search
 
 A3S Search 是受 [SearXNG](https://github.com/searxng/searxng) 启发的可嵌入元搜索引擎库。并行聚合多个搜索引擎的结果，通过规范化 URL 去重，并使用基于共识的评分算法排名。提供 Rust crate、Python 包和 Node.js 模块。
@@ -47,31 +49,63 @@ Search
 
 ### HTTP 引擎
 
-| 引擎 | 快捷名 | 权重 | 分页 | 安全搜索 |
-|------|--------|------|------|----------|
-| DuckDuckGo | `ddg` | 1.0 | 是 | 是 |
-| Brave | `brave` | 1.0 | 是 | 是 |
-| Bing | `bing` | 1.0 | 是 | 是 |
-| Wikipedia | `wiki` | 1.2 | 否 | 否 |
-| 搜狗 | `sogou` | 1.0 | 否 | 否 |
-| 360 搜索 | `360` | 1.0 | 否 | 否 |
+<TypeTable
+  type={
+    "DuckDuckGo": {
+      description: {`快捷名: \`ddg\` · 权重: 1.0 · 分页: 是 · 安全搜索: 是`},
+    },
+    "Brave": {
+      description: {`快捷名: \`brave\` · 权重: 1.0 · 分页: 是 · 安全搜索: 是`},
+    },
+    "Bing": {
+      description: {`快捷名: \`bing\` · 权重: 1.0 · 分页: 是 · 安全搜索: 是`},
+    },
+    "Wikipedia": {
+      description: {`快捷名: \`wiki\` · 权重: 1.2 · 分页: 否 · 安全搜索: 否`},
+    },
+    "搜狗": {
+      description: {`快捷名: \`sogou\` · 权重: 1.0 · 分页: 否 · 安全搜索: 否`},
+    },
+    "360 搜索": {
+      description: {`快捷名: \`360\` · 权重: 1.0 · 分页: 否 · 安全搜索: 否`},
+    },
+  }
+/>
 
 ### 无头浏览器引擎（`headless` 特性）
 
-| 引擎 | 快捷名 | 权重 | 分页 | 安全搜索 |
-|------|--------|------|------|----------|
-| Google | `g` | 1.5 | 是 | 是 |
-| 百度 | `baidu` | 1.0 | 否 | 否 |
-| 必应中国 | `bing_cn` | 1.0 | 否 | 否 |
+<TypeTable
+  type={
+    "Google": {
+      description: {`快捷名: \`g\` · 权重: 1.5 · 分页: 是 · 安全搜索: 是`},
+    },
+    "百度": {
+      description: {`快捷名: \`baidu\` · 权重: 1.0 · 分页: 否 · 安全搜索: 否`},
+    },
+    "必应中国": {
+      description: {`快捷名: \`bing_cn\` · 权重: 1.0 · 分页: 否 · 安全搜索: 否`},
+    },
+  }
+/>
 
 ## 支持的语言
 
-| 语言 | 包 | 安装 |
-|------|-----|------|
-| Rust | [`a3s-search`](https://crates.io/crates/a3s-search) | Cargo.toml 中添加 `a3s-search = "0.8"` |
-| Python | [`a3s-search`](https://pypi.org/project/a3s-search/) | `pip install a3s-search` |
-| Node.js | [`@a3s-lab/search`](https://www.npmjs.com/package/@a3s-lab/search) | `npm install @a3s-lab/search` |
-| Homebrew | [`a3s-search`](https://github.com/A3S-Lab/homebrew-tap) | `brew install a3s-lab/tap/a3s-search` |
+<TypeTable
+  type={
+    "Rust": {
+      description: {`包: [\`a3s-search\`](https://crates.io/crates/a3s-search) · 安装: Cargo.toml 中添加 \`a3s-search = "0.8"\``},
+    },
+    "Python": {
+      description: {`包: [\`a3s-search\`](https://pypi.org/project/a3s-search/) · 安装: \`pip install a3s-search\``},
+    },
+    "Node.js": {
+      description: {`包: [\`@a3s-lab/search\`](https://www.npmjs.com/package/@a3s-lab/search) · 安装: \`npm install @a3s-lab/search\``},
+    },
+    "Homebrew": {
+      description: {`包: [\`a3s-search\`](https://github.com/A3S-Lab/homebrew-tap) · 安装: \`brew install a3s-lab/tap/a3s-search\``},
+    },
+  }
+/>
 
 ## 排名算法
 

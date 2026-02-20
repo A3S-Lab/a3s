@@ -4,6 +4,7 @@ description: 定义具有隔离权限、自定义提示和并行委派的专门�
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 子代理
 
@@ -11,13 +12,25 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 ## 内置子代理
 
-| Agent | 描述 | 最大步数 | 权限 |
-|-------|-------------|-----------|-------------|
-| `explore` | 快速代码库探索（只读） | 20 | read, grep, glob, ls |
-| `general` | 通用多步骤执行 | 50 | 完整工具访问 |
-| `plan` | 架构和规划（只读） | 30 | read, grep, glob |
-| `title` | 会话标题生成（隐藏） | 1 | 无 |
-| `summary` | 会话摘要（隐藏） | 5 | read |
+<TypeTable
+  type={
+    {`\`explore\``}: {
+      description: "描述: 快速代码库探索（只读） · 最大步数: 20 · 权限: read, grep, glob, ls",
+    },
+    {`\`general\``}: {
+      description: "描述: 通用多步骤执行 · 最大步数: 50 · 权限: 完整工具访问",
+    },
+    {`\`plan\``}: {
+      description: "描述: 架构和规划（只读） · 最大步数: 30 · 权限: read, grep, glob",
+    },
+    {`\`title\``}: {
+      description: "描述: 会话标题生成（隐藏） · 最大步数: 1 · 权限: 无",
+    },
+    {`\`summary\``}: {
+      description: "描述: 会话摘要（隐藏） · 最大步数: 5 · 权限: read",
+    },
+  }
+/>
 
 ## 定义自定义子代理
 
@@ -151,18 +164,40 @@ A3S Code 包含一个内置的 `delegate-task` skill（Instruction 类型），�
 
 ## AgentDefinition 参考
 
-| 字段 | 类型 | 必填 | 描述 |
-|-------|------|----------|-------------|
-| `name` | string | 是 | 唯一的 agent 标识符 |
-| `description` | string | 是 | agent 的功能（展示给 LLM） |
-| `mode` | `subagent` 或 `primary` | 否 | Agent 模式（默认：`subagent`） |
-| `hidden` | bool | 否 | 从列表中隐藏（默认：`false`） |
-| `max_steps` | number | 否 | 最大工具轮数 |
-| `can_spawn_subagents` | bool | 否 | 允许递归委派（默认：`false`） |
-| `permissions.allow` | string[] | 否 | 允许的工具名称 |
-| `permissions.deny` | string[] | 否 | 拒绝的工具名称 |
-| `model` | string | 否 | 模型覆盖，`provider/model` 格式 |
-| `prompt` | string | 否 | Agent 的系统提示 |
+<TypeTable
+  type={
+    {`\`name\``}: {
+      description: "类型: string · 必填: 是 · 描述: 唯一的 agent 标识符",
+    },
+    {`\`description\``}: {
+      description: "类型: string · 必填: 是 · 描述: agent 的功能（展示给 LLM）",
+    },
+    {`\`mode\``}: {
+      description: {`类型: \`subagent\` 或 \`primary\` · 必填: 否 · 描述: Agent 模式（默认：\`subagent\`）`},
+    },
+    {`\`hidden\``}: {
+      description: {`类型: bool · 必填: 否 · 描述: 从列表中隐藏（默认：\`false\`）`},
+    },
+    {`\`max_steps\``}: {
+      description: "类型: number · 必填: 否 · 描述: 最大工具轮数",
+    },
+    {`\`can_spawn_subagents\``}: {
+      description: {`类型: bool · 必填: 否 · 描述: 允许递归委派（默认：\`false\`）`},
+    },
+    {`\`permissions.allow\``}: {
+      description: "类型: string[] · 必填: 否 · 描述: 允许的工具名称",
+    },
+    {`\`permissions.deny\``}: {
+      description: "类型: string[] · 必填: 否 · 描述: 拒绝的工具名称",
+    },
+    {`\`model\``}: {
+      description: {`类型: string · 必填: 否 · 描述: 模型覆盖，\`provider/model\` 格式`},
+    },
+    {`\`prompt\``}: {
+      description: "类型: string · 必填: 否 · 描述: Agent 的系统提示",
+    },
+  }
+/>
 
 ## 工具调用
 
@@ -170,23 +205,47 @@ LLM 通过两个工具委派给子代理：`task`（单个）和 `parallel_task`
 
 ### `task` 参数
 
-| 字段 | 类型 | 必填 | 描述 |
-|-------|------|----------|-------------|
-| `agent` | string | 是 | Agent 名称（内置或自定义） |
-| `description` | string | 是 | 简短任务描述 |
-| `prompt` | string | 是 | 给子代理的详细提示 |
-| `background` | bool | 否 | 不等待结果运行（默认：`false`） |
-| `max_steps` | int | 否 | 覆盖 agent 的默认最大步数 |
+<TypeTable
+  type={
+    {`\`agent\``}: {
+      description: "类型: string · 必填: 是 · 描述: Agent 名称（内置或自定义）",
+    },
+    {`\`description\``}: {
+      description: "类型: string · 必填: 是 · 描述: 简短任务描述",
+    },
+    {`\`prompt\``}: {
+      description: "类型: string · 必填: 是 · 描述: 给子代理的详细提示",
+    },
+    {`\`background\``}: {
+      description: {`类型: bool · 必填: 否 · 描述: 不等待结果运行（默认：\`false\`）`},
+    },
+    {`\`max_steps\``}: {
+      description: "类型: int · 必填: 否 · 描述: 覆盖 agent 的默认最大步数",
+    },
+  }
+/>
 
 ### `task` 结果
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `output` | string | 子代理响应文本 |
-| `session_id` | string | 子会话 ID |
-| `agent` | string | 使用的 agent 名称 |
-| `success` | bool | 执行是否成功 |
-| `task_id` | string | 唯一任务标识符 |
+<TypeTable
+  type={
+    {`\`output\``}: {
+      description: "类型: string · 描述: 子代理响应文本",
+    },
+    {`\`session_id\``}: {
+      description: "类型: string · 描述: 子会话 ID",
+    },
+    {`\`agent\``}: {
+      description: "类型: string · 描述: 使用的 agent 名称",
+    },
+    {`\`success\``}: {
+      description: "类型: bool · 描述: 执行是否成功",
+    },
+    {`\`task_id\``}: {
+      description: "类型: string · 描述: 唯一任务标识符",
+    },
+  }
+/>
 
 ### 单任务委派
 
@@ -475,35 +534,73 @@ println!("{}", summary.text);
 
 ### AgentDefinition 字段
 
-| 字段 | 类型 | 必填 | 描述 |
-|-------|------|----------|-------------|
-| `name` | `string` | ✅ | Agent 标识符（用于 `task` 工具） |
-| `description` | `string` | ✅ | Agent 的功能 |
-| `system_prompt` | `string` | ✅ | Agent 的系统提示/指令 |
-| `model` | `string` | ❌ | 模型覆盖（`provider/model` 格式） |
-| `allowed_tools` | `string[]` | ❌ | 工具访问限制 |
-| `max_tool_rounds` | `number` | ❌ | 每次调用的最大工具轮数 |
+<TypeTable
+  type={
+    {`\`name\``}: {
+      description: {`类型: \`string\` · 必填: ✅ · 描述: Agent 标识符（用于 \`task\` 工具）`},
+    },
+    {`\`description\``}: {
+      description: {`类型: \`string\` · 必填: ✅ · 描述: Agent 的功能`},
+    },
+    {`\`system_prompt\``}: {
+      description: {`类型: \`string\` · 必填: ✅ · 描述: Agent 的系统提示/指令`},
+    },
+    {`\`model\``}: {
+      description: {`类型: \`string\` · 必填: ❌ · 描述: 模型覆盖（\`provider/model\` 格式）`},
+    },
+    {`\`allowed_tools\``}: {
+      description: {`类型: \`string[]\` · 必填: ❌ · 描述: 工具访问限制`},
+    },
+    {`\`max_tool_rounds\``}: {
+      description: {`类型: \`number\` · 必填: ❌ · 描述: 每次调用的最大工具轮数`},
+    },
+  }
+/>
 
 ### SessionOptions
 
-| 选项 | Rust | Python | Node.js | 默认值 |
-|--------|------|--------|---------|---------|
-| Agent 目录 | `.with_agent_dir(path)` | `agent_dirs=[path]` | `agentDirs: [path]` | `[]` |
+<TypeTable
+  type={
+    "Agent 目录": {
+      description: {`Rust: \`.with_agent_dir(path)\` · Python: \`agent_dirs=[path]\` · Node.js: \`agentDirs: [path]\` · 默认值: \`[]\``},
+    },
+  }
+/>
 
 ### task 工具 schema
 
-| 参数 | 类型 | 必填 | 描述 |
-|-----|------|----------|-------------|
-| `agent` | `string` | ✅ | 要委派的 agent 名称 |
-| `prompt` | `string` | ✅ | 任务提示 |
-| `workspace` | `string` | ❌ | 工作区覆盖 |
+<TypeTable
+  type={
+    {`\`agent\``}: {
+      description: {`类型: \`string\` · 必填: ✅ · 描述: 要委派的 agent 名称`},
+    },
+    {`\`prompt\``}: {
+      description: {`类型: \`string\` · 必填: ✅ · 描述: 任务提示`},
+    },
+    {`\`workspace\``}: {
+      description: {`类型: \`string\` · 必填: ❌ · 描述: 工作区覆盖`},
+    },
+  }
+/>
 
 ### 内置 agents
 
-| Agent | 描述 |
-|-------|-------------|
-| `code-reviewer` | 审查代码的风格、安全性和正确性 |
-| `test-writer` | 生成单元测试和集成测试 |
-| `doc-writer` | 从代码编写文档 |
-| `refactorer` | 重构代码以提高清晰度和性能 |
-| `debugger` | 诊断和修复 bug |
+<TypeTable
+  type={
+    {`\`code-reviewer\``}: {
+      description: "审查代码的风格、安全性和正确性",
+    },
+    {`\`test-writer\``}: {
+      description: "生成单元测试和集成测试",
+    },
+    {`\`doc-writer\``}: {
+      description: "从代码编写文档",
+    },
+    {`\`refactorer\``}: {
+      description: "重构代码以提高清晰度和性能",
+    },
+    {`\`debugger\``}: {
+      description: "诊断和修复 bug",
+    },
+  }
+/>

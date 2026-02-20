@@ -3,6 +3,8 @@ title: A3S Power
 description: 本地 LLM 模型管理与推理服务 — 兼容 Ollama 的推理服务器
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S Power
 
 A3S Power 是本地 LLM 模型管理和推理基础设施。提供兼容 Ollama 的 CLI 和 HTTP 服务器，用于下载、管理和运行 GGUF 格式的语言模型。
@@ -43,14 +45,28 @@ A3S Power 是本地 LLM 模型管理和推理基础设施。提供兼容 Ollama 
 
 ## 核心组件
 
-| 组件 | 说明 |
-|------|------|
-| `cli` | 12 个命令：pull、run、list、show、delete、serve、ps、stop、push、cp、create |
-| `api` | 14 个 Ollama 原生端点 + 5 个 OpenAI 兼容端点 |
-| `backend` | 可插拔推理引擎，内置 llama.cpp 实现 |
-| `model` | 内容寻址存储、注册表、解析、GGUF 读取器 |
-| `server` | Axum HTTP 服务器，支持 CORS、追踪、Prometheus 指标 |
-| `config` | TOML 配置，兼容 Ollama 环境变量 |
+<TypeTable
+  type={
+    {`\`cli\``}: {
+      description: "12 个命令：pull、run、list、show、delete、serve、ps、stop、push、cp、create",
+    },
+    {`\`api\``}: {
+      description: "14 个 Ollama 原生端点 + 5 个 OpenAI 兼容端点",
+    },
+    {`\`backend\``}: {
+      description: "可插拔推理引擎，内置 llama.cpp 实现",
+    },
+    {`\`model\``}: {
+      description: "内容寻址存储、注册表、解析、GGUF 读取器",
+    },
+    {`\`server\``}: {
+      description: "Axum HTTP 服务器，支持 CORS、追踪、Prometheus 指标",
+    },
+    {`\`config\``}: {
+      description: "TOML 配置，兼容 Ollama 环境变量",
+    },
+  }
+/>
 
 ## 主要特性
 
@@ -69,9 +85,19 @@ A3S Power 是本地 LLM 模型管理和推理基础设施。提供兼容 Ollama 
 
 ## 默认路径
 
-| 路径 | 说明 |
-|------|------|
-| `~/.a3s/power/` | 基础目录（可通过 `$A3S_POWER_HOME` 覆盖） |
-| `~/.a3s/power/config.toml` | 配置文件 |
-| `~/.a3s/power/models/manifests/` | 模型 manifest 文件 |
-| `~/.a3s/power/models/blobs/` | 内容寻址 blob 存储 |
+<TypeTable
+  type={
+    {`\`~/.a3s/power/\``}: {
+      description: {`基础目录（可通过 \`\$A3S_POWER_HOME\` 覆盖）`},
+    },
+    {`\`~/.a3s/power/config.toml\``}: {
+      description: "配置文件",
+    },
+    {`\`~/.a3s/power/models/manifests/\``}: {
+      description: "模型 manifest 文件",
+    },
+    {`\`~/.a3s/power/models/blobs/\``}: {
+      description: "内容寻址 blob 存储",
+    },
+  }
+/>

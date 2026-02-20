@@ -4,6 +4,7 @@ description: 带目标追踪的任务分解
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # 规划
@@ -137,17 +138,35 @@ for await (const event of stream) {
 
 ### SessionOptions
 
-| 选项 | Rust | Python | Node.js | 默认值 |
-|--------|------|--------|---------|---------|
-| 启用规划 | `.with_planning(true)` | `planning=True` | `planning: true` | `false` |
-| 启用目标追踪 | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` | `false` |
+<TypeTable
+  type={
+    "启用规划": {
+      description: {`Rust: \`.with_planning(true)\` · Python: \`planning=True\` · Node.js: \`planning: true\` · 默认值: \`false\``},
+    },
+    "启用目标追踪": {
+      description: {`Rust: \`.with_goal_tracking(true)\` · Python: \`goal_tracking=True\` · Node.js: \`goalTracking: true\` · 默认值: \`false\``},
+    },
+  }
+/>
 
 ### 规划事件
 
-| 事件 | Rust 变体 | Python/Node.js `type` | 字段 |
-|-------|-------------|----------------------|--------|
-| 规划开始 | `AgentEvent::PlanningStart` | `planning_start` | `prompt` |
-| 计划生成 | `AgentEvent::PlanReady` | `plan_ready` | `steps[]`, `wave_count` |
-| 步骤开始 | `AgentEvent::StepStart` | `step_start` | `step`, `index` |
-| 步骤完成 | `AgentEvent::StepEnd` | `step_end` | `step`, `index`, `success` |
-| 目标更新 | `AgentEvent::GoalUpdated` | `goal_updated` | `goal`, `status` |
+<TypeTable
+  type={
+    "规划开始": {
+      description: {`Rust 变体: \`AgentEvent::PlanningStart\` · Python/Node.js \`type\`: \`planning_start\` · 字段: \`prompt\``},
+    },
+    "计划生成": {
+      description: {`Rust 变体: \`AgentEvent::PlanReady\` · Python/Node.js \`type\`: \`plan_ready\` · 字段: \`steps[]\`, \`wave_count\``},
+    },
+    "步骤开始": {
+      description: {`Rust 变体: \`AgentEvent::StepStart\` · Python/Node.js \`type\`: \`step_start\` · 字段: \`step\`, \`index\``},
+    },
+    "步骤完成": {
+      description: {`Rust 变体: \`AgentEvent::StepEnd\` · Python/Node.js \`type\`: \`step_end\` · 字段: \`step\`, \`index\`, \`success\``},
+    },
+    "目标更新": {
+      description: {`Rust 变体: \`AgentEvent::GoalUpdated\` · Python/Node.js \`type\`: \`goal_updated\` · 字段: \`goal\`, \`status\``},
+    },
+  }
+/>

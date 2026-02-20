@@ -4,6 +4,7 @@ description: Priority-based task queue with preemption
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Lane Queue
@@ -12,12 +13,22 @@ The lane queue provides priority-based task scheduling with four lanes. High-pri
 
 ## Lanes (highest → lowest priority)
 
-| Lane | Priority | Use case |
-|------|----------|---------|
-| `Control` | 1 (highest) | Stop/cancel commands |
-| `Query` | 2 | Read-only lookups |
-| `Execute` | 3 | File writes, tool calls |
-| `Generate` | 4 (lowest) | Long LLM generation |
+<TypeTable
+  type={
+    {`\`Control\``}: {
+      description: "Priority: 1 (highest) · Use case: Stop/cancel commands",
+    },
+    {`\`Query\``}: {
+      description: "Priority: 2 · Use case: Read-only lookups",
+    },
+    {`\`Execute\``}: {
+      description: "Priority: 3 · Use case: File writes, tool calls",
+    },
+    {`\`Generate\``}: {
+      description: "Priority: 4 (lowest) · Use case: Long LLM generation",
+    },
+  }
+/>
 
 ## Basic Queue Setup
 
@@ -145,12 +156,22 @@ For full lane queue documentation, see [Lane Queue](/docs/code/lane-queue).
 
 ### SessionQueueConfig
 
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| Enable lane features | `.with_lane_features()` | `enable_all_features=True` | `enableAllFeatures: true` | `false` |
-| Enable metrics | `.with_metrics()` | `enable_metrics=True` | `enableMetrics: true` | `false` |
-| Query concurrency | `.query_max_concurrency(n)` | `query_max_concurrency=n` | `queryMaxConcurrency: n` | `10` |
-| Execute concurrency | `.execute_max_concurrency(n)` | `execute_max_concurrency=n` | `executeMaxConcurrency: n` | `5` |
+<TypeTable
+  type={
+    "Enable lane features": {
+      description: {`Rust: \`.with_lane_features()\` · Python: \`enable_all_features=True\` · Node.js: \`enableAllFeatures: true\` · Default: \`false\``},
+    },
+    "Enable metrics": {
+      description: {`Rust: \`.with_metrics()\` · Python: \`enable_metrics=True\` · Node.js: \`enableMetrics: true\` · Default: \`false\``},
+    },
+    "Query concurrency": {
+      description: {`Rust: \`.query_max_concurrency(n)\` · Python: \`query_max_concurrency=n\` · Node.js: \`queryMaxConcurrency: n\` · Default: \`10\``},
+    },
+    "Execute concurrency": {
+      description: {`Rust: \`.execute_max_concurrency(n)\` · Python: \`execute_max_concurrency=n\` · Node.js: \`executeMaxConcurrency: n\` · Default: \`5\``},
+    },
+  }
+/>
 
 ### ExternalTask fields (Rust)
 
@@ -164,9 +185,19 @@ For full lane queue documentation, see [Lane Queue](/docs/code/lane-queue).
 
 ### Queue management methods
 
-| Method | Rust | Python | Node.js |
-|--------|------|--------|---------|
-| Submit task | `session.submit_task(task).await?` | `await session.submit_task({...})` | `await session.submitTask({...})` |
-| Queue stats | `session.queue_stats().await` | `await session.queue_stats()` | `await session.queueStats()` |
-| Queue metrics | `session.queue_metrics().await` | `await session.queue_metrics()` | `await session.queueMetrics()` |
-| Dead letters | `session.dead_letters().await` | `await session.dead_letters()` | `await session.deadLetters()` |
+<TypeTable
+  type={
+    "Submit task": {
+      description: {`Rust: \`session.submit_task(task).await?\` · Python: \`await session.submit_task({...})\` · Node.js: \`await session.submitTask({...})\``},
+    },
+    "Queue stats": {
+      description: {`Rust: \`session.queue_stats().await\` · Python: \`await session.queue_stats()\` · Node.js: \`await session.queueStats()\``},
+    },
+    "Queue metrics": {
+      description: {`Rust: \`session.queue_metrics().await\` · Python: \`await session.queue_metrics()\` · Node.js: \`await session.queueMetrics()\``},
+    },
+    "Dead letters": {
+      description: {`Rust: \`session.dead_letters().await\` · Python: \`await session.dead_letters()\` · Node.js: \`await session.deadLetters()\``},
+    },
+  }
+/>

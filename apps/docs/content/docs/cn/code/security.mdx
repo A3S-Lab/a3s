@@ -4,6 +4,7 @@ description: 权限系统、HITL 确认和可扩展安全 trait
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
@@ -28,11 +29,19 @@ A3S Code 提供两个内置安全层：**权限策略** 和 **人机协同（HIT
 
 ### 规则类型
 
-| 动作 | 行为 |
-|--------|----------|
-| `deny` | 立即阻止工具调用 |
-| `allow` | 允许工具调用 |
-| `ask` | 提示用户确认（通过 HITL） |
+<TypeTable
+  type={
+    {`\`deny\``}: {
+      description: "立即阻止工具调用",
+    },
+    {`\`allow\``}: {
+      description: "允许工具调用",
+    },
+    {`\`ask\``}: {
+      description: "提示用户确认（通过 HITL）",
+    },
+  }
+/>
 
 ### 模式匹配
 
@@ -42,21 +51,37 @@ A3S Code 提供两个内置安全层：**权限策略** 和 **人机协同（HIT
 Tool(pattern)
 ```
 
-| 模式 | 匹配 |
-|---------|---------|
-| `bash(rm -rf:*)` | 任何以 `rm -rf` 开头的 bash 命令 |
-| `read(src/**)` | `src/` 下任何文件的读取操作 |
-| `write(*)` | 所有写入操作 |
-| `mcp__pencil` | 所有 `mcp__pencil__*` 工具（前缀匹配） |
+<TypeTable
+  type={
+    {`\`bash(rm -rf:*)\``}: {
+      description: {`任何以 \`rm -rf\` 开头的 bash 命令`},
+    },
+    {`\`read(src/**)\``}: {
+      description: {`\`src/\` 下任何文件的读取操作`},
+    },
+    {`\`write(*)\``}: {
+      description: "所有写入操作",
+    },
+    {`\`mcp__pencil\``}: {
+      description: {`所有 \`mcp__pencil__*\` 工具（前缀匹配）`},
+    },
+  }
+/>
 
 通配符：`*` 匹配除 `/` 外的任何字符，`**` 匹配包括 `/` 的任何字符，`:*` 匹配任何后缀。
 
 ### 预设策略
 
-| 预设 | 行为 |
-|--------|----------|
-| `PermissionPolicy::permissive()` | 默认允许所有工具（默认） |
-| `PermissionPolicy::strict()` | 默认拒绝所有工具 |
+<TypeTable
+  type={
+    {`\`PermissionPolicy::permissive()\``}: {
+      description: "默认允许所有工具（默认）",
+    },
+    {`\`PermissionPolicy::strict()\``}: {
+      description: "默认拒绝所有工具",
+    },
+  }
+/>
 
 ### 构建自定义策略
 
@@ -235,10 +260,16 @@ for event in session.stream("Clean up old logs"):
 
 ### 超时行为
 
-| TimeoutAction | 行为 |
-|---------------|----------|
-| `Reject` | 超时未响应则拒绝工具调用（默认） |
-| `Approve` | 超时未响应则批准工具调用 |
+<TypeTable
+  type={
+    {`\`Reject\``}: {
+      description: "超时未响应则拒绝工具调用（默认）",
+    },
+    {`\`Approve\``}: {
+      description: "超时未响应则批准工具调用",
+    },
+  }
+/>
 
 ## 工作区边界
 
@@ -329,12 +360,22 @@ let session = agent.session("/project", Some(
 
 Agent 在流式传输期间发出安全相关事件：
 
-| 事件 | 触发时机 |
-|-------|------|
-| `PermissionDenied` | 工具调用被权限策略阻止 |
-| `ConfirmationRequired` | 需要 HITL 确认 |
-| `ConfirmationTimeout` | 用户未在超时时间内响应 |
-| `ConfirmationRejected` | 用户拒绝了工具调用 |
+<TypeTable
+  type={
+    {`\`PermissionDenied\``}: {
+      description: "工具调用被权限策略阻止",
+    },
+    {`\`ConfirmationRequired\``}: {
+      description: "需要 HITL 确认",
+    },
+    {`\`ConfirmationTimeout\``}: {
+      description: "用户未在超时时间内响应",
+    },
+    {`\`ConfirmationRejected\``}: {
+      description: "用户拒绝了工具调用",
+    },
+  }
+/>
 
 参见 [会话](/cn/docs/code/sessions) 获取完整事件参考。
 
@@ -342,40 +383,88 @@ Agent 在流式传输期间发出安全相关事件：
 
 ### PermissionPolicy
 
-| 方法 | 描述 |
-|--------|-------------|
-| `PermissionPolicy::new()` | 创建宽松默认策略 |
-| `PermissionPolicy::strict()` | 创建全部拒绝默认策略 |
-| `PermissionPolicy::permissive()` | 创建全部允许默认策略 |
-| `.allow(pattern)` | 添加允许规则 |
-| `.deny(pattern)` | 添加拒绝规则 |
-| `.ask(pattern)` | 添加询问（HITL）规则 |
-| `session.set_permission_policy(p).await` | 应用到运行中的会话 |
+<TypeTable
+  type={
+    {`\`PermissionPolicy::new()\``}: {
+      description: "创建宽松默认策略",
+    },
+    {`\`PermissionPolicy::strict()\``}: {
+      description: "创建全部拒绝默认策略",
+    },
+    {`\`PermissionPolicy::permissive()\``}: {
+      description: "创建全部允许默认策略",
+    },
+    {`\`.allow(pattern)\``}: {
+      description: "添加允许规则",
+    },
+    {`\`.deny(pattern)\``}: {
+      description: "添加拒绝规则",
+    },
+    {`\`.ask(pattern)\``}: {
+      description: "添加询问（HITL）规则",
+    },
+    {`\`session.set_permission_policy(p).await\``}: {
+      description: "应用到运行中的会话",
+    },
+  }
+/>
 
 ### 模式语法
 
-| 模式 | 匹配 |
-|---------|---------|
-| `bash(*)` | 所有 bash 调用 |
-| `bash(rm -rf:*)` | 以 `rm -rf` 开头的 bash 调用 |
-| `read(src/**)` | 读取 `src/` 下的任何文件 |
-| `write(*)` | 所有写入调用 |
-| `mcp__github` | 所有 `mcp__github__*` 工具 |
+<TypeTable
+  type={
+    {`\`bash(*)\``}: {
+      description: "所有 bash 调用",
+    },
+    {`\`bash(rm -rf:*)\``}: {
+      description: {`以 \`rm -rf\` 开头的 bash 调用`},
+    },
+    {`\`read(src/**)\``}: {
+      description: {`读取 \`src/\` 下的任何文件`},
+    },
+    {`\`write(*)\``}: {
+      description: "所有写入调用",
+    },
+    {`\`mcp__github\``}: {
+      description: {`所有 \`mcp__github__*\` 工具`},
+    },
+  }
+/>
 
 ### ConfirmationPolicy
 
-| 字段 | 类型 | 默认值 | 描述 |
-|-------|------|---------|-------------|
-| `enabled` | `bool` | `false` | 启用 HITL |
-| `default_timeout_ms` | `u64` | `30000` | 确认超时时间 |
-| `timeout_action` | `TimeoutAction` | `Reject` | 超时时 `Reject` 或 `Allow` |
+<TypeTable
+  type={
+    {`\`enabled\``}: {
+      description: {`类型: \`bool\` · 默认值: \`false\` · 描述: 启用 HITL`},
+    },
+    {`\`default_timeout_ms\``}: {
+      description: {`类型: \`u64\` · 默认值: \`30000\` · 描述: 确认超时时间`},
+    },
+    {`\`timeout_action\``}: {
+      description: {`类型: \`TimeoutAction\` · 默认值: \`Reject\` · 描述: 超时时 \`Reject\` 或 \`Allow\``},
+    },
+  }
+/>
 
 ### SecurityProvider trait（Rust）
 
-| 方法 | 签名 | 描述 |
-|--------|-----------|-------------|
-| `taint_input` | `fn taint_input(&self, text: &str)` | 检查用户输入中的敏感模式 |
-| `sanitize_output` | `fn sanitize_output(&self, text: &str) -> String` | 从 LLM 输出中脱敏敏感模式 |
-| `wipe` | `fn wipe(&self)` | 清除缓存的敏感状态 |
-| `register_hooks` | `fn register_hooks(&self, engine: &HookEngine)` | 附加 hooks 进行深度拦截 |
-| `teardown` | `fn teardown(&self)` | 会话结束时调用 |
+<TypeTable
+  type={
+    {`\`taint_input\``}: {
+      description: {`签名: \`fn taint_input(&self, text: &str)\` · 描述: 检查用户输入中的敏感模式`},
+    },
+    {`\`sanitize_output\``}: {
+      description: {`签名: \`fn sanitize_output(&self, text: &str) -> String\` · 描述: 从 LLM 输出中脱敏敏感模式`},
+    },
+    {`\`wipe\``}: {
+      description: {`签名: \`fn wipe(&self)\` · 描述: 清除缓存的敏感状态`},
+    },
+    {`\`register_hooks\``}: {
+      description: {`签名: \`fn register_hooks(&self, engine: &HookEngine)\` · 描述: 附加 hooks 进行深度拦截`},
+    },
+    {`\`teardown\``}: {
+      description: {`签名: \`fn teardown(&self)\` · 描述: 会话结束时调用`},
+    },
+  }
+/>

@@ -4,6 +4,7 @@ description: Implement MemoryStore to use any storage system — SQLite, Redis, 
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Custom Backend
 
@@ -33,17 +34,37 @@ impl MemoryStore for MyStore {
 
 ## Method reference
 
-| Method | Description |
-|--------|-------------|
-| `store(item)` | Persist a memory item (upsert by ID) |
-| `retrieve(id)` | Fetch a single item by ID |
-| `search(query, limit)` | Search by content, ranked by relevance |
-| `search_by_tags(tags, limit)` | Filter by tags, ranked by relevance |
-| `get_recent(limit)` | Most recently created items |
-| `get_important(threshold, limit)` | Items above importance threshold, sorted descending |
-| `delete(id)` | Remove a single item |
-| `clear()` | Remove all items |
-| `count()` | Total item count |
+<TypeTable
+  type={
+    {`\`store(item)\``}: {
+      description: "Persist a memory item (upsert by ID)",
+    },
+    {`\`retrieve(id)\``}: {
+      description: "Fetch a single item by ID",
+    },
+    {`\`search(query, limit)\``}: {
+      description: "Search by content, ranked by relevance",
+    },
+    {`\`search_by_tags(tags, limit)\``}: {
+      description: "Filter by tags, ranked by relevance",
+    },
+    {`\`get_recent(limit)\``}: {
+      description: "Most recently created items",
+    },
+    {`\`get_important(threshold, limit)\``}: {
+      description: "Items above importance threshold, sorted descending",
+    },
+    {`\`delete(id)\``}: {
+      description: "Remove a single item",
+    },
+    {`\`clear()\``}: {
+      description: "Remove all items",
+    },
+    {`\`count()\``}: {
+      description: "Total item count",
+    },
+  }
+/>
 
 ## Vector store example
 

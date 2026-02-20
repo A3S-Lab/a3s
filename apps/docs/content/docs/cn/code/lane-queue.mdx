@@ -4,6 +4,7 @@ description: 基于优先级的工具执行，支持并行读取和多机器外�
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Lane 队列
@@ -18,12 +19,22 @@ Lane 队列系统通过基于优先级的队列路由工具执行，底层由 [a
 
 每个工具调用根据其类型映射到一个 **lane**：
 
-| Lane | 优先级 | 工具 | 行为 |
-|------|----------|-------|----------|
-| Control | P0（最高） | pause, resume, cancel | 顺序 |
-| Query | P1 | read, glob, grep, ls, search, list_files, web_fetch, web_search | **并行** |
-| Execute | P2 | bash, write, edit, delete, move, copy | 顺序 |
-| Generate | P3（最低） | LLM 调用 | 顺序 |
+<TypeTable
+  type={
+    "Control": {
+      description: "优先级: P0（最高） · 工具: pause, resume, cancel · 行为: 顺序",
+    },
+    "Query": {
+      description: "优先级: P1 · 工具: read, glob, grep, ls, search, list_files, web_fetch, web_search · 行为: 并行",
+    },
+    "Execute": {
+      description: "优先级: P2 · 工具: bash, write, edit, delete, move, copy · 行为: 顺序",
+    },
+    "Generate": {
+      description: "优先级: P3（最低） · 工具: LLM 调用 · 行为: 顺序",
+    },
+  }
+/>
 
 高优先级 lane 在低优先级 lane 之前调度 — 在 Execute（P2）任务之后提交的 Query（P1）任务会排在已排队的 Execute 任务之前。
 
@@ -345,24 +356,46 @@ for dl in &dead {
 
 ### 处理器模式
 
-| 模式 | 行为 | 使用场景 |
-|------|----------|----------|
-| `Internal` | 在运行时内执行（默认） | 正常本地执行 |
-| `External` | 发出任务到 SDK，等待回调 | 多机器卸载 |
-| `Hybrid` | 本地执行并通知 SDK | 监控、审计、影子执行 |
+<TypeTable
+  type={
+    {`\`Internal\``}: {
+      description: "行为: 在运行时内执行（默认） · 使用场景: 正常本地执行",
+    },
+    {`\`External\``}: {
+      description: "行为: 发出任务到 SDK，等待回调 · 使用场景: 多机器卸载",
+    },
+    {`\`Hybrid\``}: {
+      description: "行为: 本地执行并通知 SDK · 使用场景: 监控、审计、影子执行",
+    },
+  }
+/>
 
 ### ExternalTask
 
 当工具调用进入 External 模式的 lane 时，队列创建一个 `ExternalTask`：
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `task_id` | string | 唯一任务标识符（UUID） |
-| `session_id` | string | 所属会话 |
-| `lane` | SessionLane | 任务所在的 lane |
-| `command_type` | string | 工具名称（例如 `bash`、`read`、`write`） |
-| `payload` | JSON | 工具参数（例如 `{"command": "cargo test"}`） |
-| `timeout_ms` | u64 | 队列等待超时前的时间 |
+<TypeTable
+  type={
+    {`\`task_id\``}: {
+      description: "类型: string · 描述: 唯一任务标识符（UUID）",
+    },
+    {`\`session_id\``}: {
+      description: "类型: string · 描述: 所属会话",
+    },
+    {`\`lane\``}: {
+      description: "类型: SessionLane · 描述: 任务所在的 lane",
+    },
+    {`\`command_type\``}: {
+      description: {`类型: string · 描述: 工具名称（例如 \`bash\`、\`read\`、\`write\`）`},
+    },
+    {`\`payload\``}: {
+      description: {`类型: JSON · 描述: 工具参数（例如 \`{"command": "cargo test"}\`）`},
+    },
+    {`\`timeout_ms\``}: {
+      description: "类型: u64 · 描述: 队列等待超时前的时间",
+    },
+  }
+/>
 
 方法：`is_timed_out()` 检查任务是否已过期，`remaining_ms()` 返回剩余时间。
 
@@ -370,11 +403,19 @@ for dl in &dead {
 
 通过提供以下内容完成任务：
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `success` | bool | 执行是否成功 |
-| `result` | JSON | 结果载荷（`{"output": "...", "exit_code": 0}`） |
-| `error` | Option&lt;string&gt; | 失败时的错误消息 |
+<TypeTable
+  type={
+    {`\`success\``}: {
+      description: "类型: bool · 描述: 执行是否成功",
+    },
+    {`\`result\``}: {
+      description: {`类型: JSON · 描述: 结果载荷（\`{"output": "...", "exit_code": 0}\`）`},
+    },
+    {`\`error\``}: {
+      description: "类型: Option&lt;string&gt; · 描述: 失败时的错误消息",
+    },
+  }
+/>
 
 ### 生命周期
 
@@ -468,39 +509,85 @@ session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
 
 ### SessionQueueConfig 字段
 
-| 字段 | 类型 | 默认值 | 描述 |
-|-------|------|---------|-------------|
-| `query_max_concurrency` | `usize` | `4` | Query lane 最大并行任务数 |
-| `execute_max_concurrency` | `usize` | `1` | Execute lane 最大并行任务数 |
-| `enable_metrics` | `bool` | `false` | 收集队列指标 |
-| `enable_dlq` | `bool` | `false` | 启用死信队列 |
-| `lane_handlers` | `HashMap<SessionLane, LaneHandlerConfig>` | `{}` | 每 lane 处理器配置 |
-| `retry_policy` | `Option<RetryPolicy>` | `None` | 失败重试 |
-| `rate_limit` | `Option<RateLimit>` | `None` | 速率限制 |
-| `priority_boost` | `Option<PriorityBoost>` | `None` | 基于截止时间的优先级提升 |
-| `pressure_threshold` | `usize` | `50` | 队列深度告警阈值 |
+<TypeTable
+  type={
+    {`\`query_max_concurrency\``}: {
+      description: {`类型: \`usize\` · 默认值: \`4\` · 描述: Query lane 最大并行任务数`},
+    },
+    {`\`execute_max_concurrency\``}: {
+      description: {`类型: \`usize\` · 默认值: \`1\` · 描述: Execute lane 最大并行任务数`},
+    },
+    {`\`enable_metrics\``}: {
+      description: {`类型: \`bool\` · 默认值: \`false\` · 描述: 收集队列指标`},
+    },
+    {`\`enable_dlq\``}: {
+      description: {`类型: \`bool\` · 默认值: \`false\` · 描述: 启用死信队列`},
+    },
+    {`\`lane_handlers\``}: {
+      description: {`类型: \`HashMap<SessionLane, LaneHandlerConfig>\` · 默认值: \`{}\` · 描述: 每 lane 处理器配置`},
+    },
+    {`\`retry_policy\``}: {
+      description: {`类型: \`Option<RetryPolicy>\` · 默认值: \`None\` · 描述: 失败重试`},
+    },
+    {`\`rate_limit\``}: {
+      description: {`类型: \`Option<RateLimit>\` · 默认值: \`None\` · 描述: 速率限制`},
+    },
+    {`\`priority_boost\``}: {
+      description: {`类型: \`Option<PriorityBoost>\` · 默认值: \`None\` · 描述: 基于截止时间的优先级提升`},
+    },
+    {`\`pressure_threshold\``}: {
+      description: {`类型: \`usize\` · 默认值: \`50\` · 描述: 队列深度告警阈值`},
+    },
+  }
+/>
 
 ### LaneHandlerConfig 字段
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `mode` | `TaskHandlerMode` | `Internal`、`External` 或 `Hybrid` |
-| `timeout_ms` | `Option<u64>` | 外部任务超时 |
+<TypeTable
+  type={
+    {`\`mode\``}: {
+      description: {`类型: \`TaskHandlerMode\` · 描述: \`Internal\`、\`External\` 或 \`Hybrid\``},
+    },
+    {`\`timeout_ms\``}: {
+      description: {`类型: \`Option<u64>\` · 描述: 外部任务超时`},
+    },
+  }
+/>
 
 ### 队列管理方法
 
-| 方法 | Rust | Python | Node.js |
-|--------|------|--------|---------|
-| 提交任务 | `session.submit_task(task).await?` | `await session.submit_task({...})` | `await session.submitTask({...})` |
-| 队列统计 | `session.queue_stats().await` | `await session.queue_stats()` | `await session.queueStats()` |
-| 队列指标 | `session.queue_metrics().await` | `await session.queue_metrics()` | `await session.queueMetrics()` |
-| 死信 | `session.dead_letters().await` | `await session.dead_letters()` | `await session.deadLetters()` |
-| 设置 lane 处理器 | `session.set_lane_handler(lane, cfg).await` | `await session.set_lane_handler(lane, cfg)` | `await session.setLaneHandler(lane, cfg)` |
+<TypeTable
+  type={
+    "提交任务": {
+      description: {`Rust: \`session.submit_task(task).await?\` · Python: \`await session.submit_task({...})\` · Node.js: \`await session.submitTask({...})\``},
+    },
+    "队列统计": {
+      description: {`Rust: \`session.queue_stats().await\` · Python: \`await session.queue_stats()\` · Node.js: \`await session.queueStats()\``},
+    },
+    "队列指标": {
+      description: {`Rust: \`session.queue_metrics().await\` · Python: \`await session.queue_metrics()\` · Node.js: \`await session.queueMetrics()\``},
+    },
+    "死信": {
+      description: {`Rust: \`session.dead_letters().await\` · Python: \`await session.dead_letters()\` · Node.js: \`await session.deadLetters()\``},
+    },
+    "设置 lane 处理器": {
+      description: {`Rust: \`session.set_lane_handler(lane, cfg).await\` · Python: \`await session.set_lane_handler(lane, cfg)\` · Node.js: \`await session.setLaneHandler(lane, cfg)\``},
+    },
+  }
+/>
 
 ### RetryPolicy 字段
 
-| 字段 | 类型 | 默认值 | 描述 |
-|-------|------|---------|-------------|
-| `strategy` | `string` | `"exponential"` | `"fixed"` 或 `"exponential"` |
-| `max_retries` | `u32` | `3` | 最大重试次数 |
-| `initial_delay_ms` | `u64` | `100` | 初始重试延迟 |
+<TypeTable
+  type={
+    {`\`strategy\``}: {
+      description: {`类型: \`string\` · 默认值: \`"exponential"\` · 描述: \`"fixed"\` 或 \`"exponential"\``},
+    },
+    {`\`max_retries\``}: {
+      description: {`类型: \`u32\` · 默认值: \`3\` · 描述: 最大重试次数`},
+    },
+    {`\`initial_delay_ms\``}: {
+      description: {`类型: \`u64\` · 默认值: \`100\` · 描述: 初始重试延迟`},
+    },
+  }
+/>

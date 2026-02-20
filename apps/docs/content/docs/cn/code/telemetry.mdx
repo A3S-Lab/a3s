@@ -3,6 +3,8 @@ title: 遥测
 description: 追踪 span、费用追踪和工具执行指标
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # 遥测
 
 A3S Code 通过兼容 OpenTelemetry 的追踪 span 发出结构化遥测数据。每个 LLM 调用、工具执行和 agent 轮次都带有详细属性，用于可观测性、费用追踪和性能分析。
@@ -30,60 +32,130 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
 
 ### Agent 级别（`a3s.agent.execute`、`a3s.agent.turn`）
 
-| 属性 | 类型 | 描述 |
-|-----------|------|-------------|
-| `a3s.session_id` | string | 会话标识符 |
-| `a3s.turn` | int | 当前轮次编号 |
-| `a3s.max_turns` | int | 允许的最大轮次数 |
-| `a3s.tool_calls_count` | int | 此范围内的总工具调用次数 |
+<TypeTable
+  type={
+    {`\`a3s.session_id\``}: {
+      description: "类型: string · 描述: 会话标识符",
+    },
+    {`\`a3s.turn\``}: {
+      description: "类型: int · 描述: 当前轮次编号",
+    },
+    {`\`a3s.max_turns\``}: {
+      description: "类型: int · 描述: 允许的最大轮次数",
+    },
+    {`\`a3s.tool_calls_count\``}: {
+      description: "类型: int · 描述: 此范围内的总工具调用次数",
+    },
+  }
+/>
 
 ### LLM 级别（`a3s.llm.completion`）
 
-| 属性 | 类型 | 描述 |
-|-----------|------|-------------|
-| `a3s.llm.model` | string | 模型 ID（例如 `claude-sonnet-4-20250514`） |
-| `a3s.llm.provider` | string | 提供商名称（例如 `anthropic`） |
-| `a3s.llm.streaming` | bool | 是否为流式调用 |
-| `a3s.llm.prompt_tokens` | int | 消耗的输入 token 数 |
-| `a3s.llm.completion_tokens` | int | 生成的输出 token 数 |
-| `a3s.llm.total_tokens` | int | 总 token 数 |
-| `a3s.llm.cache_read_tokens` | int | 缓存读取的输入 token 数 |
-| `a3s.llm.cache_write_tokens` | int | 缓存写入的输入 token 数 |
-| `a3s.llm.stop_reason` | string | 生成停止的原因 |
+<TypeTable
+  type={
+    {`\`a3s.llm.model\``}: {
+      description: {`类型: string · 描述: 模型 ID（例如 \`claude-sonnet-4-20250514\`）`},
+    },
+    {`\`a3s.llm.provider\``}: {
+      description: {`类型: string · 描述: 提供商名称（例如 \`anthropic\`）`},
+    },
+    {`\`a3s.llm.streaming\``}: {
+      description: "类型: bool · 描述: 是否为流式调用",
+    },
+    {`\`a3s.llm.prompt_tokens\``}: {
+      description: "类型: int · 描述: 消耗的输入 token 数",
+    },
+    {`\`a3s.llm.completion_tokens\``}: {
+      description: "类型: int · 描述: 生成的输出 token 数",
+    },
+    {`\`a3s.llm.total_tokens\``}: {
+      description: "类型: int · 描述: 总 token 数",
+    },
+    {`\`a3s.llm.cache_read_tokens\``}: {
+      description: "类型: int · 描述: 缓存读取的输入 token 数",
+    },
+    {`\`a3s.llm.cache_write_tokens\``}: {
+      description: "类型: int · 描述: 缓存写入的输入 token 数",
+    },
+    {`\`a3s.llm.stop_reason\``}: {
+      description: "类型: string · 描述: 生成停止的原因",
+    },
+  }
+/>
 
 ### 工具级别（`a3s.tool.execute`）
 
-| 属性 | 类型 | 描述 |
-|-----------|------|-------------|
-| `a3s.tool.name` | string | 工具名称（例如 `Bash`、`Read`） |
-| `a3s.tool.id` | string | 工具调用 ID |
-| `a3s.tool.exit_code` | int | 退出码（0 = 成功） |
-| `a3s.tool.success` | bool | 工具是否成功 |
-| `a3s.tool.duration_ms` | int | 执行时间（毫秒） |
-| `a3s.tool.permission` | string | 权限决策（`allow`、`deny`、`ask`） |
+<TypeTable
+  type={
+    {`\`a3s.tool.name\``}: {
+      description: {`类型: string · 描述: 工具名称（例如 \`Bash\`、\`Read\`）`},
+    },
+    {`\`a3s.tool.id\``}: {
+      description: "类型: string · 描述: 工具调用 ID",
+    },
+    {`\`a3s.tool.exit_code\``}: {
+      description: "类型: int · 描述: 退出码（0 = 成功）",
+    },
+    {`\`a3s.tool.success\``}: {
+      description: "类型: bool · 描述: 工具是否成功",
+    },
+    {`\`a3s.tool.duration_ms\``}: {
+      description: "类型: int · 描述: 执行时间（毫秒）",
+    },
+    {`\`a3s.tool.permission\``}: {
+      description: {`类型: string · 描述: 权限决策（\`allow\`、\`deny\`、\`ask\`）`},
+    },
+  }
+/>
 
 ### 上下文级别（`a3s.context.resolve`）
 
-| 属性 | 类型 | 描述 |
-|-----------|------|-------------|
-| `a3s.context.providers` | string | 逗号分隔的提供者名称 |
-| `a3s.context.items` | int | 返回的上下文条目数 |
-| `a3s.context.tokens` | int | 上下文条目的总 token 数 |
+<TypeTable
+  type={
+    {`\`a3s.context.providers\``}: {
+      description: "类型: string · 描述: 逗号分隔的提供者名称",
+    },
+    {`\`a3s.context.items\``}: {
+      description: "类型: int · 描述: 返回的上下文条目数",
+    },
+    {`\`a3s.context.tokens\``}: {
+      description: "类型: int · 描述: 上下文条目的总 token 数",
+    },
+  }
+/>
 
 ## 费用追踪
 
 遥测模块使用 `LlmCostRecord` 追踪每次调用的 LLM 费用：
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `model` | string | 模型 ID |
-| `provider` | string | 提供商名称 |
-| `prompt_tokens` | u64 | 输入 token 数 |
-| `completion_tokens` | u64 | 输出 token 数 |
-| `total_tokens` | u64 | 总 token 数 |
-| `cost_usd` | f64 | 估计费用（美元） |
-| `timestamp` | DateTime | 调用时间 |
-| `session_id` | string | 关联的会话 |
+<TypeTable
+  type={
+    {`\`model\``}: {
+      description: "类型: string · 描述: 模型 ID",
+    },
+    {`\`provider\``}: {
+      description: "类型: string · 描述: 提供商名称",
+    },
+    {`\`prompt_tokens\``}: {
+      description: "类型: u64 · 描述: 输入 token 数",
+    },
+    {`\`completion_tokens\``}: {
+      description: "类型: u64 · 描述: 输出 token 数",
+    },
+    {`\`total_tokens\``}: {
+      description: "类型: u64 · 描述: 总 token 数",
+    },
+    {`\`cost_usd\``}: {
+      description: "类型: f64 · 描述: 估计费用（美元）",
+    },
+    {`\`timestamp\``}: {
+      description: "类型: DateTime · 描述: 调用时间",
+    },
+    {`\`session_id\``}: {
+      description: "类型: string · 描述: 关联的会话",
+    },
+  }
+/>
 
 ### 模型定价
 
@@ -110,13 +182,25 @@ cost_usd = (prompt_tokens * input_per_million / 1_000_000)
 
 `ToolMetrics` 追踪会话内每个工具的执行统计：
 
-| 指标 | 描述 |
-|--------|-------------|
-| 调用次数 | 总调用次数 |
-| 成功次数 | 成功执行次数 |
-| 失败次数 | 失败执行次数 |
-| 总时长 | 累计执行时间 |
-| 平均时长 | 每次调用的平均执行时间 |
+<TypeTable
+  type={
+    "调用次数": {
+      description: "总调用次数",
+    },
+    "成功次数": {
+      description: "成功执行次数",
+    },
+    "失败次数": {
+      description: "失败执行次数",
+    },
+    "总时长": {
+      description: "累计执行时间",
+    },
+    "平均时长": {
+      description: "每次调用的平均执行时间",
+    },
+  }
+/>
 
 这些指标通过 `record_tool_result()` 记录在追踪 span 上，可用于仪表板和告警聚合。
 
@@ -150,26 +234,56 @@ let result = session.send("Analyze this codebase").await?;
 
 ### Span 层级
 
-| Span | 父级 | 关键属性 |
-|------|--------|----------------|
-| `agent.session` | root | `session.id`、`session.workspace` |
-| `agent.turn` | `agent.session` | `turn.index`、`turn.model` |
-| `agent.generate` | `agent.turn` | `llm.provider`、`llm.model`、`llm.tokens_in`、`llm.tokens_out` |
-| `agent.tool` | `agent.turn` | `tool.name`、`tool.exit_code`、`tool.duration_ms` |
-| `agent.plan` | `agent.turn` | `plan.steps`、`plan.waves` |
-| `agent.hook` | `agent.turn` | `hook.id`、`hook.event` |
+<TypeTable
+  type={
+    {`\`agent.session\``}: {
+      description: {`父级: root · 关键属性: \`session.id\`、\`session.workspace\``},
+    },
+    {`\`agent.turn\``}: {
+      description: {`父级: \`agent.session\` · 关键属性: \`turn.index\`、\`turn.model\``},
+    },
+    {`\`agent.generate\``}: {
+      description: {`父级: \`agent.turn\` · 关键属性: \`llm.provider\`、\`llm.model\`、\`llm.tokens_in\`、\`llm.tokens_out\``},
+    },
+    {`\`agent.tool\``}: {
+      description: {`父级: \`agent.turn\` · 关键属性: \`tool.name\`、\`tool.exit_code\`、\`tool.duration_ms\``},
+    },
+    {`\`agent.plan\``}: {
+      description: {`父级: \`agent.turn\` · 关键属性: \`plan.steps\`、\`plan.waves\``},
+    },
+    {`\`agent.hook\``}: {
+      description: {`父级: \`agent.turn\` · 关键属性: \`hook.id\`、\`hook.event\``},
+    },
+  }
+/>
 
 ### 费用追踪字段
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `provider` | `String` | LLM 提供商名称 |
-| `model` | `String` | 模型标识符 |
-| `input_tokens` | `u32` | 提示 token 数 |
-| `output_tokens` | `u32` | 完成 token 数 |
-| `cache_read_tokens` | `u32` | 提示缓存读取 token 数 |
-| `cache_write_tokens` | `u32` | 提示缓存写入 token 数 |
-| `cost_usd` | `f64` | 估计费用（美元） |
+<TypeTable
+  type={
+    {`\`provider\``}: {
+      description: {`类型: \`String\` · 描述: LLM 提供商名称`},
+    },
+    {`\`model\``}: {
+      description: {`类型: \`String\` · 描述: 模型标识符`},
+    },
+    {`\`input_tokens\``}: {
+      description: {`类型: \`u32\` · 描述: 提示 token 数`},
+    },
+    {`\`output_tokens\``}: {
+      description: {`类型: \`u32\` · 描述: 完成 token 数`},
+    },
+    {`\`cache_read_tokens\``}: {
+      description: {`类型: \`u32\` · 描述: 提示缓存读取 token 数`},
+    },
+    {`\`cache_write_tokens\``}: {
+      description: {`类型: \`u32\` · 描述: 提示缓存写入 token 数`},
+    },
+    {`\`cost_usd\``}: {
+      description: {`类型: \`f64\` · 描述: 估计费用（美元）`},
+    },
+  }
+/>
 
 ### 设置（Rust）
 
@@ -191,8 +305,16 @@ tracing_subscriber::registry()
 
 ### 环境变量
 
-| 变量 | 描述 |
-|----------|-------------|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP 收集器端点 |
-| `OTEL_SERVICE_NAME` | 追踪中的服务名称 |
-| `RUST_LOG` | 日志级别过滤（例如 `a3s_code_core=debug`） |
+<TypeTable
+  type={
+    {`\`OTEL_EXPORTER_OTLP_ENDPOINT\``}: {
+      description: "OTLP 收集器端点",
+    },
+    {`\`OTEL_SERVICE_NAME\``}: {
+      description: "追踪中的服务名称",
+    },
+    {`\`RUST_LOG\``}: {
+      description: {`日志级别过滤（例如 \`a3s_code_core=debug\`）`},
+    },
+  }
+/>

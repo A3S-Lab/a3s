@@ -4,6 +4,7 @@ description: 系统架构、数据流和设计决策
 ---
 
 import { Files, File, Folder } from 'fumadocs-ui/components/files';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 
@@ -47,24 +48,50 @@ Your Application (Rust / TypeScript / Python)
 
 原生绑定：
 
-| 语言 | 包 | 绑定方式 |
-|----------|---------|---------|
-| Rust | `a3s-code-core` | 原生 |
-| Python | `a3s-code` | PyO3 |
-| Node.js | `@a3s-lab/code` | napi-rs |
+<TypeTable
+  type={
+    "Rust": {
+      description: {`包: \`a3s-code-core\` · 绑定方式: 原生`},
+    },
+    "Python": {
+      description: {`包: \`a3s-code\` · 绑定方式: PyO3`},
+    },
+    "Node.js": {
+      description: {`包: \`@a3s-lab/code\` · 绑定方式: napi-rs`},
+    },
+  }
+/>
 
 ## 核心概念
 
-| 概念 | 描述 |
-|---------|-------------|
-| **Agent** | 配置驱动的顶层对象。持有 LLM 客户端和配置。与工作区无关。 |
-| **AgentSession** | 绑定到特定工作区。所有 LLM 交互和工具执行都在此进行。 |
-| **SessionOptions** | 可选的每会话覆盖：模型（`provider/model` 格式）、规划、HITL 等。 |
-| **AgentLoop** | 核心执行引擎，驱动 LLM ↔ 工具的多轮循环。 |
-| **ToolExecutor** | 工具注册和执行。管理 11 个内置工具。 |
-| **LlmPlanner** | JSON 结构化规划 — 将复杂任务分解为带依赖图的执行计划。 |
-| **WaveScheduler** | 将独立的计划步骤分组为 wave，通过 `JoinSet` 并行执行。 |
-| **AgentEvent** | `#[non_exhaustive]` 事件枚举，在流式传输期间发出 — 安全支持 SDK 演进。 |
+<TypeTable
+  type={
+    "Agent": {
+      description: "配置驱动的顶层对象。持有 LLM 客户端和配置。与工作区无关。",
+    },
+    "AgentSession": {
+      description: "绑定到特定工作区。所有 LLM 交互和工具执行都在此进行。",
+    },
+    "SessionOptions": {
+      description: {`可选的每会话覆盖：模型（\`provider/model\` 格式）、规划、HITL 等。`},
+    },
+    "AgentLoop": {
+      description: "核心执行引擎，驱动 LLM ↔ 工具的多轮循环。",
+    },
+    "ToolExecutor": {
+      description: "工具注册和执行。管理 11 个内置工具。",
+    },
+    "LlmPlanner": {
+      description: "JSON 结构化规划 — 将复杂任务分解为带依赖图的执行计划。",
+    },
+    "WaveScheduler": {
+      description: {`将独立的计划步骤分组为 wave，通过 \`JoinSet\` 并行执行。`},
+    },
+    "AgentEvent": {
+      description: {`\`#[non_exhaustive]\` 事件枚举，在流式传输期间发出 — 安全支持 SDK 演进。`},
+    },
+  }
+/>
 
 ## Agent 循环
 
@@ -95,13 +122,25 @@ Your Application (Rust / TypeScript / Python)
 
 两个内置层，加上通过 trait 的可扩展性：
 
-| 层 | 组件 | 功能 |
-|-------|-----------|-------------|
-| 1 | 权限策略 | Deny → Allow → Ask → Default 规则评估，支持 glob 模式 |
-| 2 | HITL 确认 | 独立于权限 — 即使 `Allow` 也会经过 HITL 检查 |
-| 3 | SecurityProvider | 可插拔 trait，用于污点追踪、输出清洗、注入检测 |
-| 4 | 工作区边界 | 所有文件操作限制在会话工作区内 |
-| 5 | HookEngine | 通过生命周期 hooks 实现自定义安全逻辑 |
+<TypeTable
+  type={
+    "1": {
+      description: "组件: 权限策略 · 功能: Deny → Allow → Ask → Default 规则评估，支持 glob 模式",
+    },
+    "2": {
+      description: {`组件: HITL 确认 · 功能: 独立于权限 — 即使 \`Allow\` 也会经过 HITL 检查`},
+    },
+    "3": {
+      description: "组件: SecurityProvider · 功能: 可插拔 trait，用于污点追踪、输出清洗、注入检测",
+    },
+    "4": {
+      description: "组件: 工作区边界 · 功能: 所有文件操作限制在会话工作区内",
+    },
+    "5": {
+      description: "组件: HookEngine · 功能: 通过生命周期 hooks 实现自定义安全逻辑",
+    },
+  }
+/>
 
 参见 [安全](/cn/docs/code/security) 了解详情。
 
@@ -141,11 +180,19 @@ Wave 3: [Write tests]                         ← waits for wave 2
 
 Lane 队列将工具调用路由到不同的执行策略：
 
-| Lane | 用途 | 默认模式 |
-|------|---------|--------------|
-| Query | 只读操作（read、grep、glob、ls） | 内部（并行） |
-| Execute | 写操作（write、edit、patch、bash） | 内部（顺序） |
-| Generate | LLM 调用 | 内部 |
+<TypeTable
+  type={
+    "Query": {
+      description: "用途: 只读操作（read、grep、glob、ls） · 默认模式: 内部（并行）",
+    },
+    "Execute": {
+      description: "用途: 写操作（write、edit、patch、bash） · 默认模式: 内部（顺序）",
+    },
+    "Generate": {
+      description: "用途: LLM 调用 · 默认模式: 内部",
+    },
+  }
+/>
 
 每个 lane 可以切换到 **External** 模式，将执行卸载到远程 worker。参见 [Lane 队列](/cn/docs/code/lane-queue) 了解详情。
 
@@ -153,12 +200,22 @@ Lane 队列将工具调用路由到不同的执行策略：
 
 四种记忆类型，支持可插拔的存储后端：
 
-| 类型 | 用途 | 存储 |
-|------|---------|---------|
-| Episodic | 会话事件和交互 | FileMemoryStore（默认） |
-| Semantic | 事实和知识 | FileMemoryStore（默认） |
-| Procedural | 成功的模式和工作流 | FileMemoryStore（默认） |
-| Working | 当前任务上下文 | 内存（短期） |
+<TypeTable
+  type={
+    "Episodic": {
+      description: "用途: 会话事件和交互 · 存储: FileMemoryStore（默认）",
+    },
+    "Semantic": {
+      description: "用途: 事实和知识 · 存储: FileMemoryStore（默认）",
+    },
+    "Procedural": {
+      description: "用途: 成功的模式和工作流 · 存储: FileMemoryStore（默认）",
+    },
+    "Working": {
+      description: "用途: 当前任务上下文 · 存储: 内存（短期）",
+    },
+  }
+/>
 
 默认后端：`FileMemoryStore` — 每个条目一个 JSON 文件 + 紧凑索引。可通过 `MemoryStore` trait 自定义后端。
 

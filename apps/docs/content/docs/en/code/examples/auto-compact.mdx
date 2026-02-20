@@ -4,6 +4,7 @@ description: Automatic context window compaction when token usage exceeds thresh
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Auto-Compact
@@ -143,10 +144,16 @@ for await (const event of stream) {
 
 ### SessionOptions
 
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| Enable auto-compact | `.with_auto_compact(true)` | `auto_compact=True` | `autoCompact: true` | `false` |
-| Threshold (0.0–1.0) | `.with_auto_compact_threshold(f)` | `auto_compact_threshold=f` | `autoCompactThreshold: f` | `0.8` |
+<TypeTable
+  type={
+    "Enable auto-compact": {
+      description: {`Rust: \`.with_auto_compact(true)\` · Python: \`auto_compact=True\` · Node.js: \`autoCompact: true\` · Default: \`false\``},
+    },
+    "Threshold (0.0–1.0)": {
+      description: {`Rust: \`.with_auto_compact_threshold(f)\` · Python: \`auto_compact_threshold=f\` · Node.js: \`autoCompactThreshold: f\` · Default: \`0.8\``},
+    },
+  }
+/>
 
 ### ContextCompacted Event
 

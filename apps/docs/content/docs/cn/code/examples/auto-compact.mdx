@@ -4,6 +4,7 @@ description: 当 token 使用量超过阈值时自动压缩上下文窗口
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # 自动压缩
@@ -143,15 +144,29 @@ for await (const event of stream) {
 
 ### SessionOptions
 
-| 选项 | Rust | Python | Node.js | 默认值 |
-|--------|------|--------|---------|---------|
-| 启用自动压缩 | `.with_auto_compact(true)` | `auto_compact=True` | `autoCompact: true` | `false` |
-| 阈值（0.0–1.0） | `.with_auto_compact_threshold(f)` | `auto_compact_threshold=f` | `autoCompactThreshold: f` | `0.8` |
+<TypeTable
+  type={
+    "启用自动压缩": {
+      description: {`Rust: \`.with_auto_compact(true)\` · Python: \`auto_compact=True\` · Node.js: \`autoCompact: true\` · 默认值: \`false\``},
+    },
+    "阈值（0.0–1.0）": {
+      description: {`Rust: \`.with_auto_compact_threshold(f)\` · Python: \`auto_compact_threshold=f\` · Node.js: \`autoCompactThreshold: f\` · 默认值: \`0.8\``},
+    },
+  }
+/>
 
 ### ContextCompacted 事件
 
-| 字段 | Rust | Python/Node.js | 描述 |
-|-------|------|----------------|-------------|
-| 压缩前消息数 | `messages_before` | `messages_before` / `messagesBefore` | 压缩前的消息数量 |
-| 压缩后消息数 | `messages_after` | `messages_after` / `messagesAfter` | 压缩后的消息数量 |
-| 节省的 token | `tokens_saved` | `tokens_saved` / `tokensSaved` | 大约释放的 token 数 |
+<TypeTable
+  type={
+    "压缩前消息数": {
+      description: {`Rust: \`messages_before\` · Python/Node.js: \`messages_before\` / \`messagesBefore\` · 描述: 压缩前的消息数量`},
+    },
+    "压缩后消息数": {
+      description: {`Rust: \`messages_after\` · Python/Node.js: \`messages_after\` / \`messagesAfter\` · 描述: 压缩后的消息数量`},
+    },
+    "节省的 token": {
+      description: {`Rust: \`tokens_saved\` · Python/Node.js: \`tokens_saved\` / \`tokensSaved\` · 描述: 大约释放的 token 数`},
+    },
+  }
+/>

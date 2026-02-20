@@ -4,6 +4,7 @@ description: Priority-based lanes with configurable concurrency, timeout, retry,
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Lanes
 
@@ -20,14 +21,28 @@ let manager = QueueManagerBuilder::new(emitter)
     .await?;
 ```
 
-| Lane | Priority | Min | Max | Use Case |
-|------|----------|-----|-----|----------|
-| `system` | 0 | 1 | 5 | System-level operations |
-| `control` | 1 | 1 | 3 | Pause, resume, cancel |
-| `query` | 2 | 1 | 10 | Read-only queries |
-| `session` | 3 | 1 | 5 | Session management |
-| `skill` | 4 | 1 | 3 | Skill/tool execution |
-| `prompt` | 5 | 1 | 2 | LLM prompt processing |
+<TypeTable
+  type={
+    {`\`system\``}: {
+      description: "Priority: 0 · Min: 1 · Max: 5 · Use Case: System-level operations",
+    },
+    {`\`control\``}: {
+      description: "Priority: 1 · Min: 1 · Max: 3 · Use Case: Pause, resume, cancel",
+    },
+    {`\`query\``}: {
+      description: "Priority: 2 · Min: 1 · Max: 10 · Use Case: Read-only queries",
+    },
+    {`\`session\``}: {
+      description: "Priority: 3 · Min: 1 · Max: 5 · Use Case: Session management",
+    },
+    {`\`skill\``}: {
+      description: "Priority: 4 · Min: 1 · Max: 3 · Use Case: Skill/tool execution",
+    },
+    {`\`prompt\``}: {
+      description: "Priority: 5 · Min: 1 · Max: 2 · Use Case: LLM prompt processing",
+    },
+  }
+/>
 
 ## Custom Lanes
 
@@ -150,11 +165,17 @@ LaneConfig::new(1, 10).with_retry_policy(RetryPolicy::fixed(5, Duration::from_se
 LaneConfig::new(1, 10).with_retry_policy(RetryPolicy::none())
 ```
 
-| Strategy | Initial Delay | Max Delay | Multiplier |
-|----------|---------------|-----------|------------|
-| Exponential | 100ms | 30s | 2x |
-| Fixed | User-defined | — | — |
-| None | — | — | — |
+<TypeTable
+  type={
+    "Exponential": {
+      description: "Initial Delay: 100ms · Max Delay: 30s · Multiplier: 2x",
+    },
+    "Fixed": {
+      description: "Initial Delay: User-defined",
+    },
+    "None": {},
+  }
+/>
 
 ### Rate Limiting
 

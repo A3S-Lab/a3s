@@ -4,6 +4,7 @@ description: 可插拔的会话存储后端，用于对话持久化
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 会话持久化
 
@@ -96,11 +97,19 @@ sessions_dir/
 
 ## 会话 API
 
-| 方法 | 描述 |
-|--------|-------------|
-| `session_id()` | 返回会话的唯一 ID |
-| `save()` | 将当前历史持久化到存储（无存储时为空操作） |
-| `agent.resume_session(id, opts)` | 加载已保存的会话并恢复历史 |
+<TypeTable
+  type={
+    {`\`session_id()\``}: {
+      description: "返回会话的唯一 ID",
+    },
+    {`\`save()\``}: {
+      description: "将当前历史持久化到存储（无存储时为空操作）",
+    },
+    {`\`agent.resume_session(id, opts)\``}: {
+      description: "加载已保存的会话并恢复历史",
+    },
+  }
+/>
 
 ## 自动保存
 
@@ -139,51 +148,109 @@ let session = agent.session(".", Some(
 
 每个会话持久化的内容：
 
-| 字段 | 描述 |
-|-------|-------------|
-| `id` | 会话标识符 |
-| `messages` | 完整对话历史 |
-| `config.workspace` | 工作区路径 |
-| `config.system_prompt` | 系统提示 |
-| `config.planning_enabled` | 规划标志 |
-| `tool_names` | 工具名称（恢复时重建） |
+<TypeTable
+  type={
+    {`\`id\``}: {
+      description: "会话标识符",
+    },
+    {`\`messages\``}: {
+      description: "完整对话历史",
+    },
+    {`\`config.workspace\``}: {
+      description: "工作区路径",
+    },
+    {`\`config.system_prompt\``}: {
+      description: "系统提示",
+    },
+    {`\`config.planning_enabled\``}: {
+      description: "规划标志",
+    },
+    {`\`tool_names\``}: {
+      description: "工具名称（恢复时重建）",
+    },
+  }
+/>
 
 ## API 参考
 
 ### SessionOptions
 
-| 选项 | Rust | Python | Node.js | 默认值 |
-|--------|------|--------|---------|---------|
-| 自定义存储 | `.with_session_store(Arc::new(s))` | _（仅 Rust）_ | _（仅 Rust）_ | `FileSessionStore` |
+<TypeTable
+  type={
+    "自定义存储": {
+      description: {`Rust: \`.with_session_store(Arc::new(s))\` · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: \`FileSessionStore\``},
+    },
+  }
+/>
 
 ### SessionStore trait（Rust）
 
-| 方法 | 签名 | 描述 |
-|--------|-----------|-------------|
-| `save` | `async fn save(&self, data: &SessionData) -> Result<()>` | 持久化会话数据 |
-| `load` | `async fn load(&self, id: &str) -> Result<Option<SessionData>>` | 按 ID 加载会话 |
-| `delete` | `async fn delete(&self, id: &str) -> Result<()>` | 删除会话 |
-| `list` | `async fn list(&self) -> Result<Vec<String>>` | 列出所有会话 ID |
+<TypeTable
+  type={
+    {`\`save\``}: {
+      description: {`签名: \`async fn save(&self, data: &SessionData) -> Result<()>\` · 描述: 持久化会话数据`},
+    },
+    {`\`load\``}: {
+      description: {`签名: \`async fn load(&self, id: &str) -> Result<Option<SessionData>>\` · 描述: 按 ID 加载会话`},
+    },
+    {`\`delete\``}: {
+      description: {`签名: \`async fn delete(&self, id: &str) -> Result<()>\` · 描述: 删除会话`},
+    },
+    {`\`list\``}: {
+      description: {`签名: \`async fn list(&self) -> Result<Vec<String>>\` · 描述: 列出所有会话 ID`},
+    },
+  }
+/>
 
 ### SessionData 字段
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `id` | `String` | 会话标识符 |
-| `messages` | `Vec<Message>` | 完整对话历史 |
-| `tasks` | `Vec<AgentTask>` | 任务列表（别名：`todos`） |
-| `config.workspace` | `String` | 工作区路径 |
-| `config.system_prompt` | `String` | 系统提示 |
-| `config.planning_enabled` | `bool` | 规划标志 |
-| `tool_names` | `Vec<String>` | 工具名称（恢复时重建） |
-| `created_at` | `DateTime<Utc>` | 会话创建时间 |
-| `updated_at` | `DateTime<Utc>` | 最后保存时间 |
+<TypeTable
+  type={
+    {`\`id\``}: {
+      description: {`类型: \`String\` · 描述: 会话标识符`},
+    },
+    {`\`messages\``}: {
+      description: {`类型: \`Vec<Message>\` · 描述: 完整对话历史`},
+    },
+    {`\`tasks\``}: {
+      description: {`类型: \`Vec<AgentTask>\` · 描述: 任务列表（别名：\`todos\`）`},
+    },
+    {`\`config.workspace\``}: {
+      description: {`类型: \`String\` · 描述: 工作区路径`},
+    },
+    {`\`config.system_prompt\``}: {
+      description: {`类型: \`String\` · 描述: 系统提示`},
+    },
+    {`\`config.planning_enabled\``}: {
+      description: {`类型: \`bool\` · 描述: 规划标志`},
+    },
+    {`\`tool_names\``}: {
+      description: {`类型: \`Vec<String>\` · 描述: 工具名称（恢复时重建）`},
+    },
+    {`\`created_at\``}: {
+      description: {`类型: \`DateTime<Utc>\` · 描述: 会话创建时间`},
+    },
+    {`\`updated_at\``}: {
+      description: {`类型: \`DateTime<Utc>\` · 描述: 最后保存时间`},
+    },
+  }
+/>
 
 ### 会话管理方法
 
-| 方法 | Rust | 描述 |
-|--------|------|-------------|
-| 保存会话 | `session.save().await?` | 持久化当前状态 |
-| 加载会话 | `agent.resume(id, options?)?` | 从存储状态恢复 |
-| 列出会话 | `agent.list_sessions().await?` | 列出所有已保存的会话 ID |
-| 删除会话 | `agent.delete_session(id).await?` | 删除已存储的会话 |
+<TypeTable
+  type={
+    "保存会话": {
+      description: {`Rust: \`session.save().await?\` · 描述: 持久化当前状态`},
+    },
+    "加载会话": {
+      description: {`Rust: \`agent.resume(id, options?)?\` · 描述: 从存储状态恢复`},
+    },
+    "列出会话": {
+      description: {`Rust: \`agent.list_sessions().await?\` · 描述: 列出所有已保存的会话 ID`},
+    },
+    "删除会话": {
+      description: {`Rust: \`agent.delete_session(id).await?\` · 描述: 删除已存储的会话`},
+    },
+  }
+/>

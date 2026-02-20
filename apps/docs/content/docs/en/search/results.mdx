@@ -4,6 +4,7 @@ description: Search results, scoring, deduplication, and result types
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Results
 
@@ -162,32 +163,74 @@ for answer in results.answers() {
 
 ### Rust (`SearchResults`)
 
-| Method | Description |
-|--------|-------------|
-| `items()` | Get result slice |
-| `suggestions()` | Get query suggestions |
-| `answers()` | Get direct answers |
-| `errors()` | Get per-engine errors |
-| `count` | Number of results |
-| `duration_ms` | Search duration in ms |
+<TypeTable
+  type={
+    {`\`items()\``}: {
+      description: "Get result slice",
+    },
+    {`\`suggestions()\``}: {
+      description: "Get query suggestions",
+    },
+    {`\`answers()\``}: {
+      description: "Get direct answers",
+    },
+    {`\`errors()\``}: {
+      description: "Get per-engine errors",
+    },
+    {`\`count\``}: {
+      description: "Number of results",
+    },
+    {`\`duration_ms\``}: {
+      description: "Search duration in ms",
+    },
+  }
+/>
 
 ### Python (`SearchResponse`)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `results` | `list[SearchResult]` | Ranked results |
-| `count` | `int` | Number of results |
-| `duration_ms` | `int` | Search duration in ms |
-| `errors` | `list[EngineErrorInfo]` | Per-engine errors |
+<TypeTable
+  type={
+    {`\`results\``}: {
+      type: {`\`list[SearchResult]\``},
+      description: "Ranked results",
+    },
+    {`\`count\``}: {
+      type: {`\`int\``},
+      description: "Number of results",
+    },
+    {`\`duration_ms\``}: {
+      type: {`\`int\``},
+      description: "Search duration in ms",
+    },
+    {`\`errors\``}: {
+      type: {`\`list[EngineErrorInfo]\``},
+      description: "Per-engine errors",
+    },
+  }
+/>
 
 ### Node.js (`SearchResponse`)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `results` | `SearchResult[]` | Ranked results |
-| `count` | `number` | Number of results |
-| `durationMs` | `number` | Search duration in ms |
-| `errors` | `EngineError[]` | Per-engine errors |
+<TypeTable
+  type={
+    {`\`results\``}: {
+      type: {`\`SearchResult[]\``},
+      description: "Ranked results",
+    },
+    {`\`count\``}: {
+      type: {`\`number\``},
+      description: "Number of results",
+    },
+    {`\`durationMs\``}: {
+      type: {`\`number\``},
+      description: "Search duration in ms",
+    },
+    {`\`errors\``}: {
+      type: {`\`EngineError[]\``},
+      description: "Per-engine errors",
+    },
+  }
+/>
 
 ## Error Handling
 
@@ -220,10 +263,16 @@ for err in response.errors:
     print(f"Engine '{err.engine}' failed: {err.message}")
 ```
 
-| Exception | Description |
-|-----------|-------------|
-| `A3SSearchError` | Base exception for all SDK errors |
-| `SearchError` | Search operation failed |
+<TypeTable
+  type={
+    {`\`A3SSearchError\``}: {
+      description: "Base exception for all SDK errors",
+    },
+    {`\`SearchError\``}: {
+      description: "Search operation failed",
+    },
+  }
+/>
 
 </Tab>
 <Tab value="Node.js">
@@ -243,11 +292,19 @@ for (const err of response.errors) {
 }
 ```
 
-| Class | Description |
-|-------|-------------|
-| `A3SSearchError` | Base error for all SDK errors |
-| `NativeModuleError` | Native module failed to load |
-| `SearchError` | Search operation failed |
+<TypeTable
+  type={
+    {`\`A3SSearchError\``}: {
+      description: "Base error for all SDK errors",
+    },
+    {`\`NativeModuleError\``}: {
+      description: "Native module failed to load",
+    },
+    {`\`SearchError\``}: {
+      description: "Search operation failed",
+    },
+  }
+/>
 
 </Tab>
 </Tabs>

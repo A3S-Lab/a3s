@@ -4,6 +4,7 @@ description: System architecture, data flow, and design decisions
 ---
 
 import { Files, File, Folder } from 'fumadocs-ui/components/files';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 
@@ -47,24 +48,50 @@ Your Application (Rust / TypeScript / Python)
 
 Native bindings:
 
-| Language | Package | Binding |
-|----------|---------|---------|
-| Rust | `a3s-code-core` | Native |
-| Python | `a3s-code` | PyO3 |
-| Node.js | `@a3s-lab/code` | napi-rs |
+<TypeTable
+  type={
+    "Rust": {
+      description: {`Package: \`a3s-code-core\` · Binding: Native`},
+    },
+    "Python": {
+      description: {`Package: \`a3s-code\` · Binding: PyO3`},
+    },
+    "Node.js": {
+      description: {`Package: \`@a3s-lab/code\` · Binding: napi-rs`},
+    },
+  }
+/>
 
 ## Core Concepts
 
-| Concept | Description |
-|---------|-------------|
-| **Agent** | Config-driven top-level object. Holds LLM client and config. Workspace-independent. |
-| **AgentSession** | Bound to a specific workspace. All LLM interaction and tool execution happens here. |
-| **SessionOptions** | Optional per-session override: model (`provider/model` format), planning, HITL, etc. |
-| **AgentLoop** | Core execution engine driving the LLM ↔ tool multi-turn loop. |
-| **ToolExecutor** | Tool registry and execution. Manages 11 built-in tools. |
-| **LlmPlanner** | JSON-structured planning — decomposes complex tasks into execution plans with dependency graphs. |
-| **WaveScheduler** | Groups independent plan steps into waves and executes them in parallel via `JoinSet`. |
-| **AgentEvent** | `#[non_exhaustive]` event enum emitted during streaming — safe for SDK evolution. |
+<TypeTable
+  type={
+    "Agent": {
+      description: "Config-driven top-level object. Holds LLM client and config. Workspace-independent.",
+    },
+    "AgentSession": {
+      description: "Bound to a specific workspace. All LLM interaction and tool execution happens here.",
+    },
+    "SessionOptions": {
+      description: {`Optional per-session override: model (\`provider/model\` format), planning, HITL, etc.`},
+    },
+    "AgentLoop": {
+      description: "Core execution engine driving the LLM ↔ tool multi-turn loop.",
+    },
+    "ToolExecutor": {
+      description: "Tool registry and execution. Manages 11 built-in tools.",
+    },
+    "LlmPlanner": {
+      description: "JSON-structured planning — decomposes complex tasks into execution plans with dependency graphs.",
+    },
+    "WaveScheduler": {
+      description: {`Groups independent plan steps into waves and executes them in parallel via \`JoinSet\`.`},
+    },
+    "AgentEvent": {
+      description: {`\`#[non_exhaustive]\` event enum emitted during streaming — safe for SDK evolution.`},
+    },
+  }
+/>
 
 ## Agent Loop
 
@@ -95,13 +122,25 @@ Maximum rounds per generation configurable via `max_tool_rounds` (default: 50).
 
 Two built-in layers, plus extensibility via traits:
 
-| Layer | Component | What it does |
-|-------|-----------|-------------|
-| 1 | Permission Policy | Deny → Allow → Ask → Default rule evaluation with glob patterns |
-| 2 | HITL Confirmation | Independent of permissions — even `Allow` goes through HITL check |
-| 3 | SecurityProvider | Pluggable trait for taint tracking, output sanitization, injection detection |
-| 4 | Workspace Boundary | All file operations restricted to session workspace |
-| 5 | HookEngine | Custom security logic via lifecycle hooks |
+<TypeTable
+  type={
+    "1": {
+      description: "Component: Permission Policy · What it does: Deny → Allow → Ask → Default rule evaluation with glob patterns",
+    },
+    "2": {
+      description: {`Component: HITL Confirmation · What it does: Independent of permissions — even \`Allow\` goes through HITL check`},
+    },
+    "3": {
+      description: "Component: SecurityProvider · What it does: Pluggable trait for taint tracking, output sanitization, injection detection",
+    },
+    "4": {
+      description: "Component: Workspace Boundary · What it does: All file operations restricted to session workspace",
+    },
+    "5": {
+      description: "Component: HookEngine · What it does: Custom security logic via lifecycle hooks",
+    },
+  }
+/>
 
 See [Security](/docs/code/security) for details.
 
@@ -141,11 +180,22 @@ See [Tasks](/docs/code/tasks) for details.
 
 The lane queue routes tool calls to different execution strategies:
 
-| Lane | Purpose | Default Mode |
-|------|---------|--------------|
-| Query | Read-only operations (read, grep, glob, ls) | Internal (parallel) |
-| Execute | Write operations (write, edit, patch, bash) | Internal (sequential) |
-| Generate | LLM calls | Internal |
+<TypeTable
+  type={
+    "Query": {
+      description: "Read-only operations (read, grep, glob, ls)",
+      default: "Internal (parallel)",
+    },
+    "Execute": {
+      description: "Write operations (write, edit, patch, bash)",
+      default: "Internal (sequential)",
+    },
+    "Generate": {
+      description: "LLM calls",
+      default: "Internal",
+    },
+  }
+/>
 
 Each lane can be switched to **External** mode to offload execution to remote workers. See [Lane Queue](/docs/code/lane-queue) for details.
 
@@ -153,12 +203,22 @@ Each lane can be switched to **External** mode to offload execution to remote wo
 
 Four memory types with pluggable storage backends:
 
-| Type | Purpose | Storage |
-|------|---------|---------|
-| Episodic | Session events and interactions | FileMemoryStore (default) |
-| Semantic | Facts and knowledge | FileMemoryStore (default) |
-| Procedural | Successful patterns and workflows | FileMemoryStore (default) |
-| Working | Current task context | In-memory (short-lived) |
+<TypeTable
+  type={
+    "Episodic": {
+      description: "Purpose: Session events and interactions · Storage: FileMemoryStore (default)",
+    },
+    "Semantic": {
+      description: "Purpose: Facts and knowledge · Storage: FileMemoryStore (default)",
+    },
+    "Procedural": {
+      description: "Purpose: Successful patterns and workflows · Storage: FileMemoryStore (default)",
+    },
+    "Working": {
+      description: "Purpose: Current task context · Storage: In-memory (short-lived)",
+    },
+  }
+/>
 
 Default backend: `FileMemoryStore` — one JSON file per item + compact index. Custom backends via `MemoryStore` trait.
 

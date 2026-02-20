@@ -3,6 +3,8 @@ title: Observability
 description: Audit logging, alerting, event bus, and API endpoints for monitoring
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Observability
 
 SafeClaw provides comprehensive audit logging, real-time alerting, and a centralized event bus for security monitoring.
@@ -102,27 +104,60 @@ Alerts are triggered when:
 
 ### Audit Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/audit/events` | GET | List recent audit events |
-| `/api/v1/audit/stats` | GET | Audit statistics summary |
-| `/api/v1/audit/events/:session_id` | GET | Events for a specific session |
+<TypeTable
+  type={
+    {`\`/api/v1/audit/events\``}: {
+      type: "GET",
+      description: "List recent audit events",
+    },
+    {`\`/api/v1/audit/stats\``}: {
+      type: "GET",
+      description: "Audit statistics summary",
+    },
+    {`\`/api/v1/audit/events/:session_id\``}: {
+      type: "GET",
+      description: "Events for a specific session",
+    },
+  }
+/>
 
 ### Events Endpoints
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/events` | GET | List system events |
-| `/api/v1/events/:id` | GET | Get event by ID |
-| `/api/v1/events/subscribe` | GET | SSE event stream |
+<TypeTable
+  type={
+    {`\`/api/v1/events\``}: {
+      type: "GET",
+      description: "List system events",
+    },
+    {`\`/api/v1/events/:id\``}: {
+      type: "GET",
+      description: "Get event by ID",
+    },
+    {`\`/api/v1/events/subscribe\``}: {
+      type: "GET",
+      description: "SSE event stream",
+    },
+  }
+/>
 
 ### Health and Status
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check |
-| `/api/v1/gateway/status` | GET | Gateway status with session counts |
-| `/.well-known/a3s-service.json` | GET | Service discovery |
+<TypeTable
+  type={
+    {`\`/health\``}: {
+      type: "GET",
+      description: "Health check",
+    },
+    {`\`/api/v1/gateway/status\``}: {
+      type: "GET",
+      description: "Gateway status with session counts",
+    },
+    {`\`/.well-known/a3s-service.json\``}: {
+      type: "GET",
+      description: "Service discovery",
+    },
+  }
+/>
 
 ### Example: Audit Events Response
 

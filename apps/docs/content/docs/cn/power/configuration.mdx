@@ -3,6 +3,8 @@ title: 配置
 description: A3S Power 配置文件和环境变量
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # 配置
 
 A3S Power 使用 TOML 配置文件，兼容 Ollama 环境变量。
@@ -26,11 +28,21 @@ auto_detect = true
 
 ## 环境变量
 
-| 变量 | 说明 |
-|------|------|
-| `A3S_POWER_HOME` | 覆盖基础目录 |
-| `OLLAMA_HOST` | 服务器监听地址（兼容 Ollama） |
-| `OLLAMA_MODELS` | 模型存储路径（兼容 Ollama） |
-| `OLLAMA_KEEP_ALIVE` | 模型保持加载时间（兼容 Ollama） |
+<TypeTable
+  type={
+    {`\`A3S_POWER_HOME\``}: {
+      description: "覆盖基础目录",
+    },
+    {`\`OLLAMA_HOST\``}: {
+      description: "服务器监听地址（兼容 Ollama）",
+    },
+    {`\`OLLAMA_MODELS\``}: {
+      description: "模型存储路径（兼容 Ollama）",
+    },
+    {`\`OLLAMA_KEEP_ALIVE\``}: {
+      description: "模型保持加载时间（兼容 Ollama）",
+    },
+  }
+/>
 
 详细文档请参阅[英文版](/docs/en/power/configuration)。

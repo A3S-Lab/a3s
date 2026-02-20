@@ -3,6 +3,8 @@ title: MCP Support
 description: Extend the agent with external tools via Model Context Protocol
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # MCP Support
 
 A3S Code supports the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) for integrating external tool servers. MCP tools are automatically registered in the ToolExecutor when a server connects.
@@ -11,10 +13,18 @@ A3S Code supports the [Model Context Protocol](https://modelcontextprotocol.io/)
 
 A3S Code supports two MCP transports:
 
-| Transport | Protocol | Use Case |
-|-----------|----------|----------|
-| `stdio` | JSON-RPC 2.0 over stdin/stdout | Local tools, CLI-based servers |
-| `http+sse` | JSON-RPC 2.0 over HTTP + Server-Sent Events | Remote servers, shared infrastructure |
+<TypeTable
+  type={
+    {`\`stdio\``}: {
+      type: "JSON-RPC 2.0 over stdin/stdout",
+      description: "Local tools, CLI-based servers",
+    },
+    {`\`http+sse\``}: {
+      type: "JSON-RPC 2.0 over HTTP + Server-Sent Events",
+      description: "Remote servers, shared infrastructure",
+    },
+  }
+/>
 
 ## Configuration
 
@@ -122,19 +132,37 @@ mcp_servers {
 
 ### McpTransport trait (Rust)
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `connect` | `async fn connect(&mut self) -> Result<()>` | Establish connection to MCP server |
-| `list_tools` | `async fn list_tools(&self) -> Result<Vec<McpTool>>` | Discover available tools |
-| `call_tool` | `async fn call_tool(&self, name: &str, args: Value) -> Result<Value>` | Invoke a tool |
-| `disconnect` | `async fn disconnect(&mut self) -> Result<()>` | Close connection |
+<TypeTable
+  type={
+    {`\`connect\``}: {
+      description: {`Signature: \`async fn connect(&mut self) -> Result<()>\` · Description: Establish connection to MCP server`},
+    },
+    {`\`list_tools\``}: {
+      description: {`Signature: \`async fn list_tools(&self) -> Result<Vec<McpTool>>\` · Description: Discover available tools`},
+    },
+    {`\`call_tool\``}: {
+      description: {`Signature: \`async fn call_tool(&self, name: &str, args: Value) -> Result<Value>\` · Description: Invoke a tool`},
+    },
+    {`\`disconnect\``}: {
+      description: {`Signature: \`async fn disconnect(&mut self) -> Result<()>\` · Description: Close connection`},
+    },
+  }
+/>
 
 ### Tool naming
 
 MCP tools are namespaced as `mcp__{server}__{tool}`. Use this prefix in permission rules:
 
-| Pattern | Matches |
-|---------|---------|
-| `mcp__filesystem` | All tools from the `filesystem` server |
-| `mcp__github__create_issue` | Specific tool |
-| `mcp__*` | All MCP tools |
+<TypeTable
+  type={
+    {`\`mcp__filesystem\``}: {
+      description: {`All tools from the \`filesystem\` server`},
+    },
+    {`\`mcp__github__create_issue\``}: {
+      description: "Specific tool",
+    },
+    {`\`mcp__*\``}: {
+      description: "All MCP tools",
+    },
+  }
+/>

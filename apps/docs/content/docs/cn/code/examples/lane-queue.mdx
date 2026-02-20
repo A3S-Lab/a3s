@@ -4,6 +4,7 @@ description: 基于优先级的任务队列与抢占
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Lane 队列
@@ -12,12 +13,22 @@ Lane 队列提供基于优先级的任务调度，包含四个 lane。高优先�
 
 ## Lane（优先级从高到低）
 
-| Lane | 优先级 | 使用场景 |
-|------|----------|---------|
-| `Control` | 1（最高） | 停止/取消命令 |
-| `Query` | 2 | 只读查询 |
-| `Execute` | 3 | 文件写入、工具调用 |
-| `Generate` | 4（最低） | 长时间 LLM 生成 |
+<TypeTable
+  type={
+    {`\`Control\``}: {
+      description: "优先级: 1（最高） · 使用场景: 停止/取消命令",
+    },
+    {`\`Query\``}: {
+      description: "优先级: 2 · 使用场景: 只读查询",
+    },
+    {`\`Execute\``}: {
+      description: "优先级: 3 · 使用场景: 文件写入、工具调用",
+    },
+    {`\`Generate\``}: {
+      description: "优先级: 4（最低） · 使用场景: 长时间 LLM 生成",
+    },
+  }
+/>
 
 ## 基本队列设置
 
@@ -145,26 +156,54 @@ await session.submitTask({
 
 ### SessionQueueConfig
 
-| 选项 | Rust | Python | Node.js | 默认值 |
-|--------|------|--------|---------|---------|
-| 启用 lane 功能 | `.with_lane_features()` | `enable_all_features=True` | `enableAllFeatures: true` | `false` |
-| 启用指标 | `.with_metrics()` | `enable_metrics=True` | `enableMetrics: true` | `false` |
-| Query 并发数 | `.query_max_concurrency(n)` | `query_max_concurrency=n` | `queryMaxConcurrency: n` | `10` |
-| Execute 并发数 | `.execute_max_concurrency(n)` | `execute_max_concurrency=n` | `executeMaxConcurrency: n` | `5` |
+<TypeTable
+  type={
+    "启用 lane 功能": {
+      description: {`Rust: \`.with_lane_features()\` · Python: \`enable_all_features=True\` · Node.js: \`enableAllFeatures: true\` · 默认值: \`false\``},
+    },
+    "启用指标": {
+      description: {`Rust: \`.with_metrics()\` · Python: \`enable_metrics=True\` · Node.js: \`enableMetrics: true\` · 默认值: \`false\``},
+    },
+    "Query 并发数": {
+      description: {`Rust: \`.query_max_concurrency(n)\` · Python: \`query_max_concurrency=n\` · Node.js: \`queryMaxConcurrency: n\` · 默认值: \`10\``},
+    },
+    "Execute 并发数": {
+      description: {`Rust: \`.execute_max_concurrency(n)\` · Python: \`execute_max_concurrency=n\` · Node.js: \`executeMaxConcurrency: n\` · 默认值: \`5\``},
+    },
+  }
+/>
 
 ### ExternalTask 字段（Rust）
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `id` | `String` | 唯一任务标识符 |
-| `lane` | `SessionLane` | `Control`、`Query`、`Execute` 或 `Generate` |
-| `payload` | `serde_json::Value` | 任务数据（提示、参数等） |
+<TypeTable
+  type={
+    {`\`id\``}: {
+      description: {`类型: \`String\` · 描述: 唯一任务标识符`},
+    },
+    {`\`lane\``}: {
+      description: {`类型: \`SessionLane\` · 描述: \`Control\`、\`Query\`、\`Execute\` 或 \`Generate\``},
+    },
+    {`\`payload\``}: {
+      description: {`类型: \`serde_json::Value\` · 描述: 任务数据（提示、参数等）`},
+    },
+  }
+/>
 
 ### 队列管理方法
 
-| 方法 | Rust | Python | Node.js |
-|--------|------|--------|---------|
-| 提交任务 | `session.submit_task(task).await?` | `await session.submit_task({...})` | `await session.submitTask({...})` |
-| 队列统计 | `session.queue_stats().await` | `await session.queue_stats()` | `await session.queueStats()` |
-| 队列指标 | `session.queue_metrics().await` | `await session.queue_metrics()` | `await session.queueMetrics()` |
-| 死信 | `session.dead_letters().await` | `await session.dead_letters()` | `await session.deadLetters()` |
+<TypeTable
+  type={
+    "提交任务": {
+      description: {`Rust: \`session.submit_task(task).await?\` · Python: \`await session.submit_task({...})\` · Node.js: \`await session.submitTask({...})\``},
+    },
+    "队列统计": {
+      description: {`Rust: \`session.queue_stats().await\` · Python: \`await session.queue_stats()\` · Node.js: \`await session.queueStats()\``},
+    },
+    "队列指标": {
+      description: {`Rust: \`session.queue_metrics().await\` · Python: \`await session.queue_metrics()\` · Node.js: \`await session.queueMetrics()\``},
+    },
+    "死信": {
+      description: {`Rust: \`session.dead_letters().await\` · Python: \`await session.dead_letters()\` · Node.js: \`await session.deadLetters()\``},
+    },
+  }
+/>

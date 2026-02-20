@@ -3,6 +3,8 @@ title: A3S Lane
 description: Priority-based command queue for async task scheduling — Rust, Python, and Node.js
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S Lane
 
 A3S Lane is a priority-based command queue for async task scheduling. Six built-in lanes with configurable concurrency ensure control commands always preempt LLM generation. Available as a Rust crate, Python package, and Node.js module.
@@ -40,35 +42,67 @@ QueueManager
 
 ## Built-in Lanes
 
-| Lane | Priority | Max Concurrency | Use Case |
-|------|----------|-----------------|----------|
-| `system` | 0 (highest) | 5 | System-level operations |
-| `control` | 1 | 3 | Pause, resume, cancel |
-| `query` | 2 | 10 | Read-only queries |
-| `session` | 3 | 5 | Session management |
-| `skill` | 4 | 3 | Skill/tool execution |
-| `prompt` | 5 (lowest) | 2 | LLM prompt processing |
+<TypeTable
+  type={
+    {`\`system\``}: {
+      description: "Priority: 0 (highest) · Max Concurrency: 5 · Use Case: System-level operations",
+    },
+    {`\`control\``}: {
+      description: "Priority: 1 · Max Concurrency: 3 · Use Case: Pause, resume, cancel",
+    },
+    {`\`query\``}: {
+      description: "Priority: 2 · Max Concurrency: 10 · Use Case: Read-only queries",
+    },
+    {`\`session\``}: {
+      description: "Priority: 3 · Max Concurrency: 5 · Use Case: Session management",
+    },
+    {`\`skill\``}: {
+      description: "Priority: 4 · Max Concurrency: 3 · Use Case: Skill/tool execution",
+    },
+    {`\`prompt\``}: {
+      description: "Priority: 5 (lowest) · Max Concurrency: 2 · Use Case: LLM prompt processing",
+    },
+  }
+/>
 
 Lower priority number = higher priority. The scheduler always picks commands from the highest-priority lane with pending work.
 
 ## Supported Languages
 
-| Language | Package | Install |
-|----------|---------|---------|
-| Rust | [`a3s-lane`](https://crates.io/crates/a3s-lane) | `a3s-lane = "0.4"` in Cargo.toml |
-| Python | [`a3s-lane`](https://pypi.org/project/a3s-lane/) | `pip install a3s-lane` |
-| Node.js | [`@a3s-lab/lane`](https://www.npmjs.com/package/@a3s-lab/lane) | `npm install @a3s-lab/lane` |
+<TypeTable
+  type={
+    "Rust": {
+      description: {`Package: [\`a3s-lane\`](https://crates.io/crates/a3s-lane) · Install: \`a3s-lane = "0.4"\` in Cargo.toml`},
+    },
+    "Python": {
+      description: {`Package: [\`a3s-lane\`](https://pypi.org/project/a3s-lane/) · Install: \`pip install a3s-lane\``},
+    },
+    "Node.js": {
+      description: {`Package: [\`@a3s-lab/lane\`](https://www.npmjs.com/package/@a3s-lab/lane) · Install: \`npm install @a3s-lab/lane\``},
+    },
+  }
+/>
 
 ## Performance
 
 Benchmarked on Apple Silicon (M-series), release build:
 
-| Scenario | Throughput |
-|----------|------------|
-| Concurrent (10 lanes) | 33,000–50,000 ops/sec |
-| Single lane | 6,600–10,000 ops/sec |
-| Full lifecycle (create/start/shutdown overhead) | ~85–93 ops/sec |
-| Metrics overhead | ~3–5% |
+<TypeTable
+  type={
+    "Concurrent (10 lanes)": {
+      description: "33,000–50,000 ops/sec",
+    },
+    "Single lane": {
+      description: "6,600–10,000 ops/sec",
+    },
+    "Full lifecycle (create/start/shutdown overhead)": {
+      description: "~85–93 ops/sec",
+    },
+    "Metrics overhead": {
+      description: "~3–5%",
+    },
+  }
+/>
 
 ## Test Coverage
 

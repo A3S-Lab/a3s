@@ -4,6 +4,7 @@ description: Basic send, streaming, and multi-turn conversation
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Quick Start
@@ -180,18 +181,38 @@ const session = agent.session('/my-project', {
 
 ### SessionOptions
 
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| Permissive policy | `.with_permissive_policy()` | `permissive=True` | `permissive: true` | `false` |
-| Parse retries | `.with_parse_retries(n)` | `max_parse_retries=n` | `maxParseRetries: n` | `3` |
-| Tool timeout | `.with_tool_timeout(ms)` | `tool_timeout_ms=ms` | `toolTimeoutMs: ms` | `30000` |
-| Circuit breaker | `.with_circuit_breaker(n)` | `circuit_breaker_threshold=n` | `circuitBreakerThreshold: n` | `5` |
+<TypeTable
+  type={
+    "Permissive policy": {
+      description: {`Rust: \`.with_permissive_policy()\` · Python: \`permissive=True\` · Node.js: \`permissive: true\` · Default: \`false\``},
+    },
+    "Parse retries": {
+      description: {`Rust: \`.with_parse_retries(n)\` · Python: \`max_parse_retries=n\` · Node.js: \`maxParseRetries: n\` · Default: \`3\``},
+    },
+    "Tool timeout": {
+      description: {`Rust: \`.with_tool_timeout(ms)\` · Python: \`tool_timeout_ms=ms\` · Node.js: \`toolTimeoutMs: ms\` · Default: \`30000\``},
+    },
+    "Circuit breaker": {
+      description: {`Rust: \`.with_circuit_breaker(n)\` · Python: \`circuit_breaker_threshold=n\` · Node.js: \`circuitBreakerThreshold: n\` · Default: \`5\``},
+    },
+  }
+/>
 
 ### AgentResponse
 
-| Field | Rust | Python | Node.js |
-|-------|------|--------|---------|
-| Final text | `result.text` | `result.text` | `result.text` |
-| Total tokens | `result.usage.total_tokens` | `result.usage.total_tokens` | `result.usage.totalTokens` |
-| Tool call count | `result.tool_calls_count` | `result.tool_calls_count` | `result.toolCallsCount` |
-| History | `session.history()` | `session.history()` | `session.history()` |
+<TypeTable
+  type={
+    "Final text": {
+      description: {`Rust: \`result.text\` · Python: \`result.text\` · Node.js: \`result.text\``},
+    },
+    "Total tokens": {
+      description: {`Rust: \`result.usage.total_tokens\` · Python: \`result.usage.total_tokens\` · Node.js: \`result.usage.totalTokens\``},
+    },
+    "Tool call count": {
+      description: {`Rust: \`result.tool_calls_count\` · Python: \`result.tool_calls_count\` · Node.js: \`result.toolCallsCount\``},
+    },
+    "History": {
+      description: {`Rust: \`session.history()\` · Python: \`session.history()\` · Node.js: \`session.history()\``},
+    },
+  }
+/>

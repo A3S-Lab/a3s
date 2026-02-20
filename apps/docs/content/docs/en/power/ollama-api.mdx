@@ -3,6 +3,8 @@ title: Ollama API
 description: 14 Ollama-compatible native API endpoints
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Ollama API
 
 A3S Power implements the full Ollama HTTP API for drop-in compatibility. All endpoints use NDJSON streaming by default.
@@ -249,9 +251,19 @@ curl http://localhost:11434/api/version
 
 Blob management for content-addressed storage:
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `HEAD` | `/api/blobs/:digest` | Check if blob exists |
-| `POST` | `/api/blobs/:digest` | Upload blob |
-| `GET` | `/api/blobs/:digest` | Download blob |
-| `DELETE` | `/api/blobs/:digest` | Delete blob |
+<TypeTable
+  type={
+    {`\`HEAD\``}: {
+      description: {`Endpoint: \`/api/blobs/:digest\` · Description: Check if blob exists`},
+    },
+    {`\`POST\``}: {
+      description: {`Endpoint: \`/api/blobs/:digest\` · Description: Upload blob`},
+    },
+    {`\`GET\``}: {
+      description: {`Endpoint: \`/api/blobs/:digest\` · Description: Download blob`},
+    },
+    {`\`DELETE\``}: {
+      description: {`Endpoint: \`/api/blobs/:digest\` · Description: Delete blob`},
+    },
+  }
+/>

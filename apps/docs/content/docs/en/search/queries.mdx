@@ -4,6 +4,7 @@ description: Construct search queries with filters, categories, language, and pa
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Queries
 
@@ -57,15 +58,31 @@ let query = SearchQuery::new("rust async runtime")
 
 `SearchQuery` builder methods:
 
-| Method | Description |
-|--------|-------------|
-| `new(query)` | Create a new query |
-| `with_categories(cats)` | Set target categories |
-| `with_language(lang)` | Set language/locale |
-| `with_safesearch(level)` | Set safe search level |
-| `with_page(page)` | Set page number |
-| `with_time_range(range)` | Set time range filter |
-| `with_engines(engines)` | Limit to specific engine shortcuts |
+<TypeTable
+  type={
+    {`\`new(query)\``}: {
+      description: "Create a new query",
+    },
+    {`\`with_categories(cats)\``}: {
+      description: "Set target categories",
+    },
+    {`\`with_language(lang)\``}: {
+      description: "Set language/locale",
+    },
+    {`\`with_safesearch(level)\``}: {
+      description: "Set safe search level",
+    },
+    {`\`with_page(page)\``}: {
+      description: "Set page number",
+    },
+    {`\`with_time_range(range)\``}: {
+      description: "Set time range filter",
+    },
+    {`\`with_engines(engines)\``}: {
+      description: "Limit to specific engine shortcuts",
+    },
+  }
+/>
 
 </Tab>
 <Tab value="Python">
@@ -167,26 +184,50 @@ const response2 = await search.search('Rust 编程', {
 <Tabs groupId="lang" items={['Python', 'Node.js']}>
 <Tab value="Python">
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `search` | `(query, *, engines?, limit?, timeout?, proxy?, proxy_pool?) → SearchResponse` | Run a search |
-| `set_proxy_pool` | `(proxies: list[str]) → None` | Set instance-level proxy pool |
-| `set_proxy_pool_enabled` | `(enabled: bool) → None` | Enable or disable proxy rotation |
-| `is_proxy_pool_enabled` | `() → bool` | Check if proxy pool is active |
-| `proxy_pool_size` | `() → int` | Number of proxies in pool |
+<TypeTable
+  type={
+    {`\`search\``}: {
+      description: {`Signature: \`(query, *, engines?, limit?, timeout?, proxy?, proxy_pool?) → SearchResponse\` · Description: Run a search`},
+    },
+    {`\`set_proxy_pool\``}: {
+      description: {`Signature: \`(proxies: list[str]) → None\` · Description: Set instance-level proxy pool`},
+    },
+    {`\`set_proxy_pool_enabled\``}: {
+      description: {`Signature: \`(enabled: bool) → None\` · Description: Enable or disable proxy rotation`},
+    },
+    {`\`is_proxy_pool_enabled\``}: {
+      description: {`Signature: \`() → bool\` · Description: Check if proxy pool is active`},
+    },
+    {`\`proxy_pool_size\``}: {
+      description: {`Signature: \`() → int\` · Description: Number of proxies in pool`},
+    },
+  }
+/>
 
 All methods are `async` except `set_proxy_pool_enabled` and `is_proxy_pool_enabled`.
 
 </Tab>
 <Tab value="Node.js">
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `search` | `(query: string, options?: SearchOptions) => Promise<SearchResponse>` | Run a search |
-| `setProxyPool` | `(urls: string[]) => Promise<void>` | Set instance-level proxy pool |
-| `setProxyPoolEnabled` | `(enabled: boolean) => void` | Enable or disable proxy rotation |
-| `isProxyPoolEnabled` | `() => boolean` | Check if proxy pool is active |
-| `proxyPoolSize` | `() => Promise<number>` | Number of proxies in pool |
+<TypeTable
+  type={
+    {`\`search\``}: {
+      description: {`Signature: \`(query: string, options?: SearchOptions) => Promise<SearchResponse>\` · Description: Run a search`},
+    },
+    {`\`setProxyPool\``}: {
+      description: {`Signature: \`(urls: string[]) => Promise<void>\` · Description: Set instance-level proxy pool`},
+    },
+    {`\`setProxyPoolEnabled\``}: {
+      description: {`Signature: \`(enabled: boolean) => void\` · Description: Enable or disable proxy rotation`},
+    },
+    {`\`isProxyPoolEnabled\``}: {
+      description: {`Signature: \`() => boolean\` · Description: Check if proxy pool is active`},
+    },
+    {`\`proxyPoolSize\``}: {
+      description: {`Signature: \`() => Promise<number>\` · Description: Number of proxies in pool`},
+    },
+  }
+/>
 
 </Tab>
 </Tabs>

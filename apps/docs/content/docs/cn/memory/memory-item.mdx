@@ -3,6 +3,8 @@ title: MemoryItem
 description: 记忆单元——字段、构建器 API 和记忆类型
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # MemoryItem
 
 每条记忆都是一个 `MemoryItem`，使用链式 API 构建：
@@ -36,19 +38,41 @@ let item = MemoryItem::new("Auth 使用 JWT，有效期 24 小时")
 
 ## 构建器方法
 
-| 方法 | 行为 |
-|------|------|
-| `.with_importance(f32)` | 设置重要性，截断到 0.0–1.0 |
-| `.with_tag(str)` | 追加单个标签 |
-| `.with_tags(Vec<String>)` | 替换所有标签 |
-| `.with_type(MemoryType)` | 设置记忆类型 |
-| `.with_metadata(key, value)` | 插入元数据键值对 |
+<TypeTable
+  type={
+    {`\`.with_importance(f32)\``}: {
+      description: "设置重要性，截断到 0.0–1.0",
+    },
+    {`\`.with_tag(str)\``}: {
+      description: "追加单个标签",
+    },
+    {`\`.with_tags(Vec<String>)\``}: {
+      description: "替换所有标签",
+    },
+    {`\`.with_type(MemoryType)\``}: {
+      description: "设置记忆类型",
+    },
+    {`\`.with_metadata(key, value)\``}: {
+      description: "插入元数据键值对",
+    },
+  }
+/>
 
 ## 记忆类型
 
-| 类型 | 用途 | 典型重要性 |
-|------|------|-----------|
-| `Episodic` | 特定事件和交互 | 0.5 |
-| `Semantic` | 事实和领域知识 | 0.5–0.8 |
-| `Procedural` | 成功的操作模式 | 0.8 |
-| `Working` | 当前任务的活跃上下文 | 不固定 |
+<TypeTable
+  type={
+    {`\`Episodic\``}: {
+      description: "用途: 特定事件和交互 · 典型重要性: 0.5",
+    },
+    {`\`Semantic\``}: {
+      description: "用途: 事实和领域知识 · 典型重要性: 0.5–0.8",
+    },
+    {`\`Procedural\``}: {
+      description: "用途: 成功的操作模式 · 典型重要性: 0.8",
+    },
+    {`\`Working\``}: {
+      description: "用途: 当前任务的活跃上下文 · 典型重要性: 不固定",
+    },
+  }
+/>

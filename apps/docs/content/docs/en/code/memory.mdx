@@ -4,6 +4,7 @@ description: Pluggable long-term memory for agents — store, search, and recall
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 
@@ -67,12 +68,26 @@ result = session.send("Remember: this project deploys to AWS us-east-1")
 
 ## Memory Types
 
-| Type | Purpose | Default importance |
-|------|---------|-------------------|
-| `Episodic` | Specific events and interactions | 0.5 |
-| `Semantic` | Facts and domain knowledge | 0.5–0.8 |
-| `Procedural` | Successful patterns (auto-stored on turn complete) | 0.8 |
-| `Working` | Active context for the current task | varies |
+<TypeTable
+  type={
+    {`\`Episodic\``}: {
+      description: "Specific events and interactions",
+      default: "0.5",
+    },
+    {`\`Semantic\``}: {
+      description: "Facts and domain knowledge",
+      default: "0.5–0.8",
+    },
+    {`\`Procedural\``}: {
+      description: "Successful patterns (auto-stored on turn complete)",
+      default: "0.8",
+    },
+    {`\`Working\``}: {
+      description: "Active context for the current task",
+      default: "varies",
+    },
+  }
+/>
 
 Failures are stored as `Episodic` with importance `0.9` — higher than successes so the agent avoids repeating them.
 
@@ -284,36 +299,74 @@ System Prompt
 
 ## Events
 
-| Event | Description |
-|-------|-------------|
-| `MemoryStored` | A memory item was persisted |
-| `MemoryRecalled` | A memory item was retrieved for context |
-| `MemoriesSearched` | A search was performed |
-| `MemoryCleared` | All memories were cleared |
+<TypeTable
+  type={
+    {`\`MemoryStored\``}: {
+      description: "A memory item was persisted",
+    },
+    {`\`MemoryRecalled\``}: {
+      description: "A memory item was retrieved for context",
+    },
+    {`\`MemoriesSearched\``}: {
+      description: "A search was performed",
+    },
+    {`\`MemoryCleared\``}: {
+      description: "All memories were cleared",
+    },
+  }
+/>
 
 ## API Reference
 
 ### SessionOptions
 
-| Method | Description |
-|--------|-------------|
-| `.with_file_memory(path)` | Enable `FileMemoryStore` at the given path |
-| `.with_memory(Arc<dyn MemoryStore>)` | Use a custom backend |
-| `.with_memory_config(MemoryConfig)` | Configure relevance scoring and tier capacities |
+<TypeTable
+  type={
+    {`\`.with_file_memory(path)\``}: {
+      description: {`Enable \`FileMemoryStore\` at the given path`},
+    },
+    {`\`.with_memory(Arc<dyn MemoryStore>)\``}: {
+      description: "Use a custom backend",
+    },
+    {`\`.with_memory_config(MemoryConfig)\``}: {
+      description: "Configure relevance scoring and tier capacities",
+    },
+  }
+/>
 
 ### MemoryStore trait
 
-| Method | Description |
-|--------|-------------|
-| `store(item)` | Persist a memory item (upsert by ID) |
-| `retrieve(id)` | Fetch a single item by ID |
-| `search(query, limit)` | Substring search, ranked by relevance |
-| `search_by_tags(tags, limit)` | Filter by tags, ranked by relevance |
-| `get_recent(limit)` | Most recently created items |
-| `get_important(threshold, limit)` | Items above importance threshold, sorted descending |
-| `delete(id)` | Remove a single item |
-| `clear()` | Remove all items |
-| `count()` | Total item count |
+<TypeTable
+  type={
+    {`\`store(item)\``}: {
+      description: "Persist a memory item (upsert by ID)",
+    },
+    {`\`retrieve(id)\``}: {
+      description: "Fetch a single item by ID",
+    },
+    {`\`search(query, limit)\``}: {
+      description: "Substring search, ranked by relevance",
+    },
+    {`\`search_by_tags(tags, limit)\``}: {
+      description: "Filter by tags, ranked by relevance",
+    },
+    {`\`get_recent(limit)\``}: {
+      description: "Most recently created items",
+    },
+    {`\`get_important(threshold, limit)\``}: {
+      description: "Items above importance threshold, sorted descending",
+    },
+    {`\`delete(id)\``}: {
+      description: "Remove a single item",
+    },
+    {`\`clear()\``}: {
+      description: "Remove all items",
+    },
+    {`\`count()\``}: {
+      description: "Total item count",
+    },
+  }
+/>
 
 <Callout type="info">
 `a3s-memory` is a standalone crate. Add it directly if you need the storage layer without the full agent framework: `cargo add a3s-memory`

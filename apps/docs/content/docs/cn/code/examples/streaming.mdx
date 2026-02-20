@@ -4,6 +4,7 @@ description: 使用 AgentEvent 的实时事件流
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 流式传输
 
@@ -11,15 +12,31 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 ## 事件类型
 
-| 事件 | 触发时机 |
-|-------|------|
-| `Start` | Agent 开始处理 |
-| `TurnStart` / `TurnEnd` | 每个 LLM 轮次 |
-| `TextDelta` | 流式文本片段 |
-| `ToolStart` / `ToolEnd` | 工具执行 |
-| `ToolOutputDelta` | 流式工具输出（bash） |
-| `ContextResolving` / `ContextResolved` | RAG 检索 |
-| `End` | Agent 完成 |
+<TypeTable
+  type={
+    {`\`Start\``}: {
+      description: "Agent 开始处理",
+    },
+    {`\`TurnStart\` / \`TurnEnd\``}: {
+      description: "每个 LLM 轮次",
+    },
+    {`\`TextDelta\``}: {
+      description: "流式文本片段",
+    },
+    {`\`ToolStart\` / \`ToolEnd\``}: {
+      description: "工具执行",
+    },
+    {`\`ToolOutputDelta\``}: {
+      description: "流式工具输出（bash）",
+    },
+    {`\`ContextResolving\` / \`ContextResolved\``}: {
+      description: "RAG 检索",
+    },
+    {`\`End\``}: {
+      description: "Agent 完成",
+    },
+  }
+/>
 
 ## 示例
 
@@ -129,23 +146,53 @@ The auth module has been refactored. Key changes:
 
 ### stream()
 
-| 方法 | Rust | Python | Node.js |
-|--------|------|--------|---------|
-| 启动流 | `session.stream("prompt", None).await?` | `session.stream("prompt")` | `session.stream('prompt')` |
-| 接收事件 | `rx.recv().await` | `async for event in stream` | `for await (const event of stream)` |
-| 等待完成 | `handle.await??` | _（自动）_ | _（自动）_ |
+<TypeTable
+  type={
+    "启动流": {
+      description: {`Rust: \`session.stream("prompt", None).await?\` · Python: \`session.stream("prompt")\` · Node.js: \`session.stream('prompt')\``},
+    },
+    "接收事件": {
+      description: {`Rust: \`rx.recv().await\` · Python: \`async for event in stream\` · Node.js: \`for await (const event of stream)\``},
+    },
+    "等待完成": {
+      description: {`Rust: \`handle.await??\` · Python: _（自动）_ · Node.js: _（自动）_`},
+    },
+  }
+/>
 
 ### AgentEvent 类型
 
-| 事件 | Rust 变体 | Python/Node.js `type` | 字段 |
-|-------|-------------|----------------------|--------|
-| Agent 启动 | `AgentEvent::Start` | `start` | — |
-| LLM 轮次开始 | `AgentEvent::TurnStart` | `turn_start` | `turn` |
-| LLM 轮次结束 | `AgentEvent::TurnEnd` | `turn_end` | `turn`, `usage` |
-| 文本片段 | `AgentEvent::TextDelta` | `text_delta` | `text` |
-| 工具开始 | `AgentEvent::ToolStart` | `tool_start` | `name`, `args` |
-| 工具完成 | `AgentEvent::ToolEnd` | `tool_end` | `name`, `exit_code`, `output` |
-| 工具输出片段 | `AgentEvent::ToolOutputDelta` | `tool_output_delta` | `text` |
-| RAG 检索中 | `AgentEvent::ContextResolving` | `context_resolving` | `query` |
-| RAG 检索完成 | `AgentEvent::ContextResolved` | `context_resolved` | `chunks` |
-| Agent 完成 | `AgentEvent::End` | `end` | `text`, `usage` |
+<TypeTable
+  type={
+    "Agent 启动": {
+      description: {`Rust 变体: \`AgentEvent::Start\` · Python/Node.js \`type\`: \`start\``},
+    },
+    "LLM 轮次开始": {
+      description: {`Rust 变体: \`AgentEvent::TurnStart\` · Python/Node.js \`type\`: \`turn_start\` · 字段: \`turn\``},
+    },
+    "LLM 轮次结束": {
+      description: {`Rust 变体: \`AgentEvent::TurnEnd\` · Python/Node.js \`type\`: \`turn_end\` · 字段: \`turn\`, \`usage\``},
+    },
+    "文本片段": {
+      description: {`Rust 变体: \`AgentEvent::TextDelta\` · Python/Node.js \`type\`: \`text_delta\` · 字段: \`text\``},
+    },
+    "工具开始": {
+      description: {`Rust 变体: \`AgentEvent::ToolStart\` · Python/Node.js \`type\`: \`tool_start\` · 字段: \`name\`, \`args\``},
+    },
+    "工具完成": {
+      description: {`Rust 变体: \`AgentEvent::ToolEnd\` · Python/Node.js \`type\`: \`tool_end\` · 字段: \`name\`, \`exit_code\`, \`output\``},
+    },
+    "工具输出片段": {
+      description: {`Rust 变体: \`AgentEvent::ToolOutputDelta\` · Python/Node.js \`type\`: \`tool_output_delta\` · 字段: \`text\``},
+    },
+    "RAG 检索中": {
+      description: {`Rust 变体: \`AgentEvent::ContextResolving\` · Python/Node.js \`type\`: \`context_resolving\` · 字段: \`query\``},
+    },
+    "RAG 检索完成": {
+      description: {`Rust 变体: \`AgentEvent::ContextResolved\` · Python/Node.js \`type\`: \`context_resolved\` · 字段: \`chunks\``},
+    },
+    "Agent 完成": {
+      description: {`Rust 变体: \`AgentEvent::End\` · Python/Node.js \`type\`: \`end\` · 字段: \`text\`, \`usage\``},
+    },
+  }
+/>

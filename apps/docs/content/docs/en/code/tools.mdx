@@ -4,6 +4,7 @@ description: 11 built-in tools (12 with sandbox) for file operations, shell exec
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Built-in Tools
 
@@ -11,20 +12,46 @@ A3S Code ships with 11 built-in tools (12 with the `sandbox` feature) covering f
 
 ## Tool Reference
 
-| Tool | Purpose | Example |
-|------|---------|---------|
-| `read` | Read files with line numbers | View source code |
-| `write` | Create/overwrite files | Create new files |
-| `edit` | String replacement editing | Modify existing code |
-| `patch` | Apply unified diff patches | Complex multi-line edits |
-| `bash` | Execute shell commands | `git status`, `npm install` |
-| `grep` | Search file contents (ripgrep) | Find function definitions |
-| `glob` | Find files by pattern | `**/*.ts`, `src/**/*.rs` |
-| `ls` | List directory contents | Explore project structure |
-| `web_fetch` | Fetch web content | Download documentation |
-| `web_search` | Search the web | Query multiple search engines |
-| `task` | Delegate to subagents | Offload specialized work |
-| `sandbox` | Execute in MicroVM | Isolated execution (`sandbox` feature) |
+<TypeTable
+  type={
+    {`\`read\``}: {
+      description: "Purpose: Read files with line numbers · Example: View source code",
+    },
+    {`\`write\``}: {
+      description: "Purpose: Create/overwrite files · Example: Create new files",
+    },
+    {`\`edit\``}: {
+      description: "Purpose: String replacement editing · Example: Modify existing code",
+    },
+    {`\`patch\``}: {
+      description: "Purpose: Apply unified diff patches · Example: Complex multi-line edits",
+    },
+    {`\`bash\``}: {
+      description: {`Purpose: Execute shell commands · Example: \`git status\`, \`npm install\``},
+    },
+    {`\`grep\``}: {
+      description: "Purpose: Search file contents (ripgrep) · Example: Find function definitions",
+    },
+    {`\`glob\``}: {
+      description: {`Purpose: Find files by pattern · Example: \`/*.ts\`, \`src//*.rs\``},
+    },
+    {`\`ls\``}: {
+      description: "Purpose: List directory contents · Example: Explore project structure",
+    },
+    {`\`web_fetch\``}: {
+      description: "Purpose: Fetch web content · Example: Download documentation",
+    },
+    {`\`web_search\``}: {
+      description: "Purpose: Search the web · Example: Query multiple search engines",
+    },
+    {`\`task\``}: {
+      description: "Purpose: Delegate to subagents · Example: Offload specialized work",
+    },
+    {`\`sandbox\``}: {
+      description: {`Purpose: Execute in MicroVM · Example: Isolated execution (\`sandbox\` feature)`},
+    },
+  }
+/>
 
 ## File Operations
 

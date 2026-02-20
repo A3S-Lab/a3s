@@ -3,6 +3,8 @@ title: Models
 description: Model management, storage, resolution, and Modelfile support
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Models
 
 A3S Power uses content-addressed storage with SHA-256 deduplication for efficient model management.
@@ -135,15 +137,31 @@ a3s-power run my-model
 
 ### Modelfile Directives
 
-| Directive | Description |
-|-----------|-------------|
-| `FROM` | Base model name or path |
-| `PARAMETER` | Override generation parameter |
-| `SYSTEM` | Default system prompt |
-| `TEMPLATE` | Chat template (Jinja2) |
-| `ADAPTER` | LoRA adapter path |
-| `LICENSE` | License text |
-| `MESSAGE` | Default conversation message |
+<TypeTable
+  type={
+    {`\`FROM\``}: {
+      description: "Base model name or path",
+    },
+    {`\`PARAMETER\``}: {
+      description: "Override generation parameter",
+    },
+    {`\`SYSTEM\``}: {
+      description: "Default system prompt",
+    },
+    {`\`TEMPLATE\``}: {
+      description: "Chat template (Jinja2)",
+    },
+    {`\`ADAPTER\``}: {
+      description: "LoRA adapter path",
+    },
+    {`\`LICENSE\``}: {
+      description: "License text",
+    },
+    {`\`MESSAGE\``}: {
+      description: "Default conversation message",
+    },
+  }
+/>
 
 ## Copy and Alias
 

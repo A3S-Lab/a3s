@@ -4,6 +4,7 @@ description: 创建会话、发送提示、流式响应和管理对话历史
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
@@ -64,16 +65,34 @@ session = agent.session("/my-project", model="openai/gpt-4o")
 
 ## SessionOptions
 
-| 参数 | Rust | TypeScript | Python | 描述 |
-|-----------|------|-----------|--------|-------------|
-| 模型覆盖 | `with_model("provider/model")` | `model: "provider/model"` | `model="provider/model"` | 格式：`provider/model`（例如 `openai/gpt-4o`） |
-| Skill 目录 | `with_skill_dir("path")` | `skillDirs: ["path"]` | `skill_dirs=["path"]` | 额外的 skill 文件扫描目录（与全局 `skill_dirs` 合并） |
-| Agent 目录 | `with_agent_dir("path")` | `agentDirs: ["path"]` | `agent_dirs=["path"]` | 额外的 agent 文件扫描目录（与全局 `agent_dirs` 合并） |
-| 解析重试 | `with_parse_retries(n)` | `maxParseRetries: n` | `max_parse_retries=n` | 连续工具参数格式错误的最大重试次数（默认：2） |
-| 工具超时 | `with_tool_timeout(ms)` | `toolTimeoutMs: ms` | `tool_timeout_ms=ms` | 每个工具的执行超时时间（毫秒）；超时后错误会反馈给 LLM（默认：无） |
-| 熔断器 | `with_circuit_breaker(n)` | `circuitBreakerThreshold: n` | `circuit_breaker_threshold=n` | 非流式模式下 LLM API 失败的最大次数（默认：3） |
-| 弹性套件 | `with_resilience_defaults()` | — | — | 启用 parse_retries=2、tool_timeout=120s、circuit_breaker=3 |
-| 沙箱 | `with_sandbox(SandboxConfig)` | — | — | 通过 A3S Box MicroVM 路由 `bash` 工具（需要 `sandbox` feature） |
+<TypeTable
+  type={
+    "模型覆盖": {
+      description: {`Rust: \`with_model("provider/model")\` · TypeScript: \`model: "provider/model"\` · Python: \`model="provider/model"\` · 描述: 格式：\`provider/model\`（例如 \`openai/gpt-4o\`）`},
+    },
+    "Skill 目录": {
+      description: {`Rust: \`with_skill_dir("path")\` · TypeScript: \`skillDirs: ["path"]\` · Python: \`skill_dirs=["path"]\` · 描述: 额外的 skill 文件扫描目录（与全局 \`skill_dirs\` 合并）`},
+    },
+    "Agent 目录": {
+      description: {`Rust: \`with_agent_dir("path")\` · TypeScript: \`agentDirs: ["path"]\` · Python: \`agent_dirs=["path"]\` · 描述: 额外的 agent 文件扫描目录（与全局 \`agent_dirs\` 合并）`},
+    },
+    "解析重试": {
+      description: {`Rust: \`with_parse_retries(n)\` · TypeScript: \`maxParseRetries: n\` · Python: \`max_parse_retries=n\` · 描述: 连续工具参数格式错误的最大重试次数（默认：2）`},
+    },
+    "工具超时": {
+      description: {`Rust: \`with_tool_timeout(ms)\` · TypeScript: \`toolTimeoutMs: ms\` · Python: \`tool_timeout_ms=ms\` · 描述: 每个工具的执行超时时间（毫秒）；超时后错误会反馈给 LLM（默认：无）`},
+    },
+    "熔断器": {
+      description: {`Rust: \`with_circuit_breaker(n)\` · TypeScript: \`circuitBreakerThreshold: n\` · Python: \`circuit_breaker_threshold=n\` · 描述: 非流式模式下 LLM API 失败的最大次数（默认：3）`},
+    },
+    "弹性套件": {
+      description: {`Rust: \`with_resilience_defaults()\` · 描述: 启用 parse_retries=2、tool_timeout=120s、circuit_breaker=3`},
+    },
+    "沙箱": {
+      description: {`Rust: \`with_sandbox(SandboxConfig)\` · 描述: 通过 A3S Box MicroVM 路由 \`bash\` 工具（需要 \`sandbox\` feature）`},
+    },
+  }
+/>
 
 模型必须在 agent 配置文件的 `providers` 中定义。格式为 `provider_name/model_id`。
 
@@ -335,22 +354,44 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 
 ### AgentResult
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `text` | `string` | LLM 最终响应文本 |
-| `messages` | `Vec<Message>` | 完整对话历史（仅 Rust） |
-| `usage` | `TokenUsage` | Token 使用统计 |
-| `tool_calls_count` | `usize` | 工具调用次数 |
+<TypeTable
+  type={
+    {`\`text\``}: {
+      description: {`类型: \`string\` · 描述: LLM 最终响应文本`},
+    },
+    {`\`messages\``}: {
+      description: {`类型: \`Vec<Message>\` · 描述: 完整对话历史（仅 Rust）`},
+    },
+    {`\`usage\``}: {
+      description: {`类型: \`TokenUsage\` · 描述: Token 使用统计`},
+    },
+    {`\`tool_calls_count\``}: {
+      description: {`类型: \`usize\` · 描述: 工具调用次数`},
+    },
+  }
+/>
 
 ### TokenUsage
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `prompt_tokens` | `usize` | 输入 token 数 |
-| `completion_tokens` | `usize` | 输出 token 数 |
-| `total_tokens` | `usize` | 总 token 数 |
-| `cache_read_tokens` | `Option<usize>` | 缓存读取的输入 token 数 |
-| `cache_write_tokens` | `Option<usize>` | 缓存写入的输入 token 数 |
+<TypeTable
+  type={
+    {`\`prompt_tokens\``}: {
+      description: {`类型: \`usize\` · 描述: 输入 token 数`},
+    },
+    {`\`completion_tokens\``}: {
+      description: {`类型: \`usize\` · 描述: 输出 token 数`},
+    },
+    {`\`total_tokens\``}: {
+      description: {`类型: \`usize\` · 描述: 总 token 数`},
+    },
+    {`\`cache_read_tokens\``}: {
+      description: {`类型: \`Option<usize>\` · 描述: 缓存读取的输入 token 数`},
+    },
+    {`\`cache_write_tokens\``}: {
+      description: {`类型: \`Option<usize>\` · 描述: 缓存写入的输入 token 数`},
+    },
+  }
+/>
 
 ### AgentEvent
 
@@ -358,111 +399,257 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 
 **Agent 生命周期：**
 
-| 事件 | 字段 | 描述 |
-|-------|--------|-------------|
-| `Start` | `prompt` | 开始处理 |
-| `TurnStart` | `turn` | 新轮次开始 |
-| `TextDelta` | `text` | 助手的文本片段 |
-| `TurnEnd` | `turn`, `total_tokens` | 轮次完成 |
-| `End` | `text`, `total_tokens` | 生成完成 |
-| `Error` | `error` | 发生错误 |
+<TypeTable
+  type={
+    {`\`Start\``}: {
+      description: {`字段: \`prompt\` · 描述: 开始处理`},
+    },
+    {`\`TurnStart\``}: {
+      description: {`字段: \`turn\` · 描述: 新轮次开始`},
+    },
+    {`\`TextDelta\``}: {
+      description: {`字段: \`text\` · 描述: 助手的文本片段`},
+    },
+    {`\`TurnEnd\``}: {
+      description: {`字段: \`turn\`, \`total_tokens\` · 描述: 轮次完成`},
+    },
+    {`\`End\``}: {
+      description: {`字段: \`text\`, \`total_tokens\` · 描述: 生成完成`},
+    },
+    {`\`Error\``}: {
+      description: {`字段: \`error\` · 描述: 发生错误`},
+    },
+  }
+/>
 
 **工具执行：**
 
-| 事件 | 字段 | 描述 |
-|-------|--------|-------------|
-| `ToolStart` | `tool_id`, `tool_name` | 工具调用开始 |
-| `ToolEnd` | `tool_id`, `tool_name`, `tool_output`, `exit_code` | 工具调用完成 |
-| `ToolOutputDelta` | `tool_id`, `tool_name`, `text` | 工具输出增量 |
+<TypeTable
+  type={
+    {`\`ToolStart\``}: {
+      description: {`字段: \`tool_id\`, \`tool_name\` · 描述: 工具调用开始`},
+    },
+    {`\`ToolEnd\``}: {
+      description: {`字段: \`tool_id\`, \`tool_name\`, \`tool_output\`, \`exit_code\` · 描述: 工具调用完成`},
+    },
+    {`\`ToolOutputDelta\``}: {
+      description: {`字段: \`tool_id\`, \`tool_name\`, \`text\` · 描述: 工具输出增量`},
+    },
+  }
+/>
 
 **HITL 和权限：**
 
-| 事件 | 字段 | 描述 |
-|-------|--------|-------------|
-| `ConfirmationRequired` | `tool_id`, `tool_name`, `args`, `timeout_ms` | 需要 HITL 确认 |
-| `ConfirmationReceived` | `tool_id`, `approved`, `reason` | 收到 HITL 确认 |
-| `ConfirmationTimeout` | `tool_id`, `action_taken` | HITL 确认超时 |
-| `PermissionDenied` | `tool_id`, `tool_name`, `args`, `reason` | 工具被权限策略阻止 |
+<TypeTable
+  type={
+    {`\`ConfirmationRequired\``}: {
+      description: {`字段: \`tool_id\`, \`tool_name\`, \`args\`, \`timeout_ms\` · 描述: 需要 HITL 确认`},
+    },
+    {`\`ConfirmationReceived\``}: {
+      description: {`字段: \`tool_id\`, \`approved\`, \`reason\` · 描述: 收到 HITL 确认`},
+    },
+    {`\`ConfirmationTimeout\``}: {
+      description: {`字段: \`tool_id\`, \`action_taken\` · 描述: HITL 确认超时`},
+    },
+    {`\`PermissionDenied\``}: {
+      description: {`字段: \`tool_id\`, \`tool_name\`, \`args\`, \`reason\` · 描述: 工具被权限策略阻止`},
+    },
+  }
+/>
 
 **上下文和记忆：**
 
-| 事件 | 字段 | 描述 |
-|-------|--------|-------------|
-| `ContextResolving` | `providers` | 上下文解析开始 |
-| `ContextResolved` | `total_items`, `total_tokens` | 上下文解析完成 |
-| `MemoryStored` | — | 记忆项已存储 |
-| `MemoryRecalled` | — | 记忆项已召回 |
-| `MemoriesSearched` | — | 记忆搜索完成 |
-| `MemoryCleared` | — | 记忆已清除 |
+<TypeTable
+  type={
+    {`\`ContextResolving\``}: {
+      description: {`字段: \`providers\` · 描述: 上下文解析开始`},
+    },
+    {`\`ContextResolved\``}: {
+      description: {`字段: \`total_items\`, \`total_tokens\` · 描述: 上下文解析完成`},
+    },
+    {`\`MemoryStored\``}: {
+      description: "描述: 记忆项已存储",
+    },
+    {`\`MemoryRecalled\``}: {
+      description: "描述: 记忆项已召回",
+    },
+    {`\`MemoriesSearched\``}: {
+      description: "描述: 记忆搜索完成",
+    },
+    {`\`MemoryCleared\``}: {
+      description: "描述: 记忆已清除",
+    },
+  }
+/>
 
 **任务、子代理和 Lane 队列：**
 
-| 事件 | 字段 | 描述 |
-|-------|--------|-------------|
-| `TaskUpdated` | `session_id`, `tasks` | 任务列表变更 |
-| `SubagentStart` | — | 子代理执行开始 |
-| `ExternalTaskPending` | — | 外部任务已入队 |
-| `ExternalTaskCompleted` | — | 外部任务已完成 |
-| `CommandDeadLettered` | — | Lane 命令进入死信队列 |
-| `CommandRetry` | — | Lane 命令重试 |
-| `QueueAlert` | — | 队列告警触发 |
+<TypeTable
+  type={
+    {`\`TaskUpdated\``}: {
+      description: {`字段: \`session_id\`, \`tasks\` · 描述: 任务列表变更`},
+    },
+    {`\`SubagentStart\``}: {
+      description: "描述: 子代理执行开始",
+    },
+    {`\`ExternalTaskPending\``}: {
+      description: "描述: 外部任务已入队",
+    },
+    {`\`ExternalTaskCompleted\``}: {
+      description: "描述: 外部任务已完成",
+    },
+    {`\`CommandDeadLettered\``}: {
+      description: "描述: Lane 命令进入死信队列",
+    },
+    {`\`CommandRetry\``}: {
+      description: "描述: Lane 命令重试",
+    },
+    {`\`QueueAlert\``}: {
+      description: "描述: 队列告警触发",
+    },
+  }
+/>
 
 ## API 参考
 
 ### Agent
 
-| 方法 | 签名 | 描述 |
-|--------|-----------|-------------|
-| `new` | `Agent::new(config: &str) -> Result<Agent>` | 从 HCL 文件或字符串加载 |
-| `from_config` | `Agent::from_config(config: AgentConfig) -> Result<Agent>` | 从结构体加载 |
-| `session` | `agent.session(workspace, options?) -> Result<AgentSession>` | 创建绑定工作区的会话 |
+<TypeTable
+  type={
+    {`\`new\``}: {
+      description: {`签名: \`Agent::new(config: &str) -> Result<Agent>\` · 描述: 从 HCL 文件或字符串加载`},
+    },
+    {`\`from_config\``}: {
+      description: {`签名: \`Agent::from_config(config: AgentConfig) -> Result<Agent>\` · 描述: 从结构体加载`},
+    },
+    {`\`session\``}: {
+      description: {`签名: \`agent.session(workspace, options?) -> Result<AgentSession>\` · 描述: 创建绑定工作区的会话`},
+    },
+  }
+/>
 
 ### AgentSession
 
-| 方法 | Rust | Python | Node.js |
-|--------|------|--------|---------|
-| 发送提示 | `session.send(prompt, None).await?` | `await session.send(prompt)` | `await session.send(prompt)` |
-| 流式事件 | `session.stream(prompt, None).await?` | `session.stream(prompt)` | `session.stream(prompt)` |
-| 带图片发送 | `session.send_with_attachments(p, &[img], None).await?` | `await session.send_with_attachments(p, [img])` | `await session.sendWithAttachments(p, [img])` |
-| 读取文件 | `session.read_file(path).await?` | `await session.read_file(path)` | `await session.readFile(path)` |
-| 运行 bash | `session.bash(cmd).await?` | `await session.bash(cmd)` | `await session.bash(cmd)` |
-| Glob | `session.glob(pattern).await?` | `await session.glob(pattern)` | `await session.glob(pattern)` |
-| Grep | `session.grep(pattern).await?` | `await session.grep(pattern)` | `await session.grep(pattern)` |
-| 调用工具 | `session.tool(name, args).await?` | `await session.tool(name, args)` | `await session.tool(name, args)` |
-| 历史记录 | `session.history()` | `session.history()` | `session.history()` |
+<TypeTable
+  type={
+    "发送提示": {
+      description: {`Rust: \`session.send(prompt, None).await?\` · Python: \`await session.send(prompt)\` · Node.js: \`await session.send(prompt)\``},
+    },
+    "流式事件": {
+      description: {`Rust: \`session.stream(prompt, None).await?\` · Python: \`session.stream(prompt)\` · Node.js: \`session.stream(prompt)\``},
+    },
+    "带图片发送": {
+      description: {`Rust: \`session.send_with_attachments(p, &[img], None).await?\` · Python: \`await session.send_with_attachments(p, [img])\` · Node.js: \`await session.sendWithAttachments(p, [img])\``},
+    },
+    "读取文件": {
+      description: {`Rust: \`session.read_file(path).await?\` · Python: \`await session.read_file(path)\` · Node.js: \`await session.readFile(path)\``},
+    },
+    "运行 bash": {
+      description: {`Rust: \`session.bash(cmd).await?\` · Python: \`await session.bash(cmd)\` · Node.js: \`await session.bash(cmd)\``},
+    },
+    "Glob": {
+      description: {`Rust: \`session.glob(pattern).await?\` · Python: \`await session.glob(pattern)\` · Node.js: \`await session.glob(pattern)\``},
+    },
+    "Grep": {
+      description: {`Rust: \`session.grep(pattern).await?\` · Python: \`await session.grep(pattern)\` · Node.js: \`await session.grep(pattern)\``},
+    },
+    "调用工具": {
+      description: {`Rust: \`session.tool(name, args).await?\` · Python: \`await session.tool(name, args)\` · Node.js: \`await session.tool(name, args)\``},
+    },
+    "历史记录": {
+      description: {`Rust: \`session.history()\` · Python: \`session.history()\` · Node.js: \`session.history()\``},
+    },
+  }
+/>
 
 ### SessionOptions
 
-| 选项 | Rust | Python | Node.js | 默认值 |
-|--------|------|--------|---------|---------|
-| 模型 | `.with_model("provider/model")` | `model="provider/model"` | `model: "provider/model"` | 配置默认值 |
-| 宽松模式 | `.with_permissive_policy()` | `permissive=True` | `permissive: true` | `false` |
-| 规划 | `.with_planning(true)` | `planning=True` | `planning: true` | `false` |
-| 目标跟踪 | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` | `false` |
-| 内置 skills | `.with_builtin_skills()` | `builtin_skills=True` | `builtinSkills: true` | `false` |
-| Skill 目录 | `.with_skills_from_dir(path)` | `skill_dirs=[path]` | `skillDirs: [path]` | `[]` |
-| 默认安全 | `.with_default_security()` | `default_security=True` | `defaultSecurity: true` | `false` |
-| 文件记忆 | `.with_file_memory(path)` | `memory_dir=path` | `memoryDir: path` | `None` |
-| 自动压缩 | `.with_auto_compact(true)` | `auto_compact=True` | `autoCompact: true` | `false` |
-| 自动压缩阈值 | `.with_auto_compact_threshold(f)` | `auto_compact_threshold=f` | `autoCompactThreshold: f` | `0.8` |
-| 文件系统上下文 | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` | `None` |
-| 队列配置 | `.with_queue_config(cfg)` | `queue_config=cfg` | `queueConfig: cfg` | `None` |
-| 解析重试 | `.with_parse_retries(n)` | `max_parse_retries=n` | `maxParseRetries: n` | `2` |
-| 工具超时 | `.with_tool_timeout(ms)` | `tool_timeout_ms=ms` | `toolTimeoutMs: ms` | `None` |
-| 熔断器 | `.with_circuit_breaker(n)` | `circuit_breaker_threshold=n` | `circuitBreakerThreshold: n` | `3` |
-| 弹性默认值 | `.with_resilience_defaults()` | — | — | — |
-| 沙箱 | `.with_sandbox(cfg)` | — | — | `None` |
-| 权限检查器 | `.with_permission_checker(p)` | — | — | `PermissionPolicy` |
-| 确认管理器 | `.with_confirmation_manager(m)` | — | — | `None` |
-| 安全提供者 | `.with_security_provider(p)` | — | — | `None` |
-| 上下文提供者 | `.with_context_provider(p)` | — | — | `None` |
-| 记忆存储 | `.with_memory(store)` | — | — | `InMemoryStore` |
-| Hook 引擎 | `.with_hook_engine(h)` | — | — | `HookEngine` |
+<TypeTable
+  type={
+    "模型": {
+      description: {`Rust: \`.with_model("provider/model")\` · Python: \`model="provider/model"\` · Node.js: \`model: "provider/model"\` · 默认值: 配置默认值`},
+    },
+    "宽松模式": {
+      description: {`Rust: \`.with_permissive_policy()\` · Python: \`permissive=True\` · Node.js: \`permissive: true\` · 默认值: \`false\``},
+    },
+    "规划": {
+      description: {`Rust: \`.with_planning(true)\` · Python: \`planning=True\` · Node.js: \`planning: true\` · 默认值: \`false\``},
+    },
+    "目标跟踪": {
+      description: {`Rust: \`.with_goal_tracking(true)\` · Python: \`goal_tracking=True\` · Node.js: \`goalTracking: true\` · 默认值: \`false\``},
+    },
+    "内置 skills": {
+      description: {`Rust: \`.with_builtin_skills()\` · Python: \`builtin_skills=True\` · Node.js: \`builtinSkills: true\` · 默认值: \`false\``},
+    },
+    "Skill 目录": {
+      description: {`Rust: \`.with_skills_from_dir(path)\` · Python: \`skill_dirs=[path]\` · Node.js: \`skillDirs: [path]\` · 默认值: \`[]\``},
+    },
+    "默认安全": {
+      description: {`Rust: \`.with_default_security()\` · Python: \`default_security=True\` · Node.js: \`defaultSecurity: true\` · 默认值: \`false\``},
+    },
+    "文件记忆": {
+      description: {`Rust: \`.with_file_memory(path)\` · Python: \`memory_dir=path\` · Node.js: \`memoryDir: path\` · 默认值: \`None\``},
+    },
+    "自动压缩": {
+      description: {`Rust: \`.with_auto_compact(true)\` · Python: \`auto_compact=True\` · Node.js: \`autoCompact: true\` · 默认值: \`false\``},
+    },
+    "自动压缩阈值": {
+      description: {`Rust: \`.with_auto_compact_threshold(f)\` · Python: \`auto_compact_threshold=f\` · Node.js: \`autoCompactThreshold: f\` · 默认值: \`0.8\``},
+    },
+    "文件系统上下文": {
+      description: {`Rust: \`.with_fs_context(path)\` · Python: \`fs_context=path\` · Node.js: \`fsContext: path\` · 默认值: \`None\``},
+    },
+    "队列配置": {
+      description: {`Rust: \`.with_queue_config(cfg)\` · Python: \`queue_config=cfg\` · Node.js: \`queueConfig: cfg\` · 默认值: \`None\``},
+    },
+    "解析重试": {
+      description: {`Rust: \`.with_parse_retries(n)\` · Python: \`max_parse_retries=n\` · Node.js: \`maxParseRetries: n\` · 默认值: \`2\``},
+    },
+    "工具超时": {
+      description: {`Rust: \`.with_tool_timeout(ms)\` · Python: \`tool_timeout_ms=ms\` · Node.js: \`toolTimeoutMs: ms\` · 默认值: \`None\``},
+    },
+    "熔断器": {
+      description: {`Rust: \`.with_circuit_breaker(n)\` · Python: \`circuit_breaker_threshold=n\` · Node.js: \`circuitBreakerThreshold: n\` · 默认值: \`3\``},
+    },
+    "弹性默认值": {
+      description: {`Rust: \`.with_resilience_defaults()\``},
+    },
+    "沙箱": {
+      description: {`Rust: \`.with_sandbox(cfg)\` · 默认值: \`None\``},
+    },
+    "权限检查器": {
+      description: {`Rust: \`.with_permission_checker(p)\` · 默认值: \`PermissionPolicy\``},
+    },
+    "确认管理器": {
+      description: {`Rust: \`.with_confirmation_manager(m)\` · 默认值: \`None\``},
+    },
+    "安全提供者": {
+      description: {`Rust: \`.with_security_provider(p)\` · 默认值: \`None\``},
+    },
+    "上下文提供者": {
+      description: {`Rust: \`.with_context_provider(p)\` · 默认值: \`None\``},
+    },
+    "记忆存储": {
+      description: {`Rust: \`.with_memory(store)\` · 默认值: \`InMemoryStore\``},
+    },
+    "Hook 引擎": {
+      description: {`Rust: \`.with_hook_engine(h)\` · 默认值: \`HookEngine\``},
+    },
+  }
+/>
 
 ### AgentResponse
 
-| 字段 | Rust | Python | Node.js |
-|-------|------|--------|---------|
-| 文本 | `result.text` | `result.text` | `result.text` |
-| 总 token 数 | `result.usage.total_tokens` | `result.usage.total_tokens` | `result.usage.totalTokens` |
-| 工具调用次数 | `result.tool_calls_count` | `result.tool_calls_count` | `result.toolCallsCount` |
+<TypeTable
+  type={
+    "文本": {
+      description: {`Rust: \`result.text\` · Python: \`result.text\` · Node.js: \`result.text\``},
+    },
+    "总 token 数": {
+      description: {`Rust: \`result.usage.total_tokens\` · Python: \`result.usage.total_tokens\` · Node.js: \`result.usage.totalTokens\``},
+    },
+    "工具调用次数": {
+      description: {`Rust: \`result.tool_calls_count\` · Python: \`result.tool_calls_count\` · Node.js: \`result.toolCallsCount\``},
+    },
+  }
+/>

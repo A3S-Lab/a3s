@@ -3,6 +3,8 @@ title: Telemetry
 description: Tracing spans, cost tracking, and tool execution metrics
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Telemetry
 
 A3S Code emits structured telemetry via OpenTelemetry-compatible tracing spans. Every LLM call, tool execution, and agent turn is instrumented with detailed attributes for observability, cost tracking, and performance analysis.
@@ -120,13 +122,25 @@ Use `aggregate_cost_records()` to produce summaries from a collection of `LlmCos
 
 `ToolMetrics` tracks per-tool execution statistics within a session:
 
-| Metric | Description |
-|--------|-------------|
-| Call count | Total invocations |
-| Success count | Successful executions |
-| Failure count | Failed executions |
-| Total duration | Cumulative execution time |
-| Average duration | Mean execution time per call |
+<TypeTable
+  type={
+    "Call count": {
+      description: "Total invocations",
+    },
+    "Success count": {
+      description: "Successful executions",
+    },
+    "Failure count": {
+      description: "Failed executions",
+    },
+    "Total duration": {
+      description: "Cumulative execution time",
+    },
+    "Average duration": {
+      description: "Mean execution time per call",
+    },
+  }
+/>
 
 These metrics are recorded on tracing spans via `record_tool_result()` and can be aggregated for dashboards and alerting.
 
@@ -160,14 +174,28 @@ Helper functions `record_llm_usage()` and `record_tool_result()` record metrics 
 
 ### Span hierarchy
 
-| Span | Parent | Key attributes |
-|------|--------|----------------|
-| `agent.session` | root | `session.id`, `session.workspace` |
-| `agent.turn` | `agent.session` | `turn.index`, `turn.model` |
-| `agent.generate` | `agent.turn` | `llm.provider`, `llm.model`, `llm.tokens_in`, `llm.tokens_out` |
-| `agent.tool` | `agent.turn` | `tool.name`, `tool.exit_code`, `tool.duration_ms` |
-| `agent.plan` | `agent.turn` | `plan.steps`, `plan.waves` |
-| `agent.hook` | `agent.turn` | `hook.id`, `hook.event` |
+<TypeTable
+  type={
+    {`\`agent.session\``}: {
+      description: {`Parent: root · Key attributes: \`session.id\`, \`session.workspace\``},
+    },
+    {`\`agent.turn\``}: {
+      description: {`Parent: \`agent.session\` · Key attributes: \`turn.index\`, \`turn.model\``},
+    },
+    {`\`agent.generate\``}: {
+      description: {`Parent: \`agent.turn\` · Key attributes: \`llm.provider\`, \`llm.model\`, \`llm.tokens_in\`, \`llm.tokens_out\``},
+    },
+    {`\`agent.tool\``}: {
+      description: {`Parent: \`agent.turn\` · Key attributes: \`tool.name\`, \`tool.exit_code\`, \`tool.duration_ms\``},
+    },
+    {`\`agent.plan\``}: {
+      description: {`Parent: \`agent.turn\` · Key attributes: \`plan.steps\`, \`plan.waves\``},
+    },
+    {`\`agent.hook\``}: {
+      description: {`Parent: \`agent.turn\` · Key attributes: \`hook.id\`, \`hook.event\``},
+    },
+  }
+/>
 
 ### Cost tracking fields
 
@@ -203,8 +231,16 @@ tracing_subscriber::registry()
 
 ### Environment variables
 
-| Variable | Description |
-|----------|-------------|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector endpoint |
-| `OTEL_SERVICE_NAME` | Service name in traces |
-| `RUST_LOG` | Log level filter (e.g. `a3s_code_core=debug`) |
+<TypeTable
+  type={
+    {`\`OTEL_EXPORTER_OTLP_ENDPOINT\``}: {
+      description: "OTLP collector endpoint",
+    },
+    {`\`OTEL_SERVICE_NAME\``}: {
+      description: "Service name in traces",
+    },
+    {`\`RUST_LOG\``}: {
+      description: {`Log level filter (e.g. \`a3s_code_core=debug\`)`},
+    },
+  }
+/>

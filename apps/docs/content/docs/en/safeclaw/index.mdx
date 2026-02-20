@@ -3,6 +3,8 @@ title: A3S SafeClaw
 description: Security proxy for AI agents with PII classification, taint tracking, and confidential computing
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S SafeClaw
 
 SafeClaw is a security proxy for AI agents that runs inside an A3S Box VM. It classifies messages for PII, detects prompt injection attacks, sanitizes outputs, tracks data taint, and audits everything — with optional hardware-level memory encryption via TEE.
@@ -32,41 +34,93 @@ Safe Output (PII redacted, audit logged)
 
 ## Defense in Depth
 
-| Layer | Components |
-|-------|------------|
-| L4: Application Security | Privacy Classifier, Policy Engine, Audit Logging, Session Isolation |
-| L3: Protocol Security | Message Authentication (MAC), Replay Protection, Taint Tracking |
-| L2: Channel Security | X25519 Key Exchange, AES-256-GCM Encryption, Forward Secrecy, Network Firewall |
-| L1: Hardware Security (TEE) | Memory Isolation, Remote Attestation, Sealed Storage, CPU-level Encryption |
+<TypeTable
+  type={
+    "L4: Application Security": {
+      description: "Privacy Classifier, Policy Engine, Audit Logging, Session Isolation",
+    },
+    "L3: Protocol Security": {
+      description: "Message Authentication (MAC), Replay Protection, Taint Tracking",
+    },
+    "L2: Channel Security": {
+      description: "X25519 Key Exchange, AES-256-GCM Encryption, Forward Secrecy, Network Firewall",
+    },
+    "L1: Hardware Security (TEE)": {
+      description: "Memory Isolation, Remote Attestation, Sealed Storage, CPU-level Encryption",
+    },
+  }
+/>
 
 ## Core Components
 
-| Component | Purpose |
-|-----------|---------|
-| Privacy Classifier | Regex + semantic PII detection with pluggable backends |
-| Policy Engine | Route decisions based on sensitivity level |
-| Taint Registry | Track sensitive data through processing pipeline |
-| Output Sanitizer | Redact tainted data from AI outputs |
-| Injection Detector | Block prompt injection attacks |
-| Tool Interceptor | Block dangerous tool calls (curl, wget, etc.) |
-| Network Firewall | Whitelist-only outbound network access |
-| Audit System | Forensic logging with severity levels and alerting |
-| Session Manager | Per-session isolation with secure memory wipe |
-| Channel Adapters | 7 messaging platform integrations |
-| Memory System | Three-layer memory with privacy gates |
-| Secure Channel | X25519 + AES-256-GCM encrypted communication |
+<TypeTable
+  type={
+    "Privacy Classifier": {
+      description: "Regex + semantic PII detection with pluggable backends",
+    },
+    "Policy Engine": {
+      description: "Route decisions based on sensitivity level",
+    },
+    "Taint Registry": {
+      description: "Track sensitive data through processing pipeline",
+    },
+    "Output Sanitizer": {
+      description: "Redact tainted data from AI outputs",
+    },
+    "Injection Detector": {
+      description: "Block prompt injection attacks",
+    },
+    "Tool Interceptor": {
+      description: "Block dangerous tool calls (curl, wget, etc.)",
+    },
+    "Network Firewall": {
+      description: "Whitelist-only outbound network access",
+    },
+    "Audit System": {
+      description: "Forensic logging with severity levels and alerting",
+    },
+    "Session Manager": {
+      description: "Per-session isolation with secure memory wipe",
+    },
+    "Channel Adapters": {
+      description: "7 messaging platform integrations",
+    },
+    "Memory System": {
+      description: "Three-layer memory with privacy gates",
+    },
+    "Secure Channel": {
+      description: "X25519 + AES-256-GCM encrypted communication",
+    },
+  }
+/>
 
 ## Key Statistics
 
-| Metric | Value |
-|--------|-------|
-| Source files | 80+ |
-| Lines of Rust | 28,248 |
-| Tests | 609 |
-| API endpoints | 34 (33 REST + 1 WebSocket) |
-| Channel adapters | 7 |
-| Sensitivity levels | 5 |
-| Middleware integrations | a3s-gateway, a3s-lane, a3s-event |
+<TypeTable
+  type={
+    "Source files": {
+      description: "80+",
+    },
+    "Lines of Rust": {
+      description: "28,248",
+    },
+    "Tests": {
+      description: "609",
+    },
+    "API endpoints": {
+      description: "34 (33 REST + 1 WebSocket)",
+    },
+    "Channel adapters": {
+      description: "7",
+    },
+    "Sensitivity levels": {
+      description: "5",
+    },
+    "Middleware integrations": {
+      description: "a3s-gateway, a3s-lane, a3s-event",
+    },
+  }
+/>
 
 ## Key Features
 

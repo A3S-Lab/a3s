@@ -3,6 +3,8 @@ title: A3S Lane
 description: 基于优先级的命令队列，用于异步任务调度 — 支持 Rust、Python 和 Node.js
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S Lane
 
 A3S Lane 是基于优先级的命令队列，用于异步任务调度。6 个内置通道配合可配置的并发控制，确保控制命令始终抢占 LLM 生成任务。提供 Rust crate、Python 包和 Node.js 模块。
@@ -40,35 +42,67 @@ QueueManager
 
 ## 内置通道
 
-| 通道 | 优先级 | 最大并发 | 用途 |
-|------|--------|----------|------|
-| `system` | 0（最高） | 5 | 系统级操作 |
-| `control` | 1 | 3 | 暂停、恢复、取消 |
-| `query` | 2 | 10 | 只读查询 |
-| `session` | 3 | 5 | 会话管理 |
-| `skill` | 4 | 3 | 技能/工具执行 |
-| `prompt` | 5（最低） | 2 | LLM 提示处理 |
+<TypeTable
+  type={
+    {`\`system\``}: {
+      description: "优先级: 0（最高） · 最大并发: 5 · 用途: 系统级操作",
+    },
+    {`\`control\``}: {
+      description: "优先级: 1 · 最大并发: 3 · 用途: 暂停、恢复、取消",
+    },
+    {`\`query\``}: {
+      description: "优先级: 2 · 最大并发: 10 · 用途: 只读查询",
+    },
+    {`\`session\``}: {
+      description: "优先级: 3 · 最大并发: 5 · 用途: 会话管理",
+    },
+    {`\`skill\``}: {
+      description: "优先级: 4 · 最大并发: 3 · 用途: 技能/工具执行",
+    },
+    {`\`prompt\``}: {
+      description: "优先级: 5（最低） · 最大并发: 2 · 用途: LLM 提示处理",
+    },
+  }
+/>
 
 优先级数字越小，优先级越高。调度器始终从有待处理任务的最高优先级通道取命令。
 
 ## 支持的语言
 
-| 语言 | 包 | 安装 |
-|------|-----|------|
-| Rust | [`a3s-lane`](https://crates.io/crates/a3s-lane) | Cargo.toml 中添加 `a3s-lane = "0.4"` |
-| Python | [`a3s-lane`](https://pypi.org/project/a3s-lane/) | `pip install a3s-lane` |
-| Node.js | [`@a3s-lab/lane`](https://www.npmjs.com/package/@a3s-lab/lane) | `npm install @a3s-lab/lane` |
+<TypeTable
+  type={
+    "Rust": {
+      description: {`包: [\`a3s-lane\`](https://crates.io/crates/a3s-lane) · 安装: Cargo.toml 中添加 \`a3s-lane = "0.4"\``},
+    },
+    "Python": {
+      description: {`包: [\`a3s-lane\`](https://pypi.org/project/a3s-lane/) · 安装: \`pip install a3s-lane\``},
+    },
+    "Node.js": {
+      description: {`包: [\`@a3s-lab/lane\`](https://www.npmjs.com/package/@a3s-lab/lane) · 安装: \`npm install @a3s-lab/lane\``},
+    },
+  }
+/>
 
 ## 性能
 
 在 Apple Silicon（M 系列）release 构建下的基准测试：
 
-| 场景 | 吞吐量 |
-|------|--------|
-| 并发（10 通道） | 33,000–50,000 ops/sec |
-| 单通道 | 6,600–10,000 ops/sec |
-| 完整生命周期（创建/启动/关闭开销） | ~85–93 ops/sec |
-| 指标开销 | ~3–5% |
+<TypeTable
+  type={
+    "并发（10 通道）": {
+      description: "33,000–50,000 ops/sec",
+    },
+    "单通道": {
+      description: "6,600–10,000 ops/sec",
+    },
+    "完整生命周期（创建/启动/关闭开销）": {
+      description: "~85–93 ops/sec",
+    },
+    "指标开销": {
+      description: "~3–5%",
+    },
+  }
+/>
 
 ## 测试覆盖
 

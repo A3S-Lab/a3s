@@ -4,6 +4,7 @@ description: Proxy pool with rotation strategies, dynamic providers, and per-req
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Proxy
 
@@ -29,10 +30,16 @@ let fetcher: Arc<dyn PageFetcher> = Arc::new(
 );
 ```
 
-| Method | Description |
-|--------|-------------|
-| `new(pool)` | Create with `Arc<ProxyPool>` — rotates proxy per request |
-| `with_timeout(duration)` | Set request timeout (default: 30s) |
+<TypeTable
+  type={
+    {`\`new(pool)\``}: {
+      description: {`Create with \`Arc<ProxyPool>\` — rotates proxy per request`},
+    },
+    {`\`with_timeout(duration)\``}: {
+      description: "Set request timeout (default: 30s)",
+    },
+  }
+/>
 
 ## Static Proxy List
 
@@ -257,10 +264,16 @@ const response = await search.search('rust', {
 
 ## Rotation Strategies
 
-| Strategy | Description |
-|----------|-------------|
-| `RoundRobin` | Rotate through proxies sequentially (default) |
-| `Random` | Select random proxy each time |
+<TypeTable
+  type={
+    {`\`RoundRobin\``}: {
+      description: "Rotate through proxies sequentially (default)",
+    },
+    {`\`Random\``}: {
+      description: "Select random proxy each time",
+    },
+  }
+/>
 
 ```rust
 use a3s_search::proxy::ProxyStrategy;
@@ -279,28 +292,62 @@ let proxy = ProxyConfig::new("proxy.example.com", 8080)
 proxy.url()  // -> "socks5://user:pass@proxy.example.com:8080"
 ```
 
-| Method | Description |
-|--------|-------------|
-| `new(host, port)` | Create HTTP proxy config |
-| `with_protocol(protocol)` | Set protocol (`Http` / `Https` / `Socks5`) |
-| `with_auth(user, pass)` | Set authentication |
-| `url()` | Get proxy URL string |
+<TypeTable
+  type={
+    {`\`new(host, port)\``}: {
+      description: "Create HTTP proxy config",
+    },
+    {`\`with_protocol(protocol)\``}: {
+      description: {`Set protocol (\`Http\` / \`Https\` / \`Socks5\`)`},
+    },
+    {`\`with_auth(user, pass)\``}: {
+      description: "Set authentication",
+    },
+    {`\`url()\``}: {
+      description: "Get proxy URL string",
+    },
+  }
+/>
 
 ## ProxyPool API
 
-| Method | Description |
-|--------|-------------|
-| `new()` | Create empty pool (disabled) |
-| `with_proxies(proxies)` | Create with static proxy list |
-| `with_provider(provider)` | Create with dynamic provider |
-| `with_strategy(strategy)` | Set selection strategy |
-| `set_enabled(bool)` | Enable/disable pool (`&self`, thread-safe) |
-| `is_enabled()` | Check if enabled |
-| `refresh()` | Refresh proxies from provider |
-| `get_proxy()` | Get next proxy (based on strategy) |
-| `add_proxy(proxy)` | Add a proxy to pool |
-| `remove_proxy(host, port)` | Remove a proxy |
-| `len()` | Number of proxies in pool |
+<TypeTable
+  type={
+    {`\`new()\``}: {
+      description: "Create empty pool (disabled)",
+    },
+    {`\`with_proxies(proxies)\``}: {
+      description: "Create with static proxy list",
+    },
+    {`\`with_provider(provider)\``}: {
+      description: "Create with dynamic provider",
+    },
+    {`\`with_strategy(strategy)\``}: {
+      description: "Set selection strategy",
+    },
+    {`\`set_enabled(bool)\``}: {
+      description: {`Enable/disable pool (\`&self\`, thread-safe)`},
+    },
+    {`\`is_enabled()\``}: {
+      description: "Check if enabled",
+    },
+    {`\`refresh()\``}: {
+      description: "Refresh proxies from provider",
+    },
+    {`\`get_proxy()\``}: {
+      description: "Get next proxy (based on strategy)",
+    },
+    {`\`add_proxy(proxy)\``}: {
+      description: "Add a proxy to pool",
+    },
+    {`\`remove_proxy(host, port)\``}: {
+      description: "Remove a proxy",
+    },
+    {`\`len()\``}: {
+      description: "Number of proxies in pool",
+    },
+  }
+/>
 
 ## With Browser Engines
 

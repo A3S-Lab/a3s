@@ -8,6 +8,7 @@ description: 上下文压缩和可插拔的 RAG 上下文提供者
 A3S Code 提供两个上下文管理功能：对话过长时的**自动上下文压缩**，以及用于检索增强生成（RAG）的**可插拔上下文提供者**。
 
 import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 ## 上下文压缩
@@ -40,11 +41,19 @@ let session = agent.session("/project", Some(
 
 Agent 在压缩期间发出事件：
 
-| 事件 | 触发时机 |
-|-------|------|
-| `ContextWarning` | 上下文使用量超过阈值 |
-| `ContextCompacting` | 压缩开始 |
-| `ContextCompacted` | 压缩完成 |
+<TypeTable
+  type={
+    {`\`ContextWarning\``}: {
+      description: "上下文使用量超过阈值",
+    },
+    {`\`ContextCompacting\``}: {
+      description: "压缩开始",
+    },
+    {`\`ContextCompacted\``}: {
+      description: "压缩完成",
+    },
+  }
+/>
 
 ## 上下文提供者
 
@@ -85,15 +94,31 @@ pub trait ContextProvider: Send + Sync {
 
 ### ContextQuery
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `query` | `String` | 搜索查询（通常是用户的提示） |
-| `context_types` | `Vec<ContextType>` | 要检索的类型 |
-| `depth` | `ContextDepth` | 返回多少细节 |
-| `max_results` | `usize` | 最大返回条目数 |
-| `max_tokens` | `usize` | 结果的 token 预算 |
-| `session_id` | `Option<String>` | 将结果限定到某个会话 |
-| `params` | `HashMap<String, String>` | 提供者特定的参数 |
+<TypeTable
+  type={
+    {`\`query\``}: {
+      description: {`类型: \`String\` · 描述: 搜索查询（通常是用户的提示）`},
+    },
+    {`\`context_types\``}: {
+      description: {`类型: \`Vec<ContextType>\` · 描述: 要检索的类型`},
+    },
+    {`\`depth\``}: {
+      description: {`类型: \`ContextDepth\` · 描述: 返回多少细节`},
+    },
+    {`\`max_results\``}: {
+      description: {`类型: \`usize\` · 描述: 最大返回条目数`},
+    },
+    {`\`max_tokens\``}: {
+      description: {`类型: \`usize\` · 描述: 结果的 token 预算`},
+    },
+    {`\`session_id\``}: {
+      description: {`类型: \`Option<String>\` · 描述: 将结果限定到某个会话`},
+    },
+    {`\`params\``}: {
+      description: {`类型: \`HashMap<String, String>\` · 描述: 提供者特定的参数`},
+    },
+  }
+/>
 
 Builder 方法使构造更便捷：
 
@@ -108,30 +133,60 @@ let query = ContextQuery::new("authentication flow")
 
 #### ContextType
 
-| 类型 | 描述 |
-|------|-------------|
-| `Memory` | 记忆条目（episodic、semantic、procedural、working） |
-| `Resource` | 外部资源（文件、文档、代码）— 默认 |
+<TypeTable
+  type={
+    {`\`Memory\``}: {
+      description: "记忆条目（episodic、semantic、procedural、working）",
+    },
+    {`\`Resource\``}: {
+      description: "外部资源（文件、文档、代码）— 默认",
+    },
+  }
+/>
 
 #### ContextDepth
 
-| 深度 | Token 预算 | 描述 |
-|-------|-------------|-------------|
-| `Abstract` | ~100 tokens | 简要摘要 |
-| `Overview` | ~2,000 tokens | 适度细节（默认） |
-| `Full` | 可变 | 完整内容 |
+<TypeTable
+  type={
+    {`\`Abstract\``}: {
+      description: "Token 预算: ~100 tokens · 描述: 简要摘要",
+    },
+    {`\`Overview\``}: {
+      description: "Token 预算: ~2,000 tokens · 描述: 适度细节（默认）",
+    },
+    {`\`Full\``}: {
+      description: "Token 预算: 可变 · 描述: 完整内容",
+    },
+  }
+/>
 
 ### ContextItem
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `id` | `String` | 唯一条目标识符 |
-| `context_type` | `ContextType` | Memory 或 Resource |
-| `content` | `String` | 上下文内容 |
-| `token_count` | `usize` | 估计的 token 数 |
-| `relevance` | `f32` | 0.0–1.0 相关性分数 |
-| `source` | `Option<String>` | 上下文来源 |
-| `metadata` | `HashMap<String, String>` | 额外元数据 |
+<TypeTable
+  type={
+    {`\`id\``}: {
+      description: {`类型: \`String\` · 描述: 唯一条目标识符`},
+    },
+    {`\`context_type\``}: {
+      description: {`类型: \`ContextType\` · 描述: Memory 或 Resource`},
+    },
+    {`\`content\``}: {
+      description: {`类型: \`String\` · 描述: 上下文内容`},
+    },
+    {`\`token_count\``}: {
+      description: {`类型: \`usize\` · 描述: 估计的 token 数`},
+    },
+    {`\`relevance\``}: {
+      description: {`类型: \`f32\` · 描述: 0.0–1.0 相关性分数`},
+    },
+    {`\`source\``}: {
+      description: {`类型: \`Option<String>\` · 描述: 上下文来源`},
+    },
+    {`\`metadata\``}: {
+      description: {`类型: \`HashMap<String, String>\` · 描述: 额外元数据`},
+    },
+  }
+/>
 
 条目通过 `to_xml()` 格式化为 XML 以注入系统提示。
 
@@ -227,13 +282,25 @@ let session = agent.session("/project", Some(
 
 流式传输期间发出的上下文相关事件：
 
-| 事件 | 触发时机 |
-|-------|------|
-| `ContextResolving` | 上下文提供者被查询 |
-| `ContextResolved` | 上下文条目已检索 |
-| `ContextWarning` | 上下文使用量超过阈值 |
-| `ContextCompacting` | 压缩开始 |
-| `ContextCompacted` | 压缩完成 |
+<TypeTable
+  type={
+    {`\`ContextResolving\``}: {
+      description: "上下文提供者被查询",
+    },
+    {`\`ContextResolved\``}: {
+      description: "上下文条目已检索",
+    },
+    {`\`ContextWarning\``}: {
+      description: "上下文使用量超过阈值",
+    },
+    {`\`ContextCompacting\``}: {
+      description: "压缩开始",
+    },
+    {`\`ContextCompacted\``}: {
+      description: "压缩完成",
+    },
+  }
+/>
 
 参见 [会话](/cn/docs/code/sessions) 获取完整事件参考。
 
@@ -241,43 +308,89 @@ let session = agent.session("/project", Some(
 
 ### SessionOptions
 
-| 选项 | Rust | Python | Node.js | 默认值 |
-|--------|------|--------|---------|---------|
-| 文件系统上下文 | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` | `None` |
-| 自定义提供者 | `.with_context_provider(Arc::new(p))` | _（基于配置）_ | _（基于配置）_ | `None` |
-| 压缩阈值 | `.with_context_threshold(f)` | `context_threshold=f` | `contextThreshold: f` | `0.8` |
+<TypeTable
+  type={
+    "文件系统上下文": {
+      description: {`Rust: \`.with_fs_context(path)\` · Python: \`fs_context=path\` · Node.js: \`fsContext: path\` · 默认值: \`None\``},
+    },
+    "自定义提供者": {
+      description: {`Rust: \`.with_context_provider(Arc::new(p))\` · Python: _（基于配置）_ · Node.js: _（基于配置）_ · 默认值: \`None\``},
+    },
+    "压缩阈值": {
+      description: {`Rust: \`.with_context_threshold(f)\` · Python: \`context_threshold=f\` · Node.js: \`contextThreshold: f\` · 默认值: \`0.8\``},
+    },
+  }
+/>
 
 ### ContextProvider trait（Rust）
 
-| 方法 | 签名 | 描述 |
-|--------|-----------|-------------|
-| `retrieve` | `async fn retrieve(&self, query: &ContextQuery) -> Result<Vec<ContextItem>>` | 获取相关上下文条目 |
-| `on_turn_complete` | `async fn on_turn_complete(&self, turn: &TurnSummary) -> Result<()>` | 每个 agent 轮次后调用 |
-| `name` | `fn name(&self) -> &str` | 提供者标识符 |
+<TypeTable
+  type={
+    {`\`retrieve\``}: {
+      description: {`签名: \`async fn retrieve(&self, query: &ContextQuery) -> Result<Vec<ContextItem>>\` · 描述: 获取相关上下文条目`},
+    },
+    {`\`on_turn_complete\``}: {
+      description: {`签名: \`async fn on_turn_complete(&self, turn: &TurnSummary) -> Result<()>\` · 描述: 每个 agent 轮次后调用`},
+    },
+    {`\`name\``}: {
+      description: {`签名: \`fn name(&self) -> &str\` · 描述: 提供者标识符`},
+    },
+  }
+/>
 
 ### ContextQuery 字段
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `query` | `String` | 自然语言查询 |
-| `max_tokens` | `Option<usize>` | 结果的 token 预算 |
-| `context_types` | `Vec<ContextType>` | 按类型过滤 |
-| `depth` | `ContextDepth` | `Abstract` 或 `Full` |
+<TypeTable
+  type={
+    {`\`query\``}: {
+      description: {`类型: \`String\` · 描述: 自然语言查询`},
+    },
+    {`\`max_tokens\``}: {
+      description: {`类型: \`Option<usize>\` · 描述: 结果的 token 预算`},
+    },
+    {`\`context_types\``}: {
+      description: {`类型: \`Vec<ContextType>\` · 描述: 按类型过滤`},
+    },
+    {`\`depth\``}: {
+      description: {`类型: \`ContextDepth\` · 描述: \`Abstract\` 或 \`Full\``},
+    },
+  }
+/>
 
 ### ContextItem 字段
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `content` | `String` | 上下文文本 |
-| `source` | `String` | 来源（文件路径、记忆 ID 等） |
-| `relevance` | `f32` | 相关性分数（0.0–1.0） |
-| `context_type` | `ContextType` | `File`、`Memory`、`Skill`、`Custom` |
+<TypeTable
+  type={
+    {`\`content\``}: {
+      description: {`类型: \`String\` · 描述: 上下文文本`},
+    },
+    {`\`source\``}: {
+      description: {`类型: \`String\` · 描述: 来源（文件路径、记忆 ID 等）`},
+    },
+    {`\`relevance\``}: {
+      description: {`类型: \`f32\` · 描述: 相关性分数（0.0–1.0）`},
+    },
+    {`\`context_type\``}: {
+      description: {`类型: \`ContextType\` · 描述: \`File\`、\`Memory\`、\`Skill\`、\`Custom\``},
+    },
+  }
+/>
 
 ### VectorContextConfig（Rust）
 
-| 方法 | 描述 | 默认值 |
-|--------|-------------|---------|
-| `VectorContextConfig::new(path)` | 设置工作区根目录 | — |
-| `.with_min_relevance(f)` | 最小余弦相似度 | `0.3` |
-| `.with_max_results(n)` | 每次查询最大块数 | `10` |
-| `.with_chunk_size(n)` | 每块最大字符数 | `1500` |
+<TypeTable
+  type={
+    {`\`VectorContextConfig::new(path)\``}: {
+      description: "描述: 设置工作区根目录",
+    },
+    {`\`.with_min_relevance(f)\``}: {
+      description: {`描述: 最小余弦相似度 · 默认值: \`0.3\``},
+    },
+    {`\`.with_max_results(n)\``}: {
+      description: {`描述: 每次查询最大块数 · 默认值: \`10\``},
+    },
+    {`\`.with_chunk_size(n)\``}: {
+      description: {`描述: 每块最大字符数 · 默认值: \`1500\``},
+    },
+  }
+/>

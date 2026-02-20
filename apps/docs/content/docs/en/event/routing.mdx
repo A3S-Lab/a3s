@@ -3,6 +3,8 @@ title: Event Routing
 description: Knative-inspired Broker/Trigger pattern for event filtering and delivery
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Event Routing
 
 Requires the `routing` feature (enabled by default).
@@ -58,23 +60,43 @@ pub struct TriggerFilter {
 }
 ```
 
-| Filter | Matches |
-|--------|---------|
-| `TriggerFilter::by_category("orders")` | Events with `category == "orders"` |
-| `TriggerFilter::by_event_type("order.created")` | Events with `event_type == "order.created"` |
-| `TriggerFilter::by_subject_prefix("events.market.")` | Events whose subject starts with the prefix |
+<TypeTable
+  type={
+    {`\`TriggerFilter::by_category("orders")\``}: {
+      description: {`Events with \`category == "orders"\``},
+    },
+    {`\`TriggerFilter::by_event_type("order.created")\``}: {
+      description: {`Events with \`event_type == "order.created"\``},
+    },
+    {`\`TriggerFilter::by_subject_prefix("events.market.")\``}: {
+      description: "Events whose subject starts with the prefix",
+    },
+  }
+/>
 
 ## Event Sinks
 
 ### Built-in Sinks
 
-| Sink | Description |
-|------|-------------|
-| `TopicSink` | Re-publishes events to an `EventProvider` topic (fan-out) |
-| `InProcessSink` | Calls an async handler function |
-| `LogSink` | Logs events via `tracing` (debugging) |
-| `CollectorSink` | Collects events in memory (testing) |
-| `FailingSink` | Always fails delivery (testing error paths) |
+<TypeTable
+  type={
+    {`\`TopicSink\``}: {
+      description: {`Re-publishes events to an \`EventProvider\` topic (fan-out)`},
+    },
+    {`\`InProcessSink\``}: {
+      description: "Calls an async handler function",
+    },
+    {`\`LogSink\``}: {
+      description: {`Logs events via \`tracing\` (debugging)`},
+    },
+    {`\`CollectorSink\``}: {
+      description: "Collects events in memory (testing)",
+    },
+    {`\`FailingSink\``}: {
+      description: "Always fails delivery (testing error paths)",
+    },
+  }
+/>
 
 ### Custom Sinks
 

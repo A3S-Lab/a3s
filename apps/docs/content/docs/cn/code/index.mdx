@@ -4,6 +4,7 @@ description: 基于 Rust 的可嵌入 AI 编程智能体框架，原生支持 No
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 
@@ -117,9 +118,19 @@ print(result.text)
 
 ## 文档
 
-| 分类 | 页面 |
-|------|------|
-| **核心** | [会话](/cn/docs/code/sessions) · [工具](/cn/docs/code/tools) · [任务](/cn/docs/code/tasks) · [技能](/cn/docs/code/skills) |
-| **安全** | [安全](/cn/docs/code/security) |
-| **基础设施** | [架构](/cn/docs/code/architecture) · [通道队列](/cn/docs/code/lane-queue) · [多机器](/cn/docs/code/multi-machine) |
-| **扩展** | [提供商](/cn/docs/code/providers) · [MCP](/cn/docs/code/mcp) · [子智能体](/cn/docs/code/subagents) · [上下文](/cn/docs/code/context) · [记忆](/cn/docs/code/memory) · [钩子](/cn/docs/code/hooks) · [持久化](/cn/docs/code/persistence) · [遥测](/cn/docs/code/telemetry) |
+<TypeTable
+  type={
+    "核心": {
+      description: "[会话](/cn/docs/code/sessions) · [工具](/cn/docs/code/tools) · [任务](/cn/docs/code/tasks) · [技能](/cn/docs/code/skills)",
+    },
+    "安全": {
+      description: "[安全](/cn/docs/code/security)",
+    },
+    "基础设施": {
+      description: "[架构](/cn/docs/code/architecture) · [通道队列](/cn/docs/code/lane-queue) · [多机器](/cn/docs/code/multi-machine)",
+    },
+    "扩展": {
+      description: "[提供商](/cn/docs/code/providers) · [MCP](/cn/docs/code/mcp) · [子智能体](/cn/docs/code/subagents) · [上下文](/cn/docs/code/context) · [记忆](/cn/docs/code/memory) · [钩子](/cn/docs/code/hooks) · [持久化](/cn/docs/code/persistence) · [遥测](/cn/docs/code/telemetry)",
+    },
+  }
+/>

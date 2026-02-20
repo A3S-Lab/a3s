@@ -3,18 +3,30 @@ title: Services
 description: Load balancing, health checks, sticky sessions, traffic mirroring, failover, and autoscaling
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Services
 
 Services define backend pools with load balancing, health checks, sticky sessions, traffic mirroring, failover, and optional Knative-style autoscaling.
 
 ## Load Balancing Strategies
 
-| Strategy | Description |
-|----------|-------------|
-| `round-robin` | Cycles through healthy backends sequentially |
-| `weighted` | Distributes traffic proportionally by weight |
-| `least-connections` | Routes to the backend with fewest active connections |
-| `random` | Selects a random healthy backend |
+<TypeTable
+  type={
+    {`\`round-robin\``}: {
+      description: "Cycles through healthy backends sequentially",
+    },
+    {`\`weighted\``}: {
+      description: "Distributes traffic proportionally by weight",
+    },
+    {`\`least-connections\``}: {
+      description: "Routes to the backend with fewest active connections",
+    },
+    {`\`random\``}: {
+      description: "Selects a random healthy backend",
+    },
+  }
+/>
 
 ```hcl
 services "api" {

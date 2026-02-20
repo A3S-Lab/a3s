@@ -3,15 +3,25 @@ title: 网络
 description: A3S Box 网络模式配置
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # 网络
 
 ## 网络模式
 
-| 模式 | 说明 |
-|------|------|
-| `tsi`（默认） | 透明子网隔离，零配置，支持端口映射 |
-| `bridge` | passt 桥接，支持容器间 DNS 解析 |
-| `none` | 无网络（气隙隔离） |
+<TypeTable
+  type={
+    {`\`tsi\`（默认）`}: {
+      description: "透明子网隔离，零配置，支持端口映射",
+    },
+    {`\`bridge\``}: {
+      description: "passt 桥接，支持容器间 DNS 解析",
+    },
+    {`\`none\``}: {
+      description: "无网络（气隙隔离）",
+    },
+  }
+/>
 
 ```bash
 # 默认 TSI 模式，端口映射

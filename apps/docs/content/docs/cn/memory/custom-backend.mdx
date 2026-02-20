@@ -4,6 +4,7 @@ description: 实现 MemoryStore 以使用任意存储系统——SQLite、Redis�
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 自定义后端
 
@@ -33,17 +34,37 @@ impl MemoryStore for MyStore {
 
 ## 方法参考
 
-| 方法 | 说明 |
-|------|------|
-| `store(item)` | 持久化记忆（按 ID upsert） |
-| `retrieve(id)` | 按 ID 获取单条记忆 |
-| `search(query, limit)` | 按内容搜索，按相关性排序 |
-| `search_by_tags(tags, limit)` | 按标签过滤，按相关性排序 |
-| `get_recent(limit)` | 最近创建的记忆 |
-| `get_important(threshold, limit)` | 重要性超过阈值的记忆，降序排列 |
-| `delete(id)` | 删除单条记忆 |
-| `clear()` | 清空所有记忆 |
-| `count()` | 记忆总数 |
+<TypeTable
+  type={
+    {`\`store(item)\``}: {
+      description: "持久化记忆（按 ID upsert）",
+    },
+    {`\`retrieve(id)\``}: {
+      description: "按 ID 获取单条记忆",
+    },
+    {`\`search(query, limit)\``}: {
+      description: "按内容搜索，按相关性排序",
+    },
+    {`\`search_by_tags(tags, limit)\``}: {
+      description: "按标签过滤，按相关性排序",
+    },
+    {`\`get_recent(limit)\``}: {
+      description: "最近创建的记忆",
+    },
+    {`\`get_important(threshold, limit)\``}: {
+      description: "重要性超过阈值的记忆，降序排列",
+    },
+    {`\`delete(id)\``}: {
+      description: "删除单条记忆",
+    },
+    {`\`clear()\``}: {
+      description: "清空所有记忆",
+    },
+    {`\`count()\``}: {
+      description: "记忆总数",
+    },
+  }
+/>
 
 ## 向量存储示例
 

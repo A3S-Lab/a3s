@@ -4,6 +4,7 @@ description: Real-time event stream for monitoring command lifecycle and queue s
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Events
 
@@ -138,30 +139,56 @@ lane.subscribeFiltered(
 
 ### Command Lifecycle
 
-| Event key | When | Payload fields |
-|-----------|------|----------------|
-| `queue.command.submitted` | `submit()` accepted | `lane_id` |
-| `queue.command.started` | Scheduler dispatched | `lane_id`, `command_id`, `command_type` |
-| `queue.command.completed` | Returned `Ok` | `lane_id`, `command_id` |
-| `queue.command.retry` | Failed, will retry | `lane_id`, `command_id`, `attempt` |
-| `queue.command.dead_lettered` | Moved to DLQ | `lane_id`, `command_id`, `command_type` |
-| `queue.command.failed` | Terminal failure | `lane_id`, `command_id`, `error` |
-| `queue.command.timeout` | Timed out | `lane_id`, `command_id`, `error` |
+<TypeTable
+  type={
+    {`\`queue.command.submitted\``}: {
+      description: {`When: \`submit()\` accepted · Payload fields: \`lane_id\``},
+    },
+    {`\`queue.command.started\``}: {
+      description: {`When: Scheduler dispatched · Payload fields: \`lane_id\`, \`command_id\`, \`command_type\``},
+    },
+    {`\`queue.command.completed\``}: {
+      description: {`When: Returned \`Ok\` · Payload fields: \`lane_id\`, \`command_id\``},
+    },
+    {`\`queue.command.retry\``}: {
+      description: {`When: Failed, will retry · Payload fields: \`lane_id\`, \`command_id\`, \`attempt\``},
+    },
+    {`\`queue.command.dead_lettered\``}: {
+      description: {`When: Moved to DLQ · Payload fields: \`lane_id\`, \`command_id\`, \`command_type\``},
+    },
+    {`\`queue.command.failed\``}: {
+      description: {`When: Terminal failure · Payload fields: \`lane_id\`, \`command_id\`, \`error\``},
+    },
+    {`\`queue.command.timeout\``}: {
+      description: {`When: Timed out · Payload fields: \`lane_id\`, \`command_id\`, \`error\``},
+    },
+  }
+/>
 
 ### Lane Pressure
 
-| Event key | When | Payload fields |
-|-----------|------|----------------|
-| `queue.lane.pressure` | `pending >= threshold` (first crossing) | `lane_id` |
-| `queue.lane.idle` | `pending == 0` after being pressured | `lane_id` |
+<TypeTable
+  type={
+    {`\`queue.lane.pressure\``}: {
+      description: {`When: \`pending >= threshold\` (first crossing) · Payload fields: \`lane_id\``},
+    },
+    {`\`queue.lane.idle\``}: {
+      description: {`When: \`pending == 0\` after being pressured · Payload fields: \`lane_id\``},
+    },
+  }
+/>
 
 These events require `with_pressure_threshold(n)` on the lane config. See [Lane pressure](/docs/lane/lanes#pressure-tracking).
 
 ### Shutdown
 
-| Event key | When | Payload |
-|-----------|------|---------|
-| `queue.shutdown.started` | `shutdown()` called | — |
+<TypeTable
+  type={
+    {`\`queue.shutdown.started\``}: {
+      description: {`When: \`shutdown()\` called`},
+    },
+  }
+/>
 
 ## LaneEvent Structure
 

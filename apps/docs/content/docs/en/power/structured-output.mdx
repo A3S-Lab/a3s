@@ -3,6 +3,8 @@ title: Structured Output
 description: JSON Schema constrained generation via GBNF grammar
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Structured Output
 
 A3S Power supports structured output by converting JSON Schema definitions into GBNF (GGML BNF) grammars, which constrain the model's token generation to produce valid JSON matching the schema.
@@ -95,16 +97,34 @@ response = client.chat.completions.create(
 
 ## Supported Schema Types
 
-| JSON Schema Type | GBNF Rule |
-|-----------------|-----------|
-| `string` | Quoted string with escape handling |
-| `integer` | Integer number |
-| `number` | Floating-point number |
-| `boolean` | `true` or `false` |
-| `null` | `null` |
-| `array` | Array with typed items |
-| `object` | Object with typed properties |
-| `enum` | One of the specified values |
+<TypeTable
+  type={
+    {`\`string\``}: {
+      description: "Quoted string with escape handling",
+    },
+    {`\`integer\``}: {
+      description: "Integer number",
+    },
+    {`\`number\``}: {
+      description: "Floating-point number",
+    },
+    {`\`boolean\``}: {
+      description: {`\`true\` or \`false\``},
+    },
+    {`\`null\``}: {
+      description: {`\`null\``},
+    },
+    {`\`array\``}: {
+      description: "Array with typed items",
+    },
+    {`\`object\``}: {
+      description: "Object with typed properties",
+    },
+    {`\`enum\``}: {
+      description: "One of the specified values",
+    },
+  }
+/>
 
 ### Nested Objects
 

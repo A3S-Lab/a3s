@@ -3,6 +3,8 @@ title: Tool Calling
 description: Function calling with XML, Mistral, and JSON tool call formats
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Tool Calling
 
 A3S Power supports function/tool calling for models that have been trained with tool-use capabilities. The tool call parser handles multiple output formats automatically.
@@ -41,11 +43,19 @@ Tools are defined using the standard OpenAI function calling schema:
 
 Control how the model uses tools:
 
-| Value | Behavior |
-|-------|----------|
-| `"auto"` | Model decides whether to call a tool (default) |
-| `"none"` | Model must not call any tool |
-| `{"type": "function", "function": {"name": "..."}}` | Force a specific tool |
+<TypeTable
+  type={
+    {`\`"auto"\``}: {
+      description: "Model decides whether to call a tool (default)",
+    },
+    {`\`"none"\``}: {
+      description: "Model must not call any tool",
+    },
+    {`\`{"type": "function", "function": {"name": "..."}}\``}: {
+      description: "Force a specific tool",
+    },
+  }
+/>
 
 ## Conversation Flow
 

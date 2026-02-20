@@ -4,6 +4,7 @@ description: Horizontal scaling with external task distribution across multiple 
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Multi-Machine Distribution
@@ -54,22 +55,40 @@ External task distribution enables:
 
 A3S Code supports 3 task handler modes per lane:
 
-| Mode | Description | Use Case |
-|------|-------------|----------|
-| **Internal** | Tasks execute in agent process (default) | Single-machine deployment, low latency |
-| **External** | Tasks sent to external workers, wait for completion | Multi-machine parallelization, resource isolation |
-| **Hybrid** | Execute internally + notify external system | Internal execution with external monitoring/logging |
+<TypeTable
+  type={
+    "Internal": {
+      description: "Description: Tasks execute in agent process (default) · Use Case: Single-machine deployment, low latency",
+    },
+    "External": {
+      description: "Description: Tasks sent to external workers, wait for completion · Use Case: Multi-machine parallelization, resource isolation",
+    },
+    "Hybrid": {
+      description: "Description: Execute internally + notify external system · Use Case: Internal execution with external monitoring/logging",
+    },
+  }
+/>
 
 ## Session Lanes
 
 Tasks are routed to 4 priority lanes:
 
-| Lane | Priority | Tools | Best For |
-|------|----------|-------|----------|
-| **Control** | P0 (Highest) | pause, resume, cancel | Control operations |
-| **Query** | P1 | read, grep, glob, ls | Parallelizable read operations |
-| **Execute** | P2 | bash, write, edit | Write operations, commands |
-| **Generate** | P3 (Lowest) | LLM calls | AI generation |
+<TypeTable
+  type={
+    "Control": {
+      description: "Priority: P0 (Highest) · Tools: pause, resume, cancel · Best For: Control operations",
+    },
+    "Query": {
+      description: "Priority: P1 · Tools: read, grep, glob, ls · Best For: Parallelizable read operations",
+    },
+    "Execute": {
+      description: "Priority: P2 · Tools: bash, write, edit · Best For: Write operations, commands",
+    },
+    "Generate": {
+      description: "Priority: P3 (Lowest) · Tools: LLM calls · Best For: AI generation",
+    },
+  }
+/>
 
 **Query lane** is the best candidate for external distribution — read operations are naturally parallelizable and safe.
 

@@ -3,6 +3,8 @@ title: Observability
 description: Metrics collection, latency histograms, and configurable alerts
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Observability
 
 A3S Lane provides built-in metrics collection and alerting for production monitoring. Track command throughput, latency percentiles, queue depth, and set threshold-based alerts.
@@ -50,28 +52,54 @@ if let Some(latency) = snapshot.histograms.get("lane.command.latency_ms.query") 
 
 **Counters** (monotonically increasing):
 
-| Metric | Description |
-|--------|-------------|
-| `lane.commands.submitted` | Total commands submitted |
-| `lane.commands.completed` | Successfully completed |
-| `lane.commands.failed` | Execution failures |
-| `lane.commands.timeout` | Timed out commands |
-| `lane.commands.retried` | Retry attempts |
-| `lane.commands.dead_lettered` | Moved to DLQ |
+<TypeTable
+  type={
+    {`\`lane.commands.submitted\``}: {
+      description: "Total commands submitted",
+    },
+    {`\`lane.commands.completed\``}: {
+      description: "Successfully completed",
+    },
+    {`\`lane.commands.failed\``}: {
+      description: "Execution failures",
+    },
+    {`\`lane.commands.timeout\``}: {
+      description: "Timed out commands",
+    },
+    {`\`lane.commands.retried\``}: {
+      description: "Retry attempts",
+    },
+    {`\`lane.commands.dead_lettered\``}: {
+      description: "Moved to DLQ",
+    },
+  }
+/>
 
 **Gauges** (point-in-time values):
 
-| Metric | Description |
-|--------|-------------|
-| `lane.queue.depth.<lane_id>` | Pending commands per lane |
-| `lane.queue.active.<lane_id>` | Active commands per lane |
+<TypeTable
+  type={
+    {`\`lane.queue.depth.<lane_id>\``}: {
+      description: "Pending commands per lane",
+    },
+    {`\`lane.queue.active.<lane_id>\``}: {
+      description: "Active commands per lane",
+    },
+  }
+/>
 
 **Histograms** (distributions):
 
-| Metric | Description |
-|--------|-------------|
-| `lane.command.latency_ms.<lane_id>` | Execution time distribution |
-| `lane.command.wait_time_ms.<lane_id>` | Queue wait time distribution |
+<TypeTable
+  type={
+    {`\`lane.command.latency_ms.<lane_id>\``}: {
+      description: "Execution time distribution",
+    },
+    {`\`lane.command.wait_time_ms.<lane_id>\``}: {
+      description: "Queue wait time distribution",
+    },
+  }
+/>
 
 ### Histogram Percentiles
 
@@ -139,10 +167,16 @@ let manager = QueueManagerBuilder::new(emitter)
 
 ### Alert Levels
 
-| Level | Queue Depth Trigger | Latency Trigger |
-|-------|---------------------|-----------------|
-| `Warning` | >= warning threshold | >= warning threshold |
-| `Critical` | >= critical threshold | >= critical threshold |
+<TypeTable
+  type={
+    {`\`Warning\``}: {
+      description: {`Queue Depth Trigger: >= warning threshold · Latency Trigger: >= warning threshold`},
+    },
+    {`\`Critical\``}: {
+      description: {`Queue Depth Trigger: >= critical threshold · Latency Trigger: >= critical threshold`},
+    },
+  }
+/>
 
 ### Alert Callbacks
 

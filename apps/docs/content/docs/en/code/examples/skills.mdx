@@ -4,6 +4,7 @@ description: Built-in and custom skill system
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Skills
@@ -12,15 +13,31 @@ Skills are reusable prompt templates that augment the agent's system prompt with
 
 ## Built-in Skills
 
-| Skill | What it does |
-|-------|-------------|
-| `code-search` | Semantic code search across the workspace |
-| `code-review` | Style, security, and resource issue detection |
-| `explain-code` | Clear explanations of complex code |
-| `find-bugs` | Bug detection and fix suggestions |
-| `builtin-tools` | Guides LLM on effective tool use |
-| `delegate-task` | Breaks tasks into parallel sub-agents |
-| `find-skills` | Discovers available skills dynamically |
+<TypeTable
+  type={
+    {`\`code-search\``}: {
+      description: "Semantic code search across the workspace",
+    },
+    {`\`code-review\``}: {
+      description: "Style, security, and resource issue detection",
+    },
+    {`\`explain-code\``}: {
+      description: "Clear explanations of complex code",
+    },
+    {`\`find-bugs\``}: {
+      description: "Bug detection and fix suggestions",
+    },
+    {`\`builtin-tools\``}: {
+      description: "Guides LLM on effective tool use",
+    },
+    {`\`delegate-task\``}: {
+      description: "Breaks tasks into parallel sub-agents",
+    },
+    {`\`find-skills\``}: {
+      description: "Discovers available skills dynamically",
+    },
+  }
+/>
 
 ## Enable Built-in Skills
 
@@ -182,11 +199,19 @@ For full skills documentation, see [Skills](/docs/code/skills).
 
 ### SessionOptions
 
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| Built-in skills | `.with_builtin_skills()` | `builtin_skills=True` | `builtinSkills: true` | `false` |
-| Skills from directory | `.with_skills_from_dir(path)` | `skill_dirs=[path]` | `skillDirs: [path]` | `[]` |
-| Custom registry | `.with_skill_registry(Arc::new(r))` | _(Rust only)_ | _(Rust only)_ | `None` |
+<TypeTable
+  type={
+    "Built-in skills": {
+      description: {`Rust: \`.with_builtin_skills()\` · Python: \`builtin_skills=True\` · Node.js: \`builtinSkills: true\` · Default: \`false\``},
+    },
+    "Skills from directory": {
+      description: {`Rust: \`.with_skills_from_dir(path)\` · Python: \`skill_dirs=[path]\` · Node.js: \`skillDirs: [path]\` · Default: \`[]\``},
+    },
+    "Custom registry": {
+      description: {`Rust: \`.with_skill_registry(Arc::new(r))\` · Python: _(Rust only)_ · Node.js: _(Rust only)_ · Default: \`None\``},
+    },
+  }
+/>
 
 ### Skill frontmatter fields
 
@@ -204,12 +229,28 @@ For full skills documentation, see [Skills](/docs/code/skills).
 
 ### Built-in skills
 
-| Skill ID | Trigger phrases | Effect |
-|----------|----------------|--------|
-| `code-search` | "find code", "search for" | Semantic code search |
-| `code-review` | "review", "check code" | Style + security review |
-| `explain-code` | "explain", "what does" | Code explanation |
-| `find-bugs` | "find bugs", "debug" | Bug detection |
-| `builtin-tools` | _(always active)_ | Tool usage guidance |
-| `delegate-task` | "delegate", "parallel" | Sub-agent delegation |
-| `find-skills` | "what skills", "find skill" | Dynamic skill discovery |
+<TypeTable
+  type={
+    {`\`code-search\``}: {
+      description: "Trigger phrases: &quot;find code&quot;, &quot;search for&quot; · Effect: Semantic code search",
+    },
+    {`\`code-review\``}: {
+      description: "Trigger phrases: &quot;review&quot;, &quot;check code&quot; · Effect: Style + security review",
+    },
+    {`\`explain-code\``}: {
+      description: "Trigger phrases: &quot;explain&quot;, &quot;what does&quot; · Effect: Code explanation",
+    },
+    {`\`find-bugs\``}: {
+      description: "Trigger phrases: &quot;find bugs&quot;, &quot;debug&quot; · Effect: Bug detection",
+    },
+    {`\`builtin-tools\``}: {
+      description: "Trigger phrases: _(always active)_ · Effect: Tool usage guidance",
+    },
+    {`\`delegate-task\``}: {
+      description: "Trigger phrases: &quot;delegate&quot;, &quot;parallel&quot; · Effect: Sub-agent delegation",
+    },
+    {`\`find-skills\``}: {
+      description: "Trigger phrases: &quot;what skills&quot;, &quot;find skill&quot; · Effect: Dynamic skill discovery",
+    },
+  }
+/>

@@ -3,6 +3,8 @@ title: Providers
 description: MemoryProvider for development and NatsProvider for production
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Providers
 
 A3S Event uses the `EventProvider` trait to abstract the underlying messaging system. Two implementations are included: `MemoryProvider` for development and `NatsProvider` for production.
@@ -221,12 +223,28 @@ bus.publish("orders", "created", "New order", "src", payload).await?;
 
 These capabilities are delegated to the provider, not the `EventBus`:
 
-| Capability | Where It Lives |
-|------------|----------------|
-| Retry / backoff | Provider (NATS: `MaxDeliver` + `BackOff`) |
-| Backpressure | Provider (NATS: `MaxAckPending`) |
-| Connection resilience | Provider (NATS: auto-reconnect) |
-| Transport encryption | Provider (TLS config) |
-| Exactly-once delivery | Provider (dedup + double ack) |
-| Stream mirroring | Provider (NATS Mirror/Source config) |
-| Partitioning | Provider (subject routing) |
+<TypeTable
+  type={
+    "Retry / backoff": {
+      description: {`Provider (NATS: \`MaxDeliver\` + \`BackOff\`)`},
+    },
+    "Backpressure": {
+      description: {`Provider (NATS: \`MaxAckPending\`)`},
+    },
+    "Connection resilience": {
+      description: "Provider (NATS: auto-reconnect)",
+    },
+    "Transport encryption": {
+      description: "Provider (TLS config)",
+    },
+    "Exactly-once delivery": {
+      description: "Provider (dedup + double ack)",
+    },
+    "Stream mirroring": {
+      description: "Provider (NATS Mirror/Source config)",
+    },
+    "Partitioning": {
+      description: "Provider (subject routing)",
+    },
+  }
+/>

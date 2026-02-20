@@ -3,6 +3,8 @@ title: Channels
 description: 7 messaging platform adapters with webhook authentication and message normalization
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Channels
 
 SafeClaw supports 7 messaging platforms through a unified adapter interface. Each adapter normalizes platform-specific webhook payloads into a common message format and handles authentication.
@@ -43,15 +45,31 @@ pub struct MessageAttachment {
 
 ## Supported Platforms
 
-| Platform | Webhook Format | Auth Method | Features |
-|----------|---------------|-------------|----------|
-| Telegram | JSON (Bot API) | Token verification | Text, commands, inline queries |
-| Slack | JSON (Events API) | HMAC-SHA256 signing | Messages, slash commands, interactions |
-| Discord | JSON (Interactions) | Ed25519 signature | Messages, slash commands |
-| Feishu | JSON (Event Subscription) | Token + signature | Messages, card actions |
-| DingTalk | JSON (Robot) | HMAC-SHA256 | Text, markdown, action cards |
-| WeCom | XML/JSON (Callback) | Token + signature | Text, events |
-| WebChat | JSON (custom) | API key | Generic web chat interface |
+<TypeTable
+  type={
+    "Telegram": {
+      description: "Webhook Format: JSON (Bot API) · Auth Method: Token verification · Features: Text, commands, inline queries",
+    },
+    "Slack": {
+      description: "Webhook Format: JSON (Events API) · Auth Method: HMAC-SHA256 signing · Features: Messages, slash commands, interactions",
+    },
+    "Discord": {
+      description: "Webhook Format: JSON (Interactions) · Auth Method: Ed25519 signature · Features: Messages, slash commands",
+    },
+    "Feishu": {
+      description: "Webhook Format: JSON (Event Subscription) · Auth Method: Token + signature · Features: Messages, card actions",
+    },
+    "DingTalk": {
+      description: "Webhook Format: JSON (Robot) · Auth Method: HMAC-SHA256 · Features: Text, markdown, action cards",
+    },
+    "WeCom": {
+      description: "Webhook Format: XML/JSON (Callback) · Auth Method: Token + signature · Features: Text, events",
+    },
+    "WebChat": {
+      description: "Webhook Format: JSON (custom) · Auth Method: API key · Features: Generic web chat interface",
+    },
+  }
+/>
 
 ## Webhook Authentication
 
@@ -63,14 +81,28 @@ pub trait ChannelAuth: Send + Sync {
 
 Each platform has its own authentication implementation:
 
-| Platform | Auth Implementation |
-|----------|-------------------|
-| Telegram | `TelegramAuth` — Bot token verification |
-| Slack | `SlackAuth` — HMAC-SHA256 with signing secret |
-| Discord | `DiscordAuth` — Ed25519 public key signature |
-| Feishu | `FeishuAuth` — Token + event signature |
-| DingTalk | `DingTalkAuth` — HMAC-SHA256 with app secret |
-| WeCom | `WeComAuth` — Token + message signature |
+<TypeTable
+  type={
+    "Telegram": {
+      description: {`\`TelegramAuth\` — Bot token verification`},
+    },
+    "Slack": {
+      description: {`\`SlackAuth\` — HMAC-SHA256 with signing secret`},
+    },
+    "Discord": {
+      description: {`\`DiscordAuth\` — Ed25519 public key signature`},
+    },
+    "Feishu": {
+      description: {`\`FeishuAuth\` — Token + event signature`},
+    },
+    "DingTalk": {
+      description: {`\`DingTalkAuth\` — HMAC-SHA256 with app secret`},
+    },
+    "WeCom": {
+      description: {`\`WeComAuth\` — Token + message signature`},
+    },
+  }
+/>
 
 Failed authentication generates a `Critical` severity audit event with `LeakageVector::AuthFailure`.
 

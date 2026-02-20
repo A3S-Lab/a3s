@@ -4,6 +4,7 @@ description: Timeout, retry, dead letter queue, persistent storage, and graceful
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Reliability
 
@@ -31,12 +32,22 @@ let config = LaneConfig::new(1, 10)
     .with_retry_policy(RetryPolicy::exponential(3));
 ```
 
-| Attempt | Delay |
-|---------|-------|
-| 1 | 100ms |
-| 2 | 200ms |
-| 3 | 400ms |
-| 4+ | Capped at 30s |
+<TypeTable
+  type={
+    "1": {
+      description: "100ms",
+    },
+    "2": {
+      description: "200ms",
+    },
+    "3": {
+      description: "400ms",
+    },
+    "4+": {
+      description: "Capped at 30s",
+    },
+  }
+/>
 
 ### Fixed Delay
 

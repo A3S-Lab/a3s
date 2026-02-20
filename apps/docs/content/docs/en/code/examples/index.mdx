@@ -4,6 +4,7 @@ description: Runnable SDK examples for Rust, Python, and Node.js — each using 
 ---
 
 import { Card, Cards } from 'fumadocs-ui/components/card';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Files, File, Folder } from 'fumadocs-ui/components/files';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
@@ -103,67 +104,179 @@ node examples/<name>.js
 
 ## Feature Coverage
 
-| Feature | Rust | Python | Node.js |
-|---------|:----:|:------:|:-------:|
-| Basic send / multi-turn | ✅ | ✅ | ✅ |
-| Streaming events | ✅ | ✅ | ✅ |
-| Planning + goal tracking | ✅ | ✅ | ✅ |
-| Lifecycle hooks | ✅ | ✅ | ✅ |
-| Auto-compact | ✅ | ✅ | ✅ |
-| File memory | ✅ | ✅ | ✅ |
-| Security provider | ✅ | ✅ | ✅ |
-| Batch tool | ✅ | ✅ | ✅ |
-| Vector RAG / codesearch | ✅ | ✅ | ✅ |
-| Built-in skills | ✅ | ✅ | ✅ |
-| Lane queue / priority | ✅ | ✅ | ✅ |
-| External task handling | ✅ | ✅ | ✅ |
+<TypeTable
+  type={
+    "Basic send / multi-turn": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "Streaming events": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "Planning + goal tracking": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "Lifecycle hooks": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "Auto-compact": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "File memory": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "Security provider": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "Batch tool": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "Vector RAG / codesearch": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "Built-in skills": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "Lane queue / priority": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "External task handling": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+  }
+/>
 
 ## Feature Overview
 
 ### Core (always available)
 
-| Feature | Key API | Description |
-|---------|---------|-------------|
-| Send prompt | `session.send(prompt)` | Single-turn prompt execution with tool loop |
-| Stream events | `session.stream(prompt)` | Real-time `AgentEvent` stream |
-| Multi-turn | _(automatic)_ | History accumulated per session |
-| Direct tools | `session.read_file()`, `session.bash()`, `session.glob()`, `session.grep()` | Call tools without LLM |
-| Batch tool | `batch` tool (auto-registered) | Parallel tool dispatch in one turn |
+<TypeTable
+  type={
+    "Send prompt": {
+      description: {`Key API: \`session.send(prompt)\` · Description: Single-turn prompt execution with tool loop`},
+    },
+    "Stream events": {
+      description: {`Key API: \`session.stream(prompt)\` · Description: Real-time \`AgentEvent\` stream`},
+    },
+    "Multi-turn": {
+      description: "Key API: _(automatic)_ · Description: History accumulated per session",
+    },
+    "Direct tools": {
+      description: {`Key API: \`session.read_file()\`, \`session.bash()\`, \`session.glob()\`, \`session.grep()\` · Description: Call tools without LLM`},
+    },
+    "Batch tool": {
+      description: {`Key API: \`batch\` tool (auto-registered) · Description: Parallel tool dispatch in one turn`},
+    },
+  }
+/>
 
 ### Session configuration
 
-| Feature | Rust | Python | Node.js |
-|---------|------|--------|---------|
-| Permissive policy | `.with_permissive_policy()` | `permissive=True` | `permissive: true` |
-| Planning | `.with_planning(true)` | `planning=True` | `planning: true` |
-| Goal tracking | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` |
-| Built-in skills | `.with_builtin_skills()` | `builtin_skills=True` | `builtinSkills: true` |
-| Custom skills | `.with_skills_from_dir(path)` | `skill_dirs=[path]` | `skillDirs: [path]` |
-| Default security | `.with_default_security()` | `default_security=True` | `defaultSecurity: true` |
-| File memory | `.with_file_memory(path)` | `memory_dir=path` | `memoryDir: path` |
-| Auto-compact | `.with_auto_compact(true)` | `auto_compact=True` | `autoCompact: true` |
-| FS context (RAG) | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` |
-| Lane queue | `.with_queue_config(cfg)` | `queue_config=cfg` | `queueConfig: cfg` |
-| Permission policy | `.with_permission_checker(p)` | _(Rust only)_ | _(Rust only)_ |
-| HITL confirmation | `.with_confirmation_manager(m)` | _(Rust only)_ | _(Rust only)_ |
-| Custom security | `.with_security_provider(p)` | _(Rust only)_ | _(Rust only)_ |
-| Vector context | `.with_context_provider(p)` | _(config-based)_ | _(config-based)_ |
+<TypeTable
+  type={
+    "Permissive policy": {
+      description: {`Rust: \`.with_permissive_policy()\` · Python: \`permissive=True\` · Node.js: \`permissive: true\``},
+    },
+    "Planning": {
+      description: {`Rust: \`.with_planning(true)\` · Python: \`planning=True\` · Node.js: \`planning: true\``},
+    },
+    "Goal tracking": {
+      description: {`Rust: \`.with_goal_tracking(true)\` · Python: \`goal_tracking=True\` · Node.js: \`goalTracking: true\``},
+    },
+    "Built-in skills": {
+      description: {`Rust: \`.with_builtin_skills()\` · Python: \`builtin_skills=True\` · Node.js: \`builtinSkills: true\``},
+    },
+    "Custom skills": {
+      description: {`Rust: \`.with_skills_from_dir(path)\` · Python: \`skill_dirs=[path]\` · Node.js: \`skillDirs: [path]\``},
+    },
+    "Default security": {
+      description: {`Rust: \`.with_default_security()\` · Python: \`default_security=True\` · Node.js: \`defaultSecurity: true\``},
+    },
+    "File memory": {
+      description: {`Rust: \`.with_file_memory(path)\` · Python: \`memory_dir=path\` · Node.js: \`memoryDir: path\``},
+    },
+    "Auto-compact": {
+      description: {`Rust: \`.with_auto_compact(true)\` · Python: \`auto_compact=True\` · Node.js: \`autoCompact: true\``},
+    },
+    "FS context (RAG)": {
+      description: {`Rust: \`.with_fs_context(path)\` · Python: \`fs_context=path\` · Node.js: \`fsContext: path\``},
+    },
+    "Lane queue": {
+      description: {`Rust: \`.with_queue_config(cfg)\` · Python: \`queue_config=cfg\` · Node.js: \`queueConfig: cfg\``},
+    },
+    "Permission policy": {
+      description: {`Rust: \`.with_permission_checker(p)\` · Python: _(Rust only)_ · Node.js: _(Rust only)_`},
+    },
+    "HITL confirmation": {
+      description: {`Rust: \`.with_confirmation_manager(m)\` · Python: _(Rust only)_ · Node.js: _(Rust only)_`},
+    },
+    "Custom security": {
+      description: {`Rust: \`.with_security_provider(p)\` · Python: _(Rust only)_ · Node.js: _(Rust only)_`},
+    },
+    "Vector context": {
+      description: {`Rust: \`.with_context_provider(p)\` · Python: _(config-based)_ · Node.js: _(config-based)_`},
+    },
+  }
+/>
 
 ### Extension points
 
-| Trait | Purpose | Default impl |
-|-------|---------|--------------|
-| `SecurityProvider` | Input taint + output sanitization | `DefaultSecurityProvider` |
-| `PermissionChecker` | Tool access control | `PermissionPolicy` |
-| `ConfirmationProvider` | Human-in-the-loop approval | `ConfirmationManager` |
-| `ContextProvider` | RAG retrieval | `FileSystemContextProvider` |
-| `EmbeddingProvider` | Vector embeddings | `OpenAiEmbeddingProvider` |
-| `VectorStore` | Embedding storage | `InMemoryVectorStore` |
-| `SessionStore` | Session persistence | `FileSessionStore` |
-| `MemoryStore` | Long-term memory | `InMemoryStore` |
-| `Tool` | Custom tools | 12 built-in tools |
-| `Planner` | Task decomposition | `LlmPlanner` |
-| `HookHandler` | Lifecycle event handling | `HookEngine` |
-| `McpTransport` | MCP protocol | `StdioTransport` |
-| `BashSandbox` | Shell isolation | `LocalBashExecutor` |
-| `SkillValidator` | Skill activation logic | `DefaultSkillValidator` |
+<TypeTable
+  type={
+    {`\`SecurityProvider\``}: {
+      description: "Input taint + output sanitization",
+      default: {`\`DefaultSecurityProvider\``},
+    },
+    {`\`PermissionChecker\``}: {
+      description: "Tool access control",
+      default: {`\`PermissionPolicy\``},
+    },
+    {`\`ConfirmationProvider\``}: {
+      description: "Human-in-the-loop approval",
+      default: {`\`ConfirmationManager\``},
+    },
+    {`\`ContextProvider\``}: {
+      description: "RAG retrieval",
+      default: {`\`FileSystemContextProvider\``},
+    },
+    {`\`EmbeddingProvider\``}: {
+      description: "Vector embeddings",
+      default: {`\`OpenAiEmbeddingProvider\``},
+    },
+    {`\`VectorStore\``}: {
+      description: "Embedding storage",
+      default: {`\`InMemoryVectorStore\``},
+    },
+    {`\`SessionStore\``}: {
+      description: "Session persistence",
+      default: {`\`FileSessionStore\``},
+    },
+    {`\`MemoryStore\``}: {
+      description: "Long-term memory",
+      default: {`\`InMemoryStore\``},
+    },
+    {`\`Tool\``}: {
+      description: "Custom tools",
+      default: "12 built-in tools",
+    },
+    {`\`Planner\``}: {
+      description: "Task decomposition",
+      default: {`\`LlmPlanner\``},
+    },
+    {`\`HookHandler\``}: {
+      description: "Lifecycle event handling",
+      default: {`\`HookEngine\``},
+    },
+    {`\`McpTransport\``}: {
+      description: "MCP protocol",
+      default: {`\`StdioTransport\``},
+    },
+    {`\`BashSandbox\``}: {
+      description: "Shell isolation",
+      default: {`\`LocalBashExecutor\``},
+    },
+    {`\`SkillValidator\``}: {
+      description: "Skill activation logic",
+      default: {`\`DefaultSkillValidator\``},
+    },
+  }
+/>

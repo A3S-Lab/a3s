@@ -3,6 +3,8 @@ title: OpenAI API
 description: OpenAI-compatible API endpoints for SDK integration
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # OpenAI API
 
 A3S Power provides OpenAI-compatible endpoints, allowing you to use any OpenAI SDK (Python, TypeScript, Go, etc.) with local models.
@@ -200,9 +202,17 @@ Response includes token counts, request counts, and cost estimates per model.
 
 The OpenAI API uses Server-Sent Events (SSE) for streaming, while the Ollama API uses NDJSON:
 
-| API | Format | Content-Type |
-|-----|--------|-------------|
-| Ollama (`/api/*`) | NDJSON | `application/x-ndjson` |
-| OpenAI (`/v1/*`) | SSE | `text/event-stream` |
+<TypeTable
+  type={
+    {`Ollama (\`/api/*\`)`}: {
+      type: "NDJSON",
+      description: {`\`application/x-ndjson\``},
+    },
+    {`OpenAI (\`/v1/*\`)`}: {
+      type: "SSE",
+      description: {`\`text/event-stream\``},
+    },
+  }
+/>
 
 Both formats deliver tokens incrementally as they're generated.

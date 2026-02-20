@@ -3,6 +3,8 @@ title: A3S SafeClaw
 description: AI Agent 安全代理，提供 PII 分类、污点追踪和机密计算支持
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S SafeClaw
 
 SafeClaw 是运行在 A3S Box VM 内部的 AI Agent 安全代理。它对消息进行 PII 分类、检测提示注入攻击、净化输出、追踪数据污点并审计所有操作 — 可选配 TEE 硬件级内存加密。
@@ -32,41 +34,93 @@ SafeClaw 是运行在 A3S Box VM 内部的 AI Agent 安全代理。它对消息�
 
 ## 纵深防御
 
-| 层级 | 组件 |
-|------|------|
-| L4：应用安全 | 隐私分类器、策略引擎、审计日志、会话隔离 |
-| L3：协议安全 | 消息认证（MAC）、重放保护、污点追踪 |
-| L2：通道安全 | X25519 密钥交换、AES-256-GCM 加密、前向保密、网络防火墙 |
-| L1：硬件安全（TEE） | 内存隔离、远程证明、密封存储、CPU 级加密 |
+<TypeTable
+  type={
+    "L4：应用安全": {
+      description: "隐私分类器、策略引擎、审计日志、会话隔离",
+    },
+    "L3：协议安全": {
+      description: "消息认证（MAC）、重放保护、污点追踪",
+    },
+    "L2：通道安全": {
+      description: "X25519 密钥交换、AES-256-GCM 加密、前向保密、网络防火墙",
+    },
+    "L1：硬件安全（TEE）": {
+      description: "内存隔离、远程证明、密封存储、CPU 级加密",
+    },
+  }
+/>
 
 ## 核心组件
 
-| 组件 | 职责 |
-|------|------|
-| 隐私分类器 | 正则 + 语义 PII 检测，支持可插拔后端 |
-| 策略引擎 | 基于敏感级别的路由决策 |
-| 污点注册表 | 追踪敏感数据在处理管道中的流转 |
-| 输出净化器 | 从 AI 输出中脱敏污点数据 |
-| 注入检测器 | 阻断提示注入攻击 |
-| 工具拦截器 | 阻断危险工具调用（curl、wget 等） |
-| 网络防火墙 | 仅允许白名单出站网络访问 |
-| 审计系统 | 带严重级别和告警的取证日志 |
-| 会话管理器 | 每会话隔离，安全内存擦除 |
-| 通道适配器 | 7 个消息平台集成 |
-| 内存系统 | 三层内存架构，带隐私门控 |
-| 安全通道 | X25519 + AES-256-GCM 加密通信 |
+<TypeTable
+  type={
+    "隐私分类器": {
+      description: "正则 + 语义 PII 检测，支持可插拔后端",
+    },
+    "策略引擎": {
+      description: "基于敏感级别的路由决策",
+    },
+    "污点注册表": {
+      description: "追踪敏感数据在处理管道中的流转",
+    },
+    "输出净化器": {
+      description: "从 AI 输出中脱敏污点数据",
+    },
+    "注入检测器": {
+      description: "阻断提示注入攻击",
+    },
+    "工具拦截器": {
+      description: "阻断危险工具调用（curl、wget 等）",
+    },
+    "网络防火墙": {
+      description: "仅允许白名单出站网络访问",
+    },
+    "审计系统": {
+      description: "带严重级别和告警的取证日志",
+    },
+    "会话管理器": {
+      description: "每会话隔离，安全内存擦除",
+    },
+    "通道适配器": {
+      description: "7 个消息平台集成",
+    },
+    "内存系统": {
+      description: "三层内存架构，带隐私门控",
+    },
+    "安全通道": {
+      description: "X25519 + AES-256-GCM 加密通信",
+    },
+  }
+/>
 
 ## 关键统计
 
-| 指标 | 数值 |
-|------|------|
-| 源文件 | 80+ |
-| Rust 代码行数 | 28,248 |
-| 测试数量 | 609 |
-| API 端点 | 34（33 REST + 1 WebSocket） |
-| 通道适配器 | 7 |
-| 敏感级别 | 5 |
-| 中间件集成 | a3s-gateway、a3s-lane、a3s-event |
+<TypeTable
+  type={
+    "源文件": {
+      description: "80+",
+    },
+    "Rust 代码行数": {
+      description: "28,248",
+    },
+    "测试数量": {
+      description: "609",
+    },
+    "API 端点": {
+      description: "34（33 REST + 1 WebSocket）",
+    },
+    "通道适配器": {
+      description: "7",
+    },
+    "敏感级别": {
+      description: "5",
+    },
+    "中间件集成": {
+      description: "a3s-gateway、a3s-lane、a3s-event",
+    },
+  }
+/>
 
 ## 主要特性
 

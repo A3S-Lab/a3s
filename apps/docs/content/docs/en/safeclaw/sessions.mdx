@@ -3,6 +3,8 @@ title: Sessions
 description: Session management, routing decisions, per-session isolation, and secure memory wipe
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Sessions
 
 SafeClaw manages per-user sessions with state tracking, sensitivity-aware routing, and secure isolation.
@@ -119,10 +121,18 @@ This prevents data leakage between sessions, even within the same process.
 
 ## REST API
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/v1/gateway/sessions` | GET | List all active sessions |
-| `/api/v1/gateway/sessions/:id` | GET | Get session details |
+<TypeTable
+  type={
+    {`\`/api/v1/gateway/sessions\``}: {
+      type: "GET",
+      description: "List all active sessions",
+    },
+    {`\`/api/v1/gateway/sessions/:id\``}: {
+      type: "GET",
+      description: "Get session details",
+    },
+  }
+/>
 
 ### Session Detail Response
 

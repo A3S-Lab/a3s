@@ -3,6 +3,8 @@ title: Routing
 description: Rule-based request matching with Host, Path, Headers, Method, and SNI matchers
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Routing
 
 A3S Gateway uses a Traefik-compatible rule syntax for matching incoming requests to services.
@@ -15,14 +17,28 @@ rule = "Matcher(`value`) && Matcher(`value`)"
 
 ### Supported Matchers
 
-| Matcher | Description | Example |
-|---------|-------------|---------|
-| `Host` | Match by hostname | `Host(\`api.example.com\`)` |
-| `PathPrefix` | Match by path prefix | `PathPrefix(\`/api\`)` |
-| `Path` | Match exact path | `Path(\`/health\`)` |
-| `Headers` | Match by header key/value | `Headers(\`X-Api-Version\`, \`v2\`)` |
-| `Method` | Match by HTTP method | `Method(\`POST\`)` |
-| `HostSNI` | Match TCP by TLS SNI | `HostSNI(\`db.example.com\`)` |
+<TypeTable
+  type={
+    {`\`Host\``}: {
+      description: {`Description: Match by hostname · Example: \`Host(\\\`api.example.com\\\`)\``},
+    },
+    {`\`PathPrefix\``}: {
+      description: {`Description: Match by path prefix · Example: \`PathPrefix(\\\`/api\\\`)\``},
+    },
+    {`\`Path\``}: {
+      description: {`Description: Match exact path · Example: \`Path(\\\`/health\\\`)\``},
+    },
+    {`\`Headers\``}: {
+      description: {`Description: Match by header key/value · Example: \`Headers(\\\`X-Api-Version\\\`, \\\`v2\\\`)\``},
+    },
+    {`\`Method\``}: {
+      description: {`Description: Match by HTTP method · Example: \`Method(\\\`POST\\\`)\``},
+    },
+    {`\`HostSNI\``}: {
+      description: {`Description: Match TCP by TLS SNI · Example: \`HostSNI(\\\`db.example.com\\\`)\``},
+    },
+  }
+/>
 
 ### Combining Matchers
 

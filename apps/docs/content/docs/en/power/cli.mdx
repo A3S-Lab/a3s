@@ -3,6 +3,8 @@ title: CLI Reference
 description: Complete command reference for a3s-power
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # CLI Reference
 
 A3S Power provides 12 commands for model management, inference, and server operations.
@@ -33,9 +35,13 @@ a3s-power pull hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF
 a3s-power pull --insecure my-registry.local/model
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--insecure` | Skip TLS verification |
+<TypeTable
+  type={
+    {`\`--insecure\``}: {
+      description: "Skip TLS verification",
+    },
+  }
+/>
 
 ### list
 
@@ -65,9 +71,13 @@ a3s-power show llama3.2
 a3s-power show llama3.2 --verbose
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--verbose` | Show full GGUF metadata |
+<TypeTable
+  type={
+    {`\`--verbose\``}: {
+      description: "Show full GGUF metadata",
+    },
+  }
+/>
 
 ### delete
 
@@ -113,10 +123,16 @@ a3s-power push <MODEL> --destination <URL>
 a3s-power push my-model --destination https://registry.example.com
 ```
 
-| Option | Description |
-|--------|-------------|
-| `--destination` | Remote registry URL |
-| `--insecure` | Skip TLS verification |
+<TypeTable
+  type={
+    {`\`--destination\``}: {
+      description: "Remote registry URL",
+    },
+    {`\`--insecure\``}: {
+      description: "Skip TLS verification",
+    },
+  }
+/>
 
 ## Inference
 
@@ -137,21 +153,49 @@ a3s-power run llama3.2 "Explain quicksort"
 a3s-power run llama3.2 --temperature 0.7 --num-predict 256 "Write a haiku"
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--temperature` | 0.8 | Sampling temperature |
-| `--top-p` | 0.9 | Nucleus sampling |
-| `--top-k` | 40 | Top-K sampling |
-| `--num-predict` | -1 | Max tokens to generate |
-| `--num-ctx` | 2048 | Context window size |
-| `--repeat-penalty` | 1.1 | Repetition penalty |
-| `--seed` | — | Random seed |
-| `--format` | — | Output format (`json`) |
-| `--system` | — | Override system prompt |
-| `--template` | — | Override chat template |
-| `--keep-alive` | `5m` | Model keep-alive duration |
-| `--verbose` | — | Show timing and token stats |
-| `--insecure` | — | Skip TLS verification |
+<TypeTable
+  type={
+    {`\`--temperature\``}: {
+      description: "Default: 0.8 · Description: Sampling temperature",
+    },
+    {`\`--top-p\``}: {
+      description: "Default: 0.9 · Description: Nucleus sampling",
+    },
+    {`\`--top-k\``}: {
+      description: "Default: 40 · Description: Top-K sampling",
+    },
+    {`\`--num-predict\``}: {
+      description: "Default: -1 · Description: Max tokens to generate",
+    },
+    {`\`--num-ctx\``}: {
+      description: "Default: 2048 · Description: Context window size",
+    },
+    {`\`--repeat-penalty\``}: {
+      description: "Default: 1.1 · Description: Repetition penalty",
+    },
+    {`\`--seed\``}: {
+      description: "Description: Random seed",
+    },
+    {`\`--format\``}: {
+      description: {`Description: Output format (\`json\`)`},
+    },
+    {`\`--system\``}: {
+      description: "Description: Override system prompt",
+    },
+    {`\`--template\``}: {
+      description: "Description: Override chat template",
+    },
+    {`\`--keep-alive\``}: {
+      description: {`Default: \`5m\` · Description: Model keep-alive duration`},
+    },
+    {`\`--verbose\``}: {
+      description: "Description: Show timing and token stats",
+    },
+    {`\`--insecure\``}: {
+      description: "Description: Skip TLS verification",
+    },
+  }
+/>
 
 In interactive mode, type your messages and press Enter. Use `/bye` or Ctrl+C to exit.
 
@@ -171,10 +215,16 @@ a3s-power serve
 a3s-power serve --host 0.0.0.0 --port 8080
 ```
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--host` | `127.0.0.1` | Bind address |
-| `--port` | `11434` | Bind port |
+<TypeTable
+  type={
+    {`\`--host\``}: {
+      description: {`Default: \`127.0.0.1\` · Description: Bind address`},
+    },
+    {`\`--port\``}: {
+      description: {`Default: \`11434\` · Description: Bind port`},
+    },
+  }
+/>
 
 ### ps
 

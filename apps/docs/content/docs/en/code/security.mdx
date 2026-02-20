@@ -4,6 +4,7 @@ description: Permission system, HITL confirmation, and extensible security trait
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
@@ -28,11 +29,19 @@ The permission system controls which tools the agent can use. Rules are evaluate
 
 ### Rule Types
 
-| Action | Behavior |
-|--------|----------|
-| `deny` | Block the tool call immediately |
-| `allow` | Permit the tool call |
-| `ask` | Prompt the user for confirmation (via HITL) |
+<TypeTable
+  type={
+    {`\`deny\``}: {
+      description: "Block the tool call immediately",
+    },
+    {`\`allow\``}: {
+      description: "Permit the tool call",
+    },
+    {`\`ask\``}: {
+      description: "Prompt the user for confirmation (via HITL)",
+    },
+  }
+/>
 
 ### Pattern Matching
 
@@ -42,21 +51,37 @@ Rules use glob-style pattern matching on tool names and arguments:
 Tool(pattern)
 ```
 
-| Pattern | Matches |
-|---------|---------|
-| `bash(rm -rf:*)` | Any bash command starting with `rm -rf` |
-| `read(src/**)` | Read operations on any file under `src/` |
-| `write(*)` | All write operations |
-| `mcp__pencil` | All `mcp__pencil__*` tools (prefix matching) |
+<TypeTable
+  type={
+    {`\`bash(rm -rf:*)\``}: {
+      description: {`Any bash command starting with \`rm -rf\``},
+    },
+    {`\`read(src/**)\``}: {
+      description: {`Read operations on any file under \`src/\``},
+    },
+    {`\`write(*)\``}: {
+      description: "All write operations",
+    },
+    {`\`mcp__pencil\``}: {
+      description: {`All \`mcp__pencil__*\` tools (prefix matching)`},
+    },
+  }
+/>
 
 Wildcards: `*` matches any character except `/`, `**` matches including `/`, `:*` matches any suffix.
 
 ### Preset Policies
 
-| Preset | Behavior |
-|--------|----------|
-| `PermissionPolicy::permissive()` | Allow all tools by default (default) |
-| `PermissionPolicy::strict()` | Deny all tools by default |
+<TypeTable
+  type={
+    {`\`PermissionPolicy::permissive()\``}: {
+      description: "Allow all tools by default (default)",
+    },
+    {`\`PermissionPolicy::strict()\``}: {
+      description: "Deny all tools by default",
+    },
+  }
+/>
 
 ### Building a Custom Policy
 
@@ -235,10 +260,16 @@ for event in session.stream("Clean up old logs"):
 
 ### Timeout Behavior
 
-| TimeoutAction | Behavior |
-|---------------|----------|
-| `Reject` | Reject the tool call if no response within timeout (default) |
-| `Approve` | Approve the tool call if no response within timeout |
+<TypeTable
+  type={
+    {`\`Reject\``}: {
+      description: "Reject the tool call if no response within timeout (default)",
+    },
+    {`\`Approve\``}: {
+      description: "Approve the tool call if no response within timeout",
+    },
+  }
+/>
 
 ## Workspace Boundaries
 
@@ -329,12 +360,22 @@ See [Hooks](/docs/code/hooks) for lifecycle event integration.
 
 The agent emits security-related events during streaming:
 
-| Event | When |
-|-------|------|
-| `PermissionDenied` | Tool call blocked by permission policy |
-| `ConfirmationRequired` | HITL confirmation needed |
-| `ConfirmationTimeout` | User didn't respond within timeout |
-| `ConfirmationRejected` | User rejected the tool call |
+<TypeTable
+  type={
+    {`\`PermissionDenied\``}: {
+      description: "Tool call blocked by permission policy",
+    },
+    {`\`ConfirmationRequired\``}: {
+      description: "HITL confirmation needed",
+    },
+    {`\`ConfirmationTimeout\``}: {
+      description: "User didn't respond within timeout",
+    },
+    {`\`ConfirmationRejected\``}: {
+      description: "User rejected the tool call",
+    },
+  }
+/>
 
 See [Sessions](/docs/code/sessions) for full event reference.
 
@@ -342,25 +383,53 @@ See [Sessions](/docs/code/sessions) for full event reference.
 
 ### PermissionPolicy
 
-| Method | Description |
-|--------|-------------|
-| `PermissionPolicy::new()` | Create with permissive default |
-| `PermissionPolicy::strict()` | Create with deny-all default |
-| `PermissionPolicy::permissive()` | Create with allow-all default |
-| `.allow(pattern)` | Add allow rule |
-| `.deny(pattern)` | Add deny rule |
-| `.ask(pattern)` | Add ask (HITL) rule |
-| `session.set_permission_policy(p).await` | Apply to running session |
+<TypeTable
+  type={
+    {`\`PermissionPolicy::new()\``}: {
+      description: "Create with permissive default",
+    },
+    {`\`PermissionPolicy::strict()\``}: {
+      description: "Create with deny-all default",
+    },
+    {`\`PermissionPolicy::permissive()\``}: {
+      description: "Create with allow-all default",
+    },
+    {`\`.allow(pattern)\``}: {
+      description: "Add allow rule",
+    },
+    {`\`.deny(pattern)\``}: {
+      description: "Add deny rule",
+    },
+    {`\`.ask(pattern)\``}: {
+      description: "Add ask (HITL) rule",
+    },
+    {`\`session.set_permission_policy(p).await\``}: {
+      description: "Apply to running session",
+    },
+  }
+/>
 
 ### Pattern syntax
 
-| Pattern | Matches |
-|---------|---------|
-| `bash(*)` | All bash calls |
-| `bash(rm -rf:*)` | Bash calls starting with `rm -rf` |
-| `read(src/**)` | Read any file under `src/` |
-| `write(*)` | All write calls |
-| `mcp__github` | All `mcp__github__*` tools |
+<TypeTable
+  type={
+    {`\`bash(*)\``}: {
+      description: "All bash calls",
+    },
+    {`\`bash(rm -rf:*)\``}: {
+      description: {`Bash calls starting with \`rm -rf\``},
+    },
+    {`\`read(src/**)\``}: {
+      description: {`Read any file under \`src/\``},
+    },
+    {`\`write(*)\``}: {
+      description: "All write calls",
+    },
+    {`\`mcp__github\``}: {
+      description: {`All \`mcp__github__*\` tools`},
+    },
+  }
+/>
 
 ### ConfirmationPolicy
 
@@ -386,10 +455,22 @@ See [Sessions](/docs/code/sessions) for full event reference.
 
 ### SecurityProvider trait (Rust)
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `taint_input` | `fn taint_input(&self, text: &str)` | Inspect user input for sensitive patterns |
-| `sanitize_output` | `fn sanitize_output(&self, text: &str) -> String` | Redact sensitive patterns from LLM output |
-| `wipe` | `fn wipe(&self)` | Clear cached sensitive state |
-| `register_hooks` | `fn register_hooks(&self, engine: &HookEngine)` | Attach hooks for deeper interception |
-| `teardown` | `fn teardown(&self)` | Called when session ends |
+<TypeTable
+  type={
+    {`\`taint_input\``}: {
+      description: {`Signature: \`fn taint_input(&self, text: &str)\` · Description: Inspect user input for sensitive patterns`},
+    },
+    {`\`sanitize_output\``}: {
+      description: {`Signature: \`fn sanitize_output(&self, text: &str) -> String\` · Description: Redact sensitive patterns from LLM output`},
+    },
+    {`\`wipe\``}: {
+      description: {`Signature: \`fn wipe(&self)\` · Description: Clear cached sensitive state`},
+    },
+    {`\`register_hooks\``}: {
+      description: {`Signature: \`fn register_hooks(&self, engine: &HookEngine)\` · Description: Attach hooks for deeper interception`},
+    },
+    {`\`teardown\``}: {
+      description: {`Signature: \`fn teardown(&self)\` · Description: Called when session ends`},
+    },
+  }
+/>

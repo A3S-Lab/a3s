@@ -3,6 +3,8 @@ title: Networking
 description: TSI, bridge networking, passt, vsock ports, and DNS
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Networking
 
 A3S Box supports three network modes: TSI (default), Bridge (for inter-container communication), and None (air-gapped).
@@ -103,13 +105,25 @@ pub struct Ipam {
 
 The IPAM automatically assigns IPs to containers joining a network. It tracks used addresses and allocates the next available IP within the subnet.
 
-| Method | Description |
-|--------|-------------|
-| `gateway()` | Returns the gateway IP |
-| `cidr()` | Returns the CIDR string (e.g., `"10.88.0.0/24"`) |
-| `broadcast()` | Returns the broadcast address |
-| `capacity()` | Returns the number of available host addresses |
-| `next_ip()` | Allocates the next available IP |
+<TypeTable
+  type={
+    {`\`gateway()\``}: {
+      description: "Returns the gateway IP",
+    },
+    {`\`cidr()\``}: {
+      description: {`Returns the CIDR string (e.g., \`"10.88.0.0/24"\`)`},
+    },
+    {`\`broadcast()\``}: {
+      description: "Returns the broadcast address",
+    },
+    {`\`capacity()\``}: {
+      description: "Returns the number of available host addresses",
+    },
+    {`\`next_ip()\``}: {
+      description: "Allocates the next available IP",
+    },
+  }
+/>
 
 ### Passt Manager
 
@@ -169,11 +183,21 @@ a3s-box network rm my-net
 
 Regardless of network mode, host-guest control communication always uses vsock:
 
-| Port | Service | Purpose |
-|------|---------|---------|
-| 4088 | Agent control | Health checks, metrics |
-| 4089 | Exec server | Command execution |
-| 4090 | PTY server | Terminal I/O |
-| 4091 | Attestation server | TEE operations (RA-TLS) |
+<TypeTable
+  type={
+    "4088": {
+      description: "Service: Agent control · Purpose: Health checks, metrics",
+    },
+    "4089": {
+      description: "Service: Exec server · Purpose: Command execution",
+    },
+    "4090": {
+      description: "Service: PTY server · Purpose: Terminal I/O",
+    },
+    "4091": {
+      description: "Service: Attestation server · Purpose: TEE operations (RA-TLS)",
+    },
+  }
+/>
 
 Vsock provides a reliable, low-latency channel that does not depend on network configuration.

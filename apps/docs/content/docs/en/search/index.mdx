@@ -3,6 +3,8 @@ title: A3S Search
 description: Embeddable meta search engine — multi-engine aggregation, consensus ranking, proxy pool, and headless browser support
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S Search
 
 A3S Search is an embeddable meta search engine library inspired by [SearXNG](https://github.com/searxng/searxng). It aggregates results from multiple search engines in parallel, deduplicates by normalized URL, and ranks them using a consensus-based scoring algorithm. Available as a Rust crate, Python package, and Node.js module.
@@ -47,31 +49,63 @@ Search
 
 ### HTTP Engines
 
-| Engine | Shortcut | Weight | Paging | SafeSearch |
-|--------|----------|--------|--------|------------|
-| DuckDuckGo | `ddg` | 1.0 | Yes | Yes |
-| Brave | `brave` | 1.0 | Yes | Yes |
-| Bing | `bing` | 1.0 | Yes | Yes |
-| Wikipedia | `wiki` | 1.2 | No | No |
-| Sogou | `sogou` | 1.0 | No | No |
-| 360 Search | `360` | 1.0 | No | No |
+<TypeTable
+  type={
+    "DuckDuckGo": {
+      description: {`Shortcut: \`ddg\` · Weight: 1.0 · Paging: Yes · SafeSearch: Yes`},
+    },
+    "Brave": {
+      description: {`Shortcut: \`brave\` · Weight: 1.0 · Paging: Yes · SafeSearch: Yes`},
+    },
+    "Bing": {
+      description: {`Shortcut: \`bing\` · Weight: 1.0 · Paging: Yes · SafeSearch: Yes`},
+    },
+    "Wikipedia": {
+      description: {`Shortcut: \`wiki\` · Weight: 1.2 · Paging: No · SafeSearch: No`},
+    },
+    "Sogou": {
+      description: {`Shortcut: \`sogou\` · Weight: 1.0 · Paging: No · SafeSearch: No`},
+    },
+    "360 Search": {
+      description: {`Shortcut: \`360\` · Weight: 1.0 · Paging: No · SafeSearch: No`},
+    },
+  }
+/>
 
 ### Headless Browser Engines (`headless` feature)
 
-| Engine | Shortcut | Weight | Paging | SafeSearch |
-|--------|----------|--------|--------|------------|
-| Google | `g` | 1.5 | Yes | Yes |
-| Baidu | `baidu` | 1.0 | No | No |
-| Bing China | `bing_cn` | 1.0 | No | No |
+<TypeTable
+  type={
+    "Google": {
+      description: {`Shortcut: \`g\` · Weight: 1.5 · Paging: Yes · SafeSearch: Yes`},
+    },
+    "Baidu": {
+      description: {`Shortcut: \`baidu\` · Weight: 1.0 · Paging: No · SafeSearch: No`},
+    },
+    "Bing China": {
+      description: {`Shortcut: \`bing_cn\` · Weight: 1.0 · Paging: No · SafeSearch: No`},
+    },
+  }
+/>
 
 ## Supported Languages
 
-| Language | Package | Install |
-|----------|---------|---------|
-| Rust | [`a3s-search`](https://crates.io/crates/a3s-search) | `a3s-search = "0.8"` in Cargo.toml |
-| Python | [`a3s-search`](https://pypi.org/project/a3s-search/) | `pip install a3s-search` |
-| Node.js | [`@a3s-lab/search`](https://www.npmjs.com/package/@a3s-lab/search) | `npm install @a3s-lab/search` |
-| Homebrew | [`a3s-search`](https://github.com/A3S-Lab/homebrew-tap) | `brew install a3s-lab/tap/a3s-search` |
+<TypeTable
+  type={
+    "Rust": {
+      description: {`Package: [\`a3s-search\`](https://crates.io/crates/a3s-search) · Install: \`a3s-search = "0.8"\` in Cargo.toml`},
+    },
+    "Python": {
+      description: {`Package: [\`a3s-search\`](https://pypi.org/project/a3s-search/) · Install: \`pip install a3s-search\``},
+    },
+    "Node.js": {
+      description: {`Package: [\`@a3s-lab/search\`](https://www.npmjs.com/package/@a3s-lab/search) · Install: \`npm install @a3s-lab/search\``},
+    },
+    "Homebrew": {
+      description: {`Package: [\`a3s-search\`](https://github.com/A3S-Lab/homebrew-tap) · Install: \`brew install a3s-lab/tap/a3s-search\``},
+    },
+  }
+/>
 
 ## Ranking Algorithm
 

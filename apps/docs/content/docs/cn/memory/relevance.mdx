@@ -3,6 +3,8 @@ title: 相关性评分
 description: 记忆排序原理——重要性、时效衰减和 RelevanceConfig
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # 相关性评分
 
 搜索或将记忆注入上下文时，每条记忆通过结合重要性和时效性进行评分：
@@ -37,12 +39,22 @@ let score = item.relevance_score_at(chrono::Utc::now(), &config);
 
 ## 衰减行为
 
-| 时间 | 时效性因子（decay_days = 30） |
-|------|-------------------------------|
-| 0 天 | 1.00 |
-| 30 天 | 0.37 |
-| 60 天 | 0.14 |
-| 90 天 | 0.05 |
+<TypeTable
+  type={
+    "0 天": {
+      description: "1.00",
+    },
+    "30 天": {
+      description: "0.37",
+    },
+    "60 天": {
+      description: "0.14",
+    },
+    "90 天": {
+      description: "0.05",
+    },
+  }
+/>
 
 高重要性记忆（`importance = 1.0`）在默认权重下的得分：
 - 刚创建：`0.7 × 1.0 + 0.3 × 1.0 = 1.0`
@@ -50,8 +62,16 @@ let score = item.relevance_score_at(chrono::Utc::now(), &config);
 
 ## 调优建议
 
-| 使用场景 | 推荐配置 |
-|----------|----------|
-| 长期助手 | `decay_days: 365`，`importance_weight: 0.9` |
-| 短期编码会话 | `decay_days: 1`，`recency_weight: 0.7` |
-| 均等权重 | `importance_weight: 0.5`，`recency_weight: 0.5` |
+<TypeTable
+  type={
+    "长期助手": {
+      description: {`\`decay_days: 365\`，\`importance_weight: 0.9\``},
+    },
+    "短期编码会话": {
+      description: {`\`decay_days: 1\`，\`recency_weight: 0.7\``},
+    },
+    "均等权重": {
+      description: {`\`importance_weight: 0.5\`，\`recency_weight: 0.5\``},
+    },
+  }
+/>

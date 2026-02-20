@@ -8,6 +8,7 @@ description: Context compaction and pluggable context providers for RAG
 A3S Code provides two context management features: **automatic context compaction** when conversations grow long, and **pluggable context providers** for retrieval-augmented generation (RAG).
 
 import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 ## Context Compaction
@@ -40,11 +41,19 @@ let session = agent.session("/project", Some(
 
 The agent emits events during compaction:
 
-| Event | When |
-|-------|------|
-| `ContextWarning` | Context usage exceeds threshold |
-| `ContextCompacting` | Compaction started |
-| `ContextCompacted` | Compaction completed |
+<TypeTable
+  type={
+    {`\`ContextWarning\``}: {
+      description: "Context usage exceeds threshold",
+    },
+    {`\`ContextCompacting\``}: {
+      description: "Compaction started",
+    },
+    {`\`ContextCompacted\``}: {
+      description: "Compaction completed",
+    },
+  }
+/>
 
 ## Context Providers
 
@@ -132,18 +141,32 @@ let query = ContextQuery::new("authentication flow")
 
 #### ContextType
 
-| Type | Description |
-|------|-------------|
-| `Memory` | Memory items (episodic, semantic, procedural, working) |
-| `Resource` | External resources (files, docs, code) — default |
+<TypeTable
+  type={
+    {`\`Memory\``}: {
+      description: "Memory items (episodic, semantic, procedural, working)",
+    },
+    {`\`Resource\``}: {
+      description: "External resources (files, docs, code) — default",
+    },
+  }
+/>
 
 #### ContextDepth
 
-| Depth | Token Budget | Description |
-|-------|-------------|-------------|
-| `Abstract` | ~100 tokens | Brief summary |
-| `Overview` | ~2,000 tokens | Moderate detail (default) |
-| `Full` | Variable | Complete content |
+<TypeTable
+  type={
+    {`\`Abstract\``}: {
+      description: "Token Budget: ~100 tokens · Description: Brief summary",
+    },
+    {`\`Overview\``}: {
+      description: "Token Budget: ~2,000 tokens · Description: Moderate detail (default)",
+    },
+    {`\`Full\``}: {
+      description: "Token Budget: Variable · Description: Complete content",
+    },
+  }
+/>
 
 ### ContextItem
 
@@ -274,13 +297,25 @@ All providers are queried in parallel, and results are merged before injection i
 
 Context-related events emitted during streaming:
 
-| Event | When |
-|-------|------|
-| `ContextResolving` | Context providers queried |
-| `ContextResolved` | Context items retrieved |
-| `ContextWarning` | Context usage exceeds threshold |
-| `ContextCompacting` | Compaction started |
-| `ContextCompacted` | Compaction completed |
+<TypeTable
+  type={
+    {`\`ContextResolving\``}: {
+      description: "Context providers queried",
+    },
+    {`\`ContextResolved\``}: {
+      description: "Context items retrieved",
+    },
+    {`\`ContextWarning\``}: {
+      description: "Context usage exceeds threshold",
+    },
+    {`\`ContextCompacting\``}: {
+      description: "Compaction started",
+    },
+    {`\`ContextCompacted\``}: {
+      description: "Compaction completed",
+    },
+  }
+/>
 
 See [Sessions](/docs/code/sessions) for full event reference.
 

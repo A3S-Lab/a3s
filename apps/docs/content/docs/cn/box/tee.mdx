@@ -3,19 +3,33 @@ title: TEE 机密计算
 description: AMD SEV-SNP 硬件内存加密和远程证明
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # TEE 机密计算
 
 A3S Box 支持 AMD SEV-SNP 机密计算，提供硬件级内存加密、远程证明和密封存储。
 
 ## 功能
 
-| 功能 | 说明 |
-|------|------|
-| 硬件内存加密 | AMD SEV-SNP 加密 VM 内存，防止宿主机访问 |
-| 远程证明 | 通过 RA-TLS 验证 VM 完整性和度量值 |
-| 密封存储 | AES-256-GCM 数据绑定到 TEE 度量值和/或芯片身份 |
-| 密钥注入 | 通过 RA-TLS 安全传递密钥到 `/run/secrets/`（权限 0400） |
-| 回滚保护 | 防止降级攻击 |
+<TypeTable
+  type={
+    "硬件内存加密": {
+      description: "AMD SEV-SNP 加密 VM 内存，防止宿主机访问",
+    },
+    "远程证明": {
+      description: "通过 RA-TLS 验证 VM 完整性和度量值",
+    },
+    "密封存储": {
+      description: "AES-256-GCM 数据绑定到 TEE 度量值和/或芯片身份",
+    },
+    "密钥注入": {
+      description: {`通过 RA-TLS 安全传递密钥到 \`/run/secrets/\`（权限 0400）`},
+    },
+    "回滚保护": {
+      description: "防止降级攻击",
+    },
+  }
+/>
 
 ## 使用
 

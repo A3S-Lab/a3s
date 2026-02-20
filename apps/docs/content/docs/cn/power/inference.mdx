@@ -3,18 +3,34 @@ title: 推理
 description: 推理参数、采样策略和性能调优
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # 推理
 
 ## 推理参数
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `temperature` | 采样温度，越高越随机 | 0.8 |
-| `top_p` | nucleus 采样概率 | 0.9 |
-| `top_k` | top-k 采样 | 40 |
-| `num_predict` | 最大生成 token 数 | 128 |
-| `num_ctx` | 上下文窗口大小 | 2048 |
-| `repeat_penalty` | 重复惩罚系数 | 1.1 |
+<TypeTable
+  type={
+    {`\`temperature\``}: {
+      description: "说明: 采样温度，越高越随机 · 默认值: 0.8",
+    },
+    {`\`top_p\``}: {
+      description: "说明: nucleus 采样概率 · 默认值: 0.9",
+    },
+    {`\`top_k\``}: {
+      description: "说明: top-k 采样 · 默认值: 40",
+    },
+    {`\`num_predict\``}: {
+      description: "说明: 最大生成 token 数 · 默认值: 128",
+    },
+    {`\`num_ctx\``}: {
+      description: "说明: 上下文窗口大小 · 默认值: 2048",
+    },
+    {`\`repeat_penalty\``}: {
+      description: "说明: 重复惩罚系数 · 默认值: 1.1",
+    },
+  }
+/>
 
 ## KV 缓存
 

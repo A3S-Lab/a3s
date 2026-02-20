@@ -4,6 +4,7 @@ description: 可插拔的 AI 智能体记忆存储 — MemoryStore trait、FileM
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # A3S Memory
 
@@ -33,22 +34,44 @@ SessionOptions::new().with_file_memory("./memory")
 
 ## 本 crate 包含的内容
 
-| 类型 | 说明 |
-|------|------|
-| `MemoryStore` | 异步 trait——实现或依赖的唯一接口 |
-| `MemoryItem` | 记忆单元——内容、重要性、标签、元数据、时间戳 |
-| `MemoryType` | `Episodic`（情节）、`Semantic`（语义）、`Procedural`（程序）、`Working`（工作） |
-| `RelevanceConfig` | 评分参数——衰减、重要性权重、时效性权重 |
-| `InMemoryStore` | 基于 `tokio::sync::RwLock` 的临时后端 |
-| `FileMemoryStore` | 持久化后端——原子写入、内存索引、索引重建 |
+<TypeTable
+  type={
+    {`\`MemoryStore\``}: {
+      description: "异步 trait——实现或依赖的唯一接口",
+    },
+    {`\`MemoryItem\``}: {
+      description: "记忆单元——内容、重要性、标签、元数据、时间戳",
+    },
+    {`\`MemoryType\``}: {
+      description: {`\`Episodic\`（情节）、\`Semantic\`（语义）、\`Procedural\`（程序）、\`Working\`（工作）`},
+    },
+    {`\`RelevanceConfig\``}: {
+      description: "评分参数——衰减、重要性权重、时效性权重",
+    },
+    {`\`InMemoryStore\``}: {
+      description: {`基于 \`tokio::sync::RwLock\` 的临时后端`},
+    },
+    {`\`FileMemoryStore\``}: {
+      description: "持久化后端——原子写入、内存索引、索引重建",
+    },
+  }
+/>
 
 ## 本 crate 不包含的内容
 
-| 关注点 | 所在位置 |
-|--------|----------|
-| 三层会话记忆（工作 / 短期 / 长期） | `a3s-code` |
-| `MemoryConfig`（max_short_term、max_working） | `a3s-code` |
-| 将记忆注入智能体提示词 | `a3s-code` |
+<TypeTable
+  type={
+    "三层会话记忆（工作 / 短期 / 长期）": {
+      description: {`\`a3s-code\``},
+    },
+    {`\`MemoryConfig\`（max_short_term、max_working）`}: {
+      description: {`\`a3s-code\``},
+    },
+    "将记忆注入智能体提示词": {
+      description: {`\`a3s-code\``},
+    },
+  }
+/>
 
 <Callout type="info">
 如果你在使用 A3S Code 构建智能体，请参阅 [Memory](/docs/code/memory) 获取完整的智能体层文档。

@@ -4,6 +4,7 @@ description: Unified task system for planning, tracking, and parallel execution
 ---
 
 import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -30,22 +31,44 @@ Each task has the following fields:
 
 ### TaskStatus
 
-| Status | Description |
-|--------|-------------|
-| `Pending` | Not yet started |
-| `InProgress` | Currently being executed |
-| `Completed` | Successfully finished |
-| `Failed` | Execution failed |
-| `Skipped` | Skipped (dependency failed or no longer needed) |
-| `Cancelled` | Manually cancelled |
+<TypeTable
+  type={
+    {`\`Pending\``}: {
+      description: "Not yet started",
+    },
+    {`\`InProgress\``}: {
+      description: "Currently being executed",
+    },
+    {`\`Completed\``}: {
+      description: "Successfully finished",
+    },
+    {`\`Failed\``}: {
+      description: "Execution failed",
+    },
+    {`\`Skipped\``}: {
+      description: "Skipped (dependency failed or no longer needed)",
+    },
+    {`\`Cancelled\``}: {
+      description: "Manually cancelled",
+    },
+  }
+/>
 
 ### TaskPriority
 
-| Priority | Description |
-|----------|-------------|
-| `High` | Execute first |
-| `Medium` | Default priority |
-| `Low` | Execute after higher-priority tasks |
+<TypeTable
+  type={
+    {`\`High\``}: {
+      description: "Execute first",
+    },
+    {`\`Medium\``}: {
+      description: "Default priority",
+    },
+    {`\`Low\``}: {
+      description: "Execute after higher-priority tasks",
+    },
+  }
+/>
 
 ## Task Lifecycle
 
@@ -84,12 +107,26 @@ ExecutionPlan
 
 The planner evaluates task complexity to choose an execution strategy:
 
-| Complexity | Strategy | When Used |
-|-----------|----------|-----------|
-| `Simple` | `DIRECT` | Single generation, no planning needed |
-| `Medium` | `ITERATIVE` | Generate → tool → reflect → repeat |
-| `Complex` | `PLANNED` | Create plan first, then execute steps |
-| `VeryComplex` | `PARALLEL` | Independent subtasks executed in parallel |
+<TypeTable
+  type={
+    {`\`Simple\``}: {
+      type: {`\`DIRECT\``},
+      description: "Single generation, no planning needed",
+    },
+    {`\`Medium\``}: {
+      type: {`\`ITERATIVE\``},
+      description: "Generate → tool → reflect → repeat",
+    },
+    {`\`Complex\``}: {
+      type: {`\`PLANNED\``},
+      description: "Create plan first, then execute steps",
+    },
+    {`\`VeryComplex\``}: {
+      type: {`\`PARALLEL\``},
+      description: "Independent subtasks executed in parallel",
+    },
+  }
+/>
 
 The `AUTO` strategy uses task analysis to dynamically select the best approach.
 
@@ -342,13 +379,25 @@ session = agent.session("/my-project", planning=True, goal_tracking=True)
 
 #### Helper Methods on `ExecutionPlan`
 
-| Method | Description |
-|--------|-------------|
-| `get_ready_steps()` | Returns steps with all dependencies `Completed` |
-| `mark_status(id, status)` | Update a step's status by ID |
-| `pending_count()` | Count remaining `Pending` steps |
-| `has_deadlock()` | Detect circular deps or all deps failed |
-| `progress()` | Completion fraction (0.0 to 1.0) |
+<TypeTable
+  type={
+    {`\`get_ready_steps()\``}: {
+      description: {`Returns steps with all dependencies \`Completed\``},
+    },
+    {`\`mark_status(id, status)\``}: {
+      description: "Update a step's status by ID",
+    },
+    {`\`pending_count()\``}: {
+      description: {`Count remaining \`Pending\` steps`},
+    },
+    {`\`has_deadlock()\``}: {
+      description: "Detect circular deps or all deps failed",
+    },
+    {`\`progress()\``}: {
+      description: "Completion fraction (0.0 to 1.0)",
+    },
+  }
+/>
 
 #### Deadlock Detection
 
@@ -448,12 +497,22 @@ User prompt: "Add input validation to all API endpoints"
 
 Task-related events emitted during execution:
 
-| Event | Fields | Description |
-|-------|--------|-------------|
-| `StepStart` | `step_id`, `description`, `step_number`, `total_steps` | A plan step began execution. During parallel waves, multiple `StepStart` events fire before any `StepEnd`. |
-| `StepEnd` | `step_id`, `status`, `step_number`, `total_steps` | A plan step finished. `status` is `Completed` or `Failed`. |
-| `GoalProgress` | `goal`, `progress`, `completed_steps`, `total_steps` | Fires after each wave completes. `progress` is 0.0–1.0. |
-| `TaskUpdated` | `session_id`, `tasks` | Task list changed (added, status change, completed). Includes the full current task list. |
+<TypeTable
+  type={
+    {`\`StepStart\``}: {
+      description: {`Fields: \`step_id\`, \`description\`, \`step_number\`, \`total_steps\` · Description: A plan step began execution. During parallel waves, multiple \`StepStart\` events fire before any \`StepEnd\`.`},
+    },
+    {`\`StepEnd\``}: {
+      description: {`Fields: \`step_id\`, \`status\`, \`step_number\`, \`total_steps\` · Description: A plan step finished. \`status\` is \`Completed\` or \`Failed\`.`},
+    },
+    {`\`GoalProgress\``}: {
+      description: {`Fields: \`goal\`, \`progress\`, \`completed_steps\`, \`total_steps\` · Description: Fires after each wave completes. \`progress\` is 0.0–1.0.`},
+    },
+    {`\`TaskUpdated\``}: {
+      description: {`Fields: \`session_id\`, \`tasks\` · Description: Task list changed (added, status change, completed). Includes the full current task list.`},
+    },
+  }
+/>
 
 ## External Task Offloading
 
@@ -532,7 +591,13 @@ When a session is restored from storage, its task list is restored too — the a
 
 ### Planner trait (Rust)
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `plan` | `async fn plan(&self, prompt: &str, context: &PlanContext) -> Result<Vec<AgentTask>>` | Decompose prompt into tasks |
-| `name` | `fn name(&self) -> &str` | Planner identifier |
+<TypeTable
+  type={
+    {`\`plan\``}: {
+      description: {`Signature: \`async fn plan(&self, prompt: &str, context: &PlanContext) -> Result<Vec<AgentTask>>\` · Description: Decompose prompt into tasks`},
+    },
+    {`\`name\``}: {
+      description: {`Signature: \`fn name(&self) -> &str\` · Description: Planner identifier`},
+    },
+  }
+/>

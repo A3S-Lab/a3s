@@ -4,6 +4,7 @@ description: 在单个 LLM 轮次中并行执行多个独立工具调用
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Batch 工具
@@ -176,17 +177,29 @@ handler.rs:5:// TODO: add error handling
 
 ### batch 工具输入 schema
 
-| 字段 | 类型 | 必填 | 描述 |
-|-------|------|----------|-------------|
-| `invocations` | `array` | ✅ | 要并行执行的工具调用列表 |
-| `invocations[].tool` | `string` | ✅ | 要调用的工具名称 |
-| `invocations[].args` | `object` | ✅ | 传递给工具的参数 |
+<TypeTable
+  type={
+    {`\`invocations\``}: {
+      description: {`类型: \`array\` · 必填: ✅ · 描述: 要并行执行的工具调用列表`},
+    },
+    {`\`invocations[].tool\``}: {
+      description: {`类型: \`string\` · 必填: ✅ · 描述: 要调用的工具名称`},
+    },
+    {`\`invocations[].args\``}: {
+      description: {`类型: \`object\` · 必填: ✅ · 描述: 传递给工具的参数`},
+    },
+  }
+/>
 
 ### 直接调用
 
-| 方法 | Rust | Python | Node.js |
-|--------|------|--------|---------|
-| 直接调用工具 | `session.call_tool("batch", json!({...})).await?` | `await session.call_tool("batch", {...})` | `await session.callTool('batch', {...})` |
+<TypeTable
+  type={
+    "直接调用工具": {
+      description: {`Rust: \`session.call_tool("batch", json!({...})).await?\` · Python: \`await session.call_tool("batch", {...})\` · Node.js: \`await session.callTool('batch', {...})\``},
+    },
+  }
+/>
 
 ### 输出格式
 

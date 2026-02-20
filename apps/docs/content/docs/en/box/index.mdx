@@ -3,6 +3,8 @@ title: A3S Box
 description: Lightweight MicroVM runtime with Docker-like CLI, Kubernetes CRI, and hardware-based TEE security
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S Box
 
 A3S Box is a lightweight MicroVM runtime that provides container-like UX with VM-level isolation. Built on [libkrun](https://github.com/containers/libkrun), it boots full Linux VMs in under 200ms with a Docker-compatible CLI, Kubernetes CRI integration, and AMD SEV-SNP confidential computing support.
@@ -49,15 +51,31 @@ A3S Box is a lightweight MicroVM runtime that provides container-like UX with VM
 
 A3S Box is composed of 7 crates, each with a focused responsibility:
 
-| Crate | Purpose |
-|-------|---------|
-| `a3s-box-core` | Shared types: config, errors, events, network modes, volume/PTY/DNS types |
-| `a3s-box-runtime` | VM lifecycle, OCI images, warm pool, TEE, networking, gRPC clients |
-| `a3s-box-cli` | Docker-like CLI with 52 commands, state persistence, output formatting |
-| `a3s-box-cri` | Kubernetes Container Runtime Interface (CRI) over gRPC |
-| `a3s-box-shim` | VM subprocess that bridges host and VM via libkrun (HVF/KVM) |
-| `a3s-box-guest-init` | Guest PID 1: mounts filesystems, starts servers, spawns user entrypoint |
-| `a3s-box-sdk` | Embedded sandbox SDK: create, exec, stop MicroVMs from Rust code |
+<TypeTable
+  type={
+    {`\`a3s-box-core\``}: {
+      description: "Shared types: config, errors, events, network modes, volume/PTY/DNS types",
+    },
+    {`\`a3s-box-runtime\``}: {
+      description: "VM lifecycle, OCI images, warm pool, TEE, networking, gRPC clients",
+    },
+    {`\`a3s-box-cli\``}: {
+      description: "Docker-like CLI with 52 commands, state persistence, output formatting",
+    },
+    {`\`a3s-box-cri\``}: {
+      description: "Kubernetes Container Runtime Interface (CRI) over gRPC",
+    },
+    {`\`a3s-box-shim\``}: {
+      description: "VM subprocess that bridges host and VM via libkrun (HVF/KVM)",
+    },
+    {`\`a3s-box-guest-init\``}: {
+      description: "Guest PID 1: mounts filesystems, starts servers, spawns user entrypoint",
+    },
+    {`\`a3s-box-sdk\``}: {
+      description: "Embedded sandbox SDK: create, exec, stop MicroVMs from Rust code",
+    },
+  }
+/>
 
 ## VM Lifecycle
 
@@ -66,24 +84,46 @@ Created ──→ Ready ──→ Busy ──→ Compacting ──→ Ready ─�
  (create)   (boot)   (exec)   (context gc)    (done)    (kill)
 ```
 
-| State | Description |
-|-------|-------------|
-| `Created` | Config captured, no VM started |
-| `Ready` | VM booted, agent initialized, gRPC healthy |
-| `Busy` | A session is actively processing |
-| `Compacting` | Context compression in progress |
-| `Stopped` | VM terminated, resources freed |
+<TypeTable
+  type={
+    {`\`Created\``}: {
+      description: "Config captured, no VM started",
+    },
+    {`\`Ready\``}: {
+      description: "VM booted, agent initialized, gRPC healthy",
+    },
+    {`\`Busy\``}: {
+      description: "A session is actively processing",
+    },
+    {`\`Compacting\``}: {
+      description: "Context compression in progress",
+    },
+    {`\`Stopped\``}: {
+      description: "VM terminated, resources freed",
+    },
+  }
+/>
 
 ## Vsock Communication
 
 Host and guest communicate over vsock (virtio socket) with dedicated ports:
 
-| Port | Service | Protocol |
-|------|---------|----------|
-| 4088 | Agent control | gRPC (health, metrics) |
-| 4089 | Exec server | gRPC (command execution) |
-| 4090 | PTY server | gRPC (terminal I/O) |
-| 4091 | Attestation server | gRPC + RA-TLS (TEE operations) |
+<TypeTable
+  type={
+    "4088": {
+      description: "Service: Agent control · Protocol: gRPC (health, metrics)",
+    },
+    "4089": {
+      description: "Service: Exec server · Protocol: gRPC (command execution)",
+    },
+    "4090": {
+      description: "Service: PTY server · Protocol: gRPC (terminal I/O)",
+    },
+    "4091": {
+      description: "Service: Attestation server · Protocol: gRPC + RA-TLS (TEE operations)",
+    },
+  }
+/>
 
 ## Key Features
 

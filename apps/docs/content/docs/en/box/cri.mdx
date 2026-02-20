@@ -3,6 +3,8 @@ title: Kubernetes CRI
 description: Container Runtime Interface implementation for running Box as a Kubernetes RuntimeClass
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Kubernetes CRI
 
 A3S Box implements the Kubernetes [Container Runtime Interface (CRI)](https://kubernetes.io/docs/concepts/architecture/cri/) via gRPC, allowing it to be used as a Kubernetes RuntimeClass. Each pod runs in its own MicroVM with full VM-level isolation.
@@ -44,12 +46,22 @@ A3S Box implements the Kubernetes [Container Runtime Interface (CRI)](https://ku
 
 ## CRI to Box Mapping
 
-| CRI Concept | Box Equivalent | Description |
-|-------------|----------------|-------------|
-| Pod Sandbox | VmManager instance | One MicroVM per pod |
-| Container | Session within VM | Multiple containers share the VM |
-| Image Pull | ImagePuller | OCI registry pull with caching |
-| Image Remove | ImageStore | Remove from local cache |
+<TypeTable
+  type={
+    "Pod Sandbox": {
+      description: "Box Equivalent: VmManager instance · Description: One MicroVM per pod",
+    },
+    "Container": {
+      description: "Box Equivalent: Session within VM · Description: Multiple containers share the VM",
+    },
+    "Image Pull": {
+      description: "Box Equivalent: ImagePuller · Description: OCI registry pull with caching",
+    },
+    "Image Remove": {
+      description: "Box Equivalent: ImageStore · Description: Remove from local cache",
+    },
+  }
+/>
 
 ## RuntimeService
 
@@ -57,35 +69,75 @@ Maps CRI pod and container lifecycle to Box VM management:
 
 ### Lifecycle
 
-| CRI Method | Box Action |
-|------------|------------|
-| `RunPodSandbox` | Create and boot a new VmManager |
-| `StopPodSandbox` | Stop the VM |
-| `RemovePodSandbox` | Remove VM and clean up resources |
-| `PodSandboxStatus` | Return VM state and metadata |
-| `ListPodSandbox` | List all tracked sandboxes |
-| `CreateContainer` | Register container in ContainerStore |
-| `StartContainer` | Exec container process in the VM |
-| `StopContainer` | Kill the container process |
-| `RemoveContainer` | Remove from ContainerStore |
-| `ContainerStatus` | Return container state |
-| `ListContainers` | List containers in a sandbox |
+<TypeTable
+  type={
+    {`\`RunPodSandbox\``}: {
+      description: "Create and boot a new VmManager",
+    },
+    {`\`StopPodSandbox\``}: {
+      description: "Stop the VM",
+    },
+    {`\`RemovePodSandbox\``}: {
+      description: "Remove VM and clean up resources",
+    },
+    {`\`PodSandboxStatus\``}: {
+      description: "Return VM state and metadata",
+    },
+    {`\`ListPodSandbox\``}: {
+      description: "List all tracked sandboxes",
+    },
+    {`\`CreateContainer\``}: {
+      description: "Register container in ContainerStore",
+    },
+    {`\`StartContainer\``}: {
+      description: "Exec container process in the VM",
+    },
+    {`\`StopContainer\``}: {
+      description: "Kill the container process",
+    },
+    {`\`RemoveContainer\``}: {
+      description: "Remove from ContainerStore",
+    },
+    {`\`ContainerStatus\``}: {
+      description: "Return container state",
+    },
+    {`\`ListContainers\``}: {
+      description: "List containers in a sandbox",
+    },
+  }
+/>
 
 ### Exec & Attach
 
-| CRI Method | Box Action |
-|------------|------------|
-| `ExecSync` | Execute command via ExecClient, return stdout/stderr/exit code |
-| `Exec` | Register streaming session, return URL for interactive exec |
-| `Attach` | Register streaming session, return URL for container attach |
+<TypeTable
+  type={
+    {`\`ExecSync\``}: {
+      description: "Execute command via ExecClient, return stdout/stderr/exit code",
+    },
+    {`\`Exec\``}: {
+      description: "Register streaming session, return URL for interactive exec",
+    },
+    {`\`Attach\``}: {
+      description: "Register streaming session, return URL for container attach",
+    },
+  }
+/>
 
 ### Port Forward & Resources
 
-| CRI Method | Box Action |
-|------------|------------|
-| `PortForward` | Register streaming session, return URL for TCP port proxy |
-| `UpdateContainerResources` | Acknowledge (microVM resources are fixed at boot) |
-| `ReopenContainerLog` | Truncate container log file for rotation |
+<TypeTable
+  type={
+    {`\`PortForward\``}: {
+      description: "Register streaming session, return URL for TCP port proxy",
+    },
+    {`\`UpdateContainerResources\``}: {
+      description: "Acknowledge (microVM resources are fixed at boot)",
+    },
+    {`\`ReopenContainerLog\``}: {
+      description: "Truncate container log file for rotation",
+    },
+  }
+/>
 
 ## Streaming Server
 
@@ -113,10 +165,16 @@ Streaming Server → PTY Unix socket → vsock → Guest PTY Server
 
 ### Exec Modes
 
-| Mode | TTY | Transport | Use Case |
-|------|-----|-----------|----------|
-| Non-interactive | No | ExecClient (HTTP/JSON) | `kubectl exec pod -- ls -la` |
-| Interactive | Yes | PtyClient (frame protocol) | `kubectl exec -it pod -- /bin/sh` |
+<TypeTable
+  type={
+    "Non-interactive": {
+      description: {`TTY: No · Transport: ExecClient (HTTP/JSON) · Use Case: \`kubectl exec pod -- ls -la\``},
+    },
+    "Interactive": {
+      description: {`TTY: Yes · Transport: PtyClient (frame protocol) · Use Case: \`kubectl exec -it pod -- /bin/sh\``},
+    },
+  }
+/>
 
 ### Attach
 
@@ -146,12 +204,22 @@ let server = CriServer::new(socket_path, image_store, auth)
 
 ## ImageService
 
-| CRI Method | Box Action |
-|------------|------------|
-| `PullImage` | Pull OCI image via ImagePuller |
-| `RemoveImage` | Remove from ImageStore |
-| `ImageStatus` | Return image metadata |
-| `ListImages` | List cached images |
+<TypeTable
+  type={
+    {`\`PullImage\``}: {
+      description: "Pull OCI image via ImagePuller",
+    },
+    {`\`RemoveImage\``}: {
+      description: "Remove from ImageStore",
+    },
+    {`\`ImageStatus\``}: {
+      description: "Return image metadata",
+    },
+    {`\`ListImages\``}: {
+      description: "List cached images",
+    },
+  }
+/>
 
 ## Config Mapping
 
@@ -256,10 +324,22 @@ metadata:
 
 ## Limitations
 
-| Limitation | Description |
-|------------|-------------|
-| In-memory state | CRI server restart loses all sandbox/container tracking |
-| Single node | No multi-node coordination (handled by Kubernetes) |
-| No live migration | VMs cannot be migrated between nodes |
-| Bridge networking | Required for pod-to-pod communication within a node |
-| Fixed resources | `UpdateContainerResources` is acknowledged but microVM CPU/memory cannot be changed after boot |
+<TypeTable
+  type={
+    "In-memory state": {
+      description: "CRI server restart loses all sandbox/container tracking",
+    },
+    "Single node": {
+      description: "No multi-node coordination (handled by Kubernetes)",
+    },
+    "No live migration": {
+      description: "VMs cannot be migrated between nodes",
+    },
+    "Bridge networking": {
+      description: "Required for pod-to-pod communication within a node",
+    },
+    "Fixed resources": {
+      description: {`\`UpdateContainerResources\` is acknowledged but microVM CPU/memory cannot be changed after boot`},
+    },
+  }
+/>

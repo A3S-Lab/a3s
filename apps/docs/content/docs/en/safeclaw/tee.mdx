@@ -3,18 +3,30 @@ title: TEE Integration
 description: Trusted Execution Environment support with AMD SEV-SNP, Intel SGX, and ARM CCA
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # TEE Integration
 
 SafeClaw integrates with hardware Trusted Execution Environments (TEE) for memory encryption, remote attestation, and sealed storage. When TEE is enabled, sensitive data is processed inside a hardware-isolated enclave that even the host OS cannot access.
 
 ## Supported Platforms
 
-| Platform | Technology | Status |
-|----------|-----------|--------|
-| AMD | SEV-SNP (Secure Encrypted Virtualization) | Primary support |
-| Intel | SGX (Software Guard Extensions) | Supported |
-| ARM | CCA (Confidential Compute Architecture) | Supported |
-| Apple | Secure Enclave | Planned |
+<TypeTable
+  type={
+    "AMD": {
+      description: "Technology: SEV-SNP (Secure Encrypted Virtualization) · Status: Primary support",
+    },
+    "Intel": {
+      description: "Technology: SGX (Software Guard Extensions) · Status: Supported",
+    },
+    "ARM": {
+      description: "Technology: CCA (Confidential Compute Architecture) · Status: Supported",
+    },
+    "Apple": {
+      description: "Technology: Secure Enclave · Status: Planned",
+    },
+  }
+/>
 
 ## Configuration
 
@@ -99,11 +111,19 @@ The plaintext of sensitive data never exists outside the TEE's encrypted memory.
 
 SafeClaw degrades gracefully when TEE hardware is unavailable:
 
-| TEE Available | Behavior |
-|---------------|----------|
-| Yes (SEV-SNP/SGX/CCA) | Full hardware memory encryption + attestation |
-| No (VM only) | VM-level isolation via A3S Box (still secure, no hardware encryption) |
-| Simulation mode | Fake TEE for development (`mock-tee` feature flag) |
+<TypeTable
+  type={
+    "Yes (SEV-SNP/SGX/CCA)": {
+      description: "Full hardware memory encryption + attestation",
+    },
+    "No (VM only)": {
+      description: "VM-level isolation via A3S Box (still secure, no hardware encryption)",
+    },
+    "Simulation mode": {
+      description: {`Fake TEE for development (\`mock-tee\` feature flag)`},
+    },
+  }
+/>
 
 ```rust
 // Feature flags

@@ -4,6 +4,7 @@ description: 内置工具、自定义工具和 MCP 工具集成
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
@@ -19,34 +20,64 @@ A3S Code 提供 11 个内置工具，支持自定义工具注册和 MCP 集成�
 
 ### 文件操作
 
-| 工具 | 描述 | 参数 |
-|------|-------------|------------|
-| `read` | 读取文件内容 | `file_path`, `offset?`, `limit?` |
-| `write` | 写入文件（创建或覆盖） | `file_path`, `content` |
-| `edit` | 精确字符串替换 | `file_path`, `old_string`, `new_string` |
-| `patch` | 多处编辑（批量替换） | `file_path`, `patches[]` |
+<TypeTable
+  type={
+    {`\`read\``}: {
+      description: {`描述: 读取文件内容 · 参数: \`file_path\`, \`offset?\`, \`limit?\``},
+    },
+    {`\`write\``}: {
+      description: {`描述: 写入文件（创建或覆盖） · 参数: \`file_path\`, \`content\``},
+    },
+    {`\`edit\``}: {
+      description: {`描述: 精确字符串替换 · 参数: \`file_path\`, \`old_string\`, \`new_string\``},
+    },
+    {`\`patch\``}: {
+      description: {`描述: 多处编辑（批量替换） · 参数: \`file_path\`, \`patches[]\``},
+    },
+  }
+/>
 
 ### 搜索与导航
 
-| 工具 | 描述 | 参数 |
-|------|-------------|------------|
-| `glob` | 按模式匹配文件 | `pattern`, `path?` |
-| `grep` | 搜索文件内容 | `pattern`, `path?`, `include?` |
-| `ls` | 列出目录内容 | `path?` |
-| `list_files` | 递归列出所有文件 | `path?`, `max_depth?` |
+<TypeTable
+  type={
+    {`\`glob\``}: {
+      description: {`描述: 按模式匹配文件 · 参数: \`pattern\`, \`path?\``},
+    },
+    {`\`grep\``}: {
+      description: {`描述: 搜索文件内容 · 参数: \`pattern\`, \`path?\`, \`include?\``},
+    },
+    {`\`ls\``}: {
+      description: {`描述: 列出目录内容 · 参数: \`path?\``},
+    },
+    {`\`list_files\``}: {
+      description: {`描述: 递归列出所有文件 · 参数: \`path?\`, \`max_depth?\``},
+    },
+  }
+/>
 
 ### 执行
 
-| 工具 | 描述 | 参数 |
-|------|-------------|------------|
-| `bash` | 执行 shell 命令 | `command`, `timeout?` |
+<TypeTable
+  type={
+    {`\`bash\``}: {
+      description: {`描述: 执行 shell 命令 · 参数: \`command\`, \`timeout?\``},
+    },
+  }
+/>
 
 ### 网络
 
-| 工具 | 描述 | 参数 |
-|------|-------------|------------|
-| `web_fetch` | 获取 URL 内容 | `url`, `prompt?` |
-| `web_search` | 网络搜索 | `query`, `domains?` |
+<TypeTable
+  type={
+    {`\`web_fetch\``}: {
+      description: {`描述: 获取 URL 内容 · 参数: \`url\`, \`prompt?\``},
+    },
+    {`\`web_search\``}: {
+      description: {`描述: 网络搜索 · 参数: \`query\`, \`domains?\``},
+    },
+  }
+/>
 
 ## 直接工具调用
 
@@ -214,33 +245,67 @@ pub trait Tool: Send + Sync {
 
 ### ToolDefinition
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `name` | `String` | 工具名称 |
-| `description` | `String` | 工具描述（展示给 LLM） |
-| `parameters` | `Vec<ToolParameter>` | 参数定义 |
+<TypeTable
+  type={
+    {`\`name\``}: {
+      description: {`类型: \`String\` · 描述: 工具名称`},
+    },
+    {`\`description\``}: {
+      description: {`类型: \`String\` · 描述: 工具描述（展示给 LLM）`},
+    },
+    {`\`parameters\``}: {
+      description: {`类型: \`Vec<ToolParameter>\` · 描述: 参数定义`},
+    },
+  }
+/>
 
 ### ToolParameter
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `name` | `String` | 参数名称 |
-| `description` | `String` | 参数描述 |
-| `param_type` | `String` | 类型（`string`、`number`、`boolean`、`object`、`array`） |
-| `required` | `bool` | 是否必填 |
-| `enum_values` | `Option<Vec<String>>` | 可选的枚举值列表 |
+<TypeTable
+  type={
+    {`\`name\``}: {
+      description: {`类型: \`String\` · 描述: 参数名称`},
+    },
+    {`\`description\``}: {
+      description: {`类型: \`String\` · 描述: 参数描述`},
+    },
+    {`\`param_type\``}: {
+      description: {`类型: \`String\` · 描述: 类型（\`string\`、\`number\`、\`boolean\`、\`object\`、\`array\`）`},
+    },
+    {`\`required\``}: {
+      description: {`类型: \`bool\` · 描述: 是否必填`},
+    },
+    {`\`enum_values\``}: {
+      description: {`类型: \`Option<Vec<String>>\` · 描述: 可选的枚举值列表`},
+    },
+  }
+/>
 
 ### ToolOutput
 
-| 方法 | 描述 |
-|--------|-------------|
-| `ToolOutput::success(text)` | 创建成功输出 |
-| `ToolOutput::error(text)` | 创建错误输出 |
-| `.with_images(attachments)` | 附加图片到输出 |
+<TypeTable
+  type={
+    {`\`ToolOutput::success(text)\``}: {
+      description: "创建成功输出",
+    },
+    {`\`ToolOutput::error(text)\``}: {
+      description: "创建错误输出",
+    },
+    {`\`.with_images(attachments)\``}: {
+      description: "附加图片到输出",
+    },
+  }
+/>
 
 ### ToolContext
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `workspace` | `PathBuf` | 当前工作区路径 |
-| `session_id` | `String` | 当前会话 ID |
+<TypeTable
+  type={
+    {`\`workspace\``}: {
+      description: {`类型: \`PathBuf\` · 描述: 当前工作区路径`},
+    },
+    {`\`session_id\``}: {
+      description: {`类型: \`String\` · 描述: 当前会话 ID`},
+    },
+  }
+/>

@@ -3,6 +3,8 @@ title: A3S Box
 description: 轻量级 MicroVM 运行时，提供类 Docker CLI、Kubernetes CRI 和硬件级 TEE 安全
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # A3S Box
 
 A3S Box 是一个轻量级 MicroVM 运行时，提供类容器的使用体验和 VM 级别的隔离。基于 [libkrun](https://github.com/containers/libkrun) 构建，冷启动时间不到 200ms，兼容 Docker CLI，支持 Kubernetes CRI 集成和 AMD SEV-SNP 机密计算。
@@ -49,15 +51,31 @@ A3S Box 是一个轻量级 MicroVM 运行时，提供类容器的使用体验和
 
 A3S Box 由 7 个 crate 组成，各司其职：
 
-| Crate | 职责 |
-|-------|------|
-| `a3s-box-core` | 共享类型：配置、错误、事件、网络模式、卷/PTY/DNS 类型 |
-| `a3s-box-runtime` | VM 生命周期、OCI 镜像、热池、TEE、网络、gRPC 客户端 |
-| `a3s-box-cli` | 类 Docker CLI，52 个命令，状态持久化，输出格式化 |
-| `a3s-box-cri` | Kubernetes 容器运行时接口（CRI）gRPC 实现 |
-| `a3s-box-shim` | VM 子进程，通过 libkrun（HVF/KVM）桥接宿主机和 VM |
-| `a3s-box-guest-init` | Guest PID 1：挂载文件系统、启动服务、运行用户入口 |
-| `a3s-box-sdk` | 嵌入式沙箱 SDK：从 Rust 代码创建、执行、停止 MicroVM |
+<TypeTable
+  type={
+    {`\`a3s-box-core\``}: {
+      description: "共享类型：配置、错误、事件、网络模式、卷/PTY/DNS 类型",
+    },
+    {`\`a3s-box-runtime\``}: {
+      description: "VM 生命周期、OCI 镜像、热池、TEE、网络、gRPC 客户端",
+    },
+    {`\`a3s-box-cli\``}: {
+      description: "类 Docker CLI，52 个命令，状态持久化，输出格式化",
+    },
+    {`\`a3s-box-cri\``}: {
+      description: "Kubernetes 容器运行时接口（CRI）gRPC 实现",
+    },
+    {`\`a3s-box-shim\``}: {
+      description: "VM 子进程，通过 libkrun（HVF/KVM）桥接宿主机和 VM",
+    },
+    {`\`a3s-box-guest-init\``}: {
+      description: "Guest PID 1：挂载文件系统、启动服务、运行用户入口",
+    },
+    {`\`a3s-box-sdk\``}: {
+      description: "嵌入式沙箱 SDK：从 Rust 代码创建、执行、停止 MicroVM",
+    },
+  }
+/>
 
 ## VM 生命周期
 
@@ -66,24 +84,46 @@ Created ──→ Ready ──→ Busy ──→ Compacting ──→ Ready ─�
  (创建)     (启动)   (执行)    (上下文回收)    (完成)    (终止)
 ```
 
-| 状态 | 说明 |
-|------|------|
-| `Created` | 配置已捕获，VM 尚未启动 |
-| `Ready` | VM 已启动，Agent 已初始化，gRPC 健康 |
-| `Busy` | 会话正在活跃处理中 |
-| `Compacting` | 上下文压缩进行中 |
-| `Stopped` | VM 已终止，资源已释放 |
+<TypeTable
+  type={
+    {`\`Created\``}: {
+      description: "配置已捕获，VM 尚未启动",
+    },
+    {`\`Ready\``}: {
+      description: "VM 已启动，Agent 已初始化，gRPC 健康",
+    },
+    {`\`Busy\``}: {
+      description: "会话正在活跃处理中",
+    },
+    {`\`Compacting\``}: {
+      description: "上下文压缩进行中",
+    },
+    {`\`Stopped\``}: {
+      description: "VM 已终止，资源已释放",
+    },
+  }
+/>
 
 ## Vsock 通信
 
 宿主机与 Guest 通过 vsock（virtio socket）通信，各服务使用独立端口：
 
-| 端口 | 服务 | 协议 |
-|------|------|------|
-| 4088 | Agent 控制 | gRPC（健康检查、指标） |
-| 4089 | Exec 服务 | gRPC（命令执行） |
-| 4090 | PTY 服务 | gRPC（终端 I/O） |
-| 4091 | Attestation 服务 | gRPC + RA-TLS（TEE 操作） |
+<TypeTable
+  type={
+    "4088": {
+      description: "服务: Agent 控制 · 协议: gRPC（健康检查、指标）",
+    },
+    "4089": {
+      description: "服务: Exec 服务 · 协议: gRPC（命令执行）",
+    },
+    "4090": {
+      description: "服务: PTY 服务 · 协议: gRPC（终端 I/O）",
+    },
+    "4091": {
+      description: "服务: Attestation 服务 · 协议: gRPC + RA-TLS（TEE 操作）",
+    },
+  }
+/>
 
 ## 主要特性
 

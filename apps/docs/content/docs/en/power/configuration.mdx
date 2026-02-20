@@ -4,6 +4,7 @@ description: HCL/TOML configuration and Ollama-compatible environment variables
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Configuration
 
@@ -11,10 +12,16 @@ A3S Power supports both HCL and TOML configuration formats with full Ollama-comp
 
 ## Supported Formats
 
-| Format | Extension | Priority |
-|--------|-----------|----------|
-| HCL | `.hcl` | Primary (checked first) |
-| TOML | `.toml` | Secondary (fallback) |
+<TypeTable
+  type={
+    "HCL": {
+      description: {`Extension: \`.hcl\` · Priority: Primary (checked first)`},
+    },
+    "TOML": {
+      description: {`Extension: \`.toml\` · Priority: Secondary (fallback)`},
+    },
+  }
+/>
 
 The config file is auto-detected by extension. When using the default path (`~/.a3s/power/`), Power checks for `config.hcl` first, then falls back to `config.toml`.
 
@@ -71,12 +78,22 @@ tensor_split = []             # Multi-GPU work distribution
 
 Controls how long idle models stay loaded in memory:
 
-| Value | Behavior |
-|-------|----------|
-| `"5m"` | Unload after 5 minutes idle (default) |
-| `"1h"` | Unload after 1 hour idle |
-| `"0"` | Unload immediately after request |
-| `"-1"` | Never unload (keep forever) |
+<TypeTable
+  type={
+    {`\`"5m"\``}: {
+      description: "Unload after 5 minutes idle (default)",
+    },
+    {`\`"1h"\``}: {
+      description: "Unload after 1 hour idle",
+    },
+    {`\`"0"\``}: {
+      description: "Unload immediately after request",
+    },
+    {`\`"-1"\``}: {
+      description: "Never unload (keep forever)",
+    },
+  }
+/>
 
 ## GPU Configuration
 
@@ -114,26 +131,56 @@ GPU memory is estimated before loading to prevent OOM errors. If a model doesn't
 
 All Ollama environment variables are supported for drop-in compatibility:
 
-| Variable | Config Equivalent | Description |
-|----------|-------------------|-------------|
-| `OLLAMA_HOST` | `host` + `port` | Server bind address (e.g., `0.0.0.0:11434`) |
-| `OLLAMA_MODELS` | — | Model storage directory |
-| `OLLAMA_KEEP_ALIVE` | `keep_alive` | Default keep-alive duration |
-| `OLLAMA_MAX_LOADED_MODELS` | `max_loaded_models` | Max concurrent models |
-| `OLLAMA_NUM_GPU` | `gpu.gpu_layers` | GPU layers to offload |
-| `OLLAMA_NUM_PARALLEL` | `num_parallel` | Concurrent request slots |
-| `OLLAMA_DEBUG` | — | Enable debug logging |
-| `OLLAMA_ORIGINS` | `origins` | Custom CORS origins (comma-separated) |
-| `OLLAMA_FLASH_ATTENTION` | `flash_attention` | Global flash attention |
-| `OLLAMA_TMPDIR` | — | Custom temporary directory |
-| `OLLAMA_NOPRUNE` | `noprune` | Disable blob pruning |
-| `OLLAMA_SCHED_SPREAD` | `sched_spread` | Spread layers across GPUs |
+<TypeTable
+  type={
+    {`\`OLLAMA_HOST\``}: {
+      description: {`Config Equivalent: \`host\` + \`port\` · Description: Server bind address (e.g., \`0.0.0.0:11434\`)`},
+    },
+    {`\`OLLAMA_MODELS\``}: {
+      description: "Description: Model storage directory",
+    },
+    {`\`OLLAMA_KEEP_ALIVE\``}: {
+      description: {`Config Equivalent: \`keep_alive\` · Description: Default keep-alive duration`},
+    },
+    {`\`OLLAMA_MAX_LOADED_MODELS\``}: {
+      description: {`Config Equivalent: \`max_loaded_models\` · Description: Max concurrent models`},
+    },
+    {`\`OLLAMA_NUM_GPU\``}: {
+      description: {`Config Equivalent: \`gpu.gpu_layers\` · Description: GPU layers to offload`},
+    },
+    {`\`OLLAMA_NUM_PARALLEL\``}: {
+      description: {`Config Equivalent: \`num_parallel\` · Description: Concurrent request slots`},
+    },
+    {`\`OLLAMA_DEBUG\``}: {
+      description: "Description: Enable debug logging",
+    },
+    {`\`OLLAMA_ORIGINS\``}: {
+      description: {`Config Equivalent: \`origins\` · Description: Custom CORS origins (comma-separated)`},
+    },
+    {`\`OLLAMA_FLASH_ATTENTION\``}: {
+      description: {`Config Equivalent: \`flash_attention\` · Description: Global flash attention`},
+    },
+    {`\`OLLAMA_TMPDIR\``}: {
+      description: "Description: Custom temporary directory",
+    },
+    {`\`OLLAMA_NOPRUNE\``}: {
+      description: {`Config Equivalent: \`noprune\` · Description: Disable blob pruning`},
+    },
+    {`\`OLLAMA_SCHED_SPREAD\``}: {
+      description: {`Config Equivalent: \`sched_spread\` · Description: Spread layers across GPUs`},
+    },
+  }
+/>
 
 Power-specific:
 
-| Variable | Description |
-|----------|-------------|
-| `A3S_POWER_HOME` | Base directory (default: `~/.a3s/power/`) |
+<TypeTable
+  type={
+    {`\`A3S_POWER_HOME\``}: {
+      description: {`Base directory (default: \`~/.a3s/power/\`)`},
+    },
+  }
+/>
 
 Environment variables take precedence over config file values.
 

@@ -4,6 +4,7 @@ description: 8 lifecycle hooks for intercepting tool calls, LLM generations, ses
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 # Lifecycle Hooks
@@ -12,16 +13,34 @@ A3S Code provides 8 lifecycle hooks for intercepting and reacting to events duri
 
 ## Hook Events
 
-| Hook | Fires | Use Case |
-|------|-------|----------|
-| `PreToolUse` | Before tool execution | Validate args, taint tracking, block dangerous calls |
-| `PostToolUse` | After tool execution | Audit logging, injection scanning, output filtering |
-| `GenerateStart` | Before LLM call | Injection detection, prompt logging |
-| `GenerateEnd` | After LLM response | Output sanitization, PII redaction |
-| `SessionStart` | Session created | Initialize session resources |
-| `SessionEnd` | Session destroyed | Cleanup, persist state |
-| `SkillLoad` | Skill loaded | Validate skill, log activation |
-| `SkillUnload` | Skill unloaded | Cleanup skill resources |
+<TypeTable
+  type={
+    {`\`PreToolUse\``}: {
+      description: "Fires: Before tool execution · Use Case: Validate args, taint tracking, block dangerous calls",
+    },
+    {`\`PostToolUse\``}: {
+      description: "Fires: After tool execution · Use Case: Audit logging, injection scanning, output filtering",
+    },
+    {`\`GenerateStart\``}: {
+      description: "Fires: Before LLM call · Use Case: Injection detection, prompt logging",
+    },
+    {`\`GenerateEnd\``}: {
+      description: "Fires: After LLM response · Use Case: Output sanitization, PII redaction",
+    },
+    {`\`SessionStart\``}: {
+      description: "Fires: Session created · Use Case: Initialize session resources",
+    },
+    {`\`SessionEnd\``}: {
+      description: "Fires: Session destroyed · Use Case: Cleanup, persist state",
+    },
+    {`\`SkillLoad\``}: {
+      description: "Fires: Skill loaded · Use Case: Validate skill, log activation",
+    },
+    {`\`SkillUnload\``}: {
+      description: "Fires: Skill unloaded · Use Case: Cleanup skill resources",
+    },
+  }
+/>
 
 ## How Hooks Work
 
@@ -44,12 +63,22 @@ Agent Loop
 
 The `SecurityGuard` registers hooks at priority 1 (highest) automatically:
 
-| Hook | SecurityGuard Behavior |
-|------|----------------------|
-| `PreToolUse` | Taint tracking — checks if sensitive values leak into tool arguments |
-| `PostToolUse` | Injection scanning — detects prompt injection in tool outputs |
-| `GenerateStart` | Injection detection — scans user prompt for injection patterns |
-| `GenerateEnd` | Output sanitization — redacts PII from LLM responses |
+<TypeTable
+  type={
+    {`\`PreToolUse\``}: {
+      description: "Taint tracking — checks if sensitive values leak into tool arguments",
+    },
+    {`\`PostToolUse\``}: {
+      description: "Injection scanning — detects prompt injection in tool outputs",
+    },
+    {`\`GenerateStart\``}: {
+      description: "Injection detection — scans user prompt for injection patterns",
+    },
+    {`\`GenerateEnd\``}: {
+      description: "Output sanitization — redacts PII from LLM responses",
+    },
+  }
+/>
 
 ## Hook Registration (Rust)
 
@@ -116,12 +145,22 @@ match result {
 
 Hooks execute in priority order. Lower numbers run first.
 
-| Priority | Convention |
-|----------|-----------|
-| 1 | SecurityGuard (built-in, always runs first) |
-| 2-9 | Critical custom hooks (validation, blocking) |
-| 10-49 | Standard hooks (logging, telemetry) |
-| 50+ | Low-priority hooks (analytics, optional processing) |
+<TypeTable
+  type={
+    "1": {
+      description: "SecurityGuard (built-in, always runs first)",
+    },
+    "2-9": {
+      description: "Critical custom hooks (validation, blocking)",
+    },
+    "10-49": {
+      description: "Standard hooks (logging, telemetry)",
+    },
+    "50+": {
+      description: "Low-priority hooks (analytics, optional processing)",
+    },
+  }
+/>
 
 If any hook returns `HookResult::Block`, the operation is cancelled and subsequent hooks for that event are skipped.
 
@@ -274,12 +313,22 @@ Each hook event carries a typed payload with event-specific data:
 
 ### Hook registration
 
-| Method | Rust | Description |
-|--------|------|-------------|
-| Register hook | `session.register_hook(Hook::new(id, event_type))` | Register a hook listener |
-| Register handler | `session.register_hook_handler(id, Arc::new(handler))` | Attach handler to hook |
-| Unregister | `session.unregister_hook(id)` | Remove hook and handler |
-| Count | `session.hook_count()` | Number of registered hooks |
+<TypeTable
+  type={
+    "Register hook": {
+      description: {`Rust: \`session.register_hook(Hook::new(id, event_type))\` · Description: Register a hook listener`},
+    },
+    "Register handler": {
+      description: {`Rust: \`session.register_hook_handler(id, Arc::new(handler))\` · Description: Attach handler to hook`},
+    },
+    "Unregister": {
+      description: {`Rust: \`session.unregister_hook(id)\` · Description: Remove hook and handler`},
+    },
+    "Count": {
+      description: {`Rust: \`session.hook_count()\` · Description: Number of registered hooks`},
+    },
+  }
+/>
 
 ### HookHandler trait (Rust)
 
@@ -297,11 +346,19 @@ impl HookHandler for MyHandler {
 
 ### HookResponse values
 
-| Value | Effect |
-|-------|--------|
-| `HookResponse::continue_()` | Allow the operation to proceed |
-| `HookResponse::block(reason)` | Cancel the operation with a reason string |
-| `HookResponse::modify(data)` | Replace event data before execution |
+<TypeTable
+  type={
+    {`\`HookResponse::continue_()\``}: {
+      description: "Allow the operation to proceed",
+    },
+    {`\`HookResponse::block(reason)\``}: {
+      description: "Cancel the operation with a reason string",
+    },
+    {`\`HookResponse::modify(data)\``}: {
+      description: "Replace event data before execution",
+    },
+  }
+/>
 
 ### Hook priority
 

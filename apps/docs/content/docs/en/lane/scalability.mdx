@@ -3,6 +3,8 @@ title: Scalability
 description: Rate limiting, priority boosting, queue partitioning, and distributed queues
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Scalability
 
 A3S Lane includes features for scaling from a single-core prototype to multi-core and multi-machine deployments: rate limiting, priority boosting, queue partitioning, and a distributed queue interface.
@@ -96,12 +98,22 @@ let config = PartitionConfig::none();
 
 ### Strategy Comparison
 
-| Strategy | Distribution | Ordering | Use Case |
-|----------|-------------|----------|----------|
-| `None` | Single queue | Strict FIFO | Simple workloads |
-| `RoundRobin` | Even spread | Per-partition FIFO | Balanced throughput |
-| `Hash` | By command type | Per-type FIFO | Type-affinity (caching) |
-| `Auto` | Per-core | Per-partition FIFO | Maximum parallelism |
+<TypeTable
+  type={
+    {`\`None\``}: {
+      description: "Distribution: Single queue · Ordering: Strict FIFO · Use Case: Simple workloads",
+    },
+    {`\`RoundRobin\``}: {
+      description: "Distribution: Even spread · Ordering: Per-partition FIFO · Use Case: Balanced throughput",
+    },
+    {`\`Hash\``}: {
+      description: "Distribution: By command type · Ordering: Per-type FIFO · Use Case: Type-affinity (caching)",
+    },
+    {`\`Auto\``}: {
+      description: "Distribution: Per-core · Ordering: Per-partition FIFO · Use Case: Maximum parallelism",
+    },
+  }
+/>
 
 ## Distributed Queue
 
@@ -199,13 +211,31 @@ let queue = LocalDistributedQueue::auto();
 
 ### Production Checklist
 
-| Feature | When to Enable |
-|---------|---------------|
-| Retry policies | Always (at least `exponential(2)`) |
-| Dead letter queue | Always (inspect failures) |
-| Persistent storage | When commands must survive restarts |
-| Metrics | Production environments |
-| Alerts | When SLA compliance matters |
-| Rate limiting | External API calls, shared resources |
-| Priority boosting | Mixed priority workloads |
-| Partitioning | CPU-bound, high-throughput |
+<TypeTable
+  type={
+    "Retry policies": {
+      description: {`Always (at least \`exponential(2)\`)`},
+    },
+    "Dead letter queue": {
+      description: "Always (inspect failures)",
+    },
+    "Persistent storage": {
+      description: "When commands must survive restarts",
+    },
+    "Metrics": {
+      description: "Production environments",
+    },
+    "Alerts": {
+      description: "When SLA compliance matters",
+    },
+    "Rate limiting": {
+      description: "External API calls, shared resources",
+    },
+    "Priority boosting": {
+      description: "Mixed priority workloads",
+    },
+    "Partitioning": {
+      description: "CPU-bound, high-throughput",
+    },
+  }
+/>

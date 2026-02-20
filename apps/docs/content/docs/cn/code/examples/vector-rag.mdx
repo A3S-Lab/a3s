@@ -4,6 +4,7 @@ description: 通过向量嵌入实现语义代码搜索
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # 向量 RAG
@@ -184,19 +185,35 @@ db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
 
 ### SessionOptions
 
-| 选项 | Rust | Python | Node.js | 默认值 |
-|--------|------|--------|---------|---------|
-| 文件系统上下文 | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` | `None` |
-| 自定义上下文提供者 | `.with_context_provider(Arc::new(p))` | _（基于配置）_ | _（基于配置）_ | `None` |
+<TypeTable
+  type={
+    "文件系统上下文": {
+      description: {`Rust: \`.with_fs_context(path)\` · Python: \`fs_context=path\` · Node.js: \`fsContext: path\` · 默认值: \`None\``},
+    },
+    "自定义上下文提供者": {
+      description: {`Rust: \`.with_context_provider(Arc::new(p))\` · Python: _（基于配置）_ · Node.js: _（基于配置）_ · 默认值: \`None\``},
+    },
+  }
+/>
 
 ### VectorContextConfig（Rust）
 
-| 方法 | 描述 | 默认值 |
-|--------|-------------|---------|
-| `VectorContextConfig::new(path)` | 设置工作区根目录 | — |
-| `.with_min_relevance(f)` | 最小余弦相似度分数 | `0.3` |
-| `.with_max_results(n)` | 每次查询返回的最大分块数 | `10` |
-| `.with_chunk_size(n)` | 每个分块的最大字符数 | `1500` |
+<TypeTable
+  type={
+    {`\`VectorContextConfig::new(path)\``}: {
+      description: "描述: 设置工作区根目录",
+    },
+    {`\`.with_min_relevance(f)\``}: {
+      description: {`描述: 最小余弦相似度分数 · 默认值: \`0.3\``},
+    },
+    {`\`.with_max_results(n)\``}: {
+      description: {`描述: 每次查询返回的最大分块数 · 默认值: \`10\``},
+    },
+    {`\`.with_chunk_size(n)\``}: {
+      description: {`描述: 每个分块的最大字符数 · 默认值: \`1500\``},
+    },
+  }
+/>
 
 ### HCL 配置（Python / Node.js）
 
@@ -211,7 +228,13 @@ context {
 
 ### codesearch 工具 schema
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `query` | `string` | 自然语言搜索查询 |
-| `limit` | `number` | 最大结果数（默认：`10`） |
+<TypeTable
+  type={
+    {`\`query\``}: {
+      description: {`类型: \`string\` · 描述: 自然语言搜索查询`},
+    },
+    {`\`limit\``}: {
+      description: {`类型: \`number\` · 描述: 最大结果数（默认：\`10\`）`},
+    },
+  }
+/>

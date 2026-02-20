@@ -3,15 +3,25 @@ title: Sandbox SDK
 description: Complete API reference for Rust, Python, and TypeScript SDKs
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Sandbox SDK
 
 Create, execute, and manage MicroVM sandboxes programmatically — no CLI or daemon required. All three SDKs wrap the same Rust runtime and provide identical capabilities.
 
-| SDK | Package | Version |
-|-----|---------|---------|
-| Rust | `a3s-box-sdk` crate | 0.5.3 |
-| Python | `pip install a3s-box` | 0.5.3 |
-| TypeScript | `npm install @a3s-lab/box` | 0.5.3 |
+<TypeTable
+  type={
+    "Rust": {
+      description: {`Package: \`a3s-box-sdk\` crate · Version: 0.5.3`},
+    },
+    "Python": {
+      description: {`Package: \`pip install a3s-box\` · Version: 0.5.3`},
+    },
+    "TypeScript": {
+      description: {`Package: \`npm install @a3s-lab/box\` · Version: 0.5.3`},
+    },
+  }
+/>
 
 ---
 
@@ -518,17 +528,43 @@ await sandbox.stop();
 
 ## Capabilities Summary
 
-| Feature | Rust | Python | TypeScript |
-|---------|:----:|:------:|:----------:|
-| `create` / `stop` | ✅ | ✅ | ✅ |
-| `exec` (buffered) | ✅ | ✅ | ✅ |
-| `exec_stream` (real-time) | ✅ | ✅ | ✅ |
-| `upload` / `download` | ✅ | ✅ | ✅ |
-| Port forwarding | ✅ | ✅ | ✅ |
-| Persistent workspaces | ✅ | ✅ | ✅ |
-| `pause` / `resume` | ✅ | ✅ | ✅ |
-| Interactive PTY | ✅ | — | — |
-| Embedded shim | ✅ | — | — |
-| Per-exec metrics | ✅ | ✅ | ✅ |
-| Context manager | — | ✅ | — |
-| TEE (SEV-SNP) | ✅ | ✅ | ✅ |
+<TypeTable
+  type={
+    {`\`create\` / \`stop\``}: {
+      description: "Rust: ✅ · Python: ✅ · TypeScript: ✅",
+    },
+    {`\`exec\` (buffered)`}: {
+      description: "Rust: ✅ · Python: ✅ · TypeScript: ✅",
+    },
+    {`\`exec_stream\` (real-time)`}: {
+      description: "Rust: ✅ · Python: ✅ · TypeScript: ✅",
+    },
+    {`\`upload\` / \`download\``}: {
+      description: "Rust: ✅ · Python: ✅ · TypeScript: ✅",
+    },
+    "Port forwarding": {
+      description: "Rust: ✅ · Python: ✅ · TypeScript: ✅",
+    },
+    "Persistent workspaces": {
+      description: "Rust: ✅ · Python: ✅ · TypeScript: ✅",
+    },
+    {`\`pause\` / \`resume\``}: {
+      description: "Rust: ✅ · Python: ✅ · TypeScript: ✅",
+    },
+    "Interactive PTY": {
+      description: "Rust: ✅",
+    },
+    "Embedded shim": {
+      description: "Rust: ✅",
+    },
+    "Per-exec metrics": {
+      description: "Rust: ✅ · Python: ✅ · TypeScript: ✅",
+    },
+    "Context manager": {
+      description: "Python: ✅",
+    },
+    "TEE (SEV-SNP)": {
+      description: "Rust: ✅ · Python: ✅ · TypeScript: ✅",
+    },
+  }
+/>

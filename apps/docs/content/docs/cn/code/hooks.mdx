@@ -4,6 +4,7 @@ description: 8 个生命周期 hooks 用于拦截工具调用、LLM 生成、会
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 # 生命周期 Hooks
@@ -12,16 +13,34 @@ A3S Code 提供 8 个生命周期 hooks，用于在 agent 执行期间拦截和�
 
 ## Hook 事件
 
-| Hook | 触发时机 | 使用场景 |
-|------|-------|----------|
-| `PreToolUse` | 工具执行前 | 验证参数、污点追踪、阻止危险调用 |
-| `PostToolUse` | 工具执行后 | 审计日志、注入扫描、输出过滤 |
-| `GenerateStart` | LLM 调用前 | 注入检测、提示日志 |
-| `GenerateEnd` | LLM 响应后 | 输出清洗、PII 脱敏 |
-| `SessionStart` | 会话创建时 | 初始化会话资源 |
-| `SessionEnd` | 会话销毁时 | 清理、持久化状态 |
-| `SkillLoad` | Skill 加载时 | 验证 skill、记录激活 |
-| `SkillUnload` | Skill 卸载时 | 清理 skill 资源 |
+<TypeTable
+  type={
+    {`\`PreToolUse\``}: {
+      description: "触发时机: 工具执行前 · 使用场景: 验证参数、污点追踪、阻止危险调用",
+    },
+    {`\`PostToolUse\``}: {
+      description: "触发时机: 工具执行后 · 使用场景: 审计日志、注入扫描、输出过滤",
+    },
+    {`\`GenerateStart\``}: {
+      description: "触发时机: LLM 调用前 · 使用场景: 注入检测、提示日志",
+    },
+    {`\`GenerateEnd\``}: {
+      description: "触发时机: LLM 响应后 · 使用场景: 输出清洗、PII 脱敏",
+    },
+    {`\`SessionStart\``}: {
+      description: "触发时机: 会话创建时 · 使用场景: 初始化会话资源",
+    },
+    {`\`SessionEnd\``}: {
+      description: "触发时机: 会话销毁时 · 使用场景: 清理、持久化状态",
+    },
+    {`\`SkillLoad\``}: {
+      description: "触发时机: Skill 加载时 · 使用场景: 验证 skill、记录激活",
+    },
+    {`\`SkillUnload\``}: {
+      description: "触发时机: Skill 卸载时 · 使用场景: 清理 skill 资源",
+    },
+  }
+/>
 
 ## Hooks 工作原理
 
@@ -44,12 +63,22 @@ Agent 循环
 
 `SecurityGuard` 以优先级 1（最高）自动注册 hooks：
 
-| Hook | SecurityGuard 行为 |
-|------|----------------------|
-| `PreToolUse` | 污点追踪 — 检查敏感值是否泄漏到工具参数中 |
-| `PostToolUse` | 注入扫描 — 检测工具输出中的提示注入 |
-| `GenerateStart` | 注入检测 — 扫描用户提示中的注入模式 |
-| `GenerateEnd` | 输出清洗 — 从 LLM 响应中脱敏 PII |
+<TypeTable
+  type={
+    {`\`PreToolUse\``}: {
+      description: "污点追踪 — 检查敏感值是否泄漏到工具参数中",
+    },
+    {`\`PostToolUse\``}: {
+      description: "注入扫描 — 检测工具输出中的提示注入",
+    },
+    {`\`GenerateStart\``}: {
+      description: "注入检测 — 扫描用户提示中的注入模式",
+    },
+    {`\`GenerateEnd\``}: {
+      description: "输出清洗 — 从 LLM 响应中脱敏 PII",
+    },
+  }
+/>
 
 ## Hook 注册（Rust）
 
@@ -116,12 +145,22 @@ match result {
 
 Hooks 按优先级顺序执行。数字越小越先运行。
 
-| 优先级 | 约定 |
-|----------|-----------|
-| 1 | SecurityGuard（内置，始终最先运行） |
-| 2-9 | 关键自定义 hooks（验证、阻止） |
-| 10-49 | 标准 hooks（日志、遥测） |
-| 50+ | 低优先级 hooks（分析、可选处理） |
+<TypeTable
+  type={
+    "1": {
+      description: "SecurityGuard（内置，始终最先运行）",
+    },
+    "2-9": {
+      description: "关键自定义 hooks（验证、阻止）",
+    },
+    "10-49": {
+      description: "标准 hooks（日志、遥测）",
+    },
+    "50+": {
+      description: "低优先级 hooks（分析、可选处理）",
+    },
+  }
+/>
 
 如果任何 hook 返回 `HookResult::Block`，操作会被取消，该事件的后续 hooks 会被跳过。
 
@@ -132,49 +171,103 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 <Accordions>
 <Accordion title="PreToolUse — PreToolUseEvent">
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `session_id` | `String` | 会话标识符 |
-| `tool` | `String` | 被调用的工具名称 |
-| `args` | `Value` | 工具参数 |
-| `working_directory` | `String` | 当前工作区路径 |
-| `recent_tools` | `Vec<String>` | 最近调用的工具 |
+<TypeTable
+  type={
+    {`\`session_id\``}: {
+      description: {`类型: \`String\` · 描述: 会话标识符`},
+    },
+    {`\`tool\``}: {
+      description: {`类型: \`String\` · 描述: 被调用的工具名称`},
+    },
+    {`\`args\``}: {
+      description: {`类型: \`Value\` · 描述: 工具参数`},
+    },
+    {`\`working_directory\``}: {
+      description: {`类型: \`String\` · 描述: 当前工作区路径`},
+    },
+    {`\`recent_tools\``}: {
+      description: {`类型: \`Vec<String>\` · 描述: 最近调用的工具`},
+    },
+  }
+/>
 
 </Accordion>
 <Accordion title="PostToolUse — PostToolUseEvent">
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `session_id` | `String` | 会话标识符 |
-| `tool` | `String` | 工具名称 |
-| `args` | `Value` | 工具参数 |
-| `result.success` | `bool` | 工具是否成功 |
-| `result.output` | `String` | 工具输出文本 |
-| `result.exit_code` | `i32` | 退出码 |
-| `result.duration_ms` | `u64` | 执行时间 |
+<TypeTable
+  type={
+    {`\`session_id\``}: {
+      description: {`类型: \`String\` · 描述: 会话标识符`},
+    },
+    {`\`tool\``}: {
+      description: {`类型: \`String\` · 描述: 工具名称`},
+    },
+    {`\`args\``}: {
+      description: {`类型: \`Value\` · 描述: 工具参数`},
+    },
+    {`\`result.success\``}: {
+      description: {`类型: \`bool\` · 描述: 工具是否成功`},
+    },
+    {`\`result.output\``}: {
+      description: {`类型: \`String\` · 描述: 工具输出文本`},
+    },
+    {`\`result.exit_code\``}: {
+      description: {`类型: \`i32\` · 描述: 退出码`},
+    },
+    {`\`result.duration_ms\``}: {
+      description: {`类型: \`u64\` · 描述: 执行时间`},
+    },
+  }
+/>
 
 </Accordion>
 <Accordion title="GenerateStart — GenerateStartEvent">
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `session_id` | `String` | 会话标识符 |
-| `prompt` | `String` | 用户提示 |
-| `system_prompt` | `String` | 系统提示 |
-| `model_provider` | `String` | 提供商名称 |
-| `model_name` | `String` | 模型名称 |
-| `available_tools` | `Vec<String>` | 已注册的工具名称 |
+<TypeTable
+  type={
+    {`\`session_id\``}: {
+      description: {`类型: \`String\` · 描述: 会话标识符`},
+    },
+    {`\`prompt\``}: {
+      description: {`类型: \`String\` · 描述: 用户提示`},
+    },
+    {`\`system_prompt\``}: {
+      description: {`类型: \`String\` · 描述: 系统提示`},
+    },
+    {`\`model_provider\``}: {
+      description: {`类型: \`String\` · 描述: 提供商名称`},
+    },
+    {`\`model_name\``}: {
+      description: {`类型: \`String\` · 描述: 模型名称`},
+    },
+    {`\`available_tools\``}: {
+      description: {`类型: \`Vec<String>\` · 描述: 已注册的工具名称`},
+    },
+  }
+/>
 
 </Accordion>
 <Accordion title="GenerateEnd — GenerateEndEvent">
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `session_id` | `String` | 会话标识符 |
-| `response_text` | `String` | LLM 响应 |
-| `tool_calls` | `Vec<String>` | 本轮调用的工具 |
-| `usage.total_tokens` | `u32` | Token 使用量 |
-| `duration_ms` | `u64` | 生成时间 |
+<TypeTable
+  type={
+    {`\`session_id\``}: {
+      description: {`类型: \`String\` · 描述: 会话标识符`},
+    },
+    {`\`response_text\``}: {
+      description: {`类型: \`String\` · 描述: LLM 响应`},
+    },
+    {`\`tool_calls\``}: {
+      description: {`类型: \`Vec<String>\` · 描述: 本轮调用的工具`},
+    },
+    {`\`usage.total_tokens\``}: {
+      description: {`类型: \`u32\` · 描述: Token 使用量`},
+    },
+    {`\`duration_ms\``}: {
+      description: {`类型: \`u64\` · 描述: 生成时间`},
+    },
+  }
+/>
 
 </Accordion>
 <Accordion title="SessionStart / SessionEnd">
@@ -197,12 +290,22 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 
 ### Hook 注册
 
-| 方法 | Rust | 描述 |
-|--------|------|-------------|
-| 注册 hook | `session.register_hook(Hook::new(id, event_type))` | 注册 hook 监听器 |
-| 注册处理器 | `session.register_hook_handler(id, Arc::new(handler))` | 将处理器附加到 hook |
-| 注销 | `session.unregister_hook(id)` | 移除 hook 和处理器 |
-| 计数 | `session.hook_count()` | 已注册的 hooks 数量 |
+<TypeTable
+  type={
+    "注册 hook": {
+      description: {`Rust: \`session.register_hook(Hook::new(id, event_type))\` · 描述: 注册 hook 监听器`},
+    },
+    "注册处理器": {
+      description: {`Rust: \`session.register_hook_handler(id, Arc::new(handler))\` · 描述: 将处理器附加到 hook`},
+    },
+    "注销": {
+      description: {`Rust: \`session.unregister_hook(id)\` · 描述: 移除 hook 和处理器`},
+    },
+    "计数": {
+      description: {`Rust: \`session.hook_count()\` · 描述: 已注册的 hooks 数量`},
+    },
+  }
+/>
 
 ### HookHandler trait（Rust）
 
@@ -220,11 +323,19 @@ impl HookHandler for MyHandler {
 
 ### HookResponse 值
 
-| 值 | 效果 |
-|-------|--------|
-| `HookResponse::continue_()` | 允许操作继续 |
-| `HookResponse::block(reason)` | 以原因字符串取消操作 |
-| `HookResponse::modify(data)` | 在执行前替换事件数据 |
+<TypeTable
+  type={
+    {`\`HookResponse::continue_()\``}: {
+      description: "允许操作继续",
+    },
+    {`\`HookResponse::block(reason)\``}: {
+      description: "以原因字符串取消操作",
+    },
+    {`\`HookResponse::modify(data)\``}: {
+      description: "在执行前替换事件数据",
+    },
+  }
+/>
 
 ### Hook 优先级
 

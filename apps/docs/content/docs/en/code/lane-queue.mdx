@@ -4,6 +4,7 @@ description: Priority-based tool execution with parallel reads and multi-machine
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Lane Queue
@@ -18,12 +19,22 @@ Fully integrated with A3S Lane v0.4.0 — includes retry policies, rate limiting
 
 Each tool call is mapped to a **lane** based on its type:
 
-| Lane | Priority | Tools | Behavior |
-|------|----------|-------|----------|
-| Control | P0 (highest) | pause, resume, cancel | Sequential |
-| Query | P1 | read, glob, grep, ls, search, list_files, web_fetch, web_search | **Parallel** |
-| Execute | P2 | bash, write, edit, delete, move, copy | Sequential |
-| Generate | P3 (lowest) | LLM calls | Sequential |
+<TypeTable
+  type={
+    "Control": {
+      description: "Priority: P0 (highest) · Tools: pause, resume, cancel · Behavior: Sequential",
+    },
+    "Query": {
+      description: "Priority: P1 · Tools: read, glob, grep, ls, search, list_files, web_fetch, web_search · Behavior: Parallel",
+    },
+    "Execute": {
+      description: "Priority: P2 · Tools: bash, write, edit, delete, move, copy · Behavior: Sequential",
+    },
+    "Generate": {
+      description: "Priority: P3 (lowest) · Tools: LLM calls · Behavior: Sequential",
+    },
+  }
+/>
 
 Higher-priority lanes are scheduled before lower-priority lanes — a Query (P1) task submitted after Execute (P2) tasks will be scheduled ahead of queued Execute tasks. See [Lane-Based Priority Preemption Examples](/docs/code/examples#lane-based-priority-preemption-examples) for multi-language SDK demos.
 
@@ -345,11 +356,19 @@ Any lane can be switched to **External** mode, where tool calls in that lane are
 
 ### Handler Modes
 
-| Mode | Behavior | Use Case |
-|------|----------|----------|
-| `Internal` | Execute within the runtime (default) | Normal local execution |
-| `External` | Emit task to SDK, wait for callback | Multi-machine offloading |
-| `Hybrid` | Execute locally AND notify SDK | Monitoring, audit, shadow execution |
+<TypeTable
+  type={
+    {`\`Internal\``}: {
+      description: "Behavior: Execute within the runtime (default) · Use Case: Normal local execution",
+    },
+    {`\`External\``}: {
+      description: "Behavior: Emit task to SDK, wait for callback · Use Case: Multi-machine offloading",
+    },
+    {`\`Hybrid\``}: {
+      description: "Behavior: Execute locally AND notify SDK · Use Case: Monitoring, audit, shadow execution",
+    },
+  }
+/>
 
 ### ExternalTask
 

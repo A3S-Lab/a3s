@@ -4,6 +4,7 @@ description: 使用外部任务处理器的多机器协调者/Worker 模式
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # 外部任务
@@ -16,11 +17,19 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## 处理器模式
 
-| 模式 | 描述 |
-|------|-------------|
-| `Internal` | 任务在进程内执行（默认） |
-| `External` | 任务分发到外部 worker |
-| `Hybrid` | 先尝试外部，失败后回退到内部 |
+<TypeTable
+  type={
+    {`\`Internal\``}: {
+      description: "任务在进程内执行（默认）",
+    },
+    {`\`External\``}: {
+      description: "任务分发到外部 worker",
+    },
+    {`\`Hybrid\``}: {
+      description: "先尝试外部，失败后回退到内部",
+    },
+  }
+/>
 
 ## 基本外部处理器
 
@@ -172,23 +181,45 @@ results.forEach((r) => console.log(r.text));
 
 ### LaneHandlerConfig
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `mode` | `"internal"` \| `"external"` \| `"hybrid"` | 任务执行模式 |
-| `timeout_ms` | `Option<u64>` | 等待外部 worker 响应的最大时间 |
+<TypeTable
+  type={
+    {`\`mode\``}: {
+      description: {`类型: \`"internal"\` \\ · 描述: \`"external"\` \\`},
+    },
+    {`\`timeout_ms\``}: {
+      description: {`类型: \`Option<u64>\` · 描述: 等待外部 worker 响应的最大时间`},
+    },
+  }
+/>
 
 ### 外部任务方法
 
-| 方法 | Rust | Python | Node.js |
-|--------|------|--------|---------|
-| 设置处理器 | `session.set_external_task_handler(fn).await` | `session.set_external_task_handler(fn)` | `session.setExternalTaskHandler(fn)` |
-| 轮询待处理 | `session.pending_external_tasks().await` | `await session.pending_external_tasks()` | `await session.pendingExternalTasks()` |
-| 完成任务 | `session.complete_external_task(id, result).await` | `await session.complete_external_task(id, result)` | `await session.completeExternalTask(id, result)` |
+<TypeTable
+  type={
+    "设置处理器": {
+      description: {`Rust: \`session.set_external_task_handler(fn).await\` · Python: \`session.set_external_task_handler(fn)\` · Node.js: \`session.setExternalTaskHandler(fn)\``},
+    },
+    "轮询待处理": {
+      description: {`Rust: \`session.pending_external_tasks().await\` · Python: \`await session.pending_external_tasks()\` · Node.js: \`await session.pendingExternalTasks()\``},
+    },
+    "完成任务": {
+      description: {`Rust: \`session.complete_external_task(id, result).await\` · Python: \`await session.complete_external_task(id, result)\` · Node.js: \`await session.completeExternalTask(id, result)\``},
+    },
+  }
+/>
 
 ### ExternalTaskResult 字段
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `success` | `bool` | 任务是否成功完成 |
-| `result` | `Option<Value>` | 任务输出载荷 |
-| `error` | `Option<String>` | `success` 为 `false` 时的错误消息 |
+<TypeTable
+  type={
+    {`\`success\``}: {
+      description: {`类型: \`bool\` · 描述: 任务是否成功完成`},
+    },
+    {`\`result\``}: {
+      description: {`类型: \`Option<Value>\` · 描述: 任务输出载荷`},
+    },
+    {`\`error\``}: {
+      description: {`类型: \`Option<String>\` · 描述: \`success\` 为 \`false\` 时的错误消息`},
+    },
+  }
+/>

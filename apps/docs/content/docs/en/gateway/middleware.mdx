@@ -3,6 +3,8 @@ title: Middleware
 description: 15 built-in middlewares for authentication, rate limiting, CORS, and more
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Middleware
 
 A3S Gateway provides 15 built-in middlewares that can be composed into ordered pipelines. Returning a response from `handle_request` short-circuits the pipeline.
@@ -195,20 +197,61 @@ entrypoints "tcp-db" {
 
 ## Summary
 
-| Type | Returns | Description |
-|------|---------|-------------|
-| `jwt` | 401 | JWT Bearer token validation |
-| `api-key` | 401 | Header-based API key check |
-| `basic-auth` | 401 | HTTP Basic authentication |
-| `forward-auth` | 401 | External auth delegation |
-| `rate-limit` | 429 | In-memory token bucket |
-| `rate-limit-redis` | 429 | Distributed token bucket (Redis) |
-| `cors` | — | CORS headers + preflight |
-| `headers` | — | Request/response header manipulation |
-| `strip-prefix` | — | Path prefix removal |
-| `body-limit` | 413 | Max request body size |
-| `retry` | — | Retry on backend failure |
-| `circuit-breaker` | 503 | Closed/Open/HalfOpen state machine |
-| `ip-allow` | 403 | CIDR/IP allowlist |
-| `compress` | — | brotli/gzip/deflate compression |
-| `tcp-filter` | — | TCP connection limit + IP filter |
+<TypeTable
+  type={
+    {`\`jwt\``}: {
+      type: "401",
+      description: "JWT Bearer token validation",
+    },
+    {`\`api-key\``}: {
+      type: "401",
+      description: "Header-based API key check",
+    },
+    {`\`basic-auth\``}: {
+      type: "401",
+      description: "HTTP Basic authentication",
+    },
+    {`\`forward-auth\``}: {
+      type: "401",
+      description: "External auth delegation",
+    },
+    {`\`rate-limit\``}: {
+      type: "429",
+      description: "In-memory token bucket",
+    },
+    {`\`rate-limit-redis\``}: {
+      type: "429",
+      description: "Distributed token bucket (Redis)",
+    },
+    {`\`cors\``}: {
+      description: "CORS headers + preflight",
+    },
+    {`\`headers\``}: {
+      description: "Request/response header manipulation",
+    },
+    {`\`strip-prefix\``}: {
+      description: "Path prefix removal",
+    },
+    {`\`body-limit\``}: {
+      type: "413",
+      description: "Max request body size",
+    },
+    {`\`retry\``}: {
+      description: "Retry on backend failure",
+    },
+    {`\`circuit-breaker\``}: {
+      type: "503",
+      description: "Closed/Open/HalfOpen state machine",
+    },
+    {`\`ip-allow\``}: {
+      type: "403",
+      description: "CIDR/IP allowlist",
+    },
+    {`\`compress\``}: {
+      description: "brotli/gzip/deflate compression",
+    },
+    {`\`tcp-filter\``}: {
+      description: "TCP connection limit + IP filter",
+    },
+  }
+/>

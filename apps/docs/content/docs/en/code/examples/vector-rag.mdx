@@ -4,6 +4,7 @@ description: Semantic code search via vector embeddings
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # Vector RAG
@@ -184,10 +185,16 @@ db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
 
 ### SessionOptions
 
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| Filesystem context | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` | `None` |
-| Custom context provider | `.with_context_provider(Arc::new(p))` | _(config-based)_ | _(config-based)_ | `None` |
+<TypeTable
+  type={
+    "Filesystem context": {
+      description: {`Rust: \`.with_fs_context(path)\` · Python: \`fs_context=path\` · Node.js: \`fsContext: path\` · Default: \`None\``},
+    },
+    "Custom context provider": {
+      description: {`Rust: \`.with_context_provider(Arc::new(p))\` · Python: _(config-based)_ · Node.js: _(config-based)_ · Default: \`None\``},
+    },
+  }
+/>
 
 ### VectorContextConfig (Rust)
 

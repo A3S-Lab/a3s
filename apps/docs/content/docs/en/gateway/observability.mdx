@@ -3,20 +3,36 @@ title: Observability
 description: Prometheus metrics, structured logging, distributed tracing, and dashboard API
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Observability
 
 A3S Gateway provides built-in Prometheus metrics, structured access logging, distributed tracing, and a dashboard API.
 
 ## Dashboard API
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /api/gateway/health` | Health status (JSON) |
-| `GET /api/gateway/metrics` | Prometheus metrics (text) |
-| `GET /api/gateway/config` | Current configuration (JSON) |
-| `GET /api/gateway/routes` | Active routes (JSON) |
-| `GET /api/gateway/services` | Active services and backends (JSON) |
-| `GET /api/gateway/version` | Build version info (JSON) |
+<TypeTable
+  type={
+    {`\`GET /api/gateway/health\``}: {
+      description: "Health status (JSON)",
+    },
+    {`\`GET /api/gateway/metrics\``}: {
+      description: "Prometheus metrics (text)",
+    },
+    {`\`GET /api/gateway/config\``}: {
+      description: "Current configuration (JSON)",
+    },
+    {`\`GET /api/gateway/routes\``}: {
+      description: "Active routes (JSON)",
+    },
+    {`\`GET /api/gateway/services\``}: {
+      description: "Active services and backends (JSON)",
+    },
+    {`\`GET /api/gateway/version\``}: {
+      description: "Build version info (JSON)",
+    },
+  }
+/>
 
 ### Health Response
 
@@ -97,13 +113,25 @@ a3s-gateway --config gateway.hcl --log-level debug
 RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.hcl
 ```
 
-| Level | Description |
-|-------|-------------|
-| `error` | Failures, backend errors, TLS errors |
-| `warn` | Rate limit hits, unhealthy backends, config issues |
-| `info` | Startup, shutdown, reload, access logs |
-| `debug` | Routing decisions, middleware execution |
-| `trace` | Raw bytes, header details, connection lifecycle |
+<TypeTable
+  type={
+    {`\`error\``}: {
+      description: "Failures, backend errors, TLS errors",
+    },
+    {`\`warn\``}: {
+      description: "Rate limit hits, unhealthy backends, config issues",
+    },
+    {`\`info\``}: {
+      description: "Startup, shutdown, reload, access logs",
+    },
+    {`\`debug\``}: {
+      description: "Routing decisions, middleware execution",
+    },
+    {`\`trace\``}: {
+      description: "Raw bytes, header details, connection lifecycle",
+    },
+  }
+/>
 
 ## Distributed Tracing
 

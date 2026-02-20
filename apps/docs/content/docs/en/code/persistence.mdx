@@ -4,6 +4,7 @@ description: Pluggable session storage backends for conversation persistence
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Session Persistence
 
@@ -96,11 +97,19 @@ sessions_dir/
 
 ## Session API
 
-| Method | Description |
-|--------|-------------|
-| `session_id()` | Return the session's unique ID |
-| `save()` | Persist current history to the store (no-op if no store) |
-| `agent.resume_session(id, opts)` | Load a saved session and restore history |
+<TypeTable
+  type={
+    {`\`session_id()\``}: {
+      description: "Return the session's unique ID",
+    },
+    {`\`save()\``}: {
+      description: "Persist current history to the store (no-op if no store)",
+    },
+    {`\`agent.resume_session(id, opts)\``}: {
+      description: "Load a saved session and restore history",
+    },
+  }
+/>
 
 ## Auto-Save
 
@@ -139,31 +148,59 @@ let session = agent.session(".", Some(
 
 What gets persisted per session:
 
-| Field | Description |
-|-------|-------------|
-| `id` | Session identifier |
-| `messages` | Full conversation history |
-| `config.workspace` | Workspace path |
-| `config.system_prompt` | System prompt |
-| `config.planning_enabled` | Planning flag |
-| `tool_names` | Tool names (rebuilt on resume) |
+<TypeTable
+  type={
+    {`\`id\``}: {
+      description: "Session identifier",
+    },
+    {`\`messages\``}: {
+      description: "Full conversation history",
+    },
+    {`\`config.workspace\``}: {
+      description: "Workspace path",
+    },
+    {`\`config.system_prompt\``}: {
+      description: "System prompt",
+    },
+    {`\`config.planning_enabled\``}: {
+      description: "Planning flag",
+    },
+    {`\`tool_names\``}: {
+      description: "Tool names (rebuilt on resume)",
+    },
+  }
+/>
 
 ## API Reference
 
 ### SessionOptions
 
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| Custom store | `.with_session_store(Arc::new(s))` | _(Rust only)_ | _(Rust only)_ | `FileSessionStore` |
+<TypeTable
+  type={
+    "Custom store": {
+      description: {`Rust: \`.with_session_store(Arc::new(s))\` · Python: _(Rust only)_ · Node.js: _(Rust only)_ · Default: \`FileSessionStore\``},
+    },
+  }
+/>
 
 ### SessionStore trait (Rust)
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `save` | `async fn save(&self, data: &SessionData) -> Result<()>` | Persist session data |
-| `load` | `async fn load(&self, id: &str) -> Result<Option<SessionData>>` | Load session by ID |
-| `delete` | `async fn delete(&self, id: &str) -> Result<()>` | Remove session |
-| `list` | `async fn list(&self) -> Result<Vec<String>>` | List all session IDs |
+<TypeTable
+  type={
+    {`\`save\``}: {
+      description: {`Signature: \`async fn save(&self, data: &SessionData) -> Result<()>\` · Description: Persist session data`},
+    },
+    {`\`load\``}: {
+      description: {`Signature: \`async fn load(&self, id: &str) -> Result<Option<SessionData>>\` · Description: Load session by ID`},
+    },
+    {`\`delete\``}: {
+      description: {`Signature: \`async fn delete(&self, id: &str) -> Result<()>\` · Description: Remove session`},
+    },
+    {`\`list\``}: {
+      description: {`Signature: \`async fn list(&self) -> Result<Vec<String>>\` · Description: List all session IDs`},
+    },
+  }
+/>
 
 ### SessionData fields
 
@@ -183,9 +220,19 @@ What gets persisted per session:
 
 ### Session management methods
 
-| Method | Rust | Description |
-|--------|------|-------------|
-| Save session | `session.save().await?` | Persist current state |
-| Load session | `agent.resume(id, options?)?` | Resume from stored state |
-| List sessions | `agent.list_sessions().await?` | List all saved session IDs |
-| Delete session | `agent.delete_session(id).await?` | Remove stored session |
+<TypeTable
+  type={
+    "Save session": {
+      description: {`Rust: \`session.save().await?\` · Description: Persist current state`},
+    },
+    "Load session": {
+      description: {`Rust: \`agent.resume(id, options?)?\` · Description: Resume from stored state`},
+    },
+    "List sessions": {
+      description: {`Rust: \`agent.list_sessions().await?\` · Description: List all saved session IDs`},
+    },
+    "Delete session": {
+      description: {`Rust: \`agent.delete_session(id).await?\` · Description: Remove stored session`},
+    },
+  }
+/>

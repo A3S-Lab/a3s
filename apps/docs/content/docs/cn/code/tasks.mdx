@@ -4,6 +4,7 @@ description: 统一任务系统：规划、追踪和并行执行
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 
@@ -189,20 +190,34 @@ Wave 分组:
 
 ## TaskStatus
 
-| 状态 | 描述 |
-|--------|-------------|
-| `Pending` | 等待执行 |
-| `InProgress` | 正在执行 |
-| `Completed` | 执行成功 |
-| `Failed` | 执行失败 |
+<TypeTable
+  type={
+    {`\`Pending\``}: {
+      description: "等待执行",
+    },
+    {`\`InProgress\``}: {
+      description: "正在执行",
+    },
+    {`\`Completed\``}: {
+      description: "执行成功",
+    },
+    {`\`Failed\``}: {
+      description: "执行失败",
+    },
+  }
+/>
 
 ## 事件
 
 任务相关的流式事件：
 
-| 事件 | 触发时机 |
-|-------|------|
-| `TaskUpdated` | 任务列表变更（新增、状态更新） |
+<TypeTable
+  type={
+    {`\`TaskUpdated\``}: {
+      description: "任务列表变更（新增、状态更新）",
+    },
+  }
+/>
 
 参见 [会话](/cn/docs/code/sessions) 获取完整事件参考。
 
@@ -210,16 +225,32 @@ Wave 分组:
 
 ### SessionOptions
 
-| 选项 | Rust | Python | Node.js | 默认值 |
-|--------|------|--------|---------|---------|
-| 规划 | `.with_planning(true)` | `planning=True` | `planning: true` | `false` |
-| 目标追踪 | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` | `false` |
+<TypeTable
+  type={
+    "规划": {
+      description: {`Rust: \`.with_planning(true)\` · Python: \`planning=True\` · Node.js: \`planning: true\` · 默认值: \`false\``},
+    },
+    "目标追踪": {
+      description: {`Rust: \`.with_goal_tracking(true)\` · Python: \`goal_tracking=True\` · Node.js: \`goalTracking: true\` · 默认值: \`false\``},
+    },
+  }
+/>
 
 ### TaskInfo
 
-| 字段 | 类型 | 描述 |
-|-------|------|-------------|
-| `id` | `String` | 任务唯一标识 |
-| `description` | `String` | 任务描述 |
-| `status` | `TaskStatus` | 当前状态 |
-| `dependencies` | `Vec<String>` | 前置任务 ID 列表 |
+<TypeTable
+  type={
+    {`\`id\``}: {
+      description: {`类型: \`String\` · 描述: 任务唯一标识`},
+    },
+    {`\`description\``}: {
+      description: {`类型: \`String\` · 描述: 任务描述`},
+    },
+    {`\`status\``}: {
+      description: {`类型: \`TaskStatus\` · 描述: 当前状态`},
+    },
+    {`\`dependencies\``}: {
+      description: {`类型: \`Vec<String>\` · 描述: 前置任务 ID 列表`},
+    },
+  }
+/>

@@ -3,6 +3,8 @@ title: MCP 支持
 description: 通过 Model Context Protocol 扩展 agent 的外部工具
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # MCP 支持
 
 A3S Code 支持 [Model Context Protocol](https://modelcontextprotocol.io/)（MCP）来集成外部工具服务器。当服务器连接时，MCP 工具会自动注册到 ToolExecutor 中。
@@ -11,10 +13,16 @@ A3S Code 支持 [Model Context Protocol](https://modelcontextprotocol.io/)（MCP
 
 A3S Code 支持两种 MCP 传输方式：
 
-| 传输方式 | 协议 | 使用场景 |
-|-----------|----------|----------|
-| `stdio` | JSON-RPC 2.0 over stdin/stdout | 本地工具、基于 CLI 的服务器 |
-| `http+sse` | JSON-RPC 2.0 over HTTP + Server-Sent Events | 远程服务器、共享基础设施 |
+<TypeTable
+  type={
+    {`\`stdio\``}: {
+      description: "协议: JSON-RPC 2.0 over stdin/stdout · 使用场景: 本地工具、基于 CLI 的服务器",
+    },
+    {`\`http+sse\``}: {
+      description: "协议: JSON-RPC 2.0 over HTTP + Server-Sent Events · 使用场景: 远程服务器、共享基础设施",
+    },
+  }
+/>
 
 ## 配置
 
@@ -109,30 +117,62 @@ mcp_servers {
 
 ### MCP 服务器配置字段
 
-| 字段 | 类型 | 必填 | 描述 |
-|-------|------|----------|-------------|
-| `name` | `string` | ✅ | 服务器标识符（用于工具名称前缀） |
-| `command` | `string` | ✅ | 要启动的可执行文件 |
-| `args` | `string[]` | ❌ | 命令参数 |
-| `env` | `object` | ❌ | 环境变量 |
-| `timeout_ms` | `number` | ❌ | 工具执行超时（默认：`60000`） |
-| `transport` | `string` | ❌ | `stdio`（默认）或 `http` |
+<TypeTable
+  type={
+    {`\`name\``}: {
+      description: {`类型: \`string\` · 必填: ✅ · 描述: 服务器标识符（用于工具名称前缀）`},
+    },
+    {`\`command\``}: {
+      description: {`类型: \`string\` · 必填: ✅ · 描述: 要启动的可执行文件`},
+    },
+    {`\`args\``}: {
+      description: {`类型: \`string[]\` · 必填: ❌ · 描述: 命令参数`},
+    },
+    {`\`env\``}: {
+      description: {`类型: \`object\` · 必填: ❌ · 描述: 环境变量`},
+    },
+    {`\`timeout_ms\``}: {
+      description: {`类型: \`number\` · 必填: ❌ · 描述: 工具执行超时（默认：\`60000\`）`},
+    },
+    {`\`transport\``}: {
+      description: {`类型: \`string\` · 必填: ❌ · 描述: \`stdio\`（默认）或 \`http\``},
+    },
+  }
+/>
 
 ### McpTransport trait（Rust）
 
-| 方法 | 签名 | 描述 |
-|--------|-----------|-------------|
-| `connect` | `async fn connect(&mut self) -> Result<()>` | 建立到 MCP 服务器的连接 |
-| `list_tools` | `async fn list_tools(&self) -> Result<Vec<McpTool>>` | 发现可用工具 |
-| `call_tool` | `async fn call_tool(&self, name: &str, args: Value) -> Result<Value>` | 调用工具 |
-| `disconnect` | `async fn disconnect(&mut self) -> Result<()>` | 关闭连接 |
+<TypeTable
+  type={
+    {`\`connect\``}: {
+      description: {`签名: \`async fn connect(&mut self) -> Result<()>\` · 描述: 建立到 MCP 服务器的连接`},
+    },
+    {`\`list_tools\``}: {
+      description: {`签名: \`async fn list_tools(&self) -> Result<Vec<McpTool>>\` · 描述: 发现可用工具`},
+    },
+    {`\`call_tool\``}: {
+      description: {`签名: \`async fn call_tool(&self, name: &str, args: Value) -> Result<Value>\` · 描述: 调用工具`},
+    },
+    {`\`disconnect\``}: {
+      description: {`签名: \`async fn disconnect(&mut self) -> Result<()>\` · 描述: 关闭连接`},
+    },
+  }
+/>
 
 ### 工具命名
 
 MCP 工具命名为 `mcp__{server}__{tool}`。在权限规则中使用此前缀：
 
-| 模式 | 匹配 |
-|---------|---------|
-| `mcp__filesystem` | `filesystem` 服务器的所有工具 |
-| `mcp__github__create_issue` | 特定工具 |
-| `mcp__*` | 所有 MCP 工具 |
+<TypeTable
+  type={
+    {`\`mcp__filesystem\``}: {
+      description: {`\`filesystem\` 服务器的所有工具`},
+    },
+    {`\`mcp__github__create_issue\``}: {
+      description: "特定工具",
+    },
+    {`\`mcp__*\``}: {
+      description: "所有 MCP 工具",
+    },
+  }
+/>

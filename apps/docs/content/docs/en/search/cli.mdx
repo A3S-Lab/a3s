@@ -3,6 +3,8 @@ title: CLI
 description: Command-line interface for quick searches with multiple output formats
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # CLI
 
 A3S Search includes a command-line tool for quick searches from the terminal.
@@ -63,14 +65,34 @@ a3s-search "Rust 编程" -e baidu,bing_cn
 
 ## Options
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `-e, --engines` | Comma-separated engine shortcuts | `ddg,wiki` |
-| `-l, --limit` | Max number of results | `10` |
-| `-t, --timeout` | Timeout in seconds | `10` |
-| `-p, --proxy` | Proxy URL (HTTP/HTTPS/SOCKS5) | None |
-| `-f, --format` | Output format: `default`, `json`, `compact` | `default` |
-| `-v, --verbose` | Enable verbose logging | `false` |
+<TypeTable
+  type={
+    {`\`-e, --engines\``}: {
+      description: "Comma-separated engine shortcuts",
+      default: {`\`ddg,wiki\``},
+    },
+    {`\`-l, --limit\``}: {
+      description: "Max number of results",
+      default: {`\`10\``},
+    },
+    {`\`-t, --timeout\``}: {
+      description: "Timeout in seconds",
+      default: {`\`10\``},
+    },
+    {`\`-p, --proxy\``}: {
+      description: "Proxy URL (HTTP/HTTPS/SOCKS5)",
+      default: "None",
+    },
+    {`\`-f, --format\``}: {
+      description: {`Output format: \`default\`, \`json\`, \`compact\``},
+      default: {`\`default\``},
+    },
+    {`\`-v, --verbose\``}: {
+      description: "Enable verbose logging",
+      default: {`\`false\``},
+    },
+  }
+/>
 
 ## Output Formats
 
@@ -115,17 +137,37 @@ Tab-separated output: `score\ttitle\turl` — useful for piping to other tools.
 a3s-search engines
 ```
 
-| Shortcut | Engine | Method |
-|----------|--------|--------|
-| `ddg` | DuckDuckGo | HTTP |
-| `brave` | Brave Search | HTTP |
-| `bing` | Bing International | HTTP |
-| `wiki` | Wikipedia | JSON API |
-| `sogou` | Sogou (搜狗) | HTTP |
-| `360` | 360 Search (360搜索) | HTTP |
-| `g` | Google | Headless |
-| `baidu` | Baidu (百度) | Headless |
-| `bing_cn` | Bing China (必应中国) | Headless |
+<TypeTable
+  type={
+    {`\`ddg\``}: {
+      description: "Engine: DuckDuckGo · Method: HTTP",
+    },
+    {`\`brave\``}: {
+      description: "Engine: Brave Search · Method: HTTP",
+    },
+    {`\`bing\``}: {
+      description: "Engine: Bing International · Method: HTTP",
+    },
+    {`\`wiki\``}: {
+      description: "Engine: Wikipedia · Method: JSON API",
+    },
+    {`\`sogou\``}: {
+      description: "Engine: Sogou (搜狗) · Method: HTTP",
+    },
+    {`\`360\``}: {
+      description: "Engine: 360 Search (360搜索) · Method: HTTP",
+    },
+    {`\`g\``}: {
+      description: "Engine: Google · Method: Headless",
+    },
+    {`\`baidu\``}: {
+      description: "Engine: Baidu (百度) · Method: Headless",
+    },
+    {`\`bing_cn\``}: {
+      description: "Engine: Bing China (必应中国) · Method: Headless",
+    },
+  }
+/>
 
 ## Proxy
 

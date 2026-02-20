@@ -3,6 +3,8 @@ title: Privacy Classification
 description: PII detection, sensitivity levels, policy engine, and compliance checks
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Privacy Classification
 
 SafeClaw provides multi-level PII classification with pluggable backends, a policy engine for routing decisions, and compliance checks for HIPAA, PCI-DSS, and GDPR.
@@ -179,11 +181,19 @@ curl -X POST http://localhost:18790/api/v1/privacy/scan \
   -d '{"text": "Patient diagnosis: diabetes. Card: 4111-1111-1111-1111"}'
 ```
 
-| Standard | Detects |
-|----------|---------|
-| HIPAA | Medical records, diagnoses, patient IDs, health insurance numbers |
-| PCI-DSS | Credit card numbers, CVVs, expiration dates |
-| GDPR | Personal data, consent indicators, data subject identifiers |
+<TypeTable
+  type={
+    "HIPAA": {
+      description: "Medical records, diagnoses, patient IDs, health insurance numbers",
+    },
+    "PCI-DSS": {
+      description: "Credit card numbers, CVVs, expiration dates",
+    },
+    "GDPR": {
+      description: "Personal data, consent indicators, data subject identifiers",
+    },
+  }
+/>
 
 ## Cumulative Risk Tracking
 

@@ -3,6 +3,8 @@ title: Leakage Prevention
 description: Taint tracking, output sanitization, injection detection, tool interception, and network firewall
 ---
 
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
 # Leakage Prevention
 
 SafeClaw prevents data leakage through five complementary mechanisms: taint tracking, output sanitization, injection detection, tool call interception, and network firewalling.
@@ -40,13 +42,25 @@ pub struct TaintRegistry {
 
 When a value is registered, the registry automatically generates variants:
 
-| Variant | Example (for `user@example.com`) |
-|---------|----------------------------------|
-| Original | `user@example.com` |
-| Base64 | `dXNlckBleGFtcGxlLmNvbQ==` |
-| Hex | `75736572406578616d706c652e636f6d` |
-| URL-encoded | `user%40example.com` |
-| Reversed | `moc.elpmaxe@resu` |
+<TypeTable
+  type={
+    "Original": {
+      description: {`\`user@example.com\``},
+    },
+    "Base64": {
+      description: {`\`dXNlckBleGFtcGxlLmNvbQ==\``},
+    },
+    "Hex": {
+      description: {`\`75736572406578616d706c652e636f6d\``},
+    },
+    "URL-encoded": {
+      description: {`\`user%40example.com\``},
+    },
+    "Reversed": {
+      description: {`\`moc.elpmaxe@resu\``},
+    },
+  }
+/>
 
 This catches attempts to exfiltrate data through encoding transformations.
 

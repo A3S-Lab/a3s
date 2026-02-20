@@ -4,6 +4,7 @@ description: Define specialized subagents with isolated permissions, custom prom
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Subagents
 
@@ -11,13 +12,25 @@ Subagents are specialized agents that run in isolated child sessions with their 
 
 ## Built-in Subagents
 
-| Agent | Description | Max Steps | Permissions |
-|-------|-------------|-----------|-------------|
-| `explore` | Fast codebase exploration (read-only) | 20 | read, grep, glob, ls |
-| `general` | General-purpose multi-step execution | 50 | Full tool access |
-| `plan` | Architecture and planning (read-only) | 30 | read, grep, glob |
-| `title` | Session title generation (hidden) | 1 | None |
-| `summary` | Session summarization (hidden) | 5 | read |
+<TypeTable
+  type={
+    {`\`explore\``}: {
+      description: "Description: Fast codebase exploration (read-only) · Max Steps: 20 · Permissions: read, grep, glob, ls",
+    },
+    {`\`general\``}: {
+      description: "Description: General-purpose multi-step execution · Max Steps: 50 · Permissions: Full tool access",
+    },
+    {`\`plan\``}: {
+      description: "Description: Architecture and planning (read-only) · Max Steps: 30 · Permissions: read, grep, glob",
+    },
+    {`\`title\``}: {
+      description: "Description: Session title generation (hidden) · Max Steps: 1 · Permissions: None",
+    },
+    {`\`summary\``}: {
+      description: "Description: Session summarization (hidden) · Max Steps: 5 · Permissions: read",
+    },
+  }
+/>
 
 ## Defining Custom Subagents
 
@@ -504,10 +517,22 @@ Both built-in and custom agents are available by name. Custom agents loaded from
 
 ### Built-in agents
 
-| Agent | Description |
-|-------|-------------|
-| `code-reviewer` | Reviews code for style, security, and correctness |
-| `test-writer` | Generates unit and integration tests |
-| `doc-writer` | Writes documentation from code |
-| `refactorer` | Refactors code for clarity and performance |
-| `debugger` | Diagnoses and fixes bugs |
+<TypeTable
+  type={
+    {`\`code-reviewer\``}: {
+      description: "Reviews code for style, security, and correctness",
+    },
+    {`\`test-writer\``}: {
+      description: "Generates unit and integration tests",
+    },
+    {`\`doc-writer\``}: {
+      description: "Writes documentation from code",
+    },
+    {`\`refactorer\``}: {
+      description: "Refactors code for clarity and performance",
+    },
+    {`\`debugger\``}: {
+      description: "Diagnoses and fixes bugs",
+    },
+  }
+/>
