@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -12,6 +14,9 @@ import {
   Database,
   Github,
   Package,
+  Lock,
+  Zap,
+  Puzzle,
 } from 'lucide-react';
 import { LangDropdown } from '@/components/lang-dropdown';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -21,13 +26,49 @@ import { ThemeToggle } from '@/components/theme-toggle';
 const t = {
   en: {
     badge: 'Open Source · MIT License · Built in Rust',
-    heroTitle1: 'The',
-    heroGradient: 'Agent Operating System',
-    heroTitle2: 'for Production AI',
+    heroTitle1: 'Run AI Agents',
+    heroGradient: 'Inside Hardware-Isolated VMs',
     heroSub:
-      'A modular Rust ecosystem for building, running, and securing AI agents at scale — VM isolation, privacy-aware security, and agentic evolution built in.',
+      'A3S is a modular Rust ecosystem for production AI agents — hardware TEE isolation, privacy-aware security, and a full agent framework in one coherent stack.',
     getStarted: 'Get Started',
     viewGithub: 'View on GitHub',
+
+    // Why A3S
+    whyLabel: 'Why A3S',
+    whyHeading: 'The problems A3S solves',
+    whySub: 'Most agent frameworks ignore the hard parts. A3S is built around them.',
+    pillars: [
+      {
+        icon: Lock,
+        title: 'Hardware isolation by default',
+        body: 'Every agent runs inside a MicroVM backed by AMD SEV-SNP or Intel TDX. The host cannot read agent memory. Attestation is built in, not bolted on.',
+      },
+      {
+        icon: Shield,
+        title: 'Privacy-aware at every layer',
+        body: 'SafeClaw classifies PII, tracks data taint through tool calls, detects prompt injection, and audits every interaction — before it reaches the LLM.',
+      },
+      {
+        icon: Zap,
+        title: 'Production-grade performance',
+        body: 'Lane delivers 33k–50k ops/sec priority scheduling. Box cold-starts VMs in ~200ms. Power runs local LLMs with RA-TLS attestation. All in pure Rust.',
+      },
+      {
+        icon: Puzzle,
+        title: 'Composable, not monolithic',
+        body: 'Use Code standalone, add Box for isolation, plug in SafeClaw for security. Every module has a trait interface — swap any piece without touching the rest.',
+      },
+    ],
+
+    // Stats
+    statsLabel: 'By the numbers',
+    stats: [
+      { value: '3,700+', label: 'unit tests' },
+      { value: '~200ms', label: 'VM cold start' },
+      { value: '50k', label: 'ops/sec (Lane)' },
+      { value: '9', label: 'search engines' },
+    ],
+
     frameworkLabel: 'Framework',
     frameworkHeading: 'Build agents, not boilerplate',
     appsLabel: 'Applications',
@@ -45,13 +86,47 @@ const t = {
   },
   cn: {
     badge: '开源 · MIT 协议 · Rust 构建',
-    heroTitle1: '',
-    heroGradient: 'Agent 操作系统',
-    heroTitle2: '面向生产环境的 AI 基础设施',
+    heroTitle1: '在硬件隔离的 VM 中',
+    heroGradient: '安全运行 AI Agent',
     heroSub:
-      '模块化 Rust 生态，用于大规模构建、运行和保护 AI Agent — 内置 VM 隔离、隐私感知安全和 Agent 进化能力。',
+      'A3S 是面向生产环境的模块化 Rust 生态 — 硬件 TEE 隔离、隐私感知安全和完整的 Agent 框架，构成一套连贯的技术栈。',
     getStarted: '快速开始',
     viewGithub: '查看 GitHub',
+
+    whyLabel: '为什么选 A3S',
+    whyHeading: 'A3S 解决的核心问题',
+    whySub: '大多数 Agent 框架回避了最难的部分，A3S 恰恰围绕它们而构建。',
+    pillars: [
+      {
+        icon: Lock,
+        title: '默认硬件隔离',
+        body: '每个 Agent 运行在由 AMD SEV-SNP 或 Intel TDX 支持的 MicroVM 中。宿主机无法读取 Agent 内存，远程证明内置而非外挂。',
+      },
+      {
+        icon: Shield,
+        title: '每一层都感知隐私',
+        body: 'SafeClaw 对 PII 分类、追踪工具调用中的数据污点、检测提示词注入，并在数据到达 LLM 之前审计每次交互。',
+      },
+      {
+        icon: Zap,
+        title: '生产级性能',
+        body: 'Lane 提供 33k–50k ops/sec 优先级调度，Box VM 冷启动约 200ms，Power 支持带 RA-TLS 证明的本地 LLM 推理，全部纯 Rust 实现。',
+      },
+      {
+        icon: Puzzle,
+        title: '可组合，非单体',
+        body: '单独使用 Code，加入 Box 获得隔离，接入 SafeClaw 增强安全。每个模块都有 trait 接口——替换任意组件无需改动其余部分。',
+      },
+    ],
+
+    statsLabel: '数字说话',
+    stats: [
+      { value: '3,700+', label: '单元测试' },
+      { value: '~200ms', label: 'VM 冷启动' },
+      { value: '50k', label: 'ops/sec（Lane）' },
+      { value: '9', label: '搜索引擎' },
+    ],
+
     frameworkLabel: '框架',
     frameworkHeading: '构建 Agent，而非样板代码',
     appsLabel: '应用',
@@ -121,8 +196,8 @@ function getModules(lang: Lang) {
       tag: lang === 'cn' ? 'API 网关' : 'API Gateway',
       description:
         lang === 'cn'
-          ? 'K8s Ingress Controller — 反向代理、中间件、Webhooks、TLS/ACME。'
-          : 'K8s Ingress Controller — reverse proxy, middlewares, webhooks, TLS/ACME.',
+          ? '15 个中间件、Knative 自动扩缩容、HCL 配置热重载、TLS/ACME。'
+          : '15 middlewares, Knative autoscaling, HCL hot-reload, TLS/ACME.',
       href: `${base}/docs/gateway`,
       icon: Globe,
       lightColor: 'bg-sky-50 text-sky-600',
@@ -133,8 +208,8 @@ function getModules(lang: Lang) {
       tag: lang === 'cn' ? '安全代理' : 'Security Proxy',
       description:
         lang === 'cn'
-          ? '隐私感知安全 — PII 分类、污点追踪、注入检测、审计。'
-          : 'Privacy-aware security — PII classification, taint tracking, injection detection, audit.',
+          ? 'PII 分类、污点追踪、注入检测、合规审计（HIPAA / PCI-DSS / GDPR）。'
+          : 'PII classification, taint tracking, injection detection, compliance audit (HIPAA / PCI-DSS / GDPR).',
       href: `${base}/docs/safeclaw`,
       icon: Shield,
       lightColor: 'bg-rose-50 text-rose-600',
@@ -148,8 +223,8 @@ function getModules(lang: Lang) {
       tag: lang === 'cn' ? '优先级队列' : 'Priority Queue',
       description:
         lang === 'cn'
-          ? '多通道调度 — 重试/DLQ、限流、OpenTelemetry。'
-          : 'Multi-lane scheduling — retry/DLQ, rate limiting, OpenTelemetry.',
+          ? '6 条内置通道、重试/DLQ、限流、持久化存储、33k–50k ops/sec。'
+          : '6 built-in lanes, retry/DLQ, rate limiting, persistent storage, 33k–50k ops/sec.',
       href: `${base}/docs/lane`,
       icon: Layers,
       lightColor: 'bg-amber-50 text-amber-600',
@@ -160,8 +235,8 @@ function getModules(lang: Lang) {
       tag: lang === 'cn' ? '发布/订阅' : 'Pub/Sub',
       description:
         lang === 'cn'
-          ? '可插拔事件总线 — NATS + 内存模式、Schema 校验、加密。'
-          : 'Pluggable event bus — NATS + in-memory, schema validation, encryption.',
+          ? '可插拔事件总线 — NATS JetStream + 内存模式、Schema 校验、AES-256-GCM 加密。'
+          : 'Pluggable event bus — NATS JetStream + in-memory, schema validation, AES-256-GCM encryption.',
       href: `${base}/docs/event`,
       icon: Radio,
       lightColor: 'bg-pink-50 text-pink-600',
@@ -172,8 +247,8 @@ function getModules(lang: Lang) {
       tag: lang === 'cn' ? '元搜索' : 'Meta Search',
       description:
         lang === 'cn'
-          ? '多引擎网络搜索 — 共识排名、Google、Bing 等。'
-          : 'Multi-engine web search — consensus ranking, Google, Bing, and more.',
+          ? '9 个引擎共识排名 — DuckDuckGo、Brave、Google、百度，支持代理轮换。'
+          : '9-engine consensus ranking — DuckDuckGo, Brave, Google, Baidu, proxy rotation.',
       href: `${base}/docs/search`,
       icon: Search,
       lightColor: 'bg-teal-50 text-teal-600',
@@ -181,11 +256,11 @@ function getModules(lang: Lang) {
     },
     {
       name: 'Memory',
-      tag: lang === 'cn' ? '存储' : 'Storage',
+      tag: lang === 'cn' ? '记忆存储' : 'Memory Storage',
       description:
         lang === 'cn'
-          ? '可插拔记忆存储 — MemoryStore trait、FileMemoryStore、相关性评分。'
-          : 'Pluggable memory storage — MemoryStore trait, FileMemoryStore, relevance scoring.',
+          ? '情节 / 语义 / 程序 / 工作记忆，原子写入持久化，相关性衰减评分。'
+          : 'Episodic / semantic / procedural / working memory, atomic persistence, relevance decay scoring.',
       href: `${base}/docs/memory`,
       icon: Database,
       lightColor: 'bg-indigo-50 text-indigo-600',
@@ -206,21 +281,10 @@ const installSnippets = [
 // ─── ModuleCard ───────────────────────────────────────────────────────────────
 
 function ModuleCard({
-  name,
-  tag,
-  description,
-  href,
-  icon: Icon,
-  lightColor,
-  darkColor,
+  name, tag, description, href, icon: Icon, lightColor, darkColor,
 }: {
-  name: string;
-  tag: string;
-  description: string;
-  href: string;
-  icon: React.ElementType;
-  lightColor: string;
-  darkColor: string;
+  name: string; tag: string; description: string; href: string;
+  icon: React.ElementType; lightColor: string; darkColor: string;
 }) {
   return (
     <Link
@@ -259,48 +323,21 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
   return (
     <main
       className="min-h-screen"
-      style={{
-        background: 'var(--ct-bg)',
-        fontFamily: 'var(--ct-font)',
-        color: 'var(--ct-text)',
-      }}
+      style={{ background: 'var(--ct-bg)', fontFamily: 'var(--ct-font)', color: 'var(--ct-text)' }}
     >
       {/* ── Nav ── */}
       <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href={lang === 'cn' ? '/cn' : '/'} className="flex items-center gap-2">
-            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-xl font-extrabold tracking-tight text-transparent">
-              A3S
-            </span>
+            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-xl font-extrabold tracking-tight text-transparent">A3S</span>
             <span className="text-sm font-medium text-slate-400 dark:text-slate-500">Docs</span>
           </Link>
           <div className="flex items-center gap-1">
-            <Link
-              href={docsHref}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-            >
-              {tr.docsLink}
-            </Link>
-            <Link
-              href={lang === 'cn' ? '/cn/tutorials/deep-research' : '/tutorials/deep-research'}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-            >
-              {lang === 'cn' ? '教程' : 'Tutorials'}
-            </Link>
-            <Link
-              href="/blog"
-              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-            >
-              Blog
-            </Link>
-            <Link
-              href="https://github.com/A3S-Lab"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 sm:flex"
-            >
-              <Github className="h-4 w-4" />
-              GitHub
+            <Link href={docsHref} className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100">{tr.docsLink}</Link>
+            <Link href={lang === 'cn' ? '/cn/tutorials/deep-research' : '/tutorials/deep-research'} className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100">{lang === 'cn' ? '教程' : 'Tutorials'}</Link>
+            <Link href="/blog" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100">Blog</Link>
+            <Link href="https://github.com/A3S-Lab" target="_blank" rel="noopener noreferrer" className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 sm:flex">
+              <Github className="h-4 w-4" />GitHub
             </Link>
             <LangDropdown />
             <ThemeToggle />
@@ -310,57 +347,62 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:py-36">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-40 left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full opacity-20 blur-3xl dark:opacity-10"
-          style={{ background: 'radial-gradient(circle, #4F46E5, #7C3AED)' }}
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-20 right-0 h-[400px] w-[400px] rounded-full opacity-10 blur-3xl dark:opacity-5"
-          style={{ background: 'radial-gradient(circle, #7C3AED, #4F46E5)' }}
-        />
-
+        <div aria-hidden="true" className="pointer-events-none absolute -top-40 left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full opacity-20 blur-3xl dark:opacity-10" style={{ background: 'radial-gradient(circle, #4F46E5, #7C3AED)' }} />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-20 right-0 h-[400px] w-[400px] rounded-full opacity-10 blur-3xl dark:opacity-5" style={{ background: 'radial-gradient(circle, #7C3AED, #4F46E5)' }} />
         <div className="relative mx-auto max-w-4xl text-center">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 dark:border-indigo-800/60 dark:bg-indigo-950/50">
             <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
             <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">{tr.badge}</span>
           </div>
-
-          <h1
-            className="mb-6 text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl"
-            style={{ letterSpacing: '-0.02em' }}
-          >
-            {tr.heroTitle1 && <>{tr.heroTitle1}{' '}</>}
-            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-              {tr.heroGradient}
-            </span>
-            <br />
-            {tr.heroTitle2}
+          <h1 className="mb-6 text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl" style={{ letterSpacing: '-0.02em' }}>
+            {tr.heroTitle1}{' '}
+            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">{tr.heroGradient}</span>
           </h1>
-
-          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-500 dark:text-slate-400 sm:text-xl">
-            {tr.heroSub}
-          </p>
-
+          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-500 dark:text-slate-400 sm:text-xl">{tr.heroSub}</p>
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <Link
-              href={docsHref}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-7 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5"
-              style={{ boxShadow: 'var(--ct-shadow-btn)' }}
-            >
-              {tr.getStarted}
-              <ArrowRight className="h-4 w-4" />
+            <Link href={docsHref} className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-7 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:-translate-y-0.5" style={{ boxShadow: 'var(--ct-shadow-btn)' }}>
+              {tr.getStarted}<ArrowRight className="h-4 w-4" />
             </Link>
-            <Link
-              href="https://github.com/A3S-Lab"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700"
-            >
-              <Github className="h-4 w-4" />
-              {tr.viewGithub}
+            <Link href="https://github.com/A3S-Lab" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700">
+              <Github className="h-4 w-4" />{tr.viewGithub}
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Stats ── */}
+      <section className="border-y border-slate-100 bg-slate-50/60 px-4 py-10 dark:border-slate-800 dark:bg-slate-900/40 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <p className="mb-6 text-center text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">{tr.statsLabel}</p>
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+            {tr.stats.map(({ value, label }) => (
+              <div key={label} className="text-center">
+                <div className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">{value}</div>
+                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Why A3S ── */}
+      <section className="px-4 py-20 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-12 text-center">
+            <span className="text-xs font-semibold uppercase tracking-widest text-indigo-500">{tr.whyLabel}</span>
+            <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">{tr.whyHeading}</h2>
+            <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-500 dark:text-slate-400">{tr.whySub}</p>
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {tr.pillars.map(({ icon: Icon, title, body }) => (
+              <div key={title} className="rounded-xl border border-slate-100 bg-white p-6 dark:border-slate-700 dark:bg-slate-800/60">
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400">
+                  <Icon className="h-5 w-5" strokeWidth={2} />
+                </div>
+                <h3 className="mb-2 text-base font-bold text-slate-900 dark:text-slate-100">{title}</h3>
+                <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{body}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -372,11 +414,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
             <span className="text-xs font-semibold uppercase tracking-widest text-indigo-500">{tr.frameworkLabel}</span>
             <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{tr.frameworkHeading}</h2>
           </div>
-          <div className="max-w-xl">
-            {frameworks.map((m) => (
-              <ModuleCard key={m.name} {...m} />
-            ))}
-          </div>
+          <div className="max-w-xl">{frameworks.map((m) => <ModuleCard key={m.name} {...m} />)}</div>
         </div>
       </section>
 
@@ -388,9 +426,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
             <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{tr.appsHeading}</h2>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {applications.map((m) => (
-              <ModuleCard key={m.name} {...m} />
-            ))}
+            {applications.map((m) => <ModuleCard key={m.name} {...m} />)}
           </div>
         </div>
       </section>
@@ -403,9 +439,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
             <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{tr.libsHeading}</h2>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {libraries.map((m) => (
-              <ModuleCard key={m.name} {...m} />
-            ))}
+            {libraries.map((m) => <ModuleCard key={m.name} {...m} />)}
           </div>
         </div>
       </section>
@@ -413,10 +447,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
       {/* ── Install ── */}
       <section className="px-4 py-16 sm:px-6">
         <div className="mx-auto max-w-7xl">
-          <div
-            className="overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-800/60"
-            style={{ boxShadow: 'var(--ct-shadow-card)' }}
-          >
+          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-800/60" style={{ boxShadow: 'var(--ct-shadow-card)' }}>
             <div className="border-b border-slate-100 px-8 py-6 dark:border-slate-700">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-900/40">
@@ -431,15 +462,8 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
             <div className="grid grid-cols-1 divide-y divide-slate-100 dark:divide-slate-700 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
               {installSnippets.map(({ label, cmd }) => (
                 <div key={label} className="px-8 py-5">
-                  <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                    {label}
-                  </span>
-                  <code
-                    className="block rounded-lg bg-slate-50 px-4 py-3 font-mono text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-300"
-                    style={{ fontFamily: "'JetBrains Mono', monospace" }}
-                  >
-                    {cmd}
-                  </code>
+                  <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">{label}</span>
+                  <code className="block rounded-lg bg-slate-50 px-4 py-3 font-mono text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-300" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{cmd}</code>
                 </div>
               ))}
             </div>
@@ -450,34 +474,17 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
       {/* ── CTA ── */}
       <section className="px-4 py-20 sm:px-6">
         <div className="mx-auto max-w-7xl">
-          <div
-            className="relative overflow-hidden rounded-2xl px-8 py-16 text-center"
-            style={{ background: 'linear-gradient(135deg, #1e1b4b, #2e1065)' }}
-          >
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute left-1/2 top-0 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30 blur-3xl"
-              style={{ background: 'radial-gradient(circle, #4F46E5, #7C3AED)' }}
-            />
+          <div className="relative overflow-hidden rounded-2xl px-8 py-16 text-center" style={{ background: 'linear-gradient(135deg, #1e1b4b, #2e1065)' }}>
+            <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-0 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30 blur-3xl" style={{ background: 'radial-gradient(circle, #4F46E5, #7C3AED)' }} />
             <div className="relative">
               <h2 className="mb-4 text-3xl font-extrabold text-white sm:text-4xl">{tr.ctaHeading}</h2>
               <p className="mx-auto mb-8 max-w-xl text-lg text-indigo-200">{tr.ctaSub}</p>
               <div className="flex flex-wrap items-center justify-center gap-4">
-                <Link
-                  href={docsHref}
-                  className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-indigo-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-50"
-                >
-                  {tr.readDocs}
-                  <ArrowRight className="h-4 w-4" />
+                <Link href={docsHref} className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-semibold text-indigo-700 transition-all duration-200 hover:-translate-y-0.5 hover:bg-indigo-50">
+                  {tr.readDocs}<ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link
-                  href="https://github.com/A3S-Lab"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-indigo-400/40 px-7 py-3.5 text-sm font-semibold text-indigo-200 transition-all duration-200 hover:border-indigo-300 hover:text-white"
-                >
-                  <Github className="h-4 w-4" />
-                  {tr.starGithub}
+                <Link href="https://github.com/A3S-Lab" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full border border-indigo-400/40 px-7 py-3.5 text-sm font-semibold text-indigo-200 transition-all duration-200 hover:border-indigo-300 hover:text-white">
+                  <Github className="h-4 w-4" />{tr.starGithub}
                 </Link>
               </div>
             </div>
@@ -489,12 +496,8 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
       <footer className="border-t border-slate-200 px-4 py-10 dark:border-slate-700/60 sm:px-6">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex items-center gap-2">
-            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-sm font-bold text-transparent">
-              A3S Lab
-            </span>
-            <span className="text-sm text-slate-400 dark:text-slate-500">
-              {tr.footerLicense} {new Date().getFullYear()}
-            </span>
+            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-sm font-bold text-transparent">A3S Lab</span>
+            <span className="text-sm text-slate-400 dark:text-slate-500">{tr.footerLicense} {new Date().getFullYear()}</span>
           </div>
           <div className="flex items-center gap-6">
             {[
@@ -503,15 +506,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
               { label: 'PyPI', href: 'https://pypi.org/project/a3s-code/' },
               { label: 'npm', href: 'https://www.npmjs.com/package/@a3s-lab/code' },
             ].map(({ label, href }) => (
-              <Link
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-slate-400 transition-colors hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400"
-              >
-                {label}
-              </Link>
+              <Link key={label} href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-slate-400 transition-colors hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400">{label}</Link>
             ))}
           </div>
         </div>
