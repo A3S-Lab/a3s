@@ -26,7 +26,7 @@ helm install a3s-box deploy/helm/a3s-box/ \
 ```bash
 helm install a3s-box deploy/helm/a3s-box/ \
   -n a3s-box-system --create-namespace \
-  --set image.tag=v0.5.0 \
+  --set image.tag=v0.5.3 \
   --set config.logLevel=debug \
   --set config.imageCacheSize=21474836480 \
   --set resources.limits.memory=1Gi
@@ -149,6 +149,33 @@ spec:
 ```
 
 > Intel TDX has config support but runtime is pending. Use `sev-snp` for production TEE workloads.
+
+## Prometheus Metrics
+
+The CRI pod exposes 19 Prometheus metrics on port `9090` at `/metrics`. Enable scraping via annotations:
+
+```yaml
+# values.yaml
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+```
+
+Key metrics:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `a3s_box_vm_boot_duration_seconds` | Histogram | VM boot latency |
+| `a3s_box_vm_count` | Gauge | Running VM count by state |
+| `a3s_box_vm_created_total` | Counter | Total VMs created |
+| `a3s_box_exec_total` | Counter | Total exec calls |
+| `a3s_box_exec_duration_seconds` | Histogram | Exec latency |
+| `a3s_box_image_pull_total` | Counter | Total image pulls |
+| `a3s_box_image_build_total` | Counter | Total image builds |
+| `a3s_box_rootfs_cache_hits` | Counter | Rootfs cache hits |
+| `a3s_box_warm_pool_size` | Gauge | Current idle pool size |
+| `a3s_box_warm_pool_capacity` | Gauge | Configured pool capacity |
 
 ## Health Checks
 

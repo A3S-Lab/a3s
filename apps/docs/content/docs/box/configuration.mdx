@@ -164,9 +164,11 @@ pub struct PoolStats {
 }
 ```
 
+Pool activity is also tracked via Prometheus metrics: `warm_pool_size` (current idle count) and `warm_pool_capacity` (configured `max_size`), plus `warm_pool_hits` and `warm_pool_misses` counters.
+
 ## Log Configuration
 
-Docker-compatible JSON file logging with rotation:
+Docker-compatible JSON file logging with gzip-compressed rotation, plus syslog:
 
 ```rust
 pub struct LogConfig {
@@ -175,28 +177,44 @@ pub struct LogConfig {
 }
 
 pub enum LogDriver {
-    JsonFile,   // Docker-compatible JSON lines (default)
+    JsonFile,   // Docker-compatible JSON lines with gzip rotation (default)
+    Syslog,     // Forward to syslog daemon (UDP or TCP)
     None,       // Disable logging
 }
 ```
 
-Log format:
+Log format (json-file):
 
 ```json
 {"log":"hello\n","stream":"stdout","time":"2026-02-12T06:00:00.000000000Z"}
 ```
 
-Options:
+**json-file options:**
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `max-size` | `10m` | Maximum log file size before rotation |
-| `max-file` | `3` | Number of rotated files to keep |
+| `max-file` | `3` | Number of rotated files to keep (gzip compressed) |
 
 ```bash
 a3s-box run --log-driver json-file \
   --log-opt max-size=50m \
   --log-opt max-file=5 \
+  my-image:latest
+```
+
+**syslog options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `syslog-address` | `udp://127.0.0.1:514` | Syslog server address (`udp://` or `tcp://`) |
+| `syslog-facility` | `daemon` | Syslog facility |
+| `tag` | box short ID | Message tag |
+
+```bash
+a3s-box run --log-driver syslog \
+  --log-opt syslog-address=udp://10.0.0.1:514 \
+  --log-opt tag=my-app \
   my-image:latest
 ```
 
@@ -224,6 +242,7 @@ Boxes can be referenced by full ID, short ID (12-char prefix), or name.
 
 | Variable | Description |
 |----------|-------------|
-| `A3S_IMAGE_CACHE_SIZE` | Override max cache size in bytes |
+| `A3S_IMAGE_CACHE_SIZE` | Override max image cache size in bytes |
 | `A3S_TEE_SIMULATE` | Enable TEE simulation mode (development only) |
-| `RUST_LOG` | Control log verbosity (`debug`, `info`, `warn`, `error`) |
+| `A3S_DEPS_STUB` | Stub out libkrun for CI builds without KVM |
+| `RUST_LOG` | Log verbosity: `error` · `warn` · `info` · `debug` · `trace` |

@@ -5,150 +5,265 @@ description: Run your first MicroVM with A3S Box in minutes
 
 # Quick Start
 
-## Run a MicroVM
-
-Start a container image as a MicroVM:
+## Install
 
 ```bash
-# Run Alpine interactively
-a3s-box run -it alpine:latest /bin/sh
+# macOS (Apple Silicon)
+brew install a3s-lab/tap/a3s-box
 
-# Run in background (detached)
-a3s-box run -d --name my-app nginx:latest
+# Linux / macOS (direct download)
+curl -fsSL https://github.com/A3S-Lab/Box/releases/latest/download/install.sh | sh
+```
 
-# Run with resource limits
+Verify:
+
+```bash
+a3s-box version
+```
+
+---
+
+## Run a MicroVM
+
+```bash
+# Interactive shell
+a3s-box run -it alpine:latest -- /bin/sh
+
+# Detached background box
+a3s-box run -d --name web nginx:alpine
+
+# With resource limits
 a3s-box run -d --name worker \
-  --cpus 4 --memory 2048 \
+  --cpus 4 --memory 2g \
   --timeout 3600 \
   my-image:latest
 ```
 
-## Lifecycle Commands
+---
+
+## Lifecycle
 
 ```bash
 # List running boxes
 a3s-box ps
 
-# List all boxes (including stopped)
+# List all (including stopped)
 a3s-box ps -a
 
-# Stop a box gracefully
-a3s-box stop my-app
+# Stop / start / restart
+a3s-box stop web
+a3s-box start web
+a3s-box restart web
 
-# Start a stopped box
-a3s-box start my-app
-
-# Remove a box
-a3s-box rm my-app
-
-# Force remove a running box
-a3s-box rm -f my-app
+# Force remove
+a3s-box rm -f web
 ```
+
+---
 
 ## Execute Commands
 
 ```bash
-# Run a command inside a running box
-a3s-box exec my-app ls /app
+# Run a command
+a3s-box exec my-box -- ls /app
 
 # Interactive shell
-a3s-box exec -it my-app /bin/bash
+a3s-box exec -it my-box -- /bin/bash
 
-# With environment variables
-a3s-box exec -e KEY=value my-app env
-
-# With working directory
-a3s-box exec -w /app my-app ./run.sh
+# With env var and working directory
+a3s-box exec -e DEBUG=1 -w /app my-box -- ./run.sh
 ```
 
-## View Logs
+---
+
+## Logs
 
 ```bash
-# View logs
-a3s-box logs my-app
-
-# Follow logs in real-time
-a3s-box logs -f my-app
-
-# Last 100 lines
-a3s-box logs --tail 100 my-app
+a3s-box logs my-box
+a3s-box logs -f my-box           # follow
+a3s-box logs --tail 100 my-box   # last 100 lines
+a3s-box logs -t my-box           # with timestamps
 ```
 
-## Image Management
+---
+
+## Build Images
 
 ```bash
-# Pull an image
-a3s-box pull alpine:latest
+# Build from current directory
+a3s-box build -t my-app:v1 .
 
-# List local images
-a3s-box images
+# With build args
+a3s-box build -t my-app:v1 --build-arg VERSION=1.2.3 .
 
-# Build from Dockerfile
-a3s-box build -t my-image:v1 .
-
-# Remove an image
-a3s-box rmi alpine:latest
+# Multi-platform
+a3s-box build -t my-app:v1 --platform linux/amd64,linux/arm64 .
 ```
+
+### Dockerfile features
+
+`ADD` supports HTTP/HTTPS URL download and tar auto-extraction:
+
+```dockerfile
+FROM alpine:latest
+ADD https://example.com/config.tar.gz /etc/myapp/
+COPY . /app
+RUN echo "built"
+```
+
+`ONBUILD` triggers are inherited and fired when a child image uses this as a base:
+
+```dockerfile
+FROM alpine:latest
+ONBUILD COPY . /app
+ONBUILD RUN cd /app && make
+```
+
+---
+
+## Pull with Signature Verification
+
+```bash
+# Verify with cosign public key
+a3s-box pull --verify-key cosign.pub ghcr.io/my-org/my-image:v1
+
+# Keyless (OIDC) verification
+a3s-box pull \
+  --verify-issuer https://accounts.google.com \
+  --verify-identity user@example.com \
+  my-image:latest
+```
+
+---
 
 ## Volumes and Files
 
 ```bash
-# Run with a bind mount
+# Bind mount
 a3s-box run -v /host/data:/app/data my-image
 
-# Create a named volume
+# Named volume
 a3s-box volume create my-data
-
-# Run with named volume
 a3s-box run -v my-data:/app/data my-image
 
-# Copy files between host and box
-a3s-box cp my-app:/app/output.txt ./output.txt
-a3s-box cp ./config.json my-app:/app/config.json
+# Copy files
+a3s-box cp my-box:/app/output.txt ./output.txt
+a3s-box cp ./config.json my-box:/app/config.json
 ```
+
+---
 
 ## Networking
 
 ```bash
-# Default: TSI (Transparent Socket Impersonation)
-a3s-box run -d --name web -p 8080:80 nginx:latest
+# Default TSI — port mapping
+a3s-box run -d --name web -p 8080:80 nginx:alpine
 
-# Create a user-defined network
+# Bridge network — inter-container communication
 a3s-box network create my-net
-
-# Run boxes on the same network
-a3s-box run -d --name db --network my-net postgres:latest
+a3s-box run -d --name db --network my-net postgres:15
 a3s-box run -d --name app --network my-net my-app:latest
+# app can reach db at "db:5432"
 
-# Containers on the same network can reach each other by name
-# app can connect to "db:5432"
+# Air-gapped
+a3s-box run --network none alpine:latest
 ```
+
+---
+
+## Snapshots
+
+```bash
+# Save box state
+a3s-box snapshot create my-box checkpoint-1
+
+# Restore
+a3s-box snapshot restore my-box checkpoint-1
+
+# List snapshots
+a3s-box snapshot ls my-box
+```
+
+---
+
+## Compose
+
+```yaml
+# compose.yaml
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: secret
+  app:
+    image: my-app:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+```
+
+```bash
+a3s-box compose up -d
+a3s-box compose ps
+a3s-box compose down
+```
+
+---
+
+## TEE (Confidential Computing)
+
+```bash
+# Run with AMD SEV-SNP
+a3s-box run -d --name secure --tee alpine:latest -- sleep 3600
+
+# Simulation mode (no AMD hardware required)
+a3s-box run -d --name dev --tee --tee-simulate alpine:latest -- sleep 3600
+
+# Attest the VM
+a3s-box attest secure --ratls
+
+# Inject a secret over RA-TLS
+a3s-box inject-secret secure --secret "API_KEY=my-secret" --set-env
+
+# Seal data (only decryptable in same TEE context)
+a3s-box seal secure --data "sensitive" --context myapp
+a3s-box unseal secure --context myapp
+```
+
+---
 
 ## Inspection
 
 ```bash
 # Detailed box info (JSON)
-a3s-box inspect my-app
+a3s-box inspect my-box
 
 # Live resource usage
 a3s-box stats
 
-# Show processes inside a box
-a3s-box top my-app
+# Processes inside a box
+a3s-box top my-box
+
+# Filesystem changes
+a3s-box diff my-box
 
 # Stream events
 a3s-box events --json
 ```
 
+---
+
 ## Cleanup
 
 ```bash
-# Remove all stopped boxes and unused images
+# Remove stopped boxes and unused images
 a3s-box system-prune -f
 
-# Remove unused images only
+# Unused images only
 a3s-box image-prune
 
-# Remove unused volumes
+# Unused volumes
 a3s-box volume prune
 ```

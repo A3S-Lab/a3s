@@ -177,7 +177,59 @@ pub struct SealedData {
 
 Key derivation: `HKDF-SHA256(measurement || chip_id, context_string)` produces a unique 256-bit key. The `context` parameter acts as a domain separator, allowing multiple independent sealed data stores within the same VM.
 
-## Simulation Mode
+## Image Signing
+
+A3S Box verifies cosign signatures during `pull` to ensure images haven't been tampered with before they run in a TEE.
+
+### Sign an image
+
+```bash
+# Key-based signing
+cosign sign --key cosign.key ghcr.io/my-org/my-image:v1
+
+# Keyless signing (OIDC — GitHub Actions, Google, etc.)
+cosign sign ghcr.io/my-org/my-image:v1
+```
+
+### Pull with verification
+
+```bash
+# Verify with public key
+a3s-box pull --verify-key cosign.pub ghcr.io/my-org/my-image:v1
+
+# Keyless verification
+a3s-box pull \
+  --verify-issuer https://token.actions.githubusercontent.com \
+  --verify-identity https://github.com/my-org/my-repo/.github/workflows/release.yml@refs/heads/main \
+  ghcr.io/my-org/my-image:v1
+```
+
+Verification uses the Rekor transparency log for keyless signatures. Pull fails with an error if verification does not pass.
+
+## Re-attestation
+
+Request a fresh attestation report from a running box at any time — useful for periodic compliance checks or after a workload update:
+
+```bash
+# Re-attest with a fresh nonce
+a3s-box attest my-box --ratls --nonce $(openssl rand -hex 32)
+
+# Verify measurement matches expected value
+a3s-box attest my-box --policy policy.json
+```
+
+The attestation server inside the guest generates a new SNP report on every request, bound to the provided nonce. This prevents replay attacks.
+
+## Rollback Protection
+
+Sealed data includes a monotonic counter stored in the SNP report. Attempting to unseal data with an older counter value fails, preventing rollback to a previous VM state.
+
+```bash
+# Seal with rollback protection (default)
+a3s-box seal my-box --data "secret" --context myapp --policy measurement-and-chip
+
+# The sealed blob cannot be decrypted after a VM restart with a lower counter
+```
 
 For development without AMD hardware:
 
