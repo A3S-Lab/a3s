@@ -14,7 +14,6 @@ import {
   Package,
 } from 'lucide-react';
 import { LangDropdown } from '@/components/lang-dropdown';
-import { ThemeToggle } from '@/components/theme-toggle';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 
@@ -297,7 +296,6 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
               GitHub
             </Link>
             <LangDropdown />
-            <ThemeToggle />
           </div>
         </div>
       </nav>
