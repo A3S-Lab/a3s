@@ -74,19 +74,23 @@ a3s-box build -t my-app:v1 --build-arg VERSION=1.0 .
 
 | Instruction | Description |
 |-------------|-------------|
-| `FROM` | Base image |
+| `FROM` | Base image (supports `AS` alias for multi-stage) |
 | `RUN` | Execute command in build layer |
 | `CMD` | Default command |
 | `ENTRYPOINT` | Container entrypoint |
 | `ENV` | Set environment variable |
 | `WORKDIR` | Set working directory |
-| `COPY` | Copy files from build context |
-| `ADD` | Copy files (supports URLs, tar extraction) |
+| `COPY` | Copy files from build context (supports `--from=stage`) |
+| `ADD` | Copy files, URLs (HTTP/HTTPS download), or tar auto-extraction |
 | `EXPOSE` | Declare exposed ports |
 | `VOLUME` | Declare volume mount points |
 | `USER` | Set user for RUN/CMD/ENTRYPOINT |
 | `ARG` | Build-time variables |
 | `LABEL` | Add metadata |
+| `SHELL` | Override default shell |
+| `STOPSIGNAL` | Set stop signal |
+| `HEALTHCHECK` | Configure health check |
+| `ONBUILD` | Register trigger for child image builds |
 
 ## Image Configuration
 
@@ -94,17 +98,21 @@ Each image carries its OCI configuration:
 
 ```rust
 pub struct OciImageConfig {
-    pub architecture: String,
-    pub os: String,
-    pub env: HashMap<String, String>,
-    pub cmd: Vec<String>,
-    pub entrypoint: Vec<String>,
-    pub workdir: String,
-    pub user: String,
-    pub expose_ports: Vec<String>,
+    pub entrypoint: Option<Vec<String>>,
+    pub cmd: Option<Vec<String>>,
+    pub env: Vec<(String, String)>,
+    pub working_dir: Option<String>,
+    pub user: Option<String>,
+    pub exposed_ports: Vec<String>,
+    pub labels: HashMap<String, String>,
     pub volumes: Vec<String>,
+    pub stop_signal: Option<String>,
+    pub health_check: Option<OciHealthCheck>,
+    pub onbuild: Vec<String>,   // ONBUILD triggers from base image
 }
 ```
+
+The manifest digest is also available via `OciImage::manifest_digest()` and is surfaced in `PulledImage::digest` returned by the `ImageRegistry` trait.
 
 ## Caching Pipeline
 
