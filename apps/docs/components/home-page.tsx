@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRef, useState, useEffect } from 'react';
 import {
   ArrowRight,
   Bot,
@@ -18,8 +19,7 @@ import {
   Zap,
   Puzzle,
 } from 'lucide-react';
-import { LangDropdown } from '@/components/lang-dropdown';
-import { ThemeToggle } from '@/components/theme-toggle';
+import { SiteNav } from '@/components/site-nav';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 
@@ -278,6 +278,54 @@ const installSnippets = [
   { label: 'Homebrew', cmd: 'brew tap a3s-lab/tap && brew install a3s-search a3s-power' },
 ];
 
+// ─── CountUp ──────────────────────────────────────────────────────────────────
+
+function CountUp({ value, label }: { value: string; label: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [display, setDisplay] = useState('0');
+
+  // Parse numeric part and suffix (e.g. "3,700+" → num=3700, suffix="+")
+  const raw = value.replace(/,/g, '');
+  const match = raw.match(/^(~?)(\d+)(.*)$/);
+  const prefix = match?.[1] ?? '';
+  const target = match ? parseInt(match[2], 10) : 0;
+  const suffix = match?.[3] ?? '';
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        observer.disconnect();
+        const duration = 1200;
+        const start = performance.now();
+        const tick = (now: number) => {
+          const progress = Math.min((now - start) / duration, 1);
+          // ease-out cubic
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const current = Math.round(eased * target);
+          setDisplay(prefix + current.toLocaleString() + suffix);
+          if (progress < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      },
+      { threshold: 0.5 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [target, prefix, suffix]);
+
+  return (
+    <div ref={ref} className="text-center">
+      <div className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl tabular-nums">
+        {display}
+      </div>
+      <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">{label}</div>
+    </div>
+  );
+}
+
 // ─── ModuleCard ───────────────────────────────────────────────────────────────
 
 function ModuleCard({
@@ -326,24 +374,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
       style={{ background: 'var(--ct-bg)', fontFamily: 'var(--ct-font)', color: 'var(--ct-text)' }}
     >
       {/* ── Nav ── */}
-      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link href={lang === 'cn' ? '/cn' : '/'} className="flex items-center gap-2">
-            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-xl font-extrabold tracking-tight text-transparent">A3S</span>
-            <span className="text-sm font-medium text-slate-400 dark:text-slate-500">Docs</span>
-          </Link>
-          <div className="flex items-center gap-1">
-            <Link href={docsHref} className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100">{tr.docsLink}</Link>
-            <Link href={lang === 'cn' ? '/cn/tutorials/deep-research' : '/tutorials/deep-research'} className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100">{lang === 'cn' ? '教程' : 'Tutorials'}</Link>
-            <Link href="/blog" className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100">Blog</Link>
-            <Link href="https://github.com/A3S-Lab" target="_blank" rel="noopener noreferrer" className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 sm:flex">
-              <Github className="h-4 w-4" />GitHub
-            </Link>
-            <LangDropdown />
-            <ThemeToggle />
-          </div>
-        </div>
-      </nav>
+      <SiteNav lang={lang} section="Docs" />
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:py-36">
@@ -376,10 +407,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
           <p className="mb-6 text-center text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">{tr.statsLabel}</p>
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
             {tr.stats.map(({ value, label }) => (
-              <div key={label} className="text-center">
-                <div className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 sm:text-4xl">{value}</div>
-                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">{label}</div>
-              </div>
+              <CountUp key={label} value={value} label={label} />
             ))}
           </div>
         </div>
