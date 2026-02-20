@@ -1,14 +1,719 @@
 ---
-title: 技能
-description: 内置和自定义技能系统
+title: Skills 系统
+description: 兼容 Claude Code 的 skill 系统，支持指令注入和工具权限
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
-# 技能
+# Skills 系统
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/skills)获取完整文档。
+Skills 系统提供了一种**兼容 Claude Code** 的方式来定义专业化的 agent 能力，支持自动指令注入和工具权限控制。
+
+<Callout type="info">
+**内置 Skills：** 7 个（4 个代码辅助 + 3 个工具文档） | **格式：** Markdown + YAML frontmatter | **工具限制：** 支持
 </Callout>
 
-> 中文翻译即将推出。
+## 概述
+
+Skills 是带有 YAML frontmatter 的 Markdown 文件，定义了：
+
+1. **指令** — Agent 应该做什么
+2. **允许的工具** — Agent 可以使用哪些工具
+3. **元数据** — 名称、描述、标签、版本
+
+### 核心特性
+
+- ✅ **自动系统提示注入** — Skill 内容自动注入到系统提示中
+- ✅ **工具权限控制** — Skills 限制可使用的工具
+- ✅ **兼容 Claude Code 格式** — 可使用现有的 Claude Code skills
+- ✅ **从目录加载** — 将 skills 组织在文件夹中
+- ✅ **编程式创建** — 在代码中创建 skills
+
+## 内置 Skills（7 个）
+
+A3S Code 包含 7 个生产就绪的 skills：
+
+### 代码辅助 Skills
+
+#### 1. code-search
+
+搜索代码库中的模式、函数或类型。
+
+**允许的工具：** `read(*), grep(*), glob(*)`
+
+**使用场景：** 查找所有认证函数、定位 API 端点、搜索 TODO 注释
+
+#### 2. code-review
+
+审查代码的最佳实践、bug 和安全问题。
+
+**允许的工具：** `read(*), grep(*), glob(*)`
+
+**使用场景：** 审查 Pull Request、检查安全漏洞、确保代码质量
+
+#### 3. explain-code
+
+用清晰简单的语言解释代码工作原理。
+
+**允许的工具：** `read(*), grep(*), glob(*)`
+
+**使用场景：** 新开发者入职、记录复杂逻辑、创建教程
+
+#### 4. find-bugs
+
+识别潜在的 bug、漏洞和代码异味。
+
+**允许的工具：** `read(*), grep(*), glob(*)`
+
+**使用场景：** 提交前检查、安全审计、代码质量分析
+
+### 工具文档 Skills
+
+#### 5. builtin-tools
+
+所有内置文件操作和 shell 工具的文档（read、write、edit、patch、bash、grep、glob、ls、web_fetch、web_search）。
+
+**允许的工具：** 无（仅文档）
+
+**使用场景：** 可用工具及其参数的参考
+
+#### 6. delegate-task
+
+使用 `task` 工具将复杂或多步骤任务委派给专门子代理的指南。
+
+**允许的工具：** `task(*)`
+
+**使用场景：** 并行化工作、聚焦探索、隔离执行
+
+#### 7. find-skills
+
+从开放 skills 生态系统中发现和安装 agent skills。
+
+**允许的工具：** `search_skills(*), install_skill(*), load_skill(*)`
+
+**使用场景：** 扩展 agent 能力、查找领域特定的 skills
+
+## 使用内置 Skills
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let agent = Agent::new("agent.hcl").await?;
+
+// Enable all built-in skills
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_builtin_skills()
+))?;
+
+// Now agent has 7 built-in skills:
+// Code assistance: code-search, code-review, explain-code, find-bugs
+// Tool docs: builtin-tools, delegate-task, find-skills
+let result = session.send("Review the auth code for security issues").await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+const session = agent.session('.', {
+  builtinSkills: true
+});
+
+const result = await session.send('Review the auth code for security issues');
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions
+
+agent = Agent.create("agent.hcl")
+
+session = agent.session(".", SessionOptions(
+    builtin_skills=True
+))
+
+result = session.send("Review the auth code for security issues")
+```
+</Tab>
+</Tabs>
+
+## 自定义 Skills
+
+### Skill 文件格式
+
+Skills 是带有 YAML frontmatter 的 Markdown 文件：
+
+```markdown
+---
+name: api-design
+description: Review API design for RESTful principles
+allowed-tools: "read(*), grep(*)"
+kind: instruction
+tags:
+  - api
+  - design
+  - rest
+version: 1.0.0
+---
+# API Design Review
+
+You are an API design expert. Check for:
+
+1. **RESTful Principles**
+   - Proper HTTP methods (GET, POST, PUT, DELETE)
+   - Correct status codes (200, 201, 400, 404, 500)
+   - Resource-based URLs (not action-based)
+
+2. **Naming Conventions**
+   - Consistent naming (camelCase or snake_case)
+   - Clear, descriptive names
+   - Plural for collections, singular for items
+
+3. **Error Handling**
+   - Proper error responses
+   - Meaningful error messages
+   - Error codes and types
+
+4. **Documentation**
+   - API documentation exists
+   - Request/response examples
+   - Authentication requirements
+
+5. **Versioning**
+   - API versioning strategy
+   - Backward compatibility
+
+Use `read` to examine API files and `grep` to search for patterns.
+```
+
+### Frontmatter 字段
+
+| 字段 | 必填 | 描述 |
+|-------|----------|-------------|
+| `name` | 是 | 唯一的 skill 标识符（kebab-case） |
+| `description` | 是 | skill 功能的简要描述 |
+| `allowed-tools` | 否 | 逗号分隔的允许工具列表，支持通配符 |
+| `kind` | 是 | Skill 类型：`instruction`、`tool` 或 `agent` |
+| `tags` | 否 | 用于分类的标签列表 |
+| `version` | 否 | 语义化版本（例如 "1.0.0"） |
+
+### 工具权限语法
+
+`allowed-tools` 字段支持通配符：
+
+```yaml
+# Allow all operations on specific tools
+allowed-tools: "read(*), grep(*), glob(*)"
+
+# Allow specific operations
+allowed-tools: "read(*.rs), grep(TODO:*)"
+
+# Allow all tools (not recommended)
+allowed-tools: "*"
+```
+
+## 加载自定义 Skills
+
+### 从目录加载
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let agent = Agent::new("agent.hcl").await?;
+
+// Load skills from directory
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_skills_from_dir("./skills")
+))?;
+
+// All .md files in ./skills/ are loaded as skills
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+const session = agent.session('.', {
+  skillsDir: './skills'
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions
+
+agent = Agent.create("agent.hcl")
+
+session = agent.session(".", SessionOptions(
+    skills_dir="./skills"
+))
+```
+</Tab>
+</Tabs>
+
+### 编程式创建
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::skills::{Skill, SkillKind, SkillRegistry};
+use std::sync::Arc;
+
+// Create skill
+let skill = Skill {
+    name: "security-audit".to_string(),
+    description: "Audit code for security vulnerabilities".to_string(),
+    allowed_tools: Some("read(*), grep(*)".to_string()),
+    kind: SkillKind::Instruction,
+    content: r#"# Security Audit
+
+Check for:
+1. SQL injection vulnerabilities
+2. XSS vulnerabilities
+3. Hardcoded secrets
+4. Insecure authentication
+"#.to_string(),
+    tags: vec!["security".to_string(), "audit".to_string()],
+    version: Some("1.0.0".to_string()),
+};
+
+// Create registry and register skill
+let registry = SkillRegistry::new();
+registry.register(Arc::new(skill));
+
+// Use in session
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_skill_registry(Arc::new(registry))
+))?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { Skill, SkillRegistry } from '@a3s-lab/code';
+
+const skill = new Skill({
+  name: 'security-audit',
+  description: 'Audit code for security vulnerabilities',
+  allowedTools: 'read(*), grep(*)',
+  kind: 'instruction',
+  content: `# Security Audit
+
+Check for:
+1. SQL injection vulnerabilities
+2. XSS vulnerabilities
+3. Hardcoded secrets
+4. Insecure authentication
+`,
+  tags: ['security', 'audit'],
+  version: '1.0.0'
+});
+
+const registry = new SkillRegistry();
+registry.register(skill);
+
+const session = agent.session('.', {
+  skillRegistry: registry
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Skill, SkillKind, SkillRegistry, SessionOptions
+
+skill = Skill(
+    name="security-audit",
+    description="Audit code for security vulnerabilities",
+    allowed_tools="read(*), grep(*)",
+    kind=SkillKind.INSTRUCTION,
+    content="""# Security Audit
+
+Check for:
+1. SQL injection vulnerabilities
+2. XSS vulnerabilities
+3. Hardcoded secrets
+4. Insecure authentication
+""",
+    tags=["security", "audit"],
+    version="1.0.0"
+)
+
+registry = SkillRegistry()
+registry.register(skill)
+
+session = agent.session(".", SessionOptions(
+    skill_registry=registry
+))
+```
+</Tab>
+</Tabs>
+
+## Skills 工作原理
+
+### 1. 指令注入
+
+当 skill 被注册后，其内容会自动注入到系统提示中：
+
+```
+原始系统提示：
+"You are a helpful coding assistant."
+
+添加 Skills 后：
+"You are a helpful coding assistant.
+
+# Available Skills
+
+## code-search
+Search codebase for patterns, functions, or types.
+[skill content...]
+
+## api-design
+Review API design for RESTful principles.
+[skill content...]
+"
+```
+
+### 2. 工具权限控制
+
+当 skill 定义了 `allowed-tools` 时，agent 只能使用这些工具：
+
+```rust
+// Skill with tool restrictions
+let skill = Skill {
+    name: "read-only".to_string(),
+    allowed_tools: Some("read(*), grep(*), glob(*), ls(*)".to_string()),
+    // ...
+};
+
+// Agent tries to use write
+session.send("Create a new file").await?;
+// ❌ Error: Tool 'write' is not allowed by any active skill
+```
+
+### 3. 多 Skills 组合
+
+当多个 skills 同时激活时，只要**任一** skill 允许某工具即可使用：
+
+```rust
+// Skill 1: read-only
+let skill1 = Skill {
+    allowed_tools: Some("read(*), grep(*)".to_string()),
+    // ...
+};
+
+// Skill 2: write-only
+let skill2 = Skill {
+    allowed_tools: Some("write(*), edit(*)".to_string()),
+    // ...
+};
+
+// Agent can use: read, grep, write, edit
+// (union of both skills)
+```
+
+## Skill 类型
+
+### Instruction Skills
+
+最常见的类型。为 agent 提供指令。
+
+```yaml
+kind: instruction
+```
+
+**使用场景：** 代码审查、安全审计、API 设计
+
+### Tool Skills
+
+定义 agent 可以使用的自定义工具。
+
+```yaml
+kind: tool
+```
+
+**使用场景：** 自定义集成、专门操作
+
+### Agent Skills
+
+定义可以委派任务的子代理。
+
+```yaml
+kind: agent
+```
+
+**使用场景：** 特定领域的专门 agent
+
+## 示例
+
+### 只读 Agent
+
+```rust
+let skill = Skill {
+    name: "read-only".to_string(),
+    description: "Read-only code analysis".to_string(),
+    allowed_tools: Some("read(*), grep(*), glob(*), ls(*)".to_string()),
+    kind: SkillKind::Instruction,
+    content: "You can only read files, not modify them.".to_string(),
+    tags: vec!["readonly".to_string()],
+    version: Some("1.0.0".to_string()),
+};
+
+let registry = SkillRegistry::new();
+registry.register(Arc::new(skill));
+
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_skill_registry(Arc::new(registry))
+))?;
+
+// Agent can only read, not write
+```
+
+### 安全审计员
+
+```markdown
+---
+name: security-auditor
+description: Comprehensive security audit
+allowed-tools: "read(*), grep(*), glob(*)"
+kind: instruction
+tags:
+  - security
+  - audit
+version: 1.0.0
+---
+# Security Auditor
+
+You are a security expert. Perform comprehensive security audits.
+
+## Check for:
+
+### 1. Injection Vulnerabilities
+- SQL injection
+- Command injection
+- LDAP injection
+- XPath injection
+
+### 2. Authentication Issues
+- Weak password policies
+- Missing authentication
+- Insecure session management
+- Hardcoded credentials
+
+### 3. Authorization Issues
+- Missing authorization checks
+- Privilege escalation
+- Insecure direct object references
+
+### 4. Data Exposure
+- Sensitive data in logs
+- Unencrypted data transmission
+- Insecure data storage
+
+### 5. Configuration Issues
+- Default credentials
+- Unnecessary services enabled
+- Insecure permissions
+
+Use `grep` to search for patterns and `read` to examine files.
+```
+
+### 文档生成器
+
+```markdown
+---
+name: doc-generator
+description: Generate comprehensive documentation
+allowed-tools: "read(*), grep(*), glob(*), write(*)"
+kind: instruction
+tags:
+  - documentation
+  - writing
+version: 1.0.0
+---
+# Documentation Generator
+
+You are a technical writer. Generate clear, comprehensive documentation.
+
+## Documentation Structure:
+
+### 1. Overview
+- What the code does
+- Key features
+- Architecture overview
+
+### 2. Getting Started
+- Installation
+- Configuration
+- Quick start example
+
+### 3. API Reference
+- All public functions/classes
+- Parameters and return types
+- Examples for each
+
+### 4. Examples
+- Common use cases
+- Code snippets
+- Best practices
+
+### 5. Troubleshooting
+- Common issues
+- Solutions
+- FAQ
+
+Use `read` to examine code and `write` to create documentation files.
+```
+
+## 最佳实践
+
+### 1. 清晰的指令
+
+编写清晰、具体的指令：
+
+```markdown
+❌ 不好：
+"Review the code."
+
+✅ 好：
+"Review the code for:
+1. Security vulnerabilities (SQL injection, XSS)
+2. Performance issues (N+1 queries, inefficient algorithms)
+3. Code quality (naming, structure, comments)"
+```
+
+### 2. 适当的工具限制
+
+只允许需要的工具：
+
+```yaml
+# For read-only analysis
+allowed-tools: "read(*), grep(*), glob(*), ls(*)"
+
+# For code modification
+allowed-tools: "read(*), write(*), edit(*), patch(*)"
+
+# For testing
+allowed-tools: "read(*), bash(*)"
+```
+
+### 3. 描述性名称
+
+使用清晰、描述性的名称：
+
+```yaml
+❌ 不好：
+name: skill1
+
+✅ 好：
+name: api-design-review
+```
+
+### 4. 版本管理
+
+使用语义化版本：
+
+```yaml
+version: 1.0.0  # Major.Minor.Patch
+```
+
+### 5. 标签
+
+使用标签进行组织：
+
+```yaml
+tags:
+  - security
+  - audit
+  - compliance
+```
+
+## 故障排除
+
+### Skill 未加载
+
+**问题：** Skill 文件未被识别
+
+**解决方案：**
+- 检查文件扩展名是否为 `.md`
+- 验证 YAML frontmatter 格式是否正确
+- 确保 frontmatter 在 `---` 标记之间
+
+### 工具权限被拒绝
+
+**问题：** Agent 无法使用某个工具
+
+**解决方案：**
+- 检查 skill 中的 `allowed-tools` 字段
+- 验证工具名称是否完全匹配
+- 使用通配符：`read(*)` 而不仅仅是 `read`
+
+### 多 Skills 冲突
+
+**问题：** 不清楚哪个 skill 处于激活状态
+
+**解决方案：**
+- Skills 是叠加的（允许工具的并集）
+- 如果任一 skill 允许某工具，该工具即可使用
+- 为每个 skill 使用具体的工具限制
+
+## API 参考
+
+### Skill
+
+```rust
+pub struct Skill {
+    pub name: String,
+    pub description: String,
+    pub allowed_tools: Option<String>,
+    pub kind: SkillKind,
+    pub content: String,
+    pub tags: Vec<String>,
+    pub version: Option<String>,
+}
+```
+
+### SkillKind
+
+```rust
+pub enum SkillKind {
+    Instruction,  // Provides instructions
+    Tool,         // Defines a custom tool
+    Agent,        // Defines a sub-agent
+}
+```
+
+### SkillRegistry
+
+```rust
+pub struct SkillRegistry {
+    // ...
+}
+
+impl SkillRegistry {
+    pub fn new() -> Self;
+    pub fn with_builtins() -> Self;
+    pub fn register(&self, skill: Arc<Skill>);
+    pub fn get(&self, name: &str) -> Option<Arc<Skill>>;
+    pub fn list(&self) -> Vec<String>;
+    pub fn by_kind(&self, kind: SkillKind) -> Vec<Arc<Skill>>;
+    pub fn to_system_prompt(&self) -> String;
+}
+```
+
+## 相关文档
+
+- [安全](/cn/docs/code/security) — 安全功能和权限
+- [工具](/cn/docs/code/tools) — 内置工具参考
+- [会话](/cn/docs/code/sessions) — 会话管理

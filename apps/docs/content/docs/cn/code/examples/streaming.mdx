@@ -1,14 +1,151 @@
 ---
 title: 流式传输
-description: 实时 AgentEvent 事件流
+description: 使用 AgentEvent 的实时事件流
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # 流式传输
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/examples/streaming)获取完整文档。
-</Callout>
+订阅 `AgentEvent` 以实时了解 agent 的执行状态 — 文本增量、工具调用、token 使用量等。
 
-> 中文翻译即将推出。
+## 事件类型
+
+| 事件 | 触发时机 |
+|-------|------|
+| `Start` | Agent 开始处理 |
+| `TurnStart` / `TurnEnd` | 每个 LLM 轮次 |
+| `TextDelta` | 流式文本片段 |
+| `ToolStart` / `ToolEnd` | 工具执行 |
+| `ToolOutputDelta` | 流式工具输出（bash） |
+| `ContextResolving` / `ContextResolved` | RAG 检索 |
+| `End` | Agent 完成 |
+
+## 示例
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, AgentEvent, SessionOptions};
+
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_permissive_policy()
+))?;
+
+let (mut rx, handle) = session.stream("Refactor the auth module", None).await?;
+
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::TextDelta { text } => print!("{text}"),
+        AgentEvent::ToolStart { name, .. } => println!("\n🔧 {name}..."),
+        AgentEvent::ToolEnd { name, exit_code, .. } => {
+            println!(" ✓ (exit={})", exit_code);
+        }
+        AgentEvent::TurnEnd { turn, usage } => {
+            println!("\n└─ Turn {turn} done ({} tokens)", usage.total_tokens);
+        }
+        AgentEvent::End { text, usage } => {
+            println!("\n■ Done — {} tokens total", usage.total_tokens);
+            break;
+        }
+        _ => {}
+    }
+}
+
+handle.await??;
+```
+
+**源码：** [`core/examples/agentic_loop_demo.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/agentic_loop_demo.rs)
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project", permissive=True)
+
+async for event in session.stream("Refactor the auth module"):
+    t = event.get("type")
+    if t == "text_delta":
+        print(event["text"], end="", flush=True)
+    elif t == "tool_start":
+        print(f"\n🔧 {event['name']}...", end="")
+    elif t == "tool_end":
+        print(f" ✓ (exit={event['exit_code']})")
+    elif t == "turn_end":
+        print(f"\n└─ Turn {event['turn']} done ({event['usage']['total_tokens']} tokens)")
+    elif t == "end":
+        print(f"\n■ Done — {event['usage']['total_tokens']} tokens total")
+        break
+```
+
+**源码：** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', { permissive: true });
+
+const stream = await session.stream('Refactor the auth module');
+
+for await (const event of stream) {
+  switch (event.type) {
+    case 'text_delta':
+      process.stdout.write(event.text);
+      break;
+    case 'tool_start':
+      process.stdout.write(`\n🔧 ${event.name}...`);
+      break;
+    case 'tool_end':
+      console.log(` ✓ (exit=${event.exitCode})`);
+      break;
+    case 'turn_end':
+      console.log(`\n└─ Turn ${event.turn} done (${event.usage.totalTokens} tokens)`);
+      break;
+    case 'end':
+      console.log(`\n■ Done — ${event.usage.totalTokens} tokens total`);
+      break;
+  }
+}
+```
+
+**源码：** [`sdk/node/examples/agentic_loop_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.js)
+</Tab>
+</Tabs>
+
+## 示例输出
+
+```
+┌─ Turn 1
+🔧 read... ✓ (exit=0)
+🔧 write... ✓ (exit=0)
+└─ Turn 1 done (1842 tokens)
+┌─ Turn 2
+The auth module has been refactored. Key changes:
+- Extracted JWT validation into a separate function
+- Added proper error types
+- Improved test coverage
+└─ Turn 2 done (2103 tokens)
+■ Done — 3945 tokens total
+```
+
+## API 参考
+
+### stream()
+
+| 方法 | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| 启动流 | `session.stream("prompt", None).await?` | `session.stream("prompt")` | `session.stream('prompt')` |
+| 接收事件 | `rx.recv().await` | `async for event in stream` | `for await (const event of stream)` |
+| 等待完成 | `handle.await??` | _（自动）_ | _（自动）_ |
+
+### AgentEvent 类型
+
+| 事件 | Rust 变体 | Python/Node.js `type` | 字段 |
+|-------|-------------|----------------------|--------|
+| Agent 启动 | `AgentEvent::Start` | `start` | — |
+| LLM 轮次开始 | `AgentEvent::TurnStart` | `turn_start` | `turn` |
+| LLM 轮次结束 | `AgentEvent::TurnEnd` | `turn_end` | `turn`, `usage` |
+| 文本片段 | `AgentEvent::TextDelta` | `text_delta` | `text` |
+| 工具开始 | `AgentEvent::ToolStart` | `tool_start` | `name`, `args` |
+| 工具完成 | `AgentEvent::ToolEnd` | `tool_end` | `name`, `exit_code`, `output` |
+| 工具输出片段 | `AgentEvent::ToolOutputDelta` | `tool_output_delta` | `text` |
+| RAG 检索中 | `AgentEvent::ContextResolving` | `context_resolving` | `query` |
+| RAG 检索完成 | `AgentEvent::ContextResolved` | `context_resolved` | `chunks` |
+| Agent 完成 | `AgentEvent::End` | `end` | `text`, `usage` |

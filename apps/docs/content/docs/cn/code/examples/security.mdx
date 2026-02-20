@@ -1,14 +1,166 @@
 ---
 title: 安全
-description: 输入污点追踪与输出净化
+description: 输入污点追踪和输出清洗
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # 安全
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/examples/security)获取完整文档。
+`SecurityProvider` 扩展点拦截每个用户提示和 LLM 响应，用于检测和脱敏敏感数据。
+
+内置的 `DefaultSecurityProvider` 检测常见模式：API 密钥、token、密码、SSN、信用卡号和电子邮件地址。
+
+## 启用默认安全
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_default_security(); // 污点追踪输入 + 清洗输出
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send("Review this config file", None).await?;
+println!("{}", result.text); // 敏感模式已脱敏
+```
+
+**运行：** `cargo run --example test_security`
+**源码：** [`core/examples/test_security.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_security.rs)
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import SessionOptions
+
+opts = SessionOptions()
+opts.default_security = True
+
+session = agent.session("/my-project", options=opts)
+result = await session.send("Review this config file")
+print(result.text)  # 敏感模式已脱敏
+```
+
+**运行：** `python examples/test_advanced_features.py`
+**源码：** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  defaultSecurity: true,
+});
+
+const result = await session.send('Review this config file');
+console.log(result.text); // 敏感模式已脱敏
+```
+
+**运行：** `node examples/test_advanced_features.js`
+**源码：** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+</Tab>
+</Tabs>
+
+## 自定义安全提供者
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::security::SecurityProvider;
+use std::sync::Arc;
+
+struct MySecurityProvider;
+
+impl SecurityProvider for MySecurityProvider {
+    fn taint_input(&self, text: &str) {
+        // 检测并注册输入中的敏感模式
+        if text.contains("PRIVATE_KEY") {
+            tracing::warn!("Sensitive input detected: private key reference");
+        }
+    }
+
+    fn sanitize_output(&self, text: &str) -> String {
+        // 从 LLM 输出中脱敏敏感模式
+        text.replace(r"sk-[a-zA-Z0-9]{48}", "[REDACTED_API_KEY]")
+    }
+
+    fn wipe(&self) {
+        // 清除缓存的敏感状态
+    }
+}
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_security_provider(Arc::new(MySecurityProvider));
+
+let session = agent.session("/my-project", Some(opts))?;
+```
+</Tab>
+<Tab value="Python">
+```python
+# 自定义安全提供者在 Rust 中实现。
+# 使用 with_default_security() 获取内置提供者，
+# 或在 Rust 中实现 SecurityProvider 并通过 FFI 暴露。
+opts = SessionOptions()
+opts.default_security = True
+session = agent.session("/my-project", options=opts)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+// 自定义安全提供者在 Rust 中实现。
+// 使用 defaultSecurity: true 获取内置提供者。
+const session = agent.session('/my-project', {
+  defaultSecurity: true,
+});
+```
+</Tab>
+</Tabs>
+
+## 脱敏内容
+
+`DefaultSecurityProvider` 检测并脱敏以下内容：
+
+| 模式 | 示例 | 脱敏为 |
+|---------|---------|-------------|
+| Anthropic API 密钥 | `sk-ant-api03-...` | `[REDACTED]` |
+| OpenAI API 密钥 | `sk-proj-...` | `[REDACTED]` |
+| 通用 Bearer token | `Bearer eyJ...` | `[REDACTED]` |
+| 密码字段 | `password=secret` | `[REDACTED]` |
+| SSN | `123-45-6789` | `[REDACTED]` |
+| 信用卡 | `4111 1111 1111 1111` | `[REDACTED]` |
+
+<Callout type="info">
+完整的安全配置，请参阅[安全](/cn/docs/code/security)。
 </Callout>
 
-> 中文翻译即将推出。
+## API 参考
+
+### SessionOptions
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| 默认安全 | `.with_default_security()` | `default_security=True` | `defaultSecurity: true` | `false` |
+| 自定义提供者 | `.with_security_provider(Arc::new(p))` | _（仅 Rust）_ | _（仅 Rust）_ | `None` |
+
+### SecurityProvider trait（Rust）
+
+| 方法 | 签名 | 描述 |
+|--------|-----------|-------------|
+| `taint_input` | `fn taint_input(&self, text: &str)` | 检查/注册用户输入中的敏感模式 |
+| `sanitize_output` | `fn sanitize_output(&self, text: &str) -> String` | 从 LLM 输出中脱敏敏感模式 |
+| `wipe` | `fn wipe(&self)` | 清除缓存的敏感状态 |
+| `register_hooks` | `fn register_hooks(&self, engine: &HookEngine)` | 附加 hooks 进行更深层拦截 |
+| `teardown` | `fn teardown(&self)` | 会话结束时调用 |
+
+### DefaultSecurityProvider 脱敏模式
+
+| 模式 | 匹配示例 | 替换为 |
+|---------|--------------|-------------|
+| Anthropic API 密钥 | `sk-ant-api03-...` | `[REDACTED]` |
+| OpenAI API 密钥 | `sk-proj-...` | `[REDACTED]` |
+| 通用 Bearer token | `Bearer eyJ...` | `[REDACTED]` |
+| 密码字段 | `password=secret` | `[REDACTED]` |
+| SSN | `123-45-6789` | `[REDACTED]` |
+| 信用卡 | `4111 1111 1111 1111` | `[REDACTED]` |

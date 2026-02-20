@@ -1,14 +1,506 @@
 ---
-title: 通道队列
-description: 基于优先级的任务队列与抢占
+title: Lane 队列
+description: 基于优先级的工具执行，支持并行读取和多机器外部处理
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-# 通道队列
+# Lane 队列
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/lane-queue)获取完整文档。
+Lane 队列系统通过基于优先级的队列路由工具执行，底层由 [a3s-lane](/docs/lane) v0.4.0 支持。启用后，只读工具并行执行，写入工具保持顺序执行。
+
+<Callout type="info">
+完全集成 A3S Lane v0.4.0 — 包括重试策略、速率限制、优先级提升、压力监控和每 lane 超时。
 </Callout>
 
-> 中文翻译即将推出。
+## 工作原理
+
+每个工具调用根据其类型映射到一个 **lane**：
+
+| Lane | 优先级 | 工具 | 行为 |
+|------|----------|-------|----------|
+| Control | P0（最高） | pause, resume, cancel | 顺序 |
+| Query | P1 | read, glob, grep, ls, search, list_files, web_fetch, web_search | **并行** |
+| Execute | P2 | bash, write, edit, delete, move, copy | 顺序 |
+| Generate | P3（最低） | LLM 调用 | 顺序 |
+
+高优先级 lane 在低优先级 lane 之前调度 — 在 Execute（P2）任务之后提交的 Query（P1）任务会排在已排队的 Execute 任务之前。
+
+当 LLM 在单轮中返回多个工具调用时：
+1. **Query lane 工具** 提交到队列并行执行（最多 `query_max_concurrency` 个，默认 4）
+2. **所有其他工具** 按顺序执行，保持副作用顺序
+3. 所有预执行检查（权限、HITL、hooks、skill 过滤）在队列提交前运行
+
+## 启用队列
+
+### Rust
+
+```rust
+use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig};
+
+let session = agent.session("/project", Some(
+    SessionOptions::new()
+        .with_queue_config(SessionQueueConfig::default().with_lane_features())
+))?;
+```
+
+### Python
+
+```python
+from a3s_code import Agent, SessionQueueConfig
+
+qc = SessionQueueConfig()
+qc.with_lane_features()
+session = agent.session("/project", queue_config=qc)
+```
+
+### TypeScript
+
+```typescript
+const session = agent.session('/project', {
+  queueConfig: { enableAllFeatures: true },
+});
+```
+
+## 队列功能
+
+### 死信队列（DLQ）
+
+在耗尽重试次数（默认 3 次，指数退避）后失败的命令会被移到 DLQ。通过 `session.dead_letters()` 查询死信。
+
+### 指标
+
+启用后，队列收集每 lane 的计数器、仪表和直方图（延迟百分位）。通过 `session.queue_metrics()` 访问。
+
+### 告警
+
+当待处理命令超过阈值（50 警告，100 严重）时触发队列深度告警。这些会发出 `AgentEvent::QueueAlert` 事件。
+
+## 高级功能（A3S Lane v0.4.0）
+
+### 1. 重试策略
+
+自动重试失败的任务，支持可配置的策略。
+
+**配置：**
+
+```hcl
+queue {
+  retry_policy {
+    strategy = "exponential"  # exponential, fixed, or none
+    max_retries = 3
+    initial_delay_ms = 100
+  }
+}
+```
+
+**策略：**
+
+- **`exponential`** — 指数退避（100ms → 200ms → 400ms）
+- **`fixed`** — 重试间固定延迟（需要 `fixed_delay_ms`）
+- **`none`** — 不自动重试
+
+**示例（固定延迟）：**
+
+```hcl
+queue {
+  retry_policy {
+    strategy = "fixed"
+    max_retries = 5
+    fixed_delay_ms = 1000  # 1 second between retries
+  }
+}
+```
+
+### 2. 速率限制
+
+控制每个时间窗口的最大操作数。
+
+**配置：**
+
+```hcl
+queue {
+  rate_limit {
+    limit_type = "per_second"  # per_second, per_minute, per_hour, unlimited
+    max_operations = 100
+  }
+}
+```
+
+**限制类型：**
+
+- **`per_second`** — 每秒最大操作数
+- **`per_minute`** — 每分钟最大操作数
+- **`per_hour`** — 每小时最大操作数
+- **`unlimited`** — 无速率限制
+
+<Callout type="warn">
+速率限制需要 a3s-lane 的 `distributed` feature。
+</Callout>
+
+### 3. 优先级提升
+
+随着截止时间临近自动提升任务优先级。
+
+**配置：**
+
+```hcl
+queue {
+  priority_boost {
+    strategy = "standard"  # standard, aggressive, or disabled
+    deadline_ms = 300000   # 5 minutes
+  }
+}
+```
+
+**策略：**
+
+- **`standard`** — 在剩余 75%、50%、25% 时间时提升
+- **`aggressive`** — 更早且更频繁地提升
+- **`disabled`** — 不提升优先级
+
+<Callout type="warn">
+优先级提升需要 a3s-lane 的 `distributed` feature。
+</Callout>
+
+**工作原理：**
+
+```
+任务提交，deadline_ms = 300000（5 分钟）
+
+剩余时间：225s（75%）→ 优先级 +1
+剩余时间：150s（50%）→ 优先级 +2
+剩余时间：75s（25%） → 优先级 +3
+```
+
+### 4. 压力监控
+
+当队列压力超过阈值时发出事件。
+
+**配置：**
+
+```hcl
+queue {
+  pressure_threshold = 50  # Emit event when pending tasks >= 50
+}
+```
+
+**事件：**
+
+- **`queue.lane.pressure`** — 待处理任务 >= 阈值时发出
+- **`queue.lane.idle`** — 队列变空时发出
+
+**使用场景：**
+
+- 自动扩缩容触发
+- 告警通知
+- 性能监控
+
+### 5. 每 Lane 超时
+
+为特定 lane 覆盖默认超时。
+
+**配置：**
+
+```hcl
+queue {
+  default_timeout_ms = 60000  # Global default: 60 seconds
+
+  lane_timeouts {
+    query = 30000      # Query lane: 30 seconds
+    execute = 120000   # Execute lane: 2 minutes
+  }
+}
+```
+
+**优先级：** Lane 特定超时 > 默认超时
+
+### 完整高级配置
+
+```hcl
+queue {
+  # Concurrency limits
+  control_max_concurrency = 2
+  query_max_concurrency = 10
+  execute_max_concurrency = 5
+  generate_max_concurrency = 1
+
+  # Basic features
+  enable_metrics = true
+  enable_dlq = true
+  enable_alerts = true
+  storage_path = "./queue_data"
+  default_timeout_ms = 60000
+
+  # Advanced: Retry policy
+  retry_policy {
+    strategy = "exponential"
+    max_retries = 3
+    initial_delay_ms = 100
+  }
+
+  # Advanced: Rate limiting
+  rate_limit {
+    limit_type = "per_second"
+    max_operations = 100
+  }
+
+  # Advanced: Priority boost
+  priority_boost {
+    strategy = "standard"
+    deadline_ms = 300000
+  }
+
+  # Advanced: Pressure monitoring
+  pressure_threshold = 50
+
+  # Advanced: Per-lane timeouts
+  lane_timeouts {
+    query = 30000
+    execute = 120000
+  }
+}
+```
+
+## 队列状态 API
+
+SDK 在每个配置了队列的会话上暴露实时队列内省。
+
+### SessionQueueStats
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+let stats = session.queue_stats().await;
+
+println!("Total pending: {}", stats.total_pending);
+println!("Total active:  {}", stats.total_active);
+
+// Per-lane breakdown
+for (lane, lane_stats) in &stats.lanes {
+    println!(
+        "  {:?}: pending={}, active={}, completed={}, failed={}",
+        lane, lane_stats.pending, lane_stats.active,
+        lane_stats.completed, lane_stats.failed,
+    );
+}
+
+// External tasks waiting for completion
+let external = session.pending_external_tasks().await;
+println!("External pending: {}", external.len());
+for task in &external {
+    println!(
+        "  [{}] {} in {:?} lane — {}ms remaining",
+        task.task_id, task.command_type, task.lane, task.remaining_ms(),
+    );
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const stats = await session.queueStats();
+console.log(`Pending: ${stats.totalPending}, Active: ${stats.totalActive}`);
+
+// External tasks waiting for completion
+const external = await session.pendingExternalTasks();
+console.log(`External pending: ${external.length}`);
+for (const task of external) {
+  console.log(`  [${task.task_id}] ${task.command_type} in ${task.lane} — ${task.remaining_ms}ms left`);
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+stats = session.queue_stats()
+print(f"Pending: {stats['total_pending']}, Active: {stats['total_active']}")
+
+# External tasks waiting for completion
+external = session.pending_external_tasks()
+print(f"External pending: {len(external)}")
+for task in external:
+    print(f"  [{task['task_id']}] {task['command_type']} in {task['lane']} — {task['remaining_ms']}ms left")
+```
+</Tab>
+</Tabs>
+
+### 指标和死信
+
+```rust
+// Metrics snapshot (if metrics enabled)
+if let Some(metrics) = session.queue_metrics().await {
+    println!("{:?}", metrics);
+}
+
+// Dead letters (if DLQ enabled)
+let dead = session.dead_letters().await;
+for dl in &dead {
+    println!("Dead: {} — {}", dl.command_type, dl.error);
+}
+```
+
+## 外部任务处理
+
+任何 lane 都可以切换到 **External** 模式，该 lane 中的工具调用**不在本地执行** — 而是成为 `ExternalTask` 对象，你的 SDK 代码必须轮询、处理（本地或远程机器上）并通过回调完成。这是多机器并行执行的机制。
+
+### 处理器模式
+
+| 模式 | 行为 | 使用场景 |
+|------|----------|----------|
+| `Internal` | 在运行时内执行（默认） | 正常本地执行 |
+| `External` | 发出任务到 SDK，等待回调 | 多机器卸载 |
+| `Hybrid` | 本地执行并通知 SDK | 监控、审计、影子执行 |
+
+### ExternalTask
+
+当工具调用进入 External 模式的 lane 时，队列创建一个 `ExternalTask`：
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `task_id` | string | 唯一任务标识符（UUID） |
+| `session_id` | string | 所属会话 |
+| `lane` | SessionLane | 任务所在的 lane |
+| `command_type` | string | 工具名称（例如 `bash`、`read`、`write`） |
+| `payload` | JSON | 工具参数（例如 `{"command": "cargo test"}`） |
+| `timeout_ms` | u64 | 队列等待超时前的时间 |
+
+方法：`is_timed_out()` 检查任务是否已过期，`remaining_ms()` 返回剩余时间。
+
+### ExternalTaskResult
+
+通过提供以下内容完成任务：
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `success` | bool | 执行是否成功 |
+| `result` | JSON | 结果载荷（`{"output": "...", "exit_code": 0}`） |
+| `error` | Option&lt;string&gt; | 失败时的错误消息 |
+
+### 生命周期
+
+```
+Agent 循环：LLM 返回工具调用（例如 bash("cargo test")）
+    │
+    ├─ Lane 路由："bash" → Execute lane
+    │
+    ├─ Execute lane 为 External 模式
+    │   │
+    │   ├─ 1. 创建 ExternalTask，包含 task_id、payload、timeout
+    │   ├─ 2. 存储到待处理外部任务映射
+    │   ├─ 3. 发出 ExternalTaskPending 事件
+    │   ├─ 4. 阻塞 — 等待完成或超时
+    │   │
+    │   │    ┌─── SDK / 远程 Worker ───┐
+    │   │    │ 轮询 pending_external_tasks()      │
+    │   │    │ 提取 payload，远程执行              │
+    │   │    │ 调用 complete_external_task(result)  │
+    │   │    └────────────────────────────────────┘
+    │   │
+    │   ├─ 5. 通过 oneshot channel 接收结果
+    │   ├─ 6. 发出 ExternalTaskCompleted 事件
+    │   └─ 7. 将结果返回给 agent 循环
+    │
+    └─ Agent 继续使用工具结果
+```
+
+如果 SDK 未在 `timeout_ms` 内调用 `complete_external_task()`，任务会以超时错误失败，agent 循环将其作为工具失败处理。
+
+## 多机器并行处理
+
+核心模式：在**协调者**机器上运行 agent 会话，将特定 lane 路由到 **External** 模式，让**远程机器**上的 **worker** 进程轮询并执行这些任务。
+
+### 架构
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 协调者（运行 agent 会话）                              │
+│                                                      │
+│  Agent Loop ──→ Lane Queue                           │
+│                   ├─ Query lane  [Internal]           │
+│                   │   └─ read, glob, grep → 本地      │
+│                   ├─ Execute lane [External]           │
+│                   │   └─ bash, write → ExternalTask   │
+│                   └─ Generate lane [Internal]          │
+│                       └─ LLM 调用 → 本地              │
+│                                                      │
+│  pending_external_tasks() ──→ 任务队列 ──→ workers    │
+│  complete_external_task()  ←── 结果 ←── workers       │
+└──────────────────────────┬──────────────────────────┘
+                           │ 网络（gRPC、HTTP、Redis 等）
+          ┌────────────────┼────────────────┐
+          ▼                ▼                ▼
+   ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+   │  Worker A   │ │  Worker B   │ │  Worker C   │
+   │  (机器)     │ │  (机器)     │ │  (��器)     │
+   │  bash 执行  │ │  bash 执行  │ │  bash 执行  │
+   └─────────────┘ └─────────────┘ └─────────────┘
+```
+
+### 动态 Lane 切换
+
+Lane 可以在运行时切换模式。这支持自适应策略 — 以 Internal 模式启动，当 worker 可用时切换到 External：
+
+```rust
+// Start with local execution (default)
+let result = session.send("Analyze the codebase").await?;
+
+// Workers have come online — switch to external for heavy execution
+session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
+    mode: TaskHandlerMode::External,
+    timeout_ms: 60_000,
+}).await;
+
+// Now bash/write/edit tasks route to remote workers
+let result = session.send("Run the full CI pipeline across all packages").await?;
+
+// Workers going offline — switch back to local
+session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
+    mode: TaskHandlerMode::Internal,
+    timeout_ms: 60_000,
+}).await;
+```
+
+## 向后兼容
+
+当 `SessionOptions` 中未设置 `queue_config` 时，不会创建队列，所有工具通过直接 `ToolExecutor` 调用顺序执行，与之前完全一致。队列是纯粹的可选功能。
+
+## API 参考
+
+### SessionQueueConfig 字段
+
+| 字段 | 类型 | 默认值 | 描述 |
+|-------|------|---------|-------------|
+| `query_max_concurrency` | `usize` | `4` | Query lane 最大并行任务数 |
+| `execute_max_concurrency` | `usize` | `1` | Execute lane 最大并行任务数 |
+| `enable_metrics` | `bool` | `false` | 收集队列指标 |
+| `enable_dlq` | `bool` | `false` | 启用死信队列 |
+| `lane_handlers` | `HashMap<SessionLane, LaneHandlerConfig>` | `{}` | 每 lane 处理器配置 |
+| `retry_policy` | `Option<RetryPolicy>` | `None` | 失败重试 |
+| `rate_limit` | `Option<RateLimit>` | `None` | 速率限制 |
+| `priority_boost` | `Option<PriorityBoost>` | `None` | 基于截止时间的优先级提升 |
+| `pressure_threshold` | `usize` | `50` | 队列深度告警阈值 |
+
+### LaneHandlerConfig 字段
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `mode` | `TaskHandlerMode` | `Internal`、`External` 或 `Hybrid` |
+| `timeout_ms` | `Option<u64>` | 外部任务超时 |
+
+### 队列管理方法
+
+| 方法 | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| 提交任务 | `session.submit_task(task).await?` | `await session.submit_task({...})` | `await session.submitTask({...})` |
+| 队列统计 | `session.queue_stats().await` | `await session.queue_stats()` | `await session.queueStats()` |
+| 队列指标 | `session.queue_metrics().await` | `await session.queue_metrics()` | `await session.queueMetrics()` |
+| 死信 | `session.dead_letters().await` | `await session.dead_letters()` | `await session.deadLetters()` |
+| 设置 lane 处理器 | `session.set_lane_handler(lane, cfg).await` | `await session.set_lane_handler(lane, cfg)` | `await session.setLaneHandler(lane, cfg)` |
+
+### RetryPolicy 字段
+
+| 字段 | 类型 | 默认值 | 描述 |
+|-------|------|---------|-------------|
+| `strategy` | `string` | `"exponential"` | `"fixed"` 或 `"exponential"` |
+| `max_retries` | `u32` | `3` | 最大重试次数 |
+| `initial_delay_ms` | `u64` | `100` | 初始重试延迟 |

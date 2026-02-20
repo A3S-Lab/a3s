@@ -3,12 +3,466 @@ title: 会话
 description: 创建会话、发送提示、流式响应和管理对话历史
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 # 会话
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/sessions)获取完整文档。
-</Callout>
+每个会话绑定到一个工作区目录。Agent 通过 `agent.session(workspace, options?)` 创建会话。会话持有自己的 LLM 客户端、对话历史和工具上下文。
 
-> 中文翻译即将推出。
+生成 API — `send()` 和 `stream()` — 将提示发送给 LLM 并返回响应。Agent 循环自动处理工具执行。
+
+## 创建会话
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let agent = Agent::new("agent.hcl").await?;
+
+// Default session (uses config's default model)
+let session = agent.session("/my-project", None)?;
+
+// Session with model override
+let session = agent.session("/my-project", Some(
+    SessionOptions::new()
+        .with_model("openai/gpt-4o")
+))?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const { Agent } = require('@a3s-lab/code');
+
+const agent = await Agent.create('agent.hcl');
+
+// Default session
+const session = agent.session('/my-project');
+
+// Session with model override
+const session = agent.session('/my-project', {
+  model: 'openai/gpt-4o',
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent
+
+agent = Agent.create("agent.hcl")
+
+# Default session
+session = agent.session("/my-project")
+
+# Session with model override
+session = agent.session("/my-project", model="openai/gpt-4o")
+```
+</Tab>
+</Tabs>
+
+## SessionOptions
+
+| 参数 | Rust | TypeScript | Python | 描述 |
+|-----------|------|-----------|--------|-------------|
+| 模型覆盖 | `with_model("provider/model")` | `model: "provider/model"` | `model="provider/model"` | 格式：`provider/model`（例如 `openai/gpt-4o`） |
+| Skill 目录 | `with_skill_dir("path")` | `skillDirs: ["path"]` | `skill_dirs=["path"]` | 额外的 skill 文件扫描目录（与全局 `skill_dirs` 合并） |
+| Agent 目录 | `with_agent_dir("path")` | `agentDirs: ["path"]` | `agent_dirs=["path"]` | 额外的 agent 文件扫描目录（与全局 `agent_dirs` 合并） |
+| 解析重试 | `with_parse_retries(n)` | `maxParseRetries: n` | `max_parse_retries=n` | 连续工具参数格式错误的最大重试次数（默认：2） |
+| 工具超时 | `with_tool_timeout(ms)` | `toolTimeoutMs: ms` | `tool_timeout_ms=ms` | 每个工具的执行超时时间（毫秒）；超时后错误会反馈给 LLM（默认：无） |
+| 熔断器 | `with_circuit_breaker(n)` | `circuitBreakerThreshold: n` | `circuit_breaker_threshold=n` | 非流式模式下 LLM API 失败的最大次数（默认：3） |
+| 弹性套件 | `with_resilience_defaults()` | — | — | 启用 parse_retries=2、tool_timeout=120s、circuit_breaker=3 |
+| 沙箱 | `with_sandbox(SandboxConfig)` | — | — | 通过 A3S Box MicroVM 路由 `bash` 工具（需要 `sandbox` feature） |
+
+模型必须在 agent 配置文件的 `providers` 中定义。格式为 `provider_name/model_id`。
+
+全局 `skill_dirs` 和 `agent_dirs` 在 agent 配置中设置。每个会话的目录会与全局目录合并 — 详见 [Skills](/cn/docs/code/skills)。
+
+## 错误恢复与弹性
+
+三层错误恢复机制保护长时间运行的会话：
+
+<Accordions>
+<Accordion title="解析错误恢复">
+当 LLM 返回格式错误的工具参数（`__parse_error`）时，错误会作为工具结果反馈给模型以便自我修正。连续失败 `max_parse_retries` 次后循环中止。
+</Accordion>
+<Accordion title="工具执行超时">
+每个工具调用都包装在 `tokio::time::timeout` 中。超时的工具会产生错误消息反馈给 LLM；会话继续运行。
+</Accordion>
+<Accordion title="熔断器">
+瞬态 LLM API 故障（网络错误、速率限制）在非流式模式下会以短指数退避重试最多 `circuit_breaker_threshold` 次。在流式模式下，任何故障都是致命的（事件无法重放）。
+</Accordion>
+</Accordions>
+
+```rust
+// Rust — individual controls
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_parse_retries(3)          // bail after 3 consecutive parse errors
+        .with_tool_timeout(30_000)      // 30s per tool
+        .with_circuit_breaker(5)        // retry LLM up to 5 times
+))?;
+
+// Rust — sensible bundle (parse=2, timeout=2min, circuit_breaker=3)
+let session = agent.session(".", Some(
+    SessionOptions::new().with_resilience_defaults()
+))?;
+```
+
+## 发送（非流式）
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+let result = session.send("What files handle authentication?").await?;
+println!("{}", result.text);
+println!("Tools: {}, Tokens: {}", result.tool_calls_count, result.usage.total_tokens);
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const result = await session.send('What files handle authentication?');
+console.log(result.text);
+console.log(`Tools: ${result.toolCallsCount}, Tokens: ${result.totalTokens}`);
+```
+</Tab>
+<Tab value="Python">
+```python
+result = session.send("What files handle authentication?")
+print(result.text)
+print(f"Tools: {result.tool_calls_count}, Tokens: {result.total_tokens}")
+```
+</Tab>
+</Tabs>
+
+## 带附件发送（视觉）
+
+发送图片附件和文本提示。需要支持视觉的模型（Claude Sonnet、GPT-4o）。
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::Attachment;
+
+// From file (auto-detects media type from extension)
+let image = Attachment::from_file("screenshot.png")?;
+
+// Or from bytes
+let image = Attachment::jpeg(raw_bytes);
+
+let result = session.send_with_attachments(
+    "What's in this screenshot?",
+    &[image],
+    None,
+).await?;
+println!("{}", result.text);
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const image = await fs.readFile('screenshot.png');
+const result = await session.sendWithAttachments(
+  "What's in this screenshot?",
+  [{ data: image, mediaType: 'image/png' }],
+);
+console.log(result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Attachment
+
+image = Attachment.from_file("screenshot.png")
+result = session.send_with_attachments(
+    "What's in this screenshot?",
+    [image],
+)
+print(result.text)
+```
+</Tab>
+</Tabs>
+
+支持的图片格式：JPEG、PNG、GIF、WebP。
+
+流式变体：
+
+```rust
+let (rx, handle) = session.stream_with_attachments(
+    "Describe this diagram",
+    &[Attachment::from_file("diagram.png")?],
+    None,
+).await?;
+```
+
+### 工具图片输出
+
+工具可以在文本输出旁返回图片。当工具返回图片时，它们会作为多模态内容块包含在发送给 LLM 的工具结果消息中。
+
+```rust
+// In a custom tool implementation
+async fn execute(&self, args: &Value, ctx: &ToolContext) -> Result<ToolOutput> {
+    let screenshot_bytes = take_screenshot().await?;
+    Ok(ToolOutput::success("Screenshot captured")
+        .with_images(vec![Attachment::png(screenshot_bytes)]))
+}
+```
+
+## 流式
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::AgentEvent;
+
+// AgentEvent is #[non_exhaustive] — always include a wildcard arm
+let (mut rx, _handle) = session.stream("Refactor the auth module").await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::TextDelta { text } => print!("{text}"),
+        AgentEvent::ToolStart { name, .. } => println!("\n🔧 {name}"),
+        AgentEvent::End { text, usage } => {
+            println!("\n✅ Done: {} tokens", usage.total_tokens);
+            break;
+        }
+        _ => {} // required: AgentEvent is #[non_exhaustive]
+    }
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// Returns an EventStream — use for await...of or call .next() manually
+const stream = await session.stream('Refactor the auth module');
+for await (const event of stream) {
+  if (event.type === 'text_delta') process.stdout.write(event.text);
+  if (event.type === 'tool_start') console.log(`\n🔧 ${event.toolName}`);
+  if (event.type === 'tool_end') console.log(`  → ${event.toolOutput?.slice(0, 100)}`);
+}
+
+// Or iterate manually with .next()
+const stream2 = await session.stream('Explain src/main.rs');
+while (true) {
+  const { value, done } = await stream2.next();
+  if (done) break;
+  if (value.type === 'text_delta') process.stdout.write(value.text);
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+# Sync iteration (works without an event loop)
+for event in session.stream("Refactor the auth module"):
+    if event.event_type == "text_delta":
+        print(event.text, end="", flush=True)
+    elif event.event_type == "tool_start":
+        print(f"\n🔧 {event.tool_name}")
+    elif event.event_type == "tool_end":
+        print(f"  → {event.tool_output[:100]}")
+
+# Async iteration (inside async def)
+async for event in session.stream("Refactor the auth module"):
+    if event.event_type == "text_delta":
+        print(event.text, end="", flush=True)
+    elif event.event_type == "end":
+        print(f"\nDone — {event.total_tokens} tokens")
+        break
+```
+</Tab>
+</Tabs>
+
+## 对话历史（Rust）
+
+通过传递历史记录维护多轮对话：
+
+```rust
+use a3s_code_core::llm::{ContentBlock, Message};
+
+let history = vec![
+    Message::user("What's in src/?"),
+    Message {
+        role: "assistant".to_string(),
+        content: vec![ContentBlock::Text {
+            text: "The src/ directory contains main.rs and lib.rs.".to_string(),
+        }],
+        reasoning_content: None,
+    },
+];
+
+// Continue the conversation
+let result = session.send_with_history(&history, "Now explain main.rs").await?;
+```
+
+## 直接工具执行
+
+直接调用工具而不经过 LLM：
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+session.read_file("src/main.rs").await?;
+session.bash("cargo test").await?;
+session.glob("**/*.rs").await?;
+session.grep("fn main").await?;
+session.tool("write", serde_json::json!({"file_path": "x.rs", "content": "..."})).await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+await session.readFile('src/main.rs');
+await session.bash('cargo test');
+await session.glob('**/*.rs');
+await session.grep('fn main');
+await session.tool('write', { file_path: 'x.rs', content: '...' });
+```
+</Tab>
+<Tab value="Python">
+```python
+session.read_file("src/main.rs")
+session.bash("cargo test")
+session.glob("**/*.rs")
+session.grep("fn main")
+session.tool("write", {"file_path": "x.rs", "content": "..."})
+```
+</Tab>
+</Tabs>
+
+## 配置
+
+参见 [提供商与配置](/cn/docs/code/providers) 获取完整的 HCL 配置参考，包括所有字段、`env()` 函数、队列和搜索配置。
+
+## 返回类型
+
+### AgentResult
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `text` | `string` | LLM 最终响应文本 |
+| `messages` | `Vec<Message>` | 完整对话历史（仅 Rust） |
+| `usage` | `TokenUsage` | Token 使用统计 |
+| `tool_calls_count` | `usize` | 工具调用次数 |
+
+### TokenUsage
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `prompt_tokens` | `usize` | 输入 token 数 |
+| `completion_tokens` | `usize` | 输出 token 数 |
+| `total_tokens` | `usize` | 总 token 数 |
+| `cache_read_tokens` | `Option<usize>` | 缓存读取的输入 token 数 |
+| `cache_write_tokens` | `Option<usize>` | 缓存写入的输入 token 数 |
+
+### AgentEvent
+
+`AgentEvent` 是 `#[non_exhaustive]` 的 — 在 Rust 中匹配时始终包含通配符分支。
+
+**Agent 生命周期：**
+
+| 事件 | 字段 | 描述 |
+|-------|--------|-------------|
+| `Start` | `prompt` | 开始处理 |
+| `TurnStart` | `turn` | 新轮次开始 |
+| `TextDelta` | `text` | 助手的文本片段 |
+| `TurnEnd` | `turn`, `total_tokens` | 轮次完成 |
+| `End` | `text`, `total_tokens` | 生成完成 |
+| `Error` | `error` | 发生错误 |
+
+**工具执行：**
+
+| 事件 | 字段 | 描述 |
+|-------|--------|-------------|
+| `ToolStart` | `tool_id`, `tool_name` | 工具调用开始 |
+| `ToolEnd` | `tool_id`, `tool_name`, `tool_output`, `exit_code` | 工具调用完成 |
+| `ToolOutputDelta` | `tool_id`, `tool_name`, `text` | 工具输出增量 |
+
+**HITL 和权限：**
+
+| 事件 | 字段 | 描述 |
+|-------|--------|-------------|
+| `ConfirmationRequired` | `tool_id`, `tool_name`, `args`, `timeout_ms` | 需要 HITL 确认 |
+| `ConfirmationReceived` | `tool_id`, `approved`, `reason` | 收到 HITL 确认 |
+| `ConfirmationTimeout` | `tool_id`, `action_taken` | HITL 确认超时 |
+| `PermissionDenied` | `tool_id`, `tool_name`, `args`, `reason` | 工具被权限策略阻止 |
+
+**上下文和记忆：**
+
+| 事件 | 字段 | 描述 |
+|-------|--------|-------------|
+| `ContextResolving` | `providers` | 上下文解析开始 |
+| `ContextResolved` | `total_items`, `total_tokens` | 上下文解析完成 |
+| `MemoryStored` | — | 记忆项已存储 |
+| `MemoryRecalled` | — | 记忆项已召回 |
+| `MemoriesSearched` | — | 记忆搜索完成 |
+| `MemoryCleared` | — | 记忆已清除 |
+
+**任务、子代理和 Lane 队列：**
+
+| 事件 | 字段 | 描述 |
+|-------|--------|-------------|
+| `TaskUpdated` | `session_id`, `tasks` | 任务列表变更 |
+| `SubagentStart` | — | 子代理执行开始 |
+| `ExternalTaskPending` | — | 外部任务已入队 |
+| `ExternalTaskCompleted` | — | 外部任务已完成 |
+| `CommandDeadLettered` | — | Lane 命令进入死信队列 |
+| `CommandRetry` | — | Lane 命令重试 |
+| `QueueAlert` | — | 队列告警触发 |
+
+## API 参考
+
+### Agent
+
+| 方法 | 签名 | 描述 |
+|--------|-----------|-------------|
+| `new` | `Agent::new(config: &str) -> Result<Agent>` | 从 HCL 文件或字符串加载 |
+| `from_config` | `Agent::from_config(config: AgentConfig) -> Result<Agent>` | 从结构体加载 |
+| `session` | `agent.session(workspace, options?) -> Result<AgentSession>` | 创建绑定工作区的会话 |
+
+### AgentSession
+
+| 方法 | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| 发送提示 | `session.send(prompt, None).await?` | `await session.send(prompt)` | `await session.send(prompt)` |
+| 流式事件 | `session.stream(prompt, None).await?` | `session.stream(prompt)` | `session.stream(prompt)` |
+| 带图片发送 | `session.send_with_attachments(p, &[img], None).await?` | `await session.send_with_attachments(p, [img])` | `await session.sendWithAttachments(p, [img])` |
+| 读取文件 | `session.read_file(path).await?` | `await session.read_file(path)` | `await session.readFile(path)` |
+| 运行 bash | `session.bash(cmd).await?` | `await session.bash(cmd)` | `await session.bash(cmd)` |
+| Glob | `session.glob(pattern).await?` | `await session.glob(pattern)` | `await session.glob(pattern)` |
+| Grep | `session.grep(pattern).await?` | `await session.grep(pattern)` | `await session.grep(pattern)` |
+| 调用工具 | `session.tool(name, args).await?` | `await session.tool(name, args)` | `await session.tool(name, args)` |
+| 历史记录 | `session.history()` | `session.history()` | `session.history()` |
+
+### SessionOptions
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| 模型 | `.with_model("provider/model")` | `model="provider/model"` | `model: "provider/model"` | 配置默认值 |
+| 宽松模式 | `.with_permissive_policy()` | `permissive=True` | `permissive: true` | `false` |
+| 规划 | `.with_planning(true)` | `planning=True` | `planning: true` | `false` |
+| 目标跟踪 | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` | `false` |
+| 内置 skills | `.with_builtin_skills()` | `builtin_skills=True` | `builtinSkills: true` | `false` |
+| Skill 目录 | `.with_skills_from_dir(path)` | `skill_dirs=[path]` | `skillDirs: [path]` | `[]` |
+| 默认安全 | `.with_default_security()` | `default_security=True` | `defaultSecurity: true` | `false` |
+| 文件记忆 | `.with_file_memory(path)` | `memory_dir=path` | `memoryDir: path` | `None` |
+| 自动压缩 | `.with_auto_compact(true)` | `auto_compact=True` | `autoCompact: true` | `false` |
+| 自动压缩阈值 | `.with_auto_compact_threshold(f)` | `auto_compact_threshold=f` | `autoCompactThreshold: f` | `0.8` |
+| 文件系统上下文 | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` | `None` |
+| 队列配置 | `.with_queue_config(cfg)` | `queue_config=cfg` | `queueConfig: cfg` | `None` |
+| 解析重试 | `.with_parse_retries(n)` | `max_parse_retries=n` | `maxParseRetries: n` | `2` |
+| 工具超时 | `.with_tool_timeout(ms)` | `tool_timeout_ms=ms` | `toolTimeoutMs: ms` | `None` |
+| 熔断器 | `.with_circuit_breaker(n)` | `circuit_breaker_threshold=n` | `circuitBreakerThreshold: n` | `3` |
+| 弹性默认值 | `.with_resilience_defaults()` | — | — | — |
+| 沙箱 | `.with_sandbox(cfg)` | — | — | `None` |
+| 权限检查器 | `.with_permission_checker(p)` | — | — | `PermissionPolicy` |
+| 确认管理器 | `.with_confirmation_manager(m)` | — | — | `None` |
+| 安全提供者 | `.with_security_provider(p)` | — | — | `None` |
+| 上下文提供者 | `.with_context_provider(p)` | — | — | `None` |
+| 记忆存储 | `.with_memory(store)` | — | — | `InMemoryStore` |
+| Hook 引擎 | `.with_hook_engine(h)` | — | — | `HookEngine` |
+
+### AgentResponse
+
+| 字段 | Rust | Python | Node.js |
+|-------|------|--------|---------|
+| 文本 | `result.text` | `result.text` | `result.text` |
+| 总 token 数 | `result.usage.total_tokens` | `result.usage.total_tokens` | `result.usage.totalTokens` |
+| 工具调用次数 | `result.tool_calls_count` | `result.tool_calls_count` | `result.toolCallsCount` |

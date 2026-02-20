@@ -1,14 +1,325 @@
 ---
-title: 提供商
-description: LLM 提供商配置
+title: 提供商与配置
+description: 完整的 HCL 配置参考 — LLM 提供商、模型、队列、搜索、存储和 agent 行为
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
-# 提供商
+# 提供商与配置
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/providers)获取完整文档。
+所有配置在单个 HCL 文件（或 JSON）中定义。本页是每个配置字段的权威参考。
+
+<Callout type="info">
+A3S Code 专用 HCL 配置格式。`env()` 函数在解析时读取环境变量。
 </Callout>
 
-> 中文翻译即将推出。
+## 基本配置
+
+```hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = "sk-ant-..."
+
+  models {
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    family    = "claude-sonnet"
+    tool_call = true
+  }
+}
+```
+
+## 多提供商
+
+按需定义多个提供商。在创建会话时通过 `provider/model` 切换：
+
+```hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = "sk-ant-..."
+
+  models {
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    tool_call = true
+  }
+
+  models {
+    id        = "claude-haiku-4-20250514"
+    name      = "Claude Haiku 4"
+    tool_call = true
+  }
+}
+
+providers {
+  name    = "openai"
+  api_key = "sk-..."
+
+  models {
+    id        = "gpt-4o"
+    name      = "GPT-4o"
+    tool_call = true
+  }
+
+  models {
+    id        = "gpt-4o-mini"
+    name      = "GPT-4o Mini"
+    tool_call = true
+  }
+}
+```
+
+然后在运行时选择：
+
+```rust
+// Use default model (anthropic/claude-sonnet-4-20250514)
+let session = agent.session("/project", None)?;
+
+// Use a different model
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_model("openai/gpt-4o")
+))?;
+```
+
+## 每模型 API Key 和 Base URL
+
+同一提供商下的模型可以有不同的 `api_key` 和 `base_url`。适用于：
+
+- **API key 轮换** — 不同模型使用不同的 key
+- **代理端点** — 将特定模型路由到代理或网关
+- **区域端点** — 不同的 base URL 以降低延迟或满足合规要求
+
+```hcl
+providers {
+  name     = "anthropic"
+  api_key  = "sk-ant-default-key..."          # default for all models
+  base_url = "https://api.anthropic.com"      # default base URL
+
+  models {
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    tool_call = true
+    # inherits provider api_key and base_url
+  }
+
+  models {
+    id        = "claude-sonnet-4-20250514-eu"
+    name      = "Claude Sonnet 4 (EU)"
+    api_key   = "sk-ant-eu-key..."              # override
+    base_url  = "https://eu.api.anthropic.com"  # override
+    tool_call = true
+  }
+}
+
+providers {
+  name    = "openai"
+  api_key = "sk-team-key..."
+
+  models {
+    id        = "gpt-4o"
+    name      = "GPT-4o"
+    tool_call = true
+    # inherits provider api_key
+  }
+
+  models {
+    id        = "gpt-4o-mini"
+    name      = "GPT-4o Mini"
+    api_key   = "sk-personal-key..."   # different key for this model
+    tool_call = true
+  }
+}
+```
+
+提供商级别的 `api_key` 和 `base_url` 是默认值。模型级别的值会覆盖它们。
+
+## 模型字段
+
+| 字段 | 类型 | 必填 | 描述 |
+|-------|------|----------|-------------|
+| `id` | string | 是 | 模型标识符（例如 `claude-sonnet-4-20250514`） |
+| `name` | string | 是 | 显示名称 |
+| `family` | string | 否 | 模型系列（例如 `claude-sonnet`、`gpt`） |
+| `api_key` | string | 否 | 每模型 API key（覆盖提供商） |
+| `base_url` | string | 否 | 每模型 base URL（覆盖提供商） |
+| `tool_call` | bool | 否 | 支持工具调用 |
+| `reasoning` | bool | 否 | 支持扩展推理 |
+| `temperature` | bool | 否 | 支持温度参数 |
+| `attachment` | bool | 否 | 支持文件附件 |
+| `cost` | object | 否 | `{ input, output, cache_read, cache_write }` 每百万 token 费用 |
+| `limit` | object | 否 | `{ context, output }` token 限制 |
+
+## 提供商字段
+
+| 字段 | 类型 | 必填 | 描述 |
+|-------|------|----------|-------------|
+| `name` | string | 是 | 提供商标识符（用于 `provider/model` 格式） |
+| `api_key` | string | 是 | 所有模型的默认 API key |
+| `base_url` | string | 否 | 所有模型的默认 base URL |
+
+## 完整配置参考
+
+包含所有可用字段的完整 HCL 配置：
+
+```hcl
+# === LLM (required) ===
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+# === Agent Behavior ===
+max_tool_rounds  = 20          # default: 50
+thinking_budget  = 4096        # reasoning token budget
+
+# === Extensions ===
+skill_dirs = ["./skills"]      # *.md skill files
+agent_dirs = ["./agents"]      # *.yaml/*.md agent files
+
+# === Storage ===
+storage_backend = "file"       # "memory" | "file" | "custom"
+sessions_dir    = "/tmp/a3s"   # session persistence path
+storage_url     = "redis://localhost:6379"
+
+# === Providers ===
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+
+  models {
+    id          = "claude-sonnet-4-20250514"
+    name        = "Claude Sonnet 4"
+    family      = "claude-sonnet"
+    tool_call   = true
+    temperature = true
+    reasoning   = false
+    cost {
+      input       = 3.0
+      output      = 15.0
+      cache_read  = 0.3
+      cache_write = 3.75
+    }
+    limit {
+      context = 200000
+      output  = 8192
+    }
+  }
+}
+
+providers {
+  name    = "openai"
+  api_key = env("OPENAI_API_KEY")
+
+  models {
+    id        = "gpt-4o"
+    name      = "GPT-4o"
+    tool_call = true
+  }
+
+  models {
+    id        = "gpt-4o-proxy"
+    name      = "GPT-4o (via Proxy)"
+    api_key   = "sk-proxy-key..."                 # per-model override
+    base_url  = "https://proxy.example.com/v1"    # per-model override
+    tool_call = true
+  }
+}
+
+# === Queue (optional) ===
+queue {
+  query_max_concurrency    = 5    # default: 5
+  execute_max_concurrency  = 2    # default: 2
+  generate_max_concurrency = 1    # default: 1
+  enable_metrics           = true
+  enable_dlq               = true
+
+  retry_policy {
+    strategy         = "exponential"  # "fixed" | "exponential"
+    max_retries      = 3
+    initial_delay_ms = 100
+  }
+}
+
+# === Search (optional) ===
+search {
+  timeout = 30
+
+  health {
+    max_failures    = 3
+    suspend_seconds = 60
+  }
+
+  engine {
+    ddg {
+      enabled = true
+      weight  = 1.5
+    }
+    wiki {
+      enabled = true
+      weight  = 1.2
+    }
+    brave {
+      enabled = true
+      weight  = 1.0
+      timeout = 20
+    }
+  }
+}
+```
+
+### 配置字段
+
+| 字段 | 类型 | 默认值 | 描述 |
+|-------|------|---------|-------------|
+| `default_model` | `string` | —（必填） | 默认模型，`provider/model` 格式 |
+| `max_tool_rounds` | `int` | `50` | 每轮最大工具调用次数 |
+| `thinking_budget` | `int` | `null` | 推理 token 预算 |
+| `skill_dirs` | `string[]` | `[]` | 扫描 `*.md` skill 文件的目录 |
+| `agent_dirs` | `string[]` | `[]` | 扫描 agent 文件的目录 |
+| `storage_backend` | `string` | `"file"` | `"memory"`、`"file"` 或 `"custom"` |
+| `sessions_dir` | `string` | `null` | 会话持久化路径 |
+| `storage_url` | `string` | `null` | 存储连接 URL（用于自定义后端） |
+
+### `env()` 函数
+
+使用 `env("VAR_NAME")` 在配置解析时读取环境变量：
+
+```hcl
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+}
+```
+
+这避免了在配置文件中硬编码密钥。
+
+## JSON 格式
+
+相同配置的 JSON 格式（camelCase 字段名）：
+
+```json
+{
+  "defaultModel": "anthropic/claude-sonnet-4-20250514",
+  "providers": [
+    {
+      "name": "anthropic",
+      "apiKey": "sk-ant-...",
+      "models": [
+        {
+          "id": "claude-sonnet-4-20250514",
+          "name": "Claude Sonnet 4",
+          "toolCall": true
+        },
+        {
+          "id": "claude-sonnet-4-20250514-eu",
+          "name": "Claude Sonnet 4 (EU)",
+          "apiKey": "sk-ant-eu-key...",
+          "baseUrl": "https://eu.api.anthropic.com",
+          "toolCall": true
+        }
+      ]
+    }
+  ]
+}
+```

@@ -1,14 +1,509 @@
 ---
-title: 子智能体
-description: 将任务委托给专业子智能体
+title: 子代理
+description: 定义具有隔离权限、自定义提示和并行委派的专门子代理
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
-# 子智能体
+# 子代理
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/subagents)获取完整文档。
-</Callout>
+子代理是在隔离的子会话中运行的专门 agent，拥有自己的权限、系统提示和工具访问。A3S Code 内置 5 个子代理，并支持通过 YAML 或 Markdown 文件定义用户自定义子代理。
 
-> 中文翻译即将推出。
+## 内置子代理
+
+| Agent | 描述 | 最大步数 | 权限 |
+|-------|-------------|-----------|-------------|
+| `explore` | 快速代码库探索（只读） | 20 | read, grep, glob, ls |
+| `general` | 通用多步骤执行 | 50 | 完整工具访问 |
+| `plan` | 架构和规划（只读） | 30 | read, grep, glob |
+| `title` | 会话标题生成（隐藏） | 1 | 无 |
+| `summary` | 会话摘要（隐藏） | 5 | read |
+
+## 定义自定义子代理
+
+### YAML 格式
+
+在 agents 目录中创建 YAML 文件：
+
+```yaml
+# ~/.a3s/agents/security-reviewer.yaml
+name: security-reviewer
+description: Reviews code for security vulnerabilities and best practices
+mode: subagent
+hidden: false
+max_steps: 25
+can_spawn_subagents: false
+
+permissions:
+  allow:
+    - read
+    - grep
+    - glob
+    - ls
+  deny:
+    - write
+    - edit
+    - bash
+    - patch
+
+prompt: |
+  You are a security code reviewer. Analyze the codebase for:
+  - SQL injection, XSS, CSRF vulnerabilities
+  - Hardcoded secrets and credentials
+  - Insecure cryptographic practices
+  - Missing input validation
+  - Unsafe deserialization
+
+  Report findings with severity (Critical/High/Medium/Low),
+  affected file and line, and recommended fix.
+  Never modify any files — report only.
+```
+
+### Markdown 格式
+
+或使用带 YAML frontmatter 的 Markdown（正文成为系统提示）：
+
+```markdown
+# ~/.a3s/agents/db-migration.md
+---
+name: db-migration
+description: Database migration specialist
+mode: subagent
+max_steps: 40
+permissions:
+  allow: [read, write, edit, bash, grep, glob]
+  deny: [web_fetch, web_search]
+---
+You are a database migration specialist. You can:
+- Generate migration files (SQL or ORM-specific)
+- Validate migration safety (no data loss, reversibility)
+- Run migrations in development environments
+- Generate rollback scripts
+
+Always check for:
+1. Backward compatibility with the current schema
+2. Data preservation during column renames/type changes
+3. Index impact on large tables
+4. Foreign key constraint ordering
+```
+
+### 使用模型覆盖
+
+通过 `provider/model` 格式为特定子代理使用不同模型：
+
+```yaml
+name: quick-search
+description: Fast search agent using a smaller model
+mode: subagent
+max_steps: 10
+model: anthropic/claude-haiku-4-20250514
+permissions:
+  allow: [read, grep, glob, ls]
+prompt: |
+  You are a fast search agent. Find the requested information
+  quickly and return concise results. Do not explain — just find.
+```
+
+## 加载子代理
+
+在 agent 配置中配置 agent 目录：
+
+```hcl
+agent_dirs = ["~/.a3s/agents", "/shared/team-agents"]
+```
+
+这些目录中的所有 `.yaml` 和 `.md` 文件会在启动时自动加载到 `AgentRegistry` 中。
+
+## `delegate-task` 内置 Skill
+
+A3S Code 包含一个内置的 `delegate-task` skill（Instruction 类型），会自动注入到系统提示中。它教会 LLM：
+
+- 何时将工作委派给子代理
+- 哪些内置 agent 可用及其能力
+- 如何正确调用 `task` 和 `parallel_task` 工具
+- 提示设计和并行化的最佳实践
+
+这意味着 LLM 无需额外配置即可将任务委派给子代理。参见 [Skills 系统](/cn/docs/code/skills) 了解更多内置 skills。
+
+## 委派工作原理
+
+```
+父会话
+  │
+  ├─ task("security-reviewer", "Review auth module")
+  │    │
+  │    ├─ 1. 在 AgentRegistry 中查找 AgentDefinition
+  │    ├─ 2. 使用 agent 的权限创建子会话
+  │    ├─ 3. 应用 agent 的系统提示
+  │    ├─ 4. 在隔离的 agentic 循环中执行任务
+  │    ├─ 5. 将结果返回给父会话
+  │    └─ 6. 保留子会话 ID 以供引用
+  │
+  └─ 父会话继续使用子代理的结果
+```
+
+关键隔离保证：
+- 子会话有自己的上下文窗口（无父上下文泄漏）
+- 权限限制为 agent 定义的策略
+- 工具访问按 agent 的 allow/deny 规则过滤
+- `max_steps` 防止失控执行
+- `can_spawn_subagents: false` 防止递归委派
+
+## AgentDefinition 参考
+
+| 字段 | 类型 | 必填 | 描述 |
+|-------|------|----------|-------------|
+| `name` | string | 是 | 唯一的 agent 标识符 |
+| `description` | string | 是 | agent 的功能（展示给 LLM） |
+| `mode` | `subagent` 或 `primary` | 否 | Agent 模式（默认：`subagent`） |
+| `hidden` | bool | 否 | 从列表中隐藏（默认：`false`） |
+| `max_steps` | number | 否 | 最大工具轮数 |
+| `can_spawn_subagents` | bool | 否 | 允许递归委派（默认：`false`） |
+| `permissions.allow` | string[] | 否 | 允许的工具名称 |
+| `permissions.deny` | string[] | 否 | 拒绝的工具名称 |
+| `model` | string | 否 | 模型覆盖，`provider/model` 格式 |
+| `prompt` | string | 否 | Agent 的系统提示 |
+
+## 工具调用
+
+LLM 通过两个工具委派给子代理：`task`（单个）和 `parallel_task`（并发）。两者也可通过 `session.tool()` 从 SDK 代码调用。
+
+### `task` 参数
+
+| 字段 | 类型 | 必填 | 描述 |
+|-------|------|----------|-------------|
+| `agent` | string | 是 | Agent 名称（内置或自定义） |
+| `description` | string | 是 | 简短任务描述 |
+| `prompt` | string | 是 | 给子代理的详细提示 |
+| `background` | bool | 否 | 不等待结果运行（默认：`false`） |
+| `max_steps` | int | 否 | 覆盖 agent 的默认最大步数 |
+
+### `task` 结果
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `output` | string | 子代理响应文本 |
+| `session_id` | string | 子会话 ID |
+| `agent` | string | 使用的 agent 名称 |
+| `success` | bool | 执行是否成功 |
+| `task_id` | string | 唯一任务标识符 |
+
+### 单任务委派
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+let result = session.tool("task", serde_json::json!({
+    "agent": "explore",
+    "description": "Find auth handlers",
+    "prompt": "Search for files that handle user authentication and list them with line numbers."
+})).await?;
+
+println!("{}", result.output);
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const result = await session.tool('task', {
+  agent: 'explore',
+  description: 'Find auth handlers',
+  prompt: 'Search for files that handle user authentication and list them with line numbers.',
+});
+
+console.log(result.output);
+```
+</Tab>
+<Tab value="Python">
+```python
+result = session.tool("task", {
+    "agent": "explore",
+    "description": "Find auth handlers",
+    "prompt": "Search for files that handle user authentication and list them with line numbers.",
+})
+
+print(result.output)
+```
+</Tab>
+</Tabs>
+
+### 并行委派
+
+`parallel_task` 通过 `tokio::JoinSet` 并发生成多个子代理并等待全部完成。结果以数组形式返回。
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+let result = session.tool("parallel_task", serde_json::json!({
+    "tasks": [
+        {
+            "agent": "explore",
+            "description": "Find API routes",
+            "prompt": "List all API route definitions with their HTTP methods."
+        },
+        {
+            "agent": "explore",
+            "description": "Find DB models",
+            "prompt": "List all database model definitions with their fields."
+        },
+        {
+            "agent": "security-reviewer",
+            "description": "Review auth module",
+            "prompt": "Check src/auth/ for security vulnerabilities."
+        }
+    ]
+})).await?;
+
+println!("{}", result.output);
+// Each task's result is included with its agent name and success status
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const result = await session.tool('parallel_task', {
+  tasks: [
+    {
+      agent: 'explore',
+      description: 'Find API routes',
+      prompt: 'List all API route definitions with their HTTP methods.',
+    },
+    {
+      agent: 'explore',
+      description: 'Find DB models',
+      prompt: 'List all database model definitions with their fields.',
+    },
+    {
+      agent: 'security-reviewer',
+      description: 'Review auth module',
+      prompt: 'Check src/auth/ for security vulnerabilities.',
+    },
+  ],
+});
+
+console.log(result.output);
+```
+</Tab>
+<Tab value="Python">
+```python
+result = session.tool("parallel_task", {
+    "tasks": [
+        {
+            "agent": "explore",
+            "description": "Find API routes",
+            "prompt": "List all API route definitions with their HTTP methods.",
+        },
+        {
+            "agent": "explore",
+            "description": "Find DB models",
+            "prompt": "List all database model definitions with their fields.",
+        },
+        {
+            "agent": "security-reviewer",
+            "description": "Review auth module",
+            "prompt": "Check src/auth/ for security vulnerabilities.",
+        },
+    ],
+})
+
+print(result.output)
+```
+</Tab>
+</Tabs>
+
+### 子代理事件
+
+流式传输时，子代理生命周期事件会在父会话的事件通道上发出：
+
+```rust
+let (mut rx, _handle) = session.stream("Analyze this codebase thoroughly").await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::SubagentStart { task_id, agent, description, .. } => {
+            println!("▶ [{agent}] {description} (task: {task_id})");
+        }
+        AgentEvent::SubagentEnd { agent, success, output, .. } => {
+            let status = if success { "✓" } else { "✗" };
+            println!("{status} [{agent}] {}", output.chars().take(100).collect::<String>());
+        }
+        AgentEvent::End { .. } => break,
+        _ => {}
+    }
+}
+```
+
+## 多会话并行
+
+对于超出子代理委派范围的工作负载 — 例如处理多个仓库或在不同工作区运行相同分析 — 你可以创建多个独立会话，并使用语言原生的并发原语驱动它们。
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::Agent;
+use tokio::task::JoinSet;
+
+let agent = Agent::new("agent.hcl").await?;
+
+let workspaces = vec![
+    "/repos/service-auth",
+    "/repos/service-billing",
+    "/repos/service-gateway",
+];
+
+// Spawn one session per workspace, all running concurrently
+let mut join_set = JoinSet::new();
+for workspace in workspaces {
+    let agent = agent.clone();
+    join_set.spawn(async move {
+        let session = agent.session(workspace, None)?;
+        let result = session.send("Find all TODO comments and summarize them").await?;
+        Ok::<_, a3s_code_core::CodeError>((workspace.to_string(), result.text))
+    });
+}
+
+// Collect results as they complete
+while let Some(result) = join_set.join_next().await {
+    match result? {
+        Ok((workspace, text)) => println!("=== {workspace} ===\n{text}\n"),
+        Err(e) => eprintln!("Error: {e}"),
+    }
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const { Agent } = require('@a3s-lab/code');
+
+const agent = await Agent.create('agent.hcl');
+
+const workspaces = [
+  '/repos/service-auth',
+  '/repos/service-billing',
+  '/repos/service-gateway',
+];
+
+// Run all sessions concurrently with Promise.all
+const results = await Promise.all(
+  workspaces.map(async (workspace) => {
+    const session = agent.session(workspace);
+    const result = await session.send('Find all TODO comments and summarize them');
+    return { workspace, text: result.text };
+  })
+);
+
+for (const { workspace, text } of results) {
+  console.log(`=== ${workspace} ===\n${text}\n`);
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+import asyncio
+from a3s_code import Agent
+
+agent = Agent.create("agent.hcl")
+
+workspaces = [
+    "/repos/service-auth",
+    "/repos/service-billing",
+    "/repos/service-gateway",
+]
+
+async def analyze(workspace: str) -> tuple[str, str]:
+    session = agent.session(workspace)
+    result = session.send("Find all TODO comments and summarize them")
+    return workspace, result.text
+
+# Run all sessions concurrently
+results = asyncio.run(asyncio.gather(*[analyze(ws) for ws in workspaces]))
+
+for workspace, text in results:
+    print(f"=== {workspace} ===\n{text}\n")
+```
+</Tab>
+</Tabs>
+
+> **注意：** 每个会话是独立的 — 独立的对话历史、工具上下文和工作区边界。并行会话之间没有共享状态。
+
+### 组合两种模式
+
+对于扇出/扇入工作流，可以将多会话并行与子代理委派结合：
+
+```rust
+use a3s_code_core::Agent;
+use tokio::task::JoinSet;
+
+let agent = Agent::new("agent.hcl").await?;
+
+// Phase 1: Parallel exploration across workspaces
+let mut join_set = JoinSet::new();
+for workspace in &["/repos/frontend", "/repos/backend", "/repos/infra"] {
+    let agent = agent.clone();
+    let ws = workspace.to_string();
+    join_set.spawn(async move {
+        let session = agent.session(&ws, None)?;
+        // Each session uses parallel_task internally to fan out further
+        let result = session.tool("parallel_task", serde_json::json!({
+            "tasks": [
+                { "agent": "explore", "description": "Find dependencies", "prompt": "List all external dependencies." },
+                { "agent": "security-reviewer", "description": "Security scan", "prompt": "Scan for known vulnerability patterns." }
+            ]
+        })).await?;
+        Ok::<_, a3s_code_core::CodeError>((ws, result.output))
+    });
+}
+
+// Phase 2: Collect and summarize
+let mut findings = Vec::new();
+while let Some(result) = join_set.join_next().await {
+    if let Ok(Ok((ws, output))) = result {
+        findings.push(format!("## {ws}\n{output}"));
+    }
+}
+
+// Phase 3: Feed combined results into a summary session
+let summary_session = agent.session("/repos", None)?;
+let summary = summary_session.send(&format!(
+    "Summarize these findings into a single security report:\n\n{}",
+    findings.join("\n\n")
+)).await?;
+
+println!("{}", summary.text);
+```
+
+内置和自定义 agent 都可以通过名称使用。从 `agent_dirs` 加载的自定义 agent 会自动与内置 agent 一起出现。
+
+## API 参考
+
+### AgentDefinition 字段
+
+| 字段 | 类型 | 必填 | 描述 |
+|-------|------|----------|-------------|
+| `name` | `string` | ✅ | Agent 标识符（用于 `task` 工具） |
+| `description` | `string` | ✅ | Agent 的功能 |
+| `system_prompt` | `string` | ✅ | Agent 的系统提示/指令 |
+| `model` | `string` | ❌ | 模型覆盖（`provider/model` 格式） |
+| `allowed_tools` | `string[]` | ❌ | 工具访问限制 |
+| `max_tool_rounds` | `number` | ❌ | 每次调用的最大工具轮数 |
+
+### SessionOptions
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| Agent 目录 | `.with_agent_dir(path)` | `agent_dirs=[path]` | `agentDirs: [path]` | `[]` |
+
+### task 工具 schema
+
+| 参数 | 类型 | 必填 | 描述 |
+|-----|------|----------|-------------|
+| `agent` | `string` | ✅ | 要委派的 agent 名称 |
+| `prompt` | `string` | ✅ | 任务提示 |
+| `workspace` | `string` | ❌ | 工作区覆盖 |
+
+### 内置 agents
+
+| Agent | 描述 |
+|-------|-------------|
+| `code-reviewer` | 审查代码的风格、安全性和正确性 |
+| `test-writer` | 生成单元测试和集成测试 |
+| `doc-writer` | 从代码编写文档 |
+| `refactorer` | 重构代码以提高清晰度和性能 |
+| `debugger` | 诊断和修复 bug |

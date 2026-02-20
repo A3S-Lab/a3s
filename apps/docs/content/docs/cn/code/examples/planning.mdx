@@ -1,14 +1,153 @@
 ---
-title: 任务规划
-description: 任务分解与目标追踪
+title: 规划
+description: 带目标追踪的任务分解
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-# 任务规划
+# 规划
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/examples/planning)获取完整文档。
+规划模式在执行前将复杂提示分解为结构化执行计划。每个步骤独立追踪，支持面向目标的多步骤任务。
+
+<Callout type="info">
+规划会额外增加一次 LLM 调用来生成计划。适用于复杂的多文件任务；简单查询可跳过。
 </Callout>
 
-> 中文翻译即将推出。
+## 启用规划
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_planning(true)
+    .with_goal_tracking(true);
+
+let session = agent.session("/my-project", Some(opts))?;
+
+let result = session.send(
+    "Add input validation to all API endpoints, write tests, and update the README",
+    None,
+).await?;
+
+println!("{}", result.text);
+println!("Tool calls: {}", result.tool_calls_count);
+```
+
+**运行：** `cargo run --example agentic_loop_demo`
+**源码：** [`core/examples/agentic_loop_demo.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/agentic_loop_demo.rs)
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project",
+    permissive=True,
+    planning=True,
+    goal_tracking=True,
+)
+
+result = await session.send(
+    "Add input validation to all API endpoints, write tests, and update the README"
+)
+
+print(result.text)
+print(f"Tool calls: {result.tool_calls_count}")
+```
+
+**源码：** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  planning: true,
+  goalTracking: true,
+});
+
+const result = await session.send(
+  'Add input validation to all API endpoints, write tests, and update the README'
+);
+
+console.log(result.text);
+console.log(`Tool calls: ${result.toolCallsCount}`);
+```
+
+**源码：** [`sdk/node/examples/agentic_loop_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.js)
+</Tab>
+</Tabs>
+
+## 流式规划事件
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let (mut rx, handle) = session.stream("Refactor and test the auth module", None).await?;
+
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::PlanningStart { prompt } => {
+            println!("📋 Planning: {}", prompt);
+        }
+        AgentEvent::PlanReady { steps, .. } => {
+            println!("Plan ({} steps):", steps.len());
+            for (i, step) in steps.iter().enumerate() {
+                println!("  {}. {}", i + 1, step);
+            }
+        }
+        AgentEvent::End { .. } => break,
+        _ => {}
+    }
+}
+handle.await??;
+```
+</Tab>
+<Tab value="Python">
+```python
+async for event in session.stream("Refactor and test the auth module"):
+    t = event.get("type")
+    if t == "planning_start":
+        print(f"📋 Planning: {event['prompt']}")
+    elif t == "plan_ready":
+        print(f"Plan ({len(event['steps'])} steps):")
+        for i, step in enumerate(event["steps"], 1):
+            print(f"  {i}. {step}")
+    elif t == "end":
+        break
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+for await (const event of stream) {
+  if (event.type === 'planning_start') {
+    console.log(`📋 Planning: ${event.prompt}`);
+  } else if (event.type === 'plan_ready') {
+    console.log(`Plan (${event.steps.length} steps):`);
+    event.steps.forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
+  } else if (event.type === 'end') {
+    break;
+  }
+}
+```
+</Tab>
+</Tabs>
+
+## API 参考
+
+### SessionOptions
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| 启用规划 | `.with_planning(true)` | `planning=True` | `planning: true` | `false` |
+| 启用目标追踪 | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` | `false` |
+
+### 规划事件
+
+| 事件 | Rust 变体 | Python/Node.js `type` | 字段 |
+|-------|-------------|----------------------|--------|
+| 规划开始 | `AgentEvent::PlanningStart` | `planning_start` | `prompt` |
+| 计划生成 | `AgentEvent::PlanReady` | `plan_ready` | `steps[]`, `wave_count` |
+| 步骤开始 | `AgentEvent::StepStart` | `step_start` | `step`, `index` |
+| 步骤完成 | `AgentEvent::StepEnd` | `step_end` | `step`, `index`, `success` |
+| 目标更新 | `AgentEvent::GoalUpdated` | `goal_updated` | `goal`, `status` |

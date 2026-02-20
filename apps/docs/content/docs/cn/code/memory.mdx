@@ -1,14 +1,215 @@
 ---
 title: 记忆系统
-description: 4 种记忆类型：情节、语义、程序、工作记忆
+description: 4 种记忆类型实现上下文感知的 agent 行为 — episodic、semantic、procedural、working
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # 记忆系统
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/memory)获取完整文档。
-</Callout>
+A3S Code 包含一个具有四种不同记忆类型的记忆系统。记忆条目按会话存储，用于在生成过程中为 agent 提供相关上下文。
 
-> 中文翻译即将推出。
+## 记忆类型
+
+| 类型 | 描述 | 示例 |
+|------|-------------|---------|
+| `Episodic` | 过去的事件和交互 | "用户偏好 TypeScript 而非 JavaScript" |
+| `Semantic` | 事实和知识 | "项目使用 PostgreSQL 进行持久化" |
+| `Procedural` | 操作知识和模式 | "部署时运行 `just release` 然后 `gh release create`" |
+| `Working` | 短期任务上下文 | "当前正在重构 src/auth/ 中的认证模块" |
+
+## 快速开始
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let agent = Agent::new("agent.hcl").await?;
+
+// File-based memory (persists across restarts)
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_file_memory(".a3s/memory")
+))?;
+
+// Or bring your own MemoryStore implementation
+let store = Arc::new(FileMemoryStore::new(".a3s/memory").await?);
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_memory(store)
+))?;
+
+// Access memory from session
+if let Some(memory) = session.memory() {
+    memory.remember(MemoryItem::new("User prefers Rust")).await?;
+    let results = memory.recall("preferences", 5).await?;
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('.', {
+  fileMemory: '.a3s/memory',
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+agent = Agent.create("agent.hcl")
+session = agent.session(".", SessionOptions(
+    file_memory=".a3s/memory",
+))
+```
+</Tab>
+</Tabs>
+
+## MemoryItem 结构
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `id` | string | 唯一标识符 |
+| `content` | string | 记忆内容 |
+| `memory_type` | MemoryType | `Episodic`、`Semantic`、`Procedural` 或 `Working` |
+| `importance` | f32 | 0.0–1.0 重要性分数 |
+| `tags` | string[] | 分类标签 |
+| `metadata` | map | 任意键值元数据 |
+| `timestamp` | DateTime | 记忆创建时间 |
+| `access_count` | u32 | 被检索的次数 |
+| `last_accessed` | DateTime | 最后检索时间戳 |
+
+## 存储后端
+
+### FileMemoryStore（默认）
+
+基于文件的存储，每个记忆条目一个 JSON 文件，加上紧凑索引用于快速搜索：
+
+```
+memory_dir/
+  index.json           # 轻量级索引（id、tags、importance、timestamp）
+  items/
+    {id}.json          # 单个记忆条目（完整内容）
+```
+
+关键特性：
+- 通过临时文件 + 重命名实现原子写入（崩溃时不会损坏）
+- 初始化时将索引加载到内存中以实现快速 `search()` 和 `search_by_tags()`
+- 按需从单个文件加载完整内容
+- 对记忆 ID 进行路径遍历防护
+- 索引损坏时从条目文件重建索引
+
+### 自定义 MemoryStore
+
+实现 `MemoryStore` trait 以支持自定义后端（Redis、SQLite 等）：
+
+```rust
+#[async_trait]
+impl MemoryStore for MyStore {
+    async fn store(&self, item: MemoryItem) -> Result<()>;
+    async fn retrieve(&self, id: &str) -> Result<Option<MemoryItem>>;
+    async fn search(&self, query: &str, limit: usize) -> Result<Vec<MemoryItem>>;
+    async fn search_by_tags(&self, tags: &[String], limit: usize) -> Result<Vec<MemoryItem>>;
+    async fn get_recent(&self, limit: usize) -> Result<Vec<MemoryItem>>;
+    async fn get_important(&self, threshold: f32, limit: usize) -> Result<Vec<MemoryItem>>;
+    async fn delete(&self, id: &str) -> Result<()>;
+    async fn clear(&self) -> Result<()>;
+    async fn count(&self) -> Result<usize>;
+}
+```
+
+## 相关性评分
+
+当 agent 需要上下文时，记忆系统通过结合重要性和时效性对每个条目评分：
+
+```
+relevance = importance_weight * importance + recency_weight * recency_factor
+
+recency_factor = exp(-days_since_creation / decay_days)
+```
+
+相关性更高的记忆会被包含在 agent 的上下文窗口中，确保最有用的信息始终可用。
+
+### RelevanceConfig
+
+| 字段 | 类型 | 默认值 | 描述 |
+|-------|------|---------|-------------|
+| `decay_days` | f32 | `30.0` | 时效因子减半的天数 |
+| `importance_weight` | f32 | `0.6` | 重要性分数的权重 |
+| `recency_weight` | f32 | `0.4` | 时效因子的权重 |
+
+根据你的使用场景配置相关性评分以权衡重要性与时效性。对于长期会话，增加 `decay_days` 以更长时间保留旧记忆。
+
+## 记忆的使用方式
+
+<Steps>
+<Step>**生成期间** — Agent 循环在每次 LLM 调用前查询记忆系统获取相关上下文</Step>
+<Step>**工具执行后** — 重要观察（如项目结构、用户偏好）可以存储为记忆</Step>
+<Step>**跨轮次** — Working 记忆在会话内追踪当前任务状态</Step>
+<Step>**跨会话** — Episodic 和 semantic 记忆通过 `FileMemoryStore` 持久化，在会话恢复时可用</Step>
+</Steps>
+
+## 上下文集成
+
+记忆条目通过 `MemoryContextProvider` 作为结构化上下文块注入到系统提示中。当记忆系统激活时，此提供者会自动注册 — 无需额外配置。
+
+```
+系统提示
+├── 基础指令
+├── 上下文块：
+│   ├── [memory] 用户偏好 TypeScript           ← 来自 MemoryContextProvider
+│   ├── [memory] 通过 `just release` 部署      ← 来自 MemoryContextProvider
+│   ├── [resource] 相关代码片段                 ← 来自其他提供者
+│   └── [memory] 正在重构认证模块               ← 来自 MemoryContextProvider
+├── Skill 指令
+└── 工具定义
+```
+
+包含的记忆条目数量受上下文窗口限制 — 空间有限时，只保留相关性最高的条目。
+
+`MemoryContextProvider` 还实现了 `on_turn_complete()` 以自动从对话轮次中提取和存储新记忆。
+
+参见 [上下文提供者](/cn/docs/code/context) 了解提供者系统的详情。
+
+## 事件
+
+执行期间发出的记忆相关事件：
+
+| 事件 | 描述 |
+|-------|-------------|
+| `MemoryStored` | 新记忆条目已持久化 |
+| `MemoryRecalled` | 记忆条目已被检索用于上下文 |
+| `MemoriesSearched` | 执行了记忆搜索 |
+| `MemoryCleared` | 会话记忆已清除 |
+
+## API 参考
+
+### SessionOptions
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| 文件记忆 | `.with_file_memory(path)` | `memory_dir=path` | `memoryDir: path` | `None` |
+| 自定义存储 | `.with_memory(Arc::new(store))` | _（仅 Rust）_ | _（仅 Rust）_ | `InMemoryStore` |
+
+### MemoryStore trait（Rust）
+
+| 方法 | 签名 | 描述 |
+|--------|-----------|-------------|
+| `store` | `async fn store(&self, entry: MemoryEntry) -> Result<String>` | 持久化记忆，返回 ID |
+| `recall` | `async fn recall(&self, query: &str, limit: usize) -> Result<Vec<MemoryEntry>>` | 检索相关记忆 |
+| `delete` | `async fn delete(&self, id: &str) -> Result<()>` | 按 ID 删除记忆 |
+| `clear` | `async fn clear(&self) -> Result<()>` | 清除所有记忆 |
+
+### MemoryEntry 字段
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `id` | `String` | 唯一记忆标识符 |
+| `content` | `String` | 记忆文本内容 |
+| `memory_type` | `MemoryType` | `Episodic`、`Semantic`、`Procedural` 或 `Working` |
+| `relevance` | `f32` | 相关性分数（0.0–1.0） |
+| `created_at` | `DateTime<Utc>` | 创建时间戳 |
+| `tags` | `Vec<String>` | 可选的分类标签 |

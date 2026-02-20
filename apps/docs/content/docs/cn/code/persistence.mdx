@@ -1,14 +1,189 @@
 ---
-title: 持久化
-description: 会话持久化和恢复
+title: 会话持久化
+description: 可插拔的会话存储后端，用于对话持久化
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
-# 持久化
+# 会话持久化
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/persistence)获取完整文档。
-</Callout>
+A3S Code 支持可插拔的会话存储后端。会话保存对话历史，可以在重启后恢复。
 
-> 中文翻译即将推出。
+## 快速开始
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+use a3s_code_core::store::FileSessionStore;
+
+let agent = Agent::new("agent.hcl").await?;
+
+// File-based session with auto-save
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_file_session_store(".a3s/sessions")
+        .with_session_id("my-session")
+        .with_auto_save(true)
+))?;
+
+let result = session.send("Refactor auth", None).await?;
+// Session is auto-saved after each send()
+
+// Manual save
+session.save().await?;
+
+// Resume later
+let session = agent.resume_session("my-session", SessionOptions::new()
+    .with_file_session_store(".a3s/sessions")
+)?;
+println!("Resumed with {} messages", session.history().len());
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const agent = await Agent.create('agent.hcl');
+
+// Create with auto-save
+const session = agent.session('.', {
+  fileSessionStore: '.a3s/sessions',
+  sessionId: 'my-session',
+  autoSave: true,
+});
+
+await session.send('Refactor auth');
+
+// Resume
+const resumed = agent.resumeSession('my-session', {
+  fileSessionStore: '.a3s/sessions',
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+agent = Agent.create("agent.hcl")
+
+session = agent.session(".", SessionOptions(
+    file_session_store=".a3s/sessions",
+    session_id="my-session",
+    auto_save=True,
+))
+
+session.send("Refactor auth")
+
+# Resume
+resumed = agent.resume_session("my-session", SessionOptions(
+    file_session_store=".a3s/sessions",
+))
+```
+</Tab>
+</Tabs>
+
+## 文件存储
+
+`FileSessionStore` 将每个会话存储为 JSON 文件：
+
+```
+sessions_dir/
+├── my-session.json
+├── other-session.json
+└── ...
+```
+
+- 原子写入（写入 `.tmp` → 重命名）— 崩溃时安全
+- 完整对话历史保留
+- 人类可读的 JSON 格式
+
+## 会话 API
+
+| 方法 | 描述 |
+|--------|-------------|
+| `session_id()` | 返回会话的唯一 ID |
+| `save()` | 将当前历史持久化到存储（无存储时为空操作） |
+| `agent.resume_session(id, opts)` | 加载已保存的会话并恢复历史 |
+
+## 自动保存
+
+设置 `with_auto_save(true)` 后，会话在每次使用内部历史的 `send()` 调用后自动保存。失败会记录为警告（非致命）。
+
+```rust
+SessionOptions::new()
+    .with_file_session_store(".a3s/sessions")
+    .with_auto_save(true)
+```
+
+## 自定义存储后端
+
+对于生产部署（PostgreSQL、Redis、S3 等），实现 `SessionStore` trait：
+
+```rust
+use a3s_code_core::store::{SessionStore, SessionData};
+
+#[async_trait::async_trait]
+impl SessionStore for PostgresStore {
+    async fn save(&self, session: &SessionData) -> Result<()> { /* ... */ }
+    async fn load(&self, id: &str) -> Result<Option<SessionData>> { /* ... */ }
+    async fn delete(&self, id: &str) -> Result<()> { /* ... */ }
+    async fn list(&self) -> Result<Vec<String>> { /* ... */ }
+    async fn exists(&self, id: &str) -> Result<bool> { /* ... */ }
+}
+
+// Use it
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_session_store(Arc::new(PostgresStore::new(...).await?))
+))?;
+```
+
+## SessionData 结构
+
+每个会话持久化的内容：
+
+| 字段 | 描述 |
+|-------|-------------|
+| `id` | 会话标识符 |
+| `messages` | 完整对话历史 |
+| `config.workspace` | 工作区路径 |
+| `config.system_prompt` | 系统提示 |
+| `config.planning_enabled` | 规划标志 |
+| `tool_names` | 工具名称（恢复时重建） |
+
+## API 参考
+
+### SessionOptions
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| 自定义存储 | `.with_session_store(Arc::new(s))` | _（仅 Rust）_ | _（仅 Rust）_ | `FileSessionStore` |
+
+### SessionStore trait（Rust）
+
+| 方法 | 签名 | 描述 |
+|--------|-----------|-------------|
+| `save` | `async fn save(&self, data: &SessionData) -> Result<()>` | 持久化会话数据 |
+| `load` | `async fn load(&self, id: &str) -> Result<Option<SessionData>>` | 按 ID 加载会话 |
+| `delete` | `async fn delete(&self, id: &str) -> Result<()>` | 删除会话 |
+| `list` | `async fn list(&self) -> Result<Vec<String>>` | 列出所有会话 ID |
+
+### SessionData 字段
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `id` | `String` | 会话标识符 |
+| `messages` | `Vec<Message>` | 完整对话历史 |
+| `tasks` | `Vec<AgentTask>` | 任务列表（别名：`todos`） |
+| `config.workspace` | `String` | 工作区路径 |
+| `config.system_prompt` | `String` | 系统提示 |
+| `config.planning_enabled` | `bool` | 规划标志 |
+| `tool_names` | `Vec<String>` | 工具名称（恢复时重建） |
+| `created_at` | `DateTime<Utc>` | 会话创建时间 |
+| `updated_at` | `DateTime<Utc>` | 最后保存时间 |
+
+### 会话管理方法
+
+| 方法 | Rust | 描述 |
+|--------|------|-------------|
+| 保存会话 | `session.save().await?` | 持久化当前状态 |
+| 加载会话 | `agent.resume(id, options?)?` | 从存储状态恢复 |
+| 列出会话 | `agent.list_sessions().await?` | 列出所有已保存的会话 ID |
+| 删除会话 | `agent.delete_session(id).await?` | 删除已存储的会话 |

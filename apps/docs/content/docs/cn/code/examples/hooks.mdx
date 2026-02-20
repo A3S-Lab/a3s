@@ -1,14 +1,191 @@
 ---
-title: 钩子
-description: 生命周期事件拦截
+title: Hooks
+description: 生命周期事件拦截 — PreToolUse、PostToolUse、PrePrompt、PostResponse、OnError
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-# 钩子
+# Hooks
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/examples/hooks)获取完整文档。
+Hooks 允许你拦截 agent 生命周期事件，用于审计、修改或阻止操作。在会话上注册 `Hook` + `HookHandler` 对。
+
+## Hook 事件类型
+
+| 事件 | 触发时机 | 可阻止？ |
+|-------|-----------|-----------|
+| `PreToolUse` | 工具执行前 | ✅ |
+| `PostToolUse` | 工具完成后 | ❌ |
+| `PrePrompt` | 提示发送到 LLM 前 | ✅ |
+| `PostResponse` | LLM 响应后 | ❌ |
+| `OnError` | 任何 agent 错误时 | ❌ |
+| `GenerateStart` | LLM 生成开始 | ❌ |
+| `GenerateEnd` | LLM 生成结束 | ❌ |
+| `SessionStart` / `SessionEnd` | 会话生命周期 | ❌ |
+
+## 审计 Hook（记录所有工具调用）
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::hooks::{Hook, HookEvent, HookEventType, HookHandler, HookResponse};
+use std::sync::{Arc, Mutex};
+
+struct AuditHandler {
+    log: Arc<Mutex<Vec<String>>>,
+}
+
+impl HookHandler for AuditHandler {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        if let HookEvent::PreToolUse(e) = event {
+            println!("→ tool: {}", e.tool);
+            self.log.lock().unwrap().push(e.tool.clone());
+        }
+        HookResponse::continue_()
+    }
+}
+
+// 注册
+let log = Arc::new(Mutex::new(Vec::new()));
+let hook = Hook::new("audit", HookEventType::PreToolUse);
+session.register_hook(hook);
+session.register_hook_handler("audit", Arc::new(AuditHandler { log: Arc::clone(&log) }));
+
+println!("Hooks: {}", session.hook_count());
+
+// 运行 agent
+let result = session.send("List files in the workspace", None).await?;
+
+// 查看日志
+println!("Tools called: {:?}", log.lock().unwrap());
+
+// 清理
+session.unregister_hook("audit");
+```
+
+**运行：** `cargo run --example test_hooks`
+**源码：** [`core/examples/test_hooks.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_hooks.rs)
+</Tab>
+<Tab value="Python">
+```python
+tool_log = []
+
+def on_pre_tool_use(event):
+    tool = event.get("tool", "unknown")
+    print(f"→ tool: {tool}")
+    tool_log.append(tool)
+    return None  # 允许执行
+
+session.register_hook("audit", "pre_tool_use", on_pre_tool_use)
+print(f"Hooks: {session.hook_count()}")
+
+result = await session.send("List files in the workspace")
+
+print(f"Tools called: {tool_log}")
+session.unregister_hook("audit")
+```
+
+**运行：** `python examples/test_advanced_features.py`
+**源码：** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const toolLog = [];
+
+session.registerHook('audit', 'pre_tool_use', (event) => {
+  const tool = event.tool || 'unknown';
+  console.log(`→ tool: ${tool}`);
+  toolLog.push(tool);
+  return null; // 允许执行
+});
+
+console.log(`Hooks: ${session.hookCount()}`);
+
+const result = await session.send('List files in the workspace');
+
+console.log('Tools called:', toolLog);
+session.unregisterHook('audit');
+```
+
+**运行：** `node examples/test_advanced_features.js`
+**源码：** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+</Tab>
+</Tabs>
+
+## 阻止 Hook（拒绝特定工具）
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+struct DenyBashHandler;
+
+impl HookHandler for DenyBashHandler {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        if let HookEvent::PreToolUse(e) = event {
+            if e.tool == "bash" {
+                return HookResponse::block("bash is not allowed in this session");
+            }
+        }
+        HookResponse::continue_()
+    }
+}
+
+let hook = Hook::new("no-bash", HookEventType::PreToolUse);
+session.register_hook(hook);
+session.register_hook_handler("no-bash", Arc::new(DenyBashHandler));
+```
+</Tab>
+<Tab value="Python">
+```python
+def deny_bash(event):
+    if event.get("tool") == "bash":
+        return {"action": "block", "reason": "bash is not allowed"}
+    return None
+
+session.register_hook("no-bash", "pre_tool_use", deny_bash)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+session.registerHook('no-bash', 'pre_tool_use', (event) => {
+  if (event.tool === 'bash') {
+    return { action: 'block', reason: 'bash is not allowed' };
+  }
+  return null;
+});
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+如需跨会话的持久化 hook 配置，请参阅 [Hooks](/cn/docs/code/hooks)。
 </Callout>
 
-> 中文翻译即将推出。
+## API 参考
+
+### Hook 注册
+
+| 操作 | Rust | Python | Node.js |
+|-----------|------|--------|---------|
+| 注册 hook | `session.register_hook(hook)` | `session.register_hook(id, event, fn)` | `session.registerHook(id, event, fn)` |
+| 注册处理器 | `session.register_hook_handler(id, Arc::new(h))` | _（与注册合并）_ | _（与注册合并）_ |
+| 注销 | `session.unregister_hook(id)` | `session.unregister_hook(id)` | `session.unregisterHook(id)` |
+| 计数 | `session.hook_count()` | `session.hook_count()` | `session.hookCount()` |
+
+### HookResponse（Rust）
+
+| 值 | 效果 |
+|-------|--------|
+| `HookResponse::continue_()` | 允许操作继续 |
+| `HookResponse::block(reason)` | 以原因字符串取消操作 |
+| `HookResponse::modify(data)` | 在执行前替换事件数据 |
+
+### Hook 事件字段
+
+| 事件 | 关键字段 |
+|-------|-----------|
+| `PreToolUse` | `tool: String`, `args: Value` |
+| `PostToolUse` | `tool: String`, `output: String`, `exit_code: i32` |
+| `PrePrompt` | `prompt: String` |
+| `PostResponse` | `text: String`, `usage: Usage` |
+| `OnError` | `error: String`, `turn: u32` |

@@ -1,14 +1,217 @@
 ---
 title: 向量 RAG
-description: 基于向量嵌入的语义代码搜索
+description: 通过向量嵌入实现语义代码搜索
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # 向量 RAG
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/examples/vector-rag)获取完整文档。
+A3S Code 包含 `VectorContextProvider`，可索引工作区文件并使用余弦相似度检索语义相关的代码片段。与 `grep`（精确模式匹配）不同，它按语义查找代码。
+
+<Callout type="info">
+向量 RAG 需要嵌入 API。在提供者配置中配置 `embedding_api_base` 和 `embedding_api_key`，或使用 `codesearch` 工具（首次查询时自动索引）。
 </Callout>
 
-> 中文翻译即将推出。
+## 文件系统上下文（无需嵌入）
+
+最简单的上下文提供者 — 基于关键词匹配注入相关文件内容。
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_fs_context("/my-project"); // 将相关文件注入上下文
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send("How does authentication work?", None).await?;
+println!("{}", result.text);
+```
+
+**运行：** `cargo run --example test_vector_rag`
+**源码：** [`core/examples/test_vector_rag.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_vector_rag.rs)
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project",
+    permissive=True,
+    fs_context="/my-project",
+)
+result = await session.send("How does authentication work?")
+print(result.text)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  fsContext: '/my-project',
+});
+const result = await session.send('How does authentication work?');
+console.log(result.text);
+```
+</Tab>
+</Tabs>
+
+## 向量上下文提供者（语义搜索）
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::context::{VectorContextConfig, VectorContextProvider};
+use a3s_code_core::context::embedding::OpenAiEmbeddingProvider;
+use a3s_code_core::context::vector_store::InMemoryVectorStore;
+use a3s_code_core::{Agent, SessionOptions};
+use std::sync::Arc;
+
+// 构建向量提供者
+let embedder = OpenAiEmbeddingProvider::new(
+    "https://api.openai.com/v1",
+    std::env::var("OPENAI_API_KEY")?,
+    "text-embedding-3-small",
+    1536,
+);
+let config = VectorContextConfig::new("/my-project")
+    .with_min_relevance(0.3)
+    .with_max_results(10);
+let store = InMemoryVectorStore::new();
+let provider = Arc::new(VectorContextProvider::new(config, embedder, store));
+
+// 索引工作区
+provider.index().await?;
+
+// 接入会话
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_context_provider(provider);
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send("Find all JWT authentication code", None).await?;
+println!("{}", result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+# 向量上下文通过 agent 配置文件配置。
+# 添加到 ~/.a3s/config.hcl：
+#
+# context {
+#   provider = "vector"
+#   embedding_model = "text-embedding-3-small"
+#   min_relevance = 0.3
+# }
+
+session = agent.session("/my-project", permissive=True)
+result = await session.send("Find all JWT authentication code")
+print(result.text)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+// 向量上下文通过 agent 配置文件配置。
+// 添加到 ~/.a3s/config.hcl：
+//
+// context {
+//   provider = "vector"
+//   embedding_model = "text-embedding-3-small"
+//   min_relevance = 0.3
+// }
+
+const session = agent.session('/my-project', { permissive: true });
+const result = await session.send('Find all JWT authentication code');
+console.log(result.text);
+```
+</Tab>
+</Tabs>
+
+## CodeSearch 工具
+
+`codesearch` 工具将向量搜索暴露为 LLM 可调用的工具。LLM 在需要按语义查找代码时可以直接调用它。
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::tools::builtin::codesearch::create_codesearch_tool;
+use a3s_code_core::context::embedding::OpenAiEmbeddingProvider;
+
+// 创建并注册 codesearch 工具
+let embedder = OpenAiEmbeddingProvider::new(/* ... */);
+let tool = create_codesearch_tool("/my-project", embedder);
+
+let opts = SessionOptions::new().with_permissive_policy();
+let session = agent.session("/my-project", Some(opts))?;
+session.register_tool(Arc::new(tool));
+
+// 现在 LLM 可以调用：codesearch(query="JWT authentication")
+let result = session.send(
+    "Search for code related to JWT token verification",
+    None,
+).await?;
+println!("{}", result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+# 配置向量上下文后，codesearch 工具即可使用。
+# LLM 在按语义搜索代码时会自动使用它。
+result = await session.send("Search for code related to JWT token verification")
+print(result.text)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+// 配置向量上下文后，codesearch 工具即可使用。
+const result = await session.send('Search for code related to JWT token verification');
+console.log(result.text);
+```
+</Tab>
+</Tabs>
+
+## 分块策略
+
+文件按段落/函数边界分割，最大分块大小可配置（默认：1500 字符）。每个分块独立嵌入，并存储其源文件路径和相关性分数。
+
+```
+auth.rs → [chunk 1: verify_jwt fn] [chunk 2: Claims struct] [chunk 3: tests]
+db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
+```
+
+## API 参考
+
+### SessionOptions
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| 文件系统上下文 | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` | `None` |
+| 自定义上下文提供者 | `.with_context_provider(Arc::new(p))` | _（基于配置）_ | _（基于配置）_ | `None` |
+
+### VectorContextConfig（Rust）
+
+| 方法 | 描述 | 默认值 |
+|--------|-------------|---------|
+| `VectorContextConfig::new(path)` | 设置工作区根目录 | — |
+| `.with_min_relevance(f)` | 最小余弦相似度分数 | `0.3` |
+| `.with_max_results(n)` | 每次查询返回的最大分块数 | `10` |
+| `.with_chunk_size(n)` | 每个分块的最大字符数 | `1500` |
+
+### HCL 配置（Python / Node.js）
+
+```hcl
+context {
+  provider         = "vector"
+  embedding_model  = "text-embedding-3-small"
+  min_relevance    = 0.3
+  max_results      = 10
+}
+```
+
+### codesearch 工具 schema
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `query` | `string` | 自然语言搜索查询 |
+| `limit` | `number` | 最大结果数（默认：`10`） |

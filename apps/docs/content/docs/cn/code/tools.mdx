@@ -1,14 +1,246 @@
 ---
 title: 工具
-description: 12 个内置工具参考
+description: 内置工具、自定义工具和 MCP 工具集成
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 # 工具
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/tools)获取完整文档。
+A3S Code 提供 11 个内置工具，支持自定义工具注册和 MCP 集成。所有工具通过 `ToolExecutor` 统一管理。
+
+<Callout type="info">
+内置工具：11 个 | 自定义工具：通过 `Tool` trait | MCP 工具：通过 `mcp_servers` 配置
 </Callout>
 
-> 中文翻译即将推出。
+## 内置工具
+
+### 文件操作
+
+| 工具 | 描述 | 参数 |
+|------|-------------|------------|
+| `read` | 读取文件内容 | `file_path`, `offset?`, `limit?` |
+| `write` | 写入文件（创建或覆盖） | `file_path`, `content` |
+| `edit` | 精确字符串替换 | `file_path`, `old_string`, `new_string` |
+| `patch` | 多处编辑（批量替换） | `file_path`, `patches[]` |
+
+### 搜索与导航
+
+| 工具 | 描述 | 参数 |
+|------|-------------|------------|
+| `glob` | 按模式匹配文件 | `pattern`, `path?` |
+| `grep` | 搜索文件内容 | `pattern`, `path?`, `include?` |
+| `ls` | 列出目录内容 | `path?` |
+| `list_files` | 递归列出所有文件 | `path?`, `max_depth?` |
+
+### 执行
+
+| 工具 | 描述 | 参数 |
+|------|-------------|------------|
+| `bash` | 执行 shell 命令 | `command`, `timeout?` |
+
+### 网络
+
+| 工具 | 描述 | 参数 |
+|------|-------------|------------|
+| `web_fetch` | 获取 URL 内容 | `url`, `prompt?` |
+| `web_search` | 网络搜索 | `query`, `domains?` |
+
+## 直接工具调用
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+// Convenience methods
+let content = session.read_file("src/main.rs").await?;
+let output = session.bash("cargo test").await?;
+let files = session.glob("**/*.rs").await?;
+let matches = session.grep("fn main").await?;
+
+// Generic tool call
+let result = session.tool("write", serde_json::json!({
+    "file_path": "output.txt",
+    "content": "Hello, world!"
+})).await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const content = await session.readFile('src/main.rs');
+const output = await session.bash('cargo test');
+const files = await session.glob('**/*.rs');
+const matches = await session.grep('fn main');
+
+const result = await session.tool('write', {
+  file_path: 'output.txt',
+  content: 'Hello, world!',
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+content = session.read_file("src/main.rs")
+output = session.bash("cargo test")
+files = session.glob("**/*.rs")
+matches = session.grep("fn main")
+
+result = session.tool("write", {
+    "file_path": "output.txt",
+    "content": "Hello, world!",
+})
+```
+</Tab>
+</Tabs>
+
+## 自定义工具
+
+实现 `Tool` trait 来创建自定义工具：
+
+```rust
+use a3s_code_core::tools::{Tool, ToolContext, ToolOutput, ToolDefinition, ToolParameter};
+use async_trait::async_trait;
+use serde_json::Value;
+
+struct DeployTool;
+
+#[async_trait]
+impl Tool for DeployTool {
+    fn definition(&self) -> ToolDefinition {
+        ToolDefinition {
+            name: "deploy".to_string(),
+            description: "Deploy application to specified environment".to_string(),
+            parameters: vec![
+                ToolParameter {
+                    name: "environment".to_string(),
+                    description: "Target environment (staging, production)".to_string(),
+                    param_type: "string".to_string(),
+                    required: true,
+                    enum_values: Some(vec!["staging".to_string(), "production".to_string()]),
+                },
+                ToolParameter {
+                    name: "version".to_string(),
+                    description: "Version to deploy".to_string(),
+                    param_type: "string".to_string(),
+                    required: false,
+                    enum_values: None,
+                },
+            ],
+        }
+    }
+
+    async fn execute(&self, args: &Value, _ctx: &ToolContext) -> Result<ToolOutput, String> {
+        let env = args["environment"].as_str().unwrap_or("staging");
+        let version = args["version"].as_str().unwrap_or("latest");
+
+        // Your deployment logic here
+        Ok(ToolOutput::success(format!(
+            "Deployed version {version} to {env}"
+        )))
+    }
+}
+```
+
+### 注册自定义工具
+
+```rust
+use std::sync::Arc;
+
+let session = agent.session("/project", Some(
+    SessionOptions::new()
+        .with_tool(Arc::new(DeployTool))
+))?;
+```
+
+## 工具输出
+
+工具返回 `ToolOutput`，包含文本和可选的图片：
+
+```rust
+// Text-only output
+ToolOutput::success("Operation completed")
+
+// Error output
+ToolOutput::error("File not found: config.yaml")
+
+// Output with images
+ToolOutput::success("Screenshot captured")
+    .with_images(vec![Attachment::png(screenshot_bytes)])
+```
+
+## 工具权限
+
+工具执行受权限系统控制。参见 [安全](/cn/docs/code/security) 了解详情。
+
+```rust
+use a3s_code_core::permissions::PermissionPolicy;
+
+let policy = PermissionPolicy::new()
+    .allow("read(*)")
+    .allow("grep(*)")
+    .deny("bash(rm -rf:*)")
+    .ask("write(*)");
+
+session.set_permission_policy(policy).await;
+```
+
+## MCP 工具
+
+通过 MCP 协议集成外部工具服务器。参见 [MCP 支持](/cn/docs/code/mcp) 了解详情。
+
+```hcl
+mcp_servers {
+  name      = "filesystem"
+  transport = "stdio"
+  command   = "npx"
+  args      = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+}
+```
+
+MCP 工具以 `mcp__<server>__<tool>` 格式命名。
+
+## API 参考
+
+### Tool trait
+
+```rust
+#[async_trait]
+pub trait Tool: Send + Sync {
+    fn definition(&self) -> ToolDefinition;
+    async fn execute(&self, args: &Value, ctx: &ToolContext) -> Result<ToolOutput, String>;
+}
+```
+
+### ToolDefinition
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `name` | `String` | 工具名称 |
+| `description` | `String` | 工具描述（展示给 LLM） |
+| `parameters` | `Vec<ToolParameter>` | 参数定义 |
+
+### ToolParameter
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `name` | `String` | 参数名称 |
+| `description` | `String` | 参数描述 |
+| `param_type` | `String` | 类型（`string`、`number`、`boolean`、`object`、`array`） |
+| `required` | `bool` | 是否必填 |
+| `enum_values` | `Option<Vec<String>>` | 可选的枚举值列表 |
+
+### ToolOutput
+
+| 方法 | 描述 |
+|--------|-------------|
+| `ToolOutput::success(text)` | 创建成功输出 |
+| `ToolOutput::error(text)` | 创建错误输出 |
+| `.with_images(attachments)` | 附加图片到输出 |
+
+### ToolContext
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `workspace` | `PathBuf` | 当前工作区路径 |
+| `session_id` | `String` | 当前会话 ID |

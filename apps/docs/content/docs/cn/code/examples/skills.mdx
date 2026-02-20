@@ -1,14 +1,213 @@
 ---
-title: 技能
-description: 内置和自定义技能系统
+title: Skills
+description: 内置和自定义 skill 系统
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-# 技能
+# Skills
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/examples/skills)获取完整文档。
+Skills 是可复用的提示模板，通过专业指令增强 agent 的系统提示。A3S Code 内置 7 个 skills，并支持通过 Markdown 文件自定义 skills。
+
+## 内置 Skills
+
+| Skill | 功能 |
+|-------|-------------|
+| `code-search` | 工作区语义代码搜索 |
+| `code-review` | 风格、安全和资源问题检测 |
+| `explain-code` | 清晰解释复杂代码 |
+| `find-bugs` | Bug 检测和修复建议 |
+| `builtin-tools` | 指导 LLM 有效使用工具 |
+| `delegate-task` | 将任务拆分为并行子 agent |
+| `find-skills` | 动态发现可用 skills |
+
+## 启用内置 Skills
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_builtin_skills();
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send("Review the auth module for security issues", None).await?;
+println!("{}", result.text);
+```
+
+**运行：** `cargo run --example test_builtin_skills`
+**源码：** [`core/examples/test_builtin_skills.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_builtin_skills.rs)
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project",
+    permissive=True,
+    builtin_skills=True,
+)
+result = await session.send("Review the auth module for security issues")
+print(result.text)
+```
+
+**运行：** `python examples/test_custom_skills_agents.py`
+**源码：** [`sdk/python/examples/test_custom_skills_agents.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_custom_skills_agents.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  builtinSkills: true,
+});
+const result = await session.send('Review the auth module for security issues');
+console.log(result.text);
+```
+
+**运行：** `node examples/test_custom_skills_agents.js`
+**源码：** [`sdk/node/examples/test_custom_skills_agents.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_custom_skills_agents.js)
+</Tab>
+</Tabs>
+
+## 自定义 Skills
+
+创建带 YAML frontmatter 的 Markdown 文件：
+
+```markdown
+---
+name: api-docs
+description: Generate OpenAPI documentation from code
+triggers:
+  - "generate docs"
+  - "document api"
+  - "openapi"
+---
+
+When asked to generate API documentation:
+1. Read all handler files to understand the API surface
+2. Extract route definitions, parameters, and response types
+3. Generate OpenAPI 3.0 YAML format
+4. Write to docs/openapi.yaml
+```
+
+然后加载：
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_skills_from_dir("/my-project/.a3s/skills");
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send("Generate OpenAPI docs for the REST API", None).await?;
+println!("{}", result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project",
+    permissive=True,
+    skill_dirs=["/my-project/.a3s/skills"],
+)
+result = await session.send("Generate OpenAPI docs for the REST API")
+print(result.text)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  skillDirs: ['/my-project/.a3s/skills'],
+});
+const result = await session.send('Generate OpenAPI docs for the REST API');
+console.log(result.text);
+```
+</Tab>
+</Tabs>
+
+## Skills + 规划
+
+将 skills 与规划结合，处理复杂的多步骤任务：
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_builtin_skills()
+    .with_planning(true)
+    .with_goal_tracking(true);
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send(
+    "Review the entire codebase, find all bugs, fix them, and write a report",
+    None,
+).await?;
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project",
+    permissive=True,
+    builtin_skills=True,
+    planning=True,
+    goal_tracking=True,
+)
+result = await session.send(
+    "Review the entire codebase, find all bugs, fix them, and write a report"
+)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  builtinSkills: true,
+  planning: true,
+  goalTracking: true,
+});
+const result = await session.send(
+  'Review the entire codebase, find all bugs, fix them, and write a report'
+);
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+完整的 skills 文档，请参阅 [Skills](/cn/docs/code/skills)。
 </Callout>
 
-> 中文翻译即将推出。
+## API 参考
+
+### SessionOptions
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| 内置 skills | `.with_builtin_skills()` | `builtin_skills=True` | `builtinSkills: true` | `false` |
+| 从目录加载 skills | `.with_skills_from_dir(path)` | `skill_dirs=[path]` | `skillDirs: [path]` | `[]` |
+| 自定义注册表 | `.with_skill_registry(Arc::new(r))` | _（仅 Rust）_ | _（仅 Rust）_ | `None` |
+
+### Skill frontmatter 字段
+
+| 字段 | 类型 | 必填 | 描述 |
+|-------|------|----------|-------------|
+| `name` | `string` | ✅ | 唯一 skill 标识符 |
+| `description` | `string` | ✅ | skill 的功能描述 |
+| `triggers` | `string[]` | ✅ | 激活 skill 的短语 |
+| `allowed-tools` | `string` | ❌ | 工具访问模式（例如 `"read(*), grep(*)"`) |
+| `kind` | `string` | ❌ | `instruction`（默认）或 `agent` |
+| `tags` | `string[]` | ❌ | 分类标签 |
+| `version` | `string` | ❌ | 语义版本字符串 |
+
+### 内置 skills
+
+| Skill ID | 触发短语 | 效果 |
+|----------|----------------|--------|
+| `code-search` | "find code", "search for" | 语义代码搜索 |
+| `code-review` | "review", "check code" | 风格 + 安全审查 |
+| `explain-code` | "explain", "what does" | 代码解释 |
+| `find-bugs` | "find bugs", "debug" | Bug 检测 |
+| `builtin-tools` | _（始终激活）_ | 工具使用指导 |
+| `delegate-task` | "delegate", "parallel" | 子 agent 委派 |
+| `find-skills` | "what skills", "find skill" | 动态 skill 发现 |

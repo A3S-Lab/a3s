@@ -3,12 +3,196 @@ title: 架构
 description: 系统架构、数据流和设计决策
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Files, File, Folder } from 'fumadocs-ui/components/files';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 # 架构
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/architecture)获取完整文档。
-</Callout>
+## 库优先设计
 
-> 中文翻译即将推出。
+A3S Code 是一个库优先的框架。核心（`a3s-code-core`）通过原生绑定直接嵌入到你的应用中 — 无需服务器，无 IPC 开销。
+
+```
+Your Application (Rust / TypeScript / Python)
+    │
+    ▼ Agent::new("agent.hcl") / Agent.create("agent.hcl")
+┌──────────────────────────────────────────────────────┐
+│  Agent (config-driven, workspace-independent)         │
+│  ┌────────────┬──────────────┬─────────────────────┐ │
+│  │ LlmClient  │  CodeConfig  │   SessionManager    │ │
+│  └────────────┴──────────────┴─────────────────────┘ │
+│                       │                               │
+│        agent.session("/workspace", options?)           │
+│                       ▼                               │
+│  ┌──────────────────────────────────────────────┐    │
+│  │  AgentSession (workspace-bound)               │    │
+│  │  ┌─────────┬──────────┬──────────┬─────────┐ │    │
+│  │  │ Agent   │ Tool     │Permission│  LLM    │ │    │
+│  │  │ Loop    │ Executor │ System   │ Provider│ │    │
+│  │  │         │ (10)     │          │         │ │    │
+│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
+│  │  │ HITL    │ Subagent │  Hook    │  MCP    │ │    │
+│  │  │         │          │  Engine  │         │ │    │
+│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
+│  │  │ Llm     │ Security │ Memory   │ File    │ │    │
+│  │  │ Planner │ Provider │          │ History │ │    │
+│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
+│  │  │ Wave    │ Context  │ Cost     │Telemetry│ │    │
+│  │  │Scheduler│Compactor │ Tracking │         │ │    │
+│  │  └─────────┴──────────┴──────────┴─────────┘ │    │
+│  └──────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────┘
+```
+
+原生绑定：
+
+| 语言 | 包 | 绑定方式 |
+|----------|---------|---------|
+| Rust | `a3s-code-core` | 原生 |
+| Python | `a3s-code` | PyO3 |
+| Node.js | `@a3s-lab/code` | napi-rs |
+
+## 核心概念
+
+| 概念 | 描述 |
+|---------|-------------|
+| **Agent** | 配置驱动的顶层对象。持有 LLM 客户端和配置。与工作区无关。 |
+| **AgentSession** | 绑定到特定工作区。所有 LLM 交互和工具执行都在此进行。 |
+| **SessionOptions** | 可选的每会话覆盖：模型（`provider/model` 格式）、规划、HITL 等。 |
+| **AgentLoop** | 核心执行引擎，驱动 LLM ↔ 工具的多轮循环。 |
+| **ToolExecutor** | 工具注册和执行。管理 11 个内置工具。 |
+| **LlmPlanner** | JSON 结构化规划 — 将复杂任务分解为带依赖图的执行计划。 |
+| **WaveScheduler** | 将独立的计划步骤分组为 wave，通过 `JoinSet` 并行执行。 |
+| **AgentEvent** | `#[non_exhaustive]` 事件枚举，在流式传输期间发出 — 安全支持 SDK 演进。 |
+
+## Agent 循环
+
+核心执行周期。每一轮：
+
+<Steps>
+<Step>**GenerateStart hook** 触发（可选）</Step>
+<Step>**LLM 调用** — 流式传输到 Anthropic 或 OpenAI 兼容 API</Step>
+<Step>**GenerateEnd hook** 触发（可选）</Step>
+<Step>
+
+如果 LLM 返回 `tool_use`：
+- **PreToolUse hook** 触发（可选）
+- **权限检查** — Deny → Allow → Ask → Default 评估
+- **HITL 确认** — 如需要，等待用户批准（带超时）
+- **SecurityProvider 检查** — 通过 trait 的可插拔安全逻辑
+- **工具执行** — 运行工具，捕获输出
+- **PostToolUse hook** 触发（可选）
+
+</Step>
+<Step>将工具结果反馈给 LLM，回到步骤 1</Step>
+<Step>如果 LLM 返回纯文本 → 完成</Step>
+</Steps>
+
+每次生成的最大轮数可通过 `max_tool_rounds` 配置（默认：50）。
+
+## 安全层
+
+两个内置层，加上通过 trait 的可扩展性：
+
+| 层 | 组件 | 功能 |
+|-------|-----------|-------------|
+| 1 | 权限策略 | Deny → Allow → Ask → Default 规则评估，支持 glob 模式 |
+| 2 | HITL 确认 | 独立于权限 — 即使 `Allow` 也会经过 HITL 检查 |
+| 3 | SecurityProvider | 可插拔 trait，用于污点追踪、输出清洗、注入检测 |
+| 4 | 工作区边界 | 所有文件操作限制在会话工作区内 |
+| 5 | HookEngine | 通过生命周期 hooks 实现自定义安全逻辑 |
+
+参见 [安全](/cn/docs/code/security) 了解详情。
+
+## 上下文管理
+
+当上下文使用量超过阈值（默认为模型上下文窗口的 80%）时：
+
+<Steps>
+<Step>保留前 2 条消息（系统上下文）</Step>
+<Step>保留最后 20 条消息（近期上下文）</Step>
+<Step>通过 LLM 调用总结中间消息</Step>
+<Step>将摘要作为合成消息插入</Step>
+</Steps>
+
+这在保持重要上下文的同时将会话控制在上下文限制内。
+
+## 规划与并行执行
+
+当启用规划时：
+
+<Steps>
+<Step>**LlmPlanner** 将任务分解为带依赖关系的步骤</Step>
+<Step>**WaveScheduler** 将独立步骤分组为 wave</Step>
+<Step>每个 wave 通过 `tokio::JoinSet` 并行执行</Step>
+<Step>依赖步骤等待其前置步骤完成</Step>
+</Steps>
+
+```
+Wave 1: [Analyze auth] + [Analyze DB schema]  ← parallel
+Wave 2: [Implement JWT integration]           ← waits for wave 1
+Wave 3: [Write tests]                         ← waits for wave 2
+```
+
+参见 [任务](/cn/docs/code/tasks) 了解详情。
+
+## Lane 队列系统
+
+Lane 队列将工具调用路由到不同的执行策略：
+
+| Lane | 用途 | 默认模式 |
+|------|---------|--------------|
+| Query | 只读操作（read、grep、glob、ls） | 内部（并行） |
+| Execute | 写操作（write、edit、patch、bash） | 内部（顺序） |
+| Generate | LLM 调用 | 内部 |
+
+每个 lane 可以切换到 **External** 模式，将执行卸载到远程 worker。参见 [Lane 队列](/cn/docs/code/lane-queue) 了解详情。
+
+## 记忆系统
+
+四种记忆类型，支持可插拔的存储后端：
+
+| 类型 | 用途 | 存储 |
+|------|---------|---------|
+| Episodic | 会话事件和交互 | FileMemoryStore（默认） |
+| Semantic | 事实和知识 | FileMemoryStore（默认） |
+| Procedural | 成功的模式和工作流 | FileMemoryStore（默认） |
+| Working | 当前任务上下文 | 内存（短期） |
+
+默认后端：`FileMemoryStore` — 每个条目一个 JSON 文件 + 紧凑索引。可通过 `MemoryStore` trait 自定义后端。
+
+参见 [记忆](/cn/docs/code/memory) 了解详情。
+
+## 可扩展性
+
+A3S Code 为可扩展性而设计：
+
+<Accordions>
+<Accordion title="MCP 集成">
+通过 Model Context Protocol 连接外部工具服务器。任何 MCP 兼容的服务器都可以向 agent 暴露工具。参见 [MCP](/cn/docs/code/mcp)。
+</Accordion>
+<Accordion title="自定义工具">
+实现 `Tool` trait 并注册到 `ToolRegistry`。工具接收类型化参数并返回 `ToolOutput`。参见 [工具](/cn/docs/code/tools)。
+</Accordion>
+<Accordion title="SecurityProvider">
+通过 `SecurityProvider` trait 实现自定义污点追踪、输出清洗和注入检测。参见 [安全](/cn/docs/code/security)。
+</Accordion>
+<Accordion title="HookEngine">
+在 8 个生命周期事件注册自定义逻辑：`PreToolUse`、`PostToolUse`、`PrePrompt`、`PostResponse`、`OnError`、`GenerateStart`、`GenerateEnd`、`SessionStart/End`。参见 [Hooks](/cn/docs/code/hooks)。
+</Accordion>
+<Accordion title="子代理">
+将专门任务委派给在 `.md` 文件中定义的聚焦子代理。参见 [子代理](/cn/docs/code/subagents)。
+</Accordion>
+<Accordion title="PermissionChecker">
+通过 `PermissionChecker` trait 实现自定义权限逻辑。用任何访问控制系统替换默认的 glob 策略。
+</Accordion>
+<Accordion title="ConfirmationProvider">
+通过 `ConfirmationProvider` trait 实现自定义 HITL 逻辑。将确认路由到 Slack、邮件、Web UI 或任何审批系统。
+</Accordion>
+<Accordion title="Planner">
+通过 `Planner` trait 实现自定义规划逻辑。用基于规则、基于图或任何其他分解策略替换 `LlmPlanner`。
+</Accordion>
+</Accordions>
+
+所有核心系统使用基于 trait 的接口以实现最大灵活性。

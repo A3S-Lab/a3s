@@ -3,12 +3,379 @@ title: 安全
 description: 权限系统、HITL 确认和可扩展安全 trait
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 # 安全
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/security)获取完整文档。
-</Callout>
+A3S Code 提供两个内置安全层：**权限策略** 和 **人机协同（HITL）确认**。可通过 `SecurityProvider` trait 和 `HookEngine` 实现额外的安全逻辑。
 
-> 中文翻译即将推出。
+## 安全架构
+
+```
+用户提示 → Agent 循环
+  ├─ 权限策略          ← Deny → Allow → Ask → Default
+  ├─ HITL 确认         ← 独立于权限系统
+  ├─ 工具执行
+  └─ SecurityProvider  ← 通过 trait 可插拔（污点追踪、清洗等）
+```
+
+## 权限策略
+
+权限系统控制 agent 可以使用哪些工具。规则按以下顺序评估：**Deny → Allow → Ask → Default**。
+
+### 规则类型
+
+| 动作 | 行为 |
+|--------|----------|
+| `deny` | 立即阻止工具调用 |
+| `allow` | 允许工具调用 |
+| `ask` | 提示用户确认（通过 HITL） |
+
+### 模式匹配
+
+规则使用 glob 风格的模式匹配工具名称和参数：
+
+```
+Tool(pattern)
+```
+
+| 模式 | 匹配 |
+|---------|---------|
+| `bash(rm -rf:*)` | 任何以 `rm -rf` 开头的 bash 命令 |
+| `read(src/**)` | `src/` 下任何文件的读取操作 |
+| `write(*)` | 所有写入操作 |
+| `mcp__pencil` | 所有 `mcp__pencil__*` 工具（前缀匹配） |
+
+通配符：`*` 匹配除 `/` 外的任何字符，`**` 匹配包括 `/` 的任何字符，`:*` 匹配任何后缀。
+
+### 预设策略
+
+| 预设 | 行为 |
+|--------|----------|
+| `PermissionPolicy::permissive()` | 默认允许所有工具（默认） |
+| `PermissionPolicy::strict()` | 默认拒绝所有工具 |
+
+### 构建自定义策略
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::permissions::PermissionPolicy;
+
+let policy = PermissionPolicy::new()
+    .deny("bash(rm -rf:*)")
+    .deny("bash(curl:*|sh)")
+    .allow("read(*)")
+    .allow("glob(*)")
+    .allow("grep(*)")
+    .ask("write(*)")
+    .ask("bash(*)");
+
+// Apply to session
+session.set_permission_policy(policy).await;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const { PermissionPolicy } = require('@a3s-lab/code');
+
+const policy = new PermissionPolicy()
+  .deny('bash(rm -rf:*)')
+  .deny('bash(curl:*|sh)')
+  .allow('read(*)')
+  .allow('glob(*)')
+  .allow('grep(*)')
+  .ask('write(*)')
+  .ask('bash(*)');
+
+await session.setPermissionPolicy(policy);
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import PermissionPolicy
+
+policy = PermissionPolicy()
+policy.deny("bash(rm -rf:*)")
+policy.deny("bash(curl:*|sh)")
+policy.allow("read(*)")
+policy.allow("glob(*)")
+policy.allow("grep(*)")
+policy.ask("write(*)")
+policy.ask("bash(*)")
+
+session.set_permission_policy(policy)
+```
+</Tab>
+</Tabs>
+
+### 评估顺序
+
+规则按以下顺序评估：
+
+<Steps>
+<Step>**Deny 规则** — 如果任何 deny 规则匹配，立即阻止</Step>
+<Step>**Allow 规则** — 如果任何 allow 规则匹配，允许执行</Step>
+<Step>**Ask 规则** — 如果任何 ask 规则匹配，触发 HITL 确认</Step>
+<Step>**默认策略** — 如果没有规则匹配，使用默认策略（permissive 或 strict）</Step>
+</Steps>
+
+示例：
+
+```rust
+let policy = PermissionPolicy::new()
+    .deny("bash(rm -rf:*)")      // Block destructive commands
+    .allow("bash(git *)")         // Allow git commands
+    .ask("bash(*)")               // Ask for all other bash commands
+    .allow("read(*)")             // Allow all reads
+    .ask("write(*)");             // Ask for all writes
+```
+
+## 人机协同（HITL）
+
+HITL 确认**独立于**权限系统。即使工具被权限 `allow`，HITL 仍然可以要求用户确认。
+
+### 配置
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::hitl::{ConfirmationPolicy, TimeoutAction};
+
+let hitl = ConfirmationPolicy {
+    enabled: true,
+    default_timeout_ms: 30_000,
+    timeout_action: TimeoutAction::Reject,
+    ..Default::default()
+};
+
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_confirmation_policy(hitl)
+))?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/project', {
+  confirmationPolicy: {
+    enabled: true,
+    timeoutMs: 30000,
+    timeoutAction: 'reject',
+  },
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import ConfirmationPolicy
+
+session = agent.session("/project",
+    confirmation_policy=ConfirmationPolicy(
+        enabled=True,
+        timeout_ms=30000,
+        timeout_action="reject",
+    ))
+```
+</Tab>
+</Tabs>
+
+### 处理确认事件
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+let (mut rx, _handle) = session.stream("Clean up old logs").await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::ConfirmationRequired { tool_id, tool_name, args, .. } => {
+            println!("🔒 Approve '{tool_name}'? {args:?}");
+            // Approve or reject
+            session.respond_confirmation(&tool_id, true, None).await;
+        }
+        AgentEvent::PermissionDenied { tool_name, reason, .. } => {
+            println!("🚫 {tool_name} blocked: {reason}");
+        }
+        AgentEvent::TextDelta { text } => print!("{text}"),
+        AgentEvent::End { .. } => break,
+        _ => {}
+    }
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+for await (const event of session.stream('Clean up old logs')) {
+  if (event.type === 'confirmation_required') {
+    console.log(`🔒 Approve '${event.toolName}'?`, event.toolArgs);
+    await session.respondConfirmation(event.toolId, { approved: true });
+  } else if (event.type === 'permission_denied') {
+    console.log(`🚫 ${event.toolName} blocked: ${event.reason}`);
+  } else if (event.type === 'text_delta') {
+    process.stdout.write(event.text);
+  }
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+for event in session.stream("Clean up old logs"):
+    if event.event_type == "confirmation_required":
+        print(f"🔒 Approve '{event.tool_name}'? {event.tool_args}")
+        session.respond_confirmation(event.tool_id, approved=True)
+    elif event.event_type == "permission_denied":
+        print(f"🚫 {event.tool_name} blocked: {event.reason}")
+    elif event.event_type == "text_delta":
+        print(event.text, end="", flush=True)
+```
+</Tab>
+</Tabs>
+
+### 超时行为
+
+| TimeoutAction | 行为 |
+|---------------|----------|
+| `Reject` | 超时未响应则拒绝工具调用（默认） |
+| `Approve` | 超时未响应则批准工具调用 |
+
+## 工作区边界
+
+所有文件操作限制在会话的工作区目录内。尝试访问工作区外的文件会被阻止。
+
+```rust
+let session = agent.session("/my-project", None)?;
+
+// ✅ Allowed: within workspace
+session.read_file("src/main.rs").await?;
+
+// ❌ Blocked: outside workspace
+session.read_file("../other-project/secret.txt").await?;
+```
+
+## 通过 Trait 扩展安全
+
+A3S Code 提供 `SecurityProvider` trait 用于实现自定义安全逻辑：
+
+```rust
+pub trait SecurityProvider: Send + Sync {
+    /// Classify and register sensitive data found in input text
+    fn taint_input(&self, text: &str) {}
+
+    /// Sanitize output text by redacting sensitive data
+    fn sanitize_output(&self, text: &str) -> String {
+        text.to_string()
+    }
+
+    /// Securely wipe all session security state
+    fn wipe(&self) {}
+
+    /// Register security hooks with the given engine
+    fn register_hooks(&self, hook_engine: &HookEngine) {}
+
+    /// Unregister all hooks from the engine
+    fn teardown(&self, hook_engine: &HookEngine) {}
+}
+```
+
+### 示例：自定义安全提供者
+
+```rust
+use a3s_code_core::security::SecurityProvider;
+use a3s_code_core::hooks::{HookEngine, HookEvent, HookResult};
+
+struct MySecurityProvider {
+    // Your security state
+}
+
+impl SecurityProvider for MySecurityProvider {
+    fn taint_input(&self, text: &str) {
+        // Detect and track sensitive data (SSN, API keys, etc.)
+    }
+
+    fn sanitize_output(&self, text: &str) -> String {
+        // Redact sensitive data from LLM output
+        text.replace("sk-ant-", "[REDACTED]")
+    }
+
+    fn register_hooks(&self, hook_engine: &HookEngine) {
+        // Register pre/post tool use hooks for security checks
+        hook_engine.register(/* your hooks */);
+    }
+}
+
+// Use in session
+let security = Arc::new(MySecurityProvider { /* ... */ });
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_security_provider(security)
+))?;
+```
+
+参见 [Hooks](/cn/docs/code/hooks) 了解生命周期事件集成。
+
+## 最佳实践
+
+<Steps>
+<Step>**从严格策略开始** — 使用 `PermissionPolicy::strict()` 并仅显式允许需要的工具</Step>
+<Step>**阻止危险模式** — 始终拒绝破坏性 bash 命令：`bash(rm -rf:*)`、`bash(curl:*|sh)`</Step>
+<Step>**为写操作启用 HITL** — 要求确认文件修改和 bash 执行</Step>
+<Step>**使用工作区边界** — 永远不要禁用工作区限制</Step>
+<Step>**实现 SecurityProvider** — 为敏感数据添加自定义污点追踪和输出清洗</Step>
+<Step>**审计日志** — 使用 hooks 记录所有工具执行以供安全审查</Step>
+</Steps>
+
+## 安全事件
+
+Agent 在流式传输期间发出安全相关事件：
+
+| 事件 | 触发时机 |
+|-------|------|
+| `PermissionDenied` | 工具调用被权限策略阻止 |
+| `ConfirmationRequired` | 需要 HITL 确认 |
+| `ConfirmationTimeout` | 用户未在超时时间内响应 |
+| `ConfirmationRejected` | 用户拒绝了工具调用 |
+
+参见 [会话](/cn/docs/code/sessions) 获取完整事件参考。
+
+## API 参考
+
+### PermissionPolicy
+
+| 方法 | 描述 |
+|--------|-------------|
+| `PermissionPolicy::new()` | 创建宽松默认策略 |
+| `PermissionPolicy::strict()` | 创建全部拒绝默认策略 |
+| `PermissionPolicy::permissive()` | 创建全部允许默认策略 |
+| `.allow(pattern)` | 添加允许规则 |
+| `.deny(pattern)` | 添加拒绝规则 |
+| `.ask(pattern)` | 添加询问（HITL）规则 |
+| `session.set_permission_policy(p).await` | 应用到运行中的会话 |
+
+### 模式语法
+
+| 模式 | 匹配 |
+|---------|---------|
+| `bash(*)` | 所有 bash 调用 |
+| `bash(rm -rf:*)` | 以 `rm -rf` 开头的 bash 调用 |
+| `read(src/**)` | 读取 `src/` 下的任何文件 |
+| `write(*)` | 所有写入调用 |
+| `mcp__github` | 所有 `mcp__github__*` 工具 |
+
+### ConfirmationPolicy
+
+| 字段 | 类型 | 默认值 | 描述 |
+|-------|------|---------|-------------|
+| `enabled` | `bool` | `false` | 启用 HITL |
+| `default_timeout_ms` | `u64` | `30000` | 确认超时时间 |
+| `timeout_action` | `TimeoutAction` | `Reject` | 超时时 `Reject` 或 `Allow` |
+
+### SecurityProvider trait（Rust）
+
+| 方法 | 签名 | 描述 |
+|--------|-----------|-------------|
+| `taint_input` | `fn taint_input(&self, text: &str)` | 检查用户输入中的敏感模式 |
+| `sanitize_output` | `fn sanitize_output(&self, text: &str) -> String` | 从 LLM 输出中脱敏敏感模式 |
+| `wipe` | `fn wipe(&self)` | 清除缓存的敏感状态 |
+| `register_hooks` | `fn register_hooks(&self, engine: &HookEngine)` | 附加 hooks 进行深度拦截 |
+| `teardown` | `fn teardown(&self)` | 会话结束时调用 |

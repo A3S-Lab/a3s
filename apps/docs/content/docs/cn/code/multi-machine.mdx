@@ -1,14 +1,415 @@
 ---
 title: 多机器分布
-description: 多机器协调者/工作者模式
+description: 通过外部任务分发实现水平扩展
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # 多机器分布
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/multi-machine)获取完整文档。
+A3S Code 支持**外部任务分发**以实现水平扩展。将工具执行卸载到运行在多台机器、容器或云区域的外部 worker。
+
+<Callout type="info">
+**核心功能：** 3 种执行模式 | 4 个优先级 lane | 多语言 worker | 内置超时处理
 </Callout>
 
-> 中文翻译即将推出。
+## 概述
+
+外部任务分发支持：
+
+- **水平扩展** — 添加 worker 以增加吞吐量
+- **资源隔离** — 将重计算与主进程分离
+- **自定义环境** — 在容器、VM 或专用硬件中运行工具
+- **多区域部署** — 在不同地理区域执行任务
+- **语言无关的 worker** — 用 Rust、Python、TypeScript 或任何语言实现 worker
+
+## 架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Agent Session                         │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │              Session Lane Queue (a3s-lane)             │ │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌────────┐│ │
+│  │  │ Control  │  │  Query   │  │ Execute  │  │Generate││ │
+│  │  │   (P0)   │  │   (P1)   │  │   (P2)   │  │  (P3)  ││ │
+│  │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └───┬────┘│ │
+│  └───────┼─────────────┼─────────────┼─────────────┼─────┘ │
+└──────────┼─────────────┼─────────────┼─────────────┼───────┘
+           │             │             │             │
+           │      ┌──────┴──────┐      │             │
+           │      │   External  │      │             │
+           │      │   Workers   │      │             │
+           │      └─────────────┘      │             │
+           │             │             │             │
+           ▼             ▼             ▼             ▼
+    ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
+    │ Worker 1 │  │ Worker 2 │  │ Worker 3 │  │ Worker N │
+    │ (Local)  │  │ (Remote) │  │(Container)│  │ (Cloud) │
+    └──────────┘  └──────────┘  └──────────┘  └──────────┘
+```
+
+## 任务处理器模式
+
+A3S Code 支持每个 lane 3 种任务处理器模式：
+
+| 模式 | 描述 | 使用场景 |
+|------|-------------|----------|
+| **Internal** | 任务在 agent 进程中执行（默认） | 单机部署，低延迟 |
+| **External** | 任务发送到外部 worker，等待完成 | 多机器并行化，资源隔离 |
+| **Hybrid** | 内部执行 + 通知外部系统 | 内部执行加外部监控/日志 |
+
+## 会话 Lane
+
+任务路由到 4 个优先级 lane：
+
+| Lane | 优先级 | 工具 | 最适合 |
+|------|----------|-------|----------|
+| **Control** | P0（最高） | pause, resume, cancel | 控制操作 |
+| **Query** | P1 | read, grep, glob, ls | 可并行化的读操作 |
+| **Execute** | P2 | bash, write, edit | 写操作、命令 |
+| **Generate** | P3（最低） | LLM 调用 | AI 生成 |
+
+**Query lane** 是外部分发的最佳候选 — 读操作天然可并行化且安全。
+
+## 完整示例
+
+### 步骤 1：配置会话
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig};
+use a3s_code_core::queue::{SessionLane, LaneHandlerConfig, TaskHandlerMode};
+
+let agent = Agent::new("agent.hcl").await?;
+
+// Configure queue with high concurrency
+let queue_config = SessionQueueConfig {
+    query_max_concurrency: 20,
+    execute_max_concurrency: 5,
+    enable_metrics: true,
+    enable_dlq: true,
+    ..Default::default()
+};
+
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_queue_config(queue_config)
+))?;
+
+// Configure Query lane for external processing
+session.set_lane_handler(SessionLane::Query, LaneHandlerConfig {
+    mode: TaskHandlerMode::External,
+    timeout_ms: 120_000,  // 2 minutes
+}).await;
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions, SessionQueueConfig
+from a3s_code import SessionLane, LaneHandlerConfig, TaskHandlerMode
+
+agent = Agent.create("agent.hcl")
+
+# Configure queue
+queue_config = SessionQueueConfig(
+    query_max_concurrency=20,
+    execute_max_concurrency=5,
+    enable_metrics=True,
+    enable_dlq=True
+)
+
+session = agent.session(".", SessionOptions(
+    queue_config=queue_config
+))
+
+# Configure Query lane for external processing
+session.set_lane_handler(
+    SessionLane.QUERY,
+    LaneHandlerConfig(
+        mode=TaskHandlerMode.EXTERNAL,
+        timeout_ms=120_000
+    )
+)
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { Agent, SessionOptions, SessionQueueConfig } from '@a3s-lab/code';
+import { SessionLane, LaneHandlerConfig, TaskHandlerMode } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+const session = agent.session('.', {
+  queueConfig: {
+    queryMaxConcurrency: 20,
+    executeMaxConcurrency: 5,
+    enableMetrics: true,
+    enableDlq: true
+  }
+});
+
+await session.setLaneHandler(SessionLane.Query, {
+  mode: TaskHandlerMode.External,
+  timeoutMs: 120_000
+});
+```
+</Tab>
+</Tabs>
+
+### 步骤 2：实现 Worker
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{AgentSession, ExternalTask, ExternalTaskResult};
+use tokio::time::{sleep, Duration};
+
+async fn worker_loop(session: Arc<AgentSession>) -> Result<()> {
+    loop {
+        // Poll for pending tasks
+        let tasks = session.pending_external_tasks().await;
+
+        if tasks.is_empty() {
+            sleep(Duration::from_millis(100)).await;
+            continue;
+        }
+
+        // Process tasks in parallel
+        let handles: Vec<_> = tasks.into_iter()
+            .map(|task| {
+                let session = session.clone();
+                tokio::spawn(async move {
+                    let result = execute_task(&task).await;
+                    session.complete_external_task(&task.task_id, result).await
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            let _ = handle.await;
+        }
+    }
+}
+
+async fn execute_task(task: &ExternalTask) -> ExternalTaskResult {
+    match task.command_type.as_str() {
+        "read" => {
+            let path = task.payload["path"].as_str().unwrap();
+            match tokio::fs::read_to_string(path).await {
+                Ok(content) => ExternalTaskResult {
+                    success: true,
+                    result: serde_json::json!({ "content": content }),
+                    error: None,
+                },
+                Err(e) => ExternalTaskResult {
+                    success: false,
+                    result: serde_json::json!({}),
+                    error: Some(e.to_string()),
+                },
+            }
+        }
+        _ => ExternalTaskResult {
+            success: false,
+            result: serde_json::json!({}),
+            error: Some(format!("Unknown command type: {}", task.command_type)),
+        },
+    }
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+import asyncio
+from a3s_code import AgentSession, ExternalTaskResult
+
+async def worker_loop(session: AgentSession):
+    """Worker loop - can run on multiple machines"""
+    while True:
+        tasks = await session.pending_external_tasks()
+
+        if not tasks:
+            await asyncio.sleep(0.1)
+            continue
+
+        await asyncio.gather(*[
+            process_task(session, task) for task in tasks
+        ])
+
+async def process_task(session: AgentSession, task):
+    result = await execute_task(task)
+    await session.complete_external_task(task.task_id, result)
+
+async def execute_task(task):
+    if task.command_type == "read":
+        path = task.payload["path"]
+        try:
+            with open(path, 'r') as f:
+                content = f.read()
+            return ExternalTaskResult(
+                success=True,
+                result={"content": content},
+                error=None
+            )
+        except Exception as e:
+            return ExternalTaskResult(
+                success=False, result={}, error=str(e)
+            )
+    else:
+        return ExternalTaskResult(
+            success=False, result={},
+            error=f"Unknown command type: {task.command_type}"
+        )
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { AgentSession, ExternalTask, ExternalTaskResult } from '@a3s-lab/code';
+import { readFile } from 'fs/promises';
+
+async function workerLoop(session: AgentSession): Promise<void> {
+  while (true) {
+    const tasks = await session.pendingExternalTasks();
+
+    if (tasks.length === 0) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      continue;
+    }
+
+    await Promise.all(tasks.map(task => processTask(session, task)));
+  }
+}
+
+async function processTask(session: AgentSession, task: ExternalTask): Promise<void> {
+  const result = await executeTask(task);
+  await session.completeExternalTask(task.taskId, result);
+}
+
+async function executeTask(task: ExternalTask): Promise<ExternalTaskResult> {
+  switch (task.commandType) {
+    case 'read': {
+      try {
+        const content = await readFile(task.payload.path, 'utf-8');
+        return { success: true, result: { content }, error: null };
+      } catch (e) {
+        return { success: false, result: {}, error: e.message };
+      }
+    }
+    default:
+      return {
+        success: false, result: {},
+        error: `Unknown command type: ${task.commandType}`
+      };
+  }
+}
+```
+</Tab>
+</Tabs>
+
+### 步骤 3：部署 Worker
+
+```bash
+# Worker 1 (local machine)
+./worker --session-id abc123
+
+# Worker 2 (remote server)
+ssh user@remote "cd /app && ./worker --session-id abc123"
+
+# Worker 3 (container)
+docker run -e SESSION_ID=abc123 myapp/worker
+
+# Worker 4 (cloud)
+kubectl run worker --image=myapp/worker --env="SESSION_ID=abc123"
+```
+
+## 最佳实践
+
+### 选择合适的 Lane
+
+- **Query lane** — 最适合可并行化的读操作（grep、read、glob、ls）
+- **Execute lane** — 用于写操作和 bash 命令
+- **Control lane** — 保持内部用于控制操作
+- **Generate lane** — 保持内部用于 LLM 调用（除非你有自定义 LLM 基础设施）
+
+### 设置适当的超时
+
+```rust
+// Short timeout for fast operations
+LaneHandlerConfig {
+    mode: TaskHandlerMode::External,
+    timeout_ms: 30_000,  // 30 seconds
+}
+
+// Long timeout for heavy operations
+LaneHandlerConfig {
+    mode: TaskHandlerMode::External,
+    timeout_ms: 600_000,  // 10 minutes
+}
+```
+
+### 监控队列指标
+
+```rust
+let stats = session.queue_stats().await;
+println!("Pending: {}, Active: {}, External: {}",
+    stats.pending_count,
+    stats.active_count,
+    stats.external_count
+);
+```
+
+## 总结
+
+A3S Code 的外部任务分发支持：
+
+- ✅ 多机器并行化 — 将任务分发到多个 worker
+- ✅ 灵活的执行模式 — 每个 lane 可选 Internal、External 或 Hybrid
+- ✅ 基于优先级的调度 — 4 个 lane，可配置优先级
+- ✅ 内置超时处理 — 自动超时检测和清理
+- ✅ 指标和监控 — 追踪队列深度、延迟、成功率
+- ✅ 语言无关的 worker — 用 Rust、Python、TypeScript 或任何语言实现 worker
+
+## 相关文档
+
+- [架构](/cn/docs/code/architecture) — 系统设计和组件
+- [Lane 队列](/cn/docs/code/lane-queue) — 优先级路由和任务分发
+- [任务](/cn/docs/code/tasks) — 规划和并行执行
+
+## API 参考
+
+### LaneHandlerConfig
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `mode` | `TaskHandlerMode` | `Internal`、`External` 或 `Hybrid` |
+| `timeout_ms` | `Option<u64>` | 等待外部 worker 响应的最大时间 |
+
+### 外部任务方法
+
+| 方法 | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| 设置处理器 | `session.set_external_task_handler(fn).await` | `session.set_external_task_handler(fn)` | `session.setExternalTaskHandler(fn)` |
+| 轮询待处理 | `session.pending_external_tasks().await` | `await session.pending_external_tasks()` | `await session.pendingExternalTasks()` |
+| 完成任务 | `session.complete_external_task(id, result).await` | `await session.complete_external_task(id, result)` | `await session.completeExternalTask(id, result)` |
+| 设置 lane 处理器 | `session.set_lane_handler(lane, cfg).await` | `await session.set_lane_handler(lane, cfg)` | `await session.setLaneHandler(lane, cfg)` |
+
+### ExternalTask 字段
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `task_id` | `String` | 唯一任务标识符 |
+| `lane` | `SessionLane` | `Control`、`Query`、`Execute` 或 `Generate` |
+| `payload` | `Value` | 任务数据（提示、工具参数等） |
+| `created_at` | `DateTime<Utc>` | 入队时间戳 |
+| `timeout_ms` | `Option<u64>` | 每任务超时覆盖 |
+
+### ExternalTaskResult 字段
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `success` | `bool` | 任务是否成功完成 |
+| `result` | `Option<Value>` | 任务输出载荷 |
+| `error` | `Option<String>` | `success` 为 `false` 时的错误消息 |
+| `duration_ms` | `Option<u64>` | Worker 执行时间 |

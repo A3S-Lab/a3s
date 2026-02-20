@@ -1,14 +1,197 @@
 ---
 title: 快速开始
-description: 基本发送、流式传输和多轮对话
+description: 基本 send、流式传输和多轮对话
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # 快速开始
 
+使用 A3S Code 最简单的方式：创建 agent，绑定到工作区，发送提示。
+
+## 基本 Send
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Agent::new("~/.a3s/config.hcl").await?;
+
+    let opts = SessionOptions::new().with_permissive_policy();
+    let session = agent.session("/my-project", Some(opts))?;
+
+    let result = session.send("What files handle authentication?", None).await?;
+    println!("{}", result.text);
+    println!("Tokens: {}", result.usage.total_tokens);
+    Ok(())
+}
+```
+
+**运行：** `cargo run --example sdk_basic`
+**源码：** [`core/examples/sdk_basic.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/sdk_basic.rs)
+</Tab>
+<Tab value="Python">
+```python
+import asyncio
+import a3s_code
+
+async def main():
+    agent = await a3s_code.Agent.create("~/.a3s/config.hcl")
+    session = agent.session("/my-project", permissive=True)
+
+    result = await session.send("What files handle authentication?")
+    print(result.text)
+    print(f"Tokens: {result.usage.total_tokens}")
+
+asyncio.run(main())
+```
+
+**运行：** `python examples/agentic_loop_demo.py`
+**源码：** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const { Agent } = require('@a3s-lab/code');
+
+const agent = await Agent.create('~/.a3s/config.hcl');
+const session = agent.session('/my-project', { permissive: true });
+
+const result = await session.send('What files handle authentication?');
+console.log(result.text);
+console.log(`Tokens: ${result.usage.totalTokens}`);
+```
+
+**运行：** `node examples/agentic_loop_demo.js`
+**源码：** [`sdk/node/examples/agentic_loop_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.js)
+</Tab>
+</Tabs>
+
+## 多轮对话
+
+每次 `send()` 调用后，历史记录会自动累积。
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_permissive_policy()
+))?;
+
+// 第 1 轮
+let r1 = session.send("Create a file called hello.rs", None).await?;
+println!("Turn 1: {}", r1.text);
+
+// 第 2 轮 — 历史自动保留
+let r2 = session.send("Now add a main function to it", None).await?;
+println!("Turn 2: {}", r2.text);
+
+// 第 3 轮
+let r3 = session.send("Run it and show me the output", None).await?;
+println!("Turn 3: {}", r3.text);
+
+// 查看完整历史
+let history = session.history();
+println!("Total messages: {}", history.len());
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project", permissive=True)
+
+r1 = await session.send("Create a file called hello.rs")
+print(f"Turn 1: {r1.text}")
+
+r2 = await session.send("Now add a main function to it")
+print(f"Turn 2: {r2.text}")
+
+r3 = await session.send("Run it and show me the output")
+print(f"Turn 3: {r3.text}")
+
+history = session.history()
+print(f"Total messages: {len(history)}")
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', { permissive: true });
+
+const r1 = await session.send('Create a file called hello.rs');
+console.log('Turn 1:', r1.text);
+
+const r2 = await session.send('Now add a main function to it');
+console.log('Turn 2:', r2.text);
+
+const r3 = await session.send('Run it and show me the output');
+console.log('Turn 3:', r3.text);
+
+const history = session.history();
+console.log('Total messages:', history.length);
+```
+</Tab>
+</Tabs>
+
+## 弹性会话
+
+配置解析重试、工具超时和熔断器，用于生产环境。
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_parse_retries(3)
+    .with_tool_timeout(30_000)       // 每个工具调用 30 秒
+    .with_circuit_breaker(5);        // 连续 5 次 LLM 失败后中止
+
+let session = agent.session("/my-project", Some(opts))?;
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project",
+    permissive=True,
+    max_parse_retries=3,
+    tool_timeout_ms=30_000,
+    circuit_breaker_threshold=5,
+)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  maxParseRetries: 3,
+  toolTimeoutMs: 30_000,
+  circuitBreakerThreshold: 5,
+});
+```
+</Tab>
+</Tabs>
+
 <Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/examples/quick-start)获取完整文档。
+`permissive: true` 跳过 HITL 确认 — 适用于演示和 CI。在生产环境中，请配置[权限策略](/cn/docs/code/security)。
 </Callout>
 
-> 中文翻译即将推出。
+## API 参考
+
+### SessionOptions
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| 宽松策略 | `.with_permissive_policy()` | `permissive=True` | `permissive: true` | `false` |
+| 解析重试 | `.with_parse_retries(n)` | `max_parse_retries=n` | `maxParseRetries: n` | `3` |
+| 工具超时 | `.with_tool_timeout(ms)` | `tool_timeout_ms=ms` | `toolTimeoutMs: ms` | `30000` |
+| 熔断器 | `.with_circuit_breaker(n)` | `circuit_breaker_threshold=n` | `circuitBreakerThreshold: n` | `5` |
+
+### AgentResponse
+
+| 字段 | Rust | Python | Node.js |
+|-------|------|--------|---------|
+| 最终文本 | `result.text` | `result.text` | `result.text` |
+| 总 token 数 | `result.usage.total_tokens` | `result.usage.total_tokens` | `result.usage.totalTokens` |
+| 工具调用次数 | `result.tool_calls_count` | `result.tool_calls_count` | `result.toolCallsCount` |
+| 历史记录 | `session.history()` | `session.history()` | `session.history()` |

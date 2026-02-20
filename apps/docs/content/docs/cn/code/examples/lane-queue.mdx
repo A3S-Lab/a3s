@@ -1,14 +1,170 @@
 ---
-title: 通道队列
+title: Lane 队列
 description: 基于优先级的任务队列与抢占
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-# 通道队列
+# Lane 队列
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/examples/lane-queue)获取完整文档。
+Lane 队列提供基于优先级的任务调度，包含四个 lane。高优先级任务可抢占队列中已有的低优先级任务。
+
+## Lane（优先级从高到低）
+
+| Lane | 优先级 | 使用场景 |
+|------|----------|---------|
+| `Control` | 1（最高） | 停止/取消命令 |
+| `Query` | 2 | 只读查询 |
+| `Execute` | 3 | 文件写入、工具调用 |
+| `Generate` | 4（最低） | 长时间 LLM 生成 |
+
+## 基本队列设置
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig};
+
+let queue_config = SessionQueueConfig::default()
+    .with_lane_features()
+    .with_metrics();
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_queue_config(queue_config);
+
+let session = agent.session("/my-project", Some(opts))?;
+
+// 任务自动路由到适当的 lane
+let result = session.send("List all Rust files", None).await?;
+println!("{}", result.text);
+```
+
+**运行：** `cargo run --example test_task_priority`
+**源码：** [`core/examples/test_task_priority.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_task_priority.rs)
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import SessionQueueConfig
+
+queue_config = SessionQueueConfig()
+queue_config.enable_all_features = True
+
+session = agent.session("/my-project",
+    permissive=True,
+    queue_config=queue_config,
+)
+result = await session.send("List all Rust files")
+print(result.text)
+```
+
+**运行：** `python examples/test_task_priority.py`
+**源码：** [`sdk/python/examples/test_task_priority.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_task_priority.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  queueConfig: { enableAllFeatures: true },
+});
+const result = await session.send('List all Rust files');
+console.log(result.text);
+```
+
+**运行：** `node examples/test_task_priority.js`
+**源码：** [`sdk/node/examples/test_task_priority.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_task_priority.js)
+</Tab>
+</Tabs>
+
+## 优先级抢占
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::queue::{ExternalTask, SessionLane};
+
+// 提交低优先级后台任务
+session.submit_task(ExternalTask::new(
+    "background-analysis",
+    SessionLane::Generate,
+    serde_json::json!({ "prompt": "Analyze the entire codebase" }),
+)).await?;
+
+// 提交高优先级查询，抢占后台任务
+session.submit_task(ExternalTask::new(
+    "urgent-query",
+    SessionLane::Query,
+    serde_json::json!({ "prompt": "What is the current git branch?" }),
+)).await?;
+
+// urgent-query 先执行，background-analysis 之后恢复
+```
+</Tab>
+<Tab value="Python">
+```python
+# 提交低优先级后台任务
+await session.submit_task({
+    "id": "background-analysis",
+    "lane": "generate",
+    "payload": {"prompt": "Analyze the entire codebase"},
+})
+
+# 提交高优先级查询，抢占后台任务
+await session.submit_task({
+    "id": "urgent-query",
+    "lane": "query",
+    "payload": {"prompt": "What is the current git branch?"},
+})
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+// 提交低优先级后台任务
+await session.submitTask({
+  id: 'background-analysis',
+  lane: 'generate',
+  payload: { prompt: 'Analyze the entire codebase' },
+});
+
+// 提交高优先级查询，抢占后台任务
+await session.submitTask({
+  id: 'urgent-query',
+  lane: 'query',
+  payload: { prompt: 'What is the current git branch?' },
+});
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+完整的 lane 队列文档，请参阅 [Lane 队列](/cn/docs/code/lane-queue)。
 </Callout>
 
-> 中文翻译即将推出。
+## API 参考
+
+### SessionQueueConfig
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| 启用 lane 功能 | `.with_lane_features()` | `enable_all_features=True` | `enableAllFeatures: true` | `false` |
+| 启用指标 | `.with_metrics()` | `enable_metrics=True` | `enableMetrics: true` | `false` |
+| Query 并发数 | `.query_max_concurrency(n)` | `query_max_concurrency=n` | `queryMaxConcurrency: n` | `10` |
+| Execute 并发数 | `.execute_max_concurrency(n)` | `execute_max_concurrency=n` | `executeMaxConcurrency: n` | `5` |
+
+### ExternalTask 字段（Rust）
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `id` | `String` | 唯一任务标识符 |
+| `lane` | `SessionLane` | `Control`、`Query`、`Execute` 或 `Generate` |
+| `payload` | `serde_json::Value` | 任务数据（提示、参数等） |
+
+### 队列管理方法
+
+| 方法 | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| 提交任务 | `session.submit_task(task).await?` | `await session.submit_task({...})` | `await session.submitTask({...})` |
+| 队列统计 | `session.queue_stats().await` | `await session.queue_stats()` | `await session.queueStats()` |
+| 队列指标 | `session.queue_metrics().await` | `await session.queue_metrics()` | `await session.queueMetrics()` |
+| 死信 | `session.dead_letters().await` | `await session.dead_letters()` | `await session.deadLetters()` |

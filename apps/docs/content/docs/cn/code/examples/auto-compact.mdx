@@ -1,14 +1,157 @@
 ---
 title: 自动压缩
-description: 上下文窗口自动压缩
+description: 当 token 使用量超过阈值时自动压缩上下文窗口
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # 自动压缩
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/examples/auto-compact)获取完整文档。
+当会话的上下文窗口填满时，自动压缩会自动：
+1. 裁剪旧的大型工具输出（低成本，无需 LLM 调用）
+2. 通过 LLM 总结旧的对话轮次（如果仍超过阈值）
+
+这使长时间运行的会话无需手动干预即可保持活跃。
+
+<Callout type="info">
+自动压缩在 `used_tokens / max_tokens >= threshold` 时触发。默认阈值：80%。
 </Callout>
 
-> 中文翻译即将推出。
+## 启用自动压缩
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_auto_compact(true)
+    .with_auto_compact_threshold(0.80); // 在 80% 使用率时触发
+
+let session = agent.session("/my-project", Some(opts))?;
+
+// 长时间对话 — 上下文自动压缩
+for i in 0..20 {
+    let result = session.send(
+        &format!("Step {}: analyze the next module", i),
+        None,
+    ).await?;
+    println!("Step {}: {} tokens", i, result.usage.total_tokens);
+}
+```
+
+**运行：** `cargo run --example test_auto_compact`
+**源码：** [`core/examples/test_auto_compact.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_auto_compact.rs)
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import SessionOptions
+
+opts = SessionOptions()
+opts.auto_compact = True
+opts.auto_compact_threshold = 0.80
+
+session = agent.session("/my-project", options=opts)
+
+# 长时间对话 — 上下文自动压缩
+for i in range(20):
+    result = await session.send(f"Step {i}: analyze the next module")
+    print(f"Step {i}: {result.usage.total_tokens} tokens")
+```
+
+**运行：** `python examples/test_advanced_features.py`
+**源码：** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  autoCompact: true,
+  autoCompactThreshold: 0.80,
+});
+
+// 长时间对话 — 上下文自动压缩
+for (let i = 0; i < 20; i++) {
+  const result = await session.send(`Step ${i}: analyze the next module`);
+  console.log(`Step ${i}: ${result.usage.totalTokens} tokens`);
+}
+```
+
+**运行：** `node examples/test_advanced_features.js`
+**源码：** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+</Tab>
+</Tabs>
+
+## 工作原理
+
+```
+每个 LLM 轮次后：
+  1. 检查：used_tokens / max_tokens >= threshold？
+  2. 如果是 → 裁剪旧的大型工具输出（无需 LLM 调用）
+  3. 如果仍超过阈值 → 通过 LLM 总结旧消息
+  4. 发出 ContextCompacted 事件
+```
+
+超过最近 40k token 的工具输出会被替换为：
+```
+[output pruned — re-read file or re-run command if needed]
+```
+
+LLM 总结保留前 2 条消息（系统上下文）、旧轮次的摘要以及最后 20 条消息。
+
+## 压缩事件
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let (mut rx, handle) = session.stream("Long task...", None).await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::ContextCompacted { messages_before, messages_after } => {
+            println!("Compacted: {} → {} messages", messages_before, messages_after);
+        }
+        AgentEvent::End { .. } => break,
+        _ => {}
+    }
+}
+handle.await??;
+```
+</Tab>
+<Tab value="Python">
+```python
+async for event in session.stream("Long task..."):
+    if event.get("type") == "context_compacted":
+        print(f"Compacted: {event['messages_before']} → {event['messages_after']} messages")
+    elif event.get("type") == "end":
+        break
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+for await (const event of stream) {
+  if (event.type === 'context_compacted') {
+    console.log(`Compacted: ${event.messagesBefore} → ${event.messagesAfter} messages`);
+  } else if (event.type === 'end') break;
+}
+```
+</Tab>
+</Tabs>
+
+## API 参考
+
+### SessionOptions
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| 启用自动压缩 | `.with_auto_compact(true)` | `auto_compact=True` | `autoCompact: true` | `false` |
+| 阈值（0.0–1.0） | `.with_auto_compact_threshold(f)` | `auto_compact_threshold=f` | `autoCompactThreshold: f` | `0.8` |
+
+### ContextCompacted 事件
+
+| 字段 | Rust | Python/Node.js | 描述 |
+|-------|------|----------------|-------------|
+| 压缩前消息数 | `messages_before` | `messages_before` / `messagesBefore` | 压缩前的消息数量 |
+| 压缩后消息数 | `messages_after` | `messages_after` / `messagesAfter` | 压缩后的消息数量 |
+| 节省的 token | `tokens_saved` | `tokens_saved` / `tokensSaved` | 大约释放的 token 数 |

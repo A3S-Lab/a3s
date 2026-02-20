@@ -1,14 +1,193 @@
 ---
-title: 批量工具
-description: 单次调用并行执行多个工具
+title: Batch 工具
+description: 在单个 LLM 轮次中并行执行多个独立工具调用
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-# 批量工具
+# Batch 工具
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/examples/batch)获取完整文档。
+`batch` 工具允许 LLM 在单个轮次中并行分发多个独立的工具调用。当操作之间没有依赖关系时，可以减少往返次数。
+
+<Callout type="info">
+batch 工具自动注册 — 无需配置。LLM 会根据任务自行决定何时使用。
 </Callout>
 
-> 中文翻译即将推出。
+## 工作原理
+
+不再需要：
+```
+Turn 1: read file_a.rs  → result
+Turn 2: read file_b.rs  → result
+Turn 3: read file_c.rs  → result
+```
+
+LLM 可以：
+```
+Turn 1: batch([read file_a.rs, read file_b.rs, read file_c.rs])  → all results
+```
+
+## 示例
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+use tempfile::TempDir;
+
+let dir = TempDir::new()?;
+std::fs::write(dir.path().join("auth.rs"), "// auth module")?;
+std::fs::write(dir.path().join("db.rs"), "// database module")?;
+std::fs::write(dir.path().join("handler.rs"), "// HTTP handler")?;
+
+let opts = SessionOptions::new().with_permissive_policy();
+let session = agent.session(dir.path().to_str().unwrap(), Some(opts))?;
+
+let result = session.send(
+    "Use the batch tool to read auth.rs, db.rs, and handler.rs in parallel. \
+     Then summarize what each file does.",
+    None,
+).await?;
+
+println!("Tool calls: {}", result.tool_calls_count);
+println!("{}", result.text);
+```
+
+**运行：** `cargo run --example test_batch_tool`
+**源码：** [`core/examples/test_batch_tool.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_batch_tool.rs)
+</Tab>
+<Tab value="Python">
+```python
+import tempfile, os
+
+with tempfile.TemporaryDirectory() as dir:
+    for name, content in [
+        ("auth.rs", "// auth module"),
+        ("db.rs", "// database module"),
+        ("handler.rs", "// HTTP handler"),
+    ]:
+        open(os.path.join(dir, name), "w").write(content)
+
+    session = agent.session(dir, permissive=True)
+    result = await session.send(
+        "Use the batch tool to read auth.rs, db.rs, and handler.rs in parallel. "
+        "Then summarize what each file does."
+    )
+    print(f"Tool calls: {result.tool_calls_count}")
+    print(result.text)
+```
+
+**运行：** `python examples/test_advanced_features.py`
+**源码：** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const { mkdtempSync, writeFileSync } = require('fs');
+const { join } = require('path');
+const { tmpdir } = require('os');
+
+const dir = mkdtempSync(join(tmpdir(), 'batch-'));
+writeFileSync(join(dir, 'auth.rs'), '// auth module');
+writeFileSync(join(dir, 'db.rs'), '// database module');
+writeFileSync(join(dir, 'handler.rs'), '// HTTP handler');
+
+const session = agent.session(dir, { permissive: true });
+const result = await session.send(
+  'Use the batch tool to read auth.rs, db.rs, and handler.rs in parallel. ' +
+  'Then summarize what each file does.'
+);
+
+console.log(`Tool calls: ${result.toolCallsCount}`);
+console.log(result.text);
+```
+
+**运行：** `node examples/test_advanced_features.js`
+**源码：** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+</Tab>
+</Tabs>
+
+## 直接调用 Batch
+
+你也可以不通过 LLM 直接调用 batch 工具：
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use serde_json::json;
+
+let result = session.call_tool("batch", json!({
+    "invocations": [
+        { "tool": "read", "args": { "file_path": "auth.rs" } },
+        { "tool": "read", "args": { "file_path": "db.rs" } },
+        { "tool": "grep", "args": { "pattern": "TODO", "path": "." } }
+    ]
+})).await?;
+
+println!("{}", result.output);
+```
+</Tab>
+<Tab value="Python">
+```python
+result = await session.call_tool("batch", {
+    "invocations": [
+        {"tool": "read", "args": {"file_path": "auth.rs"}},
+        {"tool": "read", "args": {"file_path": "db.rs"}},
+        {"tool": "grep", "args": {"pattern": "TODO", "path": "."}},
+    ]
+})
+print(result.output)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const result = await session.callTool('batch', {
+  invocations: [
+    { tool: 'read', args: { filePath: 'auth.rs' } },
+    { tool: 'read', args: { filePath: 'db.rs' } },
+    { tool: 'grep', args: { pattern: 'TODO', path: '.' } },
+  ],
+});
+console.log(result.output);
+```
+</Tab>
+</Tabs>
+
+## 输出格式
+
+每个调用结果以标题前缀：
+
+```
+--- [1: read] ---
+// auth module
+
+--- [2: read] ---
+// database module
+
+--- [3: grep] ---
+handler.rs:5:// TODO: add error handling
+```
+
+<Callout type="warn">
+嵌套 batch 调用会被拒绝。batch 工具不能递归调用自身。
+</Callout>
+
+## API 参考
+
+### batch 工具输入 schema
+
+| 字段 | 类型 | 必填 | 描述 |
+|-------|------|----------|-------------|
+| `invocations` | `array` | ✅ | 要并行执行的工具调用列表 |
+| `invocations[].tool` | `string` | ✅ | 要调用的工具名称 |
+| `invocations[].args` | `object` | ✅ | 传递给工具的参数 |
+
+### 直接调用
+
+| 方法 | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| 直接调用工具 | `session.call_tool("batch", json!({...})).await?` | `await session.call_tool("batch", {...})` | `await session.callTool('batch', {...})` |
+
+### 输出格式
+
+每个结果以 `--- [N: tool_name] ---` 为前缀，后跟工具输出。失败的调用包含 `error:` 行而非输出。

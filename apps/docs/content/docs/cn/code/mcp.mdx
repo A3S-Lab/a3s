@@ -1,14 +1,138 @@
 ---
-title: MCP 集成
-description: 通过 Model Context Protocol 集成外部工具
+title: MCP 支持
+description: 通过 Model Context Protocol 扩展 agent 的外部工具
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+# MCP 支持
 
-# MCP 集成
+A3S Code 支持 [Model Context Protocol](https://modelcontextprotocol.io/)（MCP）来集成外部工具服务器。当服务器连接时，MCP 工具会自动注册到 ToolExecutor 中。
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/mcp)获取完整文档。
-</Callout>
+## 传输方式
 
-> 中文翻译即将推出。
+A3S Code 支持两种 MCP 传输方式：
+
+| 传输方式 | 协议 | 使用场景 |
+|-----------|----------|----------|
+| `stdio` | JSON-RPC 2.0 over stdin/stdout | 本地工具、基于 CLI 的服务器 |
+| `http+sse` | JSON-RPC 2.0 over HTTP + Server-Sent Events | 远程服务器、共享基础设施 |
+
+## 配置
+
+### stdio 传输
+
+用于作为子进程运行的本地 MCP 服务器：
+
+```hcl
+mcp_servers {
+  name      = "filesystem"
+  transport = "stdio"
+  command   = "npx"
+  args      = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+  enabled   = true
+}
+
+mcp_servers {
+  name      = "github"
+  transport = "stdio"
+  command   = "npx"
+  args      = ["-y", "@modelcontextprotocol/server-github"]
+  enabled   = true
+  env = {
+    GITHUB_TOKEN = "ghp_..."
+  }
+}
+```
+
+### HTTP+SSE 传输
+
+用于通过 HTTP 访问的远程 MCP 服务器：
+
+```hcl
+mcp_servers {
+  name      = "remote-tools"
+  transport = "sse"
+  url       = "https://mcp.example.com/sse"
+  enabled   = true
+  env = {
+    API_TOKEN = "token-..."
+  }
+}
+```
+
+HTTP+SSE 传输连接到远程服务器端点。请求通过 HTTP POST 发送，响应通过 Server-Sent Events 流式返回。适用于团队环境中的共享 MCP 服务器或云托管的工具提供商。
+
+## 工具命名
+
+MCP 工具使用服务器名称作为命名空间以避免冲突：
+
+```
+mcp__<server_name>__<tool_name>
+```
+
+例如，`filesystem` 服务器的 `read_file` 工具变为 `mcp__filesystem__read_file`。
+
+## 权限集成
+
+MCP 工具遵循与内置工具相同的权限系统。在权限规则中使用命名空间前缀：
+
+```
+mcp__filesystem  → 匹配 filesystem 服务器的所有工具
+mcp__github      → 匹配 github 服务器的所有工具
+```
+
+## 防止覆盖
+
+MCP 工具不能覆盖内置工具名称。如果 MCP 服务器暴露了名为 `Bash`、`Read`、`Write` 或其他内置名称的工具，工具注册会被拒绝。这防止了恶意 MCP 服务器拦截敏感操作。
+
+## 执行超时
+
+MCP 工具执行有可配置的超时时间（默认：60 秒）。如果工具在超时时间内未响应，执行会被取消并返回错误。这防止了挂起的 MCP 服务器阻塞 agent。
+
+## API 参考
+
+### HCL 配置
+
+```hcl
+mcp_servers {
+  name    = "filesystem"
+  command = "npx"
+  args    = ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
+}
+
+mcp_servers {
+  name = "github"
+  command = "npx"
+  args    = ["-y", "@modelcontextprotocol/server-github"]
+  env     = { GITHUB_TOKEN = env("GITHUB_TOKEN") }
+}
+```
+
+### MCP 服务器配置字段
+
+| 字段 | 类型 | 必填 | 描述 |
+|-------|------|----------|-------------|
+| `name` | `string` | ✅ | 服务器标识符（用于工具名称前缀） |
+| `command` | `string` | ✅ | 要启动的可执行文件 |
+| `args` | `string[]` | ❌ | 命令参数 |
+| `env` | `object` | ❌ | 环境变量 |
+| `timeout_ms` | `number` | ❌ | 工具执行超时（默认：`60000`） |
+| `transport` | `string` | ❌ | `stdio`（默认）或 `http` |
+
+### McpTransport trait（Rust）
+
+| 方法 | 签名 | 描述 |
+|--------|-----------|-------------|
+| `connect` | `async fn connect(&mut self) -> Result<()>` | 建立到 MCP 服务器的连接 |
+| `list_tools` | `async fn list_tools(&self) -> Result<Vec<McpTool>>` | 发现可用工具 |
+| `call_tool` | `async fn call_tool(&self, name: &str, args: Value) -> Result<Value>` | 调用工具 |
+| `disconnect` | `async fn disconnect(&mut self) -> Result<()>` | 关闭连接 |
+
+### 工具命名
+
+MCP 工具命名为 `mcp__{server}__{tool}`。在权限规则中使用此前缀：
+
+| 模式 | 匹配 |
+|---------|---------|
+| `mcp__filesystem` | `filesystem` 服务器的所有工具 |
+| `mcp__github__create_issue` | 特定工具 |
+| `mcp__*` | 所有 MCP 工具 |

@@ -1,14 +1,191 @@
 ---
 title: 记忆
-description: 持久化文件记忆存储
+description: 跨会话的持久化文件记忆存储
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # 记忆
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/examples/memory)获取完整文档。
+A3S Code 通过 `MemoryStore` 支持持久化长期记忆。默认实现将记忆存储为磁盘上的 JSON 文件，可跨会话保留。
+
+## 文件记忆
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_file_memory("/var/lib/a3s/memory"); // 跨会话持久化
+
+let session = agent.session("/my-project", Some(opts))?;
+
+// Agent 可以跨会话存储和回忆事实
+let result = session.send(
+    "Remember that this project uses PostgreSQL 15 and deploys to AWS us-east-1",
+    None,
+).await?;
+println!("{}", result.text);
+
+// 在使用相同记忆目录的未来会话中，agent 会回忆这些信息
+```
+
+**运行：** `cargo run --example test_auto_compact`
+**源码：** [`core/examples/test_auto_compact.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_auto_compact.rs)
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import SessionOptions
+
+opts = SessionOptions()
+opts.memory_dir = "/var/lib/a3s/memory"
+
+session = agent.session("/my-project", options=opts)
+
+result = await session.send(
+    "Remember that this project uses PostgreSQL 15 and deploys to AWS us-east-1"
+)
+print(result.text)
+```
+
+**运行：** `python examples/test_advanced_features.py`
+**源码：** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  memoryDir: '/var/lib/a3s/memory',
+});
+
+const result = await session.send(
+  'Remember that this project uses PostgreSQL 15 and deploys to AWS us-east-1'
+);
+console.log(result.text);
+```
+
+**运行：** `node examples/test_advanced_features.js`
+**源码：** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+</Tab>
+</Tabs>
+
+## 自定义记忆存储
+
+实现 `MemoryStore` 以使用任何后端（Redis、SQLite、向量数据库等）。
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::memory::{AgentMemory, MemoryStore, MemoryEntry, MemoryType};
+use std::sync::Arc;
+
+// 实现自定义存储
+struct RedisMemoryStore { /* ... */ }
+
+impl MemoryStore for RedisMemoryStore {
+    async fn store(&self, entry: MemoryEntry) -> anyhow::Result<String> { /* ... */ }
+    async fn recall(&self, query: &str, limit: usize) -> anyhow::Result<Vec<MemoryEntry>> { /* ... */ }
+    async fn delete(&self, id: &str) -> anyhow::Result<()> { /* ... */ }
+    async fn clear(&self) -> anyhow::Result<()> { /* ... */ }
+}
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_memory(Arc::new(RedisMemoryStore::new()));
+
+let session = agent.session("/my-project", Some(opts))?;
+```
+</Tab>
+<Tab value="Python">
+```python
+# 自定义记忆存储在 Rust 中实现，通过 SDK 暴露。
+# 大多数场景使用内置的文件记忆即可：
+opts = SessionOptions()
+opts.memory_dir = "/path/to/memory"
+session = agent.session("/my-project", options=opts)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+// 自定义记忆存储在 Rust 中实现，通过 SDK 暴露。
+// 大多数场景使用内置的文件记忆即可：
+const session = agent.session('/my-project', {
+  memoryDir: '/path/to/memory',
+});
+```
+</Tab>
+</Tabs>
+
+## 记忆事件
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::MemoryStored { memory_id, memory_type } => {
+            println!("Stored memory: {} ({})", memory_id, memory_type);
+        }
+        AgentEvent::MemoryRecalled { memory_id, .. } => {
+            println!("Recalled memory: {}", memory_id);
+        }
+        _ => {}
+    }
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+async for event in session.stream("What do you remember about this project?"):
+    if event.get("type") == "memory_stored":
+        print(f"Stored: {event['memory_id']}")
+    elif event.get("type") == "memory_recalled":
+        print(f"Recalled: {event['memory_id']}")
+    elif event.get("type") == "end":
+        break
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+for await (const event of stream) {
+  if (event.type === 'memory_stored') {
+    console.log(`Stored: ${event.memoryId}`);
+  } else if (event.type === 'memory_recalled') {
+    console.log(`Recalled: ${event.memoryId}`);
+  } else if (event.type === 'end') break;
+}
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+完整的记忆 API 参考，请参阅[记忆](/cn/docs/code/memory)。
 </Callout>
 
-> 中文翻译即将推出。
+## API 参考
+
+### SessionOptions
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| 文件记忆 | `.with_file_memory(path)` | `memory_dir=path` | `memoryDir: path` | `None` |
+| 自定义存储 | `.with_memory(Arc::new(store))` | _（仅 Rust）_ | _（仅 Rust）_ | `InMemoryStore` |
+
+### MemoryStore trait（Rust）
+
+| 方法 | 签名 | 描述 |
+|--------|-----------|-------------|
+| `store` | `async fn store(&self, entry: MemoryEntry) -> Result<String>` | 持久化记忆，返回 ID |
+| `recall` | `async fn recall(&self, query: &str, limit: usize) -> Result<Vec<MemoryEntry>>` | 检索相关记忆 |
+| `delete` | `async fn delete(&self, id: &str) -> Result<()>` | 按 ID 删除记忆 |
+| `clear` | `async fn clear(&self) -> Result<()>` | 清除所有记忆 |
+
+### 记忆事件
+
+| 事件 | Rust 变体 | Python/Node.js `type` | 字段 |
+|-------|-------------|----------------------|--------|
+| 记忆存储 | `AgentEvent::MemoryStored` | `memory_stored` | `memory_id`, `memory_type` |
+| 记忆回忆 | `AgentEvent::MemoryRecalled` | `memory_recalled` | `memory_id`, `relevance` |

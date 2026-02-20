@@ -1,14 +1,198 @@
 ---
 title: 遥测
-description: 成本追踪和 OpenTelemetry 集成
+description: 追踪 span、费用追踪和工具执行指标
 ---
-
-import { Callout } from 'fumadocs-ui/components/callout';
 
 # 遥测
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/telemetry)获取完整文档。
-</Callout>
+A3S Code 通过兼容 OpenTelemetry 的追踪 span 发出结构化遥测数据。每个 LLM 调用、工具执行和 agent 轮次都带有详细属性，用于可观测性、费用追踪和性能分析。
 
-> 中文翻译即将推出。
+## Span 层级
+
+Agent 为每次执行生成嵌套的 span 树：
+
+```
+a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
+├── a3s.agent.turn                   ← 每个 agent 轮次一个（LLM 调用 + 工具循环）
+│   ├── a3s.context.resolve          ← 上下文提供者解析
+│   ├── a3s.llm.completion           ← LLM API 调用
+│   ├── a3s.tool.execute             ← 工具执行（每个工具调用一个）
+│   ├── a3s.llm.completion           ← 工具结果后的后续 LLM 调用
+│   └── a3s.tool.execute             ← ...
+├── a3s.agent.turn                   ← 下一轮次
+│   └── ...
+└── (end)
+```
+
+每个 span 携带描述该阶段发生了什么的属性。
+
+## Span 属性
+
+### Agent 级别（`a3s.agent.execute`、`a3s.agent.turn`）
+
+| 属性 | 类型 | 描述 |
+|-----------|------|-------------|
+| `a3s.session_id` | string | 会话标识符 |
+| `a3s.turn` | int | 当前轮次编号 |
+| `a3s.max_turns` | int | 允许的最大轮次数 |
+| `a3s.tool_calls_count` | int | 此范围内的总工具调用次数 |
+
+### LLM 级别（`a3s.llm.completion`）
+
+| 属性 | 类型 | 描述 |
+|-----------|------|-------------|
+| `a3s.llm.model` | string | 模型 ID（例如 `claude-sonnet-4-20250514`） |
+| `a3s.llm.provider` | string | 提供商名称（例如 `anthropic`） |
+| `a3s.llm.streaming` | bool | 是否为流式调用 |
+| `a3s.llm.prompt_tokens` | int | 消耗的输入 token 数 |
+| `a3s.llm.completion_tokens` | int | 生成的输出 token 数 |
+| `a3s.llm.total_tokens` | int | 总 token 数 |
+| `a3s.llm.cache_read_tokens` | int | 缓存读取的输入 token 数 |
+| `a3s.llm.cache_write_tokens` | int | 缓存写入的输入 token 数 |
+| `a3s.llm.stop_reason` | string | 生成停止的原因 |
+
+### 工具级别（`a3s.tool.execute`）
+
+| 属性 | 类型 | 描述 |
+|-----------|------|-------------|
+| `a3s.tool.name` | string | 工具名称（例如 `Bash`、`Read`） |
+| `a3s.tool.id` | string | 工具调用 ID |
+| `a3s.tool.exit_code` | int | 退出码（0 = 成功） |
+| `a3s.tool.success` | bool | 工具是否成功 |
+| `a3s.tool.duration_ms` | int | 执行时间（毫秒） |
+| `a3s.tool.permission` | string | 权限决策（`allow`、`deny`、`ask`） |
+
+### 上下文级别（`a3s.context.resolve`）
+
+| 属性 | 类型 | 描述 |
+|-----------|------|-------------|
+| `a3s.context.providers` | string | 逗号分隔的提供者名称 |
+| `a3s.context.items` | int | 返回的上下文条目数 |
+| `a3s.context.tokens` | int | 上下文条目的总 token 数 |
+
+## 费用追踪
+
+遥测模块使用 `LlmCostRecord` 追踪每次调用的 LLM 费用：
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `model` | string | 模型 ID |
+| `provider` | string | 提供商名称 |
+| `prompt_tokens` | u64 | 输入 token 数 |
+| `completion_tokens` | u64 | 输出 token 数 |
+| `total_tokens` | u64 | 总 token 数 |
+| `cost_usd` | f64 | 估计费用（美元） |
+| `timestamp` | DateTime | 调用时间 |
+| `session_id` | string | 关联的会话 |
+
+### 模型定价
+
+费用使用 `ModelPricing` 计算：
+
+```
+cost_usd = (prompt_tokens * input_per_million / 1_000_000)
+         + (completion_tokens * output_per_million / 1_000_000)
+```
+
+内置定价注册表（`default_model_pricing()`）涵盖 Anthropic、OpenAI 等常见模型。可在 agent 配置的每个模型的 `cost` 块中指定自定义定价。
+
+### 费用聚合
+
+`CostSummary` 提供带分类的聚合费用数据：
+
+- **按模型** — 所有会话中每个模型的费用
+- **按天** — 每日费用趋势
+- **总计** — 聚合窗口内的总费用
+
+使用 `aggregate_cost_records()` 从 `LlmCostRecord` 条目集合生成摘要，支持可选的会话和时间范围过滤。
+
+## 工具指标
+
+`ToolMetrics` 追踪会话内每个工具的执行统计：
+
+| 指标 | 描述 |
+|--------|-------------|
+| 调用次数 | 总调用次数 |
+| 成功次数 | 成功执行次数 |
+| 失败次数 | 失败执行次数 |
+| 总时长 | 累计执行时间 |
+| 平均时长 | 每次调用的平均执行时间 |
+
+这些指标通过 `record_tool_result()` 记录在追踪 span 上，可用于仪表板和告警聚合。
+
+## 集成
+
+遥测模块使用标准 `tracing` span 和属性。要收集遥测数据：
+
+1. **配置追踪订阅者** — 任何兼容 OpenTelemetry 的收集器都可以（Jaeger、Zipkin、OTLP 导出器）
+2. **Span 自动发出** — 除了订阅者设置外无需额外代码
+3. **费用记录** — 通过 `LlmCostRecord` 类型提供，用于自定义聚合
+
+```rust
+use tracing_subscriber::prelude::*;
+
+// Example: export to OTLP collector
+let tracer = opentelemetry_otlp::new_pipeline()
+    .tracing()
+    .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+
+tracing_subscriber::registry()
+    .with(tracing_opentelemetry::layer().with_tracer(tracer))
+    .init();
+
+// All agent operations now emit structured spans
+let result = session.send("Analyze this codebase").await?;
+```
+
+辅助函数 `record_llm_usage()` 和 `record_tool_result()` 在当前活跃 span 上记录指标。`TimedSpan` 守卫自动测量任何作用域操作的耗时。
+
+## API 参考
+
+### Span 层级
+
+| Span | 父级 | 关键属性 |
+|------|--------|----------------|
+| `agent.session` | root | `session.id`、`session.workspace` |
+| `agent.turn` | `agent.session` | `turn.index`、`turn.model` |
+| `agent.generate` | `agent.turn` | `llm.provider`、`llm.model`、`llm.tokens_in`、`llm.tokens_out` |
+| `agent.tool` | `agent.turn` | `tool.name`、`tool.exit_code`、`tool.duration_ms` |
+| `agent.plan` | `agent.turn` | `plan.steps`、`plan.waves` |
+| `agent.hook` | `agent.turn` | `hook.id`、`hook.event` |
+
+### 费用追踪字段
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `provider` | `String` | LLM 提供商名称 |
+| `model` | `String` | 模型标识符 |
+| `input_tokens` | `u32` | 提示 token 数 |
+| `output_tokens` | `u32` | 完成 token 数 |
+| `cache_read_tokens` | `u32` | 提示缓存读取 token 数 |
+| `cache_write_tokens` | `u32` | 提示缓存写入 token 数 |
+| `cost_usd` | `f64` | 估计费用（美元） |
+
+### 设置（Rust）
+
+```rust
+use tracing_subscriber::prelude::*;
+
+// stdout (development)
+tracing_subscriber::fmt().init();
+
+// OTLP (production)
+let tracer = opentelemetry_otlp::new_pipeline()
+    .tracing()
+    .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+
+tracing_subscriber::registry()
+    .with(tracing_opentelemetry::layer().with_tracer(tracer))
+    .init();
+```
+
+### 环境变量
+
+| 变量 | 描述 |
+|----------|-------------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP 收集器端点 |
+| `OTEL_SERVICE_NAME` | 追踪中的服务名称 |
+| `RUST_LOG` | 日志级别过滤（例如 `a3s_code_core=debug`） |

@@ -1,14 +1,283 @@
 ---
 title: 上下文管理
-description: 上下文压缩和可插拔 RAG 提供商
+description: 上下文压缩和可插拔的 RAG 上下文提供者
 ---
-
-import { Callout } from 'fumadocs-ui/components/callout';
 
 # 上下文管理
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/context)获取完整文档。
-</Callout>
+A3S Code 提供两个上下文管理功能：对话过长时的**自动上下文压缩**，以及用于检索增强生成（RAG）的**可插拔上下文提供者**。
 
-> 中文翻译即将推出。
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
+## 上下文压缩
+
+当上下文使用量超过阈值（默认为模型上下文窗口的 80%）时，agent 会自动总结对话以保持在限制内。
+
+### 工作原理
+
+<Steps>
+<Step>保留前 2 条消息（系统上下文）</Step>
+<Step>保留最后 20 条消息（近期上下文）</Step>
+<Step>通过 LLM 调用总结中间消息</Step>
+<Step>将摘要作为合成消息插入</Step>
+</Steps>
+
+这在减少 token 使用的同时保留了重要上下文。
+
+### 配置
+
+```rust
+use a3s_code_core::SessionOptions;
+
+let session = agent.session("/project", Some(
+    SessionOptions::new()
+        .with_context_threshold(0.8)  // Compact at 80% (default)
+))?;
+```
+
+### 事件
+
+Agent 在压缩期间发出事件：
+
+| 事件 | 触发时机 |
+|-------|------|
+| `ContextWarning` | 上下文使用量超过阈值 |
+| `ContextCompacting` | 压缩开始 |
+| `ContextCompacted` | 压缩完成 |
+
+## 上下文提供者
+
+上下文提供者在每次生成前向 LLM 的系统提示注入额外信息。这支持 RAG（检索增强生成）、记忆召回和与外部知识库的集成。
+
+### 概述
+
+Agent 在每次 LLM 调用前查询已注册的上下文提供者。提供者返回 `ContextItem` 条目，格式化为 XML 块并添加到系统提示前面：
+
+```
+系统提示
+├── 基础指令
+├── 上下文块：              ← 由上下文提供者注入
+│   ├── [resource] 认证模块的 API 文档
+│   ├── [memory] 用户偏好 TypeScript
+│   └── [resource] 相关代码片段
+└── 工具定义
+```
+
+解析期间会发出事件：`ContextResolving`（包含提供者名称）和 `ContextResolved`（包含总条目数和 token 数）。
+
+### ContextProvider Trait
+
+```rust
+#[async_trait]
+pub trait ContextProvider: Send + Sync {
+    /// Query this provider for relevant context
+    async fn query(&self, query: ContextQuery) -> Result<ContextResult>;
+
+    /// Optional: extract and store context after a turn completes
+    async fn on_turn_complete(&self, _messages: &[Message]) -> Result<()> {
+        Ok(()) // default no-op
+    }
+}
+```
+
+`query()` 方法接收 `ContextQuery` 并返回匹配的 `ContextItem` 条目。可选的 `on_turn_complete()` hook 允许提供者从对话轮次中提取和存储信息（例如记忆提取）。
+
+### ContextQuery
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `query` | `String` | 搜索查询（通常是用户的提示） |
+| `context_types` | `Vec<ContextType>` | 要检索的类型 |
+| `depth` | `ContextDepth` | 返回多少细节 |
+| `max_results` | `usize` | 最大返回条目数 |
+| `max_tokens` | `usize` | 结果的 token 预算 |
+| `session_id` | `Option<String>` | 将结果限定到某个会话 |
+| `params` | `HashMap<String, String>` | 提供者特定的参数 |
+
+Builder 方法使构造更便捷：
+
+```rust
+let query = ContextQuery::new("authentication flow")
+    .with_types(vec![ContextType::Resource])
+    .with_depth(ContextDepth::Overview)
+    .with_max_results(5)
+    .with_max_tokens(4000)
+    .with_session_id("session-123");
+```
+
+#### ContextType
+
+| 类型 | 描述 |
+|------|-------------|
+| `Memory` | 记忆条目（episodic、semantic、procedural、working） |
+| `Resource` | 外部资源（文件、文档、代码）— 默认 |
+
+#### ContextDepth
+
+| 深度 | Token 预算 | 描述 |
+|-------|-------------|-------------|
+| `Abstract` | ~100 tokens | 简要摘要 |
+| `Overview` | ~2,000 tokens | 适度细节（默认） |
+| `Full` | 可变 | 完整内容 |
+
+### ContextItem
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `id` | `String` | 唯一条目标识符 |
+| `context_type` | `ContextType` | Memory 或 Resource |
+| `content` | `String` | 上下文内容 |
+| `token_count` | `usize` | 估计的 token 数 |
+| `relevance` | `f32` | 0.0–1.0 相关性分数 |
+| `source` | `Option<String>` | 上下文来源 |
+| `metadata` | `HashMap<String, String>` | 额外元数据 |
+
+条目通过 `to_xml()` 格式化为 XML 以注入系统提示。
+
+## 内置提供者：MemoryContextProvider
+
+将[记忆](/cn/docs/code/memory)系统桥接到上下文提供者接口。对记忆条目执行语义搜索，并将其转换为带相关性分数的 `ContextItem` 条目。
+
+```rust
+use a3s_code_core::context::MemoryContextProvider;
+use a3s_code_core::memory::MemoryManager;
+
+let memory = Arc::new(MemoryManager::new());
+let provider = Arc::new(MemoryContextProvider::new(memory));
+
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_context_provider(provider)
+))?;
+```
+
+## 自定义上下文提供者示例
+
+```rust
+use a3s_code_core::context::{ContextProvider, ContextQuery, ContextResult, ContextItem, ContextType};
+use async_trait::async_trait;
+
+struct DocsContextProvider {
+    docs_path: PathBuf,
+}
+
+#[async_trait]
+impl ContextProvider for DocsContextProvider {
+    async fn query(&self, query: ContextQuery) -> Result<ContextResult> {
+        // Search documentation files
+        let matches = search_docs(&self.docs_path, &query.query)?;
+
+        let items: Vec<ContextItem> = matches.into_iter()
+            .map(|doc| ContextItem {
+                id: doc.path.to_string_lossy().to_string(),
+                context_type: ContextType::Resource,
+                content: doc.content,
+                token_count: doc.content.split_whitespace().count(),
+                relevance: doc.score,
+                source: Some(format!("docs:{}", doc.path.display())),
+                metadata: HashMap::new(),
+            })
+            .collect();
+
+        Ok(ContextResult { items })
+    }
+}
+
+// Register with session
+let provider = Arc::new(DocsContextProvider {
+    docs_path: PathBuf::from("./docs"),
+});
+
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_context_provider(provider)
+))?;
+```
+
+## 多提供者
+
+注册多个上下文提供者以组合不同来源：
+
+```rust
+let memory_provider = Arc::new(MemoryContextProvider::new(memory));
+let docs_provider = Arc::new(DocsContextProvider { docs_path });
+let code_provider = Arc::new(CodeContextProvider { repo_path });
+
+let session = agent.session("/project", Some(
+    SessionOptions::new()
+        .with_context_provider(memory_provider)
+        .with_context_provider(docs_provider)
+        .with_context_provider(code_provider)
+))?;
+```
+
+所有提供者并行查询，结果在注入系统提示前合并。
+
+## 最佳实践
+
+<Steps>
+<Step>**设置 token 预算** — 使用 `max_tokens` 防止上下文溢出</Step>
+<Step>**按类型过滤** — 使用 `context_types` 仅检索相关上下文</Step>
+<Step>**调整深度** — 使用 `Abstract` 获取摘要，`Full` 获取详细内容</Step>
+<Step>**实现相关性评分** — 返回按相关性排序的条目（0.0–1.0）</Step>
+<Step>**使用 on_turn_complete** — 从对话中提取和存储信息</Step>
+<Step>**缓存结果** — 在提供者中实现缓存以减少延迟</Step>
+</Steps>
+
+## 事件
+
+流式传输期间发出的上下文相关事件：
+
+| 事件 | 触发时机 |
+|-------|------|
+| `ContextResolving` | 上下文提供者被查询 |
+| `ContextResolved` | 上下文条目已检索 |
+| `ContextWarning` | 上下文使用量超过阈值 |
+| `ContextCompacting` | 压缩开始 |
+| `ContextCompacted` | 压缩完成 |
+
+参见 [会话](/cn/docs/code/sessions) 获取完整事件参考。
+
+## API 参考
+
+### SessionOptions
+
+| 选项 | Rust | Python | Node.js | 默认值 |
+|--------|------|--------|---------|---------|
+| 文件系统上下文 | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` | `None` |
+| 自定义提供者 | `.with_context_provider(Arc::new(p))` | _（基于配置）_ | _（基于配置）_ | `None` |
+| 压缩阈值 | `.with_context_threshold(f)` | `context_threshold=f` | `contextThreshold: f` | `0.8` |
+
+### ContextProvider trait（Rust）
+
+| 方法 | 签名 | 描述 |
+|--------|-----------|-------------|
+| `retrieve` | `async fn retrieve(&self, query: &ContextQuery) -> Result<Vec<ContextItem>>` | 获取相关上下文条目 |
+| `on_turn_complete` | `async fn on_turn_complete(&self, turn: &TurnSummary) -> Result<()>` | 每个 agent 轮次后调用 |
+| `name` | `fn name(&self) -> &str` | 提供者标识符 |
+
+### ContextQuery 字段
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `query` | `String` | 自然语言查询 |
+| `max_tokens` | `Option<usize>` | 结果的 token 预算 |
+| `context_types` | `Vec<ContextType>` | 按类型过滤 |
+| `depth` | `ContextDepth` | `Abstract` 或 `Full` |
+
+### ContextItem 字段
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `content` | `String` | 上下文文本 |
+| `source` | `String` | 来源（文件路径、记忆 ID 等） |
+| `relevance` | `f32` | 相关性分数（0.0–1.0） |
+| `context_type` | `ContextType` | `File`、`Memory`、`Skill`、`Custom` |
+
+### VectorContextConfig（Rust）
+
+| 方法 | 描述 | 默认值 |
+|--------|-------------|---------|
+| `VectorContextConfig::new(path)` | 设置工作区根目录 | — |
+| `.with_min_relevance(f)` | 最小余弦相似度 | `0.3` |
+| `.with_max_results(n)` | 每次查询最大块数 | `10` |
+| `.with_chunk_size(n)` | 每块最大字符数 | `1500` |

@@ -1,14 +1,194 @@
 ---
 title: 外部任务
-description: 多机器协调者/工作者模式
+description: 使用外部任务处理器的多机器协调者/Worker 模式
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # 外部任务
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/examples/external-tasks)获取完整文档。
+外部任务处理支持协调者/worker 模式，将任务分发到远程 worker 而非本地执行。这是多机器 A3S Code 部署的基础。
+
+<Callout type="info">
+完整的多机器架构指南，请参阅[多机器分布](/cn/docs/code/multi-machine)。
 </Callout>
 
-> 中文翻译即将推出。
+## 处理器模式
+
+| 模式 | 描述 |
+|------|-------------|
+| `Internal` | 任务在进程内执行（默认） |
+| `External` | 任务分发到外部 worker |
+| `Hybrid` | 先尝试外部，失败后回退到内部 |
+
+## 基本外部处理器
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig, LaneHandlerConfig};
+use a3s_code_core::queue::{ExternalTask, ExternalTaskResult, SessionLane};
+
+// 配置队列，为 Execute lane 设置外部处理器
+let queue_config = SessionQueueConfig::default()
+    .with_lane_features()
+    .with_lane_handler(SessionLane::Execute, LaneHandlerConfig {
+        mode: "external".to_string(),
+        timeout_ms: Some(30_000),
+    });
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_queue_config(queue_config);
+
+let session = agent.session("/my-project", Some(opts))?;
+
+// 注册外部处理器回调
+session.set_external_task_handler(|task: ExternalTask| async move {
+    println!("Worker received task: {}", task.id);
+    // 在此 worker 上处理任务
+    ExternalTaskResult {
+        success: true,
+        result: Some(serde_json::json!({ "output": "task completed" })),
+        error: None,
+    }
+}).await;
+```
+
+**运行：** `cargo run --example test_external_task_handler`
+**源码：** [`core/examples/test_external_task_handler.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_external_task_handler.rs)
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import SessionQueueConfig
+
+queue_config = SessionQueueConfig()
+queue_config.enable_all_features = True
+
+session = agent.session("/my-project",
+    permissive=True,
+    queue_config=queue_config,
+)
+
+# 注册外部任务处理器
+async def handle_task(task):
+    print(f"Worker received task: {task['id']}")
+    return {"success": True, "result": {"output": "task completed"}}
+
+session.set_external_task_handler(handle_task)
+```
+
+**运行：** `python examples/test_external_task_handler.py`
+**源码：** [`sdk/python/examples/test_external_task_handler.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_external_task_handler.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  queueConfig: { enableAllFeatures: true },
+});
+
+// 注册外部任务处理器
+session.setExternalTaskHandler(async (task) => {
+  console.log(`Worker received task: ${task.id}`);
+  return { success: true, result: { output: 'task completed' } };
+});
+```
+
+**运行：** `node examples/test_external_task_handler.js`
+**源码：** [`sdk/node/examples/test_external_task_handler.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_external_task_handler.js)
+</Tab>
+</Tabs>
+
+## 并行处理
+
+将工作分布到多个并行会话：
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use tokio::task::JoinSet;
+
+let files = vec!["auth.rs", "db.rs", "handler.rs", "config.rs"];
+let mut set = JoinSet::new();
+
+for file in files {
+    let agent = agent.clone();
+    set.spawn(async move {
+        let session = agent.session("/my-project", Some(
+            SessionOptions::new().with_permissive_policy()
+        ))?;
+        session.send(&format!("Review {} for issues", file), None).await
+    });
+}
+
+while let Some(result) = set.join_next().await {
+    println!("{}", result??. text);
+}
+```
+
+**运行：** `cargo run --example test_parallel_processing`
+**源码：** [`core/examples/test_parallel_processing.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_parallel_processing.rs)
+</Tab>
+<Tab value="Python">
+```python
+import asyncio
+
+files = ["auth.rs", "db.rs", "handler.rs", "config.rs"]
+
+async def review_file(file):
+    session = agent.session("/my-project", permissive=True)
+    return await session.send(f"Review {file} for issues")
+
+results = await asyncio.gather(*[review_file(f) for f in files])
+for r in results:
+    print(r.text)
+```
+
+**运行：** `python examples/test_parallel_processing.py`
+**源码：** [`sdk/python/examples/test_parallel_processing.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_parallel_processing.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const files = ['auth.rs', 'db.rs', 'handler.rs', 'config.rs'];
+
+const results = await Promise.all(
+  files.map(async (file) => {
+    const session = agent.session('/my-project', { permissive: true });
+    return session.send(`Review ${file} for issues`);
+  })
+);
+
+results.forEach((r) => console.log(r.text));
+```
+
+**运行：** `node examples/test_parallel_processing.js`
+**源码：** [`sdk/node/examples/test_parallel_processing.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_parallel_processing.js)
+</Tab>
+</Tabs>
+
+## API 参考
+
+### LaneHandlerConfig
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `mode` | `"internal"` \| `"external"` \| `"hybrid"` | 任务执行模式 |
+| `timeout_ms` | `Option<u64>` | 等待外部 worker 响应的最大时间 |
+
+### 外部任务方法
+
+| 方法 | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| 设置处理器 | `session.set_external_task_handler(fn).await` | `session.set_external_task_handler(fn)` | `session.setExternalTaskHandler(fn)` |
+| 轮询待处理 | `session.pending_external_tasks().await` | `await session.pending_external_tasks()` | `await session.pendingExternalTasks()` |
+| 完成任务 | `session.complete_external_task(id, result).await` | `await session.complete_external_task(id, result)` | `await session.completeExternalTask(id, result)` |
+
+### ExternalTaskResult 字段
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `success` | `bool` | 任务是否成功完成 |
+| `result` | `Option<Value>` | 任务输出载荷 |
+| `error` | `Option<String>` | `success` 为 `false` 时的错误消息 |

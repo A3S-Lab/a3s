@@ -1,14 +1,235 @@
 ---
-title: 生命周期钩子
-description: 8 个生命周期钩子：拦截工具调用、LLM 生成、会话和技能
+title: 生命周期 Hooks
+description: 8 个生命周期 hooks 用于拦截工具调用、LLM 生成、会话和 skills
 ---
 
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
-# 生命周期钩子
+# 生命周期 Hooks
 
-<Callout type="warn">
-此页面正在翻译中。请参阅[英文版本](/docs/code/hooks)获取完整文档。
-</Callout>
+A3S Code 提供 8 个生命周期 hooks，用于在 agent 执行期间拦截和响应事件。Hooks 支持日志记录、安全执行、遥测和自定义行为，无需修改核心 agent 循环。
 
-> 中文翻译即将推出。
+## Hook 事件
+
+| Hook | 触发时机 | 使用场景 |
+|------|-------|----------|
+| `PreToolUse` | 工具执行前 | 验证参数、污点追踪、阻止危险调用 |
+| `PostToolUse` | 工具执行后 | 审计日志、注入扫描、输出过滤 |
+| `GenerateStart` | LLM 调用前 | 注入检测、提示日志 |
+| `GenerateEnd` | LLM 响应后 | 输出清洗、PII 脱敏 |
+| `SessionStart` | 会话创建时 | 初始化会话资源 |
+| `SessionEnd` | 会话销毁时 | 清理、持久化状态 |
+| `SkillLoad` | Skill 加载时 | 验证 skill、记录激活 |
+| `SkillUnload` | Skill 卸载时 | 清理 skill 资源 |
+
+## Hooks 工作原理
+
+Hooks 注册在 `HookEngine` 上，在 agent 循环的特定点触发。多个 hooks 可以监听同一事件 — 它们按优先级顺序执行（数字越小优先级越高）。
+
+```
+Agent 循环
+  ├── GenerateStart hooks 触发
+  ├── LLM 调用
+  ├── GenerateEnd hooks 触发
+  └── 对每个 tool_use：
+      ├── PreToolUse hooks 触发
+      ├── 权限检查
+      ├── HITL 检查
+      ├── 工具执行
+      └── PostToolUse hooks 触发
+```
+
+## 内置 SecurityGuard
+
+`SecurityGuard` 以优先级 1（最高）自动注册 hooks：
+
+| Hook | SecurityGuard 行为 |
+|------|----------------------|
+| `PreToolUse` | 污点追踪 — 检查敏感值是否泄漏到工具参数中 |
+| `PostToolUse` | 注入扫描 — 检测工具输出中的提示注入 |
+| `GenerateStart` | 注入检测 — 扫描用户提示中的注入模式 |
+| `GenerateEnd` | 输出清洗 — 从 LLM 响应中脱敏 PII |
+
+## Hook 注册（Rust）
+
+通过 `HookEngine` 注册 hooks 和处理器：
+
+```rust
+use a3s_code_core::hooks::{
+    Hook, HookConfig, HookEngine, HookEvent, HookEventType,
+    HookHandler, HookResult, HookResponse, HookMatcher,
+};
+use std::sync::Arc;
+
+let engine = HookEngine::new();
+
+// 1. Register a hook definition (what to listen for)
+engine.register(
+    Hook::new("log-tools", HookEventType::PreToolUse)
+        .with_config(HookConfig { priority: 10, ..Default::default() })
+);
+
+// 2. Register a handler (what to do when fired)
+struct LogHandler;
+impl HookHandler for LogHandler {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        if let HookEvent::PreToolUse(e) = event {
+            println!("Tool: {} Args: {:?}", e.tool, e.args);
+        }
+        HookResponse::continue_()
+    }
+}
+engine.register_handler("log-tools", Arc::new(LogHandler));
+
+// Block dangerous patterns
+engine.register(
+    Hook::new("block-dangerous", HookEventType::PreToolUse)
+        .with_matcher(HookMatcher::tool("bash"))
+        .with_config(HookConfig { priority: 5, ..Default::default() })
+);
+
+struct BlockHandler;
+impl HookHandler for BlockHandler {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        if let HookEvent::PreToolUse(e) = event {
+            if e.args.to_string().contains("rm -rf") {
+                return HookResponse::block("Dangerous command blocked");
+            }
+        }
+        HookResponse::continue_()
+    }
+}
+engine.register_handler("block-dangerous", Arc::new(BlockHandler));
+
+// Fire a hook (done automatically by the agent loop)
+let result = engine.fire(&event).await;
+match result {
+    HookResult::Continue(None) => { /* proceed */ }
+    HookResult::Continue(Some(modified)) => { /* proceed with modified data */ }
+    HookResult::Block(reason) => { /* stop execution */ }
+    _ => {}
+}
+```
+
+## Hook 优先级
+
+Hooks 按优先级顺序执行。数字越小越先运行。
+
+| 优先级 | 约定 |
+|----------|-----------|
+| 1 | SecurityGuard（内置，始终最先运行） |
+| 2-9 | 关键自定义 hooks（验证、阻止） |
+| 10-49 | 标准 hooks（日志、遥测） |
+| 50+ | 低优先级 hooks（分析、可选处理） |
+
+如果任何 hook 返回 `HookResult::Block`，操作会被取消，该事件的后续 hooks 会被跳过。
+
+## Hook 事件载荷
+
+每个 hook 事件携带一个类型化的载荷，包含事件特定的数据：
+
+<Accordions>
+<Accordion title="PreToolUse — PreToolUseEvent">
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `session_id` | `String` | 会话标识符 |
+| `tool` | `String` | 被调用的工具名称 |
+| `args` | `Value` | 工具参数 |
+| `working_directory` | `String` | 当前工作区路径 |
+| `recent_tools` | `Vec<String>` | 最近调用的工具 |
+
+</Accordion>
+<Accordion title="PostToolUse — PostToolUseEvent">
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `session_id` | `String` | 会话标识符 |
+| `tool` | `String` | 工具名称 |
+| `args` | `Value` | 工具参数 |
+| `result.success` | `bool` | 工具是否成功 |
+| `result.output` | `String` | 工具输出文本 |
+| `result.exit_code` | `i32` | 退出码 |
+| `result.duration_ms` | `u64` | 执行时间 |
+
+</Accordion>
+<Accordion title="GenerateStart — GenerateStartEvent">
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `session_id` | `String` | 会话标识符 |
+| `prompt` | `String` | 用户提示 |
+| `system_prompt` | `String` | 系统提示 |
+| `model_provider` | `String` | 提供商名称 |
+| `model_name` | `String` | 模型名称 |
+| `available_tools` | `Vec<String>` | 已注册的工具名称 |
+
+</Accordion>
+<Accordion title="GenerateEnd — GenerateEndEvent">
+
+| 字段 | 类型 | 描述 |
+|-------|------|-------------|
+| `session_id` | `String` | 会话标识符 |
+| `response_text` | `String` | LLM 响应 |
+| `tool_calls` | `Vec<String>` | 本轮调用的工具 |
+| `usage.total_tokens` | `u32` | Token 使用量 |
+| `duration_ms` | `u64` | 生成时间 |
+
+</Accordion>
+<Accordion title="SessionStart / SessionEnd">
+
+**SessionStartEvent：** `session_id`、`system_prompt`、`model_provider`、`model_name`
+
+**SessionEndEvent：** `session_id`、`total_tokens`、`total_tool_calls`、`duration_ms`
+
+</Accordion>
+<Accordion title="SkillLoad / SkillUnload">
+
+**SkillLoadEvent：** `skill_name`、`tool_names`、`version`、`description`、`loaded_at`
+
+**SkillUnloadEvent：** `skill_name`、`tool_names`、`duration_ms`
+
+</Accordion>
+</Accordions>
+
+## API 参考
+
+### Hook 注册
+
+| 方法 | Rust | 描述 |
+|--------|------|-------------|
+| 注册 hook | `session.register_hook(Hook::new(id, event_type))` | 注册 hook 监听器 |
+| 注册处理器 | `session.register_hook_handler(id, Arc::new(handler))` | 将处理器附加到 hook |
+| 注销 | `session.unregister_hook(id)` | 移除 hook 和处理器 |
+| 计数 | `session.hook_count()` | 已注册的 hooks 数量 |
+
+### HookHandler trait（Rust）
+
+```rust
+impl HookHandler for MyHandler {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        match event {
+            HookEvent::PreToolUse(e) => { /* ... */ }
+            _ => {}
+        }
+        HookResponse::continue_()
+    }
+}
+```
+
+### HookResponse 值
+
+| 值 | 效果 |
+|-------|--------|
+| `HookResponse::continue_()` | 允许操作继续 |
+| `HookResponse::block(reason)` | 以原因字符串取消操作 |
+| `HookResponse::modify(data)` | 在执行前替换事件数据 |
+
+### Hook 优先级
+
+数字越小 = 优先级越高。`SecurityGuard` 使用优先级 `1`。默认 hooks 使用优先级 `100`。
+
+```rust
+Hook::new("my-hook", HookEventType::PreToolUse).with_priority(50)
+```
