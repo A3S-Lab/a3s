@@ -1,4 +1,18 @@
 {
   "title": "文档",
-  "pages": ["code", "box", "power", "gateway", "safeclaw", "lane", "event", "search"]
+  "root": true,
+  "pages": [
+    "---框架---",
+    "code",
+    "---应用---",
+    "box",
+    "power",
+    "gateway",
+    "safeclaw",
+    "---库---",
+    "lane",
+    "event",
+    "search",
+    "memory"
+  ]
 }

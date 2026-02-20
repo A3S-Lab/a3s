@@ -1,0 +1,52 @@
+---
+title: MemoryItem
+description: 记忆的基本单元 — 字段、Builder API 和记忆类型
+---
+
+# MemoryItem
+
+每条记忆都是一个 `MemoryItem`，使用链式 API 构建：
+
+```rust
+use a3s_memory::{MemoryItem, MemoryType};
+
+let item = MemoryItem::new("Auth 使用 JWT，有效期 24 小时")
+    .with_importance(0.9)
+    .with_tag("auth")
+    .with_tag("security")
+    .with_type(MemoryType::Semantic)
+    .with_metadata("source", "code-review");
+```
+
+## 字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | `String` | UUID，自动生成 |
+| `content` | `String` | 记忆内容 |
+| `memory_type` | `MemoryType` | 见下表 |
+| `importance` | `f32` | 0.0–1.0，自动截断 |
+| `tags` | `Vec<String>` | 分类标签 |
+| `metadata` | `HashMap<String, String>` | 任意键值对 |
+| `timestamp` | `DateTime<Utc>` | 创建时间 |
+| `access_count` | `u32` | 检索次数 |
+| `last_accessed` | `Option<DateTime<Utc>>` | 最近检索时间 |
+
+## Builder 方法
+
+| 方法 | 行为 |
+|------|------|
+| `.with_importance(f32)` | 设置重要性，截断到 0.0–1.0 |
+| `.with_tag(str)` | 追加单个标签 |
+| `.with_tags(Vec<String>)` | 替换所有标签 |
+| `.with_type(MemoryType)` | 设置记忆类型 |
+| `.with_metadata(key, value)` | 插入元数据键值对 |
+
+## 记忆类型
+
+| 类型 | 用途 | 典型重要性 |
+|------|------|-----------|
+| `Episodic` | 具体事件和交互记录 | 0.5 |
+| `Semantic` | 事实和领域知识 | 0.5–0.8 |
+| `Procedural` | 成功模式 | 0.8 |
+| `Working` | 当前任务的活跃上下文 | 不固定 |

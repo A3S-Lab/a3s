@@ -1,0 +1,52 @@
+---
+title: MemoryItem
+description: The unit of memory — fields, builder API, and memory types
+---
+
+# MemoryItem
+
+Every memory is a `MemoryItem`. Build one with the fluent API:
+
+```rust
+use a3s_memory::{MemoryItem, MemoryType};
+
+let item = MemoryItem::new("Auth uses JWT with 24h expiry")
+    .with_importance(0.9)
+    .with_tag("auth")
+    .with_tag("security")
+    .with_type(MemoryType::Semantic)
+    .with_metadata("source", "code-review");
+```
+
+## Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `String` | UUID, auto-generated |
+| `content` | `String` | The memory text |
+| `memory_type` | `MemoryType` | See below |
+| `importance` | `f32` | 0.0–1.0, clamped |
+| `tags` | `Vec<String>` | Categorization tags |
+| `metadata` | `HashMap<String, String>` | Arbitrary key-value pairs |
+| `timestamp` | `DateTime<Utc>` | Creation time |
+| `access_count` | `u32` | Retrieval count |
+| `last_accessed` | `Option<DateTime<Utc>>` | Last retrieval time |
+
+## Builder methods
+
+| Method | Behavior |
+|--------|----------|
+| `.with_importance(f32)` | Set importance, clamped to 0.0–1.0 |
+| `.with_tag(str)` | Append a single tag |
+| `.with_tags(Vec<String>)` | Replace all tags |
+| `.with_type(MemoryType)` | Set memory type |
+| `.with_metadata(key, value)` | Insert a metadata key-value pair |
+
+## Memory types
+
+| Type | Purpose | Typical importance |
+|------|---------|-------------------|
+| `Episodic` | Specific events and interactions | 0.5 |
+| `Semantic` | Facts and domain knowledge | 0.5–0.8 |
+| `Procedural` | Successful patterns | 0.8 |
+| `Working` | Active context for the current task | varies |

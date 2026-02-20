@@ -1,0 +1,55 @@
+---
+title: A3S Memory
+description: Pluggable memory storage for AI agents — MemoryStore trait, FileMemoryStore, InMemoryStore, and relevance scoring
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# A3S Memory
+
+`a3s-memory` is a standalone Rust crate that provides the storage layer for agent memory. It has no knowledge of agents, sessions, or context injection — it owns exactly one thing: storing and retrieving `MemoryItem`s.
+
+```
+Core (stable)                   Extensions (replaceable)
+─────────────────────────       ─────────────────────────
+MemoryStore (trait)             InMemoryStore
+MemoryItem                      FileMemoryStore
+MemoryType                      (your custom backend)
+RelevanceConfig
+```
+
+## Install
+
+```toml
+[dependencies]
+a3s-memory = "0.1"
+```
+
+Or if you're using A3S Code, memory is already included — configure it via `SessionOptions`:
+
+```rust
+SessionOptions::new().with_file_memory("./memory")
+```
+
+## What's in this crate
+
+| Type | Description |
+|------|-------------|
+| `MemoryStore` | Async trait — the only interface you need to implement or depend on |
+| `MemoryItem` | The unit of memory — content, importance, tags, metadata, timestamps |
+| `MemoryType` | `Episodic`, `Semantic`, `Procedural`, `Working` |
+| `RelevanceConfig` | Scoring parameters — decay, importance weight, recency weight |
+| `InMemoryStore` | Ephemeral backend backed by `tokio::sync::RwLock` |
+| `FileMemoryStore` | Persistent backend — atomic writes, in-memory index, index rebuild |
+
+## What's NOT in this crate
+
+| Concern | Lives in |
+|---------|----------|
+| Three-tier session memory (working / short-term / long-term) | `a3s-code` |
+| `MemoryConfig` (max_short_term, max_working) | `a3s-code` |
+| Context injection into agent prompts | `a3s-code` |
+
+<Callout type="info">
+If you're building an agent with A3S Code, see [Memory](/docs/code/memory) for the full agent-layer documentation.
+</Callout>

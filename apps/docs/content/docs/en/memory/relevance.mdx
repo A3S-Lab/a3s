@@ -1,0 +1,57 @@
+---
+title: Relevance Scoring
+description: How memories are ranked — importance, recency decay, and RelevanceConfig
+---
+
+# Relevance Scoring
+
+When searching or injecting memories into context, each item is scored by combining importance and recency:
+
+```
+score = importance × importance_weight + exp(−age_days / decay_days) × recency_weight
+```
+
+## RelevanceConfig
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `importance_weight` | `f32` | `0.7` | Weight of the importance factor |
+| `recency_weight` | `f32` | `0.3` | Weight of the recency factor |
+| `decay_days` | `f32` | `30.0` | Days for recency factor to decay to ~37% |
+
+```rust
+use a3s_memory::{MemoryItem, RelevanceConfig};
+
+let config = RelevanceConfig {
+    decay_days: 7.0,
+    importance_weight: 0.9,
+    recency_weight: 0.1,
+};
+
+let score = item.relevance_score_at(chrono::Utc::now(), &config);
+```
+
+`relevance_score()` is a convenience method that uses `RelevanceConfig::default()`.
+
+## Decay behavior
+
+| Age | Recency factor (decay_days = 30) |
+|-----|----------------------------------|
+| 0 days | 1.00 |
+| 30 days | 0.37 |
+| 60 days | 0.14 |
+| 90 days | 0.05 |
+
+A high-importance item (`importance = 1.0`) with default weights scores:
+- Fresh: `0.7 × 1.0 + 0.3 × 1.0 = 1.0`
+- After 90 days: `0.7 × 1.0 + 0.3 × 0.05 ≈ 0.72`
+
+A low-importance item (`importance = 0.1`) decays much faster in practice because the importance floor is low.
+
+## Tuning guidance
+
+| Use case | Recommended config |
+|----------|--------------------|
+| Long-lived assistant | `decay_days: 365`, `importance_weight: 0.9` |
+| Short coding session | `decay_days: 1`, `recency_weight: 0.7` |
+| Equal weight | `importance_weight: 0.5`, `recency_weight: 0.5` |

@@ -12,6 +12,7 @@
     "---Libraries---",
     "lane",
     "event",
-    "search"
+    "search",
+    "memory"
   ]
 }

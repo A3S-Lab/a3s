@@ -1,0 +1,104 @@
+---
+title: Custom Backend
+description: Implement MemoryStore to use any storage system — SQLite, Redis, vector DB
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Custom Backend
+
+Implement the `MemoryStore` trait to use any storage system. The `search()` method is the only one where backends meaningfully differ — `FileMemoryStore` uses substring matching, a vector store would use semantic similarity.
+
+## MemoryStore trait
+
+```rust
+use a3s_memory::{MemoryItem, MemoryStore};
+use async_trait::async_trait;
+
+struct MyStore { /* ... */ }
+
+#[async_trait]
+impl MemoryStore for MyStore {
+    async fn store(&self, item: MemoryItem) -> anyhow::Result<()> { todo!() }
+    async fn retrieve(&self, id: &str) -> anyhow::Result<Option<MemoryItem>> { todo!() }
+    async fn search(&self, query: &str, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn search_by_tags(&self, tags: &[String], limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn get_recent(&self, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn get_important(&self, threshold: f32, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn delete(&self, id: &str) -> anyhow::Result<()> { todo!() }
+    async fn clear(&self) -> anyhow::Result<()> { todo!() }
+    async fn count(&self) -> anyhow::Result<usize> { todo!() }
+}
+```
+
+## Method reference
+
+| Method | Description |
+|--------|-------------|
+| `store(item)` | Persist a memory item (upsert by ID) |
+| `retrieve(id)` | Fetch a single item by ID |
+| `search(query, limit)` | Search by content, ranked by relevance |
+| `search_by_tags(tags, limit)` | Filter by tags, ranked by relevance |
+| `get_recent(limit)` | Most recently created items |
+| `get_important(threshold, limit)` | Items above importance threshold, sorted descending |
+| `delete(id)` | Remove a single item |
+| `clear()` | Remove all items |
+| `count()` | Total item count |
+
+## Vector store example
+
+```rust
+use a3s_memory::{MemoryItem, MemoryStore};
+use async_trait::async_trait;
+
+struct VectorStore {
+    client: MyVectorDbClient,
+}
+
+#[async_trait]
+impl MemoryStore for VectorStore {
+    async fn store(&self, item: MemoryItem) -> anyhow::Result<()> {
+        let embedding = self.client.embed(&item.content).await?;
+        self.client.upsert(&item.id, embedding, &item).await?;
+        Ok(())
+    }
+
+    async fn search(&self, query: &str, limit: usize) -> anyhow::Result<Vec<MemoryItem>> {
+        let embedding = self.client.embed(query).await?;
+        let results = self.client.ann_search(embedding, limit).await?;
+        Ok(results)
+    }
+
+    // remaining methods: standard CRUD against your DB
+    # async fn retrieve(&self, id: &str) -> anyhow::Result<Option<MemoryItem>> { todo!() }
+    # async fn search_by_tags(&self, tags: &[String], limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    # async fn get_recent(&self, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    # async fn get_important(&self, threshold: f32, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    # async fn delete(&self, id: &str) -> anyhow::Result<()> { todo!() }
+    # async fn clear(&self) -> anyhow::Result<()> { todo!() }
+    # async fn count(&self) -> anyhow::Result<usize> { todo!() }
+}
+```
+
+## Use with A3S Code
+
+```rust
+use std::sync::Arc;
+
+SessionOptions::new().with_memory(Arc::new(VectorStore::new()))
+```
+
+## Use standalone
+
+```rust
+use std::sync::Arc;
+use a3s_memory::MemoryStore;
+
+let store: Arc<dyn MemoryStore> = Arc::new(VectorStore::new());
+store.store(MemoryItem::new("some fact")).await?;
+let results = store.search("fact", 5).await?;
+```
+
+<Callout type="info">
+`MemoryStore` is object-safe — `Arc<dyn MemoryStore>` works without any additional bounds.
+</Callout>

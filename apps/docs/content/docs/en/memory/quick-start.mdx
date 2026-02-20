@@ -1,0 +1,52 @@
+---
+title: Quick Start
+description: Store and retrieve memories in under 10 lines
+---
+
+# Quick Start
+
+## Add the dependency
+
+```toml
+[dependencies]
+a3s-memory = "0.1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+```
+
+## Store and search
+
+```rust
+use a3s_memory::{InMemoryStore, MemoryItem, MemoryStore, MemoryType};
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let store = Arc::new(InMemoryStore::new());
+
+    store.store(
+        MemoryItem::new("Prefer write_all over write for file I/O")
+            .with_importance(0.8)
+            .with_tag("rust")
+            .with_type(MemoryType::Semantic),
+    ).await?;
+
+    let results = store.search("file I/O", 5).await?;
+    println!("{}", results[0].content);
+
+    Ok(())
+}
+```
+
+## Persist to disk
+
+```rust
+use a3s_memory::{FileMemoryStore, MemoryItem, MemoryStore};
+
+let store = FileMemoryStore::new("./memory").await?;
+
+store.store(MemoryItem::new("Deploy via `just release`").with_importance(0.9)).await?;
+
+// Survives process restart — reload with:
+let store = FileMemoryStore::new("./memory").await?;
+assert_eq!(store.count().await?, 1);
+```

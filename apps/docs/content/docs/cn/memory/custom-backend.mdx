@@ -1,0 +1,104 @@
+---
+title: 自定义后端
+description: 实现 MemoryStore 接入任意存储系统 — SQLite、Redis、向量数据库
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 自定义后端
+
+实现 `MemoryStore` trait 即可接入任意存储系统。各后端之间真正有差异的只有 `search()` 方法——`FileMemoryStore` 使用子串匹配，向量存储则使用语义相似度。
+
+## MemoryStore trait
+
+```rust
+use a3s_memory::{MemoryItem, MemoryStore};
+use async_trait::async_trait;
+
+struct MyStore { /* ... */ }
+
+#[async_trait]
+impl MemoryStore for MyStore {
+    async fn store(&self, item: MemoryItem) -> anyhow::Result<()> { todo!() }
+    async fn retrieve(&self, id: &str) -> anyhow::Result<Option<MemoryItem>> { todo!() }
+    async fn search(&self, query: &str, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn search_by_tags(&self, tags: &[String], limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn get_recent(&self, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn get_important(&self, threshold: f32, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn delete(&self, id: &str) -> anyhow::Result<()> { todo!() }
+    async fn clear(&self) -> anyhow::Result<()> { todo!() }
+    async fn count(&self) -> anyhow::Result<usize> { todo!() }
+}
+```
+
+## 方法说明
+
+| 方法 | 说明 |
+|------|------|
+| `store(item)` | 持久化记忆条目（按 ID upsert） |
+| `retrieve(id)` | 按 ID 获取单条记忆 |
+| `search(query, limit)` | 按内容搜索，按相关性排序 |
+| `search_by_tags(tags, limit)` | 按标签过滤，按相关性排序 |
+| `get_recent(limit)` | 最近创建的记忆 |
+| `get_important(threshold, limit)` | 重要性高于阈值的记忆，降序排列 |
+| `delete(id)` | 删除单条记忆 |
+| `clear()` | 清除所有记忆 |
+| `count()` | 记忆总数 |
+
+## 向量存储示例
+
+```rust
+use a3s_memory::{MemoryItem, MemoryStore};
+use async_trait::async_trait;
+
+struct VectorStore {
+    client: MyVectorDbClient,
+}
+
+#[async_trait]
+impl MemoryStore for VectorStore {
+    async fn store(&self, item: MemoryItem) -> anyhow::Result<()> {
+        let embedding = self.client.embed(&item.content).await?;
+        self.client.upsert(&item.id, embedding, &item).await?;
+        Ok(())
+    }
+
+    async fn search(&self, query: &str, limit: usize) -> anyhow::Result<Vec<MemoryItem>> {
+        let embedding = self.client.embed(query).await?;
+        let results = self.client.ann_search(embedding, limit).await?;
+        Ok(results)
+    }
+
+    // 其余方法：对你的数据库做标准 CRUD
+    # async fn retrieve(&self, id: &str) -> anyhow::Result<Option<MemoryItem>> { todo!() }
+    # async fn search_by_tags(&self, tags: &[String], limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    # async fn get_recent(&self, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    # async fn get_important(&self, threshold: f32, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    # async fn delete(&self, id: &str) -> anyhow::Result<()> { todo!() }
+    # async fn clear(&self) -> anyhow::Result<()> { todo!() }
+    # async fn count(&self) -> anyhow::Result<usize> { todo!() }
+}
+```
+
+## 与 A3S Code 配合使用
+
+```rust
+use std::sync::Arc;
+
+SessionOptions::new().with_memory(Arc::new(VectorStore::new()))
+```
+
+## 独立使用
+
+```rust
+use std::sync::Arc;
+use a3s_memory::MemoryStore;
+
+let store: Arc<dyn MemoryStore> = Arc::new(VectorStore::new());
+store.store(MemoryItem::new("一条事实")).await?;
+let results = store.search("事实", 5).await?;
+```
+
+<Callout type="info">
+`MemoryStore` 是对象安全的 trait — `Arc<dyn MemoryStore>` 无需任何额外约束即可使用。
+</Callout>
