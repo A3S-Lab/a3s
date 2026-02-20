@@ -1,0 +1,18 @@
+{
+  "title": "示例",
+  "pages": [
+    "index",
+    "quick-start",
+    "streaming",
+    "planning",
+    "hooks",
+    "auto-compact",
+    "memory",
+    "security",
+    "batch",
+    "vector-rag",
+    "skills",
+    "lane-queue",
+    "external-tasks"
+  ]
+}

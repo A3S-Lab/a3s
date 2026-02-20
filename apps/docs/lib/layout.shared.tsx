@@ -1,7 +1,8 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 
-export function baseOptions(): BaseLayoutProps {
+export function baseOptions(lang?: string): BaseLayoutProps {
   return {
+    i18n: true,
     nav: {
       title: (
         <>
@@ -26,6 +27,10 @@ export function baseOptions(): BaseLayoutProps {
       ),
     },
     links: [
+      {
+        text: lang === 'cn' ? '中文' : 'English',
+        url: lang === 'cn' ? '/docs' : '/cn/docs',
+      },
       {
         text: 'GitHub',
         url: 'https://github.com/A3S-Lab',

@@ -1,0 +1,28 @@
+{
+  "title": "A3S Code",
+  "pages": [
+    "index",
+    "---示例---",
+    "examples",
+    "---核心---",
+    "sessions",
+    "tools",
+    "tasks",
+    "skills",
+    "---安全---",
+    "security",
+    "---基础设施---",
+    "architecture",
+    "lane-queue",
+    "multi-machine",
+    "---扩展---",
+    "providers",
+    "mcp",
+    "subagents",
+    "context",
+    "memory",
+    "hooks",
+    "persistence",
+    "telemetry"
+  ]
+}

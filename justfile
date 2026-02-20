@@ -82,3 +82,15 @@ safeclaw-dev:
 # Start ngrok tunnel only (SafeClaw already running)
 safeclaw-tunnel:
     cd crates/safeclaw && just tunnel
+
+# Start SafeClaw UI dev server (web, port 8888)
+safeclaw-ui:
+    cd apps/safeclaw-ui && pnpm dev
+
+# Start SafeClaw UI in Tauri desktop mode
+safeclaw-ui-desktop:
+    cd apps/safeclaw-ui && pnpm tauri:dev
+
+# Build SafeClaw UI for production
+safeclaw-ui-build:
+    cd apps/safeclaw-ui && pnpm build

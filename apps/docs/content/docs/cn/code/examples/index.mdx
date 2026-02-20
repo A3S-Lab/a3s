@@ -1,0 +1,30 @@
+---
+title: 示例
+description: 可运行的 SDK 示例，支持 Rust、Python 和 Node.js，均使用真实 LLM 配置
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 示例
+
+每个示例均使用 `~/.a3s/config.hcl` 或 `$A3S_CONFIG` 中的真实 LLM 配置，并支持三种 SDK。
+
+<Callout type="info">
+运行任何示例前，请先设置 `A3S_CONFIG=/path/to/config.hcl` 或创建 `~/.a3s/config.hcl`。配置格式参见[提供商](/cn/docs/code/providers)。
+</Callout>
+
+<Cards>
+  <Card title="快速开始" href="/cn/docs/code/examples/quick-start" description="基本发送、流式传输和多轮对话" />
+  <Card title="流式传输" href="/cn/docs/code/examples/streaming" description="实时 AgentEvent 事件流" />
+  <Card title="任务规划" href="/cn/docs/code/examples/planning" description="任务分解与目标追踪" />
+  <Card title="钩子" href="/cn/docs/code/examples/hooks" description="生命周期事件拦截" />
+  <Card title="自动压缩" href="/cn/docs/code/examples/auto-compact" description="上下文窗口自动压缩" />
+  <Card title="记忆" href="/cn/docs/code/examples/memory" description="持久化文件记忆存储" />
+  <Card title="安全" href="/cn/docs/code/examples/security" description="输入污点追踪与输出净化" />
+  <Card title="批量工具" href="/cn/docs/code/examples/batch" description="单次调用并行执行多个工具" />
+  <Card title="向量 RAG" href="/cn/docs/code/examples/vector-rag" description="基于向量嵌入的语义代码搜索" />
+  <Card title="技能" href="/cn/docs/code/examples/skills" description="内置和自定义技能系统" />
+  <Card title="通道队列" href="/cn/docs/code/examples/lane-queue" description="基于优先级的任务队列与抢占" />
+  <Card title="外部任务" href="/cn/docs/code/examples/external-tasks" description="多机器协调者/工作者模式" />
+</Cards>
