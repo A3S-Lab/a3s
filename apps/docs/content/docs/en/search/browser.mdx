@@ -18,7 +18,7 @@ a3s-search = "0.8"
 
 # Disable headless for smaller binary (6 engines)
 [dependencies]
-a3s-search = { version = "0.7", default-features = false }
+a3s-search = { version = "0.8", default-features = false }
 ```
 
 ## BrowserPool
@@ -40,13 +40,15 @@ let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
 
 ### Configuration
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `max_tabs` | `usize` | 4 | Maximum concurrent browser tabs |
-| `headless` | `bool` | `true` | Run Chrome without UI |
-| `chrome_path` | `Option<String>` | `None` | Explicit Chrome binary path |
-| `proxy_url` | `Option<String>` | `None` | Proxy URL for all browser traffic |
-| `launch_args` | `Vec<String>` | `[]` | Additional Chrome launch arguments |
+<TypeTable
+  type={{
+    max_tabs: { type: 'usize', default: '4', description: 'Maximum concurrent browser tabs' },
+    headless: { type: 'bool', default: 'true', description: 'Run Chrome without UI' },
+    chrome_path: { type: 'Option<String>', default: 'None', description: 'Explicit Chrome binary path' },
+    proxy_url: { type: 'Option<String>', default: 'None', description: 'Proxy URL for all browser traffic' },
+    launch_args: { type: 'Vec<String>', default: '[]', description: 'Additional Chrome launch arguments' },
+  }}
+/>
 
 ### Lifecycle
 

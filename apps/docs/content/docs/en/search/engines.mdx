@@ -27,16 +27,18 @@ pub trait Engine: Send + Sync {
 
 ## EngineConfig
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | `String` | — | Display name |
-| `shortcut` | `String` | — | Short identifier (e.g., `ddg`) |
-| `categories` | `Vec<EngineCategory>` | `[General]` | Supported categories |
-| `weight` | `f64` | `1.0` | Ranking weight multiplier |
-| `timeout` | `u64` | `5` | Timeout in seconds |
-| `enabled` | `bool` | `true` | Whether engine is active |
-| `paging` | `bool` | `false` | Supports pagination |
-| `safesearch` | `bool` | `false` | Supports safe search filtering |
+<TypeTable
+  type={{
+    name: { type: 'String', required: true, description: 'Display name' },
+    shortcut: { type: 'String', required: true, description: 'Short identifier (e.g., `ddg`)' },
+    categories: { type: 'Vec<EngineCategory>', default: '[General]', description: 'Supported categories' },
+    weight: { type: 'f64', default: '1.0', description: 'Ranking weight multiplier' },
+    timeout: { type: 'u64', default: '5', description: 'Timeout in seconds' },
+    enabled: { type: 'bool', default: 'true', description: 'Whether engine is active' },
+    paging: { type: 'bool', default: 'false', description: 'Supports pagination' },
+    safesearch: { type: 'bool', default: 'false', description: 'Supports safe search filtering' },
+  }}
+/>
 
 ## Built-in Engines
 

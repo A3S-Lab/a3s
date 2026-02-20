@@ -98,7 +98,8 @@ registry.register(EventSchema {
     event_type: "order.created".into(),
     version: 1,
     required_fields: vec!["order_id".into(), "total".into()],
-});
+    description: "Order creation event".into(),
+})?;
 let bus = EventBus::with_schema_registry(MemoryProvider::default(), Arc::new(registry));
 
 // Encryption (requires `encryption` feature)
@@ -128,7 +129,7 @@ let seq = bus.publish_event(&event).await?;
 
 // Check metrics
 let snapshot = bus.metrics().snapshot();
-println!("Published: {}, Errors: {}", snapshot.publish_count, snapshot.error_count);
+println!("Published: {}, Errors: {}", snapshot.publish_count, snapshot.publish_errors);
 
 // Health check
 let healthy = bus.health().await?;

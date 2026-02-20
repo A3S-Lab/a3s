@@ -141,12 +141,14 @@ pub trait SchemaRegistry: Send + Sync {
 
 ## EventSchema Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `event_type` | `String` | Event type identifier (e.g., `order.created`) |
-| `version` | `u32` | Schema version number |
-| `required_fields` | `Vec<String>` | Fields that must be present in the payload |
-| `description` | `String` | Description of this schema version |
+<TypeTable
+  type={{
+    event_type: { type: 'String', required: true, description: 'Event type identifier (e.g., `order.created`)' },
+    version: { type: 'u32', required: true, description: 'Schema version number' },
+    required_fields: { type: 'Vec<String>', required: true, description: 'Fields that must be present in the payload' },
+    description: { type: 'String', required: true, description: 'Description of this schema version' },
+  }}
+/>
 
 ## Querying the Registry
 

@@ -84,14 +84,16 @@ if let Some(dlq) = manager.queue().dlq() {
 
 ### DeadLetter Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `command_id` | `String` | Unique command identifier |
-| `command_type` | `String` | From `Command::command_type()` |
-| `lane_id` | `String` | Lane where the command failed |
-| `error` | `String` | Last error message |
-| `attempts` | `u32` | Total execution attempts |
-| `failed_at` | `DateTime<Utc>` | Timestamp of final failure |
+<TypeTable
+  type={{
+    command_id: { type: 'String', description: 'Unique command identifier' },
+    command_type: { type: 'String', description: 'From `Command::command_type()`' },
+    lane_id: { type: 'String', description: 'Lane where the command failed' },
+    error: { type: 'String', description: 'Last error message' },
+    attempts: { type: 'u32', description: 'Total execution attempts' },
+    failed_at: { type: 'DateTime<Utc>', description: 'Timestamp of final failure' },
+  }}
+/>
 
 ### DLQ Operations
 
@@ -144,15 +146,17 @@ impl Storage for MyRedisStorage {
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `String` | Unique identifier |
-| `command_type` | `String` | Command type string |
-| `lane_id` | `String` | Target lane |
-| `payload` | `Value` | Serialized command data |
-| `retry_count` | `u32` | Current retry count |
-| `created_at` | `DateTime<Utc>` | Submission time |
-| `last_attempt_at` | `Option<DateTime<Utc>>` | Last execution attempt |
+<TypeTable
+  type={{
+    id: { type: 'String', description: 'Unique identifier' },
+    command_type: { type: 'String', description: 'Command type string' },
+    lane_id: { type: 'String', description: 'Target lane' },
+    payload: { type: 'Value', description: 'Serialized command data' },
+    retry_count: { type: 'u32', description: 'Current retry count' },
+    created_at: { type: 'DateTime<Utc>', description: 'Submission time' },
+    last_attempt_at: { type: 'Option<DateTime<Utc>>', description: 'Last execution attempt' },
+  }}
+/>
 
 ## Graceful Shutdown
 

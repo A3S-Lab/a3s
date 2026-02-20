@@ -207,12 +207,14 @@ for (lane_id, status) in &stats.lanes {
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `pending` | `usize` | Commands waiting in queue |
-| `active` | `usize` | Commands currently executing |
-| `min` | `usize` | Minimum concurrency (advisory) |
-| `max` | `usize` | Maximum concurrency (enforced) |
+<TypeTable
+  type={{
+    pending: { type: 'usize', description: 'Commands waiting in queue' },
+    active: { type: 'usize', description: 'Commands currently executing' },
+    min: { type: 'usize', description: 'Minimum concurrency (advisory)' },
+    max: { type: 'usize', description: 'Maximum concurrency (enforced)' },
+  }}
+/>
 
 ## Scheduling Behavior
 

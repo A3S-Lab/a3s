@@ -31,18 +31,20 @@ println!("Max latency: {}µs", snapshot.max_publish_latency_us);
 
 ### MetricsSnapshot Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `publish_count` | `u64` | Total events published successfully |
-| `publish_errors` | `u64` | Total publish failures |
-| `subscribe_count` | `u64` | Total subscriptions created |
-| `unsubscribe_count` | `u64` | Total subscriptions removed |
-| `dlq_count` | `u64` | Events sent to dead letter queue |
-| `validation_errors` | `u64` | Schema validation failures |
-| `encrypt_count` | `u64` | Encryption operations |
-| `decrypt_count` | `u64` | Decryption operations |
-| `avg_publish_latency_us` | `u64` | Average publish latency in microseconds |
-| `max_publish_latency_us` | `u64` | Maximum single-publish latency in microseconds |
+<TypeTable
+  type={{
+    publish_count: { type: 'u64', description: 'Total events published successfully' },
+    publish_errors: { type: 'u64', description: 'Total publish failures' },
+    subscribe_count: { type: 'u64', description: 'Total subscriptions created' },
+    unsubscribe_count: { type: 'u64', description: 'Total subscriptions removed' },
+    dlq_count: { type: 'u64', description: 'Events sent to dead letter queue' },
+    validation_errors: { type: 'u64', description: 'Schema validation failures' },
+    encrypt_count: { type: 'u64', description: 'Encryption operations' },
+    decrypt_count: { type: 'u64', description: 'Decryption operations' },
+    avg_publish_latency_us: { type: 'u64', description: 'Average publish latency in microseconds' },
+    max_publish_latency_us: { type: 'u64', description: 'Maximum single-publish latency in microseconds' },
+  }}
+/>
 
 ### JSON Serialization
 

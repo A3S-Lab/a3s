@@ -73,11 +73,13 @@ let provider = MemoryProvider::new(MemoryConfig {
 
 ### MemoryConfig Fields
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `subject_prefix` | `String` | `"events"` | Subject prefix for `build_subject()` |
-| `max_events` | `usize` | `100_000` | Max events in history buffer |
-| `channel_capacity` | `usize` | `10_000` | Broadcast channel capacity |
+<TypeTable
+  type={{
+    subject_prefix: { type: 'String', default: '"events"', description: 'Subject prefix for `build_subject()`' },
+    max_events: { type: 'usize', default: '100_000', description: 'Max events in history buffer' },
+    channel_capacity: { type: 'usize', default: '10_000', description: 'Broadcast channel capacity' },
+  }}
+/>
 
 ### Characteristics
 
@@ -111,19 +113,21 @@ let provider = NatsProvider::connect(NatsConfig {
 
 ### NatsConfig Fields
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `url` | `String` | `nats://127.0.0.1:4222` | NATS server URL |
-| `token` | `Option<String>` | `None` | Authentication token |
-| `credentials_path` | `Option<String>` | `None` | NKey/JWT credentials file |
-| `stream_name` | `String` | `A3S_EVENTS` | JetStream stream name |
-| `subject_prefix` | `String` | `events` | Subject prefix |
-| `storage` | `StorageType` | `File` | `File` or `Memory` storage |
-| `max_events` | `i64` | `100_000` | Max messages in stream |
-| `max_age_secs` | `u64` | `604_800` (7 days) | Max message age |
-| `max_bytes` | `i64` | `0` (unlimited) | Max stream size in bytes |
-| `connect_timeout_secs` | `u64` | `5` | Connection timeout |
-| `request_timeout_secs` | `u64` | `10` | Request timeout |
+<TypeTable
+  type={{
+    url: { type: 'String', default: '"nats://127.0.0.1:4222"', description: 'NATS server URL' },
+    token: { type: 'Option<String>', default: 'None', description: 'Authentication token' },
+    credentials_path: { type: 'Option<String>', default: 'None', description: 'NKey/JWT credentials file' },
+    stream_name: { type: 'String', default: '"A3S_EVENTS"', description: 'JetStream stream name' },
+    subject_prefix: { type: 'String', default: '"events"', description: 'Subject prefix' },
+    storage: { type: 'StorageType', default: 'File', description: '`File` or `Memory` storage' },
+    max_events: { type: 'i64', default: '100_000', description: 'Max messages in stream' },
+    max_age_secs: { type: 'u64', default: '604_800', description: 'Max message age (7 days)' },
+    max_bytes: { type: 'i64', default: '0', description: 'Max stream size in bytes (0 = unlimited)' },
+    connect_timeout_secs: { type: 'u64', default: '5', description: 'Connection timeout' },
+    request_timeout_secs: { type: 'u64', default: '10', description: 'Request timeout' },
+  }}
+/>
 
 ### NATS-Specific Features
 

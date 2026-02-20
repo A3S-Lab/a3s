@@ -96,11 +96,13 @@ let sequence = bus.publish_event_with_options(&event, &opts).await?;
 
 ### PublishOptions Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `msg_id` | `Option<String>` | Deduplication ID (NATS dedup window) |
-| `expected_sequence` | `Option<u64>` | Expected stream sequence for optimistic concurrency |
-| `timeout_secs` | `Option<u64>` | Publish timeout in seconds |
+<TypeTable
+  type={{
+    msg_id: { type: 'Option<String>', description: 'Deduplication ID (NATS dedup window)' },
+    expected_sequence: { type: 'Option<u64>', description: 'Expected stream sequence for optimistic concurrency' },
+    timeout_secs: { type: 'Option<u64>', description: 'Publish timeout in seconds' },
+  }}
+/>
 
 ## Subscribing
 
@@ -166,13 +168,15 @@ bus.update_subscription(SubscriptionFilter {
 
 ### SubscribeOptions Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `deliver_policy` | `DeliverPolicy` | Where to start consuming (default: `All`) |
-| `max_deliver` | `Option<i64>` | Max redelivery attempts before DLQ |
-| `ack_wait_secs` | `Option<u64>` | Seconds to wait for ack before redelivery |
-| `max_ack_pending` | `Option<i64>` | Backpressure: max unacked messages |
-| `backoff_secs` | `Vec<u64>` | Redelivery backoff schedule in seconds |
+<TypeTable
+  type={{
+    deliver_policy: { type: 'DeliverPolicy', default: 'All', description: 'Where to start consuming' },
+    max_deliver: { type: 'Option<i64>', description: 'Max redelivery attempts before DLQ' },
+    ack_wait_secs: { type: 'Option<u64>', description: 'Seconds to wait for ack before redelivery' },
+    max_ack_pending: { type: 'Option<i64>', description: 'Backpressure: max unacked messages' },
+    backoff_secs: { type: 'Vec<u64>', description: 'Redelivery backoff schedule in seconds' },
+  }}
+/>
 
 ### Delivery Policies
 

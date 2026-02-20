@@ -13,11 +13,13 @@ score = importance × importance_weight + exp(−age_days / decay_days) × recen
 
 ## RelevanceConfig
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `importance_weight` | `f32` | `0.7` | Weight of the importance factor |
-| `recency_weight` | `f32` | `0.3` | Weight of the recency factor |
-| `decay_days` | `f32` | `30.0` | Days for recency factor to decay to ~37% |
+<TypeTable
+  type={{
+    importance_weight: { type: 'f32', default: '0.7', description: 'Weight of the importance factor' },
+    recency_weight: { type: 'f32', default: '0.3', description: 'Weight of the recency factor' },
+    decay_days: { type: 'f32', default: '30.0', description: 'Days for recency factor to decay to ~37%' },
+  }}
+/>
 
 ```rust
 use a3s_memory::{MemoryItem, RelevanceConfig};

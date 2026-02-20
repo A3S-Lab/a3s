@@ -11,19 +11,20 @@ Welcome to the A3S documentation. A3S is a secure AI infrastructure ecosystem bu
 
 - [A3S Code](/docs/code) — Embeddable AI coding agent library with multi-session support, built-in tools, skills, MCP integration, and defense-in-depth security
 - [A3S Box](/docs/box) — MicroVM runtime with TEE support, Docker-compatible CLI, and Kubernetes CRI integration
-- [A3S Gateway](/docs/gateway) — AI-native reverse proxy with multi-protocol support, privacy-aware routing, and token metering
+- [A3S Gateway](/docs/gateway) — AI-native reverse proxy with multi-protocol support, 15 middlewares, and Knative-style autoscaling
 - [SafeClaw](/docs/safeclaw) — Privacy-focused security proxy for AI agents with PII classification, taint tracking, and TEE integration
-- [A3S Power](/docs/power) — Local LLM inference engine with Ollama and OpenAI compatible API
-- [A3S Lane](/docs/lane) — Per-session priority queue with multi-lane scheduling, retry/DLQ, and rate limiting
-- [A3S Event](/docs/event) — Pluggable event system with provider-agnostic pub/sub and encryption
-- [A3S Search](/docs/search) — Meta search engine with multiple engines and consensus ranking
+- [A3S Power](/docs/power) — Local LLM inference engine with TEE attestation, RA-TLS, and OpenAI-compatible API
+- [A3S Lane](/docs/lane) — Priority queue with 6 built-in lanes, retry/DLQ, rate limiting, and persistent storage
+- [A3S Event](/docs/event) — Pluggable event bus with MemoryProvider and NATS JetStream, schema validation, and encryption
+- [A3S Search](/docs/search) — Meta search engine aggregating 9 engines with consensus ranking and proxy rotation
+- [A3S Memory](/docs/memory) — Pluggable memory storage for agents with episodic, semantic, procedural, and working memory types
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
 │              A3S Gateway                     │
-│         (traffic routing, TLS, auth)         │
+│    (traffic routing, TLS, auth, scaling)     │
 └──────────────────┬──────────────────────────┘
                    │
 ┌──────────────────▼──────────────────────────┐
@@ -31,7 +32,14 @@ Welcome to the A3S documentation. A3S is a secure AI infrastructure ecosystem bu
 │  ┌─────────────────┐  ┌──────────────────┐  │
 │  │    SafeClaw      │  │    A3S Code      │  │
 │  │  (security proxy)│◄─│  (agent library) │  │
-│  └─────────────────┘  └──────────────────┘  │
-│         TEE memory encryption (optional)     │
-└──────────────────────────────────────────────┘
+│  └─────────────────┘  └────────┬─────────┘  │
+│         TEE memory encryption  │             │
+└────────────────────────────────┼────────────┘
+                                 │
+              ┌──────────────────┼──────────────┐
+              │                  │              │
+     ┌────────▼──────┐  ┌───────▼──────┐  ┌───▼──────────┐
+     │   A3S Lane    │  │  A3S Memory  │  │  A3S Event   │
+     │ (task queue)  │  │  (storage)   │  │  (pub/sub)   │
+     └───────────────┘  └──────────────┘  └──────────────┘
 ```

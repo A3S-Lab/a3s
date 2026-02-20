@@ -167,9 +167,11 @@ println!("Total active:  {}", stats.total_active);
 println!("Dead letters:  {}", stats.dead_letter_count);
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `total_pending` | `usize` | Commands waiting across all lanes |
-| `total_active` | `usize` | Commands executing across all lanes |
-| `dead_letter_count` | `usize` | Failed commands in the DLQ |
-| `lanes` | `HashMap<String, LaneStatus>` | Per-lane breakdown |
+<TypeTable
+  type={{
+    total_pending: { type: 'usize', description: 'Commands waiting across all lanes' },
+    total_active: { type: 'usize', description: 'Commands executing across all lanes' },
+    dead_letter_count: { type: 'usize', description: 'Failed commands in the DLQ' },
+    lanes: { type: 'HashMap<String, LaneStatus>', description: 'Per-lane breakdown' },
+  }}
+/>

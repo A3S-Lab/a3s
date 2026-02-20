@@ -80,13 +80,15 @@ response = await search.search("rust async runtime",
 
 SDK search options:
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `engines` | `list[str]` | Engine shortcuts to use |
-| `limit` | `int` | Max results to return |
-| `timeout` | `int` | Per-engine timeout in seconds |
-| `proxy` | `str` | Single proxy URL |
-| `proxy_pool` | `list[str]` | Proxy pool URLs for this request |
+<TypeTable
+  type={{
+    engines: { type: 'list[str]', description: 'Engine shortcuts to use' },
+    limit: { type: 'int', description: 'Max results to return' },
+    timeout: { type: 'int', description: 'Per-engine timeout in seconds' },
+    proxy: { type: 'str', description: 'Single proxy URL' },
+    proxy_pool: { type: 'list[str]', description: 'Proxy pool URLs for this request' },
+  }}
+/>
 
 </Tab>
 <Tab value="Node.js">
@@ -101,13 +103,15 @@ const response = await search.search('rust async runtime', {
 
 SDK search options:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `engines` | `string[]` | Engine shortcuts to use |
-| `limit` | `number` | Max results to return |
-| `timeout` | `number` | Per-engine timeout in seconds |
-| `proxy` | `string` | Single proxy URL |
-| `proxyPool` | `string[]` | Proxy pool URLs for this request |
+<TypeTable
+  type={{
+    engines: { type: 'string[]', description: 'Engine shortcuts to use' },
+    limit: { type: 'number', description: 'Max results to return' },
+    timeout: { type: 'number', description: 'Per-engine timeout in seconds' },
+    proxy: { type: 'string', description: 'Single proxy URL' },
+    proxyPool: { type: 'string[]', description: 'Proxy pool URLs for this request' },
+  }}
+/>
 
 </Tab>
 </Tabs>

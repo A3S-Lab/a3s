@@ -88,10 +88,12 @@ search.add_engine(Bing::new());
 
 ### HealthConfig
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `max_failures` | `u32` | `3` | Consecutive failures before suspension |
-| `suspend_duration` | `Duration` | `60s` | How long to suspend a failing engine |
+<TypeTable
+  type={{
+    max_failures: { type: 'u32', default: '3', description: 'Consecutive failures before suspension' },
+    suspend_duration: { type: 'Duration', default: '"60s"', description: 'How long to suspend a failing engine' },
+  }}
+/>
 
 ### Behavior
 

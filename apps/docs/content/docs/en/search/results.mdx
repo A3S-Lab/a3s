@@ -68,17 +68,19 @@ for (const r of response.results) {
 
 ## SearchResult Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `url` | `String` | Result URL |
-| `title` | `String` | Result title |
-| `content` | `String` | Result snippet/description |
-| `result_type` | `ResultType` | Type of result (see below) |
-| `engines` | `HashSet<String>` | Engine shortcuts that found this result |
-| `positions` | `Vec<u32>` | Position in each engine's result list |
-| `score` | `f64` | Calculated consensus score |
-| `thumbnail` | `Option<String>` | Thumbnail URL (if available) |
-| `published_date` | `Option<String>` | Publication date (if available) |
+<TypeTable
+  type={{
+    url: { type: 'String', description: 'Result URL' },
+    title: { type: 'String', description: 'Result title' },
+    content: { type: 'String', description: 'Result snippet/description' },
+    result_type: { type: 'ResultType', description: 'Type of result (Default, Answer, News, Image, Video)' },
+    engines: { type: 'HashSet<String>', description: 'Engine shortcuts that found this result' },
+    positions: { type: 'Vec<u32>', description: "Position in each engine's result list" },
+    score: { type: 'f64', description: 'Calculated consensus score' },
+    thumbnail: { type: 'Option<String>', description: 'Thumbnail URL (if available)' },
+    published_date: { type: 'Option<String>', description: 'Publication date (if available)' },
+  }}
+/>
 
 Python uses snake_case (`result_type`, `published_date`). Node.js uses camelCase (`resultType`, `publishedDate`).
 
