@@ -96,7 +96,8 @@ registry.register(EventSchema {
     event_type: "order.created".into(),
     version: 1,
     required_fields: vec!["order_id".into(), "total".into()],
-});
+    description: "订单创建事件".into(),
+})?;
 let mut bus = EventBus::with_schema_registry(MemoryProvider::default(), Arc::new(registry));
 
 // 加密（需要 `encryption` 特性）
@@ -125,7 +126,7 @@ let seq = bus.publish_event(&event).await?;
 
 // 查看指标
 let snapshot = bus.metrics().snapshot();
-println!("已发布: {}, 错误: {}", snapshot.publish_count, snapshot.error_count);
+println!("已发布: {}, 错误: {}", snapshot.publish_count, snapshot.publish_errors);
 
 // 健康检查
 let healthy = bus.health().await?;

@@ -1,0 +1,50 @@
+---
+title: FileMemoryStore
+description: 持久化后端——原子写入、内存索引和索引重建
+---
+
+# FileMemoryStore
+
+默认的持久化后端。每条记忆存储为一个 JSON 文件，并维护一个轻量索引以加速搜索。
+
+## 目录结构
+
+```
+memory/
+  index.json          ← 轻量索引（id、tags、importance、timestamp）
+  items/
+    {uuid}.json       ← 完整记忆内容，原子写入
+```
+
+## 使用方式
+
+```rust
+use a3s_memory::{FileMemoryStore, MemoryItem, MemoryStore};
+
+let store = FileMemoryStore::new("./memory").await?;
+
+store.store(MemoryItem::new("通过 `just release` 发布").with_importance(0.9)).await?;
+
+let results = store.search("发布", 5).await?;
+let recent  = store.get_recent(10).await?;
+let top     = store.get_important(0.7, 10).await?;
+```
+
+## 关键特性
+
+- **原子写入** — 通过 `.tmp` → rename 写入，崩溃时不会损坏数据
+- **内存索引** — 初始化时加载，`search()` 和 `search_by_tags()` 不访问磁盘
+- **路径遍历防护** — 记忆 ID 在用作文件名前会经过净化处理
+- **持久化** — 进程重启后数据仍然存在，重新构造实例即可加载
+
+## 索引重建
+
+如果 `index.json` 被删除或损坏，可在不丢失数据的情况下恢复：
+
+```rust
+let store = FileMemoryStore::new("./memory").await?;
+
+// 扫描 items/ 目录，从记忆文件重建 index.json
+let recovered = store.rebuild_index().await?;
+println!("已恢复 {} 条记忆", recovered);
+```

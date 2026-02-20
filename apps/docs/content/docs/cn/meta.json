@@ -12,6 +12,7 @@
     "---库---",
     "lane",
     "event",
-    "search"
+    "search",
+    "memory"
   ]
 }

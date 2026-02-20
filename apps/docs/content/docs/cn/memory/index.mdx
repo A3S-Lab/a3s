@@ -1,0 +1,55 @@
+---
+title: A3S Memory
+description: 可插拔的 AI 智能体记忆存储 — MemoryStore trait、FileMemoryStore、InMemoryStore 和相关性评分
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# A3S Memory
+
+`a3s-memory` 是一个独立的 Rust crate，为智能体记忆提供存储层。它不感知智能体、会话或上下文注入——只负责一件事：存储和检索 `MemoryItem`。
+
+```
+核心（稳定）                    扩展（可替换）
+─────────────────────────       ─────────────────────────
+MemoryStore (trait)             InMemoryStore
+MemoryItem                      FileMemoryStore
+MemoryType                      （自定义后端）
+RelevanceConfig
+```
+
+## 安装
+
+```toml
+[dependencies]
+a3s-memory = "0.1"
+```
+
+如果你正在使用 A3S Code，记忆功能已内置——通过 `SessionOptions` 配置即可：
+
+```rust
+SessionOptions::new().with_file_memory("./memory")
+```
+
+## 本 crate 包含的内容
+
+| 类型 | 说明 |
+|------|------|
+| `MemoryStore` | 异步 trait——实现或依赖的唯一接口 |
+| `MemoryItem` | 记忆单元——内容、重要性、标签、元数据、时间戳 |
+| `MemoryType` | `Episodic`（情节）、`Semantic`（语义）、`Procedural`（程序）、`Working`（工作） |
+| `RelevanceConfig` | 评分参数——衰减、重要性权重、时效性权重 |
+| `InMemoryStore` | 基于 `tokio::sync::RwLock` 的临时后端 |
+| `FileMemoryStore` | 持久化后端——原子写入、内存索引、索引重建 |
+
+## 本 crate 不包含的内容
+
+| 关注点 | 所在位置 |
+|--------|----------|
+| 三层会话记忆（工作 / 短期 / 长期） | `a3s-code` |
+| `MemoryConfig`（max_short_term、max_working） | `a3s-code` |
+| 将记忆注入智能体提示词 | `a3s-code` |
+
+<Callout type="info">
+如果你在使用 A3S Code 构建智能体，请参阅 [Memory](/docs/code/memory) 获取完整的智能体层文档。
+</Callout>

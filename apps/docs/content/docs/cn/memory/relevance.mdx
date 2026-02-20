@@ -1,0 +1,57 @@
+---
+title: 相关性评分
+description: 记忆排序原理——重要性、时效衰减和 RelevanceConfig
+---
+
+# 相关性评分
+
+搜索或将记忆注入上下文时，每条记忆通过结合重要性和时效性进行评分：
+
+```
+score = importance × importance_weight + exp(−age_days / decay_days) × recency_weight
+```
+
+## RelevanceConfig
+
+<TypeTable
+  type={{
+    importance_weight: { type: 'f32', default: '0.7', description: '重要性因子的权重' },
+    recency_weight: { type: 'f32', default: '0.3', description: '时效性因子的权重' },
+    decay_days: { type: 'f32', default: '30.0', description: '时效性因子衰减至约 37% 所需天数' },
+  }}
+/>
+
+```rust
+use a3s_memory::{MemoryItem, RelevanceConfig};
+
+let config = RelevanceConfig {
+    decay_days: 7.0,
+    importance_weight: 0.9,
+    recency_weight: 0.1,
+};
+
+let score = item.relevance_score_at(chrono::Utc::now(), &config);
+```
+
+`relevance_score()` 是使用 `RelevanceConfig::default()` 的便捷方法。
+
+## 衰减行为
+
+| 时间 | 时效性因子（decay_days = 30） |
+|------|-------------------------------|
+| 0 天 | 1.00 |
+| 30 天 | 0.37 |
+| 60 天 | 0.14 |
+| 90 天 | 0.05 |
+
+高重要性记忆（`importance = 1.0`）在默认权重下的得分：
+- 刚创建：`0.7 × 1.0 + 0.3 × 1.0 = 1.0`
+- 90 天后：`0.7 × 1.0 + 0.3 × 0.05 ≈ 0.72`
+
+## 调优建议
+
+| 使用场景 | 推荐配置 |
+|----------|----------|
+| 长期助手 | `decay_days: 365`，`importance_weight: 0.9` |
+| 短期编码会话 | `decay_days: 1`，`recency_weight: 0.7` |
+| 均等权重 | `importance_weight: 0.5`，`recency_weight: 0.5` |
