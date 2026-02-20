@@ -213,14 +213,7 @@ function ModuleCard({
   return (
     <Link
       href={href}
-      className="group flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-6 transition-all duration-200 hover:-translate-y-1"
-      style={{ boxShadow: 'var(--ct-shadow-card)' }}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLElement).style.boxShadow = 'var(--ct-shadow-hover)';
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLElement).style.boxShadow = 'var(--ct-shadow-card)';
-      }}
+      className="module-card group flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-6 hover:-translate-y-1"
     >
       <div className="flex items-start justify-between">
         <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${color}`}>
@@ -275,6 +268,12 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
               className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
             >
               {tr.docsLink}
+            </Link>
+            <Link
+              href="/blog"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            >
+              Blog
             </Link>
             <Link
               href="https://github.com/A3S-Lab"
