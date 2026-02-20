@@ -364,11 +364,25 @@ See [Sessions](/docs/code/sessions) for full event reference.
 
 ### ConfirmationPolicy
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | `bool` | `false` | Enable HITL |
-| `default_timeout_ms` | `u64` | `30000` | Confirmation timeout |
-| `timeout_action` | `TimeoutAction` | `Reject` | `Reject` or `Allow` on timeout |
+<TypeTable
+  type={{
+    enabled: {
+      type: 'bool',
+      default: 'false',
+      description: 'Enable HITL',
+    },
+    default_timeout_ms: {
+      type: 'u64',
+      default: '30000',
+      description: 'Confirmation timeout',
+    },
+    timeout_action: {
+      type: 'TimeoutAction',
+      default: 'Reject',
+      description: '`Reject` or `Allow` on timeout',
+    },
+  }}
+/>
 
 ### SecurityProvider trait (Rust)
 

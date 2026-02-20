@@ -1,8 +1,8 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
-import { LangDropdown } from '@/components/lang-dropdown';
 
 export function baseOptions(lang?: string): BaseLayoutProps {
   return {
+    i18n: true,
     nav: {
       title: (
         <>
@@ -27,10 +27,6 @@ export function baseOptions(lang?: string): BaseLayoutProps {
       ),
     },
     links: [
-      {
-        type: 'custom',
-        children: <LangDropdown />,
-      },
       {
         text: 'GitHub',
         url: 'https://github.com/A3S-Lab',

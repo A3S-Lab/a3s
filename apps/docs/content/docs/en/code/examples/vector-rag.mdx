@@ -191,12 +191,14 @@ db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
 
 ### VectorContextConfig (Rust)
 
-| Method | Description | Default |
-|--------|-------------|---------|
-| `VectorContextConfig::new(path)` | Set workspace root | — |
-| `.with_min_relevance(f)` | Minimum cosine similarity score | `0.3` |
-| `.with_max_results(n)` | Max chunks returned per query | `10` |
-| `.with_chunk_size(n)` | Max chars per chunk | `1500` |
+<TypeTable
+  type={{
+    path: { type: 'PathBuf', required: true, description: 'Workspace root. Use `VectorContextConfig::new(path)`' },
+    min_relevance: { type: 'f32', default: '0.3', description: 'Minimum cosine similarity score. Use `.with_min_relevance(f)`' },
+    max_results: { type: 'usize', default: '10', description: 'Max chunks returned per query. Use `.with_max_results(n)`' },
+    chunk_size: { type: 'usize', default: '1500', description: 'Max chars per chunk. Use `.with_chunk_size(n)`' },
+  }}
+/>
 
 ### HCL config (Python / Node.js)
 
@@ -211,7 +213,9 @@ context {
 
 ### codesearch tool schema
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `query` | `string` | Natural language search query |
-| `limit` | `number` | Max results (default: `10`) |
+<TypeTable
+  type={{
+    query: { type: 'string', required: true, description: 'Natural language search query' },
+    limit: { type: 'number', default: '10', description: 'Max results' },
+  }}
+/>

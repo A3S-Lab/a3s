@@ -1,0 +1,177 @@
+---
+title: 快速开始
+description: 使用基本反向代理配置启动 A3S Gateway
+---
+
+# 快速开始
+
+## 最小配置
+
+创建 `gateway.hcl` 文件，包含入口点、路由器和服务：
+
+```hcl
+entrypoints "web" {
+  address = "0.0.0.0:80"
+}
+
+routers "my-api" {
+  rule        = "PathPrefix(`/api`)"
+  service     = "api-backend"
+  entrypoints = ["web"]
+}
+
+services "api-backend" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+}
+```
+
+## 启动网关
+
+```bash
+# 使用 HCL 配置启动
+a3s-gateway --config gateway.hcl
+
+# 开启调试日志
+a3s-gateway --config gateway.hcl --log-level debug
+
+# 验证配置（不启动）
+a3s-gateway validate --config gateway.hcl
+```
+
+## 添加 HTTPS
+
+```hcl
+entrypoints "web" {
+  address = "0.0.0.0:80"
+}
+
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
+
+  tls {
+    cert_file = "/etc/certs/cert.pem"
+    key_file  = "/etc/certs/key.pem"
+  }
+}
+
+routers "my-api" {
+  rule        = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+  service     = "api-backend"
+  entrypoints = ["websecure"]
+}
+
+services "api-backend" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+}
+```
+
+## 添加中间件
+
+```hcl
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
+
+  tls {
+    cert_file = "/etc/certs/cert.pem"
+    key_file  = "/etc/certs/key.pem"
+  }
+}
+
+routers "my-api" {
+  rule        = "Host(`api.example.com`)"
+  service     = "api-backend"
+  entrypoints = ["websecure"]
+  middlewares  = ["auth", "rate-limit"]
+}
+
+middlewares "auth" {
+  type  = "jwt"
+  value = "my-jwt-secret"
+}
+
+middlewares "rate-limit" {
+  type  = "rate-limit"
+  rate  = 100
+  burst = 50
+}
+
+services "api-backend" {
+  load_balancer {
+    strategy = "round-robin"
+    servers = [
+      { url = "http://127.0.0.1:8001" },
+      { url = "http://127.0.0.1:8002" },
+    ]
+  }
+}
+```
+
+## 健康检查
+
+```hcl
+services "api-backend" {
+  load_balancer {
+    strategy = "least-connections"
+
+    servers = [
+      { url = "http://127.0.0.1:8001" },
+      { url = "http://127.0.0.1:8002" },
+    ]
+
+    health_check {
+      path                = "/health"
+      interval            = "10s"
+      timeout             = "5s"
+      unhealthy_threshold = 3
+      healthy_threshold   = 1
+    }
+  }
+}
+```
+
+## 仪表盘 API
+
+网关内置仪表盘 API，提供健康状态、指标和实时配置：
+
+```bash
+# 健康状态
+curl http://localhost:80/api/gateway/health
+
+# Prometheus 指标
+curl http://localhost:80/api/gateway/metrics
+
+# 当前配置
+curl http://localhost:80/api/gateway/config
+
+# 活跃路由
+curl http://localhost:80/api/gateway/routes
+
+# 注册的服务
+curl http://localhost:80/api/gateway/services
+```
+
+## 编程式使用
+
+```rust
+use a3s_gateway::{Gateway, config::GatewayConfig};
+
+#[tokio::main]
+async fn main() -> a3s_gateway::Result<()> {
+    let config = GatewayConfig::from_file("gateway.hcl").await?;
+    let gateway = Gateway::new(config)?;
+
+    gateway.start().await?;
+
+    let health = gateway.health();
+    println!("状态: {:?}, 运行时间: {}s", health.state, health.uptime_secs);
+
+    gateway.wait_for_shutdown().await;
+    Ok(())
+}
+```

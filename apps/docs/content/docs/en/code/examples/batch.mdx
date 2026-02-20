@@ -176,11 +176,13 @@ Nested batch calls are rejected. The batch tool cannot call itself recursively.
 
 ### batch tool input schema
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `invocations` | `array` | ✅ | List of tool calls to execute in parallel |
-| `invocations[].tool` | `string` | ✅ | Name of the tool to call |
-| `invocations[].args` | `object` | ✅ | Arguments passed to the tool |
+<TypeTable
+  type={{
+    invocations: { type: 'array', required: true, description: 'List of tool calls to execute in parallel' },
+    'invocations[].tool': { type: 'string', required: true, description: 'Name of the tool to call' },
+    'invocations[].args': { type: 'object', required: true, description: 'Arguments passed to the tool' },
+  }}
+/>
 
 ### Direct invocation
 

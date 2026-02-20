@@ -1,0 +1,45 @@
+---
+title: Kubernetes CRI
+description: Kubernetes 容器运行时接口集成
+---
+
+# Kubernetes CRI
+
+A3S Box 实现了完整的 Kubernetes CRI v1 接口，可作为 Kubernetes 节点的容器运行时，以 MicroVM 替代传统容器。
+
+## 特性
+
+- 完整 CRI v1 gRPC 实现（RuntimeService + ImageService）
+- RuntimeClass 支持，可按 Pod 选择运行时
+- 流式 exec/attach/port-forward
+- Helm Chart 一键部署
+
+## 配置 Kubernetes
+
+在 kubelet 中指定 CRI socket：
+
+```bash
+kubelet --container-runtime-endpoint unix:///run/a3s-box-cri.sock
+```
+
+创建 RuntimeClass：
+
+```yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: a3s-box
+handler: a3s-box
+```
+
+在 Pod 中使用：
+
+```yaml
+spec:
+  runtimeClassName: a3s-box
+  containers:
+    - name: app
+      image: my-app:latest
+```
+
+详细文档请参阅[英文版](/docs/en/box/cri)。

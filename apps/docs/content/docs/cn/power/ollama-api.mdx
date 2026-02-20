@@ -1,0 +1,27 @@
+---
+title: Ollama API
+description: Ollama 兼容 API 端点参考
+---
+
+# Ollama API
+
+A3S Power 实现了全部 14 个 Ollama 原生 API 端点，可作为 Ollama 的直接替代品。
+
+## 端点列表
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/chat` | POST | 对话补全（流式/非流式） |
+| `/api/generate` | POST | 文本生成 |
+| `/api/embeddings` | POST | 生成嵌入向量 |
+| `/api/tags` | GET | 列出本地模型 |
+| `/api/show` | POST | 查看模型详情 |
+| `/api/pull` | POST | 拉取模型 |
+| `/api/push` | POST | 推送模型 |
+| `/api/delete` | DELETE | 删除模型 |
+| `/api/copy` | POST | 复制模型 |
+| `/api/create` | POST | 从 Modelfile 创建模型 |
+| `/api/ps` | GET | 列出运行中的模型 |
+| `/api/version` | GET | 版本信息 |
+
+详细文档请参阅[英文版](/docs/en/power/ollama-api)。

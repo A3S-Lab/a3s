@@ -1,0 +1,48 @@
+---
+title: 配置
+description: A3S Box 配置文件和环境变量
+---
+
+# 配置
+
+## 默认路径
+
+| 路径 | 说明 |
+|------|------|
+| `~/.a3s/` | 基础目录（可通过 `$A3S_BOX_HOME` 覆盖） |
+| `~/.a3s/boxes.json` | VM 状态文件 |
+| `~/.a3s/images/` | 镜像存储 |
+| `~/.a3s/volumes/` | 卷存储 |
+
+## 环境变量
+
+| 变量 | 说明 |
+|------|------|
+| `A3S_BOX_HOME` | 覆盖基础目录 |
+| `A3S_BOX_LOG` | 日志级别（debug/info/warn/error） |
+| `A3S_BOX_WARM_POOL_SIZE` | 热池预启动 VM 数量 |
+| `A3S_BOX_WARM_POOL_TTL` | 热池空闲 VM 超时时间（秒） |
+
+## 配置文件
+
+A3S Box 支持 HCL 配置文件（`~/.a3s/box.hcl`）：
+
+```hcl
+warm_pool {
+  size     = 2
+  idle_ttl = 300
+}
+
+logging {
+  driver = "json-file"
+  max_size   = "100m"
+  max_files  = 5
+  compress   = true
+}
+
+network {
+  default_mode = "tsi"
+}
+```
+
+详细配置选项请参阅[英文版](/docs/en/box/configuration)。

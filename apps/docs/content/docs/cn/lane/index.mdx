@@ -1,0 +1,75 @@
+---
+title: A3S Lane
+description: 基于优先级的命令队列，用于异步任务调度 — 支持 Rust、Python 和 Node.js
+---
+
+# A3S Lane
+
+A3S Lane 是基于优先级的命令队列，用于异步任务调度。6 个内置通道配合可配置的并发控制，确保控制命令始终抢占 LLM 生成任务。提供 Rust crate、Python 包和 Node.js 模块。
+
+## 主要特性
+
+- **优先级调度** — 6 个内置通道，始终优先调度有待处理任务的最高优先级通道
+- **并发控制** — 每通道信号量限制，可配置最小/最大并发数
+- **重试策略** — 指数退避和固定延迟策略
+- **死信队列** — 失败命令携带完整上下文捕获，便于检查
+- **持久化存储** — 可插拔存储后端（内置本地文件系统）
+- **事件流** — `EventStream` 实现 `futures_core::Stream`，无需手动传递 `EventEmitter`
+- **通道压力事件** — 队列深度超过阈值时触发 `queue.lane.pressure` / `queue.lane.idle`
+- **限流** — 每通道令牌桶（`distributed` 特性）
+- **优先级提升** — 基于截止时间的自动优先级升级（`distributed` 特性）
+- **队列分区** — 轮询和哈希分区，支持多核并行
+- **指标与告警** — 延迟直方图、队列深度追踪、可配置告警阈值
+- **优雅关闭** — 停止前排空待处理命令
+
+## 架构
+
+```
+QueueManager
+├── EventEmitter          ← 广播发布/订阅；subscribe() 返回 EventStream（Stream）
+├── CommandQueue           ← 调度器（10ms 轮询循环）
+│   ├── Lanes              ← HashMap<LaneId, Lane>
+│   │   └── Lane           ← 优先级队列 + 并发信号量
+│   │       ├── Pending    ← VecDeque（优先级内 FIFO）
+│   │       └── Config     ← 超时、重试、限流、提升、压力阈值
+│   ├── DeadLetterQueue    ← 失败命令
+│   └── Storage            ← 可选持久化
+├── Metrics                ← 可选可观测性
+└── Alerts                 ← 可选监控
+```
+
+## 内置通道
+
+| 通道 | 优先级 | 最大并发 | 用途 |
+|------|--------|----------|------|
+| `system` | 0（最高） | 5 | 系统级操作 |
+| `control` | 1 | 3 | 暂停、恢复、取消 |
+| `query` | 2 | 10 | 只读查询 |
+| `session` | 3 | 5 | 会话管理 |
+| `skill` | 4 | 3 | 技能/工具执行 |
+| `prompt` | 5（最低） | 2 | LLM 提示处理 |
+
+优先级数字越小，优先级越高。调度器始终从有待处理任务的最高优先级通道取命令。
+
+## 支持的语言
+
+| 语言 | 包 | 安装 |
+|------|-----|------|
+| Rust | [`a3s-lane`](https://crates.io/crates/a3s-lane) | Cargo.toml 中添加 `a3s-lane = "0.4"` |
+| Python | [`a3s-lane`](https://pypi.org/project/a3s-lane/) | `pip install a3s-lane` |
+| Node.js | [`@a3s-lab/lane`](https://www.npmjs.com/package/@a3s-lab/lane) | `npm install @a3s-lab/lane` |
+
+## 性能
+
+在 Apple Silicon（M 系列）release 构建下的基准测试：
+
+| 场景 | 吞吐量 |
+|------|--------|
+| 并发（10 通道） | 33,000–50,000 ops/sec |
+| 单通道 | 6,600–10,000 ops/sec |
+| 完整生命周期（创建/启动/关闭开销） | ~85–93 ops/sec |
+| 指标开销 | ~3–5% |
+
+## 测试覆盖
+
+246 个测试（`--all-features`）。核心模块行覆盖率 98–100%。

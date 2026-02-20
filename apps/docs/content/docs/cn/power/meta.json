@@ -1,0 +1,19 @@
+{
+  "title": "A3S Power",
+  "pages": [
+    "index",
+    "quick-start",
+    "---核心---",
+    "configuration",
+    "models",
+    "inference",
+    "---API---",
+    "ollama-api",
+    "openai-api",
+    "---能力---",
+    "tools",
+    "structured-output",
+    "observability",
+    "cli"
+  ]
+}

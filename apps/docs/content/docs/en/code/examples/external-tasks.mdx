@@ -172,23 +172,19 @@ results.forEach((r) => console.log(r.text));
 
 ### LaneHandlerConfig
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `mode` | `"internal"` \| `"external"` \| `"hybrid"` | Task execution mode |
-| `timeout_ms` | `Option<u64>` | Max wait time for external worker response |
-
-### External task methods
-
-| Method | Rust | Python | Node.js |
-|--------|------|--------|---------|
-| Set handler | `session.set_external_task_handler(fn).await` | `session.set_external_task_handler(fn)` | `session.setExternalTaskHandler(fn)` |
-| Poll pending | `session.pending_external_tasks().await` | `await session.pending_external_tasks()` | `await session.pendingExternalTasks()` |
-| Complete task | `session.complete_external_task(id, result).await` | `await session.complete_external_task(id, result)` | `await session.completeExternalTask(id, result)` |
+<TypeTable
+  type={{
+    mode: { type: '"internal" | "external" | "hybrid"', description: 'Task execution mode' },
+    timeout_ms: { type: 'Option<u64>', description: 'Max wait time for external worker response' },
+  }}
+/>
 
 ### ExternalTaskResult fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `success` | `bool` | Whether the task completed successfully |
-| `result` | `Option<Value>` | Task output payload |
-| `error` | `Option<String>` | Error message if `success` is `false` |
+<TypeTable
+  type={{
+    success: { type: 'bool', description: 'Whether the task completed successfully' },
+    result: { type: 'Option<Value>', description: 'Task output payload' },
+    error: { type: 'Option<String>', description: 'Error message if `success` is `false`' },
+  }}
+/>

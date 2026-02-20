@@ -1,0 +1,77 @@
+---
+title: A3S Power
+description: 本地 LLM 模型管理与推理服务 — 兼容 Ollama 的推理服务器
+---
+
+# A3S Power
+
+A3S Power 是本地 LLM 模型管理和推理基础设施。提供兼容 Ollama 的 CLI 和 HTTP 服务器，用于下载、管理和运行 GGUF 格式的语言模型。
+
+## 为什么选择 Power？
+
+- Ollama 直接替代品，API 和协议格式完全兼容
+- 兼容 OpenAI SDK（`/v1/chat/completions`、`/v1/embeddings`）
+- 本地优先推理，无云端依赖
+- A3S 生态系统的基础设施层（供 a3s-code 和其他 Agent 使用）
+
+## 架构
+
+```
+┌─────────────────────────────────────────────────┐
+│                   CLI 层                         │
+│  pull · run · list · show · serve · ps · stop    │
+├─────────────────────────────────────────────────┤
+│                  HTTP 服务器                     │
+│  ┌──────────────┐  ┌───────────────────────┐    │
+│  │  Ollama API   │  │    OpenAI API          │    │
+│  │  /api/*       │  │    /v1/*               │    │
+│  └──────┬───────┘  └──────────┬────────────┘    │
+├─────────┴──────────────────────┴────────────────┤
+│                后端层                            │
+│  ┌────────────┐  ┌────────────┐  ┌───────────┐ │
+│  │ llama.cpp   │  │ 对话模板   │  │ 工具调用   │ │
+│  │ 后端        │  │            │  │ 解析器     │ │
+│  └────────────┘  └────────────┘  └───────────┘ │
+├─────────────────────────────────────────────────┤
+│                模型层                            │
+│  ┌────────────┐  ┌────────────┐  ┌───────────┐ │
+│  │ 注册表      │  │ 存储       │  │ 解析器     │ │
+│  │ (manifests) │  │ (SHA-256)  │  │(Ollama/HF) │ │
+│  └────────────┘  └────────────┘  └───────────┘ │
+└─────────────────────────────────────────────────┘
+```
+
+## 核心组件
+
+| 组件 | 说明 |
+|------|------|
+| `cli` | 12 个命令：pull、run、list、show、delete、serve、ps、stop、push、cp、create |
+| `api` | 14 个 Ollama 原生端点 + 5 个 OpenAI 兼容端点 |
+| `backend` | 可插拔推理引擎，内置 llama.cpp 实现 |
+| `model` | 内容寻址存储、注册表、解析、GGUF 读取器 |
+| `server` | Axum HTTP 服务器，支持 CORS、追踪、Prometheus 指标 |
+| `config` | TOML 配置，兼容 Ollama 环境变量 |
+
+## 主要特性
+
+- GGUF 模型格式，llama.cpp 后端（Metal/CUDA 加速）
+- 流式 token 生成（Ollama 用 NDJSON，OpenAI 用 SSE）
+- 视觉/多模态支持（base64 图片和 URL）
+- 工具/函数调用（XML、Mistral、JSON 格式）
+- JSON Schema 结构化输出（GBNF 语法）
+- KV 缓存复用，前缀匹配加速多轮对话
+- LRU 模型淘汰，可配置 keep-alive
+- 内容寻址 blob 存储，SHA-256 去重
+- 模型解析：Ollama 注册表 → 内置目录 → HuggingFace
+- Modelfile 支持（FROM、PARAMETER、SYSTEM、TEMPLATE、ADAPTER）
+- GPU 自动检测和内存估算
+- Prometheus 指标和使用量仪表盘
+
+## 默认路径
+
+| 路径 | 说明 |
+|------|------|
+| `~/.a3s/power/` | 基础目录（可通过 `$A3S_POWER_HOME` 覆盖） |
+| `~/.a3s/power/config.toml` | 配置文件 |
+| `~/.a3s/power/models/manifests/` | 模型 manifest 文件 |
+| `~/.a3s/power/models/blobs/` | 内容寻址 blob 存储 |

@@ -1,0 +1,37 @@
+---
+title: 工具调用
+description: 函数调用和工具使用
+---
+
+# 工具调用
+
+A3S Power 支持三种工具调用格式：XML、Mistral 和 JSON。
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:11434/v1", api_key="unused")
+
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "获取指定城市的天气",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "city": {"type": "string", "description": "城市名称"}
+            },
+            "required": ["city"]
+        }
+    }
+}]
+
+response = client.chat.completions.create(
+    model="llama3.2",
+    messages=[{"role": "user", "content": "北京今天天气怎么样？"}],
+    tools=tools
+)
+```
+
+详细文档请参阅[英文版](/docs/en/power/tools)。

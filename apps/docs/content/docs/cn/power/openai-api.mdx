@@ -1,0 +1,40 @@
+---
+title: OpenAI API
+description: OpenAI 兼容 API 端点参考
+---
+
+# OpenAI API
+
+A3S Power 提供 5 个 OpenAI 兼容端点，可与任何 OpenAI SDK 配合使用。
+
+## 端点列表
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/v1/chat/completions` | POST | 对话补全（流式/非流式） |
+| `/v1/completions` | POST | 文本补全 |
+| `/v1/embeddings` | POST | 生成嵌入向量 |
+| `/v1/models` | GET | 列出可用模型 |
+| `/v1/models/:id` | GET | 查看模型详情 |
+
+## 使用示例
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:11434/v1",
+    api_key="unused"  # A3S Power 不需要 API key
+)
+
+# 流式对话
+stream = client.chat.completions.create(
+    model="llama3.2",
+    messages=[{"role": "user", "content": "你好！"}],
+    stream=True
+)
+for chunk in stream:
+    print(chunk.choices[0].delta.content, end="")
+```
+
+详细文档请参阅[英文版](/docs/en/power/openai-api)。

@@ -65,22 +65,24 @@ curl http://127.0.0.1:9090/api/gateway/health
 
 ### Helm Values
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `replicaCount` | `1` | Number of replicas |
-| `image.repository` | `ghcr.io/a3s-lab/gateway` | Container image |
-| `image.tag` | Chart appVersion | Image tag |
-| `service.type` | `ClusterIP` | Service type |
-| `service.port` | `8080` | HTTP port |
-| `dashboard.enabled` | `true` | Enable dashboard port |
-| `dashboard.port` | `9090` | Dashboard port |
-| `config` | minimal HCL | Gateway HCL configuration |
-| `resources.requests.cpu` | `100m` | CPU request |
-| `resources.requests.memory` | `64Mi` | Memory request |
-| `resources.limits.cpu` | `500m` | CPU limit |
-| `resources.limits.memory` | `256Mi` | Memory limit |
-| `autoscaling.enabled` | `false` | Enable HPA |
-| `ingress.enabled` | `false` | Enable Ingress |
+<TypeTable
+  type={{
+    replicaCount: { type: 'number', default: '1', description: 'Number of replicas' },
+    'image.repository': { type: 'string', default: '"ghcr.io/a3s-lab/gateway"', description: 'Container image' },
+    'image.tag': { type: 'string', default: 'Chart appVersion', description: 'Image tag' },
+    'service.type': { type: 'string', default: '"ClusterIP"', description: 'Service type' },
+    'service.port': { type: 'number', default: '8080', description: 'HTTP port' },
+    'dashboard.enabled': { type: 'bool', default: 'true', description: 'Enable dashboard port' },
+    'dashboard.port': { type: 'number', default: '9090', description: 'Dashboard port' },
+    config: { type: 'string', default: 'minimal HCL', description: 'Gateway HCL configuration' },
+    'resources.requests.cpu': { type: 'string', default: '"100m"', description: 'CPU request' },
+    'resources.requests.memory': { type: 'string', default: '"64Mi"', description: 'Memory request' },
+    'resources.limits.cpu': { type: 'string', default: '"500m"', description: 'CPU limit' },
+    'resources.limits.memory': { type: 'string', default: '"256Mi"', description: 'Memory limit' },
+    'autoscaling.enabled': { type: 'bool', default: 'false', description: 'Enable HPA' },
+    'ingress.enabled': { type: 'bool', default: 'false', description: 'Enable Ingress' },
+  }}
+/>
 
 ### Chart Structure
 

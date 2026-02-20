@@ -162,41 +162,49 @@ Generation parameters can be set per-request via the API:
 
 ### Sampling Parameters
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `temperature` | 0.8 | Randomness (0 = deterministic) |
-| `top_p` | 0.9 | Nucleus sampling threshold |
-| `top_k` | 40 | Top-K sampling |
-| `min_p` | 0.0 | Minimum probability threshold |
-| `typical_p` | 1.0 | Typical sampling |
-| `seed` | — | Random seed for reproducibility |
+<TypeTable
+  type={{
+    temperature: { type: 'float', default: '0.8', description: 'Randomness (0 = deterministic)' },
+    top_p: { type: 'float', default: '0.9', description: 'Nucleus sampling threshold' },
+    top_k: { type: 'int', default: '40', description: 'Top-K sampling' },
+    min_p: { type: 'float', default: '0.0', description: 'Minimum probability threshold' },
+    typical_p: { type: 'float', default: '1.0', description: 'Typical sampling' },
+    seed: { type: 'int', description: 'Random seed for reproducibility' },
+  }}
+/>
 
 ### Penalty Parameters
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `repeat_penalty` | 1.1 | Repetition penalty |
-| `repeat_last_n` | 64 | Tokens to consider for penalty |
-| `frequency_penalty` | 0.0 | Frequency-based penalty |
-| `presence_penalty` | 0.0 | Presence-based penalty |
-| `penalize_newline` | true | Apply penalty to newlines |
+<TypeTable
+  type={{
+    repeat_penalty: { type: 'float', default: '1.1', description: 'Repetition penalty' },
+    repeat_last_n: { type: 'int', default: '64', description: 'Tokens to consider for penalty' },
+    frequency_penalty: { type: 'float', default: '0.0', description: 'Frequency-based penalty' },
+    presence_penalty: { type: 'float', default: '0.0', description: 'Presence-based penalty' },
+    penalize_newline: { type: 'bool', default: 'true', description: 'Apply penalty to newlines' },
+  }}
+/>
 
 ### Context Parameters
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `num_ctx` | 2048 | Context window size |
-| `num_predict` | -1 | Max tokens to generate (-1 = unlimited) |
-| `num_keep` | 4 | Tokens to keep from initial prompt |
-| `stop` | — | Stop sequences |
+<TypeTable
+  type={{
+    num_ctx: { type: 'int', default: '2048', description: 'Context window size' },
+    num_predict: { type: 'int', default: '-1', description: 'Max tokens to generate (-1 = unlimited)' },
+    num_keep: { type: 'int', default: '4', description: 'Tokens to keep from initial prompt' },
+    stop: { type: 'string[]', description: 'Stop sequences' },
+  }}
+/>
 
 ### Performance Parameters
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `num_batch` | 512 | Batch size for prompt processing |
-| `num_thread` | — | CPU threads (auto-detected) |
-| `num_gpu` | -1 | GPU layers to offload |
-| `use_mmap` | true | Memory-map model file |
-| `use_mlock` | false | Lock model in memory |
-| `flash_attention` | false | Enable flash attention |
+<TypeTable
+  type={{
+    num_batch: { type: 'int', default: '512', description: 'Batch size for prompt processing' },
+    num_thread: { type: 'int', description: 'CPU threads (auto-detected)' },
+    num_gpu: { type: 'int', default: '-1', description: 'GPU layers to offload' },
+    use_mmap: { type: 'bool', default: 'true', description: 'Memory-map model file' },
+    use_mlock: { type: 'bool', default: 'false', description: 'Lock model in memory' },
+    flash_attention: { type: 'bool', default: 'false', description: 'Enable flash attention' },
+  }}
+/>

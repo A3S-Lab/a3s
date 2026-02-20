@@ -40,24 +40,26 @@ helm uninstall a3s-box -n a3s-box-system
 
 ## Chart Values
 
-| Value | Description | Default |
-|-------|-------------|---------|
-| `image.repository` | CRI container image | `ghcr.io/a3s-lab/a3s-box-cri` |
-| `image.tag` | Image tag | `latest` |
-| `image.pullPolicy` | Pull policy | `IfNotPresent` |
-| `nodeSelector` | DaemonSet node selector | `a3s-box.io/runtime: "true"` |
-| `config.socketPath` | CRI socket path | `/var/run/a3s-box/a3s-box.sock` |
-| `config.imageCacheSize` | Image cache size (bytes) | `10737418240` (10 GB) |
-| `config.logLevel` | Log level | `info` |
-| `overhead.memory` | Per-pod VM memory overhead | `30Mi` |
-| `overhead.cpu` | Per-pod VM CPU overhead | `50m` |
-| `resources.requests.cpu` | CRI pod CPU request | `100m` |
-| `resources.requests.memory` | CRI pod memory request | `128Mi` |
-| `resources.limits.cpu` | CRI pod CPU limit | `500m` |
-| `resources.limits.memory` | CRI pod memory limit | `512Mi` |
-| `runtimeHandler` | RuntimeClass handler name | `a3s-box` |
-| `serviceAccount.create` | Create ServiceAccount | `true` |
-| `serviceAccount.name` | ServiceAccount name | `a3s-box-cri` |
+<TypeTable
+  type={{
+    'image.repository': { type: 'string', default: '"ghcr.io/a3s-lab/a3s-box-cri"', description: 'CRI container image' },
+    'image.tag': { type: 'string', default: '"latest"', description: 'Image tag' },
+    'image.pullPolicy': { type: 'string', default: '"IfNotPresent"', description: 'Pull policy' },
+    nodeSelector: { type: 'object', default: '`a3s-box.io/runtime: "true"`', description: 'DaemonSet node selector' },
+    'config.socketPath': { type: 'string', default: '"/var/run/a3s-box/a3s-box.sock"', description: 'CRI socket path' },
+    'config.imageCacheSize': { type: 'number', default: '10737418240', description: 'Image cache size (bytes)' },
+    'config.logLevel': { type: 'string', default: '"info"', description: 'Log level' },
+    'overhead.memory': { type: 'string', default: '"30Mi"', description: 'Per-pod VM memory overhead' },
+    'overhead.cpu': { type: 'string', default: '"50m"', description: 'Per-pod VM CPU overhead' },
+    'resources.requests.cpu': { type: 'string', default: '"100m"', description: 'CRI pod CPU request' },
+    'resources.requests.memory': { type: 'string', default: '"128Mi"', description: 'CRI pod memory request' },
+    'resources.limits.cpu': { type: 'string', default: '"500m"', description: 'CRI pod CPU limit' },
+    'resources.limits.memory': { type: 'string', default: '"512Mi"', description: 'CRI pod memory limit' },
+    runtimeHandler: { type: 'string', default: '"a3s-box"', description: 'RuntimeClass handler name' },
+    'serviceAccount.create': { type: 'bool', default: 'true', description: 'Create ServiceAccount' },
+    'serviceAccount.name': { type: 'string', default: '"a3s-box-cri"', description: 'ServiceAccount name' },
+  }}
+/>
 
 ## What Gets Deployed
 

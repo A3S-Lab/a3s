@@ -194,14 +194,16 @@ Use `read` to examine API files and `grep` to search for patterns.
 
 ### Frontmatter Fields
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | Yes | Unique skill identifier (kebab-case) |
-| `description` | Yes | Brief description of what the skill does |
-| `allowed-tools` | No | Comma-separated list of allowed tools with wildcards |
-| `kind` | Yes | Skill type: `instruction`, `tool`, or `agent` |
-| `tags` | No | List of tags for categorization |
-| `version` | No | Semantic version (e.g., "1.0.0") |
+<TypeTable
+  type={{
+    name: { type: 'string', required: true, description: 'Unique skill identifier (kebab-case)' },
+    description: { type: 'string', required: true, description: 'Brief description of what the skill does' },
+    'allowed-tools': { type: 'string', description: 'Comma-separated list of allowed tools with wildcards' },
+    kind: { type: '"instruction" | "tool" | "agent"', required: true, description: 'Skill type' },
+    tags: { type: 'string[]', description: 'List of tags for categorization' },
+    version: { type: 'string', description: 'Semantic version (e.g., "1.0.0")' },
+  }}
+/>
 
 ### Tool Permission Syntax
 

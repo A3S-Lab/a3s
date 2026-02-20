@@ -1,0 +1,36 @@
+---
+title: 推理
+description: 推理参数、采样策略和性能调优
+---
+
+# 推理
+
+## 推理参数
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `temperature` | 采样温度，越高越随机 | 0.8 |
+| `top_p` | nucleus 采样概率 | 0.9 |
+| `top_k` | top-k 采样 | 40 |
+| `num_predict` | 最大生成 token 数 | 128 |
+| `num_ctx` | 上下文窗口大小 | 2048 |
+| `repeat_penalty` | 重复惩罚系数 | 1.1 |
+
+## KV 缓存
+
+A3S Power 支持 KV 缓存复用，通过前缀匹配加速多轮对话，减少重复计算。
+
+## GPU 加速
+
+- **macOS**：Metal（Apple Silicon 和 AMD GPU）
+- **Linux/Windows**：CUDA（NVIDIA GPU）
+
+```bash
+# 查看 GPU 信息
+a3s-power info
+
+# 指定 GPU 层数
+a3s-power run llama3.2 --num-gpu 35
+```
+
+详细文档请参阅[英文版](/docs/en/power/inference)。

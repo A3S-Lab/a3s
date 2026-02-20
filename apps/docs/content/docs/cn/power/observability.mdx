@@ -1,0 +1,24 @@
+---
+title: 可观测性
+description: Prometheus 指标和使用量仪表盘
+---
+
+# 可观测性
+
+## Prometheus 指标
+
+```bash
+# 获取指标
+curl http://localhost:11434/metrics
+```
+
+主要指标包括：请求计数、延迟分布、token 生成速率、模型加载状态、GPU 内存使用等。
+
+## 使用量仪表盘
+
+```bash
+# 查看使用统计
+curl http://localhost:11434/api/usage
+```
+
+详细文档请参阅[英文版](/docs/en/power/observability)。

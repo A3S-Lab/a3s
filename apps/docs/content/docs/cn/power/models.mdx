@@ -1,0 +1,41 @@
+---
+title: 模型管理
+description: 下载、管理和组织本地模型
+---
+
+# 模型管理
+
+## 模型来源
+
+A3S Power 支持三种模型来源，按优先级依次解析：
+
+1. **Ollama 注册表** — `llama3.2`、`qwen2.5:7b` 等
+2. **内置目录** — 常用模型的预配置别名
+3. **HuggingFace** — `hf.co/<用户>/<仓库>` 格式
+
+## 内容寻址存储
+
+模型以 SHA-256 内容寻址方式存储，相同内容只存一份，节省磁盘空间。
+
+```bash
+# 查看存储使用
+a3s-power list --size
+
+# 清理未使用的 blob
+a3s-power prune
+```
+
+## Modelfile
+
+```
+FROM llama3.2
+PARAMETER temperature 0.7
+PARAMETER num_predict 512
+SYSTEM "你是一个有帮助的中文助手。"
+```
+
+```bash
+a3s-power create my-assistant -f Modelfile
+```
+
+详细文档请参阅[英文版](/docs/en/power/models)。

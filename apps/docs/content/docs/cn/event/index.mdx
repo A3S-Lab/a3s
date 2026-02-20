@@ -1,0 +1,97 @@
+---
+title: A3S Event
+description: 提供商无关的事件总线，支持 Schema 验证、加密、死信队列和可观测性
+---
+
+# A3S Event
+
+A3S Event 是面向 Rust 的提供商无关事件系统。所有后端实现 `EventProvider` trait — 无需修改应用代码即可在 NATS JetStream 和内存模式之间切换。
+
+## 特性标志
+
+所有可选模块都在特性门控后面，最小核心编译时零可选依赖。
+
+| 特性 | 默认 | 说明 |
+|------|------|------|
+| `nats` | ✅ | NATS JetStream 提供商 |
+| `encryption` | ✅ | AES-256-GCM 载荷加密，支持密钥轮换 |
+| `cloudevents` | ✅ | CloudEvents v1.0 转换 |
+| `routing` | ✅ | Broker/Trigger 事件路由 + 事件 Sink |
+
+```toml
+# 完整版（默认）
+a3s-event = "0.3"
+
+# 仅最小核心
+a3s-event = { version = "0.3", default-features = false }
+
+# 按需选择
+a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
+```
+
+## 架构
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                        EventBus                          │
+│                                                          │
+│  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐  │
+│  │ SchemaReg   │  │  Encryptor   │  │  DLQ Handler  │  │
+│  │ validate()  │  │ AES-256-GCM  │  │ MemoryDlq     │  │
+│  └──────┬──────┘  └──────┬───────┘  └──────┬────────┘  │
+│         │                │                  │            │
+│         └────── publish ─┴── subscribe ─────┘            │
+│                       │                                  │
+│  ┌────────────────────┴────────────────────────────┐    │
+│  │              EventProvider（trait）               │    │
+│  │  publish · subscribe · durable · history · ack   │    │
+│  └──────────────┬──────────────────┬───────────────┘    │
+│                 │                  │                      │
+│  ┌──────────────┴───┐  ┌──────────┴──────────┐         │
+│  │  MemoryProvider   │  │   NatsProvider      │         │
+│  │  tokio::broadcast │  │   JetStream         │         │
+│  │  零依赖           │  │   持久订阅          │         │
+│  └──────────────────┘  └─────────────────────┘         │
+│                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │ StateStore   │  │ EventMetrics │  │ Broker       │  │
+│  │ 文件 / 内存  │  │ 无锁原子计数 │  │ 路由 ⚑      │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  │
+└──────────────────────────────────────────────────────────┘
+
+⚑ = 特性门控
+```
+
+## 提供商对比
+
+| 能力 | MemoryProvider | NatsProvider |
+|------|---------------|--------------|
+| 发布/订阅 | ✅ | ✅ |
+| 历史/重放 | 内存缓冲 | JetStream 流 |
+| 持久订阅 | 否 | ✅ |
+| 通配符 | ✅（`>`、`*`） | ✅（NATS 主题） |
+| 去重 | 否 | ✅（msg_id） |
+| 手动 Ack/Nak | 否 | ✅ |
+| 背压 | 否 | ✅（max_ack_pending） |
+| 健康检查 | 始终健康 | 连接检查 |
+| 持久化 | 无 | 文件或内存存储 |
+| 适用场景 | 开发、测试 | 生产 |
+
+## 核心类型
+
+| 类型 | 说明 |
+|------|------|
+| `EventProvider` | 核心 trait — 所有后端实现此接口 |
+| `EventBus` | 高级 API，带订阅管理 |
+| `Event` | 消息信封（id、subject、category、event_type、version、payload） |
+| `ReceivedEvent` | 带投递上下文的事件（sequence、num_delivered、stream） |
+| `Subscription` | 来自任意提供商的异步事件流 |
+| `PendingEvent` | 带 ack/nak 回调的事件，用于手动确认 |
+| `SchemaRegistry` | 事件类型验证，支持兼容性检查 |
+| `StateStore` | 持久化订阅状态的 trait |
+| `EventMetrics` | 无锁原子计数器 |
+| `DlqHandler` | 死信队列 trait |
+
+## 测试覆盖
+
+176 个单元测试 + 29 个内存集成测试 + 9 个 NATS 集成测试 + 2 个文档测试。

@@ -1,0 +1,25 @@
+---
+title: CLI 参考
+description: A3S Search 命令行工具
+---
+
+# CLI 参考
+
+```bash
+# 基本搜索
+a3s-search "Rust 编程语言"
+
+# 指定引擎
+a3s-search --engines ddg,brave,wiki "Rust 异步编程"
+
+# JSON 输出
+a3s-search --format json "Rust 编程语言"
+
+# 限制结果数
+a3s-search --limit 5 "Rust 编程语言"
+
+# 中文引擎
+a3s-search --engines sogou,360 "Rust 编程语言"
+```
+
+详细文档请参阅[英文版](/docs/en/search/cli)。

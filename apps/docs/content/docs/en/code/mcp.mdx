@@ -109,14 +109,16 @@ mcp_servers {
 
 ### MCP server config fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | `string` | ✅ | Server identifier (used in tool name prefix) |
-| `command` | `string` | ✅ | Executable to launch |
-| `args` | `string[]` | ❌ | Command arguments |
-| `env` | `object` | ❌ | Environment variables |
-| `timeout_ms` | `number` | ❌ | Tool execution timeout (default: `60000`) |
-| `transport` | `string` | ❌ | `stdio` (default) or `http` |
+<TypeTable
+  type={{
+    name: { type: 'string', required: true, description: 'Server identifier (used in tool name prefix)' },
+    command: { type: 'string', required: true, description: 'Executable to launch' },
+    args: { type: 'string[]', description: 'Command arguments' },
+    env: { type: 'object', description: 'Environment variables' },
+    timeout_ms: { type: 'number', default: '60000', description: 'Tool execution timeout' },
+    transport: { type: 'string', default: '"stdio"', description: '`stdio` (default) or `http`' },
+  }}
+/>
 
 ### McpTransport trait (Rust)
 

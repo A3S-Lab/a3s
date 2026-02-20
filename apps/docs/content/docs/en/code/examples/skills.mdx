@@ -190,15 +190,17 @@ For full skills documentation, see [Skills](/docs/code/skills).
 
 ### Skill frontmatter fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | `string` | ✅ | Unique skill identifier |
-| `description` | `string` | ✅ | What the skill does |
-| `triggers` | `string[]` | ✅ | Phrases that activate the skill |
-| `allowed-tools` | `string` | ❌ | Tool access pattern (e.g. `"read(*), grep(*)"`) |
-| `kind` | `string` | ❌ | `instruction` (default) or `agent` |
-| `tags` | `string[]` | ❌ | Categorization tags |
-| `version` | `string` | ❌ | Semver version string |
+<TypeTable
+  type={{
+    name: { type: 'string', required: true, description: 'Unique skill identifier' },
+    description: { type: 'string', required: true, description: 'What the skill does' },
+    triggers: { type: 'string[]', required: true, description: 'Phrases that activate the skill' },
+    'allowed-tools': { type: 'string', description: 'Tool access pattern (e.g. `"read(*), grep(*)"`)' },
+    kind: { type: 'string', default: '"instruction"', description: '`instruction` or `agent`' },
+    tags: { type: 'string[]', description: 'Categorization tags' },
+    version: { type: 'string', description: 'Semver version string' },
+  }}
+/>
 
 ### Built-in skills
 

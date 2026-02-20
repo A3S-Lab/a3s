@@ -151,18 +151,20 @@ Key isolation guarantees:
 
 ## AgentDefinition Reference
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | yes | Unique agent identifier |
-| `description` | string | yes | What the agent does (shown to LLM) |
-| `mode` | `subagent` or `primary` | no | Agent mode (default: `subagent`) |
-| `hidden` | bool | no | Hide from listing (default: `false`) |
-| `max_steps` | number | no | Maximum tool rounds |
-| `can_spawn_subagents` | bool | no | Allow recursive delegation (default: `false`) |
-| `permissions.allow` | string[] | no | Allowed tool names |
-| `permissions.deny` | string[] | no | Denied tool names |
-| `model` | string | no | Model override in `provider/model` format |
-| `prompt` | string | no | System prompt for the agent |
+<TypeTable
+  type={{
+    name: { type: 'string', required: true, description: 'Unique agent identifier' },
+    description: { type: 'string', required: true, description: 'What the agent does (shown to LLM)' },
+    mode: { type: '"subagent" | "primary"', default: '"subagent"', description: 'Agent mode' },
+    hidden: { type: 'bool', default: 'false', description: 'Hide from listing' },
+    max_steps: { type: 'number', description: 'Maximum tool rounds' },
+    can_spawn_subagents: { type: 'bool', default: 'false', description: 'Allow recursive delegation' },
+    'permissions.allow': { type: 'string[]', description: 'Allowed tool names' },
+    'permissions.deny': { type: 'string[]', description: 'Denied tool names' },
+    model: { type: 'string', description: 'Model override in `provider/model` format' },
+    prompt: { type: 'string', description: 'System prompt for the agent' },
+  }}
+/>
 
 ## Tool Invocation
 
@@ -170,23 +172,27 @@ The LLM delegates to sub-agents via two tools: `task` (single) and `parallel_tas
 
 ### `task` Parameters
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `agent` | string | yes | Agent name (built-in or custom) |
-| `description` | string | yes | Short task description |
-| `prompt` | string | yes | Detailed prompt for the subagent |
-| `background` | bool | no | Run without waiting for result (default: `false`) |
-| `max_steps` | int | no | Override agent's default max steps |
+<TypeTable
+  type={{
+    agent: { type: 'string', required: true, description: 'Agent name (built-in or custom)' },
+    description: { type: 'string', required: true, description: 'Short task description' },
+    prompt: { type: 'string', required: true, description: 'Detailed prompt for the subagent' },
+    background: { type: 'bool', default: 'false', description: 'Run without waiting for result' },
+    max_steps: { type: 'int', description: "Override agent's default max steps" },
+  }}
+/>
 
 ### `task` Result
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `output` | string | Subagent response text |
-| `session_id` | string | Child session ID |
-| `agent` | string | Agent name used |
-| `success` | bool | Whether execution succeeded |
-| `task_id` | string | Unique task identifier |
+<TypeTable
+  type={{
+    output: { type: 'string', description: 'Subagent response text' },
+    session_id: { type: 'string', description: 'Child session ID' },
+    agent: { type: 'string', description: 'Agent name used' },
+    success: { type: 'bool', description: 'Whether execution succeeded' },
+    task_id: { type: 'string', description: 'Unique task identifier' },
+  }}
+/>
 
 ### Single Delegation
 
@@ -475,28 +481,26 @@ Both built-in and custom agents are available by name. Custom agents loaded from
 
 ### AgentDefinition fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | `string` | ✅ | Agent identifier (used in `task` tool) |
-| `description` | `string` | ✅ | What this agent does |
-| `system_prompt` | `string` | ✅ | Agent's system prompt / instructions |
-| `model` | `string` | ❌ | Model override (`provider/model` format) |
-| `allowed_tools` | `string[]` | ❌ | Tool access restrictions |
-| `max_tool_rounds` | `number` | ❌ | Max tool rounds per invocation |
-
-### SessionOptions
-
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| Agent dirs | `.with_agent_dir(path)` | `agent_dirs=[path]` | `agentDirs: [path]` | `[]` |
+<TypeTable
+  type={{
+    name: { type: 'string', required: true, description: 'Agent identifier (used in `task` tool)' },
+    description: { type: 'string', required: true, description: 'What this agent does' },
+    system_prompt: { type: 'string', required: true, description: "Agent's system prompt / instructions" },
+    model: { type: 'string', description: 'Model override (`provider/model` format)' },
+    allowed_tools: { type: 'string[]', description: 'Tool access restrictions' },
+    max_tool_rounds: { type: 'number', description: 'Max tool rounds per invocation' },
+  }}
+/>
 
 ### task tool schema
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `agent` | `string` | ✅ | Agent name to delegate to |
-| `prompt` | `string` | ✅ | Task prompt |
-| `workspace` | `string` | ❌ | Workspace override |
+<TypeTable
+  type={{
+    agent: { type: 'string', required: true, description: 'Agent name to delegate to' },
+    prompt: { type: 'string', required: true, description: 'Task prompt' },
+    workspace: { type: 'string', description: 'Workspace override' },
+  }}
+/>
 
 ### Built-in agents
 

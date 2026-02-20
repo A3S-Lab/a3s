@@ -16,15 +16,17 @@ A3S Code uses a unified `Task` struct for both planning and todo tracking. The `
 
 Each task has the following fields:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `String` | Unique task identifier |
-| `content` | `String` | Task description |
-| `status` | `TaskStatus` | Current lifecycle state |
-| `priority` | `TaskPriority` | `High`, `Medium`, or `Low` |
-| `tool` | `Option<String>` | Suggested tool for execution |
-| `dependencies` | `Vec<String>` | Task IDs that must complete first |
-| `success_criteria` | `Option<String>` | How to verify completion |
+<TypeTable
+  type={{
+    id: { type: 'String', description: 'Unique task identifier' },
+    content: { type: 'String', description: 'Task description' },
+    status: { type: 'TaskStatus', description: 'Current lifecycle state' },
+    priority: { type: 'TaskPriority', description: '`High`, `Medium`, or `Low`' },
+    tool: { type: 'Option<String>', description: 'Suggested tool for execution' },
+    dependencies: { type: 'Vec<String>', description: 'Task IDs that must complete first' },
+    success_criteria: { type: 'Option<String>', description: 'How to verify completion' },
+  }}
+/>
 
 ### TaskStatus
 
@@ -482,33 +484,51 @@ When a session is restored from storage, its task list is restored too — the a
 
 ### SessionOptions
 
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| Planning | `.with_planning(true)` | `planning=True` | `planning: true` | `false` |
-| Goal tracking | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` | `false` |
-| Max tool rounds | `.with_max_tool_rounds(n)` | `max_tool_rounds=n` | `maxToolRounds: n` | `50` |
+<TypeTable
+  type={{
+    planning: {
+      type: 'bool',
+      default: 'false',
+      description: 'Enable LLM task planning. Rust: `.with_planning(true)`, TS: `planning: true`, Python: `planning=True`',
+    },
+    goal_tracking: {
+      type: 'bool',
+      default: 'false',
+      description: 'Track goal progress. Rust: `.with_goal_tracking(true)`, TS: `goalTracking: true`, Python: `goal_tracking=True`',
+    },
+    max_tool_rounds: {
+      type: 'usize',
+      default: '50',
+      description: 'Max tool call rounds per turn. Rust: `.with_max_tool_rounds(n)`, TS: `maxToolRounds: n`, Python: `max_tool_rounds=n`',
+    },
+  }}
+/>
 
 ### AgentTask fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `String` | Unique task identifier |
-| `title` | `String` | Short task description |
-| `status` | `TaskStatus` | `Pending`, `InProgress`, `Completed`, `Failed`, `Cancelled` |
-| `priority` | `TaskPriority` | `Critical`, `High`, `Medium`, `Low` |
-| `dependencies` | `Vec<String>` | IDs of tasks that must complete first |
-| `created_at` | `DateTime<Utc>` | Creation timestamp |
-| `completed_at` | `Option<DateTime<Utc>>` | Completion timestamp |
+<TypeTable
+  type={{
+    id: { type: 'String', description: 'Unique task identifier' },
+    title: { type: 'String', description: 'Short task description' },
+    status: { type: 'TaskStatus', description: '`Pending`, `InProgress`, `Completed`, `Failed`, `Cancelled`' },
+    priority: { type: 'TaskPriority', description: '`Critical`, `High`, `Medium`, `Low`' },
+    dependencies: { type: 'Vec<String>', description: 'IDs of tasks that must complete first' },
+    created_at: { type: 'DateTime<Utc>', description: 'Creation timestamp' },
+    completed_at: { type: 'Option<DateTime<Utc>>', description: 'Completion timestamp' },
+  }}
+/>
 
 ### AgentGoal fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `description` | `String` | Goal description |
-| `success_criteria` | `Vec<String>` | Measurable completion criteria |
-| `progress` | `f32` | Progress (0.0–1.0) |
-| `achieved` | `bool` | Whether goal is complete |
-| `created_at` | `DateTime<Utc>` | Creation timestamp |
+<TypeTable
+  type={{
+    description: { type: 'String', description: 'Goal description' },
+    success_criteria: { type: 'Vec<String>', description: 'Measurable completion criteria' },
+    progress: { type: 'f32', description: 'Progress (0.0–1.0)' },
+    achieved: { type: 'bool', description: 'Whether goal is complete' },
+    created_at: { type: 'DateTime<Utc>', description: 'Creation timestamp' },
+  }}
+/>
 
 ### Planner trait (Rust)
 

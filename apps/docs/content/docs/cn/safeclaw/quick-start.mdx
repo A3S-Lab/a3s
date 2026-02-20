@@ -1,0 +1,254 @@
+---
+title: 快速开始
+description: 将 SafeClaw 作为 AI Agent 的安全代理运行
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# 快速开始
+
+## 配置
+
+SafeClaw 支持 HCL（推荐）和 TOML 两种配置格式，通过文件扩展名自动检测。
+
+<Tabs items={["HCL", "TOML"]}>
+<Tab value="HCL">
+创建 `safeclaw.hcl` 配置文件：
+
+```hcl
+gateway {
+  host = "127.0.0.1"
+  port = 18790
+}
+
+agent {
+  socket_path         = "/run/safeclaw/code-agent.sock"
+  connect_timeout_secs = 10
+  wait_for_service    = true
+}
+
+tee {
+  enabled = false
+}
+
+privacy {
+  default_sensitivity      = "Normal"
+  enable_semantic_analysis  = true
+  enable_compliance_checks = true
+}
+
+audit {
+  enabled      = true
+  log_capacity = 10000
+}
+```
+</Tab>
+<Tab value="TOML">
+创建 `safeclaw.toml` 配置文件：
+
+```toml
+[gateway]
+host = "127.0.0.1"
+port = 18790
+
+[agent]
+socket_path = "/run/safeclaw/code-agent.sock"
+connect_timeout_secs = 10
+wait_for_service = true
+
+[tee]
+enabled = false
+
+[privacy]
+default_sensitivity = "Normal"
+enable_semantic_analysis = true
+enable_compliance_checks = true
+
+[audit]
+enabled = true
+log_capacity = 10000
+```
+</Tab>
+</Tabs>
+
+## 启动 SafeClaw
+
+```bash
+# 使用 HCL 配置启动（推荐）
+safeclaw --config safeclaw.hcl
+
+# 使用 TOML 配置启动
+safeclaw --config safeclaw.toml
+
+# 开启调试日志
+safeclaw --config safeclaw.hcl --log-level debug
+```
+
+## 发送消息
+
+```bash
+# 对文本进行 PII 分类
+curl -X POST http://localhost:18790/api/v1/privacy/classify \
+  -H "Content-Type: application/json" \
+  -d '{"text": "我的邮箱是 user@example.com，身份证号是 110101199001011234"}'
+
+# 响应示例：
+# {
+#   "level": "HighlySensitive",
+#   "matches": [
+#     {"rule_name": "email", "level": "Sensitive", "redacted": "[EMAIL]"},
+#     {"rule_name": "id_card", "level": "HighlySensitive", "redacted": "[ID_CARD]"}
+#   ],
+#   "requires_tee": true
+# }
+```
+
+## 通过网关发送对话消息
+
+```bash
+curl -X POST http://localhost:18790/api/v1/gateway/message \
+  -H "Content-Type: application/json" \
+  -d '{"content": "帮我写一个 Python 脚本", "channel": "webchat", "user_id": "user-1"}'
+```
+
+## WebSocket 连接
+
+```javascript
+const ws = new WebSocket("ws://localhost:18790/ws");
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    type: "message",
+    content: "你好，能帮我吗？",
+    channel: "webchat",
+    user_id: "user-1",
+  }));
+};
+
+ws.onmessage = (event) => {
+  const response = JSON.parse(event.data);
+  console.log(response.content);
+};
+```
+
+## 健康检查
+
+```bash
+# 健康检查
+curl http://localhost:18790/health
+
+# 网关状态
+curl http://localhost:18790/api/v1/gateway/status
+
+# 审计事件
+curl http://localhost:18790/api/v1/audit/events
+
+# 服务发现
+curl http://localhost:18790/.well-known/a3s-service.json
+```
+
+## 启用 TEE
+
+启用硬件级内存加密：
+
+<Tabs items={["HCL", "TOML"]}>
+<Tab value="HCL">
+```hcl
+tee {
+  enabled = true
+
+  network_policy {
+    enabled      = true
+    default_deny = true
+    allowed_protocols = ["https"]
+
+    allowed_domains {
+      domain = "api.anthropic.com"
+      ports  = [443]
+    }
+
+    allowed_domains {
+      domain = "api.openai.com"
+      ports  = [443]
+    }
+  }
+}
+```
+</Tab>
+<Tab value="TOML">
+```toml
+[tee]
+enabled = true
+
+[tee.network_policy]
+enabled = true
+default_deny = true
+allowed_protocols = ["https"]
+
+[[tee.network_policy.allowed_domains]]
+domain = "api.anthropic.com"
+ports = [443]
+
+[[tee.network_policy.allowed_domains]]
+domain = "api.openai.com"
+ports = [443]
+```
+</Tab>
+</Tabs>
+
+## 添加通道适配器
+
+<Tabs items={["HCL", "TOML"]}>
+<Tab value="HCL">
+```hcl
+channels {
+  telegram {
+    bot_token = "${TELEGRAM_BOT_TOKEN}"
+  }
+
+  slack {
+    bot_token      = "${SLACK_BOT_TOKEN}"
+    signing_secret = "${SLACK_SIGNING_SECRET}"
+  }
+
+  discord {
+    bot_token  = "${DISCORD_BOT_TOKEN}"
+    public_key = "${DISCORD_PUBLIC_KEY}"
+  }
+}
+```
+</Tab>
+<Tab value="TOML">
+```toml
+[channels.telegram]
+bot_token = "${TELEGRAM_BOT_TOKEN}"
+
+[channels.slack]
+bot_token = "${SLACK_BOT_TOKEN}"
+signing_secret = "${SLACK_SIGNING_SECRET}"
+
+[channels.discord]
+bot_token = "${DISCORD_BOT_TOKEN}"
+public_key = "${DISCORD_PUBLIC_KEY}"
+```
+</Tab>
+</Tabs>
+
+Webhook 接收地址：`/api/v1/gateway/webhook/:channel`（例如 `/api/v1/gateway/webhook/telegram`）。
+
+## 编程式使用
+
+```rust
+use safeclaw::{Gateway, GatewayBuilder, config::SafeClawConfig};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // 支持 .hcl 和 .toml — 格式自动检测
+    let config = SafeClawConfig::from_file("safeclaw.hcl")?;
+    let gateway = GatewayBuilder::new(config).build().await?;
+
+    gateway.start().await?;
+    gateway.wait_for_shutdown().await;
+    Ok(())
+}
+```

@@ -1,0 +1,19 @@
+{
+  "title": "A3S Box",
+  "pages": [
+    "index",
+    "quick-start",
+    "---核心---",
+    "configuration",
+    "images",
+    "networking",
+    "---安全---",
+    "tee",
+    "---SDK---",
+    "sdk",
+    "---运维---",
+    "cri",
+    "helm",
+    "cli"
+  ]
+}

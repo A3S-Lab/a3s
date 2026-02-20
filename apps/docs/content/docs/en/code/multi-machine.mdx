@@ -655,35 +655,32 @@ This makes A3S Code suitable for:
 
 ### LaneHandlerConfig
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `mode` | `TaskHandlerMode` | `Internal`, `External`, or `Hybrid` |
-| `timeout_ms` | `Option<u64>` | Max wait for external worker response |
-
-### External task methods
-
-| Method | Rust | Python | Node.js |
-|--------|------|--------|---------|
-| Set handler | `session.set_external_task_handler(fn).await` | `session.set_external_task_handler(fn)` | `session.setExternalTaskHandler(fn)` |
-| Poll pending | `session.pending_external_tasks().await` | `await session.pending_external_tasks()` | `await session.pendingExternalTasks()` |
-| Complete task | `session.complete_external_task(id, result).await` | `await session.complete_external_task(id, result)` | `await session.completeExternalTask(id, result)` |
-| Set lane handler | `session.set_lane_handler(lane, cfg).await` | `await session.set_lane_handler(lane, cfg)` | `await session.setLaneHandler(lane, cfg)` |
+<TypeTable
+  type={{
+    mode: { type: 'TaskHandlerMode', description: '`Internal`, `External`, or `Hybrid`' },
+    timeout_ms: { type: 'Option<u64>', description: 'Max wait for external worker response' },
+  }}
+/>
 
 ### ExternalTask fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `task_id` | `String` | Unique task identifier |
-| `lane` | `SessionLane` | `Control`, `Query`, `Execute`, or `Generate` |
-| `payload` | `Value` | Task data (prompt, tool args, etc.) |
-| `created_at` | `DateTime<Utc>` | Enqueue timestamp |
-| `timeout_ms` | `Option<u64>` | Per-task timeout override |
+<TypeTable
+  type={{
+    task_id: { type: 'String', description: 'Unique task identifier' },
+    lane: { type: 'SessionLane', description: '`Control`, `Query`, `Execute`, or `Generate`' },
+    payload: { type: 'Value', description: 'Task data (prompt, tool args, etc.)' },
+    created_at: { type: 'DateTime<Utc>', description: 'Enqueue timestamp' },
+    timeout_ms: { type: 'Option<u64>', description: 'Per-task timeout override' },
+  }}
+/>
 
 ### ExternalTaskResult fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `success` | `bool` | Whether the task completed successfully |
-| `result` | `Option<Value>` | Task output payload |
-| `error` | `Option<String>` | Error message if `success` is `false` |
-| `duration_ms` | `Option<u64>` | Worker execution time |
+<TypeTable
+  type={{
+    success: { type: 'bool', description: 'Whether the task completed successfully' },
+    result: { type: 'Option<Value>', description: 'Task output payload' },
+    error: { type: 'Option<String>', description: 'Error message if `success` is `false`' },
+    duration_ms: { type: 'Option<u64>', description: 'Worker execution time' },
+  }}
+/>

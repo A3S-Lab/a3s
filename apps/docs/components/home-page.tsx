@@ -14,6 +14,7 @@ import {
   Package,
 } from 'lucide-react';
 import { LangDropdown } from '@/components/lang-dropdown';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 
@@ -213,7 +214,7 @@ function ModuleCard({
   return (
     <Link
       href={href}
-      className="module-card group flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-6 hover:-translate-y-1"
+      className="module-card group flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-6 hover:-translate-y-1 dark:border-slate-700 dark:bg-slate-800"
     >
       <div className="flex items-start justify-between">
         <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${color}`}>
@@ -226,12 +227,12 @@ function ModuleCard({
       </div>
       <div>
         <div className="mb-1 flex items-center gap-2">
-          <span className="text-base font-bold text-slate-900">{name}</span>
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.6875rem] font-medium text-slate-500">
+          <span className="text-base font-bold text-slate-900 dark:text-slate-100">{name}</span>
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.6875rem] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-400">
             {tag}
           </span>
         </div>
-        <p className="text-sm leading-relaxed text-slate-500">{description}</p>
+        <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400">{description}</p>
       </div>
     </Link>
   );
@@ -254,7 +255,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
       }}
     >
       {/* ── Nav ── */}
-      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md">
+      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/80">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href={lang === 'cn' ? '/cn' : '/'} className="flex items-center gap-2">
             <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-xl font-extrabold tracking-tight text-transparent">
@@ -265,13 +266,13 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
           <div className="flex items-center gap-2">
             <Link
               href={docsHref}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             >
               {tr.docsLink}
             </Link>
             <Link
               href="/blog"
-              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             >
               Blog
             </Link>
@@ -279,12 +280,13 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
               href="https://github.com/A3S-Lab"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 sm:flex"
+              className="hidden items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 sm:flex"
             >
               <Github className="h-4 w-4" />
               GitHub
             </Link>
             <LangDropdown />
+            <ThemeToggle />
           </div>
         </div>
       </nav>
@@ -303,9 +305,9 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
         />
 
         <div className="relative mx-auto max-w-4xl text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 dark:border-indigo-800 dark:bg-indigo-950">
             <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-            <span className="text-xs font-semibold text-indigo-700">{tr.badge}</span>
+            <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">{tr.badge}</span>
           </div>
 
           <h1
@@ -320,7 +322,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
             {tr.heroTitle2}
           </h1>
 
-          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-500 sm:text-xl">
+          <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-slate-500 dark:text-slate-400 sm:text-xl">
             {tr.heroSub}
           </p>
 
@@ -337,7 +339,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
               href="https://github.com/A3S-Lab"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50"
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-7 py-3.5 text-sm font-semibold text-slate-700 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700"
             >
               <Github className="h-4 w-4" />
               {tr.viewGithub}
@@ -351,7 +353,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
         <div className="mx-auto max-w-7xl">
           <div className="mb-8">
             <span className="text-xs font-semibold uppercase tracking-widest text-indigo-500">{tr.frameworkLabel}</span>
-            <h2 className="mt-1 text-2xl font-bold text-slate-900">{tr.frameworkHeading}</h2>
+            <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{tr.frameworkHeading}</h2>
           </div>
           <div className="max-w-xl">
             {frameworks.map((m) => (
@@ -366,7 +368,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
         <div className="mx-auto max-w-7xl">
           <div className="mb-8">
             <span className="text-xs font-semibold uppercase tracking-widest text-violet-500">{tr.appsLabel}</span>
-            <h2 className="mt-1 text-2xl font-bold text-slate-900">{tr.appsHeading}</h2>
+            <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{tr.appsHeading}</h2>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {applications.map((m) => (
@@ -381,7 +383,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
         <div className="mx-auto max-w-7xl">
           <div className="mb-8">
             <span className="text-xs font-semibold uppercase tracking-widest text-emerald-500">{tr.libsLabel}</span>
-            <h2 className="mt-1 text-2xl font-bold text-slate-900">{tr.libsHeading}</h2>
+            <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{tr.libsHeading}</h2>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {libraries.map((m) => (
@@ -395,28 +397,28 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
       <section className="px-4 py-16 sm:px-6">
         <div className="mx-auto max-w-7xl">
           <div
-            className="overflow-hidden rounded-2xl border border-slate-100 bg-white"
+            className="overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-800"
             style={{ boxShadow: 'var(--ct-shadow-card)' }}
           >
-            <div className="border-b border-slate-100 px-8 py-6">
+            <div className="border-b border-slate-100 px-8 py-6 dark:border-slate-700">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50">
                   <Package className="h-5 w-5 text-indigo-600" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-900">{tr.installTitle}</h2>
-                  <p className="text-sm text-slate-500">{tr.installSub}</p>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{tr.installTitle}</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{tr.installSub}</p>
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-1 divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+            <div className="grid grid-cols-1 divide-y divide-slate-100 dark:divide-slate-700 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
               {installSnippets.map(({ label, cmd }) => (
                 <div key={label} className="px-8 py-5">
-                  <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-slate-400">
+                  <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                     {label}
                   </span>
                   <code
-                    className="block rounded-lg bg-slate-50 px-4 py-3 font-mono text-sm text-slate-800"
+                    className="block rounded-lg bg-slate-50 px-4 py-3 font-mono text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-200"
                     style={{ fontFamily: "'JetBrains Mono', monospace" }}
                   >
                     {cmd}
@@ -467,7 +469,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
       </section>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-slate-200 px-4 py-10 sm:px-6">
+      <footer className="border-t border-slate-200 px-4 py-10 dark:border-slate-700 sm:px-6">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex items-center gap-2">
             <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-sm font-bold text-transparent">

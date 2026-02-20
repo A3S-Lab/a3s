@@ -119,10 +119,12 @@ let config = LaneConfig::new(2, 10)
 
 ### Concurrency
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `min_concurrency` | `usize` | Reserved concurrency slots (advisory) |
-| `max_concurrency` | `usize` | Hard limit enforced by semaphore |
+<TypeTable
+  type={{
+    min_concurrency: { type: 'usize', description: 'Reserved concurrency slots (advisory)' },
+    max_concurrency: { type: 'usize', description: 'Hard limit enforced by semaphore' },
+  }}
+/>
 
 The semaphore ensures no more than `max_concurrency` commands from a lane execute simultaneously.
 

@@ -1,0 +1,22 @@
+---
+title: Helm 部署
+description: 使用 Helm Chart 在 Kubernetes 上部署 A3S Box
+---
+
+# Helm 部署
+
+```bash
+helm repo add a3s-lab https://charts.a3s.dev
+helm repo update
+helm install a3s-box a3s-lab/a3s-box
+```
+
+## 自定义配置
+
+```bash
+helm install a3s-box a3s-lab/a3s-box \
+  --set warmPool.size=4 \
+  --set resources.limits.memory=8Gi
+```
+
+详细文档请参阅[英文版](/docs/en/box/helm)。

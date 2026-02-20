@@ -48,6 +48,16 @@
   --ct-shadow-btn: 0 4px 14px 0 rgba(79,70,229,0.30);
 }
 
+.dark {
+  --ct-bg: #0F172A;
+  --ct-surface: #1E293B;
+  --ct-text: #F1F5F9;
+  --ct-muted: #94A3B8;
+  --ct-border: #334155;
+  --ct-shadow-card: 0 4px 20px -2px rgba(99,102,241,0.15);
+  --ct-shadow-hover: 0 10px 25px -5px rgba(99,102,241,0.25), 0 8px 10px -6px rgba(99,102,241,0.15);
+}
+
 /* Module card — hover shadow via CSS, no JS event handlers needed */
 .module-card {
   box-shadow: var(--ct-shadow-card);

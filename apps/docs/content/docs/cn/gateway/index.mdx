@@ -1,0 +1,83 @@
+---
+title: A3S Gateway
+description: AI 原生 API 网关，支持反向代理、多协议和 Knative 风格自动扩缩容
+---
+
+# A3S Gateway
+
+A3S Gateway 是基于 [hyper](https://hyper.rs/) 和 [rustls](https://github.com/rustls/rustls) 构建的 AI 原生 API 网关和反向代理。通过可组合的中间件管道路由 HTTP/1.1、HTTP/2、WebSocket、SSE、gRPC、TCP 和 UDP 流量，使用兼容 Traefik 的规则语法。配置完全使用 HCL（HashiCorp 配置语言）定义。内置 Knative 风格自动扩缩容、流量镜像、故障转移、灰度发布和仪表盘 API — 全部打包在单个静态链接二进制文件中，共 872 个测试。
+
+## 架构
+
+```
+客户端请求
+    ↓
+入口点（HTTP / HTTPS / TCP / UDP 监听器）
+    ↓
+TLS 终止（rustls，ACME / Let's Encrypt）
+    ↓
+路由器（Host / Path / Headers / Method / SNI 匹配）
+    ↓
+中间件管道（Auth → RateLimit → CORS → Headers → ...）
+    ↓
+服务（负载均衡 + 健康检查 + 故障转移 + 流量镜像）
+    ↓
+扩缩容（Knative 自动扩缩容，请求缓冲，版本路由）
+    ↓
+代理（HTTP / WebSocket / gRPC / TCP / UDP）
+    ↓
+后端服务
+```
+
+## 核心组件
+
+| 组件 | 职责 |
+|------|------|
+| Gateway | 顶层编排器 — 将配置、监听器、路由、扩缩容和可观测性整合为一个单元 |
+| Entrypoint | 带可选 TLS 的命名端口监听器（HTTP、HTTPS、TCP、UDP） |
+| Router | 按 Host、Path、PathPrefix、Headers、Method 和 SNI 匹配请求 |
+| Middleware | 可组合的请求/响应转换（15 个内置中间件） |
+| Service | 带负载均衡、健康检查、故障转移和流量镜像的后端池 |
+| Provider | 动态配置来源（文件监听热重载、DNS 发现、Kubernetes） |
+| Proxy | 协议专用请求转发（HTTP、WebSocket、gRPC、SSE、TCP、UDP） |
+| Scaling | Knative 风格自动扩缩容，支持并发限制、请求缓冲、版本路由和灰度发布 |
+
+## 协议支持
+
+| 协议 | 特性 |
+|------|------|
+| HTTP/1.1 & HTTP/2 | 完整反向代理，过滤逐跳头 |
+| WebSocket | 升级检测、双向中继、多路复用 |
+| SSE / 流式 | 分块传输，适用于 LLM 输出和事件流 |
+| gRPC | HTTP/2 h2c 转发，头部转换 |
+| TCP | 原始字节中继，SNI 路由，IP 过滤 |
+| UDP | 基于会话的数据报中继 |
+
+## 网关生命周期
+
+```rust
+pub enum GatewayState {
+    Created,     // 已创建，尚未启动
+    Starting,    // 初始化监听器，加载配置
+    Running,     // 正在接受和代理请求
+    Reloading,   // 热重载配置（不中断连接）
+    Stopping,    // 排空连接，关闭中
+    Stopped,     // 已完全停止
+}
+```
+
+## 主要特性
+
+- **兼容 Traefik 规则语法** — 支持 `Host()`、`PathPrefix()`、`Headers()`、`Method()` 和 SNI 路由
+- **15 个内置中间件** — API Key、Basic Auth、JWT、Forward Auth、Rate Limit、Rate Limit（Redis）、CORS、Headers、Strip Prefix、Retry、Circuit Breaker、Compress、Body Limit、IP Allowlist、TCP Filter
+- **4 种负载均衡策略** — 轮询、加权、最少连接、随机
+- **纯 Rust TLS**（rustls），自动 ACME / Let's Encrypt 证书申请
+- **热重载** — 文件监听（inotify / kqueue）无中断重载配置
+- **流量镜像** — 将可配置比例的实时流量复制到影子后端（fire-and-forget）
+- **故障转移** — 主后端池无健康实例时自动切换到备用池
+- **Knative 风格自动扩缩容** — `desired = ceil((in_flight + queue_depth) / (concurrency × target_utilization))`，缩容到零，请求缓冲，版本流量分割，错误率/延迟阈值自动回滚
+- **Helm 部署** — 生产就绪的 Kubernetes Helm Chart
+- **内置仪表盘 API** — 健康、指标、配置、路由和服务端点
+- **Prometheus 指标** — 请求计数、延迟、后端健康和自动扩缩容状态
+- **仅 HCL 配置** — 所有网关配置使用 HashiCorp 配置语言
+- **872 个测试** — 单元、集成和基于属性的测试

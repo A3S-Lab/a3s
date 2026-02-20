@@ -1,0 +1,87 @@
+---
+title: A3S Search
+description: 可嵌入的元搜索引擎 — 多引擎聚合、共识排名、代理池和无头浏览器支持
+---
+
+# A3S Search
+
+A3S Search 是受 [SearXNG](https://github.com/searxng/searxng) 启发的可嵌入元搜索引擎库。并行聚合多个搜索引擎的结果，通过规范化 URL 去重，并使用基于共识的评分算法排名。提供 Rust crate、Python 包和 Node.js 模块。
+
+## 主要特性
+
+- **多引擎聚合** — 9 个内置引擎并行查询，每个引擎可配置独立超时
+- **共识排名** — 被多个引擎找到的结果排名更高，支持每引擎权重系数
+- **智能去重** — 通过规范化 URL 合并重复结果，保留最佳标题、摘要和元数据
+- **动态代理池** — 轮询和随机轮换，可插拔 `ProxyProvider` trait 和 `spawn_auto_refresh`
+- **健康监控** — 重复失败后自动暂停引擎，支持可配置恢复
+- **HCL 配置** — 从 `.hcl` 配置文件加载引擎权重、健康设置和超时
+- **无头浏览器** — Chrome DevTools Protocol，用于 JS 渲染引擎（Google、百度、必应中国）
+- **自动安装 Chrome** — 未找到浏览器时自动检测或下载 Chrome for Testing
+- **PageFetcher 抽象** — 可插拔抓取：`HttpFetcher`、`PooledHttpFetcher` 或 `BrowserFetcher`
+- **CLI 工具** — 多种输出格式，支持 Homebrew 分发
+- **原生 SDK** — TypeScript（NAPI-RS）和 Python（PyO3）绑定，支持异步、动态代理池和无头浏览器
+- **跨平台** — macOS（arm64、x64）、Linux（x64）和 Windows（x64、x86），自动下载 Chrome
+
+## 架构
+
+```
+Search
+├── HealthMonitor         ← 按失败次数自动暂停/恢复引擎
+├── 引擎注册表             ← 9 个内置引擎（5 HTTP + 1 API + 3 无头）
+│   ├── DuckDuckGo        ← HttpFetcher / PooledHttpFetcher
+│   ├── Brave             ← HttpFetcher / PooledHttpFetcher
+│   ├── Bing              ← HttpFetcher / PooledHttpFetcher
+│   ├── 搜狗 / 360        ← HttpFetcher / PooledHttpFetcher
+│   ├── Wikipedia         ← JSON API（无需 fetcher）
+│   ├── Google            ← BrowserFetcher → BrowserPool
+│   ├── 百度              ← BrowserFetcher → BrowserPool
+│   └── 必应中国          ← BrowserFetcher → BrowserPool
+├── ProxyPool             ← 轮询 / 随机轮换，AtomicBool 开关
+│   ├── PooledHttpFetcher ← 每请求从池中取代理
+│   └── ProxyProvider     ← 动态代理来源 trait + 自动刷新
+├── Aggregator            ← 去重、合并、共识评分、排序
+└── SearchResults         ← 排名输出
+```
+
+## 内置引擎
+
+### HTTP 引擎
+
+| 引擎 | 快捷名 | 权重 | 分页 | 安全搜索 |
+|------|--------|------|------|----------|
+| DuckDuckGo | `ddg` | 1.0 | 是 | 是 |
+| Brave | `brave` | 1.0 | 是 | 是 |
+| Bing | `bing` | 1.0 | 是 | 是 |
+| Wikipedia | `wiki` | 1.2 | 否 | 否 |
+| 搜狗 | `sogou` | 1.0 | 否 | 否 |
+| 360 搜索 | `360` | 1.0 | 否 | 否 |
+
+### 无头浏览器引擎（`headless` 特性）
+
+| 引擎 | 快捷名 | 权重 | 分页 | 安全搜索 |
+|------|--------|------|------|----------|
+| Google | `g` | 1.5 | 是 | 是 |
+| 百度 | `baidu` | 1.0 | 否 | 否 |
+| 必应中国 | `bing_cn` | 1.0 | 否 | 否 |
+
+## 支持的语言
+
+| 语言 | 包 | 安装 |
+|------|-----|------|
+| Rust | [`a3s-search`](https://crates.io/crates/a3s-search) | Cargo.toml 中添加 `a3s-search = "0.8"` |
+| Python | [`a3s-search`](https://pypi.org/project/a3s-search/) | `pip install a3s-search` |
+| Node.js | [`@a3s-lab/search`](https://www.npmjs.com/package/@a3s-lab/search) | `npm install @a3s-lab/search` |
+| Homebrew | [`a3s-search`](https://github.com/A3S-Lab/homebrew-tap) | `brew install a3s-lab/tap/a3s-search` |
+
+## 排名算法
+
+```
+score = Σ (weight / position)，对每个找到该结果的引擎求和
+weight = engine_weight × 找到该结果的引擎数量
+```
+
+被多个引擎找到的结果获得显著的分数加成。权重更高的引擎（Google 1.5，Wikipedia 1.2）对最终分数贡献更大。
+
+## 测试覆盖
+
+288 个 Rust 测试（244 lib + 31 CLI + 13 集成）+ 103 个 SDK 测试（49 Node.js + 54 Python）。跨平台：macOS、Linux 和 Windows。

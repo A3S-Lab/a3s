@@ -1,0 +1,62 @@
+---
+title: SDK
+description: 从代码中嵌入使用 A3S Box
+---
+
+# SDK
+
+A3S Box 提供 Rust、Python 和 TypeScript SDK，可从代码中直接创建和管理 MicroVM。
+
+## Rust
+
+```rust
+use a3s_box_sdk::BoxClient;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let client = BoxClient::new().await?;
+
+    // 创建并启动 VM
+    let vm = client.create("ubuntu:22.04").await?;
+
+    // 执行命令
+    let output = vm.exec(&["echo", "hello"]).await?;
+    println!("{}", output.stdout);
+
+    // 流式执行
+    let mut stream = vm.exec_stream(&["cat", "/dev/urandom"]).await?;
+    while let Some(chunk) = stream.next().await {
+        // 处理输出块
+    }
+
+    // 停止 VM
+    vm.stop().await?;
+    Ok(())
+}
+```
+
+## Python
+
+```python
+from a3s_box import BoxClient
+
+async with BoxClient() as client:
+    vm = await client.create("ubuntu:22.04")
+    output = await vm.exec(["echo", "hello"])
+    print(output.stdout)
+    await vm.stop()
+```
+
+## TypeScript
+
+```typescript
+import { BoxClient } from '@a3s-lab/box';
+
+const client = new BoxClient();
+const vm = await client.create('ubuntu:22.04');
+const output = await vm.exec(['echo', 'hello']);
+console.log(output.stdout);
+await vm.stop();
+```
+
+详细文档请参阅[英文版](/docs/en/box/sdk)。

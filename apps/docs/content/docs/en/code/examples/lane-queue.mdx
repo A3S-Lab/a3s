@@ -154,11 +154,13 @@ For full lane queue documentation, see [Lane Queue](/docs/code/lane-queue).
 
 ### ExternalTask fields (Rust)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `String` | Unique task identifier |
-| `lane` | `SessionLane` | `Control`, `Query`, `Execute`, or `Generate` |
-| `payload` | `serde_json::Value` | Task data (prompt, args, etc.) |
+<TypeTable
+  type={{
+    id: { type: 'String', description: 'Unique task identifier' },
+    lane: { type: 'SessionLane', description: '`Control`, `Query`, `Execute`, or `Generate`' },
+    payload: { type: 'serde_json::Value', description: 'Task data (prompt, args, etc.)' },
+  }}
+/>
 
 ### Queue management methods
 

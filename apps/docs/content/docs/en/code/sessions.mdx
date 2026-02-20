@@ -64,16 +64,44 @@ session = agent.session("/my-project", model="openai/gpt-4o")
 
 ## SessionOptions
 
-| Parameter | Rust | TypeScript | Python | Description |
-|-----------|------|-----------|--------|-------------|
-| Model override | `with_model("provider/model")` | `model: "provider/model"` | `model="provider/model"` | Format: `provider/model` (e.g., `openai/gpt-4o`) |
-| Skill dirs | `with_skill_dir("path")` | `skillDirs: ["path"]` | `skill_dirs=["path"]` | Extra directories to scan for skill files (merged with global `skill_dirs`) |
-| Agent dirs | `with_agent_dir("path")` | `agentDirs: ["path"]` | `agent_dirs=["path"]` | Extra directories to scan for agent files (merged with global `agent_dirs`) |
-| Parse retries | `with_parse_retries(n)` | `maxParseRetries: n` | `max_parse_retries=n` | Max consecutive malformed-tool-args errors before abort (default: 2) |
-| Tool timeout | `with_tool_timeout(ms)` | `toolTimeoutMs: ms` | `tool_timeout_ms=ms` | Per-tool execution timeout in ms; timeout → error fed back to LLM (default: none) |
-| Circuit breaker | `with_circuit_breaker(n)` | `circuitBreakerThreshold: n` | `circuit_breaker_threshold=n` | Max LLM API failures before abort in non-streaming mode (default: 3) |
-| Resilience bundle | `with_resilience_defaults()` | — | — | Enables parse_retries=2, tool_timeout=120s, circuit_breaker=3 |
-| Sandbox | `with_sandbox(SandboxConfig)` | — | — | Route `bash` tool through A3S Box MicroVM (requires `sandbox` feature) |
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      description: 'Model override in `provider/model` format (e.g., `openai/gpt-4o`). Rust: `with_model("provider/model")`, TS: `model: "provider/model"`, Python: `model="provider/model"`',
+    },
+    skill_dirs: {
+      type: 'string[]',
+      description: 'Extra directories to scan for skill files (merged with global `skill_dirs`). Rust: `with_skill_dir("path")`, TS: `skillDirs: ["path"]`, Python: `skill_dirs=["path"]`',
+    },
+    agent_dirs: {
+      type: 'string[]',
+      description: 'Extra directories to scan for agent files (merged with global `agent_dirs`). Rust: `with_agent_dir("path")`, TS: `agentDirs: ["path"]`, Python: `agent_dirs=["path"]`',
+    },
+    parse_retries: {
+      type: 'u32',
+      default: '2',
+      description: 'Max consecutive malformed-tool-args errors before abort. Rust: `with_parse_retries(n)`, TS: `maxParseRetries: n`, Python: `max_parse_retries=n`',
+    },
+    tool_timeout_ms: {
+      type: 'Option<u64>',
+      description: 'Per-tool execution timeout in ms; timeout → error fed back to LLM. Rust: `with_tool_timeout(ms)`, TS: `toolTimeoutMs: ms`, Python: `tool_timeout_ms=ms`',
+    },
+    circuit_breaker: {
+      type: 'u32',
+      default: '3',
+      description: 'Max LLM API failures before abort in non-streaming mode. Rust: `with_circuit_breaker(n)`, TS: `circuitBreakerThreshold: n`, Python: `circuit_breaker_threshold=n`',
+    },
+    resilience_defaults: {
+      type: '(bundle)',
+      description: 'Enables parse_retries=2, tool_timeout=120s, circuit_breaker=3. Rust: `with_resilience_defaults()`',
+    },
+    sandbox: {
+      type: 'SandboxConfig',
+      description: 'Route `bash` tool through A3S Box MicroVM (requires `sandbox` feature). Rust: `with_sandbox(SandboxConfig)`',
+    },
+  }}
+/>
 
 The model must be defined in the agent's config file under `providers`. The format is `provider_name/model_id`.
 
@@ -335,22 +363,53 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
 
 ### AgentResult
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `text` | `string` | Final LLM response text |
-| `messages` | `Vec<Message>` | Full conversation history (Rust only) |
-| `usage` | `TokenUsage` | Token usage statistics |
-| `tool_calls_count` | `usize` | Number of tool calls |
+<TypeTable
+  type={{
+    text: {
+      type: 'string',
+      description: 'Final LLM response text',
+    },
+    messages: {
+      type: 'Vec<Message>',
+      description: 'Full conversation history (Rust only)',
+    },
+    usage: {
+      type: 'TokenUsage',
+      description: 'Token usage statistics',
+    },
+    tool_calls_count: {
+      type: 'usize',
+      description: 'Number of tool calls',
+    },
+  }}
+/>
 
 ### TokenUsage
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `prompt_tokens` | `usize` | Input tokens |
-| `completion_tokens` | `usize` | Output tokens |
-| `total_tokens` | `usize` | Total tokens |
-| `cache_read_tokens` | `Option<usize>` | Cached input tokens read |
-| `cache_write_tokens` | `Option<usize>` | Cached input tokens written |
+<TypeTable
+  type={{
+    prompt_tokens: {
+      type: 'usize',
+      description: 'Input tokens',
+    },
+    completion_tokens: {
+      type: 'usize',
+      description: 'Output tokens',
+    },
+    total_tokens: {
+      type: 'usize',
+      description: 'Total tokens',
+    },
+    cache_read_tokens: {
+      type: 'Option<usize>',
+      description: 'Cached input tokens read',
+    },
+    cache_write_tokens: {
+      type: 'Option<usize>',
+      description: 'Cached input tokens written',
+    },
+  }}
+/>
 
 ### AgentEvent
 
@@ -358,54 +417,64 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
 
 **Agent lifecycle:**
 
-| Event | Fields | Description |
-|-------|--------|-------------|
-| `Start` | `prompt` | Processing started |
-| `TurnStart` | `turn` | New turn started |
-| `TextDelta` | `text` | Text chunk from assistant |
-| `TurnEnd` | `turn`, `total_tokens` | Turn completed |
-| `End` | `text`, `total_tokens` | Generation finished |
-| `Error` | `error` | Error occurred |
+<TypeTable
+  type={{
+    Start: { type: 'prompt', description: 'Processing started' },
+    TurnStart: { type: 'turn', description: 'New turn started' },
+    TextDelta: { type: 'text', description: 'Text chunk from assistant' },
+    TurnEnd: { type: 'turn, total_tokens', description: 'Turn completed' },
+    End: { type: 'text, total_tokens', description: 'Generation finished' },
+    Error: { type: 'error', description: 'Error occurred' },
+  }}
+/>
 
 **Tool execution:**
 
-| Event | Fields | Description |
-|-------|--------|-------------|
-| `ToolStart` | `tool_id`, `tool_name` | Tool call started |
-| `ToolEnd` | `tool_id`, `tool_name`, `tool_output`, `exit_code` | Tool call completed |
-| `ToolOutputDelta` | `tool_id`, `tool_name`, `text` | Tool output increment |
+<TypeTable
+  type={{
+    ToolStart: { type: 'tool_id, tool_name', description: 'Tool call started' },
+    ToolEnd: { type: 'tool_id, tool_name, tool_output, exit_code', description: 'Tool call completed' },
+    ToolOutputDelta: { type: 'tool_id, tool_name, text', description: 'Tool output increment' },
+  }}
+/>
 
 **HITL and permissions:**
 
-| Event | Fields | Description |
-|-------|--------|-------------|
-| `ConfirmationRequired` | `tool_id`, `tool_name`, `args`, `timeout_ms` | HITL confirmation needed |
-| `ConfirmationReceived` | `tool_id`, `approved`, `reason` | HITL confirmation received |
-| `ConfirmationTimeout` | `tool_id`, `action_taken` | HITL confirmation timed out |
-| `PermissionDenied` | `tool_id`, `tool_name`, `args`, `reason` | Tool blocked by permission policy |
+<TypeTable
+  type={{
+    ConfirmationRequired: { type: 'tool_id, tool_name, args, timeout_ms', description: 'HITL confirmation needed' },
+    ConfirmationReceived: { type: 'tool_id, approved, reason', description: 'HITL confirmation received' },
+    ConfirmationTimeout: { type: 'tool_id, action_taken', description: 'HITL confirmation timed out' },
+    PermissionDenied: { type: 'tool_id, tool_name, args, reason', description: 'Tool blocked by permission policy' },
+  }}
+/>
 
 **Context and memory:**
 
-| Event | Fields | Description |
-|-------|--------|-------------|
-| `ContextResolving` | `providers` | Context resolution started |
-| `ContextResolved` | `total_items`, `total_tokens` | Context resolution completed |
-| `MemoryStored` | — | Memory item stored |
-| `MemoryRecalled` | — | Memory item recalled |
-| `MemoriesSearched` | — | Memory search completed |
-| `MemoryCleared` | — | Memory cleared |
+<TypeTable
+  type={{
+    ContextResolving: { type: 'providers', description: 'Context resolution started' },
+    ContextResolved: { type: 'total_items, total_tokens', description: 'Context resolution completed' },
+    MemoryStored: { type: '—', description: 'Memory item stored' },
+    MemoryRecalled: { type: '—', description: 'Memory item recalled' },
+    MemoriesSearched: { type: '—', description: 'Memory search completed' },
+    MemoryCleared: { type: '—', description: 'Memory cleared' },
+  }}
+/>
 
 **Tasks, subagents, and lane queue:**
 
-| Event | Fields | Description |
-|-------|--------|-------------|
-| `TaskUpdated` | `session_id`, `tasks` | Task list changed |
-| `SubagentStart` | — | Subagent execution started |
-| `ExternalTaskPending` | — | External task queued |
-| `ExternalTaskCompleted` | — | External task finished |
-| `CommandDeadLettered` | — | Lane command dead-lettered |
-| `CommandRetry` | — | Lane command retried |
-| `QueueAlert` | — | Queue alert emitted |
+<TypeTable
+  type={{
+    TaskUpdated: { type: 'session_id, tasks', description: 'Task list changed' },
+    SubagentStart: { type: '—', description: 'Subagent execution started' },
+    ExternalTaskPending: { type: '—', description: 'External task queued' },
+    ExternalTaskCompleted: { type: '—', description: 'External task finished' },
+    CommandDeadLettered: { type: '—', description: 'Lane command dead-lettered' },
+    CommandRetry: { type: '—', description: 'Lane command retried' },
+    QueueAlert: { type: '—', description: 'Queue alert emitted' },
+  }}
+/>
 
 ## API Reference
 
@@ -433,31 +502,120 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
 
 ### SessionOptions
 
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| Model | `.with_model("provider/model")` | `model="provider/model"` | `model: "provider/model"` | config default |
-| Permissive | `.with_permissive_policy()` | `permissive=True` | `permissive: true` | `false` |
-| Planning | `.with_planning(true)` | `planning=True` | `planning: true` | `false` |
-| Goal tracking | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` | `false` |
-| Built-in skills | `.with_builtin_skills()` | `builtin_skills=True` | `builtinSkills: true` | `false` |
-| Skill dirs | `.with_skills_from_dir(path)` | `skill_dirs=[path]` | `skillDirs: [path]` | `[]` |
-| Default security | `.with_default_security()` | `default_security=True` | `defaultSecurity: true` | `false` |
-| File memory | `.with_file_memory(path)` | `memory_dir=path` | `memoryDir: path` | `None` |
-| Auto-compact | `.with_auto_compact(true)` | `auto_compact=True` | `autoCompact: true` | `false` |
-| Auto-compact threshold | `.with_auto_compact_threshold(f)` | `auto_compact_threshold=f` | `autoCompactThreshold: f` | `0.8` |
-| FS context | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` | `None` |
-| Queue config | `.with_queue_config(cfg)` | `queue_config=cfg` | `queueConfig: cfg` | `None` |
-| Parse retries | `.with_parse_retries(n)` | `max_parse_retries=n` | `maxParseRetries: n` | `2` |
-| Tool timeout | `.with_tool_timeout(ms)` | `tool_timeout_ms=ms` | `toolTimeoutMs: ms` | `None` |
-| Circuit breaker | `.with_circuit_breaker(n)` | `circuit_breaker_threshold=n` | `circuitBreakerThreshold: n` | `3` |
-| Resilience defaults | `.with_resilience_defaults()` | — | — | — |
-| Sandbox | `.with_sandbox(cfg)` | — | — | `None` |
-| Permission checker | `.with_permission_checker(p)` | — | — | `PermissionPolicy` |
-| Confirmation manager | `.with_confirmation_manager(m)` | — | — | `None` |
-| Security provider | `.with_security_provider(p)` | — | — | `None` |
-| Context provider | `.with_context_provider(p)` | — | — | `None` |
-| Memory store | `.with_memory(store)` | — | — | `InMemoryStore` |
-| Hook engine | `.with_hook_engine(h)` | — | — | `HookEngine` |
+<TypeTable
+  type={{
+    model: {
+      type: 'string',
+      default: 'config default',
+      description: 'Model in `provider/model` format. Rust: `.with_model(...)`, TS: `model: "..."`, Python: `model="..."`',
+    },
+    permissive: {
+      type: 'bool',
+      default: 'false',
+      description: 'Allow all tools by default. Rust: `.with_permissive_policy()`, TS: `permissive: true`, Python: `permissive=True`',
+    },
+    planning: {
+      type: 'bool',
+      default: 'false',
+      description: 'Enable LLM task planning. Rust: `.with_planning(true)`, TS: `planning: true`, Python: `planning=True`',
+    },
+    goal_tracking: {
+      type: 'bool',
+      default: 'false',
+      description: 'Track goal progress. Rust: `.with_goal_tracking(true)`, TS: `goalTracking: true`, Python: `goal_tracking=True`',
+    },
+    builtin_skills: {
+      type: 'bool',
+      default: 'false',
+      description: 'Load built-in skills. Rust: `.with_builtin_skills()`, TS: `builtinSkills: true`, Python: `builtin_skills=True`',
+    },
+    skill_dirs: {
+      type: 'string[]',
+      default: '[]',
+      description: 'Directories to scan for skill files. Rust: `.with_skills_from_dir(path)`, TS: `skillDirs: [path]`, Python: `skill_dirs=[path]`',
+    },
+    default_security: {
+      type: 'bool',
+      default: 'false',
+      description: 'Enable default security provider. Rust: `.with_default_security()`, TS: `defaultSecurity: true`, Python: `default_security=True`',
+    },
+    file_memory: {
+      type: 'Option<string>',
+      default: 'None',
+      description: 'Path for file-backed memory. Rust: `.with_file_memory(path)`, TS: `memoryDir: path`, Python: `memory_dir=path`',
+    },
+    auto_compact: {
+      type: 'bool',
+      default: 'false',
+      description: 'Enable auto context compaction. Rust: `.with_auto_compact(true)`, TS: `autoCompact: true`, Python: `auto_compact=True`',
+    },
+    auto_compact_threshold: {
+      type: 'f32',
+      default: '0.8',
+      description: 'Context usage fraction to trigger compaction. Rust: `.with_auto_compact_threshold(f)`, TS: `autoCompactThreshold: f`, Python: `auto_compact_threshold=f`',
+    },
+    fs_context: {
+      type: 'Option<string>',
+      default: 'None',
+      description: 'Filesystem context path for RAG. Rust: `.with_fs_context(path)`, TS: `fsContext: path`, Python: `fs_context=path`',
+    },
+    queue_config: {
+      type: 'Option<SessionQueueConfig>',
+      default: 'None',
+      description: 'Lane queue configuration. Rust: `.with_queue_config(cfg)`, TS: `queueConfig: cfg`, Python: `queue_config=cfg`',
+    },
+    parse_retries: {
+      type: 'u32',
+      default: '2',
+      description: 'Max consecutive parse errors before abort. Rust: `.with_parse_retries(n)`, TS: `maxParseRetries: n`, Python: `max_parse_retries=n`',
+    },
+    tool_timeout_ms: {
+      type: 'Option<u64>',
+      default: 'None',
+      description: 'Per-tool execution timeout in ms. Rust: `.with_tool_timeout(ms)`, TS: `toolTimeoutMs: ms`, Python: `tool_timeout_ms=ms`',
+    },
+    circuit_breaker: {
+      type: 'u32',
+      default: '3',
+      description: 'Max LLM API failures before abort. Rust: `.with_circuit_breaker(n)`, TS: `circuitBreakerThreshold: n`, Python: `circuit_breaker_threshold=n`',
+    },
+    sandbox: {
+      type: 'Option<SandboxConfig>',
+      default: 'None',
+      description: 'Route `bash` through A3S Box MicroVM. Rust: `.with_sandbox(cfg)`',
+    },
+    permission_checker: {
+      type: 'Arc<dyn PermissionChecker>',
+      default: 'PermissionPolicy',
+      description: 'Custom permission checker. Rust: `.with_permission_checker(p)`',
+    },
+    confirmation_manager: {
+      type: 'Option<Arc<dyn ConfirmationManager>>',
+      default: 'None',
+      description: 'Custom HITL confirmation manager. Rust: `.with_confirmation_manager(m)`',
+    },
+    security_provider: {
+      type: 'Option<Arc<dyn SecurityProvider>>',
+      default: 'None',
+      description: 'Custom security provider. Rust: `.with_security_provider(p)`',
+    },
+    context_provider: {
+      type: 'Option<Arc<dyn ContextProvider>>',
+      default: 'None',
+      description: 'Custom context/RAG provider. Rust: `.with_context_provider(p)`',
+    },
+    memory: {
+      type: 'Arc<dyn MemoryStore>',
+      default: 'InMemoryStore',
+      description: 'Memory storage backend. Rust: `.with_memory(store)`',
+    },
+    hook_engine: {
+      type: 'HookEngine',
+      default: 'HookEngine',
+      description: 'Custom hook engine. Rust: `.with_hook_engine(h)`',
+    },
+  }}
+/>
 
 ### AgentResponse
 

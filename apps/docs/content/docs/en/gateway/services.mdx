@@ -51,13 +51,15 @@ services "api" {
 }
 ```
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `path` | — | HTTP GET path to probe |
-| `interval` | `10s` | Time between checks |
-| `timeout` | `5s` | Max wait for response |
-| `unhealthy_threshold` | `3` | Consecutive failures before marking unhealthy |
-| `healthy_threshold` | `1` | Consecutive successes before marking healthy |
+<TypeTable
+  type={{
+    path: { type: 'string', description: 'HTTP GET path to probe' },
+    interval: { type: 'string', default: '"10s"', description: 'Time between checks' },
+    timeout: { type: 'string', default: '"5s"', description: 'Max wait for response' },
+    unhealthy_threshold: { type: 'u32', default: '3', description: 'Consecutive failures before marking unhealthy' },
+    healthy_threshold: { type: 'u32', default: '1', description: 'Consecutive successes before marking healthy' },
+  }}
+/>
 
 Passive health checks also track error counts and automatically remove backends that exceed the failure threshold.
 
@@ -96,10 +98,12 @@ services "api" {
 }
 ```
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `service` | — | Target shadow service name |
-| `percentage` | `100` | Percentage of traffic to mirror (0–100) |
+<TypeTable
+  type={{
+    service: { type: 'string', required: true, description: 'Target shadow service name' },
+    percentage: { type: 'u32', default: '100', description: 'Percentage of traffic to mirror (0–100)' },
+  }}
+/>
 
 ## Failover
 
@@ -151,17 +155,19 @@ services "api" {
 }
 ```
 
-| Field | Default | Description |
-|-------|---------|-------------|
-| `min_replicas` | `0` | Minimum replicas (0 enables scale-to-zero) |
-| `max_replicas` | `10` | Maximum replicas |
-| `container_concurrency` | `0` | Max concurrent requests per container (0 = unlimited) |
-| `target_utilization` | `0.7` | Target utilization ratio for scaling decisions |
-| `scale_down_delay_secs` | `300` | Seconds after last request before scaling down |
-| `buffer_enabled` | `false` | Enable request buffering during scale-from-zero |
-| `buffer_timeout_secs` | `30` | Max wait for a backend during cold start |
-| `buffer_size` | `100` | Max buffered requests |
-| `executor` | `box` | Scale executor: `box` (HTTP) or `k8s` (kube-rs) |
+<TypeTable
+  type={{
+    min_replicas: { type: 'u32', default: '0', description: 'Minimum replicas (0 enables scale-to-zero)' },
+    max_replicas: { type: 'u32', default: '10', description: 'Maximum replicas' },
+    container_concurrency: { type: 'u32', default: '0', description: 'Max concurrent requests per container (0 = unlimited)' },
+    target_utilization: { type: 'f32', default: '0.7', description: 'Target utilization ratio for scaling decisions' },
+    scale_down_delay_secs: { type: 'u64', default: '300', description: 'Seconds after last request before scaling down' },
+    buffer_enabled: { type: 'bool', default: 'false', description: 'Enable request buffering during scale-from-zero' },
+    buffer_timeout_secs: { type: 'u64', default: '30', description: 'Max wait for a backend during cold start' },
+    buffer_size: { type: 'u32', default: '100', description: 'Max buffered requests' },
+    executor: { type: 'string', default: '"box"', description: 'Scale executor: `box` (HTTP) or `k8s` (kube-rs)' },
+  }}
+/>
 
 ## Revision Traffic Splitting
 

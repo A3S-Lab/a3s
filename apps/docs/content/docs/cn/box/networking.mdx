@@ -1,0 +1,45 @@
+---
+title: 网络
+description: A3S Box 网络模式配置
+---
+
+# 网络
+
+## 网络模式
+
+| 模式 | 说明 |
+|------|------|
+| `tsi`（默认） | 透明子网隔离，零配置，支持端口映射 |
+| `bridge` | passt 桥接，支持容器间 DNS 解析 |
+| `none` | 无网络（气隙隔离） |
+
+```bash
+# 默认 TSI 模式，端口映射
+a3s-box run -d -p 8080:80 nginx:alpine
+
+# Bridge 模式，容器间通信
+a3s-box network create my-net
+a3s-box run -d --name db --network my-net postgres:15
+a3s-box run -d --name app --network my-net my-app:latest
+
+# 气隙隔离
+a3s-box run --network none alpine:latest
+```
+
+## 网络管理
+
+```bash
+# 创建网络
+a3s-box network create my-net
+
+# 列出网络
+a3s-box network ls
+
+# 检查网络
+a3s-box network inspect my-net
+
+# 删除网络
+a3s-box network rm my-net
+```
+
+详细文档请参阅[英文版](/docs/en/box/networking)。

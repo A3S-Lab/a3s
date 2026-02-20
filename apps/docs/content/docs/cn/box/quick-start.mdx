@@ -1,0 +1,269 @@
+---
+title: 快速开始
+description: 几分钟内运行第一个 MicroVM
+---
+
+# 快速开始
+
+## 安装
+
+```bash
+# macOS（Apple Silicon）
+brew install a3s-lab/tap/a3s-box
+
+# Linux / macOS（直接下载）
+curl -fsSL https://github.com/A3S-Lab/Box/releases/latest/download/install.sh | sh
+```
+
+验证安装：
+
+```bash
+a3s-box version
+```
+
+---
+
+## 运行 MicroVM
+
+```bash
+# 交互式 shell
+a3s-box run -it alpine:latest -- /bin/sh
+
+# 后台运行
+a3s-box run -d --name web nginx:alpine
+
+# 指定资源限制
+a3s-box run -d --name worker \
+  --cpus 4 --memory 2g \
+  --timeout 3600 \
+  my-image:latest
+```
+
+---
+
+## 生命周期管理
+
+```bash
+# 列出运行中的 VM
+a3s-box ps
+
+# 列出所有 VM（包括已停止）
+a3s-box ps -a
+
+# 停止 / 启动 / 重启
+a3s-box stop web
+a3s-box start web
+a3s-box restart web
+
+# 强制删除
+a3s-box rm -f web
+```
+
+---
+
+## 执行命令
+
+```bash
+# 运行命令
+a3s-box exec my-box -- ls /app
+
+# 交互式 shell
+a3s-box exec -it my-box -- /bin/bash
+
+# 指定环境变量和工作目录
+a3s-box exec -e DEBUG=1 -w /app my-box -- ./run.sh
+```
+
+---
+
+## 查看日志
+
+```bash
+a3s-box logs my-box
+a3s-box logs -f my-box           # 持续跟踪
+a3s-box logs --tail 100 my-box   # 最后 100 行
+a3s-box logs -t my-box           # 带时间戳
+```
+
+---
+
+## 构建镜像
+
+```bash
+# 从当前目录构建
+a3s-box build -t my-app:v1 .
+
+# 带构建参数
+a3s-box build -t my-app:v1 --build-arg VERSION=1.2.3 .
+
+# 多平台构建
+a3s-box build -t my-app:v1 --platform linux/amd64,linux/arm64 .
+```
+
+### Dockerfile 特性
+
+`ADD` 支持 HTTP/HTTPS URL 下载和 tar 自动解压：
+
+```dockerfile
+FROM alpine:latest
+ADD https://example.com/config.tar.gz /etc/myapp/
+COPY . /app
+RUN echo "built"
+```
+
+`ONBUILD` 触发器在子镜像使用此镜像作为基础时继承并触发：
+
+```dockerfile
+FROM alpine:latest
+ONBUILD COPY . /app
+ONBUILD RUN cd /app && make
+```
+
+---
+
+## 拉取并验证签名
+
+```bash
+# 使用 cosign 公钥验证
+a3s-box pull --verify-key cosign.pub ghcr.io/my-org/my-image:v1
+
+# 无密钥（OIDC）验证
+a3s-box pull \
+  --verify-issuer https://accounts.google.com \
+  --verify-identity user@example.com \
+  my-image:latest
+```
+
+---
+
+## 卷与文件
+
+```bash
+# 绑定挂载
+a3s-box run -v /host/data:/app/data my-image
+
+# 命名卷
+a3s-box volume create my-data
+a3s-box run -v my-data:/app/data my-image
+
+# 复制文件
+a3s-box cp my-box:/app/output.txt ./output.txt
+a3s-box cp ./config.json my-box:/app/config.json
+```
+
+---
+
+## 网络
+
+```bash
+# 默认 TSI — 端口映射
+a3s-box run -d --name web -p 8080:80 nginx:alpine
+
+# Bridge 网络 — 容器间通信
+a3s-box network create my-net
+a3s-box run -d --name db --network my-net postgres:15
+a3s-box run -d --name app --network my-net my-app:latest
+# app 可通过 "db:5432" 访问 db
+
+# 气隙隔离
+a3s-box run --network none alpine:latest
+```
+
+---
+
+## 快照
+
+```bash
+# 保存 VM 状态
+a3s-box snapshot create my-box checkpoint-1
+
+# 恢复
+a3s-box snapshot restore my-box checkpoint-1
+
+# 列出快照
+a3s-box snapshot ls my-box
+```
+
+---
+
+## Compose
+
+```yaml
+# compose.yaml
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: secret
+  app:
+    image: my-app:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+```
+
+```bash
+a3s-box compose up -d
+a3s-box compose ps
+a3s-box compose down
+```
+
+---
+
+## TEE（机密计算）
+
+```bash
+# 使用 AMD SEV-SNP 运行
+a3s-box run -d --name secure --tee alpine:latest -- sleep 3600
+
+# 模拟模式（无需 AMD 硬件）
+a3s-box run -d --name dev --tee --tee-simulate alpine:latest -- sleep 3600
+
+# 证明 VM
+a3s-box attest secure --ratls
+
+# 通过 RA-TLS 注入密钥
+a3s-box inject-secret secure --secret "API_KEY=my-secret" --set-env
+
+# 密封数据（只能在相同 TEE 上下文中解密）
+a3s-box seal secure --data "sensitive" --context myapp
+a3s-box unseal secure --context myapp
+```
+
+---
+
+## 检查与监控
+
+```bash
+# 详细 VM 信息（JSON）
+a3s-box inspect my-box
+
+# 实时资源使用
+a3s-box stats
+
+# VM 内进程
+a3s-box top my-box
+
+# 文件系统变更
+a3s-box diff my-box
+
+# 流式事件
+a3s-box events --json
+```
+
+---
+
+## 清理
+
+```bash
+# 删除已停止的 VM 和未使用的镜像
+a3s-box system-prune -f
+
+# 仅清理未使用的镜像
+a3s-box image-prune
+
+# 清理未使用的卷
+a3s-box volume prune
+```

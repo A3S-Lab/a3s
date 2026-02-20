@@ -139,27 +139,31 @@ Provider-level `api_key` and `base_url` are defaults. Model-level values overrid
 
 ## Model Fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | yes | Model identifier (e.g., `claude-sonnet-4-20250514`) |
-| `name` | string | yes | Display name |
-| `family` | string | no | Model family (e.g., `claude-sonnet`, `gpt`) |
-| `api_key` | string | no | Per-model API key (overrides provider) |
-| `base_url` | string | no | Per-model base URL (overrides provider) |
-| `tool_call` | bool | no | Supports tool calling |
-| `reasoning` | bool | no | Supports extended reasoning |
-| `temperature` | bool | no | Supports temperature parameter |
-| `attachment` | bool | no | Supports file attachments |
-| `cost` | object | no | `{ input, output, cache_read, cache_write }` per million tokens |
-| `limit` | object | no | `{ context, output }` token limits |
+<TypeTable
+  type={{
+    id: { type: 'string', required: true, description: 'Model identifier (e.g., `claude-sonnet-4-20250514`)' },
+    name: { type: 'string', required: true, description: 'Display name' },
+    family: { type: 'string', description: 'Model family (e.g., `claude-sonnet`, `gpt`)' },
+    api_key: { type: 'string', description: 'Per-model API key (overrides provider)' },
+    base_url: { type: 'string', description: 'Per-model base URL (overrides provider)' },
+    tool_call: { type: 'bool', description: 'Supports tool calling' },
+    reasoning: { type: 'bool', description: 'Supports extended reasoning' },
+    temperature: { type: 'bool', description: 'Supports temperature parameter' },
+    attachment: { type: 'bool', description: 'Supports file attachments' },
+    cost: { type: 'object', description: '`{ input, output, cache_read, cache_write }` per million tokens' },
+    limit: { type: 'object', description: '`{ context, output }` token limits' },
+  }}
+/>
 
 ## Provider Fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | yes | Provider identifier (used in `provider/model` format) |
-| `api_key` | string | yes | Default API key for all models |
-| `base_url` | string | no | Default base URL for all models |
+<TypeTable
+  type={{
+    name: { type: 'string', required: true, description: 'Provider identifier (used in `provider/model` format)' },
+    api_key: { type: 'string', required: true, description: 'Default API key for all models' },
+    base_url: { type: 'string', description: 'Default base URL for all models' },
+  }}
+/>
 
 ## Full Configuration Reference
 
@@ -270,16 +274,18 @@ search {
 
 ### Config Fields
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `default_model` | `string` | — (required) | Default model in `provider/model` format |
-| `max_tool_rounds` | `int` | `50` | Max tool call rounds per turn |
-| `thinking_budget` | `int` | `null` | Reasoning token budget |
-| `skill_dirs` | `string[]` | `[]` | Directories to scan for `*.md` skill files |
-| `agent_dirs` | `string[]` | `[]` | Directories to scan for agent files |
-| `storage_backend` | `string` | `"file"` | `"memory"`, `"file"`, or `"custom"` |
-| `sessions_dir` | `string` | `null` | Session persistence path |
-| `storage_url` | `string` | `null` | Storage connection URL (for custom backends) |
+<TypeTable
+  type={{
+    default_model: { type: 'string', required: true, description: 'Default model in `provider/model` format' },
+    max_tool_rounds: { type: 'int', default: '50', description: 'Max tool call rounds per turn' },
+    thinking_budget: { type: 'int', description: 'Reasoning token budget' },
+    skill_dirs: { type: 'string[]', default: '[]', description: 'Directories to scan for `*.md` skill files' },
+    agent_dirs: { type: 'string[]', default: '[]', description: 'Directories to scan for agent files' },
+    storage_backend: { type: 'string', default: '"file"', description: '`"memory"`, `"file"`, or `"custom"`' },
+    sessions_dir: { type: 'string', description: 'Session persistence path' },
+    storage_url: { type: 'string', description: 'Storage connection URL (for custom backends)' },
+  }}
+/>
 
 ### The `env()` Function
 

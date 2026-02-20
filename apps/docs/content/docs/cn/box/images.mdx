@@ -1,0 +1,58 @@
+---
+title: 镜像管理
+description: OCI 镜像的拉取、构建、推送和管理
+---
+
+# 镜像管理
+
+## 基本操作
+
+```bash
+# 拉取镜像
+a3s-box pull ubuntu:22.04
+
+# 列出本地镜像
+a3s-box images
+
+# 检查镜像详情
+a3s-box inspect ubuntu:22.04
+
+# 删除镜像
+a3s-box rmi ubuntu:22.04
+
+# 标记镜像
+a3s-box tag ubuntu:22.04 my-ubuntu:latest
+
+# 推送镜像
+a3s-box push my-ubuntu:latest
+```
+
+## 构建镜像
+
+```bash
+# 从 Dockerfile 构建
+a3s-box build -t myapp:latest .
+
+# 多阶段构建
+a3s-box build -t myapp:latest --target production .
+
+# 多平台构建
+a3s-box build -t myapp:latest --platform linux/amd64,linux/arm64 .
+```
+
+## 支持的 Dockerfile 指令
+
+全部 17 条指令均受支持：`FROM`、`RUN`、`CMD`、`LABEL`、`EXPOSE`、`ENV`、`ADD`、`COPY`、`ENTRYPOINT`、`VOLUME`、`USER`、`WORKDIR`、`ARG`、`ONBUILD`、`STOPSIGNAL`、`HEALTHCHECK`、`SHELL`。
+
+## 镜像签名验证
+
+```bash
+# cosign 密钥验证
+a3s-box pull --verify-key cosign.pub ghcr.io/my-org/my-image:v1
+
+# 无密钥（OIDC）验证
+a3s-box pull --verify-issuer https://accounts.google.com \
+  --verify-identity user@example.com my-image:latest
+```
+
+详细文档请参阅[英文版](/docs/en/box/images)。

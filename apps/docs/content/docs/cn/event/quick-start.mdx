@@ -1,0 +1,132 @@
+---
+title: 快速开始
+description: 开始使用 A3S Event — 发布、订阅和查询事件
+---
+
+# 快速开始
+
+## 安装
+
+```toml
+[dependencies]
+a3s-event = "0.3"
+tokio = { version = "1", features = ["full"] }
+serde_json = "1"
+```
+
+## 内存模式（开发）
+
+```rust
+use a3s_event::{EventBus, Event, SubscriptionFilter};
+use a3s_event::provider::memory::MemoryProvider;
+
+#[tokio::main]
+async fn main() -> a3s_event::Result<()> {
+    let bus = EventBus::new(MemoryProvider::default());
+
+    // 发布事件
+    let event = bus.publish(
+        "orders",                                          // category
+        "created",                                         // topic
+        "新订单 ORD-001",                                  // summary
+        "order-service",                                   // source
+        serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
+    ).await?;
+
+    println!("已发布: {}", event.id);
+
+    // 查询历史
+    let events = bus.list_events(Some("orders"), 100).await?;
+    println!("订单事件数: {}", events.len());
+
+    Ok(())
+}
+```
+
+## NATS JetStream（生产）
+
+需要 `nats` 特性（默认启用）。
+
+```rust
+use a3s_event::{EventBus, NatsProvider, NatsConfig, SubscriptionFilter};
+
+let provider = NatsProvider::connect(NatsConfig {
+    url: "nats://localhost:4222".to_string(),
+    stream_name: "A3S_EVENTS".to_string(),
+    ..Default::default()
+}).await?;
+
+let bus = EventBus::new(provider);
+
+// 注册持久订阅
+bus.update_subscription(SubscriptionFilter {
+    subscriber_id: "order-processor".to_string(),
+    subjects: vec!["events.orders.>".to_string()],
+    durable: true,
+    options: None,
+}).await?;
+
+// 创建订阅者句柄
+let mut subs = bus.create_subscriber("order-processor").await?;
+
+// 发布
+bus.publish(
+    "orders", "created",
+    "新订单 ORD-001", "order-service",
+    serde_json::json!({ "order_id": "ORD-001" }),
+).await?;
+
+// 接收事件
+for sub in &mut subs {
+    if let Some(received) = sub.next().await? {
+        println!("{}: {}", received.event.subject, received.event.summary);
+    }
+}
+```
+
+## 完整特性示例
+
+```rust
+use a3s_event::*;
+use std::sync::Arc;
+
+// Schema 验证
+let mut registry = MemorySchemaRegistry::new();
+registry.register(EventSchema {
+    event_type: "order.created".into(),
+    version: 1,
+    required_fields: vec!["order_id".into(), "total".into()],
+});
+let mut bus = EventBus::with_schema_registry(MemoryProvider::default(), Arc::new(registry));
+
+// 加密（需要 `encryption` 特性）
+let encryptor = Aes256GcmEncryptor::new("key-v1", b"0123456789abcdef0123456789abcdef");
+bus.set_encryptor(Arc::new(encryptor));
+
+// 死信队列
+let dlq = MemoryDlqHandler::new(100);
+bus.set_dlq_handler(Arc::new(dlq));
+
+// 状态持久化
+let store = FileStateStore::new("./state/event-bus.json")?;
+bus.set_state_store(Arc::new(store))?;
+
+// 发布类型化事件（经 Schema 验证）
+let event = Event::typed(
+    "events.orders.created",
+    "orders",
+    "order.created",
+    1,
+    "新订单 ORD-001",
+    "order-service",
+    serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
+);
+let seq = bus.publish_event(&event).await?;
+
+// 查看指标
+let snapshot = bus.metrics().snapshot();
+println!("已发布: {}, 错误: {}", snapshot.publish_count, snapshot.error_count);
+
+// 健康检查
+let healthy = bus.health().await?;
+```

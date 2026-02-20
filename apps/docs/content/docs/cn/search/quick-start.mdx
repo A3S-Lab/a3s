@@ -1,0 +1,260 @@
+---
+title: 快速开始
+description: 在任意支持的语言中快速上手 A3S Search
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# 快速开始
+
+## 安装
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js', 'Homebrew']}>
+<Tab value="Rust">
+
+```toml
+[dependencies]
+a3s-search = "0.8"
+tokio = { version = "1", features = ["full"] }
+```
+
+无头浏览器引擎（Google、百度、必应中国）默认启用。仅 HTTP 模式：
+
+```toml
+a3s-search = { version = "0.8", default-features = false }
+```
+
+</Tab>
+<Tab value="Python">
+
+```bash
+pip install a3s-search
+```
+
+支持 Python 3.9–3.13。提供 Linux（glibc/musl）、macOS 和 Windows 预构建 wheel。
+
+</Tab>
+<Tab value="Node.js">
+
+```bash
+npm install @a3s-lab/search
+```
+
+支持 Node.js 16+。提供 Linux、macOS 和 Windows（x64/arm64）原生二进制。
+
+</Tab>
+<Tab value="Homebrew">
+
+```bash
+# 安装
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
+brew install a3s-search
+
+# 更新
+brew update && brew upgrade a3s-search
+
+# 卸载
+brew uninstall a3s-search
+brew untap a3s-lab/tap   # 可选：移除 tap
+```
+
+支持 macOS 和 Linux，安装 `a3s-search` CLI 二进制文件。
+
+</Tab>
+</Tabs>
+
+## 基本用法
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+### 1. 创建并配置
+
+```rust
+use a3s_search::{Search, SearchQuery};
+use a3s_search::engines::{DuckDuckGo, Brave, Wikipedia};
+
+let mut search = Search::new();
+search.add_engine(DuckDuckGo::new());
+search.add_engine(Brave::new());
+search.add_engine(Wikipedia::new());
+```
+
+### 2. 搜索
+
+```rust
+let query = SearchQuery::new("Rust 编程语言");
+let results = search.search(query).await?;
+
+for result in results.items().iter().take(10) {
+    println!("{}: {}", result.title, result.url);
+    println!("  分数: {:.2}, 引擎: {:?}", result.score, result.engines);
+}
+```
+
+### 3. 错误处理
+
+每个引擎独立运行，一个失败不影响其他引擎：
+
+```rust
+for (engine, error) in results.errors() {
+    eprintln!("引擎 '{}' 失败: {}", engine, error);
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_search import A3SSearch
+
+search = A3SSearch()
+
+# 默认引擎：DuckDuckGo + Wikipedia
+response = await search.search("Rust 编程语言")
+
+for r in response.results:
+    print(f"{r.title}: {r.url} (分数: {r.score})")
+
+print(f"{response.count} 条结果，耗时 {response.duration_ms}ms")
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+import { A3SSearch } from '@a3s-lab/search';
+
+const search = new A3SSearch();
+
+// 默认引擎：DuckDuckGo + Wikipedia
+const response = await search.search('Rust 编程语言');
+
+for (const r of response.results) {
+  console.log(`${r.title}: ${r.url} (分数: ${r.score})`);
+}
+
+console.log(`${response.count} 条结果，耗时 ${response.durationMs}ms`);
+```
+
+</Tab>
+</Tabs>
+
+## 搜索选项
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+use a3s_search::{SearchQuery, SafeSearch, TimeRange, EngineCategory};
+
+let query = SearchQuery::new("Rust 异步编程")
+    .with_language("zh-CN")
+    .with_safesearch(SafeSearch::Moderate)
+    .with_page(1)
+    .with_time_range(TimeRange::Month)
+    .with_categories(vec![EngineCategory::General])
+    .with_engines(vec!["ddg".into(), "brave".into(), "bing".into()]);
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+response = await search.search("Rust 异步编程",
+    engines=["ddg", "brave", "bing"],
+    limit=5,
+    timeout=15,
+)
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+const response = await search.search('Rust 异步编程', {
+  engines: ['ddg', 'brave', 'bing'],
+  limit: 5,
+  timeout: 15,
+});
+```
+
+</Tab>
+</Tabs>
+
+## 中文搜索引擎
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+use a3s_search::engines::{Sogou, So360};
+
+let mut search = Search::new();
+search.add_engine(Sogou::new());
+search.add_engine(So360::new());
+
+let results = search.search(SearchQuery::new("Rust 编程语言")).await?;
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+response = await search.search("Rust 编程语言", engines=["sogou", "360"])
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+const response = await search.search('Rust 编程语言', {
+  engines: ['sogou', '360'],
+});
+```
+
+</Tab>
+</Tabs>
+
+## 使用代理池（Rust）
+
+每请求轮换代理，防止反爬虫：
+
+```rust
+use std::sync::Arc;
+use a3s_search::{Search, SearchQuery, PooledHttpFetcher, PageFetcher};
+use a3s_search::engines::{DuckDuckGo, DuckDuckGoParser};
+use a3s_search::proxy::{ProxyPool, ProxyConfig, ProxyProtocol, ProxyStrategy};
+
+let pool = Arc::new(ProxyPool::with_proxies(vec![
+    ProxyConfig::new("proxy1.example.com", 8080),
+    ProxyConfig::new("proxy2.example.com", 8080)
+        .with_protocol(ProxyProtocol::Socks5),
+]).with_strategy(ProxyStrategy::RoundRobin));
+
+let fetcher: Arc<dyn PageFetcher> = Arc::new(PooledHttpFetcher::new(Arc::clone(&pool)));
+let mut search = Search::new();
+search.add_engine(DuckDuckGo::with_fetcher(DuckDuckGoParser, fetcher));
+
+let results = search.search(SearchQuery::new("Rust 编程语言")).await?;
+
+// 运行时切换（线程安全，AtomicBool）
+pool.set_enabled(false);  // 直连
+pool.set_enabled(true);   // 重新启用轮换
+```
+
+## 使用健康监控（Rust）
+
+重复失败后自动暂停引擎：
+
+```rust
+use a3s_search::{Search, HealthConfig};
+use std::time::Duration;
+
+let mut search = Search::with_health_config(HealthConfig {
+    max_failures: 3,
+    suspend_duration: Duration::from_secs(120),
+});
+search.add_engine(DuckDuckGo::new());
+search.add_engine(Brave::new());
+```

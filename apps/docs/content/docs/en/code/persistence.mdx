@@ -167,17 +167,19 @@ What gets persisted per session:
 
 ### SessionData fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `String` | Session identifier |
-| `messages` | `Vec<Message>` | Full conversation history |
-| `tasks` | `Vec<AgentTask>` | Task list (alias: `todos`) |
-| `config.workspace` | `String` | Workspace path |
-| `config.system_prompt` | `String` | System prompt |
-| `config.planning_enabled` | `bool` | Planning flag |
-| `tool_names` | `Vec<String>` | Tool names (rebuilt on resume) |
-| `created_at` | `DateTime<Utc>` | Session creation time |
-| `updated_at` | `DateTime<Utc>` | Last save time |
+<TypeTable
+  type={{
+    id: { type: 'String', description: 'Session identifier' },
+    messages: { type: 'Vec<Message>', description: 'Full conversation history' },
+    tasks: { type: 'Vec<AgentTask>', description: 'Task list (alias: `todos`)' },
+    'config.workspace': { type: 'String', description: 'Workspace path' },
+    'config.system_prompt': { type: 'String', description: 'System prompt' },
+    'config.planning_enabled': { type: 'bool', description: 'Planning flag' },
+    tool_names: { type: 'Vec<String>', description: 'Tool names (rebuilt on resume)' },
+    created_at: { type: 'DateTime<Utc>', description: 'Session creation time' },
+    updated_at: { type: 'DateTime<Utc>', description: 'Last save time' },
+  }}
+/>
 
 ### Session management methods
 

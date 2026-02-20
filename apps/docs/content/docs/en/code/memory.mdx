@@ -117,17 +117,46 @@ let item = MemoryItem::new("Prefer write_all over write for file I/O")
     .with_metadata("source", "code-review");
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `String` | UUID, auto-generated |
-| `content` | `String` | The memory text |
-| `memory_type` | `MemoryType` | `Episodic`, `Semantic`, `Procedural`, `Working` |
-| `importance` | `f32` | 0.0–1.0, clamped |
-| `tags` | `Vec<String>` | Categorization tags |
-| `metadata` | `HashMap<String, String>` | Arbitrary key-value pairs |
-| `timestamp` | `DateTime<Utc>` | Creation time |
-| `access_count` | `u32` | Retrieval count |
-| `last_accessed` | `Option<DateTime<Utc>>` | Last retrieval time |
+<TypeTable
+  type={{
+    id: {
+      type: 'String',
+      description: 'UUID, auto-generated',
+    },
+    content: {
+      type: 'String',
+      description: 'The memory text',
+    },
+    memory_type: {
+      type: 'MemoryType',
+      description: '`Episodic`, `Semantic`, `Procedural`, `Working`',
+    },
+    importance: {
+      type: 'f32',
+      description: '0.0–1.0, clamped',
+    },
+    tags: {
+      type: 'Vec<String>',
+      description: 'Categorization tags',
+    },
+    metadata: {
+      type: 'HashMap<String, String>',
+      description: 'Arbitrary key-value pairs',
+    },
+    timestamp: {
+      type: 'DateTime<Utc>',
+      description: 'Creation time',
+    },
+    access_count: {
+      type: 'u32',
+      description: 'Retrieval count',
+    },
+    last_accessed: {
+      type: 'Option<DateTime<Utc>>',
+      description: 'Last retrieval time',
+    },
+  }}
+/>
 
 ## Relevance Scoring
 

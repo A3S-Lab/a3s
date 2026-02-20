@@ -254,13 +254,35 @@ let result = session.send("Run the test suite", None).await?;
 
 **Explicit `sandbox` Tool** — With the feature enabled, a `sandbox` tool is registered so the LLM can choose to use it explicitly. The workspace is mounted at `/workspace` inside the sandbox.
 
-| `SandboxConfig` Field | Type | Default | Description |
-|----------------------|------|---------|-------------|
-| `image` | `string` | `"alpine:latest"` | OCI image reference |
-| `memory_mb` | `u32` | `512` | Memory limit in megabytes |
-| `cpus` | `u32` | `1` | Number of vCPUs |
-| `network` | `bool` | `false` | Enable outbound networking |
-| `env` | `HashMap<String,String>` | `{}` | Environment variables to inject |
+<TypeTable
+  type={{
+    image: {
+      type: 'string',
+      default: '"alpine:latest"',
+      description: 'OCI image reference',
+    },
+    memory_mb: {
+      type: 'u32',
+      default: '512',
+      description: 'Memory limit in megabytes',
+    },
+    cpus: {
+      type: 'u32',
+      default: '1',
+      description: 'Number of vCPUs',
+    },
+    network: {
+      type: 'bool',
+      default: 'false',
+      description: 'Enable outbound networking',
+    },
+    env: {
+      type: 'HashMap<String, String>',
+      default: '{}',
+      description: 'Environment variables to inject',
+    },
+  }}
+/>
 
 ## File Version History
 
@@ -287,95 +309,119 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
 
 #### read
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `file_path` | `string` | ✅ | Absolute or workspace-relative path |
-| `offset` | `number` | ❌ | Start line (1-based) |
-| `limit` | `number` | ❌ | Max lines to return |
+<TypeTable
+  type={{
+    file_path: { type: 'string', required: true, description: 'Absolute or workspace-relative path' },
+    offset: { type: 'number', description: 'Start line (1-based)' },
+    limit: { type: 'number', description: 'Max lines to return' },
+  }}
+/>
 
 #### write
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `file_path` | `string` | ✅ | Path to write |
-| `content` | `string` | ✅ | Full file content |
+<TypeTable
+  type={{
+    file_path: { type: 'string', required: true, description: 'Path to write' },
+    content: { type: 'string', required: true, description: 'Full file content' },
+  }}
+/>
 
 #### edit
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `file_path` | `string` | ✅ | Path to edit |
-| `old_string` | `string` | ✅ | Exact string to replace |
-| `new_string` | `string` | ✅ | Replacement string |
-| `replace_all` | `boolean` | ❌ | Replace all occurrences (default: `false`) |
+<TypeTable
+  type={{
+    file_path: { type: 'string', required: true, description: 'Path to edit' },
+    old_string: { type: 'string', required: true, description: 'Exact string to replace' },
+    new_string: { type: 'string', required: true, description: 'Replacement string' },
+    replace_all: { type: 'boolean', default: 'false', description: 'Replace all occurrences' },
+  }}
+/>
 
 #### patch
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `file_path` | `string` | ✅ | Path to patch |
-| `diff` | `string` | ✅ | Unified diff string |
+<TypeTable
+  type={{
+    file_path: { type: 'string', required: true, description: 'Path to patch' },
+    diff: { type: 'string', required: true, description: 'Unified diff string' },
+  }}
+/>
 
 #### grep
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `pattern` | `string` | ✅ | Regex or literal pattern |
-| `path` | `string` | ❌ | Directory or file to search (default: workspace root) |
-| `glob` | `string` | ❌ | File glob filter (e.g. `**/*.rs`) |
-| `-i` | `boolean` | ❌ | Case-insensitive |
-| `-n` | `boolean` | ❌ | Include line numbers |
-| `context` | `number` | ❌ | Lines of context around matches |
+<TypeTable
+  type={{
+    pattern: { type: 'string', required: true, description: 'Regex or literal pattern' },
+    path: { type: 'string', description: 'Directory or file to search (default: workspace root)' },
+    glob: { type: 'string', description: 'File glob filter (e.g. `**/*.rs`)' },
+    '-i': { type: 'boolean', description: 'Case-insensitive' },
+    '-n': { type: 'boolean', description: 'Include line numbers' },
+    context: { type: 'number', description: 'Lines of context around matches' },
+  }}
+/>
 
 #### glob
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `pattern` | `string` | ✅ | Glob pattern (e.g. `**/*.rs`) |
-| `path` | `string` | ❌ | Base directory (default: workspace root) |
+<TypeTable
+  type={{
+    pattern: { type: 'string', required: true, description: 'Glob pattern (e.g. `**/*.rs`)' },
+    path: { type: 'string', description: 'Base directory (default: workspace root)' },
+  }}
+/>
 
 #### ls
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `path` | `string` | ❌ | Directory to list (default: workspace root) |
+<TypeTable
+  type={{
+    path: { type: 'string', description: 'Directory to list (default: workspace root)' },
+  }}
+/>
 
 #### bash
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `command` | `string` | ✅ | Shell command to execute |
-| `timeout` | `number` | ❌ | Timeout in ms |
-| `env` | `object` | ❌ | Extra environment variables |
+<TypeTable
+  type={{
+    command: { type: 'string', required: true, description: 'Shell command to execute' },
+    timeout: { type: 'number', description: 'Timeout in ms' },
+    env: { type: 'object', description: 'Extra environment variables' },
+  }}
+/>
 
 #### web_fetch
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `url` | `string` | ✅ | URL to fetch |
-| `prompt` | `string` | ❌ | Extraction prompt for the fetched content |
+<TypeTable
+  type={{
+    url: { type: 'string', required: true, description: 'URL to fetch' },
+    prompt: { type: 'string', description: 'Extraction prompt for the fetched content' },
+  }}
+/>
 
 #### web_search
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `query` | `string` | ✅ | Search query |
-| `allowed_domains` | `string[]` | ❌ | Restrict results to these domains |
-| `blocked_domains` | `string[]` | ❌ | Exclude these domains |
+<TypeTable
+  type={{
+    query: { type: 'string', required: true, description: 'Search query' },
+    allowed_domains: { type: 'string[]', description: 'Restrict results to these domains' },
+    blocked_domains: { type: 'string[]', description: 'Exclude these domains' },
+  }}
+/>
 
 #### task
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `agent` | `string` | ✅ | Agent name to delegate to |
-| `prompt` | `string` | ✅ | Task prompt for the subagent |
-| `workspace` | `string` | ❌ | Workspace override (default: current) |
+<TypeTable
+  type={{
+    agent: { type: 'string', required: true, description: 'Agent name to delegate to' },
+    prompt: { type: 'string', required: true, description: 'Task prompt for the subagent' },
+    workspace: { type: 'string', description: 'Workspace override (default: current)' },
+  }}
+/>
 
 #### batch
 
-| Arg | Type | Required | Description |
-|-----|------|----------|-------------|
-| `invocations` | `array` | ✅ | List of `{tool, args}` objects to run in parallel |
+<TypeTable
+  type={{
+    invocations: { type: 'array', required: true, description: 'List of `{tool, args}` objects to run in parallel' },
+  }}
+/>
 
 ### Custom Tool trait (Rust)
 

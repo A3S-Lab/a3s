@@ -1,0 +1,19 @@
+{
+  "title": "A3S Event",
+  "pages": [
+    "index",
+    "quick-start",
+    "---核心---",
+    "eventbus",
+    "providers",
+    "schema",
+    "---能力---",
+    "encryption",
+    "dlq",
+    "state",
+    "observability",
+    "---高级---",
+    "routing",
+    "cloudevents"
+  ]
+}

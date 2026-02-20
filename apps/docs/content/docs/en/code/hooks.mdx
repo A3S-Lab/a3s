@@ -132,49 +132,126 @@ Each hook event carries a typed payload with event-specific data:
 <Accordions>
 <Accordion title="PreToolUse — PreToolUseEvent">
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `session_id` | `String` | Session identifier |
-| `tool` | `String` | Tool name being called |
-| `args` | `Value` | Tool arguments |
-| `working_directory` | `String` | Current workspace path |
-| `recent_tools` | `Vec<String>` | Recently called tools |
+<TypeTable
+  type={{
+    session_id: {
+      type: 'String',
+      description: 'Session identifier',
+    },
+    tool: {
+      type: 'String',
+      description: 'Tool name being called',
+    },
+    args: {
+      type: 'Value',
+      description: 'Tool arguments',
+    },
+    working_directory: {
+      type: 'String',
+      description: 'Current workspace path',
+    },
+    recent_tools: {
+      type: 'Vec<String>',
+      description: 'Recently called tools',
+    },
+  }}
+/>
 
 </Accordion>
 <Accordion title="PostToolUse — PostToolUseEvent">
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `session_id` | `String` | Session identifier |
-| `tool` | `String` | Tool name |
-| `args` | `Value` | Tool arguments |
-| `result.success` | `bool` | Whether tool succeeded |
-| `result.output` | `String` | Tool output text |
-| `result.exit_code` | `i32` | Exit code |
-| `result.duration_ms` | `u64` | Execution time |
+<TypeTable
+  type={{
+    session_id: {
+      type: 'String',
+      description: 'Session identifier',
+    },
+    tool: {
+      type: 'String',
+      description: 'Tool name',
+    },
+    args: {
+      type: 'Value',
+      description: 'Tool arguments',
+    },
+    'result.success': {
+      type: 'bool',
+      description: 'Whether tool succeeded',
+    },
+    'result.output': {
+      type: 'String',
+      description: 'Tool output text',
+    },
+    'result.exit_code': {
+      type: 'i32',
+      description: 'Exit code',
+    },
+    'result.duration_ms': {
+      type: 'u64',
+      description: 'Execution time',
+    },
+  }}
+/>
 
 </Accordion>
 <Accordion title="GenerateStart — GenerateStartEvent">
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `session_id` | `String` | Session identifier |
-| `prompt` | `String` | User prompt |
-| `system_prompt` | `String` | System prompt |
-| `model_provider` | `String` | Provider name |
-| `model_name` | `String` | Model name |
-| `available_tools` | `Vec<String>` | Registered tool names |
+<TypeTable
+  type={{
+    session_id: {
+      type: 'String',
+      description: 'Session identifier',
+    },
+    prompt: {
+      type: 'String',
+      description: 'User prompt',
+    },
+    system_prompt: {
+      type: 'String',
+      description: 'System prompt',
+    },
+    model_provider: {
+      type: 'String',
+      description: 'Provider name',
+    },
+    model_name: {
+      type: 'String',
+      description: 'Model name',
+    },
+    available_tools: {
+      type: 'Vec<String>',
+      description: 'Registered tool names',
+    },
+  }}
+/>
 
 </Accordion>
 <Accordion title="GenerateEnd — GenerateEndEvent">
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `session_id` | `String` | Session identifier |
-| `response_text` | `String` | LLM response |
-| `tool_calls` | `Vec<String>` | Tools called this turn |
-| `usage.total_tokens` | `u32` | Token usage |
-| `duration_ms` | `u64` | Generation time |
+<TypeTable
+  type={{
+    session_id: {
+      type: 'String',
+      description: 'Session identifier',
+    },
+    response_text: {
+      type: 'String',
+      description: 'LLM response',
+    },
+    tool_calls: {
+      type: 'Vec<String>',
+      description: 'Tools called this turn',
+    },
+    'usage.total_tokens': {
+      type: 'u32',
+      description: 'Token usage',
+    },
+    duration_ms: {
+      type: 'u64',
+      description: 'Generation time',
+    },
+  }}
+/>
 
 </Accordion>
 <Accordion title="SessionStart / SessionEnd">

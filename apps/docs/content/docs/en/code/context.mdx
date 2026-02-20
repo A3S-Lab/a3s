@@ -85,15 +85,39 @@ The `query()` method receives a `ContextQuery` and returns matching `ContextItem
 
 ### ContextQuery
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `query` | `String` | The search query (usually the user's prompt) |
-| `context_types` | `Vec<ContextType>` | Types to retrieve |
-| `depth` | `ContextDepth` | How much detail to return |
-| `max_results` | `usize` | Maximum items to return |
-| `max_tokens` | `usize` | Token budget for results |
-| `session_id` | `Option<String>` | Scope results to a session |
-| `params` | `HashMap<String, String>` | Provider-specific parameters |
+<TypeTable
+  type={{
+    query: {
+      type: 'String',
+      required: true,
+      description: 'The search query (usually the user\'s prompt)',
+    },
+    context_types: {
+      type: 'Vec<ContextType>',
+      description: 'Types to retrieve',
+    },
+    depth: {
+      type: 'ContextDepth',
+      description: 'How much detail to return',
+    },
+    max_results: {
+      type: 'usize',
+      description: 'Maximum items to return',
+    },
+    max_tokens: {
+      type: 'usize',
+      description: 'Token budget for results',
+    },
+    session_id: {
+      type: 'Option<String>',
+      description: 'Scope results to a session',
+    },
+    params: {
+      type: 'HashMap<String, String>',
+      description: 'Provider-specific parameters',
+    },
+  }}
+/>
 
 Builder methods make construction ergonomic:
 
@@ -123,15 +147,38 @@ let query = ContextQuery::new("authentication flow")
 
 ### ContextItem
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `String` | Unique item identifier |
-| `context_type` | `ContextType` | Memory or Resource |
-| `content` | `String` | The context content |
-| `token_count` | `usize` | Estimated token count |
-| `relevance` | `f32` | 0.0–1.0 relevance score |
-| `source` | `Option<String>` | Where this context came from |
-| `metadata` | `HashMap<String, String>` | Additional metadata |
+<TypeTable
+  type={{
+    id: {
+      type: 'String',
+      description: 'Unique item identifier',
+    },
+    context_type: {
+      type: 'ContextType',
+      description: 'Memory or Resource',
+    },
+    content: {
+      type: 'String',
+      description: 'The context content',
+    },
+    token_count: {
+      type: 'usize',
+      description: 'Estimated token count',
+    },
+    relevance: {
+      type: 'f32',
+      description: '0.0–1.0 relevance score',
+    },
+    source: {
+      type: 'Option<String>',
+      description: 'Where this context came from',
+    },
+    metadata: {
+      type: 'HashMap<String, String>',
+      description: 'Additional metadata',
+    },
+  }}
+/>
 
 Items are formatted as XML for injection into the system prompt via `to_xml()`.
 
@@ -241,43 +288,95 @@ See [Sessions](/docs/code/sessions) for full event reference.
 
 ### SessionOptions
 
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| FS context | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` | `None` |
-| Custom provider | `.with_context_provider(Arc::new(p))` | _(config-based)_ | _(config-based)_ | `None` |
-| Compact threshold | `.with_context_threshold(f)` | `context_threshold=f` | `contextThreshold: f` | `0.8` |
-
-### ContextProvider trait (Rust)
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `retrieve` | `async fn retrieve(&self, query: &ContextQuery) -> Result<Vec<ContextItem>>` | Fetch relevant context items |
-| `on_turn_complete` | `async fn on_turn_complete(&self, turn: &TurnSummary) -> Result<()>` | Called after each agent turn |
-| `name` | `fn name(&self) -> &str` | Provider identifier |
+<TypeTable
+  type={{
+    fs_context: {
+      type: 'Option<string>',
+      default: 'None',
+      description: 'Filesystem context path. Rust: `.with_fs_context(path)`, TS: `fsContext: path`, Python: `fs_context=path`',
+    },
+    context_provider: {
+      type: 'Option<Arc<dyn ContextProvider>>',
+      default: 'None',
+      description: 'Custom context provider. Rust: `.with_context_provider(Arc::new(p))`',
+    },
+    context_threshold: {
+      type: 'f32',
+      default: '0.8',
+      description: 'Context usage fraction to trigger compaction. Rust: `.with_context_threshold(f)`, TS: `contextThreshold: f`, Python: `context_threshold=f`',
+    },
+  }}
+/>
 
 ### ContextQuery fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `query` | `String` | Natural language query |
-| `max_tokens` | `Option<usize>` | Token budget for results |
-| `context_types` | `Vec<ContextType>` | Filter by type |
-| `depth` | `ContextDepth` | `Abstract` or `Full` |
+<TypeTable
+  type={{
+    query: {
+      type: 'String',
+      description: 'Natural language query',
+    },
+    max_tokens: {
+      type: 'Option<usize>',
+      description: 'Token budget for results',
+    },
+    context_types: {
+      type: 'Vec<ContextType>',
+      description: 'Filter by type',
+    },
+    depth: {
+      type: 'ContextDepth',
+      description: '`Abstract` or `Full`',
+    },
+  }}
+/>
 
 ### ContextItem fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `content` | `String` | Context text |
-| `source` | `String` | Origin (file path, memory ID, etc.) |
-| `relevance` | `f32` | Relevance score (0.0–1.0) |
-| `context_type` | `ContextType` | `File`, `Memory`, `Skill`, `Custom` |
+<TypeTable
+  type={{
+    content: {
+      type: 'String',
+      description: 'Context text',
+    },
+    source: {
+      type: 'String',
+      description: 'Origin (file path, memory ID, etc.)',
+    },
+    relevance: {
+      type: 'f32',
+      description: 'Relevance score (0.0–1.0)',
+    },
+    context_type: {
+      type: 'ContextType',
+      description: '`File`, `Memory`, `Skill`, `Custom`',
+    },
+  }}
+/>
 
 ### VectorContextConfig (Rust)
 
-| Method | Description | Default |
-|--------|-------------|---------|
-| `VectorContextConfig::new(path)` | Set workspace root | — |
-| `.with_min_relevance(f)` | Minimum cosine similarity | `0.3` |
-| `.with_max_results(n)` | Max chunks per query | `10` |
-| `.with_chunk_size(n)` | Max chars per chunk | `1500` |
+<TypeTable
+  type={{
+    path: {
+      type: 'PathBuf',
+      required: true,
+      description: 'Workspace root. Use `VectorContextConfig::new(path)`',
+    },
+    min_relevance: {
+      type: 'f32',
+      default: '0.3',
+      description: 'Minimum cosine similarity. Use `.with_min_relevance(f)`',
+    },
+    max_results: {
+      type: 'usize',
+      default: '10',
+      description: 'Max chunks per query. Use `.with_max_results(n)`',
+    },
+    chunk_size: {
+      type: 'usize',
+      default: '1500',
+      description: 'Max chars per chunk. Use `.with_chunk_size(n)`',
+    },
+  }}
+/>

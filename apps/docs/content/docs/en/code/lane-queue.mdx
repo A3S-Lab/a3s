@@ -355,14 +355,16 @@ Any lane can be switched to **External** mode, where tool calls in that lane are
 
 When a tool call enters a lane in External mode, the queue creates an `ExternalTask`:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `task_id` | string | Unique task identifier (UUID) |
-| `session_id` | string | Owning session |
-| `lane` | SessionLane | Which lane this task is in |
-| `command_type` | string | Tool name (e.g., `bash`, `read`, `write`) |
-| `payload` | JSON | Tool arguments (e.g., `{"command": "cargo test"}`) |
-| `timeout_ms` | u64 | How long the queue waits before timing out |
+<TypeTable
+  type={{
+    task_id: { type: 'string', description: 'Unique task identifier (UUID)' },
+    session_id: { type: 'string', description: 'Owning session' },
+    lane: { type: 'SessionLane', description: 'Which lane this task is in' },
+    command_type: { type: 'string', description: 'Tool name (e.g., `bash`, `read`, `write`)' },
+    payload: { type: 'JSON', description: 'Tool arguments (e.g., `{"command": "cargo test"}`)' },
+    timeout_ms: { type: 'u64', description: 'How long the queue waits before timing out' },
+  }}
+/>
 
 Methods: `is_timed_out()` checks if the task has expired, `remaining_ms()` returns remaining time.
 
@@ -370,11 +372,13 @@ Methods: `is_timed_out()` checks if the task has expired, `remaining_ms()` retur
 
 Complete a task by providing:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `success` | bool | Whether execution succeeded |
-| `result` | JSON | Result payload (`{"output": "...", "exit_code": 0}`) |
-| `error` | Option&lt;string&gt; | Error message if failed |
+<TypeTable
+  type={{
+    success: { type: 'bool', description: 'Whether execution succeeded' },
+    result: { type: 'JSON', description: 'Result payload (`{"output": "...", "exit_code": 0}`)' },
+    error: { type: 'Option<string>', description: 'Error message if failed' },
+  }}
+/>
 
 ### Lifecycle
 
@@ -819,39 +823,35 @@ When no `queue_config` is set in `SessionOptions`, the queue is not created and 
 
 ### SessionQueueConfig fields
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `query_max_concurrency` | `usize` | `4` | Max parallel Query-lane tasks |
-| `execute_max_concurrency` | `usize` | `1` | Max parallel Execute-lane tasks |
-| `enable_metrics` | `bool` | `false` | Collect queue metrics |
-| `enable_dlq` | `bool` | `false` | Enable dead-letter queue |
-| `lane_handlers` | `HashMap<SessionLane, LaneHandlerConfig>` | `{}` | Per-lane handler config |
-| `retry_policy` | `Option<RetryPolicy>` | `None` | Retry on failure |
-| `rate_limit` | `Option<RateLimit>` | `None` | Rate limiting |
-| `priority_boost` | `Option<PriorityBoost>` | `None` | Deadline-based priority boost |
-| `pressure_threshold` | `usize` | `50` | Queue depth alert threshold |
+<TypeTable
+  type={{
+    query_max_concurrency: { type: 'usize', default: '4', description: 'Max parallel Query-lane tasks' },
+    execute_max_concurrency: { type: 'usize', default: '1', description: 'Max parallel Execute-lane tasks' },
+    enable_metrics: { type: 'bool', default: 'false', description: 'Collect queue metrics' },
+    enable_dlq: { type: 'bool', default: 'false', description: 'Enable dead-letter queue' },
+    lane_handlers: { type: 'HashMap<SessionLane, LaneHandlerConfig>', default: '{}', description: 'Per-lane handler config' },
+    retry_policy: { type: 'Option<RetryPolicy>', default: 'None', description: 'Retry on failure' },
+    rate_limit: { type: 'Option<RateLimit>', default: 'None', description: 'Rate limiting' },
+    priority_boost: { type: 'Option<PriorityBoost>', default: 'None', description: 'Deadline-based priority boost' },
+    pressure_threshold: { type: 'usize', default: '50', description: 'Queue depth alert threshold' },
+  }}
+/>
 
 ### LaneHandlerConfig fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `mode` | `TaskHandlerMode` | `Internal`, `External`, or `Hybrid` |
-| `timeout_ms` | `Option<u64>` | External task timeout |
-
-### Queue management methods
-
-| Method | Rust | Python | Node.js |
-|--------|------|--------|---------|
-| Submit task | `session.submit_task(task).await?` | `await session.submit_task({...})` | `await session.submitTask({...})` |
-| Queue stats | `session.queue_stats().await` | `await session.queue_stats()` | `await session.queueStats()` |
-| Queue metrics | `session.queue_metrics().await` | `await session.queue_metrics()` | `await session.queueMetrics()` |
-| Dead letters | `session.dead_letters().await` | `await session.dead_letters()` | `await session.deadLetters()` |
-| Set lane handler | `session.set_lane_handler(lane, cfg).await` | `await session.set_lane_handler(lane, cfg)` | `await session.setLaneHandler(lane, cfg)` |
+<TypeTable
+  type={{
+    mode: { type: 'TaskHandlerMode', description: '`Internal`, `External`, or `Hybrid`' },
+    timeout_ms: { type: 'Option<u64>', description: 'External task timeout' },
+  }}
+/>
 
 ### RetryPolicy fields
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `strategy` | `string` | `"exponential"` | `"fixed"` or `"exponential"` |
-| `max_retries` | `u32` | `3` | Max retry attempts |
-| `initial_delay_ms` | `u64` | `100` | Initial retry delay |
+<TypeTable
+  type={{
+    strategy: { type: 'string', default: '"exponential"', description: '`"fixed"` or `"exponential"`' },
+    max_retries: { type: 'u32', default: '3', description: 'Max retry attempts' },
+    initial_delay_ms: { type: 'u64', default: '100', description: 'Initial retry delay' },
+  }}
+/>

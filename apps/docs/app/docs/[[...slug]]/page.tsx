@@ -36,8 +36,10 @@ export default async function Page(props: PageProps) {
   );
 }
 
-export async function generateStaticParams() {
-  return source.generateParams('en');
+export function generateStaticParams() {
+  return source.getPages('en').map((page) => ({
+    slug: page.slugs.length > 0 ? page.slugs : undefined,
+  }));
 }
 
 export async function generateMetadata(props: PageProps): Promise<Metadata> {

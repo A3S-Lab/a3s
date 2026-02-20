@@ -150,8 +150,10 @@ for await (const event of stream) {
 
 ### ContextCompacted Event
 
-| Field | Rust | Python/Node.js | Description |
-|-------|------|----------------|-------------|
-| Messages before | `messages_before` | `messages_before` / `messagesBefore` | Message count before compaction |
-| Messages after | `messages_after` | `messages_after` / `messagesAfter` | Message count after compaction |
-| Tokens saved | `tokens_saved` | `tokens_saved` / `tokensSaved` | Approximate tokens freed |
+<TypeTable
+  type={{
+    messages_before: { type: 'usize', description: 'Message count before compaction. Rust: `messages_before`, Python: `messages_before`, Node.js: `messagesBefore`' },
+    messages_after: { type: 'usize', description: 'Message count after compaction. Rust: `messages_after`, Python: `messages_after`, Node.js: `messagesAfter`' },
+    tokens_saved: { type: 'usize', description: 'Approximate tokens freed. Rust: `tokens_saved`, Python: `tokens_saved`, Node.js: `tokensSaved`' },
+  }}
+/>
