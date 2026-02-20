@@ -14,6 +14,7 @@ import {
   Package,
 } from 'lucide-react';
 import { LangDropdown } from '@/components/lang-dropdown';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 // ─── i18n ─────────────────────────────────────────────────────────────────────
 
@@ -281,6 +282,12 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
               {tr.docsLink}
             </Link>
             <Link
+              href={lang === 'cn' ? '/cn/tutorials/deep-research' : '/tutorials/deep-research'}
+              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            >
+              {lang === 'cn' ? '教程' : 'Tutorials'}
+            </Link>
+            <Link
               href="/blog"
               className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             >
@@ -296,6 +303,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
               GitHub
             </Link>
             <LangDropdown />
+            <ThemeToggle />
           </div>
         </div>
       </nav>
