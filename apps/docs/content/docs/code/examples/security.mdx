@@ -1,0 +1,136 @@
+---
+title: Security
+description: Input taint tracking and output sanitization
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Security
+
+The `SecurityProvider` extension point intercepts every user prompt and LLM response to detect and redact sensitive data.
+
+The built-in `DefaultSecurityProvider` detects common patterns: API keys, tokens, passwords, SSNs, credit card numbers, and email addresses.
+
+## Enable Default Security
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_default_security(); // taint input + sanitize output
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send("Review this config file", None).await?;
+println!("{}", result.text); // sensitive patterns redacted
+```
+
+**Run:** `cargo run --example test_security`
+**Source:** [`core/examples/test_security.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_security.rs)
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import SessionOptions
+
+opts = SessionOptions()
+opts.default_security = True
+
+session = agent.session("/my-project", options=opts)
+result = await session.send("Review this config file")
+print(result.text)  # sensitive patterns redacted
+```
+
+**Run:** `python examples/test_advanced_features.py`
+**Source:** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  defaultSecurity: true,
+});
+
+const result = await session.send('Review this config file');
+console.log(result.text); // sensitive patterns redacted
+```
+
+**Run:** `node examples/test_advanced_features.js`
+**Source:** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+</Tab>
+</Tabs>
+
+## Custom Security Provider
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::security::SecurityProvider;
+use std::sync::Arc;
+
+struct MySecurityProvider;
+
+impl SecurityProvider for MySecurityProvider {
+    fn taint_input(&self, text: &str) {
+        // Detect and register sensitive patterns in input
+        if text.contains("PRIVATE_KEY") {
+            tracing::warn!("Sensitive input detected: private key reference");
+        }
+    }
+
+    fn sanitize_output(&self, text: &str) -> String {
+        // Redact sensitive patterns from LLM output
+        text.replace(r"sk-[a-zA-Z0-9]{48}", "[REDACTED_API_KEY]")
+    }
+
+    fn wipe(&self) {
+        // Clear any cached sensitive state
+    }
+}
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_security_provider(Arc::new(MySecurityProvider));
+
+let session = agent.session("/my-project", Some(opts))?;
+```
+</Tab>
+<Tab value="Python">
+```python
+# Custom security providers are implemented in Rust.
+# Use with_default_security() for the built-in provider,
+# or implement SecurityProvider in Rust and expose via FFI.
+opts = SessionOptions()
+opts.default_security = True
+session = agent.session("/my-project", options=opts)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+// Custom security providers are implemented in Rust.
+// Use defaultSecurity: true for the built-in provider.
+const session = agent.session('/my-project', {
+  defaultSecurity: true,
+});
+```
+</Tab>
+</Tabs>
+
+## What Gets Redacted
+
+The `DefaultSecurityProvider` detects and redacts:
+
+| Pattern | Example | Redacted as |
+|---------|---------|-------------|
+| Anthropic API key | `sk-ant-api03-...` | `[REDACTED]` |
+| OpenAI API key | `sk-proj-...` | `[REDACTED]` |
+| Generic bearer token | `Bearer eyJ...` | `[REDACTED]` |
+| Password field | `password=secret` | `[REDACTED]` |
+| SSN | `123-45-6789` | `[REDACTED]` |
+| Credit card | `4111 1111 1111 1111` | `[REDACTED]` |
+
+<Callout type="info">
+For full security configuration, see [Security](/docs/code/security).
+</Callout>

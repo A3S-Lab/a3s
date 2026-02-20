@@ -1,0 +1,179 @@
+---
+title: Skills
+description: Built-in and custom skill system
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Skills
+
+Skills are reusable prompt templates that augment the agent's system prompt with specialized instructions. A3S Code ships with 7 built-in skills and supports custom skills via Markdown files.
+
+## Built-in Skills
+
+| Skill | What it does |
+|-------|-------------|
+| `code-search` | Semantic code search across the workspace |
+| `code-review` | Style, security, and resource issue detection |
+| `explain-code` | Clear explanations of complex code |
+| `find-bugs` | Bug detection and fix suggestions |
+| `builtin-tools` | Guides LLM on effective tool use |
+| `delegate-task` | Breaks tasks into parallel sub-agents |
+| `find-skills` | Discovers available skills dynamically |
+
+## Enable Built-in Skills
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_builtin_skills();
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send("Review the auth module for security issues", None).await?;
+println!("{}", result.text);
+```
+
+**Run:** `cargo run --example test_builtin_skills`
+**Source:** [`core/examples/test_builtin_skills.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_builtin_skills.rs)
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project",
+    permissive=True,
+    builtin_skills=True,
+)
+result = await session.send("Review the auth module for security issues")
+print(result.text)
+```
+
+**Run:** `python examples/test_custom_skills_agents.py`
+**Source:** [`sdk/python/examples/test_custom_skills_agents.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_custom_skills_agents.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  builtinSkills: true,
+});
+const result = await session.send('Review the auth module for security issues');
+console.log(result.text);
+```
+
+**Run:** `node examples/test_custom_skills_agents.js`
+**Source:** [`sdk/node/examples/test_custom_skills_agents.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_custom_skills_agents.js)
+</Tab>
+</Tabs>
+
+## Custom Skills
+
+Create a Markdown file with YAML frontmatter:
+
+```markdown
+---
+name: api-docs
+description: Generate OpenAPI documentation from code
+triggers:
+  - "generate docs"
+  - "document api"
+  - "openapi"
+---
+
+When asked to generate API documentation:
+1. Read all handler files to understand the API surface
+2. Extract route definitions, parameters, and response types
+3. Generate OpenAPI 3.0 YAML format
+4. Write to docs/openapi.yaml
+```
+
+Then load it:
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_skills_from_dir("/my-project/.a3s/skills");
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send("Generate OpenAPI docs for the REST API", None).await?;
+println!("{}", result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project",
+    permissive=True,
+    skill_dirs=["/my-project/.a3s/skills"],
+)
+result = await session.send("Generate OpenAPI docs for the REST API")
+print(result.text)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  skillDirs: ['/my-project/.a3s/skills'],
+});
+const result = await session.send('Generate OpenAPI docs for the REST API');
+console.log(result.text);
+```
+</Tab>
+</Tabs>
+
+## Skills + Planning
+
+Combine skills with planning for complex multi-step tasks:
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_builtin_skills()
+    .with_planning(true)
+    .with_goal_tracking(true);
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send(
+    "Review the entire codebase, find all bugs, fix them, and write a report",
+    None,
+).await?;
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project",
+    permissive=True,
+    builtin_skills=True,
+    planning=True,
+    goal_tracking=True,
+)
+result = await session.send(
+    "Review the entire codebase, find all bugs, fix them, and write a report"
+)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  builtinSkills: true,
+  planning: true,
+  goalTracking: true,
+});
+const result = await session.send(
+  'Review the entire codebase, find all bugs, fix them, and write a report'
+);
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+For full skills documentation, see [Skills](/docs/code/skills).
+</Callout>

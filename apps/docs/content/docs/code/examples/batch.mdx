@@ -1,0 +1,173 @@
+---
+title: Batch Tool
+description: Execute multiple independent tool calls in parallel within a single LLM turn
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Batch Tool
+
+The `batch` tool lets the LLM dispatch multiple independent tool calls in parallel within a single turn. This reduces round-trips when operations don't depend on each other.
+
+<Callout type="info">
+The batch tool is registered automatically — no configuration needed. The LLM decides when to use it based on the task.
+</Callout>
+
+## How It Works
+
+Instead of:
+```
+Turn 1: read file_a.rs  → result
+Turn 2: read file_b.rs  → result
+Turn 3: read file_c.rs  → result
+```
+
+The LLM can do:
+```
+Turn 1: batch([read file_a.rs, read file_b.rs, read file_c.rs])  → all results
+```
+
+## Example
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+use tempfile::TempDir;
+
+let dir = TempDir::new()?;
+std::fs::write(dir.path().join("auth.rs"), "// auth module")?;
+std::fs::write(dir.path().join("db.rs"), "// database module")?;
+std::fs::write(dir.path().join("handler.rs"), "// HTTP handler")?;
+
+let opts = SessionOptions::new().with_permissive_policy();
+let session = agent.session(dir.path().to_str().unwrap(), Some(opts))?;
+
+let result = session.send(
+    "Use the batch tool to read auth.rs, db.rs, and handler.rs in parallel. \
+     Then summarize what each file does.",
+    None,
+).await?;
+
+println!("Tool calls: {}", result.tool_calls_count);
+println!("{}", result.text);
+```
+
+**Run:** `cargo run --example test_batch_tool`
+**Source:** [`core/examples/test_batch_tool.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_batch_tool.rs)
+</Tab>
+<Tab value="Python">
+```python
+import tempfile, os
+
+with tempfile.TemporaryDirectory() as dir:
+    for name, content in [
+        ("auth.rs", "// auth module"),
+        ("db.rs", "// database module"),
+        ("handler.rs", "// HTTP handler"),
+    ]:
+        open(os.path.join(dir, name), "w").write(content)
+
+    session = agent.session(dir, permissive=True)
+    result = await session.send(
+        "Use the batch tool to read auth.rs, db.rs, and handler.rs in parallel. "
+        "Then summarize what each file does."
+    )
+    print(f"Tool calls: {result.tool_calls_count}")
+    print(result.text)
+```
+
+**Run:** `python examples/test_advanced_features.py`
+**Source:** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const { mkdtempSync, writeFileSync } = require('fs');
+const { join } = require('path');
+const { tmpdir } = require('os');
+
+const dir = mkdtempSync(join(tmpdir(), 'batch-'));
+writeFileSync(join(dir, 'auth.rs'), '// auth module');
+writeFileSync(join(dir, 'db.rs'), '// database module');
+writeFileSync(join(dir, 'handler.rs'), '// HTTP handler');
+
+const session = agent.session(dir, { permissive: true });
+const result = await session.send(
+  'Use the batch tool to read auth.rs, db.rs, and handler.rs in parallel. ' +
+  'Then summarize what each file does.'
+);
+
+console.log(`Tool calls: ${result.toolCallsCount}`);
+console.log(result.text);
+```
+
+**Run:** `node examples/test_advanced_features.js`
+**Source:** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+</Tab>
+</Tabs>
+
+## Direct Batch Invocation
+
+You can also call the batch tool directly without going through the LLM:
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use serde_json::json;
+
+let result = session.call_tool("batch", json!({
+    "invocations": [
+        { "tool": "read", "args": { "file_path": "auth.rs" } },
+        { "tool": "read", "args": { "file_path": "db.rs" } },
+        { "tool": "grep", "args": { "pattern": "TODO", "path": "." } }
+    ]
+})).await?;
+
+println!("{}", result.output);
+```
+</Tab>
+<Tab value="Python">
+```python
+result = await session.call_tool("batch", {
+    "invocations": [
+        {"tool": "read", "args": {"file_path": "auth.rs"}},
+        {"tool": "read", "args": {"file_path": "db.rs"}},
+        {"tool": "grep", "args": {"pattern": "TODO", "path": "."}},
+    ]
+})
+print(result.output)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const result = await session.callTool('batch', {
+  invocations: [
+    { tool: 'read', args: { filePath: 'auth.rs' } },
+    { tool: 'read', args: { filePath: 'db.rs' } },
+    { tool: 'grep', args: { pattern: 'TODO', path: '.' } },
+  ],
+});
+console.log(result.output);
+```
+</Tab>
+</Tabs>
+
+## Output Format
+
+Each invocation result is prefixed with a header:
+
+```
+--- [1: read] ---
+// auth module
+
+--- [2: read] ---
+// database module
+
+--- [3: grep] ---
+handler.rs:5:// TODO: add error handling
+```
+
+<Callout type="warn">
+Nested batch calls are rejected. The batch tool cannot call itself recursively.
+</Callout>

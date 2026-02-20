@@ -1,0 +1,169 @@
+---
+title: External Tasks
+description: Multi-machine coordinator/worker pattern using external task handlers
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# External Tasks
+
+External task handling enables a coordinator/worker pattern where tasks are dispatched to remote workers instead of executing locally. This is the foundation for multi-machine A3S Code deployments.
+
+<Callout type="info">
+For the full multi-machine architecture guide, see [Multi-Machine Distribution](/docs/code/multi-machine).
+</Callout>
+
+## Handler Modes
+
+| Mode | Description |
+|------|-------------|
+| `Internal` | Tasks execute in-process (default) |
+| `External` | Tasks dispatched to external worker |
+| `Hybrid` | Try external first, fall back to internal |
+
+## Basic External Handler
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig, LaneHandlerConfig};
+use a3s_code_core::queue::{ExternalTask, ExternalTaskResult, SessionLane};
+
+// Configure queue with external handler for the Execute lane
+let queue_config = SessionQueueConfig::default()
+    .with_lane_features()
+    .with_lane_handler(SessionLane::Execute, LaneHandlerConfig {
+        mode: "external".to_string(),
+        timeout_ms: Some(30_000),
+    });
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_queue_config(queue_config);
+
+let session = agent.session("/my-project", Some(opts))?;
+
+// Register the external handler callback
+session.set_external_task_handler(|task: ExternalTask| async move {
+    println!("Worker received task: {}", task.id);
+    // Process the task on this worker
+    ExternalTaskResult {
+        success: true,
+        result: Some(serde_json::json!({ "output": "task completed" })),
+        error: None,
+    }
+}).await;
+```
+
+**Run:** `cargo run --example test_external_task_handler`
+**Source:** [`core/examples/test_external_task_handler.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_external_task_handler.rs)
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import SessionQueueConfig
+
+queue_config = SessionQueueConfig()
+queue_config.enable_all_features = True
+
+session = agent.session("/my-project",
+    permissive=True,
+    queue_config=queue_config,
+)
+
+# Register external task handler
+async def handle_task(task):
+    print(f"Worker received task: {task['id']}")
+    return {"success": True, "result": {"output": "task completed"}}
+
+session.set_external_task_handler(handle_task)
+```
+
+**Run:** `python examples/test_external_task_handler.py`
+**Source:** [`sdk/python/examples/test_external_task_handler.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_external_task_handler.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  queueConfig: { enableAllFeatures: true },
+});
+
+// Register external task handler
+session.setExternalTaskHandler(async (task) => {
+  console.log(`Worker received task: ${task.id}`);
+  return { success: true, result: { output: 'task completed' } };
+});
+```
+
+**Run:** `node examples/test_external_task_handler.js`
+**Source:** [`sdk/node/examples/test_external_task_handler.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_external_task_handler.js)
+</Tab>
+</Tabs>
+
+## Parallel Processing
+
+Distribute work across multiple sessions in parallel:
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use tokio::task::JoinSet;
+
+let files = vec!["auth.rs", "db.rs", "handler.rs", "config.rs"];
+let mut set = JoinSet::new();
+
+for file in files {
+    let agent = agent.clone();
+    set.spawn(async move {
+        let session = agent.session("/my-project", Some(
+            SessionOptions::new().with_permissive_policy()
+        ))?;
+        session.send(&format!("Review {} for issues", file), None).await
+    });
+}
+
+while let Some(result) = set.join_next().await {
+    println!("{}", result??. text);
+}
+```
+
+**Run:** `cargo run --example test_parallel_processing`
+**Source:** [`core/examples/test_parallel_processing.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_parallel_processing.rs)
+</Tab>
+<Tab value="Python">
+```python
+import asyncio
+
+files = ["auth.rs", "db.rs", "handler.rs", "config.rs"]
+
+async def review_file(file):
+    session = agent.session("/my-project", permissive=True)
+    return await session.send(f"Review {file} for issues")
+
+results = await asyncio.gather(*[review_file(f) for f in files])
+for r in results:
+    print(r.text)
+```
+
+**Run:** `python examples/test_parallel_processing.py`
+**Source:** [`sdk/python/examples/test_parallel_processing.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_parallel_processing.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const files = ['auth.rs', 'db.rs', 'handler.rs', 'config.rs'];
+
+const results = await Promise.all(
+  files.map(async (file) => {
+    const session = agent.session('/my-project', { permissive: true });
+    return session.send(`Review ${file} for issues`);
+  })
+);
+
+results.forEach((r) => console.log(r.text));
+```
+
+**Run:** `node examples/test_parallel_processing.js`
+**Source:** [`sdk/node/examples/test_parallel_processing.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_parallel_processing.js)
+</Tab>
+</Tabs>

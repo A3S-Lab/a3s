@@ -1,0 +1,67 @@
+---
+title: Examples
+description: Runnable SDK examples for Rust, Python, and Node.js — each using real LLM configuration
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Examples
+
+Every example uses real LLM configuration from `~/.a3s/config.hcl` or `$A3S_CONFIG` and is available in all three SDKs.
+
+<Callout type="info">
+Set `A3S_CONFIG=/path/to/config.hcl` or create `~/.a3s/config.hcl` before running any example. See [Providers](/docs/code/providers) for config format.
+</Callout>
+
+## Quick Setup
+
+```bash
+# Rust
+cd crates/code/core
+cargo run --example <name>
+
+# Python
+cd crates/code/sdk/python
+pip install -e .
+python examples/<name>.py
+
+# Node.js
+cd crates/code/sdk/node
+npm install && npm run build
+node examples/<name>.js
+```
+
+## Example Index
+
+<Cards>
+  <Card title="Quick Start" href="/docs/code/examples/quick-start" description="Basic send, streaming, and multi-turn conversation" />
+  <Card title="Streaming" href="/docs/code/examples/streaming" description="Real-time event stream with AgentEvent" />
+  <Card title="Planning" href="/docs/code/examples/planning" description="Task decomposition with goal tracking" />
+  <Card title="Hooks" href="/docs/code/examples/hooks" description="Lifecycle event interception (PreToolUse, PostToolUse, ...)" />
+  <Card title="Auto-Compact" href="/docs/code/examples/auto-compact" description="Automatic context window compaction" />
+  <Card title="Memory" href="/docs/code/examples/memory" description="Persistent file-based memory store" />
+  <Card title="Security" href="/docs/code/examples/security" description="Input taint tracking and output sanitization" />
+  <Card title="Batch Tool" href="/docs/code/examples/batch" description="Parallel tool execution in a single turn" />
+  <Card title="Vector RAG" href="/docs/code/examples/vector-rag" description="Semantic code search via vector embeddings" />
+  <Card title="Skills" href="/docs/code/examples/skills" description="Built-in and custom skill system" />
+  <Card title="Lane Queue" href="/docs/code/examples/lane-queue" description="Priority-based task queue with preemption" />
+  <Card title="External Tasks" href="/docs/code/examples/external-tasks" description="Multi-machine coordinator/worker pattern" />
+</Cards>
+
+## Feature Coverage
+
+| Feature | Rust | Python | Node.js |
+|---------|:----:|:------:|:-------:|
+| Basic send / multi-turn | ✅ | ✅ | ✅ |
+| Streaming events | ✅ | ✅ | ✅ |
+| Planning + goal tracking | ✅ | ✅ | ✅ |
+| Lifecycle hooks | ✅ | ✅ | ✅ |
+| Auto-compact | ✅ | ✅ | ✅ |
+| File memory | ✅ | ✅ | ✅ |
+| Security provider | ✅ | ✅ | ✅ |
+| Batch tool | ✅ | ✅ | ✅ |
+| Vector RAG / codesearch | ✅ | ✅ | ✅ |
+| Built-in skills | ✅ | ✅ | ✅ |
+| Lane queue / priority | ✅ | ✅ | ✅ |
+| External task handling | ✅ | ✅ | ✅ |

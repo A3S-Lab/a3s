@@ -1,0 +1,177 @@
+---
+title: Quick Start
+description: Basic send, streaming, and multi-turn conversation
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Quick Start
+
+The simplest way to use A3S Code: create an agent, bind it to a workspace, and send a prompt.
+
+## Basic Send
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Agent::new("~/.a3s/config.hcl").await?;
+
+    let opts = SessionOptions::new().with_permissive_policy();
+    let session = agent.session("/my-project", Some(opts))?;
+
+    let result = session.send("What files handle authentication?", None).await?;
+    println!("{}", result.text);
+    println!("Tokens: {}", result.usage.total_tokens);
+    Ok(())
+}
+```
+
+**Run:** `cargo run --example sdk_basic`
+**Source:** [`core/examples/sdk_basic.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/sdk_basic.rs)
+</Tab>
+<Tab value="Python">
+```python
+import asyncio
+import a3s_code
+
+async def main():
+    agent = await a3s_code.Agent.create("~/.a3s/config.hcl")
+    session = agent.session("/my-project", permissive=True)
+
+    result = await session.send("What files handle authentication?")
+    print(result.text)
+    print(f"Tokens: {result.usage.total_tokens}")
+
+asyncio.run(main())
+```
+
+**Run:** `python examples/agentic_loop_demo.py`
+**Source:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const { Agent } = require('@a3s-lab/code');
+
+const agent = await Agent.create('~/.a3s/config.hcl');
+const session = agent.session('/my-project', { permissive: true });
+
+const result = await session.send('What files handle authentication?');
+console.log(result.text);
+console.log(`Tokens: ${result.usage.totalTokens}`);
+```
+
+**Run:** `node examples/agentic_loop_demo.js`
+**Source:** [`sdk/node/examples/agentic_loop_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.js)
+</Tab>
+</Tabs>
+
+## Multi-Turn Conversation
+
+History is automatically accumulated after each `send()` call.
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_permissive_policy()
+))?;
+
+// Turn 1
+let r1 = session.send("Create a file called hello.rs", None).await?;
+println!("Turn 1: {}", r1.text);
+
+// Turn 2 — history is preserved automatically
+let r2 = session.send("Now add a main function to it", None).await?;
+println!("Turn 2: {}", r2.text);
+
+// Turn 3
+let r3 = session.send("Run it and show me the output", None).await?;
+println!("Turn 3: {}", r3.text);
+
+// Inspect full history
+let history = session.history();
+println!("Total messages: {}", history.len());
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project", permissive=True)
+
+r1 = await session.send("Create a file called hello.rs")
+print(f"Turn 1: {r1.text}")
+
+r2 = await session.send("Now add a main function to it")
+print(f"Turn 2: {r2.text}")
+
+r3 = await session.send("Run it and show me the output")
+print(f"Turn 3: {r3.text}")
+
+history = session.history()
+print(f"Total messages: {len(history)}")
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', { permissive: true });
+
+const r1 = await session.send('Create a file called hello.rs');
+console.log('Turn 1:', r1.text);
+
+const r2 = await session.send('Now add a main function to it');
+console.log('Turn 2:', r2.text);
+
+const r3 = await session.send('Run it and show me the output');
+console.log('Turn 3:', r3.text);
+
+const history = session.history();
+console.log('Total messages:', history.length);
+```
+</Tab>
+</Tabs>
+
+## Resilient Session
+
+Configure parse retries, tool timeout, and circuit breaker for production use.
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_parse_retries(3)
+    .with_tool_timeout(30_000)       // 30s per tool call
+    .with_circuit_breaker(5);        // abort after 5 consecutive LLM failures
+
+let session = agent.session("/my-project", Some(opts))?;
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project",
+    permissive=True,
+    max_parse_retries=3,
+    tool_timeout_ms=30_000,
+    circuit_breaker_threshold=5,
+)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  maxParseRetries: 3,
+  toolTimeoutMs: 30_000,
+  circuitBreakerThreshold: 5,
+});
+```
+</Tab>
+</Tabs>
+
+<Callout type="warn">
+`permissive: true` skips HITL confirmation — suitable for demos and CI. In production, configure a [permission policy](/docs/code/security) instead.
+</Callout>

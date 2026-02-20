@@ -1,0 +1,140 @@
+---
+title: Auto-Compact
+description: Automatic context window compaction when token usage exceeds threshold
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Auto-Compact
+
+When a session's context window fills up, auto-compact automatically:
+1. Prunes old large tool outputs (cheap, no LLM call)
+2. Summarizes old conversation turns via LLM (if still over threshold)
+
+This keeps long-running sessions alive without manual intervention.
+
+<Callout type="info">
+Auto-compact triggers when `used_tokens / max_tokens >= threshold`. Default threshold: 80%.
+</Callout>
+
+## Enable Auto-Compact
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_auto_compact(true)
+    .with_auto_compact_threshold(0.80); // trigger at 80% usage
+
+let session = agent.session("/my-project", Some(opts))?;
+
+// Long-running conversation — context is compacted automatically
+for i in 0..20 {
+    let result = session.send(
+        &format!("Step {}: analyze the next module", i),
+        None,
+    ).await?;
+    println!("Step {}: {} tokens", i, result.usage.total_tokens);
+}
+```
+
+**Run:** `cargo run --example test_auto_compact`
+**Source:** [`core/examples/test_auto_compact.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_auto_compact.rs)
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import SessionOptions
+
+opts = SessionOptions()
+opts.auto_compact = True
+opts.auto_compact_threshold = 0.80
+
+session = agent.session("/my-project", options=opts)
+
+# Long-running conversation — context is compacted automatically
+for i in range(20):
+    result = await session.send(f"Step {i}: analyze the next module")
+    print(f"Step {i}: {result.usage.total_tokens} tokens")
+```
+
+**Run:** `python examples/test_advanced_features.py`
+**Source:** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  autoCompact: true,
+  autoCompactThreshold: 0.80,
+});
+
+// Long-running conversation — context is compacted automatically
+for (let i = 0; i < 20; i++) {
+  const result = await session.send(`Step ${i}: analyze the next module`);
+  console.log(`Step ${i}: ${result.usage.totalTokens} tokens`);
+}
+```
+
+**Run:** `node examples/test_advanced_features.js`
+**Source:** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+</Tab>
+</Tabs>
+
+## How It Works
+
+```
+After each LLM turn:
+  1. Check: used_tokens / max_tokens >= threshold?
+  2. If yes → prune old large tool outputs (no LLM call)
+  3. If still over threshold → summarize old messages via LLM
+  4. Emit ContextCompacted event
+```
+
+Tool outputs older than the most recent 40k tokens are replaced with:
+```
+[output pruned — re-read file or re-run command if needed]
+```
+
+The LLM summarization keeps the first 2 messages (system context), a summary of old turns, and the last 20 messages intact.
+
+## Compaction Event
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let (mut rx, handle) = session.stream("Long task...", None).await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::ContextCompacted { messages_before, messages_after } => {
+            println!("Compacted: {} → {} messages", messages_before, messages_after);
+        }
+        AgentEvent::End { .. } => break,
+        _ => {}
+    }
+}
+handle.await??;
+```
+</Tab>
+<Tab value="Python">
+```python
+async for event in session.stream("Long task..."):
+    if event.get("type") == "context_compacted":
+        print(f"Compacted: {event['messages_before']} → {event['messages_after']} messages")
+    elif event.get("type") == "end":
+        break
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+for await (const event of stream) {
+  if (event.type === 'context_compacted') {
+    console.log(`Compacted: ${event.messagesBefore} → ${event.messagesAfter} messages`);
+  } else if (event.type === 'end') break;
+}
+```
+</Tab>
+</Tabs>

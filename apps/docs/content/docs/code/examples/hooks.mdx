@@ -1,0 +1,162 @@
+---
+title: Hooks
+description: Lifecycle event interception — PreToolUse, PostToolUse, PrePrompt, PostResponse, OnError
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Hooks
+
+Hooks let you intercept agent lifecycle events to audit, modify, or block operations. Register a `Hook` + `HookHandler` pair on a session.
+
+## Hook Event Types
+
+| Event | Fires when | Can block? |
+|-------|-----------|-----------|
+| `PreToolUse` | Before a tool executes | ✅ |
+| `PostToolUse` | After a tool completes | ❌ |
+| `PrePrompt` | Before prompt is sent to LLM | ✅ |
+| `PostResponse` | After LLM responds | ❌ |
+| `OnError` | On any agent error | ❌ |
+| `GenerateStart` | LLM generation begins | ❌ |
+| `GenerateEnd` | LLM generation ends | ❌ |
+| `SessionStart` / `SessionEnd` | Session lifecycle | ❌ |
+
+## Audit Hook (Log All Tool Calls)
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::hooks::{Hook, HookEvent, HookEventType, HookHandler, HookResponse};
+use std::sync::{Arc, Mutex};
+
+struct AuditHandler {
+    log: Arc<Mutex<Vec<String>>>,
+}
+
+impl HookHandler for AuditHandler {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        if let HookEvent::PreToolUse(e) = event {
+            println!("→ tool: {}", e.tool);
+            self.log.lock().unwrap().push(e.tool.clone());
+        }
+        HookResponse::continue_()
+    }
+}
+
+// Register
+let log = Arc::new(Mutex::new(Vec::new()));
+let hook = Hook::new("audit", HookEventType::PreToolUse);
+session.register_hook(hook);
+session.register_hook_handler("audit", Arc::new(AuditHandler { log: Arc::clone(&log) }));
+
+println!("Hooks: {}", session.hook_count());
+
+// Run agent
+let result = session.send("List files in the workspace", None).await?;
+
+// Inspect log
+println!("Tools called: {:?}", log.lock().unwrap());
+
+// Cleanup
+session.unregister_hook("audit");
+```
+
+**Run:** `cargo run --example test_hooks`
+**Source:** [`core/examples/test_hooks.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_hooks.rs)
+</Tab>
+<Tab value="Python">
+```python
+tool_log = []
+
+def on_pre_tool_use(event):
+    tool = event.get("tool", "unknown")
+    print(f"→ tool: {tool}")
+    tool_log.append(tool)
+    return None  # allow execution
+
+session.register_hook("audit", "pre_tool_use", on_pre_tool_use)
+print(f"Hooks: {session.hook_count()}")
+
+result = await session.send("List files in the workspace")
+
+print(f"Tools called: {tool_log}")
+session.unregister_hook("audit")
+```
+
+**Run:** `python examples/test_advanced_features.py`
+**Source:** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const toolLog = [];
+
+session.registerHook('audit', 'pre_tool_use', (event) => {
+  const tool = event.tool || 'unknown';
+  console.log(`→ tool: ${tool}`);
+  toolLog.push(tool);
+  return null; // allow execution
+});
+
+console.log(`Hooks: ${session.hookCount()}`);
+
+const result = await session.send('List files in the workspace');
+
+console.log('Tools called:', toolLog);
+session.unregisterHook('audit');
+```
+
+**Run:** `node examples/test_advanced_features.js`
+**Source:** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+</Tab>
+</Tabs>
+
+## Block Hook (Deny Specific Tools)
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+struct DenyBashHandler;
+
+impl HookHandler for DenyBashHandler {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        if let HookEvent::PreToolUse(e) = event {
+            if e.tool == "bash" {
+                return HookResponse::block("bash is not allowed in this session");
+            }
+        }
+        HookResponse::continue_()
+    }
+}
+
+let hook = Hook::new("no-bash", HookEventType::PreToolUse);
+session.register_hook(hook);
+session.register_hook_handler("no-bash", Arc::new(DenyBashHandler));
+```
+</Tab>
+<Tab value="Python">
+```python
+def deny_bash(event):
+    if event.get("tool") == "bash":
+        return {"action": "block", "reason": "bash is not allowed"}
+    return None
+
+session.register_hook("no-bash", "pre_tool_use", deny_bash)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+session.registerHook('no-bash', 'pre_tool_use', (event) => {
+  if (event.tool === 'bash') {
+    return { action: 'block', reason: 'bash is not allowed' };
+  }
+  return null;
+});
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+For persistent hook configuration across sessions, see [Hooks](/docs/code/hooks).
+</Callout>

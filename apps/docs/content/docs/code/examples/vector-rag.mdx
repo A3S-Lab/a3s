@@ -1,0 +1,181 @@
+---
+title: Vector RAG
+description: Semantic code search via vector embeddings
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Vector RAG
+
+A3S Code includes a `VectorContextProvider` that indexes workspace files and retrieves semantically relevant code snippets using cosine similarity. Unlike `grep` (exact pattern matching), this finds code by meaning.
+
+<Callout type="info">
+Vector RAG requires an embedding API. Configure `embedding_api_base` and `embedding_api_key` in your provider config, or use the `codesearch` tool which auto-indexes on first query.
+</Callout>
+
+## FileSystem Context (No Embedding Required)
+
+The simplest context provider — injects relevant file contents based on keyword matching.
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_fs_context("/my-project"); // inject relevant files into context
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send("How does authentication work?", None).await?;
+println!("{}", result.text);
+```
+
+**Run:** `cargo run --example test_vector_rag`
+**Source:** [`core/examples/test_vector_rag.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_vector_rag.rs)
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project",
+    permissive=True,
+    fs_context="/my-project",
+)
+result = await session.send("How does authentication work?")
+print(result.text)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  fsContext: '/my-project',
+});
+const result = await session.send('How does authentication work?');
+console.log(result.text);
+```
+</Tab>
+</Tabs>
+
+## Vector Context Provider (Semantic Search)
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::context::{VectorContextConfig, VectorContextProvider};
+use a3s_code_core::context::embedding::OpenAiEmbeddingProvider;
+use a3s_code_core::context::vector_store::InMemoryVectorStore;
+use a3s_code_core::{Agent, SessionOptions};
+use std::sync::Arc;
+
+// Build the vector provider
+let embedder = OpenAiEmbeddingProvider::new(
+    "https://api.openai.com/v1",
+    std::env::var("OPENAI_API_KEY")?,
+    "text-embedding-3-small",
+    1536,
+);
+let config = VectorContextConfig::new("/my-project")
+    .with_min_relevance(0.3)
+    .with_max_results(10);
+let store = InMemoryVectorStore::new();
+let provider = Arc::new(VectorContextProvider::new(config, embedder, store));
+
+// Index the workspace
+provider.index().await?;
+
+// Wire into session
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_context_provider(provider);
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send("Find all JWT authentication code", None).await?;
+println!("{}", result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+# Vector context is configured via the agent config file.
+# Add to ~/.a3s/config.hcl:
+#
+# context {
+#   provider = "vector"
+#   embedding_model = "text-embedding-3-small"
+#   min_relevance = 0.3
+# }
+
+session = agent.session("/my-project", permissive=True)
+result = await session.send("Find all JWT authentication code")
+print(result.text)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+// Vector context is configured via the agent config file.
+// Add to ~/.a3s/config.hcl:
+//
+// context {
+//   provider = "vector"
+//   embedding_model = "text-embedding-3-small"
+//   min_relevance = 0.3
+// }
+
+const session = agent.session('/my-project', { permissive: true });
+const result = await session.send('Find all JWT authentication code');
+console.log(result.text);
+```
+</Tab>
+</Tabs>
+
+## CodeSearch Tool
+
+The `codesearch` tool exposes vector search as an LLM-callable tool. The LLM can invoke it directly when it needs to find code by meaning.
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::tools::builtin::codesearch::create_codesearch_tool;
+use a3s_code_core::context::embedding::OpenAiEmbeddingProvider;
+
+// Create and register the codesearch tool
+let embedder = OpenAiEmbeddingProvider::new(/* ... */);
+let tool = create_codesearch_tool("/my-project", embedder);
+
+let opts = SessionOptions::new().with_permissive_policy();
+let session = agent.session("/my-project", Some(opts))?;
+session.register_tool(Arc::new(tool));
+
+// Now the LLM can call: codesearch(query="JWT authentication")
+let result = session.send(
+    "Search for code related to JWT token verification",
+    None,
+).await?;
+println!("{}", result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+# The codesearch tool is available when vector context is configured.
+# The LLM will use it automatically when searching for code by meaning.
+result = await session.send("Search for code related to JWT token verification")
+print(result.text)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+// The codesearch tool is available when vector context is configured.
+const result = await session.send('Search for code related to JWT token verification');
+console.log(result.text);
+```
+</Tab>
+</Tabs>
+
+## Chunking Strategy
+
+Files are split on paragraph/function boundaries with a configurable max chunk size (default: 1500 chars). Each chunk is embedded independently and stored with its source file path and relevance score.
+
+```
+auth.rs → [chunk 1: verify_jwt fn] [chunk 2: Claims struct] [chunk 3: tests]
+db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
+```

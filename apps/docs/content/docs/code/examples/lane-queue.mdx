@@ -1,0 +1,142 @@
+---
+title: Lane Queue
+description: Priority-based task queue with preemption
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Lane Queue
+
+The lane queue provides priority-based task scheduling with four lanes. High-priority tasks preempt lower-priority ones already in the queue.
+
+## Lanes (highest → lowest priority)
+
+| Lane | Priority | Use case |
+|------|----------|---------|
+| `Control` | 1 (highest) | Stop/cancel commands |
+| `Query` | 2 | Read-only lookups |
+| `Execute` | 3 | File writes, tool calls |
+| `Generate` | 4 (lowest) | Long LLM generation |
+
+## Basic Queue Setup
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig};
+
+let queue_config = SessionQueueConfig::default()
+    .with_lane_features()
+    .with_metrics();
+
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_queue_config(queue_config);
+
+let session = agent.session("/my-project", Some(opts))?;
+
+// Tasks are automatically routed to the appropriate lane
+let result = session.send("List all Rust files", None).await?;
+println!("{}", result.text);
+```
+
+**Run:** `cargo run --example test_task_priority`
+**Source:** [`core/examples/test_task_priority.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_task_priority.rs)
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import SessionQueueConfig
+
+queue_config = SessionQueueConfig()
+queue_config.enable_all_features = True
+
+session = agent.session("/my-project",
+    permissive=True,
+    queue_config=queue_config,
+)
+result = await session.send("List all Rust files")
+print(result.text)
+```
+
+**Run:** `python examples/test_task_priority.py`
+**Source:** [`sdk/python/examples/test_task_priority.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_task_priority.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  permissive: true,
+  queueConfig: { enableAllFeatures: true },
+});
+const result = await session.send('List all Rust files');
+console.log(result.text);
+```
+
+**Run:** `node examples/test_task_priority.js`
+**Source:** [`sdk/node/examples/test_task_priority.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_task_priority.js)
+</Tab>
+</Tabs>
+
+## Priority Preemption
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::queue::{ExternalTask, SessionLane};
+
+// Submit a low-priority background task
+session.submit_task(ExternalTask::new(
+    "background-analysis",
+    SessionLane::Generate,
+    serde_json::json!({ "prompt": "Analyze the entire codebase" }),
+)).await?;
+
+// Submit a high-priority query that preempts the background task
+session.submit_task(ExternalTask::new(
+    "urgent-query",
+    SessionLane::Query,
+    serde_json::json!({ "prompt": "What is the current git branch?" }),
+)).await?;
+
+// urgent-query runs first, background-analysis resumes after
+```
+</Tab>
+<Tab value="Python">
+```python
+# Submit a low-priority background task
+await session.submit_task({
+    "id": "background-analysis",
+    "lane": "generate",
+    "payload": {"prompt": "Analyze the entire codebase"},
+})
+
+# Submit a high-priority query that preempts it
+await session.submit_task({
+    "id": "urgent-query",
+    "lane": "query",
+    "payload": {"prompt": "What is the current git branch?"},
+})
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+// Submit a low-priority background task
+await session.submitTask({
+  id: 'background-analysis',
+  lane: 'generate',
+  payload: { prompt: 'Analyze the entire codebase' },
+});
+
+// Submit a high-priority query that preempts it
+await session.submitTask({
+  id: 'urgent-query',
+  lane: 'query',
+  payload: { prompt: 'What is the current git branch?' },
+});
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+For full lane queue documentation, see [Lane Queue](/docs/code/lane-queue).
+</Callout>
