@@ -34,7 +34,7 @@ export default async function BlogPost({ params }: PostProps) {
   const post = blog.find((p) => postSlug(p.info.path) === slug);
   if (!post) notFound();
 
-  const { body: MDX } = await post.load();
+  const MDX = post.body;
 
   return (
     <main
