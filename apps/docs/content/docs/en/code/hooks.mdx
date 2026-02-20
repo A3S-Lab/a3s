@@ -316,16 +316,16 @@ Each hook event carries a typed payload with event-specific data:
 <TypeTable
   type={{
     "Register hook": {
-      description: {`Rust: \`session.register_hook(Hook::new(id, event_type))\` · Description: Register a hook listener`},
+      description: "Rust: session.register_hook(Hook::new(id, event_type)) · Description: Register a hook listener",
     },
     "Register handler": {
-      description: {`Rust: \`session.register_hook_handler(id, Arc::new(handler))\` · Description: Attach handler to hook`},
+      description: "Rust: session.register_hook_handler(id, Arc::new(handler)) · Description: Attach handler to hook",
     },
     "Unregister": {
-      description: {`Rust: \`session.unregister_hook(id)\` · Description: Remove hook and handler`},
+      description: "Rust: session.unregister_hook(id) · Description: Remove hook and handler",
     },
     "Count": {
-      description: {`Rust: \`session.hook_count()\` · Description: Number of registered hooks`},
+      description: "Rust: session.hook_count() · Description: Number of registered hooks",
     },
   }}
 />

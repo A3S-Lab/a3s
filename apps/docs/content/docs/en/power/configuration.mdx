@@ -15,10 +15,10 @@ A3S Power supports both HCL and TOML configuration formats with full Ollama-comp
 <TypeTable
   type={{
     "HCL": {
-      description: {`Extension: \`.hcl\` · Priority: Primary (checked first)`},
+      description: "Extension: .hcl · Priority: Primary (checked first)",
     },
     "TOML": {
-      description: {`Extension: \`.toml\` · Priority: Secondary (fallback)`},
+      description: "Extension: .toml · Priority: Secondary (fallback)",
     },
   }}
 />
@@ -134,40 +134,40 @@ All Ollama environment variables are supported for drop-in compatibility:
 <TypeTable
   type={{
     "OLLAMA_HOST": {
-      description: {`Config Equivalent: \`host\` + \`port\` · Description: Server bind address (e.g., \`0.0.0.0:11434\`)`},
+      description: "Config Equivalent: host + port · Description: Server bind address (e.g., 0.0.0.0:11434)",
     },
     "OLLAMA_MODELS": {
       description: "Description: Model storage directory",
     },
     "OLLAMA_KEEP_ALIVE": {
-      description: {`Config Equivalent: \`keep_alive\` · Description: Default keep-alive duration`},
+      description: "Config Equivalent: keep_alive · Description: Default keep-alive duration",
     },
     "OLLAMA_MAX_LOADED_MODELS": {
-      description: {`Config Equivalent: \`max_loaded_models\` · Description: Max concurrent models`},
+      description: "Config Equivalent: max_loaded_models · Description: Max concurrent models",
     },
     "OLLAMA_NUM_GPU": {
-      description: {`Config Equivalent: \`gpu.gpu_layers\` · Description: GPU layers to offload`},
+      description: "Config Equivalent: gpu.gpu_layers · Description: GPU layers to offload",
     },
     "OLLAMA_NUM_PARALLEL": {
-      description: {`Config Equivalent: \`num_parallel\` · Description: Concurrent request slots`},
+      description: "Config Equivalent: num_parallel · Description: Concurrent request slots",
     },
     "OLLAMA_DEBUG": {
       description: "Description: Enable debug logging",
     },
     "OLLAMA_ORIGINS": {
-      description: {`Config Equivalent: \`origins\` · Description: Custom CORS origins (comma-separated)`},
+      description: "Config Equivalent: origins · Description: Custom CORS origins (comma-separated)",
     },
     "OLLAMA_FLASH_ATTENTION": {
-      description: {`Config Equivalent: \`flash_attention\` · Description: Global flash attention`},
+      description: "Config Equivalent: flash_attention · Description: Global flash attention",
     },
     "OLLAMA_TMPDIR": {
       description: "Description: Custom temporary directory",
     },
     "OLLAMA_NOPRUNE": {
-      description: {`Config Equivalent: \`noprune\` · Description: Disable blob pruning`},
+      description: "Config Equivalent: noprune · Description: Disable blob pruning",
     },
     "OLLAMA_SCHED_SPREAD": {
-      description: {`Config Equivalent: \`sched_spread\` · Description: Spread layers across GPUs`},
+      description: "Config Equivalent: sched_spread · Description: Spread layers across GPUs",
     },
   }}
 />
@@ -177,7 +177,7 @@ Power-specific:
 <TypeTable
   type={{
     "A3S_POWER_HOME": {
-      description: {`Base directory (default: \`~/.a3s/power/\`)`},
+      description: "Base directory (default: ~/.a3s/power/)",
     },
   }}
 />

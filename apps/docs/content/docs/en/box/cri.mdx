@@ -168,10 +168,10 @@ Streaming Server → PTY Unix socket → vsock → Guest PTY Server
 <TypeTable
   type={{
     "Non-interactive": {
-      description: {`TTY: No · Transport: ExecClient (HTTP/JSON) · Use Case: \`kubectl exec pod -- ls -la\``},
+      description: "TTY: No · Transport: ExecClient (HTTP/JSON) · Use Case: kubectl exec pod -- ls -la",
     },
     "Interactive": {
-      description: {`TTY: Yes · Transport: PtyClient (frame protocol) · Use Case: \`kubectl exec -it pod -- /bin/sh\``},
+      description: "TTY: Yes · Transport: PtyClient (frame protocol) · Use Case: kubectl exec -it pod -- /bin/sh",
     },
   }}
 />
@@ -339,7 +339,7 @@ metadata:
       description: "Required for pod-to-pod communication within a node",
     },
     "Fixed resources": {
-      description: {`\`UpdateContainerResources\` is acknowledged but microVM CPU/memory cannot be changed after boot`},
+      description: "UpdateContainerResources is acknowledged but microVM CPU/memory cannot be changed after boot",
     },
   }}
 />

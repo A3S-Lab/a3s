@@ -43,13 +43,13 @@ SessionOptions::new().with_file_memory("./memory")
       description: "记忆单元——内容、重要性、标签、元数据、时间戳",
     },
     "MemoryType": {
-      description: {`\`Episodic\`（情节）、\`Semantic\`（语义）、\`Procedural\`（程序）、\`Working\`（工作）`},
+      description: "Episodic（情节）、Semantic（语义）、Procedural（程序）、Working（工作）",
     },
     "RelevanceConfig": {
       description: "评分参数——衰减、重要性权重、时效性权重",
     },
     "InMemoryStore": {
-      description: {`基于 \`tokio::sync::RwLock\` 的临时后端`},
+      description: "基于 tokio::sync::RwLock 的临时后端",
     },
     "FileMemoryStore": {
       description: "持久化后端——原子写入、内存索引、索引重建",

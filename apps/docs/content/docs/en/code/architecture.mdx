@@ -51,13 +51,13 @@ Native bindings:
 <TypeTable
   type={{
     "Rust": {
-      description: {`Package: \`a3s-code-core\` · Binding: Native`},
+      description: "Package: a3s-code-core · Binding: Native",
     },
     "Python": {
-      description: {`Package: \`a3s-code\` · Binding: PyO3`},
+      description: "Package: a3s-code · Binding: PyO3",
     },
     "Node.js": {
-      description: {`Package: \`@a3s-lab/code\` · Binding: napi-rs`},
+      description: "Package: @a3s-lab/code · Binding: napi-rs",
     },
   }}
 />
@@ -73,7 +73,7 @@ Native bindings:
       description: "Bound to a specific workspace. All LLM interaction and tool execution happens here.",
     },
     "SessionOptions": {
-      description: {`Optional per-session override: model (\`provider/model\` format), planning, HITL, etc.`},
+      description: "Optional per-session override: model (provider/model format), planning, HITL, etc.",
     },
     "AgentLoop": {
       description: "Core execution engine driving the LLM ↔ tool multi-turn loop.",
@@ -85,10 +85,10 @@ Native bindings:
       description: "JSON-structured planning — decomposes complex tasks into execution plans with dependency graphs.",
     },
     "WaveScheduler": {
-      description: {`Groups independent plan steps into waves and executes them in parallel via \`JoinSet\`.`},
+      description: "Groups independent plan steps into waves and executes them in parallel via JoinSet.",
     },
     "AgentEvent": {
-      description: {`\`#[non_exhaustive]\` event enum emitted during streaming — safe for SDK evolution.`},
+      description: "#[non_exhaustive] event enum emitted during streaming — safe for SDK evolution.",
     },
   }}
 />
@@ -128,7 +128,7 @@ Two built-in layers, plus extensibility via traits:
       description: "Component: Permission Policy · What it does: Deny → Allow → Ask → Default rule evaluation with glob patterns",
     },
     "2": {
-      description: {`Component: HITL Confirmation · What it does: Independent of permissions — even \`Allow\` goes through HITL check`},
+      description: "Component: HITL Confirmation · What it does: Independent of permissions — even Allow goes through HITL check",
     },
     "3": {
       description: "Component: SecurityProvider · What it does: Pluggable trait for taint tracking, output sanitization, injection detection",

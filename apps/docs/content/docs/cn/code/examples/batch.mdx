@@ -180,13 +180,13 @@ handler.rs:5:// TODO: add error handling
 <TypeTable
   type={{
     "invocations": {
-      description: {`类型: \`array\` · 必填: ✅ · 描述: 要并行执行的工具调用列表`},
+      description: "类型: array · 必填: ✅ · 描述: 要并行执行的工具调用列表",
     },
     "invocations[].tool": {
-      description: {`类型: \`string\` · 必填: ✅ · 描述: 要调用的工具名称`},
+      description: "类型: string · 必填: ✅ · 描述: 要调用的工具名称",
     },
     "invocations[].args": {
-      description: {`类型: \`object\` · 必填: ✅ · 描述: 传递给工具的参数`},
+      description: "类型: object · 必填: ✅ · 描述: 传递给工具的参数",
     },
   }}
 />
@@ -196,7 +196,7 @@ handler.rs:5:// TODO: add error handling
 <TypeTable
   type={{
     "直接调用工具": {
-      description: {`Rust: \`session.call_tool("batch", json!({...})).await?\` · Python: \`await session.call_tool("batch", {...})\` · Node.js: \`await session.callTool('batch', {...})\``},
+      description: "Rust: session.call_tool(&quot;batch&quot;, json!({...})).await? · Python: await session.call_tool(&quot;batch&quot;, {...}) · Node.js: await session.callTool('batch', {...})",
     },
   }}
 />

@@ -26,13 +26,13 @@ Examples:
 <TypeTable
   type={{
     "alpine:latest": {
-      description: {`Registry: Docker Hub · Name: \`alpine\` · Tag: \`latest\``},
+      description: "Registry: Docker Hub · Name: alpine · Tag: latest",
     },
     "ghcr.io/a3s-lab/box:v0.1.0": {
-      description: {`Registry: \`ghcr.io\` · Namespace: \`a3s-lab\` · Name: \`box\` · Tag: \`v0.1.0\``},
+      description: "Registry: ghcr.io · Namespace: a3s-lab · Name: box · Tag: v0.1.0",
     },
     "alpine@sha256:abc...": {
-      description: {`Registry: Docker Hub · Name: \`alpine\` · Tag: (by digest)`},
+      description: "Registry: Docker Hub · Name: alpine · Tag: (by digest)",
     },
   }}
 />
@@ -85,7 +85,7 @@ a3s-box build -t my-app:v1 --build-arg VERSION=1.0 .
 <TypeTable
   type={{
     "FROM": {
-      description: {`Base image (supports \`AS\` alias for multi-stage)`},
+      description: "Base image (supports AS alias for multi-stage)",
     },
     "RUN": {
       description: "Execute command in build layer",
@@ -103,7 +103,7 @@ a3s-box build -t my-app:v1 --build-arg VERSION=1.0 .
       description: "Set working directory",
     },
     "COPY": {
-      description: {`Copy files from build context (supports \`--from=stage\`)`},
+      description: "Copy files from build context (supports --from=stage)",
     },
     "ADD": {
       description: "Copy files, URLs (HTTP/HTTPS download), or tar auto-extraction",

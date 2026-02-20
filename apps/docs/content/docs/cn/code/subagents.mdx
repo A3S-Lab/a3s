@@ -173,16 +173,16 @@ A3S Code 包含一个内置的 `delegate-task` skill（Instruction 类型），�
       description: "类型: string · 必填: 是 · 描述: agent 的功能（展示给 LLM）",
     },
     "mode": {
-      description: {`类型: \`subagent\` 或 \`primary\` · 必填: 否 · 描述: Agent 模式（默认：\`subagent\`）`},
+      description: "类型: subagent 或 primary · 必填: 否 · 描述: Agent 模式（默认：subagent）",
     },
     "hidden": {
-      description: {`类型: bool · 必填: 否 · 描述: 从列表中隐藏（默认：\`false\`）`},
+      description: "类型: bool · 必填: 否 · 描述: 从列表中隐藏（默认：false）",
     },
     "max_steps": {
       description: "类型: number · 必填: 否 · 描述: 最大工具轮数",
     },
     "can_spawn_subagents": {
-      description: {`类型: bool · 必填: 否 · 描述: 允许递归委派（默认：\`false\`）`},
+      description: "类型: bool · 必填: 否 · 描述: 允许递归委派（默认：false）",
     },
     "permissions.allow": {
       description: "类型: string[] · 必填: 否 · 描述: 允许的工具名称",
@@ -191,7 +191,7 @@ A3S Code 包含一个内置的 `delegate-task` skill（Instruction 类型），�
       description: "类型: string[] · 必填: 否 · 描述: 拒绝的工具名称",
     },
     "model": {
-      description: {`类型: string · 必填: 否 · 描述: 模型覆盖，\`provider/model\` 格式`},
+      description: "类型: string · 必填: 否 · 描述: 模型覆盖，provider/model 格式",
     },
     "prompt": {
       description: "类型: string · 必填: 否 · 描述: Agent 的系统提示",
@@ -217,7 +217,7 @@ LLM 通过两个工具委派给子代理：`task`（单个）和 `parallel_task`
       description: "类型: string · 必填: 是 · 描述: 给子代理的详细提示",
     },
     "background": {
-      description: {`类型: bool · 必填: 否 · 描述: 不等待结果运行（默认：\`false\`）`},
+      description: "类型: bool · 必填: 否 · 描述: 不等待结果运行（默认：false）",
     },
     "max_steps": {
       description: "类型: int · 必填: 否 · 描述: 覆盖 agent 的默认最大步数",
@@ -537,22 +537,22 @@ println!("{}", summary.text);
 <TypeTable
   type={{
     "name": {
-      description: {`类型: \`string\` · 必填: ✅ · 描述: Agent 标识符（用于 \`task\` 工具）`},
+      description: "类型: string · 必填: ✅ · 描述: Agent 标识符（用于 task 工具）",
     },
     "description": {
-      description: {`类型: \`string\` · 必填: ✅ · 描述: Agent 的功能`},
+      description: "类型: string · 必填: ✅ · 描述: Agent 的功能",
     },
     "system_prompt": {
-      description: {`类型: \`string\` · 必填: ✅ · 描述: Agent 的系统提示/指令`},
+      description: "类型: string · 必填: ✅ · 描述: Agent 的系统提示/指令",
     },
     "model": {
-      description: {`类型: \`string\` · 必填: ❌ · 描述: 模型覆盖（\`provider/model\` 格式）`},
+      description: "类型: string · 必填: ❌ · 描述: 模型覆盖（provider/model 格式）",
     },
     "allowed_tools": {
-      description: {`类型: \`string[]\` · 必填: ❌ · 描述: 工具访问限制`},
+      description: "类型: string[] · 必填: ❌ · 描述: 工具访问限制",
     },
     "max_tool_rounds": {
-      description: {`类型: \`number\` · 必填: ❌ · 描述: 每次调用的最大工具轮数`},
+      description: "类型: number · 必填: ❌ · 描述: 每次调用的最大工具轮数",
     },
   }}
 />
@@ -562,7 +562,7 @@ println!("{}", summary.text);
 <TypeTable
   type={{
     "Agent 目录": {
-      description: {`Rust: \`.with_agent_dir(path)\` · Python: \`agent_dirs=[path]\` · Node.js: \`agentDirs: [path]\` · 默认值: \`[]\``},
+      description: "Rust: .with_agent_dir(path) · Python: agent_dirs=[path] · Node.js: agentDirs: [path] · 默认值: []",
     },
   }}
 />
@@ -572,13 +572,13 @@ println!("{}", summary.text);
 <TypeTable
   type={{
     "agent": {
-      description: {`类型: \`string\` · 必填: ✅ · 描述: 要委派的 agent 名称`},
+      description: "类型: string · 必填: ✅ · 描述: 要委派的 agent 名称",
     },
     "prompt": {
-      description: {`类型: \`string\` · 必填: ✅ · 描述: 任务提示`},
+      description: "类型: string · 必填: ✅ · 描述: 任务提示",
     },
     "workspace": {
-      description: {`类型: \`string\` · 必填: ❌ · 描述: 工作区覆盖`},
+      description: "类型: string · 必填: ❌ · 描述: 工作区覆盖",
     },
   }}
 />

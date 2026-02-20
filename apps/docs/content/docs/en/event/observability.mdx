@@ -103,13 +103,13 @@ tracing_subscriber::init();
 <TypeTable
   type={{
     "Publish": {
-      description: {`Span: \`event.publish\` · Fields: \`event_id\`, \`subject\`, \`category\`, \`provider\``},
+      description: "Span: event.publish · Fields: event_id, subject, category, provider",
     },
     "Subscribe": {
-      description: {`Span: \`event.subscribe\` · Fields: \`subscriber\`, \`subjects\`, \`durable\`, \`provider\``},
+      description: "Span: event.subscribe · Fields: subscriber, subjects, durable, provider",
     },
     "Unsubscribe": {
-      description: {`Span: \`event.unsubscribe\` · Fields: \`consumer\`, \`error\` (on failure)`},
+      description: "Span: event.unsubscribe · Fields: consumer, error (on failure)",
     },
   }}
 />
@@ -130,7 +130,7 @@ let is_healthy = bus.health().await?;
 <TypeTable
   type={{
     "MemoryProvider": {
-      description: {`Always returns \`true\``},
+      description: "Always returns true",
     },
     "NatsProvider": {
       description: "Checks NATS connection and stream status",

@@ -23,16 +23,16 @@ A3S Code 提供 11 个内置工具，支持自定义工具注册和 MCP 集成�
 <TypeTable
   type={{
     "read": {
-      description: {`描述: 读取文件内容 · 参数: \`file_path\`, \`offset?\`, \`limit?\``},
+      description: "描述: 读取文件内容 · 参数: file_path, offset?, limit?",
     },
     "write": {
-      description: {`描述: 写入文件（创建或覆盖） · 参数: \`file_path\`, \`content\``},
+      description: "描述: 写入文件（创建或覆盖） · 参数: file_path, content",
     },
     "edit": {
-      description: {`描述: 精确字符串替换 · 参数: \`file_path\`, \`old_string\`, \`new_string\``},
+      description: "描述: 精确字符串替换 · 参数: file_path, old_string, new_string",
     },
     "patch": {
-      description: {`描述: 多处编辑（批量替换） · 参数: \`file_path\`, \`patches[]\``},
+      description: "描述: 多处编辑（批量替换） · 参数: file_path, patches[]",
     },
   }}
 />
@@ -42,16 +42,16 @@ A3S Code 提供 11 个内置工具，支持自定义工具注册和 MCP 集成�
 <TypeTable
   type={{
     "glob": {
-      description: {`描述: 按模式匹配文件 · 参数: \`pattern\`, \`path?\``},
+      description: "描述: 按模式匹配文件 · 参数: pattern, path?",
     },
     "grep": {
-      description: {`描述: 搜索文件内容 · 参数: \`pattern\`, \`path?\`, \`include?\``},
+      description: "描述: 搜索文件内容 · 参数: pattern, path?, include?",
     },
     "ls": {
-      description: {`描述: 列出目录内容 · 参数: \`path?\``},
+      description: "描述: 列出目录内容 · 参数: path?",
     },
     "list_files": {
-      description: {`描述: 递归列出所有文件 · 参数: \`path?\`, \`max_depth?\``},
+      description: "描述: 递归列出所有文件 · 参数: path?, max_depth?",
     },
   }}
 />
@@ -61,7 +61,7 @@ A3S Code 提供 11 个内置工具，支持自定义工具注册和 MCP 集成�
 <TypeTable
   type={{
     "bash": {
-      description: {`描述: 执行 shell 命令 · 参数: \`command\`, \`timeout?\``},
+      description: "描述: 执行 shell 命令 · 参数: command, timeout?",
     },
   }}
 />
@@ -71,10 +71,10 @@ A3S Code 提供 11 个内置工具，支持自定义工具注册和 MCP 集成�
 <TypeTable
   type={{
     "web_fetch": {
-      description: {`描述: 获取 URL 内容 · 参数: \`url\`, \`prompt?\``},
+      description: "描述: 获取 URL 内容 · 参数: url, prompt?",
     },
     "web_search": {
-      description: {`描述: 网络搜索 · 参数: \`query\`, \`domains?\``},
+      description: "描述: 网络搜索 · 参数: query, domains?",
     },
   }}
 />
@@ -248,13 +248,13 @@ pub trait Tool: Send + Sync {
 <TypeTable
   type={{
     "name": {
-      description: {`类型: \`String\` · 描述: 工具名称`},
+      description: "类型: String · 描述: 工具名称",
     },
     "description": {
-      description: {`类型: \`String\` · 描述: 工具描述（展示给 LLM）`},
+      description: "类型: String · 描述: 工具描述（展示给 LLM）",
     },
     "parameters": {
-      description: {`类型: \`Vec<ToolParameter>\` · 描述: 参数定义`},
+      description: "类型: Vec<ToolParameter> · 描述: 参数定义",
     },
   }}
 />
@@ -264,19 +264,19 @@ pub trait Tool: Send + Sync {
 <TypeTable
   type={{
     "name": {
-      description: {`类型: \`String\` · 描述: 参数名称`},
+      description: "类型: String · 描述: 参数名称",
     },
     "description": {
-      description: {`类型: \`String\` · 描述: 参数描述`},
+      description: "类型: String · 描述: 参数描述",
     },
     "param_type": {
-      description: {`类型: \`String\` · 描述: 类型（\`string\`、\`number\`、\`boolean\`、\`object\`、\`array\`）`},
+      description: "类型: String · 描述: 类型（string、number、boolean、object、array）",
     },
     "required": {
-      description: {`类型: \`bool\` · 描述: 是否必填`},
+      description: "类型: bool · 描述: 是否必填",
     },
     "enum_values": {
-      description: {`类型: \`Option<Vec<String>>\` · 描述: 可选的枚举值列表`},
+      description: "类型: Option<Vec<String>> · 描述: 可选的枚举值列表",
     },
   }}
 />
@@ -302,10 +302,10 @@ pub trait Tool: Send + Sync {
 <TypeTable
   type={{
     "workspace": {
-      description: {`类型: \`PathBuf\` · 描述: 当前工作区路径`},
+      description: "类型: PathBuf · 描述: 当前工作区路径",
     },
     "session_id": {
-      description: {`类型: \`String\` · 描述: 当前会话 ID`},
+      description: "类型: String · 描述: 当前会话 ID",
     },
   }}
 />

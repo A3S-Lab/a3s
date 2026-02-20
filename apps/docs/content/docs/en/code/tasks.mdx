@@ -382,13 +382,13 @@ session = agent.session("/my-project", planning=True, goal_tracking=True)
 <TypeTable
   type={{
     "get_ready_steps()": {
-      description: {`Returns steps with all dependencies \`Completed\``},
+      description: "Returns steps with all dependencies Completed",
     },
     "mark_status(id, status)": {
       description: "Update a step's status by ID",
     },
     "pending_count()": {
-      description: {`Count remaining \`Pending\` steps`},
+      description: "Count remaining Pending steps",
     },
     "has_deadlock()": {
       description: "Detect circular deps or all deps failed",
@@ -500,16 +500,16 @@ Task-related events emitted during execution:
 <TypeTable
   type={{
     "StepStart": {
-      description: {`Fields: \`step_id\`, \`description\`, \`step_number\`, \`total_steps\` · Description: A plan step began execution. During parallel waves, multiple \`StepStart\` events fire before any \`StepEnd\`.`},
+      description: "Fields: step_id, description, step_number, total_steps · Description: A plan step began execution. During parallel waves, multiple StepStart events fire before any StepEnd.",
     },
     "StepEnd": {
-      description: {`Fields: \`step_id\`, \`status\`, \`step_number\`, \`total_steps\` · Description: A plan step finished. \`status\` is \`Completed\` or \`Failed\`.`},
+      description: "Fields: step_id, status, step_number, total_steps · Description: A plan step finished. status is Completed or Failed.",
     },
     "GoalProgress": {
-      description: {`Fields: \`goal\`, \`progress\`, \`completed_steps\`, \`total_steps\` · Description: Fires after each wave completes. \`progress\` is 0.0–1.0.`},
+      description: "Fields: goal, progress, completed_steps, total_steps · Description: Fires after each wave completes. progress is 0.0–1.0.",
     },
     "TaskUpdated": {
-      description: {`Fields: \`session_id\`, \`tasks\` · Description: Task list changed (added, status change, completed). Includes the full current task list.`},
+      description: "Fields: session_id, tasks · Description: Task list changed (added, status change, completed). Includes the full current task list.",
     },
   }}
 />
@@ -594,10 +594,10 @@ When a session is restored from storage, its task list is restored too — the a
 <TypeTable
   type={{
     "plan": {
-      description: {`Signature: \`async fn plan(&self, prompt: &str, context: &PlanContext) -> Result<Vec<AgentTask>>\` · Description: Decompose prompt into tasks`},
+      description: "Signature: async fn plan(&self, prompt: &str, context: &PlanContext) -> Result<Vec<AgentTask>> · Description: Decompose prompt into tasks",
     },
     "name": {
-      description: {`Signature: \`fn name(&self) -> &str\` · Description: Planner identifier`},
+      description: "Signature: fn name(&self) -> &str · Description: Planner identifier",
     },
   }}
 />

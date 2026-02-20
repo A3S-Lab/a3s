@@ -33,7 +33,7 @@ let fetcher: Arc<dyn PageFetcher> = Arc::new(
 <TypeTable
   type={{
     "new(pool)": {
-      description: {`Create with \`Arc<ProxyPool>\` — rotates proxy per request`},
+      description: "Create with Arc<ProxyPool> — rotates proxy per request",
     },
     "with_timeout(duration)": {
       description: "Set request timeout (default: 30s)",
@@ -298,7 +298,7 @@ proxy.url()  // -> "socks5://user:pass@proxy.example.com:8080"
       description: "Create HTTP proxy config",
     },
     "with_protocol(protocol)": {
-      description: {`Set protocol (\`Http\` / \`Https\` / \`Socks5\`)`},
+      description: "Set protocol (Http / Https / Socks5)",
     },
     "with_auth(user, pass)": {
       description: "Set authentication",
@@ -326,7 +326,7 @@ proxy.url()  // -> "socks5://user:pass@proxy.example.com:8080"
       description: "Set selection strategy",
     },
     "set_enabled(bool)": {
-      description: {`Enable/disable pool (\`&self\`, thread-safe)`},
+      description: "Enable/disable pool (&self, thread-safe)",
     },
     "is_enabled()": {
       description: "Check if enabled",

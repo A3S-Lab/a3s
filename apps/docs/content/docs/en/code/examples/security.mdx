@@ -126,22 +126,22 @@ The `DefaultSecurityProvider` detects and redacts:
 <TypeTable
   type={{
     "Anthropic API key": {
-      description: {`Example: \`sk-ant-api03-...\` · Redacted as: \`[REDACTED]\``},
+      description: "Example: sk-ant-api03-... · Redacted as: [REDACTED]",
     },
     "OpenAI API key": {
-      description: {`Example: \`sk-proj-...\` · Redacted as: \`[REDACTED]\``},
+      description: "Example: sk-proj-... · Redacted as: [REDACTED]",
     },
     "Generic bearer token": {
-      description: {`Example: \`Bearer eyJ...\` · Redacted as: \`[REDACTED]\``},
+      description: "Example: Bearer eyJ... · Redacted as: [REDACTED]",
     },
     "Password field": {
-      description: {`Example: \`password=secret\` · Redacted as: \`[REDACTED]\``},
+      description: "Example: password=secret · Redacted as: [REDACTED]",
     },
     "SSN": {
-      description: {`Example: \`123-45-6789\` · Redacted as: \`[REDACTED]\``},
+      description: "Example: 123-45-6789 · Redacted as: [REDACTED]",
     },
     "Credit card": {
-      description: {`Example: \`4111 1111 1111 1111\` · Redacted as: \`[REDACTED]\``},
+      description: "Example: 4111 1111 1111 1111 · Redacted as: [REDACTED]",
     },
   }}
 />
@@ -157,10 +157,10 @@ For full security configuration, see [Security](/docs/code/security).
 <TypeTable
   type={{
     "Default security": {
-      description: {`Rust: \`.with_default_security()\` · Python: \`default_security=True\` · Node.js: \`defaultSecurity: true\` · Default: \`false\``},
+      description: "Rust: .with_default_security() · Python: default_security=True · Node.js: defaultSecurity: true · Default: false",
     },
     "Custom provider": {
-      description: {`Rust: \`.with_security_provider(Arc::new(p))\` · Python: _(Rust only)_ · Node.js: _(Rust only)_ · Default: \`None\``},
+      description: "Rust: .with_security_provider(Arc::new(p)) · Python: _(Rust only)_ · Node.js: _(Rust only)_ · Default: None",
     },
   }}
 />
@@ -170,19 +170,19 @@ For full security configuration, see [Security](/docs/code/security).
 <TypeTable
   type={{
     "taint_input": {
-      description: {`Signature: \`fn taint_input(&self, text: &str)\` · Description: Inspect/register sensitive patterns in user input`},
+      description: "Signature: fn taint_input(&self, text: &str) · Description: Inspect/register sensitive patterns in user input",
     },
     "sanitize_output": {
-      description: {`Signature: \`fn sanitize_output(&self, text: &str) -> String\` · Description: Redact sensitive patterns from LLM output`},
+      description: "Signature: fn sanitize_output(&self, text: &str) -> String · Description: Redact sensitive patterns from LLM output",
     },
     "wipe": {
-      description: {`Signature: \`fn wipe(&self)\` · Description: Clear any cached sensitive state`},
+      description: "Signature: fn wipe(&self) · Description: Clear any cached sensitive state",
     },
     "register_hooks": {
-      description: {`Signature: \`fn register_hooks(&self, engine: &HookEngine)\` · Description: Attach hooks for deeper interception`},
+      description: "Signature: fn register_hooks(&self, engine: &HookEngine) · Description: Attach hooks for deeper interception",
     },
     "teardown": {
-      description: {`Signature: \`fn teardown(&self)\` · Description: Called when session ends`},
+      description: "Signature: fn teardown(&self) · Description: Called when session ends",
     },
   }}
 />
@@ -192,22 +192,22 @@ For full security configuration, see [Security](/docs/code/security).
 <TypeTable
   type={{
     "Anthropic API key": {
-      description: {`Example match: \`sk-ant-api03-...\` · Replacement: \`[REDACTED]\``},
+      description: "Example match: sk-ant-api03-... · Replacement: [REDACTED]",
     },
     "OpenAI API key": {
-      description: {`Example match: \`sk-proj-...\` · Replacement: \`[REDACTED]\``},
+      description: "Example match: sk-proj-... · Replacement: [REDACTED]",
     },
     "Generic bearer token": {
-      description: {`Example match: \`Bearer eyJ...\` · Replacement: \`[REDACTED]\``},
+      description: "Example match: Bearer eyJ... · Replacement: [REDACTED]",
     },
     "Password field": {
-      description: {`Example match: \`password=secret\` · Replacement: \`[REDACTED]\``},
+      description: "Example match: password=secret · Replacement: [REDACTED]",
     },
     "SSN": {
-      description: {`Example match: \`123-45-6789\` · Replacement: \`[REDACTED]\``},
+      description: "Example match: 123-45-6789 · Replacement: [REDACTED]",
     },
     "Credit card": {
-      description: {`Example match: \`4111 1111 1111 1111\` · Replacement: \`[REDACTED]\``},
+      description: "Example match: 4111 1111 1111 1111 · Replacement: [REDACTED]",
     },
   }}
 />

@@ -200,10 +200,10 @@ Both providers support NATS-style wildcards:
 <TypeTable
   type={{
     "events.orders.>": {
-      description: {`Matches: All subjects under \`events.orders.\` at any depth · Example: \`events.orders.created\`, \`events.orders.us.shipped\``},
+      description: "Matches: All subjects under events.orders. at any depth · Example: events.orders.created, events.orders.us.shipped",
     },
     "events.orders.*": {
-      description: {`Matches: One level under \`events.orders.\` · Example: \`events.orders.created\` but not \`events.orders.us.shipped\``},
+      description: "Matches: One level under events.orders. · Example: events.orders.created but not events.orders.us.shipped",
     },
   }}
 />
@@ -264,10 +264,10 @@ let is_healthy = bus.health().await?;
 <TypeTable
   type={{
     "MemoryProvider": {
-      description: {`Always returns \`true\``},
+      description: "Always returns true",
     },
     "NatsProvider": {
-      description: {`Checks NATS connection via \`info()\``},
+      description: "Checks NATS connection via info()",
     },
   }}
 />

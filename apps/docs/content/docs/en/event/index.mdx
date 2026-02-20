@@ -88,7 +88,7 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
       description: "MemoryProvider: No · NatsProvider: ✅",
     },
     "Wildcards": {
-      description: {`MemoryProvider: ✅ (\`>\`, \`*\`) · NatsProvider: ✅ (NATS subjects)`},
+      description: "MemoryProvider: ✅ (>, *) · NatsProvider: ✅ (NATS subjects)",
     },
     "Deduplication": {
       description: "MemoryProvider: No · NatsProvider: ✅ (msg_id)",
@@ -153,19 +153,19 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
 <TypeTable
   type={{
     "Aes256GcmEncryptor": {
-      description: {`Feature: \`encryption\` · Description: AES-256-GCM with key rotation`},
+      description: "Feature: encryption · Description: AES-256-GCM with key rotation",
     },
     "CloudEvent": {
-      description: {`Feature: \`cloudevents\` · Description: CloudEvents v1.0 envelope`},
+      description: "Feature: cloudevents · Description: CloudEvents v1.0 envelope",
     },
     "Broker\` / \`Trigger": {
-      description: {`Feature: \`routing\` · Description: Knative-inspired event routing`},
+      description: "Feature: routing · Description: Knative-inspired event routing",
     },
     "EventSink": {
-      description: {`Feature: \`routing\` · Description: Delivery targets: \`TopicSink\`, \`InProcessSink\`, \`LogSink\``},
+      description: "Feature: routing · Description: Delivery targets: TopicSink, InProcessSink, LogSink",
     },
     "NatsProvider": {
-      description: {`Feature: \`nats\` · Description: NATS JetStream distributed provider`},
+      description: "Feature: nats · Description: NATS JetStream distributed provider",
     },
   }}
 />

@@ -386,10 +386,10 @@ for dl in &dead {
       description: "类型: SessionLane · 描述: 任务所在的 lane",
     },
     "command_type": {
-      description: {`类型: string · 描述: 工具名称（例如 \`bash\`、\`read\`、\`write\`）`},
+      description: "类型: string · 描述: 工具名称（例如 bash、read、write）",
     },
     "payload": {
-      description: {`类型: JSON · 描述: 工具参数（例如 \`{"command": "cargo test"}\`）`},
+      description: "类型: JSON · 描述: 工具参数（例如 {&quot;command&quot;: &quot;cargo test&quot;}）",
     },
     "timeout_ms": {
       description: "类型: u64 · 描述: 队列等待超时前的时间",
@@ -409,7 +409,7 @@ for dl in &dead {
       description: "类型: bool · 描述: 执行是否成功",
     },
     "result": {
-      description: {`类型: JSON · 描述: 结果载荷（\`{"output": "...", "exit_code": 0}\`）`},
+      description: "类型: JSON · 描述: 结果载荷（{&quot;output&quot;: &quot;...&quot;, &quot;exit_code&quot;: 0}）",
     },
     "error": {
       description: "类型: Option&lt;string&gt; · 描述: 失败时的错误消息",
@@ -512,31 +512,31 @@ session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
 <TypeTable
   type={{
     "query_max_concurrency": {
-      description: {`类型: \`usize\` · 默认值: \`4\` · 描述: Query lane 最大并行任务数`},
+      description: "类型: usize · 默认值: 4 · 描述: Query lane 最大并行任务数",
     },
     "execute_max_concurrency": {
-      description: {`类型: \`usize\` · 默认值: \`1\` · 描述: Execute lane 最大并行任务数`},
+      description: "类型: usize · 默认值: 1 · 描述: Execute lane 最大并行任务数",
     },
     "enable_metrics": {
-      description: {`类型: \`bool\` · 默认值: \`false\` · 描述: 收集队列指标`},
+      description: "类型: bool · 默认值: false · 描述: 收集队列指标",
     },
     "enable_dlq": {
-      description: {`类型: \`bool\` · 默认值: \`false\` · 描述: 启用死信队列`},
+      description: "类型: bool · 默认值: false · 描述: 启用死信队列",
     },
     "lane_handlers": {
-      description: {`类型: \`HashMap<SessionLane, LaneHandlerConfig>\` · 默认值: \`{}\` · 描述: 每 lane 处理器配置`},
+      description: "类型: HashMap<SessionLane, LaneHandlerConfig> · 默认值: {} · 描述: 每 lane 处理器配置",
     },
     "retry_policy": {
-      description: {`类型: \`Option<RetryPolicy>\` · 默认值: \`None\` · 描述: 失败重试`},
+      description: "类型: Option<RetryPolicy> · 默认值: None · 描述: 失败重试",
     },
     "rate_limit": {
-      description: {`类型: \`Option<RateLimit>\` · 默认值: \`None\` · 描述: 速率限制`},
+      description: "类型: Option<RateLimit> · 默认值: None · 描述: 速率限制",
     },
     "priority_boost": {
-      description: {`类型: \`Option<PriorityBoost>\` · 默认值: \`None\` · 描述: 基于截止时间的优先级提升`},
+      description: "类型: Option<PriorityBoost> · 默认值: None · 描述: 基于截止时间的优先级提升",
     },
     "pressure_threshold": {
-      description: {`类型: \`usize\` · 默认值: \`50\` · 描述: 队列深度告警阈值`},
+      description: "类型: usize · 默认值: 50 · 描述: 队列深度告警阈值",
     },
   }}
 />
@@ -546,10 +546,10 @@ session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
 <TypeTable
   type={{
     "mode": {
-      description: {`类型: \`TaskHandlerMode\` · 描述: \`Internal\`、\`External\` 或 \`Hybrid\``},
+      description: "类型: TaskHandlerMode · 描述: Internal、External 或 Hybrid",
     },
     "timeout_ms": {
-      description: {`类型: \`Option<u64>\` · 描述: 外部任务超时`},
+      description: "类型: Option<u64> · 描述: 外部任务超时",
     },
   }}
 />
@@ -559,19 +559,19 @@ session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
 <TypeTable
   type={{
     "提交任务": {
-      description: {`Rust: \`session.submit_task(task).await?\` · Python: \`await session.submit_task({...})\` · Node.js: \`await session.submitTask({...})\``},
+      description: "Rust: session.submit_task(task).await? · Python: await session.submit_task({...}) · Node.js: await session.submitTask({...})",
     },
     "队列统计": {
-      description: {`Rust: \`session.queue_stats().await\` · Python: \`await session.queue_stats()\` · Node.js: \`await session.queueStats()\``},
+      description: "Rust: session.queue_stats().await · Python: await session.queue_stats() · Node.js: await session.queueStats()",
     },
     "队列指标": {
-      description: {`Rust: \`session.queue_metrics().await\` · Python: \`await session.queue_metrics()\` · Node.js: \`await session.queueMetrics()\``},
+      description: "Rust: session.queue_metrics().await · Python: await session.queue_metrics() · Node.js: await session.queueMetrics()",
     },
     "死信": {
-      description: {`Rust: \`session.dead_letters().await\` · Python: \`await session.dead_letters()\` · Node.js: \`await session.deadLetters()\``},
+      description: "Rust: session.dead_letters().await · Python: await session.dead_letters() · Node.js: await session.deadLetters()",
     },
     "设置 lane 处理器": {
-      description: {`Rust: \`session.set_lane_handler(lane, cfg).await\` · Python: \`await session.set_lane_handler(lane, cfg)\` · Node.js: \`await session.setLaneHandler(lane, cfg)\``},
+      description: "Rust: session.set_lane_handler(lane, cfg).await · Python: await session.set_lane_handler(lane, cfg) · Node.js: await session.setLaneHandler(lane, cfg)",
     },
   }}
 />
@@ -581,13 +581,13 @@ session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
 <TypeTable
   type={{
     "strategy": {
-      description: {`类型: \`string\` · 默认值: \`"exponential"\` · 描述: \`"fixed"\` 或 \`"exponential"\``},
+      description: "类型: string · 默认值: &quot;exponential&quot; · 描述: &quot;fixed&quot; 或 &quot;exponential&quot;",
     },
     "max_retries": {
-      description: {`类型: \`u32\` · 默认值: \`3\` · 描述: 最大重试次数`},
+      description: "类型: u32 · 默认值: 3 · 描述: 最大重试次数",
     },
     "initial_delay_ms": {
-      description: {`类型: \`u64\` · 默认值: \`100\` · 描述: 初始重试延迟`},
+      description: "类型: u64 · 默认值: 100 · 描述: 初始重试延迟",
     },
   }}
 />

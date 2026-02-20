@@ -97,25 +97,25 @@ pub trait ContextProvider: Send + Sync {
 <TypeTable
   type={{
     "query": {
-      description: {`类型: \`String\` · 描述: 搜索查询（通常是用户的提示）`},
+      description: "类型: String · 描述: 搜索查询（通常是用户的提示）",
     },
     "context_types": {
-      description: {`类型: \`Vec<ContextType>\` · 描述: 要检索的类型`},
+      description: "类型: Vec<ContextType> · 描述: 要检索的类型",
     },
     "depth": {
-      description: {`类型: \`ContextDepth\` · 描述: 返回多少细节`},
+      description: "类型: ContextDepth · 描述: 返回多少细节",
     },
     "max_results": {
-      description: {`类型: \`usize\` · 描述: 最大返回条目数`},
+      description: "类型: usize · 描述: 最大返回条目数",
     },
     "max_tokens": {
-      description: {`类型: \`usize\` · 描述: 结果的 token 预算`},
+      description: "类型: usize · 描述: 结果的 token 预算",
     },
     "session_id": {
-      description: {`类型: \`Option<String>\` · 描述: 将结果限定到某个会话`},
+      description: "类型: Option<String> · 描述: 将结果限定到某个会话",
     },
     "params": {
-      description: {`类型: \`HashMap<String, String>\` · 描述: 提供者特定的参数`},
+      description: "类型: HashMap<String, String> · 描述: 提供者特定的参数",
     },
   }}
 />
@@ -165,25 +165,25 @@ let query = ContextQuery::new("authentication flow")
 <TypeTable
   type={{
     "id": {
-      description: {`类型: \`String\` · 描述: 唯一条目标识符`},
+      description: "类型: String · 描述: 唯一条目标识符",
     },
     "context_type": {
-      description: {`类型: \`ContextType\` · 描述: Memory 或 Resource`},
+      description: "类型: ContextType · 描述: Memory 或 Resource",
     },
     "content": {
-      description: {`类型: \`String\` · 描述: 上下文内容`},
+      description: "类型: String · 描述: 上下文内容",
     },
     "token_count": {
-      description: {`类型: \`usize\` · 描述: 估计的 token 数`},
+      description: "类型: usize · 描述: 估计的 token 数",
     },
     "relevance": {
-      description: {`类型: \`f32\` · 描述: 0.0–1.0 相关性分数`},
+      description: "类型: f32 · 描述: 0.0–1.0 相关性分数",
     },
     "source": {
-      description: {`类型: \`Option<String>\` · 描述: 上下文来源`},
+      description: "类型: Option<String> · 描述: 上下文来源",
     },
     "metadata": {
-      description: {`类型: \`HashMap<String, String>\` · 描述: 额外元数据`},
+      description: "类型: HashMap<String, String> · 描述: 额外元数据",
     },
   }}
 />
@@ -311,13 +311,13 @@ let session = agent.session("/project", Some(
 <TypeTable
   type={{
     "文件系统上下文": {
-      description: {`Rust: \`.with_fs_context(path)\` · Python: \`fs_context=path\` · Node.js: \`fsContext: path\` · 默认值: \`None\``},
+      description: "Rust: .with_fs_context(path) · Python: fs_context=path · Node.js: fsContext: path · 默认值: None",
     },
     "自定义提供者": {
-      description: {`Rust: \`.with_context_provider(Arc::new(p))\` · Python: _（基于配置）_ · Node.js: _（基于配置）_ · 默认值: \`None\``},
+      description: "Rust: .with_context_provider(Arc::new(p)) · Python: _（基于配置）_ · Node.js: _（基于配置）_ · 默认值: None",
     },
     "压缩阈值": {
-      description: {`Rust: \`.with_context_threshold(f)\` · Python: \`context_threshold=f\` · Node.js: \`contextThreshold: f\` · 默认值: \`0.8\``},
+      description: "Rust: .with_context_threshold(f) · Python: context_threshold=f · Node.js: contextThreshold: f · 默认值: 0.8",
     },
   }}
 />
@@ -327,13 +327,13 @@ let session = agent.session("/project", Some(
 <TypeTable
   type={{
     "retrieve": {
-      description: {`签名: \`async fn retrieve(&self, query: &ContextQuery) -> Result<Vec<ContextItem>>\` · 描述: 获取相关上下文条目`},
+      description: "签名: async fn retrieve(&self, query: &ContextQuery) -> Result<Vec<ContextItem>> · 描述: 获取相关上下文条目",
     },
     "on_turn_complete": {
-      description: {`签名: \`async fn on_turn_complete(&self, turn: &TurnSummary) -> Result<()>\` · 描述: 每个 agent 轮次后调用`},
+      description: "签名: async fn on_turn_complete(&self, turn: &TurnSummary) -> Result<()> · 描述: 每个 agent 轮次后调用",
     },
     "name": {
-      description: {`签名: \`fn name(&self) -> &str\` · 描述: 提供者标识符`},
+      description: "签名: fn name(&self) -> &str · 描述: 提供者标识符",
     },
   }}
 />
@@ -343,16 +343,16 @@ let session = agent.session("/project", Some(
 <TypeTable
   type={{
     "query": {
-      description: {`类型: \`String\` · 描述: 自然语言查询`},
+      description: "类型: String · 描述: 自然语言查询",
     },
     "max_tokens": {
-      description: {`类型: \`Option<usize>\` · 描述: 结果的 token 预算`},
+      description: "类型: Option<usize> · 描述: 结果的 token 预算",
     },
     "context_types": {
-      description: {`类型: \`Vec<ContextType>\` · 描述: 按类型过滤`},
+      description: "类型: Vec<ContextType> · 描述: 按类型过滤",
     },
     "depth": {
-      description: {`类型: \`ContextDepth\` · 描述: \`Abstract\` 或 \`Full\``},
+      description: "类型: ContextDepth · 描述: Abstract 或 Full",
     },
   }}
 />
@@ -362,16 +362,16 @@ let session = agent.session("/project", Some(
 <TypeTable
   type={{
     "content": {
-      description: {`类型: \`String\` · 描述: 上下文文本`},
+      description: "类型: String · 描述: 上下文文本",
     },
     "source": {
-      description: {`类型: \`String\` · 描述: 来源（文件路径、记忆 ID 等）`},
+      description: "类型: String · 描述: 来源（文件路径、记忆 ID 等）",
     },
     "relevance": {
-      description: {`类型: \`f32\` · 描述: 相关性分数（0.0–1.0）`},
+      description: "类型: f32 · 描述: 相关性分数（0.0–1.0）",
     },
     "context_type": {
-      description: {`类型: \`ContextType\` · 描述: \`File\`、\`Memory\`、\`Skill\`、\`Custom\``},
+      description: "类型: ContextType · 描述: File、Memory、Skill、Custom",
     },
   }}
 />
@@ -384,13 +384,13 @@ let session = agent.session("/project", Some(
       description: "描述: 设置工作区根目录",
     },
     ".with_min_relevance(f)": {
-      description: {`描述: 最小余弦相似度 · 默认值: \`0.3\``},
+      description: "描述: 最小余弦相似度 · 默认值: 0.3",
     },
     ".with_max_results(n)": {
-      description: {`描述: 每次查询最大块数 · 默认值: \`10\``},
+      description: "描述: 每次查询最大块数 · 默认值: 10",
     },
     ".with_chunk_size(n)": {
-      description: {`描述: 每块最大字符数 · 默认值: \`1500\``},
+      description: "描述: 每块最大字符数 · 默认值: 1500",
     },
   }}
 />

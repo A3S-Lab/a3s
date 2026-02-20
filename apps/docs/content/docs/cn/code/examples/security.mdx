@@ -126,22 +126,22 @@ const session = agent.session('/my-project', {
 <TypeTable
   type={{
     "Anthropic API 密钥": {
-      description: {`示例: \`sk-ant-api03-...\` · 脱敏为: \`[REDACTED]\``},
+      description: "示例: sk-ant-api03-... · 脱敏为: [REDACTED]",
     },
     "OpenAI API 密钥": {
-      description: {`示例: \`sk-proj-...\` · 脱敏为: \`[REDACTED]\``},
+      description: "示例: sk-proj-... · 脱敏为: [REDACTED]",
     },
     "通用 Bearer token": {
-      description: {`示例: \`Bearer eyJ...\` · 脱敏为: \`[REDACTED]\``},
+      description: "示例: Bearer eyJ... · 脱敏为: [REDACTED]",
     },
     "密码字段": {
-      description: {`示例: \`password=secret\` · 脱敏为: \`[REDACTED]\``},
+      description: "示例: password=secret · 脱敏为: [REDACTED]",
     },
     "SSN": {
-      description: {`示例: \`123-45-6789\` · 脱敏为: \`[REDACTED]\``},
+      description: "示例: 123-45-6789 · 脱敏为: [REDACTED]",
     },
     "信用卡": {
-      description: {`示例: \`4111 1111 1111 1111\` · 脱敏为: \`[REDACTED]\``},
+      description: "示例: 4111 1111 1111 1111 · 脱敏为: [REDACTED]",
     },
   }}
 />
@@ -157,10 +157,10 @@ const session = agent.session('/my-project', {
 <TypeTable
   type={{
     "默认安全": {
-      description: {`Rust: \`.with_default_security()\` · Python: \`default_security=True\` · Node.js: \`defaultSecurity: true\` · 默认值: \`false\``},
+      description: "Rust: .with_default_security() · Python: default_security=True · Node.js: defaultSecurity: true · 默认值: false",
     },
     "自定义提供者": {
-      description: {`Rust: \`.with_security_provider(Arc::new(p))\` · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: \`None\``},
+      description: "Rust: .with_security_provider(Arc::new(p)) · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: None",
     },
   }}
 />
@@ -170,19 +170,19 @@ const session = agent.session('/my-project', {
 <TypeTable
   type={{
     "taint_input": {
-      description: {`签名: \`fn taint_input(&self, text: &str)\` · 描述: 检查/注册用户输入中的敏感模式`},
+      description: "签名: fn taint_input(&self, text: &str) · 描述: 检查/注册用户输入中的敏感模式",
     },
     "sanitize_output": {
-      description: {`签名: \`fn sanitize_output(&self, text: &str) -> String\` · 描述: 从 LLM 输出中脱敏敏感模式`},
+      description: "签名: fn sanitize_output(&self, text: &str) -> String · 描述: 从 LLM 输出中脱敏敏感模式",
     },
     "wipe": {
-      description: {`签名: \`fn wipe(&self)\` · 描述: 清除缓存的敏感状态`},
+      description: "签名: fn wipe(&self) · 描述: 清除缓存的敏感状态",
     },
     "register_hooks": {
-      description: {`签名: \`fn register_hooks(&self, engine: &HookEngine)\` · 描述: 附加 hooks 进行更深层拦截`},
+      description: "签名: fn register_hooks(&self, engine: &HookEngine) · 描述: 附加 hooks 进行更深层拦截",
     },
     "teardown": {
-      description: {`签名: \`fn teardown(&self)\` · 描述: 会话结束时调用`},
+      description: "签名: fn teardown(&self) · 描述: 会话结束时调用",
     },
   }}
 />
@@ -192,22 +192,22 @@ const session = agent.session('/my-project', {
 <TypeTable
   type={{
     "Anthropic API 密钥": {
-      description: {`匹配示例: \`sk-ant-api03-...\` · 替换为: \`[REDACTED]\``},
+      description: "匹配示例: sk-ant-api03-... · 替换为: [REDACTED]",
     },
     "OpenAI API 密钥": {
-      description: {`匹配示例: \`sk-proj-...\` · 替换为: \`[REDACTED]\``},
+      description: "匹配示例: sk-proj-... · 替换为: [REDACTED]",
     },
     "通用 Bearer token": {
-      description: {`匹配示例: \`Bearer eyJ...\` · 替换为: \`[REDACTED]\``},
+      description: "匹配示例: Bearer eyJ... · 替换为: [REDACTED]",
     },
     "密码字段": {
-      description: {`匹配示例: \`password=secret\` · 替换为: \`[REDACTED]\``},
+      description: "匹配示例: password=secret · 替换为: [REDACTED]",
     },
     "SSN": {
-      description: {`匹配示例: \`123-45-6789\` · 替换为: \`[REDACTED]\``},
+      description: "匹配示例: 123-45-6789 · 替换为: [REDACTED]",
     },
     "信用卡": {
-      description: {`匹配示例: \`4111 1111 1111 1111\` · 替换为: \`[REDACTED]\``},
+      description: "匹配示例: 4111 1111 1111 1111 · 替换为: [REDACTED]",
     },
   }}
 />

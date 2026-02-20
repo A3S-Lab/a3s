@@ -135,16 +135,16 @@ mcp_servers {
 <TypeTable
   type={{
     "connect": {
-      description: {`Signature: \`async fn connect(&mut self) -> Result<()>\` · Description: Establish connection to MCP server`},
+      description: "Signature: async fn connect(&mut self) -> Result<()> · Description: Establish connection to MCP server",
     },
     "list_tools": {
-      description: {`Signature: \`async fn list_tools(&self) -> Result<Vec<McpTool>>\` · Description: Discover available tools`},
+      description: "Signature: async fn list_tools(&self) -> Result<Vec<McpTool>> · Description: Discover available tools",
     },
     "call_tool": {
-      description: {`Signature: \`async fn call_tool(&self, name: &str, args: Value) -> Result<Value>\` · Description: Invoke a tool`},
+      description: "Signature: async fn call_tool(&self, name: &str, args: Value) -> Result<Value> · Description: Invoke a tool",
     },
     "disconnect": {
-      description: {`Signature: \`async fn disconnect(&mut self) -> Result<()>\` · Description: Close connection`},
+      description: "Signature: async fn disconnect(&mut self) -> Result<()> · Description: Close connection",
     },
   }}
 />
@@ -156,7 +156,7 @@ MCP tools are namespaced as `mcp__{server}__{tool}`. Use this prefix in permissi
 <TypeTable
   type={{
     "mcp__filesystem": {
-      description: {`All tools from the \`filesystem\` server`},
+      description: "All tools from the filesystem server",
     },
     "mcp__github__create_issue": {
       description: "Specific tool",

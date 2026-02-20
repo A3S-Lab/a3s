@@ -141,10 +141,10 @@ for await (const event of stream) {
 <TypeTable
   type={{
     "Enable planning": {
-      description: {`Rust: \`.with_planning(true)\` · Python: \`planning=True\` · Node.js: \`planning: true\` · Default: \`false\``},
+      description: "Rust: .with_planning(true) · Python: planning=True · Node.js: planning: true · Default: false",
     },
     "Enable goal tracking": {
-      description: {`Rust: \`.with_goal_tracking(true)\` · Python: \`goal_tracking=True\` · Node.js: \`goalTracking: true\` · Default: \`false\``},
+      description: "Rust: .with_goal_tracking(true) · Python: goal_tracking=True · Node.js: goalTracking: true · Default: false",
     },
   }}
 />
@@ -154,19 +154,19 @@ for await (const event of stream) {
 <TypeTable
   type={{
     "Planning started": {
-      description: {`Rust variant: \`AgentEvent::PlanningStart\` · Python/Node.js \`type\`: \`planning_start\` · Fields: \`prompt\``},
+      description: "Rust variant: AgentEvent::PlanningStart · Python/Node.js type: planning_start · Fields: prompt",
     },
     "Plan generated": {
-      description: {`Rust variant: \`AgentEvent::PlanReady\` · Python/Node.js \`type\`: \`plan_ready\` · Fields: \`steps[]\`, \`wave_count\``},
+      description: "Rust variant: AgentEvent::PlanReady · Python/Node.js type: plan_ready · Fields: steps[], wave_count",
     },
     "Step started": {
-      description: {`Rust variant: \`AgentEvent::StepStart\` · Python/Node.js \`type\`: \`step_start\` · Fields: \`step\`, \`index\``},
+      description: "Rust variant: AgentEvent::StepStart · Python/Node.js type: step_start · Fields: step, index",
     },
     "Step completed": {
-      description: {`Rust variant: \`AgentEvent::StepEnd\` · Python/Node.js \`type\`: \`step_end\` · Fields: \`step\`, \`index\`, \`success\``},
+      description: "Rust variant: AgentEvent::StepEnd · Python/Node.js type: step_end · Fields: step, index, success",
     },
     "Goal updated": {
-      description: {`Rust variant: \`AgentEvent::GoalUpdated\` · Python/Node.js \`type\`: \`goal_updated\` · Fields: \`goal\`, \`status\``},
+      description: "Rust variant: AgentEvent::GoalUpdated · Python/Node.js type: goal_updated · Fields: goal, status",
     },
   }}
 />

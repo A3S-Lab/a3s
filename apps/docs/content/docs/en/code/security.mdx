@@ -54,16 +54,16 @@ Tool(pattern)
 <TypeTable
   type={{
     "bash(rm -rf:*)": {
-      description: {`Any bash command starting with \`rm -rf\``},
+      description: "Any bash command starting with rm -rf",
     },
     "read(src/**)": {
-      description: {`Read operations on any file under \`src/\``},
+      description: "Read operations on any file under src/",
     },
     "write(*)": {
       description: "All write operations",
     },
     "mcp__pencil": {
-      description: {`All \`mcp__pencil__*\` tools (prefix matching)`},
+      description: "All mcp__pencil__* tools (prefix matching)",
     },
   }}
 />
@@ -417,16 +417,16 @@ See [Sessions](/docs/code/sessions) for full event reference.
       description: "All bash calls",
     },
     "bash(rm -rf:*)": {
-      description: {`Bash calls starting with \`rm -rf\``},
+      description: "Bash calls starting with rm -rf",
     },
     "read(src/**)": {
-      description: {`Read any file under \`src/\``},
+      description: "Read any file under src/",
     },
     "write(*)": {
       description: "All write calls",
     },
     "mcp__github": {
-      description: {`All \`mcp__github__*\` tools`},
+      description: "All mcp__github__* tools",
     },
   }}
 />
@@ -458,19 +458,19 @@ See [Sessions](/docs/code/sessions) for full event reference.
 <TypeTable
   type={{
     "taint_input": {
-      description: {`Signature: \`fn taint_input(&self, text: &str)\` · Description: Inspect user input for sensitive patterns`},
+      description: "Signature: fn taint_input(&self, text: &str) · Description: Inspect user input for sensitive patterns",
     },
     "sanitize_output": {
-      description: {`Signature: \`fn sanitize_output(&self, text: &str) -> String\` · Description: Redact sensitive patterns from LLM output`},
+      description: "Signature: fn sanitize_output(&self, text: &str) -> String · Description: Redact sensitive patterns from LLM output",
     },
     "wipe": {
-      description: {`Signature: \`fn wipe(&self)\` · Description: Clear cached sensitive state`},
+      description: "Signature: fn wipe(&self) · Description: Clear cached sensitive state",
     },
     "register_hooks": {
-      description: {`Signature: \`fn register_hooks(&self, engine: &HookEngine)\` · Description: Attach hooks for deeper interception`},
+      description: "Signature: fn register_hooks(&self, engine: &HookEngine) · Description: Attach hooks for deeper interception",
     },
     "teardown": {
-      description: {`Signature: \`fn teardown(&self)\` · Description: Called when session ends`},
+      description: "Signature: fn teardown(&self) · Description: Called when session ends",
     },
   }}
 />

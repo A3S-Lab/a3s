@@ -174,19 +174,19 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 <TypeTable
   type={{
     "session_id": {
-      description: {`类型: \`String\` · 描述: 会话标识符`},
+      description: "类型: String · 描述: 会话标识符",
     },
     "tool": {
-      description: {`类型: \`String\` · 描述: 被调用的工具名称`},
+      description: "类型: String · 描述: 被调用的工具名称",
     },
     "args": {
-      description: {`类型: \`Value\` · 描述: 工具参数`},
+      description: "类型: Value · 描述: 工具参数",
     },
     "working_directory": {
-      description: {`类型: \`String\` · 描述: 当前工作区路径`},
+      description: "类型: String · 描述: 当前工作区路径",
     },
     "recent_tools": {
-      description: {`类型: \`Vec<String>\` · 描述: 最近调用的工具`},
+      description: "类型: Vec<String> · 描述: 最近调用的工具",
     },
   }}
 />
@@ -197,25 +197,25 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 <TypeTable
   type={{
     "session_id": {
-      description: {`类型: \`String\` · 描述: 会话标识符`},
+      description: "类型: String · 描述: 会话标识符",
     },
     "tool": {
-      description: {`类型: \`String\` · 描述: 工具名称`},
+      description: "类型: String · 描述: 工具名称",
     },
     "args": {
-      description: {`类型: \`Value\` · 描述: 工具参数`},
+      description: "类型: Value · 描述: 工具参数",
     },
     "result.success": {
-      description: {`类型: \`bool\` · 描述: 工具是否成功`},
+      description: "类型: bool · 描述: 工具是否成功",
     },
     "result.output": {
-      description: {`类型: \`String\` · 描述: 工具输出文本`},
+      description: "类型: String · 描述: 工具输出文本",
     },
     "result.exit_code": {
-      description: {`类型: \`i32\` · 描述: 退出码`},
+      description: "类型: i32 · 描述: 退出码",
     },
     "result.duration_ms": {
-      description: {`类型: \`u64\` · 描述: 执行时间`},
+      description: "类型: u64 · 描述: 执行时间",
     },
   }}
 />
@@ -226,22 +226,22 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 <TypeTable
   type={{
     "session_id": {
-      description: {`类型: \`String\` · 描述: 会话标识符`},
+      description: "类型: String · 描述: 会话标识符",
     },
     "prompt": {
-      description: {`类型: \`String\` · 描述: 用户提示`},
+      description: "类型: String · 描述: 用户提示",
     },
     "system_prompt": {
-      description: {`类型: \`String\` · 描述: 系统提示`},
+      description: "类型: String · 描述: 系统提示",
     },
     "model_provider": {
-      description: {`类型: \`String\` · 描述: 提供商名称`},
+      description: "类型: String · 描述: 提供商名称",
     },
     "model_name": {
-      description: {`类型: \`String\` · 描述: 模型名称`},
+      description: "类型: String · 描述: 模型名称",
     },
     "available_tools": {
-      description: {`类型: \`Vec<String>\` · 描述: 已注册的工具名称`},
+      description: "类型: Vec<String> · 描述: 已注册的工具名称",
     },
   }}
 />
@@ -252,19 +252,19 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 <TypeTable
   type={{
     "session_id": {
-      description: {`类型: \`String\` · 描述: 会话标识符`},
+      description: "类型: String · 描述: 会话标识符",
     },
     "response_text": {
-      description: {`类型: \`String\` · 描述: LLM 响应`},
+      description: "类型: String · 描述: LLM 响应",
     },
     "tool_calls": {
-      description: {`类型: \`Vec<String>\` · 描述: 本轮调用的工具`},
+      description: "类型: Vec<String> · 描述: 本轮调用的工具",
     },
     "usage.total_tokens": {
-      description: {`类型: \`u32\` · 描述: Token 使用量`},
+      description: "类型: u32 · 描述: Token 使用量",
     },
     "duration_ms": {
-      description: {`类型: \`u64\` · 描述: 生成时间`},
+      description: "类型: u64 · 描述: 生成时间",
     },
   }}
 />
@@ -293,16 +293,16 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 <TypeTable
   type={{
     "注册 hook": {
-      description: {`Rust: \`session.register_hook(Hook::new(id, event_type))\` · 描述: 注册 hook 监听器`},
+      description: "Rust: session.register_hook(Hook::new(id, event_type)) · 描述: 注册 hook 监听器",
     },
     "注册处理器": {
-      description: {`Rust: \`session.register_hook_handler(id, Arc::new(handler))\` · 描述: 将处理器附加到 hook`},
+      description: "Rust: session.register_hook_handler(id, Arc::new(handler)) · 描述: 将处理器附加到 hook",
     },
     "注销": {
-      description: {`Rust: \`session.unregister_hook(id)\` · 描述: 移除 hook 和处理器`},
+      description: "Rust: session.unregister_hook(id) · 描述: 移除 hook 和处理器",
     },
     "计数": {
-      description: {`Rust: \`session.hook_count()\` · 描述: 已注册的 hooks 数量`},
+      description: "Rust: session.hook_count() · 描述: 已注册的 hooks 数量",
     },
   }}
 />

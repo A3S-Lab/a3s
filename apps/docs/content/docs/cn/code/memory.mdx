@@ -131,31 +131,31 @@ let item = MemoryItem::new("文件 I/O 优先使用 write_all 而非 write")
 <TypeTable
   type={{
     "id": {
-      description: {`类型: \`String\` · 说明: UUID，自动生成`},
+      description: "类型: String · 说明: UUID，自动生成",
     },
     "content": {
-      description: {`类型: \`String\` · 说明: 记忆内容`},
+      description: "类型: String · 说明: 记忆内容",
     },
     "memory_type": {
-      description: {`类型: \`MemoryType\` · 说明: \`Episodic\`、\`Semantic\`、\`Procedural\`、\`Working\``},
+      description: "类型: MemoryType · 说明: Episodic、Semantic、Procedural、Working",
     },
     "importance": {
-      description: {`类型: \`f32\` · 说明: 0.0–1.0，自动截断`},
+      description: "类型: f32 · 说明: 0.0–1.0，自动截断",
     },
     "tags": {
-      description: {`类型: \`Vec<String>\` · 说明: 分类标签`},
+      description: "类型: Vec<String> · 说明: 分类标签",
     },
     "metadata": {
-      description: {`类型: \`HashMap<String, String>\` · 说明: 任意键值对`},
+      description: "类型: HashMap<String, String> · 说明: 任意键值对",
     },
     "timestamp": {
-      description: {`类型: \`DateTime<Utc>\` · 说明: 创建时间`},
+      description: "类型: DateTime<Utc> · 说明: 创建时间",
     },
     "access_count": {
-      description: {`类型: \`u32\` · 说明: 检索次数`},
+      description: "类型: u32 · 说明: 检索次数",
     },
     "last_accessed": {
-      description: {`类型: \`Option<DateTime<Utc>>\` · 说明: 最近检索时间`},
+      description: "类型: Option<DateTime<Utc>> · 说明: 最近检索时间",
     },
   }}
 />
@@ -310,7 +310,7 @@ SessionOptions::new().with_memory(Arc::new(MyVectorStore::new()))
 <TypeTable
   type={{
     ".with_file_memory(path)": {
-      description: {`在指定路径启用 \`FileMemoryStore\``},
+      description: "在指定路径启用 FileMemoryStore",
     },
     ".with_memory(Arc<dyn MemoryStore>)": {
       description: "使用自定义后端",

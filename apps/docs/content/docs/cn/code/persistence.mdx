@@ -178,7 +178,7 @@ let session = agent.session(".", Some(
 <TypeTable
   type={{
     "自定义存储": {
-      description: {`Rust: \`.with_session_store(Arc::new(s))\` · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: \`FileSessionStore\``},
+      description: "Rust: .with_session_store(Arc::new(s)) · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: FileSessionStore",
     },
   }}
 />
@@ -188,16 +188,16 @@ let session = agent.session(".", Some(
 <TypeTable
   type={{
     "save": {
-      description: {`签名: \`async fn save(&self, data: &SessionData) -> Result<()>\` · 描述: 持久化会话数据`},
+      description: "签名: async fn save(&self, data: &SessionData) -> Result<()> · 描述: 持久化会话数据",
     },
     "load": {
-      description: {`签名: \`async fn load(&self, id: &str) -> Result<Option<SessionData>>\` · 描述: 按 ID 加载会话`},
+      description: "签名: async fn load(&self, id: &str) -> Result<Option<SessionData>> · 描述: 按 ID 加载会话",
     },
     "delete": {
-      description: {`签名: \`async fn delete(&self, id: &str) -> Result<()>\` · 描述: 删除会话`},
+      description: "签名: async fn delete(&self, id: &str) -> Result<()> · 描述: 删除会话",
     },
     "list": {
-      description: {`签名: \`async fn list(&self) -> Result<Vec<String>>\` · 描述: 列出所有会话 ID`},
+      description: "签名: async fn list(&self) -> Result<Vec<String>> · 描述: 列出所有会话 ID",
     },
   }}
 />
@@ -207,31 +207,31 @@ let session = agent.session(".", Some(
 <TypeTable
   type={{
     "id": {
-      description: {`类型: \`String\` · 描述: 会话标识符`},
+      description: "类型: String · 描述: 会话标识符",
     },
     "messages": {
-      description: {`类型: \`Vec<Message>\` · 描述: 完整对话历史`},
+      description: "类型: Vec<Message> · 描述: 完整对话历史",
     },
     "tasks": {
-      description: {`类型: \`Vec<AgentTask>\` · 描述: 任务列表（别名：\`todos\`）`},
+      description: "类型: Vec<AgentTask> · 描述: 任务列表（别名：todos）",
     },
     "config.workspace": {
-      description: {`类型: \`String\` · 描述: 工作区路径`},
+      description: "类型: String · 描述: 工作区路径",
     },
     "config.system_prompt": {
-      description: {`类型: \`String\` · 描述: 系统提示`},
+      description: "类型: String · 描述: 系统提示",
     },
     "config.planning_enabled": {
-      description: {`类型: \`bool\` · 描述: 规划标志`},
+      description: "类型: bool · 描述: 规划标志",
     },
     "tool_names": {
-      description: {`类型: \`Vec<String>\` · 描述: 工具名称（恢复时重建）`},
+      description: "类型: Vec<String> · 描述: 工具名称（恢复时重建）",
     },
     "created_at": {
-      description: {`类型: \`DateTime<Utc>\` · 描述: 会话创建时间`},
+      description: "类型: DateTime<Utc> · 描述: 会话创建时间",
     },
     "updated_at": {
-      description: {`类型: \`DateTime<Utc>\` · 描述: 最后保存时间`},
+      description: "类型: DateTime<Utc> · 描述: 最后保存时间",
     },
   }}
 />
@@ -241,16 +241,16 @@ let session = agent.session(".", Some(
 <TypeTable
   type={{
     "保存会话": {
-      description: {`Rust: \`session.save().await?\` · 描述: 持久化当前状态`},
+      description: "Rust: session.save().await? · 描述: 持久化当前状态",
     },
     "加载会话": {
-      description: {`Rust: \`agent.resume(id, options?)?\` · 描述: 从存储状态恢复`},
+      description: "Rust: agent.resume(id, options?)? · 描述: 从存储状态恢复",
     },
     "列出会话": {
-      description: {`Rust: \`agent.list_sessions().await?\` · 描述: 列出所有已保存的会话 ID`},
+      description: "Rust: agent.list_sessions().await? · 描述: 列出所有已保存的会话 ID",
     },
     "删除会话": {
-      description: {`Rust: \`agent.delete_session(id).await?\` · 描述: 删除已存储的会话`},
+      description: "Rust: agent.delete_session(id).await? · 描述: 删除已存储的会话",
     },
   }}
 />

@@ -120,22 +120,22 @@ mcp_servers {
 <TypeTable
   type={{
     "name": {
-      description: {`类型: \`string\` · 必填: ✅ · 描述: 服务器标识符（用于工具名称前缀）`},
+      description: "类型: string · 必填: ✅ · 描述: 服务器标识符（用于工具名称前缀）",
     },
     "command": {
-      description: {`类型: \`string\` · 必填: ✅ · 描述: 要启动的可执行文件`},
+      description: "类型: string · 必填: ✅ · 描述: 要启动的可执行文件",
     },
     "args": {
-      description: {`类型: \`string[]\` · 必填: ❌ · 描述: 命令参数`},
+      description: "类型: string[] · 必填: ❌ · 描述: 命令参数",
     },
     "env": {
-      description: {`类型: \`object\` · 必填: ❌ · 描述: 环境变量`},
+      description: "类型: object · 必填: ❌ · 描述: 环境变量",
     },
     "timeout_ms": {
-      description: {`类型: \`number\` · 必填: ❌ · 描述: 工具执行超时（默认：\`60000\`）`},
+      description: "类型: number · 必填: ❌ · 描述: 工具执行超时（默认：60000）",
     },
     "transport": {
-      description: {`类型: \`string\` · 必填: ❌ · 描述: \`stdio\`（默认）或 \`http\``},
+      description: "类型: string · 必填: ❌ · 描述: stdio（默认）或 http",
     },
   }}
 />
@@ -145,16 +145,16 @@ mcp_servers {
 <TypeTable
   type={{
     "connect": {
-      description: {`签名: \`async fn connect(&mut self) -> Result<()>\` · 描述: 建立到 MCP 服务器的连接`},
+      description: "签名: async fn connect(&mut self) -> Result<()> · 描述: 建立到 MCP 服务器的连接",
     },
     "list_tools": {
-      description: {`签名: \`async fn list_tools(&self) -> Result<Vec<McpTool>>\` · 描述: 发现可用工具`},
+      description: "签名: async fn list_tools(&self) -> Result<Vec<McpTool>> · 描述: 发现可用工具",
     },
     "call_tool": {
-      description: {`签名: \`async fn call_tool(&self, name: &str, args: Value) -> Result<Value>\` · 描述: 调用工具`},
+      description: "签名: async fn call_tool(&self, name: &str, args: Value) -> Result<Value> · 描述: 调用工具",
     },
     "disconnect": {
-      description: {`签名: \`async fn disconnect(&mut self) -> Result<()>\` · 描述: 关闭连接`},
+      description: "签名: async fn disconnect(&mut self) -> Result<()> · 描述: 关闭连接",
     },
   }}
 />
@@ -166,7 +166,7 @@ MCP 工具命名为 `mcp__{server}__{tool}`。在权限规则中使用此前缀�
 <TypeTable
   type={{
     "mcp__filesystem": {
-      description: {`\`filesystem\` 服务器的所有工具`},
+      description: "filesystem 服务器的所有工具",
     },
     "mcp__github__create_issue": {
       description: "特定工具",

@@ -63,10 +63,10 @@ pub struct TriggerFilter {
 <TypeTable
   type={{
     "TriggerFilter::by_category("orders")": {
-      description: {`Events with \`category == "orders"\``},
+      description: "Events with category == &quot;orders&quot;",
     },
     "TriggerFilter::by_event_type("order.created")": {
-      description: {`Events with \`event_type == "order.created"\``},
+      description: "Events with event_type == &quot;order.created&quot;",
     },
     "TriggerFilter::by_subject_prefix("events.market.")": {
       description: "Events whose subject starts with the prefix",
@@ -81,13 +81,13 @@ pub struct TriggerFilter {
 <TypeTable
   type={{
     "TopicSink": {
-      description: {`Re-publishes events to an \`EventProvider\` topic (fan-out)`},
+      description: "Re-publishes events to an EventProvider topic (fan-out)",
     },
     "InProcessSink": {
       description: "Calls an async handler function",
     },
     "LogSink": {
-      description: {`Logs events via \`tracing\` (debugging)`},
+      description: "Logs events via tracing (debugging)",
     },
     "CollectorSink": {
       description: "Collects events in memory (testing)",

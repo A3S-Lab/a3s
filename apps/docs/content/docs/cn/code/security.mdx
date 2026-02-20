@@ -54,16 +54,16 @@ Tool(pattern)
 <TypeTable
   type={{
     "bash(rm -rf:*)": {
-      description: {`任何以 \`rm -rf\` 开头的 bash 命令`},
+      description: "任何以 rm -rf 开头的 bash 命令",
     },
     "read(src/**)": {
-      description: {`\`src/\` 下任何文件的读取操作`},
+      description: "src/ 下任何文件的读取操作",
     },
     "write(*)": {
       description: "所有写入操作",
     },
     "mcp__pencil": {
-      description: {`所有 \`mcp__pencil__*\` 工具（前缀匹配）`},
+      description: "所有 mcp__pencil__* 工具（前缀匹配）",
     },
   }}
 />
@@ -417,16 +417,16 @@ Agent 在流式传输期间发出安全相关事件：
       description: "所有 bash 调用",
     },
     "bash(rm -rf:*)": {
-      description: {`以 \`rm -rf\` 开头的 bash 调用`},
+      description: "以 rm -rf 开头的 bash 调用",
     },
     "read(src/**)": {
-      description: {`读取 \`src/\` 下的任何文件`},
+      description: "读取 src/ 下的任何文件",
     },
     "write(*)": {
       description: "所有写入调用",
     },
     "mcp__github": {
-      description: {`所有 \`mcp__github__*\` 工具`},
+      description: "所有 mcp__github__* 工具",
     },
   }}
 />
@@ -436,13 +436,13 @@ Agent 在流式传输期间发出安全相关事件：
 <TypeTable
   type={{
     "enabled": {
-      description: {`类型: \`bool\` · 默认值: \`false\` · 描述: 启用 HITL`},
+      description: "类型: bool · 默认值: false · 描述: 启用 HITL",
     },
     "default_timeout_ms": {
-      description: {`类型: \`u64\` · 默认值: \`30000\` · 描述: 确认超时时间`},
+      description: "类型: u64 · 默认值: 30000 · 描述: 确认超时时间",
     },
     "timeout_action": {
-      description: {`类型: \`TimeoutAction\` · 默认值: \`Reject\` · 描述: 超时时 \`Reject\` 或 \`Allow\``},
+      description: "类型: TimeoutAction · 默认值: Reject · 描述: 超时时 Reject 或 Allow",
     },
   }}
 />
@@ -452,19 +452,19 @@ Agent 在流式传输期间发出安全相关事件：
 <TypeTable
   type={{
     "taint_input": {
-      description: {`签名: \`fn taint_input(&self, text: &str)\` · 描述: 检查用户输入中的敏感模式`},
+      description: "签名: fn taint_input(&self, text: &str) · 描述: 检查用户输入中的敏感模式",
     },
     "sanitize_output": {
-      description: {`签名: \`fn sanitize_output(&self, text: &str) -> String\` · 描述: 从 LLM 输出中脱敏敏感模式`},
+      description: "签名: fn sanitize_output(&self, text: &str) -> String · 描述: 从 LLM 输出中脱敏敏感模式",
     },
     "wipe": {
-      description: {`签名: \`fn wipe(&self)\` · 描述: 清除缓存的敏感状态`},
+      description: "签名: fn wipe(&self) · 描述: 清除缓存的敏感状态",
     },
     "register_hooks": {
-      description: {`签名: \`fn register_hooks(&self, engine: &HookEngine)\` · 描述: 附加 hooks 进行深度拦截`},
+      description: "签名: fn register_hooks(&self, engine: &HookEngine) · 描述: 附加 hooks 进行深度拦截",
     },
     "teardown": {
-      description: {`签名: \`fn teardown(&self)\` · 描述: 会话结束时调用`},
+      description: "签名: fn teardown(&self) · 描述: 会话结束时调用",
     },
   }}
 />

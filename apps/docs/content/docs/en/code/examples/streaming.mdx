@@ -149,13 +149,13 @@ The auth module has been refactored. Key changes:
 <TypeTable
   type={{
     "Start stream": {
-      description: {`Rust: \`session.stream("prompt", None).await?\` · Python: \`session.stream("prompt")\` · Node.js: \`session.stream('prompt')\``},
+      description: "Rust: session.stream(&quot;prompt&quot;, None).await? · Python: session.stream(&quot;prompt&quot;) · Node.js: session.stream('prompt')",
     },
     "Receive event": {
-      description: {`Rust: \`rx.recv().await\` · Python: \`async for event in stream\` · Node.js: \`for await (const event of stream)\``},
+      description: "Rust: rx.recv().await · Python: async for event in stream · Node.js: for await (const event of stream)",
     },
     "Await completion": {
-      description: {`Rust: \`handle.await??\` · Python: _(auto)_ · Node.js: _(auto)_`},
+      description: "Rust: handle.await?? · Python: _(auto)_ · Node.js: _(auto)_",
     },
   }}
 />
@@ -165,34 +165,34 @@ The auth module has been refactored. Key changes:
 <TypeTable
   type={{
     "Agent started": {
-      description: {`Rust variant: \`AgentEvent::Start\` · Python/Node.js \`type\`: \`start\``},
+      description: "Rust variant: AgentEvent::Start · Python/Node.js type: start",
     },
     "LLM turn began": {
-      description: {`Rust variant: \`AgentEvent::TurnStart\` · Python/Node.js \`type\`: \`turn_start\` · Fields: \`turn\``},
+      description: "Rust variant: AgentEvent::TurnStart · Python/Node.js type: turn_start · Fields: turn",
     },
     "LLM turn ended": {
-      description: {`Rust variant: \`AgentEvent::TurnEnd\` · Python/Node.js \`type\`: \`turn_end\` · Fields: \`turn\`, \`usage\``},
+      description: "Rust variant: AgentEvent::TurnEnd · Python/Node.js type: turn_end · Fields: turn, usage",
     },
     "Text chunk": {
-      description: {`Rust variant: \`AgentEvent::TextDelta\` · Python/Node.js \`type\`: \`text_delta\` · Fields: \`text\``},
+      description: "Rust variant: AgentEvent::TextDelta · Python/Node.js type: text_delta · Fields: text",
     },
     "Tool began": {
-      description: {`Rust variant: \`AgentEvent::ToolStart\` · Python/Node.js \`type\`: \`tool_start\` · Fields: \`name\`, \`args\``},
+      description: "Rust variant: AgentEvent::ToolStart · Python/Node.js type: tool_start · Fields: name, args",
     },
     "Tool finished": {
-      description: {`Rust variant: \`AgentEvent::ToolEnd\` · Python/Node.js \`type\`: \`tool_end\` · Fields: \`name\`, \`exit_code\`, \`output\``},
+      description: "Rust variant: AgentEvent::ToolEnd · Python/Node.js type: tool_end · Fields: name, exit_code, output",
     },
     "Tool output chunk": {
-      description: {`Rust variant: \`AgentEvent::ToolOutputDelta\` · Python/Node.js \`type\`: \`tool_output_delta\` · Fields: \`text\``},
+      description: "Rust variant: AgentEvent::ToolOutputDelta · Python/Node.js type: tool_output_delta · Fields: text",
     },
     "RAG resolving": {
-      description: {`Rust variant: \`AgentEvent::ContextResolving\` · Python/Node.js \`type\`: \`context_resolving\` · Fields: \`query\``},
+      description: "Rust variant: AgentEvent::ContextResolving · Python/Node.js type: context_resolving · Fields: query",
     },
     "RAG resolved": {
-      description: {`Rust variant: \`AgentEvent::ContextResolved\` · Python/Node.js \`type\`: \`context_resolved\` · Fields: \`chunks\``},
+      description: "Rust variant: AgentEvent::ContextResolved · Python/Node.js type: context_resolved · Fields: chunks",
     },
     "Agent finished": {
-      description: {`Rust variant: \`AgentEvent::End\` · Python/Node.js \`type\`: \`end\` · Fields: \`text\`, \`usage\``},
+      description: "Rust variant: AgentEvent::End · Python/Node.js type: end · Fields: text, usage",
     },
   }}
 />

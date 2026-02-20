@@ -484,13 +484,13 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
 <TypeTable
   type={{
     "new": {
-      description: {`Signature: \`Agent::new(config: &str) -> Result<Agent>\` · Description: Load from HCL file or string`},
+      description: "Signature: Agent::new(config: &str) -> Result<Agent> · Description: Load from HCL file or string",
     },
     "from_config": {
-      description: {`Signature: \`Agent::from_config(config: AgentConfig) -> Result<Agent>\` · Description: Load from struct`},
+      description: "Signature: Agent::from_config(config: AgentConfig) -> Result<Agent> · Description: Load from struct",
     },
     "session": {
-      description: {`Signature: \`agent.session(workspace, options?) -> Result<AgentSession>\` · Description: Create a workspace-bound session`},
+      description: "Signature: agent.session(workspace, options?) -> Result<AgentSession> · Description: Create a workspace-bound session",
     },
   }}
 />
@@ -500,31 +500,31 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
 <TypeTable
   type={{
     "Send prompt": {
-      description: {`Rust: \`session.send(prompt, None).await?\` · Python: \`await session.send(prompt)\` · Node.js: \`await session.send(prompt)\``},
+      description: "Rust: session.send(prompt, None).await? · Python: await session.send(prompt) · Node.js: await session.send(prompt)",
     },
     "Stream events": {
-      description: {`Rust: \`session.stream(prompt, None).await?\` · Python: \`session.stream(prompt)\` · Node.js: \`session.stream(prompt)\``},
+      description: "Rust: session.stream(prompt, None).await? · Python: session.stream(prompt) · Node.js: session.stream(prompt)",
     },
     "Send with image": {
-      description: {`Rust: \`session.send_with_attachments(p, &[img], None).await?\` · Python: \`await session.send_with_attachments(p, [img])\` · Node.js: \`await session.sendWithAttachments(p, [img])\``},
+      description: "Rust: session.send_with_attachments(p, &[img], None).await? · Python: await session.send_with_attachments(p, [img]) · Node.js: await session.sendWithAttachments(p, [img])",
     },
     "Read file": {
-      description: {`Rust: \`session.read_file(path).await?\` · Python: \`await session.read_file(path)\` · Node.js: \`await session.readFile(path)\``},
+      description: "Rust: session.read_file(path).await? · Python: await session.read_file(path) · Node.js: await session.readFile(path)",
     },
     "Run bash": {
-      description: {`Rust: \`session.bash(cmd).await?\` · Python: \`await session.bash(cmd)\` · Node.js: \`await session.bash(cmd)\``},
+      description: "Rust: session.bash(cmd).await? · Python: await session.bash(cmd) · Node.js: await session.bash(cmd)",
     },
     "Glob": {
-      description: {`Rust: \`session.glob(pattern).await?\` · Python: \`await session.glob(pattern)\` · Node.js: \`await session.glob(pattern)\``},
+      description: "Rust: session.glob(pattern).await? · Python: await session.glob(pattern) · Node.js: await session.glob(pattern)",
     },
     "Grep": {
-      description: {`Rust: \`session.grep(pattern).await?\` · Python: \`await session.grep(pattern)\` · Node.js: \`await session.grep(pattern)\``},
+      description: "Rust: session.grep(pattern).await? · Python: await session.grep(pattern) · Node.js: await session.grep(pattern)",
     },
     "Call tool": {
-      description: {`Rust: \`session.tool(name, args).await?\` · Python: \`await session.tool(name, args)\` · Node.js: \`await session.tool(name, args)\``},
+      description: "Rust: session.tool(name, args).await? · Python: await session.tool(name, args) · Node.js: await session.tool(name, args)",
     },
     "History": {
-      description: {`Rust: \`session.history()\` · Python: \`session.history()\` · Node.js: \`session.history()\``},
+      description: "Rust: session.history() · Python: session.history() · Node.js: session.history()",
     },
   }}
 />
@@ -651,13 +651,13 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
 <TypeTable
   type={{
     "Text": {
-      description: {`Rust: \`result.text\` · Python: \`result.text\` · Node.js: \`result.text\``},
+      description: "Rust: result.text · Python: result.text · Node.js: result.text",
     },
     "Total tokens": {
-      description: {`Rust: \`result.usage.total_tokens\` · Python: \`result.usage.total_tokens\` · Node.js: \`result.usage.totalTokens\``},
+      description: "Rust: result.usage.total_tokens · Python: result.usage.total_tokens · Node.js: result.usage.totalTokens",
     },
     "Tool call count": {
-      description: {`Rust: \`result.tool_calls_count\` · Python: \`result.tool_calls_count\` · Node.js: \`result.toolCallsCount\``},
+      description: "Rust: result.tool_calls_count · Python: result.tool_calls_count · Node.js: result.toolCallsCount",
     },
   }}
 />

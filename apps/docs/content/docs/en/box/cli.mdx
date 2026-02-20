@@ -39,13 +39,13 @@ a3s-box run [OPTIONS] IMAGE [-- COMMAND [ARGS...]]
       description: "Description: Assign a name",
     },
     "--restart POLICY": {
-      description: {`Default: \`no\` · Description: \`no\` · \`always\` · \`on-failure[:N]\` · \`unless-stopped\``},
+      description: "Default: no · Description: no · always · on-failure[:N] · unless-stopped",
     },
     "--cpus N": {
-      description: {`Default: \`2\` · Description: Number of vCPUs`},
+      description: "Default: 2 · Description: Number of vCPUs",
     },
     "--memory SIZE": {
-      description: {`Default: \`512m\` · Description: Memory (\`512m\`, \`2g\`, etc.)`},
+      description: "Default: 512m · Description: Memory (512m, 2g, etc.)",
     },
     "-p HOST:GUEST": {
       description: "Description: Publish port (repeatable)",
@@ -87,7 +87,7 @@ a3s-box run [OPTIONS] IMAGE [-- COMMAND [ARGS...]]
       description: "Description: Mount tmpfs (repeatable)",
     },
     "--platform PLATFORM": {
-      description: {`Description: Target platform (e.g. \`linux/amd64\`)`},
+      description: "Description: Target platform (e.g. linux/amd64)",
     },
     "--init": {
       description: "Description: Run init process as PID 1",
@@ -117,7 +117,7 @@ a3s-box run [OPTIONS] IMAGE [-- COMMAND [ARGS...]]
       description: "Description: PID limit",
     },
     "--cpuset-cpus CPUS": {
-      description: {`Description: CPU pinning (e.g. \`0-3\`)`},
+      description: "Description: CPU pinning (e.g. 0-3)",
     },
     "--cpu-shares N": {
       description: "Description: CPU shares (cgroup weight)",
@@ -141,19 +141,19 @@ a3s-box run [OPTIONS] IMAGE [-- COMMAND [ARGS...]]
       description: "Description: Health check command",
     },
     "--health-interval N": {
-      description: {`Default: \`30\` · Description: Health check interval (seconds)`},
+      description: "Default: 30 · Description: Health check interval (seconds)",
     },
     "--health-timeout N": {
-      description: {`Default: \`5\` · Description: Health check timeout (seconds)`},
+      description: "Default: 5 · Description: Health check timeout (seconds)",
     },
     "--health-retries N": {
-      description: {`Default: \`3\` · Description: Health check retries`},
+      description: "Default: 3 · Description: Health check retries",
     },
     "--health-start-period N": {
-      description: {`Default: \`0\` · Description: Health check start period (seconds)`},
+      description: "Default: 0 · Description: Health check start period (seconds)",
     },
     "--log-driver DRIVER": {
-      description: {`Default: \`json-file\` · Description: \`json-file\` · \`syslog\` · \`none\``},
+      description: "Default: json-file · Description: json-file · syslog · none",
     },
     "--log-opt KEY=VALUE": {
       description: "Description: Logging option (repeatable)",
@@ -307,7 +307,7 @@ a3s-box exec [OPTIONS] BOX -- COMMAND [ARGS...]
       description: "Description: Run as user",
     },
     "--timeout N": {
-      description: {`Default: \`5\` · Description: Timeout in seconds`},
+      description: "Default: 5 · Description: Timeout in seconds",
     },
   }}
 />
@@ -387,7 +387,7 @@ a3s-box build [OPTIONS] PATH
       description: "Image name and tag (repeatable)",
     },
     "-f, --file PATH": {
-      description: {`Dockerfile path (default: \`PATH/Dockerfile\`)`},
+      description: "Dockerfile path (default: PATH/Dockerfile)",
     },
     "--build-arg KEY=VALUE": {
       description: "Build argument (repeatable)",
@@ -427,7 +427,7 @@ a3s-box images [OPTIONS]
       description: "Only show image IDs",
     },
     "--format FORMAT": {
-      description: {`Go template format (\`{{.Repository}}\`, \`{{.Tag}}\`, \`{{.Digest}}\`, \`{{.Size}}\`, \`{{.CreatedAt}}\`)`},
+      description: "Go template format ({{.Repository}}, {{.Tag}}, {{.Digest}}, {{.Size}}, {{.CreatedAt}})",
     },
   }}
 />
@@ -524,10 +524,10 @@ a3s-box ps [OPTIONS]
       description: "Only show IDs",
     },
     "-f, --filter KEY=VALUE": {
-      description: {`Filter: \`name=\`, \`id=\`, \`status=\`, \`label=\`, \`image=\``},
+      description: "Filter: name=, id=, status=, label=, image=",
     },
     "--format FORMAT": {
-      description: {`Go template: \`{{.ID}}\`, \`{{.Name}}\`, \`{{.Image}}\`, \`{{.Status}}\`, \`{{.CreatedAt}}\`, \`{{.Health}}\``},
+      description: "Go template: {{.ID}}, {{.Name}}, {{.Image}}, {{.Status}}, {{.CreatedAt}}, {{.Health}}",
     },
   }}
 />
@@ -592,7 +592,7 @@ a3s-box events [OPTIONS]
 <TypeTable
   type={{
     "--filter KEY=VALUE": {
-      description: {`Filter by \`type=\`, \`action=\`, \`box=\``},
+      description: "Filter by type=, action=, box=",
     },
     "--json": {
       description: "Output as JSON lines",
@@ -637,7 +637,7 @@ a3s-box network create [OPTIONS] NAME
 <TypeTable
   type={{
     "--subnet CIDR": {
-      description: {`Network subnet (e.g. \`10.88.0.0/24\`)`},
+      description: "Network subnet (e.g. 10.88.0.0/24)",
     },
     "--gateway IP": {
       description: "Gateway address",
@@ -800,13 +800,13 @@ a3s-box audit [OPTIONS]
 <TypeTable
   type={{
     "--action ACTION": {
-      description: {`Filter by action (e.g. \`run\`, \`exec\`, \`stop\`)`},
+      description: "Filter by action (e.g. run, exec, stop)",
     },
     "--box BOX": {
       description: "Filter by box name or ID",
     },
     "--outcome OUTCOME": {
-      description: {`Filter by \`success\` or \`failure\``},
+      description: "Filter by success or failure",
     },
   }}
 />

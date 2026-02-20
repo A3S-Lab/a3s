@@ -184,10 +184,10 @@ results.forEach((r) => console.log(r.text));
 <TypeTable
   type={{
     "mode": {
-      description: {`类型: \`"internal"\` \\ · 描述: \`"external"\` \\`},
+      description: "类型: &quot;internal&quot; \ · 描述: &quot;external&quot; \",
     },
     "timeout_ms": {
-      description: {`类型: \`Option<u64>\` · 描述: 等待外部 worker 响应的最大时间`},
+      description: "类型: Option<u64> · 描述: 等待外部 worker 响应的最大时间",
     },
   }}
 />
@@ -197,13 +197,13 @@ results.forEach((r) => console.log(r.text));
 <TypeTable
   type={{
     "设置处理器": {
-      description: {`Rust: \`session.set_external_task_handler(fn).await\` · Python: \`session.set_external_task_handler(fn)\` · Node.js: \`session.setExternalTaskHandler(fn)\``},
+      description: "Rust: session.set_external_task_handler(fn).await · Python: session.set_external_task_handler(fn) · Node.js: session.setExternalTaskHandler(fn)",
     },
     "轮询待处理": {
-      description: {`Rust: \`session.pending_external_tasks().await\` · Python: \`await session.pending_external_tasks()\` · Node.js: \`await session.pendingExternalTasks()\``},
+      description: "Rust: session.pending_external_tasks().await · Python: await session.pending_external_tasks() · Node.js: await session.pendingExternalTasks()",
     },
     "完成任务": {
-      description: {`Rust: \`session.complete_external_task(id, result).await\` · Python: \`await session.complete_external_task(id, result)\` · Node.js: \`await session.completeExternalTask(id, result)\``},
+      description: "Rust: session.complete_external_task(id, result).await · Python: await session.complete_external_task(id, result) · Node.js: await session.completeExternalTask(id, result)",
     },
   }}
 />
@@ -213,13 +213,13 @@ results.forEach((r) => console.log(r.text));
 <TypeTable
   type={{
     "success": {
-      description: {`类型: \`bool\` · 描述: 任务是否成功完成`},
+      description: "类型: bool · 描述: 任务是否成功完成",
     },
     "result": {
-      description: {`类型: \`Option<Value>\` · 描述: 任务输出载荷`},
+      description: "类型: Option<Value> · 描述: 任务输出载荷",
     },
     "error": {
-      description: {`类型: \`Option<String>\` · 描述: \`success\` 为 \`false\` 时的错误消息`},
+      description: "类型: Option<String> · 描述: success 为 false 时的错误消息",
     },
   }}
 />

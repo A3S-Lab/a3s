@@ -178,7 +178,7 @@ What gets persisted per session:
 <TypeTable
   type={{
     "Custom store": {
-      description: {`Rust: \`.with_session_store(Arc::new(s))\` · Python: _(Rust only)_ · Node.js: _(Rust only)_ · Default: \`FileSessionStore\``},
+      description: "Rust: .with_session_store(Arc::new(s)) · Python: _(Rust only)_ · Node.js: _(Rust only)_ · Default: FileSessionStore",
     },
   }}
 />
@@ -188,16 +188,16 @@ What gets persisted per session:
 <TypeTable
   type={{
     "save": {
-      description: {`Signature: \`async fn save(&self, data: &SessionData) -> Result<()>\` · Description: Persist session data`},
+      description: "Signature: async fn save(&self, data: &SessionData) -> Result<()> · Description: Persist session data",
     },
     "load": {
-      description: {`Signature: \`async fn load(&self, id: &str) -> Result<Option<SessionData>>\` · Description: Load session by ID`},
+      description: "Signature: async fn load(&self, id: &str) -> Result<Option<SessionData>> · Description: Load session by ID",
     },
     "delete": {
-      description: {`Signature: \`async fn delete(&self, id: &str) -> Result<()>\` · Description: Remove session`},
+      description: "Signature: async fn delete(&self, id: &str) -> Result<()> · Description: Remove session",
     },
     "list": {
-      description: {`Signature: \`async fn list(&self) -> Result<Vec<String>>\` · Description: List all session IDs`},
+      description: "Signature: async fn list(&self) -> Result<Vec<String>> · Description: List all session IDs",
     },
   }}
 />
@@ -223,16 +223,16 @@ What gets persisted per session:
 <TypeTable
   type={{
     "Save session": {
-      description: {`Rust: \`session.save().await?\` · Description: Persist current state`},
+      description: "Rust: session.save().await? · Description: Persist current state",
     },
     "Load session": {
-      description: {`Rust: \`agent.resume(id, options?)?\` · Description: Resume from stored state`},
+      description: "Rust: agent.resume(id, options?)? · Description: Resume from stored state",
     },
     "List sessions": {
-      description: {`Rust: \`agent.list_sessions().await?\` · Description: List all saved session IDs`},
+      description: "Rust: agent.list_sessions().await? · Description: List all saved session IDs",
     },
     "Delete session": {
-      description: {`Rust: \`agent.delete_session(id).await?\` · Description: Remove stored session`},
+      description: "Rust: agent.delete_session(id).await? · Description: Remove stored session",
     },
   }}
 />

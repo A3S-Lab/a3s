@@ -51,13 +51,13 @@ Your Application (Rust / TypeScript / Python)
 <TypeTable
   type={{
     "Rust": {
-      description: {`包: \`a3s-code-core\` · 绑定方式: 原生`},
+      description: "包: a3s-code-core · 绑定方式: 原生",
     },
     "Python": {
-      description: {`包: \`a3s-code\` · 绑定方式: PyO3`},
+      description: "包: a3s-code · 绑定方式: PyO3",
     },
     "Node.js": {
-      description: {`包: \`@a3s-lab/code\` · 绑定方式: napi-rs`},
+      description: "包: @a3s-lab/code · 绑定方式: napi-rs",
     },
   }}
 />
@@ -73,7 +73,7 @@ Your Application (Rust / TypeScript / Python)
       description: "绑定到特定工作区。所有 LLM 交互和工具执行都在此进行。",
     },
     "SessionOptions": {
-      description: {`可选的每会话覆盖：模型（\`provider/model\` 格式）、规划、HITL 等。`},
+      description: "可选的每会话覆盖：模型（provider/model 格式）、规划、HITL 等。",
     },
     "AgentLoop": {
       description: "核心执行引擎，驱动 LLM ↔ 工具的多轮循环。",
@@ -85,10 +85,10 @@ Your Application (Rust / TypeScript / Python)
       description: "JSON 结构化规划 — 将复杂任务分解为带依赖图的执行计划。",
     },
     "WaveScheduler": {
-      description: {`将独立的计划步骤分组为 wave，通过 \`JoinSet\` 并行执行。`},
+      description: "将独立的计划步骤分组为 wave，通过 JoinSet 并行执行。",
     },
     "AgentEvent": {
-      description: {`\`#[non_exhaustive]\` 事件枚举，在流式传输期间发出 — 安全支持 SDK 演进。`},
+      description: "#[non_exhaustive] 事件枚举，在流式传输期间发出 — 安全支持 SDK 演进。",
     },
   }}
 />
@@ -128,7 +128,7 @@ Your Application (Rust / TypeScript / Python)
       description: "组件: 权限策略 · 功能: Deny → Allow → Ask → Default 规则评估，支持 glob 模式",
     },
     "2": {
-      description: {`组件: HITL 确认 · 功能: 独立于权限 — 即使 \`Allow\` 也会经过 HITL 检查`},
+      description: "组件: HITL 确认 · 功能: 独立于权限 — 即使 Allow 也会经过 HITL 检查",
     },
     "3": {
       description: "组件: SecurityProvider · 功能: 可插拔 trait，用于污点追踪、输出清洗、注入检测",

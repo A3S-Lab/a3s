@@ -202,13 +202,13 @@ const result = await session.send(
 <TypeTable
   type={{
     "内置 skills": {
-      description: {`Rust: \`.with_builtin_skills()\` · Python: \`builtin_skills=True\` · Node.js: \`builtinSkills: true\` · 默认值: \`false\``},
+      description: "Rust: .with_builtin_skills() · Python: builtin_skills=True · Node.js: builtinSkills: true · 默认值: false",
     },
     "从目录加载 skills": {
-      description: {`Rust: \`.with_skills_from_dir(path)\` · Python: \`skill_dirs=[path]\` · Node.js: \`skillDirs: [path]\` · 默认值: \`[]\``},
+      description: "Rust: .with_skills_from_dir(path) · Python: skill_dirs=[path] · Node.js: skillDirs: [path] · 默认值: []",
     },
     "自定义注册表": {
-      description: {`Rust: \`.with_skill_registry(Arc::new(r))\` · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: \`None\``},
+      description: "Rust: .with_skill_registry(Arc::new(r)) · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: None",
     },
   }}
 />
@@ -218,25 +218,25 @@ const result = await session.send(
 <TypeTable
   type={{
     "name": {
-      description: {`类型: \`string\` · 必填: ✅ · 描述: 唯一 skill 标识符`},
+      description: "类型: string · 必填: ✅ · 描述: 唯一 skill 标识符",
     },
     "description": {
-      description: {`类型: \`string\` · 必填: ✅ · 描述: skill 的功能描述`},
+      description: "类型: string · 必填: ✅ · 描述: skill 的功能描述",
     },
     "triggers": {
-      description: {`类型: \`string[]\` · 必填: ✅ · 描述: 激活 skill 的短语`},
+      description: "类型: string[] · 必填: ✅ · 描述: 激活 skill 的短语",
     },
     "allowed-tools": {
-      description: {`类型: \`string\` · 必填: ❌ · 描述: 工具访问模式（例如 \`"read(*), grep(*)"\`)`},
+      description: "类型: string · 必填: ❌ · 描述: 工具访问模式（例如 &quot;read(*), grep(*)&quot;)",
     },
     "kind": {
-      description: {`类型: \`string\` · 必填: ❌ · 描述: \`instruction\`（默认）或 \`agent\``},
+      description: "类型: string · 必填: ❌ · 描述: instruction（默认）或 agent",
     },
     "tags": {
-      description: {`类型: \`string[]\` · 必填: ❌ · 描述: 分类标签`},
+      description: "类型: string[] · 必填: ❌ · 描述: 分类标签",
     },
     "version": {
-      description: {`类型: \`string\` · 必填: ❌ · 描述: 语义版本字符串`},
+      description: "类型: string · 必填: ❌ · 描述: 语义版本字符串",
     },
   }}
 />

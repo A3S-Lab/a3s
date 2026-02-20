@@ -188,10 +188,10 @@ db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
 <TypeTable
   type={{
     "文件系统上下文": {
-      description: {`Rust: \`.with_fs_context(path)\` · Python: \`fs_context=path\` · Node.js: \`fsContext: path\` · 默认值: \`None\``},
+      description: "Rust: .with_fs_context(path) · Python: fs_context=path · Node.js: fsContext: path · 默认值: None",
     },
     "自定义上下文提供者": {
-      description: {`Rust: \`.with_context_provider(Arc::new(p))\` · Python: _（基于配置）_ · Node.js: _（基于配置）_ · 默认值: \`None\``},
+      description: "Rust: .with_context_provider(Arc::new(p)) · Python: _（基于配置）_ · Node.js: _（基于配置）_ · 默认值: None",
     },
   }}
 />
@@ -204,13 +204,13 @@ db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
       description: "描述: 设置工作区根目录",
     },
     ".with_min_relevance(f)": {
-      description: {`描述: 最小余弦相似度分数 · 默认值: \`0.3\``},
+      description: "描述: 最小余弦相似度分数 · 默认值: 0.3",
     },
     ".with_max_results(n)": {
-      description: {`描述: 每次查询返回的最大分块数 · 默认值: \`10\``},
+      description: "描述: 每次查询返回的最大分块数 · 默认值: 10",
     },
     ".with_chunk_size(n)": {
-      description: {`描述: 每个分块的最大字符数 · 默认值: \`1500\``},
+      description: "描述: 每个分块的最大字符数 · 默认值: 1500",
     },
   }}
 />
@@ -231,10 +231,10 @@ context {
 <TypeTable
   type={{
     "query": {
-      description: {`类型: \`string\` · 描述: 自然语言搜索查询`},
+      description: "类型: string · 描述: 自然语言搜索查询",
     },
     "limit": {
-      description: {`类型: \`number\` · 描述: 最大结果数（默认：\`10\`）`},
+      description: "类型: number · 描述: 最大结果数（默认：10）",
     },
   }}
 />

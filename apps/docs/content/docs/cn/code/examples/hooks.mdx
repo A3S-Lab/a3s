@@ -187,16 +187,16 @@ session.registerHook('no-bash', 'pre_tool_use', (event) => {
 <TypeTable
   type={{
     "注册 hook": {
-      description: {`Rust: \`session.register_hook(hook)\` · Python: \`session.register_hook(id, event, fn)\` · Node.js: \`session.registerHook(id, event, fn)\``},
+      description: "Rust: session.register_hook(hook) · Python: session.register_hook(id, event, fn) · Node.js: session.registerHook(id, event, fn)",
     },
     "注册处理器": {
-      description: {`Rust: \`session.register_hook_handler(id, Arc::new(h))\` · Python: _（与注册合并）_ · Node.js: _（与注册合并）_`},
+      description: "Rust: session.register_hook_handler(id, Arc::new(h)) · Python: _（与注册合并）_ · Node.js: _（与注册合并）_",
     },
     "注销": {
-      description: {`Rust: \`session.unregister_hook(id)\` · Python: \`session.unregister_hook(id)\` · Node.js: \`session.unregisterHook(id)\``},
+      description: "Rust: session.unregister_hook(id) · Python: session.unregister_hook(id) · Node.js: session.unregisterHook(id)",
     },
     "计数": {
-      description: {`Rust: \`session.hook_count()\` · Python: \`session.hook_count()\` · Node.js: \`session.hookCount()\``},
+      description: "Rust: session.hook_count() · Python: session.hook_count() · Node.js: session.hookCount()",
     },
   }}
 />

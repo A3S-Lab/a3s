@@ -54,10 +54,10 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
 <TypeTable
   type={{
     "a3s.llm.model": {
-      description: {`类型: string · 描述: 模型 ID（例如 \`claude-sonnet-4-20250514\`）`},
+      description: "类型: string · 描述: 模型 ID（例如 claude-sonnet-4-20250514）",
     },
     "a3s.llm.provider": {
-      description: {`类型: string · 描述: 提供商名称（例如 \`anthropic\`）`},
+      description: "类型: string · 描述: 提供商名称（例如 anthropic）",
     },
     "a3s.llm.streaming": {
       description: "类型: bool · 描述: 是否为流式调用",
@@ -88,7 +88,7 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
 <TypeTable
   type={{
     "a3s.tool.name": {
-      description: {`类型: string · 描述: 工具名称（例如 \`Bash\`、\`Read\`）`},
+      description: "类型: string · 描述: 工具名称（例如 Bash、Read）",
     },
     "a3s.tool.id": {
       description: "类型: string · 描述: 工具调用 ID",
@@ -103,7 +103,7 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
       description: "类型: int · 描述: 执行时间（毫秒）",
     },
     "a3s.tool.permission": {
-      description: {`类型: string · 描述: 权限决策（\`allow\`、\`deny\`、\`ask\`）`},
+      description: "类型: string · 描述: 权限决策（allow、deny、ask）",
     },
   }}
 />
@@ -237,22 +237,22 @@ let result = session.send("Analyze this codebase").await?;
 <TypeTable
   type={{
     "agent.session": {
-      description: {`父级: root · 关键属性: \`session.id\`、\`session.workspace\``},
+      description: "父级: root · 关键属性: session.id、session.workspace",
     },
     "agent.turn": {
-      description: {`父级: \`agent.session\` · 关键属性: \`turn.index\`、\`turn.model\``},
+      description: "父级: agent.session · 关键属性: turn.index、turn.model",
     },
     "agent.generate": {
-      description: {`父级: \`agent.turn\` · 关键属性: \`llm.provider\`、\`llm.model\`、\`llm.tokens_in\`、\`llm.tokens_out\``},
+      description: "父级: agent.turn · 关键属性: llm.provider、llm.model、llm.tokens_in、llm.tokens_out",
     },
     "agent.tool": {
-      description: {`父级: \`agent.turn\` · 关键属性: \`tool.name\`、\`tool.exit_code\`、\`tool.duration_ms\``},
+      description: "父级: agent.turn · 关键属性: tool.name、tool.exit_code、tool.duration_ms",
     },
     "agent.plan": {
-      description: {`父级: \`agent.turn\` · 关键属性: \`plan.steps\`、\`plan.waves\``},
+      description: "父级: agent.turn · 关键属性: plan.steps、plan.waves",
     },
     "agent.hook": {
-      description: {`父级: \`agent.turn\` · 关键属性: \`hook.id\`、\`hook.event\``},
+      description: "父级: agent.turn · 关键属性: hook.id、hook.event",
     },
   }}
 />
@@ -262,25 +262,25 @@ let result = session.send("Analyze this codebase").await?;
 <TypeTable
   type={{
     "provider": {
-      description: {`类型: \`String\` · 描述: LLM 提供商名称`},
+      description: "类型: String · 描述: LLM 提供商名称",
     },
     "model": {
-      description: {`类型: \`String\` · 描述: 模型标识符`},
+      description: "类型: String · 描述: 模型标识符",
     },
     "input_tokens": {
-      description: {`类型: \`u32\` · 描述: 提示 token 数`},
+      description: "类型: u32 · 描述: 提示 token 数",
     },
     "output_tokens": {
-      description: {`类型: \`u32\` · 描述: 完成 token 数`},
+      description: "类型: u32 · 描述: 完成 token 数",
     },
     "cache_read_tokens": {
-      description: {`类型: \`u32\` · 描述: 提示缓存读取 token 数`},
+      description: "类型: u32 · 描述: 提示缓存读取 token 数",
     },
     "cache_write_tokens": {
-      description: {`类型: \`u32\` · 描述: 提示缓存写入 token 数`},
+      description: "类型: u32 · 描述: 提示缓存写入 token 数",
     },
     "cost_usd": {
-      description: {`类型: \`f64\` · 描述: 估计费用（美元）`},
+      description: "类型: f64 · 描述: 估计费用（美元）",
     },
   }}
 />
@@ -314,7 +314,7 @@ tracing_subscriber::registry()
       description: "追踪中的服务名称",
     },
     "RUST_LOG": {
-      description: {`日志级别过滤（例如 \`a3s_code_core=debug\`）`},
+      description: "日志级别过滤（例如 a3s_code_core=debug）",
     },
   }}
 />

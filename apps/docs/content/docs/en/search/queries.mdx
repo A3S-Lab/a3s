@@ -187,19 +187,19 @@ const response2 = await search.search('Rust 编程', {
 <TypeTable
   type={{
     "search": {
-      description: {`Signature: \`(query, *, engines?, limit?, timeout?, proxy?, proxy_pool?) → SearchResponse\` · Description: Run a search`},
+      description: "Signature: (query, *, engines?, limit?, timeout?, proxy?, proxy_pool?) → SearchResponse · Description: Run a search",
     },
     "set_proxy_pool": {
-      description: {`Signature: \`(proxies: list[str]) → None\` · Description: Set instance-level proxy pool`},
+      description: "Signature: (proxies: list[str]) → None · Description: Set instance-level proxy pool",
     },
     "set_proxy_pool_enabled": {
-      description: {`Signature: \`(enabled: bool) → None\` · Description: Enable or disable proxy rotation`},
+      description: "Signature: (enabled: bool) → None · Description: Enable or disable proxy rotation",
     },
     "is_proxy_pool_enabled": {
-      description: {`Signature: \`() → bool\` · Description: Check if proxy pool is active`},
+      description: "Signature: () → bool · Description: Check if proxy pool is active",
     },
     "proxy_pool_size": {
-      description: {`Signature: \`() → int\` · Description: Number of proxies in pool`},
+      description: "Signature: () → int · Description: Number of proxies in pool",
     },
   }}
 />
@@ -212,19 +212,19 @@ All methods are `async` except `set_proxy_pool_enabled` and `is_proxy_pool_enabl
 <TypeTable
   type={{
     "search": {
-      description: {`Signature: \`(query: string, options?: SearchOptions) => Promise<SearchResponse>\` · Description: Run a search`},
+      description: "Signature: (query: string, options?: SearchOptions) => Promise<SearchResponse> · Description: Run a search",
     },
     "setProxyPool": {
-      description: {`Signature: \`(urls: string[]) => Promise<void>\` · Description: Set instance-level proxy pool`},
+      description: "Signature: (urls: string[]) => Promise<void> · Description: Set instance-level proxy pool",
     },
     "setProxyPoolEnabled": {
-      description: {`Signature: \`(enabled: boolean) => void\` · Description: Enable or disable proxy rotation`},
+      description: "Signature: (enabled: boolean) => void · Description: Enable or disable proxy rotation",
     },
     "isProxyPoolEnabled": {
-      description: {`Signature: \`() => boolean\` · Description: Check if proxy pool is active`},
+      description: "Signature: () => boolean · Description: Check if proxy pool is active",
     },
     "proxyPoolSize": {
-      description: {`Signature: \`() => Promise<number>\` · Description: Number of proxies in pool`},
+      description: "Signature: () => Promise<number> · Description: Number of proxies in pool",
     },
   }}
 />
