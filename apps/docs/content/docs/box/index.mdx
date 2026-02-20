@@ -88,17 +88,22 @@ Host and guest communicate over vsock (virtio socket) with dedicated ports:
 ## Key Features
 
 - **Sub-200ms cold start** via libkrun (Apple HVF / Linux KVM)
-- **Docker-compatible CLI** with 52 commands (`run`, `exec`, `logs`, `ps`, `build`, etc.)
-- **OCI image support** with pull, build, cache, and registry authentication; manifest digest exposed on every pulled image
-- **Dockerfile build** with `ADD <url>` HTTP download and `ONBUILD` trigger inheritance from base images
-- **Warm pool** for instant VM allocation with pre-booted instances
-- **Three network modes**: TSI (default), Bridge (inter-container), None
-- **AMD SEV-SNP + Intel TDX** confidential computing with attestation, sealing, and RA-TLS
-- **Kubernetes CRI** for using Box as a RuntimeClass, with Helm chart deployment
-- **Resource controls**: CPU pinning, memory limits, PID limits, cgroup v2
-- **Namespace isolation**: mount, PID, IPC, UTS, user, cgroup within each VM
-- **Security**: seccomp BPF with arch validation, capability dropping (bounding + ambient), cosign image signing
-- **Volume management**: named volumes, bind mounts, tmpfs
-- **Logging**: JSON file driver with gzip-compressed rotation, syslog driver (UDP/TCP)
-- **Embedded SDK**: Rust, Python, and TypeScript SDKs for programmatic sandbox management
-- **Observability**: 19 Prometheus metrics, OpenTelemetry tracing spans, audit logging
+- **Docker-compatible CLI** with 52 commands (`run`, `exec`, `logs`, `ps`, `build`, `snapshot`, `compose`, etc.)
+- **OCI image support** — pull, push, build, cache, tag, inspect; manifest digest exposed on every pulled image
+- **Dockerfile build** — all 17 instructions, `ADD <url>` HTTP download, `ONBUILD` trigger inheritance, multi-stage, multi-platform
+- **Image signing** — cosign key-based and keyless (OIDC + Rekor) verification on pull
+- **Warm pool** — pre-booted VM pool for instant allocation with configurable idle TTL
+- **Three network modes** — TSI (default, zero-config), Bridge (passt, inter-container DNS), None (air-gapped)
+- **AMD SEV-SNP** — hardware memory encryption, remote attestation, RA-TLS, re-attestation, rollback protection
+- **Sealed storage** — AES-256-GCM data sealed to TEE measurement and/or chip identity
+- **Secret injection** — secrets delivered over RA-TLS, written to `/run/secrets/` (mode 0400)
+- **Kubernetes CRI** — full CRI v1 implementation, RuntimeClass, Helm chart, streaming exec/attach/port-forward
+- **Compose orchestration** — multi-service `compose.yaml` with health-aware boot ordering
+- **Snapshots** — create, restore, list, and remove point-in-time VM state snapshots
+- **Resource controls** — CPU pinning, cgroup v2 cpu/memory quotas, PID limits, ulimits
+- **Namespace isolation** — mount, PID, IPC, UTS, user, cgroup namespaces within each VM
+- **Security** — seccomp BPF with arch validation, capability dropping (bounding + ambient), AppArmor/SELinux labels (stored)
+- **Volume management** — named volumes, bind mounts, tmpfs, read-only mounts
+- **Logging** — JSON file driver with gzip-compressed rotation, syslog driver (UDP/TCP)
+- **Embedded SDK** — Rust, Python, and TypeScript SDKs; `exec`, `exec_stream`, upload/download, port forwarding, workspaces
+- **Observability** — 19 Prometheus metrics, OpenTelemetry tracing spans, persistent audit log
