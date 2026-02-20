@@ -16,7 +16,7 @@ interface PageProps {
 
 export default async function Page(props: PageProps) {
   const params = await props.params;
-  const page = source.getPage(params.slug);
+  const page = source.getPage(params.slug, 'en');
   if (!page) notFound();
 
   const MDX = page.data.body;
@@ -37,12 +37,12 @@ export default async function Page(props: PageProps) {
 }
 
 export async function generateStaticParams() {
-  return source.generateParams();
+  return source.generateParams('en');
 }
 
 export async function generateMetadata(props: PageProps): Promise<Metadata> {
   const params = await props.params;
-  const page = source.getPage(params.slug);
+  const page = source.getPage(params.slug, 'en');
   if (!page) notFound();
 
   return {

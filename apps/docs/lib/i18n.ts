@@ -4,4 +4,5 @@ export const i18n = defineI18n({
   defaultLanguage: 'en',
   languages: ['en', 'cn'],
   hideLocale: 'default-locale',
+  parser: 'dir',
 });
