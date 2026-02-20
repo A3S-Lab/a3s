@@ -30,6 +30,24 @@
 }
 
 /* ═══════════════════════════════════════════
+   Corporate Trust — Design Tokens
+   ═══════════════════════════════════════════ */
+
+:root {
+  --ct-font: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --ct-bg: #F8FAFC;
+  --ct-surface: #FFFFFF;
+  --ct-primary: #4F46E5;
+  --ct-secondary: #7C3AED;
+  --ct-text: #0F172A;
+  --ct-muted: #64748B;
+  --ct-border: #E2E8F0;
+  --ct-shadow-card: 0 4px 20px -2px rgba(79,70,229,0.10);
+  --ct-shadow-hover: 0 10px 25px -5px rgba(79,70,229,0.15), 0 8px 10px -6px rgba(79,70,229,0.10);
+  --ct-shadow-btn: 0 4px 14px 0 rgba(79,70,229,0.30);
+}
+
+/* ═══════════════════════════════════════════
    Terminal Homepage Styles
    ═══════════════════════════════════════════ */
 
