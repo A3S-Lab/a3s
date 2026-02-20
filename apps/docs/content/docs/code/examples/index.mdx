@@ -65,3 +65,53 @@ node examples/<name>.js
 | Built-in skills | ✅ | ✅ | ✅ |
 | Lane queue / priority | ✅ | ✅ | ✅ |
 | External task handling | ✅ | ✅ | ✅ |
+
+## Feature Overview
+
+### Core (always available)
+
+| Feature | Key API | Description |
+|---------|---------|-------------|
+| Send prompt | `session.send(prompt)` | Single-turn prompt execution with tool loop |
+| Stream events | `session.stream(prompt)` | Real-time `AgentEvent` stream |
+| Multi-turn | _(automatic)_ | History accumulated per session |
+| Direct tools | `session.read_file()`, `session.bash()`, `session.glob()`, `session.grep()` | Call tools without LLM |
+| Batch tool | `batch` tool (auto-registered) | Parallel tool dispatch in one turn |
+
+### Session configuration
+
+| Feature | Rust | Python | Node.js |
+|---------|------|--------|---------|
+| Permissive policy | `.with_permissive_policy()` | `permissive=True` | `permissive: true` |
+| Planning | `.with_planning(true)` | `planning=True` | `planning: true` |
+| Goal tracking | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` |
+| Built-in skills | `.with_builtin_skills()` | `builtin_skills=True` | `builtinSkills: true` |
+| Custom skills | `.with_skills_from_dir(path)` | `skill_dirs=[path]` | `skillDirs: [path]` |
+| Default security | `.with_default_security()` | `default_security=True` | `defaultSecurity: true` |
+| File memory | `.with_file_memory(path)` | `memory_dir=path` | `memoryDir: path` |
+| Auto-compact | `.with_auto_compact(true)` | `auto_compact=True` | `autoCompact: true` |
+| FS context (RAG) | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` |
+| Lane queue | `.with_queue_config(cfg)` | `queue_config=cfg` | `queueConfig: cfg` |
+| Permission policy | `.with_permission_checker(p)` | _(Rust only)_ | _(Rust only)_ |
+| HITL confirmation | `.with_confirmation_manager(m)` | _(Rust only)_ | _(Rust only)_ |
+| Custom security | `.with_security_provider(p)` | _(Rust only)_ | _(Rust only)_ |
+| Vector context | `.with_context_provider(p)` | _(config-based)_ | _(config-based)_ |
+
+### Extension points
+
+| Trait | Purpose | Default impl |
+|-------|---------|--------------|
+| `SecurityProvider` | Input taint + output sanitization | `DefaultSecurityProvider` |
+| `PermissionChecker` | Tool access control | `PermissionPolicy` |
+| `ConfirmationProvider` | Human-in-the-loop approval | `ConfirmationManager` |
+| `ContextProvider` | RAG retrieval | `FileSystemContextProvider` |
+| `EmbeddingProvider` | Vector embeddings | `OpenAiEmbeddingProvider` |
+| `VectorStore` | Embedding storage | `InMemoryVectorStore` |
+| `SessionStore` | Session persistence | `FileSessionStore` |
+| `MemoryStore` | Long-term memory | `InMemoryStore` |
+| `Tool` | Custom tools | 12 built-in tools |
+| `Planner` | Task decomposition | `LlmPlanner` |
+| `HookHandler` | Lifecycle event handling | `HookEngine` |
+| `McpTransport` | MCP protocol | `StdioTransport` |
+| `BashSandbox` | Shell isolation | `LocalBashExecutor` |
+| `SkillValidator` | Skill activation logic | `DefaultSkillValidator` |
