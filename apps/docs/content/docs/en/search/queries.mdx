@@ -60,25 +60,25 @@ let query = SearchQuery::new("rust async runtime")
 
 <TypeTable
   type={
-    {`\`new(query)\``}: {
+    "new(query)": {
       description: "Create a new query",
     },
-    {`\`with_categories(cats)\``}: {
+    "with_categories(cats)": {
       description: "Set target categories",
     },
-    {`\`with_language(lang)\``}: {
+    "with_language(lang)": {
       description: "Set language/locale",
     },
-    {`\`with_safesearch(level)\``}: {
+    "with_safesearch(level)": {
       description: "Set safe search level",
     },
-    {`\`with_page(page)\``}: {
+    "with_page(page)": {
       description: "Set page number",
     },
-    {`\`with_time_range(range)\``}: {
+    "with_time_range(range)": {
       description: "Set time range filter",
     },
-    {`\`with_engines(engines)\``}: {
+    "with_engines(engines)": {
       description: "Limit to specific engine shortcuts",
     },
   }
@@ -186,19 +186,19 @@ const response2 = await search.search('Rust 编程', {
 
 <TypeTable
   type={
-    {`\`search\``}: {
+    "search": {
       description: {`Signature: \`(query, *, engines?, limit?, timeout?, proxy?, proxy_pool?) → SearchResponse\` · Description: Run a search`},
     },
-    {`\`set_proxy_pool\``}: {
+    "set_proxy_pool": {
       description: {`Signature: \`(proxies: list[str]) → None\` · Description: Set instance-level proxy pool`},
     },
-    {`\`set_proxy_pool_enabled\``}: {
+    "set_proxy_pool_enabled": {
       description: {`Signature: \`(enabled: bool) → None\` · Description: Enable or disable proxy rotation`},
     },
-    {`\`is_proxy_pool_enabled\``}: {
+    "is_proxy_pool_enabled": {
       description: {`Signature: \`() → bool\` · Description: Check if proxy pool is active`},
     },
-    {`\`proxy_pool_size\``}: {
+    "proxy_pool_size": {
       description: {`Signature: \`() → int\` · Description: Number of proxies in pool`},
     },
   }
@@ -211,19 +211,19 @@ All methods are `async` except `set_proxy_pool_enabled` and `is_proxy_pool_enabl
 
 <TypeTable
   type={
-    {`\`search\``}: {
+    "search": {
       description: {`Signature: \`(query: string, options?: SearchOptions) => Promise<SearchResponse>\` · Description: Run a search`},
     },
-    {`\`setProxyPool\``}: {
+    "setProxyPool": {
       description: {`Signature: \`(urls: string[]) => Promise<void>\` · Description: Set instance-level proxy pool`},
     },
-    {`\`setProxyPoolEnabled\``}: {
+    "setProxyPoolEnabled": {
       description: {`Signature: \`(enabled: boolean) => void\` · Description: Enable or disable proxy rotation`},
     },
-    {`\`isProxyPoolEnabled\``}: {
+    "isProxyPoolEnabled": {
       description: {`Signature: \`() => boolean\` · Description: Check if proxy pool is active`},
     },
-    {`\`proxyPoolSize\``}: {
+    "proxyPoolSize": {
       description: {`Signature: \`() => Promise<number>\` · Description: Number of proxies in pool`},
     },
   }

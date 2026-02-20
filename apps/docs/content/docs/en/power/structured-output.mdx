@@ -99,28 +99,28 @@ response = client.chat.completions.create(
 
 <TypeTable
   type={
-    {`\`string\``}: {
+    "string": {
       description: "Quoted string with escape handling",
     },
-    {`\`integer\``}: {
+    "integer": {
       description: "Integer number",
     },
-    {`\`number\``}: {
+    "number": {
       description: "Floating-point number",
     },
-    {`\`boolean\``}: {
-      description: {`\`true\` or \`false\``},
+    "boolean": {
+      description: "true\` or \`false",
     },
-    {`\`null\``}: {
-      description: {`\`null\``},
+    "null": {
+      description: "null",
     },
-    {`\`array\``}: {
+    "array": {
       description: "Array with typed items",
     },
-    {`\`object\``}: {
+    "object": {
       description: "Object with typed properties",
     },
-    {`\`enum\``}: {
+    "enum": {
       description: "One of the specified values",
     },
   }

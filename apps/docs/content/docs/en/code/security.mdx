@@ -31,13 +31,13 @@ The permission system controls which tools the agent can use. Rules are evaluate
 
 <TypeTable
   type={
-    {`\`deny\``}: {
+    "deny": {
       description: "Block the tool call immediately",
     },
-    {`\`allow\``}: {
+    "allow": {
       description: "Permit the tool call",
     },
-    {`\`ask\``}: {
+    "ask": {
       description: "Prompt the user for confirmation (via HITL)",
     },
   }
@@ -53,16 +53,16 @@ Tool(pattern)
 
 <TypeTable
   type={
-    {`\`bash(rm -rf:*)\``}: {
+    "bash(rm -rf:*)": {
       description: {`Any bash command starting with \`rm -rf\``},
     },
-    {`\`read(src/**)\``}: {
+    "read(src/**)": {
       description: {`Read operations on any file under \`src/\``},
     },
-    {`\`write(*)\``}: {
+    "write(*)": {
       description: "All write operations",
     },
-    {`\`mcp__pencil\``}: {
+    "mcp__pencil": {
       description: {`All \`mcp__pencil__*\` tools (prefix matching)`},
     },
   }
@@ -74,10 +74,10 @@ Wildcards: `*` matches any character except `/`, `**` matches including `/`, `:*
 
 <TypeTable
   type={
-    {`\`PermissionPolicy::permissive()\``}: {
+    "PermissionPolicy::permissive()": {
       description: "Allow all tools by default (default)",
     },
-    {`\`PermissionPolicy::strict()\``}: {
+    "PermissionPolicy::strict()": {
       description: "Deny all tools by default",
     },
   }
@@ -262,10 +262,10 @@ for event in session.stream("Clean up old logs"):
 
 <TypeTable
   type={
-    {`\`Reject\``}: {
+    "Reject": {
       description: "Reject the tool call if no response within timeout (default)",
     },
-    {`\`Approve\``}: {
+    "Approve": {
       description: "Approve the tool call if no response within timeout",
     },
   }
@@ -362,16 +362,16 @@ The agent emits security-related events during streaming:
 
 <TypeTable
   type={
-    {`\`PermissionDenied\``}: {
+    "PermissionDenied": {
       description: "Tool call blocked by permission policy",
     },
-    {`\`ConfirmationRequired\``}: {
+    "ConfirmationRequired": {
       description: "HITL confirmation needed",
     },
-    {`\`ConfirmationTimeout\``}: {
+    "ConfirmationTimeout": {
       description: "User didn't respond within timeout",
     },
-    {`\`ConfirmationRejected\``}: {
+    "ConfirmationRejected": {
       description: "User rejected the tool call",
     },
   }
@@ -385,25 +385,25 @@ See [Sessions](/docs/code/sessions) for full event reference.
 
 <TypeTable
   type={
-    {`\`PermissionPolicy::new()\``}: {
+    "PermissionPolicy::new()": {
       description: "Create with permissive default",
     },
-    {`\`PermissionPolicy::strict()\``}: {
+    "PermissionPolicy::strict()": {
       description: "Create with deny-all default",
     },
-    {`\`PermissionPolicy::permissive()\``}: {
+    "PermissionPolicy::permissive()": {
       description: "Create with allow-all default",
     },
-    {`\`.allow(pattern)\``}: {
+    ".allow(pattern)": {
       description: "Add allow rule",
     },
-    {`\`.deny(pattern)\``}: {
+    ".deny(pattern)": {
       description: "Add deny rule",
     },
-    {`\`.ask(pattern)\``}: {
+    ".ask(pattern)": {
       description: "Add ask (HITL) rule",
     },
-    {`\`session.set_permission_policy(p).await\``}: {
+    "session.set_permission_policy(p).await": {
       description: "Apply to running session",
     },
   }
@@ -413,19 +413,19 @@ See [Sessions](/docs/code/sessions) for full event reference.
 
 <TypeTable
   type={
-    {`\`bash(*)\``}: {
+    "bash(*)": {
       description: "All bash calls",
     },
-    {`\`bash(rm -rf:*)\``}: {
+    "bash(rm -rf:*)": {
       description: {`Bash calls starting with \`rm -rf\``},
     },
-    {`\`read(src/**)\``}: {
+    "read(src/**)": {
       description: {`Read any file under \`src/\``},
     },
-    {`\`write(*)\``}: {
+    "write(*)": {
       description: "All write calls",
     },
-    {`\`mcp__github\``}: {
+    "mcp__github": {
       description: {`All \`mcp__github__*\` tools`},
     },
   }
@@ -457,19 +457,19 @@ See [Sessions](/docs/code/sessions) for full event reference.
 
 <TypeTable
   type={
-    {`\`taint_input\``}: {
+    "taint_input": {
       description: {`Signature: \`fn taint_input(&self, text: &str)\` · Description: Inspect user input for sensitive patterns`},
     },
-    {`\`sanitize_output\``}: {
+    "sanitize_output": {
       description: {`Signature: \`fn sanitize_output(&self, text: &str) -> String\` · Description: Redact sensitive patterns from LLM output`},
     },
-    {`\`wipe\``}: {
+    "wipe": {
       description: {`Signature: \`fn wipe(&self)\` · Description: Clear cached sensitive state`},
     },
-    {`\`register_hooks\``}: {
+    "register_hooks": {
       description: {`Signature: \`fn register_hooks(&self, engine: &HookEngine)\` · Description: Attach hooks for deeper interception`},
     },
-    {`\`teardown\``}: {
+    "teardown": {
       description: {`Signature: \`fn teardown(&self)\` · Description: Called when session ends`},
     },
   }

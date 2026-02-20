@@ -99,13 +99,13 @@ sessions_dir/
 
 <TypeTable
   type={
-    {`\`session_id()\``}: {
+    "session_id()": {
       description: "返回会话的唯一 ID",
     },
-    {`\`save()\``}: {
+    "save()": {
       description: "将当前历史持久化到存储（无存储时为空操作）",
     },
-    {`\`agent.resume_session(id, opts)\``}: {
+    "agent.resume_session(id, opts)": {
       description: "加载已保存的会话并恢复历史",
     },
   }
@@ -150,22 +150,22 @@ let session = agent.session(".", Some(
 
 <TypeTable
   type={
-    {`\`id\``}: {
+    "id": {
       description: "会话标识符",
     },
-    {`\`messages\``}: {
+    "messages": {
       description: "完整对话历史",
     },
-    {`\`config.workspace\``}: {
+    "config.workspace": {
       description: "工作区路径",
     },
-    {`\`config.system_prompt\``}: {
+    "config.system_prompt": {
       description: "系统提示",
     },
-    {`\`config.planning_enabled\``}: {
+    "config.planning_enabled": {
       description: "规划标志",
     },
-    {`\`tool_names\``}: {
+    "tool_names": {
       description: "工具名称（恢复时重建）",
     },
   }
@@ -187,16 +187,16 @@ let session = agent.session(".", Some(
 
 <TypeTable
   type={
-    {`\`save\``}: {
+    "save": {
       description: {`签名: \`async fn save(&self, data: &SessionData) -> Result<()>\` · 描述: 持久化会话数据`},
     },
-    {`\`load\``}: {
+    "load": {
       description: {`签名: \`async fn load(&self, id: &str) -> Result<Option<SessionData>>\` · 描述: 按 ID 加载会话`},
     },
-    {`\`delete\``}: {
+    "delete": {
       description: {`签名: \`async fn delete(&self, id: &str) -> Result<()>\` · 描述: 删除会话`},
     },
-    {`\`list\``}: {
+    "list": {
       description: {`签名: \`async fn list(&self) -> Result<Vec<String>>\` · 描述: 列出所有会话 ID`},
     },
   }
@@ -206,31 +206,31 @@ let session = agent.session(".", Some(
 
 <TypeTable
   type={
-    {`\`id\``}: {
+    "id": {
       description: {`类型: \`String\` · 描述: 会话标识符`},
     },
-    {`\`messages\``}: {
+    "messages": {
       description: {`类型: \`Vec<Message>\` · 描述: 完整对话历史`},
     },
-    {`\`tasks\``}: {
+    "tasks": {
       description: {`类型: \`Vec<AgentTask>\` · 描述: 任务列表（别名：\`todos\`）`},
     },
-    {`\`config.workspace\``}: {
+    "config.workspace": {
       description: {`类型: \`String\` · 描述: 工作区路径`},
     },
-    {`\`config.system_prompt\``}: {
+    "config.system_prompt": {
       description: {`类型: \`String\` · 描述: 系统提示`},
     },
-    {`\`config.planning_enabled\``}: {
+    "config.planning_enabled": {
       description: {`类型: \`bool\` · 描述: 规划标志`},
     },
-    {`\`tool_names\``}: {
+    "tool_names": {
       description: {`类型: \`Vec<String>\` · 描述: 工具名称（恢复时重建）`},
     },
-    {`\`created_at\``}: {
+    "created_at": {
       description: {`类型: \`DateTime<Utc>\` · 描述: 会话创建时间`},
     },
-    {`\`updated_at\``}: {
+    "updated_at": {
       description: {`类型: \`DateTime<Utc>\` · 描述: 最后保存时间`},
     },
   }

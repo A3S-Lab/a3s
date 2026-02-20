@@ -199,58 +199,58 @@ entrypoints "tcp-db" {
 
 <TypeTable
   type={
-    {`\`jwt\``}: {
+    "jwt": {
       type: "401",
       description: "JWT Bearer token validation",
     },
-    {`\`api-key\``}: {
+    "api-key": {
       type: "401",
       description: "Header-based API key check",
     },
-    {`\`basic-auth\``}: {
+    "basic-auth": {
       type: "401",
       description: "HTTP Basic authentication",
     },
-    {`\`forward-auth\``}: {
+    "forward-auth": {
       type: "401",
       description: "External auth delegation",
     },
-    {`\`rate-limit\``}: {
+    "rate-limit": {
       type: "429",
       description: "In-memory token bucket",
     },
-    {`\`rate-limit-redis\``}: {
+    "rate-limit-redis": {
       type: "429",
       description: "Distributed token bucket (Redis)",
     },
-    {`\`cors\``}: {
+    "cors": {
       description: "CORS headers + preflight",
     },
-    {`\`headers\``}: {
+    "headers": {
       description: "Request/response header manipulation",
     },
-    {`\`strip-prefix\``}: {
+    "strip-prefix": {
       description: "Path prefix removal",
     },
-    {`\`body-limit\``}: {
+    "body-limit": {
       type: "413",
       description: "Max request body size",
     },
-    {`\`retry\``}: {
+    "retry": {
       description: "Retry on backend failure",
     },
-    {`\`circuit-breaker\``}: {
+    "circuit-breaker": {
       type: "503",
       description: "Closed/Open/HalfOpen state machine",
     },
-    {`\`ip-allow\``}: {
+    "ip-allow": {
       type: "403",
       description: "CIDR/IP allowlist",
     },
-    {`\`compress\``}: {
+    "compress": {
       description: "brotli/gzip/deflate compression",
     },
-    {`\`tcp-filter\``}: {
+    "tcp-filter": {
       description: "TCP connection limit + IP filter",
     },
   }

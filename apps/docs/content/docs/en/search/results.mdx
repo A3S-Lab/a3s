@@ -165,22 +165,22 @@ for answer in results.answers() {
 
 <TypeTable
   type={
-    {`\`items()\``}: {
+    "items()": {
       description: "Get result slice",
     },
-    {`\`suggestions()\``}: {
+    "suggestions()": {
       description: "Get query suggestions",
     },
-    {`\`answers()\``}: {
+    "answers()": {
       description: "Get direct answers",
     },
-    {`\`errors()\``}: {
+    "errors()": {
       description: "Get per-engine errors",
     },
-    {`\`count\``}: {
+    "count": {
       description: "Number of results",
     },
-    {`\`duration_ms\``}: {
+    "duration_ms": {
       description: "Search duration in ms",
     },
   }
@@ -190,20 +190,20 @@ for answer in results.answers() {
 
 <TypeTable
   type={
-    {`\`results\``}: {
-      type: {`\`list[SearchResult]\``},
+    "results": {
+      type: "list[SearchResult]",
       description: "Ranked results",
     },
-    {`\`count\``}: {
-      type: {`\`int\``},
+    "count": {
+      type: "int",
       description: "Number of results",
     },
-    {`\`duration_ms\``}: {
-      type: {`\`int\``},
+    "duration_ms": {
+      type: "int",
       description: "Search duration in ms",
     },
-    {`\`errors\``}: {
-      type: {`\`list[EngineErrorInfo]\``},
+    "errors": {
+      type: "list[EngineErrorInfo]",
       description: "Per-engine errors",
     },
   }
@@ -213,20 +213,20 @@ for answer in results.answers() {
 
 <TypeTable
   type={
-    {`\`results\``}: {
-      type: {`\`SearchResult[]\``},
+    "results": {
+      type: "SearchResult[]",
       description: "Ranked results",
     },
-    {`\`count\``}: {
-      type: {`\`number\``},
+    "count": {
+      type: "number",
       description: "Number of results",
     },
-    {`\`durationMs\``}: {
-      type: {`\`number\``},
+    "durationMs": {
+      type: "number",
       description: "Search duration in ms",
     },
-    {`\`errors\``}: {
-      type: {`\`EngineError[]\``},
+    "errors": {
+      type: "EngineError[]",
       description: "Per-engine errors",
     },
   }
@@ -265,10 +265,10 @@ for err in response.errors:
 
 <TypeTable
   type={
-    {`\`A3SSearchError\``}: {
+    "A3SSearchError": {
       description: "Base exception for all SDK errors",
     },
-    {`\`SearchError\``}: {
+    "SearchError": {
       description: "Search operation failed",
     },
   }
@@ -294,13 +294,13 @@ for (const err of response.errors) {
 
 <TypeTable
   type={
-    {`\`A3SSearchError\``}: {
+    "A3SSearchError": {
       description: "Base error for all SDK errors",
     },
-    {`\`NativeModuleError\``}: {
+    "NativeModuleError": {
       description: "Native module failed to load",
     },
-    {`\`SearchError\``}: {
+    "SearchError": {
       description: "Search operation failed",
     },
   }

@@ -47,22 +47,22 @@ A3S Power is a local LLM model management and serving infrastructure. It provide
 
 <TypeTable
   type={
-    {`\`cli\``}: {
+    "cli": {
       description: "12 commands: pull, run, list, show, delete, serve, ps, stop, push, cp, create",
     },
-    {`\`api\``}: {
+    "api": {
       description: "14 Ollama-native + 5 OpenAI-compatible endpoints",
     },
-    {`\`backend\``}: {
+    "backend": {
       description: "Pluggable inference engine with llama.cpp implementation",
     },
-    {`\`model\``}: {
+    "model": {
       description: "Content-addressed storage, registry, resolution, GGUF reader",
     },
-    {`\`server\``}: {
+    "server": {
       description: "Axum HTTP server with CORS, tracing, Prometheus metrics",
     },
-    {`\`config\``}: {
+    "config": {
       description: "TOML configuration with Ollama-compatible environment variables",
     },
   }
@@ -87,16 +87,16 @@ A3S Power is a local LLM model management and serving infrastructure. It provide
 
 <TypeTable
   type={
-    {`\`~/.a3s/power/\``}: {
+    "~/.a3s/power/": {
       description: {`Base directory (override with \`\$A3S_POWER_HOME\`)`},
     },
-    {`\`~/.a3s/power/config.toml\``}: {
+    "~/.a3s/power/config.toml": {
       description: "Configuration file",
     },
-    {`\`~/.a3s/power/models/manifests/\``}: {
+    "~/.a3s/power/models/manifests/": {
       description: "Model manifest files",
     },
-    {`\`~/.a3s/power/models/blobs/\``}: {
+    "~/.a3s/power/models/blobs/": {
       description: "Content-addressed blob storage",
     },
   }

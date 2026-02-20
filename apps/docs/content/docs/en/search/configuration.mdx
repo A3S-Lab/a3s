@@ -61,16 +61,16 @@ let config = SearchConfig::parse(r#"
 
 <TypeTable
   type={
-    {`\`SearchConfig::load(path)\``}: {
+    "SearchConfig::load(path)": {
       description: {`Load config from \`.hcl\` file`},
     },
-    {`\`SearchConfig::parse(content)\``}: {
+    "SearchConfig::parse(content)": {
       description: "Parse HCL string",
     },
-    {`\`health_config()\``}: {
+    "health_config()": {
       description: {`Get \`HealthConfig\` from config`},
     },
-    {`\`enabled_engines()\``}: {
+    "enabled_engines()": {
       description: "Get list of enabled engine shortcuts",
     },
   }

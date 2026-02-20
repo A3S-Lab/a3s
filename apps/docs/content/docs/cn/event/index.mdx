@@ -15,16 +15,16 @@ A3S Event 是面向 Rust 的提供商无关事件系统。所有后端实现 `Ev
 
 <TypeTable
   type={
-    {`\`nats\``}: {
+    "nats": {
       description: "默认: ✅ · 说明: NATS JetStream 提供商",
     },
-    {`\`encryption\``}: {
+    "encryption": {
       description: "默认: ✅ · 说明: AES-256-GCM 载荷加密，支持密钥轮换",
     },
-    {`\`cloudevents\``}: {
+    "cloudevents": {
       description: "默认: ✅ · 说明: CloudEvents v1.0 转换",
     },
-    {`\`routing\``}: {
+    "routing": {
       description: "默认: ✅ · 说明: Broker/Trigger 事件路由 + 事件 Sink",
     },
   }
@@ -115,34 +115,34 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
 
 <TypeTable
   type={
-    {`\`EventProvider\``}: {
+    "EventProvider": {
       description: "核心 trait — 所有后端实现此接口",
     },
-    {`\`EventBus\``}: {
+    "EventBus": {
       description: "高级 API，带订阅管理",
     },
-    {`\`Event\``}: {
+    "Event": {
       description: "消息信封（id、subject、category、event_type、version、payload）",
     },
-    {`\`ReceivedEvent\``}: {
+    "ReceivedEvent": {
       description: "带投递上下文的事件（sequence、num_delivered、stream）",
     },
-    {`\`Subscription\``}: {
+    "Subscription": {
       description: "来自任意提供商的异步事件流",
     },
-    {`\`PendingEvent\``}: {
+    "PendingEvent": {
       description: "带 ack/nak 回调的事件，用于手动确认",
     },
-    {`\`SchemaRegistry\``}: {
+    "SchemaRegistry": {
       description: "事件类型验证，支持兼容性检查",
     },
-    {`\`StateStore\``}: {
+    "StateStore": {
       description: "持久化订阅状态的 trait",
     },
-    {`\`EventMetrics\``}: {
+    "EventMetrics": {
       description: "无锁原子计数器",
     },
-    {`\`DlqHandler\``}: {
+    "DlqHandler": {
       description: "死信队列 trait",
     },
   }

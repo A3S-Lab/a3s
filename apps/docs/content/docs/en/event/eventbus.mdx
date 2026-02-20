@@ -199,10 +199,10 @@ Both providers support NATS-style wildcards:
 
 <TypeTable
   type={
-    {`\`events.orders.>\``}: {
+    "events.orders.>": {
       description: {`Matches: All subjects under \`events.orders.\` at any depth · Example: \`events.orders.created\`, \`events.orders.us.shipped\``},
     },
-    {`\`events.orders.*\``}: {
+    "events.orders.*": {
       description: {`Matches: One level under \`events.orders.\` · Example: \`events.orders.created\` but not \`events.orders.us.shipped\``},
     },
   }

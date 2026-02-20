@@ -36,31 +36,31 @@ impl MemoryStore for MyStore {
 
 <TypeTable
   type={
-    {`\`store(item)\``}: {
+    "store(item)": {
       description: "持久化记忆（按 ID upsert）",
     },
-    {`\`retrieve(id)\``}: {
+    "retrieve(id)": {
       description: "按 ID 获取单条记忆",
     },
-    {`\`search(query, limit)\``}: {
+    "search(query, limit)": {
       description: "按内容搜索，按相关性排序",
     },
-    {`\`search_by_tags(tags, limit)\``}: {
+    "search_by_tags(tags, limit)": {
       description: "按标签过滤，按相关性排序",
     },
-    {`\`get_recent(limit)\``}: {
+    "get_recent(limit)": {
       description: "最近创建的记忆",
     },
-    {`\`get_important(threshold, limit)\``}: {
+    "get_important(threshold, limit)": {
       description: "重要性超过阈值的记忆，降序排列",
     },
-    {`\`delete(id)\``}: {
+    "delete(id)": {
       description: "删除单条记忆",
     },
-    {`\`clear()\``}: {
+    "clear()": {
       description: "清空所有记忆",
     },
-    {`\`count()\``}: {
+    "count()": {
       description: "记忆总数",
     },
   }

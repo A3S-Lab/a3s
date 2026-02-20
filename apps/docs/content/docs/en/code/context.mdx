@@ -43,13 +43,13 @@ The agent emits events during compaction:
 
 <TypeTable
   type={
-    {`\`ContextWarning\``}: {
+    "ContextWarning": {
       description: "Context usage exceeds threshold",
     },
-    {`\`ContextCompacting\``}: {
+    "ContextCompacting": {
       description: "Compaction started",
     },
-    {`\`ContextCompacted\``}: {
+    "ContextCompacted": {
       description: "Compaction completed",
     },
   }
@@ -143,10 +143,10 @@ let query = ContextQuery::new("authentication flow")
 
 <TypeTable
   type={
-    {`\`Memory\``}: {
+    "Memory": {
       description: "Memory items (episodic, semantic, procedural, working)",
     },
-    {`\`Resource\``}: {
+    "Resource": {
       description: "External resources (files, docs, code) — default",
     },
   }
@@ -156,13 +156,13 @@ let query = ContextQuery::new("authentication flow")
 
 <TypeTable
   type={
-    {`\`Abstract\``}: {
+    "Abstract": {
       description: "Token Budget: ~100 tokens · Description: Brief summary",
     },
-    {`\`Overview\``}: {
+    "Overview": {
       description: "Token Budget: ~2,000 tokens · Description: Moderate detail (default)",
     },
-    {`\`Full\``}: {
+    "Full": {
       description: "Token Budget: Variable · Description: Complete content",
     },
   }
@@ -299,19 +299,19 @@ Context-related events emitted during streaming:
 
 <TypeTable
   type={
-    {`\`ContextResolving\``}: {
+    "ContextResolving": {
       description: "Context providers queried",
     },
-    {`\`ContextResolved\``}: {
+    "ContextResolved": {
       description: "Context items retrieved",
     },
-    {`\`ContextWarning\``}: {
+    "ContextWarning": {
       description: "Context usage exceeds threshold",
     },
-    {`\`ContextCompacting\``}: {
+    "ContextCompacting": {
       description: "Compaction started",
     },
-    {`\`ContextCompacted\``}: {
+    "ContextCompacted": {
       description: "Compaction completed",
     },
   }

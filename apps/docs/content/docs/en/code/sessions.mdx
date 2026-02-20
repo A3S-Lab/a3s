@@ -483,13 +483,13 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
 
 <TypeTable
   type={
-    {`\`new\``}: {
+    "new": {
       description: {`Signature: \`Agent::new(config: &str) -> Result<Agent>\` · Description: Load from HCL file or string`},
     },
-    {`\`from_config\``}: {
+    "from_config": {
       description: {`Signature: \`Agent::from_config(config: AgentConfig) -> Result<Agent>\` · Description: Load from struct`},
     },
-    {`\`session\``}: {
+    "session": {
       description: {`Signature: \`agent.session(workspace, options?) -> Result<AgentSession>\` · Description: Create a workspace-bound session`},
     },
   }

@@ -15,11 +15,11 @@ A3S Code supports two MCP transports:
 
 <TypeTable
   type={
-    {`\`stdio\``}: {
+    "stdio": {
       type: "JSON-RPC 2.0 over stdin/stdout",
       description: "Local tools, CLI-based servers",
     },
-    {`\`http+sse\``}: {
+    "http+sse": {
       type: "JSON-RPC 2.0 over HTTP + Server-Sent Events",
       description: "Remote servers, shared infrastructure",
     },
@@ -134,16 +134,16 @@ mcp_servers {
 
 <TypeTable
   type={
-    {`\`connect\``}: {
+    "connect": {
       description: {`Signature: \`async fn connect(&mut self) -> Result<()>\` · Description: Establish connection to MCP server`},
     },
-    {`\`list_tools\``}: {
+    "list_tools": {
       description: {`Signature: \`async fn list_tools(&self) -> Result<Vec<McpTool>>\` · Description: Discover available tools`},
     },
-    {`\`call_tool\``}: {
+    "call_tool": {
       description: {`Signature: \`async fn call_tool(&self, name: &str, args: Value) -> Result<Value>\` · Description: Invoke a tool`},
     },
-    {`\`disconnect\``}: {
+    "disconnect": {
       description: {`Signature: \`async fn disconnect(&mut self) -> Result<()>\` · Description: Close connection`},
     },
   }
@@ -155,13 +155,13 @@ MCP tools are namespaced as `mcp__{server}__{tool}`. Use this prefix in permissi
 
 <TypeTable
   type={
-    {`\`mcp__filesystem\``}: {
+    "mcp__filesystem": {
       description: {`All tools from the \`filesystem\` server`},
     },
-    {`\`mcp__github__create_issue\``}: {
+    "mcp__github__create_issue": {
       description: "Specific tool",
     },
-    {`\`mcp__*\``}: {
+    "mcp__*": {
       description: "All MCP tools",
     },
   }

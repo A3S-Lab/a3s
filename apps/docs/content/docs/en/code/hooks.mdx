@@ -15,28 +15,28 @@ A3S Code provides 8 lifecycle hooks for intercepting and reacting to events duri
 
 <TypeTable
   type={
-    {`\`PreToolUse\``}: {
+    "PreToolUse": {
       description: "Fires: Before tool execution · Use Case: Validate args, taint tracking, block dangerous calls",
     },
-    {`\`PostToolUse\``}: {
+    "PostToolUse": {
       description: "Fires: After tool execution · Use Case: Audit logging, injection scanning, output filtering",
     },
-    {`\`GenerateStart\``}: {
+    "GenerateStart": {
       description: "Fires: Before LLM call · Use Case: Injection detection, prompt logging",
     },
-    {`\`GenerateEnd\``}: {
+    "GenerateEnd": {
       description: "Fires: After LLM response · Use Case: Output sanitization, PII redaction",
     },
-    {`\`SessionStart\``}: {
+    "SessionStart": {
       description: "Fires: Session created · Use Case: Initialize session resources",
     },
-    {`\`SessionEnd\``}: {
+    "SessionEnd": {
       description: "Fires: Session destroyed · Use Case: Cleanup, persist state",
     },
-    {`\`SkillLoad\``}: {
+    "SkillLoad": {
       description: "Fires: Skill loaded · Use Case: Validate skill, log activation",
     },
-    {`\`SkillUnload\``}: {
+    "SkillUnload": {
       description: "Fires: Skill unloaded · Use Case: Cleanup skill resources",
     },
   }
@@ -65,16 +65,16 @@ The `SecurityGuard` registers hooks at priority 1 (highest) automatically:
 
 <TypeTable
   type={
-    {`\`PreToolUse\``}: {
+    "PreToolUse": {
       description: "Taint tracking — checks if sensitive values leak into tool arguments",
     },
-    {`\`PostToolUse\``}: {
+    "PostToolUse": {
       description: "Injection scanning — detects prompt injection in tool outputs",
     },
-    {`\`GenerateStart\``}: {
+    "GenerateStart": {
       description: "Injection detection — scans user prompt for injection patterns",
     },
-    {`\`GenerateEnd\``}: {
+    "GenerateEnd": {
       description: "Output sanitization — redacts PII from LLM responses",
     },
   }
@@ -348,13 +348,13 @@ impl HookHandler for MyHandler {
 
 <TypeTable
   type={
-    {`\`HookResponse::continue_()\``}: {
+    "HookResponse::continue_()": {
       description: "Allow the operation to proceed",
     },
-    {`\`HookResponse::block(reason)\``}: {
+    "HookResponse::block(reason)": {
       description: "Cancel the operation with a reason string",
     },
-    {`\`HookResponse::modify(data)\``}: {
+    "HookResponse::modify(data)": {
       description: "Replace event data before execution",
     },
   }

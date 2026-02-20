@@ -44,22 +44,22 @@ QueueManager
 
 <TypeTable
   type={
-    {`\`system\``}: {
+    "system": {
       description: "优先级: 0（最高） · 最大并发: 5 · 用途: 系统级操作",
     },
-    {`\`control\``}: {
+    "control": {
       description: "优先级: 1 · 最大并发: 3 · 用途: 暂停、恢复、取消",
     },
-    {`\`query\``}: {
+    "query": {
       description: "优先级: 2 · 最大并发: 10 · 用途: 只读查询",
     },
-    {`\`session\``}: {
+    "session": {
       description: "优先级: 3 · 最大并发: 5 · 用途: 会话管理",
     },
-    {`\`skill\``}: {
+    "skill": {
       description: "优先级: 4 · 最大并发: 3 · 用途: 技能/工具执行",
     },
-    {`\`prompt\``}: {
+    "prompt": {
       description: "优先级: 5（最低） · 最大并发: 2 · 用途: LLM 提示处理",
     },
   }

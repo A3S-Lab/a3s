@@ -15,16 +15,16 @@ Lane 队列提供基于优先级的任务调度，包含四个 lane。高优先�
 
 <TypeTable
   type={
-    {`\`Control\``}: {
+    "Control": {
       description: "优先级: 1（最高） · 使用场景: 停止/取消命令",
     },
-    {`\`Query\``}: {
+    "Query": {
       description: "优先级: 2 · 使用场景: 只读查询",
     },
-    {`\`Execute\``}: {
+    "Execute": {
       description: "优先级: 3 · 使用场景: 文件写入、工具调用",
     },
-    {`\`Generate\``}: {
+    "Generate": {
       description: "优先级: 4（最低） · 使用场景: 长时间 LLM 生成",
     },
   }
@@ -177,13 +177,13 @@ await session.submitTask({
 
 <TypeTable
   type={
-    {`\`id\``}: {
+    "id": {
       description: {`类型: \`String\` · 描述: 唯一任务标识符`},
     },
-    {`\`lane\``}: {
+    "lane": {
       description: {`类型: \`SessionLane\` · 描述: \`Control\`、\`Query\`、\`Execute\` 或 \`Generate\``},
     },
-    {`\`payload\``}: {
+    "payload": {
       description: {`类型: \`serde_json::Value\` · 描述: 任务数据（提示、参数等）`},
     },
   }

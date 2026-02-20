@@ -15,16 +15,16 @@ The lane queue provides priority-based task scheduling with four lanes. High-pri
 
 <TypeTable
   type={
-    {`\`Control\``}: {
+    "Control": {
       description: "Priority: 1 (highest) · Use case: Stop/cancel commands",
     },
-    {`\`Query\``}: {
+    "Query": {
       description: "Priority: 2 · Use case: Read-only lookups",
     },
-    {`\`Execute\``}: {
+    "Execute": {
       description: "Priority: 3 · Use case: File writes, tool calls",
     },
-    {`\`Generate\``}: {
+    "Generate": {
       description: "Priority: 4 (lowest) · Use case: Long LLM generation",
     },
   }

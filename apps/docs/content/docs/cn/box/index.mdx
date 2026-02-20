@@ -53,25 +53,25 @@ A3S Box 由 7 个 crate 组成，各司其职：
 
 <TypeTable
   type={
-    {`\`a3s-box-core\``}: {
+    "a3s-box-core": {
       description: "共享类型：配置、错误、事件、网络模式、卷/PTY/DNS 类型",
     },
-    {`\`a3s-box-runtime\``}: {
+    "a3s-box-runtime": {
       description: "VM 生命周期、OCI 镜像、热池、TEE、网络、gRPC 客户端",
     },
-    {`\`a3s-box-cli\``}: {
+    "a3s-box-cli": {
       description: "类 Docker CLI，52 个命令，状态持久化，输出格式化",
     },
-    {`\`a3s-box-cri\``}: {
+    "a3s-box-cri": {
       description: "Kubernetes 容器运行时接口（CRI）gRPC 实现",
     },
-    {`\`a3s-box-shim\``}: {
+    "a3s-box-shim": {
       description: "VM 子进程，通过 libkrun（HVF/KVM）桥接宿主机和 VM",
     },
-    {`\`a3s-box-guest-init\``}: {
+    "a3s-box-guest-init": {
       description: "Guest PID 1：挂载文件系统、启动服务、运行用户入口",
     },
-    {`\`a3s-box-sdk\``}: {
+    "a3s-box-sdk": {
       description: "嵌入式沙箱 SDK：从 Rust 代码创建、执行、停止 MicroVM",
     },
   }
@@ -86,19 +86,19 @@ Created ──→ Ready ──→ Busy ──→ Compacting ──→ Ready ─�
 
 <TypeTable
   type={
-    {`\`Created\``}: {
+    "Created": {
       description: "配置已捕获，VM 尚未启动",
     },
-    {`\`Ready\``}: {
+    "Ready": {
       description: "VM 已启动，Agent 已初始化，gRPC 健康",
     },
-    {`\`Busy\``}: {
+    "Busy": {
       description: "会话正在活跃处理中",
     },
-    {`\`Compacting\``}: {
+    "Compacting": {
       description: "上下文压缩进行中",
     },
-    {`\`Stopped\``}: {
+    "Stopped": {
       description: "VM 已终止，资源已释放",
     },
   }

@@ -71,37 +71,37 @@ Maps CRI pod and container lifecycle to Box VM management:
 
 <TypeTable
   type={
-    {`\`RunPodSandbox\``}: {
+    "RunPodSandbox": {
       description: "Create and boot a new VmManager",
     },
-    {`\`StopPodSandbox\``}: {
+    "StopPodSandbox": {
       description: "Stop the VM",
     },
-    {`\`RemovePodSandbox\``}: {
+    "RemovePodSandbox": {
       description: "Remove VM and clean up resources",
     },
-    {`\`PodSandboxStatus\``}: {
+    "PodSandboxStatus": {
       description: "Return VM state and metadata",
     },
-    {`\`ListPodSandbox\``}: {
+    "ListPodSandbox": {
       description: "List all tracked sandboxes",
     },
-    {`\`CreateContainer\``}: {
+    "CreateContainer": {
       description: "Register container in ContainerStore",
     },
-    {`\`StartContainer\``}: {
+    "StartContainer": {
       description: "Exec container process in the VM",
     },
-    {`\`StopContainer\``}: {
+    "StopContainer": {
       description: "Kill the container process",
     },
-    {`\`RemoveContainer\``}: {
+    "RemoveContainer": {
       description: "Remove from ContainerStore",
     },
-    {`\`ContainerStatus\``}: {
+    "ContainerStatus": {
       description: "Return container state",
     },
-    {`\`ListContainers\``}: {
+    "ListContainers": {
       description: "List containers in a sandbox",
     },
   }
@@ -111,13 +111,13 @@ Maps CRI pod and container lifecycle to Box VM management:
 
 <TypeTable
   type={
-    {`\`ExecSync\``}: {
+    "ExecSync": {
       description: "Execute command via ExecClient, return stdout/stderr/exit code",
     },
-    {`\`Exec\``}: {
+    "Exec": {
       description: "Register streaming session, return URL for interactive exec",
     },
-    {`\`Attach\``}: {
+    "Attach": {
       description: "Register streaming session, return URL for container attach",
     },
   }
@@ -127,13 +127,13 @@ Maps CRI pod and container lifecycle to Box VM management:
 
 <TypeTable
   type={
-    {`\`PortForward\``}: {
+    "PortForward": {
       description: "Register streaming session, return URL for TCP port proxy",
     },
-    {`\`UpdateContainerResources\``}: {
+    "UpdateContainerResources": {
       description: "Acknowledge (microVM resources are fixed at boot)",
     },
-    {`\`ReopenContainerLog\``}: {
+    "ReopenContainerLog": {
       description: "Truncate container log file for rotation",
     },
   }
@@ -206,16 +206,16 @@ let server = CriServer::new(socket_path, image_store, auth)
 
 <TypeTable
   type={
-    {`\`PullImage\``}: {
+    "PullImage": {
       description: "Pull OCI image via ImagePuller",
     },
-    {`\`RemoveImage\``}: {
+    "RemoveImage": {
       description: "Remove from ImageStore",
     },
-    {`\`ImageStatus\``}: {
+    "ImageStatus": {
       description: "Return image metadata",
     },
-    {`\`ListImages\``}: {
+    "ListImages": {
       description: "List cached images",
     },
   }

@@ -107,19 +107,19 @@ The IPAM automatically assigns IPs to containers joining a network. It tracks us
 
 <TypeTable
   type={
-    {`\`gateway()\``}: {
+    "gateway()": {
       description: "Returns the gateway IP",
     },
-    {`\`cidr()\``}: {
+    "cidr()": {
       description: {`Returns the CIDR string (e.g., \`"10.88.0.0/24"\`)`},
     },
-    {`\`broadcast()\``}: {
+    "broadcast()": {
       description: "Returns the broadcast address",
     },
-    {`\`capacity()\``}: {
+    "capacity()": {
       description: "Returns the number of available host addresses",
     },
-    {`\`next_ip()\``}: {
+    "next_ip()": {
       description: "Allocates the next available IP",
     },
   }

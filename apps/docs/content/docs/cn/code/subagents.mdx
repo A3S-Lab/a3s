@@ -14,19 +14,19 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 <TypeTable
   type={
-    {`\`explore\``}: {
+    "explore": {
       description: "描述: 快速代码库探索（只读） · 最大步数: 20 · 权限: read, grep, glob, ls",
     },
-    {`\`general\``}: {
+    "general": {
       description: "描述: 通用多步骤执行 · 最大步数: 50 · 权限: 完整工具访问",
     },
-    {`\`plan\``}: {
+    "plan": {
       description: "描述: 架构和规划（只读） · 最大步数: 30 · 权限: read, grep, glob",
     },
-    {`\`title\``}: {
+    "title": {
       description: "描述: 会话标题生成（隐藏） · 最大步数: 1 · 权限: 无",
     },
-    {`\`summary\``}: {
+    "summary": {
       description: "描述: 会话摘要（隐藏） · 最大步数: 5 · 权限: read",
     },
   }
@@ -166,34 +166,34 @@ A3S Code 包含一个内置的 `delegate-task` skill（Instruction 类型），�
 
 <TypeTable
   type={
-    {`\`name\``}: {
+    "name": {
       description: "类型: string · 必填: 是 · 描述: 唯一的 agent 标识符",
     },
-    {`\`description\``}: {
+    "description": {
       description: "类型: string · 必填: 是 · 描述: agent 的功能（展示给 LLM）",
     },
-    {`\`mode\``}: {
+    "mode": {
       description: {`类型: \`subagent\` 或 \`primary\` · 必填: 否 · 描述: Agent 模式（默认：\`subagent\`）`},
     },
-    {`\`hidden\``}: {
+    "hidden": {
       description: {`类型: bool · 必填: 否 · 描述: 从列表中隐藏（默认：\`false\`）`},
     },
-    {`\`max_steps\``}: {
+    "max_steps": {
       description: "类型: number · 必填: 否 · 描述: 最大工具轮数",
     },
-    {`\`can_spawn_subagents\``}: {
+    "can_spawn_subagents": {
       description: {`类型: bool · 必填: 否 · 描述: 允许递归委派（默认：\`false\`）`},
     },
-    {`\`permissions.allow\``}: {
+    "permissions.allow": {
       description: "类型: string[] · 必填: 否 · 描述: 允许的工具名称",
     },
-    {`\`permissions.deny\``}: {
+    "permissions.deny": {
       description: "类型: string[] · 必填: 否 · 描述: 拒绝的工具名称",
     },
-    {`\`model\``}: {
+    "model": {
       description: {`类型: string · 必填: 否 · 描述: 模型覆盖，\`provider/model\` 格式`},
     },
-    {`\`prompt\``}: {
+    "prompt": {
       description: "类型: string · 必填: 否 · 描述: Agent 的系统提示",
     },
   }
@@ -207,19 +207,19 @@ LLM 通过两个工具委派给子代理：`task`（单个）和 `parallel_task`
 
 <TypeTable
   type={
-    {`\`agent\``}: {
+    "agent": {
       description: "类型: string · 必填: 是 · 描述: Agent 名称（内置或自定义）",
     },
-    {`\`description\``}: {
+    "description": {
       description: "类型: string · 必填: 是 · 描述: 简短任务描述",
     },
-    {`\`prompt\``}: {
+    "prompt": {
       description: "类型: string · 必填: 是 · 描述: 给子代理的详细提示",
     },
-    {`\`background\``}: {
+    "background": {
       description: {`类型: bool · 必填: 否 · 描述: 不等待结果运行（默认：\`false\`）`},
     },
-    {`\`max_steps\``}: {
+    "max_steps": {
       description: "类型: int · 必填: 否 · 描述: 覆盖 agent 的默认最大步数",
     },
   }
@@ -229,19 +229,19 @@ LLM 通过两个工具委派给子代理：`task`（单个）和 `parallel_task`
 
 <TypeTable
   type={
-    {`\`output\``}: {
+    "output": {
       description: "类型: string · 描述: 子代理响应文本",
     },
-    {`\`session_id\``}: {
+    "session_id": {
       description: "类型: string · 描述: 子会话 ID",
     },
-    {`\`agent\``}: {
+    "agent": {
       description: "类型: string · 描述: 使用的 agent 名称",
     },
-    {`\`success\``}: {
+    "success": {
       description: "类型: bool · 描述: 执行是否成功",
     },
-    {`\`task_id\``}: {
+    "task_id": {
       description: "类型: string · 描述: 唯一任务标识符",
     },
   }
@@ -536,22 +536,22 @@ println!("{}", summary.text);
 
 <TypeTable
   type={
-    {`\`name\``}: {
+    "name": {
       description: {`类型: \`string\` · 必填: ✅ · 描述: Agent 标识符（用于 \`task\` 工具）`},
     },
-    {`\`description\``}: {
+    "description": {
       description: {`类型: \`string\` · 必填: ✅ · 描述: Agent 的功能`},
     },
-    {`\`system_prompt\``}: {
+    "system_prompt": {
       description: {`类型: \`string\` · 必填: ✅ · 描述: Agent 的系统提示/指令`},
     },
-    {`\`model\``}: {
+    "model": {
       description: {`类型: \`string\` · 必填: ❌ · 描述: 模型覆盖（\`provider/model\` 格式）`},
     },
-    {`\`allowed_tools\``}: {
+    "allowed_tools": {
       description: {`类型: \`string[]\` · 必填: ❌ · 描述: 工具访问限制`},
     },
-    {`\`max_tool_rounds\``}: {
+    "max_tool_rounds": {
       description: {`类型: \`number\` · 必填: ❌ · 描述: 每次调用的最大工具轮数`},
     },
   }
@@ -571,13 +571,13 @@ println!("{}", summary.text);
 
 <TypeTable
   type={
-    {`\`agent\``}: {
+    "agent": {
       description: {`类型: \`string\` · 必填: ✅ · 描述: 要委派的 agent 名称`},
     },
-    {`\`prompt\``}: {
+    "prompt": {
       description: {`类型: \`string\` · 必填: ✅ · 描述: 任务提示`},
     },
-    {`\`workspace\``}: {
+    "workspace": {
       description: {`类型: \`string\` · 必填: ❌ · 描述: 工作区覆盖`},
     },
   }
@@ -587,19 +587,19 @@ println!("{}", summary.text);
 
 <TypeTable
   type={
-    {`\`code-reviewer\``}: {
+    "code-reviewer": {
       description: "审查代码的风格、安全性和正确性",
     },
-    {`\`test-writer\``}: {
+    "test-writer": {
       description: "生成单元测试和集成测试",
     },
-    {`\`doc-writer\``}: {
+    "doc-writer": {
       description: "从代码编写文档",
     },
-    {`\`refactorer\``}: {
+    "refactorer": {
       description: "重构代码以提高清晰度和性能",
     },
-    {`\`debugger\``}: {
+    "debugger": {
       description: "诊断和修复 bug",
     },
   }

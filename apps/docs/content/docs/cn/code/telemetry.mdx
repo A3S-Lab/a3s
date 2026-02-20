@@ -34,16 +34,16 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
 
 <TypeTable
   type={
-    {`\`a3s.session_id\``}: {
+    "a3s.session_id": {
       description: "类型: string · 描述: 会话标识符",
     },
-    {`\`a3s.turn\``}: {
+    "a3s.turn": {
       description: "类型: int · 描述: 当前轮次编号",
     },
-    {`\`a3s.max_turns\``}: {
+    "a3s.max_turns": {
       description: "类型: int · 描述: 允许的最大轮次数",
     },
-    {`\`a3s.tool_calls_count\``}: {
+    "a3s.tool_calls_count": {
       description: "类型: int · 描述: 此范围内的总工具调用次数",
     },
   }
@@ -53,31 +53,31 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
 
 <TypeTable
   type={
-    {`\`a3s.llm.model\``}: {
+    "a3s.llm.model": {
       description: {`类型: string · 描述: 模型 ID（例如 \`claude-sonnet-4-20250514\`）`},
     },
-    {`\`a3s.llm.provider\``}: {
+    "a3s.llm.provider": {
       description: {`类型: string · 描述: 提供商名称（例如 \`anthropic\`）`},
     },
-    {`\`a3s.llm.streaming\``}: {
+    "a3s.llm.streaming": {
       description: "类型: bool · 描述: 是否为流式调用",
     },
-    {`\`a3s.llm.prompt_tokens\``}: {
+    "a3s.llm.prompt_tokens": {
       description: "类型: int · 描述: 消耗的输入 token 数",
     },
-    {`\`a3s.llm.completion_tokens\``}: {
+    "a3s.llm.completion_tokens": {
       description: "类型: int · 描述: 生成的输出 token 数",
     },
-    {`\`a3s.llm.total_tokens\``}: {
+    "a3s.llm.total_tokens": {
       description: "类型: int · 描述: 总 token 数",
     },
-    {`\`a3s.llm.cache_read_tokens\``}: {
+    "a3s.llm.cache_read_tokens": {
       description: "类型: int · 描述: 缓存读取的输入 token 数",
     },
-    {`\`a3s.llm.cache_write_tokens\``}: {
+    "a3s.llm.cache_write_tokens": {
       description: "类型: int · 描述: 缓存写入的输入 token 数",
     },
-    {`\`a3s.llm.stop_reason\``}: {
+    "a3s.llm.stop_reason": {
       description: "类型: string · 描述: 生成停止的原因",
     },
   }
@@ -87,22 +87,22 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
 
 <TypeTable
   type={
-    {`\`a3s.tool.name\``}: {
+    "a3s.tool.name": {
       description: {`类型: string · 描述: 工具名称（例如 \`Bash\`、\`Read\`）`},
     },
-    {`\`a3s.tool.id\``}: {
+    "a3s.tool.id": {
       description: "类型: string · 描述: 工具调用 ID",
     },
-    {`\`a3s.tool.exit_code\``}: {
+    "a3s.tool.exit_code": {
       description: "类型: int · 描述: 退出码（0 = 成功）",
     },
-    {`\`a3s.tool.success\``}: {
+    "a3s.tool.success": {
       description: "类型: bool · 描述: 工具是否成功",
     },
-    {`\`a3s.tool.duration_ms\``}: {
+    "a3s.tool.duration_ms": {
       description: "类型: int · 描述: 执行时间（毫秒）",
     },
-    {`\`a3s.tool.permission\``}: {
+    "a3s.tool.permission": {
       description: {`类型: string · 描述: 权限决策（\`allow\`、\`deny\`、\`ask\`）`},
     },
   }
@@ -112,13 +112,13 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
 
 <TypeTable
   type={
-    {`\`a3s.context.providers\``}: {
+    "a3s.context.providers": {
       description: "类型: string · 描述: 逗号分隔的提供者名称",
     },
-    {`\`a3s.context.items\``}: {
+    "a3s.context.items": {
       description: "类型: int · 描述: 返回的上下文条目数",
     },
-    {`\`a3s.context.tokens\``}: {
+    "a3s.context.tokens": {
       description: "类型: int · 描述: 上下文条目的总 token 数",
     },
   }
@@ -130,28 +130,28 @@ a3s.agent.execute                    ← 每次 send()/stream() 的顶层 span
 
 <TypeTable
   type={
-    {`\`model\``}: {
+    "model": {
       description: "类型: string · 描述: 模型 ID",
     },
-    {`\`provider\``}: {
+    "provider": {
       description: "类型: string · 描述: 提供商名称",
     },
-    {`\`prompt_tokens\``}: {
+    "prompt_tokens": {
       description: "类型: u64 · 描述: 输入 token 数",
     },
-    {`\`completion_tokens\``}: {
+    "completion_tokens": {
       description: "类型: u64 · 描述: 输出 token 数",
     },
-    {`\`total_tokens\``}: {
+    "total_tokens": {
       description: "类型: u64 · 描述: 总 token 数",
     },
-    {`\`cost_usd\``}: {
+    "cost_usd": {
       description: "类型: f64 · 描述: 估计费用（美元）",
     },
-    {`\`timestamp\``}: {
+    "timestamp": {
       description: "类型: DateTime · 描述: 调用时间",
     },
-    {`\`session_id\``}: {
+    "session_id": {
       description: "类型: string · 描述: 关联的会话",
     },
   }
@@ -236,22 +236,22 @@ let result = session.send("Analyze this codebase").await?;
 
 <TypeTable
   type={
-    {`\`agent.session\``}: {
+    "agent.session": {
       description: {`父级: root · 关键属性: \`session.id\`、\`session.workspace\``},
     },
-    {`\`agent.turn\``}: {
+    "agent.turn": {
       description: {`父级: \`agent.session\` · 关键属性: \`turn.index\`、\`turn.model\``},
     },
-    {`\`agent.generate\``}: {
+    "agent.generate": {
       description: {`父级: \`agent.turn\` · 关键属性: \`llm.provider\`、\`llm.model\`、\`llm.tokens_in\`、\`llm.tokens_out\``},
     },
-    {`\`agent.tool\``}: {
+    "agent.tool": {
       description: {`父级: \`agent.turn\` · 关键属性: \`tool.name\`、\`tool.exit_code\`、\`tool.duration_ms\``},
     },
-    {`\`agent.plan\``}: {
+    "agent.plan": {
       description: {`父级: \`agent.turn\` · 关键属性: \`plan.steps\`、\`plan.waves\``},
     },
-    {`\`agent.hook\``}: {
+    "agent.hook": {
       description: {`父级: \`agent.turn\` · 关键属性: \`hook.id\`、\`hook.event\``},
     },
   }
@@ -261,25 +261,25 @@ let result = session.send("Analyze this codebase").await?;
 
 <TypeTable
   type={
-    {`\`provider\``}: {
+    "provider": {
       description: {`类型: \`String\` · 描述: LLM 提供商名称`},
     },
-    {`\`model\``}: {
+    "model": {
       description: {`类型: \`String\` · 描述: 模型标识符`},
     },
-    {`\`input_tokens\``}: {
+    "input_tokens": {
       description: {`类型: \`u32\` · 描述: 提示 token 数`},
     },
-    {`\`output_tokens\``}: {
+    "output_tokens": {
       description: {`类型: \`u32\` · 描述: 完成 token 数`},
     },
-    {`\`cache_read_tokens\``}: {
+    "cache_read_tokens": {
       description: {`类型: \`u32\` · 描述: 提示缓存读取 token 数`},
     },
-    {`\`cache_write_tokens\``}: {
+    "cache_write_tokens": {
       description: {`类型: \`u32\` · 描述: 提示缓存写入 token 数`},
     },
-    {`\`cost_usd\``}: {
+    "cost_usd": {
       description: {`类型: \`f64\` · 描述: 估计费用（美元）`},
     },
   }
@@ -307,13 +307,13 @@ tracing_subscriber::registry()
 
 <TypeTable
   type={
-    {`\`OTEL_EXPORTER_OTLP_ENDPOINT\``}: {
+    "OTEL_EXPORTER_OTLP_ENDPOINT": {
       description: "OTLP 收集器端点",
     },
-    {`\`OTEL_SERVICE_NAME\``}: {
+    "OTEL_SERVICE_NAME": {
       description: "追踪中的服务名称",
     },
-    {`\`RUST_LOG\``}: {
+    "RUST_LOG": {
       description: {`日志级别过滤（例如 \`a3s_code_core=debug\`）`},
     },
   }

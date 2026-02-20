@@ -15,25 +15,25 @@ Skills 是可复用的提示模板，通过专业指令增强 agent 的系统提
 
 <TypeTable
   type={
-    {`\`code-search\``}: {
+    "code-search": {
       description: "工作区语义代码搜索",
     },
-    {`\`code-review\``}: {
+    "code-review": {
       description: "风格、安全和资源问题检测",
     },
-    {`\`explain-code\``}: {
+    "explain-code": {
       description: "清晰解释复杂代码",
     },
-    {`\`find-bugs\``}: {
+    "find-bugs": {
       description: "Bug 检测和修复建议",
     },
-    {`\`builtin-tools\``}: {
+    "builtin-tools": {
       description: "指导 LLM 有效使用工具",
     },
-    {`\`delegate-task\``}: {
+    "delegate-task": {
       description: "将任务拆分为并行子 agent",
     },
-    {`\`find-skills\``}: {
+    "find-skills": {
       description: "动态发现可用 skills",
     },
   }
@@ -217,25 +217,25 @@ const result = await session.send(
 
 <TypeTable
   type={
-    {`\`name\``}: {
+    "name": {
       description: {`类型: \`string\` · 必填: ✅ · 描述: 唯一 skill 标识符`},
     },
-    {`\`description\``}: {
+    "description": {
       description: {`类型: \`string\` · 必填: ✅ · 描述: skill 的功能描述`},
     },
-    {`\`triggers\``}: {
+    "triggers": {
       description: {`类型: \`string[]\` · 必填: ✅ · 描述: 激活 skill 的短语`},
     },
-    {`\`allowed-tools\``}: {
+    "allowed-tools": {
       description: {`类型: \`string\` · 必填: ❌ · 描述: 工具访问模式（例如 \`"read(*), grep(*)"\`)`},
     },
-    {`\`kind\``}: {
+    "kind": {
       description: {`类型: \`string\` · 必填: ❌ · 描述: \`instruction\`（默认）或 \`agent\``},
     },
-    {`\`tags\``}: {
+    "tags": {
       description: {`类型: \`string[]\` · 必填: ❌ · 描述: 分类标签`},
     },
-    {`\`version\``}: {
+    "version": {
       description: {`类型: \`string\` · 必填: ❌ · 描述: 语义版本字符串`},
     },
   }
@@ -245,25 +245,25 @@ const result = await session.send(
 
 <TypeTable
   type={
-    {`\`code-search\``}: {
+    "code-search": {
       description: "触发短语: &quot;find code&quot;, &quot;search for&quot; · 效果: 语义代码搜索",
     },
-    {`\`code-review\``}: {
+    "code-review": {
       description: "触发短语: &quot;review&quot;, &quot;check code&quot; · 效果: 风格 + 安全审查",
     },
-    {`\`explain-code\``}: {
+    "explain-code": {
       description: "触发短语: &quot;explain&quot;, &quot;what does&quot; · 效果: 代码解释",
     },
-    {`\`find-bugs\``}: {
+    "find-bugs": {
       description: "触发短语: &quot;find bugs&quot;, &quot;debug&quot; · 效果: Bug 检测",
     },
-    {`\`builtin-tools\``}: {
+    "builtin-tools": {
       description: "触发短语: _（始终激活）_ · 效果: 工具使用指导",
     },
-    {`\`delegate-task\``}: {
+    "delegate-task": {
       description: "触发短语: &quot;delegate&quot;, &quot;parallel&quot; · 效果: 子 agent 委派",
     },
-    {`\`find-skills\``}: {
+    "find-skills": {
       description: "触发短语: &quot;what skills&quot;, &quot;find skill&quot; · 效果: 动态 skill 发现",
     },
   }

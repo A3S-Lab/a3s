@@ -356,16 +356,16 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 
 <TypeTable
   type={
-    {`\`text\``}: {
+    "text": {
       description: {`类型: \`string\` · 描述: LLM 最终响应文本`},
     },
-    {`\`messages\``}: {
+    "messages": {
       description: {`类型: \`Vec<Message>\` · 描述: 完整对话历史（仅 Rust）`},
     },
-    {`\`usage\``}: {
+    "usage": {
       description: {`类型: \`TokenUsage\` · 描述: Token 使用统计`},
     },
-    {`\`tool_calls_count\``}: {
+    "tool_calls_count": {
       description: {`类型: \`usize\` · 描述: 工具调用次数`},
     },
   }
@@ -375,19 +375,19 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 
 <TypeTable
   type={
-    {`\`prompt_tokens\``}: {
+    "prompt_tokens": {
       description: {`类型: \`usize\` · 描述: 输入 token 数`},
     },
-    {`\`completion_tokens\``}: {
+    "completion_tokens": {
       description: {`类型: \`usize\` · 描述: 输出 token 数`},
     },
-    {`\`total_tokens\``}: {
+    "total_tokens": {
       description: {`类型: \`usize\` · 描述: 总 token 数`},
     },
-    {`\`cache_read_tokens\``}: {
+    "cache_read_tokens": {
       description: {`类型: \`Option<usize>\` · 描述: 缓存读取的输入 token 数`},
     },
-    {`\`cache_write_tokens\``}: {
+    "cache_write_tokens": {
       description: {`类型: \`Option<usize>\` · 描述: 缓存写入的输入 token 数`},
     },
   }
@@ -401,22 +401,22 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 
 <TypeTable
   type={
-    {`\`Start\``}: {
+    "Start": {
       description: {`字段: \`prompt\` · 描述: 开始处理`},
     },
-    {`\`TurnStart\``}: {
+    "TurnStart": {
       description: {`字段: \`turn\` · 描述: 新轮次开始`},
     },
-    {`\`TextDelta\``}: {
+    "TextDelta": {
       description: {`字段: \`text\` · 描述: 助手的文本片段`},
     },
-    {`\`TurnEnd\``}: {
+    "TurnEnd": {
       description: {`字段: \`turn\`, \`total_tokens\` · 描述: 轮次完成`},
     },
-    {`\`End\``}: {
+    "End": {
       description: {`字段: \`text\`, \`total_tokens\` · 描述: 生成完成`},
     },
-    {`\`Error\``}: {
+    "Error": {
       description: {`字段: \`error\` · 描述: 发生错误`},
     },
   }
@@ -426,13 +426,13 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 
 <TypeTable
   type={
-    {`\`ToolStart\``}: {
+    "ToolStart": {
       description: {`字段: \`tool_id\`, \`tool_name\` · 描述: 工具调用开始`},
     },
-    {`\`ToolEnd\``}: {
+    "ToolEnd": {
       description: {`字段: \`tool_id\`, \`tool_name\`, \`tool_output\`, \`exit_code\` · 描述: 工具调用完成`},
     },
-    {`\`ToolOutputDelta\``}: {
+    "ToolOutputDelta": {
       description: {`字段: \`tool_id\`, \`tool_name\`, \`text\` · 描述: 工具输出增量`},
     },
   }
@@ -442,16 +442,16 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 
 <TypeTable
   type={
-    {`\`ConfirmationRequired\``}: {
+    "ConfirmationRequired": {
       description: {`字段: \`tool_id\`, \`tool_name\`, \`args\`, \`timeout_ms\` · 描述: 需要 HITL 确认`},
     },
-    {`\`ConfirmationReceived\``}: {
+    "ConfirmationReceived": {
       description: {`字段: \`tool_id\`, \`approved\`, \`reason\` · 描述: 收到 HITL 确认`},
     },
-    {`\`ConfirmationTimeout\``}: {
+    "ConfirmationTimeout": {
       description: {`字段: \`tool_id\`, \`action_taken\` · 描述: HITL 确认超时`},
     },
-    {`\`PermissionDenied\``}: {
+    "PermissionDenied": {
       description: {`字段: \`tool_id\`, \`tool_name\`, \`args\`, \`reason\` · 描述: 工具被权限策略阻止`},
     },
   }
@@ -461,22 +461,22 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 
 <TypeTable
   type={
-    {`\`ContextResolving\``}: {
+    "ContextResolving": {
       description: {`字段: \`providers\` · 描述: 上下文解析开始`},
     },
-    {`\`ContextResolved\``}: {
+    "ContextResolved": {
       description: {`字段: \`total_items\`, \`total_tokens\` · 描述: 上下文解析完成`},
     },
-    {`\`MemoryStored\``}: {
+    "MemoryStored": {
       description: "描述: 记忆项已存储",
     },
-    {`\`MemoryRecalled\``}: {
+    "MemoryRecalled": {
       description: "描述: 记忆项已召回",
     },
-    {`\`MemoriesSearched\``}: {
+    "MemoriesSearched": {
       description: "描述: 记忆搜索完成",
     },
-    {`\`MemoryCleared\``}: {
+    "MemoryCleared": {
       description: "描述: 记忆已清除",
     },
   }
@@ -486,25 +486,25 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 
 <TypeTable
   type={
-    {`\`TaskUpdated\``}: {
+    "TaskUpdated": {
       description: {`字段: \`session_id\`, \`tasks\` · 描述: 任务列表变更`},
     },
-    {`\`SubagentStart\``}: {
+    "SubagentStart": {
       description: "描述: 子代理执行开始",
     },
-    {`\`ExternalTaskPending\``}: {
+    "ExternalTaskPending": {
       description: "描述: 外部任务已入队",
     },
-    {`\`ExternalTaskCompleted\``}: {
+    "ExternalTaskCompleted": {
       description: "描述: 外部任务已完成",
     },
-    {`\`CommandDeadLettered\``}: {
+    "CommandDeadLettered": {
       description: "描述: Lane 命令进入死信队列",
     },
-    {`\`CommandRetry\``}: {
+    "CommandRetry": {
       description: "描述: Lane 命令重试",
     },
-    {`\`QueueAlert\``}: {
+    "QueueAlert": {
       description: "描述: 队列告警触发",
     },
   }
@@ -516,13 +516,13 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 
 <TypeTable
   type={
-    {`\`new\``}: {
+    "new": {
       description: {`签名: \`Agent::new(config: &str) -> Result<Agent>\` · 描述: 从 HCL 文件或字符串加载`},
     },
-    {`\`from_config\``}: {
+    "from_config": {
       description: {`签名: \`Agent::from_config(config: AgentConfig) -> Result<Agent>\` · 描述: 从结构体加载`},
     },
-    {`\`session\``}: {
+    "session": {
       description: {`签名: \`agent.session(workspace, options?) -> Result<AgentSession>\` · 描述: 创建绑定工作区的会话`},
     },
   }

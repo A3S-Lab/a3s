@@ -45,13 +45,13 @@ Control how the model uses tools:
 
 <TypeTable
   type={
-    {`\`"auto"\``}: {
+    ""auto"": {
       description: "Model decides whether to call a tool (default)",
     },
-    {`\`"none"\``}: {
+    ""none"": {
       description: "Model must not call any tool",
     },
-    {`\`{"type": "function", "function": {"name": "..."}}\``}: {
+    "{"type": "function", "function": {"name": "..."}}": {
       description: "Force a specific tool",
     },
   }

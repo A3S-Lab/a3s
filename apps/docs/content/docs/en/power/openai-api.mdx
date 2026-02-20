@@ -204,13 +204,13 @@ The OpenAI API uses Server-Sent Events (SSE) for streaming, while the Ollama API
 
 <TypeTable
   type={
-    {`Ollama (\`/api/*\`)`}: {
+    "Ollama (/api/*)": {
       type: "NDJSON",
-      description: {`\`application/x-ndjson\``},
+      description: "application/x-ndjson",
     },
-    {`OpenAI (\`/v1/*\`)`}: {
+    "OpenAI (/v1/*)": {
       type: "SSE",
-      description: {`\`text/event-stream\``},
+      description: "text/event-stream",
     },
   }
 />

@@ -142,37 +142,37 @@ providers {
 
 <TypeTable
   type={
-    {`\`id\``}: {
+    "id": {
       description: {`类型: string · 必填: 是 · 描述: 模型标识符（例如 \`claude-sonnet-4-20250514\`）`},
     },
-    {`\`name\``}: {
+    "name": {
       description: "类型: string · 必填: 是 · 描述: 显示名称",
     },
-    {`\`family\``}: {
+    "family": {
       description: {`类型: string · 必填: 否 · 描述: 模型系列（例如 \`claude-sonnet\`、\`gpt\`）`},
     },
-    {`\`api_key\``}: {
+    "api_key": {
       description: "类型: string · 必填: 否 · 描述: 每模型 API key（覆盖提供商）",
     },
-    {`\`base_url\``}: {
+    "base_url": {
       description: "类型: string · 必填: 否 · 描述: 每模型 base URL（覆盖提供商）",
     },
-    {`\`tool_call\``}: {
+    "tool_call": {
       description: "类型: bool · 必填: 否 · 描述: 支持工具调用",
     },
-    {`\`reasoning\``}: {
+    "reasoning": {
       description: "类型: bool · 必填: 否 · 描述: 支持扩展推理",
     },
-    {`\`temperature\``}: {
+    "temperature": {
       description: "类型: bool · 必填: 否 · 描述: 支持温度参数",
     },
-    {`\`attachment\``}: {
+    "attachment": {
       description: "类型: bool · 必填: 否 · 描述: 支持文件附件",
     },
-    {`\`cost\``}: {
+    "cost": {
       description: {`类型: object · 必填: 否 · 描述: \`{ input, output, cache_read, cache_write }\` 每百万 token 费用`},
     },
-    {`\`limit\``}: {
+    "limit": {
       description: {`类型: object · 必填: 否 · 描述: \`{ context, output }\` token 限制`},
     },
   }
@@ -182,13 +182,13 @@ providers {
 
 <TypeTable
   type={
-    {`\`name\``}: {
+    "name": {
       description: {`类型: string · 必填: 是 · 描述: 提供商标识符（用于 \`provider/model\` 格式）`},
     },
-    {`\`api_key\``}: {
+    "api_key": {
       description: "类型: string · 必填: 是 · 描述: 所有模型的默认 API key",
     },
-    {`\`base_url\``}: {
+    "base_url": {
       description: "类型: string · 必填: 否 · 描述: 所有模型的默认 base URL",
     },
   }
@@ -305,28 +305,28 @@ search {
 
 <TypeTable
   type={
-    {`\`default_model\``}: {
+    "default_model": {
       description: {`类型: \`string\` · 默认值: —（必填） · 描述: 默认模型，\`provider/model\` 格式`},
     },
-    {`\`max_tool_rounds\``}: {
+    "max_tool_rounds": {
       description: {`类型: \`int\` · 默认值: \`50\` · 描述: 每轮最大工具调用次数`},
     },
-    {`\`thinking_budget\``}: {
+    "thinking_budget": {
       description: {`类型: \`int\` · 默认值: \`null\` · 描述: 推理 token 预算`},
     },
-    {`\`skill_dirs\``}: {
+    "skill_dirs": {
       description: {`类型: \`string[]\` · 默认值: \`[]\` · 描述: 扫描 \`*.md\` skill 文件的目录`},
     },
-    {`\`agent_dirs\``}: {
+    "agent_dirs": {
       description: {`类型: \`string[]\` · 默认值: \`[]\` · 描述: 扫描 agent 文件的目录`},
     },
-    {`\`storage_backend\``}: {
+    "storage_backend": {
       description: {`类型: \`string\` · 默认值: \`"file"\` · 描述: \`"memory"\`、\`"file"\` 或 \`"custom"\``},
     },
-    {`\`sessions_dir\``}: {
+    "sessions_dir": {
       description: {`类型: \`string\` · 默认值: \`null\` · 描述: 会话持久化路径`},
     },
-    {`\`storage_url\``}: {
+    "storage_url": {
       description: {`类型: \`string\` · 默认值: \`null\` · 描述: 存储连接 URL（用于自定义后端）`},
     },
   }

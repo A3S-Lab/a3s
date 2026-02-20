@@ -402,10 +402,10 @@ A3S Code 的外部任务分发支持：
 
 <TypeTable
   type={
-    {`\`mode\``}: {
+    "mode": {
       description: {`类型: \`TaskHandlerMode\` · 描述: \`Internal\`、\`External\` 或 \`Hybrid\``},
     },
-    {`\`timeout_ms\``}: {
+    "timeout_ms": {
       description: {`类型: \`Option<u64>\` · 描述: 等待外部 worker 响应的最大时间`},
     },
   }
@@ -434,19 +434,19 @@ A3S Code 的外部任务分发支持：
 
 <TypeTable
   type={
-    {`\`task_id\``}: {
+    "task_id": {
       description: {`类型: \`String\` · 描述: 唯一任务标识符`},
     },
-    {`\`lane\``}: {
+    "lane": {
       description: {`类型: \`SessionLane\` · 描述: \`Control\`、\`Query\`、\`Execute\` 或 \`Generate\``},
     },
-    {`\`payload\``}: {
+    "payload": {
       description: {`类型: \`Value\` · 描述: 任务数据（提示、工具参数等）`},
     },
-    {`\`created_at\``}: {
+    "created_at": {
       description: {`类型: \`DateTime<Utc>\` · 描述: 入队时间戳`},
     },
-    {`\`timeout_ms\``}: {
+    "timeout_ms": {
       description: {`类型: \`Option<u64>\` · 描述: 每任务超时覆盖`},
     },
   }
@@ -456,16 +456,16 @@ A3S Code 的外部任务分发支持：
 
 <TypeTable
   type={
-    {`\`success\``}: {
+    "success": {
       description: {`类型: \`bool\` · 描述: 任务是否成功完成`},
     },
-    {`\`result\``}: {
+    "result": {
       description: {`类型: \`Option<Value>\` · 描述: 任务输出载荷`},
     },
-    {`\`error\``}: {
+    "error": {
       description: {`类型: \`Option<String>\` · 描述: \`success\` 为 \`false\` 时的错误消息`},
     },
-    {`\`duration_ms\``}: {
+    "duration_ms": {
       description: {`类型: \`Option<u64>\` · 描述: Worker 执行时间`},
     },
   }

@@ -15,10 +15,10 @@ A3S Code 支持两种 MCP 传输方式：
 
 <TypeTable
   type={
-    {`\`stdio\``}: {
+    "stdio": {
       description: "协议: JSON-RPC 2.0 over stdin/stdout · 使用场景: 本地工具、基于 CLI 的服务器",
     },
-    {`\`http+sse\``}: {
+    "http+sse": {
       description: "协议: JSON-RPC 2.0 over HTTP + Server-Sent Events · 使用场景: 远程服务器、共享基础设施",
     },
   }
@@ -119,22 +119,22 @@ mcp_servers {
 
 <TypeTable
   type={
-    {`\`name\``}: {
+    "name": {
       description: {`类型: \`string\` · 必填: ✅ · 描述: 服务器标识符（用于工具名称前缀）`},
     },
-    {`\`command\``}: {
+    "command": {
       description: {`类型: \`string\` · 必填: ✅ · 描述: 要启动的可执行文件`},
     },
-    {`\`args\``}: {
+    "args": {
       description: {`类型: \`string[]\` · 必填: ❌ · 描述: 命令参数`},
     },
-    {`\`env\``}: {
+    "env": {
       description: {`类型: \`object\` · 必填: ❌ · 描述: 环境变量`},
     },
-    {`\`timeout_ms\``}: {
+    "timeout_ms": {
       description: {`类型: \`number\` · 必填: ❌ · 描述: 工具执行超时（默认：\`60000\`）`},
     },
-    {`\`transport\``}: {
+    "transport": {
       description: {`类型: \`string\` · 必填: ❌ · 描述: \`stdio\`（默认）或 \`http\``},
     },
   }
@@ -144,16 +144,16 @@ mcp_servers {
 
 <TypeTable
   type={
-    {`\`connect\``}: {
+    "connect": {
       description: {`签名: \`async fn connect(&mut self) -> Result<()>\` · 描述: 建立到 MCP 服务器的连接`},
     },
-    {`\`list_tools\``}: {
+    "list_tools": {
       description: {`签名: \`async fn list_tools(&self) -> Result<Vec<McpTool>>\` · 描述: 发现可用工具`},
     },
-    {`\`call_tool\``}: {
+    "call_tool": {
       description: {`签名: \`async fn call_tool(&self, name: &str, args: Value) -> Result<Value>\` · 描述: 调用工具`},
     },
-    {`\`disconnect\``}: {
+    "disconnect": {
       description: {`签名: \`async fn disconnect(&mut self) -> Result<()>\` · 描述: 关闭连接`},
     },
   }
@@ -165,13 +165,13 @@ MCP 工具命名为 `mcp__{server}__{tool}`。在权限规则中使用此前缀�
 
 <TypeTable
   type={
-    {`\`mcp__filesystem\``}: {
+    "mcp__filesystem": {
       description: {`\`filesystem\` 服务器的所有工具`},
     },
-    {`\`mcp__github__create_issue\``}: {
+    "mcp__github__create_issue": {
       description: "特定工具",
     },
-    {`\`mcp__*\``}: {
+    "mcp__*": {
       description: "所有 MCP 工具",
     },
   }

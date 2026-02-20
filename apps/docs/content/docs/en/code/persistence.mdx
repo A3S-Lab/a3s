@@ -99,13 +99,13 @@ sessions_dir/
 
 <TypeTable
   type={
-    {`\`session_id()\``}: {
+    "session_id()": {
       description: "Return the session's unique ID",
     },
-    {`\`save()\``}: {
+    "save()": {
       description: "Persist current history to the store (no-op if no store)",
     },
-    {`\`agent.resume_session(id, opts)\``}: {
+    "agent.resume_session(id, opts)": {
       description: "Load a saved session and restore history",
     },
   }
@@ -150,22 +150,22 @@ What gets persisted per session:
 
 <TypeTable
   type={
-    {`\`id\``}: {
+    "id": {
       description: "Session identifier",
     },
-    {`\`messages\``}: {
+    "messages": {
       description: "Full conversation history",
     },
-    {`\`config.workspace\``}: {
+    "config.workspace": {
       description: "Workspace path",
     },
-    {`\`config.system_prompt\``}: {
+    "config.system_prompt": {
       description: "System prompt",
     },
-    {`\`config.planning_enabled\``}: {
+    "config.planning_enabled": {
       description: "Planning flag",
     },
-    {`\`tool_names\``}: {
+    "tool_names": {
       description: "Tool names (rebuilt on resume)",
     },
   }
@@ -187,16 +187,16 @@ What gets persisted per session:
 
 <TypeTable
   type={
-    {`\`save\``}: {
+    "save": {
       description: {`Signature: \`async fn save(&self, data: &SessionData) -> Result<()>\` · Description: Persist session data`},
     },
-    {`\`load\``}: {
+    "load": {
       description: {`Signature: \`async fn load(&self, id: &str) -> Result<Option<SessionData>>\` · Description: Load session by ID`},
     },
-    {`\`delete\``}: {
+    "delete": {
       description: {`Signature: \`async fn delete(&self, id: &str) -> Result<()>\` · Description: Remove session`},
     },
-    {`\`list\``}: {
+    "list": {
       description: {`Signature: \`async fn list(&self) -> Result<Vec<String>>\` · Description: List all session IDs`},
     },
   }

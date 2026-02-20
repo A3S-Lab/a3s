@@ -37,7 +37,7 @@ a3s-power pull --insecure my-registry.local/model
 
 <TypeTable
   type={
-    {`\`--insecure\``}: {
+    "--insecure": {
       description: "Skip TLS verification",
     },
   }
@@ -73,7 +73,7 @@ a3s-power show llama3.2 --verbose
 
 <TypeTable
   type={
-    {`\`--verbose\``}: {
+    "--verbose": {
       description: "Show full GGUF metadata",
     },
   }
@@ -125,10 +125,10 @@ a3s-power push my-model --destination https://registry.example.com
 
 <TypeTable
   type={
-    {`\`--destination\``}: {
+    "--destination": {
       description: "Remote registry URL",
     },
-    {`\`--insecure\``}: {
+    "--insecure": {
       description: "Skip TLS verification",
     },
   }
@@ -155,43 +155,43 @@ a3s-power run llama3.2 --temperature 0.7 --num-predict 256 "Write a haiku"
 
 <TypeTable
   type={
-    {`\`--temperature\``}: {
+    "--temperature": {
       description: "Default: 0.8 · Description: Sampling temperature",
     },
-    {`\`--top-p\``}: {
+    "--top-p": {
       description: "Default: 0.9 · Description: Nucleus sampling",
     },
-    {`\`--top-k\``}: {
+    "--top-k": {
       description: "Default: 40 · Description: Top-K sampling",
     },
-    {`\`--num-predict\``}: {
+    "--num-predict": {
       description: "Default: -1 · Description: Max tokens to generate",
     },
-    {`\`--num-ctx\``}: {
+    "--num-ctx": {
       description: "Default: 2048 · Description: Context window size",
     },
-    {`\`--repeat-penalty\``}: {
+    "--repeat-penalty": {
       description: "Default: 1.1 · Description: Repetition penalty",
     },
-    {`\`--seed\``}: {
+    "--seed": {
       description: "Description: Random seed",
     },
-    {`\`--format\``}: {
+    "--format": {
       description: {`Description: Output format (\`json\`)`},
     },
-    {`\`--system\``}: {
+    "--system": {
       description: "Description: Override system prompt",
     },
-    {`\`--template\``}: {
+    "--template": {
       description: "Description: Override chat template",
     },
-    {`\`--keep-alive\``}: {
+    "--keep-alive": {
       description: {`Default: \`5m\` · Description: Model keep-alive duration`},
     },
-    {`\`--verbose\``}: {
+    "--verbose": {
       description: "Description: Show timing and token stats",
     },
-    {`\`--insecure\``}: {
+    "--insecure": {
       description: "Description: Skip TLS verification",
     },
   }
@@ -217,10 +217,10 @@ a3s-power serve --host 0.0.0.0 --port 8080
 
 <TypeTable
   type={
-    {`\`--host\``}: {
+    "--host": {
       description: {`Default: \`127.0.0.1\` · Description: Bind address`},
     },
-    {`\`--port\``}: {
+    "--port": {
       description: {`Default: \`11434\` · Description: Bind port`},
     },
   }

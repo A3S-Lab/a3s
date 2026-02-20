@@ -13,22 +13,22 @@ A3S Gateway provides built-in Prometheus metrics, structured access logging, dis
 
 <TypeTable
   type={
-    {`\`GET /api/gateway/health\``}: {
+    "GET /api/gateway/health": {
       description: "Health status (JSON)",
     },
-    {`\`GET /api/gateway/metrics\``}: {
+    "GET /api/gateway/metrics": {
       description: "Prometheus metrics (text)",
     },
-    {`\`GET /api/gateway/config\``}: {
+    "GET /api/gateway/config": {
       description: "Current configuration (JSON)",
     },
-    {`\`GET /api/gateway/routes\``}: {
+    "GET /api/gateway/routes": {
       description: "Active routes (JSON)",
     },
-    {`\`GET /api/gateway/services\``}: {
+    "GET /api/gateway/services": {
       description: "Active services and backends (JSON)",
     },
-    {`\`GET /api/gateway/version\``}: {
+    "GET /api/gateway/version": {
       description: "Build version info (JSON)",
     },
   }
@@ -115,19 +115,19 @@ RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.hcl
 
 <TypeTable
   type={
-    {`\`error\``}: {
+    "error": {
       description: "Failures, backend errors, TLS errors",
     },
-    {`\`warn\``}: {
+    "warn": {
       description: "Rate limit hits, unhealthy backends, config issues",
     },
-    {`\`info\``}: {
+    "info": {
       description: "Startup, shutdown, reload, access logs",
     },
-    {`\`debug\``}: {
+    "debug": {
       description: "Routing decisions, middleware execution",
     },
-    {`\`trace\``}: {
+    "trace": {
       description: "Raw bytes, header details, connection lifecycle",
     },
   }

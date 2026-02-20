@@ -250,16 +250,16 @@ Boxes can be referenced by full ID, short ID (12-char prefix), or name.
 
 <TypeTable
   type={
-    {`\`A3S_IMAGE_CACHE_SIZE\``}: {
+    "A3S_IMAGE_CACHE_SIZE": {
       description: "Override max image cache size in bytes",
     },
-    {`\`A3S_TEE_SIMULATE\``}: {
+    "A3S_TEE_SIMULATE": {
       description: "Enable TEE simulation mode (development only)",
     },
-    {`\`A3S_DEPS_STUB\``}: {
+    "A3S_DEPS_STUB": {
       description: "Stub out libkrun for CI builds without KVM",
     },
-    {`\`RUST_LOG\``}: {
+    "RUST_LOG": {
       description: {`Log verbosity: \`error\` · \`warn\` · \`info\` · \`debug\` · \`trace\``},
     },
   }

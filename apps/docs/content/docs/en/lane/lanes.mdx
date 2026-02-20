@@ -23,22 +23,22 @@ let manager = QueueManagerBuilder::new(emitter)
 
 <TypeTable
   type={
-    {`\`system\``}: {
+    "system": {
       description: "Priority: 0 · Min: 1 · Max: 5 · Use Case: System-level operations",
     },
-    {`\`control\``}: {
+    "control": {
       description: "Priority: 1 · Min: 1 · Max: 3 · Use Case: Pause, resume, cancel",
     },
-    {`\`query\``}: {
+    "query": {
       description: "Priority: 2 · Min: 1 · Max: 10 · Use Case: Read-only queries",
     },
-    {`\`session\``}: {
+    "session": {
       description: "Priority: 3 · Min: 1 · Max: 5 · Use Case: Session management",
     },
-    {`\`skill\``}: {
+    "skill": {
       description: "Priority: 4 · Min: 1 · Max: 3 · Use Case: Skill/tool execution",
     },
-    {`\`prompt\``}: {
+    "prompt": {
       description: "Priority: 5 · Min: 1 · Max: 2 · Use Case: LLM prompt processing",
     },
   }

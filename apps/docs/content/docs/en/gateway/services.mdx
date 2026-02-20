@@ -13,16 +13,16 @@ Services define backend pools with load balancing, health checks, sticky session
 
 <TypeTable
   type={
-    {`\`round-robin\``}: {
+    "round-robin": {
       description: "Cycles through healthy backends sequentially",
     },
-    {`\`weighted\``}: {
+    "weighted": {
       description: "Distributes traffic proportionally by weight",
     },
-    {`\`least-connections\``}: {
+    "least-connections": {
       description: "Routes to the backend with fewest active connections",
     },
-    {`\`random\``}: {
+    "random": {
       description: "Selects a random healthy backend",
     },
   }

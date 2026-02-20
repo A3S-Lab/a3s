@@ -44,22 +44,22 @@ QueueManager
 
 <TypeTable
   type={
-    {`\`system\``}: {
+    "system": {
       description: "Priority: 0 (highest) · Max Concurrency: 5 · Use Case: System-level operations",
     },
-    {`\`control\``}: {
+    "control": {
       description: "Priority: 1 · Max Concurrency: 3 · Use Case: Pause, resume, cancel",
     },
-    {`\`query\``}: {
+    "query": {
       description: "Priority: 2 · Max Concurrency: 10 · Use Case: Read-only queries",
     },
-    {`\`session\``}: {
+    "session": {
       description: "Priority: 3 · Max Concurrency: 5 · Use Case: Session management",
     },
-    {`\`skill\``}: {
+    "skill": {
       description: "Priority: 4 · Max Concurrency: 3 · Use Case: Skill/tool execution",
     },
-    {`\`prompt\``}: {
+    "prompt": {
       description: "Priority: 5 (lowest) · Max Concurrency: 2 · Use Case: LLM prompt processing",
     },
   }

@@ -36,22 +36,22 @@ SessionOptions::new().with_file_memory("./memory")
 
 <TypeTable
   type={
-    {`\`MemoryStore\``}: {
+    "MemoryStore": {
       description: "Async trait — the only interface you need to implement or depend on",
     },
-    {`\`MemoryItem\``}: {
+    "MemoryItem": {
       description: "The unit of memory — content, importance, tags, metadata, timestamps",
     },
-    {`\`MemoryType\``}: {
-      description: {`\`Episodic\`, \`Semantic\`, \`Procedural\`, \`Working\``},
+    "MemoryType": {
+      description: "Episodic\`, \`Semantic\`, \`Procedural\`, \`Working",
     },
-    {`\`RelevanceConfig\``}: {
+    "RelevanceConfig": {
       description: "Scoring parameters — decay, importance weight, recency weight",
     },
-    {`\`InMemoryStore\``}: {
+    "InMemoryStore": {
       description: {`Ephemeral backend backed by \`tokio::sync::RwLock\``},
     },
-    {`\`FileMemoryStore\``}: {
+    "FileMemoryStore": {
       description: "Persistent backend — atomic writes, in-memory index, index rebuild",
     },
   }
@@ -62,13 +62,13 @@ SessionOptions::new().with_file_memory("./memory")
 <TypeTable
   type={
     "Three-tier session memory (working / short-term / long-term)": {
-      description: {`\`a3s-code\``},
+      description: "a3s-code",
     },
-    {`\`MemoryConfig\` (max_short_term, max_working)`}: {
-      description: {`\`a3s-code\``},
+    "MemoryConfig (max_short_term, max_working)": {
+      description: "a3s-code",
     },
     "Context injection into agent prompts": {
-      description: {`\`a3s-code\``},
+      description: "a3s-code",
     },
   }
 />

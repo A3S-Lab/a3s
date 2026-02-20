@@ -36,31 +36,31 @@ impl MemoryStore for MyStore {
 
 <TypeTable
   type={
-    {`\`store(item)\``}: {
+    "store(item)": {
       description: "Persist a memory item (upsert by ID)",
     },
-    {`\`retrieve(id)\``}: {
+    "retrieve(id)": {
       description: "Fetch a single item by ID",
     },
-    {`\`search(query, limit)\``}: {
+    "search(query, limit)": {
       description: "Search by content, ranked by relevance",
     },
-    {`\`search_by_tags(tags, limit)\``}: {
+    "search_by_tags(tags, limit)": {
       description: "Filter by tags, ranked by relevance",
     },
-    {`\`get_recent(limit)\``}: {
+    "get_recent(limit)": {
       description: "Most recently created items",
     },
-    {`\`get_important(threshold, limit)\``}: {
+    "get_important(threshold, limit)": {
       description: "Items above importance threshold, sorted descending",
     },
-    {`\`delete(id)\``}: {
+    "delete(id)": {
       description: "Remove a single item",
     },
-    {`\`clear()\``}: {
+    "clear()": {
       description: "Remove all items",
     },
-    {`\`count()\``}: {
+    "count()": {
       description: "Total item count",
     },
   }

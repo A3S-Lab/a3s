@@ -43,13 +43,13 @@ Agent 在压缩期间发出事件：
 
 <TypeTable
   type={
-    {`\`ContextWarning\``}: {
+    "ContextWarning": {
       description: "上下文使用量超过阈值",
     },
-    {`\`ContextCompacting\``}: {
+    "ContextCompacting": {
       description: "压缩开始",
     },
-    {`\`ContextCompacted\``}: {
+    "ContextCompacted": {
       description: "压缩完成",
     },
   }
@@ -96,25 +96,25 @@ pub trait ContextProvider: Send + Sync {
 
 <TypeTable
   type={
-    {`\`query\``}: {
+    "query": {
       description: {`类型: \`String\` · 描述: 搜索查询（通常是用户的提示）`},
     },
-    {`\`context_types\``}: {
+    "context_types": {
       description: {`类型: \`Vec<ContextType>\` · 描述: 要检索的类型`},
     },
-    {`\`depth\``}: {
+    "depth": {
       description: {`类型: \`ContextDepth\` · 描述: 返回多少细节`},
     },
-    {`\`max_results\``}: {
+    "max_results": {
       description: {`类型: \`usize\` · 描述: 最大返回条目数`},
     },
-    {`\`max_tokens\``}: {
+    "max_tokens": {
       description: {`类型: \`usize\` · 描述: 结果的 token 预算`},
     },
-    {`\`session_id\``}: {
+    "session_id": {
       description: {`类型: \`Option<String>\` · 描述: 将结果限定到某个会话`},
     },
-    {`\`params\``}: {
+    "params": {
       description: {`类型: \`HashMap<String, String>\` · 描述: 提供者特定的参数`},
     },
   }
@@ -135,10 +135,10 @@ let query = ContextQuery::new("authentication flow")
 
 <TypeTable
   type={
-    {`\`Memory\``}: {
+    "Memory": {
       description: "记忆条目（episodic、semantic、procedural、working）",
     },
-    {`\`Resource\``}: {
+    "Resource": {
       description: "外部资源（文件、文档、代码）— 默认",
     },
   }
@@ -148,13 +148,13 @@ let query = ContextQuery::new("authentication flow")
 
 <TypeTable
   type={
-    {`\`Abstract\``}: {
+    "Abstract": {
       description: "Token 预算: ~100 tokens · 描述: 简要摘要",
     },
-    {`\`Overview\``}: {
+    "Overview": {
       description: "Token 预算: ~2,000 tokens · 描述: 适度细节（默认）",
     },
-    {`\`Full\``}: {
+    "Full": {
       description: "Token 预算: 可变 · 描述: 完整内容",
     },
   }
@@ -164,25 +164,25 @@ let query = ContextQuery::new("authentication flow")
 
 <TypeTable
   type={
-    {`\`id\``}: {
+    "id": {
       description: {`类型: \`String\` · 描述: 唯一条目标识符`},
     },
-    {`\`context_type\``}: {
+    "context_type": {
       description: {`类型: \`ContextType\` · 描述: Memory 或 Resource`},
     },
-    {`\`content\``}: {
+    "content": {
       description: {`类型: \`String\` · 描述: 上下文内容`},
     },
-    {`\`token_count\``}: {
+    "token_count": {
       description: {`类型: \`usize\` · 描述: 估计的 token 数`},
     },
-    {`\`relevance\``}: {
+    "relevance": {
       description: {`类型: \`f32\` · 描述: 0.0–1.0 相关性分数`},
     },
-    {`\`source\``}: {
+    "source": {
       description: {`类型: \`Option<String>\` · 描述: 上下文来源`},
     },
-    {`\`metadata\``}: {
+    "metadata": {
       description: {`类型: \`HashMap<String, String>\` · 描述: 额外元数据`},
     },
   }
@@ -284,19 +284,19 @@ let session = agent.session("/project", Some(
 
 <TypeTable
   type={
-    {`\`ContextResolving\``}: {
+    "ContextResolving": {
       description: "上下文提供者被查询",
     },
-    {`\`ContextResolved\``}: {
+    "ContextResolved": {
       description: "上下文条目已检索",
     },
-    {`\`ContextWarning\``}: {
+    "ContextWarning": {
       description: "上下文使用量超过阈值",
     },
-    {`\`ContextCompacting\``}: {
+    "ContextCompacting": {
       description: "压缩开始",
     },
-    {`\`ContextCompacted\``}: {
+    "ContextCompacted": {
       description: "压缩完成",
     },
   }
@@ -326,13 +326,13 @@ let session = agent.session("/project", Some(
 
 <TypeTable
   type={
-    {`\`retrieve\``}: {
+    "retrieve": {
       description: {`签名: \`async fn retrieve(&self, query: &ContextQuery) -> Result<Vec<ContextItem>>\` · 描述: 获取相关上下文条目`},
     },
-    {`\`on_turn_complete\``}: {
+    "on_turn_complete": {
       description: {`签名: \`async fn on_turn_complete(&self, turn: &TurnSummary) -> Result<()>\` · 描述: 每个 agent 轮次后调用`},
     },
-    {`\`name\``}: {
+    "name": {
       description: {`签名: \`fn name(&self) -> &str\` · 描述: 提供者标识符`},
     },
   }
@@ -342,16 +342,16 @@ let session = agent.session("/project", Some(
 
 <TypeTable
   type={
-    {`\`query\``}: {
+    "query": {
       description: {`类型: \`String\` · 描述: 自然语言查询`},
     },
-    {`\`max_tokens\``}: {
+    "max_tokens": {
       description: {`类型: \`Option<usize>\` · 描述: 结果的 token 预算`},
     },
-    {`\`context_types\``}: {
+    "context_types": {
       description: {`类型: \`Vec<ContextType>\` · 描述: 按类型过滤`},
     },
-    {`\`depth\``}: {
+    "depth": {
       description: {`类型: \`ContextDepth\` · 描述: \`Abstract\` 或 \`Full\``},
     },
   }
@@ -361,16 +361,16 @@ let session = agent.session("/project", Some(
 
 <TypeTable
   type={
-    {`\`content\``}: {
+    "content": {
       description: {`类型: \`String\` · 描述: 上下文文本`},
     },
-    {`\`source\``}: {
+    "source": {
       description: {`类型: \`String\` · 描述: 来源（文件路径、记忆 ID 等）`},
     },
-    {`\`relevance\``}: {
+    "relevance": {
       description: {`类型: \`f32\` · 描述: 相关性分数（0.0–1.0）`},
     },
-    {`\`context_type\``}: {
+    "context_type": {
       description: {`类型: \`ContextType\` · 描述: \`File\`、\`Memory\`、\`Skill\`、\`Custom\``},
     },
   }
@@ -380,16 +380,16 @@ let session = agent.session("/project", Some(
 
 <TypeTable
   type={
-    {`\`VectorContextConfig::new(path)\``}: {
+    "VectorContextConfig::new(path)": {
       description: "描述: 设置工作区根目录",
     },
-    {`\`.with_min_relevance(f)\``}: {
+    ".with_min_relevance(f)": {
       description: {`描述: 最小余弦相似度 · 默认值: \`0.3\``},
     },
-    {`\`.with_max_results(n)\``}: {
+    ".with_max_results(n)": {
       description: {`描述: 每次查询最大块数 · 默认值: \`10\``},
     },
-    {`\`.with_chunk_size(n)\``}: {
+    ".with_chunk_size(n)": {
       description: {`描述: 每块最大字符数 · 默认值: \`1500\``},
     },
   }

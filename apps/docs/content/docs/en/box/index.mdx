@@ -53,25 +53,25 @@ A3S Box is composed of 7 crates, each with a focused responsibility:
 
 <TypeTable
   type={
-    {`\`a3s-box-core\``}: {
+    "a3s-box-core": {
       description: "Shared types: config, errors, events, network modes, volume/PTY/DNS types",
     },
-    {`\`a3s-box-runtime\``}: {
+    "a3s-box-runtime": {
       description: "VM lifecycle, OCI images, warm pool, TEE, networking, gRPC clients",
     },
-    {`\`a3s-box-cli\``}: {
+    "a3s-box-cli": {
       description: "Docker-like CLI with 52 commands, state persistence, output formatting",
     },
-    {`\`a3s-box-cri\``}: {
+    "a3s-box-cri": {
       description: "Kubernetes Container Runtime Interface (CRI) over gRPC",
     },
-    {`\`a3s-box-shim\``}: {
+    "a3s-box-shim": {
       description: "VM subprocess that bridges host and VM via libkrun (HVF/KVM)",
     },
-    {`\`a3s-box-guest-init\``}: {
+    "a3s-box-guest-init": {
       description: "Guest PID 1: mounts filesystems, starts servers, spawns user entrypoint",
     },
-    {`\`a3s-box-sdk\``}: {
+    "a3s-box-sdk": {
       description: "Embedded sandbox SDK: create, exec, stop MicroVMs from Rust code",
     },
   }
@@ -86,19 +86,19 @@ Created ──→ Ready ──→ Busy ──→ Compacting ──→ Ready ─�
 
 <TypeTable
   type={
-    {`\`Created\``}: {
+    "Created": {
       description: "Config captured, no VM started",
     },
-    {`\`Ready\``}: {
+    "Ready": {
       description: "VM booted, agent initialized, gRPC healthy",
     },
-    {`\`Busy\``}: {
+    "Busy": {
       description: "A session is actively processing",
     },
-    {`\`Compacting\``}: {
+    "Compacting": {
       description: "Context compression in progress",
     },
-    {`\`Stopped\``}: {
+    "Stopped": {
       description: "VM terminated, resources freed",
     },
   }

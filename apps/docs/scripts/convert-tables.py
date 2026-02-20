@@ -41,14 +41,23 @@ def escape_mdx(s: str) -> str:
     return s
 
 
+def to_jsx_key(s: str) -> str:
+    """Convert a table key to a valid JSX object key (always a plain quoted string)."""
+    s = s.strip()
+    # Strip markdown formatting from keys
+    s = re.sub(r"\*\*(.+?)\*\*", r"\1", s)  # bold
+    s = re.sub(r"`(.+?)`", r"\1", s)         # inline code
+    s = s.replace('"', '\\"')
+    return f'"{s}"'
+
+
 def to_jsx_string(s: str) -> str:
     """Convert a cell value to a safe JSX string attribute value."""
     s = s.strip()
     # Remove bold markdown
     s = re.sub(r"\*\*(.+?)\*\*", r"\1", s)
-    # If contains backticks, angle brackets, or quotes, use JSX expression
+    # If contains backticks, angle brackets, or quotes, use JSX expression with template literal
     if "`" in s or "<" in s or ">" in s or "{" in s:
-        # Escape for JSX: wrap in expression with template literal
         s_escaped = s.replace("\\", "\\\\").replace("`", "\\`").replace("$", "\\$")
         return "{`" + s_escaped + "`}"
     # Plain string — just quote it
@@ -130,7 +139,7 @@ def row_to_type_node(key: str, row: list[str], mapping: dict, headers: list[str]
                 continue
             props.append(f"      {field_name}: {to_jsx_string(val)},")
 
-    key_str = to_jsx_string(key)
+    key_str = to_jsx_key(key)
     if not props:
         return f"    {key_str}: {{}},\n"
     return f"    {key_str}: {{\n" + "\n".join(props) + "\n    },\n"

@@ -70,16 +70,16 @@ result = session.send("记住：本项目部署在 AWS us-east-1")
 
 <TypeTable
   type={
-    {`\`Episodic\``}: {
+    "Episodic": {
       description: "用途: 具体事件和交互记录 · 默认重要性: 0.5",
     },
-    {`\`Semantic\``}: {
+    "Semantic": {
       description: "用途: 事实和领域知识 · 默认重要性: 0.5–0.8",
     },
-    {`\`Procedural\``}: {
+    "Procedural": {
       description: "用途: 成功模式（turn 完成后自动存储） · 默认重要性: 0.8",
     },
-    {`\`Working\``}: {
+    "Working": {
       description: "用途: 当前任务的活跃上下文 · 默认重要性: 不固定",
     },
   }
@@ -130,31 +130,31 @@ let item = MemoryItem::new("文件 I/O 优先使用 write_all 而非 write")
 
 <TypeTable
   type={
-    {`\`id\``}: {
+    "id": {
       description: {`类型: \`String\` · 说明: UUID，自动生成`},
     },
-    {`\`content\``}: {
+    "content": {
       description: {`类型: \`String\` · 说明: 记忆内容`},
     },
-    {`\`memory_type\``}: {
+    "memory_type": {
       description: {`类型: \`MemoryType\` · 说明: \`Episodic\`、\`Semantic\`、\`Procedural\`、\`Working\``},
     },
-    {`\`importance\``}: {
+    "importance": {
       description: {`类型: \`f32\` · 说明: 0.0–1.0，自动截断`},
     },
-    {`\`tags\``}: {
+    "tags": {
       description: {`类型: \`Vec<String>\` · 说明: 分类标签`},
     },
-    {`\`metadata\``}: {
+    "metadata": {
       description: {`类型: \`HashMap<String, String>\` · 说明: 任意键值对`},
     },
-    {`\`timestamp\``}: {
+    "timestamp": {
       description: {`类型: \`DateTime<Utc>\` · 说明: 创建时间`},
     },
-    {`\`access_count\``}: {
+    "access_count": {
       description: {`类型: \`u32\` · 说明: 检索次数`},
     },
-    {`\`last_accessed\``}: {
+    "last_accessed": {
       description: {`类型: \`Option<DateTime<Utc>>\` · 说明: 最近检索时间`},
     },
   }
@@ -288,16 +288,16 @@ SessionOptions::new().with_memory(Arc::new(MyVectorStore::new()))
 
 <TypeTable
   type={
-    {`\`MemoryStored\``}: {
+    "MemoryStored": {
       description: "记忆条目已持久化",
     },
-    {`\`MemoryRecalled\``}: {
+    "MemoryRecalled": {
       description: "记忆条目已被检索用于上下文",
     },
-    {`\`MemoriesSearched\``}: {
+    "MemoriesSearched": {
       description: "执行了一次记忆搜索",
     },
-    {`\`MemoryCleared\``}: {
+    "MemoryCleared": {
       description: "所有记忆已清除",
     },
   }
@@ -309,13 +309,13 @@ SessionOptions::new().with_memory(Arc::new(MyVectorStore::new()))
 
 <TypeTable
   type={
-    {`\`.with_file_memory(path)\``}: {
+    ".with_file_memory(path)": {
       description: {`在指定路径启用 \`FileMemoryStore\``},
     },
-    {`\`.with_memory(Arc<dyn MemoryStore>)\``}: {
+    ".with_memory(Arc<dyn MemoryStore>)": {
       description: "使用自定义后端",
     },
-    {`\`.with_memory_config(MemoryConfig)\``}: {
+    ".with_memory_config(MemoryConfig)": {
       description: "配置相关性评分和各层容量",
     },
   }
@@ -325,31 +325,31 @@ SessionOptions::new().with_memory(Arc::new(MyVectorStore::new()))
 
 <TypeTable
   type={
-    {`\`store(item)\``}: {
+    "store(item)": {
       description: "持久化记忆条目（按 ID upsert）",
     },
-    {`\`retrieve(id)\``}: {
+    "retrieve(id)": {
       description: "按 ID 获取单条记忆",
     },
-    {`\`search(query, limit)\``}: {
+    "search(query, limit)": {
       description: "子串搜索，按相关性排序",
     },
-    {`\`search_by_tags(tags, limit)\``}: {
+    "search_by_tags(tags, limit)": {
       description: "按标签过滤，按相关性排序",
     },
-    {`\`get_recent(limit)\``}: {
+    "get_recent(limit)": {
       description: "最近创建的记忆",
     },
-    {`\`get_important(threshold, limit)\``}: {
+    "get_important(threshold, limit)": {
       description: "重要性高于阈值的记忆，降序排列",
     },
-    {`\`delete(id)\``}: {
+    "delete(id)": {
       description: "删除单条记忆",
     },
-    {`\`clear()\``}: {
+    "clear()": {
       description: "清除所有记忆",
     },
-    {`\`count()\``}: {
+    "count()": {
       description: "记忆总数",
     },
   }

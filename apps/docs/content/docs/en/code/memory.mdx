@@ -70,19 +70,19 @@ result = session.send("Remember: this project deploys to AWS us-east-1")
 
 <TypeTable
   type={
-    {`\`Episodic\``}: {
+    "Episodic": {
       description: "Specific events and interactions",
       default: "0.5",
     },
-    {`\`Semantic\``}: {
+    "Semantic": {
       description: "Facts and domain knowledge",
       default: "0.5–0.8",
     },
-    {`\`Procedural\``}: {
+    "Procedural": {
       description: "Successful patterns (auto-stored on turn complete)",
       default: "0.8",
     },
-    {`\`Working\``}: {
+    "Working": {
       description: "Active context for the current task",
       default: "varies",
     },
@@ -301,16 +301,16 @@ System Prompt
 
 <TypeTable
   type={
-    {`\`MemoryStored\``}: {
+    "MemoryStored": {
       description: "A memory item was persisted",
     },
-    {`\`MemoryRecalled\``}: {
+    "MemoryRecalled": {
       description: "A memory item was retrieved for context",
     },
-    {`\`MemoriesSearched\``}: {
+    "MemoriesSearched": {
       description: "A search was performed",
     },
-    {`\`MemoryCleared\``}: {
+    "MemoryCleared": {
       description: "All memories were cleared",
     },
   }
@@ -322,13 +322,13 @@ System Prompt
 
 <TypeTable
   type={
-    {`\`.with_file_memory(path)\``}: {
+    ".with_file_memory(path)": {
       description: {`Enable \`FileMemoryStore\` at the given path`},
     },
-    {`\`.with_memory(Arc<dyn MemoryStore>)\``}: {
+    ".with_memory(Arc<dyn MemoryStore>)": {
       description: "Use a custom backend",
     },
-    {`\`.with_memory_config(MemoryConfig)\``}: {
+    ".with_memory_config(MemoryConfig)": {
       description: "Configure relevance scoring and tier capacities",
     },
   }
@@ -338,31 +338,31 @@ System Prompt
 
 <TypeTable
   type={
-    {`\`store(item)\``}: {
+    "store(item)": {
       description: "Persist a memory item (upsert by ID)",
     },
-    {`\`retrieve(id)\``}: {
+    "retrieve(id)": {
       description: "Fetch a single item by ID",
     },
-    {`\`search(query, limit)\``}: {
+    "search(query, limit)": {
       description: "Substring search, ranked by relevance",
     },
-    {`\`search_by_tags(tags, limit)\``}: {
+    "search_by_tags(tags, limit)": {
       description: "Filter by tags, ranked by relevance",
     },
-    {`\`get_recent(limit)\``}: {
+    "get_recent(limit)": {
       description: "Most recently created items",
     },
-    {`\`get_important(threshold, limit)\``}: {
+    "get_important(threshold, limit)": {
       description: "Items above importance threshold, sorted descending",
     },
-    {`\`delete(id)\``}: {
+    "delete(id)": {
       description: "Remove a single item",
     },
-    {`\`clear()\``}: {
+    "clear()": {
       description: "Remove all items",
     },
-    {`\`count()\``}: {
+    "count()": {
       description: "Total item count",
     },
   }

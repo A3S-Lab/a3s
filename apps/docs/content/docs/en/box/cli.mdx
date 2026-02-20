@@ -23,148 +23,148 @@ a3s-box run [OPTIONS] IMAGE [-- COMMAND [ARGS...]]
 
 <TypeTable
   type={
-    {`\`-d, --detach\``}: {
+    "-d, --detach": {
       description: "Description: Run in background",
     },
-    {`\`-i, --interactive\``}: {
+    "-i, --interactive": {
       description: "Description: Keep stdin open",
     },
-    {`\`-t, --tty\``}: {
+    "-t, --tty": {
       description: "Description: Allocate a pseudo-TTY",
     },
-    {`\`--rm\``}: {
+    "--rm": {
       description: "Description: Remove box after it exits",
     },
-    {`\`--name NAME\``}: {
+    "--name NAME": {
       description: "Description: Assign a name",
     },
-    {`\`--restart POLICY\``}: {
+    "--restart POLICY": {
       description: {`Default: \`no\` · Description: \`no\` · \`always\` · \`on-failure[:N]\` · \`unless-stopped\``},
     },
-    {`\`--cpus N\``}: {
+    "--cpus N": {
       description: {`Default: \`2\` · Description: Number of vCPUs`},
     },
-    {`\`--memory SIZE\``}: {
+    "--memory SIZE": {
       description: {`Default: \`512m\` · Description: Memory (\`512m\`, \`2g\`, etc.)`},
     },
-    {`\`-p HOST:GUEST\``}: {
+    "-p HOST:GUEST": {
       description: "Description: Publish port (repeatable)",
     },
-    {`\`-v HOST:GUEST[:ro]\``}: {
+    "-v HOST:GUEST[:ro]": {
       description: "Description: Bind mount or named volume (repeatable)",
     },
-    {`\`-e KEY=VALUE\``}: {
+    "-e KEY=VALUE": {
       description: "Description: Environment variable (repeatable)",
     },
-    {`\`--env-file FILE\``}: {
+    "--env-file FILE": {
       description: "Description: Load env vars from file (repeatable)",
     },
-    {`\`-w, --workdir DIR\``}: {
+    "-w, --workdir DIR": {
       description: "Description: Working directory",
     },
-    {`\`-u, --user USER\``}: {
+    "-u, --user USER": {
       description: "Description: Run as user",
     },
-    {`\`--entrypoint CMD\``}: {
+    "--entrypoint CMD": {
       description: "Description: Override image entrypoint",
     },
-    {`\`--hostname NAME\``}: {
+    "--hostname NAME": {
       description: "Description: Set hostname",
     },
-    {`\`--network NAME\``}: {
+    "--network NAME": {
       description: "Description: Connect to network",
     },
-    {`\`--dns IP\``}: {
+    "--dns IP": {
       description: "Description: Custom DNS server (repeatable)",
     },
-    {`\`--add-host HOST:IP\``}: {
+    "--add-host HOST:IP": {
       description: "Description: Add /etc/hosts entry (repeatable)",
     },
-    {`\`-l, --label KEY=VALUE\``}: {
+    "-l, --label KEY=VALUE": {
       description: "Description: Set label (repeatable)",
     },
-    {`\`--tmpfs PATH\``}: {
+    "--tmpfs PATH": {
       description: "Description: Mount tmpfs (repeatable)",
     },
-    {`\`--platform PLATFORM\``}: {
+    "--platform PLATFORM": {
       description: {`Description: Target platform (e.g. \`linux/amd64\`)`},
     },
-    {`\`--init\``}: {
+    "--init": {
       description: "Description: Run init process as PID 1",
     },
-    {`\`--read-only\``}: {
+    "--read-only": {
       description: "Description: Read-only root filesystem",
     },
-    {`\`--privileged\``}: {
+    "--privileged": {
       description: "Description: Extended privileges",
     },
-    {`\`--cap-add CAP\``}: {
+    "--cap-add CAP": {
       description: "Description: Add capability (repeatable)",
     },
-    {`\`--cap-drop CAP\``}: {
+    "--cap-drop CAP": {
       description: "Description: Drop capability (repeatable)",
     },
-    {`\`--security-opt OPT\``}: {
+    "--security-opt OPT": {
       description: "Description: Security option (repeatable)",
     },
-    {`\`--device PATH\``}: {
+    "--device PATH": {
       description: "Description: Device passthrough (stored, not enforced)",
     },
-    {`\`--gpus VALUE\``}: {
+    "--gpus VALUE": {
       description: "Description: GPU access (stored, not enforced)",
     },
-    {`\`--pids-limit N\``}: {
+    "--pids-limit N": {
       description: "Description: PID limit",
     },
-    {`\`--cpuset-cpus CPUS\``}: {
+    "--cpuset-cpus CPUS": {
       description: {`Description: CPU pinning (e.g. \`0-3\`)`},
     },
-    {`\`--cpu-shares N\``}: {
+    "--cpu-shares N": {
       description: "Description: CPU shares (cgroup weight)",
     },
-    {`\`--cpu-quota N\``}: {
+    "--cpu-quota N": {
       description: "Description: CPU quota in microseconds",
     },
-    {`\`--cpu-period N\``}: {
+    "--cpu-period N": {
       description: "Description: CPU period in microseconds",
     },
-    {`\`--memory-reservation SIZE\``}: {
+    "--memory-reservation SIZE": {
       description: "Description: Memory soft limit",
     },
-    {`\`--memory-swap SIZE\``}: {
+    "--memory-swap SIZE": {
       description: "Description: Memory + swap limit",
     },
-    {`\`--ulimit TYPE=SOFT:HARD\``}: {
+    "--ulimit TYPE=SOFT:HARD": {
       description: "Description: ulimit (repeatable)",
     },
-    {`\`--health-cmd CMD\``}: {
+    "--health-cmd CMD": {
       description: "Description: Health check command",
     },
-    {`\`--health-interval N\``}: {
+    "--health-interval N": {
       description: {`Default: \`30\` · Description: Health check interval (seconds)`},
     },
-    {`\`--health-timeout N\``}: {
+    "--health-timeout N": {
       description: {`Default: \`5\` · Description: Health check timeout (seconds)`},
     },
-    {`\`--health-retries N\``}: {
+    "--health-retries N": {
       description: {`Default: \`3\` · Description: Health check retries`},
     },
-    {`\`--health-start-period N\``}: {
+    "--health-start-period N": {
       description: {`Default: \`0\` · Description: Health check start period (seconds)`},
     },
-    {`\`--log-driver DRIVER\``}: {
+    "--log-driver DRIVER": {
       description: {`Default: \`json-file\` · Description: \`json-file\` · \`syslog\` · \`none\``},
     },
-    {`\`--log-opt KEY=VALUE\``}: {
+    "--log-opt KEY=VALUE": {
       description: "Description: Logging option (repeatable)",
     },
-    {`\`--tee\``}: {
+    "--tee": {
       description: "Description: Enable AMD SEV-SNP",
     },
-    {`\`--tee-workload-id ID\``}: {
+    "--tee-workload-id ID": {
       description: "Description: TEE workload identifier",
     },
-    {`\`--tee-simulate\``}: {
+    "--tee-simulate": {
       description: "Description: TEE simulation mode (dev only)",
     },
   }
@@ -226,7 +226,7 @@ a3s-box rm [OPTIONS] BOX [BOX...]
 
 <TypeTable
   type={
-    {`\`-f, --force\``}: {
+    "-f, --force": {
       description: "Force remove running boxes",
     },
   }
@@ -265,13 +265,13 @@ a3s-box container-update BOX [OPTIONS]
 
 <TypeTable
   type={
-    {`\`--cpus N\``}: {
+    "--cpus N": {
       description: "Update vCPU count",
     },
-    {`\`--memory SIZE\``}: {
+    "--memory SIZE": {
       description: "Update memory limit",
     },
-    {`\`--restart POLICY\``}: {
+    "--restart POLICY": {
       description: "Update restart policy",
     },
   }
@@ -291,22 +291,22 @@ a3s-box exec [OPTIONS] BOX -- COMMAND [ARGS...]
 
 <TypeTable
   type={
-    {`\`-i, --interactive\``}: {
+    "-i, --interactive": {
       description: "Description: Keep stdin open",
     },
-    {`\`-t, --tty\``}: {
+    "-t, --tty": {
       description: "Description: Allocate a pseudo-TTY",
     },
-    {`\`-e, --env KEY=VALUE\``}: {
+    "-e, --env KEY=VALUE": {
       description: "Description: Environment variable (repeatable)",
     },
-    {`\`-w, --workdir DIR\``}: {
+    "-w, --workdir DIR": {
       description: "Description: Working directory",
     },
-    {`\`-u, --user USER\``}: {
+    "-u, --user USER": {
       description: "Description: Run as user",
     },
-    {`\`--timeout N\``}: {
+    "--timeout N": {
       description: {`Default: \`5\` · Description: Timeout in seconds`},
     },
   }
@@ -348,13 +348,13 @@ a3s-box pull [OPTIONS] IMAGE
 
 <TypeTable
   type={
-    {`\`--verify-key FILE\``}: {
+    "--verify-key FILE": {
       description: "Verify cosign signature with public key",
     },
-    {`\`--verify-issuer ISSUER\``}: {
+    "--verify-issuer ISSUER": {
       description: "Verify keyless OIDC issuer",
     },
-    {`\`--verify-identity IDENTITY\``}: {
+    "--verify-identity IDENTITY": {
       description: "Verify keyless subject identity",
     },
   }
@@ -383,22 +383,22 @@ a3s-box build [OPTIONS] PATH
 
 <TypeTable
   type={
-    {`\`-t, --tag NAME:TAG\``}: {
+    "-t, --tag NAME:TAG": {
       description: "Image name and tag (repeatable)",
     },
-    {`\`-f, --file PATH\``}: {
+    "-f, --file PATH": {
       description: {`Dockerfile path (default: \`PATH/Dockerfile\`)`},
     },
-    {`\`--build-arg KEY=VALUE\``}: {
+    "--build-arg KEY=VALUE": {
       description: "Build argument (repeatable)",
     },
-    {`\`--platform PLATFORM\``}: {
+    "--platform PLATFORM": {
       description: "Target platform(s), comma-separated",
     },
-    {`\`--quiet\``}: {
+    "--quiet": {
       description: "Suppress build output",
     },
-    {`\`--no-cache\``}: {
+    "--no-cache": {
       description: "Disable layer cache",
     },
   }
@@ -423,10 +423,10 @@ a3s-box images [OPTIONS]
 
 <TypeTable
   type={
-    {`\`-q, --quiet\``}: {
+    "-q, --quiet": {
       description: "Only show image IDs",
     },
-    {`\`--format FORMAT\``}: {
+    "--format FORMAT": {
       description: {`Go template format (\`{{.Repository}}\`, \`{{.Tag}}\`, \`{{.Digest}}\`, \`{{.Size}}\`, \`{{.CreatedAt}}\`)`},
     },
   }
@@ -485,13 +485,13 @@ a3s-box commit [OPTIONS] BOX IMAGE:TAG
 
 <TypeTable
   type={
-    {`\`-m, --message MSG\``}: {
+    "-m, --message MSG": {
       description: "Commit message",
     },
-    {`\`-a, --author AUTHOR\``}: {
+    "-a, --author AUTHOR": {
       description: "Author",
     },
-    {`\`-c, --change INSTRUCTION\``}: {
+    "-c, --change INSTRUCTION": {
       description: "Apply Dockerfile instruction",
     },
   }
@@ -517,16 +517,16 @@ a3s-box ps [OPTIONS]
 
 <TypeTable
   type={
-    {`\`-a, --all\``}: {
+    "-a, --all": {
       description: "Show all boxes (including stopped)",
     },
-    {`\`-q, --quiet\``}: {
+    "-q, --quiet": {
       description: "Only show IDs",
     },
-    {`\`-f, --filter KEY=VALUE\``}: {
+    "-f, --filter KEY=VALUE": {
       description: {`Filter: \`name=\`, \`id=\`, \`status=\`, \`label=\`, \`image=\``},
     },
-    {`\`--format FORMAT\``}: {
+    "--format FORMAT": {
       description: {`Go template: \`{{.ID}}\`, \`{{.Name}}\`, \`{{.Image}}\`, \`{{.Status}}\`, \`{{.CreatedAt}}\`, \`{{.Health}}\``},
     },
   }
@@ -553,19 +553,19 @@ a3s-box logs [OPTIONS] BOX
 
 <TypeTable
   type={
-    {`\`-f, --follow\``}: {
+    "-f, --follow": {
       description: "Follow log output",
     },
-    {`\`--tail N\``}: {
+    "--tail N": {
       description: "Last N lines",
     },
-    {`\`--since TIMESTAMP\``}: {
+    "--since TIMESTAMP": {
       description: "Show logs since timestamp",
     },
-    {`\`--until TIMESTAMP\``}: {
+    "--until TIMESTAMP": {
       description: "Show logs until timestamp",
     },
-    {`\`-t, --timestamps\``}: {
+    "-t, --timestamps": {
       description: "Show timestamps",
     },
   }
@@ -591,10 +591,10 @@ a3s-box events [OPTIONS]
 
 <TypeTable
   type={
-    {`\`--filter KEY=VALUE\``}: {
+    "--filter KEY=VALUE": {
       description: {`Filter by \`type=\`, \`action=\`, \`box=\``},
     },
-    {`\`--json\``}: {
+    "--json": {
       description: "Output as JSON lines",
     },
   }
@@ -636,14 +636,14 @@ a3s-box network create [OPTIONS] NAME
 
 <TypeTable
   type={
-    {`\`--subnet CIDR\``}: {
+    "--subnet CIDR": {
       description: {`Network subnet (e.g. \`10.88.0.0/24\`)`},
     },
-    {`\`--gateway IP\``}: {
+    "--gateway IP": {
       description: "Gateway address",
     },
-    {`\`--isolation POLICY\``}: {
-      description: {`\`none\` · \`strict\` · \`custom\``},
+    "--isolation POLICY": {
+      description: "none\` · \`strict\` · \`custom",
     },
   }
 />
@@ -733,22 +733,22 @@ a3s-box attest BOX [OPTIONS]
 
 <TypeTable
   type={
-    {`\`--ratls\``}: {
+    "--ratls": {
       description: "Use RA-TLS for attestation",
     },
-    {`\`--policy FILE\``}: {
+    "--policy FILE": {
       description: "Attestation policy file",
     },
-    {`\`--nonce HEX\``}: {
+    "--nonce HEX": {
       description: "Custom nonce (hex)",
     },
-    {`\`--raw\``}: {
+    "--raw": {
       description: "Output raw report bytes",
     },
-    {`\`--quiet\``}: {
+    "--quiet": {
       description: "Suppress output",
     },
-    {`\`--allow-simulated\``}: {
+    "--allow-simulated": {
       description: "Accept simulated reports",
     },
   }
@@ -763,13 +763,13 @@ a3s-box unseal BOX --context CTX [--allow-simulated]
 
 <TypeTable
   type={
-    {`\`measurement-and-chip\``}: {
+    "measurement-and-chip": {
       description: "Tied to image measurement + specific chip (default)",
     },
-    {`\`measurement-only\``}: {
+    "measurement-only": {
       description: "Portable across hardware, same image",
     },
-    {`\`chip-only\``}: {
+    "chip-only": {
       description: "Portable across images, same hardware",
     },
   }
@@ -799,13 +799,13 @@ a3s-box audit [OPTIONS]
 
 <TypeTable
   type={
-    {`\`--action ACTION\``}: {
+    "--action ACTION": {
       description: {`Filter by action (e.g. \`run\`, \`exec\`, \`stop\`)`},
     },
-    {`\`--box BOX\``}: {
+    "--box BOX": {
       description: "Filter by box name or ID",
     },
-    {`\`--outcome OUTCOME\``}: {
+    "--outcome OUTCOME": {
       description: {`Filter by \`success\` or \`failure\``},
     },
   }
@@ -857,13 +857,13 @@ Boxes can be referenced by:
 <TypeTable
   type={
     "Full UUID": {
-      description: {`\`a1b2c3d4-e5f6-7890-abcd-ef1234567890\``},
+      description: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     },
     "Short ID (12-char prefix)": {
-      description: {`\`a1b2c3d4e5f6\``},
+      description: "a1b2c3d4e5f6",
     },
     "Name": {
-      description: {`\`my-box\``},
+      description: "my-box",
     },
   }
 />

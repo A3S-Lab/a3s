@@ -33,22 +33,22 @@ Each task has the following fields:
 
 <TypeTable
   type={
-    {`\`Pending\``}: {
+    "Pending": {
       description: "Not yet started",
     },
-    {`\`InProgress\``}: {
+    "InProgress": {
       description: "Currently being executed",
     },
-    {`\`Completed\``}: {
+    "Completed": {
       description: "Successfully finished",
     },
-    {`\`Failed\``}: {
+    "Failed": {
       description: "Execution failed",
     },
-    {`\`Skipped\``}: {
+    "Skipped": {
       description: "Skipped (dependency failed or no longer needed)",
     },
-    {`\`Cancelled\``}: {
+    "Cancelled": {
       description: "Manually cancelled",
     },
   }
@@ -58,13 +58,13 @@ Each task has the following fields:
 
 <TypeTable
   type={
-    {`\`High\``}: {
+    "High": {
       description: "Execute first",
     },
-    {`\`Medium\``}: {
+    "Medium": {
       description: "Default priority",
     },
-    {`\`Low\``}: {
+    "Low": {
       description: "Execute after higher-priority tasks",
     },
   }
@@ -109,20 +109,20 @@ The planner evaluates task complexity to choose an execution strategy:
 
 <TypeTable
   type={
-    {`\`Simple\``}: {
-      type: {`\`DIRECT\``},
+    "Simple": {
+      type: "DIRECT",
       description: "Single generation, no planning needed",
     },
-    {`\`Medium\``}: {
-      type: {`\`ITERATIVE\``},
+    "Medium": {
+      type: "ITERATIVE",
       description: "Generate → tool → reflect → repeat",
     },
-    {`\`Complex\``}: {
-      type: {`\`PLANNED\``},
+    "Complex": {
+      type: "PLANNED",
       description: "Create plan first, then execute steps",
     },
-    {`\`VeryComplex\``}: {
-      type: {`\`PARALLEL\``},
+    "VeryComplex": {
+      type: "PARALLEL",
       description: "Independent subtasks executed in parallel",
     },
   }
@@ -381,19 +381,19 @@ session = agent.session("/my-project", planning=True, goal_tracking=True)
 
 <TypeTable
   type={
-    {`\`get_ready_steps()\``}: {
+    "get_ready_steps()": {
       description: {`Returns steps with all dependencies \`Completed\``},
     },
-    {`\`mark_status(id, status)\``}: {
+    "mark_status(id, status)": {
       description: "Update a step's status by ID",
     },
-    {`\`pending_count()\``}: {
+    "pending_count()": {
       description: {`Count remaining \`Pending\` steps`},
     },
-    {`\`has_deadlock()\``}: {
+    "has_deadlock()": {
       description: "Detect circular deps or all deps failed",
     },
-    {`\`progress()\``}: {
+    "progress()": {
       description: "Completion fraction (0.0 to 1.0)",
     },
   }
@@ -499,16 +499,16 @@ Task-related events emitted during execution:
 
 <TypeTable
   type={
-    {`\`StepStart\``}: {
+    "StepStart": {
       description: {`Fields: \`step_id\`, \`description\`, \`step_number\`, \`total_steps\` · Description: A plan step began execution. During parallel waves, multiple \`StepStart\` events fire before any \`StepEnd\`.`},
     },
-    {`\`StepEnd\``}: {
+    "StepEnd": {
       description: {`Fields: \`step_id\`, \`status\`, \`step_number\`, \`total_steps\` · Description: A plan step finished. \`status\` is \`Completed\` or \`Failed\`.`},
     },
-    {`\`GoalProgress\``}: {
+    "GoalProgress": {
       description: {`Fields: \`goal\`, \`progress\`, \`completed_steps\`, \`total_steps\` · Description: Fires after each wave completes. \`progress\` is 0.0–1.0.`},
     },
-    {`\`TaskUpdated\``}: {
+    "TaskUpdated": {
       description: {`Fields: \`session_id\`, \`tasks\` · Description: Task list changed (added, status change, completed). Includes the full current task list.`},
     },
   }
@@ -593,10 +593,10 @@ When a session is restored from storage, its task list is restored too — the a
 
 <TypeTable
   type={
-    {`\`plan\``}: {
+    "plan": {
       description: {`Signature: \`async fn plan(&self, prompt: &str, context: &PlanContext) -> Result<Vec<AgentTask>>\` · Description: Decompose prompt into tasks`},
     },
-    {`\`name\``}: {
+    "name": {
       description: {`Signature: \`fn name(&self) -> &str\` · Description: Planner identifier`},
     },
   }

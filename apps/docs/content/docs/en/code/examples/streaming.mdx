@@ -14,25 +14,25 @@ Subscribe to `AgentEvent` for real-time visibility into what the agent is doing 
 
 <TypeTable
   type={
-    {`\`Start\``}: {
+    "Start": {
       description: "Agent begins processing",
     },
-    {`\`TurnStart\` / \`TurnEnd\``}: {
+    "TurnStart\` / \`TurnEnd": {
       description: "Each LLM turn",
     },
-    {`\`TextDelta\``}: {
+    "TextDelta": {
       description: "Streaming text chunk",
     },
-    {`\`ToolStart\` / \`ToolEnd\``}: {
+    "ToolStart\` / \`ToolEnd": {
       description: "Tool execution",
     },
-    {`\`ToolOutputDelta\``}: {
+    "ToolOutputDelta": {
       description: "Streaming tool output (bash)",
     },
-    {`\`ContextResolving\` / \`ContextResolved\``}: {
+    "ContextResolving\` / \`ContextResolved": {
       description: "RAG retrieval",
     },
-    {`\`End\``}: {
+    "End": {
       description: "Agent finished",
     },
   }

@@ -106,15 +106,15 @@ Alerts are triggered when:
 
 <TypeTable
   type={
-    {`\`/api/v1/audit/events\``}: {
+    "/api/v1/audit/events": {
       type: "GET",
       description: "List recent audit events",
     },
-    {`\`/api/v1/audit/stats\``}: {
+    "/api/v1/audit/stats": {
       type: "GET",
       description: "Audit statistics summary",
     },
-    {`\`/api/v1/audit/events/:session_id\``}: {
+    "/api/v1/audit/events/:session_id": {
       type: "GET",
       description: "Events for a specific session",
     },
@@ -125,15 +125,15 @@ Alerts are triggered when:
 
 <TypeTable
   type={
-    {`\`/api/v1/events\``}: {
+    "/api/v1/events": {
       type: "GET",
       description: "List system events",
     },
-    {`\`/api/v1/events/:id\``}: {
+    "/api/v1/events/:id": {
       type: "GET",
       description: "Get event by ID",
     },
-    {`\`/api/v1/events/subscribe\``}: {
+    "/api/v1/events/subscribe": {
       type: "GET",
       description: "SSE event stream",
     },
@@ -144,15 +144,15 @@ Alerts are triggered when:
 
 <TypeTable
   type={
-    {`\`/health\``}: {
+    "/health": {
       type: "GET",
       description: "Health check",
     },
-    {`\`/api/v1/gateway/status\``}: {
+    "/api/v1/gateway/status": {
       type: "GET",
       description: "Gateway status with session counts",
     },
-    {`\`/.well-known/a3s-service.json\``}: {
+    "/.well-known/a3s-service.json": {
       type: "GET",
       description: "Service discovery",
     },

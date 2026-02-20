@@ -40,19 +40,19 @@ let item = MemoryItem::new("Auth uses JWT with 24h expiry")
 
 <TypeTable
   type={
-    {`\`.with_importance(f32)\``}: {
+    ".with_importance(f32)": {
       description: "Set importance, clamped to 0.0–1.0",
     },
-    {`\`.with_tag(str)\``}: {
+    ".with_tag(str)": {
       description: "Append a single tag",
     },
-    {`\`.with_tags(Vec<String>)\``}: {
+    ".with_tags(Vec<String>)": {
       description: "Replace all tags",
     },
-    {`\`.with_type(MemoryType)\``}: {
+    ".with_type(MemoryType)": {
       description: "Set memory type",
     },
-    {`\`.with_metadata(key, value)\``}: {
+    ".with_metadata(key, value)": {
       description: "Insert a metadata key-value pair",
     },
   }
@@ -62,16 +62,16 @@ let item = MemoryItem::new("Auth uses JWT with 24h expiry")
 
 <TypeTable
   type={
-    {`\`Episodic\``}: {
+    "Episodic": {
       description: "Purpose: Specific events and interactions · Typical importance: 0.5",
     },
-    {`\`Semantic\``}: {
+    "Semantic": {
       description: "Purpose: Facts and domain knowledge · Typical importance: 0.5–0.8",
     },
-    {`\`Procedural\``}: {
+    "Procedural": {
       description: "Purpose: Successful patterns · Typical importance: 0.8",
     },
-    {`\`Working\``}: {
+    "Working": {
       description: "Purpose: Active context for the current task · Typical importance: varies",
     },
   }

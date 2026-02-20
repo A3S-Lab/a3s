@@ -15,28 +15,28 @@ Hooks 允许你拦截 agent 生命周期事件，用于审计、修改或阻止�
 
 <TypeTable
   type={
-    {`\`PreToolUse\``}: {
+    "PreToolUse": {
       description: "触发时机: 工具执行前 · 可阻止？: ✅",
     },
-    {`\`PostToolUse\``}: {
+    "PostToolUse": {
       description: "触发时机: 工具完成后 · 可阻止？: ❌",
     },
-    {`\`PrePrompt\``}: {
+    "PrePrompt": {
       description: "触发时机: 提示发送到 LLM 前 · 可阻止？: ✅",
     },
-    {`\`PostResponse\``}: {
+    "PostResponse": {
       description: "触发时机: LLM 响应后 · 可阻止？: ❌",
     },
-    {`\`OnError\``}: {
+    "OnError": {
       description: "触发时机: 任何 agent 错误时 · 可阻止？: ❌",
     },
-    {`\`GenerateStart\``}: {
+    "GenerateStart": {
       description: "触发时机: LLM 生成开始 · 可阻止？: ❌",
     },
-    {`\`GenerateEnd\``}: {
+    "GenerateEnd": {
       description: "触发时机: LLM 生成结束 · 可阻止？: ❌",
     },
-    {`\`SessionStart\` / \`SessionEnd\``}: {
+    "SessionStart\` / \`SessionEnd": {
       description: "触发时机: 会话生命周期 · 可阻止？: ❌",
     },
   }
@@ -205,13 +205,13 @@ session.registerHook('no-bash', 'pre_tool_use', (event) => {
 
 <TypeTable
   type={
-    {`\`HookResponse::continue_()\``}: {
+    "HookResponse::continue_()": {
       description: "允许操作继续",
     },
-    {`\`HookResponse::block(reason)\``}: {
+    "HookResponse::block(reason)": {
       description: "以原因字符串取消操作",
     },
-    {`\`HookResponse::modify(data)\``}: {
+    "HookResponse::modify(data)": {
       description: "在执行前替换事件数据",
     },
   }
@@ -221,20 +221,20 @@ session.registerHook('no-bash', 'pre_tool_use', (event) => {
 
 <TypeTable
   type={
-    {`\`PreToolUse\``}: {
-      description: {`\`tool: String\`, \`args: Value\``},
+    "PreToolUse": {
+      description: "tool: String\`, \`args: Value",
     },
-    {`\`PostToolUse\``}: {
-      description: {`\`tool: String\`, \`output: String\`, \`exit_code: i32\``},
+    "PostToolUse": {
+      description: "tool: String\`, \`output: String\`, \`exit_code: i32",
     },
-    {`\`PrePrompt\``}: {
-      description: {`\`prompt: String\``},
+    "PrePrompt": {
+      description: "prompt: String",
     },
-    {`\`PostResponse\``}: {
-      description: {`\`text: String\`, \`usage: Usage\``},
+    "PostResponse": {
+      description: "text: String\`, \`usage: Usage",
     },
-    {`\`OnError\``}: {
-      description: {`\`error: String\`, \`turn: u32\``},
+    "OnError": {
+      description: "error: String\`, \`turn: u32",
     },
   }
 />

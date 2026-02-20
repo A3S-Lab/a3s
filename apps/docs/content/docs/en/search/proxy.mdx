@@ -32,10 +32,10 @@ let fetcher: Arc<dyn PageFetcher> = Arc::new(
 
 <TypeTable
   type={
-    {`\`new(pool)\``}: {
+    "new(pool)": {
       description: {`Create with \`Arc<ProxyPool>\` — rotates proxy per request`},
     },
-    {`\`with_timeout(duration)\``}: {
+    "with_timeout(duration)": {
       description: "Set request timeout (default: 30s)",
     },
   }
@@ -266,10 +266,10 @@ const response = await search.search('rust', {
 
 <TypeTable
   type={
-    {`\`RoundRobin\``}: {
+    "RoundRobin": {
       description: "Rotate through proxies sequentially (default)",
     },
-    {`\`Random\``}: {
+    "Random": {
       description: "Select random proxy each time",
     },
   }
@@ -294,16 +294,16 @@ proxy.url()  // -> "socks5://user:pass@proxy.example.com:8080"
 
 <TypeTable
   type={
-    {`\`new(host, port)\``}: {
+    "new(host, port)": {
       description: "Create HTTP proxy config",
     },
-    {`\`with_protocol(protocol)\``}: {
+    "with_protocol(protocol)": {
       description: {`Set protocol (\`Http\` / \`Https\` / \`Socks5\`)`},
     },
-    {`\`with_auth(user, pass)\``}: {
+    "with_auth(user, pass)": {
       description: "Set authentication",
     },
-    {`\`url()\``}: {
+    "url()": {
       description: "Get proxy URL string",
     },
   }
@@ -313,37 +313,37 @@ proxy.url()  // -> "socks5://user:pass@proxy.example.com:8080"
 
 <TypeTable
   type={
-    {`\`new()\``}: {
+    "new()": {
       description: "Create empty pool (disabled)",
     },
-    {`\`with_proxies(proxies)\``}: {
+    "with_proxies(proxies)": {
       description: "Create with static proxy list",
     },
-    {`\`with_provider(provider)\``}: {
+    "with_provider(provider)": {
       description: "Create with dynamic provider",
     },
-    {`\`with_strategy(strategy)\``}: {
+    "with_strategy(strategy)": {
       description: "Set selection strategy",
     },
-    {`\`set_enabled(bool)\``}: {
+    "set_enabled(bool)": {
       description: {`Enable/disable pool (\`&self\`, thread-safe)`},
     },
-    {`\`is_enabled()\``}: {
+    "is_enabled()": {
       description: "Check if enabled",
     },
-    {`\`refresh()\``}: {
+    "refresh()": {
       description: "Refresh proxies from provider",
     },
-    {`\`get_proxy()\``}: {
+    "get_proxy()": {
       description: "Get next proxy (based on strategy)",
     },
-    {`\`add_proxy(proxy)\``}: {
+    "add_proxy(proxy)": {
       description: "Add a proxy to pool",
     },
-    {`\`remove_proxy(host, port)\``}: {
+    "remove_proxy(host, port)": {
       description: "Remove a proxy",
     },
-    {`\`len()\``}: {
+    "len()": {
       description: "Number of proxies in pool",
     },
   }

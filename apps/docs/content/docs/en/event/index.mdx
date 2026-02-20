@@ -15,16 +15,16 @@ All optional modules are behind feature gates. The minimal core compiles with ze
 
 <TypeTable
   type={
-    {`\`nats\``}: {
+    "nats": {
       description: "Default: ✅ · Description: NATS JetStream provider",
     },
-    {`\`encryption\``}: {
+    "encryption": {
       description: "Default: ✅ · Description: AES-256-GCM payload encryption with key rotation",
     },
-    {`\`cloudevents\``}: {
+    "cloudevents": {
       description: "Default: ✅ · Description: CloudEvents v1.0 conversion",
     },
-    {`\`routing\``}: {
+    "routing": {
       description: "Default: ✅ · Description: Broker/Trigger event routing + Event sinks",
     },
   }
@@ -115,34 +115,34 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
 
 <TypeTable
   type={
-    {`\`EventProvider\``}: {
+    "EventProvider": {
       description: "Core trait — all backends implement this",
     },
-    {`\`EventBus\``}: {
+    "EventBus": {
       description: "High-level API with subscription management",
     },
-    {`\`Event\``}: {
+    "Event": {
       description: "Message envelope (id, subject, category, event_type, version, payload)",
     },
-    {`\`ReceivedEvent\``}: {
+    "ReceivedEvent": {
       description: "Event with delivery context (sequence, num_delivered, stream)",
     },
-    {`\`Subscription\``}: {
+    "Subscription": {
       description: "Async event stream from any provider",
     },
-    {`\`PendingEvent\``}: {
+    "PendingEvent": {
       description: "Event with ack/nak callbacks for manual acknowledgement",
     },
-    {`\`SchemaRegistry\``}: {
+    "SchemaRegistry": {
       description: "Event type validation with compatibility checks",
     },
-    {`\`StateStore\``}: {
+    "StateStore": {
       description: "Trait for persisting subscription state",
     },
-    {`\`EventMetrics\``}: {
+    "EventMetrics": {
       description: "Lock-free atomic counters",
     },
-    {`\`DlqHandler\``}: {
+    "DlqHandler": {
       description: "Dead letter queue trait",
     },
   }
@@ -152,19 +152,19 @@ a3s-event = { version = "0.3", default-features = false, features = ["nats"] }
 
 <TypeTable
   type={
-    {`\`Aes256GcmEncryptor\``}: {
+    "Aes256GcmEncryptor": {
       description: {`Feature: \`encryption\` · Description: AES-256-GCM with key rotation`},
     },
-    {`\`CloudEvent\``}: {
+    "CloudEvent": {
       description: {`Feature: \`cloudevents\` · Description: CloudEvents v1.0 envelope`},
     },
-    {`\`Broker\` / \`Trigger\``}: {
+    "Broker\` / \`Trigger": {
       description: {`Feature: \`routing\` · Description: Knative-inspired event routing`},
     },
-    {`\`EventSink\``}: {
+    "EventSink": {
       description: {`Feature: \`routing\` · Description: Delivery targets: \`TopicSink\`, \`InProcessSink\`, \`LogSink\``},
     },
-    {`\`NatsProvider\``}: {
+    "NatsProvider": {
       description: {`Feature: \`nats\` · Description: NATS JetStream distributed provider`},
     },
   }

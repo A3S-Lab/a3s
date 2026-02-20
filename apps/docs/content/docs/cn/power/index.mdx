@@ -47,22 +47,22 @@ A3S Power 是本地 LLM 模型管理和推理基础设施。提供兼容 Ollama 
 
 <TypeTable
   type={
-    {`\`cli\``}: {
+    "cli": {
       description: "12 个命令：pull、run、list、show、delete、serve、ps、stop、push、cp、create",
     },
-    {`\`api\``}: {
+    "api": {
       description: "14 个 Ollama 原生端点 + 5 个 OpenAI 兼容端点",
     },
-    {`\`backend\``}: {
+    "backend": {
       description: "可插拔推理引擎，内置 llama.cpp 实现",
     },
-    {`\`model\``}: {
+    "model": {
       description: "内容寻址存储、注册表、解析、GGUF 读取器",
     },
-    {`\`server\``}: {
+    "server": {
       description: "Axum HTTP 服务器，支持 CORS、追踪、Prometheus 指标",
     },
-    {`\`config\``}: {
+    "config": {
       description: "TOML 配置，兼容 Ollama 环境变量",
     },
   }
@@ -87,16 +87,16 @@ A3S Power 是本地 LLM 模型管理和推理基础设施。提供兼容 Ollama 
 
 <TypeTable
   type={
-    {`\`~/.a3s/power/\``}: {
+    "~/.a3s/power/": {
       description: {`基础目录（可通过 \`\$A3S_POWER_HOME\` 覆盖）`},
     },
-    {`\`~/.a3s/power/config.toml\``}: {
+    "~/.a3s/power/config.toml": {
       description: "配置文件",
     },
-    {`\`~/.a3s/power/models/manifests/\``}: {
+    "~/.a3s/power/models/manifests/": {
       description: "模型 manifest 文件",
     },
-    {`\`~/.a3s/power/models/blobs/\``}: {
+    "~/.a3s/power/models/blobs/": {
       description: "内容寻址 blob 存储",
     },
   }

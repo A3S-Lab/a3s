@@ -222,61 +222,61 @@ node examples/<name>.js
 
 <TypeTable
   type={
-    {`\`SecurityProvider\``}: {
+    "SecurityProvider": {
       description: "Input taint + output sanitization",
-      default: {`\`DefaultSecurityProvider\``},
+      default: "DefaultSecurityProvider",
     },
-    {`\`PermissionChecker\``}: {
+    "PermissionChecker": {
       description: "Tool access control",
-      default: {`\`PermissionPolicy\``},
+      default: "PermissionPolicy",
     },
-    {`\`ConfirmationProvider\``}: {
+    "ConfirmationProvider": {
       description: "Human-in-the-loop approval",
-      default: {`\`ConfirmationManager\``},
+      default: "ConfirmationManager",
     },
-    {`\`ContextProvider\``}: {
+    "ContextProvider": {
       description: "RAG retrieval",
-      default: {`\`FileSystemContextProvider\``},
+      default: "FileSystemContextProvider",
     },
-    {`\`EmbeddingProvider\``}: {
+    "EmbeddingProvider": {
       description: "Vector embeddings",
-      default: {`\`OpenAiEmbeddingProvider\``},
+      default: "OpenAiEmbeddingProvider",
     },
-    {`\`VectorStore\``}: {
+    "VectorStore": {
       description: "Embedding storage",
-      default: {`\`InMemoryVectorStore\``},
+      default: "InMemoryVectorStore",
     },
-    {`\`SessionStore\``}: {
+    "SessionStore": {
       description: "Session persistence",
-      default: {`\`FileSessionStore\``},
+      default: "FileSessionStore",
     },
-    {`\`MemoryStore\``}: {
+    "MemoryStore": {
       description: "Long-term memory",
-      default: {`\`InMemoryStore\``},
+      default: "InMemoryStore",
     },
-    {`\`Tool\``}: {
+    "Tool": {
       description: "Custom tools",
       default: "12 built-in tools",
     },
-    {`\`Planner\``}: {
+    "Planner": {
       description: "Task decomposition",
-      default: {`\`LlmPlanner\``},
+      default: "LlmPlanner",
     },
-    {`\`HookHandler\``}: {
+    "HookHandler": {
       description: "Lifecycle event handling",
-      default: {`\`HookEngine\``},
+      default: "HookEngine",
     },
-    {`\`McpTransport\``}: {
+    "McpTransport": {
       description: "MCP protocol",
-      default: {`\`StdioTransport\``},
+      default: "StdioTransport",
     },
-    {`\`BashSandbox\``}: {
+    "BashSandbox": {
       description: "Shell isolation",
-      default: {`\`LocalBashExecutor\``},
+      default: "LocalBashExecutor",
     },
-    {`\`SkillValidator\``}: {
+    "SkillValidator": {
       description: "Skill activation logic",
-      default: {`\`DefaultSkillValidator\``},
+      default: "DefaultSkillValidator",
     },
   }
 />

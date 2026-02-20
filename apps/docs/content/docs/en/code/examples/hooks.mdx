@@ -15,28 +15,28 @@ Hooks let you intercept agent lifecycle events to audit, modify, or block operat
 
 <TypeTable
   type={
-    {`\`PreToolUse\``}: {
+    "PreToolUse": {
       description: "Fires when: Before a tool executes · Can block?: ✅",
     },
-    {`\`PostToolUse\``}: {
+    "PostToolUse": {
       description: "Fires when: After a tool completes · Can block?: ❌",
     },
-    {`\`PrePrompt\``}: {
+    "PrePrompt": {
       description: "Fires when: Before prompt is sent to LLM · Can block?: ✅",
     },
-    {`\`PostResponse\``}: {
+    "PostResponse": {
       description: "Fires when: After LLM responds · Can block?: ❌",
     },
-    {`\`OnError\``}: {
+    "OnError": {
       description: "Fires when: On any agent error · Can block?: ❌",
     },
-    {`\`GenerateStart\``}: {
+    "GenerateStart": {
       description: "Fires when: LLM generation begins · Can block?: ❌",
     },
-    {`\`GenerateEnd\``}: {
+    "GenerateEnd": {
       description: "Fires when: LLM generation ends · Can block?: ❌",
     },
-    {`\`SessionStart\` / \`SessionEnd\``}: {
+    "SessionStart\` / \`SessionEnd": {
       description: "Fires when: Session lifecycle · Can block?: ❌",
     },
   }
@@ -205,13 +205,13 @@ For persistent hook configuration across sessions, see [Hooks](/docs/code/hooks)
 
 <TypeTable
   type={
-    {`\`HookResponse::continue_()\``}: {
+    "HookResponse::continue_()": {
       description: "Allow the operation to proceed",
     },
-    {`\`HookResponse::block(reason)\``}: {
+    "HookResponse::block(reason)": {
       description: "Cancel the operation with a reason",
     },
-    {`\`HookResponse::modify(data)\``}: {
+    "HookResponse::modify(data)": {
       description: "Replace the event data before execution",
     },
   }
@@ -221,20 +221,20 @@ For persistent hook configuration across sessions, see [Hooks](/docs/code/hooks)
 
 <TypeTable
   type={
-    {`\`PreToolUse\``}: {
-      description: {`\`tool: String\`, \`args: Value\``},
+    "PreToolUse": {
+      description: "tool: String\`, \`args: Value",
     },
-    {`\`PostToolUse\``}: {
-      description: {`\`tool: String\`, \`output: String\`, \`exit_code: i32\``},
+    "PostToolUse": {
+      description: "tool: String\`, \`output: String\`, \`exit_code: i32",
     },
-    {`\`PrePrompt\``}: {
-      description: {`\`prompt: String\``},
+    "PrePrompt": {
+      description: "prompt: String",
     },
-    {`\`PostResponse\``}: {
-      description: {`\`text: String\`, \`usage: Usage\``},
+    "PostResponse": {
+      description: "text: String\`, \`usage: Usage",
     },
-    {`\`OnError\``}: {
-      description: {`\`error: String\`, \`turn: u32\``},
+    "OnError": {
+      description: "error: String\`, \`turn: u32",
     },
   }
 />

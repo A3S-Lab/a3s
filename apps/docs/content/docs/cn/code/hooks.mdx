@@ -15,28 +15,28 @@ A3S Code 提供 8 个生命周期 hooks，用于在 agent 执行期间拦截和�
 
 <TypeTable
   type={
-    {`\`PreToolUse\``}: {
+    "PreToolUse": {
       description: "触发时机: 工具执行前 · 使用场景: 验证参数、污点追踪、阻止危险调用",
     },
-    {`\`PostToolUse\``}: {
+    "PostToolUse": {
       description: "触发时机: 工具执行后 · 使用场景: 审计日志、注入扫描、输出过滤",
     },
-    {`\`GenerateStart\``}: {
+    "GenerateStart": {
       description: "触发时机: LLM 调用前 · 使用场景: 注入检测、提示日志",
     },
-    {`\`GenerateEnd\``}: {
+    "GenerateEnd": {
       description: "触发时机: LLM 响应后 · 使用场景: 输出清洗、PII 脱敏",
     },
-    {`\`SessionStart\``}: {
+    "SessionStart": {
       description: "触发时机: 会话创建时 · 使用场景: 初始化会话资源",
     },
-    {`\`SessionEnd\``}: {
+    "SessionEnd": {
       description: "触发时机: 会话销毁时 · 使用场景: 清理、持久化状态",
     },
-    {`\`SkillLoad\``}: {
+    "SkillLoad": {
       description: "触发时机: Skill 加载时 · 使用场景: 验证 skill、记录激活",
     },
-    {`\`SkillUnload\``}: {
+    "SkillUnload": {
       description: "触发时机: Skill 卸载时 · 使用场景: 清理 skill 资源",
     },
   }
@@ -65,16 +65,16 @@ Agent 循环
 
 <TypeTable
   type={
-    {`\`PreToolUse\``}: {
+    "PreToolUse": {
       description: "污点追踪 — 检查敏感值是否泄漏到工具参数中",
     },
-    {`\`PostToolUse\``}: {
+    "PostToolUse": {
       description: "注入扫描 — 检测工具输出中的提示注入",
     },
-    {`\`GenerateStart\``}: {
+    "GenerateStart": {
       description: "注入检测 — 扫描用户提示中的注入模式",
     },
-    {`\`GenerateEnd\``}: {
+    "GenerateEnd": {
       description: "输出清洗 — 从 LLM 响应中脱敏 PII",
     },
   }
@@ -173,19 +173,19 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 
 <TypeTable
   type={
-    {`\`session_id\``}: {
+    "session_id": {
       description: {`类型: \`String\` · 描述: 会话标识符`},
     },
-    {`\`tool\``}: {
+    "tool": {
       description: {`类型: \`String\` · 描述: 被调用的工具名称`},
     },
-    {`\`args\``}: {
+    "args": {
       description: {`类型: \`Value\` · 描述: 工具参数`},
     },
-    {`\`working_directory\``}: {
+    "working_directory": {
       description: {`类型: \`String\` · 描述: 当前工作区路径`},
     },
-    {`\`recent_tools\``}: {
+    "recent_tools": {
       description: {`类型: \`Vec<String>\` · 描述: 最近调用的工具`},
     },
   }
@@ -196,25 +196,25 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 
 <TypeTable
   type={
-    {`\`session_id\``}: {
+    "session_id": {
       description: {`类型: \`String\` · 描述: 会话标识符`},
     },
-    {`\`tool\``}: {
+    "tool": {
       description: {`类型: \`String\` · 描述: 工具名称`},
     },
-    {`\`args\``}: {
+    "args": {
       description: {`类型: \`Value\` · 描述: 工具参数`},
     },
-    {`\`result.success\``}: {
+    "result.success": {
       description: {`类型: \`bool\` · 描述: 工具是否成功`},
     },
-    {`\`result.output\``}: {
+    "result.output": {
       description: {`类型: \`String\` · 描述: 工具输出文本`},
     },
-    {`\`result.exit_code\``}: {
+    "result.exit_code": {
       description: {`类型: \`i32\` · 描述: 退出码`},
     },
-    {`\`result.duration_ms\``}: {
+    "result.duration_ms": {
       description: {`类型: \`u64\` · 描述: 执行时间`},
     },
   }
@@ -225,22 +225,22 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 
 <TypeTable
   type={
-    {`\`session_id\``}: {
+    "session_id": {
       description: {`类型: \`String\` · 描述: 会话标识符`},
     },
-    {`\`prompt\``}: {
+    "prompt": {
       description: {`类型: \`String\` · 描述: 用户提示`},
     },
-    {`\`system_prompt\``}: {
+    "system_prompt": {
       description: {`类型: \`String\` · 描述: 系统提示`},
     },
-    {`\`model_provider\``}: {
+    "model_provider": {
       description: {`类型: \`String\` · 描述: 提供商名称`},
     },
-    {`\`model_name\``}: {
+    "model_name": {
       description: {`类型: \`String\` · 描述: 模型名称`},
     },
-    {`\`available_tools\``}: {
+    "available_tools": {
       description: {`类型: \`Vec<String>\` · 描述: 已注册的工具名称`},
     },
   }
@@ -251,19 +251,19 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 
 <TypeTable
   type={
-    {`\`session_id\``}: {
+    "session_id": {
       description: {`类型: \`String\` · 描述: 会话标识符`},
     },
-    {`\`response_text\``}: {
+    "response_text": {
       description: {`类型: \`String\` · 描述: LLM 响应`},
     },
-    {`\`tool_calls\``}: {
+    "tool_calls": {
       description: {`类型: \`Vec<String>\` · 描述: 本轮调用的工具`},
     },
-    {`\`usage.total_tokens\``}: {
+    "usage.total_tokens": {
       description: {`类型: \`u32\` · 描述: Token 使用量`},
     },
-    {`\`duration_ms\``}: {
+    "duration_ms": {
       description: {`类型: \`u64\` · 描述: 生成时间`},
     },
   }
@@ -325,13 +325,13 @@ impl HookHandler for MyHandler {
 
 <TypeTable
   type={
-    {`\`HookResponse::continue_()\``}: {
+    "HookResponse::continue_()": {
       description: "允许操作继续",
     },
-    {`\`HookResponse::block(reason)\``}: {
+    "HookResponse::block(reason)": {
       description: "以原因字符串取消操作",
     },
-    {`\`HookResponse::modify(data)\``}: {
+    "HookResponse::modify(data)": {
       description: "在执行前替换事件数据",
     },
   }

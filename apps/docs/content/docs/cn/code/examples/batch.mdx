@@ -179,13 +179,13 @@ handler.rs:5:// TODO: add error handling
 
 <TypeTable
   type={
-    {`\`invocations\``}: {
+    "invocations": {
       description: {`类型: \`array\` · 必填: ✅ · 描述: 要并行执行的工具调用列表`},
     },
-    {`\`invocations[].tool\``}: {
+    "invocations[].tool": {
       description: {`类型: \`string\` · 必填: ✅ · 描述: 要调用的工具名称`},
     },
-    {`\`invocations[].args\``}: {
+    "invocations[].args": {
       description: {`类型: \`object\` · 必填: ✅ · 描述: 传递给工具的参数`},
     },
   }

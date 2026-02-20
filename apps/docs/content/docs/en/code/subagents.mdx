@@ -14,19 +14,19 @@ Subagents are specialized agents that run in isolated child sessions with their 
 
 <TypeTable
   type={
-    {`\`explore\``}: {
+    "explore": {
       description: "Description: Fast codebase exploration (read-only) · Max Steps: 20 · Permissions: read, grep, glob, ls",
     },
-    {`\`general\``}: {
+    "general": {
       description: "Description: General-purpose multi-step execution · Max Steps: 50 · Permissions: Full tool access",
     },
-    {`\`plan\``}: {
+    "plan": {
       description: "Description: Architecture and planning (read-only) · Max Steps: 30 · Permissions: read, grep, glob",
     },
-    {`\`title\``}: {
+    "title": {
       description: "Description: Session title generation (hidden) · Max Steps: 1 · Permissions: None",
     },
-    {`\`summary\``}: {
+    "summary": {
       description: "Description: Session summarization (hidden) · Max Steps: 5 · Permissions: read",
     },
   }
@@ -519,19 +519,19 @@ Both built-in and custom agents are available by name. Custom agents loaded from
 
 <TypeTable
   type={
-    {`\`code-reviewer\``}: {
+    "code-reviewer": {
       description: "Reviews code for style, security, and correctness",
     },
-    {`\`test-writer\``}: {
+    "test-writer": {
       description: "Generates unit and integration tests",
     },
-    {`\`doc-writer\``}: {
+    "doc-writer": {
       description: "Writes documentation from code",
     },
-    {`\`refactorer\``}: {
+    "refactorer": {
       description: "Refactors code for clarity and performance",
     },
-    {`\`debugger\``}: {
+    "debugger": {
       description: "Diagnoses and fixes bugs",
     },
   }

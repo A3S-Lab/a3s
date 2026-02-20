@@ -19,22 +19,22 @@ rule = "Matcher(`value`) && Matcher(`value`)"
 
 <TypeTable
   type={
-    {`\`Host\``}: {
+    "Host": {
       description: {`Description: Match by hostname · Example: \`Host(\\\`api.example.com\\\`)\``},
     },
-    {`\`PathPrefix\``}: {
+    "PathPrefix": {
       description: {`Description: Match by path prefix · Example: \`PathPrefix(\\\`/api\\\`)\``},
     },
-    {`\`Path\``}: {
+    "Path": {
       description: {`Description: Match exact path · Example: \`Path(\\\`/health\\\`)\``},
     },
-    {`\`Headers\``}: {
+    "Headers": {
       description: {`Description: Match by header key/value · Example: \`Headers(\\\`X-Api-Version\\\`, \\\`v2\\\`)\``},
     },
-    {`\`Method\``}: {
+    "Method": {
       description: {`Description: Match by HTTP method · Example: \`Method(\\\`POST\\\`)\``},
     },
-    {`\`HostSNI\``}: {
+    "HostSNI": {
       description: {`Description: Match TCP by TLS SNI · Example: \`HostSNI(\\\`db.example.com\\\`)\``},
     },
   }

@@ -1,0 +1,420 @@
+---
+title: Build a DeepResearch Agent
+description: Build a production-grade research agent with A3S Code — parallel web search across multiple machines, streaming synthesis, and structured report generation.
+full: true
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Build a DeepResearch Agent
+
+In this tutorial you'll build a **DeepResearch** agent that goes beyond a simple search-and-summarize loop. It uses A3S Code's core capabilities to run real parallel research:
+
+1. Decomposes a question into focused sub-queries
+2. Dispatches each search to **external workers** (separate machines/processes) via the Lane queue
+3. Streams synthesis in real time as results arrive
+4. Produces a structured markdown report with citations
+
+<Callout type="info">
+  Install the SDK first: `pip install a3s-code`. Configure `~/.a3s/config.hcl` with your LLM provider key.
+</Callout>
+
+---
+
+## Walkthrough
+
+<ScrollyCoding>
+<ScrollySteps>
+
+<ScrollyStep index={0}>
+
+### Project structure
+
+Three files: `agent.hcl` for the agent + queue + search config, `main.py` for the coordinator, and `worker.py` for the remote task executor.
+
+</ScrollyStep>
+
+<ScrollyStep index={1}>
+
+### Agent config (HCL)
+
+`agent.hcl` wires up the model, enables the Lane queue with `query_max_concurrency = 8` for parallel searches, and configures the built-in multi-engine search (Google, Bing, DuckDuckGo).
+
+</ScrollyStep>
+
+<ScrollyStep index={2}>
+
+### Create agent and session
+
+`Agent.create()` loads the config. `SessionQueueConfig` mirrors the HCL queue settings in code. `set_lane_handler("execute", mode="external")` routes all `bash`/`write` tool calls to external workers instead of running locally.
+
+</ScrollyStep>
+
+<ScrollyStep index={3}>
+
+### Decompose the question
+
+Send a planning prompt to the agent. It returns a JSON array of sub-queries. We parse these before starting the parallel phase — if parsing fails we fall back to the original question.
+
+</ScrollyStep>
+
+<ScrollyStep index={4}>
+
+### Parallel search across workers
+
+Use `asyncio.to_thread` + `asyncio.gather` to run all sub-queries concurrently. Each task calls `session.tool("web_search", ...)` directly — no LLM round-trip. The Lane queue caps concurrency at 8.
+
+</ScrollyStep>
+
+<ScrollyStep index={5}>
+
+### External task handler
+
+A background thread polls `session.pending_external_tasks()`. When the agent emits a `bash`/`write` task, the poller picks it up, ships it to a remote worker, then calls `session.complete_external_task()` to resume the agent. In production, replace `worker.execute()` with gRPC / SSH / message queue.
+
+</ScrollyStep>
+
+<ScrollyStep index={6}>
+
+### Stream the synthesis
+
+Pass all search results back to the agent. Iterate `session.stream()` — `text_delta` events print live output, `tool_start`/`tool_end` show tool activity, `end` carries final token usage.
+
+</ScrollyStep>
+
+<ScrollyStep index={7}>
+
+### Full coordinator
+
+The complete `main.py`. Run it:
+
+```bash
+python main.py "What are the latest advances in confidential computing?"
+```
+
+</ScrollyStep>
+
+</ScrollySteps>
+
+<ScrollyCode>
+
+```text project structure
+deep-research/
+├── agent.hcl   # agent + queue + search config
+├── main.py     # coordinator: plan → parallel search → synthesize
+└── worker.py   # remote worker: executes ExternalTasks
+```
+
+```hcl agent config
+# agent.hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+}
+
+# Lane queue — controls parallel execution
+queue {
+  query_max_concurrency   = 8   # up to 8 parallel searches
+  execute_max_concurrency = 4
+  enable_metrics          = true
+  enable_dlq              = true
+
+  retry_policy {
+    strategy         = "exponential"
+    max_retries      = 3
+    initial_delay_ms = 200
+  }
+}
+
+# Built-in multi-engine search
+search {
+  timeout = 30
+
+  engine {
+    google     { enabled = true; weight = 1.5 }
+    bing       { enabled = true; weight = 1.0 }
+    duckduckgo { enabled = true; weight = 1.2 }
+  }
+}
+```
+
+```python create agent and session
+# main.py
+import asyncio
+import threading
+import sys
+import json
+from a3s_code import Agent, SessionQueueConfig
+import worker
+
+def create_session(config_path):
+    agent = Agent.create(config_path)
+
+    # Mirror the HCL queue settings in code
+    qc = SessionQueueConfig()
+    qc.set_query_concurrency(8)
+    qc.set_execute_concurrency(4)
+    qc.enable_metrics()
+    qc.enable_dlq()
+
+    session = agent.session(".", queue_config=qc, permissive=True)
+
+    # Route Execute-lane tools to external workers
+    session.set_lane_handler(
+        "execute", mode="external", timeout_ms=60_000
+    )
+    return session
+```
+
+```python decompose the question
+def plan_sub_queries(session, question):
+    result = session.send(
+        f"Break this research question into 5-8 focused "
+        f"sub-queries for parallel web search. "
+        f"Return a JSON array of strings only.\n\n"
+        f"Question: {question}"
+    )
+    try:
+        sub_queries = json.loads(result.text)
+        if isinstance(sub_queries, list):
+            return sub_queries
+    except json.JSONDecodeError:
+        pass
+    # Fallback: use the original question
+    return [question]
+```
+
+```python parallel search across workers
+async def parallel_search(session, sub_queries):
+    print(f"📋 {len(sub_queries)} sub-queries planned")
+
+    async def search_one(query):
+        print(f"  🔍 searching: {query}")
+        result = await asyncio.to_thread(
+            session.tool,
+            "web_search",
+            {
+                "query":   query,
+                "engines": "google,bing,ddg",
+                "limit":   8,
+                "timeout": 20,
+                "format":  "text",
+            },
+        )
+        return result.output if result.exit_code == 0 else ""
+
+    results = await asyncio.gather(
+        *[search_one(q) for q in sub_queries],
+        return_exceptions=True,
+    )
+
+    # Filter out errors
+    return [r for r in results if isinstance(r, str) and r]
+```
+
+```python external task handler
+def start_external_worker(session, stop_event):
+    """Background thread: poll and dispatch ExternalTasks."""
+    def poll():
+        while not stop_event.is_set():
+            try:
+                tasks = session.pending_external_tasks()
+                for task in tasks:
+                    tid  = task["task_id"]
+                    kind = task["command_type"]
+                    print(f"  📥 external task: {tid[:8]} ({kind})")
+
+                    # --- ship to remote worker here ---
+                    out = worker.execute(task)
+
+                    session.complete_external_task(
+                        tid,
+                        success=out["success"],
+                        result={
+                            "output":    out["output"],
+                            "exit_code": out["exit_code"],
+                        },
+                        error=out.get("error"),
+                    )
+                    print(f"  📤 task {tid[:8]} completed")
+            except Exception:
+                pass
+            stop_event.wait(timeout=0.2)
+
+    t = threading.Thread(target=poll, daemon=True)
+    t.start()
+    return t
+```
+
+```python stream the synthesis
+async def synthesize(session, question, results):
+    context = "\n\n---\n\n".join(results)
+    prompt = (
+        f"You are a research analyst. Using the search results below, "
+        f"write a comprehensive markdown report on: {question}\n\n"
+        f"Requirements:\n"
+        f"- Clear ## sections per sub-topic\n"
+        f"- Key Findings bullet list at the top\n"
+        f"- Inline citations as [Title](url)\n"
+        f"- Contradictions flagged explicitly\n"
+        f"- ## Sources section at the end\n\n"
+        f"Search results:\n{context}"
+    )
+
+    print(f"\n# Research Report\n")
+
+    for event in session.stream(prompt):
+        if event.event_type == "text_delta":
+            print(event.text, end="", flush=True)
+        elif event.event_type == "tool_start":
+            print(f"\n  🔧 tool: {event.tool_name}", flush=True)
+        elif event.event_type == "end":
+            print(f"\n\n---\n✓ {event.total_tokens} tokens used")
+            break
+        elif event.event_type == "error":
+            print(f"\n❌ {event.error}")
+            break
+```
+
+```python full coordinator
+# main.py — complete file
+import asyncio
+import threading
+import sys
+import json
+from pathlib import Path
+from a3s_code import Agent, SessionQueueConfig
+import worker
+
+
+def find_config():
+    p = Path.home() / ".a3s" / "config.hcl"
+    if p.exists():
+        return str(p)
+    raise FileNotFoundError("~/.a3s/config.hcl not found")
+
+
+async def main():
+    question = (
+        sys.argv[1] if len(sys.argv) > 1
+        else "What are the latest advances in confidential computing?"
+    )
+
+    agent = Agent.create(find_config())
+
+    qc = SessionQueueConfig()
+    qc.set_query_concurrency(8)
+    qc.set_execute_concurrency(4)
+    qc.enable_metrics()
+    qc.enable_dlq()
+
+    session = agent.session(".", queue_config=qc, permissive=True)
+    session.set_lane_handler("execute", mode="external", timeout_ms=60_000)
+
+    # Start external task poller
+    stop = threading.Event()
+    start_external_worker(session, stop)
+
+    # Plan
+    result = session.send(
+        f"Break into 5-8 sub-queries for parallel search. "
+        f"Return JSON array only.\n\nQuestion: {question}"
+    )
+    try:
+        sub_queries = json.loads(result.text)
+    except Exception:
+        sub_queries = [question]
+
+    # Parallel search
+    async def search_one(query):
+        r = await asyncio.to_thread(
+            session.tool, "web_search",
+            {"query": query, "engines": "google,bing,ddg",
+             "limit": 8, "timeout": 20, "format": "text"},
+        )
+        return r.output if r.exit_code == 0 else ""
+
+    raw = await asyncio.gather(*[search_one(q) for q in sub_queries])
+    results = [r for r in raw if r]
+    print(f"✓ {len(results)} searches completed")
+
+    # Synthesize
+    context = "\n\n---\n\n".join(results)
+    for event in session.stream(
+        f"Write a comprehensive markdown report on: {question}\n\n"
+        f"Use ## sections, inline citations, Key Findings at top, "
+        f"Sources at end.\n\nSearch results:\n{context}"
+    ):
+        if event.event_type == "text_delta":
+            print(event.text, end="", flush=True)
+        elif event.event_type == "end":
+            print(f"\n✓ {event.total_tokens} tokens")
+            break
+        elif event.event_type == "error":
+            print(f"\n❌ {event.error}")
+            break
+
+    stop.set()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+</ScrollyCode>
+</ScrollyCoding>
+
+---
+
+## Going Further
+
+<Steps>
+<Step>
+
+### Switch workers dynamically
+
+Change the lane handler at runtime — `internal` for local, `external` for remote, `hybrid` to do both simultaneously:
+
+```python
+# Switch to hybrid: execute locally AND notify external systems
+session.set_lane_handler("execute", mode="hybrid", timeout_ms=30_000)
+```
+
+</Step>
+<Step>
+
+### Monitor queue pressure
+
+Use queue stats to auto-scale workers when the queue backs up:
+
+```python
+if session.has_queue():
+    stats = session.queue_stats()
+    print(f"pending:  {stats['total_pending']}")
+    print(f"active:   {stats['total_active']}")
+    print(f"failed:   {stats['total_failed']}")
+    print(f"dlq size: {stats['dlq_size']}")
+```
+
+</Step>
+<Step>
+
+### Add planning and goal tracking
+
+Enable the built-in planner so the agent decomposes the research task autonomously before searching:
+
+```python
+session = agent.session(
+    ".",
+    queue_config=qc,
+    planning=True,
+    goal_tracking=True,
+    permissive=True,
+)
+```
+
+</Step>
+</Steps>

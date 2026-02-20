@@ -67,29 +67,29 @@ a3s-search "Rust 编程" -e baidu,bing_cn
 
 <TypeTable
   type={
-    {`\`-e, --engines\``}: {
+    "-e, --engines": {
       description: "Comma-separated engine shortcuts",
-      default: {`\`ddg,wiki\``},
+      default: "ddg,wiki",
     },
-    {`\`-l, --limit\``}: {
+    "-l, --limit": {
       description: "Max number of results",
-      default: {`\`10\``},
+      default: "10",
     },
-    {`\`-t, --timeout\``}: {
+    "-t, --timeout": {
       description: "Timeout in seconds",
-      default: {`\`10\``},
+      default: "10",
     },
-    {`\`-p, --proxy\``}: {
+    "-p, --proxy": {
       description: "Proxy URL (HTTP/HTTPS/SOCKS5)",
       default: "None",
     },
-    {`\`-f, --format\``}: {
+    "-f, --format": {
       description: {`Output format: \`default\`, \`json\`, \`compact\``},
-      default: {`\`default\``},
+      default: "default",
     },
-    {`\`-v, --verbose\``}: {
+    "-v, --verbose": {
       description: "Enable verbose logging",
-      default: {`\`false\``},
+      default: "false",
     },
   }
 />
@@ -139,31 +139,31 @@ a3s-search engines
 
 <TypeTable
   type={
-    {`\`ddg\``}: {
+    "ddg": {
       description: "Engine: DuckDuckGo · Method: HTTP",
     },
-    {`\`brave\``}: {
+    "brave": {
       description: "Engine: Brave Search · Method: HTTP",
     },
-    {`\`bing\``}: {
+    "bing": {
       description: "Engine: Bing International · Method: HTTP",
     },
-    {`\`wiki\``}: {
+    "wiki": {
       description: "Engine: Wikipedia · Method: JSON API",
     },
-    {`\`sogou\``}: {
+    "sogou": {
       description: "Engine: Sogou (搜狗) · Method: HTTP",
     },
-    {`\`360\``}: {
+    "360": {
       description: "Engine: 360 Search (360搜索) · Method: HTTP",
     },
-    {`\`g\``}: {
+    "g": {
       description: "Engine: Google · Method: Headless",
     },
-    {`\`baidu\``}: {
+    "baidu": {
       description: "Engine: Baidu (百度) · Method: Headless",
     },
-    {`\`bing_cn\``}: {
+    "bing_cn": {
       description: "Engine: Bing China (必应中国) · Method: Headless",
     },
   }

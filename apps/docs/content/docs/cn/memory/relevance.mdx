@@ -65,13 +65,13 @@ let score = item.relevance_score_at(chrono::Utc::now(), &config);
 <TypeTable
   type={
     "长期助手": {
-      description: {`\`decay_days: 365\`，\`importance_weight: 0.9\``},
+      description: "decay_days: 365\`，\`importance_weight: 0.9",
     },
     "短期编码会话": {
-      description: {`\`decay_days: 1\`，\`recency_weight: 0.7\``},
+      description: "decay_days: 1\`，\`recency_weight: 0.7",
     },
     "均等权重": {
-      description: {`\`importance_weight: 0.5\`，\`recency_weight: 0.5\``},
+      description: "importance_weight: 0.5\`，\`recency_weight: 0.5",
     },
   }
 />

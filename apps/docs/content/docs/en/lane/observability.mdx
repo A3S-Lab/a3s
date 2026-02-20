@@ -54,22 +54,22 @@ if let Some(latency) = snapshot.histograms.get("lane.command.latency_ms.query") 
 
 <TypeTable
   type={
-    {`\`lane.commands.submitted\``}: {
+    "lane.commands.submitted": {
       description: "Total commands submitted",
     },
-    {`\`lane.commands.completed\``}: {
+    "lane.commands.completed": {
       description: "Successfully completed",
     },
-    {`\`lane.commands.failed\``}: {
+    "lane.commands.failed": {
       description: "Execution failures",
     },
-    {`\`lane.commands.timeout\``}: {
+    "lane.commands.timeout": {
       description: "Timed out commands",
     },
-    {`\`lane.commands.retried\``}: {
+    "lane.commands.retried": {
       description: "Retry attempts",
     },
-    {`\`lane.commands.dead_lettered\``}: {
+    "lane.commands.dead_lettered": {
       description: "Moved to DLQ",
     },
   }
@@ -79,10 +79,10 @@ if let Some(latency) = snapshot.histograms.get("lane.command.latency_ms.query") 
 
 <TypeTable
   type={
-    {`\`lane.queue.depth.<lane_id>\``}: {
+    "lane.queue.depth.<lane_id>": {
       description: "Pending commands per lane",
     },
-    {`\`lane.queue.active.<lane_id>\``}: {
+    "lane.queue.active.<lane_id>": {
       description: "Active commands per lane",
     },
   }
@@ -92,10 +92,10 @@ if let Some(latency) = snapshot.histograms.get("lane.command.latency_ms.query") 
 
 <TypeTable
   type={
-    {`\`lane.command.latency_ms.<lane_id>\``}: {
+    "lane.command.latency_ms.<lane_id>": {
       description: "Execution time distribution",
     },
-    {`\`lane.command.wait_time_ms.<lane_id>\``}: {
+    "lane.command.wait_time_ms.<lane_id>": {
       description: "Queue wait time distribution",
     },
   }
@@ -169,10 +169,10 @@ let manager = QueueManagerBuilder::new(emitter)
 
 <TypeTable
   type={
-    {`\`Warning\``}: {
+    "Warning": {
       description: {`Queue Depth Trigger: >= warning threshold · Latency Trigger: >= warning threshold`},
     },
-    {`\`Critical\``}: {
+    "Critical": {
       description: {`Queue Depth Trigger: >= critical threshold · Latency Trigger: >= critical threshold`},
     },
   }

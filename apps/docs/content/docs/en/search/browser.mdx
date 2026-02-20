@@ -85,16 +85,16 @@ Control when a page is considered "loaded":
 
 <TypeTable
   type={
-    {`\`Load\``}: {
+    "Load": {
       description: "Fast pages, APIs",
     },
-    {`\`NetworkIdle { idle_ms }\``}: {
+    "NetworkIdle { idle_ms }": {
       description: "Complex SPAs",
     },
-    {`\`Selector { css, timeout_ms }\``}: {
+    "Selector { css, timeout_ms }": {
       description: "Waiting for specific content (recommended)",
     },
-    {`\`Delay { ms }\``}: {
+    "Delay { ms }": {
       description: "Fallback when nothing else works",
     },
   }
@@ -105,13 +105,13 @@ Each built-in headless engine uses an appropriate strategy:
 <TypeTable
   type={
     "Google": {
-      description: {`\`Selector { css: "div.g", timeout_ms: 5000 }\``},
+      description: "Selector { css: "div.g", timeout_ms: 5000 }",
     },
     "Baidu": {
-      description: {`\`Selector { css: "div.c-container", timeout_ms: 5000 }\``},
+      description: "Selector { css: "div.c-container", timeout_ms: 5000 }",
     },
     "Bing China": {
-      description: {`\`Delay { ms: 2000 }\``},
+      description: "Delay { ms: 2000 }",
     },
   }
 />
@@ -183,13 +183,13 @@ pub trait PageFetcher: Send + Sync {
 
 <TypeTable
   type={
-    {`\`HttpFetcher\``}: {
+    "HttpFetcher": {
       description: "Plain HTTP via reqwest, optional single proxy",
     },
-    {`\`PooledHttpFetcher\``}: {
+    "PooledHttpFetcher": {
       description: "Proxy pool rotation per request",
     },
-    {`\`BrowserFetcher\``}: {
+    "BrowserFetcher": {
       description: "Headless Chrome via BrowserPool",
     },
   }

@@ -105,16 +105,16 @@ match compat {
 
 <TypeTable
   type={
-    {`\`Backward\``}: {
+    "Backward": {
       description: "Meaning: New schema can read old data · Example: Added optional field",
     },
-    {`\`Forward\``}: {
+    "Forward": {
       description: "Meaning: Old schema can read new data · Example: Removed optional field",
     },
-    {`\`Full\``}: {
+    "Full": {
       description: "Meaning: Compatible both ways · Example: No field changes",
     },
-    {`\`None\``}: {
+    "None": {
       description: "Meaning: Breaking change · Example: Added required field",
     },
   }

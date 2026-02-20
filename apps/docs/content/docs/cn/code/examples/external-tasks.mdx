@@ -19,13 +19,13 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 <TypeTable
   type={
-    {`\`Internal\``}: {
+    "Internal": {
       description: "任务在进程内执行（默认）",
     },
-    {`\`External\``}: {
+    "External": {
       description: "任务分发到外部 worker",
     },
-    {`\`Hybrid\``}: {
+    "Hybrid": {
       description: "先尝试外部，失败后回退到内部",
     },
   }
@@ -183,10 +183,10 @@ results.forEach((r) => console.log(r.text));
 
 <TypeTable
   type={
-    {`\`mode\``}: {
+    "mode": {
       description: {`类型: \`"internal"\` \\ · 描述: \`"external"\` \\`},
     },
-    {`\`timeout_ms\``}: {
+    "timeout_ms": {
       description: {`类型: \`Option<u64>\` · 描述: 等待外部 worker 响应的最大时间`},
     },
   }
@@ -212,13 +212,13 @@ results.forEach((r) => console.log(r.text));
 
 <TypeTable
   type={
-    {`\`success\``}: {
+    "success": {
       description: {`类型: \`bool\` · 描述: 任务是否成功完成`},
     },
-    {`\`result\``}: {
+    "result": {
       description: {`类型: \`Option<Value>\` · 描述: 任务输出载荷`},
     },
-    {`\`error\``}: {
+    "error": {
       description: {`类型: \`Option<String>\` · 描述: \`success\` 为 \`false\` 时的错误消息`},
     },
   }

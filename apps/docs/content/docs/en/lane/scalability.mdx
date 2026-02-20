@@ -100,16 +100,16 @@ let config = PartitionConfig::none();
 
 <TypeTable
   type={
-    {`\`None\``}: {
+    "None": {
       description: "Distribution: Single queue · Ordering: Strict FIFO · Use Case: Simple workloads",
     },
-    {`\`RoundRobin\``}: {
+    "RoundRobin": {
       description: "Distribution: Even spread · Ordering: Per-partition FIFO · Use Case: Balanced throughput",
     },
-    {`\`Hash\``}: {
+    "Hash": {
       description: "Distribution: By command type · Ordering: Per-type FIFO · Use Case: Type-affinity (caching)",
     },
-    {`\`Auto\``}: {
+    "Auto": {
       description: "Distribution: Per-core · Ordering: Per-partition FIFO · Use Case: Maximum parallelism",
     },
   }

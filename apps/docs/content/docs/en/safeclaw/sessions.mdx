@@ -123,11 +123,11 @@ This prevents data leakage between sessions, even within the same process.
 
 <TypeTable
   type={
-    {`\`/api/v1/gateway/sessions\``}: {
+    "/api/v1/gateway/sessions": {
       type: "GET",
       description: "List all active sessions",
     },
-    {`\`/api/v1/gateway/sessions/:id\``}: {
+    "/api/v1/gateway/sessions/:id": {
       type: "GET",
       description: "Get session details",
     },

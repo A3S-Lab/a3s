@@ -192,16 +192,16 @@ Wave 分组:
 
 <TypeTable
   type={
-    {`\`Pending\``}: {
+    "Pending": {
       description: "等待执行",
     },
-    {`\`InProgress\``}: {
+    "InProgress": {
       description: "正在执行",
     },
-    {`\`Completed\``}: {
+    "Completed": {
       description: "执行成功",
     },
-    {`\`Failed\``}: {
+    "Failed": {
       description: "执行失败",
     },
   }
@@ -213,7 +213,7 @@ Wave 分组:
 
 <TypeTable
   type={
-    {`\`TaskUpdated\``}: {
+    "TaskUpdated": {
       description: "任务列表变更（新增、状态更新）",
     },
   }
@@ -240,16 +240,16 @@ Wave 分组:
 
 <TypeTable
   type={
-    {`\`id\``}: {
+    "id": {
       description: {`类型: \`String\` · 描述: 任务唯一标识`},
     },
-    {`\`description\``}: {
+    "description": {
       description: {`类型: \`String\` · 描述: 任务描述`},
     },
-    {`\`status\``}: {
+    "status": {
       description: {`类型: \`TaskStatus\` · 描述: 当前状态`},
     },
-    {`\`dependencies\``}: {
+    "dependencies": {
       description: {`类型: \`Vec<String>\` · 描述: 前置任务 ID 列表`},
     },
   }

@@ -200,16 +200,16 @@ db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
 
 <TypeTable
   type={
-    {`\`VectorContextConfig::new(path)\``}: {
+    "VectorContextConfig::new(path)": {
       description: "描述: 设置工作区根目录",
     },
-    {`\`.with_min_relevance(f)\``}: {
+    ".with_min_relevance(f)": {
       description: {`描述: 最小余弦相似度分数 · 默认值: \`0.3\``},
     },
-    {`\`.with_max_results(n)\``}: {
+    ".with_max_results(n)": {
       description: {`描述: 每次查询返回的最大分块数 · 默认值: \`10\``},
     },
-    {`\`.with_chunk_size(n)\``}: {
+    ".with_chunk_size(n)": {
       description: {`描述: 每个分块的最大字符数 · 默认值: \`1500\``},
     },
   }
@@ -230,10 +230,10 @@ context {
 
 <TypeTable
   type={
-    {`\`query\``}: {
+    "query": {
       description: {`类型: \`string\` · 描述: 自然语言搜索查询`},
     },
-    {`\`limit\``}: {
+    "limit": {
       description: {`类型: \`number\` · 描述: 最大结果数（默认：\`10\`）`},
     },
   }

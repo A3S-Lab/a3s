@@ -358,13 +358,13 @@ Any lane can be switched to **External** mode, where tool calls in that lane are
 
 <TypeTable
   type={
-    {`\`Internal\``}: {
+    "Internal": {
       description: "Behavior: Execute within the runtime (default) · Use Case: Normal local execution",
     },
-    {`\`External\``}: {
+    "External": {
       description: "Behavior: Emit task to SDK, wait for callback · Use Case: Multi-machine offloading",
     },
-    {`\`Hybrid\``}: {
+    "Hybrid": {
       description: "Behavior: Execute locally AND notify SDK · Use Case: Monitoring, audit, shadow execution",
     },
   }

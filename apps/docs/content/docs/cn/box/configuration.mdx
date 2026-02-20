@@ -11,16 +11,16 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 <TypeTable
   type={
-    {`\`~/.a3s/\``}: {
+    "~/.a3s/": {
       description: {`基础目录（可通过 \`\$A3S_BOX_HOME\` 覆盖）`},
     },
-    {`\`~/.a3s/boxes.json\``}: {
+    "~/.a3s/boxes.json": {
       description: "VM 状态文件",
     },
-    {`\`~/.a3s/images/\``}: {
+    "~/.a3s/images/": {
       description: "镜像存储",
     },
-    {`\`~/.a3s/volumes/\``}: {
+    "~/.a3s/volumes/": {
       description: "卷存储",
     },
   }
@@ -30,16 +30,16 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 <TypeTable
   type={
-    {`\`A3S_BOX_HOME\``}: {
+    "A3S_BOX_HOME": {
       description: "覆盖基础目录",
     },
-    {`\`A3S_BOX_LOG\``}: {
+    "A3S_BOX_LOG": {
       description: "日志级别（debug/info/warn/error）",
     },
-    {`\`A3S_BOX_WARM_POOL_SIZE\``}: {
+    "A3S_BOX_WARM_POOL_SIZE": {
       description: "热池预启动 VM 数量",
     },
-    {`\`A3S_BOX_WARM_POOL_TTL\``}: {
+    "A3S_BOX_WARM_POOL_TTL": {
       description: "热池空闲 VM 超时时间（秒）",
     },
   }
