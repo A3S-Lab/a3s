@@ -79,10 +79,11 @@ export function ScrollyCode({ children }: { children: ReactNode }) {
       sticky top-20 self-start
       h-[calc(100vh-6rem)]
       flex flex-col
-      rounded-xl overflow-hidden
+      rounded-xl
       border border-fd-border
-      bg-[#0d1117]
+      bg-[#282c34]
       shadow-2xl
+      overflow-hidden
     ">
       {/* title bar */}
       <div className="
@@ -106,9 +107,11 @@ export function ScrollyCode({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      {/* code area */}
-      <div className="flex-1 overflow-auto ch-code-scroll-parent">
-        <Selection from={children as ReactNode[]} />
+      {/* code area — scrollable */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto ch-code-scroll-parent">
+        <div>
+          <Selection from={children as ReactNode[]} />
+        </div>
       </div>
     </div>
   );

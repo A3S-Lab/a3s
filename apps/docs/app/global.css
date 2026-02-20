@@ -99,13 +99,12 @@ article#nd-page.tutorial-page {
   color: inherit;
 }
 
-/* Inside ScrollyCode panel — strip border/radius/margin, fill the panel */
+/* Inside ScrollyCode panel — strip border/radius/margin */
 .ch-code-scroll-parent .ch-codeblock {
   background: transparent;
   border: none;
   border-radius: 0;
   margin: 0;
-  height: 100%;
   color: #abb2bf;
 }
 
@@ -115,6 +114,7 @@ article#nd-page.tutorial-page {
 
 .ch-code-scroll-parent .ch-codeblock-pre {
   padding: 1.25rem !important;
+  overflow: visible !important;
 }
 
 
