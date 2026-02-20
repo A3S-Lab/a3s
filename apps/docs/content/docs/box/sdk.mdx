@@ -1,268 +1,534 @@
 ---
 title: Sandbox SDK
-description: Programmatic MicroVM sandbox management via Rust, Python, and TypeScript SDKs
+description: Complete API reference for Rust, Python, and TypeScript SDKs
 ---
 
 # Sandbox SDK
 
-A3S Box provides embedded SDKs for creating, executing, and managing MicroVM sandboxes programmatically — no CLI or daemon required.
+Create, execute, and manage MicroVM sandboxes programmatically — no CLI or daemon required. All three SDKs wrap the same Rust runtime and provide identical capabilities.
 
 | SDK | Package | Version |
 |-----|---------|---------|
-| Rust | `a3s-box-sdk` crate | 0.5.0 |
-| Python | `pip install a3s-box` | 0.5.0 |
-| TypeScript | `npm install @a3s-lab/box` | 0.5.0 |
+| Rust | `a3s-box-sdk` crate | 0.5.3 |
+| Python | `pip install a3s-box` | 0.5.3 |
+| TypeScript | `npm install @a3s-lab/box` | 0.5.3 |
+
+---
 
 ## Rust SDK
 
-### Basic Usage
+### Installation
+
+```toml
+[dependencies]
+a3s-box-sdk = "0.5.3"
+
+# Optional: bundle the shim binary into your application
+a3s-box-sdk = { version = "0.5.3", features = ["embed-shim"] }
+```
+
+With `embed-shim`, the SDK bundles `a3s-box-shim` into your binary and auto-extracts it to `~/.a3s/bin/` on first use. No separate installation needed.
+
+### BoxSdk
+
+Entry point for creating and managing sandboxes.
 
 ```rust
 use a3s_box_sdk::{BoxSdk, SandboxOptions};
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let sdk = BoxSdk::new()?;
+// Use default home directory (~/.a3s/)
+let sdk = BoxSdk::new().await?;
 
-    // Create a sandbox
-    let sandbox = sdk.create(SandboxOptions {
-        image: "python:3.12-slim".into(),
-        cpus: 2,
-        memory_mb: 1024,
-        ..Default::default()
-    }).await?;
+// Use custom home directory
+let sdk = BoxSdk::with_home("/data/sandboxes").await?;
 
-    // Execute a command
-    let result = sandbox.exec("python", &["-c", "print('hello from sandbox')"]).await?;
-    println!("stdout: {}", result.stdout);
-    println!("exit code: {}", result.exit_code);
+// Get home directory
+let path: &Path = sdk.home_dir();
+```
 
-    // Stop and clean up
-    sandbox.stop().await?;
-    Ok(())
+### SandboxOptions
+
+```rust
+pub struct SandboxOptions {
+    pub image: String,                          // OCI image reference (default: "alpine:latest")
+    pub cpus: u32,                              // vCPU count (default: 1)
+    pub memory_mb: u32,                         // Memory in MB (default: 256)
+    pub env: HashMap<String, String>,           // Environment variables
+    pub workdir: Option<String>,                // Working directory inside sandbox
+    pub mounts: Vec<MountSpec>,                 // Host-to-guest mounts
+    pub network: bool,                          // Enable networking (default: true)
+    pub tee: bool,                              // Enable AMD SEV-SNP (default: false)
+    pub name: Option<String>,                   // Sandbox name
+    pub port_forwards: Vec<PortForward>,        // Port forwarding rules
+    pub workspace: Option<WorkspaceConfig>,     // Persistent workspace
+}
+
+pub struct MountSpec {
+    pub host_path: String,
+    pub guest_path: String,
+    pub readonly: bool,
+}
+
+pub struct PortForward {
+    pub guest_port: u16,
+    pub host_port: u16,    // 0 = auto-assign
+    pub protocol: String,  // "tcp" or "udp"
+}
+
+pub struct WorkspaceConfig {
+    pub name: String,
+    pub guest_path: String,  // default: "/workspace"
 }
 ```
 
-### Streaming Exec
-
-Stream stdout/stderr in real-time as the command runs:
+### Sandbox
 
 ```rust
-use a3s_box_sdk::{BoxSdk, SandboxOptions};
-use futures::StreamExt;
-
-let sdk = BoxSdk::new()?;
-let sandbox = sdk.create(SandboxOptions {
-    image: "ubuntu:22.04".into(),
+// Create a sandbox
+let sandbox: Sandbox = sdk.create(SandboxOptions {
+    image: "python:3.12-slim".into(),
+    cpus: 2,
+    memory_mb: 1024,
     ..Default::default()
 }).await?;
+```
 
-let mut stream = sandbox.exec_stream("bash", &["-c", "for i in 1 2 3; do echo $i; sleep 1; done"]).await?;
+#### exec
+
+Run a command and wait for it to complete.
+
+```rust
+pub async fn exec(&self, cmd: &str, args: &[&str]) -> Result<ExecResult>
+
+pub struct ExecResult {
+    pub stdout: String,
+    pub stderr: String,
+    pub exit_code: i32,
+    pub metrics: ExecMetrics,
+}
+
+pub struct ExecMetrics {
+    pub duration_ms: u64,
+    pub stdout_bytes: u64,
+    pub stderr_bytes: u64,
+}
+```
+
+```rust
+let result = sandbox.exec("python", &["-c", "print('hello')"]).await?;
+println!("{}", result.stdout);
+println!("exit: {}", result.exit_code);
+println!("took: {}ms", result.metrics.duration_ms);
+```
+
+#### exec_stream
+
+Stream stdout/stderr in real-time.
+
+```rust
+pub async fn exec_stream(&self, cmd: &str, args: &[&str]) -> Result<impl Stream<Item = ExecEvent>>
+
+pub enum ExecEvent {
+    Stdout(Vec<u8>),
+    Stderr(Vec<u8>),
+    Exit(i32),
+}
+```
+
+```rust
+use futures::StreamExt;
+
+let mut stream = sandbox.exec_stream(
+    "bash", &["-c", "for i in 1 2 3; do echo $i; sleep 1; done"]
+).await?;
 
 while let Some(event) = stream.next().await {
     match event {
         ExecEvent::Stdout(data) => print!("{}", String::from_utf8_lossy(&data)),
         ExecEvent::Stderr(data) => eprint!("{}", String::from_utf8_lossy(&data)),
-        ExecEvent::Exit(code) => println!("\nExited with code: {}", code),
+        ExecEvent::Exit(code) => println!("exit: {}", code),
     }
 }
 ```
 
-### File Transfer
-
-Upload and download files between host and sandbox:
+#### upload / download
 
 ```rust
-// Upload a file
-sandbox.upload("./config.yaml", "/app/config.yaml").await?;
+pub async fn upload(&self, host_path: &str, guest_path: &str) -> Result<()>
+pub async fn download(&self, guest_path: &str, host_path: &str) -> Result<()>
+```
 
-// Download results
+```rust
+sandbox.upload("./config.yaml", "/app/config.yaml").await?;
 sandbox.download("/app/output.json", "./output.json").await?;
 ```
 
-### Port Forwarding
-
-Expose sandbox ports to the host:
+#### pause / resume
 
 ```rust
-let sandbox = sdk.create(SandboxOptions {
-    image: "nginx:alpine".into(),
-    port_forwards: vec![
-        PortForward { host: 8080, guest: 80 },
-    ],
-    ..Default::default()
-}).await?;
-
-// nginx is now accessible at http://localhost:8080
+pub async fn pause(&self) -> Result<()>
+pub async fn resume(&self) -> Result<()>
 ```
 
-### Persistent Workspaces
+#### pty
 
-Workspaces survive sandbox restarts:
+Open an interactive terminal session.
 
 ```rust
-let sandbox = sdk.create(SandboxOptions {
-    image: "node:20-slim".into(),
-    workspace: Some("/app/project".into()),
-    ..Default::default()
-}).await?;
-
-// Files in /app/project persist across sandbox.stop() / sdk.create()
+pub async fn pty(&self) -> Result<PtySession>
+// PtySession provides read/write streams for terminal I/O
 ```
 
-### Pause / Resume
-
-Suspend and resume sandbox execution:
+#### stop
 
 ```rust
-sandbox.pause().await?;
-// ... sandbox is frozen (SIGSTOP) ...
-sandbox.resume().await?;
-// ... sandbox continues running ...
+pub async fn stop(&self) -> Result<()>
 ```
 
-### Interactive PTY
-
-Open an interactive terminal session:
+### Complete Example
 
 ```rust
-let pty = sandbox.pty().await?;
-// pty provides read/write streams for terminal I/O
+use a3s_box_sdk::{BoxSdk, SandboxOptions, MountSpec, PortForward};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let sdk = BoxSdk::new().await?;
+
+    let sandbox = sdk.create(SandboxOptions {
+        image: "node:20-slim".into(),
+        cpus: 2,
+        memory_mb: 512,
+        env: [("NODE_ENV".into(), "production".into())].into(),
+        mounts: vec![MountSpec {
+            host_path: "./app".into(),
+            guest_path: "/app".into(),
+            readonly: false,
+        }],
+        port_forwards: vec![PortForward {
+            guest_port: 3000,
+            host_port: 0,  // auto-assign
+            protocol: "tcp".into(),
+        }],
+        ..Default::default()
+    }).await?;
+
+    let result = sandbox.exec("node", &["/app/server.js"]).await?;
+    println!("{}", result.stdout);
+
+    sandbox.stop().await?;
+    Ok(())
+}
 ```
 
-### Embedded Shim
-
-Compile the shim binary into your application:
-
-```toml
-# Cargo.toml
-[dependencies]
-a3s-box-sdk = { version = "0.5.0", features = ["embed-shim"] }
-```
-
-With `embed-shim`, the SDK bundles `a3s-box-shim` into your binary and auto-extracts it to `~/.a3s/bin/` on first use. No separate installation needed.
+---
 
 ## Python SDK
 
-### Install
+### Installation
 
 ```bash
 pip install a3s-box
 ```
 
-### Basic Usage
+### BoxSdk
+
+```python
+from a3s_box import BoxSdk
+
+# Default home directory (~/.a3s/)
+sdk = BoxSdk()
+
+# Custom home directory
+sdk = BoxSdk(home_dir="/data/sandboxes")
+
+# Get home directory
+print(sdk.home_dir)  # str
+```
+
+### SandboxOptions
+
+```python
+from a3s_box import SandboxOptions, MountSpec, PortForward, WorkspaceConfig
+
+options = SandboxOptions(
+    image="python:3.12-slim",   # str, default: "alpine:latest"
+    cpus=2,                      # int, default: 1
+    memory_mb=1024,              # int, default: 256
+    env={"KEY": "VALUE"},        # dict[str, str], default: {}
+    workdir="/app",              # str | None
+    mounts=[                     # list[MountSpec], default: []
+        MountSpec(host_path="./data", guest_path="/data", readonly=False)
+    ],
+    network=True,                # bool, default: True
+    tee=False,                   # bool, default: False
+    name="my-sandbox",           # str | None
+    port_forwards=[              # list[PortForward], default: []
+        PortForward(guest_port=8080, host_port=0, protocol="tcp")
+    ],
+    workspace=WorkspaceConfig(   # WorkspaceConfig | None
+        name="my-project",
+        guest_path="/workspace"
+    ),
+)
+```
+
+### MountSpec / PortForward / WorkspaceConfig
+
+```python
+MountSpec(host_path: str, guest_path: str, readonly: bool = False)
+PortForward(guest_port: int, host_port: int = 0, protocol: str = "tcp")
+WorkspaceConfig(name: str, guest_path: str = "/workspace")
+```
+
+### Sandbox
+
+#### create
+
+```python
+sandbox = sdk.create(options)           # sync
+sandbox = await sdk.create_async(options)  # async
+```
+
+#### exec
+
+```python
+result = sandbox.exec("python", ["-c", "print('hello')"])
+# result.stdout: str
+# result.stderr: str
+# result.exit_code: int
+# result.metrics.duration_ms: int
+# result.metrics.stdout_bytes: int
+# result.metrics.stderr_bytes: int
+```
+
+#### exec_stream
+
+```python
+import sys
+
+async for event in sandbox.exec_stream("bash", ["-c", "for i in 1 2 3; do echo $i; sleep 1; done"]):
+    if event.stdout:
+        sys.stdout.write(event.stdout)
+    elif event.stderr:
+        sys.stderr.write(event.stderr)
+    elif event.exit_code is not None:
+        print(f"exit: {event.exit_code}")
+```
+
+#### upload / download
+
+```python
+sandbox.upload("./input.csv", "/app/input.csv")
+sandbox.download("/app/output.csv", "./output.csv")
+```
+
+#### pause / resume / stop
+
+```python
+sandbox.pause()
+sandbox.resume()
+sandbox.stop()
+```
+
+#### Context manager
+
+```python
+async with sdk.create(SandboxOptions(image="alpine:latest")) as sandbox:
+    result = sandbox.exec("echo", ["hello"])
+    print(result.stdout)
+# sandbox.stop() called automatically
+```
+
+### Complete Example
 
 ```python
 import asyncio
-from a3s_box import BoxSdk, SandboxOptions
+from a3s_box import BoxSdk, SandboxOptions, MountSpec
 
 async def main():
     sdk = BoxSdk()
 
-    # Create a sandbox
-    sandbox = await sdk.create(SandboxOptions(
+    sandbox = sdk.create(SandboxOptions(
         image="python:3.12-slim",
         cpus=2,
         memory_mb=1024,
+        env={"PYTHONPATH": "/app"},
+        mounts=[MountSpec(host_path="./src", guest_path="/app")],
     ))
 
-    # Execute a command
-    result = await sandbox.exec("python", ["-c", "print('hello from sandbox')"])
-    print(f"stdout: {result.stdout}")
-    print(f"exit code: {result.exit_code}")
+    # Upload a script
+    sandbox.upload("./script.py", "/app/script.py")
 
-    # Stop
-    await sandbox.stop()
+    # Run it with streaming output
+    async for event in sandbox.exec_stream("python", ["/app/script.py"]):
+        if event.stdout:
+            print(event.stdout, end="")
+
+    # Download results
+    sandbox.download("/app/results.json", "./results.json")
+
+    sandbox.stop()
 
 asyncio.run(main())
 ```
 
-### Streaming Exec
-
-```python
-async for event in sandbox.exec_stream("bash", ["-c", "for i in 1 2 3; do echo $i; sleep 1; done"]):
-    if event.stdout:
-        print(event.stdout, end="")
-    elif event.stderr:
-        print(event.stderr, end="", file=sys.stderr)
-```
-
-### File Transfer
-
-```python
-await sandbox.upload("./input.csv", "/app/input.csv")
-await sandbox.download("/app/output.csv", "./output.csv")
-```
-
-### Context Manager
-
-```python
-async with sdk.create(SandboxOptions(image="alpine:latest")) as sandbox:
-    result = await sandbox.exec("echo", ["hello"])
-    print(result.stdout)
-# sandbox is automatically stopped on exit
-```
+---
 
 ## TypeScript SDK
 
-### Install
+### Installation
 
 ```bash
 npm install @a3s-lab/box
 ```
 
-### Basic Usage
+### BoxSdk
 
 ```typescript
-import { BoxSdk, SandboxOptions } from '@a3s-lab/box';
+import { BoxSdk } from '@a3s-lab/box';
 
+// Default home directory (~/.a3s/)
 const sdk = new BoxSdk();
 
-// Create a sandbox
+// Custom home directory
+const sdk = new BoxSdk('/data/sandboxes');
+
+// Get home directory
+console.log(sdk.homeDir); // string
+```
+
+### SandboxOptions
+
+```typescript
+interface SandboxOptions {
+  image?: string;           // default: "alpine:latest"
+  cpus?: number;            // default: 1
+  memoryMb?: number;        // default: 256
+  env?: Record<string, string>;
+  workdir?: string;
+  mounts?: MountSpec[];
+  network?: boolean;        // default: true
+  tee?: boolean;            // default: false
+  name?: string;
+  portForwards?: PortForward[];
+  workspace?: WorkspaceConfig;
+}
+
+interface MountSpec {
+  hostPath: string;
+  guestPath: string;
+  readonly?: boolean;       // default: false
+}
+
+interface PortForward {
+  guestPort: number;
+  hostPort?: number;        // default: 0 (auto-assign)
+  protocol?: string;        // default: "tcp"
+}
+
+interface WorkspaceConfig {
+  name: string;
+  guestPath?: string;       // default: "/workspace"
+}
+```
+
+### Sandbox
+
+#### create
+
+```typescript
 const sandbox = await sdk.create({
   image: 'node:20-slim',
   cpus: 2,
-  memoryMb: 1024,
+  memoryMb: 512,
 });
-
-// Execute a command
-const result = await sandbox.exec('node', ['-e', 'console.log("hello from sandbox")']);
-console.log(`stdout: ${result.stdout}`);
-console.log(`exit code: ${result.exitCode}`);
-
-// Stop
-await sandbox.stop();
 ```
 
-### Streaming Exec
+#### exec
 
 ```typescript
-const stream = await sandbox.execStream('bash', ['-c', 'for i in 1 2 3; do echo $i; sleep 1; done']);
+const result = await sandbox.exec('node', ['-e', 'console.log("hello")']);
+// result.stdout: string
+// result.stderr: string
+// result.exitCode: number
+// result.metrics.durationMs: number
+// result.metrics.stdoutBytes: number
+// result.metrics.stderrBytes: number
+```
+
+#### execStream
+
+```typescript
+const stream = await sandbox.execStream('bash', [
+  '-c', 'for i in 1 2 3; do echo $i; sleep 1; done'
+]);
 
 for await (const event of stream) {
   if (event.stdout) process.stdout.write(event.stdout);
   if (event.stderr) process.stderr.write(event.stderr);
+  if (event.exitCode !== undefined) console.log(`exit: ${event.exitCode}`);
 }
 ```
 
-### File Transfer
+#### upload / download
 
 ```typescript
 await sandbox.upload('./input.json', '/app/input.json');
 await sandbox.download('/app/output.json', './output.json');
 ```
 
-## SDK Capabilities Summary
+#### pause / resume / stop
+
+```typescript
+await sandbox.pause();
+await sandbox.resume();
+await sandbox.stop();
+```
+
+### Complete Example
+
+```typescript
+import { BoxSdk } from '@a3s-lab/box';
+
+const sdk = new BoxSdk();
+
+const sandbox = await sdk.create({
+  image: 'node:20-slim',
+  cpus: 2,
+  memoryMb: 512,
+  env: { NODE_ENV: 'production' },
+  mounts: [{ hostPath: './app', guestPath: '/app' }],
+  portForwards: [{ guestPort: 3000, hostPort: 8080 }],
+});
+
+await sandbox.upload('./package.json', '/app/package.json');
+
+const install = await sandbox.exec('npm', ['install', '--prefix', '/app']);
+console.log(install.stdout);
+
+const stream = await sandbox.execStream('node', ['/app/index.js']);
+for await (const event of stream) {
+  if (event.stdout) process.stdout.write(event.stdout);
+}
+
+await sandbox.stop();
+```
+
+---
+
+## Capabilities Summary
 
 | Feature | Rust | Python | TypeScript |
 |---------|:----:|:------:|:----------:|
-| Create / Stop | ✅ | ✅ | ✅ |
-| Exec (sync) | ✅ | ✅ | ✅ |
-| Exec (streaming) | ✅ | ✅ | ✅ |
-| File upload/download | ✅ | ✅ | ✅ |
+| `create` / `stop` | ✅ | ✅ | ✅ |
+| `exec` (buffered) | ✅ | ✅ | ✅ |
+| `exec_stream` (real-time) | ✅ | ✅ | ✅ |
+| `upload` / `download` | ✅ | ✅ | ✅ |
 | Port forwarding | ✅ | ✅ | ✅ |
 | Persistent workspaces | ✅ | ✅ | ✅ |
-| Pause / Resume | ✅ | ✅ | ✅ |
+| `pause` / `resume` | ✅ | ✅ | ✅ |
 | Interactive PTY | ✅ | — | — |
 | Embedded shim | ✅ | — | — |
 | Per-exec metrics | ✅ | ✅ | ✅ |
+| Context manager | — | ✅ | — |
+| TEE (SEV-SNP) | ✅ | ✅ | ✅ |
