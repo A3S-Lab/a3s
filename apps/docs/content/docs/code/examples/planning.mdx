@@ -132,3 +132,22 @@ for await (const event of stream) {
 ```
 </Tab>
 </Tabs>
+
+## API Reference
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| Enable planning | `.with_planning(true)` | `planning=True` | `planning: true` | `false` |
+| Enable goal tracking | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` | `false` |
+
+### Planning Events
+
+| Event | Rust variant | Python/Node.js `type` | Fields |
+|-------|-------------|----------------------|--------|
+| Planning started | `AgentEvent::PlanningStart` | `planning_start` | `prompt` |
+| Plan generated | `AgentEvent::PlanReady` | `plan_ready` | `steps[]`, `wave_count` |
+| Step started | `AgentEvent::StepStart` | `step_start` | `step`, `index` |
+| Step completed | `AgentEvent::StepEnd` | `step_end` | `step`, `index`, `success` |
+| Goal updated | `AgentEvent::GoalUpdated` | `goal_updated` | `goal`, `status` |

@@ -177,3 +177,37 @@ const result = await session.send(
 <Callout type="info">
 For full skills documentation, see [Skills](/docs/code/skills).
 </Callout>
+
+## API Reference
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| Built-in skills | `.with_builtin_skills()` | `builtin_skills=True` | `builtinSkills: true` | `false` |
+| Skills from directory | `.with_skills_from_dir(path)` | `skill_dirs=[path]` | `skillDirs: [path]` | `[]` |
+| Custom registry | `.with_skill_registry(Arc::new(r))` | _(Rust only)_ | _(Rust only)_ | `None` |
+
+### Skill frontmatter fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `string` | ✅ | Unique skill identifier |
+| `description` | `string` | ✅ | What the skill does |
+| `triggers` | `string[]` | ✅ | Phrases that activate the skill |
+| `allowed-tools` | `string` | ❌ | Tool access pattern (e.g. `"read(*), grep(*)"`) |
+| `kind` | `string` | ❌ | `instruction` (default) or `agent` |
+| `tags` | `string[]` | ❌ | Categorization tags |
+| `version` | `string` | ❌ | Semver version string |
+
+### Built-in skills
+
+| Skill ID | Trigger phrases | Effect |
+|----------|----------------|--------|
+| `code-search` | "find code", "search for" | Semantic code search |
+| `code-review` | "review", "check code" | Style + security review |
+| `explain-code` | "explain", "what does" | Code explanation |
+| `find-bugs` | "find bugs", "debug" | Bug detection |
+| `builtin-tools` | _(always active)_ | Tool usage guidance |
+| `delegate-task` | "delegate", "parallel" | Sub-agent delegation |
+| `find-skills` | "what skills", "find skill" | Dynamic skill discovery |

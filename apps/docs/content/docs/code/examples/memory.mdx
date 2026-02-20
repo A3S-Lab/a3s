@@ -164,3 +164,28 @@ for await (const event of stream) {
 <Callout type="info">
 For full memory API reference, see [Memory](/docs/code/memory).
 </Callout>
+
+## API Reference
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| File memory | `.with_file_memory(path)` | `memory_dir=path` | `memoryDir: path` | `None` |
+| Custom store | `.with_memory(Arc::new(store))` | _(Rust only)_ | _(Rust only)_ | `InMemoryStore` |
+
+### MemoryStore trait (Rust)
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `store` | `async fn store(&self, entry: MemoryEntry) -> Result<String>` | Persist a memory, returns ID |
+| `recall` | `async fn recall(&self, query: &str, limit: usize) -> Result<Vec<MemoryEntry>>` | Retrieve relevant memories |
+| `delete` | `async fn delete(&self, id: &str) -> Result<()>` | Remove a memory by ID |
+| `clear` | `async fn clear(&self) -> Result<()>` | Wipe all memories |
+
+### Memory Events
+
+| Event | Rust variant | Python/Node.js `type` | Fields |
+|-------|-------------|----------------------|--------|
+| Memory stored | `AgentEvent::MemoryStored` | `memory_stored` | `memory_id`, `memory_type` |
+| Memory recalled | `AgentEvent::MemoryRecalled` | `memory_recalled` | `memory_id`, `relevance` |

@@ -124,3 +124,28 @@ The auth module has been refactored. Key changes:
 └─ Turn 2 done (2103 tokens)
 ■ Done — 3945 tokens total
 ```
+
+## API Reference
+
+### stream()
+
+| Method | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| Start stream | `session.stream("prompt", None).await?` | `session.stream("prompt")` | `session.stream('prompt')` |
+| Receive event | `rx.recv().await` | `async for event in stream` | `for await (const event of stream)` |
+| Await completion | `handle.await??` | _(auto)_ | _(auto)_ |
+
+### AgentEvent types
+
+| Event | Rust variant | Python/Node.js `type` | Fields |
+|-------|-------------|----------------------|--------|
+| Agent started | `AgentEvent::Start` | `start` | — |
+| LLM turn began | `AgentEvent::TurnStart` | `turn_start` | `turn` |
+| LLM turn ended | `AgentEvent::TurnEnd` | `turn_end` | `turn`, `usage` |
+| Text chunk | `AgentEvent::TextDelta` | `text_delta` | `text` |
+| Tool began | `AgentEvent::ToolStart` | `tool_start` | `name`, `args` |
+| Tool finished | `AgentEvent::ToolEnd` | `tool_end` | `name`, `exit_code`, `output` |
+| Tool output chunk | `AgentEvent::ToolOutputDelta` | `tool_output_delta` | `text` |
+| RAG resolving | `AgentEvent::ContextResolving` | `context_resolving` | `query` |
+| RAG resolved | `AgentEvent::ContextResolved` | `context_resolved` | `chunks` |
+| Agent finished | `AgentEvent::End` | `end` | `text`, `usage` |

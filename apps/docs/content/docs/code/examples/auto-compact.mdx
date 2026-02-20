@@ -138,3 +138,20 @@ for await (const event of stream) {
 ```
 </Tab>
 </Tabs>
+
+## API Reference
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| Enable auto-compact | `.with_auto_compact(true)` | `auto_compact=True` | `autoCompact: true` | `false` |
+| Threshold (0.0–1.0) | `.with_auto_compact_threshold(f)` | `auto_compact_threshold=f` | `autoCompactThreshold: f` | `0.8` |
+
+### ContextCompacted Event
+
+| Field | Rust | Python/Node.js | Description |
+|-------|------|----------------|-------------|
+| Messages before | `messages_before` | `messages_before` / `messagesBefore` | Message count before compaction |
+| Messages after | `messages_after` | `messages_after` / `messagesAfter` | Message count after compaction |
+| Tokens saved | `tokens_saved` | `tokens_saved` / `tokensSaved` | Approximate tokens freed |

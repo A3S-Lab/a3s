@@ -134,3 +134,33 @@ The `DefaultSecurityProvider` detects and redacts:
 <Callout type="info">
 For full security configuration, see [Security](/docs/code/security).
 </Callout>
+
+## API Reference
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| Default security | `.with_default_security()` | `default_security=True` | `defaultSecurity: true` | `false` |
+| Custom provider | `.with_security_provider(Arc::new(p))` | _(Rust only)_ | _(Rust only)_ | `None` |
+
+### SecurityProvider trait (Rust)
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `taint_input` | `fn taint_input(&self, text: &str)` | Inspect/register sensitive patterns in user input |
+| `sanitize_output` | `fn sanitize_output(&self, text: &str) -> String` | Redact sensitive patterns from LLM output |
+| `wipe` | `fn wipe(&self)` | Clear any cached sensitive state |
+| `register_hooks` | `fn register_hooks(&self, engine: &HookEngine)` | Attach hooks for deeper interception |
+| `teardown` | `fn teardown(&self)` | Called when session ends |
+
+### DefaultSecurityProvider redaction patterns
+
+| Pattern | Example match | Replacement |
+|---------|--------------|-------------|
+| Anthropic API key | `sk-ant-api03-...` | `[REDACTED]` |
+| OpenAI API key | `sk-proj-...` | `[REDACTED]` |
+| Generic bearer token | `Bearer eyJ...` | `[REDACTED]` |
+| Password field | `password=secret` | `[REDACTED]` |
+| SSN | `123-45-6789` | `[REDACTED]` |
+| Credit card | `4111 1111 1111 1111` | `[REDACTED]` |

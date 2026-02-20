@@ -167,3 +167,28 @@ results.forEach((r) => console.log(r.text));
 **Source:** [`sdk/node/examples/test_parallel_processing.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_parallel_processing.js)
 </Tab>
 </Tabs>
+
+## API Reference
+
+### LaneHandlerConfig
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `mode` | `"internal"` \| `"external"` \| `"hybrid"` | Task execution mode |
+| `timeout_ms` | `Option<u64>` | Max wait time for external worker response |
+
+### External task methods
+
+| Method | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| Set handler | `session.set_external_task_handler(fn).await` | `session.set_external_task_handler(fn)` | `session.setExternalTaskHandler(fn)` |
+| Poll pending | `session.pending_external_tasks().await` | `await session.pending_external_tasks()` | `await session.pendingExternalTasks()` |
+| Complete task | `session.complete_external_task(id, result).await` | `await session.complete_external_task(id, result)` | `await session.completeExternalTask(id, result)` |
+
+### ExternalTaskResult fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | `bool` | Whether the task completed successfully |
+| `result` | `Option<Value>` | Task output payload |
+| `error` | `Option<String>` | Error message if `success` is `false` |

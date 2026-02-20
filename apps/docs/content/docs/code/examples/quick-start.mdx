@@ -175,3 +175,23 @@ const session = agent.session('/my-project', {
 <Callout type="warn">
 `permissive: true` skips HITL confirmation — suitable for demos and CI. In production, configure a [permission policy](/docs/code/security) instead.
 </Callout>
+
+## API Reference
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| Permissive policy | `.with_permissive_policy()` | `permissive=True` | `permissive: true` | `false` |
+| Parse retries | `.with_parse_retries(n)` | `max_parse_retries=n` | `maxParseRetries: n` | `3` |
+| Tool timeout | `.with_tool_timeout(ms)` | `tool_timeout_ms=ms` | `toolTimeoutMs: ms` | `30000` |
+| Circuit breaker | `.with_circuit_breaker(n)` | `circuit_breaker_threshold=n` | `circuitBreakerThreshold: n` | `5` |
+
+### AgentResponse
+
+| Field | Rust | Python | Node.js |
+|-------|------|--------|---------|
+| Final text | `result.text` | `result.text` | `result.text` |
+| Total tokens | `result.usage.total_tokens` | `result.usage.total_tokens` | `result.usage.totalTokens` |
+| Tool call count | `result.tool_calls_count` | `result.tool_calls_count` | `result.toolCallsCount` |
+| History | `session.history()` | `session.history()` | `session.history()` |

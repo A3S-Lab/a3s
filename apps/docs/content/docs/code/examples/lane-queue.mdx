@@ -140,3 +140,31 @@ await session.submitTask({
 <Callout type="info">
 For full lane queue documentation, see [Lane Queue](/docs/code/lane-queue).
 </Callout>
+
+## API Reference
+
+### SessionQueueConfig
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| Enable lane features | `.with_lane_features()` | `enable_all_features=True` | `enableAllFeatures: true` | `false` |
+| Enable metrics | `.with_metrics()` | `enable_metrics=True` | `enableMetrics: true` | `false` |
+| Query concurrency | `.query_max_concurrency(n)` | `query_max_concurrency=n` | `queryMaxConcurrency: n` | `10` |
+| Execute concurrency | `.execute_max_concurrency(n)` | `execute_max_concurrency=n` | `executeMaxConcurrency: n` | `5` |
+
+### ExternalTask fields (Rust)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `String` | Unique task identifier |
+| `lane` | `SessionLane` | `Control`, `Query`, `Execute`, or `Generate` |
+| `payload` | `serde_json::Value` | Task data (prompt, args, etc.) |
+
+### Queue management methods
+
+| Method | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| Submit task | `session.submit_task(task).await?` | `await session.submit_task({...})` | `await session.submitTask({...})` |
+| Queue stats | `session.queue_stats().await` | `await session.queue_stats()` | `await session.queueStats()` |
+| Queue metrics | `session.queue_metrics().await` | `await session.queue_metrics()` | `await session.queueMetrics()` |
+| Dead letters | `session.dead_letters().await` | `await session.dead_letters()` | `await session.deadLetters()` |

@@ -171,3 +171,23 @@ handler.rs:5:// TODO: add error handling
 <Callout type="warn">
 Nested batch calls are rejected. The batch tool cannot call itself recursively.
 </Callout>
+
+## API Reference
+
+### batch tool input schema
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `invocations` | `array` | ✅ | List of tool calls to execute in parallel |
+| `invocations[].tool` | `string` | ✅ | Name of the tool to call |
+| `invocations[].args` | `object` | ✅ | Arguments passed to the tool |
+
+### Direct invocation
+
+| Method | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| Call tool directly | `session.call_tool("batch", json!({...})).await?` | `await session.call_tool("batch", {...})` | `await session.callTool('batch', {...})` |
+
+### Output format
+
+Each result is prefixed with `--- [N: tool_name] ---` followed by the tool output. Failed invocations include an `error:` line instead of output.

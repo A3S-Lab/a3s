@@ -179,3 +179,39 @@ Files are split on paragraph/function boundaries with a configurable max chunk s
 auth.rs → [chunk 1: verify_jwt fn] [chunk 2: Claims struct] [chunk 3: tests]
 db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
 ```
+
+## API Reference
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| Filesystem context | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` | `None` |
+| Custom context provider | `.with_context_provider(Arc::new(p))` | _(config-based)_ | _(config-based)_ | `None` |
+
+### VectorContextConfig (Rust)
+
+| Method | Description | Default |
+|--------|-------------|---------|
+| `VectorContextConfig::new(path)` | Set workspace root | — |
+| `.with_min_relevance(f)` | Minimum cosine similarity score | `0.3` |
+| `.with_max_results(n)` | Max chunks returned per query | `10` |
+| `.with_chunk_size(n)` | Max chars per chunk | `1500` |
+
+### HCL config (Python / Node.js)
+
+```hcl
+context {
+  provider         = "vector"
+  embedding_model  = "text-embedding-3-small"
+  min_relevance    = 0.3
+  max_results      = 10
+}
+```
+
+### codesearch tool schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `query` | `string` | Natural language search query |
+| `limit` | `number` | Max results (default: `10`) |

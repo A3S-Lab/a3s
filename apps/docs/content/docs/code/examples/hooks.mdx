@@ -160,3 +160,32 @@ session.registerHook('no-bash', 'pre_tool_use', (event) => {
 <Callout type="info">
 For persistent hook configuration across sessions, see [Hooks](/docs/code/hooks).
 </Callout>
+
+## API Reference
+
+### Hook Registration
+
+| Operation | Rust | Python | Node.js |
+|-----------|------|--------|---------|
+| Register hook | `session.register_hook(hook)` | `session.register_hook(id, event, fn)` | `session.registerHook(id, event, fn)` |
+| Register handler | `session.register_hook_handler(id, Arc::new(h))` | _(combined with register)_ | _(combined with register)_ |
+| Unregister | `session.unregister_hook(id)` | `session.unregister_hook(id)` | `session.unregisterHook(id)` |
+| Count | `session.hook_count()` | `session.hook_count()` | `session.hookCount()` |
+
+### HookResponse (Rust)
+
+| Value | Effect |
+|-------|--------|
+| `HookResponse::continue_()` | Allow the operation to proceed |
+| `HookResponse::block(reason)` | Cancel the operation with a reason |
+| `HookResponse::modify(data)` | Replace the event data before execution |
+
+### Hook Event Fields
+
+| Event | Key fields |
+|-------|-----------|
+| `PreToolUse` | `tool: String`, `args: Value` |
+| `PostToolUse` | `tool: String`, `output: String`, `exit_code: i32` |
+| `PrePrompt` | `prompt: String` |
+| `PostResponse` | `text: String`, `usage: Usage` |
+| `OnError` | `error: String`, `turn: u32` |
