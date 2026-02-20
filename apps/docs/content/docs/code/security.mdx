@@ -337,3 +337,45 @@ The agent emits security-related events during streaming:
 | `ConfirmationRejected` | User rejected the tool call |
 
 See [Sessions](/docs/code/sessions) for full event reference.
+
+## API Reference
+
+### PermissionPolicy
+
+| Method | Description |
+|--------|-------------|
+| `PermissionPolicy::new()` | Create with permissive default |
+| `PermissionPolicy::strict()` | Create with deny-all default |
+| `PermissionPolicy::permissive()` | Create with allow-all default |
+| `.allow(pattern)` | Add allow rule |
+| `.deny(pattern)` | Add deny rule |
+| `.ask(pattern)` | Add ask (HITL) rule |
+| `session.set_permission_policy(p).await` | Apply to running session |
+
+### Pattern syntax
+
+| Pattern | Matches |
+|---------|---------|
+| `bash(*)` | All bash calls |
+| `bash(rm -rf:*)` | Bash calls starting with `rm -rf` |
+| `read(src/**)` | Read any file under `src/` |
+| `write(*)` | All write calls |
+| `mcp__github` | All `mcp__github__*` tools |
+
+### ConfirmationPolicy
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enabled` | `bool` | `false` | Enable HITL |
+| `default_timeout_ms` | `u64` | `30000` | Confirmation timeout |
+| `timeout_action` | `TimeoutAction` | `Reject` | `Reject` or `Allow` on timeout |
+
+### SecurityProvider trait (Rust)
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `taint_input` | `fn taint_input(&self, text: &str)` | Inspect user input for sensitive patterns |
+| `sanitize_output` | `fn sanitize_output(&self, text: &str) -> String` | Redact sensitive patterns from LLM output |
+| `wipe` | `fn wipe(&self)` | Clear cached sensitive state |
+| `register_hooks` | `fn register_hooks(&self, engine: &HookEngine)` | Attach hooks for deeper interception |
+| `teardown` | `fn teardown(&self)` | Called when session ends |

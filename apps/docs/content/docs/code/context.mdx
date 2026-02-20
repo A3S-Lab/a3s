@@ -236,3 +236,48 @@ Context-related events emitted during streaming:
 | `ContextCompacted` | Compaction completed |
 
 See [Sessions](/docs/code/sessions) for full event reference.
+
+## API Reference
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| FS context | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` | `None` |
+| Custom provider | `.with_context_provider(Arc::new(p))` | _(config-based)_ | _(config-based)_ | `None` |
+| Compact threshold | `.with_context_threshold(f)` | `context_threshold=f` | `contextThreshold: f` | `0.8` |
+
+### ContextProvider trait (Rust)
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `retrieve` | `async fn retrieve(&self, query: &ContextQuery) -> Result<Vec<ContextItem>>` | Fetch relevant context items |
+| `on_turn_complete` | `async fn on_turn_complete(&self, turn: &TurnSummary) -> Result<()>` | Called after each agent turn |
+| `name` | `fn name(&self) -> &str` | Provider identifier |
+
+### ContextQuery fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `query` | `String` | Natural language query |
+| `max_tokens` | `Option<usize>` | Token budget for results |
+| `context_types` | `Vec<ContextType>` | Filter by type |
+| `depth` | `ContextDepth` | `Abstract` or `Full` |
+
+### ContextItem fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `content` | `String` | Context text |
+| `source` | `String` | Origin (file path, memory ID, etc.) |
+| `relevance` | `f32` | Relevance score (0.0–1.0) |
+| `context_type` | `ContextType` | `File`, `Memory`, `Skill`, `Custom` |
+
+### VectorContextConfig (Rust)
+
+| Method | Description | Default |
+|--------|-------------|---------|
+| `VectorContextConfig::new(path)` | Set workspace root | — |
+| `.with_min_relevance(f)` | Minimum cosine similarity | `0.3` |
+| `.with_max_results(n)` | Max chunks per query | `10` |
+| `.with_chunk_size(n)` | Max chars per chunk | `1500` |

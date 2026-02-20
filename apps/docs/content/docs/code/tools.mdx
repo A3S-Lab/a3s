@@ -280,3 +280,118 @@ Beyond built-in tools, A3S Code supports external tool integration via:
 - **Custom Tool Trait** — Implement the `Tool` trait in Rust and register with `ToolRegistry`
 
 See [MCP](/docs/code/mcp) for external tool integration examples.
+
+## API Reference
+
+### Tool input/output schemas
+
+#### read
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `file_path` | `string` | ✅ | Absolute or workspace-relative path |
+| `offset` | `number` | ❌ | Start line (1-based) |
+| `limit` | `number` | ❌ | Max lines to return |
+
+#### write
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `file_path` | `string` | ✅ | Path to write |
+| `content` | `string` | ✅ | Full file content |
+
+#### edit
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `file_path` | `string` | ✅ | Path to edit |
+| `old_string` | `string` | ✅ | Exact string to replace |
+| `new_string` | `string` | ✅ | Replacement string |
+| `replace_all` | `boolean` | ❌ | Replace all occurrences (default: `false`) |
+
+#### patch
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `file_path` | `string` | ✅ | Path to patch |
+| `diff` | `string` | ✅ | Unified diff string |
+
+#### grep
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `pattern` | `string` | ✅ | Regex or literal pattern |
+| `path` | `string` | ❌ | Directory or file to search (default: workspace root) |
+| `glob` | `string` | ❌ | File glob filter (e.g. `**/*.rs`) |
+| `-i` | `boolean` | ❌ | Case-insensitive |
+| `-n` | `boolean` | ❌ | Include line numbers |
+| `context` | `number` | ❌ | Lines of context around matches |
+
+#### glob
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `pattern` | `string` | ✅ | Glob pattern (e.g. `**/*.rs`) |
+| `path` | `string` | ❌ | Base directory (default: workspace root) |
+
+#### ls
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `path` | `string` | ❌ | Directory to list (default: workspace root) |
+
+#### bash
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `command` | `string` | ✅ | Shell command to execute |
+| `timeout` | `number` | ❌ | Timeout in ms |
+| `env` | `object` | ❌ | Extra environment variables |
+
+#### web_fetch
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `url` | `string` | ✅ | URL to fetch |
+| `prompt` | `string` | ❌ | Extraction prompt for the fetched content |
+
+#### web_search
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `query` | `string` | ✅ | Search query |
+| `allowed_domains` | `string[]` | ❌ | Restrict results to these domains |
+| `blocked_domains` | `string[]` | ❌ | Exclude these domains |
+
+#### task
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `agent` | `string` | ✅ | Agent name to delegate to |
+| `prompt` | `string` | ✅ | Task prompt for the subagent |
+| `workspace` | `string` | ❌ | Workspace override (default: current) |
+
+#### batch
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `invocations` | `array` | ✅ | List of `{tool, args}` objects to run in parallel |
+
+### Custom Tool trait (Rust)
+
+```rust
+use a3s_code_core::tools::{Tool, ToolOutput};
+use async_trait::async_trait;
+
+#[async_trait]
+impl Tool for MyTool {
+    fn name(&self) -> &str { "my_tool" }
+    fn description(&self) -> &str { "Does something useful" }
+    fn parameters(&self) -> serde_json::Value { /* JSON Schema */ }
+    async fn execute(&self, args: serde_json::Value) -> anyhow::Result<ToolOutput> {
+        Ok(ToolOutput::success("result"))
+    }
+}
+
+session.register_tool(Arc::new(MyTool));
+```

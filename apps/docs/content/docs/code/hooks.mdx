@@ -192,3 +192,44 @@ Each hook event carries a typed payload with event-specific data:
 
 </Accordion>
 </Accordions>
+
+## API Reference
+
+### Hook registration
+
+| Method | Rust | Description |
+|--------|------|-------------|
+| Register hook | `session.register_hook(Hook::new(id, event_type))` | Register a hook listener |
+| Register handler | `session.register_hook_handler(id, Arc::new(handler))` | Attach handler to hook |
+| Unregister | `session.unregister_hook(id)` | Remove hook and handler |
+| Count | `session.hook_count()` | Number of registered hooks |
+
+### HookHandler trait (Rust)
+
+```rust
+impl HookHandler for MyHandler {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        match event {
+            HookEvent::PreToolUse(e) => { /* ... */ }
+            _ => {}
+        }
+        HookResponse::continue_()
+    }
+}
+```
+
+### HookResponse values
+
+| Value | Effect |
+|-------|--------|
+| `HookResponse::continue_()` | Allow the operation to proceed |
+| `HookResponse::block(reason)` | Cancel the operation with a reason string |
+| `HookResponse::modify(data)` | Replace event data before execution |
+
+### Hook priority
+
+Lower number = higher priority. `SecurityGuard` uses priority `1`. Default hooks use priority `100`.
+
+```rust
+Hook::new("my-hook", HookEventType::PreToolUse).with_priority(50)
+```

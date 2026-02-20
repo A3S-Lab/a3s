@@ -477,3 +477,42 @@ No changes to the planning config are needed — enable planning as usual, and c
 Tasks are stored in `SessionData` alongside conversation history and memory. The `tasks` field uses `#[serde(alias = "todos")]` for backward compatibility with sessions persisted before the type unification.
 
 When a session is restored from storage, its task list is restored too — the agent picks up where it left off.
+
+## API Reference
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| Planning | `.with_planning(true)` | `planning=True` | `planning: true` | `false` |
+| Goal tracking | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` | `false` |
+| Max tool rounds | `.with_max_tool_rounds(n)` | `max_tool_rounds=n` | `maxToolRounds: n` | `50` |
+
+### AgentTask fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `String` | Unique task identifier |
+| `title` | `String` | Short task description |
+| `status` | `TaskStatus` | `Pending`, `InProgress`, `Completed`, `Failed`, `Cancelled` |
+| `priority` | `TaskPriority` | `Critical`, `High`, `Medium`, `Low` |
+| `dependencies` | `Vec<String>` | IDs of tasks that must complete first |
+| `created_at` | `DateTime<Utc>` | Creation timestamp |
+| `completed_at` | `Option<DateTime<Utc>>` | Completion timestamp |
+
+### AgentGoal fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `description` | `String` | Goal description |
+| `success_criteria` | `Vec<String>` | Measurable completion criteria |
+| `progress` | `f32` | Progress (0.0–1.0) |
+| `achieved` | `bool` | Whether goal is complete |
+| `created_at` | `DateTime<Utc>` | Creation timestamp |
+
+### Planner trait (Rust)
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `plan` | `async fn plan(&self, prompt: &str, context: &PlanContext) -> Result<Vec<AgentTask>>` | Decompose prompt into tasks |
+| `name` | `fn name(&self) -> &str` | Planner identifier |

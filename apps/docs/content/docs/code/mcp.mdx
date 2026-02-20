@@ -87,3 +87,52 @@ MCP tools cannot shadow built-in tool names. If an MCP server exposes a tool nam
 ## Execution Timeout
 
 MCP tool executions have a configurable timeout (default: 60 seconds). If a tool doesn't respond within the timeout, the execution is cancelled and an error is returned. This prevents hanging MCP servers from blocking the agent.
+
+## API Reference
+
+### HCL configuration
+
+```hcl
+mcp_servers {
+  name    = "filesystem"
+  command = "npx"
+  args    = ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
+}
+
+mcp_servers {
+  name = "github"
+  command = "npx"
+  args    = ["-y", "@modelcontextprotocol/server-github"]
+  env     = { GITHUB_TOKEN = env("GITHUB_TOKEN") }
+}
+```
+
+### MCP server config fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `string` | ✅ | Server identifier (used in tool name prefix) |
+| `command` | `string` | ✅ | Executable to launch |
+| `args` | `string[]` | ❌ | Command arguments |
+| `env` | `object` | ❌ | Environment variables |
+| `timeout_ms` | `number` | ❌ | Tool execution timeout (default: `60000`) |
+| `transport` | `string` | ❌ | `stdio` (default) or `http` |
+
+### McpTransport trait (Rust)
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `connect` | `async fn connect(&mut self) -> Result<()>` | Establish connection to MCP server |
+| `list_tools` | `async fn list_tools(&self) -> Result<Vec<McpTool>>` | Discover available tools |
+| `call_tool` | `async fn call_tool(&self, name: &str, args: Value) -> Result<Value>` | Invoke a tool |
+| `disconnect` | `async fn disconnect(&mut self) -> Result<()>` | Close connection |
+
+### Tool naming
+
+MCP tools are namespaced as `mcp__{server}__{tool}`. Use this prefix in permission rules:
+
+| Pattern | Matches |
+|---------|---------|
+| `mcp__filesystem` | All tools from the `filesystem` server |
+| `mcp__github__create_issue` | Specific tool |
+| `mcp__*` | All MCP tools |

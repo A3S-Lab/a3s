@@ -406,3 +406,63 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
 | `CommandDeadLettered` | — | Lane command dead-lettered |
 | `CommandRetry` | — | Lane command retried |
 | `QueueAlert` | — | Queue alert emitted |
+
+## API Reference
+
+### Agent
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `new` | `Agent::new(config: &str) -> Result<Agent>` | Load from HCL file or string |
+| `from_config` | `Agent::from_config(config: AgentConfig) -> Result<Agent>` | Load from struct |
+| `session` | `agent.session(workspace, options?) -> Result<AgentSession>` | Create a workspace-bound session |
+
+### AgentSession
+
+| Method | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| Send prompt | `session.send(prompt, None).await?` | `await session.send(prompt)` | `await session.send(prompt)` |
+| Stream events | `session.stream(prompt, None).await?` | `session.stream(prompt)` | `session.stream(prompt)` |
+| Send with image | `session.send_with_attachments(p, &[img], None).await?` | `await session.send_with_attachments(p, [img])` | `await session.sendWithAttachments(p, [img])` |
+| Read file | `session.read_file(path).await?` | `await session.read_file(path)` | `await session.readFile(path)` |
+| Run bash | `session.bash(cmd).await?` | `await session.bash(cmd)` | `await session.bash(cmd)` |
+| Glob | `session.glob(pattern).await?` | `await session.glob(pattern)` | `await session.glob(pattern)` |
+| Grep | `session.grep(pattern).await?` | `await session.grep(pattern)` | `await session.grep(pattern)` |
+| Call tool | `session.tool(name, args).await?` | `await session.tool(name, args)` | `await session.tool(name, args)` |
+| History | `session.history()` | `session.history()` | `session.history()` |
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| Model | `.with_model("provider/model")` | `model="provider/model"` | `model: "provider/model"` | config default |
+| Permissive | `.with_permissive_policy()` | `permissive=True` | `permissive: true` | `false` |
+| Planning | `.with_planning(true)` | `planning=True` | `planning: true` | `false` |
+| Goal tracking | `.with_goal_tracking(true)` | `goal_tracking=True` | `goalTracking: true` | `false` |
+| Built-in skills | `.with_builtin_skills()` | `builtin_skills=True` | `builtinSkills: true` | `false` |
+| Skill dirs | `.with_skills_from_dir(path)` | `skill_dirs=[path]` | `skillDirs: [path]` | `[]` |
+| Default security | `.with_default_security()` | `default_security=True` | `defaultSecurity: true` | `false` |
+| File memory | `.with_file_memory(path)` | `memory_dir=path` | `memoryDir: path` | `None` |
+| Auto-compact | `.with_auto_compact(true)` | `auto_compact=True` | `autoCompact: true` | `false` |
+| Auto-compact threshold | `.with_auto_compact_threshold(f)` | `auto_compact_threshold=f` | `autoCompactThreshold: f` | `0.8` |
+| FS context | `.with_fs_context(path)` | `fs_context=path` | `fsContext: path` | `None` |
+| Queue config | `.with_queue_config(cfg)` | `queue_config=cfg` | `queueConfig: cfg` | `None` |
+| Parse retries | `.with_parse_retries(n)` | `max_parse_retries=n` | `maxParseRetries: n` | `2` |
+| Tool timeout | `.with_tool_timeout(ms)` | `tool_timeout_ms=ms` | `toolTimeoutMs: ms` | `None` |
+| Circuit breaker | `.with_circuit_breaker(n)` | `circuit_breaker_threshold=n` | `circuitBreakerThreshold: n` | `3` |
+| Resilience defaults | `.with_resilience_defaults()` | — | — | — |
+| Sandbox | `.with_sandbox(cfg)` | — | — | `None` |
+| Permission checker | `.with_permission_checker(p)` | — | — | `PermissionPolicy` |
+| Confirmation manager | `.with_confirmation_manager(m)` | — | — | `None` |
+| Security provider | `.with_security_provider(p)` | — | — | `None` |
+| Context provider | `.with_context_provider(p)` | — | — | `None` |
+| Memory store | `.with_memory(store)` | — | — | `InMemoryStore` |
+| Hook engine | `.with_hook_engine(h)` | — | — | `HookEngine` |
+
+### AgentResponse
+
+| Field | Rust | Python | Node.js |
+|-------|------|--------|---------|
+| Text | `result.text` | `result.text` | `result.text` |
+| Total tokens | `result.usage.total_tokens` | `result.usage.total_tokens` | `result.usage.totalTokens` |
+| Tool call count | `result.tool_calls_count` | `result.tool_calls_count` | `result.toolCallsCount` |

@@ -147,3 +147,43 @@ What gets persisted per session:
 | `config.system_prompt` | System prompt |
 | `config.planning_enabled` | Planning flag |
 | `tool_names` | Tool names (rebuilt on resume) |
+
+## API Reference
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| Custom store | `.with_session_store(Arc::new(s))` | _(Rust only)_ | _(Rust only)_ | `FileSessionStore` |
+
+### SessionStore trait (Rust)
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `save` | `async fn save(&self, data: &SessionData) -> Result<()>` | Persist session data |
+| `load` | `async fn load(&self, id: &str) -> Result<Option<SessionData>>` | Load session by ID |
+| `delete` | `async fn delete(&self, id: &str) -> Result<()>` | Remove session |
+| `list` | `async fn list(&self) -> Result<Vec<String>>` | List all session IDs |
+
+### SessionData fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `String` | Session identifier |
+| `messages` | `Vec<Message>` | Full conversation history |
+| `tasks` | `Vec<AgentTask>` | Task list (alias: `todos`) |
+| `config.workspace` | `String` | Workspace path |
+| `config.system_prompt` | `String` | System prompt |
+| `config.planning_enabled` | `bool` | Planning flag |
+| `tool_names` | `Vec<String>` | Tool names (rebuilt on resume) |
+| `created_at` | `DateTime<Utc>` | Session creation time |
+| `updated_at` | `DateTime<Utc>` | Last save time |
+
+### Session management methods
+
+| Method | Rust | Description |
+|--------|------|-------------|
+| Save session | `session.save().await?` | Persist current state |
+| Load session | `agent.resume(id, options?)?` | Resume from stored state |
+| List sessions | `agent.list_sessions().await?` | List all saved session IDs |
+| Delete session | `agent.delete_session(id).await?` | Remove stored session |

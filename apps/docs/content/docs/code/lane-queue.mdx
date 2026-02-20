@@ -814,3 +814,44 @@ let session = agent.session("/project", Some(
 ## Backward Compatibility
 
 When no `queue_config` is set in `SessionOptions`, the queue is not created and all tools execute sequentially via direct `ToolExecutor` calls, exactly as before. The queue is purely opt-in.
+
+## API Reference
+
+### SessionQueueConfig fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `query_max_concurrency` | `usize` | `4` | Max parallel Query-lane tasks |
+| `execute_max_concurrency` | `usize` | `1` | Max parallel Execute-lane tasks |
+| `enable_metrics` | `bool` | `false` | Collect queue metrics |
+| `enable_dlq` | `bool` | `false` | Enable dead-letter queue |
+| `lane_handlers` | `HashMap<SessionLane, LaneHandlerConfig>` | `{}` | Per-lane handler config |
+| `retry_policy` | `Option<RetryPolicy>` | `None` | Retry on failure |
+| `rate_limit` | `Option<RateLimit>` | `None` | Rate limiting |
+| `priority_boost` | `Option<PriorityBoost>` | `None` | Deadline-based priority boost |
+| `pressure_threshold` | `usize` | `50` | Queue depth alert threshold |
+
+### LaneHandlerConfig fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `mode` | `TaskHandlerMode` | `Internal`, `External`, or `Hybrid` |
+| `timeout_ms` | `Option<u64>` | External task timeout |
+
+### Queue management methods
+
+| Method | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| Submit task | `session.submit_task(task).await?` | `await session.submit_task({...})` | `await session.submitTask({...})` |
+| Queue stats | `session.queue_stats().await` | `await session.queue_stats()` | `await session.queueStats()` |
+| Queue metrics | `session.queue_metrics().await` | `await session.queue_metrics()` | `await session.queueMetrics()` |
+| Dead letters | `session.dead_letters().await` | `await session.dead_letters()` | `await session.deadLetters()` |
+| Set lane handler | `session.set_lane_handler(lane, cfg).await` | `await session.set_lane_handler(lane, cfg)` | `await session.setLaneHandler(lane, cfg)` |
+
+### RetryPolicy fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `strategy` | `string` | `"exponential"` | `"fixed"` or `"exponential"` |
+| `max_retries` | `u32` | `3` | Max retry attempts |
+| `initial_delay_ms` | `u64` | `100` | Initial retry delay |

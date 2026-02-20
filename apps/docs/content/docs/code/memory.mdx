@@ -184,3 +184,32 @@ Memory-related events emitted during execution:
 | `MemoryRecalled` | A memory item was retrieved for context |
 | `MemoriesSearched` | A memory search was performed |
 | `MemoryCleared` | Session memory was cleared |
+
+## API Reference
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| File memory | `.with_file_memory(path)` | `memory_dir=path` | `memoryDir: path` | `None` |
+| Custom store | `.with_memory(Arc::new(store))` | _(Rust only)_ | _(Rust only)_ | `InMemoryStore` |
+
+### MemoryStore trait (Rust)
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `store` | `async fn store(&self, entry: MemoryEntry) -> Result<String>` | Persist a memory, returns ID |
+| `recall` | `async fn recall(&self, query: &str, limit: usize) -> Result<Vec<MemoryEntry>>` | Retrieve relevant memories |
+| `delete` | `async fn delete(&self, id: &str) -> Result<()>` | Remove a memory by ID |
+| `clear` | `async fn clear(&self) -> Result<()>` | Wipe all memories |
+
+### MemoryEntry fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `String` | Unique memory identifier |
+| `content` | `String` | Memory text content |
+| `memory_type` | `MemoryType` | `Episodic`, `Semantic`, `Procedural`, or `Working` |
+| `relevance` | `f32` | Relevance score (0.0–1.0) |
+| `created_at` | `DateTime<Utc>` | Creation timestamp |
+| `tags` | `Vec<String>` | Optional categorization tags |

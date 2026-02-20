@@ -650,3 +650,40 @@ This makes A3S Code suitable for:
 - [Architecture](/docs/code/architecture) — System design and components
 - [Lane Queue](/docs/code/lane-queue) — Priority routing and task distribution
 - [Tasks](/docs/code/tasks) — Planning and parallel execution
+
+## API Reference
+
+### LaneHandlerConfig
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `mode` | `TaskHandlerMode` | `Internal`, `External`, or `Hybrid` |
+| `timeout_ms` | `Option<u64>` | Max wait for external worker response |
+
+### External task methods
+
+| Method | Rust | Python | Node.js |
+|--------|------|--------|---------|
+| Set handler | `session.set_external_task_handler(fn).await` | `session.set_external_task_handler(fn)` | `session.setExternalTaskHandler(fn)` |
+| Poll pending | `session.pending_external_tasks().await` | `await session.pending_external_tasks()` | `await session.pendingExternalTasks()` |
+| Complete task | `session.complete_external_task(id, result).await` | `await session.complete_external_task(id, result)` | `await session.completeExternalTask(id, result)` |
+| Set lane handler | `session.set_lane_handler(lane, cfg).await` | `await session.set_lane_handler(lane, cfg)` | `await session.setLaneHandler(lane, cfg)` |
+
+### ExternalTask fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `task_id` | `String` | Unique task identifier |
+| `lane` | `SessionLane` | `Control`, `Query`, `Execute`, or `Generate` |
+| `payload` | `Value` | Task data (prompt, tool args, etc.) |
+| `created_at` | `DateTime<Utc>` | Enqueue timestamp |
+| `timeout_ms` | `Option<u64>` | Per-task timeout override |
+
+### ExternalTaskResult fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | `bool` | Whether the task completed successfully |
+| `result` | `Option<Value>` | Task output payload |
+| `error` | `Option<String>` | Error message if `success` is `false` |
+| `duration_ms` | `Option<u64>` | Worker execution time |

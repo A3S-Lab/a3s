@@ -145,3 +145,54 @@ let result = session.send("Analyze this codebase").await?;
 ```
 
 Helper functions `record_llm_usage()` and `record_tool_result()` record metrics on the current active span. The `TimedSpan` guard automatically measures elapsed time for any scoped operation.
+
+## API Reference
+
+### Span hierarchy
+
+| Span | Parent | Key attributes |
+|------|--------|----------------|
+| `agent.session` | root | `session.id`, `session.workspace` |
+| `agent.turn` | `agent.session` | `turn.index`, `turn.model` |
+| `agent.generate` | `agent.turn` | `llm.provider`, `llm.model`, `llm.tokens_in`, `llm.tokens_out` |
+| `agent.tool` | `agent.turn` | `tool.name`, `tool.exit_code`, `tool.duration_ms` |
+| `agent.plan` | `agent.turn` | `plan.steps`, `plan.waves` |
+| `agent.hook` | `agent.turn` | `hook.id`, `hook.event` |
+
+### Cost tracking fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `provider` | `String` | LLM provider name |
+| `model` | `String` | Model identifier |
+| `input_tokens` | `u32` | Prompt tokens |
+| `output_tokens` | `u32` | Completion tokens |
+| `cache_read_tokens` | `u32` | Prompt cache read tokens |
+| `cache_write_tokens` | `u32` | Prompt cache write tokens |
+| `cost_usd` | `f64` | Estimated cost in USD |
+
+### Setup (Rust)
+
+```rust
+use tracing_subscriber::prelude::*;
+
+// stdout (development)
+tracing_subscriber::fmt().init();
+
+// OTLP (production)
+let tracer = opentelemetry_otlp::new_pipeline()
+    .tracing()
+    .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+
+tracing_subscriber::registry()
+    .with(tracing_opentelemetry::layer().with_tracer(tracer))
+    .init();
+```
+
+### Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector endpoint |
+| `OTEL_SERVICE_NAME` | Service name in traces |
+| `RUST_LOG` | Log level filter (e.g. `a3s_code_core=debug`) |

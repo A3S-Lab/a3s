@@ -470,3 +470,40 @@ println!("{}", summary.text);
 ```
 
 Both built-in and custom agents are available by name. Custom agents loaded from `agent_dirs` appear alongside built-in agents automatically.
+
+## API Reference
+
+### AgentDefinition fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | `string` | ✅ | Agent identifier (used in `task` tool) |
+| `description` | `string` | ✅ | What this agent does |
+| `system_prompt` | `string` | ✅ | Agent's system prompt / instructions |
+| `model` | `string` | ❌ | Model override (`provider/model` format) |
+| `allowed_tools` | `string[]` | ❌ | Tool access restrictions |
+| `max_tool_rounds` | `number` | ❌ | Max tool rounds per invocation |
+
+### SessionOptions
+
+| Option | Rust | Python | Node.js | Default |
+|--------|------|--------|---------|---------|
+| Agent dirs | `.with_agent_dir(path)` | `agent_dirs=[path]` | `agentDirs: [path]` | `[]` |
+
+### task tool schema
+
+| Arg | Type | Required | Description |
+|-----|------|----------|-------------|
+| `agent` | `string` | ✅ | Agent name to delegate to |
+| `prompt` | `string` | ✅ | Task prompt |
+| `workspace` | `string` | ❌ | Workspace override |
+
+### Built-in agents
+
+| Agent | Description |
+|-------|-------------|
+| `code-reviewer` | Reviews code for style, security, and correctness |
+| `test-writer` | Generates unit and integration tests |
+| `doc-writer` | Writes documentation from code |
+| `refactorer` | Refactors code for clarity and performance |
+| `debugger` | Diagnoses and fixes bugs |
