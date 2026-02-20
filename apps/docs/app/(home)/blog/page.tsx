@@ -33,16 +33,16 @@ export default async function BlogPage() {
             return (
             <Link key={slug} href={`/blog/${slug}`} className="term-pane block hover-glitch group">
               <div className="term-pane-header">
-                <span>┌─ {new Date(post.data.date).toISOString().slice(0, 10)} ─┐</span>
+                <span>┌─ {new Date(post.date).toISOString().slice(0, 10)} ─┐</span>
               </div>
               <div className="p-4">
-                <h2 className="text-sm font-bold term-glow mb-2">{post.data.title}</h2>
+                <h2 className="text-sm font-bold term-glow mb-2">{post.title}</h2>
                 <p className="text-xs leading-relaxed" style={{ color: 'var(--term-green)', opacity: 0.7 }}>
-                  {post.data.description}
+                  {post.description}
                 </p>
-                {post.data.tags && (
+                {post.tags && (
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {post.data.tags.map((tag) => (
+                    {post.tags.map((tag) => (
                       <span key={tag} className="text-[0.6rem] px-1.5 py-0.5" style={{ border: '1px solid var(--term-muted)', color: 'var(--term-muted)' }}>
                         #{tag}
                       </span>

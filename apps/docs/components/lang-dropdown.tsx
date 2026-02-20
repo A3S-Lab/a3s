@@ -43,7 +43,7 @@ export function LangDropdown() {
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label="Switch language"
-        className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+        className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:border-indigo-600 dark:hover:bg-indigo-950 dark:hover:text-indigo-300"
       >
         <Languages className="h-4 w-4" />
         <span>{currentLabel}</span>
@@ -56,7 +56,7 @@ export function LangDropdown() {
         <ul
           role="listbox"
           aria-label="Language"
-          className="absolute right-0 top-full z-50 mt-1.5 min-w-[120px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 top-full z-50 mt-1.5 min-w-[120px] overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
           style={{ boxShadow: 'var(--ct-shadow-hover)' }}
         >
           {locales.map(({ locale, label }) => {
@@ -71,8 +71,8 @@ export function LangDropdown() {
                   }}
                   className={`flex w-full items-center gap-2 px-4 py-2.5 text-sm transition-colors ${
                     isActive
-                      ? 'bg-indigo-50 font-semibold text-indigo-700'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100'
                   }`}
                 >
                   {isActive && <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />}

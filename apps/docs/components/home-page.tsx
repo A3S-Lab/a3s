@@ -78,7 +78,7 @@ function getModules(lang: Lang) {
 
   const frameworks = [
     {
-      name: lang === 'cn' ? 'Code' : 'Code',
+      name: 'Code',
       tag: lang === 'cn' ? 'Agent 框架' : 'Agent Framework',
       description:
         lang === 'cn'
@@ -86,7 +86,8 @@ function getModules(lang: Lang) {
           : 'Embeddable AI coding agent library — multi-session, 12 built-in tools, skills, subagents, planning, hooks, MCP.',
       href: `${base}/docs/code`,
       icon: Bot,
-      color: 'bg-indigo-50 text-indigo-600',
+      lightColor: 'bg-indigo-50 text-indigo-600',
+      darkColor: 'dark:bg-indigo-900/40 dark:text-indigo-400',
     },
   ];
 
@@ -100,7 +101,8 @@ function getModules(lang: Lang) {
           : 'VM-isolated sandbox — OCI images, Docker CLI, WarmPool, CRI, TEE support.',
       href: `${base}/docs/box`,
       icon: Box,
-      color: 'bg-violet-50 text-violet-600',
+      lightColor: 'bg-violet-50 text-violet-600',
+      darkColor: 'dark:bg-violet-900/40 dark:text-violet-400',
     },
     {
       name: 'Power',
@@ -111,7 +113,8 @@ function getModules(lang: Lang) {
           : 'Local LLM engine — Ollama + OpenAI API, llama.cpp, multi-GPU, tool calling.',
       href: `${base}/docs/power`,
       icon: Cpu,
-      color: 'bg-emerald-50 text-emerald-600',
+      lightColor: 'bg-emerald-50 text-emerald-600',
+      darkColor: 'dark:bg-emerald-900/40 dark:text-emerald-400',
     },
     {
       name: 'Gateway',
@@ -122,7 +125,8 @@ function getModules(lang: Lang) {
           : 'K8s Ingress Controller — reverse proxy, middlewares, webhooks, TLS/ACME.',
       href: `${base}/docs/gateway`,
       icon: Globe,
-      color: 'bg-sky-50 text-sky-600',
+      lightColor: 'bg-sky-50 text-sky-600',
+      darkColor: 'dark:bg-sky-900/40 dark:text-sky-400',
     },
     {
       name: 'SafeClaw',
@@ -133,7 +137,8 @@ function getModules(lang: Lang) {
           : 'Privacy-aware security — PII classification, taint tracking, injection detection, audit.',
       href: `${base}/docs/safeclaw`,
       icon: Shield,
-      color: 'bg-rose-50 text-rose-600',
+      lightColor: 'bg-rose-50 text-rose-600',
+      darkColor: 'dark:bg-rose-900/40 dark:text-rose-400',
     },
   ];
 
@@ -147,7 +152,8 @@ function getModules(lang: Lang) {
           : 'Multi-lane scheduling — retry/DLQ, rate limiting, OpenTelemetry.',
       href: `${base}/docs/lane`,
       icon: Layers,
-      color: 'bg-amber-50 text-amber-600',
+      lightColor: 'bg-amber-50 text-amber-600',
+      darkColor: 'dark:bg-amber-900/40 dark:text-amber-400',
     },
     {
       name: 'Event',
@@ -158,7 +164,8 @@ function getModules(lang: Lang) {
           : 'Pluggable event bus — NATS + in-memory, schema validation, encryption.',
       href: `${base}/docs/event`,
       icon: Radio,
-      color: 'bg-pink-50 text-pink-600',
+      lightColor: 'bg-pink-50 text-pink-600',
+      darkColor: 'dark:bg-pink-900/40 dark:text-pink-400',
     },
     {
       name: 'Search',
@@ -169,7 +176,8 @@ function getModules(lang: Lang) {
           : 'Multi-engine web search — consensus ranking, Google, Bing, and more.',
       href: `${base}/docs/search`,
       icon: Search,
-      color: 'bg-teal-50 text-teal-600',
+      lightColor: 'bg-teal-50 text-teal-600',
+      darkColor: 'dark:bg-teal-900/40 dark:text-teal-400',
     },
     {
       name: 'Memory',
@@ -180,7 +188,8 @@ function getModules(lang: Lang) {
           : 'Pluggable memory storage — MemoryStore trait, FileMemoryStore, relevance scoring.',
       href: `${base}/docs/memory`,
       icon: Database,
-      color: 'bg-indigo-50 text-indigo-600',
+      lightColor: 'bg-indigo-50 text-indigo-600',
+      darkColor: 'dark:bg-indigo-900/40 dark:text-indigo-400',
     },
   ];
 
@@ -202,26 +211,28 @@ function ModuleCard({
   description,
   href,
   icon: Icon,
-  color,
+  lightColor,
+  darkColor,
 }: {
   name: string;
   tag: string;
   description: string;
   href: string;
   icon: React.ElementType;
-  color: string;
+  lightColor: string;
+  darkColor: string;
 }) {
   return (
     <Link
       href={href}
-      className="module-card group flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-6 hover:-translate-y-1 dark:border-slate-700 dark:bg-slate-800"
+      className="module-card group flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-6 hover:-translate-y-1 dark:border-slate-700 dark:bg-slate-800/60"
     >
       <div className="flex items-start justify-between">
-        <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${color}`}>
+        <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${lightColor} ${darkColor}`}>
           <Icon className="h-6 w-6" strokeWidth={2} />
         </div>
         <ArrowRight
-          className="h-4 w-4 text-slate-300 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-indigo-500"
+          className="h-4 w-4 text-slate-300 transition-transform duration-200 group-hover:translate-x-1 group-hover:text-indigo-500 dark:text-slate-600 dark:group-hover:text-indigo-400"
           strokeWidth={2}
         />
       </div>
@@ -255,24 +266,24 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
       }}
     >
       {/* ── Nav ── */}
-      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/80">
+      <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href={lang === 'cn' ? '/cn' : '/'} className="flex items-center gap-2">
             <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-xl font-extrabold tracking-tight text-transparent">
               A3S
             </span>
-            <span className="text-sm font-medium text-slate-400">Docs</span>
+            <span className="text-sm font-medium text-slate-400 dark:text-slate-500">Docs</span>
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Link
               href={docsHref}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             >
               {tr.docsLink}
             </Link>
             <Link
               href="/blog"
-              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
             >
               Blog
             </Link>
@@ -280,7 +291,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
               href="https://github.com/A3S-Lab"
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 sm:flex"
+              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 sm:flex"
             >
               <Github className="h-4 w-4" />
               GitHub
@@ -295,17 +306,17 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
       <section className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:py-36">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -top-40 left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full opacity-20 blur-3xl"
+          className="pointer-events-none absolute -top-40 left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full opacity-20 blur-3xl dark:opacity-10"
           style={{ background: 'radial-gradient(circle, #4F46E5, #7C3AED)' }}
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-20 right-0 h-[400px] w-[400px] rounded-full opacity-10 blur-3xl"
+          className="pointer-events-none absolute -bottom-20 right-0 h-[400px] w-[400px] rounded-full opacity-10 blur-3xl dark:opacity-5"
           style={{ background: 'radial-gradient(circle, #7C3AED, #4F46E5)' }}
         />
 
         <div className="relative mx-auto max-w-4xl text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 dark:border-indigo-800 dark:bg-indigo-950">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 dark:border-indigo-800/60 dark:bg-indigo-950/50">
             <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
             <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">{tr.badge}</span>
           </div>
@@ -397,13 +408,13 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
       <section className="px-4 py-16 sm:px-6">
         <div className="mx-auto max-w-7xl">
           <div
-            className="overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-800"
+            className="overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-800/60"
             style={{ boxShadow: 'var(--ct-shadow-card)' }}
           >
             <div className="border-b border-slate-100 px-8 py-6 dark:border-slate-700">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50">
-                  <Package className="h-5 w-5 text-indigo-600" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-900/40">
+                  <Package className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{tr.installTitle}</h2>
@@ -418,7 +429,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
                     {label}
                   </span>
                   <code
-                    className="block rounded-lg bg-slate-50 px-4 py-3 font-mono text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                    className="block rounded-lg bg-slate-50 px-4 py-3 font-mono text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-300"
                     style={{ fontFamily: "'JetBrains Mono', monospace" }}
                   >
                     {cmd}
@@ -469,13 +480,13 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
       </section>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-slate-200 px-4 py-10 dark:border-slate-700 sm:px-6">
+      <footer className="border-t border-slate-200 px-4 py-10 dark:border-slate-700/60 sm:px-6">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row">
           <div className="flex items-center gap-2">
             <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-sm font-bold text-transparent">
               A3S Lab
             </span>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-slate-400 dark:text-slate-500">
               {tr.footerLicense} {new Date().getFullYear()}
             </span>
           </div>
@@ -491,7 +502,7 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-slate-400 transition-colors hover:text-indigo-600"
+                className="text-sm text-slate-400 transition-colors hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400"
               >
                 {label}
               </Link>
