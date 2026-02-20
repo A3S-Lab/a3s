@@ -1,191 +1,213 @@
 ---
 title: Memory
-description: Persistent file-based memory store across sessions
+description: Practical examples for file memory, custom backends, and memory events
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-# Memory
+# Memory Examples
 
-A3S Code supports persistent long-term memory via `MemoryStore`. The default implementation stores memories as JSON files on disk, surviving across sessions.
+## File-Backed Memory
 
-## File Memory
+Memories persist across session restarts. Point multiple sessions at the same directory to share long-term knowledge.
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions};
 
-let opts = SessionOptions::new()
-    .with_permissive_policy()
-    .with_file_memory("/var/lib/a3s/memory"); // persists across sessions
+let agent = Agent::new("agent.hcl").await?;
 
-let session = agent.session("/my-project", Some(opts))?;
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_file_memory("./memory")
+))?;
 
-// Agent can store and recall facts across sessions
-let result = session.send(
-    "Remember that this project uses PostgreSQL 15 and deploys to AWS us-east-1",
-    None,
-).await?;
-println!("{}", result.text);
+// First session — agent stores a fact
+session.send("Remember: we deploy to AWS us-east-1 via GitHub Actions").await?;
 
-// In a future session with the same memory dir, the agent recalls this
+// Later session (same memory dir) — agent recalls it automatically
+let session2 = agent.session(".", Some(
+    SessionOptions::new()
+        .with_file_memory("./memory")
+))?;
+let result = session2.send("Where do we deploy?").await?;
+// Agent answers from memory without being told again
 ```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const agent = await Agent.create('agent.hcl');
 
-**Run:** `cargo run --example test_auto_compact`
-**Source:** [`core/examples/test_auto_compact.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_auto_compact.rs)
+// First session
+const s1 = agent.session('.', { fileMemory: './memory' });
+await s1.send('Remember: we deploy to AWS us-east-1 via GitHub Actions');
+
+// Later session — same memory dir
+const s2 = agent.session('.', { fileMemory: './memory' });
+const result = await s2.send('Where do we deploy?');
+```
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import SessionOptions
+agent = Agent("agent.hcl")
 
-opts = SessionOptions()
-opts.memory_dir = "/var/lib/a3s/memory"
+s1 = agent.session(".", SessionOptions(file_memory="./memory"))
+s1.send("Remember: we deploy to AWS us-east-1 via GitHub Actions")
 
-session = agent.session("/my-project", options=opts)
-
-result = await session.send(
-    "Remember that this project uses PostgreSQL 15 and deploys to AWS us-east-1"
-)
-print(result.text)
+s2 = agent.session(".", SessionOptions(file_memory="./memory"))
+result = s2.send("Where do we deploy?")
 ```
-
-**Run:** `python examples/test_advanced_features.py`
-**Source:** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
-</Tab>
-<Tab value="Node.js">
-```javascript
-const session = agent.session('/my-project', {
-  permissive: true,
-  memoryDir: '/var/lib/a3s/memory',
-});
-
-const result = await session.send(
-  'Remember that this project uses PostgreSQL 15 and deploys to AWS us-east-1'
-);
-console.log(result.text);
-```
-
-**Run:** `node examples/test_advanced_features.js`
-**Source:** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
 </Tab>
 </Tabs>
 
-## Custom Memory Store
+## Storing Memories Directly
 
-Implement `MemoryStore` to use any backend (Redis, SQLite, vector DB, etc.).
+Use `session.memory()` to store and query memories from your own code:
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
-<Tab value="Rust">
 ```rust
-use a3s_code_core::memory::{AgentMemory, MemoryStore, MemoryEntry, MemoryType};
+use a3s_memory::{MemoryItem, MemoryType};
+
+let memory = session.memory().unwrap();
+
+// Store with full control
+memory.remember(
+    MemoryItem::new("Auth uses JWT with 24h expiry")
+        .with_importance(0.9)
+        .with_tag("auth")
+        .with_tag("security")
+        .with_type(MemoryType::Semantic)
+).await?;
+
+// Convenience wrappers (set importance and tags automatically)
+memory.remember_success("Refactored auth module — tests pass").await?;
+memory.remember_failure("Deploying without running fmt check breaks CI").await?;
+
+// Query
+let results = memory.recall("auth", 5).await?;
+for item in results {
+    println!("[{:.2}] {}", item.importance, item.content);
+}
+```
+
+## Custom Backend
+
+Implement `MemoryStore` from `a3s-memory` to use any storage system:
+
+```rust
+use a3s_memory::{MemoryItem, MemoryStore};
+use async_trait::async_trait;
 use std::sync::Arc;
 
-// Implement your own store
-struct RedisMemoryStore { /* ... */ }
-
-impl MemoryStore for RedisMemoryStore {
-    async fn store(&self, entry: MemoryEntry) -> anyhow::Result<String> { /* ... */ }
-    async fn recall(&self, query: &str, limit: usize) -> anyhow::Result<Vec<MemoryEntry>> { /* ... */ }
-    async fn delete(&self, id: &str) -> anyhow::Result<()> { /* ... */ }
-    async fn clear(&self) -> anyhow::Result<()> { /* ... */ }
+struct SqliteMemoryStore {
+    pool: sqlx::SqlitePool,
 }
 
-let opts = SessionOptions::new()
-    .with_permissive_policy()
-    .with_memory(Arc::new(RedisMemoryStore::new()));
+#[async_trait]
+impl MemoryStore for SqliteMemoryStore {
+    async fn store(&self, item: MemoryItem) -> anyhow::Result<()> {
+        sqlx::query!(
+            "INSERT OR REPLACE INTO memories (id, content, importance, tags, timestamp)
+             VALUES (?, ?, ?, ?, ?)",
+            item.id, item.content, item.importance,
+            serde_json::to_string(&item.tags)?,
+            item.timestamp.to_rfc3339(),
+        )
+        .execute(&self.pool).await?;
+        Ok(())
+    }
 
-let session = agent.session("/my-project", Some(opts))?;
+    async fn search(&self, query: &str, limit: usize) -> anyhow::Result<Vec<MemoryItem>> {
+        // Full-text search or semantic similarity here
+        todo!()
+    }
+
+    async fn retrieve(&self, id: &str) -> anyhow::Result<Option<MemoryItem>> { todo!() }
+    async fn search_by_tags(&self, tags: &[String], limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn get_recent(&self, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn get_important(&self, threshold: f32, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn delete(&self, id: &str) -> anyhow::Result<()> { todo!() }
+    async fn clear(&self) -> anyhow::Result<()> { todo!() }
+    async fn count(&self) -> anyhow::Result<usize> { todo!() }
+}
+
+let store = Arc::new(SqliteMemoryStore { pool });
+let session = agent.session(".", Some(
+    SessionOptions::new().with_memory(store)
+))?;
 ```
-</Tab>
-<Tab value="Python">
-```python
-# Custom memory stores are implemented in Rust and exposed via the SDK.
-# Use the built-in file memory for most use cases:
-opts = SessionOptions()
-opts.memory_dir = "/path/to/memory"
-session = agent.session("/my-project", options=opts)
-```
-</Tab>
-<Tab value="Node.js">
-```javascript
-// Custom memory stores are implemented in Rust and exposed via the SDK.
-// Use the built-in file memory for most use cases:
-const session = agent.session('/my-project', {
-  memoryDir: '/path/to/memory',
-});
-```
-</Tab>
-</Tabs>
 
 ## Memory Events
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
-<Tab value="Rust">
+Subscribe to memory lifecycle events via the streaming API:
+
 ```rust
+let (mut rx, _handle) = session.stream("What do you know about this project?", None).await?;
+
 while let Some(event) = rx.recv().await {
     match event {
         AgentEvent::MemoryStored { memory_id, memory_type } => {
-            println!("Stored memory: {} ({})", memory_id, memory_type);
+            println!("stored {} ({:?})", memory_id, memory_type);
         }
         AgentEvent::MemoryRecalled { memory_id, .. } => {
-            println!("Recalled memory: {}", memory_id);
+            println!("recalled {}", memory_id);
+        }
+        AgentEvent::MemoriesSearched { query, count } => {
+            println!("searched '{}' → {} results", query, count);
         }
         _ => {}
     }
 }
 ```
-</Tab>
-<Tab value="Python">
-```python
-async for event in session.stream("What do you remember about this project?"):
-    if event.get("type") == "memory_stored":
-        print(f"Stored: {event['memory_id']}")
-    elif event.get("type") == "memory_recalled":
-        print(f"Recalled: {event['memory_id']}")
-    elif event.get("type") == "end":
-        break
+
+## Relevance Tuning
+
+Adjust scoring for your use case:
+
+```rust
+use a3s_memory::RelevanceConfig;
+use a3s_code_core::memory::MemoryConfig;
+
+// Long-lived assistant: slow decay, weight importance heavily
+let config = MemoryConfig {
+    relevance: RelevanceConfig {
+        decay_days: 365.0,
+        importance_weight: 0.9,
+        recency_weight: 0.1,
+    },
+    max_short_term: 200,
+    max_working: 20,
+};
+
+// Short-lived coding session: fast decay, weight recency heavily
+let config = MemoryConfig {
+    relevance: RelevanceConfig {
+        decay_days: 1.0,
+        importance_weight: 0.3,
+        recency_weight: 0.7,
+    },
+    max_short_term: 50,
+    max_working: 5,
+};
+
+SessionOptions::new().with_memory_config(config)
 ```
-</Tab>
-<Tab value="Node.js">
-```javascript
-for await (const event of stream) {
-  if (event.type === 'memory_stored') {
-    console.log(`Stored: ${event.memoryId}`);
-  } else if (event.type === 'memory_recalled') {
-    console.log(`Recalled: ${event.memoryId}`);
-  } else if (event.type === 'end') break;
-}
+
+## Index Rebuild
+
+If `FileMemoryStore`'s index is corrupted or deleted, recover without data loss:
+
+```rust
+use a3s_memory::FileMemoryStore;
+
+let store = FileMemoryStore::new("./memory").await?;
+
+// Scans items/ directory and rebuilds index.json from item files
+let recovered = store.rebuild_index().await?;
+println!("Recovered {} memories", recovered);
 ```
-</Tab>
-</Tabs>
 
 <Callout type="info">
-For full memory API reference, see [Memory](/docs/code/memory).
+For the full API reference, see [Memory](/docs/code/memory).
 </Callout>
-
-## API Reference
-
-### SessionOptions
-
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| File memory | `.with_file_memory(path)` | `memory_dir=path` | `memoryDir: path` | `None` |
-| Custom store | `.with_memory(Arc::new(store))` | _(Rust only)_ | _(Rust only)_ | `InMemoryStore` |
-
-### MemoryStore trait (Rust)
-
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `store` | `async fn store(&self, entry: MemoryEntry) -> Result<String>` | Persist a memory, returns ID |
-| `recall` | `async fn recall(&self, query: &str, limit: usize) -> Result<Vec<MemoryEntry>>` | Retrieve relevant memories |
-| `delete` | `async fn delete(&self, id: &str) -> Result<()>` | Remove a memory by ID |
-| `clear` | `async fn clear(&self) -> Result<()>` | Wipe all memories |
-
-### Memory Events
-
-| Event | Rust variant | Python/Node.js `type` | Fields |
-|-------|-------------|----------------------|--------|
-| Memory stored | `AgentEvent::MemoryStored` | `memory_stored` | `memory_id`, `memory_type` |
-| Memory recalled | `AgentEvent::MemoryRecalled` | `memory_recalled` | `memory_id`, `relevance` |

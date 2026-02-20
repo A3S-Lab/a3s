@@ -1,25 +1,29 @@
 ---
-title: Memory System
-description: 4 memory types for context-aware agent behavior — episodic, semantic, procedural, working
+title: Memory
+description: Pluggable long-term memory for agents — store, search, and recall knowledge across sessions
 ---
 
-import { Steps, Step } from 'fumadocs-ui/components/steps';
-import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
-
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
 
-# Memory System
+# Memory
 
-A3S Code includes a memory system with four distinct memory types. Memory items are stored per-session and used to provide relevant context to the agent during generation.
+A3S Code uses a two-layer memory architecture. The storage layer (`a3s-memory`) owns the `MemoryStore` trait and its default implementations. The agent layer (`a3s-code`) owns the three-tier session memory (`AgentMemory`) and context injection (`MemoryContextProvider`).
 
-## Memory Types
+```
+a3s-memory                          a3s-code
+──────────────────────────────      ──────────────────────────────
+MemoryStore (trait)                 AgentMemory
+InMemoryStore                         ├── working    (Vec, max 10)
+FileMemoryStore                       ├── short_term (VecDeque, max 100)
+MemoryItem                            └── long_term  (→ MemoryStore)
+MemoryType
+RelevanceConfig                     MemoryConfig
+                                    MemoryContextProvider
+```
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `Episodic` | Past events and interactions | "User prefers TypeScript over JavaScript" |
-| `Semantic` | Facts and knowledge | "The project uses PostgreSQL for persistence" |
-| `Procedural` | How-to knowledge and patterns | "To deploy, run `just release` then `gh release create`" |
-| `Working` | Short-term task context | "Currently refactoring the auth module in src/auth/" |
+This separation means you can swap the storage backend without touching any agent code.
 
 ## Quick Start
 
@@ -30,186 +34,258 @@ use a3s_code_core::{Agent, SessionOptions};
 
 let agent = Agent::new("agent.hcl").await?;
 
-// File-based memory (persists across restarts)
+// File-backed long-term memory (persists across restarts)
 let session = agent.session(".", Some(
     SessionOptions::new()
-        .with_file_memory(".a3s/memory")
+        .with_file_memory("./memory")
 ))?;
 
-// Or bring your own MemoryStore implementation
-let store = Arc::new(FileMemoryStore::new(".a3s/memory").await?);
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_memory(store)
-))?;
-
-// Access memory from session
-if let Some(memory) = session.memory() {
-    memory.remember(MemoryItem::new("User prefers Rust")).await?;
-    let results = memory.recall("preferences", 5).await?;
-}
+let result = session.send("Remember: this project deploys to AWS us-east-1").await?;
 ```
 </Tab>
 <Tab value="TypeScript">
 ```typescript
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.', {
-  fileMemory: '.a3s/memory',
+  fileMemory: './memory',
 });
+
+const result = await session.send('Remember: this project deploys to AWS us-east-1');
 ```
 </Tab>
 <Tab value="Python">
 ```python
-agent = Agent.create("agent.hcl")
+agent = Agent("agent.hcl")
 session = agent.session(".", SessionOptions(
-    file_memory=".a3s/memory",
+    file_memory="./memory",
 ))
+
+result = session.send("Remember: this project deploys to AWS us-east-1")
 ```
 </Tab>
 </Tabs>
 
-## MemoryItem Structure
+## Memory Types
+
+| Type | Purpose | Default importance |
+|------|---------|-------------------|
+| `Episodic` | Specific events and interactions | 0.5 |
+| `Semantic` | Facts and domain knowledge | 0.5–0.8 |
+| `Procedural` | Successful patterns (auto-stored on turn complete) | 0.8 |
+| `Working` | Active context for the current task | varies |
+
+Failures are stored as `Episodic` with importance `0.9` — higher than successes so the agent avoids repeating them.
+
+## Three-Tier Session Memory
+
+```
+Working memory   — active context, auto-trimmed by relevance when over capacity (max 10)
+Short-term       — current session, FIFO trim when over capacity (max 100)
+Long-term        — persisted via MemoryStore, survives session restarts
+```
+
+`remember()` writes to both long-term and short-term simultaneously.
+
+```rust
+let memory = session.memory().unwrap();
+
+// Store a fact
+memory.remember(
+    MemoryItem::new("Project uses PostgreSQL 15")
+        .with_importance(0.8)
+        .with_tag("database")
+        .with_type(MemoryType::Semantic)
+).await?;
+
+// Convenience methods
+memory.remember_success("Deployed via `just release`").await?;
+memory.remember_failure("Direct `cargo publish` fails without fmt check").await?;
+```
+
+## MemoryItem
+
+Every memory is a `MemoryItem`. The builder API makes construction ergonomic:
+
+```rust
+use a3s_memory::{MemoryItem, MemoryType};
+
+let item = MemoryItem::new("Prefer write_all over write for file I/O")
+    .with_importance(0.8)          // 0.0–1.0, clamped
+    .with_tag("rust")
+    .with_tag("io")
+    .with_type(MemoryType::Semantic)
+    .with_metadata("source", "code-review");
+```
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | string | Unique identifier |
-| `content` | string | The memory content |
-| `memory_type` | MemoryType | `Episodic`, `Semantic`, `Procedural`, or `Working` |
-| `importance` | f32 | 0.0–1.0 importance score |
-| `tags` | string[] | Categorization tags |
-| `metadata` | map | Arbitrary key-value metadata |
-| `timestamp` | DateTime | When the memory was created |
-| `access_count` | u32 | Number of times retrieved |
-| `last_accessed` | DateTime | Last retrieval timestamp |
-
-## Storage Backends
-
-### FileMemoryStore (Default)
-
-File-based storage with one JSON file per memory item and a compact index for fast search:
-
-```
-memory_dir/
-  index.json           # Lightweight index (id, tags, importance, timestamp)
-  items/
-    {id}.json          # Individual memory items (full content)
-```
-
-Key properties:
-- Atomic writes via temp file + rename (no corruption on crash)
-- Index loaded into memory on init for fast `search()` and `search_by_tags()`
-- Full content loaded on-demand from individual files
-- Path traversal prevention on memory IDs
-- Index rebuild from item files if index is corrupted
-
-### Custom MemoryStore
-
-Implement the `MemoryStore` trait for custom backends (Redis, SQLite, etc.):
-
-```rust
-#[async_trait]
-impl MemoryStore for MyStore {
-    async fn store(&self, item: MemoryItem) -> Result<()>;
-    async fn retrieve(&self, id: &str) -> Result<Option<MemoryItem>>;
-    async fn search(&self, query: &str, limit: usize) -> Result<Vec<MemoryItem>>;
-    async fn search_by_tags(&self, tags: &[String], limit: usize) -> Result<Vec<MemoryItem>>;
-    async fn get_recent(&self, limit: usize) -> Result<Vec<MemoryItem>>;
-    async fn get_important(&self, threshold: f32, limit: usize) -> Result<Vec<MemoryItem>>;
-    async fn delete(&self, id: &str) -> Result<()>;
-    async fn clear(&self) -> Result<()>;
-    async fn count(&self) -> Result<usize>;
-}
-```
+| `id` | `String` | UUID, auto-generated |
+| `content` | `String` | The memory text |
+| `memory_type` | `MemoryType` | `Episodic`, `Semantic`, `Procedural`, `Working` |
+| `importance` | `f32` | 0.0–1.0, clamped |
+| `tags` | `Vec<String>` | Categorization tags |
+| `metadata` | `HashMap<String, String>` | Arbitrary key-value pairs |
+| `timestamp` | `DateTime<Utc>` | Creation time |
+| `access_count` | `u32` | Retrieval count |
+| `last_accessed` | `Option<DateTime<Utc>>` | Last retrieval time |
 
 ## Relevance Scoring
 
-When the agent needs context, the memory system scores each item by combining importance and recency:
+When the agent needs context, memories are ranked by a score that combines importance and recency:
 
 ```
-relevance = importance_weight * importance + recency_weight * recency_factor
-
-recency_factor = exp(-days_since_creation / decay_days)
+score = importance × importance_weight + exp(−age_days / decay_days) × recency_weight
 ```
 
-Higher-relevance memories are included in the agent's context window, ensuring the most useful information is always available.
+Default config: `importance_weight = 0.7`, `recency_weight = 0.3`, `decay_days = 30`.
 
-### RelevanceConfig
+Configure via HCL:
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `decay_days` | f32 | `30.0` | Days until recency factor halves |
-| `importance_weight` | f32 | `0.6` | Weight of importance score |
-| `recency_weight` | f32 | `0.4` | Weight of recency factor |
+```hcl
+memory {
+  relevance {
+    decay_days        = 30.0
+    importance_weight = 0.7
+    recency_weight    = 0.3
+  }
+  max_short_term = 100
+  max_working    = 10
+}
+```
 
-Configure relevance scoring to prioritize importance vs. recency based on your use case. For long-lived sessions, increase `decay_days` to retain older memories longer.
+Or in code:
 
-## How Memory Is Used
+```rust
+use a3s_memory::RelevanceConfig;
+use a3s_code_core::memory::MemoryConfig;
 
-<Steps>
-<Step>**During generation** — The agent loop queries the memory system for relevant context before each LLM call</Step>
-<Step>**After tool execution** — Important observations (e.g., project structure, user preferences) can be stored as memories</Step>
-<Step>**Across turns** — Working memory tracks the current task state within a session</Step>
-<Step>**Across sessions** — Episodic and semantic memories persist via `FileMemoryStore`, available when a session is restored</Step>
-</Steps>
+SessionOptions::new()
+    .with_memory_config(MemoryConfig {
+        relevance: RelevanceConfig {
+            decay_days: 7.0,        // faster decay for short-lived sessions
+            importance_weight: 0.9,
+            recency_weight: 0.1,
+        },
+        max_short_term: 100,
+        max_working: 10,
+    })
+```
 
-## Context Integration
+## Storage Backends
 
-Memory items are injected into the system prompt as structured context blocks via the `MemoryContextProvider`. This provider is automatically registered when the memory system is active — no additional configuration needed.
+### FileMemoryStore
+
+The default persistent backend. One JSON file per item, plus a compact index for fast search:
+
+```
+memory/
+  index.json          ← lightweight index (id, tags, importance, timestamp)
+  items/
+    {uuid}.json       ← full item content, written atomically
+```
+
+Key properties:
+- Atomic writes via `.tmp` → rename — no corruption on crash
+- Index loaded into memory on init for fast `search()` and `search_by_tags()`
+- Path traversal prevention on memory IDs
+- `rebuild_index()` recovers from index corruption by scanning item files
+
+### InMemoryStore
+
+Ephemeral, zero-config. Useful for testing and short-lived sessions:
+
+```rust
+use a3s_memory::InMemoryStore;
+
+SessionOptions::new()
+    .with_memory(Arc::new(InMemoryStore::new()))
+```
+
+### Custom Backend
+
+Implement `MemoryStore` to use any storage system — SQLite, Redis, a vector DB:
+
+```rust
+use a3s_memory::{MemoryItem, MemoryStore};
+
+struct MyVectorStore { /* ... */ }
+
+#[async_trait::async_trait]
+impl MemoryStore for MyVectorStore {
+    async fn store(&self, item: MemoryItem) -> anyhow::Result<()> {
+        // embed item.content and upsert into vector DB
+        todo!()
+    }
+
+    async fn search(&self, query: &str, limit: usize) -> anyhow::Result<Vec<MemoryItem>> {
+        // embed query, ANN search, return top-k
+        todo!()
+    }
+
+    async fn retrieve(&self, id: &str) -> anyhow::Result<Option<MemoryItem>> { todo!() }
+    async fn search_by_tags(&self, tags: &[String], limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn get_recent(&self, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn get_important(&self, threshold: f32, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
+    async fn delete(&self, id: &str) -> anyhow::Result<()> { todo!() }
+    async fn clear(&self) -> anyhow::Result<()> { todo!() }
+    async fn count(&self) -> anyhow::Result<usize> { todo!() }
+}
+
+SessionOptions::new().with_memory(Arc::new(MyVectorStore::new()))
+```
+
+`FileMemoryStore` uses substring matching for `search()`. A vector store replaces this with semantic similarity — no other changes needed.
+
+## Context Injection
+
+`MemoryContextProvider` is registered automatically when memory is active. On each turn:
+
+1. Retrieves up to 5 relevant memories by substring match against the current prompt
+2. Injects them into the system prompt as structured context blocks
+3. After turn completion, stores the interaction as a `Procedural` memory
 
 ```
 System Prompt
 ├── Base instructions
-├── Context blocks:
-│   ├── [memory] User prefers TypeScript           ← from MemoryContextProvider
-│   ├── [memory] Deploy via `just release`         ← from MemoryContextProvider
-│   ├── [resource] Related code snippets           ← from other providers
-│   └── [memory] Refactoring auth module           ← from MemoryContextProvider
-├── Skill instructions
+├── [memory] User prefers TypeScript           ← MemoryContextProvider
+├── [memory] Deploy via `just release`         ← MemoryContextProvider
+├── [resource] Related code snippets           ← FileSystemContextProvider
 └── Tool definitions
 ```
 
-The number of memory items included is bounded by the context window — when space is limited, only the highest-relevance items are retained.
-
-The `MemoryContextProvider` also implements `on_turn_complete()` to extract and store new memories from conversation turns automatically.
-
-See [Context Providers](/docs/code/context) for details on the provider system.
-
 ## Events
-
-Memory-related events emitted during execution:
 
 | Event | Description |
 |-------|-------------|
-| `MemoryStored` | A new memory item was persisted |
+| `MemoryStored` | A memory item was persisted |
 | `MemoryRecalled` | A memory item was retrieved for context |
-| `MemoriesSearched` | A memory search was performed |
-| `MemoryCleared` | Session memory was cleared |
+| `MemoriesSearched` | A search was performed |
+| `MemoryCleared` | All memories were cleared |
 
 ## API Reference
 
 ### SessionOptions
 
-| Option | Rust | Python | Node.js | Default |
-|--------|------|--------|---------|---------|
-| File memory | `.with_file_memory(path)` | `memory_dir=path` | `memoryDir: path` | `None` |
-| Custom store | `.with_memory(Arc::new(store))` | _(Rust only)_ | _(Rust only)_ | `InMemoryStore` |
+| Method | Description |
+|--------|-------------|
+| `.with_file_memory(path)` | Enable `FileMemoryStore` at the given path |
+| `.with_memory(Arc<dyn MemoryStore>)` | Use a custom backend |
+| `.with_memory_config(MemoryConfig)` | Configure relevance scoring and tier capacities |
 
-### MemoryStore trait (Rust)
+### MemoryStore trait
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `store` | `async fn store(&self, entry: MemoryEntry) -> Result<String>` | Persist a memory, returns ID |
-| `recall` | `async fn recall(&self, query: &str, limit: usize) -> Result<Vec<MemoryEntry>>` | Retrieve relevant memories |
-| `delete` | `async fn delete(&self, id: &str) -> Result<()>` | Remove a memory by ID |
-| `clear` | `async fn clear(&self) -> Result<()>` | Wipe all memories |
+| Method | Description |
+|--------|-------------|
+| `store(item)` | Persist a memory item (upsert by ID) |
+| `retrieve(id)` | Fetch a single item by ID |
+| `search(query, limit)` | Substring search, ranked by relevance |
+| `search_by_tags(tags, limit)` | Filter by tags, ranked by relevance |
+| `get_recent(limit)` | Most recently created items |
+| `get_important(threshold, limit)` | Items above importance threshold, sorted descending |
+| `delete(id)` | Remove a single item |
+| `clear()` | Remove all items |
+| `count()` | Total item count |
 
-### MemoryEntry fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | `String` | Unique memory identifier |
-| `content` | `String` | Memory text content |
-| `memory_type` | `MemoryType` | `Episodic`, `Semantic`, `Procedural`, or `Working` |
-| `relevance` | `f32` | Relevance score (0.0–1.0) |
-| `created_at` | `DateTime<Utc>` | Creation timestamp |
-| `tags` | `Vec<String>` | Optional categorization tags |
+<Callout type="info">
+`a3s-memory` is a standalone crate. Add it directly if you need the storage layer without the full agent framework: `cargo add a3s-memory`
+</Callout>
