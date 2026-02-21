@@ -1,0 +1,308 @@
+---
+title: Build a News Radar Agent
+description: Build a multi-channel news aggregation and analysis agent with A3S Code + WebMCP — parallel fetching from search engines, RSS feeds, and web scraping, LLM-powered extraction, and streaming report generation.
+full: true
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+In this tutorial you'll build a **News Radar** agent that automatically aggregates news from multiple channels, analyzes them with an LLM, and produces a structured daily briefing. It uses:
+
+1. **WebMCP** (MCP Fetch server) to scrape RSS feeds and web pages
+2. **Built-in web_search** for search engine results
+3. **Parallel fetching** across all channels simultaneously
+4. **LLM extraction** to turn raw content into structured news items
+5. **Streaming synthesis** to generate a professional briefing report
+
+<Callout type="info">
+  Install the SDK first: `pip install a3s-code`. Configure `~/.a3s/config.hcl` with your LLM provider key. Install the MCP Fetch server: `npx -y @modelcontextprotocol/server-fetch`.
+</Callout>
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    News Radar Agent                      │
+├─────────────┬──────────────┬────────────────────────────┤
+│  web_search │  MCP Fetch   │  MCP Fetch                 │
+│  (built-in) │  (RSS feeds) │  (site scraping)           │
+├─────────────┴──────────────┴────────────────────────────┤
+│              Parallel Fetch (Lane Queue)                  │
+├──────────────────────────────────────────────────────────┤
+│              Deduplication (content hash)                 │
+├──────────────────────────────────────────────────────────┤
+│              LLM Extraction (structured JSON)             │
+├──────────────────────────────────────────────────────────┤
+│              LLM Synthesis (streaming report)             │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Walkthrough
+
+<Steps>
+<Step>
+
+### Project structure
+
+Three files: `agent.hcl` for the agent + MCP + queue config, `main.py` for the full pipeline, and an optional `--schedule` flag for daily 08:00 UTC runs.
+
+```text
+news-radar/
+├── agent.hcl   # agent + MCP servers + queue + search config
+├── main.py     # coordinator: fetch → dedup → extract → report
+└── reports/    # generated daily briefings (auto-created)
+```
+
+</Step>
+<Step>
+
+### Agent config (HCL)
+
+`agent.hcl` wires up the LLM provider, enables the Lane queue for parallel fetching, configures multi-engine web search, and registers two MCP servers: `fetch` for HTTP/RSS retrieval and `puppeteer` for JavaScript-heavy pages.
+
+```hcl
+default_model = "openai/kimi-k2.5"
+
+providers {
+  name = "openai"
+  models {
+    id       = "kimi-k2.5"
+    api_key  = env("OPENAI_API_KEY")
+    base_url = env("OPENAI_BASE_URL")
+    tool_call = true
+  }
+}
+
+queue {
+  query_max_concurrency   = 10
+  execute_max_concurrency = 4
+  enable_metrics          = true
+  enable_dlq              = true
+  retry_policy {
+    strategy         = "exponential"
+    max_retries      = 3
+    initial_delay_ms = 500
+  }
+}
+
+search {
+  timeout = 30
+  engine {
+    google     { enabled = true; weight = 1.5 }
+    bing       { enabled = true; weight = 1.0 }
+    duckduckgo { enabled = true; weight = 1.2 }
+  }
+}
+
+# WebMCP — HTTP fetch for RSS and web pages
+mcp_servers {
+  name      = "fetch"
+  transport = "stdio"
+  command   = "npx"
+  args      = ["-y", "@modelcontextprotocol/server-fetch"]
+  enabled   = true
+}
+```
+
+</Step>
+<Step>
+
+### Define news channels
+
+Each channel has three source types: search queries (via built-in `web_search`), RSS feeds (via MCP `fetch`), and direct site scraping (via MCP `fetch`). All three run in parallel per channel.
+
+```python
+DEFAULT_CHANNELS = {
+    "tech": {
+        "search_queries": [
+            "latest technology news today",
+            "AI artificial intelligence breakthroughs",
+        ],
+        "rss_feeds": [
+            "https://news.ycombinator.com/rss",
+            "https://www.reddit.com/r/technology/.rss",
+        ],
+        "sites": [
+            "https://news.ycombinator.com",
+        ],
+    },
+    "ai": {
+        "search_queries": ["AI research papers this week"],
+        "rss_feeds": ["https://arxiv.org/rss/cs.AI"],
+        "sites": ["https://huggingface.co/blog"],
+    },
+}
+```
+
+</Step>
+<Step>
+
+### Phase 1 — Parallel multi-channel fetch
+
+Three fetch functions run concurrently per channel. `web_search` uses the built-in tool directly (no LLM). RSS and scraping use the MCP `fetch` server via `session.tool("mcp__fetch__fetch", ...)`.
+
+```python
+async def fetch_via_search(session, queries, topic):
+    results = []
+    async def search_one(query):
+        r = await asyncio.to_thread(
+            session.tool, "web_search",
+            {"query": query, "limit": 10, "timeout": 20, "format": "text"},
+        )
+        if r.exit_code == 0 and r.output:
+            return {"channel": "search", "topic": topic, "content": r.output}
+    raw = await asyncio.gather(*[search_one(q) for q in queries])
+    return [r for r in raw if r]
+
+async def fetch_via_mcp_rss(session, feeds, topic):
+    results = []
+    async def fetch_one(url):
+        r = await asyncio.to_thread(
+            session.tool, "mcp__fetch__fetch",
+            {"url": url, "max_length": 50000, "raw": False},
+        )
+        if r.exit_code == 0 and r.output:
+            return {"channel": "rss", "topic": topic, "content": r.output}
+    raw = await asyncio.gather(*[fetch_one(u) for u in feeds])
+    return [r for r in raw if r]
+```
+
+</Step>
+<Step>
+
+### Phase 2 — Deduplicate
+
+Content hash on the first 500 chars removes near-duplicates across channels (the same story often appears in search results and RSS).
+
+```python
+def deduplicate(raw_items):
+    seen = set()
+    unique = []
+    for item in raw_items:
+        h = hashlib.sha256(
+            item["content"][:500].strip().lower().encode()
+        ).hexdigest()[:12]
+        if h not in seen:
+            seen.add(h)
+            unique.append(item)
+    return unique
+```
+
+</Step>
+<Step>
+
+### Phase 3 — LLM extraction
+
+Batch raw items (5 per chunk) and ask the LLM to extract structured JSON: title, summary, source, topic, impact level, and key entities. This turns noisy web content into clean, analyzable data.
+
+```python
+EXTRACT_PROMPT = """
+You are a news analyst. Extract structured news items as JSON array:
+- "title": concise headline (< 80 chars)
+- "summary": 2-3 sentence summary
+- "impact": "high" | "medium" | "low"
+- "entities": [key people, companies, technologies]
+Return JSON array only. Skip ads and boilerplate.
+
+Raw content:
+{content}
+"""
+
+for chunk in batched(raw_items, 5):
+    combined = "\n---\n".join(r["content"][:3000] for r in chunk)
+    result = session.send(EXTRACT_PROMPT.format(content=combined))
+    items = json.loads(result.text)
+```
+
+</Step>
+<Step>
+
+### Phase 4 — Streaming report
+
+Pass all extracted items to the LLM and stream the final briefing. The report includes Top Stories, By Topic breakdown, Key Entities table, Trend Analysis, and Action Items.
+
+```python
+for event in session.stream(report_prompt):
+    if event.event_type == "text_delta":
+        print(event.text, end="", flush=True)
+    elif event.event_type == "end":
+        print(f"\n✓ {event.total_tokens} tokens")
+        break
+
+# Save to file
+Path("reports").mkdir(exist_ok=True)
+Path(f"reports/news-radar-{date}.md").write_text(report)
+```
+
+</Step>
+<Step>
+
+### Run it
+
+```bash
+# One-shot
+python main.py
+
+# Filter topics
+python main.py --topics ai,dev
+
+# Scheduled mode (daily at 08:00 UTC)
+python main.py --schedule
+
+# Custom schedule hour
+python main.py --schedule --hour 9
+```
+
+</Step>
+</Steps>
+
+---
+
+## Going Further
+
+<Steps>
+<Step>
+
+### Add custom channels
+
+Define your own channels with industry-specific sources:
+
+```python
+channels["fintech"] = {
+    "search_queries": ["fintech news today", "cryptocurrency regulation"],
+    "rss_feeds": ["https://www.coindesk.com/arc/outboundfeeds/rss/"],
+    "sites": ["https://techcrunch.com/category/fintech/"],
+}
+```
+
+</Step>
+<Step>
+
+### Use Puppeteer for JS-heavy sites
+
+Some sites require JavaScript rendering. Add the Puppeteer MCP server and use `mcp__puppeteer__navigate` + `mcp__puppeteer__screenshot`:
+
+```python
+# Navigate and get rendered content
+r = session.tool("mcp__puppeteer__navigate", {"url": "https://example.com"})
+r = session.tool("mcp__puppeteer__screenshot", {})
+```
+
+</Step>
+<Step>
+
+### Multi-language reports
+
+Override the report prompt to generate briefings in different languages:
+
+```python
+prompt = f"Generate the report in Chinese (简体中文).\n\n{base_prompt}"
+```
+
+</Step>
+</Steps>
