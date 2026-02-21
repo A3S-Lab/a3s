@@ -101,6 +101,10 @@ independent steps execute **in parallel** via wave-based scheduling (`tokio::Joi
 | [a3s-event](crates/event/) | 0.3.0 | Pluggable event system — provider-agnostic pub/sub, encryption | [README](crates/event/README.md) |
 | [a3s-updater](crates/updater/) | 0.2.0 | Self-update for CLI binaries via GitHub Releases | [Source](crates/updater/) |
 
+## Community
+
+Join us on [Discord](https://discord.gg/XVg6Hu6H) for questions, discussions, and updates.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
