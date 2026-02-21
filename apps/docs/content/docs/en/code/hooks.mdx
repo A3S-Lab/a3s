@@ -247,7 +247,7 @@ Each hook event carries a typed payload with event-specific data:
     },
     system_prompt: {
       type: 'String',
-      description: 'System prompt',
+      description: 'Assembled system prompt (built from prompt slots)',
     },
     model_provider: {
       type: 'String',
@@ -295,7 +295,7 @@ Each hook event carries a typed payload with event-specific data:
 </Accordion>
 <Accordion title="SessionStart / SessionEnd">
 
-**SessionStartEvent:** `session_id`, `system_prompt`, `model_provider`, `model_name`
+**SessionStartEvent:** `session_id`, `system_prompt` (assembled from prompt slots), `model_provider`, `model_name`
 
 **SessionEndEvent:** `session_id`, `total_tokens`, `total_tool_calls`, `duration_ms`
 

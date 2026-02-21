@@ -498,7 +498,8 @@ Both built-in and custom agents are available by name. Custom agents loaded from
   type={{
     name: { type: 'string', required: true, description: 'Agent identifier (used in `task` tool)' },
     description: { type: 'string', required: true, description: 'What this agent does' },
-    system_prompt: { type: 'string', required: true, description: "Agent's system prompt / instructions" },
+    system_prompt: { type: 'string', description: "Agent's system prompt / instructions (legacy — maps to `extra` slot)" },
+    prompt: { type: 'string', description: "Agent's prompt / instructions" },
     model: { type: 'string', description: 'Model override (`provider/model` format)' },
     allowed_tools: { type: 'string[]', description: 'Tool access restrictions' },
     max_tool_rounds: { type: 'number', description: 'Max tool rounds per invocation' },

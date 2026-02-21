@@ -543,7 +543,10 @@ println!("{}", summary.text);
       description: "类型: string · 必填: ✅ · 描述: Agent 的功能",
     },
     "system_prompt": {
-      description: "类型: string · 必填: ✅ · 描述: Agent 的系统提示/指令",
+      description: "类型: string · 必填: ❌ · 描述: Agent 的系统提示/指令（旧版 — 映射到 extra 插槽）",
+    },
+    "prompt": {
+      description: "类型: string · 必填: ❌ · 描述: Agent 的提示/指令",
     },
     "model": {
       description: "类型: string · 必填: ❌ · 描述: 模型覆盖（provider/model 格式）",

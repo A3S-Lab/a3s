@@ -232,7 +232,7 @@ Hooks 按优先级顺序执行。数字越小越先运行。
       description: "类型: String · 描述: 用户提示",
     },
     "system_prompt": {
-      description: "类型: String · 描述: 系统提示",
+      description: "类型: String · 描述: 组装后的系统提示（由提示词插槽构建）",
     },
     "model_provider": {
       description: "类型: String · 描述: 提供商名称",
@@ -272,7 +272,7 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 </Accordion>
 <Accordion title="SessionStart / SessionEnd">
 
-**SessionStartEvent：** `session_id`、`system_prompt`、`model_provider`、`model_name`
+**SessionStartEvent：** `session_id`、`system_prompt`（由提示词插槽组装）、`model_provider`、`model_name`
 
 **SessionEndEvent：** `session_id`、`total_tokens`、`total_tool_calls`、`duration_ms`
 

@@ -160,7 +160,7 @@ What gets persisted per session:
       description: "Workspace path",
     },
     "config.system_prompt": {
-      description: "System prompt",
+      description: "Assembled system prompt (built from prompt slots)",
     },
     "config.planning_enabled": {
       description: "Planning flag",
@@ -210,7 +210,7 @@ What gets persisted per session:
     messages: { type: 'Vec<Message>', description: 'Full conversation history' },
     tasks: { type: 'Vec<AgentTask>', description: 'Task list (alias: `todos`)' },
     'config.workspace': { type: 'String', description: 'Workspace path' },
-    'config.system_prompt': { type: 'String', description: 'System prompt' },
+    'config.system_prompt': { type: 'String', description: 'Assembled system prompt (built from prompt slots)' },
     'config.planning_enabled': { type: 'bool', description: 'Planning flag' },
     tool_names: { type: 'Vec<String>', description: 'Tool names (rebuilt on resume)' },
     created_at: { type: 'DateTime<Utc>', description: 'Session creation time' },
