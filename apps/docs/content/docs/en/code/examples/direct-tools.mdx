@@ -1,0 +1,175 @@
+---
+title: Direct Tools
+description: Call tools directly without involving the LLM — useful for scripting, testing, and custom pipelines
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Direct Tools
+
+Call any built-in tool directly without an LLM round-trip. This is useful for scripting, testing, or building custom pipelines on top of A3S Code's tool layer.
+
+## Low-Level: `session.tool()`
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let agent = Agent::new("~/.a3s/config.hcl").await?;
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_permissive_policy()
+))?;
+
+// Write a file
+let r = session.tool("write", serde_json::json!({
+    "path": "hello.txt",
+    "content": "Hello from direct tool execution!"
+})).await?;
+println!("write: exit={}", r.exit_code);
+
+// Read it back
+let r = session.tool("read", serde_json::json!({"path": "hello.txt"})).await?;
+println!("content: {}", r.output);
+
+// Edit the file
+let r = session.tool("edit", serde_json::json!({
+    "path": "hello.txt",
+    "old_string": "Hello",
+    "new_string": "Hi"
+})).await?;
+println!("edit: exit={}", r.exit_code);
+
+// Glob for files
+let r = session.tool("glob", serde_json::json!({"pattern": "*.txt"})).await?;
+println!("matches: {}", r.output);
+
+// Run bash
+let r = session.tool("bash", serde_json::json!({"command": "cat hello.txt"})).await?;
+println!("bash: {}", r.output);
+
+// Grep
+let r = session.tool("grep", serde_json::json!({"pattern": "Hi", "path": "."})).await?;
+println!("grep: {}", r.output);
+```
+
+**Run:** `cargo run --example 07_direct_tools`
+**Source:** [`core/examples/07_direct_tools.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/07_direct_tools.rs)
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project", permissive=True)
+
+# Write a file
+r = await session.tool("write", {"path": "hello.txt", "content": "Hello!"})
+print(f"write: exit={r.exit_code}")
+
+# Read it back
+r = await session.tool("read", {"path": "hello.txt"})
+print(f"content: {r.output}")
+
+# Run bash
+r = await session.tool("bash", {"command": "cat hello.txt"})
+print(f"bash: {r.output}")
+```
+
+**Source:** [`sdk/python/examples/advanced_features_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/advanced_features_demo.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', { permissive: true });
+
+// Write a file
+const r1 = await session.tool('write', { path: 'hello.txt', content: 'Hello!' });
+console.log(`write: exit=${r1.exitCode}`);
+
+// Read it back
+const r2 = await session.tool('read', { path: 'hello.txt' });
+console.log(`content: ${r2.output}`);
+
+// Run bash
+const r3 = await session.tool('bash', { command: 'cat hello.txt' });
+console.log(`bash: ${r3.output}`);
+```
+
+**Source:** [`sdk/node/examples/advanced_features_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/advanced_features_demo.js)
+</Tab>
+</Tabs>
+
+## Convenience Methods
+
+Higher-level wrappers for common operations:
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+// Read a file
+let content = session.read_file("src/main.rs").await?;
+
+// Run a shell command
+let output = session.bash("cargo test").await?;
+
+// Find files by pattern
+let files = session.glob("**/*.rs").await?;
+
+// Search content
+let matches = session.grep("TODO").await?;
+```
+</Tab>
+<Tab value="Python">
+```python
+content = await session.read_file("src/main.rs")
+output = await session.bash("cargo test")
+files = await session.glob("**/*.rs")
+matches = await session.grep("TODO")
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const content = await session.readFile('src/main.rs');
+const output = await session.bash('cargo test');
+const files = await session.glob('**/*.rs');
+const matches = await session.grep('TODO');
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+Direct tool calls bypass the LLM entirely — no tokens consumed, no streaming events. They still respect the session's permission policy and workspace scope.
+</Callout>
+
+## API Reference
+
+### session.tool()
+
+<TypeTable
+  type={{
+    "Generic tool call": {
+      description: "Rust: session.tool(name, args).await? · Python: await session.tool(name, args) · Node.js: await session.tool(name, args)",
+    },
+    "Return type": {
+      description: "ToolOutput { exit_code: i32, output: String }",
+    },
+  }}
+/>
+
+### Convenience Methods
+
+<TypeTable
+  type={{
+    "Read file": {
+      description: "Rust: session.read_file(path) · Python: session.read_file(path) · Node.js: session.readFile(path)",
+    },
+    "Run bash": {
+      description: "Rust: session.bash(cmd) · Python: session.bash(cmd) · Node.js: session.bash(cmd)",
+    },
+    "Glob files": {
+      description: "Rust: session.glob(pattern) · Python: session.glob(pattern) · Node.js: session.glob(pattern)",
+    },
+    "Grep content": {
+      description: "Rust: session.grep(pattern) · Python: session.grep(pattern) · Node.js: session.grep(pattern)",
+    },
+  }}
+/>

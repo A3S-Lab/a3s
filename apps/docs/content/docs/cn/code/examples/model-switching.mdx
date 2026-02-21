@@ -1,0 +1,120 @@
+---
+title: 模型切换
+description: 运行时切换提供商和模型，支持温度和思考预算参数
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 模型切换
+
+按会话覆盖默认模型、提供商和生成参数。适用于将不同任务路由到不同模型（例如，简单查询用快速模型，复杂重构用强力模型）。
+
+## 示例
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let agent = Agent::new("~/.a3s/config.hcl").await?;
+
+// 使用指定模型和自定义温度
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_model("anthropic/claude-sonnet-4-20250514")
+    .with_temperature(0.3);
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send("解释这个代码库中的认证流程", None).await?;
+println!("{}", result.text);
+
+// 切换到不同的提供商
+let opts2 = SessionOptions::new()
+    .with_permissive_policy()
+    .with_model("openai/gpt-4o");
+
+let session2 = agent.session("/my-project", Some(opts2))?;
+let result2 = session2.send("列出所有 TODO 注释", None).await?;
+println!("{}", result2.text);
+```
+
+**运行:** `cargo run --example 04_model_switching`
+**源码:** [`core/examples/04_model_switching.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/04_model_switching.rs)
+</Tab>
+<Tab value="Python">
+```python
+agent = await a3s_code.Agent.create("~/.a3s/config.hcl")
+
+# 使用指定模型和自定义温度
+session = agent.session("/my-project",
+    permissive=True,
+    model="anthropic/claude-sonnet-4-20250514",
+    temperature=0.3,
+)
+
+result = await session.send("解释这个代码库中的认证流程")
+print(result.text)
+
+# 切换到不同的提供商
+session2 = agent.session("/my-project",
+    permissive=True,
+    model="openai/gpt-4o",
+)
+
+result2 = await session2.send("列出所有 TODO 注释")
+print(result2.text)
+```
+
+**源码:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const agent = await Agent.create('~/.a3s/config.hcl');
+
+// 使用指定模型和自定义温度
+const session = agent.session('/my-project', {
+  permissive: true,
+  model: 'anthropic/claude-sonnet-4-20250514',
+  temperature: 0.3,
+});
+
+const result = await session.send('解释这个代码库中的认证流程');
+console.log(result.text);
+
+// 切换到不同的提供商
+const session2 = agent.session('/my-project', {
+  permissive: true,
+  model: 'openai/gpt-4o',
+});
+
+const result2 = await session2.send('列出所有 TODO 注释');
+console.log(result2.text);
+```
+
+**源码:** [`sdk/node/examples/agentic_loop_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.js)
+</Tab>
+</Tabs>
+
+<Callout type="info">
+模型字符串格式为 `provider/model-name`。提供商必须在 `config.hcl` 中配置。如果设置了 `temperature` 或 `thinking_budget` 但未指定模型覆盖，将记录警告。
+</Callout>
+
+## API 参考
+
+### SessionOptions — 模型覆盖
+
+<TypeTable
+  type={{
+    "模型覆盖": {
+      description: "Rust: .with_model(\"provider/model\") · Python: model=\"provider/model\" · Node.js: model: \"provider/model\"",
+    },
+    "温度": {
+      description: "Rust: .with_temperature(0.3) · Python: temperature=0.3 · Node.js: temperature: 0.3",
+    },
+    "思考预算": {
+      description: "Rust: .with_thinking_budget(10000) · Python: thinking_budget=10000 · Node.js: thinkingBudget: 10000",
+    },
+  }}
+/>

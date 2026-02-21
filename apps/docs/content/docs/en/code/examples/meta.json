@@ -4,14 +4,16 @@
     "index",
     "quick-start",
     "streaming",
+    "model-switching",
+    "direct-tools",
     "planning",
     "hooks",
     "auto-compact",
     "memory",
     "security",
+    "skills",
     "batch",
     "vector-rag",
-    "skills",
     "lane-queue",
     "external-tasks"
   ]

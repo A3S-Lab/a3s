@@ -1,0 +1,120 @@
+---
+title: Model Switching
+description: Switch providers and models at runtime with temperature and thinking budget
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Model Switching
+
+Override the default model, provider, and generation parameters per session. Useful for routing different tasks to different models (e.g., fast model for simple queries, powerful model for complex refactors).
+
+## Example
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+let agent = Agent::new("~/.a3s/config.hcl").await?;
+
+// Use a specific model with custom temperature
+let opts = SessionOptions::new()
+    .with_permissive_policy()
+    .with_model("anthropic/claude-sonnet-4-20250514")
+    .with_temperature(0.3);
+
+let session = agent.session("/my-project", Some(opts))?;
+let result = session.send("Explain the auth flow in this codebase", None).await?;
+println!("{}", result.text);
+
+// Switch to a different provider for the next session
+let opts2 = SessionOptions::new()
+    .with_permissive_policy()
+    .with_model("openai/gpt-4o");
+
+let session2 = agent.session("/my-project", Some(opts2))?;
+let result2 = session2.send("List all TODO comments", None).await?;
+println!("{}", result2.text);
+```
+
+**Run:** `cargo run --example 04_model_switching`
+**Source:** [`core/examples/04_model_switching.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/04_model_switching.rs)
+</Tab>
+<Tab value="Python">
+```python
+agent = await a3s_code.Agent.create("~/.a3s/config.hcl")
+
+# Use a specific model with custom temperature
+session = agent.session("/my-project",
+    permissive=True,
+    model="anthropic/claude-sonnet-4-20250514",
+    temperature=0.3,
+)
+
+result = await session.send("Explain the auth flow in this codebase")
+print(result.text)
+
+# Switch to a different provider
+session2 = agent.session("/my-project",
+    permissive=True,
+    model="openai/gpt-4o",
+)
+
+result2 = await session2.send("List all TODO comments")
+print(result2.text)
+```
+
+**Source:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const agent = await Agent.create('~/.a3s/config.hcl');
+
+// Use a specific model with custom temperature
+const session = agent.session('/my-project', {
+  permissive: true,
+  model: 'anthropic/claude-sonnet-4-20250514',
+  temperature: 0.3,
+});
+
+const result = await session.send('Explain the auth flow in this codebase');
+console.log(result.text);
+
+// Switch to a different provider
+const session2 = agent.session('/my-project', {
+  permissive: true,
+  model: 'openai/gpt-4o',
+});
+
+const result2 = await session2.send('List all TODO comments');
+console.log(result2.text);
+```
+
+**Source:** [`sdk/node/examples/agentic_loop_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.js)
+</Tab>
+</Tabs>
+
+<Callout type="info">
+The model string format is `provider/model-name`. The provider must be configured in your `config.hcl`. If you set `temperature` or `thinking_budget` without a model override, a warning is logged.
+</Callout>
+
+## API Reference
+
+### SessionOptions — Model Override
+
+<TypeTable
+  type={{
+    "Model override": {
+      description: "Rust: .with_model(\"provider/model\") · Python: model=\"provider/model\" · Node.js: model: \"provider/model\"",
+    },
+    "Temperature": {
+      description: "Rust: .with_temperature(0.3) · Python: temperature=0.3 · Node.js: temperature: 0.3",
+    },
+    "Thinking budget": {
+      description: "Rust: .with_thinking_budget(10000) · Python: thinking_budget=10000 · Node.js: thinkingBudget: 10000",
+    },
+  }}
+/>

@@ -55,8 +55,19 @@ node examples/<name>.js
 
 <Files>
   <Folder name="core/examples" defaultOpen>
-    <File name="sdk_basic.rs" />
+    <File name="01_basic_send.rs" />
+    <File name="02_streaming.rs" />
+    <File name="03_multi_turn.rs" />
+    <File name="04_model_switching.rs" />
+    <File name="05_planning.rs" />
+    <File name="06_skills_security.rs" />
+    <File name="07_direct_tools.rs" />
+    <File name="08_hooks.rs" />
+    <File name="09_queue_lanes.rs" />
+    <File name="10_resilience.rs" />
     <File name="agentic_loop_demo.rs" />
+    <File name="sdk_basic.rs" />
+    <File name="integration_tests.rs" />
     <File name="test_auto_compact.rs" />
     <File name="test_batch_tool.rs" />
     <File name="test_builtin_skills.rs" />
@@ -67,10 +78,10 @@ node examples/<name>.js
     <File name="test_security.rs" />
     <File name="test_task_priority.rs" />
     <File name="test_vector_rag.rs" />
-    <File name="integration_tests.rs" />
   </Folder>
   <Folder name="sdk/python/examples">
     <File name="agentic_loop_demo.py" />
+    <File name="advanced_features_demo.py" />
     <File name="test_advanced_features.py" />
     <File name="test_custom_skills_agents.py" />
     <File name="test_external_task_handler.py" />
@@ -79,6 +90,7 @@ node examples/<name>.js
   </Folder>
   <Folder name="sdk/node/examples">
     <File name="agentic_loop_demo.js" />
+    <File name="advanced_features_demo.js" />
     <File name="test_advanced_features.js" />
     <File name="test_custom_skills_agents.js" />
     <File name="test_external_task_handler.js" />
@@ -90,14 +102,16 @@ node examples/<name>.js
 <Cards>
   <Card title="Quick Start" href="/docs/code/examples/quick-start" description="Basic send, streaming, and multi-turn conversation" />
   <Card title="Streaming" href="/docs/code/examples/streaming" description="Real-time event stream with AgentEvent" />
+  <Card title="Model Switching" href="/docs/code/examples/model-switching" description="Switch providers and models at runtime" />
+  <Card title="Direct Tools" href="/docs/code/examples/direct-tools" description="Call tools directly without involving the LLM" />
   <Card title="Planning" href="/docs/code/examples/planning" description="Task decomposition with goal tracking" />
   <Card title="Hooks" href="/docs/code/examples/hooks" description="Lifecycle event interception (PreToolUse, PostToolUse, ...)" />
   <Card title="Auto-Compact" href="/docs/code/examples/auto-compact" description="Automatic context window compaction" />
   <Card title="Memory" href="/docs/code/examples/memory" description="Persistent file-based memory store" />
   <Card title="Security" href="/docs/code/examples/security" description="Input taint tracking and output sanitization" />
+  <Card title="Skills" href="/docs/code/examples/skills" description="Built-in and custom skill system" />
   <Card title="Batch Tool" href="/docs/code/examples/batch" description="Parallel tool execution in a single turn" />
   <Card title="Vector RAG" href="/docs/code/examples/vector-rag" description="Semantic code search via vector embeddings" />
-  <Card title="Skills" href="/docs/code/examples/skills" description="Built-in and custom skill system" />
   <Card title="Lane Queue" href="/docs/code/examples/lane-queue" description="Priority-based task queue with preemption" />
   <Card title="External Tasks" href="/docs/code/examples/external-tasks" description="Multi-machine coordinator/worker pattern" />
 </Cards>
@@ -110,6 +124,12 @@ node examples/<name>.js
       description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
     },
     "Streaming events": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "Model switching": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "Direct tool execution": {
       description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
     },
     "Planning + goal tracking": {
@@ -127,19 +147,22 @@ node examples/<name>.js
     "Security provider": {
       description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
     },
+    "Built-in skills": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
     "Batch tool": {
       description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
     },
     "Vector RAG / codesearch": {
       description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
     },
-    "Built-in skills": {
-      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
-    },
     "Lane queue / priority": {
       description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
     },
     "External task handling": {
+      description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
+    },
+    "Resilience (circuit breaker, retries)": {
       description: "Rust: ✅ · Python: ✅ · Node.js: ✅",
     },
   }}
