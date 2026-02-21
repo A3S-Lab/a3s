@@ -1,0 +1,211 @@
+---
+title: 提示词插槽
+description: 使用插槽式系统提示词自定义 Agent 个性 — 角色、准则、响应风格和额外指令
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 提示词插槽
+
+在不覆盖核心 Agent 能力的前提下自定义 Agent 行为。插槽式系统提示词保留了工具使用策略、自主行为和完成标准，同时允许注入自定义个性、准则和响应风格。
+
+<Callout type="info">
+提示词插槽是增量式的 — 核心 Agent 提示词（工具使用、完成标准、自主行为）始终保留。你不会意外破坏 Agent 使用工具的能力。
+</Callout>
+
+## 插槽位置
+
+<TypeTable
+  type={{
+    "role": {
+      description: "位置：核心提示词之前 · 替换默认的 'You are A3S Code...' 身份行",
+    },
+    "guidelines": {
+      description: "位置：核心提示词之后 · 作为 '## Guidelines' 章节追加",
+    },
+    "response_style": {
+      description: "位置：替换章节 · 替换默认的 '## Response Format' 章节",
+    },
+    "extra": {
+      description: "位置：提示词末尾 · 自由格式指令（向后兼容旧版 system_prompt）",
+    },
+  }}
+/>
+
+## 自定义角色
+
+为 Agent 设置人设：
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions, SystemPromptSlots};
+
+let agent = Agent::new("~/.a3s/config.hcl").await?;
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
+        role: Some("You are a senior Rust developer specializing in async programming.".into()),
+        ..Default::default()
+    })
+))?;
+
+let result = session.send("What is your area of expertise?", None).await?;
+println!("{}", result.text);
+```
+
+**运行:** `cargo run --example test_prompt_slots`
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions
+
+agent = Agent("~/.a3s/config.hcl")
+
+opts = SessionOptions()
+opts.role = "You are a senior Rust developer specializing in async programming."
+session = agent.session("/my-project", options=opts)
+
+result = session.send("What is your area of expertise?")
+print(result.text)
+```
+
+**运行:** `python examples/test_prompt_slots.py`
+</Tab>
+<Tab value="Node.js">
+```javascript
+const { Agent } = require('a3s-code');
+
+const agent = await Agent.create('~/.a3s/config.hcl');
+const session = agent.session('/my-project', {
+  role: 'You are a senior Rust developer specializing in async programming.',
+});
+
+const result = await session.send('What is your area of expertise?');
+console.log(result.text);
+```
+
+**运行:** `node examples/test_prompt_slots.js`
+</Tab>
+</Tabs>
+
+## 角色 + 准则 + 响应风格
+
+组合多个插槽创建完全自定义的代码审查员：
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
+        role: Some("You are a Python code reviewer.".into()),
+        guidelines: Some("Always check for type hints. Flag any use of eval().".into()),
+        response_style: Some("Reply in bullet points. Be concise.".into()),
+        ..Default::default()
+    })
+))?;
+
+let result = session.send("Review the file app.py and list any issues.", None).await?;
+println!("{}", result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+opts = SessionOptions()
+opts.role = "You are a Python code reviewer."
+opts.guidelines = "Always check for type hints. Flag any use of eval()."
+opts.response_style = "Reply in bullet points. Be concise."
+session = agent.session("/my-project", options=opts)
+
+result = session.send("Review the file app.py and list any issues.")
+print(result.text)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  role: 'You are a Python code reviewer.',
+  guidelines: 'Always check for type hints. Flag any use of eval().',
+  responseStyle: 'Reply in bullet points. Be concise.',
+});
+
+const result = await session.send('Review the file app.py and list any issues.');
+console.log(result.text);
+```
+</Tab>
+</Tabs>
+
+## 额外指令
+
+`extra` 插槽在提示词末尾追加自由格式指令，向后兼容旧版 `system_prompt` 字段：
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
+        extra: Some("Always end your response with '— A3S'".into()),
+        ..Default::default()
+    })
+))?;
+```
+</Tab>
+<Tab value="Python">
+```python
+opts = SessionOptions()
+opts.extra = "Always end your response with '— A3S'"
+session = agent.session("/my-project", options=opts)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  extra: "Always end your response with '— A3S'",
+});
+```
+</Tab>
+</Tabs>
+
+## 工具仍然正常工作
+
+提示词插槽只影响系统提示词 — 核心工具行为完全保留：
+
+```rust
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
+        role: Some("You are a minimalist file manager.".into()),
+        guidelines: Some("Only create files when explicitly asked.".into()),
+        ..Default::default()
+    })
+))?;
+
+// Agent 仍然可以正常使用所有工具
+let result = session.send(
+    "Create a file called test.txt with 'hello'. Then read it back.",
+    None,
+).await?;
+assert!(result.tool_calls_count > 0); // 工具正常工作
+```
+
+## API 参考
+
+<TypeTable
+  type={{
+    "with_prompt_slots(slots)": {
+      description: "Rust: SessionOptions 构建器方法",
+    },
+    "opts.role": {
+      description: "Python/Node.js: 自定义角色/身份字符串",
+    },
+    "opts.guidelines": {
+      description: "Python/Node.js: 自定义编码准则字符串",
+    },
+    "opts.response_style / responseStyle": {
+      description: "Python: opts.response_style · Node.js: responseStyle",
+    },
+    "opts.extra": {
+      description: "Python/Node.js: 自由格式额外指令字符串",
+    },
+  }}
+/>

@@ -1,6 +1,6 @@
 ---
 title: Built-in Tools
-description: 11 built-in tools (12 with sandbox) for file operations, shell execution, search, web access, and subagent delegation
+description: 13 built-in tools (14 with sandbox) for file operations, shell execution, search, web access, git worktree, and subagent delegation
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -8,7 +8,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Built-in Tools
 
-A3S Code ships with 11 built-in tools (12 with the `sandbox` feature) covering file operations, shell execution, search, web access, and subagent delegation. All tools execute in-process via native Rust implementations.
+A3S Code ships with 13 built-in tools (14 with the `sandbox` feature) covering file operations, shell execution, search, web access, git worktree, and subagent delegation. All tools execute in-process via native Rust implementations.
 
 ## Tool Reference
 
@@ -46,6 +46,15 @@ A3S Code ships with 11 built-in tools (12 with the `sandbox` feature) covering f
     },
     "task": {
       description: "Purpose: Delegate to subagents · Example: Offload specialized work",
+    },
+    "batch": {
+      description: "Purpose: Parallel tool execution · Example: Run multiple tools in one turn",
+    },
+    "git_worktree": {
+      description: "Purpose: Git worktree management · Example: Parallel workspace isolation",
+    },
+    "codesearch": {
+      description: "Purpose: Semantic code search · Example: Find code by meaning via vector embeddings",
     },
     "sandbox": {
       description: "Purpose: Execute in MicroVM · Example: Isolated execution (sandbox feature)",
@@ -235,6 +244,22 @@ print(f"[{result['exit_code']}] {result['output']}")
 ```
 </Tab>
 </Tabs>
+
+## Git
+
+### `git_worktree`
+
+Manage Git worktrees for parallel workspace isolation. Supports `status`, `create`, `list`, and `remove` subcommands.
+
+```json
+{
+  "command": "create",
+  "branch": "feature-auth",
+  "path": "/repo/wt-feature-auth"
+}
+```
+
+See [Git Worktree Example](/docs/code/examples/git-worktree) for full multi-language examples.
 
 ## Subagent Delegation
 
@@ -447,6 +472,16 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
 <TypeTable
   type={{
     invocations: { type: 'array', required: true, description: 'List of `{tool, args}` objects to run in parallel' },
+  }}
+/>
+
+#### git_worktree
+
+<TypeTable
+  type={{
+    command: { type: 'string', required: true, description: '"status" | "create" | "list" | "remove"' },
+    branch: { type: 'string', description: 'Branch name (required for create)' },
+    path: { type: 'string', description: 'Worktree directory path (required for create/remove)' },
   }}
 />
 

@@ -10,10 +10,10 @@ import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 # 工具
 
-A3S Code 提供 11 个内置工具，支持自定义工具注册和 MCP 集成。所有工具通过 `ToolExecutor` 统一管理。
+A3S Code 提供 13 个内置工具，支持自定义工具注册和 MCP 集成。所有工具通过 `ToolExecutor` 统一管理。
 
 <Callout type="info">
-内置工具：11 个 | 自定义工具：通过 `Tool` trait | MCP 工具：通过 `mcp_servers` 配置
+内置工具：13 个 | 自定义工具：通过 `Tool` trait | MCP 工具：通过 `mcp_servers` 配置
 </Callout>
 
 ## 内置工具
@@ -75,6 +75,32 @@ A3S Code 提供 11 个内置工具，支持自定义工具注册和 MCP 集成�
     },
     "web_search": {
       description: "描述: 网络搜索 · 参数: query, domains?",
+    },
+  }}
+/>
+
+### Git
+
+<TypeTable
+  type={{
+    "git_worktree": {
+      description: "描述: Git worktree 管理（并行工作区隔离） · 参数: command, branch?, path?",
+    },
+  }}
+/>
+
+### 高级
+
+<TypeTable
+  type={{
+    "batch": {
+      description: "描述: 并行执行多个工具 · 参数: invocations[]",
+    },
+    "codesearch": {
+      description: "描述: 基于向量嵌入的语义代码搜索 · 参数: query",
+    },
+    "task": {
+      description: "描述: 委托给子 Agent · 参数: agent, prompt",
     },
   }}
 />

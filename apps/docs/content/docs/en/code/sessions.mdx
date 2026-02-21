@@ -101,12 +101,68 @@ session = agent.session("/my-project", model="openai/gpt-4o")
       type: 'SandboxConfig',
       description: 'Route `bash` tool through A3S Box MicroVM (requires `sandbox` feature). Rust: `with_sandbox(SandboxConfig)`',
     },
+    prompt_slots: {
+      type: 'SystemPromptSlots',
+      description: 'Slot-based system prompt customization. Rust: `with_prompt_slots(slots)`, TS: `role/guidelines/responseStyle/extra`, Python: `opts.role/guidelines/response_style/extra`',
+    },
   }}
 />
 
 The model must be defined in the agent's config file under `providers`. The format is `provider_name/model_id`.
 
 Global `skill_dirs` and `agent_dirs` are set in the agent config. Per-session dirs merge with the global ones — see [Skills](/docs/code/skills) for details.
+
+## System Prompt Customization (Slot-Based)
+
+Customize the agent's behavior without overriding core agentic capabilities. Four named slots let you inject custom personality while preserving tool usage strategy, autonomous behavior, and completion criteria:
+
+| Slot | Position | Behavior |
+|------|----------|----------|
+| `role` | Before core | Replaces default "You are A3S Code..." identity |
+| `guidelines` | After core | Appended as `## Guidelines` section |
+| `response_style` | Replaces section | Replaces default `## Response Format` |
+| `extra` | End | Freeform instructions (backward-compatible) |
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{SessionOptions, SystemPromptSlots};
+
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
+        role: Some("You are a senior Rust developer.".into()),
+        guidelines: Some("Use clippy. No unwrap(). Prefer Result.".into()),
+        response_style: Some("Be concise. Use bullet points.".into()),
+        extra: Some("This project uses tokio and axum.".into()),
+    })
+))?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', {
+  role: 'You are a senior Rust developer.',
+  guidelines: 'Use clippy. No unwrap(). Prefer Result.',
+  responseStyle: 'Be concise. Use bullet points.',
+  extra: 'This project uses tokio and axum.',
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import SessionOptions
+
+opts = SessionOptions()
+opts.role = "You are a senior Rust developer."
+opts.guidelines = "Use clippy. No unwrap(). Prefer Result."
+opts.response_style = "Be concise. Use bullet points."
+opts.extra = "This project uses tokio and axum."
+session = agent.session("/my-project", options=opts)
+```
+</Tab>
+</Tabs>
+
+See [Prompt Slots Example](/docs/code/examples/prompt-slots) for full multi-language examples.
 
 ## Error Recovery & Resilience
 

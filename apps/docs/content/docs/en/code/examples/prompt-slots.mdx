@@ -1,0 +1,214 @@
+---
+title: Prompt Slots
+description: Customize agent personality with slot-based system prompt — role, guidelines, response style, and extra instructions
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Prompt Slots
+
+Customize the agent's behavior without overriding core agentic capabilities. The slot-based system prompt preserves tool usage strategy, autonomous behavior, and completion criteria while letting you inject custom personality, guidelines, and response style.
+
+<Callout type="info">
+Prompt slots are additive — the core agentic prompt (tool usage, completion criteria, autonomous behavior) is always preserved. You cannot accidentally break the agent's ability to use tools.
+</Callout>
+
+## Slot Positions
+
+<TypeTable
+  type={{
+    "role": {
+      description: "Position: Before core prompt · Replaces default 'You are A3S Code...' identity line",
+    },
+    "guidelines": {
+      description: "Position: After core prompt · Appended as a '## Guidelines' section",
+    },
+    "response_style": {
+      description: "Position: Replaces section · Replaces the default '## Response Format' section",
+    },
+    "extra": {
+      description: "Position: End of prompt · Freeform instructions (backward-compatible with legacy system_prompt)",
+    },
+  }}
+/>
+
+## Custom Role
+
+Set a persona for the agent:
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions, SystemPromptSlots};
+
+let agent = Agent::new("~/.a3s/config.hcl").await?;
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
+        role: Some("You are a senior Rust developer specializing in async programming.".into()),
+        ..Default::default()
+    })
+))?;
+
+let result = session.send("What is your area of expertise?", None).await?;
+println!("{}", result.text);
+```
+
+**Run:** `cargo run --example test_prompt_slots`
+**Source:** [`core/examples/test_prompt_slots.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_prompt_slots.rs)
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions
+
+agent = Agent("~/.a3s/config.hcl")
+
+opts = SessionOptions()
+opts.role = "You are a senior Rust developer specializing in async programming."
+session = agent.session("/my-project", options=opts)
+
+result = session.send("What is your area of expertise?")
+print(result.text)
+```
+
+**Run:** `python examples/test_prompt_slots.py`
+**Source:** [`sdk/python/examples/test_prompt_slots.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_prompt_slots.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const { Agent } = require('a3s-code');
+
+const agent = await Agent.create('~/.a3s/config.hcl');
+const session = agent.session('/my-project', {
+  role: 'You are a senior Rust developer specializing in async programming.',
+});
+
+const result = await session.send('What is your area of expertise?');
+console.log(result.text);
+```
+
+**Run:** `node examples/test_prompt_slots.js`
+**Source:** [`sdk/node/examples/test_prompt_slots.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_prompt_slots.js)
+</Tab>
+</Tabs>
+
+## Role + Guidelines + Response Style
+
+Combine multiple slots for a fully customized code reviewer:
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
+        role: Some("You are a Python code reviewer.".into()),
+        guidelines: Some("Always check for type hints. Flag any use of eval().".into()),
+        response_style: Some("Reply in bullet points. Be concise.".into()),
+        ..Default::default()
+    })
+))?;
+
+let result = session.send("Review the file app.py and list any issues.", None).await?;
+println!("{}", result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+opts = SessionOptions()
+opts.role = "You are a Python code reviewer."
+opts.guidelines = "Always check for type hints. Flag any use of eval()."
+opts.response_style = "Reply in bullet points. Be concise."
+session = agent.session("/my-project", options=opts)
+
+result = session.send("Review the file app.py and list any issues.")
+print(result.text)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  role: 'You are a Python code reviewer.',
+  guidelines: 'Always check for type hints. Flag any use of eval().',
+  responseStyle: 'Reply in bullet points. Be concise.',
+});
+
+const result = await session.send('Review the file app.py and list any issues.');
+console.log(result.text);
+```
+</Tab>
+</Tabs>
+
+## Extra Instructions
+
+The `extra` slot appends freeform instructions at the end of the prompt. This is backward-compatible with the legacy `system_prompt` field:
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
+        extra: Some("Always end your response with '— A3S'".into()),
+        ..Default::default()
+    })
+))?;
+```
+</Tab>
+<Tab value="Python">
+```python
+opts = SessionOptions()
+opts.extra = "Always end your response with '— A3S'"
+session = agent.session("/my-project", options=opts)
+```
+</Tab>
+<Tab value="Node.js">
+```javascript
+const session = agent.session('/my-project', {
+  extra: "Always end your response with '— A3S'",
+});
+```
+</Tab>
+</Tabs>
+
+## Tools Still Work
+
+Prompt slots only affect the system prompt — core tool behavior is fully preserved:
+
+```rust
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
+        role: Some("You are a minimalist file manager.".into()),
+        guidelines: Some("Only create files when explicitly asked.".into()),
+        ..Default::default()
+    })
+))?;
+
+// The agent can still use all tools normally
+let result = session.send(
+    "Create a file called test.txt with 'hello'. Then read it back.",
+    None,
+).await?;
+assert!(result.tool_calls_count > 0); // Tools work as expected
+```
+
+## API Reference
+
+<TypeTable
+  type={{
+    "with_prompt_slots(slots)": {
+      description: "Rust: SessionOptions builder method",
+    },
+    "opts.role": {
+      description: "Python/Node.js: Custom role/identity string",
+    },
+    "opts.guidelines": {
+      description: "Python/Node.js: Custom coding guidelines string",
+    },
+    "opts.response_style / responseStyle": {
+      description: "Python: opts.response_style · Node.js: responseStyle",
+    },
+    "opts.extra": {
+      description: "Python/Node.js: Freeform extra instructions string",
+    },
+  }}
+/>

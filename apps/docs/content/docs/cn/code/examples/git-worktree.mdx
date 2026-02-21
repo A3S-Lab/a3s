@@ -1,0 +1,163 @@
+---
+title: Git Worktree
+description: 使用 git_worktree 内置工具实现并行工作区隔离 — 创建、列表、删除和状态查询
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Git Worktree
+
+`git_worktree` 内置工具通过 Git worktree 提供并行工作区隔离。在独立目录中创建功能分支，独立开发，完成后清理 — 无需切换分支。
+
+<Callout type="info">
+`git_worktree` 工具要求会话工作区位于至少有一次提交的 Git 仓库中。
+</Callout>
+
+## 直接工具调用
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::Agent;
+
+let agent = Agent::new("~/.a3s/config.hcl").await?;
+let session = agent.session("/my-git-repo", None)?;
+
+// 查看 worktree 状态
+let r = session.tool("git_worktree", serde_json::json!({"command": "status"})).await?;
+println!("{}", r.output);
+
+// 为功能分支创建 worktree
+let r = session.tool("git_worktree", serde_json::json!({
+    "command": "create",
+    "branch": "feature-auth",
+    "path": "/my-git-repo/wt-feature-auth"
+})).await?;
+assert!(r.exit_code == 0);
+
+// 列出所有 worktree
+let r = session.tool("git_worktree", serde_json::json!({"command": "list"})).await?;
+println!("{}", r.output);
+
+// 删除 worktree
+let r = session.tool("git_worktree", serde_json::json!({
+    "command": "remove",
+    "path": "/my-git-repo/wt-feature-auth"
+})).await?;
+assert!(r.exit_code == 0);
+```
+
+**运行:** `cargo run --example test_git_worktree`
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent
+
+agent = Agent("~/.a3s/config.hcl")
+session = agent.session("/my-git-repo")
+
+# 查看 worktree 状态
+r = session.tool("git_worktree", {"command": "status"})
+print(r.output)
+
+# 为功能分支创建 worktree
+r = session.tool("git_worktree", {
+    "command": "create",
+    "branch": "feature-auth",
+    "path": "/my-git-repo/wt-feature-auth",
+})
+assert r.exit_code == 0
+
+# 列出所有 worktree
+r = session.tool("git_worktree", {"command": "list"})
+print(r.output)
+
+# 删除 worktree
+r = session.tool("git_worktree", {
+    "command": "remove",
+    "path": "/my-git-repo/wt-feature-auth",
+})
+assert r.exit_code == 0
+```
+
+**运行:** `python examples/test_git_worktree.py`
+</Tab>
+<Tab value="Node.js">
+```javascript
+const { Agent } = require('a3s-code');
+
+const agent = await Agent.create('~/.a3s/config.hcl');
+const session = agent.session('/my-git-repo');
+
+// 查看 worktree 状态
+let r = await session.tool('git_worktree', { command: 'status' });
+console.log(r.output);
+
+// 为功能分支创建 worktree
+r = await session.tool('git_worktree', {
+  command: 'create',
+  branch: 'feature-auth',
+  path: '/my-git-repo/wt-feature-auth',
+});
+assert(r.exitCode === 0);
+
+// 列出所有 worktree
+r = await session.tool('git_worktree', { command: 'list' });
+console.log(r.output);
+
+// 删除 worktree
+r = await session.tool('git_worktree', {
+  command: 'remove',
+  path: '/my-git-repo/wt-feature-auth',
+});
+assert(r.exitCode === 0);
+```
+
+**运行:** `node examples/test_git_worktree.js`
+</Tab>
+</Tabs>
+
+## LLM 驱动使用
+
+Agent 可以在被要求并行开发功能时自主使用 `git_worktree`：
+
+```rust
+let result = session.send(
+    "Create a worktree for feature-auth, then list all worktrees.",
+    None,
+).await?;
+assert!(result.tool_calls_count > 0);
+```
+
+## 子命令
+
+<TypeTable
+  type={{
+    "status": {
+      description: "显示当前 worktree 信息（分支、路径、是否干净）",
+    },
+    "create": {
+      description: "创建新 worktree。参数：branch（必需）、path（可选）",
+    },
+    "list": {
+      description: "列出所有 worktree 及其分支和路径信息",
+    },
+    "remove": {
+      description: "按路径删除 worktree。参数：path（必需）",
+    },
+  }}
+/>
+
+## API 参考
+
+### git_worktree 输入模式
+
+<TypeTable
+  type={{
+    command: { type: 'string', required: true, description: '"status" | "create" | "list" | "remove"' },
+    branch: { type: 'string', description: '分支名称（create 时必需）' },
+    path: { type: 'string', description: 'Worktree 目录路径（create/remove 时必需）' },
+  }}
+/>

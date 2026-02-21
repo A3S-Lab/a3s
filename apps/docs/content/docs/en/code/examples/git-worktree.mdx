@@ -1,0 +1,167 @@
+---
+title: Git Worktree
+description: Parallel workspace isolation with the git_worktree builtin tool — create, list, remove, and status
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Git Worktree
+
+The `git_worktree` builtin tool provides parallel workspace isolation via Git worktrees. Create feature branches in separate directories, work on them independently, and clean up when done — all without switching branches.
+
+<Callout type="info">
+The `git_worktree` tool requires the session workspace to be inside a Git repository with at least one commit.
+</Callout>
+
+## Direct Tool Calls
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::Agent;
+
+let agent = Agent::new("~/.a3s/config.hcl").await?;
+let session = agent.session("/my-git-repo", None)?;
+
+// Check worktree status
+let r = session.tool("git_worktree", serde_json::json!({"command": "status"})).await?;
+println!("{}", r.output);
+
+// Create a worktree for a feature branch
+let r = session.tool("git_worktree", serde_json::json!({
+    "command": "create",
+    "branch": "feature-auth",
+    "path": "/my-git-repo/wt-feature-auth"
+})).await?;
+assert!(r.exit_code == 0);
+
+// List all worktrees
+let r = session.tool("git_worktree", serde_json::json!({"command": "list"})).await?;
+println!("{}", r.output); // Shows main + feature-auth
+
+// Remove the worktree
+let r = session.tool("git_worktree", serde_json::json!({
+    "command": "remove",
+    "path": "/my-git-repo/wt-feature-auth"
+})).await?;
+assert!(r.exit_code == 0);
+```
+
+**Run:** `cargo run --example test_git_worktree`
+**Source:** [`core/examples/test_git_worktree.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_git_worktree.rs)
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent
+
+agent = Agent("~/.a3s/config.hcl")
+session = agent.session("/my-git-repo")
+
+# Check worktree status
+r = session.tool("git_worktree", {"command": "status"})
+print(r.output)
+
+# Create a worktree for a feature branch
+r = session.tool("git_worktree", {
+    "command": "create",
+    "branch": "feature-auth",
+    "path": "/my-git-repo/wt-feature-auth",
+})
+assert r.exit_code == 0
+
+# List all worktrees
+r = session.tool("git_worktree", {"command": "list"})
+print(r.output)  # Shows main + feature-auth
+
+# Remove the worktree
+r = session.tool("git_worktree", {
+    "command": "remove",
+    "path": "/my-git-repo/wt-feature-auth",
+})
+assert r.exit_code == 0
+```
+
+**Run:** `python examples/test_git_worktree.py`
+**Source:** [`sdk/python/examples/test_git_worktree.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_git_worktree.py)
+</Tab>
+<Tab value="Node.js">
+```javascript
+const { Agent } = require('a3s-code');
+
+const agent = await Agent.create('~/.a3s/config.hcl');
+const session = agent.session('/my-git-repo');
+
+// Check worktree status
+let r = await session.tool('git_worktree', { command: 'status' });
+console.log(r.output);
+
+// Create a worktree for a feature branch
+r = await session.tool('git_worktree', {
+  command: 'create',
+  branch: 'feature-auth',
+  path: '/my-git-repo/wt-feature-auth',
+});
+assert(r.exitCode === 0);
+
+// List all worktrees
+r = await session.tool('git_worktree', { command: 'list' });
+console.log(r.output); // Shows main + feature-auth
+
+// Remove the worktree
+r = await session.tool('git_worktree', {
+  command: 'remove',
+  path: '/my-git-repo/wt-feature-auth',
+});
+assert(r.exitCode === 0);
+```
+
+**Run:** `node examples/test_git_worktree.js`
+**Source:** [`sdk/node/examples/test_git_worktree.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_git_worktree.js)
+</Tab>
+</Tabs>
+
+## LLM-Driven Usage
+
+The agent can use `git_worktree` autonomously when asked to work on parallel features:
+
+```rust
+let result = session.send(
+    "Create a worktree for feature-auth, then list all worktrees.",
+    None,
+).await?;
+println!("{}", result.text);
+assert!(result.tool_calls_count > 0);
+```
+
+## Subcommands
+
+<TypeTable
+  type={{
+    "status": {
+      description: "Show current worktree info (branch, path, clean/dirty)",
+    },
+    "create": {
+      description: "Create a new worktree. Params: branch (required), path (optional)",
+    },
+    "list": {
+      description: "List all worktrees with branch and path info",
+    },
+    "remove": {
+      description: "Remove a worktree by path. Params: path (required)",
+    },
+  }}
+/>
+
+## API Reference
+
+### git_worktree input schema
+
+<TypeTable
+  type={{
+    command: { type: 'string', required: true, description: '"status" | "create" | "list" | "remove"' },
+    branch: { type: 'string', description: 'Branch name (required for create)' },
+    path: { type: 'string', description: 'Worktree directory path (required for create/remove)' },
+  }}
+/>

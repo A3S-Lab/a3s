@@ -91,12 +91,67 @@ session = agent.session("/my-project", model="openai/gpt-4o")
     "沙箱": {
       description: "Rust: with_sandbox(SandboxConfig) · 描述: 通过 A3S Box MicroVM 路由 bash 工具（需要 sandbox feature）",
     },
+    "提示词插槽": {
+      description: "Rust: with_prompt_slots(slots) · TypeScript: role/guidelines/responseStyle/extra · Python: opts.role/guidelines/response_style/extra · 描述: 插槽式系统提示词自定义",
+    },
   }}
 />
 
 模型必须在 agent 配置文件的 `providers` 中定义。格式为 `provider_name/model_id`。
 
 全局 `skill_dirs` 和 `agent_dirs` 在 agent 配置中设置。每个会话的目录会与全局目录合并 — 详见 [Skills](/cn/docs/code/skills)。
+
+## 系统提示词自定义（插槽式）
+
+在不覆盖核心 Agent 能力的前提下自定义 Agent 行为。四个命名插槽允许注入自定义个性，同时保留工具使用策略、自主行为和完成标准：
+
+| 插槽 | 位置 | 行为 |
+|------|------|------|
+| `role` | 核心提示词之前 | 替换默认的 "You are A3S Code..." 身份行 |
+| `guidelines` | 核心提示词之后 | 作为 `## Guidelines` 章节追加 |
+| `response_style` | 替换章节 | 替换默认的 `## Response Format` 章节 |
+| `extra` | 提示词末尾 | 自由格式指令（向后兼容旧版 system_prompt） |
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{SessionOptions, SystemPromptSlots};
+
+let session = agent.session("/my-project", Some(
+    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
+        role: Some("You are a senior Rust developer.".into()),
+        guidelines: Some("Use clippy. No unwrap(). Prefer Result.".into()),
+        response_style: Some("Be concise. Use bullet points.".into()),
+        extra: Some("This project uses tokio and axum.".into()),
+    })
+))?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', {
+  role: 'You are a senior Rust developer.',
+  guidelines: 'Use clippy. No unwrap(). Prefer Result.',
+  responseStyle: 'Be concise. Use bullet points.',
+  extra: 'This project uses tokio and axum.',
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import SessionOptions
+
+opts = SessionOptions()
+opts.role = "You are a senior Rust developer."
+opts.guidelines = "Use clippy. No unwrap(). Prefer Result."
+opts.response_style = "Be concise. Use bullet points."
+opts.extra = "This project uses tokio and axum."
+session = agent.session("/my-project", options=opts)
+```
+</Tab>
+</Tabs>
+
+详见[提示词插槽示例](/cn/docs/code/examples/prompt-slots)。
 
 ## 错误恢复与弹性
 

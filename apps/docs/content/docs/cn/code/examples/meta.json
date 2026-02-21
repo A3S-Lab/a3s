@@ -15,6 +15,8 @@
     "batch",
     "vector-rag",
     "lane-queue",
-    "external-tasks"
+    "external-tasks",
+    "git-worktree",
+    "prompt-slots"
   ]
 }
