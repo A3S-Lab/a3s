@@ -1,10 +1,222 @@
 ---
 title: 隐私分类
-description: PII 检测和敏感级别分类
+description: PII 检测、敏感级别、策略引擎与合规检查
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 隐私分类
 
-SafeClaw 使用多层分类器检测 PII，支持 5 个敏感级别：Public、Normal、Sensitive、HighlySensitive、Critical。
+SafeClaw 提供多级 PII 分类，支持可插拔后端、用于路由决策的策略引擎，以及 HIPAA、PCI-DSS 和 GDPR 合规检查。
 
-详细文档请参阅[英文版](/docs/en/safeclaw/privacy)。
+## 敏感级别
+
+```rust
+pub enum SensitivityLevel {
+    Public,              // 未检测到 PII
+    Normal,              // 一般数据
+    Sensitive,           // 邮箱、电话、地址
+    HighlySensitive,     // 信用卡、SSN、API 密钥
+    Critical,            // 医疗记录、密码
+}
+```
+
+## 分类器
+
+主分类器使用基于正则表达式的模式匹配：
+
+```rust
+pub struct Classifier {
+    inner: a3s_common::privacy::RegexClassifier,
+}
+
+pub struct ClassificationResult {
+    pub level: SensitivityLevel,
+    pub matches: Vec<Match>,
+    pub requires_tee: bool,
+}
+
+pub struct Match {
+    pub rule_name: String,
+    pub level: SensitivityLevel,
+    pub start: usize,
+    pub end: usize,
+    pub redacted: String,
+}
+```
+
+### 用法
+
+```bash
+curl -X POST http://localhost:18790/api/v1/privacy/classify \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Call me at 555-0123 or email john@example.com"}'
+```
+
+响应：
+
+```json
+{
+  "level": "Sensitive",
+  "matches": [
+    {
+      "rule_name": "phone",
+      "level": "Sensitive",
+      "start": 14,
+      "end": 22,
+      "redacted": "[PHONE]"
+    },
+    {
+      "rule_name": "email",
+      "level": "Sensitive",
+      "start": 32,
+      "end": 48,
+      "redacted": "[EMAIL]"
+    }
+  ],
+  "requires_tee": false
+}
+```
+
+## 可插拔后端
+
+```rust
+#[async_trait]
+pub trait ClassifierBackend: Send + Sync {
+    async fn classify(&self, text: &str) -> Vec<PiiMatch>;
+    fn confidence_floor(&self) -> f64;
+    fn name(&self) -> &str;
+}
+
+pub struct CompositeClassifier {
+    backends: Vec<Box<dyn ClassifierBackend>>,
+}
+
+pub struct PiiMatch {
+    pub rule_name: String,
+    pub level: SensitivityLevel,
+    pub start: usize,
+    pub end: usize,
+    pub confidence: f64,
+    pub backend: String,
+}
+```
+
+`CompositeClassifier` 按顺序串联多个后端：
+1. **Regex** — 快速模式匹配（电话、邮箱、SSN、信用卡等）
+2. **Semantic** — 上下文感知分析（检测自然语言中的 PII）
+3. **LLM** — （可扩展）基于 LLM 的分类，用于模糊场景
+
+## 语义分析器
+
+超越简单正则的上下文感知 PII 检测：
+
+```bash
+curl -X POST http://localhost:18790/api/v1/privacy/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"text": "My name is John and I live at 123 Main Street"}'
+```
+
+语义分析器可检测正则表达式无法识别的 PII，例如上下文中的姓名、非标准格式的地址以及隐含的个人信息。
+
+## 策略引擎
+
+根据敏感级别分类对消息进行路由：
+
+```rust
+pub enum PolicyDecision {
+    ProcessLocal,           // 无需 TEE
+    ProcessInTee,           // 路由至 TEE
+    Reject,                 // 完全拦截
+    RequireConfirmation,    // 先请求用户确认
+}
+
+pub struct DataPolicy {
+    pub name: String,
+    pub tee_threshold: SensitivityLevel,
+    pub allow_highly_sensitive: bool,
+    pub type_rules: HashMap<String, PolicyDecision>,
+}
+
+pub struct PolicyEngine {
+    policies: HashMap<String, DataPolicy>,
+    default_policy: DataPolicy,
+}
+```
+
+### 策略评估
+
+```rust
+impl PolicyEngine {
+    pub fn evaluate(
+        &self,
+        level: SensitivityLevel,
+        data_type: Option<&str>,
+        policy_name: Option<&str>,
+    ) -> PolicyDecision;
+
+    pub fn requires_tee(&self, level: SensitivityLevel) -> bool;
+}
+```
+
+默认行为：
+- `Public` / `Normal` → `ProcessLocal`
+- `Sensitive` → `ProcessLocal`（附带污点追踪）
+- `HighlySensitive` → `ProcessInTee`
+- `Critical` → `ProcessInTee`（若 TEE 不可用则 `Reject`）
+
+## 合规引擎
+
+内置合规规则集：
+
+```rust
+pub struct ComplianceEngine {
+    // HIPAA、PCI-DSS、GDPR 规则集
+}
+```
+
+```bash
+curl -X POST http://localhost:18790/api/v1/privacy/scan \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Patient diagnosis: diabetes. Card: 4111-1111-1111-1111"}'
+```
+
+<TypeTable
+  type={{
+    "HIPAA": {
+      description: "Medical records, diagnoses, patient IDs, health insurance numbers",
+    },
+    "PCI-DSS": {
+      description: "Credit card numbers, CVVs, expiration dates",
+    },
+    "GDPR": {
+      description: "Personal data, consent indicators, data subject identifiers",
+    },
+  }}
+/>
+
+## 累积风险追踪
+
+跨对话轮次追踪 PII 暴露情况：
+
+```rust
+pub struct CumulativeRiskDecision {
+    // 每会话 PII 累积追踪
+}
+```
+
+单条消息可能只是 `Sensitive`，但若一次对话中累积了多种 PII 类型（姓名 + 地址 + 电话 + 邮箱），累积风险会升级为 `HighlySensitive` 或 `Critical`，从而触发 TEE 路由。
+
+## 配置
+
+```toml
+[privacy]
+default_sensitivity = "Normal"
+enable_semantic_analysis = true
+enable_compliance_checks = true
+
+[[privacy.classification_rules]]
+name = "custom-api-key"
+pattern = "sk-[a-zA-Z0-9]{48}"
+level = "HighlySensitive"
+```

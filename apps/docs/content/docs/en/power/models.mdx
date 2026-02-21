@@ -1,183 +1,164 @@
 ---
 title: Models
-description: Model management, storage, resolution, and Modelfile support
+description: Model formats, storage, HuggingFace Hub pull, and lifecycle management
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Models
 
-A3S Power uses content-addressed storage with SHA-256 deduplication for efficient model management.
+## Supported Formats
 
-## Model Resolution
+<TypeTable
+  type={{
+    "gguf": {
+      description: "Quantized GGUF models. Register with format=gguf (default). Supported by both mistralrs and llama.cpp backends.",
+    },
+    "safetensors": {
+      description: "HuggingFace SafeTensors chat models. ISQ quantization applied on load (default Q8_0). Configure via default_parameters.isq.",
+    },
+    "vision": {
+      description: "Multimodal vision models (LLaVA, Phi-3-Vision). Accepts base64 images via images field or OpenAI image_url content parts.",
+    },
+    "huggingface": {
+      description: "HuggingFace embedding models (Qwen3-Embedding, GTE, NomicBert). Used with POST /v1/embeddings.",
+    },
+  }}
+/>
 
-When you reference a model by name, Power resolves it through three sources in order:
-
-1. Ollama Registry — `registry.ollama.ai` (default, largest catalog)
-2. Built-in Catalog — 10 popular models as offline fallback
-3. HuggingFace — GGUF files via `hf.co/` prefix
+## Register a Model
 
 ```bash
-# Ollama registry (default)
-a3s-power pull llama3.2
-a3s-power pull qwen2.5:7b
+# GGUF model
+curl -X POST http://localhost:11434/v1/models \
+  -H "Content-Type: application/json" \
+  -d '{"name": "llama3.2:3b", "path": "/models/llama3.2-3b-q4_k_m.gguf"}'
 
-# HuggingFace GGUF
-a3s-power pull hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF
+# SafeTensors chat model (ISQ quantization on load)
+curl -X POST http://localhost:11434/v1/models \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "qwen2.5:7b",
+    "path": "/models/Qwen2.5-7B-Instruct",
+    "format": "safetensors",
+    "default_parameters": {"isq": "Q4K"}
+  }'
+
+# Vision model
+curl -X POST http://localhost:11434/v1/models \
+  -H "Content-Type: application/json" \
+  -d '{"name": "llava:7b", "path": "/models/llava-7b", "format": "vision"}'
+
+# Embedding model
+curl -X POST http://localhost:11434/v1/models \
+  -H "Content-Type: application/json" \
+  -d '{"name": "qwen3-embed", "path": "/models/Qwen3-Embedding", "format": "huggingface"}'
+```
+
+## Pull from HuggingFace Hub
+
+Requires the `hf` feature (included in default builds).
+
+```bash
+# By quantization tag — resolves filename via HF API
+curl -N http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"name": "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M"}'
+
+# By exact filename
+curl -N http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"name": "bartowski/Llama-3.2-3B-Instruct-GGUF/Llama-3.2-3B-Instruct-Q4_K_M.gguf"}'
+
+# Private/gated model with HF token
+curl -N http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"name": "meta-llama/Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Q4_K_M.gguf", "token": "hf_..."}'
+
+# Force re-download
+curl -N http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"name": "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M", "force": true}'
+```
+
+Set `HF_TOKEN` env var as an alternative to passing `token` in the request body.
+
+### SSE Progress Events
+
+```
+data: {"status":"resuming","offset":104857600,"total":2147483648}
+data: {"status":"downloading","completed":524288000,"total":2147483648}
+data: {"status":"verifying"}
+data: {"status":"success","id":"bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M","object":"model"}
+```
+
+Interrupted downloads resume automatically — the partial file is identified by a SHA-256 of the download URL and resumed via HTTP `Range` requests.
+
+### Check Pull Status
+
+```bash
+# Get persisted pull progress (survives server restarts)
+curl http://localhost:11434/v1/models/pull/bartowski%2FLlama-3.2-3B-Instruct-GGUF:Q4_K_M/status
+```
+
+```json
+{"name": "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M", "status": "pulling", "completed": 524288000, "total": 2147483648}
+```
+
+## List and Inspect Models
+
+```bash
+# List all registered models
+curl http://localhost:11434/v1/models
+
+# Get a specific model
+curl http://localhost:11434/v1/models/llama3.2:3b
+```
+
+## Delete a Model
+
+```bash
+curl -X DELETE http://localhost:11434/v1/models/llama3.2:3b
 ```
 
 ## Storage Layout
 
 ```
-~/.a3s/power/models/
-├── manifests/           # Model metadata (JSON)
-│   ├── llama3.2.json
-│   └── qwen2.5-7b.json
-└── blobs/               # Content-addressed blobs (SHA-256)
-    ├── sha256-a1b2c3...  # Model weights (GGUF)
-    ├── sha256-d4e5f6...  # Chat template
-    └── sha256-789abc...  # System prompt
+~/.a3s/power/
+├── models/
+│   ├── manifests/           # JSON metadata per model
+│   │   ├── llama3.2-3b.json
+│   │   └── qwen2.5-7b.json
+│   └── blobs/               # Content-addressed by SHA-256
+│       ├── sha256-a1b2c3...  # Model weights
+│       └── sha256-d4e5f6...
+└── pulls/                   # Pull progress state (resume)
+    └── <sha256-of-url>.json
 ```
 
-Blobs are stored by SHA-256 hash. If two models share the same weights (e.g., different quantizations of the same base), the shared layers are stored only once.
+Model blobs are stored by SHA-256 hash — identical weights shared across model names are stored only once.
 
-## Model Manifest
-
-Each model has a JSON manifest describing its components:
-
-```rust
-pub struct ModelManifest {
-    pub name: String,
-    pub format: ModelFormat,        // Gguf or SafeTensors
-    pub size: u64,                  // Total size in bytes
-    pub digest: String,             // SHA-256 of weights
-    pub parameters: ModelParameters,
-    pub system: Option<String>,     // Default system prompt
-    pub template: Option<String>,   // Chat template (Jinja2)
-    pub adapter: Option<String>,    // LoRA adapter path
-    pub projector: Option<String>,  // Vision projector path
-    pub messages: Vec<Message>,     // Default conversation
-}
-
-pub struct ModelParameters {
-    pub context_length: u64,
-    pub embedding_length: u64,
-    pub parameter_count: u64,
-    pub quantization: Option<String>,
-}
-```
-
-## Pull with Progress
-
-Model downloads show per-layer progress with resumption support:
-
-```bash
-$ a3s-power pull llama3.2
-pulling manifest
-pulling a1b2c3d4e5f6... 100% ▓████████████████████████████████▓ 2.0 GB
-pulling 7f8e9d0c1b2a...  45% ▓████████████████░░░░░░░░░░░░░░░░▓ 128 MB
-```
-
-If a download is interrupted, it resumes from where it left off.
-
-## GGUF Metadata
-
-Power includes a lightweight GGUF binary parser to read model metadata without loading the full model:
-
-```bash
-# Show model details
-a3s-power show llama3.2
-
-# Verbose mode shows GGUF metadata
-a3s-power show llama3.2 --verbose
-```
-
-Metadata includes architecture, context length, embedding dimensions, quantization type, vocabulary size, and more.
-
-## Modelfile
-
-Create custom models using a Modelfile (Ollama-compatible):
-
-```dockerfile
-# Base model
-FROM llama3.2
-
-# Override parameters
-PARAMETER temperature 0.7
-PARAMETER num_ctx 4096
-PARAMETER stop "<|eot_id|>"
-
-# System prompt
-SYSTEM """You are a helpful coding assistant. Always provide code examples."""
-
-# Chat template (Jinja2)
-TEMPLATE """{{ if .System }}<|start_header_id|>system<|end_header_id|>
-{{ .System }}<|eot_id|>{{ end }}{{ range .Messages }}<|start_header_id|>{{ .Role }}<|end_header_id|>
-{{ .Content }}<|eot_id|>{{ end }}<|start_header_id|>assistant<|end_header_id|>
-"""
-
-# LoRA adapter
-ADAPTER ./my-lora.gguf
-
-# License
-LICENSE "MIT"
-
-# Default conversation
-MESSAGE user "Hello"
-MESSAGE assistant "Hi! How can I help you today?"
-```
-
-```bash
-# Create from Modelfile
-a3s-power create my-model -f Modelfile
-
-# Run the custom model
-a3s-power run my-model
-```
-
-### Modelfile Directives
+## ISQ Quantization Types (SafeTensors)
 
 <TypeTable
   type={{
-    "FROM": {
-      description: "Base model name or path",
-    },
-    "PARAMETER": {
-      description: "Override generation parameter",
-    },
-    "SYSTEM": {
-      description: "Default system prompt",
-    },
-    "TEMPLATE": {
-      description: "Chat template (Jinja2)",
-    },
-    "ADAPTER": {
-      description: "LoRA adapter path",
-    },
-    "LICENSE": {
-      description: "License text",
-    },
-    "MESSAGE": {
-      description: "Default conversation message",
-    },
+    "Q4_0": { description: "4-bit quantization, baseline" },
+    "Q4K": { description: "4-bit K-quant (recommended for quality/size balance)" },
+    "Q6K": { description: "6-bit K-quant" },
+    "Q8_0": { description: "8-bit quantization (default for SafeTensors)" },
+    "HQQ4": { description: "Half-quadratic quantization, 4-bit" },
+    "HQQ8": { description: "Half-quadratic quantization, 8-bit" },
   }}
 />
 
-## Copy and Alias
+## Model Lifecycle
 
-```bash
-# Create an alias
-a3s-power cp llama3.2 my-llama
-
-# Both names point to the same blobs (no disk duplication)
-a3s-power run my-llama
+```
+Register/Pull → Auto-load on first request → Serve → Idle → Evict (LRU)
+                        ↑                                        │
+                        └────────────────────────────────────────┘
 ```
 
-## Delete
-
-```bash
-# Delete a model
-a3s-power delete llama3.2
-
-# Orphaned blobs are automatically pruned (unless noprune=true)
-```
+- Models load automatically on first inference request
+- Idle models unload after `keep_alive` duration (default `5m`)
+- When `max_loaded_models` is reached, the least-recently-used model is evicted

@@ -1,163 +1,151 @@
 ---
 title: Inference
-description: Chat, completion, embedding, vision, and KV cache reuse
+description: Chat, completion, embeddings, vision, streaming, and model backends
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Inference
 
-A3S Power supports chat completion, text completion, and embedding generation through a pluggable backend system.
+## Backends
 
-## Backend Architecture
+A3S Power uses a pluggable `Backend` trait. Two implementations are available:
 
-```rust
-#[async_trait]
-pub trait Backend: Send + Sync {
-    fn name(&self) -> &str;
-    fn supports(&self, format: &ModelFormat) -> bool;
-    async fn load(&self, manifest: &ModelManifest) -> Result<()>;
-    async fn unload(&self, model_name: &str) -> Result<()>;
-    async fn chat(&self, model_name: &str, request: ChatRequest)
-        -> Result<Pin<Box<dyn Stream<Item = Result<ChatResponseChunk>> + Send>>>;
-    async fn complete(&self, model_name: &str, request: CompletionRequest)
-        -> Result<Pin<Box<dyn Stream<Item = Result<CompletionResponseChunk>> + Send>>>;
-    async fn embed(&self, model_name: &str, request: EmbeddingRequest)
-        -> Result<EmbeddingResponse>;
-}
-```
-
-The default backend is llama.cpp (feature-gated, requires C++ toolchain). A mock backend is available for testing.
+<TypeTable
+  type={{
+    "mistralrs (default)": {
+      description: "Pure Rust inference via mistralrs (candle). No C++ toolchain required. Supports GGUF, SafeTensors, Vision, and Embedding formats. Ideal for TEE supply-chain auditing.",
+    },
+    "llamacpp (optional)": {
+      description: "C++ llama.cpp via llama-cpp-2 bindings. Requires C++ compiler + CMake. Feature flag: --features llamacpp.",
+    },
+  }}
+/>
 
 ## Chat Completion
 
-Multi-turn conversation with system prompts:
-
 ```bash
-curl http://localhost:11434/api/chat -d '{
-  "model": "llama3.2",
-  "messages": [
-    {"role": "system", "content": "You are a helpful assistant."},
-    {"role": "user", "content": "What is Rust?"},
-    {"role": "assistant", "content": "Rust is a systems programming language..."},
-    {"role": "user", "content": "Show me a hello world example."}
-  ],
-  "stream": true
-}'
+# Non-streaming
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "What is Rust?"}
+    ]
+  }'
+
+# Streaming (token-by-token SSE)
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }'
 ```
 
-Responses stream as NDJSON (Ollama API) or SSE (OpenAI API).
+Streaming delivers each token as it is generated via SSE (`data: {...}`). The connection closes with `data: [DONE]` when generation completes.
 
 ## Text Completion
 
-Raw text completion without chat formatting:
-
 ```bash
-curl http://localhost:11434/api/generate -d '{
-  "model": "llama3.2",
-  "prompt": "The quick brown fox",
-  "stream": false,
-  "options": {
-    "temperature": 0.0,
-    "num_predict": 50
-  }
-}'
+curl http://localhost:11434/v1/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "prompt": "The quick brown fox",
+    "max_tokens": 50
+  }'
 ```
 
 ## Embeddings
 
-Generate vector embeddings for text:
-
 ```bash
 # Single input
-curl http://localhost:11434/api/embed -d '{
-  "model": "llama3.2",
-  "input": "Hello world"
-}'
+curl http://localhost:11434/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen3-embed", "input": "Hello world"}'
 
 # Batch input
-curl http://localhost:11434/api/embed -d '{
-  "model": "llama3.2",
-  "input": ["Hello world", "Goodbye world"]
-}'
+curl http://localhost:11434/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen3-embed", "input": ["Hello world", "Goodbye world"]}'
 ```
 
-Response:
-
-```json
-{
-  "model": "llama3.2",
-  "embeddings": [[0.123, -0.456, ...], [0.789, -0.012, ...]],
-  "total_duration": 123456789
-}
-```
+Register an embedding model with `format=huggingface` (see [Models](/docs/en/power/models)).
 
 ## Vision / Multimodal
 
-Models with vision support (e.g., LLaVA) accept images:
+Register a vision model with `format=vision`, then pass images in the request:
 
 ```bash
-# Base64 image
-curl http://localhost:11434/api/chat -d '{
-  "model": "llava",
-  "messages": [{
-    "role": "user",
-    "content": "What is in this image?",
-    "images": ["iVBORw0KGgo..."]
-  }]
-}'
+# Base64 image via images field
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llava:7b",
+    "messages": [{"role": "user", "content": "What is in this image?"}],
+    "images": ["iVBORw0KGgoAAAANSUhEUgAA..."]
+  }'
 
-# Image URL (OpenAI format)
-curl http://localhost:11434/v1/chat/completions -d '{
-  "model": "llava",
-  "messages": [{
-    "role": "user",
-    "content": [
-      {"type": "text", "text": "Describe this image"},
-      {"type": "image_url", "image_url": {"url": "https://example.com/photo.jpg"}}
-    ]
-  }]
-}'
+# OpenAI-style image_url content parts
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llava:7b",
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "Describe this image"},
+        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,/9j/4AAQ..."}}
+      ]
+    }]
+  }'
 ```
+
+Supported image formats: JPEG, PNG, WebP.
+
+## Generation Parameters
+
+Pass these in the request body:
+
+<TypeTable
+  type={{
+    temperature: { type: 'float', default: '0.8', description: 'Randomness (0 = deterministic)' },
+    top_p: { type: 'float', default: '0.9', description: 'Nucleus sampling threshold' },
+    top_k: { type: 'int', default: '40', description: 'Top-K sampling' },
+    min_p: { type: 'float', default: '0.0', description: 'Minimum probability threshold' },
+    max_tokens: { type: 'int', description: 'Max tokens to generate' },
+    stop: { type: 'string[]', description: 'Stop sequences' },
+    seed: { type: 'int', description: 'Random seed for reproducibility' },
+    repeat_penalty: { type: 'float', default: '1.1', description: 'Repetition penalty' },
+    frequency_penalty: { type: 'float', default: '0.0', description: 'Frequency-based penalty' },
+    presence_penalty: { type: 'float', default: '0.0', description: 'Presence-based penalty' },
+    num_ctx: { type: 'int', default: '2048', description: 'Context window size' },
+    num_batch: { type: 'int', description: 'Batch size for prompt processing' },
+    num_thread: { type: 'int', description: 'CPU threads' },
+    num_gpu: { type: 'int', default: '-1', description: 'GPU layers to offload (-1 = all)' },
+    flash_attention: { type: 'bool', default: 'false', description: 'Enable flash attention' },
+    use_mlock: { type: 'bool', default: 'false', description: 'Lock model in memory' },
+  }}
+/>
 
 ## Chat Templates
 
-Power auto-detects and renders chat templates using Jinja2 (via minijinja). Templates are read from the model's GGUF metadata or can be overridden:
+Power renders chat templates using Jinja2 (via `minijinja`). Templates are read from GGUF metadata or can be overridden in the model manifest via `template_override`.
 
-```bash
-# Override template at runtime
-a3s-power run llama3.2 --template "custom-template"
-```
-
-Supported template formats include ChatML, Llama, Mistral, Gemma, Phi, and more. The template engine handles `{% for %}`, `{% if %}`, filters, and macros.
+Supported formats: ChatML, Llama 3, Mistral, Gemma, Phi, and custom Jinja2 templates.
 
 ## KV Cache Reuse
 
-Power implements KV cache prefix matching for multi-turn conversations. When a new request shares a prefix with a previous request (e.g., same system prompt + conversation history), the cached KV state is reused instead of recomputing from scratch.
+When a new request shares a prefix with a previous request (same system prompt + conversation history), the cached KV state is reused. This provides significant speedup for multi-turn conversations and repeated system prompts.
 
-This provides significant speedup for:
-- Multi-turn chat sessions
-- Repeated system prompts
-- Few-shot prompting with shared examples
+## Thinking / Reasoning Models
+
+DeepSeek-R1, QwQ, and other reasoning models emit `<think>...</think>` blocks. Power's streaming parser separates thinking content from the final response, forwarding each as distinct chunks.
 
 ## Auto-Loading
 
-When a request arrives for a model that isn't loaded, Power automatically:
-
-1. Checks if the model exists locally
-2. Loads it into the backend (with GPU layer estimation)
-3. Serves the request
-
-If `max_loaded_models` is reached, the least-recently-used model is evicted first.
-
-## Model Lifecycle
-
-```
-Pull → Store → Load → Serve → Idle → Evict/Unload
-                 ↑                        │
-                 └────────────────────────┘
-                    (auto-load on request)
-```
-
-- Models are loaded on first request (or via `a3s-power run`)
-- Idle models are unloaded after `keep_alive` duration
-- LRU eviction when `max_loaded_models` is reached
-- Manual unload via `a3s-power stop <model>` or `POST /api/generate` with `keep_alive: "0"`
+When a request arrives for a model that isn't loaded, Power automatically loads it. If `max_loaded_models` is reached, the least-recently-used model is evicted first.

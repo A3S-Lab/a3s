@@ -1,10 +1,117 @@
 ---
-title: 加密
-description: X25519 密钥交换和 AES-256-GCM 通道加密
+title: 密码学
+description: X25519 密钥交换、AES-256-GCM 加密、前向保密与安全通道
 ---
 
-# 加密
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
-SafeClaw 使用 X25519 进行密钥交换，AES-256-GCM 加密通道通信，支持前向保密。
+# 密码学
 
-详细文档请参阅[英文版](/docs/en/safeclaw/crypto)。
+SafeClaw 使用现代密码学原语，在不可信的网关区域与可信的 TEE 区域之间建立安全通信。
+
+## 安全通道
+
+安全通道提供具备前向保密的端到端加密：
+
+```
+Gateway（Zone 1）                    TEE（Zone 2）
+    │                                    │
+    │── X25519 临时密钥 ──────────────→ │
+    │← X25519 临时密钥 ──────────────── │
+    │                                    │
+    │   HKDF-SHA256(shared_secret)       │
+    │   → AES-256-GCM 会话密钥          │
+    │                                    │
+    │── 加密消息 ─────────────────────→ │
+    │← 加密响应 ──────────────────────  │
+```
+
+### 密钥交换
+
+```rust
+pub struct KeyPair {
+    // X25519 静态密钥对
+}
+
+pub struct EphemeralKeyPair {
+    // X25519 临时密钥对（每会话生成）
+}
+
+pub struct PublicKey {
+    // X25519 公钥
+}
+
+pub struct SharedSecret {
+    // 通过 X25519 Diffie-Hellman 派生
+    // 通过 HKDF-SHA256 扩展
+}
+```
+
+### 通道构建器
+
+```rust
+pub struct SecureChannelBuilder {
+    // 配置并构建安全通道
+}
+
+pub struct SecureChannel {
+    // AES-256-GCM 加密的双向通道
+}
+```
+
+### 加密
+
+```rust
+// AES-256-GCM 加密/解密
+pub fn encrypt(key: &[u8; 32], plaintext: &[u8]) -> Result<Vec<u8>>;
+pub fn decrypt(key: &[u8; 32], ciphertext: &[u8]) -> Result<Vec<u8>>;
+pub fn generate_key() -> [u8; 32];
+```
+
+## 前向保密
+
+每个会话使用独立的临时 X25519 密钥对。即使长期密钥泄露，历史会话数据也无法被解密，原因如下：
+
+1. 临时密钥在每个会话中独立生成
+2. 共享密钥仅由临时密钥派生
+3. 密钥交换完成后，临时私钥被安全擦除
+4. 会话终止时，会话密钥被清零
+
+## 内存安全
+
+所有密码学材料均使用 `zeroize` 进行安全擦除：
+
+- 私钥在 drop 时清零
+- 会话密钥在会话终止时清零
+- 共享密钥在密钥派生后清零
+- 明文缓冲区在加密后清零
+
+这可防止敏感密钥材料在使用后残留于内存中。
+
+## 依赖项
+
+<TypeTable
+  type={{
+    "x25519-dalek": {
+      description: "X25519 Diffie-Hellman key exchange",
+    },
+    "aes-gcm": {
+      description: "AES-256-GCM authenticated encryption",
+    },
+    "hkdf": {
+      description: "HKDF-SHA256 key derivation",
+    },
+    "ed25519-dalek": {
+      description: "Ed25519 signatures (channel authentication)",
+    },
+    "ring": {
+      description: "Additional cryptographic operations",
+    },
+    "zeroize": {
+      description: "Secure memory erasure",
+    },
+    "sha2": {
+      description: "SHA-256 hashing",
+    },
+  }}
+/>

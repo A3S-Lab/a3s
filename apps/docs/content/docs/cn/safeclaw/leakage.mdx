@@ -1,10 +1,234 @@
 ---
-title: 泄漏检测
-description: 污点追踪和数据泄漏防护
+title: 数据泄漏防护
+description: 污点追踪、输出净化、注入检测、工具拦截与网络防火墙
 ---
 
-# 泄漏检测
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
-SafeClaw 的污点追踪系统追踪敏感数据在整个处理管道中的流转，检测 base64、hex、URL 编码、反转等变体形式。
+# 数据泄漏防护
 
-详细文档请参阅[英文版](/docs/en/safeclaw/leakage)。
+SafeClaw 通过五种互补机制防止数据泄漏：污点追踪、输出净化、注入检测、工具调用拦截和网络防火墙。
+
+## 污点注册表
+
+在整个处理流水线中追踪敏感数据及其所有变体：
+
+```rust
+pub enum TaintType {
+    CreditCard,
+    Ssn,
+    Email,
+    Phone,
+    ApiKey,
+    Password,
+    Custom(String),
+}
+
+pub struct TaintEntry {
+    pub id: String,
+    pub original: String,
+    pub taint_type: TaintType,
+    pub variants: Vec<String>,
+    pub similarity_threshold: f64,
+    pub created_at: i64,
+}
+
+pub struct TaintRegistry {
+    entries: HashMap<String, TaintEntry>,
+}
+```
+
+### 变体检测
+
+注册一个值时，注册表会自动生成其变体：
+
+<TypeTable
+  type={{
+    "Original": {
+      description: "user@example.com",
+    },
+    "Base64": {
+      description: "dXNlckBleGFtcGxlLmNvbQ==",
+    },
+    "Hex": {
+      description: "75736572406578616d706c652e636f6d",
+    },
+    "URL-encoded": {
+      description: "user%40example.com",
+    },
+    "Reversed": {
+      description: "moc.elpmaxe@resu",
+    },
+  }}
+/>
+
+这可以捕获通过编码转换来渗漏数据的尝试。
+
+### API
+
+```rust
+impl TaintRegistry {
+    pub fn register(&mut self, value: &str, taint_type: TaintType) -> String;
+    pub fn detect(&self, text: &str) -> Vec<TaintMatch>;
+    pub fn contains_tainted(&self, text: &str) -> bool;
+    pub fn redact(&self, text: &str) -> String;
+}
+
+pub struct TaintMatch {
+    pub taint_id: String,
+    pub matched_variant: String,
+    pub taint_type: TaintType,
+    pub start: usize,
+    pub end: usize,
+}
+```
+
+## 输出净化器
+
+扫描 AI 输出中的污点数据并进行脱敏处理：
+
+```rust
+pub struct SanitizeResult {
+    pub sanitized_text: String,
+    pub was_redacted: bool,
+    pub redaction_count: usize,
+    pub audit_events: Vec<AuditEvent>,
+    pub matches: Vec<TaintMatch>,
+}
+
+impl OutputSanitizer {
+    pub fn sanitize(
+        registry: &TaintRegistry,
+        output: &str,
+        session_id: &str,
+    ) -> SanitizeResult;
+
+    pub fn contains_leakage(
+        registry: &TaintRegistry,
+        output: &str,
+    ) -> bool;
+}
+```
+
+若 AI 输出中包含 `user@example.com`（或其任意变体），该内容将被替换为 `[REDACTED:email]`，并生成一条审计事件。
+
+## 注入检测器
+
+检测 5 类提示注入攻击：
+
+```rust
+pub enum InjectionVerdict {
+    Clean,
+    Suspicious,
+    Blocked,
+}
+
+pub enum InjectionCategory {
+    RoleOverride,           // "Ignore previous instructions..."
+    DataExtraction,         // "List all user data..."
+    DelimiterInjection,     // Markdown/XML delimiter tricks
+    EncodingTrick,          // Base64/hex encoded payloads
+    SafetyBypass,           // "You are now DAN..."
+}
+
+pub struct InjectionDetector {
+    custom_blocking: Vec<PatternDef>,
+    custom_suspicious: Vec<PatternDef>,
+    detect_encoded: bool,
+}
+```
+
+### 用法
+
+```rust
+impl InjectionDetector {
+    pub fn new() -> Self;
+    pub fn add_blocking_pattern(&mut self, pattern: &str, category: InjectionCategory);
+    pub fn scan(&self, input: &str, session_id: &str) -> InjectionResult;
+}
+```
+
+`Blocked` 输入会被立即拒绝。`Suspicious` 输入会被记录日志，并可能触发进一步审查。
+
+## 工具拦截器
+
+拦截可能导致数据渗漏的危险工具调用：
+
+```rust
+pub enum InterceptDecision {
+    Allow,
+    BlockTainted,       // 参数中包含污点数据
+    BlockDangerous,     // 检测到危险命令模式
+}
+
+pub struct InterceptResult {
+    pub decision: InterceptDecision,
+    pub reason: Option<String>,
+    pub matches: Vec<TaintMatch>,
+    pub audit_events: Vec<AuditEvent>,
+}
+
+impl ToolInterceptor {
+    pub fn intercept(
+        registry: &TaintRegistry,
+        tool_name: &str,
+        arguments: &str,
+        session_id: &str,
+    ) -> InterceptResult;
+}
+```
+
+被拦截的命令模式包括：`curl`、`wget`、`nc`、`netcat`、`ssh`、`scp`、`rsync`、`ftp`、`sftp`、`python -m http` 及其他类似的网络渗漏工具。
+
+## 网络防火墙
+
+仅允许白名单内的出站网络访问：
+
+```rust
+pub enum FirewallDecision {
+    Allow,
+    BlockDomain,
+    BlockPort,
+    BlockProtocol,
+}
+
+pub struct NetworkPolicy {
+    pub enabled: bool,
+    pub allowed_domains: Vec<AllowedDomain>,
+    pub allowed_protocols: Vec<String>,
+    pub default_deny: bool,
+}
+
+pub struct NetworkFirewall {
+    policy: NetworkPolicy,
+}
+
+impl NetworkFirewall {
+    pub fn check_url(&self, url: &str, session_id: &str) -> FirewallResult;
+}
+```
+
+### 默认允许的域名
+
+当 `default_deny = true` 时，只有明确列出的域名才可访问：
+
+```toml
+[tee.network_policy]
+enabled = true
+default_deny = true
+allowed_protocols = ["https"]
+
+[[tee.network_policy.allowed_domains]]
+domain = "api.anthropic.com"
+ports = [443]
+
+[[tee.network_policy.allowed_domains]]
+domain = "api.openai.com"
+ports = [443]
+
+[[tee.network_policy.allowed_domains]]
+domain = "*.openai.azure.com"
+ports = [443]
+```
+
+所有其他出站连接均被拦截，并记录为审计事件。

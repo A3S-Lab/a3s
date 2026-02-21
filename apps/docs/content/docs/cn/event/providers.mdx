@@ -1,10 +1,250 @@
 ---
 title: 提供商
-description: MemoryProvider 和 NatsProvider
+description: 开发用 MemoryProvider 与生产用 NatsProvider
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 提供商
 
-A3S Event 提供两个内置提供商：`MemoryProvider`（开发/测试）和 `NatsProvider`（生产，基于 NATS JetStream）。
+A3S Event 通过 `EventProvider` trait 抽象底层消息系统。内置两种实现：开发用的 `MemoryProvider` 和生产用的 `NatsProvider`。
 
-详细文档请参阅[英文版](/docs/en/event/providers)。
+## EventProvider Trait
+
+```rust
+#[async_trait]
+pub trait EventProvider: Send + Sync {
+    /// 发布事件，返回 provider 分配的序列号
+    async fn publish(&self, event: &Event) -> Result<u64>;
+
+    /// 创建持久化订阅（重连后仍存在）
+    async fn subscribe_durable(
+        &self, consumer_name: &str, filter_subject: &str,
+    ) -> Result<Box<dyn Subscription>>;
+
+    /// 创建临时订阅
+    async fn subscribe(&self, filter_subject: &str) -> Result<Box<dyn Subscription>>;
+
+    /// 获取历史事件
+    async fn history(&self, filter_subject: Option<&str>, limit: usize) -> Result<Vec<Event>>;
+
+    /// 按消费者名称删除持久化订阅
+    async fn unsubscribe(&self, consumer_name: &str) -> Result<()>;
+
+    /// 获取 provider 信息（消息数、字节数、消费者数）
+    async fn info(&self) -> Result<ProviderInfo>;
+
+    /// 此 provider 的主题前缀（如 "events"）
+    fn subject_prefix(&self) -> &str;
+
+    /// Provider 名称（如 "nats"、"memory"）
+    fn name(&self) -> &str;
+
+    // 默认实现（可覆盖以实现 provider 特定行为）：
+    fn build_subject(&self, category: &str, topic: &str) -> String { ... }
+    fn category_subject(&self, category: &str) -> String { ... }
+    async fn publish_with_options(&self, event: &Event, opts: &PublishOptions) -> Result<u64> { ... }
+    async fn subscribe_durable_with_options(...) -> Result<Box<dyn Subscription>> { ... }
+    async fn subscribe_with_options(...) -> Result<Box<dyn Subscription>> { ... }
+    async fn health(&self) -> Result<bool> { ... }
+}
+```
+
+## MemoryProvider
+
+基于 `tokio::sync::broadcast` 的进程内事件总线，无外部依赖。
+
+```rust
+use a3s_event::MemoryProvider;
+
+// 默认配置
+let provider = MemoryProvider::default();
+```
+
+自定义配置：
+
+```rust
+use a3s_event::provider::memory::{MemoryProvider, MemoryConfig};
+
+let provider = MemoryProvider::new(MemoryConfig {
+    subject_prefix: "events".to_string(),
+    max_events: 100_000,
+    channel_capacity: 10_000,
+});
+```
+
+### MemoryConfig 字段
+
+<TypeTable
+  type={{
+    subject_prefix: { type: 'String', default: '"events"', description: '`build_subject()` 使用的主题前缀' },
+    max_events: { type: 'usize', default: '100_000', description: '历史缓冲区最大事件数' },
+    channel_capacity: { type: 'usize', default: '10_000', description: 'Broadcast channel 容量' },
+  }}
+/>
+
+### 特性
+
+- 事件存储在内存缓冲区（大小可配置）
+- 使用 broadcast channel 实现发布/订阅
+- 通配符匹配（`>`、`*`）在 Rust 中实现
+- 不支持持久化订阅（回退为临时订阅）
+- 接受发布/订阅选项但忽略
+- 健康检查始终返回 `true`
+- 适合单元测试和本地开发
+
+## NatsProvider
+
+需要启用 `nats` feature（默认已启用）。
+
+基于 [NATS JetStream](https://docs.nats.io/nats-concepts/jetstream) 的生产级 provider。
+
+```rust
+use a3s_event::{NatsProvider, NatsConfig, StorageType};
+
+let provider = NatsProvider::connect(NatsConfig {
+    url: "nats://localhost:4222".to_string(),
+    stream_name: "A3S_EVENTS".to_string(),
+    subject_prefix: "events".to_string(),
+    storage: StorageType::File,
+    max_events: 100_000,
+    max_age_secs: 604_800,  // 7 天
+    ..Default::default()
+}).await?;
+```
+
+### NatsConfig 字段
+
+<TypeTable
+  type={{
+    url: { type: 'String', default: '"nats://127.0.0.1:4222"', description: 'NATS 服务器地址' },
+    token: { type: 'Option<String>', default: 'None', description: '认证 token' },
+    credentials_path: { type: 'Option<String>', default: 'None', description: 'NKey/JWT 凭证文件路径' },
+    stream_name: { type: 'String', default: '"A3S_EVENTS"', description: 'JetStream 流名称' },
+    subject_prefix: { type: 'String', default: '"events"', description: '主题前缀' },
+    storage: { type: 'StorageType', default: 'File', description: '`File` 或 `Memory` 存储' },
+    max_events: { type: 'i64', default: '100_000', description: '流中最大消息数' },
+    max_age_secs: { type: 'u64', default: '604_800', description: '消息最大保留时间（7 天）' },
+    max_bytes: { type: 'i64', default: '0', description: '流最大字节数（0 = 不限）' },
+    connect_timeout_secs: { type: 'u64', default: '5', description: '连接超时（秒）' },
+    request_timeout_secs: { type: 'u64', default: '10', description: '请求超时（秒）' },
+  }}
+/>
+
+### NATS 专属功能
+
+**去重：**
+
+```rust
+use a3s_event::PublishOptions;
+
+let opts = PublishOptions {
+    msg_id: Some("order-001".into()),
+    ..Default::default()
+};
+bus.publish_event_with_options(&event, &opts).await?;
+// 在去重窗口内，相同 msg_id 的重复发布会被忽略
+```
+
+**手动确认：**
+
+```rust
+let mut subs = bus.create_subscriber("order-processor").await?;
+for sub in &mut subs {
+    while let Some(pending) = sub.next_manual_ack().await? {
+        match process(&pending.received.event).await {
+            Ok(()) => pending.ack().await?,
+            Err(_) => pending.nak().await?,  // 触发重新投递
+        }
+    }
+}
+```
+
+**投递策略：**
+
+```rust
+use a3s_event::{SubscribeOptions, DeliverPolicy, SubscriptionFilter};
+
+bus.update_subscription(SubscriptionFilter {
+    subscriber_id: "replay".to_string(),
+    subjects: vec!["events.orders.>".to_string()],
+    durable: true,
+    options: Some(SubscribeOptions {
+        deliver_policy: DeliverPolicy::ByStartSequence { sequence: 100 },
+        ..Default::default()
+    }),
+}).await?;
+```
+
+## 自定义 Provider
+
+为任意消息后端实现 `EventProvider`：
+
+```rust
+use a3s_event::provider::{EventProvider, Subscription, ProviderInfo};
+use a3s_event::types::Event;
+use a3s_event::Result;
+use async_trait::async_trait;
+
+pub struct RedisProvider { /* ... */ }
+
+#[async_trait]
+impl EventProvider for RedisProvider {
+    async fn publish(&self, event: &Event) -> Result<u64> { todo!() }
+
+    async fn subscribe_durable(
+        &self, consumer_name: &str, filter_subject: &str,
+    ) -> Result<Box<dyn Subscription>> { todo!() }
+
+    async fn subscribe(&self, filter_subject: &str) -> Result<Box<dyn Subscription>> { todo!() }
+
+    async fn history(
+        &self, filter_subject: Option<&str>, limit: usize,
+    ) -> Result<Vec<Event>> { todo!() }
+
+    async fn unsubscribe(&self, consumer_name: &str) -> Result<()> { todo!() }
+    async fn info(&self) -> Result<ProviderInfo> { todo!() }
+
+    // 只有 subject_prefix() 和 name() 是必须实现的。
+    // build_subject() 和 category_subject() 有默认实现。
+    fn subject_prefix(&self) -> &str { "events" }
+    fn name(&self) -> &str { "redis" }
+}
+```
+
+像使用其他 provider 一样使用它：
+
+```rust
+let bus = EventBus::new(RedisProvider::new(config));
+bus.publish("orders", "created", "New order", "src", payload).await?;
+```
+
+## 职责边界
+
+以下能力委托给 provider 处理，而非 `EventBus`：
+
+<TypeTable
+  type={{
+    "重试 / 退避": {
+      description: "Provider（NATS：MaxDeliver + BackOff）",
+    },
+    "背压": {
+      description: "Provider（NATS：MaxAckPending）",
+    },
+    "连接韧性": {
+      description: "Provider（NATS：自动重连）",
+    },
+    "传输加密": {
+      description: "Provider（TLS 配置）",
+    },
+    "精确一次投递": {
+      description: "Provider（去重 + 双重 ack）",
+    },
+    "流镜像": {
+      description: "Provider（NATS Mirror/Source 配置）",
+    },
+    "分区": {
+      description: "Provider（subject 路由）",
+    },
+  }}
+/>

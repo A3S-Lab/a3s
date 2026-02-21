@@ -1,10 +1,82 @@
 ---
 title: CloudEvents
-description: CloudEvents v1.0 格式转换
+description: 兼容 CloudEvents v1.0 规范的无损转换
 ---
 
 # CloudEvents
 
-A3S Event 支持 CloudEvents v1.0 格式转换，可与任何兼容 CloudEvents 的系统互操作（需要 `cloudevents` 特性）。
+需要启用 `cloudevents` feature（默认已启用）。
 
-详细文档请参阅[英文版](/docs/en/event/cloudevents)。
+A3S Event 支持与 [CloudEvents v1.0](https://cloudevents.io/) 规范之间的无损双向转换，可与使用 CloudEvents 标准的外部系统互操作。
+
+## CloudEvent 结构
+
+```rust
+pub struct CloudEvent {
+    pub spec_version: String,    // 固定为 "1.0"
+    pub id: String,              // 事件 ID
+    pub source: String,          // 事件来源
+    pub event_type: String,      // 事件类型
+    pub subject: Option<String>, // 事件主题
+    pub time: Option<String>,    // RFC 3339 时间戳
+    pub data: Option<serde_json::Value>,  // 事件载荷
+}
+```
+
+## 转换事件
+
+### Event → CloudEvent
+
+```rust
+use a3s_event::{Event, CloudEvent};
+
+let event = Event::typed(
+    "events.orders.created", "orders",
+    "order.created", 1,
+    "New order", "order-service",
+    serde_json::json!({"order_id": "ORD-001"}),
+);
+
+let cloud_event = CloudEvent::from_event(&event);
+
+println!("spec: {}", cloud_event.spec_version);  // "1.0"
+println!("type: {}", cloud_event.event_type);     // "order.created"
+println!("source: {}", cloud_event.source);       // "order-service"
+```
+
+### CloudEvent → Event
+
+```rust
+let event = cloud_event.to_event("orders")?;
+
+println!("subject: {}", event.subject);
+println!("category: {}", event.category);  // "orders"
+```
+
+## JSON 序列化
+
+CloudEvents 序列化为标准 JSON 格式：
+
+```rust
+let json = serde_json::to_string_pretty(&cloud_event)?;
+```
+
+```json
+{
+  "specversion": "1.0",
+  "id": "evt-550e8400-e29b-41d4-a716-446655440000",
+  "source": "order-service",
+  "type": "order.created",
+  "subject": "events.orders.created",
+  "time": "2026-02-18T12:00:00Z",
+  "data": {
+    "order_id": "ORD-001"
+  }
+}
+```
+
+## 使用场景
+
+- **Webhook 投递**：将事件转换为 CloudEvents 后发送到外部 HTTP 端点
+- **跨系统集成**：与支持 CloudEvents 的系统交换事件（如 Knative、Azure Event Grid 等）
+- **审计日志**：以 CloudEvents 格式存储事件以满足合规要求

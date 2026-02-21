@@ -1,103 +1,111 @@
 ---
 title: A3S Power
-description: 本地 LLM 模型管理与推理服务 — 兼容 Ollama 的推理服务器
+description: 面向可信执行环境的隐私保护 LLM 推理服务器
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # A3S Power
 
-A3S Power 是本地 LLM 模型管理和推理基础设施。提供兼容 Ollama 的 CLI 和 HTTP 服务器，用于下载、管理和运行 GGUF 格式的语言模型。
+A3S Power 是一款专为可信执行环境（TEE）设计的隐私保护 LLM 推理服务器。它提供兼容 OpenAI 的 API，支持对话补全、文本补全、嵌入向量和视觉推理，并具备硬件级内存加密、模型完整性验证和自动日志脱敏能力。
 
 ## 为什么选择 Power？
 
-- Ollama 直接替代品，API 和协议格式完全兼容
-- 兼容 OpenAI SDK（`/v1/chat/completions`、`/v1/embeddings`）
-- 本地优先推理，无云端依赖
-- A3S 生态系统的基础设施层（供 a3s-code 和其他 Agent 使用）
+- **TEE 原生**：在 AMD SEV-SNP 和 Intel TDX MicroVM 中运行，硬件加密内存
+- **兼容 OpenAI**：任何 OpenAI SDK 开箱即用（`/v1/chat/completions`、`/v1/embeddings`）
+- **纯 Rust 推理**：默认后端基于 `mistralrs`（candle），无需 C++ 工具链，适合供应链审计
+- **默认隐私保护**：提示词和响应内容不会出现在日志中；模型卸载时内存自动清零
+- **可验证**：远程证明在信任推理结果之前，证明推理确实运行在真实 TEE 中
 
 ## 架构
 
 ```
-┌─────────────────────────────────────────────────┐
-│                   CLI 层                         │
-│  pull · run · list · show · serve · ps · stop    │
-├─────────────────────────────────────────────────┤
-│                  HTTP 服务器                     │
-│  ┌──────────────┐  ┌───────────────────────┐    │
-│  │  Ollama API   │  │    OpenAI API          │    │
-│  │  /api/*       │  │    /v1/*               │    │
-│  └──────┬───────┘  └──────────┬────────────┘    │
-├─────────┴──────────────────────┴────────────────┤
-│                后端层                            │
-│  ┌────────────┐  ┌────────────┐  ┌───────────┐ │
-│  │ llama.cpp   │  │ 对话模板   │  │ 工具调用   │ │
-│  │ 后端        │  │            │  │ 解析器     │ │
-│  └────────────┘  └────────────┘  └───────────┘ │
-├─────────────────────────────────────────────────┤
-│                模型层                            │
-│  ┌────────────┐  ┌────────────┐  ┌───────────┐ │
-│  │ 注册表      │  │ 存储       │  │ 解析器     │ │
-│  │ (manifests) │  │ (SHA-256)  │  │(Ollama/HF) │ │
-│  └────────────┘  └────────────┘  └───────────┘ │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│                     a3s-power                         │
+│                                                       │
+│  TEE 层                                               │
+│  ┌────────────────┐ ┌──────────────┐ ┌────────────┐  │
+│  │  attestation   │ │  model_seal  │ │  privacy   │  │
+│  │  (TeeProvider) │ │  (SHA-256)   │ │  (脱敏)    │  │
+│  └────────┬───────┘ └──────┬───────┘ └─────┬──────┘  │
+│                                                       │
+│  服务层                                               │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │  Axum Router  /health  /metrics  /v1/*          │  │
+│  └──────────────────────┬──────────────────────────┘  │
+│                         │                             │
+│  推理后端层                                            │
+│  ┌──────────────────────────────────────────────────┐ │
+│  │  MistralRsBackend（默认）· LlamaCppBackend       │ │
+│  │  GGUF · SafeTensors · Vision · Embeddings        │ │
+│  └──────────────────────────────────────────────────┘ │
+│                                                       │
+│  模型层                                               │
+│  ┌──────────────────────────────────────────────────┐ │
+│  │  ModelRegistry · SHA-256 内容寻址存储 · HF 拉取  │ │
+│  └──────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────┘
 ```
 
 ## 核心组件
 
 <TypeTable
   type={{
-    "cli": {
-      description: "12 个命令：pull、run、list、show、delete、serve、ps、stop、push、cp、create",
+    "TEE 层": {
+      description: "远程证明、模型完整性验证（SHA-256）、日志脱敏、内存清零、AES-256-GCM 加密模型加载",
     },
-    "api": {
-      description: "14 个 Ollama 原生端点 + 5 个 OpenAI 兼容端点",
+    "推理后端层": {
+      description: "可插拔推理引擎：mistralrs（纯 Rust，默认）和 llama.cpp（可选）。支持 GGUF、SafeTensors、Vision 和 Embedding 格式。",
     },
-    "backend": {
-      description: "可插拔推理引擎，内置 llama.cpp 实现",
+    "模型层": {
+      description: "内容寻址 Blob 存储、模型注册表、GGUF 元数据解析器、支持断点续传的 HuggingFace Hub 拉取",
     },
-    "model": {
-      description: "内容寻址存储、注册表、解析、GGUF 读取器",
+    "服务层": {
+      description: "Axum HTTP 服务器，含限流、Prometheus 指标、RA-TLS 传输、Vsock 传输、审计日志",
     },
-    "server": {
-      description: "Axum HTTP 服务器，支持 CORS、追踪、Prometheus 指标",
-    },
-    "config": {
-      description: "TOML 配置，兼容 Ollama 环境变量",
+    "API 层": {
+      description: "兼容 OpenAI：/v1/chat/completions、/v1/completions、/v1/embeddings、/v1/models、/v1/attestation",
     },
   }}
 />
 
-## 主要特性
+## 模型格式支持
 
-- GGUF 模型格式，llama.cpp 后端（Metal/CUDA 加速）
-- 流式 token 生成（Ollama 用 NDJSON，OpenAI 用 SSE）
-- 视觉/多模态支持（base64 图片和 URL）
-- 工具/函数调用（XML、Mistral、JSON 格式）
-- JSON Schema 结构化输出（GBNF 语法）
-- KV 缓存复用，前缀匹配加速多轮对话
-- LRU 模型淘汰，可配置 keep-alive
-- 内容寻址 blob 存储，SHA-256 去重
-- 模型解析：Ollama 注册表 → 内置目录 → HuggingFace
-- Modelfile 支持（FROM、PARAMETER、SYSTEM、TEMPLATE、ADAPTER）
-- GPU 自动检测和内存估算
-- Prometheus 指标和使用量仪表盘
+<TypeTable
+  type={{
+    "GGUF": {
+      description: "量化模型（Q4_K_M、Q8_0 等）。mistralrs 和 llama.cpp 后端均支持。",
+    },
+    "SafeTensors": {
+      description: "HuggingFace SafeTensors 对话模型。通过 TextModelBuilder 加载，支持 ISQ 在线量化。",
+    },
+    "Vision": {
+      description: "多模态视觉模型（LLaVA、Phi-3-Vision）。通过 VisionModelBuilder 加载，接受 base64 图片输入。",
+    },
+    "HuggingFace": {
+      description: "嵌入向量模型（Qwen3-Embedding、GTE、NomicBert）。通过 EmbeddingModelBuilder 加载。",
+    },
+  }}
+/>
 
 ## 默认路径
 
 <TypeTable
   type={{
     "~/.a3s/power/": {
-      description: "基础目录（可通过 $A3S_POWER_HOME 覆盖）",
+      description: "根目录（可通过 $A3S_POWER_HOME 覆盖）",
     },
-    "~/.a3s/power/config.toml": {
-      description: "配置文件",
+    "~/.a3s/power/config.hcl": {
+      description: "HCL 配置文件",
     },
     "~/.a3s/power/models/manifests/": {
-      description: "模型 manifest 文件",
+      description: "模型元数据 JSON 文件",
     },
     "~/.a3s/power/models/blobs/": {
-      description: "内容寻址 blob 存储",
+      description: "内容寻址模型 Blob（SHA-256）",
+    },
+    "~/.a3s/power/pulls/": {
+      description: "拉取进度状态文件（断点续传支持）",
     },
   }}
 />

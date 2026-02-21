@@ -1,10 +1,249 @@
 ---
-title: 通道
-description: 通道配置和优先级调度
+title: Lanes
+description: 基于优先级的 lane，支持可配置的并发、超时、重试、限流、压力追踪和优先级提升
 ---
 
-# 通道
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
-通道是 A3S Lane 的核心调度单元，每个通道有独立的优先级、并发限制和配置。
+# Lanes
 
-详细文档请参阅[英文版](/docs/en/lane/lanes)。
+Lane 是一个优先级队列，用于保存待处理命令并强制执行并发限制。每个 lane 有唯一 ID、优先级，以及控制超时、重试、限流、优先级提升和压力追踪的配置。
+
+## 内置 Lanes
+
+在 builder 上调用 `with_default_lanes()` 注册 6 个标准 lane：
+
+```rust
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .build()
+    .await?;
+```
+
+<TypeTable
+  type={{
+    "system": {
+      description: "优先级：0 · 最小并发：1 · 最大并发：5 · 用途：系统级操作",
+    },
+    "control": {
+      description: "优先级：1 · 最小并发：1 · 最大并发：3 · 用途：暂停、恢复、取消",
+    },
+    "query": {
+      description: "优先级：2 · 最小并发：1 · 最大并发：10 · 用途：只读查询",
+    },
+    "session": {
+      description: "优先级：3 · 最小并发：1 · 最大并发：5 · 用途：会话管理",
+    },
+    "skill": {
+      description: "优先级：4 · 最小并发：1 · 最大并发：3 · 用途：Skill/工具执行",
+    },
+    "prompt": {
+      description: "优先级：5 · 最小并发：1 · 最大并发：2 · 用途：LLM prompt 处理",
+    },
+  }}
+/>
+
+## 自定义 Lanes
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+注册具有自定义优先级和配置的 lane：
+
+```rust
+let manager = QueueManagerBuilder::new(emitter)
+    .with_lane("critical",   LaneConfig::new(2, 8),  0)
+    .with_lane("normal",     LaneConfig::new(1, 16), 1)
+    .with_lane("background", LaneConfig::new(1, 4),  2)
+    .build()
+    .await?;
+```
+
+混合使用内置和自定义 lane：
+
+```rust
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .with_lane("batch", LaneConfig::new(1, 20), 6)
+    .build()
+    .await?;
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_lane import Lane, LaneConfig
+
+# 默认 lanes
+lane = Lane()
+lane.start()
+
+# 自定义 lanes
+lane = Lane.with_lanes([
+    LaneConfig("critical",   priority=0, min_concurrency=2, max_concurrency=8),
+    LaneConfig("normal",     priority=1, min_concurrency=1, max_concurrency=16),
+    LaneConfig("background", priority=2, min_concurrency=1, max_concurrency=4),
+])
+lane.start()
+```
+
+`LaneConfig` 字段：`lane_id`、`priority`、`min_concurrency`、`max_concurrency`、`timeout_secs`（可选）、`pressure_threshold`（可选）。
+
+</Tab>
+<Tab value="Node.js">
+
+```js
+const { Lane } = require('@a3s-lab/lane');
+
+// 默认 lanes
+const lane = new Lane();
+lane.start();
+
+// 自定义 lanes
+const lane = Lane.withLanes([
+  { laneId: 'critical',   priority: 0, minConcurrency: 2, maxConcurrency: 8  },
+  { laneId: 'normal',     priority: 1, minConcurrency: 1, maxConcurrency: 16 },
+  { laneId: 'background', priority: 2, minConcurrency: 1, maxConcurrency: 4  },
+]);
+lane.start();
+```
+
+配置字段：`laneId`、`priority`、`minConcurrency`、`maxConcurrency`、`timeoutSecs`（可选）、`pressureThreshold`（可选）。
+
+</Tab>
+</Tabs>
+
+## LaneConfig（Rust）
+
+`LaneConfig` 控制所有 per-lane 行为。使用 `new(min, max)` 创建并链式调用 builder 方法：
+
+```rust
+use std::time::Duration;
+
+let config = LaneConfig::new(2, 10)
+    .with_timeout(Duration::from_secs(30))
+    .with_retry_policy(RetryPolicy::exponential(3))
+    .with_pressure_threshold(50)                        // 发出 queue.lane.pressure / queue.lane.idle
+    .with_rate_limit(RateLimitConfig::per_second(100))  // 需要 `distributed` feature
+    .with_priority_boost(PriorityBoostConfig::standard( // 需要 `distributed` feature
+        Duration::from_secs(60),
+    ));
+```
+
+### 并发
+
+<TypeTable
+  type={{
+    min_concurrency: { type: 'usize', description: '预留并发槽位（建议值）' },
+    max_concurrency: { type: 'usize', description: '由信号量强制执行的硬限制' },
+  }}
+/>
+
+信号量确保同一 lane 中同时执行的命令不超过 `max_concurrency` 个。
+
+### 超时
+
+```rust
+let config = LaneConfig::new(1, 10)
+    .with_timeout(Duration::from_secs(30));
+```
+
+超过超时时间的命令会收到 `LaneError::Timeout`。如已配置重试，命令将重新入队；否则移入 DLQ（如已启用）或将错误返回给调用方。
+
+### 重试策略
+
+```rust
+// 指数退避：100ms → 200ms → 400ms（上限 30s）
+LaneConfig::new(1, 10).with_retry_policy(RetryPolicy::exponential(3))
+
+// 固定延迟：每次重试间隔 1s
+LaneConfig::new(1, 10).with_retry_policy(RetryPolicy::fixed(5, Duration::from_secs(1)))
+
+// 不重试（默认）
+LaneConfig::new(1, 10).with_retry_policy(RetryPolicy::none())
+```
+
+<TypeTable
+  type={{
+    "Exponential": {
+      description: "初始延迟：100ms · 最大延迟：30s · 倍数：2x",
+    },
+    "Fixed": {
+      description: "初始延迟：用户自定义",
+    },
+    "None": {},
+  }}
+/>
+
+### 限流
+
+```rust
+LaneConfig::new(1, 10).with_rate_limit(RateLimitConfig::per_second(100))
+LaneConfig::new(1, 10).with_rate_limit(RateLimitConfig::per_minute(1000))
+LaneConfig::new(1, 10).with_rate_limit(RateLimitConfig::per_hour(10_000))
+```
+
+需要 `distributed` feature（默认开启）。限流在出队时执行——命令会等待直到有可用令牌。
+
+### 优先级提升
+
+```rust
+// 标准：在剩余截止时间的 75%、50%、25% 时提升
+LaneConfig::new(1, 10).with_priority_boost(PriorityBoostConfig::standard(Duration::from_secs(60)))
+
+// 激进：更频繁的升级
+LaneConfig::new(1, 10).with_priority_boost(PriorityBoostConfig::aggressive(Duration::from_secs(30)))
+
+// 禁用
+LaneConfig::new(1, 10).with_priority_boost(PriorityBoostConfig::disabled())
+```
+
+需要 `distributed` feature。
+
+### 压力追踪
+
+当待处理队列超过阈值时发出 `queue.lane.pressure`，降回零时发出 `queue.lane.idle`：
+
+```rust
+LaneConfig::new(1, 10).with_pressure_threshold(50)
+```
+
+- `queue.lane.pressure` 在 pending 从低于阈值**首次**升至 `>= 50` 时触发
+- `queue.lane.idle` 在处于压力状态后 `pending` 降回 0 时触发
+- 未设置阈值 → 不发出压力事件
+
+完整事件规范参见 [Events → Lane 压力](/docs/lane/events#lane-pressure)。
+
+## Lane 状态
+
+查看每个 lane 的当前状态：
+
+```rust
+let stats = manager.stats().await?;
+for (lane_id, status) in &stats.lanes {
+    println!("{}: {} pending, {} active (max {})",
+        lane_id, status.pending, status.active, status.max);
+}
+```
+
+<TypeTable
+  type={{
+    pending: { type: 'usize', description: '队列中等待的命令数' },
+    active: { type: 'usize', description: '当前正在执行的命令数' },
+    min: { type: 'usize', description: '最小并发（建议值）' },
+    max: { type: 'usize', description: '最大并发（强制执行）' },
+  }}
+/>
+
+## 调度行为
+
+调度器运行一个 10ms 的后台循环：
+
+1. 按优先级对 lane 排序（数字越小优先级越高）
+2. 跳过已达最大并发的 lane
+3. 从有待处理命令的最高优先级 lane 出队并启动下一个命令
+4. 重复直到所有 lane 均无待处理命令
+
+高优先级 lane 始终优先处理。在同一 lane 内，命令按 FIFO 顺序执行。

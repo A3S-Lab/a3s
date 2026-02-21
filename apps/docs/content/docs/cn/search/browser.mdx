@@ -1,10 +1,196 @@
 ---
 title: 无头浏览器
-description: Chrome DevTools Protocol 和 JS 渲染引擎
+description: Chrome DevTools Protocol 集成，用于 JavaScript 渲染引擎
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 无头浏览器
 
-`BrowserFetcher` 使用 Chrome DevTools Protocol 抓取 JS 渲染页面，支持 Google、百度和必应中国（需要 `headless` 特性）。未找到浏览器时自动下载 Chrome for Testing。
+Google、Baidu 和 Bing China 等引擎需要 JavaScript 渲染。A3S Search 提供了 `BrowserPool`，用于管理共享的无头 Chrome 实例，并通过标签页并发控制来协调访问。
 
-详细文档请参阅[英文版](/docs/en/search/browser)。
+## 功能开关
+
+无头浏览器支持通过 `headless` Cargo feature 默认启用：
+
+```toml
+# 默认启用（9 个引擎）
+[dependencies]
+a3s-search = "0.8"
+
+# 禁用无头浏览器以减小二进制体积（6 个引擎）
+[dependencies]
+a3s-search = { version = "0.8", default-features = false }
+```
+
+## BrowserPool
+
+`BrowserPool` 管理单个 Chrome 进程，并通过标签页信号量进行并发控制：
+
+```rust
+use a3s_search::browser::{BrowserPool, BrowserPoolConfig};
+use std::sync::Arc;
+
+let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
+    max_tabs: 4,
+    headless: true,
+    chrome_path: None,
+    proxy_url: None,
+    launch_args: vec![],
+}));
+```
+
+### 配置项
+
+<TypeTable
+  type={{
+    max_tabs: { type: 'usize', default: '4', description: 'Maximum concurrent browser tabs' },
+    headless: { type: 'bool', default: 'true', description: 'Run Chrome without UI' },
+    chrome_path: { type: 'Option<String>', default: 'None', description: 'Explicit Chrome binary path' },
+    proxy_url: { type: 'Option<String>', default: 'None', description: 'Proxy URL for all browser traffic' },
+    launch_args: { type: 'Vec<String>', default: '[]', description: 'Additional Chrome launch arguments' },
+  }}
+/>
+
+### 生命周期
+
+浏览器在首次调用 `acquire_browser()` 时懒加载初始化：
+
+```rust
+let browser = pool.acquire_browser().await?;
+pool.shutdown().await;
+```
+
+## BrowserFetcher
+
+`BrowserFetcher` 使用 `BrowserPool` 实现 `PageFetcher` trait：
+
+```rust
+use a3s_search::browser::BrowserFetcher;
+use a3s_search::WaitStrategy;
+
+let fetcher = Arc::new(
+    BrowserFetcher::new(pool.clone())
+        .with_wait(WaitStrategy::Selector {
+            css: "div.g".into(),
+            timeout_ms: 5000,
+        })
+        .with_user_agent("Mozilla/5.0 ...")
+);
+```
+
+## 等待策略
+
+控制页面何时被视为"已加载"：
+
+<TypeTable
+  type={{
+    "Load": {
+      description: "Fast pages, APIs",
+    },
+    "NetworkIdle { idle_ms }": {
+      description: "Complex SPAs",
+    },
+    "Selector { css, timeout_ms }": {
+      description: "Waiting for specific content (recommended)",
+    },
+    "Delay { ms }": {
+      description: "Fallback when nothing else works",
+    },
+  }}
+/>
+
+每个内置无头引擎使用适合自身的策略：
+
+<TypeTable
+  type={{
+    "Google": {
+      description: "Selector { css: 'div.g', timeout_ms: 5000 }",
+    },
+    "Baidu": {
+      description: "Selector { css: 'div.c-container', timeout_ms: 5000 }",
+    },
+    "Bing China": {
+      description: "Delay { ms: 2000 }",
+    },
+  }}
+/>
+
+## Chrome 自动检测
+
+当 `chrome_path` 为 `None` 时，A3S Search 按以下顺序查找 Chrome：
+
+1. `CHROME` 环境变量
+2. 系统 PATH（`google-chrome`、`chromium`、`chrome` 等）
+3. 常见安装路径（macOS `/Applications/...`、Linux `/usr/bin/...`、Windows `C:\Program Files\...`）
+4. 从 Google CDN 自动下载 Chrome for Testing
+5. 缓存至 `~/.a3s/chromium/`
+
+支持的平台：macOS（arm64、x64）、Linux（x64）和 Windows（x64、x86）。首次运行可能需要下载约 150MB。
+
+## 使用无头引擎
+
+```rust
+use a3s_search::{Search, SearchQuery};
+use a3s_search::browser::{BrowserPool, BrowserPoolConfig, BrowserFetcher};
+use a3s_search::engines::{Google, Baidu, BingChina, DuckDuckGo};
+use a3s_search::WaitStrategy;
+use std::sync::Arc;
+
+let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
+    max_tabs: 4,
+    headless: true,
+    chrome_path: None,
+    proxy_url: None,
+    launch_args: vec![],
+}));
+
+let google_fetcher = Arc::new(
+    BrowserFetcher::new(pool.clone())
+        .with_wait(WaitStrategy::Selector {
+            css: "div.g".into(),
+            timeout_ms: 5000,
+        })
+);
+
+let baidu_fetcher = Arc::new(
+    BrowserFetcher::new(pool.clone())
+        .with_wait(WaitStrategy::Selector {
+            css: "div.c-container".into(),
+            timeout_ms: 5000,
+        })
+);
+
+let mut search = Search::new();
+search.add_engine(DuckDuckGo::new());
+search.add_engine(Google::new(google_fetcher));
+search.add_engine(Baidu::new(baidu_fetcher));
+
+let results = search.search(SearchQuery::new("rust programming")).await?;
+pool.shutdown().await;
+```
+
+## PageFetcher Trait
+
+所有 fetcher 均实现此 trait：
+
+```rust
+#[async_trait]
+pub trait PageFetcher: Send + Sync {
+    async fn fetch(&self, url: &str) -> Result<String>;
+}
+```
+
+<TypeTable
+  type={{
+    "HttpFetcher": {
+      description: "Plain HTTP via reqwest, optional single proxy",
+    },
+    "PooledHttpFetcher": {
+      description: "Proxy pool rotation per request",
+    },
+    "BrowserFetcher": {
+      description: "Headless Chrome via BrowserPool",
+    },
+  }}
+/>

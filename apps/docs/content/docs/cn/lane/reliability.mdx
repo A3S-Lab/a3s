@@ -1,10 +1,227 @@
 ---
 title: 可靠性
-description: 超时、重试策略和死信队列
+description: 超时、重试、死信队列、持久化存储和优雅关闭
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 可靠性
 
-A3S Lane 提供超时控制、指数退避/固定延迟重试策略和死信队列，确保任务可靠执行。
+A3S Lane 提供多层可靠性保障：per-command 超时、可配置重试策略、永久失败命令的死信队列、崩溃恢复的持久化存储，以及优雅关闭。
 
-详细文档请参阅[英文版](/docs/en/lane/reliability)。
+超时、重试、DLQ 和持久化存储仅在 Rust 中可用。优雅关闭（`drain`）在所有 SDK 中均可使用。
+
+## 超时
+
+为每个 lane 设置超时，防止命令无限期运行：
+
+```rust
+let config = LaneConfig::new(1, 10)
+    .with_timeout(Duration::from_secs(30));
+```
+
+命令超时后会收到 `LaneError::Timeout(duration)`。如已配置重试，命令将被重试；否则移入死信队列（如已启用）或将错误返回给调用方。
+
+## 重试策略
+
+### 指数退避
+
+```rust
+let config = LaneConfig::new(1, 10)
+    .with_retry_policy(RetryPolicy::exponential(3));
+```
+
+<TypeTable
+  type={{
+    "1": {
+      description: "100ms",
+    },
+    "2": {
+      description: "200ms",
+    },
+    "3": {
+      description: "400ms",
+    },
+    "4+": {
+      description: "上限 30s",
+    },
+  }}
+/>
+
+### 固定延迟
+
+```rust
+let config = LaneConfig::new(1, 10)
+    .with_retry_policy(RetryPolicy::fixed(5, Duration::from_secs(1)));
+```
+
+### 不重试（默认）
+
+```rust
+let config = LaneConfig::new(1, 10)
+    .with_retry_policy(RetryPolicy::none());
+```
+
+## 死信队列
+
+耗尽所有重试次数的命令会移入死信队列（DLQ）。
+
+### 启用 DLQ
+
+```rust
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .with_dlq(100)  // 最多 100 条死信
+    .build()
+    .await?;
+```
+
+### 查看死信
+
+```rust
+if let Some(dlq) = manager.queue().dlq() {
+    for letter in dlq.list().await {
+        println!("[{}] {} in '{}': {} (attempts: {})",
+            letter.failed_at,
+            letter.command_type,
+            letter.lane_id,
+            letter.error,
+            letter.attempts,
+        );
+    }
+}
+```
+
+### DeadLetter 字段
+
+<TypeTable
+  type={{
+    command_id: { type: 'String', description: '唯一命令标识符' },
+    command_type: { type: 'String', description: '来自 `Command::command_type()`' },
+    lane_id: { type: 'String', description: '命令失败所在的 lane' },
+    error: { type: 'String', description: '最后一次错误信息' },
+    attempts: { type: 'u32', description: '总执行次数' },
+    failed_at: { type: 'DateTime<Utc>', description: '最终失败时间戳' },
+  }}
+/>
+
+### DLQ 操作
+
+```rust
+let letter = dlq.pop().await;    // 弹出一条（用于重试或检查）
+dlq.clear().await;               // 清空所有
+let count = dlq.len().await;
+let empty = dlq.is_empty().await;
+```
+
+## 持久化存储
+
+启用存储，使待处理命令在进程重启后得以保留。
+
+### 本地文件系统存储
+
+```rust
+use std::path::PathBuf;
+
+let storage = Arc::new(
+    LocalStorage::new(PathBuf::from("./queue-data")).await?
+);
+
+let manager = QueueManagerBuilder::new(emitter)
+    .with_default_lanes()
+    .with_storage(storage)
+    .with_dlq(100)
+    .build()
+    .await?;
+```
+
+`LocalStorage` 将命令持久化为 JSON 文件，并使用内存缓存加速读取。
+
+### 自定义存储后端
+
+为任意后端（Redis、PostgreSQL 等）实现 `Storage` trait：
+
+```rust
+use a3s_lane::Storage;
+
+#[async_trait]
+impl Storage for MyRedisStorage {
+    async fn save_command(&self, cmd: StoredCommand) -> Result<()> { /* ... */ }
+    async fn load_commands(&self) -> Result<Vec<StoredCommand>> { /* ... */ }
+    async fn remove_command(&self, id: &str) -> Result<()> { /* ... */ }
+    async fn save_dead_letter(&self, letter: StoredDeadLetter) -> Result<()> { /* ... */ }
+    async fn load_dead_letters(&self) -> Result<Vec<StoredDeadLetter>> { /* ... */ }
+    async fn clear_dead_letters(&self) -> Result<()> { /* ... */ }
+    async fn clear_all(&self) -> Result<()> { /* ... */ }
+}
+```
+
+<TypeTable
+  type={{
+    id: { type: 'String', description: '唯一标识符' },
+    command_type: { type: 'String', description: '命令类型字符串' },
+    lane_id: { type: 'String', description: '目标 lane' },
+    payload: { type: 'Value', description: '序列化的命令数据' },
+    retry_count: { type: 'u32', description: '当前重试次数' },
+    created_at: { type: 'DateTime<Utc>', description: '提交时间' },
+    last_attempt_at: { type: 'Option<DateTime<Utc>>', description: '最后一次执行尝试时间' },
+  }}
+/>
+
+## 优雅关闭
+
+停止接受新命令，并等待正在执行的任务完成：
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+// 1. 停止接受新命令
+manager.shutdown().await;
+
+// 2. 等待正在执行的命令完成（带超时）
+match manager.drain(Duration::from_secs(30)).await {
+    Ok(())  => println!("All commands completed"),
+    Err(e)  => println!("Drain timed out: {}", e),
+}
+
+if manager.is_shutting_down() {
+    println!("Queue is shutting down");
+}
+```
+
+`shutdown()` 设置内部标志——新的 `submit()` 调用将返回 `LaneError::ShutdownInProgress`。`drain(timeout)` 每 100ms 轮询一次，直到所有 lane 的 `pending == 0` 且 `active == 0`。
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_lane import Lane
+
+lane = Lane()
+lane.start()
+
+# ... 提交任务 ...
+
+lane.shutdown()                # 停止接受新提交
+lane.drain(timeout_secs=30.0) # 等待正在执行的任务完成
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```js
+const { Lane } = require('@a3s-lab/lane');
+
+const lane = new Lane();
+lane.start();
+
+// ... 提交任务 ...
+
+lane.shutdown();       // 停止接受新提交
+lane.drain(30_000);    // 等待正在执行的任务完成（超时单位：ms）
+```
+
+</Tab>
+</Tabs>

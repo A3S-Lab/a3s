@@ -8,103 +8,110 @@ description: Get A3S Power running with local model inference in minutes
 ## Install
 
 ```bash
-# Via Homebrew
-brew install a3s-lab/tap/a3s-power
+# Via Homebrew (macOS)
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
+brew install a3s-power
 
-# Or build from source
+# Via Cargo (pure Rust inference, no C++ needed)
 cargo install a3s-power
-```
 
-## Pull a Model
-
-```bash
-# Pull from Ollama registry
-a3s-power pull llama3.2
-
-# Pull a specific size
-a3s-power pull qwen2.5:7b
-
-# Pull from HuggingFace (GGUF)
-a3s-power pull hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF
-```
-
-## Interactive Chat
-
-```bash
-# Start interactive chat
-a3s-power run llama3.2
-
-# Single prompt
-a3s-power run llama3.2 "Explain quicksort in 3 sentences"
-
-# With parameters
-a3s-power run llama3.2 --temperature 0.7 --num-predict 256 "Write a haiku"
+# Build from source
+git clone https://github.com/A3S-Lab/Power.git && cd Power
+cargo build --release
 ```
 
 ## Start the Server
 
 ```bash
-# Start on default port (11434)
 a3s-power serve
-
-# Custom host and port
-a3s-power serve --host 0.0.0.0 --port 8080
+# Listening on http://127.0.0.1:11434
 ```
 
-## Use the API
-
-Ollama-compatible:
+## Pull a Model from HuggingFace Hub
 
 ```bash
-# Chat completion
-curl http://localhost:11434/api/chat -d '{
-  "model": "llama3.2",
-  "messages": [{"role": "user", "content": "Hello!"}]
-}'
-
-# List models
-curl http://localhost:11434/api/tags
+# By quantization tag (resolves filename automatically)
+curl -N http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"name": "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M"}'
 ```
 
-OpenAI-compatible (works with any OpenAI SDK):
+Progress streams as SSE:
+```
+data: {"status":"downloading","completed":209715200,"total":2147483648}
+data: {"status":"verifying"}
+data: {"status":"success","id":"bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M"}
+```
+
+## Register a Local Model
 
 ```bash
-# Chat completion
-curl http://localhost:11434/v1/chat/completions -d '{
-  "model": "llama3.2",
-  "messages": [{"role": "user", "content": "Hello!"}]
-}'
+curl -X POST http://localhost:11434/v1/models \
+  -H "Content-Type: application/json" \
+  -d '{"name": "llama3.2:3b", "path": "/path/to/model.gguf"}'
 ```
+
+## Chat
+
+```bash
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## Use with OpenAI SDK
 
 ```python
 from openai import OpenAI
 
 client = OpenAI(base_url="http://localhost:11434/v1", api_key="unused")
+
 response = client.chat.completions.create(
-    model="llama3.2",
-    messages=[{"role": "user", "content": "Hello!"}]
+    model="llama3.2:3b",
+    messages=[{"role": "user", "content": "Explain Rust in one sentence"}]
 )
 print(response.choices[0].message.content)
 ```
 
-## Manage Models
+```typescript
+import OpenAI from "openai";
+
+const client = new OpenAI({ baseURL: "http://localhost:11434/v1", apiKey: "unused" });
+const response = await client.chat.completions.create({
+  model: "llama3.2:3b",
+  messages: [{ role: "user", content: "Hello!" }],
+});
+console.log(response.choices[0].message.content);
+```
+
+## Streaming
+
+```python
+stream = client.chat.completions.create(
+    model="llama3.2:3b",
+    messages=[{"role": "user", "content": "Count to 5"}],
+    stream=True
+)
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+```
+
+## Check Health
 
 ```bash
-# List local models
-a3s-power list
+curl http://localhost:11434/health
+```
 
-# Show model details
-a3s-power show llama3.2
-
-# Delete a model
-a3s-power delete llama3.2
-
-# Copy/alias
-a3s-power cp llama3.2 my-model
-
-# List running models
-a3s-power ps
-
-# Stop a running model
-a3s-power stop llama3.2
+```json
+{
+  "status": "ok",
+  "version": "0.2.0",
+  "uptime_seconds": 42,
+  "loaded_models": 1,
+  "tee": { "enabled": false, "type": "none", "models_verified": false }
+}
 ```

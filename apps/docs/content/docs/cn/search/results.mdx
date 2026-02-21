@@ -1,10 +1,310 @@
 ---
 title: 结果
-description: 搜索结果结构和排名
+description: 搜索结果、评分、去重及结果类型
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 结果
 
-`SearchResults` 包含排名后的结果列表，每个结果带有标题、URL、摘要、分数和来源引擎列表。
+搜索返回一个 `SearchResults`（Rust）/ `SearchResponse`（SDK），包含经过排名和去重的结果以及各引擎的元数据。
 
-详细文档请参阅[英文版](/docs/en/search/results)。
+## 遍历结果
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+let results = search.search(query).await?;
+
+println!("{} results in {}ms", results.count, results.duration_ms);
+
+for result in results.items().iter().take(10) {
+    println!("{}: {}", result.title, result.url);
+    println!("  Score: {:.2}", result.score);
+    println!("  Engines: {:?}", result.engines);
+    if let Some(date) = &result.published_date {
+        println!("  Published: {}", date);
+    }
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+response = await search.search("rust programming")
+
+print(f"{response.count} results in {response.duration_ms}ms")
+
+for r in response.results:
+    print(f"{r.title}: {r.url}")
+    print(f"  Score: {r.score:.2f}")
+    print(f"  Engines: {r.engines}")
+    if r.published_date:
+        print(f"  Published: {r.published_date}")
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+const response = await search.search('rust programming');
+
+console.log(`${response.count} results in ${response.durationMs}ms`);
+
+for (const r of response.results) {
+  console.log(`${r.title}: ${r.url}`);
+  console.log(`  Score: ${r.score.toFixed(2)}`);
+  console.log(`  Engines: ${r.engines.join(', ')}`);
+  if (r.publishedDate) {
+    console.log(`  Published: ${r.publishedDate}`);
+  }
+}
+```
+
+</Tab>
+</Tabs>
+
+## SearchResult 字段
+
+<TypeTable
+  type={{
+    url: { type: 'String', description: 'Result URL' },
+    title: { type: 'String', description: 'Result title' },
+    content: { type: 'String', description: 'Result snippet/description' },
+    result_type: { type: 'ResultType', description: 'Type of result (Default, Answer, News, Image, Video)' },
+    engines: { type: 'HashSet<String>', description: 'Engine shortcuts that found this result' },
+    positions: { type: 'Vec<u32>', description: "Position in each engine's result list" },
+    score: { type: 'f64', description: 'Calculated consensus score' },
+    thumbnail: { type: 'Option<String>', description: 'Thumbnail URL (if available)' },
+    published_date: { type: 'Option<String>', description: 'Publication date (if available)' },
+  }}
+/>
+
+Python 使用 snake_case（`result_type`、`published_date`），Node.js 使用 camelCase（`resultType`、`publishedDate`）。
+
+## 结果类型
+
+```rust
+pub enum ResultType {
+    Default,   // Standard web result
+    Answer,    // Direct answer (e.g., Wikipedia infobox)
+    News,      // News article
+    Image,     // Image result
+    Video,     // Video result
+}
+```
+
+## 去重
+
+来自多个引擎的结果通过规范化 URL 合并。当两个引擎返回同一页面时：
+
+- 保留最佳标题和摘要
+- 两个引擎名称均添加到 `engines`
+- 记录两个引擎的排名位置
+- 分数由所有贡献引擎共同计算
+
+```rust
+// 被 3 个引擎找到的结果排名显著高于只被 1 个引擎找到的结果
+for result in results.items().iter().take(5) {
+    let coverage = result.engines.len();
+    println!("[{coverage} engines] {:.2} — {}", result.score, result.title);
+}
+```
+
+## 引擎错误
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+每个引擎独立运行——某个引擎失败不会阻塞其他引擎：
+
+```rust
+for (engine, error) in results.errors() {
+    eprintln!("Engine '{}' failed: {}", engine, error);
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+for err in response.errors:
+    print(f"Engine '{err.engine}' failed: {err.message}")
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+for (const err of response.errors) {
+  console.error(`Engine '${err.engine}' failed: ${err.message}`);
+}
+```
+
+</Tab>
+</Tabs>
+
+## 建议与直接答案（Rust）
+
+```rust
+for suggestion in results.suggestions() {
+    println!("Did you mean: {}", suggestion);
+}
+
+for answer in results.answers() {
+    println!("Answer: {}", answer);
+}
+```
+
+## SearchResults / SearchResponse API
+
+### Rust（`SearchResults`）
+
+<TypeTable
+  type={{
+    "items()": {
+      description: "Get result slice",
+    },
+    "suggestions()": {
+      description: "Get query suggestions",
+    },
+    "answers()": {
+      description: "Get direct answers",
+    },
+    "errors()": {
+      description: "Get per-engine errors",
+    },
+    "count": {
+      description: "Number of results",
+    },
+    "duration_ms": {
+      description: "Search duration in ms",
+    },
+  }}
+/>
+
+### Python（`SearchResponse`）
+
+<TypeTable
+  type={{
+    "results": {
+      type: "list[SearchResult]",
+      description: "Ranked results",
+    },
+    "count": {
+      type: "int",
+      description: "Number of results",
+    },
+    "duration_ms": {
+      type: "int",
+      description: "Search duration in ms",
+    },
+    "errors": {
+      type: "list[EngineErrorInfo]",
+      description: "Per-engine errors",
+    },
+  }}
+/>
+
+### Node.js（`SearchResponse`）
+
+<TypeTable
+  type={{
+    "results": {
+      type: "SearchResult[]",
+      description: "Ranked results",
+    },
+    "count": {
+      type: "number",
+      description: "Number of results",
+    },
+    "durationMs": {
+      type: "number",
+      description: "Search duration in ms",
+    },
+    "errors": {
+      type: "EngineError[]",
+      description: "Per-engine errors",
+    },
+  }}
+/>
+
+## 错误处理
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+match search.search(query).await {
+    Ok(results) => {
+        // Per-engine failures don't block — check errors()
+        for (engine, error) in results.errors() {
+            eprintln!("Engine '{}' failed: {}", engine, error);
+        }
+    }
+    Err(e) => eprintln!("Search failed: {}", e),
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+try:
+    response = await search.search('query')
+except SearchError as e:
+    print(f'Search failed: {e}')
+
+# 单个引擎失败不会抛出异常 — 检查 response.errors
+for err in response.errors:
+    print(f"Engine '{err.engine}' failed: {err.message}")
+```
+
+<TypeTable
+  type={{
+    "A3SSearchError": {
+      description: "Base exception for all SDK errors",
+    },
+    "SearchError": {
+      description: "Search operation failed",
+    },
+  }}
+/>
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+try {
+  const response = await search.search('query');
+} catch (err) {
+  if (err instanceof SearchError) {
+    console.error(`Search failed: ${err.message}`);
+  }
+}
+
+// 单个引擎失败不会抛出异常 — 检查 response.errors
+for (const err of response.errors) {
+  console.warn(`Engine '${err.engine}' failed: ${err.message}`);
+}
+```
+
+<TypeTable
+  type={{
+    "A3SSearchError": {
+      description: "Base error for all SDK errors",
+    },
+    "NativeModuleError": {
+      description: "Native module failed to load",
+    },
+    "SearchError": {
+      description: "Search operation failed",
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>

@@ -1,87 +1,92 @@
 ---
 title: A3S Power
-description: Local LLM model management and serving — an Ollama-compatible inference server
+description: Privacy-preserving LLM inference server for Trusted Execution Environments
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # A3S Power
 
-A3S Power is a local LLM model management and serving infrastructure. It provides an Ollama-compatible CLI and HTTP server for downloading, managing, and running language models with GGUF format support.
+A3S Power is a privacy-preserving LLM inference server built to run inside Trusted Execution Environments (TEE). It provides an OpenAI-compatible API for chat completions, text completions, embeddings, and vision — with hardware-enforced memory encryption, model integrity verification, and automatic log redaction.
 
 ## Why Power?
 
-- Drop-in Ollama replacement with identical API and wire format
-- OpenAI SDK compatible (`/v1/chat/completions`, `/v1/embeddings`)
-- Local-first inference with no cloud dependency
-- Infrastructure layer for the A3S ecosystem (used by a3s-code and other agents)
+- **TEE-native**: Runs inside AMD SEV-SNP and Intel TDX MicroVMs with hardware-encrypted memory
+- **OpenAI-compatible**: Works with any OpenAI SDK (`/v1/chat/completions`, `/v1/embeddings`)
+- **Pure Rust inference**: Default backend via `mistralrs` (candle) — no C++ toolchain, ideal for supply-chain auditing
+- **Privacy by default**: Prompts and responses never appear in logs; memory is zeroed on model unload
+- **Verifiable**: Remote attestation proves inference runs in a genuine TEE before you trust the output
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│                   CLI Layer                      │
-│  pull · run · list · show · serve · ps · stop    │
-├─────────────────────────────────────────────────┤
-│                  HTTP Server                     │
-│  ┌──────────────┐  ┌───────────────────────┐    │
-│  │  Ollama API   │  │    OpenAI API          │    │
-│  │  /api/*       │  │    /v1/*               │    │
-│  └──────┬───────┘  └──────────┬────────────┘    │
-├─────────┴──────────────────────┴────────────────┤
-│                Backend Layer                     │
-│  ┌────────────┐  ┌────────────┐  ┌───────────┐ │
-│  │ llama.cpp   │  │ Chat       │  │ Tool Call  │ │
-│  │ Backend     │  │ Templates  │  │ Parser     │ │
-│  └────────────┘  └────────────┘  └───────────┘ │
-├─────────────────────────────────────────────────┤
-│                Model Layer                       │
-│  ┌────────────┐  ┌────────────┐  ┌───────────┐ │
-│  │ Registry    │  │ Storage    │  │ Resolver   │ │
-│  │ (manifests) │  │ (SHA-256)  │  │ (Ollama/HF)│ │
-│  └────────────┘  └────────────┘  └───────────┘ │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│                     a3s-power                         │
+│                                                       │
+│  TEE Layer                                            │
+│  ┌────────────────┐ ┌──────────────┐ ┌────────────┐  │
+│  │  attestation   │ │  model_seal  │ │  privacy   │  │
+│  │  (TeeProvider) │ │  (SHA-256)   │ │  (redact)  │  │
+│  └────────┬───────┘ └──────┬───────┘ └─────┬──────┘  │
+│                                                       │
+│  Server Layer                                         │
+│  ┌─────────────────────────────────────────────────┐  │
+│  │  Axum Router  /health  /metrics  /v1/*          │  │
+│  └──────────────────────┬──────────────────────────┘  │
+│                         │                             │
+│  Backend Layer                                        │
+│  ┌──────────────────────────────────────────────────┐ │
+│  │  MistralRsBackend (default) · LlamaCppBackend    │ │
+│  │  GGUF · SafeTensors · Vision · Embeddings        │ │
+│  └──────────────────────────────────────────────────┘ │
+│                                                       │
+│  Model Layer                                          │
+│  ┌──────────────────────────────────────────────────┐ │
+│  │  ModelRegistry · SHA-256 blob store · HF pull    │ │
+│  └──────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────┘
 ```
 
 ## Key Components
 
 <TypeTable
   type={{
-    "cli": {
-      description: "12 commands: pull, run, list, show, delete, serve, ps, stop, push, cp, create",
+    "TEE Layer": {
+      description: "Remote attestation, model integrity (SHA-256), log redaction, memory zeroing, AES-256-GCM encrypted model loading",
     },
-    "api": {
-      description: "14 Ollama-native + 5 OpenAI-compatible endpoints",
+    "Backend Layer": {
+      description: "Pluggable inference engines: mistralrs (pure Rust, default) and llama.cpp (optional). Supports GGUF, SafeTensors, Vision, and Embedding model formats.",
     },
-    "backend": {
-      description: "Pluggable inference engine with llama.cpp implementation",
+    "Model Layer": {
+      description: "Content-addressed blob store, model registry, GGUF metadata parser, HuggingFace Hub pull with resume support",
     },
-    "model": {
-      description: "Content-addressed storage, registry, resolution, GGUF reader",
+    "Server Layer": {
+      description: "Axum HTTP server with rate limiting, Prometheus metrics, RA-TLS transport, Vsock transport, audit logging",
     },
-    "server": {
-      description: "Axum HTTP server with CORS, tracing, Prometheus metrics",
-    },
-    "config": {
-      description: "TOML configuration with Ollama-compatible environment variables",
+    "API Layer": {
+      description: "OpenAI-compatible: /v1/chat/completions, /v1/completions, /v1/embeddings, /v1/models, /v1/attestation",
     },
   }}
 />
 
-## Features
+## Model Format Support
 
-- GGUF model format with llama.cpp backend (Metal/CUDA acceleration)
-- Streaming token generation (NDJSON for Ollama, SSE for OpenAI)
-- Vision/multimodal support (base64 images and URLs)
-- Tool/function calling (XML, Mistral, JSON formats)
-- JSON Schema structured output via GBNF grammar
-- KV cache reuse with prefix matching for multi-turn speedup
-- LRU model eviction with configurable keep-alive
-- Content-addressed blob storage with SHA-256 deduplication
-- Model resolution: Ollama registry → built-in catalog → HuggingFace
-- Modelfile support (FROM, PARAMETER, SYSTEM, TEMPLATE, ADAPTER)
-- GPU auto-detection and memory estimation
-- Prometheus metrics and usage dashboard
+<TypeTable
+  type={{
+    "GGUF": {
+      description: "Quantized models (Q4_K_M, Q8_0, etc.). Loaded by both mistralrs and llama.cpp backends.",
+    },
+    "SafeTensors": {
+      description: "HuggingFace SafeTensors chat models. Loaded via TextModelBuilder with ISQ on-load quantization.",
+    },
+    "Vision": {
+      description: "Multimodal models (LLaVA, Phi-3-Vision). Loaded via VisionModelBuilder. Accepts base64 images.",
+    },
+    "HuggingFace": {
+      description: "Embedding models (Qwen3-Embedding, GTE, NomicBert). Loaded via EmbeddingModelBuilder.",
+    },
+  }}
+/>
 
 ## Default Paths
 
@@ -90,14 +95,17 @@ A3S Power is a local LLM model management and serving infrastructure. It provide
     "~/.a3s/power/": {
       description: "Base directory (override with $A3S_POWER_HOME)",
     },
-    "~/.a3s/power/config.toml": {
-      description: "Configuration file",
+    "~/.a3s/power/config.hcl": {
+      description: "HCL configuration file",
     },
     "~/.a3s/power/models/manifests/": {
-      description: "Model manifest files",
+      description: "Model manifest JSON files",
     },
     "~/.a3s/power/models/blobs/": {
-      description: "Content-addressed blob storage",
+      description: "Content-addressed model blobs (SHA-256)",
+    },
+    "~/.a3s/power/pulls/": {
+      description: "Pull progress state files (resume support)",
     },
   }}
 />

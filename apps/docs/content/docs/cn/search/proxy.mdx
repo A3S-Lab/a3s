@@ -1,10 +1,346 @@
 ---
-title: 代理池
-description: 动态代理轮换和反爬虫
+title: 代理
+description: 代理池、轮换策略、动态提供者及按请求代理管理
 ---
 
-# 代理池
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
-`ProxyPool` 支持轮询和随机轮换策略，`ProxyProvider` trait 支持动态代理来源和自动刷新。
+# 代理
 
-详细文档请参阅[英文版](/docs/en/search/proxy)。
+A3S Search 内置代理池，支持在请求间轮换代理。适用于在抓取搜索引擎时规避频率限制和 IP 封禁。
+
+## PooledHttpFetcher
+
+`PooledHttpFetcher` 实现 `PageFetcher` trait，每次请求从代理池中选取一个代理。当代理池被禁用或为空时，回退到直连。
+
+```rust
+use std::sync::Arc;
+use a3s_search::{PooledHttpFetcher, PageFetcher};
+use a3s_search::proxy::{ProxyPool, ProxyConfig, ProxyStrategy};
+
+let pool = Arc::new(ProxyPool::with_proxies(vec![
+    ProxyConfig::new("proxy1.example.com", 8080),
+    ProxyConfig::new("proxy2.example.com", 8080),
+]).with_strategy(ProxyStrategy::RoundRobin));
+
+let fetcher: Arc<dyn PageFetcher> = Arc::new(
+    PooledHttpFetcher::new(Arc::clone(&pool))
+        .with_timeout(std::time::Duration::from_secs(15))
+);
+```
+
+<TypeTable
+  type={{
+    "new(pool)": {
+      description: "Create with Arc<ProxyPool> — rotates proxy per request",
+    },
+    "with_timeout(duration)": {
+      description: "Set request timeout (default: 30s)",
+    },
+  }}
+/>
+
+## 静态代理列表
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+use a3s_search::proxy::{ProxyPool, ProxyConfig, ProxyProtocol, ProxyStrategy};
+
+let pool = Arc::new(ProxyPool::with_proxies(vec![
+    ProxyConfig::new("proxy1.example.com", 8080),
+    ProxyConfig::new("proxy2.example.com", 8080)
+        .with_protocol(ProxyProtocol::Socks5),
+    ProxyConfig::new("proxy3.example.com", 3128)
+        .with_auth("username", "password"),
+]).with_strategy(ProxyStrategy::RoundRobin));
+
+let fetcher: Arc<dyn PageFetcher> = Arc::new(PooledHttpFetcher::new(Arc::clone(&pool)));
+search.add_engine(DuckDuckGo::with_fetcher(DuckDuckGoParser, fetcher));
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_search import A3SSearch
+
+search = A3SSearch()
+
+# 设置实例级代理池 — 对所有搜索持久生效
+await search.set_proxy_pool([
+    "http://proxy1.example.com:8080",
+    "socks5://proxy2.example.com:1080",
+    "http://username:password@proxy3.example.com:3128",
+])
+
+response = await search.search("rust programming")
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+import { A3SSearch } from '@a3s-lab/search';
+
+const search = new A3SSearch();
+
+// 设置实例级代理池 — 对所有搜索持久生效
+await search.setProxyPool([
+  'http://proxy1.example.com:8080',
+  'socks5://proxy2.example.com:1080',
+  'http://username:password@proxy3.example.com:3128',
+]);
+
+const response = await search.search('rust programming');
+```
+
+</Tab>
+</Tabs>
+
+## 动态提供者
+
+实现 `ProxyProvider` trait 可从外部来源（API、Redis、数据库）获取代理。这是仅限 Rust 的 API——SDK 用户可随时调用 `set_proxy_pool()` 更新代理列表。
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+use a3s_search::proxy::{ProxyProvider, ProxyPool, ProxyConfig, spawn_auto_refresh};
+use async_trait::async_trait;
+use std::{sync::Arc, time::Duration};
+
+struct MyProxyApi {
+    url: String,
+}
+
+#[async_trait]
+impl ProxyProvider for MyProxyApi {
+    async fn fetch_proxies(&self) -> a3s_search::Result<Vec<ProxyConfig>> {
+        // 从你的 API 获取 — 格式由你决定
+        Ok(vec![
+            ProxyConfig::new("dynamic-proxy.example.com", 8080),
+        ])
+    }
+
+    fn refresh_interval(&self) -> Duration {
+        Duration::from_secs(60)
+    }
+}
+
+let pool = Arc::new(ProxyPool::with_provider(
+    MyProxyApi { url: "https://api.example.com/proxies".into() }
+));
+
+// 后台任务按提供者设定的间隔刷新代理
+let _handle = spawn_auto_refresh(Arc::clone(&pool));
+```
+
+`spawn_auto_refresh` 返回一个 `JoinHandle`，可通过 abort 停止刷新。
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_search import A3SSearch
+
+search = A3SSearch()
+
+# 从你的 API 获取代理，随时调用 set_proxy_pool() 更新
+import httpx
+
+async def refresh_proxies():
+    async with httpx.AsyncClient() as client:
+        resp = await client.get("https://api.example.com/proxies")
+        proxies = [f"http://{p['host']}:{p['port']}" for p in resp.json()]
+        await search.set_proxy_pool(proxies)
+
+# 启动时及定期调用
+await refresh_proxies()
+response = await search.search("rust programming")
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+import { A3SSearch } from '@a3s-lab/search';
+
+const search = new A3SSearch();
+
+// 从你的 API 获取代理，随时调用 setProxyPool() 更新
+async function refreshProxies() {
+  const resp = await fetch('https://api.example.com/proxies');
+  const data = await resp.json();
+  await search.setProxyPool(data.map((p: any) => `http://${p.host}:${p.port}`));
+}
+
+// 启动时及定期调用
+await refreshProxies();
+setInterval(refreshProxies, 60_000);
+
+const response = await search.search('rust programming');
+```
+
+</Tab>
+</Tabs>
+
+## 运行时开关
+
+在运行时启用或禁用代理池，无需重新创建。
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+通过 `AtomicBool` 实现线程安全，可通过 `Arc<ProxyPool>` 操作：
+
+```rust
+let pool = Arc::new(ProxyPool::with_proxies(vec![...]));
+
+pool.set_enabled(false);  // direct connection
+pool.set_enabled(true);   // re-enable rotation
+pool.is_enabled();        // check status
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+search.set_proxy_pool_enabled(False)  # direct connection
+search.set_proxy_pool_enabled(True)   # re-enable rotation
+print(search.is_proxy_pool_enabled())
+print(await search.proxy_pool_size())
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+search.setProxyPoolEnabled(false);  // direct connection
+search.setProxyPoolEnabled(true);   // re-enable rotation
+console.log(search.isProxyPoolEnabled());
+console.log(await search.proxyPoolSize());
+```
+
+</Tab>
+</Tabs>
+
+## 按请求代理池
+
+为单次搜索调用覆盖实例级代理池。
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+直接将 `PooledHttpFetcher` 或 `HttpFetcher` 传入引擎构造函数：
+
+```rust
+let fetcher: Arc<dyn PageFetcher> = Arc::new(PooledHttpFetcher::new(pool.clone()));
+search.add_engine(DuckDuckGo::with_fetcher(DuckDuckGoParser, fetcher));
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+response = await search.search("rust", proxy_pool=[
+    "http://per-request-proxy:8080",
+])
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+const response = await search.search('rust', {
+  proxyPool: ['http://per-request-proxy:8080'],
+});
+```
+
+</Tab>
+</Tabs>
+
+## 轮换策略
+
+<TypeTable
+  type={{
+    "RoundRobin": {
+      description: "Rotate through proxies sequentially (default)",
+    },
+    "Random": {
+      description: "Select random proxy each time",
+    },
+  }}
+/>
+
+```rust
+use a3s_search::proxy::ProxyStrategy;
+
+let pool = ProxyPool::with_proxies(proxies)
+    .with_strategy(ProxyStrategy::Random);
+```
+
+## ProxyConfig
+
+```rust
+let proxy = ProxyConfig::new("proxy.example.com", 8080)
+    .with_protocol(ProxyProtocol::Socks5)
+    .with_auth("user", "pass");
+
+proxy.url()  // -> "socks5://user:pass@proxy.example.com:8080"
+```
+
+<TypeTable
+  type={{
+    "new(host, port)": {
+      description: "Create HTTP proxy config",
+    },
+    "with_protocol(protocol)": {
+      description: "Set protocol (Http / Https / Socks5)",
+    },
+    "with_auth(user, pass)": {
+      description: "Set authentication",
+    },
+    "url()": {
+      description: "Get proxy URL string",
+    },
+  }}
+/>
+
+## ProxyPool API
+
+<TypeTable
+  type={{
+    "new()": { description: "Create empty pool (disabled)" },
+    "with_proxies(proxies)": { description: "Create with static proxy list" },
+    "with_provider(provider)": { description: "Create with dynamic provider" },
+    "with_strategy(strategy)": { description: "Set selection strategy" },
+    "set_enabled(bool)": { description: "Enable/disable pool (&self, thread-safe)" },
+    "is_enabled()": { description: "Check if enabled" },
+    "refresh()": { description: "Refresh proxies from provider" },
+    "get_proxy()": { description: "Get next proxy (based on strategy)" },
+    "add_proxy(proxy)": { description: "Add a proxy to pool" },
+    "remove_proxy(host, port)": { description: "Remove a proxy" },
+    "len()": { description: "Number of proxies in pool" },
+  }}
+/>
+
+## 与浏览器引擎配合使用
+
+将代理 URL 传入 `BrowserPoolConfig`：
+
+```rust
+use a3s_search::browser::BrowserPoolConfig;
+
+let config = BrowserPoolConfig {
+    max_tabs: 4,
+    headless: true,
+    chrome_path: None,
+    proxy_url: Some("http://proxy.example.com:8080".into()),
+    launch_args: vec![],
+};
+```
+
+所有浏览器流量（包括无头引擎）都将通过该代理路由。

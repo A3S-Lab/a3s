@@ -1,10 +1,439 @@
 ---
 title: 配置
-description: A3S Gateway 配置参考
+description: 入口点、路由、服务、中间件和提供者的 HCL 配置
 ---
 
 # 配置
 
-A3S Gateway 使用 HCL（HashiCorp 配置语言）作为唯一配置格式。
+A3S Gateway 使用 HCL（HashiCorp 配置语言）作为唯一配置格式，通过 `.hcl` 文件扩展名自动识别。配置支持通过文件监听实现热重载。
 
-详细文档请参阅[英文版](/docs/en/gateway/configuration)。
+## GatewayConfig
+
+```rust
+pub struct GatewayConfig {
+    pub entrypoints: HashMap<String, EntrypointConfig>,
+    pub routers: HashMap<String, RouterConfig>,
+    pub services: HashMap<String, ServiceConfig>,
+    pub middlewares: HashMap<String, MiddlewareConfig>,
+    pub providers: ProviderConfig,
+    pub shutdown_timeout_secs: u64, // default: 30
+}
+```
+
+### 加载配置
+
+```rust
+// Load from file
+let config = GatewayConfig::from_file("gateway.hcl").await?;
+
+// Parse from HCL string
+let config = GatewayConfig::from_hcl(hcl_content)?;
+
+// Validate (checks router→service, router→middleware, router→entrypoint references)
+config.validate()?;
+```
+
+## 入口点
+
+入口点定义网络监听器。
+
+```rust
+pub struct EntrypointConfig {
+    pub address: String,
+    pub protocol: Protocol,          // http (default), tcp, udp
+    pub tls: Option<TlsConfig>,
+    pub max_connections: Option<u32>, // TCP only
+    pub tcp_allowed_ips: Vec<String>, // TCP only, CIDR or single IP
+    pub udp_session_timeout_secs: Option<u64>,  // UDP only
+    pub udp_max_sessions: Option<usize>,        // UDP only
+}
+```
+
+```hcl
+# HTTP listener
+entrypoints "web" {
+  address = "0.0.0.0:80"
+}
+
+# HTTPS listener with TLS
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
+  tls {
+    cert_file   = "/etc/certs/cert.pem"
+    key_file    = "/etc/certs/key.pem"
+    min_version = "1.3"
+  }
+}
+
+# TCP listener with connection limits
+entrypoints "tcp" {
+  address         = "0.0.0.0:5432"
+  protocol        = "tcp"
+  max_connections  = 1000
+  tcp_allowed_ips  = ["10.0.0.0/8", "192.168.1.0/24"]
+}
+
+# UDP listener
+entrypoints "dns" {
+  address                  = "0.0.0.0:53"
+  protocol                 = "udp"
+  udp_session_timeout_secs = 60
+  udp_max_sessions         = 5000
+}
+```
+
+### TLS 配置
+
+```rust
+pub struct TlsConfig {
+    pub cert_file: String,
+    pub key_file: String,
+    pub min_version: String,              // "1.2" (default) or "1.3"
+    pub acme: bool,                       // Let's Encrypt auto-cert
+    pub acme_email: Option<String>,       // required when acme = true
+    pub acme_domains: Vec<String>,        // defaults to Host rules if empty
+    pub acme_staging: bool,               // use staging environment
+    pub acme_storage_path: Option<String>,// default: /etc/gateway/acme
+}
+```
+
+TLS 由 rustls（纯 Rust，无 OpenSSL 依赖）处理。ACME 支持可从 Let's Encrypt 自动申请证书。
+
+```hcl
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
+  tls {
+    cert_file          = "/etc/certs/cert.pem"
+    key_file           = "/etc/certs/key.pem"
+    acme               = true
+    acme_email         = "admin@example.com"
+    acme_domains       = ["example.com", "api.example.com"]
+    acme_staging       = false
+    acme_storage_path  = "/etc/gateway/acme"
+  }
+}
+```
+
+## 路由
+
+路由将传入请求匹配到对应服务。
+
+```rust
+pub struct RouterConfig {
+    pub rule: String,
+    pub service: String,
+    pub entrypoints: Vec<String>,
+    pub middlewares: Vec<String>,
+    pub priority: i32, // lower = higher priority, default: 0
+}
+```
+
+```hcl
+routers "api" {
+  rule        = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+  service     = "api-service"
+  entrypoints = ["websecure"]
+  middlewares  = ["auth-jwt", "rate-limit"]
+  priority    = 0
+}
+
+routers "web" {
+  rule        = "Host(`www.example.com`)"
+  service     = "web-service"
+  entrypoints = ["web", "websecure"]
+  priority    = 10
+}
+```
+
+`priority` 值越小，匹配优先级越高。规则语法详见 [路由](./routing)。
+
+## 服务
+
+服务定义带负载均衡的后端池。
+
+```rust
+pub struct ServiceConfig {
+    pub load_balancer: LoadBalancerConfig,
+    pub mirror: Option<MirrorConfig>,
+    pub failover: Option<FailoverConfig>,
+}
+
+pub struct LoadBalancerConfig {
+    pub strategy: Strategy,  // round-robin, weighted, least-connections, random
+    pub servers: Vec<ServerConfig>,
+    pub health_check: Option<HealthCheckConfig>,
+    pub sticky: Option<StickyConfig>,
+}
+```
+
+```hcl
+services "api-service" {
+  load_balancer {
+    strategy = "weighted"
+    servers  = [
+      { url = "http://127.0.0.1:8001", weight = 3 },
+      { url = "http://127.0.0.1:8002", weight = 1 }
+    ]
+
+    health_check {
+      path                = "/health"
+      interval            = "10s"
+      timeout             = "5s"
+      unhealthy_threshold = 3
+      healthy_threshold   = 1
+    }
+
+    sticky {
+      cookie = "srv_id"
+    }
+  }
+}
+```
+
+### 流量镜像
+
+将一定比例的线上流量复制到影子后端，用于测试。
+
+```hcl
+services "api-service" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+  mirror {
+    service    = "shadow-backend"
+    percentage = 10
+  }
+}
+```
+
+### 故障转移
+
+当主服务没有健康后端时，自动切换到备用服务。
+
+```hcl
+services "api-service" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+  failover {
+    service = "backup-pool"
+  }
+}
+```
+
+负载均衡策略和健康检查详情请参阅 [服务](./services)。
+
+## 中间件
+
+中间件在全局定义，通过名称在路由中引用。
+
+```hcl
+middlewares "auth-jwt" {
+  type  = "jwt"
+  value = "${JWT_SECRET}"
+}
+
+middlewares "rate-limit" {
+  type  = "rate-limit"
+  rate  = 100
+  burst = 50
+}
+
+middlewares "cors" {
+  type            = "cors"
+  allowed_origins = ["https://example.com"]
+  allowed_methods = ["GET", "POST", "PUT", "DELETE"]
+  allowed_headers = ["Content-Type", "Authorization"]
+  max_age         = 3600
+}
+
+middlewares "compress" {
+  type = "compress"
+}
+
+middlewares "circuit-breaker" {
+  type              = "circuit-breaker"
+  failure_threshold = 3
+  cooldown_secs     = 60
+  success_threshold = 2
+}
+```
+
+全部 15 种内置中间件类型请参阅 [中间件](./middleware)。
+
+### 环境变量替换
+
+配置值支持引用环境变量：
+
+```hcl
+middlewares "auth-jwt" {
+  type  = "jwt"
+  value = "${JWT_SECRET}"
+}
+
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
+  tls {
+    cert_file = "${TLS_CERT_PATH}"
+    key_file  = "${TLS_KEY_PATH}"
+  }
+}
+```
+
+## 提供者
+
+配置提供者用于提供动态配置。
+
+### 文件提供者
+
+```hcl
+providers {
+  file {
+    watch     = true
+    directory = "/etc/gateway/conf.d/"
+  }
+}
+```
+
+当 `watch = true` 时，Gateway 使用 inotify（Linux）或 kqueue（macOS）监听配置文件和目录的变更，并在不停机的情况下热重载。
+
+### 服务发现提供者
+
+基于健康状态的服务发现，通过轮询后端种子 URL 的 `/.well-known/a3s-service.json` 元数据实现。
+
+```hcl
+providers {
+  discovery {
+    poll_interval_secs = 30
+    timeout_secs       = 5
+    seeds = [
+      { url = "http://10.0.0.5:8080" },
+      { url = "http://10.0.0.6:8080" }
+    ]
+  }
+}
+```
+
+### Docker 提供者
+
+通过容器标签自动发现服务。
+
+```hcl
+providers {
+  docker {
+    host               = "/var/run/docker.sock"
+    label_prefix       = "a3s"
+    poll_interval_secs = 10
+  }
+}
+```
+
+### Kubernetes 提供者
+
+监听 Ingress 和 IngressRoute CRD 资源。
+
+```hcl
+providers {
+  kubernetes {
+    namespace           = "default"
+    label_selector      = "app=my-service"
+    watch_interval_secs = 30
+    ingress_route_crd   = true
+  }
+}
+```
+
+## 热重载
+
+```rust
+// Programmatic reload
+let new_config = GatewayConfig::from_file("gateway.hcl").await?;
+gateway.reload(new_config).await?;
+```
+
+重载过程：
+1. Gateway 切换到 `Reloading` 状态
+2. 验证新配置
+3. 重建路由、服务和中间件
+4. 现有连接继续使用旧配置直到重载完成
+5. Gateway 切换回 `Running` 状态
+
+## 完整示例
+
+```hcl
+# Entrypoints
+entrypoints "web" {
+  address = "0.0.0.0:80"
+}
+
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
+  tls {
+    cert_file = "/etc/certs/cert.pem"
+    key_file  = "/etc/certs/key.pem"
+  }
+}
+
+# Routers
+routers "api" {
+  rule        = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+  service     = "api-service"
+  entrypoints = ["websecure"]
+  middlewares  = ["auth-jwt", "rate-limit", "cors"]
+}
+
+routers "web" {
+  rule        = "Host(`www.example.com`)"
+  service     = "web-service"
+  entrypoints = ["web", "websecure"]
+}
+
+# Services
+services "api-service" {
+  load_balancer {
+    strategy = "least-connections"
+    servers  = [
+      { url = "http://127.0.0.1:8001" },
+      { url = "http://127.0.0.1:8002" }
+    ]
+    health_check {
+      path     = "/health"
+      interval = "10s"
+    }
+  }
+}
+
+services "web-service" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:3000" }]
+  }
+}
+
+# Middlewares
+middlewares "auth-jwt" {
+  type  = "jwt"
+  value = "${JWT_SECRET}"
+}
+
+middlewares "rate-limit" {
+  type  = "rate-limit"
+  rate  = 100
+  burst = 50
+}
+
+middlewares "cors" {
+  type            = "cors"
+  allowed_origins = ["https://example.com"]
+  allowed_methods = ["GET", "POST"]
+}
+
+# Providers
+providers {
+  file {
+    watch = true
+  }
+}
+```

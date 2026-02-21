@@ -1,10 +1,303 @@
 ---
 title: 查询
-description: 搜索查询选项和过滤器
+description: 使用过滤器、分类、语言和分页构建搜索查询
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 查询
 
-`SearchQuery` 支持语言、安全搜索、分页、时间范围、分类和指定引擎等选项。
+`SearchQuery` 控制搜索内容和方式。除 `query` 外，所有字段均为可选。
 
-详细文档请参阅[英文版](/docs/en/search/queries)。
+## 基本查询
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+use a3s_search::SearchQuery;
+
+let query = SearchQuery::new("rust programming");
+let results = search.search(query).await?;
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+response = await search.search("rust programming")
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+const response = await search.search('rust programming');
+```
+
+</Tab>
+</Tabs>
+
+## 带选项的搜索
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+use a3s_search::{SearchQuery, SafeSearch, TimeRange, EngineCategory};
+
+let query = SearchQuery::new("rust async runtime")
+    .with_categories(vec![EngineCategory::General])
+    .with_language("en-US")
+    .with_safesearch(SafeSearch::Moderate)
+    .with_page(1)
+    .with_time_range(TimeRange::Month)
+    .with_engines(vec!["ddg".into(), "brave".into(), "bing".into()]);
+```
+
+`SearchQuery` 构建方法：
+
+<TypeTable
+  type={{
+    "new(query)": {
+      description: "Create a new query",
+    },
+    "with_categories(cats)": {
+      description: "Set target categories",
+    },
+    "with_language(lang)": {
+      description: "Set language/locale",
+    },
+    "with_safesearch(level)": {
+      description: "Set safe search level",
+    },
+    "with_page(page)": {
+      description: "Set page number",
+    },
+    "with_time_range(range)": {
+      description: "Set time range filter",
+    },
+    "with_engines(engines)": {
+      description: "Limit to specific engine shortcuts",
+    },
+  }}
+/>
+
+</Tab>
+<Tab value="Python">
+
+```python
+response = await search.search("rust async runtime",
+    engines=["ddg", "brave", "bing"],
+    limit=5,
+    timeout=15,
+)
+```
+
+SDK 搜索选项：
+
+<TypeTable
+  type={{
+    engines: { type: 'list[str]', description: 'Engine shortcuts to use' },
+    limit: { type: 'int', description: 'Max results to return' },
+    timeout: { type: 'int', description: 'Per-engine timeout in seconds' },
+    proxy: { type: 'str', description: 'Single proxy URL' },
+    proxy_pool: { type: 'list[str]', description: 'Proxy pool URLs for this request' },
+  }}
+/>
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+const response = await search.search('rust async runtime', {
+  engines: ['ddg', 'brave', 'bing'],
+  limit: 5,
+  timeout: 15,
+});
+```
+
+SDK 搜索选项：
+
+<TypeTable
+  type={{
+    engines: { type: 'string[]', description: 'Engine shortcuts to use' },
+    limit: { type: 'number', description: 'Max results to return' },
+    timeout: { type: 'number', description: 'Per-engine timeout in seconds' },
+    proxy: { type: 'string', description: 'Single proxy URL' },
+    proxyPool: { type: 'string[]', description: 'Proxy pool URLs for this request' },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
+## 指定引擎
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+// 仅使用 DuckDuckGo 和 Bing
+let query = SearchQuery::new("rust")
+    .with_engines(vec!["ddg".into(), "bing".into()]);
+
+// 仅使用中文引擎
+let query = SearchQuery::new("Rust 编程")
+    .with_engines(vec!["sogou".into(), "360".into()]);
+```
+
+不在列表中的引擎将跳过本次查询。若未调用 `with_engines`，则查询所有已注册引擎。
+
+</Tab>
+<Tab value="Python">
+
+```python
+# 国际引擎
+response = await search.search("rust", engines=["ddg", "brave", "bing", "wiki"])
+
+# 中文引擎
+response = await search.search("Rust 编程", engines=["sogou", "360"])
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+// 国际引擎
+const response = await search.search('rust', {
+  engines: ['ddg', 'brave', 'bing', 'wiki'],
+});
+
+// 中文引擎
+const response2 = await search.search('Rust 编程', {
+  engines: ['sogou', '360'],
+});
+```
+
+</Tab>
+</Tabs>
+
+## A3SSearch API（Python / Node.js）
+
+<Tabs groupId="lang" items={['Python', 'Node.js']}>
+<Tab value="Python">
+
+<TypeTable
+  type={{
+    "search": {
+      description: "Signature: (query, *, engines?, limit?, timeout?, proxy?, proxy_pool?) → SearchResponse · Description: Run a search",
+    },
+    "set_proxy_pool": {
+      description: "Signature: (proxies: list[str]) → None · Description: Set instance-level proxy pool",
+    },
+    "set_proxy_pool_enabled": {
+      description: "Signature: (enabled: bool) → None · Description: Enable or disable proxy rotation",
+    },
+    "is_proxy_pool_enabled": {
+      description: "Signature: () → bool · Description: Check if proxy pool is active",
+    },
+    "proxy_pool_size": {
+      description: "Signature: () → int · Description: Number of proxies in pool",
+    },
+  }}
+/>
+
+除 `set_proxy_pool_enabled` 和 `is_proxy_pool_enabled` 外，所有方法均为 `async`。
+
+</Tab>
+<Tab value="Node.js">
+
+<TypeTable
+  type={{
+    "search": {
+      description: "Signature: (query: string, options?: SearchOptions) => Promise<SearchResponse> · Description: Run a search",
+    },
+    "setProxyPool": {
+      description: "Signature: (urls: string[]) => Promise<void> · Description: Set instance-level proxy pool",
+    },
+    "setProxyPoolEnabled": {
+      description: "Signature: (enabled: boolean) => void · Description: Enable or disable proxy rotation",
+    },
+    "isProxyPoolEnabled": {
+      description: "Signature: () => boolean · Description: Check if proxy pool is active",
+    },
+    "proxyPoolSize": {
+      description: "Signature: () => Promise<number> · Description: Number of proxies in pool",
+    },
+  }}
+/>
+
+</Tab>
+</Tabs>
+
+## 分类
+
+```rust
+pub enum EngineCategory {
+    General,
+    Images,
+    News,
+    Videos,
+    Science,
+}
+```
+
+引擎通过 `EngineConfig.categories` 声明其支持的分类。当查询指定分类时，只有匹配该分类的引擎才会被查询。
+
+## 安全搜索
+
+```rust
+pub enum SafeSearch {
+    Off,
+    Moderate,
+    Strict,
+}
+```
+
+只有配置中 `safesearch: true` 的引擎才会遵守此设置。目前支持 DuckDuckGo、Brave、Bing 和 Google。
+
+## 时间范围
+
+```rust
+pub enum TimeRange {
+    Day,
+    Week,
+    Month,
+    Year,
+}
+```
+
+按时效性过滤结果。各引擎支持情况不同。
+
+## 分页
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+let page1 = SearchQuery::new("rust").with_page(1);
+let page2 = SearchQuery::new("rust").with_page(2);
+```
+
+只有 `paging: true` 的引擎支持分页（DuckDuckGo、Brave、Bing、Google）。
+
+</Tab>
+<Tab value="Python">
+
+```python
+# Python SDK 不直接暴露 page 参数。
+# 如需分页查询，请使用 Rust crate。
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```typescript
+// Node.js SDK 不直接暴露 page 参数。
+// 如需分页查询，请使用 Rust crate。
+```
+
+</Tab>
+</Tabs>

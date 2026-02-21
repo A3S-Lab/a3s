@@ -1,10 +1,220 @@
 ---
 title: 可观测性
-description: 审计日志和监控指标
+description: 审计日志、告警、事件总线与监控 API 端点
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 可观测性
 
-SafeClaw 提供取证级审计日志，记录所有安全事件，支持严重级别分类和告警。
+SafeClaw 提供全面的审计日志、实时告警和集中式事件总线，用于安全监控。
 
-详细文档请参阅[英文版](/docs/en/safeclaw/observability)。
+## 审计系统
+
+### 审计事件
+
+```rust
+pub enum AuditSeverity {
+    Info,
+    Warning,
+    High,
+    Critical,
+}
+
+pub enum LeakageVector {
+    OutputChannel,       // AI 输出包含污点数据
+    ToolCall,            // 工具调用参数包含污点数据
+    DangerousCommand,    // 检测到危险命令模式
+    NetworkExfil,        // 网络渗漏尝试
+    FileExfil,           // 写入包含污点数据的文件
+    AuthFailure,         // 通道鉴权失败
+}
+
+pub struct AuditEvent {
+    pub id: String,
+    pub session_id: String,
+    pub severity: AuditSeverity,
+    pub vector: LeakageVector,
+    pub description: String,
+    pub taint_labels: Vec<String>,
+    pub timestamp: i64,
+}
+```
+
+### 审计日志
+
+```rust
+pub struct AuditLog {
+    events: VecDeque<AuditEvent>,
+    capacity: usize,
+    total_count: u64,
+}
+
+impl AuditLog {
+    pub fn record(&mut self, event: AuditEvent);
+    pub fn recent(&self, limit: usize) -> Vec<&AuditEvent>;
+    pub fn by_session(&self, session_id: &str) -> Vec<&AuditEvent>;
+    pub fn by_severity(&self, severity: AuditSeverity) -> Vec<&AuditEvent>;
+}
+```
+
+默认容量为 10,000 条事件（可通过 `audit.log_capacity` 配置）。
+
+## 事件总线
+
+所有安全子系统的集中式事件分发：
+
+```rust
+pub struct AuditEventBus {
+    // 审计事件广播通道
+}
+```
+
+所有组件均向事件总线发布消息：
+- 隐私分类器 → PII 检测事件
+- 污点注册表 → 污点注册事件
+- 输出净化器 → 脱敏事件
+- 注入检测器 → 注入检测事件
+- 工具拦截器 → 工具拦截事件
+- 网络防火墙 → 网络拦截事件
+- 通道鉴权 → 鉴权事件
+
+## 告警
+
+```rust
+pub struct AlertMonitor {
+    // 监控审计事件并触发告警
+}
+
+pub struct Alert {
+    // 包含严重级别、消息和上下文的告警
+}
+
+pub struct AlertConfig {
+    // 告警阈值和通知目标
+}
+```
+
+以下情况会触发告警：
+- 发生 `Critical` 级别事件（立即触发）
+- 在时间窗口内 `High` 级别事件超过阈值
+- 同一会话累积多条 `Warning` 事件（累积风险）
+
+## REST API
+
+### 审计端点
+
+<TypeTable
+  type={{
+    "/api/v1/audit/events": {
+      type: "GET",
+      description: "列出最近的审计事件",
+    },
+    "/api/v1/audit/stats": {
+      type: "GET",
+      description: "审计统计摘要",
+    },
+    "/api/v1/audit/events/:session_id": {
+      type: "GET",
+      description: "指定会话的事件列表",
+    },
+  }}
+/>
+
+### 事件端点
+
+<TypeTable
+  type={{
+    "/api/v1/events": {
+      type: "GET",
+      description: "列出系统事件",
+    },
+    "/api/v1/events/:id": {
+      type: "GET",
+      description: "按 ID 获取事件",
+    },
+    "/api/v1/events/subscribe": {
+      type: "GET",
+      description: "SSE 事件流",
+    },
+  }}
+/>
+
+### 健康与状态
+
+<TypeTable
+  type={{
+    "/health": {
+      type: "GET",
+      description: "健康检查",
+    },
+    "/api/v1/gateway/status": {
+      type: "GET",
+      description: "网关状态及会话数量",
+    },
+    "/.well-known/a3s-service.json": {
+      type: "GET",
+      description: "服务发现",
+    },
+  }}
+/>
+
+### 示例：审计事件响应
+
+```json
+{
+  "events": [
+    {
+      "id": "evt-001",
+      "session_id": "sess-abc",
+      "severity": "High",
+      "vector": "OutputChannel",
+      "description": "Tainted email detected in AI output, redacted",
+      "taint_labels": ["taint-email-001"],
+      "timestamp": 1707734460
+    },
+    {
+      "id": "evt-002",
+      "session_id": "sess-abc",
+      "severity": "Critical",
+      "vector": "DangerousCommand",
+      "description": "Blocked curl command with tainted API key in arguments",
+      "taint_labels": ["taint-apikey-003"],
+      "timestamp": 1707734465
+    }
+  ],
+  "total_count": 2
+}
+```
+
+## 配置
+
+```toml
+[audit]
+enabled = true
+log_capacity = 10000
+
+[audit.alert_config]
+# 告警阈值和通知设置
+```
+
+## 结构化日志
+
+SafeClaw 使用 `tracing` crate 进行结构化日志记录：
+
+```bash
+# 设置日志级别
+safeclaw --config safeclaw.toml --log-level debug
+
+# 环境变量方式
+RUST_LOG=safeclaw=debug safeclaw --config safeclaw.toml
+```
+
+日志输出包含：
+- 用于关联的会话 ID
+- 每条消息的敏感级别
+- 路由决策（本地 vs. TEE）
+- 污点注册与检测事件
+- 注入检测结果
+- 工具拦截决策
+- 网络防火墙决策

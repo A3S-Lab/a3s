@@ -1,52 +1,145 @@
 ---
 title: 推理
-description: 推理参数、采样策略和性能调优
+description: 对话、补全、嵌入向量、视觉推理和流式输出
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 推理
 
-## 推理参数
+## 推理后端
+
+A3S Power 使用可插拔的 `Backend` trait，提供两种实现：
 
 <TypeTable
   type={{
-    "temperature": {
-      description: "说明: 采样温度，越高越随机 · 默认值: 0.8",
+    "mistralrs（默认）": {
+      description: "基于 mistralrs（candle）的纯 Rust 推理。无需 C++ 工具链。支持 GGUF、SafeTensors、Vision 和 Embedding 格式。适合 TEE 供应链审计。",
     },
-    "top_p": {
-      description: "说明: nucleus 采样概率 · 默认值: 0.9",
-    },
-    "top_k": {
-      description: "说明: top-k 采样 · 默认值: 40",
-    },
-    "num_predict": {
-      description: "说明: 最大生成 token 数 · 默认值: 128",
-    },
-    "num_ctx": {
-      description: "说明: 上下文窗口大小 · 默认值: 2048",
-    },
-    "repeat_penalty": {
-      description: "说明: 重复惩罚系数 · 默认值: 1.1",
+    "llamacpp（可选）": {
+      description: "通过 llama-cpp-2 绑定使用 C++ llama.cpp。需要 C++ 编译器 + CMake。Feature 标志：--features llamacpp。",
     },
   }}
 />
 
-## KV 缓存
-
-A3S Power 支持 KV 缓存复用，通过前缀匹配加速多轮对话，减少重复计算。
-
-## GPU 加速
-
-- **macOS**：Metal（Apple Silicon 和 AMD GPU）
-- **Linux/Windows**：CUDA（NVIDIA GPU）
+## 对话补全
 
 ```bash
-# 查看 GPU 信息
-a3s-power info
+# 非流式
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "messages": [
+      {"role": "system", "content": "你是一个有帮助的助手。"},
+      {"role": "user", "content": "什么是 Rust？"}
+    ]
+  }'
 
-# 指定 GPU 层数
-a3s-power run llama3.2 --num-gpu 35
+# 流式（逐 token SSE）
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "messages": [{"role": "user", "content": "你好！"}],
+    "stream": true
+  }'
 ```
 
-详细文档请参阅[英文版](/docs/en/power/inference)。
+流式模式下每生成一个 token 即通过 SSE（`data: {...}`）推送，生成完成后发送 `data: [DONE]`。
+
+## 文本补全
+
+```bash
+curl http://localhost:11434/v1/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "prompt": "从前有一天",
+    "max_tokens": 50
+  }'
+```
+
+## 嵌入向量
+
+```bash
+# 单条输入
+curl http://localhost:11434/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen3-embed", "input": "你好世界"}'
+
+# 批量输入
+curl http://localhost:11434/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen3-embed", "input": ["你好世界", "再见世界"]}'
+```
+
+嵌入向量模型需以 `format=huggingface` 注册（参见[模型管理](/docs/cn/power/models)）。
+
+## 视觉 / 多模态
+
+以 `format=vision` 注册视觉模型后，在请求中传入图片：
+
+```bash
+# 通过 images 字段传入 base64 图片
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llava:7b",
+    "messages": [{"role": "user", "content": "这张图片里有什么？"}],
+    "images": ["iVBORw0KGgoAAAANSUhEUgAA..."]
+  }'
+
+# OpenAI 风格的 image_url 内容部分
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llava:7b",
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "描述这张图片"},
+        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,/9j/4AAQ..."}}
+      ]
+    }]
+  }'
+```
+
+支持的图片格式：JPEG、PNG、WebP。
+
+## 生成参数
+
+在请求体中传入：
+
+<TypeTable
+  type={{
+    temperature: { type: 'float', default: '0.8', description: '随机性（0 = 确定性）' },
+    top_p: { type: 'float', default: '0.9', description: '核采样阈值' },
+    top_k: { type: 'int', default: '40', description: 'Top-K 采样' },
+    max_tokens: { type: 'int', description: '最大生成 token 数' },
+    stop: { type: 'string[]', description: '停止序列' },
+    seed: { type: 'int', description: '随机种子（可复现）' },
+    repeat_penalty: { type: 'float', default: '1.1', description: '重复惩罚' },
+    num_ctx: { type: 'int', default: '2048', description: '上下文窗口大小' },
+    num_gpu: { type: 'int', default: '-1', description: 'GPU 层数（-1 = 全部）' },
+    flash_attention: { type: 'bool', default: 'false', description: '启用 Flash Attention' },
+  }}
+/>
+
+## 对话模板
+
+Power 使用 Jinja2（通过 `minijinja`）渲染对话模板。模板从 GGUF 元数据中读取，也可通过模型 manifest 的 `template_override` 字段覆盖。
+
+支持格式：ChatML、Llama 3、Mistral、Gemma、Phi 及自定义 Jinja2 模板。
+
+## KV 缓存复用
+
+当新请求与之前的请求共享前缀（相同系统提示 + 对话历史）时，复用已缓存的 KV 状态，无需重新计算。对多轮对话和重复系统提示有显著加速效果。
+
+## 思维链 / 推理模型
+
+DeepSeek-R1、QwQ 等推理模型会输出 `<think>...</think>` 块。Power 的流式解析器将思维内容与最终响应分离，分别作为独立 chunk 推送。
+
+## 自动加载
+
+当请求到达时，若目标模型尚未加载，Power 会自动加载它。若已达 `max_loaded_models` 上限，最近最少使用的模型会被先驱逐。

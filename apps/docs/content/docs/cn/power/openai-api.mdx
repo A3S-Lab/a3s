@@ -7,48 +7,149 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # OpenAI API
 
-A3S Power 提供 5 个 OpenAI 兼容端点，可与任何 OpenAI SDK 配合使用。
+A3S Power 提供完整的 OpenAI 兼容 API。将任意 OpenAI SDK 的 `base_url` 指向 Power 服务器即可开箱即用。
 
 ## 端点列表
 
 <TypeTable
   type={{
-    "/v1/chat/completions": {
-      description: "方法: POST · 说明: 对话补全（流式/非流式）",
-    },
-    "/v1/completions": {
-      description: "方法: POST · 说明: 文本补全",
-    },
-    "/v1/embeddings": {
-      description: "方法: POST · 说明: 生成嵌入向量",
-    },
-    "/v1/models": {
-      description: "方法: GET · 说明: 列出可用模型",
-    },
-    "/v1/models/:id": {
-      description: "方法: GET · 说明: 查看模型详情",
-    },
+    "POST /v1/chat/completions": { description: "对话补全——流式和非流式，支持视觉、工具调用、思维链" },
+    "POST /v1/completions": { description: "文本补全——流式和非流式" },
+    "POST /v1/embeddings": { description: "生成嵌入向量（需要 huggingface 格式模型）" },
+    "GET /v1/models": { description: "列出所有已注册模型" },
+    "GET /v1/models/:name": { description: "查看指定模型" },
+    "POST /v1/models": { description: "注册本地模型（name、path、format）" },
+    "DELETE /v1/models/:name": { description: "卸载并注销模型" },
+    "POST /v1/models/pull": { description: "从 HuggingFace Hub 拉取模型（SSE 进度流）" },
+    "GET /v1/models/pull/:name/status": { description: "查询模型拉取进度（持久化，重启后可查）" },
+    "GET /v1/attestation": { description: "TEE 证明报告，支持可选 nonce 和模型绑定" },
+    "GET /health": { description: "健康检查，含 TEE 状态、版本、运行时长" },
+    "GET /metrics": { description: "Prometheus 指标" },
   }}
 />
 
-## 使用示例
+## 对话补全
+
+`POST /v1/chat/completions`
+
+```bash
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "messages": [
+      {"role": "system", "content": "你是一个有帮助的助手。"},
+      {"role": "user", "content": "你好！"}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 256,
+    "stream": false
+  }'
+```
+
+### Python SDK
 
 ```python
 from openai import OpenAI
 
-client = OpenAI(
-    base_url="http://localhost:11434/v1",
-    api_key="unused"  # A3S Power 不需要 API key
-)
+client = OpenAI(base_url="http://localhost:11434/v1", api_key="unused")
 
-# 流式对话
+# 非流式
+response = client.chat.completions.create(
+    model="llama3.2:3b",
+    messages=[{"role": "user", "content": "解释一下 Rust"}],
+    temperature=0.7,
+    max_tokens=512
+)
+print(response.choices[0].message.content)
+
+# 流式
 stream = client.chat.completions.create(
-    model="llama3.2",
-    messages=[{"role": "user", "content": "你好！"}],
+    model="llama3.2:3b",
+    messages=[{"role": "user", "content": "从 1 数到 5"}],
     stream=True
 )
 for chunk in stream:
-    print(chunk.choices[0].delta.content, end="")
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
 ```
 
-详细文档请参阅[英文版](/docs/en/power/openai-api)。
+### TypeScript SDK
+
+```typescript
+import OpenAI from "openai";
+
+const client = new OpenAI({ baseURL: "http://localhost:11434/v1", apiKey: "unused" });
+
+const response = await client.chat.completions.create({
+  model: "llama3.2:3b",
+  messages: [{ role: "user", content: "你好！" }],
+});
+console.log(response.choices[0].message.content);
+```
+
+## 文本补全
+
+`POST /v1/completions`
+
+```bash
+curl http://localhost:11434/v1/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "llama3.2:3b", "prompt": "从前有一天", "max_tokens": 100}'
+```
+
+## 嵌入向量
+
+`POST /v1/embeddings`
+
+```bash
+curl http://localhost:11434/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen3-embed", "input": ["你好", "世界"]}'
+```
+
+## 模型管理
+
+```bash
+# 列出模型
+curl http://localhost:11434/v1/models
+
+# 注册本地模型
+curl -X POST http://localhost:11434/v1/models \
+  -H "Content-Type: application/json" \
+  -d '{"name": "llama3.2:3b", "path": "/models/llama3.2-q4.gguf"}'
+
+# 删除模型
+curl -X DELETE http://localhost:11434/v1/models/llama3.2:3b
+```
+
+## 从 HuggingFace Hub 拉取
+
+`POST /v1/models/pull` — 流式返回 SSE 进度事件。
+
+```bash
+curl -N http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"name": "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M"}'
+```
+
+查询拉取状态（重启后仍可查）：
+
+```bash
+curl http://localhost:11434/v1/models/pull/bartowski%2FLlama-3.2-3B-Instruct-GGUF:Q4_K_M/status
+```
+
+## 远程证明
+
+`GET /v1/attestation` — 返回 TEE 证明报告。未启用 TEE 时返回 `503`。
+
+```bash
+# 基础证明
+curl http://localhost:11434/v1/attestation
+
+# 带 nonce（防重放攻击）
+curl "http://localhost:11434/v1/attestation?nonce=deadbeef01234567"
+
+# 绑定指定模型的 SHA-256
+curl "http://localhost:11434/v1/attestation?model=llama3.2:3b"
+```

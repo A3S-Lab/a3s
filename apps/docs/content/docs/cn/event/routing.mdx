@@ -1,10 +1,166 @@
 ---
 title: 事件路由
-description: Broker/Trigger 路由和事件 Sink
+description: Knative 风格的 Broker/Trigger 模式，用于事件过滤和投递
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 事件路由
 
-`Broker` 和 `Trigger` 提供 Knative 风格的事件路由，`EventSink` 支持 `TopicSink`、`InProcessSink` 和 `LogSink` 投递目标（需要 `routing` 特性）。
+需要启用 `routing` feature（默认已启用）。
 
-详细文档请参阅[英文版](/docs/en/event/routing)。
+A3S Event 内置 Knative 风格的 Broker/Trigger 模式，用于声明式事件路由。定义带过滤器的 Trigger，Broker 会自动将匹配的事件路由到对应的 Sink。
+
+## 概念
+
+- **Broker** — 接收事件并与已注册的 Trigger 进行匹配
+- **Trigger** — 过滤器与 Sink 的组合。事件匹配过滤器后投递到 Sink
+- **EventSink** — 投递目标（topic、进程内处理器、日志等）
+
+## 创建 Broker
+
+```rust
+use a3s_event::broker::Broker;
+
+let mut broker = Broker::new();
+```
+
+## 定义 Trigger
+
+```rust
+use a3s_event::broker::{Trigger, TriggerFilter};
+use a3s_event::sink::{LogSink, InProcessSink, TopicSink};
+use std::sync::Arc;
+
+// 将所有订单事件路由到日志 Sink
+broker.add_trigger(Trigger::new(
+    "log-orders",
+    TriggerFilter::by_category("orders"),
+    Arc::new(LogSink::default()),
+));
+
+// 将特定事件类型路由到进程内处理器
+broker.add_trigger(Trigger::new(
+    "process-payments",
+    TriggerFilter::by_event_type("payment.completed"),
+    Arc::new(InProcessSink::new("payment-handler", |event| async move {
+        println!("Payment: {}", event.payload);
+        Ok(())
+    })),
+));
+```
+
+## Trigger 过滤器
+
+```rust
+pub struct TriggerFilter {
+    pub category: Option<String>,
+    pub event_type: Option<String>,
+    pub subject_prefix: Option<String>,
+}
+```
+
+<TypeTable
+  type={{
+    "TriggerFilter::by_category('orders')": {
+      description: "匹配 category == 'orders' 的事件",
+    },
+    "TriggerFilter::by_event_type('order.created')": {
+      description: "匹配 event_type == 'order.created' 的事件",
+    },
+    "TriggerFilter::by_subject_prefix('events.market.')": {
+      description: "匹配 subject 以指定前缀开头的事件",
+    },
+  }}
+/>
+
+## Event Sink
+
+### 内置 Sink
+
+<TypeTable
+  type={{
+    "TopicSink": {
+      description: "将事件重新发布到 EventProvider topic（扇出）",
+    },
+    "InProcessSink": {
+      description: "调用异步处理函数",
+    },
+    "LogSink": {
+      description: "通过 tracing 记录事件日志（调试用）",
+    },
+    "CollectorSink": {
+      description: "在内存中收集事件（测试用）",
+    },
+    "FailingSink": {
+      description: "始终投递失败（测试错误路径用）",
+    },
+  }}
+/>
+
+### 自定义 Sink
+
+```rust
+use a3s_event::sink::EventSink;
+use a3s_event::Event;
+use async_trait::async_trait;
+
+struct WebhookSink {
+    url: String,
+    name: String,
+}
+
+#[async_trait]
+impl EventSink for WebhookSink {
+    async fn deliver(&self, event: &Event) -> Result<()> {
+        reqwest::Client::new()
+            .post(&self.url)
+            .json(event)
+            .send()
+            .await?;
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        &self.name
+    }
+}
+```
+
+## 路由事件
+
+```rust
+let event = Event::new(
+    "events.orders.created", "orders",
+    "New order", "order-service",
+    serde_json::json!({"order_id": "ORD-001"}),
+);
+
+// 通过 Broker 路由 — 投递到所有匹配的 Trigger
+broker.route(&event).await?;
+```
+
+## 与 EventBus 集成
+
+在 `EventBus` 上设置 Broker 后，发布的事件会自动路由：
+
+```rust
+let mut bus = EventBus::new(MemoryProvider::default());
+bus.set_broker(broker);
+
+// 此次发布也会经过 Broker 的 Trigger 路由
+bus.publish("orders", "created", "New order", "src", payload).await?;
+```
+
+## SinkDlqHandler
+
+通过 `EventSink` 转发死信的 DLQ 处理器：
+
+```rust
+use a3s_event::dlq::SinkDlqHandler;
+use a3s_event::sink::TopicSink;
+
+let dlq_sink = TopicSink::new("dlq-topic", provider.clone());
+let dlq = SinkDlqHandler::new(Arc::new(dlq_sink), 100);
+bus.set_dlq_handler(Arc::new(dlq));
+```

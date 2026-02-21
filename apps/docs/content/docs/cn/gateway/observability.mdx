@@ -1,10 +1,143 @@
 ---
 title: 可观测性
-description: Prometheus 指标和请求追踪
+description: Prometheus 指标、结构化日志、分布式追踪与控制台 API
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 可观测性
 
-A3S Gateway 导出 Prometheus 格式的指标，包括请求计数、延迟分布、后端健康状态和自动扩缩容状态。
+A3S Gateway 内置 Prometheus 指标、结构化访问日志、分布式追踪和控制台 API。
 
-详细文档请参阅[英文版](/docs/en/gateway/observability)。
+## 控制台 API
+
+<TypeTable
+  type={{
+    "GET /api/gateway/health": {
+      description: "Health status (JSON)",
+    },
+    "GET /api/gateway/metrics": {
+      description: "Prometheus metrics (text)",
+    },
+    "GET /api/gateway/config": {
+      description: "Current configuration (JSON)",
+    },
+    "GET /api/gateway/routes": {
+      description: "Active routes (JSON)",
+    },
+    "GET /api/gateway/services": {
+      description: "Active services and backends (JSON)",
+    },
+    "GET /api/gateway/version": {
+      description: "Build version info (JSON)",
+    },
+  }}
+/>
+
+### 健康状态响应
+
+```json
+{
+  "state": "Running",
+  "uptime_secs": 3600,
+  "active_connections": 42,
+  "total_requests": 12345
+}
+```
+
+## Prometheus 指标
+
+```text
+gateway_requests_total 12345
+gateway_responses_total{status_class="2xx"} 11000
+gateway_responses_total{status_class="3xx"} 500
+gateway_responses_total{status_class="4xx"} 700
+gateway_responses_total{status_class="5xx"} 145
+gateway_response_bytes_total 987654321
+gateway_active_connections 42
+gateway_router_requests{router="api"} 8000
+gateway_router_requests{router="web"} 4345
+gateway_backend_requests{backend="http://127.0.0.1:8001"} 6000
+gateway_backend_requests{backend="http://127.0.0.1:8002"} 6345
+```
+
+### Grafana 查询
+
+```text
+# Request rate
+rate(gateway_requests_total[5m])
+
+# Error rate (4xx + 5xx)
+rate(gateway_responses_total{status_class=~"4xx|5xx"}[5m])
+
+# Success rate %
+rate(gateway_responses_total{status_class="2xx"}[5m])
+  / rate(gateway_requests_total[5m]) * 100
+
+# Active connections
+gateway_active_connections
+
+# Traffic by router
+rate(gateway_router_requests[5m])
+
+# Throughput (bytes/sec)
+rate(gateway_response_bytes_total[5m])
+```
+
+## 访问日志
+
+通过 `tracing` crate 输出结构化 JSON 访问日志：
+
+```json
+{
+  "timestamp": "2025-01-15T10:30:00Z",
+  "client_ip": "203.0.113.42",
+  "method": "POST",
+  "path": "/api/v1/chat",
+  "status": 200,
+  "request_duration_ms": 145,
+  "bytes_sent": 2048,
+  "router": "api",
+  "service": "api-backend",
+  "backend": "http://127.0.0.1:8001"
+}
+```
+
+### 日志级别
+
+```bash
+# Via CLI
+a3s-gateway --config gateway.hcl --log-level debug
+
+# Via environment
+RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.hcl
+```
+
+<TypeTable
+  type={{
+    "error": {
+      description: "Failures, backend errors, TLS errors",
+    },
+    "warn": {
+      description: "Rate limit hits, unhealthy backends, config issues",
+    },
+    "info": {
+      description: "Startup, shutdown, reload, access logs",
+    },
+    "debug": {
+      description: "Routing decisions, middleware execution",
+    },
+    "trace": {
+      description: "Raw bytes, header details, connection lifecycle",
+    },
+  }}
+/>
+
+## 分布式追踪
+
+A3S Gateway 在服务间传播追踪上下文：
+
+- **W3C Trace Context**：`traceparent` / `tracestate` 请求头
+- **B3/Zipkin**：`X-B3-TraceId` / `X-B3-SpanId` 请求头
+
+Span 会在请求生命周期、后端连接和健康检查探测时创建。

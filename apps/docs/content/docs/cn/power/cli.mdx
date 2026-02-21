@@ -1,50 +1,103 @@
 ---
 title: CLI 参考
-description: A3S Power 命令行工具完整参考
+description: a3s-power 命令行工具完整参考
 ---
-
-import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # CLI 参考
 
-## 命令列表
+## serve
 
-<TypeTable
-  type={{
-    "pull": {
-      description: "拉取模型",
-    },
-    "run": {
-      description: "运行模型（交互式或单次）",
-    },
-    "list": {
-      description: "列出本地模型",
-    },
-    "show": {
-      description: "查看模型详情",
-    },
-    "delete": {
-      description: "删除模型",
-    },
-    "serve": {
-      description: "启动 HTTP 服务器",
-    },
-    "ps": {
-      description: "列出运行中的模型",
-    },
-    "stop": {
-      description: "停止运行中的模型",
-    },
-    "push": {
-      description: "推送模型到注册表",
-    },
-    "cp": {
-      description: "复制/别名模型",
-    },
-    "create": {
-      description: "从 Modelfile 创建模型",
-    },
-  }}
-/>
+启动推理服务器。
 
-详细文档请参阅[英文版](/docs/en/power/cli)。
+```bash
+a3s-power serve [OPTIONS]
+
+选项：
+  --host <HOST>    绑定地址（默认：127.0.0.1）
+  --port <PORT>    端口（默认：11434）
+  --config <PATH>  配置文件路径（默认：~/.a3s/power/config.hcl）
+```
+
+```bash
+# 默认启动
+a3s-power serve
+
+# 自定义地址和端口
+a3s-power serve --host 0.0.0.0 --port 8080
+
+# 启用 TEE 模式
+A3S_POWER_TEE_MODE=1 a3s-power serve
+
+# 模拟 TEE（开发用）
+A3S_TEE_SIMULATE=1 a3s-power serve
+```
+
+## a3s-power-verify
+
+验证运行中的 Power 服务器的 TEE 证明报告。
+
+```bash
+a3s-power-verify [OPTIONS] <SERVER_URL>
+
+选项：
+  --nonce <HEX>        绑定到 report_data 的客户端 nonce
+  --model <NAME>       预期模型名称（验证模型哈希绑定）
+  --measurement <HEX>  预期 TEE 度量值（用于验证）
+```
+
+```bash
+# 基础验证
+a3s-power-verify http://localhost:11434
+
+# 带 nonce
+a3s-power-verify --nonce deadbeef01234567 http://localhost:11434
+
+# 验证模型绑定
+a3s-power-verify --model llama3.2:3b http://localhost:11434
+
+# 验证度量值（硬件指纹）
+a3s-power-verify --measurement abc123... http://localhost:11434
+```
+
+verify CLI 调用 `GET /v1/attestation`，然后依次执行：
+- `verify_report()` — 验证报告结构
+- `verify_nonce_binding()` — 确认 nonce 在 `report_data` 中
+- `verify_model_hash_binding()` — 确认模型 SHA-256 在 `report_data` 中
+- `verify_measurement()` — 将 TEE 度量值与预期值比对
+
+## Feature 标志
+
+| 标志 | 默认 | 说明 |
+|------|------|------|
+| `mistralrs` | ✅ | 纯 Rust 推理（candle），无需 C++。 |
+| `llamacpp` | ❌ | llama.cpp 推理，需要 C++ + CMake。 |
+| `hf` | ❌ | HuggingFace Hub 模型拉取（`POST /v1/models/pull`）。 |
+| `tls` | ❌ | RA-TLS 传输，含证明 X.509 扩展。 |
+| `vsock` | ❌ | MicroVM 宿主机通信的 AF_VSOCK 传输（仅 Linux）。 |
+
+```bash
+# 默认（仅 mistralrs）
+cargo build --release
+
+# 含 HF 拉取支持
+cargo build --release --features hf
+
+# 使用 llama.cpp 替代 mistralrs
+cargo build --release --no-default-features --features llamacpp
+
+# 全部 feature
+cargo build --release --features mistralrs,hf,tls,vsock
+```
+
+## 环境变量
+
+| 变量 | 说明 |
+|------|------|
+| `A3S_POWER_HOME` | 根目录（默认：`~/.a3s/power`） |
+| `A3S_POWER_HOST` | 服务器绑定地址 |
+| `A3S_POWER_PORT` | 服务器端口 |
+| `A3S_POWER_TEE_MODE` | 启用 TEE 模式（`1` 或 `true`） |
+| `A3S_POWER_REDACT_LOGS` | 启用日志脱敏（`1` 或 `true`） |
+| `A3S_TEE_SIMULATE` | 模拟 TEE 环境（`1`） |
+| `HF_TOKEN` | 私有模型拉取的 HuggingFace Token |
+| `RUST_LOG` | 日志级别（如 `info`、`debug`） |

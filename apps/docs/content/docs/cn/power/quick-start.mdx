@@ -8,103 +8,110 @@ description: 几分钟内启动本地模型推理
 ## 安装
 
 ```bash
-# 通过 Homebrew
-brew install a3s-lab/tap/a3s-power
+# Homebrew（macOS）
+brew tap a3s-lab/tap https://github.com/A3S-Lab/homebrew-tap
+brew install a3s-power
 
-# 或从源码构建
+# Cargo（纯 Rust，无需 C++）
 cargo install a3s-power
-```
 
-## 拉取模型
-
-```bash
-# 从 Ollama 注册表拉取
-a3s-power pull llama3.2
-
-# 拉取指定大小
-a3s-power pull qwen2.5:7b
-
-# 从 HuggingFace 拉取（GGUF）
-a3s-power pull hf.co/bartowski/Llama-3.2-3B-Instruct-GGUF
-```
-
-## 交互式对话
-
-```bash
-# 启动交互式对话
-a3s-power run llama3.2
-
-# 单次提问
-a3s-power run llama3.2 "用三句话解释快速排序"
-
-# 带参数
-a3s-power run llama3.2 --temperature 0.7 --num-predict 256 "写一首俳句"
+# 从源码构建
+git clone https://github.com/A3S-Lab/Power.git && cd Power
+cargo build --release
 ```
 
 ## 启动服务器
 
 ```bash
-# 在默认端口（11434）启动
 a3s-power serve
-
-# 自定义地址和端口
-a3s-power serve --host 0.0.0.0 --port 8080
+# 监听 http://127.0.0.1:11434
 ```
 
-## 使用 API
-
-Ollama 兼容接口：
+## 从 HuggingFace Hub 拉取模型
 
 ```bash
-# 对话补全
-curl http://localhost:11434/api/chat -d '{
-  "model": "llama3.2",
-  "messages": [{"role": "user", "content": "你好！"}]
-}'
-
-# 列出模型
-curl http://localhost:11434/api/tags
+# 按量化标签拉取（自动解析文件名）
+curl -N http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"name": "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M"}'
 ```
 
-OpenAI 兼容接口（适用于任何 OpenAI SDK）：
+进度通过 SSE 流式返回：
+```
+data: {"status":"downloading","completed":209715200,"total":2147483648}
+data: {"status":"verifying"}
+data: {"status":"success","id":"bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M"}
+```
+
+## 注册本地模型
 
 ```bash
-# 对话补全
-curl http://localhost:11434/v1/chat/completions -d '{
-  "model": "llama3.2",
-  "messages": [{"role": "user", "content": "你好！"}]
-}'
+curl -X POST http://localhost:11434/v1/models \
+  -H "Content-Type: application/json" \
+  -d '{"name": "llama3.2:3b", "path": "/path/to/model.gguf"}'
 ```
+
+## 对话
+
+```bash
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "messages": [{"role": "user", "content": "你好！"}]
+  }'
+```
+
+## 使用 OpenAI SDK
 
 ```python
 from openai import OpenAI
 
 client = OpenAI(base_url="http://localhost:11434/v1", api_key="unused")
+
 response = client.chat.completions.create(
-    model="llama3.2",
-    messages=[{"role": "user", "content": "你好！"}]
+    model="llama3.2:3b",
+    messages=[{"role": "user", "content": "用一句话解释 Rust"}]
 )
 print(response.choices[0].message.content)
 ```
 
-## 模型管理
+```typescript
+import OpenAI from "openai";
+
+const client = new OpenAI({ baseURL: "http://localhost:11434/v1", apiKey: "unused" });
+const response = await client.chat.completions.create({
+  model: "llama3.2:3b",
+  messages: [{ role: "user", content: "你好！" }],
+});
+console.log(response.choices[0].message.content);
+```
+
+## 流式输出
+
+```python
+stream = client.chat.completions.create(
+    model="llama3.2:3b",
+    messages=[{"role": "user", "content": "从 1 数到 5"}],
+    stream=True
+)
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="", flush=True)
+```
+
+## 健康检查
 
 ```bash
-# 列出本地模型
-a3s-power list
+curl http://localhost:11434/health
+```
 
-# 查看模型详情
-a3s-power show llama3.2
-
-# 删除模型
-a3s-power delete llama3.2
-
-# 复制/别名
-a3s-power cp llama3.2 my-model
-
-# 列出运行中的模型
-a3s-power ps
-
-# 停止运行中的模型
-a3s-power stop llama3.2
+```json
+{
+  "status": "ok",
+  "version": "0.2.0",
+  "uptime_seconds": 42,
+  "loaded_models": 1,
+  "tee": { "enabled": false, "type": "none", "models_verified": false }
+}
 ```

@@ -1,10 +1,113 @@
 ---
 title: 加密
-description: AES-256-GCM 载荷加密和密钥轮换
+description: AES-256-GCM 载荷加密与密钥轮换
 ---
 
 # 加密
 
-`Aes256GcmEncryptor` 提供 AES-256-GCM 载荷加密，支持密钥轮换（需要 `encryption` 特性）。
+需要启用 `encryption` feature（默认已启用）。
 
-详细文档请参阅[英文版](/docs/en/event/encryption)。
+A3S Event 提供透明的 AES-256-GCM 载荷加密。事件在发布前自动加密，读取历史记录时自动解密。支持多个活跃解密密钥的密钥轮换。
+
+## 启用加密
+
+```rust
+use a3s_event::{EventBus, MemoryProvider, Aes256GcmEncryptor};
+use std::sync::Arc;
+
+let mut bus = EventBus::new(MemoryProvider::default());
+
+// AES-256 需要 32 字节密钥
+let key = b"0123456789abcdef0123456789abcdef";
+let encryptor = Aes256GcmEncryptor::new("key-v1", key);
+
+bus.set_encryptor(Arc::new(encryptor));
+```
+
+设置后，所有 `publish()` 和 `publish_event()` 调用都会自动加密载荷，`list_events()` 会自动解密。
+
+## 加密载荷格式
+
+加密事件在 `payload` 字段中使用密封信封格式：
+
+```json
+{
+  "encrypted": true,
+  "keyId": "key-v1",
+  "nonce": "base64-encoded-12-byte-nonce",
+  "ciphertext": "base64-encoded-ciphertext"
+}
+```
+
+每条消息使用唯一的随机 12 字节 nonce，确保相同载荷产生不同的密文。
+
+## 密钥轮换
+
+无需停机即可添加新密钥并完成轮换：
+
+```rust
+let mut encryptor = Aes256GcmEncryptor::new("key-v1", &old_key);
+
+// 添加新密钥
+encryptor.add_key("key-v2", &new_key);
+
+// 轮换：新发布使用 key-v2，旧消息仍可用 key-v1 解密
+encryptor.rotate_to("key-v2")?;
+```
+
+### 轮换流程
+
+1. `add_key("key-v2", &new_key)` — 注册新密钥（两个密钥均可解密）
+2. `rotate_to("key-v2")` — 新发布使用 `key-v2` 加密
+3. 使用 `key-v1` 加密的旧事件仍可读取（该密钥仍已注册）
+4. 所有旧事件过期后，可选择移除 `key-v1`
+
+## EventEncryptor Trait
+
+实现自定义加密后端：
+
+```rust
+use a3s_event::EventEncryptor;
+
+pub trait EventEncryptor: Send + Sync {
+    /// 加密 JSON 载荷，返回加密信封（JSON 格式）
+    fn encrypt(&self, payload: &serde_json::Value) -> Result<serde_json::Value>;
+
+    /// 解密加密信封，还原为原始 JSON 载荷
+    fn decrypt(&self, encrypted: &serde_json::Value) -> Result<serde_json::Value>;
+
+    /// 当前用于加密的活跃密钥 ID
+    fn active_key_id(&self) -> &str;
+}
+```
+
+## 检测加密载荷
+
+```rust
+use a3s_event::EncryptedPayload;
+
+if EncryptedPayload::is_encrypted(&event.payload) {
+    println!("此载荷已使用密钥加密：{}",
+        serde_json::from_value::<EncryptedPayload>(event.payload.clone())
+            .unwrap().key_id);
+}
+```
+
+## 处理顺序
+
+同时启用 Schema 验证和加密时：
+
+```
+发布：  载荷 → schema 验证 → 加密 → provider.publish()
+历史：  provider.history() → 解密 → 返回明文事件
+```
+
+Schema 验证始终在明文上执行，不会对加密数据进行验证。
+
+## 安全说明
+
+- **算法**：AES-256-GCM（带关联数据的认证加密）
+- **Nonce**：每条消息使用随机 12 字节 nonce（不重复使用）
+- **编码**：二进制数据使用 Base64 进行 JSON 序列化
+- **密钥存储**：密钥保存在内存中，生产环境请使用密钥管理服务存储密钥材料
+- **范围**：应用层加密。传输加密请在 provider 层配置 TLS（如 NATS TLS）

@@ -1,10 +1,186 @@
 ---
 title: Schema 验证
-description: 事件类型注册和兼容性检查
+description: 事件 Schema 注册、必填字段验证与版本兼容性检查
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Schema 验证
 
-`SchemaRegistry` 支持事件类型注册和发布时验证，确保事件结构符合预期。
+A3S Event 支持发布时的可选 Schema 验证。注册带必填字段的事件 Schema，`EventBus` 会在事件到达 provider 前验证载荷。
 
-详细文档请参阅[英文版](/docs/en/event/schema)。
+## 启用 Schema 验证
+
+```rust
+use a3s_event::{EventBus, MemoryProvider, MemorySchemaRegistry, EventSchema};
+use std::sync::Arc;
+
+let registry = MemorySchemaRegistry::new();
+
+registry.register(EventSchema {
+    event_type: "order.created".into(),
+    version: 1,
+    required_fields: vec!["order_id".into(), "total".into()],
+    description: "Order creation event".into(),
+})?;
+
+registry.register(EventSchema {
+    event_type: "order.shipped".into(),
+    version: 1,
+    required_fields: vec!["order_id".into(), "tracking_number".into()],
+    description: "Order shipped event".into(),
+})?;
+
+let bus = EventBus::with_schema_registry(MemoryProvider::default(), Arc::new(registry));
+```
+
+## 发布时验证
+
+设置 Schema registry 后，类型化事件会在发布时与已注册的 Schema 进行验证：
+
+```rust
+use a3s_event::Event;
+
+// 验证通过（包含 order_id 和 total）
+let event = Event::typed(
+    "events.orders.created", "orders",
+    "order.created", 1,
+    "New order ORD-001", "order-service",
+    serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
+);
+bus.publish_event(&event).await?;
+
+// 验证失败（缺少 "total" 字段）
+let bad_event = Event::typed(
+    "events.orders.created", "orders",
+    "order.created", 1,
+    "New order ORD-002", "order-service",
+    serde_json::json!({ "order_id": "ORD-002" }),
+);
+assert!(bus.publish_event(&bad_event).await.is_err());
+```
+
+通过 `Event::new()` 创建的事件 `event_type` 为空，会跳过 Schema 验证。
+
+## Schema 演进
+
+为同一事件类型注册多个版本：
+
+```rust
+// 版本 1：原始 Schema
+registry.register(EventSchema {
+    event_type: "order.created".into(),
+    version: 1,
+    required_fields: vec!["order_id".into(), "total".into()],
+    description: "Initial schema".into(),
+})?;
+
+// 版本 2：新增 "currency" 字段
+registry.register(EventSchema {
+    event_type: "order.created".into(),
+    version: 2,
+    required_fields: vec!["order_id".into(), "total".into(), "currency".into()],
+    description: "Added currency field".into(),
+})?;
+```
+
+## 兼容性检查
+
+检查新版本 Schema 与旧版本是否兼容：
+
+```rust
+use a3s_event::Compatibility;
+
+let compat = registry.check_compatibility("order.created", 1, 2)?;
+
+match compat {
+    Compatibility::Backward => println!("新版本可以读取旧数据"),
+    Compatibility::Forward => println!("旧版本可以读取新数据"),
+    Compatibility::Full => println!("双向完全兼容"),
+    Compatibility::None => println!("破坏性变更"),
+}
+```
+
+### 兼容性规则
+
+<TypeTable
+  type={{
+    "Backward": {
+      description: "含义：新 Schema 可读取旧数据 · 示例：新增可选字段",
+    },
+    "Forward": {
+      description: "含义：旧 Schema 可读取新数据 · 示例：删除可选字段",
+    },
+    "Full": {
+      description: "含义：双向兼容 · 示例：无字段变更",
+    },
+    "None": {
+      description: "含义：破坏性变更 · 示例：新增必填字段",
+    },
+  }}
+/>
+
+## SchemaRegistry Trait
+
+实现自定义 Registry（例如以数据库为后端）：
+
+```rust
+use a3s_event::{SchemaRegistry, EventSchema, Compatibility, Event};
+use a3s_event::Result;
+
+pub trait SchemaRegistry: Send + Sync {
+    /// 为指定版本的事件类型注册 Schema
+    fn register(&self, schema: EventSchema) -> Result<()>;
+
+    /// 获取指定版本的事件类型 Schema
+    fn get(&self, event_type: &str, version: u32) -> Result<Option<EventSchema>>;
+
+    /// 获取事件类型的最新 Schema 版本号
+    fn latest_version(&self, event_type: &str) -> Result<Option<u32>>;
+
+    /// 列出所有已注册的事件类型
+    fn list_types(&self) -> Result<Vec<String>>;
+
+    /// 根据已注册的 Schema 验证事件载荷
+    fn validate(&self, event: &Event) -> Result<()>;
+
+    /// 检查两个 Schema 版本之间的兼容性
+    fn check_compatibility(
+        &self, event_type: &str, old_version: u32, new_version: u32,
+    ) -> Result<Compatibility>;
+}
+```
+
+## EventSchema 字段
+
+<TypeTable
+  type={{
+    event_type: { type: 'String', required: true, description: '事件类型标识符（如 `order.created`）' },
+    version: { type: 'u32', required: true, description: 'Schema 版本号' },
+    required_fields: { type: 'Vec<String>', required: true, description: '载荷中必须存在的字段' },
+    description: { type: 'String', required: true, description: '此 Schema 版本的描述' },
+  }}
+/>
+
+## 查询 Registry
+
+```rust
+// 获取指定 Schema
+let schema = registry.get("order.created", 1)?;
+
+// 获取最新版本号
+let latest = registry.latest_version("order.created")?;
+
+// 列出所有已注册的事件类型
+let types = registry.list_types()?;
+```
+
+## 验证顺序
+
+同时启用 Schema 验证和加密时：
+
+1. Schema 验证（在明文载荷上执行）
+2. 加密（载荷变为密文）
+3. 发布到 provider
+
+这确保 Schema 始终验证真实数据，而非加密后的密文。

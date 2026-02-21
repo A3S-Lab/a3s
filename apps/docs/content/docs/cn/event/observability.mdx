@@ -1,10 +1,170 @@
 ---
 title: 可观测性
-description: 无锁指标和健康检查
+description: 无锁指标、tracing span 和健康检查
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 可观测性
 
-`EventMetrics` 提供无锁原子计数器，追踪发布数、订阅数和错误数。`health()` 方法检查提供商连接状态。
+A3S Event 提供三层可观测性：用于仪表盘的无锁原子指标、用于结构化日志的 `tracing` span，以及用于就绪探针的健康检查 API。
 
-详细文档请参阅[英文版](/docs/en/event/observability)。
+## 指标
+
+`EventMetrics` 使用无锁原子计数器，实现零竞争的指标采集。
+
+### 读取指标
+
+```rust
+let metrics = bus.metrics();
+let snapshot = metrics.snapshot();
+
+println!("Published: {}", snapshot.publish_count);
+println!("Publish errors: {}", snapshot.publish_errors);
+println!("Subscribed: {}", snapshot.subscribe_count);
+println!("Unsubscribed: {}", snapshot.unsubscribe_count);
+println!("Dead lettered: {}", snapshot.dlq_count);
+println!("Validation errors: {}", snapshot.validation_errors);
+println!("Encrypted: {}", snapshot.encrypt_count);
+println!("Decrypted: {}", snapshot.decrypt_count);
+println!("Avg latency: {}µs", snapshot.avg_publish_latency_us);
+println!("Max latency: {}µs", snapshot.max_publish_latency_us);
+```
+
+### MetricsSnapshot 字段
+
+<TypeTable
+  type={{
+    publish_count: { type: 'u64', description: 'Total events published successfully' },
+    publish_errors: { type: 'u64', description: 'Total publish failures' },
+    subscribe_count: { type: 'u64', description: 'Total subscriptions created' },
+    unsubscribe_count: { type: 'u64', description: 'Total subscriptions removed' },
+    dlq_count: { type: 'u64', description: 'Events sent to dead letter queue' },
+    validation_errors: { type: 'u64', description: 'Schema validation failures' },
+    encrypt_count: { type: 'u64', description: 'Encryption operations' },
+    decrypt_count: { type: 'u64', description: 'Decryption operations' },
+    avg_publish_latency_us: { type: 'u64', description: 'Average publish latency in microseconds' },
+    max_publish_latency_us: { type: 'u64', description: 'Maximum single-publish latency in microseconds' },
+  }}
+/>
+
+### JSON 序列化
+
+`MetricsSnapshot` 以 camelCase 字段名序列化，便于仪表盘消费：
+
+```rust
+let snapshot = bus.metrics().snapshot();
+let json = serde_json::to_string_pretty(&snapshot)?;
+```
+
+```json
+{
+  "publishCount": 1042,
+  "publishErrors": 3,
+  "subscribeCount": 5,
+  "unsubscribeCount": 1,
+  "dlqCount": 2,
+  "validationErrors": 1,
+  "encryptCount": 1042,
+  "decryptCount": 500,
+  "avgPublishLatencyUs": 146,
+  "maxPublishLatencyUs": 8700
+}
+```
+
+### 重置指标
+
+```rust
+bus.metrics().reset();
+```
+
+将所有计数器清零。适用于周期性抓取时获取增量值。
+
+### 实现细节
+
+- 所有计数器使用 `AtomicU64` 配合 `Ordering::Relaxed`，开销极低
+- 最大延迟使用无锁 CAS 循环（compare-and-swap）
+- 发布延迟端到端测量（验证 + 加密 + provider 发布）
+- 平均延迟由累计延迟 / 发布次数计算得出
+
+## Tracing Span
+
+A3S Event 在关键操作上发出结构化 `tracing` span：
+
+```rust
+use tracing_subscriber;
+
+// 启用 tracing 输出
+tracing_subscriber::init();
+```
+
+### Span 事件
+
+<TypeTable
+  type={{
+    "Publish": {
+      description: "Span: event.publish · Fields: event_id, subject, category, provider",
+    },
+    "Subscribe": {
+      description: "Span: event.subscribe · Fields: subscriber, subjects, durable, provider",
+    },
+    "Unsubscribe": {
+      description: "Span: event.unsubscribe · Fields: consumer, error (on failure)",
+    },
+  }}
+/>
+
+使用 `tracing-subscriber` 的示例输出：
+
+```
+INFO event.publish{event_id="evt-abc" subject="events.orders.created" category="orders" provider="memory"}: a3s_event: publishing event
+INFO Subscription updated subscriber="order-processor" subjects=["events.orders.>"] durable=true
+```
+
+## 健康检查
+
+```rust
+let is_healthy = bus.health().await?;
+```
+
+<TypeTable
+  type={{
+    "MemoryProvider": {
+      description: "始终返回 true",
+    },
+    "NatsProvider": {
+      description: "检查 NATS 连接和流状态",
+    },
+  }}
+/>
+
+用于 Kubernetes 就绪探针或负载均衡器健康检查：
+
+```rust
+async fn health_handler(bus: &EventBus) -> StatusCode {
+    match bus.health().await {
+        Ok(true) => StatusCode::OK,
+        _ => StatusCode::SERVICE_UNAVAILABLE,
+    }
+}
+```
+
+## 综合使用
+
+```rust
+// 1. tracing 结构化日志
+tracing_subscriber::init();
+
+// 2. 带指标的 EventBus
+let bus = EventBus::new(provider);
+
+// 3. 暴露指标端点
+async fn metrics_handler(bus: &EventBus) -> String {
+    serde_json::to_string(&bus.metrics().snapshot()).unwrap()
+}
+
+// 4. 暴露健康检查端点
+async fn health_handler(bus: &EventBus) -> bool {
+    bus.health().await.unwrap_or(false)
+}
+```

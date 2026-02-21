@@ -1,48 +1,130 @@
 ---
 title: 配置
-description: A3S Power 配置文件和环境变量
+description: HCL 配置文件和环境变量
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 配置
 
-A3S Power 使用 TOML 配置文件，兼容 Ollama 环境变量。
+A3S Power 使用 HCL（HashiCorp 配置语言）作为配置格式。
 
-## 配置文件
+默认路径：`~/.a3s/power/config.hcl`
 
-默认路径：`~/.a3s/power/config.toml`
+## 最小配置
 
-```toml
-[server]
+```hcl
 host = "127.0.0.1"
 port = 11434
-
-[model]
+max_loaded_models = 1
 keep_alive = "5m"
-max_loaded  = 3
-
-[gpu]
-auto_detect = true
 ```
+
+## 完整配置参考
+
+```hcl
+# 服务器
+host             = "127.0.0.1"
+port             = 11434
+max_loaded_models = 1
+keep_alive       = "5m"      # "0" = 立即卸载，"-1" = 永不卸载
+num_thread       = 8
+flash_attention  = false
+num_parallel     = 1         # 并发推理槽位
+use_mlock        = false
+
+# GPU
+gpu {
+  gpu_layers   = -1          # -1 = 全部层卸载到 GPU，0 = 仅 CPU
+  main_gpu     = 0
+  tensor_split = []          # 例如 [0.7, 0.3] 表示双 GPU 7/3 分配
+}
+
+# TEE 隐私保护
+tee_mode                = false
+redact_logs             = false
+suppress_token_metrics  = false
+model_hashes            = {}   # {"model:tag" = "sha256:abc..."}
+
+# 加密模型加载
+model_key_source  = null       # {file = "/path/key.hex"} 或 {env = "MY_KEY"}
+key_provider      = "static"   # "static" 或 "rotating"
+in_memory_decrypt = false      # 在 mlock 锁定的内存中解密，不写入磁盘
+
+# 限流
+rate_limit_rps          = 0    # 0 = 不限制
+max_concurrent_requests = 0    # 0 = 不限制
+
+# 传输
+tls_port   = null              # TLS 端口（需要 tls feature）
+ra_tls     = false             # 在 TLS 证书中嵌入证明报告
+vsock_port = null              # Vsock 端口（仅 Linux，需要 vsock feature）
+```
+
+## 配置项说明
+
+<TypeTable
+  type={{
+    host: { type: 'string', default: '"127.0.0.1"', description: 'HTTP 服务器绑定地址' },
+    port: { type: 'int', default: '11434', description: 'HTTP 服务器端口' },
+    max_loaded_models: { type: 'int', default: '1', description: '最大并发加载模型数' },
+    keep_alive: { type: 'string', default: '"5m"', description: '空闲模型自动卸载时间。"0" = 立即，"-1" = 永不' },
+    use_mlock: { type: 'bool', default: 'false', description: '将模型权重锁定在内存中（防止换页）' },
+    num_thread: { type: 'int', default: '自动', description: '推理线程数' },
+    flash_attention: { type: 'bool', default: 'false', description: '启用 Flash Attention' },
+    num_parallel: { type: 'int', default: '1', description: '并发推理槽位数' },
+    tee_mode: { type: 'bool', default: 'false', description: '启用 TEE：证明、完整性检查、日志脱敏' },
+    redact_logs: { type: 'bool', default: 'false', description: '从所有日志中脱敏推理内容' },
+    model_hashes: { type: 'map', default: '{}', description: '模型完整性验证的预期 SHA-256 哈希值' },
+    suppress_token_metrics: { type: 'bool', default: 'false', description: '将 token 计数四舍五入到最近的 10（防止旁路攻击）' },
+    model_key_source: { type: 'object', default: 'null', description: '.enc 加密模型文件的解密密钥' },
+    key_provider: { type: 'string', default: '"static"', description: '"static" 或 "rotating"' },
+    in_memory_decrypt: { type: 'bool', default: 'false', description: '仅在 mlock 锁定的内存中解密 .enc 模型' },
+    rate_limit_rps: { type: 'int', default: '0', description: '/v1/* 最大请求速率（0 = 不限制）' },
+    max_concurrent_requests: { type: 'int', default: '0', description: '最大并发请求数（0 = 不限制）' },
+    tls_port: { type: 'int', default: 'null', description: 'TLS 服务器端口（需要 tls feature）' },
+    ra_tls: { type: 'bool', default: 'false', description: '在 TLS 证书中嵌入 TEE 证明（需要 tls_port + tee_mode）' },
+    vsock_port: { type: 'int', default: 'null', description: 'MicroVM 宿主机通信的 Vsock 端口（vsock feature，仅 Linux）' },
+  }}
+/>
 
 ## 环境变量
 
 <TypeTable
   type={{
-    "A3S_POWER_HOME": {
-      description: "覆盖基础目录",
-    },
-    "OLLAMA_HOST": {
-      description: "服务器监听地址（兼容 Ollama）",
-    },
-    "OLLAMA_MODELS": {
-      description: "模型存储路径（兼容 Ollama）",
-    },
-    "OLLAMA_KEEP_ALIVE": {
-      description: "模型保持加载时间（兼容 Ollama）",
-    },
+    A3S_POWER_HOME: { description: '根目录（默认：~/.a3s/power）' },
+    A3S_POWER_HOST: { description: '服务器绑定地址' },
+    A3S_POWER_PORT: { description: '服务器端口' },
+    A3S_POWER_MAX_MODELS: { description: '最大并发加载模型数' },
+    A3S_POWER_KEEP_ALIVE: { description: '默认 keep-alive 时长' },
+    A3S_POWER_GPU_LAYERS: { description: 'GPU 层卸载数量' },
+    A3S_POWER_TEE_MODE: { description: '启用 TEE 模式（"1" 或 "true"）' },
+    A3S_POWER_REDACT_LOGS: { description: '启用日志脱敏（"1" 或 "true"）' },
+    A3S_POWER_TLS_PORT: { description: 'TLS 服务器端口（需要 tls feature）' },
+    A3S_POWER_RA_TLS: { description: '启用 RA-TLS（"1" 或 "true"）' },
+    A3S_POWER_VSOCK_PORT: { description: 'Vsock 端口（vsock feature，仅 Linux）' },
+    A3S_TEE_SIMULATE: { description: '模拟 TEE 环境用于开发（"1"）' },
+    HF_TOKEN: { description: '私有/受限模型拉取的 HuggingFace Token' },
   }}
 />
 
-详细文档请参阅[英文版](/docs/en/power/configuration)。
+环境变量优先级高于配置文件。
+
+## TEE 配置示例
+
+```hcl
+tee_mode    = true
+redact_logs = true
+
+model_hashes = {
+  "llama3.2:3b" = "sha256:a1b2c3d4e5f6..."
+}
+
+# 可选：加密模型权重
+model_key_source = { env = "MODEL_DECRYPT_KEY" }
+in_memory_decrypt = true
+
+# 可选：RA-TLS
+tls_port = 11443
+ra_tls   = true
+```

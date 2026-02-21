@@ -1,12 +1,197 @@
 ---
 title: 通道适配器
-description: 7 个消息平台集成
+description: 7 个消息平台适配器，支持 Webhook 鉴权与消息格式统一化
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 通道适配器
 
-SafeClaw 支持 7 个消息平台：Telegram、Slack、Discord、飞书、钉钉、企业微信、WebChat。
+SafeClaw 通过统一的适配器接口支持 7 个消息平台。每个适配器将平台特定的 Webhook 载荷规范化为通用消息格式，并负责处理鉴权。
 
-Webhook 接收地址：`/api/v1/gateway/webhook/:channel`
+## 通道适配器 Trait
 
-详细文档请参阅[英文版](/docs/en/safeclaw/channels)。
+```rust
+pub trait ChannelAdapter: Send + Sync {
+    async fn send_message(&self, message: OutboundMessage) -> Result<String>;
+    async fn receive_message(&self, payload: &[u8]) -> Result<InboundMessage>;
+}
+```
+
+## 消息类型
+
+```rust
+pub struct InboundMessage {
+    pub channel: String,
+    pub user_id: String,
+    pub chat_id: String,
+    pub content: String,
+    pub attachments: Vec<MessageAttachment>,
+    pub timestamp: i64,
+}
+
+pub struct OutboundMessage {
+    pub channel: String,
+    pub chat_id: String,
+    pub content: String,
+}
+
+pub struct MessageAttachment {
+    pub attachment_type: String,
+    pub url: String,
+    pub size: usize,
+}
+```
+
+## 支持的平台
+
+<TypeTable
+  type={{
+    "Telegram": {
+      description: "Webhook Format: JSON (Bot API) · Auth Method: Token verification · Features: Text, commands, inline queries",
+    },
+    "Slack": {
+      description: "Webhook Format: JSON (Events API) · Auth Method: HMAC-SHA256 signing · Features: Messages, slash commands, interactions",
+    },
+    "Discord": {
+      description: "Webhook Format: JSON (Interactions) · Auth Method: Ed25519 signature · Features: Messages, slash commands",
+    },
+    "Feishu": {
+      description: "Webhook Format: JSON (Event Subscription) · Auth Method: Token + signature · Features: Messages, card actions",
+    },
+    "DingTalk": {
+      description: "Webhook Format: JSON (Robot) · Auth Method: HMAC-SHA256 · Features: Text, markdown, action cards",
+    },
+    "WeCom": {
+      description: "Webhook Format: XML/JSON (Callback) · Auth Method: Token + signature · Features: Text, events",
+    },
+    "WebChat": {
+      description: "Webhook Format: JSON (custom) · Auth Method: API key · Features: Generic web chat interface",
+    },
+  }}
+/>
+
+## Webhook 鉴权
+
+```rust
+pub trait ChannelAuth: Send + Sync {
+    fn verify_signature(&self, payload: &[u8], signature: &str) -> Result<bool>;
+}
+```
+
+每个平台都有独立的鉴权实现：
+
+<TypeTable
+  type={{
+    "Telegram": {
+      description: "TelegramAuth — Bot token verification",
+    },
+    "Slack": {
+      description: "SlackAuth — HMAC-SHA256 with signing secret",
+    },
+    "Discord": {
+      description: "DiscordAuth — Ed25519 public key signature",
+    },
+    "Feishu": {
+      description: "FeishuAuth — Token + event signature",
+    },
+    "DingTalk": {
+      description: "DingTalkAuth — HMAC-SHA256 with app secret",
+    },
+    "WeCom": {
+      description: "WeComAuth — Token + message signature",
+    },
+  }}
+/>
+
+鉴权失败时，系统会生成一条严重级别为 `Critical`、泄漏向量为 `LeakageVector::AuthFailure` 的审计事件。
+
+## 配置
+
+```toml
+[channels.telegram]
+bot_token = "${TELEGRAM_BOT_TOKEN}"
+
+[channels.slack]
+bot_token = "${SLACK_BOT_TOKEN}"
+signing_secret = "${SLACK_SIGNING_SECRET}"
+
+[channels.discord]
+bot_token = "${DISCORD_BOT_TOKEN}"
+public_key = "${DISCORD_PUBLIC_KEY}"
+
+[channels.feishu]
+app_id = "${FEISHU_APP_ID}"
+app_secret = "${FEISHU_APP_SECRET}"
+verification_token = "${FEISHU_VERIFICATION_TOKEN}"
+
+[channels.dingtalk]
+app_key = "${DINGTALK_APP_KEY}"
+app_secret = "${DINGTALK_APP_SECRET}"
+
+[channels.wecom]
+corp_id = "${WECOM_CORP_ID}"
+agent_id = "${WECOM_AGENT_ID}"
+secret = "${WECOM_SECRET}"
+token = "${WECOM_TOKEN}"
+encoding_aes_key = "${WECOM_ENCODING_AES_KEY}"
+
+[channels.webchat]
+api_key = "${WEBCHAT_API_KEY}"
+```
+
+## Webhook 端点
+
+所有 Webhook 均通过以下地址接收：
+
+```
+POST /api/v1/gateway/webhook/:channel
+```
+
+示例：
+- `POST /api/v1/gateway/webhook/telegram`
+- `POST /api/v1/gateway/webhook/slack`
+- `POST /api/v1/gateway/webhook/discord`
+
+## 消息流转
+
+```
+平台 Webhook
+    ↓
+Webhook 端点 (/api/v1/gateway/webhook/:channel)
+    ↓
+通道鉴权（验证签名）
+    ↓
+通道适配器（解析 → InboundMessage）
+    ↓
+隐私分类器（检测 PII）
+    ↓
+会话管理器（路由至本地或 TEE）
+    ↓
+AI Agent（处理）
+    ↓
+输出净化器（脱敏污点数据）
+    ↓
+通道适配器（OutboundMessage → 平台格式）
+    ↓
+平台 API（发送响应）
+```
+
+## A3S Gateway 集成
+
+在 A3S Gateway 后运行时，SafeClaw 会自动注册其路由：
+
+```toml
+[a3s_gateway]
+enabled = true
+service_name = "safeclaw"
+api_rule = "PathPrefix(`/safeclaw/api`)"
+ws_rule = "Path(`/safeclaw/ws`)"
+webhook_rule = "PathPrefix(`/safeclaw/webhook`)"
+middlewares = ["auth-jwt", "rate-limit"]
+entrypoints = ["websecure"]
+conversation_affinity = true
+affinity_cookie = "safeclaw_session"
+token_metering = true
+max_tokens_per_minute = 10000
+```

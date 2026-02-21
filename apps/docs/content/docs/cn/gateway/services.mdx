@@ -1,10 +1,226 @@
 ---
 title: 服务
-description: 服务配置、负载均衡和健康检查
+description: 负载均衡、健康检查、会话保持、流量镜像、故障转移与自动扩缩容
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 服务
 
-服务定义后端池，支持 4 种负载均衡策略（轮询、加权、最少连接、随机）、健康检查、故障转移和流量镜像。
+服务定义带负载均衡、健康检查、会话保持、流量镜像、故障转移以及可选 Knative 风格自动扩缩容的后端池。
 
-详细文档请参阅[英文版](/docs/en/gateway/services)。
+## 负载均衡策略
+
+<TypeTable
+  type={{
+    "round-robin": {
+      description: "Cycles through healthy backends sequentially",
+    },
+    "weighted": {
+      description: "Distributes traffic proportionally by weight",
+    },
+    "least-connections": {
+      description: "Routes to the backend with fewest active connections",
+    },
+    "random": {
+      description: "Selects a random healthy backend",
+    },
+  }}
+/>
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "weighted"
+    servers  = [
+      { url = "http://127.0.0.1:8001", weight = 3 },
+      { url = "http://127.0.0.1:8002", weight = 1 }
+    ]
+  }
+}
+```
+
+## 健康检查
+
+主动 HTTP 探测，支持可配置的阈值。不健康的后端会自动从负载均衡中排除。
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [
+      { url = "http://127.0.0.1:8001" },
+      { url = "http://127.0.0.1:8002" }
+    ]
+    health_check {
+      path                = "/health"
+      interval            = "10s"
+      timeout             = "5s"
+      unhealthy_threshold = 3
+      healthy_threshold   = 1
+    }
+  }
+}
+```
+
+<TypeTable
+  type={{
+    path: { type: 'string', description: 'HTTP GET path to probe' },
+    interval: { type: 'string', default: '"10s"', description: 'Time between checks' },
+    timeout: { type: 'string', default: '"5s"', description: 'Max wait for response' },
+    unhealthy_threshold: { type: 'u32', default: '3', description: 'Consecutive failures before marking unhealthy' },
+    healthy_threshold: { type: 'u32', default: '1', description: 'Consecutive successes before marking healthy' },
+  }}
+/>
+
+被动健康检查同样会追踪错误计数，并自动移除超过失败阈值的后端。
+
+## 会话保持
+
+通过 Cookie 将同一客户端路由到同一后端：
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+    sticky {
+      cookie = "srv_id"
+    }
+  }
+}
+```
+
+首次请求时，Gateway 选择一个后端并设置 `Set-Cookie` 响应头。后续携带该 Cookie 的请求会被路由到同一后端。会话在 TTL 过期或达到最大会话数时被清除。
+
+## 流量镜像
+
+将一定比例的线上流量复制到影子服务，用于测试，不影响主响应：
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+  mirror {
+    service    = "shadow-backend"
+    percentage = 10
+  }
+}
+```
+
+<TypeTable
+  type={{
+    service: { type: 'string', required: true, description: 'Target shadow service name' },
+    percentage: { type: 'u32', default: '100', description: 'Percentage of traffic to mirror (0–100)' },
+  }}
+/>
+
+## 故障转移
+
+当主后端池没有健康实例时，自动切换到备用后端池：
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+    health_check {
+      path = "/health"
+    }
+  }
+  failover {
+    service = "backup-pool"
+  }
+}
+
+services "backup-pool" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://10.0.0.1:8001" }]
+  }
+}
+```
+
+## Knative 风格自动扩缩容
+
+可选的自动扩缩容，支持缩容至零、请求缓冲和基于并发的决策：
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+  scaling {
+    min_replicas          = 0
+    max_replicas          = 10
+    container_concurrency = 50
+    target_utilization    = 0.7
+    scale_down_delay_secs = 300
+    buffer_enabled        = true
+    buffer_timeout_secs   = 30
+    buffer_size           = 100
+    executor              = "box"
+  }
+}
+```
+
+<TypeTable
+  type={{
+    min_replicas: { type: 'u32', default: '0', description: 'Minimum replicas (0 enables scale-to-zero)' },
+    max_replicas: { type: 'u32', default: '10', description: 'Maximum replicas' },
+    container_concurrency: { type: 'u32', default: '0', description: 'Max concurrent requests per container (0 = unlimited)' },
+    target_utilization: { type: 'f32', default: '0.7', description: 'Target utilization ratio for scaling decisions' },
+    scale_down_delay_secs: { type: 'u64', default: '300', description: 'Seconds after last request before scaling down' },
+    buffer_enabled: { type: 'bool', default: 'false', description: 'Enable request buffering during scale-from-zero' },
+    buffer_timeout_secs: { type: 'u64', default: '30', description: 'Max wait for a backend during cold start' },
+    buffer_size: { type: 'u32', default: '100', description: 'Max buffered requests' },
+    executor: { type: 'string', default: '"box"', description: 'Scale executor: `box` (HTTP) or `k8s` (kube-rs)' },
+  }}
+/>
+
+## 版本流量分割
+
+将流量按比例分配到不同版本，用于金丝雀发布：
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+  revisions = [
+    { name = "v1", traffic_percent = 90, strategy = "round-robin",
+      servers = [{ url = "http://127.0.0.1:8001" }] },
+    { name = "v2", traffic_percent = 10, strategy = "round-robin",
+      servers = [{ url = "http://127.0.0.1:8003" }] }
+  ]
+}
+```
+
+各版本流量百分比之和必须为 100。
+
+## 渐进式发布
+
+自动将流量从一个版本迁移到另一个版本，并带有安全保障：
+
+```hcl
+services "api" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:8001" }]
+  }
+  rollout {
+    from                 = "v1"
+    to                   = "v2"
+    step_percent         = 10
+    step_interval_secs   = 60
+    error_rate_threshold = 0.05
+    latency_threshold_ms = 5000
+  }
+}
+```
+
+发布过程每隔 `step_interval_secs` 将 `step_percent` 的流量切换到新版本。若错误率超过 `error_rate_threshold` 或 p99 延迟超过 `latency_threshold_ms`，发布将自动回滚。

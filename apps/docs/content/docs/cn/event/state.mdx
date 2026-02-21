@@ -1,10 +1,123 @@
 ---
 title: 状态持久化
-description: 订阅状态的持久化存储
+description: 跨重启保存和恢复订阅过滤器
 ---
 
 # 状态持久化
 
-`StateStore` trait 支持持久化订阅状态，内置 `FileStateStore` 和 `MemoryStateStore` 实现。
+A3S Event 可以将订阅过滤器持久化到磁盘，进程重启后自动恢复订阅。
 
-详细文档请参阅[英文版](/docs/en/event/state)。
+## 启用状态持久化
+
+### 基于文件（生产环境）
+
+```rust
+use a3s_event::{EventBus, MemoryProvider, FileStateStore};
+use std::sync::Arc;
+
+let mut bus = EventBus::new(MemoryProvider::default());
+
+let store = FileStateStore::new("./state/event-bus.json");
+bus.set_state_store(Arc::new(store))?;
+```
+
+`set_state_store()` 会立即加载之前保存的订阅并重新注册。
+
+### 基于内存（测试环境）
+
+```rust
+use a3s_event::MemoryStateStore;
+
+let store = MemoryStateStore::new();
+bus.set_state_store(Arc::new(store))?;
+```
+
+## 工作原理
+
+```
+进程启动 → set_state_store() → 加载已保存的过滤器 → 重新注册订阅 → 就绪
+                                                              ↓
+进程运行中 → update_subscription() / remove_subscription() → 自动保存到 store
+```
+
+1. 调用 `set_state_store()` 时 — 从 store 加载已保存的订阅并填充内存映射
+2. 调用 `update_subscription()` 时 — 将完整订阅映射保存到 store
+3. 调用 `remove_subscription()` 时 — 将更新后的映射保存到 store
+
+## StateStore Trait
+
+实现自定义状态后端：
+
+```rust
+use a3s_event::{StateStore, SubscriptionFilter};
+use a3s_event::Result;
+use std::collections::HashMap;
+
+pub trait StateStore: Send + Sync {
+    /// 保存所有订阅过滤器（以 subscriber_id 为键）
+    fn save(&self, subscriptions: &HashMap<String, SubscriptionFilter>) -> Result<()>;
+
+    /// 加载所有订阅过滤器
+    fn load(&self) -> Result<HashMap<String, SubscriptionFilter>>;
+}
+```
+
+### 自定义示例：Redis 状态存储
+
+```rust
+struct RedisStateStore {
+    client: redis::Client,
+    key: String,
+}
+
+impl StateStore for RedisStateStore {
+    fn save(&self, subscriptions: &HashMap<String, SubscriptionFilter>) -> Result<()> {
+        let json = serde_json::to_string(subscriptions)?;
+        // redis SET（同步操作，在异步上下文中请用 block_on 包装）
+        self.client.set(&self.key, &json)?;
+        Ok(())
+    }
+
+    fn load(&self) -> Result<HashMap<String, SubscriptionFilter>> {
+        let json: Option<String> = self.client.get(&self.key)?;
+        match json {
+            Some(data) => Ok(serde_json::from_str(&data)?),
+            None => Ok(HashMap::new()),
+        }
+    }
+}
+```
+
+## FileStateStore 详情
+
+- **格式**：格式化 JSON（人类可读）
+- **原子性**：先写入 `.tmp` 文件再重命名（防止崩溃时写入不完整）
+- **目录**：父目录不存在时自动创建
+- **路径**：可配置，如 `./state/event-bus.json`
+
+持久化状态示例：
+
+```json
+{
+  "order-processor": {
+    "subscriberId": "order-processor",
+    "subjects": ["events.orders.>"],
+    "durable": true
+  },
+  "analytics": {
+    "subscriberId": "analytics",
+    "subjects": ["events.>"],
+    "durable": false
+  }
+}
+```
+
+## 访问器
+
+```rust
+// 检查是否已配置状态存储
+if let Some(store) = bus.state_store() {
+    let filters = store.load()?;
+    println!("{} 个已持久化的订阅", filters.len());
+}
+```

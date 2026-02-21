@@ -1,269 +1,172 @@
 ---
-title: Ollama API
-description: 14 Ollama-compatible native API endpoints
+title: TEE & Privacy
+description: Remote attestation, model integrity, log redaction, and encrypted model loading
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
-# Ollama API
+# TEE & Privacy
 
-A3S Power implements the full Ollama HTTP API for drop-in compatibility. All endpoints use NDJSON streaming by default.
+A3S Power is designed to run inside Trusted Execution Environments (TEE) with hardware-enforced memory encryption. This page covers the privacy and attestation features.
 
-## Generate
+## TEE Detection
 
-`POST /api/generate` — Text completion.
-
-```bash
-curl http://localhost:11434/api/generate -d '{
-  "model": "llama3.2",
-  "prompt": "Why is the sky blue?",
-  "stream": true,
-  "options": {
-    "temperature": 0.7,
-    "num_predict": 256
-  }
-}'
-```
-
-Response (streaming NDJSON):
-
-```json
-{"model":"llama3.2","response":"The","done":false}
-{"model":"llama3.2","response":" sky","done":false}
-{"model":"llama3.2","response":"","done":true,"total_duration":1234567890,"eval_count":42}
-```
-
-Set `"stream": false` for a single JSON response.
-
-## Chat
-
-`POST /api/chat` — Chat completion with multi-turn conversation.
-
-```bash
-curl http://localhost:11434/api/chat -d '{
-  "model": "llama3.2",
-  "messages": [
-    {"role": "system", "content": "You are a helpful assistant."},
-    {"role": "user", "content": "What is Rust?"}
-  ],
-  "stream": true
-}'
-```
-
-### Vision Support
-
-```bash
-curl http://localhost:11434/api/chat -d '{
-  "model": "llava",
-  "messages": [{
-    "role": "user",
-    "content": "Describe this image",
-    "images": ["iVBORw0KGgo..."]
-  }]
-}'
-```
-
-### Tool Calling
-
-```bash
-curl http://localhost:11434/api/chat -d '{
-  "model": "llama3.2",
-  "messages": [{"role": "user", "content": "What is the weather in Tokyo?"}],
-  "tools": [{
-    "type": "function",
-    "function": {
-      "name": "get_weather",
-      "description": "Get current weather",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "location": {"type": "string"}
-        },
-        "required": ["location"]
-      }
-    }
-  }]
-}'
-```
-
-## Pull
-
-`POST /api/pull` — Download a model with streaming progress.
-
-```bash
-curl http://localhost:11434/api/pull -d '{
-  "name": "llama3.2",
-  "stream": true
-}'
-```
-
-Response:
-
-```json
-{"status":"pulling manifest"}
-{"status":"pulling a1b2c3d4","digest":"sha256:a1b2c3d4...","total":2000000000,"completed":500000000}
-{"status":"success"}
-```
-
-## Push
-
-`POST /api/push` — Upload a model to a remote registry.
-
-```bash
-curl http://localhost:11434/api/push -d '{
-  "name": "my-model",
-  "destination": "https://registry.example.com",
-  "stream": true
-}'
-```
-
-## Tags
-
-`GET /api/tags` — List all local models.
-
-```bash
-curl http://localhost:11434/api/tags
-```
-
-Response:
-
-```json
-{
-  "models": [
-    {
-      "name": "llama3.2",
-      "model": "llama3.2",
-      "size": 2000000000,
-      "digest": "sha256:a1b2c3d4...",
-      "details": {
-        "format": "gguf",
-        "parameter_size": "3B",
-        "quantization_level": "Q4_K_M"
-      }
-    }
-  ]
-}
-```
-
-## Show
-
-`POST /api/show` — Show model details.
-
-```bash
-curl http://localhost:11434/api/show -d '{
-  "name": "llama3.2",
-  "verbose": true
-}'
-```
-
-Returns model info including parameters, template, system prompt, license, and (with `verbose: true`) full GGUF metadata.
-
-## Delete
-
-`DELETE /api/delete` — Delete a model.
-
-```bash
-curl http://localhost:11434/api/delete -d '{"name": "llama3.2"}'
-```
-
-## Embeddings
-
-`POST /api/embeddings` — Generate embeddings (legacy).
-
-```bash
-curl http://localhost:11434/api/embeddings -d '{
-  "model": "llama3.2",
-  "prompt": "Hello world"
-}'
-```
-
-## Embed
-
-`POST /api/embed` — Generate embeddings (batch).
-
-```bash
-curl http://localhost:11434/api/embed -d '{
-  "model": "llama3.2",
-  "input": ["Hello world", "Goodbye world"]
-}'
-```
-
-## Process Status
-
-`GET /api/ps` — List currently loaded models.
-
-```bash
-curl http://localhost:11434/api/ps
-```
-
-Response:
-
-```json
-{
-  "models": [
-    {
-      "name": "llama3.2",
-      "model": "llama3.2",
-      "size": 2000000000,
-      "size_vram": 1800000000,
-      "expires_at": "2024-01-01T00:05:00Z"
-    }
-  ]
-}
-```
-
-## Copy
-
-`POST /api/copy` — Copy/alias a model.
-
-```bash
-curl http://localhost:11434/api/copy -d '{
-  "source": "llama3.2",
-  "destination": "my-llama"
-}'
-```
-
-## Create
-
-`POST /api/create` — Create a model from a Modelfile.
-
-```bash
-curl http://localhost:11434/api/create -d '{
-  "name": "my-model",
-  "modelfile": "FROM llama3.2\nSYSTEM You are a pirate.",
-  "stream": true
-}'
-```
-
-## Version
-
-`GET /api/version` — Server version.
-
-```bash
-curl http://localhost:11434/api/version
-```
-
-```json
-{"version": "0.1.4"}
-```
-
-## Blobs
-
-Blob management for content-addressed storage:
+Power auto-detects the TEE environment at startup:
 
 <TypeTable
   type={{
-    "HEAD": {
-      description: "Endpoint: /api/blobs/:digest · Description: Check if blob exists",
-    },
-    "POST": {
-      description: "Endpoint: /api/blobs/:digest · Description: Upload blob",
-    },
-    "GET": {
-      description: "Endpoint: /api/blobs/:digest · Description: Download blob",
-    },
-    "DELETE": {
-      description: "Endpoint: /api/blobs/:digest · Description: Delete blob",
-    },
+    "AMD SEV-SNP": { description: "Detected via /dev/sev-guest. Uses SNP_GET_REPORT ioctl for hardware attestation." },
+    "Intel TDX": { description: "Detected via /dev/tdx_guest or /dev/tdx-guest. Uses TDX_CMD_GET_REPORT0 ioctl." },
+    "Simulated": { description: "Enabled via A3S_TEE_SIMULATE=1. For development and testing." },
+    "None": { description: "Default when no TEE hardware is detected." },
   }}
 />
+
+Enable TEE mode in config:
+
+```hcl
+tee_mode    = true
+redact_logs = true
+```
+
+Or via environment:
+
+```bash
+A3S_POWER_TEE_MODE=1 a3s-power serve
+# Development simulation:
+A3S_TEE_SIMULATE=1 a3s-power serve
+```
+
+## Model Integrity Verification
+
+When `tee_mode = true` and `model_hashes` is configured, Power verifies every model file's SHA-256 hash at startup. The server refuses to start if any model fails verification.
+
+```hcl
+tee_mode = true
+model_hashes = {
+  "llama3.2:3b" = "sha256:a1b2c3d4e5f6..."
+  "qwen2.5:7b"  = "sha256:def456..."
+}
+```
+
+```
+INFO TEE mode enabled tee_type="sev-snp"
+INFO Model integrity verified model="llama3.2:3b"
+INFO All model integrity checks passed count=2
+```
+
+## Remote Attestation
+
+`GET /v1/attestation` generates a cryptographic proof that inference is running inside a genuine TEE.
+
+```bash
+# Basic attestation
+curl http://localhost:11434/v1/attestation
+
+# With client nonce (prevents replay attacks)
+curl "http://localhost:11434/v1/attestation?nonce=deadbeef01234567"
+
+# Bind to a specific model (ties attestation to model SHA-256)
+curl "http://localhost:11434/v1/attestation?model=llama3.2:3b"
+```
+
+When `?model=<name>` is provided, the `report_data` layout is `[nonce(32 bytes)][model_sha256(32 bytes)]` — cryptographically tying the attestation to the specific model being served.
+
+```json
+{
+  "tee_type": "sev-snp",
+  "report": "<base64-raw-report>",
+  "report_data": "<hex-64-bytes>",
+  "measurement": "<hex-48-bytes>",
+  "timestamp": "2026-02-21T00:00:00Z"
+}
+```
+
+Returns `503` if TEE is not enabled.
+
+## Log Redaction
+
+When `redact_logs = true`, the `PrivacyProvider` strips inference content from all log output:
+
+```
+// Before redaction:
+{"content": "tell me a secret", "model": "llama3"}
+
+// After redaction:
+{"content": "[REDACTED]", "model": "llama3"}
+```
+
+Redacted JSON keys: `content`, `prompt`, `text`, `arguments`, `input`, `delta`, `system`, `message`, `query`, `instruction`.
+
+Error messages that echo prompt content are also sanitized. When `suppress_token_metrics = true`, token counts in responses are rounded to the nearest 10 to prevent exact token-count side-channel inference.
+
+## Memory Zeroing
+
+All inference buffers are wrapped in `SensitiveString` which auto-zeroizes on drop. Model weights are zeroed when a model is unloaded or evicted.
+
+## Encrypted Model Loading
+
+Model files can be encrypted with AES-256-GCM. Power decrypts them at load time and securely wipes the plaintext on unload.
+
+```hcl
+# Key from file
+model_key_source = { file = "/secure/model.key" }
+
+# Key from environment variable
+model_key_source = { env = "MODEL_DECRYPT_KEY" }
+
+# Decrypt entirely in mlock-pinned RAM (never writes plaintext to disk)
+in_memory_decrypt = true
+```
+
+### Key Rotation
+
+```hcl
+key_provider = "rotating"
+key_rotation_sources = [
+  { env = "MODEL_KEY_NEW" },
+  { env = "MODEL_KEY_OLD" }
+]
+```
+
+Deploy the new key, call `rotate_key()`, then remove the old key — zero downtime.
+
+## RA-TLS Transport
+
+When `ra_tls = true`, the TLS certificate includes the TEE attestation report as a custom X.509 extension (OID `1.3.6.1.4.1.56560.1.1`). Clients can extract and verify this extension to confirm they are communicating with a genuine TEE before trusting inference output.
+
+```hcl
+tee_mode = true
+tls_port = 11443
+ra_tls   = true
+```
+
+Requires the `tls` feature: `cargo build --features tls`.
+
+## Vsock Transport
+
+For a3s-box MicroVM deployments, Power can listen on an AF_VSOCK socket instead of (or in addition to) TCP. This enables guest-host communication without any network configuration inside the VM.
+
+```hcl
+vsock_port = 4088
+```
+
+Requires the `vsock` feature (Linux only): `cargo build --features vsock`.
+
+## Health Status
+
+The `/health` endpoint exposes TEE status:
+
+```json
+{
+  "status": "ok",
+  "version": "0.2.0",
+  "uptime_seconds": 120,
+  "loaded_models": 1,
+  "tee": {
+    "enabled": true,
+    "type": "sev-snp",
+    "models_verified": true
+  }
+}
+```

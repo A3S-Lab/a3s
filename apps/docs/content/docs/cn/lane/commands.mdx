@@ -1,10 +1,177 @@
 ---
 title: 命令
-description: 实现和提交命令
+description: 定义、提交并追踪命令在队列中的执行过程
 ---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # 命令
 
-命令是 A3S Lane 的工作单元，通过实现 `Command` trait（Rust）或传递命令类型和载荷（Python/Node.js）来定义。
+命令是 A3S Lane 的工作单元。在 Rust 中，任何实现了 `Command` trait 的结构体都可以被提交。在 Python 和 Node.js 中，直接提交 `(lane_id, command_type, payload)` 元组即可，无需实现任何 trait。
 
-详细文档请参阅[英文版](/docs/en/lane/commands)。
+## Command Trait（Rust）
+
+```rust
+use a3s_lane::Result;
+use async_trait::async_trait;
+use serde_json::Value;
+
+#[async_trait]
+pub trait Command: Send + Sync {
+    async fn execute(&self) -> Result<Value>;
+    fn command_type(&self) -> &str;
+}
+```
+
+命令必须是 `Send + Sync`，因为它们在 Tokio 任务上执行。返回类型始终为 `serde_json::Value`。
+
+### 定义命令
+
+```rust
+struct AnalyzeText {
+    text: String,
+    model: String,
+}
+
+#[async_trait]
+impl Command for AnalyzeText {
+    async fn execute(&self) -> Result<Value> {
+        let analysis = run_analysis(&self.text, &self.model).await?;
+        Ok(serde_json::json!({
+            "sentiment": analysis.sentiment,
+            "topics": analysis.topics,
+            "confidence": analysis.confidence,
+        }))
+    }
+
+    fn command_type(&self) -> &str { "analyze_text" }
+}
+```
+
+`command_type()` 用于在事件载荷、死信队列条目、存储记录和指标中标识命令。
+
+## 提交命令
+
+<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+
+```rust
+let rx = manager.submit("query", Box::new(AnalyzeText {
+    text: "A3S Lane is fast".into(),
+    model: "sentiment-v2".into(),
+})).await?;
+
+// 阻塞直到命令完成
+let result = rx.await??;
+println!("{}", result);
+```
+
+`submit()` 返回一个 `oneshot::Receiver<Result<Value>>`。`??` 分别解包 channel（`RecvError`）和命令结果（`LaneError`）。
+
+**即发即忘**（丢弃接收端）：
+
+```rust
+let _ = manager.submit("background", Box::new(MyCmd {})).await?;
+```
+
+**错误处理**：
+
+```rust
+match rx.await {
+    Ok(Ok(value)) => println!("Success: {}", value),
+    Ok(Err(e)) => match e {
+        LaneError::Timeout(d)          => println!("Timed out after {:?}", d),
+        LaneError::CommandError(msg)   => println!("Command failed: {}", msg),
+        LaneError::LaneNotFound(id)    => println!("No such lane: {}", id),
+        LaneError::ShutdownInProgress  => println!("Queue is shutting down"),
+        _ => println!("Error: {}", e),
+    },
+    Err(_) => println!("Channel dropped"),
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_lane import Lane
+
+lane = Lane()
+lane.start()
+
+# submit(lane_id, command_type, payload) — 阻塞直到获取队列槽位。
+# 队列强制执行优先级排序和并发限制。
+# 返回载荷 dict 作为确认。
+result = lane.submit("query", "analyze_text", {
+    "text": "A3S Lane is fast",
+    "model": "sentiment-v2",
+})
+print(result)
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```js
+const { Lane } = require('@a3s-lab/lane');
+
+const lane = new Lane();
+lane.start();
+
+// submit(laneId, commandType, jsonPayload) — 阻塞直到获取队列槽位。
+// 返回 JSON 字符串结果。
+const result = JSON.parse(lane.submit(
+  'query',
+  'analyze_text',
+  JSON.stringify({ text: 'A3S Lane is fast', model: 'sentiment-v2' })
+));
+console.log(result);
+```
+
+</Tab>
+</Tabs>
+
+## 执行生命周期
+
+```
+submit() → 待处理队列 → 调度器 → 执行 → 结果
+                           │          │
+                           │       失败时
+                           │          │
+                           │   重试? ──是──→ 延迟后重新入队
+                           │      │
+                           │     否
+                           │      │
+                           │      ↓
+                           │   死信队列
+                           │
+                        超时时
+                           │
+                           ↓
+                    LaneError::Timeout
+```
+
+1. **提交** — 命令入队。如已配置，持久化到存储。
+2. **调度** — 后台循环（10ms）选取具有可用容量的最高优先级 lane。
+3. **执行** — `execute()` 在 Tokio 任务中运行，如已配置则包含超时。
+4. **完成** — 结果发送到 oneshot 接收端。命令从存储中移除。
+5. **重试** — 失败且仍有重试次数时，延迟后重新入队。
+6. **死信** — 所有重试耗尽后，移入 DLQ。
+
+## 队列统计
+
+```rust
+let stats = manager.stats().await?;
+println!("Total pending: {}", stats.total_pending);
+println!("Total active:  {}", stats.total_active);
+println!("Dead letters:  {}", stats.dead_letter_count);
+```
+
+<TypeTable
+  type={{
+    total_pending: { type: 'usize', description: '所有 lane 中等待的命令数' },
+    total_active: { type: 'usize', description: '所有 lane 中正在执行的命令数' },
+    dead_letter_count: { type: 'usize', description: 'DLQ 中失败的命令数' },
+    lanes: { type: 'HashMap<String, LaneStatus>', description: '各 lane 的详细信息' },
+  }}
+/>

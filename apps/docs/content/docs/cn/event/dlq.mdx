@@ -1,10 +1,156 @@
 ---
 title: 死信队列
-description: 失败事件捕获和检查
+description: 捕获永久失败的事件以供检查和调试
 ---
 
 # 死信队列
 
-`DlqHandler` trait 和内置 `MemoryDlqHandler` 捕获处理失败的事件，保留完整上下文便于检查和重试。
+超过最大投递次数的事件会被移入死信队列（DLQ），供检查和调试使用。
 
-详细文档请参阅[英文版](/docs/en/event/dlq)。
+## 启用 DLQ
+
+```rust
+use a3s_event::{EventBus, MemoryProvider, MemoryDlqHandler};
+use std::sync::Arc;
+
+let mut bus = EventBus::new(MemoryProvider::default());
+
+let dlq = MemoryDlqHandler::new(100); // 最多保存 100 条死信
+bus.set_dlq_handler(Arc::new(dlq));
+```
+
+## 工作原理
+
+当一条消息已投递 `max_deliver` 次但始终未被成功 ack 时，该事件会被路由到 DLQ 处理器：
+
+```
+事件投递 → 处理失败 → 重新投递 → 再次失败
+    → 达到 max_deliver 上限 → DLQ 处理器接收该事件
+```
+
+`max_deliver` 阈值通过 `SubscribeOptions` 配置：
+
+```rust
+use a3s_event::SubscribeOptions;
+
+let options = SubscribeOptions {
+    max_deliver: Some(3),  // 3 次投递失败后发送到 DLQ
+    ..Default::default()
+};
+```
+
+## DeadLetterEvent
+
+```rust
+pub struct DeadLetterEvent {
+    /// 原始接收到的事件（包含投递上下文）
+    pub event: ReceivedEvent,
+
+    /// 事件被发送到 DLQ 的原因
+    pub reason: String,
+
+    /// 事件进入死信队列时的 Unix 毫秒时间戳
+    pub dead_lettered_at: u64,
+
+    /// 事件最初发布到的主题
+    pub original_subject: Option<String>,
+
+    /// 进入死信队列前的投递尝试次数
+    pub delivery_attempts: Option<u64>,
+
+    /// 首次投递失败时的 Unix 毫秒时间戳
+    pub first_failure_at: Option<u64>,
+}
+```
+
+## 查看死信
+
+```rust
+let dlq = bus.dlq_handler().unwrap();
+
+// 统计死信数量
+let count = dlq.count().await?;
+
+// 列出最近的死信
+let letters = dlq.list(50).await?;
+for letter in &letters {
+    println!("[{}] {}: {}",
+        letter.dead_lettered_at,
+        letter.event.event.subject,
+        letter.reason);
+}
+```
+
+## DlqHandler Trait
+
+实现自定义 DLQ 后端（例如持久化到数据库、转发到告警系统）：
+
+```rust
+use a3s_event::{DlqHandler, DeadLetterEvent};
+use a3s_event::Result;
+use async_trait::async_trait;
+
+#[async_trait]
+pub trait DlqHandler: Send + Sync {
+    /// 处理一条死信事件
+    async fn handle(&self, event: DeadLetterEvent) -> Result<()>;
+
+    /// 获取当前 DLQ 中的事件数量
+    async fn count(&self) -> Result<usize>;
+
+    /// 列出最近的死信事件
+    async fn list(&self, limit: usize) -> Result<Vec<DeadLetterEvent>>;
+}
+```
+
+### 自定义示例：转发到 Slack
+
+```rust
+struct SlackDlqHandler {
+    webhook_url: String,
+    memory: MemoryDlqHandler,
+}
+
+#[async_trait]
+impl DlqHandler for SlackDlqHandler {
+    async fn handle(&self, dead_letter: DeadLetterEvent) -> Result<()> {
+        self.memory.handle(dead_letter.clone()).await?;
+
+        reqwest::Client::new()
+            .post(&self.webhook_url)
+            .json(&serde_json::json!({
+                "text": format!("DLQ: {} — {}",
+                    dead_letter.event.event.subject,
+                    dead_letter.reason)
+            }))
+            .send()
+            .await
+            .map_err(|e| EventError::Other(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn count(&self) -> Result<usize> {
+        self.memory.count().await
+    }
+
+    async fn list(&self, limit: usize) -> Result<Vec<DeadLetterEvent>> {
+        self.memory.list(limit).await
+    }
+}
+```
+
+## MemoryDlqHandler
+
+内置的内存实现，支持容量管理：
+
+```rust
+let dlq = MemoryDlqHandler::new(100);
+// 达到容量上限时，最旧的死信会被淘汰
+```
+
+默认容量为 1000：
+
+```rust
+let dlq = MemoryDlqHandler::default();
+```

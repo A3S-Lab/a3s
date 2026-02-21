@@ -1,10 +1,198 @@
 ---
 title: 路由
-description: 路由规则和请求匹配
+description: 基于规则的请求匹配，支持 Host、Path、Headers、Method 和 SNI 匹配器
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 路由
 
-A3S Gateway 使用兼容 Traefik 的规则语法进行请求匹配，支持 `Host()`、`PathPrefix()`、`Path()`、`Headers()`、`Method()` 和 SNI。
+A3S Gateway 使用兼容 Traefik 的规则语法将传入请求匹配到对应服务。
 
-详细文档请参阅[英文版](/docs/en/gateway/routing)。
+## 规则语法
+
+```
+rule = "Matcher(`value`) && Matcher(`value`)"
+```
+
+### 支持的匹配器
+
+<TypeTable
+  type={{
+    "Host": {
+      description: "Description: Match by hostname · Example: Host(api.example.com)",
+    },
+    "PathPrefix": {
+      description: "Description: Match by path prefix · Example: PathPrefix(/api)",
+    },
+    "Path": {
+      description: "Description: Match exact path · Example: Path(/health)",
+    },
+    "Headers": {
+      description: "Description: Match by header key/value · Example: Headers(X-Api-Version, v2)",
+    },
+    "Method": {
+      description: "Description: Match by HTTP method · Example: Method(POST)",
+    },
+    "HostSNI": {
+      description: "Description: Match TCP by TLS SNI · Example: HostSNI(db.example.com)",
+    },
+  }}
+/>
+
+### 组合匹配器
+
+使用 `&&` 组合多个匹配器（AND 逻辑）：
+
+```hcl
+routers "api-v1" {
+  rule    = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+  service = "api-v1"
+}
+
+routers "webhooks" {
+  rule    = "Method(`POST`) && PathPrefix(`/webhooks`)"
+  service = "webhook-handler"
+}
+
+routers "internal" {
+  rule    = "Headers(`X-Internal`, `true`) && PathPrefix(`/admin`)"
+  service = "admin-service"
+}
+```
+
+## 优先级
+
+当多个路由匹配时，`priority` 值最小的优先（默认值：`0`）：
+
+```hcl
+routers "specific" {
+  rule     = "Host(`api.example.com`) && Path(`/health`)"
+  service  = "health-service"
+  priority = 0
+}
+
+routers "general" {
+  rule     = "Host(`api.example.com`)"
+  service  = "api-service"
+  priority = 10
+}
+```
+
+## 入口点绑定
+
+路由只接收来自其绑定入口点的流量：
+
+```hcl
+entrypoints "web" {
+  address = "0.0.0.0:80"
+}
+
+entrypoints "websecure" {
+  address = "0.0.0.0:443"
+  tls {
+    cert_file = "cert.pem"
+    key_file  = "key.pem"
+  }
+}
+
+# HTTPS only
+routers "api" {
+  rule        = "Host(`api.example.com`)"
+  service     = "api-service"
+  entrypoints = ["websecure"]
+}
+
+# Both HTTP and HTTPS
+routers "web" {
+  rule        = "Host(`www.example.com`)"
+  service     = "web-service"
+  entrypoints = ["web", "websecure"]
+}
+```
+
+## 中间件链
+
+中间件按列表顺序依次执行。任意中间件拒绝请求时，管道立即短路。
+
+```hcl
+routers "api" {
+  rule        = "Host(`api.example.com`)"
+  service     = "api-service"
+  middlewares = ["ip-allow", "auth-jwt", "rate-limit", "cors"]
+  # Order: IP check → JWT auth → rate limit → CORS headers
+}
+```
+
+## TCP/UDP 路由
+
+TCP 入口点使用 TLS ClientHello 中的 SNI：
+
+```hcl
+entrypoints "tcp-secure" {
+  address  = "0.0.0.0:5432"
+  protocol = "tcp"
+}
+
+routers "postgres" {
+  rule        = "HostSNI(`db.example.com`)"
+  service     = "postgres-service"
+  entrypoints = ["tcp-secure"]
+}
+```
+
+UDP 路由基于端口——每个 UDP 入口点映射到单个服务。
+
+## 示例
+
+### API 版本控制
+
+```hcl
+routers "api-v2" {
+  rule     = "Host(`api.example.com`) && PathPrefix(`/v2`)"
+  service  = "api-v2"
+  priority = 0
+}
+
+routers "api-v1" {
+  rule     = "Host(`api.example.com`) && PathPrefix(`/v1`)"
+  service  = "api-v1"
+  priority = 1
+}
+
+routers "api-fallback" {
+  rule     = "Host(`api.example.com`)"
+  service  = "api-v2"
+  priority = 100
+}
+```
+
+### 多租户
+
+```hcl
+routers "tenant-a" {
+  rule    = "Host(`a.example.com`)"
+  service = "tenant-a-backend"
+}
+
+routers "tenant-b" {
+  rule    = "Host(`b.example.com`)"
+  service = "tenant-b-backend"
+}
+```
+
+### 基于请求头的金丝雀发布
+
+```hcl
+routers "canary" {
+  rule     = "Headers(`X-Canary`, `true`) && PathPrefix(`/api`)"
+  service  = "canary-backend"
+  priority = 0
+}
+
+routers "stable" {
+  rule     = "PathPrefix(`/api`)"
+  service  = "stable-backend"
+  priority = 10
+}
+```

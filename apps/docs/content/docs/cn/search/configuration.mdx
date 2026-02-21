@@ -1,10 +1,147 @@
 ---
 title: 配置
-description: HCL 配置文件和引擎权重
+description: HCL 配置文件与引擎管理的健康监控
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 配置
 
-A3S Search 支持从 `.hcl` 配置文件加载引擎权重、健康设置和超时配置。
+A3S Search 支持通过 HCL 配置文件管理引擎设置和健康监控。可以从 `.hcl` 文件加载配置，而无需硬编码。
 
-详细文档请参阅[英文版](/docs/en/search/configuration)。
+## HCL 配置文件
+
+```hcl
+timeout = 10
+
+health {
+  max_failures    = 5
+  suspend_seconds = 120
+}
+
+engine "ddg" {
+  enabled = true
+  weight  = 1.0
+}
+
+engine "brave" {
+  enabled = true
+  weight  = 1.0
+}
+
+engine "bing" {
+  enabled = true
+  weight  = 1.2
+}
+
+engine "wiki" {
+  enabled = true
+  weight  = 1.5
+}
+
+engine "sogou" {
+  enabled = false
+}
+```
+
+## 加载配置
+
+```rust
+use a3s_search::config::SearchConfig;
+
+// 从文件加载
+let config = SearchConfig::load("search.hcl")?;
+
+// 或解析字符串
+let config = SearchConfig::parse(r#"
+    timeout = 10
+    engine "ddg" { enabled = true }
+"#)?;
+```
+
+<TypeTable
+  type={{
+    "SearchConfig::load(path)": {
+      description: "Load config from .hcl file",
+    },
+    "SearchConfig::parse(content)": {
+      description: "Parse HCL string",
+    },
+    "health_config()": {
+      description: "Get HealthConfig from config",
+    },
+    "enabled_engines()": {
+      description: "Get list of enabled engine shortcuts",
+    },
+  }}
+/>
+
+## 健康监控
+
+`HealthMonitor` 追踪每个引擎的失败次数，并在连续失败后自动暂停该引擎。暂停的引擎会在可配置的时间后自动恢复。
+
+```rust
+use a3s_search::{Search, HealthConfig};
+use a3s_search::engines::{DuckDuckGo, Brave, Bing};
+use std::time::Duration;
+
+let mut search = Search::with_health_config(HealthConfig {
+    max_failures: 3,
+    suspend_duration: Duration::from_secs(120),
+});
+
+search.add_engine(DuckDuckGo::new());
+search.add_engine(Brave::new());
+search.add_engine(Bing::new());
+
+// 如果 DuckDuckGo 连续失败 3 次，将被暂停 120 秒。
+// 120 秒后，下次搜索时自动恢复。
+```
+
+### HealthConfig
+
+<TypeTable
+  type={{
+    max_failures: { type: 'u32', default: '3', description: 'Consecutive failures before suspension' },
+    suspend_duration: { type: 'Duration', default: '"60s"', description: 'How long to suspend a failing engine' },
+  }}
+/>
+
+### 行为说明
+
+1. 每个引擎初始失败计数为 0
+2. 失败时计数加一
+3. 成功时计数重置为 0
+4. 当 `count >= max_failures` 时，引擎被暂停
+5. 经过 `suspend_duration` 后，引擎恢复并重置计数
+
+### 结合 HCL 配置使用
+
+将 HCL 配置与健康监控结合使用：
+
+```rust
+use a3s_search::{Search, SearchQuery};
+use a3s_search::config::SearchConfig;
+use a3s_search::engines::{DuckDuckGo, Brave, Bing, Wikipedia};
+
+let config = SearchConfig::load("search.hcl")?;
+
+let mut search = if let Some(health) = config.health_config() {
+    Search::with_health_config(health)
+} else {
+    Search::new()
+};
+
+// 仅添加配置中启用的引擎
+for shortcut in config.enabled_engines() {
+    match shortcut.as_str() {
+        "ddg" => search.add_engine(DuckDuckGo::new()),
+        "brave" => search.add_engine(Brave::new()),
+        "bing" => search.add_engine(Bing::new()),
+        "wiki" => search.add_engine(Wikipedia::new()),
+        _ => {}
+    }
+}
+
+let results = search.search(SearchQuery::new("rust")).await?;
+```

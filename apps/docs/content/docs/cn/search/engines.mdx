@@ -1,10 +1,313 @@
 ---
-title: 搜索引擎
-description: 内置引擎配置和自定义引擎
+title: 引擎
+description: 9 个内置搜索引擎及用于自定义实现的 Engine trait
 ---
 
-# 搜索引擎
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
-A3S Search 内置 9 个搜索引擎：5 个 HTTP 引擎（DuckDuckGo、Brave、Bing、搜狗、360）、1 个 API 引擎（Wikipedia）和 3 个无头浏览器引擎（Google、百度、必应中国）。
+# 引擎
 
-详细文档请参阅[英文版](/docs/en/search/engines)。
+A3S Search 内置 9 个搜索引擎，并提供 `Engine` trait 用于添加自定义搜索源。
+
+## Engine Trait
+
+每个搜索引擎都实现此 trait：
+
+```rust
+#[async_trait]
+pub trait Engine: Send + Sync {
+    fn config(&self) -> &EngineConfig;
+    async fn search(&self, query: &SearchQuery) -> Result<Vec<SearchResult>>;
+
+    // Default implementations derived from config:
+    fn name(&self) -> &str { &self.config().name }
+    fn shortcut(&self) -> &str { &self.config().shortcut }
+    fn weight(&self) -> f64 { self.config().weight }
+    fn is_enabled(&self) -> bool { self.config().enabled }
+}
+```
+
+## EngineConfig
+
+<TypeTable
+  type={{
+    name: { type: 'String', required: true, description: 'Display name' },
+    shortcut: { type: 'String', required: true, description: 'Short identifier (e.g., `ddg`)' },
+    categories: { type: 'Vec<EngineCategory>', default: '[General]', description: 'Supported categories' },
+    weight: { type: 'f64', default: '1.0', description: 'Ranking weight multiplier' },
+    timeout: { type: 'u64', default: '5', description: 'Timeout in seconds' },
+    enabled: { type: 'bool', default: 'true', description: 'Whether engine is active' },
+    paging: { type: 'bool', default: 'false', description: 'Supports pagination' },
+    safesearch: { type: 'bool', default: 'false', description: 'Supports safe search filtering' },
+  }}
+/>
+
+## 内置引擎
+
+### DuckDuckGo
+
+注重隐私的搜索引擎，通过 HTML 抓取实现，无需 API 密钥。
+
+```rust
+use a3s_search::engines::DuckDuckGo;
+search.add_engine(DuckDuckGo::new());
+```
+
+<TypeTable
+  type={{
+    "Shortcut": { description: "ddg" },
+    "Weight": { description: "1.0" },
+    "Method": { description: "HTTP / HTML scraping" },
+    "Paging": { description: "Yes" },
+    "SafeSearch": { description: "Yes" },
+  }}
+/>
+
+### Brave Search
+
+独立搜索索引，通过 HTML 抓取实现，无需 API 密钥。
+
+```rust
+use a3s_search::engines::Brave;
+search.add_engine(Brave::new());
+```
+
+<TypeTable
+  type={{
+    "Shortcut": { description: "brave" },
+    "Weight": { description: "1.0" },
+    "Method": { description: "HTTP / HTML scraping" },
+    "Paging": { description: "Yes" },
+    "SafeSearch": { description: "Yes" },
+  }}
+/>
+
+### Bing
+
+Bing 国际版，通过 HTML 抓取并提取查询参数实现。
+
+```rust
+use a3s_search::engines::Bing;
+search.add_engine(Bing::new());
+```
+
+<TypeTable
+  type={{
+    "Shortcut": { description: "bing" },
+    "Weight": { description: "1.0" },
+    "Method": { description: "HTTP / HTML scraping" },
+    "Paging": { description: "Yes" },
+    "SafeSearch": { description: "Yes" },
+  }}
+/>
+
+### Wikipedia
+
+MediaWiki JSON API。因内容权威性，权重较高。支持多语言。
+
+```rust
+use a3s_search::engines::Wikipedia;
+
+// 默认（英文）
+search.add_engine(Wikipedia::new());
+
+// 中文 Wikipedia
+search.add_engine(Wikipedia::with_language("zh"));
+```
+
+<TypeTable
+  type={{
+    "Shortcut": { description: "wiki" },
+    "Weight": { description: "1.2" },
+    "Method": { description: "HTTP / JSON API" },
+    "Paging": { description: "No" },
+    "SafeSearch": { description: "No" },
+  }}
+/>
+
+### Sogou
+
+中文搜索引擎（搜狗搜索）。
+
+```rust
+use a3s_search::engines::Sogou;
+search.add_engine(Sogou::new());
+```
+
+<TypeTable
+  type={{
+    "Shortcut": { description: "sogou" },
+    "Weight": { description: "1.0" },
+    "Method": { description: "HTTP / HTML scraping" },
+    "Language": { description: "Chinese" },
+  }}
+/>
+
+### 360 Search
+
+中文搜索引擎（360搜索）。
+
+```rust
+use a3s_search::engines::So360;
+search.add_engine(So360::new());
+```
+
+<TypeTable
+  type={{
+    "Shortcut": { description: "360" },
+    "Weight": { description: "1.0" },
+    "Method": { description: "HTTP / HTML scraping" },
+    "Language": { description: "Chinese" },
+  }}
+/>
+
+### Google（无头浏览器）
+
+通过无头 Chrome 访问 Google 搜索。因结果质量较高，权重为 1.5。
+
+```rust
+#[cfg(feature = "headless")]
+use a3s_search::engines::Google;
+search.add_engine(Google::new(fetcher));
+```
+
+<TypeTable
+  type={{
+    "Shortcut": { description: "g" },
+    "Weight": { description: "1.5" },
+    "Method": { description: "Headless browser" },
+    "Paging": { description: "Yes" },
+    "SafeSearch": { description: "Yes" },
+  }}
+/>
+
+### Baidu（无头浏览器）
+
+通过无头 Chrome 访问中文搜索引擎（百度搜索）。
+
+```rust
+#[cfg(feature = "headless")]
+use a3s_search::engines::Baidu;
+search.add_engine(Baidu::new(fetcher));
+```
+
+<TypeTable
+  type={{
+    "Shortcut": { description: "baidu" },
+    "Weight": { description: "1.0" },
+    "Method": { description: "Headless browser" },
+    "Language": { description: "Chinese" },
+  }}
+/>
+
+### Bing China（无头浏览器）
+
+通过无头 Chrome 访问必应中国（必应中国）。
+
+```rust
+#[cfg(feature = "headless")]
+use a3s_search::engines::BingChina;
+search.add_engine(BingChina::new(fetcher));
+```
+
+<TypeTable
+  type={{
+    "Shortcut": { description: "bing_cn" },
+    "Weight": { description: "1.0" },
+    "Method": { description: "Headless browser" },
+    "Language": { description: "Chinese" },
+  }}
+/>
+
+## 引擎快捷标识
+
+<TypeTable
+  type={{
+    "ddg": { description: "Aliases: duckduckgo · Engine: DuckDuckGo · Method: HTTP" },
+    "brave": { description: "Engine: Brave Search · Method: HTTP" },
+    "bing": { description: "Engine: Bing International · Method: HTTP" },
+    "wiki": { description: "Aliases: wikipedia · Engine: Wikipedia · Method: JSON API" },
+    "sogou": { description: "Engine: Sogou · Method: HTTP" },
+    "360": { description: "Aliases: so360 · Engine: 360 Search · Method: HTTP" },
+    "g": { description: "Aliases: google · Engine: Google · Method: Headless" },
+    "baidu": { description: "Engine: Baidu · Method: Headless" },
+    "bing_cn": { description: "Engine: Bing China · Method: Headless" },
+  }}
+/>
+
+## 自定义引擎
+
+实现 `Engine` trait 即可添加任意搜索源：
+
+```rust
+use a3s_search::*;
+use async_trait::async_trait;
+
+struct MyApiEngine {
+    config: EngineConfig,
+    api_key: String,
+}
+
+impl MyApiEngine {
+    fn new(api_key: String) -> Self {
+        Self {
+            config: EngineConfig {
+                name: "My API".into(),
+                shortcut: "myapi".into(),
+                categories: vec![EngineCategory::General],
+                weight: 1.0,
+                timeout: 5,
+                enabled: true,
+                paging: true,
+                safesearch: false,
+            },
+            api_key,
+        }
+    }
+}
+
+#[async_trait]
+impl Engine for MyApiEngine {
+    fn config(&self) -> &EngineConfig { &self.config }
+
+    async fn search(&self, query: &SearchQuery) -> Result<Vec<SearchResult>> {
+        let client = reqwest::Client::new();
+        let resp: serde_json::Value = client
+            .get("https://api.example.com/search")
+            .query(&[("q", &query.query), ("key", &self.api_key)])
+            .send().await.map_err(SearchError::Http)?
+            .json().await.map_err(SearchError::Http)?;
+
+        let mut results = vec![];
+        if let Some(items) = resp["items"].as_array() {
+            for (i, item) in items.iter().enumerate() {
+                results.push(
+                    SearchResult::new(
+                        item["url"].as_str().unwrap_or_default(),
+                        item["title"].as_str().unwrap_or_default(),
+                        item["snippet"].as_str().unwrap_or_default(),
+                    )
+                    .with_engine("myapi", (i + 1) as u32)
+                );
+            }
+        }
+        Ok(results)
+    }
+}
+```
+
+## 自定义引擎权重
+
+覆盖任意内置引擎的默认权重：
+
+```rust
+use a3s_search::{EngineConfig, engines::Wikipedia};
+
+let wiki = Wikipedia::new().with_config(EngineConfig {
+    name: "Wikipedia".to_string(),
+    shortcut: "wiki".to_string(),
+    weight: 1.5,
+    ..Default::default()
+});
+search.add_engine(wiki);
+```

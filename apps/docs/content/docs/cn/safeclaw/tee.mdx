@@ -1,10 +1,145 @@
 ---
 title: TEE 集成
-description: AMD SEV-SNP、Intel SGX 和 ARM CCA 支持
+description: 可信执行环境支持，涵盖 AMD SEV-SNP、Intel SGX 与 ARM CCA
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # TEE 集成
 
-SafeClaw 支持 AMD SEV-SNP、Intel SGX 和 ARM CCA，在硬件隔离环境中处理高敏感数据。
+SafeClaw 集成了硬件可信执行环境（TEE），提供内存加密、远程证明和密封存储能力。启用 TEE 后，敏感数据将在硬件隔离的 enclave 内处理，即使宿主操作系统也无法访问。
 
-详细文档请参阅[英文版](/docs/en/safeclaw/tee)。
+## 支持的平台
+
+<TypeTable
+  type={{
+    "AMD": {
+      description: "Technology: SEV-SNP (Secure Encrypted Virtualization) · Status: Primary support",
+    },
+    "Intel": {
+      description: "Technology: SGX (Software Guard Extensions) · Status: Supported",
+    },
+    "ARM": {
+      description: "Technology: CCA (Confidential Compute Architecture) · Status: Supported",
+    },
+    "Apple": {
+      description: "Technology: Secure Enclave · Status: Planned",
+    },
+  }}
+/>
+
+## 配置
+
+```toml
+[tee]
+enabled = true
+
+[tee.network_policy]
+enabled = true
+default_deny = true
+allowed_protocols = ["https"]
+
+[[tee.network_policy.allowed_domains]]
+domain = "api.anthropic.com"
+ports = [443]
+```
+
+```rust
+pub struct TeeConfig {
+    pub enabled: bool,
+    pub network_policy: NetworkPolicy,
+}
+```
+
+## TEE 运行时
+
+`TeeRuntime` 在启动时检测可用的 TEE 硬件：
+
+```rust
+pub struct TeeRuntime {
+    // 客户端侧 TEE 检测与操作
+}
+
+impl TeeRuntime {
+    pub fn detect() -> Self;
+    pub fn mode_description(&self) -> &str;
+}
+```
+
+检测顺序：
+1. 检测 AMD SEV-SNP（`/dev/sev-guest`）
+2. 检测 Intel SGX（`/dev/sgx_enclave`）
+3. 检测 ARM CCA
+4. 回退至虚拟机隔离（无硬件 TEE）
+
+## TEE 通信
+
+SafeClaw 通过 vsock 上的帧协议与 TEE enclave 通信：
+
+```rust
+pub struct TeeClient {
+    // 基于帧的 TEE 客户端
+}
+
+pub struct TeeMessage {
+    // TEE 通信信封
+}
+
+pub struct TeeRequest {
+    // 发往 TEE enclave 的请求
+}
+
+pub struct TeeResponse {
+    // 来自 TEE enclave 的响应
+}
+```
+
+## 使用 TEE 的数据流
+
+当消息被分类为 `HighlySensitive` 或 `Critical` 时：
+
+1. **Gateway** 通过安全通道（AES-256-GCM）加密消息
+2. **TEE enclave** 解密并由 AI agent 处理
+3. **输出净化器** 在 TEE 内部运行，脱敏所有污点数据
+4. **工具拦截器** 在 TEE 内部运行，阻断危险命令
+5. **加密响应** 发回 Gateway
+6. **Gateway** 解密后交付给用户
+
+敏感数据的明文始终不会出现在 TEE 加密内存之外。
+
+## 优雅降级
+
+当 TEE 硬件不可用时，SafeClaw 会优雅降级：
+
+<TypeTable
+  type={{
+    "Yes (SEV-SNP/SGX/CCA)": {
+      description: "Full hardware memory encryption + attestation",
+    },
+    "No (VM only)": {
+      description: "VM-level isolation via A3S Box (still secure, no hardware encryption)",
+    },
+    "Simulation mode": {
+      description: "Fake TEE for development (mock-tee feature flag)",
+    },
+  }}
+/>
+
+```rust
+// Feature flags
+#[cfg(feature = "mock-tee")]     // MockTransport fallback for testing
+#[cfg(feature = "tee-guest")]    // Guest-side TEE integration
+```
+
+## 会话 TEE 追踪
+
+每个会话都会追踪 TEE 是否处于激活状态：
+
+```rust
+impl Session {
+    pub async fn mark_tee_active(&self);
+    pub async fn uses_tee(&self) -> bool;
+}
+```
+
+当对话过程中累积风险升高时，会话可以动态升级为 TEE 处理模式。

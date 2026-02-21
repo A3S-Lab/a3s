@@ -1,55 +1,172 @@
 ---
-title: Ollama API
-description: Ollama 兼容 API 端点参考
+title: TEE 与隐私保护
+description: 远程证明、模型完整性、日志脱敏和加密模型加载
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
-# Ollama API
+# TEE 与隐私保护
 
-A3S Power 实现了全部 14 个 Ollama 原生 API 端点，可作为 Ollama 的直接替代品。
+A3S Power 专为在可信执行环境（TEE）中运行而设计，具备硬件级内存加密能力。本页介绍隐私保护和证明相关功能。
 
-## 端点列表
+## TEE 检测
+
+Power 在启动时自动检测 TEE 环境：
 
 <TypeTable
   type={{
-    "/api/chat": {
-      description: "方法: POST · 说明: 对话补全（流式/非流式）",
-    },
-    "/api/generate": {
-      description: "方法: POST · 说明: 文本生成",
-    },
-    "/api/embeddings": {
-      description: "方法: POST · 说明: 生成嵌入向量",
-    },
-    "/api/tags": {
-      description: "方法: GET · 说明: 列出本地模型",
-    },
-    "/api/show": {
-      description: "方法: POST · 说明: 查看模型详情",
-    },
-    "/api/pull": {
-      description: "方法: POST · 说明: 拉取模型",
-    },
-    "/api/push": {
-      description: "方法: POST · 说明: 推送模型",
-    },
-    "/api/delete": {
-      description: "方法: DELETE · 说明: 删除模型",
-    },
-    "/api/copy": {
-      description: "方法: POST · 说明: 复制模型",
-    },
-    "/api/create": {
-      description: "方法: POST · 说明: 从 Modelfile 创建模型",
-    },
-    "/api/ps": {
-      description: "方法: GET · 说明: 列出运行中的模型",
-    },
-    "/api/version": {
-      description: "方法: GET · 说明: 版本信息",
-    },
+    "AMD SEV-SNP": { description: "通过 /dev/sev-guest 检测。使用 SNP_GET_REPORT ioctl 生成硬件证明报告。" },
+    "Intel TDX": { description: "通过 /dev/tdx_guest 或 /dev/tdx-guest 检测。使用 TDX_CMD_GET_REPORT0 ioctl。" },
+    "模拟模式": { description: "通过 A3S_TEE_SIMULATE=1 启用。用于开发和测试。" },
+    "无": { description: "未检测到 TEE 硬件时的默认状态。" },
   }}
 />
 
-详细文档请参阅[英文版](/docs/en/power/ollama-api)。
+在配置文件中启用 TEE 模式：
+
+```hcl
+tee_mode    = true
+redact_logs = true
+```
+
+或通过环境变量：
+
+```bash
+A3S_POWER_TEE_MODE=1 a3s-power serve
+# 开发模拟模式：
+A3S_TEE_SIMULATE=1 a3s-power serve
+```
+
+## 模型完整性验证
+
+当 `tee_mode = true` 且配置了 `model_hashes` 时，Power 在启动时验证每个模型文件的 SHA-256 哈希值。任何模型验证失败，服务器拒绝启动。
+
+```hcl
+tee_mode = true
+model_hashes = {
+  "llama3.2:3b" = "sha256:a1b2c3d4e5f6..."
+  "qwen2.5:7b"  = "sha256:def456..."
+}
+```
+
+```
+INFO TEE 模式已启用 tee_type="sev-snp"
+INFO 模型完整性验证通过 model="llama3.2:3b"
+INFO 所有模型完整性检查通过 count=2
+```
+
+## 远程证明
+
+`GET /v1/attestation` 生成密码学证明，证明推理运行在真实 TEE 中。
+
+```bash
+# 基础证明
+curl http://localhost:11434/v1/attestation
+
+# 带客户端 nonce（防重放攻击）
+curl "http://localhost:11434/v1/attestation?nonce=deadbeef01234567"
+
+# 绑定指定模型（将证明与模型 SHA-256 绑定）
+curl "http://localhost:11434/v1/attestation?model=llama3.2:3b"
+```
+
+使用 `?model=<name>` 时，`report_data` 布局为 `[nonce(32字节)][model_sha256(32字节)]`，将证明与正在服务的具体模型密码学绑定。
+
+```json
+{
+  "tee_type": "sev-snp",
+  "report": "<base64原始报告>",
+  "report_data": "<hex-64字节>",
+  "measurement": "<hex-48字节>",
+  "timestamp": "2026-02-21T00:00:00Z"
+}
+```
+
+未启用 TEE 时返回 `503`。
+
+## 日志脱敏
+
+当 `redact_logs = true` 时，`PrivacyProvider` 自动从所有日志输出中剥离推理内容：
+
+```
+// 脱敏前：
+{"content": "告诉我一个秘密", "model": "llama3"}
+
+// 脱敏后：
+{"content": "[REDACTED]", "model": "llama3"}
+```
+
+脱敏的 JSON 键：`content`、`prompt`、`text`、`arguments`、`input`、`delta`、`system`、`message`、`query`、`instruction`。
+
+包含提示词内容的错误消息也会被净化。当 `suppress_token_metrics = true` 时，响应中的 token 计数会四舍五入到最近的 10，防止精确 token 计数旁路攻击。
+
+## 内存清零
+
+所有推理缓冲区都包装在 `SensitiveString` 中，在 drop 时自动清零。模型卸载或驱逐时，模型权重也会被清零。
+
+## 加密模型加载
+
+模型文件可使用 AES-256-GCM 加密。Power 在加载时解密，卸载时安全擦除明文。
+
+```hcl
+# 从文件读取密钥
+model_key_source = { file = "/secure/model.key" }
+
+# 从环境变量读取密钥
+model_key_source = { env = "MODEL_DECRYPT_KEY" }
+
+# 仅在 mlock 锁定的内存中解密（不写入磁盘）
+in_memory_decrypt = true
+```
+
+### 密钥轮换
+
+```hcl
+key_provider = "rotating"
+key_rotation_sources = [
+  { env = "MODEL_KEY_NEW" },
+  { env = "MODEL_KEY_OLD" }
+]
+```
+
+部署新密钥，调用 `rotate_key()`，然后移除旧密钥——零停机轮换。
+
+## RA-TLS 传输
+
+当 `ra_tls = true` 时，TLS 证书中包含 TEE 证明报告，作为自定义 X.509 扩展（OID `1.3.6.1.4.1.56560.1.1`）。客户端可提取并验证此扩展，在信任推理输出之前确认正在与真实 TEE 通信。
+
+```hcl
+tee_mode = true
+tls_port = 11443
+ra_tls   = true
+```
+
+需要 `tls` feature：`cargo build --features tls`。
+
+## Vsock 传输
+
+对于 a3s-box MicroVM 部署，Power 可在 AF_VSOCK 套接字上监听，无需在 VM 内部进行任何网络配置即可实现宿主机通信。
+
+```hcl
+vsock_port = 4088
+```
+
+需要 `vsock` feature（仅 Linux）：`cargo build --features vsock`。
+
+## 健康状态
+
+`/health` 端点暴露 TEE 状态：
+
+```json
+{
+  "status": "ok",
+  "version": "0.2.0",
+  "uptime_seconds": 120,
+  "loaded_models": 1,
+  "tee": {
+    "enabled": true,
+    "type": "sev-snp",
+    "models_verified": true
+  }
+}
+```

@@ -1,10 +1,227 @@
 ---
-title: 事件
-description: 事件流和生命周期事件
+title: Events
+description: 实时事件流，用于监控命令生命周期和队列状态
 ---
 
-# 事件
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
-`EventEmitter` 提供广播发布/订阅，`subscribe()` 返回实现 `futures_core::Stream` 的 `EventStream`。
+# Events
 
-详细文档请参阅[英文版](/docs/en/lane/events)。
+A3S Lane 在命令生命周期的每个阶段都会发出事件。`EventStream` 实现了 `futures_core::Stream`，可与任何流组合器配合使用。直接从 manager 订阅即可，无需手动传递 `EventEmitter`。
+
+## 从 Manager 订阅
+
+```rust
+use tokio_stream::StreamExt;
+
+// 所有事件
+let mut stream = manager.subscribe();
+
+// 过滤 — 谓词在订阅方执行
+let mut failures = manager.subscribe_filtered(|e| {
+    e.key == "queue.command.failed" || e.key == "queue.command.timeout"
+});
+
+tokio::spawn(async move {
+    while let Some(event) = stream.next().await {
+        println!("[{}] {}", event.timestamp, event.key);
+    }
+});
+```
+
+`subscribe()` 和 `subscribe_filtered()` 均返回 `EventStream`，它实现了 `futures_core::Stream<Item = LaneEvent>`。
+
+## EventStream 作为 Stream 使用
+
+直接使用 `.next().await`，或使用 `StreamExt` 中的任意流组合器：
+
+```rust
+use tokio_stream::StreamExt;
+
+// 便捷的 recv() 方法 — 等同于 .next().await
+while let Some(event) = stream.recv().await {
+    println!("{}", event.key);
+}
+
+// 每个事件设置超时
+while let Ok(Some(event)) = tokio::time::timeout(
+    Duration::from_secs(5),
+    stream.next(),
+).await {
+    println!("{}", event.key);
+}
+
+// 取前 N 个
+let first_ten: Vec<_> = stream.take(10).collect().await;
+```
+
+## 从 Emitter 订阅
+
+如需在 manager 构建之前订阅：
+
+```rust
+// EventStream（实现 Stream）— 所有事件
+let mut stream = emitter.subscribe_stream();
+
+// EventStream — 过滤
+let mut stream = emitter.subscribe_filtered(|e| e.key.starts_with("queue.command"));
+
+// 原始 broadcast::Receiver — 旧版 API
+let mut rx = emitter.subscribe();
+while let Ok(event) = rx.recv().await { /* ... */ }
+```
+
+## Python 和 Node SDK
+
+<Tabs groupId="lang" items={['Python', 'Node.js']}>
+<Tab value="Python">
+
+```python
+from a3s_lane import Lane
+
+lane = Lane()
+lane.start()
+
+# 所有事件 — 返回 EventStream
+stream = lane.subscribe()
+
+# recv() 阻塞直到事件到达；超时返回 None
+event = stream.recv(timeout_ms=5000)
+if event:
+    print(f"[{event.timestamp}] {event.key}")
+    print(event.payload)  # dict
+
+# 过滤 — 精确 key 匹配
+failures = lane.subscribe_filtered([
+    "queue.command.failed",
+    "queue.command.timeout",
+])
+
+# 事件循环
+while True:
+    event = failures.recv(timeout_ms=1000)
+    if event is None:
+        break
+    print(event.key, event.payload)
+```
+
+</Tab>
+<Tab value="Node.js">
+
+```js
+const { Lane } = require('@a3s-lab/lane');
+
+const lane = new Lane();
+lane.start();
+
+// 所有事件 — 每个事件触发回调 (err, event)
+lane.subscribe((err, event) => {
+  if (err) throw err;
+  console.log(`[${event.timestamp}] ${event.key}`);
+  console.log(JSON.parse(event.payload));  // event.payload 是 JSON 字符串
+});
+
+// 过滤 — 精确 key 匹配
+lane.subscribeFiltered(
+  ['queue.command.failed', 'queue.command.timeout'],
+  (err, event) => {
+    if (err) throw err;
+    console.error('failure:', event.key, JSON.parse(event.payload));
+  }
+);
+```
+
+</Tab>
+</Tabs>
+
+## Event 参考
+
+### 命令生命周期
+
+<TypeTable
+  type={{
+    "queue.command.submitted": {
+      description: "触发时机：submit() 被接受 · 载荷字段：lane_id",
+    },
+    "queue.command.started": {
+      description: "触发时机：调度器分发 · 载荷字段：lane_id, command_id, command_type",
+    },
+    "queue.command.completed": {
+      description: "触发时机：返回 Ok · 载荷字段：lane_id, command_id",
+    },
+    "queue.command.retry": {
+      description: "触发时机：失败，将重试 · 载荷字段：lane_id, command_id, attempt",
+    },
+    "queue.command.dead_lettered": {
+      description: "触发时机：移入 DLQ · 载荷字段：lane_id, command_id, command_type",
+    },
+    "queue.command.failed": {
+      description: "触发时机：终态失败 · 载荷字段：lane_id, command_id, error",
+    },
+    "queue.command.timeout": {
+      description: "触发时机：超时 · 载荷字段：lane_id, command_id, error",
+    },
+  }}
+/>
+
+### Lane 压力
+
+<TypeTable
+  type={{
+    "queue.lane.pressure": {
+      description: "触发时机：pending >= 阈值（首次越过）· 载荷字段：lane_id",
+    },
+    "queue.lane.idle": {
+      description: "触发时机：处于压力状态后 pending == 0 · 载荷字段：lane_id",
+    },
+  }}
+/>
+
+这些事件需要在 lane 配置上设置 `with_pressure_threshold(n)`。参见 [Lane 压力追踪](/docs/lane/lanes#pressure-tracking)。
+
+### 关闭
+
+<TypeTable
+  type={{
+    "queue.shutdown.started": {
+      description: "触发时机：调用 shutdown()",
+    },
+  }}
+/>
+
+## LaneEvent 结构
+
+```rust
+pub struct LaneEvent {
+    pub key: EventKey,            // 点分隔标识符
+    pub payload: EventPayload,    // Empty | String(String) | Map(HashMap<String, Value>)
+    pub timestamp: DateTime<Utc>,
+}
+```
+
+## 示例：生命周期日志记录器
+
+```rust
+use tokio_stream::StreamExt;
+
+let mut stream = manager.subscribe();
+
+tokio::spawn(async move {
+    while let Some(event) = stream.next().await {
+        if let a3s_lane::EventPayload::Map(ref m) = event.payload {
+            let lane = m.get("lane_id").and_then(|v| v.as_str()).unwrap_or("?");
+            match event.key.as_str() {
+                "queue.command.submitted"  => println!("+ queued  → {lane}"),
+                "queue.command.started"    => println!("→ started → {lane}"),
+                "queue.command.completed"  => println!("✓ done    ← {lane}"),
+                "queue.command.failed"     => {
+                    let err = m.get("error").and_then(|v| v.as_str()).unwrap_or("?");
+                    println!("✗ failed  ← {lane}: {err}");
+                }
+                _ => {}
+            }
+        }
+    }
+});
+```

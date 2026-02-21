@@ -3,204 +3,112 @@ title: Structured Output
 description: JSON Schema constrained generation via GBNF grammar
 ---
 
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-
 # Structured Output
 
-A3S Power supports structured output by converting JSON Schema definitions into GBNF (GGML BNF) grammars, which constrain the model's token generation to produce valid JSON matching the schema.
+A3S Power supports JSON Schema constrained generation. The schema is converted to a GBNF grammar that constrains the model's output token-by-token.
 
-## Basic Usage
+## JSON Mode
 
-### Ollama API
+Force the model to output valid JSON:
 
 ```bash
-curl http://localhost:11434/api/chat -d '{
-  "model": "llama3.2",
-  "messages": [{"role": "user", "content": "List 3 programming languages"}],
-  "format": {
-    "type": "object",
-    "properties": {
-      "languages": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "name": {"type": "string"},
-            "year": {"type": "integer"},
-            "paradigm": {"type": "string"}
-          },
-          "required": ["name", "year"]
-        }
-      }
-    },
-    "required": ["languages"]
-  },
-  "stream": false
-}'
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "messages": [{"role": "user", "content": "List 3 programming languages with their year of creation"}],
+    "response_format": {"type": "json_object"}
+  }'
 ```
 
-Guaranteed output:
+## JSON Schema
+
+Constrain output to a specific schema:
+
+```bash
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "messages": [{"role": "user", "content": "Extract the person info from: John Doe, age 30, engineer"}],
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "age": {"type": "integer"},
+          "occupation": {"type": "string"}
+        },
+        "required": ["name", "age", "occupation"]
+      }
+    }
+  }'
+```
+
+Response is guaranteed to match the schema:
 
 ```json
-{
-  "languages": [
-    {"name": "Rust", "year": 2010, "paradigm": "systems"},
-    {"name": "Python", "year": 1991, "paradigm": "multi-paradigm"},
-    {"name": "Go", "year": 2009, "paradigm": "concurrent"}
-  ]
-}
+{"name": "John Doe", "age": 30, "occupation": "engineer"}
 ```
 
-### OpenAI API
+## Python SDK
 
 ```python
 from openai import OpenAI
+from pydantic import BaseModel
 
 client = OpenAI(base_url="http://localhost:11434/v1", api_key="unused")
 
-response = client.chat.completions.create(
-    model="llama3.2",
-    messages=[{"role": "user", "content": "List 3 colors with hex codes"}],
-    response_format={
-        "type": "json_schema",
-        "json_schema": {
-            "name": "colors",
-            "schema": {
+class Person(BaseModel):
+    name: str
+    age: int
+    occupation: str
+
+response = client.beta.chat.completions.parse(
+    model="llama3.2:3b",
+    messages=[{"role": "user", "content": "Extract: Jane Smith, 25, data scientist"}],
+    response_format=Person
+)
+person = response.choices[0].message.parsed
+print(person.name, person.age, person.occupation)
+```
+
+## Complex Schemas
+
+```json
+{
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "type": "object",
+      "properties": {
+        "colors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "hex": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+              "rgb": {
                 "type": "object",
                 "properties": {
-                    "colors": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "name": {"type": "string"},
-                                "hex": {"type": "string"}
-                            },
-                            "required": ["name", "hex"]
-                        }
-                    }
-                },
-                "required": ["colors"]
-            }
+                  "r": {"type": "integer", "minimum": 0, "maximum": 255},
+                  "g": {"type": "integer", "minimum": 0, "maximum": 255},
+                  "b": {"type": "integer", "minimum": 0, "maximum": 255}
+                }
+              }
+            },
+            "required": ["name", "hex"]
+          }
         }
+      },
+      "required": ["colors"]
     }
-)
+  }
+}
 ```
 
 ## How It Works
 
-1. JSON Schema is received in the request
-2. Power converts the schema to a GBNF grammar
-3. The grammar constrains token sampling during generation
-4. Every generated token is validated against the grammar
-5. Output is guaranteed to be valid JSON matching the schema
-
-## Supported Schema Types
-
-<TypeTable
-  type={{
-    "string": {
-      description: "Quoted string with escape handling",
-    },
-    "integer": {
-      description: "Integer number",
-    },
-    "number": {
-      description: "Floating-point number",
-    },
-    "boolean": {
-      description: "true` or `false",
-    },
-    "null": {
-      description: "null",
-    },
-    "array": {
-      description: "Array with typed items",
-    },
-    "object": {
-      description: "Object with typed properties",
-    },
-    "enum": {
-      description: "One of the specified values",
-    },
-  }}
-/>
-
-### Nested Objects
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "user": {
-      "type": "object",
-      "properties": {
-        "name": {"type": "string"},
-        "address": {
-          "type": "object",
-          "properties": {
-            "city": {"type": "string"},
-            "country": {"type": "string"}
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-### Arrays with Constraints
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "tags": {
-      "type": "array",
-      "items": {"type": "string"}
-    },
-    "scores": {
-      "type": "array",
-      "items": {"type": "number"}
-    }
-  }
-}
-```
-
-### Enums
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "status": {
-      "type": "string",
-      "enum": ["active", "inactive", "pending"]
-    }
-  }
-}
-```
-
-## Simple JSON Mode
-
-For unstructured JSON output (no schema), use `"format": "json"`:
-
-```bash
-curl http://localhost:11434/api/chat -d '{
-  "model": "llama3.2",
-  "messages": [{"role": "user", "content": "Describe Rust as JSON"}],
-  "format": "json",
-  "stream": false
-}'
-```
-
-This constrains output to valid JSON but without a specific schema.
-
-## CLI Usage
-
-```bash
-# JSON mode
-a3s-power run llama3.2 --format json "List 3 colors"
-
-# The --format flag accepts "json" for simple JSON mode
-```
+The JSON Schema is converted to a GBNF (Grammar-Based Next-token Filter) grammar. During generation, only tokens that are valid continuations of the grammar are allowed. This guarantees schema compliance without post-processing or retries.

@@ -1,10 +1,288 @@
 ---
 title: EventBus
-description: 高级事件总线 API 和订阅管理
+description: 发布、订阅和管理事件的高级 API
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # EventBus
 
-`EventBus` 是 A3S Event 的高级 API，封装了 `EventProvider`，提供订阅管理、Schema 验证、加密和死信队列。
+`EventBus` 是操作事件的主要 API。它封装了 `EventProvider`，并在其基础上增加了 Schema 验证、加密、DLQ 处理、状态持久化、指标采集以及可选的 Broker 路由功能。
 
-详细文档请参阅[英文版](/docs/en/event/eventbus)。
+## 创建 EventBus
+
+```rust
+use a3s_event::{EventBus, MemoryProvider};
+
+let bus = EventBus::new(MemoryProvider::default());
+```
+
+带 Schema 验证：
+
+```rust
+use a3s_event::{EventBus, MemoryProvider, MemorySchemaRegistry};
+use std::sync::Arc;
+
+let registry = Arc::new(MemorySchemaRegistry::new());
+let bus = EventBus::with_schema_registry(MemoryProvider::default(), registry);
+```
+
+## 发布
+
+### 便捷发布
+
+自动生成 ID 和时间戳并创建 `Event`：
+
+```rust
+let event = bus.publish(
+    "orders",           // category
+    "created",          // topic → subject 变为 "events.orders.created"
+    "New order ORD-001", // summary
+    "order-service",    // source
+    serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
+).await?;
+
+println!("Event ID: {}", event.id);       // evt-<uuid>
+println!("Subject: {}", event.subject);    // events.orders.created
+```
+
+subject 由 provider 的 `build_subject(category, topic)` 方法自动构建。
+
+### 发布预构建事件
+
+```rust
+use a3s_event::Event;
+
+let event = Event::new(
+    "events.orders.created",
+    "orders",
+    "New order ORD-001",
+    "order-service",
+    serde_json::json!({ "order_id": "ORD-001" }),
+);
+
+let sequence = bus.publish_event(&event).await?;
+```
+
+### 类型化事件（带 Schema 验证）
+
+```rust
+let event = Event::typed(
+    "events.orders.created",  // subject
+    "orders",                 // category
+    "order.created",          // event_type（与 schema registry 匹配）
+    1,                        // version
+    "New order ORD-001",      // summary
+    "order-service",          // source
+    serde_json::json!({ "order_id": "ORD-001", "total": 99.99 }),
+);
+
+let sequence = bus.publish_event(&event).await?;
+```
+
+### 带选项发布
+
+Provider 专属发布选项（去重、乐观并发、超时）：
+
+```rust
+use a3s_event::PublishOptions;
+
+let opts = PublishOptions {
+    msg_id: Some("dedup-123".into()),     // 去重 ID
+    expected_sequence: Some(42),           // 乐观并发
+    timeout_secs: Some(5),                 // 发布超时
+};
+
+let sequence = bus.publish_event_with_options(&event, &opts).await?;
+```
+
+### PublishOptions 字段
+
+<TypeTable
+  type={{
+    msg_id: { type: 'Option<String>', description: '去重 ID（NATS dedup 窗口）' },
+    expected_sequence: { type: 'Option<u64>', description: '乐观并发的预期流序列号' },
+    timeout_secs: { type: 'Option<u64>', description: '发布超时（秒）' },
+  }}
+/>
+
+## 订阅
+
+A3S Event 采用两步订阅模型：先注册过滤器，再创建订阅者句柄。
+
+### 第一步：注册订阅
+
+```rust
+use a3s_event::SubscriptionFilter;
+
+bus.update_subscription(SubscriptionFilter {
+    subscriber_id: "order-processor".to_string(),
+    subjects: vec!["events.orders.>".to_string()],
+    durable: true,
+    options: None,
+}).await?;
+```
+
+### 第二步：创建订阅者句柄
+
+```rust
+let mut subs = bus.create_subscriber("order-processor").await?;
+
+for sub in &mut subs {
+    // 自动 ack 模式
+    while let Some(received) = sub.next().await? {
+        println!("{}: {}", received.event.subject, received.event.summary);
+    }
+}
+```
+
+### 手动 Ack 模式（NATS）
+
+```rust
+for sub in &mut subs {
+    while let Some(pending) = sub.next_manual_ack().await? {
+        match process(&pending.received.event).await {
+            Ok(_) => pending.ack().await?,
+            Err(_) => pending.nak().await?,  // 请求重新投递
+        }
+    }
+}
+```
+
+### 带选项订阅
+
+```rust
+use a3s_event::{SubscribeOptions, DeliverPolicy, SubscriptionFilter};
+
+bus.update_subscription(SubscriptionFilter {
+    subscriber_id: "replay-consumer".to_string(),
+    subjects: vec!["events.orders.>".to_string()],
+    durable: true,
+    options: Some(SubscribeOptions {
+        deliver_policy: DeliverPolicy::New,
+        max_deliver: Some(3),
+        ack_wait_secs: Some(30),
+        max_ack_pending: Some(100),
+        backoff_secs: vec![1, 5, 30],
+    }),
+}).await?;
+```
+
+### SubscribeOptions 字段
+
+<TypeTable
+  type={{
+    deliver_policy: { type: 'DeliverPolicy', default: 'All', description: '从哪里开始消费' },
+    max_deliver: { type: 'Option<i64>', description: '进入 DLQ 前的最大重投次数' },
+    ack_wait_secs: { type: 'Option<u64>', description: '等待 ack 的秒数，超时后重新投递' },
+    max_ack_pending: { type: 'Option<i64>', description: '背压：最大未 ack 消息数' },
+    backoff_secs: { type: 'Vec<u64>', description: '重投退避时间表（秒）' },
+  }}
+/>
+
+### 投递策略
+
+```rust
+pub enum DeliverPolicy {
+    All,                              // 从头开始的所有消息
+    Last,                             // 仅最后一条消息
+    New,                              // 订阅后的新消息
+    ByStartSequence { sequence: u64 },// 从指定流序列号开始
+    ByStartTime { timestamp: u64 },   // 从指定 Unix 时间戳（毫秒）开始
+    LastPerSubject,                   // 每个 subject 的最后一条消息
+}
+```
+
+## 主题通配符
+
+两种 provider 均支持 NATS 风格通配符：
+
+<TypeTable
+  type={{
+    "events.orders.>": {
+      description: "匹配：events.orders. 下任意深度的所有主题 · 示例：events.orders.created、events.orders.us.shipped",
+    },
+    "events.orders.*": {
+      description: "匹配：events.orders. 下一级主题 · 示例：events.orders.created，但不匹配 events.orders.us.shipped",
+    },
+  }}
+/>
+
+## 历史记录与查询
+
+```rust
+// 获取最近事件，可按 category 过滤
+let events = bus.list_events(Some("orders"), 100).await?;
+for event in &events {
+    println!("[{}] {} — {}", event.timestamp, event.subject, event.summary);
+}
+
+// 按 category 统计事件数量
+let counts = bus.counts(1000).await?;
+println!("Total: {}, Orders: {:?}", counts.total, counts.categories.get("orders"));
+```
+
+## 订阅管理
+
+```rust
+// 列出所有已注册的订阅
+let filters = bus.list_subscriptions().await;
+
+// 获取指定订阅
+let filter = bus.get_subscription("order-processor").await;
+
+// 移除订阅（同时删除持久化消费者）
+bus.remove_subscription("order-processor").await?;
+```
+
+## 配置设置器
+
+所有设置器需要 `&mut self`，应在发布前的初始化阶段调用：
+
+```rust
+let mut bus = EventBus::new(MemoryProvider::default());
+
+// 可选：DLQ 处理器
+bus.set_dlq_handler(Arc::new(MemoryDlqHandler::new(100)));
+
+// 可选：加密（需要 `encryption` feature）
+bus.set_encryptor(Arc::new(encryptor));
+
+// 可选：状态持久化
+bus.set_state_store(Arc::new(store))?;
+
+// 可选：Broker 路由（需要 `routing` feature）
+bus.set_broker(Arc::new(broker));
+```
+
+## 健康检查
+
+```rust
+let is_healthy = bus.health().await?;
+```
+
+<TypeTable
+  type={{
+    "MemoryProvider": {
+      description: "始终返回 true",
+    },
+    "NatsProvider": {
+      description: "通过 info() 检查 NATS 连接",
+    },
+  }}
+/>
+
+## 访问器
+
+```rust
+bus.provider_name();                // "memory" | "nats"
+bus.provider();                     // &dyn EventProvider
+bus.provider_arc();                 // Arc<dyn EventProvider>
+bus.metrics();                      // &EventMetrics
+bus.schema_registry();              // Option<&dyn SchemaRegistry>
+bus.dlq_handler();                  // Option<&dyn DlqHandler>
+bus.state_store();                  // Option<&dyn StateStore>
+bus.encryptor();                    // Option<&dyn EventEncryptor>（encryption feature）
+bus.broker();                       // Option<&Broker>（routing feature）
+bus.info().await?;                  // ProviderInfo
+```

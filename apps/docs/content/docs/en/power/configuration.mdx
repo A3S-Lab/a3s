@@ -1,257 +1,130 @@
 ---
 title: Configuration
-description: HCL/TOML configuration and Ollama-compatible environment variables
+description: HCL configuration file and environment variables
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Configuration
 
-A3S Power supports both HCL and TOML configuration formats with full Ollama-compatible environment variable overrides. HCL is the preferred format.
-
-## Supported Formats
-
-<TypeTable
-  type={{
-    "HCL": {
-      description: "Extension: .hcl · Priority: Primary (checked first)",
-    },
-    "TOML": {
-      description: "Extension: .toml · Priority: Secondary (fallback)",
-    },
-  }}
-/>
-
-The config file is auto-detected by extension. When using the default path (`~/.a3s/power/`), Power checks for `config.hcl` first, then falls back to `config.toml`.
-
-## Config File
-
-### HCL (Recommended)
+A3S Power uses HCL (HashiCorp Configuration Language) as its configuration format.
 
 Default location: `~/.a3s/power/config.hcl`
 
+## Minimal Config
+
 ```hcl
-host             = "127.0.0.1"    # HTTP server bind address
-port             = 11434          # HTTP server port
-max_loaded_models = 1             # Max concurrent loaded models
-keep_alive       = "5m"           # Auto-unload idle models
-use_mlock        = false          # Lock model weights in memory
-num_thread       = 8              # Threads for generation
-flash_attention  = false          # Enable flash attention
-num_parallel     = 1              # Concurrent request slots
-origins          = []             # Custom CORS origins
-noprune          = false          # Disable automatic blob pruning
-sched_spread     = false          # Spread layers across all GPUs
+host = "127.0.0.1"
+port = 11434
+max_loaded_models = 1
+keep_alive = "5m"
+```
 
+## Full Config Reference
+
+```hcl
+# Server
+host             = "127.0.0.1"
+port             = 11434
+max_loaded_models = 1
+keep_alive       = "5m"      # "0" = unload immediately, "-1" = never
+num_thread       = 8
+flash_attention  = false
+num_parallel     = 1         # Concurrent inference slots
+use_mlock        = false
+
+# GPU
 gpu {
-  gpu_layers   = -1               # GPU offloading (0=CPU, -1=all)
-  main_gpu     = 0                # Primary GPU index
-  tensor_split = []               # Multi-GPU work distribution
+  gpu_layers   = -1          # -1 = all layers on GPU, 0 = CPU only
+  main_gpu     = 0
+  tensor_split = []          # e.g. [0.7, 0.3] for 2 GPUs
 }
+
+# TEE privacy protection
+tee_mode                = false
+redact_logs             = false
+suppress_token_metrics  = false
+model_hashes            = {}   # {"model:tag" = "sha256:abc..."}
+
+# Encrypted model loading
+model_key_source  = null       # {file = "/path/key.hex"} or {env = "MY_KEY"}
+key_provider      = "static"   # "static" or "rotating"
+in_memory_decrypt = false      # Decrypt in mlock-pinned RAM, never touch disk
+
+# Rate limiting
+rate_limit_rps          = 0    # 0 = unlimited
+max_concurrent_requests = 0    # 0 = unlimited
+
+# Transport
+tls_port   = null              # TLS port (requires tls feature)
+ra_tls     = false             # Embed attestation in TLS cert
+vsock_port = null              # Vsock port (Linux only, requires vsock feature)
 ```
 
-### TOML
-
-Default location: `~/.a3s/power/config.toml`
-
-```toml
-host = "127.0.0.1"           # HTTP server bind address
-port = 11434                  # HTTP server port
-max_loaded_models = 1         # Max concurrent loaded models
-keep_alive = "5m"             # Auto-unload idle models
-use_mlock = false             # Lock model weights in memory
-num_thread = 8                # Threads for generation
-flash_attention = false       # Enable flash attention
-num_parallel = 1              # Concurrent request slots
-origins = []                  # Custom CORS origins
-noprune = false               # Disable automatic blob pruning
-sched_spread = false          # Spread layers across all GPUs
-
-[gpu]
-gpu_layers = -1               # GPU offloading (0=CPU, -1=all)
-main_gpu = 0                  # Primary GPU index
-tensor_split = []             # Multi-GPU work distribution
-```
-
-## Keep-Alive Duration
-
-Controls how long idle models stay loaded in memory:
+## Configuration Reference
 
 <TypeTable
   type={{
-    "'5m'": {
-      description: "Unload after 5 minutes idle (default)",
-    },
-    "'1h'": {
-      description: "Unload after 1 hour idle",
-    },
-    "'0'": {
-      description: "Unload immediately after request",
-    },
-    "'-1'": {
-      description: "Never unload (keep forever)",
-    },
+    host: { type: 'string', default: '"127.0.0.1"', description: 'HTTP server bind address' },
+    port: { type: 'int', default: '11434', description: 'HTTP server port' },
+    max_loaded_models: { type: 'int', default: '1', description: 'Maximum models loaded concurrently' },
+    keep_alive: { type: 'string', default: '"5m"', description: 'Auto-unload idle models. "0" = immediate, "-1" = never' },
+    use_mlock: { type: 'bool', default: 'false', description: 'Lock model weights in memory (prevent swapping)' },
+    num_thread: { type: 'int', default: 'auto', description: 'Thread count for inference' },
+    flash_attention: { type: 'bool', default: 'false', description: 'Enable flash attention' },
+    num_parallel: { type: 'int', default: '1', description: 'Concurrent inference slots' },
+    tee_mode: { type: 'bool', default: 'false', description: 'Enable TEE: attestation, integrity checks, log redaction' },
+    redact_logs: { type: 'bool', default: 'false', description: 'Redact inference content from all logs' },
+    model_hashes: { type: 'map', default: '{}', description: 'Expected SHA-256 hashes for model integrity verification' },
+    suppress_token_metrics: { type: 'bool', default: 'false', description: 'Round token counts to nearest 10 (side-channel prevention)' },
+    model_key_source: { type: 'object', default: 'null', description: 'Decryption key for .enc model files' },
+    key_provider: { type: 'string', default: '"static"', description: '"static" or "rotating"' },
+    in_memory_decrypt: { type: 'bool', default: 'false', description: 'Decrypt .enc models in mlock-pinned RAM only' },
+    rate_limit_rps: { type: 'int', default: '0', description: 'Max requests/sec for /v1/* (0 = unlimited)' },
+    max_concurrent_requests: { type: 'int', default: '0', description: 'Max concurrent requests (0 = unlimited)' },
+    tls_port: { type: 'int', default: 'null', description: 'TLS server port (tls feature required)' },
+    ra_tls: { type: 'bool', default: 'false', description: 'Embed TEE attestation in TLS cert (requires tls_port + tee_mode)' },
+    vsock_port: { type: 'int', default: 'null', description: 'Vsock port for MicroVM guest-host (vsock feature, Linux only)' },
   }}
 />
-
-## GPU Configuration
-
-Power auto-detects GPU capabilities (Metal on macOS, CUDA on Linux/Windows):
-
-<Tabs items={["HCL", "TOML"]}>
-<Tab value="HCL">
-```hcl
-gpu {
-  gpu_layers   = -1            # -1 = offload all layers to GPU
-                               #  0 = CPU only
-                               # 20 = offload first 20 layers
-
-  main_gpu     = 0             # Primary GPU for single-GPU inference
-  tensor_split = [0.7, 0.3]   # Split work 70/30 across 2 GPUs
-}
-```
-</Tab>
-<Tab value="TOML">
-```toml
-[gpu]
-gpu_layers = -1       # -1 = offload all layers to GPU
-                      #  0 = CPU only
-                      # 20 = offload first 20 layers
-
-main_gpu = 0          # Primary GPU for single-GPU inference
-tensor_split = [0.7, 0.3]  # Split work 70/30 across 2 GPUs
-```
-</Tab>
-</Tabs>
-
-GPU memory is estimated before loading to prevent OOM errors. If a model doesn't fit in VRAM, layers are automatically kept on CPU.
 
 ## Environment Variables
 
-All Ollama environment variables are supported for drop-in compatibility:
-
 <TypeTable
   type={{
-    "OLLAMA_HOST": {
-      description: "Config Equivalent: host + port · Description: Server bind address (e.g., 0.0.0.0:11434)",
-    },
-    "OLLAMA_MODELS": {
-      description: "Description: Model storage directory",
-    },
-    "OLLAMA_KEEP_ALIVE": {
-      description: "Config Equivalent: keep_alive · Description: Default keep-alive duration",
-    },
-    "OLLAMA_MAX_LOADED_MODELS": {
-      description: "Config Equivalent: max_loaded_models · Description: Max concurrent models",
-    },
-    "OLLAMA_NUM_GPU": {
-      description: "Config Equivalent: gpu.gpu_layers · Description: GPU layers to offload",
-    },
-    "OLLAMA_NUM_PARALLEL": {
-      description: "Config Equivalent: num_parallel · Description: Concurrent request slots",
-    },
-    "OLLAMA_DEBUG": {
-      description: "Description: Enable debug logging",
-    },
-    "OLLAMA_ORIGINS": {
-      description: "Config Equivalent: origins · Description: Custom CORS origins (comma-separated)",
-    },
-    "OLLAMA_FLASH_ATTENTION": {
-      description: "Config Equivalent: flash_attention · Description: Global flash attention",
-    },
-    "OLLAMA_TMPDIR": {
-      description: "Description: Custom temporary directory",
-    },
-    "OLLAMA_NOPRUNE": {
-      description: "Config Equivalent: noprune · Description: Disable blob pruning",
-    },
-    "OLLAMA_SCHED_SPREAD": {
-      description: "Config Equivalent: sched_spread · Description: Spread layers across GPUs",
-    },
-  }}
-/>
-
-Power-specific:
-
-<TypeTable
-  type={{
-    "A3S_POWER_HOME": {
-      description: "Base directory (default: ~/.a3s/power/)",
-    },
+    A3S_POWER_HOME: { description: 'Base directory (default: ~/.a3s/power)' },
+    A3S_POWER_HOST: { description: 'Server bind address' },
+    A3S_POWER_PORT: { description: 'Server port' },
+    A3S_POWER_MAX_MODELS: { description: 'Max concurrent loaded models' },
+    A3S_POWER_KEEP_ALIVE: { description: 'Default keep-alive duration' },
+    A3S_POWER_GPU_LAYERS: { description: 'GPU layer offloading' },
+    A3S_POWER_TEE_MODE: { description: 'Enable TEE mode ("1" or "true")' },
+    A3S_POWER_REDACT_LOGS: { description: 'Enable log redaction ("1" or "true")' },
+    A3S_POWER_TLS_PORT: { description: 'TLS server port (tls feature required)' },
+    A3S_POWER_RA_TLS: { description: 'Enable RA-TLS ("1" or "true")' },
+    A3S_POWER_VSOCK_PORT: { description: 'Vsock port (vsock feature, Linux only)' },
+    A3S_TEE_SIMULATE: { description: 'Simulate TEE for development ("1")' },
+    HF_TOKEN: { description: 'HuggingFace token for private/gated model pulls' },
   }}
 />
 
 Environment variables take precedence over config file values.
 
-## Per-Request Options
+## TEE Configuration Example
 
-Generation parameters can be set per-request via the API:
+```hcl
+tee_mode   = true
+redact_logs = true
 
-```json
-{
-  "model": "llama3.2",
-  "messages": [{"role": "user", "content": "Hello"}],
-  "options": {
-    "temperature": 0.7,
-    "top_p": 0.9,
-    "top_k": 40,
-    "num_predict": 256,
-    "num_ctx": 4096,
-    "repeat_penalty": 1.1,
-    "seed": 42,
-    "stop": ["\n\n"],
-    "num_gpu": 99,
-    "flash_attention": true
-  }
+model_hashes = {
+  "llama3.2:3b" = "sha256:a1b2c3d4e5f6..."
 }
+
+# Optional: encrypted model weights
+model_key_source = { env = "MODEL_DECRYPT_KEY" }
+in_memory_decrypt = true
+
+# Optional: RA-TLS
+tls_port = 11443
+ra_tls   = true
 ```
-
-### Sampling Parameters
-
-<TypeTable
-  type={{
-    temperature: { type: 'float', default: '0.8', description: 'Randomness (0 = deterministic)' },
-    top_p: { type: 'float', default: '0.9', description: 'Nucleus sampling threshold' },
-    top_k: { type: 'int', default: '40', description: 'Top-K sampling' },
-    min_p: { type: 'float', default: '0.0', description: 'Minimum probability threshold' },
-    typical_p: { type: 'float', default: '1.0', description: 'Typical sampling' },
-    seed: { type: 'int', description: 'Random seed for reproducibility' },
-  }}
-/>
-
-### Penalty Parameters
-
-<TypeTable
-  type={{
-    repeat_penalty: { type: 'float', default: '1.1', description: 'Repetition penalty' },
-    repeat_last_n: { type: 'int', default: '64', description: 'Tokens to consider for penalty' },
-    frequency_penalty: { type: 'float', default: '0.0', description: 'Frequency-based penalty' },
-    presence_penalty: { type: 'float', default: '0.0', description: 'Presence-based penalty' },
-    penalize_newline: { type: 'bool', default: 'true', description: 'Apply penalty to newlines' },
-  }}
-/>
-
-### Context Parameters
-
-<TypeTable
-  type={{
-    num_ctx: { type: 'int', default: '2048', description: 'Context window size' },
-    num_predict: { type: 'int', default: '-1', description: 'Max tokens to generate (-1 = unlimited)' },
-    num_keep: { type: 'int', default: '4', description: 'Tokens to keep from initial prompt' },
-    stop: { type: 'string[]', description: 'Stop sequences' },
-  }}
-/>
-
-### Performance Parameters
-
-<TypeTable
-  type={{
-    num_batch: { type: 'int', default: '512', description: 'Batch size for prompt processing' },
-    num_thread: { type: 'int', description: 'CPU threads (auto-detected)' },
-    num_gpu: { type: 'int', default: '-1', description: 'GPU layers to offload' },
-    use_mmap: { type: 'bool', default: 'true', description: 'Memory-map model file' },
-    use_mlock: { type: 'bool', default: 'false', description: 'Lock model in memory' },
-    flash_attention: { type: 'bool', default: 'false', description: 'Enable flash attention' },
-  }}
-/>

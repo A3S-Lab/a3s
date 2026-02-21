@@ -1,41 +1,164 @@
 ---
 title: 模型管理
-description: 下载、管理和组织本地模型
+description: 模型格式、存储、HuggingFace Hub 拉取和生命周期管理
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 模型管理
 
-## 模型来源
+## 支持的格式
 
-A3S Power 支持三种模型来源，按优先级依次解析：
+<TypeTable
+  type={{
+    "gguf": {
+      description: "量化 GGUF 模型。默认格式，mistralrs 和 llama.cpp 后端均支持。",
+    },
+    "safetensors": {
+      description: "HuggingFace SafeTensors 对话模型。加载时应用 ISQ 量化（默认 Q8_0）。通过 default_parameters.isq 配置。",
+    },
+    "vision": {
+      description: "多模态视觉模型（LLaVA、Phi-3-Vision）。通过 images 字段或 OpenAI image_url 内容部分传入 base64 图片。",
+    },
+    "huggingface": {
+      description: "HuggingFace 嵌入向量模型（Qwen3-Embedding、GTE、NomicBert）。配合 POST /v1/embeddings 使用。",
+    },
+  }}
+/>
 
-1. **Ollama 注册表** — `llama3.2`、`qwen2.5:7b` 等
-2. **内置目录** — 常用模型的预配置别名
-3. **HuggingFace** — `hf.co/<用户>/<仓库>` 格式
-
-## 内容寻址存储
-
-模型以 SHA-256 内容寻址方式存储，相同内容只存一份，节省磁盘空间。
-
-```bash
-# 查看存储使用
-a3s-power list --size
-
-# 清理未使用的 blob
-a3s-power prune
-```
-
-## Modelfile
-
-```
-FROM llama3.2
-PARAMETER temperature 0.7
-PARAMETER num_predict 512
-SYSTEM "你是一个有帮助的中文助手。"
-```
+## 注册模型
 
 ```bash
-a3s-power create my-assistant -f Modelfile
+# GGUF 模型
+curl -X POST http://localhost:11434/v1/models \
+  -H "Content-Type: application/json" \
+  -d '{"name": "llama3.2:3b", "path": "/models/llama3.2-3b-q4_k_m.gguf"}'
+
+# SafeTensors 对话模型（加载时 ISQ 量化）
+curl -X POST http://localhost:11434/v1/models \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "qwen2.5:7b",
+    "path": "/models/Qwen2.5-7B-Instruct",
+    "format": "safetensors",
+    "default_parameters": {"isq": "Q4K"}
+  }'
+
+# 视觉模型
+curl -X POST http://localhost:11434/v1/models \
+  -H "Content-Type: application/json" \
+  -d '{"name": "llava:7b", "path": "/models/llava-7b", "format": "vision"}'
+
+# 嵌入向量模型
+curl -X POST http://localhost:11434/v1/models \
+  -H "Content-Type: application/json" \
+  -d '{"name": "qwen3-embed", "path": "/models/Qwen3-Embedding", "format": "huggingface"}'
 ```
 
-详细文档请参阅[英文版](/docs/en/power/models)。
+## 从 HuggingFace Hub 拉取
+
+需要 `hf` feature（默认构建已包含）。
+
+```bash
+# 按量化标签拉取（通过 HF API 解析文件名）
+curl -N http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"name": "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M"}'
+
+# 按精确文件名拉取
+curl -N http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"name": "bartowski/Llama-3.2-3B-Instruct-GGUF/Llama-3.2-3B-Instruct-Q4_K_M.gguf"}'
+
+# 私有/受限模型（需要 HF Token）
+curl -N http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"name": "meta-llama/Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Q4_K_M.gguf", "token": "hf_..."}'
+
+# 强制重新下载
+curl -N http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"name": "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M", "force": true}'
+```
+
+也可通过环境变量 `HF_TOKEN` 代替在请求体中传入 `token`。
+
+### SSE 进度事件
+
+```
+data: {"status":"resuming","offset":104857600,"total":2147483648}
+data: {"status":"downloading","completed":524288000,"total":2147483648}
+data: {"status":"verifying"}
+data: {"status":"success","id":"bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M","object":"model"}
+```
+
+下载中断后重试会自动续传——通过下载 URL 的 SHA-256 定位断点文件，使用 HTTP `Range` 请求续传。
+
+### 查询拉取状态
+
+```bash
+# 获取持久化的拉取进度（服务器重启后仍可查询）
+curl http://localhost:11434/v1/models/pull/bartowski%2FLlama-3.2-3B-Instruct-GGUF:Q4_K_M/status
+```
+
+```json
+{"name": "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M", "status": "pulling", "completed": 524288000, "total": 2147483648}
+```
+
+## 列出和查看模型
+
+```bash
+# 列出所有已注册模型
+curl http://localhost:11434/v1/models
+
+# 查看指定模型
+curl http://localhost:11434/v1/models/llama3.2:3b
+```
+
+## 删除模型
+
+```bash
+curl -X DELETE http://localhost:11434/v1/models/llama3.2:3b
+```
+
+## 存储结构
+
+```
+~/.a3s/power/
+├── models/
+│   ├── manifests/           # 每个模型的 JSON 元数据
+│   │   ├── llama3.2-3b.json
+│   │   └── qwen2.5-7b.json
+│   └── blobs/               # 按 SHA-256 内容寻址
+│       ├── sha256-a1b2c3...
+│       └── sha256-d4e5f6...
+└── pulls/                   # 拉取进度状态（断点续传）
+    └── <url-sha256>.json
+```
+
+模型 Blob 按 SHA-256 存储——不同模型名称共享相同权重时只存储一份。
+
+## ISQ 量化类型（SafeTensors）
+
+<TypeTable
+  type={{
+    "Q4_0": { description: "4 位量化，基础版" },
+    "Q4K": { description: "4 位 K-quant（推荐，质量与体积平衡）" },
+    "Q6K": { description: "6 位 K-quant" },
+    "Q8_0": { description: "8 位量化（SafeTensors 默认）" },
+    "HQQ4": { description: "半二次量化，4 位" },
+    "HQQ8": { description: "半二次量化，8 位" },
+  }}
+/>
+
+## 模型生命周期
+
+```
+注册/拉取 → 首次请求时自动加载 → 推理服务 → 空闲 → LRU 驱逐
+                  ↑                                      │
+                  └──────────────────────────────────────┘
+```
+
+- 首次推理请求时自动加载模型
+- 空闲模型在 `keep_alive` 时间后自动卸载（默认 `5m`）
+- 达到 `max_loaded_models` 上限时，最近最少使用的模型被驱逐

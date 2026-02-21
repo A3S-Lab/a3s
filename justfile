@@ -94,3 +94,19 @@ safeclaw-ui-desktop:
 # Build SafeClaw UI for production
 safeclaw-ui-build:
     cd apps/safeclaw-ui && pnpm build
+
+# ============================================================================
+# Maintenance
+# ============================================================================
+
+# Clean all build artifacts across the monorepo
+clean:
+    cd crates/box && just clean
+    cd crates/code && just clean
+    cd crates/event && just clean
+    cd crates/lane && just clean
+    cd crates/power && just clean
+    cd crates/search && just clean
+    cd crates/safeclaw && just clean
+    cd apps/os && just clean
+    cd apps/safeclaw-ui && just clean

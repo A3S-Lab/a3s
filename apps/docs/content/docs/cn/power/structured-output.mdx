@@ -1,34 +1,114 @@
 ---
 title: 结构化输出
-description: JSON Schema 约束的结构化输出
+description: 通过 GBNF 语法约束的 JSON Schema 结构化输出
 ---
 
 # 结构化输出
 
-A3S Power 通过 GBNF 语法实现 JSON Schema 约束的结构化输出，确保模型输出符合指定格式。
+A3S Power 支持 JSON Schema 约束生成。Schema 被转换为 GBNF 语法，在 token 级别约束模型输出。
+
+## JSON 模式
+
+强制模型输出合法 JSON：
+
+```bash
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "messages": [{"role": "user", "content": "列出 3 种编程语言及其创建年份"}],
+    "response_format": {"type": "json_object"}
+  }'
+```
+
+## JSON Schema
+
+将输出约束为指定 Schema：
+
+```bash
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "messages": [{"role": "user", "content": "从以下文本提取人物信息：张三，30岁，工程师"}],
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "age": {"type": "integer"},
+          "occupation": {"type": "string"}
+        },
+        "required": ["name", "age", "occupation"]
+      }
+    }
+  }'
+```
+
+响应保证符合 Schema：
+
+```json
+{"name": "张三", "age": 30, "occupation": "工程师"}
+```
+
+## Python SDK
 
 ```python
 from openai import OpenAI
+from pydantic import BaseModel
 
 client = OpenAI(base_url="http://localhost:11434/v1", api_key="unused")
 
-response = client.chat.completions.create(
-    model="llama3.2",
-    messages=[{"role": "user", "content": "提取以下文本中的人名和地点：张三去了北京。"}],
-    response_format={
-        "type": "json_schema",
-        "json_schema": {
-            "name": "extraction",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "persons": {"type": "array", "items": {"type": "string"}},
-                    "locations": {"type": "array", "items": {"type": "string"}}
-                }
-            }
-        }
-    }
+class Person(BaseModel):
+    name: str
+    age: int
+    occupation: str
+
+response = client.beta.chat.completions.parse(
+    model="llama3.2:3b",
+    messages=[{"role": "user", "content": "提取：李四，25岁，数据科学家"}],
+    response_format=Person
 )
+person = response.choices[0].message.parsed
+print(person.name, person.age, person.occupation)
 ```
 
-详细文档请参阅[英文版](/docs/en/power/structured-output)。
+## 复杂 Schema
+
+```json
+{
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "type": "object",
+      "properties": {
+        "colors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {"type": "string"},
+              "hex": {"type": "string", "pattern": "^#[0-9A-Fa-f]{6}$"},
+              "rgb": {
+                "type": "object",
+                "properties": {
+                  "r": {"type": "integer", "minimum": 0, "maximum": 255},
+                  "g": {"type": "integer", "minimum": 0, "maximum": 255},
+                  "b": {"type": "integer", "minimum": 0, "maximum": 255}
+                }
+              }
+            },
+            "required": ["name", "hex"]
+          }
+        }
+      },
+      "required": ["colors"]
+    }
+  }
+}
+```
+
+## 工作原理
+
+JSON Schema 被转换为 GBNF（基于语法的下一 token 过滤）语法。生成过程中，只有符合语法的有效 token 才被允许输出。这保证了 Schema 合规性，无需后处理或重试。

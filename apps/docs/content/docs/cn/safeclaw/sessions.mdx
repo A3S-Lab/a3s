@@ -1,10 +1,151 @@
 ---
 title: 会话管理
-description: 每会话隔离和安全内存擦除
+description: 会话管理、路由决策、每会话隔离与安全内存擦除
 ---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 会话管理
 
-SafeClaw 为每个用户会话提供独立隔离环境，会话结束时安全擦除内存中的敏感数据。
+SafeClaw 为每个用户管理独立会话，提供状态追踪、敏感度感知路由和安全隔离。
 
-详细文档请参阅[英文版](/docs/en/safeclaw/sessions)。
+## 会话
+
+```rust
+pub enum SessionState {
+    Creating,
+    Active,
+    Processing,
+    Paused,
+    Terminating,
+    Terminated,
+}
+
+pub struct Session {
+    pub id: String,
+    pub user_id: String,
+    pub channel_id: String,
+    pub chat_id: String,
+    state: Arc<RwLock<SessionState>>,
+    sensitivity_level: Arc<RwLock<SensitivityLevel>>,
+    pub created_at: i64,
+    last_activity: Arc<RwLock<i64>>,
+    message_count: Arc<RwLock<u64>>,
+    metadata: Arc<RwLock<HashMap<String, serde_json::Value>>>,
+    tee_active: Arc<RwLock<bool>>,
+}
+```
+
+### 会话 API
+
+```rust
+impl Session {
+    pub async fn state(&self) -> SessionState;
+    pub async fn set_state(&self, state: SessionState);
+    pub async fn is_active(&self) -> bool;
+    pub async fn touch(&self);
+    pub async fn increment_messages(&self);
+    pub async fn update_sensitivity(&self, level: SensitivityLevel);
+    pub async fn mark_tee_active(&self);
+    pub async fn uses_tee(&self) -> bool;
+}
+```
+
+## 会话管理器
+
+```rust
+pub struct SessionManager {
+    sessions: Arc<RwLock<HashMap<String, Arc<Session>>>>,
+    user_sessions: Arc<RwLock<HashMap<String, String>>>,
+    tee_config: TeeConfig,
+    tee_runtime: Arc<TeeRuntime>,
+    isolation: Arc<SessionIsolation>,
+    injection_detector: Arc<InjectionDetector>,
+    network_firewall: Arc<NetworkFirewall>,
+    audit_bus: Arc<AuditEventBus>,
+}
+
+impl SessionManager {
+    pub fn new(tee_config: TeeConfig, audit_bus: Arc<AuditEventBus>) -> Self;
+    pub async fn init_tee(&self) -> Result<()>;
+    pub async fn shutdown_tee(&self) -> Result<()>;
+    pub fn is_tee_enabled(&self) -> bool;
+}
+```
+
+会话管理器协调所有安全子系统——每条传入消息在到达 AI agent 之前，都会经过注入检测器、隐私分类器和策略引擎的处理。
+
+## 会话路由
+
+`SessionRouter` 根据消息的敏感程度决定处理方式：
+
+```rust
+pub enum RoutingDecision {
+    ProcessLocal,           // 本地处理，无需 TEE
+    ProcessInTee,           // 路由至 TEE enclave
+    Reject,                 // 拦截消息
+    RequireConfirmation,    // 请求用户确认
+}
+```
+
+路由流程：
+1. 对消息进行 PII 分类 → `SensitivityLevel`
+2. 检查该会话的累积风险
+3. 策略引擎评估 → `RoutingDecision`
+4. 若为 `ProcessInTee`，通过安全通道加密并转发
+5. 在会话的污点注册表中登记污点值
+
+## 会话隔离
+
+每个会话拥有独立的安全上下文：
+
+```rust
+pub struct SessionIsolation {
+    // 每会话污点注册表
+    // 每会话审计日志
+    // 每会话安全内存擦除
+}
+
+impl SessionIsolation {
+    pub async fn wipe_all(&self);
+}
+```
+
+会话终止时：
+1. 所有污点条目被安全擦除（通过 `zeroize` 将内存清零）
+2. 会话审计日志完成归档
+3. 内存缓冲区被清零
+4. 会话元数据被清除
+
+这可防止同一进程内不同会话之间发生数据泄漏。
+
+## REST API
+
+<TypeTable
+  type={{
+    "/api/v1/gateway/sessions": {
+      type: "GET",
+      description: "列出所有活跃会话",
+    },
+    "/api/v1/gateway/sessions/:id": {
+      type: "GET",
+      description: "获取会话详情",
+    },
+  }}
+/>
+
+### 会话详情响应示例
+
+```json
+{
+  "id": "sess-abc123",
+  "user_id": "user-1",
+  "channel_id": "telegram",
+  "state": "Active",
+  "sensitivity_level": "Sensitive",
+  "tee_active": false,
+  "message_count": 12,
+  "created_at": 1707734400,
+  "last_activity": 1707734460
+}
+```

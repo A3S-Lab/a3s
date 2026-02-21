@@ -1,14 +1,65 @@
 ---
 title: 工具调用
-description: 函数调用和工具使用
+description: 函数调用与结构化工具定义
 ---
 
 # 工具调用
 
-A3S Power 支持三种工具调用格式：XML、Mistral 和 JSON。
+A3S Power 支持兼容 OpenAI 的工具/函数调用。在请求中定义工具，模型将输出结构化的工具调用响应。
+
+## 基础工具调用
+
+```bash
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama3.2:3b",
+    "messages": [{"role": "user", "content": "旧金山现在天气怎么样？"}],
+    "tools": [{
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "获取指定地点的当前天气",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "location": {"type": "string", "description": "城市名称"},
+            "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+          },
+          "required": ["location"]
+        }
+      }
+    }]
+  }'
+```
+
+响应：
+
+```json
+{
+  "choices": [{
+    "message": {
+      "role": "assistant",
+      "content": null,
+      "tool_calls": [{
+        "id": "call_abc123",
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "arguments": "{\"location\": \"旧金山\", \"unit\": \"celsius\"}"
+        }
+      }]
+    },
+    "finish_reason": "tool_calls"
+  }]
+}
+```
+
+## 多轮工具使用
 
 ```python
 from openai import OpenAI
+import json
 
 client = OpenAI(base_url="http://localhost:11434/v1", api_key="unused")
 
@@ -16,22 +67,72 @@ tools = [{
     "type": "function",
     "function": {
         "name": "get_weather",
-        "description": "获取指定城市的天气",
+        "description": "获取当前天气",
         "parameters": {
             "type": "object",
-            "properties": {
-                "city": {"type": "string", "description": "城市名称"}
-            },
-            "required": ["city"]
+            "properties": {"location": {"type": "string"}},
+            "required": ["location"]
         }
     }
 }]
 
+messages = [{"role": "user", "content": "东京天气怎么样？"}]
+
+# 第一轮：模型调用工具
 response = client.chat.completions.create(
-    model="llama3.2",
-    messages=[{"role": "user", "content": "北京今天天气怎么样？"}],
+    model="llama3.2:3b",
+    messages=messages,
     tools=tools
 )
+
+tool_call = response.choices[0].message.tool_calls[0]
+messages.append(response.choices[0].message)
+
+# 执行工具
+result = {"temperature": 22, "condition": "晴天"}
+
+# 第二轮：提供工具结果
+messages.append({
+    "role": "tool",
+    "tool_call_id": tool_call.id,
+    "content": json.dumps(result, ensure_ascii=False)
+})
+
+final = client.chat.completions.create(
+    model="llama3.2:3b",
+    messages=messages,
+    tools=tools
+)
+print(final.choices[0].message.content)
 ```
 
-详细文档请参阅[英文版](/docs/en/power/tools)。
+## 工具选择
+
+```json
+{
+  "tool_choice": "auto",       // 模型自行决定（默认）
+  "tool_choice": "none",       // 不调用工具
+  "tool_choice": "required",   // 必须调用工具
+  "tool_choice": {             // 强制调用指定工具
+    "type": "function",
+    "function": {"name": "get_weather"}
+  }
+}
+```
+
+## 并行工具调用
+
+支持的模型可在单次响应中调用多个工具：
+
+```json
+{
+  "choices": [{
+    "message": {
+      "tool_calls": [
+        {"id": "call_1", "function": {"name": "get_weather", "arguments": "{\"location\": \"东京\"}"}},
+        {"id": "call_2", "function": {"name": "get_weather", "arguments": "{\"location\": \"伦敦\"}"}}
+      ]
+    }
+  }]
+}
+```
