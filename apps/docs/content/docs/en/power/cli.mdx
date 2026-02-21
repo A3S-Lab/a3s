@@ -71,22 +71,28 @@ The verify CLI calls `GET /v1/attestation`, then runs:
 |------|---------|-------------|
 | `mistralrs` | ✅ | Pure Rust inference (candle). No C++ required. |
 | `llamacpp` | ❌ | llama.cpp inference. Requires C++ + CMake. |
+| `picolm` | ❌ | Pure Rust layer-streaming GGUF inference. O(layer_size) RAM for TEE. |
 | `hf` | ❌ | HuggingFace Hub model pull (`POST /v1/models/pull`). |
+| `hw-verify` | ❌ | Hardware attestation signature verification (AMD KDS / Intel PCS). |
 | `tls` | ❌ | RA-TLS transport with attestation X.509 extension. |
 | `vsock` | ❌ | AF_VSOCK transport for MicroVM guest-host (Linux only). |
+| `tee-minimal` | ❌ | Composite: `picolm` + `tls` + `vsock`. Smallest auditable TEE build. |
 
 ```bash
 # Default (mistralrs only)
 cargo build --release
 
-# With HF pull support
-cargo build --release --features hf
+# With HF pull + hardware verification (release build)
+cargo build --release --features hf,hw-verify
 
 # With llama.cpp instead of mistralrs
 cargo build --release --no-default-features --features llamacpp
 
+# TEE-minimal build (picolm + TLS + Vsock)
+cargo build --release --no-default-features --features tee-minimal
+
 # All features
-cargo build --release --features mistralrs,hf,tls,vsock
+cargo build --release --features mistralrs,hf,hw-verify,tls,vsock
 ```
 
 ## Environment Variables

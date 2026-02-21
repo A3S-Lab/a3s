@@ -37,6 +37,7 @@ A3S Power is a privacy-preserving LLM inference server built to run inside Trust
 │  Backend Layer                                        │
 │  ┌──────────────────────────────────────────────────┐ │
 │  │  MistralRsBackend (default) · LlamaCppBackend    │ │
+│  │  PicolmBackend (TEE layer-streaming)             │ │
 │  │  GGUF · SafeTensors · Vision · Embeddings        │ │
 │  └──────────────────────────────────────────────────┘ │
 │                                                       │
@@ -55,7 +56,7 @@ A3S Power is a privacy-preserving LLM inference server built to run inside Trust
       description: "Remote attestation, model integrity (SHA-256), log redaction, memory zeroing, AES-256-GCM encrypted model loading",
     },
     "Backend Layer": {
-      description: "Pluggable inference engines: mistralrs (pure Rust, default) and llama.cpp (optional). Supports GGUF, SafeTensors, Vision, and Embedding model formats.",
+      description: "Pluggable inference engines: mistralrs (pure Rust, default), llama.cpp (optional), and picolm (TEE layer-streaming, optional). Supports GGUF, SafeTensors, Vision, and Embedding model formats.",
     },
     "Model Layer": {
       description: "Content-addressed blob store, model registry, GGUF metadata parser, HuggingFace Hub pull with resume support",

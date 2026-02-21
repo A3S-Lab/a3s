@@ -165,8 +165,8 @@ function getModules(lang: Lang) {
       tag: lang === 'cn' ? 'LLM 推理' : 'LLM Inference',
       description:
         lang === 'cn'
-          ? '本地 LLM 引擎 — Ollama + OpenAI API、llama.cpp、多 GPU、工具调用。'
-          : 'Local LLM engine — Ollama + OpenAI API, llama.cpp, multi-GPU, tool calling.',
+          ? '隐私保护 LLM 推理 — OpenAI 兼容 API、TEE 支持、多后端、多 GPU、工具调用。'
+          : 'Privacy-preserving LLM inference — OpenAI-compatible API, TEE support, multi-backend, multi-GPU, tool calling.',
       href: `${base}/docs/power`,
       icon: Cpu,
       lightColor: 'bg-emerald-50 text-emerald-600',

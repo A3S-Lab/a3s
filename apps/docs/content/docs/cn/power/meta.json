@@ -8,11 +8,11 @@
     "models",
     "inference",
     "---API---",
-    "ollama-api",
     "openai-api",
     "---能力---",
     "tools",
     "structured-output",
+    "tee-privacy",
     "observability",
     "cli"
   ]

@@ -9,7 +9,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 ## 推理后端
 
-A3S Power 使用可插拔的 `Backend` trait，提供两种实现：
+A3S Power 使用可插拔的 `Backend` trait，提供三种实现：
 
 <TypeTable
   type={{
@@ -18,6 +18,9 @@ A3S Power 使用可插拔的 `Backend` trait，提供两种实现：
     },
     "llamacpp（可选）": {
       description: "通过 llama-cpp-2 绑定使用 C++ llama.cpp。需要 C++ 编译器 + CMake。Feature 标志：--features llamacpp。",
+    },
+    "picolm（可选）": {
+      description: "纯 Rust 层流式 GGUF 推理。峰值内存 = O(layer_size) 而非 O(model_size)。可在 512MB TEE EPC 中运行 7B+ 模型。Feature 标志：--features picolm。",
     },
   }}
 />

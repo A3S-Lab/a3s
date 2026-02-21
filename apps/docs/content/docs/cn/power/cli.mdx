@@ -71,22 +71,28 @@ verify CLI 调用 `GET /v1/attestation`，然后依次执行：
 |------|------|------|
 | `mistralrs` | ✅ | 纯 Rust 推理（candle），无需 C++。 |
 | `llamacpp` | ❌ | llama.cpp 推理，需要 C++ + CMake。 |
+| `picolm` | ❌ | 纯 Rust 层流式 GGUF 推理，O(layer_size) 内存，适合 TEE。 |
 | `hf` | ❌ | HuggingFace Hub 模型拉取（`POST /v1/models/pull`）。 |
+| `hw-verify` | ❌ | 硬件证明签名验证（AMD KDS / Intel PCS）。 |
 | `tls` | ❌ | RA-TLS 传输，含证明 X.509 扩展。 |
 | `vsock` | ❌ | MicroVM 宿主机通信的 AF_VSOCK 传输（仅 Linux）。 |
+| `tee-minimal` | ❌ | 组合：`picolm` + `tls` + `vsock`，最小可审计 TEE 构建。 |
 
 ```bash
 # 默认（仅 mistralrs）
 cargo build --release
 
-# 含 HF 拉取支持
-cargo build --release --features hf
+# 含 HF 拉取 + 硬件验证（发布构建）
+cargo build --release --features hf,hw-verify
 
 # 使用 llama.cpp 替代 mistralrs
 cargo build --release --no-default-features --features llamacpp
 
+# TEE 最小构建（picolm + TLS + Vsock）
+cargo build --release --no-default-features --features tee-minimal
+
 # 全部 feature
-cargo build --release --features mistralrs,hf,tls,vsock
+cargo build --release --features mistralrs,hf,hw-verify,tls,vsock
 ```
 
 ## 环境变量

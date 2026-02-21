@@ -9,7 +9,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 ## Backends
 
-A3S Power uses a pluggable `Backend` trait. Two implementations are available:
+A3S Power uses a pluggable `Backend` trait. Three implementations are available:
 
 <TypeTable
   type={{
@@ -18,6 +18,9 @@ A3S Power uses a pluggable `Backend` trait. Two implementations are available:
     },
     "llamacpp (optional)": {
       description: "C++ llama.cpp via llama-cpp-2 bindings. Requires C++ compiler + CMake. Feature flag: --features llamacpp.",
+    },
+    "picolm (optional)": {
+      description: "Pure Rust layer-streaming GGUF inference. Peak RAM = O(layer_size) not O(model_size). Enables 7B+ models in 512MB TEE EPC. Feature flag: --features picolm.",
     },
   }}
 />
