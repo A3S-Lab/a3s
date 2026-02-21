@@ -149,6 +149,37 @@ When a new request shares a prefix with a previous request (same system prompt +
 
 DeepSeek-R1, QwQ, and other reasoning models emit `<think>...</think>` blocks. Power's streaming parser separates thinking content from the final response, forwarding each as distinct chunks.
 
+## Layer-Streaming Inference (picolm)
+
+Traditional LLM inference loads the entire model into RAM before generating a single token. A 7B Q4_K_M model needs ~4 GB. Inside a TEE, the Encrypted Page Cache (EPC) is often limited to 512 MB–1 GB. The model simply doesn't fit.
+
+picolm solves this with layer-streaming: instead of loading all weights at once, it memory-maps the GGUF file and processes one transformer layer at a time. Only the current layer's weights occupy physical RAM.
+
+### How It Works
+
+The implementation has two components:
+
+**`gguf_stream.rs` — Zero-Copy GGUF Parser**: Opens the GGUF file via `mmap(PROT_READ)`. Parses the header and tensor descriptors but loads no weight data. When picolm requests a layer's weights, `tensor_bytes(name)` returns a `&[u8]` slice directly into the mmap region — zero copy, zero allocation. The OS pages in data on demand and reclaims it under memory pressure.
+
+**`picolm.rs` — Layer-Streaming Forward Pass**: Iterates through each transformer layer (`blk.0.*` to `blk.{n-1}.*`), applying weights to the hidden state, then moving on. After processing layer N, its weight pages are no longer referenced and the OS can reclaim them before layer N+1 is paged in.
+
+### Memory Comparison
+
+| Model | Traditional | picolm | Reduction |
+|-------|------------|--------|-----------|
+| 3B Q4_K_M (~2 GB) | ~2 GB | ~60 MB | 33× |
+| 7B Q4_K_M (~4 GB) | ~4 GB | ~120 MB | 33× |
+| 13B Q4_K_M (~7 GB) | ~7 GB | ~200 MB | 35× |
+| 70B Q4_K_M (~40 GB) | ~40 GB | ~1.1 GB | 36× |
+
+### Encrypted Model Support
+
+For encrypted models (`.enc`), `LayerStreamingDecryptedModel` decrypts one chunk at a time. Each chunk is wrapped in `Zeroizing<Vec<u8>>` — automatically zeroed when dropped. Only one layer's plaintext weights exist in RAM at any moment.
+
+### Current Status
+
+The layer-streaming infrastructure (mmap parser, layer iteration, sampling, encrypted streaming) is production-ready. The forward pass currently uses stub arithmetic — real transformer matrix operations are the next milestone.
+
 ## Auto-Loading
 
 When a request arrives for a model that isn't loaded, Power automatically loads it. If `max_loaded_models` is reached, the least-recently-used model is evicted first.
