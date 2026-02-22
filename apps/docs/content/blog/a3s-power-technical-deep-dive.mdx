@@ -1,0 +1,1075 @@
+---
+title: 10美元硬件中可运行的隐私 LLM 推理引擎
+description: 深入解析 A3S Power 的架构设计——在 10 美元、256MB 内存的硬件上运行 10B 模型的隐私推理引擎，TEE 硬件隔离、模型证明绑定、层流式推理与零信任安全
+date: "2026-02-22"
+author: A3S Lab
+tags: [power, llm, tee, rust, inference, privacy, confidential-computing]
+---
+
+三个事实，定义了 A3S Power 要解决的问题：
+
+> **一：** 你发送给任何 LLM 推理服务器的每一条 prompt，都以明文形式存在于服务器内存中。Ollama、vLLM、TGI、llama.cpp——无一例外。运营商承诺"不会看"，但这是策略，不是物理定律。
+>
+> **二：** 一个 10B 参数的量化模型需要 6GB 内存。TEE（可信执行环境）的加密内存通常只有 256MB。传统推理引擎在这个约束下只能跑 0.5B 的玩具模型——不具备任何真正的安全决策能力。
+>
+> **三：** 一块 10 美元、256MB 内存的硬件，通过层流式推理技术，可以运行 10B 模型。这个模型足够强大，能在硬件加密的内存中完成三件关键的事：**安全性校验**（识别 prompt injection）、**智能数据脱敏**（区分敏感信息和公开信息）、**敏感工具调用审批**（判断 Agent 的操作是否越权）。
+
+这三个事实的交汇点，就是 A3S Power 尝试回答的问题：**能不能在 10 美元的硬件上，用硬件加密保护每一条 prompt，同时运行一个足够聪明的模型来做安全决策？** 我们的答案是可以。
+
+这篇文章会跟着一条真实的 prompt——一位投行交易员发送的客户持仓分析请求——走完它在 A3S Power 中的完整旅程。每经过一道安全层，我们停下来，看看做了什么、为什么这么做、代码长什么样。
+
+---
+
+## 目录
+
+1. [你的 Prompt 在服务器内存里裸奔](#1-你的-prompt-在服务器内存里裸奔)
+2. [第一道门：TLS 握手里藏着一份硬件证明](#2-第一道门tls-握手里藏着一份硬件证明)
+3. [第二道门：硬件把内存锁进了保险箱](#3-第二道门硬件把内存锁进了保险箱)
+4. [你怎么知道服务器跑的是哪个模型？](#4-你怎么知道服务器跑的是哪个模型)
+5. [256MB 内存跑 10B 模型——picolm 层流式推理的秘密](#5-256mb-内存跑-10b-模型picolm-层流式推理的秘密)
+6. [日志、错误信息、token 计数——每一个都可能出卖你](#6-日志错误信息token-计数每一个都可能出卖你)
+7. [模型权重也是机密：三种加密加载模式](#7-模型权重也是机密三种加密加载模式)
+8. [客户端怎么自己验证这一切？](#8-客户端怎么自己验证这一切)
+9. [六层架构：拆开看看里面有什么](#9-六层架构拆开看看里面有什么)
+10. [为什么是纯 Rust？供应链审计的信任账本](#10-为什么是纯-rust供应链审计的信任账本)
+11. [和 Ollama、vLLM、TGI 比，差在哪？](#11-和-ollamavllmtgi-比差在哪)
+12. [如果你今天就要部署](#12-如果你今天就要部署)
+
+---
+
+## 1. 你的 Prompt 在服务器内存里裸奔
+
+先看那条 prompt 长什么样：
+
+> "客户李某，账户尾号 8832，持仓 AAPL 50 万股，成本价 142.7，当前浮盈 1.2 亿，请分析在美联储加息预期下的对冲策略，并评估大宗减持对市场的冲击。"
+
+这条 prompt 穿过 HTTPS 隧道，到达推理服务器。TLS 终止。从这一刻起，客户的姓名、账户信息、持仓规模、交易策略——全部以明文形式躺在服务器内存里。
+
+一条 prompt 在推理服务器里经历五个阶段：
+
+1. **网络传输**：HTTPS 保护，没问题
+2. **内存解密**：TLS 终止，prompt 变成明文——问题从这里开始
+3. **推理计算**：tokenize → 矩阵运算 → 生成 response，全程明文
+4. **日志记录**：prompt 和 response 可能被写进日志文件
+5. **内存残留**：请求结束了，但数据还躺在内存里，等着被覆盖
+
+磁盘加密保护静态数据，TLS 保护传输中的数据。但谁来保护**正在被处理的数据**？没有人。
+
+这不是理论风险：
+
+- **金融（SOX/GLBA）**——交易策略和客户持仓泄露意味着内幕交易或市场操纵。监管机构要的是可审计的技术保障，不是口头承诺
+- **医疗（HIPAA）**——云服务商的管理员理论上可以读取所有患者数据
+- **政府与国防**——涉密信息有严格的物理隔离要求，传统推理服务器无法证明数据未被泄露
+- **多租户 AI 平台**——一个内存越界漏洞就能打破租户隔离
+
+传统方案的信任模型：
+
+```
+你信任 → 云服务提供商 → 不会读取你的内存
+你信任 → 推理服务器运营商 → 不会记录你的 prompt
+你信任 → 系统管理员 → 不会导出内存快照
+你信任 → 所有有物理访问权限的人 → 不会进行冷启动攻击
+```
+
+每一层信任都是一个假设。假设越多，系统越脆弱。
+
+A3S Power 的回答：**用密码学验证替代信任假设，用硬件强制替代策略承诺。** 而且这种保护不需要昂贵的基础设施——一块 10 美元、256MB 内存的硬件就能跑起来。
+
+现在让那条 prompt 继续它的旅程。
+
+---
+
+## 2. 第一道门：TLS 握手里藏着一份硬件证明
+
+### 问题：验证和通信之间有个时间差
+
+传统的远程证明方案把证明和通信分成两步：先验证服务器身份，再建立 TLS 连接发送数据。听起来合理？
+
+不合理。这两步之间有个时间窗口——TOCTOU（Time-of-Check-Time-of-Use）漏洞。你验证的是 A 服务器，但在你建立连接的那一瞬间，攻击者可能已经把 A 换成了 B。你的 prompt 发给了一个你从未验证过的服务器。
+
+### A3S Power 怎么解决：RA-TLS
+
+RA-TLS（Remote Attestation TLS）把证明报告直接塞进 TLS 证书的 X.509 扩展字段里。TLS 握手的同时完成远程证明——没有时间窗口，没有 TOCTOU。
+
+先看配置，三行搞定：
+
+```hcl
+tee_mode = true
+tls_port = 11443
+ra_tls   = true
+```
+
+A3S Power 的 RA-TLS 实现细节：
+
+- **自签名 ECDSA P-256 证书**：每次服务器启动时生成新证书，有效期 365 天
+- **自定义 X.509 扩展**：OID `1.3.6.1.4.1.56560.1.1`，包含 JSON 编码的证明报告
+- **SAN（Subject Alternative Names）**：始终包含 localhost + 127.0.0.1 + ::1，支持额外的 DNS 名称或 IP 地址
+
+当那条交易分析 prompt 的客户端发起 TLS 连接时，它可以从证书中提取 OID `1.3.6.1.4.1.56560.1.1` 扩展，解析 JSON 证明报告，用 Verify SDK 验证。整个过程在握手阶段完成——验证失败？连接直接终止，prompt 一个字节都不会发出去。
+
+### 还有一条更隐蔽的通道：Vsock
+
+当 A3S Power 运行在 a3s-box MicroVM 内部时，它不走 TCP/IP，而是通过 Vsock（Virtio Socket）与宿主机通信：
+
+- **零配置**：不需要 IP 地址、路由表或防火墙规则
+- **安全**：通信通道不经过网络栈，网络层攻击者截获不了
+- **高性能**：基于 virtio 的共享内存传输，延迟极低
+
+A3S Power 用同一个 axum 路由器处理 Vsock 和 TCP 请求——所有中间件（限流、认证、审计）在 Vsock 上同样生效。
+
+好，TLS 握手完成了。那条 prompt 现在进入了服务器。接下来它会发现，自己所在的内存空间，和普通服务器完全不一样。
+
+---
+
+## 3. 第二道门：硬件把内存锁进了保险箱
+
+### 问题：软件隔离不够硬
+
+操作系统的内存保护是软件层面的。一个内核漏洞、一次权限提升、一个恶意的 hypervisor——都能绕过去。在云环境中，你的虚拟机跑在别人的物理机上，hypervisor 有权读取你的所有内存。
+
+这不是信不信任的问题，是架构上的根本缺陷。
+
+### A3S Power 怎么解决：TEE 硬件隔离
+
+TEE（Trusted Execution Environment，可信执行环境）在处理器层面创建加密的执行环境：
+
+- **内存加密**：所有内存数据被硬件 AES 密钥加密，密钥由处理器的安全处理器（PSP/SGX）管理，操作系统和 VMM 无法访问
+- **完整性保护**：硬件防止外部实体篡改 TEE 内部的内存内容
+- **远程证明**：TEE 可以生成硬件签名的证明报告，证明自己的身份和运行环境的完整性
+
+目前主流的 TEE 技术：
+
+| 技术 | 厂商 | 隔离粒度 | 内存加密 | 证明机制 |
+|------|------|----------|----------|----------|
+| AMD SEV-SNP | AMD | 虚拟机级 | AES-128/256 | SNP_GET_REPORT ioctl |
+| Intel TDX | Intel | 虚拟机级 | AES-128 | TDX_CMD_GET_REPORT0 ioctl |
+| Intel SGX | Intel | 进程级 | AES-128 | EREPORT/EGETKEY |
+
+A3S Power 支持 AMD SEV-SNP 和 Intel TDX，并提供模拟模式用于开发测试。
+
+### 自动检测，零配置
+
+A3S Power 启动时自动探测 TEE 环境，不需要你手动指定：
+
+1. 检查 `/dev/sev-guest` 设备文件 → AMD SEV-SNP
+2. 检查 `/dev/tdx-guest` 或 `/dev/tdx_guest` 设备文件 → Intel TDX
+3. 检查 `A3S_TEE_SIMULATE=1` 环境变量 → 模拟模式
+4. 以上都不满足 → 无 TEE
+
+同一个二进制文件在 TEE 和非 TEE 环境中都能跑——TEE 环境自动启用硬件保护，开发环境用模拟模式测试。
+
+### TEE 不是一个功能，是一个横切面
+
+很多人以为 TEE 支持就是加个证明端点。不是的。在 A3S Power 里，TEE 安全贯穿每一层：
+
+```
+层              TEE 集成
+──────────────  ──────────────────────────────────────────────────────
+API             日志脱敏、缓冲区清零、token 计数模糊、时序填充、
+                证明端点（nonce + 模型绑定）
+
+Server          加密审计日志（AES-256-GCM）、常量时间认证、
+                RAII 解密模型存储、RA-TLS 证书（X.509 证明扩展）、
+                TEE 专用 Prometheus 计数器
+
+Backend         EPC 感知路由（模型 > 75% EPC 时自动切换 picolm）、
+                每请求 KV 缓存隔离、mlock 权重锁定
+
+Model           SHA-256 内容寻址存储、GGUF 内存估算（EPC 预算规划）
+
+TEE             证明（SEV-SNP/TDX ioctl）、AES-256-GCM 加密（3 种模式）、
+                Ed25519 模型签名、密钥轮换、策略执行、日志脱敏（10 个键）、
+                SensitiveString（自动清零）、EPC 内存检测
+
+Verify          客户端：nonce 绑定、模型哈希绑定、度量检查（全部常量时间）、
+                硬件签名验证（AMD KDS / Intel PCS 证书链）
+```
+
+现在那条 prompt 安全地躺在硬件加密的内存里了。但有个新问题冒出来了——你怎么知道处理这条 prompt 的，真的是你以为的那个模型？
+
+---
+
+## 4. 你怎么知道服务器跑的是哪个模型？
+
+### 问题：模型身份是个黑箱
+
+你发请求到一个声称运行 "llama-3.2-3b" 的端点。但你怎么验证？运营商可能：
+
+- 用更小、更便宜的模型替换了声称的模型（省钱）
+- 用被后门植入的模型替换了原始模型（窃取数据）
+- 用经过微调的模型替换了原始模型（操纵输出）
+
+API 行为看起来可能完全正常——你无法从输出中可靠地区分不同的模型。
+
+### A3S Power 怎么解决：两层模型完整性 + 硬件证明绑定
+
+**第一层：SHA-256 哈希验证。** `tee_mode = true` 时，启动时验证每个模型文件的哈希。不匹配？拒绝启动。
+
+```hcl
+tee_mode = true
+model_hashes = {
+  "llama3.2:3b" = "sha256:a1b2c3d4e5f6..."
+  "qwen2.5:7b"  = "sha256:def456789abc..."
+}
+```
+
+**第二层：Ed25519 签名验证。** 模型发布者用 Ed25519 私钥签名模型文件，签名存放在 `<model_path>.sig`（64 字节原始签名）。加载时验证——不仅确认模型未被篡改，还确认模型确实来自声称的发布者。
+
+```hcl
+model_signing_key = "a1b2c3d4..."  # Ed25519 公钥（hex 编码，32 字节）
+```
+
+但这两层只解决了服务器端的问题。客户端怎么知道服务器真的做了这些验证？
+
+**答案：模型证明绑定。**
+
+当客户端请求 `GET /v1/attestation?nonce=<hex>&model=<name>` 时，A3S Power 把模型的 SHA-256 哈希嵌入到硬件证明报告的 `report_data` 字段中：
+
+```
+客户端发送 GET /v1/attestation?nonce=<hex>&model=<name>
+    │
+    ▼
+构建 report_data (64 字节)
+    ├── [0..32]  = nonce (客户端提供，防重放)
+    └── [32..64] = SHA-256(model_file) (模型哈希，证明模型身份)
+    │
+    ▼
+调用硬件 ioctl
+    ├── AMD: SNP_GET_REPORT → /dev/sev-guest
+    │   报告偏移 0x50: report_data (64 字节)
+    │   报告偏移 0x90: measurement (48 字节, SHA-384)
+    │   报告偏移 0x1A0: chip_id (64 字节)
+    │
+    └── Intel: TDX_CMD_GET_REPORT0 → /dev/tdx-guest
+        TDREPORT 偏移 64: reportdata (64 字节)
+        TDREPORT 偏移 528: MRTD (48 字节)
+    │
+    ▼
+返回 AttestationReport {
+    tee_type: "sev-snp" | "tdx" | "simulated",
+    report_data: [u8; 64],      // nonce + model_hash
+    measurement: [u8; 48],      // 平台启动度量
+    raw_report: Vec<u8>,        // 完整的固件报告（供客户端独立验证）
+}
+```
+
+关键在 `report_data` 的布局：`[nonce(32)][model_sha256(32)]`。这 64 字节被硬件签名保护，意味着：
+
+- **nonce 绑定**：每次用不同的 nonce，防止重放旧的证明报告
+- **模型绑定**：模型的 SHA-256 哈希被硬件签名锁死。换模型？证明立刻失效
+
+客户端验证三件事就能确认模型身份：
+1. 证明报告是真正的 TEE 硬件签名的（通过 AMD KDS / Intel PCS 证书链）
+2. `report_data[32..64]` 等于预期的模型 SHA-256 哈希
+3. `report_data[0..32]` 等于自己发送的 nonce
+
+三步形成完整信任链：**硬件证明 → 平台完整性 → 模型身份 → 请求新鲜性**。
+
+这是 A3S Power 独有的创新——其他推理服务器连证明端点都没有，更别说模型证明绑定了。
+
+好，模型身份确认了。但推理还没开始。因为还有一个棘手的工程问题——TEE 的内存太小了。
+
+---
+
+## 5. 256MB 内存跑 10B 模型——picolm 层流式推理的秘密
+
+### 问题：模型放不进便宜的硬件
+
+隐私推理的一个残酷现实：TEE 环境的 EPC（Encrypted Page Cache）通常只有 256MB 到 512MB。更广泛地说，如果你想在一块 10 美元的边缘设备上跑隐私推理——比如一个 256MB 内存的嵌入式板卡——传统推理引擎直接判你死刑。
+
+一个 10B 参数的 Q4_K_M 量化模型需要约 6GB 内存。6GB 的模型，256MB 的内存。差了 24 倍。放不进去。
+
+传统方案是用更小的模型或更激进的量化。但这会显著降低推理质量——而在安全场景中，模型质量直接决定了安全能力的上限（后面会详细讲为什么）。
+
+**A3S Power 的答案是：你不需要昂贵的硬件，你需要更聪明的推理方式。**
+
+### A3S Power 怎么解决：picolm 层流式推理
+
+核心洞察其实很简单：**在任何给定时刻，前向传播只需要一个层的权重。** 处理完第 N 层，第 N 层的权重就没用了，释放掉，加载第 N+1 层。
+
+```
+传统推理 (mistralrs / llama.cpp):
+┌──────────────────────────────────────────────────┐
+│  所有 48 层同时加载在内存中                         │
+│  峰值内存 ≈ model_size (例如 10B Q4_K_M 约 6 GB)  │
+└──────────────────────────────────────────────────┘
+
+picolm 层流式推理:
+┌──────────────────────────────────────────────────┐
+│  mmap(model.gguf)  ← 仅虚拟地址空间                │
+│                       不分配物理内存                │
+│                                                    │
+│  for layer in 0..n_layers:                         │
+│    ┌─────────────────────────┐                     │
+│    │ blk.{layer}.* 张量      │ ← OS 按需换入权重    │
+│    │ (~125 MB for 10B Q4_K_M)│                     │
+│    └─────────────────────────┘                     │
+│    forward_pass(hidden_state, layer_weights)        │
+│    madvise(MADV_DONTNEED) ← 释放物理页              │
+│                                                    │
+│  峰值内存 ≈ layer_size + KV cache (FP16)           │
+│           ≈ 125 MB + 68 MB (10B, 2048 ctx)        │
+└──────────────────────────────────────────────────┘
+```
+
+### 两个关键组件，先看代码
+
+**组件一：`gguf_stream.rs` —— 零拷贝 GGUF 解析器**
+
+通过 `mmap(MAP_PRIVATE | PROT_READ)` 打开 GGUF 文件。解析头部（v2/v3）、元数据和张量描述符——但**不加载任何权重数据**。每个张量被记录为 mmap 区域中的 `(offset, size)` 对。
+
+当 picolm 请求某一层的权重时，`tensor_bytes(name)` 返回直接指向 mmap 的 `&[u8]` 切片——零拷贝、零分配。OS 内核按需换入数据，内存压力下自动回收。
+
+```
+GGUF 文件（磁盘上）:
+┌────────┬──────────┬──────────────────────────────────┐
+│ Header │ Metadata │ Tensor Data (对齐)                 │
+│ 8 bytes│ variable │ blk.0.attn_q | blk.0.attn_k | ... │
+└────────┴──────────┴──────────────────────────────────┘
+                          ↑
+                    mmap 返回 &[u8] 切片
+                    直接指向此区域
+                    (无 memcpy, 无分配)
+```
+
+**组件二：`picolm.rs` + `picolm_ops/` —— 层流式前向传播**
+
+遍历 `blk.0.*` 到 `blk.{n-1}.*`，每一层的权重应用到隐藏状态上。处理完第 N 层，`madvise(MADV_DONTNEED)` 显式释放物理页。
+
+```rust
+// 简化的流程（实际代码在 src/backend/picolm.rs）
+let gguf = GgufFile::open("model.gguf")?;  // mmap, 仅解析头部
+let tc = TensorCache::build(&gguf, n_layers)?;  // 一次性解析张量指针
+let rope_table = RopeTable::new(max_seq, head_dim, rope_dim, theta);
+let mut hidden = vec![0.0f32; n_embd];
+let mut buf = ForwardBuffers::new(/* 预分配所有工作缓冲区 */);
+
+for layer in 0..n_layers {
+    attention_layer(&mut hidden, &tc, layer, pos, kv_cache, &rope_table, &mut buf)?;
+    ffn_layer(&mut hidden, &tc, layer, activation, &mut buf)?;
+    tc.release_layer(&gguf, layer);  // madvise(DONTNEED) — 释放物理页
+}
+```
+
+### 热路径上的六个关键优化
+
+- **TensorCache**：所有张量字节切片和类型在加载时一次性解析为扁平数组。热路径通过 `layer * 10 + slot` 索引——零字符串格式化、零 HashMap 查找
+- **ForwardBuffers**：所有工作缓冲区（q, k, v, gate, up, down, normed, logits, scores, attn_out）预分配一次。推理过程中零堆分配
+- **融合 vec_dot**：反量化+点积在单次遍历中完成——无中间 f32 缓冲区。Q4_K、Q6_K、Q8_0 各有专用内核
+- **Rayon 并行矩阵乘法**：超过 64 行的矩阵使用多线程行并行
+- **FP16 KV 缓存**：键和值以 f16 存储，读取时转换。KV 缓存内存减半
+- **预计算 RoPE**：cos/sin 表在加载时构建。热路径中无超越函数
+
+### 真实世界的内存对比
+
+| 模型 | 传统方式 | picolm 层流式 | 缩减倍数 |
+|------|---------|--------------|---------|
+| 0.5B Q4_K_M (~350 MB) | ~350 MB | ~15 MB + KV | 23x |
+| 3B Q4_K_M (~2 GB) | ~2 GB | ~60 MB + KV | 33x |
+| 7B Q4_K_M (~4 GB) | ~4 GB | ~120 MB + KV | 33x |
+| 10B Q4_K_M (~6 GB) | ~6 GB | ~125 MB + KV | 48x |
+| 13B Q4_K_M (~7 GB) | ~7 GB | ~200 MB + KV | 35x |
+| 70B Q4_K_M (~40 GB) | ~40 GB | ~1.1 GB + KV | 36x |
+
+KV 缓存使用 FP16 存储（F32 的一半内存）。10B 模型在 2048 上下文长度下约 68 MB。
+
+**一个 10B 模型在 picolm 下的峰值内存约为 193 MB（125 MB 层权重 + 68 MB KV 缓存），完全可以在 256 MB 的内存中运行。** 这意味着一块 10 美元的边缘设备、一个 256MB EPC 的 TEE 虚拟机、甚至一个内存受限的容器——都能跑起具备真正语义理解能力的 10B 模型。这是 picolm 的核心价值——不是"勉强能跑"，而是让隐私推理在任何硬件上都触手可及。
+
+### 为什么 10B 模型是关键？不只是"能跑"，而是"能干活"
+
+你可能会问：在 TEE 里跑个 0.5B 小模型不就行了？为什么非要 10B？
+
+因为 10B 是一个关键的能力分水岭。在 A3S 的安全架构中，TEE 内部的 LLM 不只是回答问题——它承担着三个核心安全职责：
+
+**职责一：安全性校验（Safety Gate）。** 在 Agent 执行链中，每一步操作都需要经过安全审查——用户的输入是否包含注入攻击？Agent 生成的代码是否有恶意行为？工具调用的参数是否合理？这些判断需要足够强的语言理解能力。0.5B 模型可以做简单的关键词匹配，但面对精心构造的对抗性输入（如多层嵌套的 prompt injection），它的判断力远远不够。10B 模型具备了真正的语义理解能力，能识别出"看起来无害但实际上在尝试越权"的复杂攻击模式。
+
+**职责二：数据脱敏与分发（Privacy Router）。** 当敏感数据需要离开 TEE 边界时——比如将推理结果发送给外部服务，或者将日志写入持久化存储——数据必须先经过脱敏处理。这不是简单的正则替换。一条包含"客户李某，账户尾号 8832，持仓 AAPL 50 万股，浮盈 1.2 亿"的文本，需要模型理解哪些是可以保留的市场公开信息（AAPL 股票代码），哪些是必须脱敏的客户隐私（李某、账户尾号、持仓规模）。10B 模型能做到上下文感知的智能脱敏，而不是粗暴地把整段文本标记为敏感。脱敏后的数据才能安全地分发到 TEE 外部的下游系统。
+
+举一个具体的例子。假设一个 AI Agent 需要从数据库查询客户信息来回答分析师的问题：
+
+```
+分析师提问: "帮我查一下最近一周大额赎回的客户，分析可能的原因"
+
+Agent 在 TEE 内部执行:
+┌─────────────────────────────────────────────────────────────────┐
+│  TEE 加密内存（硬件隔离，外部不可读）                               │
+│                                                                   │
+│  1. Agent 调用 SQL 工具查询数据库:                                 │
+│     SELECT name, account_id, amount, fund_name, redeem_date       │
+│     FROM redemptions WHERE amount > 1000000                       │
+│     AND redeem_date > NOW() - INTERVAL 7 DAY                     │
+│                                                                   │
+│  2. 数据库返回原始数据（在 TEE 内部，明文安全）:                     │
+│     ┌──────────────────────────────────────────────────────┐      │
+│     │ 张伟   | 6621-8832 | ¥5,200,000  | 稳健增长A | 02-18 │      │
+│     │ 王芳   | 6621-4471 | ¥3,800,000  | 科技先锋B | 02-19 │      │
+│     │ 陈明   | 6621-9953 | ¥12,000,000 | 稳健增长A | 02-20 │      │
+│     └──────────────────────────────────────────────────────┘      │
+│                                                                   │
+│  3. 10B 模型分析数据，生成洞察（TEE 内部，明文安全）:                │
+│     "稳健增长A 基金在 2 月 18-20 日出现集中赎回，                   │
+│      总额 ¥17,200,000，涉及 2 位客户。                             │
+│      可能原因：该基金近期净值回撤 3.2%，触发止损线。"                │
+│                                                                   │
+│  4. 10B 模型对输出进行智能脱敏（关键步骤）:                         │
+│     ┌──────────────────────────────────────────────────────┐      │
+│     │ 保留：基金名称（公开信息）、赎回趋势、时间范围、           │      │
+│     │       汇总金额、可能原因分析                               │      │
+│     │ 脱敏：客户姓名 → [客户A/B/C]、账户号 → 移除、             │      │
+│     │       单笔金额 → 模糊为区间                               │      │
+│     └──────────────────────────────────────────────────────┘      │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼ 脱敏后的数据离开 TEE
+┌─────────────────────────────────────────────────────────────────┐
+│  分析师看到的输出:                                                 │
+│                                                                   │
+│  "稳健增长A 基金在 2 月 18-20 日出现集中赎回，                     │
+│   总额约 ¥1700 万，涉及少量客户。                                  │
+│   可能原因：该基金近期净值回撤 3.2%，触发部分客户的止损线。         │
+│   建议关注该基金的流动性风险。"                                     │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+注意这个流程的关键：**原始的客户姓名、账户号、精确金额从未离开 TEE 加密内存。** 分析师得到了他需要的业务洞察（哪个基金在赎回、可能的原因、风险建议），但看不到任何可以定位到具体客户的信息。
+
+0.5B 模型做不了这件事——它无法理解"张伟"是人名需要脱敏，而"稳健增长A"是基金名称可以保留。它也无法判断"¥5,200,000"应该模糊为区间而不是完全删除。这种上下文感知的智能脱敏，需要 10B 级别的语义理解能力。
+
+**职责三：敏感工具调用的守门人（Tool Guard）。** AI Agent 通过工具（Tools）与外部世界交互——执行 shell 命令、读写文件、调用 API、访问数据库。某些工具调用涉及敏感操作：删除生产数据、发送邮件、修改权限、访问密钥管理系统。这些操作的审批不能交给 TEE 外部的系统（因为外部系统可能被攻破），必须在 TEE 内部由一个足够聪明的模型来判断："这个工具调用是否符合当前任务的授权范围？参数是否合理？是否存在权限提升的风险？"10B 模型具备了理解复杂工具调用语义的能力，能在毫秒级别做出准确的放行/拒绝决策。
+
+这三个职责有一个共同特点：**它们都是安全关键路径上的决策点，错误的判断会直接导致数据泄露或系统被攻破。** 用 0.5B 模型做这些事，就像让实习生审核核电站的安全协议——能力不匹配。10B 是目前在 TEE 内存约束下能达到的最佳平衡点：足够强大到胜任安全决策，又足够小到在 256MB EPC 中流畅运行。
+
+picolm 让这个平衡成为可能。没有层流式推理，你只能在 256MB 里跑 0.5B 模型——那些安全职责就只能退化为简单的规则匹配，攻击者轻松绕过。
+
+### 自动路由：你不需要手动选择后端
+
+A3S Power 不只有 picolm 一个推理后端。它的架构设计了一个关键抽象——`Backend` trait，任何推理引擎只要实现这个 trait 就能接入。目前内置三个后端，覆盖从 10 美元边缘设备到高端 GPU TEE 服务器的完整硬件光谱：
+
+```
+硬件条件                    自动选择的后端              特点
+──────────────────────     ─────────────────────     ──────────────────────────
+256MB 内存，无 GPU          picolm (纯 Rust 层流式)    O(layer_size) 内存，10B 模型
+（边缘设备 / TEE EPC）
+
+充足内存，无 GPU             mistralrs (纯 Rust candle) 全量加载，更快的推理速度
+（标准服务器 / 大 EPC）       ★ 默认后端
+
+GPU TEE 环境                llama.cpp (C++ 绑定)       GPU 加速，最高吞吐量
+（AMD SEV-SNP GPU TEE）     或 mistralrs + CUDA
+```
+
+这意味着 A3S Power 不是一个只能在极端条件下工作的特殊工具——它是一个**随硬件条件自动升级的推理平台**。今天你在 256MB 的边缘设备上用 picolm 跑 10B 模型做安全决策；明天你的 TEE 服务器配上了 GPU，同一套代码、同一份配置，自动切换到 GPU 加速后端，推理速度提升数十倍。
+
+`BackendRegistry` 实现了 TEE 感知的自动路由。`find_for_tee()` 读取 `/proc/meminfo` 中的可用内存作为 EPC 近似值：
+
+```
+模型大小 ≤ 75% EPC → 使用 mistralrs（全量加载，更快）
+模型大小 > 75% EPC → 使用 picolm（层流式，更省内存）
+GPU 可用且后端支持  → 优先使用 GPU 加速后端
+```
+
+75% 的阈值为工作缓冲区、KV 缓存和 OS 开销留出余量。对用户完全透明——发请求就行，系统自动选最合适的后端。在 256MB EPC 的典型场景中，10B 模型会自动路由到 picolm，而 0.5B 模型可以直接用 mistralrs 全量加载。
+
+而且，`Backend` trait 是开放的——你可以实现自己的推理后端（比如接入 TensorRT-LLM 或其他 GPU 推理框架），注册到 `BackendRegistry` 中，立刻获得 A3S Power 的全部安全能力：TEE 证明、模型绑定、日志脱敏、加密模型加载。安全层和推理层完全解耦。
+
+那条 prompt 现在正在被推理了。但推理过程中，还有一些你可能没想到的信息泄露通道。
+
+---
+
+## 6. 日志、错误信息、token 计数——每一个都可能出卖你
+
+TEE 硬件加密保护了内存中的数据不被外部读取。但隐私保护不止是内存加密。推理服务器自身产生的日志、指标、错误信息、甚至 token 计数，都可能成为信息泄露的通道。
+
+逐个击破。
+
+### 泄露通道一：日志
+
+当 `redact_logs = true` 时，`PrivacyProvider` 自动从所有日志输出中剥离推理内容。脱敏覆盖 10 个敏感 JSON 键：
+
+| 键名 | 覆盖场景 |
+|------|---------|
+| `content` | 聊天消息内容 |
+| `prompt` | 补全请求的 prompt |
+| `text` | 文本输出 |
+| `arguments` | 工具调用参数 |
+| `input` | 嵌入请求输入 |
+| `delta` | 流式传输增量 |
+| `system` | 系统提示词 |
+| `message` | 通用消息字段 |
+| `query` | 查询字段 |
+| `instruction` | 指令字段 |
+
+看看效果：
+
+脱敏前：
+```json
+{"content": "客户李某，持仓 AAPL 50 万股...", "model": "llama3"}
+```
+
+脱敏后：
+```json
+{"content": "[REDACTED]", "model": "llama3"}
+```
+
+关键设计决策：脱敏在日志写入之前执行，不是事后处理。敏感数据**从未**出现在日志文件中——即使攻击者拿到了日志文件，也恢复不了推理内容。
+
+### 泄露通道二：错误信息
+
+LLM 推理过程中的错误信息可能包含 prompt 片段。比如一个 tokenization 错误可能在错误消息中回显部分 prompt 内容。`sanitize_error()` 函数检测并剥离这些泄露：
+
+```
+净化前: "Tokenization failed for prompt: 客户李某持仓 AAPL 50 万股..."
+净化后: "Tokenization failed for prompt: [REDACTED]"
+```
+
+它识别 `prompt:`、`content:`、`message:`、`input:` 等前缀，截断其后的所有内容。
+
+### 泄露通道三：token 计数侧信道
+
+这个容易被忽视。精确的 token 计数可以被用来推断 prompt 的长度和内容特征——这是一种侧信道攻击。
+
+当 `suppress_token_metrics = true` 时，A3S Power 将响应中的 token 计数四舍五入到最近的 10：
+
+```
+实际 token 数: 137 → 返回: 140
+实际 token 数: 42  → 返回: 40
+```
+
+简单，但有效。消除了精确 token 计数带来的信息泄露，同时保留足够精度用于计费和监控。
+
+### 泄露通道四：内存残留
+
+推理请求完成了，但 prompt 和 response 的数据可能仍然残留在内存中——直到被其他数据覆盖。在此期间，内存转储攻击可以恢复这些数据。
+
+A3S Power 通过 `zeroize` crate 实现系统性的内存清零：
+
+- **`SensitiveString` 包装器**：所有推理内容（prompt、response）被包装在 `SensitiveString` 中，`Drop` 时自动将内存清零
+- **`zeroize_string()` 和 `zeroize_bytes()`**：手动清零的辅助函数
+- **`Zeroizing<Vec<u8>>`**：加密模型的解密缓冲区使用此包装器，明文权重使用后立即清零
+- **`mlock()` 内存锁定**：Linux 上，解密后的模型权重通过 `mlock()` 锁定在物理内存中，防止被交换到磁盘（swap）。`munlock()` 在释放时调用
+
+即使攻击者在推理完成后获取了内存快照，也无法恢复 prompt、response 或模型权重。
+
+四个泄露通道，四道防线。那条 prompt 的隐私现在被全方位保护了。
+
+但还有一个东西我们没讨论——模型权重本身。
+
+---
+
+## 7. 模型权重也是机密：三种加密加载模式
+
+### 问题：模型是知识产权
+
+一个经过精心微调的模型可能代表了数百万美元的投资和独特的竞争优势。如果模型以明文形式存储在磁盘上，基础设施运营商可以轻易复制它。
+
+### A3S Power 怎么解决：AES-256-GCM 加密模型
+
+A3S Power 支持 AES-256-GCM 加密的模型文件（`.enc` 后缀）。加密格式为 `[12 字节 nonce][AES-256-GCM 密文+标签]`。三种解密模式针对不同的安全和性能需求。
+
+**模式一：DecryptedModel（文件模式）**
+
+将密文解密到临时 `.dec` 文件。适用于所有后端。`Drop` 时执行安全擦除——先用零覆盖文件内容，再删除文件。
+
+```
+加密文件 → AES-256-GCM 解密 → 临时 .dec 文件 → 后端加载
+                                                    │
+                                              Drop 时：
+                                              1. 零覆盖文件
+                                              2. 删除文件
+```
+
+**模式二：MemoryDecryptedModel（内存模式）**
+
+将整个模型解密到 `mlock` 锁定的 RAM 中，明文**从不接触磁盘**。`Drop` 时通过 `Zeroizing<Vec<u8>>` 自动清零内存，然后 `munlock` 释放锁定。
+
+```
+加密文件 → AES-256-GCM 解密 → mlock 锁定的 RAM → 后端加载
+                                                    │
+                                              Drop 时：
+                                              1. 内存清零 (zeroize)
+                                              2. munlock 释放
+```
+
+这是 TEE 模式下的推荐选择（`in_memory_decrypt = true`），因为模型明文永远不会出现在磁盘上——即使是临时文件。
+
+**模式三：LayerStreamingDecryptedModel（流式模式）**
+
+专为 picolm 后端设计。将整个模型解密一次，然后按需提供分块访问。每个分块返回为 `Zeroizing<Vec<u8>>`，使用后自动清零。
+
+```
+加密文件 → AES-256-GCM 解密 → 分块访问接口
+                                    │
+                              picolm 请求第 N 层:
+                              → 返回 Zeroizing<Vec<u8>>
+                              → 前向传播
+                              → 分块 Drop → 内存清零
+```
+
+这种模式与 picolm 的层流式推理完美配合：在任何时刻，只有一个层的明文权重存在于内存中。
+
+### 密钥管理
+
+`KeyProvider` trait 提供了可扩展的密钥管理接口：
+
+```rust
+pub trait KeyProvider: Send + Sync {
+    async fn get_key(&self) -> Result<[u8; 32]>;
+    async fn rotate_key(&self) -> Result<[u8; 32]>;
+    fn provider_name(&self) -> &str;
+}
+```
+
+两个内置实现：
+
+- **StaticKeyProvider**：从文件或环境变量加载密钥，通过 `OnceCell` 缓存。适用于单密钥场景
+- **RotatingKeyProvider**：支持多个密钥，通过原子索引实现零停机轮换。`rotate_key()` 推进到下一个密钥（循环），`get_key()` 返回当前密钥
+
+密钥源支持两种形式：
+
+```hcl
+# 从文件加载（64 个 hex 字符 = 32 字节）
+model_key_source = { file = "/path/to/key.hex" }
+
+# 从环境变量加载
+model_key_source = { env = "MY_MODEL_KEY" }
+```
+
+对于需要 HSM/KMS 集成的生产环境，可以实现自定义的 `KeyProvider`。
+
+到这里，那条 prompt 的旅程快结束了。推理完成，response 通过加密通道返回给交易员。但在信任这个 response 之前，客户端还有最后一件事要做。
+
+---
+
+## 8. 客户端怎么自己验证这一切？
+
+### 问题："请相信我们"不够
+
+服务器说自己跑在 TEE 里，说自己做了日志脱敏，说自己加载的是正确的模型。但这些都是服务器的自我声明。客户端凭什么信？
+
+### A3S Power 怎么解决：客户端独立验证
+
+A3S Power 的安全模型不是"请相信我们"，而是"请自己验证"。客户端通过 `a3s-power-verify` CLI 或 Verify SDK 独立验证服务器的每一个安全声明。
+
+完整的信任链长这样：
+
+```
+AMD/Intel 硅片 (物理硬件 — 信任根)
+    │
+    ├── 安全处理器 (PSP / SGX)
+    │   └── 管理每个 VM 的 AES 加密密钥
+    │
+    ├── 硬件根密钥 (ARK / Intel Root CA)
+    │   └── 中间证书 (ASK / PCK CA)
+    │       └── 芯片级证书 (VCEK / PCK)
+    │           └── 证明报告签名
+    │
+    └── 平台度量 (measurement)
+        └── 启动时代码的哈希值
+            └── 证明运行环境未被篡改
+                │
+                ├── report_data[0..32] = nonce (防重放)
+                └── report_data[32..64] = model_sha256 (模型身份)
+```
+
+`verify_report()` 函数执行四步验证，每一步都是独立的安全检查：
+
+**第一步：Nonce 绑定验证。** 检查 `report_data[0..32]` 是否等于客户端发送的 nonce。防止重放攻击——攻击者无法用旧的证明报告冒充当前的 TEE 环境。验证使用常量时间比较，防止时序侧信道。
+
+**第二步：模型哈希绑定验证。** 检查 `report_data[32..64]` 是否等于预期的模型 SHA-256 哈希。证明服务器跑的是你期望的那个模型——不是更小的替代品，不是被后门植入的版本。
+
+**第三步：平台度量验证。** 检查 `measurement`（48 字节 SHA-384）是否等于已知的良好值。证明 TEE 环境的启动代码（固件、内核、应用）未被篡改。
+
+**第四步：硬件签名验证。** 通过 `HardwareVerifier` trait 验证证明报告的签名：
+
+- **AMD SEV-SNP**：从 AMD KDS 获取 VCEK 证书，验证 ECDSA P-384 签名。证书链：ARK → ASK → VCEK → 报告签名
+- **Intel TDX**：从 Intel PCS 获取 PCK 证书，验证 ECDSA P-256 签名。证书链：Intel Root CA → PCK CA → PCK → 报告签名
+
+证书缓存 1 小时 TTL，避免频繁请求被 AMD KDS 限流。
+
+```rust
+pub struct VerifyOptions<'a> {
+    pub nonce: Option<Vec<u8>>,
+    pub expected_model_hash: Option<Vec<u8>>,
+    pub expected_measurement: Option<Vec<u8>>,
+    pub hardware_verifier: Option<&'a dyn HardwareVerifier>,
+}
+```
+
+四步验证的组合意味着：客户端可以在不信任任何中间方的情况下，独立确认推理服务器的身份、运行环境和模型身份。
+
+那条 prompt 的旅程到此结束。从 TLS 握手中的硬件证明，到 TEE 内存加密，到模型身份验证，到层流式推理，到日志脱敏和内存清零，再到客户端独立验证——每一步都有密码学保障，不依赖任何人的承诺。
+
+现在让我们退后一步，看看支撑这一切的架构。
+
+---
+
+## 9. 六层架构：拆开看看里面有什么
+
+A3S Power 用 Rust 编写，整个系统由六个层次组成，每层职责明确，通过 trait 接口与相邻层通信。
+
+### 层次拓扑
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  API Layer                                                          │
+│  /v1/chat/completions · /v1/completions · /v1/embeddings            │
+│  /v1/models · /v1/attestation · /health · /metrics                  │
+├─────────────────────────────────────────────────────────────────────┤
+│  Server Layer                                                       │
+│  RateLimiter → RequestID → Metrics → Tracing → CORS → Auth         │
+│  AppState · Audit (JSONL/Encrypted/Async/Noop) · Transport          │
+├─────────────────────────────────────────────────────────────────────┤
+│  Backend Layer                                                      │
+│  BackendRegistry (优先级路由, TEE 感知)                                │
+│  ┌─────────────────┬─────────────────┬────────────────┐             │
+│  │ MistralRs ★     │ LlamaCpp        │ Picolm         │             │
+│  │ 纯 Rust (candle)│ C++ 绑定        │ 纯 Rust 层流式  │             │
+│  │ GGUF/SafeTensors│ GGUF            │ O(layer_size)  │             │
+│  └─────────────────┴─────────────────┴────────────────┘             │
+├─────────────────────────────────────────────────────────────────────┤
+│  Model Layer                                                        │
+│  ModelRegistry · BlobStorage (SHA-256) · GgufMeta · HfPull          │
+├─────────────────────────────────────────────────────────────────────┤
+│  TEE Layer (横切安全层)                                               │
+│  Attestation · EncryptedModel · Privacy · ModelSeal · KeyProvider   │
+│  TeePolicy · EPC Detection · RA-TLS Certificate                    │
+├─────────────────────────────────────────────────────────────────────┤
+│  Verify Layer (客户端 SDK)                                           │
+│  verify_report() · HardwareVerifier (AMD KDS / Intel PCS)           │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 每层在做什么？
+
+**API Layer** —— 提供 OpenAI 兼容的 HTTP 端点：`/v1/chat/completions`、`/v1/completions`、`/v1/embeddings`、`/v1/models`。加上 A3S Power 独有的 `/v1/attestation` 端点。`autoload` 模块实现模型的自动加载、LRU 淘汰、解密和完整性验证。
+
+**Server Layer** —— 管理中间件栈（限流、请求 ID、指标、追踪、CORS、认证）、应用状态（`AppState`）、审计日志和传输协议（TCP/TLS/Vsock）。`AppState` 是核心状态容器，持有模型注册表、后端注册表、TEE 提供者、隐私提供者等所有关键组件的引用。
+
+**Backend Layer** —— 推理引擎的抽象层，也是 A3S Power 架构灵活性的关键。`BackendRegistry` 根据优先级、模型格式和硬件条件自动选择最优后端。三个内置后端覆盖完整的硬件光谱：picolm（纯 Rust 层流式，256MB 边缘设备）、mistralrs（纯 Rust candle，标准服务器，默认）、llama.cpp（C++ 绑定，GPU 加速）。`Backend` trait 是开放的——你可以接入任何推理框架，立刻获得 A3S Power 的全部安全能力。
+
+**Model Layer** —— 管理模型的存储、注册和拉取。`BlobStorage` 使用 SHA-256 内容寻址存储，自动去重。`ModelRegistry` 通过 `RwLock<HashMap>` 管理模型清单，支持 JSON 持久化。`HfPull` 支持从 HuggingFace Hub 拉取模型，带断点续传和 SSE 进度流。
+
+**TEE Layer** —— 核心差异化层，横切所有其他层。包含证明（Attestation）、加密模型加载（EncryptedModel）、隐私保护（Privacy）、模型完整性（ModelSeal）、密钥管理（KeyProvider）、策略引擎（TeePolicy）、EPC 内存检测和 RA-TLS 证书管理。
+
+**Verify Layer** —— 客户端 SDK，独立验证服务器的证明报告。包括 nonce 绑定验证、模型哈希绑定验证、平台度量验证和硬件签名验证（AMD KDS / Intel PCS 证书链）。
+
+### 最小核心 + 外部扩展
+
+一个安全系统的可信度与其复杂度成反比。代码越多，漏洞越多，审计越难。A3S Power 把必须信任的代码量降到最低：
+
+```
+核心 (7)                              扩展 (8 个 trait)
+─────────────────────────             ──────────────────────────────────────
+AppState (模型生命周期)                Backend: MistralRs / LlamaCpp / Picolm
+BackendRegistry + Backend trait       TeeProvider: SEV-SNP / TDX / Simulated
+ModelRegistry + ModelManifest         PrivacyProvider: 脱敏策略
+PowerConfig (HCL)                     TeePolicy: 白名单 + 度量绑定
+PowerError (14 变体 → HTTP)           KeyProvider: Static / Rotating / KMS
+Router + 中间件栈                      AuthProvider: API Key (SHA-256)
+RequestContext (每请求上下文)           AuditLogger: JSONL / Encrypted / Async / Noop
+                                      HardwareVerifier: AMD KDS / Intel PCS
+```
+
+核心组件稳定且不可替换；扩展组件基于 trait，可以独立替换。所有扩展都有默认实现——开箱即用，定制是可选的。
+
+看几个关键 trait 的定义：
+
+```rust
+// TEE 硬件抽象
+pub trait TeeProvider: Send + Sync {
+    async fn attestation_report(&self, nonce: Option<&[u8]>) -> Result<AttestationReport>;
+    fn is_tee_environment(&self) -> bool;
+    fn tee_type(&self) -> TeeType;
+}
+
+// 隐私保护策略
+pub trait PrivacyProvider: Send + Sync {
+    fn should_redact(&self) -> bool;
+    fn sanitize_log(&self, msg: &str) -> String;
+    fn sanitize_error(&self, err: &str) -> String;
+    fn should_suppress_token_metrics(&self) -> bool;
+}
+
+// 推理后端
+pub trait Backend: Send + Sync {
+    fn name(&self) -> &str;
+    fn supports(&self, format: &ModelFormat) -> bool;
+    async fn load(&self, manifest: &ModelManifest) -> Result<()>;
+    async fn chat(&self, model_name: &str, request: ChatRequest)
+        -> Result<Pin<Box<dyn Stream<Item = Result<ChatResponseChunk>> + Send>>>;
+    // ...
+}
+
+// 审计日志持久化
+pub trait AuditLogger: Send + Sync {
+    fn log(&self, event: AuditEvent);
+    async fn flush(&self);
+}
+```
+
+### TEE 策略引擎
+
+`TeePolicy` trait 展示了扩展点的灵活性：
+
+```rust
+pub trait TeePolicy: Send + Sync {
+    fn is_allowed(&self, tee_type: TeeType) -> bool;
+    fn validate_measurement(&self, measurement: &[u8]) -> bool;
+}
+```
+
+三种预设策略：
+
+- **`permissive()`**：允许所有 TEE 类型，不检查度量。开发环境用
+- **`strict()`**：仅允许硬件 TEE（sev-snp、tdx），拒绝模拟模式。生产环境用
+- **自定义**：通过白名单和度量映射实现精细控制
+
+当 `A3S_POWER_TEE_STRICT=1` 环境变量被设置时，系统自动从白名单中移除 "simulated"——安全护栏，防止在生产环境中意外使用模拟模式。
+
+---
+
+## 10. 为什么是纯 Rust？供应链审计的信任账本
+
+### 问题：你审计得过来吗？
+
+在 TEE 环境中，推理路径上的每一行代码都是可信计算基（TCB）的一部分。TCB 越大，攻击面越大，审计越难。
+
+C/C++ 代码是安全审计中最大的风险来源——缓冲区溢出、use-after-free、未初始化内存等内存安全漏洞占据了 CVE 数据库的大部分。
+
+### A3S Power 怎么解决：纯 Rust 推理路径
+
+A3S Power 提供了 `tee-minimal` 构建配置——目前存在的最小可审计 LLM 推理栈：
+
+| 构建配置 | 推理后端 | 依赖树行数 | C 依赖 |
+|---------|---------|-----------|--------|
+| `default` | mistralrs (candle) | ~2,000 | 无 |
+| `tee-minimal` | picolm (纯 Rust) | ~1,220 | 无 |
+| `llamacpp` | llama.cpp | ~1,800+ | 有 (C++) |
+
+`tee-minimal` 配置包含：
+
+- **picolm 后端**：约 4,500 行纯 Rust 代码，完整的 transformer 前向传播。零 C 依赖——每一行代码都可以被 Rust 工具链审计
+- **完整 TEE 栈**：证明、模型完整性（SHA-256）、日志脱敏、内存清零
+- **加密模型加载**：AES-256-GCM，支持内存解密和流式解密
+- **RA-TLS 传输**：证明嵌入 X.509 证书
+- **Vsock 传输**：用于 a3s-box MicroVM 内部通信
+
+```bash
+# 构建最小 TEE 配置
+cargo build --release --no-default-features --features tee-minimal
+```
+
+对于 TEE 部署，纯 Rust 意味着：
+
+- **审计范围可控**：1,220 行依赖树 vs 2,000+ 行，审计工作量减少 40%
+- **无 C/C++ 工具链**：不需要信任 gcc/clang 编译器的正确性
+- **内存安全保证**：Rust 编译器在编译时验证内存安全，无需运行时检查
+- **`unsafe` 块最小化**：picolm 中的 `unsafe` 仅用于 mmap 和 madvise 系统调用，可以逐一审计
+
+### picolm 不是玩具
+
+picolm 是一个完整的、生产就绪的 transformer 推理引擎：
+
+- **注意力机制**：多头注意力 + 分组查询注意力（GQA），支持 Q/K/V 偏置（Qwen、Phi）
+- **前馈网络**：SwiGLU（LLaMA、Mistral、Phi）和 GeGLU（Gemma）激活变体
+- **位置编码**：RoPE，预计算 cos/sin 表，支持部分维度
+- **归一化**：RMSNorm，逐层按需反量化
+- **反量化**：Q4_K、Q5_K、Q6_K、Q8_0、Q4_0、F16、F32
+- **融合内核**：反量化+点积单次遍历，无中间缓冲区
+- **并行计算**：Rayon 多线程行并行矩阵乘法
+- **FP16 KV 缓存**：半精度存储，内存减半
+- **BPE 分词器**：完整的 GPT 风格字节对编码，支持 ChatML 模板
+
+---
+
+## 11. 和 Ollama、vLLM、TGI 比，差在哪？
+
+直接看表：
+
+| 能力 | Ollama | vLLM | TGI | A3S Power |
+|------|:------:|:----:|:---:|:---------:|
+| OpenAI 兼容 API | Yes | Yes | Yes | Yes |
+| GPU 加速 | Yes | Yes | Yes | Yes |
+| 流式传输 | Yes | Yes | Yes | Yes |
+| TEE 硬件隔离 (SEV-SNP / TDX) | -- | -- | -- | Yes |
+| 远程证明（硬件签名证明） | -- | -- | -- | Yes |
+| 模型证明绑定 | -- | -- | -- | Yes |
+| RA-TLS（TLS 握手中的证明） | -- | -- | -- | Yes |
+| 加密模型加载（AES-256-GCM，3 种模式） | -- | -- | -- | Yes |
+| 深度日志脱敏（10 个键 + 错误净化） | -- | -- | -- | Yes |
+| 内存清零（drop 时 zeroize） | -- | -- | -- | Yes |
+| 客户端验证 SDK | -- | -- | -- | Yes |
+| 硬件签名验证（AMD KDS / Intel PCS） | -- | -- | -- | Yes |
+| 层流式推理（256MB 跑 10B 模型） | -- | -- | -- | Yes |
+| 多后端自动路由（边缘→GPU TEE 无缝升级） | -- | -- | -- | Yes |
+| 纯 Rust 推理路径（完全可审计） | -- | -- | -- | Yes |
+
+### 什么时候该用 A3S Power？
+
+**用 A3S Power：**
+- 处理受监管数据（SOX、GLBA、HIPAA、GDPR）需要技术保障而非策略承诺
+- 多租户 AI 平台需要硬件级别的租户隔离
+- 需要向客户或审计方证明推理数据未被泄露
+- 模型权重是核心知识产权，需要防止运营商复制
+- 需要在 10 美元、256MB 内存的硬件上运行 10B 模型做安全决策
+- 边缘部署场景：IoT 网关、嵌入式设备、资源受限的容器环境
+- 供应链安全要求推理路径完全可审计（无 C/C++ 依赖）
+
+**用传统推理服务器：**
+- 内部部署，完全信任基础设施
+- 对延迟极度敏感，不需要 TEE 开销
+- 需要最大化 GPU 利用率（vLLM 的 PagedAttention）
+- 处理的数据不敏感
+
+---
+
+## 12. 如果你今天就要部署
+
+如果你今天就要把 A3S Power 跑起来，这是你需要知道的。
+
+### 最快上手：开发模式
+
+```hcl
+# power.hcl — 最小配置
+bind = "0.0.0.0"
+port = 11434
+```
+
+```bash
+# 启动
+a3s-power --config power.hcl
+
+# 拉取模型
+curl -X POST http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen2.5:0.5b"}'
+
+# 推理（和 Ollama 一样的体验）
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen2.5:0.5b", "messages": [{"role": "user", "content": "hello"}]}'
+```
+
+### 生产模式：TEE 全开
+
+```hcl
+# power.hcl — 生产 TEE 配置
+bind = "0.0.0.0"
+port = 11434
+tls_port = 11443
+
+# TEE 安全
+tee_mode = true
+ra_tls   = true
+model_hashes = {
+  "llama3.2:3b" = "sha256:a1b2c3d4e5f6..."
+}
+model_signing_key = "a1b2c3d4..."
+
+# 加密模型
+in_memory_decrypt = true
+model_key_source  = { env = "A3S_MODEL_KEY" }
+
+# 隐私保护
+redact_logs             = true
+suppress_token_metrics  = true
+```
+
+```bash
+# 构建最小 TEE 二进制
+cargo build --release --no-default-features --features tee-minimal
+
+# 在 SEV-SNP VM 中启动
+A3S_MODEL_KEY="your-64-hex-char-key" a3s-power --config power.hcl
+```
+
+### 客户端验证
+
+```bash
+# 验证服务器的 TEE 证明
+a3s-power-verify \
+  --url https://your-server:11443 \
+  --model llama3.2:3b \
+  --expected-hash sha256:a1b2c3d4e5f6...
+```
+
+或者用 SDK：
+
+```rust
+use a3s_power_verify::{verify_report, VerifyOptions};
+
+let report = fetch_attestation(url, nonce).await?;
+verify_report(&report, &VerifyOptions {
+    nonce: Some(nonce),
+    expected_model_hash: Some(expected_hash),
+    expected_measurement: Some(known_measurement),
+    hardware_verifier: Some(&amd_kds_verifier),
+})?;
+// 验证通过，可以安全地发送推理请求
+```
+
+### A3S 生态系统中的位置
+
+A3S Power 是 A3S 隐私保护 AI 平台的推理引擎，运行在 a3s-box MicroVM 内部：
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                         A3S 生态系统                               │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │  a3s-box MicroVM (AMD SEV-SNP / Intel TDX)               │    │
+│  │  ┌────────────────────────────────────────────────────┐  │    │
+│  │  │  a3s-power                                         │  │    │
+│  │  │  OpenAI API ← Vsock/RA-TLS → 宿主机               │  │    │
+│  │  └────────────────────────────────────────────────────┘  │    │
+│  │  硬件加密内存 — 宿主机无法读取                             │    │
+│  └──────────────────────────────────────────────────────────┘    │
+│       ▲ Vsock                                                     │
+│       │                                                           │
+│  ┌────┴─────────┐  ┌──────────────┐  ┌────────────────────────┐  │
+│  │  a3s-gateway │  │  a3s-event   │  │  a3s-code              │  │
+│  │  (API 路由)  │  │  (事件总线)  │  │  (AI 编码代理)         │  │
+│  └──────────────┘  └──────────────┘  └────────────────────────┘  │
+│                                                                   │
+│  客户端:                                                          │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │  a3s-power verify SDK                                     │    │
+│  │  Nonce 绑定 · 模型哈希绑定 · 硬件签名验证                  │    │
+│  └──────────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+| 组件 | 与 Power 的关系 |
+|------|----------------|
+| **a3s-box** | 在 TEE MicroVM 中托管 Power |
+| **a3s-code** | 使用 Power 作为本地推理后端 |
+| **a3s-gateway** | 将推理请求路由到 Power 实例 |
+| **a3s-event** | 分发推理事件 |
+| **verify SDK** | 客户端证明验证 |
+
+### 技术演进方向
+
+三件正在做的事：
+
+1. **扩展 TEE 硬件支持** —— Intel TDX 的支持已在架构中预留（`TeeType::Tdx` 变体已定义，ioctl 调用已实现）。未来还会关注 ARM CCA（Confidential Compute Architecture）
+2. **GPU TEE 加速** —— AMD SEV-SNP 已开始支持 GPU TEE（机密 GPU），这意味着 A3S Power 的多后端架构可以无缝升级：同一套安全层 + GPU 加速后端，推理吞吐量提升数十倍，同时保持硬件级隐私保护。picolm 解决了"能不能跑"的问题，GPU TEE 后端解决"跑得多快"的问题
+3. **深化生态集成** —— 与 a3s-box MicroVM 更紧密集成，自动化 TEE 部署流程。与 a3s-code AI 编码代理框架集成，让 AI Agent 在 TEE 保护下推理
+
+---
+
+回到开头那个场景。那位交易员输入的客户持仓和交易策略信息，从离开键盘的那一刻起，经过了 RA-TLS 证明握手、TEE 硬件内存加密、模型身份验证、层流式推理、日志脱敏、内存清零——每一步都有密码学保障，不依赖任何人的善意。
+
+而在 TEE 内部，那个 10B 模型不只是在回答交易员的问题。它同时在做三件事：校验这条 prompt 是否包含注入攻击、对返回结果中的客户信息和持仓数据进行智能脱敏、审批后续可能触发的敏感工具调用。这些安全决策必须在硬件加密的内存中完成，必须由一个足够聪明的模型来做——picolm 的层流式推理让 256MB 的 EPC 跑起了 10B 模型，让这一切成为可能。
+
+这不是"我们承诺不看你的数据"。这是"即使我们想看，硬件也不让"。
+
+858 个测试确保了这些技术选择的正确实现。纯 Rust 的最小 TCB（~1,220 行依赖树）确保了推理路径完全可审计。而对用户来说，体验和用 Ollama 一样简单——发请求，拿结果。
+
+区别在于：这一次，你不需要信任任何人。而且你不需要一台昂贵的服务器——一块 10 美元、256MB 内存的硬件就够了。
+
+---
+
+> **A3S Power — 10 美元硬件上的隐私 LLM 推理引擎。**
+>
+> 项目文档：[https://a3s-lab.github.io/a3s/](https://a3s-lab.github.io/a3s/) | GitHub：[https://github.com/A3S-Lab/Power](https://github.com/A3S-Lab/Power)
