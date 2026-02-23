@@ -19,6 +19,15 @@ pub enum DevError {
 
     #[error("port conflict: services '{a}' and '{b}' both use port {port}")]
     PortConflict { a: String, b: String, port: u16 },
+
+    #[error("template error: {0}")]
+    Template(String),
+}
+
+impl From<minijinja::Error> for DevError {
+    fn from(e: minijinja::Error) -> Self {
+        DevError::Template(e.to_string())
+    }
 }
 
 pub type Result<T> = std::result::Result<T, DevError>;

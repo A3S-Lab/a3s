@@ -2,6 +2,7 @@ use std::io::{self, Write};
 use std::path::Path;
 
 use colored::Colorize;
+use minijinja::{context, Environment};
 
 use crate::error::{DevError, Result};
 
@@ -116,37 +117,113 @@ where
 
 // ── Scaffold ──────────────────────────────────────────────────────────────────
 
-pub fn scaffold(dir: &Path, lang: Language) -> Result<()> {
+pub fn scaffold(dir: &Path, lang: Language, project_name: &str) -> Result<()> {
     std::fs::create_dir_all(dir).map_err(|e| DevError::Config(format!("create dir: {e}")))?;
 
+    let mut env = Environment::new();
+    env.add_template("python/config.hcl", PYTHON_CONFIG)
+        .unwrap();
+    env.add_template("python/skills/hello.py", PYTHON_SKILL)
+        .unwrap();
+    env.add_template("python/agents/demo.py", PYTHON_AGENT)
+        .unwrap();
+    env.add_template("python/requirements.txt", PYTHON_REQUIREMENTS)
+        .unwrap();
+    env.add_template("typescript/config.hcl", TS_CONFIG)
+        .unwrap();
+    env.add_template("typescript/skills/hello.ts", TS_SKILL)
+        .unwrap();
+    env.add_template("typescript/agents/demo.ts", TS_AGENT)
+        .unwrap();
+    env.add_template("typescript/package.json", TS_PACKAGE_JSON)
+        .unwrap();
+    env.add_template("typescript/tsconfig.json", TS_CONFIG_JSON)
+        .unwrap();
+
+    let ctx = context! { project_name };
+
     match lang {
-        Language::Python => scaffold_python(dir),
-        Language::TypeScript => scaffold_typescript(dir),
+        Language::Python => scaffold_python(dir, &env, ctx),
+        Language::TypeScript => scaffold_typescript(dir, &env, ctx),
     }
 }
 
-fn scaffold_python(dir: &Path) -> Result<()> {
-    write_file(dir, "config.hcl", PYTHON_CONFIG)?;
+fn scaffold_python(dir: &Path, env: &Environment, ctx: minijinja::Value) -> Result<()> {
     std::fs::create_dir_all(dir.join("skills")).map_err(|e| DevError::Config(e.to_string()))?;
     std::fs::create_dir_all(dir.join("agents")).map_err(|e| DevError::Config(e.to_string()))?;
-    write_file(dir, "skills/hello.py", PYTHON_SKILL)?;
-    write_file(dir, "agents/demo.py", PYTHON_AGENT)?;
-    write_file(dir, "requirements.txt", PYTHON_REQUIREMENTS)?;
+    render_file(
+        dir,
+        "config.hcl",
+        env.get_template("python/config.hcl")
+            .unwrap()
+            .render(ctx.clone())?,
+    )?;
+    render_file(
+        dir,
+        "skills/hello.py",
+        env.get_template("python/skills/hello.py")
+            .unwrap()
+            .render(ctx.clone())?,
+    )?;
+    render_file(
+        dir,
+        "agents/demo.py",
+        env.get_template("python/agents/demo.py")
+            .unwrap()
+            .render(ctx.clone())?,
+    )?;
+    render_file(
+        dir,
+        "requirements.txt",
+        env.get_template("python/requirements.txt")
+            .unwrap()
+            .render(ctx)?,
+    )?;
     Ok(())
 }
 
-fn scaffold_typescript(dir: &Path) -> Result<()> {
-    write_file(dir, "config.hcl", TS_CONFIG)?;
+fn scaffold_typescript(dir: &Path, env: &Environment, ctx: minijinja::Value) -> Result<()> {
     std::fs::create_dir_all(dir.join("skills")).map_err(|e| DevError::Config(e.to_string()))?;
     std::fs::create_dir_all(dir.join("agents")).map_err(|e| DevError::Config(e.to_string()))?;
-    write_file(dir, "skills/hello.ts", TS_SKILL)?;
-    write_file(dir, "agents/demo.ts", TS_AGENT)?;
-    write_file(dir, "package.json", TS_PACKAGE_JSON)?;
-    write_file(dir, "tsconfig.json", TS_CONFIG_JSON)?;
+    render_file(
+        dir,
+        "config.hcl",
+        env.get_template("typescript/config.hcl")
+            .unwrap()
+            .render(ctx.clone())?,
+    )?;
+    render_file(
+        dir,
+        "skills/hello.ts",
+        env.get_template("typescript/skills/hello.ts")
+            .unwrap()
+            .render(ctx.clone())?,
+    )?;
+    render_file(
+        dir,
+        "agents/demo.ts",
+        env.get_template("typescript/agents/demo.ts")
+            .unwrap()
+            .render(ctx.clone())?,
+    )?;
+    render_file(
+        dir,
+        "package.json",
+        env.get_template("typescript/package.json")
+            .unwrap()
+            .render(ctx.clone())?,
+    )?;
+    render_file(
+        dir,
+        "tsconfig.json",
+        env.get_template("typescript/tsconfig.json")
+            .unwrap()
+            .render(ctx)?,
+    )?;
     Ok(())
 }
 
-fn write_file(dir: &Path, name: &str, content: &str) -> Result<()> {
+fn render_file(dir: &Path, name: &str, content: String) -> Result<()> {
     let path = dir.join(name);
     std::fs::write(&path, content)
         .map_err(|e| DevError::Config(format!("write {}: {e}", path.display())))
@@ -172,19 +249,20 @@ mod tests {
     #[test]
     fn test_scaffold_python() {
         let dir = tempfile::tempdir().unwrap();
-        scaffold(dir.path(), Language::Python).unwrap();
+        scaffold(dir.path(), Language::Python, "my-agent").unwrap();
         assert!(dir.path().join("config.hcl").exists());
         assert!(dir.path().join("requirements.txt").exists());
         assert!(dir.path().join("skills/hello.py").exists());
         assert!(dir.path().join("agents/demo.py").exists());
         let config = std::fs::read_to_string(dir.path().join("config.hcl")).unwrap();
         assert!(config.contains("claude-sonnet-4-5"));
+        assert!(config.contains("my-agent"));
     }
 
     #[test]
     fn test_scaffold_typescript() {
         let dir = tempfile::tempdir().unwrap();
-        scaffold(dir.path(), Language::TypeScript).unwrap();
+        scaffold(dir.path(), Language::TypeScript, "my-agent").unwrap();
         assert!(dir.path().join("config.hcl").exists());
         assert!(dir.path().join("package.json").exists());
         assert!(dir.path().join("tsconfig.json").exists());
@@ -192,6 +270,7 @@ mod tests {
         assert!(dir.path().join("agents/demo.ts").exists());
         let pkg = std::fs::read_to_string(dir.path().join("package.json")).unwrap();
         assert!(pkg.contains("@a3s-lab/code"));
+        assert!(pkg.contains("my-agent"));
     }
 
     #[test]

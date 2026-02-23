@@ -506,7 +506,11 @@ async fn run(cli: Cli) -> Result<()> {
             CodeCommands::Init { dir } => {
                 println!("{} a3s-code agent scaffolding\r\n", "→".cyan());
                 let lang = code::prompt_language()?;
-                code::scaffold(dir, lang)?;
+                let project_name = dir
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("my-agent");
+                code::scaffold(dir, lang, project_name)?;
                 let lang_name = match lang {
                     code::Language::Python => "Python",
                     code::Language::TypeScript => "TypeScript",

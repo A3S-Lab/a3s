@@ -1,5 +1,5 @@
 {
-  "name": "my-a3s-agent",
+  "name": "{{ project_name }}",
   "version": "0.1.0",
   "private": true,
   "scripts": {
