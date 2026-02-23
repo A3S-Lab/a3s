@@ -83,45 +83,33 @@ async fn handle(
                 .map(|p| p["service=".len()..].to_string());
 
             let rx = sup.subscribe_logs();
-            let stream = BroadcastStream::new(rx).filter_map(move |item| {
-                match item {
-                    Ok(entry) => {
-                        if service_filter
-                            .as_deref()
-                            .is_none_or(|f| f == entry.service)
-                        {
-                            let payload = serde_json::json!({
-                                "service": entry.service,
-                                "line": entry.line,
-                            });
-                            let data = format!("data: {}\n\n", payload);
-                            Some(Ok::<_, Infallible>(Frame::data(Bytes::from(data))))
-                        } else {
-                            None
-                        }
+            let stream = BroadcastStream::new(rx).filter_map(move |item| match item {
+                Ok(entry) => {
+                    if service_filter.as_deref().is_none_or(|f| f == entry.service) {
+                        let payload = serde_json::json!({
+                            "service": entry.service,
+                            "line": entry.line,
+                        });
+                        let data = format!("data: {}\n\n", payload);
+                        Some(Ok::<_, Infallible>(Frame::data(Bytes::from(data))))
+                    } else {
+                        None
                     }
-                    Err(_) => None,
                 }
+                Err(_) => None,
             });
 
             Response::builder()
                 .header("content-type", "text/event-stream")
                 .header("cache-control", "no-cache")
                 .header("access-control-allow-origin", "*")
-                .body(
-                    StreamBody::new(stream)
-                        .map_err(|e| e)
-                        .boxed(),
-                )
+                .body(StreamBody::new(stream).map_err(|e| e).boxed())
                 .unwrap()
         }
         (Method::POST, p) if p.starts_with("/api/restart/") => {
             let name = urldecode(&p["/api/restart/".len()..]);
             match sup.restart_service(&name).await {
-                Ok(_) => full_response(
-                    "application/json",
-                    b"{\"ok\":true}".to_vec(),
-                ),
+                Ok(_) => full_response("application/json", b"{\"ok\":true}".to_vec()),
                 Err(e) => {
                     let body = format!("{{\"error\":\"{}\"}}", e).into_bytes();
                     Response::builder()
@@ -139,7 +127,11 @@ async fn handle(
         }
         _ => Response::builder()
             .status(StatusCode::NOT_FOUND)
-            .body(Full::new(Bytes::from_static(b"not found")).map_err(|e| e).boxed())
+            .body(
+                Full::new(Bytes::from_static(b"not found"))
+                    .map_err(|e| e)
+                    .boxed(),
+            )
             .unwrap(),
     };
 

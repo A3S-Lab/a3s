@@ -22,12 +22,8 @@ mod spawn;
 
 #[derive(Debug, Clone)]
 pub enum SupervisorEvent {
-    #[allow(dead_code)]
     StateChanged { service: String, state: String },
-    #[allow(dead_code)]
     HealthChange { service: String, healthy: bool },
-    #[allow(dead_code)]
-    LogLine { service: String, line: String },
 }
 
 struct ServiceHandle {
@@ -35,6 +31,8 @@ struct ServiceHandle {
     state: ServiceState,
     color_idx: usize,
     port: u16,
+    /// Cancels the file watcher thread for this service, if any.
+    watcher_stop: Option<tokio::sync::watch::Sender<bool>>,
 }
 
 pub struct Supervisor {
@@ -136,6 +134,7 @@ impl Supervisor {
                 },
                 color_idx,
                 port,
+                watcher_stop: None,
             },
         );
 
@@ -149,7 +148,7 @@ impl Supervisor {
 
         // Wait for health before unblocking dependents
         if let Some(checker) = HealthChecker::for_service(&svc) {
-            let healthy = checker.wait_healthy(&svc).await;
+            let healthy = checker.wait_healthy(&svc, port).await;
             self.emit(SupervisorEvent::HealthChange {
                 service: name.to_string(),
                 healthy,
@@ -165,7 +164,14 @@ impl Supervisor {
         // File watcher → auto-restart on change
         if let Some(watch) = &svc.watch {
             if watch.restart {
-                self.spawn_file_watcher(name.to_string(), watch.paths.clone(), watch.ignore.clone());
+                let stop_tx = self.spawn_file_watcher(
+                    name.to_string(),
+                    watch.paths.clone(),
+                    watch.ignore.clone(),
+                );
+                self.handles.write().await.get_mut(name).map(|h| {
+                    h.watcher_stop = Some(stop_tx);
+                });
             }
         }
 
@@ -186,17 +192,18 @@ impl Supervisor {
     pub async fn stop_service(&self, name: &str) {
         let mut map = self.handles.write().await;
         if let Some(h) = map.get_mut(name) {
+            // Cancel file watcher first
+            if let Some(ref stop_tx) = h.watcher_stop {
+                let _ = stop_tx.send(true);
+            }
             #[cfg(unix)]
             {
                 use nix::sys::signal::{kill, Signal};
                 use nix::unistd::Pid;
                 if let Some(pid) = h.state.pid() {
                     let _ = kill(Pid::from_raw(pid as i32), Signal::SIGTERM);
-                    let _ = tokio::time::timeout(
-                        std::time::Duration::from_secs(5),
-                        h.child.wait(),
-                    )
-                    .await;
+                    let _ = tokio::time::timeout(std::time::Duration::from_secs(5), h.child.wait())
+                        .await;
                 }
             }
             let _ = h.child.kill().await;
@@ -263,7 +270,17 @@ impl Supervisor {
         let proxy = self.proxy.clone();
 
         tokio::spawn(async move {
+            // Capture assigned port once — preserves auto-assigned port across restarts
+            let assigned_port = handles
+                .read()
+                .await
+                .get(&svc_name)
+                .map(|h| h.port)
+                .unwrap_or(0);
             let mut backoff_secs = 1u64;
+            const MAX_RESTARTS: u32 = 10;
+            let mut restart_count = 0u32;
+
             loop {
                 // Wait for the process to exit
                 let exit_status = {
@@ -288,9 +305,19 @@ impl Supervisor {
                     }
                 }
 
+                restart_count += 1;
+                if restart_count > MAX_RESTARTS {
+                    tracing::error!("[{svc_name}] crashed {MAX_RESTARTS} times — giving up");
+                    let _ = events.send(SupervisorEvent::StateChanged {
+                        service: svc_name.clone(),
+                        state: "failed".into(),
+                    });
+                    break;
+                }
+
                 let code = exit_status.and_then(|s| s.code());
                 tracing::warn!(
-                    "[{svc_name}] exited (code={}) — restarting in {backoff_secs}s",
+                    "[{svc_name}] exited (code={}) — restarting in {backoff_secs}s ({restart_count}/{MAX_RESTARTS})",
                     code.map(|c| c.to_string()).unwrap_or_else(|| "?".into())
                 );
                 let _ = events.send(SupervisorEvent::StateChanged {
@@ -299,21 +326,18 @@ impl Supervisor {
                 });
 
                 tokio::time::sleep(std::time::Duration::from_secs(backoff_secs)).await;
-                #[allow(unused_assignments)]
-                {
-                    backoff_secs = (backoff_secs * 2).min(30);
-                }
+                backoff_secs = (backoff_secs * 2).min(30);
 
                 let svc_def = match config.service.get(&svc_name) {
                     Some(s) => s.clone(),
                     None => break,
                 };
-                let port = handles
-                    .read()
-                    .await
-                    .get(&svc_name)
-                    .map(|h| h.port)
-                    .unwrap_or(svc_def.port);
+                // Use originally assigned port — avoids re-assigning a new port for port=0 services
+                let port = if assigned_port > 0 {
+                    assigned_port
+                } else {
+                    svc_def.port
+                };
 
                 let spec = SpawnSpec {
                     name: &svc_name,
@@ -336,6 +360,7 @@ impl Supervisor {
                                 },
                                 color_idx,
                                 port,
+                                watcher_stop: None,
                             },
                         );
                         let _ = events.send(SupervisorEvent::StateChanged {
@@ -343,6 +368,7 @@ impl Supervisor {
                             state: "running".into(),
                         });
                         backoff_secs = 1;
+                        restart_count = 0;
                     }
                     Err(e) => {
                         tracing::error!("[{svc_name}] restart failed: {e}");
@@ -354,77 +380,91 @@ impl Supervisor {
     }
 
     /// Spawn a task that watches files and restarts the service on change.
+    /// Returns a sender that stops the watcher when `true` is sent.
     fn spawn_file_watcher(
         &self,
         svc_name: String,
         paths: Vec<std::path::PathBuf>,
         ignore: Vec<String>,
-    ) {
+    ) -> tokio::sync::watch::Sender<bool> {
         let handles = self.handles.clone();
         let events = self.events.clone();
         let config = self.config.clone();
         let log = self.log.clone();
 
+        let (stop_tx, mut stop_rx) = tokio::sync::watch::channel(false);
         let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(8);
         spawn_watcher(svc_name.clone(), paths, ignore, tx);
 
         tokio::spawn(async move {
-            while let Some(changed_svc) = rx.recv().await {
-                tracing::info!("[{changed_svc}] file change — restarting");
+            loop {
+                tokio::select! {
+                    _ = stop_rx.changed() => break,
+                    msg = rx.recv() => {
+                        let changed_svc = match msg {
+                            Some(s) => s,
+                            None => break,
+                        };
+                        tracing::info!("[{changed_svc}] file change — restarting");
 
-                let (color_idx, port) = {
-                    let mut map = handles.write().await;
-                    if let Some(h) = map.get_mut(&changed_svc) {
-                        let idx = h.color_idx;
-                        let p = h.port;
-                        let _ = h.child.kill().await;
-                        h.state = ServiceState::Stopped;
-                        (idx, p)
-                    } else {
-                        continue;
-                    }
-                };
+                        let (color_idx, port) = {
+                            let mut map = handles.write().await;
+                            if let Some(h) = map.get_mut(&changed_svc) {
+                                let idx = h.color_idx;
+                                let p = h.port;
+                                let _ = h.child.kill().await;
+                                h.state = ServiceState::Stopped;
+                                (idx, p)
+                            } else {
+                                continue;
+                            }
+                        };
 
-                let _ = events.send(SupervisorEvent::StateChanged {
-                    service: changed_svc.clone(),
-                    state: "restarting".into(),
-                });
-
-                let svc_def = match config.service.get(&changed_svc) {
-                    Some(s) => s.clone(),
-                    None => continue,
-                };
-
-                let spec = SpawnSpec {
-                    name: &changed_svc,
-                    svc: &svc_def,
-                    port,
-                    color_idx,
-                };
-                match spawn_process(&spec, &log).await {
-                    Ok(result) => {
-                        handles.write().await.insert(
-                            changed_svc.clone(),
-                            ServiceHandle {
-                                child: result.child,
-                                state: ServiceState::Running {
-                                    pid: result.pid,
-                                    since: Instant::now(),
-                                },
-                                color_idx,
-                                port,
-                            },
-                        );
                         let _ = events.send(SupervisorEvent::StateChanged {
                             service: changed_svc.clone(),
-                            state: "running".into(),
+                            state: "restarting".into(),
                         });
-                    }
-                    Err(e) => {
-                        tracing::error!("[{changed_svc}] restart failed: {e}");
+
+                        let svc_def = match config.service.get(&changed_svc) {
+                            Some(s) => s.clone(),
+                            None => continue,
+                        };
+
+                        let spec = SpawnSpec {
+                            name: &changed_svc,
+                            svc: &svc_def,
+                            port,
+                            color_idx,
+                        };
+                        match spawn_process(&spec, &log).await {
+                            Ok(result) => {
+                                handles.write().await.insert(
+                                    changed_svc.clone(),
+                                    ServiceHandle {
+                                        child: result.child,
+                                        state: ServiceState::Running {
+                                            pid: result.pid,
+                                            since: Instant::now(),
+                                        },
+                                        color_idx,
+                                        port,
+                                        watcher_stop: None,
+                                    },
+                                );
+                                let _ = events.send(SupervisorEvent::StateChanged {
+                                    service: changed_svc.clone(),
+                                    state: "running".into(),
+                                });
+                            }
+                            Err(e) => {
+                                tracing::error!("[{changed_svc}] restart failed: {e}");
+                            }
+                        }
                     }
                 }
             }
         });
+
+        stop_tx
     }
 }

@@ -136,7 +136,9 @@ mod duration_serde {
                 .map(Duration::from_secs)
                 .map_err(|e| e.to_string());
         }
-        Err(format!("unknown duration format: '{s}' (use '2s' or '500ms')"))
+        Err(format!(
+            "unknown duration format: '{s}' (use '2s' or '500ms')"
+        ))
     }
 }
 
@@ -229,10 +231,7 @@ mod tests {
     #[test]
     fn test_validate_port_zero_no_conflict() {
         // Two services with port=0 should not conflict
-        let cfg = make_config(vec![
-            ("a", make_svc(0, vec![])),
-            ("b", make_svc(0, vec![])),
-        ]);
+        let cfg = make_config(vec![("a", make_svc(0, vec![])), ("b", make_svc(0, vec![]))]);
         assert!(cfg.validate().is_ok());
     }
 

@@ -12,6 +12,8 @@ use tokio::sync::broadcast;
 pub struct LogLine {
     pub service: String,
     pub line: String,
+    #[serde(skip)]
+    pub color_idx: usize,
 }
 
 /// Aggregates log lines from all services into a single broadcast channel.
@@ -25,7 +27,14 @@ const HISTORY_CAP: usize = 1000;
 
 // Fixed palette — one color per service slot (cycles if > 8 services)
 const COLORS: &[&str] = &[
-    "cyan", "green", "yellow", "magenta", "blue", "bright cyan", "bright green", "bright yellow",
+    "cyan",
+    "green",
+    "yellow",
+    "magenta",
+    "blue",
+    "bright cyan",
+    "bright green",
+    "bright yellow",
 ];
 
 impl LogAggregator {
@@ -43,20 +52,20 @@ impl LogAggregator {
     /// Spawn a task that reads lines from `stdout` and broadcasts them.
     pub fn attach(&self, service: String, color_idx: usize, stdout: ChildStdout) {
         let tx = self.tx.clone();
-        let _color = COLORS[color_idx % COLORS.len()];
         tokio::spawn(async move {
             let mut reader = BufReader::new(stdout).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 let _ = tx.send(LogLine {
                     service: service.clone(),
                     line,
+                    color_idx,
                 });
             }
         });
     }
 
     /// Spawn a task that reads lines from `stderr` and broadcasts them.
-    pub fn attach_stderr(&self, service: String, _color_idx: usize, stderr: ChildStderr) {
+    pub fn attach_stderr(&self, service: String, color_idx: usize, stderr: ChildStderr) {
         let tx = self.tx.clone();
         tokio::spawn(async move {
             let mut reader = BufReader::new(stderr).lines();
@@ -64,6 +73,7 @@ impl LogAggregator {
                 let _ = tx.send(LogLine {
                     service: service.clone(),
                     line,
+                    color_idx,
                 });
             }
         });
@@ -75,7 +85,9 @@ impl LogAggregator {
 
     /// Return up to `n` recent log lines, optionally filtered by service.
     pub fn recent(&self, service: Option<&str>, n: usize) -> Vec<LogLine> {
-        let history = self.history.lock().unwrap();
+        let Ok(history) = self.history.lock() else {
+            return vec![];
+        };
         history
             .iter()
             .filter(|l| service.is_none_or(|s| l.service == s))
@@ -94,8 +106,20 @@ impl LogAggregator {
         loop {
             match rx.recv().await {
                 Ok(entry) => {
+                    let color = COLORS[entry.color_idx % COLORS.len()];
                     let prefix = format!("[{}]", entry.service);
-                    println!("{} {}", prefix.cyan(), entry.line);
+                    let colored_prefix = match color {
+                        "cyan" => prefix.cyan().to_string(),
+                        "green" => prefix.green().to_string(),
+                        "yellow" => prefix.yellow().to_string(),
+                        "magenta" => prefix.magenta().to_string(),
+                        "blue" => prefix.blue().to_string(),
+                        "bright cyan" => prefix.bright_cyan().to_string(),
+                        "bright green" => prefix.bright_green().to_string(),
+                        "bright yellow" => prefix.bright_yellow().to_string(),
+                        _ => prefix.cyan().to_string(),
+                    };
+                    println!("{} {}", colored_prefix, entry.line);
                 }
                 Err(broadcast::error::RecvError::Lagged(n)) => {
                     eprintln!(
@@ -118,11 +142,15 @@ impl LogAggregator {
             loop {
                 match rx.recv().await {
                     Ok(entry) => {
-                        let mut h = log.history.lock().unwrap();
-                        if h.len() >= HISTORY_CAP {
-                            h.pop_front();
+                        match log.history.lock() {
+                            Ok(mut h) => {
+                                if h.len() >= HISTORY_CAP {
+                                    h.pop_front();
+                                }
+                                h.push_back(entry);
+                            }
+                            Err(_) => {} // poisoned — skip entry, don't panic
                         }
-                        h.push_back(entry);
                     }
                     Err(broadcast::error::RecvError::Closed) => break,
                     Err(broadcast::error::RecvError::Lagged(_)) => {}

@@ -10,10 +10,20 @@ pub fn socket_path() -> PathBuf {
 #[serde(tag = "cmd", rename_all = "snake_case")]
 pub enum IpcRequest {
     Status,
-    Stop { services: Vec<String> },
-    Restart { service: String },
-    Logs { service: Option<String>, follow: bool },
-    History { service: Option<String>, lines: usize },
+    Stop {
+        services: Vec<String>,
+    },
+    Restart {
+        service: String,
+    },
+    Logs {
+        service: Option<String>,
+        follow: bool,
+    },
+    History {
+        service: Option<String>,
+        lines: usize,
+    },
 }
 
 /// IPC response from daemon to client.
@@ -50,7 +60,9 @@ mod tests {
 
     #[test]
     fn test_request_stop_roundtrip() {
-        let req = IpcRequest::Stop { services: vec!["web".into(), "api".into()] };
+        let req = IpcRequest::Stop {
+            services: vec!["web".into(), "api".into()],
+        };
         let json = serde_json::to_string(&req).unwrap();
         let decoded: IpcRequest = serde_json::from_str(&json).unwrap();
         if let IpcRequest::Stop { services } = decoded {
@@ -62,7 +74,10 @@ mod tests {
 
     #[test]
     fn test_request_logs_roundtrip() {
-        let req = IpcRequest::Logs { service: Some("web".into()), follow: true };
+        let req = IpcRequest::Logs {
+            service: Some("web".into()),
+            follow: true,
+        };
         let json = serde_json::to_string(&req).unwrap();
         let decoded: IpcRequest = serde_json::from_str(&json).unwrap();
         if let IpcRequest::Logs { service, follow } = decoded {
@@ -83,7 +98,10 @@ mod tests {
 
     #[test]
     fn test_response_log_line_roundtrip() {
-        let resp = IpcResponse::LogLine { service: "api".into(), line: "started".into() };
+        let resp = IpcResponse::LogLine {
+            service: "api".into(),
+            line: "started".into(),
+        };
         let json = serde_json::to_string(&resp).unwrap();
         let decoded: IpcResponse = serde_json::from_str(&json).unwrap();
         if let IpcResponse::LogLine { service, line } = decoded {
@@ -94,4 +112,3 @@ mod tests {
         }
     }
 }
-

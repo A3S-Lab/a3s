@@ -87,12 +87,21 @@ safeclaw-tunnel:
 safeclaw-ui:
     cd apps/safeclaw-ui && pnpm dev
 
+# CMake compat flag for libsamplerate-sys (requires cmake >= 3.5 policy)
+export CMAKE_POLICY_VERSION_MINIMUM := "3.5"
+
 # Start SafeClaw UI in Tauri desktop mode
-safeclaw-ui-desktop:
+ui:
+    cd apps/safeclaw-ui && pnpm tauri:dev
+
+# Clean and start SafeClaw UI in Tauri desktop mode
+ui-clean:
+    cd apps/safeclaw-ui/src-tauri && cargo clean
+    cd apps/safeclaw-ui && rm -rf dist node_modules/.cache
     cd apps/safeclaw-ui && pnpm tauri:dev
 
 # Build SafeClaw UI for production
-safeclaw-ui-build:
+ui-build:
     cd apps/safeclaw-ui && pnpm build
 
 # ============================================================================

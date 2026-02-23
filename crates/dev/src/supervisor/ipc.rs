@@ -5,7 +5,7 @@ use tokio::net::UnixListener;
 use tokio::sync::broadcast;
 
 use crate::ipc::{socket_path, IpcRequest, IpcResponse};
-use crate::supervisor::{Supervisor, SupervisorEvent};
+use crate::supervisor::Supervisor;
 
 /// Start the Unix socket IPC server. Handles status/stop/restart/logs/history requests.
 pub async fn serve(sup: Arc<Supervisor>) {
@@ -92,12 +92,15 @@ pub async fn serve(sup: Arc<Supervisor>) {
                     }
 
                     IpcRequest::Logs { service, follow } => {
-                        let mut rx = sup.subscribe_events();
+                        let mut rx = sup.subscribe_logs();
                         loop {
                             match rx.recv().await {
-                                Ok(SupervisorEvent::LogLine { service: svc, line }) => {
-                                    if service.as_deref().is_none_or(|f| f == svc) {
-                                        let resp = IpcResponse::LogLine { service: svc, line };
+                                Ok(entry) => {
+                                    if service.as_deref().is_none_or(|f| f == entry.service) {
+                                        let resp = IpcResponse::LogLine {
+                                            service: entry.service,
+                                            line: entry.line,
+                                        };
                                         if writer
                                             .write_all(
                                                 format!(

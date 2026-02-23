@@ -6,12 +6,20 @@ pub enum ServiceState {
     Pending,
     #[allow(dead_code)]
     Starting,
-    Running { pid: u32, since: Instant },
+    Running {
+        pid: u32,
+        since: Instant,
+    },
     #[allow(dead_code)]
-    Unhealthy { pid: u32, failures: u32 },
+    Unhealthy {
+        pid: u32,
+        failures: u32,
+    },
     Stopped,
     #[allow(dead_code)]
-    Failed { exit_code: Option<i32> },
+    Failed {
+        exit_code: Option<i32>,
+    },
 }
 
 impl ServiceState {

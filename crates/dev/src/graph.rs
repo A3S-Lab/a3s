@@ -19,7 +19,10 @@ impl DependencyGraph {
         for (name, svc) in &cfg.service {
             for dep in &svc.depends_on {
                 *in_degree.entry(name.as_str()).or_insert(0) += 1;
-                dependents.entry(dep.as_str()).or_default().push(name.as_str());
+                dependents
+                    .entry(dep.as_str())
+                    .or_default()
+                    .push(name.as_str());
             }
         }
 

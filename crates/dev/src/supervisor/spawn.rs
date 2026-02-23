@@ -101,7 +101,15 @@ pub fn split_cmd(cmd: &str) -> Vec<String> {
 /// `parts` is the full split command (program + args).
 pub fn framework_port_args(parts: &[String], port: u16) -> Vec<String> {
     let p = port.to_string();
-    let direct = ["vite", "next", "astro", "nuxt", "remix", "svelte-kit", "wrangler"];
+    let direct = [
+        "vite",
+        "next",
+        "astro",
+        "nuxt",
+        "remix",
+        "svelte-kit",
+        "wrangler",
+    ];
     let runners = ["npx", "pnpm", "yarn", "bunx"];
 
     let program = parts.first().map(|s| s.as_str()).unwrap_or("");
