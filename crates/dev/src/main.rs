@@ -198,9 +198,9 @@ async fn run(cli: Cli) -> Result<()> {
             println!("{} proxy  http://*.localhost:{}", "→".cyan(), proxy_port);
 
             let (sup, _) = Supervisor::new(cfg.clone(), proxy);
-            let sup = Arc::new(sup);
+            let sup: Arc<Supervisor> = Arc::new(sup);
 
-            tokio::spawn(sup.clone().serve_ipc());
+            tokio::spawn(supervisor::ipc::serve(sup.clone()));
 
             // Start web UI
             if !no_ui {

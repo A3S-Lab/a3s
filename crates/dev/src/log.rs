@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use colored::Colorize;
 use serde::Serialize;
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::ChildStdout;
+use tokio::process::{ChildStderr, ChildStdout};
 use tokio::sync::broadcast;
 
 /// A log line emitted by a service.
@@ -46,6 +46,20 @@ impl LogAggregator {
         let _color = COLORS[color_idx % COLORS.len()];
         tokio::spawn(async move {
             let mut reader = BufReader::new(stdout).lines();
+            while let Ok(Some(line)) = reader.next_line().await {
+                let _ = tx.send(LogLine {
+                    service: service.clone(),
+                    line,
+                });
+            }
+        });
+    }
+
+    /// Spawn a task that reads lines from `stderr` and broadcasts them.
+    pub fn attach_stderr(&self, service: String, _color_idx: usize, stderr: ChildStderr) {
+        let tx = self.tx.clone();
+        tokio::spawn(async move {
+            let mut reader = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = reader.next_line().await {
                 let _ = tx.send(LogLine {
                     service: service.clone(),

@@ -123,9 +123,7 @@ async fn handle(
                     b"{\"ok\":true}".to_vec(),
                 ),
                 Err(e) => {
-                    let body = serde_json::to_vec(
-                        &serde_json::json!({"error": e.to_string()})
-                    ).unwrap_or_default();
+                    let body = format!("{{\"error\":\"{}\"}}", e).into_bytes();
                     Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)
                         .header("content-type", "application/json")
