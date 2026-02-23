@@ -178,3 +178,87 @@ impl DevConfig {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_svc(port: u16, depends_on: Vec<&str>) -> ServiceDef {
+        ServiceDef {
+            cmd: "echo ok".into(),
+            dir: None,
+            port,
+            subdomain: None,
+            env: Default::default(),
+            depends_on: depends_on.into_iter().map(|s| s.to_string()).collect(),
+            watch: None,
+            health: None,
+        }
+    }
+
+    fn make_config(services: Vec<(&str, ServiceDef)>) -> DevConfig {
+        let mut map = IndexMap::new();
+        for (name, svc) in services {
+            map.insert(name.to_string(), svc);
+        }
+        DevConfig {
+            dev: GlobalSettings::default(),
+            brew: BrewConfig::default(),
+            service: map,
+        }
+    }
+
+    #[test]
+    fn test_validate_ok() {
+        let cfg = make_config(vec![
+            ("a", make_svc(3000, vec![])),
+            ("b", make_svc(3001, vec!["a"])),
+        ]);
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_port_conflict() {
+        let cfg = make_config(vec![
+            ("a", make_svc(3000, vec![])),
+            ("b", make_svc(3000, vec![])),
+        ]);
+        assert!(matches!(cfg.validate(), Err(DevError::PortConflict { .. })));
+    }
+
+    #[test]
+    fn test_validate_port_zero_no_conflict() {
+        // Two services with port=0 should not conflict
+        let cfg = make_config(vec![
+            ("a", make_svc(0, vec![])),
+            ("b", make_svc(0, vec![])),
+        ]);
+        assert!(cfg.validate().is_ok());
+    }
+
+    #[test]
+    fn test_validate_unknown_depends_on() {
+        let cfg = make_config(vec![("a", make_svc(3000, vec!["nonexistent"]))]);
+        assert!(matches!(cfg.validate(), Err(DevError::Config(_))));
+    }
+
+    #[test]
+    fn test_parse_hcl() {
+        let src = r#"
+service "web" {
+  cmd  = "node server.js"
+  port = 3000
+}
+"#;
+        let cfg: DevConfig = hcl::from_str(src).unwrap();
+        assert_eq!(cfg.service.len(), 1);
+        assert_eq!(cfg.service["web"].port, 3000);
+        assert_eq!(cfg.service["web"].cmd, "node server.js");
+    }
+
+    #[test]
+    fn test_default_proxy_port() {
+        let cfg: DevConfig = hcl::from_str("").unwrap();
+        assert_eq!(cfg.dev.proxy_port, 7080);
+    }
+}
