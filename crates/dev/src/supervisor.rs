@@ -641,6 +641,8 @@ impl Supervisor {
                                     break;
                                 }
                             }
+                            // Close connection after sending all history lines
+                            break;
                         }
                     }
                 }
