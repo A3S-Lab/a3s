@@ -77,8 +77,4 @@ impl HealthChecker {
         }
         false
     }
-
-    pub async fn check_once(&self, svc: &ServiceDef) -> bool {
-        self.probe.check(svc).await
-    }
 }

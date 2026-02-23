@@ -32,4 +32,5 @@ pub struct StatusRow {
     pub pid: Option<u32>,
     pub port: u16,
     pub subdomain: Option<String>,
+    pub uptime_secs: Option<u64>,
 }

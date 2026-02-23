@@ -297,17 +297,25 @@ impl Supervisor {
             .service
             .iter()
             .map(|(name, svc)| {
-                let state = map
-                    .get(name)
+                let handle = map.get(name);
+                let state = handle
                     .map(|h| h.state.label().to_string())
                     .unwrap_or_else(|| "pending".into());
-                let pid = map.get(name).and_then(|h| h.state.pid());
+                let pid = handle.and_then(|h| h.state.pid());
+                let uptime_secs = handle.and_then(|h| {
+                    if let ServiceState::Running { since, .. } = h.state {
+                        Some(since.elapsed().as_secs())
+                    } else {
+                        None
+                    }
+                });
                 StatusRow {
                     name: name.clone(),
                     state,
                     pid,
                     port: svc.port,
                     subdomain: svc.subdomain.clone(),
+                    uptime_secs,
                 }
             })
             .collect()

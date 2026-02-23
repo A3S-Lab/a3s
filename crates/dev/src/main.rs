@@ -76,6 +76,11 @@ enum Commands {
         /// Package name(s) to remove
         packages: Vec<String>,
     },
+    /// Search for Homebrew packages
+    Search {
+        /// Search query
+        query: String,
+    },
     /// Install all brew packages declared in A3sfile.hcl
     Install,
     /// List all installed a3s ecosystem tools and brew packages
@@ -87,15 +92,26 @@ enum Commands {
 
 #[tokio::main]
 async fn main() {
+    // Parse CLI first so we can read log_level from A3sfile.hcl for `up`
+    let cli = Cli::parse();
+
+    let log_level = if matches!(cli.command, Commands::Up { .. }) {
+        std::fs::read_to_string(&cli.file)
+            .ok()
+            .and_then(|s| hcl::from_str::<config::DevConfig>(&s).ok())
+            .map(|c| c.dev.log_level)
+            .unwrap_or_else(|| "info".into())
+    } else {
+        "warn".into()
+    };
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("warn")),
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(log_level)),
         )
         .without_time()
         .init();
-
-    let cli = Cli::parse();
 
     if let Err(e) = run(cli).await {
         eprintln!("{} {e}", "[a3s]".red().bold());
@@ -176,14 +192,15 @@ async fn run(cli: Cli) -> Result<()> {
             let resp = ipc_send(IpcRequest::Status).await?;
             if let IpcResponse::Status { rows } = resp {
                 println!(
-                    "{:<16} {:<12} {:<8} {:<6} {}",
+                    "{:<16} {:<12} {:<8} {:<6} {:<24} {}",
                     "SERVICE".bold(),
                     "STATE".bold(),
                     "PID".bold(),
                     "PORT".bold(),
-                    "URL".bold()
+                    "URL".bold(),
+                    "UPTIME".bold(),
                 );
-                println!("{}", "─".repeat(60).dimmed());
+                println!("{}", "─".repeat(72).dimmed());
                 for row in rows {
                     let state_colored = match row.state.as_str() {
                         "running" => row.state.green().to_string(),
@@ -195,13 +212,15 @@ async fn run(cli: Cli) -> Result<()> {
                         .subdomain
                         .map(|s| format!("http://{s}.localhost"))
                         .unwrap_or_default();
+                    let uptime = row.uptime_secs.map(format_uptime).unwrap_or_else(|| "-".into());
                     println!(
-                        "{:<16} {:<20} {:<8} {:<6} {}",
+                        "{:<16} {:<20} {:<8} {:<6} {:<24} {}",
                         row.name,
                         state_colored,
                         row.pid.map(|p| p.to_string()).unwrap_or_else(|| "-".into()),
                         row.port,
-                        url.dimmed()
+                        url.dimmed(),
+                        uptime.dimmed(),
                     );
                 }
             }
@@ -282,6 +301,10 @@ async fn run(cli: Cli) -> Result<()> {
             }
         }
 
+        Commands::Search { query } => {
+            brew::search_packages(query).await?;
+        }
+
         Commands::Install => {
             let cfg = DevConfig::from_file(&cli.file)?;
             if cfg.brew.packages.is_empty() {
@@ -347,7 +370,15 @@ async fn run(cli: Cli) -> Result<()> {
     Ok(())
 }
 
-/// Check if a binary exists in PATH.
+fn format_uptime(secs: u64) -> String {
+    if secs < 60 {
+        format!("{secs}s")
+    } else if secs < 3600 {
+        format!("{}m{}s", secs / 60, secs % 60)
+    } else {
+        format!("{}h{}m", secs / 3600, (secs % 3600) / 60)
+    }
+}
 fn which_binary(name: &str) -> bool {
     std::process::Command::new("which")
         .arg(name)
@@ -362,7 +393,6 @@ fn ecosystem_tool(alias: &str) -> Option<(&'static str, &'static str, &'static s
         "box"      => Some(("a3s-box",      "A3S-Lab", "Box")),
         "gateway"  => Some(("a3s-gateway",  "A3S-Lab", "Gateway")),
         "power"    => Some(("a3s-power",    "A3S-Lab", "Power")),
-        "search"   => Some(("a3s-search",   "A3S-Lab", "Search")),
         "safeclaw" => Some(("a3s-safeclaw", "A3S-Lab", "SafeClaw")),
         _ => None,
     }

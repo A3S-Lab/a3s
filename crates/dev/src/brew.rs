@@ -277,6 +277,58 @@ pub async fn uninstall_package(name: &str) -> Result<()> {
     Ok(())
 }
 
+/// Search Homebrew formulae by name/description via the API.
+pub async fn search_packages(query: &str) -> Result<()> {
+    use colored::Colorize;
+
+    let client = reqwest::Client::builder()
+        .user_agent("a3s-dev/0.1")
+        .build()
+        .map_err(|e| DevError::Config(e.to_string()))?;
+
+    // Homebrew search API returns a list of formula names matching the query
+    let url = format!("https://formulae.brew.sh/api/formula.json");
+    let resp = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| DevError::Config(format!("search failed: {e}")))?;
+
+    #[derive(serde::Deserialize)]
+    struct FormulaEntry {
+        name: String,
+        desc: Option<String>,
+    }
+
+    let entries: Vec<FormulaEntry> = resp
+        .json()
+        .await
+        .map_err(|e| DevError::Config(format!("parse search results: {e}")))?;
+
+    let q = query.to_lowercase();
+    let matches: Vec<&FormulaEntry> = entries
+        .iter()
+        .filter(|e| {
+            e.name.to_lowercase().contains(&q)
+                || e.desc.as_deref().unwrap_or("").to_lowercase().contains(&q)
+        })
+        .take(20)
+        .collect();
+
+    if matches.is_empty() {
+        println!("{} no results for '{query}'", "·".dimmed());
+        return Ok(());
+    }
+
+    println!("{} results for '{}':", matches.len(), query.cyan());
+    for entry in matches {
+        let desc = entry.desc.as_deref().unwrap_or("");
+        println!("  {:<28} {}", entry.name.cyan(), desc.dimmed());
+    }
+
+    Ok(())
+}
+
 /// Add a package to the packages list (deduplicates).
 pub fn add_to_list(packages: &mut Vec<String>, name: &str) -> bool {
     if packages.iter().any(|p| p == name) {
