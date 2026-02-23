@@ -66,6 +66,15 @@ async fn handle(
             let body = serde_json::to_vec(&rows).unwrap_or_default();
             full_response("application/json", body)
         }
+        (Method::GET, "/api/history") => {
+            let service_filter: Option<String> = query
+                .split('&')
+                .find(|p| p.starts_with("service="))
+                .map(|p| p["service=".len()..].to_string());
+            let recent = sup.log_history(service_filter.as_deref(), 200);
+            let body = serde_json::to_vec(&recent).unwrap_or_default();
+            full_response("application/json", body)
+        }
         (Method::GET, "/api/logs") => {
             // SSE stream
             let service_filter: Option<String> = query

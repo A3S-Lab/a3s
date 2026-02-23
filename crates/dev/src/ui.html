@@ -181,6 +181,16 @@ function renderServices(rows) {
 
 // ── SSE log stream ────────────────────────────────────────────────────────────
 let evtSrc = null;
+
+async function loadHistory() {
+  const url = '/api/history' + (selected ? '?service='+encodeURIComponent(selected) : '');
+  try {
+    const res = await fetch(url);
+    const lines = await res.json();
+    lines.forEach(m => appendLog(m.service, m.line, true));
+  } catch(_) {}
+}
+
 function connectLogs() {
   if (evtSrc) { evtSrc.close(); evtSrc = null; }
   const url = '/api/logs' + (selected ? '?service='+encodeURIComponent(selected) : '');
@@ -191,13 +201,18 @@ function connectLogs() {
   evtSrc.onerror = () => setTimeout(connectLogs, 2000);
 }
 
-function appendLog(svc, text) {
+async function connectLogsWithHistory() {
+  await loadHistory();
+  connectLogs();
+}
+
+function appendLog(svc, text, isHistory) {
   const out = document.getElementById('log-output');
   const empty = out.querySelector('.log-empty');
   if (empty) empty.remove();
   if (selected && svc !== selected) return;
   const el = document.createElement('div');
-  el.className = 'log-line';
+  el.className = 'log-line' + (isHistory ? ' log-history' : '');
   const ts = new Date().toLocaleTimeString('en',{hour12:false});
   el.innerHTML = `<span class="log-ts">${ts}</span><span class="log-svc" style="color:${color(svc)}">[${svc}]</span><span class="log-text">${fmt(text)}</span>`;
   out.appendChild(el);
@@ -212,7 +227,7 @@ function selectService(name) {
   document.getElementById('log-title').textContent = name || 'all services';
   document.getElementById('log-output').innerHTML = '<div class="log-empty">Loading...</div>';
   logLines = [];
-  connectLogs();
+  connectLogsWithHistory();
   document.querySelectorAll('.service-row').forEach(el => el.classList.toggle('selected', el.dataset.name === name));
   document.getElementById('btn-all').classList.toggle('active', !name);
 }
@@ -227,7 +242,7 @@ document.getElementById('log-output').addEventListener('scroll', function() {
 document.getElementById('footer-url').textContent = location.href;
 poll();
 setInterval(poll, POLL_MS);
-connectLogs();
+connectLogsWithHistory();
 </script>
 </body>
 </html>

@@ -2,12 +2,13 @@ use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 
 use colored::Colorize;
+use serde::Serialize;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::ChildStdout;
 use tokio::sync::broadcast;
 
 /// A log line emitted by a service.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct LogLine {
     pub service: String,
     pub line: String,

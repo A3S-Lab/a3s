@@ -65,6 +65,10 @@ impl Supervisor {
         self.log.subscribe()
     }
 
+    pub fn log_history(&self, service: Option<&str>, lines: usize) -> Vec<crate::log::LogLine> {
+        self.log.recent(service, lines)
+    }
+
     pub async fn start_all(&self) -> Result<()> {
         let graph = DependencyGraph::from_config(&self.config)?;
         let names: Vec<String> = graph.start_order().to_vec();
