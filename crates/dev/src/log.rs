@@ -101,7 +101,6 @@ impl LogAggregator {
     }
 
     /// Print log lines to stdout with colored service prefix.
-    /// Also stores lines in the history ring buffer.
     pub async fn print_loop(mut rx: broadcast::Receiver<LogLine>) {
         loop {
             match rx.recv().await {
@@ -157,5 +156,86 @@ impl LogAggregator {
                 }
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_line(service: &str, line: &str) -> LogLine {
+        LogLine {
+            service: service.to_string(),
+            line: line.to_string(),
+            color_idx: 0,
+        }
+    }
+
+    #[test]
+    fn test_recent_returns_all_when_under_cap() {
+        let (agg, _rx) = LogAggregator::new();
+        {
+            let mut h = agg.history.lock().unwrap();
+            h.push_back(make_line("svc-a", "line1"));
+            h.push_back(make_line("svc-b", "line2"));
+            h.push_back(make_line("svc-a", "line3"));
+        }
+        let all = agg.recent(None, 100);
+        assert_eq!(all.len(), 3);
+        assert_eq!(all[0].line, "line1");
+        assert_eq!(all[2].line, "line3");
+    }
+
+    #[test]
+    fn test_recent_filters_by_service() {
+        let (agg, _rx) = LogAggregator::new();
+        {
+            let mut h = agg.history.lock().unwrap();
+            h.push_back(make_line("svc-a", "a1"));
+            h.push_back(make_line("svc-b", "b1"));
+            h.push_back(make_line("svc-a", "a2"));
+        }
+        let filtered = agg.recent(Some("svc-a"), 100);
+        assert_eq!(filtered.len(), 2);
+        assert!(filtered.iter().all(|l| l.service == "svc-a"));
+    }
+
+    #[test]
+    fn test_recent_respects_n_limit() {
+        let (agg, _rx) = LogAggregator::new();
+        {
+            let mut h = agg.history.lock().unwrap();
+            for i in 0..10 {
+                h.push_back(make_line("svc", &format!("line{i}")));
+            }
+        }
+        let recent = agg.recent(None, 3);
+        assert_eq!(recent.len(), 3);
+        assert_eq!(recent[0].line, "line7");
+        assert_eq!(recent[2].line, "line9");
+    }
+
+    #[test]
+    fn test_history_cap_evicts_oldest() {
+        let (agg, _rx) = LogAggregator::new();
+        {
+            let mut h = agg.history.lock().unwrap();
+            for i in 0..HISTORY_CAP + 5 {
+                if h.len() >= HISTORY_CAP {
+                    h.pop_front();
+                }
+                h.push_back(make_line("svc", &format!("line{i}")));
+            }
+        }
+        let all = agg.recent(None, usize::MAX);
+        assert_eq!(all.len(), HISTORY_CAP);
+        assert_eq!(all[0].line, "line5");
+    }
+
+    #[test]
+    fn test_recent_empty_history() {
+        let (agg, _rx) = LogAggregator::new();
+        assert_eq!(agg.recent(None, 10).len(), 0);
+        assert_eq!(agg.recent(Some("svc"), 10).len(), 0);
     }
 }

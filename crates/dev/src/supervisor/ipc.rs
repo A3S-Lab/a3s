@@ -116,7 +116,6 @@ pub async fn serve(sup: Arc<Supervisor>) {
                                         }
                                     }
                                 }
-                                Ok(_) => {}
                                 Err(broadcast::error::RecvError::Closed) => break,
                                 Err(broadcast::error::RecvError::Lagged(_)) => {}
                             }

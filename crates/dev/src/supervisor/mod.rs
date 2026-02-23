@@ -21,6 +21,7 @@ pub mod ipc;
 mod spawn;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum SupervisorEvent {
     StateChanged { service: String, state: String },
     HealthChange { service: String, healthy: bool },
@@ -67,11 +68,6 @@ impl Supervisor {
 
     pub fn subscribe_logs(&self) -> broadcast::Receiver<crate::log::LogLine> {
         self.log.subscribe()
-    }
-
-    /// Subscribe to raw supervisor events (used by IPC server for log streaming).
-    pub fn subscribe_events(&self) -> broadcast::Receiver<SupervisorEvent> {
-        self.events.subscribe()
     }
 
     pub fn log_history(&self, service: Option<&str>, lines: usize) -> Vec<crate::log::LogLine> {
@@ -326,7 +322,10 @@ impl Supervisor {
                 });
 
                 tokio::time::sleep(std::time::Duration::from_secs(backoff_secs)).await;
-                backoff_secs = (backoff_secs * 2).min(30);
+                #[allow(unused_assignments)]
+                {
+                    backoff_secs = (backoff_secs * 2).min(30);
+                }
 
                 let svc_def = match config.service.get(&svc_name) {
                     Some(s) => s.clone(),
