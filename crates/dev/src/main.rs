@@ -126,10 +126,12 @@ enum CodeCommands {
 
 #[derive(Subcommand)]
 enum KubeCommands {
-    /// Install and start a local k3s cluster
+    /// Install and start a local k3s cluster (via a3s box)
     Start,
-    /// Stop and clean up the local k3s cluster
+    /// Stop the local k3s cluster
     Stop,
+    /// Show k3s cluster status
+    Status,
 }
 
 #[tokio::main]
@@ -544,6 +546,7 @@ async fn run(cli: Cli) -> Result<()> {
         Commands::Kube { cmd } => match cmd {
             KubeCommands::Start => kube::start().await?,
             KubeCommands::Stop => kube::stop().await?,
+            KubeCommands::Status => kube::status().await?,
         },
     }
 

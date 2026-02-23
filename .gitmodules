@@ -1,6 +1,3 @@
-[submodule "apps/safeclaw-ui"]
-	path = apps/safeclaw-ui
-	url = git@github.com:A3S-Lab/SafeClawUI.git
 [submodule "crates/box"]
 	path = crates/box
 	url = git@github.com:A3S-Lab/Box.git
@@ -16,9 +13,6 @@
 [submodule "crates/search"]
 	path = crates/search
 	url = git@github.com:A3S-Lab/Search.git
-[submodule "crates/safeclaw"]
-	path = crates/safeclaw
-	url = git@github.com:A3S-Lab/SafeClaw.git
 [submodule "crates/power"]
 	path = crates/power
 	url = git@github.com:A3S-Lab/Power.git

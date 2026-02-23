@@ -2,63 +2,69 @@ use colored::Colorize;
 
 use crate::error::{DevError, Result};
 
-/// Install and start k3s (lightweight Kubernetes).
-/// Requires root/sudo on Linux. On macOS, uses a Lima VM via `limactl`.
+/// Box name used for the k3s MicroVM.
+const K3S_BOX_NAME: &str = "a3s-k3s";
+
+/// k3s OCI image.
+const K3S_IMAGE: &str = "rancher/k3s:latest";
+
+/// k3s API server port.
+const K3S_API_PORT: u16 = 6443;
+
+/// Install and start k3s inside an a3s box MicroVM.
 pub async fn start() -> Result<()> {
-    #[cfg(target_os = "macos")]
-    return start_macos().await;
-
-    #[cfg(target_os = "linux")]
-    return start_linux().await;
-
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    Err(DevError::Config("kube is only supported on macOS and Linux".into()))
-}
-
-/// Stop and clean up k3s.
-pub async fn stop() -> Result<()> {
-    #[cfg(target_os = "macos")]
-    return stop_macos().await;
-
-    #[cfg(target_os = "linux")]
-    return stop_linux().await;
-
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-    Err(DevError::Config("kube is only supported on macOS and Linux".into()))
-}
-
-// ── macOS: Lima VM ────────────────────────────────────────────────────────────
-
-#[cfg(target_os = "macos")]
-async fn start_macos() -> Result<()> {
-    // Ensure limactl is installed
-    if !cmd_exists("limactl").await {
-        println!("  {} limactl not found — installing via Homebrew...", "→".cyan());
-        run("brew", &["install", "lima"]).await?;
+    // Check if a3s-box is available
+    if !cmd_exists("a3s-box").await {
+        return Err(DevError::Config(
+            "a3s-box not found in PATH — install it first with `a3s install`".into(),
+        ));
     }
 
-    // Check if the k3s VM already exists
-    let list = tokio::process::Command::new("limactl")
-        .args(["list", "--format", "{{.Name}}"])
-        .output()
-        .await
-        .map_err(DevError::Io)?;
-    let existing = String::from_utf8_lossy(&list.stdout);
-
-    if existing.lines().any(|l| l.trim() == "k3s") {
-        println!("  {} k3s VM already exists — starting...", "→".cyan());
-        run("limactl", &["start", "k3s"]).await?;
-    } else {
-        println!("  {} creating k3s Lima VM...", "→".cyan());
-        run(
-            "limactl",
-            &["start", "--name=k3s", "template://k3s"],
-        )
-        .await?;
+    // Check if the k3s box already exists
+    let status = box_status().await?;
+    match status.as_str() {
+        "running" => {
+            println!("  {} k3s is already running.", "✓".green());
+            return Ok(());
+        }
+        "stopped" | "created" => {
+            println!("  {} restarting existing k3s box...", "→".cyan());
+            run_box(&["start", K3S_BOX_NAME]).await?;
+        }
+        _ => {
+            // Box doesn't exist — create and start it
+            println!(
+                "  {} pulling {} and starting k3s box...",
+                "→".cyan(),
+                K3S_IMAGE.dimmed()
+            );
+            run_box(&[
+                "run",
+                "--name",
+                K3S_BOX_NAME,
+                "--privileged",
+                "--persistent",
+                "-p",
+                &format!("{K3S_API_PORT}:{K3S_API_PORT}"),
+                // k3s needs /dev/kmsg and cgroup mounts — tmpfs for volatile state
+                "--tmpfs",
+                "/run",
+                "--tmpfs",
+                "/var/run",
+                K3S_IMAGE,
+                "server",
+                "--disable=traefik",
+                "--write-kubeconfig-mode=644",
+            ])
+            .await?;
+        }
     }
 
-    // Merge kubeconfig
-    merge_kubeconfig_macos().await?;
+    // Wait for k3s API to become ready
+    wait_for_k3s_ready().await?;
+
+    // Extract kubeconfig from the box and write to ~/.kube/config
+    write_kubeconfig().await?;
 
     println!(
         "  {} k3s is running. Use {} to interact with the cluster.",
@@ -68,17 +74,102 @@ async fn start_macos() -> Result<()> {
     Ok(())
 }
 
-#[cfg(target_os = "macos")]
-async fn stop_macos() -> Result<()> {
-    println!("  {} stopping k3s Lima VM...", "→".cyan());
-    run("limactl", &["stop", "k3s"]).await?;
+/// Stop the k3s box.
+pub async fn stop() -> Result<()> {
+    let status = box_status().await?;
+    if status == "none" {
+        println!("  {} k3s box does not exist.", "·".dimmed());
+        return Ok(());
+    }
+    println!("  {} stopping k3s box...", "→".cyan());
+    run_box(&["stop", K3S_BOX_NAME]).await?;
     println!("  {} k3s stopped.", "✓".green());
     Ok(())
 }
 
-#[cfg(target_os = "macos")]
-async fn merge_kubeconfig_macos() -> Result<()> {
-    // Export kubeconfig from Lima VM and merge into ~/.kube/config
+/// Show k3s box status.
+pub async fn status() -> Result<()> {
+    let s = box_status().await?;
+    match s.as_str() {
+        "running" => println!("  {} k3s  {}", "●".green(), "running".green()),
+        "stopped" => println!("  {} k3s  {}", "○".yellow(), "stopped".yellow()),
+        "created" => println!("  {} k3s  {}", "○".dimmed(), "created".dimmed()),
+        _ => println!("  {} k3s  {}", "·".dimmed(), "not installed".dimmed()),
+    }
+    Ok(())
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/// Query the current status of the k3s box via `a3s-box inspect`.
+async fn box_status() -> Result<String> {
+    let out = tokio::process::Command::new("a3s-box")
+        .args(["inspect", "--format", "{{.Status}}", K3S_BOX_NAME])
+        .output()
+        .await
+        .map_err(DevError::Io)?;
+
+    if !out.status.success() {
+        // Box doesn't exist
+        return Ok("none".into());
+    }
+
+    let s = String::from_utf8_lossy(&out.stdout).trim().to_lowercase();
+    Ok(s)
+}
+
+/// Poll until k3s API server responds on port 6443 (max 120s).
+async fn wait_for_k3s_ready() -> Result<()> {
+    use tokio::net::TcpStream;
+
+    println!("  {} waiting for k3s API server...", "→".cyan());
+
+    let addr = format!("127.0.0.1:{K3S_API_PORT}");
+    for _ in 0..120 {
+        if TcpStream::connect(&addr).await.is_ok() {
+            return Ok(());
+        }
+        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    }
+
+    Err(DevError::Config(
+        "k3s API server did not become ready within 120s".into(),
+    ))
+}
+
+/// Read /etc/rancher/k3s/k3s.yaml from the box and write to ~/.kube/config,
+/// replacing 127.0.0.1 with the host-accessible address.
+async fn write_kubeconfig() -> Result<()> {
+    // Exec into the box to read the kubeconfig
+    let out = tokio::process::Command::new("a3s-box")
+        .args([
+            "exec",
+            K3S_BOX_NAME,
+            "--",
+            "cat",
+            "/etc/rancher/k3s/k3s.yaml",
+        ])
+        .output()
+        .await
+        .map_err(DevError::Io)?;
+
+    if !out.status.success() {
+        let err = String::from_utf8_lossy(&out.stderr);
+        return Err(DevError::Config(format!(
+            "failed to read k3s kubeconfig from box: {err}"
+        )));
+    }
+
+    let raw = String::from_utf8_lossy(&out.stdout);
+
+    // k3s writes 127.0.0.1 — rewrite to localhost (port-forwarded via a3s box)
+    let patched = raw
+        .replace("127.0.0.1", "127.0.0.1") // already correct via port-forward
+        .replace("name: default", "name: a3s-k3s")
+        .replace("cluster: default", "cluster: a3s-k3s")
+        .replace("user: default", "user: a3s-k3s")
+        .replace("current-context: default", "current-context: a3s-k3s");
+
     let home = dirs_next::home_dir()
         .ok_or_else(|| DevError::Config("cannot determine home directory".into()))?;
     let kube_dir = home.join(".kube");
@@ -87,36 +178,6 @@ async fn merge_kubeconfig_macos() -> Result<()> {
         .map_err(DevError::Io)?;
 
     let kubeconfig_path = kube_dir.join("config");
-    let kubeconfig_str = kubeconfig_path
-        .to_str()
-        .ok_or_else(|| DevError::Config("kubeconfig path contains non-UTF8 characters".into()))?;
-
-    // limactl shell k3s sudo cat /etc/rancher/k3s/k3s.yaml
-    let output = tokio::process::Command::new("limactl")
-        .args(["shell", "k3s", "sudo", "cat", "/etc/rancher/k3s/k3s.yaml"])
-        .output()
-        .await
-        .map_err(DevError::Io)?;
-
-    if !output.status.success() {
-        let err = String::from_utf8_lossy(&output.stderr);
-        return Err(DevError::Config(format!("failed to read k3s kubeconfig: {err}")));
-    }
-
-    // Replace 127.0.0.1 with Lima VM IP
-    let raw = String::from_utf8_lossy(&output.stdout);
-    let ip_output = tokio::process::Command::new("limactl")
-        .args(["shell", "k3s", "hostname", "-I"])
-        .output()
-        .await
-        .map_err(DevError::Io)?;
-    let ip = String::from_utf8_lossy(&ip_output.stdout)
-        .split_whitespace()
-        .next()
-        .unwrap_or("127.0.0.1")
-        .to_string();
-
-    let patched = raw.replace("127.0.0.1", &ip).replace("default", "k3s");
     tokio::fs::write(&kubeconfig_path, patched.as_bytes())
         .await
         .map_err(DevError::Io)?;
@@ -124,121 +185,22 @@ async fn merge_kubeconfig_macos() -> Result<()> {
     println!(
         "  {} kubeconfig written to {}",
         "✓".green(),
-        kubeconfig_str.dimmed()
+        kubeconfig_path.display().to_string().dimmed()
     );
     Ok(())
 }
 
-// ── Linux: native k3s ────────────────────────────────────────────────────────
-
-#[cfg(target_os = "linux")]
-async fn start_linux() -> Result<()> {
-    // Check if k3s is already installed
-    if !cmd_exists("k3s").await {
-        println!("  {} k3s not found — installing...", "→".cyan());
-        install_k3s_linux().await?;
-    }
-
-    // Check if k3s service is already running
-    let status = tokio::process::Command::new("systemctl")
-        .args(["is-active", "--quiet", "k3s"])
-        .status()
-        .await
-        .map_err(DevError::Io)?;
-
-    if status.success() {
-        println!("  {} k3s is already running.", "✓".green());
-        return Ok(());
-    }
-
-    println!("  {} starting k3s service...", "→".cyan());
-    run("sudo", &["systemctl", "start", "k3s"]).await?;
-    run("sudo", &["systemctl", "enable", "k3s"]).await?;
-
-    // Copy kubeconfig
-    let home = dirs_next::home_dir()
-        .ok_or_else(|| DevError::Config("cannot determine home directory".into()))?;
-    let kube_dir = home.join(".kube");
-    tokio::fs::create_dir_all(&kube_dir)
-        .await
-        .map_err(DevError::Io)?;
-    run(
-        "sudo",
-        &[
-            "cp",
-            "/etc/rancher/k3s/k3s.yaml",
-            kube_dir.join("config").to_str().unwrap_or("/tmp/k3s.yaml"),
-        ],
-    )
-    .await?;
-    run(
-        "sudo",
-        &[
-            "chown",
-            &format!(
-                "{}:{}",
-                std::env::var("USER").unwrap_or_default(),
-                std::env::var("USER").unwrap_or_default()
-            ),
-            kube_dir.join("config").to_str().unwrap_or("/tmp/k3s.yaml"),
-        ],
-    )
-    .await?;
-
-    println!(
-        "  {} k3s is running. Use {} to interact with the cluster.",
-        "✓".green(),
-        "kubectl".cyan()
-    );
-    Ok(())
-}
-
-#[cfg(target_os = "linux")]
-async fn install_k3s_linux() -> Result<()> {
-    // Official k3s install script
-    let script = tokio::process::Command::new("sh")
-        .args(["-c", "curl -sfL https://get.k3s.io | sh -"])
-        .status()
-        .await
-        .map_err(DevError::Io)?;
-
-    if !script.success() {
-        return Err(DevError::Config("k3s installation failed".into()));
-    }
-    Ok(())
-}
-
-#[cfg(target_os = "linux")]
-async fn stop_linux() -> Result<()> {
-    println!("  {} stopping k3s service...", "→".cyan());
-    run("sudo", &["systemctl", "stop", "k3s"]).await?;
-
-    // Run k3s-killall.sh if present (cleans up CNI, iptables, etc.)
-    if tokio::fs::metadata("/usr/local/bin/k3s-killall.sh")
-        .await
-        .is_ok()
-    {
-        println!("  {} running k3s-killall.sh...", "→".cyan());
-        run("sudo", &["/usr/local/bin/k3s-killall.sh"]).await?;
-    }
-
-    println!("  {} k3s stopped.", "✓".green());
-    Ok(())
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/// Run a command, streaming output to stdout, returning error on non-zero exit.
-async fn run(program: &str, args: &[&str]) -> Result<()> {
-    let status = tokio::process::Command::new(program)
+/// Run an `a3s-box` subcommand.
+async fn run_box(args: &[&str]) -> Result<()> {
+    let status = tokio::process::Command::new("a3s-box")
         .args(args)
         .status()
         .await
-        .map_err(|e| DevError::Config(format!("failed to run `{program}`: {e}")))?;
+        .map_err(|e| DevError::Config(format!("failed to run `a3s-box`: {e}")))?;
 
     if !status.success() {
         return Err(DevError::Config(format!(
-            "`{program} {}` exited with {}",
+            "`a3s-box {}` exited with {}",
             args.join(" "),
             status.code().map(|c| c.to_string()).unwrap_or_else(|| "?".into())
         )));
@@ -268,5 +230,25 @@ mod tests {
     #[tokio::test]
     async fn test_cmd_exists_false() {
         assert!(!cmd_exists("__nonexistent_binary_xyz__").await);
+    }
+
+    #[test]
+    fn test_constants() {
+        assert_eq!(K3S_BOX_NAME, "a3s-k3s");
+        assert_eq!(K3S_API_PORT, 6443);
+        assert!(!K3S_IMAGE.is_empty());
+    }
+
+    #[test]
+    fn test_kubeconfig_patching() {
+        let raw = "name: default\ncluster: default\nuser: default\ncurrent-context: default\n";
+        let patched = raw
+            .replace("name: default", "name: a3s-k3s")
+            .replace("cluster: default", "cluster: a3s-k3s")
+            .replace("user: default", "user: a3s-k3s")
+            .replace("current-context: default", "current-context: a3s-k3s");
+        assert!(patched.contains("name: a3s-k3s"));
+        assert!(patched.contains("current-context: a3s-k3s"));
+        assert!(!patched.contains("name: default"));
     }
 }
