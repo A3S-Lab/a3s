@@ -141,15 +141,12 @@ impl LogAggregator {
             loop {
                 match rx.recv().await {
                     Ok(entry) => {
-                        match log.history.lock() {
-                            Ok(mut h) => {
-                                if h.len() >= HISTORY_CAP {
-                                    h.pop_front();
-                                }
-                                h.push_back(entry);
+                        if let Ok(mut h) = log.history.lock() {
+                            if h.len() >= HISTORY_CAP {
+                                h.pop_front();
                             }
-                            Err(_) => {} // poisoned — skip entry, don't panic
-                        }
+                            h.push_back(entry);
+                        } // poisoned — skip entry, don't panic
                     }
                     Err(broadcast::error::RecvError::Closed) => break,
                     Err(broadcast::error::RecvError::Lagged(_)) => {}

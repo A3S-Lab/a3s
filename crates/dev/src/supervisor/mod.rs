@@ -165,9 +165,9 @@ impl Supervisor {
                     watch.paths.clone(),
                     watch.ignore.clone(),
                 );
-                self.handles.write().await.get_mut(name).map(|h| {
+                if let Some(h) = self.handles.write().await.get_mut(name) {
                     h.watcher_stop = Some(stop_tx);
-                });
+                }
             }
         }
 
