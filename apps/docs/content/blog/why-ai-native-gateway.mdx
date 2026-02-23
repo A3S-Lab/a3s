@@ -31,6 +31,8 @@ tags: [gateway, llm, streaming, autoscaling, ai-infrastructure, rust]
 7. [重新设计：AI 流量层需要什么](#7-重新设计ai-流量层需要什么)
 8. [A3S Gateway 怎么应对这五个断层](#8-a3s-gateway-怎么应对这五个断层)
 9. [和现有方案的真实对比](#9-和现有方案的真实对比)
+10. [实战：为 AI 后端配置完整代理](#10-实战为-ai-后端配置完整代理)
+11. [弹性扩缩容：数字背后的原理](#11-弹性扩缩容数字背后的原理)
 
 ---
 
@@ -391,6 +393,472 @@ services "llm-service" {
 Envoy 在技术能力上最接近，但它的使用成本是隐性的高：你需要一个控制平面（Istio、xDS API），需要 Kubernetes，需要一个理解 Envoy 配置模型的工程师。对于一个把 AI 推理作为核心业务的团队来说，维护一套完整的 Service Mesh 是额外的认知负担。
 
 A3S Gateway 的设计取舍是：只做 AI 服务流量层需要的事，用 HCL 配置文件完整描述，单个二进制部署。不需要数据库、不需要控制平面、不需要 Kubernetes（尽管支持）。
+
+---
+
+## 10. 实战：为 AI 后端配置完整代理
+
+到这里，我们已经理解了为什么需要 AI 原生网关。下面是一个完整的落地示例：把 A3S Gateway 部署在一个运行 Ollama 的 LLM 服务前面，覆盖认证、限流、熔断、流式传输和弹性扩缩容。
+
+### 第一步：写 gateway.hcl
+
+这份配置代理一个本地 Ollama 实例，开放给外部调用。它加了 JWT 认证、每分钟 60 次的请求限流、熔断器，以及 TLS 终止：
+
+```hcl
+# gateway.hcl
+
+# ── 入口点 ──────────────────────────────────────────────────────────────
+entrypoints "web" {
+  address = "0.0.0.0:8080"   # HTTP（开发/内网）
+}
+
+entrypoints "websecure" {
+  address = "0.0.0.0:443"    # HTTPS（生产）
+  tls {
+    cert_file = "/etc/certs/fullchain.pem"
+    key_file  = "/etc/certs/privkey.pem"
+  }
+}
+
+# ── 路由 ──────────────────────────────────────────────────────────────────
+# /v1/** → Ollama（OpenAI 兼容 API）
+routers "llm-api" {
+  rule        = "PathPrefix(`/v1`)"
+  service     = "ollama"
+  entrypoints = ["websecure"]
+  middlewares = ["jwt-auth", "rate-limit", "circuit-breaker"]
+}
+
+# /ws/** → WebSocket 实时推理（Agent 场景）
+routers "llm-ws" {
+  rule        = "PathPrefix(`/ws`)"
+  service     = "ollama"
+  entrypoints = ["websecure"]
+  middlewares = ["jwt-auth"]
+}
+
+# ── 后端服务 ──────────────────────────────────────────────────────────────
+services "ollama" {
+  load_balancer {
+    strategy = "least-connections"   # 优先把请求送给当前负载最低的实例
+    servers = [
+      { url = "http://127.0.0.1:11434", weight = 1 },
+    ]
+    health_check {
+      path     = "/api/version"      # Ollama 的健康端点
+      interval = "15s"
+    }
+  }
+
+  # 将 3% 的真实请求镜像到新版本模型，用于离线质量对比
+  mirror {
+    service    = "ollama-next"
+    percentage = 3
+  }
+
+  # 弹性扩缩容：空闲时缩容到零，请求到来时自动扩容
+  scaling {
+    min_replicas          = 0        # 允许缩容到零
+    max_replicas          = 4        # 最多 4 个并行推理实例
+    container_concurrency = 4        # 每个实例最多同时处理 4 个请求
+    target_utilization    = 0.7      # 目标利用率 70%
+    buffer_enabled        = true     # 冷启动时缓冲请求，不返回 502
+    executor              = "box"    # 由 A3S Box 管理实例生命周期
+  }
+}
+
+# 影子后端：接收镜像流量，不影响主链路
+services "ollama-next" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:11435" }]
+  }
+}
+
+# ── 中间件 ────────────────────────────────────────────────────────────────
+middlewares "jwt-auth" {
+  type  = "jwt"
+  value = "${JWT_SECRET}"            # 从环境变量读取密钥
+}
+
+middlewares "rate-limit" {
+  type  = "rate-limit"
+  rate  = 60                         # 每分钟 60 次（令牌桶）
+  burst = 10                         # 突发上限
+}
+
+middlewares "circuit-breaker" {
+  type              = "circuit-breaker"
+  failure_threshold = 3              # 连续 3 次失败 → 开启熔断
+  cooldown_secs     = 30             # 30 秒后进入半开状态
+  success_threshold = 2              # 2 次成功 → 关闭熔断，恢复正常
+}
+
+# ── 配置热重载 ────────────────────────────────────────────────────────────
+providers {
+  file {
+    watch     = true                 # 检测到文件变更自动重载，无需重启
+    directory = "/etc/gateway/conf.d/"
+  }
+}
+```
+
+保存为 `gateway.hcl`，然后：
+
+```bash
+a3s-gateway --config gateway.hcl
+```
+
+网关立刻开始监听，配置文件的任何变更会在几毫秒内生效。
+
+---
+
+### 第二步：打包成 Docker 镜像
+
+如果你想把网关打包进一个容器（而不是直接用 Homebrew 安装的二进制），可以用下面这个 Dockerfile。注意它是两阶段构建——编译阶段用 Rust 工具链，运行阶段只需要一个 Alpine 底包：
+
+```dockerfile
+# ── 编译阶段 ──────────────────────────────────────────────────────────────
+FROM rust:alpine AS builder
+
+RUN apk add --no-cache musl-dev cmake make perl g++ linux-headers
+
+WORKDIR /build
+
+# 先复制 Cargo 清单预热依赖缓存（层缓存优化）
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir -p src && echo 'fn main(){}' > src/main.rs && touch src/lib.rs \
+    && cargo build --release 2>/dev/null || true \
+    && rm -rf src
+
+# 再复制真实源码编译
+COPY src/ src/
+RUN touch src/main.rs src/lib.rs && cargo build --release
+
+# ── 运行阶段 ──────────────────────────────────────────────────────────────
+FROM alpine:3
+
+RUN apk add --no-cache ca-certificates tzdata \
+    && addgroup -S gateway && adduser -S gateway -G gateway
+
+COPY --from=builder /build/target/release/a3s-gateway /usr/local/bin/a3s-gateway
+COPY gateway.hcl /etc/a3s-gateway/gateway.hcl
+
+USER gateway
+
+EXPOSE 8080 443
+
+ENTRYPOINT ["a3s-gateway", "--config", "/etc/a3s-gateway/gateway.hcl"]
+```
+
+构建并运行：
+
+```bash
+docker build -t my-llm-gateway:latest .
+
+docker run -d \
+  -p 8080:8080 \
+  -p 443:443 \
+  -v $(pwd)/certs:/etc/certs:ro \
+  -e JWT_SECRET=your-secret \
+  my-llm-gateway:latest
+```
+
+最终镜像大约 12MB，没有任何运行时依赖。
+
+---
+
+### 第三步：用 A3S Box 部署（单机沙箱）
+
+[A3S Box](https://github.com/A3S-Lab/Box) 是一个基于 microVM 的沙箱运行时。在不需要完整 Kubernetes 的场景下——比如边缘节点、开发机、或者资源受限的单台服务器——可以用 Box 替代 Docker Compose 来管理网关和 LLM 实例的生命周期。
+
+Box 的配置也是 HCL。创建 `box.hcl`：
+
+```hcl
+# box.hcl — 在 microVM 沙箱中运行网关 + Ollama
+
+workloads "gateway" {
+  binary = "/usr/local/bin/a3s-gateway"
+  args   = ["--config", "/etc/gateway/gateway.hcl"]
+
+  resources {
+    memory_mb = 512
+    cpus      = 2
+  }
+
+  ports = [8080, 443]
+
+  env = {
+    JWT_SECRET = "${JWT_SECRET}"
+    RUST_LOG   = "info,a3s_gateway=debug"
+  }
+
+  mounts {
+    host     = "./gateway.hcl"
+    guest    = "/etc/gateway/gateway.hcl"
+    readonly = true
+  }
+
+  mounts {
+    host     = "./certs"
+    guest    = "/etc/certs"
+    readonly = true
+  }
+
+  # 网关进程崩溃时自动重启
+  restart = "always"
+}
+
+workloads "ollama" {
+  binary = "/usr/local/bin/ollama"
+  args   = ["serve"]
+
+  resources {
+    memory_mb = 8192    # 7B 量化模型约需 6GB
+    cpus      = 4
+  }
+
+  ports = [11434]
+
+  env = {
+    OLLAMA_MODELS = "/models"
+  }
+
+  mounts {
+    host  = "/data/models"
+    guest = "/models"
+  }
+}
+```
+
+启动：
+
+```bash
+# 安装 A3S Box
+brew install a3s-lab/tap/a3s-box
+
+# 启动所有 workload
+a3s-box run --config box.hcl
+
+# 查看状态
+a3s-box status
+
+# 查看网关日志
+a3s-box logs gateway
+```
+
+Box 的 microVM 隔离意味着：即使 Ollama 因为 OOM 崩溃，网关进程不受影响——它会触发冷启动缓冲，等 Box 把 Ollama 重启起来后，再把队列里的请求重放出去。
+
+---
+
+### 第四步：用 Helm 部署到 Kubernetes
+
+对于需要高可用和水平扩展的生产环境，Helm chart 是推荐部署方式。
+
+先准备 `values-prod.yaml`，把完整的 HCL 配置嵌进去：
+
+```yaml
+# values-prod.yaml
+image:
+  repository: ghcr.io/a3s-lab/gateway
+  tag: "0.2.2"
+  pullPolicy: Always
+
+replicaCount: 2          # 网关本身跑 2 个副本做高可用
+
+service:
+  type: LoadBalancer     # 云厂商 LB，或者配合 ingress-nginx
+  port: 8080
+
+config: |
+  entrypoints "web" {
+    address = "0.0.0.0:8080"
+  }
+
+  routers "llm-api" {
+    rule        = "PathPrefix(`/v1`)"
+    service     = "ollama"
+    middlewares = ["jwt-auth", "rate-limit", "circuit-breaker"]
+  }
+
+  services "ollama" {
+    load_balancer {
+      strategy = "least-connections"
+      servers  = [
+        { url = "http://ollama-svc.ai.svc.cluster.local:11434" },
+      ]
+      health_check {
+        path     = "/api/version"
+        interval = "15s"
+      }
+    }
+    scaling {
+      min_replicas          = 0
+      max_replicas          = 4
+      container_concurrency = 4
+      target_utilization    = 0.7
+      buffer_enabled        = true
+      executor              = "kube"   # 在 K8s 中用 kube executor 管理 Pod 副本
+    }
+  }
+
+  middlewares "jwt-auth" {
+    type  = "jwt"
+    value = "${JWT_SECRET}"
+  }
+
+  middlewares "rate-limit" {
+    type  = "rate-limit"
+    rate  = 60
+    burst = 10
+  }
+
+  middlewares "circuit-breaker" {
+    type              = "circuit-breaker"
+    failure_threshold = 3
+    cooldown_secs     = 30
+    success_threshold = 2
+  }
+```
+
+部署：
+
+```bash
+# 克隆仓库（或者 brew install 后找到 chart 路径）
+git clone https://github.com/A3S-Lab/Gateway.git
+cd Gateway
+
+# 安装
+helm install llm-gateway deploy/helm/a3s-gateway \
+  -f values-prod.yaml \
+  --namespace ai \
+  --create-namespace \
+  --set-string "extraEnv[0].name=JWT_SECRET" \
+  --set-string "extraEnv[0].valueFrom.secretKeyRef.name=llm-secrets" \
+  --set-string "extraEnv[0].valueFrom.secretKeyRef.key=jwt-secret"
+
+# 升级配置（热重载，不重启 Pod）
+helm upgrade llm-gateway deploy/helm/a3s-gateway \
+  -f values-prod.yaml \
+  --namespace ai
+```
+
+验证：
+
+```bash
+# 查看网关 Pod 状态
+kubectl get pods -n ai
+
+# 检查仪表盘
+kubectl port-forward -n ai svc/llm-gateway 9090:8080
+curl http://localhost:9090/api/gateway/health    # 健康状态
+curl http://localhost:9090/api/gateway/routes    # 当前路由表
+curl http://localhost:9090/api/gateway/metrics   # Prometheus 指标
+
+# 测试流式推理（应该立刻看到 token 逐个返回）
+curl -N http://localhost:9090/v1/chat/completions \
+  -H "Authorization: Bearer $JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"llama3","messages":[{"role":"user","content":"你好"}],"stream":true}'
+```
+
+---
+
+## 11. 弹性扩缩容：数字背后的原理
+
+Knative 的扩缩容公式看起来很简单，但它的每一个参数都有具体的物理含义。把这些含义理解清楚，才能在真实场景里设对参数。
+
+### 公式
+
+```
+desired_replicas = ⌈ (in_flight + queue_depth) / (container_concurrency × target_utilization) ⌉
+```
+
+| 变量 | 含义 |
+|------|------|
+| `in_flight` | 当前所有实例正在处理的请求总数 |
+| `queue_depth` | 等待分配给实例的请求数（冷启动缓冲队列） |
+| `container_concurrency` | 每个实例允许同时处理的最大请求数 |
+| `target_utilization` | 目标利用率（0 到 1），预留一定余量应对突发流量 |
+
+`container_concurrency` 是最关键的参数，它必须根据你的模型和硬件来设定，而不是拍脑袋决定。一个经验公式：
+
+```
+container_concurrency ≈ GPU显存 / 单请求峰值显存占用
+```
+
+例如：24GB 显存的 GPU，运行 7B Q4 模型（约 5GB），单请求峰值 KV-cache 约 2GB，那么：
+```
+container_concurrency ≈ (24 - 5) / 2 ≈ 9
+```
+
+把它设为 8 比较保守（留余量给系统开销）。
+
+### 三个场景走一遍
+
+**场景一：空闲 → 首个请求到来（冷启动）**
+
+```
+初始状态：replicas = 0，in_flight = 0，queue_depth = 0
+          desired = ⌈0 / (8 × 0.7)⌉ = 0 ✓
+
+t=0s：第 1 个请求到达
+      replicas = 0，in_flight = 0，queue_depth = 1
+      desired = ⌈1 / 5.6⌉ = ⌈0.18⌉ = 1
+      → 触发扩容：启动 1 个实例，请求进入缓冲队列
+
+t=45s：实例通过健康检查，replicas = 1
+       queue 里的请求弹出 → 发送给实例
+       用户收到第一个 token
+```
+
+用户等了 45 秒，看到的不是错误，而是正常的推理响应。
+
+**场景二：负载突增（需要扩容）**
+
+```
+当前状态：replicas = 1，container_concurrency = 8，target_utilization = 0.7
+          有效容量 = 8 × 0.7 = 5.6（向上取整：实际扩容在超过 6 个请求时触发）
+
+突增到 20 个并发请求：
+  in_flight = 8（当前实例已满）
+  queue_depth = 12（等待分配）
+  desired = ⌈(8 + 12) / 5.6⌉ = ⌈20 / 5.6⌉ = ⌈3.57⌉ = 4
+
+→ 从 1 个实例扩容到 4 个
+→ 4 个实例有效容量 = 4 × 5.6 = 22.4，可以容纳 20 个并发请求
+→ 等待中的 12 个请求在新实例就绪后（约 45s）依次发送
+```
+
+注意：`target_utilization = 0.7` 保留了 30% 的余量，这意味着当实例利用率到达 70% 时就开始扩容，而不是等到 100% 再扩。这正是应对 LLM 推理时延高的关键——如果等满了再扩，新实例就绪之前的这段时间，所有请求都在等。
+
+**场景三：流量下降（缩容到零）**
+
+```
+高峰结束：replicas = 4，in_flight = 2，queue_depth = 0
+  desired = ⌈2 / 5.6⌉ = ⌈0.36⌉ = 1
+  → 缩容信号：目标 1 个实例
+
+  但缩容有冷却期（scale-down cooldown）：
+  网关会观察 60 秒（可配置），确认流量确实下降，再执行缩容
+  → 避免因为流量的短暂波动导致反复扩缩容（抖动）
+
+再过 5 分钟：in_flight = 0，queue_depth = 0
+  desired = 0
+  → 缩容到零，GPU 实例关闭
+  → 节省费用，直到下一个请求到来
+```
+
+### 调参建议
+
+| 参数 | 保守设定 | 激进设定 | 适用场景 |
+|------|---------|---------|---------|
+| `container_concurrency` | GPU显存的 50% 容量 | GPU显存的 80% 容量 | 保守：稳定性优先；激进：成本优先 |
+| `target_utilization` | 0.6 | 0.8 | 保守：应对流量尖峰；激进：低延迟要求不高 |
+| `min_replicas` | 1（保持一个热实例） | 0（允许冷启动） | 保守：成本 vs 延迟敏感业务；激进：离线/低频业务 |
+| `max_replicas` | GPU 数量 | GPU 数量 × 2（超卖） | 取决于预算上限 |
+
+一个常见的误解是把 `target_utilization` 设成 1.0——追求把每个实例的显存用满。问题在于，当利用率达到 100% 时，扩容才开始，而 GPU 实例启动需要 30-60 秒，这段时间所有新请求都在等待。`0.7` 意味着在实例还有 30% 余量时就开始扩容，让新实例在旧实例满负荷之前就绪。
 
 ---
 
