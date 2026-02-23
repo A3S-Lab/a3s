@@ -1,174 +1,110 @@
-# A3S Box v0.6.x Development Plan
+# SafeClaw 后端完善：会话生命周期管理 + 多Agent协作
 
-## Mission
+## 一、会话生命周期管理
 
-A3S Box core mission: run any OCI workload in MicroVM isolation with VM-level security boundaries. Application-agnostic infrastructure layer.
+### 1.1 活动追踪 (`engine.rs`)
 
-v0.6.x goal: solve "trustworthy" and "production-ready" — not more features.
+在 `EngineSession` 中添加字段：
+```rust
+last_activity_at: u64,   // 最后活动时间戳（浏览器消息/generation）
+```
 
----
+每次 `handle_browser_message`、`spawn_generation`、`handle_browser_open` 时调用 `touch_activity()` 更新时间戳。
 
-## P0 — Production Blockers
+### 1.2 生命周期配置 (`config.rs`)
 
-### 1. CRI Persistent State Store
+在 `SafeClawConfig` 中添加：
+```hcl
+session_lifecycle {
+  idle_timeout_secs     = 1800    # 30 min 无活动自动归档
+  purge_after_secs      = 604800  # 7 天归档后自动删除
+  max_sessions          = 100     # 最大活跃会话数
+  cleanup_interval_secs = 60      # 清理扫描间隔
+}
+```
 
-**Problem:** CRI server restart orphans running VMs. Kubelet loses track of all sandboxes. Unacceptable in production K8s.
+### 1.3 后台清理任务 (`engine.rs`)
 
-**What to build:**
-- Persist `SandboxState` and `ContainerState` to disk (JSON or SQLite) on every state transition
-- On CRI server startup, reload state and reconcile with actual running VMs (re-attach or mark as stopped)
-- Atomic writes to prevent corruption on crash
+添加 `start_lifecycle_task(&self)` 方法，启动后台 tokio 任务：
+- 每 `cleanup_interval_secs` 扫描所有 session
+- 无浏览器连接 + 无活跃 generation + 超过 `idle_timeout_secs` → 自动归档
+- 已归档超过 `purge_after_secs` → 硬删除
+- 活跃会话数超过 `max_sessions` → 按 last_activity_at 排序，归档最旧的
 
-**Acceptance criteria:**
-- Kill and restart `a3s-box-cri` — all previously running sandboxes are visible to kubelet
-- No VM is orphaned after CRI restart
-- Tests: CRI restart roundtrip, crash-recovery simulation
+### 1.4 优雅关闭 (`engine.rs`)
 
-**Crate:** `a3s-box-cri`
+添加 `shutdown(&self)` 方法：
+- 取消所有活跃 generation handle
+- 持久化所有 session 状态到磁盘
+- 在 `main.rs` 的 signal handler 中调用
 
----
+### 1.5 会话生命周期 API (`handler.rs`)
 
-## P1 — Core Differentiator Validation
+- `POST /api/agent/sessions/:id/archive` — 归档
+- `POST /api/agent/sessions/:id/unarchive` — 取消归档
+- `GET /api/agent/stats` — 会话统计（活跃数、归档数、总 token 用量）
 
-### 2. TEE Hardware Validation (AMD SEV-SNP)
+## 二、多Agent协作增强
 
-**Problem:** All TEE code runs only in simulation. "Hardware validation pending" in README means TEE is a claim, not a fact.
+### 2.1 消息协议增强 (`bus.rs` / `types.rs`)
 
-**What to do:**
-- Provision Azure DCasv5 (or bare-metal EPYC Milan/Genoa)
-- Run full flow: `run --tee` → `attest` → `seal` → `unseal` → `inject-secret`
-- Verify VCEK → ASK → ARK certificate chain against AMD KDS
-- Verify RA-TLS handshake with real SNP report
-- Document any gaps found and fix them
+扩展 `AgentMessagePayload`：
+```rust
+pub struct AgentMessagePayload {
+    pub message_id: String,           // 唯一消息 ID
+    pub from_session_id: String,
+    pub topic: String,
+    pub content: String,
+    pub message_type: AgentMessageType,  // Chat / TaskRequest / TaskResponse
+    pub reply_to: Option<String>,        // 回复哪条消息
+    pub timestamp: u64,
+}
 
-**Acceptance criteria:**
-- All 7 TEE integration tests pass on real SEV-SNP hardware (not `--allow-simulated`)
-- README "Pending Validation" section removed or updated to "Validated on Azure DCasv5"
-- VCEK cert chain verification confirmed end-to-end
+pub enum AgentMessageType {
+    Chat,          // 普通对话
+    TaskRequest,   // 任务请求
+    TaskResponse,  // 任务响应
+}
+```
 
-**Crate:** `a3s-box-runtime` (attestation module)
+### 2.2 投递可靠性 (`bus.rs`)
 
-### 3. Warm Pool CLI/CRI Integration
+- 订阅循环断线自动重连（指数退避，最大 30s）
+- auto-execute 速率限制：每 session 每分钟最多 30 条
+- 投递失败日志 + 审计事件
 
-**Problem:** Warm Pool is implemented as library-only. Pre-booted VM pool has zero user-facing value without integration.
+### 2.3 Agent 发现 (`engine.rs` / `handler.rs`)
 
-**What to build:**
-- CLI: `a3s-box pool start --size N --image alpine:latest` / `pool stop` / `pool status`
-- CRI: when kubelet creates a sandbox, check warm pool first before cold-booting
-- Config: `warm_pool_size` in `BoxConfig` wired to CRI startup
-- Prometheus metric `a3s_box_warm_pool_hits_total` already exists — wire it up
+新增 `list_agent_directory()` 方法，返回所有可用 agent 信息：
+```rust
+pub struct AgentDirectoryEntry {
+    pub session_id: String,
+    pub persona_id: Option<String>,
+    pub persona_name: Option<String>,
+    pub status: String,           // active / busy / idle / archived
+    pub auto_execute: bool,
+}
+```
 
-**Acceptance criteria:**
-- `a3s-box run` with warm pool enabled shows sub-50ms start (vs 200ms cold)
-- CRI sandbox creation uses pool when available, falls back to cold boot
-- `pool status` shows size, capacity, hit rate
+API 端点：`GET /api/agent/directory`
 
-**Crate:** `a3s-box-cli`, `a3s-box-cri`, `a3s-box-runtime`
+## 三、实现顺序
 
----
+1. `EngineSession` 添加 `last_activity_at` + `touch_activity()`
+2. 生命周期配置结构体 (`SessionLifecycleConfig`)
+3. 后台清理任务 (`start_lifecycle_task`)
+4. 优雅关闭 (`shutdown`)
+5. 会话生命周期 API（archive/unarchive/stats）
+6. `AgentMessagePayload` 增强（message_id, type, reply_to, timestamp）
+7. 订阅循环重连 + 速率限制
+8. Agent 发现（directory）
 
-## P2 — Architectural Completeness
+## 四、涉及文件
 
-### 4. SafeClaw + Box Integration
-
-**Problem:** Architecture diagram shows SafeClaw running inside Box VM alongside the agent, but there is no defined integration path. The A3S security architecture exists only on paper.
-
-**What to design and build:**
-- Define the integration model: compose sidecar vs SDK-level vs Box-native sidecar support
-- Recommended: Box-native sidecar — `BoxConfig::sidecar: Option<SidecarConfig>` that auto-injects SafeClaw as a co-process inside the VM
-- SafeClaw gets vsock port allocation (e.g., 4092) for host-side control
-- Document the data flow: agent traffic → SafeClaw → classified/sanitized → LLM
-
-**Acceptance criteria:**
-- `a3s-box run --sidecar safeclaw:latest myagent:latest` starts both processes in the same VM
-- SafeClaw intercepts agent's outbound LLM calls
-- Integration test: agent + safeclaw in one VM, verify classification runs
-
-**Crates:** `a3s-box-core` (config), `a3s-box-runtime` (sidecar launch), `a3s-box-guest-init` (multi-process PID 1)
-
-### 5. Intel TDX Runtime
-
-**Problem:** TDX config variant exists (`TeeConfig::Tdx`) but runtime is a no-op. Half-implemented TEE support is misleading.
-
-**What to build:**
-- Implement TDX TDREPORT generation via `/dev/tdx_guest` ioctl
-- TDX quote generation (TD Quote via TDQE)
-- Wire into existing attestation flow (same trait, different backend)
-- Simulation mode via `A3S_TEE_SIMULATE=1`
-
-**Dependency:** Requires Intel TDX-capable hardware (4th Gen Xeon or Azure DCesv5). Can implement + simulate first, validate on hardware second.
-
-**Acceptance criteria:**
-- `a3s-box run --tee --tee-type tdx --tee-simulate` works end-to-end
-- TDX attestation path covered by unit tests in simulation mode
-- Hardware validation tracked as separate milestone
-
-**Crate:** `a3s-box-runtime`
-
-### 6. Live CPU/Memory Hot-Resize
-
-**Problem:** `container-update` command exists but requires VM restart for resource changes. K8s VPA needs live resize.
-
-**What to build:**
-- libkrun hot-resize API for vCPU count and memory balloon
-- Wire into `container-update --cpus N --memory Xg` without VM restart
-- CRI: handle `UpdateContainerResources` RPC
-- Fallback: if libkrun version doesn't support it, return clear error (not silent failure)
-
-**Acceptance criteria:**
-- `a3s-box container-update dev --cpus 4` changes vCPU count without restart
-- Memory balloon inflate/deflate works
-- CRI `UpdateContainerResources` RPC tested
-
-**Crate:** `a3s-box-runtime`, `a3s-box-shim`, `a3s-box-cri`
-
----
-
-## P3 — Feature Completion
-
-### 7. OCI Image Signing on Push
-
-**Problem:** `pull` verifies signatures, `push` does not sign. Asymmetric.
-
-**What to build:**
-- `a3s-box push --sign-key cosign.key myimage:tag`
-- Keyless signing via OIDC + Rekor (same as verify path)
-- Sign after push, attach signature to registry
-
-**Crate:** `a3s-box-runtime` (OCI module)
-
-### 8. ADD .tar.bz2 / .tar.xz Support
-
-**Problem:** Dockerfile `ADD` auto-extracts `.tar.gz` but not `.tar.bz2` or `.tar.xz`.
-
-**What to build:** Add `bzip2` and `xz` decompression to the ADD handler. Two deps, ~30 lines.
-
-**Crate:** `a3s-box-runtime` (Dockerfile builder)
-
----
-
-## Not Doing
-
-**Multi-node compose** — Cross-host service discovery is K8s's job. Box doing this violates the "application-agnostic infrastructure" principle and duplicates K8s networking. If needed, use K8s Services + DNS.
-
----
-
-## Milestone Summary
-
-| Milestone | Items | Target |
-|-----------|-------|--------|
-| v0.6.0 | CRI persistent state (#1) | Production unblock |
-| v0.6.1 | Warm pool integration (#3), TEE hardware validation (#2) | Core differentiator |
-| v0.6.2 | SafeClaw integration (#4), TDX runtime (#5) | Architecture completeness |
-| v0.6.3 | Live hot-resize (#6), OCI signing on push (#7), ADD bz2/xz (#8) | Polish |
-
----
-
-## Definition of Done (per item)
-
-- [ ] Tests written before implementation (TDD)
-- [ ] `just test` passes
-- [ ] README updated (Features + Roadmap)
-- [ ] No test artifacts left on filesystem
-- [ ] `cargo fmt --all` run before commit
-- [ ] Pruning audit done (no dead wrappers, no orphaned exports)
+- `crates/safeclaw/src/agent/engine.rs` — 生命周期任务、活动追踪、优雅关闭、agent 发现
+- `crates/safeclaw/src/agent/bus.rs` — 消息协议增强、重连、速率限制
+- `crates/safeclaw/src/agent/handler.rs` — 新 API 端点
+- `crates/safeclaw/src/agent/types.rs` — 新类型
+- `crates/safeclaw/src/agent/mod.rs` — 导出
+- `crates/safeclaw/src/config.rs` — 生命周期配置
+- `crates/safeclaw/src/main.rs` — 启动生命周期任务 + 优雅关闭
