@@ -1,0 +1,35 @@
+[package]
+name    = "a3s"
+version = "0.1.0"
+edition = "2021"
+authors = ["A3S Lab"]
+license = "MIT"
+description = "a3s dev — local development orchestration tool for the A3S monorepo"
+
+[[bin]]
+name = "a3s"
+path = "src/main.rs"
+
+[dependencies]
+tokio          = { version = "1", features = ["rt-multi-thread", "macros", "process", "sync", "time", "io-util", "net", "signal"] }
+hcl-rs         = "0.18"
+serde          = { version = "1", features = ["derive"] }
+clap           = { version = "4", features = ["derive"] }
+thiserror      = "1"
+tracing        = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+notify         = "7"
+reqwest        = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+hyper          = { version = "1", features = ["http1", "server", "client"] }
+hyper-util     = { version = "0.1", features = ["server-auto", "tokio", "client-legacy"] }
+http-body-util = "0.1"
+async-trait    = "0.1"
+indexmap       = { version = "2", features = ["serde"] }
+colored        = "2"
+tokio-util     = { version = "0.7", features = ["io"] }
+bytes          = "1"
+http           = "1"
+
+[dev-dependencies]
+tempfile = "3"
+tokio    = { version = "1", features = ["test-util"] }
