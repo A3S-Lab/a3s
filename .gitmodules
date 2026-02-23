@@ -25,3 +25,6 @@
 [submodule "crates/memory"]
 	path = crates/memory
 	url = git@github.com:A3S-Lab/Memory.git
+[submodule "crates/dev"]
+	path = crates/dev
+	url = git@github.com:A3S-Lab/Dev.git
