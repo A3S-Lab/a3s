@@ -31,6 +31,7 @@ fn cellar() -> PathBuf {
 
 #[derive(Debug, Deserialize)]
 struct FormulaInfo {
+    #[allow(dead_code)]
     name: String,
     versions: Versions,
     bottle: BottleSpec,

@@ -18,10 +18,13 @@ use crate::watcher::spawn_watcher;
 
 #[derive(Debug, Clone)]
 pub enum SupervisorEvent {
+    #[allow(dead_code)]
     StateChanged { service: String, state: String },
+    #[allow(dead_code)]
     HealthChange { service: String, healthy: bool },
     LogLine { service: String, line: String },
 }
+
 
 struct ServiceHandle {
     child: Child,
@@ -40,13 +43,15 @@ impl Supervisor {
     pub fn new(config: Arc<DevConfig>) -> (Self, broadcast::Receiver<SupervisorEvent>) {
         let (events, rx) = broadcast::channel(4096);
         let (log, log_rx) = LogAggregator::new();
+        let log = Arc::new(log);
         tokio::spawn(LogAggregator::print_loop(log_rx));
+        LogAggregator::spawn_history_recorder(log.clone());
         (
             Self {
                 config,
                 handles: Arc::new(RwLock::new(HashMap::new())),
                 events,
-                log: Arc::new(log),
+                log,
             },
             rx,
         )
@@ -131,6 +136,115 @@ impl Supervisor {
             service: name.to_string(),
             state: "running".into(),
         });
+
+        // Crash recovery — monitor process and auto-restart on unexpected exit
+        {
+            let handles = self.handles.clone();
+            let events = self.events.clone();
+            let config = self.config.clone();
+            let log = self.log.clone();
+            let svc_name = name.to_string();
+
+            tokio::spawn(async move {
+                let mut backoff_secs = 1u64;
+                loop {
+                    // Wait for the process to exit
+                    let exit_status = {
+                        let mut map = handles.write().await;
+                        if let Some(h) = map.get_mut(&svc_name) {
+                            // Only monitor if still running
+                            if !matches!(h.state, ServiceState::Running { .. }) {
+                                break;
+                            }
+                            h.child.wait().await.ok()
+                        } else {
+                            break;
+                        }
+                    };
+
+                    // Check if we were intentionally stopped
+                    {
+                        let map = handles.read().await;
+                        if let Some(h) = map.get(&svc_name) {
+                            if matches!(h.state, ServiceState::Stopped) {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+
+                    let code = exit_status.and_then(|s| s.code());
+                    tracing::warn!(
+                        "[{svc_name}] exited (code={}) — restarting in {backoff_secs}s",
+                        code.map(|c| c.to_string()).unwrap_or_else(|| "?".into())
+                    );
+
+                    let _ = events.send(SupervisorEvent::StateChanged {
+                        service: svc_name.clone(),
+                        state: "restarting".into(),
+                    });
+
+                    tokio::time::sleep(std::time::Duration::from_secs(backoff_secs)).await;
+                    #[allow(unused_assignments)]
+                    { backoff_secs = (backoff_secs * 2).min(30); }
+
+                    // Respawn
+                    let svc_def = match config.service.get(&svc_name) {
+                        Some(s) => s.clone(),
+                        None => break,
+                    };
+
+                    let mut parts = svc_def.cmd.split_whitespace();
+                    let program = parts.next().unwrap_or("sh");
+                    let args: Vec<&str> = parts.collect();
+
+                    let mut cmd = tokio::process::Command::new(program);
+                    cmd.args(&args)
+                        .stdout(std::process::Stdio::piped())
+                        .stderr(std::process::Stdio::piped())
+                        .envs(&svc_def.env);
+                    if let Some(dir) = &svc_def.dir {
+                        cmd.current_dir(dir);
+                    }
+
+                    match cmd.spawn() {
+                        Ok(mut child) => {
+                            let pid = child.id().unwrap_or(0);
+                            let idx = handles
+                                .read()
+                                .await
+                                .get(&svc_name)
+                                .map(|h| h.color_idx)
+                                .unwrap_or(0);
+                            if let Some(stdout) = child.stdout.take() {
+                                log.attach(svc_name.clone(), idx, stdout);
+                            }
+                            handles.write().await.insert(
+                                svc_name.clone(),
+                                ServiceHandle {
+                                    child,
+                                    state: ServiceState::Running {
+                                        pid,
+                                        since: Instant::now(),
+                                    },
+                                    color_idx: idx,
+                                },
+                            );
+                            let _ = events.send(SupervisorEvent::StateChanged {
+                                service: svc_name.clone(),
+                                state: "running".into(),
+                            });
+                            backoff_secs = 1; // reset on successful start
+                        }
+                        Err(e) => {
+                            tracing::error!("[{svc_name}] restart failed: {e}");
+                            break;
+                        }
+                    }
+                }
+            });
+        }
 
         // Wait for health before unblocking dependents
         if let Some(checker) = HealthChecker::for_service(&svc) {
@@ -442,6 +556,29 @@ impl Supervisor {
                                     Err(broadcast::error::RecvError::Lagged(_)) => {}
                                 }
                                 if !follow {
+                                    break;
+                                }
+                            }
+                        }
+
+                        IpcRequest::History { service, lines } => {
+                            let recent = sup.log.recent(service.as_deref(), lines);
+                            for entry in recent {
+                                let resp = IpcResponse::LogLine {
+                                    service: entry.service,
+                                    line: entry.line,
+                                };
+                                if writer
+                                    .write_all(
+                                        format!(
+                                            "{}\n",
+                                            serde_json::to_string(&resp).unwrap()
+                                        )
+                                        .as_bytes(),
+                                    )
+                                    .await
+                                    .is_err()
+                                {
                                     break;
                                 }
                             }

@@ -2,11 +2,15 @@ use std::time::Instant;
 
 #[derive(Debug, Clone)]
 pub enum ServiceState {
+    #[allow(dead_code)]
     Pending,
+    #[allow(dead_code)]
     Starting,
     Running { pid: u32, since: Instant },
+    #[allow(dead_code)]
     Unhealthy { pid: u32, failures: u32 },
     Stopped,
+    #[allow(dead_code)]
     Failed { exit_code: Option<i32> },
 }
 

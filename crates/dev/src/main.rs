@@ -7,6 +7,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
 mod brew;
+mod code;
 mod config;
 mod error;
 mod graph;
@@ -44,6 +45,9 @@ enum Commands {
     Up {
         /// Start only these services
         services: Vec<String>,
+        /// Run as background daemon (detach from terminal)
+        #[arg(short, long)]
+        detach: bool,
     },
     /// Stop all (or named) services
     Down {
@@ -62,6 +66,8 @@ enum Commands {
         #[arg(short, long, default_value_t = true)]
         follow: bool,
     },
+    /// Generate a new A3sfile.hcl in the current directory
+    Init,
     /// Validate A3sfile.hcl without starting anything
     Validate,
     /// Upgrade a3s to the latest version
@@ -85,9 +91,24 @@ enum Commands {
     Install,
     /// List all installed a3s ecosystem tools and brew packages
     List,
-    /// Proxy to an a3s ecosystem tool (e.g. `a3s box`, `a3s code`)
+    /// a3s-code agent scaffolding
+    Code {
+        #[command(subcommand)]
+        cmd: CodeCommands,
+    },
+    /// Proxy to an a3s ecosystem tool (e.g. `a3s box`, `a3s gateway`)
     #[command(external_subcommand)]
     Tool(Vec<String>),
+}
+
+#[derive(Subcommand)]
+enum CodeCommands {
+    /// Scaffold a new a3s-code agent project
+    Init {
+        /// Directory to create the project in (default: current directory)
+        #[arg(default_value = ".")]
+        dir: std::path::PathBuf,
+    },
 }
 
 #[tokio::main]
@@ -121,7 +142,32 @@ async fn main() {
 
 async fn run(cli: Cli) -> Result<()> {
     match &cli.command {
-        Commands::Up { services } => {
+        Commands::Up { services, detach } => {
+            if *detach {
+                // Re-launch self as background daemon, dropping --detach flag
+                let exe = std::env::current_exe()
+                    .map_err(|e| DevError::Config(format!("cannot find self: {e}")))?;
+                let mut args: Vec<String> = vec![
+                    "--file".into(),
+                    cli.file.display().to_string(),
+                    "up".into(),
+                ];
+                args.extend(services.iter().cloned());
+
+                std::process::Command::new(&exe)
+                    .args(&args)
+                    .stdin(std::process::Stdio::null())
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .spawn()
+                    .map_err(|e| DevError::Config(format!("failed to daemonize: {e}")))?;
+
+                println!("{} a3s daemon started in background", "✓".green());
+                println!("  run {} to check status", "a3s status".cyan());
+                println!("  run {} to stop", "a3s down".cyan());
+                return Ok(());
+            }
+
             let cfg = Arc::new(DevConfig::from_file(&cli.file)?);
 
             // Install missing brew packages before starting services
@@ -158,6 +204,45 @@ async fn run(cli: Cli) -> Result<()> {
             println!("\n{} shutting down...", "→".yellow());
             sup.stop_all().await;
             let _ = std::fs::remove_file(socket_path());
+        }
+
+        Commands::Init => {
+            let path = &cli.file;
+            if path.exists() {
+                return Err(DevError::Config(format!(
+                    "{} already exists — delete it first or use a different path",
+                    path.display()
+                )));
+            }
+            std::fs::write(path, INIT_TEMPLATE)
+                .map_err(|e| DevError::Config(format!("write {}: {e}", path.display())))?;
+            println!("{} created {}", "✓".green(), path.display().to_string().cyan());
+
+            // Ask if user wants to git init
+            if !std::path::Path::new(".git").exists() {
+                print!("  initialize git repository? [Y/n] ");
+                std::io::Write::flush(&mut std::io::stdout()).ok();
+                let mut input = String::new();
+                std::io::BufRead::read_line(&mut std::io::stdin().lock(), &mut input).ok();
+                let answer = input.trim().to_lowercase();
+                if answer.is_empty() || answer == "y" || answer == "yes" {
+                    let status = std::process::Command::new("git")
+                        .arg("init")
+                        .status()
+                        .map_err(|e| DevError::Config(format!("git init: {e}")))?;
+                    if status.success() {
+                        // Write .gitignore
+                        let gitignore = ".gitignore";
+                        if !std::path::Path::new(gitignore).exists() {
+                            std::fs::write(gitignore, "target/\n.env\n*.sock\n")
+                                .map_err(|e| DevError::Config(format!("write .gitignore: {e}")))?;
+                            println!("{} created .gitignore", "✓".green());
+                        }
+                    }
+                }
+            }
+
+            println!("  edit {}, then run {} to start your services", path.display().to_string().cyan(), "a3s up".cyan());
         }
 
         Commands::Validate => {
@@ -365,6 +450,27 @@ async fn run(cli: Cli) -> Result<()> {
             let rest = &args[1..];
             proxy_tool(tool, rest).await?;
         }
+
+        Commands::Code { cmd } => match cmd {
+            CodeCommands::Init { dir } => {
+                println!("{} a3s-code agent scaffolding\r\n", "→".cyan());
+                let lang = code::prompt_language()?;
+                code::scaffold(dir, lang)?;
+                let lang_name = match lang {
+                    code::Language::Python => "Python",
+                    code::Language::TypeScript => "TypeScript",
+                };
+                println!(
+                    "{} scaffolded {} agent in {}\r\n",
+                    "✓".green(),
+                    lang_name.cyan(),
+                    dir.display()
+                );
+                println!("  config.hcl    — agent configuration");
+                println!("  skills/       — custom tool skills");
+                println!("  agents/       — agent runner scripts");
+            }
+        },
     }
 
     Ok(())
@@ -473,3 +579,56 @@ async fn stream_logs(service: Option<String>, follow: bool) -> Result<()> {
 
     Ok(())
 }
+
+const INIT_TEMPLATE: &str = r#"# A3sfile.hcl — generated by `a3s init`
+# Run `a3s up` to start all services, `a3s validate` to check config.
+
+dev {
+  proxy_port = 7080
+  log_level  = "info"
+}
+
+# brew {
+#   packages = [
+#     "redis",
+#     "postgresql@16",
+#   ]
+# }
+
+# service "api" {
+#   cmd        = "cargo run -p my-api"
+#   dir        = "./services/api"
+#   port       = 3000
+#   subdomain  = "api"
+#   depends_on = ["db"]
+#
+#   env = {
+#     DATABASE_URL = "postgres://localhost:5432/dev"
+#   }
+#
+#   watch {
+#     paths   = ["./services/api/src"]
+#     ignore  = ["target"]
+#     restart = true
+#   }
+#
+#   health {
+#     type     = "http"
+#     path     = "/health"
+#     interval = "2s"
+#     timeout  = "1s"
+#     retries  = 5
+#   }
+# }
+#
+# service "db" {
+#   cmd  = "postgres -D /usr/local/var/postgresql@16"
+#   port = 5432
+#
+#   health {
+#     type    = "tcp"
+#     timeout = "1s"
+#     retries = 10
+#   }
+# }
+"#;

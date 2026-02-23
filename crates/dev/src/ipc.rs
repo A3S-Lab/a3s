@@ -13,6 +13,7 @@ pub enum IpcRequest {
     Stop { services: Vec<String> },
     Restart { service: String },
     Logs { service: Option<String>, follow: bool },
+    History { service: Option<String>, lines: usize },
 }
 
 /// IPC response from daemon to client.
