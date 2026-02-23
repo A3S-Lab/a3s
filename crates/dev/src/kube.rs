@@ -148,18 +148,8 @@ async fn merge_kubeconfig_macos() -> Result<()> {
     }
 
     let raw = String::from_utf8_lossy(&output.stdout);
-    let ip_output = tokio::process::Command::new("limactl")
-        .args(["shell", "k3s", "hostname", "-I"])
-        .output()
-        .await
-        .map_err(DevError::Io)?;
-    let ip = String::from_utf8_lossy(&ip_output.stdout)
-        .split_whitespace()
-        .next()
-        .unwrap_or("127.0.0.1")
-        .to_string();
-
-    let patched = raw.replace("127.0.0.1", &ip).replace("default", "k3s");
+    // Lima forwards port 6443 to 127.0.0.1 on the host — use localhost directly.
+    let patched = raw.replace("default", "k3s");
     tokio::fs::write(&kubeconfig_path, patched.as_bytes())
         .await
         .map_err(DevError::Io)?;
