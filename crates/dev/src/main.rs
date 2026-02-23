@@ -24,7 +24,11 @@ use ipc::{socket_path, IpcRequest, IpcResponse};
 use supervisor::Supervisor;
 
 #[derive(Parser)]
-#[command(name = "a3s", about = "a3s — local development orchestration for the A3S monorepo")]
+#[command(
+    name = "a3s",
+    about = "a3s — local development orchestration for the A3S monorepo",
+    allow_external_subcommands = true
+)]
 struct Cli {
     /// Path to A3sfile.hcl
     #[arg(short, long, default_value = "A3sfile.hcl")]
@@ -74,6 +78,11 @@ enum Commands {
     },
     /// Install all brew packages declared in A3sfile.hcl
     Install,
+    /// List all installed a3s ecosystem tools and brew packages
+    List,
+    /// Proxy to an a3s ecosystem tool (e.g. `a3s box`, `a3s code`)
+    #[command(external_subcommand)]
+    Tool(Vec<String>),
 }
 
 #[tokio::main]
@@ -287,9 +296,116 @@ async fn run(cli: Cli) -> Result<()> {
                 println!("{} installed {} package(s)", "✓".green(), missing.len());
             }
         }
+
+        Commands::List => {
+            // a3s ecosystem tools
+            let tools = [
+                ("box",      "a3s-box",      "A3S-Lab/Box"),
+                ("code",     "a3s-code",     "A3S-Lab/Code"),
+                ("gateway",  "a3s-gateway",  "A3S-Lab/Gateway"),
+                ("lane",     "a3s-lane",     "A3S-Lab/Lane"),
+                ("power",    "a3s-power",    "A3S-Lab/Power"),
+                ("search",   "a3s-search",   "A3S-Lab/Search"),
+                ("safeclaw", "a3s-safeclaw", "A3S-Lab/SafeClaw"),
+                ("event",    "a3s-event",    "A3S-Lab/Event"),
+            ];
+
+            println!("{:<12} {:<16} {}", "TOOL".bold(), "BINARY".bold(), "STATUS".bold());
+            println!("{}", "─".repeat(44).dimmed());
+            for (alias, binary, _repo) in &tools {
+                let installed = which_binary(binary);
+                let status = if installed {
+                    "installed".green().to_string()
+                } else {
+                    "not installed".dimmed().to_string()
+                };
+                println!("{:<12} {:<16} {}", alias, binary, status);
+            }
+
+            // brew packages from A3sfile.hcl
+            if let Ok(cfg) = DevConfig::from_file(&cli.file) {
+                if !cfg.brew.packages.is_empty() {
+                    println!();
+                    println!("{}", "brew packages:".bold());
+                    for pkg in &cfg.brew.packages {
+                        let installed = brew::missing_packages(&[pkg.clone()]).is_empty();
+                        let status = if installed {
+                            "installed".green().to_string()
+                        } else {
+                            "missing".yellow().to_string()
+                        };
+                        println!("  {:<20} {}", pkg.cyan(), status);
+                    }
+                }
+            }
+        }
+
+        Commands::Tool(args) => {
+            let tool = &args[0];
+            let rest = &args[1..];
+            proxy_tool(tool, rest).await?;
+        }
     }
 
     Ok(())
+}
+
+/// Check if a binary exists in PATH.
+fn which_binary(name: &str) -> bool {
+    std::process::Command::new("which")
+        .arg(name)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+/// Known a3s ecosystem tools: alias -> (binary, github_owner, github_repo)
+fn ecosystem_tool(alias: &str) -> Option<(&'static str, &'static str, &'static str)> {
+    match alias {
+        "box"      => Some(("a3s-box",      "A3S-Lab", "Box")),
+        "code"     => Some(("a3s-code",     "A3S-Lab", "Code")),
+        "gateway"  => Some(("a3s-gateway",  "A3S-Lab", "Gateway")),
+        "lane"     => Some(("a3s-lane",     "A3S-Lab", "Lane")),
+        "power"    => Some(("a3s-power",    "A3S-Lab", "Power")),
+        "search"   => Some(("a3s-search",   "A3S-Lab", "Search")),
+        "safeclaw" => Some(("a3s-safeclaw", "A3S-Lab", "SafeClaw")),
+        "event"    => Some(("a3s-event",    "A3S-Lab", "Event")),
+        _ => None,
+    }
+}
+
+/// Proxy a command to an a3s ecosystem tool, auto-installing if missing.
+async fn proxy_tool(alias: &str, args: &[String]) -> Result<()> {
+    let (binary, owner, repo) = ecosystem_tool(alias).ok_or_else(|| {
+        DevError::Config(format!(
+            "unknown tool '{alias}' — run `a3s list` to see available tools"
+        ))
+    })?;
+
+    if !which_binary(binary) {
+        println!(
+            "{} {} not found — installing from {}/{}...",
+            "→".cyan(), binary.cyan(), owner, repo
+        );
+        let config = a3s_updater::UpdateConfig {
+            binary_name: binary,
+            crate_name: binary,
+            current_version: "0.0.0", // force install
+            github_owner: owner,
+            github_repo: repo,
+        };
+        a3s_updater::run_update(&config)
+            .await
+            .map_err(|e| DevError::Config(format!("failed to install {binary}: {e}")))?;
+    }
+
+    // Replace current process with the tool
+    use std::os::unix::process::CommandExt;
+    let err = std::process::Command::new(binary).args(args).exec();
+    Err(DevError::Process {
+        service: binary.to_string(),
+        msg: err.to_string(),
+    })
 }
 
 async fn ipc_send(req: IpcRequest) -> Result<IpcResponse> {
