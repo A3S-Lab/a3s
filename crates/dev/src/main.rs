@@ -13,6 +13,7 @@ mod error;
 mod graph;
 mod health;
 mod ipc;
+mod kube;
 mod log;
 mod proxy;
 mod state;
@@ -103,6 +104,11 @@ enum Commands {
         #[command(subcommand)]
         cmd: CodeCommands,
     },
+    /// Manage a local k3s Kubernetes cluster
+    Kube {
+        #[command(subcommand)]
+        cmd: KubeCommands,
+    },
     /// Proxy to an a3s ecosystem tool (e.g. `a3s box`, `a3s gateway`)
     #[command(external_subcommand)]
     Tool(Vec<String>),
@@ -116,6 +122,14 @@ enum CodeCommands {
         #[arg(default_value = ".")]
         dir: std::path::PathBuf,
     },
+}
+
+#[derive(Subcommand)]
+enum KubeCommands {
+    /// Install and start a local k3s cluster
+    Start,
+    /// Stop and clean up the local k3s cluster
+    Stop,
 }
 
 #[tokio::main]
@@ -525,6 +539,11 @@ async fn run(cli: Cli) -> Result<()> {
                 println!("  skills/       — custom tool skills");
                 println!("  agents/       — agent runner scripts");
             }
+        },
+
+        Commands::Kube { cmd } => match cmd {
+            KubeCommands::Start => kube::start().await?,
+            KubeCommands::Stop => kube::stop().await?,
         },
     }
 
