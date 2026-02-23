@@ -71,38 +71,38 @@ arch-build:
 # SafeClaw
 # ============================================================================
 
-# Start SafeClaw with local config
+# Start SafeClaw gateway with local config
 safeclaw:
-    cd crates/safeclaw && just run
+    cd apps/safeclaw/crates/safeclaw && just run
 
 # Start SafeClaw + ngrok tunnel (dev mode, auto-prints Feishu callback URL)
 safeclaw-dev:
-    cd crates/safeclaw && just dev
+    cd apps/safeclaw/crates/safeclaw && just dev
 
 # Start ngrok tunnel only (SafeClaw already running)
 safeclaw-tunnel:
-    cd crates/safeclaw && just tunnel
+    cd apps/safeclaw/crates/safeclaw && just tunnel
 
-# Start SafeClaw UI dev server (web, port 8888)
-safeclaw-ui:
-    cd apps/safeclaw-ui && pnpm dev
+# Start SafeClaw frontend dev server (web only, port 8888)
+safeclaw-web:
+    cd apps/safeclaw && pnpm dev
 
 # CMake compat flag for libsamplerate-sys (requires cmake >= 3.5 policy)
 export CMAKE_POLICY_VERSION_MINIMUM := "3.5"
 
-# Start SafeClaw UI in Tauri desktop mode
+# Start SafeClaw desktop app (Tauri + embedded gateway)
 ui:
-    cd apps/safeclaw-ui && pnpm tauri:dev
+    cd apps/safeclaw && pnpm tauri:dev
 
-# Clean and start SafeClaw UI in Tauri desktop mode
+# Clean and start SafeClaw desktop app
 ui-clean:
-    cd apps/safeclaw-ui/src-tauri && cargo clean
-    cd apps/safeclaw-ui && rm -rf dist node_modules/.cache
-    cd apps/safeclaw-ui && pnpm tauri:dev
+    cd apps/safeclaw/src-tauri && cargo clean
+    cd apps/safeclaw && rm -rf dist node_modules/.cache
+    cd apps/safeclaw && pnpm tauri:dev
 
-# Build SafeClaw UI for production
+# Build SafeClaw desktop app for production
 ui-build:
-    cd apps/safeclaw-ui && pnpm build
+    cd apps/safeclaw && pnpm build
 
 # ============================================================================
 # Maintenance
@@ -116,6 +116,6 @@ clean:
     cd crates/lane && just clean
     cd crates/power && just clean
     cd crates/search && just clean
-    cd crates/safeclaw && just clean
+    cd apps/safeclaw/crates/safeclaw && just clean
     cd apps/os && just clean
-    cd apps/safeclaw-ui && just clean
+    cd apps/safeclaw && just clean

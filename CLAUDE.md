@@ -13,10 +13,13 @@ a3s/                            ← THIS IS THE MONOREPO ROOT
 ├── CLAUDE.md                   # This file
 ├── LICENSE                     # MIT license
 ├── README.md                   # Project overview, architecture, project index
-├── apps/                       # Frontend apps and non-Rust projects
+├── apps/                       # Applications (desktop, web, CLI)
 │   ├── os/                     # A3S platform (NestJS backend + React frontend + CLI)
-│   └── safeclaw-ui/            # [submodule] git@github.com:A3S-Lab/SafeClawUI.git
-├── crates/                     # ALL Rust crates live here (submodules or local)
+│   └── safeclaw/               # SafeClaw desktop app (Tauri + React + embedded gateway)
+│       ├── src/                # React frontend
+│       ├── src-tauri/          # Tauri Rust backend
+│       └── crates/safeclaw/    # SafeClaw gateway library + CLI binary
+├── crates/                     # Shared Rust crates (submodules or local)
 │   ├── box/                    # [submodule] git@github.com:A3S-Lab/Box.git
 │   ├── code/                   # [submodule] git@github.com:A3S-Lab/Code.git — AI coding agent framework (library, not service)
 │   ├── event/                  # [submodule] git@github.com:A3S-Lab/Event.git
@@ -24,7 +27,6 @@ a3s/                            ← THIS IS THE MONOREPO ROOT
 │   ├── lane/                   # [submodule] git@github.com:A3S-Lab/Lane.git
 │   ├── power/                  # [submodule] git@github.com:A3S-Lab/Power.git
 │   ├── common/                 # Shared types: privacy, tools, transport
-│   ├── safeclaw/               # [submodule] git@github.com:A3S-Lab/SafeClaw.git
 │   ├── search/                 # [submodule] git@github.com:A3S-Lab/Search.git
 │   └── updater/                # [submodule] git@github.com:A3S-Lab/Updater.git
 ├── docs/                       # Documentation and architecture diagrams
