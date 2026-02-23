@@ -101,6 +101,9 @@ impl Supervisor {
         // Register/update proxy route now that the real port is known
         if let Some(sub) = &svc.subdomain {
             self.proxy.update(sub.clone(), port).await;
+            tracing::info!("[{name}] starting on :{port} → http://{sub}.localhost");
+        } else {
+            tracing::info!("[{name}] starting on :{port}");
         }
 
         let parts = split_cmd(&svc.cmd);
