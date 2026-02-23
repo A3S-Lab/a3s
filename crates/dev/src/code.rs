@@ -121,24 +121,19 @@ pub fn scaffold(dir: &Path, lang: Language, project_name: &str) -> Result<()> {
     std::fs::create_dir_all(dir).map_err(|e| DevError::Config(format!("create dir: {e}")))?;
 
     let mut env = Environment::new();
-    env.add_template("python/config.hcl", PYTHON_CONFIG)
-        .unwrap();
-    env.add_template("python/skills/hello.py", PYTHON_SKILL)
-        .unwrap();
-    env.add_template("python/agents/demo.py", PYTHON_AGENT)
-        .unwrap();
-    env.add_template("python/requirements.txt", PYTHON_REQUIREMENTS)
-        .unwrap();
-    env.add_template("typescript/config.hcl", TS_CONFIG)
-        .unwrap();
-    env.add_template("typescript/skills/hello.ts", TS_SKILL)
-        .unwrap();
-    env.add_template("typescript/agents/demo.ts", TS_AGENT)
-        .unwrap();
-    env.add_template("typescript/package.json", TS_PACKAGE_JSON)
-        .unwrap();
-    env.add_template("typescript/tsconfig.json", TS_CONFIG_JSON)
-        .unwrap();
+    let add = |env: &mut Environment, name: &'static str, src: &'static str| {
+        env.add_template(name, src)
+            .map_err(|e| DevError::Config(format!("template '{name}': {e}")))
+    };
+    add(&mut env, "python/config.hcl", PYTHON_CONFIG)?;
+    add(&mut env, "python/skills/hello.py", PYTHON_SKILL)?;
+    add(&mut env, "python/agents/demo.py", PYTHON_AGENT)?;
+    add(&mut env, "python/requirements.txt", PYTHON_REQUIREMENTS)?;
+    add(&mut env, "typescript/config.hcl", TS_CONFIG)?;
+    add(&mut env, "typescript/skills/hello.ts", TS_SKILL)?;
+    add(&mut env, "typescript/agents/demo.ts", TS_AGENT)?;
+    add(&mut env, "typescript/package.json", TS_PACKAGE_JSON)?;
+    add(&mut env, "typescript/tsconfig.json", TS_CONFIG_JSON)?;
 
     let ctx = context! { project_name };
 
@@ -151,75 +146,29 @@ pub fn scaffold(dir: &Path, lang: Language, project_name: &str) -> Result<()> {
 fn scaffold_python(dir: &Path, env: &Environment, ctx: minijinja::Value) -> Result<()> {
     std::fs::create_dir_all(dir.join("skills")).map_err(|e| DevError::Config(e.to_string()))?;
     std::fs::create_dir_all(dir.join("agents")).map_err(|e| DevError::Config(e.to_string()))?;
-    render_file(
-        dir,
-        "config.hcl",
-        env.get_template("python/config.hcl")
-            .unwrap()
-            .render(ctx.clone())?,
-    )?;
-    render_file(
-        dir,
-        "skills/hello.py",
-        env.get_template("python/skills/hello.py")
-            .unwrap()
-            .render(ctx.clone())?,
-    )?;
-    render_file(
-        dir,
-        "agents/demo.py",
-        env.get_template("python/agents/demo.py")
-            .unwrap()
-            .render(ctx.clone())?,
-    )?;
-    render_file(
-        dir,
-        "requirements.txt",
-        env.get_template("python/requirements.txt")
-            .unwrap()
-            .render(ctx)?,
-    )?;
+    let get = |name: &str| {
+        env.get_template(name)
+            .map_err(|e| DevError::Config(format!("template '{name}': {e}")))
+    };
+    render_file(dir, "config.hcl", get("python/config.hcl")?.render(ctx.clone())?)?;
+    render_file(dir, "skills/hello.py", get("python/skills/hello.py")?.render(ctx.clone())?)?;
+    render_file(dir, "agents/demo.py", get("python/agents/demo.py")?.render(ctx.clone())?)?;
+    render_file(dir, "requirements.txt", get("python/requirements.txt")?.render(ctx)?)?;
     Ok(())
 }
 
 fn scaffold_typescript(dir: &Path, env: &Environment, ctx: minijinja::Value) -> Result<()> {
     std::fs::create_dir_all(dir.join("skills")).map_err(|e| DevError::Config(e.to_string()))?;
     std::fs::create_dir_all(dir.join("agents")).map_err(|e| DevError::Config(e.to_string()))?;
-    render_file(
-        dir,
-        "config.hcl",
-        env.get_template("typescript/config.hcl")
-            .unwrap()
-            .render(ctx.clone())?,
-    )?;
-    render_file(
-        dir,
-        "skills/hello.ts",
-        env.get_template("typescript/skills/hello.ts")
-            .unwrap()
-            .render(ctx.clone())?,
-    )?;
-    render_file(
-        dir,
-        "agents/demo.ts",
-        env.get_template("typescript/agents/demo.ts")
-            .unwrap()
-            .render(ctx.clone())?,
-    )?;
-    render_file(
-        dir,
-        "package.json",
-        env.get_template("typescript/package.json")
-            .unwrap()
-            .render(ctx.clone())?,
-    )?;
-    render_file(
-        dir,
-        "tsconfig.json",
-        env.get_template("typescript/tsconfig.json")
-            .unwrap()
-            .render(ctx)?,
-    )?;
+    let get = |name: &str| {
+        env.get_template(name)
+            .map_err(|e| DevError::Config(format!("template '{name}': {e}")))
+    };
+    render_file(dir, "config.hcl", get("typescript/config.hcl")?.render(ctx.clone())?)?;
+    render_file(dir, "skills/hello.ts", get("typescript/skills/hello.ts")?.render(ctx.clone())?)?;
+    render_file(dir, "agents/demo.ts", get("typescript/agents/demo.ts")?.render(ctx.clone())?)?;
+    render_file(dir, "package.json", get("typescript/package.json")?.render(ctx.clone())?)?;
+    render_file(dir, "tsconfig.json", get("typescript/tsconfig.json")?.render(ctx)?)?;
     Ok(())
 }
 

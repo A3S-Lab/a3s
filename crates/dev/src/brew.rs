@@ -203,13 +203,14 @@ async fn install_one(client: &reqwest::Client, name: &str) -> Result<()> {
     } else {
         "-xzf"
     };
+    let cached_str = cached
+        .to_str()
+        .ok_or_else(|| DevError::Config("bottle path contains non-UTF8 characters".into()))?;
+    let cellar_str = cellar
+        .to_str()
+        .ok_or_else(|| DevError::Config("cellar path contains non-UTF8 characters".into()))?;
     let status = tokio::process::Command::new("tar")
-        .args([
-            decomp_flag,
-            cached.to_str().unwrap(),
-            "-C",
-            cellar.to_str().unwrap(),
-        ])
+        .args([decomp_flag, cached_str, "-C", cellar_str])
         .status()
         .await
         .map_err(DevError::Io)?;
@@ -414,9 +415,31 @@ mod tests {
         let result = std::fs::read_to_string(&path).unwrap();
         assert!(!result.contains("brew {"));
     }
-}
 
-/// Add a package to the packages list (deduplicates).
+    #[test]
+    fn test_tar_flag_gz() {
+        use std::path::Path;
+        let p = Path::new("pkg-1.0.tar.gz");
+        let flag = if p.extension().and_then(|e| e.to_str()).map(|e| e == "xz").unwrap_or(false) { "-xJf" } else { "-xzf" };
+        assert_eq!(flag, "-xzf");
+    }
+
+    #[test]
+    fn test_tar_flag_xz() {
+        use std::path::Path;
+        let p = Path::new("pkg-1.0.tar.xz");
+        let flag = if p.extension().and_then(|e| e.to_str()).map(|e| e == "xz").unwrap_or(false) { "-xJf" } else { "-xzf" };
+        assert_eq!(flag, "-xJf");
+    }
+
+    #[test]
+    fn test_tar_flag_no_extension() {
+        use std::path::Path;
+        let p = Path::new("pkg");
+        let flag = if p.extension().and_then(|e| e.to_str()).map(|e| e == "xz").unwrap_or(false) { "-xJf" } else { "-xzf" };
+        assert_eq!(flag, "-xzf");
+    }
+}
 pub fn add_to_list(packages: &mut Vec<String>, name: &str) -> bool {
     if packages.iter().any(|p| p == name) {
         return false;

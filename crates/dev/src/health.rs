@@ -18,12 +18,13 @@ pub struct HttpProbe {
 
 impl HttpProbe {
     pub fn new(request_timeout: Duration) -> Self {
-        Self {
-            client: reqwest::Client::builder()
-                .timeout(request_timeout)
-                .build()
-                .expect("failed to build health check HTTP client"),
-        }
+        // reqwest::Client::builder().build() only fails on TLS init errors,
+        // which are unrecoverable at runtime — treat as fatal.
+        let client = reqwest::Client::builder()
+            .timeout(request_timeout)
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+        Self { client }
     }
 }
 

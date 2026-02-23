@@ -104,7 +104,7 @@ async fn handle(
                 .header("cache-control", "no-cache")
                 .header("access-control-allow-origin", "*")
                 .body(StreamBody::new(stream).map_err(|e| e).boxed())
-                .unwrap()
+                .unwrap_or_default()
         }
         (Method::POST, p) if p.starts_with("/api/restart/") => {
             let name = urldecode(&p["/api/restart/".len()..]);
@@ -167,3 +167,52 @@ fn urldecode(s: &str) -> String {
 }
 
 static INDEX_HTML: &str = include_str!("ui.html");
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_urldecode_plain() {
+        assert_eq!(urldecode("hello"), "hello");
+    }
+
+    #[test]
+    fn test_urldecode_space() {
+        assert_eq!(urldecode("hello%20world"), "hello world");
+    }
+
+    #[test]
+    fn test_urldecode_slash() {
+        assert_eq!(urldecode("a%2Fb"), "a/b");
+    }
+
+    #[test]
+    fn test_urldecode_plus() {
+        assert_eq!(urldecode("a%2Bb"), "a+b");
+    }
+
+    #[test]
+    fn test_urldecode_equals_and_ampersand() {
+        assert_eq!(urldecode("a%3Db%26c"), "a=b&c");
+    }
+
+    #[test]
+    fn test_urldecode_incomplete_sequence_passthrough() {
+        // Incomplete %xx — pass through as-is
+        assert_eq!(urldecode("a%2"), "a%2");
+        assert_eq!(urldecode("a%"), "a%");
+    }
+
+    #[test]
+    fn test_urldecode_invalid_hex_passthrough() {
+        // Non-hex chars after % — pass through
+        assert_eq!(urldecode("a%ZZb"), "a%ZZb");
+    }
+
+    #[test]
+    fn test_urldecode_service_name() {
+        assert_eq!(urldecode("my-service"), "my-service");
+        assert_eq!(urldecode("svc%5F1"), "svc_1");
+    }
+}
