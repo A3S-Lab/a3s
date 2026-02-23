@@ -1,0 +1,135 @@
+[package]
+name = "safeclaw"
+version = "0.1.0"
+edition = "2021"
+authors = ["A3S Lab Team"]
+license = "MIT"
+repository = "https://github.com/A3S-Lab/SafeClaw"
+description = "SafeClaw - Secure Personal AI Assistant with TEE Support"
+keywords = ["ai", "assistant", "tee", "privacy", "secure"]
+categories = ["command-line-utilities", "cryptography"]
+
+[lib]
+name = "safeclaw"
+path = "src/lib.rs"
+
+[[bin]]
+name = "safeclaw"
+path = "src/main.rs"
+
+[dependencies]
+# Internal A3S crates
+a3s-common = { version = "0.1", path = "../../../../crates/common" }
+a3s-code = { version = "0.9", path = "../../../../crates/code/core", package = "a3s-code-core" }
+a3s-memory = { version = "0.1", path = "../../../../crates/memory" }
+a3s-event = { version = "0.3", path = "../../../../crates/event" }
+a3s-box-core = { version = "0.6", path = "../../../../crates/box/src/core", optional = true }
+
+# Home directory resolution for sealed storage
+dirs = "5.0"
+
+
+# Regex for privacy classification
+regex = "1.10"
+
+# Base64 for encoding
+base64 = "0.21"
+
+# Async runtime
+tokio = { version = "1.35", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "net", "signal", "io-util"] }
+tokio-stream = { version = "0.1", features = ["net"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+
+# gRPC for service communication
+tonic = "0.11"
+prost = "0.12"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+hcl-rs = "0.18"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Self-update
+a3s-updater = { version = "0.2", path = "../../../../crates/updater" }
+
+# CLI
+clap = { version = "4.4", features = ["derive", "env"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Async utilities
+futures = "0.3"
+async-trait = "0.1"
+async-stream = "0.3"
+
+# HTTP for channels and webhooks
+reqwest = { version = "0.11", features = ["json", "stream"] }
+axum = { version = "0.7", features = ["ws"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# WebSocket
+tokio-tungstenite = "0.21"
+
+# Cryptography for secure communication
+ring = "0.17"
+aes-gcm = "0.10"
+aes = "0.8"
+cbc = { version = "0.1", features = ["block-padding"] }
+x25519-dalek = { version = "2.0", features = ["reusable_secrets"] }
+ed25519-dalek = { version = "2.0", features = ["rand_core"] }
+hkdf = "0.12"
+zeroize = { version = "1.7", features = ["derive"] }
+
+# TLS for RA-TLS channel
+rustls = { version = "0.23", features = ["ring"] }
+tokio-rustls = "0.26"
+sha2 = "0.10"
+rand = "0.8"
+
+# UUID and time
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Bytes
+bytes = "1.5"
+
+# Concurrent hash map for per-key locking
+dashmap = "5"
+
+# OS-level hardening and TEE ioctl (Linux)
+libc = "0.2"
+
+# Agent module dependencies
+dirs-next = "2.0"
+
+[features]
+default = []
+## Enable OS-level process hardening (core dump protection on Linux).
+## Safe to enable on all platforms (no-op on non-Linux).
+hardening = []
+
+[build-dependencies]
+tonic-build = "0.11"
+prost-build = "0.12"
+
+[profile.release]
+opt-level = 3          # Max runtime performance (SafeClaw is a long-running server)
+lto = "thin"           # 10-20% size reduction, moderate build time
+codegen-units = 1      # Better optimization across crate boundaries
+strip = true           # Remove debug symbols from production binary
+panic = "abort"        # Smaller binary, no catch_unwind usage in codebase
+
+[profile.release.build-override]
+opt-level = 0          # Don't waste time optimizing build scripts
+
+[dev-dependencies]
+tempfile = "3.10"
+tokio-test = "0.4"

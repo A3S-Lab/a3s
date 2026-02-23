@@ -1,0 +1,50 @@
+.dv-drop-target {
+    position: relative;
+
+    > .dv-drop-target-dropzone {
+        position: absolute;
+        left: 0px;
+        top: 0px;
+        height: 100%;
+        width: 100%;
+        z-index: 1000;
+        pointer-events: none;
+
+        > .dv-drop-target-selection {
+            position: relative;
+            box-sizing: border-box;
+            height: 100%;
+            width: 100%;
+            background-color: var(--dv-drag-over-background-color);
+            transition: top 70ms ease-out, left 70ms ease-out,
+                width 70ms ease-out, height 70ms ease-out,
+                opacity 0.15s ease-out;
+            will-change: transform;
+            pointer-events: none;
+
+            &.dv-drop-target-top {
+                &.dv-drop-target-small-vertical {
+                    border-top: 1px solid var(--dv-drag-over-border-color);
+                }
+            }
+
+            &.dv-drop-target-bottom {
+                &.dv-drop-target-small-vertical {
+                    border-bottom: 1px solid var(--dv-drag-over-border-color);
+                }
+            }
+
+            &.dv-drop-target-left {
+                &.dv-drop-target-small-horizontal {
+                    border-left: 1px solid var(--dv-drag-over-border-color);
+                }
+            }
+
+            &.dv-drop-target-right {
+                &.dv-drop-target-small-horizontal {
+                    border-right: 1px solid var(--dv-drag-over-border-color);
+                }
+            }
+        }
+    }
+}

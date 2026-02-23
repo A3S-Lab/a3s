@@ -1,0 +1,134 @@
+.markdown {
+	@apply text-[14px] leading-relaxed;
+
+	/* ── Headings ── */
+	h1 {
+		@apply text-xl font-bold mt-5 mb-2 tracking-tight;
+	}
+	h2 {
+		@apply text-lg font-bold mt-4 mb-2 tracking-tight;
+	}
+	h3 {
+		@apply text-base font-semibold mt-3 mb-1.5;
+	}
+	h4 {
+		@apply text-sm font-semibold mt-3 mb-1;
+	}
+
+	/* ── Paragraph ── */
+	p {
+		@apply my-2;
+	}
+	p:first-child {
+		@apply mt-0;
+	}
+	p:last-child {
+		@apply mb-0;
+	}
+
+	/* ── Strong / Emphasis ── */
+	strong {
+		@apply font-semibold text-foreground;
+	}
+
+	/* ── Links ── */
+	a {
+		@apply text-primary underline underline-offset-2 decoration-primary/30 hover:decoration-primary/70 transition-colors;
+	}
+
+	/* ── Lists ── */
+	ul {
+		@apply list-disc pl-5 my-2 space-y-1;
+	}
+	ol {
+		@apply list-decimal pl-5 my-2 space-y-1;
+	}
+	li {
+		@apply text-[14px] leading-relaxed;
+	}
+	li > ul,
+	li > ol {
+		@apply my-0.5;
+	}
+
+	/* ── Blockquote ── */
+	blockquote {
+		@apply border-l-2 border-primary/30 pl-4 my-3 text-muted-foreground;
+	}
+
+	/* ── Horizontal Rule ── */
+	hr {
+		@apply border-border my-4;
+	}
+
+	/* ── Table ── */
+	table {
+		@apply w-full my-3 text-[13px] border-collapse rounded-lg overflow-hidden;
+	}
+	thead {
+		@apply border-b border-border;
+	}
+	thead th {
+		@apply text-left px-3 py-2 font-semibold text-muted-foreground bg-muted/60 text-xs;
+	}
+	thead th:first-child {
+		@apply rounded-tl-md;
+	}
+	thead th:last-child {
+		@apply rounded-tr-md;
+	}
+	tbody tr {
+		@apply border-b border-border/40 last:border-b-0;
+	}
+	tbody td {
+		@apply px-3 py-2;
+	}
+	tbody tr:hover {
+		@apply bg-muted/30;
+	}
+
+	/* ── Code blocks (fenced) ── */
+	@apply [&>pre]:rounded-lg [&>pre]:border [&>pre]:bg-card [&>pre]:my-[8px];
+
+	.shiki-header {
+		@apply flex justify-between items-center py-1.5 px-3 border-b bg-muted/40 rounded-t-lg;
+		.language-label {
+			@apply font-medium text-xs text-muted-foreground;
+		}
+	}
+
+	.shiki-code {
+		.shiki {
+			@apply rounded-b-lg py-3 px-4 text-[13px] leading-relaxed overflow-x-auto;
+		}
+
+		/* Dual theme support: show light in light mode, dark in dark mode */
+		.shiki,
+		.shiki span {
+			color: var(--shiki-light);
+			background-color: transparent;
+		}
+	}
+
+	/* ── Inline code ── */
+	:not(pre) > code {
+		@apply rounded-md bg-muted/70 px-1.5 py-0.5 text-[13px] font-mono text-foreground;
+	}
+
+	/* ── Images ── */
+	img {
+		@apply rounded-lg max-w-full my-3 border;
+	}
+}
+
+/* Dark mode: switch to dark theme colors */
+.dark .markdown .shiki-code {
+	.shiki,
+	.shiki span {
+		color: var(--shiki-dark);
+	}
+}
+
+.dark .markdown :not(pre) > code {
+	@apply bg-muted/50;
+}

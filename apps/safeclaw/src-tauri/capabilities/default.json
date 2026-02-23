@@ -1,0 +1,18 @@
+{
+	"$schema": "https://raw.githubusercontent.com/nicegui-dev/nicegui-tauri/main/capability_schema.json",
+	"identifier": "default",
+	"description": "Default capabilities for SafeClaw",
+	"windows": ["main"],
+	"permissions": [
+		"core:default",
+		"shell:allow-open",
+		"http:default",
+		{
+			"identifier": "http:default",
+			"allow": [
+				{ "url": "https://gamma-api.polymarket.com/**" },
+				{ "url": "https://polymarket.com/**" }
+			]
+		}
+	]
+}

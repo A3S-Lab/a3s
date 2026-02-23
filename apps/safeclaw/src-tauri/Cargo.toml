@@ -1,0 +1,42 @@
+[workspace]
+
+[package]
+name = "safeclaw-ui"
+version = "0.1.0"
+edition = "2021"
+description = "SafeClaw Desktop UI"
+authors = ["A3S Lab Team"]
+license = "MIT"
+
+[lib]
+name = "safeclaw_ui_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+tauri-plugin-http = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Voice input (speech-to-text)
+cpal = "0.15"
+whisper-rs = "0.15"
+vad-rs = "0.1"
+reqwest = { version = "0.12", features = ["stream", "blocking"] }
+futures-util = "0.3"
+num_cpus = "1.16"
+
+# Voice output (text-to-speech)
+piper-rs = "0.1"
+# Pin ort-sys to match ort rc.9 (used by piper-rs); rc.11 has breaking API changes.
+ort-sys = "=2.0.0-rc.9"
+
+# Embedded SafeClaw gateway (in-process server)
+safeclaw = { path = "../crates/safeclaw" }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1.0"

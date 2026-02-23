@@ -1,0 +1,17 @@
+# SafeClaw UI development commands
+
+# Default: show available commands
+default:
+    @just --list
+
+# Start dev server
+dev:
+    pnpm dev
+
+# Build for production
+build:
+    pnpm build
+
+# Clean build artifacts and node_modules
+clean:
+    pnpm clean

@@ -1,0 +1,51 @@
+/* TipTap editor styles */
+
+/* Base editor area */
+.tiptap-content {
+	outline: none;
+	min-height: 100%;
+	padding: 6px 8px;
+	font-size: 0.875rem;
+	line-height: 1.5;
+	caret-color: hsl(var(--primary));
+}
+
+.tiptap-content p {
+	margin: 0;
+}
+
+/* Placeholder when editor is empty */
+.tiptap-empty::before {
+	content: attr(data-placeholder);
+	color: hsl(var(--muted-foreground) / 0.5);
+	pointer-events: none;
+	float: left;
+	height: 0;
+}
+
+/* @mention tag styling */
+.tiptap-mention {
+	display: inline;
+	padding: 1px 4px;
+	border-radius: 4px;
+	font-weight: 500;
+	font-size: 0.8125rem;
+	background: hsl(var(--primary) / 0.1);
+	color: hsl(var(--primary));
+	white-space: nowrap;
+}
+
+/* ProseMirror base */
+.ProseMirror {
+	outline: none;
+	min-height: 100%;
+	height: 100%;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+	content: attr(data-placeholder);
+	color: hsl(var(--muted-foreground) / 0.5);
+	pointer-events: none;
+	float: left;
+	height: 0;
+}
