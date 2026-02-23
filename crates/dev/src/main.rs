@@ -60,6 +60,8 @@ enum Commands {
     },
     /// Validate A3sfile.hcl without starting anything
     Validate,
+    /// Upgrade a3s to the latest version
+    Upgrade,
     /// Add a Homebrew package to A3sfile.hcl and install it
     Add {
         /// Package name(s) to add
@@ -214,6 +216,19 @@ async fn run(cli: Cli) -> Result<()> {
 
         Commands::Logs { service, follow } => {
             stream_logs(service.clone(), *follow).await?;
+        }
+
+        Commands::Upgrade => {
+            let config = a3s_updater::UpdateConfig {
+                binary_name: "a3s",
+                crate_name: "a3s",
+                current_version: env!("CARGO_PKG_VERSION"),
+                github_owner: "A3S-Lab",
+                github_repo: "Dev",
+            };
+            a3s_updater::run_update(&config)
+                .await
+                .map_err(|e| DevError::Config(e.to_string()))?;
         }
 
         Commands::Add { packages } => {

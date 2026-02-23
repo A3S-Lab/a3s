@@ -34,6 +34,7 @@ serde_json     = "1"
 futures-util   = "0.3"
 ring           = "0.17"
 dirs-next      = "2"
+a3s-updater    = { version = "0.2", path = "../updater" }
 
 [dev-dependencies]
 tempfile = "3"
