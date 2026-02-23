@@ -54,6 +54,10 @@ impl LogAggregator {
         });
     }
 
+    pub fn subscribe(&self) -> broadcast::Receiver<LogLine> {
+        self.tx.subscribe()
+    }
+
     /// Return up to `n` recent log lines, optionally filtered by service.
     pub fn recent(&self, service: Option<&str>, n: usize) -> Vec<LogLine> {
         let history = self.history.lock().unwrap();

@@ -57,6 +57,10 @@ impl Supervisor {
         )
     }
 
+    pub fn subscribe_logs(&self) -> tokio::sync::broadcast::Receiver<crate::log::LogLine> {
+        self.log.subscribe()
+    }
+
     pub async fn start_all(&self) -> Result<()> {
         let graph = DependencyGraph::from_config(&self.config)?;
         let names: Vec<String> = graph.start_order().to_vec();

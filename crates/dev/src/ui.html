@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>a3s dev</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #1a1a2e; --sidebar: #16213e; --header: #0f3460;
+    --accent: #e94560; --green: #4caf50; --yellow: #ffc107;
+    --red: #f44336; --blue: #2196f3; --dim: #6b7280;
+    --text: #e2e8f0; --text-dim: #94a3b8; --border: #2d3748;
+    --log-bg: #0d1117; --row-hover: #1e293b; --selected: #1e3a5f;
+  }
+  body { font-family: 'SF Mono','Fira Code','Cascadia Code',monospace; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; font-size: 13px; }
+  header { background: var(--header); padding: 0 16px; height: 40px; display: flex; align-items: center; gap: 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  header .logo { font-weight: 700; font-size: 15px; color: var(--accent); letter-spacing: 1px; }
+  header .subtitle { color: var(--text-dim); font-size: 11px; }
+  header .spacer { flex: 1; }
+  header .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  header .uptime { color: var(--text-dim); font-size: 11px; }
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .sidebar { width: 300px; min-width: 200px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+  .sidebar-header { padding: 8px 12px; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; color: var(--text-dim); text-transform: uppercase; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .sidebar-header .count { background: var(--border); border-radius: 10px; padding: 1px 6px; font-size: 10px; color: var(--text-dim); }
+  .service-list { flex: 1; overflow-y: auto; }
+  .service-list::-webkit-scrollbar { width: 4px; }
+  .service-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .service-row { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid rgba(45,55,72,.5); display: flex; flex-direction: column; gap: 4px; transition: background .1s; position: relative; }
+  .service-row:hover { background: var(--row-hover); }
+  .service-row.selected { background: var(--selected); }
+  .service-row.selected::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); }
+  .row-top { display: flex; align-items: center; gap: 8px; }
+  .state-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .state-dot.running { background: var(--green); }
+  .state-dot.starting,.state-dot.restarting { background: var(--yellow); animation: pulse 1s infinite; }
+  .state-dot.stopped { background: var(--dim); }
+  .state-dot.failed,.state-dot.unhealthy { background: var(--red); }
+  .state-dot.pending { background: var(--blue); }
+  .svc-name { font-weight: 600; font-size: 13px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .svc-state { font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .svc-state.running { background: rgba(76,175,80,.15); color: var(--green); }
+  .svc-state.starting,.svc-state.restarting { background: rgba(255,193,7,.15); color: var(--yellow); }
+  .svc-state.stopped { background: rgba(107,114,128,.15); color: var(--dim); }
+  .svc-state.failed,.svc-state.unhealthy { background: rgba(244,67,54,.15); color: var(--red); }
+  .svc-state.pending { background: rgba(33,150,243,.15); color: var(--blue); }
+  .row-meta { display: flex; gap: 12px; padding-left: 16px; flex-wrap: wrap; }
+  .meta-item { font-size: 11px; color: var(--text-dim); display: flex; align-items: center; gap: 3px; }
+  .meta-item a { color: var(--blue); text-decoration: none; }
+  .meta-item a:hover { text-decoration: underline; }
+  .row-actions { display: none; gap: 4px; padding-left: 16px; margin-top: 2px; }
+  .service-row:hover .row-actions,.service-row.selected .row-actions { display: flex; }
+  .btn { font-size: 10px; padding: 2px 8px; border-radius: 3px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; font-family: inherit; transition: all .1s; }
+  .btn:hover { background: var(--border); color: var(--text); }
+  .btn.restart:hover { border-color: var(--yellow); color: var(--yellow); }
+  .btn.stop:hover { border-color: var(--red); color: var(--red); }
+  .log-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--log-bg); }
+  .log-header { padding: 8px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-shrink: 0; background: var(--sidebar); }
+  .log-title { font-weight: 600; font-size: 13px; }
+  .log-title .svc-label { color: var(--accent); }
+  .log-header .spacer { flex: 1; }
+  .log-header .hint { font-size: 10px; color: var(--dim); }
+  .log-output { flex: 1; overflow-y: auto; padding: 8px 16px; font-size: 12px; line-height: 1.6; }
+  .log-output::-webkit-scrollbar { width: 6px; }
+  .log-output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .log-line { display: flex; gap: 8px; padding: 1px 0; }
+  .log-line:hover { background: rgba(255,255,255,.03); }
+  .log-ts { color: var(--dim); flex-shrink: 0; font-size: 11px; user-select: none; }
+  .log-svc { flex-shrink: 0; font-size: 11px; font-weight: 600; min-width: 80px; }
+  .log-text { color: var(--text); white-space: pre-wrap; word-break: break-all; }
+  .log-empty { color: var(--dim); padding: 32px; text-align: center; font-size: 12px; }
+  footer { height: 22px; background: var(--header); border-top: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; gap: 16px; font-size: 10px; color: var(--text-dim); flex-shrink: 0; }
+  footer .ok { color: var(--green); }
+  footer .warn { color: var(--yellow); }
+  footer .err { color: var(--red); }
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">a3s</span>
+  <span class="subtitle">dev orchestration</span>
+  <div class="spacer"></div>
+  <div class="status-dot" id="conn-dot"></div>
+  <span class="uptime" id="uptime-label">connecting...</span>
+</header>
+<div class="main">
+  <div class="sidebar">
+    <div class="sidebar-header">Services <span class="count" id="svc-count">0</span></div>
+    <div class="service-list" id="service-list"></div>
+  </div>
+  <div class="log-panel">
+    <div class="log-header">
+      <span class="log-title">Logs — <span class="svc-label" id="log-title">all services</span></span>
+      <div class="spacer"></div>
+      <button class="btn active" id="btn-all" onclick="selectService(null)">All</button>
+      <span class="hint" id="autoscroll-hint">↓ auto</span>
+    </div>
+    <div class="log-output" id="log-output"><div class="log-empty">Waiting for logs...</div></div>
+  </div>
+</div>
+<footer>
+  <span id="footer-running" class="ok">0 running</span>
+  <span id="footer-stopped" class="warn">0 stopped</span>
+  <span id="footer-failed" class="err">0 failed</span>
+  <div style="flex:1"></div>
+  <span id="footer-url"></span>
+</footer>
+<script>
+const MAX_LINES = 2000;
+const POLL_MS = 1500;
+let selected = null, logLines = [], autoScroll = true, startTime = Date.now();
+const COLORS = ['#60a5fa','#34d399','#fbbf24','#f472b6','#a78bfa','#38bdf8','#4ade80','#fb923c'];
+const colorMap = {}; let ci = 0;
+function color(n) { if (!colorMap[n]) colorMap[n] = COLORS[ci++ % COLORS.length]; return colorMap[n]; }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmt(s) {
+  s = esc(s);
+  // ANSI color stripping (basic)
+  s = s.replace(/\x1b\[[0-9;]*m/g,'');
+  return s;
+}
+function uptime(s) {
+  s = Math.floor(s);
+  if (s < 60) return s+'s';
+  if (s < 3600) return Math.floor(s/60)+'m'+(s%60)+'s';
+  return Math.floor(s/3600)+'h'+Math.floor((s%3600)/60)+'m';
+}
+
+// ── Status polling ────────────────────────────────────────────────────────────
+async function poll() {
+  try {
+    const r = await fetch('/api/status');
+    const rows = await r.json();
+    renderServices(rows);
+    document.getElementById('conn-dot').style.background = 'var(--green)';
+    document.getElementById('uptime-label').textContent = uptime((Date.now()-startTime)/1000);
+  } catch(e) {
+    document.getElementById('conn-dot').style.background = 'var(--red)';
+    document.getElementById('uptime-label').textContent = 'disconnected';
+  }
+}
+
+function renderServices(rows) {
+  document.getElementById('svc-count').textContent = rows.length;
+  const list = document.getElementById('service-list');
+  list.innerHTML = '';
+  rows.forEach(row => {
+    const el = document.createElement('div');
+    el.className = 'service-row' + (selected === row.name ? ' selected' : '');
+    el.dataset.name = row.name;
+    el.onclick = () => selectService(row.name);
+    const c = color(row.name);
+    const url = row.subdomain ? `http://${row.subdomain}.localhost` : `http://localhost:${row.port}`;
+    el.innerHTML = `
+      <div class="row-top">
+        <div class="state-dot ${row.state}"></div>
+        <span class="svc-name" style="color:${c}">${row.name}</span>
+        <span class="svc-state ${row.state}">${row.state}</span>
+      </div>
+      <div class="row-meta">
+        <span class="meta-item">:${row.port}</span>
+        <span class="meta-item"><a href="${url}" target="_blank">${url}</a></span>
+        ${row.pid ? `<span class="meta-item">pid ${row.pid}</span>` : ''}
+        <span class="meta-item">↑ ${row.uptime_secs != null ? uptime(row.uptime_secs) : '-'}</span>
+      </div>
+      <div class="row-actions">
+        <button class="btn restart" onclick="doRestart(event,'${row.name}')">restart</button>
+        <button class="btn stop" onclick="doStop(event,'${row.name}')">stop</button>
+      </div>`;
+    list.appendChild(el);
+  });
+  const run = rows.filter(r=>r.state==='running').length;
+  const stp = rows.filter(r=>r.state==='stopped'||r.state==='pending').length;
+  const fail = rows.filter(r=>r.state==='failed'||r.state==='unhealthy').length;
+  document.getElementById('footer-running').textContent = run+' running';
+  document.getElementById('footer-stopped').textContent = stp+' stopped';
+  document.getElementById('footer-failed').textContent = fail+' failed';
+}
+
+// ── SSE log stream ────────────────────────────────────────────────────────────
+let evtSrc = null;
+function connectLogs() {
+  if (evtSrc) { evtSrc.close(); evtSrc = null; }
+  const url = '/api/logs' + (selected ? '?service='+encodeURIComponent(selected) : '');
+  evtSrc = new EventSource(url);
+  evtSrc.onmessage = e => {
+    try { const m = JSON.parse(e.data); appendLog(m.service, m.line); } catch(_){}
+  };
+  evtSrc.onerror = () => setTimeout(connectLogs, 2000);
+}
+
+function appendLog(svc, text) {
+  const out = document.getElementById('log-output');
+  const empty = out.querySelector('.log-empty');
+  if (empty) empty.remove();
+  if (selected && svc !== selected) return;
+  const el = document.createElement('div');
+  el.className = 'log-line';
+  const ts = new Date().toLocaleTimeString('en',{hour12:false});
+  el.innerHTML = `<span class="log-ts">${ts}</span><span class="log-svc" style="color:${color(svc)}">[${svc}]</span><span class="log-text">${fmt(text)}</span>`;
+  out.appendChild(el);
+  logLines.push(el);
+  while (logLines.length > MAX_LINES) logLines.shift().remove();
+  if (autoScroll) out.scrollTop = out.scrollHeight;
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+function selectService(name) {
+  selected = name;
+  document.getElementById('log-title').textContent = name || 'all services';
+  document.getElementById('log-output').innerHTML = '<div class="log-empty">Loading...</div>';
+  logLines = [];
+  connectLogs();
+  document.querySelectorAll('.service-row').forEach(el => el.classList.toggle('selected', el.dataset.name === name));
+  document.getElementById('btn-all').classList.toggle('active', !name);
+}
+async function doRestart(e, name) { e.stopPropagation(); await fetch('/api/restart/'+encodeURIComponent(name),{method:'POST'}); }
+async function doStop(e, name) { e.stopPropagation(); await fetch('/api/stop/'+encodeURIComponent(name),{method:'POST'}); }
+
+document.getElementById('log-output').addEventListener('scroll', function() {
+  autoScroll = this.scrollHeight - this.scrollTop - this.clientHeight < 40;
+  document.getElementById('autoscroll-hint').style.opacity = autoScroll ? '1' : '0.3';
+});
+
+document.getElementById('footer-url').textContent = location.href;
+poll();
+setInterval(poll, POLL_MS);
+connectLogs();
+</script>
+</body>
+</html>

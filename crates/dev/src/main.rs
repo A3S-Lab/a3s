@@ -17,6 +17,7 @@ mod log;
 mod proxy;
 mod state;
 mod supervisor;
+mod ui;
 mod watcher;
 
 use config::DevConfig;
@@ -48,6 +49,12 @@ enum Commands {
         /// Run as background daemon (detach from terminal)
         #[arg(short, long)]
         detach: bool,
+        /// Disable the web UI (default: enabled on port 10350)
+        #[arg(long)]
+        no_ui: bool,
+        /// Web UI port
+        #[arg(long, default_value_t = ui::DEFAULT_UI_PORT)]
+        ui_port: u16,
     },
     /// Stop all (or named) services
     Down {
@@ -142,7 +149,7 @@ async fn main() {
 
 async fn run(cli: Cli) -> Result<()> {
     match &cli.command {
-        Commands::Up { services, detach } => {
+        Commands::Up { services, detach, no_ui, ui_port } => {
             if *detach {
                 // Re-launch self as background daemon, dropping --detach flag
                 let exe = std::env::current_exe()
@@ -191,6 +198,21 @@ async fn run(cli: Cli) -> Result<()> {
             let sup = Arc::new(sup);
 
             tokio::spawn(sup.clone().serve_ipc());
+
+            // Start web UI
+            if !no_ui {
+                let ui_port = *ui_port;
+                let sup_ui = sup.clone();
+                tokio::spawn(async move { ui::serve(sup_ui, ui_port).await });
+                println!("{} ui     http://localhost:{}", "→".cyan(), ui_port);
+                // Open browser after a short delay
+                tokio::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                    let _ = std::process::Command::new("open")
+                        .arg(format!("http://localhost:{ui_port}"))
+                        .spawn();
+                });
+            }
 
             if services.is_empty() {
                 sup.start_all().await?;
