@@ -151,9 +151,12 @@ impl DevConfig {
     }
 
     pub fn validate(&self) -> Result<()> {
-        // Port conflict check
+        // Port conflict check — skip port 0 (auto-assigned at runtime)
         let mut seen: HashMap<u16, &str> = HashMap::new();
         for (name, svc) in &self.service {
+            if svc.port == 0 {
+                continue;
+            }
             if let Some(other) = seen.insert(svc.port, name.as_str()) {
                 return Err(DevError::PortConflict {
                     a: other.to_string(),

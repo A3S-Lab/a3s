@@ -13,6 +13,7 @@ use crate::graph::DependencyGraph;
 use crate::health::HealthChecker;
 use crate::ipc::{socket_path, IpcRequest, IpcResponse, StatusRow};
 use crate::log::LogAggregator;
+use crate::proxy::ProxyRouter;
 use crate::state::ServiceState;
 use crate::watcher::spawn_watcher;
 
@@ -38,10 +39,11 @@ pub struct Supervisor {
     handles: Arc<RwLock<HashMap<String, ServiceHandle>>>,
     events: broadcast::Sender<SupervisorEvent>,
     log: Arc<LogAggregator>,
+    proxy: Arc<ProxyRouter>,
 }
 
 impl Supervisor {
-    pub fn new(config: Arc<DevConfig>) -> (Self, broadcast::Receiver<SupervisorEvent>) {
+    pub fn new(config: Arc<DevConfig>, proxy: Arc<ProxyRouter>) -> (Self, broadcast::Receiver<SupervisorEvent>) {
         let (events, rx) = broadcast::channel(4096);
         let (log, log_rx) = LogAggregator::new();
         let log = Arc::new(log);
@@ -53,6 +55,7 @@ impl Supervisor {
                 handles: Arc::new(RwLock::new(HashMap::new())),
                 events,
                 log,
+                proxy,
             },
             rx,
         )
@@ -91,15 +94,20 @@ impl Supervisor {
             svc.port
         };
 
-        let mut parts = svc.cmd.split_whitespace();
-        let program = parts.next().unwrap_or("sh");
-        let args: Vec<&str> = parts.collect();
+        // Register/update proxy route now that the real port is known
+        if let Some(sub) = &svc.subdomain {
+            self.proxy.update(sub.clone(), port).await;
+        }
+
+        let parts = split_cmd(&svc.cmd);
+        let program = parts.first().map(|s| s.as_str()).unwrap_or("sh");
+        let args = &parts[1..];
 
         // Framework-aware port injection
-        let extra_args = framework_port_args(program, port);
+        let extra_args = framework_port_args(&parts, port);
 
         let mut cmd = Command::new(program);
-        cmd.args(&args)
+        cmd.args(args)
             .args(&extra_args)
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
@@ -163,6 +171,7 @@ impl Supervisor {
             let events = self.events.clone();
             let config = self.config.clone();
             let log = self.log.clone();
+            let proxy = self.proxy.clone();
             let svc_name = name.to_string();
 
             tokio::spawn(async move {
@@ -215,15 +224,27 @@ impl Supervisor {
                         None => break,
                     };
 
-                    let mut parts = svc_def.cmd.split_whitespace();
-                    let program = parts.next().unwrap_or("sh");
-                    let args: Vec<&str> = parts.collect();
+                    let parts = split_cmd(&svc_def.cmd);
+                    let program = parts.first().map(|s| s.as_str()).unwrap_or("sh");
+                    let args = parts[1..].to_vec();
+
+                    // Reuse the same port that was originally assigned
+                    let port = handles
+                        .read()
+                        .await
+                        .get(&svc_name)
+                        .map(|h| h.port)
+                        .unwrap_or(svc_def.port);
+                    let extra_args = framework_port_args(&parts, port);
 
                     let mut cmd = tokio::process::Command::new(program);
                     cmd.args(&args)
+                        .args(&extra_args)
                         .stdout(std::process::Stdio::piped())
                         .stderr(std::process::Stdio::piped())
-                        .envs(&svc_def.env);
+                        .envs(&svc_def.env)
+                        .env("PORT", port.to_string())
+                        .env("HOST", "127.0.0.1");
                     if let Some(dir) = &svc_def.dir {
                         cmd.current_dir(dir);
                     }
@@ -240,6 +261,10 @@ impl Supervisor {
                             if let Some(stdout) = child.stdout.take() {
                                 log.attach(svc_name.clone(), idx, stdout);
                             }
+                            // Re-register proxy route (port unchanged, but ensures route is live)
+                            if let Some(sub) = &svc_def.subdomain {
+                                proxy.update(sub.clone(), port).await;
+                            }
                             handles.write().await.insert(
                                 svc_name.clone(),
                                 ServiceHandle {
@@ -249,7 +274,7 @@ impl Supervisor {
                                         since: Instant::now(),
                                     },
                                     color_idx: idx,
-                                    port: handles.read().await.get(&svc_name).map(|h| h.port).unwrap_or(0),
+                                    port,
                                 },
                             );
                             let _ = events.send(SupervisorEvent::StateChanged {
@@ -331,10 +356,10 @@ impl Supervisor {
                             .map(|h| h.port)
                             .unwrap_or(svc_def.port);
 
-                        let mut parts = svc_def.cmd.split_whitespace();
-                        let program = parts.next().unwrap_or("sh");
-                        let args: Vec<&str> = parts.collect();
-                        let extra_args = framework_port_args(program, existing_port);
+                        let parts = split_cmd(&svc_def.cmd);
+                        let program = parts.first().map(|s| s.as_str()).unwrap_or("sh");
+                        let args = parts[1..].to_vec();
+                        let extra_args = framework_port_args(&parts, existing_port);
 
                         let mut cmd = Command::new(program);
                         cmd.args(&args)
@@ -634,26 +659,69 @@ fn free_port() -> Option<u16> {
     Some(listener.local_addr().ok()?.port())
 }
 
+/// Shell-style command splitting: handles single/double quotes and backslash escapes.
+/// e.g. `node server.js --title 'hello world'` → ["node", "server.js", "--title", "hello world"]
+fn split_cmd(cmd: &str) -> Vec<String> {
+    let mut args = Vec::new();
+    let mut current = String::new();
+    let mut chars = cmd.chars().peekable();
+    let mut in_single = false;
+    let mut in_double = false;
+
+    while let Some(ch) = chars.next() {
+        match ch {
+            '\\' if !in_single => {
+                if let Some(next) = chars.next() {
+                    current.push(next);
+                }
+            }
+            '\'' if !in_double => in_single = !in_single,
+            '"' if !in_single => in_double = !in_double,
+            ' ' | '\t' if !in_single && !in_double => {
+                if !current.is_empty() {
+                    args.push(current.clone());
+                    current.clear();
+                }
+            }
+            _ => current.push(ch),
+        }
+    }
+    if !current.is_empty() {
+        args.push(current);
+    }
+    args
+}
+
 /// Detect framework from the command and inject `--port <port>` if needed.
 /// Some frameworks ignore PORT env var and require an explicit CLI flag.
-fn framework_port_args(program: &str, port: u16) -> Vec<String> {
+/// `parts` is the full split command (program + args).
+fn framework_port_args(parts: &[String], port: u16) -> Vec<String> {
     let p = port.to_string();
-    match program {
-        // vite, vite preview
-        "vite" => vec!["--port".into(), p],
-        // next dev
-        "next" => vec!["--port".into(), p],
-        // astro dev
-        "astro" => vec!["--port".into(), p],
-        // nuxt dev
-        "nuxt" => vec!["--port".into(), p],
-        // remix dev
-        "remix" => vec!["--port".into(), p],
-        // svelte-kit dev
-        "svelte-kit" => vec!["--port".into(), p],
-        // wrangler dev (Cloudflare Workers)
-        "wrangler" => vec!["--port".into(), p],
-        // npx / pnpm / yarn — check second token via env, can't here; skip
-        _ => vec![],
+    // Direct framework binaries
+    let direct = ["vite", "next", "astro", "nuxt", "remix", "svelte-kit", "wrangler"];
+    // Package runners that delegate to a framework as the second token
+    let runners = ["npx", "pnpm", "yarn", "bunx"];
+
+    let program = parts.first().map(|s| s.as_str()).unwrap_or("");
+    let second = parts.get(1).map(|s| s.as_str()).unwrap_or("");
+
+    let framework = if direct.contains(&program) {
+        program
+    } else if runners.contains(&program) {
+        // e.g. `npx vite`, `pnpm exec next`, `yarn vite`
+        // skip "exec"/"run"/"dlx" shims and look at the next meaningful token
+        if second == "exec" || second == "run" || second == "dlx" {
+            parts.get(2).map(|s| s.as_str()).unwrap_or("")
+        } else {
+            second
+        }
+    } else {
+        ""
+    };
+
+    if direct.contains(&framework) {
+        vec!["--port".into(), p]
+    } else {
+        vec![]
     }
 }

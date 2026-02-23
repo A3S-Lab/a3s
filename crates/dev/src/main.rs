@@ -159,6 +159,13 @@ async fn run(cli: Cli) -> Result<()> {
                     cli.file.display().to_string(),
                     "up".into(),
                 ];
+                if *no_ui {
+                    args.push("--no-ui".into());
+                }
+                if *ui_port != ui::DEFAULT_UI_PORT {
+                    args.push("--ui-port".into());
+                    args.push(ui_port.to_string());
+                }
                 args.extend(services.iter().cloned());
 
                 std::process::Command::new(&exe)
@@ -184,17 +191,13 @@ async fn run(cli: Cli) -> Result<()> {
             }
 
             // Start proxy
-            let proxy = proxy::ProxyRouter::new(cfg.dev.proxy_port);
-            for (_name, svc) in &cfg.service {
-                if let Some(sub) = &svc.subdomain {
-                    proxy.register(sub.clone(), svc.port).await;
-                }
-            }
+            let proxy = Arc::new(proxy::ProxyRouter::new(cfg.dev.proxy_port));
             let proxy_port = cfg.dev.proxy_port;
-            tokio::spawn(async move { proxy.run().await });
+            let proxy_run = proxy.clone();
+            tokio::spawn(async move { proxy_run.run().await });
             println!("{} proxy  http://*.localhost:{}", "→".cyan(), proxy_port);
 
-            let (sup, _) = Supervisor::new(cfg.clone());
+            let (sup, _) = Supervisor::new(cfg.clone(), proxy);
             let sup = Arc::new(sup);
 
             tokio::spawn(sup.clone().serve_ipc());

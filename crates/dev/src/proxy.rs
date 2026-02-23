@@ -12,6 +12,7 @@ use hyper_util::rt::TokioExecutor;
 use tokio::sync::RwLock;
 
 type Routes = Arc<RwLock<HashMap<String, u16>>>;
+type HttpClient = Client<hyper_util::client::legacy::connect::HttpConnector, Full<Bytes>>;
 
 /// Minimal reverse proxy: binds `proxy_port`, routes `<subdomain>.localhost` -> `127.0.0.1:<port>`.
 pub struct ProxyRouter {
@@ -27,11 +28,12 @@ impl ProxyRouter {
         }
     }
 
-    pub async fn register(&self, subdomain: String, port: u16) {
+    /// Register or update a route (used when port is resolved at startup).
+    pub async fn update(&self, subdomain: String, port: u16) {
         self.routes.write().await.insert(subdomain, port);
     }
 
-    pub async fn run(self) {
+    pub async fn run(self: Arc<Self>) {
         let addr: SocketAddr = ([127, 0, 0, 1], self.port).into();
         let routes = self.routes.clone();
 
@@ -45,6 +47,9 @@ impl ProxyRouter {
 
         tracing::info!("proxy listening on http://localhost:{}", self.port);
 
+        // Single shared HTTP client — connection pool reused across all requests
+        let client: HttpClient = Client::builder(TokioExecutor::new()).build_http();
+
         loop {
             let (stream, _) = match listener.accept().await {
                 Ok(s) => s,
@@ -55,11 +60,11 @@ impl ProxyRouter {
             };
 
             let routes = routes.clone();
+            let client = client.clone();
             tokio::spawn(async move {
                 let io = hyper_util::rt::TokioIo::new(stream);
                 let svc = hyper::service::service_fn(move |req| {
-                    let routes = routes.clone();
-                    handle(req, routes)
+                    handle(req, routes.clone(), client.clone())
                 });
                 if let Err(e) = hyper::server::conn::http1::Builder::new()
                     .serve_connection(io, svc)
@@ -75,6 +80,7 @@ impl ProxyRouter {
 async fn handle(
     req: Request<Incoming>,
     routes: Routes,
+    client: HttpClient,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
     // Extract subdomain from Host header (e.g. "power.localhost:7080" -> "power")
     let host = req
@@ -99,10 +105,6 @@ async fn handle(
             .body(Full::new(Bytes::from(body)))
             .unwrap());
     };
-
-    // Forward request to upstream
-    let client: Client<_, Full<Bytes>> =
-        Client::builder(TokioExecutor::new()).build_http();
 
     let uri = format!(
         "http://127.0.0.1:{}{}",
@@ -151,3 +153,4 @@ async fn handle(
             .unwrap()),
     }
 }
+
