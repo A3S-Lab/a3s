@@ -301,13 +301,10 @@ async fn run(cli: Cli) -> Result<()> {
             // a3s ecosystem tools
             let tools = [
                 ("box",      "a3s-box",      "A3S-Lab/Box"),
-                ("code",     "a3s-code",     "A3S-Lab/Code"),
                 ("gateway",  "a3s-gateway",  "A3S-Lab/Gateway"),
-                ("lane",     "a3s-lane",     "A3S-Lab/Lane"),
                 ("power",    "a3s-power",    "A3S-Lab/Power"),
                 ("search",   "a3s-search",   "A3S-Lab/Search"),
                 ("safeclaw", "a3s-safeclaw", "A3S-Lab/SafeClaw"),
-                ("event",    "a3s-event",    "A3S-Lab/Event"),
             ];
 
             println!("{:<12} {:<16} {}", "TOOL".bold(), "BINARY".bold(), "STATUS".bold());
@@ -363,13 +360,10 @@ fn which_binary(name: &str) -> bool {
 fn ecosystem_tool(alias: &str) -> Option<(&'static str, &'static str, &'static str)> {
     match alias {
         "box"      => Some(("a3s-box",      "A3S-Lab", "Box")),
-        "code"     => Some(("a3s-code",     "A3S-Lab", "Code")),
         "gateway"  => Some(("a3s-gateway",  "A3S-Lab", "Gateway")),
-        "lane"     => Some(("a3s-lane",     "A3S-Lab", "Lane")),
         "power"    => Some(("a3s-power",    "A3S-Lab", "Power")),
         "search"   => Some(("a3s-search",   "A3S-Lab", "Search")),
         "safeclaw" => Some(("a3s-safeclaw", "A3S-Lab", "SafeClaw")),
-        "event"    => Some(("a3s-event",    "A3S-Lab", "Event")),
         _ => None,
     }
 }
