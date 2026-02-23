@@ -11,7 +11,7 @@ name = "a3s"
 path = "src/main.rs"
 
 [dependencies]
-tokio          = { version = "1", features = ["rt-multi-thread", "macros", "process", "sync", "time", "io-util", "net", "signal"] }
+tokio          = { version = "1", features = ["rt-multi-thread", "macros", "process", "sync", "time", "io-util", "net", "signal", "fs"] }
 hcl-rs         = "0.18"
 serde          = { version = "1", features = ["derive"] }
 clap           = { version = "4", features = ["derive"] }
@@ -19,7 +19,7 @@ thiserror      = "1"
 tracing        = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 notify         = "7"
-reqwest        = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+reqwest        = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 hyper          = { version = "1", features = ["http1", "server", "client"] }
 hyper-util     = { version = "0.1", features = ["server-auto", "tokio", "client-legacy"] }
 http-body-util = "0.1"
@@ -31,6 +31,9 @@ bytes          = "1"
 http           = "1"
 nix            = { version = "0.29", features = ["signal", "process"] }
 serde_json     = "1"
+futures-util   = "0.3"
+ring           = "0.17"
+dirs-next      = "2"
 
 [dev-dependencies]
 tempfile = "3"

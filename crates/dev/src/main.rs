@@ -6,6 +6,7 @@ use colored::Colorize;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
+mod brew;
 mod config;
 mod error;
 mod graph;
@@ -46,21 +47,31 @@ enum Commands {
         services: Vec<String>,
     },
     /// Restart a service
-    Restart {
-        service: String,
-    },
+    Restart { service: String },
     /// Show service status
     Status,
     /// Tail logs (all services or one)
     Logs {
         /// Filter to a specific service
         service: Option<String>,
-        /// Keep streaming (default: true)
+        /// Keep streaming
         #[arg(short, long, default_value_t = true)]
         follow: bool,
     },
     /// Validate A3sfile.hcl without starting anything
     Validate,
+    /// Add a Homebrew package to A3sfile.hcl and install it
+    Add {
+        /// Package name(s) to add
+        packages: Vec<String>,
+    },
+    /// Remove a Homebrew package from A3sfile.hcl and uninstall it
+    Remove {
+        /// Package name(s) to remove
+        packages: Vec<String>,
+    },
+    /// Install all brew packages declared in A3sfile.hcl
+    Install,
 }
 
 #[tokio::main]
@@ -83,9 +94,14 @@ async fn main() {
 
 async fn run(cli: Cli) -> Result<()> {
     match &cli.command {
-        // `up` is the daemon — it owns the process and IPC socket
         Commands::Up { services } => {
             let cfg = Arc::new(DevConfig::from_file(&cli.file)?);
+
+            // Install missing brew packages before starting services
+            let missing = brew::missing_packages(&cfg.brew.packages);
+            if !missing.is_empty() {
+                brew::install_packages(&missing).await?;
+            }
 
             // Start proxy
             let proxy = proxy::ProxyRouter::new(cfg.dev.proxy_port);
@@ -101,10 +117,8 @@ async fn run(cli: Cli) -> Result<()> {
             let (sup, _) = Supervisor::new(cfg.clone());
             let sup = Arc::new(sup);
 
-            // Start IPC server
             tokio::spawn(sup.clone().serve_ipc());
 
-            // Start services
             if services.is_empty() {
                 sup.start_all().await?;
             } else {
@@ -113,19 +127,23 @@ async fn run(cli: Cli) -> Result<()> {
                 }
             }
 
-            // Wait for Ctrl-C
             tokio::signal::ctrl_c().await.ok();
             println!("\n{} shutting down...", "→".yellow());
             sup.stop_all().await;
-
-            // Clean up socket
             let _ = std::fs::remove_file(socket_path());
         }
 
-        // All other commands are IPC clients
         Commands::Validate => {
             let cfg = Arc::new(DevConfig::from_file(&cli.file)?);
-            println!("{} A3sfile.hcl is valid ({} services)", "✓".green(), cfg.service.len());
+            println!(
+                "{} A3sfile.hcl is valid ({} services, {} brew packages)",
+                "✓".green(),
+                cfg.service.len(),
+                cfg.brew.packages.len()
+            );
+            if !cfg.brew.packages.is_empty() {
+                println!("  brew: {}", cfg.brew.packages.join(", ").dimmed());
+            }
             for (name, svc) in &cfg.service {
                 let deps = if svc.depends_on.is_empty() {
                     String::new()
@@ -197,12 +215,68 @@ async fn run(cli: Cli) -> Result<()> {
         Commands::Logs { service, follow } => {
             stream_logs(service.clone(), *follow).await?;
         }
+
+        Commands::Add { packages } => {
+            if packages.is_empty() {
+                return Err(DevError::Config("specify at least one package".into()));
+            }
+            let mut cfg = DevConfig::from_file(&cli.file)?;
+            let mut added = vec![];
+            for pkg in packages {
+                if brew::add_to_list(&mut cfg.brew.packages, pkg) {
+                    added.push(pkg.clone());
+                } else {
+                    println!("  {} {} already in A3sfile.hcl", "·".dimmed(), pkg.cyan());
+                }
+            }
+            if !added.is_empty() {
+                brew::write_brew_block(&cli.file, &cfg.brew.packages)?;
+                brew::install_packages(&added).await?;
+                println!("{} added: {}", "✓".green(), added.join(", ").cyan());
+            }
+        }
+
+        Commands::Remove { packages } => {
+            if packages.is_empty() {
+                return Err(DevError::Config("specify at least one package".into()));
+            }
+            let mut cfg = DevConfig::from_file(&cli.file)?;
+            let mut removed = vec![];
+            for pkg in packages {
+                if brew::remove_from_list(&mut cfg.brew.packages, pkg) {
+                    removed.push(pkg.clone());
+                } else {
+                    println!("  {} {} not in A3sfile.hcl", "·".dimmed(), pkg.cyan());
+                }
+            }
+            if !removed.is_empty() {
+                brew::write_brew_block(&cli.file, &cfg.brew.packages)?;
+                for pkg in &removed {
+                    brew::uninstall_package(pkg).await?;
+                }
+                println!("{} removed: {}", "✓".green(), removed.join(", ").cyan());
+            }
+        }
+
+        Commands::Install => {
+            let cfg = DevConfig::from_file(&cli.file)?;
+            if cfg.brew.packages.is_empty() {
+                println!("{} no brew packages declared", "·".dimmed());
+                return Ok(());
+            }
+            let missing = brew::missing_packages(&cfg.brew.packages);
+            if missing.is_empty() {
+                println!("{} all brew packages already installed", "✓".green());
+            } else {
+                brew::install_packages(&missing).await?;
+                println!("{} installed {} package(s)", "✓".green(), missing.len());
+            }
+        }
     }
 
     Ok(())
 }
 
-/// Send a single IPC request and return the response.
 async fn ipc_send(req: IpcRequest) -> Result<IpcResponse> {
     let stream = UnixStream::connect(socket_path()).await.map_err(|_| {
         DevError::Config("no running a3s daemon — run `a3s up` first".into())
@@ -222,17 +296,13 @@ async fn ipc_send(req: IpcRequest) -> Result<IpcResponse> {
         .map_err(|e| DevError::Config(format!("bad IPC response: {e}")))
 }
 
-/// Stream log lines from the daemon.
 async fn stream_logs(service: Option<String>, follow: bool) -> Result<()> {
     let stream = UnixStream::connect(socket_path()).await.map_err(|_| {
         DevError::Config("no running a3s daemon — run `a3s up` first".into())
     })?;
 
     let (reader, mut writer) = tokio::io::split(stream);
-    let req = IpcRequest::Logs {
-        service,
-        follow,
-    };
+    let req = IpcRequest::Logs { service, follow };
     writer
         .write_all(format!("{}\n", serde_json::to_string(&req).unwrap()).as_bytes())
         .await?;

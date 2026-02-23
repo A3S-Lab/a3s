@@ -89,6 +89,7 @@ mod tests {
         }
         DevConfig {
             dev: Default::default(),
+            brew: Default::default(),
             service: map,
         }
     }

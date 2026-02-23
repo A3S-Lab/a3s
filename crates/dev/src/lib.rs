@@ -1,3 +1,4 @@
+pub mod brew;
 pub mod config;
 pub mod error;
 pub mod graph;
