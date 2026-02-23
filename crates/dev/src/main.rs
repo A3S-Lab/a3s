@@ -601,7 +601,8 @@ async fn ipc_send(req: IpcRequest) -> Result<IpcResponse> {
         .map_err(|_| DevError::Config("no running a3s daemon — run `a3s up` first".into()))?;
 
     let (reader, mut writer) = tokio::io::split(stream);
-    let line = serde_json::to_string(&req).unwrap();
+    let line = serde_json::to_string(&req)
+        .map_err(|e| DevError::Config(format!("IPC serialize error: {e}")))?;
     writer.write_all(format!("{line}\n").as_bytes()).await?;
 
     let mut lines = BufReader::new(reader).lines();
@@ -625,7 +626,14 @@ async fn stream_logs(service: Option<String>, follow: bool) -> Result<()> {
             lines: 200,
         };
         writer
-            .write_all(format!("{}\n", serde_json::to_string(&req).unwrap()).as_bytes())
+            .write_all(
+                format!(
+                    "{}\n",
+                    serde_json::to_string(&req)
+                        .map_err(|e| DevError::Config(format!("IPC serialize error: {e}")))?
+                )
+                .as_bytes(),
+            )
             .await?;
         let mut lines = BufReader::new(reader).lines();
         while let Ok(Some(line)) = lines.next_line().await {
@@ -653,7 +661,14 @@ async fn stream_logs(service: Option<String>, follow: bool) -> Result<()> {
         follow: true,
     };
     writer
-        .write_all(format!("{}\n", serde_json::to_string(&req).unwrap()).as_bytes())
+        .write_all(
+            format!(
+                "{}\n",
+                serde_json::to_string(&req)
+                    .map_err(|e| DevError::Config(format!("IPC serialize error: {e}")))?
+            )
+            .as_bytes(),
+        )
         .await?;
 
     let mut lines = BufReader::new(reader).lines();

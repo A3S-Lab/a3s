@@ -57,7 +57,9 @@ impl TcpProbe {
 #[async_trait]
 impl HealthProbe for TcpProbe {
     async fn check(&self, port: u16, _svc: &ServiceDef) -> bool {
-        let addr: SocketAddr = format!("127.0.0.1:{port}").parse().unwrap();
+        let Ok(addr) = format!("127.0.0.1:{port}").parse::<SocketAddr>() else {
+            return false;
+        };
         timeout(self.timeout, TcpStream::connect(addr))
             .await
             .is_ok_and(|r| r.is_ok())

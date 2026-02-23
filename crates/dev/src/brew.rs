@@ -192,10 +192,20 @@ async fn install_one(client: &reqwest::Client, name: &str) -> Result<()> {
     let cellar = cellar();
     fs::create_dir_all(&cellar).await?;
 
-    // Use system tar for extraction (handles .tar.gz and .tar.xz)
+    // Detect format and pick the right decompression flag
+    let decomp_flag = if cached
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e == "xz")
+        .unwrap_or(false)
+    {
+        "-xJf"
+    } else {
+        "-xzf"
+    };
     let status = tokio::process::Command::new("tar")
         .args([
-            "-xzf",
+            decomp_flag,
             cached.to_str().unwrap(),
             "-C",
             cellar.to_str().unwrap(),

@@ -103,7 +103,7 @@ async fn handle(
         return Ok(Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Full::new(Bytes::from(body)))
-            .unwrap());
+            .unwrap_or_default());
     };
 
     let uri = format!(
@@ -122,7 +122,7 @@ async fn handle(
             return Ok(Response::builder()
                 .status(StatusCode::BAD_GATEWAY)
                 .body(Full::new(Bytes::from("failed to read request body")))
-                .unwrap());
+                .unwrap_or_default());
         }
     };
 
@@ -136,7 +136,7 @@ async fn handle(
             return Ok(Response::builder()
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Full::new(Bytes::from(e.to_string())))
-                .unwrap());
+                .unwrap_or_default());
         }
     };
 
@@ -152,12 +152,12 @@ async fn handle(
             for (k, v) in &parts.headers {
                 builder = builder.header(k, v);
             }
-            Ok(builder.body(Full::new(bytes)).unwrap())
+            Ok(builder.body(Full::new(bytes)).unwrap_or_default())
         }
         Err(e) => Ok(Response::builder()
             .status(StatusCode::BAD_GATEWAY)
             .body(Full::new(Bytes::from(e.to_string())))
-            .unwrap()),
+            .unwrap_or_default()),
     }
 }
 

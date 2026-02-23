@@ -147,9 +147,23 @@ fn full_response(content_type: &str, body: Vec<u8>) -> BoxResp {
 }
 
 fn urldecode(s: &str) -> String {
-    s.replace("%20", " ")
-        .replace("%2F", "/")
-        .replace("%2B", "+")
+    let mut out = String::with_capacity(s.len());
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' && i + 2 < bytes.len() {
+            if let Ok(hex) = std::str::from_utf8(&bytes[i + 1..i + 3]) {
+                if let Ok(b) = u8::from_str_radix(hex, 16) {
+                    out.push(b as char);
+                    i += 3;
+                    continue;
+                }
+            }
+        }
+        out.push(bytes[i] as char);
+        i += 1;
+    }
+    out
 }
 
 static INDEX_HTML: &str = include_str!("ui.html");
