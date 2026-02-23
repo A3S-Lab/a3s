@@ -52,6 +52,8 @@ pub struct ServiceDef {
     pub cmd: String,
     #[serde(default)]
     pub dir: Option<PathBuf>,
+    /// Port to bind. 0 = auto-assign a free port (portless-style).
+    #[serde(default)]
     pub port: u16,
     #[serde(default)]
     pub subdomain: Option<String>,

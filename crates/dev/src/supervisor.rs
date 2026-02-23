@@ -30,6 +30,7 @@ struct ServiceHandle {
     child: Child,
     state: ServiceState,
     color_idx: usize,
+    port: u16,
 }
 
 pub struct Supervisor {
@@ -83,15 +84,29 @@ impl Supervisor {
             state: "starting".into(),
         });
 
+        // Resolve port: 0 = auto-assign a free port (portless-style)
+        let port = if svc.port == 0 {
+            free_port().ok_or_else(|| DevError::Config(format!("[{name}] no free port available")))?
+        } else {
+            svc.port
+        };
+
         let mut parts = svc.cmd.split_whitespace();
         let program = parts.next().unwrap_or("sh");
         let args: Vec<&str> = parts.collect();
 
+        // Framework-aware port injection
+        let extra_args = framework_port_args(program, port);
+
         let mut cmd = Command::new(program);
         cmd.args(&args)
+            .args(&extra_args)
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())
-            .envs(&svc.env);
+            .envs(&svc.env)
+            // Always inject PORT + HOST so any framework can pick them up
+            .env("PORT", port.to_string())
+            .env("HOST", "127.0.0.1");
 
         if let Some(dir) = &svc.dir {
             cmd.current_dir(dir);
@@ -133,6 +148,7 @@ impl Supervisor {
                     since: Instant::now(),
                 },
                 color_idx,
+                port,
             },
         );
 
@@ -233,6 +249,7 @@ impl Supervisor {
                                         since: Instant::now(),
                                     },
                                     color_idx: idx,
+                                    port: handles.read().await.get(&svc_name).map(|h| h.port).unwrap_or(0),
                                 },
                             );
                             let _ = events.send(SupervisorEvent::StateChanged {
@@ -306,15 +323,27 @@ impl Supervisor {
                             None => continue,
                         };
 
+                        // Reuse the same port that was originally assigned
+                        let existing_port = handles
+                            .read()
+                            .await
+                            .get(&changed_svc)
+                            .map(|h| h.port)
+                            .unwrap_or(svc_def.port);
+
                         let mut parts = svc_def.cmd.split_whitespace();
                         let program = parts.next().unwrap_or("sh");
                         let args: Vec<&str> = parts.collect();
+                        let extra_args = framework_port_args(program, existing_port);
 
                         let mut cmd = Command::new(program);
                         cmd.args(&args)
+                            .args(&extra_args)
                             .stdout(std::process::Stdio::piped())
                             .stderr(std::process::Stdio::piped())
-                            .envs(&svc_def.env);
+                            .envs(&svc_def.env)
+                            .env("PORT", existing_port.to_string())
+                            .env("HOST", "127.0.0.1");
                         if let Some(dir) = &svc_def.dir {
                             cmd.current_dir(dir);
                         }
@@ -340,6 +369,7 @@ impl Supervisor {
                                             since: Instant::now(),
                                         },
                                         color_idx: idx,
+                                        port: existing_port,
                                     },
                                 );
                                 let _ = events.send(SupervisorEvent::StateChanged {
@@ -431,7 +461,7 @@ impl Supervisor {
                     name: name.clone(),
                     state,
                     pid,
-                    port: svc.port,
+                    port: handle.map(|h| h.port).unwrap_or(svc.port),
                     subdomain: svc.subdomain.clone(),
                     uptime_secs,
                 }
@@ -595,5 +625,35 @@ impl Supervisor {
 
     fn emit(&self, event: SupervisorEvent) {
         let _ = self.events.send(event);
+    }
+}
+
+/// Bind to port 0 and return the OS-assigned free port.
+fn free_port() -> Option<u16> {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").ok()?;
+    Some(listener.local_addr().ok()?.port())
+}
+
+/// Detect framework from the command and inject `--port <port>` if needed.
+/// Some frameworks ignore PORT env var and require an explicit CLI flag.
+fn framework_port_args(program: &str, port: u16) -> Vec<String> {
+    let p = port.to_string();
+    match program {
+        // vite, vite preview
+        "vite" => vec!["--port".into(), p],
+        // next dev
+        "next" => vec!["--port".into(), p],
+        // astro dev
+        "astro" => vec!["--port".into(), p],
+        // nuxt dev
+        "nuxt" => vec!["--port".into(), p],
+        // remix dev
+        "remix" => vec!["--port".into(), p],
+        // svelte-kit dev
+        "svelte-kit" => vec!["--port".into(), p],
+        // wrangler dev (Cloudflare Workers)
+        "wrangler" => vec!["--port".into(), p],
+        // npx / pnpm / yarn — check second token via env, can't here; skip
+        _ => vec![],
     }
 }
