@@ -28,9 +28,6 @@
 [submodule "crates/event"]
 	path = crates/event
 	url = git@github.com:A3S-Lab/Event.git
-[submodule "crates/hub"]
-	path = crates/hub
-	url = git@github.com:A3S-Lab/Hub.git
 [submodule "crates/memory"]
 	path = crates/memory
 	url = git@github.com:A3S-Lab/Memory.git

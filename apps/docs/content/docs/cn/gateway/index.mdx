@@ -1,13 +1,35 @@
 ---
 title: A3S Gateway
-description: AI 原生 API 网关，支持反向代理、多协议和 Knative 风格自动扩缩容
+description: AI 原生服务的流量层 — SSE 流式传输、缩容到零、安全模型发布，单一 Rust 二进制。
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # A3S Gateway
 
-A3S Gateway 是基于 [hyper](https://hyper.rs/) 和 [rustls](https://github.com/rustls/rustls) 构建的 AI 原生 API 网关和反向代理。通过可组合的中间件管道路由 HTTP/1.1、HTTP/2、WebSocket、SSE、gRPC、TCP 和 UDP 流量，使用兼容 Traefik 的规则语法。配置完全使用 HCL（HashiCorp 配置语言）定义。内置 Knative 风格自动扩缩容、流量镜像、故障转移、灰度发布和仪表盘 API — 全部打包在单个静态链接二进制文件中，共 872 个测试。
+A3S Gateway 是 AI 原生服务的流量层。基于 [hyper](https://hyper.rs/) 和 [rustls](https://github.com/rustls/rustls) 构建，以单一静态链接二进制发布，配置完全使用 HCL（HashiCorp 配置语言）定义。
+
+## 为什么选择 A3S Gateway
+
+AI 服务与 Web 应用有根本不同的运维模式。为 Web 时代设计的工具在 AI 场景下存在先天假设偏差：
+
+| 关注点 | Web 的假设 | AI 的现实 |
+|-------|-----------|---------|
+| 响应形状 | 小而有界的 JSON | 无界 Token 流（SSE） |
+| 延迟特征 | 毫秒级 | 秒级（模型推理） |
+| 空闲成本 | 可忽略 | 高（GPU 显存占用） |
+| 部署风险 | 低，无状态 | 高（模型质量回退） |
+| 协议需求 | HTTP 请求/响应 | SSE、WebSocket、gRPC、HTTP/2 |
+
+A3S Gateway 为右列而设计：
+
+- **SSE/流式传输** — 零缓冲分块传输中继。模型产出第一个 Token 时，客户端立刻收到，而不是等待完整响应组装完毕。
+- **缩容到零 + 请求缓冲** — 模型副本冷启动时，请求在内存中排队等待，副本就绪后立即重放。无请求丢失，客户端不会收到 503。
+- **版本流量分割** — 将可配置比例的实时流量路由到新模型版本。错误率或 p99 延迟超过阈值时自动回滚。
+- **流量镜像** — 在新模型处理任何线上请求之前，用真实生产流量对其进行影子测试。客户端只看到主后端的响应。
+- **熔断器** — 当 AI 后端过载时（推理变慢、GPU OOM），自动开启熔断，防止雪崩放大。
+
+其余部分——路由、TLS、限流、认证、Prometheus——是标准基础设施，A3S Gateway 已内置，无需引入第二个工具。
 
 ## 架构
 
@@ -16,48 +38,50 @@ A3S Gateway 是基于 [hyper](https://hyper.rs/) 和 [rustls](https://github.com
     ↓
 入口点（HTTP / HTTPS / TCP / UDP 监听器）
     ↓
-TLS 终止（rustls，ACME / Let's Encrypt）
+TLS 终止（rustls + ACME / Let's Encrypt）
     ↓
 路由器（Host / Path / Headers / Method / SNI 匹配）
     ↓
-中间件管道（Auth → RateLimit → CORS → Headers → ...）
+中间件管道（Auth → RateLimit → CircuitBreaker → CORS → ...）
     ↓
 服务（负载均衡 + 健康检查 + 故障转移 + 流量镜像）
     ↓
-扩缩容（Knative 自动扩缩容，请求缓冲，版本路由）
+扩缩容（Knative 自动扩缩容 · 请求缓冲 · 版本路由）
     ↓
-代理（HTTP / WebSocket / gRPC / TCP / UDP）
+代理（HTTP / WebSocket / SSE / gRPC / TCP / UDP）
     ↓
 后端服务
 ```
+
+热重载在 `Service` 层通过 `Arc` 原子替换路由表和服务注册表。配置变更期间不中断任何连接。
 
 ## 核心组件
 
 <TypeTable
   type={{
     "Gateway": {
-      description: "顶层编排器 — 将配置、监听器、路由、扩缩容和可观测性整合为一个单元",
+      description: "生命周期编排器 — 管理所有子系统，维护 Created → Running → Reloading → Stopped 状态机",
     },
     "Entrypoint": {
-      description: "带可选 TLS 的命名端口监听器（HTTP、HTTPS、TCP、UDP）",
+      description: "命名网络监听器（HTTP、HTTPS、TCP、UDP），可选 TLS 和协议专属设置",
     },
     "Router": {
-      description: "按 Host、Path、PathPrefix、Headers、Method 和 SNI 匹配请求",
+      description: "基于规则的请求匹配，使用兼容 Traefik 的语法：Host()、PathPrefix()、Path()、Headers()、Method()、HostSNI()",
     },
     "Middleware": {
-      description: "可组合的请求/响应转换（15 个内置中间件）",
+      description: "可组合的请求/响应管道 — 15 种内置类型，启动时按路由器预编译，消除每请求的额外分配",
     },
     "Service": {
-      description: "带负载均衡、健康检查、故障转移和流量镜像的后端池",
-    },
-    "Provider": {
-      description: "动态配置来源（文件监听热重载、DNS 发现、Kubernetes）",
-    },
-    "Proxy": {
-      description: "协议专用请求转发（HTTP、WebSocket、gRPC、SSE、TCP、UDP）",
+      description: "后端池，含负载均衡、主动/被动健康检查、会话保持、流量镜像和故障转移",
     },
     "Scaling": {
-      description: "Knative 风格自动扩缩容，支持并发限制、请求缓冲、版本路由和灰度发布",
+      description: "Knative 风格自动扩缩容：desired = ⌈(in_flight + queue_depth) / (concurrency × utilization)⌉，支持缩容到零、请求缓冲和版本路由",
+    },
+    "Provider": {
+      description: "动态配置来源 — 文件监听热重载、DNS 发现、健康发现、Kubernetes Ingress/IngressRoute",
+    },
+    "Proxy": {
+      description: "协议专用转发器 — HTTP、WebSocket、SSE（零缓冲流式）、gRPC、TCP、UDP",
     },
   }}
 />
@@ -67,22 +91,22 @@ TLS 终止（rustls，ACME / Let's Encrypt）
 <TypeTable
   type={{
     "HTTP/1.1 & HTTP/2": {
-      description: "完整反向代理，过滤逐跳头",
+      description: "完整反向代理，含逐跳头过滤和连接池管理",
+    },
+    "SSE / 流式传输": {
+      description: "针对 LLM Token 流优化的分块传输中继 — 首字节立即转发，零响应缓冲",
     },
     "WebSocket": {
-      description: "升级检测、双向中继、多路复用",
-    },
-    "SSE / 流式": {
-      description: "分块传输，适用于 LLM 输出和事件流",
+      description: "升级检测、双向中继、单连接命名频道多路复用",
     },
     "gRPC": {
-      description: "HTTP/2 h2c 转发，头部转换",
+      description: "HTTP/2 h2c 转发，含 gRPC-Web 兼容的头部转换",
     },
     "TCP": {
-      description: "原始字节中继，SNI 路由，IP 过滤",
+      description: "原始字节中继，SNI 路由（HostSNI 匹配器）、IP 过滤和连接数限制",
     },
     "UDP": {
-      description: "基于会话的数据报中继",
+      description: "基于会话的数据报中继，适用于 DNS、QUIC 及自定义 UDP 协议",
     },
   }}
 />
@@ -91,27 +115,46 @@ TLS 终止（rustls，ACME / Let's Encrypt）
 
 ```rust
 pub enum GatewayState {
-    Created,     // 已创建，尚未启动
-    Starting,    // 初始化监听器，加载配置
+    Created,     // 已配置，监听器尚未绑定
+    Starting,    // 绑定端口，编译路由和中间件管道
     Running,     // 正在接受和代理请求
-    Reloading,   // 热重载配置（不中断连接）
-    Stopping,    // 排空连接，关闭中
-    Stopped,     // 已完全停止
+    Reloading,   // 原子替换路由表和服务注册表
+    Stopping,    // 排空进行中的请求
+    Stopped,     // 所有监听器已关闭
 }
 ```
 
 ## 主要特性
 
-- **兼容 Traefik 规则语法** — 支持 `Host()`、`PathPrefix()`、`Headers()`、`Method()` 和 SNI 路由
-- **15 个内置中间件** — API Key、Basic Auth、JWT、Forward Auth、Rate Limit、Rate Limit（Redis）、CORS、Headers、Strip Prefix、Retry、Circuit Breaker、Compress、Body Limit、IP Allowlist、TCP Filter
-- **4 种负载均衡策略** — 轮询、加权、最少连接、随机
-- **纯 Rust TLS**（rustls），自动 ACME / Let's Encrypt 证书申请
-- **热重载** — 文件监听（inotify / kqueue）无中断重载配置
-- **流量镜像** — 将可配置比例的实时流量复制到影子后端（fire-and-forget）
-- **故障转移** — 主后端池无健康实例时自动切换到备用池
-- **Knative 风格自动扩缩容** — `desired = ceil((in_flight + queue_depth) / (concurrency × target_utilization))`，缩容到零，请求缓冲，版本流量分割，错误率/延迟阈值自动回滚
-- **Helm 部署** — 生产就绪的 Kubernetes Helm Chart
-- **内置仪表盘 API** — 健康、指标、配置、路由和服务端点
-- **Prometheus 指标** — 请求计数、延迟、后端健康和自动扩缩容状态
-- **仅 HCL 配置** — 所有网关配置使用 HashiCorp 配置语言
-- **872 个测试** — 单元、集成和基于属性的测试
+**AI 原生模式**
+- SSE/流式中继 — 针对 LLM 输出的零缓冲分块传输
+- 缩容到零 — Knative 自动扩缩容公式 + 冷启动请求缓冲
+- 灰度发布 — 逐步流量切换，错误率或延迟突破阈值时自动回滚
+- 流量镜像 — 用真实生产流量影子测试新模型版本
+
+**核心代理**
+- 兼容 Traefik 规则语法 — `Host()`、`PathPrefix()`、`Headers()`、`Method()`、`&&`
+- 4 种负载均衡策略 — 轮询、加权、最少连接、随机
+- 主动 HTTP 健康探测 + 被动错误计数后端剔除
+- 会话保持 — Cookie 亲和，含 TTL 和 LRU 淘汰
+- 故障转移 — 主后端无健康实例时自动切换到备用池
+- 纯 Rust TLS（rustls）— ACME/Let's Encrypt，支持 HTTP-01 和 DNS-01（Cloudflare、Route53）
+- 热重载 — inotify/kqueue 文件监听，连接零中断
+
+**中间件（15 种内置）**
+- 认证：JWT（HS256）、API Key、Basic Auth、Forward Auth
+- 流量：限流（进程内）、限流（Redis 分布式）、熔断器、重试、请求体大小限制
+- 转换：CORS、Headers、Strip Prefix、压缩（brotli/gzip/deflate）
+- 网络：IP 白名单、TCP 过滤
+
+**可观测性**
+- Prometheus 指标 — 每路由/服务/后端的请求计数、延迟直方图、自动扩缩容状态
+- 结构化 JSON 访问日志 — 客户端 IP、方法、路径、状态码、耗时、后端、路由器
+- 分布式追踪 — W3C Trace Context 和 B3/Zipkin 传播，注入子 Span
+
+**运维**
+- 单一静态链接二进制 — 无运行时依赖，无 OpenSSL
+- 仅 HCL 配置 — 一致、可读、可版本控制
+- 内置仪表盘 API — 健康、指标、配置、路由、服务、后端、版本
+- Kubernetes Helm Chart、Docker 镜像、Homebrew 公式
+- 877 个测试，覆盖所有模块
