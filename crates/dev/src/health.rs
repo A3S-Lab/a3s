@@ -36,7 +36,7 @@ impl HealthProbe for HttpProbe {
             .and_then(|h| h.path.as_deref())
             .unwrap_or("/health");
         let url = format!("http://127.0.0.1:{}{}", svc.port, path);
-        self.client.get(&url).send().await.map_or(false, |r| r.status().is_success())
+        self.client.get(&url).send().await.is_ok_and(|r| r.status().is_success())
     }
 }
 
@@ -48,7 +48,7 @@ impl HealthProbe for TcpProbe {
         let addr: SocketAddr = format!("127.0.0.1:{}", svc.port).parse().unwrap();
         timeout(Duration::from_secs(1), TcpStream::connect(addr))
             .await
-            .map_or(false, |r| r.is_ok())
+            .is_ok_and(|r| r.is_ok())
     }
 }
 

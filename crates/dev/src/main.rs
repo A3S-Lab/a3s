@@ -456,7 +456,7 @@ async fn run(cli: Cli) -> Result<()> {
                     println!();
                     println!("{}", "brew packages:".bold());
                     for pkg in &cfg.brew.packages {
-                        let installed = brew::missing_packages(&[pkg.clone()]).is_empty();
+                        let installed = brew::missing_packages(std::slice::from_ref(pkg)).is_empty();
                         let status = if installed {
                             "installed".green().to_string()
                         } else {

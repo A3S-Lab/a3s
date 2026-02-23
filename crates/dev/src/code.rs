@@ -34,9 +34,7 @@ pub fn prompt_language() -> Result<Language> {
             let key = read_key()?;
             match key {
                 Key::Up => {
-                    if selected > 0 {
-                        selected -= 1;
-                    }
+                    selected = selected.saturating_sub(1);
                 }
                 Key::Down => {
                     if selected < options.len() - 1 {

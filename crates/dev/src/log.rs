@@ -63,7 +63,7 @@ impl LogAggregator {
         let history = self.history.lock().unwrap();
         history
             .iter()
-            .filter(|l| service.map_or(true, |s| l.service == s))
+            .filter(|l| service.is_none_or(|s| l.service == s))
             .rev()
             .take(n)
             .cloned()

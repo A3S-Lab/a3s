@@ -80,7 +80,7 @@ async fn fetch_formula(client: &reqwest::Client, name: &str) -> Result<FormulaIn
 }
 
 /// Pick the best bottle for the current platform.
-fn pick_bottle<'a>(files: &'a std::collections::HashMap<String, BottleFile>) -> Option<&'a BottleFile> {
+fn pick_bottle(files: &std::collections::HashMap<String, BottleFile>) -> Option<&BottleFile> {
     // Prefer arm64_sequoia → arm64_sonoma → arm64_ventura → sequoia → sonoma → ventura → all
     let preference = [
         "arm64_sequoia",
@@ -197,7 +197,7 @@ async fn install_one(client: &reqwest::Client, name: &str) -> Result<()> {
         .args(["-xzf", cached.to_str().unwrap(), "-C", cellar.to_str().unwrap()])
         .status()
         .await
-        .map_err(|e| DevError::Io(e))?;
+        .map_err(DevError::Io)?;
 
     if !status.success() {
         return Err(DevError::Config(format!("failed to extract bottle for '{name}'")));
@@ -288,7 +288,7 @@ pub async fn search_packages(query: &str) -> Result<()> {
         .map_err(|e| DevError::Config(e.to_string()))?;
 
     // Homebrew search API returns a list of formula names matching the query
-    let url = format!("https://formulae.brew.sh/api/formula.json");
+    let url = "https://formulae.brew.sh/api/formula.json".to_string();
     let resp = client
         .get(&url)
         .send()

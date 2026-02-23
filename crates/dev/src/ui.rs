@@ -79,7 +79,7 @@ async fn handle(
                     Ok(entry) => {
                         if service_filter
                             .as_deref()
-                            .map_or(true, |f| f == entry.service)
+                            .is_none_or(|f| f == entry.service)
                         {
                             let payload = serde_json::json!({
                                 "service": entry.service,

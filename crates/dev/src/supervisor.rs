@@ -590,7 +590,7 @@ impl Supervisor {
                                         service: svc,
                                         line,
                                     }) => {
-                                        if service.as_deref().map_or(true, |f| f == svc) {
+                                        if service.as_deref().is_none_or(|f| f == svc) {
                                             let resp = IpcResponse::LogLine {
                                                 service: svc,
                                                 line,
