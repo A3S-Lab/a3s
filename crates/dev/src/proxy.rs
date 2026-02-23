@@ -109,7 +109,10 @@ async fn handle(
     let uri = format!(
         "http://127.0.0.1:{}{}",
         port,
-        req.uri().path_and_query().map(|p| p.as_str()).unwrap_or("/")
+        req.uri()
+            .path_and_query()
+            .map(|p| p.as_str())
+            .unwrap_or("/")
     );
 
     let (parts, body) = req.into_parts();
@@ -140,7 +143,11 @@ async fn handle(
     match client.request(upstream_req).await {
         Ok(resp) => {
             let (parts, body) = resp.into_parts();
-            let bytes = body.collect().await.map(|b| b.to_bytes()).unwrap_or_default();
+            let bytes = body
+                .collect()
+                .await
+                .map(|b| b.to_bytes())
+                .unwrap_or_default();
             let mut builder = Response::builder().status(parts.status);
             for (k, v) in &parts.headers {
                 builder = builder.header(k, v);
@@ -154,3 +161,27 @@ async fn handle(
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_update_and_lookup() {
+        let router = ProxyRouter::new(0);
+        router.update("web".into(), 3000).await;
+        router.update("api".into(), 4000).await;
+        let routes = router.routes.read().await;
+        assert_eq!(routes.get("web").copied(), Some(3000));
+        assert_eq!(routes.get("api").copied(), Some(4000));
+        assert_eq!(routes.get("missing"), None);
+    }
+
+    #[tokio::test]
+    async fn test_update_overwrites() {
+        let router = ProxyRouter::new(0);
+        router.update("web".into(), 3000).await;
+        router.update("web".into(), 3001).await;
+        let routes = router.routes.read().await;
+        assert_eq!(routes.get("web").copied(), Some(3001));
+    }
+}

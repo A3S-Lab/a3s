@@ -149,16 +149,18 @@ async fn main() {
 
 async fn run(cli: Cli) -> Result<()> {
     match &cli.command {
-        Commands::Up { services, detach, no_ui, ui_port } => {
+        Commands::Up {
+            services,
+            detach,
+            no_ui,
+            ui_port,
+        } => {
             if *detach {
                 // Re-launch self as background daemon, dropping --detach flag
                 let exe = std::env::current_exe()
                     .map_err(|e| DevError::Config(format!("cannot find self: {e}")))?;
-                let mut args: Vec<String> = vec![
-                    "--file".into(),
-                    cli.file.display().to_string(),
-                    "up".into(),
-                ];
+                let mut args: Vec<String> =
+                    vec!["--file".into(), cli.file.display().to_string(), "up".into()];
                 if *no_ui {
                     args.push("--no-ui".into());
                 }
@@ -241,7 +243,11 @@ async fn run(cli: Cli) -> Result<()> {
             }
             std::fs::write(path, INIT_TEMPLATE)
                 .map_err(|e| DevError::Config(format!("write {}: {e}", path.display())))?;
-            println!("{} created {}", "✓".green(), path.display().to_string().cyan());
+            println!(
+                "{} created {}",
+                "✓".green(),
+                path.display().to_string().cyan()
+            );
 
             // Ask if user wants to git init
             if !std::path::Path::new(".git").exists() {
@@ -267,7 +273,11 @@ async fn run(cli: Cli) -> Result<()> {
                 }
             }
 
-            println!("  edit {}, then run {} to start your services", path.display().to_string().cyan(), "a3s up".cyan());
+            println!(
+                "  edit {}, then run {} to start your services",
+                path.display().to_string().cyan(),
+                "a3s up".cyan()
+            );
         }
 
         Commands::Validate => {
@@ -292,7 +302,12 @@ async fn run(cli: Cli) -> Result<()> {
                     .as_deref()
                     .map(|s| format!(" (http://{s}.localhost)"))
                     .unwrap_or_default();
-                println!("  {} :{}{}{}", name.cyan(), svc.port, sub, deps.dimmed());
+                let port_str = if svc.port == 0 {
+                    "auto".to_string()
+                } else {
+                    svc.port.to_string()
+                };
+                println!("  {} :{}{}{}", name.cyan(), port_str, sub, deps.dimmed());
             }
             graph::DependencyGraph::from_config(&cfg)?;
             println!("{} dependency graph OK", "✓".green());
@@ -322,7 +337,10 @@ async fn run(cli: Cli) -> Result<()> {
                         .subdomain
                         .map(|s| format!("http://{s}.localhost"))
                         .unwrap_or_default();
-                    let uptime = row.uptime_secs.map(format_uptime).unwrap_or_else(|| "-".into());
+                    let uptime = row
+                        .uptime_secs
+                        .map(format_uptime)
+                        .unwrap_or_else(|| "-".into());
                     println!(
                         "{:<16} {:<20} {:<8} {:<6} {:<24} {}",
                         row.name,
@@ -433,12 +451,17 @@ async fn run(cli: Cli) -> Result<()> {
         Commands::List => {
             // a3s ecosystem tools
             let tools = [
-                ("box",     "a3s-box",     "A3S-Lab/Box"),
+                ("box", "a3s-box", "A3S-Lab/Box"),
                 ("gateway", "a3s-gateway", "A3S-Lab/Gateway"),
-                ("power",   "a3s-power",   "A3S-Lab/Power"),
+                ("power", "a3s-power", "A3S-Lab/Power"),
             ];
 
-            println!("{:<12} {:<16} {}", "TOOL".bold(), "BINARY".bold(), "STATUS".bold());
+            println!(
+                "{:<12} {:<16} {}",
+                "TOOL".bold(),
+                "BINARY".bold(),
+                "STATUS".bold()
+            );
             println!("{}", "─".repeat(44).dimmed());
             for (alias, binary, _repo) in &tools {
                 let installed = which_binary(binary);
@@ -456,7 +479,8 @@ async fn run(cli: Cli) -> Result<()> {
                     println!();
                     println!("{}", "brew packages:".bold());
                     for pkg in &cfg.brew.packages {
-                        let installed = brew::missing_packages(std::slice::from_ref(pkg)).is_empty();
+                        let installed =
+                            brew::missing_packages(std::slice::from_ref(pkg)).is_empty();
                         let status = if installed {
                             "installed".green().to_string()
                         } else {
@@ -519,9 +543,9 @@ fn which_binary(name: &str) -> bool {
 /// Known a3s ecosystem tools: alias -> (binary, github_owner, github_repo)
 fn ecosystem_tool(alias: &str) -> Option<(&'static str, &'static str, &'static str)> {
     match alias {
-        "box"     => Some(("a3s-box",     "A3S-Lab", "Box")),
+        "box" => Some(("a3s-box", "A3S-Lab", "Box")),
         "gateway" => Some(("a3s-gateway", "A3S-Lab", "Gateway")),
-        "power"   => Some(("a3s-power",   "A3S-Lab", "Power")),
+        "power" => Some(("a3s-power", "A3S-Lab", "Power")),
         _ => None,
     }
 }
@@ -537,7 +561,10 @@ async fn proxy_tool(alias: &str, args: &[String]) -> Result<()> {
     if !which_binary(binary) {
         println!(
             "{} {} not found — installing from {}/{}...",
-            "→".cyan(), binary.cyan(), owner, repo
+            "→".cyan(),
+            binary.cyan(),
+            owner,
+            repo
         );
         let config = a3s_updater::UpdateConfig {
             binary_name: binary,
@@ -561,9 +588,9 @@ async fn proxy_tool(alias: &str, args: &[String]) -> Result<()> {
 }
 
 async fn ipc_send(req: IpcRequest) -> Result<IpcResponse> {
-    let stream = UnixStream::connect(socket_path()).await.map_err(|_| {
-        DevError::Config("no running a3s daemon — run `a3s up` first".into())
-    })?;
+    let stream = UnixStream::connect(socket_path())
+        .await
+        .map_err(|_| DevError::Config("no running a3s daemon — run `a3s up` first".into()))?;
 
     let (reader, mut writer) = tokio::io::split(stream);
     let line = serde_json::to_string(&req).unwrap();
@@ -575,16 +602,15 @@ async fn ipc_send(req: IpcRequest) -> Result<IpcResponse> {
         .await?
         .ok_or_else(|| DevError::Config("daemon closed connection".into()))?;
 
-    serde_json::from_str(&resp_line)
-        .map_err(|e| DevError::Config(format!("bad IPC response: {e}")))
+    serde_json::from_str(&resp_line).map_err(|e| DevError::Config(format!("bad IPC response: {e}")))
 }
 
 async fn stream_logs(service: Option<String>, follow: bool) -> Result<()> {
     // First replay history (last 200 lines)
     {
-        let stream = UnixStream::connect(socket_path()).await.map_err(|_| {
-            DevError::Config("no running a3s daemon — run `a3s up` first".into())
-        })?;
+        let stream = UnixStream::connect(socket_path())
+            .await
+            .map_err(|_| DevError::Config("no running a3s daemon — run `a3s up` first".into()))?;
         let (reader, mut writer) = tokio::io::split(stream);
         let req = IpcRequest::History {
             service: service.clone(),
@@ -595,8 +621,10 @@ async fn stream_logs(service: Option<String>, follow: bool) -> Result<()> {
             .await?;
         let mut lines = BufReader::new(reader).lines();
         while let Ok(Some(line)) = lines.next_line().await {
-            if let Ok(IpcResponse::LogLine { service: svc, line: text }) =
-                serde_json::from_str::<IpcResponse>(&line)
+            if let Ok(IpcResponse::LogLine {
+                service: svc,
+                line: text,
+            }) = serde_json::from_str::<IpcResponse>(&line)
             {
                 println!("{} {}", format!("[{svc}]").dimmed(), text);
             }
@@ -608,19 +636,24 @@ async fn stream_logs(service: Option<String>, follow: bool) -> Result<()> {
     }
 
     // Then stream live
-    let stream = UnixStream::connect(socket_path()).await.map_err(|_| {
-        DevError::Config("no running a3s daemon — run `a3s up` first".into())
-    })?;
+    let stream = UnixStream::connect(socket_path())
+        .await
+        .map_err(|_| DevError::Config("no running a3s daemon — run `a3s up` first".into()))?;
     let (reader, mut writer) = tokio::io::split(stream);
-    let req = IpcRequest::Logs { service, follow: true };
+    let req = IpcRequest::Logs {
+        service,
+        follow: true,
+    };
     writer
         .write_all(format!("{}\n", serde_json::to_string(&req).unwrap()).as_bytes())
         .await?;
 
     let mut lines = BufReader::new(reader).lines();
     while let Ok(Some(line)) = lines.next_line().await {
-        if let Ok(IpcResponse::LogLine { service, line: text }) =
-            serde_json::from_str::<IpcResponse>(&line)
+        if let Ok(IpcResponse::LogLine {
+            service,
+            line: text,
+        }) = serde_json::from_str::<IpcResponse>(&line)
         {
             println!("{} {}", format!("[{service}]").cyan(), text);
         }

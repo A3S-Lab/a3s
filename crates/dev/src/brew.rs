@@ -194,13 +194,20 @@ async fn install_one(client: &reqwest::Client, name: &str) -> Result<()> {
 
     // Use system tar for extraction (handles .tar.gz and .tar.xz)
     let status = tokio::process::Command::new("tar")
-        .args(["-xzf", cached.to_str().unwrap(), "-C", cellar.to_str().unwrap()])
+        .args([
+            "-xzf",
+            cached.to_str().unwrap(),
+            "-C",
+            cellar.to_str().unwrap(),
+        ])
         .status()
         .await
         .map_err(DevError::Io)?;
 
     if !status.success() {
-        return Err(DevError::Config(format!("failed to extract bottle for '{name}'")));
+        return Err(DevError::Config(format!(
+            "failed to extract bottle for '{name}'"
+        )));
     }
 
     // Link via brew (handles keg-only, conflicts, etc.)
@@ -219,7 +226,11 @@ pub async fn install_packages(packages: &[String]) -> Result<()> {
         return Ok(());
     }
 
-    println!("{} installing {} brew package(s)...", "→".cyan(), packages.len());
+    println!(
+        "{} installing {} brew package(s)...",
+        "→".cyan(),
+        packages.len()
+    );
 
     let client = reqwest::Client::builder()
         .user_agent("a3s-dev/0.1")
@@ -328,6 +339,71 @@ pub async fn search_packages(query: &str) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_add_to_list_new() {
+        let mut pkgs = vec!["redis".to_string()];
+        assert!(add_to_list(&mut pkgs, "postgres"));
+        assert_eq!(pkgs, vec!["redis", "postgres"]);
+    }
+
+    #[test]
+    fn test_add_to_list_duplicate() {
+        let mut pkgs = vec!["redis".to_string()];
+        assert!(!add_to_list(&mut pkgs, "redis"));
+        assert_eq!(pkgs.len(), 1);
+    }
+
+    #[test]
+    fn test_remove_from_list_existing() {
+        let mut pkgs = vec!["redis".to_string(), "postgres".to_string()];
+        assert!(remove_from_list(&mut pkgs, "redis"));
+        assert_eq!(pkgs, vec!["postgres"]);
+    }
+
+    #[test]
+    fn test_remove_from_list_missing() {
+        let mut pkgs = vec!["redis".to_string()];
+        assert!(!remove_from_list(&mut pkgs, "postgres"));
+        assert_eq!(pkgs.len(), 1);
+    }
+
+    #[test]
+    fn test_write_brew_block_replace() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("A3sfile.hcl");
+        std::fs::write(&path, "brew {\n  packages = [\n  \"redis\",\n  ]\n}\n").unwrap();
+        write_brew_block(&path, &["redis".to_string(), "postgres".to_string()]).unwrap();
+        let result = std::fs::read_to_string(&path).unwrap();
+        assert!(result.contains("\"redis\""));
+        assert!(result.contains("\"postgres\""));
+    }
+
+    #[test]
+    fn test_write_brew_block_append() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("A3sfile.hcl");
+        std::fs::write(&path, "# empty\n").unwrap();
+        write_brew_block(&path, &["redis".to_string()]).unwrap();
+        let result = std::fs::read_to_string(&path).unwrap();
+        assert!(result.contains("brew {"));
+        assert!(result.contains("\"redis\""));
+    }
+
+    #[test]
+    fn test_write_brew_block_empty_removes_block() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("A3sfile.hcl");
+        std::fs::write(&path, "brew {\n  packages = [\n  \"redis\",\n  ]\n}\n").unwrap();
+        write_brew_block(&path, &[]).unwrap();
+        let result = std::fs::read_to_string(&path).unwrap();
+        assert!(!result.contains("brew {"));
+    }
 }
 
 /// Add a package to the packages list (deduplicates).
