@@ -1,0 +1,16 @@
+{
+  "name": "my-a3s-agent",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "ts-node agents/demo.ts"
+  },
+  "dependencies": {
+    "@a3s-lab/code": "latest"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "ts-node": "^10",
+    "@types/node": "^20"
+  }
+}

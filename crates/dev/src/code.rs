@@ -114,11 +114,10 @@ where
     result
 }
 
-// ── Template generation ───────────────────────────────────────────────────────
+// ── Scaffold ──────────────────────────────────────────────────────────────────
 
 pub fn scaffold(dir: &Path, lang: Language) -> Result<()> {
-    std::fs::create_dir_all(dir)
-        .map_err(|e| DevError::Config(format!("create dir: {e}")))?;
+    std::fs::create_dir_all(dir).map_err(|e| DevError::Config(format!("create dir: {e}")))?;
 
     match lang {
         Language::Python => scaffold_python(dir),
@@ -128,22 +127,18 @@ pub fn scaffold(dir: &Path, lang: Language) -> Result<()> {
 
 fn scaffold_python(dir: &Path) -> Result<()> {
     write_file(dir, "config.hcl", PYTHON_CONFIG)?;
-    std::fs::create_dir_all(dir.join("skills"))
-        .map_err(|e| DevError::Config(e.to_string()))?;
-    std::fs::create_dir_all(dir.join("agents"))
-        .map_err(|e| DevError::Config(e.to_string()))?;
+    std::fs::create_dir_all(dir.join("skills")).map_err(|e| DevError::Config(e.to_string()))?;
+    std::fs::create_dir_all(dir.join("agents")).map_err(|e| DevError::Config(e.to_string()))?;
     write_file(dir, "skills/hello.py", PYTHON_SKILL)?;
     write_file(dir, "agents/demo.py", PYTHON_AGENT)?;
-    write_file(dir, "requirements.txt", "a3s-code\n")?;
+    write_file(dir, "requirements.txt", PYTHON_REQUIREMENTS)?;
     Ok(())
 }
 
 fn scaffold_typescript(dir: &Path) -> Result<()> {
     write_file(dir, "config.hcl", TS_CONFIG)?;
-    std::fs::create_dir_all(dir.join("skills"))
-        .map_err(|e| DevError::Config(e.to_string()))?;
-    std::fs::create_dir_all(dir.join("agents"))
-        .map_err(|e| DevError::Config(e.to_string()))?;
+    std::fs::create_dir_all(dir.join("skills")).map_err(|e| DevError::Config(e.to_string()))?;
+    std::fs::create_dir_all(dir.join("agents")).map_err(|e| DevError::Config(e.to_string()))?;
     write_file(dir, "skills/hello.ts", TS_SKILL)?;
     write_file(dir, "agents/demo.ts", TS_AGENT)?;
     write_file(dir, "package.json", TS_PACKAGE_JSON)?;
@@ -157,115 +152,57 @@ fn write_file(dir: &Path, name: &str, content: &str) -> Result<()> {
         .map_err(|e| DevError::Config(format!("write {}: {e}", path.display())))
 }
 
-// ── Templates ─────────────────────────────────────────────────────────────────
+// ── Templates (embedded at compile time) ─────────────────────────────────────
 
-const PYTHON_CONFIG: &str = r#"# a3s-code agent configuration
-agent "demo" {
-  model       = "claude-sonnet-4-5"
-  max_turns   = 10
-  system      = "You are a helpful assistant."
+const PYTHON_CONFIG: &str = include_str!("templates/python/config.hcl");
+const PYTHON_SKILL: &str = include_str!("templates/python/skills/hello.py");
+const PYTHON_AGENT: &str = include_str!("templates/python/agents/demo.py");
+const PYTHON_REQUIREMENTS: &str = include_str!("templates/python/requirements.txt");
 
-  skills = [
-    "./skills/hello.py",
-  ]
+const TS_CONFIG: &str = include_str!("templates/typescript/config.hcl");
+const TS_SKILL: &str = include_str!("templates/typescript/skills/hello.ts");
+const TS_AGENT: &str = include_str!("templates/typescript/agents/demo.ts");
+const TS_PACKAGE_JSON: &str = include_str!("templates/typescript/package.json");
+const TS_CONFIG_JSON: &str = include_str!("templates/typescript/tsconfig.json");
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scaffold_python() {
+        let dir = tempfile::tempdir().unwrap();
+        scaffold(dir.path(), Language::Python).unwrap();
+        assert!(dir.path().join("config.hcl").exists());
+        assert!(dir.path().join("requirements.txt").exists());
+        assert!(dir.path().join("skills/hello.py").exists());
+        assert!(dir.path().join("agents/demo.py").exists());
+        let config = std::fs::read_to_string(dir.path().join("config.hcl")).unwrap();
+        assert!(config.contains("claude-sonnet-4-5"));
+    }
+
+    #[test]
+    fn test_scaffold_typescript() {
+        let dir = tempfile::tempdir().unwrap();
+        scaffold(dir.path(), Language::TypeScript).unwrap();
+        assert!(dir.path().join("config.hcl").exists());
+        assert!(dir.path().join("package.json").exists());
+        assert!(dir.path().join("tsconfig.json").exists());
+        assert!(dir.path().join("skills/hello.ts").exists());
+        assert!(dir.path().join("agents/demo.ts").exists());
+        let pkg = std::fs::read_to_string(dir.path().join("package.json")).unwrap();
+        assert!(pkg.contains("@a3s-lab/code"));
+    }
+
+    #[test]
+    fn test_templates_not_empty() {
+        assert!(!PYTHON_CONFIG.is_empty());
+        assert!(!PYTHON_SKILL.is_empty());
+        assert!(!PYTHON_AGENT.is_empty());
+        assert!(!TS_CONFIG.is_empty());
+        assert!(!TS_SKILL.is_empty());
+        assert!(!TS_AGENT.is_empty());
+        assert!(!TS_PACKAGE_JSON.is_empty());
+        assert!(!TS_CONFIG_JSON.is_empty());
+    }
 }
-"#;
-
-const PYTHON_SKILL: &str = r#"# skills/hello.py — example a3s-code skill
-from a3s_code import skill, ToolResult
-
-@skill(
-    name="hello",
-    description="Say hello to someone",
-    parameters={
-        "name": {"type": "string", "description": "Name to greet"},
-    },
-)
-async def hello(name: str) -> ToolResult:
-    return ToolResult(content=f"Hello, {name}!")
-"#;
-
-const PYTHON_AGENT: &str = r#"# agents/demo.py — example a3s-code agent runner
-import asyncio
-from a3s_code import Agent
-
-async def main():
-    agent = Agent.from_config("config.hcl", agent="demo")
-    async with agent.session() as session:
-        result = await session.run("Say hello to the world")
-        print(result)
-
-if __name__ == "__main__":
-    asyncio.run(main())
-"#;
-
-const TS_CONFIG: &str = r#"# a3s-code agent configuration
-agent "demo" {
-  model       = "claude-sonnet-4-5"
-  max_turns   = 10
-  system      = "You are a helpful assistant."
-
-  skills = [
-    "./skills/hello.ts",
-  ]
-}
-"#;
-
-const TS_SKILL: &str = r#"// skills/hello.ts — example a3s-code skill
-import { skill, ToolResult } from "@a3s-lab/code";
-
-export const hello = skill({
-  name: "hello",
-  description: "Say hello to someone",
-  parameters: {
-    name: { type: "string", description: "Name to greet" },
-  },
-  async execute({ name }: { name: string }): Promise<ToolResult> {
-    return { content: `Hello, ${name}!` };
-  },
-});
-"#;
-
-const TS_AGENT: &str = r#"// agents/demo.ts — example a3s-code agent runner
-import { Agent } from "@a3s-lab/code";
-
-async function main() {
-  const agent = await Agent.fromConfig("config.hcl", { agent: "demo" });
-  const session = await agent.session();
-  const result = await session.run("Say hello to the world");
-  console.log(result);
-  await session.close();
-}
-
-main().catch(console.error);
-"#;
-
-const TS_PACKAGE_JSON: &str = r#"{
-  "name": "my-a3s-agent",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "start": "ts-node agents/demo.ts"
-  },
-  "dependencies": {
-    "@a3s-lab/code": "latest"
-  },
-  "devDependencies": {
-    "typescript": "^5",
-    "ts-node": "^10",
-    "@types/node": "^20"
-  }
-}
-"#;
-
-const TS_CONFIG_JSON: &str = r#"{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "commonjs",
-    "strict": true,
-    "esModuleInterop": true,
-    "outDir": "dist"
-  },
-  "include": ["agents/**/*", "skills/**/*"]
-}
-"#;
