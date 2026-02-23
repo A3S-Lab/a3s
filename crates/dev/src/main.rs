@@ -408,11 +408,9 @@ async fn run(cli: Cli) -> Result<()> {
         Commands::List => {
             // a3s ecosystem tools
             let tools = [
-                ("box",      "a3s-box",      "A3S-Lab/Box"),
-                ("gateway",  "a3s-gateway",  "A3S-Lab/Gateway"),
-                ("power",    "a3s-power",    "A3S-Lab/Power"),
-                ("search",   "a3s-search",   "A3S-Lab/Search"),
-                ("safeclaw", "a3s-safeclaw", "A3S-Lab/SafeClaw"),
+                ("box",     "a3s-box",     "A3S-Lab/Box"),
+                ("gateway", "a3s-gateway", "A3S-Lab/Gateway"),
+                ("power",   "a3s-power",   "A3S-Lab/Power"),
             ];
 
             println!("{:<12} {:<16} {}", "TOOL".bold(), "BINARY".bold(), "STATUS".bold());
@@ -496,10 +494,9 @@ fn which_binary(name: &str) -> bool {
 /// Known a3s ecosystem tools: alias -> (binary, github_owner, github_repo)
 fn ecosystem_tool(alias: &str) -> Option<(&'static str, &'static str, &'static str)> {
     match alias {
-        "box"      => Some(("a3s-box",      "A3S-Lab", "Box")),
-        "gateway"  => Some(("a3s-gateway",  "A3S-Lab", "Gateway")),
-        "power"    => Some(("a3s-power",    "A3S-Lab", "Power")),
-        "safeclaw" => Some(("a3s-safeclaw", "A3S-Lab", "SafeClaw")),
+        "box"     => Some(("a3s-box",     "A3S-Lab", "Box")),
+        "gateway" => Some(("a3s-gateway", "A3S-Lab", "Gateway")),
+        "power"   => Some(("a3s-power",   "A3S-Lab", "Power")),
         _ => None,
     }
 }
@@ -558,12 +555,39 @@ async fn ipc_send(req: IpcRequest) -> Result<IpcResponse> {
 }
 
 async fn stream_logs(service: Option<String>, follow: bool) -> Result<()> {
+    // First replay history (last 200 lines)
+    {
+        let stream = UnixStream::connect(socket_path()).await.map_err(|_| {
+            DevError::Config("no running a3s daemon — run `a3s up` first".into())
+        })?;
+        let (reader, mut writer) = tokio::io::split(stream);
+        let req = IpcRequest::History {
+            service: service.clone(),
+            lines: 200,
+        };
+        writer
+            .write_all(format!("{}\n", serde_json::to_string(&req).unwrap()).as_bytes())
+            .await?;
+        let mut lines = BufReader::new(reader).lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            if let Ok(IpcResponse::LogLine { service: svc, line: text }) =
+                serde_json::from_str::<IpcResponse>(&line)
+            {
+                println!("{} {}", format!("[{svc}]").dimmed(), text);
+            }
+        }
+    }
+
+    if !follow {
+        return Ok(());
+    }
+
+    // Then stream live
     let stream = UnixStream::connect(socket_path()).await.map_err(|_| {
         DevError::Config("no running a3s daemon — run `a3s up` first".into())
     })?;
-
     let (reader, mut writer) = tokio::io::split(stream);
-    let req = IpcRequest::Logs { service, follow };
+    let req = IpcRequest::Logs { service, follow: true };
     writer
         .write_all(format!("{}\n", serde_json::to_string(&req).unwrap()).as_bytes())
         .await?;
