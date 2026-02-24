@@ -1,0 +1,1075 @@
+---
+title: A Privacy LLM Inference Engine That Runs on $10 Hardware
+description: A deep dive into A3S Power's architecture — a privacy inference engine that runs 10B models on $10, 256MB hardware, featuring TEE hardware isolation, model attestation binding, layer-streaming inference, and zero-trust security
+date: "2026-02-22"
+author: A3S Lab
+tags: [power, llm, tee, rust, inference, privacy, confidential-computing]
+---
+
+Three facts define the problem A3S Power was built to solve:
+
+> **One:** Every prompt you send to any LLM inference server exists in plaintext in server memory. Ollama, vLLM, TGI, llama.cpp — no exceptions. Operators promise they "won't look," but that's policy, not physics.
+>
+> **Two:** A quantized 10B-parameter model requires 6GB of memory. TEE (Trusted Execution Environment) encrypted memory is typically only 256MB. Traditional inference engines under this constraint can only run 0.5B toy models — incapable of any real security decision-making.
+>
+> **Three:** A $10 piece of hardware with 256MB of memory can run a 10B model through layer-streaming inference. That model is powerful enough to do three critical things inside hardware-encrypted memory: **security validation** (detecting prompt injection), **intelligent data redaction** (distinguishing sensitive from public information), and **sensitive tool call approval** (determining whether an Agent's actions exceed authorization).
+
+The intersection of these three facts is the question A3S Power tries to answer: **Can we use hardware encryption to protect every prompt on $10 hardware, while running a model smart enough to make security decisions?** Our answer is yes.
+
+This article follows a real prompt — a client portfolio analysis request sent by an investment bank trader — through its complete journey inside A3S Power. At each security layer, we stop and look at what was done, why it was done, and what the code looks like.
+
+---
+
+## Table of Contents
+
+1. [Your Prompt Is Running Naked in Server Memory](#1-your-prompt-is-running-naked-in-server-memory)
+2. [Gate One: A Hardware Attestation Hidden Inside the TLS Handshake](#2-gate-one-a-hardware-attestation-hidden-inside-the-tls-handshake)
+3. [Gate Two: Hardware Locks Memory in a Safe](#3-gate-two-hardware-locks-memory-in-a-safe)
+4. [How Do You Know Which Model the Server Is Running?](#4-how-do-you-know-which-model-the-server-is-running)
+5. [Running a 10B Model in 256MB — The Secret of picolm Layer-Streaming Inference](#5-running-a-10b-model-in-256mb--the-secret-of-picolm-layer-streaming-inference)
+6. [Logs, Error Messages, Token Counts — Every One Can Betray You](#6-logs-error-messages-token-counts--every-one-can-betray-you)
+7. [Model Weights Are Also Confidential: Three Encrypted Loading Modes](#7-model-weights-are-also-confidential-three-encrypted-loading-modes)
+8. [How Can the Client Verify All of This Itself?](#8-how-can-the-client-verify-all-of-this-itself)
+9. [Six-Layer Architecture: What's Inside](#9-six-layer-architecture-whats-inside)
+10. [Why Pure Rust? The Trust Ledger of Supply Chain Auditing](#10-why-pure-rust-the-trust-ledger-of-supply-chain-auditing)
+11. [Compared to Ollama, vLLM, TGI — Where's the Gap?](#11-compared-to-ollama-vllm-tgi--wheres-the-gap)
+12. [If You Need to Deploy Today](#12-if-you-need-to-deploy-today)
+
+---
+
+## 1. Your Prompt Is Running Naked in Server Memory
+
+First, let's look at what that prompt looks like:
+
+> "Client [Name], account ending in 8832, holds 500,000 shares of AAPL at a cost basis of $142.7, with a current unrealized gain of $120M. Please analyze hedging strategies under Fed rate hike expectations and assess the market impact of a large block sale."
+
+This prompt travels through an HTTPS tunnel to the inference server. TLS terminates. From this moment on, the client's name, account information, position size, and trading strategy — all of it lies in plaintext in server memory.
+
+A prompt goes through five stages inside an inference server:
+
+1. **Network transit**: Protected by HTTPS, no problem
+2. **Memory decryption**: TLS terminates, prompt becomes plaintext — the problem starts here
+3. **Inference computation**: tokenize → matrix operations → generate response, all in plaintext
+4. **Log recording**: prompt and response may be written to log files
+5. **Memory residue**: the request is done, but the data still sits in memory waiting to be overwritten
+
+Disk encryption protects data at rest. TLS protects data in transit. But who protects **data being processed**? Nobody.
+
+This isn't a theoretical risk:
+
+- **Finance (SOX/GLBA)** — Leaked trading strategies and client positions mean insider trading or market manipulation. Regulators want auditable technical guarantees, not verbal promises
+- **Healthcare (HIPAA)** — Cloud provider administrators can theoretically read all patient data
+- **Government and Defense** — Classified information has strict physical isolation requirements; traditional inference servers cannot prove data wasn't leaked
+- **Multi-tenant AI platforms** — A single memory boundary vulnerability can break tenant isolation
+
+The trust model of traditional solutions:
+
+```
+You trust → Cloud provider → won't read your memory
+You trust → Inference server operator → won't log your prompt
+You trust → System administrators → won't export memory snapshots
+You trust → Everyone with physical access → won't perform cold boot attacks
+```
+
+Every layer of trust is an assumption. More assumptions means a more fragile system.
+
+A3S Power's answer: **Replace trust assumptions with cryptographic verification, replace policy promises with hardware enforcement.** And this protection doesn't require expensive infrastructure — a $10 piece of hardware with 256MB of memory can run it.
+
+Now let that prompt continue its journey.
+
+---
+
+## 2. Gate One: A Hardware Attestation Hidden Inside the TLS Handshake
+
+### The Problem: There's a Time Gap Between Verification and Communication
+
+Traditional remote attestation schemes split attestation and communication into two steps: first verify the server's identity, then establish a TLS connection to send data. Sounds reasonable?
+
+It's not. There's a time window between these two steps — a TOCTOU (Time-of-Check-Time-of-Use) vulnerability. You verified server A, but in the instant you establish the connection, an attacker may have already swapped A for B. Your prompt was sent to a server you never verified.
+
+### How A3S Power Solves It: RA-TLS
+
+RA-TLS (Remote Attestation TLS) embeds the attestation report directly into the X.509 extension fields of the TLS certificate. Remote attestation completes simultaneously with the TLS handshake — no time window, no TOCTOU.
+
+First, the config — three lines:
+
+```hcl
+tee_mode = true
+tls_port = 11443
+ra_tls   = true
+```
+
+A3S Power's RA-TLS implementation details:
+
+- **Self-signed ECDSA P-256 certificate**: A new certificate is generated each time the server starts, valid for 365 days
+- **Custom X.509 extension**: OID `1.3.6.1.4.1.56560.1.1`, containing a JSON-encoded attestation report
+- **SAN (Subject Alternative Names)**: Always includes localhost + 127.0.0.1 + ::1, with support for additional DNS names or IP addresses
+
+When the client for that trading analysis prompt initiates a TLS connection, it can extract the OID `1.3.6.1.4.1.56560.1.1` extension from the certificate, parse the JSON attestation report, and verify it with the Verify SDK. The entire process completes during the handshake — verification fails? The connection terminates immediately, and not a single byte of the prompt is sent.
+
+### There's Also a More Hidden Channel: Vsock
+
+When A3S Power runs inside an a3s-box MicroVM, it doesn't use TCP/IP — it communicates with the host via Vsock (Virtio Socket):
+
+- **Zero configuration**: No IP addresses, routing tables, or firewall rules needed
+- **Secure**: The communication channel doesn't go through the network stack; network-layer attackers can't intercept it
+- **High performance**: virtio-based shared memory transport with extremely low latency
+
+A3S Power uses the same axum router to handle both Vsock and TCP requests — all middleware (rate limiting, authentication, auditing) applies equally to Vsock.
+
+The TLS handshake is complete. That prompt has now entered the server. Next it will discover that the memory space it's in is completely different from a normal server.
+
+---
+
+## 3. Gate Two: Hardware Locks Memory in a Safe
+
+### The Problem: Software Isolation Isn't Hard Enough
+
+The OS's memory protection is at the software level. A kernel vulnerability, a privilege escalation, a malicious hypervisor — all can bypass it. In cloud environments, your virtual machine runs on someone else's physical machine, and the hypervisor has the right to read all your memory.
+
+This isn't a question of trust — it's a fundamental architectural flaw.
+
+### How A3S Power Solves It: TEE Hardware Isolation
+
+TEE (Trusted Execution Environment) creates an encrypted execution environment at the processor level:
+
+- **Memory encryption**: All memory data is encrypted by hardware AES keys, managed by the processor's secure processor (PSP/SGX), inaccessible to the OS and VMM
+- **Integrity protection**: Hardware prevents external entities from tampering with memory contents inside the TEE
+- **Remote attestation**: The TEE can generate hardware-signed attestation reports proving its identity and the integrity of its runtime environment
+
+Current mainstream TEE technologies:
+
+| Technology | Vendor | Isolation Granularity | Memory Encryption | Attestation Mechanism |
+|------------|--------|-----------------------|-------------------|-----------------------|
+| AMD SEV-SNP | AMD | VM-level | AES-128/256 | SNP_GET_REPORT ioctl |
+| Intel TDX | Intel | VM-level | AES-128 | TDX_CMD_GET_REPORT0 ioctl |
+| Intel SGX | Intel | Process-level | AES-128 | EREPORT/EGETKEY |
+
+A3S Power supports AMD SEV-SNP and Intel TDX, and provides a simulation mode for development and testing.
+
+### Auto-Detection, Zero Configuration
+
+A3S Power automatically detects the TEE environment at startup — no manual specification needed:
+
+1. Check for `/dev/sev-guest` device file → AMD SEV-SNP
+2. Check for `/dev/tdx-guest` or `/dev/tdx_guest` device file → Intel TDX
+3. Check for `A3S_TEE_SIMULATE=1` environment variable → Simulation mode
+4. None of the above → No TEE
+
+The same binary runs in both TEE and non-TEE environments — TEE environments automatically enable hardware protection, development environments use simulation mode for testing.
+
+### TEE Is Not a Feature, It's a Cross-Cutting Concern
+
+Many people think TEE support just means adding an attestation endpoint. It's not. In A3S Power, TEE security permeates every layer:
+
+```
+Layer           TEE Integration
+──────────────  ──────────────────────────────────────────────────────
+API             Log redaction, buffer zeroing, token count fuzzing, timing padding,
+                attestation endpoint (nonce + model binding)
+
+Server          Encrypted audit logs (AES-256-GCM), constant-time auth,
+                RAII decrypted model storage, RA-TLS cert (X.509 attestation ext),
+                TEE-specific Prometheus counters
+
+Backend         EPC-aware routing (auto-switch to picolm when model > 75% EPC),
+                per-request KV cache isolation, mlock weight pinning
+
+Model           SHA-256 content-addressed storage, GGUF memory estimation (EPC budget planning)
+
+TEE             Attestation (SEV-SNP/TDX ioctl), AES-256-GCM encryption (3 modes),
+                Ed25519 model signing, key rotation, policy enforcement, log redaction (10 keys),
+                SensitiveString (auto-zeroing), EPC memory detection
+
+Verify          Client: nonce binding, model hash binding, measurement checks (all constant-time),
+                hardware signature verification (AMD KDS / Intel PCS certificate chain)
+```
+
+That prompt is now safely resting in hardware-encrypted memory. But a new problem has emerged — how do you know the model processing this prompt is really the one you think it is?
+
+---
+
+## 4. How Do You Know Which Model the Server Is Running?
+
+### The Problem: Model Identity Is a Black Box
+
+You send a request to an endpoint claiming to run "llama-3.2-3b." But how do you verify it? The operator might:
+
+- Replace the claimed model with a smaller, cheaper one (to save money)
+- Replace the original model with a backdoored one (to steal data)
+- Replace the original model with a fine-tuned one (to manipulate output)
+
+API behavior might look completely normal — you can't reliably distinguish different models from their output.
+
+### How A3S Power Solves It: Two-Layer Model Integrity + Hardware Attestation Binding
+
+**Layer one: SHA-256 hash verification.** When `tee_mode = true`, each model file's hash is verified at startup. No match? Refuse to start.
+
+```hcl
+tee_mode = true
+model_hashes = {
+  "llama3.2:3b" = "sha256:a1b2c3d4e5f6..."
+  "qwen2.5:7b"  = "sha256:def456789abc..."
+}
+```
+
+**Layer two: Ed25519 signature verification.** The model publisher signs the model file with an Ed25519 private key; the signature is stored at `<model_path>.sig` (64-byte raw signature). Verification happens at load time — confirming not only that the model hasn't been tampered with, but also that it genuinely came from the claimed publisher.
+
+```hcl
+model_signing_key = "a1b2c3d4..."  # Ed25519 public key (hex-encoded, 32 bytes)
+```
+
+But these two layers only solve the server-side problem. How does the client know the server actually did these verifications?
+
+**The answer: model attestation binding.**
+
+When the client requests `GET /v1/attestation?nonce=<hex>&model=<name>`, A3S Power embeds the model's SHA-256 hash into the `report_data` field of the hardware attestation report:
+
+```
+Client sends GET /v1/attestation?nonce=<hex>&model=<name>
+    │
+    ▼
+Build report_data (64 bytes)
+    ├── [0..32]  = nonce (client-provided, prevents replay)
+    └── [32..64] = SHA-256(model_file) (model hash, proves model identity)
+    │
+    ▼
+Call hardware ioctl
+    ├── AMD: SNP_GET_REPORT → /dev/sev-guest
+    │   Report offset 0x50: report_data (64 bytes)
+    │   Report offset 0x90: measurement (48 bytes, SHA-384)
+    │   Report offset 0x1A0: chip_id (64 bytes)
+    │
+    └── Intel: TDX_CMD_GET_REPORT0 → /dev/tdx-guest
+        TDREPORT offset 64: reportdata (64 bytes)
+        TDREPORT offset 528: MRTD (48 bytes)
+    │
+    ▼
+Return AttestationReport {
+    tee_type: "sev-snp" | "tdx" | "simulated",
+    report_data: [u8; 64],      // nonce + model_hash
+    measurement: [u8; 48],      // platform boot measurement
+    raw_report: Vec<u8>,        // full firmware report (for independent client verification)
+}
+```
+
+The key is the layout of `report_data`: `[nonce(32)][model_sha256(32)]`. These 64 bytes are protected by hardware signatures, meaning:
+
+- **Nonce binding**: A different nonce each time prevents replay of old attestation reports
+- **Model binding**: The model's SHA-256 hash is locked by hardware signature. Swap the model? The attestation immediately becomes invalid
+
+The client verifies three things to confirm model identity:
+1. The attestation report is genuinely signed by TEE hardware (via AMD KDS / Intel PCS certificate chain)
+2. `report_data[32..64]` equals the expected model SHA-256 hash
+3. `report_data[0..32]` equals the nonce the client sent
+
+Three steps form a complete chain of trust: **hardware attestation → platform integrity → model identity → request freshness**.
+
+This is A3S Power's unique innovation — other inference servers don't even have an attestation endpoint, let alone model attestation binding.
+
+The model identity is confirmed. But inference hasn't started yet. Because there's still a tricky engineering problem — the TEE's memory is too small.
+
+---
+## 5. Running a 10B Model in 256MB — The Secret of picolm Layer-Streaming Inference
+
+### The Problem: The Model Doesn't Fit in Cheap Hardware
+
+A harsh reality of privacy inference: TEE environments typically have only 256MB to 512MB of EPC (Encrypted Page Cache). More broadly, if you want to run privacy inference on a $10 edge device — say, an embedded board with 256MB of memory — traditional inference engines will sentence you to death.
+
+A 10B-parameter Q4_K_M quantized model requires about 6GB of memory. 6GB model, 256MB memory. 24x difference. It won't fit.
+
+The traditional solution is to use smaller models or more aggressive quantization. But this significantly degrades inference quality — and in security scenarios, model quality directly determines the ceiling of security capabilities (more on why later).
+
+**A3S Power's answer: you don't need expensive hardware, you need a smarter inference approach.**
+
+### How A3S Power Solves It: picolm Layer-Streaming Inference
+
+The core insight is actually simple: **at any given moment, the forward pass only needs the weights of one layer.** After processing layer N, layer N's weights are no longer needed — release them, load layer N+1.
+
+```
+Traditional inference (mistralrs / llama.cpp):
+┌──────────────────────────────────────────────────┐
+│  All 48 layers loaded in memory simultaneously    │
+│  Peak memory ≈ model_size (e.g. 10B Q4_K_M ~6GB) │
+└──────────────────────────────────────────────────┘
+
+picolm layer-streaming inference:
+┌──────────────────────────────────────────────────┐
+│  mmap(model.gguf)  ← virtual address space only  │
+│                       no physical memory alloc    │
+│                                                   │
+│  for layer in 0..n_layers:                        │
+│    ┌─────────────────────────┐                    │
+│    │ blk.{layer}.* tensors   │ ← OS pages in      │
+│    │ (~125 MB for 10B Q4_K_M)│   weights on demand│
+│    └─────────────────────────┘                    │
+│    forward_pass(hidden_state, layer_weights)       │
+│    madvise(MADV_DONTNEED) ← release physical pages │
+│                                                   │
+│  Peak memory ≈ layer_size + KV cache (FP16)       │
+│             ≈ 125 MB + 68 MB (10B, 2048 ctx)      │
+└──────────────────────────────────────────────────┘
+```
+
+### Two Key Components — Let's Look at the Code
+
+**Component one: `gguf_stream.rs` — Zero-copy GGUF parser**
+
+Opens the GGUF file via `mmap(MAP_PRIVATE | PROT_READ)`. Parses the header (v2/v3), metadata, and tensor descriptors — but **loads no weight data**. Each tensor is recorded as an `(offset, size)` pair within the mmap region.
+
+When picolm requests a layer's weights, `tensor_bytes(name)` returns a `&[u8]` slice pointing directly into the mmap — zero copy, zero allocation. The OS kernel pages in data on demand and automatically reclaims it under memory pressure.
+
+```
+GGUF file (on disk):
+┌────────┬──────────┬──────────────────────────────────┐
+│ Header │ Metadata │ Tensor Data (aligned)             │
+│ 8 bytes│ variable │ blk.0.attn_q | blk.0.attn_k | ...│
+└────────┴──────────┴──────────────────────────────────┘
+                          ↑
+                    mmap returns &[u8] slice
+                    pointing directly here
+                    (no memcpy, no allocation)
+```
+
+**Component two: `picolm.rs` + `picolm_ops/` — Layer-streaming forward pass**
+
+Iterates from `blk.0.*` to `blk.{n-1}.*`, applying each layer's weights to the hidden state. After processing layer N, `madvise(MADV_DONTNEED)` explicitly releases physical pages.
+
+```rust
+// Simplified flow (actual code in src/backend/picolm.rs)
+let gguf = GgufFile::open("model.gguf")?;  // mmap, only parses header
+let tc = TensorCache::build(&gguf, n_layers)?;  // one-time parse of tensor pointers
+let rope_table = RopeTable::new(max_seq, head_dim, rope_dim, theta);
+let mut hidden = vec![0.0f32; n_embd];
+let mut buf = ForwardBuffers::new(/* pre-allocate all working buffers */);
+
+for layer in 0..n_layers {
+    attention_layer(&mut hidden, &tc, layer, pos, kv_cache, &rope_table, &mut buf)?;
+    ffn_layer(&mut hidden, &tc, layer, activation, &mut buf)?;
+    tc.release_layer(&gguf, layer);  // madvise(DONTNEED) — release physical pages
+}
+```
+
+### Six Key Optimizations on the Hot Path
+
+- **TensorCache**: All tensor byte slices and types are parsed once at load time into flat arrays. Hot path uses `layer * 10 + slot` indexing — zero string formatting, zero HashMap lookups
+- **ForwardBuffers**: All working buffers (q, k, v, gate, up, down, normed, logits, scores, attn_out) pre-allocated once. Zero heap allocation during inference
+- **Fused vec_dot**: Dequantization + dot product in a single pass — no intermediate f32 buffer. Dedicated kernels for Q4_K, Q6_K, Q8_0
+- **Rayon parallel matrix multiply**: Matrices with more than 64 rows use multi-threaded row parallelism
+- **FP16 KV cache**: Keys and values stored as f16, converted on read. KV cache memory halved
+- **Pre-computed RoPE**: cos/sin tables built at load time. No transcendental functions on the hot path
+
+### Real-World Memory Comparison
+
+| Model | Traditional | picolm Layer-Streaming | Reduction |
+|-------|-------------|------------------------|-----------|
+| 0.5B Q4_K_M (~350 MB) | ~350 MB | ~15 MB + KV | 23x |
+| 3B Q4_K_M (~2 GB) | ~2 GB | ~60 MB + KV | 33x |
+| 7B Q4_K_M (~4 GB) | ~4 GB | ~120 MB + KV | 33x |
+| 10B Q4_K_M (~6 GB) | ~6 GB | ~125 MB + KV | 48x |
+| 13B Q4_K_M (~7 GB) | ~7 GB | ~200 MB + KV | 35x |
+| 70B Q4_K_M (~40 GB) | ~40 GB | ~1.1 GB + KV | 36x |
+
+KV cache uses FP16 storage (half the memory of F32). A 10B model at 2048 context length is about 68 MB.
+
+**A 10B model under picolm has a peak memory of about 193 MB (125 MB layer weights + 68 MB KV cache), fully runnable in 256 MB of memory.** This means a $10 edge device, a TEE VM with 256MB EPC, or even a memory-constrained container — all can run a 10B model with genuine semantic understanding capability. This is picolm's core value — not "barely runs," but making privacy inference accessible on any hardware.
+
+### Why Is a 10B Model Critical? Not Just "Can Run," But "Can Work"
+
+You might ask: wouldn't a 0.5B small model inside the TEE be enough? Why specifically 10B?
+
+Because 10B is a critical capability threshold. In A3S's security architecture, the LLM inside the TEE doesn't just answer questions — it carries three core security responsibilities:
+
+**Responsibility one: Safety Gate.** In an Agent execution chain, every operation needs security review — does the user's input contain injection attacks? Does the Agent-generated code have malicious behavior? Are the tool call parameters reasonable? These judgments require sufficient language understanding capability. A 0.5B model can do simple keyword matching, but against carefully crafted adversarial inputs (like multi-layered nested prompt injection), its judgment is far from adequate. A 10B model has genuine semantic understanding, capable of identifying complex attack patterns that "look harmless but are actually attempting privilege escalation."
+
+**Responsibility two: Data Redaction and Distribution (Privacy Router).** When sensitive data needs to leave the TEE boundary — such as sending inference results to external services, or writing logs to persistent storage — the data must first be redacted. This isn't simple regex replacement. A text containing "Client [Name], account ending in 8832, holds 500,000 shares of AAPL, unrealized gain $120M" requires the model to understand which parts are retainable public market information (AAPL ticker symbol) and which must be redacted as client privacy ([Name], account number, position size). A 10B model can perform context-aware intelligent redaction, rather than crudely marking the entire text as sensitive. Only redacted data can be safely distributed to downstream systems outside the TEE.
+
+Here's a concrete example. Suppose an AI Agent needs to query a database for client information to answer an analyst's question:
+
+```
+Analyst query: "Help me find clients with large redemptions in the past week and analyze possible reasons"
+
+Agent executes inside TEE:
+┌─────────────────────────────────────────────────────────────────┐
+│  TEE encrypted memory (hardware-isolated, unreadable externally) │
+│                                                                   │
+│  1. Agent calls SQL tool to query database:                       │
+│     SELECT name, account_id, amount, fund_name, redeem_date       │
+│     FROM redemptions WHERE amount > 1000000                       │
+│     AND redeem_date > NOW() - INTERVAL 7 DAY                     │
+│                                                                   │
+│  2. Database returns raw data (inside TEE, plaintext is safe):    │
+│     ┌──────────────────────────────────────────────────────┐      │
+│     │ [Client A] | 6621-8832 | $520,000  | Stable Growth A | 02-18│
+│     │ [Client B] | 6621-4471 | $380,000  | Tech Pioneer B  | 02-19│
+│     │ [Client C] | 6621-9953 | $1,200,000| Stable Growth A | 02-20│
+│     └──────────────────────────────────────────────────────┘      │
+│                                                                   │
+│  3. 10B model analyzes data, generates insight (inside TEE):      │
+│     "Stable Growth A fund saw concentrated redemptions            │
+│      Feb 18-20, totaling $2.1M across 2 clients.                 │
+│      Possible reason: fund NAV declined 3.2%, triggering          │
+│      stop-loss thresholds."                                       │
+│                                                                   │
+│  4. 10B model performs intelligent redaction on output (key step):│
+│     ┌──────────────────────────────────────────────────────┐      │
+│     │ Retain: fund name (public info), redemption trend,   │      │
+│     │         time range, aggregate amount, analysis        │      │
+│     │ Redact: client names → [Client A/B/C],               │      │
+│     │         account numbers → removed,                    │      │
+│     │         individual amounts → fuzzy ranges             │      │
+│     └──────────────────────────────────────────────────────┘      │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼ Redacted data leaves TEE
+┌─────────────────────────────────────────────────────────────────┐
+│  What the analyst sees:                                           │
+│                                                                   │
+│  "Stable Growth A fund saw concentrated redemptions Feb 18-20,   │
+│   totaling approximately $2M, involving a small number of        │
+│   clients. Possible reason: fund NAV declined 3.2%, triggering   │
+│   some clients' stop-loss thresholds.                            │
+│   Recommend monitoring this fund's liquidity risk."              │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+Note the key point in this flow: **the original client names, account numbers, and exact amounts never leave the TEE encrypted memory.** The analyst gets the business insight they need (which fund is seeing redemptions, possible reasons, risk recommendations), but sees no information that could identify specific clients.
+
+A 0.5B model can't do this — it can't understand that "[Name]" is a person's name that needs redaction while "Stable Growth A" is a fund name that can be retained. It also can't determine that "$520,000" should be fuzzed to a range rather than completely deleted. This context-aware intelligent redaction requires 10B-level semantic understanding.
+
+**Responsibility three: Gatekeeper for Sensitive Tool Calls (Tool Guard).** AI Agents interact with the external world through tools — executing shell commands, reading/writing files, calling APIs, accessing databases. Some tool calls involve sensitive operations: deleting production data, sending emails, modifying permissions, accessing key management systems. Approval for these operations cannot be delegated to systems outside the TEE (because external systems may be compromised) — it must be done inside the TEE by a model smart enough to judge: "Is this tool call within the authorized scope of the current task? Are the parameters reasonable? Is there a risk of privilege escalation?" A 10B model has the capability to understand complex tool call semantics and make accurate allow/deny decisions in milliseconds.
+
+These three responsibilities share a common characteristic: **they are all decision points on the security-critical path, where wrong judgments directly lead to data leakage or system compromise.** Using a 0.5B model for these tasks is like having an intern review nuclear plant safety protocols — capability mismatch. 10B is currently the best balance achievable within TEE memory constraints: powerful enough to handle security decisions, yet small enough to run smoothly in 256MB EPC.
+
+picolm makes this balance possible. Without layer-streaming inference, you can only run a 0.5B model in 256MB — those security responsibilities would degrade to simple rule matching, easily bypassed by attackers.
+
+### Auto-Routing: You Don't Need to Manually Choose a Backend
+
+A3S Power doesn't only have picolm as an inference backend. Its architecture defines a key abstraction — the `Backend` trait — where any inference engine that implements this trait can be plugged in. Three backends are built in, covering the complete hardware spectrum from $10 edge devices to high-end GPU TEE servers:
+
+```
+Hardware Condition              Auto-selected Backend           Characteristics
+──────────────────────────     ─────────────────────────     ──────────────────────────
+256MB memory, no GPU            picolm (pure Rust streaming)   O(layer_size) memory, 10B model
+(edge device / TEE EPC)
+
+Sufficient memory, no GPU       mistralrs (pure Rust candle)   Full load, faster inference
+(standard server / large EPC)   ★ Default backend
+
+GPU TEE environment             llama.cpp (C++ bindings)       GPU acceleration, max throughput
+(AMD SEV-SNP GPU TEE)           or mistralrs + CUDA
+```
+
+This means A3S Power isn't a specialized tool that only works under extreme conditions — it's an **inference platform that automatically upgrades with hardware conditions**. Today you use picolm on a 256MB edge device to run a 10B model for security decisions; tomorrow your TEE server gets a GPU, and the same code, same config automatically switches to the GPU-accelerated backend, boosting inference speed by tens of times.
+
+`BackendRegistry` implements TEE-aware auto-routing. `find_for_tee()` reads available memory from `/proc/meminfo` as an EPC approximation:
+
+```
+Model size ≤ 75% EPC → use mistralrs (full load, faster)
+Model size > 75% EPC → use picolm (layer-streaming, less memory)
+GPU available and backend supports it → prefer GPU-accelerated backend
+```
+
+The 75% threshold leaves room for working buffers, KV cache, and OS overhead. Completely transparent to users — just send requests, the system automatically selects the best backend. In a typical 256MB EPC scenario, a 10B model automatically routes to picolm, while a 0.5B model can be fully loaded with mistralrs.
+
+And the `Backend` trait is open — you can implement your own inference backend (such as integrating TensorRT-LLM or other GPU inference frameworks), register it with `BackendRegistry`, and immediately gain all of A3S Power's security capabilities: TEE attestation, model binding, log redaction, encrypted model loading. The security layer and inference layer are completely decoupled.
+
+That prompt is now being inferred. But during inference, there are some information leakage channels you might not have thought of.
+
+---
+
+## 6. Logs, Error Messages, Token Counts — Every One Can Betray You
+
+TEE hardware encryption protects data in memory from being read externally. But privacy protection isn't just memory encryption. Logs, metrics, error messages, and even token counts produced by the inference server itself can all become channels for information leakage.
+
+Let's address each one.
+
+### Leakage Channel One: Logs
+
+When `redact_logs = true`, `PrivacyProvider` automatically strips inference content from all log output. Redaction covers 10 sensitive JSON keys:
+
+| Key | Coverage Scenario |
+|-----|-------------------|
+| `content` | Chat message content |
+| `prompt` | Completion request prompt |
+| `text` | Text output |
+| `arguments` | Tool call arguments |
+| `input` | Embedding request input |
+| `delta` | Streaming delta |
+| `system` | System prompt |
+| `message` | Generic message field |
+| `query` | Query field |
+| `instruction` | Instruction field |
+
+See the effect:
+
+Before redaction:
+```json
+{"content": "Client [Name], holds 500,000 shares of AAPL...", "model": "llama3"}
+```
+
+After redaction:
+```json
+{"content": "[REDACTED]", "model": "llama3"}
+```
+
+Key design decision: redaction executes before log writing, not as post-processing. Sensitive data **never** appears in log files — even if an attacker gets the log files, they can't recover the inference content.
+
+### Leakage Channel Two: Error Messages
+
+Error messages during LLM inference may contain prompt fragments. For example, a tokenization error might echo part of the prompt content in the error message. The `sanitize_error()` function detects and strips these leaks:
+
+```
+Before sanitization: "Tokenization failed for prompt: Client [Name] holds 500,000 shares of AAPL..."
+After sanitization:  "Tokenization failed for prompt: [REDACTED]"
+```
+
+It recognizes prefixes like `prompt:`, `content:`, `message:`, `input:`, and truncates everything after them.
+
+### Leakage Channel Three: Token Count Side Channel
+
+This one is easy to overlook. Precise token counts can be used to infer the length and content characteristics of a prompt — this is a side-channel attack.
+
+When `suppress_token_metrics = true`, A3S Power rounds token counts in responses to the nearest 10:
+
+```
+Actual token count: 137 → Returns: 140
+Actual token count: 42  → Returns: 40
+```
+
+Simple, but effective. Eliminates information leakage from precise token counts while retaining sufficient precision for billing and monitoring.
+
+### Leakage Channel Four: Memory Residue
+
+The inference request is complete, but the prompt and response data may still linger in memory — until overwritten by other data. During this window, memory dump attacks can recover this data.
+
+A3S Power implements systematic memory zeroing via the `zeroize` crate:
+
+- **`SensitiveString` wrapper**: All inference content (prompts, responses) is wrapped in `SensitiveString`, which automatically zeroes memory on `Drop`
+- **`zeroize_string()` and `zeroize_bytes()`**: Helper functions for manual zeroing
+- **`Zeroizing<Vec<u8>>`**: Decryption buffers for encrypted models use this wrapper; plaintext weights are zeroed immediately after use
+- **`mlock()` memory locking**: On Linux, decrypted model weights are locked in physical memory via `mlock()`, preventing them from being swapped to disk. `munlock()` is called on release
+
+Even if an attacker captures a memory snapshot after inference completes, they cannot recover the prompt, response, or model weights.
+
+Four leakage channels, four lines of defense. That prompt's privacy is now comprehensively protected.
+
+But there's one thing we haven't discussed — the model weights themselves.
+
+---
+
+## 7. Model Weights Are Also Confidential: Three Encrypted Loading Modes
+
+### The Problem: Models Are Intellectual Property
+
+A carefully fine-tuned model may represent millions of dollars of investment and unique competitive advantage. If the model is stored in plaintext on disk, infrastructure operators can easily copy it.
+
+### How A3S Power Solves It: AES-256-GCM Encrypted Models
+
+A3S Power supports AES-256-GCM encrypted model files (`.enc` suffix). The encryption format is `[12-byte nonce][AES-256-GCM ciphertext+tag]`. Three decryption modes address different security and performance needs.
+
+**Mode one: DecryptedModel (file mode)**
+
+Decrypts ciphertext to a temporary `.dec` file. Works with all backends. Performs secure erasure on `Drop` — first overwrites file contents with zeros, then deletes the file.
+
+```
+Encrypted file → AES-256-GCM decryption → Temporary .dec file → Backend loads
+                                                                    │
+                                                              On Drop:
+                                                              1. Zero-overwrite file
+                                                              2. Delete file
+```
+
+**Mode two: MemoryDecryptedModel (memory mode)**
+
+Decrypts the entire model into `mlock`-locked RAM; plaintext **never touches disk**. On `Drop`, memory is automatically zeroed via `Zeroizing<Vec<u8>>`, then `munlock` releases the lock.
+
+```
+Encrypted file → AES-256-GCM decryption → mlock-locked RAM → Backend loads
+                                                                    │
+                                                              On Drop:
+                                                              1. Memory zeroing (zeroize)
+                                                              2. munlock release
+```
+
+This is the recommended choice in TEE mode (`in_memory_decrypt = true`), because model plaintext never appears on disk — not even as a temporary file.
+
+**Mode three: LayerStreamingDecryptedModel (streaming mode)**
+
+Designed specifically for the picolm backend. Decrypts the entire model once, then provides chunked access on demand. Each chunk is returned as `Zeroizing<Vec<u8>>`, automatically zeroed after use.
+
+```
+Encrypted file → AES-256-GCM decryption → Chunked access interface
+                                                    │
+                                              picolm requests layer N:
+                                              → Returns Zeroizing<Vec<u8>>
+                                              → Forward pass
+                                              → Chunk Drop → Memory zeroed
+```
+
+This mode pairs perfectly with picolm's layer-streaming inference: at any moment, only one layer's plaintext weights exist in memory.
+
+### Key Management
+
+The `KeyProvider` trait provides an extensible key management interface:
+
+```rust
+pub trait KeyProvider: Send + Sync {
+    async fn get_key(&self) -> Result<[u8; 32]>;
+    async fn rotate_key(&self) -> Result<[u8; 32]>;
+    fn provider_name(&self) -> &str;
+}
+```
+
+Two built-in implementations:
+
+- **StaticKeyProvider**: Loads key from file or environment variable, cached via `OnceCell`. Suitable for single-key scenarios
+- **RotatingKeyProvider**: Supports multiple keys, implements zero-downtime rotation via atomic index. `rotate_key()` advances to the next key (cycling), `get_key()` returns the current key
+
+Key sources support two forms:
+
+```hcl
+# Load from file (64 hex characters = 32 bytes)
+model_key_source = { file = "/path/to/key.hex" }
+
+# Load from environment variable
+model_key_source = { env = "MY_MODEL_KEY" }
+```
+
+For production environments requiring HSM/KMS integration, a custom `KeyProvider` can be implemented.
+
+At this point, that prompt's journey is nearly complete. Inference is done, and the response is returned to the trader through an encrypted channel. But before trusting this response, the client has one last thing to do.
+
+---
+## 8. How Can the Client Verify All of This Itself?
+
+### The Problem: "Please Trust Us" Isn't Enough
+
+The server says it's running in a TEE, says it's doing log redaction, says it loaded the correct model. But these are all self-declarations from the server. Why should the client believe them?
+
+### How A3S Power Solves It: Independent Client Verification
+
+A3S Power's security model isn't "please trust us" — it's "please verify yourself." The client independently verifies every security claim the server makes through the `a3s-power-verify` CLI or Verify SDK.
+
+The complete chain of trust looks like this:
+
+```
+AMD/Intel Silicon (physical hardware — root of trust)
+    │
+    ├── Secure Processor (PSP / SGX)
+    │   └── Manages AES encryption keys for each VM
+    │
+    ├── Hardware Root Key (ARK / Intel Root CA)
+    │   └── Intermediate certificate (ASK / PCK CA)
+    │       └── Chip-level certificate (VCEK / PCK)
+    │           └── Attestation report signature
+    │
+    └── Platform Measurement
+        └── Hash of code at boot time
+            └── Proves runtime environment hasn't been tampered with
+                │
+                ├── report_data[0..32] = nonce (prevents replay)
+                └── report_data[32..64] = model_sha256 (model identity)
+```
+
+The `verify_report()` function performs four-step verification, each an independent security check:
+
+**Step one: Nonce binding verification.** Checks whether `report_data[0..32]` equals the nonce the client sent. Prevents replay attacks — an attacker cannot use an old attestation report to impersonate the current TEE environment. Verification uses constant-time comparison to prevent timing side channels.
+
+**Step two: Model hash binding verification.** Checks whether `report_data[32..64]` equals the expected model SHA-256 hash. Proves the server is running the model you expect — not a smaller substitute, not a backdoored version.
+
+**Step three: Platform measurement verification.** Checks whether `measurement` (48-byte SHA-384) equals a known-good value. Proves the TEE environment's boot code (firmware, kernel, application) hasn't been tampered with.
+
+**Step four: Hardware signature verification.** Verifies the attestation report's signature via the `HardwareVerifier` trait:
+
+- **AMD SEV-SNP**: Fetches VCEK certificate from AMD KDS, verifies ECDSA P-384 signature. Certificate chain: ARK → ASK → VCEK → report signature
+- **Intel TDX**: Fetches PCK certificate from Intel PCS, verifies ECDSA P-256 signature. Certificate chain: Intel Root CA → PCK CA → PCK → report signature
+
+Certificate cache has a 1-hour TTL to avoid frequent requests being rate-limited by AMD KDS.
+
+```rust
+pub struct VerifyOptions<'a> {
+    pub nonce: Option<Vec<u8>>,
+    pub expected_model_hash: Option<Vec<u8>>,
+    pub expected_measurement: Option<Vec<u8>>,
+    pub hardware_verifier: Option<&'a dyn HardwareVerifier>,
+}
+```
+
+The combination of four-step verification means: the client can independently confirm the inference server's identity, runtime environment, and model identity without trusting any intermediary.
+
+That prompt's journey ends here. From the hardware attestation in the TLS handshake, to TEE memory encryption, to model identity verification, to layer-streaming inference, to log redaction and memory zeroing, to independent client verification — every step has cryptographic guarantees, depending on no one's promises.
+
+Now let's step back and look at the architecture supporting all of this.
+
+---
+
+## 9. Six-Layer Architecture: What's Inside
+
+A3S Power is written in Rust. The entire system consists of six layers, each with clear responsibilities, communicating with adjacent layers through trait interfaces.
+
+### Layer Topology
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  API Layer                                                          │
+│  /v1/chat/completions · /v1/completions · /v1/embeddings            │
+│  /v1/models · /v1/attestation · /health · /metrics                  │
+├─────────────────────────────────────────────────────────────────────┤
+│  Server Layer                                                       │
+│  RateLimiter → RequestID → Metrics → Tracing → CORS → Auth         │
+│  AppState · Audit (JSONL/Encrypted/Async/Noop) · Transport          │
+├─────────────────────────────────────────────────────────────────────┤
+│  Backend Layer                                                      │
+│  BackendRegistry (priority routing, TEE-aware)                      │
+│  ┌─────────────────┬─────────────────┬────────────────┐             │
+│  │ MistralRs ★     │ LlamaCpp        │ Picolm         │             │
+│  │ Pure Rust(candle│ C++ bindings    │ Pure Rust      │             │
+│  │ GGUF/SafeTensors│ GGUF            │ O(layer_size)  │             │
+│  └─────────────────┴─────────────────┴────────────────┘             │
+├─────────────────────────────────────────────────────────────────────┤
+│  Model Layer                                                        │
+│  ModelRegistry · BlobStorage (SHA-256) · GgufMeta · HfPull          │
+├─────────────────────────────────────────────────────────────────────┤
+│  TEE Layer (cross-cutting security layer)                           │
+│  Attestation · EncryptedModel · Privacy · ModelSeal · KeyProvider   │
+│  TeePolicy · EPC Detection · RA-TLS Certificate                    │
+├─────────────────────────────────────────────────────────────────────┤
+│  Verify Layer (client SDK)                                          │
+│  verify_report() · HardwareVerifier (AMD KDS / Intel PCS)           │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### What Each Layer Does
+
+**API Layer** — Provides OpenAI-compatible HTTP endpoints: `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/models`. Plus A3S Power's unique `/v1/attestation` endpoint. The `autoload` module implements automatic model loading, LRU eviction, decryption, and integrity verification.
+
+**Server Layer** — Manages the middleware stack (rate limiting, request ID, metrics, tracing, CORS, authentication), application state (`AppState`), audit logging, and transport protocols (TCP/TLS/Vsock). `AppState` is the core state container, holding references to all key components: model registry, backend registry, TEE provider, privacy provider, etc.
+
+**Backend Layer** — The abstraction layer for inference engines, and the key to A3S Power's architectural flexibility. `BackendRegistry` automatically selects the optimal backend based on priority, model format, and hardware conditions. Three built-in backends cover the complete hardware spectrum: picolm (pure Rust layer-streaming, 256MB edge devices), mistralrs (pure Rust candle, standard servers, default), llama.cpp (C++ bindings, GPU acceleration). The `Backend` trait is open — you can plug in any inference framework and immediately gain all of A3S Power's security capabilities.
+
+**Model Layer** — Manages model storage, registration, and pulling. `BlobStorage` uses SHA-256 content-addressed storage with automatic deduplication. `ModelRegistry` manages model manifests via `RwLock<HashMap>` with JSON persistence. `HfPull` supports pulling models from HuggingFace Hub with resume support and SSE progress streaming.
+
+**TEE Layer** — The core differentiating layer, cross-cutting all other layers. Contains attestation, encrypted model loading (EncryptedModel), privacy protection (Privacy), model integrity (ModelSeal), key management (KeyProvider), policy engine (TeePolicy), EPC memory detection, and RA-TLS certificate management.
+
+**Verify Layer** — Client SDK for independently verifying server attestation reports. Includes nonce binding verification, model hash binding verification, platform measurement verification, and hardware signature verification (AMD KDS / Intel PCS certificate chain).
+
+### Minimal Core + External Extensions
+
+The trustworthiness of a security system is inversely proportional to its complexity. More code means more vulnerabilities and harder auditing. A3S Power minimizes the amount of code that must be trusted:
+
+```
+Core (7)                              Extensions (8 traits)
+─────────────────────────             ──────────────────────────────────────
+AppState (model lifecycle)            Backend: MistralRs / LlamaCpp / Picolm
+BackendRegistry + Backend trait       TeeProvider: SEV-SNP / TDX / Simulated
+ModelRegistry + ModelManifest         PrivacyProvider: redaction policy
+PowerConfig (HCL)                     TeePolicy: allowlist + measurement binding
+PowerError (14 variants → HTTP)       KeyProvider: Static / Rotating / KMS
+Router + middleware stack             AuthProvider: API Key (SHA-256)
+RequestContext (per-request context)  AuditLogger: JSONL / Encrypted / Async / Noop
+                                      HardwareVerifier: AMD KDS / Intel PCS
+```
+
+Core components are stable and non-replaceable; extension components are trait-based and independently replaceable. All extensions have default implementations — works out of the box, customization is optional.
+
+Here are a few key trait definitions:
+
+```rust
+// TEE hardware abstraction
+pub trait TeeProvider: Send + Sync {
+    async fn attestation_report(&self, nonce: Option<&[u8]>) -> Result<AttestationReport>;
+    fn is_tee_environment(&self) -> bool;
+    fn tee_type(&self) -> TeeType;
+}
+
+// Privacy protection policy
+pub trait PrivacyProvider: Send + Sync {
+    fn should_redact(&self) -> bool;
+    fn sanitize_log(&self, msg: &str) -> String;
+    fn sanitize_error(&self, err: &str) -> String;
+    fn should_suppress_token_metrics(&self) -> bool;
+}
+
+// Inference backend
+pub trait Backend: Send + Sync {
+    fn name(&self) -> &str;
+    fn supports(&self, format: &ModelFormat) -> bool;
+    async fn load(&self, manifest: &ModelManifest) -> Result<()>;
+    async fn chat(&self, model_name: &str, request: ChatRequest)
+        -> Result<Pin<Box<dyn Stream<Item = Result<ChatResponseChunk>> + Send>>>;
+    // ...
+}
+
+// Audit log persistence
+pub trait AuditLogger: Send + Sync {
+    fn log(&self, event: AuditEvent);
+    async fn flush(&self);
+}
+```
+
+### TEE Policy Engine
+
+The `TeePolicy` trait demonstrates the flexibility of extension points:
+
+```rust
+pub trait TeePolicy: Send + Sync {
+    fn is_allowed(&self, tee_type: TeeType) -> bool;
+    fn validate_measurement(&self, measurement: &[u8]) -> bool;
+}
+```
+
+Three preset policies:
+
+- **`permissive()`**: Allows all TEE types, no measurement check. For development environments
+- **`strict()`**: Only allows hardware TEE (sev-snp, tdx), rejects simulation mode. For production environments
+- **Custom**: Fine-grained control via allowlists and measurement mappings
+
+When the `A3S_POWER_TEE_STRICT=1` environment variable is set, the system automatically removes "simulated" from the allowlist — a safety guardrail preventing accidental use of simulation mode in production.
+
+---
+
+## 10. Why Pure Rust? The Trust Ledger of Supply Chain Auditing
+
+### The Problem: Can You Audit It All?
+
+In a TEE environment, every line of code on the inference path is part of the Trusted Computing Base (TCB). The larger the TCB, the larger the attack surface, and the harder the audit.
+
+C/C++ code is the biggest risk source in security auditing — buffer overflows, use-after-free, uninitialized memory, and other memory safety vulnerabilities account for the majority of CVE database entries.
+
+### How A3S Power Solves It: Pure Rust Inference Path
+
+A3S Power provides the `tee-minimal` build configuration — currently the smallest auditable LLM inference stack in existence:
+
+| Build Config | Inference Backend | Dependency Tree Lines | C Dependencies |
+|--------------|-------------------|-----------------------|----------------|
+| `default` | mistralrs (candle) | ~2,000 | None |
+| `tee-minimal` | picolm (pure Rust) | ~1,220 | None |
+| `llamacpp` | llama.cpp | ~1,800+ | Yes (C++) |
+
+The `tee-minimal` configuration includes:
+
+- **picolm backend**: ~4,500 lines of pure Rust code, complete transformer forward pass. Zero C dependencies — every line of code can be audited by the Rust toolchain
+- **Complete TEE stack**: attestation, model integrity (SHA-256), log redaction, memory zeroing
+- **Encrypted model loading**: AES-256-GCM, supports in-memory and streaming decryption
+- **RA-TLS transport**: attestation embedded in X.509 certificate
+- **Vsock transport**: for communication inside a3s-box MicroVM
+
+```bash
+# Build minimal TEE configuration
+cargo build --release --no-default-features --features tee-minimal
+```
+
+For TEE deployments, pure Rust means:
+
+- **Auditable scope**: 1,220 dependency tree lines vs 2,000+, 40% reduction in audit workload
+- **No C/C++ toolchain**: No need to trust the correctness of gcc/clang compilers
+- **Memory safety guarantees**: Rust compiler verifies memory safety at compile time, no runtime checks needed
+- **Minimized `unsafe` blocks**: `unsafe` in picolm is only used for mmap and madvise system calls, each individually auditable
+
+### picolm Is Not a Toy
+
+picolm is a complete, production-ready transformer inference engine:
+
+- **Attention mechanism**: Multi-head attention + Grouped Query Attention (GQA), supports Q/K/V bias (Qwen, Phi)
+- **Feed-forward network**: SwiGLU (LLaMA, Mistral, Phi) and GeGLU (Gemma) activation variants
+- **Positional encoding**: RoPE with pre-computed cos/sin tables, supports partial dimensions
+- **Normalization**: RMSNorm, per-layer on-demand dequantization
+- **Dequantization**: Q4_K, Q5_K, Q6_K, Q8_0, Q4_0, F16, F32
+- **Fused kernels**: Dequantization + dot product in single pass, no intermediate buffers
+- **Parallel computation**: Rayon multi-threaded row-parallel matrix multiply
+- **FP16 KV cache**: Half-precision storage, memory halved
+- **BPE tokenizer**: Complete GPT-style byte pair encoding, supports ChatML templates
+
+---
+
+## 11. Compared to Ollama, vLLM, TGI — Where's the Gap?
+
+Let's look at the table directly:
+
+| Capability | Ollama | vLLM | TGI | A3S Power |
+|------------|:------:|:----:|:---:|:---------:|
+| OpenAI-compatible API | Yes | Yes | Yes | Yes |
+| GPU acceleration | Yes | Yes | Yes | Yes |
+| Streaming | Yes | Yes | Yes | Yes |
+| TEE hardware isolation (SEV-SNP / TDX) | -- | -- | -- | Yes |
+| Remote attestation (hardware-signed proof) | -- | -- | -- | Yes |
+| Model attestation binding | -- | -- | -- | Yes |
+| RA-TLS (attestation in TLS handshake) | -- | -- | -- | Yes |
+| Encrypted model loading (AES-256-GCM, 3 modes) | -- | -- | -- | Yes |
+| Deep log redaction (10 keys + error sanitization) | -- | -- | -- | Yes |
+| Memory zeroing (zeroize on drop) | -- | -- | -- | Yes |
+| Client verification SDK | -- | -- | -- | Yes |
+| Hardware signature verification (AMD KDS / Intel PCS) | -- | -- | -- | Yes |
+| Layer-streaming inference (10B model in 256MB) | -- | -- | -- | Yes |
+| Multi-backend auto-routing (edge→GPU TEE seamless upgrade) | -- | -- | -- | Yes |
+| Pure Rust inference path (fully auditable) | -- | -- | -- | Yes |
+
+### When Should You Use A3S Power?
+
+**Use A3S Power:**
+- Processing regulated data (SOX, GLBA, HIPAA, GDPR) requiring technical guarantees rather than policy promises
+- Multi-tenant AI platforms needing hardware-level tenant isolation
+- Need to prove to clients or auditors that inference data wasn't leaked
+- Model weights are core intellectual property that needs protection from operator copying
+- Need to run a 10B model on $10, 256MB hardware for security decisions
+- Edge deployment scenarios: IoT gateways, embedded devices, memory-constrained container environments
+- Supply chain security requires the inference path to be fully auditable (no C/C++ dependencies)
+
+**Use traditional inference servers:**
+- Internal deployment with full trust in infrastructure
+- Extremely latency-sensitive, TEE overhead not acceptable
+- Need to maximize GPU utilization (vLLM's PagedAttention)
+- Data being processed is not sensitive
+
+---
+
+## 12. If You Need to Deploy Today
+
+If you need to get A3S Power running today, here's what you need to know.
+
+### Fastest Start: Development Mode
+
+```hcl
+# power.hcl — minimal config
+bind = "0.0.0.0"
+port = 11434
+```
+
+```bash
+# Start
+a3s-power --config power.hcl
+
+# Pull a model
+curl -X POST http://localhost:11434/v1/models/pull \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen2.5:0.5b"}'
+
+# Inference (same experience as Ollama)
+curl http://localhost:11434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "qwen2.5:0.5b", "messages": [{"role": "user", "content": "hello"}]}'
+```
+
+### Production Mode: Full TEE
+
+```hcl
+# power.hcl — production TEE config
+bind = "0.0.0.0"
+port = 11434
+tls_port = 11443
+
+# TEE security
+tee_mode = true
+ra_tls   = true
+model_hashes = {
+  "llama3.2:3b" = "sha256:a1b2c3d4e5f6..."
+}
+model_signing_key = "a1b2c3d4..."
+
+# Encrypted models
+in_memory_decrypt = true
+model_key_source  = { env = "A3S_MODEL_KEY" }
+
+# Privacy protection
+redact_logs             = true
+suppress_token_metrics  = true
+```
+
+```bash
+# Build minimal TEE binary
+cargo build --release --no-default-features --features tee-minimal
+
+# Start inside SEV-SNP VM
+A3S_MODEL_KEY="your-64-hex-char-key" a3s-power --config power.hcl
+```
+
+### Client Verification
+
+```bash
+# Verify the server's TEE attestation
+a3s-power-verify \
+  --url https://your-server:11443 \
+  --model llama3.2:3b \
+  --expected-hash sha256:a1b2c3d4e5f6...
+```
+
+Or use the SDK:
+
+```rust
+use a3s_power_verify::{verify_report, VerifyOptions};
+
+let report = fetch_attestation(url, nonce).await?;
+verify_report(&report, &VerifyOptions {
+    nonce: Some(nonce),
+    expected_model_hash: Some(expected_hash),
+    expected_measurement: Some(known_measurement),
+    hardware_verifier: Some(&amd_kds_verifier),
+})?;
+// Verification passed, safe to send inference requests
+```
+
+### Position in the A3S Ecosystem
+
+A3S Power is the inference engine of the A3S privacy-preserving AI platform, running inside the a3s-box MicroVM:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                         A3S Ecosystem                             │
+│                                                                   │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │  a3s-box MicroVM (AMD SEV-SNP / Intel TDX)               │    │
+│  │  ┌────────────────────────────────────────────────────┐  │    │
+│  │  │  a3s-power                                         │  │    │
+│  │  │  OpenAI API ← Vsock/RA-TLS → Host                 │  │    │
+│  │  └────────────────────────────────────────────────────┘  │    │
+│  │  Hardware-encrypted memory — host cannot read             │    │
+│  └──────────────────────────────────────────────────────────┘    │
+│       ▲ Vsock                                                     │
+│       │                                                           │
+│  ┌────┴─────────┐  ┌──────────────┐  ┌────────────────────────┐  │
+│  │  a3s-gateway │  │  a3s-event   │  │  a3s-code              │  │
+│  │  (API routing│  │  (event bus) │  │  (AI coding agent)     │  │
+│  └──────────────┘  └──────────────┘  └────────────────────────┘  │
+│                                                                   │
+│  Client:                                                          │
+│  ┌──────────────────────────────────────────────────────────┐    │
+│  │  a3s-power verify SDK                                     │    │
+│  │  Nonce binding · Model hash binding · Hardware sig verify │    │
+│  └──────────────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+| Component | Relationship with Power |
+|-----------|------------------------|
+| **a3s-box** | Hosts Power inside TEE MicroVM |
+| **a3s-code** | Uses Power as local inference backend |
+| **a3s-gateway** | Routes inference requests to Power instances |
+| **a3s-event** | Distributes inference events |
+| **verify SDK** | Client attestation verification |
+
+### Technical Roadmap
+
+Three things in progress:
+
+1. **Expanding TEE hardware support** — Intel TDX support is already reserved in the architecture (`TeeType::Tdx` variant defined, ioctl calls implemented). ARM CCA (Confidential Compute Architecture) is on the future radar
+2. **GPU TEE acceleration** — AMD SEV-SNP has begun supporting GPU TEE (Confidential GPU), meaning A3S Power's multi-backend architecture can seamlessly upgrade: same security layer + GPU-accelerated backend, inference throughput increases by tens of times while maintaining hardware-level privacy protection. picolm solves the "can it run" problem; GPU TEE backends solve the "how fast can it run" problem
+3. **Deeper ecosystem integration** — Tighter integration with a3s-box MicroVM to automate TEE deployment workflows. Integration with the a3s-code AI coding agent framework to let AI Agents reason under TEE protection
+
+---
+
+Back to the opening scenario. The client portfolio and trading strategy information that trader typed, from the moment it left the keyboard, went through RA-TLS attestation handshake, TEE hardware memory encryption, model identity verification, layer-streaming inference, log redaction, and memory zeroing — every step with cryptographic guarantees, depending on no one's goodwill.
+
+And inside the TEE, that 10B model isn't just answering the trader's question. It's simultaneously doing three things: checking whether this prompt contains injection attacks, intelligently redacting client information and position data from the returned results, and approving subsequent sensitive tool calls that might be triggered. These security decisions must be made inside hardware-encrypted memory, and must be made by a model smart enough to do so — picolm's layer-streaming inference lets a 256MB EPC run a 10B model, making all of this possible.
+
+This isn't "we promise not to look at your data." This is "even if we wanted to look, the hardware won't allow it."
+
+858 tests ensure the correct implementation of these technical choices. The pure Rust minimal TCB (~1,220 dependency tree lines) ensures the inference path is fully auditable. And for users, the experience is as simple as using Ollama — send a request, get a result.
+
+The difference is: this time, you don't need to trust anyone. And you don't need an expensive server — a $10 piece of hardware with 256MB of memory is enough.
+
+---
+
+> **A3S Power — A Privacy LLM Inference Engine on $10 Hardware.**
+>

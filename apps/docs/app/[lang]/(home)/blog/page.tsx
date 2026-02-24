@@ -6,20 +6,22 @@ import { SiteNav } from '@/components/site-nav';
 
 export const metadata: Metadata = {
   title: 'Blog',
-  description: 'Engineering articles, release notes, and deep dives from the A3S team.',
-  openGraph: {
-    title: 'A3S Blog',
-    description: 'Engineering articles, release notes, and deep dives from the A3S team.',
-  },
+  description: 'A3S 团队的技术文章、版本说明与深度解析。',
 };
 
-function postSlug(path: string) {
-  return path.replace(/^\//, '').replace(/\.mdx$/, '');
+interface PageProps {
+  params: Promise<{ lang: string }>;
 }
 
-export default async function BlogPage() {
+function postFilename(path: string) {
+  // path is like "cn/some-post.mdx" → "some-post"
+  return path.replace(/^[^/]+\//, '').replace(/\.mdx$/, '');
+}
+
+export default async function BlogPage({ params }: PageProps) {
+  const { lang } = await params;
   const posts = [...blog]
-    .filter((p) => p.info.path.startsWith('en/'))
+    .filter((p) => p.info.path.startsWith(`${lang}/`))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
@@ -27,10 +29,8 @@ export default async function BlogPage() {
       className="min-h-screen"
       style={{ background: 'var(--ct-bg)', fontFamily: 'var(--ct-font)', color: 'var(--ct-text)' }}
     >
-      {/* ── Nav ── */}
       <SiteNav section="Blog" />
 
-      {/* ── Header ── */}
       <section className="px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto max-w-3xl">
           <span className="text-xs font-semibold uppercase tracking-widest text-indigo-500">A3S Lab</span>
@@ -38,20 +38,19 @@ export default async function BlogPage() {
             Blog
           </h1>
           <p className="mt-4 text-lg text-slate-500 dark:text-slate-400">
-            Engineering articles, release notes, and deep dives from the A3S team.
+            A3S 团队的技术文章、版本说明与深度解析。
           </p>
         </div>
       </section>
 
-      {/* ── Post list ── */}
       <section className="px-4 pb-24 sm:px-6">
         <div className="mx-auto max-w-3xl space-y-4">
           {posts.map((post) => {
-            const slug = postSlug(post.info.path);
+            const slug = postFilename(post.info.path);
             return (
               <Link
                 key={slug}
-                href={`/blog/${slug}`}
+                href={`/${lang}/blog/${slug}`}
                 className="module-card group flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-6 hover:-translate-y-0.5 dark:border-slate-700 dark:bg-slate-800/60"
               >
                 <div className="flex items-start justify-between gap-4">
@@ -87,14 +86,13 @@ export default async function BlogPage() {
         </div>
       </section>
 
-      {/* ── Footer ── */}
       <footer className="border-t border-slate-200 px-4 py-8 dark:border-slate-700/60 sm:px-6">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-sm font-bold text-transparent">
             A3S Lab
           </span>
           <Link
-            href="/"
+            href={`/${lang}`}
             className="text-sm text-slate-400 transition-colors hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400"
           >
             ← Home
