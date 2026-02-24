@@ -1,0 +1,465 @@
+---
+title: 构建多智能体代码审查流水线
+description: 使用 AgentTeam 和 TeamRunner 编排 Lead → Worker → Reviewer 流水线：自动分解目标、并行执行任务，并对每个结果进行质量把关，确认通过后才标记为完成。
+full: true
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+本教程将构建一个由三个 AI 智能体协同工作的**自动化代码审查流水线**：
+
+1. **Lead** 智能体将宏观目标（"审查 auth 模块"）分解为具体、独立的任务
+2. **Worker** 智能体从共享任务板上认领任务并并行执行
+3. **Reviewer** 智能体逐一检查每个执行结果，**通过**则标记为 Done，**拒绝**则重新入队等待重试
+
+流水线持续运行，直到所有任务完成——或者达到 `max_rounds` 上限为止。
+
+<Callout type="info">
+  先安装 SDK：`pip install a3s-code`。在 `~/.a3s/config.hcl` 中配置 LLM 提供商密钥。
+</Callout>
+
+---
+
+## 工作原理
+
+```
+目标
+  │
+  ▼
+┌─────────────┐     JSON 任务列表
+│  Lead LLM   │ ─────────────────────────────────────┐
+└─────────────┘                                       │
+                                                      ▼
+                                             ┌─────────────────┐
+                                             │  TeamTaskBoard  │
+                                             │  ┌───────────┐  │
+                                             │  │  task-1   │  │ Open
+                                             │  │  task-2   │  │ Open
+                                             │  │  task-3   │  │ Open
+                                             │  └───────────┘  │
+                                             └────────┬────────┘
+                                                      │ claim()
+              ┌──────────────┬──────────────┐         │
+              ▼              ▼              ▼         │
+        ┌──────────┐  ┌──────────┐  ┌──────────┐    │
+        │ Worker 1 │  │ Worker 2 │  │ Worker 3 │◄───┘
+        └────┬─────┘  └────┬─────┘  └────┬─────┘
+             │              │              │ complete()
+             └──────────────┴──────────────┘
+                                      │
+                                      ▼ InReview
+                              ┌───────────────┐
+                              │   Reviewer    │
+                              └───────┬───────┘
+                                      │
+                      ┌───────────────┴───────────────┐
+                      ▼                               ▼
+                   通过 (APPROVED)              拒绝 (REJECTED)
+                   (→ Done)              (→ 回到 Open，重新认领)
+```
+
+---
+
+## 操作演示
+
+<ScrollyCoding>
+<ScrollySteps>
+
+<ScrollyStep index={0}>
+
+### 项目结构
+
+仅需两个文件：`agent.hcl` 配置 LLM 提供商，`review.py` 实现流水线逻辑。
+
+无需 Lane 队列或外部工作进程——TeamRunner 使用 Tokio 任务在进程内处理所有并发。
+
+</ScrollyStep>
+
+<ScrollyStep index={1}>
+
+### 智能体配置（HCL）
+
+`agent.hcl` 只需配置提供商和模型。团队协作完全在进程内完成，无需 Lane 队列（除非需要限制 LLM 调用速率）。
+
+三个角色（Lead、Worker、Reviewer）共用同一套配置，每个角色拥有独立的 `AgentSession` 和独立的上下文窗口。
+
+</ScrollyStep>
+
+<ScrollyStep index={2}>
+
+### 构建团队
+
+创建 `AgentTeam`，添加成员并指定角色，然后包装进 `TeamRunner`。
+
+传入 `TeamRunner` 后，team 对象即被**消耗**——之后再调用 `team.add_member()` 会报错。
+
+- **`max_rounds`** — Reviewer 轮询轮数上限，超过则放弃等待中的任务（默认值：10）
+- **`poll_interval_ms`** — Worker 和 Reviewer 检查新任务的间隔（默认值：200 毫秒）
+
+</ScrollyStep>
+
+<ScrollyStep index={3}>
+
+### 绑定 Session
+
+每个成员需要一个 `Session` 作为其 LLM 执行器。对每个角色调用一次 `agent.session(workspace)`。
+
+`bind_session` 会验证成员 ID 是否存在于团队中，并在内部存储该 Session。
+执行类似任务的 Worker 甚至可以共享同一个 Session 对象——Runner 会在 Tokio 任务之间并发调用 `session.send()`。
+
+</ScrollyStep>
+
+<ScrollyStep index={4}>
+
+### 运行工作流
+
+`runner.run_until_done(goal)` 会阻塞直到所有任务完成（或 `max_rounds` 到期）。
+
+内部执行逻辑：
+1. Lead 收到规划提示，返回 `{"tasks": ["...", "..."]}` — Runner 自动解析此 JSON
+2. Worker 任务并发启动，各自轮询任务板
+3. Reviewer 任务并行运行，对每个 InReview 状态的任务进行审批或拒绝
+
+</ScrollyStep>
+
+<ScrollyStep index={5}>
+
+### 查看结果
+
+`result.done_tasks` 包含 Reviewer 审批通过的所有任务。每个 `TeamTask` 包含：
+
+- `id` — 唯一任务 ID（顺序编号，例如 `task-1`）
+- `description` — Lead 发布的原始任务描述
+- `result` — Worker 的执行结果文本
+- `status` — 此列表中始终为 `"done"`
+
+`result.rejected_tasks` 包含经过 `max_rounds` 仍处于 `"rejected"` 状态的任务——这些任务在规定轮数内未能通过审批。
+
+</ScrollyStep>
+
+<ScrollyStep index={6}>
+
+### 底层任务板操作
+
+可以手动发布任务、完全绕过 Lead，直接驱动任务板。当任务列表已知、只需并行执行加审核时非常有用。
+
+`board.stats()` 返回 `(open, in_progress, in_review, done, rejected)`——可用于进度条或监控仪表板。
+
+</ScrollyStep>
+
+<ScrollyStep index={7}>
+
+### 完整流水线
+
+完整的 `review.py`，运行方式：
+
+```bash
+python review.py "审查 auth 模块的安全问题"
+```
+
+可以看到 Lead 分解目标、Worker 并行执行任务，Reviewer 逐一验证结果，全部通过后标记为 Done。
+
+</ScrollyStep>
+
+</ScrollySteps>
+
+<ScrollyCode>
+
+```text 项目结构
+code-review/
+├── agent.hcl   # LLM 提供商配置
+└── review.py   # 流水线：组建团队 → 绑定 → 运行 → 查看结果
+```
+
+```hcl 智能体配置
+# agent.hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+}
+```
+
+```python 构建团队
+from a3s_code import Team, TeamRunner, TeamConfig
+
+config = TeamConfig(
+    max_tasks=30,        # 任务板容量
+    max_rounds=8,        # Reviewer 轮询上限
+    poll_interval_ms=150,
+)
+
+team = Team("code-review", config)
+team.add_member("lead",        "lead")     # 分解目标
+team.add_member("worker-sec",  "worker")   # 安全审查
+team.add_member("worker-perf", "worker")   # 性能审查
+team.add_member("reviewer",    "reviewer") # 质量把关
+
+runner = TeamRunner(team)  # team 在此处被消耗
+```
+
+```python 绑定 Session
+from a3s_code import Agent
+
+agent = Agent.create("agent.hcl")
+
+# 每个成员获得独立的 Session（独立的上下文窗口）
+runner.bind_session("lead",        agent.session("."))
+runner.bind_session("worker-sec",  agent.session("."))
+runner.bind_session("worker-perf", agent.session("."))
+runner.bind_session("reviewer",    agent.session("."))
+```
+
+```python 运行工作流
+goal = (
+    "审查认证模块（src/auth/）中的问题。"
+    "涵盖：JWT 验证、令牌过期、刷新流程和错误处理。"
+)
+
+print(f"目标：{goal}\n")
+result = runner.run_until_done(goal)
+
+print(f"\n工作流完成：")
+print(f"  ✅ 完成：{len(result.done_tasks)} 个任务")
+print(f"  ❌ 拒绝：{len(result.rejected_tasks)} 个任务")
+print(f"  🔄 轮数：{result.rounds}")
+```
+
+```python 查看结果
+for task in result.done_tasks:
+    # 截取结果前 200 个字符用于展示
+    snippet = (task.result or "")[:200].replace("\n", " ")
+    print(f"\n── {task.description}")
+    print(f"   {snippet}{'...' if len(task.result or '') > 200 else ''}")
+
+if result.rejected_tasks:
+    print("\n未完成的任务：")
+    for task in result.rejected_tasks:
+        print(f"  ⚠ {task.description}")
+```
+
+```python 底层任务板操作
+from a3s_code import Team, TeamRunner, TeamConfig
+
+# 跳过 Lead，直接手动发布任务
+team = Team("manual-review")
+team.add_member("lead",     "lead")
+team.add_member("worker-1", "worker")
+team.add_member("reviewer", "reviewer")
+
+runner = TeamRunner(team)
+runner.bind_session("lead",     agent.session("."))
+runner.bind_session("worker-1", agent.session("."))
+runner.bind_session("reviewer", agent.session("."))
+
+board = runner.task_board()
+
+# 手动发布任务（绕过 Lead 分解）
+board.post("检查 src/auth/jwt.py 中的 JWT 过期验证",       "lead")
+board.post("验证 src/auth/refresh.py 中的刷新令牌轮换",    "lead")
+board.post("审计错误消息中的信息泄露风险",                  "lead")
+
+# 运行前查看任务板状态
+(open_c, prog, rev, done, rej) = board.stats()
+print(f"任务板：{open_c} 个待处理，{done} 个已完成")
+```
+
+```python 完整流水线
+# review.py
+import sys
+from a3s_code import Agent, Team, TeamRunner, TeamConfig
+
+def main(goal: str):
+    agent = Agent.create("agent.hcl")
+
+    config = TeamConfig(max_tasks=30, max_rounds=8, poll_interval_ms=150)
+    team = Team("code-review", config)
+    team.add_member("lead",        "lead")
+    team.add_member("worker-sec",  "worker")
+    team.add_member("worker-perf", "worker")
+    team.add_member("reviewer",    "reviewer")
+
+    runner = TeamRunner(team)
+    runner.bind_session("lead",        agent.session("."))
+    runner.bind_session("worker-sec",  agent.session("."))
+    runner.bind_session("worker-perf", agent.session("."))
+    runner.bind_session("reviewer",    agent.session("."))
+
+    print(f"🚀 启动代码审查流水线\n目标：{goal}\n")
+    result = runner.run_until_done(goal)
+
+    print(f"\n{'─' * 60}")
+    print(f"结果：{len(result.done_tasks)} 个完成，"
+          f"{len(result.rejected_tasks)} 个拒绝，"
+          f"{result.rounds} 轮")
+    print(f"{'─' * 60}")
+
+    for task in result.done_tasks:
+        snippet = (task.result or "")[:300].replace("\n", " ")
+        print(f"\n✅ {task.description}")
+        print(f"   {snippet}{'...' if len(task.result or '') > 300 else ''}")
+
+    if result.rejected_tasks:
+        print(f"\n⚠ 未完成任务（{len(result.rejected_tasks)} 个）：")
+        for t in result.rejected_tasks:
+            print(f"  • {t.description}")
+
+if __name__ == "__main__":
+    goal = sys.argv[1] if len(sys.argv) > 1 else (
+        "审查认证模块的安全问题"
+    )
+    main(goal)
+```
+
+</ScrollyCode>
+</ScrollyCoding>
+
+---
+
+## 进阶用法
+
+<Steps>
+
+<Step>
+
+### 为角色添加专属指令
+
+通过 `SessionOptions` 为每个角色设置专注的身份和规范：
+
+```python
+from a3s_code import SessionOptions
+
+sec_opts = SessionOptions()
+sec_opts.role = "你是一名专注于认证系统的安全工程师。"
+sec_opts.guidelines = (
+    "重点关注：JWT 验证、令牌过期、CSRF、会话固定、"
+    "时序攻击以及错误消息中的信息泄露。"
+    "尽量具体——引用文件路径和行号。"
+)
+
+perf_opts = SessionOptions()
+perf_opts.role = "你是一名性能工程师。"
+perf_opts.guidelines = (
+    "重点关注：O(n²) 模式、缺失缓存、阻塞 I/O、"
+    "N+1 查询以及不必要的密码学运算。"
+)
+
+rev_opts = SessionOptions()
+rev_opts.role = "你是一名负责最终审批的高级技术负责人。"
+rev_opts.guidelines = (
+    "若结果具体、可操作且完整覆盖任务，则批准。"
+    "若结果模糊、不完整或偏离主题，则拒绝。"
+)
+
+runner.bind_session("worker-sec",  agent.session(".", sec_opts))
+runner.bind_session("worker-perf", agent.session(".", perf_opts))
+runner.bind_session("reviewer",    agent.session(".", rev_opts))
+```
+
+</Step>
+
+<Step>
+
+### 扩展 Worker 数量
+
+添加更多具有相同 `"worker"` 角色的成员，以加快任务处理速度。所有 Worker 共享同一个任务板——`claim()` 方法是原子操作，每个任务只会被执行一次：
+
+```python
+for i in range(4):
+    team.add_member(f"worker-{i}", "worker")
+
+runner = TeamRunner(team)
+for i in range(4):
+    runner.bind_session(f"worker-{i}", agent.session("."))
+```
+
+</Step>
+
+<Step>
+
+### TypeScript / Node.js
+
+同样的流水线在 Node.js 中具有完全相同的语义：
+
+```typescript
+import { Agent, Team, TeamRunner } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+const team = new Team('code-review', {
+  maxRounds: 8, maxTasks: 30, channelBuffer: 128, pollIntervalMs: 150
+});
+team.addMember('lead',        'lead');
+team.addMember('worker-sec',  'worker');
+team.addMember('worker-perf', 'worker');
+team.addMember('reviewer',    'reviewer');
+
+const runner = new TeamRunner(team);
+runner.bindSession('lead',        agent.session('.'));
+runner.bindSession('worker-sec',  agent.session('.'));
+runner.bindSession('worker-perf', agent.session('.'));
+runner.bindSession('reviewer',    agent.session('.'));
+
+const result = await runner.runUntilDone('审查认证模块的安全问题');
+console.log(`完成：${result.doneTasks.length} 个任务，${result.rounds} 轮`);
+```
+
+</Step>
+
+<Step>
+
+### Rust
+
+极致性能方案——直接将流水线嵌入 Rust 应用：
+
+```rust
+use a3s_code_core::{
+    Agent, SessionOptions,
+    agent_teams::{AgentTeam, TeamConfig, TeamRole, TeamRunner},
+};
+use std::sync::Arc;
+
+let agent = Agent::new("agent.hcl").await?;
+
+let config = TeamConfig {
+    max_rounds: 8,
+    poll_interval_ms: 150,
+    ..TeamConfig::default()
+};
+
+let mut team = AgentTeam::new("code-review", config);
+team.add_member("lead",        TeamRole::Lead);
+team.add_member("worker-sec",  TeamRole::Worker);
+team.add_member("worker-perf", TeamRole::Worker);
+team.add_member("reviewer",    TeamRole::Reviewer);
+
+let mut runner = TeamRunner::new(team);
+runner.bind_session("lead",        Arc::new(agent.session(".", None)?))?;
+runner.bind_session("worker-sec",  Arc::new(agent.session(".", None)?))?;
+runner.bind_session("worker-perf", Arc::new(agent.session(".", None)?))?;
+runner.bind_session("reviewer",    Arc::new(agent.session(".", None)?))?;
+
+let result = runner.run_until_done("审查认证模块的安全问题").await?;
+println!("完成：{} 个任务，{} 轮", result.done_tasks.len(), result.rounds);
+```
+
+</Step>
+
+</Steps>
+
+---
+
+## 关键概念
+
+| 概念 | 说明 |
+|------|------|
+| `AgentTeam` | 团队注册中心——持有成员列表和共享的 `TeamTaskBoard`。传入 `TeamRunner` 后被消耗。 |
+| `TeamRunner` | 执行引擎——将 `AgentSession` 绑定到每个成员，驱动 Lead → Worker → Reviewer 循环。 |
+| `TeamTaskBoard` | 线程安全的任务队列。状态流转：`Open → InProgress → InReview → Done`（或 `Rejected → Open` 重试）。 |
+| `TeamConfig.max_rounds` | Reviewer 轮询轮数上限。超过后，剩余任务以 `rejected_tasks` 形式返回。 |
+| `claim()` | 原子认领——返回下一个 `Open` 或 `Rejected` 状态的任务并标记为 `InProgress`。多 Worker 并发调用安全。 |
+| Lead 提示词 | 内置。指示 LLM 返回 `{"tasks": ["...", "..."]}` 格式，无需自行编写。 |
+| Reviewer 提示词 | 内置。指示 Reviewer 回复 `APPROVED: <理由>` 或 `REJECTED: <反馈>`。 |

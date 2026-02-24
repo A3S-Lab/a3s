@@ -1,0 +1,391 @@
+---
+title: Agent Teams
+description: Multi-agent coordination with AgentTeam and TeamRunner — shared task board, Lead/Worker/Reviewer roles, and automated LLM-driven workflows.
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+A3S Code ships two complementary APIs for multi-agent coordination:
+
+| API | Use when… |
+|-----|-----------|
+| `AgentTeam` + `TeamTaskBoard` | You need full control — custom orchestration logic, manual `post`/`claim`/`complete` |
+| `TeamRunner` | You want automated Lead → Worker → Reviewer workflows driven by real LLM sessions |
+
+<Callout type="info">
+See the [tutorial](/tutorials/agent-teams) for a complete walkthrough with runnable code.
+</Callout>
+
+---
+
+## AgentTeam
+
+`AgentTeam` is the coordination backbone. It holds the member registry and the shared `TeamTaskBoard`.
+
+```rust
+use a3s_code_core::agent_teams::{AgentTeam, TeamConfig, TeamRole};
+
+let config = TeamConfig {
+    max_tasks: 50,
+    channel_buffer: 128,
+    max_rounds: 10,
+    poll_interval_ms: 200,
+};
+let mut team = AgentTeam::new("my-team", config);
+team.add_member("lead",     TeamRole::Lead);
+team.add_member("worker-1", TeamRole::Worker);
+team.add_member("reviewer", TeamRole::Reviewer);
+```
+
+### TeamConfig
+
+<TypeTable
+  type={{
+    max_tasks: {
+      description: 'Maximum number of tasks the board can hold simultaneously.',
+      type: 'usize',
+      default: '50',
+    },
+    channel_buffer: {
+      description: 'Buffer size for each member\'s mpsc message channel.',
+      type: 'usize',
+      default: '128',
+    },
+    max_rounds: {
+      description: 'Maximum reviewer polling rounds in TeamRunner.run_until_done before stopping.',
+      type: 'usize',
+      default: '10',
+    },
+    poll_interval_ms: {
+      description: 'How often workers and reviewer poll the board for new work.',
+      type: 'u64',
+      default: '200',
+    },
+  }}
+/>
+
+### Peer messaging
+
+Members communicate through `mpsc` channels. Each member has an inbox:
+
+```rust
+// Send a message from lead to worker-1
+team.send_message("lead", "worker-1", "Focus on JWT validation", None).await;
+
+// Worker-1 reads its inbox
+let mut rx = team.take_receiver("worker-1").unwrap();
+while let Some(msg) = rx.recv().await {
+    println!("{} → {}: {}", msg.from, msg.to, msg.content);
+}
+
+// Broadcast to all members
+team.broadcast("lead", "Starting review phase", None).await;
+```
+
+---
+
+## TeamTaskBoard
+
+The board is shared across all members via `Arc<TeamTaskBoard>`. Every operation is thread-safe.
+
+### Task lifecycle
+
+```
+post()              claim()           complete()
+  Open ──────────► InProgress ──────► InReview
+                                           │
+                               ┌───────────┴───────────┐
+                          approve()               reject()
+                               │                       │
+                             Done             Rejected ──► (claim() again)
+```
+
+### Methods
+
+```rust
+let board = team.task_board();     // &TeamTaskBoard
+let board = team.task_board_arc(); // Arc<TeamTaskBoard>
+
+// Post a task — returns Some(task_id) or None if board is full
+let id = board.post("Refactor JWT validation", "lead", None).unwrap();
+// Pre-assign to a specific worker; task starts as InProgress (not Open)
+let id = board.post("Add CSRF protection", "lead", Some("worker-1")).unwrap();
+
+// Claim the next Open or Rejected task
+let task: Option<TeamTask> = board.claim("worker-1");
+
+// Complete a task (moves to InReview)
+board.complete(&task.id, "Added RS256 key rotation");
+
+// Reviewer actions
+board.approve(&task.id);   // InReview → Done
+board.reject(&task.id);    // InReview → Rejected (re-claimable by workers)
+
+// Query
+let tasks: Vec<TeamTask>  = board.by_status(TaskStatus::Done);
+let tasks: Vec<TeamTask>  = board.by_assignee("worker-1");
+let task:  Option<TeamTask> = board.get(&id);
+
+// Stats — (open, in_progress, in_review, done, rejected)
+let (open, prog, rev, done, rej) = board.stats();
+let total = board.len();
+```
+
+### TeamTask
+
+<TypeTable
+  type={{
+    id: {
+      description: 'Sequential task identifier (e.g., `task-1`, `task-2`).',
+      type: 'String',
+    },
+    description: {
+      description: 'Task description text as posted by the Lead.',
+      type: 'String',
+    },
+    posted_by: {
+      description: 'Member ID of the task creator.',
+      type: 'String',
+    },
+    assigned_to: {
+      description: 'Member ID currently working on this task.',
+      type: 'Option<String>',
+    },
+    status: {
+      description: 'Current task state.',
+      type: 'TaskStatus',
+    },
+    result: {
+      description: 'Output text set by complete().',
+      type: 'Option<String>',
+    },
+    created_at: {
+      description: 'Unix timestamp when the task was posted.',
+      type: 'i64',
+    },
+    updated_at: {
+      description: 'Unix timestamp of the last state change.',
+      type: 'i64',
+    },
+  }}
+/>
+
+---
+
+## TeamRunner
+
+`TeamRunner` binds real `AgentSession` instances (or any `AgentExecutor`) to team members and runs the full automated workflow.
+
+```rust
+use a3s_code_core::agent_teams::TeamRunner;
+use std::sync::Arc;
+
+let mut runner = TeamRunner::new(team); // team is consumed
+
+runner.bind_session("lead",     Arc::new(agent.session(".", None)?))?;
+runner.bind_session("worker-1", Arc::new(agent.session(".", None)?))?;
+runner.bind_session("reviewer", Arc::new(agent.session(".", None)?))?;
+
+let result = runner.run_until_done("Audit the auth module").await?;
+```
+
+### How run_until_done works
+
+1. **Lead decomposition** — the Lead's session receives:
+   ```
+   You are the lead agent in a team. Your goal is: {goal}
+   Decompose this goal into concrete, self-contained tasks for your team workers.
+   Respond with ONLY valid JSON: {"tasks": ["task 1", "task 2", ...]}
+   ```
+   The runner parses the JSON and calls `board.post()` for each task.
+
+2. **Worker execution** — one Tokio task per Worker. Each loops:
+   ```
+   while there are Open/Rejected tasks or tasks in review:
+       task = board.claim(my_id)
+       if task:
+           result = session.send(task.description).await
+           board.complete(task.id, result)
+       else:
+           sleep(poll_interval_ms)
+   ```
+
+3. **Reviewer loop** — a single Tokio task. For each InReview task, the reviewer's session receives:
+   ```
+   Review the following completed task:
+   Task: {task.description}
+   Result: {task.result}
+
+   Respond with "APPROVED: <reason>" or "REJECTED: <specific feedback>".
+   ```
+   `APPROVED` → `board.approve()`. `REJECTED` → `board.reject()` (re-queues for Worker retry).
+
+4. **Termination** — when all tasks are Done, or after `max_rounds` reviewer polling rounds.
+
+### TeamRunResult
+
+<TypeTable
+  type={{
+    done_tasks: {
+      description: 'Tasks that were approved by the Reviewer.',
+      type: 'Vec<TeamTask>',
+    },
+    rejected_tasks: {
+      description: 'Tasks still in Rejected state after max_rounds (could not be approved in time).',
+      type: 'Vec<TeamTask>',
+    },
+    rounds: {
+      description: 'Number of reviewer polling rounds completed.',
+      type: 'usize',
+    },
+  }}
+/>
+
+### AgentExecutor trait
+
+`TeamRunner` accepts any type implementing `AgentExecutor` — not just `AgentSession`. Useful for testing or custom execution strategies:
+
+```rust
+use a3s_code_core::agent_teams::AgentExecutor;
+
+#[async_trait::async_trait]
+impl AgentExecutor for MyCustomExecutor {
+    async fn execute(&self, prompt: &str) -> a3s_code_core::Result<String> {
+        // your LLM call here
+        Ok("result".to_string())
+    }
+}
+
+runner.bind_session("worker-1", Arc::new(MyCustomExecutor::new()))?;
+```
+
+---
+
+## SDK Reference
+
+<Tabs items={['Python', 'Node.js']}>
+
+<Tab value="Python">
+
+```python
+from a3s_code import Team, TeamRunner, TeamConfig, TeamTaskBoard, TeamTask, TeamRunResult
+
+# --- Setup ---
+config = TeamConfig(
+    max_tasks=50,
+    channel_buffer=128,
+    max_rounds=10,
+    poll_interval_ms=200,
+)
+team = Team("my-team", config)
+team.add_member("lead",     "lead")      # "lead" | "worker" | "reviewer"
+team.add_member("worker-1", "worker")
+team.add_member("reviewer", "reviewer")
+
+team.member_count()  # → int
+
+# Get the board before consuming the team
+board: TeamTaskBoard = team.task_board()
+
+# --- Runner ---
+runner = TeamRunner(team)           # team is consumed here
+runner.bind_session("lead",     session)
+runner.bind_session("worker-1", session)
+runner.bind_session("reviewer", session)
+
+board = runner.task_board()
+
+result: TeamRunResult = runner.run_until_done("your goal here")
+result.done_tasks      # List[TeamTask]
+result.rejected_tasks  # List[TeamTask]
+result.rounds          # int
+
+# --- Board (direct) ---
+id: str | None = board.post("description", "posted_by", assign_to=None)
+task: TeamTask | None = board.claim("worker-1")
+board.complete(task.id, "result text")
+board.approve(task.id)
+board.reject(task.id)
+board.get(task.id)                       # → TeamTask | None
+board.by_status("done")                  # → List[TeamTask]
+board.by_assignee("worker-1")            # → List[TeamTask]
+(open, prog, rev, done, rej) = board.stats()
+len(board)                               # total tasks
+
+# --- TeamTask fields ---
+task.id           # str
+task.description  # str
+task.posted_by    # str
+task.assigned_to  # str | None
+task.status       # "open" | "in_progress" | "in_review" | "done" | "rejected"
+task.result       # str | None
+task.created_at   # int (unix timestamp)
+task.updated_at   # int (unix timestamp)
+```
+
+</Tab>
+
+<Tab value="Node.js">
+
+```typescript
+import { Agent, Team, TeamRunner, TeamConfig, TeamTaskBoard, TeamTask, TeamRunResult } from '@a3s-lab/code';
+
+// --- Setup ---
+const config: TeamConfig = {
+  maxTasks: 50,
+  channelBuffer: 128,
+  maxRounds: 10,
+  pollIntervalMs: 200,
+};
+const team = new Team('my-team', config);
+team.addMember('lead',     'lead');      // "lead" | "worker" | "reviewer"
+team.addMember('worker-1', 'worker');
+team.addMember('reviewer', 'reviewer');
+
+team.memberCount;  // number
+
+// Get the board before consuming the team
+const boardBefore: TeamTaskBoard = team.taskBoard();
+
+// --- Runner ---
+const runner = new TeamRunner(team);     // team is consumed here
+runner.bindSession('lead',     session);
+runner.bindSession('worker-1', session);
+runner.bindSession('reviewer', session);
+
+const board: TeamTaskBoard = runner.taskBoard();
+
+const result: TeamRunResult = await runner.runUntilDone('your goal here');
+result.doneTasks      // TeamTask[]
+result.rejectedTasks  // TeamTask[]
+result.rounds         // number
+
+// --- Board (direct) ---
+const id: string | null = board.post('description', 'postedBy', null);
+const task: TeamTask | null = board.claim('worker-1');
+board.complete(task!.id, 'result text');
+board.approve(task!.id);
+board.reject(task!.id);
+board.get(task!.id);                          // TeamTask | null
+board.byStatus('done');                        // TeamTask[]  "open"|"in_progress"|"in_review"|"done"|"rejected"
+board.byAssignee('worker-1');                  // TeamTask[]
+const stats = board.stats();                   // { open, inProgress, inReview, done, rejected, total }
+board.len;                                     // number
+board.isEmpty;                                 // boolean
+
+// --- TeamTask fields ---
+task!.id           // string
+task!.description  // string
+task!.postedBy     // string
+task!.assignedTo   // string | null
+task!.status       // "open" | "in_progress" | "in_review" | "done" | "rejected"
+task!.result       // string | null
+task!.createdAt    // number (unix timestamp)
+task!.updatedAt    // number (unix timestamp)
+```
+
+</Tab>
+
+</Tabs>

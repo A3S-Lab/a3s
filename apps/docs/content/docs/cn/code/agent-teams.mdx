@@ -1,0 +1,391 @@
+---
+title: 智能体团队
+description: 多智能体协作 —— AgentTeam 与 TeamRunner：共享任务板、Lead/Worker/Reviewer 角色，以及 LLM 驱动的自动化工作流。
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+A3S Code 提供两套互补的多智能体协作 API：
+
+| API | 适用场景 |
+|-----|---------|
+| `AgentTeam` + `TeamTaskBoard` | 需要完全控制——自定义编排逻辑、手动调用 `post`/`claim`/`complete` |
+| `TeamRunner` | 需要由真实 LLM 会话驱动的 Lead → Worker → Reviewer 自动化工作流 |
+
+<Callout type="info">
+查看[教程](/tutorials/agent-teams)获取完整的可运行代码演示。
+</Callout>
+
+---
+
+## AgentTeam
+
+`AgentTeam` 是协调骨干，负责维护成员注册表和共享的 `TeamTaskBoard`。
+
+```rust
+use a3s_code_core::agent_teams::{AgentTeam, TeamConfig, TeamRole};
+
+let config = TeamConfig {
+    max_tasks: 50,
+    channel_buffer: 128,
+    max_rounds: 10,
+    poll_interval_ms: 200,
+};
+let mut team = AgentTeam::new("my-team", config);
+team.add_member("lead",     TeamRole::Lead);
+team.add_member("worker-1", TeamRole::Worker);
+team.add_member("reviewer", TeamRole::Reviewer);
+```
+
+### TeamConfig
+
+<TypeTable
+  type={{
+    max_tasks: {
+      description: '任务板可同时持有的最大任务数。',
+      type: 'usize',
+      default: '50',
+    },
+    channel_buffer: {
+      description: '每个成员 mpsc 消息通道的缓冲区大小。',
+      type: 'usize',
+      default: '128',
+    },
+    max_rounds: {
+      description: 'TeamRunner.run_until_done 中 Reviewer 轮询的最大轮数，超过则停止。',
+      type: 'usize',
+      default: '10',
+    },
+    poll_interval_ms: {
+      description: 'Worker 和 Reviewer 轮询新任务的时间间隔。',
+      type: 'u64',
+      default: '200',
+    },
+  }}
+/>
+
+### 点对点消息传递
+
+成员通过 `mpsc` 通道进行通信，每个成员拥有独立的消息收件箱：
+
+```rust
+// 从 lead 向 worker-1 发送消息
+team.send_message("lead", "worker-1", "重点关注 JWT 验证", None).await;
+
+// Worker-1 读取收件箱
+let mut rx = team.take_receiver("worker-1").unwrap();
+while let Some(msg) = rx.recv().await {
+    println!("{} → {}: {}", msg.from, msg.to, msg.content);
+}
+
+// 向所有成员广播
+team.broadcast("lead", "开始审核阶段", None).await;
+```
+
+---
+
+## TeamTaskBoard
+
+任务板通过 `Arc<TeamTaskBoard>` 在所有成员之间共享，所有操作均线程安全。
+
+### 任务生命周期
+
+```
+post()              claim()           complete()
+  Open ──────────► InProgress ──────► InReview
+                                           │
+                               ┌───────────┴───────────┐
+                          approve()               reject()
+                               │                       │
+                             Done             Rejected ──► (再次 claim())
+```
+
+### 方法说明
+
+```rust
+let board = team.task_board();     // &TeamTaskBoard
+let board = team.task_board_arc(); // Arc<TeamTaskBoard>
+
+// 发布任务 — 返回 Some(task_id) 或 None（任务板已满）
+let id = board.post("重构 JWT 验证", "lead", None).unwrap();
+// 预指派给特定 Worker；任务直接进入 InProgress 状态（不经过 Open）
+let id = board.post("添加 CSRF 防护", "lead", Some("worker-1")).unwrap();
+
+// 认领下一个 Open 或 Rejected 状态的任务
+let task: Option<TeamTask> = board.claim("worker-1");
+
+// 完成任务（移至 InReview 状态）
+board.complete(&task.id, "已添加 RS256 密钥轮换");
+
+// Reviewer 操作
+board.approve(&task.id);   // InReview → Done
+board.reject(&task.id);    // InReview → Rejected（可被 Worker 重新认领）
+
+// 查询
+let tasks: Vec<TeamTask>  = board.by_status(TaskStatus::Done);
+let tasks: Vec<TeamTask>  = board.by_assignee("worker-1");
+let task:  Option<TeamTask> = board.get(&id);
+
+// 统计 — (open, in_progress, in_review, done, rejected)
+let (open, prog, rev, done, rej) = board.stats();
+let total = board.len();
+```
+
+### TeamTask
+
+<TypeTable
+  type={{
+    id: {
+      description: '顺序任务标识符（例如 `task-1`、`task-2`）。',
+      type: 'String',
+    },
+    description: {
+      description: 'Lead 发布的任务描述文本。',
+      type: 'String',
+    },
+    posted_by: {
+      description: '任务创建者的成员 ID。',
+      type: 'String',
+    },
+    assigned_to: {
+      description: '当前负责该任务的成员 ID。',
+      type: 'Option<String>',
+    },
+    status: {
+      description: '当前任务状态。',
+      type: 'TaskStatus',
+    },
+    result: {
+      description: 'complete() 设置的输出文本。',
+      type: 'Option<String>',
+    },
+    created_at: {
+      description: '任务发布时的 Unix 时间戳。',
+      type: 'i64',
+    },
+    updated_at: {
+      description: '最近一次状态变更的 Unix 时间戳。',
+      type: 'i64',
+    },
+  }}
+/>
+
+---
+
+## TeamRunner
+
+`TeamRunner` 将真实的 `AgentSession`（或任意 `AgentExecutor`）绑定到团队成员，并运行完整的自动化工作流。
+
+```rust
+use a3s_code_core::agent_teams::TeamRunner;
+use std::sync::Arc;
+
+let mut runner = TeamRunner::new(team); // team 在此处被消耗
+
+runner.bind_session("lead",     Arc::new(agent.session(".", None)?))?;
+runner.bind_session("worker-1", Arc::new(agent.session(".", None)?))?;
+runner.bind_session("reviewer", Arc::new(agent.session(".", None)?))?;
+
+let result = runner.run_until_done("审查 auth 模块").await?;
+```
+
+### run_until_done 工作原理
+
+1. **Lead 分解** — Lead 的 Session 收到以下提示：
+   ```
+   You are the lead agent in a team. Your goal is: {goal}
+   Decompose this goal into concrete, self-contained tasks for your team workers.
+   Respond with ONLY valid JSON: {"tasks": ["task 1", "task 2", ...]}
+   ```
+   Runner 解析 JSON 并为每个任务调用 `board.post()`。
+
+2. **Worker 执行** — 每个 Worker 启动一个独立的 Tokio 任务，循环执行：
+   ```
+   当存在 Open/Rejected 任务或处于审核中的任务时：
+       task = board.claim(my_id)
+       如果认领成功：
+           result = session.send(task.description).await
+           board.complete(task.id, result)
+       否则：
+           sleep(poll_interval_ms)
+   ```
+
+3. **Reviewer 循环** — 单个 Tokio 任务。对每个 InReview 任务，Reviewer 的 Session 收到：
+   ```
+   Review the following completed task:
+   Task: {task.description}
+   Result: {task.result}
+
+   Respond with "APPROVED: <reason>" or "REJECTED: <specific feedback>".
+   ```
+   `APPROVED` → `board.approve()`。`REJECTED` → `board.reject()`（重新入队等待 Worker 重试）。
+
+4. **终止条件** — 所有任务完成，或达到 `max_rounds` 轮数上限。
+
+### TeamRunResult
+
+<TypeTable
+  type={{
+    done_tasks: {
+      description: 'Reviewer 审批通过的任务。',
+      type: 'Vec<TeamTask>',
+    },
+    rejected_tasks: {
+      description: '经过 max_rounds 轮后仍处于 Rejected 状态的任务（未能在规定时间内通过审批）。',
+      type: 'Vec<TeamTask>',
+    },
+    rounds: {
+      description: 'Reviewer 已完成的轮询轮数。',
+      type: 'usize',
+    },
+  }}
+/>
+
+### AgentExecutor Trait
+
+`TeamRunner` 接受任何实现了 `AgentExecutor` 的类型——不仅限于 `AgentSession`。适用于测试或自定义执行策略：
+
+```rust
+use a3s_code_core::agent_teams::AgentExecutor;
+
+#[async_trait::async_trait]
+impl AgentExecutor for MyCustomExecutor {
+    async fn execute(&self, prompt: &str) -> a3s_code_core::Result<String> {
+        // 在此调用你的 LLM
+        Ok("result".to_string())
+    }
+}
+
+runner.bind_session("worker-1", Arc::new(MyCustomExecutor::new()))?;
+```
+
+---
+
+## SDK 参考
+
+<Tabs items={['Python', 'Node.js']}>
+
+<Tab value="Python">
+
+```python
+from a3s_code import Team, TeamRunner, TeamConfig, TeamTaskBoard, TeamTask, TeamRunResult
+
+# --- 初始化 ---
+config = TeamConfig(
+    max_tasks=50,
+    channel_buffer=128,
+    max_rounds=10,
+    poll_interval_ms=200,
+)
+team = Team("my-team", config)
+team.add_member("lead",     "lead")      # "lead" | "worker" | "reviewer"
+team.add_member("worker-1", "worker")
+team.add_member("reviewer", "reviewer")
+
+team.member_count()  # → int
+
+# 在消耗 team 之前获取任务板
+board: TeamTaskBoard = team.task_board()
+
+# --- Runner ---
+runner = TeamRunner(team)           # team 在此处被消耗
+runner.bind_session("lead",     session)
+runner.bind_session("worker-1", session)
+runner.bind_session("reviewer", session)
+
+board = runner.task_board()
+
+result: TeamRunResult = runner.run_until_done("你的目标")
+result.done_tasks      # List[TeamTask]
+result.rejected_tasks  # List[TeamTask]
+result.rounds          # int
+
+# --- 任务板（直接操作）---
+id: str | None = board.post("description", "posted_by", assign_to=None)
+task: TeamTask | None = board.claim("worker-1")
+board.complete(task.id, "result text")
+board.approve(task.id)
+board.reject(task.id)
+board.get(task.id)                       # → TeamTask | None
+board.by_status("done")                  # → List[TeamTask]
+board.by_assignee("worker-1")            # → List[TeamTask]
+(open, prog, rev, done, rej) = board.stats()
+len(board)                               # 任务总数
+
+# --- TeamTask 字段 ---
+task.id           # str
+task.description  # str
+task.posted_by    # str
+task.assigned_to  # str | None
+task.status       # "open" | "in_progress" | "in_review" | "done" | "rejected"
+task.result       # str | None
+task.created_at   # int（Unix 时间戳）
+task.updated_at   # int（Unix 时间戳）
+```
+
+</Tab>
+
+<Tab value="Node.js">
+
+```typescript
+import { Agent, Team, TeamRunner, TeamConfig, TeamTaskBoard, TeamTask, TeamRunResult } from '@a3s-lab/code';
+
+// --- 初始化 ---
+const config: TeamConfig = {
+  maxTasks: 50,
+  channelBuffer: 128,
+  maxRounds: 10,
+  pollIntervalMs: 200,
+};
+const team = new Team('my-team', config);
+team.addMember('lead',     'lead');      // "lead" | "worker" | "reviewer"
+team.addMember('worker-1', 'worker');
+team.addMember('reviewer', 'reviewer');
+
+team.memberCount;  // number
+
+// 在消耗 team 之前获取任务板
+const boardBefore: TeamTaskBoard = team.taskBoard();
+
+// --- Runner ---
+const runner = new TeamRunner(team);     // team 在此处被消耗
+runner.bindSession('lead',     session);
+runner.bindSession('worker-1', session);
+runner.bindSession('reviewer', session);
+
+const board: TeamTaskBoard = runner.taskBoard();
+
+const result: TeamRunResult = await runner.runUntilDone('你的目标');
+result.doneTasks      // TeamTask[]
+result.rejectedTasks  // TeamTask[]
+result.rounds         // number
+
+// --- 任务板（直接操作）---
+const id: string | null = board.post('description', 'postedBy', null);
+const task: TeamTask | null = board.claim('worker-1');
+board.complete(task!.id, 'result text');
+board.approve(task!.id);
+board.reject(task!.id);
+board.get(task!.id);                          // TeamTask | null
+board.byStatus('done');                        // TeamTask[]  "open"|"in_progress"|"in_review"|"done"|"rejected"
+board.byAssignee('worker-1');                  // TeamTask[]
+const stats = board.stats();                   // { open, inProgress, inReview, done, rejected, total }
+board.len;                                     // number
+board.isEmpty;                                 // boolean
+
+// --- TeamTask 字段 ---
+task!.id           // string
+task!.description  // string
+task!.postedBy     // string
+task!.assignedTo   // string | null
+task!.status       // "open" | "in_progress" | "in_review" | "done" | "rejected"
+task!.result       // string | null
+task!.createdAt    // number（Unix 时间戳）
+task!.updatedAt    // number（Unix 时间戳）
+```
+
+</Tab>
+
+</Tabs>
