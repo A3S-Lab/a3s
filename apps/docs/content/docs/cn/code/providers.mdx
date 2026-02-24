@@ -1,242 +1,253 @@
 ---
 title: 提供商与配置
-description: 完整的 HCL 配置参考 — LLM 提供商、模型、队列、搜索、存储和 agent 行为
+description: 完整 HCL 配置参考 — LLM 提供商、模型字段、OpenAI 兼容接口，以及通过 Ollama / GPUStack / A3S Power / OneAPI 接入本地模型。
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
-# 提供商与配置
-
-所有配置在单个 HCL 文件（或 JSON）中定义。本页是每个配置字段的权威参考。
+所有配置定义在单个 `.hcl` 文件（或 `.json`）中。本页是每个配置字段的完整参考，并附带常见 LLM 提供商和本地推理服务器的即用配置片段。
 
 <Callout type="info">
-A3S Code 专用 HCL 配置格式。`env()` 函数在解析时读取环境变量。
+A3S Code 使用 HCL（HashiCorp Configuration Language）作为主要配置格式。`env()` 函数在解析时读取环境变量——使用它可避免在配置文件中硬编码密钥。
 </Callout>
 
-## 基本配置
+---
 
-```hcl
-default_model = "anthropic/claude-sonnet-4-20250514"
+## 配置文件位置
 
-providers {
-  name    = "anthropic"
-  api_key = "sk-ant-..."
+`Agent::new("agent.hcl")` 以当前工作目录为基准解析路径，支持任意文件名和绝对/相对路径。
 
-  models {
-    id        = "claude-sonnet-4-20250514"
-    name      = "Claude Sonnet 4"
-    family    = "claude-sonnet"
-    tool_call = true
-  }
-}
-```
-
-## 多提供商
-
-按需定义多个提供商。在创建会话时通过 `provider/model` 切换：
-
-```hcl
-default_model = "anthropic/claude-sonnet-4-20250514"
-
-providers {
-  name    = "anthropic"
-  api_key = "sk-ant-..."
-
-  models {
-    id        = "claude-sonnet-4-20250514"
-    name      = "Claude Sonnet 4"
-    tool_call = true
-  }
-
-  models {
-    id        = "claude-haiku-4-20250514"
-    name      = "Claude Haiku 4"
-    tool_call = true
-  }
-}
-
-providers {
-  name    = "openai"
-  api_key = "sk-..."
-
-  models {
-    id        = "gpt-4o"
-    name      = "GPT-4o"
-    tool_call = true
-  }
-
-  models {
-    id        = "gpt-4o-mini"
-    name      = "GPT-4o Mini"
-    tool_call = true
-  }
-}
-```
-
-然后在运行时选择：
+| 惯例 | 适用场景 |
+|------|---------|
+| `./agent.hcl` | 项目级配置，可提交到代码库 |
+| `~/.a3s/config.hcl` | 用户级默认配置，跨项目共享 |
+| `/etc/a3s/config.hcl` | 多用户服务器的系统级配置 |
 
 ```rust
-// Use default model (anthropic/claude-sonnet-4-20250514)
-let session = agent.session("/project", None)?;
-
-// Use a different model
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_model("openai/gpt-4o")
-))?;
+let agent = Agent::new("agent.hcl").await?;
+let agent = Agent::new("/home/deploy/.a3s/config.hcl").await?;
 ```
 
-## 每模型 API Key 和 Base URL
+---
 
-同一提供商下的模型可以有不同的 `api_key` 和 `base_url`。适用于：
+## 最小配置
 
-- **API key 轮换** — 不同模型使用不同的 key
-- **代理端点** — 将特定模型路由到代理或网关
-- **区域端点** — 不同的 base URL 以降低延迟或满足合规要求
+唯一必填的顶层字段是 `default_model`。对于云端提供商，还需要提供商级别的 `api_key`。
 
 ```hcl
-providers {
-  name     = "anthropic"
-  api_key  = "sk-ant-default-key..."          # default for all models
-  base_url = "https://api.anthropic.com"      # default base URL
-
-  models {
-    id        = "claude-sonnet-4-20250514"
-    name      = "Claude Sonnet 4"
-    tool_call = true
-    # inherits provider api_key and base_url
-  }
-
-  models {
-    id        = "claude-sonnet-4-20250514-eu"
-    name      = "Claude Sonnet 4 (EU)"
-    api_key   = "sk-ant-eu-key..."              # override
-    base_url  = "https://eu.api.anthropic.com"  # override
-    tool_call = true
-  }
-}
-
-providers {
-  name    = "openai"
-  api_key = "sk-team-key..."
-
-  models {
-    id        = "gpt-4o"
-    name      = "GPT-4o"
-    tool_call = true
-    # inherits provider api_key
-  }
-
-  models {
-    id        = "gpt-4o-mini"
-    name      = "GPT-4o Mini"
-    api_key   = "sk-personal-key..."   # different key for this model
-    tool_call = true
-  }
-}
-```
-
-提供商级别的 `api_key` 和 `base_url` 是默认值。模型级别的值会覆盖它们。
-
-## 模型字段
-
-<TypeTable
-  type={{
-    "id": {
-      description: "类型: string · 必填: 是 · 描述: 模型标识符（例如 claude-sonnet-4-20250514）",
-    },
-    "name": {
-      description: "类型: string · 必填: 是 · 描述: 显示名称",
-    },
-    "family": {
-      description: "类型: string · 必填: 否 · 描述: 模型系列（例如 claude-sonnet、gpt）",
-    },
-    "api_key": {
-      description: "类型: string · 必填: 否 · 描述: 每模型 API key（覆盖提供商）",
-    },
-    "base_url": {
-      description: "类型: string · 必填: 否 · 描述: 每模型 base URL（覆盖提供商）",
-    },
-    "tool_call": {
-      description: "类型: bool · 必填: 否 · 描述: 支持工具调用",
-    },
-    "reasoning": {
-      description: "类型: bool · 必填: 否 · 描述: 支持扩展推理",
-    },
-    "temperature": {
-      description: "类型: bool · 必填: 否 · 描述: 支持温度参数",
-    },
-    "attachment": {
-      description: "类型: bool · 必填: 否 · 描述: 支持文件附件",
-    },
-    "cost": {
-      description: "类型: object · 必填: 否 · 描述: { input, output, cache_read, cache_write } 每百万 token 费用",
-    },
-    "limit": {
-      description: "类型: object · 必填: 否 · 描述: { context, output } token 限制",
-    },
-  }}
-/>
-
-## 提供商字段
-
-<TypeTable
-  type={{
-    "name": {
-      description: "类型: string · 必填: 是 · 描述: 提供商标识符（用于 provider/model 格式）",
-    },
-    "api_key": {
-      description: "类型: string · 必填: 是 · 描述: 所有模型的默认 API key",
-    },
-    "base_url": {
-      description: "类型: string · 必填: 否 · 描述: 所有模型的默认 base URL",
-    },
-  }}
-/>
-
-## 完整配置参考
-
-包含所有可用字段的完整 HCL 配置：
-
-```hcl
-# === LLM (required) ===
 default_model = "anthropic/claude-sonnet-4-20250514"
 
-# === Agent Behavior ===
-max_tool_rounds  = 20          # default: 50
-thinking_budget  = 4096        # reasoning token budget
-
-# === Extensions ===
-skill_dirs = ["./skills"]      # *.md skill files
-agent_dirs = ["./agents"]      # *.yaml/*.md agent files
-
-# === Storage ===
-storage_backend = "file"       # "memory" | "file" | "custom"
-sessions_dir    = "/tmp/a3s"   # session persistence path
-storage_url     = "redis://localhost:6379"
-
-# === Providers ===
 providers {
   name    = "anthropic"
   api_key = env("ANTHROPIC_API_KEY")
 
   models {
-    id          = "claude-sonnet-4-20250514"
-    name        = "Claude Sonnet 4"
-    family      = "claude-sonnet"
-    tool_call   = true
-    temperature = true
-    reasoning   = false
-    cost {
-      input       = 3.0
-      output      = 15.0
-      cache_read  = 0.3
-      cache_write = 3.75
-    }
-    limit {
-      context = 200000
-      output  = 8192
-    }
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    tool_call = true
+  }
+}
+```
+
+对于纯本地提供商（如 Ollama），不需要 `api_key`，只需一个 `base_url`。
+
+---
+
+## 顶层字段
+
+<TypeTable
+  type={{
+    default_model: {
+      description: '默认模型，格式为 `provider/model`（如 `"anthropic/claude-sonnet-4-20250514"`）。在 `SessionOptions` 未指定模型时使用。',
+      type: 'string',
+    },
+    max_tool_rounds: {
+      description: '每个 agent 轮次的最大工具调用迭代次数，防止工具调用无限循环。',
+      type: 'int',
+      default: '50',
+    },
+    thinking_budget: {
+      description: '扩展推理的 token 预算（适用于 `reasoning = true` 的 Claude 模型）。',
+      type: 'int',
+    },
+    skill_dirs: {
+      description: '启动时扫描 `*.md` 技能文件的目录列表。',
+      type: 'string[]',
+      default: '[]',
+    },
+    agent_dirs: {
+      description: '扫描 agent 定义文件的目录列表。',
+      type: 'string[]',
+      default: '[]',
+    },
+    storage_backend: {
+      description: '`"memory"`（不持久化）、`"file"`（本地 JSON）或 `"custom"`（通过 `storage_url`）。控制会话持久化方式。',
+      type: 'string',
+      default: '"file"',
+    },
+    sessions_dir: {
+      description: '文件型会话存储的目录路径。',
+      type: 'string',
+    },
+    storage_url: {
+      description: '自定义存储后端的连接 URL（如 `"redis://localhost:6379"`）。',
+      type: 'string',
+    },
+  }}
+/>
+
+---
+
+## 提供商字段
+
+<TypeTable
+  type={{
+    name: {
+      description: '提供商标识符，用于 `provider/model` 选择器（如 `"anthropic"`、`"openai"`、`"ollama"`）。在所有 provider 块中必须唯一。',
+      type: 'string',
+    },
+    api_key: {
+      description: '该提供商下所有模型的默认 API Key。各模型块可以单独覆盖此值。',
+      type: 'string',
+    },
+    base_url: {
+      description: '所有模型的默认 Base URL。用于指向代理、网关或自托管服务器。各模型可单独覆盖。',
+      type: 'string',
+    },
+  }}
+/>
+
+---
+
+## 模型字段
+
+<TypeTable
+  type={{
+    id: {
+      description: '发送给 API 的模型标识符（如 `"claude-sonnet-4-20250514"`、`"gpt-4o"`、`"llama3.2"`）。在同一提供商内必须唯一。',
+      type: 'string',
+    },
+    name: {
+      description: '在日志和费用报告中显示的可读名称。',
+      type: 'string',
+    },
+    family: {
+      description: '模型系列标签，用于遥测中的费用汇总（如 `"claude-sonnet"`、`"gpt"`、`"llama"`）。',
+      type: 'string',
+    },
+    api_key: {
+      description: '模型级 API Key，覆盖提供商级 `api_key`。',
+      type: 'string',
+    },
+    base_url: {
+      description: '模型级 Base URL，覆盖提供商级 `base_url`。用于代理、本地服务器或区域路由。',
+      type: 'string',
+    },
+    tool_call: {
+      description: '模型是否支持工具/函数调用。',
+      type: 'bool',
+      default: 'false',
+    },
+    reasoning: {
+      description: '模型是否支持扩展推理 token（如 Claude thinking、DeepSeek-R1）。启用后可使用 `thinking_budget`。',
+      type: 'bool',
+      default: 'false',
+    },
+    temperature: {
+      description: '模型是否接受 `temperature` 参数。部分模型（如 o1）不支持。',
+      type: 'bool',
+      default: 'false',
+    },
+    attachment: {
+      description: '模型是否支持在请求中附带文件或图片。',
+      type: 'bool',
+      default: 'false',
+    },
+    release_date: {
+      description: 'ISO 8601 格式发布日期（如 `"2025-05-14"`）。仅用于遥测报告中的展示和排序。',
+      type: 'string',
+    },
+    modalities: {
+      description: '输入/输出模态声明块。`input` 可包含 `"text"`、`"image"`、`"pdf"`；`output` 通常为 `["text"]`。',
+      type: 'object',
+    },
+    cost: {
+      description: '每百万 token 的 USD 定价，用于遥测费用追踪。字段：`input`、`output`、`cache_read`、`cache_write`。',
+      type: 'object',
+    },
+    limit: {
+      description: 'Token 容量限制。`context` = 上下文窗口大小，`output` = 单次响应最大 token 数。',
+      type: 'object',
+    },
+  }}
+/>
+
+### `modalities` 块
+
+声明模型可接受和产生的内容类型：
+
+```hcl
+# 多模态模型（文本 + 视觉）
+modalities {
+  input  = ["text", "image", "pdf"]
+  output = ["text"]
+}
+
+# 纯文本模型
+modalities {
+  input  = ["text"]
+  output = ["text"]
+}
+```
+
+### `cost` 块
+
+每百万 token 的 USD 定价，由[遥测](/docs/code/telemetry)模块用于费用追踪：
+
+```hcl
+cost {
+  input       = 3.0    # 每百万输入 token
+  output      = 15.0   # 每百万输出 token
+  cache_read  = 0.3    # 每百万提示缓存命中 token（Anthropic）
+  cache_write = 3.75   # 每百万提示缓存写入 token（Anthropic）
+}
+```
+
+### `limit` 块
+
+```hcl
+limit {
+  context = 200000  # 上下文窗口（token 数）
+  output  = 64000   # 单次响应最大 token 数
+}
+```
+
+---
+
+## 多提供商
+
+按需定义多个提供商，通过 `SessionOptions` 在每次会话时切换：
+
+```hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+
+  models {
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    tool_call = true
+  }
+
+  models {
+    id        = "claude-opus-4-5-20251101"
+    name      = "Claude Opus 4.5"
+    reasoning = true
+    tool_call = true
   }
 }
 
@@ -249,21 +260,417 @@ providers {
     name      = "GPT-4o"
     tool_call = true
   }
+}
+```
+
+运行时切换：
+
+<Tabs items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+// 默认模型
+let session = agent.session(".", None)?;
+
+// 指定模型
+let session = agent.session(".", Some(
+    SessionOptions::new().with_model("openai/gpt-4o")
+))?;
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session(".", model="openai/gpt-4o")
+```
+</Tab>
+<Tab value="Node.js">
+```typescript
+const session = agent.session('.', { model: 'openai/gpt-4o' });
+```
+</Tab>
+</Tabs>
+
+---
+
+## 模型级 API Key 与 Base URL
+
+提供商级 `api_key` 和 `base_url` 是默认值，模型级的值会覆盖它们。适用于：
+
+- **API Key 轮换** — 不同模型使用不同的密钥
+- **代理路由** — 将特定模型流量路由到网关或代理
+- **区域端点** — 降低延迟或满足数据驻留合规要求
+- **自托管端点** — 将单个模型指向本地或私有推理服务器
+
+```hcl
+providers {
+  name     = "anthropic"
+  api_key  = env("ANTHROPIC_API_KEY")       # 所有模型的默认值
+  base_url = "https://api.anthropic.com"    # 默认 Base URL
 
   models {
-    id        = "gpt-4o-proxy"
-    name      = "GPT-4o (via Proxy)"
-    api_key   = "sk-proxy-key..."                 # per-model override
-    base_url  = "https://proxy.example.com/v1"    # per-model override
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    tool_call = true
+    # 继承提供商的 api_key 和 base_url
+  }
+
+  models {
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4（欧洲区域）"
+    api_key   = env("ANTHROPIC_EU_KEY")           # 覆盖
+    base_url  = "https://eu.api.anthropic.com"    # 覆盖
     tool_call = true
   }
 }
+```
 
-# === Queue (optional) ===
+---
+
+## OpenAI 兼容提供商
+
+任何实现了 OpenAI Chat Completions API（`POST /v1/chat/completions`）的服务都可作为提供商使用。设置 `base_url` 指向对应端点，`name` 字段可任意命名。
+
+**适用范围**：**Ollama**、**GPUStack**、**A3S Power**、**OneAPI**、**Together AI**、**Groq**、**Fireworks**、**LM Studio**、**vLLM**、**llama.cpp** 以及任何其他 OpenAI 兼容后端。
+
+---
+
+## 本地 LLM 提供商
+
+在本地运行推理，适用于隐私保护、控制成本、离线使用或部署微调模型。以下四种方案均暴露 OpenAI 兼容端点，配置模式完全一致。
+
+### Ollama
+
+[Ollama](https://ollama.com) 在本地运行开源模型，并在 `http://localhost:11434/v1` 提供服务。
+
+**安装与准备：**
+
+```bash
+# macOS
+brew install ollama
+ollama serve
+
+# 拉取模型
+ollama pull llama3.2
+ollama pull qwen2.5-coder:7b
+ollama pull deepseek-r1:8b
+```
+
+**配置：**
+
+```hcl
+default_model = "ollama/llama3.2"
+
+providers {
+  name     = "ollama"
+  base_url = "http://localhost:11434/v1"  # 无需 api_key
+
+  models {
+    id          = "llama3.2"
+    name        = "Llama 3.2（Ollama）"
+    family      = "llama"
+    tool_call   = true
+    temperature = true
+
+    modalities {
+      input  = ["text"]
+      output = ["text"]
+    }
+
+    limit {
+      context = 128000
+      output  = 4096
+    }
+  }
+
+  models {
+    id          = "qwen2.5-coder:7b"
+    name        = "Qwen 2.5 Coder 7B（Ollama）"
+    family      = "qwen"
+    tool_call   = true
+    temperature = true
+    limit { context = 32000  output = 4096 }
+  }
+
+  models {
+    id          = "deepseek-r1:8b"
+    name        = "DeepSeek-R1 8B（Ollama）"
+    family      = "deepseek"
+    tool_call   = false
+    reasoning   = true
+    temperature = false
+    limit { context = 64000  output = 8192 }
+  }
+}
+```
+
+<Callout type="info">
+Ollama 不需要 API Key。若客户端库要求非空值，使用任意占位字符串即可（如 `api_key = "ollama"`）。
+</Callout>
+
+---
+
+### GPUStack
+
+[GPUStack](https://gpustack.ai) 管理 GPU 集群并通过 OpenAI 兼容 API 提供模型服务。API Key 格式为 `gpustack_<token>`。模型 ID 遵循 `model--<org>--<model-name>` 格式——在 GPUStack 控制台中查找准确值。
+
+**单节点配置：**
+
+```hcl
+default_model = "gpustack/model--zhipuai--glm-4.7"
+
+providers {
+  name     = "gpustack"
+  api_key  = env("GPUSTACK_API_KEY")
+  base_url = "http://your-gpustack-host/v1"  # 所有模型共用
+
+  models {
+    id          = "model--zhipuai--glm-4.7"
+    name        = "GLM-4.7（GPUStack）"
+    family      = "glm"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+
+  models {
+    id          = "model--meta--llama-3.2-3b-instruct"
+    name        = "Llama 3.2 3B Instruct（GPUStack）"
+    family      = "llama"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+}
+```
+
+**多节点配置** — 通过模型级 `base_url` 将流量路由到不同节点：
+
+```hcl
+providers {
+  name    = "gpustack"
+  api_key = env("GPUSTACK_API_KEY")
+
+  models {
+    id       = "model--zhipuai--glm-4.7"
+    name     = "GLM-4.7（节点 1）"
+    base_url = "http://node-1.gpustack.internal/v1"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+
+  models {
+    id       = "model--meta--llama-3.2-3b-instruct"
+    name     = "Llama 3.2 3B（节点 2）"
+    base_url = "http://node-2.gpustack.internal/v1"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+}
+```
+
+---
+
+### A3S Power
+
+A3S Power 提供由 A3S 基础设施支撑的托管推理服务，暴露 OpenAI 兼容 API。
+
+```hcl
+default_model = "power/qwen2.5-72b"
+
+providers {
+  name     = "power"
+  api_key  = env("A3S_POWER_API_KEY")
+  base_url = "http://your-a3s-power-host/v1"
+
+  models {
+    id          = "qwen2.5-72b"
+    name        = "Qwen 2.5 72B（A3S Power）"
+    family      = "qwen"
+    tool_call   = true
+    temperature = true
+    reasoning   = false
+
+    modalities {
+      input  = ["text"]
+      output = ["text"]
+    }
+
+    limit {
+      context = 128000
+      output  = 8192
+    }
+  }
+
+  models {
+    id          = "deepseek-r1:70b"
+    name        = "DeepSeek-R1 70B（A3S Power）"
+    family      = "deepseek"
+    tool_call   = true
+    reasoning   = true
+    temperature = false
+    limit { context = 64000  output = 8192 }
+  }
+}
+```
+
+---
+
+### OneAPI
+
+[OneAPI](https://github.com/songquanpeng/one-api) 是开源 API 聚合代理，将多个上游提供商（Anthropic、OpenAI、Azure、Gemini 等）统一在单一端点和密钥下。
+
+```hcl
+default_model = "oneapi/claude-sonnet-4-20250514"
+
+providers {
+  name     = "oneapi"
+  api_key  = env("ONEAPI_TOKEN")
+  base_url = "http://your-oneapi-host/v1"
+
+  models {
+    id          = "claude-sonnet-4-20250514"
+    name        = "Claude Sonnet 4（经 OneAPI）"
+    tool_call   = true
+    temperature = true
+    limit { context = 200000  output = 8192 }
+  }
+
+  models {
+    id          = "gpt-4o"
+    name        = "GPT-4o（经 OneAPI）"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+
+  models {
+    id          = "deepseek-chat"
+    name        = "DeepSeek Chat（经 OneAPI）"
+    tool_call   = true
+    temperature = true
+    limit { context = 64000  output = 4096 }
+  }
+}
+```
+
+<Callout type="info">
+`id` 字段必须与 OneAPI 实例中配置的**渠道模型名称**一致，不一定等于上游提供商的模型 ID。请在 OneAPI 管理后台确认准确值。
+</Callout>
+
+---
+
+## 完整配置参考
+
+```hcl
+# ─── 全局 ────────────────────────────────────────────────────────────────────
+default_model   = "anthropic/claude-sonnet-4-20250514"
+max_tool_rounds = 20        # 默认：50
+thinking_budget = 4096      # 推理 token 预算（可选）
+
+# ─── 扩展 ────────────────────────────────────────────────────────────────────
+skill_dirs = ["./skills"]   # 包含 *.md 技能文件的目录
+agent_dirs = ["./agents"]   # 包含 agent 定义文件的目录
+
+# ─── 存储 ────────────────────────────────────────────────────────────────────
+storage_backend = "file"                    # "memory" | "file" | "custom"
+sessions_dir    = "~/.a3s/sessions"         # "file" 后端的存储路径
+storage_url     = "redis://localhost:6379"  # "custom" 后端的连接 URL
+
+# ─── 云端提供商 ──────────────────────────────────────────────────────────────
+providers {
+  name     = "anthropic"
+  api_key  = env("ANTHROPIC_API_KEY")
+  base_url = "https://api.anthropic.com"    # 可选覆盖
+
+  models {
+    id           = "claude-sonnet-4-20250514"
+    name         = "Claude Sonnet 4"
+    family       = "claude-sonnet"
+    tool_call    = true
+    reasoning    = false
+    temperature  = true
+    attachment   = true
+    release_date = "2025-05-14"
+
+    modalities {
+      input  = ["text", "image", "pdf"]
+      output = ["text"]
+    }
+
+    cost {
+      input       = 3.0
+      output      = 15.0
+      cache_read  = 0.3
+      cache_write = 3.75
+    }
+
+    limit {
+      context = 200000
+      output  = 64000
+    }
+  }
+}
+
+# ─── OpenAI 兼容云端 ─────────────────────────────────────────────────────────
+providers {
+  name    = "openai"
+  api_key = env("OPENAI_API_KEY")
+
+  models {
+    id          = "gpt-4o"
+    name        = "GPT-4o"
+    tool_call   = true
+    temperature = true
+    attachment  = true
+
+    modalities {
+      input  = ["text", "image"]
+      output = ["text"]
+    }
+
+    cost {
+      input  = 2.5
+      output = 10.0
+    }
+
+    limit {
+      context = 128000
+      output  = 16384
+    }
+  }
+
+  # 模型级 api_key + base_url 覆盖（代理路由）
+  models {
+    id          = "gpt-4o"
+    name        = "GPT-4o（经代理）"
+    api_key     = env("PROXY_API_KEY")
+    base_url    = "https://proxy.example.com/v1"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+}
+
+# ─── 本地提供商（Ollama）────────────────────────────────────────────────────
+providers {
+  name     = "ollama"
+  base_url = "http://localhost:11434/v1"
+
+  models {
+    id          = "llama3.2"
+    name        = "Llama 3.2（Ollama）"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+}
+
+# ─── 队列（可选）────────────────────────────────────────────────────────────
 queue {
-  query_max_concurrency    = 5    # default: 5
-  execute_max_concurrency  = 2    # default: 2
-  generate_max_concurrency = 1    # default: 1
+  query_max_concurrency    = 5    # 默认：5
+  execute_max_concurrency  = 2    # 默认：2
+  generate_max_concurrency = 1    # 默认：1
   enable_metrics           = true
   enable_dlq               = true
 
@@ -274,7 +681,7 @@ queue {
   }
 }
 
-# === Search (optional) ===
+# ─── 搜索（可选）────────────────────────────────────────────────────────────
 search {
   timeout = 30
 
@@ -284,57 +691,18 @@ search {
   }
 
   engine {
-    ddg {
-      enabled = true
-      weight  = 1.5
-    }
-    wiki {
-      enabled = true
-      weight  = 1.2
-    }
-    brave {
-      enabled = true
-      weight  = 1.0
-      timeout = 20
-    }
+    ddg   { enabled = true  weight = 1.5 }
+    wiki  { enabled = true  weight = 1.2 }
+    brave { enabled = true  weight = 1.0  timeout = 20 }
   }
 }
 ```
 
-### 配置字段
+---
 
-<TypeTable
-  type={{
-    "default_model": {
-      description: "类型: string · 默认值: —（必填） · 描述: 默认模型，provider/model 格式",
-    },
-    "max_tool_rounds": {
-      description: "类型: int · 默认值: 50 · 描述: 每轮最大工具调用次数",
-    },
-    "thinking_budget": {
-      description: "类型: int · 默认值: null · 描述: 推理 token 预算",
-    },
-    "skill_dirs": {
-      description: "类型: string[] · 默认值: [] · 描述: 扫描 *.md skill 文件的目录",
-    },
-    "agent_dirs": {
-      description: "类型: string[] · 默认值: [] · 描述: 扫描 agent 文件的目录",
-    },
-    "storage_backend": {
-      description: "类型: string · 默认值: 'file' · 描述: 'memory'、'file' 或 'custom'",
-    },
-    "sessions_dir": {
-      description: "类型: string · 默认值: null · 描述: 会话持久化路径",
-    },
-    "storage_url": {
-      description: "类型: string · 默认值: null · 描述: 存储连接 URL（用于自定义后端）",
-    },
-  }}
-/>
+## `env()` 函数
 
-### `env()` 函数
-
-使用 `env("VAR_NAME")` 在配置解析时读取环境变量：
+在任意需要字符串值的地方使用 `env("VAR")`。变量在解析时一次性解析——若变量未设置，`Agent::new()` 在启动时立即返回错误。
 
 ```hcl
 providers {
@@ -343,15 +711,22 @@ providers {
 }
 ```
 
-这避免了在配置文件中硬编码密钥。
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+export OPENAI_API_KEY="sk-..."
+export GPUSTACK_API_KEY="gpustack_..."
+```
+
+---
 
 ## JSON 格式
 
-相同配置的 JSON 格式（camelCase 字段名）：
+相同配置的 JSON 表示（字段名使用 camelCase）：
 
 ```json
 {
   "defaultModel": "anthropic/claude-sonnet-4-20250514",
+  "maxToolRounds": 20,
   "providers": [
     {
       "name": "anthropic",
@@ -360,14 +735,38 @@ providers {
         {
           "id": "claude-sonnet-4-20250514",
           "name": "Claude Sonnet 4",
-          "toolCall": true
-        },
+          "family": "claude-sonnet",
+          "toolCall": true,
+          "reasoning": false,
+          "temperature": true,
+          "attachment": true,
+          "modalities": {
+            "input": ["text", "image", "pdf"],
+            "output": ["text"]
+          },
+          "cost": {
+            "input": 3.0,
+            "output": 15.0,
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75
+          },
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          }
+        }
+      ]
+    },
+    {
+      "name": "ollama",
+      "models": [
         {
-          "id": "claude-sonnet-4-20250514-eu",
-          "name": "Claude Sonnet 4 (EU)",
-          "apiKey": "sk-ant-eu-key...",
-          "baseUrl": "https://eu.api.anthropic.com",
-          "toolCall": true
+          "id": "llama3.2",
+          "name": "Llama 3.2（Ollama）",
+          "baseUrl": "http://localhost:11434/v1",
+          "toolCall": true,
+          "temperature": true,
+          "limit": { "context": 128000, "output": 4096 }
         }
       ]
     }

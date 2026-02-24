@@ -1,213 +1,253 @@
 ---
 title: Providers & Configuration
-description: Full HCL configuration reference — LLM providers, models, queue, search, storage, and agent behavior
+description: Complete HCL configuration reference — LLM providers, model fields, OpenAI-compatible APIs, and local models via Ollama / GPUStack / A3S Power / OneAPI.
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
 
-# Providers & Configuration
-
-All configuration is defined in a single HCL file (or JSON). This page is the canonical reference for every config field.
+All configuration lives in a single `.hcl` file (or `.json`). This page is the complete reference for every field, plus ready-to-paste configs for common LLM providers and local inference servers.
 
 <Callout type="info">
-A3S Code uses HCL configuration format exclusively. The `env()` function reads environment variables at parse time.
+A3S Code uses HCL (HashiCorp Configuration Language) as its primary config format. The `env()` function reads environment variables at parse time — use it to keep secrets out of config files.
 </Callout>
 
-## Basic Configuration
+---
 
-```hcl
-default_model = "anthropic/claude-sonnet-4-20250514"
+## Config File Location
 
-providers {
-  name    = "anthropic"
-  api_key = "sk-ant-..."
+`Agent::new("agent.hcl")` resolves the path relative to the current working directory. Any filename and any path (relative or absolute) work.
 
-  models {
-    id        = "claude-sonnet-4-20250514"
-    name      = "Claude Sonnet 4"
-    family    = "claude-sonnet"
-    tool_call = true
-  }
-}
-```
-
-## Multiple Providers
-
-Define as many providers as needed. Switch between them at session creation via `provider/model`:
-
-```hcl
-default_model = "anthropic/claude-sonnet-4-20250514"
-
-providers {
-  name    = "anthropic"
-  api_key = "sk-ant-..."
-
-  models {
-    id        = "claude-sonnet-4-20250514"
-    name      = "Claude Sonnet 4"
-    tool_call = true
-  }
-
-  models {
-    id        = "claude-haiku-4-20250514"
-    name      = "Claude Haiku 4"
-    tool_call = true
-  }
-}
-
-providers {
-  name    = "openai"
-  api_key = "sk-..."
-
-  models {
-    id        = "gpt-4o"
-    name      = "GPT-4o"
-    tool_call = true
-  }
-
-  models {
-    id        = "gpt-4o-mini"
-    name      = "GPT-4o Mini"
-    tool_call = true
-  }
-}
-```
-
-Then select at runtime:
+| Convention | Use case |
+|------------|----------|
+| `./agent.hcl` | Per-project config, can be checked into the repo |
+| `~/.a3s/config.hcl` | User-level default shared across projects |
+| `/etc/a3s/config.hcl` | System-wide config for multi-user servers |
 
 ```rust
-// Use default model (anthropic/claude-sonnet-4-20250514)
-let session = agent.session("/project", None)?;
-
-// Use a different model
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_model("openai/gpt-4o")
-))?;
+let agent = Agent::new("agent.hcl").await?;
+let agent = Agent::new("/home/deploy/.a3s/config.hcl").await?;
 ```
 
-## Per-Model API Key & Base URL
+---
 
-Models under the same provider can have different `api_key` and `base_url`. This is useful for:
+## Minimal Config
 
-- **API key rotation** — different keys for different models
-- **Proxy endpoints** — route specific models through a proxy or gateway
-- **Regional endpoints** — different base URLs for latency or compliance
+The only required top-level field is `default_model`. For cloud providers, `api_key` at the provider level is also required.
 
 ```hcl
-providers {
-  name     = "anthropic"
-  api_key  = "sk-ant-default-key..."          # default for all models
-  base_url = "https://api.anthropic.com"      # default base URL
-
-  models {
-    id        = "claude-sonnet-4-20250514"
-    name      = "Claude Sonnet 4"
-    tool_call = true
-    # inherits provider api_key and base_url
-  }
-
-  models {
-    id        = "claude-sonnet-4-20250514-eu"
-    name      = "Claude Sonnet 4 (EU)"
-    api_key   = "sk-ant-eu-key..."              # override
-    base_url  = "https://eu.api.anthropic.com"  # override
-    tool_call = true
-  }
-}
-
-providers {
-  name    = "openai"
-  api_key = "sk-team-key..."
-
-  models {
-    id        = "gpt-4o"
-    name      = "GPT-4o"
-    tool_call = true
-    # inherits provider api_key
-  }
-
-  models {
-    id        = "gpt-4o-mini"
-    name      = "GPT-4o Mini"
-    api_key   = "sk-personal-key..."   # different key for this model
-    tool_call = true
-  }
-}
-```
-
-Provider-level `api_key` and `base_url` are defaults. Model-level values override them.
-
-## Model Fields
-
-<TypeTable
-  type={{
-    id: { type: 'string', required: true, description: 'Model identifier (e.g., `claude-sonnet-4-20250514`)' },
-    name: { type: 'string', required: true, description: 'Display name' },
-    family: { type: 'string', description: 'Model family (e.g., `claude-sonnet`, `gpt`)' },
-    api_key: { type: 'string', description: 'Per-model API key (overrides provider)' },
-    base_url: { type: 'string', description: 'Per-model base URL (overrides provider)' },
-    tool_call: { type: 'bool', description: 'Supports tool calling' },
-    reasoning: { type: 'bool', description: 'Supports extended reasoning' },
-    temperature: { type: 'bool', description: 'Supports temperature parameter' },
-    attachment: { type: 'bool', description: 'Supports file attachments' },
-    cost: { type: 'object', description: '`{ input, output, cache_read, cache_write }` per million tokens' },
-    limit: { type: 'object', description: '`{ context, output }` token limits' },
-  }}
-/>
-
-## Provider Fields
-
-<TypeTable
-  type={{
-    name: { type: 'string', required: true, description: 'Provider identifier (used in `provider/model` format)' },
-    api_key: { type: 'string', required: true, description: 'Default API key for all models' },
-    base_url: { type: 'string', description: 'Default base URL for all models' },
-  }}
-/>
-
-## Full Configuration Reference
-
-Complete HCL config with all available fields:
-
-```hcl
-# === LLM (required) ===
 default_model = "anthropic/claude-sonnet-4-20250514"
 
-# === Agent Behavior ===
-max_tool_rounds  = 20          # default: 50
-thinking_budget  = 4096        # reasoning token budget
-
-# === Extensions ===
-skill_dirs = ["./skills"]      # *.md skill files
-agent_dirs = ["./agents"]      # *.yaml/*.md agent files
-
-# === Storage ===
-storage_backend = "file"       # "memory" | "file" | "custom"
-sessions_dir    = "/tmp/a3s"   # session persistence path
-storage_url     = "redis://localhost:6379"
-
-# === Providers ===
 providers {
   name    = "anthropic"
   api_key = env("ANTHROPIC_API_KEY")
 
   models {
-    id          = "claude-sonnet-4-20250514"
-    name        = "Claude Sonnet 4"
-    family      = "claude-sonnet"
-    tool_call   = true
-    temperature = true
-    reasoning   = false
-    cost {
-      input       = 3.0
-      output      = 15.0
-      cache_read  = 0.3
-      cache_write = 3.75
-    }
-    limit {
-      context = 200000
-      output  = 8192
-    }
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    tool_call = true
+  }
+}
+```
+
+For fully local providers (e.g., Ollama) no `api_key` is needed — only a `base_url`.
+
+---
+
+## Top-Level Fields
+
+<TypeTable
+  type={{
+    default_model: {
+      description: 'Default model in `provider/model` format (e.g., `"anthropic/claude-sonnet-4-20250514"`). Used when no model is specified in `SessionOptions`.',
+      type: 'string',
+    },
+    max_tool_rounds: {
+      description: 'Maximum tool call iterations per agent turn. Prevents infinite tool loops.',
+      type: 'int',
+      default: '50',
+    },
+    thinking_budget: {
+      description: 'Token budget for extended reasoning (for Claude models with `reasoning = true`).',
+      type: 'int',
+    },
+    skill_dirs: {
+      description: 'Directories to scan for `*.md` skill files at startup.',
+      type: 'string[]',
+      default: '[]',
+    },
+    agent_dirs: {
+      description: 'Directories to scan for agent definition files.',
+      type: 'string[]',
+      default: '[]',
+    },
+    storage_backend: {
+      description: '`"memory"` (no disk), `"file"` (local JSON), or `"custom"` (via `storage_url`). Controls session persistence.',
+      type: 'string',
+      default: '"file"',
+    },
+    sessions_dir: {
+      description: 'Directory for file-based session storage.',
+      type: 'string',
+    },
+    storage_url: {
+      description: 'Connection URL for custom storage backends (e.g., `"redis://localhost:6379"`).',
+      type: 'string',
+    },
+  }}
+/>
+
+---
+
+## Provider Fields
+
+<TypeTable
+  type={{
+    name: {
+      description: 'Provider identifier used in the `provider/model` selector (e.g., `"anthropic"`, `"openai"`, `"ollama"`). Must be unique across all provider blocks.',
+      type: 'string',
+    },
+    api_key: {
+      description: 'Default API key for all models in this provider. Individual model blocks can override this.',
+      type: 'string',
+    },
+    base_url: {
+      description: 'Default base URL for all models. Override per-model for proxy routing, regional endpoints, or self-hosted servers.',
+      type: 'string',
+    },
+  }}
+/>
+
+---
+
+## Model Fields
+
+<TypeTable
+  type={{
+    id: {
+      description: 'Model identifier sent to the API (e.g., `"claude-sonnet-4-20250514"`, `"gpt-4o"`, `"llama3.2"`). Must be unique within a provider.',
+      type: 'string',
+    },
+    name: {
+      description: 'Human-readable display name shown in logs and cost reports.',
+      type: 'string',
+    },
+    family: {
+      description: 'Model family tag for grouping in cost reports (e.g., `"claude-sonnet"`, `"gpt"`, `"llama"`).',
+      type: 'string',
+    },
+    api_key: {
+      description: 'Per-model API key. Overrides the provider-level `api_key`.',
+      type: 'string',
+    },
+    base_url: {
+      description: 'Per-model base URL. Overrides the provider-level `base_url`. Use for proxies, local servers, or regional routing.',
+      type: 'string',
+    },
+    tool_call: {
+      description: 'Whether the model supports tool/function calling.',
+      type: 'bool',
+      default: 'false',
+    },
+    reasoning: {
+      description: 'Whether the model supports extended reasoning tokens (e.g., Claude thinking, DeepSeek-R1). Enables `thinking_budget` usage.',
+      type: 'bool',
+      default: 'false',
+    },
+    temperature: {
+      description: 'Whether the model accepts a `temperature` parameter. Some models (e.g., o1) ignore it.',
+      type: 'bool',
+      default: 'false',
+    },
+    attachment: {
+      description: 'Whether the model accepts file or image attachments in requests.',
+      type: 'bool',
+      default: 'false',
+    },
+    release_date: {
+      description: 'ISO 8601 release date (e.g., `"2025-05-14"`). Used for display and sorting in telemetry reports.',
+      type: 'string',
+    },
+    modalities: {
+      description: 'Input and output modality block. `input` can include `"text"`, `"image"`, `"pdf"`. `output` is typically `["text"]`.',
+      type: 'object',
+    },
+    cost: {
+      description: 'Token pricing in USD per million tokens. Fields: `input`, `output`, `cache_read`, `cache_write`.',
+      type: 'object',
+    },
+    limit: {
+      description: 'Token capacity. `context` = context window size, `output` = max response tokens.',
+      type: 'object',
+    },
+  }}
+/>
+
+### `modalities` block
+
+Declares what content types the model can receive and produce:
+
+```hcl
+# Multimodal model (text + vision)
+modalities {
+  input  = ["text", "image", "pdf"]
+  output = ["text"]
+}
+
+# Text-only model
+modalities {
+  input  = ["text"]
+  output = ["text"]
+}
+```
+
+### `cost` block
+
+Pricing in USD per million tokens, consumed by the [Telemetry](/docs/code/telemetry) module for cost tracking:
+
+```hcl
+cost {
+  input       = 3.0    # per 1M input tokens
+  output      = 15.0   # per 1M output tokens
+  cache_read  = 0.3    # per 1M prompt-cache read tokens (Anthropic)
+  cache_write = 3.75   # per 1M prompt-cache write tokens (Anthropic)
+}
+```
+
+### `limit` block
+
+```hcl
+limit {
+  context = 200000  # context window in tokens
+  output  = 64000   # max output tokens per response
+}
+```
+
+---
+
+## Multiple Providers
+
+Define as many providers as needed. Switch between them per session via `SessionOptions`:
+
+```hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+
+  models {
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    tool_call = true
+  }
+
+  models {
+    id        = "claude-opus-4-5-20251101"
+    name      = "Claude Opus 4.5"
+    reasoning = true
+    tool_call = true
   }
 }
 
@@ -220,17 +260,413 @@ providers {
     name      = "GPT-4o"
     tool_call = true
   }
+}
+```
+
+Select at runtime:
+
+<Tabs items={['Rust', 'Python', 'Node.js']}>
+<Tab value="Rust">
+```rust
+// Default model
+let session = agent.session(".", None)?;
+
+// Specific model
+let session = agent.session(".", Some(
+    SessionOptions::new().with_model("openai/gpt-4o")
+))?;
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session(".", model="openai/gpt-4o")
+```
+</Tab>
+<Tab value="Node.js">
+```typescript
+const session = agent.session('.', { model: 'openai/gpt-4o' });
+```
+</Tab>
+</Tabs>
+
+---
+
+## Per-Model API Key & Base URL
+
+Provider-level `api_key` and `base_url` are defaults; model-level values override them. This enables:
+
+- **API key rotation** — different keys per model
+- **Proxy routing** — send specific models through a gateway
+- **Regional endpoints** — lower latency or data-residency compliance
+- **Self-hosted endpoints** — point individual models to local servers
+
+```hcl
+providers {
+  name     = "anthropic"
+  api_key  = env("ANTHROPIC_API_KEY")       # default for all models
+  base_url = "https://api.anthropic.com"    # default base URL
 
   models {
-    id        = "gpt-4o-proxy"
-    name      = "GPT-4o (via Proxy)"
-    api_key   = "sk-proxy-key..."                 # per-model override
-    base_url  = "https://proxy.example.com/v1"    # per-model override
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    tool_call = true
+    # inherits provider api_key and base_url
+  }
+
+  models {
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4 (EU)"
+    api_key   = env("ANTHROPIC_EU_KEY")           # override
+    base_url  = "https://eu.api.anthropic.com"    # override
     tool_call = true
   }
 }
+```
 
-# === Queue (optional) ===
+---
+
+## OpenAI-Compatible Providers
+
+Any service implementing the OpenAI Chat Completions API (`POST /v1/chat/completions`) works as a provider. Set `base_url` to point to the endpoint. The `name` field is arbitrary.
+
+This covers: **Ollama**, **GPUStack**, **A3S Power**, **OneAPI**, **Together AI**, **Groq**, **Fireworks**, **LM Studio**, **vLLM**, **llama.cpp**, and any other OpenAI-compatible backend.
+
+---
+
+## Local LLM Providers
+
+Run inference locally for privacy, cost control, offline use, or to serve fine-tuned models. All four options below expose an OpenAI-compatible endpoint and follow the same config pattern.
+
+### Ollama
+
+[Ollama](https://ollama.com) runs open-source models locally and serves them at `http://localhost:11434/v1`.
+
+**Setup:**
+
+```bash
+# macOS
+brew install ollama
+ollama serve
+
+# Pull models
+ollama pull llama3.2
+ollama pull qwen2.5-coder:7b
+ollama pull deepseek-r1:8b
+```
+
+**Config:**
+
+```hcl
+default_model = "ollama/llama3.2"
+
+providers {
+  name     = "ollama"
+  base_url = "http://localhost:11434/v1"  # no api_key needed
+
+  models {
+    id          = "llama3.2"
+    name        = "Llama 3.2 (Ollama)"
+    family      = "llama"
+    tool_call   = true
+    temperature = true
+
+    modalities {
+      input  = ["text"]
+      output = ["text"]
+    }
+
+    limit {
+      context = 128000
+      output  = 4096
+    }
+  }
+
+  models {
+    id          = "qwen2.5-coder:7b"
+    name        = "Qwen 2.5 Coder 7B (Ollama)"
+    family      = "qwen"
+    tool_call   = true
+    temperature = true
+    limit { context = 32000  output = 4096 }
+  }
+
+  models {
+    id          = "deepseek-r1:8b"
+    name        = "DeepSeek-R1 8B (Ollama)"
+    family      = "deepseek"
+    tool_call   = false
+    reasoning   = true
+    temperature = false
+    limit { context = 64000  output = 8192 }
+  }
+}
+```
+
+<Callout type="info">
+Ollama does not require an API key. If the client library requires a non-empty value, use any placeholder string (e.g., `api_key = "ollama"`).
+</Callout>
+
+---
+
+### GPUStack
+
+[GPUStack](https://gpustack.ai) manages GPU clusters and serves models via an OpenAI-compatible API. API keys use the format `gpustack_<token>`. Model IDs follow the convention `model--<org>--<model-name>` — find the exact value in your GPUStack dashboard.
+
+**Single-node config:**
+
+```hcl
+default_model = "gpustack/model--zhipuai--glm-4.7"
+
+providers {
+  name     = "gpustack"
+  api_key  = env("GPUSTACK_API_KEY")
+  base_url = "http://your-gpustack-host/v1"  # shared for all models
+
+  models {
+    id          = "model--zhipuai--glm-4.7"
+    name        = "GLM-4.7 (GPUStack)"
+    family      = "glm"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+
+  models {
+    id          = "model--meta--llama-3.2-3b-instruct"
+    name        = "Llama 3.2 3B Instruct (GPUStack)"
+    family      = "llama"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+}
+```
+
+**Multi-node config** — override `base_url` per model to route to different nodes:
+
+```hcl
+providers {
+  name    = "gpustack"
+  api_key = env("GPUSTACK_API_KEY")
+
+  models {
+    id       = "model--zhipuai--glm-4.7"
+    name     = "GLM-4.7 (node-1)"
+    base_url = "http://node-1.gpustack.internal/v1"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+
+  models {
+    id       = "model--meta--llama-3.2-3b-instruct"
+    name     = "Llama 3.2 3B (node-2)"
+    base_url = "http://node-2.gpustack.internal/v1"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+}
+```
+
+---
+
+### A3S Power
+
+A3S Power provides managed inference backed by A3S infrastructure, with an OpenAI-compatible API.
+
+```hcl
+default_model = "power/qwen2.5-72b"
+
+providers {
+  name     = "power"
+  api_key  = env("A3S_POWER_API_KEY")
+  base_url = "http://your-a3s-power-host/v1"
+
+  models {
+    id          = "qwen2.5-72b"
+    name        = "Qwen 2.5 72B (A3S Power)"
+    family      = "qwen"
+    tool_call   = true
+    temperature = true
+    reasoning   = false
+
+    modalities {
+      input  = ["text"]
+      output = ["text"]
+    }
+
+    limit {
+      context = 128000
+      output  = 8192
+    }
+  }
+
+  models {
+    id          = "deepseek-r1:70b"
+    name        = "DeepSeek-R1 70B (A3S Power)"
+    family      = "deepseek"
+    tool_call   = true
+    reasoning   = true
+    temperature = false
+    limit { context = 64000  output = 8192 }
+  }
+}
+```
+
+---
+
+### OneAPI
+
+[OneAPI](https://github.com/songquanpeng/one-api) is an open-source API aggregator that proxies multiple upstream providers (Anthropic, OpenAI, Azure, Gemini, etc.) behind a single endpoint and key.
+
+```hcl
+default_model = "oneapi/claude-sonnet-4-20250514"
+
+providers {
+  name     = "oneapi"
+  api_key  = env("ONEAPI_TOKEN")
+  base_url = "http://your-oneapi-host/v1"
+
+  models {
+    id          = "claude-sonnet-4-20250514"
+    name        = "Claude Sonnet 4 (via OneAPI)"
+    tool_call   = true
+    temperature = true
+    limit { context = 200000  output = 8192 }
+  }
+
+  models {
+    id          = "gpt-4o"
+    name        = "GPT-4o (via OneAPI)"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+
+  models {
+    id          = "deepseek-chat"
+    name        = "DeepSeek Chat (via OneAPI)"
+    tool_call   = true
+    temperature = true
+    limit { context = 64000  output = 4096 }
+  }
+}
+```
+
+<Callout type="info">
+The `id` field must match the **channel model name** configured in your OneAPI instance, not necessarily the upstream provider's model ID. Verify the exact value in your OneAPI admin panel.
+</Callout>
+
+---
+
+## Full Configuration Reference
+
+```hcl
+# ─── Global ──────────────────────────────────────────────────────────────────
+default_model   = "anthropic/claude-sonnet-4-20250514"
+max_tool_rounds = 20        # default: 50
+thinking_budget = 4096      # reasoning token budget (optional)
+
+# ─── Extensions ──────────────────────────────────────────────────────────────
+skill_dirs = ["./skills"]   # directories with *.md skill files
+agent_dirs = ["./agents"]   # directories with agent definition files
+
+# ─── Storage ─────────────────────────────────────────────────────────────────
+storage_backend = "file"                    # "memory" | "file" | "custom"
+sessions_dir    = "~/.a3s/sessions"         # path for "file" backend
+storage_url     = "redis://localhost:6379"  # URL for "custom" backend
+
+# ─── Cloud Provider ──────────────────────────────────────────────────────────
+providers {
+  name     = "anthropic"
+  api_key  = env("ANTHROPIC_API_KEY")
+  base_url = "https://api.anthropic.com"    # optional override
+
+  models {
+    id           = "claude-sonnet-4-20250514"
+    name         = "Claude Sonnet 4"
+    family       = "claude-sonnet"
+    tool_call    = true
+    reasoning    = false
+    temperature  = true
+    attachment   = true
+    release_date = "2025-05-14"
+
+    modalities {
+      input  = ["text", "image", "pdf"]
+      output = ["text"]
+    }
+
+    cost {
+      input       = 3.0
+      output      = 15.0
+      cache_read  = 0.3
+      cache_write = 3.75
+    }
+
+    limit {
+      context = 200000
+      output  = 64000
+    }
+  }
+}
+
+# ─── OpenAI-compatible cloud ─────────────────────────────────────────────────
+providers {
+  name    = "openai"
+  api_key = env("OPENAI_API_KEY")
+
+  models {
+    id          = "gpt-4o"
+    name        = "GPT-4o"
+    tool_call   = true
+    temperature = true
+    attachment  = true
+
+    modalities {
+      input  = ["text", "image"]
+      output = ["text"]
+    }
+
+    cost {
+      input  = 2.5
+      output = 10.0
+    }
+
+    limit {
+      context = 128000
+      output  = 16384
+    }
+  }
+
+  # Per-model API key + base_url override
+  models {
+    id          = "gpt-4o"
+    name        = "GPT-4o (via proxy)"
+    api_key     = env("PROXY_API_KEY")
+    base_url    = "https://proxy.example.com/v1"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+}
+
+# ─── Local provider (Ollama) ─────────────────────────────────────────────────
+providers {
+  name     = "ollama"
+  base_url = "http://localhost:11434/v1"
+
+  models {
+    id          = "llama3.2"
+    name        = "Llama 3.2 (Ollama)"
+    tool_call   = true
+    temperature = true
+    limit { context = 128000  output = 4096 }
+  }
+}
+
+# ─── Queue (optional) ────────────────────────────────────────────────────────
 queue {
   query_max_concurrency    = 5    # default: 5
   execute_max_concurrency  = 2    # default: 2
@@ -245,7 +681,7 @@ queue {
   }
 }
 
-# === Search (optional) ===
+# ─── Search (optional) ───────────────────────────────────────────────────────
 search {
   timeout = 30
 
@@ -255,41 +691,18 @@ search {
   }
 
   engine {
-    ddg {
-      enabled = true
-      weight  = 1.5
-    }
-    wiki {
-      enabled = true
-      weight  = 1.2
-    }
-    brave {
-      enabled = true
-      weight  = 1.0
-      timeout = 20
-    }
+    ddg   { enabled = true  weight = 1.5 }
+    wiki  { enabled = true  weight = 1.2 }
+    brave { enabled = true  weight = 1.0  timeout = 20 }
   }
 }
 ```
 
-### Config Fields
+---
 
-<TypeTable
-  type={{
-    default_model: { type: 'string', required: true, description: 'Default model in `provider/model` format' },
-    max_tool_rounds: { type: 'int', default: '50', description: 'Max tool call rounds per turn' },
-    thinking_budget: { type: 'int', description: 'Reasoning token budget' },
-    skill_dirs: { type: 'string[]', default: '[]', description: 'Directories to scan for `*.md` skill files' },
-    agent_dirs: { type: 'string[]', default: '[]', description: 'Directories to scan for agent files' },
-    storage_backend: { type: 'string', default: '"file"', description: '`"memory"`, `"file"`, or `"custom"`' },
-    sessions_dir: { type: 'string', description: 'Session persistence path' },
-    storage_url: { type: 'string', description: 'Storage connection URL (for custom backends)' },
-  }}
-/>
+## The `env()` Function
 
-### The `env()` Function
-
-Use `env("VAR_NAME")` to read environment variables at config parse time:
+Use `env("VAR")` anywhere a string value is expected. The variable is resolved once at parse time — if unset, `Agent::new()` returns an error immediately at startup.
 
 ```hcl
 providers {
@@ -298,7 +711,13 @@ providers {
 }
 ```
 
-This avoids hardcoding secrets in config files.
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+export OPENAI_API_KEY="sk-..."
+export GPUSTACK_API_KEY="gpustack_..."
+```
+
+---
 
 ## JSON Format
 
@@ -307,6 +726,7 @@ The same config in JSON (camelCase field names):
 ```json
 {
   "defaultModel": "anthropic/claude-sonnet-4-20250514",
+  "maxToolRounds": 20,
   "providers": [
     {
       "name": "anthropic",
@@ -315,14 +735,38 @@ The same config in JSON (camelCase field names):
         {
           "id": "claude-sonnet-4-20250514",
           "name": "Claude Sonnet 4",
-          "toolCall": true
-        },
+          "family": "claude-sonnet",
+          "toolCall": true,
+          "reasoning": false,
+          "temperature": true,
+          "attachment": true,
+          "modalities": {
+            "input": ["text", "image", "pdf"],
+            "output": ["text"]
+          },
+          "cost": {
+            "input": 3.0,
+            "output": 15.0,
+            "cacheRead": 0.3,
+            "cacheWrite": 3.75
+          },
+          "limit": {
+            "context": 200000,
+            "output": 64000
+          }
+        }
+      ]
+    },
+    {
+      "name": "ollama",
+      "models": [
         {
-          "id": "claude-sonnet-4-20250514-eu",
-          "name": "Claude Sonnet 4 (EU)",
-          "apiKey": "sk-ant-eu-key...",
-          "baseUrl": "https://eu.api.anthropic.com",
-          "toolCall": true
+          "id": "llama3.2",
+          "name": "Llama 3.2 (Ollama)",
+          "baseUrl": "http://localhost:11434/v1",
+          "toolCall": true,
+          "temperature": true,
+          "limit": { "context": 128000, "output": 4096 }
         }
       ]
     }
