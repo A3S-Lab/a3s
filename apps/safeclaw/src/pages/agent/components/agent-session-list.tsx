@@ -149,8 +149,8 @@ const AgentItem = React.memo(function AgentItem({
 			tabIndex={-1}
 			className={cn(
 				"group flex items-start gap-3 px-3 py-3 w-full cursor-pointer transition-colors",
-				"hover:bg-foreground/[0.04]",
-				isActive && "bg-foreground/[0.03]",
+				"hover:bg-accent/[0.08]",
+				isActive && "bg-primary/[0.08]",
 			)}
 			onClick={onSelect}
 			onKeyDown={(e) => {
@@ -208,7 +208,7 @@ const AgentItem = React.memo(function AgentItem({
 							</span>
 						)}
 						{latestSid && (
-							<time className="text-[10px] text-muted-foreground/60">
+							<time className="text-[10px] text-muted-foreground/80">
 								{relativeTime(
 									lastMessageTime[latestSid] ?? activeSessions[0].created_at,
 								)}
@@ -276,14 +276,14 @@ const AgentItem = React.memo(function AgentItem({
 						</div>
 						<span
 							className={cn(
-								"text-[9px] tabular-nums shrink-0 w-7 text-right",
+								"text-[10px] tabular-nums shrink-0 w-7 text-right",
 								isCompacting
 									? "text-yellow-500 font-medium"
 									: contextPct >= 90
 										? "text-red-500 font-medium"
 										: contextPct >= 75
 											? "text-orange-400"
-											: "text-muted-foreground/40",
+											: "text-muted-foreground/60",
 							)}
 						>
 							{isCompacting
