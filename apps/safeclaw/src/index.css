@@ -23,42 +23,42 @@
 
 		/* ── Light Theme — Clean, airy, professional ── */
 		--background: 0 0% 100%;
-		--foreground: 224 71% 4%;
+		--foreground: 222 47% 11%;
 		--card: 0 0% 100%;
-		--card-foreground: 224 71% 4%;
+		--card-foreground: 222 47% 11%;
 		--popover: 0 0% 100%;
-		--popover-foreground: 224 71% 4%;
-		--primary: 220 91% 54%;
+		--popover-foreground: 222 47% 11%;
+		--primary: 221 83% 53%;
 		--primary-foreground: 0 0% 100%;
-		--secondary: 220 14% 96%;
-		--secondary-foreground: 220 40% 16%;
+		--secondary: 220 16% 94%;
+		--secondary-foreground: 222 30% 28%;
 		--muted: 220 14% 96%;
-		--muted-foreground: 220 9% 46%;
-		--accent: 230 45% 56%;
+		--muted-foreground: 220 13% 52%;
+		--accent: 258 60% 58%;
 		--accent-foreground: 0 0% 100%;
-		--destructive: 0 84% 60%;
+		--destructive: 0 78% 55%;
 		--destructive-foreground: 0 0% 100%;
-		--border: 220 13% 91%;
-		--input: 220 13% 91%;
-		--ring: 220 91% 54%;
+		--border: 220 16% 90%;
+		--input: 220 16% 90%;
+		--ring: 221 83% 53%;
 		--radius: 0.5rem;
 
 		/* Charts */
-		--chart-1: 220 91% 54%;
-		--chart-2: 230 45% 56%;
-		--chart-3: 160 60% 45%;
-		--chart-4: 38 92% 50%;
-		--chart-5: 0 84% 60%;
+		--chart-1: 221 83% 53%;
+		--chart-2: 258 60% 58%;
+		--chart-3: 158 64% 40%;
+		--chart-4: 35 95% 52%;
+		--chart-5: 0 78% 55%;
 
 		/* Sidebar */
-		--sidebar-background: 220 20% 98%;
-		--sidebar-foreground: 224 50% 18%;
-		--sidebar-primary: 220 91% 54%;
+		--sidebar-background: 220 22% 97%;
+		--sidebar-foreground: 222 30% 22%;
+		--sidebar-primary: 221 83% 53%;
 		--sidebar-primary-foreground: 0 0% 100%;
-		--sidebar-accent: 220 14% 94%;
-		--sidebar-accent-foreground: 220 40% 16%;
-		--sidebar-border: 220 13% 91%;
-		--sidebar-ring: 220 91% 54%;
+		--sidebar-accent: 220 16% 92%;
+		--sidebar-accent-foreground: 222 30% 28%;
+		--sidebar-border: 220 16% 90%;
+		--sidebar-ring: 221 83% 53%;
 
 		/* Layout */
 		--activity-bar-width: 48px;
@@ -92,68 +92,68 @@
 		--focus-ring-color: var(--ring);
 
 		/* Brand */
-		--moment-primary: 220 91% 54%;
-		--market-primary: 230 45% 56%;
+		--moment-primary: 221 83% 53%;
+		--market-primary: 258 60% 58%;
 
 		/* Semantic colors */
-		--success: 160 60% 45%;
+		--success: 158 64% 36%;
 		--success-foreground: 0 0% 100%;
-		--warning: 38 92% 50%;
+		--warning: 35 95% 48%;
 		--warning-foreground: 0 0% 100%;
-		--info: 220 91% 54%;
+		--info: 221 83% 53%;
 		--info-foreground: 0 0% 100%;
 	}
 
 	.dark {
 		/* ── Dark Theme — Deep, rich, high-contrast ── */
-		--background: 224 71% 4%;
-		--foreground: 210 20% 98%;
-		--card: 224 50% 7%;
-		--card-foreground: 210 20% 98%;
-		--popover: 224 50% 7%;
-		--popover-foreground: 210 20% 98%;
-		--primary: 217 91% 60%;
+		--background: 222 47% 6%;
+		--foreground: 210 20% 96%;
+		--card: 222 40% 8%;
+		--card-foreground: 210 20% 96%;
+		--popover: 222 40% 8%;
+		--popover-foreground: 210 20% 96%;
+		--primary: 217 89% 62%;
 		--primary-foreground: 0 0% 100%;
-		--secondary: 220 30% 12%;
-		--secondary-foreground: 210 20% 92%;
-		--muted: 220 20% 12%;
-		--muted-foreground: 218 11% 50%;
-		--accent: 230 40% 62%;
+		--secondary: 220 25% 14%;
+		--secondary-foreground: 210 18% 78%;
+		--muted: 220 20% 11%;
+		--muted-foreground: 218 14% 58%;
+		--accent: 258 55% 65%;
 		--accent-foreground: 0 0% 100%;
-		--destructive: 0 72% 51%;
+		--destructive: 0 68% 56%;
 		--destructive-foreground: 0 0% 100%;
-		--border: 220 20% 14%;
-		--input: 220 20% 14%;
-		--ring: 217 91% 60%;
+		--border: 220 18% 16%;
+		--input: 220 18% 16%;
+		--ring: 217 89% 62%;
 		--radius: 0.5rem;
 
 		/* Charts (dark) */
-		--chart-1: 217 91% 60%;
-		--chart-2: 230 40% 62%;
-		--chart-3: 160 55% 52%;
-		--chart-4: 38 88% 58%;
-		--chart-5: 0 72% 58%;
+		--chart-1: 217 89% 62%;
+		--chart-2: 258 55% 65%;
+		--chart-3: 158 58% 50%;
+		--chart-4: 35 90% 60%;
+		--chart-5: 0 68% 60%;
 
 		/* Sidebar */
-		--sidebar-background: 225 60% 3%;
-		--sidebar-foreground: 210 15% 85%;
-		--sidebar-primary: 217 91% 60%;
+		--sidebar-background: 222 50% 4%;
+		--sidebar-foreground: 210 15% 82%;
+		--sidebar-primary: 217 89% 62%;
 		--sidebar-primary-foreground: 0 0% 100%;
-		--sidebar-accent: 220 25% 10%;
-		--sidebar-accent-foreground: 210 15% 85%;
-		--sidebar-border: 220 20% 12%;
-		--sidebar-ring: 217 91% 60%;
+		--sidebar-accent: 220 22% 12%;
+		--sidebar-accent-foreground: 210 15% 82%;
+		--sidebar-border: 220 18% 14%;
+		--sidebar-ring: 217 89% 62%;
 
 		/* Brand (dark) */
-		--moment-primary: 217 91% 65%;
-		--market-primary: 230 40% 62%;
+		--moment-primary: 217 89% 65%;
+		--market-primary: 258 55% 65%;
 
 		/* Semantic colors (dark) */
-		--success: 160 55% 52%;
+		--success: 158 58% 50%;
 		--success-foreground: 0 0% 100%;
-		--warning: 38 88% 58%;
+		--warning: 35 90% 58%;
 		--warning-foreground: 0 0% 100%;
-		--info: 217 91% 60%;
+		--info: 217 89% 62%;
 		--info-foreground: 0 0% 100%;
 	}
 }
