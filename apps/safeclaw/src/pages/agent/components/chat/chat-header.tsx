@@ -26,7 +26,6 @@ import {
 	Search,
 	Settings,
 	Trash2,
-	X,
 } from "lucide-react";
 import { useMemo, useState, useCallback } from "react";
 import NiceAvatar, { genConfig } from "react-nice-avatar";
@@ -195,135 +194,14 @@ export function ChatHeader({
 
 	return (
 		<div className="border-b bg-background">
-			<div className="flex items-center justify-between px-3 py-2 gap-3">
-				<div className="flex items-center gap-2 min-w-0">
-					<NiceAvatar className="size-7 shrink-0" {...avatarConfig} />
-					{siblingsSessions.length <= 1 ? (
-						<span className="text-sm font-medium truncate">{persona.name}</span>
-					) : (
-						<Select
-							value={sessionId}
-							onValueChange={(val) => agentModel.setCurrentSession(val)}
-						>
-							<SelectTrigger className="h-7 text-xs font-medium border-none shadow-none px-2 gap-1 min-w-[120px] max-w-[200px]">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								{siblingsSessions.map((s) => {
-									const name =
-										sessionNames[s.session_id] ||
-										s.name ||
-										`会话 ${s.session_id.slice(0, 6)}`;
-									return (
-										<SelectItem
-											key={s.session_id}
-											value={s.session_id}
-											className="text-xs"
-										>
-											{name}
-										</SelectItem>
-									);
-								})}
-							</SelectContent>
-						</Select>
-					)}
-					{isExited && (
-						<span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
-							已退出
-						</span>
-					)}
-				</div>
-
-				<div className="flex items-center gap-1 shrink-0">
-					<button
-						type="button"
-						className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors"
-						aria-label="搜索消息"
-						onClick={toggleSearch}
-					>
-						<Search className="size-4" />
-					</button>
-					<button
-						type="button"
-						className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors"
-						aria-label="会话配置"
-						onClick={() => setConfigOpen(true)}
-					>
-						<Settings className="size-4" />
-					</button>
-					<SessionConfigDrawer
-						sessionId={sessionId}
-						open={configOpen}
-						onClose={() => setConfigOpen(false)}
-					/>
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<button
-								type="button"
-								className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors"
-								aria-label="会话操作"
-							>
-								{actionLoading ? (
-									<Loader2 className="size-4 animate-spin" />
-								) : (
-									<MoreHorizontal className="size-4" />
-								)}
-							</button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end" className="w-40">
-							<DropdownMenuItem
-								className="gap-2 text-xs cursor-pointer"
-								onClick={handleRelaunch}
-								disabled={actionLoading !== null}
-							>
-								<RefreshCw className="size-3.5" />
-								重启会话
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								className="gap-2 text-xs cursor-pointer"
-								onClick={handleFork}
-								disabled={actionLoading !== null}
-							>
-								<GitFork className="size-3.5" />
-								创建分支
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								className="gap-2 text-xs cursor-pointer"
-								onClick={() => handleExport("md")}
-							>
-								<Download className="size-3.5" />
-								导出 Markdown
-							</DropdownMenuItem>
-							<DropdownMenuItem
-								className="gap-2 text-xs cursor-pointer"
-								onClick={() => handleExport("json")}
-							>
-								<Download className="size-3.5" />
-								导出 JSON
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								className="gap-2 text-xs text-destructive focus:text-destructive cursor-pointer"
-								onClick={handleDelete}
-								disabled={actionLoading !== null}
-							>
-								<Trash2 className="size-3.5" />
-								删除会话
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-				</div>
-			</div>
-
-			{/* Inline search bar */}
-			{searchOpen && (
-				<div className="flex items-center gap-2 px-3 pb-2">
+			{searchOpen ? (
+				/* WeChat-style: search replaces the entire header row */
+				<div className="flex items-center gap-2 px-3 py-2">
 					<div className="relative flex-1">
-						<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+						<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
 						<Input
-							className="pl-8 h-7 text-[12px]"
-							placeholder="搜索消息内容..."
+							className="pl-8 h-8 text-sm bg-muted/50 border-transparent focus-visible:border-input focus-visible:bg-background rounded-full"
+							placeholder="搜索聊天记录"
 							value={searchQuery ?? ""}
 							onChange={(e) => onSearchChange?.(e.target.value)}
 							autoFocus
@@ -331,11 +209,132 @@ export function ChatHeader({
 					</div>
 					<button
 						type="button"
-						className="text-muted-foreground hover:text-foreground p-1"
+						className="text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
 						onClick={toggleSearch}
 					>
-						<X className="size-3.5" />
+						取消
 					</button>
+				</div>
+			) : (
+				<div className="flex items-center justify-between px-3 py-2 gap-3">
+					<div className="flex items-center gap-2 min-w-0">
+						<NiceAvatar className="size-7 shrink-0" {...avatarConfig} />
+						{siblingsSessions.length <= 1 ? (
+							<span className="text-sm font-medium truncate">{persona.name}</span>
+						) : (
+							<Select
+								value={sessionId}
+								onValueChange={(val) => agentModel.setCurrentSession(val)}
+							>
+								<SelectTrigger className="h-7 text-xs font-medium border-none shadow-none px-2 gap-1 min-w-[120px] max-w-[200px]">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{siblingsSessions.map((s) => {
+										const name =
+											sessionNames[s.session_id] ||
+											s.name ||
+											`会话 ${s.session_id.slice(0, 6)}`;
+										return (
+											<SelectItem
+												key={s.session_id}
+												value={s.session_id}
+												className="text-xs"
+											>
+												{name}
+											</SelectItem>
+										);
+									})}
+								</SelectContent>
+							</Select>
+						)}
+						{isExited && (
+							<span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
+								已退出
+							</span>
+						)}
+					</div>
+
+					<div className="flex items-center gap-1 shrink-0">
+						<button
+							type="button"
+							className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors"
+							aria-label="搜索消息"
+							onClick={toggleSearch}
+						>
+							<Search className="size-4" />
+						</button>
+						<button
+							type="button"
+							className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors"
+							aria-label="会话配置"
+							onClick={() => setConfigOpen(true)}
+						>
+							<Settings className="size-4" />
+						</button>
+						<SessionConfigDrawer
+							sessionId={sessionId}
+							open={configOpen}
+							onClose={() => setConfigOpen(false)}
+						/>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<button
+									type="button"
+									className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors"
+									aria-label="会话操作"
+								>
+									{actionLoading ? (
+										<Loader2 className="size-4 animate-spin" />
+									) : (
+										<MoreHorizontal className="size-4" />
+									)}
+								</button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end" className="w-40">
+								<DropdownMenuItem
+									className="gap-2 text-xs cursor-pointer"
+									onClick={handleRelaunch}
+									disabled={actionLoading !== null}
+								>
+									<RefreshCw className="size-3.5" />
+									重启会话
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									className="gap-2 text-xs cursor-pointer"
+									onClick={handleFork}
+									disabled={actionLoading !== null}
+								>
+									<GitFork className="size-3.5" />
+									创建分支
+								</DropdownMenuItem>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem
+									className="gap-2 text-xs cursor-pointer"
+									onClick={() => handleExport("md")}
+								>
+									<Download className="size-3.5" />
+									导出 Markdown
+								</DropdownMenuItem>
+								<DropdownMenuItem
+									className="gap-2 text-xs cursor-pointer"
+									onClick={() => handleExport("json")}
+								>
+									<Download className="size-3.5" />
+									导出 JSON
+								</DropdownMenuItem>
+								<DropdownMenuSeparator />
+								<DropdownMenuItem
+									className="gap-2 text-xs text-destructive focus:text-destructive cursor-pointer"
+									onClick={handleDelete}
+									disabled={actionLoading !== null}
+								>
+									<Trash2 className="size-3.5" />
+									删除会话
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
+					</div>
 				</div>
 			)}
 		</div>
