@@ -25,15 +25,17 @@ Skills 是带有 YAML frontmatter 的 Markdown 文件，定义了：
 
 ### 核心特性
 
-- ✅ **自动系统提示注入** — Skill 内容自动注入到系统提示中
+- ✅ **默认开启** — 7 个内置 skills 无需任何配置即自动加载
+- ✅ **自动系统提示注入** — Skill 元数据（名称 + 描述）自动注入到系统提示中
+- ✅ **全局 + 会话 skills 合并** — 会话级 skills 叠加在全局 skills 之上，互不干扰
 - ✅ **工具权限控制** — Skills 限制可使用的工具
 - ✅ **兼容 Claude Code 格式** — 可使用现有的 Claude Code skills
-- ✅ **从目录加载** — 将 skills 组织在文件夹中
+- ✅ **从目录加载** — 将 skills 组织在文件夹中，全局或按会话加载
 - ✅ **编程式创建** — 在代码中创建 skills
 
-## 内置 Skills（7 个）
+## 内置 Skills（默认开启）
 
-A3S Code 包含 7 个生产就绪的 skills：
+从 v0.9.2 起，7 个内置 skills **无需任何配置即自动加载**，其元数据（名称 + 描述）会自动注入到系统提示中。
 
 ### 代码辅助 Skills
 
@@ -97,6 +99,8 @@ A3S Code 包含 7 个生产就绪的 skills：
 
 ## 使用内置 Skills
 
+内置 skills 从 v0.9.2 起**默认自动加载**，无需任何配置。创建 session 时，7 个内置 skills 的元数据会自动注入到系统提示中。
+
 <Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 ```rust
@@ -104,16 +108,14 @@ use a3s_code_core::{Agent, SessionOptions};
 
 let agent = Agent::new("agent.hcl").await?;
 
-// Enable all built-in skills
+// 内置 skills 默认已加载，无需额外配置
+let session = agent.session(".", None)?;
+
+// 也可以叠加自定义 skills 目录
 let session = agent.session(".", Some(
     SessionOptions::new()
-        .with_builtin_skills()
+        .with_skill_dirs(["./my-skills"])
 ))?;
-
-// Now agent has 7 built-in skills:
-// Code assistance: code-search, code-review, explain-code, find-bugs
-// Tool docs: builtin-tools, delegate-task, find-skills
-let result = session.send("Review the auth code for security issues").await?;
 ```
 </Tab>
 <Tab value="TypeScript">
@@ -122,11 +124,13 @@ import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 
-const session = agent.session('.', {
-  builtinSkills: true
-});
+// 内置 skills 默认已加载
+const session = agent.session('.');
 
-const result = await session.send('Review the auth code for security issues');
+// 叠加自定义 skills 目录
+const session = agent.session('.', {
+  skillDirs: ['./my-skills']
+});
 ```
 </Tab>
 <Tab value="Python">
@@ -135,11 +139,13 @@ from a3s_code import Agent, SessionOptions
 
 agent = Agent.create("agent.hcl")
 
-session = agent.session(".", SessionOptions(
-    builtin_skills=True
-))
+# 内置 skills 默认已加载
+session = agent.session(".")
 
-result = session.send("Review the auth code for security issues")
+# 叠加自定义 skills 目录
+session = agent.session(".", SessionOptions(
+    skill_dirs=["./my-skills"]
+))
 ```
 </Tab>
 </Tabs>
