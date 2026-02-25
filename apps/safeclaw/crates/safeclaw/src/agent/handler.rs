@@ -78,7 +78,8 @@ struct CreateSessionRequest {
     base_url: Option<String>,
     /// System prompt override
     system_prompt: Option<String>,
-    /// Skills to enable
+    /// Skills to enable for this session (not yet wired into engine)
+    #[allow(dead_code)]
     skills: Option<Vec<String>>,
 }
 
@@ -133,6 +134,7 @@ async fn get_session(State(state): State<AgentState>, Path(id): Path<String>) ->
 struct UpdateSessionRequest {
     name: Option<String>,
     archived: Option<bool>,
+    cwd: Option<String>,
 }
 
 /// Update a session's name or archived status
@@ -153,6 +155,9 @@ async fn update_session(
     }
     if let Some(archived) = request.archived {
         state.engine.set_archived(&id, archived).await;
+    }
+    if let Some(cwd) = request.cwd {
+        state.engine.set_cwd(&id, cwd).await;
     }
 
     match state.engine.get_session(&id).await {
