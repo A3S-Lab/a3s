@@ -15,12 +15,14 @@ use tokio::sync::Mutex;
 pub mod codec;
 pub mod frame;
 pub mod tee;
+#[cfg(unix)]
 pub mod unix;
 
 // Re-exports for convenience
 pub use codec::{FrameCodec, FrameReader, FrameWriter};
 pub use frame::{Frame, FrameType, MAX_PAYLOAD_SIZE};
 pub use tee::{TeeMessage, TeeRequest, TeeRequestType, TeeResponse, TeeResponseStatus};
+#[cfg(unix)]
 pub use unix::{UnixListener, UnixTransport};
 
 /// Well-known vsock port assignments
