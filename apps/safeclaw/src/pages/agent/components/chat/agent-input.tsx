@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import agentModel from "@/models/agent.model";
 import personaModel from "@/models/persona.model";
 import { sendToSession } from "@/hooks/use-agent-ws";
+import { useTts } from "@/hooks/use-tts";
 import { agentApi } from "@/lib/agent-api";
 import {
 	FileText,
@@ -19,6 +20,7 @@ import {
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useSnapshot } from "valtio";
 import { SessionStatusBar } from "./session-status-bar";
+import { TtsToggle } from "./tts-toggle";
 
 /** A pending attachment with metadata for display */
 interface PendingFile {
@@ -57,6 +59,7 @@ export function AgentInput({
 	const { sessionStatus, sdkSessions } = useSnapshot(agentModel.state);
 	const personaSnap = useSnapshot(personaModel.state);
 	const isRunning = sessionStatus[sessionId] === "running";
+	const tts = useTts();
 
 	const allFilesReady = pendingFiles.every((f) => f.progress === undefined);
 
@@ -357,7 +360,7 @@ export function AgentInput({
 								{/* Delete button */}
 								<button
 									type="button"
-									className="absolute -top-1.5 -right-1.5 size-4 rounded-full bg-foreground/80 text-background flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+									className="absolute -top-1.5 -right-1.5 size-6 rounded-full bg-foreground/80 text-background flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
 									onClick={() => removeFile(file.id)}
 									aria-label="移除附件"
 								>
@@ -394,6 +397,7 @@ export function AgentInput({
 						disabled && "opacity-50 cursor-not-allowed",
 					)}
 					title="上传文件"
+					aria-label="上传文件"
 					onClick={() => fileInputRef.current?.click()}
 					disabled={disabled}
 				>
@@ -407,12 +411,24 @@ export function AgentInput({
 						disabled && "opacity-50 cursor-not-allowed",
 					)}
 					title="上传图片"
+					aria-label="上传图片"
 					onClick={() => imageInputRef.current?.click()}
 					disabled={disabled}
 				>
 					<Image className="size-3.5" />
 					<span>图片</span>
 				</button>
+				<TtsToggle
+					ttsEnabled={tts.ttsEnabled}
+					isSpeaking={tts.isSpeaking}
+					modelsReady={tts.modelsReady}
+					isDownloading={tts.isDownloading}
+					downloadProgress={tts.downloadProgress}
+					disabled={disabled}
+					onToggle={() => tts.setTtsEnabled(!tts.ttsEnabled)}
+					onStop={tts.stop}
+					onDownload={tts.downloadModels}
+				/>
 				<div className="ml-auto flex items-center gap-1.5">
 					{isRunning ? (
 						<button
@@ -454,7 +470,7 @@ export function AgentInput({
 				<TiptapEditor
 					ref={editorRef}
 					placeholder="输入消息，/ 触发技能，@ 派发给 Agent... 支持拖放文件"
-					disabled={false}
+					disabled={disabled}
 					mentionItems={mentionItems}
 					onSubmit={() => handleSubmit()}
 					onChange={handleEditorChange}

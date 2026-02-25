@@ -23,7 +23,9 @@ import { ArrowDown, Circle, Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso";
 import { useSnapshot } from "valtio";
+import { subscribe } from "valtio";
 import dayjs from "dayjs";
+import { invoke } from "@tauri-apps/api/core";
 import type { AgentChatMessage } from "@/typings/agent";
 
 // Persist first visible item index per session across remounts
@@ -319,6 +321,30 @@ export default function AgentChat({ sessionId }: { sessionId: string }) {
 		return () => window.removeEventListener("keydown", handler);
 	}, [forceScrollToBottom]);
 
+	// TTS auto-play: speak when a new assistant message completes
+	const lastSpokenTextRef = useRef<string>("");
+	useEffect(() => {
+		const unsub = subscribe(agentModel.state, () => {
+			const text = agentModel.state.lastAssistantText[sessionId];
+			if (!text || text === lastSpokenTextRef.current) return;
+			lastSpokenTextRef.current = text;
+
+			const ttsEnabled = localStorage.getItem("safeclaw-tts-enabled") === "true";
+			const voiceActive = agentModel.state.voiceInputActive[sessionId];
+
+			if (ttsEnabled || voiceActive) {
+				invoke("voice_tts_speak", { text }).catch((e: unknown) => {
+					console.warn("TTS auto-play failed:", e);
+				});
+				// Clear voice input flag after speaking
+				if (voiceActive) {
+					agentModel.setVoiceInputActive(sessionId, false);
+				}
+			}
+		});
+		return unsub;
+	}, [sessionId]);
+
 	return (
 		<ResizablePanelGroup direction="vertical" className="h-full">
 			<ResizablePanel className="flex flex-col overflow-hidden">
@@ -328,7 +354,7 @@ export default function AgentChat({ sessionId }: { sessionId: string }) {
 					onSearchChange={setSearchQuery}
 				/>
 				{searchQuery && (
-					<div className="px-3 py-1 bg-muted/30 border-b text-[11px] text-muted-foreground shrink-0">
+					<div className="px-3 py-1 bg-muted/30 border-b text-xs text-muted-foreground shrink-0">
 						找到 {displayMessages.length} / {richMessages.length} 条消息
 					</div>
 				)}
@@ -391,6 +417,7 @@ export default function AgentChat({ sessionId }: { sessionId: string }) {
 							className="absolute bottom-3 right-3 flex items-center justify-center size-8 rounded-full border bg-background/95 backdrop-blur shadow-md text-muted-foreground hover:text-foreground hover:bg-background transition-all z-20"
 							onClick={forceScrollToBottom}
 							aria-label="滚动到底部"
+						title="滚动到底部"
 						>
 							<ArrowDown className="size-4" />
 						</button>

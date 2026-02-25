@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { MessageCircle, Settings, Shield, Database, Container } from "lucide-react";
+import { MessageCircle, Settings, Database, Container, GitBranch } from "lucide-react";
 import {
 	ReactNode,
 	useCallback,
@@ -14,7 +14,7 @@ const STORAGE_KEY = "safeclaw-active-route";
 
 const NAV_ITEMS = [
 	{ key: "chat", label: "Chat", icon: MessageCircle, path: "/" },
-	{ key: "security", label: "Security", icon: Shield, path: "/security" },
+	{ key: "repos", label: "Repos", icon: GitBranch, path: "/repos" },
 	{ key: "box", label: "Box", icon: Container, path: "/box" },
 	{ key: "memory", label: "Memory", icon: Database, path: "/memory" },
 ] as const;
@@ -159,43 +159,45 @@ export default function ActivityBar() {
 			className="flex flex-col h-full w-[var(--activity-bar-width)] bg-primary text-primary-foreground/60 shadow-lg"
 		>
 			<User />
-			<div className="flex-1" role="tablist" aria-orientation="vertical">
-				{NAV_ITEMS.map((item) => (
-					<ActivityItem
-						key={item.key}
-						icon={
-							<item.icon
-								className="size-[18px]"
-								strokeWidth={activeKey === item.key ? 2.2 : 1.8}
-							/>
-						}
-						isActive={activeKey === item.key}
-						label={item.label}
-						tabIndex={activeKey === item.key ? 0 : -1}
-						onClick={() => handleNavigate(item.key)}
-						onKeyDown={(e) => handleKeyDown(e, item.key)}
-						itemRef={setRef(item.key)}
-					/>
-				))}
-			</div>
-			<div className="pb-2" role="tablist" aria-orientation="vertical">
-				{BOTTOM_ITEMS.map((item) => (
-					<ActivityItem
-						key={item.key}
-						icon={
-							<item.icon
-								className="size-[18px]"
-								strokeWidth={activeKey === item.key ? 2.2 : 1.8}
-							/>
-						}
-						isActive={activeKey === item.key}
-						label={item.label}
-						tabIndex={activeKey === item.key ? 0 : -1}
-						onClick={() => handleNavigate(item.key)}
-						onKeyDown={(e) => handleKeyDown(e, item.key)}
-						itemRef={setRef(item.key)}
-					/>
-				))}
+			<div className="flex-1 flex flex-col" role="tablist" aria-orientation="vertical">
+				<div className="flex-1">
+					{NAV_ITEMS.map((item) => (
+						<ActivityItem
+							key={item.key}
+							icon={
+								<item.icon
+									className="size-[18px]"
+									strokeWidth={activeKey === item.key ? 2.2 : 1.8}
+								/>
+							}
+							isActive={activeKey === item.key}
+							label={item.label}
+							tabIndex={activeKey === item.key ? 0 : -1}
+							onClick={() => handleNavigate(item.key)}
+							onKeyDown={(e) => handleKeyDown(e, item.key)}
+							itemRef={setRef(item.key)}
+						/>
+					))}
+				</div>
+				<div className="pb-2">
+					{BOTTOM_ITEMS.map((item) => (
+						<ActivityItem
+							key={item.key}
+							icon={
+								<item.icon
+									className="size-[18px]"
+									strokeWidth={activeKey === item.key ? 2.2 : 1.8}
+								/>
+							}
+							isActive={activeKey === item.key}
+							label={item.label}
+							tabIndex={activeKey === item.key ? 0 : -1}
+							onClick={() => handleNavigate(item.key)}
+							onKeyDown={(e) => handleKeyDown(e, item.key)}
+							itemRef={setRef(item.key)}
+						/>
+					))}
+				</div>
 			</div>
 		</nav>
 	);

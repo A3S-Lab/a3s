@@ -1,4 +1,6 @@
 @import "./assets/fonts/FiraCode/fira_code.css";
+@import "./assets/fonts/MapleMono/maple_mono.css";
+@import "file-icons-js/css/style.css";
 
 @layer tailwind-base, semi, tailwind-components, tailwind-utils;
 @layer tailwind-base {
@@ -16,7 +18,7 @@
 		--font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
 			Roboto, "Helvetica Neue", Arial, "Noto Sans", "PingFang SC",
 			"Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-		--font-mono: "Fira Code", "Fira Code VF", ui-monospace, SFMono-Regular,
+		--font-mono: "Maple Mono NF CN", "Fira Code", ui-monospace, SFMono-Regular,
 			Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
 		/* ── Light Theme — Clean, airy, professional ── */
@@ -250,6 +252,35 @@
 	border: 6px solid transparent;
 	border-left-color: hsl(var(--primary)) !important;
 	border-right-width: 0;
+}
+
+/* Dockview theme sync */
+.dv-void-container,
+.dv-tabs-and-actions-container {
+	background-color: hsl(var(--muted)) !important;
+	border-bottom: 1px solid hsl(var(--border)) !important;
+}
+
+.dv-tab {
+	background-color: hsl(var(--muted)) !important;
+	color: hsl(var(--muted-foreground)) !important;
+	border-right: 1px solid hsl(var(--border)) !important;
+	font-size: 12px;
+}
+
+.dv-tab.dv-active-tab {
+	background-color: hsl(var(--background)) !important;
+	color: hsl(var(--foreground)) !important;
+	border-top: 2px solid hsl(var(--primary)) !important;
+	border-bottom: 1px solid hsl(var(--background)) !important;
+}
+
+.dv-tab .dv-default-tab-content {
+	font-size: 12px;
+}
+
+.dv-watermark-container {
+	background-color: hsl(var(--background)) !important;
 }
 
 @layer utilities {

@@ -35,10 +35,10 @@ export function AuthStatusBanner({ sessionId }: { sessionId: string }) {
 	if (!status?.is_authenticating) return null;
 
 	return (
-		<div className="mx-3 mb-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs">
+		<div className="mx-3 mb-2 rounded-lg border border-info/30 bg-info/10 px-3 py-2 text-xs">
 			<div className="flex items-center gap-2">
-				<Loader2 className="size-3.5 text-blue-500 animate-spin shrink-0" />
-				<span className="font-medium text-blue-600 dark:text-blue-400">
+				<Loader2 className="size-3.5 text-info animate-spin shrink-0" />
+				<span className="font-medium text-info">
 					正在进行身份验证...
 				</span>
 				{status.output.length > 0 && (
@@ -243,14 +243,14 @@ export function AgentMessageInbox({ sessionId }: { sessionId: string }) {
 	};
 
 	return (
-		<div className="border-t bg-blue-50/50 dark:bg-blue-950/20 shrink-0">
-			<div className="flex items-center gap-2 px-3 py-1.5 border-b border-blue-200/60 dark:border-blue-800/40">
-				<MessageSquare className="size-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
-				<span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+		<div className="border-t bg-info/5 shrink-0">
+			<div className="flex items-center gap-2 px-3 py-1.5 border-b border-info/30">
+				<MessageSquare className="size-3.5 text-info shrink-0" />
+				<span className="text-xs font-medium text-info">
 					收到 Agent 消息 ({pendingMsgs.length})
 				</span>
 			</div>
-			<div className="max-h-36 overflow-y-auto divide-y divide-blue-100 dark:divide-blue-900/40">
+			<div className="max-h-36 overflow-y-auto divide-y divide-info/20">
 				{pendingMsgs.map((msg) => (
 					<div
 						key={msg.message_id}
@@ -305,7 +305,7 @@ export function EmptyChat({ sessionId }: { sessionId: string }) {
 					{persona.description}
 				</p>
 			</div>
-			<p className="text-xs opacity-50">
+			<p className="text-xs opacity-60">
 				发送消息开始对话，/ 触发技能，@ 派发给其他 Agent
 			</p>
 		</div>
