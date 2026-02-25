@@ -389,34 +389,45 @@ export function AgentInput({
 				onChange={handleFileChange}
 			/>
 
-			<div className="flex items-center gap-0.5 px-2 py-1.5 border-b shrink-0">
+			<div className="flex-1 min-h-0">
+				<TiptapEditor
+					ref={editorRef}
+					placeholder="输入消息，/ 触发技能，@ 派发给 Agent..."
+					disabled={disabled}
+					mentionItems={mentionItems}
+					onSubmit={() => handleSubmit()}
+					onChange={handleEditorChange}
+					onPasteImages={handlePasteImages}
+				/>
+			</div>
+
+			{/* WeChat-style bottom toolbar */}
+			<div className="flex items-center gap-1 px-2 py-2 shrink-0">
 				<button
 					type="button"
 					className={cn(
-						"flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors",
-						disabled && "opacity-50 cursor-not-allowed",
+						"flex items-center justify-center size-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors",
+						disabled && "opacity-40 cursor-not-allowed",
 					)}
 					title="上传文件"
 					aria-label="上传文件"
 					onClick={() => fileInputRef.current?.click()}
 					disabled={disabled}
 				>
-					<Paperclip className="size-3.5" />
-					<span>文件</span>
+					<Paperclip className="size-[18px]" />
 				</button>
 				<button
 					type="button"
 					className={cn(
-						"flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors",
-						disabled && "opacity-50 cursor-not-allowed",
+						"flex items-center justify-center size-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors",
+						disabled && "opacity-40 cursor-not-allowed",
 					)}
 					title="上传图片"
 					aria-label="上传图片"
 					onClick={() => imageInputRef.current?.click()}
 					disabled={disabled}
 				>
-					<Image className="size-3.5" />
-					<span>图片</span>
+					<Image className="size-[18px]" />
 				</button>
 				<TtsToggle
 					ttsEnabled={tts.ttsEnabled}
@@ -429,27 +440,25 @@ export function AgentInput({
 					onStop={tts.stop}
 					onDownload={tts.downloadModels}
 				/>
-				<div className="ml-auto flex items-center gap-1.5">
+				<div className="ml-auto">
 					{isRunning ? (
 						<button
 							type="button"
-							className="flex items-center gap-1 rounded-md bg-destructive px-2.5 py-1 text-xs font-medium text-destructive-foreground hover:bg-destructive/90"
+							className="flex items-center justify-center size-8 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
 							onClick={handleInterrupt}
-							aria-label="Interrupt"
+							aria-label="中断"
+							title="中断"
 						>
-							<X className="size-3" />
-							中断
+							<X className="size-4" />
 						</button>
 					) : (
 						<button
 							type="button"
 							className={cn(
-								"flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground",
-								(isEmpty && pendingFiles.length === 0) ||
-									!allFilesReady ||
-									disabled
-									? "opacity-50 cursor-not-allowed"
-									: "hover:bg-primary/90",
+								"flex items-center justify-center size-8 rounded-full transition-colors",
+								(isEmpty && pendingFiles.length === 0) || !allFilesReady || disabled
+									? "bg-muted text-muted-foreground cursor-not-allowed"
+									: "bg-primary text-primary-foreground hover:bg-primary/90",
 							)}
 							disabled={
 								(isEmpty && pendingFiles.length === 0) ||
@@ -457,25 +466,13 @@ export function AgentInput({
 								disabled
 							}
 							onClick={handleSubmit}
-							aria-label="Send message"
+							aria-label="发送消息"
+							title="发送"
 						>
-							<Send className="size-3" />
-							发送
+							<Send className="size-4" />
 						</button>
 					)}
 				</div>
-			</div>
-
-			<div className="flex-1 min-h-0">
-				<TiptapEditor
-					ref={editorRef}
-					placeholder="输入消息，/ 触发技能，@ 派发给 Agent... 支持拖放文件"
-					disabled={disabled}
-					mentionItems={mentionItems}
-					onSubmit={() => handleSubmit()}
-					onChange={handleEditorChange}
-					onPasteImages={handlePasteImages}
-				/>
 			</div>
 
 			<SessionStatusBar sessionId={sessionId} />
