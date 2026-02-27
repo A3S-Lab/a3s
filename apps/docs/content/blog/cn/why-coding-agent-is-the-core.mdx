@@ -117,6 +117,16 @@ OpenCode 是开源的终端编码 Agent，设计目标是**提供一个模型无
 
 **这个定位的边界**：和 Claude Code 一样，它的架构以"人机交互"为中心，没有为程序化嵌入设计。如果你想在自己的应用里调用它，你面对的是一个 CLI 工具，而不是一个 SDK。
 
+### OpenClaw：以个人助理体验为中心
+
+OpenClaw 是面向消息平台（WhatsApp、Telegram、Slack）的个人 AI 助理 Agent，设计目标是**让用户在日常使用的聊天工具里获得智能任务自动化能力**。
+
+它的设计哲学是\"对话即操作\"：用户通过自然语言发出指令，Agent 理解意图并执行——查询信息、管理日程、处理文件、调用外部服务。整个体验围绕消息平台的交互范式设计，而不是终端或 IDE。
+
+这个定位决定了它的架构选择：它是一个部署在消息平台上的服务，不是一个本地工具或可嵌入的库。它的优势在于触达——用户不需要安装任何东西，在已有的聊天工具里就能使用 AI 能力。
+
+**这个定位的边界**：它的核心是\"个人助理\"，不是\"编码智能体\"。当你需要在自己的产品里嵌入 Agent 能力，或者需要处理代码库级别的复杂任务时，它的架构不是为这个场景设计的。
+
 ### A3S Code：以可嵌入性为中心
 
 A3S Code 解决的是一个完全不同的问题：**当你需要把编码 Agent 能力作为基础设施嵌入你的产品时，你用什么？**
@@ -129,18 +139,18 @@ A3S Code 解决的是一个完全不同的问题：**当你需要把编码 Agent
 
 ### 定位对比
 
-| | Claude Code | OpenCode | A3S Code |
-|---|---|---|---|
-| **核心定位** | 开发者终端工具 | 开放生态终端工具 | 可嵌入编码 Agent 库 |
-| **使用方式** | CLI 交互 | CLI 交互 | 代码调用 |
-| **模型支持** | Anthropic（+ Bedrock/Vertex） | 任意 OpenAI 兼容 | 任意 OpenAI 兼容 |
-| **可嵌入性** | 无编程 API | 无编程 API | 核心设计目标 |
-| **扩展方式** | MCP + Skills + Hooks | MCP + 插件 | Trait 扩展点 + MCP |
-| **多租户** | 不支持 | 不支持 | 支持 |
-| **并行任务** | 子 Agent 并行 | 有限支持 | Lane 队列 + 多机器分发 |
-| **开源** | 否 | 是 | 是 |
+| | Claude Code | OpenCode | OpenClaw | A3S Code |
+|---|---|---|---|---|
+| **核心定位** | 开发者终端工具 | 开放生态终端工具 | 消息平台个人助理 | 可嵌入 Agent 基础设施 |
+| **使用方式** | CLI 交互 | CLI 交互 | 消息平台对话 | 代码调用 |
+| **模型支持** | Anthropic（+ Bedrock/Vertex） | 任意 OpenAI 兼容 | 多模型 | 任意 OpenAI 兼容 |
+| **可嵌入性** | 无编程 API | 无编程 API | 无编程 API | 核心设计目标 |
+| **扩展方式** | MCP + Skills + Hooks | MCP + 插件 | 插件 | Trait 扩展点 + MCP |
+| **多租户** | 不支持 | 不支持 | 不支持 | 支持 |
+| **并行任务** | 子 Agent 并行 | 有限支持 | 不支持 | Lane 队列 + 多机器分发 |
+| **开源** | 否 | 是 | 否 | 是 |
 
-这不是功能优劣的对比，是设计目标的对比。三个工具在各自的定位上都做得很好。
+这不是功能优劣的对比，是设计目标的对比。四个工具在各自的定位上都有其价值。
 
 ---
 
@@ -503,7 +513,216 @@ main().catch(console.error);
 
 ---
 
-## 五、从单机到多机：Lane 队列的价值
+## 五、用编码智能体构建 Agentic 金融应用
+
+编码智能体不只是为开发者服务的工具——它是构建任何领域 Agentic 应用的基础设施。金融场景是一个很好的例子：数据查询、风险计算、报告生成、交易执行，这些任务都可以通过自定义工具交给 Agent 来驱动。
+
+下面用 A3S Code TypeScript SDK 构建一个终端金融助理，具备股票查询、投资组合分析、风险评估和交易模拟能力。
+
+### 5.1 定义金融工具集
+
+```typescript
+import { Agent, Tool, ToolResult } from '@a3s-lab/code';
+
+// 模拟市场数据
+const marketData: Record<string, { price: number; change: number; volume: number }> = {
+  AAPL: { price: 189.5, change: 1.2, volume: 52_000_000 },
+  MSFT: { price: 415.3, change: -0.8, volume: 21_000_000 },
+  NVDA: { price: 875.4, change: 3.5, volume: 38_000_000 },
+  TSLA: { price: 248.7, change: -2.1, volume: 95_000_000 },
+};
+
+// 模拟持仓数据
+const portfolio: Record<string, { shares: number; avgCost: number }> = {
+  AAPL: { shares: 100, avgCost: 165.0 },
+  MSFT: { shares: 50, avgCost: 380.0 },
+};
+
+const financeTools: Tool[] = [
+  {
+    name: 'get_quote',
+    description: '获取股票实时报价，包括价格、涨跌幅、成交量',
+    parameters: {
+      type: 'object',
+      properties: {
+        symbols: {
+          type: 'array',
+          items: { type: 'string' },
+          description: '股票代码列表，如 ["AAPL", "MSFT"]',
+        },
+      },
+      required: ['symbols'],
+    },
+    execute: async (args): Promise<ToolResult> => {
+      const { symbols } = args as { symbols: string[] };
+      const quotes = symbols.map((sym) => {
+        const data = marketData[sym.toUpperCase()];
+        if (!data) return { symbol: sym, error: 'Not found' };
+        return {
+          symbol: sym.toUpperCase(),
+          price: data.price,
+          change: data.change,
+          changePct: ((data.change / (data.price - data.change)) * 100).toFixed(2) + '%',
+          volume: data.volume.toLocaleString(),
+        };
+      });
+      return { content: JSON.stringify(quotes, null, 2) };
+    },
+  },
+  {
+    name: 'get_portfolio',
+    description: '查看当前持仓，计算盈亏和市值',
+    parameters: { type: 'object', properties: {} },
+    execute: async (): Promise<ToolResult> => {
+      const positions = Object.entries(portfolio).map(([sym, pos]) => {
+        const market = marketData[sym];
+        const marketValue = market ? market.price * pos.shares : 0;
+        const costBasis = pos.avgCost * pos.shares;
+        const pnl = marketValue - costBasis;
+        const pnlPct = ((pnl / costBasis) * 100).toFixed(2);
+        return {
+          symbol: sym,
+          shares: pos.shares,
+          avgCost: pos.avgCost,
+          currentPrice: market?.price ?? 'N/A',
+          marketValue: marketValue.toFixed(2),
+          pnl: pnl.toFixed(2),
+          pnlPct: pnlPct + '%',
+        };
+      });
+      const totalValue = positions.reduce((s, p) => s + parseFloat(p.marketValue as string), 0);
+      const totalPnl = positions.reduce((s, p) => s + parseFloat(p.pnl as string), 0);
+      return {
+        content: JSON.stringify(
+          { positions, summary: { totalValue: totalValue.toFixed(2), totalPnl: totalPnl.toFixed(2) } },
+          null,
+          2,
+        ),
+      };
+    },
+  },
+  {
+    name: 'risk_assessment',
+    description: '对指定股票或投资组合进行风险评估，输出波动率和风险等级',
+    parameters: {
+      type: 'object',
+      properties: {
+        symbols: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['symbols'],
+    },
+    execute: async (args): Promise<ToolResult> => {
+      const { symbols } = args as { symbols: string[] };
+      // 简化的风险模型：基于成交量和涨跌幅估算波动率
+      const assessments = symbols.map((sym) => {
+        const data = marketData[sym.toUpperCase()];
+        if (!data) return { symbol: sym, error: 'Not found' };
+        const volatility = Math.abs(data.change / data.price) * 100;
+        const risk = volatility > 2 ? 'HIGH' : volatility > 1 ? 'MEDIUM' : 'LOW';
+        return { symbol: sym.toUpperCase(), volatility: volatility.toFixed(3) + '%', risk };
+      });
+      return { content: JSON.stringify(assessments, null, 2) };
+    },
+  },
+  {
+    name: 'simulate_trade',
+    description: '模拟买入或卖出操作，计算交易成本和预期影响',
+    parameters: {
+      type: 'object',
+      properties: {
+        symbol: { type: 'string' },
+        action: { type: 'string', enum: ['buy', 'sell'] },
+        shares: { type: 'number' },
+      },
+      required: ['symbol', 'action', 'shares'],
+    },
+    execute: async (args): Promise<ToolResult> => {
+      const { symbol, action, shares } = args as {
+        symbol: string;
+        action: 'buy' | 'sell';
+        shares: number;
+      };
+      const data = marketData[symbol.toUpperCase()];
+      if (!data) return { content: `Symbol ${symbol} not found`, isError: true };
+
+      const commission = Math.max(1.0, shares * data.price * 0.001); // 0.1% 佣金
+      const total = shares * data.price + (action === 'buy' ? commission : -commission);
+
+      return {
+        content: JSON.stringify(
+          {
+            symbol: symbol.toUpperCase(),
+            action,
+            shares,
+            price: data.price,
+            commission: commission.toFixed(2),
+            total: total.toFixed(2),
+            note: '这是模拟交易，不会实际执行',
+          },
+          null,
+          2,
+        ),
+      };
+    },
+  },
+];
+```
+
+### 5.2 组装金融 Agent
+
+```typescript
+import * as readline from 'readline';
+
+async function main() {
+  const agent = await Agent.create('agent.hcl');
+
+  const session = agent.session('.', {
+    tools: financeTools,
+    systemPrompt: `你是一位专业的金融助理，帮助用户分析市场行情、管理投资组合、评估风险。
+你可以：
+- 查询股票实时报价（get_quote）
+- 查看持仓和盈亏（get_portfolio）
+- 评估投资风险（risk_assessment）
+- 模拟交易操作（simulate_trade）
+
+始终基于数据给出客观分析，在涉及风险时主动提示。`,
+  });
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  rl.on('close', () => process.exit(0));
+
+  console.log('金融助理已就绪。输入你的问题，例如：\n');
+  console.log('  > 查一下 AAPL 和 NVDA 的报价');
+  console.log('  > 分析我的持仓风险');
+  console.log('  > 如果我买入 50 股 TSLA 需要多少钱？\n');
+
+  while (true) {
+    const input = await new Promise<string>((resolve) => rl.question('> ', resolve));
+    if (!input.trim()) continue;
+
+    const events = await session.stream(input);
+    for await (const event of events) {
+      if (event.type === 'text_delta') {
+        process.stdout.write(event.text);
+      } else if (event.type === 'tool_use') {
+        process.stdout.write(`\n[${event.tool}] `);
+      } else if (event.type === 'end') {
+        console.log('\n');
+      }
+    }
+  }
+}
+
+main().catch(console.error);
+```
+
+这个金融 Agent 的核心逻辑不到 150 行。A3S Code 处理了所有的 LLM 交互、工具路由、流式输出——你只需要定义业务工具和系统提示。
+
+同样的模式可以直接迁移到其他领域：把金融工具换成医疗数据查询工具，就是医疗助理；换成法律文档检索工具，就是法律助理。**极简核心 + 工具自举**的价值在这里体现得最清楚。
+
+---
+
+## 六、从单机到多机：Lane 队列的价值
 
 上面构建的是单机版本。当你的产品需要处理更复杂的场景时——比如同时服务多个用户、或者把计算密集型任务分发到远程机器——Lane 队列提供了解决方案。
 
@@ -556,7 +775,7 @@ for await (const event of events) {
 
 ---
 
-## 六、结论
+## 七、结论
 
 Agentic AI 的核心是感知—决策—行动的闭环，编码任务是这个闭环的最高密度测试场。
 

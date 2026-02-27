@@ -117,6 +117,16 @@ This positioning determines its architectural choices: it's also a CLI tool, wit
 
 **The boundary of this positioning**: like Claude Code, its architecture centers on "human-machine interaction" and wasn't designed for programmatic embedding. If you want to call it from your application, you're dealing with a CLI tool, not an SDK.
 
+### OpenClaw: Personal Assistant Experience First
+
+OpenClaw is a personal AI assistant Agent for messaging platforms (WhatsApp, Telegram, Slack), designed to **give users intelligent task automation inside the chat tools they already use every day**.
+
+Its design philosophy is "conversation as operation": users issue instructions in natural language, the Agent understands intent and executes — querying information, managing schedules, processing files, calling external services. The entire experience is designed around the interaction paradigm of messaging platforms, not terminals or IDEs.
+
+This positioning determines its architectural choices: it's a service deployed on messaging platforms, not a local tool or embeddable library. Its advantage is reach — users don't need to install anything; AI capability is available inside their existing chat tools.
+
+**The boundary of this positioning**: its core is "personal assistant," not "coding agent." When you need to embed Agent capability into your own product, or handle codebase-level complex tasks, its architecture wasn't designed for those scenarios.
+
 ### A3S Code: Embeddability First
 
 A3S Code solves a completely different problem: **when you need to embed coding Agent capability as infrastructure into your product, what do you use?**
@@ -129,18 +139,18 @@ This positioning determines its architectural choices: minimal core + tool boots
 
 ### Positioning Comparison
 
-| | Claude Code | OpenCode | A3S Code |
-|---|---|---|---|
-| **Core positioning** | Developer terminal tool | Open ecosystem terminal tool | Embeddable coding Agent library |
-| **Usage** | CLI interaction | CLI interaction | Code invocation |
-| **Model support** | Anthropic (+ Bedrock/Vertex) | Any OpenAI-compatible | Any OpenAI-compatible |
-| **Embeddability** | No programming API | No programming API | Core design goal |
-| **Extension** | MCP + Skills + Hooks | MCP + plugins | Trait extension points + MCP |
-| **Multi-tenancy** | Not supported | Not supported | Supported |
-| **Parallel tasks** | Sub-agent parallelism | Limited | Lane queue + multi-machine dispatch |
-| **Open source** | No | Yes | Yes |
+| | Claude Code | OpenCode | OpenClaw | A3S Code |
+|---|---|---|---|---|
+| **Core positioning** | Developer terminal tool | Open ecosystem terminal tool | Messaging platform personal assistant | Embeddable Agent infrastructure |
+| **Usage** | CLI interaction | CLI interaction | Messaging platform conversation | Code invocation |
+| **Model support** | Anthropic (+ Bedrock/Vertex) | Any OpenAI-compatible | Multi-model | Any OpenAI-compatible |
+| **Embeddability** | No programming API | No programming API | No programming API | Core design goal |
+| **Extension** | MCP + Skills + Hooks | MCP + plugins | Plugins | Trait extension points + MCP |
+| **Multi-tenancy** | Not supported | Not supported | Not supported | Supported |
+| **Parallel tasks** | Sub-agent parallelism | Limited | Not supported | Lane queue + multi-machine dispatch |
+| **Open source** | No | Yes | No | Yes |
 
-This isn't a comparison of feature quality — it's a comparison of design goals. All three tools do well within their own positioning.
+This isn't a comparison of feature quality — it's a comparison of design goals. All four tools have their own value within their respective positioning.
 
 ---
 
@@ -503,7 +513,216 @@ This product already has Claude Code's core capabilities: multi-turn conversatio
 
 ---
 
-## V. From Single Machine to Multi-Machine: The Value of Lane Queues
+## V. Building an Agentic Finance Application
+
+The coding agent isn't just a tool for developers — it's the infrastructure for building Agentic applications in any domain. Finance is a great example: data queries, risk calculations, report generation, trade execution — all of these tasks can be driven by an Agent through custom tools.
+
+Here we use the A3S Code TypeScript SDK to build a terminal finance assistant with stock quotes, portfolio analysis, risk assessment, and trade simulation.
+
+### 5.1 Define the Finance Tool Set
+
+```typescript
+import { Agent, Tool, ToolResult } from '@a3s-lab/code';
+
+// Simulated market data
+const marketData: Record<string, { price: number; change: number; volume: number }> = {
+  AAPL: { price: 189.5, change: 1.2, volume: 52_000_000 },
+  MSFT: { price: 415.3, change: -0.8, volume: 21_000_000 },
+  NVDA: { price: 875.4, change: 3.5, volume: 38_000_000 },
+  TSLA: { price: 248.7, change: -2.1, volume: 95_000_000 },
+};
+
+// Simulated portfolio
+const portfolio: Record<string, { shares: number; avgCost: number }> = {
+  AAPL: { shares: 100, avgCost: 165.0 },
+  MSFT: { shares: 50, avgCost: 380.0 },
+};
+
+const financeTools: Tool[] = [
+  {
+    name: 'get_quote',
+    description: 'Get real-time stock quotes including price, change, and volume',
+    parameters: {
+      type: 'object',
+      properties: {
+        symbols: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'List of ticker symbols, e.g. ["AAPL", "MSFT"]',
+        },
+      },
+      required: ['symbols'],
+    },
+    execute: async (args): Promise<ToolResult> => {
+      const { symbols } = args as { symbols: string[] };
+      const quotes = symbols.map((sym) => {
+        const data = marketData[sym.toUpperCase()];
+        if (!data) return { symbol: sym, error: 'Not found' };
+        return {
+          symbol: sym.toUpperCase(),
+          price: data.price,
+          change: data.change,
+          changePct: ((data.change / (data.price - data.change)) * 100).toFixed(2) + '%',
+          volume: data.volume.toLocaleString(),
+        };
+      });
+      return { content: JSON.stringify(quotes, null, 2) };
+    },
+  },
+  {
+    name: 'get_portfolio',
+    description: 'View current holdings, calculate P&L and market value',
+    parameters: { type: 'object', properties: {} },
+    execute: async (): Promise<ToolResult> => {
+      const positions = Object.entries(portfolio).map(([sym, pos]) => {
+        const market = marketData[sym];
+        const marketValue = market ? market.price * pos.shares : 0;
+        const costBasis = pos.avgCost * pos.shares;
+        const pnl = marketValue - costBasis;
+        const pnlPct = ((pnl / costBasis) * 100).toFixed(2);
+        return {
+          symbol: sym,
+          shares: pos.shares,
+          avgCost: pos.avgCost,
+          currentPrice: market?.price ?? 'N/A',
+          marketValue: marketValue.toFixed(2),
+          pnl: pnl.toFixed(2),
+          pnlPct: pnlPct + '%',
+        };
+      });
+      const totalValue = positions.reduce((s, p) => s + parseFloat(p.marketValue as string), 0);
+      const totalPnl = positions.reduce((s, p) => s + parseFloat(p.pnl as string), 0);
+      return {
+        content: JSON.stringify(
+          { positions, summary: { totalValue: totalValue.toFixed(2), totalPnl: totalPnl.toFixed(2) } },
+          null,
+          2,
+        ),
+      };
+    },
+  },
+  {
+    name: 'risk_assessment',
+    description: 'Assess risk for given symbols, outputting volatility and risk level',
+    parameters: {
+      type: 'object',
+      properties: {
+        symbols: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['symbols'],
+    },
+    execute: async (args): Promise<ToolResult> => {
+      const { symbols } = args as { symbols: string[] };
+      const assessments = symbols.map((sym) => {
+        const data = marketData[sym.toUpperCase()];
+        if (!data) return { symbol: sym, error: 'Not found' };
+        const volatility = Math.abs(data.change / data.price) * 100;
+        const risk = volatility > 2 ? 'HIGH' : volatility > 1 ? 'MEDIUM' : 'LOW';
+        return { symbol: sym.toUpperCase(), volatility: volatility.toFixed(3) + '%', risk };
+      });
+      return { content: JSON.stringify(assessments, null, 2) };
+    },
+  },
+  {
+    name: 'simulate_trade',
+    description: 'Simulate a buy or sell order, calculating transaction cost and projected impact',
+    parameters: {
+      type: 'object',
+      properties: {
+        symbol: { type: 'string' },
+        action: { type: 'string', enum: ['buy', 'sell'] },
+        shares: { type: 'number' },
+      },
+      required: ['symbol', 'action', 'shares'],
+    },
+    execute: async (args): Promise<ToolResult> => {
+      const { symbol, action, shares } = args as {
+        symbol: string;
+        action: 'buy' | 'sell';
+        shares: number;
+      };
+      const data = marketData[symbol.toUpperCase()];
+      if (!data) return { content: `Symbol ${symbol} not found`, isError: true };
+
+      const commission = Math.max(1.0, shares * data.price * 0.001); // 0.1% commission
+      const total = shares * data.price + (action === 'buy' ? commission : -commission);
+
+      return {
+        content: JSON.stringify(
+          {
+            symbol: symbol.toUpperCase(),
+            action,
+            shares,
+            price: data.price,
+            commission: commission.toFixed(2),
+            total: total.toFixed(2),
+            note: 'Simulated trade — no real execution',
+          },
+          null,
+          2,
+        ),
+      };
+    },
+  },
+];
+```
+
+### 5.2 Assemble the Finance Agent
+
+```typescript
+import * as readline from 'readline';
+
+async function main() {
+  const agent = await Agent.create('agent.hcl');
+
+  const session = agent.session('.', {
+    tools: financeTools,
+    systemPrompt: `You are a professional finance assistant helping users analyze market data,
+manage their portfolio, and assess investment risk.
+You can:
+- Fetch real-time stock quotes (get_quote)
+- View holdings and P&L (get_portfolio)
+- Assess investment risk (risk_assessment)
+- Simulate trade orders (simulate_trade)
+
+Always base your analysis on data and proactively flag risks.`,
+  });
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  rl.on('close', () => process.exit(0));
+
+  console.log('Finance assistant ready. Try asking:\n');
+  console.log('  > Get quotes for AAPL and NVDA');
+  console.log('  > Analyze my portfolio risk');
+  console.log('  > How much would it cost to buy 50 shares of TSLA?\n');
+
+  while (true) {
+    const input = await new Promise<string>((resolve) => rl.question('> ', resolve));
+    if (!input.trim()) continue;
+
+    const events = await session.stream(input);
+    for await (const event of events) {
+      if (event.type === 'text_delta') {
+        process.stdout.write(event.text);
+      } else if (event.type === 'tool_use') {
+        process.stdout.write(`\n[${event.tool}] `);
+      } else if (event.type === 'end') {
+        console.log('\n');
+      }
+    }
+  }
+}
+
+main().catch(console.error);
+```
+
+The core logic of this finance Agent is under 150 lines. A3S Code handles all LLM interaction, tool routing, and streaming output — you only need to define business tools and a system prompt.
+
+The same pattern transfers directly to other domains: swap the finance tools for medical data query tools and you have a medical assistant; swap them for legal document retrieval tools and you have a legal assistant. This is where **minimal core + tool bootstrapping** shows its value most clearly.
+
+---
+
+## VI. From Single Machine to Multi-Machine: The Value of Lane Queues
 
 The above builds a single-machine version. When your product needs to handle more complex scenarios — serving multiple users simultaneously, or distributing compute-intensive tasks to remote machines — the lane queue provides the solution.
 
@@ -556,7 +775,7 @@ This pattern lets you transparently distribute compute-intensive tasks to any nu
 
 ---
 
-## VI. Conclusion
+## VII. Conclusion
 
 The core of Agentic AI is the perceive–decide–act loop, and coding tasks are the highest-density test of this loop.
 
