@@ -1,0 +1,287 @@
+---
+title: libkrun & libkrunfw - A Technical Deep Dive into Lightweight Virtualization
+description: An in-depth analysis of libkrun and libkrunfw architecture, technical value, limitations, and how WHPX enables libkrun on Windows
+date: "2026-02-27"
+author: A3S Lab
+tags: [libkrun, libkrunfw, virtualization, whpx, windows, kvm, hvf]
+---
+
+> From Linux/macOS to Windows: How a Dynamic Library Makes Process Isolation Accessible
+
+---
+
+## Background: Why Lightweight Virtualization?
+
+Container technologies (like Docker) achieve process isolation through Linux namespaces and cgroups, but they share the host kernel, creating kernel escape security risks. Traditional virtual machines (like QEMU/KVM) provide strong isolation but are slow to start and resource-intensive, making them unsuitable for container scenarios.
+
+**libkrun** takes a middle path: using virtualization technology to provide kernel-level isolation while maintaining container-like lightweight characteristics.
+
+---
+
+## What is libkrun?
+
+libkrun is a **lightweight VMM (Virtual Machine Monitor) in dynamic library form** that allows any program to gain hardware virtualization-based process isolation capabilities simply by linking to this library.
+
+```
+Application (crun / krunkit / muvm / a3s box)
+         ↓ links to
+    libkrun.so / libkrun.dylib
+         ↓ calls
+  KVM (Linux) / HVF (macOS) / WHPX (Windows)
+         ↓ runs
+      Guest VM (isolated process)
+```
+
+Its C API is extremely simple:
+
+```c
+// Create a VM context
+uint32_t ctx = krun_create_ctx();
+
+// Configure resources
+krun_set_vm_config(ctx, 2, 512);          // 2 vCPUs, 512MB memory
+krun_set_root(ctx, "/path/to/rootfs");    // Root filesystem
+krun_set_exec(ctx, "/bin/sh", args, env); // Program to run
+
+// Start VM (blocks until VM exits)
+krun_start_enter(ctx);
+```
+
+### Core Components
+
+libkrun internally integrates a complete VMM, including:
+
+| Component | Purpose |
+|-----------|---------|
+| vCPU Management | Create, run, destroy virtual CPUs |
+| Memory Management | Allocate guest physical memory |
+| Device Emulation | virtio devices (console, fs, net, block, etc.) |
+| Interrupt Controller | Emulate APIC/GIC |
+| Boot Loader | Load kernel into guest memory and boot |
+
+---
+
+## What is libkrunfw?
+
+libkrun needs a Linux kernel to run guest processes. **libkrunfw** is the carrier for this kernel—it packages a specially configured Linux kernel as a dynamic library.
+
+### Clever Design
+
+Traditional approaches require reading kernel files from disk, but libkrunfw leverages dynamic linker features:
+
+```
+libkrunfw.so.5
+├── .data section: kernel binary image (vmlinux)
+├── krunfw_get_kernel(): returns pointer and size of kernel image
+└── krunfw_get_initrd(): returns initrd pointer (TEE variant)
+```
+
+When libkrun loads libkrunfw, the dynamic linker directly maps the kernel image into the process address space. libkrun gets the pointer and directly injects this memory into the guest's physical memory, without any file I/O.
+
+```rust
+// Code in libkrun for loading libkrunfw
+static KRUNFW: LazyLock<Option<libloading::Library>> =
+    LazyLock::new(|| unsafe { libloading::Library::new("libkrunfw.so.5").ok() });
+
+// Get kernel image pointer
+let get_kernel: Symbol<unsafe extern "C" fn(*mut u64, *mut u64, *mut size_t) -> *mut c_char>
+    = krunfw.get(b"krunfw_get_kernel")?;
+```
+
+### What's Special About the Kernel in libkrunfw?
+
+The kernel in libkrunfw is not a standard distribution kernel; it includes special patches:
+
+1. **TSI (Transparent Socket Impersonation) patches**: Allow the guest kernel to transparently forward socket calls to the VMM proxy, enabling network connectivity without virtual NICs.
+2. **Minimized configuration**: Removes many unnecessary drivers and features, reducing size and speeding up boot time.
+3. **CPU count limit**: `CONFIG_NR_CPUS=8`, optimized for lightweight scenarios.
+
+### Multiple Variants
+
+| Variant | Library Name | Purpose |
+|---------|--------------|---------|
+| Standard | `libkrunfw.so.5` | General virtualization |
+| SEV | `libkrunfw-sev.so.5` | AMD memory encryption |
+| TDX | `libkrunfw-tdx.so.5` | Intel Trust Domain Extensions |
+
+---
+
+## Technical Value
+
+### 1. Extremely Low Barrier to Entry
+
+No need to understand KVM ioctls, QEMU configuration, or any virtualization details. A single C function call can start an isolated VM. This allows projects like [crun](https://github.com/containers/crun), [krunkit](https://github.com/containers/krunkit), and [muvm](https://github.com/AsahiLinux/muvm) to easily gain virtualization isolation capabilities.
+
+### 2. Fast Boot Time
+
+Since the kernel is already mapped into memory through the dynamic linker, disk read time is eliminated. Combined with the kernel's minimized configuration, the entire VM boot time can be controlled at the millisecond level.
+
+### 3. Strong Security Isolation
+
+Compared to namespace isolation, libkrun provides hardware-level isolation boundaries. Even if the guest kernel has vulnerabilities, attackers need to break through the hypervisor layer to affect the host.
+
+### 4. TSI Network Innovation
+
+Traditional VMs require virtual NICs + userspace network proxies (like passt/gvproxy) for networking, with complex configuration. TSI intercepts socket system calls in the guest kernel and transparently forwards network requests to the VMM, without any virtual network devices, greatly simplifying network configuration.
+
+### 5. Cross-Platform Capability
+
+The same API uses KVM on Linux, HVF on macOS, and WHPX on Windows, with upper-layer applications unaware of underlying differences.
+
+---
+
+## Limitations
+
+### Technical Limitations
+
+**1. Dependency on Custom Kernel**
+Core features like TSI require the custom kernel in libkrunfw; standard distribution kernels cannot be used. This means kernel version and features are determined by libkrunfw, and users cannot freely choose.
+
+**2. Limited Workload Compatibility**
+libkrun is designed to run single processes, not general-purpose VMs. It does not support:
+- Workloads requiring special kernel modules
+- OS installations requiring UEFI/BIOS (except EFI variant)
+- Scenarios requiring PCI passthrough
+
+**3. CPU Count Ceiling**
+The libkrunfw kernel limits to a maximum of 8 vCPUs, unsuitable for high-concurrency compute-intensive scenarios.
+
+**4. TDX Variant Memory Limit**
+The Intel TDX variant supports a maximum of 3072MB memory and 1 vCPU, with significant limitations.
+
+### Security Model Limitations
+
+libkrun's security model treats the guest and VMM as the same security context. Host resources accessible to the VMM can theoretically be accessed by the guest through the VMM. To achieve true isolation, restrictions must be applied to the VMM process itself at the host level (such as Linux namespaces).
+
+### Platform Limitations
+
+- **Windows support is still experimental**: WHPX backend is under development
+- **macOS only supports ARM64**: x86_64 macOS is not supported (HVF limitation)
+- **Linux requires KVM support**: Cannot be used in VMs or environments without KVM
+
+---
+
+## WHPX: Enabling libkrun on Windows
+
+### What is WHPX?
+
+**Windows Hypervisor Platform (WHPX)** is a userspace virtualization API introduced by Microsoft in Windows 10 version 2004, exposed to applications through `WinHvPlatform.dll`. It is the userspace interface to Hyper-V, similar to Linux's KVM and macOS's HVF.
+
+```
+Windows Application
+      ↓
+WinHvPlatform API (userspace)
+      ↓
+Hyper-V Hypervisor (kernel)
+      ↓
+Hardware Virtualization (Intel VT-x / AMD-V)
+```
+
+### WHPX Core APIs
+
+| API | Purpose |
+|-----|---------|
+| `WHvCreatePartition` | Create VM partition |
+| `WHvSetupPartition` | Configure partition parameters |
+| `WHvMapGpaRange` | Map guest physical memory |
+| `WHvCreateVirtualProcessor` | Create vCPU |
+| `WHvRunVirtualProcessor` | Run vCPU until VM exit |
+| `WHvGetVirtualProcessorRegisters` | Read vCPU registers |
+| `WHvSetVirtualProcessorRegisters` | Write vCPU registers |
+| `WHvDeleteVirtualProcessor` | Destroy vCPU |
+| `WHvDeletePartition` | Destroy partition |
+
+### VM Exit Handling Mechanism
+
+WHPX uses a **synchronous VM exit** model: each time the guest executes an operation requiring VMM intervention, `WHvRunVirtualProcessor` returns, the VMM handles it, and then calls again to continue execution.
+
+```rust
+// Core logic of WHPX vCPU run loop in libkrun
+pub fn run(&mut self) -> io::Result<VcpuExit<'_>> {
+    let mut exit_context = WHV_RUN_VP_EXIT_CONTEXT::default();
+
+    unsafe {
+        WHvRunVirtualProcessor(
+            self.partition,
+            self.index,
+            &mut exit_context as *mut _,
+            size_of::<WHV_RUN_VP_EXIT_CONTEXT>() as u32,
+        )?;
+    }
+
+    // Parse exit reason
+    match exit_context.ExitReason {
+        WHV_RUN_VP_EXIT_REASON_MEMORY_ACCESS => { /* MMIO handling */ }
+        WHV_RUN_VP_EXIT_REASON_X64_IO_PORT_ACCESS => { /* IO port handling */ }
+        WHV_RUN_VP_EXIT_REASON_X64_HALT => Ok(VcpuExit::Halted),
+        WHV_RUN_VP_EXIT_REASON_CANCELED => Ok(VcpuExit::Shutdown),
+        _ => Ok(VcpuExit::Shutdown),
+    }
+}
+```
+
+### libkrun WHPX Backend Architecture
+
+To support libkrun on Windows, we implemented the following architecture:
+
+```
+Vcpu::run() [vstate.rs]
+    ↓ loops calling
+WhpxVcpu::run() [whpx_vcpu.rs]
+    ↓ calls WHvRunVirtualProcessor
+    ↓ returns VcpuExit enum
+Vcpu::run_emulation()
+    ↓ dispatches based on exit type
+    ├── MmioRead/MmioWrite → mmio_bus (device emulation)
+    ├── IoPortRead/IoPortWrite → mmio_bus (IO port devices)
+    ├── Halted → VcpuEmulation::Halted (stop)
+    └── Shutdown → VcpuEmulation::Stopped (stop)
+```
+
+The **VcpuExit enum** design uses Rust's lifetime parameters to ensure memory safety of MMIO/IO data buffers:
+
+```rust
+pub enum VcpuExit<'a> {
+    MmioRead(u64, &'a mut [u8]),   // address + mutable buffer (device fills data)
+    MmioWrite(u64, &'a [u8]),      // address + data
+    IoPortRead(u16, &'a mut [u8]), // port + mutable buffer
+    IoPortWrite(u16, &'a [u8]),    // port + data
+    Halted,
+    Shutdown,
+}
+```
+
+### Comparison with KVM/HVF
+
+| Feature | KVM (Linux) | HVF (macOS) | WHPX (Windows) |
+|---------|-------------|-------------|----------------|
+| API Level | Kernel ioctl | Userspace framework | Userspace DLL |
+| Memory Mapping | `KVM_SET_USER_MEMORY_REGION` | `hv_vm_map` | `WHvMapGpaRange` |
+| vCPU Execution | `KVM_RUN` ioctl | `hv_vcpu_run` | `WHvRunVirtualProcessor` |
+| Exit Information | `kvm_run` shared memory | `hv_vcpu_exit_t` | `WHV_RUN_VP_EXIT_CONTEXT` |
+| Register Access | `KVM_GET/SET_REGS` | `hv_vcpu_get/set_reg` | `WHvGet/SetVirtualProcessorRegisters` |
+| Minimum Requirements | Linux + KVM module | macOS 11+ ARM64 | Windows 10 2004+ + Hyper-V |
+
+### Significance of Windows Support
+
+The WHPX backend implementation makes libkrun a truly cross-platform virtualization library:
+
+1. **Windows Container Ecosystem**: Provides virtualization isolation capabilities for container runtimes on Windows (like Windows version of crun)
+2. **Development Environment Consistency**: Developers can use the same isolation mechanism on Windows as on Linux/macOS
+3. **a3s box Cross-Platform**: Enables a3s box to provide consistent security isolation experience on Windows as on other platforms
+
+---
+
+## Summary
+
+libkrun and libkrunfw together form an elegant lightweight virtualization solution:
+
+- **libkrunfw** solves the "where does the kernel come from" problem—packaging the kernel as a dynamic library, using the linker for zero-overhead loading
+- **libkrun** solves the "how to use virtualization" problem—wrapping complex VMM into a simple C API
+- **WHPX backend** solves the "what about Windows" problem—implementing virtualization capabilities equivalent to KVM/HVF through Windows Hypervisor Platform API
+
+This design philosophy—**minimization, self-containment, cross-platform**—makes libkrun an important infrastructure in the container security isolation field.
+
+---
+
+*This article is based on libkrun source code analysis. Some implementation details are subject to the code.*

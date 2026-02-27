@@ -1,0 +1,287 @@
+---
+title: libkrun 与 libkrunfw：轻量级虚拟化的技术解析
+description: 深入解析 libkrun 和 libkrunfw 的架构设计、技术价值与限制，以及 WHPX 如何让 libkrun 在 Windows 上运行
+date: "2026-02-27"
+author: A3S Lab
+tags: [libkrun, libkrunfw, virtualization, whpx, windows, kvm, hvf]
+---
+
+> 从 Linux/macOS 到 Windows，一个动态库如何让进程隔离变得触手可及
+
+---
+
+## 背景：为什么需要轻量级虚拟化？
+
+容器技术（如 Docker）通过 Linux namespace 和 cgroup 实现进程隔离，但它们共享宿主机内核，存在内核逃逸的安全风险。传统虚拟机（如 QEMU/KVM）提供了强隔离，但启动慢、资源占用高，不适合容器场景。
+
+**libkrun** 走了一条中间路线：用虚拟化技术提供内核级隔离，同时保持接近容器的轻量性。
+
+---
+
+## libkrun 是什么？
+
+libkrun 是一个**动态库形式的轻量级 VMM（Virtual Machine Monitor）**，它让任何程序只需链接这个库，就能获得基于硬件虚拟化的进程隔离能力。
+
+```
+应用程序 (crun / krunkit / muvm / a3s box)
+         ↓ 链接
+    libkrun.so / libkrun.dylib
+         ↓ 调用
+  KVM (Linux) / HVF (macOS) / WHPX (Windows)
+         ↓ 运行
+      Guest VM（隔离的进程）
+```
+
+它的 C API 极其简洁：
+
+```c
+// 创建一个 VM 上下文
+uint32_t ctx = krun_create_ctx();
+
+// 配置资源
+krun_set_vm_config(ctx, 2, 512);          // 2 vCPU，512MB 内存
+krun_set_root(ctx, "/path/to/rootfs");    // 根文件系统
+krun_set_exec(ctx, "/bin/sh", args, env); // 要运行的程序
+
+// 启动 VM（阻塞直到 VM 退出）
+krun_start_enter(ctx);
+```
+
+### 核心组件
+
+libkrun 内部集成了一个完整的 VMM，包含：
+
+| 组件 | 作用 |
+|------|------|
+| vCPU 管理 | 创建、运行、销毁虚拟 CPU |
+| 内存管理 | 分配 guest 物理内存 |
+| 设备模拟 | virtio 设备（console、fs、net、block 等）|
+| 中断控制器 | 模拟 APIC/GIC |
+| 引导加载 | 将内核加载到 guest 内存并启动 |
+
+---
+
+## libkrunfw 是什么？
+
+libkrun 需要一个 Linux 内核来运行 guest 进程。**libkrunfw** 就是这个内核的载体——它把一个经过专门配置的 Linux 内核打包成动态库。
+
+### 巧妙的设计
+
+传统方式需要从磁盘读取内核文件，而 libkrunfw 利用了动态链接器的特性：
+
+```
+libkrunfw.so.5
+├── .data 段：内核二进制镜像（vmlinux）
+├── krunfw_get_kernel()：返回内核镜像的指针和大小
+└── krunfw_get_initrd()：返回 initrd 的指针（TEE 变体）
+```
+
+当 libkrun 加载 libkrunfw 时，动态链接器直接将内核镜像映射到进程地址空间。libkrun 拿到指针后，直接将这段内存注入到 guest 的物理内存中，无需任何文件 I/O。
+
+```rust
+// libkrun 中加载 libkrunfw 的代码
+static KRUNFW: LazyLock<Option<libloading::Library>> =
+    LazyLock::new(|| unsafe { libloading::Library::new("libkrunfw.so.5").ok() });
+
+// 获取内核镜像指针
+let get_kernel: Symbol<unsafe extern "C" fn(*mut u64, *mut u64, *mut size_t) -> *mut c_char>
+    = krunfw.get(b"krunfw_get_kernel")?;
+```
+
+### libkrunfw 中的内核有什么特别之处？
+
+libkrunfw 中的内核不是标准的发行版内核，它包含了专门的补丁：
+
+1. **TSI（Transparent Socket Impersonation）补丁**：让 guest 内核能够将 socket 调用透明地转发给 VMM 代理，实现无虚拟网卡的网络连接。
+2. **最小化配置**：去掉了大量不需要的驱动和功能，减小体积，加快启动速度。
+3. **CPU 数量限制**：`CONFIG_NR_CPUS=8`，针对轻量级场景优化。
+
+### 多种变体
+
+| 变体 | 库名 | 用途 |
+|------|------|------|
+| 标准版 | `libkrunfw.so.5` | 通用虚拟化 |
+| SEV 版 | `libkrunfw-sev.so.5` | AMD 内存加密 |
+| TDX 版 | `libkrunfw-tdx.so.5` | Intel 可信域扩展 |
+
+---
+
+## 技术价值
+
+### 1. 极低的使用门槛
+
+不需要了解 KVM ioctl、QEMU 配置或任何虚拟化细节。一个 C 函数调用就能启动一个隔离的 VM。这让 [crun](https://github.com/containers/crun)、[krunkit](https://github.com/containers/krunkit)、[muvm](https://github.com/AsahiLinux/muvm) 等项目能够轻松获得虚拟化隔离能力。
+
+### 2. 启动速度快
+
+由于内核已经通过动态链接器映射到内存，省去了磁盘读取时间。加上内核本身的最小化配置，整个 VM 的启动时间可以控制在毫秒级别。
+
+### 3. 强安全隔离
+
+相比 namespace 隔离，libkrun 提供了硬件级别的隔离边界。即使 guest 内核存在漏洞，攻击者也需要突破 hypervisor 层才能影响宿主机。
+
+### 4. TSI 网络的创新性
+
+传统虚拟机需要虚拟网卡 + 用户态网络代理（如 passt/gvproxy）才能联网，配置复杂。TSI 通过在 guest 内核中拦截 socket 系统调用，将网络请求透明地转发给 VMM，无需任何虚拟网络设备，大幅简化了网络配置。
+
+### 5. 跨平台能力
+
+同一套 API，在 Linux 上用 KVM，在 macOS 上用 HVF，在 Windows 上用 WHPX，上层应用无需感知底层差异。
+
+---
+
+## 限制
+
+### 技术限制
+
+**1. 依赖定制内核**
+TSI 等核心功能需要 libkrunfw 中的定制内核，无法使用发行版标准内核。这意味着内核版本和功能由 libkrunfw 决定，用户无法自由选择。
+
+**2. 工作负载兼容性有限**
+libkrun 的设计目标是运行单个进程，而非通用虚拟机。不支持：
+- 需要特殊内核模块的工作负载
+- 需要 UEFI/BIOS 的操作系统安装（EFI 变体除外）
+- 需要 PCI 直通的场景
+
+**3. CPU 数量上限**
+libkrunfw 内核限制最多 8 个 vCPU，不适合高并发计算密集型场景。
+
+**4. TDX 变体的内存限制**
+Intel TDX 变体最多支持 3072MB 内存和 1 个 vCPU，限制较大。
+
+### 安全模型限制
+
+libkrun 的安全模型将 guest 和 VMM 视为同一安全上下文。VMM 能访问的宿主机资源，guest 理论上也能通过 VMM 访问。要实现真正的隔离，需要在宿主机层面（如 Linux namespace）对 VMM 进程本身进行限制。
+
+### 平台限制
+
+- **Windows 支持仍处于实验阶段**：WHPX 后端正在开发中
+- **macOS 仅支持 ARM64**：x86_64 macOS 不支持（HVF 限制）
+- **Linux 需要 KVM 支持**：虚拟机或无 KVM 的环境无法使用
+
+---
+
+## WHPX：让 libkrun 在 Windows 上运行
+
+### 什么是 WHPX？
+
+**Windows Hypervisor Platform (WHPX)** 是微软在 Windows 10 2004 版本引入的用户态虚拟化 API，通过 `WinHvPlatform.dll` 暴露给应用程序。它是 Hyper-V 的用户态接口，类似于 Linux 的 KVM 和 macOS 的 HVF。
+
+```
+Windows 应用程序
+      ↓
+WinHvPlatform API (用户态)
+      ↓
+Hyper-V Hypervisor (内核态)
+      ↓
+硬件虚拟化 (Intel VT-x / AMD-V)
+```
+
+### WHPX 核心 API
+
+| API | 作用 |
+|-----|------|
+| `WHvCreatePartition` | 创建虚拟机分区 |
+| `WHvSetupPartition` | 配置分区参数 |
+| `WHvMapGpaRange` | 映射 guest 物理内存 |
+| `WHvCreateVirtualProcessor` | 创建 vCPU |
+| `WHvRunVirtualProcessor` | 运行 vCPU 直到 VM exit |
+| `WHvGetVirtualProcessorRegisters` | 读取 vCPU 寄存器 |
+| `WHvSetVirtualProcessorRegisters` | 写入 vCPU 寄存器 |
+| `WHvDeleteVirtualProcessor` | 销毁 vCPU |
+| `WHvDeletePartition` | 销毁分区 |
+
+### VM Exit 处理机制
+
+WHPX 采用**同步 VM exit** 模型：每次 guest 执行需要 VMM 介入的操作时，`WHvRunVirtualProcessor` 返回，VMM 处理后再次调用继续执行。
+
+```rust
+// libkrun 中 WHPX vCPU 运行循环的核心逻辑
+pub fn run(&mut self) -> io::Result<VcpuExit<'_>> {
+    let mut exit_context = WHV_RUN_VP_EXIT_CONTEXT::default();
+
+    unsafe {
+        WHvRunVirtualProcessor(
+            self.partition,
+            self.index,
+            &mut exit_context as *mut _,
+            size_of::<WHV_RUN_VP_EXIT_CONTEXT>() as u32,
+        )?;
+    }
+
+    // 解析 exit 原因
+    match exit_context.ExitReason {
+        WHV_RUN_VP_EXIT_REASON_MEMORY_ACCESS => { /* MMIO 处理 */ }
+        WHV_RUN_VP_EXIT_REASON_X64_IO_PORT_ACCESS => { /* IO 端口处理 */ }
+        WHV_RUN_VP_EXIT_REASON_X64_HALT => Ok(VcpuExit::Halted),
+        WHV_RUN_VP_EXIT_REASON_CANCELED => Ok(VcpuExit::Shutdown),
+        _ => Ok(VcpuExit::Shutdown),
+    }
+}
+```
+
+### libkrun WHPX 后端架构
+
+为了在 Windows 上支持 libkrun，我们实现了以下架构：
+
+```
+Vcpu::run() [vstate.rs]
+    ↓ 循环调用
+WhpxVcpu::run() [whpx_vcpu.rs]
+    ↓ 调用 WHvRunVirtualProcessor
+    ↓ 返回 VcpuExit 枚举
+Vcpu::run_emulation()
+    ↓ 根据 exit 类型分发
+    ├── MmioRead/MmioWrite → mmio_bus（设备模拟）
+    ├── IoPortRead/IoPortWrite → mmio_bus（IO 端口设备）
+    ├── Halted → VcpuEmulation::Halted（停止）
+    └── Shutdown → VcpuEmulation::Stopped（停止）
+```
+
+**VcpuExit 枚举**设计使用了 Rust 的生命周期参数，确保 MMIO/IO 数据缓冲区的内存安全：
+
+```rust
+pub enum VcpuExit<'a> {
+    MmioRead(u64, &'a mut [u8]),   // 地址 + 可变缓冲区（设备填充数据）
+    MmioWrite(u64, &'a [u8]),      // 地址 + 数据
+    IoPortRead(u16, &'a mut [u8]), // 端口 + 可变缓冲区
+    IoPortWrite(u16, &'a [u8]),    // 端口 + 数据
+    Halted,
+    Shutdown,
+}
+```
+
+### 与 KVM/HVF 的对比
+
+| 特性 | KVM (Linux) | HVF (macOS) | WHPX (Windows) |
+|------|-------------|-------------|----------------|
+| API 层次 | 内核 ioctl | 用户态框架 | 用户态 DLL |
+| 内存映射 | `KVM_SET_USER_MEMORY_REGION` | `hv_vm_map` | `WHvMapGpaRange` |
+| vCPU 运行 | `KVM_RUN` ioctl | `hv_vcpu_run` | `WHvRunVirtualProcessor` |
+| Exit 信息 | `kvm_run` 共享内存 | `hv_vcpu_exit_t` | `WHV_RUN_VP_EXIT_CONTEXT` |
+| 寄存器访问 | `KVM_GET/SET_REGS` | `hv_vcpu_get/set_reg` | `WHvGet/SetVirtualProcessorRegisters` |
+| 最低系统要求 | Linux + KVM 模块 | macOS 11+ ARM64 | Windows 10 2004+ + Hyper-V |
+
+### Windows 支持的意义
+
+WHPX 后端的实现让 libkrun 真正成为跨平台的虚拟化库：
+
+1. **Windows 容器生态**：为 Windows 上的容器运行时（如 crun 的 Windows 版本）提供虚拟化隔离能力
+2. **开发环境一致性**：开发者在 Windows 上也能使用与 Linux/macOS 相同的隔离机制
+3. **a3s box 跨平台**：让 a3s box 能够在 Windows 上提供与其他平台一致的安全隔离体验
+
+---
+
+## 总结
+
+libkrun 和 libkrunfw 共同构成了一套优雅的轻量级虚拟化方案：
+
+- **libkrunfw** 解决了"内核从哪来"的问题——把内核打包成动态库，利用链接器实现零开销加载
+- **libkrun** 解决了"虚拟化怎么用"的问题——把复杂的 VMM 封装成简单的 C API
+- **WHPX 后端** 解决了"Windows 怎么办"的问题——通过 Windows Hypervisor Platform API 实现与 KVM/HVF 对等的虚拟化能力
+
+这种设计哲学——**最小化、自包含、跨平台**——使得 libkrun 成为容器安全隔离领域的重要基础设施。
+
+---
+
+*本文基于 libkrun 源码分析，部分实现细节以代码为准。*
