@@ -10,8 +10,11 @@ const locales = [
 ];
 
 function resolveHref(locale: string, pathname: string): string {
-  const stripped = pathname.replace(/^\/(cn)/, '') || '/';
-  return locale === 'en' ? stripped : `/${locale}${stripped}`;
+  // Strip existing lang prefix (en or cn)
+  const stripped = pathname.replace(/^\/(en|cn)/, '') || '/';
+  // For blog posts: /blog/en/slug → /blog/cn/slug (swap lang segment in slug)
+  const swapped = stripped.replace(/^(\/blog\/)(en|cn)(\/)/, `$1${locale}$3`);
+  return locale === 'en' ? swapped : `/${locale}${swapped}`;
 }
 
 export function LangDropdown() {
