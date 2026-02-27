@@ -361,7 +361,295 @@ asyncio.run(main())
 
 ---
 
-## 四、三种定位，三种设计哲学
+## 四、A3S Code + A3S Box：给 Agent 提供沙箱环境
+
+Agent 执行代码时，默认在宿主机上运行——这意味着恶意代码、意外删除、资源耗尽等风险直接暴露给你的系统。A3S Box 是一个轻量级 MicroVM 沙箱，为 Agent 的代码执行提供完全隔离的环境。
+
+### 4.1 A3S Box 是什么？
+
+A3S Box 是基于 libkrun 的嵌入式 MicroVM 沙箱，特点是：
+
+- **轻量级**：启动时间 < 100ms，内存占用 < 50MB
+- **无守护进程**：直接嵌入你的应用，不需要 Docker daemon
+- **完全隔离**：独立的文件系统、网络、进程空间
+- **TEE 支持**：可选的可信执行环境（AMD SEV-SNP）
+
+状态机：`Created → Ready → Busy → Stopped`
+
+### 4.2 为什么 Agent 需要沙箱？
+
+考虑这个场景：用户让 Agent「清理项目中的临时文件」，Agent 执行了 `rm -rf /tmp/*`——但由于路径解析错误，实际执行的是 `rm -rf /*`。
+
+**没有沙箱**：宿主机文件系统被破坏。
+
+**有沙箱**：只有 Box 内的文件系统受影响，宿主机安全。
+
+其他风险场景：
+- Agent 下载并执行恶意脚本
+- Agent 启动占用所有 CPU 的进程
+- Agent 意外暴露敏感文件（如 `.env`）
+
+A3S Box 把这些风险全部隔离在沙箱内。
+
+### 4.3 集成方式：将 Agent 的代码执行路由到 Box
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+import { BoxSdk } from '@a3s-lab/box';
+
+async function main() {
+  // 创建 Box SDK 实例
+  const boxSdk = new BoxSdk();
+
+  // 创建沙箱：Alpine Linux，512MB 内存，挂载当前目录
+  const sandbox = boxSdk.create({
+    image: 'alpine:latest',
+    memoryMb: 512,
+    mounts: [{ hostPath: process.cwd(), guestPath: '/workspace', readonly: false }],
+    workdir: '/workspace',
+  });
+
+  // 定义 Box 工具：在沙箱内执行命令
+  const boxTools = [
+    {
+      name: 'bash',
+      description: '在隔离的沙箱环境中执行 shell 命令',
+      parameters: {
+        type: 'object',
+        properties: {
+          command: { type: 'string', description: 'Shell 命令' },
+        },
+        required: ['command'],
+      },
+      execute: async (args: { command: string }) => {
+        const result = await sandbox.exec('sh', ['-c', args.command]);
+        return {
+          content: result.stdout,
+          isError: result.exitCode !== 0,
+        };
+      },
+    },
+  ];
+
+  // Agent 的 bash 工具现在路由到 Box
+  const agent = await Agent.create('agent.hcl');
+  const session = agent.session('.', { tools: boxTools });
+
+  // 用户请求执行危险操作，但只影响沙箱
+  await session.stream('删除所有 .tmp 文件');
+  // → Agent 调用 bash 工具
+  // → 命令在 Box 内执行，宿主机安全
+
+  // 任务完成后停止沙箱
+  sandbox.stop();
+}
+```
+
+### 4.4 扩展 Box 工具：文件上传/下载、快照
+
+除了命令执行，Box 还支持文件传输和快照管理：
+
+```typescript
+const boxTools = [
+  {
+    name: 'box_exec',
+    description: '在沙箱中执行命令',
+    execute: async (args: { command: string }) => {
+      const result = await sandbox.exec('sh', ['-c', args.command]);
+      return { content: result.stdout, isError: result.exitCode !== 0 };
+    },
+  },
+  {
+    name: 'box_upload',
+    description: '上传文件到沙箱',
+    parameters: {
+      type: 'object',
+      properties: {
+        localPath: { type: 'string' },
+        guestPath: { type: 'string' },
+      },
+      required: ['localPath', 'guestPath'],
+    },
+    execute: async (args: { localPath: string; guestPath: string }) => {
+      const data = await fs.readFile(args.localPath);
+      await sandbox.upload(data, args.guestPath);
+      return { content: `已上传 ${args.localPath} → ${args.guestPath}` };
+    },
+  },
+  {
+    name: 'box_download',
+    description: '从沙箱下载文件',
+    parameters: {
+      type: 'object',
+      properties: {
+        guestPath: { type: 'string' },
+        localPath: { type: 'string' },
+      },
+      required: ['guestPath', 'localPath'],
+    },
+    execute: async (args: { guestPath: string; localPath: string }) => {
+      const data = await sandbox.download(args.guestPath);
+      await fs.writeFile(args.localPath, data);
+      return { content: `已下载 ${args.guestPath} → ${args.localPath}` };
+    },
+  },
+];
+```
+
+### 4.5 Skill 机制：教 Agent 如何操作 Box
+
+通过 Skill 文件，你可以教 Agent 在什么场景下使用 Box，以及如何安全地操作沙箱。
+
+```markdown
+<!-- skills/box_operator.md -->
+# Box 沙箱操作员
+
+## 可用工具
+- `box_exec`: 在沙箱中执行命令
+- `box_upload`: 上传文件到沙箱
+- `box_download`: 从沙箱下载文件
+
+## 操作规范
+
+### 何时使用沙箱
+以下操作**必须**在沙箱中执行，不得在宿主机上运行：
+- 执行用户提供的脚本或命令
+- 安装第三方依赖（npm install, pip install）
+- 运行测试（可能包含恶意测试用例）
+- 编译未知来源的代码
+- 任何涉及 `rm`、`mv`、`chmod` 的文件操作
+
+### 安全检查清单
+在执行任何命令前，检查：
+1. 命令是否包含 `rm -rf /`、`:(){ :|:& };:` 等危险模式
+2. 是否需要 root 权限（沙箱内无 root）
+3. 是否需要网络访问（默认隔离）
+
+### 文件传输规范
+- 上传前验证文件大小（< 100MB）
+- 下载前验证路径（不得包含 `..`）
+- 敏感文件（.env, id_rsa）不得上传到沙箱
+
+## 示例工作流
+
+用户请求：「运行项目的测试套件」
+
+1. 检查测试命令（如 `npm test`）
+2. 上传项目文件到沙箱 `/workspace`
+3. 在沙箱中执行 `npm install && npm test`
+4. 下载测试报告到宿主机
+5. 停止沙箱释放资源
+```
+
+加载 Skill 后，Agent 会自动遵循这些规范：
+
+```typescript
+const session = agent.session('.', {
+  tools: boxTools,
+  skills: ['box_operator'],
+});
+
+// Agent 自动判断需要使用沙箱
+await session.stream('帮我运行测试，然后清理所有临时文件');
+// → Agent 读取 box_operator skill
+// → 识别「运行测试」和「清理文件」是危险操作
+// → 自动使用 box_exec 在沙箱中执行
+// → 宿主机安全
+```
+
+### 4.6 完整示例：沙箱化的编码 Agent
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+import { BoxSdk } from '@a3s-lab/box';
+import * as fs from 'fs/promises';
+
+async function main() {
+  const boxSdk = new BoxSdk();
+  const sandbox = boxSdk.create({
+    image: 'node:20-alpine',
+    memoryMb: 1024,
+    mounts: [{ hostPath: process.cwd(), guestPath: '/workspace' }],
+    workdir: '/workspace',
+    network: true, // 允许网络访问（npm install）
+  });
+
+  const boxTools = [
+    {
+      name: 'bash',
+      description: '在隔离沙箱中执行命令',
+      execute: async (args: { command: string }) => {
+        const result = await sandbox.exec('sh', ['-c', args.command]);
+        return { content: result.stdout, isError: result.exitCode !== 0 };
+      },
+    },
+  ];
+
+  const agent = await Agent.create('agent.hcl');
+  const session = agent.session('.', {
+    tools: boxTools,
+    skills: ['box_operator'],
+  });
+
+  console.log('沙箱化编码 Agent 就绪。所有代码执行都在隔离环境中进行。\n');
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  rl.on('close', () => {
+    sandbox.stop();
+    process.exit(0);
+  });
+
+  while (true) {
+    const input = await new Promise<string>((resolve) => rl.question('> ', resolve));
+    if (!input.trim()) continue;
+
+    const events = await session.stream(input);
+    for await (const event of events) {
+      if (event.type === 'text_delta') process.stdout.write(event.text);
+      else if (event.type === 'tool_use') process.stdout.write(`\n[沙箱] ${event.tool} `);
+      else if (event.type === 'end') console.log('\n');
+    }
+  }
+}
+
+main().catch(console.error);
+```
+
+### 4.7 Box 的其他能力
+
+**持久化工作区**：多次会话共享同一个沙箱状态
+
+```typescript
+const sandbox = boxSdk.create({
+  image: 'ubuntu:22.04',
+  workspace: { name: 'my-project', guestPath: '/workspace' },
+});
+// 工作区内容在沙箱停止后保留，下次启动时恢复
+```
+
+**端口转发**：访问沙箱内的服务
+
+```typescript
+const sandbox = boxSdk.create({
+  image: 'node:20',
+  portForwards: [{ guestPort: 3000, hostPort: 3000 }],
+});
+// 沙箱内的 3000 端口映射到宿主机 3000
+```
+
+**TEE 模式**：可信执行环境（需要硬件支持）
+
+```typescript
+const sandbox = boxSdk.create({
+  image: 'alpine:latest',
+  tee: true, // 启用 AMD SEV-SNP
+});
+// 沙箱内存加密，宿主机无法读取
+```
+
+---
+
+## 五、四种定位，三种设计哲学
 
 市场上有三个值得认真对比的工具：Claude Code、OpenCode、A3S Code。它们都在"编码 Agent"这个标签下，但背后的设计哲学完全不同。
 
@@ -422,7 +710,7 @@ A3S Code 解决的是一个完全不同的问题：**当你需要把编码 Agent
 
 ---
 
-## 五、用 TypeScript SDK 构建类 Claude Code 的产品
+## 六、用 TypeScript SDK 构建类 Claude Code 的产品
 
 理解了架构原则，现在来实践。我们用 A3S Code 的 TypeScript SDK 构建一个具备 Claude Code 核心能力的终端编码助手。
 
@@ -781,7 +1069,7 @@ main().catch(console.error);
 
 ---
 
-## 六、用编码智能体构建 Agentic 金融应用
+## 七、用编码智能体构建 Agentic 金融应用
 
 编码智能体不只是为开发者服务的工具——它是构建任何领域 Agentic 应用的基础设施。真正的 Agentic 应用和普通聊天机器人的区别在于：它能自主规划、并行执行、协调多个专业 Agent 协作，而不只是被动响应单条指令。
 
@@ -1052,7 +1340,7 @@ main().catch(console.error);
 
 ---
 
-## 七、从单机到多机：Lane 队列的价值
+## 八、从单机到多机：Lane 队列的价值
 
 上面构建的是单机版本。当你的产品需要处理更复杂的场景时——比如同时服务多个用户、或者把计算密集型任务分发到远程机器——Lane 队列提供了解决方案。
 
@@ -1105,7 +1393,7 @@ for await (const event of events) {
 
 ---
 
-## 八、结论
+## 九、结论
 
 Agentic AI 的核心是感知—决策—行动的闭环，编码任务是这个闭环的最高密度测试场。
 

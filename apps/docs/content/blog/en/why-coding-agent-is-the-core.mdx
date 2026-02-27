@@ -358,7 +358,296 @@ All of these features are **optional extensions** — the system ships with defa
 
 ---
 
-## IV. Three Positions, Three Design Philosophies
+
+## IV. A3S Code + A3S Box: Providing a Sandbox Environment for Agents
+
+When Agents execute code, they run on the host machine by default — meaning risks like malicious code, accidental deletion, and resource exhaustion are directly exposed to your system. A3S Box is a lightweight MicroVM sandbox that provides a fully isolated environment for Agent code execution.
+
+### 4.1 What is A3S Box?
+
+A3S Box is an embedded MicroVM sandbox based on libkrun, with these characteristics:
+
+- **Lightweight**: startup time < 100ms, memory footprint < 50MB
+- **No daemon**: embeds directly in your application, no Docker daemon required
+- **Complete isolation**: independent filesystem, network, process space
+- **TEE support**: optional Trusted Execution Environment (AMD SEV-SNP)
+
+State machine: `Created → Ready → Busy → Stopped`
+
+### 4.2 Why Do Agents Need a Sandbox?
+
+Consider this scenario: a user asks the Agent to "clean up temporary files in the project," and the Agent executes `rm -rf /tmp/*` — but due to a path resolution error, it actually runs `rm -rf /*`.
+
+**Without sandbox**: host filesystem destroyed.
+
+**With sandbox**: only the Box filesystem is affected; host is safe.
+
+Other risk scenarios:
+- Agent downloads and executes a malicious script
+- Agent starts a process that consumes all CPU
+- Agent accidentally exposes sensitive files (like `.env`)
+
+A3S Box isolates all these risks inside the sandbox.
+
+### 4.3 Integration: Route Agent Code Execution to Box
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+import { BoxSdk } from '@a3s-lab/box';
+
+async function main() {
+  // Create Box SDK instance
+  const boxSdk = new BoxSdk();
+
+  // Create sandbox: Alpine Linux, 512MB memory, mount current directory
+  const sandbox = boxSdk.create({
+    image: 'alpine:latest',
+    memoryMb: 512,
+    mounts: [{ hostPath: process.cwd(), guestPath: '/workspace', readonly: false }],
+    workdir: '/workspace',
+  });
+
+  // Define Box tools: execute commands inside the sandbox
+  const boxTools = [
+    {
+      name: 'bash',
+      description: 'Execute shell commands in an isolated sandbox environment',
+      parameters: {
+        type: 'object',
+        properties: {
+          command: { type: 'string', description: 'Shell command' },
+        },
+        required: ['command'],
+      },
+      execute: async (args: { command: string }) => {
+        const result = await sandbox.exec('sh', ['-c', args.command]);
+        return {
+          content: result.stdout,
+          isError: result.exitCode !== 0,
+        };
+      },
+    },
+  ];
+
+  // Agent's bash tool now routes to Box
+  const agent = await Agent.create('agent.hcl');
+  const session = agent.session('.', { tools: boxTools });
+
+  // User requests a dangerous operation, but only affects the sandbox
+  await session.stream('Delete all .tmp files');
+  // → Agent calls bash tool
+  // → Command executes inside Box, host is safe
+
+  // Stop sandbox after task completes
+  sandbox.stop();
+}
+```
+
+### 4.4 Extended Box Tools: File Upload/Download, Snapshots
+
+Beyond command execution, Box also supports file transfer and snapshot management:
+
+```typescript
+const boxTools = [
+  {
+    name: 'box_exec',
+    description: 'Execute command in sandbox',
+    execute: async (args: { command: string }) => {
+      const result = await sandbox.exec('sh', ['-c', args.command]);
+      return { content: result.stdout, isError: result.exitCode !== 0 };
+    },
+  },
+  {
+    name: 'box_upload',
+    description: 'Upload file to sandbox',
+    parameters: {
+      type: 'object',
+      properties: {
+        localPath: { type: 'string' },
+        guestPath: { type: 'string' },
+      },
+      required: ['localPath', 'guestPath'],
+    },
+    execute: async (args: { localPath: string; guestPath: string }) => {
+      const data = await fs.readFile(args.localPath);
+      await sandbox.upload(data, args.guestPath);
+      return { content: `Uploaded ${args.localPath} → ${args.guestPath}` };
+    },
+  },
+  {
+    name: 'box_download',
+    description: 'Download file from sandbox',
+    parameters: {
+      type: 'object',
+      properties: {
+        guestPath: { type: 'string' },
+        localPath: { type: 'string' },
+      },
+      required: ['guestPath', 'localPath'],
+    },
+    execute: async (args: { guestPath: string; localPath: string }) => {
+      const data = await sandbox.download(args.guestPath);
+      await fs.writeFile(args.localPath, data);
+      return { content: `Downloaded ${args.guestPath} → ${args.localPath}` };
+    },
+  },
+];
+```
+
+### 4.5 Skill Mechanism: Teaching the Agent How to Operate Box
+
+Through Skill files, you can teach the Agent when to use Box and how to safely operate the sandbox.
+
+```markdown
+<!-- skills/box_operator.md -->
+# Box Sandbox Operator
+
+## Available Tools
+- `box_exec`: Execute command in sandbox
+- `box_upload`: Upload file to sandbox
+- `box_download`: Download file from sandbox
+
+## Operating Guidelines
+
+### When to Use Sandbox
+The following operations **must** execute in the sandbox, not on the host:
+- Execute user-provided scripts or commands
+- Install third-party dependencies (npm install, pip install)
+- Run tests (may contain malicious test cases)
+- Compile code from unknown sources
+- Any file operations involving `rm`, `mv`, `chmod`
+
+### Safety Checklist
+Before executing any command, check:
+1. Does the command contain dangerous patterns like `rm -rf /`, `:(){ :|:& };:`
+2. Does it require root privileges (no root in sandbox)
+3. Does it need network access (isolated by default)
+
+### File Transfer Guidelines
+- Validate file size before upload (< 100MB)
+- Validate path before download (must not contain `..`)
+- Sensitive files (.env, id_rsa) must not be uploaded to sandbox
+
+## Example Workflow
+
+User request: "Run the project's test suite"
+
+1. Check test command (e.g. `npm test`)
+2. Upload project files to sandbox `/workspace`
+3. Execute `npm install && npm test` in sandbox
+4. Download test report to host
+5. Stop sandbox to release resources
+```
+
+After loading the Skill, the Agent automatically follows these guidelines:
+
+```typescript
+const session = agent.session('.', {
+  tools: boxTools,
+  skills: ['box_operator'],
+});
+
+// Agent automatically determines sandbox is needed
+await session.stream('Run the tests, then clean up all temporary files');
+// → Agent reads box_operator skill
+// → Recognizes "run tests" and "clean files" as dangerous operations
+// → Automatically uses box_exec to execute in sandbox
+// → Host is safe
+```
+
+### 4.6 Complete Example: Sandboxed Coding Agent
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+import { BoxSdk } from '@a3s-lab/box';
+import * as fs from 'fs/promises';
+
+async function main() {
+  const boxSdk = new BoxSdk();
+  const sandbox = boxSdk.create({
+    image: 'node:20-alpine',
+    memoryMb: 1024,
+    mounts: [{ hostPath: process.cwd(), guestPath: '/workspace' }],
+    workdir: '/workspace',
+    network: true, // Allow network access (npm install)
+  });
+
+  const boxTools = [
+    {
+      name: 'bash',
+      description: 'Execute command in isolated sandbox',
+      execute: async (args: { command: string }) => {
+        const result = await sandbox.exec('sh', ['-c', args.command]);
+        return { content: result.stdout, isError: result.exitCode !== 0 };
+      },
+    },
+  ];
+
+  const agent = await Agent.create('agent.hcl');
+  const session = agent.session('.', {
+    tools: boxTools,
+    skills: ['box_operator'],
+  });
+
+  console.log('Sandboxed coding Agent ready. All code execution happens in an isolated environment.\n');
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  rl.on('close', () => {
+    sandbox.stop();
+    process.exit(0);
+  });
+
+  while (true) {
+    const input = await new Promise<string>((resolve) => rl.question('> ', resolve));
+    if (!input.trim()) continue;
+
+    const events = await session.stream(input);
+    for await (const event of events) {
+      if (event.type === 'text_delta') process.stdout.write(event.text);
+      else if (event.type === 'tool_use') process.stdout.write(`\n[sandbox] ${event.tool} `);
+      else if (event.type === 'end') console.log('\n');
+    }
+  }
+}
+
+main().catch(console.error);
+```
+
+### 4.7 Other Box Capabilities
+
+**Persistent workspace**: share the same sandbox state across multiple sessions
+
+```typescript
+const sandbox = boxSdk.create({
+  image: 'ubuntu:22.04',
+  workspace: { name: 'my-project', guestPath: '/workspace' },
+});
+// Workspace content persists after sandbox stops, restored on next start
+```
+
+**Port forwarding**: access services inside the sandbox
+
+```typescript
+const sandbox = boxSdk.create({
+  image: 'node:20',
+  portForwards: [{ guestPort: 3000, hostPort: 3000 }],
+});
+// Port 3000 inside sandbox maps to host port 3000
+```
+
+**TEE mode**: Trusted Execution Environment (requires hardware support)
+
+```typescript
+const sandbox = boxSdk.create({
+  image: 'alpine:latest',
+  tee: true, // Enable AMD SEV-SNP
+});
+// Sandbox memory is encrypted, host cannot read
+```
+
+---
+
+## V. Four Positions, Three Design Philosophies
 
 Three tools deserve serious comparison: Claude Code, OpenCode, and A3S Code. All carry the "coding Agent" label, but their underlying design philosophies are completely different.
 
@@ -419,7 +708,7 @@ This isn't a comparison of feature quality — it's a comparison of design goals
 
 ---
 
-## V. Building a Claude Code-Like Product with the TypeScript SDK
+## VI. Building a Claude Code-Like Product with the TypeScript SDK
 
 With the architectural principles understood, let's put them into practice. We'll use the A3S Code TypeScript SDK to build a terminal coding assistant with Claude Code's core capabilities.
 
@@ -778,7 +1067,7 @@ This product already has Claude Code's core capabilities: multi-turn conversatio
 
 ---
 
-## VI. Building an Agentic Finance Application
+## VII. Building an Agentic Finance Application
 
 The coding agent isn't just a tool for developers — it's the infrastructure for building Agentic applications in any domain. The difference between a real Agentic application and an ordinary chatbot is this: it can autonomously plan, execute in parallel, and coordinate multiple specialized Agents — rather than passively responding to one instruction at a time.
 
@@ -1047,7 +1336,7 @@ The fundamental difference between this system and an ordinary chatbot: when the
 
 ---
 
-## VII. From Single Machine to Multi-Machine: The Value of Lane Queues
+## VIII. From Single Machine to Multi-Machine: The Value of Lane Queues
 
 The above builds a single-machine version. When your product needs to handle more complex scenarios — serving multiple users simultaneously, or distributing compute-intensive tasks to remote machines — the lane queue provides the solution.
 
@@ -1100,7 +1389,7 @@ This pattern lets you transparently distribute compute-intensive tasks to any nu
 
 ---
 
-## VIII. Conclusion
+## IX. Conclusion
 
 The core of Agentic AI is the perceive–decide–act loop, and coding tasks are the highest-density test of this loop.
 
