@@ -750,54 +750,91 @@ mcp_servers {
 
 ### 4.2 核心会话循环
 
-这是整个产品的骨架——一个读取用户输入、流式输出 Agent 响应的循环：
+这是整个产品的骨架——一个读取用户输入、流式输出 Agent 响应的循环。升级版本展示完整的事件处理：thinking 过程、工具调用结果、token 用量统计、以及中断恢复：
 
 ```typescript
-import { Agent } from '@a3s-lab/code';
+import { Agent, AgentSession, StreamEvent } from '@a3s-lab/code';
 import * as readline from 'readline';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session(process.cwd());
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
-function prompt(): Promise<string> {
-  return new Promise((resolve) => {
-    rl.question('\n> ', resolve);
-  });
-}
+// 优雅退出：Ctrl+C 时等待当前轮次完成
+let currentAbort: AbortController | null = null;
+rl.on('close', async () => {
+  currentAbort?.abort();
+  await session.flush(); // 等待持久化完成
+  process.exit(0);
+});
 
 console.log('A3S Code — 输入你的问题，Ctrl+C 退出\n');
 
 while (true) {
-  const input = await prompt();
+  const input = await new Promise<string>((resolve) => rl.question('> ', resolve));
   if (!input.trim()) continue;
 
-  // 流式输出：实时显示 Agent 的每一个字
-  const events = await session.stream(input);
+  currentAbort = new AbortController();
+  const startTime = Date.now();
 
-  for await (const event of events) {
-    switch (event.type) {
-      case 'text_delta':
-        process.stdout.write(event.text);
-        break;
+  try {
+    const events = await session.stream(input, { signal: currentAbort.signal });
 
-      case 'tool_use':
-        // 显示工具调用，让用户知道 Agent 在做什么
-        console.log(`\n[工具] ${event.tool}(${JSON.stringify(event.args)})`);
-        break;
+    let toolCount = 0;
+    let inputTokens = 0;
+    let outputTokens = 0;
 
-      case 'tool_result':
-        // 工具执行完成，可以选择显示结果摘要
-        break;
+    for await (const event of events) {
+      switch (event.type) {
+        case 'thinking':
+          // Agent 的推理过程（仅在支持 extended thinking 的模型上出现）
+          process.stdout.write(`\x1b[2m${event.thinking}\x1b[0m`);
+          break;
 
-      case 'end':
-        console.log('\n');
-        break;
+        case 'text_delta':
+          process.stdout.write(event.text);
+          break;
+
+        case 'tool_use':
+          toolCount++;
+          process.stdout.write(`\n\x1b[36m[${event.tool}]\x1b[0m `);
+          break;
+
+        case 'tool_result':
+          // 工具执行完成：显示耗时和结果摘要
+          const preview = typeof event.result.content === 'string'
+            ? event.result.content.slice(0, 80).replace(/\n/g, ' ')
+            : '[binary]';
+          process.stdout.write(
+            event.result.isError
+              ? `\x1b[31m✗ ${preview}\x1b[0m\n`
+              : `\x1b[32m✓\x1b[0m ${preview}…\n`
+          );
+          break;
+
+        case 'usage':
+          // token 用量（每轮结束时触发）
+          inputTokens = event.inputTokens;
+          outputTokens = event.outputTokens;
+          break;
+
+        case 'end':
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          console.log(
+            `\n\x1b[2m[${toolCount} tools · ${inputTokens}↑ ${outputTokens}↓ tokens · ${elapsed}s]\x1b[0m\n`
+          );
+          break;
+      }
     }
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      console.log('\n[已中断]\n');
+    } else {
+      console.error(`\n\x1b[31m错误：${(err as Error).message}\x1b[0m\n`);
+    }
+  } finally {
+    currentAbort = null;
   }
 }
 ```
@@ -1168,34 +1205,56 @@ for await (const event of events) {
 
 ### 5.3 并行研究：同时分析多只股票
 
-对多只股票做深度研究时，串行执行会很慢。`submitBatch` 让多个分析任务并行运行，结果统一汇总。
+对多只股票做深度研究时，串行执行会很慢。`submitBatch` 让多个分析任务并行运行，并支持进度追踪和部分失败处理：
 
 ```typescript
-import { Agent, SessionLane } from '@a3s-lab/code';
+import { Agent, SessionLane, BatchResult } from '@a3s-lab/code';
 
 async function parallelStockResearch(symbols: string[]) {
   const agent = await Agent.create('agent.hcl');
   const session = agent.session('.', { tools: financeTools });
 
-  // 为每只股票创建独立的深度研究任务，全部并行执行
+  // 为每只股票创建独立的深度研究任务
   const researchTasks = symbols.map((sym) => ({
+    id: sym, // 任务 ID，用于追踪进度
     prompt: `对 ${sym} 进行深度分析：
       1. 获取实时报价和成交量
-      2. 评估当前风险等级
+      2. 评估当前风险等级（低/中/高）
       3. 基于数据给出买入/持有/卖出建议
-      输出结构化 JSON 结果。`,
-    lane: SessionLane.Generate,  // 路由到 Generate 通道并行执行
+      输出结构化 JSON：{ symbol, price, volume, risk, recommendation, rationale }`,
+    lane: SessionLane.Generate,
   }));
 
-  console.log(`启动 ${symbols.length} 个并行研究任务...`);
-  const results = await session.submitBatch(researchTasks);
+  console.log(`启动 ${symbols.length} 个并行研究任务...\n`);
 
-  // 所有任务完成后，交给汇总 Agent 生成综合报告
+  // 进度回调：每个任务完成时实时输出
+  const results = await session.submitBatch(researchTasks, {
+    onProgress: (completed, total, result: BatchResult) => {
+      const icon = result.error ? '✗' : '✓';
+      const summary = result.error
+        ? result.error.message
+        : JSON.parse(result.output).recommendation ?? 'done';
+      console.log(`[${completed}/${total}] ${icon} ${result.id}: ${summary}`);
+    },
+    // 部分失败不中断：收集所有结果后统一处理
+    continueOnError: true,
+  });
+
+  // 分离成功和失败的任务
+  const succeeded = results.filter((r) => !r.error);
+  const failed = results.filter((r) => r.error);
+
+  if (failed.length > 0) {
+    console.warn(`\n⚠ ${failed.length} 个任务失败：${failed.map((r) => r.id).join(', ')}`);
+  }
+
+  // 把成功的结果交给汇总 Agent
   const summarySession = agent.session('.', { tools: financeTools });
   const summaryEvents = await summarySession.stream(
-    `以下是对各股票的独立研究结果：\n${JSON.stringify(results, null, 2)}\n\n` +
-    `请综合以上分析，生成一份投资组合优化建议报告，` +
-    `包含风险分散建议和仓位调整方案。`
+    `以下是对各股票的独立研究结果（${succeeded.length}/${symbols.length} 成功）：\n` +
+    `${JSON.stringify(succeeded.map((r) => JSON.parse(r.output)), null, 2)}\n\n` +
+    `请综合以上分析，生成投资组合优化建议，包含风险分散建议和仓位调整方案。` +
+    (failed.length > 0 ? `\n注意：${failed.map((r) => r.id).join(', ')} 数据缺失，建议保守处理。` : '')
   );
 
   for await (const event of summaryEvents) {
