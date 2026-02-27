@@ -144,37 +144,6 @@ export function StreamingDisplay({ sessionId }: { sessionId: string }) {
 			</div>
 
 			<div className="ml-[38px] space-y-1.5">
-				{/* Active tool execution */}
-				{toolProgress && (
-					<div className="rounded-xl border border-primary/20 bg-primary/[0.03] px-3 py-2.5">
-						<div className="flex items-center gap-2">
-							<Loader2 className="size-3.5 text-primary animate-spin shrink-0" />
-							<span
-								className={cn(
-									"shrink-0 flex items-center justify-center size-5 rounded-md bg-primary/10",
-									getToolMeta(toolProgress.tool_name).color,
-								)}
-							>
-								{getToolMeta(toolProgress.tool_name).icon}
-							</span>
-							<span className="text-xs font-semibold text-foreground/90">
-								{toolProgress.tool_name}
-							</span>
-							{toolProgress.input && (
-								<span className="text-[11px] text-muted-foreground/50 truncate font-mono flex-1">
-									{summarizeInput(toolProgress.input)}
-								</span>
-							)}
-							{toolProgress.elapsed_time_seconds > 0 && (
-								<span className="text-[10px] text-muted-foreground/40 flex items-center gap-0.5 ml-auto shrink-0 tabular-nums">
-									<Clock className="size-2.5" />
-									{Math.round(toolProgress.elapsed_time_seconds)}s
-								</span>
-							)}
-						</div>
-					</div>
-				)}
-
 				{/* Completed tool calls */}
 				{done.map((t) => {
 					const meta = getToolMeta(t.tool_name);
@@ -229,6 +198,37 @@ export function StreamingDisplay({ sessionId }: { sessionId: string }) {
 						</div>
 					);
 				})}
+
+				{/* Active tool execution */}
+				{toolProgress && (
+					<div className="rounded-xl border border-primary/20 bg-primary/[0.03] px-3 py-2.5">
+						<div className="flex items-center gap-2">
+							<Loader2 className="size-3.5 text-primary animate-spin shrink-0" />
+							<span
+								className={cn(
+									"shrink-0 flex items-center justify-center size-5 rounded-md bg-primary/10",
+									getToolMeta(toolProgress.tool_name).color,
+								)}
+							>
+								{getToolMeta(toolProgress.tool_name).icon}
+							</span>
+							<span className="text-xs font-semibold text-foreground/90">
+								{toolProgress.tool_name}
+							</span>
+							{toolProgress.input && (
+								<span className="text-[11px] text-muted-foreground/50 truncate font-mono flex-1">
+									{summarizeInput(toolProgress.input)}
+								</span>
+							)}
+							{toolProgress.elapsed_time_seconds > 0 && (
+								<span className="text-[10px] text-muted-foreground/40 flex items-center gap-0.5 ml-auto shrink-0 tabular-nums">
+									<Clock className="size-2.5" />
+									{Math.round(toolProgress.elapsed_time_seconds)}s
+								</span>
+							)}
+						</div>
+					</div>
+				)}
 
 				{/* Streaming text */}
 				{text ? (
