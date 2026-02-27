@@ -29,7 +29,7 @@ export default async function BlogPage({ params }: PageProps) {
       className="min-h-screen"
       style={{ background: 'var(--ct-bg)', fontFamily: 'var(--ct-font)', color: 'var(--ct-text)' }}
     >
-      <SiteNav section="Blog" />
+      <SiteNav lang={lang} section={lang === 'cn' ? '博客' : 'Blog'} />
 
       <section className="px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto max-w-3xl">

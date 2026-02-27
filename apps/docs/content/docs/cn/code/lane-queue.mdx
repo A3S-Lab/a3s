@@ -505,6 +505,92 @@ session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
 
 当 `SessionOptions` 中未设置 `queue_config` 时，不会创建队列，所有工具通过直接 `ToolExecutor` 调用顺序执行，与之前完全一致。队列是纯粹的可选功能。
 
+## 直接队列提交
+
+使用 `submit()` 和 `submit_batch()` 从 SDK 代码直接向 lane 队列注入任务 — 绕过 LLM 轮次。适用于主动调度工作、扇出模式或从外部编排器驱动队列。
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use serde_json::json;
+
+// 向 Execute lane 提交单个任务
+let result = session.submit(
+    "execute",
+    json!({ "command": "cargo test --workspace" }),
+).await?;
+println!("结果: {}", result);
+
+// 向 Query lane 批量提交多个任务（并行执行）
+let results = session.submit_batch(
+    "query",
+    vec![
+        json!({ "path": "src/main.rs" }),
+        json!({ "path": "src/lib.rs" }),
+        json!({ "path": "Cargo.toml" }),
+    ],
+).await?;
+for r in results {
+    println!("{}", r);
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// 向 Execute lane 提交单个任务
+const result = await session.submit(
+  'execute',
+  { command: 'cargo test --workspace' },
+);
+console.log(result);
+
+// 向 Query lane 批量提交多个任务（并行执行）
+const results = await session.submitBatch(
+  'query',
+  [
+    { path: 'src/main.rs' },
+    { path: 'src/lib.rs' },
+    { path: 'Cargo.toml' },
+  ],
+);
+results.forEach(r => console.log(r));
+```
+</Tab>
+<Tab value="Python">
+```python
+# 向 Execute lane 提交单个任务
+result = session.submit(
+    "execute",
+    {"command": "cargo test --workspace"},
+)
+print(result)
+
+# 向 Query lane 批量提交多个任务（并行执行）
+results = session.submit_batch(
+    "query",
+    [
+        {"path": "src/main.rs"},
+        {"path": "src/lib.rs"},
+        {"path": "Cargo.toml"},
+    ],
+)
+for r in results:
+    print(r)
+```
+</Tab>
+</Tabs>
+
+### Lane 名称
+
+| Lane | 字符串值 | 优先级 |
+|------|---------|--------|
+| Control | `"control"` | P0（最高）|
+| Query | `"query"` | P1 |
+| Execute | `"execute"` | P2 |
+| Generate | `"generate"` | P3（最低）|
+
+`submit_batch()` 将所有 payload 提交到同一个 lane。Query lane 的批量任务并行执行（最多 `query_max_concurrency` 个）。其他 lane 顺序执行。
+
 ## API 参考
 
 ### SessionQueueConfig 字段

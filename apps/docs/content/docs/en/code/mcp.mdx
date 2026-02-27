@@ -3,6 +3,7 @@ title: MCP Support
 description: Extend the agent with external tools via Model Context Protocol
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # MCP Support
@@ -166,3 +167,97 @@ MCP tools are namespaced as `mcp__{server}__{tool}`. Use this prefix in permissi
     },
   }}
 />
+
+## Dynamic MCP Server Registration
+
+Use `add_mcp_server()` to connect an MCP server to a live session at runtime — without restarting the agent or reloading config. The server is launched, its tools are discovered, and they are immediately available for the next LLM turn.
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use std::sync::Arc;
+use a3s_code_core::{Agent, mcp::manager::McpManager};
+
+let agent = Agent::new("agent.hcl").await?;
+let session = Arc::new(agent.session(".", None)?);
+
+// Build an McpManager (or reuse the one from AgentConfig)
+let manager = Arc::new(McpManager::new());
+
+// Connect a filesystem MCP server and register its tools
+let tool_count = session.add_mcp_server(
+    Arc::clone(&manager),
+    "filesystem",
+).await?;
+println!("Registered {tool_count} tools from filesystem server");
+
+// The tools are now available: mcp__filesystem__read_file, etc.
+let result = session.send("List files in /tmp").await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('.');
+
+// Connect a filesystem MCP server at runtime
+const toolCount = await session.addMcpServer(
+  'filesystem',
+  'npx',
+  ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+);
+console.log(`Registered ${toolCount} tools`);
+
+// Connect a GitHub MCP server with env vars
+await session.addMcpServer(
+  'github',
+  'npx',
+  ['-y', '@modelcontextprotocol/server-github'],
+  { GITHUB_TOKEN: process.env.GITHUB_TOKEN },
+);
+
+const result = await session.send('List files in /tmp');
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent
+
+agent = Agent.create("agent.hcl")
+session = agent.session(".")
+
+# Connect a filesystem MCP server at runtime
+tool_count = session.add_mcp_server(
+    "filesystem",
+    "npx",
+    ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+)
+print(f"Registered {tool_count} tools")
+
+# Connect a GitHub MCP server with env vars
+session.add_mcp_server(
+    "github",
+    "npx",
+    ["-y", "@modelcontextprotocol/server-github"],
+    env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
+)
+
+result = session.send("List files in /tmp")
+```
+</Tab>
+</Tabs>
+
+### add_mcp_server parameters
+
+<TypeTable
+  type={{
+    name: { type: 'string', required: true, description: 'Server identifier — used as the tool name prefix (`mcp__{name}__{tool}`)' },
+    command: { type: 'string', required: true, description: 'Executable to launch (e.g. `npx`, `uvx`, `/usr/local/bin/my-server`)' },
+    args: { type: 'string[]', description: 'Command-line arguments passed to the server process' },
+    env: { type: 'object', description: 'Extra environment variables for the server process' },
+  }}
+/>
+
+Returns the number of tools registered from the server. Throws if the server fails to start or the initial `list_tools` call fails.

@@ -3,6 +3,7 @@ title: MCP 支持
 description: 通过 Model Context Protocol 扩展 agent 的外部工具
 ---
 
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # MCP 支持
@@ -176,3 +177,105 @@ MCP 工具命名为 `mcp__{server}__{tool}`。在权限规则中使用此前缀�
     },
   }}
 />
+
+## 动态 MCP 服务器注册
+
+使用 `add_mcp_server()` 在运行时将 MCP 服务器连接到活跃 session — 无需重启 agent 或重新加载配置。服务器启动后，其工具会被自动发现，并在下一轮 LLM 调用中立即可用。
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use std::sync::Arc;
+use a3s_code_core::{Agent, mcp::manager::McpManager};
+
+let agent = Agent::new("agent.hcl").await?;
+let session = Arc::new(agent.session(".", None)?);
+
+// 构建 McpManager（或复用 AgentConfig 中的实例）
+let manager = Arc::new(McpManager::new());
+
+// 连接 filesystem MCP 服务器并注册其工具
+let tool_count = session.add_mcp_server(
+    Arc::clone(&manager),
+    "filesystem",
+).await?;
+println!("从 filesystem 服务器注册了 {tool_count} 个工具");
+
+// 工具现在可用：mcp__filesystem__read_file 等
+let result = session.send("列出 /tmp 中的文件").await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('.');
+
+// 运行时连接 filesystem MCP 服务器
+const toolCount = await session.addMcpServer(
+  'filesystem',
+  'npx',
+  ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+);
+console.log(`注册了 ${toolCount} 个工具`);
+
+// 连接带环境变量的 GitHub MCP 服务器
+await session.addMcpServer(
+  'github',
+  'npx',
+  ['-y', '@modelcontextprotocol/server-github'],
+  { GITHUB_TOKEN: process.env.GITHUB_TOKEN },
+);
+
+const result = await session.send('列出 /tmp 中的文件');
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent
+
+agent = Agent.create("agent.hcl")
+session = agent.session(".")
+
+# 运行时连接 filesystem MCP 服务器
+tool_count = session.add_mcp_server(
+    "filesystem",
+    "npx",
+    ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+)
+print(f"注册了 {tool_count} 个工具")
+
+# 连接带环境变量的 GitHub MCP 服务器
+session.add_mcp_server(
+    "github",
+    "npx",
+    ["-y", "@modelcontextprotocol/server-github"],
+    env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
+)
+
+result = session.send("列出 /tmp 中的文件")
+```
+</Tab>
+</Tabs>
+
+### add_mcp_server 参数
+
+<TypeTable
+  type={{
+    "name": {
+      description: "类型: string · 必填: ✅ · 描述: 服务器标识符 — 用作工具名称前缀（mcp__{name}__{tool}）",
+    },
+    "command": {
+      description: "类型: string · 必填: ✅ · 描述: 要启动的可执行文件（如 npx、uvx、/usr/local/bin/my-server）",
+    },
+    "args": {
+      description: "类型: string[] · 必填: ❌ · 描述: 传递给服务器进程的命令行参数",
+    },
+    "env": {
+      description: "类型: object · 必填: ❌ · 描述: 服务器进程的额外环境变量",
+    },
+  }}
+/>
+
+返回从服务器注册的工具数量。如果服务器启动失败或初始 `list_tools` 调用失败，则抛出错误。

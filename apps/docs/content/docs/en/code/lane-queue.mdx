@@ -838,6 +838,92 @@ let session = agent.session("/project", Some(
 
 When no `queue_config` is set in `SessionOptions`, the queue is not created and all tools execute sequentially via direct `ToolExecutor` calls, exactly as before. The queue is purely opt-in.
 
+## Direct Queue Submission
+
+Use `submit()` and `submit_batch()` to inject tasks directly into the lane queue from your SDK code — bypassing the LLM turn. This is useful for proactively scheduling work, fan-out patterns, or driving the queue from external orchestrators.
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use serde_json::json;
+
+// Submit a single task to the Execute lane
+let result = session.submit(
+    "execute",
+    json!({ "command": "cargo test --workspace" }),
+).await?;
+println!("Result: {}", result);
+
+// Submit multiple tasks to the Query lane in one call (executed in parallel)
+let results = session.submit_batch(
+    "query",
+    vec![
+        json!({ "path": "src/main.rs" }),
+        json!({ "path": "src/lib.rs" }),
+        json!({ "path": "Cargo.toml" }),
+    ],
+).await?;
+for r in results {
+    println!("{}", r);
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// Submit a single task to the Execute lane
+const result = await session.submit(
+  'execute',
+  { command: 'cargo test --workspace' },
+);
+console.log(result);
+
+// Submit multiple tasks to the Query lane in one call (executed in parallel)
+const results = await session.submitBatch(
+  'query',
+  [
+    { path: 'src/main.rs' },
+    { path: 'src/lib.rs' },
+    { path: 'Cargo.toml' },
+  ],
+);
+results.forEach(r => console.log(r));
+```
+</Tab>
+<Tab value="Python">
+```python
+# Submit a single task to the Execute lane
+result = session.submit(
+    "execute",
+    {"command": "cargo test --workspace"},
+)
+print(result)
+
+# Submit multiple tasks to the Query lane in one call (executed in parallel)
+results = session.submit_batch(
+    "query",
+    [
+        {"path": "src/main.rs"},
+        {"path": "src/lib.rs"},
+        {"path": "Cargo.toml"},
+    ],
+)
+for r in results:
+    print(r)
+```
+</Tab>
+</Tabs>
+
+### Lane names
+
+| Lane | String value | Priority |
+|------|-------------|----------|
+| Control | `"control"` | P0 (highest) |
+| Query | `"query"` | P1 |
+| Execute | `"execute"` | P2 |
+| Generate | `"generate"` | P3 (lowest) |
+
+`submit_batch()` submits all payloads to the same lane. Query-lane batches execute in parallel (up to `query_max_concurrency`). All other lanes execute sequentially.
+
 ## API Reference
 
 ### SessionQueueConfig fields

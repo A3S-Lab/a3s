@@ -40,7 +40,7 @@ export default async function BlogPost({ params }: PostProps) {
       className="min-h-screen"
       style={{ background: 'var(--ct-bg)', fontFamily: 'var(--ct-font)', color: 'var(--ct-text)' }}
     >
-      <SiteNav section="Blog" />
+      <SiteNav lang={lang} section={lang === 'cn' ? '博客' : 'Blog'} />
 
       <article className="mx-auto max-w-3xl px-4 py-16 sm:px-6 sm:py-20">
         <div className="mb-8">
@@ -49,7 +49,7 @@ export default async function BlogPost({ params }: PostProps) {
             className="mb-6 inline-flex items-center gap-1.5 text-sm text-slate-400 transition-colors hover:text-indigo-600 dark:text-slate-500 dark:hover:text-indigo-400"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Back to blog
+            {lang === 'cn' ? '返回博客' : 'Back to blog'}
           </Link>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <span className="text-xs text-slate-400 dark:text-slate-500">
@@ -87,7 +87,7 @@ export default async function BlogPost({ params }: PostProps) {
             className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition-all hover:border-indigo-300 hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-indigo-600 dark:hover:text-indigo-300"
           >
             <ArrowLeft className="h-4 w-4" />
-            All posts
+            {lang === 'cn' ? '所有文章' : 'All posts'}
           </Link>
         </div>
       </article>
