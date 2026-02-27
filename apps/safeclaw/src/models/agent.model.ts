@@ -22,12 +22,26 @@ export interface CompletedToolCall {
 	input: string;
 	output: string;
 	is_error: boolean;
+	before?: string;
+	after?: string;
+	file_path?: string;
 }
 
 export interface AuthStatus {
 	is_authenticating: boolean;
 	output: string[];
 	error?: string;
+}
+
+/** A task from a3s Code's planning system */
+export interface AgentTask {
+	id: string;
+	content: string;
+	status: "pending" | "in_progress" | "completed" | "failed" | "skipped" | "cancelled";
+	priority: "high" | "medium" | "low";
+	tool?: string;
+	dependencies?: string[];
+	success_criteria?: string;
 }
 
 interface AgentStoreState {
@@ -53,6 +67,9 @@ interface AgentStoreState {
 	// Completed tool calls during current streaming (cleared on new generation)
 	completedTools: Record<string, CompletedToolCall[]>;
 
+	// Tasks from a3s Code planning system (updated via task_updated events)
+	tasks: Record<string, AgentTask[]>;
+
 	// Auth status per session (OAuth flow)
 	authStatus: Record<string, AuthStatus | null>;
 
@@ -65,6 +82,12 @@ interface AgentStoreState {
 	sessionNames: Record<string, string>;
 	/** Unread message count per session (for sidebar badges) */
 	unreadCounts: Record<string, number>;
+
+	// TTS
+	/** Whether last user input was via voice (per session) */
+	voiceInputActive: Record<string, boolean>;
+	/** Text of the latest completed assistant response (per session) */
+	lastAssistantText: Record<string, string>;
 }
 
 const STORAGE_KEY_SESSION = "safeclaw-agent-current-session";
@@ -81,12 +104,15 @@ const state = proxy<AgentStoreState>({
 	agentMessages: {},
 	activeToolProgress: {},
 	completedTools: {},
+	tasks: {},
 	authStatus: {},
 	connectionStatus: {},
 	cliConnected: {},
 	sessionStatus: {},
 	sessionNames: JSON.parse(localStorage.getItem(STORAGE_KEY_NAMES) || "{}"),
 	unreadCounts: {},
+	voiceInputActive: {},
+	lastAssistantText: {},
 });
 
 const actions = {
@@ -124,6 +150,10 @@ const actions = {
 		delete state.cliConnected[sessionId];
 		delete state.sessionStatus[sessionId];
 		delete state.sessionNames[sessionId];
+		delete state.voiceInputActive[sessionId];
+		delete state.lastAssistantText[sessionId];
+		delete state.completedTools[sessionId];
+		delete state.tasks[sessionId];
 		localStorage.setItem(STORAGE_KEY_NAMES, JSON.stringify(state.sessionNames));
 		if (state.currentSessionId === sessionId) {
 			state.currentSessionId = null;
@@ -245,9 +275,23 @@ const actions = {
 		delete state.completedTools[sessionId];
 	},
 
+	// --- Tasks (a3s Code planning system) ---
+	setTasks(sessionId: string, tasks: AgentTask[]) {
+		state.tasks[sessionId] = tasks;
+	},
+
 	// --- Auth status ---
 	setAuthStatus(sessionId: string, status: AuthStatus | null) {
 		state.authStatus[sessionId] = status;
+	},
+
+	// --- TTS / Voice input tracking ---
+	setVoiceInputActive(sessionId: string, active: boolean) {
+		state.voiceInputActive[sessionId] = active;
+	},
+
+	setLastAssistantText(sessionId: string, text: string) {
+		state.lastAssistantText[sessionId] = text;
 	},
 };
 

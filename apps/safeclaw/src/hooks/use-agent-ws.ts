@@ -1,4 +1,5 @@
 import agentModel from "@/models/agent.model";
+import type { AgentTask } from "@/models/agent.model";
 import { getGatewayUrl } from "@/models/settings.model";
 import dayjs from "dayjs";
 import type {
@@ -155,6 +156,10 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 			};
 			agentModel.appendMessage(sessionId, chatMsg);
 			agentModel.setStreaming(sessionId, null);
+			// Store text for TTS auto-play (only top-level assistant messages)
+			if (!msg.parent_tool_use_id && textParts.trim()) {
+				agentModel.setLastAssistantText(sessionId, textParts);
+			}
 			break;
 		}
 
@@ -221,6 +226,9 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 				const toolName = event.tool_name as string;
 				const output = (event.output as string) || "";
 				const isError = (event.is_error as boolean) || false;
+				const before = event.before as string | undefined;
+				const after = event.after as string | undefined;
+				const filePath = event.file_path as string | undefined;
 				const tp = agentModel.state.activeToolProgress[sessionId];
 				agentModel.addCompletedTool(sessionId, {
 					tool_use_id: toolUseId,
@@ -228,8 +236,16 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 					input: tp?.input || "",
 					output,
 					is_error: isError,
+					before,
+					after,
+					file_path: filePath,
 				});
 				agentModel.setToolProgress(sessionId, null);
+			} else if (eventType === "task_updated") {
+				const tasks = event.tasks as AgentTask[] | undefined;
+				if (Array.isArray(tasks)) {
+					agentModel.setTasks(sessionId, tasks);
+				}
 			} else if (eventType === "tool_output_delta") {
 				// Real-time tool output — keep tool progress alive
 				const toolName = event.tool_name as string | undefined;

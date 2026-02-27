@@ -17,6 +17,9 @@ export interface ToolCallBlock {
 	output?: string;
 	durationMs?: number;
 	isError?: boolean;
+	before?: string;
+	after?: string;
+	filePath?: string;
 }
 
 export interface SubAgentBlock {
