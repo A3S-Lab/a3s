@@ -11,12 +11,10 @@ interface PostProps {
 }
 
 export function generateStaticParams() {
-  return blog
-    .filter((post) => !post.info.path.startsWith('en/'))
-    .map((post) => {
-      const [lang, ...rest] = post.info.path.replace(/\.mdx$/, '').split('/');
-      return { lang, slug: rest };
-    });
+  return blog.map((post) => {
+    const [lang, ...rest] = post.info.path.replace(/\.mdx$/, '').split('/');
+    return { lang, slug: rest };
+  });
 }
 
 export async function generateMetadata({ params }: PostProps): Promise<Metadata> {
