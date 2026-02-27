@@ -202,7 +202,7 @@ export function StreamingDisplay({ sessionId }: { sessionId: string }) {
 									{summary}
 								</span>
 							</div>
-							{t.before !== undefined && t.after !== undefined && !t.is_error && (
+							{t.before != null && t.after != null && !t.is_error && (
 								<div className="border-t border-border/30">
 									<DiffEditor
 										original={t.before}

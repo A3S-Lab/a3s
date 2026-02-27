@@ -226,9 +226,9 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 				const toolName = event.tool_name as string;
 				const output = (event.output as string) || "";
 				const isError = (event.is_error as boolean) || false;
-				const before = event.before as string | undefined;
-				const after = event.after as string | undefined;
-				const filePath = event.file_path as string | undefined;
+				const before = (event.before as string | null) ?? undefined;
+				const after = (event.after as string | null) ?? undefined;
+				const filePath = (event.file_path as string | null) ?? undefined;
 				const tp = agentModel.state.activeToolProgress[sessionId];
 				agentModel.addCompletedTool(sessionId, {
 					tool_use_id: toolUseId,
