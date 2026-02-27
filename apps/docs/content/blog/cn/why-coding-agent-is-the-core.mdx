@@ -1,290 +1,577 @@
 ---
 title: 构建 Agentic AI 的核心原理和基础架构
-description: 为什么在所有 AI Agent 形态中，编码智能体处于最核心的位置？A3S Code 与 Claude Code、OpenClaw 的能力边界在哪里？本文从第一性原理出发，推导出这些问题的答案。
+description: 什么是极简核心+工具自举？编码智能体为何是 Agentic AI 的核心形态？以及如何用 A3S Code TypeScript SDK 从零构建一个类 Claude Code 的产品。
 date: "2026-02-27"
 author: A3S Lab
-tags: [a3s-code, coding-agent, llm, architecture, first-principles]
+tags: [a3s-code, coding-agent, architecture, typescript, sdk]
 ---
 
-> 如果你只能选择一种 AI Agent 能力嵌入你的产品，应该选哪种？
->
-> 答案不是搜索，不是问答，不是图像理解。**是编码。**
+软件开发者每天面对的问题，是 AI Agent 能力的最高密度测试场。读懂一个陌生代码库、定位一个隐蔽的 bug、在不破坏现有逻辑的前提下添加新功能——这些任务要求 Agent 同时具备感知、推理、行动、验证四种能力，缺一不可。
 
-这不是偏好，是推导出来的结论。本文从第一性原理出发，解释为什么编码智能体是 Agentic AI 的核心形态，A3S Code 在这个坐标系里处于什么位置，以及它与 Claude Code、OpenClaw 的本质区别。
-
----
-
-## 一、第一性原理：什么是 Agent 的本质能力？
-
-Agent 这个词被滥用了。聊天机器人被叫做 Agent，RAG 管道被叫做 Agent，一个带工具调用的 prompt 也被叫做 Agent。
-
-回到本质：**Agent 是能够感知环境、做出决策、并通过行动改变环境的系统。**
-
-这个定义有三个关键词：
-
-1. **感知**——读取状态（文件、数据库、API 响应、代码）
-2. **决策**——基于状态推理下一步行动
-3. **行动**——写入、执行、调用，产生副作用
-
-现在问：哪种环境最能体现这三种能力的完整循环？
-
-答案是**代码库**。
-
-代码库是人类创造的最结构化、最可验证的知识载体。它有明确的状态（文件内容、测试结果、编译输出），有明确的行动空间（读、写、执行），有明确的反馈信号（编译错误、测试通过/失败、lint 警告）。
-
-这意味着：**编码任务是 Agent 能力的最高密度测试场。** 一个能在代码库里自主工作的 Agent，具备了在任何其他领域工作的基础能力。反过来不成立。
+这就是为什么编码智能体不只是 AI 的一个垂直应用，而是整个 Agentic AI 领域的核心形态。本文从架构设计出发，解释构建 Agentic AI 的核心原理，介绍"极简核心 + 工具自举"这一关键设计模式，对比三种主流工具的定位差异，最后用 A3S Code TypeScript SDK 演示如何从零构建一个类 Claude Code 的产品。
 
 ---
 
-## 二、为什么编码智能体是 Agentic AI 的核心？
+## 一、Agent 的本质：感知—决策—行动的闭环
 
-### 2.1 代码是通用执行器
+把所有 AI Agent 的外壳剥掉，剩下的结构只有三层：
 
-代码不只是代码。代码是**一切数字行动的最终形态**。
+**感知层**——读取环境状态。文件内容、命令输出、API 响应、数据库记录，都是 Agent 的感知对象。
 
-- 想操作数据库？写 SQL。
-- 想调用 API？写 HTTP 客户端。
-- 想处理文件？写脚本。
-- 想部署服务？写 Dockerfile 和 CI 配置。
+**决策层**——基于状态推理下一步。这是 LLM 的核心职责：给定当前上下文，决定调用哪个工具、传入什么参数。
 
-一个能写代码的 Agent，理论上能完成所有可以被数字化的任务。这是其他任何单一能力都无法比拟的覆盖范围。
+**行动层**——执行工具调用，产生副作用。写文件、运行命令、调用 API，改变外部世界的状态。
 
-### 2.2 代码提供了最强的验证闭环
+这三层构成一个循环，每次循环称为一个"轮次"（turn）。Agent 的能力，本质上是这个循环的质量：感知是否准确、决策是否合理、行动是否可靠、反馈是否及时。
 
-Agent 最大的风险是**幻觉**——它相信自己做对了，但实际上没有。
+代码库是这个循环的最佳训练场，原因是它提供了**客观的反馈信号**。编译器要么通过要么报错，测试要么绿要么红，没有模糊地带。这种客观性让 Agent 能够自我校正，而不依赖人类的主观判断。
 
-代码环境天然提供了对抗幻觉的机制：
+一个能在代码库里自主工作的 Agent，已经具备了在任何其他结构化环境里工作的基础能力。
+
+---
+
+## 二、极简核心 + 工具自举
+
+这是构建 Agentic AI 系统最重要的架构原则，也是 A3S Code 的设计基础。
+
+### 什么是极简核心？
+
+极简核心的意思是：**系统的不可替换部分应该尽可能小。**
+
+一个编码 Agent 的真正核心，只有五个组件：
 
 ```
-写代码 → 编译 → 运行测试 → 观察结果 → 修正
-```
-
-这个循环是**客观的**。编译器不会因为 Agent 的自信而通过错误的代码。测试不会因为 Agent 的解释而变绿。这种客观反馈是其他领域（写文章、做分析、回答问题）所缺乏的。
-
-### 2.3 软件开发是最大的 Agent 应用市场
-
-全球有 2700 万软件开发者。每一个开发者每天都在重复大量可以被 Agent 自动化的工作：读文档、写样板代码、调试、写测试、做代码审查。
-
-这不是一个利基市场，这是 AI Agent 最大的单一应用场景。
-
-### 2.4 编码能力是其他 Agent 能力的基础设施
-
-当你构建一个数据分析 Agent、一个客服 Agent、一个研究 Agent 时，你需要：
-
-- 工具调用框架
-- 上下文管理
-- 错误恢复
-- 权限控制
-- 多步骤规划
-
-这些能力在编码 Agent 里已经被充分验证和打磨。编码 Agent 不只是一个垂直应用，它是**构建其他 Agent 的基础设施**。
-
----
-
-## 三、三种工具，三种定位
-
-市场上有三个值得认真对比的工具：Claude Code、OpenClaw、A3S Code。它们都在"编码 Agent"这个标签下，但解决的是完全不同的问题。
-
-### Claude Code：终端里的 AI 结对程序员
-
-Claude Code 是 Anthropic 为开发者构建的**交互式 CLI 工具**。它的核心价值主张是：在你的终端里，有一个懂你代码库的 AI 伙伴。
-
-**它做得极好的事：**
-- 理解大型代码库的上下文
-- 交互式对话式开发
-- 与开发者工作流深度集成（git、编辑器、终端）
-- 开箱即用，零配置
-
-**它的边界：**
-- 它是一个**工具**，不是一个**库**。你无法把它嵌入你的产品。
-- 它绑定 Anthropic 的模型和基础设施。
-- 它没有提供编程 API——你不能在代码里调用 `claude_code.session().send("...")`。
-- 它为人类开发者设计，不为机器调用设计。
-
-**一句话定位：** 开发者的 AI 结对程序员。
-
-### OpenClaw：开源的 Claude Code 替代品
-
-OpenClaw（以及同类的 Aider、Continue 等）是 Claude Code 的开源替代，核心目标是**把相同的交互式体验带给不想依赖 Anthropic 的用户**。
-
-**它做得极好的事：**
-- 模型无关（支持 OpenAI、Anthropic、本地模型）
-- 开源可审计
-- 社区驱动的功能迭代
-
-**它的边界：**
-- 同样是 CLI 工具，不是可嵌入的库
-- 架构上仍然以"人机交互"为中心
-- 没有为程序化调用、多租户、生产部署设计
-
-**一句话定位：** 开源的交互式编码助手。
-
-### A3S Code：可嵌入的编码 Agent 框架
-
-A3S Code 解决的是一个完全不同的问题：**当你需要把编码 Agent 能力嵌入你自己的产品时，你用什么？**
-
-```rust
-// 三行代码，在你的 Rust 应用里嵌入一个完整的编码 Agent
-let agent = Agent::new("agent.hcl").await?;
-let session = agent.session("/your/project", None)?;
-let result = session.send("重构认证模块，使用 JWT").await?;
-```
-
-**它做得极好的事：**
-- **可嵌入**：Rust 库 + Node.js/Python 绑定，不是服务，不是 CLI
-- **模型无关**：支持 Anthropic、OpenAI、任何 OpenAI 兼容端点
-- **生产级安全**：权限系统、HITL 确认、技能级工具限制
-- **可扩展**：19 个 trait 扩展点，全部有默认实现
-- **可编程的并行性**：Lane 队列、`submit()`/`submit_batch()`、多机器任务分发
-- **MCP 生态**：运行时动态注册 MCP 服务器，工具命名空间隔离
-
-**它的边界：**
-- 它不是一个开箱即用的终端工具（虽然有 CLI，但那是次要的）
-- 它需要你写代码来集成
-- 它假设你在构建一个产品，而不是在使用一个工具
-
-**一句话定位：** 构建编码 Agent 产品的基础设施。
-
----
-
-## 四、能力对比矩阵
-
-| 能力维度 | Claude Code | OpenClaw | A3S Code |
-|---------|------------|---------|---------|
-| **使用方式** | CLI / IDE 插件 | CLI | Rust 库 / Node / Python |
-| **可嵌入性** | ❌ | ❌ | ✅ |
-| **模型支持** | Anthropic only | 多模型 | 多模型 |
-| **权限系统** | 基础 | 基础 | 细粒度（Allow/Deny/Ask + 通配符）|
-| **HITL 确认** | ✅ | 部分 | ✅ 可编程 |
-| **MCP 支持** | ✅ | 部分 | ✅ 含运行时动态注册 |
-| **并行任务队列** | ❌ | ❌ | ✅ Lane 优先级队列 |
-| **多机器分发** | ❌ | ❌ | ✅ External Task 模式 |
-| **多 Agent 协作** | ❌ | ❌ | ✅ Lead/Worker/Reviewer 团队 |
-| **技能系统** | ✅ | 部分 | ✅ 兼容 Claude Code 格式 |
-| **上下文压缩** | ✅ | 部分 | ✅ 自动触发 |
-| **生产部署** | 不适用 | 不适用 | ✅ 为此设计 |
-| **开源** | ❌ | ✅ | ✅ |
-
----
-
-## 五、为什么"可嵌入"是关键区别？
-
-Claude Code 和 OpenClaw 都是**工具**。工具的使用者是人。
-
-A3S Code 是**库**。库的使用者是程序。
-
-这个区别比表面看起来深刻得多。
-
-当你构建一个 AI 产品时，你需要的不是一个工具，而是一个**可以被你的系统调用的能力**。你需要：
-
-- 在你的 API 里触发 Agent 执行
-- 把 Agent 的输出流式传输给你的用户
-- 在你的权限系统里控制 Agent 能做什么
-- 在你的数据库里持久化 Agent 的会话状态
-- 在你的监控系统里追踪 Agent 的行为
-
-这些需求，工具无法满足，只有库能满足。
-
-```python
-# 你的 FastAPI 服务里
-@app.post("/agent/run")
-async def run_agent(task: TaskRequest):
-    session = agent.session(task.workspace)
-
-    # 流式输出给你的用户
-    async def stream():
-        async for event in session.stream(task.prompt):
-            yield f"data: {event.json()}\n\n"
-
-    return StreamingResponse(stream())
-```
-
-这是 Claude Code 和 OpenClaw 无法做到的。
-
----
-
-## 六、A3S Code 的第一性原理设计
-
-A3S Code 的架构从一个问题出发：**一个编码 Agent 的最小核心是什么？**
-
-答案是五个组件：
-
-```
-Agent          ← 配置和会话管理
+Agent          ← 配置加载、会话生命周期管理
 AgentSession   ← 工作区绑定的执行上下文
-AgentLoop      ← 核心执行引擎（基于轮次的 LLM 交互）
-ToolExecutor   ← 工具执行协调器
-LlmClient      ← LLM 提供商抽象
+AgentLoop      ← 驱动 LLM 轮次的执行引擎
+ToolExecutor   ← 工具注册、调度、执行
+LlmClient      ← LLM 提供商的统一抽象
 ```
 
-其他一切——安全、权限、记忆、技能、规划、MCP、队列——都是**可替换的扩展点**，通过 trait 定义，全部有默认实现。
+这五个组件是系统的骨架。它们之间的关系是固定的：`Agent` 创建 `AgentSession`，`AgentSession` 持有 `AgentLoop`，`AgentLoop` 在每个轮次里调用 `LlmClient` 获取决策，再通过 `ToolExecutor` 执行工具。
 
-这个设计的含义是：
+这个骨架不应该随业务需求变化。它是稳定的、可测试的、可独立推理的。
 
-1. **系统开箱即用**——默认实现覆盖 90% 的场景
-2. **任何部分都可以替换**——不满意默认的权限系统？实现 `PermissionChecker` trait
-3. **核心保持稳定**——扩展点的变化不影响核心
+### 什么是工具自举？
 
-这是"最小核心 + 外部扩展"的第一性原理架构，与 Unix 哲学一脉相承。
+工具自举的意思是：**Agent 的所有扩展能力，都通过工具来实现，而不是通过修改核心。**
+
+这个原则有两层含义：
+
+**第一层：内置工具覆盖基础能力。** 文件读写、代码搜索、命令执行、网络请求——这些是编码 Agent 的基础动作，以内置工具的形式存在，开箱即用。
+
+**第二层：外部工具扩展专业能力。** 数据库操作、代码审查、部署流水线、第三方 API——这些通过 MCP（Model Context Protocol）或自定义工具接入，不需要修改核心代码。
+
+工具自举的关键洞察是：**LLM 本身就是最好的工具路由器。** 你不需要写复杂的意图识别逻辑，只需要给 LLM 提供足够清晰的工具描述，它会自己决定什么时候用什么工具。
+
+这个设计的结果是：系统的能力边界由工具集决定，而工具集可以在运行时动态扩展，核心代码保持不变。
+
+### 为什么这个原则重要？
+
+考虑反面：如果你把权限控制、记忆管理、技能系统、MCP 集成都写进核心，会发生什么？
+
+核心变得臃肿，每个新需求都需要修改核心，不同功能之间产生耦合，测试变得困难，维护成本指数级上升。
+
+极简核心 + 工具自举把这些问题全部消解：核心只做一件事（驱动 LLM 轮次），其他一切都是可插拔的扩展。
+
+在 A3S Code 里，这个原则体现为 19 个 trait 扩展点，每个都有默认实现：
+
+```typescript
+// 不满意默认的权限系统？实现自己的
+class MyPermissionChecker implements PermissionChecker {
+  async check(tool: string, args: unknown): Promise<Permission> {
+    // 你的逻辑
+  }
+}
+
+const session = agent.session('.', {
+  permissionChecker: new MyPermissionChecker(),
+});
+```
+
+系统开箱即用，任何部分都可以替换，核心保持稳定。
 
 ---
 
-## 七、编码 Agent 的下一个边界
+## 三、三种定位，三种设计哲学
 
-当前的编码 Agent 都在解决**单机、单会话、单开发者**的问题。
+市场上有三个值得认真对比的工具：Claude Code、OpenCode、A3S Code。它们都在"编码 Agent"这个标签下，但背后的设计哲学完全不同。
 
-下一个边界是**多机器、多会话、多 Agent 协作**。
+### Claude Code：以开发者体验为中心
 
-A3S Code 的 Lane 队列和 External Task 模式是为这个边界设计的：
+Claude Code 是 Anthropic 构建的交互式 CLI 工具，设计目标是**让开发者在终端里获得最好的 AI 辅助编程体验**。
 
-```
-协调器（运行 Agent 会话）
-    │
-    ├─ Query lane [本地]     ← 读文件、搜索代码
-    ├─ Execute lane [外部]   ← bash、写文件 → 分发给远程 Worker
-    └─ Generate lane [本地]  ← LLM 调用
-         │
-    ┌────┴────┐
-    Worker A  Worker B  Worker C
-   （远程机器）（远程机器）（远程机器）
-```
+它的设计哲学是"人机协作"：Agent 提出方案，人类审批，Agent 执行，人类观察。整个交互流程围绕这个节奏设计——权限提示、计划模式、HITL 确认，都是为了让人类保持控制感。
 
-这不是理论设计，这是今天可以用的 API：
+这个定位决定了它的架构选择：它是一个 CLI 工具，不是一个库。你通过终端使用它，不能通过代码调用它。它绑定 Anthropic 的模型，因为 Anthropic 可以对自己的模型做深度优化（上下文压缩、工具调用格式、系统提示设计）。
 
-```rust
-// 把 Execute lane 路由到外部 Worker
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::External,
-    timeout_ms: 60_000,
-}).await;
+**这个定位的边界**：当你需要把编码 Agent 能力嵌入自己的产品时，Claude Code 帮不了你。它没有编程 API，没有多租户支持，没有为程序化调用设计。
 
-// Agent 产生的 bash/write/edit 调用变成 ExternalTask
-// 你的 Worker 轮询、执行、回调
-```
+### OpenCode：以开放生态为中心
 
----
+OpenCode 是开源的终端编码 Agent，设计目标是**提供一个模型无关、可自托管的 Claude Code 替代品**。
 
-## 八、结论
+它的设计哲学是"开放优先"：支持任何 OpenAI 兼容的模型端点，代码完全开源，社区可以贡献功能和集成。
 
-从第一性原理推导，编码智能体是 Agentic AI 的核心，原因是：
+这个定位决定了它的架构选择：它同样是一个 CLI 工具，以交互式终端体验为核心。它的优势在于灵活性——你可以接入本地模型、私有部署的模型、任何兼容 API。
 
-1. **代码是通用执行器**——能写代码的 Agent 能做一切数字任务
-2. **代码提供最强验证闭环**——编译器和测试是客观的反馈机制
-3. **软件开发是最大的 Agent 市场**——2700 万开发者，每天大量可自动化工作
-4. **编码能力是其他 Agent 的基础设施**——工具调用、规划、错误恢复在这里被打磨
+**这个定位的边界**：和 Claude Code 一样，它的架构以"人机交互"为中心，没有为程序化嵌入设计。如果你想在自己的应用里调用它，你面对的是一个 CLI 工具，而不是一个 SDK。
 
-在这个坐标系里：
+### A3S Code：以可嵌入性为中心
 
-- **Claude Code** 是最好的交互式编码助手，为人类开发者设计
-- **OpenClaw** 是开源的替代选择，同样以人机交互为中心
-- **A3S Code** 是构建编码 Agent 产品的基础设施，为程序调用设计
+A3S Code 解决的是一个完全不同的问题：**当你需要把编码 Agent 能力作为基础设施嵌入你的产品时，你用什么？**
 
-如果你在**使用**编码 Agent，Claude Code 是最佳选择。
+它的设计哲学是"库优先"：Rust 核心库 + Node.js/Python 原生绑定，不是服务，不是 CLI，是可以被你的代码直接调用的库。
 
-如果你在**构建**包含编码 Agent 能力的产品，A3S Code 是你需要的。
+这个定位决定了它的架构选择：极简核心 + 工具自举，19 个 trait 扩展点，Lane 优先级队列，多机器任务分发，MCP 运行时动态注册。每一个设计决策都在回答同一个问题：如何让这个库在生产环境里可靠运行？
 
-这不是竞争，是分工。
+**这个定位的边界**：它不是开箱即用的终端工具。你需要写代码来集成它。如果你只是想在终端里用 AI 辅助编程，Claude Code 是更好的选择。
+
+### 定位对比
+
+| | Claude Code | OpenCode | A3S Code |
+|---|---|---|---|
+| **核心定位** | 开发者终端工具 | 开放生态终端工具 | 可嵌入编码 Agent 库 |
+| **使用方式** | CLI 交互 | CLI 交互 | 代码调用 |
+| **模型支持** | Anthropic（+ Bedrock/Vertex） | 任意 OpenAI 兼容 | 任意 OpenAI 兼容 |
+| **可嵌入性** | 无编程 API | 无编程 API | 核心设计目标 |
+| **扩展方式** | MCP + Skills + Hooks | MCP + 插件 | Trait 扩展点 + MCP |
+| **多租户** | 不支持 | 不支持 | 支持 |
+| **并行任务** | 子 Agent 并行 | 有限支持 | Lane 队列 + 多机器分发 |
+| **开源** | 否 | 是 | 是 |
+
+这不是功能优劣的对比，是设计目标的对比。三个工具在各自的定位上都做得很好。
 
 ---
 
-*A3S Code 是开源的 Rust 编码 Agent 框架，支持 Rust、Node.js、Python。[查看文档](/docs/code) · [GitHub](https://github.com/A3S-Lab/Code)*
+## 四、用 TypeScript SDK 构建类 Claude Code 的产品
+
+理解了架构原则，现在来实践。我们用 A3S Code 的 TypeScript SDK 构建一个具备 Claude Code 核心能力的终端编码助手。
+
+目标产品具备：
+- 多轮对话，理解代码库上下文
+- 流式输出，实时显示 Agent 思考过程
+- 工具执行（读文件、写文件、运行命令）
+- 权限控制，敏感操作需要用户确认
+- MCP 服务器支持，动态扩展工具集
+- 会话持久化，支持恢复上次对话
+
+### 4.1 安装和配置
+
+```bash
+npm install @a3s-lab/code
+```
+
+创建 `agent.hcl` 配置文件：
+
+```hcl
+# 支持任何 OpenAI 兼容端点
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+}
+
+# 可选：接入 MCP 服务器
+mcp_servers {
+  name    = "filesystem"
+  command = "npx"
+  args    = ["-y", "@modelcontextprotocol/server-filesystem", "."]
+}
+```
+
+### 4.2 核心会话循环
+
+这是整个产品的骨架——一个读取用户输入、流式输出 Agent 响应的循环：
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+import * as readline from 'readline';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session(process.cwd());
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+function prompt(): Promise<string> {
+  return new Promise((resolve) => {
+    rl.question('\n> ', resolve);
+  });
+}
+
+console.log('A3S Code — 输入你的问题，Ctrl+C 退出\n');
+
+while (true) {
+  const input = await prompt();
+  if (!input.trim()) continue;
+
+  // 流式输出：实时显示 Agent 的每一个字
+  const events = await session.stream(input);
+
+  for await (const event of events) {
+    switch (event.type) {
+      case 'text_delta':
+        process.stdout.write(event.text);
+        break;
+
+      case 'tool_use':
+        // 显示工具调用，让用户知道 Agent 在做什么
+        console.log(`\n[工具] ${event.tool}(${JSON.stringify(event.args)})`);
+        break;
+
+      case 'tool_result':
+        // 工具执行完成，可以选择显示结果摘要
+        break;
+
+      case 'end':
+        console.log('\n');
+        break;
+    }
+  }
+}
+```
+
+### 4.3 添加权限控制
+
+Claude Code 的一个核心设计是：危险操作需要用户确认。我们用 A3S Code 的权限系统实现同样的效果：
+
+```typescript
+import { Agent, PermissionChecker, Permission } from '@a3s-lab/code';
+import * as readline from 'readline';
+
+// 需要确认的高风险工具
+const DANGEROUS_TOOLS = new Set(['bash', 'write', 'edit', 'patch']);
+
+class InteractivePermissionChecker implements PermissionChecker {
+  private rl: readline.Interface;
+
+  constructor(rl: readline.Interface) {
+    this.rl = rl;
+  }
+
+  async check(tool: string, args: unknown): Promise<Permission> {
+    // 只读工具直接放行
+    if (!DANGEROUS_TOOLS.has(tool)) {
+      return Permission.Allow;
+    }
+
+    // 显示将要执行的操作
+    const preview = this.formatPreview(tool, args);
+    console.log(`\n⚠️  Agent 想要执行：\n${preview}`);
+
+    const answer = await new Promise<string>((resolve) => {
+      this.rl.question('允许？[y/N] ', resolve);
+    });
+
+    return answer.toLowerCase() === 'y' ? Permission.Allow : Permission.Deny;
+  }
+
+  private formatPreview(tool: string, args: unknown): string {
+    const a = args as Record<string, unknown>;
+    switch (tool) {
+      case 'bash':
+        return `  $ ${a.command}`;
+      case 'write':
+        return `  写入文件: ${a.file_path}`;
+      case 'edit':
+        return `  编辑文件: ${a.file_path}`;
+      default:
+        return `  ${tool}: ${JSON.stringify(args, null, 2)}`;
+    }
+  }
+}
+
+// 集成到 session
+const session = agent.session(process.cwd(), {
+  permissionChecker: new InteractivePermissionChecker(rl),
+});
+```
+
+### 4.4 添加 MCP 服务器动态注册
+
+Claude Code 支持在配置文件里声明 MCP 服务器。A3S Code 还支持在运行时动态注册，这让你可以根据用户的项目类型按需加载工具：
+
+```typescript
+// 检测项目类型，按需加载 MCP 服务器
+async function loadProjectMcpServers(session: AgentSession, projectPath: string) {
+  const fs = await import('fs/promises');
+
+  // 检测到 package.json → 加载 Node.js 相关工具
+  try {
+    await fs.access(`${projectPath}/package.json`);
+    const count = await session.addMcpServer(
+      'nodejs-tools',
+      'npx',
+      ['-y', '@modelcontextprotocol/server-filesystem', projectPath],
+    );
+    console.log(`[MCP] 加载 Node.js 工具集，${count} 个工具可用`);
+  } catch {}
+
+  // 检测到 Cargo.toml → 加载 Rust 相关工具
+  try {
+    await fs.access(`${projectPath}/Cargo.toml`);
+    const count = await session.addMcpServer(
+      'rust-tools',
+      'npx',
+      ['-y', '@modelcontextprotocol/server-filesystem', projectPath],
+    );
+    console.log(`[MCP] 加载 Rust 工具集，${count} 个工具可用`);
+  } catch {}
+}
+```
+
+### 4.5 添加会话持久化
+
+Claude Code 支持恢复上次会话。A3S Code 通过 `SessionStore` trait 实现同样的能力：
+
+```typescript
+import { SessionStore, SessionData } from '@a3s-lab/code';
+import * as fs from 'fs/promises';
+import * as path from 'path';
+
+class FileSessionStore implements SessionStore {
+  private storePath: string;
+
+  constructor(storePath: string) {
+    this.storePath = storePath;
+  }
+
+  async save(sessionId: string, data: SessionData): Promise<void> {
+    const filePath = path.join(this.storePath, `${sessionId}.json`);
+    await fs.mkdir(this.storePath, { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+  }
+
+  async load(sessionId: string): Promise<SessionData | null> {
+    const filePath = path.join(this.storePath, `${sessionId}.json`);
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      return JSON.parse(content);
+    } catch {
+      return null;
+    }
+  }
+
+  async delete(sessionId: string): Promise<void> {
+    const filePath = path.join(this.storePath, `${sessionId}.json`);
+    await fs.unlink(filePath).catch(() => {});
+  }
+}
+
+// 使用项目目录作为会话 ID，实现"每个项目一个会话"
+const projectId = Buffer.from(process.cwd()).toString('base64url');
+const session = agent.session(process.cwd(), {
+  sessionId: projectId,
+  sessionStore: new FileSessionStore(path.join(process.env.HOME!, '.a3s/sessions')),
+  permissionChecker: new InteractivePermissionChecker(rl),
+});
+```
+
+### 4.6 添加斜杠命令
+
+Claude Code 有 `/help`、`/clear`、`/cost` 等内置命令。A3S Code 的 `SlashCommand` 接口让你实现同样的功能：
+
+```typescript
+import { SlashCommand, CommandContext, CommandOutput } from '@a3s-lab/code';
+
+// /cost 命令：显示本次会话的 token 消耗
+class CostCommand implements SlashCommand {
+  name = 'cost';
+  description = '显示本次会话的 token 消耗和估算费用';
+
+  execute(_args: string, ctx: CommandContext): CommandOutput {
+    const usage = ctx.tokenUsage;
+    // Claude Sonnet 4 定价（仅供参考）
+    const inputCost = (usage.promptTokens / 1_000_000) * 3.0;
+    const outputCost = (usage.completionTokens / 1_000_000) * 15.0;
+    const total = inputCost + outputCost;
+
+    return CommandOutput.text(
+      `Token 消耗：\n` +
+      `  输入：${usage.promptTokens.toLocaleString()} tokens ($${inputCost.toFixed(4)})\n` +
+      `  输出：${usage.completionTokens.toLocaleString()} tokens ($${outputCost.toFixed(4)})\n` +
+      `  合计：$${total.toFixed(4)}`
+    );
+  }
+}
+
+// /clear 命令：清空对话历史
+class ClearCommand implements SlashCommand {
+  name = 'clear';
+  description = '清空对话历史，开始新会话';
+
+  execute(_args: string, ctx: CommandContext): CommandOutput {
+    ctx.clearHistory();
+    return CommandOutput.text('对话历史已清空');
+  }
+}
+
+session.registerCommand(new CostCommand());
+session.registerCommand(new ClearCommand());
+```
+
+### 4.7 完整产品组装
+
+把所有部分组合起来：
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+import * as readline from 'readline';
+import * as path from 'path';
+
+async function main() {
+  const agent = await Agent.create('agent.hcl');
+
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: true,
+  });
+
+  // 处理 Ctrl+C
+  rl.on('close', () => {
+    console.log('\n再见！');
+    process.exit(0);
+  });
+
+  const projectId = Buffer.from(process.cwd()).toString('base64url');
+
+  const session = agent.session(process.cwd(), {
+    sessionId: projectId,
+    sessionStore: new FileSessionStore(
+      path.join(process.env.HOME!, '.a3s/sessions')
+    ),
+    permissionChecker: new InteractivePermissionChecker(rl),
+  });
+
+  // 注册命令
+  session.registerCommand(new CostCommand());
+  session.registerCommand(new ClearCommand());
+
+  // 按需加载 MCP 服务器
+  await loadProjectMcpServers(session, process.cwd());
+
+  // 显示欢迎信息
+  const isResumed = await session.hasHistory();
+  if (isResumed) {
+    console.log('✓ 已恢复上次会话。输入 /clear 开始新对话。\n');
+  } else {
+    console.log('A3S Code — 输入你的问题，/help 查看命令，Ctrl+C 退出\n');
+  }
+
+  // 主循环
+  while (true) {
+    const input = await new Promise<string>((resolve) => {
+      rl.question('> ', resolve);
+    });
+
+    if (!input.trim()) continue;
+
+    // 斜杠命令
+    if (input.startsWith('/')) {
+      const output = await session.executeCommand(input);
+      console.log(output.text);
+      continue;
+    }
+
+    // Agent 流式响应
+    try {
+      const events = await session.stream(input);
+      for await (const event of events) {
+        if (event.type === 'text_delta') {
+          process.stdout.write(event.text);
+        } else if (event.type === 'tool_use') {
+          process.stdout.write(`\n[${event.tool}] `);
+        } else if (event.type === 'end') {
+          console.log('\n');
+        }
+      }
+    } catch (err) {
+      console.error(`\n错误：${err instanceof Error ? err.message : err}\n`);
+    }
+  }
+}
+
+main().catch(console.error);
+```
+
+这个产品已经具备了 Claude Code 的核心能力：多轮对话、流式输出、工具执行、权限控制、MCP 支持、会话持久化、斜杠命令。代码量不到 200 行。
+
+---
+
+## 五、从单机到多机：Lane 队列的价值
+
+上面构建的是单机版本。当你的产品需要处理更复杂的场景时——比如同时服务多个用户、或者把计算密集型任务分发到远程机器——Lane 队列提供了解决方案。
+
+Lane 队列把工具调用按优先级分为四个通道：
+
+```
+Control (P0) ← 控制指令，最高优先级，顺序执行
+Query   (P1) ← 读文件、搜索，并行执行
+Execute (P2) ← 写文件、运行命令，顺序执行
+Generate(P3) ← LLM 调用，最低优先级
+```
+
+Query 通道的并行执行是关键优化：当 LLM 在一个轮次里返回多个读文件请求时，它们会并行执行，而不是串行等待。
+
+```typescript
+import { SessionQueueConfig } from '@a3s-lab/code';
+
+const session = agent.session(process.cwd(), {
+  queueConfig: {
+    enableAllFeatures: true,
+    queryMaxConcurrency: 8,  // 最多 8 个读操作并行
+  },
+});
+```
+
+当你需要把执行任务分发到远程机器时：
+
+```typescript
+// 把 Execute 通道切换为外部模式
+await session.setLaneHandler('execute', {
+  mode: 'external',
+  timeoutMs: 120_000,
+});
+
+// 监听外部任务，分发给 Worker
+const events = await session.stream('运行完整的测试套件并修复所有失败');
+for await (const event of events) {
+  if (event.type === 'external_task_pending') {
+    const tasks = await session.pendingExternalTasks();
+    for (const task of tasks) {
+      // 发送给远程 Worker（你的传输层：gRPC、HTTP、消息队列等）
+      const result = await dispatchToWorker(task);
+      await session.completeExternalTask(task.task_id, result);
+    }
+  }
+}
+```
+
+这个模式让你可以在不修改 Agent 逻辑的前提下，把计算密集型任务透明地分发到任意数量的远程机器。
+
+---
+
+## 六、结论
+
+Agentic AI 的核心是感知—决策—行动的闭环，编码任务是这个闭环的最高密度测试场。
+
+构建可靠的 Agentic AI 系统，需要遵循两个核心原则：
+
+**极简核心**——系统的不可替换部分应该尽可能小，只包含驱动 LLM 轮次所必需的组件。
+
+**工具自举**——所有扩展能力通过工具实现，LLM 是最好的工具路由器，核心代码保持不变。
+
+在产品定位上，Claude Code 和 OpenCode 以终端交互体验为中心，为开发者设计。A3S Code 以可嵌入性为中心，为产品构建者设计。这不是竞争，是分工。
+
+如果你在**使用**编码 Agent，Claude Code 是最成熟的选择。
+
+如果你在**构建**包含编码 Agent 能力的产品，A3S Code 提供了你需要的基础设施——从单机的交互式助手，到多机器的分布式执行系统，都在同一套 API 之上。
+
+---
+
+*A3S Code 是开源的 Rust 编码 Agent 框架，提供 Rust、Node.js、Python SDK。[查看文档](/docs/code) · [GitHub](https://github.com/A3S-Lab/Code)*
