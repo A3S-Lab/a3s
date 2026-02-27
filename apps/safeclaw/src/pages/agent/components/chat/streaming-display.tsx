@@ -7,6 +7,8 @@ import agentModel, {
 } from "@/models/agent.model";
 import personaModel from "@/models/persona.model";
 import {
+	ChevronDown,
+	ChevronRight,
 	CheckCircle2,
 	Clock,
 	Code2,
@@ -97,6 +99,7 @@ export function StreamingDisplay({ sessionId }: { sessionId: string }) {
 	const [toolProgress, setToolProgress] = useState<ToolProgress | null>(null);
 	const [done, setDone] = useState<CompletedToolCall[]>([]);
 	const [status, setStatus] = useState<string | null>(null);
+	const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
 
 	// Direct subscription to agentModel.state — fires on every mutation
 	useEffect(() => {
@@ -148,9 +151,22 @@ export function StreamingDisplay({ sessionId }: { sessionId: string }) {
 				{done.map((t) => {
 					const meta = getToolMeta(t.tool_name);
 					const summary = summarizeInput(t.input);
+					const hasDiff = t.before != null && t.after != null && !t.is_error;
+					const isExpanded = expandedTools.has(t.tool_use_id);
+					const toggleExpand = hasDiff
+						? () => setExpandedTools((prev) => {
+								const next = new Set(prev);
+								if (next.has(t.tool_use_id)) next.delete(t.tool_use_id);
+								else next.add(t.tool_use_id);
+								return next;
+							})
+						: undefined;
 					return (
 						<div key={t.tool_use_id} className="rounded-xl border border-border/30 bg-muted/10 overflow-hidden">
-							<div className="flex items-center gap-2 px-3 py-2">
+							<div
+								className={cn("flex items-center gap-2 px-3 py-2", hasDiff && "cursor-pointer hover:bg-foreground/[0.03]")}
+								onClick={toggleExpand}
+							>
 								{t.is_error ? (
 									<XCircle className="size-3.5 text-destructive/70 shrink-0" />
 								) : (
@@ -170,8 +186,9 @@ export function StreamingDisplay({ sessionId }: { sessionId: string }) {
 								<span className="text-[11px] text-muted-foreground/50 truncate font-mono">
 									{summary}
 								</span>
+								{hasDiff && (isExpanded ? <ChevronDown className="size-3 text-muted-foreground/40 shrink-0 ml-auto" /> : <ChevronRight className="size-3 text-muted-foreground/40 shrink-0 ml-auto" />)}
 							</div>
-							{t.before != null && t.after != null && !t.is_error && (
+							{hasDiff && isExpanded && (
 								<div className="border-t border-border/30">
 									<DiffEditor
 										original={t.before}

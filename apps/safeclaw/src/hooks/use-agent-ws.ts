@@ -229,6 +229,7 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 				const before = (event.before as string | null) ?? undefined;
 				const after = (event.after as string | null) ?? undefined;
 				const filePath = (event.file_path as string | null) ?? undefined;
+					if (before || after) console.log('[diff-debug] tool_end has diff:', { toolName, before: before?.slice(0, 50), after: after?.slice(0, 50) });
 				const tp = agentModel.state.activeToolProgress[sessionId];
 				agentModel.addCompletedTool(sessionId, {
 					tool_use_id: toolUseId,
