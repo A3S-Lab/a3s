@@ -515,200 +515,262 @@ This product already has Claude Code's core capabilities: multi-turn conversatio
 
 ## V. Building an Agentic Finance Application
 
-The coding agent isn't just a tool for developers — it's the infrastructure for building Agentic applications in any domain. Finance is a great example: data queries, risk calculations, report generation, trade execution — all of these tasks can be driven by an Agent through custom tools.
+The coding agent isn't just a tool for developers — it's the infrastructure for building Agentic applications in any domain. The difference between a real Agentic application and an ordinary chatbot is this: it can autonomously plan, execute in parallel, and coordinate multiple specialized Agents — rather than passively responding to one instruction at a time.
 
-Here we use the A3S Code TypeScript SDK to build a terminal finance assistant with stock quotes, portfolio analysis, risk assessment, and trade simulation.
+Here we use the A3S Code TypeScript SDK to build a financial research system that demonstrates four core Agentic features: **skills system**, **auto-planning**, **Agent Team**, and **parallel research analysis**.
 
-### 5.1 Define the Finance Tool Set
+### 5.1 Skills System: Define Professional Behavior
 
-```typescript
-import { Agent, Tool, ToolResult } from '@a3s-lab/code';
+A skill is a Markdown behavior specification file that tells the Agent what process to follow in a given scenario. It's not code — it's structured professional knowledge.
 
-// Simulated market data
-const marketData: Record<string, { price: number; change: number; volume: number }> = {
-  AAPL: { price: 189.5, change: 1.2, volume: 52_000_000 },
-  MSFT: { price: 415.3, change: -0.8, volume: 21_000_000 },
-  NVDA: { price: 875.4, change: 3.5, volume: 38_000_000 },
-  TSLA: { price: 248.7, change: -2.1, volume: 95_000_000 },
-};
+```markdown
+<!-- skills/portfolio_analyst.md -->
+# Portfolio Analyst
 
-// Simulated portfolio
-const portfolio: Record<string, { shares: number; avgCost: number }> = {
-  AAPL: { shares: 100, avgCost: 165.0 },
-  MSFT: { shares: 50, avgCost: 380.0 },
-};
+## Analysis Process
 
-const financeTools: Tool[] = [
-  {
-    name: 'get_quote',
-    description: 'Get real-time stock quotes including price, change, and volume',
-    parameters: {
-      type: 'object',
-      properties: {
-        symbols: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'List of ticker symbols, e.g. ["AAPL", "MSFT"]',
-        },
-      },
-      required: ['symbols'],
-    },
-    execute: async (args): Promise<ToolResult> => {
-      const { symbols } = args as { symbols: string[] };
-      const quotes = symbols.map((sym) => {
-        const data = marketData[sym.toUpperCase()];
-        if (!data) return { symbol: sym, error: 'Not found' };
-        return {
-          symbol: sym.toUpperCase(),
-          price: data.price,
-          change: data.change,
-          changePct: ((data.change / (data.price - data.change)) * 100).toFixed(2) + '%',
-          volume: data.volume.toLocaleString(),
-        };
-      });
-      return { content: JSON.stringify(quotes, null, 2) };
-    },
-  },
-  {
-    name: 'get_portfolio',
-    description: 'View current holdings, calculate P&L and market value',
-    parameters: { type: 'object', properties: {} },
-    execute: async (): Promise<ToolResult> => {
-      const positions = Object.entries(portfolio).map(([sym, pos]) => {
-        const market = marketData[sym];
-        const marketValue = market ? market.price * pos.shares : 0;
-        const costBasis = pos.avgCost * pos.shares;
-        const pnl = marketValue - costBasis;
-        const pnlPct = ((pnl / costBasis) * 100).toFixed(2);
-        return {
-          symbol: sym,
-          shares: pos.shares,
-          avgCost: pos.avgCost,
-          currentPrice: market?.price ?? 'N/A',
-          marketValue: marketValue.toFixed(2),
-          pnl: pnl.toFixed(2),
-          pnlPct: pnlPct + '%',
-        };
-      });
-      const totalValue = positions.reduce((s, p) => s + parseFloat(p.marketValue as string), 0);
-      const totalPnl = positions.reduce((s, p) => s + parseFloat(p.pnl as string), 0);
-      return {
-        content: JSON.stringify(
-          { positions, summary: { totalValue: totalValue.toFixed(2), totalPnl: totalPnl.toFixed(2) } },
-          null,
-          2,
-        ),
-      };
-    },
-  },
-  {
-    name: 'risk_assessment',
-    description: 'Assess risk for given symbols, outputting volatility and risk level',
-    parameters: {
-      type: 'object',
-      properties: {
-        symbols: { type: 'array', items: { type: 'string' } },
-      },
-      required: ['symbols'],
-    },
-    execute: async (args): Promise<ToolResult> => {
-      const { symbols } = args as { symbols: string[] };
-      const assessments = symbols.map((sym) => {
-        const data = marketData[sym.toUpperCase()];
-        if (!data) return { symbol: sym, error: 'Not found' };
-        const volatility = Math.abs(data.change / data.price) * 100;
-        const risk = volatility > 2 ? 'HIGH' : volatility > 1 ? 'MEDIUM' : 'LOW';
-        return { symbol: sym.toUpperCase(), volatility: volatility.toFixed(3) + '%', risk };
-      });
-      return { content: JSON.stringify(assessments, null, 2) };
-    },
-  },
-  {
-    name: 'simulate_trade',
-    description: 'Simulate a buy or sell order, calculating transaction cost and projected impact',
-    parameters: {
-      type: 'object',
-      properties: {
-        symbol: { type: 'string' },
-        action: { type: 'string', enum: ['buy', 'sell'] },
-        shares: { type: 'number' },
-      },
-      required: ['symbol', 'action', 'shares'],
-    },
-    execute: async (args): Promise<ToolResult> => {
-      const { symbol, action, shares } = args as {
-        symbol: string;
-        action: 'buy' | 'sell';
-        shares: number;
-      };
-      const data = marketData[symbol.toUpperCase()];
-      if (!data) return { content: `Symbol ${symbol} not found`, isError: true };
+When receiving a portfolio analysis request, **you must** execute the following steps in order
+without skipping any:
 
-      const commission = Math.max(1.0, shares * data.price * 0.001); // 0.1% commission
-      const total = shares * data.price + (action === 'buy' ? commission : -commission);
+1. **Data collection**: call get_portfolio for all holdings, call get_quote for live prices
+2. **Parallel research**: launch independent analysis tasks for each holding simultaneously
+   (use submit_batch)
+3. **Risk assessment**: calculate overall portfolio volatility, concentration risk, correlation
+4. **Generate report**: output a structured report with holdings overview, risk ratings,
+   and rebalancing recommendations
 
-      return {
-        content: JSON.stringify(
-          {
-            symbol: symbol.toUpperCase(),
-            action,
-            shares,
-            price: data.price,
-            commission: commission.toFixed(2),
-            total: total.toFixed(2),
-            note: 'Simulated trade — no real execution',
-          },
-          null,
-          2,
-        ),
-      };
-    },
-  },
-];
+## Report Format
+
+\`\`\`
+## Portfolio Analysis Report
+**Time**: {timestamp}
+**Total Value**: ${total_value}  **Total P&L**: ${total_pnl} ({pnl_pct}%)
+
+### Holdings
+| Symbol | Shares | Cost | Price | P&L | Risk |
+...
+
+### Risk Assessment
+- Concentration: {concentration}
+- Highest-risk position: {symbol}
+- Recommendation: {recommendation}
+\`\`\`
+
+## Notes
+- All recommendations must be data-driven, no speculation
+- High-risk positions must be explicitly flagged
+- Rebalancing suggestions must include rationale
 ```
 
-### 5.2 Assemble the Finance Agent
+Load the skill in HCL config:
+
+```hcl
+# agent.hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+}
+
+skills_dir = "./skills"
+```
+
+The value of the skills system is **reusable professional knowledge**: the same analysis process can be loaded by different Agent instances, ensuring behavioral consistency and making it easy for teams to maintain collaboratively.
+
+### 5.2 Auto-Planning: One Sentence Triggers the Full Flow
+
+When the user says "give me a complete portfolio analysis," the Agent doesn't answer directly — it **plans first, then executes**.
 
 ```typescript
+import { Agent, SessionLane } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+// Load the portfolio analyst skill
+const session = agent.session('.', {
+  tools: financeTools,
+  skills: ['portfolio_analyst'],  // inject professional behavior spec
+});
+
+// The user provides one sentence; the Agent automatically plans and executes:
+// 1. call get_portfolio to fetch holdings
+// 2. call get_quote to batch-fetch prices
+// 3. launch parallel research tasks (one per holding)
+// 4. aggregate results and generate structured report
+const events = await session.stream(
+  'Give me a complete portfolio analysis, focusing on risk exposure and rebalancing recommendations'
+);
+
+for await (const event of events) {
+  if (event.type === 'text_delta') process.stdout.write(event.text);
+  else if (event.type === 'tool_use') console.log(`\n→ [${event.tool}]`);
+  else if (event.type === 'end') console.log('\n');
+}
+```
+
+The key here: **the skill file defines the planning logic, and the Agent autonomously decides the call order and tool combinations**. You don't write any orchestration code.
+
+### 5.3 Parallel Research: Analyze Multiple Stocks Simultaneously
+
+Deep research on multiple stocks is slow when done serially. `submitBatch` runs multiple analysis tasks in parallel and aggregates the results.
+
+```typescript
+import { Agent, SessionLane } from '@a3s-lab/code';
+
+async function parallelStockResearch(symbols: string[]) {
+  const agent = await Agent.create('agent.hcl');
+  const session = agent.session('.', { tools: financeTools });
+
+  // Create an independent deep-research task per symbol — all run in parallel
+  const researchTasks = symbols.map((sym) => ({
+    prompt: `Deep analysis of ${sym}:
+      1. Fetch live quote and volume
+      2. Assess current risk level
+      3. Give a data-driven buy/hold/sell recommendation
+      Output structured JSON.`,
+    lane: SessionLane.Generate,  // route to Generate lane for parallel execution
+  }));
+
+  console.log(`Launching ${symbols.length} parallel research tasks...`);
+  const results = await session.submitBatch(researchTasks);
+
+  // Once all tasks complete, pass to a summary Agent for the final report
+  const summarySession = agent.session('.', { tools: financeTools });
+  const summaryEvents = await summarySession.stream(
+    `Here are the independent research results for each stock:\n${JSON.stringify(results, null, 2)}\n\n` +
+    `Please synthesize the above into a portfolio optimization report, ` +
+    `including risk diversification recommendations and position sizing suggestions.`
+  );
+
+  for await (const event of summaryEvents) {
+    if (event.type === 'text_delta') process.stdout.write(event.text);
+    else if (event.type === 'end') console.log('\n');
+  }
+}
+
+// Research 4 stocks in parallel — total time ≈ time for a single stock analysis
+await parallelStockResearch(['AAPL', 'MSFT', 'NVDA', 'TSLA']);
+```
+
+### 5.4 Agent Team: Specialized Collaboration
+
+Complex financial analysis requires different areas of expertise working together. Agent Team lets you assign tasks to specialized Worker Agents, coordinated by a Lead Agent.
+
+```typescript
+import { Agent, AgentTeam } from '@a3s-lab/code';
+
+async function buildFinanceTeam() {
+  // Lead Agent: receives user requests, plans tasks, delegates to Workers, aggregates results
+  const lead = await Agent.create('agent.hcl');
+  const leadSession = lead.session('.', {
+    tools: financeTools,
+    skills: ['portfolio_analyst'],
+    role: 'lead',
+  });
+
+  // Worker 1: Market Analyst — focused on price data and technical indicators
+  const marketAnalyst = await Agent.create('agent.hcl');
+  const marketSession = marketAnalyst.session('.', {
+    tools: [financeTools.find((t) => t.name === 'get_quote')!],
+    systemPrompt: 'You are a market analyst specializing in price data, volume analysis, and price trends.',
+    role: 'worker',
+    workerId: 'market_analyst',
+  });
+
+  // Worker 2: Risk Analyst — focused on risk assessment and stress testing
+  const riskAnalyst = await Agent.create('agent.hcl');
+  const riskSession = riskAnalyst.session('.', {
+    tools: [financeTools.find((t) => t.name === 'risk_assessment')!],
+    systemPrompt: 'You are a risk analyst specializing in volatility calculation, risk exposure, and stress testing.',
+    role: 'worker',
+    workerId: 'risk_analyst',
+  });
+
+  // Form the team — Lead can delegate sub-tasks to Workers
+  const team = AgentTeam.create({
+    lead: leadSession,
+    workers: [marketSession, riskSession],
+  });
+
+  // Lead receives the user request and automatically decides which sub-tasks go to which Worker.
+  // Market data → market_analyst, risk calculations → risk_analyst.
+  // Both Workers run in parallel; Lead aggregates and replies.
+  const events = await team.stream(
+    'Analyze my portfolio: market analyst handles price data, risk analyst handles risk assessment, then give me combined recommendations'
+  );
+
+  for await (const event of events) {
+    if (event.type === 'text_delta') process.stdout.write(event.text);
+    else if (event.type === 'worker_started') console.log(`\n[Team] ${event.workerId} started`);
+    else if (event.type === 'worker_completed') console.log(`\n[Team] ${event.workerId} done`);
+    else if (event.type === 'end') console.log('\n');
+  }
+}
+
+buildFinanceTeam().catch(console.error);
+```
+
+### 5.5 Full System: All Four Features Working Together
+
+Combine the above into a complete financial research terminal:
+
+```typescript
+import { Agent, AgentTeam, SessionLane } from '@a3s-lab/code';
 import * as readline from 'readline';
 
 async function main() {
   const agent = await Agent.create('agent.hcl');
-
-  const session = agent.session('.', {
-    tools: financeTools,
-    systemPrompt: `You are a professional finance assistant helping users analyze market data,
-manage their portfolio, and assess investment risk.
-You can:
-- Fetch real-time stock quotes (get_quote)
-- View holdings and P&L (get_portfolio)
-- Assess investment risk (risk_assessment)
-- Simulate trade orders (simulate_trade)
-
-Always base your analysis on data and proactively flag risks.`,
-  });
-
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   rl.on('close', () => process.exit(0));
 
-  console.log('Finance assistant ready. Try asking:\n');
-  console.log('  > Get quotes for AAPL and NVDA');
-  console.log('  > Analyze my portfolio risk');
-  console.log('  > How much would it cost to buy 50 shares of TSLA?\n');
+  // Main session: skills loaded, auto-planning enabled
+  const session = agent.session('.', {
+    tools: financeTools,
+    skills: ['portfolio_analyst'],
+    role: 'lead',
+    queueConfig: { queryMaxConcurrency: 4 },  // up to 4 parallel Query lane tasks
+  });
+
+  // Register slash command for parallel research
+  session.registerCommand({
+    name: 'research',
+    description: 'Research multiple stocks in parallel. Usage: /research AAPL MSFT NVDA',
+    execute: async (args) => {
+      const symbols = args.trim().split(/\s+/).filter(Boolean);
+      if (symbols.length === 0) return { text: 'Usage: /research AAPL MSFT NVDA' };
+
+      console.log(`\nLaunching ${symbols.length} parallel research tasks...\n`);
+      const tasks = symbols.map((sym) => ({
+        prompt: `Analyze ${sym}: quote, risk level, investment recommendation`,
+        lane: SessionLane.Generate,
+      }));
+
+      const results = await session.submitBatch(tasks);
+      return { text: JSON.stringify(results, null, 2) };
+    },
+  });
+
+  console.log('Financial research system ready.\n');
+  console.log('  > Give me a complete portfolio analysis        (auto-planning + skills)');
+  console.log('  > /research AAPL MSFT NVDA TSLA               (parallel research)');
+  console.log('  > Build a team to deep-dive the tech sector   (Agent Team)\n');
 
   while (true) {
     const input = await new Promise<string>((resolve) => rl.question('> ', resolve));
     if (!input.trim()) continue;
 
+    if (input.startsWith('/')) {
+      const output = await session.executeCommand(input);
+      console.log(output.text + '\n');
+      continue;
+    }
+
     const events = await session.stream(input);
     for await (const event of events) {
-      if (event.type === 'text_delta') {
-        process.stdout.write(event.text);
-      } else if (event.type === 'tool_use') {
-        process.stdout.write(`\n[${event.tool}] `);
-      } else if (event.type === 'end') {
-        console.log('\n');
-      }
+      if (event.type === 'text_delta') process.stdout.write(event.text);
+      else if (event.type === 'tool_use') process.stdout.write(`\n→ [${event.tool}] `);
+      else if (event.type === 'end') console.log('\n');
     }
   }
 }
@@ -716,9 +778,7 @@ Always base your analysis on data and proactively flag risks.`,
 main().catch(console.error);
 ```
 
-The core logic of this finance Agent is under 150 lines. A3S Code handles all LLM interaction, tool routing, and streaming output — you only need to define business tools and a system prompt.
-
-The same pattern transfers directly to other domains: swap the finance tools for medical data query tools and you have a medical assistant; swap them for legal document retrieval tools and you have a legal assistant. This is where **minimal core + tool bootstrapping** shows its value most clearly.
+The fundamental difference between this system and an ordinary chatbot: when the user says "do a full analysis," the system **autonomously plans the steps**, **executes research in parallel**, **coordinates multiple specialized Agents**, and aggregates everything into a structured report — without the user needing to guide each step. That's the core value of an Agentic application.
 
 ---
 

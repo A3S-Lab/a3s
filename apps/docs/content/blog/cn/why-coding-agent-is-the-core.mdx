@@ -515,200 +515,264 @@ main().catch(console.error);
 
 ## 五、用编码智能体构建 Agentic 金融应用
 
-编码智能体不只是为开发者服务的工具——它是构建任何领域 Agentic 应用的基础设施。金融场景是一个很好的例子：数据查询、风险计算、报告生成、交易执行，这些任务都可以通过自定义工具交给 Agent 来驱动。
+编码智能体不只是为开发者服务的工具——它是构建任何领域 Agentic 应用的基础设施。真正的 Agentic 应用和普通聊天机器人的区别在于：它能自主规划、并行执行、协调多个专业 Agent 协作，而不只是被动响应单条指令。
 
-下面用 A3S Code TypeScript SDK 构建一个终端金融助理，具备股票查询、投资组合分析、风险评估和交易模拟能力。
+下面用 A3S Code TypeScript SDK 构建一个金融研究系统，展示四个核心 Agentic 特性：**技能系统**、**自动规划**、**Agent Team** 和**并行研究分析**。
 
-### 5.1 定义金融工具集
+### 5.1 技能系统：定义专业行为规范
 
-```typescript
-import { Agent, Tool, ToolResult } from '@a3s-lab/code';
+技能（Skill）是 Markdown 格式的行为规范文件，告诉 Agent 在特定场景下应该遵循什么流程。它不是代码，而是结构化的专业知识。
 
-// 模拟市场数据
-const marketData: Record<string, { price: number; change: number; volume: number }> = {
-  AAPL: { price: 189.5, change: 1.2, volume: 52_000_000 },
-  MSFT: { price: 415.3, change: -0.8, volume: 21_000_000 },
-  NVDA: { price: 875.4, change: 3.5, volume: 38_000_000 },
-  TSLA: { price: 248.7, change: -2.1, volume: 95_000_000 },
-};
+```markdown
+<!-- skills/portfolio_analyst.md -->
+# 投资组合分析师
 
-// 模拟持仓数据
-const portfolio: Record<string, { shares: number; avgCost: number }> = {
-  AAPL: { shares: 100, avgCost: 165.0 },
-  MSFT: { shares: 50, avgCost: 380.0 },
-};
+## 分析流程
 
-const financeTools: Tool[] = [
-  {
-    name: 'get_quote',
-    description: '获取股票实时报价，包括价格、涨跌幅、成交量',
-    parameters: {
-      type: 'object',
-      properties: {
-        symbols: {
-          type: 'array',
-          items: { type: 'string' },
-          description: '股票代码列表，如 ["AAPL", "MSFT"]',
-        },
-      },
-      required: ['symbols'],
-    },
-    execute: async (args): Promise<ToolResult> => {
-      const { symbols } = args as { symbols: string[] };
-      const quotes = symbols.map((sym) => {
-        const data = marketData[sym.toUpperCase()];
-        if (!data) return { symbol: sym, error: 'Not found' };
-        return {
-          symbol: sym.toUpperCase(),
-          price: data.price,
-          change: data.change,
-          changePct: ((data.change / (data.price - data.change)) * 100).toFixed(2) + '%',
-          volume: data.volume.toLocaleString(),
-        };
-      });
-      return { content: JSON.stringify(quotes, null, 2) };
-    },
-  },
-  {
-    name: 'get_portfolio',
-    description: '查看当前持仓，计算盈亏和市值',
-    parameters: { type: 'object', properties: {} },
-    execute: async (): Promise<ToolResult> => {
-      const positions = Object.entries(portfolio).map(([sym, pos]) => {
-        const market = marketData[sym];
-        const marketValue = market ? market.price * pos.shares : 0;
-        const costBasis = pos.avgCost * pos.shares;
-        const pnl = marketValue - costBasis;
-        const pnlPct = ((pnl / costBasis) * 100).toFixed(2);
-        return {
-          symbol: sym,
-          shares: pos.shares,
-          avgCost: pos.avgCost,
-          currentPrice: market?.price ?? 'N/A',
-          marketValue: marketValue.toFixed(2),
-          pnl: pnl.toFixed(2),
-          pnlPct: pnlPct + '%',
-        };
-      });
-      const totalValue = positions.reduce((s, p) => s + parseFloat(p.marketValue as string), 0);
-      const totalPnl = positions.reduce((s, p) => s + parseFloat(p.pnl as string), 0);
-      return {
-        content: JSON.stringify(
-          { positions, summary: { totalValue: totalValue.toFixed(2), totalPnl: totalPnl.toFixed(2) } },
-          null,
-          2,
-        ),
-      };
-    },
-  },
-  {
-    name: 'risk_assessment',
-    description: '对指定股票或投资组合进行风险评估，输出波动率和风险等级',
-    parameters: {
-      type: 'object',
-      properties: {
-        symbols: { type: 'array', items: { type: 'string' } },
-      },
-      required: ['symbols'],
-    },
-    execute: async (args): Promise<ToolResult> => {
-      const { symbols } = args as { symbols: string[] };
-      // 简化的风险模型：基于成交量和涨跌幅估算波动率
-      const assessments = symbols.map((sym) => {
-        const data = marketData[sym.toUpperCase()];
-        if (!data) return { symbol: sym, error: 'Not found' };
-        const volatility = Math.abs(data.change / data.price) * 100;
-        const risk = volatility > 2 ? 'HIGH' : volatility > 1 ? 'MEDIUM' : 'LOW';
-        return { symbol: sym.toUpperCase(), volatility: volatility.toFixed(3) + '%', risk };
-      });
-      return { content: JSON.stringify(assessments, null, 2) };
-    },
-  },
-  {
-    name: 'simulate_trade',
-    description: '模拟买入或卖出操作，计算交易成本和预期影响',
-    parameters: {
-      type: 'object',
-      properties: {
-        symbol: { type: 'string' },
-        action: { type: 'string', enum: ['buy', 'sell'] },
-        shares: { type: 'number' },
-      },
-      required: ['symbol', 'action', 'shares'],
-    },
-    execute: async (args): Promise<ToolResult> => {
-      const { symbol, action, shares } = args as {
-        symbol: string;
-        action: 'buy' | 'sell';
-        shares: number;
-      };
-      const data = marketData[symbol.toUpperCase()];
-      if (!data) return { content: `Symbol ${symbol} not found`, isError: true };
+收到投资组合分析请求时，**必须**按以下顺序执行，不得跳过任何步骤：
 
-      const commission = Math.max(1.0, shares * data.price * 0.001); // 0.1% 佣金
-      const total = shares * data.price + (action === 'buy' ? commission : -commission);
+1. **数据收集**：调用 get_portfolio 获取所有持仓，调用 get_quote 获取实时报价
+2. **并行研究**：对每只持仓股票同时启动独立分析任务（使用 submit_batch）
+3. **风险评估**：计算组合整体波动率、集中度风险、相关性
+4. **生成报告**：输出结构化报告，包含持仓概览、风险评级、调仓建议
 
-      return {
-        content: JSON.stringify(
-          {
-            symbol: symbol.toUpperCase(),
-            action,
-            shares,
-            price: data.price,
-            commission: commission.toFixed(2),
-            total: total.toFixed(2),
-            note: '这是模拟交易，不会实际执行',
-          },
-          null,
-          2,
-        ),
-      };
-    },
-  },
-];
+## 报告格式
+
+\`\`\`
+## 投资组合分析报告
+**分析时间**: {timestamp}
+**总市值**: ${total_value}  **总盈亏**: ${total_pnl} ({pnl_pct}%)
+
+### 持仓明细
+| 股票 | 持仓 | 成本 | 现价 | 盈亏 | 风险 |
+...
+
+### 风险评估
+- 组合集中度: {concentration}
+- 最高风险持仓: {symbol}
+- 建议: {recommendation}
+\`\`\`
+
+## 注意事项
+- 所有建议必须基于数据，不得主观臆断
+- 高风险持仓必须在报告中明确标注
+- 调仓建议需说明理由
 ```
 
-### 5.2 组装金融 Agent
+在 HCL 配置中加载技能：
+
+```hcl
+# agent.hcl
+default_model = "anthropic/claude-sonnet-4-20250514"
+
+providers {
+  name    = "anthropic"
+  api_key = env("ANTHROPIC_API_KEY")
+}
+
+# 加载技能文件目录
+skills_dir = "./skills"
+```
+
+技能系统的价值在于**可复用的专业知识**：同一套分析流程可以被不同的 Agent 实例加载，确保行为一致性，也方便团队协作维护。
+
+### 5.2 自动规划：一句话触发完整分析流程
+
+当用户说「帮我做一份完整的投资组合分析」时，Agent 不会直接回答——它会先**规划**，再**执行**。
 
 ```typescript
+import { Agent, SessionLane } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+// 加载投资组合分析师技能
+const session = agent.session('.', {
+  tools: financeTools,
+  skills: ['portfolio_analyst'],  // 注入专业行为规范
+});
+
+// 用户只需一句话，Agent 自动规划并执行完整流程：
+// 1. 调用 get_portfolio 获取持仓
+// 2. 调用 get_quote 批量获取报价
+// 3. 启动并行研究任务（每只股票独立分析）
+// 4. 汇总结果，生成结构化报告
+const events = await session.stream(
+  '帮我做一份完整的投资组合分析，重点关注风险敞口和调仓建议'
+);
+
+for await (const event of events) {
+  if (event.type === 'text_delta') process.stdout.write(event.text);
+  else if (event.type === 'tool_use') console.log(`\n→ [${event.tool}]`);
+  else if (event.type === 'end') console.log('\n');
+}
+```
+
+这里的关键是：**技能文件定义了规划逻辑，Agent 自主决定调用顺序和工具组合**。你不需要写任何编排代码。
+
+### 5.3 并行研究：同时分析多只股票
+
+对多只股票做深度研究时，串行执行会很慢。`submitBatch` 让多个分析任务并行运行，结果统一汇总。
+
+```typescript
+import { Agent, SessionLane } from '@a3s-lab/code';
+
+async function parallelStockResearch(symbols: string[]) {
+  const agent = await Agent.create('agent.hcl');
+  const session = agent.session('.', { tools: financeTools });
+
+  // 为每只股票创建独立的深度研究任务，全部并行执行
+  const researchTasks = symbols.map((sym) => ({
+    prompt: `对 ${sym} 进行深度分析：
+      1. 获取实时报价和成交量
+      2. 评估当前风险等级
+      3. 基于数据给出买入/持有/卖出建议
+      输出结构化 JSON 结果。`,
+    lane: SessionLane.Generate,  // 路由到 Generate 通道并行执行
+  }));
+
+  console.log(`启动 ${symbols.length} 个并行研究任务...`);
+  const results = await session.submitBatch(researchTasks);
+
+  // 所有任务完成后，交给汇总 Agent 生成综合报告
+  const summarySession = agent.session('.', { tools: financeTools });
+  const summaryEvents = await summarySession.stream(
+    `以下是对各股票的独立研究结果：\n${JSON.stringify(results, null, 2)}\n\n` +
+    `请综合以上分析，生成一份投资组合优化建议报告，` +
+    `包含风险分散建议和仓位调整方案。`
+  );
+
+  for await (const event of summaryEvents) {
+    if (event.type === 'text_delta') process.stdout.write(event.text);
+    else if (event.type === 'end') console.log('\n');
+  }
+}
+
+// 并行研究 4 只股票，耗时约等于单只股票的分析时间
+await parallelStockResearch(['AAPL', 'MSFT', 'NVDA', 'TSLA']);
+```
+
+### 5.4 Agent Team：专业分工协作
+
+复杂的金融分析需要不同专业能力的协作。Agent Team 让你把任务分配给专门的 Worker Agent，由 Lead Agent 统一协调。
+
+```typescript
+import { Agent, AgentTeam } from '@a3s-lab/code';
+
+async function buildFinanceTeam() {
+  // Lead Agent：接收用户请求，规划任务，分配给 Worker，汇总结果
+  const lead = await Agent.create('agent.hcl');
+  const leadSession = lead.session('.', {
+    tools: financeTools,
+    skills: ['portfolio_analyst'],
+    role: 'lead',
+  });
+
+  // Worker 1：市场分析师，专注行情数据和技术指标
+  const marketAnalyst = await Agent.create('agent.hcl');
+  const marketSession = marketAnalyst.session('.', {
+    tools: [financeTools.find((t) => t.name === 'get_quote')!],
+    systemPrompt: '你是市场分析师，专注于股票行情数据、成交量分析和价格趋势。',
+    role: 'worker',
+    workerId: 'market_analyst',
+  });
+
+  // Worker 2：风险分析师，专注风险评估和压力测试
+  const riskAnalyst = await Agent.create('agent.hcl');
+  const riskSession = riskAnalyst.session('.', {
+    tools: [financeTools.find((t) => t.name === 'risk_assessment')!],
+    systemPrompt: '你是风险分析师，专注于波动率计算、风险敞口评估和压力测试。',
+    role: 'worker',
+    workerId: 'risk_analyst',
+  });
+
+  // 组建 Team，Lead 可以把子任务委派给 Worker
+  const team = AgentTeam.create({
+    lead: leadSession,
+    workers: [marketSession, riskSession],
+  });
+
+  // Lead 接收用户请求，自动决定哪些子任务交给哪个 Worker
+  // 例如：行情数据 → market_analyst，风险计算 → risk_analyst
+  // 两个 Worker 并行工作，Lead 汇总结果后回复用户
+  const events = await team.stream(
+    '分析我的持仓，市场分析师负责行情，风险分析师负责风险评估，最后给我综合建议'
+  );
+
+  for await (const event of events) {
+    if (event.type === 'text_delta') process.stdout.write(event.text);
+    else if (event.type === 'worker_started') {
+      console.log(`\n[Team] ${event.workerId} 开始工作...`);
+    } else if (event.type === 'worker_completed') {
+      console.log(`\n[Team] ${event.workerId} 完成`);
+    } else if (event.type === 'end') {
+      console.log('\n');
+    }
+  }
+}
+
+buildFinanceTeam().catch(console.error);
+```
+
+### 5.5 完整系统：四个特性协同工作
+
+把以上特性组合成一个完整的金融研究终端：
+
+```typescript
+import { Agent, AgentTeam, SessionLane } from '@a3s-lab/code';
 import * as readline from 'readline';
 
 async function main() {
   const agent = await Agent.create('agent.hcl');
-
-  const session = agent.session('.', {
-    tools: financeTools,
-    systemPrompt: `你是一位专业的金融助理，帮助用户分析市场行情、管理投资组合、评估风险。
-你可以：
-- 查询股票实时报价（get_quote）
-- 查看持仓和盈亏（get_portfolio）
-- 评估投资风险（risk_assessment）
-- 模拟交易操作（simulate_trade）
-
-始终基于数据给出客观分析，在涉及风险时主动提示。`,
-  });
-
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   rl.on('close', () => process.exit(0));
 
-  console.log('金融助理已就绪。输入你的问题，例如：\n');
-  console.log('  > 查一下 AAPL 和 NVDA 的报价');
-  console.log('  > 分析我的持仓风险');
-  console.log('  > 如果我买入 50 股 TSLA 需要多少钱？\n');
+  // 主会话：加载技能，具备自动规划能力
+  const session = agent.session('.', {
+    tools: financeTools,
+    skills: ['portfolio_analyst'],
+    role: 'lead',
+    queueConfig: { queryMaxConcurrency: 4 },  // Query 通道最多 4 个并行
+  });
+
+  // 注册斜杠命令
+  session.registerCommand({
+    name: 'research',
+    description: '并行研究多只股票，用法: /research AAPL MSFT NVDA',
+    execute: async (args) => {
+      const symbols = args.trim().split(/\s+/).filter(Boolean);
+      if (symbols.length === 0) return { text: '用法: /research AAPL MSFT NVDA' };
+
+      console.log(`\n启动 ${symbols.length} 个并行研究任务...\n`);
+      const tasks = symbols.map((sym) => ({
+        prompt: `分析 ${sym}：报价、风险等级、投资建议`,
+        lane: SessionLane.Generate,
+      }));
+
+      const results = await session.submitBatch(tasks);
+      return { text: JSON.stringify(results, null, 2) };
+    },
+  });
+
+  console.log('金融研究系统就绪。\n');
+  console.log('  > 帮我做一份完整的投资组合分析        (自动规划 + 技能系统)');
+  console.log('  > /research AAPL MSFT NVDA TSLA       (并行研究)');
+  console.log('  > 组建分析团队，深度研究科技股板块     (Agent Team)\n');
 
   while (true) {
     const input = await new Promise<string>((resolve) => rl.question('> ', resolve));
     if (!input.trim()) continue;
 
+    if (input.startsWith('/')) {
+      const output = await session.executeCommand(input);
+      console.log(output.text + '\n');
+      continue;
+    }
+
     const events = await session.stream(input);
     for await (const event of events) {
-      if (event.type === 'text_delta') {
-        process.stdout.write(event.text);
-      } else if (event.type === 'tool_use') {
-        process.stdout.write(`\n[${event.tool}] `);
-      } else if (event.type === 'end') {
-        console.log('\n');
-      }
+      if (event.type === 'text_delta') process.stdout.write(event.text);
+      else if (event.type === 'tool_use') process.stdout.write(`\n→ [${event.tool}] `);
+      else if (event.type === 'end') console.log('\n');
     }
   }
 }
@@ -716,9 +780,7 @@ async function main() {
 main().catch(console.error);
 ```
 
-这个金融 Agent 的核心逻辑不到 150 行。A3S Code 处理了所有的 LLM 交互、工具路由、流式输出——你只需要定义业务工具和系统提示。
-
-同样的模式可以直接迁移到其他领域：把金融工具换成医疗数据查询工具，就是医疗助理；换成法律文档检索工具，就是法律助理。**极简核心 + 工具自举**的价值在这里体现得最清楚。
+这个系统和普通聊天机器人的本质区别：用户说一句「做完整分析」，系统会**自主规划步骤**、**并行执行研究**、**协调多个专业 Agent**，最后汇总成结构化报告——整个过程不需要用户逐步指导。这才是 Agentic 应用的核心价值。
 
 ---
 
