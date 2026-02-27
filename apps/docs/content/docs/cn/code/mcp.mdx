@@ -12,15 +12,18 @@ A3S Code 支持 [Model Context Protocol](https://modelcontextprotocol.io/)（MCP
 
 ## 传输方式
 
-A3S Code 支持两种 MCP 传输方式：
+A3S Code 支持三种 MCP 传输方式：
 
 <TypeTable
   type={{
     "stdio": {
       description: "协议: JSON-RPC 2.0 over stdin/stdout · 使用场景: 本地工具、基于 CLI 的服务器",
     },
-    "http+sse": {
-      description: "协议: JSON-RPC 2.0 over HTTP + Server-Sent Events · 使用场景: 远程服务器、共享基础设施",
+    "http": {
+      description: "协议: JSON-RPC 2.0 over HTTP + Server-Sent Events · 使用场景: 远程服务器、共享基础设施（旧版 SSE 传输）",
+    },
+    "streamable-http": {
+      description: "协议: JSON-RPC 2.0 over HTTP（MCP 2025-03-26 规范）· 使用场景: 远程服务器 — 单一端点，支持 JSON 和 SSE 响应，通过 Mcp-Session-Id 头管理会话",
     },
   }}
 />
@@ -54,21 +57,39 @@ mcp_servers {
 
 ### HTTP+SSE 传输
 
-用于通过 HTTP 访问的远程 MCP 服务器：
+用于使用旧版 SSE 传输的远程 MCP 服务器：
 
 ```hcl
 mcp_servers {
   name      = "remote-tools"
-  transport = "sse"
+  transport = "http"
   url       = "https://mcp.example.com/sse"
   enabled   = true
-  env = {
-    API_TOKEN = "token-..."
+  headers = {
+    Authorization = "Bearer token-..."
   }
 }
 ```
 
-HTTP+SSE 传输连接到远程服务器端点。请求通过 HTTP POST 发送，响应通过 Server-Sent Events 流式返回。适用于团队环境中的共享 MCP 服务器或云托管的工具提供商。
+请求通过 HTTP POST 发送到基础 URL；响应通过 `/sse` 端点的 Server-Sent Events 流式返回。
+
+### Streamable HTTP 传输
+
+用于实现 MCP 2025-03-26 规范的远程 MCP 服务器：
+
+```hcl
+mcp_servers {
+  name      = "remote-tools"
+  transport = "streamable-http"
+  url       = "https://mcp.example.com/mcp"
+  enabled   = true
+  headers = {
+    Authorization = "Bearer token-..."
+  }
+}
+```
+
+所有通信通过单一端点进行。服务器可以返回纯 JSON 或 SSE 流。会话通过 `Mcp-Session-Id` 头跟踪，关闭时发送 DELETE 请求终止会话。
 
 ## 工具命名
 
@@ -114,6 +135,13 @@ mcp_servers {
   args    = ["-y", "@modelcontextprotocol/server-github"]
   env     = { GITHUB_TOKEN = env("GITHUB_TOKEN") }
 }
+
+mcp_servers {
+  name      = "remote"
+  transport = "streamable-http"
+  url       = "https://mcp.example.com/mcp"
+  headers   = { Authorization = "Bearer token" }
+}
 ```
 
 ### MCP 服务器配置字段
@@ -123,39 +151,26 @@ mcp_servers {
     "name": {
       description: "类型: string · 必填: ✅ · 描述: 服务器标识符（用于工具名称前缀）",
     },
+    "transport": {
+      description: "类型: string · 必填: ❌ · 默认: stdio · 描述: stdio、http 或 streamable-http",
+    },
     "command": {
-      description: "类型: string · 必填: ✅ · 描述: 要启动的可执行文件",
+      description: "类型: string · 必填: ❌ · 描述: 要启动的可执行文件（仅 stdio）",
     },
     "args": {
-      description: "类型: string[] · 必填: ❌ · 描述: 命令参数",
+      description: "类型: string[] · 必填: ❌ · 描述: 命令参数（仅 stdio）",
+    },
+    "url": {
+      description: "类型: string · 必填: ❌ · 描述: 服务器端点 URL（http / streamable-http 必填）",
+    },
+    "headers": {
+      description: "类型: object · 必填: ❌ · 描述: HTTP 请求头（http / streamable-http）",
     },
     "env": {
-      description: "类型: object · 必填: ❌ · 描述: 环境变量",
+      description: "类型: object · 必填: ❌ · 描述: 环境变量（仅 stdio）",
     },
     "timeout_ms": {
-      description: "类型: number · 必填: ❌ · 描述: 工具执行超时（默认：60000）",
-    },
-    "transport": {
-      description: "类型: string · 必填: ❌ · 描述: stdio（默认）或 http",
-    },
-  }}
-/>
-
-### McpTransport trait（Rust）
-
-<TypeTable
-  type={{
-    "connect": {
-      description: "签名: async fn connect(&mut self) -> Result<()> · 描述: 建立到 MCP 服务器的连接",
-    },
-    "list_tools": {
-      description: "签名: async fn list_tools(&self) -> Result<Vec<McpTool>> · 描述: 发现可用工具",
-    },
-    "call_tool": {
-      description: "签名: async fn call_tool(&self, name: &str, args: Value) -> Result<Value> · 描述: 调用工具",
-    },
-    "disconnect": {
-      description: "签名: async fn disconnect(&mut self) -> Result<()> · 描述: 关闭连接",
+      description: "类型: number · 必填: ❌ · 默认: 60000 · 描述: 工具执行超时（毫秒）",
     },
   }}
 />
@@ -191,10 +206,9 @@ use a3s_code_core::{Agent, mcp::manager::McpManager};
 let agent = Agent::new("agent.hcl").await?;
 let session = Arc::new(agent.session(".", None)?);
 
-// 构建 McpManager（或复用 AgentConfig 中的实例）
 let manager = Arc::new(McpManager::new());
 
-// 连接 filesystem MCP 服务器并注册其工具
+// stdio 服务器
 let tool_count = session.add_mcp_server(
     Arc::clone(&manager),
     "filesystem",
@@ -207,25 +221,26 @@ let result = session.send("列出 /tmp 中的文件").await?;
 </Tab>
 <Tab value="TypeScript">
 ```typescript
-import { Agent } from '@a3s-lab/code';
+import { Agent } from '@a3s-lab/code'; // v0.9.5
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.');
 
-// 运行时连接 filesystem MCP 服务器
+// stdio 服务器
 const toolCount = await session.addMcpServer(
   'filesystem',
-  'npx',
-  ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+  { transport: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'] },
 );
 console.log(`注册了 ${toolCount} 个工具`);
 
-// 连接带环境变量的 GitHub MCP 服务器
+// Streamable HTTP 服务器
 await session.addMcpServer(
-  'github',
-  'npx',
-  ['-y', '@modelcontextprotocol/server-github'],
-  { GITHUB_TOKEN: process.env.GITHUB_TOKEN },
+  'remote',
+  {
+    transport: 'streamable-http',
+    url: 'https://mcp.example.com/mcp',
+    headers: { Authorization: `Bearer ${process.env.API_TOKEN}` },
+  },
 );
 
 const result = await session.send('列出 /tmp 中的文件');
@@ -233,25 +248,26 @@ const result = await session.send('列出 /tmp 中的文件');
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent
+from a3s_code import Agent  # v0.9.5
 
 agent = Agent.create("agent.hcl")
 session = agent.session(".")
 
-# 运行时连接 filesystem MCP 服务器
+# stdio 服务器
 tool_count = session.add_mcp_server(
     "filesystem",
-    "npx",
-    ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+    transport="stdio",
+    command="npx",
+    args=["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
 )
 print(f"注册了 {tool_count} 个工具")
 
-# 连接带环境变量的 GitHub MCP 服务器
+# Streamable HTTP 服务器
 session.add_mcp_server(
-    "github",
-    "npx",
-    ["-y", "@modelcontextprotocol/server-github"],
-    env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
+    "remote",
+    transport="streamable-http",
+    url="https://mcp.example.com/mcp",
+    headers={"Authorization": f"Bearer {os.environ['API_TOKEN']}"},
 )
 
 result = session.send("列出 /tmp 中的文件")
@@ -266,14 +282,23 @@ result = session.send("列出 /tmp 中的文件")
     "name": {
       description: "类型: string · 必填: ✅ · 描述: 服务器标识符 — 用作工具名称前缀（mcp__{name}__{tool}）",
     },
+    "transport": {
+      description: "类型: 'stdio' | 'http' | 'streamable-http' · 必填: ❌ · 默认: stdio · 描述: 传输协议",
+    },
     "command": {
-      description: "类型: string · 必填: ✅ · 描述: 要启动的可执行文件（如 npx、uvx、/usr/local/bin/my-server）",
+      description: "类型: string · 必填: ❌ · 描述: 要启动的可执行文件 — stdio 传输必填",
     },
     "args": {
-      description: "类型: string[] · 必填: ❌ · 描述: 传递给服务器进程的命令行参数",
+      description: "类型: string[] · 必填: ❌ · 描述: 传递给服务器进程的命令行参数（仅 stdio）",
+    },
+    "url": {
+      description: "类型: string · 必填: ❌ · 描述: 服务器端点 URL — http 和 streamable-http 传输必填",
+    },
+    "headers": {
+      description: "类型: object · 必填: ❌ · 描述: 每次请求发送的 HTTP 头（http / streamable-http）",
     },
     "env": {
-      description: "类型: object · 必填: ❌ · 描述: 服务器进程的额外环境变量",
+      description: "类型: object · 必填: ❌ · 描述: 服务器进程的额外环境变量（仅 stdio）",
     },
   }}
 />

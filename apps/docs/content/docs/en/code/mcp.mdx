@@ -12,7 +12,7 @@ A3S Code supports the [Model Context Protocol](https://modelcontextprotocol.io/)
 
 ## Transports
 
-A3S Code supports two MCP transports:
+A3S Code supports three MCP transports:
 
 <TypeTable
   type={{
@@ -20,9 +20,13 @@ A3S Code supports two MCP transports:
       type: "JSON-RPC 2.0 over stdin/stdout",
       description: "Local tools, CLI-based servers",
     },
-    "http+sse": {
+    "http": {
       type: "JSON-RPC 2.0 over HTTP + Server-Sent Events",
-      description: "Remote servers, shared infrastructure",
+      description: "Remote servers, shared infrastructure (legacy SSE transport)",
+    },
+    "streamable-http": {
+      type: "JSON-RPC 2.0 over HTTP (MCP 2025-03-26)",
+      description: "Remote servers — single endpoint, supports both JSON and SSE responses, session management via Mcp-Session-Id header",
     },
   }}
 />
@@ -56,21 +60,39 @@ mcp_servers {
 
 ### HTTP+SSE Transport
 
-For remote MCP servers accessible over HTTP:
+For remote MCP servers using the legacy SSE transport:
 
 ```hcl
 mcp_servers {
   name      = "remote-tools"
-  transport = "sse"
+  transport = "http"
   url       = "https://mcp.example.com/sse"
   enabled   = true
-  env = {
-    API_TOKEN = "token-..."
+  headers = {
+    Authorization = "Bearer token-..."
   }
 }
 ```
 
-The HTTP+SSE transport connects to a remote server endpoint. Requests are sent via HTTP POST, and responses stream back via Server-Sent Events. This is useful for shared MCP servers in team environments or cloud-hosted tool providers.
+Requests are sent via HTTP POST to the base URL; responses stream back via Server-Sent Events from a `/sse` endpoint.
+
+### Streamable HTTP Transport
+
+For remote MCP servers implementing the MCP 2025-03-26 spec:
+
+```hcl
+mcp_servers {
+  name      = "remote-tools"
+  transport = "streamable-http"
+  url       = "https://mcp.example.com/mcp"
+  enabled   = true
+  headers = {
+    Authorization = "Bearer token-..."
+  }
+}
+```
+
+All communication goes through a single endpoint. The server may respond with plain JSON or an SSE stream. Sessions are tracked via the `Mcp-Session-Id` header and terminated with a DELETE request on close.
 
 ## Tool Naming
 
@@ -116,6 +138,13 @@ mcp_servers {
   args    = ["-y", "@modelcontextprotocol/server-github"]
   env     = { GITHUB_TOKEN = env("GITHUB_TOKEN") }
 }
+
+mcp_servers {
+  name      = "remote"
+  transport = "streamable-http"
+  url       = "https://mcp.example.com/mcp"
+  headers   = { Authorization = "Bearer token" }
+}
 ```
 
 ### MCP server config fields
@@ -123,30 +152,13 @@ mcp_servers {
 <TypeTable
   type={{
     name: { type: 'string', required: true, description: 'Server identifier (used in tool name prefix)' },
-    command: { type: 'string', required: true, description: 'Executable to launch' },
-    args: { type: 'string[]', description: 'Command arguments' },
-    env: { type: 'object', description: 'Environment variables' },
+    transport: { type: 'string', default: '"stdio"', description: '`stdio`, `http`, or `streamable-http`' },
+    command: { type: 'string', description: 'Executable to launch (stdio only)' },
+    args: { type: 'string[]', description: 'Command arguments (stdio only)' },
+    url: { type: 'string', description: 'Server endpoint URL (http / streamable-http only)' },
+    headers: { type: 'object', description: 'HTTP headers (http / streamable-http only)' },
+    env: { type: 'object', description: 'Environment variables (stdio only)' },
     timeout_ms: { type: 'number', default: '60000', description: 'Tool execution timeout' },
-    transport: { type: 'string', default: '"stdio"', description: '`stdio` (default) or `http`' },
-  }}
-/>
-
-### McpTransport trait (Rust)
-
-<TypeTable
-  type={{
-    "connect": {
-      description: "Signature: async fn connect(&mut self) -> Result<()> · Description: Establish connection to MCP server",
-    },
-    "list_tools": {
-      description: "Signature: async fn list_tools(&self) -> Result<Vec<McpTool>> · Description: Discover available tools",
-    },
-    "call_tool": {
-      description: "Signature: async fn call_tool(&self, name: &str, args: Value) -> Result<Value> · Description: Invoke a tool",
-    },
-    "disconnect": {
-      description: "Signature: async fn disconnect(&mut self) -> Result<()> · Description: Close connection",
-    },
   }}
 />
 
@@ -181,10 +193,9 @@ use a3s_code_core::{Agent, mcp::manager::McpManager};
 let agent = Agent::new("agent.hcl").await?;
 let session = Arc::new(agent.session(".", None)?);
 
-// Build an McpManager (or reuse the one from AgentConfig)
 let manager = Arc::new(McpManager::new());
 
-// Connect a filesystem MCP server and register its tools
+// stdio server
 let tool_count = session.add_mcp_server(
     Arc::clone(&manager),
     "filesystem",
@@ -197,25 +208,26 @@ let result = session.send("List files in /tmp").await?;
 </Tab>
 <Tab value="TypeScript">
 ```typescript
-import { Agent } from '@a3s-lab/code';
+import { Agent } from '@a3s-lab/code'; // v0.9.5
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.');
 
-// Connect a filesystem MCP server at runtime
+// stdio server
 const toolCount = await session.addMcpServer(
   'filesystem',
-  'npx',
-  ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+  { transport: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'] },
 );
 console.log(`Registered ${toolCount} tools`);
 
-// Connect a GitHub MCP server with env vars
+// Streamable HTTP server
 await session.addMcpServer(
-  'github',
-  'npx',
-  ['-y', '@modelcontextprotocol/server-github'],
-  { GITHUB_TOKEN: process.env.GITHUB_TOKEN },
+  'remote',
+  {
+    transport: 'streamable-http',
+    url: 'https://mcp.example.com/mcp',
+    headers: { Authorization: `Bearer ${process.env.API_TOKEN}` },
+  },
 );
 
 const result = await session.send('List files in /tmp');
@@ -223,25 +235,26 @@ const result = await session.send('List files in /tmp');
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent
+from a3s_code import Agent  # v0.9.5
 
 agent = Agent.create("agent.hcl")
 session = agent.session(".")
 
-# Connect a filesystem MCP server at runtime
+# stdio server
 tool_count = session.add_mcp_server(
     "filesystem",
-    "npx",
-    ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+    transport="stdio",
+    command="npx",
+    args=["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
 )
 print(f"Registered {tool_count} tools")
 
-# Connect a GitHub MCP server with env vars
+# Streamable HTTP server
 session.add_mcp_server(
-    "github",
-    "npx",
-    ["-y", "@modelcontextprotocol/server-github"],
-    env={"GITHUB_TOKEN": os.environ["GITHUB_TOKEN"]},
+    "remote",
+    transport="streamable-http",
+    url="https://mcp.example.com/mcp",
+    headers={"Authorization": f"Bearer {os.environ['API_TOKEN']}"},
 )
 
 result = session.send("List files in /tmp")
@@ -254,9 +267,12 @@ result = session.send("List files in /tmp")
 <TypeTable
   type={{
     name: { type: 'string', required: true, description: 'Server identifier — used as the tool name prefix (`mcp__{name}__{tool}`)' },
-    command: { type: 'string', required: true, description: 'Executable to launch (e.g. `npx`, `uvx`, `/usr/local/bin/my-server`)' },
-    args: { type: 'string[]', description: 'Command-line arguments passed to the server process' },
-    env: { type: 'object', description: 'Extra environment variables for the server process' },
+    transport: { type: "'stdio' | 'http' | 'streamable-http'", default: '"stdio"', description: 'Transport protocol' },
+    command: { type: 'string', description: 'Executable to launch — required for `stdio` transport' },
+    args: { type: 'string[]', description: 'Command-line arguments passed to the server process (stdio only)' },
+    url: { type: 'string', description: 'Server endpoint URL — required for `http` and `streamable-http` transports' },
+    headers: { type: 'object', description: 'HTTP headers sent with every request (http / streamable-http only)' },
+    env: { type: 'object', description: 'Extra environment variables for the server process (stdio only)' },
   }}
 />
 
