@@ -56,6 +56,10 @@ pub fn agent_router(state: AgentState) -> Router {
         // Config endpoints
         .route("/api/agent/config", get(get_config))
         .route("/api/agent/config", put(put_config))
+        // MCP endpoints
+        .route("/api/agent/mcp", get(list_mcp_servers))
+        .route("/api/agent/mcp", post(add_mcp_server))
+        .route("/api/agent/mcp/:name", delete(remove_mcp_server))
         // WebSocket endpoint (browser only — no more CLI subprocess)
         .route("/ws/agent/browser/:id", get(ws_browser_upgrade))
         .with_state(state)
@@ -81,6 +85,9 @@ struct CreateSessionRequest {
     /// Skills to enable for this session (not yet wired into engine)
     #[allow(dead_code)]
     skills: Option<Vec<String>>,
+    /// MCP servers to connect for this session
+    #[serde(default)]
+    mcp_servers: Vec<a3s_code::mcp::McpServerConfig>,
 }
 
 /// Create a new agent session
@@ -155,9 +162,6 @@ async fn update_session(
     }
     if let Some(archived) = request.archived {
         state.engine.set_archived(&id, archived).await;
-    }
-    if let Some(cwd) = request.cwd {
-        state.engine.set_cwd(&id, cwd).await;
     }
 
     match state.engine.get_session(&id).await {
@@ -747,6 +751,31 @@ async fn handle_browser_ws(socket: WebSocket, session_id: String, state: AgentSt
     );
 }
 
+// =============================================================================
+// MCP handlers
+// =============================================================================
+
+/// List all MCP servers and their status
+async fn list_mcp_servers(_state: State<AgentState>) -> impl IntoResponse {
+    StatusCode::NOT_IMPLEMENTED
+}
+
+/// Add and connect an MCP server
+async fn add_mcp_server(
+    _state: State<AgentState>,
+    _body: axum::body::Bytes,
+) -> impl IntoResponse {
+    StatusCode::NOT_IMPLEMENTED
+}
+
+/// Disconnect and remove an MCP server
+async fn remove_mcp_server(
+    _state: State<AgentState>,
+    _name: Path<String>,
+) -> impl IntoResponse {
+    StatusCode::NOT_IMPLEMENTED
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1000,6 +1029,7 @@ mod tests {
             base_url: None,
             system_prompt: None,
             skills: None,
+            mcp_servers: vec![],
         };
         let response = create_session(State(state.clone()), Json(req))
             .await
