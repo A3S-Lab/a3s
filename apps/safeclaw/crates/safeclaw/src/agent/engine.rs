@@ -1765,7 +1765,13 @@ pub fn translate_event(event: &AgentEvent) -> Vec<BrowserIncomingMessage> {
                     "tool_use_id": id,
                     "tool_name": name,
                     "output": if output.len() > 500 {
-                        format!("{}…", &output[..500])
+                        let truncated = output
+                            .char_indices()
+                            .take_while(|(i, _)| *i < 500)
+                            .last()
+                            .map(|(i, c)| &output[..i + c.len_utf8()])
+                            .unwrap_or("");
+                        format!("{}…", truncated)
                     } else {
                         output.clone()
                     },
