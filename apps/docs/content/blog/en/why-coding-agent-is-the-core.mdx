@@ -1,36 +1,55 @@
 ---
-title: Core Principles and Architecture for Building Agentic AI
-description: What is "minimal core + tool bootstrapping"? Why is the coding agent the core form of Agentic AI? And how to build a Claude Code-like product with the A3S Code TypeScript SDK.
+title: "20 Lines of Code to Build Claude Code's Core Capabilities"
+description: A3S Code is an embeddable Rust coding agent framework. Build a terminal assistant in 20 lines, build production-grade Agentic apps with the full SDK.
 date: "2026-02-27"
 author: A3S Lab
-tags: [a3s-code, coding-agent, architecture, typescript, sdk]
+tags: [a3s-code, coding-agent, embeddable, typescript, sdk]
 ---
 
-Software development is the highest-density test of AI Agent capability. Reading an unfamiliar codebase, tracking down a subtle bug, adding new functionality without breaking existing logic — these tasks require an Agent to simultaneously perceive, reason, act, and verify. Miss any one of them and the Agent fails.
+**A3S Code is an embeddable Rust coding agent framework. In 20 lines of code, you can build a terminal assistant with Claude Code's core capabilities.**
 
-That's why the coding agent isn't just a vertical application of AI — it's the core form of the entire Agentic AI field. This post explains the core principles of building Agentic AI from an architectural perspective, introduces the "minimal core + tool bootstrapping" design pattern, compares the positioning of three mainstream tools, and then demonstrates how to build a Claude Code-like product from scratch using the A3S Code TypeScript SDK.
+```typescript
+import { Agent } from '@a3s-lab/code';
+import * as readline from 'readline';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session(process.cwd());
+
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+console.log('A3S Code — type your question, Ctrl+C to exit\n');
+
+while (true) {
+  const input = await new Promise<string>((resolve) => rl.question('> ', resolve));
+  if (!input.trim()) continue;
+
+  const events = await session.stream(input);
+  for await (const event of events) {
+    if (event.type === 'text_delta') process.stdout.write(event.text);
+    else if (event.type === 'tool_use') console.log(`\n[${event.tool}]`);
+    else if (event.type === 'end') console.log('\n');
+  }
+}
+```
+
+**That's all the core code.** It already has: multi-turn conversation, streaming output, tool execution (read files, write files, run commands), and codebase context understanding.
+
+**Why so simple?** Because Claude Code is a terminal tool with no programming API. OpenCode is also a CLI — it can't be embedded. **A3S Code is a library** — callable directly from your code, embeddable in any product.
+
+| | Claude Code | OpenCode | OpenClaw | A3S Code |
+|---|---|---|---|---|
+| **Core positioning** | Developer terminal tool | Open ecosystem terminal tool | Messaging platform personal assistant | **Embeddable Agent infrastructure** |
+| **Usage** | CLI interaction | CLI interaction | Messaging platform conversation | **Code invocation (library)** |
+| **Embeddability** | No programming API | No programming API | No programming API | **Core design goal** |
+| **Extension** | MCP + Skills + Hooks | MCP + plugins | Plugins | **Trait extension points + MCP** |
+| **Multi-tenancy** | Not supported | Not supported | Not supported | **Supported** |
+| **Parallel tasks** | Sub-agent parallelism | Limited | Not supported | **Lane queue + multi-machine dispatch** |
+| **Open source** | No | Yes | Yes | Yes |
+
+This isn't a comparison of feature quality — it's a comparison of **design goals**. If you're **using** a coding agent, Claude Code is the most mature choice. If you're **building** a product that includes coding agent capability, A3S Code provides the infrastructure you need.
 
 ---
 
-## I. The Essence of an Agent: The Perceive–Decide–Act Loop
-
-Strip away the outer shell of any AI Agent and you're left with three layers:
-
-**Perception** — reading environment state. File contents, command output, API responses, database records — all are the Agent's perception targets.
-
-**Decision** — reasoning about the next step based on state. This is the LLM's core job: given the current context, decide which tool to call and with what arguments.
-
-**Action** — executing tool calls to produce side effects. Writing files, running commands, calling APIs — changing the state of the external world.
-
-These three layers form a loop. Each iteration is called a "turn." An Agent's capability is fundamentally the quality of this loop: how accurate the perception, how sound the reasoning, how reliable the action, how timely the feedback.
-
-A codebase is the best training ground for this loop, because it provides **objective feedback signals**. The compiler either passes or errors. Tests are either green or red. No ambiguity. This objectivity lets the Agent self-correct without depending on human judgment.
-
-An Agent that can work autonomously in a codebase already has the foundational capabilities to work in any other structured environment.
-
----
-
-## II. Minimal Core + Tool Bootstrapping
+## I. Why Does 20 Lines Suffice? Minimal Core + Tool Bootstrapping
 
 This is the most important architectural principle for building Agentic AI systems, and the design foundation of A3S Code.
 
@@ -93,11 +112,11 @@ Works out of the box. Any part is replaceable. Core stays stable.
 
 ---
 
-## III. A3S Code's Full Capability Boundary
+## II. A3S Code's Full Capability Boundary
 
 Minimal core + tool bootstrapping is the architectural principle, but A3S Code's actual capability boundary goes much further. Here's a systematic overview of all core features — memory system, context retrieval, hooks, security layer, planner, and more.
 
-### 3.1 Memory System: Long-Term Memory Across Sessions
+### 2.1 Memory System: Long-Term Memory Across Sessions
 
 `MemoryStore` lets the Agent retain key information across multiple sessions. Unlike `SessionStore` (which saves conversation history), `MemoryStore` stores **distilled knowledge** — user preferences, project context, important decisions.
 
@@ -135,7 +154,7 @@ await session.stream('Continue the refactoring task from last time');
 // → Agent retrieves: "Last refactoring goal: migrate auth module to JWT"
 ```
 
-### 3.2 Context Retrieval (RAG): Dynamically Inject External Knowledge
+### 2.2 Context Retrieval (RAG): Dynamically Inject External Knowledge
 
 `ContextProvider` automatically retrieves relevant documents before each turn and injects them into the LLM context. This is the standard RAG (Retrieval-Augmented Generation) implementation.
 
@@ -164,7 +183,7 @@ await session.stream('Where is the JWT validation logic in the auth module?');
 // → LLM answers based on the retrieved code
 ```
 
-### 3.3 Hooks System: Event-Driven Automation
+### 2.3 Hooks System: Event-Driven Automation
 
 Hooks execute automatically before and after tool calls, for logging, auditing, and automated workflows.
 
@@ -203,7 +222,7 @@ const session = agent.session('.', {
 });
 ```
 
-### 3.4 Security Layer: Input Taint Analysis and Output Sanitization
+### 2.4 Security Layer: Input Taint Analysis and Output Sanitization
 
 `SecurityProvider` detects malicious content in inputs before tool execution, and sanitizes sensitive information from outputs.
 
@@ -215,7 +234,7 @@ class ProductionSecurityProvider implements SecurityProvider {
     // Detect command injection, path traversal, SQL injection
     const threats = [];
     if (/;\s*(rm|curl|wget|nc)\s/.test(input)) threats.push('command_injection');
-    if (/\.\.[\/\\]/.test(input)) threats.push('path_traversal');
+    if (/\.\.[\\/\\]/.test(input)) threats.push('path_traversal');
     if (/(union|select|drop|insert)\s+/i.test(input)) threats.push('sql_injection');
 
     return {
@@ -241,7 +260,7 @@ const session = agent.session('.', {
 });
 ```
 
-### 3.5 Planner: Automatic Decomposition of Complex Tasks
+### 2.5 Planner: Automatic Decomposition of Complex Tasks
 
 `Planner` breaks complex tasks into a sequence of sub-tasks that the Agent executes step by step.
 
@@ -274,7 +293,7 @@ await session.stream('Refactor the entire auth module to use JWT with refresh to
 //   5. Verify all tests pass
 ```
 
-### 3.6 Context Compaction: Automatic Token Budget Management
+### 2.6 Context Compaction: Automatic Token Budget Management
 
 When conversation history exceeds a threshold, `ContextCompactor` automatically compresses old turns while preserving key information.
 
@@ -293,7 +312,7 @@ Compaction strategies:
 - **Summarize**: use LLM to summarize old turns, keep the summary
 - **Semantic**: retain the most relevant turns based on semantic similarity
 
-### 3.7 Multi-Language SDKs: Rust / Node.js / Python
+### 2.7 Multi-Language SDKs: Rust / Node.js / Python
 
 A3S Code is a Rust core library with Node.js and Python native bindings via FFI.
 
@@ -342,7 +361,7 @@ async def main():
 asyncio.run(main())
 ```
 
-### 3.8 Feature Summary
+### 2.8 Feature Summary
 
 | Feature | Purpose | Extension Point |
 |---------|---------|----------------|
@@ -358,12 +377,11 @@ All of these features are **optional extensions** — the system ships with defa
 
 ---
 
-
-## IV. A3S Code + A3S Box: Providing a Sandbox Environment for Agents
+## III. A3S Code + A3S Box: Providing a Sandbox Environment for Agents
 
 When Agents execute code, they run on the host machine by default — meaning risks like malicious code, accidental deletion, and resource exhaustion are directly exposed to your system. A3S Box is a lightweight MicroVM sandbox that provides a fully isolated environment for Agent code execution.
 
-### 4.1 What is A3S Box?
+### 3.1 What is A3S Box?
 
 A3S Box is an embedded MicroVM sandbox based on libkrun, with these characteristics:
 
@@ -374,7 +392,7 @@ A3S Box is an embedded MicroVM sandbox based on libkrun, with these characterist
 
 State machine: `Created → Ready → Busy → Stopped`
 
-### 4.2 Why Do Agents Need a Sandbox?
+### 3.2 Why Do Agents Need a Sandbox?
 
 Consider this scenario: a user asks the Agent to "clean up temporary files in the project," and the Agent executes `rm -rf /tmp/*` — but due to a path resolution error, it actually runs `rm -rf /*`.
 
@@ -389,7 +407,7 @@ Other risk scenarios:
 
 A3S Box isolates all these risks inside the sandbox.
 
-### 4.3 Integration: Route Agent Code Execution to Box
+### 3.3 Integration: Route Agent Code Execution to Box
 
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -443,7 +461,7 @@ async function main() {
 }
 ```
 
-### 4.4 Extended Box Tools: File Upload/Download, Snapshots
+### 3.4 Extended Box Tools: File Upload/Download, Snapshots
 
 Beyond command execution, Box also supports file transfer and snapshot management:
 
@@ -494,7 +512,7 @@ const boxTools = [
 ];
 ```
 
-### 4.5 Skill Mechanism: Teaching the Agent How to Operate Box
+### 3.5 Skill Mechanism: Teaching the Agent How to Operate Box
 
 Through Skill files, you can teach the Agent when to use Box and how to safely operate the sandbox.
 
@@ -555,7 +573,7 @@ await session.stream('Run the tests, then clean up all temporary files');
 // → Host is safe
 ```
 
-### 4.6 Complete Example: Sandboxed Coding Agent
+### 3.6 Complete Example: Sandboxed Coding Agent
 
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -613,7 +631,7 @@ async function main() {
 main().catch(console.error);
 ```
 
-### 4.7 Other Box Capabilities
+### 3.7 Other Box Capabilities
 
 **Persistent workspace**: share the same sandbox state across multiple sessions
 
@@ -647,68 +665,7 @@ const sandbox = boxSdk.create({
 
 ---
 
-## V. Four Positions, Three Design Philosophies
-
-Three tools deserve serious comparison: Claude Code, OpenCode, and A3S Code. All carry the "coding Agent" label, but their underlying design philosophies are completely different.
-
-### Claude Code: Developer Experience First
-
-Claude Code is an interactive CLI tool built by Anthropic, designed to **give developers the best AI-assisted programming experience in the terminal**.
-
-Its design philosophy is "human-machine collaboration": the Agent proposes a plan, the human approves, the Agent executes, the human observes. The entire interaction flow is designed around this rhythm — permission prompts, plan mode, HITL confirmation — all to keep the human in control.
-
-This positioning determines its architectural choices: it's a CLI tool, not a library. You use it through the terminal; you can't call it through code. It's bound to Anthropic's models, because Anthropic can do deep optimization for its own models (context compression, tool call format, system prompt design).
-
-**The boundary of this positioning**: when you need to embed coding Agent capability into your own product, Claude Code can't help. It has no programming API, no multi-tenancy support, and wasn't designed for programmatic invocation.
-
-### OpenCode: Open Ecosystem First
-
-OpenCode is an open-source terminal coding Agent, designed to **provide a model-agnostic, self-hostable alternative to Claude Code**.
-
-Its design philosophy is "openness first": supports any OpenAI-compatible model endpoint, fully open-source, community can contribute features and integrations.
-
-This positioning determines its architectural choices: it's also a CLI tool, with interactive terminal experience at its core. Its advantage is flexibility — you can connect local models, privately deployed models, any compatible API.
-
-**The boundary of this positioning**: like Claude Code, its architecture centers on "human-machine interaction" and wasn't designed for programmatic embedding. If you want to call it from your application, you're dealing with a CLI tool, not an SDK.
-
-### OpenClaw: Personal Assistant Experience First
-
-OpenClaw is a personal AI assistant Agent for messaging platforms (WhatsApp, Telegram, Slack), designed to **give users intelligent task automation inside the chat tools they already use every day**.
-
-Its design philosophy is "conversation as operation": users issue instructions in natural language, the Agent understands intent and executes — querying information, managing schedules, processing files, calling external services. The entire experience is designed around the interaction paradigm of messaging platforms, not terminals or IDEs.
-
-This positioning determines its architectural choices: it's a service deployed on messaging platforms, not a local tool or embeddable library. Its advantage is reach — users don't need to install anything; AI capability is available inside their existing chat tools.
-
-**The boundary of this positioning**: its core is "personal assistant," not "coding agent." When you need to embed Agent capability into your own product, or handle codebase-level complex tasks, its architecture wasn't designed for those scenarios.
-
-### A3S Code: Embeddability First
-
-A3S Code solves a completely different problem: **when you need to embed coding Agent capability as infrastructure into your product, what do you use?**
-
-Its design philosophy is "library first": Rust core library + Node.js/Python native bindings — not a service, not a CLI, but a library your code can call directly.
-
-This positioning determines its architectural choices: minimal core + tool bootstrapping, 19 trait extension points, lane priority queue, multi-machine task dispatch, MCP runtime dynamic registration. Every design decision answers the same question: how do we make this library run reliably in production?
-
-**The boundary of this positioning**: it's not an out-of-the-box terminal tool. You need to write code to integrate it. If you just want AI-assisted programming in the terminal, Claude Code is the better choice.
-
-### Positioning Comparison
-
-| | Claude Code | OpenCode | OpenClaw | A3S Code |
-|---|---|---|---|---|
-| **Core positioning** | Developer terminal tool | Open ecosystem terminal tool | Messaging platform personal assistant | Embeddable Agent infrastructure |
-| **Usage** | CLI interaction | CLI interaction | Messaging platform conversation | Code invocation |
-| **Model support** | Anthropic (+ Bedrock/Vertex) | Any OpenAI-compatible | Multi-model | Any OpenAI-compatible |
-| **Embeddability** | No programming API | No programming API | No programming API | Core design goal |
-| **Extension** | MCP + Skills + Hooks | MCP + plugins | Plugins | Trait extension points + MCP |
-| **Multi-tenancy** | Not supported | Not supported | Not supported | Supported |
-| **Parallel tasks** | Sub-agent parallelism | Limited | Not supported | Lane queue + multi-machine dispatch |
-| **Open source** | No | Yes | Yes | Yes |
-
-This isn't a comparison of feature quality — it's a comparison of design goals. All four tools have their own value within their respective positioning.
-
----
-
-## VI. Building a Claude Code-Like Product with the TypeScript SDK
+## IV. Building a Claude Code-Like Product with the TypeScript SDK
 
 With the architectural principles understood, let's put them into practice. We'll use the A3S Code TypeScript SDK to build a terminal coding assistant with Claude Code's core capabilities.
 
@@ -1067,7 +1024,7 @@ This product already has Claude Code's core capabilities: multi-turn conversatio
 
 ---
 
-## VII. Building an Agentic Finance Application
+## V. Building an Agentic Finance Application
 
 The coding agent isn't just a tool for developers — it's the infrastructure for building Agentic applications in any domain. The difference between a real Agentic application and an ordinary chatbot is this: it can autonomously plan, execute in parallel, and coordinate multiple specialized Agents — rather than passively responding to one instruction at a time.
 
@@ -1336,7 +1293,7 @@ The fundamental difference between this system and an ordinary chatbot: when the
 
 ---
 
-## VIII. From Single Machine to Multi-Machine: The Value of Lane Queues
+## VI. From Single Machine to Multi-Machine: The Value of Lane Queues
 
 The above builds a single-machine version. When your product needs to handle more complex scenarios — serving multiple users simultaneously, or distributing compute-intensive tasks to remote machines — the lane queue provides the solution.
 
@@ -1389,7 +1346,7 @@ This pattern lets you transparently distribute compute-intensive tasks to any nu
 
 ---
 
-## IX. Conclusion
+## VII. Conclusion
 
 The core of Agentic AI is the perceive–decide–act loop, and coding tasks are the highest-density test of this loop.
 
@@ -1399,12 +1356,8 @@ Building reliable Agentic AI systems requires two core principles:
 
 **Tool bootstrapping** — all extended capabilities are implemented through tools. The LLM is the best tool router. Core code stays unchanged.
 
-On product positioning: Claude Code and OpenCode center on terminal interaction experience, designed for developers. A3S Code centers on embeddability, designed for product builders. This isn't competition — it's division of labor.
-
-If you're **using** a coding Agent, Claude Code is the most mature choice.
-
-If you're **building** a product that includes coding Agent capability, A3S Code provides the infrastructure you need — from a single-machine interactive assistant to a multi-machine distributed execution system, all on the same API.
+From the 20 lines of code at the start of this article to a multi-machine distributed execution system, A3S Code's API stays the same throughout. That's the value of a minimal core: stable foundation, unlimited capability expansion.
 
 ---
 
-*A3S Code is an open-source Rust coding Agent framework with Rust, Node.js, and Python SDKs. [View Docs](/docs/code) · [GitHub](https://github.com/A3S-Lab/Code)*
+*A3S Code is an open-source Rust coding agent framework with Rust, Node.js, and Python SDKs. [View Docs](/docs/code) · [GitHub](https://github.com/A3S-Lab/Code)*
