@@ -715,6 +715,7 @@ impl AgentEngine {
                         name,
                         output,
                         exit_code,
+                        metadata: _,
                     } => {
                         let input_str = tool_input_buffers.remove(id).unwrap_or_default();
                         let input_val: serde_json::Value =
@@ -1740,7 +1741,23 @@ pub fn translate_event(event: &AgentEvent) -> Vec<BrowserIncomingMessage> {
             name,
             output,
             exit_code,
+            metadata,
         } => {
+            let before = metadata
+                .as_ref()
+                .and_then(|m| m.get("before"))
+                .cloned()
+                .unwrap_or(serde_json::Value::Null);
+            let after = metadata
+                .as_ref()
+                .and_then(|m| m.get("after"))
+                .cloned()
+                .unwrap_or(serde_json::Value::Null);
+            let file_path = metadata
+                .as_ref()
+                .and_then(|m| m.get("file_path"))
+                .cloned()
+                .unwrap_or(serde_json::Value::Null);
             // Send tool_end stream event with output for UI display
             vec![BrowserIncomingMessage::StreamEvent {
                 event: serde_json::json!({
@@ -1753,6 +1770,9 @@ pub fn translate_event(event: &AgentEvent) -> Vec<BrowserIncomingMessage> {
                         output.clone()
                     },
                     "is_error": *exit_code != 0,
+                    "before": before,
+                    "after": after,
+                    "file_path": file_path,
                 }),
                 parent_tool_use_id: Some(id.clone()),
             }]
@@ -1984,6 +2004,7 @@ mod tests {
             name: "Bash".to_string(),
             output: "ok".to_string(),
             exit_code: 0,
+            metadata: None,
         };
         let msgs = translate_event(&event);
         assert_eq!(msgs.len(), 1);
@@ -1991,6 +2012,30 @@ mod tests {
             msgs[0],
             BrowserIncomingMessage::StreamEvent { .. }
         ));
+    }
+
+    #[test]
+    fn test_translate_tool_end_with_diff_metadata() {
+        let event = AgentEvent::ToolEnd {
+            id: "t1".to_string(),
+            name: "write".to_string(),
+            output: "Wrote 5 bytes".to_string(),
+            exit_code: 0,
+            metadata: Some(serde_json::json!({
+                "before": "old content",
+                "after": "new content",
+                "file_path": "src/main.rs"
+            })),
+        };
+        let msgs = translate_event(&event);
+        assert_eq!(msgs.len(), 1);
+        if let BrowserIncomingMessage::StreamEvent { event: ev, .. } = &msgs[0] {
+            assert_eq!(ev["before"], "old content");
+            assert_eq!(ev["after"], "new content");
+            assert_eq!(ev["file_path"], "src/main.rs");
+        } else {
+            panic!("expected StreamEvent");
+        }
     }
 
     #[test]

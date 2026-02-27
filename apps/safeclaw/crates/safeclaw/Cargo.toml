@@ -23,7 +23,7 @@ a3s-common = { version = "0.1", path = "../../../../crates/common" }
 a3s-code = { version = "0.9", path = "../../../../crates/code/core", package = "a3s-code-core" }
 a3s-memory = { version = "0.1", path = "../../../../crates/memory" }
 a3s-event = { version = "0.3", path = "../../../../crates/event" }
-a3s-box-core = { version = "0.6", path = "../../../../crates/box/src/core", optional = true }
+a3s-box-core = { version = "0.7", path = "../../../../crates/box/src/core", optional = true }
 
 # Home directory resolution for sealed storage
 dirs = "5.0"
@@ -109,6 +109,10 @@ libc = "0.2"
 
 # Agent module dependencies
 dirs-next = "2.0"
+mime_guess = "2.0"
+
+# File system watching
+notify = { version = "6", features = ["macos_fsevent"] }
 
 [features]
 default = []
