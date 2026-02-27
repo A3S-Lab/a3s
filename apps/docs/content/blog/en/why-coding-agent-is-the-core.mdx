@@ -93,7 +93,272 @@ Works out of the box. Any part is replaceable. Core stays stable.
 
 ---
 
-## III. Three Positions, Three Design Philosophies
+## III. A3S Code's Full Capability Boundary
+
+Minimal core + tool bootstrapping is the architectural principle, but A3S Code's actual capability boundary goes much further. Here's a systematic overview of all core features — memory system, context retrieval, hooks, security layer, planner, and more.
+
+### 3.1 Memory System: Long-Term Memory Across Sessions
+
+`MemoryStore` lets the Agent retain key information across multiple sessions. Unlike `SessionStore` (which saves conversation history), `MemoryStore` stores **distilled knowledge** — user preferences, project context, important decisions.
+
+```typescript
+import { MemoryStore, Memory } from '@a3s-lab/code';
+
+class VectorMemoryStore implements MemoryStore {
+  async save(memory: Memory): Promise<void> {
+    // Store in a vector database (e.g. Pinecone, Qdrant)
+    await vectorDB.upsert({
+      id: memory.id,
+      vector: await embed(memory.content),
+      metadata: { timestamp: memory.timestamp, tags: memory.tags },
+    });
+  }
+
+  async search(query: string, limit: number): Promise<Memory[]> {
+    // Semantic search for relevant memories
+    const results = await vectorDB.query(await embed(query), limit);
+    return results.map((r) => ({
+      id: r.id,
+      content: r.metadata.content,
+      timestamp: r.metadata.timestamp,
+      tags: r.metadata.tags,
+    }));
+  }
+}
+
+const session = agent.session('.', {
+  memoryStore: new VectorMemoryStore(),
+});
+
+// Agent automatically retrieves relevant context from memory
+await session.stream('Continue the refactoring task from last time');
+// → Agent retrieves: "Last refactoring goal: migrate auth module to JWT"
+```
+
+### 3.2 Context Retrieval (RAG): Dynamically Inject External Knowledge
+
+`ContextProvider` automatically retrieves relevant documents before each turn and injects them into the LLM context. This is the standard RAG (Retrieval-Augmented Generation) implementation.
+
+```typescript
+import { ContextProvider, ContextChunk } from '@a3s-lab/code';
+
+class CodebaseContextProvider implements ContextProvider {
+  async retrieve(query: string, maxChunks: number): Promise<ContextChunk[]> {
+    // Retrieve relevant code snippets from the codebase index
+    const results = await codeSearch.search(query, maxChunks);
+    return results.map((r) => ({
+      content: r.code,
+      source: r.filePath,
+      score: r.relevance,
+    }));
+  }
+}
+
+const session = agent.session('.', {
+  contextProvider: new CodebaseContextProvider(),
+});
+
+// User question triggers automatic retrieval
+await session.stream('Where is the JWT validation logic in the auth module?');
+// → ContextProvider retrieves relevant code from src/auth/jwt.ts
+// → LLM answers based on the retrieved code
+```
+
+### 3.3 Hooks System: Event-Driven Automation
+
+Hooks execute automatically before and after tool calls, for logging, auditing, and automated workflows.
+
+```typescript
+import { HookHandler, ToolCallEvent, ToolResultEvent } from '@a3s-lab/code';
+
+class AuditHookHandler implements HookHandler {
+  async onToolCall(event: ToolCallEvent): Promise<void> {
+    // Before tool call: write audit log
+    await auditLog.write({
+      timestamp: Date.now(),
+      tool: event.tool,
+      args: event.args,
+      sessionId: event.sessionId,
+    });
+
+    // High-risk operations: send notification
+    if (['bash', 'write', 'delete'].includes(event.tool)) {
+      await slack.notify(`⚠️ Agent is executing ${event.tool}`);
+    }
+  }
+
+  async onToolResult(event: ToolResultEvent): Promise<void> {
+    // After tool call: record result
+    await auditLog.write({
+      timestamp: Date.now(),
+      tool: event.tool,
+      success: !event.result.isError,
+      duration: event.duration,
+    });
+  }
+}
+
+const session = agent.session('.', {
+  hookHandler: new AuditHookHandler(),
+});
+```
+
+### 3.4 Security Layer: Input Taint Analysis and Output Sanitization
+
+`SecurityProvider` detects malicious content in inputs before tool execution, and sanitizes sensitive information from outputs.
+
+```typescript
+import { SecurityProvider, TaintAnalysis, SanitizeResult } from '@a3s-lab/code';
+
+class ProductionSecurityProvider implements SecurityProvider {
+  async analyzeTaint(input: string): Promise<TaintAnalysis> {
+    // Detect command injection, path traversal, SQL injection
+    const threats = [];
+    if (/;\s*(rm|curl|wget|nc)\s/.test(input)) threats.push('command_injection');
+    if (/\.\.[\/\\]/.test(input)) threats.push('path_traversal');
+    if (/(union|select|drop|insert)\s+/i.test(input)) threats.push('sql_injection');
+
+    return {
+      isTainted: threats.length > 0,
+      threats,
+      riskLevel: threats.length > 0 ? 'high' : 'low',
+    };
+  }
+
+  async sanitizeOutput(output: string): Promise<SanitizeResult> {
+    // Remove sensitive data: API keys, passwords, tokens
+    let sanitized = output;
+    sanitized = sanitized.replace(/sk-[a-zA-Z0-9]{48}/g, '[REDACTED_API_KEY]');
+    sanitized = sanitized.replace(/password["\s:=]+[^\s"]+/gi, 'password=[REDACTED]');
+    sanitized = sanitized.replace(/Bearer\s+[^\s]+/g, 'Bearer [REDACTED]');
+
+    return { sanitized, redacted: sanitized !== output };
+  }
+}
+
+const session = agent.session('.', {
+  securityProvider: new ProductionSecurityProvider(),
+});
+```
+
+### 3.5 Planner: Automatic Decomposition of Complex Tasks
+
+`Planner` breaks complex tasks into a sequence of sub-tasks that the Agent executes step by step.
+
+```typescript
+import { Planner, Task, Plan } from '@a3s-lab/code';
+
+class HierarchicalPlanner implements Planner {
+  async plan(goal: string, context: string): Promise<Plan> {
+    // Use LLM to generate task decomposition
+    const response = await llm.complete({
+      prompt: `Goal: ${goal}\nContext: ${context}\n\nDecompose into an executable sequence of sub-tasks.`,
+    });
+
+    const tasks: Task[] = parseTasksFromResponse(response);
+    return { goal, tasks, estimatedSteps: tasks.length };
+  }
+}
+
+const session = agent.session('.', {
+  planner: new HierarchicalPlanner(),
+});
+
+// Complex task is automatically decomposed
+await session.stream('Refactor the entire auth module to use JWT with refresh tokens, update all tests');
+// → Planner decomposes into:
+//   1. Read existing auth code
+//   2. Design JWT + refresh token approach
+//   3. Implement new auth logic
+//   4. Update tests
+//   5. Verify all tests pass
+```
+
+### 3.6 Context Compaction: Automatic Token Budget Management
+
+When conversation history exceeds a threshold, `ContextCompactor` automatically compresses old turns while preserving key information.
+
+```hcl
+# agent.hcl
+context_compaction {
+  enabled           = true
+  trigger_threshold = 100000  # trigger at 100k tokens
+  target_size       = 50000   # compress to 50k tokens
+  strategy          = "semantic"  # semantic compression (preserve key info)
+}
+```
+
+Compaction strategies:
+- **Truncate**: drop the oldest turns directly
+- **Summarize**: use LLM to summarize old turns, keep the summary
+- **Semantic**: retain the most relevant turns based on semantic similarity
+
+### 3.7 Multi-Language SDKs: Rust / Node.js / Python
+
+A3S Code is a Rust core library with Node.js and Python native bindings via FFI.
+
+**Rust API** (zero overhead, maximum performance):
+
+```rust
+use a3s_code::{Agent, Event};
+use futures::StreamExt;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Agent::new("agent.hcl").await?;
+    let session = agent.session("/project", None)?;
+
+    let mut stream = session.stream("Refactor the auth module").await?;
+    while let Some(event) = stream.next().await {
+        match event {
+            Event::TextDelta(text) => print!("{}", text),
+            Event::ToolUse(tool) => println!("\n[{}]", tool.name),
+            Event::End => println!(),
+            _ => {}
+        }
+    }
+    Ok(())
+}
+```
+
+**Python SDK** (async-first, type hints):
+
+```python
+from a3s_code import Agent, SessionLane
+import asyncio
+
+async def main():
+    agent = await Agent.create("agent.hcl")
+    session = agent.session(".", tools=finance_tools)
+
+    # Parallel research
+    tasks = [
+        {"prompt": f"Analyze {sym}", "lane": SessionLane.GENERATE}
+        for sym in ["AAPL", "MSFT", "NVDA"]
+    ]
+    results = await session.submit_batch(tasks)
+    print(results)
+
+asyncio.run(main())
+```
+
+### 3.8 Feature Summary
+
+| Feature | Purpose | Extension Point |
+|---------|---------|----------------|
+| **Memory system** | Long-term memory across sessions | `MemoryStore` |
+| **Context retrieval** | RAG dynamic knowledge injection | `ContextProvider` |
+| **Hooks** | Event-driven automation | `HookHandler` |
+| **Security layer** | Input taint analysis, output sanitization | `SecurityProvider` |
+| **Planner** | Complex task decomposition | `Planner` |
+| **Context compaction** | Automatic token budget management | Config-driven |
+| **Multi-language SDKs** | Rust / Node.js / Python | Native bindings |
+
+All of these features are **optional extensions** — the system ships with default implementations and works out of the box. To customize, implement the corresponding trait. Core code stays unchanged.
+
+---
+
+## IV. Three Positions, Three Design Philosophies
 
 Three tools deserve serious comparison: Claude Code, OpenCode, and A3S Code. All carry the "coding Agent" label, but their underlying design philosophies are completely different.
 
@@ -154,7 +419,7 @@ This isn't a comparison of feature quality — it's a comparison of design goals
 
 ---
 
-## IV. Building a Claude Code-Like Product with the TypeScript SDK
+## V. Building a Claude Code-Like Product with the TypeScript SDK
 
 With the architectural principles understood, let's put them into practice. We'll use the A3S Code TypeScript SDK to build a terminal coding assistant with Claude Code's core capabilities.
 
@@ -513,7 +778,7 @@ This product already has Claude Code's core capabilities: multi-turn conversatio
 
 ---
 
-## V. Building an Agentic Finance Application
+## VI. Building an Agentic Finance Application
 
 The coding agent isn't just a tool for developers — it's the infrastructure for building Agentic applications in any domain. The difference between a real Agentic application and an ordinary chatbot is this: it can autonomously plan, execute in parallel, and coordinate multiple specialized Agents — rather than passively responding to one instruction at a time.
 
@@ -782,7 +1047,7 @@ The fundamental difference between this system and an ordinary chatbot: when the
 
 ---
 
-## VI. From Single Machine to Multi-Machine: The Value of Lane Queues
+## VII. From Single Machine to Multi-Machine: The Value of Lane Queues
 
 The above builds a single-machine version. When your product needs to handle more complex scenarios — serving multiple users simultaneously, or distributing compute-intensive tasks to remote machines — the lane queue provides the solution.
 
@@ -835,7 +1100,7 @@ This pattern lets you transparently distribute compute-intensive tasks to any nu
 
 ---
 
-## VII. Conclusion
+## VIII. Conclusion
 
 The core of Agentic AI is the perceive–decide–act loop, and coding tasks are the highest-density test of this loop.
 

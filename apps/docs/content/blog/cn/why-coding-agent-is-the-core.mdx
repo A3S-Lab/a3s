@@ -93,7 +93,275 @@ const session = agent.session('.', {
 
 ---
 
-## 三、三种定位，三种设计哲学
+## 三、A3S Code 的完整能力边界
+
+极简核心 + 工具自举是架构原则，但 A3S Code 的实际能力边界远不止于此。下面系统介绍所有核心特性，包括记忆系统、上下文检索、Hooks、安全层、规划器等。
+
+### 3.1 记忆系统：跨会话的长期记忆
+
+`MemoryStore` 让 Agent 在多次会话之间保留关键信息。不同于 `SessionStore`（保存对话历史），`MemoryStore` 存储的是**提炼后的知识**——用户偏好、项目上下文、重要决策。
+
+```typescript
+import { MemoryStore, Memory } from '@a3s-lab/code';
+
+class VectorMemoryStore implements MemoryStore {
+  async save(memory: Memory): Promise<void> {
+    // 存储到向量数据库（如 Pinecone、Qdrant）
+    await vectorDB.upsert({
+      id: memory.id,
+      vector: await embed(memory.content),
+      metadata: { timestamp: memory.timestamp, tags: memory.tags },
+    });
+  }
+
+  async search(query: string, limit: number): Promise<Memory[]> {
+    // 语义搜索相关记忆
+    const results = await vectorDB.query(await embed(query), limit);
+    return results.map((r) => ({
+      id: r.id,
+      content: r.metadata.content,
+      timestamp: r.metadata.timestamp,
+      tags: r.metadata.tags,
+    }));
+  }
+}
+
+const session = agent.session('.', {
+  memoryStore: new VectorMemoryStore(),
+});
+
+// Agent 自动从记忆中检索相关上下文
+await session.stream('继续上次的重构任务');
+// → Agent 检索到「上次重构目标：auth 模块改用 JWT」
+```
+
+### 3.2 上下文检索（RAG）：动态注入外部知识
+
+`ContextProvider` 在每个轮次前自动检索相关文档，注入到 LLM 上下文。这是 RAG（Retrieval-Augmented Generation）的标准实现。
+
+```typescript
+import { ContextProvider, ContextChunk } from '@a3s-lab/code';
+
+class CodebaseContextProvider implements ContextProvider {
+  async retrieve(query: string, maxChunks: number): Promise<ContextChunk[]> {
+    // 从代码库索引中检索相关代码片段
+    const results = await codeSearch.search(query, maxChunks);
+    return results.map((r) => ({
+      content: r.code,
+      source: r.filePath,
+      score: r.relevance,
+    }));
+  }
+}
+
+const session = agent.session('.', {
+  contextProvider: new CodebaseContextProvider(),
+});
+
+// 用户问题触发自动检索
+await session.stream('auth 模块的 JWT 验证逻辑在哪里？');
+// → ContextProvider 检索到 src/auth/jwt.ts 的相关代码
+// → LLM 基于检索到的代码回答
+```
+
+### 3.3 Hooks 系统：事件驱动的自动化
+
+Hooks 在工具调用前后自动执行，用于日志记录、审计、自动化流程。
+
+```typescript
+import { HookHandler, ToolCallEvent, ToolResultEvent } from '@a3s-lab/code';
+
+class AuditHookHandler implements HookHandler {
+  async onToolCall(event: ToolCallEvent): Promise<void> {
+    // 工具调用前：记录审计日志
+    await auditLog.write({
+      timestamp: Date.now(),
+      tool: event.tool,
+      args: event.args,
+      sessionId: event.sessionId,
+    });
+
+    // 高风险操作：发送通知
+    if (['bash', 'write', 'delete'].includes(event.tool)) {
+      await slack.notify(`⚠️ Agent 正在执行 ${event.tool}`);
+    }
+  }
+
+  async onToolResult(event: ToolResultEvent): Promise<void> {
+    // 工具执行后：记录结果
+    await auditLog.write({
+      timestamp: Date.now(),
+      tool: event.tool,
+      success: !event.result.isError,
+      duration: event.duration,
+    });
+  }
+}
+
+const session = agent.session('.', {
+  hookHandler: new AuditHookHandler(),
+});
+```
+
+### 3.4 安全层：输入污点分析和输出净化
+
+`SecurityProvider` 在工具执行前检测输入是否包含恶意内容，在输出前净化敏感信息。
+
+```typescript
+import { SecurityProvider, TaintAnalysis, SanitizeResult } from '@a3s-lab/code';
+
+class ProductionSecurityProvider implements SecurityProvider {
+  async analyzeTaint(input: string): Promise<TaintAnalysis> {
+    // 检测命令注入、路径遍历、SQL 注入
+    const threats = [];
+    if (/;\s*(rm|curl|wget|nc)\s/.test(input)) threats.push('command_injection');
+    if (/\.\.[\/\\]/.test(input)) threats.push('path_traversal');
+    if (/(union|select|drop|insert)\s+/i.test(input)) threats.push('sql_injection');
+
+    return {
+      isTainted: threats.length > 0,
+      threats,
+      riskLevel: threats.length > 0 ? 'high' : 'low',
+    };
+  }
+
+  async sanitizeOutput(output: string): Promise<SanitizeResult> {
+    // 移除敏感信息：API key、密码、token
+    let sanitized = output;
+    sanitized = sanitized.replace(/sk-[a-zA-Z0-9]{48}/g, '[REDACTED_API_KEY]');
+    sanitized = sanitized.replace(/password["\s:=]+[^\s"]+/gi, 'password=[REDACTED]');
+    sanitized = sanitized.replace(/Bearer\s+[^\s]+/g, 'Bearer [REDACTED]');
+
+    return { sanitized, redacted: sanitized !== output };
+  }
+}
+
+const session = agent.session('.', {
+  securityProvider: new ProductionSecurityProvider(),
+});
+```
+
+### 3.5 规划器：复杂任务的自动分解
+
+`Planner` 把复杂任务分解为子任务序列，Agent 按计划逐步执行。
+
+```typescript
+import { Planner, Task, Plan } from '@a3s-lab/code';
+
+class HierarchicalPlanner implements Planner {
+  async plan(goal: string, context: string): Promise<Plan> {
+    // 调用 LLM 生成任务分解
+    const response = await llm.complete({
+      prompt: `目标：${goal}\n上下文：${context}\n\n请分解为可执行的子任务序列。`,
+    });
+
+    const tasks: Task[] = parseTasksFromResponse(response);
+    return {
+      goal,
+      tasks,
+      estimatedSteps: tasks.length,
+    };
+  }
+}
+
+const session = agent.session('.', {
+  planner: new HierarchicalPlanner(),
+});
+
+// 复杂任务自动分解
+await session.stream('重构整个 auth 模块，改用 JWT，添加 refresh token 机制，更新所有测试');
+// → Planner 分解为：
+//   1. 阅读现有 auth 代码
+//   2. 设计 JWT + refresh token 方案
+//   3. 实现新的 auth 逻辑
+//   4. 更新测试
+//   5. 验证所有测试通过
+```
+
+### 3.6 上下文压缩：自动管理 Token 预算
+
+当对话历史超过阈值时，`ContextCompactor` 自动压缩旧轮次，保留关键信息。
+
+```typescript
+// 在 agent.hcl 中配置
+context_compaction {
+  enabled           = true
+  trigger_threshold = 100000  # 超过 10 万 token 触发压缩
+  target_size       = 50000   # 压缩到 5 万 token
+  strategy          = "semantic"  # 语义压缩（保留关键信息）
+}
+```
+
+压缩策略：
+- **Truncate**：直接删除最早的轮次
+- **Summarize**：用 LLM 总结旧轮次，保留摘要
+- **Semantic**：基于语义相似度保留最相关的轮次
+
+### 3.7 多语言 SDK：Rust / Node.js / Python
+
+A3S Code 是 Rust 核心库，通过 FFI 提供 Node.js 和 Python 原生绑定。
+
+**Rust API**（零开销，最高性能）：
+
+```rust
+use a3s_code::{Agent, AgentSession};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let agent = Agent::new("agent.hcl").await?;
+    let session = agent.session("/project", None)?;
+
+    let mut stream = session.stream("重构 auth 模块").await?;
+    while let Some(event) = stream.next().await {
+        match event {
+            Event::TextDelta(text) => print!("{}", text),
+            Event::ToolUse(tool) => println!("\n[{}]", tool.name),
+            Event::End => println!(),
+            _ => {}
+        }
+    }
+    Ok(())
+}
+```
+
+**Python SDK**（异步优先，类型提示）：
+
+```python
+from a3s_code import Agent, SessionLane
+import asyncio
+
+async def main():
+    agent = await Agent.create("agent.hcl")
+    session = agent.session(".", tools=finance_tools)
+
+    # 并行研究
+    tasks = [
+        {"prompt": f"分析 {sym}", "lane": SessionLane.GENERATE}
+        for sym in ["AAPL", "MSFT", "NVDA"]
+    ]
+    results = await session.submit_batch(tasks)
+    print(results)
+
+asyncio.run(main())
+```
+
+### 3.8 特性总结
+
+| 特性 | 用途 | 扩展点 |
+|------|------|--------|
+| **记忆系统** | 跨会话长期记忆 | `MemoryStore` |
+| **上下文检索** | RAG 动态注入知识 | `ContextProvider` |
+| **Hooks** | 事件驱动自动化 | `HookHandler` |
+| **安全层** | 输入污点分析、输出净化 | `SecurityProvider` |
+| **规划器** | 复杂任务分解 | `Planner` |
+| **上下文压缩** | 自动管理 token 预算 | 配置驱动 |
+| **多语言 SDK** | Rust/Node.js/Python | 原生绑定 |
+
+这些特性全部是**可选扩展**——系统有默认实现，开箱即用；如果需要定制，实现对应的 trait 即可。核心代码保持不变。
+
+---
+
+## 四、三种定位，三种设计哲学
 
 市场上有三个值得认真对比的工具：Claude Code、OpenCode、A3S Code。它们都在"编码 Agent"这个标签下，但背后的设计哲学完全不同。
 
@@ -154,7 +422,7 @@ A3S Code 解决的是一个完全不同的问题：**当你需要把编码 Agent
 
 ---
 
-## 四、用 TypeScript SDK 构建类 Claude Code 的产品
+## 五、用 TypeScript SDK 构建类 Claude Code 的产品
 
 理解了架构原则，现在来实践。我们用 A3S Code 的 TypeScript SDK 构建一个具备 Claude Code 核心能力的终端编码助手。
 
@@ -513,7 +781,7 @@ main().catch(console.error);
 
 ---
 
-## 五、用编码智能体构建 Agentic 金融应用
+## 六、用编码智能体构建 Agentic 金融应用
 
 编码智能体不只是为开发者服务的工具——它是构建任何领域 Agentic 应用的基础设施。真正的 Agentic 应用和普通聊天机器人的区别在于：它能自主规划、并行执行、协调多个专业 Agent 协作，而不只是被动响应单条指令。
 
@@ -784,7 +1052,7 @@ main().catch(console.error);
 
 ---
 
-## 六、从单机到多机：Lane 队列的价值
+## 七、从单机到多机：Lane 队列的价值
 
 上面构建的是单机版本。当你的产品需要处理更复杂的场景时——比如同时服务多个用户、或者把计算密集型任务分发到远程机器——Lane 队列提供了解决方案。
 
@@ -837,7 +1105,7 @@ for await (const event of events) {
 
 ---
 
-## 七、结论
+## 八、结论
 
 Agentic AI 的核心是感知—决策—行动的闭环，编码任务是这个闭环的最高密度测试场。
 
