@@ -112,6 +112,8 @@ const session = agent.session('.', {
 
 Works out of the box. Any part is replaceable. Core stays stable.
 
+**Another implication of tool bootstrapping: no pre-processing of knowledge required.** Traditional RAG thinking is "pre-vectorize or graph-index knowledge, then retrieve and inject." But tool bootstrapping reveals another path: the Agent doesn't need to know everything upfront — it can read what it needs through tools when it needs it. A codebase doesn't need to be vectorized in advance — the Agent reads it directly with `read_file` and `search_code` tools on demand. This isn't just saving the engineering cost of pre-processing. More importantly: **tool calls are the most precise form of context retrieval**, because the Agent itself decides what to read, rather than a retrieval system guessing what's relevant.
+
 ---
 
 ## II. A3S Code's Full Capability Boundary
@@ -376,6 +378,45 @@ asyncio.run(main())
 | **Multi-language SDKs** | Rust / Node.js / Python | Native bindings |
 
 All of these features are **optional extensions** — the system ships with default implementations and works out of the box. To customize, implement the corresponding trait. Core code stays unchanged.
+
+### 2.9 Context Engineering: Progressive Disclosure
+
+The core question of context engineering is: how do you give the Agent exactly enough information at each turn within a limited token budget?
+
+The answer is **progressive disclosure**: the Agent doesn't stuff all knowledge into context at once — it acquires information on demand, in layers.
+
+Take understanding an unfamiliar codebase. The Agent's natural behavior is:
+
+1. Read directory structure → understand global layout (low cost, high coverage)
+2. Read top-level comments of key files → understand module responsibilities (medium cost)
+3. Locate specific functions → read implementation details (high cost, precise)
+
+Each step discloses only what's needed, keeping context lean. This is more accurate than "vectorize the whole codebase and retrieve" because the Agent itself knows what it needs.
+
+**How A3S Code implements this:**
+
+```typescript
+// ContextProvider: automatically retrieves relevant context before each turn
+class ProgressiveContextProvider implements ContextProvider {
+  async retrieve(query: string, maxChunks: number): Promise<ContextChunk[]> {
+    // Layer 1: directory structure (always injected)
+    const structure = await getProjectStructure();
+    // Layer 2: semantically relevant file summaries
+    const summaries = await searchFileSummaries(query, maxChunks - 1);
+    // Layer 3: precise code snippets (on demand)
+    const snippets = await searchCodeSnippets(query, 2);
+    return [structure, ...summaries, ...snippets];
+  }
+}
+
+const session = agent.session('.', {
+  contextProvider: new ProgressiveContextProvider(),
+  // MemoryStore retains key findings across sessions, avoiding re-exploration
+  memoryStore: new FileMemoryStore('.a3s/memory'),
+});
+```
+
+`ContextProvider` controls what gets injected each turn, `MemoryStore` retains key knowledge across sessions, and `ContextCompactor` automatically compresses old turns when the token budget is exceeded — together these three form A3S Code's context engineering system.
 
 ---
 

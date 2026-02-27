@@ -112,6 +112,8 @@ const session = agent.session('.', {
 
 系统开箱即用，任何部分都可以替换，核心保持稳定。
 
+**工具自举的另一层含义：不需要预处理知识。** 传统 RAG 的思路是"预先把知识向量化或图谱化，再检索注入"。但工具自举揭示了另一条路：Agent 不需要预先知道所有知识，它可以在需要的时候通过工具去读取。代码库不需要提前向量化——Agent 直接用 `read_file`、`search_code` 工具按需读取。这不只是省去了预处理的工程成本，更重要的是：**工具调用本身就是最精准的上下文检索**，因为是 Agent 自己决定读什么，而不是检索系统猜测什么相关。
+
 ---
 
 ## 二、A3S Code 的完整能力边界
@@ -379,6 +381,45 @@ asyncio.run(main())
 | **多语言 SDK** | Rust/Node.js/Python | 原生绑定 |
 
 这些特性全部是**可选扩展**——系统有默认实现，开箱即用；如果需要定制，实现对应的 trait 即可。核心代码保持不变。
+
+### 2.9 上下文工程：渐进式披露
+
+上下文工程（Context Engineering）的核心问题是：如何在有限的 token 预算内，让 Agent 在每个轮次都拥有恰好足够的信息？
+
+答案是**渐进式披露（Progressive Disclosure）**：Agent 不是一次性把所有知识塞进上下文，而是按需、分层地获取信息。
+
+以理解一个陌生代码库为例，Agent 的自然行为是：
+
+1. 读目录结构 → 了解全局布局（低成本，高覆盖）
+2. 读关键文件的顶部注释 → 了解模块职责（中等成本）
+3. 定位具体函数 → 读取实现细节（高成本，精准）
+
+每一步都是按需披露，上下文始终保持精简。这比"把整个代码库向量化后检索"更准确，因为 Agent 自己知道它需要什么。
+
+**A3S Code 的实现：**
+
+```typescript
+// ContextProvider：每个轮次前自动检索相关上下文
+class ProgressiveContextProvider implements ContextProvider {
+  async retrieve(query: string, maxChunks: number): Promise<ContextChunk[]> {
+    // 第一层：目录结构（总是注入）
+    const structure = await getProjectStructure();
+    // 第二层：语义相关的文件摘要
+    const summaries = await searchFileSummaries(query, maxChunks - 1);
+    // 第三层：精确匹配的代码片段（按需）
+    const snippets = await searchCodeSnippets(query, 2);
+    return [structure, ...summaries, ...snippets];
+  }
+}
+
+const session = agent.session('.', {
+  contextProvider: new ProgressiveContextProvider(),
+  // MemoryStore 保留跨会话的关键发现，避免重复探索
+  memoryStore: new FileMemoryStore('.a3s/memory'),
+});
+```
+
+`ContextProvider` 控制每轮注入什么，`MemoryStore` 保留跨会话的关键知识，`ContextCompactor` 在 token 超限时自动压缩旧轮次——三者共同构成 A3S Code 的上下文工程体系。
 
 ---
 
