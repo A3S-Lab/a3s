@@ -71,7 +71,9 @@ export function SnapshotsSection() {
 					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
 					onClick={() => boxModel.fetchSnapshots()}
 				>
-					<RotateCw className={`size-3 ${snap.loading.snapshots ? "animate-spin" : ""}`} />
+					<RotateCw
+						className={`size-3 ${snap.loading.snapshots ? "animate-spin" : ""}`}
+					/>
 					刷新
 				</button>
 				<span className="ml-auto text-xs text-muted-foreground">
@@ -107,7 +109,9 @@ export function SnapshotsSection() {
 										</div>
 									)}
 									<div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-										<span className="font-mono">{formatBytes(snapshot.size)}</span>
+										<span className="font-mono">
+											{formatBytes(snapshot.size)}
+										</span>
 										<span>{timeAgo(snapshot.created_at)}</span>
 									</div>
 								</div>

@@ -5,30 +5,36 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import agentModel from "@/models/agent.model";
-import settingsModel from "@/models/settings.model";
 import { sendToSession } from "@/hooks/use-agent-ws";
 import { agentApi } from "@/lib/agent-api";
+import { cn } from "@/lib/utils";
+import agentModel from "@/models/agent.model";
+import settingsModel, {
+	getSessionRoutingModel,
+	resolveApiKey,
+	resolveBaseUrl,
+} from "@/models/settings.model";
 import {
 	Ban,
 	ChevronDown,
 	Circle,
-	CornerDownLeft,
 	Cpu,
 	Gauge,
 	Loader2,
-	MessageSquare,
+	Shield,
 	Sparkles,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useSnapshot } from "valtio";
 
-export function SessionStatusBar({ sessionId }: { sessionId: string }) {
+export function SessionStatusBar({
+	sessionId,
+	readonlyCwd,
+}: { sessionId: string; readonlyCwd?: boolean }) {
 	const settingsSnap = useSnapshot(settingsModel.state);
-	const { sessionStatus, sessions, connectionStatus } = useSnapshot(
-		agentModel.state,
-	);
+	const { localPrivacyRouting, sessionStatus, sessions, connectionStatus } =
+		useSnapshot(agentModel.state);
 	const session = sessions[sessionId];
 	const pct = Math.round(session?.context_used_percent ?? 0);
 	const status = sessionStatus[sessionId] || "idle";
@@ -36,6 +42,8 @@ export function SessionStatusBar({ sessionId }: { sessionId: string }) {
 	const model = session?.model || settingsSnap.defaultModel || "";
 	const [backends, setBackends] = useState<{ id: string; name: string }[]>([]);
 	const [modelOpen, setModelOpen] = useState(false);
+	const [routingSwitching, setRoutingSwitching] = useState(false);
+	const forceLocal = !!localPrivacyRouting[sessionId];
 
 	const modelShort = useMemo(() => {
 		const m = model;
@@ -58,6 +66,36 @@ export function SessionStatusBar({ sessionId }: { sessionId: string }) {
 	const handleSelectModel = (newModel: string) => {
 		sendToSession(sessionId, { type: "set_model", model: newModel });
 		setModelOpen(false);
+	};
+
+	const handleToggleLocalRouting = async () => {
+		const nextForceLocal = !forceLocal;
+		const target = getSessionRoutingModel(nextForceLocal);
+		if (!target.providerName || !target.modelId) {
+			toast.error("没有可用模型可切换");
+			return;
+		}
+
+		const apiKey = resolveApiKey(target.providerName, target.modelId);
+		const baseUrl = resolveBaseUrl(target.providerName, target.modelId);
+		const fullModel = `${target.providerName}/${target.modelId}`;
+
+		setRoutingSwitching(true);
+		try {
+			await agentApi.configureSession(sessionId, {
+				model: fullModel,
+				api_key: apiKey || undefined,
+				base_url: baseUrl || undefined,
+			});
+			agentModel.setLocalPrivacyRouting(sessionId, nextForceLocal);
+			toast.success(
+				nextForceLocal ? "已启用本地隐私模型" : "已恢复常规模型路由",
+			);
+		} catch (e) {
+			toast.error(`切换失败：${e instanceof Error ? e.message : "后端不可用"}`);
+		} finally {
+			setRoutingSwitching(false);
+		}
 	};
 
 	return (
@@ -104,24 +142,53 @@ export function SessionStatusBar({ sessionId }: { sessionId: string }) {
 			<div className="w-px h-3 bg-border" />
 
 			{/* Permission mode */}
-			<div className="flex items-center gap-1">
-				<Sparkles className="size-3 text-primary" />
-				<Select
-					value={session?.permission_mode || "default"}
-					onValueChange={(mode) =>
-						sendToSession(sessionId, { type: "set_permission_mode", mode })
-					}
-				>
-					<SelectTrigger className="h-auto border-0 bg-transparent p-0 text-[11px] text-muted-foreground shadow-none focus:ring-0 gap-0.5 [&>svg]:size-2.5 [&>svg]:opacity-50">
-						<SelectValue />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="default">Agent</SelectItem>
-						<SelectItem value="plan">计划模式</SelectItem>
-						<SelectItem value="bypassPermissions">跳过权限</SelectItem>
-					</SelectContent>
-				</Select>
-			</div>
+			{!readonlyCwd && (
+				<div className="flex items-center gap-1">
+					<Sparkles className="size-3 text-primary" />
+					<Select
+						value={session?.permission_mode || "default"}
+						onValueChange={(mode) =>
+							sendToSession(sessionId, { type: "set_permission_mode", mode })
+						}
+					>
+						<SelectTrigger className="h-auto border-0 bg-transparent p-0 text-[11px] text-muted-foreground shadow-none focus:ring-0 gap-0.5 [&>svg]:size-2.5 [&>svg]:opacity-50">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="default">Agent</SelectItem>
+							<SelectItem value="plan">计划模式</SelectItem>
+							<SelectItem value="bypassPermissions">跳过权限</SelectItem>
+						</SelectContent>
+					</Select>
+				</div>
+			)}
+
+			<div className="w-px h-3 bg-border" />
+
+			{/* Privacy routing */}
+			<button
+				type="button"
+				className={cn(
+					"flex items-center gap-1 rounded-md border px-2 py-0.5 transition-colors",
+					forceLocal
+						? "border-primary/40 text-primary"
+						: "border-border text-muted-foreground hover:text-foreground",
+				)}
+				title={
+					forceLocal
+						? "当前会话强制使用本地隐私模型"
+						: "当前会话使用常规模型路由"
+				}
+				onClick={handleToggleLocalRouting}
+				disabled={routingSwitching}
+			>
+				{routingSwitching ? (
+					<Loader2 className="size-3 animate-spin" />
+				) : (
+					<Shield className="size-3" />
+				)}
+				<span>{forceLocal ? "本地隐私 ON" : "本地隐私 OFF"}</span>
+			</button>
 
 			<div className="w-px h-3 bg-border" />
 
@@ -175,38 +242,6 @@ export function SessionStatusBar({ sessionId }: { sessionId: string }) {
 						<span className="text-muted-foreground/70">$</span>
 						<span>{session!.total_cost_usd.toFixed(4)}</span>
 					</div>
-					{(session?.input_tokens ?? 0) > 0 && (
-						<span
-							className="text-muted-foreground/60 cursor-default"
-							title={[
-								`输入: ${(session!.input_tokens ?? 0).toLocaleString()} tokens`,
-								`输出: ${(session!.output_tokens ?? 0).toLocaleString()} tokens`,
-								session?.cache_read_tokens
-									? `缓存读: ${session.cache_read_tokens.toLocaleString()} tokens`
-									: "",
-								session?.cache_write_tokens
-									? `缓存写: ${session.cache_write_tokens.toLocaleString()} tokens`
-									: "",
-							]
-								.filter(Boolean)
-								.join(" · ")}
-						>
-							(
-							{(
-								(session!.input_tokens ?? 0) + (session!.output_tokens ?? 0)
-							).toLocaleString()}
-							t)
-						</span>
-					)}
-				</>
-			)}
-			{(session?.num_turns ?? 0) > 0 && (
-				<>
-					<div className="w-px h-3 bg-border" />
-					<div className="flex items-center gap-1" title="对话轮次">
-						<MessageSquare className="size-3" />
-						<span>{session!.num_turns}</span>
-					</div>
 				</>
 			)}
 
@@ -241,14 +276,6 @@ export function SessionStatusBar({ sessionId }: { sessionId: string }) {
 					</button>
 				</>
 			)}
-
-			{/* Shortcuts hint */}
-			<div className="ml-auto flex items-center gap-1 text-muted-foreground/60">
-				<CornerDownLeft className="size-3" />
-				<span>发送</span>
-				<span className="mx-0.5">/</span>
-				<span>Shift+Enter 换行</span>
-			</div>
 		</div>
 	);
 }

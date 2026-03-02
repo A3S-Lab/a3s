@@ -183,7 +183,13 @@ fn generate_gateway_config(
     _config: &SafeClawConfig,
     output: Option<&std::path::Path>,
 ) -> Result<()> {
-    let descriptor = safeclaw::runtime::build_service_descriptor();
+    let descriptor = serde_json::json!({
+        "name": "safeclaw",
+        "version": env!("CARGO_PKG_VERSION"),
+        "serviceType": "agent-backend",
+        "healthCheck": "/health",
+        "capabilities": ["multi-agent", "tee-support", "multi-channel", "streaming"],
+    });
     let json = serde_json::to_string_pretty(&descriptor)
         .context("Failed to serialize service descriptor")?;
 

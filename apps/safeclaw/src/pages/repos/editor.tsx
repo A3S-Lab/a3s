@@ -1,5 +1,10 @@
 import CodeEditor from "@/components/custom/code-editor";
-import { DockviewReact, type DockviewReadyEvent, type IDockviewPanelProps, type IDockviewPanelHeaderProps } from "@/components/custom/dockview";
+import {
+	DockviewReact,
+	type DockviewReadyEvent,
+	type IDockviewPanelProps,
+	type IDockviewPanelHeaderProps,
+} from "@/components/custom/dockview";
 import repoModel from "@/models/repo.model";
 import agentModel from "@/models/agent.model";
 import { agentApi } from "@/lib/agent-api";
@@ -110,14 +115,35 @@ async function deleteFsNode(path: string): Promise<void> {
 function detectLanguage(filename: string): string {
 	const ext = filename.split(".").pop()?.toLowerCase() ?? "";
 	const map: Record<string, string> = {
-		rs: "rust", ts: "typescript", tsx: "typescript",
-		js: "javascript", jsx: "javascript", py: "python",
-		go: "go", java: "java", cpp: "cpp", c: "c",
-		cs: "csharp", rb: "ruby", sh: "shell", bash: "shell",
-		zsh: "shell", json: "json", toml: "toml", yaml: "yaml",
-		yml: "yaml", md: "markdown", mdx: "markdown", html: "html",
-		css: "css", scss: "scss", sql: "sql", xml: "xml",
-		hcl: "hcl", tf: "hcl", dockerfile: "dockerfile",
+		rs: "rust",
+		ts: "typescript",
+		tsx: "typescript",
+		js: "javascript",
+		jsx: "javascript",
+		py: "python",
+		go: "go",
+		java: "java",
+		cpp: "cpp",
+		c: "c",
+		cs: "csharp",
+		rb: "ruby",
+		sh: "shell",
+		bash: "shell",
+		zsh: "shell",
+		json: "json",
+		toml: "toml",
+		yaml: "yaml",
+		yml: "yaml",
+		md: "markdown",
+		mdx: "markdown",
+		html: "html",
+		css: "css",
+		scss: "scss",
+		sql: "sql",
+		xml: "xml",
+		hcl: "hcl",
+		tf: "hcl",
+		dockerfile: "dockerfile",
 	};
 	return map[ext] ?? "plaintext";
 }
@@ -189,7 +215,10 @@ function TreeNode({
 
 	const commitRename = async () => {
 		const newName = renameValue.trim();
-		if (!newName || newName === node.name) { setRenaming(false); return; }
+		if (!newName || newName === node.name) {
+			setRenaming(false);
+			return;
+		}
 		const dir = node.path.substring(0, node.path.lastIndexOf("/"));
 		const newPath = `${dir}/${newName}`;
 		try {
@@ -220,7 +249,10 @@ function TreeNode({
 
 	const commitCreate = async () => {
 		const name = createValue.trim();
-		if (!name) { setCreating(null); return; }
+		if (!name) {
+			setCreating(null);
+			return;
+		}
 		const newPath = `${node.path}/${name}`;
 		try {
 			await createFsNode(newPath, creating === "folder");
@@ -274,7 +306,10 @@ function TreeNode({
 				<div
 					className="fixed inset-0 z-40"
 					onClick={closeMenu}
-					onContextMenu={(e) => { e.preventDefault(); closeMenu(); }}
+					onContextMenu={(e) => {
+						e.preventDefault();
+						closeMenu();
+					}}
 				/>
 			)}
 			{contextMenu && (
@@ -284,33 +319,55 @@ function TreeNode({
 				>
 					{node.is_dir && (
 						<>
-							<button type="button" className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent transition-colors" onClick={() => handleCreate("file")}>
+							<button
+								type="button"
+								className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent transition-colors"
+								onClick={() => handleCreate("file")}
+							>
 								<FilePlus className="size-3 shrink-0" /> 新建文件
 							</button>
-							<button type="button" className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent transition-colors" onClick={() => handleCreate("folder")}>
+							<button
+								type="button"
+								className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent transition-colors"
+								onClick={() => handleCreate("folder")}
+							>
 								<FolderPlus className="size-3 shrink-0" /> 新建文件夹
 							</button>
 							<div className="my-1 border-t" />
 						</>
 					)}
-					<button type="button" className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent transition-colors" onClick={handleRename}>
+					<button
+						type="button"
+						className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent transition-colors"
+						onClick={handleRename}
+					>
 						<Pencil className="size-3 shrink-0" /> 重命名
 					</button>
-					<button type="button" className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent text-destructive transition-colors" onClick={handleDelete}>
+					<button
+						type="button"
+						className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent text-destructive transition-colors"
+						onClick={handleDelete}
+					>
 						<Trash2 className="size-3 shrink-0" /> 删除
 					</button>
 				</div>
 			)}
 
 			{renaming ? (
-				<div className="flex items-center gap-1 px-2 py-[3px]" style={{ paddingLeft: `${8 + indent}px` }}>
+				<div
+					className="flex items-center gap-1 px-2 py-[3px]"
+					style={{ paddingLeft: `${8 + indent}px` }}
+				>
 					<input
 						autoFocus
 						type="text"
 						value={renameValue}
 						onChange={(e) => setRenameValue(e.target.value)}
 						onBlur={commitRename}
-						onKeyDown={(e) => { if (e.key === "Enter") commitRename(); else if (e.key === "Escape") setRenaming(false); }}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") commitRename();
+							else if (e.key === "Escape") setRenaming(false);
+						}}
 						className="flex-1 min-w-0 text-[12px] font-mono bg-white border border-blue-400 rounded px-1 outline-none"
 					/>
 				</div>
@@ -330,7 +387,13 @@ function TreeNode({
 					onClick={toggle}
 					onContextMenu={handleContextMenu}
 					onDragStart={handleDragStart}
-					onDragOver={(e) => { if (node.is_dir) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOver(true); } }}
+					onDragOver={(e) => {
+						if (node.is_dir) {
+							e.preventDefault();
+							e.dataTransfer.dropEffect = "move";
+							setDragOver(true);
+						}
+					}}
 					onDragLeave={() => setDragOver(false)}
 					onDrop={handleDrop}
 				>
@@ -353,7 +416,12 @@ function TreeNode({
 						<>
 							<span className="size-3 shrink-0" />
 							{getClassWithColor(node.name) ? (
-								<span className={cn("size-3.5 shrink-0 text-[14px] leading-none", getClassWithColor(node.name))} />
+								<span
+									className={cn(
+										"size-3.5 shrink-0 text-[14px] leading-none",
+										getClassWithColor(node.name),
+									)}
+								/>
 							) : (
 								<File className="size-3.5 shrink-0 text-slate-400" />
 							)}
@@ -366,18 +434,25 @@ function TreeNode({
 			{node.is_dir && open && (
 				<div>
 					{creating && (
-						<div className="flex items-center gap-1 px-2 py-[3px]" style={{ paddingLeft: `${8 + (depth + 1) * 12}px` }}>
-							{creating === "folder"
-								? <Folder className="size-3.5 shrink-0 text-amber-400" />
-								: <File className="size-3.5 shrink-0 text-slate-400" />
-							}
+						<div
+							className="flex items-center gap-1 px-2 py-[3px]"
+							style={{ paddingLeft: `${8 + (depth + 1) * 12}px` }}
+						>
+							{creating === "folder" ? (
+								<Folder className="size-3.5 shrink-0 text-amber-400" />
+							) : (
+								<File className="size-3.5 shrink-0 text-slate-400" />
+							)}
 							<input
 								autoFocus
 								type="text"
 								value={createValue}
 								onChange={(e) => setCreateValue(e.target.value)}
 								onBlur={commitCreate}
-								onKeyDown={(e) => { if (e.key === "Enter") commitCreate(); else if (e.key === "Escape") setCreating(null); }}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") commitCreate();
+									else if (e.key === "Escape") setCreating(null);
+								}}
 								className="flex-1 min-w-0 text-[12px] font-mono bg-white border border-blue-400 rounded px-1 outline-none"
 							/>
 						</div>
@@ -415,9 +490,14 @@ function FileTreePanel({
 	const [root, setRoot] = useState<FsNode | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
-	const [rootCreating, setRootCreating] = useState<"file" | "folder" | null>(null);
+	const [rootCreating, setRootCreating] = useState<"file" | "folder" | null>(
+		null,
+	);
 	const [rootCreateValue, setRootCreateValue] = useState("");
-	const [rootContextMenu, setRootContextMenu] = useState<{ x: number; y: number } | null>(null);
+	const [rootContextMenu, setRootContextMenu] = useState<{
+		x: number;
+		y: number;
+	} | null>(null);
 
 	useEffect(() => {
 		fetchTree(repoPath, 2)
@@ -441,14 +521,20 @@ function FileTreePanel({
 		return () => ws.close();
 	}, [repoPath]);
 
-	const handleExpandDir = useCallback(async (path: string): Promise<FsNode[]> => {
-		const node = await fetchTree(path, 1);
-		return node.children ?? [];
-	}, []);
+	const handleExpandDir = useCallback(
+		async (path: string): Promise<FsNode[]> => {
+			const node = await fetchTree(path, 1);
+			return node.children ?? [];
+		},
+		[],
+	);
 
 	const commitRootCreate = async () => {
 		const name = rootCreateValue.trim();
-		if (!name) { setRootCreating(null); return; }
+		if (!name) {
+			setRootCreating(null);
+			return;
+		}
 		try {
 			await createFsNode(`${repoPath}/${name}`, rootCreating === "folder");
 			setRefreshKey((k) => k + 1);
@@ -481,34 +567,64 @@ function FileTreePanel({
 			onContextMenu={handleRootContextMenu}
 		>
 			{rootContextMenu && (
-				<div className="fixed inset-0 z-40" onClick={() => setRootContextMenu(null)} onContextMenu={(e) => { e.preventDefault(); setRootContextMenu(null); }} />
+				<div
+					className="fixed inset-0 z-40"
+					onClick={() => setRootContextMenu(null)}
+					onContextMenu={(e) => {
+						e.preventDefault();
+						setRootContextMenu(null);
+					}}
+				/>
 			)}
 			{rootContextMenu && (
 				<div
 					className="fixed z-50 min-w-36 rounded-md border bg-popover text-popover-foreground shadow-md py-1 text-[12px]"
 					style={{ left: rootContextMenu.x, top: rootContextMenu.y }}
 				>
-					<button type="button" className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent transition-colors" onClick={() => { setRootCreating("file"); setRootCreateValue(""); setRootContextMenu(null); }}>
+					<button
+						type="button"
+						className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent transition-colors"
+						onClick={() => {
+							setRootCreating("file");
+							setRootCreateValue("");
+							setRootContextMenu(null);
+						}}
+					>
 						<FilePlus className="size-3 shrink-0" /> 新建文件
 					</button>
-					<button type="button" className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent transition-colors" onClick={() => { setRootCreating("folder"); setRootCreateValue(""); setRootContextMenu(null); }}>
+					<button
+						type="button"
+						className="flex items-center gap-2 w-full px-3 py-1.5 hover:bg-accent transition-colors"
+						onClick={() => {
+							setRootCreating("folder");
+							setRootCreateValue("");
+							setRootContextMenu(null);
+						}}
+					>
 						<FolderPlus className="size-3 shrink-0" /> 新建文件夹
 					</button>
 				</div>
 			)}
 			{rootCreating && (
-				<div className="flex items-center gap-1 px-2 py-[3px]" style={{ paddingLeft: "8px" }}>
-					{rootCreating === "folder"
-						? <Folder className="size-3.5 shrink-0 text-amber-400" />
-						: <File className="size-3.5 shrink-0 text-slate-400" />
-					}
+				<div
+					className="flex items-center gap-1 px-2 py-[3px]"
+					style={{ paddingLeft: "8px" }}
+				>
+					{rootCreating === "folder" ? (
+						<Folder className="size-3.5 shrink-0 text-amber-400" />
+					) : (
+						<File className="size-3.5 shrink-0 text-slate-400" />
+					)}
 					<input
 						autoFocus
 						type="text"
 						value={rootCreateValue}
 						onChange={(e) => setRootCreateValue(e.target.value)}
 						onBlur={commitRootCreate}
-						onKeyDown={(e) => { if (e.key === "Enter") commitRootCreate(); else if (e.key === "Escape") setRootCreating(null); }}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") commitRootCreate();
+							else if (e.key === "Escape") setRootCreating(null);
+						}}
 						className="flex-1 min-w-0 text-[12px] font-mono bg-white border border-blue-400 rounded px-1 outline-none"
 					/>
 				</div>
@@ -532,12 +648,24 @@ function FileTreePanel({
 // File type detection
 // ---------------------------------------------------------------------------
 
-const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp", "ico", "tiff"]);
+const IMAGE_EXTS = new Set([
+	"png",
+	"jpg",
+	"jpeg",
+	"gif",
+	"webp",
+	"svg",
+	"bmp",
+	"ico",
+	"tiff",
+]);
 const PDF_EXTS = new Set(["pdf"]);
 const VIDEO_EXTS = new Set(["mp4", "webm", "mov", "avi", "mkv"]);
 const AUDIO_EXTS = new Set(["mp3", "wav", "ogg", "flac", "aac", "m4a"]);
 
-function getFileType(filePath: string): "image" | "pdf" | "video" | "audio" | "text" {
+function getFileType(
+	filePath: string,
+): "image" | "pdf" | "video" | "audio" | "text" {
 	const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
 	if (IMAGE_EXTS.has(ext)) return "image";
 	if (PDF_EXTS.has(ext)) return "pdf";
@@ -579,7 +707,11 @@ function EditorPanel({ params }: IDockviewPanelProps<EditorPanelParams>) {
 	if (fileType === "pdf") {
 		return (
 			<div className="h-full w-full">
-				<iframe src={fileUrl} className="w-full h-full border-0" title={filePath.split("/").pop()} />
+				<iframe
+					src={fileUrl}
+					className="w-full h-full border-0"
+					title={filePath.split("/").pop()}
+				/>
 			</div>
 		);
 	}
@@ -605,10 +737,22 @@ function EditorPanel({ params }: IDockviewPanelProps<EditorPanelParams>) {
 	}
 
 	// Text / code editor (default)
-	return <TextEditorPanel filePath={filePath} onSave={onSave} onCursorChange={onCursorChange} onDirtyChange={onDirtyChange} />;
+	return (
+		<TextEditorPanel
+			filePath={filePath}
+			onSave={onSave}
+			onCursorChange={onCursorChange}
+			onDirtyChange={onDirtyChange}
+		/>
+	);
 }
 
-function TextEditorPanel({ filePath, onSave, onCursorChange, onDirtyChange }: {
+function TextEditorPanel({
+	filePath,
+	onSave,
+	onCursorChange,
+	onDirtyChange,
+}: {
 	filePath: string;
 	onSave?: (path: string, content: string) => void;
 	onCursorChange?: (line: number, col: number) => void;
@@ -616,7 +760,6 @@ function TextEditorPanel({ filePath, onSave, onCursorChange, onDirtyChange }: {
 }) {
 	const [content, setContent] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const [saving, setSaving] = useState(false);
 	const dirtyRef = useRef(false);
 	const valueRef = useRef<string>("");
 
@@ -643,7 +786,6 @@ function TextEditorPanel({ filePath, onSave, onCursorChange, onDirtyChange }: {
 
 	const save = useCallback(async () => {
 		if (!dirtyRef.current) return;
-		setSaving(true);
 		try {
 			await writeFile(filePath, valueRef.current);
 			dirtyRef.current = false;
@@ -651,8 +793,6 @@ function TextEditorPanel({ filePath, onSave, onCursorChange, onDirtyChange }: {
 			onSave?.(filePath, valueRef.current);
 		} catch (e) {
 			toast.error(`保存失败: ${(e as Error).message}`);
-		} finally {
-			setSaving(false);
 		}
 	}, [filePath, onSave, onDirtyChange]);
 
@@ -693,7 +833,7 @@ function TextEditorPanel({ filePath, onSave, onCursorChange, onDirtyChange }: {
 					onChange={handleChange}
 					path={filePath}
 					theme="vs"
-					onMount={(editor, monaco) => {
+					onMount={(editor) => {
 						editor.onDidChangeCursorPosition((e) => {
 							onCursorChange?.(e.position.lineNumber, e.position.column);
 						});
@@ -740,14 +880,24 @@ function EditorTab({ api }: IDockviewPanelHeaderProps) {
 			)}
 		>
 			{getClassWithColor(title) ? (
-				<span className={cn("size-3.5 shrink-0 text-[13px] leading-none", getClassWithColor(title))} />
+				<span
+					className={cn(
+						"size-3.5 shrink-0 text-[13px] leading-none",
+						getClassWithColor(title),
+					)}
+				/>
 			) : (
 				<File className="size-3 shrink-0 opacity-60" />
 			)}
-			<span className="font-mono max-w-[120px] truncate">{isDirty ? `${title} ●` : title}</span>
+			<span className="font-mono max-w-[120px] truncate">
+				{isDirty ? `${title} ●` : title}
+			</span>
 			<button
 				type="button"
-				onClick={(e) => { e.stopPropagation(); api.close(); }}
+				onClick={(e) => {
+					e.stopPropagation();
+					api.close();
+				}}
 				className={cn(
 					"size-4 flex items-center justify-center rounded transition-colors ml-0.5",
 					"opacity-0 group-hover:opacity-100",
@@ -789,8 +939,12 @@ export default function RepoEditorPage() {
 
 	const [activeFile, setActiveFile] = useState<string | null>(null);
 	const [treeWidth, setTreeWidth] = useState(224);
-	const [cursor, setCursor] = useState<{ line: number; col: number } | null>(null);
-	const [worktrees, setWorktrees] = useState<{ path: string; branch: string; is_current: boolean }[]>([]);
+	const [cursor, setCursor] = useState<{ line: number; col: number } | null>(
+		null,
+	);
+	const [worktrees, setWorktrees] = useState<
+		{ path: string; branch: string; is_current: boolean }[]
+	>([]);
 	const [showWorktrees, setShowWorktrees] = useState(false);
 	const [showCopilot, setShowCopilot] = useState(true);
 	const [showTaskList, setShowTaskList] = useState(false);
@@ -798,7 +952,9 @@ export default function RepoEditorPage() {
 	const [creatingSession, setCreatingSession] = useState(false);
 	const [copilotSessionId, setCopilotSessionId] = useState<string | null>(null);
 	const resolvedSessionId = copilotSessionId;
-	const dockviewApiRef = useRef<import("@/components/custom/dockview-core").DockviewApi | null>(null);
+	const dockviewApiRef = useRef<
+		import("@/components/custom/dockview-core").DockviewApi | null
+	>(null);
 
 	const handleCreateCopilotSession = useCallback(async () => {
 		if (!repo || creatingSession) return;
@@ -838,13 +994,16 @@ export default function RepoEditorPage() {
 	// Load worktrees
 	useEffect(() => {
 		if (!repo) return;
-		fetch(`${getGatewayUrl()}/api/git/worktrees?path=${encodeURIComponent(repo.path)}`)
+		fetch(
+			`${getGatewayUrl()}/api/git/worktrees?path=${encodeURIComponent(repo.path)}`,
+		)
 			.then((r) => r.json())
 			.then(setWorktrees)
 			.catch(() => setWorktrees([]));
 	}, [repo?.path]);
 
-	const currentBranch = worktrees.find((w) => w.is_current)?.branch ?? repo?.name ?? "";
+	const currentBranch =
+		worktrees.find((w) => w.is_current)?.branch ?? repo?.name ?? "";
 
 	const handleCheckout = async (branch: string) => {
 		if (!repo) return;
@@ -855,52 +1014,60 @@ export default function RepoEditorPage() {
 			body: JSON.stringify({ path: repo.path, branch }),
 		});
 		// Refresh worktrees
-		fetch(`${getGatewayUrl()}/api/git/worktrees?path=${encodeURIComponent(repo.path)}`)
+		fetch(
+			`${getGatewayUrl()}/api/git/worktrees?path=${encodeURIComponent(repo.path)}`,
+		)
 			.then((r) => r.json())
 			.then(setWorktrees)
 			.catch(() => {});
 	};
 
-	const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
-		e.preventDefault();
-		const startX = e.clientX;
-		const startWidth = treeWidth;
+	const handleResizeMouseDown = useCallback(
+		(e: React.MouseEvent) => {
+			e.preventDefault();
+			const startX = e.clientX;
+			const startWidth = treeWidth;
 
-		const onMouseMove = (ev: MouseEvent) => {
-			const delta = ev.clientX - startX;
-			setTreeWidth(Math.max(140, Math.min(480, startWidth + delta)));
-		};
-		const onMouseUp = () => {
-			document.body.style.cursor = "";
-			document.body.style.userSelect = "";
-			window.removeEventListener("mousemove", onMouseMove);
-			window.removeEventListener("mouseup", onMouseUp);
-		};
-		document.body.style.cursor = "col-resize";
-		document.body.style.userSelect = "none";
-		window.addEventListener("mousemove", onMouseMove);
-		window.addEventListener("mouseup", onMouseUp);
-	}, [treeWidth]);
+			const onMouseMove = (ev: MouseEvent) => {
+				const delta = ev.clientX - startX;
+				setTreeWidth(Math.max(140, Math.min(480, startWidth + delta)));
+			};
+			const onMouseUp = () => {
+				document.body.style.cursor = "";
+				document.body.style.userSelect = "";
+				window.removeEventListener("mousemove", onMouseMove);
+				window.removeEventListener("mouseup", onMouseUp);
+			};
+			document.body.style.cursor = "col-resize";
+			document.body.style.userSelect = "none";
+			window.addEventListener("mousemove", onMouseMove);
+			window.addEventListener("mouseup", onMouseUp);
+		},
+		[treeWidth],
+	);
 
-	const handleCopilotResizeMouseDown = useCallback((e: React.MouseEvent) => {
-		e.preventDefault();
-		const startX = e.clientX;
-		const startWidth = copilotWidth;
-		const onMouseMove = (ev: MouseEvent) => {
-			const delta = startX - ev.clientX;
-			setCopilotWidth(Math.max(240, Math.min(600, startWidth + delta)));
-		};
-		const onMouseUp = () => {
-			document.body.style.cursor = "";
-			document.body.style.userSelect = "";
-			window.removeEventListener("mousemove", onMouseMove);
-			window.removeEventListener("mouseup", onMouseUp);
-		};
-		document.body.style.cursor = "col-resize";
-		document.body.style.userSelect = "none";
-		window.addEventListener("mousemove", onMouseMove);
-		window.addEventListener("mouseup", onMouseUp);
-	}, [copilotWidth]);
+	const handleCopilotResizeMouseDown = useCallback(
+		(e: React.MouseEvent) => {
+			e.preventDefault();
+			const startX = e.clientX;
+			const startWidth = copilotWidth;
+			const onMouseMove = (ev: MouseEvent) => {
+				const delta = startX - ev.clientX;
+				setCopilotWidth(Math.max(240, Math.min(600, startWidth + delta)));
+			};
+			const onMouseUp = () => {
+				document.body.style.cursor = "";
+				document.body.style.userSelect = "";
+				window.removeEventListener("mousemove", onMouseMove);
+				window.removeEventListener("mouseup", onMouseUp);
+			};
+			document.body.style.cursor = "col-resize";
+			document.body.style.userSelect = "none";
+			window.addEventListener("mousemove", onMouseMove);
+			window.addEventListener("mouseup", onMouseUp);
+		},
+		[copilotWidth],
+	);
 
 	const handleFileClick = useCallback((filePath: string) => {
 		setActiveFile(filePath);
@@ -969,7 +1136,9 @@ export default function RepoEditorPage() {
 						onClick={() => setShowTaskList((v) => !v)}
 						className={cn(
 							"flex items-center justify-center size-6 rounded transition-colors",
-							showTaskList ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]",
+							showTaskList
+								? "text-primary bg-primary/10"
+								: "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]",
 						)}
 					>
 						<ListTodo className="size-3.5" />
@@ -998,7 +1167,9 @@ export default function RepoEditorPage() {
 					onClick={() => setShowCopilot((v) => !v)}
 					className={cn(
 						"flex items-center justify-center size-6 rounded transition-colors shrink-0",
-						showCopilot ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]",
+						showCopilot
+							? "text-primary bg-primary/10"
+							: "text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06]",
 					)}
 				>
 					<Bot className="size-3.5" />
@@ -1008,7 +1179,10 @@ export default function RepoEditorPage() {
 			{/* Main: file tree + dockview editor */}
 			<div className="flex flex-1 min-h-0">
 				{/* File tree */}
-				<div className="shrink-0 border-r bg-slate-50 overflow-hidden flex flex-col relative" style={{ width: treeWidth }}>
+				<div
+					className="shrink-0 border-r bg-slate-50 overflow-hidden flex flex-col relative"
+					style={{ width: treeWidth }}
+				>
 					<div className="px-3 py-1.5 text-[10px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
 						资源管理器
 					</div>
@@ -1039,7 +1213,10 @@ export default function RepoEditorPage() {
 
 				{/* Copilot panel */}
 				{showCopilot && (
-					<div className="shrink-0 border-l bg-background relative flex flex-col" style={{ width: copilotWidth }}>
+					<div
+						className="shrink-0 border-l bg-background relative flex flex-col"
+						style={{ width: copilotWidth }}
+					>
 						{/* Resize handle */}
 						<div
 							className="absolute left-0 top-0 h-full w-1 cursor-col-resize hover:bg-blue-400/40 transition-colors z-10"
@@ -1047,7 +1224,11 @@ export default function RepoEditorPage() {
 						/>
 						{resolvedSessionId ? (
 							<div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-								<AgentChat sessionId={resolvedSessionId} cwd={repo.path} onSessionChange={(id) => setCopilotSessionId(id)} />
+								<AgentChat
+									sessionId={resolvedSessionId}
+									cwd={repo.path}
+									onSessionChange={(id) => setCopilotSessionId(id)}
+								/>
 							</div>
 						) : (
 							<div className="flex flex-col items-center justify-center flex-1 gap-3 text-muted-foreground p-4">
@@ -1067,7 +1248,13 @@ export default function RepoEditorPage() {
 			</div>
 
 			{/* Status bar */}
-			<div className="relative flex items-center justify-between px-3 shrink-0 h-7 text-[11px] font-mono select-none" style={{ background: "hsl(var(--primary) / 0.8)", color: "hsl(var(--primary-foreground))" }}>
+			<div
+				className="relative flex items-center justify-between px-3 shrink-0 h-7 text-[11px] font-mono select-none"
+				style={{
+					background: "hsl(var(--primary) / 0.8)",
+					color: "hsl(var(--primary-foreground))",
+				}}
+			>
 				<div className="flex items-center gap-1">
 					<button
 						type="button"
@@ -1098,10 +1285,14 @@ export default function RepoEditorPage() {
 				</div>
 				<div className="flex items-center gap-3">
 					{activeFile && (
-						<span className="opacity-80">{detectLanguage(activeFile.split("/").pop() ?? "")}</span>
+						<span className="opacity-80">
+							{detectLanguage(activeFile.split("/").pop() ?? "")}
+						</span>
 					)}
 					{cursor && (
-						<span className="opacity-80">行 {cursor.line}，列 {cursor.col}</span>
+						<span className="opacity-80">
+							行 {cursor.line}，列 {cursor.col}
+						</span>
 					)}
 				</div>
 			</div>

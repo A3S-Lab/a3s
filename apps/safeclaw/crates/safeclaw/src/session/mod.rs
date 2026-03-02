@@ -1,7 +1,5 @@
-//! Session management and routing
+//! Session management
 
 mod manager;
-mod router;
 
-pub use manager::{Session, SessionManager, SessionState};
-pub use router::{RoutingDecision, SessionRouter};
+pub use manager::{RoutingDecision, Session, SessionManager, SessionState};

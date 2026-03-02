@@ -43,6 +43,8 @@ pub enum BrowserIncomingMessage {
         tool_use_id: String,
         tool_name: String,
         elapsed_time_seconds: f64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        seq: Option<u64>,
     },
     ToolUseSummary {
         summary: String,
@@ -162,6 +164,12 @@ pub enum ContentBlock {
         content: serde_json::Value,
         #[serde(default)]
         is_error: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        before: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        after: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        file_path: Option<String>,
     },
     Thinking {
         thinking: String,
@@ -172,6 +180,14 @@ pub enum ContentBlock {
 // =============================================================================
 // Session state types
 // =============================================================================
+
+/// MCP server info included in session state
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct McpServerInfo {
+    pub name: String,
+    /// "connected" | "error" | "disabled"
+    pub status: String,
+}
 
 /// Agent session state
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -188,6 +204,9 @@ pub struct AgentSessionState {
     /// Bound persona ID (if any)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub persona_id: Option<String>,
+    /// Connected MCP servers for this session
+    #[serde(default)]
+    pub mcp_servers: Vec<McpServerInfo>,
 }
 
 impl AgentSessionState {
@@ -204,6 +223,7 @@ impl AgentSessionState {
             context_used_percent: 0.0,
             is_compacting: false,
             persona_id: None,
+            mcp_servers: Vec::new(),
         }
     }
 }

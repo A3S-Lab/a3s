@@ -81,25 +81,19 @@
 //!
 //! ## Modules
 //!
-//! - [`runtime`]: Runtime orchestrator, a3s-gateway integration, and HTTP API
-//! - [`guard`]: Core protection pipeline (taint, sanitization, interception, firewall)
-//! - [`audit`]: Observability pipeline (audit log, alerting, persistence)
+//! - [`runtime`]: Runtime orchestrator and HTTP API
 //! - [`channels`]: Multi-channel message adapters
 //! - [`session`]: Session management and routing
-//! - [`privacy`]: Privacy classification and data protection
 //! - [`tee`]: TEE environment integration with A3S Box
 //! - [`config`]: Configuration management
 
 pub mod agent;
 pub mod api;
-pub mod audit;
 pub mod bootstrap;
 pub mod channels;
 pub mod config;
 pub mod error;
-pub mod guard;
 pub mod hardening;
-pub mod privacy;
 pub mod runtime;
 pub mod session;
 pub mod skills;
@@ -107,12 +101,6 @@ pub mod tee;
 
 pub use agent::{agent_router, AgentEngine, AgentSessionStore, AgentState};
 pub use api::build_app;
-pub use audit::{Alert, AlertConfig, AlertKind, AlertMonitor, AuditEventBus, AuditLog, AuditState};
-pub use config::{A3sGatewayConfig, AuditConfig, EventBridgeConfig, SafeClawConfig};
+pub use config::{A3sGatewayConfig, SafeClawConfig};
 pub use error::{Error, Result};
-pub use guard::{
-    InjectionDetector, NetworkFirewall, NetworkPolicy, OutputSanitizer, SessionIsolation,
-    TaintRegistry, ToolInterceptor,
-};
-pub use privacy::{privacy_router, PrivacyState};
 pub use runtime::{ProcessedResponse, Runtime, RuntimeBuilder, RuntimeState};

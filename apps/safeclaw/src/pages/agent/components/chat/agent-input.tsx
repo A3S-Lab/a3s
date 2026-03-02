@@ -41,9 +41,11 @@ export function AgentInput({
 	sessionId,
 	disabled,
 	onSend,
+	readonlyCwd,
 }: {
 	sessionId: string;
 	disabled: boolean;
+	readonlyCwd?: boolean;
 	onSend?: (
 		text: string,
 		images?: { media_type: string; data: string }[],
@@ -95,88 +97,79 @@ export function AgentInput({
 
 	// ── File processing with progress ──
 
-	const processFile = useCallback(
-		(file: File) => {
-			const id = nextFileId();
-			const isImage = file.type.startsWith("image/");
+	const processFile = useCallback((file: File) => {
+		const id = nextFileId();
+		const isImage = file.type.startsWith("image/");
 
-			// Add placeholder with 0% progress
-			setPendingFiles((prev) => [
-				...prev,
-				{
-					id,
-					name: file.name,
-					media_type: isImage ? file.type : "text/plain",
-					data: "",
-					progress: 0,
-				},
-			]);
+		// Add placeholder with 0% progress
+		setPendingFiles((prev) => [
+			...prev,
+			{
+				id,
+				name: file.name,
+				media_type: isImage ? file.type : "text/plain",
+				data: "",
+				progress: 0,
+			},
+		]);
 
-			const reader = new FileReader();
-			reader.onprogress = (e) => {
-				if (e.lengthComputable) {
-					const pct = Math.round((e.loaded / e.total) * 100);
-					setPendingFiles((prev) =>
-						prev.map((f) => (f.id === id ? { ...f, progress: pct } : f)),
+		const reader = new FileReader();
+		reader.onprogress = (e) => {
+			if (e.lengthComputable) {
+				const pct = Math.round((e.loaded / e.total) * 100);
+				setPendingFiles((prev) =>
+					prev.map((f) => (f.id === id ? { ...f, progress: pct } : f)),
+				);
+			}
+		};
+		reader.onload = () => {
+			const result = reader.result as string;
+			if (isImage) {
+				const [header, data] = result.split(",");
+				const media_type = header.replace("data:", "").replace(";base64", "");
+				setPendingFiles((prev) =>
+					prev.map((f) =>
+						f.id === id ? { ...f, media_type, data, progress: undefined } : f,
+					),
+				);
+			} else {
+				// Text file — read as text, then encode
+				const textReader = new FileReader();
+				textReader.onload = () => {
+					const text = textReader.result as string;
+					const encoded = btoa(
+						unescape(encodeURIComponent(`# ${file.name}\n\n${text}`)),
 					);
-				}
-			};
-			reader.onload = () => {
-				const result = reader.result as string;
-				if (isImage) {
-					const [header, data] = result.split(",");
-					const media_type = header
-						.replace("data:", "")
-						.replace(";base64", "");
 					setPendingFiles((prev) =>
 						prev.map((f) =>
 							f.id === id
-								? { ...f, media_type, data, progress: undefined }
+								? {
+										...f,
+										media_type: "text/plain",
+										data: encoded,
+										progress: undefined,
+									}
 								: f,
 						),
 					);
-				} else {
-					// Text file — read as text, then encode
-					const textReader = new FileReader();
-					textReader.onload = () => {
-						const text = textReader.result as string;
-						const encoded = btoa(
-							unescape(
-								encodeURIComponent(`# ${file.name}\n\n${text}`),
-							),
-						);
-						setPendingFiles((prev) =>
-							prev.map((f) =>
-								f.id === id
-									? {
-											...f,
-											media_type: "text/plain",
-											data: encoded,
-											progress: undefined,
-										}
-									: f,
-							),
-						);
-					};
-					textReader.onerror = () => {
-						setPendingFiles((prev) => prev.filter((f) => f.id !== id));
-					};
-					textReader.readAsText(file);
-				}
-			};
-			reader.onerror = () => {
-				setPendingFiles((prev) => prev.filter((f) => f.id !== id));
-			};
-
-			if (isImage) {
-				reader.readAsDataURL(file);
-			} else {
-				// Use readAsDataURL just for progress tracking, then re-read as text
-				reader.readAsDataURL(file);
+				};
+				textReader.onerror = () => {
+					setPendingFiles((prev) => prev.filter((f) => f.id !== id));
+				};
+				textReader.readAsText(file);
 			}
-		},
-		[],
-	);
+		};
+		reader.onerror = () => {
+			setPendingFiles((prev) => prev.filter((f) => f.id !== id));
+		};
+
+		if (isImage) {
+			reader.readAsDataURL(file);
+		} else {
+			// Use readAsDataURL just for progress tracking, then re-read as text
+			reader.readAsDataURL(file);
+		}
+	}, []);
 
 	const processFiles = useCallback(
 		(files: File[]) => {
@@ -456,7 +449,9 @@ export function AgentInput({
 							type="button"
 							className={cn(
 								"flex items-center justify-center size-8 rounded-full transition-colors",
-								(isEmpty && pendingFiles.length === 0) || !allFilesReady || disabled
+								(isEmpty && pendingFiles.length === 0) ||
+									!allFilesReady ||
+									disabled
 									? "bg-muted text-muted-foreground cursor-not-allowed"
 									: "bg-primary text-primary-foreground hover:bg-primary/90",
 							)}
@@ -475,7 +470,7 @@ export function AgentInput({
 				</div>
 			</div>
 
-			<SessionStatusBar sessionId={sessionId} />
+			<SessionStatusBar sessionId={sessionId} readonlyCwd={readonlyCwd} />
 		</div>
 	);
 }

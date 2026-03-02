@@ -134,6 +134,10 @@ function contentBlocksToRichBlocks(blocks: ContentBlock[]): RichBlock[] {
 			if (idx !== undefined && result[idx]?.type === "tool_call") {
 				(result[idx] as ToolCallBlock).output = content;
 				(result[idx] as ToolCallBlock).isError = b.is_error;
+				if (b.before != null) (result[idx] as ToolCallBlock).before = b.before;
+				if (b.after != null) (result[idx] as ToolCallBlock).after = b.after;
+				if (b.file_path != null)
+					(result[idx] as ToolCallBlock).filePath = b.file_path;
 			} else {
 				result.push({
 					type: "tool_call",

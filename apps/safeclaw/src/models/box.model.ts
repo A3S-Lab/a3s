@@ -64,7 +64,7 @@ const actions = {
 			state.boxes = boxes;
 			state.stats = stats;
 		} catch {
-			/* backend may not be available */
+			state.boxes = [];
 		} finally {
 			state.loading.boxes = false;
 		}
@@ -75,7 +75,7 @@ const actions = {
 		try {
 			state.images = await boxApi.listImages();
 		} catch {
-			/* ignore */
+			state.images = [];
 		} finally {
 			state.loading.images = false;
 		}
@@ -97,7 +97,7 @@ const actions = {
 		try {
 			state.volumes = await boxApi.listVolumes();
 		} catch {
-			/* ignore */
+			state.volumes = [];
 		} finally {
 			state.loading.volumes = false;
 		}
@@ -176,7 +176,11 @@ const actions = {
 		return result;
 	},
 
-	async createNetwork(params: { name: string; driver?: string; isolation?: string }) {
+	async createNetwork(params: {
+		name: string;
+		driver?: string;
+		isolation?: string;
+	}) {
 		await boxApi.createNetwork(params);
 		await actions.fetchNetworks();
 	},

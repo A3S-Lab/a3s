@@ -1,11 +1,6 @@
-import {
-	ForcedSubject,
-	MongoAbility,
-	RawRuleOf,
-	createMongoAbility,
-} from "@casl/ability";
+import { createMongoAbility } from "@casl/ability";
 import { createContextualCan } from "@casl/react";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 
 export const actions = [
 	"manage",
@@ -15,20 +10,20 @@ export const actions = [
 	"delete",
 ] as const;
 
-export type Abilities = [
-	(typeof actions)[number],
-	string | ForcedSubject<Exclude<string, "all">>,
-];
-export type AppAbility = MongoAbility<Abilities>;
-export const createAbility = (rules: RawRuleOf<AppAbility>[]) =>
-	createMongoAbility<AppAbility>(rules);
+export type Abilities = [(typeof actions)[number], string];
+export type AppAbility = {
+	can: (action: string, subject: string) => boolean;
+	cannot: (action: string, subject: string) => boolean;
+};
+export const createAbility = (rules: unknown[]) =>
+	createMongoAbility(rules) as AppAbility;
 
 export const AbilityContext = createContext<AppAbility>(createAbility([]));
 export const Can = createContextualCan(AbilityContext.Consumer);
 
 type AbilityProviderProps = {
-	children: React.ReactNode;
-	rules: RawRuleOf<AppAbility>[];
+	children: ReactNode;
+	rules: unknown[];
 };
 
 export function AbilityProvider({ children, rules }: AbilityProviderProps) {
@@ -46,13 +41,9 @@ export const useAbility = () => {
 		throw new Error("useAbility must be used within a AbilityProvider");
 
 	return {
-		can: (
-			action: (typeof actions)[number],
-			subject: string | ForcedSubject<Exclude<string, "all">>,
-		) => context.can(action, subject),
-		cannot: (
-			action: (typeof actions)[number],
-			subject: string | ForcedSubject<Exclude<string, "all">>,
-		) => context.cannot(action, subject),
+		can: (action: (typeof actions)[number], subject: string) =>
+			context.can(action, subject),
+		cannot: (action: (typeof actions)[number], subject: string) =>
+			context.cannot(action, subject),
 	};
 };

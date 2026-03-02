@@ -1,12 +1,14 @@
+import { sendToSession } from "@/hooks/use-agent-ws";
+import { agentApi } from "@/lib/agent-api";
 import agentModel from "@/models/agent.model";
 import personaModel from "@/models/persona.model";
 import settingsModel, {
+	getLocalPrivacyModel,
+	getSessionRoutingModel,
+	isSensitiveTool,
 	resolveApiKey,
 	resolveBaseUrl,
 } from "@/models/settings.model";
-import { sendToSession } from "@/hooks/use-agent-ws";
-import { agentApi } from "@/lib/agent-api";
-import { cn } from "@/lib/utils";
 import {
 	Ban,
 	ChevronDown,
@@ -19,7 +21,7 @@ import {
 	Terminal,
 	X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { useSnapshot } from "valtio";
 
@@ -38,9 +40,7 @@ export function AuthStatusBanner({ sessionId }: { sessionId: string }) {
 		<div className="mx-3 mb-2 rounded-lg border border-info/30 bg-info/10 px-3 py-2 text-xs">
 			<div className="flex items-center gap-2">
 				<Loader2 className="size-3.5 text-info animate-spin shrink-0" />
-				<span className="font-medium text-info">
-					正在进行身份验证...
-				</span>
+				<span className="font-medium text-info">正在进行身份验证...</span>
 				{status.output.length > 0 && (
 					<button
 						type="button"
@@ -70,9 +70,45 @@ export function AuthStatusBanner({ sessionId }: { sessionId: string }) {
 // =============================================================================
 
 export function PermissionRequestPanel({ sessionId }: { sessionId: string }) {
-	const { pendingPermissions } = useSnapshot(agentModel.state);
+	const { localPrivacyRouting, pendingPermissions } = useSnapshot(
+		agentModel.state,
+	);
 	const requests = Object.values(pendingPermissions[sessionId] || {});
 	const [expandedId, setExpandedId] = useState<string | null>(null);
+	const activeModeRef = useRef<"preferred" | "local" | null>(null);
+	const hasSensitiveRequests = requests.some((req) =>
+		isSensitiveTool(req.tool_name),
+	);
+	const forceLocal = !!localPrivacyRouting[sessionId];
+
+	useEffect(() => {
+		const targetMode =
+			forceLocal || hasSensitiveRequests ? "local" : "preferred";
+		if (activeModeRef.current === targetMode) return;
+
+		const target =
+			targetMode === "local"
+				? getLocalPrivacyModel()
+				: getSessionRoutingModel(false);
+		if (!target?.providerName || !target.modelId) return;
+
+		const apiKey = resolveApiKey(target.providerName, target.modelId);
+		const baseUrl = resolveBaseUrl(target.providerName, target.modelId);
+		const fullModel = `${target.providerName}/${target.modelId}`;
+
+		agentApi
+			.configureSession(sessionId, {
+				model: fullModel,
+				api_key: apiKey || undefined,
+				base_url: baseUrl || undefined,
+			})
+			.then(() => {
+				activeModeRef.current = targetMode;
+			})
+			.catch((e) => {
+				console.warn("Failed to switch model for permission gating", e);
+			});
+	}, [forceLocal, hasSensitiveRequests, sessionId]);
 
 	if (requests.length === 0) return null;
 
@@ -197,8 +233,10 @@ export function AgentMessageInbox({ sessionId }: { sessionId: string }) {
 	// Configure LLM before sending — same logic as handleSend in agent-chat
 	const configureAndSend = useCallback(
 		async (content: string) => {
-			const modelId = settingsModel.state.defaultModel;
-			const providerName = settingsModel.state.defaultProvider;
+			const forceLocal = !!agentModel.state.localPrivacyRouting[sessionId];
+			const routed = getSessionRoutingModel(forceLocal);
+			const modelId = routed.modelId;
+			const providerName = routed.providerName;
 			const apiKey = resolveApiKey(providerName, modelId);
 			const baseUrl = resolveBaseUrl(providerName, modelId);
 			const fullModel =

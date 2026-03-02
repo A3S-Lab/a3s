@@ -1,4 +1,5 @@
 import { MemoizedMarkdown } from "@/components/custom/memoized-markdown";
+import { DiffEditor } from "@monaco-editor/react";
 import { cn } from "@/lib/utils";
 import {
 	CheckCircle2,
@@ -25,6 +26,27 @@ import type {
 	EventBlock,
 	MessageSource,
 } from "./types";
+
+function langFromPath(filePath?: string): string {
+	if (!filePath) return "plaintext";
+	const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
+	const map: Record<string, string> = {
+		rs: "rust",
+		ts: "typescript",
+		tsx: "typescript",
+		js: "javascript",
+		jsx: "javascript",
+		py: "python",
+		go: "go",
+		json: "json",
+		toml: "toml",
+		md: "markdown",
+		css: "css",
+		html: "html",
+		sh: "shell",
+	};
+	return map[ext] ?? "plaintext";
+}
 
 // =============================================================================
 // ThinkingBlockView — collapsible thinking process
@@ -215,6 +237,8 @@ export function ToolCallBlockView({ block }: { block: ToolCallBlock }) {
 	const hasOutput = block.output !== undefined;
 	const hasDisplayableOutput = !!block.output;
 	const isRunning = !hasOutput && !block.isError;
+	const hasDiff = block.before != null && block.after != null && !block.isError;
+	const isExpandable = hasDiff || hasDisplayableOutput;
 
 	return (
 		<div
@@ -224,7 +248,7 @@ export function ToolCallBlockView({ block }: { block: ToolCallBlock }) {
 					? "border-primary/20 bg-primary/[0.02]"
 					: block.isError
 						? "border-destructive/15 bg-destructive/[0.02]"
-						: "border-border/40 bg-muted/15",
+						: "border-border/60 bg-muted/40",
 			)}
 		>
 			{/* Tool header: clickable to toggle output */}
@@ -232,9 +256,9 @@ export function ToolCallBlockView({ block }: { block: ToolCallBlock }) {
 				type="button"
 				className={cn(
 					"flex items-center gap-2 px-3 py-2 w-full text-left transition-colors",
-					hasDisplayableOutput && "hover:bg-foreground/[0.03]",
+					isExpandable && "hover:bg-foreground/[0.03]",
 				)}
-				onClick={() => hasDisplayableOutput && setOpen(!open)}
+				onClick={() => isExpandable && setOpen(!open)}
 			>
 				{isRunning ? (
 					<Loader2 className="size-3.5 text-primary animate-spin shrink-0" />
@@ -268,7 +292,7 @@ export function ToolCallBlockView({ block }: { block: ToolCallBlock }) {
 						{(block.durationMs / 1000).toFixed(1)}s
 					</span>
 				)}
-				{hasDisplayableOutput &&
+				{isExpandable &&
 					(open ? (
 						<ChevronDown className="size-3 text-muted-foreground/40 shrink-0" />
 					) : (
@@ -276,8 +300,33 @@ export function ToolCallBlockView({ block }: { block: ToolCallBlock }) {
 					))}
 			</button>
 
-			{/* Output (collapsed by default) */}
-			{open && block.output && (
+			{/* Output / Diff (collapsed by default) */}
+			{open && hasDiff && (
+				<div className="border-t border-border/30">
+					<DiffEditor
+						original={block.before}
+						modified={block.after}
+						language={langFromPath(block.filePath)}
+						theme="vs-dark"
+						options={{
+							readOnly: true,
+							renderSideBySide: false,
+							minimap: { enabled: false },
+							scrollBeyondLastLine: false,
+							fontSize: 11,
+							lineNumbers: "off",
+							folding: false,
+							contextmenu: false,
+							scrollbar: { vertical: "hidden", horizontal: "hidden" },
+						}}
+						height={Math.min(
+							300,
+							Math.max(80, (block.after!.split("\n").length + 4) * 18),
+						)}
+					/>
+				</div>
+			)}
+			{open && !hasDiff && block.output && (
 				<div className="border-t border-border/30 px-3 py-2.5">
 					{block.isError ? (
 						<pre className="rounded-lg border border-destructive/15 p-3 text-[11px] font-mono overflow-auto max-h-60 whitespace-pre-wrap leading-relaxed bg-destructive/[0.03] text-destructive/80">

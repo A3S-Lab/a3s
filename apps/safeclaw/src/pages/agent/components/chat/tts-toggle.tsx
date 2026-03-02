@@ -92,9 +92,7 @@ export function TtsToggle({
 						onKeyDown={() => {}}
 					/>
 					<div className="absolute bottom-full left-0 mb-2 z-40 w-64 rounded-lg border bg-popover p-3 shadow-md text-popover-foreground">
-						<p className="text-xs font-medium mb-1">
-							需要下载语音模型
-						</p>
+						<p className="text-xs font-medium mb-1">需要下载语音模型</p>
 						<p className="text-[11px] text-muted-foreground mb-3">
 							首次使用需下载中文和英文语音模型（约 60MB），下载后可离线使用。
 						</p>

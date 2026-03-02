@@ -10,13 +10,9 @@ const locales = [
 ];
 
 function onLocaleChange(locale: string, pathname: string, router: ReturnType<typeof useRouter>) {
-  // Strip existing locale prefix if present
-  const stripped = pathname.replace(/^\/(cn)/, '') || '/';
-  if (locale === 'en') {
-    router.push(stripped);
-  } else {
-    router.push(`/${locale}${stripped}`);
-  }
+  // Strip any existing /en or /cn prefix, then re-prefix with the target locale
+  const stripped = pathname.replace(/^\/(en|cn)(\/|$)/, '/').replace(/\/$/, '') || '/';
+  router.push(`/${locale}${stripped === '/' ? '' : stripped}`);
 }
 
 export function I18nProvider({

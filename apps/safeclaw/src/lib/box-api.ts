@@ -37,10 +37,9 @@ export async function restartBox(id: string): Promise<void> {
 }
 
 export async function removeBox(id: string, force = false): Promise<void> {
-	await apiFetch(
-		`/box/containers/${id}${force ? "?force=true" : ""}`,
-		{ method: "DELETE" },
-	);
+	await apiFetch(`/box/containers/${id}${force ? "?force=true" : ""}`, {
+		method: "DELETE",
+	});
 }
 
 export async function pauseBox(id: string): Promise<void> {
@@ -57,11 +56,13 @@ export async function listImages(): Promise<BoxImage[]> {
 	return apiFetch("/box/images");
 }
 
-export async function removeImage(id: string, force = false): Promise<void> {
-	await apiFetch(
-		`/box/images/${id}${force ? "?force=true" : ""}`,
-		{ method: "DELETE" },
-	);
+export async function removeImage(
+	reference: string,
+	force = false,
+): Promise<void> {
+	const params = new URLSearchParams({ reference });
+	if (force) params.set("force", "true");
+	await apiFetch(`/box/images/remove?${params}`, { method: "DELETE" });
 }
 
 export async function pullImage(image: string): Promise<void> {

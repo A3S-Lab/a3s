@@ -58,6 +58,7 @@ export interface SettingsState {
 		maxTurns: number; // 0 = unlimited
 		defaultCwd: string; // empty = process cwd
 		autoArchiveHours: number; // 0 = never
+		sensitiveTools: string[]; // trigger local privacy model routing
 	};
 }
 
@@ -67,10 +68,58 @@ export interface SettingsState {
 
 const STORAGE_KEY = "safeclaw-settings";
 
+const DEFAULT_SENSITIVE_TOOLS = [
+	"bash",
+	"shell",
+	"sh",
+	"zsh",
+	"edit",
+	"write",
+	"delete",
+	"rm",
+	"git",
+	"network*",
+	"http*",
+	"curl",
+	"wget",
+	"mcp*",
+];
+
 const DEFAULTS: SettingsState = {
-	defaultProvider: "anthropic",
-	defaultModel: "claude-sonnet-4-20250514",
+	defaultProvider: "local-power",
+	// Model ID must match the exact ID that the Power server registers.
+	// The Power server uses the full HuggingFace path as the model ID.
+	defaultModel: "Qwen/Qwen2.5-7B-Instruct-GGUF:Q3_K_M",
 	providers: [
+		{
+			name: "local-power",
+			apiKey: "",
+			baseUrl: "http://127.0.0.1:11435/v1",
+			models: [
+				{
+					id: "Qwen/Qwen2.5-7B-Instruct-GGUF:Q3_K_M",
+					name: "Qwen2.5 7B Instruct (Q3_K_M)",
+					family: "qwen2.5",
+					attachment: false,
+					reasoning: true,
+					toolCall: true,
+					temperature: true,
+					modalities: { input: ["text"], output: ["text"] },
+					limit: { context: 2048, output: 1024 },
+				},
+				{
+					id: "Qwen/Qwen2.5-7B-Instruct-GGUF:Q4_K_M",
+					name: "Qwen2.5 7B Instruct (Q4_K_M)",
+					family: "qwen2.5",
+					attachment: false,
+					reasoning: true,
+					toolCall: true,
+					temperature: true,
+					modalities: { input: ["text"], output: ["text"] },
+					limit: { context: 4096, output: 1024 },
+				},
+			],
+		},
 		{
 			name: "anthropic",
 			apiKey: "",
@@ -97,6 +146,7 @@ const DEFAULTS: SettingsState = {
 		maxTurns: 0,
 		defaultCwd: "",
 		autoArchiveHours: 0,
+		sensitiveTools: DEFAULT_SENSITIVE_TOOLS,
 	},
 };
 
@@ -113,13 +163,23 @@ function loadSettings(): SettingsState {
 					defaultModel: parsed.model || DEFAULTS.defaultModel,
 					baseUrl: parsed.baseUrl || "",
 					providers: DEFAULTS.providers.map((p) =>
-						p.name === (parsed.provider || "anthropic")
+						p.name === (parsed.provider || DEFAULTS.defaultProvider)
 							? { ...p, apiKey: parsed.apiKey || "" }
 							: p,
 					),
 				};
 			}
-			return { ...DEFAULTS, ...parsed };
+			return {
+				...DEFAULTS,
+				...parsed,
+				agentDefaults: {
+					...DEFAULTS.agentDefaults,
+					...(parsed.agentDefaults || {}),
+					sensitiveTools: Array.isArray(parsed.agentDefaults?.sensitiveTools)
+						? parsed.agentDefaults.sensitiveTools
+						: DEFAULTS.agentDefaults.sensitiveTools,
+				},
+			};
 		}
 	} catch {
 		// Ignore parse errors
@@ -391,6 +451,121 @@ export function getGatewayUrl(): string {
 	return state.baseUrl || constants.gatewayUrl;
 }
 
+export function getPreferredSessionModel(): {
+	providerName: string;
+	modelId: string;
+} {
+	const currentProvider = state.providers.find(
+		(p) => p.name === state.defaultProvider && p.models.length > 0,
+	);
+	const currentModelId =
+		currentProvider?.models.find((m) => m.id === state.defaultModel)?.id ||
+		currentProvider?.models[0]?.id ||
+		"";
+
+	if (currentProvider && currentProvider.name !== "local-power") {
+		const hasCreds =
+			!!currentProvider.apiKey ||
+			!!currentProvider.baseUrl ||
+			currentProvider.models.some((m) => !!m.apiKey || !!m.baseUrl);
+		if (hasCreds) {
+			return {
+				providerName: currentProvider.name,
+				modelId: currentModelId,
+			};
+		}
+	}
+
+	const nonLocal = state.providers.filter(
+		(p) => p.name !== "local-power" && p.models.length > 0,
+	);
+	const withCreds = nonLocal.find(
+		(p) =>
+			!!p.apiKey ||
+			!!p.baseUrl ||
+			p.models.some((m) => !!m.apiKey || !!m.baseUrl),
+	);
+	if (withCreds) {
+		return {
+			providerName: withCreds.name,
+			modelId: withCreds.models[0].id,
+		};
+	}
+
+	if (nonLocal.length > 0) {
+		// currentProvider is local-power and no non-local provider has credentials.
+		// Stay on local-power so the user's explicit default is respected.
+		// (If local-power is unavailable the user should configure a remote provider.)
+		if (currentProvider) {
+			return { providerName: currentProvider.name, modelId: currentModelId };
+		}
+		return {
+			providerName: nonLocal[0].name,
+			modelId: nonLocal[0].models[0].id,
+		};
+	}
+
+	if (currentProvider) {
+		return {
+			providerName: currentProvider.name,
+			modelId: currentModelId,
+		};
+	}
+
+	const fallback = state.providers.find((p) => p.models.length > 0);
+	return {
+		providerName: fallback?.name || "",
+		modelId: fallback?.models[0]?.id || "",
+	};
+}
+
+export function getLocalPrivacyModel(): {
+	providerName: string;
+	modelId: string;
+} | null {
+	const local = state.providers.find(
+		(p) => p.name === "local-power" && p.models.length > 0,
+	);
+	if (!local) return null;
+	const modelId = local.models.some((m) => m.id === state.defaultModel)
+		? state.defaultModel
+		: local.models[0].id;
+	return { providerName: local.name, modelId };
+}
+
+export function getSessionRoutingModel(forceLocal: boolean): {
+	providerName: string;
+	modelId: string;
+} {
+	if (forceLocal) {
+		const local = getLocalPrivacyModel();
+		if (local) return local;
+	}
+	return getPreferredSessionModel();
+}
+
+export function getSensitiveToolPatterns(): string[] {
+	const configured = state.agentDefaults.sensitiveTools || [];
+	const normalized = configured
+		.map((p) => p.trim().toLowerCase())
+		.filter(Boolean);
+	return normalized.length > 0 ? normalized : DEFAULT_SENSITIVE_TOOLS;
+}
+
+export function isSensitiveTool(toolName: string): boolean {
+	const name = (toolName || "").trim().toLowerCase();
+	if (!name) return false;
+
+	return getSensitiveToolPatterns().some((pattern) => {
+		if (pattern === "*") return true;
+		if (pattern.endsWith("*")) {
+			const prefix = pattern.slice(0, -1);
+			return prefix.length > 0 && name.startsWith(prefix);
+		}
+		return name === pattern;
+	});
+}
+
 /** Get all models across all providers as flat list */
 export function getAllModels(): { provider: string; model: ModelConfig }[] {
 	return state.providers.flatMap((p) =>
@@ -413,4 +588,9 @@ export default {
 	seedFromBackend,
 	syncToBackend,
 	waitForSeed,
+	getLocalPrivacyModel,
+	getPreferredSessionModel,
+	getSessionRoutingModel,
+	isSensitiveTool,
+	getSensitiveToolPatterns,
 };

@@ -35,8 +35,6 @@ export class OverlayRenderContainer extends CompositeDisposable {
 		}
 	> = {};
 
-	private _disposed = false;
-
 	constructor(
 		readonly element: HTMLElement,
 		readonly accessor: DockviewComponent,
@@ -49,7 +47,6 @@ export class OverlayRenderContainer extends CompositeDisposable {
 					value.disposable.dispose();
 					value.destroy.dispose();
 				}
-				this._disposed = true;
 			}),
 		);
 	}

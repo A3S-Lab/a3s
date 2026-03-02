@@ -1,22 +1,18 @@
 //! SafeClaw runtime server
 //!
 //! **Single responsibility**: lifecycle (start/stop) and infrastructure
-//! setup (audit pipeline, channel adapters, event loop).
+//! setup (channel adapters, event loop).
 //!
 //! Message processing is delegated entirely to `MessageProcessor`.
 
-use crate::audit::{AlertMonitor, AuditEventBus, AuditLog, AuditPersistence};
 use crate::channels::{
     supervisor, ChannelAdapter, DingTalkAdapter, DiscordAdapter, FeishuAdapter, SlackAdapter,
     TelegramAdapter, WeComAdapter, WebChatAdapter,
 };
 use crate::config::SafeClawConfig;
 use crate::error::{Error, Result};
-use crate::privacy::{
-    Classifier, CompositeClassifier, PolicyEngine, RegexBackend, SemanticAnalyzer, SemanticBackend,
-};
 use crate::runtime::processor::MessageProcessor;
-use crate::session::{SessionManager, SessionRouter};
+use crate::session::SessionManager;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -66,12 +62,6 @@ pub struct Runtime {
     channels: Arc<RwLock<HashMap<String, Arc<dyn ChannelAdapter>>>>,
     event_tx: mpsc::Sender<crate::channels::ChannelEvent>,
     event_rx: Arc<RwLock<Option<mpsc::Receiver<crate::channels::ChannelEvent>>>>,
-    /// Global audit log shared with the REST API
-    global_audit_log: Arc<RwLock<AuditLog>>,
-    /// Centralized audit event bus
-    audit_bus: Arc<AuditEventBus>,
-    /// Alert monitor for rate-based anomaly detection
-    alert_monitor: Arc<AlertMonitor>,
     /// Message processing pipeline
     processor: Arc<MessageProcessor>,
 }
@@ -81,39 +71,9 @@ impl Runtime {
     pub fn new(config: SafeClawConfig) -> Result<Self> {
         let (event_tx, event_rx) = mpsc::channel(1000);
 
-        let audit_capacity = config.audit.bus_capacity;
-        let global_audit_log = Arc::new(RwLock::new(AuditLog::new(audit_capacity)));
-        let audit_bus = Arc::new(AuditEventBus::new(audit_capacity, global_audit_log.clone()));
-        let alert_monitor = Arc::new(AlertMonitor::new(config.audit.alert.clone()));
-
-        let session_manager = Arc::new(SessionManager::new(config.tee.clone(), audit_bus.clone()));
-
-        // Regex-only classifier — for synchronous redaction helpers
-        let classifier = Arc::new(
-            Classifier::new(config.privacy.rules.clone(), config.privacy.default_level)
-                .map_err(|e| Error::Privacy(format!("Failed to create classifier: {}", e)))?,
-        );
-
-        // Full composite chain (regex + semantic) — for routing decisions
-        let composite = Arc::new({
-            let regex =
-                RegexBackend::new(config.privacy.rules.clone(), config.privacy.default_level)
-                    .map_err(|e| Error::Privacy(format!("Failed to build regex backend: {}", e)))?;
-            let semantic = SemanticBackend::new(SemanticAnalyzer::new());
-            CompositeClassifier::new(vec![Box::new(regex), Box::new(semantic)])
-        });
-
-        let policy_engine = Arc::new(PolicyEngine::new());
-
-        let session_router = Arc::new(SessionRouter::new(
-            session_manager.clone(),
-            classifier,
-            composite,
-            policy_engine,
-        ));
+        let session_manager = Arc::new(SessionManager::new(config.tee.clone()));
 
         let processor = Arc::new(MessageProcessor::new(
-            session_router,
             session_manager.clone(),
             config.channels.feishu.clone(),
         ));
@@ -125,9 +85,6 @@ impl Runtime {
             channels: Arc::new(RwLock::new(HashMap::new())),
             event_tx,
             event_rx: Arc::new(RwLock::new(Some(event_rx))),
-            global_audit_log,
-            audit_bus,
-            alert_monitor,
             processor,
         })
     }
@@ -162,82 +119,6 @@ impl Runtime {
                     "TEE enabled in config but hardware TEE not detected. \
                      Sensitive data routing will use fallback policy."
                 );
-            }
-        }
-
-        // Start audit event pipeline
-        self.audit_bus
-            .spawn_session_forwarder(self.session_manager.isolation().clone());
-        if self.config.audit.alert.enabled {
-            self.alert_monitor.spawn(self.audit_bus.subscribe());
-        }
-
-        // Start audit persistence
-        if self.config.audit.persistence.enabled {
-            match AuditPersistence::new(
-                &self.config.storage.base_dir,
-                self.config.audit.persistence.clone(),
-            )
-            .await
-            {
-                Ok(persistence) => {
-                    let restored = persistence
-                        .load_recent(self.config.audit.bus_capacity)
-                        .await;
-                    if !restored.is_empty() {
-                        let mut log = self.global_audit_log.write().await;
-                        for event in &restored {
-                            log.record(event.clone());
-                        }
-                        tracing::info!(count = restored.len(), "Restored audit events from disk");
-                    }
-                    let persistence = std::sync::Arc::new(persistence);
-                    crate::audit::persistence::spawn_persistence_subscriber(
-                        self.audit_bus.subscribe(),
-                        persistence,
-                    );
-                }
-                Err(e) => {
-                    tracing::error!(
-                        "Failed to initialize audit persistence: {}. \
-                         Audit events will NOT survive restarts.",
-                        e
-                    );
-                }
-            }
-        }
-
-        // Start a3s-event bridge
-        if self.config.audit.event_bridge.enabled {
-            let nats_url = &self.config.audit.event_bridge.nats_url;
-            if nats_url.is_empty() {
-                let provider = a3s_event::MemoryProvider::default();
-                let event_bus = Arc::new(a3s_event::EventBus::new(provider));
-                self.audit_bus.spawn_event_bridge(event_bus);
-                tracing::info!("a3s-event bridge started (in-memory provider)");
-            } else {
-                match a3s_event::NatsProvider::connect(a3s_event::NatsConfig {
-                    url: nats_url.clone(),
-                    ..Default::default()
-                })
-                .await
-                {
-                    Ok(provider) => {
-                        let event_bus = Arc::new(a3s_event::EventBus::new(provider));
-                        self.audit_bus.spawn_event_bridge(event_bus);
-                        tracing::info!(url = %nats_url, "a3s-event bridge started (NATS provider)");
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            url = %nats_url,
-                            error = %e,
-                            "Failed to connect to NATS, falling back to in-memory provider."
-                        );
-                        let provider = a3s_event::MemoryProvider::default();
-                        let event_bus = Arc::new(a3s_event::EventBus::new(provider));
-                        self.audit_bus.spawn_event_bridge(event_bus);
-                    }
-                }
             }
         }
 
@@ -423,24 +304,8 @@ impl Runtime {
         &self.session_manager
     }
 
-    pub fn session_router(&self) -> &Arc<SessionRouter> {
-        self.processor.session_router()
-    }
-
     pub fn config(&self) -> &SafeClawConfig {
         &self.config
-    }
-
-    pub fn global_audit_log(&self) -> &Arc<RwLock<AuditLog>> {
-        &self.global_audit_log
-    }
-
-    pub fn alert_monitor(&self) -> &Arc<AlertMonitor> {
-        &self.alert_monitor
-    }
-
-    pub fn audit_bus(&self) -> &Arc<AuditEventBus> {
-        &self.audit_bus
     }
 
     pub async fn active_channel_names(&self) -> Vec<String> {
@@ -459,7 +324,7 @@ impl Runtime {
         self.session_manager.tee_runtime().security_level()
     }
 
-    /// Get event sender for injecting external events (e.g., from a3s-gateway webhooks)
+    /// Get event sender for injecting external events
     pub fn event_sender(&self) -> &mpsc::Sender<crate::channels::ChannelEvent> {
         &self.event_tx
     }
@@ -528,7 +393,6 @@ impl Default for RuntimeBuilder {
 // ---------------------------------------------------------------------------
 
 /// Try to detect the ngrok public URL by querying the local ngrok API.
-/// Returns `None` if ngrok is not running or the API is unreachable.
 async fn detect_ngrok_url() -> Option<String> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(1))
@@ -542,7 +406,6 @@ async fn detect_ngrok_url() -> Option<String> {
         .ok()?;
 
     let body: serde_json::Value = resp.json().await.ok()?;
-    // Prefer https tunnel
     body.get("tunnels")?
         .as_array()?
         .iter()

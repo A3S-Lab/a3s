@@ -19,6 +19,26 @@ async function safeFetch(url: string, init?: RequestInit): Promise<any> {
 	return null;
 }
 
+export type McpTransportConfig =
+	| { type: "stdio"; command: string; args?: string[] }
+	| { type: "http"; url: string; headers?: Record<string, string> };
+
+export interface McpServerConfig {
+	name: string;
+	transport: McpTransportConfig;
+	enabled?: boolean;
+	env?: Record<string, string>;
+	tool_timeout_secs?: number;
+}
+
+export interface McpServerStatus {
+	name: string;
+	connected: boolean;
+	enabled: boolean;
+	tool_count: number;
+	error?: string;
+}
+
 export const agentApi = {
 	createSession: (params: {
 		model?: string;
@@ -29,6 +49,7 @@ export const agentApi = {
 		api_key?: string;
 		system_prompt?: string;
 		skills?: string[];
+		mcp_servers?: McpServerConfig[];
 	}) =>
 		safeFetch(`${baseUrl()}/sessions`, {
 			method: "POST",
@@ -40,11 +61,26 @@ export const agentApi = {
 
 	getSession: (id: string) => safeFetch(`${baseUrl()}/sessions/${id}`),
 
-	updateSession: (id: string, updates: { name?: string; archived?: boolean }) =>
+	updateSession: (
+		id: string,
+		updates: { name?: string; archived?: boolean; cwd?: string },
+	) =>
 		safeFetch(`${baseUrl()}/sessions/${id}`, {
 			method: "PATCH",
 			headers: jsonHeaders,
 			body: JSON.stringify(updates),
+		}),
+
+	/** GET /api/agent/sessions/:id/mcp — fetch per-session MCP configs */
+	getSessionMcpServers: (id: string) =>
+		safeFetch(`${baseUrl()}/sessions/${id}/mcp`) as Promise<McpServerConfig[]>,
+
+	/** PUT /api/agent/sessions/:id/mcp — replace per-session MCP configs */
+	setSessionMcpServers: (id: string, mcp_servers: McpServerConfig[]) =>
+		safeFetch(`${baseUrl()}/sessions/${id}/mcp`, {
+			method: "PUT",
+			headers: jsonHeaders,
+			body: JSON.stringify({ mcp_servers }),
 		}),
 
 	deleteSession: (id: string) =>
@@ -69,7 +105,9 @@ export const agentApi = {
 		if (params.page_size) qs.set("page_size", String(params.page_size));
 		if (params.search) qs.set("search", params.search);
 		if (params.tags?.length) qs.set("tags", params.tags.join(","));
-		return safeFetch(`${baseUrl()}/personas/market?${qs.toString()}`) as Promise<{
+		return safeFetch(
+			`${baseUrl()}/personas/market?${qs.toString()}`,
+		) as Promise<{
 			items: import("@/typings/agent").PersonaInfo[];
 			total: number;
 			page: number;
@@ -118,4 +156,34 @@ export const agentApi = {
 			headers: jsonHeaders,
 			body: JSON.stringify(params),
 		}),
+
+	/** POST /api/agent/sessions/:id/archive — archive a session */
+	archiveSession: (id: string) =>
+		safeFetch(`${baseUrl()}/sessions/${id}/archive`, { method: "POST" }),
+
+	/** POST /api/agent/sessions/:id/unarchive — unarchive a session */
+	unarchiveSession: (id: string) =>
+		safeFetch(`${baseUrl()}/sessions/${id}/unarchive`, { method: "POST" }),
+
+	/** GET /api/agent/stats — aggregate session statistics */
+	getSessionStats: () => safeFetch(`${baseUrl()}/stats`),
+
+	/** GET /api/agent/directory — agent discovery directory */
+	getAgentDirectory: () => safeFetch(`${baseUrl()}/directory`),
+
+	/** GET /api/agent/mcp — list all MCP servers and their status */
+	listMcpServers: () =>
+		safeFetch(`${baseUrl()}/mcp`) as Promise<Record<string, McpServerStatus>>,
+
+	/** POST /api/agent/mcp — add and connect an MCP server */
+	addMcpServer: (config: McpServerConfig) =>
+		safeFetch(`${baseUrl()}/mcp`, {
+			method: "POST",
+			headers: jsonHeaders,
+			body: JSON.stringify(config),
+		}),
+
+	/** DELETE /api/agent/mcp/:name — disconnect and remove an MCP server */
+	removeMcpServer: (name: string) =>
+		safeFetch(`${baseUrl()}/mcp/${name}`, { method: "DELETE" }),
 };

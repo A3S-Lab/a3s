@@ -12,9 +12,9 @@ import { AvatarProps } from "@radix-ui/react-avatar";
 import { useReactive } from "ahooks";
 import Compressor from "compressorjs";
 import { ImageUpIcon } from "lucide-react";
-import { forwardRef, useImperativeHandle } from "react";
-import { DropzoneOptions, useDropzone } from "react-dropzone";
-import Cropper, { Area, CropperProps, Point } from "react-easy-crop";
+import { forwardRef, useImperativeHandle, type ReactNode } from "react";
+import { useDropzone } from "react-dropzone";
+import Cropper from "react-easy-crop";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 
@@ -25,10 +25,10 @@ interface AvatarUploaderProps {
 	value?: string;
 	onChange?: (value: string) => void;
 	onUpload: (file: File) => Promise<string>;
-	icon?: React.ReactNode;
-	dropProps?: Omit<Partial<DropzoneOptions>, "onDrop">;
-	cropProps?: Partial<CropperProps>;
-	compressorProps?: Partial<Compressor.Options>;
+	icon?: ReactNode;
+	dropProps?: Record<string, unknown>;
+	cropProps?: Record<string, unknown>;
+	compressorProps?: Record<string, unknown>;
 	avatarProps?: Partial<AvatarProps>;
 }
 
@@ -49,9 +49,9 @@ const AvatarUploader = forwardRef<AvatarUploaderRefProps, AvatarUploaderProps>(
 	) => {
 		const state = useReactive<{
 			cropUrl: string | undefined;
-			crop: Point;
+			crop: { x: number; y: number };
 			zoom: number;
-			croppedAreaPixels: Area | null;
+			croppedAreaPixels: unknown;
 		}>({
 			cropUrl: undefined,
 			crop: {
@@ -81,7 +81,7 @@ const AvatarUploader = forwardRef<AvatarUploaderRefProps, AvatarUploaderProps>(
 								success(result: File) {
 									resolve(result);
 								},
-								error(err) {
+								error(err: unknown) {
 									reject(err);
 								},
 							}),
@@ -140,13 +140,16 @@ const AvatarUploader = forwardRef<AvatarUploaderRefProps, AvatarUploaderProps>(
 									image={state.cropUrl}
 									crop={state.crop}
 									zoom={state.zoom}
-									onCropChange={(crop) => {
+									onCropChange={(crop: { x: number; y: number }) => {
 										state.crop = crop;
 									}}
-									onZoomChange={(zoom) => {
+									onZoomChange={(zoom: number) => {
 										state.zoom = zoom;
 									}}
-									onCropComplete={(_, croppedAreaPixels) => {
+									onCropComplete={(
+										_area: unknown,
+										croppedAreaPixels: unknown,
+									) => {
 										state.croppedAreaPixels = croppedAreaPixels;
 									}}
 								/>

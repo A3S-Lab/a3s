@@ -10,6 +10,7 @@ import {
 import agentModel from "@/models/agent.model";
 import personaModel from "@/models/persona.model";
 import settingsModel, {
+	getSessionRoutingModel,
 	resolveApiKey,
 	resolveBaseUrl,
 } from "@/models/settings.model";
@@ -28,6 +29,14 @@ import dayjs from "dayjs";
 import { invoke } from "@tauri-apps/api/core";
 import type { AgentChatMessage } from "@/typings/agent";
 
+function isStreamDebugEnabled(): boolean {
+	try {
+		return localStorage.getItem("safeclaw-stream-debug") === "true";
+	} catch {
+		return false;
+	}
+}
+
 // Persist first visible item index per session across remounts
 const scrollIndexCache = new Map<string, number>();
 
@@ -44,11 +53,29 @@ import {
 	EmptyChat,
 } from "./chat/chat-panels";
 
-export default function AgentChat({ sessionId }: { sessionId: string }) {
-	const { messages, connectionStatus, sessionStatus, sdkSessions, streaming } =
-		useSnapshot(agentModel.state);
+export default function AgentChat({
+	sessionId,
+	cwd,
+	onSessionChange,
+}: {
+	sessionId: string;
+	cwd?: string;
+	onSessionChange?: (id: string) => void;
+}) {
+	const {
+		messages,
+		sessionStatus,
+		sdkSessions,
+		streaming,
+		streamingSegments,
+		pendingPermissions,
+	} = useSnapshot(agentModel.state);
 	const rawMessages = messages[sessionId] || [];
 	const isRunning = sessionStatus[sessionId] === "running";
+	const hasStreamingUi =
+		streaming[sessionId] != null ||
+		(streamingSegments[sessionId]?.length || 0) > 0 ||
+		Object.keys(pendingPermissions[sessionId] || {}).length > 0;
 	const isExited =
 		sdkSessions.find((s) => s.session_id === sessionId)?.state === "exited";
 	const [relaunching, setRelaunching] = useState(false);
@@ -112,29 +139,39 @@ export default function AgentChat({ sessionId }: { sessionId: string }) {
 		agentModel.clearUnread(sessionId);
 	}, [sessionId]);
 
+	// Sync cwd as system prompt when provided
+	useEffect(() => {
+		if (!cwd) return;
+		sendToSession(sessionId, {
+			type: "set_system_prompt",
+			system_prompt: `当前工作区路径: ${cwd}\n请在该目录下工作，不要修改工作区路径。`,
+		});
+	}, [sessionId, cwd]);
+
 	// Auto-scroll when new messages arrive
 	useEffect(() => {
 		agentModel.clearUnread(sessionId);
 		if (!userScrolledUpRef.current) {
-			virtuosoRef.current?.scrollToIndex({
-				index: "LAST",
-				align: "end",
+			virtuosoRef.current?.scrollTo({
+				top: Number.MAX_SAFE_INTEGER,
 				behavior: "smooth",
 			});
 		}
 	}, [richMessages.length, sessionId]);
 
-	// Auto-scroll during streaming — continuous follow
+	// Auto-scroll during streaming — follows both text deltas and tool call updates.
+	// scrollTo MAX scrolls to the absolute bottom including the Virtuoso Footer
+	// (StreamingDisplay), which scrollToIndex LAST does not reach.
 	const streamingText = streaming[sessionId];
+	const streamingSegsCount = (streamingSegments[sessionId] || []).length;
 	useEffect(() => {
 		if (streamingText != null && !userScrolledUpRef.current) {
-			virtuosoRef.current?.scrollToIndex({
-				index: "LAST",
-				align: "end",
+			virtuosoRef.current?.scrollTo({
+				top: Number.MAX_SAFE_INTEGER,
 				behavior: "auto",
 			});
 		}
-	}, [streamingText]);
+	}, [streamingText, streamingSegsCount]);
 
 	// Scroll to bottom when entering running state (optimistic loading)
 	const prevStatusRef = useRef<string | null>(null);
@@ -144,16 +181,14 @@ export default function AgentChat({ sessionId }: { sessionId: string }) {
 			userScrolledUpRef.current = false;
 			// Multiple attempts to ensure Footer is rendered and visible
 			const t1 = setTimeout(() => {
-				virtuosoRef.current?.scrollToIndex({
-					index: "LAST",
-					align: "end",
+				virtuosoRef.current?.scrollTo({
+					top: Number.MAX_SAFE_INTEGER,
 					behavior: "auto",
 				});
 			}, 50);
 			const t2 = setTimeout(() => {
-				virtuosoRef.current?.scrollToIndex({
-					index: "LAST",
-					align: "end",
+				virtuosoRef.current?.scrollTo({
+					top: Number.MAX_SAFE_INTEGER,
 					behavior: "auto",
 				});
 			}, 200);
@@ -169,25 +204,36 @@ export default function AgentChat({ sessionId }: { sessionId: string }) {
 	// Send user message
 	const handleSend = useCallback(
 		async (text: string, images?: { media_type: string; data: string }[]) => {
+			const t0 = performance.now();
 			// Show loading immediately — don't wait for configure round-trip
 			agentModel.setSessionStatus(sessionId, "running");
 			// Initialize streaming key so Valtio tracks it for reactivity in StreamingDisplay
 			agentModel.setStreaming(sessionId, "");
 			agentModel.clearCompletedTools(sessionId);
 
-			const modelId = settingsModel.state.defaultModel;
-			const providerName = settingsModel.state.defaultProvider;
+			const forceLocal = !!agentModel.state.localPrivacyRouting[sessionId];
+			const routed = getSessionRoutingModel(forceLocal);
+			const modelId = routed.modelId;
+			const providerName = routed.providerName;
 			const apiKey = resolveApiKey(providerName, modelId);
 			const baseUrl = resolveBaseUrl(providerName, modelId);
 			if (apiKey || baseUrl) {
 				const fullModel =
 					providerName && modelId ? `${providerName}/${modelId}` : modelId;
 				try {
+					const tCfg0 = performance.now();
 					await agentApi.configureSession(sessionId, {
 						model: fullModel || undefined,
 						api_key: apiKey || undefined,
 						base_url: baseUrl || undefined,
 					});
+					if (isStreamDebugEnabled()) {
+						console.info(`[stream:${sessionId}] configureSession latency`, {
+							ms: Math.round(performance.now() - tCfg0),
+							provider: providerName,
+							model: fullModel,
+						});
+					}
 				} catch (e) {
 					console.warn("Failed to configure session before send", e);
 				}
@@ -201,6 +247,12 @@ export default function AgentChat({ sessionId }: { sessionId: string }) {
 				// WS not connected — revert optimistic state
 				agentModel.setSessionStatus(sessionId, "idle");
 				agentModel.setStreaming(sessionId, null);
+			}
+			if (isStreamDebugEnabled()) {
+				console.info(`[stream:${sessionId}] sendToSession`, {
+					sent,
+					totalMs: Math.round(performance.now() - t0),
+				});
 			}
 		},
 		[sessionId],
@@ -329,7 +381,8 @@ export default function AgentChat({ sessionId }: { sessionId: string }) {
 			if (!text || text === lastSpokenTextRef.current) return;
 			lastSpokenTextRef.current = text;
 
-			const ttsEnabled = localStorage.getItem("safeclaw-tts-enabled") === "true";
+			const ttsEnabled =
+				localStorage.getItem("safeclaw-tts-enabled") === "true";
 			const voiceActive = agentModel.state.voiceInputActive[sessionId];
 
 			if (ttsEnabled || voiceActive) {
@@ -352,12 +405,8 @@ export default function AgentChat({ sessionId }: { sessionId: string }) {
 					sessionId={sessionId}
 					searchQuery={searchQuery}
 					onSearchChange={setSearchQuery}
+					onSessionChange={onSessionChange}
 				/>
-				{searchQuery && (
-					<div className="px-3 py-1 bg-muted/30 border-b text-xs text-muted-foreground shrink-0">
-						找到 {displayMessages.length} / {richMessages.length} 条消息
-					</div>
-				)}
 				{isExited && (
 					<div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b text-xs text-muted-foreground shrink-0">
 						<Circle className="size-2 fill-muted-foreground/40 text-muted-foreground/40 shrink-0" />
@@ -383,9 +432,12 @@ export default function AgentChat({ sessionId }: { sessionId: string }) {
 					aria-live="polite"
 					aria-label="Chat messages"
 				>
-					{displayMessages.length === 0 && !searchQuery && !isRunning ? (
+					{displayMessages.length === 0 &&
+					!searchQuery &&
+					!isRunning &&
+					!hasStreamingUi ? (
 						<EmptyChat sessionId={sessionId} />
-					) : displayMessages.length === 0 && searchQuery ? (
+					) : displayMessages.length === 0 && searchQuery && !hasStreamingUi ? (
 						<div className="flex items-center justify-center h-full text-sm text-muted-foreground">
 							没有匹配的消息
 						</div>
@@ -417,7 +469,7 @@ export default function AgentChat({ sessionId }: { sessionId: string }) {
 							className="absolute bottom-3 right-3 flex items-center justify-center size-8 rounded-full border bg-background/95 backdrop-blur shadow-md text-muted-foreground hover:text-foreground hover:bg-background transition-all z-20"
 							onClick={forceScrollToBottom}
 							aria-label="滚动到底部"
-						title="滚动到底部"
+							title="滚动到底部"
 						>
 							<ArrowDown className="size-4" />
 						</button>

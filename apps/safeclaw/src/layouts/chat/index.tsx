@@ -2,11 +2,10 @@ import { PageLoading } from "@/components/custom/page-loading";
 import OnboardingWizard, {
 	isOnboardingComplete,
 } from "@/components/custom/onboarding-wizard";
-import globalModel from "@/models/global.model";
 import KeepAlive, { useKeepAliveRef } from "keepalive-for-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Suspense, useMemo, useState } from "react";
-import { Await, useLocation, useOutlet } from "react-router-dom";
+import { useLocation, useOutlet } from "react-router-dom";
 import ActivityBar from "./components/activity-bar";
 import Main from "./components/main";
 
@@ -48,11 +47,7 @@ export default function ChatLayout() {
 								exit={{ opacity: 0, filter: "blur(8px)" }}
 								transition={{ duration: 0.25, ease: "easeInOut" }}
 							>
-								<Await resolve={globalModel.load()}>
-									{() => {
-										return outlet;
-									}}
-								</Await>
+								{outlet}
 							</motion.div>
 						</AnimatePresence>
 					</KeepAlive>

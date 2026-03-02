@@ -76,7 +76,9 @@ export function NetworksSection() {
 					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
 					onClick={() => boxModel.fetchNetworks()}
 				>
-					<RotateCw className={`size-3 ${snap.loading.networks ? "animate-spin" : ""}`} />
+					<RotateCw
+						className={`size-3 ${snap.loading.networks ? "animate-spin" : ""}`}
+					/>
 					刷新
 				</button>
 			</div>

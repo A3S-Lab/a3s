@@ -1,3 +1,4 @@
+import { useModal } from "@/components/custom/modal-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -7,26 +8,34 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { useModal } from "@/components/custom/modal-provider";
+import { powerApi, type PowerLogEntry } from "@/lib/power-api";
 import { cn } from "@/lib/utils";
 import settingsModel from "@/models/settings.model";
-import type { ProviderConfig, ModelConfig } from "@/models/settings.model";
+import type { ModelConfig, ProviderConfig } from "@/models/settings.model";
+import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import {
 	Bot,
 	Check,
+	Download,
 	Eye,
 	EyeOff,
+	FolderUp,
+	Gauge,
+	HardDrive,
 	KeyRound,
 	Loader2,
 	Plus,
+	RefreshCw,
 	Server,
+	Shield,
 	Star,
 	Trash2,
 	X,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
-import { useSnapshot } from "valtio";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useSnapshot } from "valtio";
 import { SectionHeader, pColor } from "./shared";
 
 function AddProviderForm({
@@ -199,6 +208,537 @@ function AddModelForm({
 					添加
 				</Button>
 			</div>
+		</div>
+	);
+}
+
+const LOCAL_POWER_PRESETS: Array<{
+	name: string;
+	label: string;
+	context: number;
+	help: string;
+}> = [
+	{
+		name: "Qwen/Qwen2.5-7B-Instruct-GGUF:Q3_K_M",
+		label: "Qwen2.5 7B Q3_K_M",
+		context: 2048,
+		help: "默认推荐，适配大多数机器（8GB+）",
+	},
+	{
+		name: "Qwen/Qwen2.5-7B-Instruct-GGUF:Q4_K_M",
+		label: "Qwen2.5 7B Q4_K_M",
+		context: 4096,
+		help: "推荐 12GB+ 内存，质量更稳",
+	},
+];
+
+interface PowerRuntimeStatus {
+	url: string;
+	host: string;
+	port: number;
+	inferenceBackend: string;
+	profile: string;
+	totalMemoryGib?: number;
+	teeType: string;
+	hardwareTee: boolean;
+}
+
+function formatBytes(n: number): string {
+	if (n < 1024) return `${n} B`;
+	if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+	if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+	return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+function LocalPowerPanel({ provider }: { provider: ProviderConfig }) {
+	const [models, setModels] = useState<string[]>([]);
+	const [loading, setLoading] = useState(false);
+	const [pulling, setPulling] = useState<string | null>(null);
+	const [importing, setImporting] = useState(false);
+	const [diagnosing, setDiagnosing] = useState(false);
+	const [logs, setLogs] = useState<string[]>([]);
+	const [error, setError] = useState<string>("");
+	const [runtimeStatus, setRuntimeStatus] = useState<PowerRuntimeStatus | null>(
+		null,
+	);
+	const logsEndRef = useRef<HTMLDivElement>(null);
+	const logStreamCtrlRef = useRef<AbortController | null>(null);
+
+	const appendLog = useCallback((msg: string) => {
+		const ts = new Date().toLocaleTimeString("en-US", {
+			hour12: false,
+			hour: "2-digit",
+			minute: "2-digit",
+			second: "2-digit",
+		});
+		setLogs((prev) => [...prev, `[${ts}] ${msg}`]);
+	}, []);
+
+	/** Start streaming real Power server logs into the log panel. */
+	const startLogStream = useCallback(() => {
+		// Stop any existing stream first.
+		logStreamCtrlRef.current?.abort();
+		logStreamCtrlRef.current = powerApi.streamLogs(
+			(entry: PowerLogEntry) => {
+				// Format: [HH:MM:SS.mmm] LEVEL  message
+				const ts = entry.ts.substring(11, 23); // "HH:MM:SS.mmm"
+				setLogs((prev) => [
+					...prev,
+					`[${ts}] ${entry.level.padEnd(5)}  ${entry.message}`,
+				]);
+			},
+			provider,
+		);
+	}, [provider]);
+
+	const stopLogStream = useCallback(() => {
+		logStreamCtrlRef.current?.abort();
+		logStreamCtrlRef.current = null;
+	}, []);
+
+	useEffect(() => {
+		logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+	}, [logs]);
+
+	const isTauri =
+		typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+	const profileLabel = (profile: string) => {
+		switch (profile) {
+			case "high-memory":
+				return "高内存";
+			case "balanced":
+				return "均衡";
+			default:
+				return "轻量";
+		}
+	};
+
+	const teeLabel = (status: PowerRuntimeStatus) => {
+		if (status.teeType === "sev-snp") return "AMD SEV-SNP";
+		if (status.teeType === "tdx") return "Intel TDX";
+		if (status.teeType === "simulated") return "软件模拟";
+		return "未检测到";
+	};
+
+	const refreshRuntimeStatus = useCallback(async () => {
+		if (!isTauri) return;
+		try {
+			const status = await invoke<PowerRuntimeStatus>(
+				"get_power_runtime_status",
+			);
+			setRuntimeStatus(status);
+			if ((provider.baseUrl || "") !== status.url) {
+				settingsModel.updateProvider(provider.name, { baseUrl: status.url });
+			}
+		} catch (e) {
+			console.warn("Failed to fetch embedded Power runtime status:", e);
+		}
+	}, [isTauri, provider.baseUrl, provider.name]);
+
+	const refreshModels = useCallback(async () => {
+		setLoading(true);
+		setError("");
+		try {
+			const list = await powerApi.listModels(provider);
+			setModels(list.map((m) => m.id));
+		} catch (e) {
+			setError(e instanceof Error ? e.message : "无法连接本地 Power 服务");
+		} finally {
+			setLoading(false);
+		}
+	}, [provider]);
+
+	useEffect(() => {
+		refreshModels().catch(() => undefined);
+	}, [refreshModels]);
+
+	useEffect(() => {
+		refreshRuntimeStatus().catch(() => undefined);
+	}, [refreshRuntimeStatus]);
+
+	const syncModelToProvider = (modelId: string, context: number) => {
+		if (provider.models.some((m) => m.id === modelId)) return;
+		settingsModel.addModel(provider.name, {
+			id: modelId,
+			name: modelId,
+			toolCall: true,
+			temperature: true,
+			reasoning: true,
+			modalities: { input: ["text"], output: ["text"] },
+			limit: { context, output: 1024 },
+		});
+	};
+
+	const modelNameFromPath = (filePath: string) => {
+		const fileName = filePath.split(/[/\\]/).pop() || filePath;
+		return fileName.replace(/\.gguf$/i, "") || `local-model-${Date.now()}`;
+	};
+
+	const handleImport = async () => {
+		if (!isTauri) {
+			toast.error("仅桌面版支持本地模型导入");
+			return;
+		}
+
+		setError("");
+		setLogs([]);
+		setImporting(true);
+		startLogStream();
+		try {
+			const selected = await open({
+				directory: false,
+				multiple: false,
+				filters: [
+					{ name: "GGUF Models", extensions: ["gguf"] },
+					{ name: "All Files", extensions: ["*"] },
+				],
+			});
+
+			if (!selected || Array.isArray(selected)) return;
+
+			const modelName = modelNameFromPath(selected);
+			appendLog(`导入文件: ${selected}`);
+			appendLog("计算 SHA-256 并注册到模型列表...");
+			await powerApi.registerModel(
+				{ name: modelName, path: selected, format: "gguf" },
+				provider,
+			);
+			syncModelToProvider(modelName, 4096);
+			await refreshModels();
+			appendLog(`✓ 已导入 ${modelName}`);
+			toast.success(`已导入 ${modelName}`);
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : "导入失败";
+			appendLog(`✗ ${msg}`);
+			setError(msg);
+			toast.error("导入本地模型失败");
+		} finally {
+			setImporting(false);
+			stopLogStream();
+		}
+	};
+
+	const downloadCtxRef = useRef<{
+		startMs: number;
+		startCompleted: number;
+		lastPct: number;
+	} | null>(null);
+
+	const handlePull = async (preset: (typeof LOCAL_POWER_PRESETS)[number]) => {
+		setError("");
+		setLogs([]);
+		downloadCtxRef.current = null;
+		setPulling(preset.name);
+		startLogStream();
+		appendLog(`开始下载 ${preset.label}`);
+		appendLog(`模型: ${preset.name}`);
+		try {
+			await powerApi.pullModel(
+				preset.name,
+				(event) => {
+					if (event.status === "resuming") {
+						const offset = event.offset || 0;
+						const total = event.total || 0;
+						appendLog(
+							`断点续传 ${formatBytes(offset)} / ${formatBytes(total)}`,
+						);
+						return;
+					}
+					if (event.status === "downloading") {
+						const total = event.total || 0;
+						const completed = event.completed || 0;
+						if (total === 0) return;
+
+						const pct = Math.floor((completed / total) * 100);
+
+						// Initialize speed tracking on first downloading event.
+						if (!downloadCtxRef.current) {
+							downloadCtxRef.current = {
+								startMs: Date.now(),
+								startCompleted: completed,
+								lastPct: -1,
+							};
+							appendLog(`文件大小: ${formatBytes(total)}`);
+						}
+
+						// Log every 5% change to keep the log readable.
+						const ctx = downloadCtxRef.current;
+						if (pct - ctx.lastPct < 5 && pct < 100) return;
+						ctx.lastPct = pct;
+
+						const elapsedSec = (Date.now() - ctx.startMs) / 1000;
+						const bytesPerSec =
+							elapsedSec > 0
+								? (completed - ctx.startCompleted) / elapsedSec
+								: 0;
+
+						let eta = "";
+						if (bytesPerSec > 0 && completed < total) {
+							const remainSec = Math.round((total - completed) / bytesPerSec);
+							const h = Math.floor(remainSec / 3600);
+							const m = Math.floor((remainSec % 3600) / 60);
+							const s = remainSec % 60;
+							if (h > 0) {
+								eta = ` · 预计剩余 ${h}小时${m}分${s}秒`;
+							} else if (m > 0) {
+								eta = ` · 预计剩余 ${m}分${s}秒`;
+							} else {
+								eta = ` · 预计剩余 ${s}秒`;
+							}
+						}
+
+						appendLog(
+							`▼ ${pct}%  ${formatBytes(completed)} / ${formatBytes(total)}${eta}`,
+						);
+						return;
+					}
+					if (event.status === "verifying") {
+						appendLog("校验 SHA-256...");
+						return;
+					}
+					if (event.status === "already_exists") {
+						appendLog("模型已存在，无需重新下载");
+						return;
+					}
+					if (event.status === "success") {
+						appendLog("✓ 下载完成，模型已注册");
+					}
+				},
+				provider,
+			);
+			syncModelToProvider(preset.name, preset.context);
+			await refreshModels();
+			toast.success(`${preset.label} 已就绪`);
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : "下载失败";
+			appendLog(`✗ ${msg}`);
+			setError(msg);
+			toast.error("模型下载失败");
+		} finally {
+			setPulling(null);
+			downloadCtxRef.current = null;
+			stopLogStream();
+		}
+	};
+
+	const handleDiagnostic = async () => {
+		setError("");
+		setLogs([]);
+		setDiagnosing(true);
+		startLogStream();
+		appendLog("开始诊断本地 Power 服务...");
+		try {
+			appendLog("检查服务健康状态...");
+			const info = await powerApi.healthInfo(provider);
+			if (info.status !== "ok") {
+				throw new Error(`服务健康检查失败 (status=${info.status})`);
+			}
+			appendLog(
+				`✓ 服务正常  版本 ${info.version ?? "unknown"}  运行 ${info.uptimeSeconds ?? 0}s`,
+			);
+
+			appendLog("列出已注册模型...");
+			const latestModels = await powerApi.listModels(provider);
+			const ids = latestModels.map((m) => m.id);
+			setModels(ids);
+			if (ids.length === 0) {
+				appendLog("未发现已注册模型");
+			} else {
+				appendLog(`✓ 发现 ${ids.length} 个模型: ${ids.join(", ")}`);
+			}
+
+			const modelId = ids[0] || provider.models[0]?.id;
+			if (!modelId) {
+				throw new Error("无可用模型，请先下载或导入 GGUF");
+			}
+
+			appendLog(`对 ${modelId} 进行推理测试...`);
+			const result = await powerApi.diagnoseModel(modelId, provider);
+			appendLog(
+				`✓ 推理完成  延迟 ${result.latencyMs}ms · ${result.tokensPerSecond.toFixed(1)} tok/s`,
+			);
+			toast.success("本地模型诊断完成");
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : "诊断失败";
+			appendLog(`✗ ${msg}`);
+			setError(msg);
+			toast.error("本地模型诊断失败");
+		} finally {
+			setDiagnosing(false);
+			stopLogStream();
+		}
+	};
+
+	const handleDelete = async (modelId: string) => {
+		try {
+			await powerApi.deleteModel(modelId, provider);
+			await refreshModels();
+			toast.success(`已删除 ${modelId}`);
+		} catch (e) {
+			setError(e instanceof Error ? e.message : "删除失败");
+			toast.error("删除模型失败");
+		}
+	};
+
+	return (
+		<div className="rounded-xl border bg-card p-4 mb-4 space-y-3">
+			<div className="flex items-center justify-between">
+				<div className="flex items-center gap-2">
+					<Shield className="size-4 text-primary" />
+					<span className="text-sm font-semibold">本地隐私推理 (Power)</span>
+				</div>
+				<div className="flex items-center gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-7 text-xs"
+						onClick={() => handleDiagnostic()}
+						disabled={loading || !!pulling || importing || diagnosing}
+					>
+						{diagnosing ? (
+							<Loader2 className="size-3 mr-1 animate-spin" />
+						) : (
+							<Gauge className="size-3 mr-1" />
+						)}
+						诊断本地模型
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-7 text-xs"
+						onClick={() => handleImport()}
+						disabled={loading || !!pulling || importing || diagnosing}
+					>
+						{importing ? (
+							<Loader2 className="size-3 mr-1 animate-spin" />
+						) : (
+							<FolderUp className="size-3 mr-1" />
+						)}
+						导入 GGUF
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-7 text-xs"
+						onClick={() => refreshModels()}
+						disabled={loading || !!pulling || importing || diagnosing}
+					>
+						<RefreshCw
+							className={cn("size-3 mr-1", loading && "animate-spin")}
+						/>
+						刷新
+					</Button>
+				</div>
+			</div>
+
+			<div className="text-xs text-muted-foreground">
+				<div>地址: {provider.baseUrl || "http://127.0.0.1:11435/v1"}</div>
+				<div className="mt-1">默认启用日志脱敏、内存解密与流式解密。</div>
+			</div>
+
+			{runtimeStatus && (
+				<div className="rounded-lg border bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+					<div>推理后端: {runtimeStatus.inferenceBackend}（layer-stream）</div>
+					<div>
+						运行档位: {profileLabel(runtimeStatus.profile)}
+						{typeof runtimeStatus.totalMemoryGib === "number"
+							? ` · 内存 ${runtimeStatus.totalMemoryGib} GiB`
+							: ""}
+					</div>
+					<div className="mt-0.5">
+						TEE 状态: {teeLabel(runtimeStatus)}
+						{runtimeStatus.hardwareTee ? "（硬件隔离）" : "（本地隐私模式）"}
+					</div>
+				</div>
+			)}
+
+			<div className="grid gap-2 sm:grid-cols-2">
+				{LOCAL_POWER_PRESETS.map((preset) => {
+					const installed = models.includes(preset.name);
+					const isPulling = pulling === preset.name;
+					return (
+						<div key={preset.name} className="rounded-lg border p-3 space-y-2">
+							<div className="text-xs font-medium">{preset.label}</div>
+							<div className="text-[11px] text-muted-foreground">
+								{preset.help}
+							</div>
+							<div className="flex gap-2">
+								<Button
+									size="sm"
+									className="h-7 text-[11px]"
+									variant={installed ? "secondary" : "default"}
+									onClick={() => handlePull(preset)}
+									disabled={!!pulling || importing}
+								>
+									{isPulling ? (
+										<Loader2 className="size-3 mr-1 animate-spin" />
+									) : (
+										<Download className="size-3 mr-1" />
+									)}
+									{installed ? "重新拉取" : "下载模型"}
+								</Button>
+							</div>
+						</div>
+					);
+				})}
+			</div>
+
+			{logs.length > 0 && (
+				<div className="rounded-lg border border-border/50 bg-black/75 px-3 py-2.5 font-mono text-[10.5px] leading-relaxed max-h-40 overflow-y-auto space-y-px">
+					{logs.map((line, i) => (
+						<div
+							key={i}
+							className={cn(
+								"text-green-400/80 whitespace-pre-wrap break-all",
+								line.includes("✗") && "text-red-400",
+								line.includes("✓") && "text-emerald-400",
+							)}
+						>
+							{line}
+						</div>
+					))}
+					<div ref={logsEndRef} />
+				</div>
+			)}
+
+			<div className="rounded-lg border bg-muted/20 p-3">
+				<div className="flex items-center gap-1.5 mb-2">
+					<HardDrive className="size-3.5 text-muted-foreground" />
+					<span className="text-xs font-medium">
+						已安装模型 ({models.length})
+					</span>
+				</div>
+				{models.length === 0 && !pulling && !importing ? (
+					<div className="text-[11px] text-muted-foreground">暂无本地模型</div>
+				) : models.length === 0 ? null : (
+					<div className="space-y-1.5">
+						{models.map((modelId) => (
+							<div
+								key={modelId}
+								className="flex items-center justify-between gap-2 rounded border px-2 py-1.5"
+							>
+								<span className="text-[11px] font-mono truncate">
+									{modelId}
+								</span>
+								<Button
+									variant="ghost"
+									size="sm"
+									className="h-6 text-[10px] text-destructive"
+									onClick={() => handleDelete(modelId)}
+								>
+									<Trash2 className="size-3 mr-1" />
+									删除
+								</Button>
+							</div>
+						))}
+					</div>
+				)}
+			</div>
+
+			{error && (
+				<div className="text-xs text-destructive break-all">{error}</div>
+			)}
 		</div>
 	);
 }
@@ -590,6 +1130,9 @@ export function AiSection() {
 		(p) => p.name === snap.defaultProvider,
 	);
 	const defModel = defProvider?.models.find((m) => m.id === snap.defaultModel);
+	const localPowerProvider = snap.providers.find(
+		(p) => p.name === "local-power",
+	);
 
 	return (
 		<div>
@@ -598,6 +1141,9 @@ export function AiSection() {
 				title="AI 服务"
 				description="管理模型提供商、模型和默认配置。"
 			/>
+			{localPowerProvider && (
+				<LocalPowerPanel provider={localPowerProvider as ProviderConfig} />
+			)}
 			<div className="rounded-xl border bg-card p-4 mb-4">
 				<div className="flex items-center gap-2 mb-3">
 					<Star className="size-4 text-primary fill-primary" />

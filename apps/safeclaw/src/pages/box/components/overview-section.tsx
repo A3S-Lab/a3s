@@ -3,7 +3,16 @@
  */
 import { SectionHeader, StatCard } from "@/components/layout/sidebar-layout";
 import boxModel from "@/models/box.model";
-import { Box, Cpu, HardDrive, Image, Network, Shield, Trash2, Loader2 } from "lucide-react";
+import {
+	Box,
+	Cpu,
+	HardDrive,
+	Image,
+	Network,
+	Shield,
+	Trash2,
+	Loader2,
+} from "lucide-react";
 import { useEffect } from "react";
 import { useSnapshot } from "valtio";
 
@@ -54,7 +63,9 @@ export function OverviewSection() {
 						</div>
 						<div className="flex justify-between">
 							<span className="text-muted-foreground">平台</span>
-							<span className="font-mono text-xs">{info.os}/{info.arch}</span>
+							<span className="font-mono text-xs">
+								{info.os}/{info.arch}
+							</span>
 						</div>
 						<div className="flex justify-between">
 							<span className="text-muted-foreground">CPU</span>
@@ -66,7 +77,13 @@ export function OverviewSection() {
 						</div>
 						<div className="flex justify-between">
 							<span className="text-muted-foreground">TEE</span>
-							<span className={info.tee_available ? "text-green-500" : "text-muted-foreground"}>
+							<span
+								className={
+									info.tee_available
+										? "text-green-500"
+										: "text-muted-foreground"
+								}
+							>
 								{info.tee_available ? info.tee_backend : "不可用"}
 							</span>
 						</div>
@@ -117,14 +134,21 @@ export function OverviewSection() {
 							{ label: "存储卷", value: disk.volumes_size },
 							{ label: "缓存", value: disk.cache_size },
 						].map((item) => (
-							<div key={item.label} className="flex items-center justify-between text-sm">
+							<div
+								key={item.label}
+								className="flex items-center justify-between text-sm"
+							>
 								<span className="text-muted-foreground">{item.label}</span>
-								<span className="font-mono text-xs">{formatBytes(item.value)}</span>
+								<span className="font-mono text-xs">
+									{formatBytes(item.value)}
+								</span>
 							</div>
 						))}
 						<div className="border-t pt-2 flex items-center justify-between text-sm font-medium">
 							<span>总计</span>
-							<span className="font-mono text-xs">{formatBytes(disk.total)}</span>
+							<span className="font-mono text-xs">
+								{formatBytes(disk.total)}
+							</span>
 						</div>
 					</div>
 				</div>

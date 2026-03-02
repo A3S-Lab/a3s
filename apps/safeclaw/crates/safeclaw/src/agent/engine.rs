@@ -53,6 +53,8 @@ struct EngineSession {
     persona_id: Option<String>,
     /// Unix timestamp of last activity (message sent or browser connected)
     last_activity_at: u64,
+    /// Per-session MCP servers (separate from global; applied at create/relaunch)
+    session_mcp_servers: Vec<a3s_code::mcp::McpServerConfig>,
 }
 
 impl AgentEngine {
@@ -128,6 +130,7 @@ impl AgentEngine {
         api_key: Option<String>,
         base_url: Option<String>,
         system_prompt_override: Option<String>,
+        mcp_servers: Vec<a3s_code::mcp::McpServerConfig>,
     ) -> crate::Result<AgentProcessInfo> {
         let workspace = cwd.unwrap_or_else(|| {
             std::env::current_dir()
@@ -199,6 +202,25 @@ impl AgentEngine {
         let mut state = AgentSessionState::new(session_id.to_string());
         state.persona_id = persona_id.clone();
 
+        // Connect per-session MCP servers
+        for mcp_config in &mcp_servers {
+            if !mcp_config.enabled {
+                continue;
+            }
+            if let Err(e) = self
+                .session_manager
+                .add_mcp_server(mcp_config.clone())
+                .await
+            {
+                tracing::warn!(
+                    session_id = %session_id,
+                    server = %mcp_config.name,
+                    "Failed to connect per-session MCP server: {}",
+                    e
+                );
+            }
+        }
+
         let engine_session = EngineSession {
             id: session_id.to_string(),
             browser_senders: HashMap::new(),
@@ -214,6 +236,7 @@ impl AgentEngine {
             permission_mode: permission_mode.clone(),
             persona_id: persona_id.clone(),
             last_activity_at: now,
+            session_mcp_servers: mcp_servers,
         };
 
         // Update state fields
@@ -314,6 +337,69 @@ impl AgentEngine {
             es.archived = archived;
             self.persist_session(es);
         }
+    }
+
+    /// Update a session workspace path used on relaunch.
+    pub async fn set_cwd(&self, session_id: &str, cwd: String) {
+        let mut sessions = self.sessions.write().await;
+        if let Some(es) = sessions.get_mut(session_id) {
+            es.cwd = cwd.clone();
+            es.state.cwd = cwd;
+            self.persist_session(es);
+        }
+    }
+
+    // =========================================================================
+    // MCP management
+    // =========================================================================
+
+    /// List all connected MCP servers and their status.
+    pub async fn list_mcp_servers(&self) -> HashMap<String, a3s_code::mcp::McpServerStatus> {
+        self.session_manager.mcp_status().await
+    }
+
+    /// Connect a global MCP server (available to all sessions).
+    pub async fn add_global_mcp_server(
+        &self,
+        config: a3s_code::mcp::McpServerConfig,
+    ) -> crate::Result<()> {
+        self.session_manager
+            .add_mcp_server(config)
+            .await
+            .map_err(|e| crate::Error::Runtime(format!("Failed to add MCP server: {}", e)))
+    }
+
+    /// Disconnect and remove a global MCP server.
+    pub async fn remove_global_mcp_server(&self, name: &str) -> crate::Result<()> {
+        self.session_manager
+            .remove_mcp_server(name)
+            .await
+            .map_err(|e| crate::Error::Runtime(format!("Failed to remove MCP server: {}", e)))
+    }
+
+    /// Update per-session MCP server list (stored for relaunch).
+    pub async fn set_session_mcp_servers(
+        &self,
+        session_id: &str,
+        servers: Vec<a3s_code::mcp::McpServerConfig>,
+    ) {
+        let mut sessions = self.sessions.write().await;
+        if let Some(es) = sessions.get_mut(session_id) {
+            es.session_mcp_servers = servers;
+            self.persist_session(es);
+        }
+    }
+
+    /// Get per-session MCP servers for relaunch.
+    pub async fn get_session_mcp_servers(
+        &self,
+        session_id: &str,
+    ) -> Vec<a3s_code::mcp::McpServerConfig> {
+        let sessions = self.sessions.read().await;
+        sessions
+            .get(session_id)
+            .map(|es| es.session_mcp_servers.clone())
+            .unwrap_or_default()
     }
 
     // =========================================================================
@@ -675,7 +761,13 @@ impl AgentEngine {
         let sid = session_id.to_string();
 
         let handle = tokio::spawn(async move {
+            let turn_started_at = std::time::Instant::now();
+            let mut first_text_delta_logged = false;
+            let mut first_tool_start_logged = false;
             let mut text_buffer = String::new();
+            let mut stream_event_seq: u64 = 0;
+            let mut tool_started_at: std::collections::HashMap<String, std::time::Instant> =
+                std::collections::HashMap::new();
             // Accumulate content blocks (text + tool_use + tool_result) for the
             // final assistant message so the UI can render tool call details.
             let mut content_blocks: Vec<ContentBlock> = Vec::new();
@@ -687,11 +779,29 @@ impl AgentEngine {
                 // Accumulate text for final message
                 if let AgentEvent::TextDelta { ref text } = event {
                     text_buffer.push_str(text);
+                    if !first_text_delta_logged {
+                        first_text_delta_logged = true;
+                        tracing::info!(
+                            session_id = %sid,
+                            elapsed_ms = turn_started_at.elapsed().as_millis() as u64,
+                            "first_text_delta"
+                        );
+                    }
                 }
 
                 // Accumulate tool calls into content blocks
                 match &event {
                     AgentEvent::ToolStart { id, name } => {
+                        if !first_tool_start_logged {
+                            first_tool_start_logged = true;
+                            tracing::info!(
+                                session_id = %sid,
+                                elapsed_ms = turn_started_at.elapsed().as_millis() as u64,
+                                tool_name = %name,
+                                "first_tool_start"
+                            );
+                        }
+                        tool_started_at.insert(id.clone(), std::time::Instant::now());
                         // Flush any accumulated text before the tool call
                         if !text_buffer.is_empty() {
                             content_blocks.push(ContentBlock::Text {
@@ -715,8 +825,15 @@ impl AgentEngine {
                         name,
                         output,
                         exit_code,
-                        metadata: _,
+                        metadata,
                     } => {
+                        tracing::debug!(
+                            session_id = %sid,
+                            elapsed_ms = turn_started_at.elapsed().as_millis() as u64,
+                            tool_name = %name,
+                            is_error = *exit_code != 0,
+                            "tool_end"
+                        );
                         let input_str = tool_input_buffers.remove(id).unwrap_or_default();
                         let input_val: serde_json::Value =
                             serde_json::from_str(&input_str).unwrap_or(serde_json::json!({}));
@@ -725,16 +842,155 @@ impl AgentEngine {
                             name: name.clone(),
                             input: input_val,
                         });
+                        // Extract diff metadata if present
+                        let (before, after, file_path) = if let Some(meta) = metadata {
+                            eprintln!("📝 ToolEnd metadata present: {:?}", meta);
+                            let mut before = meta
+                                .get("before")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string());
+                            let mut after = meta
+                                .get("after")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string());
+                            let file_path = meta
+                                .get("file_path")
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string());
+
+                            // If file_path is present but before/after are missing, read them now
+                            if let Some(ref fp) = file_path {
+                                eprintln!(
+                                    "📝 file_path found: {}, before={:?}, after={:?}",
+                                    fp,
+                                    before.is_some(),
+                                    after.is_some()
+                                );
+                                if before.is_none() || after.is_none() {
+                                    if let Ok(sessions_guard) = sessions.try_read() {
+                                        if let Some(es) = sessions_guard.get(&sid) {
+                                            let workspace = std::path::PathBuf::from(&es.cwd);
+                                            let file_full_path = workspace.join(fp);
+                                            eprintln!(
+                                                "📝 Reading file from: {}",
+                                                file_full_path.display()
+                                            );
+
+                                            // Read "after" content from current file
+                                            if after.is_none() {
+                                                if let Ok(content) =
+                                                    std::fs::read_to_string(&file_full_path)
+                                                {
+                                                    // Skip if file is too large
+                                                    const MAX_DIFF_BYTES: usize = 100 * 1024;
+                                                    if content.len() <= MAX_DIFF_BYTES {
+                                                        eprintln!(
+                                                            "📝 Read after content: {} bytes",
+                                                            content.len()
+                                                        );
+                                                        after = Some(content);
+                                                    } else {
+                                                        eprintln!(
+                                                            "📝 File too large: {} bytes",
+                                                            content.len()
+                                                        );
+                                                    }
+                                                } else {
+                                                    eprintln!(
+                                                        "📝 Failed to read file: {}",
+                                                        file_full_path.display()
+                                                    );
+                                                }
+                                            }
+
+                                            // Use empty string for "before" if not provided
+                                            // (file_history is not easily accessible here)
+                                            if before.is_none() && after.is_some() {
+                                                before = Some(String::new());
+                                                eprintln!("📝 Using empty string for before");
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                eprintln!("📝 No file_path in metadata");
+                            }
+
+                            eprintln!(
+                                "📝 Final: before={:?}, after={:?}, file_path={:?}",
+                                before.is_some(),
+                                after.is_some(),
+                                file_path
+                            );
+                            (before, after, file_path)
+                        } else {
+                            eprintln!("📝 No metadata in ToolEnd");
+                            (None, None, None)
+                        };
                         content_blocks.push(ContentBlock::ToolResult {
                             tool_use_id: id.clone(),
                             content: serde_json::Value::String(output.clone()),
                             is_error: *exit_code != 0,
+                            before: before.clone(),
+                            after: after.clone(),
+                            file_path: file_path.clone(),
                         });
                     }
                     _ => {}
                 }
 
-                let browser_messages = translate_event(&event);
+                // Create modified event with updated metadata for translate_event
+                let event_for_translate = if let AgentEvent::ToolEnd {
+                    id,
+                    name,
+                    output,
+                    exit_code,
+                    metadata,
+                } = &event
+                {
+                    // Check if we need to update metadata with before/after
+                    if let Some(content_block) = content_blocks.last() {
+                        if let ContentBlock::ToolResult {
+                            before,
+                            after,
+                            file_path,
+                            ..
+                        } = content_block
+                        {
+                            // Create updated metadata with before/after
+                            let mut updated_meta =
+                                metadata.clone().unwrap_or_else(|| serde_json::json!({}));
+                            if let Some(b) = before {
+                                updated_meta["before"] = serde_json::Value::String(b.clone());
+                            }
+                            if let Some(a) = after {
+                                updated_meta["after"] = serde_json::Value::String(a.clone());
+                            }
+                            if let Some(fp) = file_path {
+                                updated_meta["file_path"] = serde_json::Value::String(fp.clone());
+                            }
+                            eprintln!("📝 Updated metadata for translate_event: before={}, after={}, file_path={}",
+                                updated_meta.get("before").is_some(),
+                                updated_meta.get("after").is_some(),
+                                updated_meta.get("file_path").is_some());
+                            AgentEvent::ToolEnd {
+                                id: id.clone(),
+                                name: name.clone(),
+                                output: output.clone(),
+                                exit_code: *exit_code,
+                                metadata: Some(updated_meta),
+                            }
+                        } else {
+                            event.clone()
+                        }
+                    } else {
+                        event.clone()
+                    }
+                } else {
+                    event.clone()
+                };
+
+                let browser_messages = translate_event(&event_for_translate);
 
                 // For End events, we broadcast our own rich assistant message
                 // (with tool_use blocks), so filter out the text-only one from
@@ -783,6 +1039,48 @@ impl AgentEngine {
                 } else {
                     browser_messages
                 };
+
+                // Attach a monotonically increasing stream sequence so frontend can
+                // render in stable order even if different stream sub-events interleave.
+                let browser_messages: Vec<_> = browser_messages
+                    .into_iter()
+                    .map(|m| match m {
+                        BrowserIncomingMessage::StreamEvent {
+                            mut event,
+                            parent_tool_use_id,
+                        } => {
+                            stream_event_seq = stream_event_seq.saturating_add(1);
+                            if let serde_json::Value::Object(ref mut obj) = event {
+                                obj.insert("seq".to_string(), serde_json::json!(stream_event_seq));
+                                let event_type =
+                                    obj.get("type").and_then(|v| v.as_str()).unwrap_or_default();
+                                if (event_type == "tool_output_delta" || event_type == "tool_end")
+                                    && !obj.contains_key("elapsed_time_seconds")
+                                {
+                                    if let Some(tool_id) =
+                                        obj.get("tool_use_id").and_then(|v| v.as_str())
+                                    {
+                                        if let Some(started) = tool_started_at.get(tool_id) {
+                                            obj.insert(
+                                                "elapsed_time_seconds".to_string(),
+                                                serde_json::json!(started.elapsed().as_secs_f64()),
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            BrowserIncomingMessage::StreamEvent {
+                                event,
+                                parent_tool_use_id,
+                            }
+                        }
+                        other => other,
+                    })
+                    .collect();
+
+                if let AgentEvent::ToolEnd { id, .. } = &event {
+                    tool_started_at.remove(id);
+                }
 
                 // Log all events for debugging
                 tracing::debug!(
@@ -840,6 +1138,11 @@ impl AgentEngine {
                         }
                     }
                     AgentEvent::End { ref text, .. } => {
+                        tracing::info!(
+                            session_id = %sid,
+                            elapsed_ms = turn_started_at.elapsed().as_millis() as u64,
+                            "turn_end"
+                        );
                         // Flush any remaining text into content blocks
                         let final_text = if text.is_empty() {
                             text_buffer.clone()
@@ -954,6 +1257,7 @@ impl AgentEngine {
                 None,
                 None,
                 None,
+                Vec::new(),
             )
             .await?;
         }
@@ -1026,6 +1330,7 @@ impl AgentEngine {
                 None,
                 None,
                 None,
+                Vec::new(),
             )
             .await?;
         }
@@ -1393,6 +1698,7 @@ impl AgentEngine {
                 permission_mode: Some(ps.state.permission_mode.clone()),
                 persona_id: ps.state.persona_id.clone(),
                 last_activity_at: 0,
+                session_mcp_servers: Vec::new(),
             };
 
             // Try to restore a3s-code session with full LLM history first

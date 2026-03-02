@@ -23,21 +23,33 @@ const router = createHashRouter([
 				}),
 			},
 			{
-				path: "security",
+				path: "repos",
 				lazy: async () => ({
-					Component: (await import("@/pages/security")).default,
+					Component: (await import("@/pages/repos")).default,
 				}),
 			},
 			{
-				path: "memory",
+				path: "repos/:id",
 				lazy: async () => ({
-					Component: (await import("@/pages/memory")).default,
+					Component: (await import("@/pages/repos/editor")).default,
 				}),
 			},
 			{
 				path: "box",
 				lazy: async () => ({
 					Component: (await import("@/pages/box")).default,
+				}),
+			},
+			{
+				path: "workflow",
+				lazy: async () => ({
+					Component: (await import("@/pages/workflow")).default,
+				}),
+			},
+			{
+				path: "workflow/:id",
+				lazy: async () => ({
+					Component: (await import("@/pages/workflow/editor")).default,
 				}),
 			},
 		],
@@ -53,6 +65,12 @@ const router = createHashRouter([
 				}),
 			},
 		],
+	},
+	{
+		path: "/builtin/:id",
+		lazy: async () => ({
+			Component: (await import("@/pages/builtin")).default,
+		}),
 	},
 	{ path: "/500", Component: GeneralError },
 	{ path: "/404", Component: NotFoundError },

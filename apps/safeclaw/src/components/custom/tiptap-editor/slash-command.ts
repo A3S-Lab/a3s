@@ -8,7 +8,7 @@ import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
 export interface SlashCommandItem {
 	id: string;
 	label: string;
-	description: string;
+	description?: string;
 	icon?: string;
 }
 

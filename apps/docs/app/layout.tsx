@@ -8,14 +8,14 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://a3s.dev';
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'A3S – Autonomous Agent System',
+    default: 'A3S – Agentic Adaptive Augmentation System',
     template: '%s | A3S',
   },
   description:
-    'A3S is an open-source Autonomous Agent System — runtime, TEE security, memory, tooling, and orchestration for production AI agents.',
+    'A3S is an open-source Agentic Adaptive Augmentation System — runtime, TEE security, memory, tooling, and orchestration for production AI agents.',
   keywords: [
     'A3S',
-    'autonomous agents',
+    'agentic agents',
     'AI agent runtime',
     'TEE',
     'Trusted Execution Environment',

@@ -21,10 +21,6 @@ pub enum Error {
     #[error("TEE error: {0}")]
     Tee(String),
 
-    /// Privacy classification error
-    #[error("Privacy error: {0}")]
-    Privacy(String),
-
     /// Runtime error
     #[error("Runtime error: {0}")]
     Runtime(String),
@@ -40,10 +36,6 @@ pub enum Error {
     /// HTTP error
     #[error("HTTP error: {0}")]
     Http(#[from] reqwest::Error),
-
-    /// Leakage prevention error
-    #[error("Leakage error: {0}")]
-    Leakage(String),
 
     /// Internal error
     #[error("Internal error: {0}")]

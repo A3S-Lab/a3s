@@ -8,7 +8,6 @@ import {
 	Pie,
 	PieChart as ReChartsDonutChart,
 	ResponsiveContainer,
-	Sector,
 	Tooltip,
 } from "recharts";
 
@@ -123,26 +122,6 @@ const ChartTooltip = ({
 		);
 	}
 	return null;
-};
-
-const renderInactiveShape = (props: any) => {
-	const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, className } =
-		props;
-
-	return (
-		<Sector
-			cx={cx}
-			cy={cy}
-			innerRadius={innerRadius}
-			outerRadius={outerRadius}
-			startAngle={startAngle}
-			endAngle={endAngle}
-			className={className}
-			fill=""
-			opacity={0.3}
-			style={{ outline: "none" }}
-		/>
-	);
 };
 
 type DonutChartVariant = "donut" | "pie";
@@ -277,8 +256,6 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
 							nameKey={category}
 							isAnimationActive={false}
 							onClick={handleShapeClick}
-							activeIndex={activeIndex}
-							inactiveShape={renderInactiveShape}
 							style={{ outline: "none" }}
 						/>
 						{showTooltip && (

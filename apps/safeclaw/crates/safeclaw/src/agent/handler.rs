@@ -37,6 +37,10 @@ pub fn agent_router(state: AgentState) -> Router {
         .route("/api/agent/sessions/:id", get(get_session))
         .route("/api/agent/sessions/:id", patch(update_session))
         .route("/api/agent/sessions/:id", delete(delete_session))
+        .route(
+            "/api/agent/sessions/:id/mcp",
+            get(get_session_mcp_servers).put(set_session_mcp_servers),
+        )
         .route("/api/agent/sessions/:id/relaunch", post(relaunch_session))
         .route("/api/agent/backends", get(list_backends))
         .route("/api/agent/personas", get(list_personas))
@@ -108,6 +112,7 @@ async fn create_session(
             request.api_key,
             request.base_url,
             request.system_prompt,
+            request.mcp_servers,
         )
         .await
     {
@@ -142,6 +147,8 @@ struct UpdateSessionRequest {
     name: Option<String>,
     archived: Option<bool>,
     cwd: Option<String>,
+    #[serde(default)]
+    mcp_servers: Option<Vec<a3s_code::mcp::McpServerConfig>>,
 }
 
 /// Update a session's name or archived status
@@ -162,6 +169,12 @@ async fn update_session(
     }
     if let Some(archived) = request.archived {
         state.engine.set_archived(&id, archived).await;
+    }
+    if let Some(cwd) = request.cwd {
+        state.engine.set_cwd(&id, cwd).await;
+    }
+    if let Some(servers) = request.mcp_servers {
+        state.engine.set_session_mcp_servers(&id, servers).await;
     }
 
     match state.engine.get_session(&id).await {
@@ -187,6 +200,52 @@ async fn delete_session(
     StatusCode::NO_CONTENT
 }
 
+#[derive(Debug, Deserialize)]
+struct SessionMcpRequest {
+    #[serde(default)]
+    mcp_servers: Vec<a3s_code::mcp::McpServerConfig>,
+}
+
+/// Get per-session MCP server configs.
+async fn get_session_mcp_servers(
+    State(state): State<AgentState>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    if state.engine.get_session(&id).await.is_none() {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Session not found"})),
+        );
+    }
+
+    let servers = state.engine.get_session_mcp_servers(&id).await;
+    (
+        StatusCode::OK,
+        Json(serde_json::to_value(servers).unwrap_or_default()),
+    )
+}
+
+/// Replace per-session MCP server configs.
+async fn set_session_mcp_servers(
+    State(state): State<AgentState>,
+    Path(id): Path<String>,
+    Json(request): Json<SessionMcpRequest>,
+) -> impl IntoResponse {
+    if state.engine.get_session(&id).await.is_none() {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Session not found"})),
+        );
+    }
+
+    state
+        .engine
+        .set_session_mcp_servers(&id, request.mcp_servers)
+        .await;
+
+    (StatusCode::OK, Json(serde_json::json!({"ok": true})))
+}
+
 /// Relaunch a session (destroy + recreate with same config)
 async fn relaunch_session(
     State(state): State<AgentState>,
@@ -202,10 +261,13 @@ async fn relaunch_session(
         }
     };
 
+    // Retrieve per-session MCP servers before destroying
+    let session_mcp_servers = state.engine.get_session_mcp_servers(&id).await;
+
     // Destroy existing session
     let _ = state.engine.destroy_session(&id).await;
 
-    // Recreate with same config
+    // Recreate with same config (including per-session MCP servers)
     match state
         .engine
         .create_session(
@@ -217,6 +279,7 @@ async fn relaunch_session(
             None,
             None,
             None,
+            session_mcp_servers,
         )
         .await
     {
@@ -756,24 +819,58 @@ async fn handle_browser_ws(socket: WebSocket, session_id: String, state: AgentSt
 // =============================================================================
 
 /// List all MCP servers and their status
-async fn list_mcp_servers(_state: State<AgentState>) -> impl IntoResponse {
-    StatusCode::NOT_IMPLEMENTED
+async fn list_mcp_servers(State(state): State<AgentState>) -> impl IntoResponse {
+    let status = state.engine.list_mcp_servers().await;
+    Json(serde_json::to_value(status).unwrap_or_default())
 }
 
-/// Add and connect an MCP server
+/// Add and connect an MCP server, then persist to config file
 async fn add_mcp_server(
-    _state: State<AgentState>,
-    _body: axum::body::Bytes,
+    State(state): State<AgentState>,
+    Json(config): Json<a3s_code::mcp::McpServerConfig>,
 ) -> impl IntoResponse {
-    StatusCode::NOT_IMPLEMENTED
+    let enabled = config.enabled;
+
+    if enabled {
+        if let Err(e) = state.engine.add_global_mcp_server(config.clone()).await {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": e.to_string()})),
+            );
+        }
+    } else {
+        // Keep config entry but ensure runtime connection is removed.
+        let _ = state.engine.remove_global_mcp_server(&config.name).await;
+    }
+
+    // Persist to config file
+    let mut cfg = state.engine.code_config().await;
+    cfg.mcp_servers.retain(|s| s.name != config.name);
+    cfg.mcp_servers.push(config);
+    if let Some(path) = state.engine.get_config_path().await {
+        persist_code_config_to_file(&cfg, &path);
+    }
+    state.engine.update_code_config(cfg).await;
+
+    (StatusCode::CREATED, Json(serde_json::json!({"ok": true})))
 }
 
-/// Disconnect and remove an MCP server
+/// Disconnect and remove an MCP server, then persist to config file
 async fn remove_mcp_server(
-    _state: State<AgentState>,
-    _name: Path<String>,
+    State(state): State<AgentState>,
+    Path(name): Path<String>,
 ) -> impl IntoResponse {
-    StatusCode::NOT_IMPLEMENTED
+    let _ = state.engine.remove_global_mcp_server(&name).await;
+
+    // Persist to config file
+    let mut cfg = state.engine.code_config().await;
+    cfg.mcp_servers.retain(|s| s.name != name);
+    if let Some(path) = state.engine.get_config_path().await {
+        persist_code_config_to_file(&cfg, &path);
+    }
+    state.engine.update_code_config(cfg).await;
+
+    StatusCode::NO_CONTENT
 }
 
 #[cfg(test)]
@@ -782,6 +879,8 @@ mod tests {
     use crate::agent::engine::AgentEngine;
     use crate::agent::session_store::AgentSessionStore;
     use a3s_code::config::{CodeConfig, ProviderConfig};
+    use a3s_code::mcp::{McpServerConfig, McpTransportConfig};
+    use std::collections::HashMap;
     use tempfile::TempDir;
 
     fn test_model(id: &str) -> a3s_code::config::ModelConfig {
@@ -1009,6 +1108,8 @@ mod tests {
         let req = UpdateSessionRequest {
             name: Some("New Name".to_string()),
             archived: None,
+            cwd: None,
+            mcp_servers: None,
         };
         let response = update_session(State(state), Path("nonexistent".to_string()), Json(req))
             .await
@@ -1053,5 +1154,107 @@ mod tests {
             .await
             .into_response();
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    }
+
+    #[tokio::test]
+    async fn test_add_disabled_mcp_server_persists_without_connecting() {
+        let (state, _dir) = make_state().await;
+
+        // Invalid command is fine because disabled MCP servers should not connect.
+        let config = McpServerConfig {
+            name: "disabled-test".to_string(),
+            transport: McpTransportConfig::Stdio {
+                command: "/definitely/not/a/real/command".to_string(),
+                args: vec![],
+            },
+            enabled: false,
+            env: HashMap::new(),
+            oauth: None,
+            tool_timeout_secs: 1,
+        };
+
+        let response = add_mcp_server(State(state.clone()), Json(config.clone()))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::CREATED);
+
+        let cfg = state.engine.code_config().await;
+        let saved = cfg
+            .mcp_servers
+            .iter()
+            .find(|s| s.name == config.name)
+            .expect("disabled MCP config should be persisted");
+        assert!(!saved.enabled);
+
+        let status = state.engine.list_mcp_servers().await;
+        assert!(
+            status.get(&config.name).is_none(),
+            "disabled MCP server should not be connected in runtime manager"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_add_enabled_mcp_server_invalid_command_returns_error() {
+        let (state, _dir) = make_state().await;
+
+        // Enabled path should attempt real connection and fail for invalid command.
+        let config = McpServerConfig {
+            name: "enabled-invalid-test".to_string(),
+            transport: McpTransportConfig::Stdio {
+                command: "/definitely/not/a/real/command".to_string(),
+                args: vec![],
+            },
+            enabled: true,
+            env: HashMap::new(),
+            oauth: None,
+            tool_timeout_secs: 1,
+        };
+
+        let response = add_mcp_server(State(state.clone()), Json(config))
+            .await
+            .into_response();
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let cfg = state.engine.code_config().await;
+        assert!(
+            cfg.mcp_servers
+                .iter()
+                .all(|s| s.name != "enabled-invalid-test"),
+            "failed enabled MCP server should not be persisted"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_create_session_accepts_disabled_session_mcp_server() {
+        let (state, _dir) = make_state().await;
+
+        let response = create_session(
+            State(state),
+            Json(CreateSessionRequest {
+                model: None,
+                permission_mode: None,
+                cwd: None,
+                persona_id: None,
+                mcp_servers: vec![McpServerConfig {
+                    name: "session-disabled-test".to_string(),
+                    transport: McpTransportConfig::Stdio {
+                        command: "/definitely/not/a/real/command".to_string(),
+                        args: vec![],
+                    },
+                    enabled: false,
+                    env: HashMap::new(),
+                    oauth: None,
+                    tool_timeout_secs: 1,
+                }],
+                api_key: None,
+                base_url: None,
+                system_prompt: None,
+                skills: None,
+            }),
+        )
+        .await
+        .into_response();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
     }
 }

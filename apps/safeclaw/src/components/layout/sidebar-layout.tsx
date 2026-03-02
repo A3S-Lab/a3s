@@ -218,7 +218,8 @@ export function SettingRow({
 export const PROVIDER_COLORS: Record<string, string> = {
 	anthropic:
 		"bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
-	openai: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
+	openai:
+		"bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
 	google: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
 	deepseek:
 		"bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",

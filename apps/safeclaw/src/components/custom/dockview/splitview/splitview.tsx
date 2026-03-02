@@ -32,7 +32,7 @@ export interface ISplitviewReactProps {
 export const SplitviewReact = React.forwardRef(
 	(props: ISplitviewReactProps, ref: React.ForwardedRef<HTMLDivElement>) => {
 		const domRef = React.useRef<HTMLDivElement>(null);
-		const splitviewRef = React.useRef<SplitviewApi>();
+		const splitviewRef = React.useRef<SplitviewApi | null>(null);
 		const [portals, addPortal] = usePortalsLifecycle();
 
 		React.useImperativeHandle(ref, () => domRef.current!, []);

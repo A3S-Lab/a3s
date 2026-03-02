@@ -1,5 +1,6 @@
 //! SafeClaw configuration management
 
+use dirs_next;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -42,10 +43,6 @@ pub struct SafeClawConfig {
     #[serde(default)]
     pub tee: TeeConfig,
 
-    /// Privacy configuration
-    #[serde(default)]
-    pub privacy: PrivacyConfig,
-
     /// Model configuration (a3s-code CodeConfig format).
     /// Deserialized separately via `SafeClawConfig::from_hcl` to handle
     /// repeated HCL blocks (providers, models) correctly.
@@ -55,10 +52,6 @@ pub struct SafeClawConfig {
     /// Storage configuration
     #[serde(default)]
     pub storage: StorageConfig,
-
-    /// Audit event pipeline configuration
-    #[serde(default)]
-    pub audit: AuditConfig,
 
     /// Skills configuration
     #[serde(default)]
@@ -423,7 +416,7 @@ pub struct TeeConfig {
 
     /// Network firewall policy for outbound connections
     #[serde(default)]
-    pub network_policy: crate::guard::NetworkPolicy,
+    pub network_policy: NetworkPolicy,
 
     /// Fallback policy when TEE is expected but unavailable.
     /// Controls how the policy engine handles `ProcessInTee` decisions
@@ -465,7 +458,7 @@ impl Default for TeeConfig {
             secrets: Vec::new(),
             workspace_dir: None,
             socket_dir: None,
-            network_policy: crate::guard::NetworkPolicy::default(),
+            network_policy: NetworkPolicy::default(),
             fallback_policy: TeeFallbackPolicy::default(),
         }
     }
@@ -492,6 +485,28 @@ pub enum TeeFallbackPolicy {
 impl Default for TeeFallbackPolicy {
     fn default() -> Self {
         Self::Warn
+    }
+}
+
+/// Network firewall policy for outbound connections from TEE.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct NetworkPolicy {
+    /// Enable network firewall
+    pub enabled: bool,
+    /// Default deny all outbound connections
+    pub default_deny: bool,
+    /// Allowed outbound domains
+    pub allowed_domains: Vec<String>,
+}
+
+impl Default for NetworkPolicy {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            default_deny: false,
+            allowed_domains: Vec::new(),
+        }
     }
 }
 
@@ -537,62 +552,8 @@ impl Default for AttestationConfig {
     }
 }
 
-/// Privacy configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct PrivacyConfig {
-    /// Enable automatic privacy classification
-    pub auto_classify: bool,
-
-    /// Default sensitivity level for unclassified data
-    pub default_level: SensitivityLevel,
-
-    /// Classification rules
-    pub rules: Vec<ClassificationRule>,
-
-    /// Data retention policy
-    pub retention: RetentionConfig,
-}
-
-impl Default for PrivacyConfig {
-    fn default() -> Self {
-        Self {
-            auto_classify: true,
-            default_level: SensitivityLevel::Normal,
-            rules: default_classification_rules(),
-            retention: RetentionConfig::default(),
-        }
-    }
-}
-
 // Re-export from shared a3s-common crate (single source of truth)
-pub use a3s_common::privacy::default_classification_rules;
-pub use a3s_common::privacy::ClassificationRule;
 pub use a3s_common::privacy::SensitivityLevel;
-
-/// Data retention configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct RetentionConfig {
-    /// Retention period for normal data in days
-    pub normal_days: u32,
-
-    /// Retention period for sensitive data in days
-    pub sensitive_days: u32,
-
-    /// Enable automatic cleanup
-    pub auto_cleanup: bool,
-}
-
-impl Default for RetentionConfig {
-    fn default() -> Self {
-        Self {
-            normal_days: 30,
-            sensitive_days: 7,
-            auto_cleanup: true,
-        }
-    }
-}
 
 /// Storage configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -626,61 +587,6 @@ impl Default for StorageConfig {
     }
 }
 
-/// Audit event pipeline configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct AuditConfig {
-    /// Broadcast channel / audit log buffer capacity
-    pub bus_capacity: usize,
-
-    /// Alert monitor configuration
-    pub alert: crate::audit::AlertConfig,
-
-    /// File-based audit persistence configuration
-    #[serde(default)]
-    pub persistence: crate::audit::PersistenceConfig,
-
-    /// a3s-event bridge configuration (NATS integration)
-    #[serde(default)]
-    pub event_bridge: EventBridgeConfig,
-}
-
-impl Default for AuditConfig {
-    fn default() -> Self {
-        Self {
-            bus_capacity: 10_000,
-            alert: crate::audit::AlertConfig::default(),
-            persistence: crate::audit::PersistenceConfig::default(),
-            event_bridge: EventBridgeConfig::default(),
-        }
-    }
-}
-
-/// Configuration for bridging audit events to a3s-event (NATS/memory).
-///
-/// When enabled, all audit events are forwarded to an `a3s-event::EventBus`
-/// under the `audit.<severity>.<vector>` subject hierarchy.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct EventBridgeConfig {
-    /// Enable the a3s-event bridge
-    pub enabled: bool,
-
-    /// NATS server URL (e.g., "nats://localhost:4222")
-    /// When empty, falls back to in-memory provider.
-    #[serde(default)]
-    pub nats_url: String,
-}
-
-impl Default for EventBridgeConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            nats_url: String::new(),
-        }
-    }
-}
-
 /// Skills configuration for runtime skill management and self-bootstrap
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -696,7 +602,25 @@ pub struct SkillsConfig {
 
 impl SkillsConfig {
     fn default_dir() -> String {
-        "./skills".to_string()
+        // Prefer skills/ directory next to the binary (works for both dev and production)
+        if let Ok(exe) = std::env::current_exe() {
+            let candidate = exe
+                .parent()
+                .unwrap_or(std::path::Path::new("."))
+                .join("skills");
+            if candidate.exists() {
+                return candidate.to_string_lossy().into_owned();
+            }
+        }
+        // Fallback to ~/.safeclaw/skills
+        dirs_next::home_dir()
+            .map(|h| {
+                h.join(".safeclaw")
+                    .join("skills")
+                    .to_string_lossy()
+                    .into_owned()
+            })
+            .unwrap_or_else(|| "./skills".to_string())
     }
 
     fn default_auto_load() -> bool {
@@ -890,14 +814,6 @@ mod tests {
         let config = SafeClawConfig::default();
         assert_eq!(config.gateway.port, 18790);
         assert!(config.tee.enabled);
-        assert!(config.privacy.auto_classify);
-    }
-
-    #[test]
-    fn test_classification_rules() {
-        let rules = default_classification_rules();
-        assert!(!rules.is_empty());
-        assert!(rules.iter().any(|r| r.name == "credit_card"));
     }
 
     #[test]
@@ -982,29 +898,5 @@ mod tests {
         assert!(config.dingtalk.is_some());
         assert!(config.wecom.is_some());
         assert!(config.telegram.is_none());
-    }
-
-    #[test]
-    fn test_event_bridge_config_default() {
-        let config = EventBridgeConfig::default();
-        assert!(!config.enabled);
-        assert!(config.nats_url.is_empty());
-    }
-
-    #[test]
-    fn test_event_bridge_config_serde() {
-        let json = serde_json::json!({
-            "enabled": true,
-            "nats_url": "nats://localhost:4222"
-        });
-        let config: EventBridgeConfig = serde_json::from_value(json).unwrap();
-        assert!(config.enabled);
-        assert_eq!(config.nats_url, "nats://localhost:4222");
-    }
-
-    #[test]
-    fn test_audit_config_includes_event_bridge() {
-        let config = AuditConfig::default();
-        assert!(!config.event_bridge.enabled);
     }
 }

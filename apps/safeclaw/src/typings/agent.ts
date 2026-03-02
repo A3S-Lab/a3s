@@ -63,6 +63,9 @@ export type ContentBlock =
 			tool_use_id: string;
 			content: string | ContentBlock[];
 			is_error?: boolean;
+			before?: string;
+			after?: string;
+			file_path?: string;
 	  }
 	| { type: "thinking"; thinking: string; budget_tokens?: number };
 
@@ -130,6 +133,7 @@ export type BrowserIncomingMessage =
 			tool_use_id: string;
 			tool_name: string;
 			elapsed_time_seconds: number;
+			seq?: number;
 	  }
 	| { type: "tool_use_summary"; summary: string; tool_use_ids: string[] }
 	| { type: "status_change"; status: string | null }

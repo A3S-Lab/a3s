@@ -8,14 +8,26 @@
 use crate::{
     agent::{AgentBus, AgentEngine, AgentSessionStore, AgentState},
     api::build_app,
-    audit::AuditState,
     config::SafeClawConfig,
-    privacy::handler::PrivacyState,
     runtime::RuntimeBuilder,
 };
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 use std::sync::Arc;
+
+fn parse_code_config_with_fallback(content: &str) -> Result<a3s_code::config::CodeConfig> {
+    match a3s_code::config::CodeConfig::from_hcl(content) {
+        Ok(cfg) => Ok(cfg),
+        Err(hcl_err) => {
+            // Backward compatibility: some older tools persisted JSON into .hcl paths.
+            serde_json::from_str::<a3s_code::config::CodeConfig>(content).map_err(|json_err| {
+                anyhow::anyhow!(
+                    "Config error: Failed to parse HCL ({hcl_err}); JSON fallback also failed ({json_err})"
+                )
+            })
+        }
+    }
+}
 
 // ── Config loading ──────────────────────────────────────────────────
 
@@ -38,7 +50,7 @@ pub fn merge_model_config(config: &mut SafeClawConfig) {
     if config.models.providers.is_empty() {
         if let Some(a3s_config) = find_a3s_config() {
             if let Ok(content) = std::fs::read_to_string(&a3s_config) {
-                if let Ok(code_config) = a3s_code::config::CodeConfig::from_hcl(&content) {
+                if let Ok(code_config) = parse_code_config_with_fallback(&content) {
                     if !code_config.providers.is_empty() {
                         tracing::info!("Merging model config from {}", a3s_config.display());
                         config.models = code_config;
@@ -50,12 +62,6 @@ pub fn merge_model_config(config: &mut SafeClawConfig) {
 }
 
 /// Load configuration using the standard priority chain.
-///
-/// Priority: explicit path > `./safeclaw.hcl` > `<ancestor>/.a3s/config.hcl`
-///           > `~/.config/safeclaw/config.hcl` > default.
-///
-/// Model config from `.a3s/config.hcl` is always merged in when the
-/// primary config has no providers.
 pub fn load_config(explicit_path: Option<&PathBuf>) -> Result<(SafeClawConfig, Option<PathBuf>)> {
     let (mut config, config_path) = if let Some(path) = explicit_path {
         let content = std::fs::read_to_string(path)?;
@@ -76,7 +82,7 @@ pub fn load_config(explicit_path: Option<&PathBuf>) -> Result<(SafeClawConfig, O
     } else if let Some(a3s_config) = find_a3s_config() {
         let content = std::fs::read_to_string(&a3s_config)?;
         tracing::info!("Loading config from {}", a3s_config.display());
-        let code_config = a3s_code::config::CodeConfig::from_hcl(&content)
+        let code_config = parse_code_config_with_fallback(&content)
             .map_err(|e| anyhow::anyhow!("Config parse error: {e}"))?;
         let mut sc = SafeClawConfig::default();
         sc.models = code_config;
@@ -134,7 +140,6 @@ pub async fn build_agent_state(
         tracing::info!("No LLM config found — configure via Settings or PUT /api/agent/config");
     }
 
-    // Skill registry
     let skill_registry = Arc::new(a3s_code::skills::SkillRegistry::with_builtins());
     let skills_dir = PathBuf::from(&skills_config.dir);
     if skills_config.auto_load {
@@ -164,6 +169,23 @@ pub async fn build_agent_state(
         .set_skill_registry(skill_registry, skills_dir)
         .await;
     session_manager.set_memory_store(memory_store).await;
+
+    // Initialize MCP servers from config
+    if !code_config.mcp_servers.is_empty() {
+        let mcp_manager = Arc::new(a3s_code::mcp::McpManager::new());
+        for server_config in &code_config.mcp_servers {
+            if server_config.enabled {
+                mcp_manager.register_server(server_config.clone()).await;
+                match mcp_manager.connect(&server_config.name).await {
+                    Ok(()) => tracing::info!(server = %server_config.name, "MCP server connected"),
+                    Err(e) => {
+                        tracing::warn!(server = %server_config.name, "MCP server failed to connect: {e}")
+                    }
+                }
+            }
+        }
+        session_manager.set_mcp_manager(mcp_manager).await;
+    }
 
     let store = Arc::new(AgentSessionStore::new(sessions_dir.join("ui-state")));
     let engine = Arc::new(
@@ -206,10 +228,7 @@ impl GatewayHandle {
     }
 }
 
-/// Build and start the full gateway stack. Returns the axum `Router`
-/// and a `GatewayHandle` for shutdown.
-///
-/// The caller is responsible for binding the router to a listener.
+/// Build and start the full gateway stack.
 pub async fn start_gateway(
     config: SafeClawConfig,
     config_path: Option<PathBuf>,
@@ -251,23 +270,6 @@ pub async fn start_gateway(
     gateway.start().await?;
     let gateway = Arc::new(gateway);
 
-    let audit_state = AuditState {
-        log: gateway.global_audit_log().clone(),
-        alert_monitor: Some(gateway.alert_monitor().clone()),
-        persistence: None,
-    };
-
-    let privacy_state = PrivacyState {
-        classifier: Arc::new(
-            crate::privacy::classifier::Classifier::new(
-                crate::config::default_classification_rules(),
-                crate::config::SensitivityLevel::Normal,
-            )
-            .expect("default classifier"),
-        ),
-        semantic: Arc::new(crate::privacy::semantic::SemanticAnalyzer::new()),
-    };
-
     let channel_config_dir = dirs_next::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("safeclaw");
@@ -278,8 +280,6 @@ pub async fn start_gateway(
     let app = build_app(
         gateway.clone(),
         agent_state,
-        privacy_state,
-        audit_state,
         memory_store,
         channel_config_store,
         &[],
@@ -289,11 +289,6 @@ pub async fn start_gateway(
 }
 
 /// Build, bind, serve, and shut down the full gateway in one call.
-///
-/// This is the highest-level entry point — it calls [`start_gateway`],
-/// binds the listener, runs `axum::serve` with graceful shutdown on
-/// Ctrl-C, then tears everything down.  Both the standalone CLI and
-/// the embedded Tauri gateway use this.
 pub async fn run_gateway(
     config: SafeClawConfig,
     config_path: Option<PathBuf>,

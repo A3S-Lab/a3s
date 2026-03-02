@@ -17,6 +17,169 @@ const pendingUserImages = new Map<
 	string,
 	{ media_type: string; data: string }[]
 >();
+/** Cache diff data from tool_end events, keyed by sessionId → toolUseId */
+const diffCache = new Map<
+	string,
+	Map<string, { before?: string; after?: string; file_path?: string }>
+>();
+/** Local monotonically increasing sequence per session for stream ordering */
+const streamSeq = new Map<string, number>();
+/** Next expected seq per session for in-order stream processing */
+const nextExpectedStreamSeq = new Map<string, number>();
+
+type StreamStats = {
+	received: number;
+	processed: number;
+	staleDrops: number;
+	reanchors: number;
+	gapRecoveries: number;
+};
+const streamStats = new Map<string, StreamStats>();
+
+type TurnPerf = {
+	turnId: number;
+	startedAt: number;
+	wsSentAt?: number;
+	messageStartAt?: number;
+	firstDeltaAt?: number;
+	firstToolStartAt?: number;
+	firstPermissionRequestAt?: number;
+	firstToolOutputAt?: number;
+	firstToolEndAt?: number;
+	assistantAt?: number;
+	resultAt?: number;
+};
+const turnPerfBySession = new Map<string, TurnPerf>();
+let turnCounter = 0;
+
+function isStreamDebugEnabled(): boolean {
+	if (typeof window === "undefined") return false;
+	try {
+		return localStorage.getItem("safeclaw-stream-debug") === "true";
+	} catch {
+		return false;
+	}
+}
+
+function getStreamStats(sessionId: string): StreamStats {
+	if (!streamStats.has(sessionId)) {
+		streamStats.set(sessionId, {
+			received: 0,
+			processed: 0,
+			staleDrops: 0,
+			reanchors: 0,
+			gapRecoveries: 0,
+		});
+	}
+	return streamStats.get(sessionId)!;
+}
+
+function logStreamDebug(sessionId: string, reason: string): void {
+	if (!isStreamDebugEnabled()) return;
+	const stats = getStreamStats(sessionId);
+	const expected = nextExpectedStreamSeq.get(sessionId) || 1;
+	console.debug(`[stream:${sessionId}] ${reason}`, {
+		expected,
+		buffered: 0,
+		seq: streamSeq.get(sessionId) || 0,
+		stats,
+	});
+}
+
+function markTurnPerf(sessionId: string, field: keyof TurnPerf): void {
+	const perf = turnPerfBySession.get(sessionId);
+	if (!perf) return;
+	if (perf[field] == null) {
+		(perf as Record<string, unknown>)[field] = performance.now();
+	}
+}
+
+function emitTurnPerf(
+	sessionId: string,
+	finalStage: "assistant" | "result",
+): void {
+	if (!isStreamDebugEnabled()) return;
+	const perf = turnPerfBySession.get(sessionId);
+	if (!perf) return;
+
+	const base = perf.wsSentAt ?? perf.startedAt;
+	const ms = (t?: number) =>
+		typeof t === "number" ? Math.round(t - base) : null;
+	const firstDeltaMs = ms(perf.firstDeltaAt);
+	const firstToolStartMs = ms(perf.firstToolStartAt);
+	const firstPermissionRequestMs = ms(perf.firstPermissionRequestAt);
+	const resultMs = ms(perf.resultAt);
+	let inferredSlowStage:
+		| "frontend_send"
+		| "model_first_token"
+		| "permission_wait"
+		| "tool_exec"
+		| "unknown" = "unknown";
+	if (typeof firstDeltaMs === "number" && firstDeltaMs > 8000) {
+		inferredSlowStage = "model_first_token";
+	} else if (
+		typeof firstPermissionRequestMs === "number" &&
+		typeof resultMs === "number" &&
+		resultMs - firstPermissionRequestMs > 5000
+	) {
+		inferredSlowStage = "permission_wait";
+	} else if (
+		typeof firstToolStartMs === "number" &&
+		typeof resultMs === "number" &&
+		resultMs - firstToolStartMs > 4000
+	) {
+		inferredSlowStage = "tool_exec";
+	} else if (
+		typeof perf.wsSentAt === "number" &&
+		perf.wsSentAt - perf.startedAt > 1500
+	) {
+		inferredSlowStage = "frontend_send";
+	}
+
+	console.info(
+		`[stream:${sessionId}] turn #${perf.turnId} timeline (${finalStage})`,
+		{
+			toMessageStartMs: ms(perf.messageStartAt),
+			toFirstDeltaMs: firstDeltaMs,
+			toFirstToolStartMs: firstToolStartMs,
+			toFirstPermissionRequestMs: firstPermissionRequestMs,
+			toFirstToolOutputMs: ms(perf.firstToolOutputAt),
+			toFirstToolEndMs: ms(perf.firstToolEndAt),
+			toAssistantMs: ms(perf.assistantAt),
+			toResultMs: resultMs,
+			transportOverheadMs:
+				typeof perf.wsSentAt === "number"
+					? Math.round(perf.wsSentAt - perf.startedAt)
+					: null,
+			inferredSlowStage,
+		},
+	);
+
+	agentModel.setStreamPerfHint(sessionId, {
+		turn_id: perf.turnId,
+		slow_stage: inferredSlowStage,
+		to_first_delta_ms: firstDeltaMs ?? undefined,
+		to_first_permission_request_ms: firstPermissionRequestMs ?? undefined,
+		to_result_ms: resultMs ?? undefined,
+		updated_at: Date.now(),
+	});
+}
+
+function nextStreamSeq(sessionId: string): number {
+	const next = (streamSeq.get(sessionId) || 0) + 1;
+	streamSeq.set(sessionId, next);
+	return next;
+}
+
+function resetStreamSeq(sessionId: string): void {
+	streamSeq.delete(sessionId);
+}
+
+function resetStreamState(sessionId: string): void {
+	resetStreamSeq(sessionId);
+	nextExpectedStreamSeq.delete(sessionId);
+	streamStats.delete(sessionId);
+}
 
 function getWsUrl(sessionId: string): string {
 	const base = getGatewayUrl().replace(/^http/, "ws");
@@ -54,6 +217,10 @@ export function connectSession(sessionId: string): void {
 	ws.onclose = () => {
 		sockets.delete(sessionId);
 		agentModel.setConnectionStatus(sessionId, "disconnected");
+		turnPerfBySession.delete(sessionId);
+		resetStreamState(sessionId);
+		diffCache.delete(sessionId);
+		pendingUserImages.delete(sessionId);
 		scheduleReconnect(sessionId);
 	};
 
@@ -77,6 +244,10 @@ export function disconnectSession(sessionId: string): void {
 		sockets.delete(sessionId);
 	}
 	agentModel.setConnectionStatus(sessionId, "disconnected");
+	turnPerfBySession.delete(sessionId);
+	resetStreamState(sessionId);
+	diffCache.delete(sessionId);
+	pendingUserImages.delete(sessionId);
 }
 
 /** Disconnect all sessions */
@@ -93,9 +264,20 @@ export function sendToSession(
 ): boolean {
 	const ws = sockets.get(sessionId);
 	if (ws?.readyState === WebSocket.OPEN) {
+		const now = performance.now();
 		ws.send(JSON.stringify(msg));
 
 		if (msg.type === "user_message") {
+			turnCounter += 1;
+			turnPerfBySession.set(sessionId, {
+				turnId: turnCounter,
+				startedAt: now,
+				wsSentAt: now,
+			});
+			agentModel.setStreamPerfHint(sessionId, null);
+			// Start a fresh turn window immediately to avoid stale seq state
+			// blocking new stream events when message_start is delayed or missing.
+			resetStreamState(sessionId);
 			agentModel.setSessionStatus(sessionId, "running");
 			// Store user message locally with images (server echo won't include images)
 			if (msg.images && msg.images.length > 0) {
@@ -126,6 +308,235 @@ function scheduleReconnect(sessionId: string): void {
 	reconnectTimers.set(sessionId, timer);
 }
 
+function handleStreamEventPayload(
+	sessionId: string,
+	event: Record<string, unknown>,
+	seq: number,
+): void {
+	const eventType = event.type as string;
+
+	if (eventType === "message_start") {
+		markTurnPerf(sessionId, "messageStartAt");
+		resetStreamState(sessionId);
+		nextExpectedStreamSeq.set(sessionId, seq + 1);
+		streamSeq.set(sessionId, seq);
+		agentModel.setStreamingStartedAt(sessionId, Date.now());
+		agentModel.setStreaming(sessionId, "");
+		agentModel.setSessionStatus(sessionId, "running");
+		agentModel.clearCompletedTools(sessionId); // also clears streamingSegments
+		diffCache.delete(sessionId);
+		return;
+	}
+
+	if (eventType === "content_block_start") {
+		if (agentModel.state.streaming[sessionId] === undefined) {
+			agentModel.setStreaming(sessionId, "");
+			agentModel.setSessionStatus(sessionId, "running");
+			agentModel.setStreamingStartedAt(sessionId, Date.now());
+		}
+		const block = event.content_block as Record<string, unknown> | undefined;
+		if (block?.type === "tool_use" && typeof block.name === "string") {
+			markTurnPerf(sessionId, "firstToolStartAt");
+			const elapsed =
+				typeof event.elapsed_time_seconds === "number" &&
+				Number.isFinite(event.elapsed_time_seconds)
+					? event.elapsed_time_seconds
+					: 0;
+			const progress = {
+				tool_use_id: (block.id as string) || "",
+				tool_name: block.name,
+				elapsed_time_seconds: elapsed,
+			};
+			agentModel.setToolProgress(sessionId, progress);
+			agentModel.upsertStreamingToolProgressSegment(sessionId, progress, seq);
+		}
+		return;
+	}
+
+	if (eventType === "content_block_delta") {
+		if (agentModel.state.streaming[sessionId] === undefined) {
+			agentModel.setStreaming(sessionId, "");
+			agentModel.setSessionStatus(sessionId, "running");
+			agentModel.setStreamingStartedAt(sessionId, Date.now());
+		}
+		const delta = event.delta as Record<string, unknown> | undefined;
+		if (delta?.type === "text_delta" && typeof delta.text === "string") {
+			markTurnPerf(sessionId, "firstDeltaAt");
+			const current = agentModel.state.streaming[sessionId] || "";
+			agentModel.setStreaming(sessionId, current + delta.text);
+			agentModel.appendStreamingText(sessionId, delta.text, seq);
+		} else if (
+			delta?.type === "thinking_delta" &&
+			typeof delta.thinking === "string"
+		) {
+			const current = agentModel.state.streaming[sessionId] || "";
+			agentModel.setStreaming(sessionId, current + delta.thinking);
+		} else if (
+			delta?.type === "input_json_delta" &&
+			typeof delta.partial_json === "string"
+		) {
+			const tp = agentModel.state.activeToolProgress[sessionId];
+			if (tp) {
+				const next = { ...tp, input: (tp.input || "") + delta.partial_json };
+				agentModel.setToolProgress(sessionId, next);
+				agentModel.upsertStreamingToolProgressSegment(sessionId, next, seq);
+			}
+		}
+		return;
+	}
+
+	if (eventType === "tool_end") {
+		markTurnPerf(sessionId, "firstToolEndAt");
+		const toolUseId = event.tool_use_id as string;
+		const toolName = event.tool_name as string;
+		const output = (event.output as string) || "";
+		const isError = (event.is_error as boolean) || false;
+		const before = (event.before as string | null) ?? undefined;
+		const after = (event.after as string | null) ?? undefined;
+		const filePath = (event.file_path as string | null) ?? undefined;
+		if (before != null || after != null) {
+			if (!diffCache.has(sessionId)) diffCache.set(sessionId, new Map());
+			diffCache
+				.get(sessionId)!
+				.set(toolUseId, { before, after, file_path: filePath });
+		}
+		const tp = agentModel.state.activeToolProgress[sessionId];
+		const completedTool = {
+			tool_use_id: toolUseId,
+			tool_name: toolName,
+			input: tp?.input || "",
+			output,
+			is_error: isError,
+			before,
+			after,
+			file_path: filePath,
+		};
+		agentModel.addCompletedTool(sessionId, completedTool);
+		agentModel.replaceStreamingToolProgressWithCompleted(
+			sessionId,
+			toolUseId,
+			completedTool,
+			seq,
+		);
+		agentModel.setToolProgress(sessionId, null);
+		return;
+	}
+
+	if (eventType === "task_updated") {
+		const tasks = event.tasks as AgentTask[] | undefined;
+		if (Array.isArray(tasks)) {
+			agentModel.setTasks(sessionId, tasks);
+		}
+		return;
+	}
+
+	if (eventType === "tool_output_delta") {
+		markTurnPerf(sessionId, "firstToolOutputAt");
+		const toolName = event.tool_name as string | undefined;
+		if (toolName) {
+			const deltaText =
+				typeof event.delta === "string"
+					? event.delta
+					: typeof event.delta === "object" && event.delta
+						? JSON.stringify(event.delta)
+						: "";
+			const tp = agentModel.state.activeToolProgress[sessionId];
+			if (tp) {
+				const elapsed =
+					typeof event.elapsed_time_seconds === "number" &&
+					Number.isFinite(event.elapsed_time_seconds)
+						? event.elapsed_time_seconds
+						: tp.elapsed_time_seconds;
+				const next = {
+					...tp,
+					output: (tp.output || "") + deltaText,
+					elapsed_time_seconds: elapsed,
+				};
+				agentModel.setToolProgress(sessionId, next);
+				agentModel.upsertStreamingToolProgressSegment(sessionId, next, seq);
+			}
+		}
+		return;
+	}
+
+	if (eventType === "tool_progress") {
+		const toolUseId = event.tool_use_id as string | undefined;
+		const toolName = event.tool_name as string | undefined;
+		if (!toolUseId || !toolName) return;
+		const existing = agentModel.state.activeToolProgress[sessionId];
+		const next = {
+			tool_use_id: toolUseId,
+			tool_name: toolName,
+			elapsed_time_seconds:
+				typeof event.elapsed_time_seconds === "number" &&
+				Number.isFinite(event.elapsed_time_seconds)
+					? event.elapsed_time_seconds
+					: 0,
+			input: existing?.tool_use_id === toolUseId ? existing.input : undefined,
+			output: existing?.tool_use_id === toolUseId ? existing.output : undefined,
+		};
+		agentModel.setToolProgress(sessionId, next);
+		agentModel.upsertStreamingToolProgressSegment(sessionId, next, seq);
+	}
+}
+
+function enqueueStreamEvent(
+	sessionId: string,
+	event: Record<string, unknown>,
+): void {
+	const stats = getStreamStats(sessionId);
+	stats.received += 1;
+
+	const raw = event.seq;
+	const seq =
+		typeof raw === "number" && Number.isFinite(raw)
+			? Math.max(1, Math.floor(raw))
+			: nextStreamSeq(sessionId);
+	const eventType = event.type as string | undefined;
+	if (eventType === "message_start") {
+		// Turn boundary should always re-anchor ordering.
+		stats.reanchors += 1;
+		resetStreamState(sessionId);
+		nextExpectedStreamSeq.set(sessionId, seq);
+		streamSeq.set(sessionId, Math.max(0, seq - 1));
+		logStreamDebug(sessionId, `message_start reanchor seq=${seq}`);
+	}
+
+	let expected = nextExpectedStreamSeq.get(sessionId) || 1;
+	if (seq < expected) {
+		if (seq === 1 || expected - seq > 20) {
+			stats.reanchors += 1;
+			resetStreamState(sessionId);
+			nextExpectedStreamSeq.set(sessionId, seq);
+			streamSeq.set(sessionId, Math.max(0, seq - 1));
+			logStreamDebug(sessionId, `stale expected reanchor seq=${seq}`);
+			expected = seq;
+		} else {
+			stats.staleDrops += 1;
+			if (stats.staleDrops % 10 === 0) {
+				logStreamDebug(sessionId, `stale drop x${stats.staleDrops}`);
+			}
+			return;
+		}
+	}
+
+	// If there is a gap, prefer responsiveness: skip missing seq and continue.
+	if (seq > expected + 1) {
+		stats.gapRecoveries += 1;
+		nextExpectedStreamSeq.set(sessionId, seq);
+		logStreamDebug(sessionId, `gap skip expected=${expected} -> seq=${seq}`);
+	}
+
+	streamSeq.set(sessionId, seq);
+	handleStreamEventPayload(sessionId, event, seq);
+	stats.processed += 1;
+	nextExpectedStreamSeq.set(sessionId, seq + 1);
+
+	if (stats.received % 40 === 0) {
+		logStreamDebug(sessionId, "periodic");
+	}
+}
+
 function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 	switch (msg.type) {
 		case "session_init":
@@ -139,16 +550,31 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 			break;
 
 		case "assistant": {
+			markTurnPerf(sessionId, "assistantAt");
 			const textParts = msg.message.content
 				.filter((b) => b.type === "text")
 				.map((b) => (b as { type: "text"; text: string }).text)
 				.join("");
 
+			// Inject cached diff data into tool_result blocks
+			const sessionDiffs = diffCache.get(sessionId);
+			const enrichedBlocks = sessionDiffs
+				? msg.message.content.map((b) => {
+						if (b.type === "tool_result") {
+							const diff = sessionDiffs.get(b.tool_use_id);
+							if (diff) {
+								return { ...b, ...diff };
+							}
+						}
+						return b;
+					})
+				: msg.message.content;
+
 			const chatMsg: AgentChatMessage = {
 				id: msg.message.id,
 				role: "assistant",
 				content: textParts,
-				contentBlocks: msg.message.content,
+				contentBlocks: enrichedBlocks,
 				timestamp: Date.now(),
 				parentToolUseId: msg.parent_tool_use_id,
 				model: msg.message.model,
@@ -156,6 +582,10 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 			};
 			agentModel.appendMessage(sessionId, chatMsg);
 			agentModel.setStreaming(sessionId, null);
+			agentModel.setToolProgress(sessionId, null);
+			agentModel.clearCompletedTools(sessionId);
+			emitTurnPerf(sessionId, "assistant");
+			resetStreamState(sessionId);
 			// Store text for TTS auto-play (only top-level assistant messages)
 			if (!msg.parent_tool_use_id && textParts.trim()) {
 				agentModel.setLastAssistantText(sessionId, textParts);
@@ -165,105 +595,12 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 
 		case "stream_event": {
 			const event = msg.event as Record<string, unknown>;
-			const eventType = event.type as string;
-			console.log("[WS] stream_event:", eventType, event);
-
-			if (eventType === "message_start") {
-				agentModel.setStreamingStartedAt(sessionId, Date.now());
-				agentModel.setStreaming(sessionId, "");
-				agentModel.setSessionStatus(sessionId, "running");
-				agentModel.clearCompletedTools(sessionId);
-			} else if (eventType === "content_block_start") {
-				// Ensure streaming is initialized even if message_start was never received
-				if (agentModel.state.streaming[sessionId] === undefined) {
-					agentModel.setStreaming(sessionId, "");
-					agentModel.setSessionStatus(sessionId, "running");
-					agentModel.setStreamingStartedAt(sessionId, Date.now());
-				}
-				const block = event.content_block as
-					| Record<string, unknown>
-					| undefined;
-				if (block?.type === "tool_use" && typeof block.name === "string") {
-					agentModel.setToolProgress(sessionId, {
-						tool_use_id: (block.id as string) || "",
-						tool_name: block.name,
-						elapsed_time_seconds: 0,
-					});
-				}
-			} else if (eventType === "content_block_delta") {
-				// Ensure streaming is initialized even if message_start was never received
-				if (agentModel.state.streaming[sessionId] === undefined) {
-					agentModel.setStreaming(sessionId, "");
-					agentModel.setSessionStatus(sessionId, "running");
-					agentModel.setStreamingStartedAt(sessionId, Date.now());
-				}
-				const delta = event.delta as Record<string, unknown> | undefined;
-				if (delta?.type === "text_delta" && typeof delta.text === "string") {
-					const current = agentModel.state.streaming[sessionId] || "";
-					agentModel.setStreaming(sessionId, current + delta.text);
-				} else if (
-					delta?.type === "thinking_delta" &&
-					typeof delta.thinking === "string"
-				) {
-					const current = agentModel.state.streaming[sessionId] || "";
-					agentModel.setStreaming(sessionId, current + delta.thinking);
-				} else if (
-					delta?.type === "input_json_delta" &&
-					typeof delta.partial_json === "string"
-				) {
-					// Accumulate tool input JSON for display
-					const tp = agentModel.state.activeToolProgress[sessionId];
-					if (tp) {
-						agentModel.setToolProgress(sessionId, {
-							...tp,
-							input: (tp.input || "") + delta.partial_json,
-						});
-					}
-				}
-			} else if (eventType === "tool_end") {
-				// Tool finished — record as completed and clear active progress
-				const toolUseId = event.tool_use_id as string;
-				const toolName = event.tool_name as string;
-				const output = (event.output as string) || "";
-				const isError = (event.is_error as boolean) || false;
-				const before = (event.before as string | null) ?? undefined;
-				const after = (event.after as string | null) ?? undefined;
-				const filePath = (event.file_path as string | null) ?? undefined;
-					if (before || after) console.log('[diff-debug] tool_end has diff:', { toolName, before: before?.slice(0, 50), after: after?.slice(0, 50) });
-				const tp = agentModel.state.activeToolProgress[sessionId];
-				agentModel.addCompletedTool(sessionId, {
-					tool_use_id: toolUseId,
-					tool_name: toolName,
-					input: tp?.input || "",
-					output,
-					is_error: isError,
-					before,
-					after,
-					file_path: filePath,
-				});
-				agentModel.setToolProgress(sessionId, null);
-			} else if (eventType === "task_updated") {
-				const tasks = event.tasks as AgentTask[] | undefined;
-				if (Array.isArray(tasks)) {
-					agentModel.setTasks(sessionId, tasks);
-				}
-			} else if (eventType === "tool_output_delta") {
-				// Real-time tool output — keep tool progress alive
-				const toolName = event.tool_name as string | undefined;
-				if (toolName) {
-					const tp = agentModel.state.activeToolProgress[sessionId];
-					if (tp) {
-						agentModel.setToolProgress(sessionId, {
-							...tp,
-							elapsed_time_seconds: tp.elapsed_time_seconds,
-						});
-					}
-				}
-			}
+			enqueueStreamEvent(sessionId, event);
 			break;
 		}
 
 		case "result": {
+			markTurnPerf(sessionId, "resultAt");
 			const data = msg.data;
 			agentModel.updateSession(sessionId, {
 				total_cost_usd: data.total_cost_usd as number | undefined,
@@ -280,6 +617,9 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 			agentModel.setSessionStatus(sessionId, "idle");
 			agentModel.setToolProgress(sessionId, null);
 			agentModel.clearCompletedTools(sessionId);
+			emitTurnPerf(sessionId, "result");
+			turnPerfBySession.delete(sessionId);
+			resetStreamState(sessionId);
 
 			if (data.is_error) {
 				agentModel.appendMessage(sessionId, {
@@ -293,7 +633,25 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 		}
 
 		case "permission_request":
+			markTurnPerf(sessionId, "firstPermissionRequestAt");
 			console.log("[WS] permission_request received:", msg.request);
+			if (msg.request.tool_use_id) {
+				const existing = agentModel.state.activeToolProgress[sessionId];
+				if (existing?.tool_use_id !== msg.request.tool_use_id) {
+					const progress = {
+						tool_use_id: msg.request.tool_use_id,
+						tool_name: msg.request.tool_name,
+						elapsed_time_seconds: 0,
+						input: JSON.stringify(msg.request.input || {}, null, 2),
+					};
+					agentModel.setToolProgress(sessionId, progress);
+					agentModel.upsertStreamingToolProgressSegment(
+						sessionId,
+						progress,
+						nextStreamSeq(sessionId),
+					);
+				}
+			}
 			agentModel.addPermission(sessionId, msg.request);
 			break;
 
@@ -309,7 +667,15 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 				agentModel.setSessionStatus(sessionId, "running");
 				agentModel.updateSession(sessionId, { is_compacting: false });
 			} else {
-				agentModel.setSessionStatus(sessionId, "idle");
+				// Ignore transient idle updates while streaming content is still active.
+				const hasStreaming =
+					typeof agentModel.state.streaming[sessionId] === "string" ||
+					(agentModel.state.streamingSegments[sessionId]?.length || 0) > 0 ||
+					Object.keys(agentModel.state.pendingPermissions[sessionId] || {})
+						.length > 0;
+				if (!hasStreaming) {
+					agentModel.setSessionStatus(sessionId, "idle");
+				}
 				agentModel.updateSession(sessionId, { is_compacting: false });
 			}
 			break;
@@ -389,22 +755,12 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 			break;
 
 		case "tool_progress": {
-			console.log(
-				"[WS] tool_progress:",
-				msg.tool_use_id,
-				msg.tool_name,
-				msg.elapsed_time_seconds,
-			);
-			// Preserve existing input from streaming deltas
-			const existing = agentModel.state.activeToolProgress[sessionId];
-			agentModel.setToolProgress(sessionId, {
+			enqueueStreamEvent(sessionId, {
+				type: "tool_progress",
 				tool_use_id: msg.tool_use_id,
 				tool_name: msg.tool_name,
 				elapsed_time_seconds: msg.elapsed_time_seconds,
-				input:
-					existing?.tool_use_id === msg.tool_use_id
-						? existing.input
-						: undefined,
+				seq: msg.seq,
 			});
 			break;
 		}

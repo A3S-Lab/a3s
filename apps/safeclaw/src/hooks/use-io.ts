@@ -1,11 +1,11 @@
 import { getGatewayUrl } from "@/models/settings.model";
 import { useReactive } from "ahooks";
 import { useCallback, useEffect } from "react";
-import { io, Socket } from "socket.io-client";
+import { io } from "socket.io-client";
 
 export const useIo = (namespace?: string) => {
 	const state = useReactive<{
-		socket: Socket | null;
+		socket: any;
 		isConnected: boolean;
 		isConnecting: boolean;
 	}>({

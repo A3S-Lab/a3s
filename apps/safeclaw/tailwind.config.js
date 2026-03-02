@@ -98,6 +98,10 @@ module.exports = withTV({
 						height: "0",
 					},
 				},
+				"tts-bar": {
+					"0%, 100%": { transform: "scaleY(1)" },
+					"50%": { transform: "scaleY(0.4)" },
+				},
 			},
 			animation: {
 				"accordion-down": "accordion-down 0.2s ease-out",

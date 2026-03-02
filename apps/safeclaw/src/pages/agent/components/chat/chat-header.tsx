@@ -5,51 +5,38 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import agentModel from "@/models/agent.model";
 import personaModel from "@/models/persona.model";
 import { connectSession, disconnectSession } from "@/hooks/use-agent-ws";
 import { agentApi } from "@/lib/agent-api";
 import {
-	Download,
 	GitFork,
 	Loader2,
 	MoreHorizontal,
+	Pencil,
+	Plus,
 	RefreshCw,
 	Search,
 	Settings,
 	Trash2,
 } from "lucide-react";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { useSnapshot } from "valtio";
 import { toast } from "sonner";
 import { SessionConfigDrawer } from "./session-config-drawer";
 
-function downloadBlob(blob: Blob, filename: string) {
-	const url = URL.createObjectURL(blob);
-	const a = document.createElement("a");
-	a.href = url;
-	a.download = filename;
-	a.click();
-	URL.revokeObjectURL(url);
-}
-
 export function ChatHeader({
 	sessionId,
 	searchQuery,
 	onSearchChange,
+	onSessionChange,
 }: {
 	sessionId: string;
 	searchQuery?: string;
 	onSearchChange?: (q: string) => void;
+	onSessionChange?: (id: string) => void;
 }) {
 	const { sdkSessions, sessionNames } = useSnapshot(agentModel.state);
 	const personaSnap = useSnapshot(personaModel.state);
@@ -60,23 +47,21 @@ export function ChatHeader({
 		[persona.avatar],
 	);
 	const [actionLoading, setActionLoading] = useState<
-		"relaunch" | "delete" | "fork" | null
+		"relaunch" | "delete" | "fork" | "new" | null
 	>(null);
 	const [configOpen, setConfigOpen] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
+	const [editingName, setEditingName] = useState(false);
+	const [nameInput, setNameInput] = useState("");
 
 	const currentSession = sdkSessions.find((s) => s.session_id === sessionId);
 	const isExited = currentSession?.state === "exited";
 
 	const siblingsSessions = useMemo(() => {
 		return [...sdkSessions]
-			.filter(
-				(s) =>
-					!s.archived &&
-					personaSnap.sessionPersonas[s.session_id] === personaId,
-			)
+			.filter((s) => !s.archived && s.state !== "exited")
 			.sort((a, b) => b.created_at - a.created_at);
-	}, [sdkSessions, personaSnap.sessionPersonas, personaId]);
+	}, [sdkSessions]);
 
 	const handleRelaunch = async () => {
 		setActionLoading("relaunch");
@@ -126,6 +111,52 @@ export function ChatHeader({
 		}
 	};
 
+	const handleNew = async () => {
+		setActionLoading("new");
+		try {
+			const p = personaId
+				? personaModel.getAllPersonas().find((x) => x.id === personaId)
+				: null;
+			const currentSess = agentModel.state.sessions[sessionId];
+			const result = await agentApi.createSession({
+				persona_id: personaId || undefined,
+				system_prompt: p?.systemPrompt || undefined,
+				model: currentSess?.model || undefined,
+				permission_mode: currentSess?.permission_mode || undefined,
+				cwd: currentSess?.cwd || undefined,
+			});
+			if (result?.session_id) {
+				const sessions = await agentApi.listSessions();
+				if (Array.isArray(sessions)) agentModel.setSdkSessions(sessions);
+				connectSession(result.session_id);
+				agentModel.setCurrentSession(result.session_id);
+				if (personaId)
+					personaModel.setSessionPersona(result.session_id, personaId);
+			}
+		} finally {
+			setActionLoading(null);
+		}
+	};
+
+	const handleRename = () => {
+		const currentSession = sdkSessions.find((s) => s.session_id === sessionId);
+		const displayedName =
+			sessionNames[sessionId] ||
+			currentSession?.name ||
+			`会话 ${sessionId.slice(0, 6)}`;
+		setNameInput(displayedName);
+		setEditingName(true);
+	};
+
+	const commitRename = () => {
+		const name = nameInput.trim();
+		if (name) {
+			agentModel.setSessionName(sessionId, name);
+			agentApi.updateSession(sessionId, { name }).catch(() => {});
+		}
+		setEditingName(false);
+	};
+
 	const handleDelete = async () => {
 		setActionLoading("delete");
 		try {
@@ -137,51 +168,32 @@ export function ChatHeader({
 			const remaining = agentModel.state.sdkSessions.filter(
 				(s) => !s.archived && s.session_id !== sessionId,
 			);
-			agentModel.setCurrentSession(remaining[0]?.session_id ?? null);
+			if (remaining.length > 0) {
+				agentModel.setCurrentSession(remaining[0].session_id);
+				onSessionChange?.(remaining[0].session_id);
+			} else {
+				const p = personaId
+					? personaModel.getAllPersonas().find((x) => x.id === personaId)
+					: null;
+				const result = await agentApi.createSession({
+					persona_id: personaId || undefined,
+					system_prompt: p?.systemPrompt || undefined,
+				});
+				if (result?.session_id) {
+					const newSessions = await agentApi.listSessions();
+					if (Array.isArray(newSessions))
+						agentModel.setSdkSessions(newSessions);
+					connectSession(result.session_id);
+					agentModel.setCurrentSession(result.session_id);
+					onSessionChange?.(result.session_id);
+					if (personaId)
+						personaModel.setSessionPersona(result.session_id, personaId);
+				}
+			}
 		} finally {
 			setActionLoading(null);
 		}
 	};
-
-	const handleExport = useCallback(
-		(format: "json" | "md") => {
-			const messages = agentModel.state.messages[sessionId] ?? [];
-			const name = sessionNames[sessionId] || sessionId.slice(0, 8);
-			const date = new Date().toISOString().slice(0, 10);
-
-			if (format === "md") {
-				const lines = [
-					`# ${name}\n`,
-					`导出时间: ${new Date().toLocaleString()}\n`,
-				];
-				for (const msg of messages) {
-					if (msg.role === "user") {
-						lines.push(`\n## 用户\n\n${msg.content}\n`);
-					} else if (msg.role === "assistant") {
-						// Use contentBlocks if available, otherwise fall back to content
-						const text = msg.contentBlocks
-							? msg.contentBlocks
-									.filter((b) => b.type === "text")
-									.map((b) => (b as { type: "text"; text: string }).text)
-									.join("\n")
-							: msg.content;
-						lines.push(`\n## 助手\n\n${text}\n`);
-					} else if (msg.role === "system") {
-						lines.push(`\n> **系统**: ${msg.content}\n`);
-					}
-				}
-				const blob = new Blob([lines.join("")], { type: "text/markdown" });
-				downloadBlob(blob, `session-${name}-${date}.md`);
-			} else {
-				const blob = new Blob([JSON.stringify(messages, null, 2)], {
-					type: "application/json",
-				});
-				downloadBlob(blob, `session-${name}-${date}.json`);
-			}
-			toast.success("会话已导出");
-		},
-		[sessionId, sessionNames],
-	);
 
 	const toggleSearch = () => {
 		if (searchOpen) {
@@ -219,34 +231,55 @@ export function ChatHeader({
 				<div className="flex items-center justify-between px-3 py-2 gap-3">
 					<div className="flex items-center gap-2 min-w-0">
 						<NiceAvatar className="size-7 shrink-0" {...avatarConfig} />
-						{siblingsSessions.length <= 1 ? (
-							<span className="text-sm font-medium truncate">{persona.name}</span>
+						{editingName ? (
+							<input
+								autoFocus
+								type="text"
+								value={nameInput}
+								onChange={(e) => setNameInput(e.target.value)}
+								onBlur={commitRename}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") commitRename();
+									else if (e.key === "Escape") setEditingName(false);
+								}}
+								className="flex-1 min-w-0 text-sm bg-muted rounded-lg px-2 py-0.5 border-0 outline-none focus:ring-1 focus:ring-ring"
+							/>
 						) : (
-							<Select
+							<select
 								value={sessionId}
-								onValueChange={(val) => agentModel.setCurrentSession(val)}
+								onChange={(e) => {
+									agentModel.setCurrentSession(e.target.value);
+									onSessionChange?.(e.target.value);
+								}}
+								className="flex-1 min-w-0 max-w-[200px] text-sm font-medium bg-transparent border-0 outline-none cursor-pointer text-foreground"
 							>
-								<SelectTrigger className="h-7 text-xs font-medium border-none shadow-none px-2 gap-1 min-w-[120px] max-w-[200px]">
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									{siblingsSessions.map((s) => {
-										const name =
-											sessionNames[s.session_id] ||
-											s.name ||
-											`会话 ${s.session_id.slice(0, 6)}`;
-										return (
-											<SelectItem
-												key={s.session_id}
-												value={s.session_id}
-												className="text-xs"
-											>
-												{name}
-											</SelectItem>
-										);
-									})}
-								</SelectContent>
-							</Select>
+								{siblingsSessions.map((s) => {
+									const name =
+										sessionNames[s.session_id] ||
+										s.name ||
+										`会话 ${s.session_id.slice(0, 6)}`;
+									return (
+										<option key={s.session_id} value={s.session_id}>
+											{name}
+										</option>
+									);
+								})}
+								{!siblingsSessions.find((s) => s.session_id === sessionId) && (
+									<option value={sessionId}>
+										{sessionNames[sessionId] || `会话 ${sessionId.slice(0, 6)}`}
+									</option>
+								)}
+							</select>
+						)}
+						{!editingName && (
+							<button
+								type="button"
+								title="重命名会话"
+								onClick={handleRename}
+								className="shrink-0 flex items-center justify-center size-6 rounded text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors"
+							>
+								<Pencil className="size-3" />
+							</button>
 						)}
 						{isExited && (
 							<span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground shrink-0">
@@ -256,6 +289,20 @@ export function ChatHeader({
 					</div>
 
 					<div className="flex items-center gap-1 shrink-0">
+						<button
+							type="button"
+							className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors disabled:opacity-40"
+							aria-label="新建会话"
+							title="新建会话"
+							onClick={handleNew}
+							disabled={actionLoading !== null}
+						>
+							{actionLoading === "new" ? (
+								<Loader2 className="size-4 animate-spin" />
+							) : (
+								<Plus className="size-4" />
+							)}
+						</button>
 						<button
 							type="button"
 							className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors"
@@ -307,21 +354,6 @@ export function ChatHeader({
 								>
 									<GitFork className="size-3.5" />
 									创建分支
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem
-									className="gap-2 text-xs cursor-pointer"
-									onClick={() => handleExport("md")}
-								>
-									<Download className="size-3.5" />
-									导出 Markdown
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									className="gap-2 text-xs cursor-pointer"
-									onClick={() => handleExport("json")}
-								>
-									<Download className="size-3.5" />
-									导出 JSON
 								</DropdownMenuItem>
 								<DropdownMenuSeparator />
 								<DropdownMenuItem

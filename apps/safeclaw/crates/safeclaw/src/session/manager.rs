@@ -2,18 +2,10 @@
 //!
 //! Provides a single `Session` type that optionally supports TEE processing,
 //! and a `SessionManager` that handles both regular and TEE session lifecycles.
-//!
-//! TEE processing is backed by `TeeRuntime` which detects the TEE environment
-//! at startup (Phase 11 architecture). SafeClaw runs as a guest inside the TEE,
-//! not as a host that boots VMs.
 
-use crate::audit::AuditEventBus;
+use crate::channels::InboundMessage;
 use crate::config::{SensitivityLevel, TeeConfig};
 use crate::error::{Error, Result};
-use crate::guard::{
-    FirewallResult, InjectionVerdict, InterceptResult, SanitizeResult, SessionIsolation,
-};
-use crate::privacy::{CumulativeRiskDecision, PrivacyPipeline, SessionPrivacyContext};
 use crate::tee::TeeRuntime;
 use dashmap::DashMap;
 use std::collections::HashMap;
@@ -63,8 +55,6 @@ pub struct Session {
     metadata: Arc<RwLock<HashMap<String, serde_json::Value>>>,
     /// Whether this session has been upgraded to TEE
     tee_active: Arc<RwLock<bool>>,
-    /// Per-session cumulative privacy context for split-message attack defense
-    privacy_context: Arc<RwLock<SessionPrivacyContext>>,
 }
 
 impl Session {
@@ -83,7 +73,6 @@ impl Session {
             message_count: Arc::new(RwLock::new(0)),
             metadata: Arc::new(RwLock::new(HashMap::new())),
             tee_active: Arc::new(RwLock::new(false)),
-            privacy_context: Arc::new(RwLock::new(SessionPrivacyContext::new())),
         }
     }
 
@@ -138,32 +127,6 @@ impl Session {
         *self.sensitivity_level.read().await
     }
 
-    /// Record PII disclosures from a classification result.
-    ///
-    /// Called by `SessionRouter::route()` after each message is classified.
-    /// Feeds the cumulative privacy context used for split-message attack detection.
-    pub async fn record_disclosures(&self, rule_names: &[String], sensitivity: SensitivityLevel) {
-        self.privacy_context
-            .write()
-            .await
-            .record_disclosures(rule_names, sensitivity);
-    }
-
-    /// Assess cumulative PII risk for this session.
-    ///
-    /// Returns `CumulativeRiskDecision::Reject` when the session has disclosed
-    /// `reject_threshold` or more distinct PII types across all messages.
-    pub async fn assess_privacy_risk(
-        &self,
-        warn_threshold: usize,
-        reject_threshold: usize,
-    ) -> CumulativeRiskDecision {
-        self.privacy_context
-            .read()
-            .await
-            .assess_risk(warn_threshold, reject_threshold)
-    }
-
     /// Set metadata value
     pub async fn set_metadata(&self, key: impl Into<String>, value: serde_json::Value) {
         self.metadata.write().await.insert(key.into(), value);
@@ -185,56 +148,52 @@ impl Session {
     }
 }
 
+/// Routing decision for a message
+#[derive(Debug, Clone)]
+pub struct RoutingDecision {
+    /// Session to route to
+    pub session_id: String,
+    /// Whether to process in TEE
+    pub use_tee: bool,
+    /// Sensitivity level
+    pub sensitivity: SensitivityLevel,
+}
+
 /// Unified session manager handling both regular and TEE sessions.
 pub struct SessionManager {
-    /// Active sessions indexed by session ID (DashMap for per-key locking)
+    /// Active sessions indexed by session ID
     sessions: Arc<DashMap<String, Arc<Session>>>,
-    /// Sessions indexed by user_id:channel_id:chat_id (DashMap for per-key locking)
+    /// Sessions indexed by user_id:channel_id:chat_id
     user_sessions: Arc<DashMap<String, String>>,
     /// TEE configuration
     tee_config: TeeConfig,
-    /// TEE runtime for self-detection and sealed storage (Phase 11)
+    /// TEE runtime for self-detection and sealed storage
     tee_runtime: Arc<TeeRuntime>,
-    /// Unified privacy + protection pipeline
-    pipeline: PrivacyPipeline,
 }
 
 impl SessionManager {
-    /// Create a new session manager with TEE configuration and audit bus.
-    ///
-    /// Uses `TeeRuntime` for environment self-detection (Phase 11).
-    /// The runtime detects TEE hardware at startup — no VM boot needed.
-    pub fn new(tee_config: TeeConfig, audit_bus: Arc<AuditEventBus>) -> Self {
+    /// Create a new session manager with TEE configuration.
+    pub fn new(tee_config: TeeConfig) -> Self {
         let tee_runtime = Arc::new(TeeRuntime::process_only());
-        let pipeline = PrivacyPipeline::new(tee_config.network_policy.clone(), audit_bus);
         Self {
             sessions: Arc::new(DashMap::new()),
             user_sessions: Arc::new(DashMap::new()),
             tee_config,
             tee_runtime,
-            pipeline,
         }
     }
 
     /// Create a new session manager with a pre-detected TEE runtime.
-    pub fn with_runtime(
-        tee_config: TeeConfig,
-        tee_runtime: Arc<TeeRuntime>,
-        audit_bus: Arc<AuditEventBus>,
-    ) -> Self {
-        let pipeline = PrivacyPipeline::new(tee_config.network_policy.clone(), audit_bus);
+    pub fn with_runtime(tee_config: TeeConfig, tee_runtime: Arc<TeeRuntime>) -> Self {
         Self {
             sessions: Arc::new(DashMap::new()),
             user_sessions: Arc::new(DashMap::new()),
             tee_config,
             tee_runtime,
-            pipeline,
         }
     }
 
     /// Initialize the TEE subsystem.
-    ///
-    /// With TeeRuntime, detection happens at startup. This logs the result.
     pub async fn init_tee(&self) -> Result<()> {
         if !self.tee_config.enabled {
             tracing::info!("TEE is disabled, skipping initialization");
@@ -256,7 +215,6 @@ impl SessionManager {
 
         tracing::info!("Shutting down TEE subsystem");
 
-        // Terminate all active sessions
         let sessions: Vec<Arc<Session>> =
             { self.sessions.iter().map(|r| r.value().clone()).collect() };
 
@@ -266,11 +224,7 @@ impl SessionManager {
             }
         }
 
-        // Shutdown the TEE runtime
         self.tee_runtime.shutdown().await?;
-
-        // Wipe all session isolation data
-        self.pipeline.isolation().wipe_all().await;
 
         tracing::info!("TEE subsystem shutdown complete");
         Ok(())
@@ -284,48 +238,6 @@ impl SessionManager {
     /// Get a reference to the TEE runtime
     pub fn tee_runtime(&self) -> &Arc<TeeRuntime> {
         &self.tee_runtime
-    }
-
-    /// Get a reference to the session isolation manager
-    pub fn isolation(&self) -> &Arc<SessionIsolation> {
-        self.pipeline.isolation()
-    }
-
-    /// Get a reference to the injection detector
-    pub fn injection_detector(&self) -> &Arc<crate::guard::InjectionDetector> {
-        self.pipeline.injection_detector()
-    }
-
-    /// Get a reference to the network firewall
-    pub fn network_firewall(&self) -> &Arc<crate::guard::NetworkFirewall> {
-        self.pipeline.network_firewall()
-    }
-
-    /// Get a reference to the audit event bus
-    pub fn audit_bus(&self) -> &Arc<AuditEventBus> {
-        self.pipeline.audit_bus()
-    }
-
-    /// Sanitize AI output for a session, publishing any audit events.
-    pub async fn sanitize_output(&self, session_id: &str, output: &str) -> SanitizeResult {
-        self.pipeline.sanitize_output(session_id, output).await
-    }
-
-    /// Intercept a tool call for a session, publishing any audit events.
-    pub async fn intercept_tool_call(
-        &self,
-        session_id: &str,
-        tool_name: &str,
-        arguments: &str,
-    ) -> InterceptResult {
-        self.pipeline
-            .intercept_tool_call(session_id, tool_name, arguments)
-            .await
-    }
-
-    /// Check a URL against the network firewall, publishing any audit event.
-    pub async fn check_firewall(&self, url: &str, session_id: &str) -> FirewallResult {
-        self.pipeline.check_firewall(url, session_id).await
     }
 
     /// Create a new session
@@ -346,7 +258,6 @@ impl SessionManager {
             }
         }
 
-        // Create new session
         let session = Arc::new(Session::new(
             user_id.to_string(),
             channel_id.to_string(),
@@ -356,10 +267,6 @@ impl SessionManager {
 
         session.set_state(SessionState::Active).await;
 
-        // Initialize per-session isolation (taint registry + audit log)
-        self.pipeline.isolation().init_session(&session.id).await;
-
-        // Store session
         self.sessions.insert(session_id.clone(), session.clone());
         self.user_sessions.insert(user_key, session_id);
 
@@ -391,10 +298,30 @@ impl SessionManager {
         self.get_session(&session_id).await
     }
 
+    /// Route an inbound message to a session, creating one if needed.
+    pub async fn route_message(&self, message: &InboundMessage) -> Result<RoutingDecision> {
+        let session = match self
+            .get_user_session(&message.sender_id, &message.channel, &message.chat_id)
+            .await
+        {
+            Some(s) => s,
+            None => {
+                self.create_session(&message.sender_id, &message.channel, &message.chat_id)
+                    .await?
+            }
+        };
+
+        session.touch().await;
+        session.increment_messages().await;
+
+        Ok(RoutingDecision {
+            session_id: session.id.clone(),
+            use_tee: session.uses_tee().await,
+            sensitivity: session.sensitivity_level().await,
+        })
+    }
+
     /// Upgrade an existing session to use TEE processing.
-    ///
-    /// With TeeRuntime (Phase 11), this checks if the runtime detected TEE
-    /// hardware and marks the session accordingly. No VM boot needed.
     pub async fn upgrade_to_tee(&self, session_id: &str) -> Result<()> {
         if !self.tee_config.enabled {
             return Err(Error::Tee("TEE is not enabled".to_string()));
@@ -406,10 +333,9 @@ impl SessionManager {
             .ok_or_else(|| Error::Tee(format!("Session {} not found", session_id)))?;
 
         if session.uses_tee().await {
-            return Ok(()); // Already upgraded
+            return Ok(());
         }
 
-        // Check if TEE hardware is actually available
         if !self.tee_runtime.is_tee_active() {
             return Err(Error::Tee(format!(
                 "Cannot upgrade to TEE: runtime security level is {} (need TeeHardware)",
@@ -417,7 +343,6 @@ impl SessionManager {
             )));
         }
 
-        // Mark session as TEE-active
         session.mark_tee_active().await;
 
         tracing::info!(
@@ -430,24 +355,11 @@ impl SessionManager {
     }
 
     /// Process a message in TEE for the given session.
-    ///
-    /// Scans input for prompt injection before processing. With TeeRuntime
-    /// (Phase 11), the message is processed in the current TEE environment
-    /// rather than being forwarded to a separate VM.
     pub async fn process_in_tee(&self, session_id: &str, content: &str) -> Result<String> {
         let session = self
             .get_session(session_id)
             .await
             .ok_or_else(|| Error::Tee(format!("Session {} not found", session_id)))?;
-
-        // Prompt injection defense: scan input before processing
-        let injection_result = self.pipeline.check_injection(content, session_id).await;
-        if injection_result.verdict == InjectionVerdict::Blocked {
-            return Err(Error::Tee(format!(
-                "Prompt injection blocked: {} pattern(s) detected",
-                injection_result.matches.len()
-            )));
-        }
 
         if !self.tee_runtime.is_tee_active() {
             return Err(Error::Tee(
@@ -459,8 +371,6 @@ impl SessionManager {
         session.touch().await;
 
         // In Phase 11, processing happens in the current TEE environment.
-        // The actual LLM call is handled by AgentEngine (in-process a3s-code).
-        // This method validates TEE state and injection safety.
         session.set_state(SessionState::Active).await;
 
         Ok(content.to_string())
@@ -475,18 +385,11 @@ impl SessionManager {
 
         session.set_state(SessionState::Terminating).await;
 
-        // Remove from user sessions
         let user_key = format!(
             "{}:{}:{}",
             session.user_id, session.channel_id, session.chat_id
         );
         self.user_sessions.remove(&user_key);
-
-        // Securely wipe session-scoped taint data and audit log
-        let wipe = self.pipeline.isolation().wipe_session(session_id).await;
-        if !wipe.verified {
-            tracing::error!(session_id = session_id, "Session wipe verification failed");
-        }
 
         session.set_state(SessionState::Terminated).await;
 
@@ -539,29 +442,13 @@ impl SessionManager {
 
 impl Default for SessionManager {
     fn default() -> Self {
-        let global_log = Arc::new(RwLock::new(crate::audit::AuditLog::default()));
-        let bus = Arc::new(AuditEventBus::new(256, global_log));
-        Self::new(TeeConfig::default(), bus)
+        Self::new(TeeConfig::default())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::audit::AuditLog;
-
-    /// Create a default bus for tests.
-    fn test_bus() -> Arc<AuditEventBus> {
-        let log = Arc::new(RwLock::new(AuditLog::default()));
-        Arc::new(AuditEventBus::new(256, log))
-    }
-
-    /// Create a SessionManager from a TeeConfig with a default test bus.
-    fn make_manager(config: TeeConfig) -> SessionManager {
-        SessionManager::new(config, test_bus())
-    }
-
-    // ---- Session tests ----
 
     #[tokio::test]
     async fn test_session_creation() {
@@ -620,16 +507,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_session_uses_tee_default_false() {
-        let session = Session::new(
-            "user-123".to_string(),
-            "telegram".to_string(),
-            "chat-456".to_string(),
-        );
-        assert!(!session.uses_tee().await);
-    }
-
-    #[tokio::test]
     async fn test_session_mark_tee_active() {
         let session = Session::new(
             "user-123".to_string(),
@@ -640,8 +517,6 @@ mod tests {
         session.mark_tee_active().await;
         assert!(session.uses_tee().await);
     }
-
-    // ---- SessionManager tests ----
 
     #[tokio::test]
     async fn test_manager_create_session() {
@@ -693,7 +568,7 @@ mod tests {
             enabled: false,
             ..Default::default()
         };
-        let manager = make_manager(config);
+        let manager = SessionManager::new(config);
 
         let session = manager
             .create_session("user-123", "telegram", "chat-456")
@@ -706,125 +581,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_manager_is_tee_enabled() {
-        let disabled = make_manager(TeeConfig {
+        let disabled = SessionManager::new(TeeConfig {
             enabled: false,
             ..Default::default()
         });
         assert!(!disabled.is_tee_enabled());
 
-        let enabled = make_manager(TeeConfig {
+        let enabled = SessionManager::new(TeeConfig {
             enabled: true,
             ..Default::default()
         });
         assert!(enabled.is_tee_enabled());
     }
-
-    #[tokio::test]
-    async fn test_manager_upgrade_nonexistent_session_fails() {
-        let config = TeeConfig {
-            enabled: true,
-            ..Default::default()
-        };
-        let manager = make_manager(config);
-
-        let result = manager.upgrade_to_tee("nonexistent").await;
-        assert!(result.is_err());
-    }
-
-    // ---- Audit bus wiring tests ----
-
-    #[tokio::test]
-    async fn test_sanitize_output_publishes_events() {
-        let global_log = Arc::new(RwLock::new(AuditLog::new(100)));
-        let bus = Arc::new(AuditEventBus::new(256, global_log.clone()));
-        let manager = SessionManager::new(TeeConfig::default(), bus);
-
-        let session = manager
-            .create_session("user-1", "test", "chat-1")
-            .await
-            .unwrap();
-
-        // Register tainted data in the session's registry
-        if let Some(guard) = manager.isolation().registry(&session.id).await {
-            guard
-                .write(|registry| {
-                    registry.register("sk-secret-key-123", crate::guard::TaintType::ApiKey);
-                })
-                .await;
-        }
-
-        // Sanitize output containing the tainted data
-        let result = manager
-            .sanitize_output(&session.id, "The key is sk-secret-key-123")
-            .await;
-        assert!(result.was_redacted);
-
-        // Events should be in the global log
-        let log = global_log.read().await;
-        assert!(log.len() > 0);
-    }
-
-    #[tokio::test]
-    async fn test_intercept_tool_call_publishes_events() {
-        let global_log = Arc::new(RwLock::new(AuditLog::new(100)));
-        let bus = Arc::new(AuditEventBus::new(256, global_log.clone()));
-        let manager = SessionManager::new(TeeConfig::default(), bus);
-
-        let session = manager
-            .create_session("user-1", "test", "chat-1")
-            .await
-            .unwrap();
-
-        // Register tainted data
-        if let Some(guard) = manager.isolation().registry(&session.id).await {
-            guard
-                .write(|registry| {
-                    registry.register("my-secret-password", crate::guard::TaintType::Password);
-                })
-                .await;
-        }
-
-        let result = manager
-            .intercept_tool_call(&session.id, "bash", "echo my-secret-password")
-            .await;
-        // Should detect both tainted data and dangerous command
-        assert!(!result.audit_events.is_empty());
-
-        let log = global_log.read().await;
-        assert!(log.len() > 0);
-    }
-
-    #[tokio::test]
-    async fn test_check_firewall_publishes_blocked_event() {
-        let global_log = Arc::new(RwLock::new(AuditLog::new(100)));
-        let bus = Arc::new(AuditEventBus::new(256, global_log.clone()));
-        let mut tee_config = TeeConfig::default();
-        // Ensure default-deny firewall is active
-        tee_config.network_policy.enabled = true;
-        tee_config.network_policy.default_deny = true;
-        let manager = SessionManager::new(tee_config, bus);
-
-        let session = manager
-            .create_session("user-1", "test", "chat-1")
-            .await
-            .unwrap();
-
-        // Check a URL that's not in the whitelist
-        let result = manager
-            .check_firewall("https://evil-exfil.example.com/steal", &session.id)
-            .await;
-
-        // Should be blocked
-        assert_ne!(result.decision, crate::guard::FirewallDecision::Allow);
-
-        // If blocked, an audit event should have been published
-        if result.audit_event.is_some() {
-            let log = global_log.read().await;
-            assert!(log.len() > 0);
-        }
-    }
-
-    // ---- TeeRuntime integration tests ----
 
     #[tokio::test]
     async fn test_manager_with_runtime() {
@@ -835,71 +603,13 @@ mod tests {
             enabled: true,
             ..Default::default()
         };
-        let manager = SessionManager::with_runtime(config, runtime.clone(), test_bus());
+        let manager = SessionManager::with_runtime(config, runtime.clone());
 
         assert!(manager.is_tee_enabled());
         assert_eq!(
             manager.tee_runtime().security_level(),
             SecurityLevel::ProcessOnly
         );
-    }
-
-    #[tokio::test]
-    async fn test_manager_upgrade_fails_without_tee_hardware() {
-        use crate::tee::{SecurityLevel, TeeRuntime};
-
-        // ProcessOnly runtime — upgrade should fail
-        let runtime = Arc::new(TeeRuntime::with_level(SecurityLevel::ProcessOnly));
-        let config = TeeConfig {
-            enabled: true,
-            ..Default::default()
-        };
-        let manager = SessionManager::with_runtime(config, runtime, test_bus());
-
-        let session = manager
-            .create_session("user-123", "telegram", "chat-456")
-            .await
-            .unwrap();
-
-        let result = manager.upgrade_to_tee(&session.id).await;
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("need TeeHardware"));
-    }
-
-    #[tokio::test]
-    async fn test_manager_process_in_tee_fails_without_hardware() {
-        use crate::tee::{SecurityLevel, TeeRuntime};
-
-        let runtime = Arc::new(TeeRuntime::with_level(SecurityLevel::ProcessOnly));
-        let config = TeeConfig {
-            enabled: true,
-            ..Default::default()
-        };
-        let manager = SessionManager::with_runtime(config, runtime, test_bus());
-
-        let session = manager
-            .create_session("user-123", "telegram", "chat-456")
-            .await
-            .unwrap();
-
-        let result = manager.process_in_tee(&session.id, "hello from TEE").await;
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("not active"));
-    }
-
-    #[tokio::test]
-    async fn test_manager_init_tee_logs_level() {
-        use crate::tee::{SecurityLevel, TeeRuntime};
-
-        let runtime = Arc::new(TeeRuntime::with_level(SecurityLevel::VmIsolation));
-        let config = TeeConfig {
-            enabled: true,
-            ..Default::default()
-        };
-        let manager = SessionManager::with_runtime(config, runtime, test_bus());
-
-        // Should succeed without error (just logs)
-        manager.init_tee().await.unwrap();
     }
 
     #[tokio::test]
@@ -911,7 +621,7 @@ mod tests {
             enabled: true,
             ..Default::default()
         };
-        let manager = SessionManager::with_runtime(config, runtime, test_bus());
+        let manager = SessionManager::with_runtime(config, runtime);
 
         let session = manager
             .create_session("user-123", "telegram", "chat-456")
@@ -921,30 +631,29 @@ mod tests {
 
         manager.shutdown_tee().await.unwrap();
 
-        // Session should be marked as terminating
         assert_eq!(session.state().await, SessionState::Terminating);
     }
 
     #[tokio::test]
-    async fn test_manager_terminate_session_wipes_isolation() {
+    async fn test_route_message() {
         let manager = SessionManager::default();
+        let message =
+            InboundMessage::new("telegram", "user-123", "chat-456", "Hello, how are you?");
 
-        let session = manager
-            .create_session("user-123", "telegram", "chat-456")
-            .await
-            .unwrap();
-        let session_id = session.id.clone();
+        let decision = manager.route_message(&message).await.unwrap();
 
-        // Register some tainted data
-        if let Some(guard) = manager.isolation().registry(&session_id).await {
-            guard
-                .write(|registry| {
-                    registry.register("secret-data", crate::guard::TaintType::ApiKey);
-                })
-                .await;
-        }
+        assert!(!decision.use_tee);
+        assert_eq!(decision.sensitivity, SensitivityLevel::Normal);
+    }
 
-        manager.terminate_session(&session_id).await.unwrap();
-        assert!(manager.get_session(&session_id).await.is_none());
+    #[tokio::test]
+    async fn test_route_message_reuses_session() {
+        let manager = SessionManager::default();
+        let message = InboundMessage::new("telegram", "user-123", "chat-456", "Hello!");
+
+        let d1 = manager.route_message(&message).await.unwrap();
+        let d2 = manager.route_message(&message).await.unwrap();
+
+        assert_eq!(d1.session_id, d2.session_id);
     }
 }

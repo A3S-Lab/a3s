@@ -1,11 +1,7 @@
 import { Editor, EditorProps, Monaco } from "@monaco-editor/react";
-import { useRef } from "react";
-import * as MonacoEditor from "monaco-editor";
 import ThemeOneDarkPro from "./themes/onedarkpro.json";
 
 export default function CodeEditor(props: EditorProps) {
-	const editorRef = useRef<MonacoEditor.editor.IStandaloneCodeEditor>();
-
 	function handleBeforeMount(monaco: Monaco) {
 		monaco.editor.defineTheme("one-dark-pro", {
 			base: "vs-dark",
@@ -16,6 +12,7 @@ export default function CodeEditor(props: EditorProps) {
 				...ThemeOneDarkPro.colors,
 			},
 		});
+		props.beforeMount?.(monaco);
 	}
 
 	return (
@@ -24,8 +21,8 @@ export default function CodeEditor(props: EditorProps) {
 			height="100%"
 			beforeMount={handleBeforeMount}
 			options={{
-				fontSize: 16,
-				fontFamily: "'Fira Code', 'Fira Code VF', monospace",
+				fontSize: 14,
+				fontFamily: "'Maple Mono NF CN', 'Fira Code', monospace",
 				fontLigatures: true,
 				wordWrap: "on",
 				minimap: {
@@ -42,6 +39,7 @@ export default function CodeEditor(props: EditorProps) {
 				},
 				codeLens: true,
 				contextmenu: false,
+				stickyScroll: { enabled: false },
 			}}
 			{...props}
 		/>

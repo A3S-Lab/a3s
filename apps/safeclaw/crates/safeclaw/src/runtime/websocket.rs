@@ -104,9 +104,11 @@ impl WebSocketHandler {
                                     )
                                     .as_dm();
 
-                                    // Route through session router
-                                    if let Ok(decision) =
-                                        gateway_clone.session_router().route(&inbound).await
+                                    // Route through session manager
+                                    if let Ok(decision) = gateway_clone
+                                        .session_manager()
+                                        .route_message(&inbound)
+                                        .await
                                     {
                                         // Process message
                                         let response = if decision.use_tee {

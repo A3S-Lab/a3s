@@ -18,6 +18,10 @@ function postFilename(path: string) {
   return path.replace(/^[^/]+\//, '').replace(/\.mdx$/, '');
 }
 
+export function generateStaticParams() {
+  return [{ lang: 'en' }, { lang: 'cn' }];
+}
+
 export default async function BlogPage({ params }: PageProps) {
   const { lang } = await params;
   const posts = [...blog]

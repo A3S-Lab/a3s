@@ -1,4 +1,3 @@
-import { proxy } from "valtio";
 import type {
 	AgentChatMessage,
 	AgentMessage,
@@ -6,6 +5,7 @@ import type {
 	AgentSessionState,
 	PermissionRequest,
 } from "@/typings/agent";
+import { proxy } from "valtio";
 
 export interface ToolProgress {
 	tool_use_id: string;
@@ -13,6 +13,8 @@ export interface ToolProgress {
 	elapsed_time_seconds: number;
 	/** Tool input summary (e.g. file path, command) */
 	input?: string;
+	/** Streaming tool output (when available) */
+	output?: string;
 }
 
 /** A completed tool call shown during streaming */
@@ -27,17 +29,45 @@ export interface CompletedToolCall {
 	file_path?: string;
 }
 
+/** One ordered segment in a streaming response: either a text run or a completed tool call */
+export type StreamingSegment =
+	| { type: "text"; content: string; seq: number }
+	| { type: "tool_progress"; progress: ToolProgress; seq: number }
+	| { type: "tool"; call: CompletedToolCall; seq: number };
+
 export interface AuthStatus {
 	is_authenticating: boolean;
 	output: string[];
 	error?: string;
 }
 
+export type StreamSlowStage =
+	| "frontend_send"
+	| "model_first_token"
+	| "permission_wait"
+	| "tool_exec"
+	| "unknown";
+
+export interface StreamPerfHint {
+	turn_id: number;
+	slow_stage: StreamSlowStage;
+	to_first_delta_ms?: number;
+	to_first_permission_request_ms?: number;
+	to_result_ms?: number;
+	updated_at: number;
+}
+
 /** A task from a3s Code's planning system */
 export interface AgentTask {
 	id: string;
 	content: string;
-	status: "pending" | "in_progress" | "completed" | "failed" | "skipped" | "cancelled";
+	status:
+		| "pending"
+		| "in_progress"
+		| "completed"
+		| "failed"
+		| "skipped"
+		| "cancelled";
 	priority: "high" | "medium" | "low";
 	tool?: string;
 	dependencies?: string[];
@@ -57,6 +87,8 @@ interface AgentStoreState {
 
 	// Permissions
 	pendingPermissions: Record<string, Record<string, PermissionRequest>>;
+	/** User override: force this session to use local privacy model. */
+	localPrivacyRouting: Record<string, boolean>;
 
 	// Agent-to-agent messages (pending confirm-mode messages)
 	agentMessages: Record<string, AgentMessage[]>;
@@ -66,6 +98,9 @@ interface AgentStoreState {
 
 	// Completed tool calls during current streaming (cleared on new generation)
 	completedTools: Record<string, CompletedToolCall[]>;
+
+	// Ordered interleaved segments for correct streaming render order
+	streamingSegments: Record<string, StreamingSegment[]>;
 
 	// Tasks from a3s Code planning system (updated via task_updated events)
 	tasks: Record<string, AgentTask[]>;
@@ -88,6 +123,9 @@ interface AgentStoreState {
 	voiceInputActive: Record<string, boolean>;
 	/** Text of the latest completed assistant response (per session) */
 	lastAssistantText: Record<string, string>;
+
+	/** Last inferred perf bottleneck for current/last turn */
+	streamPerfHint: Record<string, StreamPerfHint | null>;
 }
 
 const STORAGE_KEY_SESSION = "safeclaw-agent-current-session";
@@ -101,9 +139,11 @@ const state = proxy<AgentStoreState>({
 	streaming: {},
 	streamingStartedAt: {},
 	pendingPermissions: {},
+	localPrivacyRouting: {},
 	agentMessages: {},
 	activeToolProgress: {},
 	completedTools: {},
+	streamingSegments: {},
 	tasks: {},
 	authStatus: {},
 	connectionStatus: {},
@@ -113,6 +153,7 @@ const state = proxy<AgentStoreState>({
 	unreadCounts: {},
 	voiceInputActive: {},
 	lastAssistantText: {},
+	streamPerfHint: {},
 });
 
 const actions = {
@@ -143,6 +184,7 @@ const actions = {
 		delete state.streaming[sessionId];
 		delete state.streamingStartedAt[sessionId];
 		delete state.pendingPermissions[sessionId];
+		delete state.localPrivacyRouting[sessionId];
 		delete state.agentMessages[sessionId];
 		delete state.activeToolProgress[sessionId];
 		delete state.authStatus[sessionId];
@@ -152,7 +194,9 @@ const actions = {
 		delete state.sessionNames[sessionId];
 		delete state.voiceInputActive[sessionId];
 		delete state.lastAssistantText[sessionId];
+		delete state.streamPerfHint[sessionId];
 		delete state.completedTools[sessionId];
+		delete state.streamingSegments[sessionId];
 		delete state.tasks[sessionId];
 		localStorage.setItem(STORAGE_KEY_NAMES, JSON.stringify(state.sessionNames));
 		if (state.currentSessionId === sessionId) {
@@ -202,6 +246,10 @@ const actions = {
 		if (state.pendingPermissions[sessionId]) {
 			delete state.pendingPermissions[sessionId][requestId];
 		}
+	},
+
+	setLocalPrivacyRouting(sessionId: string, enabled: boolean) {
+		state.localPrivacyRouting[sessionId] = enabled;
 	},
 
 	// --- Connection ---
@@ -273,6 +321,67 @@ const actions = {
 
 	clearCompletedTools(sessionId: string) {
 		delete state.completedTools[sessionId];
+		delete state.streamingSegments[sessionId];
+	},
+
+	/** Append text to the last text segment, or push a new one */
+	appendStreamingText(sessionId: string, text: string, seq: number) {
+		if (!text) return;
+		if (!state.streamingSegments[sessionId]) {
+			state.streamingSegments[sessionId] = [];
+		}
+		const segs = state.streamingSegments[sessionId];
+		const last = segs[segs.length - 1];
+		if (last?.type === "text" && last.seq + 1 === seq) {
+			last.content += text;
+			last.seq = seq;
+		} else {
+			segs.push({ type: "text", content: text, seq });
+		}
+	},
+
+	/** Upsert active tool progress segment, preserving arrival order */
+	upsertStreamingToolProgressSegment(
+		sessionId: string,
+		progress: ToolProgress,
+		seq: number,
+	) {
+		if (!state.streamingSegments[sessionId]) {
+			state.streamingSegments[sessionId] = [];
+		}
+		const segs = state.streamingSegments[sessionId];
+		const idx = segs.findIndex(
+			(seg) =>
+				seg.type === "tool_progress" &&
+				seg.progress.tool_use_id === progress.tool_use_id,
+		);
+		if (idx >= 0) {
+			segs[idx] = { type: "tool_progress", progress, seq: segs[idx].seq };
+		} else {
+			segs.push({ type: "tool_progress", progress, seq });
+		}
+	},
+
+	/** Replace active tool progress segment with completed tool segment in-place */
+	replaceStreamingToolProgressWithCompleted(
+		sessionId: string,
+		toolUseId: string,
+		call: CompletedToolCall,
+		seq: number,
+	) {
+		if (!state.streamingSegments[sessionId]) {
+			state.streamingSegments[sessionId] = [];
+		}
+		const segs = state.streamingSegments[sessionId];
+		const idx = segs.findIndex(
+			(seg) =>
+				seg.type === "tool_progress" && seg.progress.tool_use_id === toolUseId,
+		);
+		if (idx >= 0) {
+			segs[idx] = { type: "tool", call, seq: segs[idx].seq };
+		} else {
+			segs.push({ type: "tool", call, seq });
+		}
 	},
 
 	// --- Tasks (a3s Code planning system) ---
@@ -292,6 +401,10 @@ const actions = {
 
 	setLastAssistantText(sessionId: string, text: string) {
 		state.lastAssistantText[sessionId] = text;
+	},
+
+	setStreamPerfHint(sessionId: string, hint: StreamPerfHint | null) {
+		state.streamPerfHint[sessionId] = hint;
 	},
 };
 

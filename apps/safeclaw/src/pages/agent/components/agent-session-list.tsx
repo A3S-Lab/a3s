@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import agentModel from "@/models/agent.model";
 import personaModel from "@/models/persona.model";
 import settingsModel, {
+	getPreferredSessionModel,
 	resolveApiKey,
 	resolveBaseUrl,
 } from "@/models/settings.model";
@@ -91,7 +92,9 @@ const AgentItem = React.memo(function AgentItem({
 }: {
 	persona: AgentPersona;
 	sessions: AgentProcessInfo[];
-	sessionStates: Record<string, import("@/typings/agent").AgentSessionState>;
+	sessionStates: Readonly<
+		Record<string, import("@/typings/agent").AgentSessionState>
+	>;
 	isActive: boolean;
 	unreadCount: number;
 	sessionStatus: Record<string, "idle" | "running" | "compacting" | null>;
@@ -416,11 +419,11 @@ export default function AgentSessionList() {
 			// No active session — silently create one with persona defaults
 			const persona = allPersonas.find((p) => p.id === personaId);
 			const defaults = settingsModel.state.agentDefaults;
-			const modelId =
-				persona?.model || settingsModel.state.defaultModel || undefined;
-			const providerName = persona?.model?.includes("/")
-				? persona.model.split("/")[0]
-				: settingsModel.state.defaultProvider;
+			const preferred = getPreferredSessionModel();
+			const modelId = persona?.defaultModel || preferred.modelId || undefined;
+			const providerName = persona?.defaultModel?.includes("/")
+				? persona.defaultModel.split("/")[0]
+				: preferred.providerName;
 			const apiKey = modelId
 				? resolveApiKey(providerName, modelId.split("/").pop() || modelId)
 				: "";
@@ -431,7 +434,7 @@ export default function AgentSessionList() {
 				const result = await agentApi.createSession({
 					persona_id: personaId,
 					model: modelId,
-					permission_mode: persona?.permissionMode || "default",
+					permission_mode: persona?.defaultPermissionMode || "default",
 					cwd: defaults.defaultCwd || undefined,
 					system_prompt: persona?.systemPrompt || undefined,
 					api_key: apiKey || undefined,
@@ -506,7 +509,7 @@ export default function AgentSessionList() {
 							key={persona.id}
 							persona={persona}
 							sessions={sessionsByPersona[persona.id] || []}
-							sessionStates={snap.sessions}
+							sessionStates={snap.sessions as any}
 							isActive={currentPersonaId === persona.id}
 							unreadCount={unreadByPersona[persona.id] || 0}
 							sessionStatus={snap.sessionStatus}

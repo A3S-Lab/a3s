@@ -20,6 +20,15 @@ dayjs.extend(relativeTime);
 // Seed settings from backend config on first launch (no-op if localStorage exists)
 settingsModel.seedFromBackend();
 
+// Enable stream debug logs by default in development.
+if (constants.isDev) {
+	try {
+		localStorage.setItem("safeclaw-stream-debug", "true");
+	} catch {
+		// Ignore storage failures in restricted environments.
+	}
+}
+
 const rootEl = document.getElementById("root");
 if (rootEl) {
 	const root = ReactDOM.createRoot(rootEl);

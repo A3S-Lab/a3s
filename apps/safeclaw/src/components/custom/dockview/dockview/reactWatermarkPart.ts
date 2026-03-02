@@ -29,14 +29,14 @@ export class ReactWatermarkPart implements IWatermarkRenderer {
 	}
 
 	init(parameters: WatermarkRendererInitParameters): void {
-		this.part = new ReactPart(
+		this.part = new ReactPart<any>(
 			this.element,
 			this.reactPortalStore,
-			this.component,
+			this.component as any,
 			{
 				group: parameters.group,
 				containerApi: parameters.containerApi,
-			},
+			} as any,
 		);
 	}
 

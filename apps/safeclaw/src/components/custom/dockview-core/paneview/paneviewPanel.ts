@@ -87,7 +87,6 @@ export abstract class PaneviewPanel
 	protected body?: HTMLElement;
 	private bodyPart?: IPaneHeaderPart;
 	private headerPart?: IPaneBodyPart;
-	private expandedSize = 0;
 	private animationTimer: any;
 	private _orientation: Orientation;
 
@@ -259,7 +258,7 @@ export abstract class PaneviewPanel
 				? [size, orthogonalSize]
 				: [orthogonalSize, size];
 		if (this.isExpanded()) {
-			this.expandedSize = width;
+			// expanded state layout is handled by parent paneview
 		}
 		super.layout(width, height);
 	}

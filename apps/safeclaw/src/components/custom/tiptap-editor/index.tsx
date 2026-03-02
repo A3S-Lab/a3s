@@ -345,7 +345,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 				}),
 				SlashCommand.configure({
 					suggestion: {
-						...slashSuggestion,
+						...(slashSuggestion as any),
 					},
 				}),
 			],
@@ -358,7 +358,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 					const items = event.clipboardData?.items;
 					if (!items || !onPasteImages) return false;
 					const imageFiles: File[] = [];
-					for (const item of items) {
+					for (const item of Array.from(items)) {
 						if (item.type.startsWith("image/")) {
 							const file = item.getAsFile();
 							if (file) imageFiles.push(file);

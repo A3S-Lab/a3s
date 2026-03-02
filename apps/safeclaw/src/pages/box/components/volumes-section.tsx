@@ -86,7 +86,9 @@ export function VolumesSection() {
 					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
 					onClick={() => boxModel.fetchVolumes()}
 				>
-					<RotateCw className={`size-3 ${snap.loading.volumes ? "animate-spin" : ""}`} />
+					<RotateCw
+						className={`size-3 ${snap.loading.volumes ? "animate-spin" : ""}`}
+					/>
 					刷新
 				</button>
 				<button
@@ -95,7 +97,11 @@ export function VolumesSection() {
 					onClick={handlePrune}
 					disabled={pruning}
 				>
-					{pruning ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
+					{pruning ? (
+						<Loader2 className="size-3 animate-spin" />
+					) : (
+						<Trash2 className="size-3" />
+					)}
 					清理未使用
 				</button>
 			</div>
@@ -154,7 +160,10 @@ export function VolumesSection() {
 									</div>
 									<div className="flex items-center gap-3 text-[11px] text-muted-foreground">
 										<span className="font-mono">{formatBytes(vol.size)}</span>
-										<span className="truncate max-w-[200px]" title={vol.mountpoint}>
+										<span
+											className="truncate max-w-[200px]"
+											title={vol.mountpoint}
+										>
 											{vol.mountpoint}
 										</span>
 									</div>

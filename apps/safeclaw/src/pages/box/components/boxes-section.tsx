@@ -95,7 +95,11 @@ export function BoxesSection() {
 						}`}
 						onClick={() => setFilter(f)}
 					>
-						{f === "all" ? `全部 (${snap.boxes.length})` : f === "running" ? `运行中 (${snap.boxes.filter((b) => b.status === "running").length})` : `已停止 (${snap.boxes.filter((b) => b.status !== "running").length})`}
+						{f === "all"
+							? `全部 (${snap.boxes.length})`
+							: f === "running"
+								? `运行中 (${snap.boxes.filter((b) => b.status === "running").length})`
+								: `已停止 (${snap.boxes.filter((b) => b.status !== "running").length})`}
 					</button>
 				))}
 				<button
@@ -103,7 +107,9 @@ export function BoxesSection() {
 					className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
 					onClick={() => boxModel.fetchBoxes()}
 				>
-					<RotateCw className={`size-3 ${snap.loading.boxes ? "animate-spin" : ""}`} />
+					<RotateCw
+						className={`size-3 ${snap.loading.boxes ? "animate-spin" : ""}`}
+					/>
 					刷新
 				</button>
 			</div>
@@ -126,10 +132,16 @@ export function BoxesSection() {
 								<div className="flex items-start justify-between gap-3">
 									<div className="min-w-0 flex-1">
 										<div className="flex items-center gap-2 mb-1">
-											<span className={`size-2 rounded-full shrink-0 ${STATUS_COLORS[box.status]}`} />
-											<span className="font-medium text-sm truncate">{box.name}</span>
+											<span
+												className={`size-2 rounded-full shrink-0 ${STATUS_COLORS[box.status]}`}
+											/>
+											<span className="font-medium text-sm truncate">
+												{box.name}
+											</span>
 											{box.tee && (
-												<Shield className="size-3 text-green-500 shrink-0" title="TEE 加密" />
+												<span title="TEE 加密">
+													<Shield className="size-3 text-green-500 shrink-0" />
+												</span>
 											)}
 											<span className="text-[10px] text-muted-foreground">
 												{STATUS_LABELS[box.status]}
@@ -167,7 +179,12 @@ export function BoxesSection() {
 														<button
 															type="button"
 															className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
-															onClick={() => handleAction(() => boxModel.pauseBox(box.id), box.id)}
+															onClick={() =>
+																handleAction(
+																	() => boxModel.pauseBox(box.id),
+																	box.id,
+																)
+															}
 															title="暂停"
 														>
 															<Pause className="size-3.5" />
@@ -175,7 +192,12 @@ export function BoxesSection() {
 														<button
 															type="button"
 															className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
-															onClick={() => handleAction(() => boxModel.stopBox(box.id), box.id)}
+															onClick={() =>
+																handleAction(
+																	() => boxModel.stopBox(box.id),
+																	box.id,
+																)
+															}
 															title="停止"
 														>
 															<Square className="size-3.5" />
@@ -183,7 +205,12 @@ export function BoxesSection() {
 														<button
 															type="button"
 															className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
-															onClick={() => handleAction(() => boxModel.restartBox(box.id), box.id)}
+															onClick={() =>
+																handleAction(
+																	() => boxModel.restartBox(box.id),
+																	box.id,
+																)
+															}
 															title="重启"
 														>
 															<RotateCw className="size-3.5" />
@@ -194,17 +221,29 @@ export function BoxesSection() {
 													<button
 														type="button"
 														className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
-														onClick={() => handleAction(() => boxModel.unpauseBox(box.id), box.id)}
+														onClick={() =>
+															handleAction(
+																() => boxModel.unpauseBox(box.id),
+																box.id,
+															)
+														}
 														title="恢复"
 													>
 														<Play className="size-3.5" />
 													</button>
 												)}
-												{(box.status === "stopped" || box.status === "exited" || box.status === "created") && (
+												{(box.status === "stopped" ||
+													box.status === "exited" ||
+													box.status === "created") && (
 													<button
 														type="button"
 														className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
-														onClick={() => handleAction(() => boxModel.startBox(box.id), box.id)}
+														onClick={() =>
+															handleAction(
+																() => boxModel.startBox(box.id),
+																box.id,
+															)
+														}
 														title="启动"
 													>
 														<Play className="size-3.5" />
@@ -213,7 +252,16 @@ export function BoxesSection() {
 												<button
 													type="button"
 													className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-													onClick={() => handleAction(() => boxModel.removeBox(box.id, box.status === "running"), box.id)}
+													onClick={() =>
+														handleAction(
+															() =>
+																boxModel.removeBox(
+																	box.id,
+																	box.status === "running",
+																),
+															box.id,
+														)
+													}
 													title="删除"
 												>
 													<Trash2 className="size-3.5" />

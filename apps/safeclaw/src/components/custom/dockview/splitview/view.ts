@@ -17,17 +17,17 @@ export class ReactPanelView extends SplitviewPanel {
 	}
 
 	getComponent(): ReactPart<ISplitviewPanelProps> {
-		return new ReactPart(
+		return new ReactPart<any>(
 			this.element,
 			this.reactPortalStore,
-			this.reactComponent,
+			this.reactComponent as any,
 			{
 				params: this._params?.params ?? {},
 				api: this.api,
 				containerApi: new SplitviewApi(
 					(this._params as PanelViewInitParameters).accessor,
 				),
-			},
+			} as any,
 		);
 	}
 }

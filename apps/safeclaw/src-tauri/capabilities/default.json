@@ -7,11 +7,13 @@
 		"core:default",
 		"shell:allow-open",
 		"http:default",
+		"dialog:default",
+		"core:webview:allow-create-webview-window",
 		{
 			"identifier": "http:default",
 			"allow": [
-				{ "url": "https://gamma-api.polymarket.com/**" },
-				{ "url": "https://polymarket.com/**" }
+				{ "url": "http://127.0.0.1:18790/**" },
+				{ "url": "http://127.0.0.1:11435/**" }
 			]
 		}
 	]

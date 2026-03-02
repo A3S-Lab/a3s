@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { MessageCircle, Settings, Database, Container, GitBranch } from "lucide-react";
+import { MessageCircle, Settings, Container, FolderOpen } from "lucide-react";
 import {
 	ReactNode,
 	useCallback,
@@ -14,9 +14,9 @@ const STORAGE_KEY = "safeclaw-active-route";
 
 const NAV_ITEMS = [
 	{ key: "chat", label: "Chat", icon: MessageCircle, path: "/" },
-	{ key: "repos", label: "Repos", icon: GitBranch, path: "/repos" },
+	{ key: "repos", label: "工作区", icon: FolderOpen, path: "/repos" },
+	// { key: "workflow", label: "工作流", icon: GitBranch, path: "/workflow" },
 	{ key: "box", label: "Box", icon: Container, path: "/box" },
-	{ key: "memory", label: "Memory", icon: Database, path: "/memory" },
 ] as const;
 
 const BOTTOM_ITEMS = [
@@ -30,7 +30,7 @@ const ROUTE_MAP: Record<string, string> = Object.fromEntries(
 );
 
 function pathToKey(pathname: string): string {
-	const segment = pathname.replace(/^\//, "") || "chat";
+	const segment = pathname.replace(/^\//, "").split("/")[0] || "chat";
 	return segment in ROUTE_MAP ? segment : "chat";
 }
 
@@ -137,10 +137,17 @@ export default function ActivityBar() {
 	}, []);
 
 	useEffect(() => {
-		if (location.pathname !== "/") return;
 		try {
 			const stored = localStorage.getItem(STORAGE_KEY);
-			if (stored && stored !== "chat" && stored in ROUTE_MAP) {
+			if (stored && !(stored in ROUTE_MAP)) {
+				localStorage.removeItem(STORAGE_KEY);
+				nav("/", { replace: true });
+			} else if (
+				stored &&
+				stored !== "chat" &&
+				stored in ROUTE_MAP &&
+				location.pathname === "/"
+			) {
 				nav(ROUTE_MAP[stored], { replace: true });
 			}
 		} catch {
@@ -159,7 +166,11 @@ export default function ActivityBar() {
 			className="flex flex-col h-full w-[var(--activity-bar-width)] bg-primary text-primary-foreground/60 shadow-lg"
 		>
 			<User />
-			<div className="flex-1 flex flex-col" role="tablist" aria-orientation="vertical">
+			<div
+				className="flex-1 flex flex-col"
+				role="tablist"
+				aria-orientation="vertical"
+			>
 				<div className="flex-1">
 					{NAV_ITEMS.map((item) => (
 						<ActivityItem

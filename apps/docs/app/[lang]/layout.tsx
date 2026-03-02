@@ -7,7 +7,7 @@ interface LangLayoutProps {
 }
 
 export function generateStaticParams() {
-  return [{ lang: 'cn' }];
+  return [{ lang: 'en' }, { lang: 'cn' }];
 }
 
 const cnTranslations = {

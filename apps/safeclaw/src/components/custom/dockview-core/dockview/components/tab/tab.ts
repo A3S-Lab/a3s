@@ -30,7 +30,7 @@ class TabDragHandler extends DragHandler {
 		super(element);
 	}
 
-	getData(event: DragEvent): IDisposable {
+	getData(_event: DragEvent): IDisposable {
 		this.panelTransfer.setData(
 			[new PanelTransfer(this.accessor.id, this.group.id, this.panel.id)],
 			PanelTransfer.prototype,

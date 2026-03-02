@@ -1,5 +1,6 @@
 import { defineConfig } from "@rsbuild/core";
 import { pluginLess } from "@rsbuild/plugin-less";
+import { pluginSass } from "@rsbuild/plugin-sass";
 import { pluginReact } from "@rsbuild/plugin-react";
 import path from "path";
 
@@ -36,5 +37,5 @@ export default defineConfig({
 					},
 				},
 	},
-	plugins: [pluginReact(), pluginLess()],
+	plugins: [pluginReact(), pluginLess(), pluginSass()],
 });

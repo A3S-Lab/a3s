@@ -110,7 +110,9 @@ export function ImagesSection() {
 					className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
 					onClick={() => boxModel.fetchImages()}
 				>
-					<RotateCw className={`size-3 ${snap.loading.images ? "animate-spin" : ""}`} />
+					<RotateCw
+						className={`size-3 ${snap.loading.images ? "animate-spin" : ""}`}
+					/>
 					刷新
 				</button>
 				<button
@@ -119,7 +121,11 @@ export function ImagesSection() {
 					onClick={handlePrune}
 					disabled={pruning}
 				>
-					{pruning ? <Loader2 className="size-3 animate-spin" /> : <Trash2 className="size-3" />}
+					{pruning ? (
+						<Loader2 className="size-3 animate-spin" />
+					) : (
+						<Trash2 className="size-3" />
+					)}
 					清理未使用
 				</button>
 				<span className="ml-auto text-xs text-muted-foreground">
@@ -137,16 +143,27 @@ export function ImagesSection() {
 					<table className="w-full text-sm">
 						<thead>
 							<tr className="border-b bg-muted/30">
-								<th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">镜像</th>
-								<th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">标签</th>
-								<th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">大小</th>
-								<th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">创建时间</th>
+								<th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">
+									镜像
+								</th>
+								<th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">
+									标签
+								</th>
+								<th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">
+									大小
+								</th>
+								<th className="text-right px-4 py-2.5 text-xs font-medium text-muted-foreground">
+									创建时间
+								</th>
 								<th className="w-10" />
 							</tr>
 						</thead>
 						<tbody>
 							{snap.images.map((img) => (
-								<tr key={img.id} className="border-b last:border-b-0 hover:bg-muted/20 transition-colors">
+								<tr
+									key={img.id}
+									className="border-b last:border-b-0 hover:bg-muted/20 transition-colors"
+								>
 									<td className="px-4 py-2.5 font-mono text-xs truncate max-w-[200px]">
 										{img.repository}
 									</td>
@@ -165,7 +182,9 @@ export function ImagesSection() {
 										<button
 											type="button"
 											className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
-											onClick={() => handleDelete(img.id)}
+											onClick={() =>
+												handleDelete(`${img.repository}:${img.tag}`)
+											}
 											disabled={deletingId === img.id}
 											title="删除镜像"
 										>

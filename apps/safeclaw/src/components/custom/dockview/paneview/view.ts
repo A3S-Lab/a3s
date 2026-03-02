@@ -26,16 +26,16 @@ export class PanePanelSection implements IPaneBodyPart {
 	}
 
 	public init(parameters: PanePanelComponentInitParameter): void {
-		this.part = new ReactPart(
+		this.part = new ReactPart<any>(
 			this.element,
 			this.reactPortalStore,
-			this.component,
+			this.component as any,
 			{
 				params: parameters.params,
 				api: parameters.api,
 				title: parameters.title,
 				containerApi: parameters.containerApi,
-			},
+			} as any,
 		);
 	}
 

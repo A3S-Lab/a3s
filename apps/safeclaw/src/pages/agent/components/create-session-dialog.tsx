@@ -29,6 +29,7 @@ import { agentApi } from "@/lib/agent-api";
 import { cn } from "@/lib/utils";
 import personaModel from "@/models/persona.model";
 import settingsModel, {
+	getPreferredSessionModel,
 	resolveApiKey,
 	resolveBaseUrl,
 	getAllModels,
@@ -61,14 +62,7 @@ import { toast } from "sonner";
 // =============================================================================
 
 /** All available filter tags — derived from builtin persona categories */
-const ALL_TAGS = [
-	"工程",
-	"量化",
-	"金融",
-	"产品",
-	"数据",
-	"自定义",
-] as const;
+const ALL_TAGS = ["工程", "量化", "金融", "产品", "数据", "自定义"] as const;
 
 // =============================================================================
 // Types
@@ -110,8 +104,7 @@ export default function CreateSessionDialog({
 	const [selectedPersonaId, setSelectedPersonaId] = useState<string | null>(
 		null,
 	);
-	const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
-	const scrollRef = useRef<HTMLDivElement>(null);
+	const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	// ── Custom tab state ──
 	const [avatarConfig, setAvatarConfig] = useState<AvatarFullConfig>(
@@ -121,8 +114,9 @@ export default function CreateSessionDialog({
 	const [systemPrompt, setSystemPrompt] = useState(
 		defaults?.systemPrompt || "",
 	);
+	const preferredSessionModel = getPreferredSessionModel();
 	const [model, setModel] = useState(
-		defaults?.model || settingsModel.state.defaultModel,
+		defaults?.model || preferredSessionModel.modelId,
 	);
 	const [permissionMode, setPermissionMode] = useState(
 		defaults?.permissionMode || "default",
@@ -130,14 +124,14 @@ export default function CreateSessionDialog({
 	const [cwd, setCwd] = useState(settingsModel.state.agentDefaults.defaultCwd);
 	const [baseUrl, setBaseUrl] = useState(
 		resolveBaseUrl(
-			settingsModel.state.defaultProvider,
-			settingsModel.state.defaultModel,
+			preferredSessionModel.providerName,
+			preferredSessionModel.modelId,
 		),
 	);
 	const [apiKey, setApiKey] = useState(
 		resolveApiKey(
-			settingsModel.state.defaultProvider,
-			settingsModel.state.defaultModel,
+			preferredSessionModel.providerName,
+			preferredSessionModel.modelId,
 		),
 	);
 	const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -187,10 +181,10 @@ export default function CreateSessionDialog({
 	);
 
 	// Market data from backend (paginated)
-	const marketItems = personaSnap.market.items as import("@/typings/persona").AgentPersona[];
+	const marketItems = personaSnap.market
+		.items as import("@/typings/persona").AgentPersona[];
 	const marketTotal = personaSnap.market.total;
 	const marketPage = personaSnap.market.page;
-	const marketPageSize = personaSnap.market.pageSize;
 	const marketLoading = personaSnap.market.loading;
 	const hasMore = marketItems.length < marketTotal;
 
@@ -251,44 +245,38 @@ export default function CreateSessionDialog({
 
 	// ── Actions ──
 
-	const toggleTag = useCallback((tag: string) => {
-		setActiveTags((prev) => {
-			const next = new Set(prev);
-			if (next.has(tag)) next.delete(tag);
-			else next.add(tag);
-			personaModel.fetchMarketPersonas({
-				page: 1,
-				search: marketSearch,
-				tags: Array.from(next),
-				reset: true,
+	const toggleTag = useCallback(
+		(tag: string) => {
+			setActiveTags((prev) => {
+				const next = new Set(prev);
+				if (next.has(tag)) next.delete(tag);
+				else next.add(tag);
+				personaModel.fetchMarketPersonas({
+					page: 1,
+					search: marketSearch,
+					tags: Array.from(next),
+					reset: true,
+				});
+				return next;
 			});
-			return next;
-		});
-	}, [marketSearch]);
+		},
+		[marketSearch],
+	);
 
 	const handleRandomAvatar = useCallback(() => {
 		setAvatarConfig(genConfig());
 	}, []);
 
 	const resetForm = useCallback(() => {
+		const preferred = getPreferredSessionModel();
 		setAvatarConfig(genConfig());
 		setSessionName("");
 		setSystemPrompt("");
-		setModel(settingsModel.state.defaultModel);
+		setModel(preferred.modelId);
 		setPermissionMode("default");
 		setCwd(settingsModel.state.agentDefaults.defaultCwd);
-		setBaseUrl(
-			resolveBaseUrl(
-				settingsModel.state.defaultProvider,
-				settingsModel.state.defaultModel,
-			),
-		);
-		setApiKey(
-			resolveApiKey(
-				settingsModel.state.defaultProvider,
-				settingsModel.state.defaultModel,
-			),
-		);
+		setBaseUrl(resolveBaseUrl(preferred.providerName, preferred.modelId));
+		setApiKey(resolveApiKey(preferred.providerName, preferred.modelId));
 		setAdvancedOpen(false);
 		setSaveAsPersona(false);
 		setPersonaDescription("");
@@ -338,9 +326,7 @@ export default function CreateSessionDialog({
 				const sid = result.session_id;
 				personaModel.setSessionPersona(sid, personaId || "general");
 				if (finalName) {
-					const { default: agentModel } = await import(
-						"@/models/agent.model"
-					);
+					const { default: agentModel } = await import("@/models/agent.model");
 					agentModel.setSessionName(sid, finalName);
 					agentApi.updateSession(sid, { name: finalName }).catch(() => {});
 				}
@@ -462,7 +448,10 @@ export default function CreateSessionDialog({
 						</div>
 
 						{/* Persona grid — scrollable with infinite scroll */}
-						<ScrollArea className="flex-1 min-h-0 px-6" onScrollCapture={handleMarketScroll}>
+						<ScrollArea
+							className="flex-1 min-h-0 px-6"
+							onScrollCapture={handleMarketScroll}
+						>
 							<div className="grid grid-cols-2 gap-2 pb-3">
 								{marketItems.map((persona) => {
 									const cfg = genConfig(persona.avatar);
@@ -479,10 +468,7 @@ export default function CreateSessionDialog({
 											)}
 											onClick={() => setSelectedPersonaId(persona.id)}
 										>
-											<NiceAvatar
-												className="w-9 h-9 shrink-0"
-												{...cfg}
-											/>
+											<NiceAvatar className="w-9 h-9 shrink-0" {...cfg} />
 											<div className="flex-1 min-w-0">
 												<div className="flex items-center gap-1.5">
 													<span className="text-xs font-semibold truncate">
@@ -581,10 +567,7 @@ export default function CreateSessionDialog({
 					</TabsContent>
 
 					{/* ===== Tab: Custom ===== */}
-					<TabsContent
-						value="custom"
-						className="flex-1 min-h-0 mt-0"
-					>
+					<TabsContent value="custom" className="flex-1 min-h-0 mt-0">
 						<ScrollArea className="flex-1 min-h-0 px-6 pt-3">
 							<div className="grid gap-4 pb-4">
 								{/* Avatar + Name */}
@@ -812,9 +795,7 @@ export default function CreateSessionDialog({
 											<Input
 												placeholder="智能体描述（可选）"
 												value={personaDescription}
-												onChange={(e) =>
-													setPersonaDescription(e.target.value)
-												}
+												onChange={(e) => setPersonaDescription(e.target.value)}
 												className="h-8 text-xs"
 											/>
 										</div>

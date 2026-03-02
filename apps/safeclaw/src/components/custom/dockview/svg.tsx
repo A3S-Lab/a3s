@@ -1,5 +1,3 @@
-import React from "react";
-
 export const CloseButton = () => (
 	<svg
 		height="11"
@@ -9,7 +7,7 @@ export const CloseButton = () => (
 		focusable={false}
 		className="dockview-svg"
 	>
-		<path d="M2.1 27.3L0 25.2L11.55 13.65L0 2.1L2.1 0L13.65 11.55L25.2 0L27.3 2.1L15.75 13.65L27.3 25.2L25.2 27.3L13.65 15.75L2.1 27.3Z"></path>
+		<path d="M2.1 27.3L0 25.2L11.55 13.65L0 2.1L2.1 0L13.65 11.55L25.2 0L27.3 2.1L15.75 13.65L27.3 25.2L25.2 27.3L13.65 15.75L2.1 27.3Z" />
 	</svg>
 );
 

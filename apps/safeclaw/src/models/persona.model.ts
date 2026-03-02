@@ -133,9 +133,13 @@ const actions = {
 
 	/** Get all available personas (builtin + server + custom) with overrides applied */
 	getAllPersonas(): AgentPersona[] {
+		const builtinIds = new Set(BUILTIN_PERSONAS.map((p) => p.id));
+		const customIds = new Set(state.customPersonas.map((p) => p.id));
 		return [
 			...BUILTIN_PERSONAS,
-			...state.serverPersonas,
+			...state.serverPersonas.filter(
+				(p) => !builtinIds.has(p.id) && !customIds.has(p.id),
+			),
 			...state.customPersonas,
 		].map(applyOverrides);
 	},
@@ -224,9 +228,7 @@ const actions = {
 			} else {
 				// Append for infinite scroll, deduplicate by id
 				const existingIds = new Set(state.market.items.map((p) => p.id));
-				state.market.items.push(
-					...items.filter((p) => !existingIds.has(p.id)),
-				);
+				state.market.items.push(...items.filter((p) => !existingIds.has(p.id)));
 			}
 			state.market.total = result.total;
 			state.market.page = result.page;
