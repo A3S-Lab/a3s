@@ -20,7 +20,7 @@ path = "src/main.rs"
 [dependencies]
 # Internal A3S crates
 a3s-common = { version = "0.1", path = "../../../../crates/common" }
-a3s-code = { version = "0.9", path = "../../../../crates/code/core", package = "a3s-code-core" }
+a3s-code = { version = "1.0", path = "../../../../crates/code/core", package = "a3s-code-core" }
 a3s-memory = { version = "0.1", path = "../../../../crates/memory" }
 a3s-event = { version = "0.3", path = "../../../../crates/event" }
 a3s-box-core = { version = "0.7", path = "../../../../crates/box/src/core", optional = true }
