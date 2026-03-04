@@ -4,6 +4,10 @@
 default:
     @just --list
 
+# Install frontend dependencies
+install:
+    pnpm install
+
 # Start dev server
 dev:
     pnpm dev

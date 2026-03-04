@@ -83,6 +83,12 @@ safeclaw-dev:
 safeclaw-tunnel:
     cd apps/safeclaw/crates/safeclaw && just tunnel
 
+# Install SafeClaw frontend (pnpm) and backend (cargo) dependencies
+safeclaw-install:
+    cd apps/safeclaw && pnpm install
+    cd apps/safeclaw/src-tauri && cargo fetch
+    cd apps/safeclaw/crates/safeclaw && cargo fetch
+
 # Start SafeClaw frontend dev server (web only, port 8888)
 safeclaw-web:
     cd apps/safeclaw && pnpm dev
