@@ -15,7 +15,7 @@ The built-in `DefaultSecurityProvider` detects common patterns: API keys, tokens
 
 ## Enable Default Security
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions};
@@ -40,15 +40,15 @@ opts = SessionOptions()
 opts.default_security = True
 
 session = agent.session("/my-project", options=opts)
-result = await session.send("Review this config file")
+result = session.send("Review this config file")
 print(result.text)  # sensitive patterns redacted
 ```
 
 **Run:** `python examples/test_advanced_features.py`
 **Source:** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   permissive: true,
   defaultSecurity: true,
@@ -58,14 +58,14 @@ const result = await session.send('Review this config file');
 console.log(result.text); // sensitive patterns redacted
 ```
 
-**Run:** `node examples/test_advanced_features.js`
-**Source:** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+**Run:** `npx ts-node examples/test_advanced_features.ts`
+**Source:** [`sdk/node/examples/test_advanced_features.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.ts)
 </Tab>
 </Tabs>
 
 ## Custom Security Provider
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::security::SecurityProvider;
@@ -108,8 +108,8 @@ opts.default_security = True
 session = agent.session("/my-project", options=opts)
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 // Custom security providers are implemented in Rust.
 // Use defaultSecurity: true for the built-in provider.
 const session = agent.session('/my-project', {
@@ -157,10 +157,10 @@ For full security configuration, see [Security](/docs/code/security).
 <TypeTable
   type={{
     "Default security": {
-      description: "Rust: .with_default_security() · Python: default_security=True · Node.js: defaultSecurity: true · Default: false",
+      description: "Rust: .with_default_security() · Python: default_security=True · TypeScript: defaultSecurity: true · Default: false",
     },
     "Custom provider": {
-      description: "Rust: .with_security_provider(Arc::new(p)) · Python: _(Rust only)_ · Node.js: _(Rust only)_ · Default: None",
+      description: "Rust: .with_security_provider(Arc::new(p)) · Python: _(Rust only)_ · TypeScript: _(Rust only)_ · Default: None",
     },
   }}
 />

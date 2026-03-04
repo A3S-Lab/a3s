@@ -40,7 +40,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 ## 示例
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, AgentEvent, SessionOptions};
@@ -79,25 +79,25 @@ handle.await??;
 ```python
 session = agent.session("/my-project", permissive=True)
 
-async for event in session.stream("Refactor the auth module"):
-    t = event.get("type")
+for event in session.stream("Refactor the auth module"):
+    t = event.event_type
     if t == "text_delta":
-        print(event["text"], end="", flush=True)
+        print(event.text, end="", flush=True)
     elif t == "tool_start":
-        print(f"\n🔧 {event['name']}...", end="")
+        print(f"\n🔧 {event.tool_name}...", end="")
     elif t == "tool_end":
-        print(f" ✓ (exit={event['exit_code']})")
+        print(f" ✓ (exit={event.exit_code})")
     elif t == "turn_end":
-        print(f"\n└─ Turn {event['turn']} done ({event['usage']['total_tokens']} tokens)")
+        print(f"\n└─ Turn {event.turn} done ({event.total_tokens} tokens)")
     elif t == "end":
-        print(f"\n■ Done — {event['usage']['total_tokens']} tokens total")
+        print(f"\n■ Done — {event.total_tokens} tokens total")
         break
 ```
 
 **源码：** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', { permissive: true });
 
 const stream = await session.stream('Refactor the auth module');
@@ -108,22 +108,22 @@ for await (const event of stream) {
       process.stdout.write(event.text);
       break;
     case 'tool_start':
-      process.stdout.write(`\n🔧 ${event.name}...`);
+      process.stdout.write(`\n🔧 ${event.toolName}...`);
       break;
     case 'tool_end':
       console.log(` ✓ (exit=${event.exitCode})`);
       break;
     case 'turn_end':
-      console.log(`\n└─ Turn ${event.turn} done (${event.usage.totalTokens} tokens)`);
+      console.log(`\n└─ Turn ${event.turn} done (${event.totalTokens} tokens)`);
       break;
     case 'end':
-      console.log(`\n■ Done — ${event.usage.totalTokens} tokens total`);
+      console.log(`\n■ Done — ${event.totalTokens} tokens total`);
       break;
   }
 }
 ```
 
-**源码：** [`sdk/node/examples/agentic_loop_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.js)
+**源码：** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
 </Tab>
 </Tabs>
 
@@ -150,13 +150,13 @@ The auth module has been refactored. Key changes:
 <TypeTable
   type={{
     "启动流": {
-      description: "Rust: session.stream('prompt', None).await? · Python: session.stream('prompt') · Node.js: session.stream('prompt')",
+      description: "Rust: session.stream('prompt', None).await? · Python: session.stream('prompt') · TypeScript: await session.stream('prompt')",
     },
     "接收事件": {
-      description: "Rust: rx.recv().await · Python: async for event in stream · Node.js: for await (const event of stream)",
+      description: "Rust: rx.recv().await · Python: for event in session.stream(...) · TypeScript: for await (const event of stream)",
     },
     "等待完成": {
-      description: "Rust: handle.await?? · Python: _（自动）_ · Node.js: _（自动）_",
+      description: "Rust: handle.await?? · Python: _（自动）_ · TypeScript: _（自动）_",
     },
   }}
 />
@@ -166,34 +166,34 @@ The auth module has been refactored. Key changes:
 <TypeTable
   type={{
     "Agent 启动": {
-      description: "Rust 变体: AgentEvent::Start · Python/Node.js type: start",
+      description: "Rust 变体: AgentEvent::Start · Python/TypeScript type: start",
     },
     "LLM 轮次开始": {
-      description: "Rust 变体: AgentEvent::TurnStart · Python/Node.js type: turn_start · 字段: turn",
+      description: "Rust 变体: AgentEvent::TurnStart · Python/TypeScript type: turn_start · 字段: turn",
     },
     "LLM 轮次结束": {
-      description: "Rust 变体: AgentEvent::TurnEnd · Python/Node.js type: turn_end · 字段: turn, usage",
+      description: "Rust 变体: AgentEvent::TurnEnd · Python/TypeScript type: turn_end · 字段: turn, usage",
     },
     "文本片段": {
-      description: "Rust 变体: AgentEvent::TextDelta · Python/Node.js type: text_delta · 字段: text",
+      description: "Rust 变体: AgentEvent::TextDelta · Python/TypeScript type: text_delta · 字段: text",
     },
     "工具开始": {
-      description: "Rust 变体: AgentEvent::ToolStart · Python/Node.js type: tool_start · 字段: name, args",
+      description: "Rust 变体: AgentEvent::ToolStart · Python/TypeScript type: tool_start · 字段: name, args",
     },
     "工具完成": {
-      description: "Rust 变体: AgentEvent::ToolEnd · Python/Node.js type: tool_end · 字段: name, exit_code, output",
+      description: "Rust 变体: AgentEvent::ToolEnd · Python/TypeScript type: tool_end · 字段: name, exit_code, output",
     },
     "工具输出片段": {
-      description: "Rust 变体: AgentEvent::ToolOutputDelta · Python/Node.js type: tool_output_delta · 字段: text",
+      description: "Rust 变体: AgentEvent::ToolOutputDelta · Python/TypeScript type: tool_output_delta · 字段: text",
     },
     "RAG 检索中": {
-      description: "Rust 变体: AgentEvent::ContextResolving · Python/Node.js type: context_resolving · 字段: query",
+      description: "Rust 变体: AgentEvent::ContextResolving · Python/TypeScript type: context_resolving · 字段: query",
     },
     "RAG 检索完成": {
-      description: "Rust 变体: AgentEvent::ContextResolved · Python/Node.js type: context_resolved · 字段: chunks",
+      description: "Rust 变体: AgentEvent::ContextResolved · Python/TypeScript type: context_resolved · 字段: chunks",
     },
     "Agent 完成": {
-      description: "Rust 变体: AgentEvent::End · Python/Node.js type: end · 字段: text, usage",
+      description: "Rust 变体: AgentEvent::End · Python/TypeScript type: end · 字段: text, usage",
     },
   }}
 />

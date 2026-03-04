@@ -7,7 +7,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
-所有配置定义在单个 `.hcl` 文件（或 `.json`）中。本页是每个配置字段的完整参考，并附带常见 LLM 提供商和本地推理服务器的即用配置片段。
+所有配置定义在单个 `.hcl` 文件中。本页是每个配置字段的完整参考，并附带常见 LLM 提供商和本地推理服务器的即用配置片段。
 
 <Callout type="info">
 A3S Code 使用 HCL（HashiCorp Configuration Language）作为主要配置格式。`env()` 函数在解析时读取环境变量——使用它可避免在配置文件中硬编码密钥。
@@ -265,7 +265,7 @@ providers {
 
 运行时切换：
 
-<Tabs items={['Rust', 'Python', 'Node.js']}>
+<Tabs items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 // 默认模型
@@ -282,7 +282,7 @@ let session = agent.session(".", Some(
 session = agent.session(".", model="openai/gpt-4o")
 ```
 </Tab>
-<Tab value="Node.js">
+<Tab value="TypeScript">
 ```typescript
 const session = agent.session('.', { model: 'openai/gpt-4o' });
 ```
@@ -711,65 +711,26 @@ providers {
 }
 ```
 
+<Tabs groupId="os" items={['Linux / macOS', 'Windows PowerShell', 'Windows CMD']}>
+<Tab value="Linux / macOS">
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
 export OPENAI_API_KEY="sk-..."
 export GPUSTACK_API_KEY="gpustack_..."
 ```
-
----
-
-## JSON 格式
-
-相同配置的 JSON 表示（字段名使用 camelCase）：
-
-```json
-{
-  "defaultModel": "anthropic/claude-sonnet-4-20250514",
-  "maxToolRounds": 20,
-  "providers": [
-    {
-      "name": "anthropic",
-      "apiKey": "sk-ant-...",
-      "models": [
-        {
-          "id": "claude-sonnet-4-20250514",
-          "name": "Claude Sonnet 4",
-          "family": "claude-sonnet",
-          "toolCall": true,
-          "reasoning": false,
-          "temperature": true,
-          "attachment": true,
-          "modalities": {
-            "input": ["text", "image", "pdf"],
-            "output": ["text"]
-          },
-          "cost": {
-            "input": 3.0,
-            "output": 15.0,
-            "cacheRead": 0.3,
-            "cacheWrite": 3.75
-          },
-          "limit": {
-            "context": 200000,
-            "output": 64000
-          }
-        }
-      ]
-    },
-    {
-      "name": "ollama",
-      "models": [
-        {
-          "id": "llama3.2",
-          "name": "Llama 3.2（Ollama）",
-          "baseUrl": "http://localhost:11434/v1",
-          "toolCall": true,
-          "temperature": true,
-          "limit": { "context": 128000, "output": 4096 }
-        }
-      ]
-    }
-  ]
-}
+</Tab>
+<Tab value="Windows PowerShell">
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+$env:OPENAI_API_KEY = "sk-..."
+$env:GPUSTACK_API_KEY = "gpustack_..."
 ```
+</Tab>
+<Tab value="Windows CMD">
+```cmd
+set ANTHROPIC_API_KEY=sk-ant-...
+set OPENAI_API_KEY=sk-...
+set GPUSTACK_API_KEY=gpustack_...
+```
+</Tab>
+</Tabs>

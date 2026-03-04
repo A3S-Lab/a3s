@@ -17,7 +17,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## 直接工具调用
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::Agent;
@@ -84,8 +84,8 @@ assert r.exit_code == 0
 
 **运行:** `python examples/test_git_worktree.py`
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const { Agent } = require('a3s-code');
 
 const agent = await Agent.create('~/.a3s/config.hcl');
@@ -115,7 +115,7 @@ r = await session.tool('git_worktree', {
 assert(r.exitCode === 0);
 ```
 
-**运行:** `node examples/test_git_worktree.js`
+**运行:** `node examples/test_git_worktree.ts`
 </Tab>
 </Tabs>
 

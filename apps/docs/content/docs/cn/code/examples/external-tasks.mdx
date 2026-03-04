@@ -33,7 +33,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## 基本外部处理器
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig, LaneHandlerConfig};
@@ -81,7 +81,7 @@ session = agent.session("/my-project",
 )
 
 # 注册外部任务处理器
-async def handle_task(task):
+def handle_task(task):
     print(f"Worker received task: {task['id']}")
     return {"success": True, "result": {"output": "task completed"}}
 
@@ -91,8 +91,8 @@ session.set_external_task_handler(handle_task)
 **运行：** `python examples/test_external_task_handler.py`
 **源码：** [`sdk/python/examples/test_external_task_handler.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_external_task_handler.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   permissive: true,
   queueConfig: { enableAllFeatures: true },
@@ -105,8 +105,8 @@ session.setExternalTaskHandler(async (task) => {
 });
 ```
 
-**运行：** `node examples/test_external_task_handler.js`
-**源码：** [`sdk/node/examples/test_external_task_handler.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_external_task_handler.js)
+**运行：** `node examples/test_external_task_handler.ts`
+**源码：** [`sdk/node/examples/test_external_task_handler.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_external_task_handler.ts)
 </Tab>
 </Tabs>
 
@@ -114,7 +114,7 @@ session.setExternalTaskHandler(async (task) => {
 
 将工作分布到多个并行会话：
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use tokio::task::JoinSet;
@@ -142,15 +142,16 @@ while let Some(result) = set.join_next().await {
 </Tab>
 <Tab value="Python">
 ```python
-import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 files = ["auth.rs", "db.rs", "handler.rs", "config.rs"]
 
-async def review_file(file):
+def review_file(file):
     session = agent.session("/my-project", permissive=True)
-    return await session.send(f"Review {file} for issues")
+    return session.send(f"Review {file} for issues")
 
-results = await asyncio.gather(*[review_file(f) for f in files])
+with ThreadPoolExecutor() as executor:
+    results = list(executor.map(review_file, files))
 for r in results:
     print(r.text)
 ```
@@ -158,22 +159,22 @@ for r in results:
 **运行：** `python examples/test_parallel_processing.py`
 **源码：** [`sdk/python/examples/test_parallel_processing.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_parallel_processing.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const files = ['auth.rs', 'db.rs', 'handler.rs', 'config.rs'];
 
 const results = await Promise.all(
   files.map(async (file) => {
     const session = agent.session('/my-project', { permissive: true });
-    return session.send(`Review ${file} for issues`);
+    return await session.send(`Review ${file} for issues`);
   })
 );
 
 results.forEach((r) => console.log(r.text));
 ```
 
-**运行：** `node examples/test_parallel_processing.js`
-**源码：** [`sdk/node/examples/test_parallel_processing.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_parallel_processing.js)
+**运行：** `node examples/test_parallel_processing.ts`
+**源码：** [`sdk/node/examples/test_parallel_processing.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_parallel_processing.ts)
 </Tab>
 </Tabs>
 
@@ -197,13 +198,13 @@ results.forEach((r) => console.log(r.text));
 <TypeTable
   type={{
     "设置处理器": {
-      description: "Rust: session.set_external_task_handler(fn).await · Python: session.set_external_task_handler(fn) · Node.js: session.setExternalTaskHandler(fn)",
+      description: "Rust: session.set_external_task_handler(fn).await · Python: session.set_external_task_handler(fn) · TypeScript: session.setExternalTaskHandler(fn)",
     },
     "轮询待处理": {
-      description: "Rust: session.pending_external_tasks().await · Python: await session.pending_external_tasks() · Node.js: await session.pendingExternalTasks()",
+      description: "Rust: session.pending_external_tasks().await · Python: session.pending_external_tasks() · TypeScript: await session.pendingExternalTasks()",
     },
     "完成任务": {
-      description: "Rust: session.complete_external_task(id, result).await · Python: await session.complete_external_task(id, result) · Node.js: await session.completeExternalTask(id, result)",
+      description: "Rust: session.complete_external_task(id, result).await · Python: session.complete_external_task(id, result) · TypeScript: await session.completeExternalTask(id, result)",
     },
   }}
 />

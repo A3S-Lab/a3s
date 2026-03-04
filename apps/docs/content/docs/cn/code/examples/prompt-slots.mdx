@@ -38,7 +38,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 为 Agent 设置人设：
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions, SystemPromptSlots};
@@ -73,8 +73,8 @@ print(result.text)
 
 **运行:** `python examples/test_prompt_slots.py`
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const { Agent } = require('a3s-code');
 
 const agent = await Agent.create('~/.a3s/config.hcl');
@@ -86,7 +86,7 @@ const result = await session.send('What is your area of expertise?');
 console.log(result.text);
 ```
 
-**运行:** `node examples/test_prompt_slots.js`
+**运行:** `node examples/test_prompt_slots.ts`
 </Tab>
 </Tabs>
 
@@ -94,7 +94,7 @@ console.log(result.text);
 
 组合多个插槽创建完全自定义的代码审查员：
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 let session = agent.session("/my-project", Some(
@@ -122,8 +122,8 @@ result = session.send("Review the file app.py and list any issues.")
 print(result.text)
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   role: 'You are a Python code reviewer.',
   guidelines: 'Always check for type hints. Flag any use of eval().',
@@ -140,7 +140,7 @@ console.log(result.text);
 
 `extra` 插槽在提示词末尾追加自由格式指令，向后兼容旧版 `system_prompt` 字段：
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 let session = agent.session("/my-project", Some(
@@ -158,8 +158,8 @@ opts.extra = "Always end your response with '— A3S'"
 session = agent.session("/my-project", options=opts)
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   extra: "Always end your response with '— A3S'",
 });
@@ -196,16 +196,16 @@ assert!(result.tool_calls_count > 0); // 工具正常工作
       description: "Rust: SessionOptions 构建器方法",
     },
     "opts.role": {
-      description: "Python/Node.js: 自定义角色/身份字符串",
+      description: "Python/TypeScript: 自定义角色/身份字符串",
     },
     "opts.guidelines": {
-      description: "Python/Node.js: 自定义编码准则字符串",
+      description: "Python/TypeScript: 自定义编码准则字符串",
     },
     "opts.response_style / responseStyle": {
-      description: "Python: opts.response_style · Node.js: responseStyle",
+      description: "Python: opts.response_style · TypeScript: responseStyle",
     },
     "opts.extra": {
-      description: "Python/Node.js: 自由格式额外指令字符串",
+      description: "Python/TypeScript: 自由格式额外指令字符串",
     },
   }}
 />

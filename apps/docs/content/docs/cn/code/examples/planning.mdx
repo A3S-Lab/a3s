@@ -17,7 +17,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## 启用规划
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions};
@@ -49,7 +49,7 @@ session = agent.session("/my-project",
     goal_tracking=True,
 )
 
-result = await session.send(
+result = session.send(
     "Add input validation to all API endpoints, write tests, and update the README"
 )
 
@@ -59,8 +59,8 @@ print(f"Tool calls: {result.tool_calls_count}")
 
 **源码：** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   permissive: true,
   planning: true,
@@ -75,13 +75,13 @@ console.log(result.text);
 console.log(`Tool calls: ${result.toolCallsCount}`);
 ```
 
-**源码：** [`sdk/node/examples/agentic_loop_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.js)
+**源码：** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
 </Tab>
 </Tabs>
 
 ## 流式规划事件
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 let (mut rx, handle) = session.stream("Refactor and test the auth module", None).await?;
@@ -106,7 +106,7 @@ handle.await??;
 </Tab>
 <Tab value="Python">
 ```python
-async for event in session.stream("Refactor and test the auth module"):
+for event in session.stream("Refactor and test the auth module"):
     t = event.get("type")
     if t == "planning_start":
         print(f"📋 Planning: {event['prompt']}")
@@ -118,8 +118,9 @@ async for event in session.stream("Refactor and test the auth module"):
         break
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
+const stream = await session.stream('Refactor and test the auth module');
 for await (const event of stream) {
   if (event.type === 'planning_start') {
     console.log(`📋 Planning: ${event.prompt}`);
@@ -141,10 +142,10 @@ for await (const event of stream) {
 <TypeTable
   type={{
     "启用规划": {
-      description: "Rust: .with_planning(true) · Python: planning=True · Node.js: planning: true · 默认值: false",
+      description: "Rust: .with_planning(true) · Python: planning=True · TypeScript: planning: true · 默认值: false",
     },
     "启用目标追踪": {
-      description: "Rust: .with_goal_tracking(true) · Python: goal_tracking=True · Node.js: goalTracking: true · 默认值: false",
+      description: "Rust: .with_goal_tracking(true) · Python: goal_tracking=True · TypeScript: goalTracking: true · 默认值: false",
     },
   }}
 />
@@ -154,19 +155,19 @@ for await (const event of stream) {
 <TypeTable
   type={{
     "规划开始": {
-      description: "Rust 变体: AgentEvent::PlanningStart · Python/Node.js type: planning_start · 字段: prompt",
+      description: "Rust 变体: AgentEvent::PlanningStart · Python/TypeScript type: planning_start · 字段: prompt",
     },
     "计划生成": {
-      description: "Rust 变体: AgentEvent::PlanReady · Python/Node.js type: plan_ready · 字段: steps[], wave_count",
+      description: "Rust 变体: AgentEvent::PlanReady · Python/TypeScript type: plan_ready · 字段: steps[], wave_count",
     },
     "步骤开始": {
-      description: "Rust 变体: AgentEvent::StepStart · Python/Node.js type: step_start · 字段: step, index",
+      description: "Rust 变体: AgentEvent::StepStart · Python/TypeScript type: step_start · 字段: step, index",
     },
     "步骤完成": {
-      description: "Rust 变体: AgentEvent::StepEnd · Python/Node.js type: step_end · 字段: step, index, success",
+      description: "Rust 变体: AgentEvent::StepEnd · Python/TypeScript type: step_end · 字段: step, index, success",
     },
     "目标更新": {
-      description: "Rust 变体: AgentEvent::GoalUpdated · Python/Node.js type: goal_updated · 字段: goal, status",
+      description: "Rust 变体: AgentEvent::GoalUpdated · Python/TypeScript type: goal_updated · 字段: goal, status",
     },
   }}
 />

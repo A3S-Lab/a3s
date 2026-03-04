@@ -44,7 +44,7 @@ Hooks let you intercept agent lifecycle events to audit, modify, or block operat
 
 ## Audit Hook (Log All Tool Calls)
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::hooks::{Hook, HookEvent, HookEventType, HookHandler, HookResponse};
@@ -98,7 +98,7 @@ def on_pre_tool_use(event):
 session.register_hook("audit", "pre_tool_use", on_pre_tool_use)
 print(f"Hooks: {session.hook_count()}")
 
-result = await session.send("List files in the workspace")
+result = session.send("List files in the workspace")
 
 print(f"Tools called: {tool_log}")
 session.unregister_hook("audit")
@@ -107,9 +107,9 @@ session.unregister_hook("audit")
 **Run:** `python examples/test_advanced_features.py`
 **Source:** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
-const toolLog = [];
+<Tab value="TypeScript">
+```typescript
+const toolLog: string[] = [];
 
 session.registerHook('audit', 'pre_tool_use', (event) => {
   const tool = event.tool || 'unknown';
@@ -126,14 +126,14 @@ console.log('Tools called:', toolLog);
 session.unregisterHook('audit');
 ```
 
-**Run:** `node examples/test_advanced_features.js`
-**Source:** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+**Run:** `npx ts-node examples/test_advanced_features.ts`
+**Source:** [`sdk/node/examples/test_advanced_features.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.ts)
 </Tab>
 </Tabs>
 
 ## Block Hook (Deny Specific Tools)
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 struct DenyBashHandler;
@@ -164,8 +164,8 @@ def deny_bash(event):
 session.register_hook("no-bash", "pre_tool_use", deny_bash)
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 session.registerHook('no-bash', 'pre_tool_use', (event) => {
   if (event.tool === 'bash') {
     return { action: 'block', reason: 'bash is not allowed' };
@@ -187,16 +187,16 @@ For persistent hook configuration across sessions, see [Hooks](/docs/code/hooks)
 <TypeTable
   type={{
     "Register hook": {
-      description: "Rust: session.register_hook(hook) · Python: session.register_hook(id, event, fn) · Node.js: session.registerHook(id, event, fn)",
+      description: "Rust: session.register_hook(hook) · Python: session.register_hook(id, event, fn) · TypeScript: session.registerHook(id, event, fn)",
     },
     "Register handler": {
-      description: "Rust: session.register_hook_handler(id, Arc::new(h)) · Python: _(combined with register)_ · Node.js: _(combined with register)_",
+      description: "Rust: session.register_hook_handler(id, Arc::new(h)) · Python: _(combined with register)_ · TypeScript: _(combined with register)_",
     },
     "Unregister": {
-      description: "Rust: session.unregister_hook(id) · Python: session.unregister_hook(id) · Node.js: session.unregisterHook(id)",
+      description: "Rust: session.unregister_hook(id) · Python: session.unregister_hook(id) · TypeScript: session.unregisterHook(id)",
     },
     "Count": {
-      description: "Rust: session.hook_count() · Python: session.hook_count() · Node.js: session.hookCount()",
+      description: "Rust: session.hook_count() · Python: session.hook_count() · TypeScript: session.hookCount()",
     },
   }}
 />

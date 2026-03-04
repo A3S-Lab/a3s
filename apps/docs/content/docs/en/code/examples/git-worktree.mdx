@@ -17,7 +17,7 @@ The `git_worktree` tool requires the session workspace to be inside a Git reposi
 
 ## Direct Tool Calls
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::Agent;
@@ -86,8 +86,8 @@ assert r.exit_code == 0
 **Run:** `python examples/test_git_worktree.py`
 **Source:** [`sdk/python/examples/test_git_worktree.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_git_worktree.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const { Agent } = require('a3s-code');
 
 const agent = await Agent.create('~/.a3s/config.hcl');
@@ -117,8 +117,8 @@ r = await session.tool('git_worktree', {
 assert(r.exitCode === 0);
 ```
 
-**Run:** `node examples/test_git_worktree.js`
-**Source:** [`sdk/node/examples/test_git_worktree.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_git_worktree.js)
+**Run:** `node examples/test_git_worktree.ts`
+**Source:** [`sdk/node/examples/test_git_worktree.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_git_worktree.ts)
 </Tab>
 </Tabs>
 

@@ -31,7 +31,7 @@ Turn 1: batch([read file_a.rs, read file_b.rs, read file_c.rs])  → all results
 
 ## 示例
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions};
@@ -71,7 +71,7 @@ with tempfile.TemporaryDirectory() as dir:
         open(os.path.join(dir, name), "w").write(content)
 
     session = agent.session(dir, permissive=True)
-    result = await session.send(
+    result = session.send(
         "Use the batch tool to read auth.rs, db.rs, and handler.rs in parallel. "
         "Then summarize what each file does."
     )
@@ -82,8 +82,8 @@ with tempfile.TemporaryDirectory() as dir:
 **运行：** `python examples/test_advanced_features.py`
 **源码：** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const { mkdtempSync, writeFileSync } = require('fs');
 const { join } = require('path');
 const { tmpdir } = require('os');
@@ -103,8 +103,8 @@ console.log(`Tool calls: ${result.toolCallsCount}`);
 console.log(result.text);
 ```
 
-**运行：** `node examples/test_advanced_features.js`
-**源码：** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+**运行：** `node examples/test_advanced_features.ts`
+**源码：** [`sdk/node/examples/test_advanced_features.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.ts)
 </Tab>
 </Tabs>
 
@@ -112,7 +112,7 @@ console.log(result.text);
 
 你也可以不通过 LLM 直接调用 batch 工具：
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use serde_json::json;
@@ -130,7 +130,7 @@ println!("{}", result.output);
 </Tab>
 <Tab value="Python">
 ```python
-result = await session.call_tool("batch", {
+result = session.call_tool("batch", {
     "invocations": [
         {"tool": "read", "args": {"file_path": "auth.rs"}},
         {"tool": "read", "args": {"file_path": "db.rs"}},
@@ -140,8 +140,8 @@ result = await session.call_tool("batch", {
 print(result.output)
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const result = await session.callTool('batch', {
   invocations: [
     { tool: 'read', args: { filePath: 'auth.rs' } },
@@ -196,7 +196,7 @@ handler.rs:5:// TODO: add error handling
 <TypeTable
   type={{
     "直接调用工具": {
-      description: "Rust: session.call_tool('batch', json!({...})).await? · Python: await session.call_tool('batch', {...}) · Node.js: await session.callTool('batch', {...})",
+      description: "Rust: session.call_tool('batch', json!({...})).await? · Python: session.call_tool('batch', {...}) · TypeScript: await session.callTool('batch', {...})",
     },
   }}
 />

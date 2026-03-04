@@ -17,7 +17,7 @@ Planning adds one extra LLM call to generate the plan. Use it for complex multi-
 
 ## Enable Planning
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions};
@@ -49,7 +49,7 @@ session = agent.session("/my-project",
     goal_tracking=True,
 )
 
-result = await session.send(
+result = session.send(
     "Add input validation to all API endpoints, write tests, and update the README"
 )
 
@@ -59,8 +59,8 @@ print(f"Tool calls: {result.tool_calls_count}")
 
 **Source:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   permissive: true,
   planning: true,
@@ -75,13 +75,13 @@ console.log(result.text);
 console.log(`Tool calls: ${result.toolCallsCount}`);
 ```
 
-**Source:** [`sdk/node/examples/agentic_loop_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.js)
+**Source:** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
 </Tab>
 </Tabs>
 
 ## Streaming Planning Events
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 let (mut rx, handle) = session.stream("Refactor and test the auth module", None).await?;
@@ -106,7 +106,7 @@ handle.await??;
 </Tab>
 <Tab value="Python">
 ```python
-async for event in session.stream("Refactor and test the auth module"):
+for event in session.stream("Refactor and test the auth module"):
     t = event.get("type")
     if t == "planning_start":
         print(f"📋 Planning: {event['prompt']}")
@@ -118,8 +118,9 @@ async for event in session.stream("Refactor and test the auth module"):
         break
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
+const stream = await session.stream('Refactor and test the auth module');
 for await (const event of stream) {
   if (event.type === 'planning_start') {
     console.log(`📋 Planning: ${event.prompt}`);
@@ -141,10 +142,10 @@ for await (const event of stream) {
 <TypeTable
   type={{
     "Enable planning": {
-      description: "Rust: .with_planning(true) · Python: planning=True · Node.js: planning: true · Default: false",
+      description: "Rust: .with_planning(true) · Python: planning=True · TypeScript: planning: true · Default: false",
     },
     "Enable goal tracking": {
-      description: "Rust: .with_goal_tracking(true) · Python: goal_tracking=True · Node.js: goalTracking: true · Default: false",
+      description: "Rust: .with_goal_tracking(true) · Python: goal_tracking=True · TypeScript: goalTracking: true · Default: false",
     },
   }}
 />
@@ -154,19 +155,19 @@ for await (const event of stream) {
 <TypeTable
   type={{
     "Planning started": {
-      description: "Rust variant: AgentEvent::PlanningStart · Python/Node.js type: planning_start · Fields: prompt",
+      description: "Rust variant: AgentEvent::PlanningStart · Python/TypeScript type: planning_start · Fields: prompt",
     },
     "Plan generated": {
-      description: "Rust variant: AgentEvent::PlanReady · Python/Node.js type: plan_ready · Fields: steps[], wave_count",
+      description: "Rust variant: AgentEvent::PlanReady · Python/TypeScript type: plan_ready · Fields: steps[], wave_count",
     },
     "Step started": {
-      description: "Rust variant: AgentEvent::StepStart · Python/Node.js type: step_start · Fields: step, index",
+      description: "Rust variant: AgentEvent::StepStart · Python/TypeScript type: step_start · Fields: step, index",
     },
     "Step completed": {
-      description: "Rust variant: AgentEvent::StepEnd · Python/Node.js type: step_end · Fields: step, index, success",
+      description: "Rust variant: AgentEvent::StepEnd · Python/TypeScript type: step_end · Fields: step, index, success",
     },
     "Goal updated": {
-      description: "Rust variant: AgentEvent::GoalUpdated · Python/Node.js type: goal_updated · Fields: goal, status",
+      description: "Rust variant: AgentEvent::GoalUpdated · Python/TypeScript type: goal_updated · Fields: goal, status",
     },
   }}
 />

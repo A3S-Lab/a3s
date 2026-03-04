@@ -19,7 +19,7 @@ Vector RAG requires an embedding API. Configure `embedding_api_base` and `embedd
 
 The simplest context provider — injects relevant file contents based on keyword matching.
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions};
@@ -42,12 +42,12 @@ session = agent.session("/my-project",
     permissive=True,
     fs_context="/my-project",
 )
-result = await session.send("How does authentication work?")
+result = session.send("How does authentication work?")
 print(result.text)
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   permissive: true,
   fsContext: '/my-project',
@@ -60,7 +60,7 @@ console.log(result.text);
 
 ## Vector Context Provider (Semantic Search)
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::context::{VectorContextConfig, VectorContextProvider};
@@ -107,12 +107,12 @@ println!("{}", result.text);
 # }
 
 session = agent.session("/my-project", permissive=True)
-result = await session.send("Find all JWT authentication code")
+result = session.send("Find all JWT authentication code")
 print(result.text)
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 // Vector context is configured via the agent config file.
 // Add to ~/.a3s/config.hcl:
 //
@@ -133,7 +133,7 @@ console.log(result.text);
 
 The `codesearch` tool exposes vector search as an LLM-callable tool. The LLM can invoke it directly when it needs to find code by meaning.
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::tools::builtin::codesearch::create_codesearch_tool;
@@ -159,12 +159,12 @@ println!("{}", result.text);
 ```python
 # The codesearch tool is available when vector context is configured.
 # The LLM will use it automatically when searching for code by meaning.
-result = await session.send("Search for code related to JWT token verification")
+result = session.send("Search for code related to JWT token verification")
 print(result.text)
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 // The codesearch tool is available when vector context is configured.
 const result = await session.send('Search for code related to JWT token verification');
 console.log(result.text);
@@ -188,10 +188,10 @@ db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
 <TypeTable
   type={{
     "Filesystem context": {
-      description: "Rust: .with_fs_context(path) · Python: fs_context=path · Node.js: fsContext: path · Default: None",
+      description: "Rust: .with_fs_context(path) · Python: fs_context=path · TypeScript: fsContext: path · Default: None",
     },
     "Custom context provider": {
-      description: "Rust: .with_context_provider(Arc::new(p)) · Python: _(config-based)_ · Node.js: _(config-based)_ · Default: None",
+      description: "Rust: .with_context_provider(Arc::new(p)) · Python: _(config-based)_ · TypeScript: _(config-based)_ · Default: None",
     },
   }}
 />
@@ -207,7 +207,7 @@ db.rs   → [chunk 1: connect_pool fn] [chunk 2: Pool config]
   }}
 />
 
-### HCL config (Python / Node.js)
+### HCL config (Python / TypeScript)
 
 ```hcl
 context {

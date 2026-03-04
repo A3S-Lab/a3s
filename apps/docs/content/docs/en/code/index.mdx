@@ -75,19 +75,73 @@ pip install a3s-code
 
 ### Configuration
 
-Create `agent.hcl`:
+Create `~/.a3s/config.hcl` (or `./agent.hcl` for per-project config):
 
+<Tabs groupId="provider" items={['Anthropic', 'OpenAI-Compatible']}>
+<Tab value="Anthropic">
 ```hcl
 default_model = "anthropic/claude-sonnet-4-20250514"
 
 providers {
   name    = "anthropic"
   api_key = env("ANTHROPIC_API_KEY")
+
+  models {
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    tool_call = true
+  }
 }
 ```
+</Tab>
+<Tab value="OpenAI-Compatible">
+```hcl
+# Works with DeepSeek, Kimi, Together AI, Groq, Ollama, vLLM, etc.
+default_model = "openai/gpt-4o"
+
+providers {
+  name     = "openai"
+  api_key  = env("OPENAI_API_KEY")
+  base_url = "https://api.openai.com/v1"   # change to your provider's URL
+
+  models {
+    id        = "gpt-4o"
+    name      = "GPT-4o"
+    tool_call = true
+  }
+}
+```
+</Tab>
+</Tabs>
+
+Set the API key for your OS:
+
+<Tabs groupId="os" items={['Linux / macOS', 'Windows PowerShell', 'Windows CMD']}>
+<Tab value="Linux / macOS">
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+# or for OpenAI-compatible:
+export OPENAI_API_KEY="sk-..."
+```
+</Tab>
+<Tab value="Windows PowerShell">
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+# or for OpenAI-compatible:
+$env:OPENAI_API_KEY = "sk-..."
+```
+</Tab>
+<Tab value="Windows CMD">
+```cmd
+set ANTHROPIC_API_KEY=sk-ant-...
+:: or for OpenAI-compatible:
+set OPENAI_API_KEY=sk-...
+```
+</Tab>
+</Tabs>
 
 <Callout type="info">
-A3S Code uses HCL configuration format exclusively. See [Providers](/docs/code/providers) for multi-provider setup and full config reference.
+Any service implementing the OpenAI Chat Completions API works as a provider — just set `base_url`. See [Providers](/docs/code/providers) for Ollama, GPUStack, A3S Power, OneAPI, and full config reference.
 </Callout>
 
 </Step>

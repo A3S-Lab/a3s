@@ -38,7 +38,7 @@ Prompt slots are additive — the core agentic prompt (tool usage, completion cr
 
 Set a persona for the agent:
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions, SystemPromptSlots};
@@ -75,8 +75,8 @@ print(result.text)
 **Run:** `python examples/test_prompt_slots.py`
 **Source:** [`sdk/python/examples/test_prompt_slots.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_prompt_slots.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const { Agent } = require('a3s-code');
 
 const agent = await Agent.create('~/.a3s/config.hcl');
@@ -88,8 +88,8 @@ const result = await session.send('What is your area of expertise?');
 console.log(result.text);
 ```
 
-**Run:** `node examples/test_prompt_slots.js`
-**Source:** [`sdk/node/examples/test_prompt_slots.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_prompt_slots.js)
+**Run:** `node examples/test_prompt_slots.ts`
+**Source:** [`sdk/node/examples/test_prompt_slots.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_prompt_slots.ts)
 </Tab>
 </Tabs>
 
@@ -97,7 +97,7 @@ console.log(result.text);
 
 Combine multiple slots for a fully customized code reviewer:
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 let session = agent.session("/my-project", Some(
@@ -125,8 +125,8 @@ result = session.send("Review the file app.py and list any issues.")
 print(result.text)
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   role: 'You are a Python code reviewer.',
   guidelines: 'Always check for type hints. Flag any use of eval().',
@@ -143,7 +143,7 @@ console.log(result.text);
 
 The `extra` slot appends freeform instructions at the end of the prompt. This is backward-compatible with the legacy `system_prompt` field:
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 let session = agent.session("/my-project", Some(
@@ -161,8 +161,8 @@ opts.extra = "Always end your response with '— A3S'"
 session = agent.session("/my-project", options=opts)
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   extra: "Always end your response with '— A3S'",
 });
@@ -199,16 +199,16 @@ assert!(result.tool_calls_count > 0); // Tools work as expected
       description: "Rust: SessionOptions builder method",
     },
     "opts.role": {
-      description: "Python/Node.js: Custom role/identity string",
+      description: "Python/TypeScript: Custom role/identity string",
     },
     "opts.guidelines": {
-      description: "Python/Node.js: Custom coding guidelines string",
+      description: "Python/TypeScript: Custom coding guidelines string",
     },
     "opts.response_style / responseStyle": {
-      description: "Python: opts.response_style · Node.js: responseStyle",
+      description: "Python: opts.response_style · TypeScript: responseStyle",
     },
     "opts.extra": {
-      description: "Python/Node.js: Freeform extra instructions string",
+      description: "Python/TypeScript: Freeform extra instructions string",
     },
   }}
 />

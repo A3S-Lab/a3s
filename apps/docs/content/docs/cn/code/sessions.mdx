@@ -588,31 +588,31 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 <TypeTable
   type={{
     "发送提示": {
-      description: "Rust: session.send(prompt, None).await? · Python: await session.send(prompt) · Node.js: await session.send(prompt)",
+      description: "Rust: session.send(prompt, None).await? · Python: session.send(prompt) · TypeScript: await session.send(prompt)",
     },
     "流式事件": {
-      description: "Rust: session.stream(prompt, None).await? · Python: session.stream(prompt) · Node.js: session.stream(prompt)",
+      description: "Rust: session.stream(prompt, None).await? · Python: session.stream(prompt) · TypeScript: await session.stream(prompt)",
     },
     "带图片发送": {
-      description: "Rust: session.send_with_attachments(p, &[img], None).await? · Python: await session.send_with_attachments(p, [img]) · Node.js: await session.sendWithAttachments(p, [img])",
+      description: "Rust: session.send_with_attachments(p, &[img], None).await? · Python: session.send_with_attachments(p, [img]) · TypeScript: await session.sendWithAttachments(p, [img])",
     },
     "读取文件": {
-      description: "Rust: session.read_file(path).await? · Python: await session.read_file(path) · Node.js: await session.readFile(path)",
+      description: "Rust: session.read_file(path).await? · Python: session.read_file(path) · TypeScript: await session.readFile(path)",
     },
     "运行 bash": {
-      description: "Rust: session.bash(cmd).await? · Python: await session.bash(cmd) · Node.js: await session.bash(cmd)",
+      description: "Rust: session.bash(cmd).await? · Python: session.bash(cmd) · TypeScript: await session.bash(cmd)",
     },
     "Glob": {
-      description: "Rust: session.glob(pattern).await? · Python: await session.glob(pattern) · Node.js: await session.glob(pattern)",
+      description: "Rust: session.glob(pattern).await? · Python: session.glob(pattern) · TypeScript: await session.glob(pattern)",
     },
     "Grep": {
-      description: "Rust: session.grep(pattern).await? · Python: await session.grep(pattern) · Node.js: await session.grep(pattern)",
+      description: "Rust: session.grep(pattern).await? · Python: session.grep(pattern) · TypeScript: await session.grep(pattern)",
     },
     "调用工具": {
-      description: "Rust: session.tool(name, args).await? · Python: await session.tool(name, args) · Node.js: await session.tool(name, args)",
+      description: "Rust: session.tool(name, args).await? · Python: session.tool(name, args) · TypeScript: await session.tool(name, args)",
     },
     "历史记录": {
-      description: "Rust: session.history() · Python: session.history() · Node.js: session.history()",
+      description: "Rust: session.history() · Python: session.history() · TypeScript: session.history()",
     },
   }}
 />
@@ -622,49 +622,49 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 <TypeTable
   type={{
     "模型": {
-      description: "Rust: .with_model('provider/model') · Python: model='provider/model' · Node.js: model: 'provider/model' · 默认值: 配置默认值",
+      description: "Rust: .with_model('provider/model') · Python: model='provider/model' · TypeScript: model: 'provider/model' · 默认值: 配置默认值",
     },
     "宽松模式": {
-      description: "Rust: .with_permissive_policy() · Python: permissive=True · Node.js: permissive: true · 默认值: false",
+      description: "Rust: .with_permissive_policy() · Python: permissive=True · TypeScript: permissive: true · 默认值: false",
     },
     "规划": {
-      description: "Rust: .with_planning(true) · Python: planning=True · Node.js: planning: true · 默认值: false",
+      description: "Rust: .with_planning(true) · Python: planning=True · TypeScript: planning: true · 默认值: false",
     },
     "目标跟踪": {
-      description: "Rust: .with_goal_tracking(true) · Python: goal_tracking=True · Node.js: goalTracking: true · 默认值: false",
+      description: "Rust: .with_goal_tracking(true) · Python: goal_tracking=True · TypeScript: goalTracking: true · 默认值: false",
     },
     "内置 skills": {
-      description: "Rust: .with_builtin_skills() · Python: builtin_skills=True · Node.js: builtinSkills: true · 默认值: false",
+      description: "Rust: .with_builtin_skills() · Python: builtin_skills=True · TypeScript: builtinSkills: true · 默认值: false",
     },
     "Skill 目录": {
-      description: "Rust: .with_skills_from_dir(path) · Python: skill_dirs=[path] · Node.js: skillDirs: [path] · 默认值: []",
+      description: "Rust: .with_skills_from_dir(path) · Python: skill_dirs=[path] · TypeScript: skillDirs: [path] · 默认值: []",
     },
     "默认安全": {
-      description: "Rust: .with_default_security() · Python: default_security=True · Node.js: defaultSecurity: true · 默认值: false",
+      description: "Rust: .with_default_security() · Python: default_security=True · TypeScript: defaultSecurity: true · 默认值: false",
     },
     "文件记忆": {
-      description: "Rust: .with_file_memory(path) · Python: memory_dir=path · Node.js: memoryDir: path · 默认值: None",
+      description: "Rust: .with_file_memory(path) · Python: memory_dir=path · TypeScript: memoryDir: path · 默认值: None",
     },
     "自动压缩": {
-      description: "Rust: .with_auto_compact(true) · Python: auto_compact=True · Node.js: autoCompact: true · 默认值: false",
+      description: "Rust: .with_auto_compact(true) · Python: auto_compact=True · TypeScript: autoCompact: true · 默认值: false",
     },
     "自动压缩阈值": {
-      description: "Rust: .with_auto_compact_threshold(f) · Python: auto_compact_threshold=f · Node.js: autoCompactThreshold: f · 默认值: 0.8",
+      description: "Rust: .with_auto_compact_threshold(f) · Python: auto_compact_threshold=f · TypeScript: autoCompactThreshold: f · 默认值: 0.8",
     },
     "文件系统上下文": {
-      description: "Rust: .with_fs_context(path) · Python: fs_context=path · Node.js: fsContext: path · 默认值: None",
+      description: "Rust: .with_fs_context(path) · Python: fs_context=path · TypeScript: fsContext: path · 默认值: None",
     },
     "队列配置": {
-      description: "Rust: .with_queue_config(cfg) · Python: queue_config=cfg · Node.js: queueConfig: cfg · 默认值: None",
+      description: "Rust: .with_queue_config(cfg) · Python: queue_config=cfg · TypeScript: queueConfig: cfg · 默认值: None",
     },
     "解析重试": {
-      description: "Rust: .with_parse_retries(n) · Python: max_parse_retries=n · Node.js: maxParseRetries: n · 默认值: 2",
+      description: "Rust: .with_parse_retries(n) · Python: max_parse_retries=n · TypeScript: maxParseRetries: n · 默认值: 2",
     },
     "工具超时": {
-      description: "Rust: .with_tool_timeout(ms) · Python: tool_timeout_ms=ms · Node.js: toolTimeoutMs: ms · 默认值: None",
+      description: "Rust: .with_tool_timeout(ms) · Python: tool_timeout_ms=ms · TypeScript: toolTimeoutMs: ms · 默认值: None",
     },
     "熔断器": {
-      description: "Rust: .with_circuit_breaker(n) · Python: circuit_breaker_threshold=n · Node.js: circuitBreakerThreshold: n · 默认值: 3",
+      description: "Rust: .with_circuit_breaker(n) · Python: circuit_breaker_threshold=n · TypeScript: circuitBreakerThreshold: n · 默认值: 3",
     },
     "弹性默认值": {
       description: "Rust: .with_resilience_defaults()",
@@ -698,13 +698,13 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 <TypeTable
   type={{
     "文本": {
-      description: "Rust: result.text · Python: result.text · Node.js: result.text",
+      description: "Rust: result.text · Python: result.text · TypeScript: result.text",
     },
     "总 token 数": {
-      description: "Rust: result.usage.total_tokens · Python: result.usage.total_tokens · Node.js: result.usage.totalTokens",
+      description: "Rust: result.usage.total_tokens · Python: result.usage.total_tokens · TypeScript: result.usage.totalTokens",
     },
     "工具调用次数": {
-      description: "Rust: result.tool_calls_count · Python: result.tool_calls_count · Node.js: result.toolCallsCount",
+      description: "Rust: result.tool_calls_count · Python: result.tool_calls_count · TypeScript: result.toolCallsCount",
     },
   }}
 />

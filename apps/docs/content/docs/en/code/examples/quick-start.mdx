@@ -13,7 +13,7 @@ The simplest way to use A3S Code: create an agent, bind it to a workspace, and s
 
 ## Basic Send
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions};
@@ -37,25 +37,21 @@ async fn main() -> anyhow::Result<()> {
 </Tab>
 <Tab value="Python">
 ```python
-import asyncio
 import a3s_code
 
-async def main():
-    agent = await a3s_code.Agent.create("~/.a3s/config.hcl")
-    session = agent.session("/my-project", permissive=True)
+agent = a3s_code.Agent.create("~/.a3s/config.hcl")
+session = agent.session("/my-project", permissive=True)
 
-    result = await session.send("What files handle authentication?")
-    print(result.text)
-    print(f"Tokens: {result.usage.total_tokens}")
-
-asyncio.run(main())
+result = session.send("What files handle authentication?")
+print(result.text)
+print(f"Tokens: {result.total_tokens}")
 ```
 
 **Run:** `python examples/agentic_loop_demo.py`
 **Source:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const { Agent } = require('@a3s-lab/code');
 
 const agent = await Agent.create('~/.a3s/config.hcl');
@@ -63,11 +59,11 @@ const session = agent.session('/my-project', { permissive: true });
 
 const result = await session.send('What files handle authentication?');
 console.log(result.text);
-console.log(`Tokens: ${result.usage.totalTokens}`);
+console.log(`Tokens: ${result.totalTokens}`);
 ```
 
-**Run:** `node examples/agentic_loop_demo.js`
-**Source:** [`sdk/node/examples/agentic_loop_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.js)
+**Run:** `node examples/agentic_loop_demo.ts`
+**Source:** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
 </Tab>
 </Tabs>
 
@@ -75,7 +71,7 @@ console.log(`Tokens: ${result.usage.totalTokens}`);
 
 History is automatically accumulated after each `send()` call.
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 let session = agent.session("/my-project", Some(
@@ -103,21 +99,21 @@ println!("Total messages: {}", history.len());
 ```python
 session = agent.session("/my-project", permissive=True)
 
-r1 = await session.send("Create a file called hello.rs")
+r1 = session.send("Create a file called hello.rs")
 print(f"Turn 1: {r1.text}")
 
-r2 = await session.send("Now add a main function to it")
+r2 = session.send("Now add a main function to it")
 print(f"Turn 2: {r2.text}")
 
-r3 = await session.send("Run it and show me the output")
+r3 = session.send("Run it and show me the output")
 print(f"Turn 3: {r3.text}")
 
 history = session.history()
 print(f"Total messages: {len(history)}")
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', { permissive: true });
 
 const r1 = await session.send('Create a file called hello.rs');
@@ -139,7 +135,7 @@ console.log('Total messages:', history.length);
 
 Configure parse retries, tool timeout, and circuit breaker for production use.
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 let opts = SessionOptions::new()
@@ -161,8 +157,8 @@ session = agent.session("/my-project",
 )
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   permissive: true,
   maxParseRetries: 3,
@@ -184,16 +180,16 @@ const session = agent.session('/my-project', {
 <TypeTable
   type={{
     "Permissive policy": {
-      description: "Rust: .with_permissive_policy() · Python: permissive=True · Node.js: permissive: true · Default: false",
+      description: "Rust: .with_permissive_policy() · Python: permissive=True · TypeScript: permissive: true · Default: false",
     },
     "Parse retries": {
-      description: "Rust: .with_parse_retries(n) · Python: max_parse_retries=n · Node.js: maxParseRetries: n · Default: 3",
+      description: "Rust: .with_parse_retries(n) · Python: max_parse_retries=n · TypeScript: maxParseRetries: n · Default: 3",
     },
     "Tool timeout": {
-      description: "Rust: .with_tool_timeout(ms) · Python: tool_timeout_ms=ms · Node.js: toolTimeoutMs: ms · Default: 30000",
+      description: "Rust: .with_tool_timeout(ms) · Python: tool_timeout_ms=ms · TypeScript: toolTimeoutMs: ms · Default: 30000",
     },
     "Circuit breaker": {
-      description: "Rust: .with_circuit_breaker(n) · Python: circuit_breaker_threshold=n · Node.js: circuitBreakerThreshold: n · Default: 5",
+      description: "Rust: .with_circuit_breaker(n) · Python: circuit_breaker_threshold=n · TypeScript: circuitBreakerThreshold: n · Default: 5",
     },
   }}
 />
@@ -203,16 +199,16 @@ const session = agent.session('/my-project', {
 <TypeTable
   type={{
     "Final text": {
-      description: "Rust: result.text · Python: result.text · Node.js: result.text",
+      description: "Rust: result.text · Python: result.text · TypeScript: result.text",
     },
     "Total tokens": {
-      description: "Rust: result.usage.total_tokens · Python: result.usage.total_tokens · Node.js: result.usage.totalTokens",
+      description: "Rust: result.usage.total_tokens · Python: result.total_tokens · TypeScript: result.totalTokens",
     },
     "Tool call count": {
-      description: "Rust: result.tool_calls_count · Python: result.tool_calls_count · Node.js: result.toolCallsCount",
+      description: "Rust: result.tool_calls_count · Python: result.tool_calls_count · TypeScript: result.toolCallsCount",
     },
     "History": {
-      description: "Rust: session.history() · Python: session.history() · Node.js: session.history()",
+      description: "Rust: session.history() · Python: session.history() · TypeScript: session.history()",
     },
   }}
 />

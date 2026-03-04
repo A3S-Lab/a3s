@@ -41,7 +41,7 @@ Skills 是可复用的提示模板，通过专业指令增强 agent 的系统提
 
 ## 启用内置 Skills
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions};
@@ -64,15 +64,15 @@ session = agent.session("/my-project",
     permissive=True,
     builtin_skills=True,
 )
-result = await session.send("Review the auth module for security issues")
+result = session.send("Review the auth module for security issues")
 print(result.text)
 ```
 
 **运行：** `python examples/test_custom_skills_agents.py`
 **源码：** [`sdk/python/examples/test_custom_skills_agents.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_custom_skills_agents.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   permissive: true,
   builtinSkills: true,
@@ -81,8 +81,8 @@ const result = await session.send('Review the auth module for security issues');
 console.log(result.text);
 ```
 
-**运行：** `node examples/test_custom_skills_agents.js`
-**源码：** [`sdk/node/examples/test_custom_skills_agents.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_custom_skills_agents.js)
+**运行：** `npx ts-node examples/test_custom_skills_agents.ts`
+**源码：** [`sdk/node/examples/test_custom_skills_agents.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_custom_skills_agents.ts)
 </Tab>
 </Tabs>
 
@@ -109,7 +109,7 @@ When asked to generate API documentation:
 
 然后加载：
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 let opts = SessionOptions::new()
@@ -127,12 +127,12 @@ session = agent.session("/my-project",
     permissive=True,
     skill_dirs=["/my-project/.a3s/skills"],
 )
-result = await session.send("Generate OpenAPI docs for the REST API")
+result = session.send("Generate OpenAPI docs for the REST API")
 print(result.text)
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   permissive: true,
   skillDirs: ['/my-project/.a3s/skills'],
@@ -147,7 +147,7 @@ console.log(result.text);
 
 将 skills 与规划结合，处理复杂的多步骤任务：
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 let opts = SessionOptions::new()
@@ -171,13 +171,13 @@ session = agent.session("/my-project",
     planning=True,
     goal_tracking=True,
 )
-result = await session.send(
+result = session.send(
     "Review the entire codebase, find all bugs, fix them, and write a report"
 )
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   permissive: true,
   builtinSkills: true,
@@ -202,13 +202,13 @@ const result = await session.send(
 <TypeTable
   type={{
     "内置 skills": {
-      description: "Rust: .with_builtin_skills() · Python: builtin_skills=True · Node.js: builtinSkills: true · 默认值: false",
+      description: "Rust: .with_builtin_skills() · Python: builtin_skills=True · TypeScript: builtinSkills: true · 默认值: false",
     },
     "从目录加载 skills": {
-      description: "Rust: .with_skills_from_dir(path) · Python: skill_dirs=[path] · Node.js: skillDirs: [path] · 默认值: []",
+      description: "Rust: .with_skills_from_dir(path) · Python: skill_dirs=[path] · TypeScript: skillDirs: [path] · 默认值: []",
     },
     "自定义注册表": {
-      description: "Rust: .with_skill_registry(Arc::new(r)) · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: None",
+      description: "Rust: .with_skill_registry(Arc::new(r)) · Python: _（仅 Rust）_ · TypeScript: _（仅 Rust）_ · 默认值: None",
     },
   }}
 />

@@ -32,7 +32,7 @@ The lane queue provides priority-based task scheduling with four lanes. High-pri
 
 ## Basic Queue Setup
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig};
@@ -66,15 +66,15 @@ session = agent.session("/my-project",
     permissive=True,
     queue_config=queue_config,
 )
-result = await session.send("List all Rust files")
+result = session.send("List all Rust files")
 print(result.text)
 ```
 
 **Run:** `python examples/test_task_priority.py`
 **Source:** [`sdk/python/examples/test_task_priority.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_task_priority.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   permissive: true,
   queueConfig: { enableAllFeatures: true },
@@ -83,14 +83,14 @@ const result = await session.send('List all Rust files');
 console.log(result.text);
 ```
 
-**Run:** `node examples/test_task_priority.js`
-**Source:** [`sdk/node/examples/test_task_priority.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_task_priority.js)
+**Run:** `node examples/test_task_priority.ts`
+**Source:** [`sdk/node/examples/test_task_priority.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_task_priority.ts)
 </Tab>
 </Tabs>
 
 ## Priority Preemption
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::queue::{ExternalTask, SessionLane};
@@ -115,22 +115,22 @@ session.submit_task(ExternalTask::new(
 <Tab value="Python">
 ```python
 # Submit a low-priority background task
-await session.submit_task({
+session.submit_task({
     "id": "background-analysis",
     "lane": "generate",
     "payload": {"prompt": "Analyze the entire codebase"},
 })
 
 # Submit a high-priority query that preempts it
-await session.submit_task({
+session.submit_task({
     "id": "urgent-query",
     "lane": "query",
     "payload": {"prompt": "What is the current git branch?"},
 })
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 // Submit a low-priority background task
 await session.submitTask({
   id: 'background-analysis',
@@ -159,16 +159,16 @@ For full lane queue documentation, see [Lane Queue](/docs/code/lane-queue).
 <TypeTable
   type={{
     "Enable lane features": {
-      description: "Rust: .with_lane_features() · Python: enable_all_features=True · Node.js: enableAllFeatures: true · Default: false",
+      description: "Rust: .with_lane_features() · Python: enable_all_features=True · TypeScript: enableAllFeatures: true · Default: false",
     },
     "Enable metrics": {
-      description: "Rust: .with_metrics() · Python: enable_metrics=True · Node.js: enableMetrics: true · Default: false",
+      description: "Rust: .with_metrics() · Python: enable_metrics=True · TypeScript: enableMetrics: true · Default: false",
     },
     "Query concurrency": {
-      description: "Rust: .query_max_concurrency(n) · Python: query_max_concurrency=n · Node.js: queryMaxConcurrency: n · Default: 10",
+      description: "Rust: .query_max_concurrency(n) · Python: query_max_concurrency=n · TypeScript: queryMaxConcurrency: n · Default: 10",
     },
     "Execute concurrency": {
-      description: "Rust: .execute_max_concurrency(n) · Python: execute_max_concurrency=n · Node.js: executeMaxConcurrency: n · Default: 5",
+      description: "Rust: .execute_max_concurrency(n) · Python: execute_max_concurrency=n · TypeScript: executeMaxConcurrency: n · Default: 5",
     },
   }}
 />
@@ -188,16 +188,16 @@ For full lane queue documentation, see [Lane Queue](/docs/code/lane-queue).
 <TypeTable
   type={{
     "Submit task": {
-      description: "Rust: session.submit_task(task).await? · Python: await session.submit_task({...}) · Node.js: await session.submitTask({...})",
+      description: "Rust: session.submit_task(task).await? · Python: session.submit_task({...}) · TypeScript: await session.submitTask({...})",
     },
     "Queue stats": {
-      description: "Rust: session.queue_stats().await · Python: await session.queue_stats() · Node.js: await session.queueStats()",
+      description: "Rust: session.queue_stats().await · Python: session.queue_stats() · TypeScript: await session.queueStats()",
     },
     "Queue metrics": {
-      description: "Rust: session.queue_metrics().await · Python: await session.queue_metrics() · Node.js: await session.queueMetrics()",
+      description: "Rust: session.queue_metrics().await · Python: session.queue_metrics() · TypeScript: await session.queueMetrics()",
     },
     "Dead letters": {
-      description: "Rust: session.dead_letters().await · Python: await session.dead_letters() · Node.js: await session.deadLetters()",
+      description: "Rust: session.dead_letters().await · Python: session.dead_letters() · TypeScript: await session.deadLetters()",
     },
   }}
 />

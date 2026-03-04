@@ -15,7 +15,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## 启用默认安全
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions};
@@ -40,15 +40,15 @@ opts = SessionOptions()
 opts.default_security = True
 
 session = agent.session("/my-project", options=opts)
-result = await session.send("Review this config file")
+result = session.send("Review this config file")
 print(result.text)  # 敏感模式已脱敏
 ```
 
 **运行：** `python examples/test_advanced_features.py`
 **源码：** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', {
   permissive: true,
   defaultSecurity: true,
@@ -58,14 +58,14 @@ const result = await session.send('Review this config file');
 console.log(result.text); // 敏感模式已脱敏
 ```
 
-**运行：** `node examples/test_advanced_features.js`
-**源码：** [`sdk/node/examples/test_advanced_features.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.js)
+**运行：** `npx ts-node examples/test_advanced_features.ts`
+**源码：** [`sdk/node/examples/test_advanced_features.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.ts)
 </Tab>
 </Tabs>
 
 ## 自定义安全提供者
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::security::SecurityProvider;
@@ -108,8 +108,8 @@ opts.default_security = True
 session = agent.session("/my-project", options=opts)
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 // 自定义安全提供者在 Rust 中实现。
 // 使用 defaultSecurity: true 获取内置提供者。
 const session = agent.session('/my-project', {
@@ -157,10 +157,10 @@ const session = agent.session('/my-project', {
 <TypeTable
   type={{
     "默认安全": {
-      description: "Rust: .with_default_security() · Python: default_security=True · Node.js: defaultSecurity: true · 默认值: false",
+      description: "Rust: .with_default_security() · Python: default_security=True · TypeScript: defaultSecurity: true · 默认值: false",
     },
     "自定义提供者": {
-      description: "Rust: .with_security_provider(Arc::new(p)) · Python: _（仅 Rust）_ · Node.js: _（仅 Rust）_ · 默认值: None",
+      description: "Rust: .with_security_provider(Arc::new(p)) · Python: _（仅 Rust）_ · TypeScript: _（仅 Rust）_ · 默认值: None",
     },
   }}
 />

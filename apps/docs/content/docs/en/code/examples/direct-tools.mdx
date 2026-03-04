@@ -13,7 +13,7 @@ Call any built-in tool directly without an LLM round-trip. This is useful for sc
 
 ## Low-Level: `session.tool()`
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions};
@@ -63,22 +63,22 @@ println!("grep: {}", r.output);
 session = agent.session("/my-project", permissive=True)
 
 # Write a file
-r = await session.tool("write", {"path": "hello.txt", "content": "Hello!"})
+r = session.tool("write", {"path": "hello.txt", "content": "Hello!"})
 print(f"write: exit={r.exit_code}")
 
 # Read it back
-r = await session.tool("read", {"path": "hello.txt"})
+r = session.tool("read", {"path": "hello.txt"})
 print(f"content: {r.output}")
 
 # Run bash
-r = await session.tool("bash", {"command": "cat hello.txt"})
+r = session.tool("bash", {"command": "cat hello.txt"})
 print(f"bash: {r.output}")
 ```
 
 **Source:** [`sdk/python/examples/advanced_features_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/advanced_features_demo.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const session = agent.session('/my-project', { permissive: true });
 
 // Write a file
@@ -94,7 +94,7 @@ const r3 = await session.tool('bash', { command: 'cat hello.txt' });
 console.log(`bash: ${r3.output}`);
 ```
 
-**Source:** [`sdk/node/examples/advanced_features_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/advanced_features_demo.js)
+**Source:** [`sdk/node/examples/advanced_features_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/advanced_features_demo.ts)
 </Tab>
 </Tabs>
 
@@ -102,7 +102,7 @@ console.log(`bash: ${r3.output}`);
 
 Higher-level wrappers for common operations:
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 // Read a file
@@ -120,14 +120,14 @@ let matches = session.grep("TODO").await?;
 </Tab>
 <Tab value="Python">
 ```python
-content = await session.read_file("src/main.rs")
-output = await session.bash("cargo test")
-files = await session.glob("**/*.rs")
-matches = await session.grep("TODO")
+content = session.read_file("src/main.rs")
+output = session.bash("cargo test")
+files = session.glob("**/*.rs")
+matches = session.grep("TODO")
 ```
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const content = await session.readFile('src/main.rs');
 const output = await session.bash('cargo test');
 const files = await session.glob('**/*.rs');
@@ -147,7 +147,7 @@ Direct tool calls bypass the LLM entirely — no tokens consumed, no streaming e
 <TypeTable
   type={{
     "Generic tool call": {
-      description: "Rust: session.tool(name, args).await? · Python: await session.tool(name, args) · Node.js: await session.tool(name, args)",
+      description: "Rust: session.tool(name, args).await? · Python: session.tool(name, args) · TypeScript: await session.tool(name, args)",
     },
     "Return type": {
       description: "ToolOutput { exit_code: i32, output: String }",
@@ -160,16 +160,16 @@ Direct tool calls bypass the LLM entirely — no tokens consumed, no streaming e
 <TypeTable
   type={{
     "Read file": {
-      description: "Rust: session.read_file(path) · Python: session.read_file(path) · Node.js: session.readFile(path)",
+      description: "Rust: session.read_file(path) · Python: session.read_file(path) · TypeScript: session.readFile(path)",
     },
     "Run bash": {
-      description: "Rust: session.bash(cmd) · Python: session.bash(cmd) · Node.js: session.bash(cmd)",
+      description: "Rust: session.bash(cmd) · Python: session.bash(cmd) · TypeScript: session.bash(cmd)",
     },
     "Glob files": {
-      description: "Rust: session.glob(pattern) · Python: session.glob(pattern) · Node.js: session.glob(pattern)",
+      description: "Rust: session.glob(pattern) · Python: session.glob(pattern) · TypeScript: session.glob(pattern)",
     },
     "Grep content": {
-      description: "Rust: session.grep(pattern) · Python: session.grep(pattern) · Node.js: session.grep(pattern)",
+      description: "Rust: session.grep(pattern) · Python: session.grep(pattern) · TypeScript: session.grep(pattern)",
     },
   }}
 />

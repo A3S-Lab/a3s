@@ -52,16 +52,74 @@ pip install a3s-code
 
 ### 配置
 
-创建 `agent.hcl`：
+创建 `~/.a3s/config.hcl`（或在项目根目录创建 `./agent.hcl`）：
 
+<Tabs groupId="provider" items={['Anthropic', 'OpenAI 兼容']}>
+<Tab value="Anthropic">
 ```hcl
 default_model = "anthropic/claude-sonnet-4-20250514"
 
 providers {
   name    = "anthropic"
   api_key = env("ANTHROPIC_API_KEY")
+
+  models {
+    id        = "claude-sonnet-4-20250514"
+    name      = "Claude Sonnet 4"
+    tool_call = true
+  }
 }
 ```
+</Tab>
+<Tab value="OpenAI 兼容">
+```hcl
+# 适用于 DeepSeek、Kimi、Together AI、Groq、Ollama、vLLM 等
+default_model = "openai/gpt-4o"
+
+providers {
+  name     = "openai"
+  api_key  = env("OPENAI_API_KEY")
+  base_url = "https://api.openai.com/v1"   # 改为你的服务商 URL
+
+  models {
+    id        = "gpt-4o"
+    name      = "GPT-4o"
+    tool_call = true
+  }
+}
+```
+</Tab>
+</Tabs>
+
+设置 API Key 环境变量：
+
+<Tabs groupId="os" items={['Linux / macOS', 'Windows PowerShell', 'Windows CMD']}>
+<Tab value="Linux / macOS">
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+# 或 OpenAI 兼容服务商：
+export OPENAI_API_KEY="sk-..."
+```
+</Tab>
+<Tab value="Windows PowerShell">
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+# 或 OpenAI 兼容服务商：
+$env:OPENAI_API_KEY = "sk-..."
+```
+</Tab>
+<Tab value="Windows CMD">
+```cmd
+set ANTHROPIC_API_KEY=sk-ant-...
+:: 或 OpenAI 兼容服务商：
+set OPENAI_API_KEY=sk-...
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+任何实现了 OpenAI Chat Completions API 的服务都可以作为 provider — 只需设置 `base_url`。详见 [提供商配置](/cn/docs/code/providers) 了解 Ollama、GPUStack、A3S Power、OneAPI 等完整配置参考。
+</Callout>
 
 </Step>
 <Step>

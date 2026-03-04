@@ -13,7 +13,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## 示例
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'Node.js']}>
+<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, SessionOptions};
@@ -45,7 +45,7 @@ println!("{}", result2.text);
 </Tab>
 <Tab value="Python">
 ```python
-agent = await a3s_code.Agent.create("~/.a3s/config.hcl")
+agent = a3s_code.Agent.create("~/.a3s/config.hcl")
 
 # 使用指定模型和自定义温度
 session = agent.session("/my-project",
@@ -54,7 +54,7 @@ session = agent.session("/my-project",
     temperature=0.3,
 )
 
-result = await session.send("解释这个代码库中的认证流程")
+result = session.send("解释这个代码库中的认证流程")
 print(result.text)
 
 # 切换到不同的提供商
@@ -63,14 +63,14 @@ session2 = agent.session("/my-project",
     model="openai/gpt-4o",
 )
 
-result2 = await session2.send("列出所有 TODO 注释")
+result2 = session2.send("列出所有 TODO 注释")
 print(result2.text)
 ```
 
 **源码:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
 </Tab>
-<Tab value="Node.js">
-```javascript
+<Tab value="TypeScript">
+```typescript
 const agent = await Agent.create('~/.a3s/config.hcl');
 
 // 使用指定模型和自定义温度
@@ -93,7 +93,7 @@ const result2 = await session2.send('列出所有 TODO 注释');
 console.log(result2.text);
 ```
 
-**源码:** [`sdk/node/examples/agentic_loop_demo.js`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.js)
+**源码:** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
 </Tab>
 </Tabs>
 
@@ -108,13 +108,13 @@ console.log(result2.text);
 <TypeTable
   type={{
     "模型覆盖": {
-      description: "Rust: .with_model(\"provider/model\") · Python: model=\"provider/model\" · Node.js: model: \"provider/model\"",
+      description: "Rust: .with_model(\"provider/model\") · Python: model=\"provider/model\" · TypeScript: model: \"provider/model\"",
     },
     "温度": {
-      description: "Rust: .with_temperature(0.3) · Python: temperature=0.3 · Node.js: temperature: 0.3",
+      description: "Rust: .with_temperature(0.3) · Python: temperature=0.3 · TypeScript: temperature: 0.3",
     },
     "思考预算": {
-      description: "Rust: .with_thinking_budget(10000) · Python: thinking_budget=10000 · Node.js: thinkingBudget: 10000",
+      description: "Rust: .with_thinking_budget(10000) · Python: thinking_budget=10000 · TypeScript: thinkingBudget: 10000",
     },
   }}
 />
