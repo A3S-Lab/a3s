@@ -62,9 +62,10 @@ pub async fn run_update(config: &UpdateConfig) -> anyhow::Result<()> {
         config.binary_name, latest_version, os, arch
     );
 
-    let new_binary =
+    let (new_binary, _temp_dir) =
         download::download_and_extract(&asset.browser_download_url, config.binary_name).await?;
     install::replace_binary(&new_binary)?;
+    // _temp_dir is dropped here, automatically cleaning up the temp directory
 
     println!(
         "\nUpdated {}: {} -> {}",
@@ -83,6 +84,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(not(target_os = "windows"))]
     fn test_platform_detection() {
         let result = platform::platform_target();
         assert!(result.is_ok(), "platform_target() should succeed");

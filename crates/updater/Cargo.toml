@@ -16,3 +16,4 @@ flate2 = "1"
 tar = "0.4"
 tokio = { version = "1", features = ["fs", "io-util"] }
 anyhow = "1"
+tempfile = "3"

@@ -8,6 +8,9 @@ use std::path::Path;
 /// 2. Renames the current binary to `{name}.bak`.
 /// 3. Copies the new binary into place.
 /// 4. Sets executable permissions (unix).
+///
+/// Note: The caller is responsible for cleaning up the temp directory
+/// that contains `new_binary_path` (e.g. by dropping a `TempDir`).
 pub fn replace_binary(new_binary_path: &Path) -> anyhow::Result<()> {
     let current_exe = std::env::current_exe()
         .map_err(|e| anyhow::anyhow!("Failed to determine current executable path: {}", e))?;
@@ -57,10 +60,7 @@ pub fn replace_binary(new_binary_path: &Path) -> anyhow::Result<()> {
     // Clean up backup
     let _ = std::fs::remove_file(&backup_path);
 
-    // Clean up temp directory
-    if let Some(parent) = new_binary_path.parent() {
-        let _ = std::fs::remove_dir_all(parent);
-    }
+    // Temp directory cleanup is handled by the caller (TempDir drop).
 
     Ok(())
 }

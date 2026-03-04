@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use ring::hmac;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use subtle::ConstantTimeEq;
 use tokio::sync::{mpsc, RwLock};
 
 /// DingTalk channel adapter
@@ -103,7 +104,8 @@ impl DingTalkAdapter {
         use base64::Engine as _;
         let encoded = base64::engine::general_purpose::STANDARD.encode(signature.as_ref());
 
-        if encoded != expected {
+        // Constant-time comparison to prevent timing side-channel attacks
+        if encoded.as_bytes().ct_eq(expected.as_bytes()).unwrap_u8() != 1 {
             return Err(Error::Channel("Invalid DingTalk signature".to_string()));
         }
 

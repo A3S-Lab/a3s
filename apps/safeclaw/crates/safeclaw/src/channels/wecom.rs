@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
+use subtle::ConstantTimeEq;
 use tokio::sync::{mpsc, RwLock};
 
 /// WeCom channel adapter
@@ -106,7 +107,8 @@ impl WeComAdapter {
         hasher.update(combined.as_bytes());
         let result = format!("{:x}", hasher.finalize());
 
-        if result != signature {
+        // Constant-time comparison to prevent timing side-channel attacks
+        if result.as_bytes().ct_eq(signature.as_bytes()).unwrap_u8() != 1 {
             return Err(Error::Channel("Invalid WeCom signature".to_string()));
         }
 

@@ -23,13 +23,16 @@ pub struct ToolResult {
 pub fn resolve_path(workspace: &Path, path: &str) -> Result<PathBuf, String> {
     let resolved = workspace.join(path);
 
-    // Canonicalize to resolve .. and symlinks
+    // Canonicalize both to resolve .. and symlinks
+    let canonical_workspace = workspace
+        .canonicalize()
+        .map_err(|e| format!("Failed to canonicalize workspace: {}", e))?;
     let canonical = resolved
         .canonicalize()
         .map_err(|e| format!("Failed to resolve path: {}", e))?;
 
     // Ensure the path is within workspace
-    if !canonical.starts_with(workspace) {
+    if !canonical.starts_with(&canonical_workspace) {
         return Err(format!("Path escapes workspace: {}", path));
     }
 
@@ -40,6 +43,11 @@ pub fn resolve_path(workspace: &Path, path: &str) -> Result<PathBuf, String> {
 pub fn resolve_path_for_write(workspace: &Path, path: &str) -> Result<PathBuf, String> {
     let resolved = workspace.join(path);
 
+    // Canonicalize workspace to resolve symlinks
+    let canonical_workspace = workspace
+        .canonicalize()
+        .map_err(|e| format!("Failed to canonicalize workspace: {}", e))?;
+
     // Check parent directory exists and is within workspace
     if let Some(parent) = resolved.parent() {
         if parent.exists() {
@@ -47,7 +55,7 @@ pub fn resolve_path_for_write(workspace: &Path, path: &str) -> Result<PathBuf, S
                 .canonicalize()
                 .map_err(|e| format!("Failed to resolve parent: {}", e))?;
 
-            if !canonical.starts_with(workspace) {
+            if !canonical.starts_with(&canonical_workspace) {
                 return Err(format!("Path escapes workspace: {}", path));
             }
 

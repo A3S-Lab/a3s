@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
+use subtle::ConstantTimeEq;
 use tokio::sync::{mpsc, RwLock};
 
 /// Feishu channel adapter
@@ -141,7 +142,8 @@ impl FeishuAdapter {
         hasher.update(content.as_bytes());
         let result = format!("{:x}", hasher.finalize());
 
-        if result != expected {
+        // Constant-time comparison to prevent timing side-channel attacks
+        if result.as_bytes().ct_eq(expected.as_bytes()).unwrap_u8() != 1 {
             return Err(Error::Channel("Invalid Feishu signature".to_string()));
         }
 
