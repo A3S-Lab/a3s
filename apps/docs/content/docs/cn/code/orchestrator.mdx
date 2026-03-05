@@ -1,0 +1,359 @@
+---
+title: Agent Orchestrator
+description: 主子智能体协调器 - 实时监控和动态控制多个 SubAgent
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+# Agent Orchestrator
+
+Agent Orchestrator 是一个主子智能体协调器，基于 a3s-event 实现统一的事件总线，支持实时监控所有子智能体的行为、规划和执行，并提供动态控制能力。
+
+<Callout type="info">
+  **版本要求**: v1.0.4+
+</Callout>
+
+## 核心特性
+
+- **实时监控** - 监控所有 SubAgent 的生命周期、状态变更、进度和工具执行
+- **动态控制** - 暂停、恢复、取消 SubAgent，调整参数，注入新提示词
+- **事件驱动** - 基于 a3s-event 的统一事件总线
+- **可插拔通讯** - 默认内存事件通讯，支持自定义 NATS provider
+- **并发管理** - 控制最大并发 SubAgent 数量
+
+## 架构
+
+```text
+AgentOrchestrator (主智能体)
+    ↓ 订阅事件
+┌───────────────────────────────┐
+│   a3s-event EventBus          │
+│ (Memory / NATS / Custom)      │
+└───────────────────────────────┘
+    ↑ 发布事件    ↓ 控制信号
+SubAgentWrapper (子智能体)
+```
+
+## 快速开始
+
+<Tabs items={['Rust', 'Python']}>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::orchestrator::{AgentOrchestrator, SubAgentConfig};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // 创建 orchestrator (默认使用内存 provider)
+    let orchestrator = AgentOrchestrator::new_memory();
+
+    // 订阅所有事件
+    let mut events = orchestrator.subscribe_all();
+
+    // 启动子智能体
+    let config = SubAgentConfig::new("general", "Use glob to find Python files")
+        .with_description("Find Python files")
+        .with_permissive(true)
+        .with_max_steps(10);
+
+    let handle = orchestrator.spawn_subagent(config).await?;
+
+    // 监控事件
+    tokio::spawn(async move {
+        while let Ok(event) = events.recv().await {
+            println!("Event: {:?}", event.event_name());
+        }
+    });
+
+    // 控制子智能体
+    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+    handle.pause().await?;
+
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    handle.resume().await?;
+
+    // 等待完成
+    let result = handle.wait().await?;
+    println!("Result: {}", result);
+
+    Ok(())
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Orchestrator, SubAgentConfig
+import time
+
+# 创建 orchestrator
+orch = Orchestrator.create()
+
+# 创建 SubAgent 配置
+config = SubAgentConfig(
+    agent_type="general",
+    prompt="Use glob to find Python files",
+    description="Find Python files",
+    permissive=True,
+    max_steps=10
+)
+
+# 启动 SubAgent
+handle = orch.spawn_subagent(config)
+print(f"SubAgent ID: {handle.id}")
+
+# 监控状态
+for i in range(10):
+    time.sleep(0.5)
+    state = handle.state()
+    active = orch.active_count()
+    print(f"[{i*0.5}s] Active: {active}, State: {state}")
+
+    # 控制操作
+    if i == 3:
+        handle.pause()
+        print("Paused")
+    if i == 5:
+        handle.resume()
+        print("Resumed")
+
+# 等待完成
+result = handle.wait()
+print(f"Result: {result}")
+```
+
+</Tab>
+</Tabs>
+
+## 事件类型
+
+Orchestrator 发布以下事件类型：
+
+| 事件 | 描述 |
+|------|------|
+| `SubAgentStarted` | SubAgent 启动 |
+| `SubAgentCompleted` | SubAgent 完成 |
+| `SubAgentStateChanged` | 状态变更 |
+| `SubAgentProgress` | 进度更新 |
+| `SubAgentInternalEvent` | 内部事件（来自 AgentLoop） |
+| `PlanningStarted` | 规划开始 |
+| `PlanningCompleted` | 规划完成 |
+| `ToolExecutionStarted` | 工具执行开始 |
+| `ToolExecutionCompleted` | 工具执行完成 |
+| `ControlSignalReceived` | 控制信号接收 |
+| `ControlSignalApplied` | 控制信号应用 |
+
+## SubAgent 状态
+
+SubAgent 在执行过程中会经历以下状态：
+
+```rust
+pub enum SubAgentState {
+    Initializing,                    // 初始化中
+    Running,                         // 运行中
+    Paused,                          // 已暂停
+    Completed { success, output },   // 已完成
+    Cancelled,                       // 已取消
+    Error { message },               // 错误
+}
+```
+
+## 控制信号
+
+主智能体可以发送以下控制信号：
+
+<Steps>
+<Step>
+
+### 暂停执行
+
+```rust
+handle.pause().await?;
+```
+
+暂停 SubAgent 的执行，可以稍后恢复。
+
+</Step>
+<Step>
+
+### 恢复执行
+
+```rust
+handle.resume().await?;
+```
+
+恢复已暂停的 SubAgent。
+
+</Step>
+<Step>
+
+### 取消执行
+
+```rust
+handle.cancel().await?;
+```
+
+取消 SubAgent 的执行，无法恢复。
+
+</Step>
+<Step>
+
+### 调整参数
+
+```rust
+handle.adjust_params(Some(20), Some(60000)).await?;
+```
+
+动态调整 SubAgent 的最大步数和超时时间。
+
+</Step>
+<Step>
+
+### 注入提示词
+
+```rust
+handle.inject_prompt("Please focus on error handling").await?;
+```
+
+向正在运行的 SubAgent 注入新的提示词。
+
+</Step>
+</Steps>
+
+## 配置选项
+
+### OrchestratorConfig
+
+```rust
+pub struct OrchestratorConfig {
+    /// 事件通道缓冲区大小
+    pub event_buffer_size: usize,           // 默认: 1000
+
+    /// 控制信号通道缓冲区大小
+    pub control_buffer_size: usize,         // 默认: 100
+
+    /// SubAgent 最大并发数
+    pub max_concurrent_subagents: usize,    // 默认: 50
+
+    /// 事件主题前缀
+    pub subject_prefix: String,             // 默认: "agent"
+}
+```
+
+### SubAgentConfig
+
+```rust
+pub struct SubAgentConfig {
+    /// Agent 类型 (general, explore, plan, etc.)
+    pub agent_type: String,
+
+    /// 任务描述
+    pub description: String,
+
+    /// 执行提示词
+    pub prompt: String,
+
+    /// 是否启用宽松模式（绕过 HITL）
+    pub permissive: bool,
+
+    /// 最大执行步数
+    pub max_steps: Option<usize>,
+
+    /// 执行超时（毫秒）
+    pub timeout_ms: Option<u64>,
+
+    /// 父 SubAgent ID（用于嵌套）
+    pub parent_id: Option<String>,
+
+    /// 自定义元数据
+    pub metadata: serde_json::Value,
+}
+```
+
+## 高级用法
+
+### 订阅特定 SubAgent 的事件
+
+```rust
+let mut events = orchestrator.subscribe_subagent(&handle.id);
+
+while let Ok(event) = events.recv().await {
+    match event {
+        OrchestratorEvent::SubAgentProgress { step, total_steps, message, .. } => {
+            println!("Progress: {}/{} - {}", step, total_steps, message);
+        }
+        OrchestratorEvent::ToolExecutionStarted { tool_name, .. } => {
+            println!("Tool started: {}", tool_name);
+        }
+        _ => {}
+    }
+}
+```
+
+### 并发限制
+
+```rust
+let mut config = OrchestratorConfig::default();
+config.max_concurrent_subagents = 5;
+
+let orchestrator = AgentOrchestrator::new(config);
+
+// 尝试启动第 6 个 SubAgent 会失败
+for i in 0..6 {
+    let result = orchestrator.spawn_subagent(config.clone()).await;
+    if result.is_err() {
+        println!("Max concurrent limit reached");
+    }
+}
+```
+
+### 嵌套 SubAgent
+
+```rust
+// 主 SubAgent
+let parent_config = SubAgentConfig::new("general", "Main task");
+let parent_handle = orchestrator.spawn_subagent(parent_config).await?;
+
+// 子 SubAgent
+let child_config = SubAgentConfig::new("explore", "Subtask")
+    .with_parent_id(&parent_handle.id);
+let child_handle = orchestrator.spawn_subagent(child_config).await?;
+```
+
+## 与 AgentTeam 的区别
+
+| 特性 | AgentTeam | AgentOrchestrator |
+|------|-----------|-------------------|
+| 架构 | 对等协作 | 主从协调 |
+| 通讯 | mpsc + 共享 TaskBoard | 事件总线 (broadcast) |
+| 控制 | 自治 | 集中控制 |
+| 监控 | 任务级别 | 实时事件流 |
+| 用例 | 多角色协作 | 主智能体监督 |
+
+## 最佳实践
+
+<Callout type="warn">
+  **注意**: 当前实现使用占位符执行来演示协调功能。要集成真实的 LLM 执行，请参考 [实现指南](https://github.com/A3S-Lab/Code/blob/main/docs/orchestrator-implementation.md)。
+</Callout>
+
+1. **合理设置并发限制** - 根据系统资源设置 `max_concurrent_subagents`
+2. **使用事件过滤** - 订阅特定 SubAgent 的事件以减少噪音
+3. **处理错误状态** - 监听 `SubAgentStateChanged` 事件并处理错误
+4. **设置超时** - 为长时间运行的任务设置 `timeout_ms`
+5. **清理资源** - 使用 `cancel()` 清理不再需要的 SubAgent
+
+## 示例
+
+完整示例请参考：
+
+- [Rust 示例](https://github.com/A3S-Lab/Code/blob/main/core/examples/orchestrator_basic.rs)
+- [Python 示例](https://github.com/A3S-Lab/Code/tree/main/sdk/python/examples)
+
+## 相关文档
+
+- [SubAgents](/docs/cn/code/subagents) - SubAgent 基础概念
+- [Agent Teams](/docs/cn/code/agent-teams) - 多智能体协作
+- [Hooks](/docs/cn/code/hooks) - 事件钩子系统

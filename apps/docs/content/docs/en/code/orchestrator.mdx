@@ -1,0 +1,359 @@
+---
+title: Agent Orchestrator
+description: Main-Sub Agent Coordinator - Real-time monitoring and dynamic control of multiple SubAgents
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+# Agent Orchestrator
+
+Agent Orchestrator is a main-sub agent coordinator built on a3s-event, providing a unified event bus for real-time monitoring of all sub-agent behaviors, planning, and execution, with dynamic control capabilities.
+
+<Callout type="info">
+  **Version Requirement**: v1.0.4+
+</Callout>
+
+## Core Features
+
+- **Real-time Monitoring** - Monitor all SubAgent lifecycles, state changes, progress, and tool executions
+- **Dynamic Control** - Pause, resume, cancel SubAgents, adjust parameters, inject new prompts
+- **Event-Driven** - Unified event bus based on a3s-event
+- **Pluggable Communication** - Default memory-based events, supports custom NATS provider
+- **Concurrency Management** - Control maximum concurrent SubAgent count
+
+## Architecture
+
+```text
+AgentOrchestrator (Main Agent)
+    ↓ Subscribe Events
+┌───────────────────────────────┐
+│   a3s-event EventBus          │
+│ (Memory / NATS / Custom)      │
+└───────────────────────────────┘
+    ↑ Publish Events    ↓ Control Signals
+SubAgentWrapper (Sub Agents)
+```
+
+## Quick Start
+
+<Tabs items={['Rust', 'Python']}>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::orchestrator::{AgentOrchestrator, SubAgentConfig};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // Create orchestrator (default memory provider)
+    let orchestrator = AgentOrchestrator::new_memory();
+
+    // Subscribe to all events
+    let mut events = orchestrator.subscribe_all();
+
+    // Spawn a SubAgent
+    let config = SubAgentConfig::new("general", "Use glob to find Python files")
+        .with_description("Find Python files")
+        .with_permissive(true)
+        .with_max_steps(10);
+
+    let handle = orchestrator.spawn_subagent(config).await?;
+
+    // Monitor events
+    tokio::spawn(async move {
+        while let Ok(event) = events.recv().await {
+            println!("Event: {:?}", event.event_name());
+        }
+    });
+
+    // Control SubAgent
+    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+    handle.pause().await?;
+
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+    handle.resume().await?;
+
+    // Wait for completion
+    let result = handle.wait().await?;
+    println!("Result: {}", result);
+
+    Ok(())
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Orchestrator, SubAgentConfig
+import time
+
+# Create orchestrator
+orch = Orchestrator.create()
+
+# Create SubAgent config
+config = SubAgentConfig(
+    agent_type="general",
+    prompt="Use glob to find Python files",
+    description="Find Python files",
+    permissive=True,
+    max_steps=10
+)
+
+# Spawn SubAgent
+handle = orch.spawn_subagent(config)
+print(f"SubAgent ID: {handle.id}")
+
+# Monitor state
+for i in range(10):
+    time.sleep(0.5)
+    state = handle.state()
+    active = orch.active_count()
+    print(f"[{i*0.5}s] Active: {active}, State: {state}")
+
+    # Control operations
+    if i == 3:
+        handle.pause()
+        print("Paused")
+    if i == 5:
+        handle.resume()
+        print("Resumed")
+
+# Wait for completion
+result = handle.wait()
+print(f"Result: {result}")
+```
+
+</Tab>
+</Tabs>
+
+## Event Types
+
+The Orchestrator publishes the following event types:
+
+| Event | Description |
+|-------|-------------|
+| `SubAgentStarted` | SubAgent started |
+| `SubAgentCompleted` | SubAgent completed |
+| `SubAgentStateChanged` | State changed |
+| `SubAgentProgress` | Progress update |
+| `SubAgentInternalEvent` | Internal event (from AgentLoop) |
+| `PlanningStarted` | Planning started |
+| `PlanningCompleted` | Planning completed |
+| `ToolExecutionStarted` | Tool execution started |
+| `ToolExecutionCompleted` | Tool execution completed |
+| `ControlSignalReceived` | Control signal received |
+| `ControlSignalApplied` | Control signal applied |
+
+## SubAgent States
+
+SubAgents go through the following states during execution:
+
+```rust
+pub enum SubAgentState {
+    Initializing,                    // Initializing
+    Running,                         // Running
+    Paused,                          // Paused
+    Completed { success, output },   // Completed
+    Cancelled,                       // Cancelled
+    Error { message },               // Error
+}
+```
+
+## Control Signals
+
+The main agent can send the following control signals:
+
+<Steps>
+<Step>
+
+### Pause Execution
+
+```rust
+handle.pause().await?;
+```
+
+Pause SubAgent execution, can be resumed later.
+
+</Step>
+<Step>
+
+### Resume Execution
+
+```rust
+handle.resume().await?;
+```
+
+Resume a paused SubAgent.
+
+</Step>
+<Step>
+
+### Cancel Execution
+
+```rust
+handle.cancel().await?;
+```
+
+Cancel SubAgent execution, cannot be resumed.
+
+</Step>
+<Step>
+
+### Adjust Parameters
+
+```rust
+handle.adjust_params(Some(20), Some(60000)).await?;
+```
+
+Dynamically adjust SubAgent's max steps and timeout.
+
+</Step>
+<Step>
+
+### Inject Prompt
+
+```rust
+handle.inject_prompt("Please focus on error handling").await?;
+```
+
+Inject a new prompt into a running SubAgent.
+
+</Step>
+</Steps>
+
+## Configuration Options
+
+### OrchestratorConfig
+
+```rust
+pub struct OrchestratorConfig {
+    /// Event channel buffer size
+    pub event_buffer_size: usize,           // Default: 1000
+
+    /// Control signal channel buffer size
+    pub control_buffer_size: usize,         // Default: 100
+
+    /// Maximum concurrent SubAgents
+    pub max_concurrent_subagents: usize,    // Default: 50
+
+    /// Event subject prefix
+    pub subject_prefix: String,             // Default: "agent"
+}
+```
+
+### SubAgentConfig
+
+```rust
+pub struct SubAgentConfig {
+    /// Agent type (general, explore, plan, etc.)
+    pub agent_type: String,
+
+    /// Task description
+    pub description: String,
+
+    /// Execution prompt
+    pub prompt: String,
+
+    /// Enable permissive mode (bypass HITL)
+    pub permissive: bool,
+
+    /// Maximum execution steps
+    pub max_steps: Option<usize>,
+
+    /// Execution timeout (milliseconds)
+    pub timeout_ms: Option<u64>,
+
+    /// Parent SubAgent ID (for nesting)
+    pub parent_id: Option<String>,
+
+    /// Custom metadata
+    pub metadata: serde_json::Value,
+}
+```
+
+## Advanced Usage
+
+### Subscribe to Specific SubAgent Events
+
+```rust
+let mut events = orchestrator.subscribe_subagent(&handle.id);
+
+while let Ok(event) = events.recv().await {
+    match event {
+        OrchestratorEvent::SubAgentProgress { step, total_steps, message, .. } => {
+            println!("Progress: {}/{} - {}", step, total_steps, message);
+        }
+        OrchestratorEvent::ToolExecutionStarted { tool_name, .. } => {
+            println!("Tool started: {}", tool_name);
+        }
+        _ => {}
+    }
+}
+```
+
+### Concurrency Limits
+
+```rust
+let mut config = OrchestratorConfig::default();
+config.max_concurrent_subagents = 5;
+
+let orchestrator = AgentOrchestrator::new(config);
+
+// Attempting to spawn 6th SubAgent will fail
+for i in 0..6 {
+    let result = orchestrator.spawn_subagent(config.clone()).await;
+    if result.is_err() {
+        println!("Max concurrent limit reached");
+    }
+}
+```
+
+### Nested SubAgents
+
+```rust
+// Parent SubAgent
+let parent_config = SubAgentConfig::new("general", "Main task");
+let parent_handle = orchestrator.spawn_subagent(parent_config).await?;
+
+// Child SubAgent
+let child_config = SubAgentConfig::new("explore", "Subtask")
+    .with_parent_id(&parent_handle.id);
+let child_handle = orchestrator.spawn_subagent(child_config).await?;
+```
+
+## Comparison with AgentTeam
+
+| Feature | AgentTeam | AgentOrchestrator |
+|---------|-----------|-------------------|
+| Architecture | Peer collaboration | Main-sub coordination |
+| Communication | mpsc + shared TaskBoard | Event bus (broadcast) |
+| Control | Autonomous | Centralized |
+| Monitoring | Task-level | Real-time event stream |
+| Use Case | Multi-role collaboration | Main agent supervision |
+
+## Best Practices
+
+<Callout type="warn">
+  **Note**: Current implementation uses placeholder execution to demonstrate coordination features. For real LLM execution integration, see the [Implementation Guide](https://github.com/A3S-Lab/Code/blob/main/docs/orchestrator-implementation.md).
+</Callout>
+
+1. **Set Reasonable Concurrency Limits** - Configure `max_concurrent_subagents` based on system resources
+2. **Use Event Filtering** - Subscribe to specific SubAgent events to reduce noise
+3. **Handle Error States** - Listen to `SubAgentStateChanged` events and handle errors
+4. **Set Timeouts** - Configure `timeout_ms` for long-running tasks
+5. **Clean Up Resources** - Use `cancel()` to clean up unneeded SubAgents
+
+## Examples
+
+For complete examples, see:
+
+- [Rust Example](https://github.com/A3S-Lab/Code/blob/main/core/examples/orchestrator_basic.rs)
+- [Python Examples](https://github.com/A3S-Lab/Code/tree/main/sdk/python/examples)
+
+## Related Documentation
+
+- [SubAgents](/docs/en/code/subagents) - SubAgent fundamentals
+- [Agent Teams](/docs/en/code/agent-teams) - Multi-agent collaboration
+- [Hooks](/docs/en/code/hooks) - Event hook system
