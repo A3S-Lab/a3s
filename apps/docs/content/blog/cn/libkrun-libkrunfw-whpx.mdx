@@ -1,287 +1,729 @@
 ---
-title: libkrun 与 libkrunfw：轻量级虚拟化的技术解析
-description: 深入解析 libkrun 和 libkrunfw 的架构设计、技术价值与限制，以及 WHPX 如何让 libkrun 在 Windows 上运行
-date: "2026-02-27"
+title: libkrun 深度解析：架构设计、模块实现与 Windows WHPX 后端
+description: 全面解析 libkrun 的分层架构、13 个核心模块的设计原理，以及将 Linux 内核启动到 Windows 上所需解决的每一个工程难题
+date: "2026-03-05"
 author: A3S Lab
-tags: [libkrun, libkrunfw, virtualization, whpx, windows, kvm, hvf]
+tags: [libkrun, libkrunfw, virtualization, whpx, windows, kvm, hvf, virtio, tsi]
 ---
 
-> 从 Linux/macOS 到 Windows，一个动态库如何让进程隔离变得触手可及
-
----
-
-## 背景：为什么需要轻量级虚拟化？
-
-容器技术（如 Docker）通过 Linux namespace 和 cgroup 实现进程隔离，但它们共享宿主机内核，存在内核逃逸的安全风险。传统虚拟机（如 QEMU/KVM）提供了强隔离，但启动慢、资源占用高，不适合容器场景。
-
-**libkrun** 走了一条中间路线：用虚拟化技术提供内核级隔离，同时保持接近容器的轻量性。
+> 从一个动态库到完整的跨平台 VMM：libkrun 如何在保持极简 API 的同时，支撑起 Linux、macOS 和 Windows 三大平台的虚拟化能力
 
 ---
 
-## libkrun 是什么？
+## 一、为什么需要 libkrun？
 
-libkrun 是一个**动态库形式的轻量级 VMM（Virtual Machine Monitor）**，它让任何程序只需链接这个库，就能获得基于硬件虚拟化的进程隔离能力。
+### 1.1 容器安全的困境
+
+过去十年，容器技术（Docker、containerd、CRI-O）彻底改变了软件交付方式。但容器的核心机制——Linux namespace 和 cgroup——本质上是对同一个宿主机内核的切片，而非真正的隔离。一旦宿主机内核存在漏洞，容器边界便形同虚设。Dirty COW（CVE-2016-5195）、runc 漏洞（CVE-2019-5736）等真实攻击案例一再证明了这一点。
+
+传统虚拟机（QEMU/KVM）提供了硬件级的强隔离，但代价是：
+- **启动慢**：完整系统镜像加载 + BIOS/UEFI + 内核初始化，通常需要数秒到数十秒
+- **资源重**：每个 VM 独占完整内存，内核栈本身就消耗数百 MB
+- **使用复杂**：需要管理磁盘镜像、网络配置、快照等大量基础设施
+
+libkrun 的核心洞察是：**绝大多数容器工作负载只需要运行一个进程**。既然如此，VMM 不需要模拟完整 PC，只需要模拟"恰好够用"的硬件——一个能运行 Linux 进程的最小化虚拟机。
+
+### 1.2 libkrun 的定位
 
 ```
-应用程序 (crun / krunkit / muvm / a3s box)
-         ↓ 链接
-    libkrun.so / libkrun.dylib
-         ↓ 调用
-  KVM (Linux) / HVF (macOS) / WHPX (Windows)
-         ↓ 运行
-      Guest VM（隔离的进程）
+传统容器（namespace）  ←── 隔离性 ──→  传统虚拟机（QEMU）
+    弱隔离 / 快启动                    强隔离 / 慢启动
+
+              libkrun
+          硬件隔离 + 毫秒启动
 ```
 
-它的 C API 极其简洁：
-
-```c
-// 创建一个 VM 上下文
-uint32_t ctx = krun_create_ctx();
-
-// 配置资源
-krun_set_vm_config(ctx, 2, 512);          // 2 vCPU，512MB 内存
-krun_set_root(ctx, "/path/to/rootfs");    // 根文件系统
-krun_set_exec(ctx, "/bin/sh", args, env); // 要运行的程序
-
-// 启动 VM（阻塞直到 VM 退出）
-krun_start_enter(ctx);
-```
-
-### 核心组件
-
-libkrun 内部集成了一个完整的 VMM，包含：
-
-| 组件 | 作用 |
-|------|------|
-| vCPU 管理 | 创建、运行、销毁虚拟 CPU |
-| 内存管理 | 分配 guest 物理内存 |
-| 设备模拟 | virtio 设备（console、fs、net、block 等）|
-| 中断控制器 | 模拟 APIC/GIC |
-| 引导加载 | 将内核加载到 guest 内存并启动 |
+libkrun 是一个**以动态库形式交付的轻量级 VMM（Virtual Machine Monitor）**。应用程序链接它，就像链接 libc 一样——不需要守护进程、不需要特权进程、不需要套接字通信。整个虚拟化栈在调用方进程内运行。
 
 ---
 
-## libkrunfw 是什么？
+## 二、整体架构
 
-libkrun 需要一个 Linux 内核来运行 guest 进程。**libkrunfw** 就是这个内核的载体——它把一个经过专门配置的 Linux 内核打包成动态库。
-
-### 巧妙的设计
-
-传统方式需要从磁盘读取内核文件，而 libkrunfw 利用了动态链接器的特性：
+### 2.1 分层结构
 
 ```
-libkrunfw.so.5
-├── .data 段：内核二进制镜像（vmlinux）
-├── krunfw_get_kernel()：返回内核镜像的指针和大小
-└── krunfw_get_initrd()：返回 initrd 的指针（TEE 变体）
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                        宿主应用  (C / Rust)                                  │
+│              crun · krunkit · muvm · a3s box · 自定义程序                    │
+└────────────────────────────────┬─────────────────────────────────────────────┘
+                                 │  include/libkrun.h  (稳定 C API)
+┌────────────────────────────────▼─────────────────────────────────────────────┐
+│                    src/libkrun  ·  公共 C API 层                             │
+│   krun_create_ctx · krun_set_vm_config · krun_set_root · krun_set_kernel    │
+│   krun_add_virtiofs · krun_add_disk · krun_add_net · krun_start_enter …     │
+└──────┬──────────────────┬──────────────────┬──────────────┬──────────────────┘
+       │                  │                  │              │
+┌──────▼──────┐  ┌────────▼────────┐  ┌─────▼──────┐  ┌───▼──────────────────┐
+│  src/vmm    │  │  src/devices    │  │  src/arch  │  │  src/kernel           │
+│             │  │                 │  │            │  │                        │
+│ VM/vCPU     │  │ virtio-console  │  │ x86_64     │  │ ELF/Image/PeGz 加载器 │
+│ 生命周期    │  │ virtio-block    │  │ aarch64    │  │                        │
+│             │  │ virtio-fs       │  │ riscv64    │  │ 内核命令行构建         │
+│ 内存管理    │  │ virtio-net      │  │            │  └────────────────────────┘
+│             │  │ virtio-vsock    │  │ 引导状态   │
+│ IRQ 芯片    │  │   └─ TSI 代理   │  │ 内存布局   │  ┌────────────────────────┐
+│ IO/MMIO 总线│  │ virtio-gpu      │  │ configure_ │  │  src/cpuid             │
+│             │  │ virtio-balloon  │  │ system()   │  │  CPUID 叶子模拟        │
+│ vCPU 事件  │  │ virtio-rng      │  └────────────┘  └────────────────────────┘
+│ 循环        │  │ virtio-snd      │
+│             │  │                 │                  ┌────────────────────────┐
+└──────┬──────┘  │ 遗留设备:       │                  │  src/polly             │
+       │         │  8250 串口      │                  │  epoll 事件管理器      │
+       │         │  i8042 键盘     │                  └────────────────────────┘
+       │         │  CMOS (RTC)    │
+       │         │  PIT 8254      │                  ┌────────────────────────┐
+       │         │  PIC 8259A     │                  │  src/utils             │
+       │         └─────────────────┘                  │  EventFd · epoll       │
+       │                                              │  时间戳 · 字节工具     │
+       │                                              └────────────────────────┘
+┌──────▼──────────────────────────────────────────────────────────────────────┐
+│                         Hypervisor 后端                                      │
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  ┌──────────────┐ │
+│  │  KVM          │  │  HVF          │  │  WHPX         │  │  Nitro       │ │
+│  │  Linux        │  │  macOS/ARM64  │  │  Windows      │  │  AWS Enclave │ │
+│  └───────────────┘  └───────────────┘  └───────────────┘  └──────────────┘ │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-当 libkrun 加载 libkrunfw 时，动态链接器直接将内核镜像映射到进程地址空间。libkrun 拿到指针后，直接将这段内存注入到 guest 的物理内存中，无需任何文件 I/O。
+### 2.2 数据流：从 API 调用到 VM 运行
+
+```
+krun_start_enter(ctx_id)
+    │
+    ├─ build_microvm(vm_resources)               [vmm/builder.rs]
+    │      ├─ choose_payload()                    → libkrunfw 或 ExternalKernel
+    │      ├─ create_guest_memory()              → GuestMemoryMmap
+    │      ├─ Vm::new()                          → WHvCreatePartition / KVM_CREATE_VM
+    │      ├─ load_payload()                     → 内核加载到 guest 物理内存
+    │      ├─ attach_legacy_devices()            → PIT/PIC/串口注册到 IO 总线
+    │      ├─ attach_virtio_devices()            → virtio-fs/block/net/vsock 注册
+    │      ├─ create_vcpus_x86_64()             → WHvCreateVirtualProcessor
+    │      └─ Vmm::run_control()                → 启动 vCPU 线程
+    │
+    └─ vCPU 线程循环
+           ├─ configure_x86_64()               → 设置 GDT/IDT/页表/寄存器
+           └─ loop { self.run() }
+                  ├─ WHvRunVirtualProcessor()  → 执行 guest 指令
+                  ├─ IoPortWrite(0x3f8, 'H')  → io_bus.write() → 串口设备
+                  ├─ MmioRead(0xfec00000, 4)  → mmio_bus.read() → APIC
+                  └─ Halted                   → 等待中断 → 重新进入
+```
+
+---
+
+## 三、各模块深度解析
+
+### 3.1 libkrun — 公共 C API 层
+
+**位置**：`src/libkrun/src/lib.rs`
+
+这是整个库的入口点。它的职责是将 C 语言调用翻译成 Rust 内部的 `VmResources` 配置结构，然后驱动 VMM 启动。
+
+**核心设计：上下文映射**
+
+每个 `krun_create_ctx()` 调用返回一个整数 ID，对应一个 `VmResources` 实例存储在全局 `HashMap` 中：
 
 ```rust
-// libkrun 中加载 libkrunfw 的代码
-static KRUNFW: LazyLock<Option<libloading::Library>> =
-    LazyLock::new(|| unsafe { libloading::Library::new("libkrunfw.so.5").ok() });
+static CTX_MAP: Mutex<HashMap<u32, CtxCfg>> = Mutex::new(HashMap::new());
 
-// 获取内核镜像指针
-let get_kernel: Symbol<unsafe extern "C" fn(*mut u64, *mut u64, *mut size_t) -> *mut c_char>
-    = krunfw.get(b"krunfw_get_kernel")?;
+pub extern "C" fn krun_create_ctx() -> i32 {
+    let ctx_id = NEXT_CTX_ID.fetch_add(1, Ordering::Relaxed);
+    CTX_MAP.lock().unwrap().insert(ctx_id, CtxCfg::default());
+    ctx_id as i32
+}
 ```
 
-### libkrunfw 中的内核有什么特别之处？
+这种设计使得多个 VM 上下文可以并发存在，互不干扰。每个上下文在 `krun_start_enter()` 时被消耗，转化为实际的 VM。
 
-libkrunfw 中的内核不是标准的发行版内核，它包含了专门的补丁：
+**平台差异抹平**
 
-1. **TSI（Transparent Socket Impersonation）补丁**：让 guest 内核能够将 socket 调用透明地转发给 VMM 代理，实现无虚拟网卡的网络连接。
-2. **最小化配置**：去掉了大量不需要的驱动和功能，减小体积，加快启动速度。
-3. **CPU 数量限制**：`CONFIG_NR_CPUS=8`，针对轻量级场景优化。
+同一个 `krun_add_net_unixstream()` API 在 Linux 上通过 Unix 套接字连接 passt，在 Windows 上通过 TcpStream 连接网络后端：
 
-### 多种变体
+```rust
+#[cfg(not(target_os = "windows"))]
+pub unsafe extern "C" fn krun_add_net_unixstream(...) { /* Unix 路径 */ }
 
-| 变体 | 库名 | 用途 |
+#[cfg(target_os = "windows")]
+pub unsafe extern "C" fn krun_add_net(...) { /* TCP 地址 */ }
+```
+
+### 3.2 vmm — VMM 核心
+
+**位置**：`src/vmm/`
+
+vmm 是 libkrun 的心脏，负责 VM 的完整生命周期。它源自 AWS Firecracker，经过大量修改以支持多平台和 libkrun 的特定需求。
+
+**关键子模块：**
+
+**`builder.rs`**：VM 组装流水线。`build_microvm()` 函数按严格顺序执行每个阶段：
+1. 分配 guest 物理内存（`GuestMemoryMmap`，基于 `mmap` 或 Windows 上的 `VirtualAlloc`）
+2. 创建 Hypervisor 分区（KVM fd / WHPX partition / HVF partition）
+3. 加载内核（ELF loader 解析节头，写入 guest 内存）
+4. 配置引导参数（x86_64 零页，包含内存图、cmdline 指针、initrd 位置）
+5. 注册 IO/MMIO 总线设备
+6. 创建并启动 vCPU 线程
+
+**`vstate.rs`（x86_64）**：vCPU 状态机。`configure_x86_64()` 设置完整的 x86_64 长模式引导状态：
+
+```rust
+// 初始化关键寄存器
+// CR0: 保护模式 + 分页使能
+// CR3: PML4 页表地址
+// CR4: PAE 使能
+// EFER: IA-32e 模式 + 长模式使能
+// RIP: 内核入口点
+// RSI: 零页地址（Linux 引导协议）
+fn configure_x86_64(&mut self, guest_mem: &GuestMemoryMmap, entry: GuestAddress) {
+    // 写入 GDT（4 个段描述符：null, 代码, 数据, TSS）
+    // 写入 IDT（空，CPU 异常在 guest 内核初始化时配置）
+    // 写入 PML4/PDPTE/PDE（映射前 4GB guest 物理地址）
+    // 通过 WHvSetVirtualProcessorRegisters 写入所有寄存器
+}
+```
+
+**`device_manager/`**：设备总线管理。`Bus` 是一个基于 `BTreeMap` 的地址空间路由器：给定地址，查找拥有该地址范围的设备并调用其 `read()`/`write()`。
+
+**`windows/whpx_vcpu.rs`**：WHPX vCPU 实现（见第五节详述）。
+
+### 3.3 devices — 设备实现
+
+**位置**：`src/devices/src/`
+
+所有模拟设备的实现。每个设备实现 `BusDevice` trait：
+
+```rust
+pub trait BusDevice: AsAny + Send {
+    fn read(&mut self, vcpuid: u64, offset: u64, data: &mut [u8]) {}
+    fn write(&mut self, vcpuid: u64, offset: u64, data: &[u8]) {}
+}
+```
+
+设备通过 `Arc<Mutex<dyn BusDevice>>` 注册到 IO/MMIO 总线，允许多线程安全访问。
+
+**virtio 设备通用框架（`virtio/mmio.rs`）**
+
+所有 virtio 设备遵循 MMIO 传输协议。Guest 驱动通过特定 MMIO 地址与设备通信：
+
+```
+Guest 驱动写入:    VIRTIO_MMIO_QUEUE_NOTIFY → 通知设备有新请求
+Guest 驱动写入:    VIRTIO_MMIO_DRIVER_FEATURES → 协商功能集
+设备读取 MMIO:     VIRTIO_MMIO_CONFIG → 读取设备配置（如网卡 MAC）
+```
+
+**描述符链（Descriptor Chain）**是 virtio 的核心数据结构：
+
+```
+    ┌────────────┐     ┌────────────┐     ┌────────────┐
+    │ Desc[0]    │────▶│ Desc[1]    │────▶│ Desc[2]    │
+    │ addr: 0x.. │     │ addr: 0x.. │     │ addr: 0x.. │
+    │ len:  512  │     │ len:  16   │     │ len:  1    │
+    │ flags: W   │     │ flags: R   │     │ flags: W   │
+    └────────────┘     └────────────┘     └────────────┘
+    Guest 内存中的分散-聚集 I/O 列表
+```
+
+VMM 遍历这个链，读写 guest 内存中的数据，完成后将 used ring 中的条目标记为已用，并通过 `EventFd` 通知 guest。
+
+**主要设备实现：**
+
+**virtio-console**：最简单的设备之一。TX 队列（guest→host）：VMM 读取描述符链中的字节，写入宿主 stdout/文件。RX 队列（host→guest）：VMM 读取 stdin，填充描述符链，通知 guest。Windows 版本使用后台线程读取 stdin 到环形缓冲区（`WindowsStdinInput`），因为 Windows 不支持非阻塞 stdin。
+
+**virtio-block**：实现 `VIRTIO_BLK_T_IN`（读）和 `VIRTIO_BLK_T_OUT`（写）请求。Linux 版本通过 `preadv`/`pwritev` 实现向量 I/O；Windows 版本使用 `std::fs::File` + `Seek`。
+
+**virtio-fs（virtiofs）**：最复杂的设备。它在 VMM 侧实现了 FUSE 服务器。Guest 内核的 FUSE 客户端通过 virtio 队列发送 FUSE 请求（`FUSE_LOOKUP`、`FUSE_READ`、`FUSE_WRITE` 等），VMM 翻译成宿主文件系统调用。Windows 版本（`fs/windows/passthrough.rs`）直接调用 Win32 API，支持符号链接（需开发者模式）、`fsync`、稀疏文件等特性。
+
+**virtio-net**：实现标准以太网帧传输。Linux/macOS 通过 Unix 套接字连接 passt/gvproxy；Windows 通过 TcpStream 后端，并实现了校验和卸载（checksum offload）和 TSO（TCP Segmentation Offload），减少 CPU 开销。
+
+**virtio-vsock + TSI**：
+
+TSI（Transparent Socket Impersonation，透明套接字替换）是 libkrun 最创新的功能。Guest 内核的 TSI 补丁将 socket 系统调用拦截后转为 vsock 消息发送给 VMM。VMM 侧的 TSI 代理接收这些消息，在宿主机上代为执行真正的 socket 操作：
+
+```
+Guest 进程 connect("8.8.8.8:53")
+    │
+    ▼ (TSI 内核补丁拦截)
+virtio-vsock 消息 →→→→→→→→→→→→→→→→→→→→→→→→→ VMM TSI 代理
+                                                    │
+                                                    ▼
+                                          宿主机 connect("8.8.8.8:53")
+                                                    │
+                                                    ▼
+                                             真实网络
+```
+
+Windows 实现分为 5 个阶段（约 2,100 行代码），完整支持 TCP/UDP/Named Pipe（AF_UNIX 替代）。
+
+**遗留设备（`legacy/`）**：
+
+| 设备 | 端口 | 用途 |
 |------|------|------|
-| 标准版 | `libkrunfw.so.5` | 通用虚拟化 |
-| SEV 版 | `libkrunfw-sev.so.5` | AMD 内存加密 |
-| TDX 版 | `libkrunfw-tdx.so.5` | Intel 可信域扩展 |
+| 8250 串口 | 0x3F8, 0x2F8, 0x3E8, 0x2E8 | 内核早期控制台输出（earlycon） |
+| i8042 | 0x60-0x64 | 键盘/鼠标控制器 |
+| CMOS (RTC) | 0x70-0x77 | 实时时钟，内存大小存储 |
+| PIT 8254 | 0x40-0x43 | 可编程定时器，IRQ 0 时钟源 |
+| PIC 8259A | 0x20-0x21, 0xA0-0xA1 | 遗留中断控制器 |
 
----
+### 3.4 arch — 架构抽象层
 
-## 技术价值
+**位置**：`src/arch/src/`
 
-### 1. 极低的使用门槛
+每个目标架构都有独立的引导协议：
 
-不需要了解 KVM ioctl、QEMU 配置或任何虚拟化细节。一个 C 函数调用就能启动一个隔离的 VM。这让 [crun](https://github.com/containers/crun)、[krunkit](https://github.com/containers/krunkit)、[muvm](https://github.com/AsahiLinux/muvm) 等项目能够轻松获得虚拟化隔离能力。
+**x86_64**：遵循 Linux x86_64 引导协议（`Documentation/x86/boot.rst`）：
+- **零页**（`ZERO_PAGE_START = 0x7000`）：`boot_params` 结构，包含内存图（e820 entries）、cmdline 指针、initrd 位置
+- **cmdline**（`CMDLINE_START = 0x20000`）：内核命令行字符串
+- **GDT/IDT**：长模式所需的段描述符表，位于 `0x500`/`0x520`
+- **页表**：PML4→PDPTE→PDE 三级结构，恒等映射前 4GB
 
-### 2. 启动速度快
+**aarch64**：遵循 Linux ARM64 引导协议，使用 FDT（Flattened Device Tree）描述硬件拓扑。
 
-由于内核已经通过动态链接器映射到内存，省去了磁盘读取时间。加上内核本身的最小化配置，整个 VM 的启动时间可以控制在毫秒级别。
+**RISC-V**：遵循 RISC-V Linux 引导约定，使用 OpenSBI 作为 M 模式固件。
 
-### 3. 强安全隔离
+`configure_system()` 函数将所有这些结构写入 guest 物理内存，这是内核启动前的最后一步。
 
-相比 namespace 隔离，libkrun 提供了硬件级别的隔离边界。即使 guest 内核存在漏洞，攻击者也需要突破 hypervisor 层才能影响宿主机。
+### 3.5 kernel — 内核加载器
 
-### 4. TSI 网络的创新性
+**位置**：`src/kernel/src/`
 
-传统虚拟机需要虚拟网卡 + 用户态网络代理（如 passt/gvproxy）才能联网，配置复杂。TSI 通过在 guest 内核中拦截 socket 系统调用，将网络请求透明地转发给 VMM，无需任何虚拟网络设备，大幅简化了网络配置。
+支持多种内核格式：
 
-### 5. 跨平台能力
+| 格式 | 常量 | 使用场景 |
+|------|------|---------|
+| Raw | `KRUN_KERNEL_FORMAT_RAW` | libkrunfw 提供的内存映射内核 |
+| ELF | `KRUN_KERNEL_FORMAT_ELF` | 调试用 vmlinux（未压缩） |
+| PeGz | `KRUN_KERNEL_FORMAT_PEGZ` | Windows/UEFI 内核（PE 格式+gzip） |
+| ImageBz2 | `KRUN_KERNEL_FORMAT_IMAGE_BZ2` | ARM64 常用压缩格式 |
+| ImageGz | `KRUN_KERNEL_FORMAT_IMAGE_GZ` | x86_64 常见压缩格式 |
+| ImageZstd | `KRUN_KERNEL_FORMAT_IMAGE_ZSTD` | 现代压缩格式，速度更快 |
 
-同一套 API，在 Linux 上用 KVM，在 macOS 上用 HVF，在 Windows 上用 WHPX，上层应用无需感知底层差异。
-
----
-
-## 限制
-
-### 技术限制
-
-**1. 依赖定制内核**
-TSI 等核心功能需要 libkrunfw 中的定制内核，无法使用发行版标准内核。这意味着内核版本和功能由 libkrunfw 决定，用户无法自由选择。
-
-**2. 工作负载兼容性有限**
-libkrun 的设计目标是运行单个进程，而非通用虚拟机。不支持：
-- 需要特殊内核模块的工作负载
-- 需要 UEFI/BIOS 的操作系统安装（EFI 变体除外）
-- 需要 PCI 直通的场景
-
-**3. CPU 数量上限**
-libkrunfw 内核限制最多 8 个 vCPU，不适合高并发计算密集型场景。
-
-**4. TDX 变体的内存限制**
-Intel TDX 变体最多支持 3072MB 内存和 1 个 vCPU，限制较大。
-
-### 安全模型限制
-
-libkrun 的安全模型将 guest 和 VMM 视为同一安全上下文。VMM 能访问的宿主机资源，guest 理论上也能通过 VMM 访问。要实现真正的隔离，需要在宿主机层面（如 Linux namespace）对 VMM 进程本身进行限制。
-
-### 平台限制
-
-- **Windows 支持仍处于实验阶段**：WHPX 后端正在开发中
-- **macOS 仅支持 ARM64**：x86_64 macOS 不支持（HVF 限制）
-- **Linux 需要 KVM 支持**：虚拟机或无 KVM 的环境无法使用
-
----
-
-## WHPX：让 libkrun 在 Windows 上运行
-
-### 什么是 WHPX？
-
-**Windows Hypervisor Platform (WHPX)** 是微软在 Windows 10 2004 版本引入的用户态虚拟化 API，通过 `WinHvPlatform.dll` 暴露给应用程序。它是 Hyper-V 的用户态接口，类似于 Linux 的 KVM 和 macOS 的 HVF。
-
-```
-Windows 应用程序
-      ↓
-WinHvPlatform API (用户态)
-      ↓
-Hyper-V Hypervisor (内核态)
-      ↓
-硬件虚拟化 (Intel VT-x / AMD-V)
-```
-
-### WHPX 核心 API
-
-| API | 作用 |
-|-----|------|
-| `WHvCreatePartition` | 创建虚拟机分区 |
-| `WHvSetupPartition` | 配置分区参数 |
-| `WHvMapGpaRange` | 映射 guest 物理内存 |
-| `WHvCreateVirtualProcessor` | 创建 vCPU |
-| `WHvRunVirtualProcessor` | 运行 vCPU 直到 VM exit |
-| `WHvGetVirtualProcessorRegisters` | 读取 vCPU 寄存器 |
-| `WHvSetVirtualProcessorRegisters` | 写入 vCPU 寄存器 |
-| `WHvDeleteVirtualProcessor` | 销毁 vCPU |
-| `WHvDeletePartition` | 销毁分区 |
-
-### VM Exit 处理机制
-
-WHPX 采用**同步 VM exit** 模型：每次 guest 执行需要 VMM 介入的操作时，`WHvRunVirtualProcessor` 返回，VMM 处理后再次调用继续执行。
+ELF 加载器（基于 `linux-loader` crate）解析 ELF 节头，将每个 `PT_LOAD` 段复制到对应的 guest 物理地址：
 
 ```rust
-// libkrun 中 WHPX vCPU 运行循环的核心逻辑
-pub fn run(&mut self) -> io::Result<VcpuExit<'_>> {
-    let mut exit_context = WHV_RUN_VP_EXIT_CONTEXT::default();
+let load_result = Elf::load(&guest_mem, None, &mut kernel_file, None)?;
+let kernel_entry = load_result.kernel_load; // ELF 入口点 GPA
+```
 
-    unsafe {
-        WHvRunVirtualProcessor(
-            self.partition,
-            self.index,
-            &mut exit_context as *mut _,
-            size_of::<WHV_RUN_VP_EXIT_CONTEXT>() as u32,
-        )?;
-    }
+### 3.6 cpuid — CPUID 模拟
 
-    // 解析 exit 原因
-    match exit_context.ExitReason {
-        WHV_RUN_VP_EXIT_REASON_MEMORY_ACCESS => { /* MMIO 处理 */ }
-        WHV_RUN_VP_EXIT_REASON_X64_IO_PORT_ACCESS => { /* IO 端口处理 */ }
-        WHV_RUN_VP_EXIT_REASON_X64_HALT => Ok(VcpuExit::Halted),
-        WHV_RUN_VP_EXIT_REASON_CANCELED => Ok(VcpuExit::Shutdown),
-        _ => Ok(VcpuExit::Shutdown),
+**位置**：`src/cpuid/src/`
+
+x86 guest 通过 `CPUID` 指令查询 CPU 特性。libkrun 需要正确模拟这些响应，原因：
+1. 隐藏宿主机上不应暴露给 guest 的特性（如 SGX）
+2. 为虚拟 CPU 设置一致的特性集
+3. 设置 `HYPERVISOR` bit，让 guest 知道自己在 VM 中运行
+
+```rust
+// CPUID leaf 1, ECX bit 31 = 超级管理程序存在标志
+fn filter_cpuid(cpuid: &mut CpuId) {
+    for entry in cpuid.as_mut_slice() {
+        if entry.function == 1 {
+            entry.ecx |= 1 << 31; // 设置 hypervisor present bit
+        }
     }
 }
 ```
 
-### libkrun WHPX 后端架构
+### 3.7 polly — 事件管理器
 
-为了在 Windows 上支持 libkrun，我们实现了以下架构：
+**位置**：`src/polly/src/`
 
-```
-Vcpu::run() [vstate.rs]
-    ↓ 循环调用
-WhpxVcpu::run() [whpx_vcpu.rs]
-    ↓ 调用 WHvRunVirtualProcessor
-    ↓ 返回 VcpuExit 枚举
-Vcpu::run_emulation()
-    ↓ 根据 exit 类型分发
-    ├── MmioRead/MmioWrite → mmio_bus（设备模拟）
-    ├── IoPortRead/IoPortWrite → mmio_bus（IO 端口设备）
-    ├── Halted → VcpuEmulation::Halted（停止）
-    └── Shutdown → VcpuEmulation::Stopped（停止）
-```
+基于 epoll（Linux/macOS）或 Windows 事件对象的异步事件多路复用器。virtio 设备后端（如 console 的 stdin 读取、vsock 的套接字 I/O）通过向 `EventManager` 注册感兴趣的文件描述符，实现非阻塞 I/O。
 
-**VcpuExit 枚举**设计使用了 Rust 的生命周期参数，确保 MMIO/IO 数据缓冲区的内存安全：
+`Subscriber` trait 定义了设备如何参与事件循环：
 
 ```rust
-pub enum VcpuExit<'a> {
-    MmioRead(u64, &'a mut [u8]),   // 地址 + 可变缓冲区（设备填充数据）
-    MmioWrite(u64, &'a [u8]),      // 地址 + 数据
-    IoPortRead(u16, &'a mut [u8]), // 端口 + 可变缓冲区
-    IoPortWrite(u16, &'a [u8]),    // 端口 + 数据
-    Halted,
-    Shutdown,
+pub trait Subscriber: Send {
+    fn process(&mut self, event: &EpollEvent, evmgr: &mut EventManager);
+    fn interest_list(&self) -> Vec<EpollEvent>;
 }
 ```
 
-### 与 KVM/HVF 的对比
+Windows 版本将 EventFd 映射到 Win32 事件对象（`HANDLE`），通过 `WaitForMultipleObjects` 实现等效的多路复用。
 
-| 特性 | KVM (Linux) | HVF (macOS) | WHPX (Windows) |
-|------|-------------|-------------|----------------|
-| API 层次 | 内核 ioctl | 用户态框架 | 用户态 DLL |
-| 内存映射 | `KVM_SET_USER_MEMORY_REGION` | `hv_vm_map` | `WHvMapGpaRange` |
-| vCPU 运行 | `KVM_RUN` ioctl | `hv_vcpu_run` | `WHvRunVirtualProcessor` |
-| Exit 信息 | `kvm_run` 共享内存 | `hv_vcpu_exit_t` | `WHV_RUN_VP_EXIT_CONTEXT` |
-| 寄存器访问 | `KVM_GET/SET_REGS` | `hv_vcpu_get/set_reg` | `WHvGet/SetVirtualProcessorRegisters` |
-| 最低系统要求 | Linux + KVM 模块 | macOS 11+ ARM64 | Windows 10 2004+ + Hyper-V |
+### 3.8 utils — 跨平台工具集
 
-### Windows 支持的意义
+**位置**：`src/utils/src/`
 
-WHPX 后端的实现让 libkrun 真正成为跨平台的虚拟化库：
+**EventFd**：Linux 上封装 `eventfd(2)` 系统调用，用于线程间信号传递。Windows 上使用 Win32 手动重置事件对象（`CreateEventW`），并通过全局注册表将整数 ID 映射到 `HANDLE`，模拟文件描述符语义：
 
-1. **Windows 容器生态**：为 Windows 上的容器运行时（如 crun 的 Windows 版本）提供虚拟化隔离能力
-2. **开发环境一致性**：开发者在 Windows 上也能使用与 Linux/macOS 相同的隔离机制
-3. **a3s box 跨平台**：让 a3s box 能够在 Windows 上提供与其他平台一致的安全隔离体验
+```rust
+// Windows EventFd 实现
+pub fn write(&self, v: u64) -> io::Result<()> {
+    let mut state = self.shared.state.lock().unwrap();
+    state.value = state.value.saturating_add(v);
+    unsafe { SetEvent(self.shared.event_handle); } // 通知等待者
+    Ok(())
+}
+
+pub fn read(&self) -> io::Result<u64> {
+    // 如果 value > 0，消耗并返回
+    // 否则 WaitForSingleObject(INFINITE) 等待信号
+}
+```
+
+**epoll（Windows 适配）**：Windows 没有 epoll，`src/utils/src/windows/epoll.rs` 通过 `WaitForMultipleObjects` 实现等效功能，仅支持 EventFd 类型的文件描述符（通过注册表查找对应 HANDLE）。
+
+### 3.9 hvf — macOS Hypervisor.framework 绑定
+
+**位置**：`src/hvf/src/`
+
+Apple Silicon（M 系列）使用 Hypervisor.framework 作为底层虚拟化 API，提供与 KVM 类似的能力但接口完全不同。`hvf` crate 提供 Rust 安全封装。
+
+### 3.10 rutabaga_gfx — GPU 虚拟化
+
+**位置**：`src/rutabaga_gfx/`
+
+虚拟 GPU 的核心库，支持两种后端：
+- **Venus**：Vulkan-over-virtio，将 guest Vulkan API 调用转发给宿主 GPU
+- **Native Context**：直接将宿主 GPU 上下文暴露给 guest，用于游戏（muvm）场景
+
+这是 libkrun 中最复杂的可选组件，仅在 Linux 和 macOS 上支持。
+
+### 3.11 smbios — SMBIOS 表构建
+
+**位置**：`src/smbios/`
+
+SMBIOS（System Management BIOS）是固件向操作系统报告硬件信息的标准。libkrun 生成最小化的 SMBIOS 3.0 表，让 guest 内核能够正确识别自己运行在虚拟机中，并获取基本的"硬件"描述。
 
 ---
 
-## 总结
+## 四、libkrunfw：内核即动态库
 
-libkrun 和 libkrunfw 共同构成了一套优雅的轻量级虚拟化方案：
+### 4.1 设计哲学
 
-- **libkrunfw** 解决了"内核从哪来"的问题——把内核打包成动态库，利用链接器实现零开销加载
-- **libkrun** 解决了"虚拟化怎么用"的问题——把复杂的 VMM 封装成简单的 C API
-- **WHPX 后端** 解决了"Windows 怎么办"的问题——通过 Windows Hypervisor Platform API 实现与 KVM/HVF 对等的虚拟化能力
+libkrunfw 解决了一个根本性问题：libkrun 需要一个内核，但不能假设磁盘上有内核文件。解决方案是把内核变成动态库的一部分。
 
-这种设计哲学——**最小化、自包含、跨平台**——使得 libkrun 成为容器安全隔离领域的重要基础设施。
+```
+libkrunfw.so.5 内部结构：
+┌──────────────────────────────────┐
+│  ELF 头 + 动态链接信息           │
+├──────────────────────────────────┤
+│  .text 段：krunfw_get_kernel()   │ ← 返回内核指针的函数
+│             krunfw_get_initrd()  │
+├──────────────────────────────────┤
+│  .data 段：vmlinux 二进制        │ ← 完整 Linux 内核镜像（约 20MB）
+│            initrd.img            │ ← 极小的 initrd（TEE 变体）
+└──────────────────────────────────┘
+```
+
+当操作系统的动态链接器加载 libkrunfw.so.5 时，内核镜像直接 mmap 到进程地址空间。libkrun 拿到指针，通过 `GuestMemoryMmap::write()` 把这段内存复制到 guest 物理内存——零文件 I/O，零磁盘延迟。
+
+### 4.2 TSI 内核补丁
+
+libkrunfw 中的内核包含多个关键补丁：
+
+**TSI 补丁**修改了 Linux socket 系统调用路径。当 guest 进程调用 `connect()`、`bind()`、`sendto()` 等 socket 系统调用时，TSI 内核代码检查目标地址族（AF_INET、AF_INET6、AF_UNIX），如果匹配，将请求序列化为 TSI 协议消息，通过 `/dev/vsock` 发送给 VMM 侧的 TSI 代理，再由代理在宿主机上执行真正的 socket 操作：
+
+```
+Guest: connect(fd, {AF_INET, 8.8.8.8, 53}, len)
+    ↓ TSI 内核拦截
+vsock 消息: {op: CONNECT, addr: 8.8.8.8:53}
+    ↓ VMM TSI 代理接收
+host: real_connect(8.8.8.8:53)
+    ↓ 返回结果
+vsock 消息: {op: CONNECT_REPLY, errno: 0}
+    ↓ TSI 内核将结果返回给 guest 进程
+Guest: connect() 返回 0（成功）
+```
+
+从 guest 进程的视角，它完全感知不到这个代理过程——透明性是 TSI 的核心价值。
+
+### 4.3 多变体体系
+
+| 变体 | 功能 | 内核特殊配置 |
+|------|------|-------------|
+| 标准版 | 通用虚拟化 | TSI + 最小化 |
+| SEV 版 | AMD 内存加密 | SEV/SEV-ES/SEV-SNP 支持 |
+| TDX 版 | Intel 可信域 | TDX 客户机支持，单 vCPU，≤3072MB |
+| EFI 版 | UEFI 引导 | 捆绑 OVMF/EDK2 固件（仅 macOS） |
 
 ---
 
-*本文基于 libkrun 源码分析，部分实现细节以代码为准。*
+## 五、Windows WHPX 后端：从零到 Linux 启动
+
+Windows WHPX 后端是 libkrun 最晚实现的平台支持，也是工程挑战最大的部分。本节详细记录我们在实现过程中解决的每一个关键问题。
+
+### 5.1 WHPX API 概述
+
+Windows Hypervisor Platform（WHPX）是 Hyper-V 的用户态接口，自 Windows 10 2004 起通过 `WinHvPlatform.dll` 提供。与 KVM（内核 ioctl）不同，WHPX 是纯用户态 API，调用层次更高，抽象程度更强。
+
+```
+应用程序（libkrun）
+    ↓ C API
+WinHvPlatform.dll（用户态）
+    ↓ IOCTL
+hvax64.sys（Hyper-V 组件）
+    ↓ VMX/SVM
+硬件（Intel VT-x / AMD-V）
+```
+
+**核心 WHPX 对象：**
+- **Partition**：对应一个 VM，包含 guest 内存映射和 vCPU 集合
+- **vCPU**：虚拟处理器，有自己的寄存器状态
+- **GPA Range**：Guest Physical Address 范围，映射到 host 虚拟内存
+
+### 5.2 WHV_REGISTER_VALUE 初始化陷阱
+
+实现过程中遇到的第一个严重 bug：`ACCESS_VIOLATION`（访问违规崩溃）。
+
+**根本原因**：`WHV_REGISTER_VALUE` 是一个 16 字节的 union，包含各种寄存器类型（`Reg64`、`Fp`、`Reg128` 等）。Rust 的 `WHV_REGISTER_VALUE { Reg64: val }` 写法只初始化低 8 字节，高 8 字节是未定义内存。`WHvSetVirtualProcessorRegisters` 读取完整的 16 字节，垃圾数据导致 WHPX 内部状态损坏。
+
+**修复**：
+
+```rust
+// 错误写法（高 8 字节未初始化）
+let value = WHV_REGISTER_VALUE { Reg64: rip_value };
+
+// 正确写法
+let mut value: WHV_REGISTER_VALUE = unsafe { std::mem::zeroed() };
+unsafe { value.Reg64 = rip_value; }
+```
+
+### 5.3 IO 指令模拟：InstructionByteCount = 0 问题
+
+WHPX 处理 IO 端口访问（`OUT`/`IN` 指令）时，有时将 `InstructionByteCount` 设置为 0，表示需要软件模拟。在这种模式下，直接通过 `WHvSetVirtualProcessorRegisters` 修改 `RIP`（指令指针）会被 WHPX 静默忽略，导致 vCPU 永远重新执行同一条指令，陷入无限循环。
+
+**修复**：使用 `WHvEmulatorTryIoEmulation`。WHPX 提供了一套软件仿真器 API，专门处理这种情况：
+
+```rust
+// 对于 InstructionByteCount == 0 的 IO 退出，使用仿真器
+unsafe {
+    WHvEmulatorTryIoEmulation(
+        self.emulator,
+        context_ptr,           // 传递给回调的上下文
+        &exit_context.VpContext,
+        &io_port_context,
+    )?;
+}
+// 仿真器通过回调读取指令字节、执行 IO、并更新 RIP
+// 这个路径下 WHvSetVirtualProcessorRegisters(RIP) 会被正确执行
+```
+
+仿真器需要 5 个回调函数（IO 处理、内存读写、寄存器读写），通过 `WHvEmulatorCreateEmulator` 注册。
+
+### 5.4 中断注入与 HLT 空闲循环
+
+Linux 内核在没有任务可运行时执行 `HLT` 指令让 CPU 睡眠，等待中断唤醒。WHPX 将 `HLT` 作为 VM exit 返回给 VMM。
+
+问题在于：从 WHPX 的角度，vCPU 已经**回到用户态**（WHvRunVirtualProcessor 已返回）。此时即使设备线程调用 `WHvRequestInterrupt` 注入中断，WHPX 也无法自动"唤醒"这个 vCPU——因为它根本不在运行。
+
+**解决方案**：共享的 `EventFd` + 超时等待：
+
+```rust
+// builder.rs：WhpxIrqChip
+fn set_irq(&self, irq_line: Option<u32>, ...) {
+    // 1. 通过 WHPX 虚拟 APIC 注入中断
+    WHvRequestInterrupt(self.partition, &interrupt, size)?;
+    // 2. 通知 vCPU 线程退出 HLT 等待，重新进入 WHvRunVirtualProcessor
+    let _ = self.irq_pending_evt.write(1);
+}
+
+// vstate.rs：vCPU 线程
+Ok(VcpuEmulation::Halted) => {
+    if let Some(ref evt) = self.irq_pending_evt {
+        // 等待最多 5ms，减少忙等 CPU 开销
+        evt.wait_timeout(5);
+        // 重新进入 WHvRunVirtualProcessor，WHPX 会投递虚拟 APIC 中的中断
+        continue;
+    }
+}
+```
+
+`EventFd::wait_timeout()` 使用 `WaitForSingleObject(handle, 5)` 实现，既避免了忙等浪费 CPU，又保证了中断延迟不超过 5ms。
+
+### 5.5 PIT 8254 与 TSC 校准
+
+Linux 内核在早期启动阶段用 PIT 8254 定时器校准 TSC 时钟频率。校准流程：
+
+1. 对 PIT counter 2（端口 0x42）编程
+2. 读取计数器值，同时记录 TSC 周期数
+3. 根据 PIT 的已知频率（1.193182 MHz）计算 TSC 频率
+
+如果 PIT 端口（0x40-0x43）没有设备响应，校准失败：
+
+```
+[0.000000] tsc: Fast TSC calibration failed
+[0.000000] [Firmware Bug]: TSC doesn't count with P0 frequency!
+← 内核在此挂起，等待 IRQ 0（PIT 时钟中断）驱动 jiffies 前进
+```
+
+**实现**：`src/devices/src/legacy/x86_64/pit.rs`
+
+PIT 模拟基于墙钟时间（wall clock）计算计数器值：
+
+```rust
+fn current_count(&self) -> u16 {
+    let reload = if self.reload == 0 { 65536u64 } else { self.reload as u64 };
+    let ticks = self.start.elapsed().as_micros() as u64 * PIT_CLOCK_HZ / 1_000_000;
+    ((reload - (ticks % reload)) & 0xffff) as u16
+}
+```
+
+同时，在 `attach_legacy_devices()` 中启动后台定时器线程，以 100 Hz 频率注入 IRQ 0：
+
+```rust
+std::thread::Builder::new()
+    .name("pit-timer".into())
+    .spawn(move || {
+        loop {
+            std::thread::sleep(Duration::from_millis(10)); // 100 Hz
+            intc.lock().unwrap().set_irq(Some(0), None)?;
+        }
+    })?;
+```
+
+### 5.6 8259A PIC stub
+
+Linux 内核在切换到 APIC 模式之前会初始化 8259A PIC（端口 0x20-0x21 主 PIC，0xA0-0xA1 从 PIC）。没有对应设备会导致内核的 ICW（初始化控制字）写入被忽略，某些内核版本会在此出现异常行为。
+
+实现非常简单（`src/devices/src/legacy/x86_64/pic.rs`）：
+
+```rust
+impl BusDevice for Pic {
+    fn read(&mut self, _: u64, offset: u64, data: &mut [u8]) {
+        // 返回 0（无中断等待）
+        if offset < 2 { data[0] = self.regs[offset as usize]; }
+    }
+    fn write(&mut self, _: u64, offset: u64, data: &[u8]) {
+        // 静默吸收所有 ICW/OCW 初始化写入
+        if offset < 2 { self.regs[offset as usize] = data[0]; }
+    }
+}
+```
+
+### 5.7 APIC Trap 处理
+
+WHPX 在某些配置下会将 APIC 寄存器写操作作为 VM exit 上报（`WHvRunVpExitReasonX64ApicWriteTrap`）。这些 exit 是通知性的——虚拟 APIC 已经完成了写操作，VMM 无需额外处理。
+
+原始实现将这些 exit 处理为致命错误导致 VM 停止。修复后改为 no-op：
+
+```rust
+reason if reason == WHvRunVpExitReasonX64ApicWriteTrap => {
+    // 虚拟 APIC 已处理写操作，VMM 无需介入，继续执行
+}
+```
+
+### 5.8 ACPI 关机
+
+Linux `poweroff` 命令通过向 PM1a_CNT 寄存器（端口 0x604）写入特定值触发 ACPI 关机。检测到 SLP_EN bit（bit 13）后返回 `VcpuEmulation::Stopped`：
+
+```rust
+VcpuExit::IoPortWrite(port, data) => {
+    // ...
+    let acpi_shutdown = port == 0x604
+        && data.len() >= 2
+        && (u16::from_le_bytes([data[0], data[1]]) & 0x2000) != 0;
+    if let Ok(()) = self.whpx_vcpu.complete_io_write() {
+        if acpi_shutdown {
+            info!("Guest requested ACPI shutdown");
+            return VcpuEmulation::Stopped; // 干净退出
+        }
+    }
+}
+```
+
+### 5.9 Windows 上的 virtio-fs（virtiofs）
+
+virtiofs 在 Windows 上的挑战是将 FUSE 协议操作映射到 Win32 文件 API。主要难点：
+
+1. **符号链接**：Windows 符号链接需要管理员权限或开发者模式，且有 `FILE_FLAG_OPEN_REPARSE_POINT` 等特殊标志
+2. **文件同步**：`FUSE_FSYNC` 映射到 `FlushFileBuffers()`
+3. **目录遍历**：`FindFirstFileW`/`FindNextFileW` 替代 `readdir`
+4. **权限模型**：Windows ACL 与 Unix 权限位之间的映射
+5. **磁盘空间**：`GetDiskFreeSpaceExW` 替代 `statvfs`
+
+完整实现（`src/devices/src/virtio/fs/windows/passthrough.rs`，约 2,500 行）支持所有核心 FUSE 操作，包括读写、目录操作、符号链接、fsync、fallocate（稀疏文件）。
+
+### 5.10 Windows 上的 TSI
+
+TSI 的 Windows 实现分 5 个阶段（约 2,100 行代码）：
+
+- **Phase 1**：`socket_wrapper.rs`——Windows Socket API（WSA）的 Rust 抽象，处理 `WSAStartup`/`WSACleanup` 生命周期
+- **Phase 2**：`stream_proxy.rs`——TCP STREAM 代理，处理 connect/accept/send/recv 操作
+- **Phase 3**：`dgram_proxy.rs`——UDP DGRAM 代理，处理 sendto/recvfrom
+- **Phase 4**：`pipe_proxy.rs`——Named Pipe 代理，作为 AF_UNIX 的替代（Windows 不支持 Unix 套接字）
+- **Phase 5**：`muxer.rs` 集成——将上述代理集成到 vsock 多路复用器中
+
+信用流控（credit-based flow control）防止 guest 发送过快导致 VMM 缓冲区溢出：
+
+```rust
+struct ConnectionState {
+    tx_credit: u32,      // 可发送字节数（guest→host）
+    rx_credit: u32,      // 可接收字节数（host→guest）
+}
+// guest 每发送 N 字节，从 tx_credit 减去 N
+// host 处理完后发送 CREDIT_UPDATE 消息补充 credit
+```
+
+### 5.11 端到端验证
+
+所有组件就绪后，Linux 5.10 内核成功在 WHPX 上启动到用户空间。验证测试（`test_whpx_real_kernel_e2e`）：
+
+1. 加载 Linux 5.10 vmlinux ELF（20.3 MB）到 256MB guest 内存
+2. 配置 x86_64 引导状态（零页 + 长模式寄存器）
+3. 内核命令行：`earlycon=uart8250,io,0x3f8` 将早期日志重定向到 COM1
+4. COM1 捕获设备记录所有 guest 输出
+5. 断言 90 秒内出现 `"Linux version"` banner
+
+```
+测试输出：
+test windows::vstate::tests::test_whpx_real_kernel_e2e ... ok
+finished in 90.02s
+```
+
+Linux 内核在 WHPX 上成功启动，打印版本信息。
+
+---
+
+## 六、当前状态与展望
+
+### 6.1 功能完整度
+
+| 功能 | Linux/macOS | Windows |
+|------|-------------|---------|
+| 硬件虚拟化 | ✅ KVM/HVF | ✅ WHPX |
+| virtio-console | ✅ | ✅ |
+| virtio-block | ✅ | ✅ |
+| virtio-fs | ✅ | ✅ |
+| virtio-net | ✅ | ✅（TcpStream 后端） |
+| virtio-vsock + TSI | ✅ | ✅（TCP/UDP/Named Pipe） |
+| virtio-balloon | ✅ | ✅（free-page + page-hinting） |
+| virtio-rng | ✅ | ✅（BCryptGenRandom） |
+| virtio-snd | ✅ | ⚠️（NullBackend） |
+| virtio-gpu | ✅ | ❌ |
+| 中断注入 | ✅ | ✅ |
+| Linux 启动验证 | ✅ | ✅（5.10 已验证） |
+
+### 6.2 Roadmap
+
+**近期**：
+- Windows 多 vCPU（SMP 引导协议 INIT/SIPI）
+- libkrunfw-windows（内置内核，消除用户手动提供内核的需求）
+- ACPI 表生成（MADT/FADT），改善内核 APIC 初始化兼容性
+
+**中期**：
+- Windows virtio-gpu（WGPU 或 D3D12 后端）
+- Windows virtio-snd（WASAPI 后端）
+- Windows ARM64（等待 Microsoft 开放 WHPX ARM64 分区类型）
+
+**长期**：
+- SEV-SNP 热迁移
+- 机密容器（Confidential Container）深度集成
+
+---
+
+## 七、总结
+
+libkrun 的优雅之处在于它的**分层设计**：每一层只做好一件事，层与层之间通过清晰的接口解耦。
+
+- `libkrun`（API 层）屏蔽所有平台差异，给上层一个统一的 C API
+- `vmm`（VMM 核心）管理 VM 生命周期，对不同 hypervisor 后端提供统一抽象
+- `devices`（设备层）实现所有 virtio 设备，通过 `BusDevice` trait 插入 IO/MMIO 总线
+- `arch`（架构层）封装 x86_64/aarch64/RISC-V 的引导差异
+- 各 hypervisor 后端（KVM/HVF/WHPX）只需实现 vCPU 运行和内存映射
+
+Windows 后端的实现，特别是 PIT/PIC 模拟、中断注入架构、TSI 的 Windows 适配，证明了这套分层设计的延展性——在不修改任何上层接口的情况下，添加了全新的平台支持，并通过 Linux 5.10 的端到端启动测试验证了功能正确性。
+
+---
+
+*基于 libkrun 源码（截至 2026-03-05），主要模块：`src/vmm`、`src/devices`、`src/arch`、`src/utils`。*

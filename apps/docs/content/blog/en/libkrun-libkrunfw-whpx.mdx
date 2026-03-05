@@ -1,183 +1,468 @@
 ---
-title: libkrun & libkrunfw - A Technical Deep Dive into Lightweight Virtualization
-description: An in-depth analysis of libkrun and libkrunfw architecture, technical value, limitations, and how WHPX enables libkrun on Windows
-date: "2026-02-27"
+title: "libkrun Deep Dive: Architecture, Modules, and the Windows WHPX Backend"
+description: A comprehensive analysis of libkrun's layered architecture, the design principles behind its 13 core modules, and every engineering challenge solved to boot a Linux kernel on Windows
+date: "2026-03-05"
 author: A3S Lab
-tags: [libkrun, libkrunfw, virtualization, whpx, windows, kvm, hvf]
+tags: [libkrun, libkrunfw, virtualization, whpx, windows, kvm, hvf, virtio, tsi]
 ---
 
-> From Linux/macOS to Windows: How a Dynamic Library Makes Process Isolation Accessible
-
----
-
-## Background: Why Lightweight Virtualization?
-
-Container technologies (like Docker) achieve process isolation through Linux namespaces and cgroups, but they share the host kernel, creating kernel escape security risks. Traditional virtual machines (like QEMU/KVM) provide strong isolation but are slow to start and resource-intensive, making them unsuitable for container scenarios.
-
-**libkrun** takes a middle path: using virtualization technology to provide kernel-level isolation while maintaining container-like lightweight characteristics.
+> From a single dynamic library to a full cross-platform VMM: how libkrun maintains a minimal API while delivering virtualization across Linux, macOS, and Windows
 
 ---
 
-## What is libkrun?
+## 1. Why libkrun?
 
-libkrun is a **lightweight VMM (Virtual Machine Monitor) in dynamic library form** that allows any program to gain hardware virtualization-based process isolation capabilities simply by linking to this library.
+### 1.1 The Container Security Dilemma
+
+Over the past decade, container technologies (Docker, containerd, CRI-O) transformed software delivery. But their core mechanism—Linux namespaces and cgroups—is fundamentally a way to partition a single host kernel, not true isolation. If the host kernel has a vulnerability, the container boundary collapses. Real-world attacks like Dirty COW (CVE-2016-5195) and the runc vulnerability (CVE-2019-5736) have proven this repeatedly.
+
+Traditional virtual machines (QEMU/KVM) offer hardware-level strong isolation, but at a cost:
+- **Slow startup**: Full system image loading + BIOS/UEFI + kernel initialization typically takes seconds to tens of seconds
+- **Heavy resources**: Each VM exclusively owns a complete memory footprint; the kernel stack alone consumes hundreds of MB
+- **Operational complexity**: Managing disk images, network configuration, snapshots, and other infrastructure
+
+libkrun's core insight is: **the vast majority of container workloads only need to run a single process**. Given that, a VMM doesn't need to simulate a complete PC—it only needs to simulate "just enough" hardware: a minimal virtual machine capable of running a Linux process.
+
+### 1.2 libkrun's Position
 
 ```
-Application (crun / krunkit / muvm / a3s box)
-         ↓ links to
-    libkrun.so / libkrun.dylib
-         ↓ calls
-  KVM (Linux) / HVF (macOS) / WHPX (Windows)
-         ↓ runs
-      Guest VM (isolated process)
+Traditional container (namespace)  ←── isolation ──→  Traditional VM (QEMU)
+      weak isolation / fast start                      strong isolation / slow start
+
+                    libkrun
+              hardware isolation + millisecond boot
 ```
 
-Its C API is extremely simple:
-
-```c
-// Create a VM context
-uint32_t ctx = krun_create_ctx();
-
-// Configure resources
-krun_set_vm_config(ctx, 2, 512);          // 2 vCPUs, 512MB memory
-krun_set_root(ctx, "/path/to/rootfs");    // Root filesystem
-krun_set_exec(ctx, "/bin/sh", args, env); // Program to run
-
-// Start VM (blocks until VM exits)
-krun_start_enter(ctx);
-```
-
-### Core Components
-
-libkrun internally integrates a complete VMM, including:
-
-| Component | Purpose |
-|-----------|---------|
-| vCPU Management | Create, run, destroy virtual CPUs |
-| Memory Management | Allocate guest physical memory |
-| Device Emulation | virtio devices (console, fs, net, block, etc.) |
-| Interrupt Controller | Emulate APIC/GIC |
-| Boot Loader | Load kernel into guest memory and boot |
+libkrun is a **lightweight VMM (Virtual Machine Monitor) delivered as a dynamic library**. Applications link to it like they link to libc—no daemon process, no privileged process, no socket communication. The entire virtualization stack runs inside the caller's process.
 
 ---
 
-## What is libkrunfw?
+## 2. Overall Architecture
 
-libkrun needs a Linux kernel to run guest processes. **libkrunfw** is the carrier for this kernel—it packages a specially configured Linux kernel as a dynamic library.
-
-### Clever Design
-
-Traditional approaches require reading kernel files from disk, but libkrunfw leverages dynamic linker features:
+### 2.1 Layered Structure
 
 ```
-libkrunfw.so.5
-├── .data section: kernel binary image (vmlinux)
-├── krunfw_get_kernel(): returns pointer and size of kernel image
-└── krunfw_get_initrd(): returns initrd pointer (TEE variant)
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                        Host Application  (C / Rust)                          │
+│              crun · krunkit · muvm · a3s box · custom programs               │
+└────────────────────────────────┬─────────────────────────────────────────────┘
+                                 │  include/libkrun.h  (stable C API)
+┌────────────────────────────────▼─────────────────────────────────────────────┐
+│                    src/libkrun  ·  Public C API Layer                        │
+│   krun_create_ctx · krun_set_vm_config · krun_set_root · krun_set_kernel    │
+│   krun_add_virtiofs · krun_add_disk · krun_add_net · krun_start_enter …     │
+└──────┬──────────────────┬──────────────────┬──────────────┬──────────────────┘
+       │                  │                  │              │
+┌──────▼──────┐  ┌────────▼────────┐  ┌─────▼──────┐  ┌───▼──────────────────┐
+│  src/vmm    │  │  src/devices    │  │  src/arch  │  │  src/kernel           │
+│             │  │                 │  │            │  │                        │
+│ VM/vCPU     │  │ virtio-console  │  │ x86_64     │  │ ELF/Image/PeGz loader │
+│ lifecycle   │  │ virtio-block    │  │ aarch64    │  │                        │
+│             │  │ virtio-fs       │  │ riscv64    │  │ kernel cmdline build   │
+│ memory mgmt │  │ virtio-net      │  │            │  └────────────────────────┘
+│             │  │ virtio-vsock    │  │ boot state │
+│ IRQ chip    │  │   └─ TSI proxy  │  │ memory map │  ┌────────────────────────┐
+│ IO/MMIO bus │  │ virtio-gpu      │  │ configure_ │  │  src/cpuid             │
+│             │  │ virtio-balloon  │  │ system()   │  │  CPUID leaf emulation  │
+│ vCPU event  │  │ virtio-rng      │  └────────────┘  └────────────────────────┘
+│ loop        │  │ virtio-snd      │
+│             │  │                 │                  ┌────────────────────────┐
+└──────┬──────┘  │ legacy devices: │                  │  src/polly             │
+       │         │  8250 serial    │                  │  epoll event manager   │
+       │         │  i8042 keyboard │                  └────────────────────────┘
+       │         │  CMOS (RTC)     │
+       │         │  PIT 8254       │                  ┌────────────────────────┐
+       │         │  PIC 8259A      │                  │  src/utils             │
+       │         └─────────────────┘                  │  EventFd · epoll       │
+       │                                              │  timestamps · byte util│
+       │                                              └────────────────────────┘
+┌──────▼──────────────────────────────────────────────────────────────────────┐
+│                         Hypervisor Backend                                   │
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  ┌──────────────┐ │
+│  │  KVM          │  │  HVF          │  │  WHPX         │  │  Nitro       │ │
+│  │  Linux        │  │  macOS/ARM64  │  │  Windows      │  │  AWS Enclave │ │
+│  └───────────────┘  └───────────────┘  └───────────────┘  └──────────────┘ │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-When libkrun loads libkrunfw, the dynamic linker directly maps the kernel image into the process address space. libkrun gets the pointer and directly injects this memory into the guest's physical memory, without any file I/O.
+### 2.2 Data Flow: From API Call to Running VM
+
+```
+krun_start_enter(ctx_id)
+    │
+    ├─ build_microvm(vm_resources)               [vmm/builder.rs]
+    │      ├─ choose_payload()                    → libkrunfw or ExternalKernel
+    │      ├─ create_guest_memory()              → GuestMemoryMmap
+    │      ├─ Vm::new()                          → WHvCreatePartition / KVM_CREATE_VM
+    │      ├─ load_payload()                     → kernel loaded into guest physical memory
+    │      ├─ attach_legacy_devices()            → PIT/PIC/serial registered on IO bus
+    │      ├─ attach_virtio_devices()            → virtio-fs/block/net/vsock registered
+    │      ├─ create_vcpus_x86_64()             → WHvCreateVirtualProcessor
+    │      └─ Vmm::run_control()                → launch vCPU threads
+    │
+    └─ vCPU thread loop
+           ├─ configure_x86_64()               → set GDT/IDT/page tables/registers
+           └─ loop { self.run() }
+                  ├─ WHvRunVirtualProcessor()  → execute guest instructions
+                  ├─ IoPortWrite(0x3f8, 'H')  → io_bus.write() → serial device
+                  ├─ MmioRead(0xfec00000, 4)  → mmio_bus.read() → APIC
+                  └─ Halted                   → wait for interrupt → re-enter
+```
+
+---
+
+## 3. Module Deep Dives
+
+### 3.1 libkrun — Public C API Layer
+
+**Location**: `src/libkrun/src/lib.rs`
+
+This is the entry point for the entire library. Its responsibility is to translate C-language calls into the internal Rust `VmResources` configuration structure, then drive the VMM to start.
+
+**Core Design: Context Map**
+
+Each `krun_create_ctx()` call returns an integer ID corresponding to a `VmResources` instance stored in a global `HashMap`:
 
 ```rust
-// Code in libkrun for loading libkrunfw
-static KRUNFW: LazyLock<Option<libloading::Library>> =
-    LazyLock::new(|| unsafe { libloading::Library::new("libkrunfw.so.5").ok() });
+static CTX_MAP: Mutex<HashMap<u32, CtxCfg>> = Mutex::new(HashMap::new());
 
-// Get kernel image pointer
-let get_kernel: Symbol<unsafe extern "C" fn(*mut u64, *mut u64, *mut size_t) -> *mut c_char>
-    = krunfw.get(b"krunfw_get_kernel")?;
+pub extern "C" fn krun_create_ctx() -> i32 {
+    let ctx_id = NEXT_CTX_ID.fetch_add(1, Ordering::Relaxed);
+    CTX_MAP.lock().unwrap().insert(ctx_id, CtxCfg::default());
+    ctx_id as i32
+}
 ```
 
-### What's Special About the Kernel in libkrunfw?
+This design allows multiple VM contexts to coexist concurrently without interference. Each context is consumed at `krun_start_enter()` time, being transformed into an actual VM.
 
-The kernel in libkrunfw is not a standard distribution kernel; it includes special patches:
+**Platform Difference Abstraction**
 
-1. **TSI (Transparent Socket Impersonation) patches**: Allow the guest kernel to transparently forward socket calls to the VMM proxy, enabling network connectivity without virtual NICs.
-2. **Minimized configuration**: Removes many unnecessary drivers and features, reducing size and speeding up boot time.
-3. **CPU count limit**: `CONFIG_NR_CPUS=8`, optimized for lightweight scenarios.
+The same `krun_add_net_unixstream()` API connects to passt via Unix socket on Linux, and connects to the network backend via TcpStream on Windows:
 
-### Multiple Variants
+```rust
+#[cfg(not(target_os = "windows"))]
+pub unsafe extern "C" fn krun_add_net_unixstream(...) { /* Unix path */ }
 
-| Variant | Library Name | Purpose |
-|---------|--------------|---------|
-| Standard | `libkrunfw.so.5` | General virtualization |
-| SEV | `libkrunfw-sev.so.5` | AMD memory encryption |
-| TDX | `libkrunfw-tdx.so.5` | Intel Trust Domain Extensions |
+#[cfg(target_os = "windows")]
+pub unsafe extern "C" fn krun_add_net(...) { /* TCP address */ }
+```
+
+### 3.2 vmm — VMM Core
+
+**Location**: `src/vmm/`
+
+The vmm is libkrun's heart, responsible for the complete VM lifecycle. It originates from AWS Firecracker, heavily modified to support multiple platforms and libkrun's specific requirements.
+
+**Key Submodules:**
+
+**`builder.rs`**: VM assembly pipeline. The `build_microvm()` function executes each phase in strict order:
+1. Allocate guest physical memory (`GuestMemoryMmap`, based on `mmap` or `VirtualAlloc` on Windows)
+2. Create hypervisor partition (KVM fd / WHPX partition / HVF partition)
+3. Load kernel (ELF loader parses section headers, writes to guest memory)
+4. Configure boot parameters (x86_64 zero page, containing memory map, cmdline pointer, initrd location)
+5. Register IO/MMIO bus devices
+6. Create and start vCPU threads
+
+**`vstate.rs` (x86_64)**: vCPU state machine. `configure_x86_64()` sets up the complete x86_64 long mode boot state:
+
+```rust
+// Initialize key registers
+// CR0: protected mode + paging enabled
+// CR3: PML4 page table address
+// CR4: PAE enabled
+// EFER: IA-32e mode + long mode enabled
+// RIP: kernel entry point
+// RSI: zero page address (Linux boot protocol)
+fn configure_x86_64(&mut self, guest_mem: &GuestMemoryMmap, entry: GuestAddress) {
+    // Write GDT (4 segment descriptors: null, code, data, TSS)
+    // Write IDT (empty; CPU exceptions configured during guest kernel init)
+    // Write PML4/PDPTE/PDE (identity map first 4GB of guest physical address)
+    // Write all registers via WHvSetVirtualProcessorRegisters
+}
+```
+
+**`device_manager/`**: Device bus management. `Bus` is a `BTreeMap`-based address space router: given an address, it finds the device owning that address range and calls its `read()`/`write()`.
+
+**`windows/whpx_vcpu.rs`**: WHPX vCPU implementation (detailed in Section 5).
+
+### 3.3 devices — Device Implementations
+
+**Location**: `src/devices/src/`
+
+All emulated device implementations. Each device implements the `BusDevice` trait:
+
+```rust
+pub trait BusDevice: AsAny + Send {
+    fn read(&mut self, vcpuid: u64, offset: u64, data: &mut [u8]) {}
+    fn write(&mut self, vcpuid: u64, offset: u64, data: &[u8]) {}
+}
+```
+
+Devices are registered to the IO/MMIO bus via `Arc<Mutex<dyn BusDevice>>`, allowing thread-safe multi-threaded access.
+
+**virtio Device Generic Framework (`virtio/mmio.rs`)**
+
+All virtio devices follow the MMIO transport protocol. Guest drivers communicate with devices through specific MMIO addresses:
+
+```
+Guest driver writes:  VIRTIO_MMIO_QUEUE_NOTIFY → notify device of new request
+Guest driver writes:  VIRTIO_MMIO_DRIVER_FEATURES → negotiate feature set
+Device reads MMIO:    VIRTIO_MMIO_CONFIG → read device config (e.g., NIC MAC)
+```
+
+The **Descriptor Chain** is virtio's core data structure:
+
+```
+    ┌────────────┐     ┌────────────┐     ┌────────────┐
+    │ Desc[0]    │────▶│ Desc[1]    │────▶│ Desc[2]    │
+    │ addr: 0x.. │     │ addr: 0x.. │     │ addr: 0x.. │
+    │ len:  512  │     │ len:  16   │     │ len:  1    │
+    │ flags: W   │     │ flags: R   │     │ flags: W   │
+    └────────────┘     └────────────┘     └────────────┘
+    Scatter-gather I/O list in guest memory
+```
+
+The VMM traverses this chain, reading and writing data in guest memory, marks entries as used in the used ring upon completion, and notifies the guest via `EventFd`.
+
+**Major Device Implementations:**
+
+**virtio-console**: The simplest device. TX queue (guest→host): VMM reads bytes from the descriptor chain, writes to host stdout/file. RX queue (host→guest): VMM reads stdin, fills the descriptor chain, notifies guest. The Windows version uses a background thread to read stdin into a ring buffer (`WindowsStdinInput`) because Windows doesn't support non-blocking stdin.
+
+**virtio-block**: Implements `VIRTIO_BLK_T_IN` (read) and `VIRTIO_BLK_T_OUT` (write) requests. The Linux version uses `preadv`/`pwritev` for vectored I/O; the Windows version uses `std::fs::File` + `Seek`.
+
+**virtio-fs (virtiofs)**: The most complex device. It implements a FUSE server on the VMM side. The guest kernel's FUSE client sends FUSE requests (`FUSE_LOOKUP`, `FUSE_READ`, `FUSE_WRITE`, etc.) through virtio queues; the VMM translates them into host filesystem calls. The Windows version (`fs/windows/passthrough.rs`) calls Win32 APIs directly, supporting symbolic links (requiring developer mode), `fsync`, sparse files, and other features.
+
+**virtio-net**: Implements standard Ethernet frame transmission. Linux/macOS connects to passt/gvproxy via Unix socket; Windows uses a TcpStream backend with checksum offload and TSO (TCP Segmentation Offload) to reduce CPU overhead.
+
+**virtio-vsock + TSI**:
+
+TSI (Transparent Socket Impersonation) is libkrun's most innovative feature. The TSI patch in the guest kernel intercepts socket system calls and converts them into vsock messages sent to the VMM. The VMM-side TSI proxy receives these messages and performs the real socket operations on the host:
+
+```
+Guest process: connect("8.8.8.8:53")
+    │
+    ▼ (TSI kernel patch intercepts)
+virtio-vsock message →→→→→→→→→→→→→→→→→→→→→→→→→ VMM TSI proxy
+                                                    │
+                                                    ▼
+                                          host: connect("8.8.8.8:53")
+                                                    │
+                                                    ▼
+                                               real network
+```
+
+The Windows implementation spans 5 phases (~2,100 lines of code), fully supporting TCP/UDP/Named Pipe (as an AF_UNIX replacement).
+
+**Legacy Devices (`legacy/`)**:
+
+| Device | Ports | Purpose |
+|--------|-------|---------|
+| 8250 Serial | 0x3F8, 0x2F8, 0x3E8, 0x2E8 | Kernel early console output (earlycon) |
+| i8042 | 0x60-0x64 | Keyboard/mouse controller |
+| CMOS (RTC) | 0x70-0x77 | Real-time clock, memory size storage |
+| PIT 8254 | 0x40-0x43 | Programmable timer, IRQ 0 clock source |
+| PIC 8259A | 0x20-0x21, 0xA0-0xA1 | Legacy interrupt controller |
+
+### 3.4 arch — Architecture Abstraction Layer
+
+**Location**: `src/arch/src/`
+
+Each target architecture has its own boot protocol:
+
+**x86_64**: Follows the Linux x86_64 boot protocol (`Documentation/x86/boot.rst`):
+- **Zero page** (`ZERO_PAGE_START = 0x7000`): `boot_params` structure containing memory map (e820 entries), cmdline pointer, initrd location
+- **cmdline** (`CMDLINE_START = 0x20000`): kernel command line string
+- **GDT/IDT**: Segment descriptor tables required for long mode, located at `0x500`/`0x520`
+- **Page tables**: PML4→PDPTE→PDE three-level structure, identity mapping the first 4GB
+
+**aarch64**: Follows the Linux ARM64 boot protocol, using FDT (Flattened Device Tree) to describe the hardware topology.
+
+**RISC-V**: Follows RISC-V Linux boot conventions, using OpenSBI as the M-mode firmware.
+
+The `configure_system()` function writes all of these structures into guest physical memory—this is the final step before kernel boot.
+
+### 3.5 kernel — Kernel Loader
+
+**Location**: `src/kernel/src/`
+
+Supports multiple kernel formats:
+
+| Format | Constant | Use Case |
+|--------|----------|----------|
+| Raw | `KRUN_KERNEL_FORMAT_RAW` | Memory-mapped kernel provided by libkrunfw |
+| ELF | `KRUN_KERNEL_FORMAT_ELF` | Debug vmlinux (uncompressed) |
+| PeGz | `KRUN_KERNEL_FORMAT_PEGZ` | Windows/UEFI kernels (PE format + gzip) |
+| ImageBz2 | `KRUN_KERNEL_FORMAT_IMAGE_BZ2` | Common ARM64 compressed format |
+| ImageGz | `KRUN_KERNEL_FORMAT_IMAGE_GZ` | Common x86_64 compressed format |
+| ImageZstd | `KRUN_KERNEL_FORMAT_IMAGE_ZSTD` | Modern compression, faster decompression |
+
+The ELF loader (based on the `linux-loader` crate) parses ELF section headers, copying each `PT_LOAD` segment to its corresponding guest physical address:
+
+```rust
+let load_result = Elf::load(&guest_mem, None, &mut kernel_file, None)?;
+let kernel_entry = load_result.kernel_load; // ELF entry point GPA
+```
+
+### 3.6 cpuid — CPUID Emulation
+
+**Location**: `src/cpuid/src/`
+
+x86 guests query CPU features via the `CPUID` instruction. libkrun needs to correctly emulate these responses for three reasons:
+1. Hide host features that should not be exposed to the guest (e.g., SGX)
+2. Establish a consistent feature set for virtual CPUs
+3. Set the `HYPERVISOR` bit to let the guest know it's running inside a VM
+
+```rust
+// CPUID leaf 1, ECX bit 31 = hypervisor present flag
+fn filter_cpuid(cpuid: &mut CpuId) {
+    for entry in cpuid.as_mut_slice() {
+        if entry.function == 1 {
+            entry.ecx |= 1 << 31; // set hypervisor present bit
+        }
+    }
+}
+```
+
+### 3.7 polly — Event Manager
+
+**Location**: `src/polly/src/`
+
+An async event multiplexer based on epoll (Linux/macOS) or Windows event objects. virtio device backends (e.g., console's stdin reading, vsock's socket I/O) register their file descriptors of interest with `EventManager` to achieve non-blocking I/O.
+
+The `Subscriber` trait defines how devices participate in the event loop:
+
+```rust
+pub trait Subscriber: Send {
+    fn process(&mut self, event: &EpollEvent, evmgr: &mut EventManager);
+    fn interest_list(&self) -> Vec<EpollEvent>;
+}
+```
+
+The Windows version maps EventFd to Win32 event objects (`HANDLE`), achieving equivalent multiplexing via `WaitForMultipleObjects`.
+
+### 3.8 utils — Cross-Platform Utility Set
+
+**Location**: `src/utils/src/`
+
+**EventFd**: On Linux, wraps the `eventfd(2)` system call for inter-thread signaling. On Windows, uses Win32 manual-reset event objects (`CreateEventW`), mapping integer IDs to `HANDLE` via a global registry to emulate file descriptor semantics:
+
+```rust
+// Windows EventFd implementation
+pub fn write(&self, v: u64) -> io::Result<()> {
+    let mut state = self.shared.state.lock().unwrap();
+    state.value = state.value.saturating_add(v);
+    unsafe { SetEvent(self.shared.event_handle); } // notify waiters
+    Ok(())
+}
+
+pub fn read(&self) -> io::Result<u64> {
+    // if value > 0, consume and return
+    // otherwise WaitForSingleObject(INFINITE) waits for signal
+}
+```
+
+**epoll (Windows adaptation)**: Windows has no epoll; `src/utils/src/windows/epoll.rs` implements equivalent functionality via `WaitForMultipleObjects`, supporting only EventFd-type file descriptors (via registry lookup for the corresponding HANDLE).
+
+### 3.9 hvf — macOS Hypervisor.framework Bindings
+
+**Location**: `src/hvf/src/`
+
+Apple Silicon (M-series) uses Hypervisor.framework as the underlying virtualization API, providing capabilities similar to KVM but with a completely different interface. The `hvf` crate provides safe Rust bindings.
+
+### 3.10 rutabaga_gfx — GPU Virtualization
+
+**Location**: `src/rutabaga_gfx/`
+
+The core library for virtual GPU, supporting two backends:
+- **Venus**: Vulkan-over-virtio, forwarding guest Vulkan API calls to the host GPU
+- **Native Context**: Directly exposes host GPU contexts to the guest, used for gaming (muvm) scenarios
+
+This is the most complex optional component in libkrun, supported only on Linux and macOS.
+
+### 3.11 smbios — SMBIOS Table Construction
+
+**Location**: `src/smbios/`
+
+SMBIOS (System Management BIOS) is the standard by which firmware reports hardware information to the operating system. libkrun generates a minimal SMBIOS 3.0 table, allowing the guest kernel to correctly identify that it's running in a virtual machine and obtain basic "hardware" descriptions.
 
 ---
 
-## Technical Value
+## 4. libkrunfw: The Kernel as a Dynamic Library
 
-### 1. Extremely Low Barrier to Entry
+### 4.1 Design Philosophy
 
-No need to understand KVM ioctls, QEMU configuration, or any virtualization details. A single C function call can start an isolated VM. This allows projects like [crun](https://github.com/containers/crun), [krunkit](https://github.com/containers/krunkit), and [muvm](https://github.com/AsahiLinux/muvm) to easily gain virtualization isolation capabilities.
+libkrunfw solves a fundamental problem: libkrun needs a kernel, but cannot assume a kernel file exists on disk. The solution is to make the kernel part of a dynamic library.
 
-### 2. Fast Boot Time
+```
+libkrunfw.so.5 internal structure:
+┌──────────────────────────────────┐
+│  ELF header + dynamic link info  │
+├──────────────────────────────────┤
+│  .text section: krunfw_get_kernel() │ ← function returning kernel pointer
+│                 krunfw_get_initrd() │
+├──────────────────────────────────┤
+│  .data section: vmlinux binary   │ ← complete Linux kernel image (~20MB)
+│                 initrd.img       │ ← minimal initrd (TEE variant)
+└──────────────────────────────────┘
+```
 
-Since the kernel is already mapped into memory through the dynamic linker, disk read time is eliminated. Combined with the kernel's minimized configuration, the entire VM boot time can be controlled at the millisecond level.
+When the OS dynamic linker loads `libkrunfw.so.5`, the kernel image is directly mmap'd into the process address space. libkrun receives the pointer and uses `GuestMemoryMmap::write()` to copy this memory into guest physical memory—zero file I/O, zero disk latency.
 
-### 3. Strong Security Isolation
+### 4.2 TSI Kernel Patches
 
-Compared to namespace isolation, libkrun provides hardware-level isolation boundaries. Even if the guest kernel has vulnerabilities, attackers need to break through the hypervisor layer to affect the host.
+The kernel in libkrunfw contains several critical patches:
 
-### 4. TSI Network Innovation
+**TSI patches** modify the Linux socket system call path. When a guest process calls `connect()`, `bind()`, `sendto()`, or other socket system calls, the TSI kernel code checks the target address family (AF_INET, AF_INET6, AF_UNIX). If it matches, the request is serialized into a TSI protocol message, sent via `/dev/vsock` to the VMM-side TSI proxy, which then performs the real socket operation on the host:
 
-Traditional VMs require virtual NICs + userspace network proxies (like passt/gvproxy) for networking, with complex configuration. TSI intercepts socket system calls in the guest kernel and transparently forwards network requests to the VMM, without any virtual network devices, greatly simplifying network configuration.
+```
+Guest: connect(fd, {AF_INET, 8.8.8.8, 53}, len)
+    ↓ TSI kernel intercepts
+vsock message: {op: CONNECT, addr: 8.8.8.8:53}
+    ↓ VMM TSI proxy receives
+host: real_connect(8.8.8.8:53)
+    ↓ returns result
+vsock message: {op: CONNECT_REPLY, errno: 0}
+    ↓ TSI kernel returns result to guest process
+Guest: connect() returns 0 (success)
+```
 
-### 5. Cross-Platform Capability
+From the guest process's perspective, it is completely unaware of this proxy—transparency is TSI's core value.
 
-The same API uses KVM on Linux, HVF on macOS, and WHPX on Windows, with upper-layer applications unaware of underlying differences.
+### 4.3 Multiple Variants
+
+| Variant | Feature | Special Kernel Config |
+|---------|---------|----------------------|
+| Standard | General virtualization | TSI + minimized |
+| SEV | AMD memory encryption | SEV/SEV-ES/SEV-SNP support |
+| TDX | Intel Trust Domain | TDX guest support, single vCPU, ≤3072MB |
+| EFI | UEFI boot | Bundled OVMF/EDK2 firmware (macOS only) |
 
 ---
 
-## Limitations
+## 5. The Windows WHPX Backend: From Zero to Linux Boot
 
-### Technical Limitations
+The Windows WHPX backend is the last platform support implemented in libkrun, and the most engineering-intensive. This section documents every critical problem we solved during implementation.
 
-**1. Dependency on Custom Kernel**
-Core features like TSI require the custom kernel in libkrunfw; standard distribution kernels cannot be used. This means kernel version and features are determined by libkrunfw, and users cannot freely choose.
+### 5.1 WHPX API Overview
 
-**2. Limited Workload Compatibility**
-libkrun is designed to run single processes, not general-purpose VMs. It does not support:
-- Workloads requiring special kernel modules
-- OS installations requiring UEFI/BIOS (except EFI variant)
-- Scenarios requiring PCI passthrough
-
-**3. CPU Count Ceiling**
-The libkrunfw kernel limits to a maximum of 8 vCPUs, unsuitable for high-concurrency compute-intensive scenarios.
-
-**4. TDX Variant Memory Limit**
-The Intel TDX variant supports a maximum of 3072MB memory and 1 vCPU, with significant limitations.
-
-### Security Model Limitations
-
-libkrun's security model treats the guest and VMM as the same security context. Host resources accessible to the VMM can theoretically be accessed by the guest through the VMM. To achieve true isolation, restrictions must be applied to the VMM process itself at the host level (such as Linux namespaces).
-
-### Platform Limitations
-
-- **Windows support is still experimental**: WHPX backend is under development
-- **macOS only supports ARM64**: x86_64 macOS is not supported (HVF limitation)
-- **Linux requires KVM support**: Cannot be used in VMs or environments without KVM
-
----
-
-## WHPX: Enabling libkrun on Windows
-
-### What is WHPX?
-
-**Windows Hypervisor Platform (WHPX)** is a userspace virtualization API introduced by Microsoft in Windows 10 version 2004, exposed to applications through `WinHvPlatform.dll`. It is the userspace interface to Hyper-V, similar to Linux's KVM and macOS's HVF.
+Windows Hypervisor Platform (WHPX) is the user-mode interface to Hyper-V, available since Windows 10 2004 via `WinHvPlatform.dll`. Unlike KVM (kernel ioctls), WHPX is a pure user-mode API with a higher-level abstraction.
 
 ```
-Windows Application
-      ↓
-WinHvPlatform API (userspace)
-      ↓
-Hyper-V Hypervisor (kernel)
-      ↓
-Hardware Virtualization (Intel VT-x / AMD-V)
+Application (libkrun)
+    ↓ C API
+WinHvPlatform.dll (user mode)
+    ↓ IOCTL
+hvax64.sys (Hyper-V component)
+    ↓ VMX/SVM
+Hardware (Intel VT-x / AMD-V)
 ```
 
-### WHPX Core APIs
+**Core WHPX Objects:**
+- **Partition**: Corresponds to a VM, containing guest memory mappings and a vCPU collection
+- **vCPU**: Virtual processor with its own register state
+- **GPA Range**: Guest Physical Address range, mapped to host virtual memory
+
+**Core WHPX APIs:**
 
 | API | Purpose |
 |-----|---------|
@@ -191,12 +476,10 @@ Hardware Virtualization (Intel VT-x / AMD-V)
 | `WHvDeleteVirtualProcessor` | Destroy vCPU |
 | `WHvDeletePartition` | Destroy partition |
 
-### VM Exit Handling Mechanism
-
-WHPX uses a **synchronous VM exit** model: each time the guest executes an operation requiring VMM intervention, `WHvRunVirtualProcessor` returns, the VMM handles it, and then calls again to continue execution.
+WHPX uses a **synchronous VM exit** model: each time the guest executes an operation requiring VMM intervention, `WHvRunVirtualProcessor` returns, the VMM handles it, and then calls again to continue execution:
 
 ```rust
-// Core logic of WHPX vCPU run loop in libkrun
+// Core WHPX vCPU run loop in libkrun
 pub fn run(&mut self) -> io::Result<VcpuExit<'_>> {
     let mut exit_context = WHV_RUN_VP_EXIT_CONTEXT::default();
 
@@ -209,7 +492,6 @@ pub fn run(&mut self) -> io::Result<VcpuExit<'_>> {
         )?;
     }
 
-    // Parse exit reason
     match exit_context.ExitReason {
         WHV_RUN_VP_EXIT_REASON_MEMORY_ACCESS => { /* MMIO handling */ }
         WHV_RUN_VP_EXIT_REASON_X64_IO_PORT_ACCESS => { /* IO port handling */ }
@@ -220,25 +502,7 @@ pub fn run(&mut self) -> io::Result<VcpuExit<'_>> {
 }
 ```
 
-### libkrun WHPX Backend Architecture
-
-To support libkrun on Windows, we implemented the following architecture:
-
-```
-Vcpu::run() [vstate.rs]
-    ↓ loops calling
-WhpxVcpu::run() [whpx_vcpu.rs]
-    ↓ calls WHvRunVirtualProcessor
-    ↓ returns VcpuExit enum
-Vcpu::run_emulation()
-    ↓ dispatches based on exit type
-    ├── MmioRead/MmioWrite → mmio_bus (device emulation)
-    ├── IoPortRead/IoPortWrite → mmio_bus (IO port devices)
-    ├── Halted → VcpuEmulation::Halted (stop)
-    └── Shutdown → VcpuEmulation::Stopped (stop)
-```
-
-The **VcpuExit enum** design uses Rust's lifetime parameters to ensure memory safety of MMIO/IO data buffers:
+The **VcpuExit enum** design uses Rust lifetime parameters to guarantee memory safety of MMIO/IO data buffers:
 
 ```rust
 pub enum VcpuExit<'a> {
@@ -251,7 +515,220 @@ pub enum VcpuExit<'a> {
 }
 ```
 
-### Comparison with KVM/HVF
+### 5.2 WHV_REGISTER_VALUE Initialization Trap
+
+The first serious bug encountered during implementation: `ACCESS_VIOLATION` crash.
+
+**Root Cause**: `WHV_REGISTER_VALUE` is a 16-byte union containing various register types (`Reg64`, `Fp`, `Reg128`, etc.). Rust's `WHV_REGISTER_VALUE { Reg64: val }` syntax only initializes the low 8 bytes; the high 8 bytes are undefined memory. `WHvSetVirtualProcessorRegisters` reads the complete 16 bytes, and the garbage data corrupts WHPX's internal state.
+
+**Fix**:
+
+```rust
+// Wrong (high 8 bytes uninitialized)
+let value = WHV_REGISTER_VALUE { Reg64: rip_value };
+
+// Correct
+let mut value: WHV_REGISTER_VALUE = unsafe { std::mem::zeroed() };
+unsafe { value.Reg64 = rip_value; }
+```
+
+### 5.3 IO Instruction Emulation: InstructionByteCount = 0 Problem
+
+When WHPX handles IO port access (`OUT`/`IN` instructions), it sometimes sets `InstructionByteCount` to 0, indicating software emulation is needed. In this mode, directly modifying `RIP` (instruction pointer) via `WHvSetVirtualProcessorRegisters` is silently ignored by WHPX, causing the vCPU to forever re-execute the same instruction in an infinite loop.
+
+**Fix**: Use `WHvEmulatorTryIoEmulation`. WHPX provides a software emulator API specifically for this situation:
+
+```rust
+// For IO exits with InstructionByteCount == 0, use the emulator
+unsafe {
+    WHvEmulatorTryIoEmulation(
+        self.emulator,
+        context_ptr,           // context passed to callbacks
+        &exit_context.VpContext,
+        &io_port_context,
+    )?;
+}
+// The emulator reads instruction bytes, executes IO, and updates RIP via callbacks
+// WHvSetVirtualProcessorRegisters(RIP) is correctly executed on this path
+```
+
+The emulator requires 5 callback functions (IO handling, memory read/write, register read/write), registered via `WHvEmulatorCreateEmulator`.
+
+### 5.4 Interrupt Injection and HLT Idle Loop
+
+The Linux kernel executes the `HLT` instruction when no tasks are ready, putting the CPU to sleep and waiting for an interrupt. WHPX returns `HLT` to the VMM as a VM exit.
+
+The problem: from WHPX's perspective, the vCPU has already **returned to user mode** (WHvRunVirtualProcessor has returned). Even if a device thread calls `WHvRequestInterrupt` to inject an interrupt, WHPX cannot automatically "wake" the vCPU—because it isn't running.
+
+**Solution**: Shared `EventFd` + timeout wait:
+
+```rust
+// builder.rs: WhpxIrqChip
+fn set_irq(&self, irq_line: Option<u32>, ...) {
+    // 1. Inject interrupt via WHPX virtual APIC
+    WHvRequestInterrupt(self.partition, &interrupt, size)?;
+    // 2. Notify vCPU thread to exit HLT wait and re-enter WHvRunVirtualProcessor
+    let _ = self.irq_pending_evt.write(1);
+}
+
+// vstate.rs: vCPU thread
+Ok(VcpuEmulation::Halted) => {
+    if let Some(ref evt) = self.irq_pending_evt {
+        // Wait up to 5ms to reduce busy-wait CPU overhead
+        evt.wait_timeout(5);
+        // Re-enter WHvRunVirtualProcessor; WHPX will deliver the virtual APIC interrupt
+        continue;
+    }
+}
+```
+
+`EventFd::wait_timeout()` is implemented using `WaitForSingleObject(handle, 5)`, avoiding busy-wait CPU waste while guaranteeing interrupt latency does not exceed 5ms.
+
+### 5.5 PIT 8254 and TSC Calibration
+
+The Linux kernel uses the PIT 8254 timer to calibrate TSC clock frequency during early boot. The calibration flow:
+
+1. Program PIT counter 2 (port 0x42)
+2. Read the counter value while recording TSC cycle count
+3. Calculate TSC frequency based on PIT's known frequency (1.193182 MHz)
+
+If no device responds to PIT ports (0x40-0x43), calibration fails:
+
+```
+[0.000000] tsc: Fast TSC calibration failed
+[0.000000] [Firmware Bug]: TSC doesn't count with P0 frequency!
+← kernel hangs here, waiting for IRQ 0 (PIT clock interrupt) to advance jiffies
+```
+
+**Implementation**: `src/devices/src/legacy/x86_64/pit.rs`
+
+PIT emulation calculates counter values based on wall clock time:
+
+```rust
+fn current_count(&self) -> u16 {
+    let reload = if self.reload == 0 { 65536u64 } else { self.reload as u64 };
+    let ticks = self.start.elapsed().as_micros() as u64 * PIT_CLOCK_HZ / 1_000_000;
+    ((reload - (ticks % reload)) & 0xffff) as u16
+}
+```
+
+Additionally, `attach_legacy_devices()` starts a background timer thread that injects IRQ 0 at 100 Hz:
+
+```rust
+std::thread::Builder::new()
+    .name("pit-timer".into())
+    .spawn(move || {
+        loop {
+            std::thread::sleep(Duration::from_millis(10)); // 100 Hz
+            intc.lock().unwrap().set_irq(Some(0), None)?;
+        }
+    })?;
+```
+
+### 5.6 8259A PIC Stub
+
+Before switching to APIC mode, the Linux kernel initializes the 8259A PIC (ports 0x20-0x21 master PIC, 0xA0-0xA1 slave PIC). Without a corresponding device, the kernel's ICW (Initialization Control Word) writes are ignored, and some kernel versions exhibit abnormal behavior at this point.
+
+The implementation is intentionally minimal (`src/devices/src/legacy/x86_64/pic.rs`):
+
+```rust
+impl BusDevice for Pic {
+    fn read(&mut self, _: u64, offset: u64, data: &mut [u8]) {
+        // return 0 (no interrupt pending)
+        if offset < 2 { data[0] = self.regs[offset as usize]; }
+    }
+    fn write(&mut self, _: u64, offset: u64, data: &[u8]) {
+        // silently absorb all ICW/OCW initialization writes
+        if offset < 2 { self.regs[offset as usize] = data[0]; }
+    }
+}
+```
+
+### 5.7 APIC Write Trap Handling
+
+In certain configurations, WHPX reports APIC register write operations as VM exits (`WHvRunVpExitReasonX64ApicWriteTrap`). These exits are informational—the virtual APIC has already completed the write operation, and the VMM needs no additional action.
+
+The original implementation treated these exits as fatal errors, stopping the VM. The fix changes them to a no-op:
+
+```rust
+reason if reason == WHvRunVpExitReasonX64ApicWriteTrap => {
+    // Virtual APIC has handled the write; VMM need not intervene, continue execution
+}
+```
+
+### 5.8 ACPI Shutdown
+
+The Linux `poweroff` command triggers ACPI shutdown by writing a specific value to the PM1a_CNT register (port 0x604). Detecting the SLP_EN bit (bit 13) causes the vCPU to return `VcpuEmulation::Stopped`:
+
+```rust
+VcpuExit::IoPortWrite(port, data) => {
+    // ...
+    let acpi_shutdown = port == 0x604
+        && data.len() >= 2
+        && (u16::from_le_bytes([data[0], data[1]]) & 0x2000) != 0;
+    if let Ok(()) = self.whpx_vcpu.complete_io_write() {
+        if acpi_shutdown {
+            info!("Guest requested ACPI shutdown");
+            return VcpuEmulation::Stopped; // clean exit
+        }
+    }
+}
+```
+
+### 5.9 virtio-fs on Windows
+
+The challenge with virtiofs on Windows is mapping FUSE protocol operations to Win32 file APIs. Key difficulties:
+
+1. **Symbolic links**: Windows symbolic links require administrator privileges or developer mode, plus special flags like `FILE_FLAG_OPEN_REPARSE_POINT`
+2. **File synchronization**: `FUSE_FSYNC` maps to `FlushFileBuffers()`
+3. **Directory traversal**: `FindFirstFileW`/`FindNextFileW` replaces `readdir`
+4. **Permission model**: Mapping between Windows ACLs and Unix permission bits
+5. **Disk space**: `GetDiskFreeSpaceExW` replaces `statvfs`
+
+The complete implementation (`src/devices/src/virtio/fs/windows/passthrough.rs`, ~2,500 lines) supports all core FUSE operations, including read/write, directory operations, symbolic links, fsync, and fallocate (sparse files).
+
+### 5.10 TSI on Windows
+
+The Windows TSI implementation spans 5 phases (~2,100 lines of code):
+
+- **Phase 1**: `socket_wrapper.rs`—Rust abstraction over Windows Socket API (WSA), handling `WSAStartup`/`WSACleanup` lifecycle
+- **Phase 2**: `stream_proxy.rs`—TCP STREAM proxy, handling connect/accept/send/recv operations
+- **Phase 3**: `dgram_proxy.rs`—UDP DGRAM proxy, handling sendto/recvfrom
+- **Phase 4**: `pipe_proxy.rs`—Named Pipe proxy, as an AF_UNIX replacement (Windows doesn't support Unix sockets)
+- **Phase 5**: `muxer.rs` integration—integrating the above proxies into the vsock multiplexer
+
+Credit-based flow control prevents the guest from sending too fast and overflowing VMM buffers:
+
+```rust
+struct ConnectionState {
+    tx_credit: u32,      // sendable bytes (guest→host)
+    rx_credit: u32,      // receivable bytes (host→guest)
+}
+// guest subtracts N from tx_credit for each N bytes sent
+// host sends CREDIT_UPDATE message to replenish credit after processing
+```
+
+### 5.11 End-to-End Validation
+
+With all components in place, Linux kernel 5.10 successfully booted to user space on WHPX. The validation test (`test_whpx_real_kernel_e2e`):
+
+1. Load Linux 5.10 vmlinux ELF (20.3 MB) into 256MB guest memory
+2. Configure x86_64 boot state (zero page + long mode registers)
+3. Kernel command line: `earlycon=uart8250,io,0x3f8` redirects early logs to COM1
+4. A COM1 capture device records all guest output
+5. Assert that `"Linux version"` banner appears within 90 seconds
+
+```
+Test output:
+test windows::vstate::tests::test_whpx_real_kernel_e2e ... ok
+finished in 90.02s
+```
+
+Linux kernel boots successfully on WHPX, printing its version banner.
+
+---
+
+## 6. Platform Comparison
 
 | Feature | KVM (Linux) | HVF (macOS) | WHPX (Windows) |
 |---------|-------------|-------------|----------------|
@@ -262,26 +739,57 @@ pub enum VcpuExit<'a> {
 | Register Access | `KVM_GET/SET_REGS` | `hv_vcpu_get/set_reg` | `WHvGet/SetVirtualProcessorRegisters` |
 | Minimum Requirements | Linux + KVM module | macOS 11+ ARM64 | Windows 10 2004+ + Hyper-V |
 
-### Significance of Windows Support
+---
 
-The WHPX backend implementation makes libkrun a truly cross-platform virtualization library:
+## 7. Current Status and Roadmap
 
-1. **Windows Container Ecosystem**: Provides virtualization isolation capabilities for container runtimes on Windows (like Windows version of crun)
-2. **Development Environment Consistency**: Developers can use the same isolation mechanism on Windows as on Linux/macOS
-3. **a3s box Cross-Platform**: Enables a3s box to provide consistent security isolation experience on Windows as on other platforms
+### 7.1 Feature Completeness
+
+| Feature | Linux/macOS | Windows |
+|---------|-------------|---------|
+| Hardware virtualization | yes (KVM/HVF) | yes (WHPX) |
+| virtio-console | yes | yes |
+| virtio-block | yes | yes |
+| virtio-fs | yes | yes |
+| virtio-net | yes | yes (TcpStream backend) |
+| virtio-vsock + TSI | yes | yes (TCP/UDP/Named Pipe) |
+| virtio-balloon | yes | yes (free-page + page-hinting) |
+| virtio-rng | yes | yes (BCryptGenRandom) |
+| virtio-snd | yes | partial (NullBackend only) |
+| virtio-gpu | yes | not yet |
+| Interrupt injection | yes | yes |
+| Linux boot validation | yes | yes (5.10 verified) |
+
+### 7.2 Roadmap
+
+**Near-term**:
+- Windows multi-vCPU (SMP boot protocol INIT/SIPI)
+- libkrunfw-windows (built-in kernel, eliminating the need for users to provide kernels manually)
+- ACPI table generation (MADT/FADT), improving kernel APIC initialization compatibility
+
+**Medium-term**:
+- Windows virtio-gpu (WGPU or D3D12 backend)
+- Windows virtio-snd (WASAPI backend)
+- Windows ARM64 (pending Microsoft opening WHPX ARM64 partition type)
+
+**Long-term**:
+- SEV-SNP live migration
+- Confidential Container deep integration
 
 ---
 
-## Summary
+## 8. Summary
 
-libkrun and libkrunfw together form an elegant lightweight virtualization solution:
+libkrun's elegance lies in its **layered design**: each layer does exactly one thing well, and layers are decoupled through clean interfaces.
 
-- **libkrunfw** solves the "where does the kernel come from" problem—packaging the kernel as a dynamic library, using the linker for zero-overhead loading
-- **libkrun** solves the "how to use virtualization" problem—wrapping complex VMM into a simple C API
-- **WHPX backend** solves the "what about Windows" problem—implementing virtualization capabilities equivalent to KVM/HVF through Windows Hypervisor Platform API
+- `libkrun` (API layer) hides all platform differences, giving upper layers a unified C API
+- `vmm` (VMM core) manages VM lifecycle, providing a unified abstraction over different hypervisor backends
+- `devices` (device layer) implements all virtio devices, inserted into the IO/MMIO bus via the `BusDevice` trait
+- `arch` (architecture layer) encapsulates boot differences across x86_64/aarch64/RISC-V
+- Each hypervisor backend (KVM/HVF/WHPX) only needs to implement vCPU execution and memory mapping
 
-This design philosophy—**minimization, self-containment, cross-platform**—makes libkrun an important infrastructure in the container security isolation field.
+The Windows backend implementation—particularly PIT/PIC emulation, the interrupt injection architecture, and TSI's Windows adaptation—demonstrates this layered design's extensibility: adding complete new platform support without modifying any upper-layer interface, validated by end-to-end boot testing with Linux 5.10.
 
 ---
 
-*This article is based on libkrun source code analysis. Some implementation details are subject to the code.*
+*Based on libkrun source code analysis (as of 2026-03-05). Key modules: `src/vmm`, `src/devices`, `src/arch`, `src/utils`.*
