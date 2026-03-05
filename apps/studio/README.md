@@ -94,7 +94,7 @@ studio/
 │   ├── sidecar/              # SEA binaries (output)
 │   └── tauri.conf.json       # Tauri configuration
 ├── sidecar/                  # NestJS backend (embedded)
-│   ├── apps/api/             # Main API application
+│   ├── api/                  # Main API application
 │   │   ├── src/
 │   │   │   ├── modules/      # Feature modules (DDD)
 │   │   │   ├── shared/       # Shared utilities
@@ -139,14 +139,15 @@ pnpm dev
 - Hot reload enabled
 - No backend (API calls will fail)
 
-#### 2. Full Stack (Frontend + Backend)
+#### 2. Full Stack (Frontend + Backend + Tauri)
 ```bash
 pnpm dev:all
 ```
-- Starts both UI and NestJS sidecar concurrently
-- UI: `http://localhost:8889`
-- API: `http://localhost:3000`
+- Starts NestJS sidecar backend
+- Starts Tauri desktop app (which auto-starts frontend)
+- Backend API: `http://localhost:3000`
 - Swagger: `http://localhost:3000/api/docs`
+- Frontend: Embedded in Tauri window (`http://localhost:1420`)
 
 #### 3. Backend Only
 ```bash
@@ -206,9 +207,9 @@ This will:
 - ✅ RESTful API with Swagger docs
 - ✅ Hot reload in development
 - ✅ Single executable packaging
+- ✅ Frontend-backend integration demo (Order management)
 
 ### Planned
-- 🚧 Order management demo (frontend integration)
 - 🚧 Persistent storage (SQLite/PostgreSQL)
 - 🚧 Redis caching layer
 - 🚧 Authentication & authorization

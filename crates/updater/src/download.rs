@@ -38,8 +38,8 @@ pub async fn download_and_extract(
         .map_err(|e| anyhow::anyhow!("Failed to read download body: {}", e))?;
 
     // Create a cryptographically unique temp directory (auto-cleaned on drop)
-    let temp_dir = TempDir::new()
-        .map_err(|e| anyhow::anyhow!("Failed to create temp directory: {}", e))?;
+    let temp_dir =
+        TempDir::new().map_err(|e| anyhow::anyhow!("Failed to create temp directory: {}", e))?;
 
     // Decompress gzip and extract tar
     extract_tar_gz(&bytes, temp_dir.path(), binary_name)?;
