@@ -28,3 +28,6 @@
 [submodule "crates/dev"]
 	path = crates/dev
 	url = git@github.com:A3S-Lab/Dev.git
+[submodule "apps/studio/sidecar"]
+	path = apps/studio/sidecar
+	url = git@github.com:A3S-Lab/nestify.git
