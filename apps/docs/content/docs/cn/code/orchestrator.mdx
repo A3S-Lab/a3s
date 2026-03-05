@@ -12,12 +12,14 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 Agent Orchestrator 是一个主子智能体协调器，基于 a3s-event 实现统一的事件总线，支持实时监控所有子智能体的行为、规划和执行，并提供动态控制能力。
 
 <Callout type="info">
-  **版本要求**: v1.0.4+
+  **版本要求**: v1.1.0+
 </Callout>
 
 ## 核心特性
 
 - **实时监控** - 监控所有 SubAgent 的生命周期、状态变更、进度和工具执行
+- **任务列表查询** - 实时查看所有 SubAgent 的任务列表和当前活动 ⭐ 新增
+- **活动跟踪** - 追踪每个 SubAgent 的当前活动（调用工具、请求 LLM、等待控制） ⭐ 新增
 - **动态控制** - 暂停、恢复、取消 SubAgent，调整参数，注入新提示词
 - **事件驱动** - 基于 a3s-event 的统一事件总线
 - **可插拔通讯** - 默认内存事件通讯，支持自定义 NATS provider
@@ -222,6 +224,175 @@ handle.inject_prompt("Please focus on error handling").await?;
 
 </Step>
 </Steps>
+
+## 实时监控 API ⭐ v1.1.0 新增
+
+主智能体可以实时查看所有 SubAgent 的任务列表和当前活动。
+
+<Tabs items={['Rust', 'Python', 'TypeScript']}>
+<Tab value="Rust">
+
+```rust
+// 获取所有 SubAgent 信息列表
+let subagents = orchestrator.list_subagents().await;
+for info in subagents {
+    println!("SubAgent: {}", info.id);
+    println!("  Type: {}", info.agent_type);
+    println!("  State: {}", info.state);
+    println!("  Description: {}", info.description);
+
+    if let Some(activity) = info.current_activity {
+        println!("  Current Activity: {:?}", activity);
+    }
+}
+
+// 获取特定 SubAgent 的详细信息
+if let Some(info) = orchestrator.get_subagent_info("subagent-1").await {
+    println!("Created at: {}", info.created_at);
+    println!("Updated at: {}", info.updated_at);
+}
+
+// 获取所有活跃 SubAgent 的当前活动
+let activities = orchestrator.get_active_activities().await;
+for (id, activity) in activities {
+    match activity {
+        SubAgentActivity::CallingTool { tool_name, args } => {
+            println!("{} is calling tool: {}", id, tool_name);
+        }
+        SubAgentActivity::RequestingLlm { message_count } => {
+            println!("{} is requesting LLM ({} messages)", id, message_count);
+        }
+        SubAgentActivity::WaitingForControl { reason } => {
+            println!("{} is waiting: {}", id, reason);
+        }
+        SubAgentActivity::Idle => {
+            println!("{} is idle", id);
+        }
+    }
+}
+
+// 获取所有 SubAgent 状态
+let states = orchestrator.get_all_states().await;
+for (id, state) in states {
+    println!("{}: {:?}", id, state);
+}
+
+// 获取活跃数量
+let count = orchestrator.active_count().await;
+println!("Active SubAgents: {}", count);
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+# 获取所有 SubAgent 信息列表
+subagents = orch.list_subagents()
+for info in subagents:
+    print(f"SubAgent: {info.id}")
+    print(f"  Type: {info.agent_type}")
+    print(f"  State: {info.state}")
+    print(f"  Description: {info.description}")
+
+    if info.current_activity:
+        print(f"  Current Activity: {info.current_activity.activity_type}")
+
+# 获取特定 SubAgent 的详细信息
+info = orch.get_subagent_info("subagent-1")
+if info:
+    print(f"Created at: {info.created_at}")
+    print(f"Updated at: {info.updated_at}")
+
+# 获取所有活跃 SubAgent 的当前活动
+activities = orch.get_active_activities()
+for subagent_id, activity in activities:
+    if activity.activity_type == "calling_tool":
+        print(f"{subagent_id} is calling a tool")
+    elif activity.activity_type == "requesting_llm":
+        print(f"{subagent_id} is requesting LLM")
+
+# 获取所有 SubAgent 状态
+states = orch.get_all_states()
+for subagent_id, state in states:
+    print(f"{subagent_id}: {state}")
+
+# 获取活跃数量
+count = orch.active_count()
+print(f"Active SubAgents: {count}")
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+// 获取所有 SubAgent 信息列表
+const subagents = orch.listSubagents();
+for (const info of subagents) {
+  console.log(`SubAgent: ${info.id}`);
+  console.log(`  Type: ${info.agentType}`);
+  console.log(`  State: ${info.state}`);
+  console.log(`  Description: ${info.description}`);
+
+  if (info.currentActivity) {
+    console.log(`  Current Activity: ${info.currentActivity.activityType}`);
+  }
+}
+
+// 获取特定 SubAgent 的详细信息
+const info = orch.getSubagentInfo('subagent-1');
+if (info) {
+  console.log(`Created at: ${info.createdAt}`);
+  console.log(`Updated at: ${info.updatedAt}`);
+}
+
+// 获取所有活跃 SubAgent 的当前活动
+const activities = orch.getActiveActivities();
+for (const entry of activities) {
+  if (entry.activity.activityType === 'calling_tool') {
+    console.log(`${entry.id} is calling a tool`);
+  } else if (entry.activity.activityType === 'requesting_llm') {
+    console.log(`${entry.id} is requesting LLM`);
+  }
+}
+
+// 获取所有 SubAgent 状态
+const states = orch.getAllStates();
+for (const entry of states) {
+  console.log(`${entry.id}: ${entry.state}`);
+}
+
+// 获取活跃数量
+const count = orch.activeCount();
+console.log(`Active SubAgents: ${count}`);
+```
+
+</Tab>
+</Tabs>
+
+### SubAgent 活动类型
+
+SubAgent 在执行过程中会有以下活动类型：
+
+| 活动类型 | 描述 | 数据 |
+|---------|------|------|
+| `Idle` | 空闲状态 | - |
+| `CallingTool` | 正在调用工具 | 工具名称和参数 |
+| `RequestingLlm` | 正在请求 LLM | 消息数量 |
+| `WaitingForControl` | 等待控制信号 | 等待原因 |
+
+### 监控 API 列表
+
+| API | 描述 |
+|-----|------|
+| `list_subagents()` | 获取所有 SubAgent 信息列表 |
+| `get_subagent_info(id)` | 获取特定 SubAgent 详细信息 |
+| `get_active_activities()` | 获取所有活跃 SubAgent 的当前活动 |
+| `get_all_states()` | 获取所有 SubAgent 状态 |
+| `active_count()` | 获取活跃 SubAgent 数量 |
+| `pause_subagent(id)` | 暂停指定 SubAgent |
+| `resume_subagent(id)` | 恢复指定 SubAgent |
+| `cancel_subagent(id)` | 取消指定 SubAgent |
+| `wait_all()` | 等待所有 SubAgent 完成 |
 
 ## 配置选项
 

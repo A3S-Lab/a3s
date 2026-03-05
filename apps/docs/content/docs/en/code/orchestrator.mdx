@@ -12,12 +12,14 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 Agent Orchestrator is a main-sub agent coordinator built on a3s-event, providing a unified event bus for real-time monitoring of all sub-agent behaviors, planning, and execution, with dynamic control capabilities.
 
 <Callout type="info">
-  **Version Requirement**: v1.0.4+
+  **Version Requirement**: v1.1.0+
 </Callout>
 
 ## Core Features
 
 - **Real-time Monitoring** - Monitor all SubAgent lifecycles, state changes, progress, and tool executions
+- **Task List Query** - View all SubAgent task lists and current activities in real-time ⭐ New
+- **Activity Tracking** - Track each SubAgent's current activity (calling tools, requesting LLM, waiting for control) ⭐ New
 - **Dynamic Control** - Pause, resume, cancel SubAgents, adjust parameters, inject new prompts
 - **Event-Driven** - Unified event bus based on a3s-event
 - **Pluggable Communication** - Default memory-based events, supports custom NATS provider
@@ -222,6 +224,175 @@ Inject a new prompt into a running SubAgent.
 
 </Step>
 </Steps>
+
+## Real-time Monitoring API ⭐ v1.1.0 New
+
+The main agent can view all SubAgent task lists and current activities in real-time.
+
+<Tabs items={['Rust', 'Python', 'TypeScript']}>
+<Tab value="Rust">
+
+```rust
+// Get all SubAgent information list
+let subagents = orchestrator.list_subagents().await;
+for info in subagents {
+    println!("SubAgent: {}", info.id);
+    println!("  Type: {}", info.agent_type);
+    println!("  State: {}", info.state);
+    println!("  Description: {}", info.description);
+
+    if let Some(activity) = info.current_activity {
+        println!("  Current Activity: {:?}", activity);
+    }
+}
+
+// Get specific SubAgent details
+if let Some(info) = orchestrator.get_subagent_info("subagent-1").await {
+    println!("Created at: {}", info.created_at);
+    println!("Updated at: {}", info.updated_at);
+}
+
+// Get all active SubAgent activities
+let activities = orchestrator.get_active_activities().await;
+for (id, activity) in activities {
+    match activity {
+        SubAgentActivity::CallingTool { tool_name, args } => {
+            println!("{} is calling tool: {}", id, tool_name);
+        }
+        SubAgentActivity::RequestingLlm { message_count } => {
+            println!("{} is requesting LLM ({} messages)", id, message_count);
+        }
+        SubAgentActivity::WaitingForControl { reason } => {
+            println!("{} is waiting: {}", id, reason);
+        }
+        SubAgentActivity::Idle => {
+            println!("{} is idle", id);
+        }
+    }
+}
+
+// Get all SubAgent states
+let states = orchestrator.get_all_states().await;
+for (id, state) in states {
+    println!("{}: {:?}", id, state);
+}
+
+// Get active count
+let count = orchestrator.active_count().await;
+println!("Active SubAgents: {}", count);
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+# Get all SubAgent information list
+subagents = orch.list_subagents()
+for info in subagents:
+    print(f"SubAgent: {info.id}")
+    print(f"  Type: {info.agent_type}")
+    print(f"  State: {info.state}")
+    print(f"  Description: {info.description}")
+
+    if info.current_activity:
+        print(f"  Current Activity: {info.current_activity.activity_type}")
+
+# Get specific SubAgent details
+info = orch.get_subagent_info("subagent-1")
+if info:
+    print(f"Created at: {info.created_at}")
+    print(f"Updated at: {info.updated_at}")
+
+# Get all active SubAgent activities
+activities = orch.get_active_activities()
+for subagent_id, activity in activities:
+    if activity.activity_type == "calling_tool":
+        print(f"{subagent_id} is calling a tool")
+    elif activity.activity_type == "requesting_llm":
+        print(f"{subagent_id} is requesting LLM")
+
+# Get all SubAgent states
+states = orch.get_all_states()
+for subagent_id, state in states:
+    print(f"{subagent_id}: {state}")
+
+# Get active count
+count = orch.active_count()
+print(f"Active SubAgents: {count}")
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+// Get all SubAgent information list
+const subagents = orch.listSubagents();
+for (const info of subagents) {
+  console.log(`SubAgent: ${info.id}`);
+  console.log(`  Type: ${info.agentType}`);
+  console.log(`  State: ${info.state}`);
+  console.log(`  Description: ${info.description}`);
+
+  if (info.currentActivity) {
+    console.log(`  Current Activity: ${info.currentActivity.activityType}`);
+  }
+}
+
+// Get specific SubAgent details
+const info = orch.getSubagentInfo('subagent-1');
+if (info) {
+  console.log(`Created at: ${info.createdAt}`);
+  console.log(`Updated at: ${info.updatedAt}`);
+}
+
+// Get all active SubAgent activities
+const activities = orch.getActiveActivities();
+for (const entry of activities) {
+  if (entry.activity.activityType === 'calling_tool') {
+    console.log(`${entry.id} is calling a tool`);
+  } else if (entry.activity.activityType === 'requesting_llm') {
+    console.log(`${entry.id} is requesting LLM`);
+  }
+}
+
+// Get all SubAgent states
+const states = orch.getAllStates();
+for (const entry of states) {
+  console.log(`${entry.id}: ${entry.state}`);
+}
+
+// Get active count
+const count = orch.activeCount();
+console.log(`Active SubAgents: ${count}`);
+```
+
+</Tab>
+</Tabs>
+
+### SubAgent Activity Types
+
+SubAgents have the following activity types during execution:
+
+| Activity Type | Description | Data |
+|--------------|-------------|------|
+| `Idle` | Idle state | - |
+| `CallingTool` | Calling a tool | Tool name and arguments |
+| `RequestingLlm` | Requesting LLM | Message count |
+| `WaitingForControl` | Waiting for control signal | Reason |
+
+### Monitoring API List
+
+| API | Description |
+|-----|-------------|
+| `list_subagents()` | Get all SubAgent information list |
+| `get_subagent_info(id)` | Get specific SubAgent details |
+| `get_active_activities()` | Get all active SubAgent activities |
+| `get_all_states()` | Get all SubAgent states |
+| `active_count()` | Get active SubAgent count |
+| `pause_subagent(id)` | Pause specified SubAgent |
+| `resume_subagent(id)` | Resume specified SubAgent |
+| `cancel_subagent(id)` | Cancel specified SubAgent |
+| `wait_all()` | Wait for all SubAgents to complete |
 
 ## Configuration Options
 
