@@ -9,11 +9,7 @@ import { sendToSession } from "@/hooks/use-agent-ws";
 import { agentApi } from "@/lib/agent-api";
 import { cn } from "@/lib/utils";
 import agentModel from "@/models/agent.model";
-import settingsModel, {
-	getSessionRoutingModel,
-	resolveApiKey,
-	resolveBaseUrl,
-} from "@/models/settings.model";
+import settingsModel from "@/models/settings.model";
 import {
 	Ban,
 	ChevronDown,
@@ -21,11 +17,9 @@ import {
 	Cpu,
 	Gauge,
 	Loader2,
-	Shield,
 	Sparkles,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
 import { useSnapshot } from "valtio";
 
 export function SessionStatusBar({
@@ -33,7 +27,7 @@ export function SessionStatusBar({
 	readonlyCwd,
 }: { sessionId: string; readonlyCwd?: boolean }) {
 	const settingsSnap = useSnapshot(settingsModel.state);
-	const { localPrivacyRouting, sessionStatus, sessions, connectionStatus } =
+	const { sessionStatus, sessions, connectionStatus } =
 		useSnapshot(agentModel.state);
 	const session = sessions[sessionId];
 	const pct = Math.round(session?.context_used_percent ?? 0);
@@ -42,8 +36,6 @@ export function SessionStatusBar({
 	const model = session?.model || settingsSnap.defaultModel || "";
 	const [backends, setBackends] = useState<{ id: string; name: string }[]>([]);
 	const [modelOpen, setModelOpen] = useState(false);
-	const [routingSwitching, setRoutingSwitching] = useState(false);
-	const forceLocal = !!localPrivacyRouting[sessionId];
 
 	const modelShort = useMemo(() => {
 		const m = model;
@@ -66,36 +58,6 @@ export function SessionStatusBar({
 	const handleSelectModel = (newModel: string) => {
 		sendToSession(sessionId, { type: "set_model", model: newModel });
 		setModelOpen(false);
-	};
-
-	const handleToggleLocalRouting = async () => {
-		const nextForceLocal = !forceLocal;
-		const target = getSessionRoutingModel(nextForceLocal);
-		if (!target.providerName || !target.modelId) {
-			toast.error("没有可用模型可切换");
-			return;
-		}
-
-		const apiKey = resolveApiKey(target.providerName, target.modelId);
-		const baseUrl = resolveBaseUrl(target.providerName, target.modelId);
-		const fullModel = `${target.providerName}/${target.modelId}`;
-
-		setRoutingSwitching(true);
-		try {
-			await agentApi.configureSession(sessionId, {
-				model: fullModel,
-				api_key: apiKey || undefined,
-				base_url: baseUrl || undefined,
-			});
-			agentModel.setLocalPrivacyRouting(sessionId, nextForceLocal);
-			toast.success(
-				nextForceLocal ? "已启用本地隐私模型" : "已恢复常规模型路由",
-			);
-		} catch (e) {
-			toast.error(`切换失败：${e instanceof Error ? e.message : "后端不可用"}`);
-		} finally {
-			setRoutingSwitching(false);
-		}
 	};
 
 	return (
@@ -163,34 +125,6 @@ export function SessionStatusBar({
 				</div>
 			)}
 
-			<div className="w-px h-3 bg-border" />
-
-			{/* Privacy routing */}
-			<button
-				type="button"
-				className={cn(
-					"flex items-center gap-1 rounded-md border px-2 py-0.5 transition-colors",
-					forceLocal
-						? "border-primary/40 text-primary"
-						: "border-border text-muted-foreground hover:text-foreground",
-				)}
-				title={
-					forceLocal
-						? "当前会话强制使用本地隐私模型"
-						: "当前会话使用常规模型路由"
-				}
-				onClick={handleToggleLocalRouting}
-				disabled={routingSwitching}
-			>
-				{routingSwitching ? (
-					<Loader2 className="size-3 animate-spin" />
-				) : (
-					<Shield className="size-3" />
-				)}
-				<span>{forceLocal ? "本地隐私 ON" : "本地隐私 OFF"}</span>
-			</button>
-
-			<div className="w-px h-3 bg-border" />
 
 			{/* Session status */}
 			<div className="flex items-center gap-1">

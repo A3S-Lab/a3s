@@ -34,7 +34,7 @@
 		--secondary-foreground: 222 30% 28%;
 		--muted: 220 14% 96%;
 		--muted-foreground: 220 13% 52%;
-		--accent: 258 60% 58%;
+		--accent: 199 89% 48%;
 		--accent-foreground: 0 0% 100%;
 		--destructive: 0 78% 55%;
 		--destructive-foreground: 0 0% 100%;
@@ -45,7 +45,7 @@
 
 		/* Charts */
 		--chart-1: 221 83% 53%;
-		--chart-2: 258 60% 58%;
+		--chart-2: 199 89% 48%;
 		--chart-3: 158 64% 40%;
 		--chart-4: 35 95% 52%;
 		--chart-5: 0 78% 55%;
@@ -93,7 +93,7 @@
 
 		/* Brand */
 		--moment-primary: 221 83% 53%;
-		--market-primary: 258 60% 58%;
+		--market-primary: 199 89% 48%;
 
 		/* Semantic colors */
 		--success: 158 64% 36%;
@@ -118,7 +118,7 @@
 		--secondary-foreground: 210 18% 78%;
 		--muted: 220 20% 11%;
 		--muted-foreground: 218 14% 58%;
-		--accent: 258 55% 65%;
+		--accent: 199 89% 58%;
 		--accent-foreground: 0 0% 100%;
 		--destructive: 0 68% 56%;
 		--destructive-foreground: 0 0% 100%;
@@ -129,7 +129,7 @@
 
 		/* Charts (dark) */
 		--chart-1: 217 89% 62%;
-		--chart-2: 258 55% 65%;
+		--chart-2: 199 89% 58%;
 		--chart-3: 158 58% 50%;
 		--chart-4: 35 90% 60%;
 		--chart-5: 0 68% 60%;
@@ -146,7 +146,7 @@
 
 		/* Brand (dark) */
 		--moment-primary: 217 89% 65%;
-		--market-primary: 258 55% 65%;
+		--market-primary: 199 89% 58%;
 
 		/* Semantic colors (dark) */
 		--success: 158 58% 50%;

@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -23,7 +22,6 @@ import {
 	Globe,
 	Lock,
 	Loader2,
-	Plus,
 	Search,
 	Terminal,
 	Wrench,
@@ -478,15 +476,6 @@ export default function AgentSessionList() {
 			{/* Header */}
 			<div className="flex items-center justify-between px-3 py-3 border-b">
 				<h2 className="text-sm font-semibold truncate">智能体</h2>
-				<Button
-					variant="ghost"
-					size="icon"
-					className="size-7"
-					aria-label="自定义新建会话"
-					onClick={() => setCreateOpen(true)}
-				>
-					<Plus className="size-4" />
-				</Button>
 			</div>
 
 			{/* Search */}

@@ -11,32 +11,37 @@ import personaModel from "@/models/persona.model";
 import { connectSession, disconnectSession } from "@/hooks/use-agent-ws";
 import { agentApi } from "@/lib/agent-api";
 import {
+	FolderOpen,
 	GitFork,
 	Loader2,
+	MessageSquare,
 	MoreHorizontal,
 	Pencil,
 	Plus,
 	RefreshCw,
 	Search,
-	Settings,
 	Trash2,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
 import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { useSnapshot } from "valtio";
 import { toast } from "sonner";
-import { SessionConfigDrawer } from "./session-config-drawer";
 
 export function ChatHeader({
 	sessionId,
 	searchQuery,
 	onSearchChange,
 	onSessionChange,
+	viewMode,
+	onViewModeChange,
 }: {
 	sessionId: string;
 	searchQuery?: string;
 	onSearchChange?: (q: string) => void;
 	onSessionChange?: (id: string) => void;
+	viewMode?: "chat" | "workspace";
+	onViewModeChange?: (mode: "chat" | "workspace") => void;
 }) {
 	const { sdkSessions, sessionNames } = useSnapshot(agentModel.state);
 	const personaSnap = useSnapshot(personaModel.state);
@@ -49,7 +54,6 @@ export function ChatHeader({
 	const [actionLoading, setActionLoading] = useState<
 		"relaunch" | "delete" | "fork" | "new" | null
 	>(null);
-	const [configOpen, setConfigOpen] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [editingName, setEditingName] = useState(false);
 	const [nameInput, setNameInput] = useState("");
@@ -228,8 +232,8 @@ export function ChatHeader({
 					</button>
 				</div>
 			) : (
-				<div className="flex items-center justify-between px-3 py-2 gap-3">
-					<div className="flex items-center gap-2 min-w-0">
+				<div className="flex items-center px-3 py-2 gap-3">
+					<div className="flex items-center gap-2 min-w-0 flex-1">
 						<NiceAvatar className="size-7 shrink-0" {...avatarConfig} />
 						{editingName ? (
 							<input
@@ -288,6 +292,38 @@ export function ChatHeader({
 						)}
 					</div>
 
+
+			{/* Mode Switcher - Center */}
+			{viewMode && onViewModeChange && (
+				<div className="flex items-center gap-1 p-1 rounded-lg bg-muted/50 shrink-0">
+					<button
+						type="button"
+						onClick={() => onViewModeChange("chat")}
+						className={cn(
+							"flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+							viewMode === "chat"
+								? "bg-background text-foreground shadow-sm"
+								: "text-muted-foreground hover:text-foreground hover:bg-background/50"
+						)}
+					>
+						<MessageSquare className="size-4" />
+						会话
+					</button>
+					<button
+						type="button"
+						onClick={() => onViewModeChange("workspace")}
+						className={cn(
+							"flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
+							viewMode === "workspace"
+								? "bg-background text-foreground shadow-sm"
+								: "text-muted-foreground hover:text-foreground hover:bg-background/50"
+						)}
+					>
+						<FolderOpen className="size-4" />
+						工作区
+					</button>
+				</div>
+			)}
 					<div className="flex items-center gap-1 shrink-0">
 						<button
 							type="button"
@@ -311,19 +347,6 @@ export function ChatHeader({
 						>
 							<Search className="size-4" />
 						</button>
-						<button
-							type="button"
-							className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors"
-							aria-label="会话配置"
-							onClick={() => setConfigOpen(true)}
-						>
-							<Settings className="size-4" />
-						</button>
-						<SessionConfigDrawer
-							sessionId={sessionId}
-							open={configOpen}
-							onClose={() => setConfigOpen(false)}
-						/>
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
 								<button

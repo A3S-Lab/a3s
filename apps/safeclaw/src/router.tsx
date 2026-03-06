@@ -23,12 +23,6 @@ const router = createHashRouter([
 				}),
 			},
 			{
-				path: "repos",
-				lazy: async () => ({
-					Component: (await import("@/pages/repos")).default,
-				}),
-			},
-			{
 				path: "repos/:id",
 				lazy: async () => ({
 					Component: (await import("@/pages/repos/editor")).default,
@@ -50,6 +44,24 @@ const router = createHashRouter([
 				path: "workflow/:id",
 				lazy: async () => ({
 					Component: (await import("@/pages/workflow/editor")).default,
+				}),
+			},
+			{
+				path: "marketplace",
+				lazy: async () => ({
+					Component: (await import("@/pages/marketplace")).default,
+				}),
+			},
+			{
+				path: "agent-marketplace",
+				lazy: async () => ({
+					Component: (await import("@/pages/agent-marketplace")).default,
+				}),
+			},
+			{
+				path: "skill-marketplace",
+				lazy: async () => ({
+					Component: (await import("@/pages/skill-marketplace")).default,
 				}),
 			},
 		],
