@@ -481,13 +481,13 @@ Hooks 按优先级顺序执行。数字越小越先运行。
       description: "类型: String · 描述: 被调用的工具名称",
     },
     "args": {
-      description: "类型: Value · 描述: 工具参数",
+      description: "类型: Value · 描述: 工具参数（JSON 对象）",
     },
     "working_directory": {
       description: "类型: String · 描述: 当前工作区路径",
     },
     "recent_tools": {
-      description: "类型: Vec<String> · 描述: 最近调用的工具",
+      description: "类型: Vec<String> · 描述: 最近调用的工具名称列表",
     },
   }}
 />
@@ -504,19 +504,19 @@ Hooks 按优先级顺序执行。数字越小越先运行。
       description: "类型: String · 描述: 工具名称",
     },
     "args": {
-      description: "类型: Value · 描述: 工具参数",
+      description: "类型: Value · 描述: 工具参数（JSON 对象）",
     },
     "result.success": {
-      description: "类型: bool · 描述: 工具是否成功",
+      description: "类型: bool · 描述: 工具是否执行成功",
     },
     "result.output": {
       description: "类型: String · 描述: 工具输出文本",
     },
     "result.exit_code": {
-      description: "类型: i32 · 描述: 退出码",
+      description: "类型: Option<i32> · 描述: 退出码（进程工具为 Some，其他为 None）",
     },
     "result.duration_ms": {
-      description: "类型: u64 · 描述: 执行时间",
+      description: "类型: u64 · 描述: 执行耗时（毫秒）",
     },
   }}
 />
@@ -533,16 +533,16 @@ Hooks 按优先级顺序执行。数字越小越先运行。
       description: "类型: String · 描述: 用户提示",
     },
     "system_prompt": {
-      description: "类型: String · 描述: 组装后的系统提示（由提示词插槽构建）",
+      description: "类型: Option<String> · 描述: 组装后的系统提示（由提示词插槽构建，首轮后为 None）",
     },
     "model_provider": {
-      description: "类型: String · 描述: 提供商名称",
+      description: "类型: String · 描述: LLM 提供商名称",
     },
     "model_name": {
       description: "类型: String · 描述: 模型名称",
     },
     "available_tools": {
-      description: "类型: Vec<String> · 描述: 已注册的工具名称",
+      description: "类型: Vec<String> · 描述: 已注册的工具名称列表",
     },
   }}
 />
@@ -555,34 +555,187 @@ Hooks 按优先级顺序执行。数字越小越先运行。
     "session_id": {
       description: "类型: String · 描述: 会话标识符",
     },
-    "response_text": {
-      description: "类型: String · 描述: LLM 响应",
+    "prompt": {
+      description: "类型: String · 描述: 触发本次生成的提示",
     },
-    "tool_calls": {
-      description: "类型: Vec<String> · 描述: 本轮调用的工具",
+    "response_text": {
+      description: "类型: String · 描述: LLM 文本响应",
+    },
+    "tool_calls[].name": {
+      description: "类型: String · 描述: 本轮调用的工具名称",
+    },
+    "tool_calls[].args": {
+      description: "类型: Value · 描述: 对应工具的参数",
+    },
+    "usage.prompt_tokens": {
+      description: "类型: i32 · 描述: 提示 Token 数",
+    },
+    "usage.completion_tokens": {
+      description: "类型: i32 · 描述: 补全 Token 数",
     },
     "usage.total_tokens": {
-      description: "类型: u32 · 描述: Token 使用量",
+      description: "类型: i32 · 描述: 总 Token 数",
     },
     "duration_ms": {
-      description: "类型: u64 · 描述: 生成时间",
+      description: "类型: u64 · 描述: 生成耗时（毫秒）",
     },
   }}
 />
 
 </Accordion>
-<Accordion title="SessionStart / SessionEnd">
+<Accordion title="SessionStart — SessionStartEvent">
 
-**SessionStartEvent：** `session_id`、`system_prompt`（由提示词插槽组装）、`model_provider`、`model_name`
-
-**SessionEndEvent：** `session_id`、`total_tokens`、`total_tool_calls`、`duration_ms`
+<TypeTable
+  type={{
+    "session_id": {
+      description: "类型: String · 描述: 会话标识符",
+    },
+    "system_prompt": {
+      description: "类型: Option<String> · 描述: 组装后的初始系统提示（由提示词插槽构建）",
+    },
+    "model_provider": {
+      description: "类型: String · 描述: LLM 提供商名称",
+    },
+    "model_name": {
+      description: "类型: String · 描述: 模型名称",
+    },
+  }}
+/>
 
 </Accordion>
-<Accordion title="SkillLoad / SkillUnload">
+<Accordion title="SessionEnd — SessionEndEvent">
 
-**SkillLoadEvent：** `skill_name`、`tool_names`、`version`、`description`、`loaded_at`
+<TypeTable
+  type={{
+    "session_id": {
+      description: "类型: String · 描述: 会话标识符",
+    },
+    "total_tokens": {
+      description: "类型: i32 · 描述: 会话总 Token 消耗",
+    },
+    "total_tool_calls": {
+      description: "类型: u32 · 描述: 会话期间工具调用总次数",
+    },
+    "duration_ms": {
+      description: "类型: u64 · 描述: 会话总耗时（毫秒）",
+    },
+  }}
+/>
 
-**SkillUnloadEvent：** `skill_name`、`tool_names`、`duration_ms`
+</Accordion>
+<Accordion title="SkillLoad — SkillLoadEvent">
+
+<TypeTable
+  type={{
+    "skill_name": {
+      description: "类型: String · 描述: Skill 名称",
+    },
+    "tool_names": {
+      description: "类型: Vec<String> · 描述: Skill 注册的工具名称列表",
+    },
+    "version": {
+      description: "类型: Option<String> · 描述: Skill 版本（如有）",
+    },
+    "description": {
+      description: "类型: Option<String> · 描述: Skill 描述（如有）",
+    },
+    "loaded_at": {
+      description: "类型: u64 · 描述: 加载时间戳（Unix 时间，秒）",
+    },
+  }}
+/>
+
+</Accordion>
+<Accordion title="SkillUnload — SkillUnloadEvent">
+
+<TypeTable
+  type={{
+    "skill_name": {
+      description: "类型: String · 描述: Skill 名称",
+    },
+    "tool_names": {
+      description: "类型: Vec<String> · 描述: 被移除的工具名称列表",
+    },
+    "duration_ms": {
+      description: "类型: u64 · 描述: Skill 活跃时长（毫秒）",
+    },
+  }}
+/>
+
+</Accordion>
+<Accordion title="PrePrompt — PrePromptEvent">
+
+在系统提示组装前触发，允许 hook 在发送给 LLM 之前检查或修改上下文。
+
+<TypeTable
+  type={{
+    "session_id": {
+      description: "类型: String · 描述: 会话标识符",
+    },
+    "prompt": {
+      description: "类型: String · 描述: 用户提示",
+    },
+    "system_prompt": {
+      description: "类型: Option<String> · 描述: 已组装的系统提示（若尚未构建则为 None）",
+    },
+    "message_count": {
+      description: "类型: usize · 描述: 当前对话中的消息数量",
+    },
+  }}
+/>
+
+</Accordion>
+<Accordion title="PostResponse — PostResponseEvent">
+
+在最终响应就绪后触发，包含完整的 token 使用统计。
+
+<TypeTable
+  type={{
+    "session_id": {
+      description: "类型: String · 描述: 会话标识符",
+    },
+    "response_text": {
+      description: "类型: String · 描述: agent 的最终文本响应",
+    },
+    "tool_calls_count": {
+      description: "类型: usize · 描述: 本轮执行的工具调用总次数",
+    },
+    "usage.prompt_tokens": {
+      description: "类型: i32 · 描述: 提示 Token 数",
+    },
+    "usage.completion_tokens": {
+      description: "类型: i32 · 描述: 补全 Token 数",
+    },
+    "usage.total_tokens": {
+      description: "类型: i32 · 描述: 总 Token 数",
+    },
+    "duration_ms": {
+      description: "类型: u64 · 描述: 从提示到响应的总耗时（毫秒）",
+    },
+  }}
+/>
+
+</Accordion>
+<Accordion title="OnError — OnErrorEvent">
+
+当执行期间发生错误时触发——工具失败、LLM 错误、权限拒绝或超时。
+
+<TypeTable
+  type={{
+    "session_id": {
+      description: "类型: String · 描述: 会话标识符",
+    },
+    "error_type": {
+      description: "类型: ErrorType · 描述: 错误分类：`tool_failure`、`llm_failure`、`permission_denied`、`timeout`、`other`",
+    },
+    "error_message": {
+      description: "类型: String · 描述: 人类可读的错误描述",
+    },
+    "context": {
+      description: "类型: Value · 描述: 附加上下文（如工具名称、失败的操作��）",
+    },
+  }}
+/>
 
 </Accordion>
 </Accordions>

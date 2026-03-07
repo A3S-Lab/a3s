@@ -549,8 +549,8 @@ Each hook event carries a typed payload with event-specific data:
       description: 'User prompt',
     },
     system_prompt: {
-      type: 'String',
-      description: 'Assembled system prompt (built from prompt slots)',
+      type: 'Option<String>',
+      description: 'Assembled system prompt (built from prompt slots), if present',
     },
     model_provider: {
       type: 'String',
@@ -576,38 +576,226 @@ Each hook event carries a typed payload with event-specific data:
       type: 'String',
       description: 'Session identifier',
     },
+    prompt: {
+      type: 'String',
+      description: 'User prompt that triggered generation',
+    },
     response_text: {
       type: 'String',
       description: 'LLM response',
     },
-    tool_calls: {
-      type: 'Vec<String>',
-      description: 'Tools called this turn',
+    'tool_calls[].name': {
+      type: 'String',
+      description: 'Tool name for each call made this turn',
+    },
+    'tool_calls[].args': {
+      type: 'Value',
+      description: 'Arguments passed to the tool',
+    },
+    'usage.prompt_tokens': {
+      type: 'i32',
+      description: 'Prompt token count',
+    },
+    'usage.completion_tokens': {
+      type: 'i32',
+      description: 'Completion token count',
     },
     'usage.total_tokens': {
-      type: 'u32',
-      description: 'Token usage',
+      type: 'i32',
+      description: 'Total tokens used',
     },
     duration_ms: {
       type: 'u64',
-      description: 'Generation time',
+      description: 'Generation time in milliseconds',
     },
   }}
 />
 
 </Accordion>
-<Accordion title="SessionStart / SessionEnd">
+<Accordion title="SessionStart — SessionStartEvent">
 
-**SessionStartEvent:** `session_id`, `system_prompt` (assembled from prompt slots), `model_provider`, `model_name`
-
-**SessionEndEvent:** `session_id`, `total_tokens`, `total_tool_calls`, `duration_ms`
+<TypeTable
+  type={{
+    session_id: {
+      type: 'String',
+      description: 'Session identifier',
+    },
+    system_prompt: {
+      type: 'Option<String>',
+      description: 'Assembled system prompt, if present',
+    },
+    model_provider: {
+      type: 'String',
+      description: 'Provider name',
+    },
+    model_name: {
+      type: 'String',
+      description: 'Model name',
+    },
+  }}
+/>
 
 </Accordion>
-<Accordion title="SkillLoad / SkillUnload">
+<Accordion title="SessionEnd — SessionEndEvent">
 
-**SkillLoadEvent:** `skill_name`, `tool_names`, `version`, `description`, `loaded_at`
+<TypeTable
+  type={{
+    session_id: {
+      type: 'String',
+      description: 'Session identifier',
+    },
+    total_tokens: {
+      type: 'i32',
+      description: 'Total tokens used across the session',
+    },
+    total_tool_calls: {
+      type: 'i32',
+      description: 'Total tool calls made during the session',
+    },
+    duration_ms: {
+      type: 'u64',
+      description: 'Session duration in milliseconds',
+    },
+  }}
+/>
 
-**SkillUnloadEvent:** `skill_name`, `tool_names`, `duration_ms`
+</Accordion>
+<Accordion title="SkillLoad — SkillLoadEvent">
+
+<TypeTable
+  type={{
+    skill_name: {
+      type: 'String',
+      description: 'Skill identifier',
+    },
+    tool_names: {
+      type: 'Vec<String>',
+      description: 'Tool names registered by the skill',
+    },
+    version: {
+      type: 'Option<String>',
+      description: 'Skill version, if declared',
+    },
+    description: {
+      type: 'Option<String>',
+      description: 'Skill description, if declared',
+    },
+    loaded_at: {
+      type: 'i64',
+      description: 'Unix timestamp (milliseconds) when the skill was loaded',
+    },
+  }}
+/>
+
+</Accordion>
+<Accordion title="SkillUnload — SkillUnloadEvent">
+
+<TypeTable
+  type={{
+    skill_name: {
+      type: 'String',
+      description: 'Skill identifier',
+    },
+    tool_names: {
+      type: 'Vec<String>',
+      description: 'Tool names that were unloaded',
+    },
+    duration_ms: {
+      type: 'u64',
+      description: 'How long the skill was loaded (milliseconds)',
+    },
+  }}
+/>
+
+</Accordion>
+<Accordion title="PrePrompt — PrePromptEvent">
+
+Fires before prompt augmentation. The handler can inspect (and in Rust, modify) the prompt before it reaches the LLM.
+
+<TypeTable
+  type={{
+    session_id: {
+      type: 'String',
+      description: 'Session identifier',
+    },
+    prompt: {
+      type: 'String',
+      description: 'User prompt text',
+    },
+    system_prompt: {
+      type: 'Option<String>',
+      description: 'Current system prompt, if present',
+    },
+    message_count: {
+      type: 'usize',
+      description: 'Number of messages in conversation history',
+    },
+  }}
+/>
+
+</Accordion>
+<Accordion title="PostResponse — PostResponseEvent">
+
+Fires after the LLM response is fully processed, before it is returned to the caller.
+
+<TypeTable
+  type={{
+    session_id: {
+      type: 'String',
+      description: 'Session identifier',
+    },
+    response_text: {
+      type: 'String',
+      description: 'Final response text',
+    },
+    tool_calls_count: {
+      type: 'usize',
+      description: 'Number of tool calls made during this turn',
+    },
+    'usage.prompt_tokens': {
+      type: 'i32',
+      description: 'Prompt token count',
+    },
+    'usage.completion_tokens': {
+      type: 'i32',
+      description: 'Completion token count',
+    },
+    'usage.total_tokens': {
+      type: 'i32',
+      description: 'Total tokens used',
+    },
+    duration_ms: {
+      type: 'u64',
+      description: 'Total turn duration in milliseconds',
+    },
+  }}
+/>
+
+</Accordion>
+<Accordion title="OnError — OnErrorEvent">
+
+Fires when any error occurs during execution. Use for error reporting or recovery logic.
+
+<TypeTable
+  type={{
+    session_id: {
+      type: 'String',
+      description: 'Session identifier',
+    },
+    error_type: {
+      type: 'ErrorType',
+      description: '`tool_failure` | `llm_failure` | `permission_denied` | `timeout` | `other`',
+    },
+    error_message: {
+      type: 'String',
+      description: 'Human-readable error description',
+    },
+    context: {
+      type: 'Value',
+      description: 'Additional context (e.g. tool name, model name) as a JSON object',
+    },
+  }}
+/>
 
 </Accordion>
 </Accordions>
