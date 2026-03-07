@@ -84,9 +84,7 @@ pub fn load_config(explicit_path: Option<&PathBuf>) -> Result<(SafeClawConfig, O
         tracing::info!("Loading config from {}", a3s_config.display());
         let code_config = parse_code_config_with_fallback(&content)
             .map_err(|e| anyhow::anyhow!("Config parse error: {e}"))?;
-        let mut sc = SafeClawConfig::default();
-        sc.models = code_config;
-        (sc, Some(a3s_config))
+        (SafeClawConfig { models: code_config, ..Default::default() }, Some(a3s_config))
     } else if let Some(config_dir) = dirs_next::config_dir() {
         let hcl_path = config_dir.join("safeclaw/config.hcl");
         if hcl_path.exists() {
@@ -129,7 +127,7 @@ pub async fn build_agent_state(
 
     let default_llm = code_config
         .default_llm_config()
-        .map(|llm_cfg| a3s_code::llm::create_client_with_config(llm_cfg));
+        .map(a3s_code::llm::create_client_with_config);
 
     if default_llm.is_some() {
         tracing::info!(

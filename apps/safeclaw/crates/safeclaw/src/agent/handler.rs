@@ -86,9 +86,6 @@ struct CreateSessionRequest {
     base_url: Option<String>,
     /// System prompt override
     system_prompt: Option<String>,
-    /// Skills to enable for this session (not yet wired into engine)
-    #[allow(dead_code)]
-    skills: Option<Vec<String>>,
     /// MCP servers to connect for this session
     #[serde(default)]
     mcp_servers: Vec<a3s_code::mcp::McpServerConfig>,
@@ -1129,7 +1126,6 @@ mod tests {
             api_key: None,
             base_url: None,
             system_prompt: None,
-            skills: None,
             mcp_servers: vec![],
         };
         let response = create_session(State(state.clone()), Json(req))
@@ -1249,7 +1245,6 @@ mod tests {
                 api_key: None,
                 base_url: None,
                 system_prompt: None,
-                skills: None,
             }),
         )
         .await

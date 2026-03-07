@@ -1090,8 +1090,7 @@ async fn handle_fs_watch(mut socket: WebSocket, path: String) {
             let _ = socket
                 .send(Message::Text(
                     serde_json::json!({"error": e.to_string()})
-                        .to_string()
-                        .into(),
+                        .to_string(),
                 ))
                 .await;
             return;
@@ -1102,8 +1101,7 @@ async fn handle_fs_watch(mut socket: WebSocket, path: String) {
         let _ = socket
             .send(Message::Text(
                 serde_json::json!({"error": e.to_string()})
-                    .to_string()
-                    .into(),
+                    .to_string(),
             ))
             .await;
         return;
@@ -1127,7 +1125,7 @@ async fn handle_fs_watch(mut socket: WebSocket, path: String) {
                             "kind": kind,
                             "paths": ev.paths.iter().map(|p| p.to_string_lossy()).collect::<Vec<_>>(),
                         });
-                        if socket.send(Message::Text(msg.to_string().into())).await.is_err() {
+                        if socket.send(Message::Text(msg.to_string())).await.is_err() {
                             break;
                         }
                     }
@@ -1648,7 +1646,6 @@ async fn box_info() -> impl IntoResponse {
             }
         } else if let Some(v) = line.strip_prefix("Images:") {
             images_count = v
-                .trim()
                 .split_whitespace()
                 .next()
                 .unwrap_or("0")

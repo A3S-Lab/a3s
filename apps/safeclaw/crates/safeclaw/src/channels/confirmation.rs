@@ -18,7 +18,7 @@ use tokio::time::{timeout, Duration};
 const DEFAULT_TIMEOUT_SECS: u64 = 120;
 
 /// Per-channel permission policy.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ChannelPermissionPolicy {
     /// Always trust — auto-approve all confirmations (skip HITL).
@@ -26,13 +26,8 @@ pub enum ChannelPermissionPolicy {
     /// Always require explicit confirmation.
     Strict,
     /// Use default behavior (require confirmation for sensitive operations).
+    #[default]
     Default,
-}
-
-impl std::default::Default for ChannelPermissionPolicy {
-    fn default() -> Self {
-        Self::Default
-    }
 }
 
 /// A pending confirmation request.

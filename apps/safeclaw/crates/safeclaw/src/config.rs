@@ -75,9 +75,7 @@ impl SafeClawConfig {
         if trimmed.starts_with('{') {
             // Try parsing as CodeConfig JSON first (camelCase fields from old format)
             if let Ok(code_config) = serde_json::from_str::<a3s_code::config::CodeConfig>(content) {
-                let mut sc = SafeClawConfig::default();
-                sc.models = code_config;
-                return Ok(sc);
+                return Ok(SafeClawConfig { models: code_config, ..Default::default() });
             }
             // Fall back to SafeClawConfig JSON
             let config: SafeClawConfig = serde_json::from_str(content)
@@ -469,7 +467,7 @@ impl Default for TeeConfig {
 /// Controls the security/availability tradeoff when the system detects
 /// that TEE hardware is not present but the policy engine would route
 /// data to the TEE.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum TeeFallbackPolicy {
     /// Reject processing of sensitive data when TEE is unavailable.
@@ -477,19 +475,14 @@ pub enum TeeFallbackPolicy {
     Reject,
     /// Allow processing with a warning in the audit log.
     /// Balances security and availability.
+    #[default]
     Warn,
     /// Allow processing silently (current behavior, least secure).
     Allow,
 }
 
-impl Default for TeeFallbackPolicy {
-    fn default() -> Self {
-        Self::Warn
-    }
-}
-
 /// Network firewall policy for outbound connections from TEE.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct NetworkPolicy {
     /// Enable network firewall
@@ -498,16 +491,6 @@ pub struct NetworkPolicy {
     pub default_deny: bool,
     /// Allowed outbound domains
     pub allowed_domains: Vec<String>,
-}
-
-impl Default for NetworkPolicy {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            default_deny: false,
-            allowed_domains: Vec::new(),
-        }
-    }
 }
 
 /// TEE backend type

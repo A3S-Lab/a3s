@@ -72,7 +72,7 @@ impl AgentEngine {
         // Build new default LLM client from updated config
         let new_llm = new_config
             .default_llm_config()
-            .map(|llm_cfg| a3s_code::llm::create_client_with_config(llm_cfg));
+            .map(a3s_code::llm::create_client_with_config);
 
         // Hot-swap SessionManager's default client
         self.session_manager.set_default_llm(new_llm).await;
@@ -120,6 +120,7 @@ impl AgentEngine {
     /// Create a new agent session.
     ///
     /// Creates both an a3s-code session and the corresponding UI state.
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_session(
         &self,
         session_id: &str,
@@ -508,7 +509,7 @@ impl AgentEngine {
                     tracing::info!(session_id = %session_id, content = %content, "Slash command detected");
                     let ctx = self.build_command_context(session_id).await;
                     if let Some(output) = self.command_registry.dispatch(&content, &ctx) {
-                        let cmd_name = content.trim().split_whitespace().next().unwrap_or("/");
+                        let cmd_name = content.split_whitespace().next().unwrap_or("/");
                         tracing::info!(session_id = %session_id, command = %cmd_name, "Slash command dispatched");
 
                         // Handle post-command actions
@@ -949,39 +950,31 @@ impl AgentEngine {
                 } = &event
                 {
                     // Check if we need to update metadata with before/after
-                    if let Some(content_block) = content_blocks.last() {
-                        if let ContentBlock::ToolResult {
-                            before,
-                            after,
-                            file_path,
-                            ..
-                        } = content_block
-                        {
-                            // Create updated metadata with before/after
-                            let mut updated_meta =
-                                metadata.clone().unwrap_or_else(|| serde_json::json!({}));
-                            if let Some(b) = before {
-                                updated_meta["before"] = serde_json::Value::String(b.clone());
-                            }
-                            if let Some(a) = after {
-                                updated_meta["after"] = serde_json::Value::String(a.clone());
-                            }
-                            if let Some(fp) = file_path {
-                                updated_meta["file_path"] = serde_json::Value::String(fp.clone());
-                            }
-                            eprintln!("📝 Updated metadata for translate_event: before={}, after={}, file_path={}",
-                                updated_meta.get("before").is_some(),
-                                updated_meta.get("after").is_some(),
-                                updated_meta.get("file_path").is_some());
-                            AgentEvent::ToolEnd {
-                                id: id.clone(),
-                                name: name.clone(),
-                                output: output.clone(),
-                                exit_code: *exit_code,
-                                metadata: Some(updated_meta),
-                            }
-                        } else {
-                            event.clone()
+                    if let Some(ContentBlock::ToolResult {
+                        before,
+                        after,
+                        file_path,
+                        ..
+                    }) = content_blocks.last()
+                    {
+                        // Create updated metadata with before/after
+                        let mut updated_meta =
+                            metadata.clone().unwrap_or_else(|| serde_json::json!({}));
+                        if let Some(b) = before {
+                            updated_meta["before"] = serde_json::Value::String(b.clone());
+                        }
+                        if let Some(a) = after {
+                            updated_meta["after"] = serde_json::Value::String(a.clone());
+                        }
+                        if let Some(fp) = file_path {
+                            updated_meta["file_path"] = serde_json::Value::String(fp.clone());
+                        }
+                        AgentEvent::ToolEnd {
+                            id: id.clone(),
+                            name: name.clone(),
+                            output: output.clone(),
+                            exit_code: *exit_code,
+                            metadata: Some(updated_meta),
                         }
                     } else {
                         event.clone()

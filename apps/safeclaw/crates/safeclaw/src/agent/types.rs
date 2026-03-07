@@ -306,21 +306,16 @@ pub struct SessionStats {
 }
 
 /// Agent-to-agent message type for structured collaboration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentMessageType {
     /// Normal conversation
+    #[default]
     Chat,
     /// Task request (expects a response)
     TaskRequest,
     /// Response to a task request
     TaskResponse,
-}
-
-impl Default for AgentMessageType {
-    fn default() -> Self {
-        Self::Chat
-    }
 }
 
 /// Entry in the agent directory (discoverable agents)

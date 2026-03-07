@@ -258,7 +258,7 @@ impl AgentBus {
                                 .event
                                 .subject
                                 .split('.')
-                                .last()
+                                .next_back()
                                 .unwrap_or("")
                                 .to_string();
 
