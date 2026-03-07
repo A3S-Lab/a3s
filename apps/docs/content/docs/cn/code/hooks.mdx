@@ -204,10 +204,10 @@ console.log(`已注册 Hooks: ${session.hookCount()}`);
 session.unregisterHook('log-tools');
 ```
 
-Hook 事件可通过流式事件 API 观察 — 使用 `session.stream()` 接收携带事件载荷的 `hook_fired` 事件。
+Hook 在 Rust 内部触发。可通过 `tool_start` / `tool_end` 流式事件观察工具调用活动。
 
 <Callout type="info">
-  **从 TypeScript 阻止调用**：TypeScript 和 Python 支持 hook 观察。如需阻止或修改工具调用，请在 Rust 中实现 `HookHandler`。
+  **从 TypeScript 阻止调用**：TypeScript 和 Python 仅支持注册 hook 元数据。如需阻止或修改工具调用，请在 Rust 中实现 `HookHandler`。
 </Callout>
 
 </Tab>
@@ -408,11 +408,13 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 
+实现 `HookHandler` 以阻止或修改工具调用：
+
 ```rust
 impl HookHandler for MyHandler {
     fn handle(&self, event: &HookEvent) -> HookResponse {
         match event {
-            HookEvent::PreToolUse(e) => { /* ... */ }
+            HookEvent::PreToolUse(e) => { /* 检查 e.tool, e.args */ }
             _ => {}
         }
         HookResponse::continue_()
@@ -423,7 +425,7 @@ impl HookHandler for MyHandler {
 </Tab>
 <Tab value="TypeScript">
 
-Hook 观察通过事件流实现。注册 hook 名称，然后在 `session.stream()` 中监听 `hook_fired` 事件：
+TypeScript 和 Python 支持注册 hook 元数据。Hook 在 Rust 内部触发 — 可通过 `tool_start` / `tool_end` 流式事件观察工具调用活动：
 
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -431,14 +433,19 @@ import { Agent } from '@a3s-lab/code';
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('/project');
 
+// 注册 hook — 当事件发生时在 Rust 内部触发
 session.registerHook('my-hook', 'pre_tool_use');
 
 for await (const event of session.stream('列出所有 .ts 文件')) {
-  if (event.type === 'hook_fired' && event.hookId === 'my-hook') {
-    console.log(`Hook 触发 — 工具: ${event.payload?.tool}`);
+  if (event.type === 'tool_start') {
+    console.log(`工具调用: ${event.toolName}`);
   }
 }
 ```
+
+<Callout type="info">
+  **从 TypeScript 阻止调用**：如需阻止或修改工具调用，请在 Rust 中实现 `HookHandler`。
+</Callout>
 
 </Tab>
 <Tab value="Python">
@@ -449,11 +456,14 @@ from a3s_code import Agent
 agent = Agent.create('agent.hcl')
 session = agent.session('/project')
 
+# 注册 hook — 当事件发生时在 Rust 内部触发
 session.register_hook('my-hook', 'pre_tool_use')
 
-async for event in session.stream('列出所有 .py 文件'):
-    if event.type == 'hook_fired' and event.hook_id == 'my-hook':
-        print(f"Hook 触发 — 工具: {event.payload.get('tool')}")
+for event in session.stream('列出所有 .py 文件'):
+    if event.event_type == 'tool_start':
+        print(f"工具调用: {event.tool_name}")
+    elif event.event_type == 'end':
+        break
 ```
 
 </Tab>

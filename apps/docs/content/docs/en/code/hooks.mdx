@@ -204,12 +204,10 @@ console.log(`Hooks registered: ${session.hookCount()}`);
 session.unregisterHook('log-tools');
 ```
 
-Hook events are observable through the streaming event API — use `session.stream()` to
-receive `hook_fired` events with the event payload.
+Hooks fire internally in Rust. Observe tool activity through `tool_start` / `tool_end` stream events.
 
 <Callout type="info">
-  **Blocking from TypeScript**: Hook observation is supported in TypeScript and Python. To
-  block or modify tool calls, implement a `HookHandler` in Rust.
+  **Blocking from TypeScript**: TypeScript and Python support hook registration only. To block or modify tool calls, implement a `HookHandler` in Rust.
 </Callout>
 
 </Tab>
@@ -433,11 +431,13 @@ Each hook event carries a typed payload with event-specific data:
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 
+Implement `HookHandler` to block or modify tool calls:
+
 ```rust
 impl HookHandler for MyHandler {
     fn handle(&self, event: &HookEvent) -> HookResponse {
         match event {
-            HookEvent::PreToolUse(e) => { /* ... */ }
+            HookEvent::PreToolUse(e) => { /* inspect e.tool, e.args */ }
             _ => {}
         }
         HookResponse::continue_()
@@ -448,8 +448,7 @@ impl HookHandler for MyHandler {
 </Tab>
 <Tab value="TypeScript">
 
-Hook observation uses the event stream. Register the hook name, then watch for `hook_fired`
-events in `session.stream()`:
+TypeScript and Python support hook registration (metadata only). Hooks fire internally in Rust — observe tool activity through `tool_start` / `tool_end` stream events:
 
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -457,14 +456,19 @@ import { Agent } from '@a3s-lab/code';
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('/project');
 
+// Register hook — fires in Rust when the event occurs
 session.registerHook('my-hook', 'pre_tool_use');
 
 for await (const event of session.stream('List all .ts files')) {
-  if (event.type === 'hook_fired' && event.hookId === 'my-hook') {
-    console.log(`Hook fired — tool: ${event.payload?.tool}`);
+  if (event.type === 'tool_start') {
+    console.log(`Tool called: ${event.toolName}`);
   }
 }
 ```
+
+<Callout type="info">
+  **Blocking from TypeScript**: Hook observation is supported in TypeScript and Python via `tool_start`/`tool_end` stream events. To block or modify tool calls, implement a `HookHandler` in Rust.
+</Callout>
 
 </Tab>
 <Tab value="Python">
@@ -475,11 +479,14 @@ from a3s_code import Agent
 agent = Agent.create('agent.hcl')
 session = agent.session('/project')
 
+# Register hook — fires in Rust when the event occurs
 session.register_hook('my-hook', 'pre_tool_use')
 
-async for event in session.stream('List all .py files'):
-    if event.type == 'hook_fired' and event.hook_id == 'my-hook':
-        print(f"Hook fired — tool: {event.payload.get('tool')}")
+for event in session.stream('List all .py files'):
+    if event.event_type == 'tool_start':
+        print(f"Tool called: {event.tool_name}")
+    elif event.event_type == 'end':
+        break
 ```
 
 </Tab>
