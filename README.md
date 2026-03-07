@@ -19,8 +19,10 @@ a3s                  ← local dev orchestration + unified CLI for the A3S ecosy
 a3s-box              ← MicroVM runtime (standalone CLI or K8s RuntimeClass)
   └── MicroVM        ← TEE hardware encryption when available, VM isolation always
       ├── SafeClaw   ← security proxy: classify, sanitize, audit
-      ├── Your Agent ← built with a3s-code (imperative) or a3s-flow (DAG workflow)
-      └── a3s-lane   ← shared scheduling for both
+      ├── a3s-code   ← imperative agent framework: Agent::new(), 14 tools, LLM, memory
+      ├── a3s-flow   ← workflow engine: FlowEngine · JSON DAG · pause/resume/terminate
+      │     └── FlowEngine.start() / pause() / resume() / terminate() / node_types()
+      └── a3s-lane   ← shared scheduling for a3s-code and a3s-flow
 a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
 ```
 
