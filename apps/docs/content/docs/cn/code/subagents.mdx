@@ -590,20 +590,14 @@ println!("{}", summary.text);
 
 <TypeTable
   type={{
-    "code-reviewer": {
-      description: "审查代码的风格、安全性和正确性",
+    "explore": {
+      description: "快速代码库探索（只读） · 最大步骤: 20 · 工具: read, grep, glob, ls",
     },
-    "test-writer": {
-      description: "生成单元测试和集成测试",
+    "general": {
+      description: "通用多步骤执行 · 最大步骤: 50 · 工具: 完整访问权限",
     },
-    "doc-writer": {
-      description: "从代码编写文档",
-    },
-    "refactorer": {
-      description: "重构代码以提高清晰度和性能",
-    },
-    "debugger": {
-      description: "诊断和修复 bug",
+    "plan": {
+      description: "架构和规划（只读） · 最大步骤: 30 · 工具: read, grep, glob",
     },
   }}
 />

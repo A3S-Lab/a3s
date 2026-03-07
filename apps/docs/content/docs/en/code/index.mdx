@@ -18,7 +18,7 @@ let result = session.send("Refactor auth to use JWT", None).await?;
 ```
 
 <Callout type="info">
-**Test Coverage:** 1387 tests, 100% pass rate | **Extension Points:** 19 trait-based | **Built-in Tools:** 12 (13 with `sandbox` feature)
+**Test Coverage:** 1480 tests, 100% pass rate | **Extension Points:** 19 trait-based | **Built-in Tools:** 14 (15 with `sandbox` feature)
 </Callout>
 
 ## Why A3S Code?
@@ -215,13 +215,13 @@ print(result.text)
 Agent (config-driven)
   └── AgentSession (workspace-bound)
         ├── AgentLoop (core execution engine)
-        │     ├── ToolExecutor (11 built-in tools)
+        │     ├── ToolExecutor (14 built-in tools)
         │     ├── Planning (task decomposition + wave execution)
         │     └── HITL Confirmation
         ├── SessionLaneQueue (a3s-lane backed)
         │     ├── Control (P0) → Query (P1) → Execute (P2) → Generate (P3)
         │     └── External Task Distribution
-        ├── HookEngine (8 lifecycle events)
+        ├── HookEngine (11 lifecycle events)
         ├── Security (PII redaction, injection detection)
         ├── Skills (instruction injection + tool permissions)
         ├── Context (RAG providers)
@@ -237,7 +237,7 @@ See [Architecture](/docs/code/architecture) for detailed documentation.
     <h3 className="text-lg font-semibold mb-2">Core</h3>
     <ul className="text-sm text-muted-foreground space-y-1">
       <li><a href="/docs/code/sessions">Sessions</a> — Lifecycle, send/stream, history, vision</li>
-      <li><a href="/docs/code/tools">Tools</a> — 11 built-in tools reference</li>
+      <li><a href="/docs/code/tools">Tools</a> — 14 built-in tools reference</li>
       <li><a href="/docs/code/tasks">Tasks</a> — Planning and wave-based execution</li>
       <li><a href="/docs/code/skills">Skills</a> — Skill system and tool restrictions</li>
     </ul>
@@ -281,7 +281,7 @@ cargo test          # All tests
 cargo test --lib    # Unit tests only
 ```
 
-**Test Coverage:** 1387 tests, 100% pass rate
+**Test Coverage:** 1480 tests, 100% pass rate
 
 ## License
 

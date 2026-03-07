@@ -520,20 +520,14 @@ Both built-in and custom agents are available by name. Custom agents loaded from
 
 <TypeTable
   type={{
-    "code-reviewer": {
-      description: "Reviews code for style, security, and correctness",
+    "explore": {
+      description: "Fast codebase exploration (read-only) · Max Steps: 20 · Tools: read, grep, glob, ls",
     },
-    "test-writer": {
-      description: "Generates unit and integration tests",
+    "general": {
+      description: "General-purpose multi-step execution · Max Steps: 50 · Tools: full access",
     },
-    "doc-writer": {
-      description: "Writes documentation from code",
-    },
-    "refactorer": {
-      description: "Refactors code for clarity and performance",
-    },
-    "debugger": {
-      description: "Diagnoses and fixes bugs",
+    "plan": {
+      description: "Architecture and planning (read-only) · Max Steps: 30 · Tools: read, grep, glob",
     },
   }}
 />

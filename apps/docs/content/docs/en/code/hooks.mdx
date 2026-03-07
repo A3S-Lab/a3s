@@ -1,6 +1,6 @@
 ---
 title: Lifecycle Hooks
-description: 8 lifecycle hooks for intercepting tool calls, LLM generations, sessions, and skills
+description: 11 lifecycle hooks for intercepting tool calls, LLM generations, sessions, and skills
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -10,7 +10,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 # Lifecycle Hooks
 
-A3S Code provides 8 lifecycle hooks for intercepting and reacting to events during agent execution. Hooks enable logging, security enforcement, telemetry, and custom behavior without modifying the core agent loop.
+A3S Code provides 11 lifecycle hooks for intercepting and reacting to events during agent execution. Hooks enable logging, security enforcement, telemetry, and custom behavior without modifying the core agent loop.
 
 ## Hook Events
 
@@ -39,6 +39,15 @@ A3S Code provides 8 lifecycle hooks for intercepting and reacting to events duri
     },
     "SkillUnload": {
       description: "Fires: Skill unloaded · Use Case: Cleanup skill resources",
+    },
+    "PrePrompt": {
+      description: "Fires: Before system prompt is assembled · Use Case: Inject custom context, modify prompt slots",
+    },
+    "PostResponse": {
+      description: "Fires: After final response is ready · Use Case: Post-process output, logging",
+    },
+    "OnError": {
+      description: "Fires: When an error occurs during execution · Use Case: Error reporting, recovery logic",
     },
   }}
 />

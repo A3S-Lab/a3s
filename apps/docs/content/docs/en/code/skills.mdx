@@ -199,7 +199,7 @@ Use `read` to examine API files and `grep` to search for patterns.
     name: { type: 'string', required: true, description: 'Unique skill identifier (kebab-case)' },
     description: { type: 'string', required: true, description: 'Brief description of what the skill does' },
     'allowed-tools': { type: 'string', description: 'Comma-separated list of allowed tools with wildcards' },
-    kind: { type: '"instruction" | "tool" | "agent"', required: true, description: 'Skill type' },
+    kind: { type: '"instruction" | "persona"', required: true, description: 'Skill type' },
     tags: { type: 'string[]', description: 'List of tags for categorization' },
     version: { type: 'string', description: 'Semantic version (e.g., "1.0.0")' },
   }}
@@ -436,25 +436,15 @@ kind: instruction
 
 **Use case:** Code review, security audit, API design
 
-### Tool Skills
+### Persona Skills
 
-Defines a custom tool that the agent can use.
-
-```yaml
-kind: tool
-```
-
-**Use case:** Custom integrations, specialized operations
-
-### Agent Skills
-
-Defines a sub-agent that can be delegated to.
+Defines a persona or role for the agent to adopt.
 
 ```yaml
-kind: agent
+kind: persona
 ```
 
-**Use case:** Specialized agents for specific domains
+**Use case:** Give the agent a specific identity (e.g., "security expert", "technical writer")
 
 ## Examples
 
@@ -691,8 +681,7 @@ pub struct Skill {
 ```rust
 pub enum SkillKind {
     Instruction,  // Provides instructions
-    Tool,         // Defines a custom tool
-    Agent,        // Defines a sub-agent
+    Persona,      // Defines a persona or role
 }
 ```
 
