@@ -209,6 +209,22 @@ async fn run_sentinel_daemon(
     let sentinel =
         safeclaw::sentinel::SentinelAgent::init(&sentinel_dir, Some(&config.models)).await?;
 
+    // Start remote registry sync if configured.
+    if let Some(sync_cfg) = safeclaw::sentinel::config::SentinelPolicy::load(&sentinel_dir)
+        .ok()
+        .and_then(|p| p.skill_registry)
+        .filter(|c| c.enabled && !c.url.is_empty())
+    {
+        let syncer = std::sync::Arc::new(safeclaw::sentinel::sync::SkillSyncer::new(
+            sync_cfg,
+            sentinel.skill_registry(),
+            sentinel.agent_registry(),
+            &sentinel_dir,
+        ));
+        tokio::spawn(safeclaw::sentinel::sync::start_background_sync(syncer));
+        tracing::info!("Sentinel skill-registry sync started");
+    }
+
     // Run the UDS server; exit when the parent closes the socket.
     safeclaw::sentinel::server::run_server(&socket_str, sentinel).await?;
     Ok(())

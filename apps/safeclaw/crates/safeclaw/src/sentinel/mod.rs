@@ -34,6 +34,7 @@ pub mod lineage;
 pub mod phase1;
 pub mod phase2_pool;
 pub mod server;
+pub mod sync;
 
 pub use config::{DelegateTrigger, SentinelPolicy};
 pub use daemon::SentinelDaemon;
@@ -167,7 +168,6 @@ pub struct SentinelAgent {
     session_manager: Arc<SessionManager>,
 
     /// Skills the sentinel agent has access to (kept alive; set on session_manager).
-    #[allow(dead_code)]
     skill_registry: Arc<SkillRegistry>,
 
     /// User-defined specialist sub-agents.
@@ -529,6 +529,16 @@ impl SentinelAgent {
         hook_engine.unregister_handler(HOOK_ID_PRE_TOOL);
         hook_engine.unregister_handler(HOOK_ID_PRE_PROMPT);
         hook_engine.unregister_handler(HOOK_ID_POST_RESPONSE);
+    }
+
+    /// Return the sentinel's skill registry (used by [`sync::SkillSyncer`]).
+    pub fn skill_registry(&self) -> Arc<SkillRegistry> {
+        self.skill_registry.clone()
+    }
+
+    /// Return the sentinel's agent registry (used by [`sync::SkillSyncer`]).
+    pub fn agent_registry(&self) -> Arc<AgentRegistry> {
+        self.agent_registry.clone()
     }
 }
 

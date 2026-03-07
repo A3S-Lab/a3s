@@ -4,6 +4,7 @@
 //! config dir equivalent).  When the file is absent, all fields use their
 //! documented defaults so the system works out of the box.
 
+use crate::sentinel::sync::SkillRegistryConfig;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
@@ -23,6 +24,10 @@ pub struct SentinelPolicy {
     /// Sub-agent delegation rules.
     #[serde(default)]
     pub delegate: Vec<DelegateRule>,
+
+    /// Optional remote skill/agent registry sync configuration.
+    #[serde(default)]
+    pub skill_registry: Option<SkillRegistryConfig>,
 }
 
 impl SentinelPolicy {
