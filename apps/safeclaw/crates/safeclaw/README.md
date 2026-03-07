@@ -11,6 +11,7 @@
 <p align="center">
   <a href="#security-architecture">Security Architecture</a> •
   <a href="#technical-architecture">Architecture</a> •
+  <a href="#sentinel-security-observer">Sentinel</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#configuration">Configuration</a> •
   <a href="#roadmap">Roadmap</a>
@@ -814,6 +815,350 @@ happens within the same VM.
 │  └── No hardware memory encryption, no sealed storage                  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
+
+## Sentinel Security Observer
+
+The **Sentinel** is SafeClaw's runtime security watchdog. It intercepts every prompt, tool
+call, and agent response — blocking attacks before they reach the LLM or exit through the
+output channel. It runs as an **isolated child process** so a crash or panic inside the
+sentinel never affects normal agent operation.
+
+### Process Isolation Model
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  SafeClaw Main Process (pid N)                                               │
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  AgentEngine                                                          │   │
+│  │  ┌──────────────────────┐    Hook events (PreToolUse / PrePrompt /   │   │
+│  │  │  HookEngine          │    PostResponse)                            │   │
+│  │  │  sentinel.pre_tool   │                                             │   │
+│  │  │  sentinel.pre_prompt │──────────────────────────────────────────┐ │   │
+│  │  │  sentinel.post_resp  │                                          │ │   │
+│  │  └──────────────────────┘                                          │ │   │
+│  │                                                                     │ │   │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │ │   │
+│  │  │  SentinelDaemon  (Arc<dyn SentinelObserver>)                 │  │ │   │
+│  │  │                                                               │◄─┘ │   │
+│  │  │  socket_path: /tmp/safeclaw-sentinel-N.sock                  │    │   │
+│  │  │  shutdown_tx:  watch::Sender<bool>                           │    │   │
+│  │  │                                                               │    │   │
+│  │  │  send() ─── 500 ms timeout ──► Unix Domain Socket ──────────────────► │
+│  │  │  fire_and_forget() ──────────► Unix Domain Socket ──────────────────► │
+│  │  │                                                               │    │   │
+│  │  │  Drop → shutdown_tx.send(true) + remove_file(socket)         │    │   │
+│  │  └──────────────────────────────────────────────────────────────┘    │   │
+│  │                                                                        │   │
+│  │  ┌──────────────────────────────────────────────────────────────┐    │   │
+│  │  │  Watchdog Task (tokio::spawn)                                 │    │   │
+│  │  │                                                               │    │   │
+│  │  │  loop:                                                        │    │   │
+│  │  │    tokio::select! {                                           │    │   │
+│  │  │      child.wait()         → restart if crashed               │    │   │
+│  │  │      shutdown_rx.changed() → kill child + exit               │    │   │
+│  │  │    }                                                          │    │   │
+│  │  │  Restart policy: max 3 crashes / 60 s → fail-open            │    │   │
+│  │  └──────────────────────────────────────────────────────────────┘    │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                         │ Unix Domain Socket (newline JSON)  │
+└─────────────────────────────────────────┼───────────────────────────────────┘
+                                          │
+┌─────────────────────────────────────────▼───────────────────────────────────┐
+│  Sentinel Child Process  (safeclaw sentinel-daemon --socket <path>)          │
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  server::run_server()  ←  UnixListener                               │   │
+│  │                                                                       │   │
+│  │  per connection: tokio::spawn(handle_connection(stream, sentinel))   │   │
+│  └─────────────────────────────┬────────────────────────────────────────┘   │
+│                                │                                             │
+│  ┌─────────────────────────────▼────────────────────────────────────────┐   │
+│  │  SentinelAgent  (isolated, full analysis stack)                       │   │
+│  │                                                                       │   │
+│  │  Phase1Engine  ·  SuspicionAccumulatorMap  ·  LineageMap              │   │
+│  │  Phase2Pool    ·  CrossSessionCorrelator                              │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Isolation guarantee:** A panic, memory exhaustion, or runaway LLM call inside the
+sentinel child process cannot crash or block the main SafeClaw agent. The watchdog
+restarts the child automatically. If the child keeps crashing, the sentinel is
+disabled and all events **fail-open** (allowed).
+
+### IPC Protocol
+
+All communication between parent and child uses **newline-delimited JSON** over a
+Unix Domain Socket. Every request has a 500 ms timeout; on timeout the parent
+returns `SecurityVerdict::allow()` immediately.
+
+```
+Parent (SentinelDaemon)                Child (server::run_server)
+       │                                          │
+       │   connect()                              │
+       │─────────────────────────────────────────►│
+       │                                          │
+       │   {"type":"analyze_tool_use",            │
+       │    "session_id":"s1",                    │
+       │    "tool":"Write",                       │   JSON request line
+       │    "args":{...}}\n                       │
+       │─────────────────────────────────────────►│
+       │                                          │  dispatch() →
+       │                                          │  SentinelAgent::analyze_pre_tool_use()
+       │                                          │
+       │   {"should_block":false,"reason":null}\n │   JSON response line
+       │◄─────────────────────────────────────────│
+       │                                          │
+       │   connection closed                      │
+       │─────────────────────────────────────────►│
+
+Request types (SentinelRequest):
+  analyze_tool_use    → expects response (blocking path)
+  analyze_prompt      → expects response (blocking path)
+  analyze_response    → expects response (blocking path)
+  session_created     → fire-and-forget (no reply)
+  session_destroyed   → fire-and-forget (no reply)
+  ping                → expects response (health check)
+
+Response (SentinelResponse):
+  { "should_block": bool, "reason": Option<String> }
+
+Fail-open cases:
+  - IPC timeout (> 500 ms)          → SecurityVerdict::allow()
+  - Socket unreachable / IO error   → SecurityVerdict::allow()
+  - Child crash loop (> 3 / 60 s)   → sentinel disabled, all events allowed
+```
+
+### Internal Analysis Pipeline
+
+Each event that enters the sentinel child process travels through a multi-stage
+pipeline. The stages are ordered from fastest (nanoseconds) to slowest (seconds):
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Incoming event: pre_tool_use | pre_prompt | post_response                   │
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  Stage 1 — Phase 1: Rule-Based Analysis  (< 5 ms, no I/O)            │   │
+│  │                                                                       │   │
+│  │  compiled from policy.hcl:                                            │   │
+│  │  ├── blocked_tools list  → hard block if tool is forbidden            │   │
+│  │  ├── block_patterns (regex) → hard block on regex match               │   │
+│  │  ├── score_patterns (regex) → add suspicion score 0.0–1.0             │   │
+│  │  ├── always_analyze tools → force Phase 2 regardless of score         │   │
+│  │  └── rate limits (sliding window) → block if rate exceeded            │   │
+│  │                                                                       │   │
+│  │  Output: Phase1Result { score, should_block, block_reason }           │   │
+│  └─────────────────────────────────┬──────────────────────────────────── ┘   │
+│                                    │                                         │
+│              should_block? ────────┴────────── YES ──► BLOCK immediately     │
+│                                    │ NO                                      │
+│                                    ▼                                         │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  Stage 2 — Lineage Tracker  (P2, sync, zero cost)                    │   │
+│  │                                                                       │   │
+│  │  Tracks session parent/child relationships across sub-agent spawns.   │   │
+│  │  Deeper sub-agents are less trusted → score_multiplier > 1.0         │   │
+│  │                                                                       │   │
+│  │  adjusted_score = phase1_score × lineage.score_multiplier()           │   │
+│  └─────────────────────────────────┬─────────────────────────────────────┘   │
+│                                    │                                         │
+│                                    ▼                                         │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  Stage 3 — Suspicion Accumulator  (P1, sliding-window, per session)  │   │
+│  │                                                                       │   │
+│  │  Accumulates adjusted scores across events in a time window.          │   │
+│  │  Defeats temporal-evasion: spread low-score events → caught.          │   │
+│  │                                                                       │   │
+│  │  accumulated_score = Σ scores in window (default 5 min)               │   │
+│  │                                                                       │   │
+│  │  Decision:                                                            │   │
+│  │  ├── accumulated < 1.2           → Continue                           │   │
+│  │  ├── 1.2 ≤ accumulated < 2.5    → TriggerPhase2                      │   │
+│  │  └── accumulated ≥ 2.5          → HardBlock immediately              │   │
+│  └─────────────────────────────────┬─────────────────────────────────────┘   │
+│                                    │                                         │
+│        HardBlock? ─────────────────┴───── YES ──► BLOCK immediately         │
+│                                    │ NO                                      │
+│                                    ▼                                         │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  Stage 4 — Cross-Session Correlator  (P4, async, non-blocking)       │   │
+│  │                                                                       │   │
+│  │  Background task with 1024-event ring buffer, 2-minute window.        │   │
+│  │  Correlates events across sessions:                                   │   │
+│  │  ├── NetworkRequest { host } — repeated requests to same host         │   │
+│  │  ├── FileWrite { path } — coordinated file write attempts             │   │
+│  │  └── HighSuspicion — hard-block events from any session               │   │
+│  │                                                                       │   │
+│  │  Does not block the current event — fires alerts out-of-band.         │   │
+│  └─────────────────────────────────┬─────────────────────────────────────┘   │
+│                                    │                                         │
+│                                    ▼                                         │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  Stage 5 — Phase 2: LLM Analysis  (P3, up to 2 s, on-demand)        │   │
+│  │                                                                       │   │
+│  │  Triggered when:                                                      │   │
+│  │  ├── single-event score ≥ phase2_trigger_score (configurable)        │   │
+│  │  ├── tool is in always_analyze set                                    │   │
+│  │  └── accumulator returns TriggerPhase2                                │   │
+│  │                                                                       │   │
+│  │  Phase2Pool (3 pre-warmed sessions):                                  │   │
+│  │  ├── acquire() → pop a pre-warmed session from pool                   │   │
+│  │  ├── generate(context) → LLM analysis with sentinel system prompt     │   │
+│  │  ├── release() → clear history, return to pool                        │   │
+│  │  └── pool exhausted → create ephemeral session (degraded, correct)   │   │
+│  │                                                                       │   │
+│  │  LLM response format:                                                 │   │
+│  │  { "severity": "none|low|medium|high|critical",                       │   │
+│  │    "should_block": bool, "reason": "..." }                            │   │
+│  │                                                                       │   │
+│  │  Timeout: configurable (default 2 s) → fail-open on timeout          │   │
+│  └─────────────────────────────────┬─────────────────────────────────────┘   │
+│                                    │                                         │
+│                                    ▼                                         │
+│                          SecurityVerdict { should_block, reason }            │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Watchdog Lifecycle
+
+```
+SafeClaw starts
+       │
+       ▼
+SentinelDaemon::spawn(sentinel_dir, config_path)
+       │
+       ├── create watch channel (shutdown_tx, shutdown_rx)
+       ├── tokio::spawn(watchdog task)
+       └── return Arc<SentinelDaemon>
+                           │
+                           ▼
+             ┌─────────────────────────┐
+             │      Watchdog loop       │
+             │                         │
+             │  check shutdown signal  │
+             │  evict old timestamps   │◄──────────────────────────────┐
+             │  check restart budget   │                               │
+             │                         │                               │
+             │  spawn child process:   │                               │
+             │  safeclaw              │                               │
+             │    sentinel-daemon     │                               │
+             │    --socket <path>     │                               │
+             │    --sentinel-dir <d>  │                               │
+             │                         │                               │
+             │  tokio::select! {       │                               │
+             │    child.wait() ──► ───►├──── clean exit ──► STOP      │
+             │                    └────┼──── crash ──────► restart ───┘
+             │    shutdown_rx.changed()│
+             │    (Drop triggered)     ├──── kill child               │
+             │  }                      │     remove socket             │
+             │                         │     return                    │
+             └─────────────────────────┘
+                                    ▲
+                                    │
+          SentinelDaemon::drop() ───┘
+          (main SafeClaw process exits)
+          sends shutdown_tx = true
+          removes socket file
+
+Restart budget: max 3 crashes within 60 seconds
+→ If budget exceeded: sentinel permanently disabled (fail-open)
+```
+
+### Fail-Open Guarantee
+
+The sentinel **never blocks normal agent operation due to its own failure**.
+
+| Failure Mode | Behavior |
+|---|---|
+| IPC timeout (> 500 ms) | `SecurityVerdict::allow()` |
+| Socket unreachable | `SecurityVerdict::allow()` |
+| JSON parse error | `SecurityVerdict::allow()` |
+| Child process crash | Watchdog restarts child; events fail-open during restart |
+| Crash loop (> 3 / 60 s) | Watchdog exits; sentinel permanently disabled (fail-open) |
+| Phase 2 LLM timeout | `SecurityVerdict::allow()` |
+| Phase 2 pool exhausted | Create ephemeral session; still fail-open on its timeout |
+
+### Sentinel Configuration
+
+The sentinel is configured via `policy.hcl` in `~/.config/safeclaw/sentinel/`:
+
+```
+~/.config/safeclaw/sentinel/
+├── policy.hcl          # Security policy (block patterns, tool lists, scores)
+├── skills/             # Custom security analysis skills (.md files)
+└── agents/             # Specialist sub-agent definitions (.yaml / .md)
+```
+
+```hcl
+sentinel {
+  enabled = true
+  dir     = "~/.config/safeclaw/sentinel"
+
+  phase1 {
+    # Tools that are always blocked
+    blocked_tools = ["bash", "shell_exec"]
+
+    # Regex patterns that trigger an immediate hard block
+    block_patterns = [
+      "(?i)ignore previous instructions",
+      "(?i)you are now",
+    ]
+
+    # Patterns that add suspicion score (0.0–1.0)
+    score_patterns = [
+      { pattern = "(?i)exfiltrate", score = 0.8 },
+      { pattern = "(?i)base64",     score = 0.3 },
+    ]
+
+    # Phase 2 is triggered when single-event score >= this
+    phase2_trigger_score = 0.6
+
+    # These tools always go through Phase 2 (regardless of score)
+    always_analyze = ["web_fetch", "Write"]
+  }
+
+  phase2 {
+    # LLM model to use (falls back to main model if unset)
+    model      = "claude-haiku-4-5-20251001"
+    timeout_ms = 2000
+  }
+}
+```
+
+### Hook Integration
+
+The sentinel hooks into the `HookEngine` with three blocking hook points:
+
+```
+Agent session                 HookEngine               SentinelDaemon
+      │                           │                          │
+      │── user prompt ──────────► │                          │
+      │                    pre_prompt hook                   │
+      │                           │── analyze_prompt ───────►│
+      │                           │◄─ SecurityVerdict ───────│
+      │            BLOCK? ────────┤                          │
+      │                           │                          │
+      │── tool call ────────────► │                          │
+      │                    pre_tool_use hook                 │
+      │                           │── analyze_pre_tool ─────►│
+      │                           │◄─ SecurityVerdict ───────│
+      │            BLOCK? ────────┤                          │
+      │                           │                          │
+      │◄─ LLM response ─────────  │                          │
+      │                    post_response hook                │
+      │                           │── analyze_response ─────►│
+      │                           │◄─ SecurityVerdict ───────│
+      │            BLOCK? ────────┤                          │
+      │                           │                          │
+```
+
+Session lifecycle events (`on_session_created`, `on_session_destroyed`) are sent as
+fire-and-forget notifications so the lineage tracker and accumulator stay in sync
+with the main agent's session graph.
+
+---
 
 ## Configuration
 
