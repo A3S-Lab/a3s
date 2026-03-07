@@ -88,35 +88,240 @@ Agent 循环
   }}
 />
 
-## Hook 传播到子智能体
+## 哨兵钩子系统
 
-在 session 上注册的 hook 会自动传播到所有由 `task` 和 `parallel_task` 工具派生的子智能体，包括任意深度的孙子智能体。
+**哨兵钩子（sentinel hook）** 是将父 session 的 `HookEngine` 自动传播到由 `task` 和 `parallel_task` 派生的每个子智能体的机制——传播深度不限，无需手动重新注册。
+
+### 传播机制
 
 ```
-父 session（已注册 hooks）
+父 session
+  ├── register_hook("guard", PreToolUse)    ← 注册到 HookEngine
+  ├── register_hook_handler("guard", ...)
+  │
   └── task 工具派生子 AgentLoop
-        ├── 通过 ToolContext.sentinel_hook 继承哨兵 hook
+        ├── AgentConfig.hook_engine = sentinel_hook   ← 继承
+        ├── ToolContext.sentinel_hook = sentinel_hook  ← 为孙子设置
+        │
         └── task 工具派生孙子 AgentLoop
-              └── 继承哨兵 hook（再次传播）
+              ├── AgentConfig.hook_engine = sentinel_hook  ← 再次继承
+              └── ToolContext.sentinel_hook = sentinel_hook ← 深度不限
 ```
 
-实现原理：`ToolContext` 新增了一个**哨兵 hook（sentinel hook）**字段。创建 session 时，若存在 `hook_engine`，会将其复制到 `ToolContext.sentinel_hook`。`task` / `parallel_task` 工具在创建子 agent 时，将该字段设置为子 `AgentConfig.hook_engine`，同时也设置在子 `ToolContext` 上，使孙子 agent 同样能继承。
+**实现路径**（`core/src/`）：
+
+1. `agent_api.rs` — 构建 session 时，若 `hook_engine` 存在，则写入 `ToolContext.sentinel_hook`
+2. `tools/task.rs` — `TaskTool::execute()` 读取 `ctx.sentinel_hook`，设置为子 `AgentConfig.hook_engine`
+3. `tools/task.rs` — 子 `ToolContext` 同样设置 `sentinel_hook`，确保孙子 task 工具重复相同传播
 
 <Callout type="info">
-  **安全意义**：在父 session 上注册的 `PreToolUse` 阻断钩子，无论嵌套深度如何，都会同样作用于所有子智能体——无需在每个子 session 上手动重新注册。
+  **安全意义**：在父 session 上注册一次 `PreToolUse` 阻断钩子，即可对任意深度的所有子智能体强制执行相同的安全策略——这是多智能体安全执行的推荐模式。
 </Callout>
 
-```rust
-// 只需在父 session 注册一次 — 子智能体自动继承
-session.register_hook(
-    Hook::new("block-dangerous", HookEventType::PreToolUse)
-        .with_matcher(HookMatcher::tool("bash"))
-);
-session.register_hook_handler("block-dangerous", Arc::new(BlockHandler));
+### 使用哨兵钩子
 
-// 通过 task 工具派生的子智能体无需额外配置即可受到保护
-let result = session.send("分析仓库并并行执行子任务", None).await?;
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+Rust 提供完整控制：注册 hook 定义，再注册可以 `block`、`modify` 或 `continue` 的 `HookHandler`。处理器自动作用于所有子智能体。
+
+```rust
+use a3s_code_core::{
+    Agent, SessionOptions,
+    hooks::{Hook, HookConfig, HookEvent, HookEventType, HookHandler, HookMatcher, HookResponse},
+};
+use std::sync::Arc;
+
+// 1. 定义阻断处理器
+struct DangerousCommandGuard;
+
+impl HookHandler for DangerousCommandGuard {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        let HookEvent::PreToolUse(e) = event else {
+            return HookResponse::continue_();
+        };
+        let cmd = e.args.to_string();
+        if cmd.contains("rm -rf") || cmd.contains("DROP TABLE") {
+            return HookResponse::block(format!(
+                "哨兵拦截：'{}' 中包含危险命令", e.tool
+            ));
+        }
+        HookResponse::continue_()
+    }
+}
+
+// 2. 创建 session，在父 session 上注册一次哨兵 hook
+let agent = Agent::new("agent.hcl").await?;
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_builtin_skills()
+        .with_permissive_policy()
+))?;
+
+session.register_hook(
+    Hook::new("sentinel-guard", HookEventType::PreToolUse)
+        .with_matcher(HookMatcher::tool("bash"))
+        .with_config(HookConfig { priority: 2, ..Default::default() })
+);
+session.register_hook_handler("sentinel-guard", Arc::new(DangerousCommandGuard));
+
+// 3. task 派生的所有子智能体自动继承哨兵
+let result = session.send(
+    "用多个子智能体分析仓库并汇总结果",
+    None,
+).await?;
+
+println!("{}", result.text);
 ```
+
+同时添加日志型 hook（审计）：
+
+```rust
+struct AuditLogger;
+
+impl HookHandler for AuditLogger {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        if let HookEvent::PostToolUse(e) = event {
+            println!("[审计] tool={} exit={}", e.tool, e.result.exit_code);
+        }
+        HookResponse::continue_()
+    }
+}
+
+session.register_hook(
+    Hook::new("sentinel-audit", HookEventType::PostToolUse)
+        .with_config(HookConfig { priority: 10, ..Default::default() })
+);
+session.register_hook_handler("sentinel-audit", Arc::new(AuditLogger));
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+TypeScript 支持注册 hook 元数据（含 matcher 和 priority）。Hook 在 Rust 内部触发，作用于父智能体**和所有子智能体**的每次工具调用。可通过 `tool_start` / `tool_end` 流式事件观察父级工具活动。
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project', {
+  builtinSkills: true,
+  permissive: true,
+});
+
+// 注册哨兵 hooks — 优先级 2 在标准 hooks（10+）之前运行
+session.registerHook('sentinel-guard', 'pre_tool_use', null, { priority: 2 });
+session.registerHook('sentinel-audit', 'post_tool_use', null, { priority: 10 });
+session.registerHook('sentinel-gen', 'generate_start', null, { priority: 10 });
+
+console.log(`哨兵 hooks 已注册: ${session.hookCount()}`);
+// → 3
+
+// Hooks 传播到 task 工具派生的所有子智能体
+// 通过流式事件观察父级工具调用：
+const stream = await session.stream(
+  '用多个子智能体分析仓库并汇总结果'
+);
+
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (done || !event) break;
+
+  if (event.type === 'tool_start') {
+    console.log(`[哨兵] 工具调用: ${event.toolName}`);
+  } else if (event.type === 'tool_end') {
+    console.log(`[哨兵] 工具完成: ${event.toolName} exit=${event.exitCode}`);
+  } else if (event.type === 'end') {
+    console.log(`完成。Token: ${event.totalTokens}`);
+    break;
+  }
+}
+
+// session 不再使用时注销
+session.unregisterHook('sentinel-guard');
+session.unregisterHook('sentinel-audit');
+session.unregisterHook('sentinel-gen');
+```
+
+使用 matcher 将哨兵限定到特定工具：
+
+```typescript
+// 仅拦截 bash 调用
+session.registerHook('sentinel-bash', 'pre_tool_use', { tool: 'bash' }, { priority: 2 });
+```
+
+<Callout type="info">
+  **从 TypeScript 阻止调用**：TypeScript 和 Python 仅支持注册 hook 元数据。如需实现阻断或修改逻辑，请在 Rust 中实现 `HookHandler`。
+</Callout>
+
+</Tab>
+<Tab value="Python">
+
+Python 支持与 TypeScript 一致——按元数据注册 hook。哨兵自动覆盖所有子智能体。可通过流迭代器观察父级工具活动。
+
+```python
+from a3s_code import Agent
+
+agent = Agent.create('agent.hcl')
+session = agent.session('/project', builtin_skills=True, permissive=True)
+
+# 注册哨兵 hooks — 优先级 2 在标准 hooks（10+）之前运行
+session.register_hook('sentinel-guard', 'pre_tool_use', config={'priority': 2})
+session.register_hook('sentinel-audit', 'post_tool_use', config={'priority': 10})
+session.register_hook('sentinel-gen', 'generate_start', config={'priority': 10})
+
+print(f"哨兵 hooks 已注册: {session.hook_count()}")
+# → 3
+
+# Hooks 传播到 task 工具派生的所有子智能体
+# 通过流式事件观察父级工具调用：
+for event in session.stream('用多个子智能体分析仓库并汇总结果'):
+    if event.event_type == 'tool_start':
+        print(f"[哨兵] 工具调用: {event.tool_name}")
+    elif event.event_type == 'tool_end':
+        print(f"[哨兵] 工具完成: {event.tool_name} exit={event.exit_code}")
+    elif event.event_type == 'end':
+        print(f"完成。Token: {event.total_tokens}")
+        break
+
+# session 不再使用时注销
+session.unregister_hook('sentinel-guard')
+session.unregister_hook('sentinel-audit')
+session.unregister_hook('sentinel-gen')
+```
+
+使用 matcher 将哨兵限定到特定工具：
+
+```python
+# 仅拦截 bash 调用
+session.register_hook('sentinel-bash', 'pre_tool_use',
+                      matcher={'tool': 'bash'}, config={'priority': 2})
+```
+
+</Tab>
+</Tabs>
+
+### 传播约束
+
+<TypeTable
+  type={{
+    "传播深度": {
+      description: "不限 — 孙子及更深层级的智能体自动继承哨兵",
+    },
+    "阻断/修改": {
+      description: "仅 Rust — 实现返回 `HookResponse::block()` 或 `HookResponse::modify()` 的 `HookHandler`",
+    },
+    "子智能体流式事件": {
+      description: "子智能体工具调用发送到广播通道（`ToolContext.agent_event_tx`），不进入流式 mpsc 通道，在 `session.stream()` 中不可见。如需监控子智能体事件，请使用 Orchestrator API。",
+    },
+    "hook_count 作用域": {
+      description: "`session.hook_count()` 仅反映父 session。与子智能体共享的哨兵 HookEngine 是同一个 `Arc` 克隆，计数相同。",
+    },
+    "并行任务": {
+      description: "`parallel_task` 应用相同的传播机制——所有并行子智能体共享同一个哨兵 HookEngine",
+    },
+  }}
+/>
 
 ## Hook 注册
 
@@ -436,10 +641,14 @@ const session = agent.session('/project');
 // 注册 hook — 当事件发生时在 Rust 内部触发
 session.registerHook('my-hook', 'pre_tool_use');
 
-for await (const event of session.stream('列出所有 .ts 文件')) {
+// EventStream 使用 .next()（不支持 Symbol.asyncIterator）
+const stream = await session.stream('列出所有 .ts 文件');
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (done || !event) break;
   if (event.type === 'tool_start') {
     console.log(`工具调用: ${event.toolName}`);
-  }
+  } else if (event.type === 'end') break;
 }
 ```
 
