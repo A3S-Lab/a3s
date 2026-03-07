@@ -19,13 +19,16 @@ a3s                  ← local dev orchestration + unified CLI for the A3S ecosy
 a3s-box              ← MicroVM runtime (standalone CLI or K8s RuntimeClass)
   └── MicroVM        ← TEE hardware encryption when available, VM isolation always
       ├── SafeClaw   ← security proxy: classify, sanitize, audit
-      └── Your Agent ← built with a3s-code + a3s-lane scheduling
+      ├── Your Agent ← built with a3s-code (imperative) or a3s-flow (DAG workflow)
+      └── a3s-lane   ← shared scheduling for both
 a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
 ```
 
 **a3s** is the developer CLI. One binary to start services, manage dependencies, deploy k3s, proxy to ecosystem tools, and scaffold agents — all from a single `A3sfile.hcl`.
 
 **a3s-code** is a coding agent framework — not a standalone service. Import it as a library (`a3s-code-core`) and build agents with `Agent::new("agent.hcl")`. All subsystems (tools, hooks, security, memory, MCP, planning, subagents) are embedded and active by default. Complex tasks are decomposed into dependency graphs and independent steps execute **in parallel** via wave-based scheduling.
+
+**a3s-flow** is a workflow engine for declarative, DAG-driven agentic pipelines. Define workflows as JSON arrays of typed nodes with explicit `depends_on` edges. `FlowEngine` validates the graph, executes waves of independent nodes concurrently, and exposes full lifecycle control — start, pause, resume, and terminate — for each running execution. Designed to power platforms similar to Dify and n8n.
 
 **a3s-gateway** and **a3s-box** are infrastructure components. They are application-agnostic — they don't know or care what runs inside the VM.
 
@@ -64,16 +67,28 @@ a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
               │  └──────────────────┬───────────────────────┘ │
               │                     │ library API              │
               │  ┌──────────────────▼───────────────────────┐ │
-              │  │    Your Agent (built with a3s-code)       │ │
-              │  │  Agent::new() · 14 Tools · LLM Calls      │ │
-              │  │  a3s-lane scheduling · Skills · Memory    │ │
+              │  │              Your Agent                   │ │
+              │  │                                          │ │
+              │  │  ┌─────────────────────────────────┐    │ │
+              │  │  │ a3s-code  (imperative agents)   │    │ │
+              │  │  │ Agent::new() · 14 Tools · LLM   │    │ │
+              │  │  │ Skills · Memory · Subagents      │    │ │
+              │  │  └─────────────────────────────────┘    │ │
+              │  │                                          │ │
+              │  │  ┌─────────────────────────────────┐    │ │
+              │  │  │ a3s-flow  (workflow agents)      │    │ │
+              │  │  │ FlowEngine · JSON DAG · pause /  │    │ │
+              │  │  │ resume / terminate · node types  │    │ │
+              │  │  └─────────────────────────────────┘    │ │
+              │  │                                          │ │
+              │  │  a3s-lane scheduling (shared)            │ │
               │  └──────────────────────────────────────────┘ │
               └────────────────────────────────────────────────┘
-                     │              │
-               ┌─────▼────┐  ┌─────▼────┐
-               │ a3s-power│  │a3s-search│
-               │ LLM Eng. │  │ Search   │
-               └──────────┘  └──────────┘
+                     │              │              │
+               ┌─────▼────┐  ┌─────▼────┐  ┌─────▼────┐
+               │ a3s-power│  │a3s-search│  │ a3s-event│
+               │ LLM Eng. │  │ Search   │  │  pub/sub │
+               └──────────┘  └──────────┘  └──────────┘
 
   Shared: a3s-common (PII classification, tools, transport)
   Observability: OpenTelemetry spans · Prometheus metrics
@@ -86,8 +101,9 @@ a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
 | VM Runtime | a3s-box | MicroVM isolation + TEE (SEV-SNP/TDX), 52-command CLI, CRI for K8s |
 | Security Proxy | SafeClaw | 7-channel routing, privacy classification, injection detection, taint tracking, audit |
 | Agent Framework | a3s-code | Embeddable library: config-driven Agent, 14 tools, skills, subagents, memory, parallel execution |
+| Workflow Engine | a3s-flow | JSON DAG workflow engine: FlowEngine lifecycle API (start / pause / resume / terminate), concurrent wave execution, pluggable node types |
 | Scheduling | a3s-lane | Per-session priority queue: 6 lanes, concurrency, retry, dead letter |
-| Infrastructure | a3s-power / a3s-search | LLM inference / meta search |
+| Infrastructure | a3s-power / a3s-search / a3s-event | LLM inference / meta search / pub-sub events |
 | Shared | a3s-common | PII classification, tool types, vsock frame protocol |
 
 ## Projects
