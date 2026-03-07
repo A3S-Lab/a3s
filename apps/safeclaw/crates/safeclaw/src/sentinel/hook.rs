@@ -1,5 +1,5 @@
 //! `SentinelHookHandler` — bridges the synchronous `HookHandler` trait to the
-//! async `SentinelAgent::analyze()` via `tokio::task::block_in_place`.
+//! async `SentinelObserver::analyze()` via `tokio::task::block_in_place`.
 //!
 //! The handler is registered with the a3s-code `HookEngine` for three
 //! blocking event types:
@@ -8,21 +8,21 @@
 //! - `PrePrompt`   — can rewrite or block the user prompt
 //! - `PostResponse`— can redact sensitive content before returning to the user
 //!
-//! All other events are observed asynchronously through the `HookEngine`
-//! event channel (fire-and-forget) and do not go through this handler.
+//! Works with any `SentinelObserver` implementation — both the in-process
+//! `SentinelAgent` and the out-of-process `SentinelDaemon`.
 
-use super::SentinelAgent;
+use super::SentinelObserver;
 use a3s_code::hooks::{HookEvent, HookHandler, HookResponse};
 use std::sync::Arc;
 
-/// Hook handler that delegates to `SentinelAgent` for blocking analysis.
+/// Hook handler that delegates to a `SentinelObserver` for blocking analysis.
 pub struct SentinelHookHandler {
-    agent: Arc<SentinelAgent>,
+    observer: Arc<dyn SentinelObserver>,
 }
 
 impl SentinelHookHandler {
-    pub fn new(agent: Arc<SentinelAgent>) -> Self {
-        Self { agent }
+    pub fn new(observer: Arc<dyn SentinelObserver>) -> Self {
+        Self { observer }
     }
 }
 
@@ -31,8 +31,9 @@ impl HookHandler for SentinelHookHandler {
         match event {
             HookEvent::PreToolUse(e) => {
                 let verdict = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current()
-                        .block_on(self.agent.analyze_pre_tool_use(&e.session_id, &e.tool, &e.args))
+                    tokio::runtime::Handle::current().block_on(
+                        self.observer.analyze_pre_tool_use(&e.session_id, &e.tool, &e.args),
+                    )
                 });
                 if verdict.should_block {
                     HookResponse::block(verdict.reason.as_deref().unwrap_or("Blocked by sentinel"))
@@ -44,7 +45,7 @@ impl HookHandler for SentinelHookHandler {
             HookEvent::PrePrompt(e) => {
                 let verdict = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current()
-                        .block_on(self.agent.analyze_prompt(&e.session_id, &e.prompt))
+                        .block_on(self.observer.analyze_prompt(&e.session_id, &e.prompt))
                 });
                 if verdict.should_block {
                     HookResponse::block(verdict.reason.as_deref().unwrap_or("Blocked by sentinel"))
@@ -56,7 +57,7 @@ impl HookHandler for SentinelHookHandler {
             HookEvent::PostResponse(e) => {
                 let verdict = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current()
-                        .block_on(self.agent.analyze_response(&e.response_text))
+                        .block_on(self.observer.analyze_response(&e.response_text))
                 });
                 if verdict.should_block {
                     HookResponse::block(verdict.reason.as_deref().unwrap_or("Blocked by sentinel"))

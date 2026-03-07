@@ -27,12 +27,16 @@
 pub mod accumulator;
 pub mod config;
 pub mod correlator;
+pub mod daemon;
 pub mod hook;
+pub mod ipc;
 pub mod lineage;
 pub mod phase1;
 pub mod phase2_pool;
+pub mod server;
 
 pub use config::{DelegateTrigger, SentinelPolicy};
+pub use daemon::SentinelDaemon;
 pub use phase1::{Phase1Engine, Phase1Result};
 
 use accumulator::{AccumulatorDecision, SuspicionAccumulatorMap};
@@ -41,6 +45,60 @@ use lineage::LineageMap;
 use phase2_pool::Phase2Pool;
 
 use a3s_code::hooks::{Hook, HookConfig, HookEngine, HookEventType};
+
+// ── SentinelObserver trait ────────────────────────────────────────────────────
+
+/// Unified interface for both in-process and out-of-process sentinel observers.
+///
+/// Implemented by:
+/// - [`SentinelAgent`] — in-process (used inside the daemon child process)
+/// - [`SentinelDaemon`] — out-of-process (communicates over Unix Domain Socket)
+#[async_trait::async_trait]
+pub trait SentinelObserver: Send + Sync + std::fmt::Debug {
+    async fn analyze_pre_tool_use(
+        &self,
+        session_id: &str,
+        tool: &str,
+        args: &serde_json::Value,
+    ) -> SecurityVerdict;
+
+    async fn analyze_prompt(&self, session_id: &str, prompt: &str) -> SecurityVerdict;
+
+    async fn analyze_response(&self, response_text: &str) -> SecurityVerdict;
+
+    fn on_session_created(&self, session_id: &str, parent_id: Option<&str>);
+
+    fn on_session_destroyed(&self, session_id: &str);
+}
+
+/// Register the three blocking sentinel hooks on `hook_engine`.
+///
+/// Extracted as a free function so both `SentinelAgent` and `SentinelDaemon`
+/// can reuse it without duplication.
+pub fn register_sentinel_hooks(
+    observer: Arc<dyn SentinelObserver>,
+    hook_engine: &HookEngine,
+) {
+    use hook::SentinelHookHandler;
+    let handler = Arc::new(SentinelHookHandler::new(observer));
+
+    let pre_tool = Hook::new(HOOK_ID_PRE_TOOL, HookEventType::PreToolUse)
+        .with_config(HookConfig { priority: 1, timeout_ms: 5000, ..Default::default() });
+    hook_engine.register(pre_tool);
+    hook_engine.register_handler(HOOK_ID_PRE_TOOL, handler.clone());
+
+    let pre_prompt = Hook::new(HOOK_ID_PRE_PROMPT, HookEventType::PrePrompt)
+        .with_config(HookConfig { priority: 1, timeout_ms: 5000, ..Default::default() });
+    hook_engine.register(pre_prompt);
+    hook_engine.register_handler(HOOK_ID_PRE_PROMPT, handler.clone());
+
+    let post_response = Hook::new(HOOK_ID_POST_RESPONSE, HookEventType::PostResponse)
+        .with_config(HookConfig { priority: 1, timeout_ms: 5000, ..Default::default() });
+    hook_engine.register(post_response);
+    hook_engine.register_handler(HOOK_ID_POST_RESPONSE, handler);
+
+    tracing::info!("Sentinel hooks registered (pre_tool_use, pre_prompt, post_response)");
+}
 use a3s_code::llm::create_client_with_config;
 use a3s_code::session::SessionManager;
 use a3s_code::skills::SkillRegistry;
@@ -463,43 +521,6 @@ impl SentinelAgent {
 
     // ── Hook registration ─────────────────────────────────────────────────
 
-    /// Register sentinel hooks with `hook_engine`.
-    ///
-    /// Three blocking hooks are installed (`PreToolUse`, `PrePrompt`,
-    /// `PostResponse`).  The hook IDs are stable so they can be unregistered
-    /// if needed.
-    pub fn register_hooks(self: &Arc<Self>, hook_engine: &HookEngine) {
-        use hook::SentinelHookHandler;
-
-        let handler = Arc::new(SentinelHookHandler::new(Arc::clone(self)));
-
-        // PreToolUse — highest priority so sentinel runs before other hooks
-        let pre_tool = Hook::new(HOOK_ID_PRE_TOOL, HookEventType::PreToolUse).with_config(
-            HookConfig { priority: 1, timeout_ms: 5000, ..Default::default() },
-        );
-        hook_engine.register(pre_tool);
-        hook_engine.register_handler(HOOK_ID_PRE_TOOL, handler.clone());
-
-        // PrePrompt
-        let pre_prompt = Hook::new(HOOK_ID_PRE_PROMPT, HookEventType::PrePrompt).with_config(
-            HookConfig { priority: 1, timeout_ms: 5000, ..Default::default() },
-        );
-        hook_engine.register(pre_prompt);
-        hook_engine.register_handler(HOOK_ID_PRE_PROMPT, handler.clone());
-
-        // PostResponse
-        let post_response =
-            Hook::new(HOOK_ID_POST_RESPONSE, HookEventType::PostResponse).with_config(HookConfig {
-                priority: 1,
-                timeout_ms: 5000,
-                ..Default::default()
-            });
-        hook_engine.register(post_response);
-        hook_engine.register_handler(HOOK_ID_POST_RESPONSE, handler);
-
-        tracing::info!("Sentinel hooks registered (pre_tool_use, pre_prompt, post_response)");
-    }
-
     /// Unregister all sentinel hooks from `hook_engine`.
     pub fn unregister_hooks(&self, hook_engine: &HookEngine) {
         hook_engine.unregister(HOOK_ID_PRE_TOOL);
@@ -508,6 +529,36 @@ impl SentinelAgent {
         hook_engine.unregister_handler(HOOK_ID_PRE_TOOL);
         hook_engine.unregister_handler(HOOK_ID_PRE_PROMPT);
         hook_engine.unregister_handler(HOOK_ID_POST_RESPONSE);
+    }
+}
+
+// ── SentinelObserver impl for SentinelAgent ───────────────────────────────────
+
+#[async_trait::async_trait]
+impl SentinelObserver for SentinelAgent {
+    async fn analyze_pre_tool_use(
+        &self,
+        session_id: &str,
+        tool: &str,
+        args: &serde_json::Value,
+    ) -> SecurityVerdict {
+        self.analyze_pre_tool_use(session_id, tool, args).await
+    }
+
+    async fn analyze_prompt(&self, session_id: &str, prompt: &str) -> SecurityVerdict {
+        self.analyze_prompt(session_id, prompt).await
+    }
+
+    async fn analyze_response(&self, response_text: &str) -> SecurityVerdict {
+        self.analyze_response(response_text).await
+    }
+
+    fn on_session_created(&self, session_id: &str, parent_id: Option<&str>) {
+        self.on_session_created(session_id, parent_id);
+    }
+
+    fn on_session_destroyed(&self, session_id: &str) {
+        self.on_session_destroyed(session_id);
     }
 }
 

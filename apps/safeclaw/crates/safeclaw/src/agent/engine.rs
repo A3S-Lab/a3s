@@ -33,8 +33,9 @@ pub struct AgentEngine {
     config_path: Arc<RwLock<Option<std::path::PathBuf>>>,
     /// Slash command registry (shared across sessions)
     command_registry: Arc<CommandRegistry>,
-    /// Optional sentinel security observer (injected at startup)
-    sentinel: Arc<RwLock<Option<Arc<crate::sentinel::SentinelAgent>>>>,
+    /// Optional sentinel security observer (injected at startup).
+    /// May be an in-process `SentinelAgent` or an out-of-process `SentinelDaemon`.
+    sentinel: Arc<RwLock<Option<Arc<dyn crate::sentinel::SentinelObserver>>>>,
 }
 
 /// Per-session UI state tracked by the engine.
@@ -170,7 +171,7 @@ impl AgentEngine {
         // Wire sentinel hooks when a sentinel observer is configured
         if let Some(ref sentinel) = *self.sentinel.read().await {
             let hook_engine = Arc::new(a3s_code::HookEngine::new());
-            sentinel.register_hooks(&hook_engine);
+            crate::sentinel::register_sentinel_hooks(sentinel.clone(), &hook_engine);
             session_config.hook_engine = Some(hook_engine);
             // Register lineage — user-initiated sessions have no parent.
             sentinel.on_session_created(session_id, None);
@@ -1382,7 +1383,7 @@ impl AgentEngine {
     ///
     /// Once set, every new session gets a `HookEngine` pre-wired with the
     /// sentinel's blocking hooks (`pre_tool_use`, `pre_prompt`, `post_response`).
-    pub async fn set_sentinel(&self, sentinel: Arc<crate::sentinel::SentinelAgent>) {
+    pub async fn set_sentinel(&self, sentinel: Arc<dyn crate::sentinel::SentinelObserver>) {
         *self.sentinel.write().await = Some(sentinel);
     }
 

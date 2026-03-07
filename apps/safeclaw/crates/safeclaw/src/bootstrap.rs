@@ -249,23 +249,20 @@ pub async fn start_gateway(
         .build()?;
 
     let agent_state = build_agent_state(models.clone(), skills_config, memory_store.clone()).await?;
-    if let Some(path) = config_path {
-        agent_state.engine.set_config_path(path).await;
+    if let Some(ref path) = config_path {
+        agent_state.engine.set_config_path(path.clone()).await;
     }
     gateway.set_agent_engine(agent_state.engine.clone()).await;
 
-    // Start sentinel security observer (non-fatal: log and continue on failure)
+    // Start sentinel security observer as an isolated child process (non-fatal).
     if sentinel_config.enabled {
         let sentinel_dir = sentinel_config.resolved_dir();
-        match crate::sentinel::SentinelAgent::init(&sentinel_dir, Some(&models)).await {
-            Ok(sentinel) => {
-                agent_state.engine.set_sentinel(sentinel).await;
-                tracing::info!(dir = %sentinel_dir.display(), "Sentinel security observer started");
-            }
-            Err(e) => {
-                tracing::warn!("Sentinel failed to start (security observation disabled): {e}");
-            }
-        }
+        let daemon = crate::sentinel::SentinelDaemon::spawn(
+            &sentinel_dir,
+            config_path.as_deref(),
+        );
+        agent_state.engine.set_sentinel(daemon).await;
+        tracing::info!(dir = %sentinel_dir.display(), "Sentinel daemon spawned");
     } else {
         tracing::info!("Sentinel security observer disabled by config");
     }

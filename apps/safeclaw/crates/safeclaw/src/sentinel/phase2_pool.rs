@@ -96,11 +96,18 @@ impl Phase2Pool {
             let _ = self.session_manager.destroy_session(&session_id).await;
             return;
         }
-        let mut slots = self.available.lock().expect("phase2 pool lock poisoned");
-        if slots.len() < self.capacity {
-            slots.push(session_id);
-        } else {
-            drop(slots);
+        // Lock the slot list in a scoped block so the MutexGuard is definitely
+        // dropped before any subsequent `.await`.
+        let return_to_pool = {
+            let mut slots = self.available.lock().expect("phase2 pool lock poisoned");
+            if slots.len() < self.capacity {
+                slots.push(session_id.clone());
+                true
+            } else {
+                false
+            }
+        };
+        if !return_to_pool {
             let _ = self.session_manager.destroy_session(&session_id).await;
         }
     }

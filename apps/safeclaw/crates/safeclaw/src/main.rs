@@ -108,6 +108,21 @@ enum Commands {
 
     /// Update safeclaw to the latest version
     Update,
+
+    /// [INTERNAL] Run as sentinel daemon child process.
+    ///
+    /// Not intended to be called directly by users.  Spawned automatically
+    /// by the parent SafeClaw process when the sentinel is enabled.
+    #[command(hide = true)]
+    SentinelDaemon {
+        /// Unix Domain Socket path to listen on.
+        #[arg(long)]
+        socket: PathBuf,
+
+        /// Sentinel configuration directory.
+        #[arg(long)]
+        sentinel_dir: PathBuf,
+    },
 }
 
 #[tokio::main]
@@ -170,8 +185,32 @@ async fn main() -> Result<()> {
         Commands::Config { default } => {
             show_config(if default { None } else { Some(&config) })?;
         }
+        Commands::SentinelDaemon { socket, sentinel_dir } => {
+            run_sentinel_daemon(socket, sentinel_dir, &config).await?;
+        }
     }
 
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// run_sentinel_daemon — sentinel child process entry point
+// ---------------------------------------------------------------------------
+
+async fn run_sentinel_daemon(
+    socket: PathBuf,
+    sentinel_dir: PathBuf,
+    config: &safeclaw::config::SafeClawConfig,
+) -> Result<()> {
+    let socket_str = socket.to_string_lossy();
+    tracing::info!(socket = %socket_str, "Sentinel daemon starting");
+
+    // Initialise the in-process SentinelAgent (full logic lives here).
+    let sentinel =
+        safeclaw::sentinel::SentinelAgent::init(&sentinel_dir, Some(&config.models)).await?;
+
+    // Run the UDS server; exit when the parent closes the socket.
+    safeclaw::sentinel::server::run_server(&socket_str, sentinel).await?;
     Ok(())
 }
 
