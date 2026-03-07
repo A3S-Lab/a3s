@@ -134,28 +134,30 @@ print(f"Result: {result}")
 
 `Orchestrator.create()` spawns subagents using an internal stub — for tests and demos only. To run **real LLM + tool execution**, use `AgentOrchestrator::from_agent(agent)` (Rust) or `create_with_agent()` (Python/TypeScript) to attach a real AgentLoop.
 
-<Tabs items={['Python', 'TypeScript', 'Rust']}>
-<Tab value="Python">
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
 
-```python
-from a3s_code import Agent, Orchestrator, SubAgentConfig
+```rust
+use a3s_code_core::{Agent, orchestrator::{AgentOrchestrator, SubAgentConfig}};
+use std::sync::Arc;
 
-# 1. Load your agent config (any provider — Kimi, Claude, OpenAI, …)
-agent = Agent.create("agent.hcl")
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Arc::new(Agent::new("agent.hcl").await?);
 
-# 2. Wire the orchestrator to real AgentLoop execution
-orch = Orchestrator.create_with_agent(agent, workspace=".")
+    // Wire the orchestrator to real AgentLoop execution
+    let orch = AgentOrchestrator::from_agent(agent);
 
-# 3. Spawn and run — uses real LLM + tool calls
-handle = orch.spawn_subagent(SubAgentConfig(
-    agent_type="general",
-    prompt="Use glob to find all Python files. Report how many you found.",
-    permissive=True,
-    max_steps=5,
-))
+    let handle = orch.spawn_subagent(
+        SubAgentConfig::new("general", "Find all Rust source files.")
+            .with_permissive(true)
+            .with_max_steps(5),
+    ).await?;
 
-result = handle.wait()
-print(result)
+    let result = handle.wait().await?;
+    println!("{result}");
+    Ok(())
+}
 ```
 
 </Tab>
@@ -181,29 +183,27 @@ orch.waitAll();
 ```
 
 </Tab>
-<Tab value="Rust">
+<Tab value="Python">
 
-```rust
-use a3s_code_core::{Agent, orchestrator::{AgentOrchestrator, SubAgentConfig}};
-use std::sync::Arc;
+```python
+from a3s_code import Agent, Orchestrator, SubAgentConfig
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let agent = Arc::new(Agent::new("agent.hcl").await?);
+# 1. Load your agent config (any provider — Kimi, Claude, OpenAI, …)
+agent = Agent.create("agent.hcl")
 
-    // Wire the orchestrator to real AgentLoop execution
-    let orch = AgentOrchestrator::from_agent(agent);
+# 2. Wire the orchestrator to real AgentLoop execution
+orch = Orchestrator.create_with_agent(agent, workspace=".")
 
-    let handle = orch.spawn_subagent(
-        SubAgentConfig::new("general", "Find all Rust source files.")
-            .with_permissive(true)
-            .with_max_steps(5),
-    ).await?;
+# 3. Spawn and run — uses real LLM + tool calls
+handle = orch.spawn_subagent(SubAgentConfig(
+    agent_type="general",
+    prompt="Use glob to find all Python files. Report how many you found.",
+    permissive=True,
+    max_steps=5,
+))
 
-    let result = handle.wait().await?;
-    println!("{result}");
-    Ok(())
-}
+result = handle.wait()
+print(result)
 ```
 
 </Tab>
@@ -280,7 +280,7 @@ Python/TypeScript use the same method names without `.await?`.
 
 ## Real-time Monitoring API
 
-<Tabs items={['Rust', 'Python', 'TypeScript']}>
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 
 ```rust
@@ -334,45 +334,6 @@ println!("Active SubAgents: {}", count);
 ```
 
 </Tab>
-<Tab value="Python">
-
-```python
-# Get all SubAgent information list
-subagents = orch.list_subagents()
-for info in subagents:
-    print(f"SubAgent: {info.id}")
-    print(f"  Type: {info.agent_type}")
-    print(f"  State: {info.state}")
-    print(f"  Description: {info.description}")
-
-    if info.current_activity:
-        print(f"  Current Activity: {info.current_activity.activity_type}")
-
-# Get specific SubAgent details
-info = orch.get_subagent_info("subagent-1")
-if info:
-    print(f"Created at: {info.created_at}")
-    print(f"Updated at: {info.updated_at}")
-
-# Get all active SubAgent activities
-activities = orch.get_active_activities()
-for subagent_id, activity in activities:
-    if activity.activity_type == "calling_tool":
-        print(f"{subagent_id} is calling a tool")
-    elif activity.activity_type == "requesting_llm":
-        print(f"{subagent_id} is requesting LLM")
-
-# Get all SubAgent states
-states = orch.get_all_states()
-for subagent_id, state in states:
-    print(f"{subagent_id}: {state}")
-
-# Get active count
-count = orch.active_count()
-print(f"Active SubAgents: {count}")
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -415,6 +376,45 @@ for (const entry of states) {
 // Get active count
 const count = orch.activeCount();
 console.log(`Active SubAgents: ${count}`);
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+# Get all SubAgent information list
+subagents = orch.list_subagents()
+for info in subagents:
+    print(f"SubAgent: {info.id}")
+    print(f"  Type: {info.agent_type}")
+    print(f"  State: {info.state}")
+    print(f"  Description: {info.description}")
+
+    if info.current_activity:
+        print(f"  Current Activity: {info.current_activity.activity_type}")
+
+# Get specific SubAgent details
+info = orch.get_subagent_info("subagent-1")
+if info:
+    print(f"Created at: {info.created_at}")
+    print(f"Updated at: {info.updated_at}")
+
+# Get all active SubAgent activities
+activities = orch.get_active_activities()
+for subagent_id, activity in activities:
+    if activity.activity_type == "calling_tool":
+        print(f"{subagent_id} is calling a tool")
+    elif activity.activity_type == "requesting_llm":
+        print(f"{subagent_id} is requesting LLM")
+
+# Get all SubAgent states
+states = orch.get_all_states()
+for subagent_id, state in states:
+    print(f"{subagent_id}: {state}")
+
+# Get active count
+count = orch.active_count()
+print(f"Active SubAgents: {count}")
 ```
 
 </Tab>

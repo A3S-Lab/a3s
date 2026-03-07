@@ -54,8 +54,6 @@ A3S Code 提供 11 个生命周期 hooks，用于在 agent 执行期间拦截和
 
 ## Hooks 工作原理
 
-Hooks 注册在 `HookEngine` 上，在 agent 循环的特定点触发。多个 hooks 可以监听同一事件 — 它们按优先级顺序执行（数字越小优先级越高）。
-
 ```
 Agent 循环
   ├── GenerateStart hooks 触发
@@ -92,63 +90,7 @@ Agent 循环
 
 ## Hook 注册
 
-注册 hooks 以观察和拦截生命周期事件：
-
-<Tabs items={['TypeScript', 'Python', 'Rust']}>
-<Tab value="TypeScript">
-
-```typescript
-import { Agent } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-const session = agent.session('/project');
-
-// 注册在每次工具使用前触发的 hook
-session.registerHook('log-tools', 'pre_tool_use');
-
-// 使用 matcher 过滤到特定工具
-session.registerHook('log-bash', 'pre_tool_use', { tool: 'bash' });
-
-// 设置优先级（越低优先级越高）
-session.registerHook('critical-check', 'pre_tool_use', null, { priority: 5 });
-
-console.log(`已注册 Hooks: ${session.hookCount()}`);
-
-// 完成后注销
-session.unregisterHook('log-tools');
-```
-
-Hook 事件可通过流式事件 API 观察 — 使用 `session.stream()` 接收携带事件载荷的 `hook_fired` 事件。
-
-<Callout type="info">
-  **从 TypeScript 阻止调用**：TypeScript 和 Python 支持 hook 观察。如需阻止或修改工具调用，请在 Rust 中实现 `HookHandler`。
-</Callout>
-
-</Tab>
-<Tab value="Python">
-
-```python
-from a3s_code import Agent
-
-agent = await Agent.create('agent.hcl')
-session = agent.session('/project')
-
-# 注册在每次工具使用前触发的 hook
-session.register_hook('log-tools', 'pre_tool_use')
-
-# 使用 matcher 过滤到特定工具
-session.register_hook('log-bash', 'pre_tool_use', {'tool': 'bash'})
-
-# 设置优先级（越低优先级越高）
-session.register_hook('critical-check', 'pre_tool_use', None, {'priority': 5})
-
-print(f'已注册 Hooks: {session.hook_count()}')
-
-# 完成后注销
-session.unregister_hook('log-tools')
-```
-
-</Tab>
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 
 ```rust
@@ -206,6 +148,60 @@ match result {
     HookResult::Block(reason) => { /* stop execution */ }
     _ => {}
 }
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project');
+
+// 注册在每次工具使用前触发的 hook
+session.registerHook('log-tools', 'pre_tool_use');
+
+// 使用 matcher 过滤到特定工具
+session.registerHook('log-bash', 'pre_tool_use', { tool: 'bash' });
+
+// 设置优先级（越低优先级越高）
+session.registerHook('critical-check', 'pre_tool_use', null, { priority: 5 });
+
+console.log(`已注册 Hooks: ${session.hookCount()}`);
+
+// 完成后注销
+session.unregisterHook('log-tools');
+```
+
+Hook 事件可通过流式事件 API 观察 — 使用 `session.stream()` 接收携带事件载荷的 `hook_fired` 事件。
+
+<Callout type="info">
+  **从 TypeScript 阻止调用**：TypeScript 和 Python 支持 hook 观察。如需阻止或修改工具调用，请在 Rust 中实现 `HookHandler`。
+</Callout>
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = Agent.create('agent.hcl')
+session = agent.session('/project')
+
+# 注册在每次工具使用前触发的 hook
+session.register_hook('log-tools', 'pre_tool_use')
+
+# 使用 matcher 过滤到特定工具
+session.register_hook('log-bash', 'pre_tool_use', {'tool': 'bash'})
+
+# 设置优先级（越低优先级越高）
+session.register_hook('critical-check', 'pre_tool_use', None, {'priority': 5})
+
+print(f'已注册 Hooks: {session.hook_count()}')
+
+# 完成后注销
+session.unregister_hook('log-tools')
 ```
 
 </Tab>
@@ -379,7 +375,22 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 
 ### HookHandler
 
-<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+impl HookHandler for MyHandler {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        match event {
+            HookEvent::PreToolUse(e) => { /* ... */ }
+            _ => {}
+        }
+        HookResponse::continue_()
+    }
+}
+```
+
+</Tab>
 <Tab value="TypeScript">
 
 Hook 观察通过事件流实现。注册 hook 名称，然后在 `session.stream()` 中监听 `hook_fired` 事件：
@@ -405,7 +416,7 @@ for await (const event of session.stream('列出所有 .ts 文件')) {
 ```python
 from a3s_code import Agent
 
-agent = await Agent.create('agent.hcl')
+agent = Agent.create('agent.hcl')
 session = agent.session('/project')
 
 session.register_hook('my-hook', 'pre_tool_use')
@@ -413,21 +424,6 @@ session.register_hook('my-hook', 'pre_tool_use')
 async for event in session.stream('列出所有 .py 文件'):
     if event.type == 'hook_fired' and event.hook_id == 'my-hook':
         print(f"Hook 触发 — 工具: {event.payload.get('tool')}")
-```
-
-</Tab>
-<Tab value="Rust">
-
-```rust
-impl HookHandler for MyHandler {
-    fn handle(&self, event: &HookEvent) -> HookResponse {
-        match event {
-            HookEvent::PreToolUse(e) => { /* ... */ }
-            _ => {}
-        }
-        HookResponse::continue_()
-    }
-}
 ```
 
 </Tab>
@@ -451,9 +447,14 @@ impl HookHandler for MyHandler {
 
 ### Hook 优先级
 
-数字越小 = 优先级越高。`SecurityGuard` 使用优先级 `1`。默认 hooks 使用优先级 `100`。
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
 
-<Tabs items={['TypeScript', 'Python', 'Rust']}>
+```rust
+Hook::new("my-hook", HookEventType::PreToolUse).with_priority(50)
+```
+
+</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -466,13 +467,6 @@ session.registerHook('my-hook', 'pre_tool_use', null, { priority: 5 });
 
 ```python
 session.register_hook('my-hook', 'pre_tool_use', None, {'priority': 5})
-```
-
-</Tab>
-<Tab value="Rust">
-
-```rust
-Hook::new("my-hook", HookEventType::PreToolUse).with_priority(50)
 ```
 
 </Tab>

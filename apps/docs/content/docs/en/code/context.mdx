@@ -30,7 +30,19 @@ This preserves important context while reducing token usage.
 
 ### Configuration
 
-<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::SessionOptions;
+
+let session = agent.session("/project", Some(
+    SessionOptions::new()
+        .with_context_threshold(0.8)  // Compact at 80% (default)
+))?;
+```
+
+</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -49,23 +61,11 @@ const session = agent.session('/project', {
 ```python
 from a3s_code import Agent
 
-agent = await Agent.create('agent.hcl')
+agent = Agent.create('agent.hcl')
 session = agent.session('/project', {
     'auto_compact': True,
     'auto_compact_threshold': 0.8,  # Compact at 80% (default)
 })
-```
-
-</Tab>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::SessionOptions;
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_context_threshold(0.8)  // Compact at 80% (default)
-))?;
 ```
 
 </Tab>
@@ -249,7 +249,22 @@ Bridges the [Memory](/docs/code/memory) system to the context provider interface
   automatically.
 </Callout>
 
-<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::context::MemoryContextProvider;
+use a3s_code_core::memory::MemoryManager;
+
+let memory = Arc::new(MemoryManager::new());
+let provider = Arc::new(MemoryContextProvider::new(memory));
+
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_context_provider(provider)
+))?;
+```
+
+</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -267,25 +282,10 @@ const session = agent.session('/project', {
 ```python
 from a3s_code import Agent
 
-agent = await Agent.create('agent.hcl')
+agent = Agent.create('agent.hcl')
 session = agent.session('/project', {
     'memory_dir': './.a3s/memory',  # enables MemoryContextProvider automatically
 })
-```
-
-</Tab>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::context::MemoryContextProvider;
-use a3s_code_core::memory::MemoryManager;
-
-let memory = Arc::new(MemoryManager::new());
-let provider = Arc::new(MemoryContextProvider::new(memory));
-
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_context_provider(provider)
-))?;
 ```
 
 </Tab>
@@ -295,35 +295,7 @@ let session = agent.session("/project", Some(
 
 Custom context providers implement the `ContextProvider` trait in Rust and are registered on the session. TypeScript and Python can use `fsContext` to inject filesystem context without a custom provider.
 
-<Tabs items={['TypeScript', 'Python', 'Rust']}>
-<Tab value="TypeScript">
-
-```typescript
-import { Agent } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-const session = agent.session('/project', {
-  // Inject a specific directory as filesystem context
-  fsContext: './docs',
-});
-```
-
-For full custom provider logic (semantic search, external knowledge bases), implement a
-`ContextProvider` in Rust and register it via `with_context_provider()`.
-
-</Tab>
-<Tab value="Python">
-
-```python
-from a3s_code import Agent
-
-agent = await Agent.create('agent.hcl')
-session = agent.session('/project', {
-    'fs_context': './docs',  # inject filesystem context
-})
-```
-
-</Tab>
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 
 ```rust
@@ -367,13 +339,59 @@ let session = agent.session("/project", Some(
 ```
 
 </Tab>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project', {
+  // Inject a specific directory as filesystem context
+  fsContext: './docs',
+});
+```
+
+For full custom provider logic (semantic search, external knowledge bases), implement a
+`ContextProvider` in Rust and register it via `with_context_provider()`.
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = Agent.create('agent.hcl')
+session = agent.session('/project', {
+    'fs_context': './docs',  # inject filesystem context
+})
+```
+
+</Tab>
 </Tabs>
 
 ## Multiple Providers
 
 Register multiple context providers to combine different sources:
 
-<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+let memory_provider = Arc::new(MemoryContextProvider::new(memory));
+let docs_provider = Arc::new(DocsContextProvider { docs_path });
+let code_provider = Arc::new(CodeContextProvider { repo_path });
+
+let session = agent.session("/project", Some(
+    SessionOptions::new()
+        .with_context_provider(memory_provider)
+        .with_context_provider(docs_provider)
+        .with_context_provider(code_provider)
+))?;
+```
+
+All providers are queried in parallel, and results are merged before injection into the system prompt.
+
+</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -395,30 +413,12 @@ use Rust and register them with `.with_context_provider()`.
 ```python
 from a3s_code import Agent
 
-agent = await Agent.create('agent.hcl')
+agent = Agent.create('agent.hcl')
 session = agent.session('/project', {
     'memory_dir': './.a3s/memory',  # memory provider
     'fs_context': './docs',          # filesystem context provider
 })
 ```
-
-</Tab>
-<Tab value="Rust">
-
-```rust
-let memory_provider = Arc::new(MemoryContextProvider::new(memory));
-let docs_provider = Arc::new(DocsContextProvider { docs_path });
-let code_provider = Arc::new(CodeContextProvider { repo_path });
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_context_provider(memory_provider)
-        .with_context_provider(docs_provider)
-        .with_context_provider(code_provider)
-))?;
-```
-
-All providers are queried in parallel, and results are merged before injection into the system prompt.
 
 </Tab>
 </Tabs>

@@ -134,28 +134,30 @@ print(f"Result: {result}")
 
 `Orchestrator.create()` 默认使用内部占位符——仅用于测试和演示。要运行**真实的 LLM + 工具调用**，用 `AgentOrchestrator::from_agent(agent)`（Rust）或 `create_with_agent()`（Python/TypeScript）挂载真实的 AgentLoop。
 
-<Tabs items={['Python', 'TypeScript', 'Rust']}>
-<Tab value="Python">
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
 
-```python
-from a3s_code import Agent, Orchestrator, SubAgentConfig
+```rust
+use a3s_code_core::{Agent, orchestrator::{AgentOrchestrator, SubAgentConfig}};
+use std::sync::Arc;
 
-# 1. 加载 agent 配置（任意 provider：Kimi、Claude、OpenAI 等）
-agent = Agent.create("agent.hcl")
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Arc::new(Agent::new("agent.hcl").await?);
 
-# 2. 将 orchestrator 连接到真实 AgentLoop 执行
-orch = Orchestrator.create_with_agent(agent, workspace=".")
+    // 将 orchestrator 连接到真实 AgentLoop 执行
+    let orch = AgentOrchestrator::from_agent(agent);
 
-# 3. 生成并运行——使用真实 LLM + 工具调用
-handle = orch.spawn_subagent(SubAgentConfig(
-    agent_type="general",
-    prompt="使用 glob 工具查找所有 Python 文件，并报告找到了多少个。",
-    permissive=True,
-    max_steps=5,
-))
+    let handle = orch.spawn_subagent(
+        SubAgentConfig::new("general", "查找所有 Rust 源文件。")
+            .with_permissive(true)
+            .with_max_steps(5),
+    ).await?;
 
-result = handle.wait()
-print(result)
+    let result = handle.wait().await?;
+    println!("{result}");
+    Ok(())
+}
 ```
 
 </Tab>
@@ -181,29 +183,27 @@ orch.waitAll();
 ```
 
 </Tab>
-<Tab value="Rust">
+<Tab value="Python">
 
-```rust
-use a3s_code_core::{Agent, orchestrator::{AgentOrchestrator, SubAgentConfig}};
-use std::sync::Arc;
+```python
+from a3s_code import Agent, Orchestrator, SubAgentConfig
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let agent = Arc::new(Agent::new("agent.hcl").await?);
+# 1. 加载 agent 配置（任意 provider：Kimi、Claude、OpenAI 等）
+agent = Agent.create("agent.hcl")
 
-    // 将 orchestrator 连接到真实 AgentLoop 执行
-    let orch = AgentOrchestrator::from_agent(agent);
+# 2. 将 orchestrator 连接到真实 AgentLoop 执行
+orch = Orchestrator.create_with_agent(agent, workspace=".")
 
-    let handle = orch.spawn_subagent(
-        SubAgentConfig::new("general", "查找所有 Rust 源文件。")
-            .with_permissive(true)
-            .with_max_steps(5),
-    ).await?;
+# 3. 生成并运行——使用真实 LLM + 工具调用
+handle = orch.spawn_subagent(SubAgentConfig(
+    agent_type="general",
+    prompt="使用 glob 工具查找所有 Python 文件，并报告找到了多少个。",
+    permissive=True,
+    max_steps=5,
+))
 
-    let result = handle.wait().await?;
-    println!("{result}");
-    Ok(())
-}
+result = handle.wait()
+print(result)
 ```
 
 </Tab>
@@ -280,7 +280,7 @@ Python/TypeScript 使用相同方法名，去掉 `.await?`。
 
 ## 实时监控 API
 
-<Tabs items={['Rust', 'Python', 'TypeScript']}>
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 
 ```rust
@@ -334,45 +334,6 @@ println!("Active SubAgents: {}", count);
 ```
 
 </Tab>
-<Tab value="Python">
-
-```python
-# 获取所有 SubAgent 信息列表
-subagents = orch.list_subagents()
-for info in subagents:
-    print(f"SubAgent: {info.id}")
-    print(f"  Type: {info.agent_type}")
-    print(f"  State: {info.state}")
-    print(f"  Description: {info.description}")
-
-    if info.current_activity:
-        print(f"  Current Activity: {info.current_activity.activity_type}")
-
-# 获取特定 SubAgent 的详细信息
-info = orch.get_subagent_info("subagent-1")
-if info:
-    print(f"Created at: {info.created_at}")
-    print(f"Updated at: {info.updated_at}")
-
-# 获取所有活跃 SubAgent 的当前活动
-activities = orch.get_active_activities()
-for subagent_id, activity in activities:
-    if activity.activity_type == "calling_tool":
-        print(f"{subagent_id} is calling a tool")
-    elif activity.activity_type == "requesting_llm":
-        print(f"{subagent_id} is requesting LLM")
-
-# 获取所有 SubAgent 状态
-states = orch.get_all_states()
-for subagent_id, state in states:
-    print(f"{subagent_id}: {state}")
-
-# 获取活跃数量
-count = orch.active_count()
-print(f"Active SubAgents: {count}")
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -415,6 +376,45 @@ for (const entry of states) {
 // 获取活跃数量
 const count = orch.activeCount();
 console.log(`Active SubAgents: ${count}`);
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+# 获取所有 SubAgent 信息列表
+subagents = orch.list_subagents()
+for info in subagents:
+    print(f"SubAgent: {info.id}")
+    print(f"  Type: {info.agent_type}")
+    print(f"  State: {info.state}")
+    print(f"  Description: {info.description}")
+
+    if info.current_activity:
+        print(f"  Current Activity: {info.current_activity.activity_type}")
+
+# 获取特定 SubAgent 的详细信息
+info = orch.get_subagent_info("subagent-1")
+if info:
+    print(f"Created at: {info.created_at}")
+    print(f"Updated at: {info.updated_at}")
+
+# 获取所有活跃 SubAgent 的当前活动
+activities = orch.get_active_activities()
+for subagent_id, activity in activities:
+    if activity.activity_type == "calling_tool":
+        print(f"{subagent_id} is calling a tool")
+    elif activity.activity_type == "requesting_llm":
+        print(f"{subagent_id} is requesting LLM")
+
+# 获取所有 SubAgent 状态
+states = orch.get_all_states()
+for subagent_id, state in states:
+    print(f"{subagent_id}: {state}")
+
+# 获取活跃数量
+count = orch.active_count()
+print(f"Active SubAgents: {count}")
 ```
 
 </Tab>

@@ -9,8 +9,10 @@
     "tasks",
     "agent-teams",
     "skills",
-    "---安全---",
+    "---约束工程---",
     "security",
+    "hooks",
+    "orchestrator",
     "---基础设施---",
     "architecture",
     "lane-queue",
@@ -21,7 +23,6 @@
     "subagents",
     "context",
     "memory",
-    "hooks",
     "persistence",
     "telemetry"
   ]

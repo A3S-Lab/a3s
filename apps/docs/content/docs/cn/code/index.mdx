@@ -4,7 +4,6 @@ description: 基于 Rust 的可嵌入 AI 编程智能体框架，原生支持 No
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 
@@ -19,8 +18,32 @@ let result = session.send("重构 auth 模块使用 JWT", None).await?;
 ```
 
 <Callout type="info">
-**测试覆盖：** 1480 个测试，100% 通过率 | **扩展点：** 19 个基于 trait 的扩展点 | **内置工具：** 14 个 | **内置 Skills：** 7 个（默认开启）
+**测试覆盖：** 1480 个测试，100% 通过率 | **扩展点：** 19 个基于 trait 的扩展点 | **内置工具：** 14 个（启用 `sandbox` feature 后 15 个） | **内置 Skills：** 7 个（默认开启）
 </Callout>
+
+## 为什么选择 A3S Code？
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">🔧 可嵌入</h3>
+    <span className="text-sm text-muted-foreground">Rust 库，非服务。通过 Node.js/Python 绑定集成到你的应用中。</span>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">🛡️ 生产就绪</h3>
+    <span className="text-sm text-muted-foreground">权限系统、HITL 确认、技能工具限制、错误恢复（解析重试、工具超时、熔断器）。</span>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">🔌 可扩展</h3>
+    <span className="text-sm text-muted-foreground">19 个基于 trait 的扩展点，可替换任意策略实现。</span>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">📈 可伸缩</h3>
+    <span className="text-sm text-muted-foreground">基于 Lane 的优先级队列，支持多机器任务分发。</span>
+  </div>
+</div>
 
 ## 快速开始
 
@@ -91,31 +114,7 @@ providers {
 </Tab>
 </Tabs>
 
-设置 API Key 环境变量：
-
-<Tabs groupId="os" items={['Linux / macOS', 'Windows PowerShell', 'Windows CMD']}>
-<Tab value="Linux / macOS">
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
-# 或 OpenAI 兼容服务商：
-export OPENAI_API_KEY="sk-..."
-```
-</Tab>
-<Tab value="Windows PowerShell">
-```powershell
-$env:ANTHROPIC_API_KEY = "sk-ant-..."
-# 或 OpenAI 兼容服务商：
-$env:OPENAI_API_KEY = "sk-..."
-```
-</Tab>
-<Tab value="Windows CMD">
-```cmd
-set ANTHROPIC_API_KEY=sk-ant-...
-:: 或 OpenAI 兼容服务商：
-set OPENAI_API_KEY=sk-...
-```
-</Tab>
-</Tabs>
+然后导出 API Key（macOS/Linux：`export ANTHROPIC_API_KEY="sk-ant-..."`，PowerShell：`$env:ANTHROPIC_API_KEY`）。
 
 <Callout type="info">
 任何实现了 OpenAI Chat Completions API 的服务都可以作为 provider — 只需设置 `base_url`。详见 [提供商配置](/cn/docs/code/providers) 了解 Ollama、GPUStack、A3S Power、OneAPI 等完整配置参考。
@@ -176,19 +175,46 @@ print(result.text)
 
 ## 文档
 
-<TypeTable
-  type={{
-    "核心": {
-      description: "[会话](/cn/docs/code/sessions) · [工具](/cn/docs/code/tools) · [任务](/cn/docs/code/tasks) · [技能](/cn/docs/code/skills)",
-    },
-    "安全": {
-      description: "[安全](/cn/docs/code/security)",
-    },
-    "基础设施": {
-      description: "[架构](/cn/docs/code/architecture) · [通道队列](/cn/docs/code/lane-queue) · [多机器](/cn/docs/code/multi-machine)",
-    },
-    "扩展": {
-      description: "[提供商](/cn/docs/code/providers) · [MCP](/cn/docs/code/mcp) · [子智能体](/cn/docs/code/subagents) · [上下文](/cn/docs/code/context) · [记忆](/cn/docs/code/memory) · [钩子](/cn/docs/code/hooks) · [持久化](/cn/docs/code/persistence) · [遥测](/cn/docs/code/telemetry)",
-    },
-  }}
-/>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">核心</h3>
+    <ul className="text-sm text-muted-foreground space-y-1">
+      <li><a href="/cn/docs/code/sessions">会话</a> — 生命周期、send/stream、历史记录、视觉</li>
+      <li><a href="/cn/docs/code/tools">工具</a> — 14 个内置工具参考</li>
+      <li><a href="/cn/docs/code/tasks">任务</a> — 规划与 wave 并行执行</li>
+      <li><a href="/cn/docs/code/skills">技能</a> — 技能系统与工具限制</li>
+    </ul>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">约束工程</h3>
+    <ul className="text-sm text-muted-foreground space-y-1">
+      <li><a href="/cn/docs/code/security">安全</a> — 权限规则（Deny/Allow/Ask）、人机确认（HITL）、安全扩展</li>
+      <li><a href="/cn/docs/code/hooks">钩子</a> — 11 个生命周期拦截点，拦截工具调用与 LLM 生成</li>
+      <li><a href="/cn/docs/code/orchestrator">编排器</a> — 子智能体暂停、恢复、取消与提示注入</li>
+    </ul>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">基础设施</h3>
+    <ul className="text-sm text-muted-foreground space-y-1">
+      <li><a href="/cn/docs/code/architecture">架构</a> — 系统设计概览</li>
+      <li><a href="/cn/docs/code/lane-queue">通道队列</a> — 优先级路由与队列特性</li>
+      <li><a href="/cn/docs/code/multi-machine">多机器</a> — 水平扩展指南</li>
+    </ul>
+  </div>
+
+  <div className="border rounded-lg p-4">
+    <h3 className="text-lg font-semibold mb-2">扩展</h3>
+    <ul className="text-sm text-muted-foreground space-y-1">
+      <li><a href="/cn/docs/code/providers">提供商</a> — LLM 提供商与完整配置参考</li>
+      <li><a href="/cn/docs/code/mcp">MCP</a> — 外部工具集成</li>
+      <li><a href="/cn/docs/code/subagents">子智能体</a> — 委托给专门智能体</li>
+      <li><a href="/cn/docs/code/context">上下文</a> — RAG 提供商</li>
+      <li><a href="/cn/docs/code/memory">记忆</a> — 长期记忆</li>
+      <li><a href="/cn/docs/code/hooks">钩子</a> — 生命周期事件</li>
+      <li><a href="/cn/docs/code/persistence">持久化</a> — 会话存储</li>
+      <li><a href="/cn/docs/code/telemetry">遥测</a> — 成本追踪与指标</li>
+    </ul>
+  </div>
+</div>

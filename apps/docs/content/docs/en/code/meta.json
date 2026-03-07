@@ -9,8 +9,10 @@
     "tasks",
     "agent-teams",
     "skills",
-    "---Security & Safety---",
+    "---Harness Engineering---",
     "security",
+    "hooks",
+    "orchestrator",
     "---Infrastructure---",
     "architecture",
     "lane-queue",
@@ -21,7 +23,6 @@
     "subagents",
     "context",
     "memory",
-    "hooks",
     "persistence",
     "telemetry"
   ]

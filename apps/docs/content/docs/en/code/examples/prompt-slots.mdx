@@ -62,7 +62,7 @@ println!("{}", result.text);
 ```python
 from a3s_code import Agent, SessionOptions
 
-agent = Agent("~/.a3s/config.hcl")
+agent = Agent.create("~/.a3s/config.hcl")
 
 opts = SessionOptions()
 opts.role = "You are a senior Rust developer specializing in async programming."

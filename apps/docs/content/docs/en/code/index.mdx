@@ -18,7 +18,7 @@ let result = session.send("Refactor auth to use JWT", None).await?;
 ```
 
 <Callout type="info">
-**Test Coverage:** 1480 tests, 100% pass rate | **Extension Points:** 19 trait-based | **Built-in Tools:** 14 (15 with `sandbox` feature)
+**Test Coverage:** 1480 tests, 100% pass rate | **Extension Points:** 19 trait-based | **Built-in Tools:** 14 (15 with `sandbox` feature) | **Built-in Skills:** 7 (auto-loaded)
 </Callout>
 
 ## Why A3S Code?
@@ -36,7 +36,7 @@ let result = session.send("Refactor auth to use JWT", None).await?;
 
   <div className="border rounded-lg p-4">
     <h3 className="text-lg font-semibold mb-2">🔌 Extensible</h3>
-    <span className="text-sm text-muted-foreground">14 trait-based extension points. Replace any policy with your own implementation.</span>
+    <span className="text-sm text-muted-foreground">19 trait-based extension points. Replace any policy with your own implementation.</span>
   </div>
 
   <div className="border rounded-lg p-4">
@@ -114,31 +114,7 @@ providers {
 </Tab>
 </Tabs>
 
-Set the API key for your OS:
-
-<Tabs groupId="os" items={['Linux / macOS', 'Windows PowerShell', 'Windows CMD']}>
-<Tab value="Linux / macOS">
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
-# or for OpenAI-compatible:
-export OPENAI_API_KEY="sk-..."
-```
-</Tab>
-<Tab value="Windows PowerShell">
-```powershell
-$env:ANTHROPIC_API_KEY = "sk-ant-..."
-# or for OpenAI-compatible:
-$env:OPENAI_API_KEY = "sk-..."
-```
-</Tab>
-<Tab value="Windows CMD">
-```cmd
-set ANTHROPIC_API_KEY=sk-ant-...
-:: or for OpenAI-compatible:
-set OPENAI_API_KEY=sk-...
-```
-</Tab>
-</Tabs>
+Then export your API key (`export ANTHROPIC_API_KEY="sk-ant-..."` on macOS/Linux, `$env:ANTHROPIC_API_KEY` on PowerShell).
 
 <Callout type="info">
 Any service implementing the OpenAI Chat Completions API works as a provider — just set `base_url`. See [Providers](/docs/code/providers) for Ollama, GPUStack, A3S Power, OneAPI, and full config reference.
@@ -154,26 +130,16 @@ Any service implementing the OpenAI Chat Completions API works as a provider —
 ```rust
 use a3s_code_core::{Agent, SessionOptions};
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let agent = Agent::new("agent.hcl").await?;
+let agent = Agent::new("agent.hcl").await?;
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_default_security()
+        .with_builtin_skills()
+        .with_planning(true)
+))?;
 
-    // Basic usage
-    let session = agent.session(".", None)?;
-    let result = session.send("What files handle authentication?", None).await?;
-    println!("{}", result.text);
-
-    // With options
-    let session = agent.session(".", Some(
-        SessionOptions::new()
-            .with_default_security()
-            .with_builtin_skills()
-            .with_planning(true)
-    ))?;
-
-    let result = session.send("Refactor auth + update tests", None).await?;
-    Ok(())
-}
+let result = session.send("Refactor auth + update tests", None).await?;
+println!("{}", result.text);
 ```
 </Tab>
 <Tab value="TypeScript">
@@ -244,9 +210,11 @@ See [Architecture](/docs/code/architecture) for detailed documentation.
   </div>
 
   <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">Security & Safety</h3>
+    <h3 className="text-lg font-semibold mb-2">Harness Engineering</h3>
     <ul className="text-sm text-muted-foreground space-y-1">
-      <li><a href="/docs/code/security">Security</a> — Permissions, PII redaction, HITL</li>
+      <li><a href="/docs/code/security">Security</a> — Permission policies, HITL, SecurityProvider</li>
+      <li><a href="/docs/code/hooks">Hooks</a> — Lifecycle interception and control</li>
+      <li><a href="/docs/code/orchestrator">Orchestrator</a> — Multi-agent coordination and runtime control</li>
     </ul>
   </div>
 

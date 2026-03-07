@@ -54,8 +54,6 @@ A3S Code provides 11 lifecycle hooks for intercepting and reacting to events dur
 
 ## How Hooks Work
 
-Hooks are registered on the `HookEngine` and fire at specific points in the agent loop. Multiple hooks can listen to the same event — they execute in priority order (lower number = higher priority).
-
 ```
 Agent Loop
   ├── GenerateStart hooks fire
@@ -92,65 +90,7 @@ The `SecurityGuard` registers hooks at priority 1 (highest) automatically:
 
 ## Hook Registration
 
-Register hooks to observe and intercept lifecycle events:
-
-<Tabs items={['TypeScript', 'Python', 'Rust']}>
-<Tab value="TypeScript">
-
-```typescript
-import { Agent } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-const session = agent.session('/project');
-
-// Register a hook that fires before every tool use
-session.registerHook('log-tools', 'pre_tool_use');
-
-// Register with a matcher to filter to a specific tool
-session.registerHook('log-bash', 'pre_tool_use', { tool: 'bash' });
-
-// Set priority (lower = higher priority)
-session.registerHook('critical-check', 'pre_tool_use', null, { priority: 5 });
-
-console.log(`Hooks registered: ${session.hookCount()}`);
-
-// Unregister when done
-session.unregisterHook('log-tools');
-```
-
-Hook events are observable through the streaming event API — use `session.stream()` to
-receive `hook_fired` events with the event payload.
-
-<Callout type="info">
-  **Blocking from TypeScript**: Hook observation is supported in TypeScript and Python. To
-  block or modify tool calls, implement a `HookHandler` in Rust.
-</Callout>
-
-</Tab>
-<Tab value="Python">
-
-```python
-from a3s_code import Agent
-
-agent = await Agent.create('agent.hcl')
-session = agent.session('/project')
-
-# Register a hook that fires before every tool use
-session.register_hook('log-tools', 'pre_tool_use')
-
-# Register with a matcher to filter to a specific tool
-session.register_hook('log-bash', 'pre_tool_use', {'tool': 'bash'})
-
-# Set priority (lower = higher priority)
-session.register_hook('critical-check', 'pre_tool_use', None, {'priority': 5})
-
-print(f'Hooks registered: {session.hook_count()}')
-
-# Unregister when done
-session.unregister_hook('log-tools')
-```
-
-</Tab>
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 
 ```rust
@@ -208,6 +148,62 @@ match result {
     HookResult::Block(reason) => { /* stop execution */ }
     _ => {}
 }
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project');
+
+// Register a hook that fires before every tool use
+session.registerHook('log-tools', 'pre_tool_use');
+
+// Register with a matcher to filter to a specific tool
+session.registerHook('log-bash', 'pre_tool_use', { tool: 'bash' });
+
+// Set priority (lower = higher priority)
+session.registerHook('critical-check', 'pre_tool_use', null, { priority: 5 });
+
+console.log(`Hooks registered: ${session.hookCount()}`);
+
+// Unregister when done
+session.unregisterHook('log-tools');
+```
+
+Hook events are observable through the streaming event API — use `session.stream()` to
+receive `hook_fired` events with the event payload.
+
+<Callout type="info">
+  **Blocking from TypeScript**: Hook observation is supported in TypeScript and Python. To
+  block or modify tool calls, implement a `HookHandler` in Rust.
+</Callout>
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = Agent.create('agent.hcl')
+session = agent.session('/project')
+
+# Register a hook that fires before every tool use
+session.register_hook('log-tools', 'pre_tool_use')
+
+# Register with a matcher to filter to a specific tool
+session.register_hook('log-bash', 'pre_tool_use', {'tool': 'bash'})
+
+# Set priority (lower = higher priority)
+session.register_hook('critical-check', 'pre_tool_use', None, {'priority': 5})
+
+print(f'Hooks registered: {session.hook_count()}')
+
+# Unregister when done
+session.unregister_hook('log-tools')
 ```
 
 </Tab>
@@ -404,7 +400,22 @@ Each hook event carries a typed payload with event-specific data:
 
 ### HookHandler
 
-<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+impl HookHandler for MyHandler {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        match event {
+            HookEvent::PreToolUse(e) => { /* ... */ }
+            _ => {}
+        }
+        HookResponse::continue_()
+    }
+}
+```
+
+</Tab>
 <Tab value="TypeScript">
 
 Hook observation uses the event stream. Register the hook name, then watch for `hook_fired`
@@ -431,7 +442,7 @@ for await (const event of session.stream('List all .ts files')) {
 ```python
 from a3s_code import Agent
 
-agent = await Agent.create('agent.hcl')
+agent = Agent.create('agent.hcl')
 session = agent.session('/project')
 
 session.register_hook('my-hook', 'pre_tool_use')
@@ -439,21 +450,6 @@ session.register_hook('my-hook', 'pre_tool_use')
 async for event in session.stream('List all .py files'):
     if event.type == 'hook_fired' and event.hook_id == 'my-hook':
         print(f"Hook fired — tool: {event.payload.get('tool')}")
-```
-
-</Tab>
-<Tab value="Rust">
-
-```rust
-impl HookHandler for MyHandler {
-    fn handle(&self, event: &HookEvent) -> HookResponse {
-        match event {
-            HookEvent::PreToolUse(e) => { /* ... */ }
-            _ => {}
-        }
-        HookResponse::continue_()
-    }
-}
 ```
 
 </Tab>
@@ -477,9 +473,14 @@ impl HookHandler for MyHandler {
 
 ### Hook priority
 
-Lower number = higher priority. `SecurityGuard` uses priority `1`. Default hooks use priority `100`.
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
 
-<Tabs items={['TypeScript', 'Python', 'Rust']}>
+```rust
+Hook::new("my-hook", HookEventType::PreToolUse).with_priority(50)
+```
+
+</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -492,13 +493,6 @@ session.registerHook('my-hook', 'pre_tool_use', null, { priority: 5 });
 
 ```python
 session.register_hook('my-hook', 'pre_tool_use', None, {'priority': 5})
-```
-
-</Tab>
-<Tab value="Rust">
-
-```rust
-Hook::new("my-hook", HookEventType::PreToolUse).with_priority(50)
 ```
 
 </Tab>

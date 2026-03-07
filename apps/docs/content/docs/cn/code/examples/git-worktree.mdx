@@ -55,7 +55,7 @@ assert!(r.exit_code == 0);
 ```python
 from a3s_code import Agent
 
-agent = Agent("~/.a3s/config.hcl")
+agent = Agent.create("~/.a3s/config.hcl")
 session = agent.session("/my-git-repo")
 
 # 查看 worktree 状态

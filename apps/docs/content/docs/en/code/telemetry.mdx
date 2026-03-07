@@ -151,7 +151,29 @@ These metrics are recorded on tracing spans via `record_tool_result()` and can b
 The telemetry module emits standard OpenTelemetry spans. Spans fire automatically during every
 `send()` / `stream()` call — no changes to your agent code are needed.
 
-<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+use tracing_subscriber::prelude::*;
+
+// Example: export to OTLP collector
+let tracer = opentelemetry_otlp::new_pipeline()
+    .tracing()
+    .install_batch(opentelemetry_sdk::runtime::Tokio)?;
+
+tracing_subscriber::registry()
+    .with(tracing_opentelemetry::layer().with_tracer(tracer))
+    .init();
+
+// All agent operations now emit structured spans
+let result = session.send("Analyze this codebase").await?;
+```
+
+Helper functions `record_llm_usage()` and `record_tool_result()` record metrics on the current
+active span. The `TimedSpan` guard automatically measures elapsed time for any scoped operation.
+
+</Tab>
 <Tab value="TypeScript">
 
 Telemetry is emitted automatically. Configure the collector via environment variables before
@@ -183,34 +205,12 @@ from a3s_code import Agent
 # OTEL_SERVICE_NAME=my-agent
 os.environ['OTEL_EXPORTER_OTLP_ENDPOINT'] = 'http://localhost:4318'
 
-agent = await Agent.create('agent.hcl')
+agent = Agent.create('agent.hcl')
 session = agent.session('/project')
 
 # Spans are emitted automatically — no extra code needed
-result = await session.send('Analyze this codebase')
+result = session.send('Analyze this codebase')
 ```
-
-</Tab>
-<Tab value="Rust">
-
-```rust
-use tracing_subscriber::prelude::*;
-
-// Example: export to OTLP collector
-let tracer = opentelemetry_otlp::new_pipeline()
-    .tracing()
-    .install_batch(opentelemetry_sdk::runtime::Tokio)?;
-
-tracing_subscriber::registry()
-    .with(tracing_opentelemetry::layer().with_tracer(tracer))
-    .init();
-
-// All agent operations now emit structured spans
-let result = session.send("Analyze this codebase").await?;
-```
-
-Helper functions `record_llm_usage()` and `record_tool_result()` record metrics on the current
-active span. The `TimedSpan` guard automatically measures elapsed time for any scoped operation.
 
 </Tab>
 </Tabs>

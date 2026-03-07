@@ -56,7 +56,7 @@ const result = await session.send('Remember: this project deploys to AWS us-east
 </Tab>
 <Tab value="Python">
 ```python
-agent = Agent("agent.hcl")
+agent = Agent.create("agent.hcl")
 session = agent.session(".", SessionOptions(
     file_memory="./memory",
 ))

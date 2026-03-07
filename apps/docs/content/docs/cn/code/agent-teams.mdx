@@ -265,7 +265,68 @@ runner.bind_session("worker-1", Arc::new(MyCustomExecutor::new()))?;
 
 ## SDK 参考
 
-<Tabs items={['Python', 'Node.js']}>
+<Tabs items={['TypeScript', 'Python']}>
+
+<Tab value="TypeScript">
+
+```typescript
+import { Agent, Team, TeamRunner, TeamConfig, TeamTaskBoard, TeamTask, TeamRunResult } from '@a3s-lab/code';
+
+// --- 初始化 ---
+const config: TeamConfig = {
+  maxTasks: 50,
+  channelBuffer: 128,
+  maxRounds: 10,
+  pollIntervalMs: 200,
+};
+const team = new Team('my-team', config);
+team.addMember('lead',     'lead');      // "lead" | "worker" | "reviewer"
+team.addMember('worker-1', 'worker');
+team.addMember('reviewer', 'reviewer');
+
+team.memberCount;  // number
+
+// 在消耗 team 之前获取任务板
+const boardBefore: TeamTaskBoard = team.taskBoard();
+
+// --- Runner ---
+const runner = new TeamRunner(team);     // team 在此处被消耗
+runner.bindSession('lead',     session);
+runner.bindSession('worker-1', session);
+runner.bindSession('reviewer', session);
+
+const board: TeamTaskBoard = runner.taskBoard();
+
+const result: TeamRunResult = await runner.runUntilDone('你的目标');
+result.doneTasks      // TeamTask[]
+result.rejectedTasks  // TeamTask[]
+result.rounds         // number
+
+// --- 任务板（直接操作）---
+const id: string | null = board.post('description', 'postedBy', null);
+const task: TeamTask | null = board.claim('worker-1');
+board.complete(task!.id, 'result text');
+board.approve(task!.id);
+board.reject(task!.id);
+board.get(task!.id);                          // TeamTask | null
+board.byStatus('done');                        // TeamTask[]  "open"|"in_progress"|"in_review"|"done"|"rejected"
+board.byAssignee('worker-1');                  // TeamTask[]
+const stats = board.stats();                   // { open, inProgress, inReview, done, rejected, total }
+board.len;                                     // number
+board.isEmpty;                                 // boolean
+
+// --- TeamTask 字段 ---
+task!.id           // string
+task!.description  // string
+task!.postedBy     // string
+task!.assignedTo   // string | null
+task!.status       // "open" | "in_progress" | "in_review" | "done" | "rejected"
+task!.result       // string | null
+task!.createdAt    // number（Unix 时间戳）
+task!.updatedAt    // number（Unix 时间戳）
+```
+
+</Tab>
 
 <Tab value="Python">
 
@@ -323,67 +384,6 @@ task.status       # "open" | "in_progress" | "in_review" | "done" | "rejected"
 task.result       # str | None
 task.created_at   # int（Unix 时间戳）
 task.updated_at   # int（Unix 时间戳）
-```
-
-</Tab>
-
-<Tab value="Node.js">
-
-```typescript
-import { Agent, Team, TeamRunner, TeamConfig, TeamTaskBoard, TeamTask, TeamRunResult } from '@a3s-lab/code';
-
-// --- 初始化 ---
-const config: TeamConfig = {
-  maxTasks: 50,
-  channelBuffer: 128,
-  maxRounds: 10,
-  pollIntervalMs: 200,
-};
-const team = new Team('my-team', config);
-team.addMember('lead',     'lead');      // "lead" | "worker" | "reviewer"
-team.addMember('worker-1', 'worker');
-team.addMember('reviewer', 'reviewer');
-
-team.memberCount;  // number
-
-// 在消耗 team 之前获取任务板
-const boardBefore: TeamTaskBoard = team.taskBoard();
-
-// --- Runner ---
-const runner = new TeamRunner(team);     // team 在此处被消耗
-runner.bindSession('lead',     session);
-runner.bindSession('worker-1', session);
-runner.bindSession('reviewer', session);
-
-const board: TeamTaskBoard = runner.taskBoard();
-
-const result: TeamRunResult = await runner.runUntilDone('你的目标');
-result.doneTasks      // TeamTask[]
-result.rejectedTasks  // TeamTask[]
-result.rounds         // number
-
-// --- 任务板（直接操作）---
-const id: string | null = board.post('description', 'postedBy', null);
-const task: TeamTask | null = board.claim('worker-1');
-board.complete(task!.id, 'result text');
-board.approve(task!.id);
-board.reject(task!.id);
-board.get(task!.id);                          // TeamTask | null
-board.byStatus('done');                        // TeamTask[]  "open"|"in_progress"|"in_review"|"done"|"rejected"
-board.byAssignee('worker-1');                  // TeamTask[]
-const stats = board.stats();                   // { open, inProgress, inReview, done, rejected, total }
-board.len;                                     // number
-board.isEmpty;                                 // boolean
-
-// --- TeamTask 字段 ---
-task!.id           // string
-task!.description  // string
-task!.postedBy     // string
-task!.assignedTo   // string | null
-task!.status       // "open" | "in_progress" | "in_review" | "done" | "rejected"
-task!.result       // string | null
-task!.createdAt    // number（Unix 时间戳）
-task!.updatedAt    // number（Unix 时间戳）
 ```
 
 </Tab>
