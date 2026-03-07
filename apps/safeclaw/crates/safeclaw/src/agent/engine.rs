@@ -172,6 +172,8 @@ impl AgentEngine {
             let hook_engine = Arc::new(a3s_code::HookEngine::new());
             sentinel.register_hooks(&hook_engine);
             session_config.hook_engine = Some(hook_engine);
+            // Register lineage — user-initiated sessions have no parent.
+            sentinel.on_session_created(session_id, None);
         }
 
         // Create a3s-code session
@@ -308,6 +310,11 @@ impl AgentEngine {
 
         // Remove from disk
         self.store.remove(session_id).await;
+
+        // Release sentinel per-session state (accumulator + lineage).
+        if let Some(ref sentinel) = *self.sentinel.read().await {
+            sentinel.on_session_destroyed(session_id);
+        }
 
         Ok(())
     }

@@ -24,12 +24,21 @@
 //! Call [`SentinelAgent::init`] at startup, then [`SentinelAgent::register_hooks`]
 //! to wire the blocking hooks into an existing `HookEngine`.
 
+pub mod accumulator;
 pub mod config;
+pub mod correlator;
 pub mod hook;
+pub mod lineage;
 pub mod phase1;
+pub mod phase2_pool;
 
 pub use config::{DelegateTrigger, SentinelPolicy};
 pub use phase1::{Phase1Engine, Phase1Result};
+
+use accumulator::{AccumulatorDecision, SuspicionAccumulatorMap};
+use correlator::{CorrelatedEvent, CorrelatedEventType, CrossSessionCorrelator};
+use lineage::LineageMap;
+use phase2_pool::Phase2Pool;
 
 use a3s_code::hooks::{Hook, HookConfig, HookEngine, HookEventType};
 use a3s_code::llm::create_client_with_config;
@@ -105,6 +114,20 @@ pub struct SentinelAgent {
 
     /// User-defined specialist sub-agents.
     agent_registry: Arc<AgentRegistry>,
+
+    // ── Multi-agent improvements ─────────────────────────────────────────
+
+    /// P1: per-session suspicion accumulator (temporal-evasion defence).
+    accumulator: Arc<SuspicionAccumulatorMap>,
+
+    /// P2: session lineage / trust-level tracker.
+    lineage: Arc<LineageMap>,
+
+    /// P3: pre-warmed Phase 2 LLM session pool.
+    phase2_pool: Arc<Phase2Pool>,
+
+    /// P4: async cross-session pattern correlator.
+    correlator: Arc<CrossSessionCorrelator>,
 }
 
 impl std::fmt::Debug for SentinelAgent {
@@ -166,7 +189,42 @@ impl SentinelAgent {
             );
         }
 
-        Ok(Arc::new(Self { policy, phase1, session_manager, skill_registry, agent_registry }))
+        // P1: suspicion accumulator (default: 5-minute window, 30s Phase 2 cooldown)
+        let accumulator = Arc::new(SuspicionAccumulatorMap::default());
+
+        // P2: session lineage
+        let lineage = Arc::new(LineageMap::new());
+
+        // P3: Phase 2 pool (3 pre-warmed sessions)
+        let system_prompt = build_sentinel_system_prompt(
+            policy.phase2.extra_system_prompt.as_deref().unwrap_or(""),
+        );
+        let phase2_pool = Phase2Pool::new(
+            3,
+            session_manager.clone(),
+            system_prompt,
+            policy.phase2.severity_actions.clone(),
+        )
+        .await;
+
+        // P4: cross-session correlator (1024-event buffer, 2-minute window)
+        let correlator = Arc::new(CrossSessionCorrelator::spawn(
+            1024,
+            std::time::Duration::from_secs(120),
+            None, // alert broadcast channel — callers can add one via their own channel
+        ));
+
+        Ok(Arc::new(Self {
+            policy,
+            phase1,
+            session_manager,
+            skill_registry,
+            agent_registry,
+            accumulator,
+            lineage,
+            phase2_pool,
+            correlator,
+        }))
     }
 
     // ── Analysis entry points ────────────────────────────────────────────
@@ -178,15 +236,62 @@ impl SentinelAgent {
         tool: &str,
         args: &serde_json::Value,
     ) -> SecurityVerdict {
+        // Register session lineage on first encounter (P2).
+        let lineage = self.lineage.get_or_infer(session_id);
+
         let r1 = self.phase1.check_tool_use(session_id, tool, args);
 
         if r1.should_block {
+            // Feed hard-block as high suspicion to correlator (P4).
+            self.correlator.submit(CorrelatedEvent {
+                session_id: session_id.to_string(),
+                event_type: CorrelatedEventType::HighSuspicion,
+                timestamp: std::time::Instant::now(),
+            });
             return SecurityVerdict::block(
                 r1.block_reason.unwrap_or_else(|| "Sentinel Phase 1 block".to_string()),
             );
         }
 
-        // Delegate: synchronous rules first
+        // Submit tool-specific events to correlator (P4, non-blocking).
+        if let Some(url) = extract_url_from_args(args) {
+            let host = extract_domain(&url);
+            self.correlator.submit(CorrelatedEvent {
+                session_id: session_id.to_string(),
+                event_type: CorrelatedEventType::NetworkRequest { host },
+                timestamp: std::time::Instant::now(),
+            });
+        }
+        if is_file_write_tool(tool) {
+            let path = args.get("file_path")
+                .or_else(|| args.get("path"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+            self.correlator.submit(CorrelatedEvent {
+                session_id: session_id.to_string(),
+                event_type: CorrelatedEventType::FileWrite { path },
+                timestamp: std::time::Instant::now(),
+            });
+        }
+
+        // Apply lineage depth multiplier then feed into accumulator (P1 + P2).
+        let adjusted_score = r1.score * lineage.score_multiplier();
+        let acc_decision = self.accumulator.record(session_id, adjusted_score);
+
+        // Accumulator hard block (P1).
+        if let AccumulatorDecision::HardBlock { accumulated_score } = acc_decision {
+            tracing::warn!(
+                session_id,
+                accumulated_score,
+                "Sentinel: accumulated suspicion hard-block"
+            );
+            return SecurityVerdict::block(format!(
+                "Accumulated suspicion score {accumulated_score:.2} exceeds hard-block threshold"
+            ));
+        }
+
+        // Delegate: synchronous rules first.
         if let Some(v) = self.try_delegate_blocking(
             DelegateTrigger::PreToolUse,
             Some(tool),
@@ -195,13 +300,20 @@ impl SentinelAgent {
             return v;
         }
 
-        // Phase 2 when score exceeds threshold or tool is in always_analyze set
-        if r1.score >= self.policy.phase1.phase2_trigger_score || self.phase1.always_analyze(tool) {
-            self.phase2_analyze(&format!(
+        // Trigger Phase 2 via pool when:
+        //   - single-event score crosses threshold, OR
+        //   - tool is in always_analyze set, OR
+        //   - accumulator says TriggerPhase2  (P1)
+        let single_trigger = r1.score >= self.policy.phase1.phase2_trigger_score
+            || self.phase1.always_analyze(tool);
+        let accum_trigger = matches!(acc_decision, AccumulatorDecision::TriggerPhase2 { .. });
+
+        if single_trigger || accum_trigger {
+            let context = format!(
                 "Tool '{tool}' called with args: {}",
                 serde_json::to_string(args).unwrap_or_default()
-            ))
-            .await
+            );
+            self.phase2_pool.analyze(&context, self.policy.phase2.timeout_ms).await
         } else {
             SecurityVerdict::allow()
         }
@@ -209,12 +321,27 @@ impl SentinelAgent {
 
     /// Analyse a user prompt (blocking path).
     pub async fn analyze_prompt(&self, session_id: &str, prompt: &str) -> SecurityVerdict {
+        let lineage = self.lineage.get_or_infer(session_id);
         let r1 = self.phase1.check_prompt(session_id, prompt);
 
         if r1.should_block {
+            self.correlator.submit(CorrelatedEvent {
+                session_id: session_id.to_string(),
+                event_type: CorrelatedEventType::HighSuspicion,
+                timestamp: std::time::Instant::now(),
+            });
             return SecurityVerdict::block(
                 r1.block_reason.unwrap_or_else(|| "Sentinel Phase 1 block".to_string()),
             );
+        }
+
+        let adjusted_score = r1.score * lineage.score_multiplier();
+        let acc_decision = self.accumulator.record(session_id, adjusted_score);
+
+        if let AccumulatorDecision::HardBlock { accumulated_score } = acc_decision {
+            return SecurityVerdict::block(format!(
+                "Accumulated suspicion {accumulated_score:.2} exceeds hard-block threshold"
+            ));
         }
 
         if let Some(v) = self.try_delegate_blocking(
@@ -225,8 +352,13 @@ impl SentinelAgent {
             return v;
         }
 
-        if r1.score >= self.policy.phase1.phase2_trigger_score {
-            self.phase2_analyze(&format!("User prompt: {prompt}")).await
+        let single_trigger = r1.score >= self.policy.phase1.phase2_trigger_score;
+        let accum_trigger = matches!(acc_decision, AccumulatorDecision::TriggerPhase2 { .. });
+
+        if single_trigger || accum_trigger {
+            self.phase2_pool
+                .analyze(&format!("User prompt: {prompt}"), self.policy.phase2.timeout_ms)
+                .await
         } else {
             SecurityVerdict::allow()
         }
@@ -242,80 +374,34 @@ impl SentinelAgent {
             );
         }
 
-        // Fire async (non-blocking) delegates for post-response
+        // Fire async (non-blocking) delegates for post-response.
         self.fire_async_delegates(DelegateTrigger::PostResponse, None, response_text);
 
         if r1.score >= self.policy.phase1.phase2_trigger_score {
-            self.phase2_analyze(&format!("Agent response: {response_text}")).await
+            self.phase2_pool
+                .analyze(
+                    &format!("Agent response: {response_text}"),
+                    self.policy.phase2.timeout_ms,
+                )
+                .await
         } else {
             SecurityVerdict::allow()
         }
     }
 
-    // ── Phase 2 ──────────────────────────────────────────────────────────
+    /// Notify the sentinel that a session has been created (registers lineage).
+    ///
+    /// Call with `parent_id = None` for user-initiated sessions.  For sub-agent
+    /// sessions call with the spawning session's ID so the lineage depth is
+    /// tracked correctly.
+    pub fn on_session_created(&self, session_id: &str, parent_id: Option<&str>) {
+        self.lineage.register(session_id, parent_id);
+    }
 
-    /// Run Phase 2 LLM analysis.  Returns `Allow` on timeout or when no LLM
-    /// is configured (fail-open — security must not block normal usage).
-    async fn phase2_analyze(&self, context: &str) -> SecurityVerdict {
-        let timeout = tokio::time::Duration::from_millis(self.policy.phase2.timeout_ms);
-
-        let extra = self
-            .policy
-            .phase2
-            .extra_system_prompt
-            .as_deref()
-            .unwrap_or("");
-
-        let system_prompt = build_sentinel_system_prompt(extra);
-
-        let analysis_prompt = format!(
-            "Analyse the following agent activity and return JSON with fields \
-             `severity` (none/low/medium/high/critical), `should_block` (bool), \
-             and `reason` (string).\n\nActivity:\n{context}"
-        );
-
-        // Create an ephemeral sentinel session
-        let session_id_str = format!("sentinel-{}", uuid::Uuid::new_v4());
-        let session_cfg = a3s_code::session::SessionConfig {
-            system_prompt: Some(system_prompt.clone()),
-            ..Default::default()
-        };
-        let session_result = self
-            .session_manager
-            .create_session(session_id_str.clone(), session_cfg)
-            .await;
-
-        let session_id = match session_result {
-            Ok(id) => id,
-            Err(e) => {
-                tracing::warn!("Sentinel Phase 2 session creation failed: {e}");
-                return SecurityVerdict::allow(); // fail-open
-            }
-        };
-
-        let generate = tokio::time::timeout(
-            timeout,
-            self.session_manager.generate(&session_id, &analysis_prompt),
-        )
-        .await;
-
-        // Best-effort cleanup: ignore errors (session will expire via lifecycle task)
-        let _ = self.session_manager.destroy_session(&session_id).await;
-
-        match generate {
-            Ok(Ok(result)) => parse_phase2_verdict(&result.text, &self.policy.phase2.severity_actions),
-            Ok(Err(e)) => {
-                tracing::debug!("Sentinel Phase 2 LLM error: {e}");
-                SecurityVerdict::allow()
-            }
-            Err(_timeout) => {
-                tracing::debug!(
-                    timeout_ms = self.policy.phase2.timeout_ms,
-                    "Sentinel Phase 2 timed out — failing open"
-                );
-                SecurityVerdict::allow()
-            }
-        }
+    /// Notify the sentinel that a session has been destroyed (releases state).
+    pub fn on_session_destroyed(&self, session_id: &str) {
+        self.accumulator.remove(session_id);
+        self.lineage.remove(session_id);
     }
 
     // ── Delegation ────────────────────────────────────────────────────────
@@ -486,6 +572,39 @@ impl SentinelSubAgentRunner {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/// Returns `true` for tools that write files to disk.
+fn is_file_write_tool(tool: &str) -> bool {
+    matches!(tool, "write_file" | "edit_file" | "create_file" | "overwrite_file" | "Write" | "Edit")
+}
+
+/// Extract a URL-like string from tool arguments (checks common arg names).
+fn extract_url_from_args(args: &serde_json::Value) -> Option<String> {
+    for key in &["url", "uri", "endpoint", "host"] {
+        if let Some(v) = args.get(key).and_then(|v| v.as_str()) {
+            if v.contains("://") || v.contains('.') {
+                return Some(v.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// Extract the domain/host component from a URL-like string.
+fn extract_domain(url: &str) -> String {
+    // Strip scheme
+    let without_scheme = if let Some(pos) = url.find("://") {
+        &url[pos + 3..]
+    } else {
+        url
+    };
+    // Take only the host part (before first '/' or ':')
+    without_scheme
+        .split(['/', ':'])
+        .next()
+        .unwrap_or(without_scheme)
+        .to_string()
+}
 
 fn resolve_llm(
     policy: &SentinelPolicy,
