@@ -88,6 +88,36 @@ Agent 循环
   }}
 />
 
+## Hook 传播到子智能体
+
+在 session 上注册的 hook 会自动传播到所有由 `task` 和 `parallel_task` 工具派生的子智能体，包括任意深度的孙子智能体。
+
+```
+父 session（已注册 hooks）
+  └── task 工具派生子 AgentLoop
+        ├── 通过 ToolContext.sentinel_hook 继承哨兵 hook
+        └── task 工具派生孙子 AgentLoop
+              └── 继承哨兵 hook（再次传播）
+```
+
+实现原理：`ToolContext` 新增了一个**哨兵 hook（sentinel hook）**字段。创建 session 时，若存在 `hook_engine`，会将其复制到 `ToolContext.sentinel_hook`。`task` / `parallel_task` 工具在创建子 agent 时，将该字段设置为子 `AgentConfig.hook_engine`，同时也设置在子 `ToolContext` 上，使孙子 agent 同样能继承。
+
+<Callout type="info">
+  **安全意义**：在父 session 上注册的 `PreToolUse` 阻断钩子，无论嵌套深度如何，都会同样作用于所有子智能体——无需在每个子 session 上手动重新注册。
+</Callout>
+
+```rust
+// 只需在父 session 注册一次 — 子智能体自动继承
+session.register_hook(
+    Hook::new("block-dangerous", HookEventType::PreToolUse)
+        .with_matcher(HookMatcher::tool("bash"))
+);
+session.register_hook_handler("block-dangerous", Arc::new(BlockHandler));
+
+// 通过 task 工具派生的子智能体无需额外配置即可受到保护
+let result = session.send("分析仓库并并行执行子任务", None).await?;
+```
+
 ## Hook 注册
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>

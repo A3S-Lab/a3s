@@ -88,6 +88,36 @@ The `SecurityGuard` registers hooks at priority 1 (highest) automatically:
   }}
 />
 
+## Hook Propagation to Sub-agents
+
+Hooks registered on a session are automatically propagated to all sub-agents spawned by the `task` and `parallel_task` tools, including grandchildren at arbitrary depth.
+
+```
+Parent session (hooks registered)
+  └── task tool spawns child AgentLoop
+        ├── inherits sentinel hook via ToolContext.sentinel_hook
+        └── task tool spawns grandchild AgentLoop
+              └── inherits sentinel hook (propagated again)
+```
+
+This is implemented via a **sentinel hook** field on `ToolContext`. When a session is created with a `hook_engine`, the engine is copied into `ToolContext.sentinel_hook`. The `task` / `parallel_task` tools then set this as `AgentConfig.hook_engine` on the child and also set it on the child's own `ToolContext`, so grandchildren inherit it too.
+
+<Callout type="info">
+  **Security implication**: A `PreToolUse` hook that blocks dangerous commands on the parent will also block them in every sub-agent, regardless of nesting depth — no manual re-registration needed.
+</Callout>
+
+```rust
+// Register once on the parent — sub-agents inherit automatically
+session.register_hook(
+    Hook::new("block-dangerous", HookEventType::PreToolUse)
+        .with_matcher(HookMatcher::tool("bash"))
+);
+session.register_hook_handler("block-dangerous", Arc::new(BlockHandler));
+
+// Sub-agents spawned via task tool are covered without any extra setup
+let result = session.send("Analyze repo and run sub-tasks in parallel", None).await?;
+```
+
 ## Hook Registration
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
