@@ -103,6 +103,7 @@ a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
 | [a3s-power](crates/power/) | 0.2.0 | Local LLM inference engine — Ollama + OpenAI compatible API | [README](crates/power/README.md) |
 | [a3s-search](crates/search/) | 0.8.0 | Meta search engine — 8 engines, consensus ranking | [README](crates/search/README.md) |
 | [a3s-event](crates/event/) | 0.3.0 | Pluggable event system — provider-agnostic pub/sub, encryption | [README](crates/event/README.md) |
+| [a3s-flow](crates/flow/) | 0.1.0 | Workflow engine — JSON DAG execution for agentic workflows (Dify/n8n style) | [README](crates/flow/README.md) |
 | [a3s-updater](crates/updater/) | 0.2.0 | Self-update for CLI binaries via GitHub Releases | [Source](crates/updater/) |
 
 ## Quick start
@@ -139,6 +140,7 @@ a3s/
 │   ├── common/          # Shared types: PII classification, tools, transport
 │   ├── dev/             # a3s developer CLI
 │   ├── event/           # a3s-event pub/sub system
+│   ├── flow/            # a3s-flow workflow engine (JSON DAG)
 │   ├── gateway/         # a3s-gateway K8s Ingress Controller
 │   ├── lane/            # a3s-lane scheduling
 │   ├── memory/          # a3s-memory long-term memory

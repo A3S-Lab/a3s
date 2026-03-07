@@ -28,3 +28,6 @@
 [submodule "crates/dev"]
 	path = crates/dev
 	url = git@github.com:A3S-Lab/Dev.git
+[submodule "crates/flow"]
+	path = crates/flow
+	url = git@github.com:A3S-Lab/Flow.git
