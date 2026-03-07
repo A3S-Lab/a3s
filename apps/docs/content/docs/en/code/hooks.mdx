@@ -250,14 +250,10 @@ Filter the sentinel to a specific tool with a matcher:
 session.registerHook('sentinel-bash', 'pre_tool_use', { tool: 'bash' }, { priority: 2 });
 ```
 
-<Callout type="info">
-  **Blocking from TypeScript**: TypeScript and Python support hook registration only. To implement blocking or modifying logic, implement a `HookHandler` in Rust.
-</Callout>
-
 </Tab>
 <Tab value="Python">
 
-Python support mirrors TypeScript — register hooks by metadata. The sentinel automatically covers all sub-agents. Observe parent-level tool activity through the stream iterator.
+Python support mirrors TypeScript — register hooks with an optional `handler` callback for blocking. The sentinel automatically covers all sub-agents.
 
 ```python
 from a3s_code import Agent
@@ -265,8 +261,18 @@ from a3s_code import Agent
 agent = Agent.create('agent.hcl')
 session = agent.session('/project', builtin_skills=True, permissive=True)
 
-# Register sentinel hooks — priority 2 runs before standard hooks (10+)
-session.register_hook('sentinel-guard', 'pre_tool_use', config={'priority': 2})
+# Sentinel guard with blocking — propagates to all sub-agents
+def sentinel_guard(event):
+    cmd = str(event.get('payload', {}).get('args', {}).get('command', ''))
+    if 'rm -rf' in cmd or 'DROP TABLE' in cmd:
+        return {'action': 'block', 'reason': 'Sentinel: dangerous command blocked'}
+    return None
+
+session.register_hook(
+    'sentinel-guard', 'pre_tool_use',
+    config={'priority': 2},
+    handler=sentinel_guard,
+)
 session.register_hook('sentinel-audit', 'post_tool_use', config={'priority': 10})
 session.register_hook('sentinel-gen', 'generate_start', config={'priority': 10})
 
@@ -297,7 +303,8 @@ Filter the sentinel to a specific tool with a matcher:
 ```python
 # Only intercept bash calls
 session.register_hook('sentinel-bash', 'pre_tool_use',
-                      matcher={'tool': 'bash'}, config={'priority': 2})
+                      matcher={'tool': 'bash'}, config={'priority': 2},
+                      handler=sentinel_guard)
 ```
 
 </Tab>
@@ -311,7 +318,7 @@ session.register_hook('sentinel-bash', 'pre_tool_use',
       description: "Unlimited — grandchildren and deeper inherit the sentinel automatically",
     },
     "Blocking/modifying": {
-      description: "Rust only — implement `HookHandler` returning `HookResponse::block()` or `HookResponse::modify()`",
+      description: "All languages — Rust via `HookHandler`, TypeScript/Python via the `handler` callback passed to `registerHook`/`register_hook`",
     },
     "Sub-agent stream events": {
       description: "Sub-agent tool calls emit to the broadcast channel (`ToolContext.agent_event_tx`), not the streaming mpsc channel. They are not visible in `session.stream()`. Use the Orchestrator API for sub-agent event monitoring.",
@@ -396,26 +403,32 @@ import { Agent } from '@a3s-lab/code';
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('/project');
 
-// Register a hook that fires before every tool use
+// Metadata-only — fires in Rust, always continues (good for logging via stream events)
 session.registerHook('log-tools', 'pre_tool_use');
 
-// Register with a matcher to filter to a specific tool
-session.registerHook('log-bash', 'pre_tool_use', { tool: 'bash' });
-
-// Set priority (lower = higher priority)
-session.registerHook('critical-check', 'pre_tool_use', null, { priority: 5 });
+// With callback — can block, skip, or continue
+session.registerHook(
+  'guard',
+  'pre_tool_use',
+  { tool: 'bash' },
+  { priority: 5 },
+  (event) => {
+    const cmd = String((event.payload as any)?.args?.command ?? '');
+    if (cmd.includes('rm -rf')) {
+      return { action: 'block', reason: 'Dangerous command blocked by guard' };
+    }
+    return null; // continue
+  },
+);
 
 console.log(`Hooks registered: ${session.hookCount()}`);
 
-// Unregister when done
+// Unregister when done (also removes the associated callback)
 session.unregisterHook('log-tools');
+session.unregisterHook('guard');
 ```
 
-Hooks fire internally in Rust. Observe tool activity through `tool_start` / `tool_end` stream events.
-
-<Callout type="info">
-  **Blocking from TypeScript**: TypeScript and Python support hook registration only. To block or modify tool calls, implement a `HookHandler` in Rust.
-</Callout>
+The `handler` callback receives the serialized hook event `{ event_type, payload }` and must return `null`/`undefined` to continue, or `{ action: 'block', reason: '…' }` / `{ action: 'skip' }` to control execution.
 
 </Tab>
 <Tab value="Python">
@@ -426,20 +439,32 @@ from a3s_code import Agent
 agent = Agent.create('agent.hcl')
 session = agent.session('/project')
 
-# Register a hook that fires before every tool use
+# Metadata-only — fires in Rust, always continues
 session.register_hook('log-tools', 'pre_tool_use')
 
-# Register with a matcher to filter to a specific tool
-session.register_hook('log-bash', 'pre_tool_use', {'tool': 'bash'})
+# With callback — can block, skip, or continue
+def bash_guard(event):
+    cmd = str(event.get('payload', {}).get('args', {}).get('command', ''))
+    if 'rm -rf' in cmd:
+        return {'action': 'block', 'reason': 'Dangerous command blocked by guard'}
+    return None  # continue
 
-# Set priority (lower = higher priority)
-session.register_hook('critical-check', 'pre_tool_use', None, {'priority': 5})
+session.register_hook(
+    'guard', 'pre_tool_use',
+    matcher={'tool': 'bash'},
+    config={'priority': 5},
+    handler=bash_guard,
+)
 
 print(f'Hooks registered: {session.hook_count()}')
 
-# Unregister when done
+# Unregister when done (also removes the associated callback)
 session.unregister_hook('log-tools')
+session.unregister_hook('guard')
 ```
+
+The `handler` callable receives `event: dict` with `event_type` and `payload` fields.
+Return `None` or `{"action": "continue"}` to allow execution, or `{"action": "block", "reason": "…"}` to cancel.
 
 </Tab>
 </Tabs>
@@ -807,13 +832,13 @@ Fires when any error occurs during execution. Use for error reporting or recover
 <TypeTable
   type={{
     "Register hook": {
-      description: "Rust: `session.register_hook(Hook::new(id, event_type))` · TS: `session.registerHook(id, event)` · Python: `session.register_hook(id, event)`",
+      description: "Rust: `session.register_hook(Hook::new(id, event_type))` · TS: `session.registerHook(id, event, matcher?, config?, handler?)` · Python: `session.register_hook(id, event, matcher?, config?, handler?)`",
     },
-    "Register handler": {
-      description: "Rust: `session.register_hook_handler(id, Arc::new(handler))` · TS/Python: observe via stream events",
+    "Register Rust handler": {
+      description: "Rust: `session.register_hook_handler(id, Arc::new(handler))` — for advanced in-process handlers. Not needed when using TS/Python callbacks.",
     },
     "Unregister": {
-      description: "Rust: `session.unregister_hook(id)` · TS: `session.unregisterHook(id)` · Python: `session.unregister_hook(id)`",
+      description: "Rust: `session.unregister_hook(id)` · TS: `session.unregisterHook(id)` · Python: `session.unregister_hook(id)` — also removes any associated callback",
     },
     "Count": {
       description: "Rust: `session.hook_count()` · TS: `session.hookCount()` · Python: `session.hook_count()`",
@@ -826,7 +851,7 @@ Fires when any error occurs during execution. Use for error reporting or recover
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 
-Implement `HookHandler` to block or modify tool calls:
+Implement `HookHandler` for maximum control — block, modify, or continue:
 
 ```rust
 impl HookHandler for MyHandler {
@@ -843,7 +868,7 @@ impl HookHandler for MyHandler {
 </Tab>
 <Tab value="TypeScript">
 
-TypeScript and Python support hook registration (metadata only). Hooks fire internally in Rust — observe tool activity through `tool_start` / `tool_end` stream events:
+Pass a callback as the fifth argument to `registerHook`. The callback receives the serialized event and returns a response object:
 
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -851,8 +876,20 @@ import { Agent } from '@a3s-lab/code';
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('/project');
 
-// Register hook — fires in Rust when the event occurs
-session.registerHook('my-hook', 'pre_tool_use');
+// Block dangerous bash commands
+session.registerHook(
+  'my-guard',
+  'pre_tool_use',
+  { tool: 'bash' },
+  { priority: 5 },
+  (event) => {
+    const cmd = String((event.payload as any)?.args?.command ?? '');
+    if (cmd.includes('rm -rf')) {
+      return { action: 'block', reason: 'Dangerous command blocked' };
+    }
+    return null; // continue
+  },
+);
 
 // EventStream uses .next() (not Symbol.asyncIterator)
 const stream = await session.stream('List all .ts files');
@@ -865,12 +902,16 @@ while (true) {
 }
 ```
 
-<Callout type="info">
-  **Blocking from TypeScript**: Hook observation is supported in TypeScript and Python via `tool_start`/`tool_end` stream events. To block or modify tool calls, implement a `HookHandler` in Rust.
-</Callout>
+**Callback return values:**
+- `null` / `undefined` → continue
+- `{ action: 'block', reason: '…' }` → cancel the operation
+- `{ action: 'skip' }` → skip remaining hooks, continue execution
+- `{ action: 'retry', delayMs: N }` → retry after N milliseconds
 
 </Tab>
 <Tab value="Python">
+
+Pass a callable as the `handler` keyword argument. It receives `event: dict` and returns a response dict:
 
 ```python
 from a3s_code import Agent
@@ -878,8 +919,19 @@ from a3s_code import Agent
 agent = Agent.create('agent.hcl')
 session = agent.session('/project')
 
-# Register hook — fires in Rust when the event occurs
-session.register_hook('my-hook', 'pre_tool_use')
+# Block dangerous bash commands
+def bash_guard(event):
+    cmd = str(event.get('payload', {}).get('args', {}).get('command', ''))
+    if 'rm -rf' in cmd or 'DROP TABLE' in cmd:
+        return {'action': 'block', 'reason': 'Dangerous command blocked'}
+    return None  # continue
+
+session.register_hook(
+    'my-guard', 'pre_tool_use',
+    matcher={'tool': 'bash'},
+    config={'priority': 5},
+    handler=bash_guard,
+)
 
 for event in session.stream('List all .py files'):
     if event.event_type == 'tool_start':
@@ -887,6 +939,12 @@ for event in session.stream('List all .py files'):
     elif event.event_type == 'end':
         break
 ```
+
+**Callback return values:**
+- `None` → continue
+- `{"action": "block", "reason": "…"}` → cancel the operation
+- `{"action": "skip"}` → skip remaining hooks, continue execution
+- `{"action": "retry", "delay_ms": N}` → retry after N milliseconds
 
 </Tab>
 </Tabs>

@@ -198,7 +198,7 @@ session.register_hook_handler("sentinel-audit", Arc::new(AuditLogger));
 </Tab>
 <Tab value="TypeScript">
 
-TypeScript 支持注册 hook 元数据（含 matcher 和 priority）。Hook 在 Rust 内部触发，作用于父智能体**和所有子智能体**的每次工具调用。可通过 `tool_start` / `tool_end` 流式事件观察父级工具活动。
+TypeScript 支持注册 hook 元数据，并可通过第五个可选参数传入回调函数实现阻断逻辑。Hook 作用于父智能体**和所有子智能体**的��次工具调用。
 
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -209,8 +209,20 @@ const session = agent.session('/project', {
   permissive: true,
 });
 
-// 注册哨兵 hooks — 优先级 2 在标准 hooks（10+）之前运行
-session.registerHook('sentinel-guard', 'pre_tool_use', null, { priority: 2 });
+// 带阻断回调的哨兵 guard — 传播到所有子智能体
+session.registerHook(
+  'sentinel-guard',
+  'pre_tool_use',
+  null,
+  { priority: 2 },
+  (event) => {
+    const cmd = String((event.payload as any)?.args?.command ?? '');
+    if (cmd.includes('rm -rf') || cmd.includes('DROP TABLE')) {
+      return { action: 'block', reason: '哨兵拦截：危险命令已阻断' };
+    }
+    return null; // 继续
+  },
+);
 session.registerHook('sentinel-audit', 'post_tool_use', null, { priority: 10 });
 session.registerHook('sentinel-gen', 'generate_start', null, { priority: 10 });
 
@@ -247,17 +259,13 @@ session.unregisterHook('sentinel-gen');
 
 ```typescript
 // 仅拦截 bash 调用
-session.registerHook('sentinel-bash', 'pre_tool_use', { tool: 'bash' }, { priority: 2 });
+session.registerHook('sentinel-bash', 'pre_tool_use', { tool: 'bash' }, { priority: 2 }, guardFn);
 ```
-
-<Callout type="info">
-  **从 TypeScript 阻止调用**：TypeScript 和 Python 仅支持注册 hook 元数据。如需实现阻断或修改逻辑，请在 Rust 中实现 `HookHandler`。
-</Callout>
 
 </Tab>
 <Tab value="Python">
 
-Python 支持与 TypeScript 一致——按元数据注册 hook。哨兵自动覆盖所有子智能体。可通过流迭代器观察父级工具活动。
+Python 支持与 TypeScript 一致——可传入 `handler` 回调实现阻断。哨兵自动覆盖所有子智能体。
 
 ```python
 from a3s_code import Agent
@@ -265,8 +273,18 @@ from a3s_code import Agent
 agent = Agent.create('agent.hcl')
 session = agent.session('/project', builtin_skills=True, permissive=True)
 
-# 注册哨兵 hooks — 优先级 2 在标准 hooks（10+）之前运行
-session.register_hook('sentinel-guard', 'pre_tool_use', config={'priority': 2})
+# 带阻断回调的哨兵 guard — 传播到所有子智能体
+def sentinel_guard(event):
+    cmd = str(event.get('payload', {}).get('args', {}).get('command', ''))
+    if 'rm -rf' in cmd or 'DROP TABLE' in cmd:
+        return {'action': 'block', 'reason': '哨兵拦截：危险命令已阻断'}
+    return None  # 继续
+
+session.register_hook(
+    'sentinel-guard', 'pre_tool_use',
+    config={'priority': 2},
+    handler=sentinel_guard,
+)
 session.register_hook('sentinel-audit', 'post_tool_use', config={'priority': 10})
 session.register_hook('sentinel-gen', 'generate_start', config={'priority': 10})
 
@@ -295,7 +313,8 @@ session.unregister_hook('sentinel-gen')
 ```python
 # 仅拦截 bash 调用
 session.register_hook('sentinel-bash', 'pre_tool_use',
-                      matcher={'tool': 'bash'}, config={'priority': 2})
+                      matcher={'tool': 'bash'}, config={'priority': 2},
+                      handler=sentinel_guard)
 ```
 
 </Tab>
@@ -309,7 +328,7 @@ session.register_hook('sentinel-bash', 'pre_tool_use',
       description: "不限 — 孙子及更深层级的智能体自动继承哨兵",
     },
     "阻断/修改": {
-      description: "仅 Rust — 实现返回 `HookResponse::block()` 或 `HookResponse::modify()` 的 `HookHandler`",
+      description: "所有语言均支持 — Rust 通过 `HookHandler`，TypeScript/Python 通过 `registerHook`/`register_hook` 的 `handler` 回调参数",
     },
     "子智能体流式事件": {
       description: "子智能体工具调用发送到广播通道（`ToolContext.agent_event_tx`），不进入流式 mpsc 通道，在 `session.stream()` 中不可见。如需监控子智能体事件，请使用 Orchestrator API。",
@@ -394,26 +413,32 @@ import { Agent } from '@a3s-lab/code';
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('/project');
 
-// 注册在每次工具使用前触发的 hook
+// 仅元数据 — 在 Rust 内部触发，始终继续（适合通过流式事件做日志）
 session.registerHook('log-tools', 'pre_tool_use');
 
-// 使用 matcher 过滤到特定工具
-session.registerHook('log-bash', 'pre_tool_use', { tool: 'bash' });
-
-// 设置优先级（越低优先级越高）
-session.registerHook('critical-check', 'pre_tool_use', null, { priority: 5 });
+// 带回调 — 可阻断、跳过或继续
+session.registerHook(
+  'guard',
+  'pre_tool_use',
+  { tool: 'bash' },
+  { priority: 5 },
+  (event) => {
+    const cmd = String((event.payload as any)?.args?.command ?? '');
+    if (cmd.includes('rm -rf')) {
+      return { action: 'block', reason: '危险命令已阻断' };
+    }
+    return null; // 继续
+  },
+);
 
 console.log(`已注册 Hooks: ${session.hookCount()}`);
 
-// 完成后注销
+// 注销时同步移除关联的回调
 session.unregisterHook('log-tools');
+session.unregisterHook('guard');
 ```
 
-Hook 在 Rust 内部触发。可通过 `tool_start` / `tool_end` 流式事件观察工具调用活动。
-
-<Callout type="info">
-  **从 TypeScript 阻止调用**：TypeScript 和 Python 仅支持注册 hook 元数据。如需阻止或修改工具调用，请在 Rust 中实现 `HookHandler`。
-</Callout>
+回调函数接收序列化的 hook 事件 `{ event_type, payload }`,返回 `null`/`undefined` 表示继续,返回 `{ action: 'block', reason: '…' }` 或 `{ action: 'skip' }` 控制执行。
 
 </Tab>
 <Tab value="Python">
@@ -424,20 +449,32 @@ from a3s_code import Agent
 agent = Agent.create('agent.hcl')
 session = agent.session('/project')
 
-# 注册在每次工具使用前触发的 hook
+# 仅元数据 — 在 Rust 内部触发，始终继续
 session.register_hook('log-tools', 'pre_tool_use')
 
-# 使用 matcher 过滤到特定工具
-session.register_hook('log-bash', 'pre_tool_use', {'tool': 'bash'})
+# 带回调 — 可阻断、跳过或继续
+def bash_guard(event):
+    cmd = str(event.get('payload', {}).get('args', {}).get('command', ''))
+    if 'rm -rf' in cmd:
+        return {'action': 'block', 'reason': '危险命令已阻断'}
+    return None  # 继续
 
-# 设置优先级（越低优先级越高）
-session.register_hook('critical-check', 'pre_tool_use', None, {'priority': 5})
+session.register_hook(
+    'guard', 'pre_tool_use',
+    matcher={'tool': 'bash'},
+    config={'priority': 5},
+    handler=bash_guard,
+)
 
 print(f'已注册 Hooks: {session.hook_count()}')
 
-# 完成后注销
+# 注销时同步移除关联的回调
 session.unregister_hook('log-tools')
+session.unregister_hook('guard')
 ```
+
+回调函数接收 `event: dict`（含 `event_type` 和 `payload` 字段）。
+返回 `None` 或 `{"action": "continue"}` 允许继续，返回 `{"action": "block", "reason": "…"}` 取消操作。
 
 </Tab>
 </Tabs>
@@ -747,13 +784,13 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 <TypeTable
   type={{
     "注册 hook": {
-      description: "Rust: `session.register_hook(Hook::new(id, event_type))` · TS: `session.registerHook(id, event)` · Python: `session.register_hook(id, event)`",
+      description: "Rust: `session.register_hook(Hook::new(id, event_type))` · TS: `session.registerHook(id, event, matcher?, config?, handler?)` · Python: `session.register_hook(id, event, matcher?, config?, handler?)`",
     },
-    "注册处理器": {
-      description: "Rust: `session.register_hook_handler(id, Arc::new(handler))` · TS/Python: 通过流式事件观察",
+    "注册 Rust 处理器": {
+      description: "Rust: `session.register_hook_handler(id, Arc::new(handler))` — 用于高级进程内处理器，使用 TS/Python 回调时无需此步骤",
     },
     "注销": {
-      description: "Rust: `session.unregister_hook(id)` · TS: `session.unregisterHook(id)` · Python: `session.unregister_hook(id)`",
+      description: "Rust: `session.unregister_hook(id)` · TS: `session.unregisterHook(id)` · Python: `session.unregister_hook(id)` — 同步移除关联回调",
     },
     "计数": {
       description: "Rust: `session.hook_count()` · TS: `session.hookCount()` · Python: `session.hook_count()`",
@@ -766,7 +803,7 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
 
-实现 `HookHandler` 以阻止或修改工具调用：
+实现 `HookHandler` 以获得最完整的控制能力——阻断、修改或继续：
 
 ```rust
 impl HookHandler for MyHandler {
@@ -783,7 +820,7 @@ impl HookHandler for MyHandler {
 </Tab>
 <Tab value="TypeScript">
 
-TypeScript 和 Python 支持注册 hook 元数据。Hook 在 Rust 内部触发 — 可通过 `tool_start` / `tool_end` 流式事件观察工具调用活动：
+将回调函数作为 `registerHook` 的第五个参数传入。回调接收序列化的事件并返回响应对象：
 
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -791,8 +828,20 @@ import { Agent } from '@a3s-lab/code';
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('/project');
 
-// 注册 hook — 当事件发生时在 Rust 内部触发
-session.registerHook('my-hook', 'pre_tool_use');
+// 阻断危险的 bash 命令
+session.registerHook(
+  'my-guard',
+  'pre_tool_use',
+  { tool: 'bash' },
+  { priority: 5 },
+  (event) => {
+    const cmd = String((event.payload as any)?.args?.command ?? '');
+    if (cmd.includes('rm -rf')) {
+      return { action: 'block', reason: '危险命令已阻断' };
+    }
+    return null; // 继续
+  },
+);
 
 // EventStream 使用 .next()（不支持 Symbol.asyncIterator）
 const stream = await session.stream('列出所有 .ts 文件');
@@ -805,12 +854,16 @@ while (true) {
 }
 ```
 
-<Callout type="info">
-  **从 TypeScript 阻止调用**：如需阻止或修改工具调用，请在 Rust 中实现 `HookHandler`。
-</Callout>
+**回调返回值：**
+- `null` / `undefined` → 继续
+- `{ action: 'block', reason: '…' }` → 取消操作
+- `{ action: 'skip' }` → 跳过后续 hooks，继续执行
+- `{ action: 'retry', delayMs: N }` → N 毫秒后重试
 
 </Tab>
 <Tab value="Python">
+
+将可调用对象作为 `handler` 关键字参数传入。它接收 `event: dict` 并返回响应字典：
 
 ```python
 from a3s_code import Agent
@@ -818,8 +871,19 @@ from a3s_code import Agent
 agent = Agent.create('agent.hcl')
 session = agent.session('/project')
 
-# 注册 hook — 当事件发生时在 Rust 内部触发
-session.register_hook('my-hook', 'pre_tool_use')
+# 阻断危险的 bash 命令
+def bash_guard(event):
+    cmd = str(event.get('payload', {}).get('args', {}).get('command', ''))
+    if 'rm -rf' in cmd or 'DROP TABLE' in cmd:
+        return {'action': 'block', 'reason': '危险命令已阻断'}
+    return None  # 继续
+
+session.register_hook(
+    'my-guard', 'pre_tool_use',
+    matcher={'tool': 'bash'},
+    config={'priority': 5},
+    handler=bash_guard,
+)
 
 for event in session.stream('列出所有 .py 文件'):
     if event.event_type == 'tool_start':
@@ -827,6 +891,12 @@ for event in session.stream('列出所有 .py 文件'):
     elif event.event_type == 'end':
         break
 ```
+
+**回调返回值：**
+- `None` → 继续
+- `{"action": "block", "reason": "…"}` → 取消操作
+- `{"action": "skip"}` → 跳过后续 hooks，继续执行
+- `{"action": "retry", "delay_ms": N}` → N 毫秒后重试
 
 </Tab>
 </Tabs>
