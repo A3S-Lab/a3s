@@ -1,8 +1,0 @@
-#!/usr/bin/env node
-
-// Placeholder sidecar for development
-// In development, run the actual sidecar with: pnpm dev:sidecar
-
-console.log('This is a placeholder sidecar binary for development.');
-console.log('Please run the actual sidecar with: pnpm dev:sidecar');
-process.exit(0);
