@@ -17,9 +17,10 @@ Agent Orchestrator is a main-sub agent coordinator built on a3s-event, providing
 
 ## Core Features
 
+- **Real AgentLoop Execution** - SubAgents run real LLM + tool loops via `create_with_agent()` ⭐ New
 - **Real-time Monitoring** - Monitor all SubAgent lifecycles, state changes, progress, and tool executions
-- **Task List Query** - View all SubAgent task lists and current activities in real-time ⭐ New
-- **Activity Tracking** - Track each SubAgent's current activity (calling tools, requesting LLM, waiting for control) ⭐ New
+- **Task List Query** - View all SubAgent task lists and current activities in real-time
+- **Activity Tracking** - Track each SubAgent's current activity (calling tools, requesting LLM, waiting for control)
 - **Dynamic Control** - Pause, resume, cancel SubAgents, adjust parameters, inject new prompts
 - **Event-Driven** - Unified event bus based on a3s-event
 - **Pluggable Communication** - Default memory-based events, supports custom NATS provider
@@ -129,6 +130,127 @@ print(f"Result: {result}")
 
 </Tab>
 </Tabs>
+
+## Real Execution ⭐ New
+
+By default, `Orchestrator.create()` spawns subagents using an internal stub — useful for tests
+and coordination demos. To run **real LLM + tool execution**, use `create_with_agent()` (Python /
+TypeScript) or `with_execution_context()` (Rust). This wires the orchestrator to your agent's LLM
+client, agent registry, and workspace so every spawned subagent runs a full AgentLoop.
+
+<Tabs items={['Python', 'TypeScript', 'Rust']}>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent, Orchestrator, SubAgentConfig
+
+# 1. Load your agent config (any provider — Kimi, Claude, OpenAI, …)
+agent = Agent.create("agent.hcl")
+
+# 2. Wire the orchestrator to real AgentLoop execution
+orch = Orchestrator.create_with_agent(agent, workspace=".")
+
+# 3. Spawn and run — uses real LLM + tool calls
+handle = orch.spawn_subagent(SubAgentConfig(
+    agent_type="general",
+    prompt="Use glob to find all Python files. Report how many you found.",
+    permissive=True,
+    max_steps=5,
+))
+
+result = handle.wait()
+print(result)
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent, Orchestrator } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+// Wire the orchestrator to real AgentLoop execution
+const orch = Orchestrator.createWithAgent(agent, process.cwd());
+
+const handle = orch.spawnSubagent({
+  agentType: 'general',
+  prompt: 'Use glob to find all TypeScript files. Report how many you found.',
+  permissive: true,
+  maxSteps: 5,
+});
+
+// Block until done
+orch.waitAll();
+```
+
+</Tab>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::{agent_api::Agent, orchestrator::AgentOrchestrator};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Agent::new("agent.hcl").await?;
+
+    // Extract LLM client + registry from the agent
+    let ctx = agent.make_execution_context(".");
+
+    // Wire the orchestrator
+    let orch = AgentOrchestrator::new_memory()
+        .with_execution_context(ctx.llm_client, ctx.registry, ctx.workspace);
+
+    let handle = orch.spawn_subagent(
+        SubAgentConfig::new("general", "Find all Rust source files.")
+            .with_permissive(true)
+            .with_max_steps(5),
+    ).await?;
+
+    let result = handle.wait().await?;
+    println!("{result}");
+    Ok(())
+}
+```
+
+</Tab>
+</Tabs>
+
+### Execution Mode Comparison
+
+| Mode | API | Subagent runs |
+|------|-----|---------------|
+| Stub (default) | `Orchestrator.create()` | Internal placeholder — for tests & demos |
+| Real execution | `Orchestrator.create_with_agent(agent, ws)` | Full AgentLoop with real LLM + tools |
+
+### Architecture with Real Execution
+
+```text
+AgentOrchestrator
+    └── SubAgentWrapper  (ExecutionContext attached)
+            ├── AgentRegistry   — looks up agent type definition
+            ├── ToolExecutor    — built-in tools only (no Task tool to prevent nesting)
+            └── AgentLoop       — real LLM turns + tool execution
+                    │ events
+                    ▼
+        OrchestratorEvent::SubAgentInternalEvent { id, event }
+```
+
+<Callout type="info">
+  **Timeout support**: Set `timeout_ms` in `SubAgentConfig` to abort long-running subagents
+  automatically. The spawned `AgentLoop` task is cancelled and an error is returned.
+</Callout>
+
+<Callout type="info">
+  **Pause behavior**: Pause marks the state as `Paused` and stops accepting new control signals,
+  but the underlying `AgentLoop` continues until the current LLM turn finishes. Cancel aborts the
+  task immediately.
+</Callout>
+
+<Callout type="info">
+  **`duration_ms` in `SubAgentCompleted`**: Reports real elapsed wall-clock time from spawn to
+  completion, not a hardcoded zero.
+</Callout>
 
 ## Event Types
 
@@ -506,15 +628,12 @@ let child_handle = orchestrator.spawn_subagent(child_config).await?;
 
 ## Best Practices
 
-<Callout type="warn">
-  **Note**: Current implementation uses placeholder execution to demonstrate coordination features. For real LLM execution integration, see the [Implementation Guide](https://github.com/A3S-Lab/Code/blob/main/docs/orchestrator-implementation.md).
-</Callout>
-
-1. **Set Reasonable Concurrency Limits** - Configure `max_concurrent_subagents` based on system resources
-2. **Use Event Filtering** - Subscribe to specific SubAgent events to reduce noise
-3. **Handle Error States** - Listen to `SubAgentStateChanged` events and handle errors
-4. **Set Timeouts** - Configure `timeout_ms` for long-running tasks
-5. **Clean Up Resources** - Use `cancel()` to clean up unneeded SubAgents
+1. **Use `create_with_agent` for production** - Always wire a real agent for actual LLM execution; `create()` alone only runs stubs
+2. **Set Reasonable Concurrency Limits** - Configure `max_concurrent_subagents` based on system resources
+3. **Use Event Filtering** - Subscribe to specific SubAgent events to reduce noise
+4. **Handle Error States** - Listen to `SubAgentStateChanged` events and handle errors
+5. **Set Timeouts** - Configure `timeout_ms` for long-running tasks; the underlying task is aborted automatically on timeout
+6. **Clean Up Resources** - Use `cancel()` to clean up unneeded SubAgents
 
 ## Examples
 
