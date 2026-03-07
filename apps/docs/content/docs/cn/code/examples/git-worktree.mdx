@@ -86,7 +86,7 @@ assert r.exit_code == 0
 </Tab>
 <Tab value="TypeScript">
 ```typescript
-const { Agent } = require('a3s-code');
+import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('~/.a3s/config.hcl');
 const session = agent.session('/my-git-repo');

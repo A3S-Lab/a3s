@@ -4,6 +4,8 @@ description: Tracing spans, cost tracking, and tool execution metrics
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 # Telemetry
 
@@ -146,11 +148,50 @@ These metrics are recorded on tracing spans via `record_tool_result()` and can b
 
 ## Integration
 
-The telemetry module uses standard `tracing` spans and attributes. To collect telemetry data:
+The telemetry module emits standard OpenTelemetry spans. Spans fire automatically during every
+`send()` / `stream()` call — no changes to your agent code are needed.
 
-1. **Configure a tracing subscriber** — Any OpenTelemetry-compatible collector works (Jaeger, Zipkin, OTLP exporters)
-2. **Spans are emitted automatically** — No additional code needed beyond subscriber setup
-3. **Cost records** — Available via the `LlmCostRecord` type for custom aggregation
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+Telemetry is emitted automatically. Configure the collector via environment variables before
+starting your process:
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+// Set env vars before running (or in your shell):
+// OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+// OTEL_SERVICE_NAME=my-agent
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project');
+
+// Spans are emitted automatically — no extra code needed
+const result = await session.send('Analyze this codebase');
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+import os
+from a3s_code import Agent
+
+# Set env vars before running (or in your shell):
+# OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+# OTEL_SERVICE_NAME=my-agent
+os.environ['OTEL_EXPORTER_OTLP_ENDPOINT'] = 'http://localhost:4318'
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project')
+
+# Spans are emitted automatically — no extra code needed
+result = await session.send('Analyze this codebase')
+```
+
+</Tab>
+<Tab value="Rust">
 
 ```rust
 use tracing_subscriber::prelude::*;
@@ -168,7 +209,11 @@ tracing_subscriber::registry()
 let result = session.send("Analyze this codebase").await?;
 ```
 
-Helper functions `record_llm_usage()` and `record_tool_result()` record metrics on the current active span. The `TimedSpan` guard automatically measures elapsed time for any scoped operation.
+Helper functions `record_llm_usage()` and `record_tool_result()` record metrics on the current
+active span. The `TimedSpan` guard automatically measures elapsed time for any scoped operation.
+
+</Tab>
+</Tabs>
 
 ## API Reference
 
@@ -211,7 +256,27 @@ Helper functions `record_llm_usage()` and `record_tool_result()` record metrics 
   }}
 />
 
-### Setup (Rust)
+### Setup
+
+<Tabs items={['TypeScript / Python', 'Rust']}>
+<Tab value="TypeScript / Python">
+
+Configure the OTLP collector endpoint via environment variables — no subscriber setup needed
+in application code:
+
+```bash
+# Development: stdout logging
+export RUST_LOG=a3s_code_core=debug
+
+# Production: OTLP exporter
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+export OTEL_SERVICE_NAME=my-agent
+```
+
+Spans are collected and exported automatically by the native Rust layer.
+
+</Tab>
+<Tab value="Rust">
 
 ```rust
 use tracing_subscriber::prelude::*;
@@ -228,6 +293,9 @@ tracing_subscriber::registry()
     .with(tracing_opentelemetry::layer().with_tracer(tracer))
     .init();
 ```
+
+</Tab>
+</Tabs>
 
 ### Environment variables
 

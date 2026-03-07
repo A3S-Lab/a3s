@@ -6,6 +6,7 @@ description: 8 个生命周期 hooks 用于拦截工具调用、LLM 生成、会
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 # 生命周期 Hooks
 
@@ -80,9 +81,66 @@ Agent 循环
   }}
 />
 
-## Hook 注册（Rust）
+## Hook 注册
 
-通过 `HookEngine` 注册 hooks 和处理器：
+注册 hooks 以观察和拦截生命周期事件：
+
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project');
+
+// 注册在每次工具使用前触发的 hook
+session.registerHook('log-tools', 'pre_tool_use');
+
+// 使用 matcher 过滤到特定工具
+session.registerHook('log-bash', 'pre_tool_use', { tool: 'bash' });
+
+// 设置优先级（越低优先级越高）
+session.registerHook('critical-check', 'pre_tool_use', null, { priority: 5 });
+
+console.log(`已注册 Hooks: ${session.hookCount()}`);
+
+// 完成后注销
+session.unregisterHook('log-tools');
+```
+
+Hook 事件可通过流式事件 API 观察 — 使用 `session.stream()` 接收携带事件载荷的 `hook_fired` 事件。
+
+<Callout type="info">
+  **从 TypeScript 阻止调用**：TypeScript 和 Python 支持 hook 观察。如需阻止或修改工具调用，请在 Rust 中实现 `HookHandler`。
+</Callout>
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project')
+
+# 注册在每次工具使用前触发的 hook
+session.register_hook('log-tools', 'pre_tool_use')
+
+# 使用 matcher 过滤到特定工具
+session.register_hook('log-bash', 'pre_tool_use', {'tool': 'bash'})
+
+# 设置优先级（越低优先级越高）
+session.register_hook('critical-check', 'pre_tool_use', None, {'priority': 5})
+
+print(f'已注册 Hooks: {session.hook_count()}')
+
+# 完成后注销
+session.unregister_hook('log-tools')
+```
+
+</Tab>
+<Tab value="Rust">
 
 ```rust
 use a3s_code_core::hooks::{
@@ -140,6 +198,9 @@ match result {
     _ => {}
 }
 ```
+
+</Tab>
+</Tabs>
 
 ## Hook 优先级
 
@@ -293,21 +354,60 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 <TypeTable
   type={{
     "注册 hook": {
-      description: "Rust: session.register_hook(Hook::new(id, event_type)) · 描述: 注册 hook 监听器",
+      description: "Rust: `session.register_hook(Hook::new(id, event_type))` · TS: `session.registerHook(id, event)` · Python: `session.register_hook(id, event)`",
     },
     "注册处理器": {
-      description: "Rust: session.register_hook_handler(id, Arc::new(handler)) · 描述: 将处理器附加到 hook",
+      description: "Rust: `session.register_hook_handler(id, Arc::new(handler))` · TS/Python: 通过流式事件观察",
     },
     "注销": {
-      description: "Rust: session.unregister_hook(id) · 描述: 移除 hook 和处理器",
+      description: "Rust: `session.unregister_hook(id)` · TS: `session.unregisterHook(id)` · Python: `session.unregister_hook(id)`",
     },
     "计数": {
-      description: "Rust: session.hook_count() · 描述: 已注册的 hooks 数量",
+      description: "Rust: `session.hook_count()` · TS: `session.hookCount()` · Python: `session.hook_count()`",
     },
   }}
 />
 
-### HookHandler trait（Rust）
+### HookHandler
+
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+Hook 观察通过事件流实现。注册 hook 名称，然后在 `session.stream()` 中监听 `hook_fired` 事件：
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project');
+
+session.registerHook('my-hook', 'pre_tool_use');
+
+for await (const event of session.stream('列出所有 .ts 文件')) {
+  if (event.type === 'hook_fired' && event.hookId === 'my-hook') {
+    console.log(`Hook 触发 — 工具: ${event.payload?.tool}`);
+  }
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project')
+
+session.register_hook('my-hook', 'pre_tool_use')
+
+async for event in session.stream('列出所有 .py 文件'):
+    if event.type == 'hook_fired' and event.hook_id == 'my-hook':
+        print(f"Hook 触发 — 工具: {event.payload.get('tool')}")
+```
+
+</Tab>
+<Tab value="Rust">
 
 ```rust
 impl HookHandler for MyHandler {
@@ -320,6 +420,9 @@ impl HookHandler for MyHandler {
     }
 }
 ```
+
+</Tab>
+</Tabs>
 
 ### HookResponse 值
 
@@ -341,6 +444,27 @@ impl HookHandler for MyHandler {
 
 数字越小 = 优先级越高。`SecurityGuard` 使用优先级 `1`。默认 hooks 使用优先级 `100`。
 
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+```typescript
+// 优先级 5 — 在标准 hooks（优先级 10+）之前运行
+session.registerHook('my-hook', 'pre_tool_use', null, { priority: 5 });
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+session.register_hook('my-hook', 'pre_tool_use', None, {'priority': 5})
+```
+
+</Tab>
+<Tab value="Rust">
+
 ```rust
 Hook::new("my-hook", HookEventType::PreToolUse).with_priority(50)
 ```
+
+</Tab>
+</Tabs>

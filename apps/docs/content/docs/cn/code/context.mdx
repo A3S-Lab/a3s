@@ -10,6 +10,8 @@ A3S Code 提供两个上下文管理功能：对话过长时的**自动上下文
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 ## 上下文压缩
 
@@ -28,6 +30,35 @@ import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 ### 配置
 
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project', {
+  autoCompact: true,
+  autoCompactThreshold: 0.8,  // 在 80% 时压缩（默认）
+});
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project', {
+    'auto_compact': True,
+    'auto_compact_threshold': 0.8,  # 在 80% 时压缩（默认）
+})
+```
+
+</Tab>
+<Tab value="Rust">
+
 ```rust
 use a3s_code_core::SessionOptions;
 
@@ -36,6 +67,9 @@ let session = agent.session("/project", Some(
         .with_context_threshold(0.8)  // Compact at 80% (default)
 ))?;
 ```
+
+</Tab>
+</Tabs>
 
 ### 事件
 
@@ -194,6 +228,37 @@ let query = ContextQuery::new("authentication flow")
 
 将[记忆](/cn/docs/code/memory)系统桥接到上下文提供者接口。对记忆条目执行语义搜索，并将其转换为带相关性分数的 `ContextItem` 条目。
 
+<Callout type="info">
+  `MemoryContextProvider` 在 Rust 中实现。TypeScript 和 Python 会话可以通过在会话选项中设置 `memoryDir` 来启用内存支持的上下文 — 提供者将自动激活。
+</Callout>
+
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project', {
+  memoryDir: './.a3s/memory',  // 自动启用 MemoryContextProvider
+});
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project', {
+    'memory_dir': './.a3s/memory',  # 自动启用 MemoryContextProvider
+})
+```
+
+</Tab>
+<Tab value="Rust">
+
 ```rust
 use a3s_code_core::context::MemoryContextProvider;
 use a3s_code_core::memory::MemoryManager;
@@ -206,7 +271,42 @@ let session = agent.session("/project", Some(
 ))?;
 ```
 
+</Tab>
+</Tabs>
+
 ## 自定义上下文提供者示例
+
+自定义上下文提供者在 Rust 中实现 `ContextProvider` trait 并在会话上注册。TypeScript 和 Python 可以使用 `fsContext` 注入文件系统上下文，无需自定义提供者。
+
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project', {
+  // 将特定目录作为文件系统上下文注入
+  fsContext: './docs',
+});
+```
+
+对于完整的自定义提供者逻辑（语义搜索、外部知识库），请在 Rust 中实现 `ContextProvider` 并通过 `.with_context_provider()` 注册。
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project', {
+    'fs_context': './docs',  # 注入文件系统上下文
+})
+```
+
+</Tab>
+<Tab value="Rust">
 
 ```rust
 use a3s_code_core::context::{ContextProvider, ContextQuery, ContextResult, ContextItem, ContextType};
@@ -248,9 +348,43 @@ let session = agent.session("/project", Some(
 ))?;
 ```
 
+</Tab>
+</Tabs>
+
 ## 多提供者
 
 注册多个上下文提供者以组合不同来源：
+
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project', {
+  memoryDir: './.a3s/memory',  // 记忆提供者
+  fsContext: './docs',          // 文件系统上下文提供者
+});
+```
+
+多个内置提供者可以通过会话选项组合。对于完全自定义的提供者，请使用 Rust 并通过 `.with_context_provider()` 注册。
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project', {
+    'memory_dir': './.a3s/memory',  # 记忆提供者
+    'fs_context': './docs',          # 文件系统上下文提供者
+})
+```
+
+</Tab>
+<Tab value="Rust">
 
 ```rust
 let memory_provider = Arc::new(MemoryContextProvider::new(memory));
@@ -266,6 +400,9 @@ let session = agent.session("/project", Some(
 ```
 
 所有提供者并行查询，结果在注入系统提示前合并。
+
+</Tab>
+</Tabs>
 
 ## 最佳实践
 

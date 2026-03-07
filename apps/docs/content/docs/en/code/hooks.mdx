@@ -6,6 +6,7 @@ description: 8 lifecycle hooks for intercepting tool calls, LLM generations, ses
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 # Lifecycle Hooks
 
@@ -80,9 +81,68 @@ The `SecurityGuard` registers hooks at priority 1 (highest) automatically:
   }}
 />
 
-## Hook Registration (Rust)
+## Hook Registration
 
-Register hooks and handlers via the `HookEngine`:
+Register hooks to observe and intercept lifecycle events:
+
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project');
+
+// Register a hook that fires before every tool use
+session.registerHook('log-tools', 'pre_tool_use');
+
+// Register with a matcher to filter to a specific tool
+session.registerHook('log-bash', 'pre_tool_use', { tool: 'bash' });
+
+// Set priority (lower = higher priority)
+session.registerHook('critical-check', 'pre_tool_use', null, { priority: 5 });
+
+console.log(`Hooks registered: ${session.hookCount()}`);
+
+// Unregister when done
+session.unregisterHook('log-tools');
+```
+
+Hook events are observable through the streaming event API — use `session.stream()` to
+receive `hook_fired` events with the event payload.
+
+<Callout type="info">
+  **Blocking from TypeScript**: Hook observation is supported in TypeScript and Python. To
+  block or modify tool calls, implement a `HookHandler` in Rust.
+</Callout>
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project')
+
+# Register a hook that fires before every tool use
+session.register_hook('log-tools', 'pre_tool_use')
+
+# Register with a matcher to filter to a specific tool
+session.register_hook('log-bash', 'pre_tool_use', {'tool': 'bash'})
+
+# Set priority (lower = higher priority)
+session.register_hook('critical-check', 'pre_tool_use', None, {'priority': 5})
+
+print(f'Hooks registered: {session.hook_count()}')
+
+# Unregister when done
+session.unregister_hook('log-tools')
+```
+
+</Tab>
+<Tab value="Rust">
 
 ```rust
 use a3s_code_core::hooks::{
@@ -140,6 +200,9 @@ match result {
     _ => {}
 }
 ```
+
+</Tab>
+</Tabs>
 
 ## Hook Priority
 
@@ -316,21 +379,61 @@ Each hook event carries a typed payload with event-specific data:
 <TypeTable
   type={{
     "Register hook": {
-      description: "Rust: session.register_hook(Hook::new(id, event_type)) · Description: Register a hook listener",
+      description: "Rust: `session.register_hook(Hook::new(id, event_type))` · TS: `session.registerHook(id, event)` · Python: `session.register_hook(id, event)`",
     },
     "Register handler": {
-      description: "Rust: session.register_hook_handler(id, Arc::new(handler)) · Description: Attach handler to hook",
+      description: "Rust: `session.register_hook_handler(id, Arc::new(handler))` · TS/Python: observe via stream events",
     },
     "Unregister": {
-      description: "Rust: session.unregister_hook(id) · Description: Remove hook and handler",
+      description: "Rust: `session.unregister_hook(id)` · TS: `session.unregisterHook(id)` · Python: `session.unregister_hook(id)`",
     },
     "Count": {
-      description: "Rust: session.hook_count() · Description: Number of registered hooks",
+      description: "Rust: `session.hook_count()` · TS: `session.hookCount()` · Python: `session.hook_count()`",
     },
   }}
 />
 
-### HookHandler trait (Rust)
+### HookHandler
+
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+Hook observation uses the event stream. Register the hook name, then watch for `hook_fired`
+events in `session.stream()`:
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project');
+
+session.registerHook('my-hook', 'pre_tool_use');
+
+for await (const event of session.stream('List all .ts files')) {
+  if (event.type === 'hook_fired' && event.hookId === 'my-hook') {
+    console.log(`Hook fired — tool: ${event.payload?.tool}`);
+  }
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project')
+
+session.register_hook('my-hook', 'pre_tool_use')
+
+async for event in session.stream('List all .py files'):
+    if event.type == 'hook_fired' and event.hook_id == 'my-hook':
+        print(f"Hook fired — tool: {event.payload.get('tool')}")
+```
+
+</Tab>
+<Tab value="Rust">
 
 ```rust
 impl HookHandler for MyHandler {
@@ -343,6 +446,9 @@ impl HookHandler for MyHandler {
     }
 }
 ```
+
+</Tab>
+</Tabs>
 
 ### HookResponse values
 
@@ -364,6 +470,27 @@ impl HookHandler for MyHandler {
 
 Lower number = higher priority. `SecurityGuard` uses priority `1`. Default hooks use priority `100`.
 
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+```typescript
+// Priority 5 — runs before standard hooks (priority 10+)
+session.registerHook('my-hook', 'pre_tool_use', null, { priority: 5 });
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+session.register_hook('my-hook', 'pre_tool_use', None, {'priority': 5})
+```
+
+</Tab>
+<Tab value="Rust">
+
 ```rust
 Hook::new("my-hook", HookEventType::PreToolUse).with_priority(50)
 ```
+
+</Tab>
+</Tabs>

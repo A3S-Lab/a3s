@@ -105,7 +105,7 @@ session.set_permission_policy(policy).await;
 </Tab>
 <Tab value="TypeScript">
 ```typescript
-const { PermissionPolicy } = require('@a3s-lab/code');
+import { PermissionPolicy } from '@a3s-lab/code';
 
 const policy = new PermissionPolicy()
   .deny('bash(rm -rf:*)')

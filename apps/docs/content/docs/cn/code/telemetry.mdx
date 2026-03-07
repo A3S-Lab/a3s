@@ -4,6 +4,8 @@ description: 追踪 span、费用追踪和工具执行指标
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 # 遥测
 
@@ -206,11 +208,48 @@ cost_usd = (prompt_tokens * input_per_million / 1_000_000)
 
 ## 集成
 
-遥测模块使用标准 `tracing` span 和属性。要收集遥测数据：
+遥测模块发出标准 OpenTelemetry span。每次 `send()` / `stream()` 调用期间 span 自动触发 — 无需修改 agent 代码。
 
-1. **配置追踪订阅者** — 任何兼容 OpenTelemetry 的收集器都可以（Jaeger、Zipkin、OTLP 导出器）
-2. **Span 自动发出** — 除了订阅者设置外无需额外代码
-3. **费用记录** — 通过 `LlmCostRecord` 类型提供，用于自定义聚合
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+遥测自动发出。在启动进程之前通过环境变量配置收集器：
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+// 运行前设置环境变量（或在 shell 中设置）：
+// OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+// OTEL_SERVICE_NAME=my-agent
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project');
+
+// Span 自动发出 — 无需额外代码
+const result = await session.send('分析此代码库');
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+import os
+from a3s_code import Agent
+
+# 运行前设置环境变量（或在 shell 中设置）：
+# OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+# OTEL_SERVICE_NAME=my-agent
+os.environ['OTEL_EXPORTER_OTLP_ENDPOINT'] = 'http://localhost:4318'
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project')
+
+# Span 自动发出 — 无需额外代码
+result = await session.send('分析此代码库')
+```
+
+</Tab>
+<Tab value="Rust">
 
 ```rust
 use tracing_subscriber::prelude::*;
@@ -229,6 +268,9 @@ let result = session.send("Analyze this codebase").await?;
 ```
 
 辅助函数 `record_llm_usage()` 和 `record_tool_result()` 在当前活跃 span 上记录指标。`TimedSpan` 守卫自动测量任何作用域操作的耗时。
+
+</Tab>
+</Tabs>
 
 ## API 参考
 
@@ -285,15 +327,34 @@ let result = session.send("Analyze this codebase").await?;
   }}
 />
 
-### 设置（Rust）
+### 设置
+
+<Tabs items={['TypeScript / Python', 'Rust']}>
+<Tab value="TypeScript / Python">
+
+通过环境变量配置 OTLP 收集器端点 — 应用程序代码中无需设置订阅者：
+
+```bash
+# 开发环境：stdout 日志
+export RUST_LOG=a3s_code_core=debug
+
+# 生产环境：OTLP 导出器
+export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+export OTEL_SERVICE_NAME=my-agent
+```
+
+Span 由原生 Rust 层自动收集和导出。
+
+</Tab>
+<Tab value="Rust">
 
 ```rust
 use tracing_subscriber::prelude::*;
 
-// stdout (development)
+// stdout（开发环境）
 tracing_subscriber::fmt().init();
 
-// OTLP (production)
+// OTLP（生产环境）
 let tracer = opentelemetry_otlp::new_pipeline()
     .tracing()
     .install_batch(opentelemetry_sdk::runtime::Tokio)?;
@@ -302,6 +363,9 @@ tracing_subscriber::registry()
     .with(tracing_opentelemetry::layer().with_tracer(tracer))
     .init();
 ```
+
+</Tab>
+</Tabs>
 
 ### 环境变量
 

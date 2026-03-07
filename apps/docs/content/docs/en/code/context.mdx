@@ -10,6 +10,8 @@ A3S Code provides two context management features: **automatic context compactio
 import { Steps, Step } from 'fumadocs-ui/components/steps';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
 
 ## Context Compaction
 
@@ -28,6 +30,35 @@ This preserves important context while reducing token usage.
 
 ### Configuration
 
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project', {
+  autoCompact: true,
+  autoCompactThreshold: 0.8,  // Compact at 80% (default)
+});
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project', {
+    'auto_compact': True,
+    'auto_compact_threshold': 0.8,  # Compact at 80% (default)
+})
+```
+
+</Tab>
+<Tab value="Rust">
+
 ```rust
 use a3s_code_core::SessionOptions;
 
@@ -36,6 +67,9 @@ let session = agent.session("/project", Some(
         .with_context_threshold(0.8)  // Compact at 80% (default)
 ))?;
 ```
+
+</Tab>
+</Tabs>
 
 ### Events
 
@@ -209,6 +243,39 @@ Items are formatted as XML for injection into the system prompt via `to_xml()`.
 
 Bridges the [Memory](/docs/code/memory) system to the context provider interface. Performs semantic search over memory items and converts them to `ContextItem` entries with relevance scores.
 
+<Callout type="info">
+  `MemoryContextProvider` is implemented in Rust. TypeScript and Python sessions can enable
+  memory-backed context by setting `memoryDir` in session options — the provider is activated
+  automatically.
+</Callout>
+
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project', {
+  memoryDir: './.a3s/memory',  // enables MemoryContextProvider automatically
+});
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project', {
+    'memory_dir': './.a3s/memory',  # enables MemoryContextProvider automatically
+})
+```
+
+</Tab>
+<Tab value="Rust">
+
 ```rust
 use a3s_code_core::context::MemoryContextProvider;
 use a3s_code_core::memory::MemoryManager;
@@ -221,7 +288,43 @@ let session = agent.session("/project", Some(
 ))?;
 ```
 
+</Tab>
+</Tabs>
+
 ## Custom Context Provider Example
+
+Custom context providers implement the `ContextProvider` trait in Rust and are registered on the session. TypeScript and Python can use `fsContext` to inject filesystem context without a custom provider.
+
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project', {
+  // Inject a specific directory as filesystem context
+  fsContext: './docs',
+});
+```
+
+For full custom provider logic (semantic search, external knowledge bases), implement a
+`ContextProvider` in Rust and register it via `with_context_provider()`.
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project', {
+    'fs_context': './docs',  # inject filesystem context
+})
+```
+
+</Tab>
+<Tab value="Rust">
 
 ```rust
 use a3s_code_core::context::{ContextProvider, ContextQuery, ContextResult, ContextItem, ContextType};
@@ -263,9 +366,44 @@ let session = agent.session("/project", Some(
 ))?;
 ```
 
+</Tab>
+</Tabs>
+
 ## Multiple Providers
 
 Register multiple context providers to combine different sources:
+
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project', {
+  memoryDir: './.a3s/memory',  // memory provider
+  fsContext: './docs',          // filesystem context provider
+});
+```
+
+Multiple built-in providers can be combined via session options. For fully custom providers,
+use Rust and register them with `.with_context_provider()`.
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent
+
+agent = await Agent.create('agent.hcl')
+session = agent.session('/project', {
+    'memory_dir': './.a3s/memory',  # memory provider
+    'fs_context': './docs',          # filesystem context provider
+})
+```
+
+</Tab>
+<Tab value="Rust">
 
 ```rust
 let memory_provider = Arc::new(MemoryContextProvider::new(memory));
@@ -281,6 +419,9 @@ let session = agent.session("/project", Some(
 ```
 
 All providers are queried in parallel, and results are merged before injection into the system prompt.
+
+</Tab>
+</Tabs>
 
 ## Best Practices
 

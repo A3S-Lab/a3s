@@ -84,9 +84,9 @@ with tempfile.TemporaryDirectory() as dir:
 </Tab>
 <Tab value="TypeScript">
 ```typescript
-const { mkdtempSync, writeFileSync } = require('fs');
-const { join } = require('path');
-const { tmpdir } = require('os');
+import { mkdtempSync, writeFileSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
 const dir = mkdtempSync(join(tmpdir(), 'batch-'));
 writeFileSync(join(dir, 'auth.rs'), '// auth module');
