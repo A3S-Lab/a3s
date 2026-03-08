@@ -27,17 +27,13 @@
 pub mod accumulator;
 pub mod config;
 pub mod correlator;
-pub mod daemon;
 pub mod hook;
-pub mod ipc;
 pub mod lineage;
 pub mod phase1;
 pub mod phase2_pool;
-pub mod server;
 pub mod sync;
 
 pub use config::{DelegateTrigger, SentinelPolicy};
-pub use daemon::SentinelDaemon;
 pub use phase1::{Phase1Engine, Phase1Result};
 
 use accumulator::{AccumulatorDecision, SuspicionAccumulatorMap};

@@ -1,0 +1,699 @@
+---
+title: Multi-Agent Orchestration
+description: AgentSlot unified declaration · standalone spawn · team run_team workflow · real-time monitoring and control
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+# Multi-Agent Orchestration
+
+A3S Code provides a unified multi-agent orchestration layer through `AgentOrchestrator`, supporting two execution modes: **standalone subagent** (`spawn`) and **team workflow** (`run_team`). Both share a single declaration type: `AgentSlot`.
+
+## Architecture
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│                    AgentOrchestrator                    │
+│                                                         │
+│  ┌──────────────────┐      ┌─────────────────────────┐  │
+│  │  spawn(AgentSlot) │      │ run_team(goal, ws, slots)│  │
+│  │  role = None      │      │  role = Lead/Worker/     │  │
+│  │                   │      │         Reviewer         │  │
+│  └────────┬─────────┘      └──────────────┬──────────┘  │
+│           │                               │              │
+│  SubAgentWrapper                    AgentTeam +          │
+│  ├─ AgentRegistry                   TeamRunner           │
+│  ├─ ToolExecutor                    ├─ Lead decomposes   │
+│  └─ AgentLoop (real LLM)            ├─ Workers execute   │
+│                                     └─ Reviewer approves │
+└─────────────────────────────────────────────────────────┘
+              ↑
+        AgentRegistry
+   (built-in: general / explore / plan)
+   (custom: ~/.a3s/agents/*.yaml)
+```
+
+**How the three concepts relate:**
+
+| Concept | Responsibility |
+|---------|---------------|
+| `AgentDefinition` / `AgentRegistry` | Static agent definitions (YAML/Markdown) — describes prompts, permissions, and tool access |
+| `AgentSlot` | Runtime declaration type — specifies which agent type to launch and its role |
+| `AgentOrchestrator` | Execution engine — drives AgentLoop via `spawn` or `run_team` |
+
+---
+
+## AgentSlot — Unified Declaration Type
+
+`AgentSlot` is the single type for describing "how to launch an agent", used for both standalone subagents and team members:
+
+```rust
+pub struct AgentSlot {
+    pub agent_type: String,             // "general" | "explore" | "plan" | custom name
+    pub role: Option<TeamRole>,         // None = standalone; Some(Lead/Worker/Reviewer) = team member
+    pub description: String,
+    pub prompt: String,
+    pub permissive: bool,               // true = skip human confirmation
+    pub max_steps: Option<usize>,
+    pub timeout_ms: Option<u64>,
+    pub workspace: String,
+    pub agent_dirs: Vec<String>,        // additional custom agent directories
+    // ...
+}
+```
+
+The `role` field determines the execution path:
+- `role = None` → `spawn()` runs as a standalone subagent
+- `role = Some(Lead)` / `Some(Worker)` / `Some(Reviewer)` → `run_team()` assembles a team
+
+<TypeTable
+  type={{
+    "agent_type": {
+      description: "Type: String · Required: ✅ · Agent type name (built-in: general, explore, plan)",
+    },
+    "role": {
+      description: "Type: Option<TeamRole> · Required: ❌ · None = standalone; Lead/Worker/Reviewer = team member",
+    },
+    "description": {
+      description: "Type: String · Required: ❌ · Task description (shown in monitoring views)",
+    },
+    "prompt": {
+      description: "Type: String · Required: ❌ · Execution prompt",
+    },
+    "permissive": {
+      description: "Type: bool · Default: false · Skip human-in-the-loop confirmation",
+    },
+    "max_steps": {
+      description: "Type: Option<usize> · Maximum tool rounds",
+    },
+    "timeout_ms": {
+      description: "Type: Option<u64> · Timeout in milliseconds — auto-cancels on expiry",
+    },
+    "workspace": {
+      description: "Type: String · Default: \".\" · Working directory",
+    },
+    "agent_dirs": {
+      description: "Type: Vec<String> · Additional directories to scan for custom agent definitions",
+    },
+  }}
+/>
+
+---
+
+## Path 1: Standalone Subagent (spawn)
+
+`spawn(AgentSlot)` runs a single agent in an isolated child session with real-time monitoring and dynamic control.
+
+### Quick Start
+
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::{Agent, orchestrator::{AgentOrchestrator, AgentSlot}};
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Arc::new(Agent::new("agent.hcl").await?);
+    let orch = AgentOrchestrator::from_agent(agent);
+
+    let slot = AgentSlot::new("general", "Find all Rust source files")
+        .with_description("Find Rust files")
+        .with_permissive(true)
+        .with_max_steps(10);
+
+    let handle = orch.spawn(slot).await?;
+    let result = handle.wait().await?;
+    println!("{result}");
+    Ok(())
+}
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent, Orchestrator, AgentSlot } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const orch = Orchestrator.create(agent);
+
+const handle = await orch.spawn({
+  agentType: 'general',
+  prompt: 'Find all Rust source files',
+  description: 'Find Rust files',
+  permissive: true,
+  maxSteps: 10,
+});
+
+const result = await handle.wait();
+console.log(result);
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent, Orchestrator, AgentSlot
+
+agent = Agent.create("agent.hcl")
+orch = Orchestrator.create(agent)
+
+handle = orch.spawn(AgentSlot(
+    agent_type="general",
+    prompt="Find all Rust source files",
+    description="Find Rust files",
+    permissive=True,
+    max_steps=10,
+))
+
+result = handle.wait()
+print(result)
+```
+
+</Tab>
+</Tabs>
+
+### Dynamic Control
+
+Use `SubAgentHandle` to pause, resume, or cancel a running subagent in real time:
+
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+let handle = orch.spawn(slot).await?;
+
+handle.pause().await?;
+handle.resume().await?;
+handle.cancel().await?;
+
+// Adjust parameters at runtime
+handle.adjust_params(Some(20), Some(60_000)).await?;  // max_steps, timeout_ms
+
+// Inject a new instruction into the running agent
+handle.inject_prompt("Focus specifically on src/auth/").await?;
+
+let result = handle.wait().await?;
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+const handle = await orch.spawn(slot);
+
+handle.pause();
+handle.resume();
+handle.cancel();
+handle.adjustParams(20, 60000);
+handle.injectPrompt('Focus specifically on src/auth/');
+
+const result = await handle.wait();
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+handle = orch.spawn(slot)
+
+handle.pause()
+handle.resume()
+handle.cancel()
+handle.adjust_params(20, 60000)
+handle.inject_prompt("Focus specifically on src/auth/")
+
+result = handle.wait()
+```
+
+</Tab>
+</Tabs>
+
+### Real-Time Monitoring
+
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+// List all subagents
+let subagents = orch.list_subagents().await;
+for info in subagents {
+    println!("{}: {:?}", info.id, info.state);
+    if let Some(activity) = info.current_activity {
+        println!("  Activity: {:?}", activity);
+    }
+}
+
+// Active count
+let count = orch.active_count().await;
+
+// Subscribe to event stream
+let mut events = orch.subscribe_all();
+while let Ok(event) = events.recv().await {
+    println!("Event: {:?}", event.event_name());
+}
+
+// Wait for all to complete
+orch.wait_all().await;
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+const subagents = orch.listSubagents();
+for (const info of subagents) {
+  console.log(`${info.id}: ${info.state}`);
+}
+
+const count = orch.activeCount();
+orch.waitAll();
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+subagents = orch.list_subagents()
+for info in subagents:
+    print(f"{info.id}: {info.state}")
+
+count = orch.active_count()
+orch.wait_all()
+```
+
+</Tab>
+</Tabs>
+
+### Subagent Activity Types
+
+| Activity | Description |
+|----------|-------------|
+| `Idle` | No active work |
+| `CallingTool { tool_name, args }` | Executing a tool call |
+| `RequestingLlm { message_count }` | Waiting for LLM response |
+| `WaitingForControl { reason }` | Waiting for a control signal |
+
+### Event Types
+
+| Event | Description |
+|-------|-------------|
+| `SubAgentStarted` | Subagent started |
+| `SubAgentCompleted` | Subagent finished |
+| `SubAgentStateChanged` | State transition |
+| `SubAgentProgress` | Progress update |
+| `SubAgentInternalEvent` | Internal event from AgentLoop |
+| `ToolExecutionStarted/Completed` | Tool execution |
+| `ControlSignalReceived/Applied` | Control signal processed |
+
+---
+
+## Path 2: Team Workflow (run_team)
+
+`run_team(goal, workspace, slots)` automatically assembles a Lead → Worker → Reviewer team, decomposes the goal into tasks, and coordinates execution.
+
+<Callout type="info">
+  **Prerequisite**: Requires `Orchestrator.create(agent)` with a real Agent attached.
+</Callout>
+
+### Quick Start
+
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::{Agent, orchestrator::{AgentOrchestrator, AgentSlot, TeamRole}};
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Arc::new(Agent::new("agent.hcl").await?);
+    let orch = AgentOrchestrator::from_agent(agent);
+
+    let slots = vec![
+        AgentSlot::new("general", "").with_role(TeamRole::Lead).with_max_steps(5),
+        AgentSlot::new("general", "").with_role(TeamRole::Worker).with_max_steps(5),
+        AgentSlot::new("general", "").with_role(TeamRole::Reviewer).with_max_steps(3),
+    ];
+
+    let result = orch.run_team(
+        "List 3 common Rust data structures and briefly describe each",
+        ".",
+        slots,
+    ).await?;
+
+    println!("Done tasks:     {}", result.done_tasks.len());
+    println!("Rejected tasks: {}", result.rejected_tasks.len());
+    println!("Rounds:         {}", result.rounds);
+    for task in &result.done_tasks {
+        println!("  [{}] {}", task.id, task.result.as_deref().unwrap_or(""));
+    }
+    Ok(())
+}
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent, Orchestrator, AgentSlot } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const orch = Orchestrator.create(agent);
+
+const slots: AgentSlot[] = [
+  { agentType: 'general', role: 'lead',     prompt: '', permissive: true, maxSteps: 5 },
+  { agentType: 'general', role: 'worker',   prompt: '', permissive: true, maxSteps: 5 },
+  { agentType: 'general', role: 'reviewer', prompt: '', permissive: true, maxSteps: 3 },
+];
+
+const result = await orch.runTeam(
+  'List 3 common JavaScript data structures and briefly describe each',
+  '.',
+  slots,
+);
+
+console.log(`Done tasks:     ${result.doneTasks.length}`);
+console.log(`Rejected tasks: ${result.rejectedTasks.length}`);
+console.log(`Rounds:         ${result.rounds}`);
+for (const task of result.doneTasks) {
+  console.log(`  [${task.id}] ${task.result}`);
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent, Orchestrator, AgentSlot
+
+agent = Agent.create("agent.hcl")
+orch = Orchestrator.create(agent)
+
+slots = [
+    AgentSlot(agent_type="general", role="lead",     prompt="", permissive=True, max_steps=5),
+    AgentSlot(agent_type="general", role="worker",   prompt="", permissive=True, max_steps=5),
+    AgentSlot(agent_type="general", role="reviewer", prompt="", permissive=True, max_steps=3),
+]
+
+result = orch.run_team(
+    "List 3 common Python data structures and briefly describe each",
+    ".",
+    slots,
+)
+
+print(f"Done tasks:     {len(result.done_tasks)}")
+print(f"Rejected tasks: {len(result.rejected_tasks)}")
+print(f"Rounds:         {result.rounds}")
+for task in result.done_tasks:
+    print(f"  [{task.id}] {task.result}")
+```
+
+</Tab>
+</Tabs>
+
+### Workflow Internals
+
+```
+1. Lead decomposes
+   ├─ Receives goal, outputs JSON: {"tasks": ["task 1", "task 2", ...]}
+   └─ Calls board.post() for each task
+
+2. Workers execute (concurrent)
+   ├─ Loop: claim() → session.send(task) → board.complete()
+   └─ Sleep poll_interval_ms when no tasks available
+
+3. Reviewer approves
+   ├─ For each InReview task, evaluates the result
+   ├─ "APPROVED: <reason>"  → board.approve() → task becomes Done
+   └─ "REJECTED: <feedback>" → board.reject() → task re-queued for retry
+
+4. Termination
+   └─ All tasks done, or max_rounds reached
+```
+
+### TeamRole
+
+| Role | Rust | TypeScript/Python | Responsibility |
+|------|------|-------------------|---------------|
+| Lead | `TeamRole::Lead` | `"lead"` | Decomposes goal, posts tasks |
+| Worker | `TeamRole::Worker` | `"worker"` | Claims and executes tasks |
+| Reviewer | `TeamRole::Reviewer` | `"reviewer"` | Approves or rejects results |
+
+### TeamRunResult
+
+<TypeTable
+  type={{
+    "done_tasks": {
+      description: "Type: Vec<TeamTask> · Tasks approved by the Reviewer",
+    },
+    "rejected_tasks": {
+      description: "Type: Vec<TeamTask> · Tasks still rejected after max_rounds",
+    },
+    "rounds": {
+      description: "Type: usize · Number of Reviewer polling rounds completed",
+    },
+  }}
+/>
+
+---
+
+## Task Board (Advanced)
+
+For full control over orchestration logic, manipulate `TeamTaskBoard` directly:
+
+```rust
+use a3s_code_core::agent_teams::{AgentTeam, TeamConfig, TeamRole, TeamRunner};
+
+let config = TeamConfig { max_tasks: 50, max_rounds: 10, ..Default::default() };
+let mut team = AgentTeam::new("my-team", config);
+team.add_member("lead",     TeamRole::Lead);
+team.add_member("worker-1", TeamRole::Worker);
+team.add_member("reviewer", TeamRole::Reviewer);
+
+let board = team.task_board();
+
+// Manual task board operations
+let id = board.post("Refactor auth module", "lead", None).unwrap();
+let task = board.claim("worker-1").unwrap();
+board.complete(&task.id, "Refactoring complete");
+board.approve(&task.id);
+
+// Stats
+let (open, in_progress, in_review, done, rejected) = board.stats();
+```
+
+### Task State Machine
+
+```
+post()      claim()       complete()
+  Open ──► InProgress ──► InReview
+                               │
+                   ┌───────────┴──────────┐
+              approve()              reject()
+                   │                      │
+                 Done           Rejected ──► (re-claim())
+```
+
+### Point-to-Point Messaging
+
+```rust
+// Send to a specific member
+team.send_message("lead", "worker-1", "Focus on JWT validation", None).await;
+
+// Broadcast to all members
+team.broadcast("lead", "Starting review phase", None).await;
+
+// Worker reads inbox
+let mut rx = team.take_receiver("worker-1").unwrap();
+while let Some(msg) = rx.recv().await {
+    println!("{} → {}: {}", msg.from, msg.to, msg.content);
+}
+```
+
+---
+
+## Built-in Subagents
+
+`AgentRegistry` auto-loads the following built-in agents at startup:
+
+<TypeTable
+  type={{
+    "general": {
+      description: "General-purpose multi-step execution · Max steps: 50 · Tools: full access",
+    },
+    "explore": {
+      description: "Fast codebase exploration (read-only) · Max steps: 20 · Tools: read, grep, glob, ls",
+    },
+    "plan": {
+      description: "Architecture and planning (read-only) · Max steps: 30 · Tools: read, grep, glob",
+    },
+    "title": {
+      description: "Session title generation (hidden) · Max steps: 1",
+    },
+    "summary": {
+      description: "Session summarization (hidden) · Max steps: 5 · Tools: read",
+    },
+  }}
+/>
+
+## Custom Subagents
+
+Place YAML or Markdown files in your agent directories — they're loaded automatically at startup:
+
+```hcl
+# agent.hcl
+agent_dirs = ["~/.a3s/agents", "/shared/team-agents"]
+```
+
+```yaml
+# ~/.a3s/agents/security-reviewer.yaml
+name: security-reviewer
+description: Reviews code for security vulnerabilities
+mode: subagent
+max_steps: 25
+
+permissions:
+  allow: [read, grep, glob, ls]
+  deny:  [write, edit, bash]
+
+prompt: |
+  You are a security code reviewer. Analyze the codebase for
+  SQL injection, XSS, hardcoded secrets, and insecure crypto.
+  Report findings with severity (Critical/High/Medium/Low) and
+  recommended fixes. Never modify files.
+```
+
+Markdown format (with YAML frontmatter, body becomes the system prompt):
+
+```markdown
+---
+name: db-migration
+description: Database migration specialist
+mode: subagent
+max_steps: 40
+permissions:
+  allow: [read, write, edit, bash, grep, glob]
+  deny:  [web_fetch, web_search]
+---
+You are a database migration specialist...
+```
+
+Use the `model` field to assign a different model to a specific agent:
+
+```yaml
+name: quick-search
+model: anthropic/claude-haiku-4-20250514
+max_steps: 10
+permissions:
+  allow: [read, grep, glob, ls]
+prompt: |
+  Fast search agent. Find and return concise results. No explanation.
+```
+
+---
+
+## LLM-Driven Delegation
+
+Within a session, the LLM delegates work to subagents via the `task` and `parallel_task` tools:
+
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+// Single task delegation
+let result = session.tool("task", serde_json::json!({
+    "agent": "explore",
+    "description": "Find auth handlers",
+    "prompt": "Search for files that handle user authentication and list them with line numbers."
+})).await?;
+
+// Parallel delegation
+let result = session.tool("parallel_task", serde_json::json!({
+    "tasks": [
+        { "agent": "explore",           "description": "Find API routes",  "prompt": "List all API route definitions." },
+        { "agent": "security-reviewer", "description": "Security scan",    "prompt": "Check src/auth/ for vulnerabilities." }
+    ]
+})).await?;
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+const result = await session.tool('parallel_task', {
+  tasks: [
+    { agent: 'explore',           description: 'Find API routes',  prompt: 'List all API route definitions.' },
+    { agent: 'security-reviewer', description: 'Security scan',    prompt: 'Check src/auth/ for vulnerabilities.' },
+  ],
+});
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+result = session.tool("parallel_task", {
+    "tasks": [
+        { "agent": "explore",           "description": "Find API routes", "prompt": "List all API route definitions." },
+        { "agent": "security-reviewer", "description": "Security scan",   "prompt": "Check src/auth/ for vulnerabilities." },
+    ]
+})
+```
+
+</Tab>
+</Tabs>
+
+Subagent lifecycle events are emitted on the parent session's event stream:
+
+```rust
+let (mut rx, _handle) = session.stream("Analyze this codebase thoroughly").await?;
+while let Some(event) = rx.recv().await {
+    match event {
+        AgentEvent::SubagentStart { agent, description, .. } => println!("▶ [{agent}] {description}"),
+        AgentEvent::SubagentEnd   { agent, success, .. }     => println!("{} [{agent}]", if success { "✓" } else { "✗" }),
+        AgentEvent::End { .. } => break,
+        _ => {}
+    }
+}
+```
+
+---
+
+## Orchestrator Creation Modes
+
+| Mode | API | How subagents run |
+|------|-----|------------------|
+| Placeholder (testing) | `Orchestrator.create()` / `AgentOrchestrator::new_memory()` | Internal stub — no LLM calls |
+| Real execution | `Orchestrator.create(agent)` / `AgentOrchestrator::from_agent(agent)` | Full AgentLoop with real LLM + tools |
+
+<Callout type="warn">
+  `Orchestrator.create()` without an agent runs only stubs. Use `Orchestrator.create(agent)` for production.
+</Callout>
+
+## OrchestratorConfig
+
+```rust
+pub struct OrchestratorConfig {
+    pub event_buffer_size: usize,         // Event channel buffer size, default: 1000
+    pub control_buffer_size: usize,       // Control signal buffer size, default: 100
+    pub max_concurrent_subagents: usize,  // Max concurrent subagents, default: 50
+    pub subject_prefix: String,           // Event topic prefix, default: "agent"
+}
+```
+
+---
+
+## Choosing Between the Two Paths
+
+| Scenario | Recommended |
+|----------|-------------|
+| Run a single specialized task | `spawn(AgentSlot)` |
+| Need real-time monitoring, pause/resume control | `spawn(AgentSlot)` |
+| Goal needs decomposing into parallel subtasks | `run_team(goal, ws, slots)` |
+| Need Lead/Worker/Reviewer collaboration and quality review | `run_team(goal, ws, slots)` |
+| Need full control over task board and orchestration logic | `AgentTeam` + `TeamRunner` directly |
