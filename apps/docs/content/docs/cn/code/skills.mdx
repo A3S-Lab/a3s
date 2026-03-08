@@ -75,7 +75,7 @@ Skills 是带有 YAML frontmatter 的 Markdown 文件，定义了：
 
 #### 5. builtin-tools
 
-所有内置文件操作和 shell 工具的文档（read、write、edit、patch、bash、grep、glob、ls、web_fetch、web_search）。
+所有内置工具的文档：read、write、edit、patch、bash、grep、glob、ls、web_fetch、web_search、git_worktree、batch、task、parallel_task、run_team。
 
 **允许的工具：** 无（仅文档）
 
@@ -85,7 +85,7 @@ Skills 是带有 YAML frontmatter 的 Markdown 文件，定义了：
 
 使用 `task` 工具将复杂或多步骤任务委派给专门子代理的指南。
 
-**允许的工具：** `task(*)`
+**允许的工具：** `task(*), parallel_task(*), run_team(*)`
 
 **使用场景：** 并行化工作、聚焦探索、隔离执行
 

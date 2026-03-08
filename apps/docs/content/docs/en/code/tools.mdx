@@ -1,6 +1,6 @@
 ---
 title: Built-in Tools
-description: 14 built-in tools (15 with sandbox) for file operations, shell execution, search, web access, git worktree, and subagent delegation
+description: 15 built-in tools (16 with sandbox) for file operations, shell execution, search, web access, git worktree, and subagent delegation
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -8,7 +8,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Built-in Tools
 
-A3S Code ships with 14 built-in tools (15 with the `sandbox` feature) covering file operations, shell execution, search, web access, git worktree, and subagent delegation. All tools execute in-process via native Rust implementations.
+A3S Code ships with 15 built-in tools (16 with the `sandbox` feature) covering file operations, shell execution, search, web access, git worktree, and subagent delegation. All tools execute in-process via native Rust implementations.
 
 ## Tool Reference
 
@@ -49,6 +49,9 @@ A3S Code ships with 14 built-in tools (15 with the `sandbox` feature) covering f
     },
     "parallel_task": {
       description: "Purpose: Delegate to multiple subagents concurrently · Example: Fan-out analysis across modules",
+    },
+    "run_team": {
+      description: "Purpose: Lead → Worker → Reviewer team workflow · Example: Decompose, execute, and review complex goals",
     },
     "batch": {
       description: "Purpose: Parallel tool execution · Example: Run multiple tools in one turn",
@@ -274,6 +277,22 @@ Delegate work to a specialized child agent. The child agent runs in its own sess
 }
 ```
 
+### `run_team`
+
+Coordinate a Lead → Worker → Reviewer team to tackle goals that require decomposition, execution, and quality review. The Lead breaks the goal into a task list; Workers claim and execute tasks in parallel; the Reviewer approves or rejects each result.
+
+```json
+{
+  "goal": "Audit the authentication module for security issues",
+  "lead_agent": "general",
+  "worker_agent": "general",
+  "reviewer_agent": "general",
+  "max_steps": 10
+}
+```
+
+All agent type fields default to `"general"`. Only `goal` is required.
+
 ## Sandbox (Optional)
 
 ### `sandbox`
@@ -442,8 +461,9 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
 
 <TypeTable
   type={{
-    url: { type: 'string', required: true, description: 'URL to fetch' },
-    prompt: { type: 'string', description: 'Extraction prompt for the fetched content' },
+    url: { type: 'string', required: true, description: 'URL to fetch (must start with http:// or https://)' },
+    format: { type: '"markdown" | "text" | "html"', default: '"markdown"', description: 'Output format' },
+    timeout: { type: 'number', default: '30', description: 'Timeout in seconds (max 120)' },
   }}
 />
 
@@ -452,8 +472,11 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
 <TypeTable
   type={{
     query: { type: 'string', required: true, description: 'Search query' },
-    allowed_domains: { type: 'string[]', description: 'Restrict results to these domains' },
-    blocked_domains: { type: 'string[]', description: 'Exclude these domains' },
+    engines: { type: 'string', default: '"ddg,wiki"', description: 'Comma-separated engines: ddg, brave, wiki, sogou, 360' },
+    limit: { type: 'number', default: '10', description: 'Max results (max 50)' },
+    timeout: { type: 'number', default: '10', description: 'Timeout in seconds (max 60)' },
+    proxy: { type: 'string', description: 'Proxy URL (e.g. http://127.0.0.1:8080 or socks5://...)' },
+    format: { type: '"text" | "json"', default: '"text"', description: 'Output format' },
   }}
 />
 
@@ -464,6 +487,18 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
     agent: { type: 'string', required: true, description: 'Agent name to delegate to' },
     prompt: { type: 'string', required: true, description: 'Task prompt for the subagent' },
     workspace: { type: 'string', description: 'Workspace override (default: current)' },
+  }}
+/>
+
+#### run_team
+
+<TypeTable
+  type={{
+    goal: { type: 'string', required: true, description: 'Goal for the team to accomplish' },
+    lead_agent: { type: 'string', default: '"general"', description: 'Agent type for the Lead role' },
+    worker_agent: { type: 'string', default: '"general"', description: 'Agent type for Worker roles' },
+    reviewer_agent: { type: 'string', default: '"general"', description: 'Agent type for the Reviewer role' },
+    max_steps: { type: 'number', description: 'Max tool rounds per team member' },
   }}
 />
 
