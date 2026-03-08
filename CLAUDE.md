@@ -349,6 +349,146 @@ grep -rn "pub fn\|pub struct\|pub enum\|pub trait" src/changed_module/ | wc -l
 **14. Thoughtful Naming** — Consider 5+ alternatives, choose the clearest
 **15. Structured Code** — Organized hierarchy, clear layers, predictable organization
 **16. Idiomatic by Default** — Follow each language's standard patterns and libraries first; only diverge with a clear, documented reason
+**17. Typed Extension Options** — Extension/backend choices in API options MUST be typed objects, never raw primitives (strings or booleans). See rule below.
+
+### Typed Extension Options (MANDATORY — Rule 17)
+
+**Extension points exposed in public APIs — especially SDK options structs — MUST use typed objects, not raw string paths or boolean flags.**
+
+#### The Rule
+
+When an option selects or configures an extension (a swappable backend, provider, or strategy), it MUST be expressed as a typed object or class instance, not a raw primitive:
+
+```typescript
+// ❌ WRONG: raw string leaks the backend name, can't be swapped
+agent.session('.', { memoryDir: './memory' });
+agent.session('.', { defaultSecurity: true });
+agent.resumeSession('id', './sessions', options);
+
+// ✅ CORRECT: typed objects are explicit, swappable, self-documenting
+agent.session('.', { memoryStore: new FileMemoryStore('./memory') });
+agent.session('.', { securityProvider: new DefaultSecurityProvider() });
+agent.resumeSession('id', { sessionStore: new FileSessionStore('./sessions') });
+```
+
+#### Why This Matters
+
+- **Clarity**: `new FileMemoryStore('./memory')` communicates both WHAT backend and HOW it's configured. `memoryDir: './memory'` communicates only the path — the backend is implicit.
+- **Extensibility**: Typed objects let callers substitute any implementation (`new RedisMemoryStore(...)`, `new S3SessionStore(...)`) without changing the API surface.
+- **No hidden coupling**: A boolean `defaultSecurity: true` silently instantiates `DefaultSecurityProvider` inside the library. The typed form `securityProvider: new DefaultSecurityProvider()` makes that explicit and lets the caller swap it.
+
+#### When to Apply
+
+This rule applies whenever an option field:
+- Selects a backend (memory store, session store, security provider, context provider, ...)
+- Enables a feature that corresponds to a named extension/implementation
+- Accepts a path string that implicitly determines which provider to use
+
+#### Cross-Language SDK Implementation Patterns
+
+The two binding layers require different techniques because napi-rs and PyO3 have different type systems.
+
+**napi-rs (Node.js) — Structural Compatibility**
+
+`#[napi(object)]` structs (plain JS objects) cannot hold `#[napi]` class instances. The solution: define a plain config struct as the field type, then expose a named class with the same shape. TypeScript's structural typing accepts the class instance wherever the plain struct is expected.
+
+```rust
+// Plain struct — used as the field type in SessionOptions
+#[napi(object)]
+pub struct JsMemoryStore { pub backend: String, pub dir: Option<String> }
+
+// Named class — same shape, self-documenting constructor
+#[napi]
+pub struct FileMemoryStore { pub backend: String, pub dir: String }
+#[napi]
+impl FileMemoryStore {
+    #[napi(constructor)]
+    pub fn new(dir: String) -> Self { Self { backend: "file".into(), dir } }
+}
+
+// In SessionOptions (#[napi(object)])
+pub memory_store: Option<JsMemoryStore>,
+// TypeScript accepts `new FileMemoryStore('./memory')` here via structural subtyping
+```
+
+**PyO3 (Python) — Runtime Dispatch**
+
+PyO3 allows `Option<PyObject>` fields in `#[pyclass]` structs, which stores any Python object reference. Use `Python::with_gil` + `extract::<PyRef<T>>` to dispatch on the concrete class type at conversion time.
+
+```rust
+// Named classes — no plain struct needed; store directly as PyObject
+#[pyclass(name = "FileMemoryStore")]
+struct PyFileMemoryStore { #[pyo3(get, set)] dir: String }
+#[pymethods]
+impl PyFileMemoryStore {
+    #[new] fn new(dir: String) -> Self { Self { dir } }
+}
+
+#[pyclass(name = "MemorySessionStore")]
+struct PyMemorySessionStore {}
+
+// In PySessionOptions
+memory_store: Option<pyo3::PyObject>,    // accepts FileMemoryStore or any future backend
+session_store: Option<pyo3::PyObject>,   // accepts FileSessionStore or MemorySessionStore
+
+// In build_rust_session_options — runtime dispatch
+if let Some(ref store) = so.memory_store {
+    let dir = Python::with_gil(|py| {
+        store.extract::<PyRef<PyFileMemoryStore>>(py).ok().map(|s| s.dir.clone())
+    });
+    if let Some(dir) = dir { o = o.with_file_memory(dir); }
+}
+if let Some(ref store) = so.session_store {
+    Python::with_gil(|py| {
+        if let Ok(s) = store.extract::<PyRef<PyFileSessionStore>>(py) {
+            o = o.with_file_session_store(s.dir.clone());
+        } else if store.extract::<PyRef<PyMemorySessionStore>>(py).is_ok() {
+            o = o.with_session_store(Arc::new(MemorySessionStore::new()));
+        }
+    });
+}
+```
+
+**Summary of trade-offs:**
+
+| Binding | Field type | Dispatch | Extensible to 3rd-party types |
+|---------|-----------|----------|-------------------------------|
+| napi-rs | Plain struct (`JsMemoryStore`) | Compile-time via struct fields | No — must match struct shape |
+| PyO3 | `Option<PyObject>` | Runtime via `extract::<PyRef<T>>` | Yes — any Python class accepted |
+
+#### Anti-Patterns to Reject
+
+| Bad | Good |
+|-----|------|
+| `memoryDir: './memory'` | `memoryStore: new FileMemoryStore('./memory')` |
+| `defaultSecurity: true` | `securityProvider: new DefaultSecurityProvider()` |
+| `useMemorySessionStore: true` | `sessionStore: new MemorySessionStore()` |
+| `resumeSession(id, dir, opts)` | `resumeSession(id, { sessionStore: new FileSessionStore(dir) })` |
+| `fileContextRoot: './src'` | `contextProvider: new FileSystemContextProvider('./src')` |
+| `mode: string` where only 3 values are valid | `mode: 'internal' \| 'external' \| 'hybrid'` (literal union) |
+
+#### What Is NOT a Violation
+
+Not every boolean or string option violates this rule. The rule applies specifically to **swappable extensions/backends**. These are fine:
+
+- **Feature flags** (`builtinSkills: boolean`, `permissive: boolean`, `planning: boolean`) — toggle a single fixed behavior, not a backend choice.
+- **Feature toggles with sub-config** (`enableDlq: boolean` + `dlqMaxSize: number`) — these enable/disable a component within one implementation, not select between implementations. Acceptable, though combining into a config object (`dlq?: { maxSize?: number }`) is a better V2 design.
+- **Numeric/string scalars** (`model: string`, `toolTimeoutMs: number`, `maxToolRounds: number`) — configuration parameters for a fixed layer, not backend selectors.
+
+The test: **"Could a user swap this for a different implementation?"** If yes → typed object. If no → primitive is fine.
+
+#### Rust Builder Convenience Methods — Separate Standard
+
+Rust core `SessionOptions` builder methods (e.g. `with_fs_context(path)`, `with_file_memory(path)`) are **not held to the same standard** as SDK options fields. Convenience builder methods that wrap a typed call are idiomatic Rust — the full typed path (`with_context_provider(Arc::new(...))`) must always exist alongside them. The rule is:
+
+- ✅ Rust builder: convenience `with_fs_context(path)` is fine **as long as** `with_context_provider(Arc<dyn ContextProvider>)` also exists.
+- ❌ SDK option field: `fsContextDir: './src'` is never acceptable — SDK users must pass `contextProviders: [new FileSystemContextProvider('./src')]`.
+
+If a convenience builder method is added to Rust core, it MUST NOT be mechanically forwarded as a primitive field in the SDK options. The SDK always exposes the typed form only.
+
+#### Internal Shims Are Not Public API
+
+In napi-rs bindings, the `#[napi(object)]` plain structs (`JsMemoryStore`, `JsSessionStore`, etc.) that back the options fields are **implementation details**, not public API. They MUST NOT appear in the exported TypeScript declarations (`index.d.ts`). Only the named classes (`FileMemoryStore`, `FileSessionStore`, etc.) are public.
 
 ### First Principles Architecture (MANDATORY — Rule 1)
 
@@ -530,6 +670,7 @@ std::fs::create_dir_all(&socket_dir).map_err(|e| {
 - [ ] No duplicated knowledge (DRY - single source of truth)
 - [ ] Every error has full context (self-documenting)
 - [ ] Pruning audit done: no dead wrappers, no orphaned exports, no redundant modules
+- [ ] **Typed Extension Options (Rule 17):** every extension/backend option uses a typed object, not a raw string or boolean
 
 **Supporting Principles:**
 
