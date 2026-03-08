@@ -1,0 +1,357 @@
+---
+title: Isolation Strategies
+description: Workspace boundaries, file version history, Git worktrees, and MicroVM sandbox
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+# Isolation Strategies
+
+A3S Code provides four isolation layers to prevent agent operations from affecting files or system resources outside the intended scope.
+
+```
+Isolation Layers
+  ├─ Workspace Boundary   ← File ops confined to the session directory (always on)
+  ├─ File Version History ← Auto-snapshot before writes; diff and restore any version
+  ├─ Git Worktree         ← Agent works on an isolated branch; discard with one command
+  └─ MicroVM Sandbox      ← bash runs inside an isolated VM (requires sandbox feature)
+```
+
+## Workspace Boundary
+
+All file operations (`read`, `write`, `edit`, `glob`, `grep`) are confined to the directory specified when creating the session. Attempts to access paths outside the workspace are intercepted immediately — no retry, no path disclosure to the LLM.
+
+```rust
+// Workspace set to /my-project
+let session = agent.session("/my-project", None)?;
+
+// ✅ Allowed: within workspace
+// read("src/main.rs") → /my-project/src/main.rs
+
+// ❌ Blocked: outside workspace
+// read("../other-project/secret.txt") → access denied
+// read("/etc/passwd") → access denied
+```
+
+This boundary is **always active** and cannot be disabled through configuration.
+
+## File Version History
+
+Whenever the agent executes `write`, `edit`, or `patch`, A3S Code automatically captures a snapshot of the file before the modification. Snapshots are stored in session memory and support version listing, diff generation, and restore.
+
+### Snapshot Triggers
+
+| Tool | Snapshot Taken |
+|------|---------------|
+| `write` | Before overwriting |
+| `edit` | Before string replacement |
+| `patch` | Before applying patch |
+
+### Using File History
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+// List all versions of a file
+let versions = session.list_file_versions("src/auth.rs").await;
+for v in &versions {
+    println!("v{} — {} — {}", v.version, v.tool_name, v.timestamp);
+}
+
+// Generate a diff between two versions
+let diff = session.diff_file_versions("src/auth.rs", 0, 1).await?;
+println!("{}", diff);
+
+// Restore to a specific version
+session.restore_file_version("src/auth.rs", 0).await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// List all versions of a file
+const versions = await session.listFileVersions('src/auth.rs');
+for (const v of versions) {
+  console.log(`v${v.version} — ${v.toolName} — ${v.timestamp}`);
+}
+
+// Generate diff
+const diff = await session.diffFileVersions('src/auth.rs', 0, 1);
+console.log(diff);
+
+// Restore to version 0
+await session.restoreFileVersion('src/auth.rs', 0);
+```
+</Tab>
+<Tab value="Python">
+```python
+# List all versions of a file
+versions = session.list_file_versions("src/auth.rs")
+for v in versions:
+    print(f"v{v.version} — {v.tool_name} — {v.timestamp}")
+
+# Generate diff
+diff = session.diff_file_versions("src/auth.rs", 0, 1)
+print(diff)
+
+# Restore to version 0
+session.restore_file_version("src/auth.rs", 0)
+```
+</Tab>
+</Tabs>
+
+### VersionSummary Fields
+
+<TypeTable
+  type={{
+    "version": {
+      description: "Type: usize · Version number (0-indexed, monotonically increasing per file)",
+    },
+    "path": {
+      description: "Type: String · File path",
+    },
+    "timestamp": {
+      description: "Type: DateTime<Utc> · When the snapshot was taken",
+    },
+    "tool_name": {
+      description: "Type: String · Tool that triggered the snapshot (write/edit/patch)",
+    },
+    "size": {
+      description: "Type: usize · File content size in bytes",
+    },
+  }}
+/>
+
+<Callout type="info">
+File history is session-scoped in-memory storage and is not persisted after the session ends. For cross-session change tracking, use the Git Worktree approach instead.
+</Callout>
+
+## Git Worktree
+
+The `git_worktree` tool lets the agent work on an isolated Git worktree (branch). All agent changes stay on the isolated branch — the main branch is completely unaffected. If an experiment fails, remove the worktree with a single command to discard all changes.
+
+### Workflow
+
+<Steps>
+<Step>**Create worktree** — establish an isolated workspace on a new branch</Step>
+<Step>**Work in isolation** — all agent file changes are committed to this branch</Step>
+<Step>**Review results** — inspect changes, decide to merge or discard</Step>
+<Step>**Merge or discard** — if satisfied, merge; if not, `remove` the entire worktree</Step>
+</Steps>
+
+### Example
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+// Create an isolated worktree
+let result = session.call_tool("git_worktree", serde_json::json!({
+    "command": "create",
+    "branch": "agent/refactor-auth",
+    "path": "/tmp/agent-worktrees/refactor-auth",
+    "new_branch": true,
+    "base": "main"
+})).await?;
+
+// Create a new session pointing at the worktree
+let isolated_session = agent.session(
+    "/tmp/agent-worktrees/refactor-auth",
+    None
+)?;
+
+// Agent changes are confined to agent/refactor-auth
+let result = isolated_session.send("Refactor auth module to use JWT", None).await?;
+
+// Check worktree status
+let status = isolated_session.call_tool("git_worktree", serde_json::json!({
+    "command": "status"
+})).await?;
+
+// Discard everything — main branch untouched
+let result = session.call_tool("git_worktree", serde_json::json!({
+    "command": "remove",
+    "path": "/tmp/agent-worktrees/refactor-auth"
+})).await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// Create isolated worktree
+await session.callTool('git_worktree', {
+  command: 'create',
+  branch: 'agent/refactor-auth',
+  path: '/tmp/agent-worktrees/refactor-auth',
+  newBranch: true,
+  base: 'main',
+});
+
+// Create session pointing at the worktree
+const isolatedSession = agent.session('/tmp/agent-worktrees/refactor-auth');
+
+// All changes on isolated branch
+const result = await isolatedSession.send('Refactor auth module to use JWT');
+
+// List all worktrees
+const list = await session.callTool('git_worktree', { command: 'list' });
+
+// Discard if not satisfied
+await session.callTool('git_worktree', {
+  command: 'remove',
+  path: '/tmp/agent-worktrees/refactor-auth',
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+# Create isolated worktree
+session.call_tool("git_worktree", {
+    "command": "create",
+    "branch": "agent/refactor-auth",
+    "path": "/tmp/agent-worktrees/refactor-auth",
+    "new_branch": True,
+    "base": "main",
+})
+
+# Create session pointing at the worktree
+isolated_session = agent.session("/tmp/agent-worktrees/refactor-auth")
+
+# All changes on isolated branch
+result = isolated_session.send("Refactor auth module to use JWT")
+
+# Discard entire worktree if not satisfied
+session.call_tool("git_worktree", {
+    "command": "remove",
+    "path": "/tmp/agent-worktrees/refactor-auth",
+})
+```
+</Tab>
+</Tabs>
+
+### git_worktree Parameters
+
+<TypeTable
+  type={{
+    "command": {
+      description: "Type: string (required) · Enum: create / list / remove / status",
+    },
+    "branch": {
+      description: "Type: string · Branch name (for create)",
+    },
+    "path": {
+      description: "Type: string · Worktree path (for create / remove)",
+    },
+    "new_branch": {
+      description: "Type: bool · Default: true · Create a new branch (for create)",
+    },
+    "base": {
+      description: "Type: string · Default: HEAD · Base ref for the new branch (for create)",
+    },
+    "force": {
+      description: "Type: bool · Force remove even with uncommitted changes (for remove)",
+    },
+  }}
+/>
+
+See [Git Worktree Example](/docs/code/examples/git-worktree) for a full walkthrough.
+
+## MicroVM Sandbox
+
+With the `sandbox` Cargo feature enabled, `bash` tool commands are routed through an A3S Box MicroVM instead of the host `std::process::Command`. The workspace directory is mounted read-write at `/workspace` inside the VM.
+
+<Callout type="info">
+**Requires the `sandbox` Cargo feature.** Add to `Cargo.toml`:
+```toml
+a3s-code-core = { version = "...", features = ["sandbox"] }
+```
+</Callout>
+
+### Configuration
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+use a3s_code_core::sandbox::SandboxConfig;
+use std::collections::HashMap;
+
+let sandbox = SandboxConfig {
+    image: "ubuntu:22.04".to_string(),
+    memory_mb: 1024,     // 1 GB
+    cpus: 2,             // 2 vCPUs
+    network: false,      // disable outbound network (safer)
+    env: HashMap::from([
+        ("NODE_ENV".to_string(), "test".to_string()),
+    ]),
+};
+
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_sandbox(sandbox)
+))?;
+
+// bash commands now run inside the MicroVM
+let result = session.send("Run the test suite", None).await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/project', {
+  sandbox: {
+    image: 'ubuntu:22.04',
+    memoryMb: 1024,
+    cpus: 2,
+    network: false,
+    env: { NODE_ENV: 'test' },
+  },
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/project", sandbox={
+    "image": "ubuntu:22.04",
+    "memory_mb": 1024,
+    "cpus": 2,
+    "network": False,
+    "env": {"NODE_ENV": "test"},
+})
+```
+</Tab>
+</Tabs>
+
+### SandboxConfig Fields
+
+<TypeTable
+  type={{
+    "image": {
+      description: "Type: String · Default: alpine:latest · OCI image reference",
+    },
+    "memory_mb": {
+      description: "Type: u32 · Default: 512 · Memory limit in MB",
+    },
+    "cpus": {
+      description: "Type: u32 · Default: 1 · Number of vCPUs",
+    },
+    "network": {
+      description: "Type: bool · Default: false · Enable outbound networking (off by default — safer)",
+    },
+    "env": {
+      description: "Type: HashMap<String,String> · Environment variables injected into the sandbox",
+    },
+  }}
+/>
+
+<Callout type="info">
+Networking is disabled by default (`network: false`). Enable only when the agent needs to run `npm install`, `pip install`, or similar network operations — and consider pairing it with a permission policy to restrict which commands can run.
+</Callout>
+
+## Choosing an Isolation Strategy
+
+| Scenario | Recommended approach |
+|----------|---------------------|
+| Prevent reading files outside the project | Workspace boundary (always on) |
+| Undo agent file writes | File version history |
+| Agent works on an experimental branch | Git worktree |
+| Isolate system side-effects of bash commands | MicroVM sandbox |
+| High-security production environment | Git worktree + MicroVM sandbox |

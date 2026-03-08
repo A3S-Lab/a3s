@@ -1,0 +1,357 @@
+---
+title: 隔离策略
+description: 工作区边界、文件版本历史、Git 工作树与 MicroVM 沙箱
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+# 隔离策略
+
+A3S Code 提供四层隔离机制，防止 agent 的操作影响到不应被修改的文件或系统资源。
+
+```
+隔离层次
+  ├─ 工作区边界     ← 文件操作限制在指定目录内（始终生效）
+  ├─ 文件版本历史   ← 写入前自动快照，支持 diff 与恢复
+  ├─ Git 工作树     ← agent 在独立分支上操作，出错可整个丢弃
+  └─ MicroVM 沙箱   ← bash 命令在隔离虚拟机内执行（需 sandbox feature）
+```
+
+## 工作区边界
+
+所有文件操作（`read`、`write`、`edit`、`glob`、`grep`）均被限制在 session 创建时指定的工作区目录内。尝试访问工作区外的路径会被直接拦截，不会产生错误重试，也不会向 LLM 反馈路径内容。
+
+```rust
+// 工作区设为 /my-project
+let session = agent.session("/my-project", None)?;
+
+// ✅ 允许：工作区内
+// read("src/main.rs") → /my-project/src/main.rs
+
+// ❌ 拦截：工作区外
+// read("../other-project/secret.txt") → 访问被拒绝
+// read("/etc/passwd") → 访问被拒绝
+```
+
+这一边界**始终生效**，无法通过配置关闭。
+
+## 文件版本历史
+
+每当 agent 执行 `write`、`edit` 或 `patch` 工具时，A3S Code 自动在修改前捕获文件快照。快照保存在会话内存中，支持版本列表、diff 生成和恢复。
+
+### 自动快照时机
+
+| 工具 | 触发快照 |
+|------|---------|
+| `write` | 覆写文件前 |
+| `edit` | 字符串替换前 |
+| `patch` | 应用补丁前 |
+
+### 查看版本历史
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+// 列出文件的所有版本
+let versions = session.list_file_versions("src/auth.rs").await;
+for v in &versions {
+    println!("v{} — {} — {}", v.version, v.tool_name, v.timestamp);
+}
+
+// 生成两个版本之间的 diff
+let diff = session.diff_file_versions("src/auth.rs", 0, 1).await?;
+println!("{}", diff);
+
+// 恢复到指定版本
+session.restore_file_version("src/auth.rs", 0).await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// 列出文件的所有版本
+const versions = await session.listFileVersions('src/auth.rs');
+for (const v of versions) {
+  console.log(`v${v.version} — ${v.toolName} — ${v.timestamp}`);
+}
+
+// 生成 diff
+const diff = await session.diffFileVersions('src/auth.rs', 0, 1);
+console.log(diff);
+
+// 恢复到版本 0
+await session.restoreFileVersion('src/auth.rs', 0);
+```
+</Tab>
+<Tab value="Python">
+```python
+# 列出文件的所有版本
+versions = session.list_file_versions("src/auth.rs")
+for v in versions:
+    print(f"v{v.version} — {v.tool_name} — {v.timestamp}")
+
+# 生成 diff
+diff = session.diff_file_versions("src/auth.rs", 0, 1)
+print(diff)
+
+# 恢复到版本 0
+session.restore_file_version("src/auth.rs", 0)
+```
+</Tab>
+</Tabs>
+
+### VersionSummary 字段
+
+<TypeTable
+  type={{
+    "version": {
+      description: "类型: usize · 描述: 版本号（从 0 开始单调递增）",
+    },
+    "path": {
+      description: "类型: String · 描述: 文件路径",
+    },
+    "timestamp": {
+      description: "类型: DateTime<Utc> · 描述: 快照时间",
+    },
+    "tool_name": {
+      description: "类型: String · 描述: 触发快照的工具名称（write/edit/patch）",
+    },
+    "size": {
+      description: "类型: usize · 描述: 文件内容大小（字节）",
+    },
+  }}
+/>
+
+<Callout type="info">
+文件历史是会话级内存存储，会话结束后不持久化。如需跨会话保留修改记录，使用 Git 工作树方案。
+</Callout>
+
+## Git 工作树
+
+`git_worktree` 工具让 agent 在独立的 Git 工作树（分支）上工作。agent 的所有改动都在隔离分支上，主分支完全不受影响。如果实验失败，直接删除工作树即可，一行命令清除所有修改。
+
+### 工作流
+
+<Steps>
+<Step>**创建工作树** — 在新分支上建立隔离工作区</Step>
+<Step>**在隔离分支上工作** — agent 的所有文件修改都提交到该分支</Step>
+<Step>**验证结果** — 检查修改，决定是合并还是丢弃</Step>
+<Step>**合并或丢弃** — 满意则 merge，不满意则 `remove` 整个工作树</Step>
+</Steps>
+
+### 使用示例
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+// 创建隔离工作树
+let result = session.call_tool("git_worktree", serde_json::json!({
+    "command": "create",
+    "branch": "agent/refactor-auth",
+    "path": "/tmp/agent-worktrees/refactor-auth",
+    "new_branch": true,
+    "base": "main"
+})).await?;
+
+// 在隔离工作树上创建新 session
+let isolated_session = agent.session(
+    "/tmp/agent-worktrees/refactor-auth",
+    None
+)?;
+
+// agent 的所有修改都在 agent/refactor-auth 分支上
+let result = isolated_session.send("重构 auth 模块使用 JWT", None).await?;
+
+// 验证：查看 diff
+let result = isolated_session.call_tool("git_worktree", serde_json::json!({
+    "command": "status"
+})).await?;
+
+// 不满意：直接删除工作树，主分支不受影响
+let result = session.call_tool("git_worktree", serde_json::json!({
+    "command": "remove",
+    "path": "/tmp/agent-worktrees/refactor-auth"
+})).await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// 创建隔离工作树
+await session.callTool('git_worktree', {
+  command: 'create',
+  branch: 'agent/refactor-auth',
+  path: '/tmp/agent-worktrees/refactor-auth',
+  newBranch: true,
+  base: 'main',
+});
+
+// 在隔离工作树上创建新 session
+const isolatedSession = agent.session('/tmp/agent-worktrees/refactor-auth');
+
+// agent 的所有修改都在隔离分支上
+const result = await isolatedSession.send('重构 auth 模块使用 JWT');
+
+// 查看所有工作树
+const list = await session.callTool('git_worktree', { command: 'list' });
+
+// 不满意则删除
+await session.callTool('git_worktree', {
+  command: 'remove',
+  path: '/tmp/agent-worktrees/refactor-auth',
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+# 创建隔离工作树
+session.call_tool("git_worktree", {
+    "command": "create",
+    "branch": "agent/refactor-auth",
+    "path": "/tmp/agent-worktrees/refactor-auth",
+    "new_branch": True,
+    "base": "main",
+})
+
+# 在隔离工作树上创建新 session
+isolated_session = agent.session("/tmp/agent-worktrees/refactor-auth")
+
+# agent 的所有修改都在隔离分支上
+result = isolated_session.send("重构 auth 模块使用 JWT")
+
+# 不满意则删除整个工作树
+session.call_tool("git_worktree", {
+    "command": "remove",
+    "path": "/tmp/agent-worktrees/refactor-auth",
+})
+```
+</Tab>
+</Tabs>
+
+### git_worktree 命令参数
+
+<TypeTable
+  type={{
+    "command": {
+      description: "类型: string（必填）· 枚举: create / list / remove / status",
+    },
+    "branch": {
+      description: "类型: string · 描述: 分支名称（create 时使用）",
+    },
+    "path": {
+      description: "类型: string · 描述: 工作树路径（create / remove 时使用）",
+    },
+    "new_branch": {
+      description: "类型: bool · 默认: true · 描述: 是否创建新分支（create 时使用）",
+    },
+    "base": {
+      description: "类型: string · 默认: HEAD · 描述: 新分支的起始 ref（create 时使用）",
+    },
+    "force": {
+      description: "类型: bool · 描述: 强制删除（即使工作树有未提交改动，remove 时使用）",
+    },
+  }}
+/>
+
+参见 [Git 工作树示例](/cn/docs/code/examples/git-worktree) 了解完整演示。
+
+## MicroVM 沙箱
+
+启用 `sandbox` feature 后，`bash` 工具的命令会路由到 A3S Box MicroVM 内执行，而不是宿主机上的 `std::process::Command`。工作区目录以读写方式挂载到 MicroVM 内的 `/workspace`。
+
+<Callout type="info">
+**需要 `sandbox` Cargo feature。** 在 `Cargo.toml` 中添加：
+```toml
+a3s-code-core = { version = "...", features = ["sandbox"] }
+```
+</Callout>
+
+### 配置
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+use a3s_code_core::sandbox::SandboxConfig;
+use std::collections::HashMap;
+
+let sandbox = SandboxConfig {
+    image: "ubuntu:22.04".to_string(),
+    memory_mb: 1024,          // 1 GB 内存
+    cpus: 2,                  // 2 vCPU
+    network: false,           // 禁用网络（更安全）
+    env: HashMap::from([
+        ("NODE_ENV".to_string(), "test".to_string()),
+    ]),
+};
+
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_sandbox(sandbox)
+))?;
+
+// bash 工具现在在 MicroVM 内执行
+let result = session.send("运行测试套件", None).await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/project', {
+  sandbox: {
+    image: 'ubuntu:22.04',
+    memoryMb: 1024,
+    cpus: 2,
+    network: false,
+    env: { NODE_ENV: 'test' },
+  },
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/project", sandbox={
+    "image": "ubuntu:22.04",
+    "memory_mb": 1024,
+    "cpus": 2,
+    "network": False,
+    "env": {"NODE_ENV": "test"},
+})
+```
+</Tab>
+</Tabs>
+
+### SandboxConfig 字段
+
+<TypeTable
+  type={{
+    "image": {
+      description: "类型: String · 默认: alpine:latest · OCI 镜像引用",
+    },
+    "memory_mb": {
+      description: "类型: u32 · 默认: 512 · 内存限制（MB）",
+    },
+    "cpus": {
+      description: "类型: u32 · 默认: 1 · vCPU 数量",
+    },
+    "network": {
+      description: "类型: bool · 默认: false · 启用出站网络（默认关闭，更安全）",
+    },
+    "env": {
+      description: "类型: HashMap<String,String> · 注入到沙箱的环境变量",
+    },
+  }}
+/>
+
+<Callout type="info">
+沙箱默认禁用网络（`network: false`）。只有在 agent 需要执行 `npm install`、`pip install` 等网络操作时才启用，且建议同时配合权限策略限制可执行的命令范围。
+</Callout>
+
+## 选择隔离方案
+
+| 场景 | 推荐方案 |
+|------|---------|
+| 防止读取项目外文件 | 工作区边界（始终生效） |
+| agent 写文件后想撤销 | 文件版本历史 |
+| agent 在实验性分支工作 | Git 工作树 |
+| 需要隔离 bash 命令的系统副作用 | MicroVM 沙箱 |
+| 生产环境高安全需求 | Git 工作树 + MicroVM 沙箱 组合 |

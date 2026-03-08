@@ -285,6 +285,144 @@ session.read_file("src/main.rs").await?;
 session.read_file("../other-project/secret.txt").await?;
 ```
 
+## Built-in Security Provider
+
+A3S Code ships a `DefaultSecurityProvider` that is off by default. Call `with_default_security()` to activate it — no additional configuration required.
+
+### Enabling
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+use a3s_code_core::security::default::{DefaultSecurityProvider, DefaultSecurityConfig, SensitivePattern};
+use std::sync::Arc;
+
+// Activate with defaults (all features on)
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_default_security()
+))?;
+
+// Or with custom config
+let config = DefaultSecurityConfig {
+    enable_taint_tracking: true,
+    enable_output_sanitization: true,
+    enable_injection_detection: true,
+    custom_patterns: vec![
+        SensitivePattern::new("internal_id", r"INT-\d{6}", "REDACTED:ID"),
+    ],
+};
+let provider = Arc::new(DefaultSecurityProvider::with_config(config));
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_security_provider(provider)
+))?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// Default security config
+const session = agent.session('/project', {
+  defaultSecurity: true,
+});
+
+// Custom config
+const session = agent.session('/project', {
+  securityConfig: {
+    enableTaintTracking: true,
+    enableOutputSanitization: true,
+    enableInjectionDetection: true,
+    customPatterns: [
+      { name: 'internal_id', pattern: 'INT-\\d{6}', label: 'REDACTED:ID' },
+    ],
+  },
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+# Default security config
+session = agent.session("/project", default_security=True)
+
+# Custom config
+session = agent.session("/project", security_config={
+    "enable_taint_tracking": True,
+    "enable_output_sanitization": True,
+    "enable_injection_detection": True,
+    "custom_patterns": [
+        {"name": "internal_id", "pattern": r"INT-\d{6}", "label": "REDACTED:ID"},
+    ],
+})
+```
+</Tab>
+</Tabs>
+
+### Built-in PII Redaction Patterns
+
+`DefaultSecurityProvider` includes 8 built-in sensitive data patterns that are automatically redacted from LLM output:
+
+<TypeTable
+  type={{
+    "ssn": {
+      description: "Pattern: \\b\\d{3}-\\d{2}-\\d{4}\\b · Output: [REDACTED:SSN]",
+    },
+    "email": {
+      description: "Pattern: user@example.com format · Output: [REDACTED:EMAIL]",
+    },
+    "phone": {
+      description: "Pattern: +1-234-567-8900 and variants · Output: [REDACTED:PHONE]",
+    },
+    "api_key": {
+      description: "Pattern: sk-... / pk-... (20+ chars) · Output: [REDACTED:API_KEY]",
+    },
+    "credit_card": {
+      description: "Pattern: 16-digit card number (with or without separators) · Output: [REDACTED:CC]",
+    },
+    "aws_key": {
+      description: "Pattern: AKIA... · Output: [REDACTED:AWS_KEY]",
+    },
+    "github_token": {
+      description: "Pattern: ghp_... / gho_... / ghu_... · Output: [REDACTED:GITHUB_TOKEN]",
+    },
+    "jwt": {
+      description: "Pattern: eyJ...eyJ...signature format · Output: [REDACTED:JWT]",
+    },
+  }}
+/>
+
+### Prompt Injection Detection
+
+`DefaultSecurityProvider` scans user input in the `GenerateStart` hook for injection patterns:
+
+| Pattern | Example |
+|---------|---------|
+| Ignore prior instructions | "Ignore all previous instructions..." |
+| Disregard context | "Disregard all prior context..." |
+| Mode switch | "You are now in developer mode..." |
+| Forget instructions | "Forget everything you learned..." |
+| New instruction injection | "New instructions: ..." |
+| System prompt override | "System prompt override" |
+
+When injection is detected, it is reported via the `OnError` hook and emitted as a `SecurityAlert` in the agent event stream. Taint tracking also scans tool outputs to catch indirect injection (e.g., via poisoned files or web content read by the agent).
+
+### DefaultSecurityConfig Fields
+
+<TypeTable
+  type={{
+    "enable_taint_tracking": {
+      description: "Type: bool · Default: true · Detect and track sensitive data in user input",
+    },
+    "enable_output_sanitization": {
+      description: "Type: bool · Default: true · Redact sensitive data from LLM output",
+    },
+    "enable_injection_detection": {
+      description: "Type: bool · Default: true · Detect prompt injection patterns",
+    },
+    "custom_patterns": {
+      description: "Type: Vec<SensitivePattern> · Additional sensitive data patterns to detect",
+    },
+  }}
+/>
+
 ## Extensible Security via Traits
 
 A3S Code provides a `SecurityProvider` trait for implementing custom security logic:

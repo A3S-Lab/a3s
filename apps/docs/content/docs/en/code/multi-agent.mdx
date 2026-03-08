@@ -1,6 +1,6 @@
 ---
 title: Multi-Agent Orchestration
-description: AgentSlot unified declaration · standalone spawn · team run_team workflow · real-time monitoring and control
+description: LLM-driven delegation · standalone spawn · team run_team workflow · direct task board access
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
@@ -9,7 +9,14 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Multi-Agent Orchestration
 
-A3S Code provides a unified multi-agent orchestration layer through `AgentOrchestrator`, supporting two execution modes: **standalone subagent** (`spawn`) and **team workflow** (`run_team`). Both share a single declaration type: `AgentSlot`.
+A3S Code provides four multi-agent collaboration modes, from lightweight delegation to fully controllable team orchestration:
+
+| Mode | API | Use when |
+|------|-----|----------|
+| LLM-driven delegation | `task` / `parallel_task` tools | LLM autonomously decides when to delegate work to subagents |
+| Standalone subagent | `spawn(AgentSlot)` | Launch a single subagent from code with real-time monitoring and control |
+| Team workflow | `run_team(goal, ws, slots)` | Automatically assemble Lead → Worker → Reviewer team and coordinate execution |
+| Direct task board | `AgentTeam` + `TeamRunner` | Advanced scenarios requiring full control over orchestration logic |
 
 ## Architecture
 
@@ -35,13 +42,147 @@ A3S Code provides a unified multi-agent orchestration layer through `AgentOrches
    (custom: ~/.a3s/agents/*.yaml)
 ```
 
-**How the three concepts relate:**
+**How the three core concepts relate:**
 
 | Concept | Responsibility |
 |---------|---------------|
 | `AgentDefinition` / `AgentRegistry` | Static agent definitions (YAML/Markdown) — describes prompts, permissions, and tool access |
 | `AgentSlot` | Runtime declaration type — specifies which agent type to launch and its role |
 | `AgentOrchestrator` | Execution engine — drives AgentLoop via `spawn` or `run_team` |
+
+---
+
+## Agent Definitions
+
+### Built-in Subagents
+
+`AgentRegistry` auto-loads the following built-in agents at startup:
+
+<TypeTable
+  type={{
+    "general": {
+      description: "General-purpose multi-step execution · Max steps: 50 · Tools: full access",
+    },
+    "explore": {
+      description: "Fast codebase exploration (read-only) · Max steps: 20 · Tools: read, grep, glob, ls",
+    },
+    "plan": {
+      description: "Architecture and planning (read-only) · Max steps: 30 · Tools: read, grep, glob",
+    },
+    "title": {
+      description: "Session title generation (hidden) · Max steps: 1",
+    },
+    "summary": {
+      description: "Session summarization (hidden) · Max steps: 5 · Tools: read",
+    },
+  }}
+/>
+
+### Custom Subagents
+
+Place YAML or Markdown files in your agent directories — they're loaded automatically at startup:
+
+```hcl
+# agent.hcl
+agent_dirs = ["~/.a3s/agents", "/shared/team-agents"]
+```
+
+**YAML format:**
+
+```yaml
+# ~/.a3s/agents/security-reviewer.yaml
+name: security-reviewer
+description: Reviews code for security vulnerabilities and best practices
+mode: subagent
+hidden: false
+max_steps: 25
+can_spawn_subagents: false
+
+permissions:
+  allow:
+    - read
+    - grep
+    - glob
+    - ls
+  deny:
+    - write
+    - edit
+    - bash
+    - patch
+
+prompt: |
+  You are a security code reviewer. Analyze the codebase for:
+  - SQL injection, XSS, CSRF vulnerabilities
+  - Hardcoded secrets and credentials
+  - Insecure cryptographic practices
+  Report findings with severity (Critical/High/Medium/Low),
+  affected file and line, and recommended fix.
+  Never modify any files — report only.
+```
+
+**Markdown format** (YAML frontmatter; body becomes the system prompt):
+
+```markdown
+---
+name: db-migration
+description: Database migration specialist
+mode: subagent
+max_steps: 40
+permissions:
+  allow: [read, write, edit, bash, grep, glob]
+  deny:  [web_fetch, web_search]
+---
+You are a database migration specialist...
+```
+
+Use the `model` field to assign a different model to a specific agent:
+
+```yaml
+name: quick-search
+model: anthropic/claude-haiku-4-20250514
+max_steps: 10
+permissions:
+  allow: [read, grep, glob, ls]
+prompt: |
+  Fast search agent. Find and return concise results. No explanation.
+```
+
+### AgentDefinition Reference
+
+<TypeTable
+  type={{
+    "name": {
+      description: "Type: string · Required: ✅ · Unique agent identifier (used in task tool)",
+    },
+    "description": {
+      description: "Type: string · Required: ✅ · What this agent does (shown to LLM)",
+    },
+    "mode": {
+      description: "Type: subagent | primary · Required: ❌ · Agent mode (default: subagent)",
+    },
+    "hidden": {
+      description: "Type: bool · Required: ❌ · Hide from listing (default: false)",
+    },
+    "max_steps": {
+      description: "Type: number · Required: ❌ · Maximum tool rounds",
+    },
+    "can_spawn_subagents": {
+      description: "Type: bool · Required: ❌ · Allow recursive delegation (default: false)",
+    },
+    "permissions.allow": {
+      description: "Type: string[] · Required: ❌ · Allowed tool names",
+    },
+    "permissions.deny": {
+      description: "Type: string[] · Required: ❌ · Denied tool names",
+    },
+    "model": {
+      description: "Type: string · Required: ❌ · Model override in provider/model format",
+    },
+    "prompt": {
+      description: "Type: string · Required: ❌ · System prompt for the agent",
+    },
+  }}
+/>
 
 ---
 
@@ -429,7 +570,7 @@ for task in result.done_tasks:
 
 3. Reviewer approves
    ├─ For each InReview task, evaluates the result
-   ├─ "APPROVED: <reason>"  → board.approve() → task becomes Done
+   ├─ "APPROVED: <reason>"   → board.approve() → task becomes Done
    └─ "REJECTED: <feedback>" → board.reject() → task re-queued for retry
 
 4. Termination
@@ -462,29 +603,77 @@ for task in result.done_tasks:
 
 ---
 
-## Task Board (Advanced)
+## Path 3: Direct Task Board
 
-For full control over orchestration logic, manipulate `TeamTaskBoard` directly:
+For scenarios requiring full control over orchestration logic, use `AgentTeam` + `TeamTaskBoard` + `TeamRunner` directly.
+
+### AgentTeam Setup
 
 ```rust
-use a3s_code_core::agent_teams::{AgentTeam, TeamConfig, TeamRole, TeamRunner};
+use a3s_code_core::agent_teams::{AgentTeam, TeamConfig, TeamRole};
 
-let config = TeamConfig { max_tasks: 50, max_rounds: 10, ..Default::default() };
+let config = TeamConfig {
+    max_tasks: 50,
+    channel_buffer: 128,
+    max_rounds: 10,
+    poll_interval_ms: 200,
+};
 let mut team = AgentTeam::new("my-team", config);
 team.add_member("lead",     TeamRole::Lead);
 team.add_member("worker-1", TeamRole::Worker);
 team.add_member("reviewer", TeamRole::Reviewer);
+```
 
-let board = team.task_board();
+### TeamConfig
 
-// Manual task board operations
-let id = board.post("Refactor auth module", "lead", None).unwrap();
-let task = board.claim("worker-1").unwrap();
-board.complete(&task.id, "Refactoring complete");
-board.approve(&task.id);
+<TypeTable
+  type={{
+    "max_tasks": {
+      description: "Type: usize · Default: 50 · Maximum number of tasks the board can hold simultaneously",
+    },
+    "channel_buffer": {
+      description: "Type: usize · Default: 128 · Buffer size for each member's mpsc message channel",
+    },
+    "max_rounds": {
+      description: "Type: usize · Default: 10 · Maximum Reviewer polling rounds in run_until_done before stopping",
+    },
+    "poll_interval_ms": {
+      description: "Type: u64 · Default: 200 · How often workers and reviewer poll the board for new work (ms)",
+    },
+  }}
+/>
 
-// Stats
-let (open, in_progress, in_review, done, rejected) = board.stats();
+### TeamTaskBoard
+
+The board is shared across all members via `Arc<TeamTaskBoard>`. Every operation is thread-safe:
+
+```rust
+let board = team.task_board();     // &TeamTaskBoard
+let board = team.task_board_arc(); // Arc<TeamTaskBoard>
+
+// Post a task — returns Some(task_id) or None if board is full
+let id = board.post("Refactor JWT validation", "lead", None).unwrap();
+// Pre-assign to a specific worker; task starts as InProgress (not Open)
+let id = board.post("Add CSRF protection", "lead", Some("worker-1")).unwrap();
+
+// Claim the next Open or Rejected task
+let task: Option<TeamTask> = board.claim("worker-1");
+
+// Complete a task (moves to InReview)
+board.complete(&task.id, "Added RS256 key rotation");
+
+// Reviewer actions
+board.approve(&task.id);   // InReview → Done
+board.reject(&task.id);    // InReview → Rejected (re-claimable by workers)
+
+// Query
+let tasks: Vec<TeamTask>    = board.by_status(TaskStatus::Done);
+let tasks: Vec<TeamTask>    = board.by_assignee("worker-1");
+let task:  Option<TeamTask> = board.get(&id);
+
+// Stats — (open, in_progress, in_review, done, rejected)
+let (open, prog, rev, done, rej) = board.stats();
+let total = board.len();
 ```
 
 ### Task State Machine
@@ -497,6 +686,82 @@ post()      claim()       complete()
               approve()              reject()
                    │                      │
                  Done           Rejected ──► (re-claim())
+```
+
+### TeamTask Fields
+
+<TypeTable
+  type={{
+    "id": {
+      description: "Type: String · Sequential task identifier (e.g., task-1, task-2)",
+    },
+    "description": {
+      description: "Type: String · Task description text as posted by the Lead",
+    },
+    "posted_by": {
+      description: "Type: String · Member ID of the task creator",
+    },
+    "assigned_to": {
+      description: "Type: Option<String> · Member ID currently working on this task",
+    },
+    "status": {
+      description: "Type: TaskStatus · Current task state",
+    },
+    "result": {
+      description: "Type: Option<String> · Output text set by complete()",
+    },
+    "created_at": {
+      description: "Type: i64 · Unix timestamp when the task was posted",
+    },
+    "updated_at": {
+      description: "Type: i64 · Unix timestamp of the last state change",
+    },
+  }}
+/>
+
+### TeamRunner
+
+`TeamRunner` binds real `AgentSession` instances (or any `AgentExecutor`) to team members and runs the full automated workflow:
+
+```rust
+use a3s_code_core::agent_teams::TeamRunner;
+use std::sync::Arc;
+
+let mut runner = TeamRunner::new(team); // team is consumed here
+
+runner.bind_session("lead",     Arc::new(agent.session(".", None)?))?;
+runner.bind_session("worker-1", Arc::new(agent.session(".", None)?))?;
+runner.bind_session("reviewer", Arc::new(agent.session(".", None)?))?;
+
+let result = runner.run_until_done("Audit the auth module").await?;
+```
+
+`run_until_done` internals:
+
+1. **Lead decomposition** — the Lead's session receives a prompt to output JSON tasks. The runner parses the JSON and calls `board.post()` for each task.
+
+2. **Worker execution** — one Tokio task per Worker. Each loops: `claim() → session.send() → board.complete()`
+
+3. **Reviewer loop** — for each InReview task, the Reviewer's session evaluates the result and responds `APPROVED: <reason>` or `REJECTED: <feedback>`
+
+4. **Termination** — when all tasks are Done, or after `max_rounds` Reviewer polling rounds
+
+### AgentExecutor Trait
+
+`TeamRunner` accepts any type implementing `AgentExecutor` — not just `AgentSession`. Useful for testing or custom execution strategies:
+
+```rust
+use a3s_code_core::agent_teams::AgentExecutor;
+
+#[async_trait::async_trait]
+impl AgentExecutor for MyCustomExecutor {
+    async fn execute(&self, prompt: &str) -> a3s_code_core::Result<String> {
+        // your LLM call or custom logic here
+        Ok("result".to_string())
+    }
+}
+
+runner.bind_session("worker-1", Arc::new(MyCustomExecutor::new()))?;
 ```
 
 ### Point-to-Point Messaging
@@ -517,89 +782,78 @@ while let Some(msg) = rx.recv().await {
 
 ---
 
-## Built-in Subagents
+## LLM-Driven Delegation
 
-`AgentRegistry` auto-loads the following built-in agents at startup:
+Within a session, the LLM delegates work to subagents via the `task` and `parallel_task` tools. The built-in `delegate-task` skill (Instruction kind) is automatically injected into the system prompt, teaching the LLM when to delegate, which agents are available, and how to invoke the tools — no additional configuration required.
+
+### How Delegation Works
+
+```
+Parent Session
+  │
+  ├─ task("security-reviewer", "Review auth module")
+  │    │
+  │    ├─ 1. Look up AgentDefinition in AgentRegistry
+  │    ├─ 2. Create child session with agent's permissions
+  │    ├─ 3. Apply agent's system prompt
+  │    ├─ 4. Execute task in isolated agentic loop
+  │    ├─ 5. Return result to parent
+  │    └─ 6. Child session ID preserved for reference
+  │
+  └─ Parent continues with subagent's result
+```
+
+Key isolation guarantees:
+- Child session has its own context window (no parent context leakage)
+- Permissions are restricted to the agent definition's policy
+- `max_steps` prevents runaway execution
+- `can_spawn_subagents: false` prevents recursive delegation
+
+### task Tool
 
 <TypeTable
   type={{
-    "general": {
-      description: "General-purpose multi-step execution · Max steps: 50 · Tools: full access",
+    "agent": {
+      description: "Type: string · Required: ✅ · Agent name (built-in or custom)",
     },
-    "explore": {
-      description: "Fast codebase exploration (read-only) · Max steps: 20 · Tools: read, grep, glob, ls",
+    "description": {
+      description: "Type: string · Required: ✅ · Short task description",
     },
-    "plan": {
-      description: "Architecture and planning (read-only) · Max steps: 30 · Tools: read, grep, glob",
+    "prompt": {
+      description: "Type: string · Required: ✅ · Detailed prompt for the subagent",
     },
-    "title": {
-      description: "Session title generation (hidden) · Max steps: 1",
+    "background": {
+      description: "Type: bool · Required: ❌ · Run without waiting for result (default: false)",
     },
-    "summary": {
-      description: "Session summarization (hidden) · Max steps: 5 · Tools: read",
+    "max_steps": {
+      description: "Type: int · Required: ❌ · Override the agent's default max steps",
     },
   }}
 />
 
-## Custom Subagents
+**task result:**
 
-Place YAML or Markdown files in your agent directories — they're loaded automatically at startup:
+<TypeTable
+  type={{
+    "output": {
+      description: "Type: string · Subagent response text",
+    },
+    "session_id": {
+      description: "Type: string · Child session ID",
+    },
+    "agent": {
+      description: "Type: string · Agent name used",
+    },
+    "success": {
+      description: "Type: bool · Whether execution succeeded",
+    },
+    "task_id": {
+      description: "Type: string · Unique task identifier",
+    },
+  }}
+/>
 
-```hcl
-# agent.hcl
-agent_dirs = ["~/.a3s/agents", "/shared/team-agents"]
-```
-
-```yaml
-# ~/.a3s/agents/security-reviewer.yaml
-name: security-reviewer
-description: Reviews code for security vulnerabilities
-mode: subagent
-max_steps: 25
-
-permissions:
-  allow: [read, grep, glob, ls]
-  deny:  [write, edit, bash]
-
-prompt: |
-  You are a security code reviewer. Analyze the codebase for
-  SQL injection, XSS, hardcoded secrets, and insecure crypto.
-  Report findings with severity (Critical/High/Medium/Low) and
-  recommended fixes. Never modify files.
-```
-
-Markdown format (with YAML frontmatter, body becomes the system prompt):
-
-```markdown
----
-name: db-migration
-description: Database migration specialist
-mode: subagent
-max_steps: 40
-permissions:
-  allow: [read, write, edit, bash, grep, glob]
-  deny:  [web_fetch, web_search]
----
-You are a database migration specialist...
-```
-
-Use the `model` field to assign a different model to a specific agent:
-
-```yaml
-name: quick-search
-model: anthropic/claude-haiku-4-20250514
-max_steps: 10
-permissions:
-  allow: [read, grep, glob, ls]
-prompt: |
-  Fast search agent. Find and return concise results. No explanation.
-```
-
----
-
-## LLM-Driven Delegation
-
-Within a session, the LLM delegates work to subagents via the `task` and `parallel_task` tools:
+### Code Examples
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
 <Tab value="Rust">
@@ -615,8 +869,21 @@ let result = session.tool("task", serde_json::json!({
 // Parallel delegation
 let result = session.tool("parallel_task", serde_json::json!({
     "tasks": [
-        { "agent": "explore",           "description": "Find API routes",  "prompt": "List all API route definitions." },
-        { "agent": "security-reviewer", "description": "Security scan",    "prompt": "Check src/auth/ for vulnerabilities." }
+        {
+            "agent": "explore",
+            "description": "Find API routes",
+            "prompt": "List all API route definitions with their HTTP methods."
+        },
+        {
+            "agent": "explore",
+            "description": "Find DB models",
+            "prompt": "List all database model definitions with their fields."
+        },
+        {
+            "agent": "security-reviewer",
+            "description": "Review auth module",
+            "prompt": "Check src/auth/ for security vulnerabilities."
+        }
     ]
 })).await?;
 ```
@@ -648,18 +915,171 @@ result = session.tool("parallel_task", {
 </Tab>
 </Tabs>
 
-Subagent lifecycle events are emitted on the parent session's event stream:
+### Subagent Events
+
+When streaming, subagent lifecycle events are emitted on the parent session's event channel:
 
 ```rust
 let (mut rx, _handle) = session.stream("Analyze this codebase thoroughly").await?;
 while let Some(event) = rx.recv().await {
     match event {
-        AgentEvent::SubagentStart { agent, description, .. } => println!("▶ [{agent}] {description}"),
-        AgentEvent::SubagentEnd   { agent, success, .. }     => println!("{} [{agent}]", if success { "✓" } else { "✗" }),
+        AgentEvent::SubagentStart { task_id, agent, description, .. } => {
+            println!("▶ [{agent}] {description} (task: {task_id})");
+        }
+        AgentEvent::SubagentEnd { agent, success, output, .. } => {
+            let status = if success { "✓" } else { "✗" };
+            println!("{status} [{agent}] {}", output.chars().take(100).collect::<String>());
+        }
         AgentEvent::End { .. } => break,
         _ => {}
     }
 }
+```
+
+---
+
+## Multi-Session Parallelism
+
+For workloads that go beyond subagent delegation — e.g., processing multiple repositories or running the same analysis across different workspaces — create multiple independent sessions and drive them concurrently using language-native primitives.
+
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::Agent;
+use tokio::task::JoinSet;
+
+let agent = Agent::new("agent.hcl").await?;
+
+let workspaces = vec![
+    "/repos/service-auth",
+    "/repos/service-billing",
+    "/repos/service-gateway",
+];
+
+// Spawn one session per workspace, all running concurrently
+let mut join_set = JoinSet::new();
+for workspace in workspaces {
+    let agent = agent.clone();
+    join_set.spawn(async move {
+        let session = agent.session(workspace, None)?;
+        let result = session.send("Find all TODO comments and summarize them").await?;
+        Ok::<_, a3s_code_core::CodeError>((workspace.to_string(), result.text))
+    });
+}
+
+// Collect results as they complete
+while let Some(result) = join_set.join_next().await {
+    match result? {
+        Ok((workspace, text)) => println!("=== {workspace} ===\n{text}\n"),
+        Err(e) => eprintln!("Error: {e}"),
+    }
+}
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+const workspaces = [
+  '/repos/service-auth',
+  '/repos/service-billing',
+  '/repos/service-gateway',
+];
+
+// Run all sessions concurrently with Promise.all
+const results = await Promise.all(
+  workspaces.map(async (workspace) => {
+    const session = agent.session(workspace);
+    const result = await session.send('Find all TODO comments and summarize them');
+    return { workspace, text: result.text };
+  })
+);
+
+for (const { workspace, text } of results) {
+  console.log(`=== ${workspace} ===\n${text}\n`);
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+import asyncio
+from a3s_code import Agent
+
+agent = Agent.create("agent.hcl")
+
+workspaces = [
+    "/repos/service-auth",
+    "/repos/service-billing",
+    "/repos/service-gateway",
+]
+
+async def analyze(workspace: str) -> tuple[str, str]:
+    session = agent.session(workspace)
+    result = session.send("Find all TODO comments and summarize them")
+    return workspace, result.text
+
+results = asyncio.run(asyncio.gather(*[analyze(ws) for ws in workspaces]))
+
+for workspace, text in results:
+    print(f"=== {workspace} ===\n{text}\n")
+```
+
+</Tab>
+</Tabs>
+
+> **Note:** Each session is independent — separate conversation history, tool context, and workspace boundary. There is no shared state between parallel sessions.
+
+### Fan-Out / Fan-In Pattern
+
+Combine multi-session parallelism with subagent delegation for fan-out/fan-in workflows:
+
+```rust
+use a3s_code_core::Agent;
+use tokio::task::JoinSet;
+
+let agent = Agent::new("agent.hcl").await?;
+
+// Phase 1: Parallel exploration across workspaces
+let mut join_set = JoinSet::new();
+for workspace in &["/repos/frontend", "/repos/backend", "/repos/infra"] {
+    let agent = agent.clone();
+    let ws = workspace.to_string();
+    join_set.spawn(async move {
+        let session = agent.session(&ws, None)?;
+        // Each session uses parallel_task internally to fan out further
+        let result = session.tool("parallel_task", serde_json::json!({
+            "tasks": [
+                { "agent": "explore",           "description": "Find dependencies", "prompt": "List all external dependencies." },
+                { "agent": "security-reviewer", "description": "Security scan",     "prompt": "Scan for known vulnerability patterns." }
+            ]
+        })).await?;
+        Ok::<_, a3s_code_core::CodeError>((ws, result.output))
+    });
+}
+
+// Phase 2: Collect findings
+let mut findings = Vec::new();
+while let Some(result) = join_set.join_next().await {
+    if let Ok(Ok((ws, output))) = result {
+        findings.push(format!("## {ws}\n{output}"));
+    }
+}
+
+// Phase 3: Summarize into a single session
+let summary_session = agent.session("/repos", None)?;
+let summary = summary_session.send(&format!(
+    "Summarize these findings into a single security report:\n\n{}",
+    findings.join("\n\n")
+)).await?;
+
+println!("{}", summary.text);
 ```
 
 ---
@@ -688,12 +1108,141 @@ pub struct OrchestratorConfig {
 
 ---
 
-## Choosing Between the Two Paths
+## Choosing a Mode
 
 | Scenario | Recommended |
 |----------|-------------|
-| Run a single specialized task | `spawn(AgentSlot)` |
+| LLM autonomously decides whether to delegate | LLM delegation (task / parallel_task) |
+| Launch a single specialized task from code | `spawn(AgentSlot)` |
 | Need real-time monitoring, pause/resume control | `spawn(AgentSlot)` |
 | Goal needs decomposing into parallel subtasks | `run_team(goal, ws, slots)` |
 | Need Lead/Worker/Reviewer collaboration and quality review | `run_team(goal, ws, slots)` |
 | Need full control over task board and orchestration logic | `AgentTeam` + `TeamRunner` directly |
+| Multi-repo or cross-workspace parallel analysis | Multi-session parallelism (JoinSet / Promise.all) |
+
+---
+
+## SDK Reference (TypeScript / Python)
+
+<Tabs items={['TypeScript', 'Python']}>
+
+<Tab value="TypeScript">
+
+```typescript
+import { Agent, Team, TeamRunner, TeamConfig, TeamTaskBoard, TeamTask, TeamRunResult } from '@a3s-lab/code';
+
+// --- Setup ---
+const config: TeamConfig = {
+  maxTasks: 50,
+  channelBuffer: 128,
+  maxRounds: 10,
+  pollIntervalMs: 200,
+};
+const team = new Team('my-team', config);
+team.addMember('lead',     'lead');      // "lead" | "worker" | "reviewer"
+team.addMember('worker-1', 'worker');
+team.addMember('reviewer', 'reviewer');
+
+team.memberCount;  // number
+
+// Get the board before consuming the team
+const boardBefore: TeamTaskBoard = team.taskBoard();
+
+// --- Runner ---
+const runner = new TeamRunner(team);     // team is consumed here
+runner.bindSession('lead',     session);
+runner.bindSession('worker-1', session);
+runner.bindSession('reviewer', session);
+
+const board: TeamTaskBoard = runner.taskBoard();
+const result: TeamRunResult = await runner.runUntilDone('your goal here');
+result.doneTasks      // TeamTask[]
+result.rejectedTasks  // TeamTask[]
+result.rounds         // number
+
+// --- Board (direct) ---
+const id: string | null = board.post('description', 'postedBy', null);
+const task: TeamTask | null = board.claim('worker-1');
+board.complete(task!.id, 'result text');
+board.approve(task!.id);
+board.reject(task!.id);
+board.get(task!.id);                          // TeamTask | null
+board.byStatus('done');                        // TeamTask[]  "open"|"in_progress"|"in_review"|"done"|"rejected"
+board.byAssignee('worker-1');                  // TeamTask[]
+const stats = board.stats();                   // { open, inProgress, inReview, done, rejected, total }
+board.len;                                     // number
+board.isEmpty;                                 // boolean
+
+// --- TeamTask fields ---
+task!.id           // string
+task!.description  // string
+task!.postedBy     // string
+task!.assignedTo   // string | null
+task!.status       // "open" | "in_progress" | "in_review" | "done" | "rejected"
+task!.result       // string | null
+task!.createdAt    // number (unix timestamp)
+task!.updatedAt    // number (unix timestamp)
+```
+
+</Tab>
+
+<Tab value="Python">
+
+```python
+from a3s_code import Team, TeamRunner, TeamConfig, TeamTaskBoard, TeamTask, TeamRunResult
+
+# --- Setup ---
+config = TeamConfig(
+    max_tasks=50,
+    channel_buffer=128,
+    max_rounds=10,
+    poll_interval_ms=200,
+)
+team = Team("my-team", config)
+team.add_member("lead",     "lead")      # "lead" | "worker" | "reviewer"
+team.add_member("worker-1", "worker")
+team.add_member("reviewer", "reviewer")
+
+team.member_count()  # → int
+
+# Get the board before consuming the team
+board: TeamTaskBoard = team.task_board()
+
+# --- Runner ---
+runner = TeamRunner(team)           # team is consumed here
+runner.bind_session("lead",     session)
+runner.bind_session("worker-1", session)
+runner.bind_session("reviewer", session)
+
+board = runner.task_board()
+result: TeamRunResult = runner.run_until_done("your goal here")
+result.done_tasks      # List[TeamTask]
+result.rejected_tasks  # List[TeamTask]
+result.rounds          # int
+
+# --- Board (direct) ---
+id: str | None = board.post("description", "posted_by", assign_to=None)
+task: TeamTask | None = board.claim("worker-1")
+board.complete(task.id, "result text")
+board.approve(task.id)
+board.reject(task.id)
+board.get(task.id)                       # → TeamTask | None
+board.by_status("done")                  # → List[TeamTask]
+board.by_assignee("worker-1")            # → List[TeamTask]
+(open, prog, rev, done, rej) = board.stats()
+len(board)                               # total tasks
+
+# --- TeamTask fields ---
+task.id           # str
+task.description  # str
+task.posted_by    # str
+task.assigned_to  # str | None
+task.status       # "open" | "in_progress" | "in_review" | "done" | "rejected"
+task.result       # str | None
+task.created_at   # int (unix timestamp)
+task.updated_at   # int (unix timestamp)
+```
+
+</Tab>
+
+</Tabs>

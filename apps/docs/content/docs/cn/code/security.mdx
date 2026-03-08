@@ -285,6 +285,144 @@ session.read_file("src/main.rs").await?;
 session.read_file("../other-project/secret.txt").await?;
 ```
 
+## 内置安全提供者
+
+A3S Code 默认不启用任何 `SecurityProvider`。调用 `with_default_security()` 即可激活内置的 `DefaultSecurityProvider`，无需任何额外配置。
+
+### 启用方式
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+use a3s_code_core::security::default::{DefaultSecurityProvider, DefaultSecurityConfig, SensitivePattern};
+use std::sync::Arc;
+
+// 使用默认配置（全部功能开启）
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_default_security()
+))?;
+
+// 或使用自定义配置
+let config = DefaultSecurityConfig {
+    enable_taint_tracking: true,
+    enable_output_sanitization: true,
+    enable_injection_detection: true,
+    custom_patterns: vec![
+        SensitivePattern::new("internal_id", r"INT-\d{6}", "REDACTED:ID"),
+    ],
+};
+let provider = Arc::new(DefaultSecurityProvider::with_config(config));
+let session = agent.session("/project", Some(
+    SessionOptions::new().with_security_provider(provider)
+))?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// 默认安全配置
+const session = agent.session('/project', {
+  defaultSecurity: true,
+});
+
+// 自定义配置
+const session = agent.session('/project', {
+  securityConfig: {
+    enableTaintTracking: true,
+    enableOutputSanitization: true,
+    enableInjectionDetection: true,
+    customPatterns: [
+      { name: 'internal_id', pattern: 'INT-\\d{6}', label: 'REDACTED:ID' },
+    ],
+  },
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+# 默认安全配置
+session = agent.session("/project", default_security=True)
+
+# 自定义配置
+session = agent.session("/project", security_config={
+    "enable_taint_tracking": True,
+    "enable_output_sanitization": True,
+    "enable_injection_detection": True,
+    "custom_patterns": [
+        {"name": "internal_id", "pattern": r"INT-\d{6}", "label": "REDACTED:ID"},
+    ],
+})
+```
+</Tab>
+</Tabs>
+
+### 内置 PII 脱敏模式
+
+`DefaultSecurityProvider` 内置 8 种敏感数据检测模式，在 LLM 输出中自动脱敏：
+
+<TypeTable
+  type={{
+    "ssn": {
+      description: "模式: \\b\\d{3}-\\d{2}-\\d{4}\\b · 输出: [REDACTED:SSN]",
+    },
+    "email": {
+      description: "模式: user@example.com 格式 · 输出: [REDACTED:EMAIL]",
+    },
+    "phone": {
+      description: "模式: +1-234-567-8900 等格式 · 输出: [REDACTED:PHONE]",
+    },
+    "api_key": {
+      description: "模式: sk-... / pk-...（20 字符以上）· 输出: [REDACTED:API_KEY]",
+    },
+    "credit_card": {
+      description: "模式: 16 位卡号（带或不带分隔符）· 输出: [REDACTED:CC]",
+    },
+    "aws_key": {
+      description: "模式: AKIA... · 输出: [REDACTED:AWS_KEY]",
+    },
+    "github_token": {
+      description: "模式: ghp_... / gho_... / ghu_... · 输出: [REDACTED:GITHUB_TOKEN]",
+    },
+    "jwt": {
+      description: "模式: eyJ...eyJ...签名 格式 · 输出: [REDACTED:JWT]",
+    },
+  }}
+/>
+
+### 提示注入检测
+
+`DefaultSecurityProvider` 在 `GenerateStart` hook 中对用户输入进行注入检测，识别以下模式：
+
+| 模式 | 示例 |
+|------|------|
+| 忽略先前指令 | "Ignore all previous instructions..." |
+| 无视上下文 | "Disregard all prior context..." |
+| 模式切换 | "You are now in developer mode..." |
+| 遗忘指令 | "Forget everything you learned..." |
+| 新指令注入 | "New instructions: ..." |
+| 系统提示覆盖 | "System prompt override" |
+
+检测到注入时，通过 `OnError` hook 上报，并在 agent 事件流中发出 `SecurityAlert`。污点追踪同时扫描工具输出，防止间接注入（通过读取被污染文件或网页内容）。
+
+### DefaultSecurityConfig 字段
+
+<TypeTable
+  type={{
+    "enable_taint_tracking": {
+      description: "类型: bool · 默认: true · 检测用户输入中的敏感数据并追踪",
+    },
+    "enable_output_sanitization": {
+      description: "类型: bool · 默认: true · 从 LLM 输出中脱敏敏感数据",
+    },
+    "enable_injection_detection": {
+      description: "类型: bool · 默认: true · 检测提示注入模式",
+    },
+    "custom_patterns": {
+      description: "类型: Vec<SensitivePattern> · 自定义敏感数据检测模式",
+    },
+  }}
+/>
+
 ## 通过 Trait 扩展安全
 
 A3S Code 提供 `SecurityProvider` trait 用于实现自定义安全逻辑：

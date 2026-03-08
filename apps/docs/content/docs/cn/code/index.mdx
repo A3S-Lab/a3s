@@ -187,11 +187,13 @@ print(result.text)
   </div>
 
   <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">约束工程</h3>
+    <h3 className="text-lg font-semibold mb-2">驾驭工程</h3>
     <ul className="text-sm text-muted-foreground space-y-1">
-      <li><a href="/cn/docs/code/security">安全</a> — 权限规则（Deny/Allow/Ask）、人机确认（HITL）、安全扩展</li>
-      <li><a href="/cn/docs/code/hooks">钩子</a> — 11 个生命周期拦截点，拦截工具调用与 LLM 生成</li>
+      <li><a href="/cn/docs/code/security">安全</a> — 权限规则（Deny/Allow/Ask）、HITL、内置 PII 脱敏与注入检测</li>
+      <li><a href="/cn/docs/code/hooks">钩子</a> — 11 个生命周期拦截点，哨兵传播到全部子智能体</li>
       <li><a href="/cn/docs/code/orchestrator">编排器</a> — 子智能体暂停、恢复、取消与提示注入</li>
+      <li><a href="/cn/docs/code/limits">运行时限制</a> — 工具轮次上限、超时、熔断器、自动压缩</li>
+      <li><a href="/cn/docs/code/isolation">隔离策略</a> — 工作区边界、文件版本历史、Git 工作树、MicroVM 沙箱</li>
     </ul>
   </div>
 
