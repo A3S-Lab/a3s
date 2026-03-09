@@ -11,12 +11,6 @@ import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 **基于 Rust 的可嵌入 AI 编程智能体框架** — 构建能够读写、执行代码的 AI 智能体，支持工具调用、任务规划、安全控制和多机器分布式部署。
 
-```rust
-let agent = Agent::new("agent.hcl").await?;
-let session = agent.session(".", None)?;
-let result = session.send("重构 auth 模块使用 JWT", None).await?;
-```
-
 <Callout type="info">
 **测试覆盖：** 1500 个测试，100% 通过率 | **扩展点：** 19 个基于 trait 的扩展点 | **内置工具：** 14 个（启用 `sandbox` feature 后 15 个） | **内置 Skills：** 7 个（默认开启）
 </Callout>
@@ -127,7 +121,6 @@ import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.', {
-  defaultSecurity: true,
   builtinSkills: true,
   planning: true,
 });
@@ -141,7 +134,7 @@ console.log(result.text);
 from a3s_code import Agent
 
 agent = Agent.create("agent.hcl")
-session = agent.session(".", default_security=True, builtin_skills=True, planning=True)
+session = agent.session(".", builtin_skills=True, planning=True)
 
 result = session.send("重构 auth 模块并更新测试")
 print(result.text)

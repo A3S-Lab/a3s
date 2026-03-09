@@ -53,7 +53,7 @@ session = agent.session("/my-project", model="openai/gpt-4o")
   type={{
     model: {
       type: 'string',
-      description: 'Model override in `provider/model` format (e.g., `openai/gpt-4o`). "provider/model")`, TS: `model: "provider/model"`, Python: `model="provider/model"`',
+      description: 'Model override in `provider/model` format (e.g., `openai/gpt-4o`). TS: `model: \'provider/model\'`, Python: `model=\'provider/model\'`',
     },
     skill_dirs: {
       type: 'string[]',
@@ -718,7 +718,7 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
     model: {
       type: 'string',
       default: 'config default',
-      description: 'Model in `provider/model` format. "..."`, Python: `model="..."`',
+      description: 'Model in `provider/model` format. TS: `model: \'...\'`, Python: `model=\'...\'`',
     },
     permissive: {
       type: 'bool',

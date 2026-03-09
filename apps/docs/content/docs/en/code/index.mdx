@@ -11,12 +11,6 @@ import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 **Embeddable AI coding agent framework in Rust** — Build AI agents that read, write, and execute code with tool access, planning, safety controls, and multi-machine distribution.
 
-```rust
-let agent = Agent::new("agent.hcl").await?;
-let session = agent.session(".", None)?;
-let result = session.send("Refactor auth to use JWT", None).await?;
-```
-
 <Callout type="info">
 **Test Coverage:** 1500 tests, 100% pass rate | **Extension Points:** 19 trait-based | **Built-in Tools:** 14 (15 with `sandbox` feature) | **Built-in Skills:** 7 (auto-loaded)
 </Callout>
@@ -127,7 +121,6 @@ import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.', {
-  defaultSecurity: true,
   builtinSkills: true,
   planning: true,
 });
@@ -141,7 +134,7 @@ console.log(result.text);
 from a3s_code import Agent
 
 agent = Agent.create("agent.hcl")
-session = agent.session(".", default_security=True, builtin_skills=True, planning=True)
+session = agent.session(".", builtin_skills=True, planning=True)
 
 result = session.send("Refactor auth + update tests")
 print(result.text)

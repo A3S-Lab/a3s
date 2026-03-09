@@ -18,11 +18,12 @@
 }
 
 /* Hide React Flow attribution */
-.react-flow__attribution {
-	display: none;
+#workflow-container .react-flow__attribution {
+	background: none !important;
 }
 
-/* Smooth edge animations (Dify-style: thicker, more prominent) */
+/* ── Edge paths ── */
+
 .react-flow__edge-path {
 	stroke-width: 2;
 	transition: stroke 0.2s ease, stroke-width 0.2s ease;
@@ -30,7 +31,7 @@
 
 .react-flow__edge.selected .react-flow__edge-path {
 	stroke: hsl(var(--primary));
-	stroke-width: 3;
+	stroke-width: 2.5;
 }
 
 .react-flow__edge:hover .react-flow__edge-path {
@@ -38,24 +39,44 @@
 	stroke-width: 2.5;
 }
 
-/* Handle hover effects */
+/* ── Handles (Dify-style: transparent hit area, visual via child span) ── */
+
 .react-flow__handle {
-	transition: all 0.2s ease;
+	transition: transform 0.15s ease;
 }
 
-.react-flow__handle:hover {
-	transform: scale(1.3);
-	border-color: hsl(var(--primary)) !important;
-	background: hsl(var(--primary) / 0.2) !important;
-}
+/* ── Connection line (when dragging from handle) ── */
 
-/* Connection line (when dragging) */
 .react-flow__connection-path {
-	stroke: hsl(var(--primary));
+	stroke: #d0d5dd;
 	stroke-width: 2;
 }
 
-/* Controls panel */
+/* ── Selection rect (Dify blue) ── */
+
+#workflow-container .react-flow__nodesselection-rect {
+	border: 1px solid #528bff;
+	background: rgba(21, 94, 239, 0.05);
+	cursor: move;
+}
+
+#workflow-container .react-flow__selection {
+	border: 1px solid #528bff;
+	background: rgba(21, 94, 239, 0.05);
+}
+
+/* ── Viewport / node animations (Dify-style) ── */
+
+.workflow-panel-animation .react-flow__viewport {
+	transition: transform 0.3s ease-in-out;
+}
+
+.workflow-node-animation .react-flow__node {
+	transition: transform 0.2s ease-in-out;
+}
+
+/* ── Controls panel ── */
+
 .react-flow__controls {
 	border-radius: 10px;
 	overflow: hidden;
@@ -72,9 +93,37 @@
 	border-bottom: none;
 }
 
-/* Minimap */
+/* ── Minimap ── */
+
 .react-flow__minimap {
 	border: 1px solid hsl(var(--border));
 	border-radius: 10px;
 	overflow: hidden;
+}
+
+/* ── Container nodes (iteration / loop) ── */
+
+/* React Flow wraps parent nodes in a div — disable overflow so child nodes
+   stay visually inside even before extent:'parent' clips them on drag. */
+#workflow-container .react-flow__node-iteration,
+#workflow-container .react-flow__node-loop {
+	overflow: visible; /* children can slightly overflow during drag */
+}
+
+/* Child node selection ring should still be fully visible inside container */
+#workflow-container .react-flow__node[data-id] .react-flow__node {
+	z-index: 10;
+}
+
+/* ── Node config panel: number input — hide browser spinner arrows ── */
+/* Ensures <input type="number"> looks identical to <input type="text"> */
+
+#workflow-container input[type="number"]::-webkit-inner-spin-button,
+#workflow-container input[type="number"]::-webkit-outer-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+#workflow-container input[type="number"] {
+	-moz-appearance: textfield;
 }

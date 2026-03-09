@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useSnapshot } from "valtio";
 import {
@@ -24,6 +24,7 @@ import {
 	type NodeProps,
 	type EdgeProps,
 	type EdgeTypes,
+	type ConnectionLineComponentProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./flow.css";
@@ -45,20 +46,52 @@ import {
 	Save,
 	Loader2,
 	Play,
-	Square,
 	Search,
 	X,
 	Plus,
 	Trash2,
 	Maximize2,
 	LayoutGrid,
+	Copy,
+	CopyPlus,
+	ChevronDown,
+	Variable,
+	Globe,
 	type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import workflowModel, { type WorkflowDoc } from "@/models/workflow.model";
 
 // =============================================================================
-// Custom Edge with hover actions (Dify-style)
+// Custom Connection Line (Dify-style: gray bezier + blue endpoint rect)
+// =============================================================================
+
+function CustomConnectionLine({
+	fromX,
+	fromY,
+	toX,
+	toY,
+}: ConnectionLineComponentProps) {
+	const [edgePath] = getBezierPath({
+		sourceX: fromX,
+		sourceY: fromY,
+		sourcePosition: Position.Right,
+		targetX: toX,
+		targetY: toY,
+		targetPosition: Position.Left,
+		curvature: 0.16,
+	});
+
+	return (
+		<g>
+			<path fill="none" stroke="#D0D5DD" strokeWidth={2} d={edgePath} />
+			<rect x={toX - 1} y={toY - 4} width={2} height={8} fill="#2970FF" />
+		</g>
+	);
+}
+
+// =============================================================================
+// Custom Edge (Dify-style: curvature 0.16, midpoint action button)
 // =============================================================================
 
 function CustomEdge({
@@ -77,31 +110,27 @@ function CustomEdge({
 	const { setEdges } = useReactFlow();
 
 	const [edgePath, labelX, labelY] = getBezierPath({
-		sourceX,
+		sourceX: sourceX - 8,
 		sourceY,
 		sourcePosition,
-		targetX,
+		targetX: targetX + 8,
 		targetY,
 		targetPosition,
+		curvature: 0.16,
 	});
 
 	const onEdgeDelete = useCallback(() => {
 		setEdges((edges) => edges.filter((edge) => edge.id !== id));
 	}, [id, setEdges]);
 
-	// 计算起点、中点、终点的位置
-	const startPoint = { x: sourceX, y: sourceY };
-	const endPoint = { x: targetX, y: targetY };
-	const midPoint = { x: labelX, y: labelY };
-
 	const showControls = isHovered || selected;
 
 	return (
 		<>
-			{/* 主连接线 */}
+			{/* Main edge path */}
 			<BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
 
-			{/* 透明的宽连接线用于捕获 hover */}
+			{/* Wide transparent hit area for hover detection */}
 			<path
 				d={edgePath}
 				fill="none"
@@ -112,33 +141,18 @@ function CustomEdge({
 				style={{ cursor: "pointer" }}
 			/>
 
-			{/* 连接点和操作按钮 */}
+			{/* Midpoint action button (Dify-style: no circles, just button) */}
 			{showControls && (
 				<EdgeLabelRenderer>
-					{/* 起点圆形连接点 */}
 					<div
 						style={{
 							position: "absolute",
-							transform: `translate(-50%, -50%) translate(${startPoint.x}px,${startPoint.y}px)`,
+							transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
 							pointerEvents: "all",
 						}}
-						className="w-3 h-3 rounded-full bg-primary border-2 border-background shadow-md"
-					/>
-
-					{/* 中点操作按钮 */}
-					<div
-						style={{
-							position: "absolute",
-							transform: `translate(-50%, -50%) translate(${midPoint.x}px,${midPoint.y}px)`,
-							pointerEvents: "all",
-						}}
-						className="flex items-center gap-1"
+						className="nopan nodrag hover:scale-125 transition-transform duration-150"
 					>
-						{/* 中点圆形连接点 */}
-						<div className="w-3 h-3 rounded-full bg-primary border-2 border-background shadow-md" />
-
-						{/* 操作按钮组 */}
-						<div className="flex items-center gap-0.5 bg-background border border-border rounded-lg shadow-lg px-1 py-0.5 ml-1">
+						<div className="flex items-center gap-0.5 bg-card border border-border rounded-lg shadow-lg px-1 py-0.5">
 							<button
 								type="button"
 								onClick={onEdgeDelete}
@@ -156,16 +170,6 @@ function CustomEdge({
 							</button>
 						</div>
 					</div>
-
-					{/* 终点圆形连接点 */}
-					<div
-						style={{
-							position: "absolute",
-							transform: `translate(-50%, -50%) translate(${endPoint.x}px,${endPoint.y}px)`,
-							pointerEvents: "all",
-						}}
-						className="w-3 h-3 rounded-full bg-primary border-2 border-background shadow-md"
-					/>
 				</EdgeLabelRenderer>
 			)}
 		</>
@@ -173,7 +177,7 @@ function CustomEdge({
 }
 
 // =============================================================================
-// Handles (Dify-style: round dots)
+// Handles (Dify-style: transparent 16×16 hit area + vertical line indicator)
 // =============================================================================
 
 function SourceHandle() {
@@ -181,12 +185,10 @@ function SourceHandle() {
 		<Handle
 			type="source"
 			position={Position.Right}
-			className={cn(
-				"!w-3 !h-3 !border-2 !border-border !bg-background !rounded-full",
-				"!transition-all !duration-200",
-				"hover:!w-3.5 hover:!h-3.5 hover:!border-primary hover:!bg-primary/10",
-			)}
-		/>
+			className="!h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none transition-all hover:scale-125"
+		>
+			<span className="absolute right-1.5 top-1 h-2 w-0.5 rounded-sm bg-border pointer-events-none" />
+		</Handle>
 	);
 }
 
@@ -195,38 +197,38 @@ function TargetHandle() {
 		<Handle
 			type="target"
 			position={Position.Left}
-			className={cn(
-				"!w-3 !h-3 !border-2 !border-border !bg-background !rounded-full",
-				"!transition-all !duration-200",
-				"hover:!w-3.5 hover:!h-3.5 hover:!border-primary hover:!bg-primary/10",
-			)}
-		/>
+			className="!h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none transition-all hover:scale-125"
+		>
+			<span className="absolute left-1.5 top-1 h-2 w-0.5 rounded-sm bg-border pointer-events-none" />
+		</Handle>
 	);
 }
 
 // =============================================================================
-// Node icon (Dify-style: larger, more prominent)
+// Node icon
 // =============================================================================
 
 function NodeIcon({
 	entry,
 	size = "sm",
-}: { entry: NodeCatalogEntry; size?: "sm" | "md" | "lg" }) {
+	className,
+}: { entry: NodeCatalogEntry; size?: "sm" | "md" | "lg"; className?: string }) {
 	const Icon = entry.icon;
 	return (
 		<div
 			className={cn(
-				"flex items-center justify-center rounded-lg shrink-0 shadow-sm",
+				"flex items-center justify-center rounded-lg shrink-0",
 				size === "sm" && "w-7 h-7",
-				size === "md" && "w-9 h-9",
+				size === "md" && "w-8 h-8",
 				size === "lg" && "w-10 h-10",
 				entry.headerBg,
+				className,
 			)}
 		>
 			<Icon
 				className={cn(
 					size === "sm" && "size-4",
-					size === "md" && "size-5",
+					size === "md" && "size-4",
 					size === "lg" && "size-5",
 					entry.iconColor,
 				)}
@@ -236,7 +238,288 @@ function NodeIcon({
 }
 
 // =============================================================================
-// Canvas node — Dify-style card
+// Dify-style node body helpers
+// =============================================================================
+
+/** Single parameter pill — h-6 muted background, consistent with Dify's
+ *  `bg-workflow-block-parma-bg` pattern */
+function Pill({
+	icon: Icon,
+	children,
+	mono,
+	className,
+}: {
+	icon?: LucideIcon;
+	children: React.ReactNode;
+	mono?: boolean;
+	className?: string;
+}) {
+	return (
+		<div
+			className={cn(
+				"flex h-6 items-center gap-1 rounded-md bg-muted/60 px-1.5 text-xs text-foreground/80 overflow-hidden",
+				className,
+			)}
+		>
+			{Icon && <Icon className="size-3 shrink-0 text-muted-foreground/60" />}
+			<span className={cn("truncate leading-none", mono && "font-mono")}>{children}</span>
+		</div>
+	);
+}
+
+/** Node body wrapper — mb-1 px-3 py-1 space-y-0.5 matching Dify */
+function Body({ children }: { children: React.ReactNode }) {
+	return <div className="mb-1 px-3 py-1 space-y-0.5">{children}</div>;
+}
+
+// =============================================================================
+// Per-node body content (Dify-aligned, one component per node type)
+// =============================================================================
+
+function NodeBody({
+	entry,
+	data,
+}: { entry: NodeCatalogEntry | undefined; data: Record<string, unknown> }) {
+	switch (entry?.type) {
+		// ── Start: input variable pills ───────────────────────────────────────
+		case "start": {
+			const inputs =
+				(data.inputs as Array<{ name: string; type: string }>) ?? [];
+			if (!inputs.length) return null;
+			return (
+				<Body>
+					{inputs.slice(0, 4).map((v, i) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: ordered list
+						<div
+							key={i}
+							className="flex h-6 items-center justify-between gap-1 rounded-md bg-muted/60 px-1.5 overflow-hidden"
+						>
+							<div className="flex items-center gap-1 min-w-0">
+								<Variable className="size-3 shrink-0 text-primary/50" />
+								<span className="text-xs text-foreground/80 truncate leading-none">
+									{v.name || "unnamed"}
+								</span>
+							</div>
+							<span className="shrink-0 text-[9px] text-muted-foreground/60 uppercase font-mono">
+								{v.type}
+							</span>
+						</div>
+					))}
+					{inputs.length > 4 && (
+						<p className="text-[10px] text-muted-foreground/50 pl-1">
+							+{inputs.length - 4} more
+						</p>
+					)}
+				</Body>
+			);
+		}
+
+			// ── HTTP: [METHOD] + URL ───────────────────────────────────────────────
+		case "http-request": {
+			const method = (data.method as string) ?? "GET";
+			const url = (data.url as string) ?? "";
+			if (!url) return null;
+			const methodColors: Record<string, string> = {
+				GET: "text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30",
+				POST: "text-blue-600 bg-blue-100 dark:bg-blue-900/30",
+				PUT: "text-amber-600 bg-amber-100 dark:bg-amber-900/30",
+				DELETE: "text-red-600 bg-red-100 dark:bg-red-900/30",
+				PATCH: "text-purple-600 bg-purple-100 dark:bg-purple-900/30",
+			};
+			return (
+				<Body>
+					<div className="flex items-center gap-1.5 rounded-md bg-muted/60 px-1.5 min-h-6 py-0.5 overflow-hidden">
+						<span
+							className={cn(
+								"shrink-0 text-[10px] font-bold uppercase px-1 py-0.5 rounded",
+								methodColors[method] ?? "text-muted-foreground bg-muted",
+							)}
+						>
+							{method}
+						</span>
+						<span className="text-xs text-foreground/60 font-mono truncate">
+							{url.replace(/^https?:\/\//, "")}
+						</span>
+					</div>
+				</Body>
+			);
+		}
+
+		// ── If-Else: case rows ─────────────────────────────────────────────────
+		case "if-else": {
+			const cases =
+				(data.cases as Array<{ id: string; conditions?: unknown[] }>) ?? [];
+			if (!cases.length) return null;
+			return (
+				<Body>
+					{cases.slice(0, 3).map((c, i) => (
+						<div
+							key={c.id}
+							className="flex h-6 items-center justify-between gap-1 rounded-md bg-muted/60 px-1.5"
+						>
+							<span className="text-[10px] font-semibold text-muted-foreground uppercase">
+								{i === 0 ? "IF" : `ELIF ${i}`}
+							</span>
+							<span className="text-[10px] text-foreground/60">
+								{c.conditions?.length ?? 0} 条件
+							</span>
+						</div>
+					))}
+					{cases.length > 3 && (
+						<p className="text-[10px] text-muted-foreground/50 pl-1">
+							+{cases.length - 3} more
+						</p>
+					)}
+					<div className="flex h-6 items-center justify-end px-1">
+						<span className="text-[10px] font-semibold text-muted-foreground/60 uppercase">
+							ELSE
+						</span>
+					</div>
+				</Body>
+			);
+		}
+
+		// ── LLM: model pill ────────────────────────────────────────────────────
+		case "llm": {
+			const model = (data.model as string) ?? "";
+			if (!model) return null;
+			return (
+				<Body>
+					<Pill mono>{model}</Pill>
+				</Body>
+			);
+		}
+
+		// ── Question Classifier: model + class count ───────────────────────────
+		case "question-classifier": {
+			const model = (data.model as string) ?? "";
+			const classes = (data.classes as unknown[]) ?? [];
+			if (!model && !classes.length) return null;
+			return (
+				<Body>
+					{model && <Pill mono>{model}</Pill>}
+					{classes.length > 0 && (
+						<Pill>{classes.length} 个分类</Pill>
+					)}
+				</Body>
+			);
+		}
+
+		// ── Parameter Extractor: model + param count ───────────────────────────
+		case "parameter-extractor": {
+			const model = (data.model as string) ?? "";
+			const params = (data.parameters as unknown[]) ?? [];
+			if (!model && !params.length) return null;
+			return (
+				<Body>
+					{model && <Pill mono>{model}</Pill>}
+					{params.length > 0 && (
+						<Pill>{params.length} 个参数</Pill>
+					)}
+				</Body>
+			);
+		}
+
+		// ── Variable Aggregator: source path pills ─────────────────────────────
+		case "variable-aggregator": {
+			const sources = (data.sources as string[]) ?? [];
+			if (!sources.length) return null;
+			return (
+				<Body>
+					{sources.slice(0, 3).map((s, i) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: ordered list
+						<Pill key={i} mono>
+							{s}
+						</Pill>
+					))}
+					{sources.length > 3 && (
+						<p className="text-[10px] text-muted-foreground/50 pl-1">
+							+{sources.length - 3} more
+						</p>
+					)}
+				</Body>
+			);
+		}
+
+			// ── Assign: key → value rows ───────────────────────────────────────────
+		case "assign": {
+			const assigns = data.assigns as Record<string, string> | undefined;
+			const entries = Object.entries(assigns ?? {}).slice(0, 3);
+			if (!entries.length) return null;
+			const total = Object.keys(assigns ?? {}).length;
+			return (
+				<Body>
+					{entries.map(([key, val]) => (
+						<div
+							key={key}
+							className="flex h-6 items-center gap-1 rounded-md bg-muted/60 px-1.5 overflow-hidden"
+						>
+							<span className="shrink-0 text-xs font-mono text-muted-foreground/70 truncate max-w-[70px]">
+								{key}
+							</span>
+							<span className="text-muted-foreground/40 shrink-0 text-[10px]">＝</span>
+							<span className="text-xs text-foreground/70 font-mono truncate">
+								{val || "…"}
+							</span>
+						</div>
+					))}
+					{total > 3 && (
+						<p className="text-[10px] text-muted-foreground/50 pl-1">
+							+{total - 3} more
+						</p>
+					)}
+				</Body>
+			);
+		}
+
+		// ── List Operator: input selector + sort ──────────────────────────────
+		case "list-operator": {
+			const input = (data.input_selector as string) ?? "";
+			const sortBy = (data.sort_by as string) ?? "";
+			if (!input) return null;
+			return (
+				<Body>
+					<Pill mono>{input}</Pill>
+					{sortBy && (
+						<Pill>
+							{sortBy} {(data.sort_order as string) ?? "asc"}
+						</Pill>
+					)}
+				</Body>
+			);
+		}
+
+		// ── MCP: tool name + server ────────────────────────────────────────────
+		case "mcp": {
+			const toolName = (data.tool_name as string) ?? "";
+			const serverUrl = (data.server_url as string) ?? "";
+			if (!toolName && !serverUrl) return null;
+			return (
+				<Body>
+					{toolName && (
+						<Pill icon={Globe}>{toolName}</Pill>
+					)}
+					{serverUrl && (
+						<Pill mono>
+							{serverUrl.replace(/^https?:\/\//, "").slice(0, 32)}
+						</Pill>
+					)}
+				</Body>
+			);
+		}
+
+		// code / template-transform / noop: no preview (matches Dify)
+		default:
+			return null;
+	}
+}
+
+// =============================================================================
+// Canvas node — Dify-aligned card
+//   • Outer ring:  rounded-2xl border (transparent → primary/40 when selected)
+//   • Inner card:  w-[240px] rounded-[15px] border-border/10 bg-card shadow-sm
+//   • Header:      px-3 pb-2 pt-3, NodeIcon (sm=28px) + uppercase title
+//   • Body:        per-type NodeBody pills (mb-1 px-3 py-1)
 // =============================================================================
 
 function FlowNode({ type, data, selected }: NodeProps) {
@@ -246,126 +529,187 @@ function FlowNode({ type, data, selected }: NodeProps) {
 	return (
 		<>
 			<TargetHandle />
+			{/* Outer: selection ring */}
 			<div
 				className={cn(
-					"w-[260px] rounded-xl border-2 bg-card transition-all duration-200",
-					selected
-						? "border-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)] shadow-lg"
-						: "border-border/60 shadow-sm hover:border-border hover:shadow-md",
+					"relative flex rounded-2xl border transition-all duration-200",
+					selected ? "border-primary/40" : "border-transparent",
 				)}
 			>
-				{/* Header */}
-				<div className="flex items-center gap-3 px-3.5 py-3 border-b border-border/40">
-					{entry && <NodeIcon entry={entry} size="md" />}
-					<div className="flex-1 min-w-0">
-						<p className="text-xs font-semibold text-foreground leading-tight truncate">
+				{/* Inner: card — rounded-[15px] matches Dify's rounded-[15px] */}
+				<div
+					className={cn(
+						"group relative",
+						"rounded-[15px] border border-border/10",
+						"w-[240px] bg-card shadow-sm",
+						"hover:shadow-md transition-shadow duration-200",
+					)}
+				>
+					{/* Header: px-3 pb-2 pt-3 — NodeIcon sm (28px) + uppercase title */}
+					<div className="flex items-center px-3 pb-2 pt-3">
+						{entry && (
+							<NodeIcon entry={entry} size="sm" className="mr-2 shrink-0" />
+						)}
+						<p className="text-[11px] font-semibold text-foreground uppercase tracking-wider truncate">
 							{(d.title as string) || entry?.label || type}
 						</p>
-						<p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-							{entry?.label ?? type}
-						</p>
 					</div>
+					{/* Per-type body */}
+					<NodeBody entry={entry} data={d} />
 				</div>
-
-				{/* Param preview */}
-				<NodeParamPreview entry={entry} data={d} />
 			</div>
 			<SourceHandle />
 		</>
 	);
 }
 
-function NodeParamPreview({
-	entry,
-	data,
-}: { entry: NodeCatalogEntry | undefined; data: Record<string, unknown> }) {
-	const rows: { key: string; value: string }[] = [];
-
-	switch (entry?.type) {
-		case "http-request":
-			rows.push({ key: "方法", value: (data.method as string) ?? "GET" });
-			if (data.url)
-				rows.push({ key: "URL", value: (data.url as string).slice(0, 35) });
-			break;
-		case "if-else":
-			rows.push({
-				key: "分支数",
-				value: `${((data.cases as unknown[]) ?? []).length} 个条件`,
-			});
-			break;
-		case "code":
-			if (data.script) {
-				const preview = (data.script as string).split("\n")[0].slice(0, 30);
-				rows.push({ key: "脚本", value: preview || "空脚本" });
-			}
-			break;
-		case "template-transform":
-			if (data.template) {
-				rows.push({
-					key: "模板",
-					value: (data.template as string).slice(0, 30),
-				});
-			}
-			break;
-		case "variable-aggregator":
-			rows.push({
-				key: "来源",
-				value: `${((data.sources as unknown[]) ?? []).length} 个`,
-			});
-			break;
-		case "iteration":
-			if (data.items_path)
-				rows.push({ key: "路径", value: data.items_path as string });
-			break;
-		case "sub-flow":
-			if (data.flow_name)
-				rows.push({ key: "子流程", value: data.flow_name as string });
-			break;
-		case "noop":
-			rows.push({ key: "操作", value: "透传输入" });
-			break;
-	}
-
-	if (rows.length === 0) return null;
-
+function StartNode({ data, selected }: NodeProps) {
+	const d = data as Record<string, unknown>;
+	const entry = getCatalogEntry("start")!;
 	return (
-		<div className="px-3.5 py-2.5 space-y-1.5">
-			{rows.map((row, i) => (
-				<div key={i} className="flex items-start gap-2 text-[11px]">
-					<span className="text-muted-foreground font-medium shrink-0">
-						{row.key}:
-					</span>
-					<span className="text-foreground/80 truncate font-mono">
-						{row.value}
-					</span>
+		<>
+			{/* Outer: selection ring */}
+			<div
+				className={cn(
+					"relative flex rounded-2xl border transition-all duration-200",
+					selected ? "border-primary/40" : "border-transparent",
+				)}
+			>
+				<div
+					className={cn(
+						"group relative",
+						"rounded-[15px] border border-border/10",
+						"w-[240px] bg-card shadow-sm",
+						"hover:shadow-md transition-shadow duration-200",
+					)}
+				>
+					<div className="flex items-center px-3 pb-2 pt-3">
+						<NodeIcon entry={entry} size="sm" className="mr-2 shrink-0" />
+						<p className="text-[11px] font-semibold text-foreground uppercase tracking-wider">
+							开始
+						</p>
+					</div>
+					<NodeBody entry={entry} data={d} />
 				</div>
-			))}
+			</div>
+			<SourceHandle />
+		</>
+	);
+}
+
+// =============================================================================
+// Container nodes (Dify-style: large frame + inner editing zone)
+//
+// React Flow "parent node" pattern:
+//   - The container is a normal node with explicit style.width/height
+//   - Child nodes carry parentId + extent:'parent' and are positioned
+//     relative to the container's top-left corner
+//   - useReactFlow().addNodes() adds children directly from inside the node
+// =============================================================================
+
+const CONTAINER_W = 700;
+const CONTAINER_H = 320;
+const CONTAINER_INNER_PADDING = 56; // header height + bottom margin
+
+// Catalog popover rendered inside the container node.
+// Needs nodrag + nopan so clicks don't propagate to ReactFlow.
+function InlineCatalogPopover({
+	onAdd,
+	onClose,
+}: {
+	onAdd: (type: string, data: Record<string, unknown>) => void;
+	onClose: () => void;
+}) {
+	return (
+		<div className="nodrag nopan absolute bottom-10 right-0 z-50">
+			<NodeCatalogPopover onAdd={onAdd} onClose={onClose} />
 		</div>
 	);
 }
 
-function StartNode({ selected }: NodeProps) {
+function IterationContainerNode({ id, data, selected }: NodeProps) {
+	const entry = getCatalogEntry("iteration");
+	const d = data as Record<string, unknown>;
+	const { addNodes } = useReactFlow();
+	const [catalogOpen, setCatalogOpen] = useState(false);
+
+	const handleAddInner = useCallback(
+		(type: string, nodeData: Record<string, unknown>) => {
+			addNodes([
+				{
+					id: `${type}_${Date.now()}`,
+					type,
+					parentId: id,
+					extent: "parent" as const,
+					position: { x: 60, y: CONTAINER_INNER_PADDING },
+					data: nodeData,
+				},
+			]);
+			setCatalogOpen(false);
+		},
+		[id, addNodes],
+	);
+
 	return (
 		<>
+			<TargetHandle />
 			<div
+				style={{ width: CONTAINER_W, minHeight: CONTAINER_H }}
 				className={cn(
-					"w-[260px] rounded-xl border-2 bg-card transition-all duration-200",
+					"relative rounded-2xl border-2 transition-all duration-200",
 					selected
-						? "border-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)] shadow-lg"
-						: "border-border/60 shadow-sm hover:border-border hover:shadow-md",
+						? "border-violet-400 shadow-lg shadow-violet-200/40 dark:shadow-violet-900/30"
+						: "border-violet-300/60 hover:border-violet-400/70",
+					"bg-gradient-to-b from-violet-50/80 to-violet-50/20 dark:from-violet-950/15 dark:to-transparent",
 				)}
 			>
-				<div className="flex items-center gap-3 px-3.5 py-3 border-b border-border/40">
-					<div className="flex items-center justify-center w-9 h-9 rounded-lg shrink-0 shadow-sm bg-emerald-50 dark:bg-emerald-950/30">
-						<Play className="size-5 text-emerald-500" />
-					</div>
-					<div className="flex-1 min-w-0">
-						<p className="text-xs font-semibold text-foreground leading-tight truncate">
-							开始
-						</p>
-						<p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-							开始
-						</p>
+				{/* Header */}
+				<div className="flex items-center gap-2.5 px-4 py-3 border-b border-violet-200/50 dark:border-violet-800/25">
+					{entry && <NodeIcon entry={entry} size="md" />}
+					<p className="flex-1 text-[11px] font-semibold text-foreground uppercase tracking-wider truncate">
+						{(d.title as string) || entry?.label}
+					</p>
+					{!!d.input_selector && (
+						<code className="shrink-0 text-[10px] text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/30 px-2 py-0.5 rounded-full font-mono">
+							{d.input_selector as string}
+						</code>
+					)}
+					{!!d.mode && (
+						<span className="shrink-0 text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full capitalize">
+							{d.mode as string}
+						</span>
+					)}
+				</div>
+
+				{/* Inner editing zone */}
+				<div
+					className={cn(
+						"nodrag relative m-3 rounded-xl border border-dashed",
+						"border-violet-300/50 dark:border-violet-700/30",
+						"bg-violet-50/20 dark:bg-violet-950/5",
+					)}
+					style={{ minHeight: CONTAINER_H - CONTAINER_INNER_PADDING }}
+				>
+					{/* Add inner node button */}
+					<div className="nopan nodrag absolute bottom-3 right-3 flex flex-col items-end gap-1">
+						{catalogOpen && (
+							<InlineCatalogPopover
+								onAdd={handleAddInner}
+								onClose={() => setCatalogOpen(false)}
+							/>
+						)}
+						<button
+							type="button"
+							onClick={(e) => { e.stopPropagation(); setCatalogOpen((v) => !v); }}
+							className={cn(
+								"flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition-all",
+								"border border-dashed border-violet-400/50 text-violet-500 dark:text-violet-400",
+								"hover:bg-violet-100/60 dark:hover:bg-violet-900/30 hover:border-violet-400",
+							)}
+						>
+							<Plus className="size-3" />
+							添加节点
+						</button>
 					</div>
 				</div>
 			</div>
@@ -374,47 +718,112 @@ function StartNode({ selected }: NodeProps) {
 	);
 }
 
-function EndNode({ selected }: NodeProps) {
+function LoopContainerNode({ id, data, selected }: NodeProps) {
+	const entry = getCatalogEntry("loop");
+	const d = data as Record<string, unknown>;
+	const { addNodes } = useReactFlow();
+	const [catalogOpen, setCatalogOpen] = useState(false);
+
+	const handleAddInner = useCallback(
+		(type: string, nodeData: Record<string, unknown>) => {
+			addNodes([
+				{
+					id: `${type}_${Date.now()}`,
+					type,
+					parentId: id,
+					extent: "parent" as const,
+					position: { x: 60, y: CONTAINER_INNER_PADDING },
+					data: nodeData,
+				},
+			]);
+			setCatalogOpen(false);
+		},
+		[id, addNodes],
+	);
+
 	return (
 		<>
 			<TargetHandle />
 			<div
+				style={{ width: CONTAINER_W, minHeight: CONTAINER_H }}
 				className={cn(
-					"w-[260px] rounded-xl border-2 bg-card transition-all duration-200",
+					"relative rounded-2xl border-2 transition-all duration-200",
 					selected
-						? "border-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.15)] shadow-lg"
-						: "border-border/60 shadow-sm hover:border-border hover:shadow-md",
+						? "border-indigo-400 shadow-lg shadow-indigo-200/40 dark:shadow-indigo-900/30"
+						: "border-indigo-300/60 hover:border-indigo-400/70",
+					"bg-gradient-to-b from-indigo-50/80 to-indigo-50/20 dark:from-indigo-950/15 dark:to-transparent",
 				)}
 			>
-				<div className="flex items-center gap-3 px-3.5 py-3 border-b border-border/40">
-					<div className="flex items-center justify-center w-9 h-9 rounded-lg shrink-0 shadow-sm bg-slate-100 dark:bg-slate-800/40">
-						<Square className="size-5 text-slate-500" />
-					</div>
-					<div className="flex-1 min-w-0">
-						<p className="text-xs font-semibold text-foreground leading-tight truncate">
-							结束
-						</p>
-						<p className="text-[10px] text-muted-foreground leading-tight mt-0.5">
-							结束
-						</p>
+				{/* Header */}
+				<div className="flex items-center gap-2.5 px-4 py-3 border-b border-indigo-200/50 dark:border-indigo-800/25">
+					{entry && <NodeIcon entry={entry} size="md" />}
+					<p className="flex-1 text-[11px] font-semibold text-foreground uppercase tracking-wider truncate">
+						{(d.title as string) || entry?.label}
+					</p>
+					{d.max_iterations !== undefined && (
+						<span className="shrink-0 text-[10px] font-mono text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full">
+							≤ {d.max_iterations as number} 次
+						</span>
+					)}
+					{!!d.output_selector && (
+						<code className="shrink-0 text-[10px] text-indigo-500 bg-indigo-100 dark:bg-indigo-900/30 px-2 py-0.5 rounded-full font-mono ml-1">
+							{d.output_selector as string}
+						</code>
+					)}
+				</div>
+
+				{/* Inner editing zone */}
+				<div
+					className={cn(
+						"nodrag relative m-3 rounded-xl border border-dashed",
+						"border-indigo-300/50 dark:border-indigo-700/30",
+						"bg-indigo-50/20 dark:bg-indigo-950/5",
+					)}
+					style={{ minHeight: CONTAINER_H - CONTAINER_INNER_PADDING }}
+				>
+					<div className="nopan nodrag absolute bottom-3 right-3 flex flex-col items-end gap-1">
+						{catalogOpen && (
+							<InlineCatalogPopover
+								onAdd={handleAddInner}
+								onClose={() => setCatalogOpen(false)}
+							/>
+						)}
+						<button
+							type="button"
+							onClick={(e) => { e.stopPropagation(); setCatalogOpen((v) => !v); }}
+							className={cn(
+								"flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition-all",
+								"border border-dashed border-indigo-400/50 text-indigo-500 dark:text-indigo-400",
+								"hover:bg-indigo-100/60 dark:hover:bg-indigo-900/30 hover:border-indigo-400",
+							)}
+						>
+							<Plus className="size-3" />
+							添加节点
+						</button>
 					</div>
 				</div>
 			</div>
+			<SourceHandle />
 		</>
 	);
 }
 
 const NODE_TYPES: NodeTypes = {
 	start: StartNode,
-	end: EndNode,
 	noop: FlowNode,
 	"http-request": FlowNode,
 	"if-else": FlowNode,
 	"template-transform": FlowNode,
 	"variable-aggregator": FlowNode,
 	code: FlowNode,
-	iteration: FlowNode,
-	"sub-flow": FlowNode,
+	iteration: IterationContainerNode,
+	loop: LoopContainerNode,
+	llm: FlowNode,
+	"question-classifier": FlowNode,
+	"parameter-extractor": FlowNode,
+	assign: FlowNode,
+	"list-operator": FlowNode,
+	mcp: FlowNode,
 };
 
 const EDGE_TYPES: EdgeTypes = {
@@ -423,7 +832,6 @@ const EDGE_TYPES: EdgeTypes = {
 
 // =============================================================================
 // Auto-layout (topological left-to-right)
-// =============================================================================
 // =============================================================================
 
 function computeLayout(nodes: Node[], edges: Edge[]): Node[] {
@@ -769,57 +1177,51 @@ function NodeConfigPanel({
 		[draft, onUpdate],
 	);
 
-	const isSpecial = node.type === "start" || node.type === "end";
-
 	return (
-		<div className="w-[340px] bg-card border-2 border-border/60 rounded-xl shadow-2xl flex flex-col overflow-hidden max-h-[80vh]">
-			{/* Colored header */}
-			<div
-				className={cn(
-					"flex items-center gap-3 px-4 py-3.5 border-b-2 border-border/40",
-					entry?.headerBg,
-				)}
-			>
+		<div className="w-[340px] bg-card border border-border/50 rounded-2xl shadow-xl flex flex-col overflow-hidden max-h-[80vh]">
+			{/* Header: node icon + title + close */}
+			<div className="flex items-center gap-2.5 px-4 py-3 border-b border-border/30">
 				{entry && <NodeIcon entry={entry} size="md" />}
 				<div className="flex-1 min-w-0">
-					<p className="text-sm font-semibold text-foreground">
+					<p className="text-xs font-semibold uppercase tracking-wider text-foreground truncate">
 						{entry?.label ?? node.type}
 					</p>
-					<p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+					<p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate leading-tight">
 						{entry?.description ?? ""}
 					</p>
 				</div>
 				<button
 					type="button"
 					onClick={onClose}
-					className="text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-background/50"
+					className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-muted/60"
 				>
-					<X className="size-4" />
+					<X className="size-3.5" />
 				</button>
 			</div>
 
-			{isSpecial ? (
-				<div className="px-4 py-8 text-xs text-muted-foreground text-center">
-					此节点无需配置
+			<div className="overflow-y-auto flex-1 pt-2">
+				{node.type !== "start" && node.type !== "end" && (
+					<>
+						<div className="space-y-4 px-4 pb-4">
+							<Field label="节点标题">
+								<TextInput
+									value={(draft.title as string) ?? ""}
+									onChange={(v) => patch({ title: v })}
+									placeholder={entry?.label}
+								/>
+							</Field>
+						</div>
+						<div className="border-t border-border/20" />
+					</>
+				)}
+				<div className="space-y-4 px-4 pt-4 pb-4">
+					<NodeFields
+						type={node.type as string}
+						draft={draft}
+						patch={patch}
+					/>
 				</div>
-			) : (
-				<div className="overflow-y-auto flex-1 p-4 flex flex-col gap-6">
-					<Field label="节点标题">
-						<TextInput
-							value={(draft.title as string) ?? ""}
-							onChange={(v) => patch({ title: v })}
-							placeholder={entry?.label}
-						/>
-					</Field>
-					<div className="border-t border-border/30 pt-4">
-						<NodeFields
-							type={node.type as string}
-							draft={draft}
-							patch={patch}
-						/>
-					</div>
-				</div>
-			)}
+			</div>
 		</div>
 	);
 }
@@ -832,11 +1234,13 @@ function Field({
 	children,
 }: { label: string; hint?: string; children: React.ReactNode }) {
 	return (
-		<div className="flex flex-col gap-2">
-			<div className="flex items-center justify-between">
-				<label className="text-xs font-semibold text-foreground">{label}</label>
+		<div className="flex flex-col gap-1.5">
+			<div className="flex h-6 items-center justify-between">
+				<label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+					{label}
+				</label>
 				{hint && (
-					<span className="text-[10px] text-muted-foreground/70 font-medium">
+					<span className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wide">
 						{hint}
 					</span>
 				)}
@@ -846,8 +1250,10 @@ function Field({
 	);
 }
 
+// ── Base input class — h-8 enforces pixel-perfect consistency across all controls
+// Dify compact panel spec: h-8 (32px), text-xs, rounded-lg, primary focus ring
 const inputCls =
-	"w-full px-3 py-2.5 text-xs border-2 border-border/60 rounded-lg bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-muted-foreground/50";
+	"w-full h-8 px-3 text-xs border border-border/50 rounded-lg bg-background/80 outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 transition-colors placeholder:text-muted-foreground/40";
 
 function TextInput({
 	value,
@@ -865,6 +1271,7 @@ function TextInput({
 	);
 }
 
+// Textarea overrides h-8 back to auto; rows drives height
 function TextareaInput({
 	value,
 	onChange,
@@ -882,28 +1289,33 @@ function TextareaInput({
 			onChange={(e) => onChange(e.target.value)}
 			placeholder={placeholder}
 			rows={rows}
-			className={cn(inputCls, "resize-y font-mono leading-relaxed")}
+			className={cn(inputCls, "h-auto py-2 resize-y font-mono leading-relaxed")}
 		/>
 	);
 }
 
+// Custom select: appearance-none strips browser chrome; ChevronDown adds a
+// consistent arrow that matches TextInput visually at exactly h-8.
 function SelectInput({
 	value,
 	onChange,
 	options,
 }: { value: string; onChange: (v: string) => void; options: string[] }) {
 	return (
-		<select
-			value={value}
-			onChange={(e) => onChange(e.target.value)}
-			className={inputCls}
-		>
-			{options.map((o) => (
-				<option key={o} value={o}>
-					{o}
-				</option>
-			))}
-		</select>
+		<div className="relative">
+			<select
+				value={value}
+				onChange={(e) => onChange(e.target.value)}
+				className={cn(inputCls, "appearance-none cursor-pointer pr-7")}
+			>
+				{options.map((o) => (
+					<option key={o} value={o}>
+						{o}
+					</option>
+				))}
+			</select>
+			<ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground/60" />
+		</div>
 	);
 }
 
@@ -931,7 +1343,7 @@ function StringListInput({
 					<button
 						type="button"
 						onClick={() => onChange(value.filter((_, j) => j !== i))}
-						className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded-lg hover:bg-destructive/10"
+						className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
 					>
 						<Trash2 className="size-3.5" />
 					</button>
@@ -946,6 +1358,388 @@ function StringListInput({
 				添加来源
 			</button>
 		</div>
+	);
+}
+
+// ── NumberInput ───────────────────────────────────────────────────────────────
+
+function NumberInput({
+	value,
+	onChange,
+	placeholder,
+	min,
+	max,
+	step,
+}: {
+	value: number | undefined;
+	onChange: (v: number | undefined) => void;
+	placeholder?: string;
+	min?: number;
+	max?: number;
+	step?: number;
+}) {
+	return (
+		<input
+			type="number"
+			value={value ?? ""}
+			onChange={(e) =>
+				onChange(e.target.value === "" ? undefined : Number(e.target.value))
+			}
+			placeholder={placeholder}
+			min={min}
+			max={max}
+			step={step}
+			className={inputCls}
+		/>
+	);
+}
+
+// ── LlmConnectionFields (shared by llm / question-classifier / parameter-extractor) ──
+
+function LlmConnectionFields({
+	draft,
+	patch,
+}: { draft: Record<string, unknown>; patch: (p: Record<string, unknown>) => void }) {
+	return (
+		<>
+			<div className="border-t border-border/20 pt-4">
+				<p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-3">
+					连接设置
+				</p>
+				<div className="space-y-4">
+					<Field label="API Base URL">
+						<TextInput
+							value={(draft.api_base as string) ?? "https://api.openai.com/v1"}
+							onChange={(v) => patch({ api_base: v })}
+							placeholder="https://api.openai.com/v1"
+						/>
+					</Field>
+					<Field label="API Key">
+						<input
+							type="password"
+							value={(draft.api_key as string) ?? ""}
+							onChange={(e) => patch({ api_key: e.target.value })}
+							placeholder="sk-..."
+							className={inputCls}
+						/>
+					</Field>
+					<Field label="Temperature">
+						<NumberInput
+							value={draft.temperature as number | undefined}
+							onChange={(v) => patch({ temperature: v ?? 0.7 })}
+							placeholder="0.7"
+							min={0}
+							max={2}
+							step={0.1}
+						/>
+					</Field>
+					<Field label="Max Tokens" hint="可选">
+						<NumberInput
+							value={draft.max_tokens as number | undefined}
+							onChange={(v) => patch({ max_tokens: v })}
+							placeholder="不限制"
+							min={1}
+						/>
+					</Field>
+				</div>
+			</div>
+		</>
+	);
+}
+
+// ── ClassesEditor (question-classifier) ──────────────────────────────────────
+
+interface ClassItem {
+	id: string;
+	name: string;
+	description?: string;
+}
+
+function ClassesEditor({
+	value,
+	onChange,
+}: { value: ClassItem[]; onChange: (v: ClassItem[]) => void }) {
+	const update = (i: number, patch: Partial<ClassItem>) => {
+		const next = value.map((c, idx) => (idx === i ? { ...c, ...patch } : c));
+		onChange(next);
+	};
+	const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
+	const add = () =>
+		onChange([...value, { id: `class_${value.length + 1}`, name: "", description: "" }]);
+
+	return (
+		<Field label="分类列表" hint="至少 2 个">
+			<div className="flex flex-col gap-2">
+				{value.map((cls, i) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: positional list
+					<div key={i} className="rounded-lg border border-border/40 p-3 flex flex-col gap-2 bg-muted/20">
+						<div className="flex items-center gap-1.5">
+							<input
+								type="text"
+								value={cls.id}
+								onChange={(e) => update(i, { id: e.target.value })}
+								placeholder="class_id"
+								className={cn(inputCls, "flex-1 font-mono text-[11px]")}
+							/>
+							<button
+								type="button"
+								onClick={() => remove(i)}
+								className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+							>
+								<Trash2 className="size-3" />
+							</button>
+						</div>
+						<input
+							type="text"
+							value={cls.name}
+							onChange={(e) => update(i, { name: e.target.value })}
+							placeholder="显示名称"
+							className={inputCls}
+						/>
+						<input
+							type="text"
+							value={cls.description ?? ""}
+							onChange={(e) => update(i, { description: e.target.value })}
+							placeholder="描述（可选，帮助 LLM 分类）"
+							className={inputCls}
+						/>
+					</div>
+				))}
+				<button
+					type="button"
+					onClick={add}
+					className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+				>
+					<Plus className="size-3" />
+					添加类别
+				</button>
+			</div>
+		</Field>
+	);
+}
+
+// ── ParametersEditor (parameter-extractor) ───────────────────────────────────
+
+interface ParamItem {
+	name: string;
+	type: string;
+	description?: string;
+	required?: boolean;
+}
+
+const PARAM_TYPES = ["string", "number", "boolean", "object", "array"];
+
+function ParametersEditor({
+	value,
+	onChange,
+}: { value: ParamItem[]; onChange: (v: ParamItem[]) => void }) {
+	const update = (i: number, p: Partial<ParamItem>) => {
+		onChange(value.map((item, idx) => (idx === i ? { ...item, ...p } : item)));
+	};
+	const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
+	const add = () =>
+		onChange([...value, { name: "", type: "string", description: "", required: false }]);
+
+	return (
+		<Field label="提取参数" hint="至少 1 个">
+			<div className="flex flex-col gap-2">
+				{value.map((param, i) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: positional list
+					<div key={i} className="rounded-lg border border-border/40 p-3 flex flex-col gap-2 bg-muted/20">
+						<div className="flex items-center gap-1.5">
+							<input
+								type="text"
+								value={param.name}
+								onChange={(e) => update(i, { name: e.target.value })}
+								placeholder="参数名"
+								className={cn(inputCls, "flex-1")}
+							/>
+							<select
+								value={param.type}
+								onChange={(e) => update(i, { type: e.target.value })}
+								className={cn(inputCls, "w-24 shrink-0 appearance-none cursor-pointer")}
+							>
+								{PARAM_TYPES.map((t) => (
+									<option key={t} value={t}>{t}</option>
+								))}
+							</select>
+							<button
+								type="button"
+								onClick={() => remove(i)}
+								className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+							>
+								<Trash2 className="size-3" />
+							</button>
+						</div>
+						<input
+							type="text"
+							value={param.description ?? ""}
+							onChange={(e) => update(i, { description: e.target.value })}
+							placeholder="描述（可选）"
+							className={inputCls}
+						/>
+						<label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
+							<input
+								type="checkbox"
+								checked={param.required ?? false}
+								onChange={(e) => update(i, { required: e.target.checked })}
+								className="rounded"
+							/>
+							必填
+						</label>
+					</div>
+				))}
+				<button
+					type="button"
+					onClick={add}
+					className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+				>
+					<Plus className="size-3" />
+					添加参数
+				</button>
+			</div>
+		</Field>
+	);
+}
+
+// ── AssignsEditor (assign node) ───────────────────────────────────────────────
+
+function AssignsEditor({
+	value,
+	onChange,
+}: { value: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
+	const entries = Object.entries(value);
+	const set = (key: string, val: string) => onChange({ ...value, [key]: val });
+	const rename = (oldKey: string, newKey: string) => {
+		const next: Record<string, string> = {};
+		for (const [k, v] of Object.entries(value)) {
+			next[k === oldKey ? newKey : k] = v;
+		}
+		onChange(next);
+	};
+	const remove = (key: string) => {
+		const next = { ...value };
+		delete next[key];
+		onChange(next);
+	};
+	const add = () => {
+		const key = `var_${entries.length + 1}`;
+		onChange({ ...value, [key]: "" });
+	};
+
+	return (
+		<Field label="变量赋值">
+			<div className="flex flex-col gap-2">
+				{entries.map(([key, val]) => (
+					<div key={key} className="flex flex-col gap-1.5 rounded-lg border border-border/40 p-2.5 bg-muted/20">
+						<div className="flex items-center gap-1.5">
+							<input
+								type="text"
+								value={key}
+								onChange={(e) => rename(key, e.target.value)}
+								placeholder="变量名"
+								className={cn(inputCls, "flex-1 font-mono text-[11px]")}
+							/>
+							<button
+								type="button"
+								onClick={() => remove(key)}
+								className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+							>
+								<Trash2 className="size-3" />
+							</button>
+						</div>
+						<input
+							type="text"
+							value={val}
+							onChange={(e) => set(key, e.target.value)}
+							placeholder='值或 Jinja2 模板，如 {{ node_id.field }}'
+							className={inputCls}
+						/>
+					</div>
+				))}
+				<button
+					type="button"
+					onClick={add}
+					className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+				>
+					<Plus className="size-3" />
+					添加变量
+				</button>
+			</div>
+		</Field>
+	);
+}
+
+// ── StartInputsEditor ─────────────────────────────────────────────────────────
+
+interface InputDecl {
+	name: string;
+	type: string;
+	default?: string;
+}
+
+const VAR_TYPES = ["string", "number", "bool", "object", "array"];
+
+function StartInputsEditor({
+	value,
+	onChange,
+}: { value: InputDecl[]; onChange: (v: InputDecl[]) => void }) {
+	const update = (i: number, p: Partial<InputDecl>) => {
+		onChange(value.map((item, idx) => (idx === i ? { ...item, ...p } : item)));
+	};
+	const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
+	const add = () => onChange([...value, { name: "", type: "string", default: "" }]);
+
+	return (
+		<Field label="输入变量声明">
+			<div className="flex flex-col gap-2">
+				{value.map((decl, i) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: positional list
+					<div key={i} className="rounded-lg border border-border/40 p-2.5 flex flex-col gap-1.5 bg-muted/20">
+						<div className="flex items-center gap-1.5">
+							<input
+								type="text"
+								value={decl.name}
+								onChange={(e) => update(i, { name: e.target.value })}
+								placeholder="变量名"
+								className={cn(inputCls, "flex-1 font-mono")}
+							/>
+							<select
+								value={decl.type}
+								onChange={(e) => update(i, { type: e.target.value })}
+								className={cn(inputCls, "w-24 shrink-0 appearance-none cursor-pointer")}
+							>
+								{VAR_TYPES.map((t) => (
+									<option key={t} value={t}>{t}</option>
+								))}
+							</select>
+							<button
+								type="button"
+								onClick={() => remove(i)}
+								className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+							>
+								<Trash2 className="size-3" />
+							</button>
+						</div>
+						<input
+							type="text"
+							value={decl.default ?? ""}
+							onChange={(e) => update(i, { default: e.target.value })}
+							placeholder="默认值（可选）"
+							className={inputCls}
+						/>
+					</div>
+				))}
+				<button
+					type="button"
+					onClick={add}
+					className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+				>
+					<Plus className="size-3" />
+					添加变量
+				</button>
+			</div>
+		</Field>
 	);
 }
 
@@ -1034,13 +1828,49 @@ function NodeFields({
 			);
 		case "iteration":
 			return (
-				<Field label="数组路径" hint="node_id.field">
-					<TextInput
-						value={(draft.items_path as string) ?? ""}
-						onChange={(v) => patch({ items_path: v })}
-						placeholder="upstream_node.items"
-					/>
-				</Field>
+				<>
+					<Field label="输入数组路径" hint="必填">
+						<TextInput
+							value={(draft.input_selector as string) ?? ""}
+							onChange={(v) => patch({ input_selector: v })}
+							placeholder="node_id.items"
+						/>
+					</Field>
+					<Field label="输出收集路径" hint="必填">
+						<TextInput
+							value={(draft.output_selector as string) ?? ""}
+							onChange={(v) => patch({ output_selector: v })}
+							placeholder="summarize.output"
+						/>
+					</Field>
+					<Field label="执行模式">
+						<SelectInput
+							value={(draft.mode as string) ?? "parallel"}
+							onChange={(v) => patch({ mode: v })}
+							options={["parallel", "sequential"]}
+						/>
+					</Field>
+				</>
+			);
+		case "loop":
+			return (
+				<>
+					<Field label="输出收集路径" hint="必填">
+						<TextInput
+							value={(draft.output_selector as string) ?? ""}
+							onChange={(v) => patch({ output_selector: v })}
+							placeholder="step.result"
+						/>
+					</Field>
+					<Field label="最大迭代次数">
+						<NumberInput
+							value={(draft.max_iterations as number) ?? 10}
+							onChange={(v) => patch({ max_iterations: v ?? 10 })}
+							min={1}
+							max={1000}
+						/>
+					</Field>
+				</>
 			);
 		case "sub-flow":
 			return (
@@ -1054,7 +1884,7 @@ function NodeFields({
 			);
 		case "variable-aggregator":
 			return (
-				<Field label="来源" hint="node_id.path">
+				<Field label="来源路径" hint="node_id.path">
 					<StringListInput
 						value={(draft.sources as string[]) ?? []}
 						onChange={(v) => patch({ sources: v })}
@@ -1084,11 +1914,310 @@ function NodeFields({
 					/>
 				</Field>
 			);
+		case "llm":
+			return (
+				<>
+					<Field label="模型" hint="必填">
+						<TextInput
+							value={(draft.model as string) ?? ""}
+							onChange={(v) => patch({ model: v })}
+							placeholder="gpt-4o-mini"
+						/>
+					</Field>
+					<Field label="用户提示词" hint="Jinja2 模板">
+						<TextareaInput
+							value={(draft.user_prompt as string) ?? ""}
+							onChange={(v) => patch({ user_prompt: v })}
+							placeholder={"根据以下内容作答：\n{{ start.query }}"}
+							rows={6}
+						/>
+					</Field>
+					<Field label="系统提示词" hint="可选">
+						<TextareaInput
+							value={(draft.system_prompt as string) ?? ""}
+							onChange={(v) => patch({ system_prompt: v })}
+							placeholder="You are a helpful assistant."
+							rows={4}
+						/>
+					</Field>
+					<LlmConnectionFields draft={draft} patch={patch} />
+				</>
+			);
+		case "question-classifier":
+			return (
+				<>
+					<Field label="模型" hint="必填">
+						<TextInput
+							value={(draft.model as string) ?? ""}
+							onChange={(v) => patch({ model: v })}
+							placeholder="gpt-4o-mini"
+						/>
+					</Field>
+					<Field label="输入问题" hint="Jinja2 模板">
+						<TextareaInput
+							value={(draft.question as string) ?? ""}
+							onChange={(v) => patch({ question: v })}
+							placeholder="{{ start.user_input }}"
+							rows={3}
+						/>
+					</Field>
+					<ClassesEditor
+						value={(draft.classes as ClassItem[]) ?? []}
+						onChange={(v) => patch({ classes: v })}
+					/>
+					<LlmConnectionFields draft={draft} patch={patch} />
+				</>
+			);
+		case "parameter-extractor":
+			return (
+				<>
+					<Field label="模型" hint="必填">
+						<TextInput
+							value={(draft.model as string) ?? ""}
+							onChange={(v) => patch({ model: v })}
+							placeholder="gpt-4o-mini"
+						/>
+					</Field>
+					<Field label="提取查询" hint="Jinja2 模板">
+						<TextareaInput
+							value={(draft.query as string) ?? ""}
+							onChange={(v) => patch({ query: v })}
+							placeholder="{{ start.user_input }}"
+							rows={3}
+						/>
+					</Field>
+					<ParametersEditor
+						value={(draft.parameters as ParamItem[]) ?? []}
+						onChange={(v) => patch({ parameters: v })}
+					/>
+					<LlmConnectionFields draft={draft} patch={patch} />
+				</>
+			);
+		case "assign":
+			return (
+				<AssignsEditor
+					value={(draft.assigns as Record<string, string>) ?? {}}
+					onChange={(v) => patch({ assigns: v })}
+				/>
+			);
+		case "list-operator":
+			return (
+				<>
+					<Field label="输入数组路径" hint="必填">
+						<TextInput
+							value={(draft.input_selector as string) ?? ""}
+							onChange={(v) => patch({ input_selector: v })}
+							placeholder="node_id.items"
+						/>
+					</Field>
+					<Field label="排序字段" hint="可选">
+						<TextInput
+							value={(draft.sort_by as string) ?? ""}
+							onChange={(v) => patch({ sort_by: v })}
+							placeholder="name"
+						/>
+					</Field>
+					<Field label="排序方向">
+						<SelectInput
+							value={(draft.sort_order as string) ?? "asc"}
+							onChange={(v) => patch({ sort_order: v })}
+							options={["asc", "desc"]}
+						/>
+					</Field>
+					<Field label="去重字段" hint="可选">
+						<TextInput
+							value={(draft.deduplicate_by as string) ?? ""}
+							onChange={(v) => patch({ deduplicate_by: v })}
+							placeholder="id"
+						/>
+					</Field>
+					<Field label="限制数量" hint="可选">
+						<NumberInput
+							value={draft.limit as number | undefined}
+							onChange={(v) => patch({ limit: v })}
+							placeholder="不限制"
+							min={1}
+						/>
+					</Field>
+				</>
+			);
+		case "start":
+			return (
+				<StartInputsEditor
+					value={(draft.inputs as InputDecl[]) ?? []}
+					onChange={(v) => patch({ inputs: v })}
+				/>
+			);
+		case "end":
+			return (
+				<Field label="输出路径" hint="key → node_id.field">
+					<TextareaInput
+						value={
+							typeof draft.outputs === "object" && draft.outputs !== null
+								? JSON.stringify(draft.outputs, null, 2)
+								: ((draft.outputs as string) ?? "")
+						}
+						onChange={(v) => {
+							try {
+								patch({ outputs: JSON.parse(v) });
+							} catch {
+								patch({ outputs: v });
+							}
+						}}
+						placeholder={'{\n  "result": "llm_node.text"\n}'}
+						rows={6}
+					/>
+				</Field>
+			);
+		case "mcp":
+			return (
+				<>
+					<Field label="服务器 URL" hint="SSE 端点">
+						<TextInput
+							value={(draft.server_url as string) ?? ""}
+							onChange={(v) => patch({ server_url: v })}
+							placeholder="http://localhost:3000/sse"
+						/>
+					</Field>
+					<Field label="工具名称" hint="必填">
+						<TextInput
+							value={(draft.tool_name as string) ?? ""}
+							onChange={(v) => patch({ tool_name: v })}
+							placeholder="search"
+						/>
+					</Field>
+					<Field label="参数" hint="JSON">
+						<TextareaInput
+							value={
+								typeof draft.arguments === "object"
+									? JSON.stringify(draft.arguments, null, 2)
+									: ((draft.arguments as string) ?? "")
+							}
+							onChange={(v) => {
+								try {
+									patch({ arguments: JSON.parse(v) });
+								} catch {
+									patch({ arguments: v });
+								}
+							}}
+							placeholder={'{\n  "query": "{{ start.query }}"\n}'}
+							rows={5}
+						/>
+					</Field>
+				</>
+			);
 		case "noop":
-			return <p className="text-xs text-muted-foreground">此节点无需配置。</p>;
+			return (
+				<p className="text-xs text-muted-foreground/70 text-center py-4">
+					此节点透传所有上游输出，无需配置。
+				</p>
+			);
 		default:
 			return null;
 	}
+}
+
+// =============================================================================
+// Node context menu (right-click, Dify-style)
+// =============================================================================
+
+interface ContextMenuState {
+	x: number;
+	y: number;
+	nodeId: string;
+}
+
+function NodeContextMenu({
+	state,
+	onClose,
+	onDuplicate,
+	onDelete,
+}: {
+	state: ContextMenuState;
+	onClose: () => void;
+	onDuplicate: (nodeId: string) => void;
+	onDelete: (nodeId: string) => void;
+}) {
+	const menuRef = useRef<HTMLDivElement>(null);
+
+	useEffect(() => {
+		function onKey(e: KeyboardEvent) {
+			if (e.key === "Escape") onClose();
+		}
+		function onMouseDown(e: MouseEvent) {
+			if (menuRef.current && !menuRef.current.contains(e.target as globalThis.Node)) {
+				onClose();
+			}
+		}
+		document.addEventListener("keydown", onKey);
+		document.addEventListener("mousedown", onMouseDown);
+		return () => {
+			document.removeEventListener("keydown", onKey);
+			document.removeEventListener("mousedown", onMouseDown);
+		};
+	}, [onClose]);
+
+	const items: Array<
+		| { icon: LucideIcon; label: string; shortcut: string; action: () => void; danger: boolean }
+		| null
+	> = [
+		{
+			icon: Copy,
+			label: "复制",
+			shortcut: "⌘C",
+			action: () => { onDuplicate(state.nodeId); onClose(); },
+			danger: false,
+		},
+		{
+			icon: CopyPlus,
+			label: "复制节点",
+			shortcut: "⌘D",
+			action: () => { onDuplicate(state.nodeId); onClose(); },
+			danger: false,
+		},
+		null,
+		{
+			icon: Trash2,
+			label: "删除",
+			shortcut: "⌘⌫",
+			action: () => { onDelete(state.nodeId); onClose(); },
+			danger: true,
+		},
+	];
+
+	return (
+		<div
+			ref={menuRef}
+			style={{ position: "fixed", left: state.x, top: state.y, zIndex: 1000 }}
+			className="w-[200px] rounded-lg border border-border/60 bg-card shadow-xl py-1"
+		>
+			{items.map((item, i) =>
+				item === null ? (
+					// biome-ignore lint/suspicious/noArrayIndexKey: static divider
+					<div key={i} className="my-1 h-px bg-border/50" />
+				) : (
+					<button
+						// biome-ignore lint/suspicious/noArrayIndexKey: static menu item
+						key={i}
+						type="button"
+						onClick={item.action}
+						className={cn(
+							"flex w-full items-center justify-between px-3 py-1.5 text-xs transition-colors",
+							item.danger
+								? "text-destructive hover:bg-destructive/10"
+								: "text-foreground hover:bg-muted",
+						)}
+					>
+						<span className="flex items-center gap-2">
+							<item.icon className="size-3.5" />
+							{item.label}
+						</span>
+						<span className="text-muted-foreground/60 font-mono">{item.shortcut}</span>
+					</button>
+				),
+			)}
+		</div>
+	);
 }
 
 // =============================================================================
@@ -1131,6 +2260,9 @@ function parseDocument(doc: Record<string, unknown>): {
 				type: n.type as string,
 				position: (n.meta as { position: { x: number; y: number } }).position,
 				data: (n.data as Record<string, unknown>) ?? {},
+				...(n.parentId ? { parentId: n.parentId as string } : {}),
+				...(n.extent ? { extent: n.extent as "parent" } : {}),
+				...(n.style ? { style: n.style as React.CSSProperties } : {}),
 			})),
 			edges: (rawEdges as Array<Record<string, unknown>>).map((e, i) => ({
 				id: (e.id as string) ?? `e-${i}`,
@@ -1139,7 +2271,15 @@ function parseDocument(doc: Record<string, unknown>): {
 			})),
 		};
 	}
-	return { nodes: rawNodes as Node[], edges: rawEdges as Edge[] };
+	// Plain React Flow format — preserve parentId, extent, style if present
+	return {
+		nodes: (rawNodes as Array<Record<string, unknown>>).map((n) => ({
+			...(n as Node),
+			...(n.parentId ? { parentId: n.parentId as string } : {}),
+			...(n.extent ? { extent: n.extent as "parent" } : {}),
+		})),
+		edges: rawEdges as Edge[],
+	};
 }
 
 // =============================================================================
@@ -1161,6 +2301,7 @@ function FlowCanvas({
 	const [nodes, setNodes, onNodesChange] = useNodesState(initNodes);
 	const [edges, setEdges, onEdgesChange] = useEdgesState(initEdges);
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+	const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 	const selectedNode = selectedNodeId
 		? nodes.find((n) => n.id === selectedNodeId)
 		: null;
@@ -1214,6 +2355,7 @@ function FlowCanvas({
 
 	const addNode = useCallback(
 		(type: string, data: Record<string, unknown>) => {
+			const isContainer = type === "iteration" || type === "loop";
 			setNodes((nds) => [
 				...nds,
 				{
@@ -1224,10 +2366,43 @@ function FlowCanvas({
 						y: 200 + Math.random() * 80 - 40,
 					},
 					data,
+					// Container nodes need explicit dimensions so child nodes
+					// have a defined parent bounding box from creation.
+					...(isContainer
+						? { style: { width: CONTAINER_W, minHeight: CONTAINER_H } }
+						: {}),
 				},
 			]);
 		},
 		[setNodes],
+	);
+
+	const duplicateNode = useCallback(
+		(nodeId: string) => {
+			const node = nodes.find((n) => n.id === nodeId);
+			if (!node) return;
+			setNodes((nds) => [
+				...nds,
+				{
+					...node,
+					id: `${node.type}_${Date.now()}`,
+					position: { x: node.position.x + 30, y: node.position.y + 30 },
+					selected: false,
+				},
+			]);
+			triggerSave();
+		},
+		[nodes, setNodes, triggerSave],
+	);
+
+	const deleteNode = useCallback(
+		(nodeId: string) => {
+			setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+			setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+			if (selectedNodeId === nodeId) setSelectedNodeId(null);
+			triggerSave();
+		},
+		[setNodes, setEdges, selectedNodeId, triggerSave],
 	);
 
 	const handleLayout = useCallback(
@@ -1239,52 +2414,69 @@ function FlowCanvas({
 	);
 
 	return (
-		<ReactFlow
-			nodes={nodes}
-			edges={edges}
-			onNodesChange={(c) => {
-				onNodesChange(c);
-				triggerSave();
-			}}
-			onEdgesChange={(c) => {
-				onEdgesChange(c);
-				triggerSave();
-			}}
-			onConnect={(c) => {
-				onConnect(c);
-				triggerSave();
-			}}
-			onNodeClick={(_, node) => setSelectedNodeId(node.id)}
-			onPaneClick={() => setSelectedNodeId(null)}
-			nodeTypes={NODE_TYPES}
-			edgeTypes={EDGE_TYPES}
-			fitView
-			proOptions={{ hideAttribution: true }}
-		>
-			<Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-			<Controls showInteractive={false} />
-			<MiniMap zoomable pannable nodeStrokeWidth={2} />
-
-			{/* Left toolbar + catalog popover */}
-			<CanvasToolbar
+		<>
+		<div id="workflow-container" className="h-full w-full">
+			<ReactFlow
 				nodes={nodes}
 				edges={edges}
-				onAddNode={addNode}
-				onSetNodes={handleLayout}
-			/>
+				onNodesChange={(c) => {
+					onNodesChange(c);
+					triggerSave();
+				}}
+				onEdgesChange={(c) => {
+					onEdgesChange(c);
+					triggerSave();
+				}}
+				onConnect={(c) => {
+					onConnect(c);
+					triggerSave();
+				}}
+				onNodeClick={(_, node) => setSelectedNodeId(node.id)}
+				onNodeContextMenu={(e, node) => {
+					e.preventDefault();
+					setContextMenu({ x: e.clientX, y: e.clientY, nodeId: node.id });
+				}}
+				onPaneClick={() => { setSelectedNodeId(null); setContextMenu(null); }}
+				nodeTypes={NODE_TYPES}
+				edgeTypes={EDGE_TYPES}
+				connectionLineComponent={CustomConnectionLine}
+				fitView
+				proOptions={{ hideAttribution: true }}
+			>
+				<Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+				<Controls showInteractive={false} />
+				<MiniMap zoomable pannable nodeStrokeWidth={2} />
 
-			{/* Right: node config */}
-			{selectedNode && (
-				<Panel position="top-right">
-					<NodeConfigPanel
-						key={selectedNode.id}
-						node={selectedNode}
-						onUpdate={(data) => updateNodeData(selectedNode.id, data)}
-						onClose={() => setSelectedNodeId(null)}
-					/>
-				</Panel>
-			)}
-		</ReactFlow>
+				{/* Left toolbar + catalog popover */}
+				<CanvasToolbar
+					nodes={nodes}
+					edges={edges}
+					onAddNode={addNode}
+					onSetNodes={handleLayout}
+				/>
+
+				{/* Right: node config */}
+				{selectedNode && (
+					<Panel position="top-right">
+						<NodeConfigPanel
+							key={selectedNode.id}
+							node={selectedNode}
+							onUpdate={(data) => updateNodeData(selectedNode.id, data)}
+							onClose={() => setSelectedNodeId(null)}
+						/>
+					</Panel>
+				)}
+			</ReactFlow>
+		</div>
+		{contextMenu && (
+			<NodeContextMenu
+				state={contextMenu}
+				onClose={() => setContextMenu(null)}
+				onDuplicate={duplicateNode}
+				onDelete={deleteNode}
+			/>
+		)}
+		</>
 	);
 }
 
