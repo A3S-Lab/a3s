@@ -39,10 +39,35 @@
 	stroke-width: 2.5;
 }
 
-/* ── Handles (Dify-style: transparent hit area, visual via child span) ── */
+/* ── Handles (Dify-style: circular "+" button, visible on node hover) ──
+ *
+ * React Flow absolutely positions Handle elements relative to its own node
+ * wrapper div (.react-flow__node), so we use .react-flow__node:hover as the
+ * hover trigger — Tailwind's group/group-hover can't cross this boundary.
+ */
 
-.react-flow__handle {
-	transition: transform 0.15s ease;
+#workflow-container .react-flow__handle {
+	opacity: 0;
+	transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+/* Reveal all handles when the node is hovered */
+#workflow-container .react-flow__node:hover .react-flow__handle {
+	opacity: 1;
+}
+
+/* Keep handles visible when hovering the handle itself */
+#workflow-container .react-flow__handle:hover {
+	opacity: 1;
+	transform: scale(1.15);
+}
+
+/* Show target handles on any node when a connection is being dragged
+   (React Flow adds .connectingto / .valid classes at this point) */
+#workflow-container .react-flow__handle.connectingto,
+#workflow-container .react-flow__handle.valid,
+#workflow-container .react-flow__handle.invalid {
+	opacity: 1;
 }
 
 /* ── Connection line (when dragging from handle) ── */

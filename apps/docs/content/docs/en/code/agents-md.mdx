@@ -1,0 +1,265 @@
+---
+title: AGENTS.md Auto-Loading
+description: Automatic project instructions loading from workspace root
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+# AGENTS.md Auto-Loading
+
+A3S Code automatically loads project-specific instructions from an `AGENTS.md` file in the workspace root, similar to Claude Code's `CLAUDE.md` mechanism.
+
+## Overview
+
+When you create a session, A3S Code automatically:
+1. Checks if `AGENTS.md` exists in the workspace root
+2. Loads its content if found
+3. Injects it into the system prompt as "Project Instructions"
+
+This allows you to provide project-specific guidelines, conventions, and requirements that the agent will follow automatically.
+
+## Usage
+
+### Create AGENTS.md
+
+Place an `AGENTS.md` file in your project root:
+
+```markdown
+# Project Instructions
+
+This is a TypeScript project using Node.js and Express.
+
+## Code Style
+- Use TypeScript strict mode
+- Prefer async/await over callbacks
+- Use ESLint and Prettier
+- Write tests with Jest
+
+## Architecture
+- Follow MVC pattern
+- Use dependency injection
+- Keep controllers thin
+- Business logic in services
+
+## Testing
+- Unit tests for all services
+- Integration tests for API endpoints
+- Minimum 80% code coverage
+
+## Security
+- Validate all user input
+- Use parameterized queries
+- Never log sensitive data
+```
+
+### Create Session
+
+The agent automatically loads `AGENTS.md` when you create a session:
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+// AGENTS.md is automatically loaded from /my-project/AGENTS.md
+const session = agent.session('/my-project', {
+  builtinSkills: true,
+});
+
+// The agent now follows your project instructions
+const result = await session.send('Create a new user registration endpoint');
+console.log(result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent
+
+agent = Agent.create("agent.hcl")
+
+# AGENTS.md is automatically loaded from /my-project/AGENTS.md
+session = agent.session("/my-project", builtin_skills=True)
+
+# The agent now follows your project instructions
+result = session.send("Create a new user registration endpoint")
+print(result.text)
+```
+</Tab>
+</Tabs>
+
+## What to Include
+
+### Code Style Guidelines
+
+```markdown
+## Code Style
+- Language-specific conventions (PEP 8, ESLint rules, etc.)
+- Formatting preferences (tabs vs spaces, line length, etc.)
+- Naming conventions (camelCase, snake_case, etc.)
+- Comment style and documentation requirements
+```
+
+### Architecture Patterns
+
+```markdown
+## Architecture
+- Design patterns to follow (MVC, Clean Architecture, etc.)
+- Module organization and structure
+- Dependency management approach
+- Separation of concerns guidelines
+```
+
+### Testing Requirements
+
+```markdown
+## Testing
+- Testing framework and tools
+- Coverage requirements
+- Test organization (unit, integration, e2e)
+- Mocking and fixture strategies
+```
+
+### Security Guidelines
+
+```markdown
+## Security
+- Input validation requirements
+- Authentication and authorization patterns
+- Data sanitization rules
+- Logging and monitoring guidelines
+```
+
+### Project-Specific Context
+
+```markdown
+## Project Context
+- Tech stack and dependencies
+- External services and APIs
+- Database schema and ORM
+- Deployment and CI/CD process
+```
+
+## Example: Full AGENTS.md
+
+```markdown
+# Project Instructions
+
+This is a FastAPI project using SQLAlchemy and PostgreSQL.
+
+## Code Style
+- Use type hints everywhere
+- Follow PEP 8 (enforced by Black)
+- Use mypy for type checking
+- Docstrings for all public functions
+
+## Architecture
+- Follow Clean Architecture
+- Use dependency injection (FastAPI Depends)
+- Keep routes thin (< 20 lines)
+- Business logic in services layer
+- Data access in repositories
+
+## Database
+- Use SQLAlchemy ORM
+- Alembic for migrations
+- Never use raw SQL
+- Always use transactions for writes
+
+## Testing
+- pytest for all tests
+- Unit tests for services and repositories
+- Integration tests for API endpoints
+- Minimum 80% code coverage
+- Use factories for test data
+
+## Security
+- Validate all input with Pydantic models
+- Use parameterized queries (SQLAlchemy)
+- Never log passwords or tokens
+- Follow OWASP Top 10 guidelines
+- Use JWT for authentication
+
+## API Design
+- RESTful endpoints
+- Consistent error responses
+- Pagination for list endpoints
+- Versioning via URL path (/api/v1/)
+```
+
+## Behavior
+
+### Loading Priority
+
+The `AGENTS.md` content is injected into the `extra` slot of the system prompt, which means:
+
+1. **Core agentic behavior** is always preserved
+2. **AGENTS.md** is loaded before skill instructions
+3. **Custom `extra` slot** content (if provided) comes before AGENTS.md
+
+### Logging
+
+When `AGENTS.md` is loaded, you'll see a log message:
+
+```
+INFO Auto-loaded AGENTS.md from workspace root: /my-project/AGENTS.md
+```
+
+If the file exists but is empty, it's skipped:
+
+```
+DEBUG AGENTS.md exists but is empty — skipping
+```
+
+If reading fails, a warning is logged:
+
+```
+WARN Failed to read AGENTS.md — skipping: Permission denied
+```
+
+### Error Handling
+
+- **File not found**: Silently skipped (no error)
+- **Empty file**: Silently skipped (no error)
+- **Read error**: Warning logged, session creation continues
+
+## Use Cases
+
+### Team Onboarding
+
+New team members can see project conventions automatically enforced by the agent.
+
+### Consistent Code Style
+
+Ensure all AI-generated code follows your project's style guide.
+
+### Security Compliance
+
+Embed security requirements that the agent must follow.
+
+### Framework-Specific Patterns
+
+Guide the agent to use your preferred libraries and patterns.
+
+## Comparison with Claude Code
+
+| Feature | A3S Code | Claude Code |
+|---------|----------|-------------|
+| File name | `AGENTS.md` | `CLAUDE.md` |
+| Location | Workspace root | Project root |
+| Auto-load | ✅ Yes | ✅ Yes |
+| Format | Markdown | Markdown |
+| Scope | Per-session | Per-project |
+
+<Callout type="info">
+**Note:** `AGENTS.md` is loaded per-session, not globally. Each workspace can have its own instructions.
+</Callout>
+
+## See Also
+
+- [Sessions](/docs/code/sessions) — Session creation and configuration
+- [System Prompt Slots](/docs/code/sessions#system-prompt-customization) — Custom prompt injection
+- [Skills](/docs/code/skills) — Skill-based tool restrictions

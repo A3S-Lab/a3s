@@ -187,10 +187,10 @@ function CustomEdge({
 // =============================================================================
 
 // Shared handle visual — circular "+" button, Dify-style.
-// Invisible by default; parent must have className="group" for group-hover to work.
+// Opacity is controlled by flow.css (.react-flow__node:hover .react-flow__handle).
 const handleCircleClass =
 	"!h-5 !w-5 !rounded-full !border !border-primary/50 !bg-card !shadow-sm !outline-none " +
-	"!opacity-0 group-hover:!opacity-100 !transition-opacity !duration-150 hover:!scale-110 hover:!border-primary";
+	"!flex !items-center !justify-center";
 
 function SourceHandle({ id }: { id?: string } = {}) {
 	return (
@@ -200,7 +200,7 @@ function SourceHandle({ id }: { id?: string } = {}) {
 			id={id}
 			className={handleCircleClass}
 		>
-			<Plus className="pointer-events-none absolute inset-0 m-auto size-2.5 text-primary/70" />
+			<Plus className="pointer-events-none size-2.5 text-primary/70" />
 		</Handle>
 	);
 }
@@ -212,14 +212,13 @@ function TargetHandle() {
 			position={Position.Left}
 			className={handleCircleClass}
 		>
-			<Plus className="pointer-events-none absolute inset-0 m-auto size-2.5 text-primary/70" />
+			<Plus className="pointer-events-none size-2.5 text-primary/70" />
 		</Handle>
 	);
 }
 
 // Branch row handle — sits inside a `relative` row div, protrudes right.
 // React Flow computes the edge endpoint from this element's screen position.
-// Inherits group-hover visibility from the top-level node group wrapper.
 function BranchHandle({ id }: { id: string }) {
 	return (
 		<Handle
@@ -231,7 +230,7 @@ function BranchHandle({ id }: { id: string }) {
 				handleCircleClass,
 			)}
 		>
-			<Plus className="pointer-events-none absolute inset-0 m-auto size-2.5 text-primary/70" />
+			<Plus className="pointer-events-none size-2.5 text-primary/70" />
 		</Handle>
 	);
 }
@@ -510,7 +509,7 @@ function FlowNode({ type, data, selected }: NodeProps) {
 	const d = data as Record<string, unknown>;
 
 	return (
-		<div className="group">
+		<>
 			<TargetHandle />
 			{/* Outer: selection ring */}
 			<div
@@ -542,7 +541,7 @@ function FlowNode({ type, data, selected }: NodeProps) {
 				</div>
 			</div>
 			<SourceHandle />
-		</div>
+		</>
 	);
 }
 
@@ -550,7 +549,7 @@ function StartNode({ data, selected }: NodeProps) {
 	const d = data as Record<string, unknown>;
 	const entry = getCatalogEntry("start")!;
 	return (
-		<div className="group">
+		<>
 			{/* Outer: selection ring */}
 			<div
 				className={cn(
@@ -576,7 +575,7 @@ function StartNode({ data, selected }: NodeProps) {
 				</div>
 			</div>
 			<SourceHandle />
-		</div>
+		</>
 	);
 }
 
@@ -634,7 +633,7 @@ function IterationContainerNode({ id, data, selected }: NodeProps) {
 	);
 
 	return (
-		<div className="group">
+		<>
 			<TargetHandle />
 			<div
 				style={{ width: CONTAINER_W, minHeight: CONTAINER_H }}
@@ -697,7 +696,7 @@ function IterationContainerNode({ id, data, selected }: NodeProps) {
 				</div>
 			</div>
 			<SourceHandle />
-		</div>
+		</>
 	);
 }
 
@@ -725,7 +724,7 @@ function LoopContainerNode({ id, data, selected }: NodeProps) {
 	);
 
 	return (
-		<div className="group">
+		<>
 			<TargetHandle />
 			<div
 				style={{ width: CONTAINER_W, minHeight: CONTAINER_H }}
@@ -787,7 +786,7 @@ function LoopContainerNode({ id, data, selected }: NodeProps) {
 				</div>
 			</div>
 			<SourceHandle />
-		</div>
+		</>
 	);
 }
 
@@ -802,7 +801,7 @@ function IfElseNode({ data, selected }: NodeProps) {
 		(d.cases as Array<{ id: string; conditions?: unknown[] }>) ?? [];
 
 	return (
-		<div className="group">
+		<>
 			<TargetHandle />
 			<div
 				className={cn(
@@ -852,7 +851,7 @@ function IfElseNode({ data, selected }: NodeProps) {
 					</div>
 				</div>
 			</div>
-		</div>
+		</>
 	);
 }
 
@@ -873,7 +872,7 @@ function QuestionClassifierNode({ data, selected }: NodeProps) {
 	const model = (d.model as string) ?? "";
 
 	return (
-		<div className="group">
+		<>
 			<TargetHandle />
 			<div
 				className={cn(
@@ -924,7 +923,7 @@ function QuestionClassifierNode({ data, selected }: NodeProps) {
 					</div>
 				</div>
 			</div>
-		</div>
+		</>
 	);
 }
 
