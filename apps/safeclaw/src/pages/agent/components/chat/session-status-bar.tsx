@@ -27,8 +27,9 @@ export function SessionStatusBar({
 	readonlyCwd,
 }: { sessionId: string; readonlyCwd?: boolean }) {
 	const settingsSnap = useSnapshot(settingsModel.state);
-	const { sessionStatus, sessions, connectionStatus } =
-		useSnapshot(agentModel.state);
+	const { sessionStatus, sessions, connectionStatus } = useSnapshot(
+		agentModel.state,
+	);
 	const session = sessions[sessionId];
 	const pct = Math.round(session?.context_used_percent ?? 0);
 	const status = sessionStatus[sessionId] || "idle";
@@ -124,7 +125,6 @@ export function SessionStatusBar({
 					</Select>
 				</div>
 			)}
-
 
 			{/* Session status */}
 			<div className="flex items-center gap-1">

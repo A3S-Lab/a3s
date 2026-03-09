@@ -1,0 +1,218 @@
+---
+title: Agent 驾驭协议
+description: 使用 AHP JSON-RPC 协议从外部进程监督 agent 会话
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Agent 驾驭协议示例
+
+本示例展示如何使用 [Agent 驾驭协议](/docs/cn/code/harness) 将外部驾驭服务器挂载到 A3S Code 会话。驾驭服务器阻止危险的 Bash 命令，并记录敏感输出检测结果——全部来自一个独立的 Python 进程。
+
+## 驾驭服务器（`harness.py`）
+
+将以下文件保存为 `harness.py`，放在 agent 配置文件旁边。它从 stdin 读取事件，将响应写入 stdout。
+
+```python
+#!/usr/bin/env python3
+"""
+最简 AHP 驾驭服务器——阻止危险的 Bash 命令，
+将敏感输出检测记录到 stderr。
+"""
+import json, re, sys
+from typing import Any
+
+BLOCKED_PATTERNS = [
+    (r"rm\s+-[rf]{1,2}\s+/", "从根目录递归删除"),
+    (r"\bdd\s+if=",           "原始磁盘写入"),
+    (r"curl\s+.*\|\s*(ba)?sh","将 curl 管道传给 shell"),
+    (r":\(\)\s*\{.*:\|:&\s*\}","fork 炸弹"),
+]
+
+SENSITIVE_PATTERNS = [
+    r"(?i)(password|secret|token|api[_-]?key)\s*[:=]\s*\S+",
+    r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}",
+]
+
+def log(msg: str) -> None:
+    print(f"[AHP] {msg}", file=sys.stderr, flush=True)
+
+def on_pre_tool_use(payload: dict, depth: int) -> dict:
+    tool    = payload.get("tool", "")
+    command = payload.get("args", {}).get("command", "") if isinstance(payload.get("args"), dict) else ""
+    sid     = payload.get("session_id", "?")
+    tag     = f"d{depth}" if depth else "root"
+
+    if tool == "Bash" and command:
+        for pattern, desc in BLOCKED_PATTERNS:
+            if re.search(pattern, command, re.IGNORECASE):
+                log(f"BLOCK [{sid}][{tag}] {desc}: {command[:80]}")
+                return {"action": "block", "reason": f"AHP: {desc}"}
+
+    log(f"ALLOW [{sid}][{tag}] {tool}: {command[:60] or '（无命令）'}")
+    return {"action": "continue"}
+
+def on_post_tool_use(payload: dict, depth: int) -> None:
+    output = (payload.get("result") or {}).get("output", "")
+    sid    = payload.get("session_id", "?")
+    tag    = f"d{depth}" if depth else "root"
+    if output:
+        for p in SENSITIVE_PATTERNS:
+            if re.search(p, output):
+                log(f"ALERT [{sid}][{tag}] {payload.get('tool','?')} 输出中检测到敏感数据")
+                break
+
+BLOCKING      = {"pre_tool_use": on_pre_tool_use, "pre_prompt": lambda p, d: {"action": "continue"}}
+NOTIFICATIONS = {"post_tool_use": on_post_tool_use}
+
+log("AHP 服务器已启动")
+for raw in sys.stdin:
+    line = raw.strip()
+    if not line:
+        continue
+    try:
+        msg = json.loads(line)
+    except json.JSONDecodeError as e:
+        log(f"ERROR 解析失败: {e}")
+        continue
+
+    params     = msg.get("params", {})
+    event_type = params.get("event_type", "")
+    payload    = params.get("payload", {})
+    depth      = params.get("meta", {}).get("depth", 0)
+    req_id     = msg.get("id")
+
+    if req_id is None:
+        if event_type in NOTIFICATIONS:
+            NOTIFICATIONS[event_type](payload, depth)
+        continue
+
+    result = BLOCKING.get(event_type, lambda p, d: {"action": "continue"})(payload, depth)
+    print(json.dumps({"jsonrpc": "2.0", "id": req_id, "result": result}), flush=True)
+
+log("AHP 服务器已退出")
+```
+
+## 挂载驾驭服务器
+
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::{Agent, AhpHookExecutor, SessionOptions};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Agent::new("agent.hcl").await?;
+
+    // 派生驾驭服务器——它监督整个会话
+    let harness = AhpHookExecutor::spawn("python3", &["harness.py"]).await?;
+
+    let session = agent.session(".", Some(
+        SessionOptions::new()
+            .with_builtin_skills()
+            .with_hook_executor(harness),
+    ))?;
+
+    // 驾驭服务器拦截所有工具调用——包括子智能体内的调用
+    let result = session.send(
+        "列出所有 Rust 文件并统计代码行数",
+        None,
+    ).await?;
+
+    println!("{}", result.text);
+    Ok(())
+}
+```
+
+验证驾驭服务器是否正在阻断危险命令：
+
+```rust
+// 这将被驾驭服务器阻断——agent 将收到阻断错误
+let result = session.send("执行：rm -rf /tmp/test", None).await?;
+// agent 将报告 Bash 工具被阻断。
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent, HarnessServer } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+const session = agent.session('.', {
+  builtinSkills: true,
+  harnessServer: new HarnessServer('python3', ['harness.py']),
+});
+
+// 驾驭服务器拦截所有工具调用——包括子智能体内的调用
+const result = await session.send('列出所有 TypeScript 文件并统计代码行数');
+console.log(result.text);
+
+// 测试阻断：
+// const r = await session.send('执行：rm -rf /tmp/test');
+// agent 将报告 Bash 工具被阻断。
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent, HarnessServer, SessionOptions
+
+agent = Agent.create('agent.hcl')
+
+opts = SessionOptions()
+opts.harness_server = HarnessServer('python3', ['harness.py'])
+opts.builtin_skills = True
+
+session = agent.session('.', opts)
+
+# 驾驭服务器拦截所有工具调用——包括子智能体内的调用
+result = session.send('列出所有 Python 文件并统计代码行数')
+print(result.text)
+
+# 测试阻断：
+# result = session.send('执行：rm -rf /tmp/test')
+# agent 将报告 Bash 工具被阻断。
+```
+
+</Tab>
+</Tabs>
+
+## 多智能体场景
+
+当 agent 使用 `task` 工具派生子智能体时，驾驭服务器自动接收所有子智能体的事件。`meta.depth` 字段在每个层级递增：
+
+```python
+# harness.py 输出（stderr），多智能体运行：
+# [AHP] START [root-session][root] model=anthropic/claude-...
+# [AHP] ALLOW [root-session][root] task: （无命令）
+# [AHP] START [child-session][d1]  model=anthropic/claude-...
+# [AHP] ALLOW [child-session][d1]  Bash: ls -la
+# [AHP] ALLOW [child-session][d1]  Glob: **/*.rs
+# [AHP] START [grandchild][d2]     model=anthropic/claude-...
+# [AHP] BLOCK [grandchild][d2]     从根目录递归删除: rm -rf /
+```
+
+<Callout type="info">
+  驾驭服务器接收来自所有 agent 的单一多路复用事件流。使用 `session_id` 将事件关联到特定子智能体，使用 `depth` 应用深度感知策略。
+</Callout>
+
+## 单独运行驾驭服务器（测试）
+
+无需 A3S Code 即可独立测试驾驭服务器：
+
+```bash
+# 测试：允许安全命令
+echo '{"jsonrpc":"2.0","id":1,"method":"harness/event","params":{"event_type":"pre_tool_use","payload":{"session_id":"test","tool":"Bash","args":{"command":"ls -la"},"working_directory":"/","recent_tools":[]},"meta":{"depth":0}}}' \
+  | python3 harness.py
+# → {"jsonrpc": "2.0", "id": 1, "result": {"action": "continue"}}
+
+# 测试：阻断危险命令
+echo '{"jsonrpc":"2.0","id":2,"method":"harness/event","params":{"event_type":"pre_tool_use","payload":{"session_id":"test","tool":"Bash","args":{"command":"rm -rf /"},"working_directory":"/","recent_tools":[]},"meta":{"depth":1}}}' \
+  | python3 harness.py
+# → {"jsonrpc": "2.0", "id": 2, "result": {"action": "block", "reason": "AHP: 从根目录递归删除"}}
+```

@@ -8,6 +8,7 @@
     "direct-tools",
     "planning",
     "hooks",
+    "harness",
     "auto-compact",
     "memory",
     "security",

@@ -37,9 +37,6 @@ ort-sys = "=2.0.0-rc.9"
 
 # Embedded SafeClaw gateway (in-process server)
 safeclaw = { path = "../crates/safeclaw" }
-# Keep `picolm` enabled and avoid heavyweight default backends so SafeClaw
-# uses layer-streaming inference by default.
-a3s-power = { path = "../../../crates/power", default-features = false, features = ["picolm", "hf"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1.0"

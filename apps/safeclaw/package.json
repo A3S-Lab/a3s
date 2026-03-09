@@ -16,13 +16,8 @@
 		"test:e2e:ui": "playwright test --ui"
 	},
 	"dependencies": {
-		"@flowgram.ai/free-layout-editor": "^1.0.7",
-		"@flowgram.ai/free-lines-plugin": "^1.0.7",
-		"@flowgram.ai/free-node-panel-plugin": "^1.0.7",
-		"@flowgram.ai/free-snap-plugin": "^1.0.7",
-		"@flowgram.ai/free-stack-plugin": "^1.0.7",
-		"@flowgram.ai/minimap-plugin": "^1.0.7",
 		"@lottiefiles/react-lottie-player": "^3.6.0",
+		"@xyflow/react": "^12.6.4",
 		"@monaco-editor/react": "^4.7.0",
 		"@radix-ui/react-alert-dialog": "^1.1.2",
 		"@radix-ui/react-avatar": "^1.1.1",

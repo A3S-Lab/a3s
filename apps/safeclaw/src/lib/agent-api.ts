@@ -4,6 +4,10 @@ function baseUrl() {
 	return `${getGatewayUrl()}/api/agent`;
 }
 
+function wfBaseUrl() {
+	return `${getGatewayUrl()}/api/workflows`;
+}
+
 const jsonHeaders = { "Content-Type": "application/json" };
 
 /** Safe JSON fetch — throws on HTTP errors with descriptive message */
@@ -186,4 +190,53 @@ export const agentApi = {
 	/** DELETE /api/agent/mcp/:name — disconnect and remove an MCP server */
 	removeMcpServer: (name: string) =>
 		safeFetch(`${baseUrl()}/mcp/${name}`, { method: "DELETE" }),
+};
+
+// =============================================================================
+// Workflow API
+// =============================================================================
+
+export interface WorkflowDoc {
+	id: string;
+	name: string;
+	description?: string;
+	created_at: number;
+	updated_at: number;
+	document: Record<string, unknown>;
+	session_id?: string;
+}
+
+export const workflowApi = {
+	list: (): Promise<WorkflowDoc[]> => safeFetch(wfBaseUrl()),
+
+	get: (id: string): Promise<WorkflowDoc> => safeFetch(`${wfBaseUrl()}/${id}`),
+
+	create: (params: {
+		name: string;
+		description?: string;
+		document?: Record<string, unknown>;
+	}): Promise<WorkflowDoc> =>
+		safeFetch(wfBaseUrl(), {
+			method: "POST",
+			headers: jsonHeaders,
+			body: JSON.stringify(params),
+		}),
+
+	update: (
+		id: string,
+		patch: {
+			name?: string;
+			description?: string;
+			document?: Record<string, unknown>;
+			session_id?: string;
+		},
+	): Promise<WorkflowDoc> =>
+		safeFetch(`${wfBaseUrl()}/${id}`, {
+			method: "PATCH",
+			headers: jsonHeaders,
+			body: JSON.stringify(patch),
+		}),
+
+	remove: (id: string): Promise<void> =>
+		safeFetch(`${wfBaseUrl()}/${id}`, { method: "DELETE" }),
 };

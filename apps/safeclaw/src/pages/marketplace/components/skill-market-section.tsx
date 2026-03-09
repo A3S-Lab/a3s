@@ -11,14 +11,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useReactive } from "ahooks";
-import {
-	Code2,
-	Download,
-	ExternalLink,
-	Search,
-	Star,
-	Zap,
-} from "lucide-react";
+import { Code2, Download, ExternalLink, Search, Star, Zap } from "lucide-react";
 
 // Mock data - 实际应该从 API 获取
 const CATEGORIES = [
@@ -62,7 +55,8 @@ const MOCK_SKILLS: Skill[] = [
 	{
 		id: "2",
 		name: "数据库查询",
-		description: "支持多种数据库的查询和管理，包括 MySQL、PostgreSQL、MongoDB 等",
+		description:
+			"支持多种数据库的查询和管理，包括 MySQL、PostgreSQL、MongoDB 等",
 		category: "data",
 		author: "DataTools",
 		icon: "database",
@@ -252,7 +246,11 @@ function SkillCard({ skill }: { skill: Skill }) {
 			{/* Tags */}
 			<div className="flex gap-1.5 flex-wrap">
 				{skill.tags.slice(0, 3).map((tag) => (
-					<Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
+					<Badge
+						key={tag}
+						variant="outline"
+						className="text-[10px] px-1.5 py-0"
+					>
 						{tag}
 					</Badge>
 				))}

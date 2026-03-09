@@ -1,0 +1,377 @@
+---
+title: Agent Harness Protocol
+description: Language-agnostic JSON-RPC 2.0 protocol for supervising agent sessions from any external process
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Agent Harness Protocol (AHP)
+
+The **Agent Harness Protocol** is a language-agnostic protocol for supervising A3S Code agent sessions from an external process. Where [lifecycle hooks](/docs/en/code/hooks) let you intercept events in-process (Rust, Python, TypeScript), AHP lets you do the same thing from **any language** — by spawning a child process and communicating via newline-delimited JSON-RPC 2.0 over stdio.
+
+AHP is modeled on the same transport principle as MCP: the A3S Code host spawns a harness server process, sends events over stdin, and reads decisions from stdout. The harness server can be written in Go, Java, a shell script, or any other language.
+
+## When to use AHP
+
+<TypeTable
+  type={{
+    "In-process policy (same language)": {
+      description: "Use lifecycle hooks — lower overhead, native types, full Rust/Python/TS integration",
+    },
+    "Existing compliance server (Go, Java, …)": {
+      description: "Use AHP — the host spawns it as a child process, no FFI required",
+    },
+    "Shared policy across many agents or apps": {
+      description: "Use AHP — a single harness server binary can be reused by any A3S Code session",
+    },
+    "Audit log pipeline with its own storage": {
+      description: "Use AHP — fire-and-forget notifications stream to the harness server asynchronously",
+    },
+    "TEE or sandbox boundary": {
+      description: "Use AHP — the harness server runs in a separate process and can enforce its own isolation",
+    },
+  }}
+/>
+
+## Architecture
+
+```
+A3S Code host
+  └── AgentSession
+        └── AhpHookExecutor  (implements HookExecutor)
+              ├── pre_tool_use / pre_prompt  →  JSON-RPC request  →  awaits response
+              └── all other events           →  JSON-RPC notification  →  no wait
+
+Harness server (child process, any language)
+  ├── reads newline-delimited JSON from stdin
+  └── writes JSON-RPC responses to stdout
+```
+
+The harness server's stderr is inherited by the host, so all server-side log output appears in the host terminal.
+
+## Protocol
+
+### Transport
+
+Events are sent as newline-delimited JSON over the child process's stdin/stdout. Each message is a single JSON object terminated by a newline character (`\n`).
+
+### Blocking vs. fire-and-forget
+
+<TypeTable
+  type={{
+    "pre_tool_use": {
+      description: "Blocking — host sends a request with an id and waits for a response before the tool executes",
+    },
+    "pre_prompt": {
+      description: "Blocking — host waits for a response before the prompt is sent to the LLM",
+    },
+    "post_tool_use, session_start, session_end, generate_start, generate_end, post_response, on_error, skill_load, skill_unload": {
+      description: "Fire-and-forget — host sends a notification with no id and does not wait",
+    },
+  }}
+/>
+
+### Request (blocking event)
+
+The host sends this when a decision is required before execution continues:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "harness/event",
+  "params": {
+    "event_type": "pre_tool_use",
+    "payload": {
+      "session_id": "s1",
+      "tool": "Bash",
+      "args": { "command": "ls -la" },
+      "working_directory": "/workspace",
+      "recent_tools": []
+    },
+    "meta": { "depth": 0 }
+  }
+}
+```
+
+The harness server must respond with a JSON-RPC result before the default timeout (10 seconds) elapses:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "action": "continue",
+    "reason": null,
+    "modified": null,
+    "retry_delay_ms": null
+  }
+}
+```
+
+### Notification (fire-and-forget event)
+
+The host sends this for observability events that require no decision:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "harness/event",
+  "params": {
+    "event_type": "post_tool_use",
+    "payload": { "session_id": "s1", "tool": "Bash", ... },
+    "meta": { "depth": 0 }
+  }
+}
+```
+
+No response is expected or sent for notifications.
+
+### `meta.depth` — sub-agent nesting
+
+Every AHP message carries a `meta` object with a `depth` field:
+
+<TypeTable
+  type={{
+    "depth: 0": {
+      description: "User-facing session (top-level agent)",
+    },
+    "depth: 1": {
+      description: "First-level sub-agent spawned by the task tool",
+    },
+    "depth: N": {
+      description: "N-th level sub-agent. The harness server can apply stricter policies to deeper agents.",
+    },
+  }}
+/>
+
+### Decision actions
+
+<TypeTable
+  type={{
+    "continue": {
+      description: "Allow the operation to proceed. If `modified` is set, replace the event payload before execution.",
+    },
+    "block": {
+      description: "Cancel the operation. The `reason` string is returned to the agent as an error.",
+    },
+    "skip": {
+      description: "Skip the operation silently (no error returned to the agent).",
+    },
+    "retry": {
+      description: "Retry the operation after `retry_delay_ms` milliseconds (default: 1000).",
+    },
+  }}
+/>
+
+If the harness server does not respond within the timeout, the host falls back to `continue` so the agent is never permanently stalled.
+
+## Attaching a harness server
+
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::{Agent, AhpHookExecutor, SessionOptions};
+
+let agent = Agent::new("agent.hcl").await?;
+
+// Spawn the harness server process
+let harness = AhpHookExecutor::spawn("python3", &["harness.py"]).await?;
+
+let session = agent.session("/workspace", Some(
+    SessionOptions::new().with_hook_executor(harness)
+))?;
+
+let result = session.send("Analyze this repository", None).await?;
+println!("{}", result.text);
+```
+
+To adjust the blocking-request timeout from the default 10 seconds, use `spawn_with_timeout`:
+
+```rust
+let harness = AhpHookExecutor::spawn_with_timeout(
+    "python3", &["harness.py"],
+    30_000, // 30 s
+).await?;
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent, HarnessServer } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+const session = agent.session('/workspace', {
+  harnessServer: new HarnessServer('python3', ['harness.py']),
+});
+
+const result = await session.send('Analyze this repository');
+console.log(result.text);
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent, HarnessServer, SessionOptions
+
+agent = Agent.create('agent.hcl')
+
+opts = SessionOptions()
+opts.harness_server = HarnessServer('python3', ['harness.py'])
+
+session = agent.session('/workspace', opts)
+
+result = session.send('Analyze this repository')
+print(result.text)
+```
+
+</Tab>
+</Tabs>
+
+<Callout type="info">
+  `AhpHookExecutor` implements the same `HookExecutor` trait as the in-process `HookEngine`. When set on a session, it **replaces** the built-in hook engine for that session — all 11 lifecycle events are forwarded to the harness server instead.
+</Callout>
+
+## Writing a harness server
+
+A harness server is any process that reads newline-delimited JSON from stdin and writes JSON-RPC responses to stdout. All logging must go to stderr so it does not interfere with the protocol.
+
+### Python reference server
+
+The repository ships a reference Python server at `core/examples/ahp_server.py`. It demonstrates:
+
+- Parsing the `event_type` and `payload` from each message
+- Reading `meta.depth` for depth-aware decisions
+- Blocking dangerous Bash commands via regex patterns
+- Detecting sensitive output patterns in `post_tool_use` (fire-and-forget)
+- Writing all log output to stderr
+
+Key structure:
+
+```python
+import json, sys
+
+def on_pre_tool_use(payload, depth):
+    tool = payload.get("tool", "")
+    command = payload.get("args", {}).get("command", "")
+    # depth-aware: stricter policy for sub-agents
+    if depth > 0 and tool == "Bash" and is_dangerous(command):
+        return {"action": "block", "reason": f"blocked at depth {depth}"}
+    return {"action": "continue"}
+
+for raw_line in sys.stdin:
+    msg = json.loads(raw_line.strip())
+    params = msg.get("params", {})
+    event_type = params.get("event_type", "")
+    payload    = params.get("payload", {})
+    depth      = params.get("meta", {}).get("depth", 0)
+    req_id     = msg.get("id")          # None for notifications
+
+    if req_id is None:
+        dispatch_notification(event_type, payload, depth)
+        continue
+
+    result = dispatch_request(event_type, payload, depth) or {"action": "continue"}
+    print(json.dumps({"jsonrpc": "2.0", "id": req_id, "result": result}), flush=True)
+```
+
+### Minimal shell harness
+
+A shell script that allows everything (useful as a starting point):
+
+```bash
+#!/usr/bin/env bash
+# harness.sh — allow-all AHP server
+while IFS= read -r line; do
+    id=$(echo "$line" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))")
+    if [ -n "$id" ]; then
+        echo "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"action\":\"continue\"}}"
+    fi
+done
+```
+
+## Sub-agent depth propagation
+
+When a session with an attached harness spawns sub-agents via the `task` tool, the `AhpHookExecutor` is propagated automatically — the same harness server process receives events from all sub-agents. The `meta.depth` field increments with each nesting level, letting the server apply stricter policies at deeper depths.
+
+```
+Parent session (depth: 0)
+  └── task tool spawns Child (depth: 1)
+        └── task tool spawns Grandchild (depth: 2)
+              └── ...
+```
+
+All events from all levels are multiplexed into the same stdin/stdout stream. The harness server can distinguish origins using `session_id` (unique per agent) and `depth`.
+
+<Callout type="info">
+  AHP depth propagation mirrors the sentinel hook propagation described in the [Lifecycle Hooks](/docs/en/code/hooks) page. The same `ToolContext.sentinel_hook` mechanism is used — `AhpHookExecutor` is registered there and inherited at every nesting level.
+</Callout>
+
+## AHP vs. lifecycle hooks
+
+<TypeTable
+  type={{
+    "Language": {
+      description: "Hooks: Rust, Python, TypeScript only · AHP: any language",
+    },
+    "Process boundary": {
+      description: "Hooks: in-process · AHP: separate child process",
+    },
+    "Deployment": {
+      description: "Hooks: embedded in the application · AHP: standalone binary, reusable across applications",
+    },
+    "Latency": {
+      description: "Hooks: near-zero (in-process) · AHP: adds stdio round-trip for blocking events (~1 ms local)",
+    },
+    "Timeout on non-response": {
+      description: "Hooks: N/A · AHP: falls back to `continue` after the configured timeout (default 10 s)",
+    },
+    "Prompt modification": {
+      description: "Hooks: Rust only via HookResponse::modify · AHP: any language via `modified` field in response",
+    },
+    "Sub-agent propagation": {
+      description: "Both: automatic via sentinel hook / ToolContext.sentinel_hook",
+    },
+  }}
+/>
+
+## API reference
+
+### `AhpHookExecutor` (Rust)
+
+<TypeTable
+  type={{
+    "AhpHookExecutor::spawn(program, args)": {
+      description: "Spawn a harness server with the default 10-second blocking timeout. Returns `Arc<AhpHookExecutor>`.",
+    },
+    "AhpHookExecutor::spawn_with_timeout(program, args, timeout_ms)": {
+      description: "Spawn with an explicit blocking timeout in milliseconds.",
+    },
+    "executor.with_incremented_depth()": {
+      description: "Return a clone of the executor with `depth + 1`. Used internally by the task tool for sub-agent propagation.",
+    },
+  }}
+/>
+
+### `SessionOptions` (all SDKs)
+
+<TypeTable
+  type={{
+    "Rust: .with_hook_executor(executor)": {
+      description: "Replace the built-in HookEngine with an AhpHookExecutor (or any HookExecutor impl).",
+    },
+    "TypeScript: harnessServer: new HarnessServer(program, args)": {
+      description: "Spawn a harness server and attach it to the session.",
+    },
+    "Python: opts.harness_server = HarnessServer(program, args)": {
+      description: "Spawn a harness server and attach it to the session.",
+    },
+  }}
+/>

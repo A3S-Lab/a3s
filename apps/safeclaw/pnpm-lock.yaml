@@ -8,24 +8,6 @@ importers:
 
   .:
     dependencies:
-      '@flowgram.ai/free-layout-editor':
-        specifier: ^1.0.7
-        version: 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
-      '@flowgram.ai/free-lines-plugin':
-        specifier: ^1.0.7
-        version: 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
-      '@flowgram.ai/free-node-panel-plugin':
-        specifier: ^1.0.7
-        version: 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-snap-plugin':
-        specifier: ^1.0.7
-        version: 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
-      '@flowgram.ai/free-stack-plugin':
-        specifier: ^1.0.7
-        version: 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
-      '@flowgram.ai/minimap-plugin':
-        specifier: ^1.0.7
-        version: 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@lottiefiles/react-lottie-player':
         specifier: ^3.6.0
         version: 3.6.0(react@18.3.1)
@@ -104,6 +86,9 @@ importers:
       '@tiptap/suggestion':
         specifier: ^3.19.0
         version: 3.19.0(@tiptap/core@3.19.0(@tiptap/pm@3.19.0))(@tiptap/pm@3.19.0)
+      '@xyflow/react':
+        specifier: ^12.6.4
+        version: 12.10.1(@types/react@19.1.3)(immer@11.1.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       ahooks:
         specifier: ^3.8.1
         version: 3.8.4(react@18.3.1)
@@ -273,24 +258,28 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@biomejs/cli-linux-arm64@1.9.3':
     resolution: {integrity: sha512-vJkAimD2+sVviNTbaWOGqEBy31cW0ZB52KtpVIbkuma7PlfII3tsLhFa+cwbRAcRBkobBBhqZ06hXoZAN8NODQ==}
     engines: {node: '>=14.21.3'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@biomejs/cli-linux-x64-musl@1.9.3':
     resolution: {integrity: sha512-TJmnOG2+NOGM72mlczEsNki9UT+XAsMFAOo8J0me/N47EJ/vkLXxf481evfHLlxMejTY6IN8SdRSiPVLv6AHlA==}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@biomejs/cli-linux-x64@1.9.3':
     resolution: {integrity: sha512-x220V4c+romd26Mu1ptU+EudMXVS4xmzKxPVb9mgnfYlN4Yx9vD5NZraSx/onJnd3Gh/y8iPUdU5CDZJKg9COA==}
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@biomejs/cli-win32-arm64@1.9.3':
     resolution: {integrity: sha512-lg/yZis2HdQGsycUvHWSzo9kOvnGgvtrYRgoCEwPBwwAL8/6crOp3+f47tPwI/LI1dZrhSji7PNsGKGHbwyAhw==}
@@ -307,18 +296,11 @@ packages:
   '@bufbuild/protobuf@2.11.0':
     resolution: {integrity: sha512-sBXGT13cpmPR5BMgHE6UEEfEaShh5Ror6rfN3yEK5si7QVrtZg8LEPQb0VVhiLRUslD2yLnXtnRzG035J/mZXQ==}
 
-  '@dagrejs/graphlib@2.2.2':
-    resolution: {integrity: sha512-CbyGpCDKsiTg/wuk79S7Muoj8mghDGAESWGxcSyhHX5jD35vYMBZochYVFzlHxynpE9unpu6O+4ZuhrLxASsOg==}
-    engines: {node: '>17.0.0'}
-
   '@emotion/is-prop-valid@1.4.0':
     resolution: {integrity: sha512-QgD4fyscGcbbKwJmqNvUMSE02OsHUa+lAWKdEUIJKgqe5IwRSKd7+KhibEWdaKwgjLj0DRSHA9biAIqGBk05lw==}
 
   '@emotion/memoize@0.9.0':
     resolution: {integrity: sha512-30FAj7/EoJ5mwVPOWhAyCX+FPfMDrVecJAM+Iw9NRoSl4BBAQeqj4cApHHUXOVvIPgLVDsCFoz/hGD+5QQD1GQ==}
-
-  '@emotion/unitless@0.10.0':
-    resolution: {integrity: sha512-dFoMUuQA20zvtVTuxZww6OHoJYgrzfKM1t52mVySDJnMSEa08ruEvdYQbhvyu6soU+NeLVd3yKfTfT0NeV6qGg==}
 
   '@floating-ui/core@1.7.3':
     resolution: {integrity: sha512-sGnvb5dmrJaKEZ+LDIpguvdX3bDlEllmv4/ClQ9awcmCZrlx5jQyyMWFM5kBI+EyNOCDDiKk8il0zeuX3Zlg/w==}
@@ -334,207 +316,6 @@ packages:
 
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
-
-  '@flowgram.ai/background-plugin@1.0.7':
-    resolution: {integrity: sha512-6MMINn74NPkqTHm3Imalt3SYQhK4NJ/aL+X7lcIm6+f3MxKfhEjzM5/jZ97mJDWw3RUnTsJPkaH7/5IYQxJbnw==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/command@1.0.7':
-    resolution: {integrity: sha512-yXgOGIekfw6qQsciUGsPNsEjuwaoX17nrg2OEx7KkyHaiNHg+ovoTUbkxPYpMyCwqq4Z42GtHDyBafokem9JaA==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/core@1.0.7':
-    resolution: {integrity: sha512-2RIpdn065DQhcFfnKz2cagZdns38Z3p6JdFlZWFkUR9b1GuH5SStU2phxPyTanP29RPXpfxMfagvxI8Zp80emQ==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/document@1.0.7':
-    resolution: {integrity: sha512-ufl5EXJjEWdqYBFSad5X21Cgdm8ctPjw21NTrDoD0DkZYfwT8wPufkYHBLGnPxBHTxHJAk6L+pI6M9YADz72+A==}
-
-  '@flowgram.ai/editor@1.0.7':
-    resolution: {integrity: sha512-cwvD40zwrdLI98EVXHl48tLlyzGQ3h/4rtb+jrapWiywmhWY+OeXOLme83Idhs4iBlBr8fQSLwQlHtBS4Qp1yQ==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/form-core@1.0.7':
-    resolution: {integrity: sha512-bLWfTj0+tu0lscUOdm0i7lTRni+pEV3WrGrNZ/GPmo3Kdc+pGgmLaclPDsnkBe+Qahhbm/dSGwStXlegRZaq1g==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/form@1.0.7':
-    resolution: {integrity: sha512-ESMWEC5pwNBsJEP890LquAqt5yYBY0r2U/myxqkFqvTvnHI3k8xGVXFXLGZKLilrbW9ava8sGbDu4FnJNfK4pg==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/free-auto-layout-plugin@1.0.7':
-    resolution: {integrity: sha512-DRdL/CYRGnzAx0bOhtSTnsc9Gzt/dFvJf1EgY23qMUcZdrSe9nr+o/jkj6MOGPp+rgc2ogR5+BDFtStP3TpZ0g==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-      styled-components: '>=5'
-
-  '@flowgram.ai/free-history-plugin@1.0.7':
-    resolution: {integrity: sha512-8VKSiNx8TS+5eq59OQlf4cdi2nGn+gYuoGplSCt5z13gZ1aqzvL75qNMUiWKMkmwSwWWBPtAxjw22Hqc7MnyNQ==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/free-hover-plugin@1.0.7':
-    resolution: {integrity: sha512-aGIG3rkXsH3IqBKfnVM9Rs7txD8xNx8CEln2++nqnlAgznwozHmuYFY2/TSV5cny5A29GXyni0b/a1W0Hs/1sA==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/free-layout-core@1.0.7':
-    resolution: {integrity: sha512-bt3+rTX14A37xFMzP7Fj05qYdCK2iyLW3tJ5+AixAnxfY7XdSNSJJoDIcsRzIJKITvqAsoXoeQORQMMQmFJzIw==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/free-layout-editor@1.0.7':
-    resolution: {integrity: sha512-JS3RH/3ITcGeGVLBcjfU5gyTfEpyIqrPQuV9v5tqN76iC5lpOcywO6kxINKP/nBdKq9pTuHbWmcq71aHzo1XLw==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/free-lines-plugin@1.0.7':
-    resolution: {integrity: sha512-Tt0MDKnOjrb8eMRYnBoKB0D44dqJFf2EmezY97JXAL2IwsB+jjmaAFLLaHj6M6QtRoU/5YO4XUigUMjSKZxBxA==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-      styled-components: '>=5'
-
-  '@flowgram.ai/free-node-panel-plugin@1.0.7':
-    resolution: {integrity: sha512-RdBLyFE7D4l7RoXd9s7bui7HcbhoFlBJjd1FWO+22s1Zy0P9k/vy/gTTe9+oU+Df4rXJyJ0nZY01SCfHdSlCFQ==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/free-snap-plugin@1.0.7':
-    resolution: {integrity: sha512-8pimsO+EaXhFGNoAgwz78kTXZKMEkJDEnHC6+KPDR0TWyk9g/2COmtYvALG3HeOEUSseDKtl2EzBP4szQoMGCg==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-      styled-components: '>=5'
-
-  '@flowgram.ai/free-stack-plugin@1.0.7':
-    resolution: {integrity: sha512-A7YnzNGwzph9CzZdVhaen7GmAwb97wgcXd6jQ/G5I8TGF9QBkCc/5iz7/scEUbeq5Si/Ijenj4TW+nU+81GJaw==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-      styled-components: '>=5'
-
-  '@flowgram.ai/history-node-plugin@1.0.7':
-    resolution: {integrity: sha512-D2rCyStpGuQr5KMJUHV3wYiv4fiyLf/COoaSAH3aiGZa0GkKvn+RVQMlewaBa7gem/Hpz22b3BK+OYXQMsvJAA==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/history@1.0.7':
-    resolution: {integrity: sha512-zY7Gbje2nMqaD5rkpVn3ibEb7bPKR2rps90QDbrPl3jQxpO99yigWwbg7iE5UlkPuM51N4EEHCXdm4G68z2VRQ==}
-
-  '@flowgram.ai/i18n-plugin@1.0.7':
-    resolution: {integrity: sha512-dWjsDYF1qKoo8nipSx8sPhJ2xDrzK2FCUaRaKwSXbVNezeyEhHfuQwg80IAmliCjT1axYH8ZgloW6Vw/7InWXw==}
-
-  '@flowgram.ai/i18n@1.0.7':
-    resolution: {integrity: sha512-/QLhTH5zCh+OuZJynVaqJxQyacl6MI1Hd4EBkProl2kN16dHFdEa2+5bZ+oG7RKO+I9L9NNjpCTowbaXN4z17w==}
-
-  '@flowgram.ai/materials-plugin@1.0.7':
-    resolution: {integrity: sha512-75s5365egJljp20B+DklFZJ17PKtFI/8Y90k9f3pj3eZioaqhYN4RtO/6+2DvSqkFBTKsfBvh63L6QrxmOTedQ==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/minimap-plugin@1.0.7':
-    resolution: {integrity: sha512-y2z+XZ0sjRQ6ZGFv+qF9F/rLn0pX/I2U2lo+QKSNeDImdn4Z1UFJ7p5X2OEiYhilGCXD9TXGZnRTu0fIMhQtHQ==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/node-core-plugin@1.0.7':
-    resolution: {integrity: sha512-4KVsflElfCFfP18ljGEW10epj8xLDl7zL3/2vwaIE/dn52qsvOeVGV/03yRSOBcICLhNkX2g/A51ME6f6U39Qg==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/node-variable-plugin@1.0.7':
-    resolution: {integrity: sha512-gKJyVpPWab+QcWNin3C+jJ3wkYqiDzYQwlaRsL+aGC9Znw3TFREZDli8VfhB//HHXiTEVp0jY4NQ8stn5JJRGw==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/node@1.0.7':
-    resolution: {integrity: sha512-qRsPd+ezyYMOCxmw7BVESgOpV8Pfw0ZHGQ9NzlpHOIJz8D2pn+3Ur3BrdoxadFD7zP3yRguR7AgvR1r2WW3j4w==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/playground-react@1.0.7':
-    resolution: {integrity: sha512-lDRI5WxvJSvd576sMcxjIKUahUxigYgAFrc+5wRhHOxkTNfu2NJlZ3Yxp61h9GraiOGkkY7Ra8J4cGUkwwRsFg==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/reactive@1.0.7':
-    resolution: {integrity: sha512-0dhtCF5Mp/cpl6nTXZOtZ8bbr9i7OfqaCy14kFWNb0sRdtPdWuXijvoBpDFCw7+Su6D1agXGT9M96xrkMIOi/g==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/redux-devtool-plugin@1.0.7':
-    resolution: {integrity: sha512-CG0f1FPCV+pHZGwxR44+p2H5eEgF97qw9yRqIIiOYYuF63S8/Ebcz5Tca6e7qemNORz3zVicpmbinjlJ33x+LA==}
-
-  '@flowgram.ai/renderer@1.0.7':
-    resolution: {integrity: sha512-CEV15WF7eNfLY/Zq7h16Jai+giQ02X7D5YFPZQ69TOMtN8Yv9DkF58A+QbVU+Wq2USwJvObog8d5r1Fr1r7mJQ==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/select-box-plugin@1.0.7':
-    resolution: {integrity: sha512-5988MaU+8LA0IafQuICk9NrrTNEXPl6KT/Qz2YBTnmSVfF5G4bT7LF09t6YFLdmGL81JN3vjbhIDWPLo/VQM8A==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/shortcuts-plugin@1.0.7':
-    resolution: {integrity: sha512-PfQvks8mxc0zl/pQqJtbsZ0k40Gsj78vCN5kvYrnBwTtZSWVTXxXVLyGZiS5mHy34HAudJ2m9aJYshiJQr9gmA==}
-
-  '@flowgram.ai/utils@1.0.7':
-    resolution: {integrity: sha512-vwl7wgvbt3iomqvIkST1cA9LoGiWQh+PRK4DP52kJW7vgeAmssmw1//45pZnUNMMLfi+IB/EiW6MufvaTLEiUw==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/variable-core@1.0.7':
-    resolution: {integrity: sha512-KDI2fq8zxi1oPOWTdJPCQW2NfC4jMx8mQd0Ds99hYJF86WFCBPzJswoKi74EKcrRW5UuIYrE+cGUQaQdj20Xsw==}
-    peerDependencies:
-      react: '>=16.8'
-      react-dom: '>=16.8'
-
-  '@flowgram.ai/variable-layout@1.0.7':
-    resolution: {integrity: sha512-u7qdk24wxG3XbRxEr82fEstk8LFg6iZ+9oorNfkwD0+l75BPixTCr2AOgSOwklQFvXpfFtPCahru3AerbuhcuQ==}
-
-  '@flowgram.ai/variable-plugin@1.0.7':
-    resolution: {integrity: sha512-UQHMkEfggwRmzK1r+hkV/l86GXxC+FmZ17NjYjScu24V74O8b2UionIQKcwT2ZDO0WegwkHaQVwQteddnilAEQ==}
-
-  '@inversifyjs/common@1.4.0':
-    resolution: {integrity: sha512-qfRJ/3iOlCL/VfJq8+4o5X4oA14cZSBbpAmHsYj8EsIit1xDndoOl0xKOyglKtQD4u4gdNVxMHx4RWARk/I4QA==}
-
-  '@inversifyjs/core@1.3.5':
-    resolution: {integrity: sha512-B4MFXabhNTAmrfgB+yeD6wd/GIvmvWC6IQ8Rh/j2C3Ix69kmqwz9pr8Jt3E+Nho9aEHOQCZaGmrALgtqRd+oEQ==}
-
-  '@inversifyjs/reflect-metadata-utils@0.2.4':
-    resolution: {integrity: sha512-u95rV3lKfG+NT2Uy/5vNzoDujos8vN8O18SSA5UyhxsGYd4GLQn/eUsGXfOsfa7m34eKrDelTKRUX1m/BcNX5w==}
-    peerDependencies:
-      reflect-metadata: 0.2.2
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -632,36 +413,42 @@ packages:
     engines: {node: '>= 10.0.0'}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@parcel/watcher-linux-arm-musl@2.5.6':
     resolution: {integrity: sha512-Ve3gUCG57nuUUSyjBq/MAM0CzArtuIOxsBdQ+ftz6ho8n7s1i9E1Nmk/xmP323r2YL0SONs1EuwqBp2u1k5fxg==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm]
     os: [linux]
+    libc: [musl]
 
   '@parcel/watcher-linux-arm64-glibc@2.5.6':
     resolution: {integrity: sha512-f2g/DT3NhGPdBmMWYoxixqYr3v/UXcmLOYy16Bx0TM20Tchduwr4EaCbmxh1321TABqPGDpS8D/ggOTaljijOA==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@parcel/watcher-linux-arm64-musl@2.5.6':
     resolution: {integrity: sha512-qb6naMDGlbCwdhLj6hgoVKJl2odL34z2sqkC7Z6kzir8b5W65WYDpLB6R06KabvZdgoHI/zxke4b3zR0wAbDTA==}
     engines: {node: '>= 10.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@parcel/watcher-linux-x64-glibc@2.5.6':
     resolution: {integrity: sha512-kbT5wvNQlx7NaGjzPFu8nVIW1rWqV780O7ZtkjuWaPUgpv2NMFpjYERVi0UYj1msZNyCzGlaCWEtzc+exjMGbQ==}
     engines: {node: '>= 10.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@parcel/watcher-linux-x64-musl@2.5.6':
     resolution: {integrity: sha512-1JRFeC+h7RdXwldHzTsmdtYR/Ku8SylLgTU/reMuqdVD7CtLwf0VR1FqeprZ0eHQkO0vqsbvFLXUmYm/uNKJBg==}
     engines: {node: '>= 10.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@parcel/watcher-win32-arm64@2.5.6':
     resolution: {integrity: sha512-3ukyebjc6eGlw9yRt678DxVF7rjXatWiHvTXqphZLvo7aC5NdEgFufVwjFfY51ijYEWpXbqF5jtrK275z52D4Q==}
@@ -684,15 +471,6 @@ packages:
   '@parcel/watcher@2.5.6':
     resolution: {integrity: sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==}
     engines: {node: '>= 10.0.0'}
-
-  '@phosphor/algorithm@1.2.0':
-    resolution: {integrity: sha512-C9+dnjXyU2QAkWCW6QVDGExk4hhwxzAKf5/FIuYlHAI9X5vFv99PYm0EREDxX1PbMuvfFBZhPNu0PvuSDQ7sFA==}
-
-  '@phosphor/collections@1.2.0':
-    resolution: {integrity: sha512-T9/0EjSuY6+ga2LIFRZ0xupciOR3Qnyy8Q95lhGTC0FXZUFwC8fl9e8On6IcwasCszS+1n8dtZUWSIynfgdpzw==}
-
-  '@phosphor/messaging@1.3.0':
-    resolution: {integrity: sha512-k0JE+BTMKlkM335S2AmmJxoYYNRwOdW5jKBqLgjJdGRvUQkM0+2i60ahM45+J23atGJDv9esKUUBINiKHFhLew==}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -1232,21 +1010,25 @@ packages:
     resolution: {integrity: sha512-xleG9XJp6BoURNhSrbz9Wnig2I3xQxKj3Sk/MynPYXMGVBF9wUbgUpvrdIlm5wenwxGpLftpPdXkI9bkf6+5JQ==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@rspack/binding-linux-arm64-musl@1.3.6':
     resolution: {integrity: sha512-P27mxcL0cu5wBDFjoQrvRIpisraoA+hmVuOoeCvC/FT7aUIfLNzt94eCLZqAtZ7J7kNFoDXgJwCx3gAf1D0JdA==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@rspack/binding-linux-x64-gnu@1.3.6':
     resolution: {integrity: sha512-vDXC/29U26uYaSNJ9wttdykz+VPU6qbpBMHjS6aQWtp3kUYnI3w11f4HvzZYr9c1UbfQBFemljBuz/3elQPrNQ==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@rspack/binding-linux-x64-musl@1.3.6':
     resolution: {integrity: sha512-utNCoMVmveoGxVuswugsKpyToP5wAk/8tN5CiuWgNsnYc8szFfXEENJet1x1YmxB8C+TqqbiNpsgwba5ckNFdw==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@rspack/binding-win32-arm64-msvc@1.3.6':
     resolution: {integrity: sha512-HawcuYzozRmDnjInNQooKWU2mABE29oRQa+k254RuUNVVhmjcU8IgTSZ6nLduWqBLqxIYATOm/4zFi4InEuUXw==}
@@ -1349,30 +1131,35 @@ packages:
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@tauri-apps/cli-linux-arm64-musl@2.10.0':
     resolution: {integrity: sha512-GUoPdVJmrJRIXFfW3Rkt+eGK9ygOdyISACZfC/bCSfOnGt8kNdQIQr5WRH9QUaTVFIwxMlQyV3m+yXYP+xhSVA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@tauri-apps/cli-linux-riscv64-gnu@2.10.0':
     resolution: {integrity: sha512-JO7s3TlSxshwsoKNCDkyvsx5gw2QAs/Y2GbR5UE2d5kkU138ATKoPOtxn8G1fFT1aDW4LH0rYAAfBpGkDyJJnw==}
     engines: {node: '>= 10'}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@tauri-apps/cli-linux-x64-gnu@2.10.0':
     resolution: {integrity: sha512-Uvh4SUUp4A6DVRSMWjelww0GnZI3PlVy7VS+DRF5napKuIehVjGl9XD0uKoCoxwAQBLctvipyEK+pDXpJeoHng==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@tauri-apps/cli-linux-x64-musl@2.10.0':
     resolution: {integrity: sha512-AP0KRK6bJuTpQ8kMNWvhIpKUkQJfcPFeba7QshOQZjJ8wOS6emwTN4K5g/d3AbCMo0RRdnZWwu67MlmtJyxC1Q==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@tauri-apps/cli-win32-arm64-msvc@2.10.0':
     resolution: {integrity: sha512-97DXVU3dJystrq7W41IX+82JEorLNY+3+ECYxvXWqkq7DBN6FsA08x/EFGE8N/b0LTOui9X2dvpGGoeZKKV08g==}
@@ -1577,14 +1364,14 @@ packages:
     resolution: {integrity: sha512-L7z9BgrNEcYyUYtF+HaEfiS5ebkh9jXqbszz7pC0hRBPaatV0XjSD3+eHrpqFemQfgwiFF0QPIarnIihIDn7OA==}
     engines: {node: '>=10.13.0'}
 
-  '@tweenjs/tween.js@18.6.4':
-    resolution: {integrity: sha512-lB9lMjuqjtuJrx7/kOkqQBtllspPIN+96OvTCeJ2j5FEzinoAXTdAMFnDAQT1KVPRlnYfBrqxtqP66vDM40xxQ==}
-
   '@types/d3-array@3.2.2':
     resolution: {integrity: sha512-hOLWVbm7uRza0BYXpIIW5pxfrKe0W+D5lrFiAEYR+pb6w3N2SwSMaJbXdUfSEv+dT4MfHBLtn5js0LAWaO6otw==}
 
   '@types/d3-color@3.1.3':
     resolution: {integrity: sha512-iO90scth9WAbmgv7ogoq57O9YpKmFBbmoEoCHDB2xMBY0+/KVrqAaCDyCE16dUspeOvIxFFRI+0sEtqDqy2b4A==}
+
+  '@types/d3-drag@3.0.7':
+    resolution: {integrity: sha512-HE3jVKlzU9AaMazNufooRJ5ZpWmLIoc90A37WU2JMmeq28w1FQqCZswHZ3xR+SuxYftzHq6WU6KJHvqxKzTxxQ==}
 
   '@types/d3-ease@3.0.2':
     resolution: {integrity: sha512-NcV1JjO5oDzoK26oMzbILE6HW7uVXOHLQvHshBUW4UMdZGfiY6v5BeQwh9a9tCzv+CeefZQHJt5SRgK154RtiA==}
@@ -1598,6 +1385,9 @@ packages:
   '@types/d3-scale@4.0.9':
     resolution: {integrity: sha512-dLmtwB8zkAeO/juAMfnV+sItKjlsw2lKdZVVy6LRr0cBmegxSABiLEpGVmSJJ8O08i4+sGR6qQtb6WtuwJdvVw==}
 
+  '@types/d3-selection@3.0.11':
+    resolution: {integrity: sha512-bhAXu23DJWsrI45xafYpkQ4NtcKMwWnAC/vKrd2l+nxMFuvOT3XMYTIj2opv8vq8AO5Yh7Qac/nSeP/3zjTK0w==}
+
   '@types/d3-shape@3.1.8':
     resolution: {integrity: sha512-lae0iWfcDeR7qt7rA88BNiqdvPS5pFVPpo5OfjElwNaT2yyekbM0C9vK+yqBqEmHr6lDkRnYNoTBYlAgJa7a4w==}
 
@@ -1606,6 +1396,12 @@ packages:
 
   '@types/d3-timer@3.0.2':
     resolution: {integrity: sha512-Ps3T8E8dZDam6fUyNiMkekK3XUsaUEik+idO9/YjPtfj2qruF8tFBXS7XhtE4iIXBLxhmLjP3SXpLhVf21I9Lw==}
+
+  '@types/d3-transition@3.0.9':
+    resolution: {integrity: sha512-uZS5shfxzO3rGlu0cC3bjmMFKsXv+SmZZcgp0KD22ts4uGXp5EVYGzu/0YdwZeKmddhcAccYtREJKkPfXkZuCg==}
+
+  '@types/d3-zoom@3.0.8':
+    resolution: {integrity: sha512-iqMC4/YlFCSlO8+2Ii1GGGliCAY4XdeG748w5vQUbevlbDu0zSjH/+jojorQVBK/se0j6DUFNPBGSqD3YWYnDw==}
 
   '@types/debug@4.1.12':
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
@@ -1645,9 +1441,6 @@ packages:
   '@types/react@19.1.3':
     resolution: {integrity: sha512-dLWQ+Z0CkIvK1J8+wrDPwGxEYFA4RAyHoZPxHVGspYmFVnwGSNT24cGIhFJrtfRnWVuW8X7NO52gCXmhkVUWGQ==}
 
-  '@types/stylis@4.2.7':
-    resolution: {integrity: sha512-VgDNokpBoKF+wrdvhAAfS55OMQpL6QRglwTwNC3kIgBrzZxA4WsFj+2eLfEA/uMUDzBcEhYmjSbwQakn/i3ajA==}
-
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
 
@@ -1662,6 +1455,15 @@ packages:
 
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
+
+  '@xyflow/react@12.10.1':
+    resolution: {integrity: sha512-5eSWtIK/+rkldOuFbOOz44CRgQRjtS9v5nufk77DV+XBnfCGL9HAQ8PG00o2ZYKqkEU/Ak6wrKC95Tu+2zuK3Q==}
+    peerDependencies:
+      react: '>=17'
+      react-dom: '>=17'
+
+  '@xyflow/system@0.0.75':
+    resolution: {integrity: sha512-iXs+AGFLi8w/VlAoc/iSxk+CxfT6o64Uw/k0CKASOPqjqz6E0rb5jFZgJtXGZCpfQI6OQpu5EnumP5fGxQheaQ==}
 
   agentation@2.2.1:
     resolution: {integrity: sha512-yV9P1DggI7M3SRaRwLwt+xqE5lXqg5l8xtqCr8KzEkbnH8Wa6eRATU97uKnD7cC8FrsJP62Mmw0Xf5Xi5KV50Q==}
@@ -1726,14 +1528,8 @@ packages:
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
 
-  bezier-js@6.1.4:
-    resolution: {integrity: sha512-PA0FW9ZpcHbojUCMu28z9Vg/fNkwTj5YhusSAjHHDfHDGLxJ6YUKrAN2vk1fP2MMOxVw4Oko16FMlRGVBGqLKg==}
-
   big.js@5.2.2:
     resolution: {integrity: sha512-vyL2OymJxmarO8gxMr0mhChsO9QGwhynfuu4+MHTAW6czfq9humCB7rKpUjDd9YUiDPU4mzpyupFSvOClAwbmQ==}
-
-  bignumber.js@10.0.2:
-    resolution: {integrity: sha512-E8Wp9O06QA6lneJ4aRUXKYf/1GIomqUEmUMwtIOMtDxf1U52ffJY+y7JBk/8wRafA8qOIqLnXQGqonYXZdBnFQ==}
 
   binary-extensions@2.3.0:
     resolution: {integrity: sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw==}
@@ -1762,9 +1558,6 @@ packages:
   camelcase-css@2.0.1:
     resolution: {integrity: sha512-QOSvevhslijgYwRx6Rv7zKdMF8lbRmx+uQGx2+vDc+KI/eBnsy9kit5aj23AgGu3pa4t9AgwbnXWqS+iOY+2aA==}
     engines: {node: '>= 6'}
-
-  camelize@1.0.1:
-    resolution: {integrity: sha512-dU+Tx2fsypxTgtLoE36npi3UqcjSSMNYfkqgmoEhtZrraP5VWq0K7FkWVTYa8eMPtnU/G2txVsfdCJTn9uzpuQ==}
 
   caniuse-api@3.0.0:
     resolution: {integrity: sha512-bsTwuIg/BZZK/vreVTYYbSWoe2F+71P7K5QGEX+pT250DZbfU1MQ5prOKpPR+LL6uWKK3KMwMCAS74QB3Um1uw==}
@@ -1804,9 +1597,8 @@ packages:
   class-variance-authority@0.7.1:
     resolution: {integrity: sha512-Ka+9Trutv7G8M6WT6SeiRWz792K5qEqIGEGzXKhAE6xOWAY6pPH8U+9IY3oCMv6kqTmLsv7Xh/2w2RigkePMsg==}
 
-  clsx@1.2.1:
-    resolution: {integrity: sha512-EcR6r5a8bj6pu3ycsa/E/cKVGuTgZJZdsyUYHOksG/UHIiKfjxzRxYJpyVBwYaQeOvghal9fcc4PidlgzugAQg==}
-    engines: {node: '>=6'}
+  classcat@5.0.5:
+    resolution: {integrity: sha512-JhZUT7JFcQy/EzW605k/ktHtncoo9vnyW/2GspNYwFlN1C/WmjuV/xtS04e9SOkL2sTdw0VAZ2UGCcQ9lR6p6w==}
 
   clsx@2.1.1:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
@@ -1850,10 +1642,6 @@ packages:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
 
-  css-color-keywords@1.0.0:
-    resolution: {integrity: sha512-FyyrDHZKEjXDpNJYvVsV960FiqQyXc/LlYmsxl2BcdMb2WPx0OGRVgTg55rPSyLSNMqP52R9r8geSp7apN3Ofg==}
-    engines: {node: '>=4'}
-
   css-declaration-sorter@7.2.0:
     resolution: {integrity: sha512-h70rUM+3PNFuaBDTLe8wF/cdWu+dOZmb7pJt8Z2sedYbAcQVQV/tEchueg3GWxwqS0cxtbxmaHEdkNACqcvsow==}
     engines: {node: ^14 || ^16 || >=18}
@@ -1862,9 +1650,6 @@ packages:
 
   css-select@5.1.0:
     resolution: {integrity: sha512-nwoRF1rvRRnnCqqY7updORDsuqKzqYJ28+oSMaJMMgOauh3fvwHqMS7EZpIPqK8GL+g9mKxF1vP/ZjSeNjEVHg==}
-
-  css-to-react-native@3.2.0:
-    resolution: {integrity: sha512-e8RKaLXMOFii+02mOlqwjbD00KSEKqblnpO9e++1aXS1fPQOpS1YoqdVHBqPjHNoxeF2mimzVqawm2KCbEdtHQ==}
 
   css-tree@2.2.1:
     resolution: {integrity: sha512-OA0mILzGc1kCOCSJerOeqDxDQ4HOh+G8NbOJFOTgOCzpw7fCBubk0fEyxp8AgOL/jvLgYA/uV0cMbe43ElF1JA==}
@@ -1908,15 +1693,20 @@ packages:
   csstype@3.1.3:
     resolution: {integrity: sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==}
 
-  csstype@3.2.3:
-    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
-
   d3-array@3.2.4:
     resolution: {integrity: sha512-tdQAmyA18i4J7wprpYq8ClcxZy3SC31QMeByyCFyRt7BVHdREQZ5lpzoe5mFEYZUWe+oq8HBvk9JjpibyEV4Jg==}
     engines: {node: '>=12'}
 
   d3-color@3.1.0:
     resolution: {integrity: sha512-zg/chbXyeBtMQ1LbD/WSoW2DpC3I0mpmPdW+ynRTj/x2DAWYrIY7qeZIHidozwV24m4iavr15lNwIwLxRmOxhA==}
+    engines: {node: '>=12'}
+
+  d3-dispatch@3.0.1:
+    resolution: {integrity: sha512-rzUyPU/S7rwUflMyLc1ETDeBj0NRuHKKAcvukozwhshr6g6c5d8zh4c2gQjY2bZ0dXeGLWc1PF174P2tVvKhfg==}
+    engines: {node: '>=12'}
+
+  d3-drag@3.0.0:
+    resolution: {integrity: sha512-pWbUJLdETVA8lQNJecMxoXfH6x+mO2UQo8rSmZ+QqxcbyA3hfeprFgIT//HW2nlHChWeIIMwS2Fq+gEARkhTkg==}
     engines: {node: '>=12'}
 
   d3-ease@3.0.1:
@@ -1939,6 +1729,10 @@ packages:
     resolution: {integrity: sha512-GZW464g1SH7ag3Y7hXjf8RoUuAFIqklOAq3MRl4OaWabTFJY9PN/E1YklhXLh+OQ3fM9yS2nOkCoS+WLZ6kvxQ==}
     engines: {node: '>=12'}
 
+  d3-selection@3.0.0:
+    resolution: {integrity: sha512-fmTRWbNMmsmWq6xJV8D19U/gw/bwrHfNXxrIN+HfZgnzqTHp9jOmKMhsTUjXOJnZOdZY9Q28y4yebKzqDKlxlQ==}
+    engines: {node: '>=12'}
+
   d3-shape@3.2.0:
     resolution: {integrity: sha512-SaLBuwGm3MOViRq2ABk3eLoxwZELpH6zhl3FbAoJ7Vm1gofKx6El1Ib5z23NUEhF9AsGl7y+dzLe5Cw2AArGTA==}
     engines: {node: '>=12'}
@@ -1953,6 +1747,16 @@ packages:
 
   d3-timer@3.0.1:
     resolution: {integrity: sha512-ndfJ/JxxMd3nw31uyKoY2naivF+r29V+Lc0svZxe1JvvIRmi8hUsrMvdOwgS1o6uBHmiz91geQ0ylPP0aj1VUA==}
+    engines: {node: '>=12'}
+
+  d3-transition@3.0.1:
+    resolution: {integrity: sha512-ApKvfjsSR6tg06xrL434C0WydLr7JewBB3V+/39RMHsaXTOG0zmt/OAXeng5M5LBm0ojmxJrpomQVZ1aPvBL4w==}
+    engines: {node: '>=12'}
+    peerDependencies:
+      d3-selection: 2 - 3
+
+  d3-zoom@3.0.0:
+    resolution: {integrity: sha512-b8AmV3kfQaqWAuacbPuNbL6vahnOJflOhexLzMMNLga62+/nh0JzvJ0aO/5a5MVgUFGS7Hu1P9P03o3fJkDCyw==}
     engines: {node: '>=12'}
 
   dayjs@1.11.13:
@@ -2066,9 +1870,6 @@ packages:
 
   extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
-
-  fast-equals@2.0.4:
-    resolution: {integrity: sha512-caj/ZmjHljPrZtbzJ3kfH5ia/k4mTJe/qSiXAGzxZWRZgsgDV0cvNaQULqUX8t0/JVlzzEdYOwCN5DmzTxoD4w==}
 
   fast-equals@5.4.0:
     resolution: {integrity: sha512-jt2DW/aNFNwke7AUd+Z+e6pz39KO5rzdbbFCg2sGafS4mk13MI7Z8O5z9cADNn5lhGODIgLwug6TZO2ctf7kcw==}
@@ -2184,9 +1985,6 @@ packages:
   html-void-elements@3.0.0:
     resolution: {integrity: sha512-bEqo66MRXsUGxWHV5IP0PUiAWwoEjba4VCzg0LjFJBpchPaTfyfCKTG6bc5F8ucKec3q5y6qOdGyYTSBEvhCrg==}
 
-  i18n-js@4.5.2:
-    resolution: {integrity: sha512-QetDvWXkyX+FTbidPn7gEyGtO5l0cB5nj/MNfnXczrUWCGaF9p8pzoh5lTStXww3KZj2D9s5xXNH6Z5gKhd6iQ==}
-
   immer@10.2.0:
     resolution: {integrity: sha512-d/+XTN3zfODyjr89gM3mPq1WNX2B8pYsu7eORitdwyA2sBubnTl3laYlBk4sXY5FUa5qTZGBDPJICVbvqzjlbw==}
 
@@ -2205,11 +2003,6 @@ packages:
 
   intersection-observer@0.12.2:
     resolution: {integrity: sha512-7m1vEcPCxXYI8HqnL8CKI6siDyD+eIWSwgB3DZA+ZTogxk9I4CDnj4wilt9x/+/QbHI4YG5YZNmC6458/e9Ktg==}
-
-  inversify@6.2.2:
-    resolution: {integrity: sha512-KB836KHbZ9WrUnB8ax5MtadOwnqQYa+ZJO3KWbPFgcr4RIEnHM621VaqFZzOZd9+U7ln6upt9n0wJei7x2BNqw==}
-    peerDependencies:
-      reflect-metadata: ~0.2.2
 
   is-alphabetical@2.0.1:
     resolution: {integrity: sha512-FWyyY60MeTNyeSRpkM2Iry0G9hpr7/9kD40mD/cGQEuilcZYS4okz8SN2Q6rLCJ8gbCt6fN+rC+6tMGS99LaxQ==}
@@ -2305,9 +2098,6 @@ packages:
     resolution: {integrity: sha512-xXqpXoINfFhgua9xiqD8fPFHgkoq1mmmpE92WlDbm9rNRd/EbRb+Gqf908T2DMfuHjjJlksiK2RbHVOdD/MqSw==}
     engines: {node: '>=8.9.0'}
 
-  lodash-es@4.17.23:
-    resolution: {integrity: sha512-kVI48u3PZr38HdYz98UmfPnXl2DXrpdctLrFLCd3kOx1xUkOmpFPx7gCWWM5MPkL/fD8zb+Ph0QzjGFs4+hHWg==}
-
   lodash.castarray@4.4.0:
     resolution: {integrity: sha512-aVx8ztPv7/2ULbArGJ2Y42bG1mEQ5mGjpdvrbJcJFU3TbYybe+QlLS4pst9zV52ymy2in1KpFPiZnAOATxD4+Q==}
 
@@ -2347,9 +2137,6 @@ packages:
     resolution: {integrity: sha512-kL+RGZCcJi9BvJtzg2kshO192Ddy9hv3ij+cPrVPWSRzgCWCVazoQJxOjAwgK53NomL07HB7GPHW120FimjNhQ==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc
-
-  make-plural@7.5.0:
-    resolution: {integrity: sha512-0booA+aVYyVFoR67JBHdfVk0U08HmrBH2FrtmBqBa+NldlqXv/G2Z9VQuQq6Wgp2jDWdybEWGfBkk1cq5264WA==}
 
   markdown-it@14.1.1:
     resolution: {integrity: sha512-BuU2qnTti9YKgK5N+IeMubp14ZUKUUw7yeJbkjtosvHiP0AZ5c8IAgEMk79D0eC8F23r4Ac/q8cAIFdm2FtyoA==}
@@ -2859,10 +2646,6 @@ packages:
   postcss-value-parser@4.2.0:
     resolution: {integrity: sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==}
 
-  postcss@8.4.49:
-    resolution: {integrity: sha512-OCVPnIObs4N29kxTjzLfUryOkvZEq+pf8jTF0lg8E7uETuWHA+v7j3c/xJmiqpX450191LlmZfUKkXxkTry7nA==}
-    engines: {node: ^10 || ^12 || >=14}
-
   postcss@8.5.3:
     resolution: {integrity: sha512-dle9A3yYxlBSrt8Fu+IpjGT8SY8hN0mlaA6GY8t0P5PjIOZemULz/E2Bnm/2dcUOena75OTNkHI76uZBNUUq3A==}
     engines: {node: ^10 || ^12 || >=14}
@@ -3079,9 +2862,6 @@ packages:
   redux@5.0.1:
     resolution: {integrity: sha512-M9/ELqF6fy8FwmkpnF0S3YKOqMyoWJ4+CS5Efg2ct3oY9daQvd/Pc71FpGZsVsbl3Cpb+IIcjBDUnnyBdQbq4w==}
 
-  reflect-metadata@0.2.2:
-    resolution: {integrity: sha512-urBwgfrvVP/eAyXx4hluJivBKzuEbSQs9rKWCrCkbSxNv8mxPcUZKeuoF3Uy4mJl3Lwprp6yy5/39VWigZ4K6Q==}
-
   regenerator-runtime@0.14.1:
     resolution: {integrity: sha512-dYnhHh0nJoMfnkZs6GmmhFknAGRrLznOu5nc9ML+EJxGvrx6H7teuevqVqCuPcPK//3eDrrjQhehXVx9cnkGdw==}
 
@@ -3183,48 +2963,56 @@ packages:
     engines: {node: '>=14.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: glibc
 
   sass-embedded-linux-arm@1.97.3:
     resolution: {integrity: sha512-2lPQ7HQQg4CKsH18FTsj2hbw5GJa6sBQgDsls+cV7buXlHjqF8iTKhAQViT6nrpLK/e8nFCoaRgSqEC8xMnXuA==}
     engines: {node: '>=14.0.0'}
     cpu: [arm]
     os: [linux]
+    libc: glibc
 
   sass-embedded-linux-musl-arm64@1.97.3:
     resolution: {integrity: sha512-Lij0SdZCsr+mNRSyDZ7XtJpXEITrYsaGbOTz5e6uFLJ9bmzUbV7M8BXz2/cA7bhfpRPT7/lwRKPdV4+aR9Ozcw==}
     engines: {node: '>=14.0.0'}
     cpu: [arm64]
     os: [linux]
+    libc: musl
 
   sass-embedded-linux-musl-arm@1.97.3:
     resolution: {integrity: sha512-cBTMU68X2opBpoYsSZnI321gnoaiMBEtc+60CKCclN6PCL3W3uXm8g4TLoil1hDD6mqU9YYNlVG6sJ+ZNef6Lg==}
     engines: {node: '>=14.0.0'}
     cpu: [arm]
     os: [linux]
+    libc: musl
 
   sass-embedded-linux-musl-riscv64@1.97.3:
     resolution: {integrity: sha512-sBeLFIzMGshR4WmHAD4oIM7WJVkSoCIEwutzptFtGlSlwfNiijULp+J5hA2KteGvI6Gji35apR5aWj66wEn/iA==}
     engines: {node: '>=14.0.0'}
     cpu: [riscv64]
     os: [linux]
+    libc: musl
 
   sass-embedded-linux-musl-x64@1.97.3:
     resolution: {integrity: sha512-/oWJ+OVrDg7ADDQxRLC/4g1+Nsz1g4mkYS2t6XmyMJKFTFK50FVI2t5sOdFH+zmMp+nXHKM036W94y9m4jjEcw==}
     engines: {node: '>=14.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: musl
 
   sass-embedded-linux-riscv64@1.97.3:
     resolution: {integrity: sha512-l3IfySApLVYdNx0Kjm7Zehte1CDPZVcldma3dZt+TfzvlAEerM6YDgsk5XEj3L8eHBCgHgF4A0MJspHEo2WNfA==}
     engines: {node: '>=14.0.0'}
     cpu: [riscv64]
     os: [linux]
+    libc: glibc
 
   sass-embedded-linux-x64@1.97.3:
     resolution: {integrity: sha512-Kwqwc/jSSlcpRjULAOVbndqEy2GBzo6OBmmuBVINWUaJLJ8Kczz3vIsDUWLfWz/kTEw9FHBSiL0WCtYLVAXSLg==}
     engines: {node: '>=14.0.0'}
     cpu: [x64]
     os: [linux]
+    libc: glibc
 
   sass-embedded-unknown-all@1.97.3:
     resolution: {integrity: sha512-/GHajyYJmvb0IABUQHbVHf1nuHPtIDo/ClMZ81IDr59wT5CNcMe7/dMNujXwWugtQVGI5UGmqXWZQCeoGnct8Q==}
@@ -3261,9 +3049,6 @@ packages:
 
   set-cookie-parser@2.7.1:
     resolution: {integrity: sha512-IOc8uWeOZgnb3ptbCURJWNjWUPcO3ZnTTdzsurqERrP6nPyv+paC55vJM0LpOlT2ne+Ix+9+CRG1MNLlyZ4GjQ==}
-
-  shallowequal@1.1.0:
-    resolution: {integrity: sha512-y0m1JoUZSlPAjXVtPPW70aZWfIL/dSP7AFkRnniLCrK/8MDKog3TySTBmckD+RObVxH0v4Tox67+F14PdED2oQ==}
 
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
@@ -3324,24 +3109,11 @@ packages:
   style-to-object@1.0.8:
     resolution: {integrity: sha512-xT47I/Eo0rwJmaXC4oilDGDWLohVhR6o/xAQcPQN8q6QBuZVL8qMYL85kLmST5cPjAorwvqIA4qXTRQoYHaL6g==}
 
-  styled-components@6.3.11:
-    resolution: {integrity: sha512-opzgceGlQ5rdZdGwf9ddLW7EM2F4L7tgsgLn6fFzQ2JgE5EVQ4HZwNkcgB1p8WfOBx1GEZP3fa66ajJmtXhSrA==}
-    engines: {node: '>= 16'}
-    peerDependencies:
-      react: '>= 16.8.0'
-      react-dom: '>= 16.8.0'
-    peerDependenciesMeta:
-      react-dom:
-        optional: true
-
   stylehacks@7.0.5:
     resolution: {integrity: sha512-5kNb7V37BNf0Q3w+1pxfa+oiNPS++/b4Jil9e/kPDgrk1zjEd6uR7SZeJiYaLYH6RRSC1XX2/37OTeU/4FvuIA==}
     engines: {node: ^18.12.0 || ^20.9.0 || >=22.0}
     peerDependencies:
       postcss: ^8.4.32
-
-  stylis@4.3.6:
-    resolution: {integrity: sha512-yQ3rwFWRfwNUY7H5vpU0wfdkNSnvnJinhF9830Swlaxl03zsOjCfmX0ugac+3LtK0lYSgwL/KXc8oYL3mG4YFQ==}
 
   sucrase@3.35.0:
     resolution: {integrity: sha512-8EbVDiu9iN/nESwxeSxDKe0dunta1GOlHufmSSXxMD2z2/tMZpDMpvXQGsc+ajGo8y2uYUmixaSRUc/QPoQ0GA==}
@@ -3531,6 +3303,21 @@ packages:
     engines: {node: '>= 14'}
     hasBin: true
 
+  zustand@4.5.7:
+    resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
+    engines: {node: '>=12.7.0'}
+    peerDependencies:
+      '@types/react': '>=16.8'
+      immer: '>=9.0.6'
+      react: '>=16.8'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
@@ -3579,15 +3366,13 @@ snapshots:
 
   '@bufbuild/protobuf@2.11.0': {}
 
-  '@dagrejs/graphlib@2.2.2': {}
-
   '@emotion/is-prop-valid@1.4.0':
     dependencies:
       '@emotion/memoize': 0.9.0
+    optional: true
 
-  '@emotion/memoize@0.9.0': {}
-
-  '@emotion/unitless@0.10.0': {}
+  '@emotion/memoize@0.9.0':
+    optional: true
 
   '@floating-ui/core@1.7.3':
     dependencies:
@@ -3605,436 +3390,6 @@ snapshots:
       react-dom: 18.3.1(react@18.3.1)
 
   '@floating-ui/utils@0.2.10': {}
-
-  '@flowgram.ai/background-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/command@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/core@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/command': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@phosphor/messaging': 1.3.0
-      '@tweenjs/tween.js': 18.6.4
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      lodash-es: 4.17.23
-      nanoid: 5.1.6
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/document@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      lodash-es: 4.17.23
-      nanoid: 5.1.6
-      reflect-metadata: 0.2.2
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
-  '@flowgram.ai/editor@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/form': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/form-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/history': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/history-node-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/i18n-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/materials-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/node': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/node-core-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/node-variable-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/playground-react': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/reactive': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/redux-devtool-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/renderer': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/shortcuts-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/variable-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/form-core@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      lodash-es: 4.17.23
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/form@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/reactive': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      fast-equals: 2.0.4
-      lodash-es: 4.17.23
-      nanoid: 5.1.6
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-
-  '@flowgram.ai/free-auto-layout-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))':
-    dependencies:
-      '@dagrejs/graphlib': 2.2.2
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-layout-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-      styled-components: 6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-
-  '@flowgram.ai/free-history-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/form-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-layout-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/history': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      lodash-es: 4.17.23
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/free-hover-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-layout-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/renderer': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/free-layout-core@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/form-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/node': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/reactive': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      lodash-es: 4.17.23
-      nanoid: 5.1.6
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/free-layout-editor@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))':
-    dependencies:
-      '@flowgram.ai/editor': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-auto-layout-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
-      '@flowgram.ai/free-history-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-hover-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-layout-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-lines-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
-      '@flowgram.ai/free-stack-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
-      '@flowgram.ai/history': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/select-box-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      clsx: 1.2.1
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-    transitivePeerDependencies:
-      - styled-components
-
-  '@flowgram.ai/free-lines-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-layout-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-stack-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))
-      '@flowgram.ai/renderer': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      bezier-js: 6.1.4
-      clsx: 1.2.1
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-      styled-components: 6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-
-  '@flowgram.ai/free-node-panel-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-history-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-layout-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/free-snap-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-layout-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-      styled-components: 6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-
-  '@flowgram.ai/free-stack-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1))':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-layout-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      lodash-es: 4.17.23
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-      styled-components: 6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-
-  '@flowgram.ai/history-node-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/form': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/form-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/history': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/node': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      lodash-es: 4.17.23
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/history@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      lodash-es: 4.17.23
-      nanoid: 5.1.6
-      reflect-metadata: 0.2.2
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
-  '@flowgram.ai/i18n-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/i18n': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
-  '@flowgram.ai/i18n@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      i18n-js: 4.5.2
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
-  '@flowgram.ai/materials-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/renderer': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/minimap-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      lodash-es: 4.17.23
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/node-core-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/form-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/node': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/node-variable-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/form-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/node': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/variable-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/node@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/form': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/form-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      lodash-es: 4.17.23
-      nanoid: 5.1.6
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/playground-react@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/background-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/shortcuts-plugin': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/reactive@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-
-  '@flowgram.ai/redux-devtool-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/variable-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      reflect-metadata: 0.2.2
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
-  '@flowgram.ai/renderer@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/i18n': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      lodash-es: 4.17.23
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/select-box-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/renderer': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/shortcuts-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      reflect-metadata: 0.2.2
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
-  '@flowgram.ai/utils@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      clsx: 1.2.1
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      nanoid: 5.1.6
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-
-  '@flowgram.ai/variable-core@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/utils': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      fast-equals: 2.0.4
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      lodash-es: 4.17.23
-      nanoid: 5.1.6
-      react: 18.3.1
-      react-dom: 18.3.1(react@18.3.1)
-      reflect-metadata: 0.2.2
-      rxjs: 7.8.2
-
-  '@flowgram.ai/variable-layout@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/free-layout-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/variable-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      reflect-metadata: 0.2.2
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
-  '@flowgram.ai/variable-plugin@1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
-    dependencies:
-      '@flowgram.ai/core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/document': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/variable-core': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@flowgram.ai/variable-layout': 1.0.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      inversify: 6.2.2(reflect-metadata@0.2.2)
-      reflect-metadata: 0.2.2
-    transitivePeerDependencies:
-      - react
-      - react-dom
-
-  '@inversifyjs/common@1.4.0': {}
-
-  '@inversifyjs/core@1.3.5(reflect-metadata@0.2.2)':
-    dependencies:
-      '@inversifyjs/common': 1.4.0
-      '@inversifyjs/reflect-metadata-utils': 0.2.4(reflect-metadata@0.2.2)
-    transitivePeerDependencies:
-      - reflect-metadata
-
-  '@inversifyjs/reflect-metadata-utils@0.2.4(reflect-metadata@0.2.2)':
-    dependencies:
-      reflect-metadata: 0.2.2
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -4175,17 +3530,6 @@ snapshots:
       '@parcel/watcher-win32-ia32': 2.5.6
       '@parcel/watcher-win32-x64': 2.5.6
     optional: true
-
-  '@phosphor/algorithm@1.2.0': {}
-
-  '@phosphor/collections@1.2.0':
-    dependencies:
-      '@phosphor/algorithm': 1.2.0
-
-  '@phosphor/messaging@1.3.0':
-    dependencies:
-      '@phosphor/algorithm': 1.2.0
-      '@phosphor/collections': 1.2.0
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
@@ -5083,11 +4427,13 @@ snapshots:
 
   '@trysound/sax@0.2.0': {}
 
-  '@tweenjs/tween.js@18.6.4': {}
-
   '@types/d3-array@3.2.2': {}
 
   '@types/d3-color@3.1.3': {}
+
+  '@types/d3-drag@3.0.7':
+    dependencies:
+      '@types/d3-selection': 3.0.11
 
   '@types/d3-ease@3.0.2': {}
 
@@ -5101,6 +4447,8 @@ snapshots:
     dependencies:
       '@types/d3-time': 3.0.4
 
+  '@types/d3-selection@3.0.11': {}
+
   '@types/d3-shape@3.1.8':
     dependencies:
       '@types/d3-path': 3.1.1
@@ -5108,6 +4456,15 @@ snapshots:
   '@types/d3-time@3.0.4': {}
 
   '@types/d3-timer@3.0.2': {}
+
+  '@types/d3-transition@3.0.9':
+    dependencies:
+      '@types/d3-selection': 3.0.11
+
+  '@types/d3-zoom@3.0.8':
+    dependencies:
+      '@types/d3-interpolate': 3.0.4
+      '@types/d3-selection': 3.0.11
 
   '@types/debug@4.1.12':
     dependencies:
@@ -5150,8 +4507,6 @@ snapshots:
     dependencies:
       csstype: 3.1.3
 
-  '@types/stylis@4.2.7': {}
-
   '@types/trusted-types@2.0.7':
     optional: true
 
@@ -5162,6 +4517,29 @@ snapshots:
   '@types/use-sync-external-store@0.0.6': {}
 
   '@ungap/structured-clone@1.3.0': {}
+
+  '@xyflow/react@12.10.1(@types/react@19.1.3)(immer@11.1.4)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@xyflow/system': 0.0.75
+      classcat: 5.0.5
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+      zustand: 4.5.7(@types/react@19.1.3)(immer@11.1.4)(react@18.3.1)
+    transitivePeerDependencies:
+      - '@types/react'
+      - immer
+
+  '@xyflow/system@0.0.75':
+    dependencies:
+      '@types/d3-drag': 3.0.7
+      '@types/d3-interpolate': 3.0.4
+      '@types/d3-selection': 3.0.11
+      '@types/d3-transition': 3.0.9
+      '@types/d3-zoom': 3.0.8
+      d3-drag: 3.0.0
+      d3-interpolate: 3.0.1
+      d3-selection: 3.0.0
+      d3-zoom: 3.0.0
 
   agentation@2.2.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     optionalDependencies:
@@ -5220,11 +4598,7 @@ snapshots:
 
   balanced-match@1.0.2: {}
 
-  bezier-js@6.1.4: {}
-
   big.js@5.2.2: {}
-
-  bignumber.js@10.0.2: {}
 
   binary-extensions@2.3.0: {}
 
@@ -5253,8 +4627,6 @@ snapshots:
       update-browserslist-db: 1.1.3(browserslist@4.24.5)
 
   camelcase-css@2.0.1: {}
-
-  camelize@1.0.1: {}
 
   caniuse-api@3.0.0:
     dependencies:
@@ -5300,7 +4672,7 @@ snapshots:
     dependencies:
       clsx: 2.1.1
 
-  clsx@1.2.1: {}
+  classcat@5.0.5: {}
 
   clsx@2.1.1: {}
 
@@ -5332,8 +4704,6 @@ snapshots:
       shebang-command: 2.0.0
       which: 2.0.2
 
-  css-color-keywords@1.0.0: {}
-
   css-declaration-sorter@7.2.0(postcss@8.5.3):
     dependencies:
       postcss: 8.5.3
@@ -5345,12 +4715,6 @@ snapshots:
       domhandler: 5.0.3
       domutils: 3.2.2
       nth-check: 2.1.1
-
-  css-to-react-native@3.2.0:
-    dependencies:
-      camelize: 1.0.1
-      css-color-keywords: 1.0.0
-      postcss-value-parser: 4.2.0
 
   css-tree@2.2.1:
     dependencies:
@@ -5416,13 +4780,18 @@ snapshots:
 
   csstype@3.1.3: {}
 
-  csstype@3.2.3: {}
-
   d3-array@3.2.4:
     dependencies:
       internmap: 2.0.3
 
   d3-color@3.1.0: {}
+
+  d3-dispatch@3.0.1: {}
+
+  d3-drag@3.0.0:
+    dependencies:
+      d3-dispatch: 3.0.1
+      d3-selection: 3.0.0
 
   d3-ease@3.0.1: {}
 
@@ -5442,6 +4811,8 @@ snapshots:
       d3-time: 3.1.0
       d3-time-format: 4.1.0
 
+  d3-selection@3.0.0: {}
+
   d3-shape@3.2.0:
     dependencies:
       d3-path: 3.1.0
@@ -5455,6 +4826,23 @@ snapshots:
       d3-array: 3.2.4
 
   d3-timer@3.0.1: {}
+
+  d3-transition@3.0.1(d3-selection@3.0.0):
+    dependencies:
+      d3-color: 3.1.0
+      d3-dispatch: 3.0.1
+      d3-ease: 3.0.1
+      d3-interpolate: 3.0.1
+      d3-selection: 3.0.0
+      d3-timer: 3.0.1
+
+  d3-zoom@3.0.0:
+    dependencies:
+      d3-dispatch: 3.0.1
+      d3-drag: 3.0.0
+      d3-interpolate: 3.0.1
+      d3-selection: 3.0.0
+      d3-transition: 3.0.1(d3-selection@3.0.0)
 
   dayjs@1.11.13: {}
 
@@ -5540,8 +4928,6 @@ snapshots:
   eventemitter3@5.0.4: {}
 
   extend@3.0.2: {}
-
-  fast-equals@2.0.4: {}
 
   fast-equals@5.4.0: {}
 
@@ -5715,12 +5101,6 @@ snapshots:
 
   html-void-elements@3.0.0: {}
 
-  i18n-js@4.5.2:
-    dependencies:
-      bignumber.js: 10.0.2
-      lodash: 4.17.21
-      make-plural: 7.5.0
-
   immer@10.2.0: {}
 
   immer@11.1.4: {}
@@ -5732,12 +5112,6 @@ snapshots:
   internmap@2.0.3: {}
 
   intersection-observer@0.12.2: {}
-
-  inversify@6.2.2(reflect-metadata@0.2.2):
-    dependencies:
-      '@inversifyjs/common': 1.4.0
-      '@inversifyjs/core': 1.3.5(reflect-metadata@0.2.2)
-      reflect-metadata: 0.2.2
 
   is-alphabetical@2.0.1: {}
 
@@ -5814,8 +5188,6 @@ snapshots:
       emojis-list: 3.0.0
       json5: 2.2.3
 
-  lodash-es@4.17.23: {}
-
   lodash.castarray@4.4.0: {}
 
   lodash.isplainobject@4.0.6: {}
@@ -5843,8 +5215,6 @@ snapshots:
   lucide-react@0.453.0(react@18.3.1):
     dependencies:
       react: 18.3.1
-
-  make-plural@7.5.0: {}
 
   markdown-it@14.1.1:
     dependencies:
@@ -6526,12 +5896,6 @@ snapshots:
 
   postcss-value-parser@4.2.0: {}
 
-  postcss@8.4.49:
-    dependencies:
-      nanoid: 3.3.11
-      picocolors: 1.1.1
-      source-map-js: 1.2.1
-
   postcss@8.5.3:
     dependencies:
       nanoid: 3.3.11
@@ -6804,8 +6168,6 @@ snapshots:
 
   redux@5.0.1: {}
 
-  reflect-metadata@0.2.2: {}
-
   regenerator-runtime@0.14.1: {}
 
   regex-recursion@6.0.2:
@@ -6989,8 +6351,6 @@ snapshots:
 
   set-cookie-parser@2.7.1: {}
 
-  shallowequal@1.1.0: {}
-
   shebang-command@2.0.0:
     dependencies:
       shebang-regex: 3.0.0
@@ -7056,28 +6416,11 @@ snapshots:
     dependencies:
       inline-style-parser: 0.2.4
 
-  styled-components@6.3.11(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
-    dependencies:
-      '@emotion/is-prop-valid': 1.4.0
-      '@emotion/unitless': 0.10.0
-      '@types/stylis': 4.2.7
-      css-to-react-native: 3.2.0
-      csstype: 3.2.3
-      postcss: 8.4.49
-      react: 18.3.1
-      shallowequal: 1.1.0
-      stylis: 4.3.6
-      tslib: 2.8.1
-    optionalDependencies:
-      react-dom: 18.3.1(react@18.3.1)
-
   stylehacks@7.0.5(postcss@8.5.3):
     dependencies:
       browserslist: 4.24.5
       postcss: 8.5.3
       postcss-selector-parser: 7.1.0
-
-  stylis@4.3.6: {}
 
   sucrase@3.35.0:
     dependencies:
@@ -7307,5 +6650,13 @@ snapshots:
       strip-ansi: 7.1.0
 
   yaml@2.7.1: {}
+
+  zustand@4.5.7(@types/react@19.1.3)(immer@11.1.4)(react@18.3.1):
+    dependencies:
+      use-sync-external-store: 1.5.0(react@18.3.1)
+    optionalDependencies:
+      '@types/react': 19.1.3
+      immer: 11.1.4
+      react: 18.3.1
 
   zwitch@2.0.4: {}

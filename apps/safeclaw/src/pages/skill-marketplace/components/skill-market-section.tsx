@@ -11,14 +11,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useReactive } from "ahooks";
-import {
-	Code2,
-	Download,
-	ExternalLink,
-	Search,
-	Star,
-	Zap,
-} from "lucide-react";
+import { Code2, Download, ExternalLink, Search, Star, Zap } from "lucide-react";
 
 // Mock data - 实际应该从 API 获取
 const CATEGORIES = [
@@ -58,7 +51,8 @@ const MOCK_SKILLS: Skill[] = [
 	{
 		id: "2",
 		name: "数据库查询",
-		description: "支持多种数据库的查询和管理，包括 MySQL、PostgreSQL、MongoDB 等",
+		description:
+			"支持多种数据库的查询和管理，包括 MySQL、PostgreSQL、MongoDB 等",
 		category: "regular",
 		author: "DataTools",
 		icon: "database",
@@ -97,7 +91,8 @@ const MOCK_SKILLS: Skill[] = [
 	{
 		id: "5",
 		name: "漏洞扫描",
-		description: "自动扫描代码和依赖中的安全漏洞，支持 CVE 数据库查询和修复建议",
+		description:
+			"自动扫描代码和依赖中的安全漏洞，支持 CVE 数据库查询和修复建议",
 		category: "security",
 		author: "SecLab",
 		icon: "shield",
@@ -123,7 +118,8 @@ const MOCK_SKILLS: Skill[] = [
 	{
 		id: "7",
 		name: "代码混淆",
-		description: "保护 JavaScript 和 TypeScript 代码，防止逆向工程和知识产权泄露",
+		description:
+			"保护 JavaScript 和 TypeScript 代码，防止逆向工程和知识产权泄露",
 		category: "security",
 		author: "ObfuscatorPro",
 		icon: "lock",
@@ -136,7 +132,8 @@ const MOCK_SKILLS: Skill[] = [
 	{
 		id: "8",
 		name: "安全审计",
-		description: "全面的安全审计工具，检测 OWASP Top 10 漏洞、配置错误等安全问题",
+		description:
+			"全面的安全审计工具，检测 OWASP Top 10 漏洞、配置错误等安全问题",
 		category: "security",
 		author: "AuditSec",
 		icon: "search",
@@ -274,7 +271,11 @@ function SkillCard({ skill }: { skill: Skill }) {
 			{/* Tags */}
 			<div className="flex gap-1.5 flex-wrap">
 				{skill.tags.slice(0, 3).map((tag) => (
-					<Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
+					<Badge
+						key={tag}
+						variant="outline"
+						className="text-[10px] px-1.5 py-0"
+					>
 						{tag}
 					</Badge>
 				))}

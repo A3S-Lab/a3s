@@ -36,7 +36,6 @@ export function AgentSection() {
 	const snap = useSnapshot(settingsModel.state);
 	const d = snap.agentDefaults;
 	const [maxTurns, setMaxTurns] = useState(String(d.maxTurns));
-	const [defaultCwd, setDefaultCwd] = useState(d.defaultCwd);
 	const [autoArchiveHours, setAutoArchiveHours] = useState(
 		String(d.autoArchiveHours),
 	);
@@ -54,7 +53,6 @@ export function AgentSection() {
 		const uniqueSensitiveTools = Array.from(new Set(parsedSensitiveTools));
 		settingsModel.setAgentDefaults({
 			maxTurns: Number.isNaN(turns) || turns < 0 ? 0 : turns,
-			defaultCwd: defaultCwd.trim(),
 			autoArchiveHours: Number.isNaN(archive) || archive < 0 ? 0 : archive,
 			sensitiveTools: uniqueSensitiveTools,
 		});
@@ -90,22 +88,6 @@ export function AgentSection() {
 					/>
 					<p className="text-xs text-muted-foreground">
 						每个会话允许的最大对话轮次。0 表示不限制。
-					</p>
-				</div>
-
-				<div className="space-y-1.5">
-					<label htmlFor="agent-default-cwd" className="text-sm font-medium">
-						默认工作目录
-					</label>
-					<Input
-						id="agent-default-cwd"
-						value={defaultCwd}
-						onChange={(e) => setDefaultCwd(e.target.value)}
-						className="h-9 font-mono text-sm"
-						placeholder="/path/to/workspace"
-					/>
-					<p className="text-xs text-muted-foreground">
-						新建会话时的默认工作目录。留空则使用进程当前目录。
 					</p>
 				</div>
 

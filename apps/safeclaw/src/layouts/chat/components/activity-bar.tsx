@@ -1,5 +1,11 @@
 import { cn } from "@/lib/utils";
-import { MessageCircle, Settings, Container, Bot } from "lucide-react";
+import {
+	MessageCircle,
+	Settings,
+	Container,
+	Bot,
+	GitBranch,
+} from "lucide-react";
 import {
 	ReactNode,
 	useCallback,
@@ -14,7 +20,7 @@ const STORAGE_KEY = "safeclaw-active-route";
 
 const NAV_ITEMS = [
 	{ key: "chat", label: "Chat", icon: MessageCircle, path: "/" },
-	// { key: "workflow", label: "工作流", icon: GitBranch, path: "/workflow" },
+	{ key: "workflow", label: "工作流", icon: GitBranch, path: "/workflow" },
 	{
 		key: "agent-marketplace",
 		label: "智能体市场",

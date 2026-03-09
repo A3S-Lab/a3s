@@ -1,10 +1,7 @@
 import { PageLoading } from "@/components/custom/page-loading";
-import OnboardingWizard, {
-	isOnboardingComplete,
-} from "@/components/custom/onboarding-wizard";
 import KeepAlive, { useKeepAliveRef } from "keepalive-for-react";
 import { AnimatePresence, motion } from "motion/react";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useMemo } from "react";
 import { useLocation, useOutlet } from "react-router-dom";
 import ActivityBar from "./components/activity-bar";
 import Main from "./components/main";
@@ -13,9 +10,6 @@ export default function ChatLayout() {
 	const aliveRef = useKeepAliveRef();
 	const location = useLocation();
 	const outlet = useOutlet();
-	const [showOnboarding, setShowOnboarding] = useState(
-		() => !isOnboardingComplete(),
-	);
 
 	const currentCacheKey = useMemo(() => {
 		return location.pathname + location.search;
@@ -53,9 +47,6 @@ export default function ChatLayout() {
 					</KeepAlive>
 				</Suspense>
 			</Main>
-			{showOnboarding && (
-				<OnboardingWizard onComplete={() => setShowOnboarding(false)} />
-			)}
 		</div>
 	);
 }

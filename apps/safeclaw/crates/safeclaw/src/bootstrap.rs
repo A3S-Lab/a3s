@@ -10,6 +10,7 @@ use crate::{
     api::build_app,
     config::SafeClawConfig,
     runtime::RuntimeBuilder,
+    workflows::WorkflowStore,
 };
 use anyhow::{Context, Result};
 use std::path::PathBuf;
@@ -301,11 +302,14 @@ pub async fn start_gateway(
     gateway.start().await?;
     let gateway = Arc::new(gateway);
 
-    let channel_config_dir = dirs_next::config_dir()
+    let safeclaw_dir = dirs_next::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("safeclaw");
     let channel_config_store =
-        crate::config::ChannelAgentConfigStore::new(channel_config_dir).await;
+        crate::config::ChannelAgentConfigStore::new(safeclaw_dir.clone()).await;
+
+    let workflow_store = WorkflowStore::open(safeclaw_dir.join("workflows.db"))
+        .context("Failed to open workflow store")?;
 
     let engine = agent_state.engine.clone();
     let app = build_app(
@@ -313,6 +317,7 @@ pub async fn start_gateway(
         agent_state,
         memory_store,
         channel_config_store,
+        workflow_store,
         &[],
     );
 

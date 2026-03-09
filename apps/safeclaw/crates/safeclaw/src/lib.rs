@@ -99,6 +99,7 @@ pub mod sentinel;
 pub mod session;
 pub mod skills;
 pub mod tee;
+pub mod workflows;
 
 pub use agent::{agent_router, AgentEngine, AgentSessionStore, AgentState};
 pub use api::build_app;

@@ -15,7 +15,12 @@ import { SkillMarketSection } from "./components/skill-market-section";
 type SectionId = "agents" | "skills";
 
 const sections: SidebarSection<SectionId>[] = [
-	{ id: "agents", label: "智能体市场", icon: Bot, description: "发现外部智能体" },
+	{
+		id: "agents",
+		label: "智能体市场",
+		icon: Bot,
+		description: "发现外部智能体",
+	},
 	{ id: "skills", label: "技能市场", icon: Zap, description: "扩展智能体能力" },
 ];
 

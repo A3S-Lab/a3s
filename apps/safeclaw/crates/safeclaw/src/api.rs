@@ -6,6 +6,7 @@
 use crate::agent::{agent_router, AgentState};
 use crate::config::{ChannelAgentConfig, ChannelAgentConfigStore};
 use crate::runtime::Runtime;
+use crate::workflows::{CreateWorkflow, UpdateWorkflow, WorkflowStore};
 use a3s_memory::MemoryStore;
 use axum::{
     extract::{
@@ -34,6 +35,7 @@ pub fn build_app(
     agent_state: AgentState,
     memory_store: Arc<dyn MemoryStore>,
     channel_config_store: ChannelAgentConfigStore,
+    workflow_store: WorkflowStore,
     cors_origins: &[String],
 ) -> Router {
     let cors = build_cors(cors_origins);
@@ -49,6 +51,7 @@ pub fn build_app(
         .merge(agent_router(agent_state))
         .merge(fs_router())
         .merge(box_router())
+        .merge(workflow_router(workflow_store))
         .layer(cors)
 }
 
@@ -1184,15 +1187,16 @@ fn box_router() -> Router {
 
 /// Run `a3s box <args>` and return stdout, or an error response.
 async fn run_box(args: &[&str]) -> Result<String, (StatusCode, Json<serde_json::Value>)> {
-    let out = tokio::process::Command::new("a3s")
-        .arg("box")
+    // Use the bundled sidecar when available; fall back to `a3s-box` in PATH.
+    let program = std::env::var("A3S_BOX_BIN").unwrap_or_else(|_| "a3s-box".to_string());
+    let out = tokio::process::Command::new(&program)
         .args(args)
         .output()
         .await
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": format!("Failed to run a3s box: {e}")})),
+                Json(serde_json::json!({"error": format!("Failed to run a3s-box: {e}")})),
             )
         })?;
     if !out.status.success() {
@@ -1714,6 +1718,94 @@ async fn box_system_prune() -> impl IntoResponse {
     match run_box(&["system-prune", "--force"]).await {
         Ok(_) => (StatusCode::OK, Json(serde_json::json!({"reclaimed": 0}))).into_response(),
         Err(e) => e.into_response(),
+    }
+}
+
+// =============================================================================
+// Workflow API
+// =============================================================================
+
+fn workflow_router(store: WorkflowStore) -> Router {
+    Router::new()
+        .route(
+            "/api/workflows",
+            get(wf_list).post(wf_create),
+        )
+        .route(
+            "/api/workflows/:id",
+            get(wf_get).patch(wf_update).delete(wf_delete),
+        )
+        .with_state(store)
+}
+
+async fn wf_list(State(store): State<WorkflowStore>) -> impl IntoResponse {
+    match store.list().await {
+        Ok(list) => Json(list).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        )
+            .into_response(),
+    }
+}
+
+async fn wf_get(
+    State(store): State<WorkflowStore>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    match store.get(&id).await {
+        Ok(Some(wf)) => Json(wf).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "not found"}))).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        )
+            .into_response(),
+    }
+}
+
+async fn wf_create(
+    State(store): State<WorkflowStore>,
+    Json(body): Json<CreateWorkflow>,
+) -> impl IntoResponse {
+    match store.create(body).await {
+        Ok(wf) => (StatusCode::CREATED, Json(wf)).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        )
+            .into_response(),
+    }
+}
+
+async fn wf_update(
+    State(store): State<WorkflowStore>,
+    Path(id): Path<String>,
+    Json(body): Json<UpdateWorkflow>,
+) -> impl IntoResponse {
+    match store.update(&id, body).await {
+        Ok(Some(wf)) => Json(wf).into_response(),
+        Ok(None) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "not found"}))).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        )
+            .into_response(),
+    }
+}
+
+async fn wf_delete(
+    State(store): State<WorkflowStore>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    match store.remove(&id).await {
+        Ok(true) => StatusCode::NO_CONTENT.into_response(),
+        Ok(false) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "not found"}))).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": e.to_string()})),
+        )
+            .into_response(),
     }
 }
 

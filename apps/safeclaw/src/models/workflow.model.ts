@@ -1,84 +1,71 @@
+/**
+ * Workflow model — thin reactive cache over the SafeClaw backend API.
+ *
+ * All mutations go through the API first; on success the local Valtio state
+ * is updated to reflect the server response.  The `load()` action fetches the
+ * full list from the backend and should be called once on app startup.
+ */
 import { proxy } from "valtio";
-import { nanoid } from "nanoid";
+import { workflowApi, type WorkflowDoc } from "@/lib/agent-api";
 
-export interface WorkflowDoc {
-	id: string;
-	name: string;
-	description?: string;
-	createdAt: number;
-	updatedAt: number;
-	document: Record<string, unknown>;
-}
+export type { WorkflowDoc };
 
-const STORAGE_KEY = "safeclaw-workflows";
-
-function load(): WorkflowDoc[] {
-	try {
-		return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-	} catch {
-		return [];
-	}
-}
-
-function persist(list: WorkflowDoc[]) {
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-}
-
-const state = proxy<{ workflows: WorkflowDoc[] }>({
-	workflows: load(),
+const state = proxy<{ workflows: WorkflowDoc[]; loaded: boolean }>({
+	workflows: [],
+	loaded: false,
 });
 
 const actions = {
-	create(name: string, description?: string): WorkflowDoc {
-		const wf: WorkflowDoc = {
-			id: nanoid(),
-			name,
-			description,
-			createdAt: Date.now(),
-			updatedAt: Date.now(),
-			document: {
-				nodes: [
-					{
-						id: "start_0",
-						type: "start",
-						meta: { position: { x: 180, y: 300 } },
-						data: { title: "开始" },
-					},
-					{
-						id: "end_0",
-						type: "end",
-						meta: { position: { x: 680, y: 300 } },
-						data: { title: "结束" },
-					},
-				],
-				edges: [{ sourceNodeID: "start_0", targetNodeID: "end_0" }],
-			},
-		};
-		state.workflows.unshift(wf);
-		persist([...state.workflows]);
-		return wf;
-	},
-
-	update(
-		id: string,
-		patch: Partial<Pick<WorkflowDoc, "name" | "description" | "document">>,
-	) {
-		const wf = state.workflows.find((w) => w.id === id);
-		if (!wf) return;
-		Object.assign(wf, { ...patch, updatedAt: Date.now() });
-		persist([...state.workflows]);
-	},
-
-	remove(id: string) {
-		const idx = state.workflows.findIndex((w) => w.id === id);
-		if (idx >= 0) {
-			state.workflows.splice(idx, 1);
-			persist([...state.workflows]);
+	/** Fetch the full workflow list from the backend and populate local state. */
+	async load(): Promise<void> {
+		try {
+			const list = await workflowApi.list();
+			state.workflows = list;
+		} catch (e) {
+			console.warn("Failed to load workflows from backend:", e);
+		} finally {
+			state.loaded = true;
 		}
 	},
 
+	/** Create a new workflow and return the server-assigned document. */
+	async create(name: string, description?: string): Promise<WorkflowDoc> {
+		const wf = await workflowApi.create({ name, description });
+		state.workflows.unshift(wf);
+		return wf;
+	},
+
+	/** Update name, description, document, or session_id. */
+	async update(
+		id: string,
+		patch: Partial<
+			Pick<WorkflowDoc, "name" | "description" | "document" | "session_id">
+		>,
+	): Promise<void> {
+		const updated = await workflowApi.update(id, patch);
+		const idx = state.workflows.findIndex((w) => w.id === id);
+		if (idx >= 0) {
+			state.workflows[idx] = updated;
+		}
+	},
+
+	/** Delete a workflow. */
+	async remove(id: string): Promise<void> {
+		await workflowApi.remove(id);
+		const idx = state.workflows.findIndex((w) => w.id === id);
+		if (idx >= 0) {
+			state.workflows.splice(idx, 1);
+		}
+	},
+
+	/** Read a single workflow from the local cache (does not hit the network). */
 	get(id: string): WorkflowDoc | undefined {
 		return state.workflows.find((w) => w.id === id);
+	},
+
+	/** Bind a session to a workflow (persisted to backend). */
+	async setSessionId(id: string, sessionId: string): Promise<void> {
+		await actions.update(id, { session_id: sessionId });
 	},
 };
 

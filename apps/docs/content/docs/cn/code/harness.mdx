@@ -1,0 +1,377 @@
+---
+title: Agent 驾驭协议
+description: 语言无关的 JSON-RPC 2.0 协议，用于从任意外部进程监督 agent 会话
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Agent 驾驭协议（AHP）
+
+**Agent Harness Protocol（AHP）** 是一种语言无关的协议，用于从外部进程监督 A3S Code 的 agent 会话。[生命周期 Hooks](/docs/cn/code/hooks) 允许你在进程内（Rust、Python、TypeScript）拦截事件；而 AHP 允许你用**任意语言**做同样的事——只需派生一个子进程，通过 stdio 上的换行分隔 JSON-RPC 2.0 进行通信。
+
+AHP 采用与 MCP 相同的传输原则：A3S Code 宿主派生一个驾驭服务器进程，通过 stdin 发送事件，从 stdout 读取决策。驾驭服务器可用 Go、Java、Shell 脚本或任意其他语言实现。
+
+## 何时使用 AHP
+
+<TypeTable
+  type={{
+    "同语言进程内策略": {
+      description: "使用生命周期 Hooks——开销更低，类型原生，与 Rust/Python/TS 完全集成",
+    },
+    "已有合规服务器（Go、Java 等）": {
+      description: "使用 AHP——宿主将其作为子进程派生，无需 FFI",
+    },
+    "多个 agent 或应用共享策略": {
+      description: "使用 AHP——单个驾驭服务器二进制可被任意 A3S Code 会话复用",
+    },
+    "拥有独立存储的审计日志管道": {
+      description: "使用 AHP——即发即忘通知异步流向驾驭服务器",
+    },
+    "TEE 或沙箱边界": {
+      description: "使用 AHP——驾驭服务器在独立进程中运行，可强制执行自身隔离策略",
+    },
+  }}
+/>
+
+## 架构
+
+```
+A3S Code 宿主
+  └── AgentSession
+        └── AhpHookExecutor（实现 HookExecutor trait）
+              ├── pre_tool_use / pre_prompt  →  JSON-RPC 请求  →  等待响应
+              └── 其他所有事件               →  JSON-RPC 通知  →  不等待
+
+驾驭服务器（子进程，任意语言）
+  ├── 从 stdin 读取换行分隔的 JSON
+  └── 将 JSON-RPC 响应写入 stdout
+```
+
+驾驭服务器的 stderr 由宿主继承，所有服务器端日志输出将显示在宿主终端中。
+
+## 协议
+
+### 传输层
+
+事件通过子进程的 stdin/stdout 以换行分隔的 JSON 发送。每条消息是一个以换行符（`\n`）结尾的 JSON 对象。
+
+### 阻塞 vs. 即发即忘
+
+<TypeTable
+  type={{
+    "pre_tool_use": {
+      description: "阻塞——宿主发送带 id 的请求并等待响应，工具执行前必须获得决策",
+    },
+    "pre_prompt": {
+      description: "阻塞——宿主等待响应，之后才将提示词发送给 LLM",
+    },
+    "post_tool_use、session_start、session_end、generate_start、generate_end、post_response、on_error、skill_load、skill_unload": {
+      description: "即发即忘——宿主发送不带 id 的通知，不等待响应",
+    },
+  }}
+/>
+
+### 请求（阻塞事件）
+
+宿主在需要执行前获取决策时发送此消息：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "harness/event",
+  "params": {
+    "event_type": "pre_tool_use",
+    "payload": {
+      "session_id": "s1",
+      "tool": "Bash",
+      "args": { "command": "ls -la" },
+      "working_directory": "/workspace",
+      "recent_tools": []
+    },
+    "meta": { "depth": 0 }
+  }
+}
+```
+
+驾驭服务器必须在默认超时（10 秒）内返回 JSON-RPC 结果：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "action": "continue",
+    "reason": null,
+    "modified": null,
+    "retry_delay_ms": null
+  }
+}
+```
+
+### 通知（即发即忘事件）
+
+宿主为不需要决策的可观测事件发送此消息：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "harness/event",
+  "params": {
+    "event_type": "post_tool_use",
+    "payload": { "session_id": "s1", "tool": "Bash", ... },
+    "meta": { "depth": 0 }
+  }
+}
+```
+
+通知不需要也不会收到任何响应。
+
+### `meta.depth` — 子智能体嵌套深度
+
+每条 AHP 消息都携带一个包含 `depth` 字段的 `meta` 对象：
+
+<TypeTable
+  type={{
+    "depth: 0": {
+      description: "面向用户的会话（顶层 agent）",
+    },
+    "depth: 1": {
+      description: "由 task 工具派生的第一层子智能体",
+    },
+    "depth: N": {
+      description: "第 N 层子智能体。驾驭服务器可对更深层的 agent 应用更严格的策略。",
+    },
+  }}
+/>
+
+### 决策动作
+
+<TypeTable
+  type={{
+    "continue": {
+      description: "允许操作继续。若设置了 `modified`，则在执行前替换事件载荷。",
+    },
+    "block": {
+      description: "��消操作。`reason` 字符串作为错误返回给 agent。",
+    },
+    "skip": {
+      description: "静默跳过操作（不向 agent 返回错误）。",
+    },
+    "retry": {
+      description: "在 `retry_delay_ms` 毫秒后重试操作（默认：1000）。",
+    },
+  }}
+/>
+
+若驾驭服务器在超时时间内未响应，宿主将回退到 `continue`，确保 agent 不会永久卡住。
+
+## 挂载驾驭服务器
+
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::{Agent, AhpHookExecutor, SessionOptions};
+
+let agent = Agent::new("agent.hcl").await?;
+
+// 派生驾驭服务器进程
+let harness = AhpHookExecutor::spawn("python3", &["harness.py"]).await?;
+
+let session = agent.session("/workspace", Some(
+    SessionOptions::new().with_hook_executor(harness)
+))?;
+
+let result = session.send("分析此代码仓库", None).await?;
+println!("{}", result.text);
+```
+
+若需调整默认 10 秒的阻塞请求超时时间，使用 `spawn_with_timeout`：
+
+```rust
+let harness = AhpHookExecutor::spawn_with_timeout(
+    "python3", &["harness.py"],
+    30_000, // 30 秒
+).await?;
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent, HarnessServer } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+const session = agent.session('/workspace', {
+  harnessServer: new HarnessServer('python3', ['harness.py']),
+});
+
+const result = await session.send('分析此代码仓库');
+console.log(result.text);
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent, HarnessServer, SessionOptions
+
+agent = Agent.create('agent.hcl')
+
+opts = SessionOptions()
+opts.harness_server = HarnessServer('python3', ['harness.py'])
+
+session = agent.session('/workspace', opts)
+
+result = session.send('分析此代码仓库')
+print(result.text)
+```
+
+</Tab>
+</Tabs>
+
+<Callout type="info">
+  `AhpHookExecutor` 实现了与进程内 `HookEngine` 相同的 `HookExecutor` trait。在 session 上设置后，它会**替换**该 session 的内置 hook 引擎——所有 11 个生命周期事件都将转发到驾驭服务器。
+</Callout>
+
+## 编写驾驭服务器
+
+驾驭服务器是任意能从 stdin 读取换行分隔 JSON 并将 JSON-RPC 响应写入 stdout 的进程。所有日志必须写入 stderr，以免干扰协议通信。
+
+### Python 参考服务器
+
+仓库在 `core/examples/ahp_server.py` 提供了一个 Python 参考服务器，演示了：
+
+- 从每条消息中解析 `event_type` 和 `payload`
+- 读取 `meta.depth` 以实现深度感知决策
+- 通过正则表达式阻止危险的 Bash 命令
+- 在 `post_tool_use`（即发即忘）中检测敏感输出模式
+- 将所有日志写入 stderr
+
+核心结构：
+
+```python
+import json, sys
+
+def on_pre_tool_use(payload, depth):
+    tool = payload.get("tool", "")
+    command = payload.get("args", {}).get("command", "")
+    # 深度感知：对子智能体应用更严格的策略
+    if depth > 0 and tool == "Bash" and is_dangerous(command):
+        return {"action": "block", "reason": f"在深度 {depth} 处被阻断"}
+    return {"action": "continue"}
+
+for raw_line in sys.stdin:
+    msg = json.loads(raw_line.strip())
+    params = msg.get("params", {})
+    event_type = params.get("event_type", "")
+    payload    = params.get("payload", {})
+    depth      = params.get("meta", {}).get("depth", 0)
+    req_id     = msg.get("id")          # 通知时为 None
+
+    if req_id is None:
+        dispatch_notification(event_type, payload, depth)
+        continue
+
+    result = dispatch_request(event_type, payload, depth) or {"action": "continue"}
+    print(json.dumps({"jsonrpc": "2.0", "id": req_id, "result": result}), flush=True)
+```
+
+### 最简 Shell 驾驭服务器
+
+允许一切操作的 Shell 脚本（可作为起点使用）：
+
+```bash
+#!/usr/bin/env bash
+# harness.sh — 全放行 AHP 服务器
+while IFS= read -r line; do
+    id=$(echo "$line" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))")
+    if [ -n "$id" ]; then
+        echo "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"action\":\"continue\"}}"
+    fi
+done
+```
+
+## 子智能体深度传播
+
+当挂载了驾驭服务器的 session 通过 `task` 工具派生子智能体时，`AhpHookExecutor` 会自动传播——同一个驾驭服务器进程接收来自所有子智能体的事件。`meta.depth` 字段随嵌套层级递增，使服务器能对更深层的 agent 应用更严格的策略。
+
+```
+父 session（depth: 0）
+  └── task 工具派生子智能体（depth: 1）
+        └── task 工具派生孙子智能体（depth: 2）
+              └── ...
+```
+
+所有层级的事件都被复用到同一个 stdin/stdout 流中。驾驭服务器可通过 `session_id`（每个 agent 唯一）和 `depth` 区分事件来源。
+
+<Callout type="info">
+  AHP 深度传播与[生命周期 Hooks](/docs/cn/code/hooks) 页面描述的哨兵钩子传播机制一致——使用相同的 `ToolContext.sentinel_hook` 机制，`AhpHookExecutor` 在其中注册并在每个嵌套层级继承。
+</Callout>
+
+## AHP vs. 生命周期 Hooks
+
+<TypeTable
+  type={{
+    "语言": {
+      description: "Hooks：仅 Rust、Python、TypeScript · AHP：任意语言",
+    },
+    "进程边界": {
+      description: "Hooks：进程内 · AHP：独立子进程",
+    },
+    "部署方式": {
+      description: "Hooks：嵌入应用程序 · AHP：独立二进制，可跨应用复用",
+    },
+    "延迟": {
+      description: "Hooks：近零（进程内）· AHP：阻塞事件需要 stdio 往返（本地约 1 ms）",
+    },
+    "无响应时的超时处理": {
+      description: "Hooks：不适用 · AHP：在配置的超时时间后（默认 10 秒）回退到 `continue`",
+    },
+    "提示词修改": {
+      description: "Hooks：仅 Rust，通过 HookResponse::modify · AHP：任意语言，通过响应中的 `modified` 字段",
+    },
+    "子智能体传播": {
+      description: "两者均支持：通过哨兵钩子 / ToolContext.sentinel_hook 自动传播",
+    },
+  }}
+/>
+
+## API 参考
+
+### `AhpHookExecutor`（Rust）
+
+<TypeTable
+  type={{
+    "AhpHookExecutor::spawn(program, args)": {
+      description: "以默认 10 秒阻塞超时派生驾驭服务器，返回 `Arc<AhpHookExecutor>`。",
+    },
+    "AhpHookExecutor::spawn_with_timeout(program, args, timeout_ms)": {
+      description: "以显式阻塞超时时间（毫秒）派生驾驭服务器。",
+    },
+    "executor.with_incremented_depth()": {
+      description: "返回 depth + 1 的执行器克隆。由 task 工具内部用于子智能体传播。",
+    },
+  }}
+/>
+
+### `SessionOptions`（所有 SDK）
+
+<TypeTable
+  type={{
+    "Rust: .with_hook_executor(executor)": {
+      description: "用 AhpHookExecutor（或任意 HookExecutor 实现）替换内置 HookEngine。",
+    },
+    "TypeScript: harnessServer: new HarnessServer(program, args)": {
+      description: "派生驾驭服务器并将其挂载到会话。",
+    },
+    "Python: opts.harness_server = HarnessServer(program, args)": {
+      description: "派生驾驭服务器并将其挂载到会话。",
+    },
+  }}
+/>

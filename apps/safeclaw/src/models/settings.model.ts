@@ -86,40 +86,9 @@ const DEFAULT_SENSITIVE_TOOLS = [
 ];
 
 const DEFAULTS: SettingsState = {
-	defaultProvider: "local-power",
-	// Model ID must match the exact ID that the Power server registers.
-	// The Power server uses the full HuggingFace path as the model ID.
-	defaultModel: "Qwen/Qwen2.5-7B-Instruct-GGUF:Q3_K_M",
+	defaultProvider: "",
+	defaultModel: "",
 	providers: [
-		{
-			name: "local-power",
-			apiKey: "",
-			baseUrl: "http://127.0.0.1:11435/v1",
-			models: [
-				{
-					id: "Qwen/Qwen2.5-7B-Instruct-GGUF:Q3_K_M",
-					name: "Qwen2.5 7B Instruct (Q3_K_M)",
-					family: "qwen2.5",
-					attachment: false,
-					reasoning: true,
-					toolCall: true,
-					temperature: true,
-					modalities: { input: ["text"], output: ["text"] },
-					limit: { context: 2048, output: 1024 },
-				},
-				{
-					id: "Qwen/Qwen2.5-7B-Instruct-GGUF:Q4_K_M",
-					name: "Qwen2.5 7B Instruct (Q4_K_M)",
-					family: "qwen2.5",
-					attachment: false,
-					reasoning: true,
-					toolCall: true,
-					temperature: true,
-					modalities: { input: ["text"], output: ["text"] },
-					limit: { context: 4096, output: 1024 },
-				},
-			],
-		},
 		{
 			name: "anthropic",
 			apiKey: "",
@@ -463,7 +432,7 @@ export function getPreferredSessionModel(): {
 		currentProvider?.models[0]?.id ||
 		"";
 
-	if (currentProvider && currentProvider.name !== "local-power") {
+	if (currentProvider && currentProvider.name !== "") {
 		const hasCreds =
 			!!currentProvider.apiKey ||
 			!!currentProvider.baseUrl ||
@@ -477,7 +446,7 @@ export function getPreferredSessionModel(): {
 	}
 
 	const nonLocal = state.providers.filter(
-		(p) => p.name !== "local-power" && p.models.length > 0,
+		(p) => p.name !== "" && p.models.length > 0,
 	);
 	const withCreds = nonLocal.find(
 		(p) =>
@@ -493,9 +462,9 @@ export function getPreferredSessionModel(): {
 	}
 
 	if (nonLocal.length > 0) {
-		// currentProvider is local-power and no non-local provider has credentials.
-		// Stay on local-power so the user's explicit default is respected.
-		// (If local-power is unavailable the user should configure a remote provider.)
+		// currentProvider is  and no non-local provider has credentials.
+		// Stay on  so the user's explicit default is respected.
+		// (If  is unavailable the user should configure a remote provider.)
 		if (currentProvider) {
 			return { providerName: currentProvider.name, modelId: currentModelId };
 		}
@@ -524,7 +493,7 @@ export function getLocalPrivacyModel(): {
 	modelId: string;
 } | null {
 	const local = state.providers.find(
-		(p) => p.name === "local-power" && p.models.length > 0,
+		(p) => p.name === "" && p.models.length > 0,
 	);
 	if (!local) return null;
 	const modelId = local.models.some((m) => m.id === state.defaultModel)

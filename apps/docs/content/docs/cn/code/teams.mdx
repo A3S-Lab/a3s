@@ -1,0 +1,391 @@
+---
+title: 智能体团队
+description: 通过团队工作流和任务板直接控制实现多智能体协作
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+# 智能体团队
+
+A3S Code 提供两种基于团队的多智能体协作模式：
+
+| 模式 | API | 适用场景 |
+|------|-----|---------|
+| 团队工作流 | `run_team(goal, ws, slots)` | 自动组建 Lead → Worker → Reviewer 团队并协调执行 |
+| 任务板直接控制 | `AgentTeam` + `TeamRunner` | 需要完全控制编排逻辑的高级场景 |
+
+<Callout type="info">
+  **单智能体编排和实时监控**，请参阅 [智能体编排器](/docs/code/orchestrator)。
+</Callout>
+
+## 架构
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│              AgentOrchestrator.run_team()               │
+│                                                         │
+│  ┌─────────────────────────┐                           │
+│  │ run_team(goal, ws, slots)│                           │
+│  │  role = Lead/Worker/     │                           │
+│  │         Reviewer         │                           │
+│  └──────────────┬──────────┘                           │
+│                 │                                        │
+│           AgentTeam +                                    │
+│           TeamRunner                                     │
+│           ├─ Lead 分解目标                               │
+│           ├─ Worker 执行任务                             │
+│           └─ Reviewer 审批                               │
+└─────────────────────────────────────────────────────────┘
+              ↑
+        AgentRegistry
+   (内置: general / explore / plan)
+   (自定义: ~/.a3s/agents/*.yaml)
+```
+
+**核心概念：**
+
+| 概念 | 职责 |
+|------|------|
+| `AgentTeam` | 任务板 + 成员注册表 — 管理任务生命周期和团队组成 |
+| `TeamRunner` | 执行协调器 — 驱动 Lead/Worker/Reviewer 循环 |
+| `TeamRole` | 角色枚举 — `Lead`、`Worker`、`Reviewer` |
+| `TeamTaskBoard` | 线程安全任务队列 — 所有成员共享 `Arc<TeamTaskBoard>` |
+
+---
+
+## 团队工作流 (run_team)
+
+`run_team(goal, workspace, slots)` 自动组建 Lead → Worker → Reviewer 团队，将目标分解成任务并协调执行。
+
+<Callout type="info">
+  **前提**：需要使用 `Orchestrator.create(agent)` 挂载真实 Agent。
+</Callout>
+
+### 快速开始
+
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::{Agent, orchestrator::{AgentOrchestrator, AgentSlot, TeamRole}};
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let agent = Arc::new(Agent::new("agent.hcl").await?);
+    let orch = AgentOrchestrator::from_agent(agent);
+
+    let slots = vec![
+        AgentSlot::new("general", "").with_role(TeamRole::Lead).with_max_steps(5),
+        AgentSlot::new("general", "").with_role(TeamRole::Worker).with_max_steps(5),
+        AgentSlot::new("general", "").with_role(TeamRole::Reviewer).with_max_steps(3),
+    ];
+
+    let result = orch.run_team(
+        "列举 3 种常见的 Rust 数据结构并简要说明",
+        ".",
+        slots,
+    ).await?;
+
+    println!("完成任务: {}", result.done_tasks.len());
+    println!("拒绝任务: {}", result.rejected_tasks.len());
+    println!("轮数: {}", result.rounds);
+    for task in &result.done_tasks {
+        println!("  [{}] {}", task.id, task.result.as_deref().unwrap_or(""));
+    }
+    Ok(())
+}
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+```typescript
+import { Agent, Orchestrator, AgentSlot } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const orch = Orchestrator.create(agent);
+
+const slots: AgentSlot[] = [
+  { agentType: 'general', role: 'lead',     prompt: '', permissive: true, maxSteps: 5 },
+  { agentType: 'general', role: 'worker',   prompt: '', permissive: true, maxSteps: 5 },
+  { agentType: 'general', role: 'reviewer', prompt: '', permissive: true, maxSteps: 3 },
+];
+
+const result = await orch.runTeam(
+  '列举 3 种常见的 JavaScript 数据结构并简要说明',
+  '.',
+  slots,
+);
+
+console.log(`完成任务: ${result.doneTasks.length}`);
+console.log(`拒绝任务: ${result.rejectedTasks.length}`);
+console.log(`轮数: ${result.rounds}`);
+for (const task of result.doneTasks) {
+  console.log(`  [${task.id}] ${task.result}`);
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent, Orchestrator, AgentSlot
+
+agent = Agent.create("agent.hcl")
+orch = Orchestrator.create(agent)
+
+slots = [
+    AgentSlot(agent_type="general", role="lead",     prompt="", permissive=True, max_steps=5),
+    AgentSlot(agent_type="general", role="worker",   prompt="", permissive=True, max_steps=5),
+    AgentSlot(agent_type="general", role="reviewer", prompt="", permissive=True, max_steps=3),
+]
+
+result = orch.run_team(
+    "列举 3 种常见的 Python 数据结构并简要说明",
+    ".",
+    slots,
+)
+
+print(f"完成任务: {len(result.done_tasks)}")
+print(f"拒绝任务: {len(result.rejected_tasks)}")
+print(f"轮数: {result.rounds}")
+for task in result.done_tasks:
+    print(f"  [{task.id}] {task.result}")
+```
+
+</Tab>
+</Tabs>
+
+### 工作流程
+
+```
+1. Lead 分解
+   ├─ 接收目标，输出 JSON: {"tasks": ["任务1", "任务2", ...]}
+   └─ 为每个任务调用 board.post()
+
+2. Worker 执行（并发）
+   ├─ 循环 claim() → 认领任务 → session.send(任务) → board.complete()
+   └─ 无任务时等待 poll_interval_ms
+
+3. Reviewer 审批
+   ├─ 对每个 InReview 任务，检查结果是否符合要求
+   ├─ 输出 "APPROVED: <原因>" → board.approve() → 任务进入 Done
+   └─ 输出 "REJECTED: <反馈>" → board.reject() → 任务重新入队
+
+4. 终止条件
+   └─ 全部任务完成，或达到 max_rounds 上限
+```
+
+### TeamRole 枚举
+
+| 角色 | Rust | TypeScript/Python | 职责 |
+|------|------|-------------------|------|
+| Lead | `TeamRole::Lead` | `"lead"` | 分解目标，发布任务 |
+| Worker | `TeamRole::Worker` | `"worker"` | 认领并执行任务 |
+| Reviewer | `TeamRole::Reviewer` | `"reviewer"` | 审批任务结果 |
+
+### TeamRunResult
+
+<TypeTable
+  type={{
+    "done_tasks": {
+      description: "类型: Vec<TeamTask> · 已通过 Reviewer 审批的任务列表",
+    },
+    "rejected_tasks": {
+      description: "类型: Vec<TeamTask> · 经过 max_rounds 轮后仍处于 Rejected 状态的任务",
+    },
+    "rounds": {
+      description: "类型: usize · Reviewer 已完成的轮询轮数",
+    },
+  }}
+/>
+
+---
+
+## 任务板直接控制
+
+对于需要完全控制编排逻辑的场景，直接操作 `AgentTeam` + `TeamTaskBoard` + `TeamRunner`。
+
+### AgentTeam 初始化
+
+```rust
+use a3s_code_core::agent_teams::{AgentTeam, TeamConfig, TeamRole};
+
+let config = TeamConfig {
+    max_tasks: 50,
+    channel_buffer: 128,
+    max_rounds: 10,
+    poll_interval_ms: 200,
+};
+let mut team = AgentTeam::new("my-team", config);
+team.add_member("lead",     TeamRole::Lead);
+team.add_member("worker-1", TeamRole::Worker);
+team.add_member("reviewer", TeamRole::Reviewer);
+```
+
+### TeamConfig
+
+<TypeTable
+  type={{
+    "max_tasks": {
+      description: "类型: usize · 默认: 50 · 任务板可同时持有的最大任务数",
+    },
+    "channel_buffer": {
+      description: "类型: usize · 默认: 128 · 每个成员 mpsc 消息通道的缓冲区大小",
+    },
+    "max_rounds": {
+      description: "类型: usize · 默认: 10 · run_until_done 中 Reviewer 轮询的最大轮数",
+    },
+    "poll_interval_ms": {
+      description: "类型: u64 · 默认: 200 · Worker 和 Reviewer 轮询新任务的时间间隔（毫秒）",
+    },
+  }}
+/>
+
+### TeamTaskBoard
+
+任务板通过 `Arc<TeamTaskBoard>` 在所有成员之间共享，所有操作均线程安全：
+
+```rust
+let board = team.task_board();     // &TeamTaskBoard
+let board = team.task_board_arc(); // Arc<TeamTaskBoard>
+
+// 发布任务 — 返回 Some(task_id) 或 None（任务板已满）
+let id = board.post("重构 JWT 验证", "lead", None).unwrap();
+// 预指派给特定 Worker；任务直接进入 InProgress 状态
+let id = board.post("添加 CSRF 防护", "lead", Some("worker-1")).unwrap();
+
+// 认领下一个 Open 或 Rejected 状态的任务
+let task: Option<TeamTask> = board.claim("worker-1");
+
+// 完成任务（移至 InReview 状态）
+board.complete(&task.id, "已添加 RS256 密钥轮换");
+
+// Reviewer 操作
+board.approve(&task.id);   // InReview → Done
+board.reject(&task.id);    // InReview → Rejected（可被 Worker 重新认领）
+
+// 查询
+let tasks: Vec<TeamTask>    = board.by_status(TaskStatus::Done);
+let tasks: Vec<TeamTask>    = board.by_assignee("worker-1");
+let task:  Option<TeamTask> = board.get(&id);
+
+// 统计 — (open, in_progress, in_review, done, rejected)
+let (open, prog, rev, done, rej) = board.stats();
+let total = board.len();
+```
+
+### 任务状态机
+
+```
+post()      claim()       complete()
+  Open ──► InProgress ──► InReview
+                               │
+                   ┌───────────┴──────────┐
+              approve()              reject()
+                   │                      │
+                 Done           Rejected ──► (重新 claim())
+```
+
+### TeamTask 字段
+
+<TypeTable
+  type={{
+    "id": {
+      description: "类型: String · 顺序任务标识符（例如 task-1、task-2）",
+    },
+    "description": {
+      description: "类型: String · Lead 发布的任务描述文本",
+    },
+    "posted_by": {
+      description: "类型: String · 任务创建者的成员 ID",
+    },
+    "assigned_to": {
+      description: "类型: Option<String> · 当前负责该任务的成员 ID",
+    },
+    "status": {
+      description: "类型: TaskStatus · 当前任务状态",
+    },
+    "result": {
+      description: "类型: Option<String> · complete() 设置的输出文本",
+    },
+    "created_at": {
+      description: "类型: i64 · 任务发布时的 Unix 时间戳",
+    },
+    "updated_at": {
+      description: "类型: i64 · 最近一次状态变更的 Unix 时间戳",
+    },
+  }}
+/>
+
+### TeamRunner
+
+`TeamRunner` 将真实的 `AgentSession`（或任意 `AgentExecutor`）绑定到团队成员，并运行完整的自动化工作流：
+
+```rust
+use a3s_code_core::agent_teams::TeamRunner;
+use std::sync::Arc;
+
+let mut runner = TeamRunner::new(team); // team 在此处被消耗
+
+runner.bind_session("lead",     Arc::new(agent.session(".", None)?))?;
+runner.bind_session("worker-1", Arc::new(agent.session(".", None)?))?;
+runner.bind_session("reviewer", Arc::new(agent.session(".", None)?))?;
+
+let result = runner.run_until_done("审查 auth 模块").await?;
+```
+
+`run_until_done` 内部工作流：
+
+1. **Lead 分解** — Lead Session 收到以下提示，Runner 解析 JSON 并调用 `board.post()`：
+   ```
+   You are the lead agent in a team. Your goal is: {goal}
+   Decompose this goal into concrete, self-contained tasks for your team workers.
+   Respond with ONLY valid JSON: {"tasks": ["task 1", "task 2", ...]}
+   ```
+
+2. **Worker 执行** — 每个 Worker 启动独立的 Tokio 任务，循环 `claim() → session.send() → board.complete()`
+
+3. **Reviewer 循环** — 对每个 InReview 任务，Reviewer Session 收到任务描述和结果，回应 `APPROVED: <原因>` 或 `REJECTED: <反馈>`
+
+4. **终止条件** — 所有任务完成，或达到 `max_rounds` 上限
+
+### AgentExecutor Trait
+
+`TeamRunner` 接受任何实现了 `AgentExecutor` 的类型，不仅限于 `AgentSession`。适用于测试或自定义执行策略：
+
+```rust
+use a3s_code_core::agent_teams::AgentExecutor;
+
+#[async_trait::async_trait]
+impl AgentExecutor for MyCustomExecutor {
+    async fn execute(&self, prompt: &str) -> a3s_code_core::Result<String> {
+        // 在此调用你的 LLM 或自定义逻辑
+        Ok("result".to_string())
+    }
+}
+
+runner.bind_session("worker-1", Arc::new(MyCustomExecutor::new()))?;
+```
+
+### 点对点消息传递
+
+```rust
+// 向指定成员发送消息
+team.send_message("lead", "worker-1", "重点关注 JWT 验证", None).await;
+
+// 广播给所有成员
+team.broadcast("lead", "开始审核阶段", None).await;
+
+// Worker 读取收件箱
+let mut rx = team.take_receiver("worker-1").unwrap();
+while let Some(msg) = rx.recv().await {
+    println!("{} → {}: {}", msg.from, msg.to, msg.content);
+}
+```
+
+---
+

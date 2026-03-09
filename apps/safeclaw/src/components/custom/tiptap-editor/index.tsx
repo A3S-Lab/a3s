@@ -7,7 +7,7 @@ import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { HelpCircle, Sparkles, Terminal, User, Wrench } from "lucide-react";
+import { User } from "lucide-react";
 import {
 	forwardRef,
 	useCallback,
@@ -24,202 +24,6 @@ import "./tiptap.css";
 // =============================================================================
 // Data sources for / and @
 // =============================================================================
-
-/** Skills available for /slash-command */
-const SLASH_ITEMS: SuggestionItem[] = [
-	// Session commands (a3s-code v0.9.0)
-	{
-		id: "help",
-		label: "help",
-		description: "显示可用命令列表",
-		group: "命令",
-		icon: <HelpCircle className="size-3 text-blue-500" />,
-	},
-	{
-		id: "cost",
-		label: "cost",
-		description: "查看 Token 用量与费用",
-		group: "命令",
-		icon: <Terminal className="size-3 text-blue-500" />,
-	},
-	{
-		id: "model",
-		label: "model",
-		description: "查看或切换当前模型",
-		group: "命令",
-		icon: <Terminal className="size-3 text-blue-500" />,
-	},
-	{
-		id: "history",
-		label: "history",
-		description: "查看对话轮次与 Token 统计",
-		group: "命令",
-		icon: <Terminal className="size-3 text-blue-500" />,
-	},
-	{
-		id: "tools",
-		label: "tools",
-		description: "列出已注册的工具",
-		group: "命令",
-		icon: <Terminal className="size-3 text-blue-500" />,
-	},
-	{
-		id: "compact",
-		label: "compact",
-		description: "手动触发上下文压缩",
-		group: "命令",
-		icon: <Terminal className="size-3 text-blue-500" />,
-	},
-	{
-		id: "clear",
-		label: "clear",
-		description: "清空对话历史",
-		group: "命令",
-		icon: <Terminal className="size-3 text-blue-500" />,
-	},
-	{
-		id: "mcp",
-		label: "mcp",
-		description: "查看 MCP 服务器状态",
-		group: "命令",
-		icon: <Terminal className="size-3 text-blue-500" />,
-	},
-	// Skills
-	{
-		id: "factor_analysis",
-		label: "factor_analysis",
-		description: "批量因子检验 — IC、分层回测、归因",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	{
-		id: "model_monitor",
-		label: "model_monitor",
-		description: "模型监控 — PSI、AUC 衰减、漂移告警",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	{
-		id: "k8s_upgrade_preflight",
-		label: "k8s_upgrade_preflight",
-		description: "K8s 升级预检自动化",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	{
-		id: "pipeline_quality_monitor",
-		label: "pipeline_quality_monitor",
-		description: "数据管道质量监控",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	{
-		id: "competitive_intel",
-		label: "competitive_intel",
-		description: "竞品情报自动采集与分析",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	{
-		id: "backtest_report",
-		label: "backtest_report",
-		description: "策略回测报告生成",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	{
-		id: "credit_feature_eng",
-		label: "credit_feature_eng",
-		description: "信用特征工程自动化",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	{
-		id: "schema_migration",
-		label: "schema_migration",
-		description: "数据库 Schema 迁移管理",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	{
-		id: "incident_runbook",
-		label: "incident_runbook",
-		description: "故障应急 Runbook 执行",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	{
-		id: "prd_template",
-		label: "prd_template",
-		description: "PRD 模板生成与校验",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	{
-		id: "payment_approval",
-		label: "payment_approval",
-		description: "供应商付款审批与执行",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	{
-		id: "invoice_reconcile",
-		label: "invoice_reconcile",
-		description: "发票自动核对与对账",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	{
-		id: "ab_test_analyzer",
-		label: "ab_test_analyzer",
-		description: "A/B 测试显著性分析",
-		group: "技能",
-		icon: <Sparkles className="size-3 text-primary" />,
-	},
-	// Tools
-	{
-		id: "tool_read",
-		label: "Read",
-		description: "读取文件内容",
-		group: "工具",
-		icon: <Wrench className="size-3 text-muted-foreground" />,
-	},
-	{
-		id: "tool_write",
-		label: "Write",
-		description: "写入文件",
-		group: "工具",
-		icon: <Wrench className="size-3 text-muted-foreground" />,
-	},
-	{
-		id: "tool_bash",
-		label: "Bash",
-		description: "执行终端命令",
-		group: "工具",
-		icon: <Wrench className="size-3 text-muted-foreground" />,
-	},
-	{
-		id: "tool_web_search",
-		label: "WebSearch",
-		description: "联网搜索",
-		group: "工具",
-		icon: <Wrench className="size-3 text-muted-foreground" />,
-	},
-	{
-		id: "tool_python",
-		label: "PythonExec",
-		description: "执行 Python 代码",
-		group: "工具",
-		icon: <Wrench className="size-3 text-muted-foreground" />,
-	},
-	{
-		id: "tool_sql",
-		label: "SQLExecute",
-		description: "执行 SQL 查询",
-		group: "工具",
-		icon: <Wrench className="size-3 text-muted-foreground" />,
-	},
-];
 
 /** Items available for @mention: agents */
 const MENTION_ITEMS: SuggestionItem[] = [
@@ -269,6 +73,8 @@ interface TiptapEditorProps {
 	onPasteImages?: (images: { media_type: string; data: string }[]) => void;
 	/** Override @mention items (defaults to BUILTIN_PERSONAS) */
 	mentionItems?: SuggestionItem[];
+	/** Slash command items fetched from the API */
+	slashItems?: SuggestionItem[];
 }
 
 const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
@@ -281,10 +87,18 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 			onChange,
 			onPasteImages,
 			mentionItems,
+			slashItems,
 		},
 		ref,
 	) => {
 		const resolvedMentionItems = mentionItems ?? MENTION_ITEMS;
+		// Use a ref so the slash suggestion closure always reads the latest items
+		// without needing to recreate the editor when items change.
+		const slashItemsRef = useRef<SuggestionItem[]>(slashItems ?? []);
+		useEffect(() => {
+			slashItemsRef.current = slashItems ?? [];
+		}, [slashItems]);
+
 		// Guard: when a suggestion item is just selected via Enter, skip the
 		// next Enter keydown so it doesn't also submit the message.
 		const justSelectedRef = useRef(false);
@@ -292,11 +106,12 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 		const slashSuggestion = useMemo(
 			() =>
 				createSuggestionRenderer(
-					(q) => filterItems(SLASH_ITEMS, q),
+					(q) => filterItems(slashItemsRef.current, q),
 					() => {
 						justSelectedRef.current = true;
 					},
 				),
+			// eslint-disable-next-line react-hooks/exhaustive-deps
 			[],
 		);
 

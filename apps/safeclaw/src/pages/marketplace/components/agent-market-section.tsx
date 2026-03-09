@@ -40,7 +40,8 @@ const MOCK_AGENTS: MarketplaceAgent[] = [
 	{
 		id: "code-reviewer",
 		name: "代码审查助手",
-		description: "专业的代码审查工具，支持多种编程语言，提供详细的代码质量分析和改进建议",
+		description:
+			"专业的代码审查工具，支持多种编程语言，提供详细的代码质量分析和改进建议",
 		category: "coding",
 		author: "A3S Lab",
 		avatar: "code-reviewer",
@@ -53,7 +54,8 @@ const MOCK_AGENTS: MarketplaceAgent[] = [
 	{
 		id: "doc-generator",
 		name: "技术文档生成器",
-		description: "自动生成高质量的技术文档，支持 API 文档、用户手册、开发指南等多种格式",
+		description:
+			"自动生成高质量的技术文档，支持 API 文档、用户手册、开发指南等多种格式",
 		category: "writing",
 		author: "DocGen Team",
 		avatar: "doc-writer",
@@ -131,9 +133,12 @@ export function AgentMarketSection() {
 			toast.success(`${agent.name} 安装成功`, { id: agent.id });
 		} catch (error) {
 			console.error("Failed to install agent:", error);
-			toast.error(`安装失败: ${error instanceof Error ? error.message : "未知错误"}`, {
-				id: agent.id,
-			});
+			toast.error(
+				`安装失败: ${error instanceof Error ? error.message : "未知错误"}`,
+				{
+					id: agent.id,
+				},
+			);
 		} finally {
 			state.installingId = null;
 		}
@@ -160,9 +165,12 @@ export function AgentMarketSection() {
 			toast.success(`${agent.name} 已卸载`, { id: agent.id });
 		} catch (error) {
 			console.error("Failed to uninstall agent:", error);
-			toast.error(`卸载失败: ${error instanceof Error ? error.message : "未知错误"}`, {
-				id: agent.id,
-			});
+			toast.error(
+				`卸载失败: ${error instanceof Error ? error.message : "未知错误"}`,
+				{
+					id: agent.id,
+				},
+			);
 		} finally {
 			state.installingId = null;
 		}
@@ -306,7 +314,11 @@ function AgentCard({
 			{/* Tags */}
 			<div className="flex gap-1.5 flex-wrap">
 				{agent.tags.slice(0, 3).map((tag) => (
-					<Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0">
+					<Badge
+						key={tag}
+						variant="outline"
+						className="text-[10px] px-1.5 py-0"
+					>
 						{tag}
 					</Badge>
 				))}

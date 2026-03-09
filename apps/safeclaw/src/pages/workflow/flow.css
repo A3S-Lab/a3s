@@ -1,0 +1,80 @@
+/* React Flow theme overrides — matches SafeClaw light/dark design system */
+
+.react-flow {
+	--xy-background-color: transparent;
+	--xy-background-pattern-color: hsl(var(--border) / 0.6);
+	--xy-node-border-default: hsl(var(--border));
+	--xy-edge-stroke: hsl(var(--border));
+	--xy-edge-stroke-selected: hsl(var(--primary));
+	--xy-handle-background-color: hsl(var(--background));
+	--xy-handle-border-color: hsl(var(--border));
+	--xy-minimap-background-color: hsl(var(--card));
+	--xy-minimap-mask-background-color: hsl(var(--muted) / 0.6);
+	--xy-controls-button-background-color: hsl(var(--card));
+	--xy-controls-button-background-color-hover: hsl(var(--muted));
+	--xy-controls-button-color: hsl(var(--foreground));
+	--xy-controls-button-border-color: hsl(var(--border));
+	--xy-controls-box-shadow: 0 1px 6px hsl(var(--foreground) / 0.06);
+}
+
+/* Hide React Flow attribution */
+.react-flow__attribution {
+	display: none;
+}
+
+/* Smooth edge animations (Dify-style: thicker, more prominent) */
+.react-flow__edge-path {
+	stroke-width: 2;
+	transition: stroke 0.2s ease, stroke-width 0.2s ease;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+	stroke: hsl(var(--primary));
+	stroke-width: 3;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+	stroke: hsl(var(--primary) / 0.7);
+	stroke-width: 2.5;
+}
+
+/* Handle hover effects */
+.react-flow__handle {
+	transition: all 0.2s ease;
+}
+
+.react-flow__handle:hover {
+	transform: scale(1.3);
+	border-color: hsl(var(--primary)) !important;
+	background: hsl(var(--primary) / 0.2) !important;
+}
+
+/* Connection line (when dragging) */
+.react-flow__connection-path {
+	stroke: hsl(var(--primary));
+	stroke-width: 2;
+}
+
+/* Controls panel */
+.react-flow__controls {
+	border-radius: 10px;
+	overflow: hidden;
+	border: 1px solid hsl(var(--border));
+	box-shadow: 0 1px 6px hsl(var(--foreground) / 0.06);
+}
+
+.react-flow__controls-button {
+	border-bottom: 1px solid hsl(var(--border));
+	padding: 6px;
+}
+
+.react-flow__controls-button:last-child {
+	border-bottom: none;
+}
+
+/* Minimap */
+.react-flow__minimap {
+	border: 1px solid hsl(var(--border));
+	border-radius: 10px;
+	overflow: hidden;
+}

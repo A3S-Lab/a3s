@@ -5,22 +5,35 @@ import { cn } from "@/lib/utils";
 import agentModel from "@/models/agent.model";
 import personaModel from "@/models/persona.model";
 import { sendToSession } from "@/hooks/use-agent-ws";
-import { useTts } from "@/hooks/use-tts";
 import { agentApi } from "@/lib/agent-api";
-import {
-	FileText,
-	Image,
-	Loader2,
-	Paperclip,
-	Send,
-	Upload,
-	User,
-	X,
-} from "lucide-react";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import { FileText, Loader2, Paperclip, Send, Upload, X } from "lucide-react";
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import type { SuggestionItem } from "@/components/custom/tiptap-editor/mention-list";
+import { Terminal } from "lucide-react";
+import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { useSnapshot } from "valtio";
 import { SessionStatusBar } from "./session-status-bar";
-import { TtsToggle } from "./tts-toggle";
+
+/** Chinese descriptions for built-in slash commands */
+const COMMAND_DESCRIPTIONS: Record<string, string> = {
+	help: "显示可用命令列表",
+	compact: "手动触发上下文压缩",
+	cost: "查看 Token 用量与费用",
+	model: "查看或切换当前模型",
+	clear: "清空对话历史",
+	history: "查看对话轮次与 Token 统计",
+	tools: "列出已注册的工具",
+	mcp: "查看已连接的 MCP 服务器",
+	loop: "设置定时循环提示",
+	"cron-list": "列出所有定时任务",
+	"cron-cancel": "取消指定定时任务",
+};
 
 /** A pending attachment with metadata for display */
 interface PendingFile {
@@ -53,7 +66,6 @@ export function AgentInput({
 }) {
 	const editorRef = useRef<TiptapEditorRef>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const imageInputRef = useRef<HTMLInputElement>(null);
 	const [isEmpty, setIsEmpty] = useState(true);
 	const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
 	const [isDragging, setIsDragging] = useState(false);
@@ -61,22 +73,55 @@ export function AgentInput({
 	const { sessionStatus, sdkSessions } = useSnapshot(agentModel.state);
 	const personaSnap = useSnapshot(personaModel.state);
 	const isRunning = sessionStatus[sessionId] === "running";
-	const tts = useTts();
 
 	const allFilesReady = pendingFiles.every((f) => f.progress === undefined);
+
+	const [slashItems, setSlashItems] = useState<SuggestionItem[]>([]);
+
+	useEffect(() => {
+		agentApi
+			.listCommands()
+			.then((cmds) => {
+				if (!Array.isArray(cmds)) return;
+				setSlashItems(
+					cmds.map((cmd) => {
+						// Backend prefixes names with "/", strip it for the id/label
+						const name = cmd.name.startsWith("/")
+							? cmd.name.slice(1)
+							: cmd.name;
+						return {
+							id: name,
+							label: name,
+							description: COMMAND_DESCRIPTIONS[name] ?? cmd.description,
+							group: "命令",
+							icon: <Terminal className="size-3 text-blue-500" />,
+						};
+					}),
+				);
+			})
+			.catch(() => {});
+	}, []);
+
+	const currentPersonaId = personaSnap.sessionPersonas[sessionId];
 
 	const mentionItems = useMemo(() => {
 		return personaModel
 			.getAllPersonas()
-			.filter((p) => p.id !== "company-group")
+			.filter((p) => p.id !== "company-group" && p.id !== currentPersonaId)
 			.map((p) => ({
 				id: p.id,
 				label: p.name,
 				description: p.description,
 				group: "智能体",
-				icon: <User className="size-3 text-primary" />,
+				icon: (
+					<NiceAvatar className="size-4 shrink-0" {...genConfig(p.avatar)} />
+				),
 			}));
-	}, [personaSnap.serverPersonas, personaSnap.customPersonas]);
+	}, [
+		personaSnap.serverPersonas,
+		personaSnap.customPersonas,
+		currentPersonaId,
+	]);
 
 	const sessionByPersona = useMemo(() => {
 		const map: Record<string, string> = {};
@@ -373,20 +418,13 @@ export function AgentInput({
 				accept=".txt,.md,.json,.csv,.ts,.tsx,.js,.jsx,.py,.rs,.go,.java,.c,.cpp,.h,.yaml,.yml,.toml,.xml,.html,.css"
 				onChange={handleFileChange}
 			/>
-			<input
-				ref={imageInputRef}
-				type="file"
-				className="hidden"
-				multiple
-				accept="image/*"
-				onChange={handleFileChange}
-			/>
 
 			<div className="flex-1 min-h-0">
 				<TiptapEditor
 					ref={editorRef}
-					placeholder="输入消息，/ 触发技能，@ 派发给 Agent..."
+					placeholder="输入消息，/ 触发指令，@ 派发给 Agent..."
 					disabled={disabled}
+					slashItems={slashItems}
 					mentionItems={mentionItems}
 					onSubmit={() => handleSubmit()}
 					onChange={handleEditorChange}
@@ -409,30 +447,6 @@ export function AgentInput({
 				>
 					<Paperclip className="size-[18px]" />
 				</button>
-				<button
-					type="button"
-					className={cn(
-						"flex items-center justify-center size-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors",
-						disabled && "opacity-40 cursor-not-allowed",
-					)}
-					title="上传图片"
-					aria-label="上传图片"
-					onClick={() => imageInputRef.current?.click()}
-					disabled={disabled}
-				>
-					<Image className="size-[18px]" />
-				</button>
-				<TtsToggle
-					ttsEnabled={tts.ttsEnabled}
-					isSpeaking={tts.isSpeaking}
-					modelsReady={tts.modelsReady}
-					isDownloading={tts.isDownloading}
-					downloadProgress={tts.downloadProgress}
-					disabled={disabled}
-					onToggle={() => tts.setTtsEnabled(!tts.ttsEnabled)}
-					onStop={tts.stop}
-					onDownload={tts.downloadModels}
-				/>
 				<div className="ml-auto">
 					{isRunning ? (
 						<button

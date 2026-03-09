@@ -2,14 +2,8 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/time";
-import { toast } from "sonner";
 import agentModel from "@/models/agent.model";
 import personaModel from "@/models/persona.model";
-import settingsModel, {
-	getPreferredSessionModel,
-	resolveApiKey,
-	resolveBaseUrl,
-} from "@/models/settings.model";
 import { connectSession } from "@/hooks/use-agent-ws";
 import { agentApi } from "@/lib/agent-api";
 import type { AgentProcessInfo } from "@/typings/agent";
@@ -32,6 +26,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useSnapshot } from "valtio";
 import CreateSessionDialog from "./create-session-dialog";
+import PickWorkdirDialog from "./pick-workdir-dialog";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -322,6 +317,10 @@ export default function AgentSessionList() {
 		  }
 		| undefined
 	>(undefined);
+	const [pickWorkdirOpen, setPickWorkdirOpen] = useState(false);
+	const [pickWorkdirPersonaId, setPickWorkdirPersonaId] = useState<
+		string | null
+	>(null);
 	const q = search.trim().toLowerCase();
 
 	// Group sessions by persona
@@ -400,9 +399,9 @@ export default function AgentSessionList() {
 		agentModel.clearUnread(sid);
 	}, []);
 
-	// Select agent → select its latest session, or silently create one
+	// Select agent → select its latest session; if none, prompt for working directory
 	const handleSelectAgent = useCallback(
-		async (personaId: string) => {
+		(personaId: string) => {
 			const sessions = [...(sessionsByPersona[personaId] || [])]
 				.filter((s) => !s.archived)
 				.sort((a, b) => b.created_at - a.created_at);
@@ -411,64 +410,13 @@ export default function AgentSessionList() {
 				const sid = sessions[0].session_id;
 				agentModel.setCurrentSession(sid);
 				agentModel.clearUnread(sid);
-				return;
-			}
-
-			// No active session — silently create one with persona defaults
-			const persona = allPersonas.find((p) => p.id === personaId);
-			const defaults = settingsModel.state.agentDefaults;
-			const preferred = getPreferredSessionModel();
-			const modelId = persona?.defaultModel || preferred.modelId || undefined;
-			const providerName = persona?.defaultModel?.includes("/")
-				? persona.defaultModel.split("/")[0]
-				: preferred.providerName;
-			const apiKey = modelId
-				? resolveApiKey(providerName, modelId.split("/").pop() || modelId)
-				: "";
-			const baseUrl = modelId
-				? resolveBaseUrl(providerName, modelId.split("/").pop() || modelId)
-				: "";
-			try {
-				const result = await agentApi.createSession({
-					persona_id: personaId,
-					model: modelId,
-					permission_mode: persona?.defaultPermissionMode || "default",
-					cwd: defaults.defaultCwd || undefined,
-					system_prompt: persona?.systemPrompt || undefined,
-					api_key: apiKey || undefined,
-					base_url: baseUrl || undefined,
-				});
-				if (result?.session_id) {
-					personaModel.setSessionPersona(result.session_id, personaId);
-					// Clear any stale messages for this new session
-					agentModel.setMessages(result.session_id, []);
-					const updated = await agentApi.listSessions();
-					if (Array.isArray(updated))
-						agentModel.setSdkSessions(updated as AgentProcessInfo[]);
-					connectSession(result.session_id);
-					agentModel.setCurrentSession(result.session_id);
-					agentModel.clearUnread(result.session_id);
-				}
-			} catch (e) {
-				console.warn("Failed to create session for persona", personaId, e);
-				toast.error("会话创建失败", {
-					description: "后端服务不可用，请检查 SafeClaw 是否正在运行",
-				});
-				// Fall back to create dialog so user can retry manually
-				setCreateDefaults(
-					persona
-						? {
-								personaId: persona.id,
-								sessionName: persona.name,
-								systemPrompt: persona.systemPrompt || "",
-								avatar: genConfig(persona.avatar),
-							}
-						: undefined,
-				);
-				setCreateOpen(true);
+			} else {
+				// No active session — ask user to pick a working directory first
+				setPickWorkdirPersonaId(personaId);
+				setPickWorkdirOpen(true);
 			}
 		},
-		[sessionsByPersona, allPersonas],
+		[sessionsByPersona],
 	);
 
 	return (
@@ -526,6 +474,15 @@ export default function AgentSessionList() {
 				}}
 				onCreated={handleCreated}
 				defaults={createDefaults}
+			/>
+			<PickWorkdirDialog
+				open={pickWorkdirOpen}
+				onOpenChange={(open) => {
+					setPickWorkdirOpen(open);
+					if (!open) setPickWorkdirPersonaId(null);
+				}}
+				personaId={pickWorkdirPersonaId}
+				onCreated={handleCreated}
 			/>
 		</div>
 	);

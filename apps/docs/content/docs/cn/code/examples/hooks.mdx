@@ -176,6 +176,193 @@ session.registerHook('no-bash', 'pre_tool_use', (event) => {
 </Tab>
 </Tabs>
 
+## 哨兵智能体（监控 + 阻断 + 告警）
+
+哨兵在 session 上附加两个 hooks——一个在命令运行前阻断危险操作，一个在输出中检测敏感数据。Hooks 会自动传播到任意深度的每个子 agent。
+
+<Tabs groupId="lang" items={['Python', 'TypeScript', 'Rust']}>
+<Tab value="Python">
+```python
+from typing import Optional
+from a3s_code import Agent
+
+BLOCKED = ["rm -rf", "mkfs", "dd if=", "DROP TABLE", "curl | sh"]
+SENSITIVE = ["password=", "secret=", "api_key=", "token=", "Bearer "]
+
+def on_pre_tool_use(event: dict) -> Optional[dict]:
+    p = event.get("payload", event)
+    tool = p.get("tool", "")
+    if tool not in ("bash", "shell"):
+        return None
+    cmd = p.get("args", {}).get("command", "")
+    for pat in BLOCKED:
+        if pat.lower() in cmd.lower():
+            print(f"⛔  已阻断: 命令中包含 '{pat}'")
+            return {"action": "block", "reason": f"[哨兵] '{pat}'"}
+    return None
+
+def on_post_tool_use(event: dict) -> Optional[dict]:
+    p = event.get("payload", event)
+    result = p.get("result", {})
+    output = result.get("output", "") if isinstance(result, dict) else ""
+    for kw in SENSITIVE:
+        if kw.lower() in output.lower():
+            print(f"⚠️   告警: 输出中检测到敏感关键词 '{kw}'")
+            break
+    return None
+
+def attach_sentinel(session, label: str = "") -> None:
+    tag = f"sentinel-{label}-" if label else "sentinel-"
+    session.register_hook(
+        f"{tag}pre", "pre_tool_use",
+        config={"priority": 1},
+        handler=on_pre_tool_use,
+    )
+    session.register_hook(
+        f"{tag}post", "post_tool_use",
+        config={"priority": 1, "async_execution": True},
+        handler=on_post_tool_use,
+    )
+
+agent = Agent.create("agent.hcl")
+session = agent.session("/workspace", permissive=True)
+attach_sentinel(session)
+
+# 安全命令 — 通过
+r = session.send("使用 bash 列出 /tmp 中的文件")
+print(r.text)
+
+# 危险命令 — 哨兵在 bash 运行前阻断
+r = session.send("使用 bash 运行: rm -rf /tmp/test")
+print(r.text)  # agent 解释被阻断的原因
+```
+
+**源码：** [`sdk/python/examples/sentinel_agent.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/sentinel_agent.py)
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const BLOCKED = ['rm -rf', 'mkfs', 'dd if=', 'DROP TABLE', 'curl | sh'];
+const SENSITIVE = ['password=', 'secret=', 'api_key=', 'token='];
+
+function attachSentinel(session: ReturnType<Agent['session']>, label = '') {
+  const tag = label ? `sentinel-${label}-` : 'sentinel-';
+
+  session.registerHook(
+    `${tag}pre`, 'pre_tool_use', null, { priority: 1 },
+    (event) => {
+      const p = (event.payload ?? event) as Record<string, unknown>;
+      if (!['bash', 'shell'].includes(String(p.tool ?? ''))) return null;
+      const cmd = String((p.args as Record<string, unknown>)?.command ?? '');
+      for (const pat of BLOCKED) {
+        if (cmd.toLowerCase().includes(pat.toLowerCase())) {
+          console.log(`⛔  已阻断: '${pat}'`);
+          return { action: 'block', reason: `[哨兵] '${pat}'` };
+        }
+      }
+      return null;
+    },
+  );
+
+  session.registerHook(
+    `${tag}post`, 'post_tool_use', null,
+    { priority: 1, asyncExecution: true },
+    (event) => {
+      const p = (event.payload ?? event) as Record<string, unknown>;
+      const output = String((p.result as Record<string, unknown>)?.output ?? '');
+      for (const kw of SENSITIVE) {
+        if (output.toLowerCase().includes(kw.toLowerCase())) {
+          console.log(`⚠️   告警: 输出中检测到敏感关键词 '${kw}'`);
+          break;
+        }
+      }
+      return null;
+    },
+  );
+}
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/workspace', { permissive: true });
+attachSentinel(session);
+
+// 安全命令 — 通过
+const r1 = await session.send('使用 bash 列出 /tmp 中的文件');
+console.log(r1.text);
+
+// 危险命令 — 哨兵在 bash 运行前阻断
+const r2 = await session.send('使用 bash 运行: rm -rf /tmp/test');
+console.log(r2.text);
+```
+
+**源码：** [`sdk/node/examples/sentinel_agent.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/sentinel_agent.ts)
+</Tab>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{
+    Agent, SessionOptions,
+    hooks::{Hook, HookConfig, HookEvent, HookEventType, HookHandler, HookMatcher, HookResponse},
+};
+use std::sync::Arc;
+
+const BLOCKED: &[&str] = &["rm -rf", "mkfs", "dd if=", "DROP TABLE"];
+
+struct SentinelGuard;
+
+impl HookHandler for SentinelGuard {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        let HookEvent::PreToolUse(e) = event else {
+            return HookResponse::continue_();
+        };
+        let cmd = e.args.to_string().to_lowercase();
+        for pat in BLOCKED {
+            if cmd.contains(&pat.to_lowercase()) {
+                eprintln!("⛔  已阻断: '{pat}'");
+                return HookResponse::block(format!("[哨兵] '{pat}'"));
+            }
+        }
+        HookResponse::continue_()
+    }
+}
+
+let session = agent.session(".", Some(
+    SessionOptions::new().with_permissive_policy()
+))?;
+session.register_hook(
+    Hook::new("sentinel-guard", HookEventType::PreToolUse)
+        .with_matcher(HookMatcher::tool("bash"))
+        .with_config(HookConfig { priority: 1, ..Default::default() })
+);
+session.register_hook_handler("sentinel-guard", Arc::new(SentinelGuard));
+
+// 哨兵自动传播到 task 工具派生的每个子 agent
+let result = session.send("用子 agent 分析代码仓库", None).await?;
+println!("{}", result.text);
+```
+</Tab>
+</Tabs>
+
+如需为 AgentTeam 的每个成员添加哨兵，在绑定前为每个 session 附加即可：
+
+```python
+from a3s_code import Agent, Team, TeamRunner, TeamConfig
+
+agent  = Agent.create("agent.hcl")
+team   = Team("my-team", TeamConfig(max_tasks=20, max_rounds=6))
+team.add_member("lead",     "lead")
+team.add_member("worker",   "worker")
+team.add_member("reviewer", "reviewer")
+
+runner = TeamRunner(team)
+
+for role in ("lead", "worker", "reviewer"):
+    s = agent.session("/workspace", permissive=True)
+    attach_sentinel(s, role)
+    runner.bind_session(role, s)
+
+result = runner.run_until_done("分析代码库中的安全问题")
+```
+
 <Callout type="info">
 如需跨会话的持久化 hook 配置，请参阅 [Hooks](/cn/docs/code/hooks)。
 </Callout>

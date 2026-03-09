@@ -1,12 +1,10 @@
-import { useModal } from "@/components/custom/modal-provider";
-import settingsModel from "@/models/settings.model";
 import { Info, ShieldCheck } from "lucide-react";
 import { SectionHeader } from "./shared";
 
 const INFO_ITEMS = [
 	{ label: "应用名称", value: "SafeClaw" },
 	{ label: "版本", value: "0.1.0" },
-	{ label: "运行时", value: "Tauri v2 + React 19" },
+	{ label: "运行时", value: "Tauri v2 + React 18" },
 	{ label: "许可证", value: "MIT" },
 ];
 

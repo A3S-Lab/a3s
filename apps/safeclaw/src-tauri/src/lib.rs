@@ -1,7 +1,5 @@
 mod browser;
-mod power;
 mod server;
-mod voice;
 
 use tauri::Manager;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -21,18 +19,34 @@ fn startup_window_size(screen_width: f64, screen_height: f64) -> (f64, f64) {
 }
 
 #[tauri::command]
+fn mkdir_all(path: String) -> Result<(), String> {
+    std::fs::create_dir_all(&path).map_err(|e| e.to_string())
+}
+
+/// Initialize a new workspace directory with the standard layout:
+///   <path>/
+///   ├── A3sfile          (workspace config, created only if absent)
+///   ├── agents/          (agent definition files)
+///   └── skills/          (custom skill scripts)
+#[tauri::command]
+fn init_workspace(path: String) -> Result<(), String> {
+    let root = std::path::Path::new(&path);
+    std::fs::create_dir_all(root).map_err(|e| format!("create workspace: {e}"))?;
+    std::fs::create_dir_all(root.join("agents"))
+        .map_err(|e| format!("create agents/: {e}"))?;
+    std::fs::create_dir_all(root.join("skills"))
+        .map_err(|e| format!("create skills/: {e}"))?;
+    let a3sfile = root.join("A3sfile");
+    if !a3sfile.exists() {
+        std::fs::write(&a3sfile, "# A3S workspace configuration\n")
+            .map_err(|e| format!("create A3sfile: {e}"))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 fn get_gateway_url() -> String {
     std::env::var("SAFECLAW_GATEWAY_URL").unwrap_or_else(|_| "http://127.0.0.1:18790".to_string())
-}
-
-#[tauri::command]
-fn get_power_url() -> String {
-    std::env::var("SAFECLAW_POWER_URL").unwrap_or_else(|_| power::local_power_base_url())
-}
-
-#[tauri::command]
-fn get_power_runtime_status() -> power::PowerRuntimeStatus {
-    power::embedded_runtime_status()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -45,7 +59,6 @@ pub fn run() {
                 .unwrap_or_else(|_| "safeclaw=debug,a3s_code=debug,a3s_power=debug,tower_http=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
-        .with(power::log_buffer_layer())
         .init();
 
     tauri::Builder::default()
@@ -53,13 +66,9 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            mkdir_all,
+            init_workspace,
             get_gateway_url,
-            get_power_url,
-            get_power_runtime_status,
-            voice::voice_tts_status,
-            voice::voice_tts_download,
-            voice::voice_tts_speak,
-            voice::voice_tts_stop,
             browser::browser_open,
             browser::browser_navigate,
             browser::browser_close,
@@ -76,8 +85,6 @@ pub fn run() {
             browser::browser_show_active,
         ])
         .setup(|app| {
-            // Initialize voice state
-            app.manage(voice::VoiceState::default());
             // Initialize browser state
             app.manage(browser::BrowserState::default());
 
@@ -105,13 +112,6 @@ pub fn run() {
             tauri::async_runtime::spawn(async {
                 if let Err(e) = server::start_embedded_gateway().await {
                     tracing::error!("Embedded gateway failed: {e:#}");
-                }
-            });
-
-            // Spawn embedded local Power inference server in background
-            tauri::async_runtime::spawn(async {
-                if let Err(e) = power::start_embedded_power().await {
-                    tracing::error!("Embedded Power server failed: {e:#}");
                 }
             });
 
