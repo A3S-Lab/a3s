@@ -108,7 +108,6 @@ enum Commands {
 
     /// Update safeclaw to the latest version
     Update,
-
 }
 
 #[tokio::main]

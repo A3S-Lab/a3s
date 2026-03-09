@@ -1092,8 +1092,7 @@ async fn handle_fs_watch(mut socket: WebSocket, path: String) {
         Err(e) => {
             let _ = socket
                 .send(Message::Text(
-                    serde_json::json!({"error": e.to_string()})
-                        .to_string(),
+                    serde_json::json!({"error": e.to_string()}).to_string(),
                 ))
                 .await;
             return;
@@ -1103,8 +1102,7 @@ async fn handle_fs_watch(mut socket: WebSocket, path: String) {
     if let Err(e) = watcher.watch(std::path::Path::new(&path), RecursiveMode::Recursive) {
         let _ = socket
             .send(Message::Text(
-                serde_json::json!({"error": e.to_string()})
-                    .to_string(),
+                serde_json::json!({"error": e.to_string()}).to_string(),
             ))
             .await;
         return;
@@ -1727,10 +1725,7 @@ async fn box_system_prune() -> impl IntoResponse {
 
 fn workflow_router(store: WorkflowStore) -> Router {
     Router::new()
-        .route(
-            "/api/workflows",
-            get(wf_list).post(wf_create),
-        )
+        .route("/api/workflows", get(wf_list).post(wf_create))
         .route(
             "/api/workflows/:id",
             get(wf_get).patch(wf_update).delete(wf_delete),
@@ -1749,13 +1744,14 @@ async fn wf_list(State(store): State<WorkflowStore>) -> impl IntoResponse {
     }
 }
 
-async fn wf_get(
-    State(store): State<WorkflowStore>,
-    Path(id): Path<String>,
-) -> impl IntoResponse {
+async fn wf_get(State(store): State<WorkflowStore>, Path(id): Path<String>) -> impl IntoResponse {
     match store.get(&id).await {
         Ok(Some(wf)) => Json(wf).into_response(),
-        Ok(None) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "not found"}))).into_response(),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "not found"})),
+        )
+            .into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": e.to_string()})),
@@ -1785,7 +1781,11 @@ async fn wf_update(
 ) -> impl IntoResponse {
     match store.update(&id, body).await {
         Ok(Some(wf)) => Json(wf).into_response(),
-        Ok(None) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "not found"}))).into_response(),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "not found"})),
+        )
+            .into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": e.to_string()})),
@@ -1800,7 +1800,11 @@ async fn wf_delete(
 ) -> impl IntoResponse {
     match store.remove(&id).await {
         Ok(true) => StatusCode::NO_CONTENT.into_response(),
-        Ok(false) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "not found"}))).into_response(),
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "not found"})),
+        )
+            .into_response(),
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": e.to_string()})),

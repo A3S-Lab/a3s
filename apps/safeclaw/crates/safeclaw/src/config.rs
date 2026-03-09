@@ -75,7 +75,10 @@ impl SafeClawConfig {
         if trimmed.starts_with('{') {
             // Try parsing as CodeConfig JSON first (camelCase fields from old format)
             if let Ok(code_config) = serde_json::from_str::<a3s_code::config::CodeConfig>(content) {
-                return Ok(SafeClawConfig { models: code_config, ..Default::default() });
+                return Ok(SafeClawConfig {
+                    models: code_config,
+                    ..Default::default()
+                });
             }
             // Fall back to SafeClawConfig JSON
             let config: SafeClawConfig = serde_json::from_str(content)

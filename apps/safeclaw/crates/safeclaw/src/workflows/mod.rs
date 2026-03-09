@@ -96,7 +96,8 @@ impl WorkflowStore {
                  FROM workflows ORDER BY updated_at DESC",
             )?;
             let rows = stmt.query_map([], row_to_doc)?;
-            rows.collect::<Result<Vec<_>, _>>().map_err(anyhow::Error::from)
+            rows.collect::<Result<Vec<_>, _>>()
+                .map_err(anyhow::Error::from)
         })
         .await?
     }
@@ -111,9 +112,7 @@ impl WorkflowStore {
                  FROM workflows WHERE id = ?1",
             )?;
             let mut rows = stmt.query_map([&id], row_to_doc)?;
-            rows.next()
-                .transpose()
-                .map_err(anyhow::Error::from)
+            rows.next().transpose().map_err(anyhow::Error::from)
         })
         .await?
     }
@@ -159,10 +158,8 @@ impl WorkflowStore {
                 "SELECT id, name, description, created_at, updated_at, document, session_id
                  FROM workflows WHERE id = ?1",
             )?;
-            let existing: Option<WorkflowDoc> = stmt
-                .query_map([&id], row_to_doc)?
-                .next()
-                .transpose()?;
+            let existing: Option<WorkflowDoc> =
+                stmt.query_map([&id], row_to_doc)?.next().transpose()?;
             let Some(mut wf) = existing else {
                 return Ok(None);
             };
@@ -184,7 +181,14 @@ impl WorkflowStore {
                 "UPDATE workflows
                  SET name = ?2, description = ?3, updated_at = ?4, document = ?5, session_id = ?6
                  WHERE id = ?1",
-                params![wf.id, wf.name, wf.description, wf.updated_at, doc_str, wf.session_id],
+                params![
+                    wf.id,
+                    wf.name,
+                    wf.description,
+                    wf.updated_at,
+                    doc_str,
+                    wf.session_id
+                ],
             )?;
             Ok(Some(wf))
         })
@@ -209,8 +213,8 @@ impl WorkflowStore {
 
 fn row_to_doc(row: &rusqlite::Row<'_>) -> rusqlite::Result<WorkflowDoc> {
     let doc_str: String = row.get(5)?;
-    let document = serde_json::from_str(&doc_str)
-        .unwrap_or(serde_json::Value::Object(Default::default()));
+    let document =
+        serde_json::from_str(&doc_str).unwrap_or(serde_json::Value::Object(Default::default()));
     Ok(WorkflowDoc {
         id: row.get(0)?,
         name: row.get(1)?,

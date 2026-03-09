@@ -85,7 +85,13 @@ pub fn load_config(explicit_path: Option<&PathBuf>) -> Result<(SafeClawConfig, O
         tracing::info!("Loading config from {}", a3s_config.display());
         let code_config = parse_code_config_with_fallback(&content)
             .map_err(|e| anyhow::anyhow!("Config parse error: {e}"))?;
-        (SafeClawConfig { models: code_config, ..Default::default() }, Some(a3s_config))
+        (
+            SafeClawConfig {
+                models: code_config,
+                ..Default::default()
+            },
+            Some(a3s_config),
+        )
     } else if let Some(config_dir) = dirs_next::config_dir() {
         let hcl_path = config_dir.join("safeclaw/config.hcl");
         if hcl_path.exists() {
@@ -248,7 +254,8 @@ pub async fn start_gateway(
         .tee_enabled(tee_enabled)
         .build()?;
 
-    let agent_state = build_agent_state(models.clone(), skills_config, memory_store.clone()).await?;
+    let agent_state =
+        build_agent_state(models.clone(), skills_config, memory_store.clone()).await?;
     if let Some(ref path) = config_path {
         agent_state.engine.set_config_path(path.clone()).await;
     }

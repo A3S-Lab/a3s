@@ -103,26 +103,20 @@ impl Node for McpNode {
 
         let server_url = ctx.data["server_url"]
             .as_str()
-            .ok_or_else(|| {
-                FlowError::InvalidDefinition("mcp: missing data.server_url".into())
-            })?
+            .ok_or_else(|| FlowError::InvalidDefinition("mcp: missing data.server_url".into()))?
             .trim_end_matches('/')
             .to_string();
 
         let tool_name = ctx.data["tool_name"]
             .as_str()
-            .ok_or_else(|| {
-                FlowError::InvalidDefinition("mcp: missing data.tool_name".into())
-            })?
+            .ok_or_else(|| FlowError::InvalidDefinition("mcp: missing data.tool_name".into()))?
             .to_string();
 
         let arguments = render_arguments(&ctx)?;
 
         match transport {
             "sse" => call_via_sse(&server_url, &tool_name, arguments).await,
-            "streamable-http" => {
-                call_via_streamable_http(&server_url, &tool_name, arguments).await
-            }
+            "streamable-http" => call_via_streamable_http(&server_url, &tool_name, arguments).await,
             other => Err(FlowError::InvalidDefinition(format!(
                 "mcp: unknown transport '{other}', expected 'sse' or 'streamable-http'"
             ))),
@@ -147,13 +141,14 @@ fn render_arguments(ctx: &ExecContext) -> Result<Value> {
     let mut out = serde_json::Map::new();
 
     for (key, val) in raw.as_object().unwrap() {
-        let rendered = if let Some(tmpl) = val.as_str() {
-            Value::String(render(tmpl, &jinja_ctx).map_err(|e| {
-                FlowError::InvalidDefinition(format!("mcp: argument '{key}': {e}"))
-            })?)
-        } else {
-            val.clone()
-        };
+        let rendered =
+            if let Some(tmpl) = val.as_str() {
+                Value::String(render(tmpl, &jinja_ctx).map_err(|e| {
+                    FlowError::InvalidDefinition(format!("mcp: argument '{key}': {e}"))
+                })?)
+            } else {
+                val.clone()
+            };
         out.insert(key.clone(), rendered);
     }
 
@@ -174,11 +169,15 @@ async fn call_via_streamable_http(
         .post(server_url)
         .header("Content-Type", "application/json")
         .header("Accept", "application/json, text/event-stream")
-        .json(&rpc_request("initialize", 1, json!({
-            "protocolVersion": PROTOCOL_HTTP,
-            "capabilities": {},
-            "clientInfo": { "name": CLIENT_NAME, "version": CLIENT_VERSION },
-        })))
+        .json(&rpc_request(
+            "initialize",
+            1,
+            json!({
+                "protocolVersion": PROTOCOL_HTTP,
+                "capabilities": {},
+                "clientInfo": { "name": CLIENT_NAME, "version": CLIENT_VERSION },
+            }),
+        ))
         .send()
         .await
         .map_err(|e| FlowError::Internal(format!("mcp: initialize failed: {e}")))?;
@@ -238,14 +237,12 @@ async fn call_via_streamable_http(
     extract_tool_result(&body)
 }
 
-fn build_post<'a>(
-    client: &'a reqwest::Client,
+fn build_post(
+    client: &reqwest::Client,
     url: &str,
     session_id: Option<&str>,
 ) -> reqwest::RequestBuilder {
-    let mut req = client
-        .post(url)
-        .header("Content-Type", "application/json");
+    let mut req = client.post(url).header("Content-Type", "application/json");
     if let Some(id) = session_id {
         req = req.header("Mcp-Session-Id", id);
     }
@@ -254,16 +251,12 @@ fn build_post<'a>(
 
 // ── SSE transport (MCP 2024-11-05) ────────────────────────────────────────
 
-async fn call_via_sse(
-    server_url: &str,
-    tool_name: &str,
-    arguments: Value,
-) -> Result<Value> {
+async fn call_via_sse(server_url: &str, tool_name: &str, arguments: Value) -> Result<Value> {
     let client = reqwest::Client::new();
 
     // 1. Open SSE connection
     let sse_resp = client
-        .get(&format!("{server_url}/sse"))
+        .get(format!("{server_url}/sse"))
         .header("Accept", "text/event-stream")
         .send()
         .await
@@ -286,11 +279,15 @@ async fn call_via_sse(
     // 3. Initialize
     client
         .post(&post_url)
-        .json(&rpc_request("initialize", 1, json!({
-            "protocolVersion": PROTOCOL_SSE,
-            "capabilities": {},
-            "clientInfo": { "name": CLIENT_NAME, "version": CLIENT_VERSION },
-        })))
+        .json(&rpc_request(
+            "initialize",
+            1,
+            json!({
+                "protocolVersion": PROTOCOL_SSE,
+                "capabilities": {},
+                "clientInfo": { "name": CLIENT_NAME, "version": CLIENT_VERSION },
+            }),
+        ))
         .send()
         .await
         .map_err(|e| FlowError::Internal(format!("mcp: initialize failed: {e}")))?;
@@ -329,9 +326,7 @@ async fn read_event_type<S>(
     event_type: &str,
 ) -> Result<SseEvent>
 where
-    S: futures_util::Stream<
-            Item = std::result::Result<bytes::Bytes, reqwest::Error>,
-        > + Unpin,
+    S: futures_util::Stream<Item = std::result::Result<bytes::Bytes, reqwest::Error>> + Unpin,
 {
     loop {
         while let Some(ev) = buf.next_event() {
@@ -342,24 +337,16 @@ where
         let chunk = stream
             .next()
             .await
-            .ok_or_else(|| {
-                FlowError::Internal("mcp: SSE stream closed unexpectedly".into())
-            })?
+            .ok_or_else(|| FlowError::Internal("mcp: SSE stream closed unexpectedly".into()))?
             .map_err(|e| FlowError::Internal(format!("mcp: SSE read error: {e}")))?;
         buf.push(&chunk);
     }
 }
 
 /// Read SSE events until a JSON-RPC message with the given `id` arrives.
-async fn wait_for_response_id<S>(
-    stream: &mut S,
-    buf: &mut SseBuffer,
-    id: u64,
-) -> Result<Value>
+async fn wait_for_response_id<S>(stream: &mut S, buf: &mut SseBuffer, id: u64) -> Result<Value>
 where
-    S: futures_util::Stream<
-            Item = std::result::Result<bytes::Bytes, reqwest::Error>,
-        > + Unpin,
+    S: futures_util::Stream<Item = std::result::Result<bytes::Bytes, reqwest::Error>> + Unpin,
 {
     loop {
         while let Some(ev) = buf.next_event() {
@@ -367,9 +354,7 @@ where
                 if let Ok(msg) = serde_json::from_str::<Value>(&ev.data) {
                     if msg["id"].as_u64() == Some(id) {
                         if let Some(err) = msg.get("error") {
-                            return Err(FlowError::Internal(format!(
-                                "mcp: JSON-RPC error: {err}"
-                            )));
+                            return Err(FlowError::Internal(format!("mcp: JSON-RPC error: {err}")));
                         }
                         return Ok(msg);
                     }
@@ -395,8 +380,7 @@ async fn read_sse_rpc_result(response: reqwest::Response, id: u64) -> Result<Val
     let mut stream = response.bytes_stream();
 
     while let Some(chunk) = stream.next().await {
-        let chunk =
-            chunk.map_err(|e| FlowError::Internal(format!("mcp: SSE read error: {e}")))?;
+        let chunk = chunk.map_err(|e| FlowError::Internal(format!("mcp: SSE read error: {e}")))?;
         buf.push(&chunk);
 
         while let Some(ev) = buf.next_event() {
@@ -439,10 +423,7 @@ impl SseBuffer {
     /// Return the next complete SSE event if one is buffered.
     fn next_event(&mut self) -> Option<SseEvent> {
         // Events are delimited by a blank line (\n\n).
-        let pos = self
-            .buf
-            .windows(2)
-            .position(|w| w == b"\n\n")?;
+        let pos = self.buf.windows(2).position(|w| w == b"\n\n")?;
 
         let event_bytes = self.buf[..pos].to_vec();
         self.buf = self.buf[pos + 2..].to_vec();
@@ -527,7 +508,10 @@ mod tests {
     use serde_json::json;
 
     fn ctx(data: Value) -> ExecContext {
-        ExecContext { data, ..Default::default() }
+        ExecContext {
+            data,
+            ..Default::default()
+        }
     }
 
     // ── Config validation ──────────────────────────────────────────────────
@@ -637,9 +621,7 @@ mod tests {
     #[test]
     fn sse_buffer_parses_multiple_consecutive_events() {
         let mut buf = SseBuffer::new();
-        buf.push(
-            b"event: endpoint\ndata: /msg\n\nevent: message\ndata: {\"id\":1}\n\n",
-        );
+        buf.push(b"event: endpoint\ndata: /msg\n\nevent: message\ndata: {\"id\":1}\n\n");
         let e1 = buf.next_event().unwrap();
         let e2 = buf.next_event().unwrap();
         assert_eq!(e1.event_type, "endpoint");
@@ -708,8 +690,7 @@ mod tests {
 
     #[test]
     fn extract_propagates_json_rpc_error() {
-        let body =
-            json!({ "error": { "code": -32601, "message": "method not found" } });
+        let body = json!({ "error": { "code": -32601, "message": "method not found" } });
         let err = extract_tool_result(&body).unwrap_err();
         assert!(matches!(err, FlowError::Internal(_)));
     }
