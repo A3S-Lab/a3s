@@ -13,7 +13,7 @@ Override the default model, provider, and generation parameters per session. Use
 
 ## Example
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const agent = await Agent.create('~/.a3s/config.hcl');
@@ -79,7 +79,7 @@ The model string format is `provider/model-name`. The provider must be configure
 <TypeTable
   type={{
     "Model override": {
-      description: "Rust: .with_model(\"provider/model\") · Python: model=\"provider/model\" · TypeScript: model: \"provider/model\"",
+      description: "Rust: .with_model(\"provider/model\") · Python: model="provider/model" · TypeScript: model: \"provider/model\"",
     },
     "Temperature": {
       description: "Rust: .with_temperature(0.3) · Python: temperature=0.3 · TypeScript: temperature: 0.3",

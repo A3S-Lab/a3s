@@ -13,7 +13,7 @@ The simplest way to use A3S Code: create an agent, bind it to a workspace, and s
 
 ## Basic Send
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -50,7 +50,7 @@ print(f"Tokens: {result.total_tokens}")
 
 History is automatically accumulated after each `send()` call.
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/my-project', { permissive: true });
@@ -91,7 +91,7 @@ print(f"Total messages: {len(history)}")
 
 Configure parse retries, tool timeout, and circuit breaker for production use.
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/my-project', {

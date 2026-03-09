@@ -19,7 +19,7 @@ Vector RAG requires an embedding API. Configure `embedding_api_base` and `embedd
 
 The simplest context provider — injects relevant file contents based on keyword matching.
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/my-project', {
@@ -44,7 +44,7 @@ print(result.text)
 
 ## Vector Context Provider (Semantic Search)
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // Vector context is configured via the agent config file.
@@ -83,7 +83,7 @@ print(result.text)
 
 The `codesearch` tool exposes vector search as an LLM-callable tool. The LLM can invoke it directly when it needs to find code by meaning.
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // The codesearch tool is available when vector context is configured.

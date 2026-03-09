@@ -38,7 +38,7 @@ Prompt slots are additive — the core agentic prompt (tool usage, completion cr
 
 Set a persona for the agent:
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -78,7 +78,7 @@ print(result.text)
 
 Combine multiple slots for a fully customized code reviewer:
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/my-project', {
@@ -109,7 +109,7 @@ print(result.text)
 
 The `extra` slot appends freeform instructions at the end of the prompt. This is backward-compatible with the legacy `system_prompt` field:
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/my-project', {

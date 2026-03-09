@@ -44,7 +44,7 @@ Hooks let you intercept agent lifecycle events to audit, modify, or block operat
 
 ## Audit Hook (Log All Tool Calls)
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const toolLog: string[] = [];
@@ -93,7 +93,7 @@ session.unregister_hook("audit")
 
 ## Block Hook (Deny Specific Tools)
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 session.registerHook('no-bash', 'pre_tool_use', (event) => {

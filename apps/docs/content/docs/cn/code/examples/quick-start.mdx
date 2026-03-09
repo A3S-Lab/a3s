@@ -13,7 +13,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## 基本 Send
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -50,7 +50,7 @@ print(f"Tokens: {result.total_tokens}")
 
 每次 `send()` 调用后，历史记录会自动累积。
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/my-project', { permissive: true });
@@ -91,7 +91,7 @@ print(f"Total messages: {len(history)}")
 
 配置解析重试、工具超时和熔断器，用于生产环境。
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/my-project', {

@@ -31,7 +31,7 @@ Turn 1: batch([read file_a.rs, read file_b.rs, read file_c.rs])  → all results
 
 ## 示例
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { mkdtempSync, writeFileSync } from 'fs';
@@ -86,7 +86,7 @@ with tempfile.TemporaryDirectory() as dir:
 
 你也可以不通过 LLM 直接调用 batch 工具：
 
-<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const result = await session.callTool('batch', {
