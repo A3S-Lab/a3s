@@ -1,5 +1,5 @@
 /**
- * A3S Flow node catalog — metadata for all 8 built-in node types.
+ * A3S Flow node catalog — metadata for all 15 built-in node types.
  *
  * Mirrors the types registered in `NodeRegistry::with_defaults()` in
  * `crates/flow/src/registry.rs`.  Each entry drives both the searchable
@@ -16,6 +16,14 @@ import {
 	ExternalLink,
 	ArrowRightLeft,
 	Plug,
+	Play,
+	Square,
+	MessageSquare,
+	HelpCircle,
+	Variable,
+	Scissors,
+	Repeat,
+	List,
 } from "lucide-react";
 
 export interface NodeCatalogEntry {
@@ -36,6 +44,30 @@ export interface NodeCatalogEntry {
 }
 
 export const NODE_CATALOG: NodeCatalogEntry[] = [
+	// ── 流程控制 ──────────────────────────────────────────────────────────
+	{
+		type: "start",
+		label: "开始",
+		description: "工作流入口，声明输入变量和默认值",
+		category: "流程控制",
+		icon: Play,
+		iconColor: "text-emerald-500",
+		headerBg: "bg-emerald-50 dark:bg-emerald-950/30",
+		headerText: "text-emerald-700 dark:text-emerald-300",
+		defaultData: { variables: [] },
+	},
+	{
+		type: "end",
+		label: "结束",
+		description: "工作流出口，收集输出结果",
+		category: "流程控制",
+		icon: Square,
+		iconColor: "text-red-500",
+		headerBg: "bg-red-50 dark:bg-red-950/30",
+		headerText: "text-red-700 dark:text-red-300",
+		defaultData: { outputs: [] },
+	},
+
 	// ── 网络 ──────────────────────────────────────────────────────────
 	{
 		type: "http-request",
@@ -86,6 +118,21 @@ export const NODE_CATALOG: NodeCatalogEntry[] = [
 		defaultData: { items_path: "", flow: { nodes: [], edges: [] } },
 	},
 	{
+		type: "loop",
+		label: "循环",
+		description: "While 循环，支持中断条件",
+		category: "逻辑",
+		icon: Repeat,
+		iconColor: "text-indigo-500",
+		headerBg: "bg-indigo-50 dark:bg-indigo-950/30",
+		headerText: "text-indigo-700 dark:text-indigo-300",
+		defaultData: {
+			max_iterations: 10,
+			break_condition: { variable: "", operator: "==", value: "" },
+			flow: { nodes: [], edges: [] },
+		},
+	},
+	{
 		type: "sub-flow",
 		label: "子流程",
 		description: "内联调用一个已命名的子流程",
@@ -119,6 +166,73 @@ export const NODE_CATALOG: NodeCatalogEntry[] = [
 		headerBg: "bg-orange-50 dark:bg-orange-950/30",
 		headerText: "text-orange-700 dark:text-orange-300",
 		defaultData: { sources: [] },
+	},
+	{
+		type: "assign",
+		label: "变量赋值",
+		description: "设置工作流变量的值",
+		category: "数据",
+		icon: Variable,
+		iconColor: "text-teal-500",
+		headerBg: "bg-teal-50 dark:bg-teal-950/30",
+		headerText: "text-teal-700 dark:text-teal-300",
+		defaultData: { assignments: [] },
+	},
+	{
+		type: "list-operator",
+		label: "列表操作",
+		description: "过滤、排序、去重、限制数组元素",
+		category: "数据",
+		icon: List,
+		iconColor: "text-pink-500",
+		headerBg: "bg-pink-50 dark:bg-pink-950/30",
+		headerText: "text-pink-700 dark:text-pink-300",
+		defaultData: { operation: "filter", array_path: "" },
+	},
+
+	// ── AI ──────────────────────────────────────────────────────────
+	{
+		type: "llm",
+		label: "LLM",
+		description: "调用大语言模型（OpenAI 兼容）",
+		category: "AI",
+		icon: MessageSquare,
+		iconColor: "text-purple-500",
+		headerBg: "bg-purple-50 dark:bg-purple-950/30",
+		headerText: "text-purple-700 dark:text-purple-300",
+		defaultData: {
+			model: "gpt-4",
+			system_prompt: "",
+			user_prompt: "",
+		},
+	},
+	{
+		type: "question-classifier",
+		label: "问题分类",
+		description: "使用 LLM 将输入分类到预定义类别",
+		category: "AI",
+		icon: HelpCircle,
+		iconColor: "text-fuchsia-500",
+		headerBg: "bg-fuchsia-50 dark:bg-fuchsia-950/30",
+		headerText: "text-fuchsia-700 dark:text-fuchsia-300",
+		defaultData: {
+			classes: [],
+			input_variable: "",
+		},
+	},
+	{
+		type: "parameter-extractor",
+		label: "参数提取",
+		description: "使用 LLM 从自然语言中提取结构化参数",
+		category: "AI",
+		icon: Scissors,
+		iconColor: "text-sky-500",
+		headerBg: "bg-sky-50 dark:bg-sky-950/30",
+		headerText: "text-sky-700 dark:text-sky-300",
+		defaultData: {
+			parameters: [],
+			input_variable: "",
+		},
 	},
 
 	// ── 实用 ──────────────────────────────────────────────────────────
