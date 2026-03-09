@@ -125,10 +125,6 @@ Backoff formula: `delay = base_delay × 2^attempt`, capped at `max_delay`, with 
 
 To disable retries:
 
-```rust
-let retry = RetryConfig::disabled();  // max_retries = 0
-```
-
 ## Parse Error Retries
 
 LLMs occasionally return malformed tool arguments. `max_parse_retries` controls how many consecutive parse errors are tolerated before aborting (default 2).

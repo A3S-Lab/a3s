@@ -344,39 +344,9 @@ Review API design for RESTful principles.
 
 当 skill 定义了 `allowed-tools` 时，agent 只能使用这些工具：
 
-```rust
-// Skill with tool restrictions
-let skill = Skill {
-    name: "read-only".to_string(),
-    allowed_tools: Some("read(*), grep(*), glob(*), ls(*)".to_string()),
-    // ...
-};
-
-// Agent tries to use write
-session.send("Create a new file").await?;
-// ❌ Error: Tool 'write' is not allowed by any active skill
-```
-
 ### 3. 多 Skills 组合
 
 当多个 skills 同时激活时，只要**任一** skill 允许某工具即可使用：
-
-```rust
-// Skill 1: read-only
-let skill1 = Skill {
-    allowed_tools: Some("read(*), grep(*)".to_string()),
-    // ...
-};
-
-// Skill 2: write-only
-let skill2 = Skill {
-    allowed_tools: Some("write(*), edit(*)".to_string()),
-    // ...
-};
-
-// Agent can use: read, grep, write, edit
-// (union of both skills)
-```
 
 ## Skill 类型
 
@@ -403,28 +373,6 @@ kind: persona
 ## 示例
 
 ### 只读 Agent
-
-```rust
-let skill = Skill {
-    name: "read-only".to_string(),
-    description: "Read-only code analysis".to_string(),
-    allowed_tools: Some("read(*), grep(*), glob(*), ls(*)".to_string()),
-    kind: SkillKind::Instruction,
-    content: "You can only read files, not modify them.".to_string(),
-    tags: vec!["readonly".to_string()],
-    version: Some("1.0.0".to_string()),
-};
-
-let registry = SkillRegistry::new();
-registry.register(Arc::new(skill));
-
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_skill_registry(Arc::new(registry))
-))?;
-
-// Agent can only read, not write
-```
 
 ### 安全审计员
 
@@ -618,44 +566,9 @@ tags:
 
 ### Skill
 
-```rust
-pub struct Skill {
-    pub name: String,
-    pub description: String,
-    pub allowed_tools: Option<String>,
-    pub kind: SkillKind,
-    pub content: String,
-    pub tags: Vec<String>,
-    pub version: Option<String>,
-}
-```
-
 ### SkillKind
 
-```rust
-pub enum SkillKind {
-    Instruction,  // Provides instructions
-    Persona,      // Defines a persona or role
-}
-```
-
 ### SkillRegistry
-
-```rust
-pub struct SkillRegistry {
-    // ...
-}
-
-impl SkillRegistry {
-    pub fn new() -> Self;
-    pub fn with_builtins() -> Self;
-    pub fn register(&self, skill: Arc<Skill>);
-    pub fn get(&self, name: &str) -> Option<Arc<Skill>>;
-    pub fn list(&self) -> Vec<String>;
-    pub fn by_kind(&self, kind: SkillKind) -> Vec<Arc<Skill>>;
-    pub fn to_system_prompt(&self) -> String;
-}
-```
 
 ## 相关文档
 

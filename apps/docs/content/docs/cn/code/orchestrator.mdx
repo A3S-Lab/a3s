@@ -40,7 +40,7 @@ SubAgentWrapper (子智能体)
 
 ## 快速开始
 
-<Tabs items={['Rust', 'Python']}>
+<Tabs items={['Python']}>
 <Tab value="Python">
 
 ```python
@@ -90,7 +90,7 @@ print(f"Result: {result}")
 
 `Orchestrator.create()` 默认使用内部占位符——仅用于测试和演示。要运行**真实的 LLM + 工具调用**，用 `AgentOrchestrator::from_agent(agent)`（Rust）或 `create_with_agent()`（Python/TypeScript）挂载真实的 AgentLoop。
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
@@ -185,17 +185,6 @@ AgentOrchestrator::from_agent(agent)
 
 ## SubAgent 状态
 
-```rust
-pub enum SubAgentState {
-    Initializing,                    // 初始化中
-    Running,                         // 运行中
-    Paused,                          // 已暂停
-    Completed { success, output },   // 已完成
-    Cancelled,                       // 已取消
-    Error { message },               // 错误
-}
-```
-
 ## 控制信号
 
 | 方法 | 说明 |
@@ -210,7 +199,7 @@ Python/TypeScript 使用相同方法名，去掉 `.await?`。
 
 ## 实时监控 API
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
@@ -326,110 +315,15 @@ SubAgent 在执行过程中会有以下活动类型：
 
 ### OrchestratorConfig
 
-```rust
-pub struct OrchestratorConfig {
-    /// 事件通道缓冲区大小
-    pub event_buffer_size: usize,           // 默认: 1000
-
-    /// 控制信号通道缓冲区大小
-    pub control_buffer_size: usize,         // 默认: 100
-
-    /// SubAgent 最大并发数
-    pub max_concurrent_subagents: usize,    // 默认: 50
-
-    /// 事件主题前缀
-    pub subject_prefix: String,             // 默认: "agent"
-}
-```
-
 ### SubAgentConfig
-
-```rust
-pub struct SubAgentConfig {
-    /// Agent 类型 (general, explore, plan, etc.)
-    pub agent_type: String,
-
-    /// 任务描述
-    pub description: String,
-
-    /// 执行提示词
-    pub prompt: String,
-
-    /// 是否启用宽松模式（绕过 HITL）
-    pub permissive: bool,
-
-    /// 最大执行步数
-    pub max_steps: Option<usize>,
-
-    /// 执行超时（毫秒）
-    pub timeout_ms: Option<u64>,
-
-    /// 父 SubAgent ID（用于嵌套）
-    pub parent_id: Option<String>,
-
-    /// 自定义元数据
-    pub metadata: serde_json::Value,
-
-    /// 工作目录（默认为 "."）
-    pub workspace: String,
-
-    /// 额外扫描 agent 定义文件的目录列表
-    pub agent_dirs: Vec<String>,
-
-    /// External/Hybrid 工具分发所用的 Lane 队列配置
-    pub lane_config: Option<SessionQueueConfig>,
-}
-```
 
 ## 高级用法
 
 ### 订阅特定 SubAgent 的事件
 
-```rust
-let mut events = orchestrator.subscribe_subagent(&handle.id);
-
-while let Some(event) = events.recv().await {
-    match event {
-        OrchestratorEvent::SubAgentProgress { step, total_steps, message, .. } => {
-            println!("Progress: {}/{} - {}", step, total_steps, message);
-        }
-        OrchestratorEvent::ToolExecutionStarted { tool_name, .. } => {
-            println!("Tool started: {}", tool_name);
-        }
-        _ => {}
-    }
-}
-```
-
 ### 并发限制
 
-```rust
-let mut config = OrchestratorConfig::default();
-config.max_concurrent_subagents = 5;
-
-let orchestrator = AgentOrchestrator::new(config);
-
-// 尝试启动第 6 个 SubAgent 会失败
-for i in 0..6 {
-    let result = orchestrator.spawn_subagent(config.clone()).await;
-    if result.is_err() {
-        println!("Max concurrent limit reached");
-    }
-}
-```
-
 ### 嵌套 SubAgent
-
-```rust
-// 主 SubAgent
-let parent_config = SubAgentConfig::new("general", "Main task");
-let parent_handle = orchestrator.spawn_subagent(parent_config).await?;
-
-// 子 SubAgent
-let child_config = SubAgentConfig::new("explore", "Subtask")
-    .with_parent_id(&parent_handle.id);
-let child_handle = orchestrator.spawn_subagent(child_config).await?;
-```
 
 ## 与 AgentTeam 的区别
 

@@ -18,9 +18,11 @@ import { Callout } from 'fumadocs-ui/components/callout';
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
+import { DefaultSecurityProvider } from '@a3s-lab/code';
+
 const session = agent.session('/my-project', {
   permissive: true,
-  defaultSecurity: true,
+  securityProvider: new DefaultSecurityProvider(),
 });
 
 const result = await session.send('Review this config file');
@@ -32,10 +34,10 @@ console.log(result.text); // 敏感模式已脱敏
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import SessionOptions
+from a3s_code import SessionOptions, DefaultSecurityProvider
 
 opts = SessionOptions()
-opts.default_security = True
+opts.security_provider = DefaultSecurityProvider()
 
 session = agent.session("/my-project", options=opts)
 result = session.send("Review this config file")
@@ -52,20 +54,24 @@ print(result.text)  # 敏感模式已脱敏
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
+import { DefaultSecurityProvider } from '@a3s-lab/code';
+
 // 自定义安全提供者在 Rust 中实现。
-// 使用 defaultSecurity: true 获取内置提供者。
+// 使用 securityProvider: new DefaultSecurityProvider() 获取内置提供者。
 const session = agent.session('/my-project', {
-  defaultSecurity: true,
+  securityProvider: new DefaultSecurityProvider(),
 });
 ```
 </Tab>
 <Tab value="Python">
 ```python
+from a3s_code import DefaultSecurityProvider
+
 # 自定义安全提供者在 Rust 中实现。
-# 使用 with_default_security() 获取内置提供者，
+# 使用 DefaultSecurityProvider() 获取内置提供者，
 # 或在 Rust 中实现 SecurityProvider 并通过 FFI 暴露。
 opts = SessionOptions()
-opts.default_security = True
+opts.security_provider = DefaultSecurityProvider()
 session = agent.session("/my-project", options=opts)
 ```
 </Tab>
@@ -109,7 +115,7 @@ session = agent.session("/my-project", options=opts)
 <TypeTable
   type={{
     "默认安全": {
-      description: "Python: default_security=True · TypeScript: defaultSecurity: true · 默认值: false",
+      description: "Python: security_provider=DefaultSecurityProvider() · TypeScript: securityProvider: new DefaultSecurityProvider() · 默认值: false",
     },
     "自定义提供者": {
       description: "Python: _（仅 Rust）_ · TypeScript: _（仅 Rust）_ · 默认值: None",

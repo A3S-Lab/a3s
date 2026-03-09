@@ -47,15 +47,6 @@ When the LLM returns multiple tool calls in a single turn:
 
 ### Rust
 
-```rust
-use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig};
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_queue_config(SessionQueueConfig::default().with_lane_features())
-))?;
-```
-
 ### Python
 
 ```python
@@ -310,19 +301,6 @@ for task in external:
 
 ### Metrics and Dead Letters
 
-```rust
-// Metrics snapshot (if metrics enabled)
-if let Some(metrics) = session.queue_metrics().await {
-    println!("{:?}", metrics);
-}
-
-// Dead letters (if DLQ enabled)
-let dead = session.dead_letters().await;
-for dl in &dead {
-    println!("Dead: {} — {}", dl.command_type, dl.error);
-}
-```
-
 ## External Task Handling
 
 Any lane can be switched to **External** mode, where tool calls in that lane are **not executed locally** — instead they become `ExternalTask` objects that your SDK code must poll, process (locally or on a remote machine), and complete via callback. This is the mechanism for multi-machine parallel execution.
@@ -518,49 +496,6 @@ for event in session.stream("Run the full test suite, build for release, and dep
 
 The worker is a standalone process that receives tasks via your transport layer, executes them, and returns results:
 
-```rust
-// worker.rs — runs on each remote machine
-use std::process::Command;
-
-/// Receives ExternalTask payloads, executes locally, returns results
-async fn worker_loop(mut receiver: impl TaskReceiver) {
-    while let Some(task_envelope) = receiver.next().await {
-        let task = task_envelope.task; // ExternalTask fields
-
-        let result = match task.command_type.as_str() {
-            "bash" => {
-                let cmd = task.payload["command"].as_str().unwrap_or("");
-                let output = Command::new("sh")
-                    .arg("-c")
-                    .arg(cmd)
-                    .current_dir(&task.payload["working_dir"].as_str().unwrap_or("."))
-                    .output();
-                match output {
-                    Ok(out) => WorkerResult {
-                        success: out.status.success(),
-                        output: String::from_utf8_lossy(&out.stdout).to_string(),
-                        exit_code: out.status.code().unwrap_or(1),
-                        error: if out.status.success() { None }
-                               else { Some(String::from_utf8_lossy(&out.stderr).to_string()) },
-                    },
-                    Err(e) => WorkerResult {
-                        success: false, output: String::new(), exit_code: 1,
-                        error: Some(e.to_string()),
-                    },
-                }
-            }
-            _ => WorkerResult {
-                success: false, output: String::new(), exit_code: 1,
-                error: Some(format!("Worker does not handle: {}", task.command_type)),
-            },
-        };
-
-        // Send result back to coordinator
-        task_envelope.respond(result).await;
-    }
-}
-```
-
 The transport layer between coordinator and workers is **your choice** — A3S Code provides the `ExternalTask`/`ExternalTaskResult` contract, you provide the plumbing (gRPC, HTTP, Redis, NATS, SQS, etc.).
 
 ### Hybrid Mode: Local Execution + External Notification
@@ -592,146 +527,13 @@ result = session.send("Run cargo test and fix any failures")
 
 Lanes can be switched between modes at runtime. This enables adaptive strategies — start in Internal mode, switch to External when workers are available:
 
-```rust
-// Start with local execution (default)
-let result = session.send("Analyze the codebase").await?;
-
-// Workers have come online — switch to external for heavy execution
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::External,
-    timeout_ms: 60_000,
-}).await;
-
-// Now bash/write/edit tasks route to remote workers
-let result = session.send("Run the full CI pipeline across all packages").await?;
-
-// Workers going offline — switch back to local
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::Internal,
-    timeout_ms: 60_000,
-}).await;
-```
-
 ### Planning + External Execution
 
 When [planning](/docs/code/tasks) is enabled, each plan step goes through the same agent loop and lane queue. This means externally-handled lanes work transparently with execution plans:
 
-```rust
-let config = AgentConfig {
-    planning_enabled: true,
-    // ...
-};
-
-// Set Execute lane to External
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::External,
-    timeout_ms: 120_000,
-}).await;
-
-// The planner decomposes the task into steps.
-// Each step's tool calls route through the lane queue.
-// bash/write/edit calls in each step → ExternalTask → workers
-let (mut rx, _handle) = session.stream(
-    "Refactor the auth module to use JWT, update all tests, and verify CI passes"
-).await?;
-
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::TaskUpdated { tasks, .. } => {
-            // Track plan progress
-            let done = tasks.iter().filter(|t| t.status == TaskStatus::Completed).count();
-            println!("Plan progress: {}/{} steps", done, tasks.len());
-        }
-        AgentEvent::ExternalTaskPending { .. } => {
-            // Dispatch to workers — same pattern as above
-            for task in session.pending_external_tasks().await {
-                let session = session.clone();
-                tokio::spawn(async move {
-                    let result = dispatch_to_worker(&task).await;
-                    session.complete_external_task(&task.task_id, result.into()).await;
-                });
-            }
-        }
-        AgentEvent::End { .. } => break,
-        _ => {}
-    }
-}
-```
-
 ## Configuration Reference
 
-```rust
-pub struct SessionQueueConfig {
-    // Concurrency limits
-    pub control_max_concurrency: usize,    // Default: 2
-    pub query_max_concurrency: usize,      // Default: 4
-    pub execute_max_concurrency: usize,    // Default: 2
-    pub generate_max_concurrency: usize,   // Default: 1
-
-    // Lane handlers
-    pub lane_handlers: HashMap<SessionLane, LaneHandlerConfig>,  // Per-lane mode config
-
-    // Basic features
-    pub enable_dlq: bool,                  // Default: false
-    pub dlq_max_size: Option<usize>,       // Default: 1000 (when enabled)
-    pub enable_metrics: bool,              // Default: false
-    pub enable_alerts: bool,               // Default: false
-    pub default_timeout_ms: Option<u64>,   // Default: 60000 (when enabled)
-    pub storage_path: Option<PathBuf>,     // Default: None (in-memory only)
-
-    // Advanced features (A3S Lane v0.4.0)
-    pub retry_policy: Option<RetryPolicyConfig>,
-    pub rate_limit: Option<RateLimitConfig>,
-    pub priority_boost: Option<PriorityBoostConfig>,
-    pub pressure_threshold: Option<usize>,
-    pub lane_timeouts: HashMap<SessionLane, u64>,
-}
-
-pub struct RetryPolicyConfig {
-    pub strategy: String,        // "exponential", "fixed", "none"
-    pub max_retries: u32,
-    pub initial_delay_ms: u64,
-    pub fixed_delay_ms: Option<u64>,  // For "fixed" strategy
-}
-
-pub struct RateLimitConfig {
-    pub limit_type: String,      // "per_second", "per_minute", "per_hour", "unlimited"
-    pub max_operations: Option<u64>,
-}
-
-pub struct PriorityBoostConfig {
-    pub strategy: String,        // "standard", "aggressive", "disabled"
-    pub deadline_ms: Option<u64>,
-}
-
-pub struct LaneHandlerConfig {
-    pub mode: TaskHandlerMode,  // Internal | External | Hybrid
-    pub timeout_ms: u64,        // Default: 60000
-}
-```
-
 Lane handlers can also be pre-configured in `SessionQueueConfig` instead of calling `set_lane_handler()` at runtime:
-
-```rust
-use std::collections::HashMap;
-
-let mut lane_handlers = HashMap::new();
-lane_handlers.insert(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::External,
-    timeout_ms: 60_000,
-});
-
-let config = SessionQueueConfig {
-    lane_handlers,
-    enable_dlq: true,
-    enable_metrics: true,
-    ..Default::default()
-};
-
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_queue_config(config)
-))?;
-```
 
 ## Backward Compatibility
 

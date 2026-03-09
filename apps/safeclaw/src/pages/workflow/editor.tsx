@@ -177,14 +177,21 @@ function CustomEdge({
 }
 
 // =============================================================================
-// Handles (Dify-style: transparent 16×16 hit area + vertical line indicator)
+// Handles
+//
+// Design (matches Dify):
+//   • Transparent 16×16 hit area so users can click the edge of a node
+//   • A 2×8px vertical bar as the visual indicator (bg-border)
+//   • BranchHandle — embedded inside a branch row for IF/ELSE and QC nodes;
+//     uses absolute positioning so it protrudes at the right edge of the row
 // =============================================================================
 
-function SourceHandle() {
+function SourceHandle({ id }: { id?: string } = {}) {
 	return (
 		<Handle
 			type="source"
 			position={Position.Right}
+			id={id}
 			className="!h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none transition-all hover:scale-125"
 		>
 			<span className="absolute right-1.5 top-1 h-2 w-0.5 rounded-sm bg-border pointer-events-none" />
@@ -200,6 +207,21 @@ function TargetHandle() {
 			className="!h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none transition-all hover:scale-125"
 		>
 			<span className="absolute left-1.5 top-1 h-2 w-0.5 rounded-sm bg-border pointer-events-none" />
+		</Handle>
+	);
+}
+
+// Branch row handle — sits inside a `relative` row div, protrudes right.
+// React Flow computes the edge endpoint from this element's screen position.
+function BranchHandle({ id }: { id: string }) {
+	return (
+		<Handle
+			type="source"
+			position={Position.Right}
+			id={id}
+			className="!absolute !-right-2 !top-1/2 !-translate-y-1/2 !h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none"
+		>
+			<span className="pointer-events-none absolute right-1.5 top-1 h-2 w-0.5 rounded-sm bg-border" />
 		</Handle>
 	);
 }
@@ -345,40 +367,6 @@ function NodeBody({
 			);
 		}
 
-		// ── If-Else: case rows ─────────────────────────────────────────────────
-		case "if-else": {
-			const cases =
-				(data.cases as Array<{ id: string; conditions?: unknown[] }>) ?? [];
-			if (!cases.length) return null;
-			return (
-				<Body>
-					{cases.slice(0, 3).map((c, i) => (
-						<div
-							key={c.id}
-							className="flex h-6 items-center justify-between gap-1 rounded-md bg-muted/60 px-1.5"
-						>
-							<span className="text-[10px] font-semibold text-muted-foreground uppercase">
-								{i === 0 ? "IF" : `ELIF ${i}`}
-							</span>
-							<span className="text-[10px] text-foreground/60">
-								{c.conditions?.length ?? 0} 条件
-							</span>
-						</div>
-					))}
-					{cases.length > 3 && (
-						<p className="text-[10px] text-muted-foreground/50 pl-1">
-							+{cases.length - 3} more
-						</p>
-					)}
-					<div className="flex h-6 items-center justify-end px-1">
-						<span className="text-[10px] font-semibold text-muted-foreground/60 uppercase">
-							ELSE
-						</span>
-					</div>
-				</Body>
-			);
-		}
-
 		// ── LLM: model pill ────────────────────────────────────────────────────
 		case "llm": {
 			const model = (data.model as string) ?? "";
@@ -386,21 +374,6 @@ function NodeBody({
 			return (
 				<Body>
 					<Pill mono>{model}</Pill>
-				</Body>
-			);
-		}
-
-		// ── Question Classifier: model + class count ───────────────────────────
-		case "question-classifier": {
-			const model = (data.model as string) ?? "";
-			const classes = (data.classes as unknown[]) ?? [];
-			if (!model && !classes.length) return null;
-			return (
-				<Body>
-					{model && <Pill mono>{model}</Pill>}
-					{classes.length > 0 && (
-						<Pill>{classes.length} 个分类</Pill>
-					)}
 				</Body>
 			);
 		}
@@ -586,7 +559,7 @@ function StartNode({ data, selected }: NodeProps) {
 					<div className="flex items-center px-3 pb-2 pt-3">
 						<NodeIcon entry={entry} size="sm" className="mr-2 shrink-0" />
 						<p className="text-[11px] font-semibold text-foreground uppercase tracking-wider">
-							开始
+							{(d.title as string) || entry.label}
 						</p>
 					</div>
 					<NodeBody entry={entry} data={d} />
@@ -808,18 +781,155 @@ function LoopContainerNode({ id, data, selected }: NodeProps) {
 	);
 }
 
+// =============================================================================
+// IF/ELSE node — one source handle per case + one ELSE handle (Dify-style)
+// =============================================================================
+
+function IfElseNode({ data, selected }: NodeProps) {
+	const entry = getCatalogEntry("if-else")!;
+	const d = data as Record<string, unknown>;
+	const cases =
+		(d.cases as Array<{ id: string; conditions?: unknown[] }>) ?? [];
+
+	return (
+		<>
+			<TargetHandle />
+			<div
+				className={cn(
+					"relative flex rounded-2xl border transition-all duration-200",
+					selected ? "border-primary/40" : "border-transparent",
+				)}
+			>
+				<div
+					className={cn(
+						"group relative",
+						"rounded-[15px] border border-border/10",
+						"w-[240px] bg-card shadow-sm",
+						"hover:shadow-md transition-shadow duration-200",
+					)}
+				>
+					<div className="flex items-center px-3 pb-2 pt-3">
+						<NodeIcon entry={entry} size="sm" className="mr-2 shrink-0" />
+						<p className="text-[11px] font-semibold text-foreground uppercase tracking-wider truncate">
+							{(d.title as string) || entry.label}
+						</p>
+					</div>
+					{/* Branch rows — each row carries its own source handle */}
+					<div className="mb-1 px-3 py-1 space-y-0.5">
+						{cases.slice(0, 5).map((c, i) => (
+							<div
+								key={c.id}
+								className="relative flex h-6 items-center justify-between gap-1 rounded-md bg-muted/60 px-1.5"
+							>
+								<span className="text-[10px] font-semibold text-muted-foreground uppercase">
+									{i === 0 ? "IF" : `ELIF ${i}`}
+								</span>
+								<span className="text-[10px] text-foreground/60">
+									{(c.conditions?.length ?? 0) > 0
+										? `${c.conditions?.length} 条件`
+										: ""}
+								</span>
+								<BranchHandle id={c.id} />
+							</div>
+						))}
+						{/* ELSE always present */}
+						<div className="relative flex h-6 items-center justify-between px-1">
+							<span className="text-[10px] font-semibold text-muted-foreground/60 uppercase">
+								ELSE
+							</span>
+							<BranchHandle id="else" />
+						</div>
+					</div>
+				</div>
+			</div>
+		</>
+	);
+}
+
+// =============================================================================
+// Question Classifier node — one source handle per class (Dify-style)
+// =============================================================================
+
+interface ClassItem {
+	id: string;
+	name: string;
+	description?: string;
+}
+
+function QuestionClassifierNode({ data, selected }: NodeProps) {
+	const entry = getCatalogEntry("question-classifier")!;
+	const d = data as Record<string, unknown>;
+	const classes = (d.classes as ClassItem[]) ?? [];
+	const model = (d.model as string) ?? "";
+
+	return (
+		<>
+			<TargetHandle />
+			<div
+				className={cn(
+					"relative flex rounded-2xl border transition-all duration-200",
+					selected ? "border-primary/40" : "border-transparent",
+				)}
+			>
+				<div
+					className={cn(
+						"group relative",
+						"rounded-[15px] border border-border/10",
+						"w-[240px] bg-card shadow-sm",
+						"hover:shadow-md transition-shadow duration-200",
+					)}
+				>
+					<div className="flex items-center px-3 pb-2 pt-3">
+						<NodeIcon entry={entry} size="sm" className="mr-2 shrink-0" />
+						<p className="text-[11px] font-semibold text-foreground uppercase tracking-wider truncate">
+							{(d.title as string) || entry.label}
+						</p>
+					</div>
+					<div className="mb-1 px-3 py-1 space-y-0.5">
+						{/* Model pill */}
+						{model && (
+							<div className="flex h-6 items-center gap-1 rounded-md bg-muted/60 px-1.5 overflow-hidden">
+								<span className="text-xs font-mono text-foreground/70 truncate">
+									{model}
+								</span>
+							</div>
+						)}
+						{/* Class rows — each row carries its own source handle */}
+						{classes.slice(0, 6).map((cls) => (
+							<div
+								key={cls.id}
+								className="relative flex h-6 items-center gap-1 rounded-md bg-muted/60 px-1.5"
+							>
+								<span className="text-xs text-foreground/80 truncate leading-none flex-1">
+									{cls.name || cls.id}
+								</span>
+								<BranchHandle id={cls.id} />
+							</div>
+						))}
+						{classes.length > 6 && (
+							<p className="text-[10px] text-muted-foreground/50 pl-1">
+								+{classes.length - 6} more
+							</p>
+						)}
+					</div>
+				</div>
+			</div>
+		</>
+	);
+}
+
 const NODE_TYPES: NodeTypes = {
 	start: StartNode,
 	noop: FlowNode,
 	"http-request": FlowNode,
-	"if-else": FlowNode,
+	"if-else": IfElseNode,
 	"template-transform": FlowNode,
 	"variable-aggregator": FlowNode,
 	code: FlowNode,
 	iteration: IterationContainerNode,
 	loop: LoopContainerNode,
 	llm: FlowNode,
-	"question-classifier": FlowNode,
+	"question-classifier": QuestionClassifierNode,
 	"parameter-extractor": FlowNode,
 	assign: FlowNode,
 	"list-operator": FlowNode,
@@ -1178,7 +1288,7 @@ function NodeConfigPanel({
 	);
 
 	return (
-		<div className="w-[340px] bg-card border border-border/50 rounded-2xl shadow-xl flex flex-col overflow-hidden max-h-[80vh]">
+		<div className="w-[420px] bg-card border border-border/50 rounded-2xl shadow-xl flex flex-col overflow-hidden max-h-[85vh]">
 			{/* Header: node icon + title + close */}
 			<div className="flex items-center gap-2.5 px-4 py-3 border-b border-border/30">
 				{entry && <NodeIcon entry={entry} size="md" />}
@@ -1228,6 +1338,7 @@ function NodeConfigPanel({
 
 // ── Form primitives ──────────────────────────────────────────────────────────
 
+// Field — label in normal case matching Dify's panel style.
 function Field({
 	label,
 	hint,
@@ -1235,12 +1346,12 @@ function Field({
 }: { label: string; hint?: string; children: React.ReactNode }) {
 	return (
 		<div className="flex flex-col gap-1.5">
-			<div className="flex h-6 items-center justify-between">
-				<label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+			<div className="flex items-center justify-between min-h-5">
+				<label className="text-[11px] font-medium text-foreground/60">
 					{label}
 				</label>
 				{hint && (
-					<span className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-wide">
+					<span className="text-[10px] text-muted-foreground/50">
 						{hint}
 					</span>
 				)}
@@ -1250,8 +1361,25 @@ function Field({
 	);
 }
 
-// ── Base input class — h-8 enforces pixel-perfect consistency across all controls
-// Dify compact panel spec: h-8 (32px), text-xs, rounded-lg, primary focus ring
+// Section — groups related fields under a subtle divider header (Dify style).
+function Section({
+	title,
+	children,
+}: { title: string; children: React.ReactNode }) {
+	return (
+		<div className="flex flex-col gap-4">
+			<div className="flex items-center gap-2">
+				<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+					{title}
+				</span>
+				<div className="flex-1 h-px bg-border/40" />
+			</div>
+			{children}
+		</div>
+	);
+}
+
+// ── Base input class — h-8 (32px), matches Dify compact panel spec
 const inputCls =
 	"w-full h-8 px-3 text-xs border border-border/50 rounded-lg bg-background/80 outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 transition-colors placeholder:text-muted-foreground/40";
 
@@ -1323,7 +1451,8 @@ function StringListInput({
 	value,
 	onChange,
 	placeholder,
-}: { value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
+	addLabel = "添加",
+}: { value: string[]; onChange: (v: string[]) => void; placeholder?: string; addLabel?: string }) {
 	return (
 		<div className="flex flex-col gap-1.5">
 			{value.map((item, i) => (
@@ -1355,13 +1484,11 @@ function StringListInput({
 				className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors mt-0.5"
 			>
 				<Plus className="size-3" />
-				添加来源
+				{addLabel}
 			</button>
 		</div>
 	);
 }
-
-// ── NumberInput ───────────────────────────────────────────────────────────────
 
 function NumberInput({
 	value,
@@ -1394,19 +1521,30 @@ function NumberInput({
 	);
 }
 
-// ── LlmConnectionFields (shared by llm / question-classifier / parameter-extractor) ──
+// ── LlmConnectionFields — collapsible API settings shared by LLM nodes ────────
 
 function LlmConnectionFields({
 	draft,
 	patch,
 }: { draft: Record<string, unknown>; patch: (p: Record<string, unknown>) => void }) {
+	const [open, setOpen] = useState(false);
 	return (
-		<>
-			<div className="border-t border-border/20 pt-4">
-				<p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-3">
-					连接设置
-				</p>
-				<div className="space-y-4">
+		<div className="border-t border-border/20 pt-3">
+			<button
+				type="button"
+				onClick={() => setOpen((v) => !v)}
+				className="flex items-center gap-2 w-full text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+			>
+				<ChevronDown
+					className={cn(
+						"size-3 transition-transform duration-150",
+						open ? "rotate-0" : "-rotate-90",
+					)}
+				/>
+				连接设置
+			</button>
+			{open && (
+				<div className="mt-3 space-y-3">
 					<Field label="API Base URL">
 						<TextInput
 							value={(draft.api_base as string) ?? "https://api.openai.com/v1"}
@@ -1442,18 +1580,207 @@ function LlmConnectionFields({
 						/>
 					</Field>
 				</div>
+			)}
+		</div>
+	);
+}
+
+// ── IfElseBuilder — visual condition builder (Dify-style) ─────────────────────
+
+interface Condition {
+	variable: string;
+	comparison_operator: string;
+	value: string;
+}
+
+interface IfElseCase {
+	id: string;
+	logical_operator: "and" | "or";
+	conditions: Condition[];
+}
+
+const COMPARISON_OPS: { value: string; label: string; noValue?: boolean }[] = [
+	{ value: "contains", label: "包含" },
+	{ value: "not-contains", label: "不包含" },
+	{ value: "starts-with", label: "开始是" },
+	{ value: "ends-with", label: "结束是" },
+	{ value: "is", label: "是" },
+	{ value: "is-not", label: "不是" },
+	{ value: "is-empty", label: "为空", noValue: true },
+	{ value: "is-not-empty", label: "不为空", noValue: true },
+	{ value: "gt", label: ">" },
+	{ value: "lt", label: "<" },
+	{ value: "gte", label: "≥" },
+	{ value: "lte", label: "≤" },
+];
+
+function ConditionRow({
+	condition,
+	onChange,
+	onRemove,
+}: {
+	condition: Condition;
+	onChange: (c: Condition) => void;
+	onRemove: () => void;
+}) {
+	const op = COMPARISON_OPS.find((o) => o.value === condition.comparison_operator);
+	const noValue = op?.noValue ?? false;
+	return (
+		<div className="flex items-center gap-1">
+			<input
+				type="text"
+				value={condition.variable}
+				onChange={(e) => onChange({ ...condition, variable: e.target.value })}
+				placeholder="{{node.field}}"
+				className={cn(inputCls, "font-mono text-[11px]", noValue ? "flex-1" : "w-[100px] shrink-0")}
+			/>
+			<div className="relative shrink-0">
+				<select
+					value={condition.comparison_operator}
+					onChange={(e) =>
+						onChange({ ...condition, comparison_operator: e.target.value, value: "" })
+					}
+					className={cn(inputCls, "appearance-none cursor-pointer pr-5", noValue ? "w-[90px]" : "w-[72px]")}
+				>
+					{COMPARISON_OPS.map((o) => (
+						<option key={o.value} value={o.value}>{o.label}</option>
+					))}
+				</select>
+				<ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground/50" />
 			</div>
-		</>
+			{!noValue && (
+				<input
+					type="text"
+					value={condition.value}
+					onChange={(e) => onChange({ ...condition, value: e.target.value })}
+					placeholder="值"
+					className={cn(inputCls, "flex-1 min-w-0")}
+				/>
+			)}
+			<button
+				type="button"
+				onClick={onRemove}
+				className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+			>
+				<X className="size-3" />
+			</button>
+		</div>
+	);
+}
+
+function IfElseBuilder({
+	value,
+	onChange,
+}: { value: IfElseCase[]; onChange: (v: IfElseCase[]) => void }) {
+	const addCase = () =>
+		onChange([
+			...value,
+			{
+				id: `case_${value.length + 1}`,
+				logical_operator: "and",
+				conditions: [],
+			},
+		]);
+	const removeCase = (i: number) =>
+		onChange(value.filter((_, idx) => idx !== i));
+	const updateCase = (i: number, patch: Partial<IfElseCase>) =>
+		onChange(value.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
+
+	const addCondition = (i: number) => {
+		const newCond: Condition = { variable: "", comparison_operator: "contains", value: "" };
+		updateCase(i, { conditions: [...(value[i].conditions ?? []), newCond] });
+	};
+	const updateCondition = (i: number, j: number, cond: Condition) => {
+		const conditions = value[i].conditions.map((c, k) => (k === j ? cond : c));
+		updateCase(i, { conditions });
+	};
+	const removeCondition = (i: number, j: number) => {
+		updateCase(i, { conditions: value[i].conditions.filter((_, k) => k !== j) });
+	};
+
+	return (
+		<div className="flex flex-col gap-2">
+			{value.map((c, i) => (
+				<div
+					key={c.id}
+					className="rounded-lg border border-border/40 bg-background overflow-hidden"
+				>
+					{/* Case header */}
+					<div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border/30">
+						<span className="text-[11px] font-semibold text-foreground/70">
+							{i === 0 ? "IF" : `ELIF ${i}`}
+						</span>
+						<div className="flex items-center gap-2">
+							{/* AND / OR toggle */}
+							<div className="flex rounded-md overflow-hidden border border-border/40 text-[10px] font-semibold">
+								{(["and", "or"] as const).map((op) => (
+									<button
+										key={op}
+										type="button"
+										onClick={() => updateCase(i, { logical_operator: op })}
+										className={cn(
+											"px-2.5 py-0.5 transition-colors",
+											c.logical_operator === op
+												? "bg-primary text-primary-foreground"
+												: "text-muted-foreground hover:bg-muted",
+										)}
+									>
+										{op.toUpperCase()}
+									</button>
+								))}
+							</div>
+							{value.length > 1 && (
+								<button
+									type="button"
+									onClick={() => removeCase(i)}
+									className="text-muted-foreground hover:text-destructive transition-colors"
+								>
+									<X className="size-3" />
+								</button>
+							)}
+						</div>
+					</div>
+					{/* Condition rows */}
+					<div className="p-2 space-y-1.5">
+						{c.conditions.map((cond, j) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: ordered list
+							<ConditionRow
+								key={j}
+								condition={cond}
+								onChange={(updated) => updateCondition(i, j, updated)}
+								onRemove={() => removeCondition(i, j)}
+							/>
+						))}
+						<button
+							type="button"
+							onClick={() => addCondition(i)}
+							className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors mt-0.5"
+						>
+							<Plus className="size-3" />
+							添加条件
+						</button>
+					</div>
+				</div>
+			))}
+
+			{/* ELSE — always exists, no config */}
+			<div className="rounded-lg border border-border/20 bg-muted/10 px-3 py-2">
+				<span className="text-[11px] font-semibold text-muted-foreground/50">ELSE</span>
+			</div>
+
+			<button
+				type="button"
+				onClick={addCase}
+				className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+			>
+				<Plus className="size-3" />
+				添加条件组
+			</button>
+		</div>
 	);
 }
 
 // ── ClassesEditor (question-classifier) ──────────────────────────────────────
-
-interface ClassItem {
-	id: string;
-	name: string;
-	description?: string;
-}
 
 function ClassesEditor({
 	value,
@@ -1465,44 +1792,33 @@ function ClassesEditor({
 	};
 	const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
 	const add = () =>
-		onChange([...value, { id: `class_${value.length + 1}`, name: "", description: "" }]);
+		onChange([
+			...value,
+			{ id: `class_${Date.now()}`, name: "", description: "" },
+		]);
 
 	return (
-		<Field label="分类列表" hint="至少 2 个">
-			<div className="flex flex-col gap-2">
+		<Field label="分类" hint="至少 2 个">
+			<div className="flex flex-col gap-1.5">
 				{value.map((cls, i) => (
 					// biome-ignore lint/suspicious/noArrayIndexKey: positional list
-					<div key={i} className="rounded-lg border border-border/40 p-3 flex flex-col gap-2 bg-muted/20">
-						<div className="flex items-center gap-1.5">
-							<input
-								type="text"
-								value={cls.id}
-								onChange={(e) => update(i, { id: e.target.value })}
-								placeholder="class_id"
-								className={cn(inputCls, "flex-1 font-mono text-[11px]")}
-							/>
-							<button
-								type="button"
-								onClick={() => remove(i)}
-								className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
-							>
-								<Trash2 className="size-3" />
-							</button>
-						</div>
+					<div key={i} className="flex items-center gap-1.5">
 						<input
 							type="text"
-							value={cls.name}
-							onChange={(e) => update(i, { name: e.target.value })}
-							placeholder="显示名称"
-							className={inputCls}
+							value={cls.name || cls.id}
+							onChange={(e) =>
+								update(i, { name: e.target.value, id: e.target.value.toLowerCase().replace(/\s+/g, "_") || cls.id })
+							}
+							placeholder={`类别 ${i + 1}`}
+							className={cn(inputCls, "flex-1")}
 						/>
-						<input
-							type="text"
-							value={cls.description ?? ""}
-							onChange={(e) => update(i, { description: e.target.value })}
-							placeholder="描述（可选，帮助 LLM 分类）"
-							className={inputCls}
-						/>
+						<button
+							type="button"
+							onClick={() => remove(i)}
+							className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+						>
+							<Trash2 className="size-3" />
+						</button>
 					</div>
 				))}
 				<button
@@ -1538,14 +1854,20 @@ function ParametersEditor({
 	};
 	const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
 	const add = () =>
-		onChange([...value, { name: "", type: "string", description: "", required: false }]);
+		onChange([
+			...value,
+			{ name: "", type: "string", description: "", required: false },
+		]);
 
 	return (
 		<Field label="提取参数" hint="至少 1 个">
 			<div className="flex flex-col gap-2">
 				{value.map((param, i) => (
 					// biome-ignore lint/suspicious/noArrayIndexKey: positional list
-					<div key={i} className="rounded-lg border border-border/40 p-3 flex flex-col gap-2 bg-muted/20">
+					<div
+						key={i}
+						className="rounded-lg border border-border/40 p-2.5 flex flex-col gap-1.5 bg-muted/10"
+					>
 						<div className="flex items-center gap-1.5">
 							<input
 								type="text"
@@ -1554,15 +1876,18 @@ function ParametersEditor({
 								placeholder="参数名"
 								className={cn(inputCls, "flex-1")}
 							/>
-							<select
-								value={param.type}
-								onChange={(e) => update(i, { type: e.target.value })}
-								className={cn(inputCls, "w-24 shrink-0 appearance-none cursor-pointer")}
-							>
-								{PARAM_TYPES.map((t) => (
-									<option key={t} value={t}>{t}</option>
-								))}
-							</select>
+							<div className="relative shrink-0">
+								<select
+									value={param.type}
+									onChange={(e) => update(i, { type: e.target.value })}
+									className={cn(inputCls, "w-24 appearance-none cursor-pointer pr-6")}
+								>
+									{PARAM_TYPES.map((t) => (
+										<option key={t} value={t}>{t}</option>
+									))}
+								</select>
+								<ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground/50" />
+							</div>
 							<button
 								type="button"
 								onClick={() => remove(i)}
@@ -1575,7 +1900,7 @@ function ParametersEditor({
 							type="text"
 							value={param.description ?? ""}
 							onChange={(e) => update(i, { description: e.target.value })}
-							placeholder="描述（可选）"
+							placeholder="描述（帮助 LLM 理解此参数）"
 							className={inputCls}
 						/>
 						<label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
@@ -1607,7 +1932,10 @@ function ParametersEditor({
 function AssignsEditor({
 	value,
 	onChange,
-}: { value: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
+}: {
+	value: Record<string, string>;
+	onChange: (v: Record<string, string>) => void;
+}) {
 	const entries = Object.entries(value);
 	const set = (key: string, val: string) => onChange({ ...value, [key]: val });
 	const rename = (oldKey: string, newKey: string) => {
@@ -1628,10 +1956,13 @@ function AssignsEditor({
 	};
 
 	return (
-		<Field label="变量赋值">
+		<Field label="赋值列表">
 			<div className="flex flex-col gap-2">
 				{entries.map(([key, val]) => (
-					<div key={key} className="flex flex-col gap-1.5 rounded-lg border border-border/40 p-2.5 bg-muted/20">
+					<div
+						key={key}
+						className="flex flex-col gap-1.5 rounded-lg border border-border/40 p-2.5 bg-muted/10"
+					>
 						<div className="flex items-center gap-1.5">
 							<input
 								type="text"
@@ -1652,7 +1983,7 @@ function AssignsEditor({
 							type="text"
 							value={val}
 							onChange={(e) => set(key, e.target.value)}
-							placeholder='值或 Jinja2 模板，如 {{ node_id.field }}'
+							placeholder="值或 Jinja2 模板，如 {{ node_id.field }}"
 							className={inputCls}
 						/>
 					</div>
@@ -1688,62 +2019,69 @@ function StartInputsEditor({
 		onChange(value.map((item, idx) => (idx === i ? { ...item, ...p } : item)));
 	};
 	const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
-	const add = () => onChange([...value, { name: "", type: "string", default: "" }]);
+	const add = () =>
+		onChange([...value, { name: "", type: "string", default: "" }]);
 
 	return (
-		<Field label="输入变量声明">
-			<div className="flex flex-col gap-2">
-				{value.map((decl, i) => (
-					// biome-ignore lint/suspicious/noArrayIndexKey: positional list
-					<div key={i} className="rounded-lg border border-border/40 p-2.5 flex flex-col gap-1.5 bg-muted/20">
-						<div className="flex items-center gap-1.5">
-							<input
-								type="text"
-								value={decl.name}
-								onChange={(e) => update(i, { name: e.target.value })}
-								placeholder="变量名"
-								className={cn(inputCls, "flex-1 font-mono")}
-							/>
+		<div className="flex flex-col gap-2">
+			{value.map((decl, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: positional list
+				<div
+					key={i}
+					className="rounded-lg border border-border/40 p-2.5 flex flex-col gap-1.5 bg-muted/10"
+				>
+					<div className="flex items-center gap-1.5">
+						<input
+							type="text"
+							value={decl.name}
+							onChange={(e) => update(i, { name: e.target.value })}
+							placeholder="变量名"
+							className={cn(inputCls, "flex-1 font-mono")}
+						/>
+						<div className="relative shrink-0">
 							<select
 								value={decl.type}
 								onChange={(e) => update(i, { type: e.target.value })}
-								className={cn(inputCls, "w-24 shrink-0 appearance-none cursor-pointer")}
+								className={cn(inputCls, "w-24 appearance-none cursor-pointer pr-6")}
 							>
 								{VAR_TYPES.map((t) => (
 									<option key={t} value={t}>{t}</option>
 								))}
 							</select>
-							<button
-								type="button"
-								onClick={() => remove(i)}
-								className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
-							>
-								<Trash2 className="size-3" />
-							</button>
+							<ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground/50" />
 						</div>
-						<input
-							type="text"
-							value={decl.default ?? ""}
-							onChange={(e) => update(i, { default: e.target.value })}
-							placeholder="默认值（可选）"
-							className={inputCls}
-						/>
+						<button
+							type="button"
+							onClick={() => remove(i)}
+							className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+						>
+							<Trash2 className="size-3" />
+						</button>
 					</div>
-				))}
-				<button
-					type="button"
-					onClick={add}
-					className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
-				>
-					<Plus className="size-3" />
-					添加变量
-				</button>
-			</div>
-		</Field>
+					<input
+						type="text"
+						value={decl.default ?? ""}
+						onChange={(e) => update(i, { default: e.target.value })}
+						placeholder="默认值（可选）"
+						className={inputCls}
+					/>
+				</div>
+			))}
+			<button
+				type="button"
+				onClick={add}
+				className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+			>
+				<Plus className="size-3" />
+				添加变量
+			</button>
+		</div>
 	);
 }
 
 const HTTP_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"];
+
+// ── NodeFields — per-type config fields, Dify-aligned ─────────────────────────
 
 function NodeFields({
 	type,
@@ -1755,24 +2093,38 @@ function NodeFields({
 	patch: (p: Record<string, unknown>) => void;
 }) {
 	switch (type) {
+		// ── 开始：输入字段声明 ───────────────────────────────────────────────
+		case "start":
+			return (
+				<Section title="输入字段">
+					<StartInputsEditor
+						value={(draft.inputs as InputDecl[]) ?? []}
+						onChange={(v) => patch({ inputs: v })}
+					/>
+				</Section>
+			);
+
+		// ── HTTP 请求 ────────────────────────────────────────────────────────
 		case "http-request":
 			return (
 				<>
-					<Field label="方法">
-						<SelectInput
-							value={(draft.method as string) ?? "GET"}
-							onChange={(v) => patch({ method: v })}
-							options={HTTP_METHODS}
-						/>
-					</Field>
-					<Field label="URL">
-						<TextInput
-							value={(draft.url as string) ?? ""}
-							onChange={(v) => patch({ url: v })}
-							placeholder="https://api.example.com/endpoint"
-						/>
-					</Field>
-					<Field label="请求头" hint="JSON">
+					<Section title="请求">
+						<Field label="方法">
+							<SelectInput
+								value={(draft.method as string) ?? "GET"}
+								onChange={(v) => patch({ method: v })}
+								options={HTTP_METHODS}
+							/>
+						</Field>
+						<Field label="URL">
+							<TextInput
+								value={(draft.url as string) ?? ""}
+								onChange={(v) => patch({ url: v })}
+								placeholder="https://api.example.com/endpoint"
+							/>
+						</Field>
+					</Section>
+					<Section title="请求头">
 						<TextareaInput
 							value={
 								typeof draft.headers === "object"
@@ -1789,298 +2141,344 @@ function NodeFields({
 							placeholder={'{\n  "Authorization": "Bearer ..."\n}'}
 							rows={3}
 						/>
-					</Field>
+					</Section>
 					{["POST", "PUT", "PATCH"].includes(
 						(draft.method as string) ?? "GET",
 					) && (
-						<Field label="请求体">
+						<Section title="请求体">
 							<TextareaInput
 								value={(draft.body as string) ?? ""}
 								onChange={(v) => patch({ body: v })}
-								placeholder={'{\n  "key": "value"\n}'}
+								placeholder={'{\n  "key": "{{ start.field }}"\n}'}
 								rows={4}
 							/>
-						</Field>
+						</Section>
 					)}
 				</>
 			);
+
+		// ── IF/ELSE：可视化条件构建器 ─────────────────────────────────────────
+		case "if-else":
+			return (
+				<Section title="条件">
+					<IfElseBuilder
+						value={
+							(draft.cases as IfElseCase[]) ?? [
+								{ id: "case_1", logical_operator: "and", conditions: [] },
+							]
+						}
+						onChange={(v) => patch({ cases: v })}
+					/>
+				</Section>
+			);
+
+		// ── 代码 ─────────────────────────────────────────────────────────────
 		case "code":
 			return (
-				<Field label="Rhai 脚本" hint="返回值即节点输出">
+				<Section title="Rhai 脚本">
 					<TextareaInput
 						value={(draft.script as string) ?? ""}
 						onChange={(v) => patch({ script: v })}
-						placeholder={"// 通过 inputs 访问上游节点输出\ninputs"}
-						rows={10}
+						placeholder={"// 通过 inputs 访问上游节点输出\n// 返回值即节点输出\ninputs"}
+						rows={14}
 					/>
-				</Field>
+				</Section>
 			);
+
+		// ── 模板 ─────────────────────────────────────────────────────────────
 		case "template-transform":
 			return (
-				<Field label="Jinja2 模板">
+				<Section title="Jinja2 模板">
 					<TextareaInput
 						value={(draft.template as string) ?? ""}
 						onChange={(v) => patch({ template: v })}
 						placeholder={"Hello {{ inputs.node_id.field }}!"}
-						rows={10}
+						rows={12}
 					/>
-				</Field>
+				</Section>
 			);
+
+		// ── 迭代 ─────────────────────────────────────────────────────────────
 		case "iteration":
 			return (
 				<>
-					<Field label="输入数组路径" hint="必填">
-						<TextInput
-							value={(draft.input_selector as string) ?? ""}
-							onChange={(v) => patch({ input_selector: v })}
-							placeholder="node_id.items"
-						/>
-					</Field>
-					<Field label="输出收集路径" hint="必填">
-						<TextInput
-							value={(draft.output_selector as string) ?? ""}
-							onChange={(v) => patch({ output_selector: v })}
-							placeholder="summarize.output"
-						/>
-					</Field>
-					<Field label="执行模式">
-						<SelectInput
-							value={(draft.mode as string) ?? "parallel"}
-							onChange={(v) => patch({ mode: v })}
-							options={["parallel", "sequential"]}
-						/>
-					</Field>
+					<Section title="数据">
+						<Field label="输入数组">
+							<TextInput
+								value={(draft.input_selector as string) ?? ""}
+								onChange={(v) => patch({ input_selector: v })}
+								placeholder="node_id.items"
+							/>
+						</Field>
+						<Field label="输出收集">
+							<TextInput
+								value={(draft.output_selector as string) ?? ""}
+								onChange={(v) => patch({ output_selector: v })}
+								placeholder="summarize.output"
+							/>
+						</Field>
+					</Section>
+					<Section title="设置">
+						<Field label="执行模式">
+							<SelectInput
+								value={(draft.mode as string) ?? "parallel"}
+								onChange={(v) => patch({ mode: v })}
+								options={["parallel", "sequential"]}
+							/>
+						</Field>
+					</Section>
 				</>
 			);
+
+		// ── 循环 ─────────────────────────────────────────────────────────────
 		case "loop":
 			return (
 				<>
-					<Field label="输出收集路径" hint="必填">
-						<TextInput
-							value={(draft.output_selector as string) ?? ""}
-							onChange={(v) => patch({ output_selector: v })}
-							placeholder="step.result"
-						/>
-					</Field>
-					<Field label="最大迭代次数">
-						<NumberInput
-							value={(draft.max_iterations as number) ?? 10}
-							onChange={(v) => patch({ max_iterations: v ?? 10 })}
-							min={1}
-							max={1000}
-						/>
-					</Field>
+					<Section title="数据">
+						<Field label="输出收集">
+							<TextInput
+								value={(draft.output_selector as string) ?? ""}
+								onChange={(v) => patch({ output_selector: v })}
+								placeholder="step.result"
+							/>
+						</Field>
+					</Section>
+					<Section title="设置">
+						<Field label="最大迭代次数">
+							<NumberInput
+								value={(draft.max_iterations as number) ?? 10}
+								onChange={(v) => patch({ max_iterations: v ?? 10 })}
+								min={1}
+								max={1000}
+							/>
+						</Field>
+					</Section>
 				</>
 			);
+
+		// ── 变量聚合 ──────────────────────────────────────────────────────────
 		case "variable-aggregator":
 			return (
-				<Field label="来源路径" hint="node_id.path">
+				<Section title="来源变量">
 					<StringListInput
 						value={(draft.sources as string[]) ?? []}
 						onChange={(v) => patch({ sources: v })}
 						placeholder="node_id.output"
+						addLabel="添加来源"
 					/>
-				</Field>
+				</Section>
 			);
-		case "if-else":
-			return (
-				<Field label="分支条件" hint="JSON">
-					<TextareaInput
-						value={JSON.stringify(
-							draft.cases ?? [
-								{ id: "case_1", logical_operator: "and", conditions: [] },
-							],
-							null,
-							2,
-						)}
-						onChange={(v) => {
-							try {
-								patch({ cases: JSON.parse(v) });
-							} catch {
-								/* ignore */
-							}
-						}}
-						rows={10}
-					/>
-				</Field>
-			);
+
+		// ── LLM ─────────────────────────────────────────────────────────────
 		case "llm":
 			return (
 				<>
-					<Field label="模型" hint="必填">
-						<TextInput
-							value={(draft.model as string) ?? ""}
-							onChange={(v) => patch({ model: v })}
-							placeholder="gpt-4o-mini"
-						/>
-					</Field>
-					<Field label="用户提示词" hint="Jinja2 模板">
-						<TextareaInput
-							value={(draft.user_prompt as string) ?? ""}
-							onChange={(v) => patch({ user_prompt: v })}
-							placeholder={"根据以下内容作答：\n{{ start.query }}"}
-							rows={6}
-						/>
-					</Field>
-					<Field label="系统提示词" hint="可选">
-						<TextareaInput
-							value={(draft.system_prompt as string) ?? ""}
-							onChange={(v) => patch({ system_prompt: v })}
-							placeholder="You are a helpful assistant."
-							rows={4}
-						/>
-					</Field>
+					<Section title="模型">
+						<Field label="模型名称">
+							<TextInput
+								value={(draft.model as string) ?? ""}
+								onChange={(v) => patch({ model: v })}
+								placeholder="gpt-4o-mini"
+							/>
+						</Field>
+					</Section>
+					<Section title="提示词">
+						<Field label="系统提示词" hint="可选">
+							<TextareaInput
+								value={(draft.system_prompt as string) ?? ""}
+								onChange={(v) => patch({ system_prompt: v })}
+								placeholder="You are a helpful assistant."
+								rows={4}
+							/>
+						</Field>
+						<Field label="用户提示词">
+							<TextareaInput
+								value={(draft.user_prompt as string) ?? ""}
+								onChange={(v) => patch({ user_prompt: v })}
+								placeholder={"根据以下内容作答：\n{{ start.query }}"}
+								rows={6}
+							/>
+						</Field>
+					</Section>
 					<LlmConnectionFields draft={draft} patch={patch} />
 				</>
 			);
+
+		// ── 问题分类 ──────────────────────────────────────────────────────────
 		case "question-classifier":
 			return (
 				<>
-					<Field label="模型" hint="必填">
-						<TextInput
-							value={(draft.model as string) ?? ""}
-							onChange={(v) => patch({ model: v })}
-							placeholder="gpt-4o-mini"
+					<Section title="输入">
+						<Field label="查询变量">
+							<TextareaInput
+								value={(draft.question as string) ?? ""}
+								onChange={(v) => patch({ question: v })}
+								placeholder="{{ start.user_input }}"
+								rows={3}
+							/>
+						</Field>
+					</Section>
+					<Section title="模型">
+						<Field label="模型名称">
+							<TextInput
+								value={(draft.model as string) ?? ""}
+								onChange={(v) => patch({ model: v })}
+								placeholder="gpt-4o-mini"
+							/>
+						</Field>
+					</Section>
+					<Section title="分类">
+						<ClassesEditor
+							value={(draft.classes as ClassItem[]) ?? []}
+							onChange={(v) => patch({ classes: v })}
 						/>
-					</Field>
-					<Field label="输入问题" hint="Jinja2 模板">
-						<TextareaInput
-							value={(draft.question as string) ?? ""}
-							onChange={(v) => patch({ question: v })}
-							placeholder="{{ start.user_input }}"
-							rows={3}
-						/>
-					</Field>
-					<ClassesEditor
-						value={(draft.classes as ClassItem[]) ?? []}
-						onChange={(v) => patch({ classes: v })}
-					/>
+					</Section>
 					<LlmConnectionFields draft={draft} patch={patch} />
 				</>
 			);
+
+		// ── 参数提取 ──────────────────────────────────────────────────────────
 		case "parameter-extractor":
 			return (
 				<>
-					<Field label="模型" hint="必填">
-						<TextInput
-							value={(draft.model as string) ?? ""}
-							onChange={(v) => patch({ model: v })}
-							placeholder="gpt-4o-mini"
+					<Section title="输入">
+						<Field label="查询文本">
+							<TextareaInput
+								value={(draft.query as string) ?? ""}
+								onChange={(v) => patch({ query: v })}
+								placeholder="{{ start.user_input }}"
+								rows={3}
+							/>
+						</Field>
+					</Section>
+					<Section title="模型">
+						<Field label="模型名称">
+							<TextInput
+								value={(draft.model as string) ?? ""}
+								onChange={(v) => patch({ model: v })}
+								placeholder="gpt-4o-mini"
+							/>
+						</Field>
+					</Section>
+					<Section title="参数">
+						<ParametersEditor
+							value={(draft.parameters as ParamItem[]) ?? []}
+							onChange={(v) => patch({ parameters: v })}
 						/>
-					</Field>
-					<Field label="提取查询" hint="Jinja2 模板">
-						<TextareaInput
-							value={(draft.query as string) ?? ""}
-							onChange={(v) => patch({ query: v })}
-							placeholder="{{ start.user_input }}"
-							rows={3}
-						/>
-					</Field>
-					<ParametersEditor
-						value={(draft.parameters as ParamItem[]) ?? []}
-						onChange={(v) => patch({ parameters: v })}
-					/>
+					</Section>
 					<LlmConnectionFields draft={draft} patch={patch} />
 				</>
 			);
+
+		// ── 变量赋值 ──────────────────────────────────────────────────────────
 		case "assign":
 			return (
-				<AssignsEditor
-					value={(draft.assigns as Record<string, string>) ?? {}}
-					onChange={(v) => patch({ assigns: v })}
-				/>
+				<Section title="赋值">
+					<AssignsEditor
+						value={(draft.assigns as Record<string, string>) ?? {}}
+						onChange={(v) => patch({ assigns: v })}
+					/>
+				</Section>
 			);
+
+		// ── 列表操作 ──────────────────────────────────────────────────────────
 		case "list-operator":
 			return (
 				<>
-					<Field label="输入数组路径" hint="必填">
-						<TextInput
-							value={(draft.input_selector as string) ?? ""}
-							onChange={(v) => patch({ input_selector: v })}
-							placeholder="node_id.items"
-						/>
-					</Field>
-					<Field label="排序字段" hint="可选">
-						<TextInput
-							value={(draft.sort_by as string) ?? ""}
-							onChange={(v) => patch({ sort_by: v })}
-							placeholder="name"
-						/>
-					</Field>
-					<Field label="排序方向">
-						<SelectInput
-							value={(draft.sort_order as string) ?? "asc"}
-							onChange={(v) => patch({ sort_order: v })}
-							options={["asc", "desc"]}
-						/>
-					</Field>
-					<Field label="去重字段" hint="可选">
-						<TextInput
-							value={(draft.deduplicate_by as string) ?? ""}
-							onChange={(v) => patch({ deduplicate_by: v })}
-							placeholder="id"
-						/>
-					</Field>
-					<Field label="限制数量" hint="可选">
-						<NumberInput
-							value={draft.limit as number | undefined}
-							onChange={(v) => patch({ limit: v })}
-							placeholder="不限制"
-							min={1}
-						/>
-					</Field>
+					<Section title="数据">
+						<Field label="输入数组">
+							<TextInput
+								value={(draft.input_selector as string) ?? ""}
+								onChange={(v) => patch({ input_selector: v })}
+								placeholder="node_id.items"
+							/>
+						</Field>
+					</Section>
+					<Section title="操作">
+						<Field label="排序字段" hint="可选">
+							<TextInput
+								value={(draft.sort_by as string) ?? ""}
+								onChange={(v) => patch({ sort_by: v })}
+								placeholder="name"
+							/>
+						</Field>
+						<Field label="排序方向">
+							<SelectInput
+								value={(draft.sort_order as string) ?? "asc"}
+								onChange={(v) => patch({ sort_order: v })}
+								options={["asc", "desc"]}
+							/>
+						</Field>
+						<Field label="去重字段" hint="可选">
+							<TextInput
+								value={(draft.deduplicate_by as string) ?? ""}
+								onChange={(v) => patch({ deduplicate_by: v })}
+								placeholder="id"
+							/>
+						</Field>
+						<Field label="限制数量" hint="可选">
+							<NumberInput
+								value={draft.limit as number | undefined}
+								onChange={(v) => patch({ limit: v })}
+								placeholder="不限制"
+								min={1}
+							/>
+						</Field>
+					</Section>
 				</>
 			);
-		case "start":
-			return (
-				<StartInputsEditor
-					value={(draft.inputs as InputDecl[]) ?? []}
-					onChange={(v) => patch({ inputs: v })}
-				/>
-			);
+
+		// ── MCP 工具 ──────────────────────────────────────────────────────────
 		case "mcp":
 			return (
 				<>
-					<Field label="服务器 URL" hint="SSE 端点">
-						<TextInput
-							value={(draft.server_url as string) ?? ""}
-							onChange={(v) => patch({ server_url: v })}
-							placeholder="http://localhost:3000/sse"
-						/>
-					</Field>
-					<Field label="工具名称" hint="必填">
-						<TextInput
-							value={(draft.tool_name as string) ?? ""}
-							onChange={(v) => patch({ tool_name: v })}
-							placeholder="search"
-						/>
-					</Field>
-					<Field label="参数" hint="JSON">
-						<TextareaInput
-							value={
-								typeof draft.arguments === "object"
-									? JSON.stringify(draft.arguments, null, 2)
-									: ((draft.arguments as string) ?? "")
-							}
-							onChange={(v) => {
-								try {
-									patch({ arguments: JSON.parse(v) });
-								} catch {
-									patch({ arguments: v });
+					<Section title="服务器">
+						<Field label="服务器 URL" hint="SSE 端点">
+							<TextInput
+								value={(draft.server_url as string) ?? ""}
+								onChange={(v) => patch({ server_url: v })}
+								placeholder="http://localhost:3000/sse"
+							/>
+						</Field>
+					</Section>
+					<Section title="工具">
+						<Field label="工具名称">
+							<TextInput
+								value={(draft.tool_name as string) ?? ""}
+								onChange={(v) => patch({ tool_name: v })}
+								placeholder="search"
+							/>
+						</Field>
+						<Field label="参数" hint="JSON">
+							<TextareaInput
+								value={
+									typeof draft.arguments === "object"
+										? JSON.stringify(draft.arguments, null, 2)
+										: ((draft.arguments as string) ?? "")
 								}
-							}}
-							placeholder={'{\n  "query": "{{ start.query }}"\n}'}
-							rows={5}
-						/>
-					</Field>
+								onChange={(v) => {
+									try {
+										patch({ arguments: JSON.parse(v) });
+									} catch {
+										patch({ arguments: v });
+									}
+								}}
+								placeholder={'{\n  "query": "{{ start.query }}"\n}'}
+								rows={5}
+							/>
+						</Field>
+					</Section>
 				</>
 			);
+
+		// ── 合并：无需配置 ────────────────────────────────────────────────────
 		case "noop":
 			return (
-				<p className="text-xs text-muted-foreground/70 text-center py-4">
+				<p className="text-xs text-muted-foreground/60 text-center py-6">
 					此节点透传所有上游输出，无需配置。
 				</p>
 			);
+
 		default:
 			return null;
 	}
@@ -2271,6 +2669,24 @@ function FlowCanvas({
 		[setEdges],
 	);
 
+	// Dify connection rules:
+	//   1. No self-loops
+	//   2. Each (source, sourceHandle) pair may have at most one outgoing edge —
+	//      enforces that IF/ELSE and QC branches each route to a single next node.
+	//   3. A target handle may receive unlimited incoming edges (fan-in is valid).
+	const isValidConnection = useCallback(
+		(connection: { source: string | null; sourceHandle?: string | null; target: string | null; targetHandle?: string | null }) => {
+			if (!connection.source || !connection.target) return false;
+			if (connection.source === connection.target) return false;
+			return !edges.some(
+				(e) =>
+					e.source === connection.source &&
+					(e.sourceHandle ?? null) === (connection.sourceHandle ?? null),
+			);
+		},
+		[edges],
+	);
+
 	// Auto-save
 	const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const nodesRef = useRef(nodes);
@@ -2400,6 +2816,7 @@ function FlowCanvas({
 				nodeTypes={NODE_TYPES}
 				edgeTypes={EDGE_TYPES}
 				connectionLineComponent={CustomConnectionLine}
+				isValidConnection={isValidConnection}
 				fitView
 				proOptions={{ hideAttribution: true }}
 			>

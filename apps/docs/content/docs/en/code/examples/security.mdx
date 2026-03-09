@@ -18,9 +18,11 @@ The built-in `DefaultSecurityProvider` detects common patterns: API keys, tokens
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
+import { DefaultSecurityProvider } from '@a3s-lab/code';
+
 const session = agent.session('/my-project', {
   permissive: true,
-  defaultSecurity: true,
+  securityProvider: new DefaultSecurityProvider(),
 });
 
 const result = await session.send('Review this config file');
@@ -32,10 +34,10 @@ console.log(result.text); // sensitive patterns redacted
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import SessionOptions
+from a3s_code import SessionOptions, DefaultSecurityProvider
 
 opts = SessionOptions()
-opts.default_security = True
+opts.security_provider = DefaultSecurityProvider()
 
 session = agent.session("/my-project", options=opts)
 result = session.send("Review this config file")
@@ -52,20 +54,24 @@ print(result.text)  # sensitive patterns redacted
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
+import { DefaultSecurityProvider } from '@a3s-lab/code';
+
 // Custom security providers are implemented in Rust.
-// Use defaultSecurity: true for the built-in provider.
+// Use securityProvider: new DefaultSecurityProvider() for the built-in provider.
 const session = agent.session('/my-project', {
-  defaultSecurity: true,
+  securityProvider: new DefaultSecurityProvider(),
 });
 ```
 </Tab>
 <Tab value="Python">
 ```python
+from a3s_code import DefaultSecurityProvider
+
 # Custom security providers are implemented in Rust.
-# Use with_default_security() for the built-in provider,
+# Use DefaultSecurityProvider() for the built-in provider,
 # or implement SecurityProvider in Rust and expose via FFI.
 opts = SessionOptions()
-opts.default_security = True
+opts.security_provider = DefaultSecurityProvider()
 session = agent.session("/my-project", options=opts)
 ```
 </Tab>
@@ -109,7 +115,7 @@ For full security configuration, see [Security](/docs/code/security).
 <TypeTable
   type={{
     "Default security": {
-      description: "Python: default_security=True · TypeScript: defaultSecurity: true · Default: false",
+      description: "Python: security_provider=DefaultSecurityProvider() · TypeScript: securityProvider: new DefaultSecurityProvider() · Default: false",
     },
     "Custom provider": {
       description: "Python: _(Rust only)_ · TypeScript: _(Rust only)_ · Default: None",

@@ -40,7 +40,7 @@ SubAgentWrapper (Sub Agents)
 
 ## Quick Start
 
-<Tabs items={['Rust', 'Python']}>
+<Tabs items={['Python']}>
 <Tab value="Python">
 
 ```python
@@ -90,7 +90,7 @@ print(f"Result: {result}")
 
 `Orchestrator.create()` spawns subagents using an internal stub — for tests and demos only. To run **real LLM + tool execution**, use `AgentOrchestrator::from_agent(agent)` (Rust) or `create_with_agent()` (Python/TypeScript) to attach a real AgentLoop.
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
@@ -185,17 +185,6 @@ AgentOrchestrator::from_agent(agent)
 
 ## SubAgent States
 
-```rust
-pub enum SubAgentState {
-    Initializing,                    // Initializing
-    Running,                         // Running
-    Paused,                          // Paused
-    Completed { success, output },   // Completed
-    Cancelled,                       // Cancelled
-    Error { message },               // Error
-}
-```
-
 ## Control Signals
 
 | Method | Description |
@@ -210,7 +199,7 @@ Python/TypeScript use the same method names without `.await?`.
 
 ## Real-time Monitoring API
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
@@ -326,110 +315,15 @@ SubAgents have the following activity types during execution:
 
 ### OrchestratorConfig
 
-```rust
-pub struct OrchestratorConfig {
-    /// Event channel buffer size
-    pub event_buffer_size: usize,           // Default: 1000
-
-    /// Control signal channel buffer size
-    pub control_buffer_size: usize,         // Default: 100
-
-    /// Maximum concurrent SubAgents
-    pub max_concurrent_subagents: usize,    // Default: 50
-
-    /// Event subject prefix
-    pub subject_prefix: String,             // Default: "agent"
-}
-```
-
 ### SubAgentConfig
-
-```rust
-pub struct SubAgentConfig {
-    /// Agent type (general, explore, plan, etc.)
-    pub agent_type: String,
-
-    /// Task description
-    pub description: String,
-
-    /// Execution prompt
-    pub prompt: String,
-
-    /// Enable permissive mode (bypass HITL)
-    pub permissive: bool,
-
-    /// Maximum execution steps
-    pub max_steps: Option<usize>,
-
-    /// Execution timeout (milliseconds)
-    pub timeout_ms: Option<u64>,
-
-    /// Parent SubAgent ID (for nesting)
-    pub parent_id: Option<String>,
-
-    /// Custom metadata
-    pub metadata: serde_json::Value,
-
-    /// Workspace directory (defaults to ".")
-    pub workspace: String,
-
-    /// Extra directories to scan for agent definition files
-    pub agent_dirs: Vec<String>,
-
-    /// Lane queue config for External/Hybrid tool dispatch
-    pub lane_config: Option<SessionQueueConfig>,
-}
-```
 
 ## Advanced Usage
 
 ### Subscribe to Specific SubAgent Events
 
-```rust
-let mut events = orchestrator.subscribe_subagent(&handle.id);
-
-while let Some(event) = events.recv().await {
-    match event {
-        OrchestratorEvent::SubAgentProgress { step, total_steps, message, .. } => {
-            println!("Progress: {}/{} - {}", step, total_steps, message);
-        }
-        OrchestratorEvent::ToolExecutionStarted { tool_name, .. } => {
-            println!("Tool started: {}", tool_name);
-        }
-        _ => {}
-    }
-}
-```
-
 ### Concurrency Limits
 
-```rust
-let mut config = OrchestratorConfig::default();
-config.max_concurrent_subagents = 5;
-
-let orchestrator = AgentOrchestrator::new(config);
-
-// Attempting to spawn 6th SubAgent will fail
-for i in 0..6 {
-    let result = orchestrator.spawn_subagent(config.clone()).await;
-    if result.is_err() {
-        println!("Max concurrent limit reached");
-    }
-}
-```
-
 ### Nested SubAgents
-
-```rust
-// Parent SubAgent
-let parent_config = SubAgentConfig::new("general", "Main task");
-let parent_handle = orchestrator.spawn_subagent(parent_config).await?;
-
-// Child SubAgent
-let child_config = SubAgentConfig::new("explore", "Subtask")
-    .with_parent_id(&parent_handle.id);
-let child_handle = orchestrator.spawn_subagent(child_config).await?;
-```
 
 ## Comparison with AgentTeam
 

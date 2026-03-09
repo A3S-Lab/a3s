@@ -133,15 +133,6 @@ session.set_permission_policy(policy)
 
 示例：
 
-```rust
-let policy = PermissionPolicy::new()
-    .deny("bash(rm -rf:*)")      // Block destructive commands
-    .allow("bash(git *)")         // Allow git commands
-    .ask("bash(*)")               // Ask for all other bash commands
-    .allow("read(*)")             // Allow all reads
-    .ask("write(*)");             // Ask for all writes
-```
-
 ## 人机协同（HITL）
 
 HITL 确认**独立于**权限系统。即使工具被权限 `allow`，HITL 仍然可以要求用户确认。
@@ -222,16 +213,6 @@ for event in session.stream("Clean up old logs"):
 
 所有文件操作限制在会话的工作区目录内。尝试访问工作区外的文件会被阻止。
 
-```rust
-let session = agent.session("/my-project", None)?;
-
-// ✅ Allowed: within workspace
-session.read_file("src/main.rs").await?;
-
-// ❌ Blocked: outside workspace
-session.read_file("../other-project/secret.txt").await?;
-```
-
 ## 内置安全提供者
 
 A3S Code 默认不启用任何 `SecurityProvider`。调用 `with_default_security()` 即可激活内置的 `DefaultSecurityProvider`，无需任何额外配置。
@@ -241,9 +222,11 @@ A3S Code 默认不启用任何 `SecurityProvider`。调用 `with_default_securit
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
+import { DefaultSecurityProvider } from '@a3s-lab/code';
+
 // 默认安全配置
 const session = agent.session('/project', {
-  defaultSecurity: true,
+  securityProvider: new DefaultSecurityProvider(),
 });
 
 // 自定义配置
@@ -261,8 +244,11 @@ const session = agent.session('/project', {
 </Tab>
 <Tab value="Python">
 ```python
+from a3s_code import DefaultSecurityProvider
+
 # 默认安全配置
-session = agent.session("/project", default_security=True)
+session = agent.session("/project",
+    security_provider=DefaultSecurityProvider())
 
 # 自定义配置
 session = agent.session("/project", security_config={
@@ -348,59 +334,7 @@ session = agent.session("/project", security_config={
 
 A3S Code 提供 `SecurityProvider` trait 用于实现自定义安全逻辑：
 
-```rust
-pub trait SecurityProvider: Send + Sync {
-    /// Classify and register sensitive data found in input text
-    fn taint_input(&self, text: &str) {}
-
-    /// Sanitize output text by redacting sensitive data
-    fn sanitize_output(&self, text: &str) -> String {
-        text.to_string()
-    }
-
-    /// Securely wipe all session security state
-    fn wipe(&self) {}
-
-    /// Register security hooks with the given engine
-    fn register_hooks(&self, hook_engine: &HookEngine) {}
-
-    /// Unregister all hooks from the engine
-    fn teardown(&self, hook_engine: &HookEngine) {}
-}
-```
-
 ### 示例：自定义安全提供者
-
-```rust
-use a3s_code_core::security::SecurityProvider;
-use a3s_code_core::hooks::{HookEngine, HookEvent, HookResult};
-
-struct MySecurityProvider {
-    // Your security state
-}
-
-impl SecurityProvider for MySecurityProvider {
-    fn taint_input(&self, text: &str) {
-        // Detect and track sensitive data (SSN, API keys, etc.)
-    }
-
-    fn sanitize_output(&self, text: &str) -> String {
-        // Redact sensitive data from LLM output
-        text.replace("sk-ant-", "[REDACTED]")
-    }
-
-    fn register_hooks(&self, hook_engine: &HookEngine) {
-        // Register pre/post tool use hooks for security checks
-        hook_engine.register(/* your hooks */);
-    }
-}
-
-// Use in session
-let security = Arc::new(MySecurityProvider { /* ... */ });
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_security_provider(security)
-))?;
-```
 
 参见 [Hooks](/cn/docs/code/hooks) 了解生命周期事件集成。
 

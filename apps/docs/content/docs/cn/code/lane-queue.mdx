@@ -47,15 +47,6 @@ Lane 队列系统通过基于优先级的队列路由工具执行，底层由 [a
 
 ### Rust
 
-```rust
-use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig};
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_queue_config(SessionQueueConfig::default().with_lane_features())
-))?;
-```
-
 ### Python
 
 ```python
@@ -310,19 +301,6 @@ for task in external:
 
 ### 指标和死信
 
-```rust
-// Metrics snapshot (if metrics enabled)
-if let Some(metrics) = session.queue_metrics().await {
-    println!("{:?}", metrics);
-}
-
-// Dead letters (if DLQ enabled)
-let dead = session.dead_letters().await;
-for dl in &dead {
-    println!("Dead: {} — {}", dl.command_type, dl.error);
-}
-```
-
 ## 外部任务处理
 
 任何 lane 都可以切换到 **External** 模式，该 lane 中的工具调用**不在本地执行** — 而是成为 `ExternalTask` 对象，你的 SDK 代码必须轮询、处理（本地或远程机器上）并通过回调完成。这是多机器并行执行的机制。
@@ -453,26 +431,6 @@ Agent 循环：LLM 返回工具调用（例如 bash("cargo test")）
 ### 动态 Lane 切换
 
 Lane 可以在运行时切换模式。这支持自适应策略 — 以 Internal 模式启动，当 worker 可用时切换到 External：
-
-```rust
-// Start with local execution (default)
-let result = session.send("Analyze the codebase").await?;
-
-// Workers have come online — switch to external for heavy execution
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::External,
-    timeout_ms: 60_000,
-}).await;
-
-// Now bash/write/edit tasks route to remote workers
-let result = session.send("Run the full CI pipeline across all packages").await?;
-
-// Workers going offline — switch back to local
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::Internal,
-    timeout_ms: 60_000,
-}).await;
-```
 
 ## 向后兼容
 

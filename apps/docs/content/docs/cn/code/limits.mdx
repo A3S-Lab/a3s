@@ -125,10 +125,6 @@ session = agent.session("/project", retry_config={
 
 禁用重试：
 
-```rust
-let retry = RetryConfig::disabled();  // max_retries = 0
-```
-
 ## 解析错误重试
 
 LLM 有时返回格式错误的工具参数。`max_parse_retries` 控制连续解析错误多少次后终止（默认 2）。

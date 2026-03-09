@@ -90,7 +90,7 @@ The `SecurityGuard` registers hooks at priority 1 (highest) automatically:
 
 ## Hook Registration
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
@@ -544,7 +544,7 @@ Fires when any error occurs during execution. Use for error reporting or recover
 
 ### HookHandler
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 Pass a callback as the fifth argument to `registerHook`. The callback receives the serialized event and returns a response object:
@@ -646,7 +646,7 @@ for event in session.stream('List all .py files'):
 
 ### Hook priority
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript

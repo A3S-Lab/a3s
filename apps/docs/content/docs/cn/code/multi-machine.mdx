@@ -268,30 +268,7 @@ kubectl run worker --image=myapp/worker --env="SESSION_ID=abc123"
 
 ### 设置适当的超时
 
-```rust
-// Short timeout for fast operations
-LaneHandlerConfig {
-    mode: TaskHandlerMode::External,
-    timeout_ms: 30_000,  // 30 seconds
-}
-
-// Long timeout for heavy operations
-LaneHandlerConfig {
-    mode: TaskHandlerMode::External,
-    timeout_ms: 600_000,  // 10 minutes
-}
-```
-
 ### 监控队列指标
-
-```rust
-let stats = session.queue_stats().await;
-println!("Pending: {}, Active: {}, External: {}",
-    stats.pending_count,
-    stats.active_count,
-    stats.external_count
-);
-```
 
 ## 总结
 

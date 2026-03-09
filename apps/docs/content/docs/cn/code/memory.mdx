@@ -82,36 +82,9 @@ result = session.send("记住：本项目部署在 AWS us-east-1")
 
 `remember()` 同时写入长期记忆和短期记忆。
 
-```rust
-let memory = session.memory().unwrap();
-
-// 存储一条知识
-memory.remember(
-    MemoryItem::new("项目使用 PostgreSQL 15")
-        .with_importance(0.8)
-        .with_tag("database")
-        .with_type(MemoryType::Semantic)
-).await?;
-
-// 便捷方法（自动设置重要性和标签）
-memory.remember_success("通过 `just release` 完成部署").await?;
-memory.remember_failure("未运行 fmt 检查直接发布会导致 CI 失败").await?;
-```
-
 ## MemoryItem
 
 每条记忆都是一个 `MemoryItem`，Builder API 让构建更简洁：
-
-```rust
-use a3s_memory::{MemoryItem, MemoryType};
-
-let item = MemoryItem::new("文件 I/O 优先使用 write_all 而非 write")
-    .with_importance(0.8)          // 0.0–1.0，自动截断
-    .with_tag("rust")
-    .with_tag("io")
-    .with_type(MemoryType::Semantic)
-    .with_metadata("source", "code-review");
-```
 
 <TypeTable
   type={{
@@ -171,22 +144,6 @@ memory {
 
 或在代码中配置：
 
-```rust
-use a3s_memory::RelevanceConfig;
-use a3s_code_core::memory::MemoryConfig;
-
-SessionOptions::new()
-    .with_memory_config(MemoryConfig {
-        relevance: RelevanceConfig {
-            decay_days: 7.0,        // 短期会话，衰减更快
-            importance_weight: 0.9,
-            recency_weight: 0.1,
-        },
-        max_short_term: 100,
-        max_working: 10,
-    })
-```
-
 ## 存储后端
 
 ### FileMemoryStore
@@ -210,45 +167,9 @@ memory/
 
 临时存储，零配置。适合测试和短生命周期会话：
 
-```rust
-use a3s_memory::InMemoryStore;
-
-SessionOptions::new()
-    .with_memory(Arc::new(InMemoryStore::new()))
-```
-
 ### 自定义后端
 
 实现 `MemoryStore` trait 即可接入任意存储系统——SQLite、Redis、向量数据库：
-
-```rust
-use a3s_memory::{MemoryItem, MemoryStore};
-
-struct MyVectorStore { /* ... */ }
-
-#[async_trait::async_trait]
-impl MemoryStore for MyVectorStore {
-    async fn store(&self, item: MemoryItem) -> anyhow::Result<()> {
-        // 对 item.content 做向量嵌入并 upsert 到向量数据库
-        todo!()
-    }
-
-    async fn search(&self, query: &str, limit: usize) -> anyhow::Result<Vec<MemoryItem>> {
-        // 对 query 做向量嵌入，ANN 搜索，返回 top-k
-        todo!()
-    }
-
-    async fn retrieve(&self, id: &str) -> anyhow::Result<Option<MemoryItem>> { todo!() }
-    async fn search_by_tags(&self, tags: &[String], limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
-    async fn get_recent(&self, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
-    async fn get_important(&self, threshold: f32, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
-    async fn delete(&self, id: &str) -> anyhow::Result<()> { todo!() }
-    async fn clear(&self) -> anyhow::Result<()> { todo!() }
-    async fn count(&self) -> anyhow::Result<usize> { todo!() }
-}
-
-SessionOptions::new().with_memory(Arc::new(MyVectorStore::new()))
-```
 
 `FileMemoryStore` 的 `search()` 使用子串匹配。向量存储实现只需替换这一方法为语义相似度搜索，其余无需改动。
 

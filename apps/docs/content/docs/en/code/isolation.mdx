@@ -24,18 +24,6 @@ Isolation Layers
 
 All file operations (`read`, `write`, `edit`, `glob`, `grep`) are confined to the directory specified when creating the session. Attempts to access paths outside the workspace are intercepted immediately — no retry, no path disclosure to the LLM.
 
-```rust
-// Workspace set to /my-project
-let session = agent.session("/my-project", None)?;
-
-// ✅ Allowed: within workspace
-// read("src/main.rs") → /my-project/src/main.rs
-
-// ❌ Blocked: outside workspace
-// read("../other-project/secret.txt") → access denied
-// read("/etc/passwd") → access denied
-```
-
 This boundary is **always active** and cannot be disabled through configuration.
 
 ## File Version History

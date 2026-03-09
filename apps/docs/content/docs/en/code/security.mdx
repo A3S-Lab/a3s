@@ -133,15 +133,6 @@ Rules are evaluated in this order:
 
 Example:
 
-```rust
-let policy = PermissionPolicy::new()
-    .deny("bash(rm -rf:*)")      // Block destructive commands
-    .allow("bash(git *)")         // Allow git commands
-    .ask("bash(*)")               // Ask for all other bash commands
-    .allow("read(*)")             // Allow all reads
-    .ask("write(*)");             // Ask for all writes
-```
-
 ## Human-in-the-Loop (HITL)
 
 HITL confirmation is **independent** of the permission system. Even if a tool is `allow`ed by permissions, HITL can still require user confirmation.
@@ -222,16 +213,6 @@ for event in session.stream("Clean up old logs"):
 
 All file operations are restricted to the session's workspace directory. Attempts to access files outside the workspace are blocked.
 
-```rust
-let session = agent.session("/my-project", None)?;
-
-// ✅ Allowed: within workspace
-session.read_file("src/main.rs").await?;
-
-// ❌ Blocked: outside workspace
-session.read_file("../other-project/secret.txt").await?;
-```
-
 ## Built-in Security Provider
 
 A3S Code ships a `DefaultSecurityProvider` that is off by default. Call `with_default_security()` to activate it — no additional configuration required.
@@ -241,9 +222,11 @@ A3S Code ships a `DefaultSecurityProvider` that is off by default. Call `with_de
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
+import { DefaultSecurityProvider } from '@a3s-lab/code';
+
 // Default security config
 const session = agent.session('/project', {
-  defaultSecurity: true,
+  securityProvider: new DefaultSecurityProvider(),
 });
 
 // Custom config
@@ -261,8 +244,11 @@ const session = agent.session('/project', {
 </Tab>
 <Tab value="Python">
 ```python
+from a3s_code import DefaultSecurityProvider
+
 # Default security config
-session = agent.session("/project", default_security=True)
+session = agent.session("/project",
+    security_provider=DefaultSecurityProvider())
 
 # Custom config
 session = agent.session("/project", security_config={
@@ -348,59 +334,7 @@ When injection is detected, it is reported via the `OnError` hook and emitted as
 
 A3S Code provides a `SecurityProvider` trait for implementing custom security logic:
 
-```rust
-pub trait SecurityProvider: Send + Sync {
-    /// Classify and register sensitive data found in input text
-    fn taint_input(&self, text: &str) {}
-
-    /// Sanitize output text by redacting sensitive data
-    fn sanitize_output(&self, text: &str) -> String {
-        text.to_string()
-    }
-
-    /// Securely wipe all session security state
-    fn wipe(&self) {}
-
-    /// Register security hooks with the given engine
-    fn register_hooks(&self, hook_engine: &HookEngine) {}
-
-    /// Unregister all hooks from the engine
-    fn teardown(&self, hook_engine: &HookEngine) {}
-}
-```
-
 ### Example: Custom Security Provider
-
-```rust
-use a3s_code_core::security::SecurityProvider;
-use a3s_code_core::hooks::{HookEngine, HookEvent, HookResult};
-
-struct MySecurityProvider {
-    // Your security state
-}
-
-impl SecurityProvider for MySecurityProvider {
-    fn taint_input(&self, text: &str) {
-        // Detect and track sensitive data (SSN, API keys, etc.)
-    }
-
-    fn sanitize_output(&self, text: &str) -> String {
-        // Redact sensitive data from LLM output
-        text.replace("sk-ant-", "[REDACTED]")
-    }
-
-    fn register_hooks(&self, hook_engine: &HookEngine) {
-        // Register pre/post tool use hooks for security checks
-        hook_engine.register(/* your hooks */);
-    }
-}
-
-// Use in session
-let security = Arc::new(MySecurityProvider { /* ... */ });
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_security_provider(security)
-))?;
-```
 
 See [Hooks](/docs/code/hooks) for lifecycle event integration.
 

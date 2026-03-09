@@ -1,0 +1,353 @@
+---
+title: Middleware
+description: Express-style middleware system with sync and async support
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+# Middleware
+
+A3S Code provides an Express-style middleware system that allows you to intercept and modify context during session creation. Middleware supports both synchronous and asynchronous execution.
+
+## Architecture
+
+```
+Agent.session(workspace, options)
+  ↓
+MiddlewarePipeline.execute(ctx)
+  ├─ Middleware 1 (sync/async)
+  ├─ Middleware 2 (sync/async)
+  └─ Middleware N (sync/async)
+  ↓
+AgentSession created
+```
+
+## Basic Usage
+
+### Synchronous Middleware
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { MiddlewarePipeline, MiddlewareContext } from '@a3s-lab/code';
+
+const pipeline = new MiddlewarePipeline();
+
+pipeline.useMiddleware((ctx: MiddlewareContext) => {
+  console.log(`Session: ${ctx.sessionId}, Workspace: ${ctx.workspace}`);
+
+  // Modify context
+  ctx.prompt = `[Enhanced] ${ctx.prompt}`;
+
+  return { resultType: 'continue' };
+});
+
+// Execute pipeline
+const result = await pipeline.execute({
+  sessionId: 'session-123',
+  workspace: '/project',
+  prompt: 'Refactor auth module',
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import MiddlewarePipeline
+
+def my_middleware(ctx):
+    print(f"Session: {ctx.session_id}, Workspace: {ctx.workspace}")
+
+    # Modify context
+    ctx.prompt = f"[Enhanced] {ctx.prompt}"
+
+    return {"result_type": "continue"}
+
+pipeline = MiddlewarePipeline()
+pipeline.use_middleware(my_middleware)
+
+# Execute pipeline
+result = pipeline.execute({
+    "session_id": "session-123",
+    "workspace": "/project",
+    "prompt": "Refactor auth module",
+})
+```
+</Tab>
+</Tabs>
+
+### Asynchronous Middleware
+
+TypeScript supports async middleware via the `AsyncMiddlewarePipeline` wrapper:
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { MiddlewarePipeline, MiddlewareContext } from '@a3s-lab/code';
+
+// AsyncMiddlewarePipeline wrapper
+class AsyncMiddlewarePipeline {
+  private pipeline: MiddlewarePipeline;
+  private pendingPromises: Promise<any>[] = [];
+
+  constructor() {
+    this.pipeline = new MiddlewarePipeline();
+  }
+
+  use(middleware: (ctx: MiddlewareContext) => any | Promise<any>): this {
+    const isAsync = middleware.constructor.name === 'AsyncFunction';
+
+    if (isAsync) {
+      const wrapped = (ctx: MiddlewareContext) => {
+        const promise = middleware(ctx);
+        this.pendingPromises.push(promise);
+        return { resultType: 'continue' };
+      };
+      this.pipeline.useMiddleware(wrapped);
+    } else {
+      this.pipeline.useMiddleware(middleware);
+    }
+
+    return this;
+  }
+
+  async execute(ctx: MiddlewareContext): Promise<MiddlewareContext> {
+    this.pendingPromises = [];
+    const result = await this.pipeline.execute(ctx);
+
+    // Wait for all async middleware to complete
+    if (this.pendingPromises.length > 0) {
+      const results = await Promise.all(this.pendingPromises);
+      for (const middlewareResult of results) {
+        if (middlewareResult.resultType === 'abort') {
+          throw new Error(`Middleware aborted: ${middlewareResult.reason}`);
+        }
+      }
+    }
+
+    return result;
+  }
+}
+
+// Use async middleware
+const pipeline = new AsyncMiddlewarePipeline();
+
+pipeline.use(async (ctx) => {
+  console.log('⏳ Async middleware: starting...');
+  await new Promise(resolve => setTimeout(resolve, 100));
+  console.log('✅ Async middleware: completed');
+  return { resultType: 'continue' };
+});
+
+await pipeline.execute(ctx);
+```
+</Tab>
+<Tab value="Python">
+```python
+# Python middleware currently supports synchronous execution only
+from a3s_code import MiddlewarePipeline
+
+def my_middleware(ctx):
+    print(f"Processing: {ctx.session_id}")
+    return {"result_type": "continue"}
+
+pipeline = MiddlewarePipeline()
+pipeline.use_middleware(my_middleware)
+```
+</Tab>
+</Tabs>
+
+## Middleware Context
+
+### MiddlewareContext Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `sessionId` | `string` | Unique session identifier |
+| `workspace` | `string` | Workspace directory path |
+| `prompt` | `string?` | Optional initial prompt |
+
+### Middleware Result
+
+| Result Type | Description |
+|-------------|-------------|
+| `continue` | Continue to next middleware |
+| `abort` | Abort pipeline execution |
+
+## Use Cases
+
+### Logging Middleware
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+function loggingMiddleware(ctx: MiddlewareContext) {
+  console.log(`[${new Date().toISOString()}] Session ${ctx.sessionId} created`);
+  console.log(`Workspace: ${ctx.workspace}`);
+  return { resultType: 'continue' };
+}
+
+pipeline.useMiddleware(loggingMiddleware);
+```
+</Tab>
+<Tab value="Python">
+```python
+def logging_middleware(ctx):
+    print(f"[{datetime.now().isoformat()}] Session {ctx.session_id} created")
+    print(f"Workspace: {ctx.workspace}")
+    return {"result_type": "continue"}
+
+pipeline.use_middleware(logging_middleware)
+```
+</Tab>
+</Tabs>
+
+### Validation Middleware
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+function validationMiddleware(ctx: MiddlewareContext) {
+  if (!ctx.workspace.startsWith('/allowed/path')) {
+    return {
+      resultType: 'abort',
+      reason: 'Workspace path not allowed',
+    };
+  }
+  return { resultType: 'continue' };
+}
+
+pipeline.useMiddleware(validationMiddleware);
+```
+</Tab>
+<Tab value="Python">
+```python
+def validation_middleware(ctx):
+    if not ctx.workspace.startswith('/allowed/path'):
+        return {
+            "result_type": "abort",
+            "reason": "Workspace path not allowed",
+        }
+    return {"result_type": "continue"}
+
+pipeline.use_middleware(validation_middleware)
+```
+</Tab>
+</Tabs>
+
+### Context Enhancement Middleware
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+function enhancementMiddleware(ctx: MiddlewareContext) {
+  // Add project-specific context to prompt
+  if (ctx.prompt) {
+    ctx.prompt = `Project: ${ctx.workspace}\n\n${ctx.prompt}`;
+  }
+  return { resultType: 'continue' };
+}
+
+pipeline.useMiddleware(enhancementMiddleware);
+```
+</Tab>
+<Tab value="Python">
+```python
+def enhancement_middleware(ctx):
+    # Add project-specific context to prompt
+    if ctx.prompt:
+        ctx.prompt = f"Project: {ctx.workspace}\n\n{ctx.prompt}"
+    return {"result_type": "continue"}
+
+pipeline.use_middleware(enhancement_middleware)
+```
+</Tab>
+</Tabs>
+
+## Complete Example
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { MiddlewarePipeline, MiddlewareContext } from '@a3s-lab/code';
+
+const pipeline = new MiddlewarePipeline();
+
+// 1. Logging
+pipeline.useMiddleware((ctx) => {
+  console.log(`🟢 Session ${ctx.sessionId} starting`);
+  return { resultType: 'continue' };
+});
+
+// 2. Validation
+pipeline.useMiddleware((ctx) => {
+  if (!ctx.workspace) {
+    return { resultType: 'abort', reason: 'Workspace required' };
+  }
+  return { resultType: 'continue' };
+});
+
+// 3. Enhancement
+pipeline.useMiddleware((ctx) => {
+  ctx.prompt = `[Enhanced] ${ctx.prompt || ''}`;
+  return { resultType: 'continue' };
+});
+
+// Execute
+const result = await pipeline.execute({
+  sessionId: 'session-123',
+  workspace: '/project',
+  prompt: 'Refactor auth',
+});
+
+console.log('Pipeline completed:', result);
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import MiddlewarePipeline
+
+pipeline = MiddlewarePipeline()
+
+# 1. Logging
+def logging_middleware(ctx):
+    print(f"🟢 Session {ctx.session_id} starting")
+    return {"result_type": "continue"}
+
+# 2. Validation
+def validation_middleware(ctx):
+    if not ctx.workspace:
+        return {"result_type": "abort", "reason": "Workspace required"}
+    return {"result_type": "continue"}
+
+# 3. Enhancement
+def enhancement_middleware(ctx):
+    ctx.prompt = f"[Enhanced] {ctx.prompt or ''}"
+    return {"result_type": "continue"}
+
+pipeline.use_middleware(logging_middleware)
+pipeline.use_middleware(validation_middleware)
+pipeline.use_middleware(enhancement_middleware)
+
+# Execute
+result = pipeline.execute({
+    "session_id": "session-123",
+    "workspace": "/project",
+    "prompt": "Refactor auth",
+})
+
+print("Pipeline completed:", result)
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+**Note:** Middleware executes during session creation, not during LLM interaction. For lifecycle hooks during execution, see [Hooks](/docs/code/hooks).
+</Callout>
+
+## See Also
+
+- [Hooks](/docs/code/hooks) — Lifecycle events during agent execution
+- [Security](/docs/code/security) — Permission policies and HITL confirmation
+- [Sessions](/docs/code/sessions) — Session creation and management

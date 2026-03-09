@@ -92,15 +92,6 @@ assert r.exit_code == 0
 
 The agent can use `git_worktree` autonomously when asked to work on parallel features:
 
-```rust
-let result = session.send(
-    "Create a worktree for feature-auth, then list all worktrees.",
-    None,
-).await?;
-println!("{}", result.text);
-assert!(result.tool_calls_count > 0);
-```
-
 ## Subcommands
 
 <TypeTable

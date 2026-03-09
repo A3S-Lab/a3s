@@ -214,26 +214,9 @@ print(result.text)
 
 流式变体：
 
-```rust
-let (rx, handle) = session.stream_with_attachments(
-    "Describe this diagram",
-    &[Attachment::from_file("diagram.png")?],
-    None,
-).await?;
-```
-
 ### 工具图片输出
 
 工具可以在文本输出旁返回图片。当工具返回图片时，它们会作为多模态内容块包含在发送给 LLM 的工具结果消息中。
-
-```rust
-// In a custom tool implementation
-async fn execute(&self, args: &Value, ctx: &ToolContext) -> Result<ToolOutput> {
-    let screenshot_bytes = take_screenshot().await?;
-    Ok(ToolOutput::success("Screenshot captured")
-        .with_images(vec![Attachment::png(screenshot_bytes)]))
-}
-```
 
 ## 流式
 
@@ -282,24 +265,6 @@ async for event in session.stream("Refactor the auth module"):
 ## 对话历史（Rust）
 
 通过传递历史记录维护多轮对话：
-
-```rust
-use a3s_code_core::llm::{ContentBlock, Message};
-
-let history = vec![
-    Message::user("What's in src/?"),
-    Message {
-        role: "assistant".to_string(),
-        content: vec![ContentBlock::Text {
-            text: "The src/ directory contains main.rs and lib.rs.".to_string(),
-        }],
-        reasoning_content: None,
-    },
-];
-
-// Continue the conversation
-let result = session.send_with_history(&history, "Now explain main.rs").await?;
-```
 
 ## 直接工具执行
 
@@ -759,10 +724,10 @@ print(r.text)  # Cancelled task [a1b2c3d4]
       description: "Python: skill_dirs=[path] · TypeScript: skillDirs: [path] · 默认值: []",
     },
     "默认安全": {
-      description: "Python: default_security=True · TypeScript: defaultSecurity: true · 默认值: false",
+      description: "Python: security_provider=DefaultSecurityProvider() · TypeScript: securityProvider: new DefaultSecurityProvider() · 默认值: false",
     },
     "文件记忆": {
-      description: "Python: memory_dir=path · TypeScript: memoryDir: path · 默认值: None",
+      description: "Python: memory_store=FileMemoryStore(path) · TypeScript: memoryStore: new FileMemoryStore(path) · 默认值: None",
     },
     "自动压缩": {
       description: "Python: auto_compact=True · TypeScript: autoCompact: true · 默认值: false",

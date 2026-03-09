@@ -151,7 +151,7 @@ These metrics are recorded on tracing spans via `record_tool_result()` and can b
 The telemetry module emits standard OpenTelemetry spans. Spans fire automatically during every
 `send()` / `stream()` call — no changes to your agent code are needed.
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 Telemetry is emitted automatically. Configure the collector via environment variables before
@@ -236,7 +236,7 @@ result = session.send('Analyze this codebase')
 
 ### Setup
 
-<Tabs items={['TypeScript / Python', 'Rust']}>
+<Tabs items={['TypeScript / Python']}>
 <Tab value="TypeScript / Python">
 
 Configure the OTLP collector endpoint via environment variables — no subscriber setup needed

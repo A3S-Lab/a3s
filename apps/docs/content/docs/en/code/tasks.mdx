@@ -134,16 +134,7 @@ The `AUTO` strategy uses task analysis to dynamically select the best approach.
 
 `ExecutionPlan::get_ready_steps()` returns only tasks whose dependencies are all `Completed`. This ensures correct execution order without manual sequencing:
 
-```rust
-let ready = plan.get_ready_steps();
-// Returns tasks where all dependencies are satisfied
-```
-
 Progress is calculated automatically:
-
-```rust
-let progress = plan.progress(); // 0.0 to 1.0
-```
 
 ### Parallel Wave-Based Execution
 
@@ -333,17 +324,6 @@ session = agent.session("/my-project", planning=True, goal_tracking=True)
 
 If pending steps remain but no steps are ready (all dependencies failed or circular), the executor detects the deadlock and breaks out of the loop, returning partial results.
 
-```rust
-// Circular dependency — immediate deadlock
-plan.add_step(Task::new("a", "Step A").with_dependencies(vec!["b".to_string()]));
-plan.add_step(Task::new("b", "Step B").with_dependencies(vec!["a".to_string()]));
-assert!(plan.has_deadlock()); // true — neither step can start
-
-// Failed dependency — cascading deadlock
-plan.mark_status("s1", TaskStatus::Failed);
-// Steps depending on s1 can never start → has_deadlock() returns true
-```
-
 #### Fallback Planner Compatibility
 
 The fallback planner creates linear chains (analyze → implement → verify), so it always produces one step per wave — effectively sequential execution. Parallel execution only activates when the LLM planner creates steps with non-overlapping dependencies.
@@ -351,13 +331,6 @@ The fallback planner creates linear chains (analyze → implement → verify), s
 ## Planning Mode
 
 Enable planning with the `planning_enabled` flag in `AgentConfig`:
-
-```rust
-let config = AgentConfig {
-    planning_enabled: true,
-    // ...
-};
-```
 
 When enabled, the `LlmPlanner` generates a structured plan before execution begins. If the LLM planner fails (e.g., malformed response), a heuristic fallback creates a reasonable default plan.
 
@@ -392,17 +365,6 @@ When the LLM planner fails, the fallback heuristic creates a 3-step plan:
 When `goal_tracking` is enabled, the agent extracts a measurable goal from the user's prompt and monitors progress throughout execution.
 
 ### Goal Structure
-
-```rust
-pub struct AgentGoal {
-    pub description: String,
-    pub success_criteria: Vec<String>,
-    pub progress: f32,          // 0.0 to 1.0
-    pub achieved: bool,
-    pub created_at: DateTime<Utc>,
-    pub achieved_at: Option<DateTime<Utc>>,
-}
-```
 
 ### How It Works
 

@@ -162,11 +162,6 @@ Execute shell commands. Commands run in the session's workspace directory.
 
 **Security:** Use [Permission System](/docs/code/security) to control bash access:
 
-```rust
-policy.deny("bash(rm -rf:*)");  // Block destructive commands
-policy.ask("bash(*)");          // Require confirmation for all bash
-```
-
 ## Web
 
 ### `web_fetch`
@@ -289,22 +284,6 @@ a3s-code-core = { version = "1.2", features = ["sandbox"] }
 Two modes of operation:
 
 **Transparent Routing** — When `SandboxConfig` is set on the session, the `bash` tool silently routes through the sandbox:
-
-```rust
-use a3s_code_core::{SessionOptions, SandboxConfig};
-
-let session = agent.session(".", Some(
-    SessionOptions::new().with_sandbox(SandboxConfig {
-        image: "ubuntu:22.04".into(),
-        memory_mb: 512,
-        network: false,
-        ..SandboxConfig::default()
-    })
-))?;
-
-// bash commands run inside the MicroVM sandbox
-let result = session.send("Run the test suite", None).await?;
-```
 
 **Explicit `sandbox` Tool** — With the feature enabled, a `sandbox` tool is registered so the LLM can choose to use it explicitly. The workspace is mounted at `/workspace` inside the sandbox.
 
@@ -504,20 +483,3 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
 />
 
 ### Custom Tool trait (Rust)
-
-```rust
-use a3s_code_core::tools::{Tool, ToolOutput};
-use async_trait::async_trait;
-
-#[async_trait]
-impl Tool for MyTool {
-    fn name(&self) -> &str { "my_tool" }
-    fn description(&self) -> &str { "Does something useful" }
-    fn parameters(&self) -> serde_json::Value { /* JSON Schema */ }
-    async fn execute(&self, args: serde_json::Value) -> anyhow::Result<ToolOutput> {
-        Ok(ToolOutput::success("result"))
-    }
-}
-
-session.register_tool(Arc::new(MyTool));
-```

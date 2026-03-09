@@ -225,26 +225,9 @@ Supported image formats: JPEG, PNG, GIF, WebP.
 
 Streaming variant:
 
-```rust
-let (rx, handle) = session.stream_with_attachments(
-    "Describe this diagram",
-    &[Attachment::from_file("diagram.png")?],
-    None,
-).await?;
-```
-
 ### Tool Image Output
 
 Tools can return images alongside text output. When a tool returns images, they are included as multi-modal content blocks in the tool result message sent to the LLM.
-
-```rust
-// In a custom tool implementation
-async fn execute(&self, args: &Value, ctx: &ToolContext) -> Result<ToolOutput> {
-    let screenshot_bytes = take_screenshot().await?;
-    Ok(ToolOutput::success("Screenshot captured")
-        .with_images(vec![Attachment::png(screenshot_bytes)]))
-}
-```
 
 ## Stream
 
@@ -293,24 +276,6 @@ async for event in session.stream("Refactor the auth module"):
 ## Conversation History (Rust)
 
 Maintain multi-turn conversations by passing history:
-
-```rust
-use a3s_code_core::llm::{ContentBlock, Message};
-
-let history = vec![
-    Message::user("What's in src/?"),
-    Message {
-        role: "assistant".to_string(),
-        content: vec![ContentBlock::Text {
-            text: "The src/ directory contains main.rs and lib.rs.".to_string(),
-        }],
-        reasoning_content: None,
-    },
-];
-
-// Continue the conversation
-let result = session.send_with_history(&history, "Now explain main.rs").await?;
-```
 
 ## Direct Tool Execution
 
@@ -756,12 +721,12 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
     default_security: {
       type: 'bool',
       default: 'false',
-      description: 'Enable default security provider. TS: `defaultSecurity: true`, Python: `default_security=True`',
+      description: 'Enable default security provider. TS: `securityProvider: new DefaultSecurityProvider()`, Python: `security_provider=DefaultSecurityProvider()`',
     },
     file_memory: {
       type: 'Option<string>',
       default: 'None',
-      description: 'Path for file-backed memory. TS: `memoryDir: path`, Python: `memory_dir=path`',
+      description: 'Path for file-backed memory. TS: `memoryStore: new FileMemoryStore(path)`, Python: `memory_store=FileMemoryStore(path)`',
     },
     auto_compact: {
       type: 'bool',

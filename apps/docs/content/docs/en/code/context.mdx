@@ -30,7 +30,7 @@ This preserves important context while reducing token usage.
 
 ### Configuration
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
@@ -99,19 +99,6 @@ Events are emitted during resolution: `ContextResolving` (with provider names) a
 
 ### ContextProvider Trait
 
-```rust
-#[async_trait]
-pub trait ContextProvider: Send + Sync {
-    /// Query this provider for relevant context
-    async fn query(&self, query: ContextQuery) -> Result<ContextResult>;
-
-    /// Optional: extract and store context after a turn completes
-    async fn on_turn_complete(&self, _messages: &[Message]) -> Result<()> {
-        Ok(()) // default no-op
-    }
-}
-```
-
 The `query()` method receives a `ContextQuery` and returns matching `ContextItem` entries. The optional `on_turn_complete()` hook allows providers to extract and store information from conversation turns (e.g., memory extraction).
 
 ### ContextQuery
@@ -151,15 +138,6 @@ The `query()` method receives a `ContextQuery` and returns matching `ContextItem
 />
 
 Builder methods make construction ergonomic:
-
-```rust
-let query = ContextQuery::new("authentication flow")
-    .with_types(vec![ContextType::Resource])
-    .with_depth(ContextDepth::Overview)
-    .with_max_results(5)
-    .with_max_tokens(4000)
-    .with_session_id("session-123");
-```
 
 #### ContextType
 
@@ -233,19 +211,19 @@ Bridges the [Memory](/docs/code/memory) system to the context provider interface
 
 <Callout type="info">
   `MemoryContextProvider` is implemented in Rust. TypeScript and Python sessions can enable
-  memory-backed context by setting `memoryDir` in session options — the provider is activated
+  memory-backed context by passing a `FileMemoryStore` instance — the provider is activated
   automatically.
 </Callout>
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
-import { Agent } from '@a3s-lab/code';
+import { Agent, FileMemoryStore } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('/project', {
-  memoryDir: './.a3s/memory',  // enables MemoryContextProvider automatically
+  memoryStore: new FileMemoryStore('./.a3s/memory'),  // enables MemoryContextProvider automatically
 });
 ```
 
@@ -253,12 +231,11 @@ const session = agent.session('/project', {
 <Tab value="Python">
 
 ```python
-from a3s_code import Agent
+from a3s_code import Agent, FileMemoryStore
 
 agent = Agent.create('agent.hcl')
-session = agent.session('/project', {
-    'memory_dir': './.a3s/memory',  # enables MemoryContextProvider automatically
-})
+session = agent.session('/project',
+    memory_store=FileMemoryStore('./.a3s/memory'))  # enables MemoryContextProvider automatically
 ```
 
 </Tab>
@@ -268,7 +245,7 @@ session = agent.session('/project', {
 
 Custom context providers implement the `ContextProvider` trait in Rust and are registered on the session. TypeScript and Python can use `fsContext` to inject filesystem context without a custom provider.
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
@@ -303,15 +280,15 @@ session = agent.session('/project', {
 
 Register multiple context providers to combine different sources:
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
-import { Agent } from '@a3s-lab/code';
+import { Agent, FileMemoryStore } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('/project', {
-  memoryDir: './.a3s/memory',  // memory provider
+  memoryStore: new FileMemoryStore('./.a3s/memory'),  // memory provider
   fsContext: './docs',          // filesystem context provider
 });
 ```
@@ -323,13 +300,12 @@ use Rust and register them with `.with_context_provider()`.
 <Tab value="Python">
 
 ```python
-from a3s_code import Agent
+from a3s_code import Agent, FileMemoryStore
 
 agent = Agent.create('agent.hcl')
-session = agent.session('/project', {
-    'memory_dir': './.a3s/memory',  # memory provider
-    'fs_context': './docs',          # filesystem context provider
-})
+session = agent.session('/project',
+    memory_store=FileMemoryStore('./.a3s/memory'),  # memory provider
+    fs_context='./docs')  # filesystem context provider
 ```
 
 </Tab>

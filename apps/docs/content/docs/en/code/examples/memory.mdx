@@ -43,147 +43,21 @@ result = s2.send("Where do we deploy?")
 
 Use `session.memory()` to store and query memories from your own code:
 
-```rust
-use a3s_memory::{MemoryItem, MemoryType};
-
-let memory = session.memory().unwrap();
-
-// Store with full control
-memory.remember(
-    MemoryItem::new("Auth uses JWT with 24h expiry")
-        .with_importance(0.9)
-        .with_tag("auth")
-        .with_tag("security")
-        .with_type(MemoryType::Semantic)
-).await?;
-
-// Convenience wrappers (set importance and tags automatically)
-memory.remember_success("Refactored auth module — tests pass").await?;
-memory.remember_failure("Deploying without running fmt check breaks CI").await?;
-
-// Query
-let results = memory.recall("auth", 5).await?;
-for item in results {
-    println!("[{:.2}] {}", item.importance, item.content);
-}
-```
-
 ## Custom Backend
 
 Implement `MemoryStore` from `a3s-memory` to use any storage system:
-
-```rust
-use a3s_memory::{MemoryItem, MemoryStore};
-use async_trait::async_trait;
-use std::sync::Arc;
-
-struct SqliteMemoryStore {
-    pool: sqlx::SqlitePool,
-}
-
-#[async_trait]
-impl MemoryStore for SqliteMemoryStore {
-    async fn store(&self, item: MemoryItem) -> anyhow::Result<()> {
-        sqlx::query!(
-            "INSERT OR REPLACE INTO memories (id, content, importance, tags, timestamp)
-             VALUES (?, ?, ?, ?, ?)",
-            item.id, item.content, item.importance,
-            serde_json::to_string(&item.tags)?,
-            item.timestamp.to_rfc3339(),
-        )
-        .execute(&self.pool).await?;
-        Ok(())
-    }
-
-    async fn search(&self, query: &str, limit: usize) -> anyhow::Result<Vec<MemoryItem>> {
-        // Full-text search or semantic similarity here
-        todo!()
-    }
-
-    async fn retrieve(&self, id: &str) -> anyhow::Result<Option<MemoryItem>> { todo!() }
-    async fn search_by_tags(&self, tags: &[String], limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
-    async fn get_recent(&self, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
-    async fn get_important(&self, threshold: f32, limit: usize) -> anyhow::Result<Vec<MemoryItem>> { todo!() }
-    async fn delete(&self, id: &str) -> anyhow::Result<()> { todo!() }
-    async fn clear(&self) -> anyhow::Result<()> { todo!() }
-    async fn count(&self) -> anyhow::Result<usize> { todo!() }
-}
-
-let store = Arc::new(SqliteMemoryStore { pool });
-let session = agent.session(".", Some(
-    SessionOptions::new().with_memory(store)
-))?;
-```
 
 ## Memory Events
 
 Subscribe to memory lifecycle events via the streaming API:
 
-```rust
-let (mut rx, _handle) = session.stream("What do you know about this project?", None).await?;
-
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::MemoryStored { memory_id, memory_type } => {
-            println!("stored {} ({:?})", memory_id, memory_type);
-        }
-        AgentEvent::MemoryRecalled { memory_id, .. } => {
-            println!("recalled {}", memory_id);
-        }
-        AgentEvent::MemoriesSearched { query, count } => {
-            println!("searched '{}' → {} results", query, count);
-        }
-        _ => {}
-    }
-}
-```
-
 ## Relevance Tuning
 
 Adjust scoring for your use case:
 
-```rust
-use a3s_memory::RelevanceConfig;
-use a3s_code_core::memory::MemoryConfig;
-
-// Long-lived assistant: slow decay, weight importance heavily
-let config = MemoryConfig {
-    relevance: RelevanceConfig {
-        decay_days: 365.0,
-        importance_weight: 0.9,
-        recency_weight: 0.1,
-    },
-    max_short_term: 200,
-    max_working: 20,
-};
-
-// Short-lived coding session: fast decay, weight recency heavily
-let config = MemoryConfig {
-    relevance: RelevanceConfig {
-        decay_days: 1.0,
-        importance_weight: 0.3,
-        recency_weight: 0.7,
-    },
-    max_short_term: 50,
-    max_working: 5,
-};
-
-SessionOptions::new().with_memory_config(config)
-```
-
 ## Index Rebuild
 
 If `FileMemoryStore`'s index is corrupted or deleted, recover without data loss:
-
-```rust
-use a3s_memory::FileMemoryStore;
-
-let store = FileMemoryStore::new("./memory").await?;
-
-// Scans items/ directory and rebuilds index.json from item files
-let recovered = store.rebuild_index().await?;
-println!("Recovered {} memories", recovered);
-```
 
 <Callout type="info">
 For the full API reference, see [Memory](/docs/code/memory).

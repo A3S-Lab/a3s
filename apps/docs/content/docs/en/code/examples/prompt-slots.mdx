@@ -130,23 +130,6 @@ session = agent.session("/my-project", options=opts)
 
 Prompt slots only affect the system prompt — core tool behavior is fully preserved:
 
-```rust
-let session = agent.session("/my-project", Some(
-    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
-        role: Some("You are a minimalist file manager.".into()),
-        guidelines: Some("Only create files when explicitly asked.".into()),
-        ..Default::default()
-    })
-))?;
-
-// The agent can still use all tools normally
-let result = session.send(
-    "Create a file called test.txt with 'hello'. Then read it back.",
-    None,
-).await?;
-assert!(result.tool_calls_count > 0); // Tools work as expected
-```
-
 ## API Reference
 
 <TypeTable

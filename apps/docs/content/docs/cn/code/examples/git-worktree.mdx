@@ -90,14 +90,6 @@ assert r.exit_code == 0
 
 Agent 可以在被要求并行开发功能时自主使用 `git_worktree`：
 
-```rust
-let result = session.send(
-    "Create a worktree for feature-auth, then list all worktrees.",
-    None,
-).await?;
-assert!(result.tool_calls_count > 0);
-```
-
 ## 子命令
 
 <TypeTable

@@ -25,11 +25,6 @@ A3S Code uses HCL (HashiCorp Configuration Language) as its primary config forma
 | `~/.a3s/config.hcl` | User-level default shared across projects |
 | `/etc/a3s/config.hcl` | System-wide config for multi-user servers |
 
-```rust
-let agent = Agent::new("agent.hcl").await?;
-let agent = Agent::new("/home/deploy/.a3s/config.hcl").await?;
-```
-
 ---
 
 ## Minimal Config
@@ -265,7 +260,7 @@ providers {
 
 Select at runtime:
 
-<Tabs items={['Rust', 'Python', 'TypeScript']}>
+<Tabs items={['Python', 'TypeScript']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('.', { model: 'openai/gpt-4o' });

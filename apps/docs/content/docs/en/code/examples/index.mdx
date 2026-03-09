@@ -236,10 +236,10 @@ npx tsx examples/<name>.ts
       description: "Python: skill_dirs=[path] · TypeScript: skillDirs: [path]",
     },
     "Default security": {
-      description: "Python: default_security=True · TypeScript: defaultSecurity: true",
+      description: "Python: security_provider=DefaultSecurityProvider() · TypeScript: securityProvider: new DefaultSecurityProvider()",
     },
     "File memory": {
-      description: "Python: memory_dir=path · TypeScript: memoryDir: path",
+      description: "Python: memory_store=FileMemoryStore(path) · TypeScript: memoryStore: new FileMemoryStore(path)",
     },
     "Auto-compact": {
       description: "Python: auto_compact=True · TypeScript: autoCompact: true",

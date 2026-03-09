@@ -65,7 +65,7 @@ A3S Code provides two team-based multi-agent collaboration modes:
 
 ### Quick Start
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
@@ -177,21 +177,6 @@ For scenarios requiring full control over orchestration logic, use `AgentTeam` +
 
 ### AgentTeam Setup
 
-```rust
-use a3s_code_core::agent_teams::{AgentTeam, TeamConfig, TeamRole};
-
-let config = TeamConfig {
-    max_tasks: 50,
-    channel_buffer: 128,
-    max_rounds: 10,
-    poll_interval_ms: 200,
-};
-let mut team = AgentTeam::new("my-team", config);
-team.add_member("lead",     TeamRole::Lead);
-team.add_member("worker-1", TeamRole::Worker);
-team.add_member("reviewer", TeamRole::Reviewer);
-```
-
 ### TeamConfig
 
 <TypeTable
@@ -214,35 +199,6 @@ team.add_member("reviewer", TeamRole::Reviewer);
 ### TeamTaskBoard
 
 The board is shared across all members via `Arc<TeamTaskBoard>`. Every operation is thread-safe:
-
-```rust
-let board = team.task_board();     // &TeamTaskBoard
-let board = team.task_board_arc(); // Arc<TeamTaskBoard>
-
-// Post a task — returns Some(task_id) or None if board is full
-let id = board.post("Refactor JWT validation", "lead", None).unwrap();
-// Pre-assign to a specific worker; task starts as InProgress (not Open)
-let id = board.post("Add CSRF protection", "lead", Some("worker-1")).unwrap();
-
-// Claim the next Open or Rejected task
-let task: Option<TeamTask> = board.claim("worker-1");
-
-// Complete a task (moves to InReview)
-board.complete(&task.id, "Added RS256 key rotation");
-
-// Reviewer actions
-board.approve(&task.id);   // InReview → Done
-board.reject(&task.id);    // InReview → Rejected (re-claimable by workers)
-
-// Query
-let tasks: Vec<TeamTask>    = board.by_status(TaskStatus::Done);
-let tasks: Vec<TeamTask>    = board.by_assignee("worker-1");
-let task:  Option<TeamTask> = board.get(&id);
-
-// Stats — (open, in_progress, in_review, done, rejected)
-let (open, prog, rev, done, rej) = board.stats();
-let total = board.len();
-```
 
 ### Task State Machine
 
@@ -291,19 +247,6 @@ post()      claim()       complete()
 
 `TeamRunner` binds real `AgentSession` instances (or any `AgentExecutor`) to team members and runs the full automated workflow:
 
-```rust
-use a3s_code_core::agent_teams::TeamRunner;
-use std::sync::Arc;
-
-let mut runner = TeamRunner::new(team); // team is consumed here
-
-runner.bind_session("lead",     Arc::new(agent.session(".", None)?))?;
-runner.bind_session("worker-1", Arc::new(agent.session(".", None)?))?;
-runner.bind_session("reviewer", Arc::new(agent.session(".", None)?))?;
-
-let result = runner.run_until_done("Audit the auth module").await?;
-```
-
 `run_until_done` internals:
 
 1. **Lead decomposition** — the Lead's session receives a prompt to output JSON tasks. The runner parses the JSON and calls `board.post()` for each task.
@@ -318,35 +261,7 @@ let result = runner.run_until_done("Audit the auth module").await?;
 
 `TeamRunner` accepts any type implementing `AgentExecutor` — not just `AgentSession`. Useful for testing or custom execution strategies:
 
-```rust
-use a3s_code_core::agent_teams::AgentExecutor;
-
-#[async_trait::async_trait]
-impl AgentExecutor for MyCustomExecutor {
-    async fn execute(&self, prompt: &str) -> a3s_code_core::Result<String> {
-        // your LLM call or custom logic here
-        Ok("result".to_string())
-    }
-}
-
-runner.bind_session("worker-1", Arc::new(MyCustomExecutor::new()))?;
-```
-
 ### Point-to-Point Messaging
-
-```rust
-// Send to a specific member
-team.send_message("lead", "worker-1", "Focus on JWT validation", None).await;
-
-// Broadcast to all members
-team.broadcast("lead", "Starting review phase", None).await;
-
-// Worker reads inbox
-let mut rx = team.take_receiver("worker-1").unwrap();
-while let Some(msg) = rx.recv().await {
-    println!("{} → {}: {}", msg.from, msg.to, msg.content);
-}
-```
 
 ---
 

@@ -30,7 +30,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ### 配置
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
@@ -99,19 +99,6 @@ Agent 在每次 LLM 调用前查询已注册的上下文提供者。提供者返
 
 ### ContextProvider Trait
 
-```rust
-#[async_trait]
-pub trait ContextProvider: Send + Sync {
-    /// Query this provider for relevant context
-    async fn query(&self, query: ContextQuery) -> Result<ContextResult>;
-
-    /// Optional: extract and store context after a turn completes
-    async fn on_turn_complete(&self, _messages: &[Message]) -> Result<()> {
-        Ok(()) // default no-op
-    }
-}
-```
-
 `query()` 方法接收 `ContextQuery` 并返回匹配的 `ContextItem` 条目。可选的 `on_turn_complete()` hook 允许提供者从对话轮次中提取和存储信息（例如记忆提取）。
 
 ### ContextQuery
@@ -143,15 +130,6 @@ pub trait ContextProvider: Send + Sync {
 />
 
 Builder 方法使构造更便捷：
-
-```rust
-let query = ContextQuery::new("authentication flow")
-    .with_types(vec![ContextType::Resource])
-    .with_depth(ContextDepth::Overview)
-    .with_max_results(5)
-    .with_max_tokens(4000)
-    .with_session_id("session-123");
-```
 
 #### ContextType
 
@@ -217,18 +195,18 @@ let query = ContextQuery::new("authentication flow")
 将[记忆](/cn/docs/code/memory)系统桥接到上下文提供者接口。对记忆条目执行语义搜索，并将其转换为带相关性分数的 `ContextItem` 条目。
 
 <Callout type="info">
-  `MemoryContextProvider` 在 Rust 中实现。TypeScript 和 Python 会话可以通过在会话选项中设置 `memoryDir` 来启用内存支持的上下文 — 提供者将自动激活。
+  `MemoryContextProvider` 在 Rust 中实现。TypeScript 和 Python 会话可以通过传递 `FileMemoryStore` 实例来启用内存支持的上下文 — 提供者将自动激活。
 </Callout>
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
-import { Agent } from '@a3s-lab/code';
+import { Agent, FileMemoryStore } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('/project', {
-  memoryDir: './.a3s/memory',  // 自动启用 MemoryContextProvider
+  memoryStore: new FileMemoryStore('./.a3s/memory'),  // 自动启用 MemoryContextProvider
 });
 ```
 
@@ -236,12 +214,11 @@ const session = agent.session('/project', {
 <Tab value="Python">
 
 ```python
-from a3s_code import Agent
+from a3s_code import Agent, FileMemoryStore
 
 agent = Agent.create('agent.hcl')
-session = agent.session('/project', {
-    'memory_dir': './.a3s/memory',  # 自动启用 MemoryContextProvider
-})
+session = agent.session('/project',
+    memory_store=FileMemoryStore('./.a3s/memory'))  # 自动启用 MemoryContextProvider
 ```
 
 </Tab>
@@ -251,7 +228,7 @@ session = agent.session('/project', {
 
 自定义上下文提供者在 Rust 中实现 `ContextProvider` trait 并在会话上注册。TypeScript 和 Python 可以使用 `fsContext` 注入文件系统上下文，无需自定义提供者。
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
@@ -285,15 +262,15 @@ session = agent.session('/project', {
 
 注册多个上下文提供者以组合不同来源：
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 ```typescript
-import { Agent } from '@a3s-lab/code';
+import { Agent, FileMemoryStore } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('/project', {
-  memoryDir: './.a3s/memory',  // 记忆提供者
+  memoryStore: new FileMemoryStore('./.a3s/memory'),  // 记忆提供者
   fsContext: './docs',          // 文件系统上下文提供者
 });
 ```
@@ -304,13 +281,12 @@ const session = agent.session('/project', {
 <Tab value="Python">
 
 ```python
-from a3s_code import Agent
+from a3s_code import Agent, FileMemoryStore
 
 agent = Agent.create('agent.hcl')
-session = agent.session('/project', {
-    'memory_dir': './.a3s/memory',  # 记忆提供者
-    'fs_context': './docs',          # 文件系统上下文提供者
-})
+session = agent.session('/project',
+    memory_store=FileMemoryStore('./.a3s/memory'),  # 记忆提供者
+    fs_context='./docs')  # 文件系统上下文提供者
 ```
 
 </Tab>

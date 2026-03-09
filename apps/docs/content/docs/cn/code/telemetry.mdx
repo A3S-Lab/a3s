@@ -210,7 +210,7 @@ cost_usd = (prompt_tokens * input_per_million / 1_000_000)
 
 遥测模块发出标准 OpenTelemetry span。每次 `send()` / `stream()` 调用期间 span 自动触发 — 无需修改 agent 代码。
 
-<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 遥测自动发出。在启动进程之前通过环境变量配置收集器：
@@ -308,7 +308,7 @@ result = session.send('分析此代码库')
 
 ### 设置
 
-<Tabs items={['TypeScript / Python', 'Rust']}>
+<Tabs items={['TypeScript / Python']}>
 <Tab value="TypeScript / Python">
 
 通过环境变量配置 OTLP 收集器端点 — 应用程序代码中无需设置订阅者：

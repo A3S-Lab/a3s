@@ -128,23 +128,6 @@ session = agent.session("/my-project", options=opts)
 
 提示词插槽只影响系统提示词 — 核心工具行为完全保留：
 
-```rust
-let session = agent.session("/my-project", Some(
-    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
-        role: Some("You are a minimalist file manager.".into()),
-        guidelines: Some("Only create files when explicitly asked.".into()),
-        ..Default::default()
-    })
-))?;
-
-// Agent 仍然可以正常使用所有工具
-let result = session.send(
-    "Create a file called test.txt with 'hello'. Then read it back.",
-    None,
-).await?;
-assert!(result.tool_calls_count > 0); // 工具正常工作
-```
-
 ## API 参考
 
 <TypeTable
