@@ -15,25 +15,29 @@ import { Callout } from 'fumadocs-ui/components/callout';
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
+import { Agent, FileMemoryStore } from '@a3s-lab/code';
+
 const agent = await Agent.create('agent.hcl');
 
 // 第一次会话
-const s1 = agent.session('.', { fileMemory: './memory' });
+const s1 = agent.session('.', { memoryStore: new FileMemoryStore('./memory') });
 await s1.send('记住：我们通过 GitHub Actions 部署到 AWS us-east-1');
 
 // 之后的会话 — 同一 memory 目录
-const s2 = agent.session('.', { fileMemory: './memory' });
+const s2 = agent.session('.', { memoryStore: new FileMemoryStore('./memory') });
 const result = await s2.send('我们部署在哪里？');
 ```
 </Tab>
 <Tab value="Python">
 ```python
+from a3s_code import Agent, SessionOptions, FileMemoryStore
+
 agent = Agent.create("agent.hcl")
 
-s1 = agent.session(".", SessionOptions(file_memory="./memory"))
+s1 = agent.session(".", SessionOptions(memory_store=FileMemoryStore("./memory")))
 s1.send("记住：我们通过 GitHub Actions 部署到 AWS us-east-1")
 
-s2 = agent.session(".", SessionOptions(file_memory="./memory"))
+s2 = agent.session(".", SessionOptions(memory_store=FileMemoryStore("./memory")))
 result = s2.send("我们部署在哪里？")
 ```
 </Tab>

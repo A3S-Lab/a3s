@@ -31,9 +31,11 @@ This separation means you can swap the storage backend without touching any agen
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
+import { Agent, FileMemoryStore } from '@a3s-lab/code';
+
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.', {
-  fileMemory: './memory',
+  memoryStore: new FileMemoryStore('./memory'),
 });
 
 const result = await session.send('Remember: this project deploys to AWS us-east-1');
@@ -41,9 +43,11 @@ const result = await session.send('Remember: this project deploys to AWS us-east
 </Tab>
 <Tab value="Python">
 ```python
+from a3s_code import Agent, SessionOptions, FileMemoryStore
+
 agent = Agent.create("agent.hcl")
 session = agent.session(".", SessionOptions(
-    file_memory="./memory",
+    memory_store=FileMemoryStore("./memory"),
 ))
 
 result = session.send("Remember: this project deploys to AWS us-east-1")

@@ -186,15 +186,21 @@ function CustomEdge({
 //     uses absolute positioning so it protrudes at the right edge of the row
 // =============================================================================
 
+// Shared handle visual — circular "+" button, Dify-style.
+// Invisible by default; parent must have className="group" for group-hover to work.
+const handleCircleClass =
+	"!h-5 !w-5 !rounded-full !border !border-primary/50 !bg-card !shadow-sm !outline-none " +
+	"!opacity-0 group-hover:!opacity-100 !transition-opacity !duration-150 hover:!scale-110 hover:!border-primary";
+
 function SourceHandle({ id }: { id?: string } = {}) {
 	return (
 		<Handle
 			type="source"
 			position={Position.Right}
 			id={id}
-			className="!h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none transition-all hover:scale-125"
+			className={handleCircleClass}
 		>
-			<span className="absolute right-1.5 top-1 h-2 w-0.5 rounded-sm bg-border pointer-events-none" />
+			<Plus className="pointer-events-none absolute inset-0 m-auto size-2.5 text-primary/70" />
 		</Handle>
 	);
 }
@@ -204,24 +210,28 @@ function TargetHandle() {
 		<Handle
 			type="target"
 			position={Position.Left}
-			className="!h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none transition-all hover:scale-125"
+			className={handleCircleClass}
 		>
-			<span className="absolute left-1.5 top-1 h-2 w-0.5 rounded-sm bg-border pointer-events-none" />
+			<Plus className="pointer-events-none absolute inset-0 m-auto size-2.5 text-primary/70" />
 		</Handle>
 	);
 }
 
 // Branch row handle — sits inside a `relative` row div, protrudes right.
 // React Flow computes the edge endpoint from this element's screen position.
+// Inherits group-hover visibility from the top-level node group wrapper.
 function BranchHandle({ id }: { id: string }) {
 	return (
 		<Handle
 			type="source"
 			position={Position.Right}
 			id={id}
-			className="!absolute !-right-2 !top-1/2 !-translate-y-1/2 !h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none"
+			className={cn(
+				"!absolute !-right-2.5 !top-1/2 !-translate-y-1/2",
+				handleCircleClass,
+			)}
 		>
-			<span className="pointer-events-none absolute right-1.5 top-1 h-2 w-0.5 rounded-sm bg-border" />
+			<Plus className="pointer-events-none absolute inset-0 m-auto size-2.5 text-primary/70" />
 		</Handle>
 	);
 }
@@ -500,7 +510,7 @@ function FlowNode({ type, data, selected }: NodeProps) {
 	const d = data as Record<string, unknown>;
 
 	return (
-		<>
+		<div className="group">
 			<TargetHandle />
 			{/* Outer: selection ring */}
 			<div
@@ -512,7 +522,7 @@ function FlowNode({ type, data, selected }: NodeProps) {
 				{/* Inner: card — rounded-[15px] matches Dify's rounded-[15px] */}
 				<div
 					className={cn(
-						"group relative",
+						"relative",
 						"rounded-[15px] border border-border/10",
 						"w-[240px] bg-card shadow-sm",
 						"hover:shadow-md transition-shadow duration-200",
@@ -532,7 +542,7 @@ function FlowNode({ type, data, selected }: NodeProps) {
 				</div>
 			</div>
 			<SourceHandle />
-		</>
+		</div>
 	);
 }
 
@@ -540,7 +550,7 @@ function StartNode({ data, selected }: NodeProps) {
 	const d = data as Record<string, unknown>;
 	const entry = getCatalogEntry("start")!;
 	return (
-		<>
+		<div className="group">
 			{/* Outer: selection ring */}
 			<div
 				className={cn(
@@ -550,7 +560,7 @@ function StartNode({ data, selected }: NodeProps) {
 			>
 				<div
 					className={cn(
-						"group relative",
+						"relative",
 						"rounded-[15px] border border-border/10",
 						"w-[240px] bg-card shadow-sm",
 						"hover:shadow-md transition-shadow duration-200",
@@ -566,7 +576,7 @@ function StartNode({ data, selected }: NodeProps) {
 				</div>
 			</div>
 			<SourceHandle />
-		</>
+		</div>
 	);
 }
 
@@ -624,7 +634,7 @@ function IterationContainerNode({ id, data, selected }: NodeProps) {
 	);
 
 	return (
-		<>
+		<div className="group">
 			<TargetHandle />
 			<div
 				style={{ width: CONTAINER_W, minHeight: CONTAINER_H }}
@@ -687,7 +697,7 @@ function IterationContainerNode({ id, data, selected }: NodeProps) {
 				</div>
 			</div>
 			<SourceHandle />
-		</>
+		</div>
 	);
 }
 
@@ -715,7 +725,7 @@ function LoopContainerNode({ id, data, selected }: NodeProps) {
 	);
 
 	return (
-		<>
+		<div className="group">
 			<TargetHandle />
 			<div
 				style={{ width: CONTAINER_W, minHeight: CONTAINER_H }}
@@ -777,7 +787,7 @@ function LoopContainerNode({ id, data, selected }: NodeProps) {
 				</div>
 			</div>
 			<SourceHandle />
-		</>
+		</div>
 	);
 }
 
@@ -792,7 +802,7 @@ function IfElseNode({ data, selected }: NodeProps) {
 		(d.cases as Array<{ id: string; conditions?: unknown[] }>) ?? [];
 
 	return (
-		<>
+		<div className="group">
 			<TargetHandle />
 			<div
 				className={cn(
@@ -802,7 +812,7 @@ function IfElseNode({ data, selected }: NodeProps) {
 			>
 				<div
 					className={cn(
-						"group relative",
+						"relative",
 						"rounded-[15px] border border-border/10",
 						"w-[240px] bg-card shadow-sm",
 						"hover:shadow-md transition-shadow duration-200",
@@ -842,7 +852,7 @@ function IfElseNode({ data, selected }: NodeProps) {
 					</div>
 				</div>
 			</div>
-		</>
+		</div>
 	);
 }
 
@@ -863,7 +873,7 @@ function QuestionClassifierNode({ data, selected }: NodeProps) {
 	const model = (d.model as string) ?? "";
 
 	return (
-		<>
+		<div className="group">
 			<TargetHandle />
 			<div
 				className={cn(
@@ -873,7 +883,7 @@ function QuestionClassifierNode({ data, selected }: NodeProps) {
 			>
 				<div
 					className={cn(
-						"group relative",
+						"relative",
 						"rounded-[15px] border border-border/10",
 						"w-[240px] bg-card shadow-sm",
 						"hover:shadow-md transition-shadow duration-200",
@@ -914,7 +924,7 @@ function QuestionClassifierNode({ data, selected }: NodeProps) {
 					</div>
 				</div>
 			</div>
-		</>
+		</div>
 	);
 }
 
