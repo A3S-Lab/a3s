@@ -1,0 +1,174 @@
+/**
+ * A3S Flow node catalog — metadata for all 8 built-in node types.
+ *
+ * Mirrors the types registered in `NodeRegistry::with_defaults()` in
+ * `crates/flow/src/registry.rs`.  Each entry drives both the searchable
+ * node panel and the React Flow canvas renderer.
+ */
+import type { LucideIcon } from "lucide-react";
+import {
+	Globe,
+	GitBranch,
+	FileText,
+	Layers,
+	Code2,
+	RefreshCw,
+	ExternalLink,
+	ArrowRightLeft,
+	Plug,
+} from "lucide-react";
+
+export interface NodeCatalogEntry {
+	/** a3s flow node type string (must match the Rust registry key) */
+	type: string;
+	label: string;
+	description: string;
+	category: string;
+	icon: LucideIcon;
+	/** Tailwind text-* color class for the icon */
+	iconColor: string;
+	/** Tailwind bg-* color class for the node header */
+	headerBg: string;
+	/** Tailwind text-* color class for the header label */
+	headerText: string;
+	/** Default `data` object to pass when creating a new node */
+	defaultData: Record<string, unknown>;
+}
+
+export const NODE_CATALOG: NodeCatalogEntry[] = [
+	// ── 网络 ──────────────────────────────────────────────────────────
+	{
+		type: "http-request",
+		label: "HTTP 请求",
+		description: "发送 GET / POST / PUT / DELETE / PATCH 请求",
+		category: "网络",
+		icon: Globe,
+		iconColor: "text-cyan-500",
+		headerBg: "bg-cyan-50 dark:bg-cyan-950/30",
+		headerText: "text-cyan-700 dark:text-cyan-300",
+		defaultData: { method: "GET", url: "", headers: {} },
+	},
+
+	// ── 逻辑 ──────────────────────────────────────────────────────────
+	{
+		type: "if-else",
+		label: "条件分支",
+		description: "多条件路由，支持 AND / OR 逻辑",
+		category: "逻辑",
+		icon: GitBranch,
+		iconColor: "text-blue-500",
+		headerBg: "bg-blue-50 dark:bg-blue-950/30",
+		headerText: "text-blue-700 dark:text-blue-300",
+		defaultData: {
+			cases: [{ id: "case_1", logical_operator: "and", conditions: [] }],
+		},
+	},
+	{
+		type: "code",
+		label: "代码",
+		description: "使用 Rhai 脚本处理数据（沙盒执行）",
+		category: "逻辑",
+		icon: Code2,
+		iconColor: "text-amber-500",
+		headerBg: "bg-amber-50 dark:bg-amber-950/30",
+		headerText: "text-amber-700 dark:text-amber-300",
+		defaultData: { script: "" },
+	},
+	{
+		type: "iteration",
+		label: "迭代",
+		description: "遍历数组，对每个元素并发执行子流程",
+		category: "逻辑",
+		icon: RefreshCw,
+		iconColor: "text-violet-500",
+		headerBg: "bg-violet-50 dark:bg-violet-950/30",
+		headerText: "text-violet-700 dark:text-violet-300",
+		defaultData: { items_path: "", flow: { nodes: [], edges: [] } },
+	},
+	{
+		type: "sub-flow",
+		label: "子流程",
+		description: "内联调用一个已命名的子流程",
+		category: "逻辑",
+		icon: ExternalLink,
+		iconColor: "text-green-500",
+		headerBg: "bg-green-50 dark:bg-green-950/30",
+		headerText: "text-green-700 dark:text-green-300",
+		defaultData: { flow_name: "" },
+	},
+
+	// ── 数据 ──────────────────────────────────────────────────────────
+	{
+		type: "template-transform",
+		label: "模板变换",
+		description: "使用 Jinja2 模板渲染输出",
+		category: "数据",
+		icon: FileText,
+		iconColor: "text-rose-500",
+		headerBg: "bg-rose-50 dark:bg-rose-950/30",
+		headerText: "text-rose-700 dark:text-rose-300",
+		defaultData: { template: "" },
+	},
+	{
+		type: "variable-aggregator",
+		label: "变量聚合",
+		description: "从多个分支取第一个非空输出（扇入合并）",
+		category: "数据",
+		icon: Layers,
+		iconColor: "text-orange-500",
+		headerBg: "bg-orange-50 dark:bg-orange-950/30",
+		headerText: "text-orange-700 dark:text-orange-300",
+		defaultData: { sources: [] },
+	},
+
+	// ── 实用 ──────────────────────────────────────────────────────────
+	{
+		type: "noop",
+		label: "合并",
+		description: "透传所有上游输入，不做任何处理",
+		category: "实用",
+		icon: ArrowRightLeft,
+		iconColor: "text-slate-500",
+		headerBg: "bg-slate-100 dark:bg-slate-800/40",
+		headerText: "text-slate-600 dark:text-slate-300",
+		defaultData: {},
+	},
+];
+
+/**
+ * Tool node catalog — external integrations (MCP, Zapier, Slack, etc.).
+ *
+ * These nodes are NOT part of the core flow engine. They are registered
+ * externally via the `NodeRegistry::register()` API.
+ */
+export const TOOL_CATALOG: NodeCatalogEntry[] = [
+	{
+		type: "mcp",
+		label: "MCP 工具",
+		description: "调用 Model Context Protocol (MCP) 服务器上的工具",
+		category: "工具",
+		icon: Plug,
+		iconColor: "text-purple-500",
+		headerBg: "bg-purple-50 dark:bg-purple-950/30",
+		headerText: "text-purple-700 dark:text-purple-300",
+		defaultData: {
+			transport: "sse",
+			server_url: "",
+			tool_name: "",
+			arguments: {},
+		},
+	},
+];
+
+/** Look up catalog entry by node type string (searches both built-in and tool catalogs). */
+export function getCatalogEntry(type: string): NodeCatalogEntry | undefined {
+	return (
+		NODE_CATALOG.find((n) => n.type === type) ||
+		TOOL_CATALOG.find((n) => n.type === type)
+	);
+}
+
+/** All distinct categories, in display order. */
+export const CATEGORIES = Array.from(
+	new Set(NODE_CATALOG.map((n) => n.category)),
+);
