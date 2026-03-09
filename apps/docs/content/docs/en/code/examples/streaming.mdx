@@ -40,62 +40,7 @@ Subscribe to `AgentEvent` for real-time visibility into what the agent is doing 
 
 ## Example
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, AgentEvent, SessionOptions};
-
-let session = agent.session("/my-project", Some(
-    SessionOptions::new().with_permissive_policy()
-))?;
-
-let (mut rx, handle) = session.stream("Refactor the auth module", None).await?;
-
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::ToolStart { name, .. } => println!("\n🔧 {name}..."),
-        AgentEvent::ToolEnd { name, exit_code, .. } => {
-            println!(" ✓ (exit={})", exit_code);
-        }
-        AgentEvent::TurnEnd { turn, usage } => {
-            println!("\n└─ Turn {turn} done ({} tokens)", usage.total_tokens);
-        }
-        AgentEvent::End { text, usage } => {
-            println!("\n■ Done — {} tokens total", usage.total_tokens);
-            break;
-        }
-        _ => {}
-    }
-}
-
-handle.await??;
-```
-
-**Run:** `cargo run --example 02_streaming`
-**Source:** [`core/examples/02_streaming.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/02_streaming.rs)
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/my-project", permissive=True)
-
-for event in session.stream("Refactor the auth module"):
-    t = event.event_type
-    if t == "text_delta":
-        print(event.text, end="", flush=True)
-    elif t == "tool_start":
-        print(f"\n🔧 {event.tool_name}...", end="")
-    elif t == "tool_end":
-        print(f" ✓ (exit={event.exit_code})")
-    elif t == "turn_end":
-        print(f"\n└─ Turn {event.turn} done ({event.total_tokens} tokens)")
-    elif t == "end":
-        print(f"\n■ Done — {event.total_tokens} tokens total")
-        break
-```
-
-**Source:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
-</Tab>
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/my-project', { permissive: true });
@@ -124,6 +69,27 @@ for await (const event of stream) {
 ```
 
 **Source:** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project", permissive=True)
+
+for event in session.stream("Refactor the auth module"):
+    t = event.event_type
+    if t == "text_delta":
+        print(event.text, end="", flush=True)
+    elif t == "tool_start":
+        print(f"\n🔧 {event.tool_name}...", end="")
+    elif t == "tool_end":
+        print(f" ✓ (exit={event.exit_code})")
+    elif t == "turn_end":
+        print(f"\n└─ Turn {event.turn} done ({event.total_tokens} tokens)")
+    elif t == "end":
+        print(f"\n■ Done — {event.total_tokens} tokens total")
+        break
+```
+
+**Source:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
 </Tab>
 </Tabs>
 

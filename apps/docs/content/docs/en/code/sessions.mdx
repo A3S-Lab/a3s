@@ -16,23 +16,7 @@ The generation APIs — `send()` and `stream()` — send prompts to the LLM and 
 
 ## Create Session
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-// Default session (uses config's default model)
-let session = agent.session("/my-project", None)?;
-
-// Session with model override
-let session = agent.session("/my-project", Some(
-    SessionOptions::new()
-        .with_model("openai/gpt-4o")
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -123,21 +107,7 @@ Customize the agent's behavior without overriding core agentic capabilities. Fou
 | `response_style` | Replaces section | Replaces default `## Response Format` |
 | `extra` | End | Freeform instructions (backward-compatible) |
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{SessionOptions, SystemPromptSlots};
-
-let session = agent.session("/my-project", Some(
-    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
-        role: Some("You are a senior Rust developer.".into()),
-        guidelines: Some("Use clippy. No unwrap(). Prefer Result.".into()),
-        response_style: Some("Be concise. Use bullet points.".into()),
-        extra: Some("This project uses tokio and axum.".into()),
-    })
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/my-project', {
@@ -197,14 +167,7 @@ let session = agent.session(".", Some(
 
 ## Send (Non-Streaming)
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let result = session.send("What files handle authentication?").await?;
-println!("{}", result.text);
-println!("Tools: {}, Tokens: {}", result.tool_calls_count, result.usage.total_tokens);
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const result = await session.send('What files handle authentication?');
@@ -225,25 +188,7 @@ print(f"Tools: {result.tool_calls_count}, Tokens: {result.total_tokens}")
 
 Send image attachments alongside text prompts. Requires a vision-capable model (Claude Sonnet, GPT-4o).
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::Attachment;
-
-// From file (auto-detects media type from extension)
-let image = Attachment::from_file("screenshot.png")?;
-
-// Or from bytes
-let image = Attachment::jpeg(raw_bytes);
-
-let result = session.send_with_attachments(
-    "What's in this screenshot?",
-    &[image],
-    None,
-).await?;
-println!("{}", result.text);
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const image = await fs.readFile('screenshot.png');
@@ -295,26 +240,7 @@ async fn execute(&self, args: &Value, ctx: &ToolContext) -> Result<ToolOutput> {
 
 ## Stream
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::AgentEvent;
-
-// AgentEvent is #[non_exhaustive] — always include a wildcard arm
-let (mut rx, _handle) = session.stream("Refactor the auth module").await?;
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::ToolStart { name, .. } => println!("\n🔧 {name}"),
-        AgentEvent::End { text, usage } => {
-            println!("\n✅ Done: {} tokens", usage.total_tokens);
-            break;
-        }
-        _ => {} // required: AgentEvent is #[non_exhaustive]
-    }
-}
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // Returns an EventStream — use for await...of or call .next() manually
@@ -382,16 +308,7 @@ let result = session.send_with_history(&history, "Now explain main.rs").await?;
 
 Call tools directly without going through the LLM:
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-session.read_file("src/main.rs").await?;
-session.bash("cargo test").await?;
-session.glob("**/*.rs").await?;
-session.grep("fn main").await?;
-session.tool("write", serde_json::json!({"file_path": "x.rs", "content": "..."})).await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 await session.readFile('src/main.rs');
@@ -432,16 +349,7 @@ Session commands are intercepted before the LLM. Type `/help` in any session to 
 
 ### List All Commands (SDK)
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let registry = session.command_registry();
-for (name, desc, usage) in registry.list_full() {
-    let u = usage.map(|u| format!("  usage: {u}")).unwrap_or_default();
-    println!("/{name:<15} {desc}{u}");
-}
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const commands = session.listCommands();
@@ -465,30 +373,7 @@ for cmd in commands:
 
 Register custom slash commands handled before the LLM:
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::commands::{SlashCommand, CommandContext, CommandOutput};
-use std::sync::Arc;
-
-struct StatusCommand;
-impl SlashCommand for StatusCommand {
-    fn name(&self) -> &str { "status" }
-    fn description(&self) -> &str { "Show session status" }
-    fn execute(&self, args: &str, ctx: &CommandContext) -> CommandOutput {
-        CommandOutput::text(format!(
-            "Model: {}, History: {} msgs, args: {:?}",
-            ctx.model, ctx.history_len, args
-        ))
-    }
-}
-
-session.register_command(Arc::new(StatusCommand));
-let result = session.send("/status hello", None).await?;
-println!("{}", result.text);
-// Model: openai/gpt-4o, History: 2 msgs, args: "hello"
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 Custom command registration is not yet supported in the Node.js SDK. Use built-in slash commands via `send()`.
@@ -523,21 +408,7 @@ Sessions support recurring prompts via the `/loop` slash command or the programm
 
 ### Schedule a Recurring Prompt
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-// Via /loop slash command
-let r = session.send("/loop 30s check deployment status", None).await?;
-println!("{}", r.text);
-// Scheduled [a1b2c3d4]: "check deployment status" — fires every 30s
-
-// Interval at the end ("every" clause)
-let r = session.send("/loop monitor errors every 1m", None).await?;
-
-// Default interval (10 minutes when omitted)
-let r = session.send("/loop summarize recent changes", None).await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // Via /loop slash command

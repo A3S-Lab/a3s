@@ -38,25 +38,22 @@ Prompt slots are additive — the core agentic prompt (tool usage, completion cr
 
 Set a persona for the agent:
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions, SystemPromptSlots};
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
 
-let agent = Agent::new("~/.a3s/config.hcl").await?;
-let session = agent.session("/my-project", Some(
-    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
-        role: Some("You are a senior Rust developer specializing in async programming.".into()),
-        ..Default::default()
-    })
-))?;
+const agent = await Agent.create('~/.a3s/config.hcl');
+const session = agent.session('/my-project', {
+  role: 'You are a senior Rust developer specializing in async programming.',
+});
 
-let result = session.send("What is your area of expertise?", None).await?;
-println!("{}", result.text);
+const result = await session.send('What is your area of expertise?');
+console.log(result.text);
 ```
 
-**Run:** `cargo run --example test_prompt_slots`
-**Source:** [`core/examples/test_prompt_slots.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_prompt_slots.rs)
+**Run:** `node examples/test_prompt_slots.ts`
+**Source:** [`sdk/node/examples/test_prompt_slots.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_prompt_slots.ts)
 </Tab>
 <Tab value="Python">
 ```python
@@ -75,42 +72,23 @@ print(result.text)
 **Run:** `python examples/test_prompt_slots.py`
 **Source:** [`sdk/python/examples/test_prompt_slots.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_prompt_slots.py)
 </Tab>
-<Tab value="TypeScript">
-```typescript
-import { Agent } from '@a3s-lab/code';
-
-const agent = await Agent.create('~/.a3s/config.hcl');
-const session = agent.session('/my-project', {
-  role: 'You are a senior Rust developer specializing in async programming.',
-});
-
-const result = await session.send('What is your area of expertise?');
-console.log(result.text);
-```
-
-**Run:** `node examples/test_prompt_slots.ts`
-**Source:** [`sdk/node/examples/test_prompt_slots.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_prompt_slots.ts)
-</Tab>
 </Tabs>
 
 ## Role + Guidelines + Response Style
 
 Combine multiple slots for a fully customized code reviewer:
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/my-project", Some(
-    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
-        role: Some("You are a Python code reviewer.".into()),
-        guidelines: Some("Always check for type hints. Flag any use of eval().".into()),
-        response_style: Some("Reply in bullet points. Be concise.".into()),
-        ..Default::default()
-    })
-))?;
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', {
+  role: 'You are a Python code reviewer.',
+  guidelines: 'Always check for type hints. Flag any use of eval().',
+  responseStyle: 'Reply in bullet points. Be concise.',
+});
 
-let result = session.send("Review the file app.py and list any issues.", None).await?;
-println!("{}", result.text);
+const result = await session.send('Review the file app.py and list any issues.');
+console.log(result.text);
 ```
 </Tab>
 <Tab value="Python">
@@ -125,33 +103,18 @@ result = session.send("Review the file app.py and list any issues.")
 print(result.text)
 ```
 </Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  role: 'You are a Python code reviewer.',
-  guidelines: 'Always check for type hints. Flag any use of eval().',
-  responseStyle: 'Reply in bullet points. Be concise.',
-});
-
-const result = await session.send('Review the file app.py and list any issues.');
-console.log(result.text);
-```
-</Tab>
 </Tabs>
 
 ## Extra Instructions
 
 The `extra` slot appends freeform instructions at the end of the prompt. This is backward-compatible with the legacy `system_prompt` field:
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/my-project", Some(
-    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
-        extra: Some("Always end your response with '— A3S'".into()),
-        ..Default::default()
-    })
-))?;
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', {
+  extra: "Always end your response with '— A3S'",
+});
 ```
 </Tab>
 <Tab value="Python">
@@ -159,13 +122,6 @@ let session = agent.session("/my-project", Some(
 opts = SessionOptions()
 opts.extra = "Always end your response with '— A3S'"
 session = agent.session("/my-project", options=opts)
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  extra: "Always end your response with '— A3S'",
-});
 ```
 </Tab>
 </Tabs>

@@ -52,23 +52,7 @@ let session = agent.session("/my-project", None)?;
 
 ### 查看版本历史
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-// 列出文件的所有版本
-let versions = session.list_file_versions("src/auth.rs").await;
-for v in &versions {
-    println!("v{} — {} — {}", v.version, v.tool_name, v.timestamp);
-}
-
-// 生成两个版本之间的 diff
-let diff = session.diff_file_versions("src/auth.rs", 0, 1).await?;
-println!("{}", diff);
-
-// 恢复到指定版本
-session.restore_file_version("src/auth.rs", 0).await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // 列出文件的所有版本
@@ -143,39 +127,7 @@ session.restore_file_version("src/auth.rs", 0)
 
 ### 使用示例
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-// 创建隔离工作树
-let result = session.call_tool("git_worktree", serde_json::json!({
-    "command": "create",
-    "branch": "agent/refactor-auth",
-    "path": "/tmp/agent-worktrees/refactor-auth",
-    "new_branch": true,
-    "base": "main"
-})).await?;
-
-// 在隔离工作树上创建新 session
-let isolated_session = agent.session(
-    "/tmp/agent-worktrees/refactor-auth",
-    None
-)?;
-
-// agent 的所有修改都在 agent/refactor-auth 分支上
-let result = isolated_session.send("重构 auth 模块使用 JWT", None).await?;
-
-// 验证：查看 diff
-let result = isolated_session.call_tool("git_worktree", serde_json::json!({
-    "command": "status"
-})).await?;
-
-// 不满意：直接删除工作树，主分支不受影响
-let result = session.call_tool("git_worktree", serde_json::json!({
-    "command": "remove",
-    "path": "/tmp/agent-worktrees/refactor-auth"
-})).await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // 创建隔离工作树
@@ -269,31 +221,7 @@ a3s-code-core = { version = "...", features = ["sandbox"] }
 
 ### 配置
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-use a3s_code_core::sandbox::SandboxConfig;
-use std::collections::HashMap;
-
-let sandbox = SandboxConfig {
-    image: "ubuntu:22.04".to_string(),
-    memory_mb: 1024,          // 1 GB 内存
-    cpus: 2,                  // 2 vCPU
-    network: false,           // 禁用网络（更安全）
-    env: HashMap::from([
-        ("NODE_ENV".to_string(), "test".to_string()),
-    ]),
-};
-
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_sandbox(sandbox)
-))?;
-
-// bash 工具现在在 MicroVM 内执行
-let result = session.send("运行测试套件", None).await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {

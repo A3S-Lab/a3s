@@ -35,21 +35,7 @@ Wave 3: [编写测试]                             ← 等待 wave 2
 
 ## 启用规划
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_planning(true)
-))?;
-
-let result = session.send("Refactor the auth module to use JWT").await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const agent = await Agent.create('agent.hcl');
@@ -76,35 +62,7 @@ result = session.send("Refactor the auth module to use JWT")
 
 启用目标追踪后，Agent 会维护一个任务列表并在流式事件中报告进度：
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_planning(true)
-        .with_goal_tracking(true)
-))?;
-
-let (mut rx, _handle) = session.stream("Build a REST API with auth").await?;
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::TaskUpdated { tasks, .. } => {
-            for task in &tasks {
-                let icon = match task.status {
-                    TaskStatus::Pending => "⏳",
-                    TaskStatus::InProgress => "🔄",
-                    TaskStatus::Completed => "✅",
-                    TaskStatus::Failed => "❌",
-                };
-                println!("{icon} {}", task.description);
-            }
-        }
-        AgentEvent::End { .. } => break,
-        _ => {}
-    }
-}
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {

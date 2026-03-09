@@ -17,39 +17,39 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## 直接工具调用
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::Agent;
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
 
-let agent = Agent::new("~/.a3s/config.hcl").await?;
-let session = agent.session("/my-git-repo", None)?;
+const agent = await Agent.create('~/.a3s/config.hcl');
+const session = agent.session('/my-git-repo');
 
 // 查看 worktree 状态
-let r = session.tool("git_worktree", serde_json::json!({"command": "status"})).await?;
-println!("{}", r.output);
+let r = await session.tool('git_worktree', { command: 'status' });
+console.log(r.output);
 
 // 为功能分支创建 worktree
-let r = session.tool("git_worktree", serde_json::json!({
-    "command": "create",
-    "branch": "feature-auth",
-    "path": "/my-git-repo/wt-feature-auth"
-})).await?;
-assert!(r.exit_code == 0);
+r = await session.tool('git_worktree', {
+  command: 'create',
+  branch: 'feature-auth',
+  path: '/my-git-repo/wt-feature-auth',
+});
+assert(r.exitCode === 0);
 
 // 列出所有 worktree
-let r = session.tool("git_worktree", serde_json::json!({"command": "list"})).await?;
-println!("{}", r.output);
+r = await session.tool('git_worktree', { command: 'list' });
+console.log(r.output);
 
 // 删除 worktree
-let r = session.tool("git_worktree", serde_json::json!({
-    "command": "remove",
-    "path": "/my-git-repo/wt-feature-auth"
-})).await?;
-assert!(r.exit_code == 0);
+r = await session.tool('git_worktree', {
+  command: 'remove',
+  path: '/my-git-repo/wt-feature-auth',
+});
+assert(r.exitCode === 0);
 ```
 
-**运行:** `cargo run --example test_git_worktree`
+**运行:** `node examples/test_git_worktree.ts`
 </Tab>
 <Tab value="Python">
 ```python
@@ -83,39 +83,6 @@ assert r.exit_code == 0
 ```
 
 **运行:** `python examples/test_git_worktree.py`
-</Tab>
-<Tab value="TypeScript">
-```typescript
-import { Agent } from '@a3s-lab/code';
-
-const agent = await Agent.create('~/.a3s/config.hcl');
-const session = agent.session('/my-git-repo');
-
-// 查看 worktree 状态
-let r = await session.tool('git_worktree', { command: 'status' });
-console.log(r.output);
-
-// 为功能分支创建 worktree
-r = await session.tool('git_worktree', {
-  command: 'create',
-  branch: 'feature-auth',
-  path: '/my-git-repo/wt-feature-auth',
-});
-assert(r.exitCode === 0);
-
-// 列出所有 worktree
-r = await session.tool('git_worktree', { command: 'list' });
-console.log(r.output);
-
-// 删除 worktree
-r = await session.tool('git_worktree', {
-  command: 'remove',
-  path: '/my-git-repo/wt-feature-auth',
-});
-assert(r.exitCode === 0);
-```
-
-**运行:** `node examples/test_git_worktree.ts`
 </Tab>
 </Tabs>
 

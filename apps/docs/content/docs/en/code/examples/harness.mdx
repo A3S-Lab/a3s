@@ -97,44 +97,6 @@ log("AHP server exiting")
 ## Attaching the harness
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::{Agent, AhpHookExecutor, SessionOptions};
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let agent = Agent::new("agent.hcl").await?;
-
-    // Spawn the harness server — it supervises the entire session
-    let harness = AhpHookExecutor::spawn("python3", &["harness.py"]).await?;
-
-    let session = agent.session(".", Some(
-        SessionOptions::new()
-            .with_builtin_skills()
-            .with_hook_executor(harness),
-    ))?;
-
-    // The harness intercepts every tool call — including inside sub-agents
-    let result = session.send(
-        "List all Rust files and count lines of code",
-        None,
-    ).await?;
-
-    println!("{}", result.text);
-    Ok(())
-}
-```
-
-To verify the harness is blocking, try a dangerous command:
-
-```rust
-// This will be blocked by the harness — the agent receives a block error
-let result = session.send("Run: rm -rf /tmp/test", None).await?;
-// The agent will report that the Bash tool was blocked.
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript

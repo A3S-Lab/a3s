@@ -152,28 +152,6 @@ The telemetry module emits standard OpenTelemetry spans. Spans fire automaticall
 `send()` / `stream()` call — no changes to your agent code are needed.
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use tracing_subscriber::prelude::*;
-
-// Example: export to OTLP collector
-let tracer = opentelemetry_otlp::new_pipeline()
-    .tracing()
-    .install_batch(opentelemetry_sdk::runtime::Tokio)?;
-
-tracing_subscriber::registry()
-    .with(tracing_opentelemetry::layer().with_tracer(tracer))
-    .init();
-
-// All agent operations now emit structured spans
-let result = session.send("Analyze this codebase").await?;
-```
-
-Helper functions `record_llm_usage()` and `record_tool_result()` record metrics on the current
-active span. The `TimedSpan` guard automatically measures elapsed time for any scoped operation.
-
-</Tab>
 <Tab value="TypeScript">
 
 Telemetry is emitted automatically. Configure the collector via environment variables before
@@ -274,25 +252,6 @@ export OTEL_SERVICE_NAME=my-agent
 ```
 
 Spans are collected and exported automatically by the native Rust layer.
-
-</Tab>
-<Tab value="Rust">
-
-```rust
-use tracing_subscriber::prelude::*;
-
-// stdout (development)
-tracing_subscriber::fmt().init();
-
-// OTLP (production)
-let tracer = opentelemetry_otlp::new_pipeline()
-    .tracing()
-    .install_batch(opentelemetry_sdk::runtime::Tokio)?;
-
-tracing_subscriber::registry()
-    .with(tracing_opentelemetry::layer().with_tracer(tracer))
-    .init();
-```
 
 </Tab>
 </Tabs>

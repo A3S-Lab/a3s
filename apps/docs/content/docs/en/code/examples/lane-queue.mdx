@@ -32,28 +32,19 @@ The lane queue provides priority-based task scheduling with four lanes. High-pri
 
 ## Basic Queue Setup
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig};
-
-let queue_config = SessionQueueConfig::default()
-    .with_lane_features()
-    .with_metrics();
-
-let opts = SessionOptions::new()
-    .with_permissive_policy()
-    .with_queue_config(queue_config);
-
-let session = agent.session("/my-project", Some(opts))?;
-
-// Tasks are automatically routed to the appropriate lane
-let result = session.send("List all Rust files", None).await?;
-println!("{}", result.text);
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', {
+  permissive: true,
+  queueConfig: { enableAllFeatures: true },
+});
+const result = await session.send('List all Rust files');
+console.log(result.text);
 ```
 
-**Run:** `cargo run --example test_task_priority`
-**Source:** [`core/examples/test_task_priority.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_task_priority.rs)
+**Run:** `node examples/test_task_priority.ts`
+**Source:** [`sdk/node/examples/test_task_priority.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_task_priority.ts)
 </Tab>
 <Tab value="Python">
 ```python
@@ -73,43 +64,26 @@ print(result.text)
 **Run:** `python examples/test_task_priority.py`
 **Source:** [`sdk/python/examples/test_task_priority.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_task_priority.py)
 </Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
-  queueConfig: { enableAllFeatures: true },
-});
-const result = await session.send('List all Rust files');
-console.log(result.text);
-```
-
-**Run:** `node examples/test_task_priority.ts`
-**Source:** [`sdk/node/examples/test_task_priority.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_task_priority.ts)
-</Tab>
 </Tabs>
 
 ## Priority Preemption
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::queue::{ExternalTask, SessionLane};
-
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
 // Submit a low-priority background task
-session.submit_task(ExternalTask::new(
-    "background-analysis",
-    SessionLane::Generate,
-    serde_json::json!({ "prompt": "Analyze the entire codebase" }),
-)).await?;
+await session.submitTask({
+  id: 'background-analysis',
+  lane: 'generate',
+  payload: { prompt: 'Analyze the entire codebase' },
+});
 
-// Submit a high-priority query that preempts the background task
-session.submit_task(ExternalTask::new(
-    "urgent-query",
-    SessionLane::Query,
-    serde_json::json!({ "prompt": "What is the current git branch?" }),
-)).await?;
-
-// urgent-query runs first, background-analysis resumes after
+// Submit a high-priority query that preempts it
+await session.submitTask({
+  id: 'urgent-query',
+  lane: 'query',
+  payload: { prompt: 'What is the current git branch?' },
+});
 ```
 </Tab>
 <Tab value="Python">
@@ -127,23 +101,6 @@ session.submit_task({
     "lane": "query",
     "payload": {"prompt": "What is the current git branch?"},
 })
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-// Submit a low-priority background task
-await session.submitTask({
-  id: 'background-analysis',
-  lane: 'generate',
-  payload: { prompt: 'Analyze the entire codebase' },
-});
-
-// Submit a high-priority query that preempts it
-await session.submitTask({
-  id: 'urgent-query',
-  lane: 'query',
-  payload: { prompt: 'What is the current git branch?' },
-});
 ```
 </Tab>
 </Tabs>

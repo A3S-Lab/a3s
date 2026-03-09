@@ -52,23 +52,7 @@ Whenever the agent executes `write`, `edit`, or `patch`, A3S Code automatically 
 
 ### Using File History
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-// List all versions of a file
-let versions = session.list_file_versions("src/auth.rs").await;
-for v in &versions {
-    println!("v{} — {} — {}", v.version, v.tool_name, v.timestamp);
-}
-
-// Generate a diff between two versions
-let diff = session.diff_file_versions("src/auth.rs", 0, 1).await?;
-println!("{}", diff);
-
-// Restore to a specific version
-session.restore_file_version("src/auth.rs", 0).await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // List all versions of a file
@@ -143,39 +127,7 @@ The `git_worktree` tool lets the agent work on an isolated Git worktree (branch)
 
 ### Example
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-// Create an isolated worktree
-let result = session.call_tool("git_worktree", serde_json::json!({
-    "command": "create",
-    "branch": "agent/refactor-auth",
-    "path": "/tmp/agent-worktrees/refactor-auth",
-    "new_branch": true,
-    "base": "main"
-})).await?;
-
-// Create a new session pointing at the worktree
-let isolated_session = agent.session(
-    "/tmp/agent-worktrees/refactor-auth",
-    None
-)?;
-
-// Agent changes are confined to agent/refactor-auth
-let result = isolated_session.send("Refactor auth module to use JWT", None).await?;
-
-// Check worktree status
-let status = isolated_session.call_tool("git_worktree", serde_json::json!({
-    "command": "status"
-})).await?;
-
-// Discard everything — main branch untouched
-let result = session.call_tool("git_worktree", serde_json::json!({
-    "command": "remove",
-    "path": "/tmp/agent-worktrees/refactor-auth"
-})).await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // Create isolated worktree
@@ -269,31 +221,7 @@ a3s-code-core = { version = "...", features = ["sandbox"] }
 
 ### Configuration
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-use a3s_code_core::sandbox::SandboxConfig;
-use std::collections::HashMap;
-
-let sandbox = SandboxConfig {
-    image: "ubuntu:22.04".to_string(),
-    memory_mb: 1024,     // 1 GB
-    cpus: 2,             // 2 vCPUs
-    network: false,      // disable outbound network (safer)
-    env: HashMap::from([
-        ("NODE_ENV".to_string(), "test".to_string()),
-    ]),
-};
-
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_sandbox(sandbox)
-))?;
-
-// bash commands now run inside the MicroVM
-let result = session.send("Run the test suite", None).await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {

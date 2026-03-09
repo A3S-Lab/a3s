@@ -13,35 +13,32 @@ Override the default model, provider, and generation parameters per session. Use
 
 ## Example
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("~/.a3s/config.hcl").await?;
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const agent = await Agent.create('~/.a3s/config.hcl');
 
 // Use a specific model with custom temperature
-let opts = SessionOptions::new()
-    .with_permissive_policy()
-    .with_model("anthropic/claude-sonnet-4-20250514")
-    .with_temperature(0.3);
+const session = agent.session('/my-project', {
+  permissive: true,
+  model: 'anthropic/claude-sonnet-4-20250514',
+  temperature: 0.3,
+});
 
-let session = agent.session("/my-project", Some(opts))?;
-let result = session.send("Explain the auth flow in this codebase", None).await?;
-println!("{}", result.text);
+const result = await session.send('Explain the auth flow in this codebase');
+console.log(result.text);
 
-// Switch to a different provider for the next session
-let opts2 = SessionOptions::new()
-    .with_permissive_policy()
-    .with_model("openai/gpt-4o");
+// Switch to a different provider
+const session2 = agent.session('/my-project', {
+  permissive: true,
+  model: 'openai/gpt-4o',
+});
 
-let session2 = agent.session("/my-project", Some(opts2))?;
-let result2 = session2.send("List all TODO comments", None).await?;
-println!("{}", result2.text);
+const result2 = await session2.send('List all TODO comments');
+console.log(result2.text);
 ```
 
-**Run:** `cargo run --example 04_model_switching`
-**Source:** [`core/examples/04_model_switching.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/04_model_switching.rs)
+**Source:** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
 </Tab>
 <Tab value="Python">
 ```python
@@ -68,32 +65,6 @@ print(result2.text)
 ```
 
 **Source:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
-</Tab>
-<Tab value="TypeScript">
-```typescript
-const agent = await Agent.create('~/.a3s/config.hcl');
-
-// Use a specific model with custom temperature
-const session = agent.session('/my-project', {
-  permissive: true,
-  model: 'anthropic/claude-sonnet-4-20250514',
-  temperature: 0.3,
-});
-
-const result = await session.send('Explain the auth flow in this codebase');
-console.log(result.text);
-
-// Switch to a different provider
-const session2 = agent.session('/my-project', {
-  permissive: true,
-  model: 'openai/gpt-4o',
-});
-
-const result2 = await session2.send('List all TODO comments');
-console.log(result2.text);
-```
-
-**Source:** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
 </Tab>
 </Tabs>
 

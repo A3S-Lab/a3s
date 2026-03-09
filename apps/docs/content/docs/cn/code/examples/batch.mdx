@@ -31,32 +31,30 @@ Turn 1: batch([read file_a.rs, read file_b.rs, read file_c.rs])  → all results
 
 ## 示例
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-use tempfile::TempDir;
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { mkdtempSync, writeFileSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
-let dir = TempDir::new()?;
-std::fs::write(dir.path().join("auth.rs"), "// auth module")?;
-std::fs::write(dir.path().join("db.rs"), "// database module")?;
-std::fs::write(dir.path().join("handler.rs"), "// HTTP handler")?;
+const dir = mkdtempSync(join(tmpdir(), 'batch-'));
+writeFileSync(join(dir, 'auth.rs'), '// auth module');
+writeFileSync(join(dir, 'db.rs'), '// database module');
+writeFileSync(join(dir, 'handler.rs'), '// HTTP handler');
 
-let opts = SessionOptions::new().with_permissive_policy();
-let session = agent.session(dir.path().to_str().unwrap(), Some(opts))?;
+const session = agent.session(dir, { permissive: true });
+const result = await session.send(
+  'Use the batch tool to read auth.rs, db.rs, and handler.rs in parallel. ' +
+  'Then summarize what each file does.'
+);
 
-let result = session.send(
-    "Use the batch tool to read auth.rs, db.rs, and handler.rs in parallel. \
-     Then summarize what each file does.",
-    None,
-).await?;
-
-println!("Tool calls: {}", result.tool_calls_count);
-println!("{}", result.text);
+console.log(`Tool calls: ${result.toolCallsCount}`);
+console.log(result.text);
 ```
 
-**运行：** `cargo run --example test_batch_tool`
-**源码：** [`core/examples/test_batch_tool.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_batch_tool.rs)
+**运行：** `node examples/test_advanced_features.ts`
+**源码：** [`sdk/node/examples/test_advanced_features.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.ts)
 </Tab>
 <Tab value="Python">
 ```python
@@ -82,50 +80,23 @@ with tempfile.TemporaryDirectory() as dir:
 **运行：** `python examples/test_advanced_features.py`
 **源码：** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
 </Tab>
-<Tab value="TypeScript">
-```typescript
-import { mkdtempSync, writeFileSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
-
-const dir = mkdtempSync(join(tmpdir(), 'batch-'));
-writeFileSync(join(dir, 'auth.rs'), '// auth module');
-writeFileSync(join(dir, 'db.rs'), '// database module');
-writeFileSync(join(dir, 'handler.rs'), '// HTTP handler');
-
-const session = agent.session(dir, { permissive: true });
-const result = await session.send(
-  'Use the batch tool to read auth.rs, db.rs, and handler.rs in parallel. ' +
-  'Then summarize what each file does.'
-);
-
-console.log(`Tool calls: ${result.toolCallsCount}`);
-console.log(result.text);
-```
-
-**运行：** `node examples/test_advanced_features.ts`
-**源码：** [`sdk/node/examples/test_advanced_features.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.ts)
-</Tab>
 </Tabs>
 
 ## 直接调用 Batch
 
 你也可以不通过 LLM 直接调用 batch 工具：
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use serde_json::json;
-
-let result = session.call_tool("batch", json!({
-    "invocations": [
-        { "tool": "read", "args": { "file_path": "auth.rs" } },
-        { "tool": "read", "args": { "file_path": "db.rs" } },
-        { "tool": "grep", "args": { "pattern": "TODO", "path": "." } }
-    ]
-})).await?;
-
-println!("{}", result.output);
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const result = await session.callTool('batch', {
+  invocations: [
+    { tool: 'read', args: { filePath: 'auth.rs' } },
+    { tool: 'read', args: { filePath: 'db.rs' } },
+    { tool: 'grep', args: { pattern: 'TODO', path: '.' } },
+  ],
+});
+console.log(result.output);
 ```
 </Tab>
 <Tab value="Python">
@@ -138,18 +109,6 @@ result = session.call_tool("batch", {
     ]
 })
 print(result.output)
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-const result = await session.callTool('batch', {
-  invocations: [
-    { tool: 'read', args: { filePath: 'auth.rs' } },
-    { tool: 'read', args: { filePath: 'db.rs' } },
-    { tool: 'grep', args: { pattern: 'TODO', path: '.' } },
-  ],
-});
-console.log(result.output);
 ```
 </Tab>
 </Tabs>

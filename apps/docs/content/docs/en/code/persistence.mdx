@@ -12,35 +12,7 @@ A3S Code supports pluggable session storage backends. Sessions save conversation
 
 ## Quick Start
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-use a3s_code_core::store::FileSessionStore;
-
-let agent = Agent::new("agent.hcl").await?;
-
-// File-based session with auto-save
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_file_session_store(".a3s/sessions")
-        .with_session_id("my-session")
-        .with_auto_save(true)
-))?;
-
-let result = session.send("Refactor auth", None).await?;
-// Session is auto-saved after each send()
-
-// Manual save
-session.save().await?;
-
-// Resume later
-let session = agent.resume_session("my-session", SessionOptions::new()
-    .with_file_session_store(".a3s/sessions")
-)?;
-println!("Resumed with {} messages", session.history().len());
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const agent = await Agent.create('agent.hcl');

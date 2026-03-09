@@ -41,22 +41,19 @@ Skills are reusable prompt templates that augment the agent's system prompt with
 
 ## Enable Built-in Skills
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let opts = SessionOptions::new()
-    .with_permissive_policy()
-    .with_builtin_skills();
-
-let session = agent.session("/my-project", Some(opts))?;
-let result = session.send("Review the auth module for security issues", None).await?;
-println!("{}", result.text);
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', {
+  permissive: true,
+  builtinSkills: true,
+});
+const result = await session.send('Review the auth module for security issues');
+console.log(result.text);
 ```
 
-**Run:** `cargo run --example test_builtin_skills`
-**Source:** [`core/examples/test_builtin_skills.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_builtin_skills.rs)
+**Run:** `npx ts-node examples/test_custom_skills_agents.ts`
+**Source:** [`sdk/node/examples/test_custom_skills_agents.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_custom_skills_agents.ts)
 </Tab>
 <Tab value="Python">
 ```python
@@ -70,19 +67,6 @@ print(result.text)
 
 **Run:** `python examples/test_custom_skills_agents.py`
 **Source:** [`sdk/python/examples/test_custom_skills_agents.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_custom_skills_agents.py)
-</Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
-  builtinSkills: true,
-});
-const result = await session.send('Review the auth module for security issues');
-console.log(result.text);
-```
-
-**Run:** `npx ts-node examples/test_custom_skills_agents.ts`
-**Source:** [`sdk/node/examples/test_custom_skills_agents.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_custom_skills_agents.ts)
 </Tab>
 </Tabs>
 
@@ -109,16 +93,15 @@ When asked to generate API documentation:
 
 Then load it:
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-let opts = SessionOptions::new()
-    .with_permissive_policy()
-    .with_skills_from_dir("/my-project/.a3s/skills");
-
-let session = agent.session("/my-project", Some(opts))?;
-let result = session.send("Generate OpenAPI docs for the REST API", None).await?;
-println!("{}", result.text);
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', {
+  permissive: true,
+  skillDirs: ['/my-project/.a3s/skills'],
+});
+const result = await session.send('Generate OpenAPI docs for the REST API');
+console.log(result.text);
 ```
 </Tab>
 <Tab value="Python">
@@ -131,36 +114,24 @@ result = session.send("Generate OpenAPI docs for the REST API")
 print(result.text)
 ```
 </Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
-  skillDirs: ['/my-project/.a3s/skills'],
-});
-const result = await session.send('Generate OpenAPI docs for the REST API');
-console.log(result.text);
-```
-</Tab>
 </Tabs>
 
 ## Skills + Planning
 
 Combine skills with planning for complex multi-step tasks:
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-let opts = SessionOptions::new()
-    .with_permissive_policy()
-    .with_builtin_skills()
-    .with_planning(true)
-    .with_goal_tracking(true);
-
-let session = agent.session("/my-project", Some(opts))?;
-let result = session.send(
-    "Review the entire codebase, find all bugs, fix them, and write a report",
-    None,
-).await?;
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', {
+  permissive: true,
+  builtinSkills: true,
+  planning: true,
+  goalTracking: true,
+});
+const result = await session.send(
+  'Review the entire codebase, find all bugs, fix them, and write a report'
+);
 ```
 </Tab>
 <Tab value="Python">
@@ -174,19 +145,6 @@ session = agent.session("/my-project",
 result = session.send(
     "Review the entire codebase, find all bugs, fix them, and write a report"
 )
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
-  builtinSkills: true,
-  planning: true,
-  goalTracking: true,
-});
-const result = await session.send(
-  'Review the entire codebase, find all bugs, fix them, and write a report'
-);
 ```
 </Tab>
 </Tabs>

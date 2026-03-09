@@ -17,29 +17,24 @@ Planning adds one extra LLM call to generate the plan. Use it for complex multi-
 
 ## Enable Planning
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', {
+  permissive: true,
+  planning: true,
+  goalTracking: true,
+});
 
-let opts = SessionOptions::new()
-    .with_permissive_policy()
-    .with_planning(true)
-    .with_goal_tracking(true);
+const result = await session.send(
+  'Add input validation to all API endpoints, write tests, and update the README'
+);
 
-let session = agent.session("/my-project", Some(opts))?;
-
-let result = session.send(
-    "Add input validation to all API endpoints, write tests, and update the README",
-    None,
-).await?;
-
-println!("{}", result.text);
-println!("Tool calls: {}", result.tool_calls_count);
+console.log(result.text);
+console.log(`Tool calls: ${result.toolCallsCount}`);
 ```
 
-**Run:** `cargo run --example 05_planning`
-**Source:** [`core/examples/05_planning.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/05_planning.rs)
+**Source:** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
 </Tab>
 <Tab value="Python">
 ```python
@@ -59,49 +54,24 @@ print(f"Tool calls: {result.tool_calls_count}")
 
 **Source:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
 </Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
-  planning: true,
-  goalTracking: true,
-});
-
-const result = await session.send(
-  'Add input validation to all API endpoints, write tests, and update the README'
-);
-
-console.log(result.text);
-console.log(`Tool calls: ${result.toolCallsCount}`);
-```
-
-**Source:** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
-</Tab>
 </Tabs>
 
 ## Streaming Planning Events
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-let (mut rx, handle) = session.stream("Refactor and test the auth module", None).await?;
-
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::PlanningStart { prompt } => {
-            println!("📋 Planning: {}", prompt);
-        }
-        AgentEvent::PlanReady { steps, .. } => {
-            println!("Plan ({} steps):", steps.len());
-            for (i, step) in steps.iter().enumerate() {
-                println!("  {}. {}", i + 1, step);
-            }
-        }
-        AgentEvent::End { .. } => break,
-        _ => {}
-    }
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const stream = await session.stream('Refactor and test the auth module');
+for await (const event of stream) {
+  if (event.type === 'planning_start') {
+    console.log(`📋 Planning: ${event.prompt}`);
+  } else if (event.type === 'plan_ready') {
+    console.log(`Plan (${event.steps.length} steps):`);
+    event.steps.forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
+  } else if (event.type === 'end') {
+    break;
+  }
 }
-handle.await??;
 ```
 </Tab>
 <Tab value="Python">
@@ -116,21 +86,6 @@ for event in session.stream("Refactor and test the auth module"):
             print(f"  {i}. {step}")
     elif t == "end":
         break
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-const stream = await session.stream('Refactor and test the auth module');
-for await (const event of stream) {
-  if (event.type === 'planning_start') {
-    console.log(`📋 Planning: ${event.prompt}`);
-  } else if (event.type === 'plan_ready') {
-    console.log(`Plan (${event.steps.length} steps):`);
-    event.steps.forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
-  } else if (event.type === 'end') {
-    break;
-  }
-}
 ```
 </Tab>
 </Tabs>

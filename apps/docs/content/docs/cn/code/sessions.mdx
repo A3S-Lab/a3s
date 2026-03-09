@@ -16,23 +16,7 @@ import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 ## 创建会话
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-// Default session (uses config's default model)
-let session = agent.session("/my-project", None)?;
-
-// Session with model override
-let session = agent.session("/my-project", Some(
-    SessionOptions::new()
-        .with_model("openai/gpt-4o")
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -112,21 +96,7 @@ session = agent.session("/my-project", model="openai/gpt-4o")
 | `response_style` | 替换章节 | 替换默认的 `## Response Format` 章节 |
 | `extra` | 提示词末尾 | 自由格式指令（向后兼容旧版 system_prompt） |
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{SessionOptions, SystemPromptSlots};
-
-let session = agent.session("/my-project", Some(
-    SessionOptions::new().with_prompt_slots(SystemPromptSlots {
-        role: Some("You are a senior Rust developer.".into()),
-        guidelines: Some("Use clippy. No unwrap(). Prefer Result.".into()),
-        response_style: Some("Be concise. Use bullet points.".into()),
-        extra: Some("This project uses tokio and axum.".into()),
-    })
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/my-project', {
@@ -186,14 +156,7 @@ let session = agent.session(".", Some(
 
 ## 发送（非流式）
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let result = session.send("What files handle authentication?").await?;
-println!("{}", result.text);
-println!("Tools: {}, Tokens: {}", result.tool_calls_count, result.usage.total_tokens);
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const result = await session.send('What files handle authentication?');
@@ -214,25 +177,7 @@ print(f"Tools: {result.tool_calls_count}, Tokens: {result.total_tokens}")
 
 发送图片附件和文本提示。需要支持视觉的模型（Claude Sonnet、GPT-4o）。
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::Attachment;
-
-// From file (auto-detects media type from extension)
-let image = Attachment::from_file("screenshot.png")?;
-
-// Or from bytes
-let image = Attachment::jpeg(raw_bytes);
-
-let result = session.send_with_attachments(
-    "What's in this screenshot?",
-    &[image],
-    None,
-).await?;
-println!("{}", result.text);
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const image = await fs.readFile('screenshot.png');
@@ -284,26 +229,7 @@ async fn execute(&self, args: &Value, ctx: &ToolContext) -> Result<ToolOutput> {
 
 ## 流式
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::AgentEvent;
-
-// AgentEvent is #[non_exhaustive] — always include a wildcard arm
-let (mut rx, _handle) = session.stream("Refactor the auth module").await?;
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::ToolStart { name, .. } => println!("\n🔧 {name}"),
-        AgentEvent::End { text, usage } => {
-            println!("\n✅ Done: {} tokens", usage.total_tokens);
-            break;
-        }
-        _ => {} // required: AgentEvent is #[non_exhaustive]
-    }
-}
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // Returns an EventStream — use for await...of or call .next() manually
@@ -371,16 +297,7 @@ let result = session.send_with_history(&history, "Now explain main.rs").await?;
 
 直接调用工具而不经过 LLM：
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-session.read_file("src/main.rs").await?;
-session.bash("cargo test").await?;
-session.glob("**/*.rs").await?;
-session.grep("fn main").await?;
-session.tool("write", serde_json::json!({"file_path": "x.rs", "content": "..."})).await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 await session.readFile('src/main.rs');
@@ -421,16 +338,7 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 
 ### 列出所有指令（SDK）
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let registry = session.command_registry();
-for (name, desc, usage) in registry.list_full() {
-    let u = usage.map(|u| format!("  usage: {u}")).unwrap_or_default();
-    println!("/{name:<15} {desc}{u}");
-}
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const commands = session.listCommands();
@@ -454,30 +362,7 @@ for cmd in commands:
 
 注册在 LLM 之前处理的自定义斜杠指令：
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::commands::{SlashCommand, CommandContext, CommandOutput};
-use std::sync::Arc;
-
-struct StatusCommand;
-impl SlashCommand for StatusCommand {
-    fn name(&self) -> &str { "status" }
-    fn description(&self) -> &str { "Show session status" }
-    fn execute(&self, args: &str, ctx: &CommandContext) -> CommandOutput {
-        CommandOutput::text(format!(
-            "Model: {}, History: {} msgs, args: {:?}",
-            ctx.model, ctx.history_len, args
-        ))
-    }
-}
-
-session.register_command(Arc::new(StatusCommand));
-let result = session.send("/status hello", None).await?;
-println!("{}", result.text);
-// Model: openai/gpt-4o, History: 2 msgs, args: "hello"
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 
 Node.js SDK 暂不支持自定义指令注册。请通过 `send()` 使用内置斜杠指令。
@@ -512,21 +397,7 @@ print(result.text)
 
 ### 调度循环提示
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-// 通过 /loop 斜杠指令
-let r = session.send("/loop 30s check deployment status", None).await?;
-println!("{}", r.text);
-// Scheduled [a1b2c3d4]: "check deployment status" — fires every 30s
-
-// 间隔放在末尾（"every" 子句）
-let r = session.send("/loop monitor errors every 1m", None).await?;
-
-// 默认间隔（省略时为 10 分钟）
-let r = session.send("/loop summarize recent changes", None).await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // 通过 /loop 斜杠指令

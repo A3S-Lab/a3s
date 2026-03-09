@@ -31,18 +31,6 @@ import { Callout } from 'fumadocs-ui/components/callout';
 ### 配置
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::SessionOptions;
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_context_threshold(0.8)  // Compact at 80% (default)
-))?;
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -233,21 +221,6 @@ let query = ContextQuery::new("authentication flow")
 </Callout>
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::context::MemoryContextProvider;
-use a3s_code_core::memory::MemoryManager;
-
-let memory = Arc::new(MemoryManager::new());
-let provider = Arc::new(MemoryContextProvider::new(memory));
-
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_context_provider(provider)
-))?;
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -279,49 +252,6 @@ session = agent.session('/project', {
 自定义上下文提供者在 Rust 中实现 `ContextProvider` trait 并在会话上注册。TypeScript 和 Python 可以使用 `fsContext` 注入文件系统上下文，无需自定义提供者。
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::context::{ContextProvider, ContextQuery, ContextResult, ContextItem, ContextType};
-use async_trait::async_trait;
-
-struct DocsContextProvider {
-    docs_path: PathBuf,
-}
-
-#[async_trait]
-impl ContextProvider for DocsContextProvider {
-    async fn query(&self, query: ContextQuery) -> Result<ContextResult> {
-        // Search documentation files
-        let matches = search_docs(&self.docs_path, &query.query)?;
-
-        let items: Vec<ContextItem> = matches.into_iter()
-            .map(|doc| ContextItem {
-                id: doc.path.to_string_lossy().to_string(),
-                context_type: ContextType::Resource,
-                content: doc.content,
-                token_count: doc.content.split_whitespace().count(),
-                relevance: doc.score,
-                source: Some(format!("docs:{}", doc.path.display())),
-                metadata: HashMap::new(),
-            })
-            .collect();
-
-        Ok(ContextResult { items })
-    }
-}
-
-// Register with session
-let provider = Arc::new(DocsContextProvider {
-    docs_path: PathBuf::from("./docs"),
-});
-
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_context_provider(provider)
-))?;
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -356,24 +286,6 @@ session = agent.session('/project', {
 注册多个上下文提供者以组合不同来源：
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-let memory_provider = Arc::new(MemoryContextProvider::new(memory));
-let docs_provider = Arc::new(DocsContextProvider { docs_path });
-let code_provider = Arc::new(CodeContextProvider { repo_path });
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_context_provider(memory_provider)
-        .with_context_provider(docs_provider)
-        .with_context_provider(code_provider)
-))?;
-```
-
-所有提供者并行查询，结果在注入系统提示前合并。
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript

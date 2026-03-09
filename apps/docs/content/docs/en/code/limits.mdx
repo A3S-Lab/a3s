@@ -27,17 +27,7 @@ Agent Execution
 
 `max_tool_rounds` limits the total tool call rounds within a single `send()` / `stream()`. When the limit is reached, the agent stops and returns the current result.
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_max_tool_rounds(20)  // default 50
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -60,15 +50,7 @@ session = agent.session("/project", max_tool_rounds=20)  # default 50
 
 `tool_timeout_ms` sets a timeout for each individual tool call. A timeout does not crash the session — the timeout result is returned to the LLM as an error, and the LLM can choose to retry or try a different approach.
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_tool_timeout_ms(10_000)  // max 10s per tool
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -93,15 +75,7 @@ Tool 'bash' timed out after 10000ms
 
 `circuit_breaker_threshold` controls how many consecutive LLM API failures trigger an abort (non-streaming mode). Prevents the agent from retrying indefinitely when the API is unstable.
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_circuit_breaker_threshold(5)  // default 3
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -124,23 +98,7 @@ In streaming mode (`stream()`), any LLM failure is fatal because event streams c
 
 A3S Code has built-in exponential backoff retry with `Retry-After` header support. By default it retries 429 (rate limit), 500, 502, 503, and 529 (Anthropic overload).
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::retry::RetryConfig;
-
-// Default: 3 retries, 1s base, 30s max, ±25% jitter
-let retry = RetryConfig::default();
-
-// Custom
-let retry = RetryConfig {
-    max_retries: 5,
-    base_delay_ms: 500,
-    max_delay_ms: 60_000,
-    retryable_status_codes: vec![429, 500, 503],
-};
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -175,15 +133,7 @@ let retry = RetryConfig::disabled();  // max_retries = 0
 
 LLMs occasionally return malformed tool arguments. `max_parse_retries` controls how many consecutive parse errors are tolerated before aborting (default 2).
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_max_parse_retries(3)  // default 2
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -202,22 +152,7 @@ session = agent.session("/project", max_parse_retries=3)
 
 When the LLM stops calling tools before the task is complete, A3S Code automatically injects a continuation message to keep execution going. `max_continuation_turns` limits how many times this can happen (default 3).
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_continuation(true)           // enabled by default
-        .with_max_continuation_turns(5)    // default 3
-))?;
-
-// Disable continuation entirely
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_continuation(false)
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -240,16 +175,7 @@ session = agent.session("/project",
 
 When context window usage exceeds the threshold, A3S Code automatically calls the LLM to summarize history, preventing context overflow.
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_auto_compact(true)
-        .with_auto_compact_threshold(0.75)  // trigger at 75% (default 80%)
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -274,24 +200,7 @@ See [Auto-Compact Example](/docs/code/examples/auto-compact) for a full walkthro
 
 Recommended production combination:
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_max_tool_rounds(30)
-        .with_tool_timeout_ms(15_000)
-        .with_circuit_breaker_threshold(3)
-        .with_max_parse_retries(2)
-        .with_continuation(true)
-        .with_max_continuation_turns(3)
-        .with_auto_compact(true)
-        .with_auto_compact_threshold(0.80)
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {

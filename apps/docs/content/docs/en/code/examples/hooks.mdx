@@ -44,46 +44,28 @@ Hooks let you intercept agent lifecycle events to audit, modify, or block operat
 
 ## Audit Hook (Log All Tool Calls)
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::hooks::{Hook, HookEvent, HookEventType, HookHandler, HookResponse};
-use std::sync::{Arc, Mutex};
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const toolLog: string[] = [];
 
-struct AuditHandler {
-    log: Arc<Mutex<Vec<String>>>,
-}
+session.registerHook('audit', 'pre_tool_use', (event) => {
+  const tool = event.tool || 'unknown';
+  console.log(`→ tool: ${tool}`);
+  toolLog.push(tool);
+  return null; // allow execution
+});
 
-impl HookHandler for AuditHandler {
-    fn handle(&self, event: &HookEvent) -> HookResponse {
-        if let HookEvent::PreToolUse(e) = event {
-            println!("→ tool: {}", e.tool);
-            self.log.lock().unwrap().push(e.tool.clone());
-        }
-        HookResponse::continue_()
-    }
-}
+console.log(`Hooks: ${session.hookCount()}`);
 
-// Register
-let log = Arc::new(Mutex::new(Vec::new()));
-let hook = Hook::new("audit", HookEventType::PreToolUse);
-session.register_hook(hook);
-session.register_hook_handler("audit", Arc::new(AuditHandler { log: Arc::clone(&log) }));
+const result = await session.send('List files in the workspace');
 
-println!("Hooks: {}", session.hook_count());
-
-// Run agent
-let result = session.send("List files in the workspace", None).await?;
-
-// Inspect log
-println!("Tools called: {:?}", log.lock().unwrap());
-
-// Cleanup
-session.unregister_hook("audit");
+console.log('Tools called:', toolLog);
+session.unregisterHook('audit');
 ```
 
-**Run:** `cargo run --example 08_hooks`
-**Source:** [`core/examples/08_hooks.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/08_hooks.rs)
+**Run:** `npx ts-node examples/test_advanced_features.ts`
+**Source:** [`sdk/node/examples/test_advanced_features.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.ts)
 </Tab>
 <Tab value="Python">
 ```python
@@ -107,51 +89,19 @@ session.unregister_hook("audit")
 **Run:** `python examples/test_advanced_features.py`
 **Source:** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
 </Tab>
-<Tab value="TypeScript">
-```typescript
-const toolLog: string[] = [];
-
-session.registerHook('audit', 'pre_tool_use', (event) => {
-  const tool = event.tool || 'unknown';
-  console.log(`→ tool: ${tool}`);
-  toolLog.push(tool);
-  return null; // allow execution
-});
-
-console.log(`Hooks: ${session.hookCount()}`);
-
-const result = await session.send('List files in the workspace');
-
-console.log('Tools called:', toolLog);
-session.unregisterHook('audit');
-```
-
-**Run:** `npx ts-node examples/test_advanced_features.ts`
-**Source:** [`sdk/node/examples/test_advanced_features.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.ts)
-</Tab>
 </Tabs>
 
 ## Block Hook (Deny Specific Tools)
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-struct DenyBashHandler;
-
-impl HookHandler for DenyBashHandler {
-    fn handle(&self, event: &HookEvent) -> HookResponse {
-        if let HookEvent::PreToolUse(e) = event {
-            if e.tool == "bash" {
-                return HookResponse::block("bash is not allowed in this session");
-            }
-        }
-        HookResponse::continue_()
-    }
-}
-
-let hook = Hook::new("no-bash", HookEventType::PreToolUse);
-session.register_hook(hook);
-session.register_hook_handler("no-bash", Arc::new(DenyBashHandler));
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+session.registerHook('no-bash', 'pre_tool_use', (event) => {
+  if (event.tool === 'bash') {
+    return { action: 'block', reason: 'bash is not allowed' };
+  }
+  return null;
+});
 ```
 </Tab>
 <Tab value="Python">
@@ -164,81 +114,13 @@ def deny_bash(event):
 session.register_hook("no-bash", "pre_tool_use", deny_bash)
 ```
 </Tab>
-<Tab value="TypeScript">
-```typescript
-session.registerHook('no-bash', 'pre_tool_use', (event) => {
-  if (event.tool === 'bash') {
-    return { action: 'block', reason: 'bash is not allowed' };
-  }
-  return null;
-});
-```
-</Tab>
 </Tabs>
 
 ## Sentinel Agent (Monitor + Block + Alert)
 
 A sentinel attaches two hooks to a session — one that blocks dangerous commands before they run, and one that detects sensitive data in output. Hooks propagate automatically to every sub-agent at any depth.
 
-<Tabs groupId="lang" items={['Python', 'TypeScript', 'Rust']}>
-<Tab value="Python">
-```python
-from typing import Optional
-from a3s_code import Agent
-
-BLOCKED = ["rm -rf", "mkfs", "dd if=", "DROP TABLE", "curl | sh"]
-SENSITIVE = ["password=", "secret=", "api_key=", "token=", "Bearer "]
-
-def on_pre_tool_use(event: dict) -> Optional[dict]:
-    p = event.get("payload", event)
-    tool = p.get("tool", "")
-    if tool not in ("bash", "shell"):
-        return None
-    cmd = p.get("args", {}).get("command", "")
-    for pat in BLOCKED:
-        if pat.lower() in cmd.lower():
-            print(f"⛔  BLOCKED: '{pat}' in command")
-            return {"action": "block", "reason": f"[sentinel] '{pat}'"}
-    return None
-
-def on_post_tool_use(event: dict) -> Optional[dict]:
-    p = event.get("payload", event)
-    result = p.get("result", {})
-    output = result.get("output", "") if isinstance(result, dict) else ""
-    for kw in SENSITIVE:
-        if kw.lower() in output.lower():
-            print(f"⚠️   ALERT: sensitive keyword '{kw}' in output")
-            break
-    return None
-
-def attach_sentinel(session, label: str = "") -> None:
-    tag = f"sentinel-{label}-" if label else "sentinel-"
-    session.register_hook(
-        f"{tag}pre", "pre_tool_use",
-        config={"priority": 1},
-        handler=on_pre_tool_use,
-    )
-    session.register_hook(
-        f"{tag}post", "post_tool_use",
-        config={"priority": 1, "async_execution": True},
-        handler=on_post_tool_use,
-    )
-
-agent = Agent.create("agent.hcl")
-session = agent.session("/workspace", permissive=True)
-attach_sentinel(session)
-
-# safe — passes through
-r = session.send("Use bash to list /tmp")
-print(r.text)
-
-# dangerous — sentinel blocks before bash runs
-r = session.send("Use bash: rm -rf /tmp/test")
-print(r.text)  # agent explains it was blocked
-```
-
-**Source:** [`sdk/python/examples/sentinel_agent.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/sentinel_agent.py)
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -297,48 +179,63 @@ console.log(r2.text); // agent explains it was blocked
 
 **Source:** [`sdk/node/examples/sentinel_agent.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/sentinel_agent.ts)
 </Tab>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{
-    Agent, SessionOptions,
-    hooks::{Hook, HookConfig, HookEvent, HookEventType, HookHandler, HookMatcher, HookResponse},
-};
-use std::sync::Arc;
+<Tab value="Python">
+```python
+from typing import Optional
+from a3s_code import Agent
 
-const BLOCKED: &[&str] = &["rm -rf", "mkfs", "dd if=", "DROP TABLE"];
+BLOCKED = ["rm -rf", "mkfs", "dd if=", "DROP TABLE", "curl | sh"]
+SENSITIVE = ["password=", "secret=", "api_key=", "token=", "Bearer "]
 
-struct SentinelGuard;
+def on_pre_tool_use(event: dict) -> Optional[dict]:
+    p = event.get("payload", event)
+    tool = p.get("tool", "")
+    if tool not in ("bash", "shell"):
+        return None
+    cmd = p.get("args", {}).get("command", "")
+    for pat in BLOCKED:
+        if pat.lower() in cmd.lower():
+            print(f"⛔  BLOCKED: '{pat}' in command")
+            return {"action": "block", "reason": f"[sentinel] '{pat}'"}
+    return None
 
-impl HookHandler for SentinelGuard {
-    fn handle(&self, event: &HookEvent) -> HookResponse {
-        let HookEvent::PreToolUse(e) = event else {
-            return HookResponse::continue_();
-        };
-        let cmd = e.args.to_string().to_lowercase();
-        for pat in BLOCKED {
-            if cmd.contains(&pat.to_lowercase()) {
-                eprintln!("⛔  BLOCKED: '{pat}' in command");
-                return HookResponse::block(format!("[sentinel] '{pat}'"));
-            }
-        }
-        HookResponse::continue_()
-    }
-}
+def on_post_tool_use(event: dict) -> Optional[dict]:
+    p = event.get("payload", event)
+    result = p.get("result", {})
+    output = result.get("output", "") if isinstance(result, dict) else ""
+    for kw in SENSITIVE:
+        if kw.lower() in output.lower():
+            print(f"⚠️   ALERT: sensitive keyword '{kw}' in output")
+            break
+    return None
 
-let session = agent.session(".", Some(
-    SessionOptions::new().with_permissive_policy()
-))?;
-session.register_hook(
-    Hook::new("sentinel-guard", HookEventType::PreToolUse)
-        .with_matcher(HookMatcher::tool("bash"))
-        .with_config(HookConfig { priority: 1, ..Default::default() })
-);
-session.register_hook_handler("sentinel-guard", Arc::new(SentinelGuard));
+def attach_sentinel(session, label: str = "") -> None:
+    tag = f"sentinel-{label}-" if label else "sentinel-"
+    session.register_hook(
+        f"{tag}pre", "pre_tool_use",
+        config={"priority": 1},
+        handler=on_pre_tool_use,
+    )
+    session.register_hook(
+        f"{tag}post", "post_tool_use",
+        config={"priority": 1, "async_execution": True},
+        handler=on_post_tool_use,
+    )
 
-// Sentinel propagates to every sub-agent spawned by the task tool
-let result = session.send("Analyze the repo with sub-agents", None).await?;
-println!("{}", result.text);
+agent = Agent.create("agent.hcl")
+session = agent.session("/workspace", permissive=True)
+attach_sentinel(session)
+
+# safe — passes through
+r = session.send("Use bash to list /tmp")
+print(r.text)
+
+# dangerous — sentinel blocks before bash runs
+r = session.send("Use bash: rm -rf /tmp/test")
+print(r.text)  # agent explains it was blocked
 ```
+
+**Source:** [`sdk/python/examples/sentinel_agent.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/sentinel_agent.py)
 </Tab>
 </Tabs>
 

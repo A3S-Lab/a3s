@@ -97,44 +97,6 @@ log("AHP 服务器已退出")
 ## 挂载驾驭服务器
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::{Agent, AhpHookExecutor, SessionOptions};
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let agent = Agent::new("agent.hcl").await?;
-
-    // 派生驾驭服务器——它监督整个会话
-    let harness = AhpHookExecutor::spawn("python3", &["harness.py"]).await?;
-
-    let session = agent.session(".", Some(
-        SessionOptions::new()
-            .with_builtin_skills()
-            .with_hook_executor(harness),
-    ))?;
-
-    // 驾驭服务器拦截所有工具调用——包括子智能体内的调用
-    let result = session.send(
-        "列出所有 Rust 文件并统计代码行数",
-        None,
-    ).await?;
-
-    println!("{}", result.text);
-    Ok(())
-}
-```
-
-验证驾驭服务器是否正在阻断危险命令：
-
-```rust
-// 这将被驾驭服务器阻断——agent 将收到阻断错误
-let result = session.send("执行：rm -rf /tmp/test", None).await?;
-// agent 将报告 Bash 工具被阻断。
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript

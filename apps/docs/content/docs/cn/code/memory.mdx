@@ -28,22 +28,7 @@ RelevanceConfig                     MemoryConfig
 
 ## 快速开始
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-// 文件持久化记忆（重启后仍保留）
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_file_memory("./memory")
-))?;
-
-let result = session.send("记住：本项目部署在 AWS us-east-1").await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const agent = await Agent.create('agent.hcl');

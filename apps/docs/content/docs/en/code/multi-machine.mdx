@@ -96,33 +96,27 @@ Tasks are routed to 4 priority lanes:
 
 ### Step 1: Configure Session
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions, SessionQueueConfig};
-use a3s_code_core::queue::{SessionLane, LaneHandlerConfig, TaskHandlerMode};
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent, SessionOptions, SessionQueueConfig } from '@a3s-lab/code';
+import { SessionLane, LaneHandlerConfig, TaskHandlerMode } from '@a3s-lab/code';
 
-let agent = Agent::new("agent.hcl").await?;
+const agent = await Agent.create('agent.hcl');
 
-// Configure queue with high concurrency
-let queue_config = SessionQueueConfig {
-    query_max_concurrency: 20,
-    execute_max_concurrency: 5,
-    enable_metrics: true,
-    enable_dlq: true,
-    ..Default::default()
-};
+const session = agent.session('.', {
+  queueConfig: {
+    queryMaxConcurrency: 20,
+    executeMaxConcurrency: 5,
+    enableMetrics: true,
+    enableDlq: true
+  }
+});
 
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_queue_config(queue_config)
-))?;
-
-// Configure Query lane for external processing
-session.set_lane_handler(SessionLane::Query, LaneHandlerConfig {
-    mode: TaskHandlerMode::External,
-    timeout_ms: 120_000,  // 2 minutes
-}).await;
+await session.setLaneHandler(SessionLane.Query, {
+  mode: TaskHandlerMode.External,
+  timeoutMs: 120_000
+});
 ```
 </Tab>
 <Tab value="Python">
@@ -154,112 +148,85 @@ session.set_lane_handler(
 )
 ```
 </Tab>
-<Tab value="TypeScript">
-```typescript
-import { Agent, SessionOptions, SessionQueueConfig } from '@a3s-lab/code';
-import { SessionLane, LaneHandlerConfig, TaskHandlerMode } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-
-const session = agent.session('.', {
-  queueConfig: {
-    queryMaxConcurrency: 20,
-    executeMaxConcurrency: 5,
-    enableMetrics: true,
-    enableDlq: true
-  }
-});
-
-await session.setLaneHandler(SessionLane.Query, {
-  mode: TaskHandlerMode.External,
-  timeoutMs: 120_000
-});
-```
-</Tab>
 </Tabs>
 
 ### Step 2: Implement Worker
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{AgentSession, ExternalTask, ExternalTaskResult};
-use tokio::time::{sleep, Duration};
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { AgentSession, ExternalTask, ExternalTaskResult } from '@a3s-lab/code';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { readFile } from 'fs/promises';
 
-async fn worker_loop(session: Arc<AgentSession>) -> Result<()> {
-    loop {
-        // Poll for pending tasks
-        let tasks = session.pending_external_tasks().await;
+const execAsync = promisify(exec);
 
-        if tasks.is_empty() {
-            sleep(Duration::from_millis(100)).await;
-            continue;
-        }
+async function workerLoop(session: AgentSession): Promise<void> {
+  while (true) {
+    // Poll for pending tasks
+    const tasks = await session.pendingExternalTasks();
 
-        // Process tasks in parallel
-        let handles: Vec<_> = tasks.into_iter()
-            .map(|task| {
-                let session = session.clone();
-                tokio::spawn(async move {
-                    let result = execute_task(&task).await;
-                    session.complete_external_task(&task.task_id, result).await
-                })
-            })
-            .collect();
-
-        for handle in handles {
-            let _ = handle.await;
-        }
+    if (tasks.length === 0) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      continue;
     }
+
+    // Process tasks in parallel
+    await Promise.all(tasks.map(task => processTask(session, task)));
+  }
 }
 
-async fn execute_task(task: &ExternalTask) -> ExternalTaskResult {
-    match task.command_type.as_str() {
-        "read" => {
-            let path = task.payload["path"].as_str().unwrap();
-            match tokio::fs::read_to_string(path).await {
-                Ok(content) => ExternalTaskResult {
-                    success: true,
-                    result: serde_json::json!({ "content": content }),
-                    error: None,
-                },
-                Err(e) => ExternalTaskResult {
-                    success: false,
-                    result: serde_json::json!({}),
-                    error: Some(e.to_string()),
-                },
-            }
-        }
-        "bash" => {
-            let command = task.payload["command"].as_str().unwrap();
-            match tokio::process::Command::new("sh")
-                .arg("-c")
-                .arg(command)
-                .output()
-                .await
-            {
-                Ok(output) => ExternalTaskResult {
-                    success: output.status.success(),
-                    result: serde_json::json!({
-                        "stdout": String::from_utf8_lossy(&output.stdout),
-                        "stderr": String::from_utf8_lossy(&output.stderr),
-                        "exit_code": output.status.code()
-                    }),
-                    error: None,
-                },
-                Err(e) => ExternalTaskResult {
-                    success: false,
-                    result: serde_json::json!({}),
-                    error: Some(e.to_string()),
-                },
-            }
-        }
-        _ => ExternalTaskResult {
-            success: false,
-            result: serde_json::json!({}),
-            error: Some(format!("Unknown command type: {}", task.command_type)),
-        },
+async function processTask(session: AgentSession, task: ExternalTask): Promise<void> {
+  const result = await executeTask(task);
+  await session.completeExternalTask(task.taskId, result);
+}
+
+async function executeTask(task: ExternalTask): Promise<ExternalTaskResult> {
+  switch (task.commandType) {
+    case 'read': {
+      const path = task.payload.path;
+      try {
+        const content = await readFile(path, 'utf-8');
+        return {
+          success: true,
+          result: { content },
+          error: null
+        };
+      } catch (e) {
+        return {
+          success: false,
+          result: {},
+          error: e.message
+        };
+      }
     }
+
+    case 'bash': {
+      const command = task.payload.command;
+      try {
+        const { stdout, stderr } = await execAsync(command);
+        return {
+          success: true,
+          result: { stdout, stderr, exitCode: 0 },
+          error: null
+        };
+      } catch (e) {
+        return {
+          success: false,
+          result: { stdout: e.stdout, stderr: e.stderr, exitCode: e.code },
+          error: e.message
+        };
+      }
+    }
+
+    default:
+      return {
+        success: false,
+        result: {},
+        error: `Unknown command type: ${task.commandType}`
+      };
+  }
 }
 ```
 </Tab>
@@ -338,83 +305,6 @@ async def execute_task(task):
             result={},
             error=f"Unknown command type: {task.command_type}"
         )
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-import { AgentSession, ExternalTask, ExternalTaskResult } from '@a3s-lab/code';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { readFile } from 'fs/promises';
-
-const execAsync = promisify(exec);
-
-async function workerLoop(session: AgentSession): Promise<void> {
-  while (true) {
-    // Poll for pending tasks
-    const tasks = await session.pendingExternalTasks();
-
-    if (tasks.length === 0) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      continue;
-    }
-
-    // Process tasks in parallel
-    await Promise.all(tasks.map(task => processTask(session, task)));
-  }
-}
-
-async function processTask(session: AgentSession, task: ExternalTask): Promise<void> {
-  const result = await executeTask(task);
-  await session.completeExternalTask(task.taskId, result);
-}
-
-async function executeTask(task: ExternalTask): Promise<ExternalTaskResult> {
-  switch (task.commandType) {
-    case 'read': {
-      const path = task.payload.path;
-      try {
-        const content = await readFile(path, 'utf-8');
-        return {
-          success: true,
-          result: { content },
-          error: null
-        };
-      } catch (e) {
-        return {
-          success: false,
-          result: {},
-          error: e.message
-        };
-      }
-    }
-
-    case 'bash': {
-      const command = task.payload.command;
-      try {
-        const { stdout, stderr } = await execAsync(command);
-        return {
-          success: true,
-          result: { stdout, stderr, exitCode: 0 },
-          error: null
-        };
-      } catch (e) {
-        return {
-          success: false,
-          result: { stdout: e.stdout, stderr: e.stderr, exitCode: e.code },
-          error: e.message
-        };
-      }
-    }
-
-    default:
-      return {
-        success: false,
-        result: {},
-        error: `Unknown command type: ${task.commandType}`
-      };
-  }
-}
 ```
 </Tab>
 </Tabs>

@@ -28,22 +28,7 @@ This separation means you can swap the storage backend without touching any agen
 
 ## Quick Start
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-// File-backed long-term memory (persists across restarts)
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_file_memory("./memory")
-))?;
-
-let result = session.send("Remember: this project deploys to AWS us-east-1").await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const agent = await Agent.create('agent.hcl');

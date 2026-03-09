@@ -12,30 +12,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 记忆在会话重启后仍然保留。多个会话指向同一目录即可共享长期知识。
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_file_memory("./memory")
-))?;
-
-// 第一次会话 — Agent 存储一条事实
-session.send("记住：我们通过 GitHub Actions 部署到 AWS us-east-1").await?;
-
-// 之后的会话（同一 memory 目录）— Agent 自动召回
-let session2 = agent.session(".", Some(
-    SessionOptions::new()
-        .with_file_memory("./memory")
-))?;
-let result = session2.send("我们部署在哪里？").await?;
-// Agent 无需再次告知，直接从记忆中回答
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const agent = await Agent.create('agent.hcl');

@@ -12,30 +12,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 Memories persist across session restarts. Point multiple sessions at the same directory to share long-term knowledge.
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_file_memory("./memory")
-))?;
-
-// First session — agent stores a fact
-session.send("Remember: we deploy to AWS us-east-1 via GitHub Actions").await?;
-
-// Later session (same memory dir) — agent recalls it automatically
-let session2 = agent.session(".", Some(
-    SessionOptions::new()
-        .with_file_memory("./memory")
-))?;
-let result = session2.send("Where do we deploy?").await?;
-// Agent answers from memory without being told again
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const agent = await Agent.create('agent.hcl');

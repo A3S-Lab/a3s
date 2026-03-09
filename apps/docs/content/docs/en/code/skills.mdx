@@ -96,25 +96,7 @@ Discover and install agent skills from the open skills ecosystem.
 
 ## Using Built-in Skills
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-// Enable all built-in skills
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_builtin_skills()
-))?;
-
-// Now agent has 7 built-in skills:
-// Code assistance: code-search, code-review, explain-code, find-bugs
-// Tool docs: builtin-tools, delegate-task, find-skills
-let result = session.send("Review the auth code for security issues").await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -224,22 +206,7 @@ allowed-tools: "*"
 
 ### From Directory
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-// Load skills from directory
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_skills_from_dir("./skills")
-))?;
-
-// All .md files in ./skills/ are loaded as skills
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -266,41 +233,7 @@ session = agent.session(".", SessionOptions(
 
 ### Programmatically
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::skills::{Skill, SkillKind, SkillRegistry};
-use std::sync::Arc;
-
-// Create skill
-let skill = Skill {
-    name: "security-audit".to_string(),
-    description: "Audit code for security vulnerabilities".to_string(),
-    allowed_tools: Some("read(*), grep(*)".to_string()),
-    kind: SkillKind::Instruction,
-    content: r#"# Security Audit
-
-Check for:
-1. SQL injection vulnerabilities
-2. XSS vulnerabilities
-3. Hardcoded secrets
-4. Insecure authentication
-"#.to_string(),
-    tags: vec!["security".to_string(), "audit".to_string()],
-    version: Some("1.0.0".to_string()),
-};
-
-// Create registry and register skill
-let registry = SkillRegistry::new();
-registry.register(Arc::new(skill));
-
-// Use in session
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_skill_registry(Arc::new(registry))
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Skill, SkillRegistry } from '@a3s-lab/code';

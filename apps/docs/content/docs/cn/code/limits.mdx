@@ -27,17 +27,7 @@ Agent 执行
 
 `max_tool_rounds` 限制单次 `send()` / `stream()` 中工具调用的总轮次。达到上限后 agent 停止并返回当前结果。
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_max_tool_rounds(20)  // 默认 50
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -60,15 +50,7 @@ session = agent.session("/project", max_tool_rounds=20)  # 默认 50
 
 `tool_timeout_ms` 为每次工具调用设置超时。超时后不会崩溃会话——超时结果作为错误信息回传给 LLM，LLM 可以选择重试或换一种策略。
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_tool_timeout_ms(10_000)  // 每个工具最多执行 10s
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -93,15 +75,7 @@ Tool 'bash' timed out after 10000ms
 
 `circuit_breaker_threshold` 控制 LLM API 连续失败多少次后终止执行（非流式模式）。防止 API 不稳定时 agent 陷入无限重试。
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_circuit_breaker_threshold(5)  // 默认 3
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -124,23 +98,7 @@ session = agent.session("/project", circuit_breaker_threshold=5)
 
 A3S Code 内置带 Retry-After 支持的指数退避重试。默认重试 429（限流）、500、502、503、529（Anthropic 过载）。
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::retry::RetryConfig;
-
-// 默认配置：3 次重试，1s 起始，最大 30s，±25% 抖动
-let retry = RetryConfig::default();
-
-// 自定义配置
-let retry = RetryConfig {
-    max_retries: 5,
-    base_delay_ms: 500,
-    max_delay_ms: 60_000,
-    retryable_status_codes: vec![429, 500, 503],
-};
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -175,15 +133,7 @@ let retry = RetryConfig::disabled();  // max_retries = 0
 
 LLM 有时返回格式错误的工具参数。`max_parse_retries` 控制连续解析错误多少次后终止（默认 2）。
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_max_parse_retries(3)  // 默认 2
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -202,22 +152,7 @@ session = agent.session("/project", max_parse_retries=3)
 
 当 LLM 在任务未完成时停止调用工具，A3S Code 会自动注入续接消息推动执行。`max_continuation_turns` 控制最多注入次数（默认 3）。
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_continuation(true)           // 默认开启
-        .with_max_continuation_turns(5)    // 默认 3
-))?;
-
-// 完全禁用续接
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_continuation(false)
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -240,16 +175,7 @@ session = agent.session("/project",
 
 当上下文窗口使用率超过阈值时，A3S Code 自动调用 LLM 对历史消息进行摘要压缩，防止超出模型上下文长度。
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_auto_compact(true)
-        .with_auto_compact_threshold(0.75)  // 75% 时触发（默认 80%）
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -274,24 +200,7 @@ session = agent.session("/project",
 
 生产环境推荐组合：
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_max_tool_rounds(30)
-        .with_tool_timeout_ms(15_000)
-        .with_circuit_breaker_threshold(3)
-        .with_max_parse_retries(2)
-        .with_continuation(true)
-        .with_max_continuation_turns(3)
-        .with_auto_compact(true)
-        .with_auto_compact_threshold(0.80)
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {

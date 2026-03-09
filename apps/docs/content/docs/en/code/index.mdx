@@ -52,12 +52,7 @@ let result = session.send("Refactor auth to use JWT", None).await?;
 
 ### Installation
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```bash
-cargo add a3s-code-core
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```bash
 npm install @a3s-lab/code
@@ -125,23 +120,7 @@ Any service implementing the OpenAI Chat Completions API works as a provider —
 
 ### Basic Usage
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_default_security()
-        .with_builtin_skills()
-        .with_planning(true)
-))?;
-
-let result = session.send("Refactor auth + update tests", None).await?;
-println!("{}", result.text);
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';

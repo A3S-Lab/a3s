@@ -211,27 +211,6 @@ cost_usd = (prompt_tokens * input_per_million / 1_000_000)
 遥测模块发出标准 OpenTelemetry span。每次 `send()` / `stream()` 调用期间 span 自动触发 — 无需修改 agent 代码。
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use tracing_subscriber::prelude::*;
-
-// Example: export to OTLP collector
-let tracer = opentelemetry_otlp::new_pipeline()
-    .tracing()
-    .install_batch(opentelemetry_sdk::runtime::Tokio)?;
-
-tracing_subscriber::registry()
-    .with(tracing_opentelemetry::layer().with_tracer(tracer))
-    .init();
-
-// All agent operations now emit structured spans
-let result = session.send("Analyze this codebase").await?;
-```
-
-辅助函数 `record_llm_usage()` 和 `record_tool_result()` 在当前活跃 span 上记录指标。`TimedSpan` 守卫自动测量任何作用域操作的耗时。
-
-</Tab>
 <Tab value="TypeScript">
 
 遥测自动发出。在启动进程之前通过环境变量配置收集器：
@@ -344,25 +323,6 @@ export OTEL_SERVICE_NAME=my-agent
 ```
 
 Span 由原生 Rust 层自动收集和导出。
-
-</Tab>
-<Tab value="Rust">
-
-```rust
-use tracing_subscriber::prelude::*;
-
-// stdout（开发环境）
-tracing_subscriber::fmt().init();
-
-// OTLP（生产环境）
-let tracer = opentelemetry_otlp::new_pipeline()
-    .tracing()
-    .install_batch(opentelemetry_sdk::runtime::Tokio)?;
-
-tracing_subscriber::registry()
-    .with(tracing_opentelemetry::layer().with_tracer(tracer))
-    .init();
-```
 
 </Tab>
 </Tabs>

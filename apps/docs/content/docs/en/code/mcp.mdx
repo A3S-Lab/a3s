@@ -182,28 +182,7 @@ MCP tools are namespaced as `mcp__{server}__{tool}`. Use this prefix in permissi
 
 Use `add_mcp_server()` to connect an MCP server to a live session at runtime — without restarting the agent or reloading config. The server is launched, its tools are discovered, and they are immediately available for the next LLM turn.
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use std::sync::Arc;
-use a3s_code_core::{Agent, mcp::manager::McpManager};
-
-let agent = Agent::new("agent.hcl").await?;
-let session = Arc::new(agent.session(".", None)?);
-
-let manager = Arc::new(McpManager::new());
-
-// stdio server
-let tool_count = session.add_mcp_server(
-    Arc::clone(&manager),
-    "filesystem",
-).await?;
-println!("Registered {tool_count} tools from filesystem server");
-
-// The tools are now available: mcp__filesystem__read_file, etc.
-let result = session.send("List files in /tmp").await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code'; // v0.9.5

@@ -194,24 +194,7 @@ Search the web using multiple search engines.
 
 Call tools directly on the session without going through the LLM:
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-// Convenience wrappers
-let content = session.read_file("src/main.rs").await?;
-let output = session.bash("cargo test --lib").await?;
-let files = session.glob("**/*.rs").await?;
-let matches = session.grep("fn main").await?;
-
-// Generic tool call with JSON args
-let result = session.tool("edit", serde_json::json!({
-    "file_path": "src/main.rs",
-    "old_string": "fn main() {",
-    "new_string": "fn main() -> Result<()> {"
-})).await?;
-println!("[{}] {}", result.exit_code, result.output);
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // Convenience wrappers

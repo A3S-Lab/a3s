@@ -172,34 +172,6 @@ A3S Code 宿主
 ## 挂载驾驭服务器
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::{Agent, AhpHookExecutor, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-// 派生驾驭服务器进程
-let harness = AhpHookExecutor::spawn("python3", &["harness.py"]).await?;
-
-let session = agent.session("/workspace", Some(
-    SessionOptions::new().with_hook_executor(harness)
-))?;
-
-let result = session.send("分析此代码仓库", None).await?;
-println!("{}", result.text);
-```
-
-若需调整默认 10 秒的阻塞请求超时时间，使用 `spawn_with_timeout`：
-
-```rust
-let harness = AhpHookExecutor::spawn_with_timeout(
-    "python3", &["harness.py"],
-    30_000, // 30 秒
-).await?;
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript

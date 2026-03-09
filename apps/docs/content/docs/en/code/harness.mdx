@@ -172,34 +172,6 @@ If the harness server does not respond within the timeout, the host falls back t
 ## Attaching a harness server
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::{Agent, AhpHookExecutor, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-// Spawn the harness server process
-let harness = AhpHookExecutor::spawn("python3", &["harness.py"]).await?;
-
-let session = agent.session("/workspace", Some(
-    SessionOptions::new().with_hook_executor(harness)
-))?;
-
-let result = session.send("Analyze this repository", None).await?;
-println!("{}", result.text);
-```
-
-To adjust the blocking-request timeout from the default 10 seconds, use `spawn_with_timeout`:
-
-```rust
-let harness = AhpHookExecutor::spawn_with_timeout(
-    "python3", &["harness.py"],
-    30_000, // 30 s
-).await?;
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript

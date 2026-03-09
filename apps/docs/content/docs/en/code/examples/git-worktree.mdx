@@ -17,40 +17,40 @@ The `git_worktree` tool requires the session workspace to be inside a Git reposi
 
 ## Direct Tool Calls
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::Agent;
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
 
-let agent = Agent::new("~/.a3s/config.hcl").await?;
-let session = agent.session("/my-git-repo", None)?;
+const agent = await Agent.create('~/.a3s/config.hcl');
+const session = agent.session('/my-git-repo');
 
 // Check worktree status
-let r = session.tool("git_worktree", serde_json::json!({"command": "status"})).await?;
-println!("{}", r.output);
+let r = await session.tool('git_worktree', { command: 'status' });
+console.log(r.output);
 
 // Create a worktree for a feature branch
-let r = session.tool("git_worktree", serde_json::json!({
-    "command": "create",
-    "branch": "feature-auth",
-    "path": "/my-git-repo/wt-feature-auth"
-})).await?;
-assert!(r.exit_code == 0);
+r = await session.tool('git_worktree', {
+  command: 'create',
+  branch: 'feature-auth',
+  path: '/my-git-repo/wt-feature-auth',
+});
+assert(r.exitCode === 0);
 
 // List all worktrees
-let r = session.tool("git_worktree", serde_json::json!({"command": "list"})).await?;
-println!("{}", r.output); // Shows main + feature-auth
+r = await session.tool('git_worktree', { command: 'list' });
+console.log(r.output); // Shows main + feature-auth
 
 // Remove the worktree
-let r = session.tool("git_worktree", serde_json::json!({
-    "command": "remove",
-    "path": "/my-git-repo/wt-feature-auth"
-})).await?;
-assert!(r.exit_code == 0);
+r = await session.tool('git_worktree', {
+  command: 'remove',
+  path: '/my-git-repo/wt-feature-auth',
+});
+assert(r.exitCode === 0);
 ```
 
-**Run:** `cargo run --example test_git_worktree`
-**Source:** [`core/examples/test_git_worktree.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_git_worktree.rs)
+**Run:** `node examples/test_git_worktree.ts`
+**Source:** [`sdk/node/examples/test_git_worktree.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_git_worktree.ts)
 </Tab>
 <Tab value="Python">
 ```python
@@ -85,40 +85,6 @@ assert r.exit_code == 0
 
 **Run:** `python examples/test_git_worktree.py`
 **Source:** [`sdk/python/examples/test_git_worktree.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_git_worktree.py)
-</Tab>
-<Tab value="TypeScript">
-```typescript
-import { Agent } from '@a3s-lab/code';
-
-const agent = await Agent.create('~/.a3s/config.hcl');
-const session = agent.session('/my-git-repo');
-
-// Check worktree status
-let r = await session.tool('git_worktree', { command: 'status' });
-console.log(r.output);
-
-// Create a worktree for a feature branch
-r = await session.tool('git_worktree', {
-  command: 'create',
-  branch: 'feature-auth',
-  path: '/my-git-repo/wt-feature-auth',
-});
-assert(r.exitCode === 0);
-
-// List all worktrees
-r = await session.tool('git_worktree', { command: 'list' });
-console.log(r.output); // Shows main + feature-auth
-
-// Remove the worktree
-r = await session.tool('git_worktree', {
-  command: 'remove',
-  path: '/my-git-repo/wt-feature-auth',
-});
-assert(r.exitCode === 0);
-```
-
-**Run:** `node examples/test_git_worktree.ts`
-**Source:** [`sdk/node/examples/test_git_worktree.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_git_worktree.ts)
 </Tab>
 </Tabs>
 

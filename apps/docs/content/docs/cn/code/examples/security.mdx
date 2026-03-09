@@ -15,22 +15,20 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## 启用默认安全
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', {
+  permissive: true,
+  defaultSecurity: true,
+});
 
-let opts = SessionOptions::new()
-    .with_permissive_policy()
-    .with_default_security(); // 污点追踪输入 + 清洗输出
-
-let session = agent.session("/my-project", Some(opts))?;
-let result = session.send("Review this config file", None).await?;
-println!("{}", result.text); // 敏感模式已脱敏
+const result = await session.send('Review this config file');
+console.log(result.text); // 敏感模式已脱敏
 ```
 
-**运行：** `cargo run --example test_security`
-**源码：** [`core/examples/test_security.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/test_security.rs)
+**运行：** `npx ts-node examples/test_advanced_features.ts`
+**源码：** [`sdk/node/examples/test_advanced_features.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.ts)
 </Tab>
 <Tab value="Python">
 ```python
@@ -47,55 +45,18 @@ print(result.text)  # 敏感模式已脱敏
 **运行：** `python examples/test_advanced_features.py`
 **源码：** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
 </Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
-  defaultSecurity: true,
-});
-
-const result = await session.send('Review this config file');
-console.log(result.text); // 敏感模式已脱敏
-```
-
-**运行：** `npx ts-node examples/test_advanced_features.ts`
-**源码：** [`sdk/node/examples/test_advanced_features.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.ts)
-</Tab>
 </Tabs>
 
 ## 自定义安全提供者
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::security::SecurityProvider;
-use std::sync::Arc;
-
-struct MySecurityProvider;
-
-impl SecurityProvider for MySecurityProvider {
-    fn taint_input(&self, text: &str) {
-        // 检测并注册输入中的敏感模式
-        if text.contains("PRIVATE_KEY") {
-            tracing::warn!("Sensitive input detected: private key reference");
-        }
-    }
-
-    fn sanitize_output(&self, text: &str) -> String {
-        // 从 LLM 输出中脱敏敏感模式
-        text.replace(r"sk-[a-zA-Z0-9]{48}", "[REDACTED_API_KEY]")
-    }
-
-    fn wipe(&self) {
-        // 清除缓存的敏感状态
-    }
-}
-
-let opts = SessionOptions::new()
-    .with_permissive_policy()
-    .with_security_provider(Arc::new(MySecurityProvider));
-
-let session = agent.session("/my-project", Some(opts))?;
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// 自定义安全提供者在 Rust 中实现。
+// 使用 defaultSecurity: true 获取内置提供者。
+const session = agent.session('/my-project', {
+  defaultSecurity: true,
+});
 ```
 </Tab>
 <Tab value="Python">
@@ -106,15 +67,6 @@ let session = agent.session("/my-project", Some(opts))?;
 opts = SessionOptions()
 opts.default_security = True
 session = agent.session("/my-project", options=opts)
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-// 自定义安全提供者在 Rust 中实现。
-// 使用 defaultSecurity: true 获取内置提供者。
-const session = agent.session('/my-project', {
-  defaultSecurity: true,
-});
 ```
 </Tab>
 </Tabs>

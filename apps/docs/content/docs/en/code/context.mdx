@@ -31,18 +31,6 @@ This preserves important context while reducing token usage.
 ### Configuration
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::SessionOptions;
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_context_threshold(0.8)  // Compact at 80% (default)
-))?;
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -250,21 +238,6 @@ Bridges the [Memory](/docs/code/memory) system to the context provider interface
 </Callout>
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::context::MemoryContextProvider;
-use a3s_code_core::memory::MemoryManager;
-
-let memory = Arc::new(MemoryManager::new());
-let provider = Arc::new(MemoryContextProvider::new(memory));
-
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_context_provider(provider)
-))?;
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -296,49 +269,6 @@ session = agent.session('/project', {
 Custom context providers implement the `ContextProvider` trait in Rust and are registered on the session. TypeScript and Python can use `fsContext` to inject filesystem context without a custom provider.
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::context::{ContextProvider, ContextQuery, ContextResult, ContextItem, ContextType};
-use async_trait::async_trait;
-
-struct DocsContextProvider {
-    docs_path: PathBuf,
-}
-
-#[async_trait]
-impl ContextProvider for DocsContextProvider {
-    async fn query(&self, query: ContextQuery) -> Result<ContextResult> {
-        // Search documentation files
-        let matches = search_docs(&self.docs_path, &query.query)?;
-
-        let items: Vec<ContextItem> = matches.into_iter()
-            .map(|doc| ContextItem {
-                id: doc.path.to_string_lossy().to_string(),
-                context_type: ContextType::Resource,
-                content: doc.content,
-                token_count: doc.content.split_whitespace().count(),
-                relevance: doc.score,
-                source: Some(format!("docs:{}", doc.path.display())),
-                metadata: HashMap::new(),
-            })
-            .collect();
-
-        Ok(ContextResult { items })
-    }
-}
-
-// Register with session
-let provider = Arc::new(DocsContextProvider {
-    docs_path: PathBuf::from("./docs"),
-});
-
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_context_provider(provider)
-))?;
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -374,24 +304,6 @@ session = agent.session('/project', {
 Register multiple context providers to combine different sources:
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-let memory_provider = Arc::new(MemoryContextProvider::new(memory));
-let docs_provider = Arc::new(DocsContextProvider { docs_path });
-let code_provider = Arc::new(CodeContextProvider { repo_path });
-
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_context_provider(memory_provider)
-        .with_context_provider(docs_provider)
-        .with_context_provider(code_provider)
-))?;
-```
-
-All providers are queried in parallel, and results are merged before injection into the system prompt.
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript

@@ -185,40 +185,7 @@ Parallel steps each start from the same base history. They cannot see each other
 
 The executor emits `StepStart`, `StepEnd`, and `GoalProgress` events during wave-based execution. Streaming consumers can track which steps are running in parallel and monitor overall progress.
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, AgentEvent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-let session = agent.session("/my-project", Some(
-    SessionOptions::new()
-        .with_planning(true)
-        .with_goal_tracking(true)
-))?;
-
-let (mut rx, _handle) = session.stream("Refactor auth to use JWT and update all tests").await?;
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::StepStart { step_id, description, step_number, total_steps } => {
-            // During parallel waves, multiple StepStart events fire before any StepEnd
-            println!("[{step_number}/{total_steps}] Starting: {description}");
-        }
-        AgentEvent::StepEnd { step_id, status, step_number, total_steps } => {
-            println!("[{step_number}/{total_steps}] {status}");
-        }
-        AgentEvent::GoalProgress { goal, progress, completed_steps, total_steps } => {
-            // Fires after each wave completes
-            println!("Goal: {goal}");
-            println!("Progress: {:.0}% ({completed_steps}/{total_steps})", progress * 100.0);
-        }
-        AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::End { .. } => break,
-        _ => {} // required: AgentEvent is #[non_exhaustive]
-    }
-}
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -292,44 +259,7 @@ Note how steps 1 and 2 emit `StepStart` events simultaneously — they are runni
 
 #### Dependency Graph API
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::planning::{ExecutionPlan, Task, TaskStatus, Complexity};
-
-let mut plan = ExecutionPlan::new("Refactor auth", Complexity::Complex);
-
-// Independent steps — will run in parallel (Wave 1)
-plan.add_step(Task::new("s1", "Analyze auth module"));
-plan.add_step(Task::new("s2", "Analyze database schema"));
-
-// Dependent step — waits for Wave 1 (Wave 2)
-plan.add_step(
-    Task::new("s3", "Implement JWT")
-        .with_dependencies(vec!["s1".to_string(), "s2".to_string()])
-);
-
-// Wave 1: both s1 and s2 are ready
-assert_eq!(plan.get_ready_steps().len(), 2);
-
-// Simulate completing wave 1
-plan.mark_status("s1", TaskStatus::Completed);
-plan.mark_status("s2", TaskStatus::Completed);
-
-// Wave 2: s3 is now ready
-assert_eq!(plan.get_ready_steps().len(), 1);
-assert_eq!(plan.get_ready_steps()[0].id, "s3");
-
-// Progress tracking
-assert!((plan.progress() - 0.666).abs() < 0.01); // 2/3
-
-// Deadlock detection
-assert!(!plan.has_deadlock());
-
-// Count remaining work
-assert_eq!(plan.pending_count(), 1);
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // The dependency graph is built by the LLM planner automatically.

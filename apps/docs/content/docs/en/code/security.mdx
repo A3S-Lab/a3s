@@ -85,24 +85,7 @@ Wildcards: `*` matches any character except `/`, `**` matches including `/`, `:*
 
 ### Building a Custom Policy
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::permissions::PermissionPolicy;
-
-let policy = PermissionPolicy::new()
-    .deny("bash(rm -rf:*)")
-    .deny("bash(curl:*|sh)")
-    .allow("read(*)")
-    .allow("glob(*)")
-    .allow("grep(*)")
-    .ask("write(*)")
-    .ask("bash(*)");
-
-// Apply to session
-session.set_permission_policy(policy).await;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { PermissionPolicy } from '@a3s-lab/code';
@@ -165,23 +148,7 @@ HITL confirmation is **independent** of the permission system. Even if a tool is
 
 ### Configuration
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::hitl::{ConfirmationPolicy, TimeoutAction};
-
-let hitl = ConfirmationPolicy {
-    enabled: true,
-    default_timeout_ms: 30_000,
-    timeout_action: TimeoutAction::Reject,
-    ..Default::default()
-};
-
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_confirmation_policy(hitl)
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
@@ -209,27 +176,7 @@ session = agent.session("/project",
 
 ### Handling Confirmation Events
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let (mut rx, _handle) = session.stream("Clean up old logs").await?;
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::ConfirmationRequired { tool_id, tool_name, args, .. } => {
-            println!("🔒 Approve '{tool_name}'? {args:?}");
-            // Approve or reject
-            session.respond_confirmation(&tool_id, true, None).await;
-        }
-        AgentEvent::PermissionDenied { tool_name, reason, .. } => {
-            println!("🚫 {tool_name} blocked: {reason}");
-        }
-        AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::End { .. } => break,
-        _ => {}
-    }
-}
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 for await (const event of session.stream('Clean up old logs')) {
@@ -291,33 +238,7 @@ A3S Code ships a `DefaultSecurityProvider` that is off by default. Call `with_de
 
 ### Enabling
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-use a3s_code_core::security::default::{DefaultSecurityProvider, DefaultSecurityConfig, SensitivePattern};
-use std::sync::Arc;
-
-// Activate with defaults (all features on)
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_default_security()
-))?;
-
-// Or with custom config
-let config = DefaultSecurityConfig {
-    enable_taint_tracking: true,
-    enable_output_sanitization: true,
-    enable_injection_detection: true,
-    custom_patterns: vec![
-        SensitivePattern::new("internal_id", r"INT-\d{6}", "REDACTED:ID"),
-    ],
-};
-let provider = Arc::new(DefaultSecurityProvider::with_config(config));
-let session = agent.session("/project", Some(
-    SessionOptions::new().with_security_provider(provider)
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // Default security config

@@ -52,12 +52,7 @@ let result = session.send("重构 auth 模块使用 JWT", None).await?;
 
 ### 安装
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```bash
-cargo add a3s-code-core
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```bash
 npm install @a3s-lab/code
@@ -125,23 +120,7 @@ providers {
 
 ### 基本用法
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_default_security()
-        .with_builtin_skills()
-        .with_planning(true)
-))?;
-
-let result = session.send("重构 auth 模块并更新测试", None).await?;
-println!("{}", result.text);
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';

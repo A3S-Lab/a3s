@@ -41,50 +41,6 @@ SubAgentWrapper (子智能体)
 ## 快速开始
 
 <Tabs items={['Rust', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::orchestrator::{AgentOrchestrator, SubAgentConfig};
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    // 创建 orchestrator (默认使用内存 provider)
-    let orchestrator = AgentOrchestrator::new_memory();
-
-    // 订阅所有事件
-    let mut events = orchestrator.subscribe_all();
-
-    // 启动子智能体
-    let config = SubAgentConfig::new("general", "Use glob to find Python files")
-        .with_description("Find Python files")
-        .with_permissive(true)
-        .with_max_steps(10);
-
-    let handle = orchestrator.spawn_subagent(config).await?;
-
-    // 监控事件
-    tokio::spawn(async move {
-        while let Ok(event) = events.recv().await {
-            println!("Event: {:?}", event.event_name());
-        }
-    });
-
-    // 控制子智能体
-    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-    handle.pause().await?;
-
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    handle.resume().await?;
-
-    // 等待完成
-    let result = handle.wait().await?;
-    println!("Result: {}", result);
-
-    Ok(())
-}
-```
-
-</Tab>
 <Tab value="Python">
 
 ```python
@@ -135,32 +91,6 @@ print(f"Result: {result}")
 `Orchestrator.create()` 默认使用内部占位符——仅用于测试和演示。要运行**真实的 LLM + 工具调用**，用 `AgentOrchestrator::from_agent(agent)`（Rust）或 `create_with_agent()`（Python/TypeScript）挂载真实的 AgentLoop。
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::{Agent, orchestrator::{AgentOrchestrator, SubAgentConfig}};
-use std::sync::Arc;
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let agent = Arc::new(Agent::new("agent.hcl").await?);
-
-    // 将 orchestrator 连接到真实 AgentLoop 执行
-    let orch = AgentOrchestrator::from_agent(agent);
-
-    let handle = orch.spawn_subagent(
-        SubAgentConfig::new("general", "查找所有 Rust 源文件。")
-            .with_permissive(true)
-            .with_max_steps(5),
-    ).await?;
-
-    let result = handle.wait().await?;
-    println!("{result}");
-    Ok(())
-}
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript
@@ -281,59 +211,6 @@ Python/TypeScript 使用相同方法名，去掉 `.await?`。
 ## 实时监控 API
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-// 获取所有 SubAgent 信息列表
-let subagents = orchestrator.list_subagents().await;
-for info in subagents {
-    println!("SubAgent: {}", info.id);
-    println!("  Type: {}", info.agent_type);
-    println!("  State: {}", info.state);
-    println!("  Description: {}", info.description);
-
-    if let Some(activity) = info.current_activity {
-        println!("  Current Activity: {:?}", activity);
-    }
-}
-
-// 获取特定 SubAgent 的详细信息
-if let Some(info) = orchestrator.get_subagent_info("subagent-1").await {
-    println!("Created at: {}", info.created_at);
-    println!("Updated at: {}", info.updated_at);
-}
-
-// 获取所有活跃 SubAgent 的当前活动
-let activities = orchestrator.get_active_activities().await;
-for (id, activity) in activities {
-    match activity {
-        SubAgentActivity::CallingTool { tool_name, args } => {
-            println!("{} is calling tool: {}", id, tool_name);
-        }
-        SubAgentActivity::RequestingLlm { message_count } => {
-            println!("{} is requesting LLM ({} messages)", id, message_count);
-        }
-        SubAgentActivity::WaitingForControl { reason } => {
-            println!("{} is waiting: {}", id, reason);
-        }
-        SubAgentActivity::Idle => {
-            println!("{} is idle", id);
-        }
-    }
-}
-
-// 获取所有 SubAgent 状态
-let states = orchestrator.get_all_states().await;
-for (id, state) in states {
-    println!("{}: {:?}", id, state);
-}
-
-// 获取活跃数量
-let count = orchestrator.active_count().await;
-println!("Active SubAgents: {}", count);
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript

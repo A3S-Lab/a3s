@@ -280,34 +280,7 @@ The SDK exposes real-time queue introspection on every session with a queue conf
 
 ### SessionQueueStats
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-let stats = session.queue_stats().await;
-
-println!("Total pending: {}", stats.total_pending);
-println!("Total active:  {}", stats.total_active);
-
-// Per-lane breakdown
-for (lane, lane_stats) in &stats.lanes {
-    println!(
-        "  {:?}: pending={}, active={}, completed={}, failed={}",
-        lane, lane_stats.pending, lane_stats.active,
-        lane_stats.completed, lane_stats.failed,
-    );
-}
-
-// External tasks waiting for completion
-let external = session.pending_external_tasks().await;
-println!("External pending: {}", external.len());
-for task in &external {
-    println!(
-        "  [{}] {} in {:?} lane — {}ms remaining",
-        task.task_id, task.command_type, task.lane, task.remaining_ms(),
-    );
-}
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const stats = await session.queueStats();
@@ -461,67 +434,7 @@ The core pattern: run the agent session on a **coordinator** machine, route spec
 
 ### Coordinator: Setup and Event Loop
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{
-    Agent, AgentEvent, SessionOptions, SessionQueueConfig,
-    SessionLane, LaneHandlerConfig, TaskHandlerMode, ExternalTaskResult,
-};
-use tokio::sync::mpsc;
-
-let agent = Agent::new("agent.hcl").await?;
-
-// 1. Create session with queue enabled
-let session = agent.session("/project", Some(
-    SessionOptions::new()
-        .with_queue_config(
-            SessionQueueConfig::default()
-                .with_lane_features()
-                .with_timeout(60_000)
-        )
-))?;
-
-// 2. Route Execute lane to external handlers
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::External,
-    timeout_ms: 60_000,
-}).await;
-
-// 3. Stream the prompt — agent will produce ExternalTask objects for bash/write/edit
-let (mut rx, _handle) = session.stream("Run the full test suite, build for release, and deploy to staging").await?;
-
-// 4. Event loop: dispatch external tasks to workers, feed results back
-while let Some(event) = rx.recv().await {
-    match event {
-        AgentEvent::ExternalTaskPending { .. } => {
-            // Poll all pending tasks and dispatch to remote workers
-            let tasks = session.pending_external_tasks().await;
-            for task in tasks {
-                let session = session.clone();
-                tokio::spawn(async move {
-                    // dispatch_to_worker is your transport layer
-                    // (gRPC, HTTP, Redis pub/sub, message queue, etc.)
-                    let worker_result = dispatch_to_worker(&task).await;
-
-                    session.complete_external_task(&task.task_id, ExternalTaskResult {
-                        success: worker_result.success,
-                        result: serde_json::json!({
-                            "output": worker_result.output,
-                            "exit_code": worker_result.exit_code,
-                        }),
-                        error: worker_result.error,
-                    }).await;
-                });
-            }
-        }
-        AgentEvent::TextDelta { text } => print!("{text}"),
-        AgentEvent::End { .. } => break,
-        _ => {}
-    }
-}
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -654,21 +567,7 @@ The transport layer between coordinator and workers is **your choice** — A3S C
 
 Use `Hybrid` mode when you want local execution as the default path but also need external visibility — for monitoring, audit logging, or shadow processing on remote machines:
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-// Hybrid: execute locally, also notify external watchers
-session.set_lane_handler(SessionLane::Execute, LaneHandlerConfig {
-    mode: TaskHandlerMode::Hybrid,
-    timeout_ms: 60_000,
-}).await;
-
-// The agent runs normally — tools execute locally as default.
-// ExternalTaskPending events are still emitted, so external watchers
-// can observe what's happening (e.g., for audit or metrics).
-let result = session.send("Run cargo test and fix any failures").await?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // Hybrid: execute locally, also notify external watchers
@@ -842,32 +741,7 @@ When no `queue_config` is set in `SessionOptions`, the queue is not created and 
 
 Use `submit()` and `submit_batch()` to inject tasks directly into the lane queue from your SDK code — bypassing the LLM turn. This is useful for proactively scheduling work, fan-out patterns, or driving the queue from external orchestrators.
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use serde_json::json;
-
-// Submit a single task to the Execute lane
-let result = session.submit(
-    "execute",
-    json!({ "command": "cargo test --workspace" }),
-).await?;
-println!("Result: {}", result);
-
-// Submit multiple tasks to the Query lane in one call (executed in parallel)
-let results = session.submit_batch(
-    "query",
-    vec![
-        json!({ "path": "src/main.rs" }),
-        json!({ "path": "src/lib.rs" }),
-        json!({ "path": "Cargo.toml" }),
-    ],
-).await?;
-for r in results {
-    println!("{}", r);
-}
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 // Submit a single task to the Execute lane

@@ -66,40 +66,6 @@ A3S Code 提供两种基于团队的多智能体协作模式：
 ### 快速开始
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-
-```rust
-use a3s_code_core::{Agent, orchestrator::{AgentOrchestrator, AgentSlot, TeamRole}};
-use std::sync::Arc;
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let agent = Arc::new(Agent::new("agent.hcl").await?);
-    let orch = AgentOrchestrator::from_agent(agent);
-
-    let slots = vec![
-        AgentSlot::new("general", "").with_role(TeamRole::Lead).with_max_steps(5),
-        AgentSlot::new("general", "").with_role(TeamRole::Worker).with_max_steps(5),
-        AgentSlot::new("general", "").with_role(TeamRole::Reviewer).with_max_steps(3),
-    ];
-
-    let result = orch.run_team(
-        "列举 3 种常见的 Rust 数据结构并简要说明",
-        ".",
-        slots,
-    ).await?;
-
-    println!("完成任务: {}", result.done_tasks.len());
-    println!("拒绝任务: {}", result.rejected_tasks.len());
-    println!("轮数: {}", result.rounds);
-    for task in &result.done_tasks {
-        println!("  [{}] {}", task.id, task.result.as_deref().unwrap_or(""));
-    }
-    Ok(())
-}
-```
-
-</Tab>
 <Tab value="TypeScript">
 
 ```typescript

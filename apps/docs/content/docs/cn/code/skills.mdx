@@ -101,23 +101,7 @@ Skills 是带有 YAML frontmatter 的 Markdown 文件，定义了：
 
 内置 skills 从 v0.9.2 起**默认自动加载**，无需任何配置。创建 session 时，7 个内置 skills 的元数据会自动注入到系统提示中。
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-// 内置 skills 默认已加载，无需额外配置
-let session = agent.session(".", None)?;
-
-// 也可以叠加自定义 skills 目录
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_skill_dirs(["./my-skills"])
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -243,22 +227,7 @@ allowed-tools: "*"
 
 ### 从目录加载
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
-
-let agent = Agent::new("agent.hcl").await?;
-
-// Load skills from directory
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_skills_from_dir("./skills")
-))?;
-
-// All .md files in ./skills/ are loaded as skills
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Agent } from '@a3s-lab/code';
@@ -285,41 +254,7 @@ session = agent.session(".", SessionOptions(
 
 ### 编程式创建
 
-<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::skills::{Skill, SkillKind, SkillRegistry};
-use std::sync::Arc;
-
-// Create skill
-let skill = Skill {
-    name: "security-audit".to_string(),
-    description: "Audit code for security vulnerabilities".to_string(),
-    allowed_tools: Some("read(*), grep(*)".to_string()),
-    kind: SkillKind::Instruction,
-    content: r#"# Security Audit
-
-Check for:
-1. SQL injection vulnerabilities
-2. XSS vulnerabilities
-3. Hardcoded secrets
-4. Insecure authentication
-"#.to_string(),
-    tags: vec!["security".to_string(), "audit".to_string()],
-    version: Some("1.0.0".to_string()),
-};
-
-// Create registry and register skill
-let registry = SkillRegistry::new();
-registry.register(Arc::new(skill));
-
-// Use in session
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_skill_registry(Arc::new(registry))
-))?;
-```
-</Tab>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 import { Skill, SkillRegistry } from '@a3s-lab/code';

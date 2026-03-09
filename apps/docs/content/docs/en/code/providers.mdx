@@ -266,25 +266,14 @@ providers {
 Select at runtime:
 
 <Tabs items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-// Default model
-let session = agent.session(".", None)?;
-
-// Specific model
-let session = agent.session(".", Some(
-    SessionOptions::new().with_model("openai/gpt-4o")
-))?;
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('.', { model: 'openai/gpt-4o' });
 ```
 </Tab>
 <Tab value="Python">
 ```python
 session = agent.session(".", model="openai/gpt-4o")
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('.', { model: 'openai/gpt-4o' });
 ```
 </Tab>
 </Tabs>

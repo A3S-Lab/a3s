@@ -13,27 +13,21 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## 基本 Send
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-use a3s_code_core::{Agent, SessionOptions};
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let agent = Agent::new("~/.a3s/config.hcl").await?;
+const agent = await Agent.create('~/.a3s/config.hcl');
+const session = agent.session('/my-project', { permissive: true });
 
-    let opts = SessionOptions::new().with_permissive_policy();
-    let session = agent.session("/my-project", Some(opts))?;
-
-    let result = session.send("What files handle authentication?", None).await?;
-    println!("{}", result.text);
-    println!("Tokens: {}", result.usage.total_tokens);
-    Ok(())
-}
+const result = await session.send('What files handle authentication?');
+console.log(result.text);
+console.log(`Tokens: ${result.totalTokens}`);
 ```
 
-**运行：** `cargo run --example 01_basic_send`
-**源码：** [`core/examples/01_basic_send.rs`](https://github.com/A3S-Lab/Code/blob/main/core/examples/01_basic_send.rs)
+**运行：** `node examples/agentic_loop_demo.ts`
+**源码：** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
 </Tab>
 <Tab value="Python">
 ```python
@@ -50,49 +44,28 @@ print(f"Tokens: {result.total_tokens}")
 **运行：** `python examples/agentic_loop_demo.py`
 **源码：** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
 </Tab>
-<Tab value="TypeScript">
-```typescript
-import { Agent } from '@a3s-lab/code';
-
-const agent = await Agent.create('~/.a3s/config.hcl');
-const session = agent.session('/my-project', { permissive: true });
-
-const result = await session.send('What files handle authentication?');
-console.log(result.text);
-console.log(`Tokens: ${result.totalTokens}`);
-```
-
-**运行：** `node examples/agentic_loop_demo.ts`
-**源码：** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
-</Tab>
 </Tabs>
 
 ## 多轮对话
 
 每次 `send()` 调用后，历史记录会自动累积。
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-let session = agent.session("/my-project", Some(
-    SessionOptions::new().with_permissive_policy()
-))?;
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', { permissive: true });
 
-// 第 1 轮
-let r1 = session.send("Create a file called hello.rs", None).await?;
-println!("Turn 1: {}", r1.text);
+const r1 = await session.send('Create a file called hello.rs');
+console.log('Turn 1:', r1.text);
 
-// 第 2 轮 — 历史自动保留
-let r2 = session.send("Now add a main function to it", None).await?;
-println!("Turn 2: {}", r2.text);
+const r2 = await session.send('Now add a main function to it');
+console.log('Turn 2:', r2.text);
 
-// 第 3 轮
-let r3 = session.send("Run it and show me the output", None).await?;
-println!("Turn 3: {}", r3.text);
+const r3 = await session.send('Run it and show me the output');
+console.log('Turn 3:', r3.text);
 
-// 查看完整历史
-let history = session.history();
-println!("Total messages: {}", history.len());
+const history = session.history();
+console.log('Total messages:', history.length);
 ```
 </Tab>
 <Tab value="Python">
@@ -112,39 +85,21 @@ history = session.history()
 print(f"Total messages: {len(history)}")
 ```
 </Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', { permissive: true });
-
-const r1 = await session.send('Create a file called hello.rs');
-console.log('Turn 1:', r1.text);
-
-const r2 = await session.send('Now add a main function to it');
-console.log('Turn 2:', r2.text);
-
-const r3 = await session.send('Run it and show me the output');
-console.log('Turn 3:', r3.text);
-
-const history = session.history();
-console.log('Total messages:', history.length);
-```
-</Tab>
 </Tabs>
 
 ## 弹性会话
 
 配置解析重试、工具超时和熔断器，用于生产环境。
 
-<Tabs groupId="lang" items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-let opts = SessionOptions::new()
-    .with_permissive_policy()
-    .with_parse_retries(3)
-    .with_tool_timeout(30_000)       // 每个工具调用 30 秒
-    .with_circuit_breaker(5);        // 连续 5 次 LLM 失败后中止
-
-let session = agent.session("/my-project", Some(opts))?;
+<Tabs groupId=\"lang\" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', {
+  permissive: true,
+  maxParseRetries: 3,
+  toolTimeoutMs: 30_000,
+  circuitBreakerThreshold: 5,
+});
 ```
 </Tab>
 <Tab value="Python">
@@ -155,16 +110,6 @@ session = agent.session("/my-project",
     tool_timeout_ms=30_000,
     circuit_breaker_threshold=5,
 )
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
-  maxParseRetries: 3,
-  toolTimeoutMs: 30_000,
-  circuitBreakerThreshold: 5,
-});
 ```
 </Tab>
 </Tabs>

@@ -266,25 +266,14 @@ providers {
 运行时切换：
 
 <Tabs items={['Rust', 'Python', 'TypeScript']}>
-<Tab value="Rust">
-```rust
-// 默认模型
-let session = agent.session(".", None)?;
-
-// 指定模型
-let session = agent.session(".", Some(
-    SessionOptions::new().with_model("openai/gpt-4o")
-))?;
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('.', { model: 'openai/gpt-4o' });
 ```
 </Tab>
 <Tab value="Python">
 ```python
 session = agent.session(".", model="openai/gpt-4o")
-```
-</Tab>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('.', { model: 'openai/gpt-4o' });
 ```
 </Tab>
 </Tabs>
