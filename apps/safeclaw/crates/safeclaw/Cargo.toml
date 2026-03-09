@@ -23,6 +23,7 @@ a3s-common = { version = "0.1", path = "../../../../crates/common" }
 a3s-code = { version = "1.1", path = "../../../../crates/code/core", package = "a3s-code-core" }
 a3s-memory = { version = "0.1", path = "../../../../crates/memory" }
 a3s-event = { version = "0.3", path = "../../../../crates/event" }
+a3s-flow = { version = "0.2", path = "../../../../crates/flow" }
 a3s-box-core = { version = "0.7", path = "../../../../crates/box/src/core", optional = true }
 
 # Home directory resolution for sealed storage
@@ -75,6 +76,12 @@ axum = { version = "0.7", features = ["ws"] }
 tower = "0.4"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 
+# Stream combinators (for MCP SSE parsing)
+futures-util = "0.3"
+
+# Jinja2 templates (for MCP argument rendering)
+minijinja = { version = "2", features = ["loader"] }
+
 # WebSocket
 tokio-tungstenite = "0.21"
 
@@ -111,6 +118,9 @@ libc = "0.2"
 # Agent module dependencies
 dirs-next = "2.0"
 mime_guess = "2.0"
+
+# Embedded SQLite for workflow persistence
+rusqlite = { version = "0.31", features = ["bundled"] }
 
 # File system watching
 notify = { version = "6", features = ["macos_fsevent"] }
