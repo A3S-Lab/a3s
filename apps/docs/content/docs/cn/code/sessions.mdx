@@ -401,6 +401,246 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 </Tab>
 </Tabs>
 
+## 斜杠指令
+
+会话指令在发送给 LLM 之前被拦截处理。在任意会话中输入 `/help` 可列出所有可用指令。
+
+| 指令 | 描述 |
+|------|------|
+| `/help` | 列出可用指令 |
+| `/model [provider/model]` | 显示或切换当前模型 |
+| `/cost` | 显示 token 使用量和估算费用 |
+| `/history` | 显示对话轮次数和 token 统计 |
+| `/clear` | 清空对话历史 |
+| `/compact` | 手动触发上下文压缩 |
+| `/tools` | 列出已注册的工具 |
+| `/mcp` | 列出已连接的 MCP 服务器及其工具 |
+| `/loop [interval] <prompt>` | 调度循环提示（默认间隔：10m） |
+| `/cron-list` | 列出所有已调度的循环提示 |
+| `/cron-cancel <id>` | 按 ID 取消定时任务 |
+
+### 列出所有指令（SDK）
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+let registry = session.command_registry();
+for (name, desc, usage) in registry.list_full() {
+    let u = usage.map(|u| format!("  usage: {u}")).unwrap_or_default();
+    println!("/{name:<15} {desc}{u}");
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const commands = session.listCommands();
+for (const cmd of commands) {
+  const usage = cmd.usage ? `  usage: ${cmd.usage}` : '';
+  console.log(`/${cmd.name.padEnd(15)} ${cmd.description}${usage}`);
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+commands = session.list_commands()
+for cmd in commands:
+    usage = f"  usage: {cmd['usage']}" if cmd.get('usage') else ''
+    print(f"/{cmd['name']:15s} {cmd['description']}{usage}")
+```
+</Tab>
+</Tabs>
+
+### 自定义指令
+
+注册在 LLM 之前处理的自定义斜杠指令：
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::commands::{SlashCommand, CommandContext, CommandOutput};
+use std::sync::Arc;
+
+struct StatusCommand;
+impl SlashCommand for StatusCommand {
+    fn name(&self) -> &str { "status" }
+    fn description(&self) -> &str { "Show session status" }
+    fn execute(&self, args: &str, ctx: &CommandContext) -> CommandOutput {
+        CommandOutput::text(format!(
+            "Model: {}, History: {} msgs, args: {:?}",
+            ctx.model, ctx.history_len, args
+        ))
+    }
+}
+
+session.register_command(Arc::new(StatusCommand));
+let result = session.send("/status hello", None).await?;
+println!("{}", result.text);
+// Model: openai/gpt-4o, History: 2 msgs, args: "hello"
+```
+</Tab>
+<Tab value="TypeScript">
+
+Node.js SDK 暂不支持自定义指令注册。请通过 `send()` 使用内置斜杠指令。
+
+</Tab>
+<Tab value="Python">
+```python
+def status_handler(args: str, ctx: dict) -> str:
+    return (
+        f"Model: {ctx['model']}, "
+        f"History: {ctx['history_len']} msgs, "
+        f"args: {args!r}"
+    )
+
+session.register_command("status", "Show session status", status_handler)
+
+result = session.send("/status hello")
+print(result.text)
+# Model: openai/gpt-4o, History: 2 msgs, args: 'hello'
+```
+
+处理函数接收：
+- `args` — 指令名称之后的所有内容（字符串）
+- `ctx` — 包含 `session_id`、`model` 和 `history_len` 的字典
+
+</Tab>
+</Tabs>
+
+## 定时任务
+
+会话通过 `/loop` 斜杠指令或程序化调度器 API 支持循环提示。定时任务在每次 `send()` 调用返回后、其间隔时间到期时触发。后台 ticker 在第一次 `send()` 时懒启动，会话销毁时自动停止。
+
+### 调度循环提示
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+// 通过 /loop 斜杠指令
+let r = session.send("/loop 30s check deployment status", None).await?;
+println!("{}", r.text);
+// Scheduled [a1b2c3d4]: "check deployment status" — fires every 30s
+
+// 间隔放在末尾（"every" 子句）
+let r = session.send("/loop monitor errors every 1m", None).await?;
+
+// 默认间隔（省略时为 10 分钟）
+let r = session.send("/loop summarize recent changes", None).await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// 通过 /loop 斜杠指令
+const r = await session.send('/loop 30s check deployment status');
+console.log(r.text);
+// Scheduled [a1b2c3d4]: "check deployment status" — fires every 30s
+
+// 程序化（间隔单位为秒）
+const taskId = session.scheduleTask('summarize recent commits', 300);  // 每 5 分钟
+console.log(`Scheduled: ${taskId}`);
+```
+</Tab>
+<Tab value="Python">
+```python
+# 通过 /loop 斜杠指令
+r = session.send('/loop 30s check deployment status')
+print(r.text)
+# Scheduled [a1b2c3d4]: "check deployment status" — fires every 30s
+
+# 程序化（间隔单位为秒）
+task_id = session.schedule_task('summarize recent commits', 300)  # 每 5 分钟
+print(f'Scheduled: {task_id}')
+```
+</Tab>
+</Tabs>
+
+**间隔语法：**
+
+| 格式 | 示例 | 含义 |
+|------|------|------|
+| 秒 | `30s` | 每 30 秒 |
+| 分钟 | `5m` | 每 5 分钟 |
+| 小时 | `2h` | 每 2 小时 |
+| 天 | `1d` | 每天 |
+| 前置 | `/loop 5m <prompt>` | 间隔在提示词前 |
+| 后置 | `/loop <prompt> every 5m` | `every` 子句在末尾 |
+| 默认 | `/loop <prompt>` | 每 10 分钟 |
+
+### 列出定时任务
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// 程序化
+const tasks = session.listScheduledTasks();
+for (const t of tasks) {
+  console.log(`[${t.id}] every ${t.intervalSecs}s — fires in ${t.nextFireInSecs}s — "${t.prompt}"`);
+}
+
+// 通过斜杠指令
+const r = await session.send('/cron-list');
+console.log(r.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+# 程序化
+tasks = session.list_scheduled_tasks()
+for t in tasks:
+    print(f"[{t['id']}] every {t['interval_secs']}s "
+          f"— fires in {t['next_fire_in_secs']}s "
+          f"— \"{t['prompt']}\"")
+
+# 通过斜杠指令
+r = session.send('/cron-list')
+print(r.text)
+```
+</Tab>
+</Tabs>
+
+### 取消定时任务
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// 程序化
+const ok = session.cancelScheduledTask(taskId);
+console.log(`Cancelled: ${ok}`);  // true
+
+// 通过斜杠指令
+const r = await session.send(`/cron-cancel ${taskId}`);
+console.log(r.text);  // Cancelled task [a1b2c3d4]
+```
+</Tab>
+<Tab value="Python">
+```python
+# 程序化
+ok = session.cancel_scheduled_task(task_id)
+print(f'Cancelled: {ok}')  # True
+
+# 通过斜杠指令
+r = session.send(f'/cron-cancel {task_id}')
+print(r.text)  # Cancelled task [a1b2c3d4]
+```
+</Tab>
+</Tabs>
+
+### ScheduledTaskInfo 字段
+
+<TypeTable
+  type={{
+    id: { type: 'string', description: '唯一 8 字符任务 ID（十六进制）' },
+    prompt: { type: 'string', description: '每次触发时执行的提示词' },
+    interval_secs: { type: 'number', description: '触发间隔（秒）' },
+    recurring: { type: 'bool', description: 'true = 循环，false = 单次' },
+    fire_count: { type: 'number', description: '已触发总次数' },
+    next_fire_in_secs: { type: 'number', description: '距下次触发的估计秒数' },
+  }}
+/>
+
+<Callout type="info">
+**任务触发时机：** 定时任务在每次 `send()` 调用返回后检查并执行。1 秒后台 ticker 推进内部时钟；间隔已到期的任务在下次 `send()` 时排队执行。重入守卫（`is_processing_cron`）防止嵌套触发。
+</Callout>
+
 ## 配置
 
 参见 [提供商与配置](/cn/docs/code/providers) 获取完整的 HCL 配置参考，包括所有字段、`env()` 函数、队列和搜索配置。

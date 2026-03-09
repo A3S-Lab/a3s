@@ -412,6 +412,246 @@ session.tool("write", {"file_path": "x.rs", "content": "..."})
 </Tab>
 </Tabs>
 
+## Slash Commands
+
+Session commands are intercepted before the LLM. Type `/help` in any session to list all available commands.
+
+| Command | Description |
+|---------|-------------|
+| `/help` | List available commands |
+| `/model [provider/model]` | Show or switch the current model |
+| `/cost` | Show token usage and estimated cost |
+| `/history` | Show conversation turn count and token stats |
+| `/clear` | Clear conversation history |
+| `/compact` | Manually trigger context compaction |
+| `/tools` | List registered tools |
+| `/mcp` | List connected MCP servers and their tools |
+| `/loop [interval] <prompt>` | Schedule a recurring prompt (default interval: 10m) |
+| `/cron-list` | List all scheduled recurring prompts |
+| `/cron-cancel <id>` | Cancel a scheduled task by ID |
+
+### List All Commands (SDK)
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+let registry = session.command_registry();
+for (name, desc, usage) in registry.list_full() {
+    let u = usage.map(|u| format!("  usage: {u}")).unwrap_or_default();
+    println!("/{name:<15} {desc}{u}");
+}
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+const commands = session.listCommands();
+for (const cmd of commands) {
+  const usage = cmd.usage ? `  usage: ${cmd.usage}` : '';
+  console.log(`/${cmd.name.padEnd(15)} ${cmd.description}${usage}`);
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+commands = session.list_commands()
+for cmd in commands:
+    usage = f"  usage: {cmd['usage']}" if cmd.get('usage') else ''
+    print(f"/{cmd['name']:15s} {cmd['description']}{usage}")
+```
+</Tab>
+</Tabs>
+
+### Custom Commands
+
+Register custom slash commands handled before the LLM:
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::commands::{SlashCommand, CommandContext, CommandOutput};
+use std::sync::Arc;
+
+struct StatusCommand;
+impl SlashCommand for StatusCommand {
+    fn name(&self) -> &str { "status" }
+    fn description(&self) -> &str { "Show session status" }
+    fn execute(&self, args: &str, ctx: &CommandContext) -> CommandOutput {
+        CommandOutput::text(format!(
+            "Model: {}, History: {} msgs, args: {:?}",
+            ctx.model, ctx.history_len, args
+        ))
+    }
+}
+
+session.register_command(Arc::new(StatusCommand));
+let result = session.send("/status hello", None).await?;
+println!("{}", result.text);
+// Model: openai/gpt-4o, History: 2 msgs, args: "hello"
+```
+</Tab>
+<Tab value="TypeScript">
+
+Custom command registration is not yet supported in the Node.js SDK. Use built-in slash commands via `send()`.
+
+</Tab>
+<Tab value="Python">
+```python
+def status_handler(args: str, ctx: dict) -> str:
+    return (
+        f"Model: {ctx['model']}, "
+        f"History: {ctx['history_len']} msgs, "
+        f"args: {args!r}"
+    )
+
+session.register_command("status", "Show session status", status_handler)
+
+result = session.send("/status hello")
+print(result.text)
+# Model: openai/gpt-4o, History: 2 msgs, args: 'hello'
+```
+
+The handler receives:
+- `args` — string with everything after the command name
+- `ctx` — dict with `session_id`, `model`, and `history_len`
+
+</Tab>
+</Tabs>
+
+## Scheduled Tasks
+
+Sessions support recurring prompts via the `/loop` slash command or the programmatic scheduler API. Scheduled tasks fire after each `send()` call when their interval has elapsed. The background ticker starts lazily on the first `send()` and stops automatically when the session is dropped.
+
+### Schedule a Recurring Prompt
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+// Via /loop slash command
+let r = session.send("/loop 30s check deployment status", None).await?;
+println!("{}", r.text);
+// Scheduled [a1b2c3d4]: "check deployment status" — fires every 30s
+
+// Interval at the end ("every" clause)
+let r = session.send("/loop monitor errors every 1m", None).await?;
+
+// Default interval (10 minutes when omitted)
+let r = session.send("/loop summarize recent changes", None).await?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+// Via /loop slash command
+const r = await session.send('/loop 30s check deployment status');
+console.log(r.text);
+// Scheduled [a1b2c3d4]: "check deployment status" — fires every 30s
+
+// Programmatic (interval in seconds)
+const taskId = session.scheduleTask('summarize recent commits', 300);  // every 5 min
+console.log(`Scheduled: ${taskId}`);
+```
+</Tab>
+<Tab value="Python">
+```python
+# Via /loop slash command
+r = session.send('/loop 30s check deployment status')
+print(r.text)
+# Scheduled [a1b2c3d4]: "check deployment status" — fires every 30s
+
+# Programmatic (interval in seconds)
+task_id = session.schedule_task('summarize recent commits', 300)  # every 5 min
+print(f'Scheduled: {task_id}')
+```
+</Tab>
+</Tabs>
+
+**Interval syntax:**
+
+| Format | Example | Meaning |
+|--------|---------|---------|
+| Seconds | `30s` | Every 30 seconds |
+| Minutes | `5m` | Every 5 minutes |
+| Hours | `2h` | Every 2 hours |
+| Days | `1d` | Every day |
+| Leading | `/loop 5m <prompt>` | Interval before the prompt |
+| Trailing | `/loop <prompt> every 5m` | `every` clause at end |
+| Default | `/loop <prompt>` | Every 10 minutes |
+
+### List Scheduled Tasks
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// Programmatic
+const tasks = session.listScheduledTasks();
+for (const t of tasks) {
+  console.log(`[${t.id}] every ${t.intervalSecs}s — fires in ${t.nextFireInSecs}s — "${t.prompt}"`);
+}
+
+// Via slash command
+const r = await session.send('/cron-list');
+console.log(r.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+# Programmatic
+tasks = session.list_scheduled_tasks()
+for t in tasks:
+    print(f"[{t['id']}] every {t['interval_secs']}s "
+          f"— fires in {t['next_fire_in_secs']}s "
+          f"— \"{t['prompt']}\"")
+
+# Via slash command
+r = session.send('/cron-list')
+print(r.text)
+```
+</Tab>
+</Tabs>
+
+### Cancel a Scheduled Task
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// Programmatic
+const ok = session.cancelScheduledTask(taskId);
+console.log(`Cancelled: ${ok}`);  // true
+
+// Via slash command
+const r = await session.send(`/cron-cancel ${taskId}`);
+console.log(r.text);  // Cancelled task [a1b2c3d4]
+```
+</Tab>
+<Tab value="Python">
+```python
+# Programmatic
+ok = session.cancel_scheduled_task(task_id)
+print(f'Cancelled: {ok}')  # True
+
+# Via slash command
+r = session.send(f'/cron-cancel {task_id}')
+print(r.text)  # Cancelled task [a1b2c3d4]
+```
+</Tab>
+</Tabs>
+
+### ScheduledTaskInfo Fields
+
+<TypeTable
+  type={{
+    id: { type: 'string', description: 'Unique 8-char task ID (hex)' },
+    prompt: { type: 'string', description: 'Prompt executed on each fire' },
+    interval_secs: { type: 'number', description: 'Fire interval in seconds' },
+    recurring: { type: 'bool', description: 'true = recurring, false = one-shot' },
+    fire_count: { type: 'number', description: 'Total number of times fired' },
+    next_fire_in_secs: { type: 'number', description: 'Estimated seconds until next fire' },
+  }}
+/>
+
+<Callout type="info">
+**When tasks fire:** Scheduled tasks are checked and executed after each `send()` call returns. A 1-second background ticker advances the internal clock; tasks whose interval has elapsed are queued and processed at the next `send()`. A reentrance guard (`is_processing_cron`) prevents nested firing.
+</Callout>
+
 ## Configuration
 
 See [Providers & Configuration](/docs/code/providers) for the full HCL config reference including all fields, the `env()` function, queue and search configuration.
@@ -581,6 +821,21 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
     },
     "History": {
       description: "Rust: session.history() · Python: session.history() · TypeScript: session.history()",
+    },
+    "List commands": {
+      description: "Rust: registry.list_full() via session.command_registry() · Python: session.list_commands() · TypeScript: session.listCommands()",
+    },
+    "Register command": {
+      description: "Rust: session.register_command(Arc::new(cmd)) · Python: session.register_command(name, desc, handler) · TypeScript: not yet supported",
+    },
+    "Schedule task": {
+      description: "Python: session.schedule_task(prompt, interval_secs) · TypeScript: session.scheduleTask(prompt, intervalSecs) · Also: session.send('/loop 5m <prompt>')",
+    },
+    "List scheduled tasks": {
+      description: "Python: session.list_scheduled_tasks() · TypeScript: session.listScheduledTasks() · Also: session.send('/cron-list')",
+    },
+    "Cancel scheduled task": {
+      description: "Python: session.cancel_scheduled_task(id) → bool · TypeScript: session.cancelScheduledTask(id) → boolean · Also: session.send('/cron-cancel <id>')",
     },
   }}
 />
