@@ -139,20 +139,28 @@ session = agent.session("/my-project", options=opts)
 </Accordion>
 </Accordions>
 
-```rust
-// Rust — individual controls
-let session = agent.session(".", Some(
-    SessionOptions::new()
-        .with_parse_retries(3)          // bail after 3 consecutive parse errors
-        .with_tool_timeout(30_000)      // 30s per tool
-        .with_circuit_breaker(5)        // retry LLM up to 5 times
-))?;
-
-// Rust — sensible bundle (parse=2, timeout=2min, circuit_breaker=3)
-let session = agent.session(".", Some(
-    SessionOptions::new().with_resilience_defaults()
-))?;
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// Individual controls
+const session = agent.session('.', {
+  maxParseRetries: 3,        // bail after 3 consecutive parse errors
+  toolTimeoutMs: 30000,      // 30s per tool
+  circuitBreakerThreshold: 5 // retry LLM up to 5 times
+});
 ```
+</Tab>
+<Tab value="Python">
+```python
+# Individual controls
+session = agent.session(".",
+  max_parse_retries=3,        # bail after 3 consecutive parse errors
+  tool_timeout_ms=30000,      # 30s per tool
+  circuit_breaker_threshold=5 # retry LLM up to 5 times
+)
+```
+</Tab>
+</Tabs>
 
 ## 发送（非流式）
 

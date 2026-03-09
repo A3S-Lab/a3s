@@ -1200,7 +1200,7 @@ function NodeConfigPanel({
 			</div>
 
 			<div className="overflow-y-auto flex-1 pt-2">
-				{node.type !== "start" && node.type !== "end" && (
+				{node.type !== "start" && (
 					<>
 						<div className="space-y-4 px-4 pb-4">
 							<Field label="节点标题">
@@ -1872,16 +1872,6 @@ function NodeFields({
 					</Field>
 				</>
 			);
-		case "sub-flow":
-			return (
-				<Field label="子流程名称">
-					<TextInput
-						value={(draft.flow_name as string) ?? ""}
-						onChange={(v) => patch({ flow_name: v })}
-						placeholder="my-sub-flow"
-					/>
-				</Field>
-			);
 		case "variable-aggregator":
 			return (
 				<Field label="来源路径" hint="node_id.path">
@@ -2048,27 +2038,6 @@ function NodeFields({
 					onChange={(v) => patch({ inputs: v })}
 				/>
 			);
-		case "end":
-			return (
-				<Field label="输出路径" hint="key → node_id.field">
-					<TextareaInput
-						value={
-							typeof draft.outputs === "object" && draft.outputs !== null
-								? JSON.stringify(draft.outputs, null, 2)
-								: ((draft.outputs as string) ?? "")
-						}
-						onChange={(v) => {
-							try {
-								patch({ outputs: JSON.parse(v) });
-							} catch {
-								patch({ outputs: v });
-							}
-						}}
-						placeholder={'{\n  "result": "llm_node.text"\n}'}
-						rows={6}
-					/>
-				</Field>
-			);
 		case "mcp":
 			return (
 				<>
@@ -2232,17 +2201,8 @@ const DEFAULT_NODES: Node[] = [
 		data: {},
 		deletable: false,
 	},
-	{
-		id: "end_0",
-		type: "end",
-		position: { x: 640, y: 200 },
-		data: {},
-		deletable: false,
-	},
 ];
-const DEFAULT_EDGES: Edge[] = [
-	{ id: "e-start-end", source: "start_0", target: "end_0" },
-];
+const DEFAULT_EDGES: Edge[] = [];
 
 function parseDocument(doc: Record<string, unknown>): {
 	nodes: Node[];
