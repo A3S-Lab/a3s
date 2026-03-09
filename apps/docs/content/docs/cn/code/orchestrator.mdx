@@ -40,7 +40,52 @@ SubAgentWrapper (子智能体)
 
 ## 快速开始
 
-<Tabs items={['Python']}>
+<Tabs items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+
+```typescript
+import { Orchestrator, SubAgentConfig } from '@a3s-lab/code';
+
+// 创建 orchestrator
+const orch = Orchestrator.create();
+
+// 创建 SubAgent 配置
+const config: SubAgentConfig = {
+  agentType: 'general',
+  prompt: '使用 glob 查找 TypeScript 文件',
+  description: '查找 TypeScript 文件',
+  permissive: true,
+  maxSteps: 10,
+};
+
+// 启动 SubAgent
+const handle = orch.spawnSubagent(config);
+console.log(`SubAgent ID: ${handle.id}`);
+
+// 监控状态
+for (let i = 0; i < 10; i++) {
+  await new Promise(resolve => setTimeout(resolve, 500));
+  const state = handle.state();
+  const active = orch.activeCount();
+  console.log(`[${i * 0.5}s] Active: ${active}, State: ${state}`);
+
+  // 控制操作
+  if (i === 3) {
+    handle.pause();
+    console.log('已暂停');
+  }
+  if (i === 5) {
+    handle.resume();
+    console.log('已恢复');
+  }
+}
+
+// 等待完成
+const result = await handle.wait();
+console.log(`结果: ${result}`);
+```
+
+</Tab>
 <Tab value="Python">
 
 ```python

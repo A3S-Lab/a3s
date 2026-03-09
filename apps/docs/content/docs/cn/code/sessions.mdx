@@ -337,8 +337,24 @@ for cmd in commands:
 
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
+```typescript
+function statusHandler(args: string, ctx: CommandContext): string {
+  console.log(`Model: ${ctx.model}, History: ${ctx.historyLen} msgs, args: ${args}`);
+  return `Status: OK`;  // 注意：返回值会被记录但当前实现中不会被捕获
+}
 
-Node.js SDK 暂不支持自定义指令注册。请通过 `send()` 使用内置斜杠指令。
+session.registerCommand("status", "显示会话状态", statusHandler);
+
+const result = await session.send("/status hello");
+console.log(result.text);
+// Command 'status' executed successfully
+```
+
+处理函数接收：
+- `args` — 指令名称之后的所有内容（字符串）
+- `ctx` — 包含 `sessionId`、`model`、`historyLen`、`totalTokens`、`totalCost`、`toolNames` 和 `mcpServers` 的对象
+
+**注意**：由于 napi-rs 的限制，处理函数的返回值当前无法被捕获。命令会成功执行，您可以在处理函数中使用 `console.log()` 或其他副作用。未来版本将支持返回值捕获。
 
 </Tab>
 <Tab value="Python">

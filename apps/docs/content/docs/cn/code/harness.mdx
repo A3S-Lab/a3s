@@ -56,7 +56,20 @@ A3S Code 宿主
 
 ### 传输层
 
-事件通过子进程的 stdin/stdout 以换行分隔的 JSON 发送。每条消息是一个以换行符（`\n`）结尾的 JSON 对象。
+**当前实现：** 事件通过子进程的 stdin/stdout 以换行分隔的 JSON 发送。每条消息是一个以换行符（`\n`）结尾的 JSON 对象。
+
+stdio 传输层是当前版本中唯一的内置传输层。此设计优先考虑：
+- **简单性** — 无需网络配置、端口或身份验证
+- **进程隔离** — 驾驭服务器作为独立的操作系统进程运行
+- **语言无关** — 任何能读取 stdin 和写入 stdout 的语言都可以工作
+
+**未来扩展性：** 协议本身与传输层无关。未来版本可能支持：
+- HTTP/SSE（类似 MCP 的 HTTP 传输）
+- WebSocket（用于远程驾驭服务器）
+- Unix domain sockets（用于本地 IPC，开销更低）
+- gRPC（用于高性能部署）
+
+JSON-RPC 2.0 消息格式保持不变——只有传输层会改变。
 
 ### 阻塞 vs. 即发即忘
 
@@ -215,15 +228,25 @@ print(result.text)
 
 驾驭服务器是任意能从 stdin 读取换行分隔 JSON 并将 JSON-RPC 响应写入 stdout 的进程。所有日志必须写入 stderr，以免干扰协议通信。
 
-### Python 参考服务器
+### 参考实现
 
-仓库在 `core/examples/ahp_server.py` 提供了一个 Python 参考服务器，演示了：
+仓库提供了多种语言的参考服务器：
 
+**Python:** `core/examples/ahp_server.py`
 - 从每条消息中解析 `event_type` 和 `payload`
 - 读取 `meta.depth` 以实现深度感知决策
 - 通过正则表达式阻止危险的 Bash 命令
 - 在 `post_tool_use`（即发即忘）中检测敏感输出模式
 - 将所有日志写入 stderr
+
+**TypeScript:** `core/examples/ahp_server.ts`
+- 完整的 TypeScript 实现，具有类型安全
+- 深度感知策略执行（对子智能体应用更严格的规则）
+- 基于模式的命令阻断
+- 工具输出中的敏感数据检测
+- 全面的事件处理
+
+### Python 参考服务器
 
 核心结构：
 
@@ -253,6 +276,68 @@ for raw_line in sys.stdin:
     result = dispatch_request(event_type, payload, depth) or {"action": "continue"}
     print(json.dumps({"jsonrpc": "2.0", "id": req_id, "result": result}), flush=True)
 ```
+
+
+### TypeScript 参考服务器
+
+完整实现位于 `core/examples/ahp_server.ts`。核心模式：
+
+```typescript
+import * as readline from 'readline';
+
+interface AhpResponse {
+  action: 'continue' | 'block' | 'skip' | 'retry';
+  reason?: string;
+}
+
+function handlePreToolUse(payload: any, depth: number): AhpResponse {
+  const tool = payload.tool || '';
+  const command = payload.args?.command || '';
+
+  // 深度感知：对子智能体应用更严格的策略
+  if (tool === 'Bash' && isDangerous(command)) {
+    const reason = `在深度 ${depth} 处阻断危险命令`;
+    console.error(`[BLOCK] ${reason}`);
+    return { action: 'block', reason };
+  }
+
+  return { action: 'continue' };
+}
+
+// 主循环
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+  terminal: false,
+});
+
+rl.on('line', (line: string) => {
+  const msg = JSON.parse(line);
+  const { event_type, payload, meta } = msg.params;
+  const depth = meta?.depth ?? 0;
+  const reqId = msg.id;
+
+  if (reqId === undefined) {
+    handleNotification(event_type, payload, depth);
+  } else {
+    const result = handleRequest(event_type, payload, depth);
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: reqId, result }));
+  }
+});
+```
+
+**使用方法：** `npx ts-node core/examples/ahp_server.ts`
+
+**附加到会话：**
+
+```typescript
+import { Agent, HarnessServer } from '@a3s-lab/code';
+
+const session = agent.session('.', {
+  harnessServer: new HarnessServer('npx', ['ts-node', 'core/examples/ahp_server.ts']),
+});
+```
+
 
 ### 最简 Shell 驾驭服务器
 

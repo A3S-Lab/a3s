@@ -57,10 +57,12 @@ export default function AgentChat({
 	sessionId,
 	cwd,
 	onSessionChange,
+	disableMention,
 }: {
 	sessionId: string;
 	cwd?: string;
 	onSessionChange?: (id: string) => void;
+	disableMention?: boolean;
 }) {
 	const {
 		messages,
@@ -436,7 +438,7 @@ export default function AgentChat({
 					!searchQuery &&
 					!isRunning &&
 					!hasStreamingUi ? (
-						<EmptyChat sessionId={sessionId} />
+						<EmptyChat sessionId={sessionId} disableMention={disableMention} />
 					) : displayMessages.length === 0 && searchQuery && !hasStreamingUi ? (
 						<div className="flex items-center justify-center h-full text-sm text-muted-foreground">
 							没有匹配的消息
@@ -485,6 +487,7 @@ export default function AgentChat({
 					sessionId={sessionId}
 					disabled={isRunning}
 					onSend={handleSend}
+					disableMention={disableMention}
 				/>
 			</ResizablePanel>
 		</ResizablePanelGroup>

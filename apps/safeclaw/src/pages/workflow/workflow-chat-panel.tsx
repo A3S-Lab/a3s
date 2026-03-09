@@ -204,5 +204,5 @@ export default function WorkflowChatPanel({
 	// panelState === "ready"
 	if (!sessionId) return null;
 
-	return <AgentChat key={sessionId} sessionId={sessionId} />;
+	return <AgentChat key={sessionId} sessionId={sessionId} disableMention />;
 }

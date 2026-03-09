@@ -40,7 +40,52 @@ SubAgentWrapper (Sub Agents)
 
 ## Quick Start
 
-<Tabs items={['Python']}>
+<Tabs items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+
+```typescript
+import { Orchestrator, SubAgentConfig } from '@a3s-lab/code';
+
+// Create orchestrator
+const orch = Orchestrator.create();
+
+// Create SubAgent config
+const config: SubAgentConfig = {
+  agentType: 'general',
+  prompt: 'Use glob to find TypeScript files',
+  description: 'Find TypeScript files',
+  permissive: true,
+  maxSteps: 10,
+};
+
+// Spawn SubAgent
+const handle = orch.spawnSubagent(config);
+console.log(`SubAgent ID: ${handle.id}`);
+
+// Monitor state
+for (let i = 0; i < 10; i++) {
+  await new Promise(resolve => setTimeout(resolve, 500));
+  const state = handle.state();
+  const active = orch.activeCount();
+  console.log(`[${i * 0.5}s] Active: ${active}, State: ${state}`);
+
+  // Control operations
+  if (i === 3) {
+    handle.pause();
+    console.log('Paused');
+  }
+  if (i === 5) {
+    handle.resume();
+    console.log('Resumed');
+  }
+}
+
+// Wait for completion
+const result = await handle.wait();
+console.log(`Result: ${result}`);
+```
+
+</Tab>
 <Tab value="Python">
 
 ```python

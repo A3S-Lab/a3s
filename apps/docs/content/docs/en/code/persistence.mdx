@@ -15,11 +15,13 @@ A3S Code supports pluggable session storage backends. Sessions save conversation
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
+import { Agent, FileSessionStore } from '@a3s-lab/code';
+
 const agent = await Agent.create('agent.hcl');
 
 // Create with auto-save
 const session = agent.session('.', {
-  fileSessionStore: '.a3s/sessions',
+  sessionStore: new FileSessionStore('.a3s/sessions'),
   sessionId: 'my-session',
   autoSave: true,
 });
@@ -28,26 +30,28 @@ await session.send('Refactor auth');
 
 // Resume
 const resumed = agent.resumeSession('my-session', {
-  fileSessionStore: '.a3s/sessions',
+  sessionStore: new FileSessionStore('.a3s/sessions'),
 });
 ```
 </Tab>
 <Tab value="Python">
 ```python
+from a3s_code import Agent, FileSessionStore
+
 agent = Agent.create("agent.hcl")
 
-session = agent.session(".", SessionOptions(
-    file_session_store=".a3s/sessions",
+session = agent.session(".",
+    session_store=FileSessionStore(".a3s/sessions"),
     session_id="my-session",
     auto_save=True,
-))
+)
 
 session.send("Refactor auth")
 
 # Resume
-resumed = agent.resume_session("my-session", SessionOptions(
-    file_session_store=".a3s/sessions",
-))
+resumed = agent.resume_session("my-session",
+    session_store=FileSessionStore(".a3s/sessions"),
+)
 ```
 </Tab>
 </Tabs>

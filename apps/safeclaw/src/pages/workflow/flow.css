@@ -48,6 +48,7 @@
 
 #workflow-container .react-flow__handle {
 	opacity: 0;
+	z-index: 10;
 	transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
@@ -59,11 +60,16 @@
 /* Keep handles visible when hovering the handle itself */
 #workflow-container .react-flow__handle:hover {
 	opacity: 1;
-	transform: scale(1.15);
+	box-shadow: 0 0 0 3px hsl(var(--primary) / 0.25);
 }
 
-/* Show target handles on any node when a connection is being dragged
-   (React Flow adds .connectingto / .valid classes at this point) */
+/* Show handles on ALL nodes when any connection is being dragged —
+   React Flow adds .react-flow__container.connecting while dragging */
+#workflow-container.connecting .react-flow__handle {
+	opacity: 1;
+}
+
+/* Show target handles marked as valid/invalid drop targets */
 #workflow-container .react-flow__handle.connectingto,
 #workflow-container .react-flow__handle.valid,
 #workflow-container .react-flow__handle.invalid {
@@ -100,30 +106,14 @@
 	transition: transform 0.2s ease-in-out;
 }
 
-/* ── Controls panel ── */
 
-.react-flow__controls {
-	border-radius: 10px;
-	overflow: hidden;
-	border: 1px solid hsl(var(--border));
-	box-shadow: 0 1px 6px hsl(var(--foreground) / 0.06);
-}
-
-.react-flow__controls-button {
-	border-bottom: 1px solid hsl(var(--border));
-	padding: 6px;
-}
-
-.react-flow__controls-button:last-child {
-	border-bottom: none;
-}
-
-/* ── Minimap ── */
+/* ── Minimap (Dify-style: compact, bottom-right) ── */
 
 .react-flow__minimap {
 	border: 1px solid hsl(var(--border));
-	border-radius: 10px;
+	border-radius: 8px;
 	overflow: hidden;
+	box-shadow: 0 1px 4px hsl(var(--foreground) / 0.06);
 }
 
 /* ── Container nodes (iteration / loop) ── */

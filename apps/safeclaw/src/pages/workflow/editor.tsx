@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useSnapshot } from "valtio";
 import {
 	ReactFlow,
-	Controls,
 	MiniMap,
 	Background,
 	BackgroundVariant,
@@ -11,6 +10,7 @@ import {
 	useNodesState,
 	useEdgesState,
 	useReactFlow,
+	useViewport,
 	addEdge,
 	Handle,
 	Position,
@@ -52,6 +52,10 @@ import {
 	Trash2,
 	Maximize2,
 	LayoutGrid,
+	Minus,
+	Map,
+	Undo2,
+	Redo2,
 	Copy,
 	CopyPlus,
 	ChevronDown,
@@ -96,6 +100,8 @@ function CustomConnectionLine({
 
 function CustomEdge({
 	id,
+	source,
+	target,
 	sourceX,
 	sourceY,
 	targetX,
@@ -107,7 +113,8 @@ function CustomEdge({
 	selected,
 }: EdgeProps) {
 	const [isHovered, setIsHovered] = useState(false);
-	const { setEdges } = useReactFlow();
+	const [catalogOpen, setCatalogOpen] = useState(false);
+	const { setEdges, addNodes } = useReactFlow();
 
 	const [edgePath, labelX, labelY] = getBezierPath({
 		sourceX: sourceX - 8,
@@ -123,7 +130,46 @@ function CustomEdge({
 		setEdges((edges) => edges.filter((edge) => edge.id !== id));
 	}, [id, setEdges]);
 
-	const showControls = isHovered || selected;
+	// Insert a new node at the edge midpoint, splitting this edge into two.
+	const handleInsertNode = useCallback(
+		(type: string, data: Record<string, unknown>) => {
+			const newId = `${type}_${Date.now()}`;
+			// Place node centered on the midpoint
+			addNodes([
+				{
+					id: newId,
+					type,
+					position: { x: labelX - 120, y: labelY - 36 },
+					data,
+				},
+			]);
+			// Look up sourceHandle/targetHandle from the current edge
+			setEdges((edges) => {
+				const cur = edges.find((e) => e.id === id);
+				return [
+					...edges.filter((e) => e.id !== id),
+					{
+						id: `e-${source}-${newId}`,
+						source,
+						...(cur?.sourceHandle ? { sourceHandle: cur.sourceHandle } : {}),
+						target: newId,
+						type: "custom",
+					},
+					{
+						id: `e-${newId}-${target}`,
+						source: newId,
+						target,
+						...(cur?.targetHandle ? { targetHandle: cur.targetHandle } : {}),
+						type: "custom",
+					},
+				];
+			});
+			setCatalogOpen(false);
+		},
+		[id, source, target, labelX, labelY, addNodes, setEdges],
+	);
+
+	const showButton = isHovered || selected || catalogOpen;
 
 	return (
 		<>
@@ -141,8 +187,7 @@ function CustomEdge({
 				style={{ cursor: "pointer" }}
 			/>
 
-			{/* Midpoint action button (Dify-style: no circles, just button) */}
-			{showControls && (
+			{showButton && (
 				<EdgeLabelRenderer>
 					<div
 						style={{
@@ -150,25 +195,46 @@ function CustomEdge({
 							transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
 							pointerEvents: "all",
 						}}
-						className="nopan nodrag hover:scale-125 transition-transform duration-150"
+						className="nopan nodrag"
+						onMouseEnter={() => setIsHovered(true)}
+						onMouseLeave={() => setIsHovered(false)}
 					>
-						<div className="flex items-center gap-0.5 bg-card border border-border rounded-lg shadow-lg px-1 py-0.5">
+						{/* Circular "+" button — matches node handle style */}
+						<button
+							type="button"
+							onClick={() => setCatalogOpen((v) => !v)}
+							className={cn(
+								"flex items-center justify-center w-5 h-5 rounded-full",
+								"bg-primary text-white shadow-md border-0 outline-none",
+								"hover:scale-110 transition-transform duration-150",
+								catalogOpen && "scale-110 ring-2 ring-primary/30",
+							)}
+							title="插入节点"
+						>
+							<Plus className="size-3" />
+						</button>
+
+						{/* Delete button — floats alongside, only when selected */}
+						{selected && !catalogOpen && (
 							<button
 								type="button"
 								onClick={onEdgeDelete}
-								className="flex items-center justify-center w-6 h-6 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+								className="absolute -right-6 top-0 flex items-center justify-center w-5 h-5 rounded-full bg-destructive/90 text-white shadow-md border-0 outline-none hover:bg-destructive transition-colors"
 								title="删除连接"
 							>
-								<Trash2 className="size-3" />
+								<X className="size-2.5" />
 							</button>
-							<button
-								type="button"
-								className="flex items-center justify-center w-6 h-6 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-								title="插入节点"
-							>
-								<Plus className="size-3" />
-							</button>
-						</div>
+						)}
+
+						{/* Node catalog popover */}
+						{catalogOpen && (
+							<div className="absolute left-1/2 -translate-x-1/2 top-7 z-50">
+								<NodeCatalogPopover
+									onAdd={handleInsertNode}
+									onClose={() => setCatalogOpen(false)}
+								/>
+							</div>
+						)}
 					</div>
 				</EdgeLabelRenderer>
 			)}
@@ -187,10 +253,12 @@ function CustomEdge({
 // =============================================================================
 
 // Shared handle visual — circular "+" button, Dify-style.
-// Opacity is controlled by flow.css (.react-flow__node:hover .react-flow__handle).
+// • Background: primary color (solid fill)
+// • Icon: white
+// • Opacity controlled by flow.css (.react-flow__node:hover .react-flow__handle)
 const handleCircleClass =
-	"!h-5 !w-5 !rounded-full !border !border-primary/50 !bg-card !shadow-sm !outline-none " +
-	"!flex !items-center !justify-center";
+	"!h-5 !w-5 !rounded-full !border-0 !bg-primary !shadow-md !outline-none " +
+	"!flex !items-center !justify-center !z-10";
 
 function SourceHandle({ id }: { id?: string } = {}) {
 	return (
@@ -200,7 +268,7 @@ function SourceHandle({ id }: { id?: string } = {}) {
 			id={id}
 			className={handleCircleClass}
 		>
-			<Plus className="pointer-events-none size-2.5 text-primary/70" />
+			<Plus className="pointer-events-none size-3 text-white" />
 		</Handle>
 	);
 }
@@ -212,7 +280,7 @@ function TargetHandle() {
 			position={Position.Left}
 			className={handleCircleClass}
 		>
-			<Plus className="pointer-events-none size-2.5 text-primary/70" />
+			<Plus className="pointer-events-none size-3 text-white" />
 		</Handle>
 	);
 }
@@ -230,7 +298,7 @@ function BranchHandle({ id }: { id: string }) {
 				handleCircleClass,
 			)}
 		>
-			<Plus className="pointer-events-none size-2.5 text-primary/70" />
+			<Plus className="pointer-events-none size-3 text-white" />
 		</Handle>
 	);
 }
@@ -1195,6 +1263,116 @@ interface ToolbarButton {
 	active?: boolean;
 }
 
+// =============================================================================
+// Canvas controls — Dify layout:
+//   bottom-left  → UndoRedoControls (撤销 / 重做)
+//   bottom-center → ZoomControls (−, %, +, fit, minimap toggle)
+// Both must be rendered inside <ReactFlow>.
+// =============================================================================
+
+const ctrlBtnCls =
+	"flex items-center justify-center w-7 h-7 text-muted-foreground " +
+	"hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-30 disabled:pointer-events-none";
+
+const ctrlBtnFlexCls =
+	"flex items-center justify-center flex-1 h-7 text-muted-foreground " +
+	"hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-30 disabled:pointer-events-none";
+
+function UndoRedoControls({
+	canUndo,
+	canRedo,
+	onUndo,
+	onRedo,
+}: {
+	canUndo: boolean;
+	canRedo: boolean;
+	onUndo: () => void;
+	onRedo: () => void;
+}) {
+	return (
+		<Panel position="bottom-left">
+			<div className="flex items-center rounded-lg border border-border bg-card shadow-sm overflow-hidden h-7">
+				<button
+					type="button"
+					onClick={onUndo}
+					disabled={!canUndo}
+					title="撤销 (⌘Z)"
+					className={ctrlBtnCls}
+				>
+					<Undo2 className="size-3" />
+				</button>
+				<button
+					type="button"
+					onClick={onRedo}
+					disabled={!canRedo}
+					title="重做 (⌘⇧Z)"
+					className={cn(ctrlBtnCls, "border-l border-border")}
+				>
+					<Redo2 className="size-3" />
+				</button>
+			</div>
+		</Panel>
+	);
+}
+
+function ZoomControls({
+	showMiniMap,
+	onToggleMiniMap,
+}: {
+	showMiniMap: boolean;
+	onToggleMiniMap: () => void;
+}) {
+	const { zoomIn, zoomOut, fitView, zoomTo } = useReactFlow();
+	const { zoom } = useViewport();
+
+	return (
+		<Panel position="bottom-right">
+			<div className="flex items-center rounded-lg border border-border bg-card shadow-sm overflow-hidden h-7 w-[200px]">
+				<button
+					type="button"
+					onClick={() => zoomOut({ duration: 200 })}
+					title="缩小"
+					className={ctrlBtnFlexCls}
+				>
+					<Minus className="size-3" />
+				</button>
+				<button
+					type="button"
+					onClick={() => zoomTo(1, { duration: 200 })}
+					title="重置缩放"
+					className="flex-1 h-full text-[11px] font-medium tabular-nums text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors border-x border-border text-center"
+				>
+					{Math.round(zoom * 100)}%
+				</button>
+				<button
+					type="button"
+					onClick={() => zoomIn({ duration: 200 })}
+					title="放大"
+					className={ctrlBtnFlexCls}
+				>
+					<Plus className="size-3" />
+				</button>
+				<button
+					type="button"
+					onClick={() => fitView({ padding: 0.2, duration: 300 })}
+					title="适合视图"
+					className={cn(ctrlBtnFlexCls, "border-l border-border")}
+				>
+					<Maximize2 className="size-3" />
+				</button>
+				<button
+					type="button"
+					onClick={onToggleMiniMap}
+					title={showMiniMap ? "隐藏小地图" : "显示小地图"}
+					className={cn(ctrlBtnFlexCls, "border-l border-border", showMiniMap && "text-primary")}
+				>
+					<Map className="size-3" />
+				</button>
+			</div>
+		</Panel>
+	);
+}
+
 function CanvasToolbar({
 	nodes,
 	edges,
@@ -1235,7 +1413,7 @@ function CanvasToolbar({
 	];
 
 	return (
-		<Panel position="top-left">
+		<Panel position="center-left">
 			<div className="flex items-start gap-2">
 				{/* Vertical toolbar */}
 				<div className="flex flex-col gap-0.5 p-1 bg-card border border-border/70 rounded-2xl shadow-md">
@@ -1297,43 +1475,50 @@ function NodeConfigPanel({
 	);
 
 	return (
-		<div className="w-[420px] bg-card border border-border/50 rounded-2xl shadow-xl flex flex-col overflow-hidden max-h-[85vh]">
-			{/* Header: node icon + title + close */}
-			<div className="flex items-center gap-2.5 px-4 py-3 border-b border-border/30">
+		<div className="w-[420px] h-full bg-card border-l border-border/40 flex flex-col overflow-hidden">
+			{/* Header: colored by node type, matches canvas card header */}
+			<div
+				className={cn(
+					"flex items-center gap-3 px-4 py-3 border-b border-border/20",
+					entry?.headerBg ?? "bg-muted/30",
+				)}
+			>
 				{entry && <NodeIcon entry={entry} size="md" />}
 				<div className="flex-1 min-w-0">
-					<p className="text-xs font-semibold uppercase tracking-wider text-foreground truncate">
+					<p
+						className={cn(
+							"text-[11px] font-semibold uppercase tracking-wider truncate",
+							entry?.headerText ?? "text-foreground",
+						)}
+					>
 						{entry?.label ?? node.type}
 					</p>
-					<p className="text-[10px] text-muted-foreground/70 mt-0.5 truncate leading-tight">
+					<p className="text-[10px] text-muted-foreground/60 mt-0.5 line-clamp-1 leading-tight">
 						{entry?.description ?? ""}
 					</p>
 				</div>
 				<button
 					type="button"
 					onClick={onClose}
-					className="shrink-0 text-muted-foreground hover:text-foreground transition-colors p-1 rounded-lg hover:bg-muted/60"
+					className="shrink-0 text-muted-foreground/60 hover:text-foreground transition-colors p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10"
 				>
 					<X className="size-3.5" />
 				</button>
 			</div>
 
-			<div className="overflow-y-auto flex-1 pt-2">
+			<div className="overflow-y-auto flex-1">
 				{node.type !== "start" && (
-					<>
-						<div className="space-y-4 px-4 pb-4">
-							<Field label="节点标题">
-								<TextInput
-									value={(draft.title as string) ?? ""}
-									onChange={(v) => patch({ title: v })}
-									placeholder={entry?.label}
-								/>
-							</Field>
-						</div>
-						<div className="border-t border-border/20" />
-					</>
+					<div className="px-4 pt-4 pb-3 border-b border-border/20">
+						<Field label="节点名称">
+							<TextInput
+								value={(draft.title as string) ?? ""}
+								onChange={(v) => patch({ title: v })}
+								placeholder={entry?.label}
+							/>
+						</Field>
+					</div>
 				)}
-				<div className="space-y-4 px-4 pt-4 pb-4">
+				<div className="space-y-5 px-4 pt-4 pb-6">
 					<NodeFields
 						type={node.type as string}
 						draft={draft}
@@ -1376,12 +1561,12 @@ function Section({
 	children,
 }: { title: string; children: React.ReactNode }) {
 	return (
-		<div className="flex flex-col gap-4">
-			<div className="flex items-center gap-2">
-				<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">
+		<div className="flex flex-col gap-3">
+			<div className="flex items-center gap-2 -mx-1">
+				<span className="text-[11px] font-semibold text-muted-foreground/70 px-1 shrink-0">
 					{title}
 				</span>
-				<div className="flex-1 h-px bg-border/40" />
+				<div className="flex-1 h-px bg-border/50" />
 			</div>
 			{children}
 		</div>
@@ -1390,7 +1575,7 @@ function Section({
 
 // ── Base input class — h-8 (32px), matches Dify compact panel spec
 const inputCls =
-	"w-full h-8 px-3 text-xs border border-border/50 rounded-lg bg-background/80 outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20 transition-colors placeholder:text-muted-foreground/40";
+	"w-full h-8 px-3 text-xs border border-border/60 rounded-lg bg-background outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/10 transition-colors placeholder:text-muted-foreground/30";
 
 function TextInput({
 	value,
@@ -1414,11 +1599,13 @@ function TextareaInput({
 	onChange,
 	placeholder,
 	rows = 5,
+	mono = false,
 }: {
 	value: string;
 	onChange: (v: string) => void;
 	placeholder?: string;
 	rows?: number;
+	mono?: boolean;
 }) {
 	return (
 		<textarea
@@ -1426,18 +1613,24 @@ function TextareaInput({
 			onChange={(e) => onChange(e.target.value)}
 			placeholder={placeholder}
 			rows={rows}
-			className={cn(inputCls, "h-auto py-2 resize-y font-mono leading-relaxed")}
+			className={cn(
+				inputCls,
+				"h-auto py-2.5 resize-y leading-relaxed",
+				mono && "font-mono text-[11px]",
+			)}
 		/>
 	);
 }
 
 // Custom select: appearance-none strips browser chrome; ChevronDown adds a
 // consistent arrow that matches TextInput visually at exactly h-8.
+type SelectOption = string | { value: string; label: string };
+
 function SelectInput({
 	value,
 	onChange,
 	options,
-}: { value: string; onChange: (v: string) => void; options: string[] }) {
+}: { value: string; onChange: (v: string) => void; options: SelectOption[] }) {
 	return (
 		<div className="relative">
 			<select
@@ -1445,11 +1638,15 @@ function SelectInput({
 				onChange={(e) => onChange(e.target.value)}
 				className={cn(inputCls, "appearance-none cursor-pointer pr-7")}
 			>
-				{options.map((o) => (
-					<option key={o} value={o}>
-						{o}
-					</option>
-				))}
+				{options.map((o) => {
+					const val = typeof o === "string" ? o : o.value;
+					const label = typeof o === "string" ? o : o.label;
+					return (
+						<option key={val} value={val}>
+							{label}
+						</option>
+					);
+				})}
 			</select>
 			<ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 size-3 text-muted-foreground/60" />
 		</div>
@@ -1538,22 +1735,22 @@ function LlmConnectionFields({
 }: { draft: Record<string, unknown>; patch: (p: Record<string, unknown>) => void }) {
 	const [open, setOpen] = useState(false);
 	return (
-		<div className="border-t border-border/20 pt-3">
+		<div className="rounded-xl border border-border/40 overflow-hidden">
 			<button
 				type="button"
 				onClick={() => setOpen((v) => !v)}
-				className="flex items-center gap-2 w-full text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+				className="flex items-center justify-between w-full px-3 py-2.5 bg-muted/20 hover:bg-muted/40 transition-colors"
 			>
+				<span className="text-[11px] font-semibold text-muted-foreground/70">连接设置</span>
 				<ChevronDown
 					className={cn(
-						"size-3 transition-transform duration-150",
+						"size-3.5 text-muted-foreground/50 transition-transform duration-150",
 						open ? "rotate-0" : "-rotate-90",
 					)}
 				/>
-				连接设置
 			</button>
 			{open && (
-				<div className="mt-3 space-y-3">
+				<div className="p-3 space-y-3 border-t border-border/30 bg-background/50">
 					<Field label="API Base URL">
 						<TextInput
 							value={(draft.api_base as string) ?? "https://api.openai.com/v1"}
@@ -1623,6 +1820,9 @@ const COMPARISON_OPS: { value: string; label: string; noValue?: boolean }[] = [
 	{ value: "lte", label: "≤" },
 ];
 
+// Dify-style condition row:
+//   Line 1: [variable chip input — full width]
+//   Line 2: [operator dropdown]  [value input]  [remove ×]
 function ConditionRow({
 	condition,
 	onChange,
@@ -1635,44 +1835,52 @@ function ConditionRow({
 	const op = COMPARISON_OPS.find((o) => o.value === condition.comparison_operator);
 	const noValue = op?.noValue ?? false;
 	return (
-		<div className="flex items-center gap-1">
+		<div className="flex flex-col gap-1 rounded-lg bg-muted/30 p-2">
+			{/* Row 1: variable reference — blue chip style */}
 			<input
 				type="text"
 				value={condition.variable}
 				onChange={(e) => onChange({ ...condition, variable: e.target.value })}
-				placeholder="{{node.field}}"
-				className={cn(inputCls, "font-mono text-[11px]", noValue ? "flex-1" : "w-[100px] shrink-0")}
+				placeholder="{{node_id.field}}"
+				className={cn(
+					inputCls,
+					"font-mono text-[11px] bg-blue-50/60 dark:bg-blue-950/20 border-blue-200/60 dark:border-blue-800/40",
+					"focus:border-blue-400/70 focus:ring-blue-400/10 placeholder:text-blue-400/40 text-blue-700 dark:text-blue-300",
+				)}
 			/>
-			<div className="relative shrink-0">
-				<select
-					value={condition.comparison_operator}
-					onChange={(e) =>
-						onChange({ ...condition, comparison_operator: e.target.value, value: "" })
-					}
-					className={cn(inputCls, "appearance-none cursor-pointer pr-5", noValue ? "w-[90px]" : "w-[72px]")}
+			{/* Row 2: operator + value + remove */}
+			<div className="flex items-center gap-1">
+				<div className="relative shrink-0">
+					<select
+						value={condition.comparison_operator}
+						onChange={(e) =>
+							onChange({ ...condition, comparison_operator: e.target.value, value: "" })
+						}
+						className={cn(inputCls, "w-28 appearance-none cursor-pointer pr-6")}
+					>
+						{COMPARISON_OPS.map((o) => (
+							<option key={o.value} value={o.value}>{o.label}</option>
+						))}
+					</select>
+					<ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground/50" />
+				</div>
+				{!noValue && (
+					<input
+						type="text"
+						value={condition.value}
+						onChange={(e) => onChange({ ...condition, value: e.target.value })}
+						placeholder="值"
+						className={cn(inputCls, "flex-1 min-w-0")}
+					/>
+				)}
+				<button
+					type="button"
+					onClick={onRemove}
+					className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
 				>
-					{COMPARISON_OPS.map((o) => (
-						<option key={o.value} value={o.value}>{o.label}</option>
-					))}
-				</select>
-				<ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground/50" />
+					<X className="size-3" />
+				</button>
 			</div>
-			{!noValue && (
-				<input
-					type="text"
-					value={condition.value}
-					onChange={(e) => onChange({ ...condition, value: e.target.value })}
-					placeholder="值"
-					className={cn(inputCls, "flex-1 min-w-0")}
-				/>
-			)}
-			<button
-				type="button"
-				onClick={onRemove}
-				className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
-			>
-				<X className="size-3" />
-			</button>
 		</div>
 	);
 }
@@ -1708,30 +1916,40 @@ function IfElseBuilder({
 	};
 
 	return (
-		<div className="flex flex-col gap-2">
+		<div className="flex flex-col gap-2.5">
 			{value.map((c, i) => (
 				<div
 					key={c.id}
-					className="rounded-lg border border-border/40 bg-background overflow-hidden"
+					className="rounded-xl border border-border/50 bg-background overflow-hidden"
 				>
-					{/* Case header */}
-					<div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border/30">
-						<span className="text-[11px] font-semibold text-foreground/70">
+					{/* Case header — blue accent for IF, gray for ELIF */}
+					<div
+						className={cn(
+							"flex items-center justify-between px-3 py-2 border-b border-border/30",
+							i === 0 ? "bg-blue-50/60 dark:bg-blue-950/20" : "bg-muted/30",
+						)}
+					>
+						<span
+							className={cn(
+								"text-[11px] font-semibold",
+								i === 0 ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground",
+							)}
+						>
 							{i === 0 ? "IF" : `ELIF ${i}`}
 						</span>
 						<div className="flex items-center gap-2">
 							{/* AND / OR toggle */}
-							<div className="flex rounded-md overflow-hidden border border-border/40 text-[10px] font-semibold">
+							<div className="flex rounded-md overflow-hidden border border-border/40 text-[10px] font-bold">
 								{(["and", "or"] as const).map((op) => (
 									<button
 										key={op}
 										type="button"
 										onClick={() => updateCase(i, { logical_operator: op })}
 										className={cn(
-											"px-2.5 py-0.5 transition-colors",
+											"px-2.5 py-1 transition-colors",
 											c.logical_operator === op
 												? "bg-primary text-primary-foreground"
-												: "text-muted-foreground hover:bg-muted",
+												: "text-muted-foreground hover:bg-muted/60",
 										)}
 									>
 										{op.toUpperCase()}
@@ -1742,7 +1960,7 @@ function IfElseBuilder({
 								<button
 									type="button"
 									onClick={() => removeCase(i)}
-									className="text-muted-foreground hover:text-destructive transition-colors"
+									className="p-0.5 text-muted-foreground/60 hover:text-destructive transition-colors rounded"
 								>
 									<X className="size-3" />
 								</button>
@@ -1750,7 +1968,7 @@ function IfElseBuilder({
 						</div>
 					</div>
 					{/* Condition rows */}
-					<div className="p-2 space-y-1.5">
+					<div className="p-2.5 space-y-2">
 						{c.conditions.map((cond, j) => (
 							// biome-ignore lint/suspicious/noArrayIndexKey: ordered list
 							<ConditionRow
@@ -1763,7 +1981,7 @@ function IfElseBuilder({
 						<button
 							type="button"
 							onClick={() => addCondition(i)}
-							className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors mt-0.5"
+							className="flex items-center gap-1 text-[11px] text-primary/70 hover:text-primary transition-colors"
 						>
 							<Plus className="size-3" />
 							添加条件
@@ -1772,18 +1990,19 @@ function IfElseBuilder({
 				</div>
 			))}
 
-			{/* ELSE — always exists, no config */}
-			<div className="rounded-lg border border-border/20 bg-muted/10 px-3 py-2">
-				<span className="text-[11px] font-semibold text-muted-foreground/50">ELSE</span>
+			{/* ELSE — always exists, no conditions needed */}
+			<div className="rounded-xl border border-dashed border-border/40 bg-muted/10 px-3 py-2.5">
+				<span className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wide">ELSE</span>
+				<p className="text-[10px] text-muted-foreground/30 mt-0.5">以上条件均不满足时执行此分支</p>
 			</div>
 
 			<button
 				type="button"
 				onClick={addCase}
-				className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+				className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-primary transition-colors"
 			>
 				<Plus className="size-3" />
-				添加条件组
+				添加条件分支
 			</button>
 		</div>
 	);
@@ -2149,6 +2368,7 @@ function NodeFields({
 							}}
 							placeholder={'{\n  "Authorization": "Bearer ..."\n}'}
 							rows={3}
+						mono
 						/>
 					</Section>
 					{["POST", "PUT", "PATCH"].includes(
@@ -2160,6 +2380,7 @@ function NodeFields({
 								onChange={(v) => patch({ body: v })}
 								placeholder={'{\n  "key": "{{ start.field }}"\n}'}
 								rows={4}
+							mono
 							/>
 						</Section>
 					)}
@@ -2190,6 +2411,7 @@ function NodeFields({
 						onChange={(v) => patch({ script: v })}
 						placeholder={"// 通过 inputs 访问上游节点输出\n// 返回值即节点输出\ninputs"}
 						rows={14}
+						mono
 					/>
 				</Section>
 			);
@@ -2203,6 +2425,7 @@ function NodeFields({
 						onChange={(v) => patch({ template: v })}
 						placeholder={"Hello {{ inputs.node_id.field }}!"}
 						rows={12}
+						mono
 					/>
 				</Section>
 			);
@@ -2232,7 +2455,7 @@ function NodeFields({
 							<SelectInput
 								value={(draft.mode as string) ?? "parallel"}
 								onChange={(v) => patch({ mode: v })}
-								options={["parallel", "sequential"]}
+								options={[{ value: "parallel", label: "并行" }, { value: "sequential", label: "顺序" }]}
 							/>
 						</Field>
 					</Section>
@@ -2415,7 +2638,7 @@ function NodeFields({
 							<SelectInput
 								value={(draft.sort_order as string) ?? "asc"}
 								onChange={(v) => patch({ sort_order: v })}
-								options={["asc", "desc"]}
+								options={[{ value: "asc", label: "升序" }, { value: "desc", label: "降序" }]}
 							/>
 						</Field>
 						<Field label="去重字段" hint="可选">
@@ -2669,6 +2892,32 @@ function FlowCanvas({
 	const [edges, setEdges, onEdgesChange] = useEdgesState(initEdges);
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 	const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+	const [showMiniMap, setShowMiniMap] = useState(true);
+
+	// ── Undo / Redo history ───────────────────────────────────────────────────
+	type Snapshot = { nodes: Node[]; edges: Edge[] };
+	const historyRef = useRef<Snapshot[]>([]);
+	const historyIdxRef = useRef<number>(-1);
+	const skipHistoryRef = useRef(false); // prevents recording during undo/redo restore
+
+	// Call this before any intentional mutation to record a snapshot.
+	const pushHistory = useCallback(() => {
+		if (skipHistoryRef.current) return;
+		const snap: Snapshot = { nodes: nodesRef.current, edges: edgesRef.current };
+		// Drop any redo future when a new action is made
+		historyRef.current = historyRef.current.slice(0, historyIdxRef.current + 1);
+		historyRef.current.push(snap);
+		// Cap history at 100 entries
+		if (historyRef.current.length > 100) {
+			historyRef.current.shift();
+		}
+		historyIdxRef.current = historyRef.current.length - 1;
+	}, []);
+
+	const [historyVersion, setHistoryVersion] = useState(0); // triggers re-render for button state
+	const canUndo = historyIdxRef.current > 0;
+	const canRedo = historyIdxRef.current < historyRef.current.length - 1;
+
 	const selectedNode = selectedNodeId
 		? nodes.find((n) => n.id === selectedNodeId)
 		: null;
@@ -2730,6 +2979,42 @@ function FlowCanvas({
 		}, 800);
 	}, [wf.id, onSavingChange, onSavedChange]);
 
+	const undo = useCallback(() => {
+		if (historyIdxRef.current <= 0) return;
+		historyIdxRef.current -= 1;
+		const snap = historyRef.current[historyIdxRef.current];
+		skipHistoryRef.current = true;
+		setNodes(snap.nodes);
+		setEdges(snap.edges);
+		skipHistoryRef.current = false;
+		setHistoryVersion((v) => v + 1);
+		triggerSave();
+	}, [setNodes, setEdges, triggerSave]);
+
+	const redo = useCallback(() => {
+		if (historyIdxRef.current >= historyRef.current.length - 1) return;
+		historyIdxRef.current += 1;
+		const snap = historyRef.current[historyIdxRef.current];
+		skipHistoryRef.current = true;
+		setNodes(snap.nodes);
+		setEdges(snap.edges);
+		skipHistoryRef.current = false;
+		setHistoryVersion((v) => v + 1);
+		triggerSave();
+	}, [setNodes, setEdges, triggerSave]);
+
+	// Keyboard shortcuts: ⌘Z / ⌘⇧Z
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => {
+			if (!(e.metaKey || e.ctrlKey)) return;
+			if (e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+			if ((e.key === "z" && e.shiftKey) || e.key === "y") { e.preventDefault(); redo(); }
+		};
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, [undo, redo]);
+
+
 	const updateNodeData = useCallback(
 		(id: string, data: Record<string, unknown>) => {
 			setNodes((nds) => nds.map((n) => (n.id === id ? { ...n, data } : n)));
@@ -2741,6 +3026,7 @@ function FlowCanvas({
 	const addNode = useCallback(
 		(type: string, data: Record<string, unknown>) => {
 			const isContainer = type === "iteration" || type === "loop";
+			pushHistory();
 			setNodes((nds) => [
 				...nds,
 				{
@@ -2758,14 +3044,16 @@ function FlowCanvas({
 						: {}),
 				},
 			]);
+			setHistoryVersion((v) => v + 1);
 		},
-		[setNodes],
+		[setNodes, pushHistory],
 	);
 
 	const duplicateNode = useCallback(
 		(nodeId: string) => {
 			const node = nodes.find((n) => n.id === nodeId);
 			if (!node) return;
+			pushHistory();
 			setNodes((nds) => [
 				...nds,
 				{
@@ -2776,93 +3064,126 @@ function FlowCanvas({
 				},
 			]);
 			triggerSave();
+			setHistoryVersion((v) => v + 1);
 		},
-		[nodes, setNodes, triggerSave],
+		[nodes, setNodes, triggerSave, pushHistory],
 	);
 
 	const deleteNode = useCallback(
 		(nodeId: string) => {
+			pushHistory();
 			setNodes((nds) => nds.filter((n) => n.id !== nodeId));
 			setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
 			if (selectedNodeId === nodeId) setSelectedNodeId(null);
 			triggerSave();
+			setHistoryVersion((v) => v + 1);
 		},
-		[setNodes, setEdges, selectedNodeId, triggerSave],
+		[setNodes, setEdges, selectedNodeId, triggerSave, pushHistory],
 	);
 
 	const handleLayout = useCallback(
 		(laid: Node[]) => {
+			pushHistory();
 			setNodes(laid);
 			triggerSave();
+			setHistoryVersion((v) => v + 1);
 		},
-		[setNodes, triggerSave],
+		[setNodes, triggerSave, pushHistory],
 	);
 
 	return (
-		<>
-		<div id="workflow-container" className="h-full w-full">
-			<ReactFlow
-				nodes={nodes}
-				edges={edges}
-				onNodesChange={(c) => {
-					onNodesChange(c);
-					triggerSave();
-				}}
-				onEdgesChange={(c) => {
-					onEdgesChange(c);
-					triggerSave();
-				}}
-				onConnect={(c) => {
-					onConnect(c);
-					triggerSave();
-				}}
-				onNodeClick={(_, node) => setSelectedNodeId(node.id)}
-				onNodeContextMenu={(e, node) => {
-					e.preventDefault();
-					setContextMenu({ x: e.clientX, y: e.clientY, nodeId: node.id });
-				}}
-				onPaneClick={() => { setSelectedNodeId(null); setContextMenu(null); }}
-				nodeTypes={NODE_TYPES}
-				edgeTypes={EDGE_TYPES}
-				connectionLineComponent={CustomConnectionLine}
-				isValidConnection={isValidConnection}
-				fitView
-				proOptions={{ hideAttribution: true }}
-			>
-				<Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-				<Controls showInteractive={false} />
-				<MiniMap zoomable pannable nodeStrokeWidth={2} />
-
-				{/* Left toolbar + catalog popover */}
-				<CanvasToolbar
+		<div className="relative h-full w-full">
+			<div id="workflow-container" className="h-full w-full">
+				<ReactFlow
 					nodes={nodes}
 					edges={edges}
-					onAddNode={addNode}
-					onSetNodes={handleLayout}
-				/>
-
-				{/* Right: node config */}
-				{selectedNode && (
-					<Panel position="top-right">
-						<NodeConfigPanel
-							key={selectedNode.id}
-							node={selectedNode}
-							onUpdate={(data) => updateNodeData(selectedNode.id, data)}
-							onClose={() => setSelectedNodeId(null)}
+					onNodesChange={(c) => {
+						const structural = c.some((ch) => ch.type === "add" || ch.type === "remove");
+						if (structural) { pushHistory(); setHistoryVersion((v) => v + 1); }
+						onNodesChange(c);
+						triggerSave();
+					}}
+					onEdgesChange={(c) => {
+						const structural = c.some((ch) => ch.type === "add" || ch.type === "remove");
+						if (structural) { pushHistory(); setHistoryVersion((v) => v + 1); }
+						onEdgesChange(c);
+						triggerSave();
+					}}
+					onConnect={(c) => {
+						pushHistory();
+						onConnect(c);
+						triggerSave();
+						setHistoryVersion((v) => v + 1);
+					}}
+					onNodeClick={(_, node) => setSelectedNodeId(node.id)}
+					onNodeContextMenu={(e, node) => {
+						e.preventDefault();
+						setContextMenu({ x: e.clientX, y: e.clientY, nodeId: node.id });
+					}}
+					onPaneClick={() => { setSelectedNodeId(null); setContextMenu(null); }}
+					nodeTypes={NODE_TYPES}
+					edgeTypes={EDGE_TYPES}
+					connectionLineComponent={CustomConnectionLine}
+					isValidConnection={isValidConnection}
+					fitView
+					proOptions={{ hideAttribution: true }}
+				>
+					<Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+					<UndoRedoControls
+						canUndo={canUndo}
+						canRedo={canRedo}
+						onUndo={undo}
+						onRedo={redo}
+					/>
+					<ZoomControls showMiniMap={showMiniMap} onToggleMiniMap={() => setShowMiniMap(v => !v)} />
+					{showMiniMap && (
+						<MiniMap
+							zoomable
+							pannable
+							nodeStrokeWidth={2}
+							position="bottom-right"
+							style={{ width: 200, height: 110, bottom: 36 }}
 						/>
-					</Panel>
+					)}
+
+					{/* Left toolbar + catalog popover */}
+					<CanvasToolbar
+						nodes={nodes}
+						edges={edges}
+						onAddNode={addNode}
+						onSetNodes={handleLayout}
+					/>
+				</ReactFlow>
+			</div>
+
+			{/* Dify-style node config panel: slides in from right, overlays canvas */}
+			<div
+				className={cn(
+					"absolute top-0 right-0 h-full z-20",
+					"transition-transform duration-200 ease-out",
+					selectedNode ? "translate-x-0" : "translate-x-full",
 				)}
-			</ReactFlow>
+				style={{ pointerEvents: selectedNode ? "auto" : "none" }}
+			>
+				{selectedNode && (
+					<NodeConfigPanel
+						key={selectedNode.id}
+						node={selectedNode}
+						onUpdate={(data) => updateNodeData(selectedNode.id, data)}
+						onClose={() => setSelectedNodeId(null)}
+					/>
+				)}
+			</div>
+
+			{contextMenu && (
+				<NodeContextMenu
+					state={contextMenu}
+					onClose={() => setContextMenu(null)}
+					onDuplicate={duplicateNode}
+					onDelete={deleteNode}
+				/>
+			)}
 		</div>
-		{contextMenu && (
-			<NodeContextMenu
-				state={contextMenu}
-				onClose={() => setContextMenu(null)}
-				onDuplicate={duplicateNode}
-				onDelete={deleteNode}
-			/>
-		)}
-		</>
 	);
 }
 
@@ -2954,21 +3275,21 @@ export default function WorkflowEditorPage() {
 				</button>
 			</div>
 
-			{/* Canvas + Chat */}
+			{/* Chat (left) + Canvas (right) */}
 			<ResizablePanelGroup direction="horizontal" className="flex-1 min-h-0">
-				<ResizablePanel defaultSize={65} minSize={40}>
+				<ResizablePanel defaultSize={20} minSize={15} maxSize={45}>
+					<div className="h-full border-r bg-background">
+						<WorkflowChatPanel workflowId={wf.id} />
+					</div>
+				</ResizablePanel>
+				<RHandle withHandle />
+				<ResizablePanel defaultSize={80} minSize={40}>
 					<FlowCanvas
 						key={wf.id}
 						wf={wf}
 						onSavingChange={setSaving}
 						onSavedChange={setSaved}
 					/>
-				</ResizablePanel>
-				<RHandle withHandle />
-				<ResizablePanel defaultSize={35} minSize={24} maxSize={55}>
-					<div className="h-full border-l bg-background">
-						<WorkflowChatPanel workflowId={wf.id} />
-					</div>
 				</ResizablePanel>
 			</ResizablePanelGroup>
 		</div>

@@ -55,10 +55,12 @@ export function AgentInput({
 	disabled,
 	onSend,
 	readonlyCwd,
+	disableMention,
 }: {
 	sessionId: string;
 	disabled: boolean;
 	readonlyCwd?: boolean;
+	disableMention?: boolean;
 	onSend?: (
 		text: string,
 		images?: { media_type: string; data: string }[],
@@ -422,10 +424,10 @@ export function AgentInput({
 			<div className="flex-1 min-h-0">
 				<TiptapEditor
 					ref={editorRef}
-					placeholder="输入消息，/ 触发指令，@ 派发给 Agent..."
+					placeholder={disableMention ? "输入消息，/ 触发指令…" : "输入消息，/ 触发指令，@ 派发给 Agent..."}
 					disabled={disabled}
 					slashItems={slashItems}
-					mentionItems={mentionItems}
+					mentionItems={disableMention ? [] : mentionItems}
 					onSubmit={() => handleSubmit()}
 					onChange={handleEditorChange}
 					onPasteImages={handlePasteImages}
@@ -484,7 +486,7 @@ export function AgentInput({
 				</div>
 			</div>
 
-			<SessionStatusBar sessionId={sessionId} readonlyCwd={readonlyCwd} />
+			{!disableMention && <SessionStatusBar sessionId={sessionId} readonlyCwd={readonlyCwd} />}
 		</div>
 	);
 }

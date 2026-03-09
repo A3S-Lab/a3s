@@ -348,8 +348,24 @@ Register custom slash commands handled before the LLM:
 
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
+```typescript
+function statusHandler(args: string, ctx: CommandContext): string {
+  console.log(`Model: ${ctx.model}, History: ${ctx.historyLen} msgs, args: ${args}`);
+  return `Status: OK`;  // Note: return value is logged but not captured in current implementation
+}
 
-Custom command registration is not yet supported in the Node.js SDK. Use built-in slash commands via `send()`.
+session.registerCommand("status", "Show session status", statusHandler);
+
+const result = await session.send("/status hello");
+console.log(result.text);
+// Command 'status' executed successfully
+```
+
+The handler receives:
+- `args` — string with everything after the command name
+- `ctx` — object with `sessionId`, `model`, `historyLen`, `totalTokens`, `totalCost`, `toolNames`, and `mcpServers`
+
+**Note**: Due to napi-rs limitations, the return value from the handler function is not currently captured. The command will execute successfully and you can use `console.log()` or other side effects in your handler. Future versions will support return value capture.
 
 </Tab>
 <Tab value="Python">
@@ -670,7 +686,7 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
       description: "Python: session.list_commands() · TypeScript: session.listCommands()",
     },
     "Register command": {
-      description: "Python: session.register_command(name, desc, handler) · TypeScript: not yet supported",
+      description: "Python: session.register_command(name, desc, handler) · TypeScript: session.registerCommand(name, desc, handler)",
     },
     "Schedule task": {
       description: "Python: session.schedule_task(prompt, interval_secs) · TypeScript: session.scheduleTask(prompt, intervalSecs) · Also: session.send('/loop 5m <prompt>')",

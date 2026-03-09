@@ -56,7 +56,20 @@ The harness server's stderr is inherited by the host, so all server-side log out
 
 ### Transport
 
-Events are sent as newline-delimited JSON over the child process's stdin/stdout. Each message is a single JSON object terminated by a newline character (`\n`).
+**Current implementation:** Events are sent as newline-delimited JSON over the child process's stdin/stdout. Each message is a single JSON object terminated by a newline character (`\n`).
+
+The stdio transport is the only built-in transport layer in the current version. This design prioritizes:
+- **Simplicity** — No network configuration, no ports, no authentication
+- **Process isolation** — The harness runs as a separate OS process
+- **Language agnostic** — Any language that can read stdin and write stdout works
+
+**Future extensibility:** The protocol is transport-agnostic. Future versions could support:
+- HTTP/SSE (similar to MCP's HTTP transport)
+- WebSocket (for remote harness servers)
+- Unix domain sockets (for local IPC with lower overhead)
+- gRPC (for high-performance deployments)
+
+The JSON-RPC 2.0 message format would remain the same — only the transport layer would change.
 
 ### Blocking vs. fire-and-forget
 
@@ -215,15 +228,25 @@ print(result.text)
 
 A harness server is any process that reads newline-delimited JSON from stdin and writes JSON-RPC responses to stdout. All logging must go to stderr so it does not interfere with the protocol.
 
-### Python reference server
+### Reference implementations
 
-The repository ships a reference Python server at `core/examples/ahp_server.py`. It demonstrates:
+The repository ships reference servers in multiple languages:
 
-- Parsing the `event_type` and `payload` from each message
+**Python:** `core/examples/ahp_server.py`
+- Parsing `event_type` and `payload` from each message
 - Reading `meta.depth` for depth-aware decisions
 - Blocking dangerous Bash commands via regex patterns
 - Detecting sensitive output patterns in `post_tool_use` (fire-and-forget)
 - Writing all log output to stderr
+
+**TypeScript:** `core/examples/ahp_server.ts`
+- Full TypeScript implementation with type safety
+- Depth-aware policy enforcement (stricter rules for sub-agents)
+- Pattern-based command blocking
+- Sensitive data detection in tool outputs
+- Comprehensive event handling
+
+### Python reference server
 
 Key structure:
 
@@ -252,6 +275,84 @@ for raw_line in sys.stdin:
 
     result = dispatch_request(event_type, payload, depth) or {"action": "continue"}
     print(json.dumps({"jsonrpc": "2.0", "id": req_id, "result": result}), flush=True)
+```
+
+### TypeScript reference server
+
+Full implementation at `core/examples/ahp_server.ts`. Key patterns:
+
+```typescript
+import * as readline from 'readline';
+
+interface AhpResponse {
+  action: 'continue' | 'block' | 'skip' | 'retry';
+  reason?: string;
+  modified?: any;
+  retry_delay_ms?: number;
+}
+
+function handlePreToolUse(payload: any, depth: number): AhpResponse {
+  const tool = payload.tool || '';
+  const command = payload.args?.command || '';
+
+  // Depth-aware: stricter policy for sub-agents
+  if (tool === 'Bash' && isDangerous(command)) {
+    const reason = `Blocked dangerous command at depth ${depth}`;
+    console.error(`[BLOCK] ${reason}`);
+    return { action: 'block', reason };
+  }
+
+  // Block network access for depth > 1
+  if (depth > 1 && /curl|wget|nc/.test(command)) {
+    return { action: 'block', reason: 'Network access not allowed for nested agents' };
+  }
+
+  return { action: 'continue' };
+}
+
+// Main loop
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+  terminal: false,
+});
+
+rl.on('line', (line: string) => {
+  const msg = JSON.parse(line);
+  const { event_type, payload, meta } = msg.params;
+  const depth = meta?.depth ?? 0;
+  const reqId = msg.id;
+
+  if (reqId === undefined) {
+    // Notification (fire-and-forget)
+    handleNotification(event_type, payload, depth);
+  } else {
+    // Request (blocking)
+    const result = handleRequest(event_type, payload, depth);
+    console.log(JSON.stringify({ jsonrpc: '2.0', id: reqId, result }));
+  }
+});
+```
+
+**Usage:**
+
+```bash
+# Run with ts-node
+npx ts-node core/examples/ahp_server.ts
+
+# Or compile and run
+npx tsc core/examples/ahp_server.ts && node core/examples/ahp_server.js
+```
+
+**Attach to session:**
+
+```typescript
+import { Agent, HarnessServer } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('.', {
+  harnessServer: new HarnessServer('npx', ['ts-node', 'core/examples/ahp_server.ts']),
+});
 ```
 
 ### Minimal shell harness
