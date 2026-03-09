@@ -108,10 +108,10 @@ for event in session.stream("Long task..."):
 <TypeTable
   type={{
     "Enable auto-compact": {
-      description: "Rust: .with_auto_compact(true) · Python: auto_compact=True · TypeScript: autoCompact: true · Default: false",
+      description: "Python: auto_compact=True · TypeScript: autoCompact: true · Default: false",
     },
     "Threshold (0.0–1.0)": {
-      description: "Rust: .with_auto_compact_threshold(f) · Python: auto_compact_threshold=f · TypeScript: autoCompactThreshold: f · Default: 0.8",
+      description: "Python: auto_compact_threshold=f · TypeScript: autoCompactThreshold: f · Default: 0.8",
     },
   }}
 />
@@ -120,8 +120,8 @@ for event in session.stream("Long task..."):
 
 <TypeTable
   type={{
-    messages_before: { type: 'usize', description: 'Message count before compaction. Rust: `messages_before`, Python: `messages_before`, TypeScript: `messagesBefore`' },
-    messages_after: { type: 'usize', description: 'Message count after compaction. Rust: `messages_after`, Python: `messages_after`, TypeScript: `messagesAfter`' },
-    tokens_saved: { type: 'usize', description: 'Approximate tokens freed. Rust: `tokens_saved`, Python: `tokens_saved`, TypeScript: `tokensSaved`' },
+    messages_before: { type: 'usize', description: 'Message count before compaction. Python: `messages_before`, TypeScript: `messagesBefore`' },
+    messages_after: { type: 'usize', description: 'Message count after compaction. Python: `messages_after`, TypeScript: `messagesAfter`' },
+    tokens_saved: { type: 'usize', description: 'Approximate tokens freed. Python: `tokens_saved`, TypeScript: `tokensSaved`' },
   }}
 />

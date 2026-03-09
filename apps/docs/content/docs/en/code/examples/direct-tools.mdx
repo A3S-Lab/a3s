@@ -88,7 +88,7 @@ Direct tool calls bypass the LLM entirely — no tokens consumed, no streaming e
 <TypeTable
   type={{
     "Generic tool call": {
-      description: "Rust: session.tool(name, args).await? · Python: session.tool(name, args) · TypeScript: await session.tool(name, args)",
+      description: "Python: session.tool(name, args) · TypeScript: await session.tool(name, args)",
     },
     "Return type": {
       description: "ToolOutput { exit_code: i32, output: String }",
@@ -101,16 +101,16 @@ Direct tool calls bypass the LLM entirely — no tokens consumed, no streaming e
 <TypeTable
   type={{
     "Read file": {
-      description: "Rust: session.read_file(path) · Python: session.read_file(path) · TypeScript: session.readFile(path)",
+      description: "Python: session.read_file(path) · TypeScript: session.readFile(path)",
     },
     "Run bash": {
-      description: "Rust: session.bash(cmd) · Python: session.bash(cmd) · TypeScript: session.bash(cmd)",
+      description: "Python: session.bash(cmd) · TypeScript: session.bash(cmd)",
     },
     "Glob files": {
-      description: "Rust: session.glob(pattern) · Python: session.glob(pattern) · TypeScript: session.glob(pattern)",
+      description: "Python: session.glob(pattern) · TypeScript: session.glob(pattern)",
     },
     "Grep content": {
-      description: "Rust: session.grep(pattern) · Python: session.grep(pattern) · TypeScript: session.grep(pattern)",
+      description: "Python: session.grep(pattern) · TypeScript: session.grep(pattern)",
     },
   }}
 />

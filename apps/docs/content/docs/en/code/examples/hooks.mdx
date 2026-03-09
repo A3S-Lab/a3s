@@ -271,16 +271,16 @@ For persistent hook configuration across sessions, see [Hooks](/docs/code/hooks)
 <TypeTable
   type={{
     "Register hook": {
-      description: "Rust: session.register_hook(hook) · Python: session.register_hook(id, event, fn) · TypeScript: session.registerHook(id, event, fn)",
+      description: "Python: session.register_hook(id, event, fn) · TypeScript: session.registerHook(id, event, fn)",
     },
     "Register handler": {
-      description: "Rust: session.register_hook_handler(id, Arc::new(h)) · Python: _(combined with register)_ · TypeScript: _(combined with register)_",
+      description: "Python: _(combined with register)_ · TypeScript: _(combined with register)_",
     },
     "Unregister": {
-      description: "Rust: session.unregister_hook(id) · Python: session.unregister_hook(id) · TypeScript: session.unregisterHook(id)",
+      description: "Python: session.unregister_hook(id) · TypeScript: session.unregisterHook(id)",
     },
     "Count": {
-      description: "Rust: session.hook_count() · Python: session.hook_count() · TypeScript: session.hookCount()",
+      description: "Python: session.hook_count() · TypeScript: session.hookCount()",
     },
   }}
 />

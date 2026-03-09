@@ -116,16 +116,16 @@ session.submit_task({
 <TypeTable
   type={{
     "启用 lane 功能": {
-      description: "Rust: .with_lane_features() · Python: enable_all_features=True · TypeScript: enableAllFeatures: true · 默认值: false",
+      description: "Python: enable_all_features=True · TypeScript: enableAllFeatures: true · 默认值: false",
     },
     "启用指标": {
-      description: "Rust: .with_metrics() · Python: enable_metrics=True · TypeScript: enableMetrics: true · 默认值: false",
+      description: "Python: enable_metrics=True · TypeScript: enableMetrics: true · 默认值: false",
     },
     "Query 并发数": {
-      description: "Rust: .query_max_concurrency(n) · Python: query_max_concurrency=n · TypeScript: queryMaxConcurrency: n · 默认值: 10",
+      description: "Python: query_max_concurrency=n · TypeScript: queryMaxConcurrency: n · 默认值: 10",
     },
     "Execute 并发数": {
-      description: "Rust: .execute_max_concurrency(n) · Python: execute_max_concurrency=n · TypeScript: executeMaxConcurrency: n · 默认值: 5",
+      description: "Python: execute_max_concurrency=n · TypeScript: executeMaxConcurrency: n · 默认值: 5",
     },
   }}
 />
@@ -151,16 +151,16 @@ session.submit_task({
 <TypeTable
   type={{
     "提交任务": {
-      description: "Rust: session.submit_task(task).await? · Python: session.submit_task({...}) · TypeScript: await session.submitTask({...})",
+      description: "Python: session.submit_task({...}) · TypeScript: await session.submitTask({...})",
     },
     "队列统计": {
-      description: "Rust: session.queue_stats().await · Python: session.queue_stats() · TypeScript: await session.queueStats()",
+      description: "Python: session.queue_stats() · TypeScript: await session.queueStats()",
     },
     "队列指标": {
-      description: "Rust: session.queue_metrics().await · Python: session.queue_metrics() · TypeScript: await session.queueMetrics()",
+      description: "Python: session.queue_metrics() · TypeScript: await session.queueMetrics()",
     },
     "死信": {
-      description: "Rust: session.dead_letters().await · Python: session.dead_letters() · TypeScript: await session.deadLetters()",
+      description: "Python: session.dead_letters() · TypeScript: await session.deadLetters()",
     },
   }}
 />

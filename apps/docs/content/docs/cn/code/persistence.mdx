@@ -150,7 +150,7 @@ let session = agent.session(".", Some(
 <TypeTable
   type={{
     "自定义存储": {
-      description: "Rust: .with_session_store(Arc::new(s)) · Python: _（仅 Rust）_ · TypeScript: _（仅 Rust）_ · 默认值: FileSessionStore",
+      description: "Python: _（仅 Rust）_ · TypeScript: _（仅 Rust）_ · 默认值: FileSessionStore",
     },
   }}
 />
@@ -213,16 +213,16 @@ let session = agent.session(".", Some(
 <TypeTable
   type={{
     "保存会话": {
-      description: "Rust: session.save().await? · 描述: 持久化当前状态",
+      description: "描述: 持久化当前状态",
     },
     "加载会话": {
-      description: "Rust: agent.resume(id, options?)? · 描述: 从存储状态恢复",
+      description: "描述: 从存储状态恢复",
     },
     "列出会话": {
-      description: "Rust: agent.list_sessions().await? · 描述: 列出所有已保存的会话 ID",
+      description: "描述: 列出所有已保存的会话 ID",
     },
     "删除会话": {
-      description: "Rust: agent.delete_session(id).await? · 描述: 删除已存储的会话",
+      description: "描述: 删除已存储的会话",
     },
   }}
 />

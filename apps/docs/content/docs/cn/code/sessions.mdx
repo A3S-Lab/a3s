@@ -52,31 +52,31 @@ session = agent.session("/my-project", model="openai/gpt-4o")
 <TypeTable
   type={{
     "模型覆盖": {
-      description: "Rust: with_model('provider/model') · TypeScript: model: 'provider/model' · Python: model='provider/model' · 描述: 格式：provider/model（例如 openai/gpt-4o）",
+      description: "TypeScript: model: 'provider/model' · Python: model='provider/model' · 描述: 格式：provider/model（例如 openai/gpt-4o）",
     },
     "Skill 目录": {
-      description: "Rust: with_skill_dir('path') · TypeScript: skillDirs: ['path'] · Python: skill_dirs=['path'] · 描述: 额外的 skill 文件扫描目录（与全局 skill_dirs 合并）",
+      description: "TypeScript: skillDirs: ['path'] · Python: skill_dirs=['path'] · 描述: 额外的 skill 文件扫描目录（与全局 skill_dirs 合并）",
     },
     "Agent 目录": {
-      description: "Rust: with_agent_dir('path') · TypeScript: agentDirs: ['path'] · Python: agent_dirs=['path'] · 描述: 额外的 agent 文件扫描目录（与全局 agent_dirs 合并）",
+      description: "TypeScript: agentDirs: ['path'] · Python: agent_dirs=['path'] · 描述: 额外的 agent 文件扫描目录（与全局 agent_dirs 合并）",
     },
     "解析重试": {
-      description: "Rust: with_parse_retries(n) · TypeScript: maxParseRetries: n · Python: max_parse_retries=n · 描述: 连续工具参数格式错误的最大重试次数（默认：2）",
+      description: "TypeScript: maxParseRetries: n · Python: max_parse_retries=n · 描述: 连续工具参数格式错误的最大重试次数（默认：2）",
     },
     "工具超时": {
-      description: "Rust: with_tool_timeout(ms) · TypeScript: toolTimeoutMs: ms · Python: tool_timeout_ms=ms · 描述: 每个工具的执行超时时间（毫秒）；超时后错误会反馈给 LLM（默认：无）",
+      description: "TypeScript: toolTimeoutMs: ms · Python: tool_timeout_ms=ms · 描述: 每个工具的执行超时时间（毫秒）；超时后错误会反馈给 LLM（默认：无）",
     },
     "熔断器": {
-      description: "Rust: with_circuit_breaker(n) · TypeScript: circuitBreakerThreshold: n · Python: circuit_breaker_threshold=n · 描述: 非流式模式下 LLM API 失败的最大次数（默认：3）",
+      description: "TypeScript: circuitBreakerThreshold: n · Python: circuit_breaker_threshold=n · 描述: 非流式模式下 LLM API 失败的最大次数（默认：3）",
     },
     "弹性套件": {
-      description: "Rust: with_resilience_defaults() · 描述: 启用 parse_retries=2、tool_timeout=120s、circuit_breaker=3",
+      description: "描述: 启用 parse_retries=2、tool_timeout=120s、circuit_breaker=3",
     },
     "沙箱": {
-      description: "Rust: with_sandbox(SandboxConfig) · 描述: 通过 A3S Box MicroVM 路由 bash 工具（需要 sandbox feature）",
+      description: "描述: 通过 A3S Box MicroVM 路由 bash 工具（需要 sandbox feature）",
     },
     "提示词插槽": {
-      description: "Rust: with_prompt_slots(slots) · TypeScript: role/guidelines/responseStyle/extra · Python: opts.role/guidelines/response_style/extra · 描述: 插槽式系统提示词自定义",
+      description: "TypeScript: role/guidelines/responseStyle/extra · Python: opts.role/guidelines/response_style/extra · 描述: 插槽式系统提示词自定义",
     },
   }}
 />
@@ -459,7 +459,7 @@ tasks = session.list_scheduled_tasks()
 for t in tasks:
     print(f"[{t['id']}] every {t['interval_secs']}s "
           f"— fires in {t['next_fire_in_secs']}s "
-          f"— \"{t['prompt']}\"")
+          f"— "{t['prompt']}"")
 
 # 通过斜杠指令
 r = session.send('/cron-list')
@@ -699,31 +699,31 @@ print(r.text)  # Cancelled task [a1b2c3d4]
 <TypeTable
   type={{
     "发送提示": {
-      description: "Rust: session.send(prompt, None).await? · Python: session.send(prompt) · TypeScript: await session.send(prompt)",
+      description: "Python: session.send(prompt) · TypeScript: await session.send(prompt)",
     },
     "流式事件": {
-      description: "Rust: session.stream(prompt, None).await? · Python: session.stream(prompt) · TypeScript: await session.stream(prompt)",
+      description: "Python: session.stream(prompt) · TypeScript: await session.stream(prompt)",
     },
     "带图片发送": {
-      description: "Rust: session.send_with_attachments(p, &[img], None).await? · Python: session.send_with_attachments(p, [img]) · TypeScript: await session.sendWithAttachments(p, [img])",
+      description: "Python: session.send_with_attachments(p, [img]) · TypeScript: await session.sendWithAttachments(p, [img])",
     },
     "读取文件": {
-      description: "Rust: session.read_file(path).await? · Python: session.read_file(path) · TypeScript: await session.readFile(path)",
+      description: "Python: session.read_file(path) · TypeScript: await session.readFile(path)",
     },
     "运行 bash": {
-      description: "Rust: session.bash(cmd).await? · Python: session.bash(cmd) · TypeScript: await session.bash(cmd)",
+      description: "Python: session.bash(cmd) · TypeScript: await session.bash(cmd)",
     },
     "Glob": {
-      description: "Rust: session.glob(pattern).await? · Python: session.glob(pattern) · TypeScript: await session.glob(pattern)",
+      description: "Python: session.glob(pattern) · TypeScript: await session.glob(pattern)",
     },
     "Grep": {
-      description: "Rust: session.grep(pattern).await? · Python: session.grep(pattern) · TypeScript: await session.grep(pattern)",
+      description: "Python: session.grep(pattern) · TypeScript: await session.grep(pattern)",
     },
     "调用工具": {
-      description: "Rust: session.tool(name, args).await? · Python: session.tool(name, args) · TypeScript: await session.tool(name, args)",
+      description: "Python: session.tool(name, args) · TypeScript: await session.tool(name, args)",
     },
     "历史记录": {
-      description: "Rust: session.history() · Python: session.history() · TypeScript: session.history()",
+      description: "Python: session.history() · TypeScript: session.history()",
     },
   }}
 />
@@ -733,73 +733,73 @@ print(r.text)  # Cancelled task [a1b2c3d4]
 <TypeTable
   type={{
     "模型": {
-      description: "Rust: .with_model('provider/model') · Python: model='provider/model' · TypeScript: model: 'provider/model' · 默认值: 配置默认值",
+      description: "Python: model='provider/model' · TypeScript: model: 'provider/model' · 默认值: 配置默认值",
     },
     "宽松模式": {
-      description: "Rust: .with_permissive_policy() · Python: permissive=True · TypeScript: permissive: true · 默认值: false",
+      description: "Python: permissive=True · TypeScript: permissive: true · 默认值: false",
     },
     "规划": {
-      description: "Rust: .with_planning(true) · Python: planning=True · TypeScript: planning: true · 默认值: false",
+      description: "Python: planning=True · TypeScript: planning: true · 默认值: false",
     },
     "目标跟踪": {
-      description: "Rust: .with_goal_tracking(true) · Python: goal_tracking=True · TypeScript: goalTracking: true · 默认值: false",
+      description: "Python: goal_tracking=True · TypeScript: goalTracking: true · 默认值: false",
     },
     "内置 skills": {
-      description: "Rust: .with_builtin_skills() · Python: builtin_skills=True · TypeScript: builtinSkills: true · 默认值: false",
+      description: "Python: builtin_skills=True · TypeScript: builtinSkills: true · 默认值: false",
     },
     "Skill 目录": {
-      description: "Rust: .with_skills_from_dir(path) · Python: skill_dirs=[path] · TypeScript: skillDirs: [path] · 默认值: []",
+      description: "Python: skill_dirs=[path] · TypeScript: skillDirs: [path] · 默认值: []",
     },
     "默认安全": {
-      description: "Rust: .with_default_security() · Python: default_security=True · TypeScript: defaultSecurity: true · 默认值: false",
+      description: "Python: default_security=True · TypeScript: defaultSecurity: true · 默认值: false",
     },
     "文件记忆": {
-      description: "Rust: .with_file_memory(path) · Python: memory_dir=path · TypeScript: memoryDir: path · 默认值: None",
+      description: "Python: memory_dir=path · TypeScript: memoryDir: path · 默认值: None",
     },
     "自动压缩": {
-      description: "Rust: .with_auto_compact(true) · Python: auto_compact=True · TypeScript: autoCompact: true · 默认值: false",
+      description: "Python: auto_compact=True · TypeScript: autoCompact: true · 默认值: false",
     },
     "自动压缩阈值": {
-      description: "Rust: .with_auto_compact_threshold(f) · Python: auto_compact_threshold=f · TypeScript: autoCompactThreshold: f · 默认值: 0.8",
+      description: "Python: auto_compact_threshold=f · TypeScript: autoCompactThreshold: f · 默认值: 0.8",
     },
     "文件系统上下文": {
-      description: "Rust: .with_fs_context(path) · Python: fs_context=path · TypeScript: fsContext: path · 默认值: None",
+      description: "Python: fs_context=path · TypeScript: fsContext: path · 默认值: None",
     },
     "队列配置": {
-      description: "Rust: .with_queue_config(cfg) · Python: queue_config=cfg · TypeScript: queueConfig: cfg · 默认值: None",
+      description: "Python: queue_config=cfg · TypeScript: queueConfig: cfg · 默认值: None",
     },
     "解析重试": {
-      description: "Rust: .with_parse_retries(n) · Python: max_parse_retries=n · TypeScript: maxParseRetries: n · 默认值: 2",
+      description: "Python: max_parse_retries=n · TypeScript: maxParseRetries: n · 默认值: 2",
     },
     "工具超时": {
-      description: "Rust: .with_tool_timeout(ms) · Python: tool_timeout_ms=ms · TypeScript: toolTimeoutMs: ms · 默认值: None",
+      description: "Python: tool_timeout_ms=ms · TypeScript: toolTimeoutMs: ms · 默认值: None",
     },
     "熔断器": {
-      description: "Rust: .with_circuit_breaker(n) · Python: circuit_breaker_threshold=n · TypeScript: circuitBreakerThreshold: n · 默认值: 3",
+      description: "Python: circuit_breaker_threshold=n · TypeScript: circuitBreakerThreshold: n · 默认值: 3",
     },
     "弹性默认值": {
-      description: "Rust: .with_resilience_defaults()",
+      description: "",
     },
     "沙箱": {
-      description: "Rust: .with_sandbox(cfg) · 默认值: None",
+      description: "默认值: None",
     },
     "权限检查器": {
-      description: "Rust: .with_permission_checker(p) · 默认值: PermissionPolicy",
+      description: "默认值: PermissionPolicy",
     },
     "确认管理器": {
-      description: "Rust: .with_confirmation_manager(m) · 默认值: None",
+      description: "默认值: None",
     },
     "安全提供者": {
-      description: "Rust: .with_security_provider(p) · 默认值: None",
+      description: "默认值: None",
     },
     "上下文提供者": {
-      description: "Rust: .with_context_provider(p) · 默认值: None",
+      description: "默认值: None",
     },
     "记忆存储": {
-      description: "Rust: .with_memory(store) · 默认值: InMemoryStore",
+      description: "默认值: InMemoryStore",
     },
     "Hook 引擎": {
-      description: "Rust: .with_hook_engine(h) · 默认值: HookEngine",
+      description: "默认值: HookEngine",
     },
   }}
 />
@@ -809,13 +809,13 @@ print(r.text)  # Cancelled task [a1b2c3d4]
 <TypeTable
   type={{
     "文本": {
-      description: "Rust: result.text · Python: result.text · TypeScript: result.text",
+      description: "Python: result.text · TypeScript: result.text",
     },
     "总 token 数": {
-      description: "Rust: result.usage.total_tokens · Python: result.usage.total_tokens · TypeScript: result.usage.totalTokens",
+      description: "Python: result.usage.total_tokens · TypeScript: result.usage.totalTokens",
     },
     "工具调用次数": {
-      description: "Rust: result.tool_calls_count · Python: result.tool_calls_count · TypeScript: result.toolCallsCount",
+      description: "Python: result.tool_calls_count · TypeScript: result.toolCallsCount",
     },
   }}
 />

@@ -116,13 +116,13 @@ The auth module has been refactored. Key changes:
 <TypeTable
   type={{
     "Start stream": {
-      description: "Rust: session.stream('prompt', None).await? · Python: session.stream('prompt') · TypeScript: await session.stream('prompt')",
+      description: "Python: session.stream('prompt') · TypeScript: await session.stream('prompt')",
     },
     "Receive event": {
-      description: "Rust: rx.recv().await · Python: for event in session.stream(...) · TypeScript: for await (const event of stream)",
+      description: "Python: for event in session.stream(...) · TypeScript: for await (const event of stream)",
     },
     "Await completion": {
-      description: "Rust: handle.await?? · Python: _(auto)_ · TypeScript: _(auto)_",
+      description: "Python: _(auto)_ · TypeScript: _(auto)_",
     },
   }}
 />

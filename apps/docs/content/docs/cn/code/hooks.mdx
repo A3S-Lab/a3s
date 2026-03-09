@@ -470,16 +470,16 @@ Hooks 按优先级顺序执行。数字越小越先运行。
 <TypeTable
   type={{
     "注册 hook": {
-      description: "Rust: `session.register_hook(Hook::new(id, event_type))` · TS: `session.registerHook(id, event, matcher?, config?, handler?)` · Python: `session.register_hook(id, event, matcher?, config?, handler?)`",
+      description: "TS: `session.registerHook(id, event, matcher?, config?, handler?)` · Python: `session.register_hook(id, event, matcher?, config?, handler?)`",
     },
     "注册 Rust 处理器": {
-      description: "Rust: `session.register_hook_handler(id, Arc::new(handler))` — 用于高级进程内处理器，使用 TS/Python 回调时无需此步骤",
+      description: "",
     },
     "注销": {
-      description: "Rust: `session.unregister_hook(id)` · TS: `session.unregisterHook(id)` · Python: `session.unregister_hook(id)` — 同步移除关联回调",
+      description: "TS: `session.unregisterHook(id)` · Python: `session.unregister_hook(id)` — 同步移除关联回调",
     },
     "计数": {
-      description: "Rust: `session.hook_count()` · TS: `session.hookCount()` · Python: `session.hook_count()`",
+      description: "TS: `session.hookCount()` · Python: `session.hook_count()`",
     },
   }}
 />

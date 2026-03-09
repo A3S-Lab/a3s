@@ -88,7 +88,7 @@ matches = session.grep("TODO")
 <TypeTable
   type={{
     "通用工具调用": {
-      description: "Rust: session.tool(name, args).await? · Python: session.tool(name, args) · TypeScript: await session.tool(name, args)",
+      description: "Python: session.tool(name, args) · TypeScript: await session.tool(name, args)",
     },
     "返回类型": {
       description: "ToolOutput { exit_code: i32, output: String }",
@@ -101,16 +101,16 @@ matches = session.grep("TODO")
 <TypeTable
   type={{
     "读取文件": {
-      description: "Rust: session.read_file(path) · Python: session.read_file(path) · TypeScript: session.readFile(path)",
+      description: "Python: session.read_file(path) · TypeScript: session.readFile(path)",
     },
     "执行命令": {
-      description: "Rust: session.bash(cmd) · Python: session.bash(cmd) · TypeScript: session.bash(cmd)",
+      description: "Python: session.bash(cmd) · TypeScript: session.bash(cmd)",
     },
     "搜索文件": {
-      description: "Rust: session.glob(pattern) · Python: session.glob(pattern) · TypeScript: session.glob(pattern)",
+      description: "Python: session.glob(pattern) · TypeScript: session.glob(pattern)",
     },
     "搜索内容": {
-      description: "Rust: session.grep(pattern) · Python: session.grep(pattern) · TypeScript: session.grep(pattern)",
+      description: "Python: session.grep(pattern) · TypeScript: session.grep(pattern)",
     },
   }}
 />

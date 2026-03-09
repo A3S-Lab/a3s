@@ -271,16 +271,16 @@ result = runner.run_until_done("分析代码库中的安全问题")
 <TypeTable
   type={{
     "注册 hook": {
-      description: "Rust: session.register_hook(hook) · Python: session.register_hook(id, event, fn) · TypeScript: session.registerHook(id, event, fn)",
+      description: "Python: session.register_hook(id, event, fn) · TypeScript: session.registerHook(id, event, fn)",
     },
     "注册处理器": {
-      description: "Rust: session.register_hook_handler(id, Arc::new(h)) · Python: _（与注册合并）_ · TypeScript: _（与注册合并）_",
+      description: "Python: _（与注册合并）_ · TypeScript: _（与注册合并）_",
     },
     "注销": {
-      description: "Rust: session.unregister_hook(id) · Python: session.unregister_hook(id) · TypeScript: session.unregisterHook(id)",
+      description: "Python: session.unregister_hook(id) · TypeScript: session.unregisterHook(id)",
     },
     "计数": {
-      description: "Rust: session.hook_count() · Python: session.hook_count() · TypeScript: session.hookCount()",
+      description: "Python: session.hook_count() · TypeScript: session.hookCount()",
     },
   }}
 />

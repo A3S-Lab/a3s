@@ -528,16 +528,16 @@ Fires when any error occurs during execution. Use for error reporting or recover
 <TypeTable
   type={{
     "Register hook": {
-      description: "Rust: `session.register_hook(Hook::new(id, event_type))` · TS: `session.registerHook(id, event, matcher?, config?, handler?)` · Python: `session.register_hook(id, event, matcher?, config?, handler?)`",
+      description: "TS: `session.registerHook(id, event, matcher?, config?, handler?)` · Python: `session.register_hook(id, event, matcher?, config?, handler?)`",
     },
     "Register Rust handler": {
-      description: "Rust: `session.register_hook_handler(id, Arc::new(handler))` — for advanced in-process handlers. Not needed when using TS/Python callbacks.",
+      description: "",
     },
     "Unregister": {
-      description: "Rust: `session.unregister_hook(id)` · TS: `session.unregisterHook(id)` · Python: `session.unregister_hook(id)` — also removes any associated callback",
+      description: "TS: `session.unregisterHook(id)` · Python: `session.unregister_hook(id)` — also removes any associated callback",
     },
     "Count": {
-      description: "Rust: `session.hook_count()` · TS: `session.hookCount()` · Python: `session.hook_count()`",
+      description: "TS: `session.hookCount()` · Python: `session.hook_count()`",
     },
   }}
 />

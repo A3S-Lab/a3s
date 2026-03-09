@@ -381,17 +381,17 @@ See [Sessions](/docs/code/sessions) for full event reference.
     fs_context: {
       type: 'Option<string>',
       default: 'None',
-      description: 'Filesystem context path. Rust: `.with_fs_context(path)`, TS: `fsContext: path`, Python: `fs_context=path`',
+      description: 'Filesystem context path. TS: `fsContext: path`, Python: `fs_context=path`',
     },
     context_provider: {
       type: 'Option<Arc<dyn ContextProvider>>',
       default: 'None',
-      description: 'Custom context provider. Rust: `.with_context_provider(Arc::new(p))`',
+      description: 'Custom context provider',
     },
     context_threshold: {
       type: 'f32',
       default: '0.8',
-      description: 'Context usage fraction to trigger compaction. Rust: `.with_context_threshold(f)`, TS: `contextThreshold: f`, Python: `context_threshold=f`',
+      description: 'Context usage fraction to trigger compaction. TS: `contextThreshold: f`, Python: `context_threshold=f`',
     },
   }}
 />

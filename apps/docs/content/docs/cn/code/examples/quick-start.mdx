@@ -125,16 +125,16 @@ session = agent.session("/my-project",
 <TypeTable
   type={{
     "宽松策略": {
-      description: "Rust: .with_permissive_policy() · Python: permissive=True · TypeScript: permissive: true · 默认值: false",
+      description: "Python: permissive=True · TypeScript: permissive: true · 默认值: false",
     },
     "解析重试": {
-      description: "Rust: .with_parse_retries(n) · Python: max_parse_retries=n · TypeScript: maxParseRetries: n · 默认值: 3",
+      description: "Python: max_parse_retries=n · TypeScript: maxParseRetries: n · 默认值: 3",
     },
     "工具超时": {
-      description: "Rust: .with_tool_timeout(ms) · Python: tool_timeout_ms=ms · TypeScript: toolTimeoutMs: ms · 默认值: 30000",
+      description: "Python: tool_timeout_ms=ms · TypeScript: toolTimeoutMs: ms · 默认值: 30000",
     },
     "熔断器": {
-      description: "Rust: .with_circuit_breaker(n) · Python: circuit_breaker_threshold=n · TypeScript: circuitBreakerThreshold: n · 默认值: 5",
+      description: "Python: circuit_breaker_threshold=n · TypeScript: circuitBreakerThreshold: n · 默认值: 5",
     },
   }}
 />
@@ -144,16 +144,16 @@ session = agent.session("/my-project",
 <TypeTable
   type={{
     "最终文本": {
-      description: "Rust: result.text · Python: result.text · TypeScript: result.text",
+      description: "Python: result.text · TypeScript: result.text",
     },
     "总 token 数": {
-      description: "Rust: result.usage.total_tokens · Python: result.total_tokens · TypeScript: result.totalTokens",
+      description: "Python: result.total_tokens · TypeScript: result.totalTokens",
     },
     "工具调用次数": {
-      description: "Rust: result.tool_calls_count · Python: result.tool_calls_count · TypeScript: result.toolCallsCount",
+      description: "Python: result.tool_calls_count · TypeScript: result.toolCallsCount",
     },
     "历史记录": {
-      description: "Rust: session.history() · Python: session.history() · TypeScript: session.history()",
+      description: "Python: session.history() · TypeScript: session.history()",
     },
   }}
 />

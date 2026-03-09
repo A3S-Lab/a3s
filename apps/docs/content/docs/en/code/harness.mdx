@@ -264,7 +264,7 @@ A shell script that allows everything (useful as a starting point):
 while IFS= read -r line; do
     id=$(echo "$line" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))")
     if [ -n "$id" ]; then
-        echo "{\"jsonrpc\":\"2.0\",\"id\":$id,\"result\":{\"action\":\"continue\"}}"
+        echo "{"jsonrpc":"2.0","id":$id,"result":{"action":"continue"}}"
     fi
 done
 ```
@@ -336,7 +336,7 @@ All events from all levels are multiplexed into the same stdin/stdout stream. Th
 
 <TypeTable
   type={{
-    "Rust: .with_hook_executor(executor)": {
+    "": {
       description: "Replace the built-in HookEngine with an AhpHookExecutor (or any HookExecutor impl).",
     },
     "TypeScript: harnessServer: new HarnessServer(program, args)": {

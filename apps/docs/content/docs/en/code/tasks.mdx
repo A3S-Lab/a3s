@@ -478,17 +478,17 @@ When a session is restored from storage, its task list is restored too — the a
     planning: {
       type: 'bool',
       default: 'false',
-      description: 'Enable LLM task planning. Rust: `.with_planning(true)`, TS: `planning: true`, Python: `planning=True`',
+      description: 'Enable LLM task planning. TS: `planning: true`, Python: `planning=True`',
     },
     goal_tracking: {
       type: 'bool',
       default: 'false',
-      description: 'Track goal progress. Rust: `.with_goal_tracking(true)`, TS: `goalTracking: true`, Python: `goal_tracking=True`',
+      description: 'Track goal progress. TS: `goalTracking: true`, Python: `goal_tracking=True`',
     },
     max_tool_rounds: {
       type: 'usize',
       default: '50',
-      description: 'Max tool call rounds per turn. Rust: `.with_max_tool_rounds(n)`, TS: `maxToolRounds: n`, Python: `max_tool_rounds=n`',
+      description: 'Max tool call rounds per turn. TS: `maxToolRounds: n`, Python: `max_tool_rounds=n`',
     },
   }}
 />
