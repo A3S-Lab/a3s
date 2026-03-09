@@ -88,6 +88,250 @@ The `SecurityGuard` registers hooks at priority 1 (highest) automatically:
   }}
 />
 
+## Sentinel Hook System
+
+The **sentinel hook** is the mechanism that automatically propagates the parent session's `HookEngine` to every sub-agent spawned by `task` and `parallel_task`, at arbitrary nesting depth — with no manual re-registration required.
+
+### How propagation works
+
+```
+Parent session
+  ├── register_hook("guard", PreToolUse)    ← registered on HookEngine
+  ├── register_hook_handler("guard", ...)
+  │
+  └── task tool spawns Child AgentLoop
+        ├── AgentConfig.hook_engine = sentinel_hook   ← inherited
+        ├── ToolContext.sentinel_hook = sentinel_hook  ← set for grandchildren
+        │
+        └── task tool spawns Grandchild AgentLoop
+              ├── AgentConfig.hook_engine = sentinel_hook  ← inherited again
+              └── ToolContext.sentinel_hook = sentinel_hook ← depth-unlimited
+```
+
+**Implementation path** (`core/src/`):
+
+1. `agent_api.rs` — when a session is built, if `hook_engine` exists it is written into `ToolContext.sentinel_hook`
+2. `tools/task.rs` — `TaskTool::execute()` reads `ctx.sentinel_hook` and sets it as `child AgentConfig.hook_engine`
+3. `tools/task.rs` — the child's own `ToolContext` also receives `sentinel_hook`, so any grandchild task tool will repeat the same propagation
+
+<Callout type="info">
+  **Security implication**: A `PreToolUse` blocking hook registered once on the parent enforces the same policy across every sub-agent at every depth. This is the recommended pattern for multi-agent security enforcement.
+</Callout>
+
+### Using sentinel hooks
+
+<Tabs items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+
+Rust gives full control: register the hook definition, then register a `HookHandler` that can `block`, `modify`, or `continue` the operation. The handler automatically applies to all sub-agents.
+
+```rust
+use a3s_code_core::{
+    Agent, SessionOptions,
+    hooks::{Hook, HookConfig, HookEvent, HookEventType, HookHandler, HookMatcher, HookResponse},
+};
+use std::sync::Arc;
+
+// 1. Define a blocking handler
+struct DangerousCommandGuard;
+
+impl HookHandler for DangerousCommandGuard {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        let HookEvent::PreToolUse(e) = event else {
+            return HookResponse::continue_();
+        };
+        let cmd = e.args.to_string();
+        if cmd.contains("rm -rf") || cmd.contains("DROP TABLE") {
+            return HookResponse::block(format!(
+                "Blocked by sentinel: dangerous pattern in '{}'", e.tool
+            ));
+        }
+        HookResponse::continue_()
+    }
+}
+
+// 2. Create session and register sentinel hook once on the parent
+let agent = Agent::new("agent.hcl").await?;
+let session = agent.session(".", Some(
+    SessionOptions::new()
+        .with_builtin_skills()
+        .with_permissive_policy()
+))?;
+
+session.register_hook(
+    Hook::new("sentinel-guard", HookEventType::PreToolUse)
+        .with_matcher(HookMatcher::tool("bash"))
+        .with_config(HookConfig { priority: 2, ..Default::default() })
+);
+session.register_hook_handler("sentinel-guard", Arc::new(DangerousCommandGuard));
+
+// 3. Any task-spawned sub-agent automatically inherits the sentinel
+let result = session.send(
+    "Analyze the repo with multiple sub-agents and summarize findings",
+    None,
+).await?;
+
+println!("{}", result.text);
+```
+
+To add a logging-only hook alongside the blocking hook:
+
+```rust
+struct AuditLogger;
+
+impl HookHandler for AuditLogger {
+    fn handle(&self, event: &HookEvent) -> HookResponse {
+        if let HookEvent::PostToolUse(e) = event {
+            println!("[audit] tool={} exit={}", e.tool, e.result.exit_code);
+        }
+        HookResponse::continue_()
+    }
+}
+
+session.register_hook(
+    Hook::new("sentinel-audit", HookEventType::PostToolUse)
+        .with_config(HookConfig { priority: 10, ..Default::default() })
+);
+session.register_hook_handler("sentinel-audit", Arc::new(AuditLogger));
+```
+
+</Tab>
+<Tab value="TypeScript">
+
+TypeScript supports hook registration (metadata + matcher + priority). Hooks fire inside Rust for every tool call in the parent **and all sub-agents**. Observe parent-level tool activity through `tool_start` / `tool_end` stream events.
+
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('/project', {
+  builtinSkills: true,
+  permissive: true,
+});
+
+// Register sentinel hooks — priority 2 runs before standard hooks (10+)
+session.registerHook('sentinel-guard', 'pre_tool_use', null, { priority: 2 });
+session.registerHook('sentinel-audit', 'post_tool_use', null, { priority: 10 });
+session.registerHook('sentinel-gen', 'generate_start', null, { priority: 10 });
+
+console.log(`Sentinel hooks registered: ${session.hookCount()}`);
+// → 3
+
+// Hooks propagate into every sub-agent spawned by the task tool.
+// Observe parent-level tool calls via the stream:
+const stream = await session.stream(
+  'Analyze the repo with multiple sub-agents and summarize findings'
+);
+
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (done || !event) break;
+
+  if (event.type === 'tool_start') {
+    console.log(`[sentinel] tool called: ${event.toolName}`);
+  } else if (event.type === 'tool_end') {
+    console.log(`[sentinel] tool done:   ${event.toolName} exit=${event.exitCode}`);
+  } else if (event.type === 'end') {
+    console.log(`Done. Tokens: ${event.totalTokens}`);
+    break;
+  }
+}
+
+// Clean up when the session is no longer needed
+session.unregisterHook('sentinel-guard');
+session.unregisterHook('sentinel-audit');
+session.unregisterHook('sentinel-gen');
+```
+
+Filter the sentinel to a specific tool with a matcher:
+
+```typescript
+// Only intercept bash calls
+session.registerHook('sentinel-bash', 'pre_tool_use', { tool: 'bash' }, { priority: 2 });
+```
+
+</Tab>
+<Tab value="Python">
+
+Python support mirrors TypeScript — register hooks with an optional `handler` callback for blocking. The sentinel automatically covers all sub-agents.
+
+```python
+from a3s_code import Agent
+
+agent = Agent.create('agent.hcl')
+session = agent.session('/project', builtin_skills=True, permissive=True)
+
+# Sentinel guard with blocking — propagates to all sub-agents
+def sentinel_guard(event):
+    cmd = str(event.get('payload', {}).get('args', {}).get('command', ''))
+    if 'rm -rf' in cmd or 'DROP TABLE' in cmd:
+        return {'action': 'block', 'reason': 'Sentinel: dangerous command blocked'}
+    return None
+
+session.register_hook(
+    'sentinel-guard', 'pre_tool_use',
+    config={'priority': 2},
+    handler=sentinel_guard,
+)
+session.register_hook('sentinel-audit', 'post_tool_use', config={'priority': 10})
+session.register_hook('sentinel-gen', 'generate_start', config={'priority': 10})
+
+print(f"Sentinel hooks registered: {session.hook_count()}")
+# → 3
+
+# Hooks propagate into every sub-agent spawned by the task tool.
+# Observe parent-level tool calls via the stream:
+for event in session.stream(
+    'Analyze the repo with multiple sub-agents and summarize findings'
+):
+    if event.event_type == 'tool_start':
+        print(f"[sentinel] tool called: {event.tool_name}")
+    elif event.event_type == 'tool_end':
+        print(f"[sentinel] tool done:   {event.tool_name} exit={event.exit_code}")
+    elif event.event_type == 'end':
+        print(f"Done. Tokens: {event.total_tokens}")
+        break
+
+# Clean up when the session is no longer needed
+session.unregister_hook('sentinel-guard')
+session.unregister_hook('sentinel-audit')
+session.unregister_hook('sentinel-gen')
+```
+
+Filter the sentinel to a specific tool with a matcher:
+
+```python
+# Only intercept bash calls
+session.register_hook('sentinel-bash', 'pre_tool_use',
+                      matcher={'tool': 'bash'}, config={'priority': 2},
+                      handler=sentinel_guard)
+```
+
+</Tab>
+</Tabs>
+
+### Propagation constraints
+
+<TypeTable
+  type={{
+    "Propagation depth": {
+      description: "Unlimited — grandchildren and deeper inherit the sentinel automatically",
+    },
+    "Blocking/modifying": {
+      description: "All languages — Rust via `HookHandler`, TypeScript/Python via the `handler` callback passed to `registerHook`/`register_hook`",
+    },
+    "Sub-agent stream events": {
+      description: "Sub-agent tool calls emit to the broadcast channel (`ToolContext.agent_event_tx`), not the streaming mpsc channel. They are not visible in `session.stream()`. Use the Orchestrator API for sub-agent event monitoring.",
+    },
+    "Hook count scope": {
+      description: "`session.hook_count()` reflects the parent session only. The sentinel hook engine shared with sub-agents is a cloned `Arc` — the count is the same instance.",
+    },
+    "Parallel tasks": {
+      description: "`parallel_task` applies the same propagation — all parallel sub-agents share the same sentinel hook engine",
+    },
+  }}
+/>
+
 ## Hook Registration
 
 <Tabs items={['Rust', 'TypeScript', 'Python']}>

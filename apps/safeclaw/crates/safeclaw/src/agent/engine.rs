@@ -33,9 +33,6 @@ pub struct AgentEngine {
     config_path: Arc<RwLock<Option<std::path::PathBuf>>>,
     /// Slash command registry (shared across sessions)
     command_registry: Arc<CommandRegistry>,
-    /// Optional sentinel security observer (injected at startup).
-    /// May be an in-process `SentinelAgent` or an out-of-process `SentinelDaemon`.
-    sentinel: Arc<RwLock<Option<Arc<dyn crate::sentinel::SentinelObserver>>>>,
 }
 
 /// Per-session UI state tracked by the engine.
@@ -108,7 +105,6 @@ impl AgentEngine {
             agent_bus: Arc::new(RwLock::new(None)),
             config_path: Arc::new(RwLock::new(None)),
             command_registry: Arc::new(CommandRegistry::new()),
-            sentinel: Arc::new(RwLock::new(None)),
         };
 
         // Restore persisted UI state from disk
@@ -166,15 +162,6 @@ impl AgentEngine {
             let (perm, confirm) = permission_mode_to_policies(mode);
             session_config.permission_policy = Some(perm);
             session_config.confirmation_policy = Some(confirm);
-        }
-
-        // Wire sentinel hooks when a sentinel observer is configured
-        if let Some(ref sentinel) = *self.sentinel.read().await {
-            let hook_engine = Arc::new(a3s_code::HookEngine::new());
-            crate::sentinel::register_sentinel_hooks(sentinel.clone(), &hook_engine);
-            session_config.hook_engine = Some(hook_engine);
-            // Register lineage — user-initiated sessions have no parent.
-            sentinel.on_session_created(session_id, None);
         }
 
         // Create a3s-code session
@@ -311,11 +298,6 @@ impl AgentEngine {
 
         // Remove from disk
         self.store.remove(session_id).await;
-
-        // Release sentinel per-session state (accumulator + lineage).
-        if let Some(ref sentinel) = *self.sentinel.read().await {
-            sentinel.on_session_destroyed(session_id);
-        }
 
         Ok(())
     }
@@ -1377,14 +1359,6 @@ impl AgentEngine {
     /// Called once during Runtime startup after the bus is created.
     pub async fn set_bus(&self, bus: Arc<crate::agent::bus::AgentBus>) {
         *self.agent_bus.write().await = Some(bus);
-    }
-
-    /// Attach a sentinel security observer.
-    ///
-    /// Once set, every new session gets a `HookEngine` pre-wired with the
-    /// sentinel's blocking hooks (`pre_tool_use`, `pre_prompt`, `post_response`).
-    pub async fn set_sentinel(&self, sentinel: Arc<dyn crate::sentinel::SentinelObserver>) {
-        *self.sentinel.write().await = Some(sentinel);
     }
 
     /// Publish a message to another agent via the event bus.

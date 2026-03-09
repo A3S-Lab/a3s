@@ -60,10 +60,6 @@ pub struct SafeClawConfig {
     /// Session lifecycle management configuration
     #[serde(default)]
     pub session_lifecycle: SessionLifecycleConfig,
-
-    /// Sentinel security observer configuration.
-    #[serde(default)]
-    pub sentinel: SentinelConfig,
 }
 
 impl SafeClawConfig {
@@ -621,34 +617,6 @@ impl Default for SkillsConfig {
             dir: Self::default_dir(),
             auto_load: Self::default_auto_load(),
         }
-    }
-}
-
-/// Sentinel security observer configuration.
-///
-/// Controls whether the sentinel agent is enabled and where its customisation
-/// files live.  Defaults to enabled with the platform-standard config dir.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct SentinelConfig {
-    /// Enable the sentinel security observer.
-    pub enabled: bool,
-
-    /// Directory containing `policy.hcl`, `skills/`, and `agents/`.
-    /// Defaults to `<platform_config_dir>/safeclaw/sentinel`.
-    pub dir: Option<std::path::PathBuf>,
-}
-
-impl Default for SentinelConfig {
-    fn default() -> Self {
-        Self { enabled: true, dir: None }
-    }
-}
-
-impl SentinelConfig {
-    /// Resolve the effective sentinel directory.
-    pub fn resolved_dir(&self) -> std::path::PathBuf {
-        self.dir.clone().unwrap_or_else(crate::sentinel::default_sentinel_dir)
     }
 }
 

@@ -311,7 +311,7 @@ Parent session (depth: 0)
 All events from all levels are multiplexed into the same stdin/stdout stream. The harness server can distinguish origins using `session_id` (unique per agent) and `depth`.
 
 <Callout type="info">
-  AHP depth propagation mirrors the sentinel hook propagation described in the [Lifecycle Hooks](/docs/en/code/hooks) page. The same `ToolContext.sentinel_hook` mechanism is used — `AhpHookExecutor` is registered there and inherited at every nesting level.
+  AHP depth propagation uses the `ToolContext.hook_executor` mechanism — `AhpHookExecutor` is registered there and inherited at every nesting level.
 </Callout>
 
 ## AHP vs. lifecycle hooks
@@ -337,7 +337,7 @@ All events from all levels are multiplexed into the same stdin/stdout stream. Th
       description: "Hooks: Rust only via HookResponse::modify · AHP: any language via `modified` field in response",
     },
     "Sub-agent propagation": {
-      description: "Both: automatic via sentinel hook / ToolContext.sentinel_hook",
+      description: "Both: automatic via ToolContext.hook_executor",
     },
   }}
 />

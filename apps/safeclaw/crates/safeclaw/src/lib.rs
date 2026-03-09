@@ -95,7 +95,6 @@ pub mod config;
 pub mod error;
 pub mod hardening;
 pub mod runtime;
-pub mod sentinel;
 pub mod session;
 pub mod skills;
 pub mod tee;

@@ -311,7 +311,7 @@ done
 所有层级的事件都被复用到同一个 stdin/stdout 流中。驾驭服务器可通过 `session_id`（每个 agent 唯一）和 `depth` 区分事件来源。
 
 <Callout type="info">
-  AHP 深度传播与[生命周期 Hooks](/docs/cn/code/hooks) 页面描述的哨兵钩子传播机制一致——使用相同的 `ToolContext.sentinel_hook` 机制，`AhpHookExecutor` 在其中注册并在每个嵌套层级继承。
+  AHP 深度传播使用 `ToolContext.hook_executor` 机制，`AhpHookExecutor` 在其中注册并在每个嵌套层级继承。
 </Callout>
 
 ## AHP vs. 生命周期 Hooks
@@ -337,7 +337,7 @@ done
       description: "Hooks：仅 Rust，通过 HookResponse::modify · AHP：任意语言，通过响应中的 `modified` 字段",
     },
     "子智能体传播": {
-      description: "两者均支持：通过哨兵钩子 / ToolContext.sentinel_hook 自动传播",
+      description: "两者均支持：通过 ToolContext.hook_executor 自动传播",
     },
   }}
 />

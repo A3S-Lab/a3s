@@ -11,9 +11,7 @@
 		"tauri": "tauri",
 		"tauri:dev": "tauri dev",
 		"tauri:build": "tauri build",
-		"format": "pnpm biome format --write .",
-		"test:e2e": "playwright test",
-		"test:e2e:ui": "playwright test --ui"
+		"format": "pnpm biome format --write ."
 	},
 	"dependencies": {
 		"@lottiefiles/react-lottie-player": "^3.6.0",
@@ -72,7 +70,6 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.3",
-		"@playwright/test": "^1.58.2",
 		"@rsbuild/core": "^1.0.15",
 		"@rsbuild/plugin-less": "^1.2.2",
 		"@rsbuild/plugin-react": "^1.0.5",

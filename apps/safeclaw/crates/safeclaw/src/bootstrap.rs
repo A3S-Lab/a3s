@@ -238,7 +238,6 @@ pub async fn start_gateway(
     let models = config.models.clone();
     let skills_config = config.skills.clone();
     let lifecycle_config = config.session_lifecycle.clone();
-    let sentinel_config = config.sentinel.clone();
 
     let memory_store = init_memory_store().await?;
 
@@ -254,38 +253,6 @@ pub async fn start_gateway(
         agent_state.engine.set_config_path(path.clone()).await;
     }
     gateway.set_agent_engine(agent_state.engine.clone()).await;
-
-    // Start sentinel security observer in-process (non-fatal).
-    if sentinel_config.enabled {
-        let sentinel_dir = sentinel_config.resolved_dir();
-        match crate::sentinel::SentinelAgent::init(&sentinel_dir, Some(&models)).await {
-            Ok(sentinel) => {
-                // Start remote registry sync if configured.
-                if let Some(sync_cfg) =
-                    crate::sentinel::config::SentinelPolicy::load(&sentinel_dir)
-                        .ok()
-                        .and_then(|p| p.skill_registry)
-                        .filter(|c| c.enabled && !c.url.is_empty())
-                {
-                    let syncer = std::sync::Arc::new(crate::sentinel::sync::SkillSyncer::new(
-                        sync_cfg,
-                        sentinel.skill_registry(),
-                        sentinel.agent_registry(),
-                        &sentinel_dir,
-                    ));
-                    tokio::spawn(crate::sentinel::sync::start_background_sync(syncer));
-                    tracing::info!("Sentinel skill-registry sync started");
-                }
-                agent_state.engine.set_sentinel(sentinel).await;
-                tracing::info!(dir = %sentinel_dir.display(), "Sentinel initialized");
-            }
-            Err(e) => {
-                tracing::warn!("Sentinel init failed (continuing without sentinel): {e}");
-            }
-        }
-    } else {
-        tracing::info!("Sentinel security observer disabled by config");
-    }
 
     // Wire agent bus (in-memory)
     {
