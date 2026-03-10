@@ -17,16 +17,18 @@ jobs:
   build-dmg:
     name: Build Universal macOS DMG
     runs-on: macos-latest
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
 
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Resolve version
-        id: version
+      - name: Resolve tag
+        id: meta
         run: |
-          TAG="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          TAG="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
           VERSION="${TAG#safeclaw-v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -61,9 +63,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Import Apple certificate
-        if: ${{ secrets.APPLE_CERTIFICATE != '' }}
+        if: env.APPLE_CERTIFICATE != ''
         env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         run: |
           KEYCHAIN_PASSWORD="$(openssl rand -hex 16)"
@@ -113,20 +114,20 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-dmg
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      tag: ${{ steps.version.outputs.tag }}
-      sha256: ${{ steps.sha256.outputs.sha256 }}
-      dmg_name: ${{ steps.artifact.outputs.dmg_name }}
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+      sha256: ${{ steps.checksum.outputs.sha256 }}
+      dmg_name: ${{ steps.checksum.outputs.dmg_name }}
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Resolve version
-        id: version
+      - name: Resolve tag
+        id: meta
         run: |
-          TAG="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          TAG="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
           VERSION="${TAG#safeclaw-v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -137,35 +138,27 @@ jobs:
           name: safeclaw-dmg
           path: dist
 
-      - name: Get DMG name and SHA256
-        id: sha256
+      - name: Compute SHA256
+        id: checksum
         run: |
           DMG_PATH="$(find dist -name '*.dmg' | head -1)"
-          SHA256="$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')"
-          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
-          echo "dmg_path=$DMG_PATH" >> "$GITHUB_OUTPUT"
-
-      - name: Get DMG artifact name
-        id: artifact
-        run: |
-          DMG_PATH="$(find dist -name '*.dmg' | head -1)"
+          echo "sha256=$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
           echo "dmg_name=$(basename "$DMG_PATH")" >> "$GITHUB_OUTPUT"
 
       - name: Generate release notes
         run: |
-          PREV_TAG=$(git tag --sort=-v:refname | grep '^safeclaw-v' | head -2 | tail -1)
+          PREV_TAG=$(git tag --sort=-v:refname | grep '^safeclaw-v' | grep -v "^${{ steps.meta.outputs.tag }}$" | head -1)
           if [ -z "$PREV_TAG" ]; then
-            NOTES="Initial release of SafeClaw."
+            echo "Initial release of SafeClaw." > /tmp/release-notes.md
           else
-            NOTES=$(git log "${PREV_TAG}..HEAD" --oneline --no-merges --pretty=format:"- %s" | head -50)
+            git log "${PREV_TAG}..HEAD" --oneline --no-merges --pretty=format:"- %s" | head -50 > /tmp/release-notes.md
           fi
-          echo "$NOTES" > /tmp/release-notes.md
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ steps.version.outputs.tag }}
         run: |
+          TAG="${{ steps.meta.outputs.tag }}"
           DMG_PATH="$(find dist -name '*.dmg' | head -1)"
           if gh release view "$TAG" &>/dev/null; then
             gh release upload "$TAG" "$DMG_PATH" --clobber
@@ -196,15 +189,15 @@ jobs:
           DMG_NAME: ${{ needs.github-release.outputs.dmg_name }}
         run: |
           mkdir -p homebrew-tap/Casks
-          cat > homebrew-tap/Casks/safeclaw.rb <<CASK
+          cat > homebrew-tap/Casks/safeclaw.rb << 'RUBY'
           # typed: false
           # frozen_string_literal: true
 
           cask "safeclaw" do
-            version "${VERSION}"
-            sha256 "${SHA256}"
+            version "VERSION_PLACEHOLDER"
+            sha256 "SHA256_PLACEHOLDER"
 
-            url "https://github.com/A3S-Lab/a3s/releases/download/${TAG}/${DMG_NAME}"
+            url "https://github.com/A3S-Lab/a3s/releases/download/TAG_PLACEHOLDER/DMG_NAME_PLACEHOLDER"
             name "SafeClaw"
             desc "Secure personal AI assistant with TEE support"
             homepage "https://github.com/A3S-Lab/a3s"
@@ -220,9 +213,14 @@ jobs:
               "~/Library/Logs/com.a3s.safeclaw",
             ]
           end
-          CASK
-          # Strip leading whitespace from heredoc indentation
-          sed -i 's/^          //' homebrew-tap/Casks/safeclaw.rb
+          RUBY
+          sed -i \
+            -e "s/VERSION_PLACEHOLDER/${VERSION}/" \
+            -e "s/SHA256_PLACEHOLDER/${SHA256}/" \
+            -e "s/TAG_PLACEHOLDER/${TAG}/" \
+            -e "s/DMG_NAME_PLACEHOLDER/${DMG_NAME}/" \
+            -e 's/^          //' \
+            homebrew-tap/Casks/safeclaw.rb
 
       - name: Commit and push
         working-directory: homebrew-tap
