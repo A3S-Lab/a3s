@@ -539,6 +539,55 @@ function NodeBody({
 			);
 		}
 
+		// ── Context-set: key → value rows ─────────────────────────────────────
+		case "context-set": {
+			const assigns = data.assigns as Record<string, string> | undefined;
+			const entries = Object.entries(assigns ?? {}).slice(0, 3);
+			if (!entries.length) return null;
+			const total = Object.keys(assigns ?? {}).length;
+			return (
+				<Body>
+					{entries.map(([key, val]) => (
+						<div
+							key={key}
+							className="flex h-6 items-center gap-1 rounded-md bg-muted/60 px-1.5 overflow-hidden"
+						>
+							<span className="shrink-0 text-xs font-mono text-muted-foreground/70 truncate max-w-[70px]">
+								{key}
+							</span>
+							<span className="text-muted-foreground/40 shrink-0 text-[10px]">＝</span>
+							<span className="text-xs text-foreground/70 font-mono truncate">
+								{val || "…"}
+							</span>
+						</div>
+					))}
+					{total > 3 && (
+						<p className="text-[10px] text-muted-foreground/50 pl-1">
+							+{total - 3} more
+						</p>
+					)}
+				</Body>
+			);
+		}
+
+		// ── Context-get: list of keys ──────────────────────────────────────────
+		case "context-get": {
+			const keys = data.keys as string[] | undefined;
+			if (!keys?.length) return null;
+			return (
+				<Body>
+					{keys.slice(0, 4).map((k) => (
+						<Pill key={k} mono>{k}</Pill>
+					))}
+					{keys.length > 4 && (
+						<p className="text-[10px] text-muted-foreground/50 pl-1">
+							+{keys.length - 4} more
+						</p>
+					)}
+				</Body>
+			);
+		}
+
 		// ── MCP: tool name + server ────────────────────────────────────────────
 		case "mcp": {
 			const toolName = (data.tool_name as string) ?? "";
@@ -2229,6 +2278,58 @@ function AssignsEditor({
 	);
 }
 
+// ── ContextKeysEditor (context-get node) ──────────────────────────────────────
+
+function ContextKeysEditor({
+	value,
+	onChange,
+}: {
+	value: string[];
+	onChange: (v: string[]) => void;
+}) {
+	const set = (idx: number, key: string) => {
+		const next = [...value];
+		next[idx] = key;
+		onChange(next);
+	};
+	const remove = (idx: number) => onChange(value.filter((_, i) => i !== idx));
+	const add = () => onChange([...value, ""]);
+
+	return (
+		<Field label="读取键列表">
+			<div className="flex flex-col gap-2">
+				{value.map((key, idx) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: order matters here
+					<div key={idx} className="flex items-center gap-1.5">
+						<input
+							type="text"
+							value={key}
+							onChange={(e) => set(idx, e.target.value)}
+							placeholder="上下文键名"
+							className={cn(inputCls, "flex-1 font-mono text-[11px]")}
+						/>
+						<button
+							type="button"
+							onClick={() => remove(idx)}
+							className="shrink-0 flex items-center justify-center h-8 w-8 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+						>
+							<Trash2 className="size-3" />
+						</button>
+					</div>
+				))}
+				<button
+					type="button"
+					onClick={add}
+					className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+				>
+					<Plus className="size-3" />
+					添加键
+				</button>
+			</div>
+		</Field>
+	);
+}
+
 // ── StartInputsEditor ─────────────────────────────────────────────────────────
 
 interface InputDecl {
@@ -2609,6 +2710,28 @@ function NodeFields({
 					<AssignsEditor
 						value={(draft.assigns as Record<string, string>) ?? {}}
 						onChange={(v) => patch({ assigns: v })}
+					/>
+				</Section>
+			);
+
+		// ── 写入上下文 ────────────────────────────────────────────────────────
+		case "context-set":
+			return (
+				<Section title="上下文写入">
+					<AssignsEditor
+						value={(draft.assigns as Record<string, string>) ?? {}}
+						onChange={(v) => patch({ assigns: v })}
+					/>
+				</Section>
+			);
+
+		// ── 读取上下文 ────────────────────────────────────────────────────────
+		case "context-get":
+			return (
+				<Section title="上下文读取">
+					<ContextKeysEditor
+						value={(draft.keys as string[]) ?? []}
+						onChange={(v) => patch({ keys: v })}
 					/>
 				</Section>
 			);

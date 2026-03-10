@@ -25,6 +25,8 @@ import {
 	Scissors,
 	Repeat,
 	List,
+	DatabaseBackup,
+	DatabaseZap,
 } from "lucide-react";
 
 export interface NodeCatalogEntry {
@@ -224,6 +226,28 @@ export const NODE_CATALOG: NodeCatalogEntry[] = [
 		headerBg: "bg-pink-50 dark:bg-pink-950/30",
 		headerText: "text-pink-700 dark:text-pink-300",
 		defaultData: { input_selector: "", sort_order: "asc" },
+	},
+	{
+		type: "context-set",
+		label: "写入上下文",
+		description: "将键值对写入工作流共享上下文，所有节点均可读取",
+		category: "数据处理",
+		icon: DatabaseBackup,
+		iconColor: "text-teal-600",
+		headerBg: "bg-teal-50 dark:bg-teal-950/30",
+		headerText: "text-teal-700 dark:text-teal-300",
+		defaultData: { assigns: {} },
+	},
+	{
+		type: "context-get",
+		label: "读取上下文",
+		description: "从工作流共享上下文读取指定键的值",
+		category: "数据处理",
+		icon: DatabaseZap,
+		iconColor: "text-teal-500",
+		headerBg: "bg-teal-50 dark:bg-teal-950/30",
+		headerText: "text-teal-700 dark:text-teal-300",
+		defaultData: { keys: [] },
 	},
 	{
 		type: "noop",

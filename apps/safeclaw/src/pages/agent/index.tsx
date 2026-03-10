@@ -92,7 +92,7 @@ export default function AgentPage() {
 				<ResizableHandle withHandle />
 				<ResizablePanel defaultSize={78} minSize={50}>
 					{currentSessionId ? (
-						<AgentChat key={currentSessionId} sessionId={currentSessionId} />
+						<AgentChat key={currentSessionId} sessionId={currentSessionId} disableMention />
 					) : (
 						<EmptyState />
 					)}
