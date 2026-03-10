@@ -13,6 +13,7 @@ import {
 	Network,
 	HardDrive,
 	Camera,
+	Loader2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSnapshot } from "valtio";
@@ -24,6 +25,7 @@ import { ImagesSection } from "./components/images-section";
 import { NetworksSection } from "./components/networks-section";
 import { VolumesSection } from "./components/volumes-section";
 import { SnapshotsSection } from "./components/snapshots-section";
+import { BoxNotInstalled } from "./components/box-not-installed";
 
 type SectionId =
 	| "overview"
@@ -77,9 +79,36 @@ export default function BoxPage() {
 	const snap = useSnapshot(boxModel.state);
 
 	useEffect(() => {
-		boxModel.fetchSystemInfo();
-		boxModel.fetchBoxes();
+		boxModel.checkInstalled().then(() => {
+			if (boxModel.state.installed) {
+				boxModel.fetchSystemInfo();
+				boxModel.fetchBoxes();
+			}
+		});
 	}, []);
+
+	// Still checking
+	if (snap.installed === null) {
+		return (
+			<div className="flex items-center justify-center h-full gap-2 text-muted-foreground">
+				<Loader2 className="size-4 animate-spin" />
+				<span className="text-sm">检测 a3s-box…</span>
+			</div>
+		);
+	}
+
+	// Not installed
+	if (snap.installed === false) {
+		return (
+			<BoxNotInstalled
+				onInstalled={() => {
+					boxModel.state.installed = true;
+					boxModel.fetchSystemInfo();
+					boxModel.fetchBoxes();
+				}}
+			/>
+		);
+	}
 
 	return (
 		<SidebarLayout

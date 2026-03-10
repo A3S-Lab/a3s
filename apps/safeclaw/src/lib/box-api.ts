@@ -127,6 +127,43 @@ export async function restoreSnapshot(id: string): Promise<void> {
 	await apiFetch(`/box/snapshots/${id}/restore`, jsonBody("POST", {}));
 }
 
+// ── Installation ─────────────────────────────────────────────────────
+
+export async function checkInstalled(): Promise<{
+	installed: boolean;
+	version: string | null;
+}> {
+	return apiFetch("/box/check");
+}
+
+/**
+ * Stream `brew install a3s-lab/tap/a3s-box` output line by line.
+ * Uses native fetch (not Tauri plugin) to get a ReadableStream.
+ * Calls `onLine` for each output line; resolves when the stream ends.
+ * Throws if the response is not ok.
+ */
+export async function installBox(
+	onLine: (line: string) => void,
+): Promise<void> {
+	const { apiUrl } = await import("@/lib/http");
+	const resp = await fetch(apiUrl("/box/install"), { method: "POST" });
+	if (!resp.ok || !resp.body) {
+		throw new Error(`install request failed: ${resp.status}`);
+	}
+	const reader = resp.body.getReader();
+	const decoder = new TextDecoder();
+	let buf = "";
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		buf += decoder.decode(value, { stream: true });
+		const lines = buf.split("\n");
+		buf = lines.pop() ?? "";
+		for (const line of lines) onLine(line);
+	}
+	if (buf) onLine(buf);
+}
+
 // ── System ───────────────────────────────────────────────────────────
 
 export async function getSystemInfo(): Promise<BoxSystemInfo> {

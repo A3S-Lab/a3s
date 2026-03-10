@@ -1148,6 +1148,8 @@ async fn handle_fs_watch(mut socket: WebSocket, path: String) {
 
 fn box_router() -> Router {
     Router::new()
+        .route("/api/v1/box/check", get(box_check))
+        .route("/api/v1/box/install", post(box_install))
         .route("/api/v1/box/containers", get(box_list_containers))
         .route("/api/v1/box/containers/:id", get(box_inspect_container))
         .route("/api/v1/box/containers/:id/start", post(box_start))
@@ -1717,6 +1719,124 @@ async fn box_system_prune() -> impl IntoResponse {
         Ok(_) => (StatusCode::OK, Json(serde_json::json!({"reclaimed": 0}))).into_response(),
         Err(e) => e.into_response(),
     }
+}
+
+// =============================================================================
+// Box installation check & auto-install
+// =============================================================================
+
+/// GET /api/v1/box/check — returns whether `a3s-box` is available in PATH.
+async fn box_check() -> impl IntoResponse {
+    let installed = tokio::process::Command::new("a3s-box")
+        .arg("--version")
+        .output()
+        .await
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    let version = if installed {
+        tokio::process::Command::new("a3s-box")
+            .arg("--version")
+            .output()
+            .await
+            .ok()
+            .and_then(|o| String::from_utf8(o.stdout).ok())
+            .map(|s| s.trim().to_string())
+    } else {
+        None
+    };
+
+    Json(serde_json::json!({ "installed": installed, "version": version }))
+}
+
+/// POST /api/v1/box/install — runs `brew install a3s-lab/tap/a3s-box` and
+/// streams combined stdout+stderr as `text/plain` (newline-delimited).
+async fn box_install() -> impl IntoResponse {
+    use axum::body::Body;
+    use bytes::Bytes;
+    use tokio::io::{AsyncBufReadExt, BufReader};
+    use tokio_stream::wrappers::ReceiverStream;
+
+    let (tx, rx) = tokio::sync::mpsc::channel::<Bytes>(64);
+
+    tokio::spawn(async move {
+        // Locate brew — try common install paths before falling back to PATH.
+        let brew = ["/opt/homebrew/bin/brew", "/usr/local/bin/brew", "brew"]
+            .iter()
+            .find(|p| std::path::Path::new(p).exists() || p == &&"brew")
+            .copied()
+            .unwrap_or("brew");
+
+        let send = |msg: String| {
+            let tx = tx.clone();
+            async move { let _ = tx.send(Bytes::from(msg)).await; }
+        };
+
+        let mut child = match tokio::process::Command::new(brew)
+            .args(["install", "a3s-lab/tap/a3s-box"])
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+        {
+            Ok(c) => c,
+            Err(e) => {
+                send(format!("[error] brew not found: {e}\n")).await;
+                return;
+            }
+        };
+
+        let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
+
+        let tx_out = tx.clone();
+        let h1 = tokio::spawn(async move {
+            let mut lines = BufReader::new(stdout).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                if tx_out.send(Bytes::from(format!("{line}\n"))).await.is_err() {
+                    break;
+                }
+            }
+        });
+
+        let tx_err = tx.clone();
+        let h2 = tokio::spawn(async move {
+            let mut lines = BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                if tx_err.send(Bytes::from(format!("{line}\n"))).await.is_err() {
+                    break;
+                }
+            }
+        });
+
+        let _ = h1.await;
+        let _ = h2.await;
+
+        match child.wait().await {
+            Ok(s) if s.success() => {
+                send("[done]\n".to_string()).await;
+            }
+            Ok(s) => {
+                send(format!(
+                    "[error] exit code {}\n",
+                    s.code().unwrap_or(-1)
+                ))
+                .await;
+            }
+            Err(e) => {
+                send(format!("[error] {e}\n")).await;
+            }
+        }
+        // tx drops here — stream ends
+    });
+
+    let stream = ReceiverStream::new(rx).map(Ok::<_, std::io::Error>);
+    (
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; charset=utf-8",
+        )],
+        Body::from_stream(stream),
+    )
 }
 
 // =============================================================================

@@ -16,6 +16,8 @@ import type {
 import * as boxApi from "@/lib/box-api";
 
 interface BoxState {
+	/** null = unknown (not yet checked), true/false = check result */
+	installed: boolean | null;
 	boxes: BoxInfo[];
 	stats: BoxStats[];
 	images: BoxImage[];
@@ -35,6 +37,7 @@ interface BoxState {
 }
 
 const state = proxy<BoxState>({
+	installed: null,
 	boxes: [],
 	stats: [],
 	images: [],
@@ -54,6 +57,15 @@ const state = proxy<BoxState>({
 });
 
 const actions = {
+	async checkInstalled() {
+		try {
+			const result = await boxApi.checkInstalled();
+			state.installed = result.installed;
+		} catch {
+			state.installed = false;
+		}
+	},
+
 	async fetchBoxes() {
 		state.loading.boxes = true;
 		try {

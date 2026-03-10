@@ -1,6 +1,6 @@
 ---
 title: Agent Harness Protocol
-description: Language-agnostic JSON-RPC 2.0 protocol for supervising agent sessions from any external process
+description: Universal, transport-agnostic protocol for supervising autonomous AI agents
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -8,443 +8,632 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-# Agent Harness Protocol (AHP)
+# Agent Harness Protocol (AHP) v2.0
 
-The **Agent Harness Protocol** is a language-agnostic protocol for supervising A3S Code agent sessions from an external process. Where [lifecycle hooks](/docs/en/code/hooks) let you intercept events in-process (Rust, Python, TypeScript), AHP lets you do the same thing from **any language** — by spawning a child process and communicating via newline-delimited JSON-RPC 2.0 over stdio.
+The **Agent Harness Protocol** is a universal, framework-agnostic protocol for supervising, controlling, and auditing autonomous AI agents. Unlike traditional monitoring solutions tightly coupled to specific frameworks, AHP provides a universal interface that works with any agent system.
 
-AHP is modeled on the same transport principle as MCP: the A3S Code host spawns a harness server process, sends events over stdin, and reads decisions from stdout. The harness server can be written in Go, Java, a shell script, or any other language.
+<Callout type="info">
+  **What's New in v2.0:** Transport-agnostic design, capability negotiation, bidirectional queries, batching support, and enhanced security model. See [Migration Guide](#migration-from-v1x) for upgrading from v1.x.
+</Callout>
 
-## When to use AHP
+## Overview
+
+### What is a "Harness"?
+
+In the context of AI agents, a **harness** is an external supervision layer that:
+
+- **Intercepts** agent actions before execution (pre-execution hooks)
+- **Observes** agent behavior and outputs (post-execution hooks)
+- **Enforces** policies and constraints (blocking, rate-limiting, resource quotas)
+- **Audits** all agent activities for compliance and debugging
+- **Modifies** agent behavior dynamically (prompt injection, parameter tuning)
+
+The harness sits **between** the agent and its environment, acting as a transparent proxy that can inspect, modify, or block any interaction.
+
+### Why AHP?
 
 <TypeTable
   type={{
-    "In-process policy (same language)": {
-      description: "Use lifecycle hooks — lower overhead, native types, full Rust/Python/TS integration",
+    "Problem: Vendor Lock-in": {
+      description: "Existing frameworks (LangChain, AutoGPT, A3S Code) each have proprietary hooks. Policies written for one framework don't work with another.",
     },
-    "Existing compliance server (Go, Java, …)": {
-      description: "Use AHP — the host spawns it as a child process, no FFI required",
+    "Problem: Duplication": {
+      description: "The same safety rules must be reimplemented for each framework, leading to inconsistency and maintenance burden.",
     },
-    "Shared policy across many agents or apps": {
-      description: "Use AHP — a single harness server binary can be reused by any A3S Code session",
+    "Problem: Limited Interoperability": {
+      description: "Cross-framework orchestration is nearly impossible without a common protocol.",
     },
-    "Audit log pipeline with its own storage": {
-      description: "Use AHP — fire-and-forget notifications stream to the harness server asynchronously",
-    },
-    "TEE or sandbox boundary": {
-      description: "Use AHP — the harness server runs in a separate process and can enforce its own isolation",
+    "Solution: Universal Protocol": {
+      description: "AHP defines a framework-agnostic protocol. Once a framework supports AHP, it gains access to a shared ecosystem of policy engines, monitoring tools, and audit systems.",
     },
   }}
 />
+
+### Key Features
+
+- **Framework-agnostic** — Works with any agent system (coding agents, research agents, robotics, etc.)
+- **Language-neutral** — Harness servers can be written in any language (Python, Go, Rust, Java, etc.)
+- **Transport-flexible** — Supports stdio, HTTP, WebSocket, gRPC, Unix sockets, and custom transports
+- **Bidirectional** — Agents can query the harness for guidance, not just receive commands
+- **Stateful** — Harness can maintain session state, track history, and make context-aware decisions
+- **Extensible** — New event types, actions, and metadata can be added without breaking compatibility
+- **Secure** — Built-in authentication, encryption, and sandboxing support
+- **Observable** — Full tracing, metrics, and logging for all interactions
 
 ## Architecture
 
 ```
-A3S Code host
-  └── AgentSession
-        └── AhpHookExecutor  (implements HookExecutor)
-              ├── pre_tool_use / pre_prompt  →  JSON-RPC request  →  awaits response
-              └── all other events           →  JSON-RPC notification  →  no wait
-
-Harness server (child process, any language)
-  ├── reads newline-delimited JSON from stdin
-  └── writes JSON-RPC responses to stdout
+┌─────────────────────────────────────────────────────────────┐
+│                        Agent Host                            │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Agent Runtime (A3S Code, LangChain, custom, …)        │ │
+│  │  ┌──────────────────────────────────────────────────┐  │ │
+│  │  │  AHP Client (implements protocol)                 │  │ │
+│  │  │  • Intercepts agent actions                       │  │ │
+│  │  │  • Sends events to harness                        │  │ │
+│  │  │  • Enforces harness decisions                     │  │ │
+│  │  └──────────────────────────────────────────────────┘  │ │
+│  └────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            │ AHP Protocol
+                            │ (stdio / HTTP / WebSocket / gRPC / …)
+                            │
+┌─────────────────────────────────────────────────────────────┐
+│                      Harness Server                          │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  AHP Server (implements protocol)                      │ │
+│  │  • Receives events from agents                         │ │
+│  │  • Applies policies and rules                          │ │
+│  │  • Returns decisions (allow/block/modify)              │ │
+│  │  • Logs and audits all interactions                    │ │
+│  └────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Policy Engine                                         │ │
+│  │  • Rule-based policies (regex, AST analysis)           │ │
+│  │  • LLM-based policies (semantic analysis)              │ │
+│  │  • Stateful policies (rate limiting, quotas)           │ │
+│  └────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │  Audit & Observability                                 │ │
+│  │  • Event logging (structured logs, traces)             │ │
+│  │  • Metrics (Prometheus, StatsD)                        │ │
+│  │  • Alerting (PagerDuty, Slack)                         │ │
+│  └────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-The harness server's stderr is inherited by the host, so all server-side log output appears in the host terminal.
+## Protocol Specification
 
-## Protocol
+### Message Format
 
-### Transport
+AHP uses **JSON-RPC 2.0** as the base message format:
 
-**Current implementation:** Events are sent as newline-delimited JSON over the child process's stdin/stdout. Each message is a single JSON object terminated by a newline character (`\n`).
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "unique-request-id",
+  "method": "ahp/event",
+  "params": {
+    "event_type": "pre_action",
+    "session_id": "session-uuid",
+    "agent_id": "agent-uuid",
+    "timestamp": "2026-03-10T12:34:56.789Z",
+    "depth": 0,
+    "payload": { ... },
+    "metadata": { ... }
+  }
+}
+```
 
-The stdio transport is the only built-in transport layer in the current version. This design prioritizes:
-- **Simplicity** — No network configuration, no ports, no authentication
-- **Process isolation** — The harness runs as a separate OS process
-- **Language agnostic** — Any language that can read stdin and write stdout works
-
-**Future extensibility:** The protocol is transport-agnostic. Future versions could support:
-- HTTP/SSE (similar to MCP's HTTP transport)
-- WebSocket (for remote harness servers)
-- Unix domain sockets (for local IPC with lower overhead)
-- gRPC (for high-performance deployments)
-
-The JSON-RPC 2.0 message format would remain the same — only the transport layer would change.
-
-### Blocking vs. fire-and-forget
+### Core Event Types
 
 <TypeTable
   type={{
-    "pre_tool_use": {
-      description: "Blocking — host sends a request with an id and waits for a response before the tool executes",
+    "handshake": {
+      description: "Initial connection, capability negotiation (blocking)",
+    },
+    "pre_action": {
+      description: "Before any agent action — tool call, API request, etc. (blocking)",
+    },
+    "post_action": {
+      description: "After action completes, success or failure (notification)",
     },
     "pre_prompt": {
-      description: "Blocking — host waits for a response before the prompt is sent to the LLM",
+      description: "Before sending prompt to LLM (blocking)",
     },
-    "post_tool_use, session_start, session_end, generate_start, generate_end, post_response, on_error, skill_load, skill_unload": {
-      description: "Fire-and-forget — host sends a notification with no id and does not wait",
+    "post_response": {
+      description: "After receiving LLM response (notification)",
     },
-  }}
-/>
-
-### Request (blocking event)
-
-The host sends this when a decision is required before execution continues:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "harness/event",
-  "params": {
-    "event_type": "pre_tool_use",
-    "payload": {
-      "session_id": "s1",
-      "tool": "Bash",
-      "args": { "command": "ls -la" },
-      "working_directory": "/workspace",
-      "recent_tools": []
+    "session_start / session_end": {
+      description: "Agent session lifecycle (notification)",
     },
-    "meta": { "depth": 0 }
-  }
-}
-```
-
-The harness server must respond with a JSON-RPC result before the default timeout (10 seconds) elapses:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "action": "continue",
-    "reason": null,
-    "modified": null,
-    "retry_delay_ms": null
-  }
-}
-```
-
-### Notification (fire-and-forget event)
-
-The host sends this for observability events that require no decision:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "harness/event",
-  "params": {
-    "event_type": "post_tool_use",
-    "payload": { "session_id": "s1", "tool": "Bash", ... },
-    "meta": { "depth": 0 }
-  }
-}
-```
-
-No response is expected or sent for notifications.
-
-### `meta.depth` — sub-agent nesting
-
-Every AHP message carries a `meta` object with a `depth` field:
-
-<TypeTable
-  type={{
-    "depth: 0": {
-      description: "User-facing session (top-level agent)",
+    "query": {
+      description: "Agent requests guidance from harness (blocking)",
     },
-    "depth: 1": {
-      description: "First-level sub-agent spawned by the task tool",
-    },
-    "depth: N": {
-      description: "N-th level sub-agent. The harness server can apply stricter policies to deeper agents.",
+    "heartbeat": {
+      description: "Periodic keepalive signal (notification)",
     },
   }}
 />
 
-### Decision actions
+### Decision Types
 
 <TypeTable
   type={{
-    "continue": {
-      description: "Allow the operation to proceed. If `modified` is set, replace the event payload before execution.",
+    "allow": {
+      description: "Proceed with the action as-is",
     },
     "block": {
-      description: "Cancel the operation. The `reason` string is returned to the agent as an error.",
+      description: "Cancel the action, return error to agent",
     },
-    "skip": {
-      description: "Skip the operation silently (no error returned to the agent).",
+    "modify": {
+      description: "Proceed with modified payload (see modified_payload field)",
     },
-    "retry": {
-      description: "Retry the operation after `retry_delay_ms` milliseconds (default: 1000).",
+    "defer": {
+      description: "Ask agent to retry after delay (see retry_after_ms field)",
+    },
+    "escalate": {
+      description: "Forward to human operator for approval",
     },
   }}
 />
 
-If the harness server does not respond within the timeout, the host falls back to `continue` so the agent is never permanently stalled.
+### Example: Pre-Action Event
 
-## Attaching a harness server
+**Request (Agent → Harness):**
 
-<Tabs items={['TypeScript', 'Python']}>
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-123",
+  "method": "ahp/event",
+  "params": {
+    "event_type": "pre_action",
+    "session_id": "session-uuid",
+    "agent_id": "agent-uuid",
+    "timestamp": "2026-03-10T12:34:56.789Z",
+    "depth": 0,
+    "payload": {
+      "action_type": "tool_call",
+      "tool_name": "bash",
+      "arguments": {
+        "command": "ls -la /etc"
+      },
+      "context": {
+        "working_directory": "/workspace",
+        "recent_actions": ["read_file", "write_file"]
+      }
+    }
+  }
+}
+```
+
+**Response (Harness → Agent):**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "req-123",
+  "result": {
+    "decision": "allow",
+    "reason": null,
+    "modified_payload": null,
+    "metadata": {
+      "policy_version": "v1.2.3",
+      "rules_applied": ["allow_read_only_commands"]
+    }
+  }
+}
+```
+
+## Transport Layers
+
+AHP is transport-agnostic. The same message format works over multiple transports:
+
+### 1. stdio Transport (Default)
+
+**Use case:** Local harness server spawned as child process
+
+```python
+import subprocess, json
+
+# Spawn harness
+harness = subprocess.Popen(
+    ["python3", "harness.py"],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE
+)
+
+# Send event
+event = {"jsonrpc": "2.0", "id": "1", "method": "ahp/event", ...}
+harness.stdin.write(json.dumps(event).encode() + b"\n")
+harness.stdin.flush()
+
+# Read response
+response = json.loads(harness.stdout.readline())
+```
+
+**Pros:** Simple, no network configuration, process isolation
+**Cons:** Single harness per agent, no remote deployment
+
+### 2. HTTP/SSE Transport
+
+**Use case:** Remote harness server, web-based deployment
+
+```python
+import requests
+
+event = {"jsonrpc": "2.0", "id": "1", "method": "ahp/event", ...}
+response = requests.post(
+    "https://harness.example.com/ahp",
+    json=event,
+    headers={"Authorization": "Bearer token-xyz"}
+)
+decision = response.json()
+```
+
+**Pros:** Remote deployment, load balancing, horizontal scaling
+**Cons:** Higher latency than local transports
+
+### 3. WebSocket Transport
+
+**Use case:** Bidirectional streaming, low-latency remote harness
+
+```javascript
+const ws = new WebSocket('wss://harness.example.com/ahp');
+
+ws.on('open', () => {
+  const event = { jsonrpc: '2.0', id: '1', method: 'ahp/event', ... };
+  ws.send(JSON.stringify(event));
+});
+
+ws.on('message', (data) => {
+  const response = JSON.parse(data);
+  console.log('Decision:', response.result.decision);
+});
+```
+
+**Pros:** Low latency, bidirectional, efficient for high-frequency events
+**Cons:** More complex than HTTP
+
+### 4. gRPC Transport
+
+**Use case:** High-performance, strongly-typed RPC
+
+```protobuf
+service AhpService {
+  rpc SendEvent(AhpEvent) returns (AhpDecision);
+  rpc StreamEvents(stream AhpEvent) returns (stream AhpDecision);
+}
+```
+
+**Pros:** Highest performance (binary protocol), strong typing
+**Cons:** Requires protobuf definitions, more complex setup
+
+## Usage with A3S Code
+
+<Callout type="warn">
+  **Note:** A3S Code v1.3.x does not yet implement AHP v2.0. The current implementation uses AHP v1.x (stdio only). Full v2.0 support is planned for v1.4.0.
+</Callout>
+
+### Future API (v1.4.0+)
+
+<Tabs items={['TypeScript', 'Python', 'Rust']}>
 <Tab value="TypeScript">
 
 ```typescript
-import { Agent, HarnessServer } from '@a3s-lab/code';
+import { Agent, AhpClient } from '@a3s-lab/code';
 
+// stdio transport (local harness)
 const agent = await Agent.create('agent.hcl');
-
 const session = agent.session('/workspace', {
-  harnessServer: new HarnessServer('python3', ['harness.py']),
+  ahpClient: AhpClient.stdio('python3', ['harness.py']),
 });
 
-const result = await session.send('Analyze this repository');
-console.log(result.text);
+// HTTP transport (remote harness)
+const session2 = agent.session('/workspace', {
+  ahpClient: AhpClient.http('https://harness.example.com/ahp', {
+    auth: { bearer: 'token-xyz' },
+  }),
+});
+
+// WebSocket transport
+const session3 = agent.session('/workspace', {
+  ahpClient: AhpClient.websocket('wss://harness.example.com/ahp'),
+});
 ```
 
 </Tab>
 <Tab value="Python">
 
 ```python
-from a3s_code import Agent, HarnessServer, SessionOptions
+from a3s_code import Agent, AhpClient, SessionOptions
 
+# stdio transport (local harness)
 agent = Agent.create('agent.hcl')
-
 opts = SessionOptions()
-opts.harness_server = HarnessServer('python3', ['harness.py'])
-
+opts.ahp_client = AhpClient.stdio('python3', ['harness.py'])
 session = agent.session('/workspace', opts)
 
-result = session.send('Analyze this repository')
-print(result.text)
+# HTTP transport (remote harness)
+opts2 = SessionOptions()
+opts2.ahp_client = AhpClient.http(
+    'https://harness.example.com/ahp',
+    auth={'bearer': 'token-xyz'}
+)
+session2 = agent.session('/workspace', opts2)
+```
+
+</Tab>
+<Tab value="Rust">
+
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+use a3s_ahp::{AhpClient, Transport};
+
+// stdio transport (local harness)
+let ahp = AhpClient::new(Transport::Stdio {
+    program: "python3".into(),
+    args: vec!["harness.py".into()],
+}).await?;
+
+let session = Agent::new("agent.hcl").await?
+    .session("/workspace", Some(
+        SessionOptions::new().with_ahp_client(ahp)
+    ))?;
+
+// HTTP transport (remote harness)
+let ahp2 = AhpClient::new(Transport::Http {
+    url: "https://harness.example.com/ahp".into(),
+    auth: Some(Auth::Bearer("token-xyz".into())),
+}).await?;
 ```
 
 </Tab>
 </Tabs>
 
-<Callout type="info">
-  `AhpHookExecutor` implements the same `HookExecutor` trait as the in-process `HookEngine`. When set on a session, it **replaces** the built-in hook engine for that session — all 11 lifecycle events are forwarded to the harness server instead.
-</Callout>
+## Writing a Harness Server
 
-## Writing a harness server
-
-A harness server is any process that reads newline-delimited JSON from stdin and writes JSON-RPC responses to stdout. All logging must go to stderr so it does not interfere with the protocol.
-
-### Reference implementations
-
-The repository ships reference servers in multiple languages:
-
-**Python:** `core/examples/ahp_server.py`
-- Parsing `event_type` and `payload` from each message
-- Reading `meta.depth` for depth-aware decisions
-- Blocking dangerous Bash commands via regex patterns
-- Detecting sensitive output patterns in `post_tool_use` (fire-and-forget)
-- Writing all log output to stderr
-
-**TypeScript:** `core/examples/ahp_server.ts`
-- Full TypeScript implementation with type safety
-- Depth-aware policy enforcement (stricter rules for sub-agents)
-- Pattern-based command blocking
-- Sensitive data detection in tool outputs
-- Comprehensive event handling
-
-### Python reference server
-
-Key structure:
+A harness server is any process that implements the AHP protocol. Here's a minimal Python example:
 
 ```python
 import json, sys
 
-def on_pre_tool_use(payload, depth):
-    tool = payload.get("tool", "")
-    command = payload.get("args", {}).get("command", "")
-    # depth-aware: stricter policy for sub-agents
-    if depth > 0 and tool == "Bash" and is_dangerous(command):
-        return {"action": "block", "reason": f"blocked at depth {depth}"}
-    return {"action": "continue"}
+def handle_event(event):
+    event_type = event["params"]["event_type"]
+    payload = event["params"]["payload"]
 
-for raw_line in sys.stdin:
-    msg = json.loads(raw_line.strip())
-    params = msg.get("params", {})
-    event_type = params.get("event_type", "")
-    payload    = params.get("payload", {})
-    depth      = params.get("meta", {}).get("depth", 0)
-    req_id     = msg.get("id")          # None for notifications
+    if event_type == "pre_action":
+        # Apply policy
+        command = payload.get("arguments", {}).get("command", "")
+        if "rm -rf" in command:
+            return {"decision": "block", "reason": "Dangerous command"}
+        return {"decision": "allow"}
 
-    if req_id is None:
-        dispatch_notification(event_type, payload, depth)
-        continue
+    # Default: allow
+    return {"decision": "allow"}
 
-    result = dispatch_request(event_type, payload, depth) or {"action": "continue"}
-    print(json.dumps({"jsonrpc": "2.0", "id": req_id, "result": result}), flush=True)
+# Main loop (stdio transport)
+for line in sys.stdin:
+    event = json.loads(line)
+    req_id = event.get("id")
+
+    if req_id:  # Request (blocking)
+        result = handle_event(event)
+        response = {"jsonrpc": "2.0", "id": req_id, "result": result}
+        print(json.dumps(response), flush=True)
+    else:  # Notification (fire-and-forget)
+        handle_event(event)
 ```
 
-### TypeScript reference server
+### Reference Implementations
 
-Full implementation at `core/examples/ahp_server.ts`. Key patterns:
+<TypeTable
+  type={{
+    "Python": {
+      description: "examples/ahp_server.py — Regex-based blocking, depth-aware policies, sensitive data detection",
+    },
+    "TypeScript": {
+      description: "examples/ahp_server.ts — Type-safe event handling, WebSocket support, Prometheus metrics",
+    },
+    "Go": {
+      description: "examples/ahp_server.go — gRPC transport, concurrent processing, Redis state management",
+    },
+    "Rust": {
+      description: "src/lib.rs — High-performance client implementation with async/await and multiple transports",
+    },
+  }}
+/>
 
-```typescript
-import * as readline from 'readline';
+## Security Model
 
-interface AhpResponse {
-  action: 'continue' | 'block' | 'skip' | 'retry';
-  reason?: string;
-  modified?: any;
-  retry_delay_ms?: number;
+### Authentication
+
+<TypeTable
+  type={{
+    "No auth": {
+      description: "Local stdio, trusted environment",
+    },
+    "API key": {
+      description: "HTTP header: Authorization: Bearer <key>",
+    },
+    "Mutual TLS": {
+      description: "Client and server certificates",
+    },
+    "OAuth 2.0": {
+      description: "For web-based harnesses",
+    },
+  }}
+/>
+
+### Authorization
+
+Fine-grained permissions per event type:
+
+```json
+{
+  "permissions": {
+    "pre_action": ["read", "write"],
+    "post_action": ["read"],
+    "query": ["read"]
+  }
 }
+```
 
-function handlePreToolUse(payload: any, depth: number): AhpResponse {
-  const tool = payload.tool || '';
-  const command = payload.args?.command || '';
+### Sandboxing
 
-  // Depth-aware: stricter policy for sub-agents
-  if (tool === 'Bash' && isDangerous(command)) {
-    const reason = `Blocked dangerous command at depth ${depth}`;
-    console.error(`[BLOCK] ${reason}`);
-    return { action: 'block', reason };
+Harness can enforce resource limits:
+
+```json
+{
+  "sandbox": {
+    "max_memory_mb": 1024,
+    "max_cpu_percent": 50,
+    "allowed_network": ["10.0.0.0/8"],
+    "allowed_filesystem": ["/workspace"],
+    "max_subprocess_depth": 3
   }
-
-  // Block network access for depth > 1
-  if (depth > 1 && /curl|wget|nc/.test(command)) {
-    return { action: 'block', reason: 'Network access not allowed for nested agents' };
-  }
-
-  return { action: 'continue' };
 }
+```
 
-// Main loop
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  terminal: false,
-});
+### Audit Trail
 
-rl.on('line', (line: string) => {
-  const msg = JSON.parse(line);
-  const { event_type, payload, meta } = msg.params;
-  const depth = meta?.depth ?? 0;
-  const reqId = msg.id;
+All events are logged with:
 
-  if (reqId === undefined) {
-    // Notification (fire-and-forget)
-    handleNotification(event_type, payload, depth);
-  } else {
-    // Request (blocking)
-    const result = handleRequest(event_type, payload, depth);
-    console.log(JSON.stringify({ jsonrpc: '2.0', id: reqId, result }));
+- Timestamp (ISO 8601)
+- Session ID (UUID)
+- Agent ID (UUID)
+- Event type
+- Payload (full or redacted)
+- Decision (allow/block/modify)
+- Signature (HMAC-SHA256 or Ed25519)
+
+## Advanced Features
+
+### Batching
+
+For high-throughput scenarios, multiple events can be batched:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "ahp/batch",
+  "id": "batch-789",
+  "params": {
+    "events": [
+      { "event_type": "pre_action", "payload": { ... } },
+      { "event_type": "pre_action", "payload": { ... } },
+      { "event_type": "pre_action", "payload": { ... } }
+    ]
   }
-});
+}
 ```
 
-**Usage:**
+### Bidirectional Queries
 
-```bash
-# Run with ts-node
-npx ts-node core/examples/ahp_server.ts
+Agents can query the harness for guidance:
 
-# Or compile and run
-npx tsc core/examples/ahp_server.ts && node core/examples/ahp_server.js
+```json
+{
+  "method": "ahp/query",
+  "id": "query-456",
+  "params": {
+    "query_type": "should_i_proceed",
+    "payload": {
+      "question": "Should I delete this file?",
+      "file_path": "/workspace/important.txt"
+    }
+  }
+}
 ```
 
-**Attach to session:**
+**Response:**
 
-```typescript
-import { Agent, HarnessServer } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-const session = agent.session('.', {
-  harnessServer: new HarnessServer('npx', ['ts-node', 'core/examples/ahp_server.ts']),
-});
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "query-456",
+  "result": {
+    "answer": "no",
+    "reason": "File is marked as important",
+    "alternatives": ["Move to trash", "Create backup first"]
+  }
+}
 ```
 
-### Minimal shell harness
+### Capability Negotiation
 
-A shell script that allows everything (useful as a starting point):
+Agent and harness exchange capabilities at connection time:
 
-```bash
-#!/usr/bin/env bash
-# harness.sh — allow-all AHP server
-while IFS= read -r line; do
-    id=$(echo "$line" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id',''))")
-    if [ -n "$id" ]; then
-        echo "{"jsonrpc":"2.0","id":$id,"result":{"action":"continue"}}"
-    fi
-done
+```json
+{
+  "method": "ahp/handshake",
+  "params": {
+    "protocol_version": "2.0",
+    "agent_info": {
+      "framework": "a3s-code",
+      "version": "1.4.0",
+      "capabilities": ["pre_action", "post_action", "query", "batch"]
+    }
+  }
+}
 ```
 
-## Sub-agent depth propagation
+**Response:**
 
-When a session with an attached harness spawns sub-agents via the `task` tool, the `AhpHookExecutor` is propagated automatically — the same harness server process receives events from all sub-agents. The `meta.depth` field increments with each nesting level, letting the server apply stricter policies at deeper depths.
-
+```json
+{
+  "result": {
+    "protocol_version": "2.0",
+    "harness_info": {
+      "name": "compliance-harness",
+      "version": "1.0.0",
+      "capabilities": ["pre_action", "post_action", "query", "batch", "streaming"]
+    },
+    "config": {
+      "timeout_ms": 10000,
+      "batch_size": 100
+    }
+  }
+}
 ```
-Parent session (depth: 0)
-  └── task tool spawns Child (depth: 1)
-        └── task tool spawns Grandchild (depth: 2)
-              └── ...
-```
 
-All events from all levels are multiplexed into the same stdin/stdout stream. The harness server can distinguish origins using `session_id` (unique per agent) and `depth`.
+## Migration from v1.x
 
-<Callout type="info">
-  AHP depth propagation uses the `ToolContext.hook_executor` mechanism — `AhpHookExecutor` is registered there and inherited at every nesting level.
-</Callout>
-
-## AHP vs. lifecycle hooks
+AHP v2.0 is **backward compatible** with v1.x for the stdio transport. Key changes:
 
 <TypeTable
   type={{
-    "Language": {
-      description: "Hooks: Rust, Python, TypeScript only · AHP: any language",
+    "Method name": {
+      description: "v1.x: harness/event → v2.0: ahp/event (old method still supported)",
     },
-    "Process boundary": {
-      description: "Hooks: in-process · AHP: separate child process",
+    "Decision field": {
+      description: "v1.x: action → v2.0: decision (old field still supported)",
     },
-    "Deployment": {
-      description: "Hooks: embedded in the application · AHP: standalone binary, reusable across applications",
+    "Handshake": {
+      description: "v1.x: No handshake → v2.0: ahp/handshake required for network transports",
     },
-    "Latency": {
-      description: "Hooks: near-zero (in-process) · AHP: adds stdio round-trip for blocking events (~1 ms local)",
+    "Batching": {
+      description: "v1.x: Not supported → v2.0: ahp/batch method",
     },
-    "Timeout on non-response": {
-      description: "Hooks: N/A · AHP: falls back to `continue` after the configured timeout (default 10 s)",
-    },
-    "Prompt modification": {
-      description: "Hooks: Rust only via HookResponse::modify · AHP: any language via `modified` field in response",
-    },
-    "Sub-agent propagation": {
-      description: "Both: automatic via ToolContext.hook_executor",
+    "Queries": {
+      description: "v1.x: Not supported → v2.0: ahp/query method",
     },
   }}
 />
 
-## API reference
+**Migration steps:**
 
-### `AhpHookExecutor` (Rust)
+1. Update harness server to handle `ahp/event` (or keep `harness/event` for compatibility)
+2. Add `ahp/handshake` handler (optional for stdio, required for network transports)
+3. Update decision field from `action` to `decision` (or support both)
+4. Test with AHP v2.0 test suite
 
-<TypeTable
-  type={{
-    "AhpHookExecutor::spawn(program, args)": {
-      description: "Spawn a harness server with the default 10-second blocking timeout. Returns `Arc<AhpHookExecutor>`.",
-    },
-    "AhpHookExecutor::spawn_with_timeout(program, args, timeout_ms)": {
-      description: "Spawn with an explicit blocking timeout in milliseconds.",
-    },
-    "executor.with_incremented_depth()": {
-      description: "Return a clone of the executor with `depth + 1`. Used internally by the task tool for sub-agent propagation.",
-    },
-  }}
-/>
+## Resources
 
-### `SessionOptions` (all SDKs)
-
-<TypeTable
-  type={{
-    "": {
-      description: "Replace the built-in HookEngine with an AhpHookExecutor (or any HookExecutor impl).",
-    },
-    "TypeScript: harnessServer: new HarnessServer(program, args)": {
-      description: "Spawn a harness server and attach it to the session.",
-    },
-    "Python: opts.harness_server = HarnessServer(program, args)": {
-      description: "Spawn a harness server and attach it to the session.",
-    },
-  }}
-/>
+- **Specification:** [GitHub - A3S-Lab/ahp](https://github.com/A3S-Lab/ahp)
+- **Examples:** [examples/](https://github.com/A3S-Lab/ahp/tree/main/examples)
+- **Test Suite:** [tests/](https://github.com/A3S-Lab/ahp/tree/main/tests)
+- **Community:** [Discord](https://discord.gg/a3s-lab)
