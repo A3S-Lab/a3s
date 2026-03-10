@@ -1,3 +1,13 @@
+/** Convert a File to a base64 data URL for local storage. */
+export function fileToDataUrl(file: File): Promise<string> {
+	return new Promise((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = (e) => resolve(e.target!.result as string);
+		reader.onerror = reject;
+		reader.readAsDataURL(file);
+	});
+}
+
 export const createImage = (url: string) =>
 	new Promise((resolve, reject) => {
 		const image = new Image();

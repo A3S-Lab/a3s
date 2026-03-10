@@ -291,6 +291,7 @@ pub async fn start_gateway(
     }
 
     agent_state.engine.start_lifecycle_task(lifecycle_config);
+    agent_state.engine.start_cron_drainer_task();
 
     gateway.start().await?;
     let gateway = Arc::new(gateway);

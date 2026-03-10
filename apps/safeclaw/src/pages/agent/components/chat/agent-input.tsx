@@ -436,20 +436,7 @@ export function AgentInput({
 
 			{/* WeChat-style bottom toolbar */}
 			<div className="flex items-center gap-1 px-2 py-2 shrink-0">
-				<button
-					type="button"
-					className={cn(
-						"flex items-center justify-center size-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors",
-						disabled && "opacity-40 cursor-not-allowed",
-					)}
-					title="上传文件"
-					aria-label="上传文件"
-					onClick={() => fileInputRef.current?.click()}
-					disabled={disabled}
-				>
-					<Paperclip className="size-[18px]" />
-				</button>
-				<div className="ml-auto">
+					<div className="ml-auto">
 					{isRunning ? (
 						<button
 							type="button"

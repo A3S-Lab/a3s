@@ -84,6 +84,12 @@ const router = createHashRouter([
 			Component: (await import("@/pages/builtin")).default,
 		}),
 	},
+	{
+		path: "/onboarding",
+		lazy: async () => ({
+			Component: (await import("@/pages/onboarding")).default,
+		}),
+	},
 	{ path: "/500", Component: GeneralError },
 	{ path: "/404", Component: NotFoundError },
 	{ path: "/503", Component: MaintenanceError },

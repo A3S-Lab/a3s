@@ -11,7 +11,11 @@
 use crate::agent::session_store::AgentSessionStore;
 use crate::agent::types::*;
 use a3s_code::agent::AgentEvent;
-use a3s_code::commands::{CommandAction, CommandContext, CommandRegistry};
+use a3s_code::commands::{
+    CommandAction, CommandContext, CommandRegistry, CronCancelCommand, CronListCommand,
+    LoopCommand,
+};
+use a3s_code::scheduler::{CronScheduler, ScheduledFire};
 use a3s_code::config::CodeConfig;
 use a3s_code::session::SessionManager;
 use std::collections::HashMap;
@@ -55,6 +59,10 @@ struct EngineSession {
     last_activity_at: u64,
     /// Per-session MCP servers (separate from global; applied at create/relaunch)
     session_mcp_servers: Vec<a3s_code::mcp::McpServerConfig>,
+    /// Fired prompts from the cron scheduler, drained by the cron drainer task.
+    cron_rx: Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<ScheduledFire>>>,
+    /// Per-session command registry (includes all 11 commands with live scheduler).
+    session_command_registry: Arc<CommandRegistry>,
 }
 
 impl AgentEngine {
@@ -104,7 +112,7 @@ impl AgentEngine {
             store,
             agent_bus: Arc::new(RwLock::new(None)),
             config_path: Arc::new(RwLock::new(None)),
-            command_registry: Arc::new(CommandRegistry::new()),
+            command_registry: Arc::new(make_full_command_registry()),
         };
 
         // Restore persisted UI state from disk
@@ -222,6 +230,11 @@ impl AgentEngine {
             }
         }
 
+        // Create per-session cron scheduler and command registry.
+        let (cron_scheduler, cron_rx) = CronScheduler::new();
+        CronScheduler::start(Arc::clone(&cron_scheduler));
+        let session_cmd_registry = Arc::new(make_session_command_registry(&cron_scheduler));
+
         let engine_session = EngineSession {
             id: session_id.to_string(),
             browser_senders: HashMap::new(),
@@ -238,6 +251,8 @@ impl AgentEngine {
             persona_id: persona_id.clone(),
             last_activity_at: now,
             session_mcp_servers: mcp_servers,
+            cron_rx: Arc::new(tokio::sync::Mutex::new(cron_rx)),
+            session_command_registry: session_cmd_registry,
         };
 
         // Update state fields
@@ -508,7 +523,17 @@ impl AgentEngine {
                 if CommandRegistry::is_command(&content) {
                     tracing::info!(session_id = %session_id, content = %content, "Slash command detected");
                     let ctx = self.build_command_context(session_id).await;
-                    if let Some(output) = self.command_registry.dispatch(&content, &ctx) {
+                    // Use per-session registry so scheduler commands (/loop etc.) work.
+                    let session_reg = {
+                        let sessions = self.sessions.read().await;
+                        sessions
+                            .get(session_id)
+                            .map(|es| Arc::clone(&es.session_command_registry))
+                    };
+                    let registry = session_reg
+                        .as_deref()
+                        .unwrap_or(&self.command_registry);
+                    if let Some(output) = registry.dispatch(&content, &ctx) {
                         let cmd_name = content.split_whitespace().next().unwrap_or("/");
                         tracing::info!(session_id = %session_id, command = %cmd_name, "Slash command dispatched");
 
@@ -1708,6 +1733,11 @@ impl AgentEngine {
         let mut sessions = self.sessions.write().await;
 
         for ps in persisted_sessions {
+            let (cron_scheduler, cron_rx) = CronScheduler::new();
+            CronScheduler::start(Arc::clone(&cron_scheduler));
+            let session_cmd_registry =
+                Arc::new(make_session_command_registry(&cron_scheduler));
+
             let mut es = EngineSession {
                 id: ps.id.clone(),
                 browser_senders: HashMap::new(),
@@ -1728,6 +1758,8 @@ impl AgentEngine {
                 persona_id: ps.state.persona_id.clone(),
                 last_activity_at: 0,
                 session_mcp_servers: Vec::new(),
+                cron_rx: Arc::new(tokio::sync::Mutex::new(cron_rx)),
+                session_command_registry: session_cmd_registry,
             };
 
             // Try to restore a3s-code session with full LLM history first
@@ -1795,6 +1827,58 @@ impl AgentEngine {
         }
 
         tracing::info!(count = sessions.len(), "Restored agent sessions from disk");
+    }
+
+    // =========================================================================
+    // Cron scheduler — drain fired prompts back into sessions
+    // =========================================================================
+
+    /// Spawn a background task that drains each session's cron receiver every
+    /// second and re-injects fired prompts as user messages.
+    pub fn start_cron_drainer_task(self: &Arc<Self>) {
+        let engine = Arc::downgrade(self);
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
+            loop {
+                interval.tick().await;
+                let Some(engine) = engine.upgrade() else { break };
+                engine.drain_cron_tasks().await;
+            }
+        });
+    }
+
+    async fn drain_cron_tasks(&self) {
+        // Collect (session_id, cron_rx) pairs without holding the write lock.
+        let pairs: Vec<(String, Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<ScheduledFire>>>)> = {
+            let sessions = self.sessions.read().await;
+            sessions
+                .values()
+                .filter(|es| !es.archived)
+                .map(|es| (es.id.clone(), Arc::clone(&es.cron_rx)))
+                .collect()
+        };
+
+        for (session_id, cron_rx) in pairs {
+            let mut fired: Vec<String> = Vec::new();
+            {
+                let mut rx = cron_rx.lock().await;
+                while let Ok(fire) = rx.try_recv() {
+                    fired.push(fire.prompt);
+                }
+            }
+            for prompt in fired {
+                tracing::info!(session_id = %session_id, "Cron task fired — injecting prompt");
+                self.handle_browser_message(
+                    &session_id,
+                    BrowserOutgoingMessage::UserMessage {
+                        content: prompt,
+                        session_id: None,
+                        images: None,
+                    },
+                )
+                .await;
+            }
+        }
     }
 
     // =========================================================================
@@ -2035,6 +2119,31 @@ impl EngineSession {
 // =============================================================================
 // Event translation (pure functions)
 // =============================================================================
+
+/// Build a `CommandRegistry` with all 11 commands.
+///
+/// For the engine-level registry (used only for listing), the scheduler commands
+/// are backed by a dummy `CronScheduler` that is never started.
+/// For per-session registries the caller supplies a live scheduler.
+fn make_full_command_registry() -> CommandRegistry {
+    let (dummy_sched, _rx) = CronScheduler::new();
+    make_session_command_registry(&dummy_sched)
+}
+
+/// Build a `CommandRegistry` with all 11 commands using the given live scheduler.
+fn make_session_command_registry(scheduler: &Arc<CronScheduler>) -> CommandRegistry {
+    let mut reg = CommandRegistry::new();
+    reg.register(Arc::new(LoopCommand {
+        scheduler: Arc::clone(scheduler),
+    }));
+    reg.register(Arc::new(CronListCommand {
+        scheduler: Arc::clone(scheduler),
+    }));
+    reg.register(Arc::new(CronCancelCommand {
+        scheduler: Arc::clone(scheduler),
+    }));
+    reg
+}
 
 /// Translate an `AgentEvent` into zero or more `BrowserIncomingMessage`s.
 ///

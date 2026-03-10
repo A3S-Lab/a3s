@@ -1,15 +1,22 @@
 import { PageLoading } from "@/components/custom/page-loading";
+import globalModel from "@/models/global.model";
 import KeepAlive, { useKeepAliveRef } from "keepalive-for-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Suspense, useMemo } from "react";
-import { useLocation, useOutlet } from "react-router-dom";
+import { Navigate, useLocation, useOutlet } from "react-router-dom";
+import { useSnapshot } from "valtio";
 import ActivityBar from "./components/activity-bar";
 import Main from "./components/main";
 
 export default function ChatLayout() {
+	const { isOnboarded } = useSnapshot(globalModel.state);
 	const aliveRef = useKeepAliveRef();
 	const location = useLocation();
 	const outlet = useOutlet();
+
+	if (!isOnboarded) {
+		return <Navigate to="/onboarding" replace />;
+	}
 
 	const currentCacheKey = useMemo(() => {
 		return location.pathname + location.search;

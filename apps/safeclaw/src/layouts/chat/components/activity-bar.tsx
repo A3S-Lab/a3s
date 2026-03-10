@@ -1,11 +1,5 @@
 import { cn } from "@/lib/utils";
-import {
-	MessageCircle,
-	Settings,
-	Container,
-	Bot,
-	GitBranch,
-} from "lucide-react";
+import { MessageCircle, Settings, Container } from "lucide-react";
 import {
 	ReactNode,
 	useCallback,
@@ -20,13 +14,6 @@ const STORAGE_KEY = "safeclaw-active-route";
 
 const NAV_ITEMS = [
 	{ key: "chat", label: "Chat", icon: MessageCircle, path: "/" },
-	{ key: "workflow", label: "工作流", icon: GitBranch, path: "/workflow" },
-	{
-		key: "agent-marketplace",
-		label: "智能体市场",
-		icon: Bot,
-		path: "/agent-marketplace",
-	},
 	{ key: "box", label: "Box", icon: Container, path: "/box" },
 ] as const;
 
@@ -176,7 +163,9 @@ export default function ActivityBar() {
 			aria-label="Main navigation"
 			className="flex flex-col h-full w-[var(--activity-bar-width)] bg-primary text-primary-foreground/60 shadow-lg"
 		>
-			<User />
+			<div className="flex justify-center pt-3">
+				<User />
+			</div>
 			<div
 				className="flex-1 flex flex-col"
 				role="tablist"
