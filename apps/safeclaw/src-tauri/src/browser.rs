@@ -92,7 +92,7 @@ pub async fn browser_open(
 #[tauri::command]
 pub async fn browser_navigate(
     app: AppHandle,
-    state: tauri::State<'_, BrowserState>,
+    _state: tauri::State<'_, BrowserState>,
     tab_id: String,
     url: String,
 ) -> Result<(), String> {
