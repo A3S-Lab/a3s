@@ -73,7 +73,7 @@ session = agent.session("/my-project", model="openai/gpt-4o")
       description: "描述: 启用 parse_retries=2、tool_timeout=120s、circuit_breaker=3",
     },
     "沙箱": {
-      description: "描述: 通过 A3S Box MicroVM 路由 bash 工具（需要 sandbox feature）",
+      description: "描述: 通过 A3S Box MicroVM 路由 bash 工具（通过 `with_sandbox_handle()` 提供实现）",
     },
     "提示词插槽": {
       description: "TypeScript: role/guidelines/responseStyle/extra · Python: opts.role/guidelines/response_style/extra · 描述: 插槽式系统提示词自定义",
@@ -769,8 +769,8 @@ print(r.text)  # Cancelled task [a1b2c3d4]
     "弹性默认值": {
       description: "",
     },
-    "沙箱": {
-      description: "默认值: None",
+    "沙箱句柄": {
+      description: "类型: Arc<dyn BashSandbox> · 默认值: None · 通过 `with_sandbox_handle()` 提供具体实现，将 `bash` 路由到 MicroVM 沙箱。参见[隔离](/cn/docs/code/isolation)。",
     },
     "权限检查器": {
       description: "默认值: PermissionPolicy",

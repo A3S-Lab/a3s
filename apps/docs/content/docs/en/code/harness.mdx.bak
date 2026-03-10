@@ -314,11 +314,33 @@ service AhpService {
 
 ## Usage with A3S Code
 
-<Callout type="warn">
-  **Note:** A3S Code v1.3.x does not yet implement AHP v2.0. The current implementation uses AHP v1.x (stdio only). Full v2.0 support is planned for v1.4.0.
+<Callout type="info">
+  **AHP v2.0 Support:** A3S Code v1.3.1+ includes full AHP v2.0 support with HTTP, WebSocket, and stdio transports. See the [AHP Integration Guide](/docs/en/code/ahp-integration) for complete documentation.
 </Callout>
 
-### Future API (v1.4.0+)
+### Quick Example
+
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+use a3s_code_core::ahp::{AhpHookExecutor, AhpTransport};
+
+// Create AHP executor
+let ahp = AhpHookExecutor::new(
+    AhpTransport::Http {
+        url: "http://localhost:8080/ahp".into(),
+        auth: None,
+    }
+).await?;
+
+// Create agent with AHP supervision
+let agent = Agent::new("agent.hcl").await?;
+let session = agent.session(
+    "/workspace",
+    Some(SessionOptions::default().with_ahp_executor(ahp))
+)?;
+```
+
+For detailed integration instructions, examples, and configuration options, see the [AHP Integration Guide](/docs/en/code/ahp-integration).
 
 <Tabs items={['TypeScript', 'Python', 'Rust']}>
 <Tab value="TypeScript">

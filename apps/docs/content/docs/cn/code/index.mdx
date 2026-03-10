@@ -1,6 +1,6 @@
 ---
 title: A3S Code
-description: 基于 Rust 的可嵌入 AI 编程智能体框架，原生支持 Node.js 和 Python 绑定
+description: 用于构建Agentic AI 应用的 Rust 框架，原生支持 Node.js 和 Python 绑定
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -9,10 +9,10 @@ import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 # A3S Code
 
-**基于 Rust 的可嵌入 AI 编程智能体框架** — 构建能够读写、执行代码的 AI 智能体，支持工具调用、任务规划、安全控制和多机器分布式部署。
+**用于构建 Agentic AI 应用的 Rust 框架** — 将能够读写、执行代码的智能体嵌入任意应用。工具调用、任务规划、安全控制、多机器分布式部署 — 原生支持 Node.js 和 Python 绑定。
 
 <Callout type="info">
-**测试覆盖：** 1500 个测试，100% 通过率 | **扩展点：** 19 个基于 trait 的扩展点 | **内置工具：** 14 个（启用 `sandbox` feature 后 15 个） | **内置 Skills：** 7 个（默认开启）
+**测试覆盖：** 1500 个测试，100% 通过率 | **扩展点：** 19 个基于 trait 的扩展点 | **内置工具：** 15 个 | **内置 Skills：** 7 个（默认开启）
 </Callout>
 
 ## 为什么选择 A3S Code？
@@ -24,7 +24,7 @@ import { Steps, Step } from 'fumadocs-ui/components/steps';
   </div>
 
   <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">🛡️ 生产就绪</h3>
+    <h3 className="text-lg font-semibold mb-2">🛡️ 默认安全</h3>
     <span className="text-sm text-muted-foreground">权限系统、HITL 确认、技能工具限制、错误恢复（解析重试、工具超时、熔断器）。</span>
   </div>
 

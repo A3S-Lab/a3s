@@ -8,6 +8,7 @@ use crate::config::{ChannelAgentConfig, ChannelAgentConfigStore};
 use crate::runtime::Runtime;
 use crate::workflows::{CreateWorkflow, UpdateWorkflow, WorkflowStore};
 use a3s_code::skills::SkillRegistry;
+use a3s_flow::{ExecutionState, FlowEngine, FlowError};
 use a3s_memory::MemoryStore;
 use axum::{
     extract::{
@@ -16,13 +17,14 @@ use axum::{
     },
     http::{header, Method, StatusCode},
     response::IntoResponse,
-    routing::{delete, get, patch, post},
+    routing::{delete, get, patch, post, put},
     Json, Router,
 };
 use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
+use uuid::Uuid;
 
 /// Shared state for memory endpoints
 #[derive(Clone)]
@@ -38,6 +40,7 @@ pub fn build_app(
     memory_store: Arc<dyn MemoryStore>,
     channel_config_store: ChannelAgentConfigStore,
     workflow_store: WorkflowStore,
+    flow_engine: Arc<FlowEngine>,
     cors_origins: &[String],
 ) -> Router {
     let cors = build_cors(cors_origins);
@@ -54,6 +57,7 @@ pub fn build_app(
         .merge(fs_router())
         .merge(box_router(skill_registry))
         .merge(workflow_router(workflow_store))
+        .merge(execution_router(flow_engine))
         .layer(cors)
 }
 
@@ -1821,10 +1825,7 @@ async fn box_install(State(state): State<BoxState>) -> impl IntoResponse {
             }
         };
 
-        let client = match reqwest::Client::builder()
-            .user_agent("safeclaw")
-            .build()
-        {
+        let client = match reqwest::Client::builder().user_agent("safeclaw").build() {
             Ok(c) => c,
             Err(e) => {
                 send(format!("[error] 初始化 HTTP 客户端失败: {e}\n")).await;
@@ -1872,15 +1873,18 @@ async fn box_install(State(state): State<BoxState>) -> impl IntoResponse {
             .and_then(|a| a["browser_download_url"].as_str())
             .map(String::from)
             .unwrap_or_else(|| {
-                format!(
-                    "https://github.com/A3S-Lab/Box/releases/download/v{tag}/{asset_name}"
-                )
+                format!("https://github.com/A3S-Lab/Box/releases/download/v{tag}/{asset_name}")
             });
 
         send(format!("正在下载 a3s-box v{tag}…\n")).await;
 
         // Download the tarball, streaming to a temp file.
-        let mut response = match client.get(&url).send().await.and_then(|r| r.error_for_status()) {
+        let mut response = match client
+            .get(&url)
+            .send()
+            .await
+            .and_then(|r| r.error_for_status())
+        {
             Ok(r) => r,
             Err(e) => {
                 send(format!("[error] 下载失败: {e}\n")).await;
@@ -1888,7 +1892,8 @@ async fn box_install(State(state): State<BoxState>) -> impl IntoResponse {
             }
         };
 
-        let tmp_dir = std::env::temp_dir().join(format!("a3s-box-install-{}", uuid::Uuid::new_v4()));
+        let tmp_dir =
+            std::env::temp_dir().join(format!("a3s-box-install-{}", uuid::Uuid::new_v4()));
         if let Err(e) = tokio::fs::create_dir_all(&tmp_dir).await {
             send(format!("[error] 创建临时目录失败: {e}\n")).await;
             return;
@@ -1984,7 +1989,9 @@ async fn box_install(State(state): State<BoxState>) -> impl IntoResponse {
         let mut extracted_dir = None;
         if let Ok(mut entries) = tokio::fs::read_dir(&install_dir).await {
             while let Ok(Some(entry)) = entries.next_entry().await {
-                if entry.path().is_dir() && entry.file_name().to_string_lossy().starts_with("a3s-box") {
+                if entry.path().is_dir()
+                    && entry.file_name().to_string_lossy().starts_with("a3s-box")
+                {
                     extracted_dir = Some(entry.path());
                     break;
                 }
@@ -1993,7 +2000,12 @@ async fn box_install(State(state): State<BoxState>) -> impl IntoResponse {
 
         if let Some(src_dir) = extracted_dir {
             // Move each binary from src_dir to install_dir
-            for bin in &["a3s-box", "a3s-box-shim", "a3s-box-guest-init", "a3s-box-cri"] {
+            for bin in &[
+                "a3s-box",
+                "a3s-box-shim",
+                "a3s-box-guest-init",
+                "a3s-box-cri",
+            ] {
                 let src = src_dir.join(bin);
                 let dst = install_dir.join(bin);
                 if src.exists() {
@@ -2007,7 +2019,12 @@ async fn box_install(State(state): State<BoxState>) -> impl IntoResponse {
         }
 
         // Ensure all installed binaries are executable.
-        for bin in &["a3s-box", "a3s-box-shim", "a3s-box-guest-init", "a3s-box-cri"] {
+        for bin in &[
+            "a3s-box",
+            "a3s-box-shim",
+            "a3s-box-guest-init",
+            "a3s-box-cri",
+        ] {
             let path = install_dir.join(bin);
             if path.exists() {
                 let _ = tokio::process::Command::new("chmod")
@@ -2136,6 +2153,230 @@ async fn wf_delete(
             Json(serde_json::json!({"error": e.to_string()})),
         )
             .into_response(),
+    }
+}
+
+// =============================================================================
+// Workflow Execution API
+//
+// Exposes a3s-flow's FlowEngine over HTTP so the UI (and external callers)
+// can start, control, and inspect live workflow executions, including full
+// CRUD on the shared mutable context.
+//
+// Routes:
+//   POST   /api/executions                    — start a new execution
+//   GET    /api/executions/:id/state          — get lifecycle state + result
+//   POST   /api/executions/:id/pause          — pause at next wave boundary
+//   POST   /api/executions/:id/resume         — resume a paused execution
+//   DELETE /api/executions/:id                — terminate immediately
+//   GET    /api/executions/:id/context        — read full context snapshot
+//   PUT    /api/executions/:id/context/:key   — set a single context entry
+//   DELETE /api/executions/:id/context/:key   — delete a single context entry
+// =============================================================================
+
+#[derive(Clone)]
+struct ExecState {
+    engine: Arc<FlowEngine>,
+}
+
+fn execution_router(engine: Arc<FlowEngine>) -> Router {
+    Router::new()
+        .route("/api/executions", post(exec_start))
+        .route("/api/executions/:id/state", get(exec_state))
+        .route("/api/executions/:id/pause", post(exec_pause))
+        .route("/api/executions/:id/resume", post(exec_resume))
+        .route("/api/executions/:id", delete(exec_terminate))
+        .route("/api/executions/:id/context", get(exec_context_get))
+        .route(
+            "/api/executions/:id/context/:key",
+            put(exec_context_set).delete(exec_context_delete),
+        )
+        .with_state(ExecState { engine })
+}
+
+// ── Request / response types ───────────────────────────────────────────────
+
+#[derive(Deserialize)]
+struct StartExecutionRequest {
+    definition: serde_json::Value,
+    #[serde(default)]
+    variables: std::collections::HashMap<String, serde_json::Value>,
+}
+
+#[derive(Serialize)]
+struct StartExecutionResponse {
+    id: Uuid,
+}
+
+#[derive(Serialize)]
+struct ExecutionStateResponse {
+    state: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    result: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct SetContextEntryRequest {
+    value: serde_json::Value,
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+fn parse_exec_id(raw: &str) -> Result<Uuid, (StatusCode, Json<serde_json::Value>)> {
+    raw.parse::<Uuid>().map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "invalid execution id"})),
+        )
+    })
+}
+
+fn flow_err_response(e: FlowError) -> (StatusCode, Json<serde_json::Value>) {
+    let status = match &e {
+        FlowError::ExecutionNotFound(_) => StatusCode::NOT_FOUND,
+        FlowError::InvalidTransition { .. } => StatusCode::CONFLICT,
+        _ => StatusCode::INTERNAL_SERVER_ERROR,
+    };
+    (status, Json(serde_json::json!({"error": e.to_string()})))
+}
+
+fn state_to_response(state: ExecutionState) -> ExecutionStateResponse {
+    match state {
+        ExecutionState::Running => ExecutionStateResponse {
+            state: "running",
+            result: None,
+            error: None,
+        },
+        ExecutionState::Paused => ExecutionStateResponse {
+            state: "paused",
+            result: None,
+            error: None,
+        },
+        ExecutionState::Completed(result) => ExecutionStateResponse {
+            state: "completed",
+            result: serde_json::to_value(&result).ok(),
+            error: None,
+        },
+        ExecutionState::Failed(msg) => ExecutionStateResponse {
+            state: "failed",
+            result: None,
+            error: Some(msg),
+        },
+        ExecutionState::Terminated => ExecutionStateResponse {
+            state: "terminated",
+            result: None,
+            error: None,
+        },
+    }
+}
+
+// ── Handlers ───────────────────────────────────────────────────────────────
+
+async fn exec_start(
+    State(s): State<ExecState>,
+    Json(body): Json<StartExecutionRequest>,
+) -> impl IntoResponse {
+    match s.engine.start(&body.definition, body.variables).await {
+        Ok(id) => (
+            StatusCode::CREATED,
+            Json(serde_json::to_value(StartExecutionResponse { id }).unwrap()),
+        )
+            .into_response(),
+        Err(e) => {
+            let (status, body) = flow_err_response(e);
+            (status, body).into_response()
+        }
+    }
+}
+
+async fn exec_state(State(s): State<ExecState>, Path(id): Path<String>) -> impl IntoResponse {
+    let id = match parse_exec_id(&id) {
+        Ok(v) => v,
+        Err(e) => return e.into_response(),
+    };
+    match s.engine.state(id).await {
+        Ok(state) => Json(state_to_response(state)).into_response(),
+        Err(e) => flow_err_response(e).into_response(),
+    }
+}
+
+async fn exec_pause(State(s): State<ExecState>, Path(id): Path<String>) -> impl IntoResponse {
+    let id = match parse_exec_id(&id) {
+        Ok(v) => v,
+        Err(e) => return e.into_response(),
+    };
+    match s.engine.pause(id).await {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(e) => flow_err_response(e).into_response(),
+    }
+}
+
+async fn exec_resume(State(s): State<ExecState>, Path(id): Path<String>) -> impl IntoResponse {
+    let id = match parse_exec_id(&id) {
+        Ok(v) => v,
+        Err(e) => return e.into_response(),
+    };
+    match s.engine.resume(id).await {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(e) => flow_err_response(e).into_response(),
+    }
+}
+
+async fn exec_terminate(State(s): State<ExecState>, Path(id): Path<String>) -> impl IntoResponse {
+    let id = match parse_exec_id(&id) {
+        Ok(v) => v,
+        Err(e) => return e.into_response(),
+    };
+    match s.engine.terminate(id).await {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(e) => flow_err_response(e).into_response(),
+    }
+}
+
+async fn exec_context_get(State(s): State<ExecState>, Path(id): Path<String>) -> impl IntoResponse {
+    let id = match parse_exec_id(&id) {
+        Ok(v) => v,
+        Err(e) => return e.into_response(),
+    };
+    match s.engine.get_context(id).await {
+        Ok(ctx) => Json(ctx).into_response(),
+        Err(e) => flow_err_response(e).into_response(),
+    }
+}
+
+async fn exec_context_set(
+    State(s): State<ExecState>,
+    Path((id, key)): Path<(String, String)>,
+    Json(body): Json<SetContextEntryRequest>,
+) -> impl IntoResponse {
+    let id = match parse_exec_id(&id) {
+        Ok(v) => v,
+        Err(e) => return e.into_response(),
+    };
+    match s.engine.set_context_entry(id, key, body.value).await {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(e) => flow_err_response(e).into_response(),
+    }
+}
+
+async fn exec_context_delete(
+    State(s): State<ExecState>,
+    Path((id, key)): Path<(String, String)>,
+) -> impl IntoResponse {
+    let id = match parse_exec_id(&id) {
+        Ok(v) => v,
+        Err(e) => return e.into_response(),
+    };
+    match s.engine.delete_context_entry(id, &key).await {
+        Ok(true) => StatusCode::NO_CONTENT.into_response(),
+        Ok(false) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "key not found"})),
+        )
+            .into_response(),
+        Err(e) => flow_err_response(e).into_response(),
     }
 }
 

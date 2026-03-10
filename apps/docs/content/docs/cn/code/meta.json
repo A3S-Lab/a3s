@@ -13,7 +13,7 @@
     "---驾驭工程---",
     "security",
     "hooks",
-    "harness",
+    "ahp-integration",
     "orchestrator",
     "limits",
     "isolation",

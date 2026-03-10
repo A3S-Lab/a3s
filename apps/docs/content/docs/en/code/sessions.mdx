@@ -83,7 +83,7 @@ session = agent.session("/my-project", model="openai/gpt-4o")
     },
     sandbox: {
       type: 'SandboxConfig',
-      description: 'Route `bash` tool through A3S Box MicroVM (requires `sandbox` feature)',
+      description: 'Route `bash` tool through A3S Box MicroVM (supply via `with_sandbox_handle()`)',
     },
     prompt_slots: {
       type: 'SystemPromptSlots',
@@ -779,10 +779,10 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
       default: '3',
       description: 'Max LLM API failures before abort. TS: `circuitBreakerThreshold: n`, Python: `circuit_breaker_threshold=n`',
     },
-    sandbox: {
-      type: 'Option<SandboxConfig>',
+    sandbox_handle: {
+      type: 'Arc<dyn BashSandbox>',
       default: 'None',
-      description: 'Route `bash` through A3S Box MicroVM',
+      description: 'Route `bash` through a MicroVM sandbox. Supply a concrete `BashSandbox` impl via `with_sandbox_handle()`. See [Isolation](/docs/code/isolation).',
     },
     permission_checker: {
       type: 'Arc<dyn PermissionChecker>',

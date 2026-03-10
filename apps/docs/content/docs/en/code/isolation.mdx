@@ -17,7 +17,7 @@ Isolation Layers
   ├─ Workspace Boundary   ← File ops confined to the session directory (always on)
   ├─ File Version History ← Auto-snapshot before writes; diff and restore any version
   ├─ Git Worktree         ← Agent works on an isolated branch; discard with one command
-  └─ MicroVM Sandbox      ← bash runs inside an isolated VM (requires sandbox feature)
+  └─ MicroVM Sandbox      ← bash runs inside an isolated VM (host app supplies BashSandbox impl)
 ```
 
 ## Workspace Boundary
@@ -198,43 +198,35 @@ See [Git Worktree Example](/docs/code/examples/git-worktree) for a full walkthro
 
 ## MicroVM Sandbox
 
-With the `sandbox` Cargo feature enabled, `bash` tool commands are routed through an A3S Box MicroVM instead of the host `std::process::Command`. The workspace directory is mounted read-write at `/workspace` inside the VM.
+When `bash` tool commands need to run inside an A3S Box MicroVM instead of the host process, the host application supplies a concrete `BashSandbox` implementation via `SessionOptions::with_sandbox_handle()`. The workspace directory is mounted read-write at `/workspace` inside the VM.
 
 <Callout type="info">
-**Requires the `sandbox` Cargo feature.** Add to `Cargo.toml`:
-```toml
-a3s-code-core = { version = "...", features = ["sandbox"] }
-```
+No Cargo feature flag is required. `a3s-code-core` ships the `BashSandbox` trait as an open extension point. The host application (e.g. SafeClaw) provides the concrete sandbox implementation.
 </Callout>
 
-### Configuration
+### Rust — wiring in a custom sandbox
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/project', {
-  sandbox: {
-    image: 'ubuntu:22.04',
-    memoryMb: 1024,
-    cpus: 2,
-    network: false,
-    env: { NODE_ENV: 'test' },
-  },
-});
+```rust
+use a3s_code::{sandbox::BashSandbox, agent_api::SessionOptions};
+use std::sync::Arc;
+
+// Any type that implements BashSandbox can be supplied here.
+// SafeClaw ships an a3s-box–backed implementation; you can provide your own.
+let opts = SessionOptions::default()
+    .with_sandbox_handle(Arc::new(my_sandbox_impl));
+
+let session = agent.session("/project", opts).await?;
 ```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/project", sandbox={
-    "image": "ubuntu:22.04",
-    "memory_mb": 1024,
-    "cpus": 2,
-    "network": False,
-    "env": {"NODE_ENV": "test"},
-})
+
+### BashSandbox trait
+
+```rust
+#[async_trait]
+pub trait BashSandbox: Send + Sync {
+    /// Execute a shell command inside the sandbox.
+    async fn run(&self, command: &str, config: &SandboxConfig) -> Result<SandboxOutput>;
+}
 ```
-</Tab>
-</Tabs>
 
 ### SandboxConfig Fields
 

@@ -764,13 +764,24 @@ impl AgentEngine {
             tokio::spawn(async move {
                 match join_handle.await {
                     Ok(Ok(_)) => {
-                        tracing::debug!("Generation completed successfully for session {}", session_id_clone);
+                        tracing::debug!(
+                            "Generation completed successfully for session {}",
+                            session_id_clone
+                        );
                     }
                     Ok(Err(e)) => {
-                        tracing::error!("Generation failed for session {}: {}", session_id_clone, e);
+                        tracing::error!(
+                            "Generation failed for session {}: {}",
+                            session_id_clone,
+                            e
+                        );
                     }
                     Err(e) => {
-                        tracing::error!("Generation task panicked for session {}: {}", session_id_clone, e);
+                        tracing::error!(
+                            "Generation task panicked for session {}: {}",
+                            session_id_clone,
+                            e
+                        );
                     }
                 }
             })

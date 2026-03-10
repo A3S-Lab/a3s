@@ -31,7 +31,7 @@ Your Application (Rust / TypeScript / Python)
 │  │  ┌─────────┬──────────┬──────────┬─────────┐ │    │
 │  │  │ Agent   │ Tool     │Permission│  LLM    │ │    │
 │  │  │ Loop    │ Executor │ System   │ Provider│ │    │
-│  │  │         │ (10)     │          │         │ │    │
+│  │  │         │ (15)     │          │         │ │    │
 │  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
 │  │  │ HITL    │ Subagent │  Hook    │  MCP    │ │    │
 │  │  │         │          │  Engine  │         │ │    │
@@ -79,7 +79,7 @@ Your Application (Rust / TypeScript / Python)
       description: "核心执行引擎，驱动 LLM ↔ 工具的多轮循环。",
     },
     "ToolExecutor": {
-      description: "工具注册和执行。管理 11 个内置工具。",
+      description: "工具注册和执行。管理 15 个内置工具。",
     },
     "LlmPlanner": {
       description: "JSON 结构化规划 — 将复杂任务分解为带依赖图的执行计划。",
@@ -182,13 +182,16 @@ Lane 队列将工具调用路由到不同的执行策略：
 
 <TypeTable
   type={{
-    "Query": {
-      description: "用途: 只读操作（read、grep、glob、ls） · 默认模式: 内部（并行）",
+    "Control (P0)": {
+      description: "用途: 最高优先级 — pause、resume、cancel 信号 · 默认模式: 内部（顺序）",
     },
-    "Execute": {
+    "Query (P1)": {
+      description: "用途: 只读操作（read、grep、glob、ls、web_fetch、web_search） · 默认模式: 内部（并行）",
+    },
+    "Execute (P2)": {
       description: "用途: 写操作（write、edit、patch、bash） · 默认模式: 内部（顺序）",
     },
-    "Generate": {
+    "Generate (P3)": {
       description: "用途: LLM 调用 · 默认模式: 内部",
     },
   }}
@@ -236,7 +239,7 @@ A3S Code 为可扩展性而设计：
 通过 `SecurityProvider` trait 实现自定义污点追踪、输出清洗和注入检测。参见 [安全](/cn/docs/code/security)。
 </Accordion>
 <Accordion title="HookEngine">
-在 8 个生命周期事件注册自定义逻辑：`PreToolUse`、`PostToolUse`、`PrePrompt`、`PostResponse`、`OnError`、`GenerateStart`、`GenerateEnd`、`SessionStart/End`。参见 [Hooks](/cn/docs/code/hooks)。
+在 11 个生命周期事件注册自定义逻辑：`PreToolUse`、`PostToolUse`、`GenerateStart`、`GenerateEnd`、`SessionStart`、`SessionEnd`、`SkillLoad`、`SkillUnload`、`PrePrompt`、`PostResponse`、`OnError`。参见 [Hooks](/cn/docs/code/hooks)。
 </Accordion>
 <Accordion title="子代理">
 将专门任务委派给在 `.md` 文件中定义的聚焦子代理。参见 [子代理](/cn/docs/code/subagents)。

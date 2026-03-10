@@ -31,7 +31,7 @@ Your Application (Rust / TypeScript / Python)
 │  │  ┌─────────┬──────────┬──────────┬─────────┐ │    │
 │  │  │ Agent   │ Tool     │Permission│  LLM    │ │    │
 │  │  │ Loop    │ Executor │ System   │ Provider│ │    │
-│  │  │         │ (10)     │          │         │ │    │
+│  │  │         │ (15)     │          │         │ │    │
 │  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
 │  │  │ HITL    │ Subagent │  Hook    │  MCP    │ │    │
 │  │  │         │          │  Engine  │         │ │    │
@@ -79,7 +79,7 @@ Native bindings:
       description: "Core execution engine driving the LLM ↔ tool multi-turn loop.",
     },
     "ToolExecutor": {
-      description: "Tool registry and execution. Manages 11 built-in tools.",
+      description: "Tool registry and execution. Manages 15 built-in tools.",
     },
     "LlmPlanner": {
       description: "JSON-structured planning — decomposes complex tasks into execution plans with dependency graphs.",
@@ -182,15 +182,19 @@ The lane queue routes tool calls to different execution strategies:
 
 <TypeTable
   type={{
-    "Query": {
-      description: "Read-only operations (read, grep, glob, ls)",
+    "Control (P0)": {
+      description: "Highest priority — pause, resume, cancel signals",
+      default: "Internal (sequential)",
+    },
+    "Query (P1)": {
+      description: "Read-only operations (read, grep, glob, ls, web_fetch, web_search)",
       default: "Internal (parallel)",
     },
-    "Execute": {
+    "Execute (P2)": {
       description: "Write operations (write, edit, patch, bash)",
       default: "Internal (sequential)",
     },
-    "Generate": {
+    "Generate (P3)": {
       description: "LLM calls",
       default: "Internal",
     },
@@ -239,7 +243,7 @@ Implement the `Tool` trait and register with `ToolRegistry`. Tools receive typed
 Implement custom taint tracking, output sanitization, and injection detection via the `SecurityProvider` trait. See [Security](/docs/code/security).
 </Accordion>
 <Accordion title="HookEngine">
-Register custom logic at 8 lifecycle events: `PreToolUse`, `PostToolUse`, `PrePrompt`, `PostResponse`, `OnError`, `GenerateStart`, `GenerateEnd`, `SessionStart/End`. See [Hooks](/docs/code/hooks).
+Register custom logic at 11 lifecycle events: `PreToolUse`, `PostToolUse`, `GenerateStart`, `GenerateEnd`, `SessionStart`, `SessionEnd`, `SkillLoad`, `SkillUnload`, `PrePrompt`, `PostResponse`, `OnError`. See [Hooks](/docs/code/hooks).
 </Accordion>
 <Accordion title="Subagents">
 Delegate specialized tasks to focused child agents defined in `.md` files. See [Subagents](/docs/code/subagents).

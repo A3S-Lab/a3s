@@ -1,6 +1,6 @@
 ---
 title: Built-in Tools
-description: 15 built-in tools (16 with sandbox) for file operations, shell execution, search, web access, git worktree, and subagent delegation
+description: 15 built-in tools for file operations, shell execution, search, web access, git worktree, and subagent delegation
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -8,7 +8,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Built-in Tools
 
-A3S Code ships with 15 built-in tools (16 with the `sandbox` feature) covering file operations, shell execution, search, web access, git worktree, and subagent delegation. All tools execute in-process via native Rust implementations.
+A3S Code ships with 15 built-in tools covering file operations, shell execution, search, web access, git worktree, and subagent delegation. All tools execute in-process via native Rust implementations.
 
 ## Tool Reference
 
@@ -58,9 +58,6 @@ A3S Code ships with 15 built-in tools (16 with the `sandbox` feature) covering f
     },
     "git_worktree": {
       description: "Purpose: Git worktree management · Example: Parallel workspace isolation",
-    },
-    "sandbox": {
-      description: "Purpose: Execute in MicroVM · Example: Isolated execution (sandbox feature)",
     },
   }}
 />
@@ -271,51 +268,15 @@ Coordinate a Lead → Worker → Reviewer team to tackle goals that require deco
 
 All agent type fields default to `"general"`. Only `goal` is required.
 
-## Sandbox (Optional)
+## Sandbox Routing (Optional)
 
-### `sandbox`
+There is no standalone `sandbox` tool. Instead, `bash` transparently routes through an A3S Box MicroVM when the session has a `BashSandbox` handle configured:
 
-Execute commands in an isolated [A3S Box](/docs/box) MicroVM. Requires the `sandbox` Cargo feature.
-
-```toml
-a3s-code-core = { version = "1.2", features = ["sandbox"] }
+```rust
+SessionOptions::new().with_sandbox_handle(Arc::new(my_box_impl))
 ```
 
-Two modes of operation:
-
-**Transparent Routing** — When `SandboxConfig` is set on the session, the `bash` tool silently routes through the sandbox:
-
-**Explicit `sandbox` Tool** — With the feature enabled, a `sandbox` tool is registered so the LLM can choose to use it explicitly. The workspace is mounted at `/workspace` inside the sandbox.
-
-<TypeTable
-  type={{
-    image: {
-      type: 'string',
-      default: '"alpine:latest"',
-      description: 'OCI image reference',
-    },
-    memory_mb: {
-      type: 'u32',
-      default: '512',
-      description: 'Memory limit in megabytes',
-    },
-    cpus: {
-      type: 'u32',
-      default: '1',
-      description: 'Number of vCPUs',
-    },
-    network: {
-      type: 'bool',
-      default: 'false',
-      description: 'Enable outbound networking',
-    },
-    env: {
-      type: 'HashMap<String, String>',
-      default: '{}',
-      description: 'Environment variables to inject',
-    },
-  }}
-/>
+The workspace is mounted at `/workspace` inside the VM. See [Isolation → MicroVM Sandbox](/docs/code/isolation) for `SandboxConfig` fields and the full `BashSandbox` trait definition.
 
 ## File Version History
 
