@@ -23,18 +23,6 @@ tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-# Voice input (speech-to-text)
-cpal = "0.15"
-whisper-rs = "0.15"
-reqwest = { version = "0.12", features = ["stream", "blocking"] }
-futures-util = "0.3"
-num_cpus = "1.16"
-
-# Voice output (text-to-speech)
-piper-rs = "0.1"
-# Pin ort-sys to match ort rc.9 (used by piper-rs); rc.11 has breaking API changes.
-ort-sys = "=2.0.0-rc.9"
-
 # Embedded SafeClaw gateway (in-process server)
 safeclaw = { path = "../crates/safeclaw" }
 tracing = "0.1"
