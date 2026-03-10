@@ -731,7 +731,7 @@ impl AgentEngine {
             .generate_streaming(session_id, prompt)
             .await;
 
-        let (mut event_rx, _join_handle) = match result {
+        let (mut event_rx, join_handle) = match result {
             Ok((rx, jh)) => (rx, jh),
             Err(e) => {
                 tracing::error!(
@@ -757,11 +757,37 @@ impl AgentEngine {
             }
         };
 
+        // Store the join handle so we can abort it on interrupt
+        // Wrap it in a JoinHandle<()> since generation_handle expects that type
+        let wrapped_handle = {
+            let session_id_clone = session_id.to_string();
+            tokio::spawn(async move {
+                match join_handle.await {
+                    Ok(Ok(_)) => {
+                        tracing::debug!("Generation completed successfully for session {}", session_id_clone);
+                    }
+                    Ok(Err(e)) => {
+                        tracing::error!("Generation failed for session {}: {}", session_id_clone, e);
+                    }
+                    Err(e) => {
+                        tracing::error!("Generation task panicked for session {}: {}", session_id_clone, e);
+                    }
+                }
+            })
+        };
+
+        {
+            let mut sessions = self.sessions.write().await;
+            if let Some(es) = sessions.get_mut(session_id) {
+                es.generation_handle = Some(wrapped_handle);
+            }
+        }
+
         let sessions = self.sessions.clone();
         let store = self.store.clone();
         let sid = session_id.to_string();
 
-        let handle = tokio::spawn(async move {
+        let _handle = tokio::spawn(async move {
             let turn_started_at = std::time::Instant::now();
             let mut first_text_delta_logged = false;
             let mut first_tool_start_logged = false;
@@ -1217,12 +1243,6 @@ impl AgentEngine {
                 es.generation_handle = None;
             }
         });
-
-        // Store the handle
-        let mut sessions = self.sessions.write().await;
-        if let Some(es) = sessions.get_mut(session_id) {
-            es.generation_handle = Some(handle);
-        }
     }
 
     // =========================================================================
@@ -1458,6 +1478,11 @@ impl AgentEngine {
             return None;
         }
         Some(skill.content.clone())
+    }
+
+    /// Return the shared skill registry, if one has been set.
+    pub async fn skill_registry(&self) -> Option<std::sync::Arc<a3s_code::skills::SkillRegistry>> {
+        self.session_manager.skill_registry().await
     }
 
     /// List all available personas from the skill registry.

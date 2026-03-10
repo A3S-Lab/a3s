@@ -7,6 +7,7 @@ use crate::agent::{agent_router, AgentState};
 use crate::config::{ChannelAgentConfig, ChannelAgentConfigStore};
 use crate::runtime::Runtime;
 use crate::workflows::{CreateWorkflow, UpdateWorkflow, WorkflowStore};
+use a3s_code::skills::SkillRegistry;
 use a3s_memory::MemoryStore;
 use axum::{
     extract::{
@@ -33,6 +34,7 @@ pub struct MemoryState {
 pub fn build_app(
     gateway: Arc<Runtime>,
     agent_state: AgentState,
+    skill_registry: Arc<a3s_code::skills::SkillRegistry>,
     memory_store: Arc<dyn MemoryStore>,
     channel_config_store: ChannelAgentConfigStore,
     workflow_store: WorkflowStore,
@@ -50,7 +52,7 @@ pub fn build_app(
         .merge(memory_routes)
         .merge(agent_router(agent_state))
         .merge(fs_router())
-        .merge(box_router())
+        .merge(box_router(skill_registry))
         .merge(workflow_router(workflow_store))
         .layer(cors)
 }
@@ -1146,7 +1148,24 @@ async fn handle_fs_watch(mut socket: WebSocket, path: String) {
 // A3S Box API — delegates to `a3s box` CLI
 // =============================================================================
 
-fn box_router() -> Router {
+/// Synchronously check whether `a3s-box` is reachable on this system.
+/// Used at startup by bootstrap to decide whether to register the box skill.
+pub fn box_is_installed() -> bool {
+    std::process::Command::new(find_a3s_box())
+        .arg("--version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+/// Shared state for box API handlers that need to inject skills after install.
+#[derive(Clone)]
+struct BoxState {
+    skill_registry: Arc<SkillRegistry>,
+}
+
+fn box_router(skill_registry: Arc<SkillRegistry>) -> Router {
+    let state = BoxState { skill_registry };
     Router::new()
         .route("/api/v1/box/check", get(box_check))
         .route("/api/v1/box/install", post(box_install))
@@ -1183,12 +1202,39 @@ fn box_router() -> Router {
         .route("/api/v1/box/info", get(box_info))
         .route("/api/v1/box/df", get(box_df))
         .route("/api/v1/box/system/prune", post(box_system_prune))
+        .with_state(state)
+}
+
+/// Resolve the `a3s-box` binary path.
+///
+/// Checks `A3S_BOX_BIN` env override first, then common install locations
+/// (Homebrew paths and `~/.local/bin`), then falls back to a bare PATH lookup.
+fn find_a3s_box() -> String {
+    if let Ok(bin) = std::env::var("A3S_BOX_BIN") {
+        return bin;
+    }
+    let mut candidates: Vec<String> = vec![
+        "/opt/homebrew/bin/a3s-box".into(),
+        "/usr/local/bin/a3s-box".into(),
+    ];
+    if let Some(home) = dirs::home_dir() {
+        candidates.push(
+            home.join(".local/bin/a3s-box")
+                .to_string_lossy()
+                .into_owned(),
+        );
+    }
+    for candidate in &candidates {
+        if std::path::Path::new(candidate.as_str()).exists() {
+            return candidate.clone();
+        }
+    }
+    "a3s-box".to_string()
 }
 
 /// Run `a3s box <args>` and return stdout, or an error response.
 async fn run_box(args: &[&str]) -> Result<String, (StatusCode, Json<serde_json::Value>)> {
-    // Use the bundled sidecar when available; fall back to `a3s-box` in PATH.
-    let program = std::env::var("A3S_BOX_BIN").unwrap_or_else(|_| "a3s-box".to_string());
+    let program = find_a3s_box();
     let out = tokio::process::Command::new(&program)
         .args(args)
         .output()
@@ -1725,107 +1771,267 @@ async fn box_system_prune() -> impl IntoResponse {
 // Box installation check & auto-install
 // =============================================================================
 
-/// GET /api/v1/box/check — returns whether `a3s-box` is available in PATH.
+/// GET /api/v1/box/check — returns whether `a3s-box` is available.
 async fn box_check() -> impl IntoResponse {
-    let installed = tokio::process::Command::new("a3s-box")
+    let bin = find_a3s_box();
+    let out = tokio::process::Command::new(&bin)
         .arg("--version")
         .output()
-        .await
-        .map(|o| o.status.success())
-        .unwrap_or(false);
+        .await;
 
-    let version = if installed {
-        tokio::process::Command::new("a3s-box")
-            .arg("--version")
-            .output()
-            .await
-            .ok()
-            .and_then(|o| String::from_utf8(o.stdout).ok())
-            .map(|s| s.trim().to_string())
-    } else {
-        None
+    let (installed, version) = match out {
+        Ok(o) if o.status.success() => {
+            let ver = String::from_utf8_lossy(&o.stdout).trim().to_string();
+            (true, Some(ver))
+        }
+        _ => (false, None),
     };
 
     Json(serde_json::json!({ "installed": installed, "version": version }))
 }
 
-/// POST /api/v1/box/install — runs `brew install a3s-lab/tap/a3s-box` and
-/// streams combined stdout+stderr as `text/plain` (newline-delimited).
-async fn box_install() -> impl IntoResponse {
+/// POST /api/v1/box/install — downloads the latest a3s-box release from
+/// GitHub and installs it to `~/.local/bin/`. Streams progress as
+/// `text/plain` (newline-delimited). Sends `[done]` or `[error]...` sentinels.
+async fn box_install(State(state): State<BoxState>) -> impl IntoResponse {
     use axum::body::Body;
     use bytes::Bytes;
-    use tokio::io::{AsyncBufReadExt, BufReader};
+    use tokio::io::AsyncWriteExt;
     use tokio_stream::wrappers::ReceiverStream;
 
     let (tx, rx) = tokio::sync::mpsc::channel::<Bytes>(64);
+    let skill_registry = state.skill_registry.clone();
 
     tokio::spawn(async move {
-        // Locate brew — try common install paths before falling back to PATH.
-        let brew = ["/opt/homebrew/bin/brew", "/usr/local/bin/brew", "brew"]
-            .iter()
-            .find(|p| std::path::Path::new(p).exists() || p == &&"brew")
-            .copied()
-            .unwrap_or("brew");
-
         let send = |msg: String| {
             let tx = tx.clone();
-            async move { let _ = tx.send(Bytes::from(msg)).await; }
+            async move {
+                let _ = tx.send(Bytes::from(msg)).await;
+            }
         };
 
-        let mut child = match tokio::process::Command::new(brew)
-            .args(["install", "a3s-lab/tap/a3s-box"])
-            .stdout(std::process::Stdio::piped())
-            .stderr(std::process::Stdio::piped())
-            .spawn()
-        {
-            Ok(c) => c,
-            Err(e) => {
-                send(format!("[error] brew not found: {e}\n")).await;
+        // Determine the release asset name for the current platform.
+        let platform = match (std::env::consts::OS, std::env::consts::ARCH) {
+            ("macos", "aarch64") => "macos-arm64",
+            ("linux", "aarch64") => "linux-arm64",
+            ("linux", "x86_64") => "linux-x86_64",
+            (os, arch) => {
+                send(format!("[error] 不支持的平台: {os}/{arch}\n")).await;
                 return;
             }
         };
 
-        let stdout = child.stdout.take().unwrap();
-        let stderr = child.stderr.take().unwrap();
-
-        let tx_out = tx.clone();
-        let h1 = tokio::spawn(async move {
-            let mut lines = BufReader::new(stdout).lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                if tx_out.send(Bytes::from(format!("{line}\n"))).await.is_err() {
-                    break;
-                }
-            }
-        });
-
-        let tx_err = tx.clone();
-        let h2 = tokio::spawn(async move {
-            let mut lines = BufReader::new(stderr).lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                if tx_err.send(Bytes::from(format!("{line}\n"))).await.is_err() {
-                    break;
-                }
-            }
-        });
-
-        let _ = h1.await;
-        let _ = h2.await;
-
-        match child.wait().await {
-            Ok(s) if s.success() => {
-                send("[done]\n".to_string()).await;
-            }
-            Ok(s) => {
-                send(format!(
-                    "[error] exit code {}\n",
-                    s.code().unwrap_or(-1)
-                ))
-                .await;
-            }
+        let client = match reqwest::Client::builder()
+            .user_agent("safeclaw")
+            .build()
+        {
+            Ok(c) => c,
             Err(e) => {
-                send(format!("[error] {e}\n")).await;
+                send(format!("[error] 初始化 HTTP 客户端失败: {e}\n")).await;
+                return;
+            }
+        };
+
+        // Fetch latest release metadata from GitHub API.
+        send("正在获取最新版本信息…\n".to_string()).await;
+        let release: serde_json::Value = match client
+            .get("https://api.github.com/repos/A3S-Lab/Box/releases/latest")
+            .send()
+            .await
+            .and_then(|r| r.error_for_status())
+        {
+            Ok(r) => match r.json().await {
+                Ok(v) => v,
+                Err(e) => {
+                    send(format!("[error] 解析版本信息失败: {e}\n")).await;
+                    return;
+                }
+            },
+            Err(e) => {
+                send(format!("[error] 获取版本信息失败: {e}\n")).await;
+                return;
+            }
+        };
+
+        let tag = release["tag_name"]
+            .as_str()
+            .unwrap_or("latest")
+            .trim_start_matches('v')
+            .to_string();
+        let asset_name = format!("a3s-box-v{tag}-{platform}.tar.gz");
+
+        // Find the browser download URL from the assets list (fall back to
+        // constructing the URL directly).
+        let url = release["assets"]
+            .as_array()
+            .and_then(|assets| {
+                assets
+                    .iter()
+                    .find(|a| a["name"].as_str() == Some(asset_name.as_str()))
+            })
+            .and_then(|a| a["browser_download_url"].as_str())
+            .map(String::from)
+            .unwrap_or_else(|| {
+                format!(
+                    "https://github.com/A3S-Lab/Box/releases/download/v{tag}/{asset_name}"
+                )
+            });
+
+        send(format!("正在下载 a3s-box v{tag}…\n")).await;
+
+        // Download the tarball, streaming to a temp file.
+        let mut response = match client.get(&url).send().await.and_then(|r| r.error_for_status()) {
+            Ok(r) => r,
+            Err(e) => {
+                send(format!("[error] 下载失败: {e}\n")).await;
+                return;
+            }
+        };
+
+        let tmp_dir = std::env::temp_dir().join(format!("a3s-box-install-{}", uuid::Uuid::new_v4()));
+        if let Err(e) = tokio::fs::create_dir_all(&tmp_dir).await {
+            send(format!("[error] 创建临时目录失败: {e}\n")).await;
+            return;
+        }
+        let tarball_path = tmp_dir.join(&asset_name);
+
+        let mut file = match tokio::fs::File::create(&tarball_path).await {
+            Ok(f) => f,
+            Err(e) => {
+                send(format!("[error] 创建临时文件失败: {e}\n")).await;
+                return;
+            }
+        };
+
+        let total = response.content_length();
+        let mut downloaded: u64 = 0;
+        let mut last_report: u64 = 0;
+
+        loop {
+            match response.chunk().await {
+                Ok(Some(chunk)) => {
+                    if let Err(e) = file.write_all(&chunk).await {
+                        send(format!("[error] 写入失败: {e}\n")).await;
+                        return;
+                    }
+                    downloaded += chunk.len() as u64;
+                    // Report progress every ~256 KB as a structured sentinel.
+                    if downloaded.saturating_sub(last_report) >= 262_144 {
+                        last_report = downloaded;
+                        send(format!(
+                            "[progress:{}:{}]\n",
+                            downloaded,
+                            total.unwrap_or(0)
+                        ))
+                        .await;
+                    }
+                }
+                Ok(None) => break,
+                Err(e) => {
+                    send(format!("[error] 下载中断: {e}\n")).await;
+                    return;
+                }
             }
         }
+        drop(file);
+
+        send("正在解压安装文件…\n".to_string()).await;
+
+        // Prepare install directory: ~/.local/bin/
+        let install_dir = match dirs::home_dir() {
+            Some(h) => h.join(".local/bin"),
+            None => {
+                send("[error] 无法确定用户目录\n".to_string()).await;
+                return;
+            }
+        };
+        if let Err(e) = tokio::fs::create_dir_all(&install_dir).await {
+            send(format!("[error] 创建安装目录失败: {e}\n")).await;
+            return;
+        }
+
+        // Extract tarball into install directory.
+        let extract_out = tokio::process::Command::new("tar")
+            .args([
+                "-xzf",
+                tarball_path.to_str().unwrap_or_default(),
+                "-C",
+                install_dir.to_str().unwrap_or_default(),
+            ])
+            .output()
+            .await;
+
+        match extract_out {
+            Ok(o) if o.status.success() => {}
+            Ok(o) => {
+                let err = String::from_utf8_lossy(&o.stderr);
+                send(format!("[error] 解压失败: {err}\n")).await;
+                let _ = tokio::fs::remove_dir_all(&tmp_dir).await;
+                return;
+            }
+            Err(e) => {
+                send(format!("[error] 解压失败: {e}\n")).await;
+                let _ = tokio::fs::remove_dir_all(&tmp_dir).await;
+                return;
+            }
+        }
+
+        // The tarball extracts to a versioned subdirectory (e.g., a3s-box-v0.8.0-macos-arm64/).
+        // Move binaries from the subdirectory to ~/.local/bin/ root.
+        send("正在移动二进制文件...\n".to_string()).await;
+
+        // Find the extracted directory (should be the only directory in install_dir after extraction)
+        let mut extracted_dir = None;
+        if let Ok(mut entries) = tokio::fs::read_dir(&install_dir).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                if entry.path().is_dir() && entry.file_name().to_string_lossy().starts_with("a3s-box") {
+                    extracted_dir = Some(entry.path());
+                    break;
+                }
+            }
+        }
+
+        if let Some(src_dir) = extracted_dir {
+            // Move each binary from src_dir to install_dir
+            for bin in &["a3s-box", "a3s-box-shim", "a3s-box-guest-init", "a3s-box-cri"] {
+                let src = src_dir.join(bin);
+                let dst = install_dir.join(bin);
+                if src.exists() {
+                    if let Err(e) = tokio::fs::rename(&src, &dst).await {
+                        tracing::warn!("Failed to move {}: {}", bin, e);
+                    }
+                }
+            }
+            // Remove the now-empty extracted directory
+            let _ = tokio::fs::remove_dir_all(&src_dir).await;
+        }
+
+        // Ensure all installed binaries are executable.
+        for bin in &["a3s-box", "a3s-box-shim", "a3s-box-guest-init", "a3s-box-cri"] {
+            let path = install_dir.join(bin);
+            if path.exists() {
+                let _ = tokio::process::Command::new("chmod")
+                    .args(["+x", path.to_str().unwrap_or_default()])
+                    .output()
+                    .await;
+            }
+        }
+
+        let _ = tokio::fs::remove_dir_all(&tmp_dir).await;
+
+        send(format!("已安装到 {}\n", install_dir.display())).await;
+
+        // Inject the a3s-box skill into the live registry so it's available
+        // immediately without requiring a restart.
+        if let Some(skill) = crate::skills::a3s_box_skill() {
+            let name = skill.name.clone();
+            match skill_registry.register(skill) {
+                Ok(_) => tracing::info!(skill = %name, "Injected a3s-box skill after install"),
+                Err(e) => tracing::warn!(skill = %name, "a3s-box skill injection failed: {e}"),
+            }
+        }
+
+        send("[done]\n".to_string()).await;
         // tx drops here — stream ends
     });
 

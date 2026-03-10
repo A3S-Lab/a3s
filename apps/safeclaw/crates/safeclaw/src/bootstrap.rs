@@ -160,6 +160,25 @@ pub async fn build_agent_state(
         }
     }
 
+    // Register SafeClaw built-in skills (always-on).
+    for skill in crate::skills::always_on_skills() {
+        let name = skill.name.clone();
+        if let Err(e) = skill_registry.register(skill) {
+            tracing::warn!(skill = %name, "Failed to register built-in skill: {e}");
+        }
+    }
+
+    // Register the a3s-box skill if a3s-box is installed on this system.
+    if crate::api::box_is_installed() {
+        if let Some(skill) = crate::skills::a3s_box_skill() {
+            let name = skill.name.clone();
+            match skill_registry.register(skill) {
+                Ok(_) => tracing::info!(skill = %name, "Registered a3s-box skill"),
+                Err(e) => tracing::warn!(skill = %name, "Failed to register a3s-box skill: {e}"),
+            }
+        }
+    }
+
     let session_manager = Arc::new(
         a3s_code::session::SessionManager::with_persistence(
             default_llm,
@@ -286,9 +305,14 @@ pub async fn start_gateway(
         .context("Failed to open workflow store")?;
 
     let engine = agent_state.engine.clone();
+    let skill_registry = engine
+        .skill_registry()
+        .await
+        .expect("skill registry must be set before building app");
     let app = build_app(
         gateway.clone(),
         agent_state,
+        skill_registry,
         memory_store,
         channel_config_store,
         workflow_store,
