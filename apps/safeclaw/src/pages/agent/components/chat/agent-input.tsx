@@ -73,10 +73,18 @@ export function AgentInput({
 	const [isEmpty, setIsEmpty] = useState(true);
 	const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
 	const [isDragging, setIsDragging] = useState(false);
+	const [isInterrupting, setIsInterrupting] = useState(false);
 	const dragCounterRef = useRef(0);
 	const { sessionStatus, sdkSessions } = useSnapshot(agentModel.state);
 	const personaSnap = useSnapshot(personaModel.state);
 	const isRunning = sessionStatus[sessionId] === "running";
+
+	// Clear interrupting state when generation stops
+	useEffect(() => {
+		if (!isRunning) {
+			setIsInterrupting(false);
+		}
+	}, [isRunning]);
 
 	const allFilesReady = pendingFiles.every((f) => f.progress === undefined);
 
@@ -284,6 +292,7 @@ export function AgentInput({
 	);
 
 	const handleInterrupt = useCallback(() => {
+		setIsInterrupting(true);
 		sendToSession(sessionId, { type: "interrupt" });
 	}, [sessionId]);
 
@@ -444,7 +453,7 @@ export function AgentInput({
 						type="button"
 						className={cn(
 							"flex items-center justify-center size-8 rounded-full transition-colors",
-							isRunning
+							isRunning || isInterrupting
 								? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
 								: (isEmpty && pendingFiles.length === 0) ||
 									  !allFilesReady ||
@@ -453,17 +462,22 @@ export function AgentInput({
 									: "bg-primary text-primary-foreground hover:bg-primary/90",
 						)}
 						disabled={
-							!isRunning &&
-							((isEmpty && pendingFiles.length === 0) ||
-								!allFilesReady ||
-								disabled)
+							isInterrupting ||
+							(!isRunning &&
+								((isEmpty && pendingFiles.length === 0) ||
+									!allFilesReady ||
+									disabled))
 						}
 						onClick={isRunning ? handleInterrupt : handleSubmit}
 						aria-label={isRunning ? "中断" : "发送消息"}
 						title={isRunning ? "中断" : "发送"}
 					>
-						{isRunning ? (
-							<X className="size-4" />
+						{isRunning || isInterrupting ? (
+							isInterrupting ? (
+								<Loader2 className="size-4 animate-spin" />
+							) : (
+								<X className="size-4" />
+							)
 						) : (
 							<Send className="size-4" />
 						)}

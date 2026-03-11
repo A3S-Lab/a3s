@@ -2,6 +2,7 @@
  * Renders the suggestion popup using React portal.
  * Used by both @mention and /slash-command extensions.
  */
+import type React from "react";
 import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { createRoot, type Root } from "react-dom/client";
 import MentionList, {
@@ -39,6 +40,7 @@ export function createSuggestionRenderer(
 	onSelect?: () => void,
 	onFolderClick?: (item: SuggestionItem) => void,
 	onOpen?: () => void,
+	suggestionOpenRef?: React.MutableRefObject<boolean>,
 ): Pick<SuggestionOptions<SuggestionItem>, "items" | "render"> {
 	return {
 		items: ({ query }) => getItems(query),
@@ -95,6 +97,11 @@ export function createSuggestionRenderer(
 
 			return {
 				onStart: (props: SuggestionProps<SuggestionItem>) => {
+					// Mark suggestion menu as open
+					if (suggestionOpenRef) {
+						suggestionOpenRef.current = true;
+					}
+
 					// Trigger refresh callback when panel opens
 					console.log("[SuggestionRenderer] onStart called, triggering onOpen");
 
@@ -173,10 +180,23 @@ export function createSuggestionRenderer(
 						destroy();
 						return true;
 					}
-					return component?.onKeyDown(props) ?? false;
+					// If component is ready, delegate to it
+					if (component) {
+						return component.onKeyDown(props);
+					}
+					// If component is not ready yet but we have items, intercept Enter/Tab
+					// to prevent submitting the form before the suggestion is selected
+					if (props.event.key === "Enter" || props.event.key === "Tab") {
+						return true;
+					}
+					return false;
 				},
 
 				onExit: () => {
+					// Mark suggestion menu as closed
+					if (suggestionOpenRef) {
+						suggestionOpenRef.current = false;
+					}
 					destroy();
 				},
 			};

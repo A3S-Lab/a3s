@@ -50,6 +50,7 @@ struct EngineSession {
     pending_permissions: HashMap<String, PermissionRequest>,
     generation_handle: Option<tokio::task::JoinHandle<()>>,
     generation_cancel_token: Option<tokio_util::sync::CancellationToken>,
+    generation_id: u64,  // Incremented each time a new generation starts
     name: Option<String>,
     archived: bool,
     created_at: u64,
@@ -247,6 +248,7 @@ impl AgentEngine {
             pending_permissions: HashMap::new(),
             generation_handle: None,
             generation_cancel_token: None,
+            generation_id: 0,
             name: None,
             archived: false,
             created_at: now,
@@ -683,18 +685,31 @@ impl AgentEngine {
                 }
             }
             BrowserOutgoingMessage::Interrupt => {
+                tracing::info!(session_id = %session_id, "🛑 Interrupt received from browser");
                 // Cancel running generation via CancellationToken (cooperative) + abort handle (fallback)
                 {
                     let mut sessions = self.sessions.write().await;
                     if let Some(es) = sessions.get_mut(session_id) {
+                        let had_token = es.generation_cancel_token.is_some();
+                        let had_handle = es.generation_handle.is_some();
+
                         if let Some(token) = es.generation_cancel_token.take() {
+                            tracing::info!(session_id = %session_id, "🛑 Calling cancel_token.cancel()");
                             token.cancel();
                         }
                         if let Some(handle) = es.generation_handle.take() {
+                            tracing::info!(session_id = %session_id, "🛑 Calling handle.abort()");
                             handle.abort();
                         }
+
+                        if !had_token && !had_handle {
+                            tracing::debug!(session_id = %session_id, "🛑 No active generation to cancel (already cancelled or not running)");
+                        }
+                    } else {
+                        tracing::warn!(session_id = %session_id, "🛑 Session not found");
                     }
                 }
+                tracing::info!(session_id = %session_id, "🛑 Calling session_manager.cancel_operation()");
                 let _ = self.session_manager.cancel_operation(session_id).await;
 
                 // Notify browsers of idle state
@@ -779,6 +794,8 @@ impl AgentEngine {
                     handle.abort();
                 }
                 es.touch_activity();
+                // Increment generation ID for the new generation
+                es.generation_id = es.generation_id.wrapping_add(1);
             }
         }
 
@@ -858,13 +875,18 @@ impl AgentEngine {
             })
         };
 
-        {
+        let current_generation_id = {
             let mut sessions = self.sessions.write().await;
             if let Some(es) = sessions.get_mut(session_id) {
+                tracing::info!(session_id = %session_id, generation_id = es.generation_id, "✅ Storing new generation_handle and cancel_token");
                 es.generation_handle = Some(wrapped_handle);
                 es.generation_cancel_token = Some(cancel_token);
+                es.generation_id
+            } else {
+                tracing::error!(session_id = %session_id, "❌ Failed to store token: session not found");
+                return;
             }
-        }
+        };
 
         let sessions = self.sessions.clone();
         let store = self.store.clone();
@@ -1320,10 +1342,13 @@ impl AgentEngine {
             }
             drop(sessions_read);
 
-            // Clear generation handle
+            // Clear generation handle and cancel token only if they still belong to this generation
             let mut sessions = sessions.write().await;
             if let Some(es) = sessions.get_mut(&sid) {
-                es.generation_handle = None;
+                if es.generation_id == current_generation_id {
+                    es.generation_handle = None;
+                    es.generation_cancel_token = None;
+                }
             }
         });
     }
@@ -1804,6 +1829,7 @@ impl AgentEngine {
                 pending_permissions: ps.pending_permissions,
                 generation_handle: None,
                 generation_cancel_token: None,
+                generation_id: 0,
                 name: None,
                 archived: ps.archived,
                 created_at: 0,

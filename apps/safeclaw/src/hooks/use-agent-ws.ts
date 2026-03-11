@@ -667,15 +667,10 @@ function handleMessage(sessionId: string, msg: BrowserIncomingMessage): void {
 				agentModel.setSessionStatus(sessionId, "running");
 				agentModel.updateSession(sessionId, { is_compacting: false });
 			} else {
-				// Ignore transient idle updates while streaming content is still active.
-				const hasStreaming =
-					typeof agentModel.state.streaming[sessionId] === "string" ||
-					(agentModel.state.streamingSegments[sessionId]?.length || 0) > 0 ||
-					Object.keys(agentModel.state.pendingPermissions[sessionId] || {})
-						.length > 0;
-				if (!hasStreaming) {
-					agentModel.setSessionStatus(sessionId, "idle");
-				}
+				// When going idle, clear streaming state (especially important for interrupts)
+				agentModel.setStreaming(sessionId, null);
+				agentModel.clearCompletedTools(sessionId);
+				agentModel.setSessionStatus(sessionId, "idle");
 				agentModel.updateSession(sessionId, { is_compacting: false });
 			}
 			break;

@@ -351,6 +351,9 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 		// next Enter keydown so it doesn't also submit the message.
 		const justSelectedRef = useRef(false);
 
+		// Track whether any suggestion menu is currently open
+		const suggestionOpenRef = useRef(false);
+
 		const slashSuggestion = useMemo(
 			() =>
 				createSuggestionRenderer(
@@ -358,6 +361,9 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 					() => {
 						justSelectedRef.current = true;
 					},
+					undefined,
+					undefined,
+					suggestionOpenRef,
 				),
 			// eslint-disable-next-line react-hooks/exhaustive-deps
 			[],
@@ -376,6 +382,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 					},
 					(item) => handleFolderClickRef.current(item),
 					() => refreshWorkspaceFilesRef.current(),
+					suggestionOpenRef,
 				),
 			// eslint-disable-next-line react-hooks/exhaustive-deps
 			[],
@@ -462,6 +469,10 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 				handleKeyDown: (_view, event) => {
 					// Enter without Shift = submit
 					if (event.key === "Enter" && !event.shiftKey) {
+						// Don't submit if suggestion menu is open
+						if (suggestionOpenRef.current) {
+							return false; // Let suggestion plugin handle it
+						}
 						// Don't submit if a suggestion was just selected via Enter
 						if (justSelectedRef.current) {
 							justSelectedRef.current = false;
