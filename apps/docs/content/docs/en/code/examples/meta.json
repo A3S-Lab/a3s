@@ -11,6 +11,7 @@
     "auto-compact",
     "memory",
     "security",
+    "ahp-safety",
     "skills",
     "batch",
     "vector-rag",

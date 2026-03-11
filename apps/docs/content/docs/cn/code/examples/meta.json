@@ -1,5 +1,5 @@
 {
-  "title": "示例",
+  "title": "Examples",
   "pages": [
     "index",
     "quick-start",
@@ -11,6 +11,7 @@
     "auto-compact",
     "memory",
     "security",
+    "ahp-safety",
     "skills",
     "batch",
     "vector-rag",
