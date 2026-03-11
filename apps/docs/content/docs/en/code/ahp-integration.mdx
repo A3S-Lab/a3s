@@ -24,7 +24,49 @@ AHP provides a framework-agnostic interface for:
 - **Audit logging** — Record all agent activities for compliance
 - **Dynamic control** — Pause, resume, or modify agent behavior at runtime
 
-### Architecture
+### Architecture Types
+
+A3S Code supports two AHP architectures:
+
+1. **Agent Monitors Agent** (Recommended) — Use an independent A3S Code agent as AHP Server
+2. **Pattern-Based Harness** — Fast rule-based checks using regex patterns
+
+#### Agent Monitors Agent Architecture (Recommended)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Business Agent                          │
+│                  (A3S Code Agent + Kimi)                    │
+│                                                             │
+│  - Executes actual business tasks                          │
+│  - Calls tools (Bash, Read, Write, etc.)                   │
+│  - Configured with AHP transport to AHP Server             │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          │ AHP Protocol (JSON-RPC 2.0)
+                          │ stdio transport
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│                   AHP Server Agent                           │
+│                  (A3S Code Agent + Kimi)                    │
+│                                                             │
+│  - Receives pre_action/post_action events                  │
+│  - Uses LLM to analyze security risks                      │
+│  - Makes allow/block decisions                             │
+│  - Returns decisions to business agent                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Advantages**:
+- Context-aware analysis: Understands operation intent, not just pattern matching
+- Adaptive learning: Improves from historical decisions
+- Natural language reasoning: Provides clear decision rationale
+- Complex threat detection: Catches attacks that bypass regex
+- Independent agents: AHP Server agent is fully independent, can have its own config and policies
+
+**Example**: See [AHP Safety Harness Example](/docs/en/code/examples/ahp-safety#agent-monitors-agent-architecture-recommended)
+
+#### Pattern-Based Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

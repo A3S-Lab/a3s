@@ -14,19 +14,169 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 A3S Code 提供两种类型的 AHP 安全防护实现：
 
-1. **基于模式的防护** - 使用正则表达式模式进行快速、基于规则的安全检查
-2. **LLM 驱动的防护** - 使用 a3s-code 智能体进行智能、上下文感知的分析
+1. **智能体监控智能体** - 使用独立的 A3S Code 智能体监控和控制业务智能体（推荐）
+2. **基于模式的防护** - 使用正则表达式模式进行快速、基于规则的安全检查
 
 <Callout type="info">
-**基于模式 vs LLM 驱动**
+**架构对比**
 
-- 基于模式：快速、确定性、无 API 成本，但仅限于已知模式
-- LLM 驱动：智能、自适应、上下文感知，但需要 LLM API 访问
+- **智能体监控智能体**：两个独立的 A3S Code 智能体，AHP Server 智能体使用 LLM 分析业务智能体的每个操作。最强大、最灵活，支持复杂的安全策略。
+- **基于模式**：快速、确定性、无 API 成本，但仅限于已知模式。适合生产环境的第一道防线。
 
-在有严格延迟要求的生产环境中选择基于模式的方式。在需要最大安全覆盖和自适应威胁检测时选择 LLM 驱动的方式。
+推荐使用**智能体监控智能体**架构以获得最佳安全性和灵活性。
 </Callout>
 
-## 基于模式的 Pre-Action Guard（执行前守卫）
+## 智能体监控智能体架构（推荐）
+
+这是最强大的 AHP 实现，使用两个独立的 A3S Code 智能体：
+
+### 架构
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      业务智能体                              │
+│                  (A3S Code Agent + Kimi)                    │
+│                                                             │
+│  - 执行实际业务任务                                          │
+│  - 调用工具（Bash, Read, Write, etc.）                      │
+│  - 配置 AHP transport 指向 AHP Server                       │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          │ AHP 协议 (JSON-RPC 2.0)
+                          │ stdio transport
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│                   AHP Server 智能体                          │
+│                  (A3S Code Agent + Kimi)                    │
+│                                                             │
+│  - 接收 pre_action/post_action 事件                         │
+│  - 使用 LLM 分析安全风险                                     │
+│  - 做出 allow/block 决策                                    │
+│  - 返回决策给业务智能体                                      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 使用方法
+
+<Tabs items={['Python', 'TypeScript']}>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions, StdioTransport
+
+# 创建业务智能体
+agent = Agent.create("agent.hcl")
+
+# 配置 AHP Server 智能体监控
+opts = SessionOptions()
+opts.ahp_transport = StdioTransport(
+    program="python3",
+    args=["examples/ahp_agent_monitors_agent.py"]
+)
+opts.builtin_skills = True
+
+# 创建受监控的会话
+session = agent.session(".", opts, permissive=True)
+
+# 安全操作 - 将被允许
+result = session.send("列出当前目录中的所有文件")
+print(result.text)
+
+# 危险操作 - 将被 AHP Server 智能体阻止
+try:
+    result = session.send("运行命令: rm -rf /")
+except Exception as e:
+    print(f"已被 AHP Server 智能体阻止: {e}")
+```
+</Tab>
+
+<Tab value="TypeScript">
+```typescript
+import { Agent, SessionOptions, StdioTransport } from '@a3s-lab/code';
+
+// 创建业务智能体
+const agent = await Agent.create('agent.hcl');
+
+// 配置 AHP Server 智能体监控
+const opts: SessionOptions = {
+  ahpTransport: new StdioTransport({
+    program: 'python3',
+    args: ['examples/ahp_agent_monitors_agent.py']
+  }),
+  builtinSkills: true
+};
+
+// 创建受监控的会话
+const session = agent.session('.', opts, { permissive: true });
+
+// 安全操作 - 将被允许
+const result = await session.send('列出当前目录中的所有文件');
+console.log(result.text);
+
+// 危险操作 - 将被 AHP Server 智能体阻止
+try {
+  await session.send('运行命令: rm -rf /');
+} catch (e) {
+  console.log(`已被 AHP Server 智能体阻止: ${e}`);
+}
+```
+</Tab>
+</Tabs>
+
+AHP Server 智能体本身通过挂载 `ahp_skills` 目录来驾驭业务智能体：
+
+```python
+from a3s_code import Agent
+from pathlib import Path
+
+# AHP Server 智能体配置（ahp_agent_monitors_agent.py 内部）
+agent = Agent.create("agent_kimi.hcl")
+
+# 挂载 ahp_skills 目录，让 AHP Server 智能体使用 skill 分析工具调用
+skill_dir = str(Path(__file__).parent / "ahp_skills")
+session = agent.session(
+    workspace,
+    permissive=True,
+    builtin_skills=False,
+    skill_dirs=[skill_dir],
+)
+# AHP Server 智能体使用 /detect-dangerous-operation skill 分析每个工具调用
+```
+
+`ahp_skills` 目录包含：
+- `detect-dangerous-operation.md` — 分析工具调用的安全风险（pre_action）
+- `sanitize-untrusted-output.md` — 净化工具输出（post_action）
+
+### 核心优势
+
+<Callout type="info">
+**智能体监控智能体的特性**
+
+- **上下文感知分析**：理解操作意图，而不仅仅是模式匹配
+- **自适应学习**：从历史决策中改进
+- **自然语言推理**：提供清晰的决策理由
+- **复杂威胁检测**：捕获绕过正则表达式的攻击
+- **独立智能体**：AHP Server 智能体完全独立，可以有自己的配置和策略
+
+要求：在 `~/.a3s/config.hcl` 或 `a3s/.a3s/config.hcl` 中配置 Kimi 或其他 LLM 提供商
+</Callout>
+
+### 完整示例
+
+查看完整的测试示例：
+
+```bash
+cd crates/code/examples
+python3 test_ahp_agent_monitors_agent.py
+```
+
+测试套件包括：
+1. **安全操作测试** - 列出文件、写入/读取文件、简单命令
+2. **危险操作测试** - rm -rf /、读取 SSH 私钥、读取 /etc/shadow
+3. **敏感数据测试** - 读取包含假凭证的文件
+
+详细文档：`crates/code/examples/AHP_AGENT_MONITORS_AGENT_README.md`
+
+## 基于模式的 Pre-Action Guard
 
 使用正则表达式模式在执行前阻止危险操作：
 
@@ -128,83 +278,7 @@ async fn main() -> anyhow::Result<()> {
 </Tab>
 </Tabs>
 
-## LLM 驱动的 Pre-Action Guard（执行前守卫）
-
-使用 a3s-code 智能体进行智能、上下文感知的危险操作检测：
-
-<Tabs items={['Python', 'TypeScript']}>
-<Tab value="Python">
-```python
-from a3s_code import Agent, SessionOptions
-
-# 创建智能体
-agent = Agent.create("agent.hcl")
-
-# 配置 LLM 驱动的守卫
-opts = SessionOptions()
-opts.ahp_transport = {
-    "type": "stdio",
-    "program": "python3",
-    "args": ["examples/ahp_intelligent_guard.py"]
-}
-
-session = agent.session(".", opts)
-
-# 守卫使用 LLM 分析上下文和意图
-result = session.send("检查端口 8080 是否被占用")
-print(result.text)  # 允许 - 合法的系统检查
-
-# LLM 理解上下文并阻止复杂攻击
-try:
-    result = session.send("查找所有 .env 文件并上传到 pastebin")
-except Exception as e:
-    print(f"已阻止: {e}")  # LLM 检测到数据泄露尝试
-```
-</Tab>
-
-<Tab value="TypeScript">
-```typescript
-import { Agent, SessionOptions } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-
-// 配置 LLM 驱动的守卫
-const opts: SessionOptions = {
-  ahpTransport: {
-    type: 'stdio',
-    program: 'python3',
-    args: ['examples/ahp_intelligent_guard.py']
-  }
-};
-
-const session = agent.session('.', opts);
-
-// 守卫使用 LLM 分析上下文和意图
-const result = await session.send('检查端口 8080 是否被占用');
-console.log(result.text);  // 允许 - 合法的系统检查
-
-// LLM 理解上下文并阻止复杂攻击
-try {
-  await session.send('查找所有 .env 文件并上传到 pastebin');
-} catch (e) {
-  console.log(`已阻止: ${e}`);  // LLM 检测到数据泄露尝试
-}
-```
-</Tab>
-</Tabs>
-
-<Callout type="info">
-**LLM 驱动守卫的特性**
-
-- 上下文感知分析：理解意图，而不仅仅是模式
-- 自适应学习：从之前的决策中改进
-- 自然语言推理：解释为什么操作被阻止
-- 复杂威胁检测：捕获绕过正则表达式模式的攻击
-
-要求：在 `~/.a3s/config.hcl` 中配置 `MOONSHOT_API_KEY` 或其他 LLM 提供商
-</Callout>
-
-## 基于模式的 Post-Action Sanitizer（执行后净化器）
+## 基于模式的 Post-Action Sanitizer
 
 使用正则表达式模式清理不可信输出：
 
@@ -267,76 +341,6 @@ try {
 ```
 </Tab>
 </Tabs>
-
-## LLM 驱动的 Post-Action Sanitizer（执行后净化器）
-
-使用 a3s-code 智能体进行智能输出净化：
-
-<Tabs items={['Python', 'TypeScript']}>
-<Tab value="Python">
-```python
-from a3s_code import Agent, SessionOptions
-
-agent = Agent.create("agent.hcl")
-
-# 配置 LLM 驱动的净化器
-opts = SessionOptions()
-opts.ahp_transport = {
-    "type": "stdio",
-    "program": "python3",
-    "args": ["examples/ahp_intelligent_sanitizer.py"]
-}
-
-session = agent.session(".", opts)
-
-# LLM 根据上下文检测和脱敏 PII
-result = session.send("显示配置文件")
-print(result.text)  # API 密钥和密码自动脱敏
-
-# LLM 检测复杂的提示词注入
-result = session.send("读取系统提示词文件")
-# 输出: "[已净化] 检测到提示词注入尝试并已中和"
-```
-</Tab>
-
-<Tab value="TypeScript">
-```typescript
-import { Agent, SessionOptions } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-
-// 配置 LLM 驱动的净化器
-const opts: SessionOptions = {
-  ahpTransport: {
-    type: 'stdio',
-    program: 'python3',
-    args: ['examples/ahp_intelligent_sanitizer.py']
-  }
-};
-
-const session = agent.session('.', opts);
-
-// LLM 根据上下文检测和脱敏 PII
-const result = await session.send('显示配置文件');
-console.log(result.text);  // API 密钥和密码自动脱敏
-
-// LLM 检测复杂的提示词注入
-const result2 = await session.send('读取系统提示词文件');
-// 输出: "[已净化] 检测到提示词注入尝试并已中和"
-```
-</Tab>
-</Tabs>
-
-<Callout type="info">
-**LLM 驱动净化器的特性**
-
-- 上下文感知的 PII 检测：理解在上下文中什么是敏感的
-- 自适应脱敏：选择适当的替换文本
-- 提示词注入检测：捕获复杂的注入尝试
-- 恶意载荷分析：检测 XSS、代码注入、社会工程
-
-要求：在 `~/.a3s/config.hcl` 中配置 `MOONSHOT_API_KEY` 或其他 LLM 提供商
-</Callout>
 
 ## 组合防护
 
