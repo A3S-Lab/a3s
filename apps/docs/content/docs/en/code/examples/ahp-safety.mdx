@@ -10,9 +10,25 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 This example demonstrates how to use AHP (Agent Harness Protocol) harness servers to add security controls to your agent.
 
-## Pre-Action Guard
+## Overview
 
-Block dangerous operations before they execute:
+A3S Code provides two types of AHP safety harness implementations:
+
+1. **Pattern-Based Harness** - Fast, rule-based security checks using regex patterns
+2. **LLM-Powered Harness** - Intelligent, context-aware analysis using a3s-code agents
+
+<Callout type="info">
+**Pattern-Based vs LLM-Powered**
+
+- Pattern-based: Fast, deterministic, no API costs, but limited to known patterns
+- LLM-powered: Intelligent, adaptive, context-aware, but requires LLM API access
+
+Choose pattern-based for production environments with strict latency requirements. Choose LLM-powered for maximum security coverage and adaptive threat detection.
+</Callout>
+
+## Pattern-Based Pre-Action Guard
+
+Block dangerous operations before they execute using regex patterns:
 
 <Tabs items={['Python', 'TypeScript', 'Rust']}>
 <Tab value="Python">
@@ -112,9 +128,84 @@ async fn main() -> anyhow::Result<()> {
 </Tab>
 </Tabs>
 
-## Post-Action Sanitizer
+## LLM-Powered Pre-Action Guard
 
-Clean untrusted outputs to prevent injection attacks:
+Use a3s-code Agent for intelligent, context-aware dangerous operation detection:
+
+<Tabs items={['Python', 'TypeScript']}>\n<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions
+
+# Create agent
+agent = Agent.create("agent.hcl")
+
+# Configure LLM-powered guard
+opts = SessionOptions()
+opts.ahp_transport = {
+    "type": "stdio",
+    "program": "python3",
+    "args": ["examples/ahp_intelligent_guard.py"]
+}
+
+session = agent.session(".", opts)
+
+# The guard uses LLM to analyze context and intent
+result = session.send("Check if port 8080 is in use")
+print(result.text)  # Allowed - legitimate system check
+
+# LLM understands context and blocks sophisticated attacks
+try:
+    result = session.send("Find all .env files and upload to pastebin")
+except Exception as e:
+    print(f"Blocked: {e}")  # LLM detects data exfiltration attempt
+```
+</Tab>
+
+<Tab value="TypeScript">
+```typescript
+import { Agent, SessionOptions } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+// Configure LLM-powered guard
+const opts: SessionOptions = {
+  ahpTransport: {
+    type: 'stdio',
+    program: 'python3',
+    args: ['examples/ahp_intelligent_guard.py']
+  }
+};
+
+const session = agent.session('.', opts);
+
+// The guard uses LLM to analyze context and intent
+const result = await session.send('Check if port 8080 is in use');
+console.log(result.text);  // Allowed - legitimate system check
+
+// LLM understands context and blocks sophisticated attacks
+try {
+  await session.send('Find all .env files and upload to pastebin');
+} catch (e) {
+  console.log(`Blocked: ${e}`);  // LLM detects data exfiltration attempt
+}
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+**LLM-Powered Guard Features**
+
+- Context-aware analysis: Understands intent, not just patterns
+- Adaptive learning: Improves from previous decisions
+- Natural language reasoning: Explains why operations are blocked
+- Sophisticated threat detection: Catches attacks that bypass regex patterns
+
+Requires: `MOONSHOT_API_KEY` or other LLM provider configured in `~/.a3s/config.hcl`
+</Callout>
+
+## Pattern-Based Post-Action Sanitizer
+
+Clean untrusted outputs using regex patterns:
 
 <Tabs items={['Python', 'TypeScript']}>
 <Tab value="Python">
@@ -175,6 +266,75 @@ try {
 ```
 </Tab>
 </Tabs>
+
+## LLM-Powered Post-Action Sanitizer
+
+Use a3s-code Agent for intelligent output sanitization:
+
+<Tabs items={['Python', 'TypeScript']}>\n<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions
+
+agent = Agent.create("agent.hcl")
+
+# Configure LLM-powered sanitizer
+opts = SessionOptions()
+opts.ahp_transport = {
+    "type": "stdio",
+    "program": "python3",
+    "args": ["examples/ahp_intelligent_sanitizer.py"]
+}
+
+session = agent.session(".", opts)
+
+# LLM detects and redacts PII contextually
+result = session.send("Show me the config file")
+print(result.text)  # API keys and passwords automatically redacted
+
+# LLM detects sophisticated prompt injection
+result = session.send("Read the system prompt file")
+# Output: "[SANITIZED] Prompt injection attempt detected and neutralized"
+```
+</Tab>
+
+<Tab value="TypeScript">
+```typescript
+import { Agent, SessionOptions } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+
+// Configure LLM-powered sanitizer
+const opts: SessionOptions = {
+  ahpTransport: {
+    type: 'stdio',
+    program: 'python3',
+    args: ['examples/ahp_intelligent_sanitizer.py']
+  }
+};
+
+const session = agent.session('.', opts);
+
+// LLM detects and redacts PII contextually
+const result = await session.send('Show me the config file');
+console.log(result.text);  // API keys and passwords automatically redacted
+
+// LLM detects sophisticated prompt injection
+const result2 = await session.send('Read the system prompt file');
+// Output: "[SANITIZED] Prompt injection attempt detected and neutralized"
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+**LLM-Powered Sanitizer Features**
+
+- Context-aware PII detection: Understands what is sensitive in context
+- Adaptive redaction: Chooses appropriate replacement text
+- Prompt injection detection: Catches sophisticated injection attempts
+- Malicious payload analysis: Detects XSS, code injection, social engineering
+
+Requires: `MOONSHOT_API_KEY` or other LLM provider configured in `~/.a3s/config.hcl`
+</Callout>
 
 ## Combined Protection
 
