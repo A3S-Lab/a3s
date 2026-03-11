@@ -37,6 +37,8 @@ pub struct AgentEngine {
     config_path: Arc<RwLock<Option<std::path::PathBuf>>>,
     /// Slash command registry (shared across sessions)
     command_registry: Arc<CommandRegistry>,
+    /// Per-session memory stores (session_id -> memory store)
+    session_memory_stores: Arc<RwLock<HashMap<String, Arc<dyn a3s_memory::MemoryStore>>>>,
 }
 
 /// Per-session UI state tracked by the engine.
@@ -47,6 +49,7 @@ struct EngineSession {
     message_history: Vec<BrowserIncomingMessage>,
     pending_permissions: HashMap<String, PermissionRequest>,
     generation_handle: Option<tokio::task::JoinHandle<()>>,
+    generation_cancel_token: Option<tokio_util::sync::CancellationToken>,
     name: Option<String>,
     archived: bool,
     created_at: u64,
@@ -113,6 +116,7 @@ impl AgentEngine {
             agent_bus: Arc::new(RwLock::new(None)),
             config_path: Arc::new(RwLock::new(None)),
             command_registry: Arc::new(make_full_command_registry()),
+            session_memory_stores: Arc::new(RwLock::new(HashMap::new())),
         };
 
         // Restore persisted UI state from disk
@@ -242,6 +246,7 @@ impl AgentEngine {
             message_history: Vec::new(),
             pending_permissions: HashMap::new(),
             generation_handle: None,
+            generation_cancel_token: None,
             name: None,
             archived: false,
             created_at: now,
@@ -258,6 +263,30 @@ impl AgentEngine {
         // Update state fields
         let mut sessions = self.sessions.write().await;
         sessions.insert(session_id.to_string(), engine_session);
+
+        // Create per-session memory store in workspace/.a3s/memory
+        let memory_dir = std::path::PathBuf::from(&workspace).join(".a3s").join("memory");
+        match a3s_memory::FileMemoryStore::new(memory_dir.clone()).await {
+            Ok(file_store) => {
+                let store: Arc<dyn a3s_memory::MemoryStore> = Arc::new(file_store);
+                self.session_memory_stores.write().await.insert(session_id.to_string(), store.clone());
+                // Set this as the active memory store for the session
+                self.session_manager.set_memory_store(store).await;
+                tracing::info!(
+                    session_id = %session_id,
+                    dir = %memory_dir.display(),
+                    "Session memory store initialized"
+                );
+            }
+            Err(e) => {
+                tracing::warn!(
+                    session_id = %session_id,
+                    dir = %memory_dir.display(),
+                    "Failed to initialize session memory store: {}",
+                    e
+                );
+            }
+        }
 
         // Update the session state with model/cwd info
         if let Some(es) = sessions.get_mut(session_id) {
@@ -299,6 +328,9 @@ impl AgentEngine {
         {
             let mut sessions = self.sessions.write().await;
             if let Some(es) = sessions.get_mut(session_id) {
+                if let Some(token) = es.generation_cancel_token.take() {
+                    token.cancel();
+                }
                 if let Some(handle) = es.generation_handle.take() {
                     handle.abort();
                 }
@@ -310,6 +342,9 @@ impl AgentEngine {
 
         // Remove UI state
         self.sessions.write().await.remove(session_id);
+
+        // Remove session memory store
+        self.session_memory_stores.write().await.remove(session_id);
 
         // Remove from disk
         self.store.remove(session_id).await;
@@ -648,10 +683,13 @@ impl AgentEngine {
                 }
             }
             BrowserOutgoingMessage::Interrupt => {
-                // Cancel running generation
+                // Cancel running generation via CancellationToken (cooperative) + abort handle (fallback)
                 {
                     let mut sessions = self.sessions.write().await;
                     if let Some(es) = sessions.get_mut(session_id) {
+                        if let Some(token) = es.generation_cancel_token.take() {
+                            token.cancel();
+                        }
                         if let Some(handle) = es.generation_handle.take() {
                             handle.abort();
                         }
@@ -734,6 +772,9 @@ impl AgentEngine {
         {
             let mut sessions = self.sessions.write().await;
             if let Some(es) = sessions.get_mut(session_id) {
+                if let Some(token) = es.generation_cancel_token.take() {
+                    token.cancel();
+                }
                 if let Some(handle) = es.generation_handle.take() {
                     handle.abort();
                 }
@@ -750,14 +791,19 @@ impl AgentEngine {
         )
         .await;
 
+        // Set session-specific memory store before generation
+        if let Some(memory_store) = self.session_memory_stores.read().await.get(session_id) {
+            self.session_manager.set_memory_store(memory_store.clone()).await;
+        }
+
         // Start streaming generation
         let result = self
             .session_manager
             .generate_streaming(session_id, prompt)
             .await;
 
-        let (mut event_rx, join_handle) = match result {
-            Ok((rx, jh)) => (rx, jh),
+        let (mut event_rx, join_handle, cancel_token) = match result {
+            Ok((rx, jh, ct)) => (rx, jh, ct),
             Err(e) => {
                 tracing::error!(
                     session_id = %session_id,
@@ -816,6 +862,7 @@ impl AgentEngine {
             let mut sessions = self.sessions.write().await;
             if let Some(es) = sessions.get_mut(session_id) {
                 es.generation_handle = Some(wrapped_handle);
+                es.generation_cancel_token = Some(cancel_token);
             }
         }
 
@@ -1311,8 +1358,13 @@ impl AgentEngine {
             .await?;
         }
 
+        // Set session-specific memory store before generation
+        if let Some(memory_store) = self.session_memory_stores.read().await.get(session_id) {
+            self.session_manager.set_memory_store(memory_store.clone()).await;
+        }
+
         // Start streaming generation
-        let (mut event_rx, _join_handle) = self
+        let (mut event_rx, _join_handle, _cancel_token) = self
             .session_manager
             .generate_streaming(session_id, prompt)
             .await
@@ -1367,6 +1419,7 @@ impl AgentEngine {
     ) -> crate::Result<(
         mpsc::Receiver<AgentEvent>,
         tokio::task::JoinHandle<anyhow::Result<a3s_code::agent::AgentResult>>,
+        tokio_util::sync::CancellationToken,
     )> {
         if self.get_session(session_id).await.is_none() {
             let default_model = self.code_config.read().await.default_model.clone();
@@ -1382,6 +1435,11 @@ impl AgentEngine {
                 Vec::new(),
             )
             .await?;
+        }
+
+        // Set session-specific memory store before generation
+        if let Some(memory_store) = self.session_memory_stores.read().await.get(session_id) {
+            self.session_manager.set_memory_store(memory_store.clone()).await;
         }
 
         self.session_manager
@@ -1745,6 +1803,7 @@ impl AgentEngine {
                 message_history: ps.message_history,
                 pending_permissions: ps.pending_permissions,
                 generation_handle: None,
+                generation_cancel_token: None,
                 name: None,
                 archived: ps.archived,
                 created_at: 0,
@@ -1989,6 +2048,9 @@ impl AgentEngine {
         let mut sessions = self.sessions.write().await;
         for (sid, es) in sessions.iter_mut() {
             // Cancel running generations
+            if let Some(token) = es.generation_cancel_token.take() {
+                token.cancel();
+            }
             if let Some(handle) = es.generation_handle.take() {
                 handle.abort();
                 tracing::debug!(session_id = %sid, "Cancelled generation on shutdown");

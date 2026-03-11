@@ -171,7 +171,7 @@ export default function ActivityBar() {
 				role="tablist"
 				aria-orientation="vertical"
 			>
-				<div className="flex-1">
+				<div className="flex-1 pt-4">
 					{NAV_ITEMS.map((item) => (
 						<ActivityItem
 							key={item.key}

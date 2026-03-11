@@ -187,7 +187,7 @@ impl MessageProcessor {
             .as_ref()
             .ok_or_else(|| Error::Runtime("Agent engine not configured".to_string()))?;
 
-        let (mut event_rx, _join_handle) = engine
+        let (mut event_rx, _join_handle, _cancel_token) = engine
             .generate_response_streaming(&decision.session_id, &message.content)
             .await?;
 

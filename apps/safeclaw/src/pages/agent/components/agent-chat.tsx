@@ -488,6 +488,7 @@ export default function AgentChat({
 					disabled={isRunning}
 					onSend={handleSend}
 					disableMention={disableMention}
+					workspaceDir={cwd}
 				/>
 			</ResizablePanel>
 		</ResizablePanelGroup>

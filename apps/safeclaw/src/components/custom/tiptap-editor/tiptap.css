@@ -23,8 +23,10 @@
 	height: 0;
 }
 
-/* @mention tag styling */
-.tiptap-mention {
+/* Inline token styling for @mention and /slash-command */
+.tiptap-mention,
+.tiptap-content .tiptap-slash-command,
+.ProseMirror .tiptap-slash-command {
 	display: inline;
 	padding: 1px 4px;
 	border-radius: 4px;

@@ -25,7 +25,7 @@ fn mkdir_all(path: String) -> Result<(), String> {
 
 /// Initialize a new workspace directory with the standard layout:
 ///   <path>/
-///   ├── A3sfile          (workspace config, created only if absent)
+///   ├── A3sfile.hcl      (workspace config, created only if absent)
 ///   ├── agents/          (agent definition files)
 ///   └── skills/          (custom skill scripts)
 #[tauri::command]
@@ -36,10 +36,10 @@ fn init_workspace(path: String) -> Result<(), String> {
         .map_err(|e| format!("create agents/: {e}"))?;
     std::fs::create_dir_all(root.join("skills"))
         .map_err(|e| format!("create skills/: {e}"))?;
-    let a3sfile = root.join("A3sfile");
+    let a3sfile = root.join("A3sfile.hcl");
     if !a3sfile.exists() {
         std::fs::write(&a3sfile, "# A3S workspace configuration\n")
-            .map_err(|e| format!("create A3sfile: {e}"))?;
+            .map_err(|e| format!("create A3sfile.hcl: {e}"))?;
     }
     Ok(())
 }
@@ -65,6 +65,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             mkdir_all,
             init_workspace,

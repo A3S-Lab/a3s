@@ -103,7 +103,7 @@ export default function PickWorkdirDialog({
 		setLoading(true);
 		setError(null);
 		try {
-			// Initialize workspace: create directory, agents/, skills/, A3sfile
+			// Initialize workspace: create directory, agents/, skills/, A3sfile.hcl
 			await invoke("init_workspace", { path: trimmedCwd });
 
 			const preferred = getPreferredSessionModel();

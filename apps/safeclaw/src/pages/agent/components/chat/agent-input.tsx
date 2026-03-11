@@ -56,11 +56,13 @@ export function AgentInput({
 	onSend,
 	readonlyCwd,
 	disableMention,
+	workspaceDir,
 }: {
 	sessionId: string;
 	disabled: boolean;
 	readonlyCwd?: boolean;
 	disableMention?: boolean;
+	workspaceDir?: string;
 	onSend?: (
 		text: string,
 		images?: { media_type: string; data: string }[],
@@ -101,7 +103,7 @@ export function AgentInput({
 					}),
 				);
 			})
-			.catch(() => {});
+			.catch(() => { });
 	}, []);
 
 	const currentPersonaId = personaSnap.sessionPersonas[sessionId];
@@ -134,7 +136,7 @@ export function AgentInput({
 			if (
 				!map[pid] ||
 				s.created_at >
-					(sdkSessions.find((x) => x.session_id === map[pid])?.created_at ?? 0)
+				(sdkSessions.find((x) => x.session_id === map[pid])?.created_at ?? 0)
 			) {
 				map[pid] = s.session_id;
 			}
@@ -191,11 +193,11 @@ export function AgentInput({
 						prev.map((f) =>
 							f.id === id
 								? {
-										...f,
-										media_type: "text/plain",
-										data: encoded,
-										progress: undefined,
-									}
+									...f,
+									media_type: "text/plain",
+									data: encoded,
+									progress: undefined,
+								}
 								: f,
 						),
 					);
@@ -247,7 +249,7 @@ export function AgentInput({
 				if (targetSid) {
 					agentApi
 						.sendAgentMessage(targetSid, `mention:${targetSid}`, content)
-						.catch(() => {});
+						.catch(() => { });
 				}
 			}
 		}
@@ -380,7 +382,7 @@ export function AgentInput({
 								</div>
 								{/* File name + progress */}
 								<div className="flex-1 min-w-0">
-									<p className="text-[11px] font-medium truncate leading-tight">
+									<p className="truncate text-[11px] font-medium leading-tight">
 										{file.name}
 									</p>
 									{isLoading && (
@@ -424,10 +426,11 @@ export function AgentInput({
 			<div className="flex-1 min-h-0">
 				<TiptapEditor
 					ref={editorRef}
-					placeholder={disableMention ? "输入消息，/ 触发指令…" : "输入消息，/ 触发指令，@ 派发给 Agent..."}
+					placeholder={disableMention ? "输入消息，/ 触发指令…" : "输入消息，/ 触发指令，@ 关联工作区文件"}
 					disabled={disabled}
 					slashItems={slashItems}
 					mentionItems={disableMention ? [] : mentionItems}
+					workspaceDir={workspaceDir}
 					onSubmit={() => handleSubmit()}
 					onChange={handleEditorChange}
 					onPasteImages={handlePasteImages}
@@ -437,39 +440,34 @@ export function AgentInput({
 			{/* WeChat-style bottom toolbar */}
 			<div className="flex items-center gap-1 px-2 py-2 shrink-0">
 					<div className="ml-auto">
-					{isRunning ? (
-						<button
-							type="button"
-							className="flex items-center justify-center size-8 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
-							onClick={handleInterrupt}
-							aria-label="中断"
-							title="中断"
-						>
-							<X className="size-4" />
-						</button>
-					) : (
-						<button
-							type="button"
-							className={cn(
-								"flex items-center justify-center size-8 rounded-full transition-colors",
-								(isEmpty && pendingFiles.length === 0) ||
-									!allFilesReady ||
-									disabled
+					<button
+						type="button"
+						className={cn(
+							"flex items-center justify-center size-8 rounded-full transition-colors",
+							isRunning
+								? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+								: (isEmpty && pendingFiles.length === 0) ||
+									  !allFilesReady ||
+									  disabled
 									? "bg-muted text-muted-foreground cursor-not-allowed"
 									: "bg-primary text-primary-foreground hover:bg-primary/90",
-							)}
-							disabled={
-								(isEmpty && pendingFiles.length === 0) ||
+						)}
+						disabled={
+							!isRunning &&
+							((isEmpty && pendingFiles.length === 0) ||
 								!allFilesReady ||
-								disabled
-							}
-							onClick={handleSubmit}
-							aria-label="发送消息"
-							title="发送"
-						>
+								disabled)
+						}
+						onClick={isRunning ? handleInterrupt : handleSubmit}
+						aria-label={isRunning ? "中断" : "发送消息"}
+						title={isRunning ? "中断" : "发送"}
+					>
+						{isRunning ? (
+							<X className="size-4" />
+						) : (
 							<Send className="size-4" />
-						</button>
-					)}
+						)}
+					</button>
 				</div>
 			</div>
 

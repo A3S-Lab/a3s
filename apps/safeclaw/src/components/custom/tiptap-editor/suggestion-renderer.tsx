@@ -37,6 +37,8 @@ function positionContainer(container: HTMLDivElement, rect: DOMRect | null) {
 export function createSuggestionRenderer(
 	getItems: (query: string) => SuggestionItem[],
 	onSelect?: () => void,
+	onFolderClick?: (item: SuggestionItem) => void,
+	onOpen?: () => void,
 ): Pick<SuggestionOptions<SuggestionItem>, "items" | "render"> {
 	return {
 		items: ({ query }) => getItems(query),
@@ -44,9 +46,61 @@ export function createSuggestionRenderer(
 			let component: MentionListRef | null = null;
 			let container: HTMLDivElement | null = null;
 			let root: Root | null = null;
+			let currentQuery = "";
+			let updateScheduled = false;
+			let currentCommandFn: ((item: SuggestionItem) => void) | null = null;
+
+			// Wrapped command that calls the current command function
+			const wrappedCommand = (item: SuggestionItem) => {
+				onSelect?.();
+				if (currentCommandFn) {
+					currentCommandFn(item);
+				}
+			};
+
+			// Wrapped folder click handler that triggers re-render
+			const wrappedFolderClick = (item: SuggestionItem) => {
+				if (onFolderClick) {
+					console.log("[SuggestionRenderer] Folder clicked, calling onFolderClick");
+					onFolderClick(item);
+
+					// Schedule update with multiple requestAnimationFrame for better timing
+					// This ensures React state updates and DOM updates are complete
+					if (!updateScheduled) {
+						updateScheduled = true;
+						requestAnimationFrame(() => {
+							requestAnimationFrame(() => {
+								requestAnimationFrame(() => {
+									if (root && container) {
+										const items = getItems(currentQuery);
+										console.log("[SuggestionRenderer] Re-rendering after folder click, items:", items.length);
+										root.render(
+											<MentionList
+												ref={(ref) => {
+													component = ref;
+												}}
+												items={items}
+												command={wrappedCommand}
+												onFolderClick={wrappedFolderClick}
+											/>,
+										);
+										updateScheduled = false;
+									}
+								});
+							});
+						});
+					}
+				}
+			};
 
 			return {
 				onStart: (props: SuggestionProps<SuggestionItem>) => {
+					// Trigger refresh callback when panel opens
+					console.log("[SuggestionRenderer] onStart called, triggering onOpen");
+
+					currentQuery = props.query || "";
+					currentCommandFn = props.command;
+
 					container = document.createElement("div");
 					container.style.position = "fixed";
 					container.style.zIndex = "9999";
@@ -54,12 +108,9 @@ export function createSuggestionRenderer(
 					positionContainer(container, props.clientRect?.() ?? null);
 					document.body.appendChild(container);
 
-					const wrappedCommand = (item: SuggestionItem) => {
-						onSelect?.();
-						props.command(item);
-					};
-
 					root = createRoot(container);
+
+					// Initial render with current items
 					root.render(
 						<MentionList
 							ref={(ref) => {
@@ -67,19 +118,43 @@ export function createSuggestionRenderer(
 							}}
 							items={props.items}
 							command={wrappedCommand}
+							onFolderClick={wrappedFolderClick}
 						/>,
 					);
+
+					// Call onOpen and wait for it to complete, then re-render
+					if (onOpen) {
+						Promise.resolve(onOpen()).then(() => {
+							// Wait for state updates to complete
+							requestAnimationFrame(() => {
+								requestAnimationFrame(() => {
+									if (root && container) {
+										const updatedItems = getItems(currentQuery);
+										console.log("[SuggestionRenderer] Re-rendering after onOpen, items:", updatedItems.length);
+										root.render(
+											<MentionList
+												ref={(ref) => {
+													component = ref;
+												}}
+												items={updatedItems}
+												command={wrappedCommand}
+												onFolderClick={wrappedFolderClick}
+											/>,
+										);
+									}
+								});
+							});
+						});
+					}
 				},
 
 				onUpdate: (props: SuggestionProps<SuggestionItem>) => {
 					if (!root || !container) return;
 
-					positionContainer(container, props.clientRect?.() ?? null);
+					currentQuery = props.query || "";
+					currentCommandFn = props.command;
 
-					const wrappedCommand = (item: SuggestionItem) => {
-						onSelect?.();
-						props.command(item);
-					};
+					positionContainer(container, props.clientRect?.() ?? null);
 
 					root.render(
 						<MentionList
@@ -88,6 +163,7 @@ export function createSuggestionRenderer(
 							}}
 							items={props.items}
 							command={wrappedCommand}
+							onFolderClick={wrappedFolderClick}
 						/>,
 					);
 				},

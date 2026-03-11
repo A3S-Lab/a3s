@@ -16,6 +16,7 @@ import {
 	Eye,
 	EyeOff,
 	KeyRound,
+	Pencil,
 	Plus,
 	Star,
 	Trash2,
@@ -200,27 +201,141 @@ function AddModelForm({
 	);
 }
 
+function EditModelForm({
+	model,
+	onSave,
+	onCancel,
+}: {
+	model: ModelConfig;
+	onSave: (patch: Partial<ModelConfig>) => void;
+	onCancel: () => void;
+}) {
+	const [name, setName] = useState(model.name);
+	const [apiKey, setApiKey] = useState(model.apiKey || "");
+	const [baseUrl, setBaseUrl] = useState(model.baseUrl || "");
+	const [context, setContext] = useState(String(model.limit.context));
+	const [output, setOutput] = useState(String(model.limit.output));
+	return (
+		<div className="rounded-lg border-2 border-primary/50 bg-primary/[0.05] p-3 space-y-2.5 mt-2">
+			<div className="flex items-center justify-between">
+				<span className="text-xs font-semibold">编辑模型</span>
+				<button
+					type="button"
+					onClick={onCancel}
+					className="text-muted-foreground hover:text-foreground"
+				>
+					<X className="size-3.5" />
+				</button>
+			</div>
+			<div className="space-y-2">
+				<div>
+					<label className="text-[10px] text-muted-foreground">模型 ID</label>
+					<Input
+						className="h-7 text-xs font-mono"
+						value={model.id}
+						disabled
+					/>
+				</div>
+				<div>
+					<label className="text-[10px] text-muted-foreground">显示名称</label>
+					<Input
+						className="h-7 text-xs"
+						placeholder="显示名称"
+						value={name}
+						onChange={(e) => setName(e.target.value)}
+					/>
+				</div>
+			</div>
+			<Input
+				className="h-7 text-xs font-mono"
+				placeholder="API Key (可选，覆盖 Provider)"
+				type="password"
+				value={apiKey}
+				onChange={(e) => setApiKey(e.target.value)}
+			/>
+			<Input
+				className="h-7 text-xs font-mono"
+				placeholder="Base URL (可选，覆盖 Provider)"
+				value={baseUrl}
+				onChange={(e) => setBaseUrl(e.target.value)}
+			/>
+			<div className="grid grid-cols-2 gap-2">
+				<div>
+					<label className="text-[10px] text-muted-foreground">
+						上下文窗口
+					</label>
+					<Input
+						className="h-7 text-xs font-mono"
+						value={context}
+						onChange={(e) => setContext(e.target.value)}
+					/>
+				</div>
+				<div>
+					<label className="text-[10px] text-muted-foreground">最大输出</label>
+					<Input
+						className="h-7 text-xs font-mono"
+						value={output}
+						onChange={(e) => setOutput(e.target.value)}
+					/>
+				</div>
+			</div>
+			<div className="flex justify-end gap-2">
+				<Button
+					variant="ghost"
+					size="sm"
+					className="h-6 text-[11px]"
+					onClick={onCancel}
+				>
+					取消
+				</Button>
+				<Button
+					size="sm"
+					className="h-6 text-[11px]"
+					onClick={() =>
+						onSave({
+							name: name.trim() || model.id,
+							apiKey: apiKey || undefined,
+							baseUrl: baseUrl || undefined,
+							limit: {
+								context: Number(context) || 128000,
+								output: Number(output) || 4096,
+							},
+						})
+					}
+				>
+					保存
+				</Button>
+			</div>
+		</div>
+	);
+}
+
 function ProviderCard({
 	provider,
 	isDefault,
+	defaultModelId,
 	onSetDefault,
 	onRemove,
 	onUpdateProvider,
 	onAddModel,
+	onUpdateModel,
 	onRemoveModel,
 }: {
 	provider: ProviderConfig;
 	isDefault: boolean;
+	defaultModelId: string;
 	onSetDefault: (pName: string, mId: string) => void;
 	onRemove: () => void;
 	onUpdateProvider: (patch: Partial<Omit<ProviderConfig, "name">>) => void;
 	onAddModel: (m: ModelConfig) => void;
+	onUpdateModel: (mId: string, patch: Partial<ModelConfig>) => void;
 	onRemoveModel: (mId: string) => void;
 }) {
 	const [showApiKey, setShowApiKey] = useState(false);
 	const [apiKey, setApiKey] = useState(provider.apiKey || "");
 	const [baseUrl, setBaseUrl] = useState(provider.baseUrl || "");
 	const [addingModel, setAddingModel] = useState(false);
+	const [editingModelId, setEditingModelId] = useState<string | null>(null);
 
 	const handleSave = () => {
 		onUpdateProvider({
@@ -320,37 +435,59 @@ function ProviderCard({
 
 				<div className="space-y-1.5">
 					{provider.models.map((model) => (
-						<div
-							key={model.id}
-							className="flex items-center justify-between rounded-lg border bg-muted/30 px-2.5 py-1.5"
-						>
-							<div className="flex-1 min-w-0">
-								<div className="text-xs font-medium truncate">{model.name}</div>
-								<div className="text-[10px] text-muted-foreground font-mono truncate">
-									{model.id}
+						<div key={model.id}>
+							<div className="flex items-center justify-between rounded-lg border bg-muted/30 px-2.5 py-1.5">
+								<div className="flex-1 min-w-0">
+									<div className="text-xs font-medium truncate">{model.name}</div>
+									<div className="text-[10px] text-muted-foreground font-mono truncate">
+										{model.id}
+									</div>
 								</div>
-							</div>
-							<div className="flex items-center gap-1">
-								{isDefault && (
+								<div className="flex items-center gap-1">
+									{isDefault && model.id === defaultModelId ? (
+										<div className="flex items-center gap-1 h-5 px-1.5 text-[10px] text-primary">
+											<Check className="size-2.5" />
+											<span>默认</span>
+										</div>
+									) : (
+										<Button
+											variant="ghost"
+											size="sm"
+											className="h-5 text-[10px] px-1.5"
+											onClick={() => onSetDefault(provider.name, model.id)}
+										>
+											<Star className="size-2.5 mr-0.5" />
+											设为默认
+										</Button>
+									)}
 									<Button
 										variant="ghost"
 										size="sm"
-										className="h-5 text-[10px] px-1.5"
-										onClick={() => onSetDefault(provider.name, model.id)}
+										className="h-5 w-5 p-0"
+										onClick={() => setEditingModelId(model.id)}
 									>
-										<Star className="size-2.5 mr-0.5" />
-										设为默认
+										<Pencil className="size-2.5" />
 									</Button>
-								)}
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-5 w-5 p-0 text-destructive hover:text-destructive"
-									onClick={() => onRemoveModel(model.id)}
-								>
-									<Trash2 className="size-2.5" />
-								</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-5 w-5 p-0 text-destructive hover:text-destructive"
+										onClick={() => onRemoveModel(model.id)}
+									>
+										<Trash2 className="size-2.5" />
+									</Button>
+								</div>
 							</div>
+							{editingModelId === model.id && (
+								<EditModelForm
+									model={model}
+									onSave={(patch) => {
+										onUpdateModel(model.id, patch);
+										setEditingModelId(null);
+									}}
+									onCancel={() => setEditingModelId(null)}
+								/>
+							)}
 						</div>
 					))}
 					{provider.models.length === 0 && (
@@ -477,6 +614,7 @@ export function AiSection() {
 						key={provider.name}
 						provider={provider}
 						isDefault={provider.name === snap.defaultProvider}
+						defaultModelId={snap.defaultModel}
 						onSetDefault={handleSetDefault}
 						onRemove={() => {
 							settingsModel.removeProvider(provider.name);
@@ -492,6 +630,10 @@ export function AiSection() {
 							}
 							settingsModel.addModel(provider.name, m);
 							toast.success(`已添加模型 ${m.name}`);
+						}}
+						onUpdateModel={(mId, patch) => {
+							settingsModel.updateModel(provider.name, mId, patch);
+							toast.success("已更新模型");
 						}}
 						onRemoveModel={(mId) => {
 							settingsModel.removeModel(provider.name, mId);

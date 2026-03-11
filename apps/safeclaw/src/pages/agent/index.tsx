@@ -73,7 +73,7 @@ async function loadSessions() {
 }
 
 export default function AgentPage() {
-	const { currentSessionId } = useSnapshot(agentModel.state);
+	const { currentSessionId, sdkSessions } = useSnapshot(agentModel.state);
 	const loaded = useRef(false);
 
 	useEffect(() => {
@@ -82,6 +82,10 @@ export default function AgentPage() {
 			loadSessions();
 		}
 	}, []);
+
+	// Get current session's cwd
+	const currentSession = sdkSessions.find((s) => s.session_id === currentSessionId);
+	const cwd = currentSession?.cwd;
 
 	return (
 		<>
@@ -92,7 +96,7 @@ export default function AgentPage() {
 				<ResizableHandle withHandle />
 				<ResizablePanel defaultSize={78} minSize={50}>
 					{currentSessionId ? (
-						<AgentChat key={currentSessionId} sessionId={currentSessionId} disableMention />
+						<AgentChat key={currentSessionId} sessionId={currentSessionId} cwd={cwd} />
 					) : (
 						<EmptyState />
 					)}

@@ -8,6 +8,46 @@
 		"shell:allow-open",
 		"http:default",
 		"dialog:default",
+		{
+			"identifier": "fs:allow-read-dir",
+			"allow": [
+				{ "path": "$HOME/Desktop/code/workspace/**" },
+				{ "path": "$HOME/.a3s/**" },
+				{ "path": "$APPDATA/safeclaw/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-read-file",
+			"allow": [
+				{ "path": "$HOME/Desktop/code/workspace/**" },
+				{ "path": "$HOME/.a3s/**" },
+				{ "path": "$APPDATA/safeclaw/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-write-file",
+			"allow": [
+				{ "path": "$HOME/Desktop/code/workspace/**" },
+				{ "path": "$HOME/.a3s/**" },
+				{ "path": "$APPDATA/safeclaw/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-create",
+			"allow": [
+				{ "path": "$HOME/Desktop/code/workspace/**" },
+				{ "path": "$HOME/.a3s/**" },
+				{ "path": "$APPDATA/safeclaw/**" }
+			]
+		},
+		{
+			"identifier": "fs:allow-mkdir",
+			"allow": [
+				{ "path": "$HOME/Desktop/code/workspace/**" },
+				{ "path": "$HOME/.a3s/**" },
+				{ "path": "$APPDATA/safeclaw/**" }
+			]
+		},
 		"core:webview:allow-create-webview-window",
 		{
 			"identifier": "http:default",

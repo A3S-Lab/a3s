@@ -1,46 +1,49 @@
 /**
- * TipTap slash-command extension for triggering skills via "/"
+ * TipTap file-mention extension for selecting workspace files via "@"
+ * This extends the existing @ mention to support both agents and files
  */
 import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import Suggestion, { type SuggestionOptions } from "@tiptap/suggestion";
 
-export interface SlashCommandItem {
+export interface FileMentionItem {
 	id: string;
 	label: string;
 	description?: string;
 	icon?: string;
+	type: "file" | "directory";
+	path: string;
 }
 
-export type SlashCommandOptions = {
-	suggestion: Omit<SuggestionOptions<SlashCommandItem>, "editor">;
+export type FileMentionOptions = {
+	suggestion: Omit<SuggestionOptions<FileMentionItem>, "editor">;
 };
 
-export const SlashCommandPluginKey = new PluginKey("slashCommand");
+export const FileMentionPluginKey = new PluginKey("fileMention");
 
-export const SlashCommand = Extension.create<SlashCommandOptions>({
-	name: "slashCommandSuggestion",
+export const FileMention = Extension.create<FileMentionOptions>({
+	name: "fileMention",
 
 	addOptions() {
 		return {
 			suggestion: {
-				char: "/",
-				pluginKey: SlashCommandPluginKey,
+				char: "#",
+				pluginKey: FileMentionPluginKey,
 				command: ({ editor, range, props }) => {
+					// Delete the trigger text and insert a file mention
 					editor
 						.chain()
 						.focus()
 						.deleteRange(range)
-						.insertContent([
-							{
-								type: "slashCommand",
-								attrs: {
-									id: props.id,
-									label: props.label ?? props.id,
+						.insertContent({
+							type: "text",
+							marks: [
+								{
+									type: "code",
 								},
-							},
-							{ type: "text", text: " " },
-						])
+							],
+							text: `${props.path} `,
+						})
 						.run();
 				},
 				allow: ({ state, range }) => {

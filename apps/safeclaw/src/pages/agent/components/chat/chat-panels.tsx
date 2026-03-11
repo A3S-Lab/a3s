@@ -344,7 +344,7 @@ export function EmptyChat({ sessionId, disableMention }: { sessionId: string; di
 				</p>
 			</div>
 			<p className="text-xs opacity-60">
-				{disableMention ? "发送消息开始对话，/ 触发技能" : "发送消息开始对话，/ 触发技能，@ 派发给其他 Agent"}
+				{disableMention ? "发送消息开始对话，/ 触发技能" : "发送消息开始对话，/ 触发技能，@ 关联工作区文件"}
 			</p>
 		</div>
 	);

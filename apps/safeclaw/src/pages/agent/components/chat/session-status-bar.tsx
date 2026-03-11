@@ -6,27 +6,20 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { sendToSession } from "@/hooks/use-agent-ws";
-import { agentApi } from "@/lib/agent-api";
 import { cn } from "@/lib/utils";
 import agentModel from "@/models/agent.model";
-import settingsModel from "@/models/settings.model";
 import {
-	Ban,
-	ChevronDown,
 	Circle,
-	Cpu,
 	Gauge,
 	Loader2,
 	Sparkles,
 } from "lucide-react";
-import { useMemo, useState } from "react";
 import { useSnapshot } from "valtio";
 
 export function SessionStatusBar({
 	sessionId,
 	readonlyCwd,
 }: { sessionId: string; readonlyCwd?: boolean }) {
-	const settingsSnap = useSnapshot(settingsModel.state);
 	const { sessionStatus, sessions, connectionStatus } = useSnapshot(
 		agentModel.state,
 	);
@@ -34,76 +27,9 @@ export function SessionStatusBar({
 	const pct = Math.round(session?.context_used_percent ?? 0);
 	const status = sessionStatus[sessionId] || "idle";
 	const connStatus = connectionStatus[sessionId];
-	const model = session?.model || settingsSnap.defaultModel || "";
-	const [backends, setBackends] = useState<{ id: string; name: string }[]>([]);
-	const [modelOpen, setModelOpen] = useState(false);
-
-	const modelShort = useMemo(() => {
-		const m = model;
-		if (m.includes("opus")) return "Opus";
-		if (m.includes("sonnet")) return "Sonnet";
-		if (m.includes("haiku")) return "Haiku";
-		if (m.includes("gpt-4")) return "GPT-4o";
-		if (m.includes("gpt-3")) return "GPT-3.5";
-		return m.split("/").pop()?.split("-").slice(0, 2).join("-") || m;
-	}, [model]);
-
-	const handleModelClick = async () => {
-		if (!modelOpen && backends.length === 0) {
-			const result = await agentApi.listBackends().catch(() => []);
-			if (Array.isArray(result)) setBackends(result);
-		}
-		setModelOpen((v) => !v);
-	};
-
-	const handleSelectModel = (newModel: string) => {
-		sendToSession(sessionId, { type: "set_model", model: newModel });
-		setModelOpen(false);
-	};
 
 	return (
 		<div className="flex items-center gap-3 px-3 py-1.5 border-t bg-muted/30 text-[11px] text-muted-foreground shrink-0 select-none">
-			{/* Model switcher */}
-			<div className="relative">
-				<button
-					type="button"
-					className="flex items-center gap-1.5 hover:text-foreground transition-colors"
-					title={model}
-					onClick={handleModelClick}
-				>
-					<Cpu className="size-3" />
-					<span className="font-medium text-foreground/80">
-						{modelShort || "—"}
-					</span>
-					<ChevronDown className="size-2.5 opacity-50" />
-				</button>
-				{modelOpen && (
-					<div className="absolute bottom-full mb-1 left-0 z-50 bg-popover border rounded-lg shadow-lg py-1 min-w-[200px]">
-						{backends.length === 0 ? (
-							<div className="px-3 py-2 text-xs text-muted-foreground">
-								加载中...
-							</div>
-						) : (
-							backends.map((b) => (
-								<button
-									key={b.id}
-									type="button"
-									className={cn(
-										"w-full text-left px-3 py-1.5 text-xs hover:bg-foreground/[0.04] transition-colors",
-										b.id === model && "text-primary font-medium",
-									)}
-									onClick={() => handleSelectModel(b.id)}
-								>
-									{b.name || b.id}
-								</button>
-							))
-						)}
-					</div>
-				)}
-			</div>
-
-			<div className="w-px h-3 bg-border" />
-
 			{/* Permission mode */}
 			{!readonlyCwd && (
 				<div className="flex items-center gap-1">
@@ -168,17 +94,6 @@ export function SessionStatusBar({
 				</span>
 			</div>
 
-			{/* Cost + turns */}
-			{(session?.total_cost_usd ?? 0) > 0 && (
-				<>
-					<div className="w-px h-3 bg-border" />
-					<div className="flex items-center gap-1" title="累计成本">
-						<span className="text-muted-foreground/70">$</span>
-						<span>{session!.total_cost_usd.toFixed(4)}</span>
-					</div>
-				</>
-			)}
-
 			{/* Connection status */}
 			{connStatus !== "connected" && (
 				<>
@@ -192,22 +107,6 @@ export function SessionStatusBar({
 						/>
 						<span>{connStatus === "connecting" ? "连接中..." : "已断开"}</span>
 					</div>
-				</>
-			)}
-
-			{/* Stop button */}
-			{status === "running" && (
-				<>
-					<div className="w-px h-3 bg-border" />
-					<button
-						type="button"
-						className="flex items-center gap-1 text-destructive hover:text-destructive/80 transition-colors"
-						title="中断当前任务"
-						onClick={() => sendToSession(sessionId, { type: "interrupt" })}
-					>
-						<Ban className="size-3" />
-						<span>中断</span>
-					</button>
 				</>
 			)}
 		</div>

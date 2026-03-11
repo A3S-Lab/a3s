@@ -121,7 +121,6 @@ pub fn load_config(explicit_path: Option<&PathBuf>) -> Result<(SafeClawConfig, O
 pub async fn build_agent_state(
     mut code_config: a3s_code::config::CodeConfig,
     skills_config: crate::config::SkillsConfig,
-    memory_store: Arc<dyn a3s_memory::MemoryStore>,
 ) -> Result<AgentState> {
     let sessions_dir = AgentSessionStore::default_dir();
     code_config.sessions_dir = Some(sessions_dir.clone());
@@ -192,7 +191,7 @@ pub async fn build_agent_state(
     session_manager
         .set_skill_registry(skill_registry, skills_dir)
         .await;
-    session_manager.set_memory_store(memory_store).await;
+    // Note: Memory store is now per-session, set in AgentEngine::create_session
 
     // Initialize MCP servers from config
     if !code_config.mcp_servers.is_empty() {
@@ -219,22 +218,6 @@ pub async fn build_agent_state(
     );
 
     Ok(AgentState { engine })
-}
-
-// ── Memory store ────────────────────────────────────────────────────
-
-/// Initialize the shared file-backed memory store.
-pub async fn init_memory_store() -> Result<Arc<dyn a3s_memory::MemoryStore>> {
-    let memory_dir = dirs_next::config_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("safeclaw")
-        .join("memory");
-    let file_store = a3s_memory::FileMemoryStore::new(memory_dir.clone())
-        .await
-        .context("Failed to initialize memory store")?;
-    let store: Arc<dyn a3s_memory::MemoryStore> = Arc::new(file_store);
-    tracing::info!(dir = %memory_dir.display(), "Memory store initialized");
-    Ok(store)
 }
 
 // ── Gateway runner ──────────────────────────────────────────────────
@@ -264,8 +247,6 @@ pub async fn start_gateway(
     let skills_config = config.skills.clone();
     let lifecycle_config = config.session_lifecycle.clone();
 
-    let memory_store = init_memory_store().await?;
-
     let gateway = RuntimeBuilder::new()
         .config(config)
         .host(host)
@@ -274,7 +255,7 @@ pub async fn start_gateway(
         .build()?;
 
     let agent_state =
-        build_agent_state(models.clone(), skills_config, memory_store.clone()).await?;
+        build_agent_state(models.clone(), skills_config).await?;
     if let Some(ref path) = config_path {
         agent_state.engine.set_config_path(path.clone()).await;
     }
@@ -312,11 +293,21 @@ pub async fn start_gateway(
         .skill_registry()
         .await
         .expect("skill registry must be set before building app");
+
+    // Create a placeholder memory store for the API
+    // Note: Per-session memory stores are managed by AgentEngine
+    let placeholder_memory_dir = std::env::temp_dir().join("safeclaw-memory-placeholder");
+    let placeholder_memory_store = Arc::new(
+        a3s_memory::FileMemoryStore::new(placeholder_memory_dir)
+            .await
+            .context("Failed to create placeholder memory store")?,
+    ) as Arc<dyn a3s_memory::MemoryStore>;
+
     let app = build_app(
         gateway.clone(),
         agent_state,
         skill_registry,
-        memory_store,
+        placeholder_memory_store,
         channel_config_store,
         workflow_store,
         flow_engine,
