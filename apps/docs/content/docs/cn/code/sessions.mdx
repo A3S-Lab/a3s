@@ -262,6 +262,94 @@ async for event in session.stream("Refactor the auth module"):
 </Tab>
 </Tabs>
 
+## BTW（顺便问一下）- 临时旁路问题
+
+`btw()` 方法允许你提出临时的旁路问题，而不会影响对话历史。这对于快速查询、澄清或上下文检查非常有用，这些内容不应成为主对话流程的一部分。
+
+<Callout type="info">
+**主要特性：**
+- 问题和答案永远不会添加到对话历史中
+- 使用当前历史的只读快照作为上下文
+- 可以与正在进行的 `send()` 或 `stream()` 操作并发调用
+- 使用针对快速回答优化的简化系统提示词
+- 立即返回答案和 token 使用情况
+</Callout>
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// 主对话
+const result = await session.send('解释认证系统');
+console.log(result.text);
+
+// 快速旁路问题（不添加到历史）
+const btw = await session.btw('法国的首都是什么？');
+console.log(btw.answer);  // "巴黎"
+console.log(btw.totalTokens);  // 此查询的 token 使用量
+
+// 继续主对话（btw 问题不在历史中）
+const result2 = await session.send('给我看登录代码');
+```
+</Tab>
+<Tab value="Python">
+```python
+# 主对话
+result = session.send("解释认证系统")
+print(result.text)
+
+# 快速旁路问题（不添加到历史）
+btw = session.btw("法国的首都是什么？")
+print(btw.answer)  # "巴黎"
+print(btw.total_tokens)  # 此查询的 token 使用量
+
+# 继续主对话（btw 问题不在历史中）
+result2 = session.send("给我看登录代码")
+```
+</Tab>
+</Tabs>
+
+### BtwResult
+
+<TypeTable
+  type={{
+    question: {
+      type: 'string',
+      description: '提出的原始问题',
+    },
+    answer: {
+      type: 'string',
+      description: 'LLM 对问题的回答',
+    },
+    prompt_tokens: {
+      type: 'number',
+      description: '提示词中的 token 数量（TS: `promptTokens`，Python: `prompt_tokens`）',
+    },
+    completion_tokens: {
+      type: 'number',
+      description: '补全中的 token 数量（TS: `completionTokens`，Python: `completion_tokens`）',
+    },
+    total_tokens: {
+      type: 'number',
+      description: '使用的总 token 数（TS: `totalTokens`，Python: `total_tokens`）',
+    },
+  }}
+/>
+
+### 使用场景
+
+- **快速查询**："语言 Y 中 X 的语法是什么？"
+- **澄清**："这个错误代码是什么意思？"
+- **上下文检查**："当前目录中有哪些文件？"
+- **辅助计算**："1000 的 15% 是多少？"
+- **常识问题**：与主任务无关的问题
+
+<Callout type="warn">
+**限制：**
+- 不执行工具（答案仅基于 LLM 知识 + 对话上下文）
+- 不适合需要文件访问或代码执行的任务
+- 使用简化的系统提示词（无 agent 角色或自定义指令）
+</Callout>
+
 ## 取消正在进行的操作
 
 调用 `session.cancel()` 可以中断正在进行的 `send()` 或 `stream()` 调用。LLM 流式输出和任何正在运行的工具执行将尽快停止。
@@ -619,6 +707,9 @@ print(r.text)  # Cancelled task [a1b2c3d4]
     "Error": {
       description: "字段: error · 描述: 发生错误",
     },
+    "BtwAnswer": {
+      description: "字段: question, answer, total_tokens · 描述: BTW 旁路问题已回答（不添加到历史记录）",
+    },
   }}
 />
 
@@ -737,6 +828,9 @@ print(r.text)  # Cancelled task [a1b2c3d4]
     },
     "流式事件": {
       description: "Python: session.stream(prompt) · TypeScript: await session.stream(prompt)",
+    },
+    "BTW（旁路问题）": {
+      description: "Python: session.btw(question) · TypeScript: await session.btw(question) · 返回 BtwResult，包含答案和 token 使用量。问题/答案不会添加到历史记录。",
     },
     "带图片发送": {
       description: "Python: session.send_with_attachments(p, [img]) · TypeScript: await session.sendWithAttachments(p, [img])",

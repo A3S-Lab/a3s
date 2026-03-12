@@ -321,9 +321,87 @@ Review API design for RESTful principles.
 
 ### 2. Tool Permission Enforcement
 
-When a skill defines `allowed-tools`, the agent can only use those tools:
+When a skill defines `allowed-tools`, the agent can only use those tools.
 
-### 3. Multiple Skills
+<Callout type="info">
+**New in v1.3.4:** Skills can now be invoked as **first-class tools** using the `Skill` tool, with temporary permission grants during execution.
+</Callout>
+
+### 3. Skill Tool - Callable Skills with Permission Isolation
+
+The `Skill` tool allows the LLM to invoke skills as callable tools, with the skill's `allowed-tools` temporarily granted during execution. This enforces skill-based access patterns and prevents agents from bypassing skills to directly access underlying tools.
+
+#### How It Works
+
+```
+1. LLM calls: Skill("data-processor", prompt="Read README.md")
+2. SkillTool creates temporary PermissionPolicy from skill's allowed-tools
+3. New AgentLoop is created with skill's permissions
+4. Skill executes with temporary permissions
+5. After execution, permissions are automatically revoked (RAII)
+```
+
+#### Example: Permission Isolation
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent, SessionOptions, PermissionPolicy, PermissionRule } from '@a3s-lab/code';
+
+// Create agent with Skill(*) permission only
+const agent = await Agent.create('agent.hcl');
+
+const session = agent.session('.', {
+  skillsDir: './skills',
+  permissionPolicy: new PermissionPolicy({
+    allow: [new PermissionRule('Skill(*)')],  // Only allow Skill tool
+    deny: [new PermissionRule('read(*)')],    // Deny direct read access
+    defaultDecision: 'deny'
+  })
+});
+
+// Agent can only access read/grep through skills
+// Direct read calls will be denied
+const result = await session.send('Use data-processor to read file.txt');
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy, PermissionRule
+
+# Create agent with Skill(*) permission only
+agent = Agent.create("agent.hcl")
+
+session = agent.session(".", SessionOptions(
+    skills_dir="./skills",
+    permission_policy=PermissionPolicy(
+        allow=[PermissionRule("Skill(*)")],  # Only allow Skill tool
+        deny=[PermissionRule("read(*)")],    # Deny direct read access
+        default_decision="deny"
+    )
+))
+
+# Agent can only access read/grep through skills
+result = session.send("Use data-processor to read file.txt")
+```
+</Tab>
+</Tabs>
+
+#### Benefits
+
+1. **Permission Isolation**: Parent agent cannot bypass skills to access underlying tools
+2. **Temporary Grants**: Permissions are only granted during skill execution
+3. **Automatic Revocation**: RAII pattern ensures permissions are cleaned up
+4. **Composable Security**: Combine with permission policies for fine-grained control
+
+#### Use Cases
+
+- **Restricted Environments**: Allow agents to use powerful tools only through approved skills
+- **Audit Trails**: Track which skills are invoked and what tools they use
+- **Skill Composition**: Build complex workflows by chaining skill invocations
+- **Security Boundaries**: Enforce security policies at the skill level
+
+### 4. Multiple Skills
 
 When multiple skills are active, a tool is allowed if **any** skill allows it:
 

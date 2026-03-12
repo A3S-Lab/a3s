@@ -273,6 +273,94 @@ async for event in session.stream("Refactor the auth module"):
 </Tab>
 </Tabs>
 
+## BTW (By The Way) - Ephemeral Side Questions
+
+The `btw()` method lets you ask ephemeral side questions without affecting the conversation history. This is useful for quick lookups, clarifications, or context checks that shouldn't be part of the main conversation flow.
+
+<Callout type="info">
+**Key Features:**
+- Questions and answers are never added to conversation history
+- Uses a read-only snapshot of current history for context
+- Safe to call concurrently with ongoing `send()` or `stream()` operations
+- Uses a simplified system prompt optimized for quick answers
+- Returns immediately with answer and token usage
+</Callout>
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// Main conversation
+const result = await session.send('Explain the authentication system');
+console.log(result.text);
+
+// Quick side question (not added to history)
+const btw = await session.btw('What is the capital of France?');
+console.log(btw.answer);  // "Paris"
+console.log(btw.totalTokens);  // Token usage for this query
+
+// Continue main conversation (btw question not in history)
+const result2 = await session.send('Show me the login code');
+```
+</Tab>
+<Tab value="Python">
+```python
+# Main conversation
+result = session.send("Explain the authentication system")
+print(result.text)
+
+# Quick side question (not added to history)
+btw = session.btw("What is the capital of France?")
+print(btw.answer)  # "Paris"
+print(btw.total_tokens)  # Token usage for this query
+
+# Continue main conversation (btw question not in history)
+result2 = session.send("Show me the login code")
+```
+</Tab>
+</Tabs>
+
+### BtwResult
+
+<TypeTable
+  type={{
+    question: {
+      type: 'string',
+      description: 'The original question asked',
+    },
+    answer: {
+      type: 'string',
+      description: 'The LLM\'s answer to the question',
+    },
+    prompt_tokens: {
+      type: 'number',
+      description: 'Number of tokens in the prompt (TS: `promptTokens`, Python: `prompt_tokens`)',
+    },
+    completion_tokens: {
+      type: 'number',
+      description: 'Number of tokens in the completion (TS: `completionTokens`, Python: `completion_tokens`)',
+    },
+    total_tokens: {
+      type: 'number',
+      description: 'Total tokens used (TS: `totalTokens`, Python: `total_tokens`)',
+    },
+  }}
+/>
+
+### Use Cases
+
+- **Quick lookups**: "What's the syntax for X in language Y?"
+- **Clarifications**: "What does this error code mean?"
+- **Context checks**: "What files are in the current directory?"
+- **Side calculations**: "What's 15% of 1000?"
+- **General knowledge**: Questions unrelated to the main task
+
+<Callout type="warn">
+**Limitations:**
+- No tool execution (answers are based on LLM knowledge + conversation context only)
+- Not suitable for tasks requiring file access or code execution
+- Uses a simplified system prompt (no agent persona or custom instructions)
+</Callout>
+
 ## Cancel Ongoing Operation
 
 Call `session.cancel()` to interrupt an in-progress `send()` or `stream()` call. The LLM streaming and any running tool execution will stop as soon as possible.
@@ -627,6 +715,7 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
     TurnEnd: { type: 'turn, total_tokens', description: 'Turn completed' },
     End: { type: 'text, total_tokens', description: 'Generation finished' },
     Error: { type: 'error', description: 'Error occurred' },
+    BtwAnswer: { type: 'question, answer, total_tokens', description: 'BTW side question answered (not added to history)' },
   }}
 />
 
@@ -705,6 +794,9 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
     },
     "Stream events": {
       description: "Python: session.stream(prompt) · TypeScript: await session.stream(prompt)",
+    },
+    "BTW (side question)": {
+      description: "Python: session.btw(question) · TypeScript: await session.btw(question) · Returns BtwResult with answer and token usage. Question/answer not added to history.",
     },
     "Send with image": {
       description: "Python: session.send_with_attachments(p, [img]) · TypeScript: await session.sendWithAttachments(p, [img])",

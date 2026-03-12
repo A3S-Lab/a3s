@@ -418,29 +418,29 @@ See [Sessions](/docs/code/sessions) for full event reference.
   }}
 />
 
-### VectorContextConfig (Rust)
+### RipgrepContextConfig (Rust)
 
 <TypeTable
   type={{
     path: {
       type: 'PathBuf',
       required: true,
-      description: 'Workspace root. Use `VectorContextConfig::new(path)`',
+      description: 'Workspace root. Use `RipgrepContextConfig::new(path)`',
     },
-    min_relevance: {
-      type: 'f32',
-      default: '0.3',
-      description: 'Minimum cosine similarity. Use `.with_min_relevance(f)`',
+    case_insensitive: {
+      type: 'bool',
+      default: 'true',
+      description: 'Case-insensitive search. Use `.with_case_insensitive(b)`',
     },
-    max_results: {
+    context_lines: {
       type: 'usize',
-      default: '10',
-      description: 'Max chunks per query. Use `.with_max_results(n)`',
+      default: '2',
+      description: 'Context lines around matches. Use `.with_context_lines(n)`',
     },
-    chunk_size: {
+    max_file_size: {
       type: 'usize',
-      default: '1500',
-      description: 'Max chars per chunk. Use `.with_chunk_size(n)`',
+      default: '1MB',
+      description: 'Max file size to search. Use `.with_max_file_size(n)`',
     },
   }}
 />

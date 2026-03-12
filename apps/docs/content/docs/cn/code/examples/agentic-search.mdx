@@ -1,0 +1,622 @@
+---
+title: Agentic Search - 技术深度解析
+description: Sirchmunk 启发的智能代码搜索技术原理和实现示例
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Agentic Search - 技术深度解析
+
+本指南详细解释 `agentic_search` 工具背后的技术原理，并提供实用的实现示例。
+
+<Callout type="info">
+**灵感来源 Sirchmunk**：agentic_search 工具实现了受 [Sirchmunk 论文](https://github.com/modelscope/sirchmunk)启发的多阶段搜索管道，用智能关键词提取和相关性排序取代了传统的基于嵌入的向量搜索。
+</Callout>
+
+---
+
+## 技术原理
+
+### 架构概览
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 用户查询: "JWT token 验证是如何工作的"                       │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 阶段 1: 关键词提取                                           │
+│ - 移除停用词 ("是", "如何", "的")                          │
+│ - 提取短语: ["JWT token", "token 验证"]                    │
+│ - 提取单词: ["jwt", "token", "验证"]                       │
+│ 结果: ["JWT token", "token 验证", "jwt", ...]              │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 阶段 2: 并行搜索                                             │
+│ ├─ 内容搜索: ripgrep 风格的正则匹配                        │
+│ │  - 在文件内容中搜索关键词模式                            │
+│ │  - 收集匹配行及其上下文                                  │
+│ └─ 结构搜索: 文件名和路径匹配                              │
+│    - 将关键词与文件名匹配                                  │
+│    - 将关键词与目录路径匹配                                │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 阶段 3: 相关性评分                                           │
+│ - 基础分数: match_count / sqrt(file_lines)                │
+│ - IDF 提升: unique_keywords_matched / total_keywords       │
+│ - 文件类型提升: code(1.2x) > config(1.0x) > docs(0.9x)   │
+│ - 最终分数: base_score * idf_boost * type_boost           │
+└─────────────────────────────────────────────────────────────┘
+                           ↓
+┌─────────────────────────────────────────────────────────────┐
+│ 阶段 4: 结果格式化                                           │
+│ - 按相关性降序排序                                          │
+│ - 格式化并添加上下文行                                      │
+│ - 返回前 N 个结果                                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 阶段 1: 关键词提取
+
+关键词提取算法移除停用词，并在多个粒度上提取有意义的搜索词：
+
+**算法：**
+```rust
+fn extract_keywords(query: &str) -> Vec<String> {
+    let mut keywords = Vec::new();
+
+    // 1. 提取 2-3 词组合
+    let words: Vec<&str> = query.split_whitespace().collect();
+    for window in words.windows(2) {
+        keywords.push(window.join(" "));
+    }
+
+    // 2. 提取单个有意义的词（长度 >= 3）
+    for word in &words {
+        let clean = word.trim_matches(|c: char| !c.is_alphanumeric())
+                        .to_lowercase();
+        if clean.len() >= 3 && !STOP_WORDS.contains(&clean.as_str()) {
+            keywords.push(clean);
+        }
+    }
+
+    // 3. 去重并限制为前 8 个
+    keywords.dedup();
+    keywords.truncate(8);
+    keywords
+}
+```
+
+**示例：**
+```
+输入:  "JWT token 验证是如何工作的"
+输出: ["JWT token", "token 验证", "jwt", "token", "验证"]
+```
+
+---
+
+### 阶段 2: IDF 加权相关性评分
+
+匹配更多唯一关键词的文件排名更高。这受 TF-IDF（词频-逆文档频率）启发，但针对代码搜索进行了简化。
+
+**评分公式：**
+```rust
+// 基础分数：归一化匹配密度
+let base_score = (match_count as f32) / (total_lines as f32).sqrt();
+
+// IDF 提升：关键词覆盖率
+let unique_keywords_matched = patterns
+    .iter()
+    .filter(|p| lines.iter().any(|l| p.is_match(l)))
+    .count();
+let idf_boost = (unique_keywords_matched as f32) / (patterns.len() as f32);
+
+// 文件类型提升
+let type_boost = match file_type {
+    Code => 1.2,           // 优先代码文件
+    Config => 1.0,         // 标准权重
+    Documentation => 0.9,  // 稍低
+    Other => 0.8,          // 最低优先级
+};
+
+// 最终相关性
+let relevance = base_score * idf_boost * type_boost;
+```
+
+**为什么有效：**
+- **基础分数**：较小、聚焦的文件比有分散匹配的大文件排名更高
+- **IDF 提升**：匹配更多关键词的文件更相关
+- **类型提升**：代码文件优先于文档
+
+---
+
+### 阶段 3: 蒙特卡洛证据采样（DEEP 模式）
+
+DEEP 模式使用高斯重要性采样来探索高分匹配周围的代码区域。
+
+**三幕策略：**
+
+**第一幕：模糊锚定**
+```rust
+// 将高分区域识别为锚点
+let anchors: Vec<usize> = file_matches
+    .iter()
+    .map(|m| m.line_number)
+    .collect();
+```
+
+**第二幕：高斯重要性采样**
+```rust
+// 使用高斯权重在每个锚点周围采样
+let sigma = (5.0 - match_density * 20.0).max(2.0);  // 自适应 sigma
+
+for &anchor in &anchors {
+    let window_radius = (sigma * 3.0) as usize;
+    for line_idx in (anchor - window_radius)..(anchor + window_radius) {
+        let distance = (line_idx as i32 - anchor as i32).abs();
+
+        // 高斯权重: exp(-d² / (2σ²))
+        let weight = (-((distance * distance) as f32) / (2.0 * sigma * sigma)).exp();
+
+        sampled.push(SampledLine { line_idx, weight, ... });
+    }
+}
+```
+
+**第三幕：证据合成**
+```rust
+// 计算复合证据分数
+let weight_sum: f32 = sampled.iter().map(|s| s.weight).sum();
+let evidence_score = file_relevance * weight_sum / (sampled.len() as f32).sqrt();
+```
+
+**为什么使用高斯采样？**
+- 聚焦于匹配周围的区域（而非随机采样）
+- 衰减权重确保附近的行被优先考虑
+- 自适应 sigma 根据匹配密度调整
+
+---
+
+## 代码示例
+
+### 示例 1: 基础搜索
+
+<Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('.', {
+  builtinSkills: true,
+  permissive: true,
+});
+
+// LLM 会自动调用 agentic_search 工具
+const result = await session.send(
+  '在这个项目中查找 JWT token 验证代码'
+);
+
+console.log(result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions
+
+agent = Agent("agent.hcl")
+opts = SessionOptions()
+opts.builtin_skills = True
+opts.permissive = True
+
+session = agent.session(".", opts)
+
+# LLM 会自动调用 agentic_search 工具
+result = session.send(
+    "在这个项目中查找 JWT token 验证代码"
+)
+
+print(result.text)
+```
+</Tab>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let agent = Agent::from_file("agent.hcl").await?;
+
+    let opts = SessionOptions::default()
+        .with_builtin_skills(true)
+        .with_permissive(true);
+
+    let session = agent.session(".", opts).await?;
+
+    // LLM 会自动调用 agentic_search 工具
+    let result = session.send(
+        "在这个项目中查找 JWT token 验证代码"
+    ).await?;
+
+    println!("{}", result.text);
+    Ok(())
+}
+```
+</Tab>
+</Tabs>
+
+---
+
+### 示例 2: FAST 模式（默认）
+
+FAST 模式使用关键词级联在 2-5 秒内返回结果：
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// LLM 会使用这些参数调用 agentic_search
+const result = await session.send(`
+  使用 agentic_search 查找认证代码。
+  参数:
+  - query: "authentication login session"
+  - mode: "fast"
+  - max_results: 5
+  - context_lines: 2
+`);
+```
+</Tab>
+<Tab value="Python">
+```python
+# LLM 会使用这些参数调用 agentic_search
+result = session.send("""
+  使用 agentic_search 查找认证代码。
+  参数:
+  - query: "authentication login session"
+  - mode: "fast"
+  - max_results: 5
+  - context_lines: 2
+""")
+```
+</Tab>
+</Tabs>
+
+**预期输出：**
+```
+Found 3 file(s) matching "authentication login session"
+
+─── src/auth/login.rs (code, relevance: 0.85) ───
+  use crate::session::Session;
+
+▶ L12: pub async fn authenticate_user(username: &str, password: &str) -> Result<Session> {
+      let user = db::find_user(username).await?;
+      verify_password(password, &user.password_hash)?;
+
+─── src/auth/session.rs (code, relevance: 0.72) ───
+▶ L45: pub struct Session {
+      pub user_id: String,
+      pub token: String,
+      pub expires_at: DateTime<Utc>,
+  }
+```
+
+---
+
+### 示例 3: DEEP 模式（蒙特卡洛采样）
+
+DEEP 模式使用高斯重要性采样进行全面分析（10-30 秒）：
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const result = await session.send(`
+  使用 DEEP 模式的 agentic_search 分析整个认证流程。
+  参数:
+  - query: "从登录到会话管理的认证流程"
+  - mode: "deep"
+  - max_results: 3
+`);
+```
+</Tab>
+<Tab value="Python">
+```python
+result = session.send("""
+  使用 DEEP 模式的 agentic_search 分析整个认证流程。
+  参数:
+  - query: "从登录到会话管理的认证流程"
+  - mode: "deep"
+  - max_results: 3
+""")
+```
+</Tab>
+</Tabs>
+
+---
+
+### 示例 4: FILENAME_ONLY 模式
+
+快速文件发现（< 1 秒）：
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const result = await session.send(`
+  使用 agentic_search 查找所有测试文件。
+  参数:
+  - query: "test"
+  - mode: "filename_only"
+  - max_results: 20
+`);
+```
+</Tab>
+<Tab value="Python">
+```python
+result = session.send("""
+  使用 agentic_search 查找所有测试文件。
+  参数:
+  - query: "test"
+  - mode: "filename_only"
+  - max_results: 20
+""")
+```
+</Tab>
+</Tabs>
+
+**预期输出：**
+```
+src/auth_test.rs
+src/session_test.rs
+tests/integration_test.rs
+tests/unit_test.rs
+tests/e2e_test.rs
+```
+
+---
+
+### 示例 5: 按文件类型过滤
+
+只搜索 Rust 文件：
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const result = await session.send(`
+  使用 agentic_search 只在 Rust 文件中查找数据库连接代码。
+  参数:
+  - query: "database connection pool"
+  - include: "*.rs"
+  - max_results: 5
+  - context_lines: 3
+`);
+```
+</Tab>
+<Tab value="Python">
+```python
+result = session.send("""
+  使用 agentic_search 只在 Rust 文件中查找数据库连接代码。
+  参数:
+  - query: "database connection pool"
+  - include: "*.rs"
+  - max_results: 5
+  - context_lines: 3
+""")
+```
+</Tab>
+</Tabs>
+
+---
+
+### 示例 6: 文档解析配置
+
+通过配置 `DocumentParserRegistry` 启用二进制文档（PDF、DOCX 等）的解析：
+
+<Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent, DocumentParserRegistry } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('.', {
+  documentParserRegistry: new DocumentParserRegistry(),
+  builtinSkills: true,
+});
+
+// 现在 agentic_search 可以解析 PDF、DOCX 和其他二进制文档
+const result = await session.send(
+  '在所有文档（包括 PDF）中搜索"隐私政策"'
+);
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions, DocumentParserRegistry
+
+agent = Agent("agent.hcl")
+opts = SessionOptions()
+opts.document_parser_registry = DocumentParserRegistry()
+opts.builtin_skills = True
+
+session = agent.session(".", opts)
+
+# 现在 agentic_search 可以解析 PDF、DOCX 和其他二进制文档
+result = session.send(
+    "在所有文档（包括 PDF）中搜索'隐私政策'"
+)
+```
+</Tab>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions};
+use a3s_code_core::tools::document_parser::DocumentParserRegistry;
+use std::sync::Arc;
+
+let agent = Agent::from_file("agent.hcl").await?;
+let registry = DocumentParserRegistry::new();
+
+let opts = SessionOptions::default()
+    .with_document_parser_registry(Arc::new(registry))
+    .with_builtin_skills(true);
+
+let session = agent.session(".", opts).await?;
+
+// 现在 agentic_search 可以解析 PDF、DOCX 和其他二进制文档
+let result = session.send(
+    "在所有文档（包括 PDF）中搜索'隐私政策'"
+).await?;
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+如果不配置 `DocumentParserRegistry`，agentic_search 只读取纯文本文件。文档解析是可选的，可以按会话配置。
+</Callout>
+
+---
+
+## 性能特征
+
+### 基准测试结果
+
+在典型的中型项目（~50k 行代码）上：
+
+| 操作 | 时间 | 说明 |
+|------|------|------|
+| 单关键词（FAST） | ~100ms | "authentication" |
+| 多关键词（FAST） | ~150ms | "JWT token validation" |
+| DEEP 模式 | ~15s | 蒙特卡洛采样 |
+| 文件名搜索 | ~50ms | filename_only 模式 |
+| 大型代码库（500k 行） | ~800ms | 使用 include 模式 |
+
+### 优化技巧
+
+1. **使用 include 模式**限制文件类型：
+   ```
+   include: "*.{rs,toml}"  // 只搜索 Rust 和 TOML 文件
+   ```
+
+2. **根据需求调整 max_results**：
+   ```
+   max_results: 3   // 快速概览
+   max_results: 10  // 标准（默认）
+   max_results: 20  // 全面
+   ```
+
+3. **使用 FILENAME_ONLY 进行发现**：
+   ```
+   mode: "filename_only"  // 比内容搜索快 10 倍
+   ```
+
+4. **为复杂查询保留 DEEP 模式**：
+   ```
+   mode: "deep"  // 仅当 FAST 模式不足时使用
+   ```
+
+---
+
+## 对比：agentic_search vs 传统工具
+
+| 特性 | agentic_search | grep | ripgrep | Vector RAG |
+|------|----------------|------|---------|------------|
+| 输入 | 自然语言 | 正则表达式 | 正则表达式 | 嵌入向量 |
+| 关键词提取 | 自动 | 手动 | 手动 | N/A |
+| 相关性排序 | 是（IDF 加权） | 否 | 否 | 是（余弦相似度） |
+| 文件类型感知 | 是 | 否 | 是 | 否 |
+| 停用词过滤 | 是 | 否 | 否 | N/A |
+| 设置成本 | 零 | 零 | 零 | 高（嵌入生成） |
+| 查询延迟 | 100-150ms | 50-100ms | 30-80ms | 200-500ms |
+| 最适合 | 探索性搜索 | 精确模式 | 快速精确模式 | 语义相似性 |
+
+---
+
+## 最佳实践
+
+### 1. 使用自然语言查询
+
+```typescript
+// ✅ 好：自然语言
+"认证是如何工作的"
+"JWT token 验证逻辑"
+"数据库连接池设置"
+
+// ❌ 不好：单个关键词
+"auth"
+"token"
+"db"
+```
+
+### 2. 与其他工具结合
+
+```typescript
+// 1. 使用 agentic_search 进行发现
+const search = await session.send(
+  "使用 agentic_search 查找认证代码"
+);
+
+// 2. 使用 read 检查特定文件
+const content = await session.send(
+  "读取 src/auth/login.rs"
+);
+
+// 3. 使用 grep 进行精确搜索
+const matches = await session.send(
+  "使用 grep 在 src/ 中查找所有对 authenticate_user 的调用"
+);
+```
+
+### 3. 选择正确的模式
+
+```typescript
+// FAST：大多数查询（2-5s）
+"查找认证代码"
+
+// DEEP：复杂分析（10-30s）
+"解释从登录到会话管理的整个认证流程"
+
+// FILENAME_ONLY：快速发现（< 1s）
+"查找所有测试文件"
+```
+
+---
+
+## 故障排除
+
+### 搜索太慢
+
+**问题：**搜索耗时 > 5 秒
+
+**解决方案：**
+1. 使用 `include` 模式限制文件类型
+2. 减少 `max_results`
+3. 使用 `filename_only` 模式进行快速发现
+
+### 找不到预期结果
+
+**问题：**相关文件在结果中缺失
+
+**解决方案：**
+1. 尝试更具体的关键词
+2. 检查文件是否被 `.gitignore` 排除
+3. 验证文件大小是否 < 1MB（跳过大文件）
+4. 尝试使用 `grep` 进行精确匹配
+
+### 结果太多
+
+**问题：**结果过于庞大
+
+**解决方案：**
+1. 使查询更具体
+2. 使用 `include` 模式过滤文件类型
+3. 减少 `max_results`
+4. 减少 `context_lines`
+
+---
+
+## 相关资源
+
+- [Agentic Search 工具参考](/cn/docs/code/tools/agentic-search) — 完整工具文档
+- [Ripgrep Context Provider](/cn/docs/code/examples/ripgrep-context) — 基于 ripgrep 的上下文提供器
+- [Sirchmunk 论文](https://github.com/modelscope/sirchmunk) — 原始灵感来源

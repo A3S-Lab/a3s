@@ -342,9 +342,87 @@ Review API design for RESTful principles.
 
 ### 2. 工具权限控制
 
-当 skill 定义了 `allowed-tools` 时，agent 只能使用这些工具：
+当 skill 定义了 `allowed-tools` 时，agent 只能使用这些工具。
 
-### 3. 多 Skills 组合
+<Callout type="info">
+**v1.3.4 新功能：** Skills 现在可以作为**一等工具**被调用，使用 `Skill` 工具，在执行期间临时授予权限。
+</Callout>
+
+### 3. Skill Tool - 可调用的 Skills 与权限隔离
+
+`Skill` 工具允许 LLM 将 skills 作为可调用工具来调用，在执行期间临时授予 skill 的 `allowed-tools` 权限。这强制执行基于 skill 的访问模式，防止 agent 绕过 skills 直接访问底层工具。
+
+#### 工作原理
+
+```
+1. LLM 调用: Skill("data-processor", prompt="Read README.md")
+2. SkillTool 从 skill 的 allowed-tools 创建临时 PermissionPolicy
+3. 创建新的 AgentLoop，使用 skill 的权限
+4. Skill 使用临时权限执行
+5. 执行完成后，权限自动撤销（RAII）
+```
+
+#### 示例：权限隔离
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent, SessionOptions, PermissionPolicy, PermissionRule } from '@a3s-lab/code';
+
+// 创建只有 Skill(*) 权限的 agent
+const agent = await Agent.create('agent.hcl');
+
+const session = agent.session('.', {
+  skillsDir: './skills',
+  permissionPolicy: new PermissionPolicy({
+    allow: [new PermissionRule('Skill(*)')],  // 只允许 Skill 工具
+    deny: [new PermissionRule('read(*)')],    // 拒绝直接 read 访问
+    defaultDecision: 'deny'
+  })
+});
+
+// Agent 只能通过 skills 访问 read/grep
+// 直接 read 调用会被拒绝
+const result = await session.send('使用 data-processor 读取 file.txt');
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy, PermissionRule
+
+# 创建只有 Skill(*) 权限的 agent
+agent = Agent.create("agent.hcl")
+
+session = agent.session(".", SessionOptions(
+    skills_dir="./skills",
+    permission_policy=PermissionPolicy(
+        allow=[PermissionRule("Skill(*)")],  # 只允许 Skill 工具
+        deny=[PermissionRule("read(*)")],    # 拒绝直接 read 访问
+        default_decision="deny"
+    )
+))
+
+# Agent 只能通过 skills 访问 read/grep
+result = session.send("使用 data-processor 读取 file.txt")
+```
+</Tab>
+</Tabs>
+
+#### 优势
+
+1. **权限隔离**：父 agent 无法绕过 skills 访问底层工具
+2. **临时授权**：权限仅在 skill 执行期间授予
+3. **自动撤销**：RAII 模式确保权限被清理
+4. **可组合安全**：与权限策略结合实现细粒度控制
+
+#### 使用场景
+
+- **受限环境**：允许 agent 仅通过批准的 skills 使用强大工具
+- **审计追踪**：跟踪调用了哪些 skills 以及它们使用了哪些工具
+- **Skill 组合**：通过链式调用 skill 构建复杂工作流
+- **安全边界**：在 skill 级别强制执行安全策略
+
+### 4. 多 Skills 组合
 
 当多个 skills 同时激活时，只要**任一** skill 允许某工具即可使用：
 

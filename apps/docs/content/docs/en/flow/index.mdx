@@ -1,0 +1,175 @@
+---
+title: A3S Flow
+description: JSON-native workflow engine with concurrent wave scheduling, pluggable nodes, and full lifecycle control
+---
+
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+# A3S Flow
+
+A3S Flow is a workflow engine for agentic platforms that executes JSON-defined DAGs with concurrent wave scheduling, pluggable node types, and full lifecycle control. Built for the A3S ecosystem, it provides Dify-compatible workflow execution with pause/resume capabilities and extensible node registry.
+
+## Architecture
+
+```
+  External Caller
+  ┌─────────────────────────────────────────────────────────────┐
+  │                       FlowEngine                            │
+  │                                                             │
+  │  node_types() → Vec<String>   list registered node types    │
+  │  start(def, vars) → Uuid      parse DAG, spawn task, return │
+  │  pause(id)                    signal pause at wave boundary  │
+  │  resume(id)                   unblock a paused execution     │
+  │  terminate(id)                cancel via CancellationToken   │
+  │  state(id) → ExecutionState   snapshot current state        │
+  │                                                             │
+  │  ┌───────────────────────────────────────────────────────┐  │
+  │  │               ExecutionState (per Uuid)               │  │
+  │  │                                                       │  │
+  │  │            ┌──────────┐                               │  │
+  │  │   start() ►│ Running  │◄─── resume()                  │  │
+  │  │            └────┬─────┘                               │  │
+  │  │    pause() ─────┤  terminate()                        │  │
+  │  │                 │  ├──────────────► Terminated        │  │
+  │  │                 ▼  │  node error ► Failed(msg)        │  │
+  │  │            ┌────────┴─┐  all done ► Completed(result) │  │
+  │  │            │  Paused  │                               │  │
+  │  │            └──────────┘                               │  │
+  │  └───────────────────────────────────────────────────────┘  │
+  └────────────────────────────┬────────────────────────────────┘
+                               │  spawns background Tokio task
+                               │  (watch::Receiver + CancellationToken)
+                               ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │                       FlowRunner                            │
+  │                (one task per execution)                     │
+  │                                                             │
+  │  Wave 1 │ fetch                    no deps → run now        │
+  │         │  └─ outputs["fetch"]                             │
+  │  Wave 2 │ summarize                fetch done → run now     │
+  │         │  └─ outputs["summarize"]                         │
+  │  Wave 3 │ branch_a  branch_b       both ready → concurrent  │
+  │         │  └─ outputs["branch_a"], outputs["branch_b"]     │
+  │  Wave 4 │ notify                   fan-in join → run now    │
+  │         │  └─ outputs["notify"]                            │
+  └─────────────────────────────────────────────────────────────┘
+```
+
+## Module Structure
+
+<TypeTable
+  type={{
+    "engine.rs": {
+      description: "FlowEngine: lifecycle API (start, pause, resume, terminate, state)",
+    },
+    "runner.rs": {
+      description: "FlowRunner: wave-based execution with concurrent node processing",
+    },
+    "graph.rs": {
+      description: "DagGraph: parse, validate, cycle detection, topological sort",
+    },
+    "registry.rs": {
+      description: "NodeRegistry: type string → Arc<dyn Node> mapping",
+    },
+    "node.rs": {
+      description: "Node trait, ExecContext with shared mutable context",
+    },
+    "nodes/": {
+      description: "Built-in nodes: noop, http-request, if-else, llm, code, csv-parse, loop, etc.",
+    },
+  }}
+/>
+
+## Execution States
+
+```
+Created ──→ Running ──→ Paused ──→ Running ──→ Completed
+                   │                      │
+                   └──► Terminated        └──► Failed
+```
+
+<TypeTable
+  type={{
+    "Running": {
+      description: "Execution in progress, processing waves",
+    },
+    "Paused": {
+      description: "Paused at wave boundary, waiting for resume signal",
+    },
+    "Completed": {
+      description: "All nodes executed successfully, outputs available",
+    },
+    "Failed": {
+      description: "Node execution error, execution stopped",
+    },
+    "Terminated": {
+      description: "Cancelled via terminate(), resources freed",
+    },
+  }}
+/>
+
+## Key Features
+
+- **JSON-native workflows** — plain JSON objects (`{ nodes, edges }`), no YAML or DSL required
+- **Concurrent wave scheduling** — nodes with no mutual dependency run in parallel via Tokio JoinSet
+- **Full lifecycle control** — pause at wave boundaries, resume, or cancel mid-execution
+- **Pluggable node types** — implement the `Node` trait to add custom nodes (LLM, HTTP, MCP, etc.)
+- **Dify-compatible** — supports Dify workflow format with 14+ built-in node types
+- **Shared mutable context** — cross-node state sharing for conversation context and metadata
+- **Cycle detection** — validates DAG structure at parse time before execution
+- **Conditional execution** — `run_if` guards for conditional node execution
+- **Sub-flow support** — `iteration` and `loop` nodes for nested workflow execution
+- **Event streaming** — subscribe to execution events (node start/complete, wave progress)
+- **Rust, Python, TypeScript SDKs** — multi-language support with identical APIs
+- **Zero-copy execution** — efficient memory usage with Arc and async/await
+
+## Built-in Nodes
+
+<TypeTable
+  type={{
+    "noop": {
+      description: "Pass-through node, merges upstream inputs",
+    },
+    "start": {
+      description: "Entry point with input variable definitions",
+    },
+    "end": {
+      description: "Exit point with output mappings",
+    },
+    "http-request": {
+      description: "HTTP client with method, headers, body support",
+    },
+    "if-else": {
+      description: "Conditional routing with multiple cases",
+    },
+    "template-transform": {
+      description: "Jinja2 template rendering",
+    },
+    "code": {
+      description: "Sandboxed Rhai script execution",
+    },
+    "csv-parse": {
+      description: "CSV parsing with header/no-header modes",
+    },
+    "llm": {
+      description: "LLM inference with OpenAI-compatible API",
+    },
+    "loop": {
+      description: "Iterative sub-flow execution with break conditions",
+    },
+    "iteration": {
+      description: "Parallel/sequential sub-flow over arrays",
+    },
+    "assign": {
+      description: "Variable assignment with Jinja2 templates",
+    },
+  }}
+/>
+
+## Use Cases
+
+- **Agentic workflows** — multi-step agent tasks with LLM calls, tool use, and decision trees
+- **Data pipelines** — ETL workflows with HTTP fetching, CSV parsing, and transformations
+- **Orchestration** — coordinate multiple services with conditional routing and error handling
+- **Automation** — scheduled tasks with loops, retries, and notifications
+- **Integration** — connect external APIs, databases, and message queues via custom nodes

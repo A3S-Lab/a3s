@@ -1,0 +1,412 @@
+---
+title: Ripgrep 上下文提供器
+description: 使用 ripgrep 风格的模式匹配实现快速、无索引的代码搜索
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Ripgrep 上下文提供器
+
+A3S Code 内置了 `RipgrepContextProvider`，使用快速的正则表达式模式匹配实时搜索工作区文件。与基于向量的 RAG 系统不同，这种方法具有以下优势：
+
+- **无需预索引** — 直接在原始源文件上工作
+- **实时更新** — 代码变更立即生效，无需重新索引
+- **快速搜索** — 使用 ripgrep 风格的模式匹配和相关性评分
+- **低开销** — 无需调用嵌入 API 或向量存储
+
+<Callout type="info">
+Ripgrep 上下文提供器是代码搜索的默认选择。它无需配置，开箱即用。
+</Callout>
+
+## 技术原理
+
+### 核心架构
+
+Ripgrep 上下文提供器采用**无索引实时搜索**架构，完全不同于传统的向量 RAG 方案：
+
+```
+传统向量 RAG 流程：
+代码文件 → 分块 → 嵌入 API → 向量存储 → 相似度搜索 → 结果
+         ↑_____________重新索引（代码变更时）_____________↑
+
+Ripgrep 流程：
+代码文件 → 正则匹配 → 相关性评分 → 结果
+         ↑________实时搜索（无需索引）________↑
+```
+
+### 搜索策略
+
+Ripgrep 提供器使用五步搜索流程：
+
+1. **模式提取** — 从用户查询中提取关键词
+2. **文件遍历** — 遍历工作区，遵循 `.gitignore` 规则
+3. **正则匹配** — 使用快速正则表达式搜索文件内容
+4. **相关性评分** — 根据匹配数量和文件大小排序结果
+5. **上下文提取** — 返回匹配行及其周围上下文
+
+#### 相关性评分算法
+
+```rust
+// 相关性 = 匹配数量 / sqrt(文件总行数)
+let relevance = (matches.len() as f32) / (lines.len() as f32).sqrt();
+```
+
+这个公式确保：
+- 匹配数量多的文件排名更高
+- 较小的文件（更聚焦）比大文件（可能只是偶然匹配）排名更高
+- 使用平方根避免过度惩罚大文件
+
+### 性能优化
+
+1. **并行搜索** — 使用 `tokio::task::spawn_blocking` 在后台线程池执行搜索
+2. **早期过滤** — 在读取文件前检查文件大小和模式匹配
+3. **智能跳过** — 自动跳过二进制文件、空文件和被排除的目录
+4. **增量结果** — 支持 `max_results` 和 `max_tokens` 限制，避免过度搜索
+
+## 快速开始
+
+### 文件系统上下文（简单关键词匹配）
+
+最简单的上下文提供器 — 基于关键词匹配注入相关文件内容。
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('/my-project', {
+  permissive: true,
+  fsContext: '/my-project',
+});
+const result = await session.send('认证是如何工作的？');
+console.log(result.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+session = agent.session("/my-project",
+    permissive=True,
+    fs_context="/my-project",
+)
+result = session.send("认证是如何工作的？")
+print(result.text)
+```
+</Tab>
+</Tabs>
+
+### Ripgrep 上下文提供器（快速模式匹配）
+
+<Tabs groupId="lang" items={['Rust', 'TypeScript', 'Python']}>
+<Tab value="Rust">
+```rust
+use a3s_code_core::context::{RipgrepContextProvider, RipgrepContextConfig};
+use std::sync::Arc;
+
+let config = RipgrepContextConfig::new("/my-project")
+    .with_case_insensitive(true)
+    .with_context_lines(3)
+    .with_include_patterns(vec![
+        "**/*.rs".to_string(),
+        "**/*.md".to_string()
+    ]);
+
+let provider = RipgrepContextProvider::new(config);
+
+// 注册到会话
+let session = agent.session("/my-project")
+    .with_context_provider(Arc::new(provider))
+    .build()?;
+```
+</Tab>
+<Tab value="TypeScript">
+```typescript
+import { Agent, RipgrepContextProvider } from '@a3s/code';
+
+const provider = new RipgrepContextProvider({
+  rootPath: '/my-project',
+  includePatterns: ['**/*.ts', '**/*.tsx', '**/*.md'],
+  excludePatterns: ['**/node_modules/**', '**/dist/**'],
+  caseInsensitive: true,
+  contextLines: 3,
+});
+
+const session = agent.session('/my-project', {
+  contextProviders: [provider],
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, RipgrepContextProvider
+
+provider = RipgrepContextProvider(
+    root_path="/my-project",
+    include_patterns=["**/*.py", "**/*.md"],
+    exclude_patterns=["**/venv/**", "**/__pycache__/**"],
+    case_insensitive=True,
+    context_lines=3,
+)
+
+session = agent.session("/my-project",
+    context_providers=[provider],
+)
+```
+</Tab>
+</Tabs>
+
+## 配置选项
+
+<TypeTable
+  type={{
+    root_path: { type: 'PathBuf', required: true, description: '工作区根目录' },
+    include_patterns: { type: 'Vec<String>', default: '[\"**/*.rs\", \"**/*.py\", ...]', description: '要包含的文件的 Glob 模式' },
+    exclude_patterns: { type: 'Vec<String>', default: '[\"**/target/**\", \"**/node_modules/**\", ...]', description: '要排除的文件的 Glob 模式' },
+    max_file_size: { type: 'usize', default: '1MB', description: '搜索的最大文件大小' },
+    case_insensitive: { type: 'bool', default: 'true', description: '不区分大小写搜索' },
+    context_lines: { type: 'usize', default: '2', description: '匹配前后的上下文行数' },
+  }}
+/>
+
+### 默认包含模式
+
+```rust
+vec![
+    "**/*.rs",      // Rust
+    "**/*.py",      // Python
+    "**/*.ts",      // TypeScript
+    "**/*.tsx",     // TypeScript React
+    "**/*.js",      // JavaScript
+    "**/*.jsx",     // JavaScript React
+    "**/*.go",      // Go
+    "**/*.java",    // Java
+    "**/*.c",       // C
+    "**/*.cpp",     // C++
+    "**/*.h",       // C/C++ 头文件
+    "**/*.hpp",     // C++ 头文件
+    "**/*.md",      // Markdown
+    "**/*.toml",    // TOML 配置
+    "**/*.yaml",    // YAML 配置
+    "**/*.yml",     // YAML 配置
+    "**/*.json",    // JSON
+]
+```
+
+### 默认排除模式
+
+```rust
+vec![
+    "**/target/**",         // Rust 构建输出
+    "**/node_modules/**",   // Node.js 依赖
+    "**/.git/**",           // Git 元数据
+    "**/dist/**",           // 构建输出
+    "**/build/**",          // 构建输出
+    "**/*.lock",            // 锁文件
+    "**/vendor/**",         // 第三方依赖
+    "**/__pycache__/**",    // Python 缓存
+]
+```
+
+## API 参考
+
+### RipgrepContextConfig
+
+<TypeTable
+  type={{
+    new: { type: 'fn(PathBuf) -> Self', description: '使用默认值创建配置' },
+    with_include_patterns: { type: 'fn(Vec<String>) -> Self', description: '设置包含模式' },
+    with_exclude_patterns: { type: 'fn(Vec<String>) -> Self', description: '设置排除模式' },
+    with_max_file_size: { type: 'fn(usize) -> Self', description: '设置最大文件大小' },
+    with_case_insensitive: { type: 'fn(bool) -> Self', description: '启用/禁用大小写敏感' },
+    with_context_lines: { type: 'fn(usize) -> Self', description: '设置上下文行数' },
+  }}
+/>
+
+## 实战示例
+
+### 示例 1：搜索认证相关代码
+
+```rust
+use a3s_code_core::context::{ContextQuery, ContextProvider};
+
+let provider = RipgrepContextProvider::new(
+    RipgrepContextConfig::new("/my-project")
+);
+
+let query = ContextQuery::new("authentication")
+    .with_max_results(5)
+    .with_max_tokens(2000);
+
+let result = provider.query(&query).await?;
+
+for item in result.items {
+    println!("文件: {}", item.title);
+    println!("相关性: {:.2}", item.relevance.unwrap_or(0.0));
+    println!("匹配:\n{}\n", item.content);
+}
+```
+
+### 示例 2：只搜索 Rust 文件
+
+```rust
+let config = RipgrepContextConfig::new("/my-project")
+    .with_include_patterns(vec!["**/*.rs".to_string()])
+    .with_exclude_patterns(vec![
+        "**/target/**".to_string(),
+        "**/tests/**".to_string(),
+    ]);
+
+let provider = RipgrepContextProvider::new(config);
+```
+
+### 示例 3：大型代码库优化
+
+```rust
+let config = RipgrepContextConfig::new("/large-project")
+    .with_max_file_size(512 * 1024)  // 限制为 512KB
+    .with_context_lines(1)            // 减少上下文
+    .with_exclude_patterns(vec![
+        "**/vendor/**".to_string(),
+        "**/third_party/**".to_string(),
+        "**/*.min.js".to_string(),    // 跳过压缩文件
+    ]);
+```
+
+### 示例 4：多深度查询
+
+```rust
+use a3s_code_core::context::ContextDepth;
+
+// 抽象级别 - 只显示文件路径和匹配数量
+let query = ContextQuery::new("database")
+    .with_depth(ContextDepth::Abstract);
+
+// 概览级别 - 显示前 3 个匹配
+let query = ContextQuery::new("database")
+    .with_depth(ContextDepth::Overview);
+
+// 完整级别 - 显示所有匹配和完整上下文
+let query = ContextQuery::new("database")
+    .with_depth(ContextDepth::Full);
+```
+
+## 对比：Ripgrep vs 向量 RAG
+
+| 特性 | Ripgrep 提供器 | 向量 RAG（已移除） |
+|------|----------------|-------------------|
+| 索引 | 无需索引 | 需要预索引 |
+| 实时更新 | ✅ 即时 | ❌ 需要重新索引 |
+| 设置复杂度 | ✅ 零配置 | ❌ 嵌入 API + 向量数据库 |
+| 搜索速度 | ✅ 快速（< 1s） | ⚠️ 取决于索引大小 |
+| 语义搜索 | ❌ 基于关键词 | ✅ 基于语义 |
+| 成本 | ✅ 免费 | ❌ 嵌入 API 费用 |
+| 精确匹配 | ✅ 完美 | ⚠️ 可能遗漏精确术语 |
+| 模糊匹配 | ❌ 需要正则表达式 | ✅ 自动处理同义词 |
+
+## 最佳实践
+
+### 1. 调整包含模式
+
+限制搜索到相关文件类型以提高性能：
+
+```rust
+let config = RipgrepContextConfig::new("/my-project")
+    .with_include_patterns(vec![
+        "**/*.rs".to_string(),
+        "**/*.toml".to_string(),
+        "**/README.md".to_string(),
+    ]);
+```
+
+### 2. 使用排除模式
+
+跳过构建产物和依赖项：
+
+```rust
+let config = RipgrepContextConfig::new("/my-project")
+    .with_exclude_patterns(vec![
+        "**/target/**".to_string(),
+        "**/node_modules/**".to_string(),
+        "**/.git/**".to_string(),
+        "**/dist/**".to_string(),
+        "**/*.min.js".to_string(),
+        "**/*.map".to_string(),
+    ]);
+```
+
+### 3. 设置上下文行数
+
+在详细程度和 token 使用之间取得平衡：
+
+```rust
+// 最小上下文 - 节省 token
+.with_context_lines(1)
+
+// 标准上下文 - 平衡
+.with_context_lines(2)
+
+// 丰富上下文 - 更多细节
+.with_context_lines(5)
+```
+
+### 4. 监控文件大小限制
+
+防止搜索大型生成文件：
+
+```rust
+.with_max_file_size(512 * 1024)  // 512KB
+```
+
+### 5. 与记忆结合使用
+
+将 Ripgrep 与 `MemoryContextProvider` 结合以获得对话历史：
+
+```rust
+let session = agent.session("/my-project")
+    .with_context_provider(Arc::new(ripgrep_provider))
+    .with_context_provider(Arc::new(memory_provider))
+    .build()?;
+```
+
+## 性能基准
+
+在典型的中型 Rust 项目（~50k 行代码）上：
+
+| 操作 | 时间 | 说明 |
+|------|------|------|
+| 单关键词搜索 | ~100ms | 搜索 "authentication" |
+| 多关键词搜索 | ~150ms | 搜索 "user login session" |
+| 大型代码库（500k 行） | ~800ms | 使用适当的排除模式 |
+| 向量 RAG 索引 | ~30s | 初始索引时间（对比） |
+| 向量 RAG 查询 | ~200ms | 查询时间（对比） |
+
+<Callout type="info">
+性能取决于代码库大小、文件数量和磁盘速度。使用 SSD 和适当的排除模式可获得最佳性能。
+</Callout>
+
+## 故障排除
+
+### 搜索太慢
+
+1. 添加更多排除模式以跳过不相关的目录
+2. 减少 `max_file_size` 以跳过大文件
+3. 使用更具体的包含模式
+
+### 找不到预期结果
+
+1. 检查文件是否被排除模式匹配
+2. 验证文件大小是否在 `max_file_size` 限制内
+3. 尝试使用 `case_insensitive: true`
+4. 检查搜索词是否正确（ripgrep 使用字面匹配）
+
+### Token 使用过高
+
+1. 减少 `context_lines`
+2. 降低 `max_results`
+3. 使用 `ContextDepth::Abstract` 或 `Overview`
+4. 设置更严格的 `max_tokens` 限制
+
+## 相关资源
+
+- [上下文提供器](/cn/docs/code/context) — 上下文系统概述
+- [记忆](/cn/docs/code/examples/memory) — 持久化记忆存储
+- [快速开始](/cn/docs/code/examples/quick-start) — 基本用法示例

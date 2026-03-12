@@ -401,21 +401,21 @@ session = agent.session('/project',
   }}
 />
 
-### VectorContextConfig（Rust）
+### RipgrepContextConfig（Rust）
 
 <TypeTable
   type={{
-    "VectorContextConfig::new(path)": {
+    "RipgrepContextConfig::new(path)": {
       description: "描述: 设置工作区根目录",
     },
-    ".with_min_relevance(f)": {
-      description: "描述: 最小余弦相似度 · 默认值: 0.3",
+    ".with_case_insensitive(b)": {
+      description: "描述: 大小写不敏感搜索 · 默认值: true",
     },
-    ".with_max_results(n)": {
-      description: "描述: 每次查询最大块数 · 默认值: 10",
+    ".with_context_lines(n)": {
+      description: "描述: 匹配行前后的上下文行数 · 默认值: 2",
     },
-    ".with_chunk_size(n)": {
-      description: "描述: 每块最大字符数 · 默认值: 1500",
+    ".with_max_file_size(n)": {
+      description: "描述: 最大文件大小 · 默认值: 1MB",
     },
   }}
 />

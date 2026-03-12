@@ -77,7 +77,7 @@ npx tsx examples/<name>.ts
     <File name="test_parallel_processing.rs" />
     <File name="test_security.rs" />
     <File name="test_task_priority.rs" />
-    <File name="test_vector_rag.rs" />
+    <File name="test_ripgrep_context.rs" />
     <File name="test_git_worktree.rs" />
     <File name="test_prompt_slots.rs" />
   </Folder>
@@ -127,7 +127,7 @@ npx tsx examples/<name>.ts
   <Card title="Security" href="/docs/code/examples/security" description="Input taint tracking and output sanitization" />
   <Card title="Skills" href="/docs/code/examples/skills" description="Built-in and custom skill system" />
   <Card title="Batch Tool" href="/docs/code/examples/batch" description="Parallel tool execution in a single turn" />
-  <Card title="Vector RAG" href="/docs/code/examples/vector-rag" description="Semantic code search via vector embeddings" />
+  <Card title="Ripgrep Context" href="/docs/code/examples/ripgrep-context" description="Fast indexless code search with ripgrep" />
   <Card title="Lane Queue" href="/docs/code/examples/lane-queue" description="Priority-based task queue with preemption" />
   <Card title="External Tasks" href="/docs/code/examples/external-tasks" description="Multi-machine coordinator/worker pattern" />
   <Card title="Git Worktree" href="/docs/code/examples/git-worktree" description="Parallel workspace isolation with git_worktree tool" />
@@ -171,7 +171,7 @@ npx tsx examples/<name>.ts
     "Batch tool": {
       description: "Python: ✅ · TypeScript: ✅",
     },
-    "Vector RAG / codesearch": {
+    "Ripgrep context": {
       description: "Python: ✅ · TypeScript: ✅",
     },
     "Lane queue / priority": {
@@ -244,7 +244,7 @@ npx tsx examples/<name>.ts
     "Auto-compact": {
       description: "Python: auto_compact=True · TypeScript: autoCompact: true",
     },
-    "FS context (RAG)": {
+    "Ripgrep context (RAG)": {
       description: "Python: fs_context=path · TypeScript: fsContext: path",
     },
     "Lane queue": {
@@ -262,8 +262,8 @@ npx tsx examples/<name>.ts
     "Custom security": {
       description: "Python: _(Rust only)_ · TypeScript: _(Rust only)_",
     },
-    "Vector context": {
-      description: "Python: _(config-based)_ · TypeScript: _(config-based)_",
+    "Custom context": {
+      description: "Python: _(Rust only)_ · TypeScript: _(Rust only)_",
     },
   }}
 />
@@ -286,15 +286,7 @@ npx tsx examples/<name>.ts
     },
     "ContextProvider": {
       description: "RAG retrieval",
-      default: "FileSystemContextProvider",
-    },
-    "EmbeddingProvider": {
-      description: "Vector embeddings",
-      default: "OpenAiEmbeddingProvider",
-    },
-    "VectorStore": {
-      description: "Embedding storage",
-      default: "InMemoryVectorStore",
+      default: "RipgrepContextProvider",
     },
     "SessionStore": {
       description: "Session persistence",

@@ -98,13 +98,24 @@ export default async function Page({ params }: PageProps) {
 }
 
 export function generateStaticParams() {
-  return [
-    { lang: 'cn', slug: undefined },
-    ...tutorialsSource.getPages('cn').map((page) => ({
-      lang: 'cn',
-      slug: page.slugs.length > 0 ? page.slugs : undefined,
-    })),
-  ];
+  const languages = ['en', 'cn'];
+  const params: Array<{ lang: string; slug?: string[] }> = [];
+
+  for (const lang of languages) {
+    // List page
+    params.push({ lang, slug: undefined });
+
+    // Individual tutorial pages
+    const pages = tutorialsSource.getPages(lang);
+    for (const page of pages) {
+      params.push({
+        lang,
+        slug: page.slugs.length > 0 ? page.slugs : undefined,
+      });
+    }
+  }
+
+  return params;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
