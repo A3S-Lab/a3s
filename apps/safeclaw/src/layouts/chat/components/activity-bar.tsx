@@ -1,5 +1,11 @@
 import { cn } from "@/lib/utils";
-import { MessageCircle, Settings, Container } from "lucide-react";
+import {
+	MessageCircle,
+	Settings,
+	Container,
+	BookOpen,
+	Store,
+} from "lucide-react";
 import {
 	ReactNode,
 	useCallback,
@@ -14,6 +20,13 @@ const STORAGE_KEY = "safeclaw-active-route";
 
 const NAV_ITEMS = [
 	{ key: "chat", label: "Chat", icon: MessageCircle, path: "/" },
+	{ key: "knowledge", label: "Knowledge", icon: BookOpen, path: "/knowledge" },
+	{
+		key: "agent-marketplace",
+		label: "Market",
+		icon: Store,
+		path: "/agent-marketplace",
+	},
 	{ key: "box", label: "Box", icon: Container, path: "/box" },
 ] as const;
 

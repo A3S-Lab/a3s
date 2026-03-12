@@ -11,6 +11,7 @@ import type { PersonaInfo } from "@/typings/agent";
 const STORAGE_KEY = "safeclaw-session-personas";
 const OVERRIDES_KEY = "safeclaw-persona-overrides";
 const CUSTOM_PERSONAS_KEY = "safeclaw-custom-personas";
+const WORKSPACES_KEY = "safeclaw-persona-workspaces";
 
 type PersonaOverride = Pick<
 	AgentPersona,
@@ -36,6 +37,8 @@ interface PersonaStoreState {
 	serverPersonas: AgentPersona[];
 	/** User overrides for builtin/server personas (persisted) */
 	personaOverrides: Record<string, PersonaOverride>;
+	/** Default workspace paths for each persona (persisted) */
+	personaWorkspaces: Record<string, string>;
 	/** Marketplace pagination state */
 	market: MarketState;
 }
@@ -56,6 +59,14 @@ function loadCustomPersonas(): AgentPersona[] {
 	}
 }
 
+function loadWorkspaces(): Record<string, string> {
+	try {
+		return JSON.parse(localStorage.getItem(WORKSPACES_KEY) || "{}");
+	} catch {
+		return {};
+	}
+}
+
 function persistCustomPersonas() {
 	try {
 		localStorage.setItem(
@@ -67,11 +78,23 @@ function persistCustomPersonas() {
 	}
 }
 
+function persistWorkspaces() {
+	try {
+		localStorage.setItem(
+			WORKSPACES_KEY,
+			JSON.stringify(state.personaWorkspaces),
+		);
+	} catch {
+		/* ignore */
+	}
+}
+
 const state = proxy<PersonaStoreState>({
 	sessionPersonas: JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"),
 	customPersonas: loadCustomPersonas(),
 	serverPersonas: [],
 	personaOverrides: loadOverrides(),
+	personaWorkspaces: loadWorkspaces(),
 	market: {
 		items: [],
 		total: 0,
@@ -100,11 +123,15 @@ function serverPersonaToAgentPersona(p: PersonaInfo): AgentPersona {
 	};
 }
 
-/** Apply stored overrides on top of a persona */
+/** Apply stored overrides and workspace on top of a persona */
 function applyOverrides(persona: AgentPersona): AgentPersona {
 	const ov = state.personaOverrides[persona.id];
-	if (!ov) return persona;
-	return { ...persona, ...ov };
+	const workspace = state.personaWorkspaces[persona.id];
+	return {
+		...persona,
+		...ov,
+		defaultWorkspace: workspace || persona.defaultWorkspace,
+	};
 }
 
 const actions = {
@@ -252,6 +279,17 @@ const actions = {
 		state.market.loading = false;
 		state.market.search = "";
 		state.market.tags = [];
+	},
+
+	/** Set default workspace for a persona */
+	setPersonaWorkspace(personaId: string, workspacePath: string) {
+		state.personaWorkspaces[personaId] = workspacePath;
+		persistWorkspaces();
+	},
+
+	/** Get default workspace for a persona */
+	getPersonaWorkspace(personaId: string): string | undefined {
+		return state.personaWorkspaces[personaId];
 	},
 };
 

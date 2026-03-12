@@ -16,6 +16,7 @@ import settingsModel, {
 	resolveApiKey,
 	resolveBaseUrl,
 } from "@/models/settings.model";
+import { getSessionWorkspacePath } from "@/lib/workspace-utils";
 import { connectSession } from "@/hooks/use-agent-ws";
 import { AlertCircle, FolderOpen, Loader2 } from "lucide-react";
 import NiceAvatar, { genConfig } from "react-nice-avatar";
@@ -23,15 +24,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from "react-router-dom";
-
-/** Generate a session subfolder name: <persona-id>-YYYYMMDD-HHmmss */
-function sessionFolderName(personaId: string): string {
-	const now = new Date();
-	const pad = (n: number) => String(n).padStart(2, "0");
-	const date = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
-	const time = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-	return `${personaId}-${date}-${time}`;
-}
 
 function joinPath(...parts: string[]): string {
 	return parts
@@ -57,11 +49,13 @@ export default function PickWorkdirDialog({
 }: PickWorkdirDialogProps) {
 	const navigate = useNavigate();
 	const [cwd, setCwd] = useState("");
+	const [placeholder, setPlaceholder] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	const defaultCwd = settingsModel.state.agentDefaults.defaultCwd.trim();
-	const hasDefaultCwd = defaultCwd.length > 0;
+	const workspaceRoot = settingsModel.state.agentDefaults.workspaceRoot.trim();
+	const hasWorkspaceRoot = workspaceRoot.length > 0;
+	const isSuperAdmin = personaId === "super-admin";
 
 	const persona = useMemo(
 		() =>
@@ -78,13 +72,23 @@ export default function PickWorkdirDialog({
 
 	// Compute a fresh suggested path each time the dialog opens
 	useEffect(() => {
-		if (open && personaId && hasDefaultCwd) {
-			setCwd(joinPath(defaultCwd, sessionFolderName(personaId)));
+		if (open && personaId && hasWorkspaceRoot && !isSuperAdmin) {
+			getSessionWorkspacePath(personaId).then((path) => {
+				const pathStr = path ?? "";
+				setCwd(pathStr);
+				setPlaceholder(pathStr);
+			});
+		} else if (open && isSuperAdmin) {
+			// Super-admin doesn't need workspace configuration
+			getSessionWorkspacePath(personaId).then((path) => {
+				setCwd(path ?? "");
+			});
 		} else if (open) {
 			setCwd("");
+			setPlaceholder("");
 		}
 		setError(null);
-	}, [open, personaId, hasDefaultCwd, defaultCwd]);
+	}, [open, personaId, hasWorkspaceRoot, isSuperAdmin]);
 
 	const handlePickDir = useCallback(async () => {
 		const selected = await openDialog({ directory: true, multiple: false });
@@ -95,7 +99,8 @@ export default function PickWorkdirDialog({
 		if (!personaId || !persona) return;
 
 		const trimmedCwd = cwd.trim();
-		if (!trimmedCwd) {
+		// Super-admin doesn't require workspace validation
+		if (!isSuperAdmin && !trimmedCwd) {
 			setError("工作区目录不能为空");
 			return;
 		}
@@ -104,7 +109,11 @@ export default function PickWorkdirDialog({
 		setError(null);
 		try {
 			// Initialize workspace: create directory, agents/, skills/, A3sfile.hcl
-			await invoke("init_workspace", { path: trimmedCwd });
+			// For document-expert, also copies document-office skill templates
+			// Skip workspace init for super-admin
+			if (!isSuperAdmin) {
+				await invoke("init_workspace", { path: trimmedCwd, personaId });
+			}
 
 			const preferred = getPreferredSessionModel();
 			const modelId = persona.defaultModel || preferred.modelId || undefined;
@@ -122,10 +131,14 @@ export default function PickWorkdirDialog({
 				persona_id: personaId,
 				model: modelId,
 				permission_mode: persona.defaultPermissionMode || "default",
-				cwd: trimmedCwd,
+				cwd: trimmedCwd || undefined,
 				system_prompt: persona.systemPrompt || undefined,
 				api_key: apiKey || undefined,
 				base_url: baseUrl || undefined,
+				// For document-expert persona, auto-mount workspace skills directory
+				...(personaId === "document-expert"
+					? { skill_dirs: [joinPath(trimmedCwd, "skills")] }
+					: {}),
 			});
 
 			if (result?.error) {
@@ -155,7 +168,7 @@ export default function PickWorkdirDialog({
 		} finally {
 			setLoading(false);
 		}
-	}, [personaId, persona, cwd, onCreated, onOpenChange]);
+	}, [personaId, persona, cwd, isSuperAdmin, onCreated, onOpenChange]);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -170,15 +183,17 @@ export default function PickWorkdirDialog({
 				</DialogHeader>
 
 				<div className="py-1 space-y-4">
-					{!hasDefaultCwd ? (
+					{isSuperAdmin ? /* ── Super-admin: no workspace configuration needed ── */
+					null : !hasWorkspaceRoot ? (
 						/* ── No default workspace configured ── */
 						<div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 space-y-2">
 							<div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
 								<AlertCircle className="size-4 shrink-0" />
-								<span className="text-sm font-medium">未配置默认工作区</span>
+								<span className="text-sm font-medium">未配置工作区根目录</span>
 							</div>
 							<p className="text-xs text-muted-foreground">
-								创建会话前需要先在设置中配置默认工作区根目录，每个会话将在其下自动创建独立文件夹。
+								创建会话前需要先在设置中配置工作区根目录，每个会话将在 sessions/
+								子目录下自动创建独立文件夹。
 							</p>
 							<Button
 								size="sm"
@@ -214,7 +229,7 @@ export default function PickWorkdirDialog({
 										value={cwd}
 										onChange={(e) => setCwd(e.target.value)}
 										className="h-8 text-xs font-mono flex-1"
-										placeholder={joinPath(defaultCwd, "session-folder")}
+										placeholder={placeholder}
 									/>
 									<Button
 										type="button"
@@ -250,7 +265,7 @@ export default function PickWorkdirDialog({
 					<Button
 						size="sm"
 						onClick={handleCreate}
-						disabled={loading || !hasDefaultCwd}
+						disabled={loading || (!isSuperAdmin && !hasWorkspaceRoot)}
 					>
 						{loading ? (
 							<>

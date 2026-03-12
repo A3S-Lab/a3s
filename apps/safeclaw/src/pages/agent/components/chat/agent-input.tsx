@@ -111,7 +111,7 @@ export function AgentInput({
 					}),
 				);
 			})
-			.catch(() => { });
+			.catch(() => {});
 	}, []);
 
 	const currentPersonaId = personaSnap.sessionPersonas[sessionId];
@@ -125,9 +125,7 @@ export function AgentInput({
 				label: p.name,
 				description: p.description,
 				group: "智能体",
-				icon: (
-					<NiceAvatar className="size-4 shrink-0" {...genConfig(p.avatar)} />
-				),
+				icon: <NiceAvatar className="size-4 shrink-0" {...p.avatar} />,
 			}));
 	}, [
 		personaSnap.serverPersonas,
@@ -144,7 +142,7 @@ export function AgentInput({
 			if (
 				!map[pid] ||
 				s.created_at >
-				(sdkSessions.find((x) => x.session_id === map[pid])?.created_at ?? 0)
+					(sdkSessions.find((x) => x.session_id === map[pid])?.created_at ?? 0)
 			) {
 				map[pid] = s.session_id;
 			}
@@ -201,11 +199,11 @@ export function AgentInput({
 						prev.map((f) =>
 							f.id === id
 								? {
-									...f,
-									media_type: "text/plain",
-									data: encoded,
-									progress: undefined,
-								}
+										...f,
+										media_type: "text/plain",
+										data: encoded,
+										progress: undefined,
+									}
 								: f,
 						),
 					);
@@ -257,7 +255,7 @@ export function AgentInput({
 				if (targetSid) {
 					agentApi
 						.sendAgentMessage(targetSid, `mention:${targetSid}`, content)
-						.catch(() => { });
+						.catch(() => {});
 				}
 			}
 		}
@@ -435,10 +433,14 @@ export function AgentInput({
 			<div className="flex-1 min-h-0">
 				<TiptapEditor
 					ref={editorRef}
-					placeholder={disableMention ? "输入消息，/ 触发指令…" : "输入消息，/ 触发指令，@ 关联工作区文件"}
+					placeholder={
+						disableMention
+							? "输入消息，/ 触发指令…"
+							: "输入消息，/ 触发指令，@ 关联工作区文件"
+					}
 					disabled={disabled}
 					slashItems={slashItems}
-					mentionItems={disableMention ? [] : mentionItems}
+					mentionItems={[]}
 					workspaceDir={workspaceDir}
 					onSubmit={() => handleSubmit()}
 					onChange={handleEditorChange}
@@ -448,7 +450,7 @@ export function AgentInput({
 
 			{/* WeChat-style bottom toolbar */}
 			<div className="flex items-center gap-1 px-2 py-2 shrink-0">
-					<div className="ml-auto">
+				<div className="ml-auto">
 					<button
 						type="button"
 						className={cn(
@@ -456,8 +458,8 @@ export function AgentInput({
 							isRunning || isInterrupting
 								? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
 								: (isEmpty && pendingFiles.length === 0) ||
-									  !allFilesReady ||
-									  disabled
+										!allFilesReady ||
+										disabled
 									? "bg-muted text-muted-foreground cursor-not-allowed"
 									: "bg-primary text-primary-foreground hover:bg-primary/90",
 						)}
@@ -485,7 +487,9 @@ export function AgentInput({
 				</div>
 			</div>
 
-			{!disableMention && <SessionStatusBar sessionId={sessionId} readonlyCwd={readonlyCwd} />}
+			{!disableMention && (
+				<SessionStatusBar sessionId={sessionId} readonlyCwd={readonlyCwd} />
+			)}
 		</div>
 	);
 }

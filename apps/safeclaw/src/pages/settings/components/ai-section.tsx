@@ -230,11 +230,7 @@ function EditModelForm({
 			<div className="space-y-2">
 				<div>
 					<label className="text-[10px] text-muted-foreground">模型 ID</label>
-					<Input
-						className="h-7 text-xs font-mono"
-						value={model.id}
-						disabled
-					/>
+					<Input className="h-7 text-xs font-mono" value={model.id} disabled />
 				</div>
 				<div>
 					<label className="text-[10px] text-muted-foreground">显示名称</label>
@@ -438,7 +434,9 @@ function ProviderCard({
 						<div key={model.id}>
 							<div className="flex items-center justify-between rounded-lg border bg-muted/30 px-2.5 py-1.5">
 								<div className="flex-1 min-w-0">
-									<div className="text-xs font-medium truncate">{model.name}</div>
+									<div className="text-xs font-medium truncate">
+										{model.name}
+									</div>
 									<div className="text-[10px] text-muted-foreground font-mono truncate">
 										{model.id}
 									</div>

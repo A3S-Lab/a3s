@@ -12,6 +12,10 @@ license = "MIT"
 name = "safeclaw_ui_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+[[bin]]
+name = "SafeClaw"
+path = "src/main.rs"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

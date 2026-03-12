@@ -331,9 +331,12 @@ export function AgentMessageInbox({ sessionId }: { sessionId: string }) {
 // EmptyChat
 // =============================================================================
 
-export function EmptyChat({ sessionId, disableMention }: { sessionId: string; disableMention?: boolean }) {
+export function EmptyChat({
+	sessionId,
+	disableMention,
+}: { sessionId: string; disableMention?: boolean }) {
 	const persona = personaModel.getSessionPersona(sessionId);
-	const cfg = useMemo(() => genConfig(persona.avatar), [persona.avatar]);
+	const cfg = useMemo(() => persona.avatar, [persona.avatar]);
 	return (
 		<div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground px-8">
 			<NiceAvatar className="size-16" {...cfg} />
@@ -344,7 +347,9 @@ export function EmptyChat({ sessionId, disableMention }: { sessionId: string; di
 				</p>
 			</div>
 			<p className="text-xs opacity-60">
-				{disableMention ? "发送消息开始对话，/ 触发技能" : "发送消息开始对话，/ 触发技能，@ 关联工作区文件"}
+				{disableMention
+					? "发送消息开始对话，/ 触发技能"
+					: "发送消息开始对话，/ 触发技能，@ 关联工作区文件"}
 			</p>
 		</div>
 	);

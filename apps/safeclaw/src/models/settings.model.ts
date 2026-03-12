@@ -56,9 +56,10 @@ export interface SettingsState {
 	/** Global agent behavior defaults */
 	agentDefaults: {
 		maxTurns: number; // 0 = unlimited
-		defaultCwd: string; // empty = process cwd
 		autoArchiveHours: number; // 0 = never
 		sensitiveTools: string[]; // trigger local privacy model routing
+		/** Root workspace directory. agents/ and sessions/ subdirs are created automatically. */
+		workspaceRoot: string;
 	};
 }
 
@@ -113,9 +114,9 @@ const DEFAULTS: SettingsState = {
 	baseUrl: "",
 	agentDefaults: {
 		maxTurns: 0,
-		defaultCwd: "",
 		autoArchiveHours: 0,
 		sensitiveTools: DEFAULT_SENSITIVE_TOOLS,
+		workspaceRoot: "",
 	},
 };
 

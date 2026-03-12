@@ -325,10 +325,7 @@ export function StreamingDisplay({ sessionId }: { sessionId: string }) {
 	const isRunning = status === "running";
 	const isCompacting = status === "compacting";
 	const persona = personaModel.getSessionPersona(sessionId);
-	const avatarConfig = useMemo(
-		() => genConfig(persona.avatar),
-		[persona.avatar],
-	);
+	const avatarConfig = useMemo(() => persona.avatar, [persona.avatar]);
 	const orderedSegments = useMemo(
 		() => [...segments].sort((a, b) => a.seq - b.seq),
 		[segments],

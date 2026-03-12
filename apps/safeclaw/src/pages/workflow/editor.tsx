@@ -361,7 +361,9 @@ function Pill({
 			)}
 		>
 			{Icon && <Icon className="size-3 shrink-0 text-muted-foreground/60" />}
-			<span className={cn("truncate leading-none", mono && "font-mono")}>{children}</span>
+			<span className={cn("truncate leading-none", mono && "font-mono")}>
+				{children}
+			</span>
 		</div>
 	);
 }
@@ -413,7 +415,7 @@ function NodeBody({
 			);
 		}
 
-			// ── HTTP: [METHOD] + URL ───────────────────────────────────────────────
+		// ── HTTP: [METHOD] + URL ───────────────────────────────────────────────
 		case "http-request": {
 			const method = (data.method as string) ?? "GET";
 			const url = (data.url as string) ?? "";
@@ -463,9 +465,7 @@ function NodeBody({
 			return (
 				<Body>
 					{model && <Pill mono>{model}</Pill>}
-					{params.length > 0 && (
-						<Pill>{params.length} 个参数</Pill>
-					)}
+					{params.length > 0 && <Pill>{params.length} 个参数</Pill>}
 				</Body>
 			);
 		}
@@ -491,7 +491,7 @@ function NodeBody({
 			);
 		}
 
-			// ── Assign: key → value rows ───────────────────────────────────────────
+		// ── Assign: key → value rows ───────────────────────────────────────────
 		case "assign": {
 			const assigns = data.assigns as Record<string, string> | undefined;
 			const entries = Object.entries(assigns ?? {}).slice(0, 3);
@@ -507,7 +507,9 @@ function NodeBody({
 							<span className="shrink-0 text-xs font-mono text-muted-foreground/70 truncate max-w-[70px]">
 								{key}
 							</span>
-							<span className="text-muted-foreground/40 shrink-0 text-[10px]">＝</span>
+							<span className="text-muted-foreground/40 shrink-0 text-[10px]">
+								＝
+							</span>
 							<span className="text-xs text-foreground/70 font-mono truncate">
 								{val || "…"}
 							</span>
@@ -555,7 +557,9 @@ function NodeBody({
 							<span className="shrink-0 text-xs font-mono text-muted-foreground/70 truncate max-w-[70px]">
 								{key}
 							</span>
-							<span className="text-muted-foreground/40 shrink-0 text-[10px]">＝</span>
+							<span className="text-muted-foreground/40 shrink-0 text-[10px]">
+								＝
+							</span>
 							<span className="text-xs text-foreground/70 font-mono truncate">
 								{val || "…"}
 							</span>
@@ -577,7 +581,9 @@ function NodeBody({
 			return (
 				<Body>
 					{keys.slice(0, 4).map((k) => (
-						<Pill key={k} mono>{k}</Pill>
+						<Pill key={k} mono>
+							{k}
+						</Pill>
 					))}
 					{keys.length > 4 && (
 						<p className="text-[10px] text-muted-foreground/50 pl-1">
@@ -595,9 +601,7 @@ function NodeBody({
 			if (!toolName && !serverUrl) return null;
 			return (
 				<Body>
-					{toolName && (
-						<Pill icon={Globe}>{toolName}</Pill>
-					)}
+					{toolName && <Pill icon={Globe}>{toolName}</Pill>}
 					{serverUrl && (
 						<Pill mono>
 							{serverUrl.replace(/^https?:\/\//, "").slice(0, 32)}
@@ -799,7 +803,10 @@ function IterationContainerNode({ id, data, selected }: NodeProps) {
 						)}
 						<button
 							type="button"
-							onClick={(e) => { e.stopPropagation(); setCatalogOpen((v) => !v); }}
+							onClick={(e) => {
+								e.stopPropagation();
+								setCatalogOpen((v) => !v);
+							}}
 							className={cn(
 								"flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition-all",
 								"border border-dashed border-violet-400/50 text-violet-500 dark:text-violet-400",
@@ -889,7 +896,10 @@ function LoopContainerNode({ id, data, selected }: NodeProps) {
 						)}
 						<button
 							type="button"
-							onClick={(e) => { e.stopPropagation(); setCatalogOpen((v) => !v); }}
+							onClick={(e) => {
+								e.stopPropagation();
+								setCatalogOpen((v) => !v);
+							}}
 							className={cn(
 								"flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition-all",
 								"border border-dashed border-indigo-400/50 text-indigo-500 dark:text-indigo-400",
@@ -1288,7 +1298,9 @@ function NodeCatalogPopover({
 						))}
 						{TOOL_CATALOG.length === 0 && (
 							<div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-								<p className="text-xs text-muted-foreground mb-2">暂无工具节点</p>
+								<p className="text-xs text-muted-foreground mb-2">
+									暂无工具节点
+								</p>
 								<p className="text-[10px] text-muted-foreground/60">
 									工具节点由外部集成提供
 								</p>
@@ -1413,7 +1425,11 @@ function ZoomControls({
 					type="button"
 					onClick={onToggleMiniMap}
 					title={showMiniMap ? "隐藏小地图" : "显示小地图"}
-					className={cn(ctrlBtnFlexCls, "border-l border-border", showMiniMap && "text-primary")}
+					className={cn(
+						ctrlBtnFlexCls,
+						"border-l border-border",
+						showMiniMap && "text-primary",
+					)}
 				>
 					<Map className="size-3" />
 				</button>
@@ -1568,11 +1584,7 @@ function NodeConfigPanel({
 					</div>
 				)}
 				<div className="space-y-5 px-4 pt-4 pb-6">
-					<NodeFields
-						type={node.type as string}
-						draft={draft}
-						patch={patch}
-					/>
+					<NodeFields type={node.type as string} draft={draft} patch={patch} />
 				</div>
 			</div>
 		</div>
@@ -1594,9 +1606,7 @@ function Field({
 					{label}
 				</label>
 				{hint && (
-					<span className="text-[10px] text-muted-foreground/50">
-						{hint}
-					</span>
+					<span className="text-[10px] text-muted-foreground/50">{hint}</span>
 				)}
 			</div>
 			{children}
@@ -1707,7 +1717,12 @@ function StringListInput({
 	onChange,
 	placeholder,
 	addLabel = "添加",
-}: { value: string[]; onChange: (v: string[]) => void; placeholder?: string; addLabel?: string }) {
+}: {
+	value: string[];
+	onChange: (v: string[]) => void;
+	placeholder?: string;
+	addLabel?: string;
+}) {
 	return (
 		<div className="flex flex-col gap-1.5">
 			{value.map((item, i) => (
@@ -1781,7 +1796,10 @@ function NumberInput({
 function LlmConnectionFields({
 	draft,
 	patch,
-}: { draft: Record<string, unknown>; patch: (p: Record<string, unknown>) => void }) {
+}: {
+	draft: Record<string, unknown>;
+	patch: (p: Record<string, unknown>) => void;
+}) {
 	const [open, setOpen] = useState(false);
 	return (
 		<div className="rounded-xl border border-border/40 overflow-hidden">
@@ -1790,7 +1808,9 @@ function LlmConnectionFields({
 				onClick={() => setOpen((v) => !v)}
 				className="flex items-center justify-between w-full px-3 py-2.5 bg-muted/20 hover:bg-muted/40 transition-colors"
 			>
-				<span className="text-[11px] font-semibold text-muted-foreground/70">连接设置</span>
+				<span className="text-[11px] font-semibold text-muted-foreground/70">
+					连接设置
+				</span>
 				<ChevronDown
 					className={cn(
 						"size-3.5 text-muted-foreground/50 transition-transform duration-150",
@@ -1881,7 +1901,9 @@ function ConditionRow({
 	onChange: (c: Condition) => void;
 	onRemove: () => void;
 }) {
-	const op = COMPARISON_OPS.find((o) => o.value === condition.comparison_operator);
+	const op = COMPARISON_OPS.find(
+		(o) => o.value === condition.comparison_operator,
+	);
 	const noValue = op?.noValue ?? false;
 	return (
 		<div className="flex flex-col gap-1 rounded-lg bg-muted/30 p-2">
@@ -1903,12 +1925,18 @@ function ConditionRow({
 					<select
 						value={condition.comparison_operator}
 						onChange={(e) =>
-							onChange({ ...condition, comparison_operator: e.target.value, value: "" })
+							onChange({
+								...condition,
+								comparison_operator: e.target.value,
+								value: "",
+							})
 						}
 						className={cn(inputCls, "w-28 appearance-none cursor-pointer pr-6")}
 					>
 						{COMPARISON_OPS.map((o) => (
-							<option key={o.value} value={o.value}>{o.label}</option>
+							<option key={o.value} value={o.value}>
+								{o.label}
+							</option>
 						))}
 					</select>
 					<ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground/50" />
@@ -1953,7 +1981,11 @@ function IfElseBuilder({
 		onChange(value.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
 
 	const addCondition = (i: number) => {
-		const newCond: Condition = { variable: "", comparison_operator: "contains", value: "" };
+		const newCond: Condition = {
+			variable: "",
+			comparison_operator: "contains",
+			value: "",
+		};
 		updateCase(i, { conditions: [...(value[i].conditions ?? []), newCond] });
 	};
 	const updateCondition = (i: number, j: number, cond: Condition) => {
@@ -1961,7 +1993,9 @@ function IfElseBuilder({
 		updateCase(i, { conditions });
 	};
 	const removeCondition = (i: number, j: number) => {
-		updateCase(i, { conditions: value[i].conditions.filter((_, k) => k !== j) });
+		updateCase(i, {
+			conditions: value[i].conditions.filter((_, k) => k !== j),
+		});
 	};
 
 	return (
@@ -1981,7 +2015,9 @@ function IfElseBuilder({
 						<span
 							className={cn(
 								"text-[11px] font-semibold",
-								i === 0 ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground",
+								i === 0
+									? "text-blue-600 dark:text-blue-400"
+									: "text-muted-foreground",
 							)}
 						>
 							{i === 0 ? "IF" : `ELIF ${i}`}
@@ -2041,8 +2077,12 @@ function IfElseBuilder({
 
 			{/* ELSE — always exists, no conditions needed */}
 			<div className="rounded-xl border border-dashed border-border/40 bg-muted/10 px-3 py-2.5">
-				<span className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wide">ELSE</span>
-				<p className="text-[10px] text-muted-foreground/30 mt-0.5">以上条件均不满足时执行此分支</p>
+				<span className="text-[11px] font-semibold text-muted-foreground/40 uppercase tracking-wide">
+					ELSE
+				</span>
+				<p className="text-[10px] text-muted-foreground/30 mt-0.5">
+					以上条件均不满足时执行此分支
+				</p>
 			</div>
 
 			<button
@@ -2084,7 +2124,11 @@ function ClassesEditor({
 							type="text"
 							value={cls.name || cls.id}
 							onChange={(e) =>
-								update(i, { name: e.target.value, id: e.target.value.toLowerCase().replace(/\s+/g, "_") || cls.id })
+								update(i, {
+									name: e.target.value,
+									id:
+										e.target.value.toLowerCase().replace(/\s+/g, "_") || cls.id,
+								})
 							}
 							placeholder={`类别 ${i + 1}`}
 							className={cn(inputCls, "flex-1")}
@@ -2157,10 +2201,15 @@ function ParametersEditor({
 								<select
 									value={param.type}
 									onChange={(e) => update(i, { type: e.target.value })}
-									className={cn(inputCls, "w-24 appearance-none cursor-pointer pr-6")}
+									className={cn(
+										inputCls,
+										"w-24 appearance-none cursor-pointer pr-6",
+									)}
 								>
 									{PARAM_TYPES.map((t) => (
-										<option key={t} value={t}>{t}</option>
+										<option key={t} value={t}>
+											{t}
+										</option>
 									))}
 								</select>
 								<ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground/50" />
@@ -2371,10 +2420,15 @@ function StartInputsEditor({
 							<select
 								value={decl.type}
 								onChange={(e) => update(i, { type: e.target.value })}
-								className={cn(inputCls, "w-24 appearance-none cursor-pointer pr-6")}
+								className={cn(
+									inputCls,
+									"w-24 appearance-none cursor-pointer pr-6",
+								)}
 							>
 								{VAR_TYPES.map((t) => (
-									<option key={t} value={t}>{t}</option>
+									<option key={t} value={t}>
+										{t}
+									</option>
 								))}
 							</select>
 							<ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground/50" />
@@ -2469,7 +2523,7 @@ function NodeFields({
 							}}
 							placeholder={'{\n  "Authorization": "Bearer ..."\n}'}
 							rows={3}
-						mono
+							mono
 						/>
 					</Section>
 					{["POST", "PUT", "PATCH"].includes(
@@ -2481,7 +2535,7 @@ function NodeFields({
 								onChange={(v) => patch({ body: v })}
 								placeholder={'{\n  "key": "{{ start.field }}"\n}'}
 								rows={4}
-							mono
+								mono
 							/>
 						</Section>
 					)}
@@ -2510,7 +2564,9 @@ function NodeFields({
 					<TextareaInput
 						value={(draft.script as string) ?? ""}
 						onChange={(v) => patch({ script: v })}
-						placeholder={"// 通过 inputs 访问上游节点输出\n// 返回值即节点输出\ninputs"}
+						placeholder={
+							"// 通过 inputs 访问上游节点输出\n// 返回值即节点输出\ninputs"
+						}
 						rows={14}
 						mono
 					/>
@@ -2556,7 +2612,10 @@ function NodeFields({
 							<SelectInput
 								value={(draft.mode as string) ?? "parallel"}
 								onChange={(v) => patch({ mode: v })}
-								options={[{ value: "parallel", label: "并行" }, { value: "sequential", label: "顺序" }]}
+								options={[
+									{ value: "parallel", label: "并行" },
+									{ value: "sequential", label: "顺序" },
+								]}
 							/>
 						</Field>
 					</Section>
@@ -2761,7 +2820,10 @@ function NodeFields({
 							<SelectInput
 								value={(draft.sort_order as string) ?? "asc"}
 								onChange={(v) => patch({ sort_order: v })}
-								options={[{ value: "asc", label: "升序" }, { value: "desc", label: "降序" }]}
+								options={[
+									{ value: "asc", label: "升序" },
+									{ value: "desc", label: "降序" },
+								]}
 							/>
 						</Field>
 						<Field label="去重字段" hint="可选">
@@ -2867,7 +2929,10 @@ function NodeContextMenu({
 			if (e.key === "Escape") onClose();
 		}
 		function onMouseDown(e: MouseEvent) {
-			if (menuRef.current && !menuRef.current.contains(e.target as globalThis.Node)) {
+			if (
+				menuRef.current &&
+				!menuRef.current.contains(e.target as globalThis.Node)
+			) {
 				onClose();
 			}
 		}
@@ -2879,22 +2944,31 @@ function NodeContextMenu({
 		};
 	}, [onClose]);
 
-	const items: Array<
-		| { icon: LucideIcon; label: string; shortcut: string; action: () => void; danger: boolean }
-		| null
-	> = [
+	const items: Array<{
+		icon: LucideIcon;
+		label: string;
+		shortcut: string;
+		action: () => void;
+		danger: boolean;
+	} | null> = [
 		{
 			icon: Copy,
 			label: "复制",
 			shortcut: "⌘C",
-			action: () => { onDuplicate(state.nodeId); onClose(); },
+			action: () => {
+				onDuplicate(state.nodeId);
+				onClose();
+			},
 			danger: false,
 		},
 		{
 			icon: CopyPlus,
 			label: "复制节点",
 			shortcut: "⌘D",
-			action: () => { onDuplicate(state.nodeId); onClose(); },
+			action: () => {
+				onDuplicate(state.nodeId);
+				onClose();
+			},
 			danger: false,
 		},
 		null,
@@ -2902,7 +2976,10 @@ function NodeContextMenu({
 			icon: Trash2,
 			label: "删除",
 			shortcut: "⌘⌫",
-			action: () => { onDelete(state.nodeId); onClose(); },
+			action: () => {
+				onDelete(state.nodeId);
+				onClose();
+			},
 			danger: true,
 		},
 	];
@@ -2934,7 +3011,9 @@ function NodeContextMenu({
 							<item.icon className="size-3.5" />
 							{item.label}
 						</span>
-						<span className="text-muted-foreground/60 font-mono">{item.shortcut}</span>
+						<span className="text-muted-foreground/60 font-mono">
+							{item.shortcut}
+						</span>
 					</button>
 				),
 			)}
@@ -3056,7 +3135,12 @@ function FlowCanvas({
 	//      enforces that IF/ELSE and QC branches each route to a single next node.
 	//   3. A target handle may receive unlimited incoming edges (fan-in is valid).
 	const isValidConnection = useCallback(
-		(connection: { source: string | null; sourceHandle?: string | null; target: string | null; targetHandle?: string | null }) => {
+		(connection: {
+			source: string | null;
+			sourceHandle?: string | null;
+			target: string | null;
+			targetHandle?: string | null;
+		}) => {
 			if (!connection.source || !connection.target) return false;
 			if (connection.source === connection.target) return false;
 			return !edges.some(
@@ -3130,13 +3214,18 @@ function FlowCanvas({
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
 			if (!(e.metaKey || e.ctrlKey)) return;
-			if (e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
-			if ((e.key === "z" && e.shiftKey) || e.key === "y") { e.preventDefault(); redo(); }
+			if (e.key === "z" && !e.shiftKey) {
+				e.preventDefault();
+				undo();
+			}
+			if ((e.key === "z" && e.shiftKey) || e.key === "y") {
+				e.preventDefault();
+				redo();
+			}
 		};
 		window.addEventListener("keydown", handler);
 		return () => window.removeEventListener("keydown", handler);
 	}, [undo, redo]);
-
 
 	const updateNodeData = useCallback(
 		(id: string, data: Record<string, unknown>) => {
@@ -3196,7 +3285,9 @@ function FlowCanvas({
 		(nodeId: string) => {
 			pushHistory();
 			setNodes((nds) => nds.filter((n) => n.id !== nodeId));
-			setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+			setEdges((eds) =>
+				eds.filter((e) => e.source !== nodeId && e.target !== nodeId),
+			);
 			if (selectedNodeId === nodeId) setSelectedNodeId(null);
 			triggerSave();
 			setHistoryVersion((v) => v + 1);
@@ -3221,14 +3312,24 @@ function FlowCanvas({
 					nodes={nodes}
 					edges={edges}
 					onNodesChange={(c) => {
-						const structural = c.some((ch) => ch.type === "add" || ch.type === "remove");
-						if (structural) { pushHistory(); setHistoryVersion((v) => v + 1); }
+						const structural = c.some(
+							(ch) => ch.type === "add" || ch.type === "remove",
+						);
+						if (structural) {
+							pushHistory();
+							setHistoryVersion((v) => v + 1);
+						}
 						onNodesChange(c);
 						triggerSave();
 					}}
 					onEdgesChange={(c) => {
-						const structural = c.some((ch) => ch.type === "add" || ch.type === "remove");
-						if (structural) { pushHistory(); setHistoryVersion((v) => v + 1); }
+						const structural = c.some(
+							(ch) => ch.type === "add" || ch.type === "remove",
+						);
+						if (structural) {
+							pushHistory();
+							setHistoryVersion((v) => v + 1);
+						}
 						onEdgesChange(c);
 						triggerSave();
 					}}
@@ -3243,7 +3344,10 @@ function FlowCanvas({
 						e.preventDefault();
 						setContextMenu({ x: e.clientX, y: e.clientY, nodeId: node.id });
 					}}
-					onPaneClick={() => { setSelectedNodeId(null); setContextMenu(null); }}
+					onPaneClick={() => {
+						setSelectedNodeId(null);
+						setContextMenu(null);
+					}}
 					nodeTypes={NODE_TYPES}
 					edgeTypes={EDGE_TYPES}
 					connectionLineComponent={CustomConnectionLine}
@@ -3258,7 +3362,10 @@ function FlowCanvas({
 						onUndo={undo}
 						onRedo={redo}
 					/>
-					<ZoomControls showMiniMap={showMiniMap} onToggleMiniMap={() => setShowMiniMap(v => !v)} />
+					<ZoomControls
+						showMiniMap={showMiniMap}
+						onToggleMiniMap={() => setShowMiniMap((v) => !v)}
+					/>
 					{showMiniMap && (
 						<MiniMap
 							zoomable
@@ -3346,9 +3453,9 @@ export default function WorkflowEditorPage() {
 				<button
 					type="button"
 					className="text-xs underline"
-					onClick={() => nav("/workflow")}
+					onClick={() => nav("/")}
 				>
-					返回列表
+					返回首页
 				</button>
 			</div>
 		);
@@ -3359,7 +3466,9 @@ export default function WorkflowEditorPage() {
 			<div className="flex items-center gap-3 px-4 py-2.5 border-b bg-background shrink-0">
 				<button
 					type="button"
-					onClick={() => nav("/workflow")}
+					onClick={() =>
+						wf.agent_id ? nav(`/agent/${wf.agent_id}/workflows`) : nav("/")
+					}
 					className="flex items-center justify-center size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
 				>
 					<ArrowLeft className="size-3.5" />

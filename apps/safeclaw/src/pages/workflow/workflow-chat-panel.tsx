@@ -84,7 +84,7 @@ export default function WorkflowChatPanel({
 		}
 
 		// No valid session — auto-create if workspace is configured
-		const defaultCwd = settingsModel.state.agentDefaults.defaultCwd.trim();
+		const defaultCwd = settingsModel.state.agentDefaults.workspaceRoot.trim();
 		if (!defaultCwd) {
 			setPanelState("no-workspace");
 			return;
@@ -93,11 +93,11 @@ export default function WorkflowChatPanel({
 		await createSession(workflowId, defaultCwd);
 	}
 
-	async function createSession(wfId: string, defaultCwd: string) {
+	async function createSession(wfId: string, workspaceRoot: string) {
 		setPanelState("initializing");
 		setErrorMsg(null);
 		try {
-			const wfCwd = [defaultCwd.replace(/\/$/, ""), "workflows", wfId].join(
+			const wfCwd = [workspaceRoot.replace(/\/$/, ""), "workflows", wfId].join(
 				"/",
 			);
 			const preferred = getPreferredSessionModel();

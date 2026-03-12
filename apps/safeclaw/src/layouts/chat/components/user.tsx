@@ -78,10 +78,7 @@ const User = ({ className, size, onClick, ...props }: UserProps) => {
 							onUpload={fileToDataUrl}
 						/>
 						<div className="w-full space-y-1.5">
-							<label
-								htmlFor="profile-nickname"
-								className="text-sm font-medium"
-							>
+							<label htmlFor="profile-nickname" className="text-sm font-medium">
 								昵称
 							</label>
 							<Input

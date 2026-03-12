@@ -3,9 +3,8 @@
 /// Tests the new permission wildcard matching feature in SafeClaw context.
 ///
 /// Run with: cargo test --test test_safeclaw_permissions
-
 // Import from the dependency, not the crate name
-use a3s_code::permissions::{PermissionPolicy, PermissionDecision};
+use a3s_code::permissions::{PermissionDecision, PermissionPolicy};
 
 #[tokio::test]
 async fn test_safeclaw_permission_wildcard() {
@@ -57,8 +56,7 @@ async fn test_safeclaw_agent_permissions() {
     // is compatible with the updated a3s-code v1.3.4
 
     // Create a permission policy with wildcard deny
-    let policy = PermissionPolicy::permissive()
-        .deny("mcp__*");  // Deny all MCP tools
+    let policy = PermissionPolicy::permissive().deny("mcp__*"); // Deny all MCP tools
 
     // Verify the policy works
     assert_eq!(

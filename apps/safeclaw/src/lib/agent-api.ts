@@ -53,6 +53,7 @@ export const agentApi = {
 		api_key?: string;
 		system_prompt?: string;
 		skills?: string[];
+		skill_dirs?: string[];
 		mcp_servers?: McpServerConfig[];
 	}) =>
 		safeFetch(`${baseUrl()}/sessions`, {
@@ -203,6 +204,7 @@ export interface WorkflowDoc {
 	created_at: number;
 	updated_at: number;
 	document: Record<string, unknown>;
+	agent_id?: string;
 	session_id?: string;
 }
 
@@ -228,6 +230,7 @@ export const workflowApi = {
 			name?: string;
 			description?: string;
 			document?: Record<string, unknown>;
+			agent_id?: string;
 			session_id?: string;
 		},
 	): Promise<WorkflowDoc> =>

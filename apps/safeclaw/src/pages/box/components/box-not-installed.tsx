@@ -4,7 +4,13 @@
  */
 import { installBox } from "@/lib/box-api";
 import { cn } from "@/lib/utils";
-import { Box, CheckCircle2, Download, ExternalLink, Loader2 } from "lucide-react";
+import {
+	Box,
+	CheckCircle2,
+	Download,
+	ExternalLink,
+	Loader2,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 type InstallState = "idle" | "installing" | "done" | "error";
@@ -49,7 +55,10 @@ export function BoxNotInstalled({ onInstalled }: Props) {
 					setInstallState("error");
 				} else if (line.startsWith("[progress:")) {
 					// Structured progress: [progress:downloaded:total]
-					const parts = line.slice("[progress:".length).replace("]", "").split(":");
+					const parts = line
+						.slice("[progress:".length)
+						.replace("]", "")
+						.split(":");
 					const downloaded = Number(parts[0]);
 					const total = Number(parts[1]);
 					setProgress({ downloaded, total });
@@ -82,7 +91,8 @@ export function BoxNotInstalled({ onInstalled }: Props) {
 				<p className="text-base font-semibold">未检测到 a3s-box</p>
 				<p className="text-sm text-muted-foreground leading-relaxed">
 					A3S Box 是 SafeClaw 的 MicroVM 运行时，提供硬件级隔离和 TEE 支持。
-					点击下方按钮可从 GitHub 自动下载并安装，完成后即可在此管理容器、镜像、网络和存储卷。
+					点击下方按钮可从 GitHub
+					自动下载并安装，完成后即可在此管理容器、镜像、网络和存储卷。
 				</p>
 			</div>
 

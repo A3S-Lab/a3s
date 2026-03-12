@@ -43,7 +43,10 @@ export default function OnboardingPage() {
 					/>
 
 					<div className="w-full space-y-1.5">
-						<label htmlFor="onboarding-nickname" className="text-sm font-medium">
+						<label
+							htmlFor="onboarding-nickname"
+							className="text-sm font-medium"
+						>
 							昵称
 						</label>
 						<Input

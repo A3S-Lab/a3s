@@ -12,11 +12,10 @@ use crate::agent::session_store::AgentSessionStore;
 use crate::agent::types::*;
 use a3s_code::agent::AgentEvent;
 use a3s_code::commands::{
-    CommandAction, CommandContext, CommandRegistry, CronCancelCommand, CronListCommand,
-    LoopCommand,
+    CommandAction, CommandContext, CommandRegistry, CronCancelCommand, CronListCommand, LoopCommand,
 };
-use a3s_code::scheduler::{CronScheduler, ScheduledFire};
 use a3s_code::config::CodeConfig;
+use a3s_code::scheduler::{CronScheduler, ScheduledFire};
 use a3s_code::session::SessionManager;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -50,7 +49,7 @@ struct EngineSession {
     pending_permissions: HashMap<String, PermissionRequest>,
     generation_handle: Option<tokio::task::JoinHandle<()>>,
     generation_cancel_token: Option<tokio_util::sync::CancellationToken>,
-    generation_id: u64,  // Incremented each time a new generation starts
+    generation_id: u64, // Incremented each time a new generation starts
     name: Option<String>,
     archived: bool,
     created_at: u64,
@@ -267,11 +266,16 @@ impl AgentEngine {
         sessions.insert(session_id.to_string(), engine_session);
 
         // Create per-session memory store in workspace/.a3s/memory
-        let memory_dir = std::path::PathBuf::from(&workspace).join(".a3s").join("memory");
+        let memory_dir = std::path::PathBuf::from(&workspace)
+            .join(".a3s")
+            .join("memory");
         match a3s_memory::FileMemoryStore::new(memory_dir.clone()).await {
             Ok(file_store) => {
                 let store: Arc<dyn a3s_memory::MemoryStore> = Arc::new(file_store);
-                self.session_memory_stores.write().await.insert(session_id.to_string(), store.clone());
+                self.session_memory_stores
+                    .write()
+                    .await
+                    .insert(session_id.to_string(), store.clone());
                 // Set this as the active memory store for the session
                 self.session_manager.set_memory_store(store).await;
                 tracing::info!(
@@ -567,9 +571,7 @@ impl AgentEngine {
                             .get(session_id)
                             .map(|es| Arc::clone(&es.session_command_registry))
                     };
-                    let registry = session_reg
-                        .as_deref()
-                        .unwrap_or(&self.command_registry);
+                    let registry = session_reg.as_deref().unwrap_or(&self.command_registry);
                     if let Some(output) = registry.dispatch(&content, &ctx) {
                         let cmd_name = content.split_whitespace().next().unwrap_or("/");
                         tracing::info!(session_id = %session_id, command = %cmd_name, "Slash command dispatched");
@@ -602,6 +604,9 @@ impl AgentEngine {
                                             es.state.model = model.clone();
                                         }
                                     }
+                                }
+                                CommandAction::BtwQuery(_) => {
+                                    // BTW query is handled by the command itself, no post-action needed
                                 }
                             }
                         }
@@ -810,7 +815,9 @@ impl AgentEngine {
 
         // Set session-specific memory store before generation
         if let Some(memory_store) = self.session_memory_stores.read().await.get(session_id) {
-            self.session_manager.set_memory_store(memory_store.clone()).await;
+            self.session_manager
+                .set_memory_store(memory_store.clone())
+                .await;
         }
 
         // Start streaming generation
@@ -1385,7 +1392,9 @@ impl AgentEngine {
 
         // Set session-specific memory store before generation
         if let Some(memory_store) = self.session_memory_stores.read().await.get(session_id) {
-            self.session_manager.set_memory_store(memory_store.clone()).await;
+            self.session_manager
+                .set_memory_store(memory_store.clone())
+                .await;
         }
 
         // Start streaming generation
@@ -1464,7 +1473,9 @@ impl AgentEngine {
 
         // Set session-specific memory store before generation
         if let Some(memory_store) = self.session_memory_stores.read().await.get(session_id) {
-            self.session_manager.set_memory_store(memory_store.clone()).await;
+            self.session_manager
+                .set_memory_store(memory_store.clone())
+                .await;
         }
 
         self.session_manager
@@ -1818,8 +1829,7 @@ impl AgentEngine {
         for ps in persisted_sessions {
             let (cron_scheduler, cron_rx) = CronScheduler::new();
             CronScheduler::start(Arc::clone(&cron_scheduler));
-            let session_cmd_registry =
-                Arc::new(make_session_command_registry(&cron_scheduler));
+            let session_cmd_registry = Arc::new(make_session_command_registry(&cron_scheduler));
 
             let mut es = EngineSession {
                 id: ps.id.clone(),
@@ -1926,7 +1936,9 @@ impl AgentEngine {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
             loop {
                 interval.tick().await;
-                let Some(engine) = engine.upgrade() else { break };
+                let Some(engine) = engine.upgrade() else {
+                    break;
+                };
                 engine.drain_cron_tasks().await;
             }
         });
@@ -1934,7 +1946,10 @@ impl AgentEngine {
 
     async fn drain_cron_tasks(&self) {
         // Collect (session_id, cron_rx) pairs without holding the write lock.
-        let pairs: Vec<(String, Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<ScheduledFire>>>)> = {
+        let pairs: Vec<(
+            String,
+            Arc<tokio::sync::Mutex<mpsc::UnboundedReceiver<ScheduledFire>>>,
+        )> = {
             let sessions = self.sessions.read().await;
             sessions
                 .values()

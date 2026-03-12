@@ -8,7 +8,7 @@ const isTauri = !!process.env.TAURI_ENV_PLATFORM;
 
 export default defineConfig({
 	html: {
-		favicon: path.join(__dirname, "public/logo.svg"),
+		favicon: path.join(__dirname, "public/logo.png"),
 		template: path.join(__dirname, "index.html"),
 	},
 	source: {

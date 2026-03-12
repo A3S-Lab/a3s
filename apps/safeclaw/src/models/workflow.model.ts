@@ -35,11 +35,11 @@ const actions = {
 		return wf;
 	},
 
-	/** Update name, description, document, or session_id. */
+	/** Update name, description, document, or agent_id. */
 	async update(
 		id: string,
 		patch: Partial<
-			Pick<WorkflowDoc, "name" | "description" | "document" | "session_id">
+			Pick<WorkflowDoc, "name" | "description" | "document" | "agent_id">
 		>,
 	): Promise<void> {
 		const updated = await workflowApi.update(id, patch);
@@ -61,6 +61,11 @@ const actions = {
 	/** Read a single workflow from the local cache (does not hit the network). */
 	get(id: string): WorkflowDoc | undefined {
 		return state.workflows.find((w) => w.id === id);
+	},
+
+	/** Bind an agent to a workflow (persisted to backend). */
+	async setAgentId(id: string, agentId: string): Promise<void> {
+		await actions.update(id, { agent_id: agentId });
 	},
 
 	/** Bind a session to a workflow (persisted to backend). */

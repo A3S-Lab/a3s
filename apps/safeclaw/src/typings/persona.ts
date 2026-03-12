@@ -13,4 +13,20 @@ export interface AgentPersona {
 	undeletable?: boolean;
 	/** Category tags for marketplace filtering */
 	tags?: string[];
+	/** Default workspace path for this agent (shared across all sessions) */
+	defaultWorkspace?: string;
+	/** Default skills to enable for this persona */
+	defaultSkills?: string[];
+	/** Default workflow configurations */
+	defaultFlows?: Array<{
+		id: string;
+		name: string;
+		description: string;
+		trigger?: string;
+		steps: Array<{
+			type: string;
+			action: string;
+			params?: Record<string, any>;
+		}>;
+	}>;
 }

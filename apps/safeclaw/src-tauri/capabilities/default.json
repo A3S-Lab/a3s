@@ -8,46 +8,15 @@
 		"shell:allow-open",
 		"http:default",
 		"dialog:default",
-		{
-			"identifier": "fs:allow-read-dir",
-			"allow": [
-				{ "path": "$HOME/Desktop/code/workspace/**" },
-				{ "path": "$HOME/.a3s/**" },
-				{ "path": "$APPDATA/safeclaw/**" }
-			]
-		},
-		{
-			"identifier": "fs:allow-read-file",
-			"allow": [
-				{ "path": "$HOME/Desktop/code/workspace/**" },
-				{ "path": "$HOME/.a3s/**" },
-				{ "path": "$APPDATA/safeclaw/**" }
-			]
-		},
-		{
-			"identifier": "fs:allow-write-file",
-			"allow": [
-				{ "path": "$HOME/Desktop/code/workspace/**" },
-				{ "path": "$HOME/.a3s/**" },
-				{ "path": "$APPDATA/safeclaw/**" }
-			]
-		},
-		{
-			"identifier": "fs:allow-create",
-			"allow": [
-				{ "path": "$HOME/Desktop/code/workspace/**" },
-				{ "path": "$HOME/.a3s/**" },
-				{ "path": "$APPDATA/safeclaw/**" }
-			]
-		},
-		{
-			"identifier": "fs:allow-mkdir",
-			"allow": [
-				{ "path": "$HOME/Desktop/code/workspace/**" },
-				{ "path": "$HOME/.a3s/**" },
-				{ "path": "$APPDATA/safeclaw/**" }
-			]
-		},
+		"fs:allow-read-dir",
+		"fs:allow-read-file",
+		"fs:allow-write-file",
+		"fs:allow-write-text-file",
+		"fs:allow-create",
+		"fs:allow-mkdir",
+		"fs:allow-exists",
+		"fs:allow-home-read-recursive",
+		"fs:allow-home-write-recursive",
 		"core:webview:allow-create-webview-window",
 		{
 			"identifier": "http:default",

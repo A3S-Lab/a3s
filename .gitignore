@@ -40,3 +40,16 @@ apps/os/
 # A3S runtime data & config (contains API keys)
 .a3s/
 config.hcl
+
+# Temporary test files (should not be in root)
+/test_*.py
+/test_*.js
+/test_*.ts
+/test-*.sh
+/test*.sh
+
+# Node.js (root should not have these)
+/node_modules/
+/package.json
+/package-lock.json
+/tsconfig.json

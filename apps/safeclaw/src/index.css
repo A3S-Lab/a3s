@@ -28,24 +28,24 @@
 		--card-foreground: 222 47% 11%;
 		--popover: 0 0% 100%;
 		--popover-foreground: 222 47% 11%;
-		--primary: 221 83% 53%;
+		--primary: 209 51% 24%;
 		--primary-foreground: 0 0% 100%;
 		--secondary: 220 16% 94%;
 		--secondary-foreground: 222 30% 28%;
 		--muted: 220 14% 96%;
 		--muted-foreground: 220 13% 52%;
-		--accent: 199 89% 48%;
+		--accent: 209 51% 35%;
 		--accent-foreground: 0 0% 100%;
 		--destructive: 0 78% 55%;
 		--destructive-foreground: 0 0% 100%;
 		--border: 220 16% 90%;
 		--input: 220 16% 90%;
-		--ring: 221 83% 53%;
+		--ring: 209 51% 24%;
 		--radius: 0.5rem;
 
 		/* Charts */
-		--chart-1: 221 83% 53%;
-		--chart-2: 199 89% 48%;
+		--chart-1: 209 51% 24%;
+		--chart-2: 209 51% 35%;
 		--chart-3: 158 64% 40%;
 		--chart-4: 35 95% 52%;
 		--chart-5: 0 78% 55%;
@@ -53,12 +53,12 @@
 		/* Sidebar */
 		--sidebar-background: 220 22% 97%;
 		--sidebar-foreground: 222 30% 22%;
-		--sidebar-primary: 221 83% 53%;
+		--sidebar-primary: 209 51% 24%;
 		--sidebar-primary-foreground: 0 0% 100%;
 		--sidebar-accent: 220 16% 92%;
 		--sidebar-accent-foreground: 222 30% 28%;
 		--sidebar-border: 220 16% 90%;
-		--sidebar-ring: 221 83% 53%;
+		--sidebar-ring: 209 51% 24%;
 
 		/* Layout */
 		--activity-bar-width: 48px;
@@ -92,15 +92,15 @@
 		--focus-ring-color: var(--ring);
 
 		/* Brand */
-		--moment-primary: 221 83% 53%;
-		--market-primary: 199 89% 48%;
+		--moment-primary: 209 51% 24%;
+		--market-primary: 209 51% 35%;
 
 		/* Semantic colors */
 		--success: 158 64% 36%;
 		--success-foreground: 0 0% 100%;
 		--warning: 35 95% 48%;
 		--warning-foreground: 0 0% 100%;
-		--info: 221 83% 53%;
+		--info: 209 51% 24%;
 		--info-foreground: 0 0% 100%;
 	}
 
@@ -112,24 +112,24 @@
 		--card-foreground: 210 20% 96%;
 		--popover: 222 40% 8%;
 		--popover-foreground: 210 20% 96%;
-		--primary: 217 89% 62%;
+		--primary: 209 51% 45%;
 		--primary-foreground: 0 0% 100%;
 		--secondary: 220 25% 14%;
 		--secondary-foreground: 210 18% 78%;
 		--muted: 220 20% 11%;
 		--muted-foreground: 218 14% 58%;
-		--accent: 199 89% 58%;
+		--accent: 209 51% 55%;
 		--accent-foreground: 0 0% 100%;
 		--destructive: 0 68% 56%;
 		--destructive-foreground: 0 0% 100%;
 		--border: 220 18% 16%;
 		--input: 220 18% 16%;
-		--ring: 217 89% 62%;
+		--ring: 209 51% 45%;
 		--radius: 0.5rem;
 
 		/* Charts (dark) */
-		--chart-1: 217 89% 62%;
-		--chart-2: 199 89% 58%;
+		--chart-1: 209 51% 45%;
+		--chart-2: 209 51% 55%;
 		--chart-3: 158 58% 50%;
 		--chart-4: 35 90% 60%;
 		--chart-5: 0 68% 60%;
@@ -137,23 +137,23 @@
 		/* Sidebar */
 		--sidebar-background: 222 50% 4%;
 		--sidebar-foreground: 210 15% 82%;
-		--sidebar-primary: 217 89% 62%;
+		--sidebar-primary: 209 51% 45%;
 		--sidebar-primary-foreground: 0 0% 100%;
 		--sidebar-accent: 220 22% 12%;
 		--sidebar-accent-foreground: 210 15% 82%;
 		--sidebar-border: 220 18% 14%;
-		--sidebar-ring: 217 89% 62%;
+		--sidebar-ring: 209 51% 45%;
 
 		/* Brand (dark) */
-		--moment-primary: 217 89% 65%;
-		--market-primary: 199 89% 58%;
+		--moment-primary: 209 51% 50%;
+		--market-primary: 209 51% 55%;
 
 		/* Semantic colors (dark) */
 		--success: 158 58% 50%;
 		--success-foreground: 0 0% 100%;
 		--warning: 35 90% 58%;
 		--warning-foreground: 0 0% 100%;
-		--info: 217 89% 62%;
+		--info: 209 51% 45%;
 		--info-foreground: 0 0% 100%;
 	}
 }

@@ -7,7 +7,7 @@ import { agentApi } from "@/lib/agent-api";
 import agentModel from "@/models/agent.model";
 import personaModel from "@/models/persona.model";
 import { connectSession } from "@/hooks/use-agent-ws";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useSnapshot } from "valtio";
 import AgentSessionList from "./components/agent-session-list";
 import AgentChat from "./components/agent-chat";
@@ -74,18 +74,54 @@ async function loadSessions() {
 
 export default function AgentPage() {
 	const { currentSessionId, sdkSessions } = useSnapshot(agentModel.state);
-	const loaded = useRef(false);
 
+	// Reload sessions when page becomes visible
 	useEffect(() => {
-		if (!loaded.current) {
-			loaded.current = true;
+		loadSessions();
+
+		// Also reload when window regains focus (user comes back from marketplace)
+		const handleFocus = () => {
 			loadSessions();
-		}
+		};
+		window.addEventListener("focus", handleFocus);
+		return () => window.removeEventListener("focus", handleFocus);
 	}, []);
 
 	// Get current session's cwd
-	const currentSession = sdkSessions.find((s) => s.session_id === currentSessionId);
-	const cwd = currentSession?.cwd;
+	const currentSession = sdkSessions.find(
+		(s) => s.session_id === currentSessionId,
+	);
+	const [effectiveCwd, setEffectiveCwd] = useState<string | undefined>(
+		currentSession?.cwd,
+	);
+
+	// Handle super-admin sessions without cwd
+	useEffect(() => {
+		const session = sdkSessions.find((s) => s.session_id === currentSessionId);
+		if (!session) {
+			setEffectiveCwd(undefined);
+			return;
+		}
+
+		// If session has cwd, use it
+		if (session.cwd) {
+			setEffectiveCwd(session.cwd);
+			return;
+		}
+
+		// If super-admin session without cwd, set to homeDir
+		const personaId = personaModel.getSessionPersona(currentSessionId);
+		if (personaId === "super-admin") {
+			import("@tauri-apps/api/path").then(({ homeDir }) => {
+				homeDir().then((home) => {
+					console.log("[Agent] Setting super-admin cwd to homeDir:", home);
+					setEffectiveCwd(home);
+				});
+			});
+		} else {
+			setEffectiveCwd(undefined);
+		}
+	}, [currentSessionId, sdkSessions]);
 
 	return (
 		<>
@@ -94,9 +130,13 @@ export default function AgentPage() {
 					<AgentSessionList />
 				</ResizablePanel>
 				<ResizableHandle withHandle />
-				<ResizablePanel defaultSize={78} minSize={50}>
+				<ResizablePanel defaultSize={78} minSize={40}>
 					{currentSessionId ? (
-						<AgentChat key={currentSessionId} sessionId={currentSessionId} cwd={cwd} />
+						<AgentChat
+							key={currentSessionId}
+							sessionId={currentSessionId}
+							cwd={effectiveCwd}
+						/>
 					) : (
 						<EmptyState />
 					)}

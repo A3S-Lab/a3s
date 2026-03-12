@@ -22,71 +22,32 @@ import {
 import Avatar, { genConfig } from "react-nice-avatar";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import * as marketplaceApi from "@/lib/marketplace-api";
 import type { MarketplaceAgent } from "@/lib/marketplace-api";
+import { MARKETPLACE_AGENTS } from "@/lib/marketplace-agents-data";
 
-// Mock data - 实际应该从 API 获取
+// Industrial domain categories
 const CATEGORIES = [
 	{ id: "all", label: "全部" },
-	{ id: "coding", label: "编程开发" },
-	{ id: "writing", label: "写作助手" },
-	{ id: "research", label: "研究分析" },
-	{ id: "design", label: "设计创作" },
-	{ id: "business", label: "商业办公" },
-	{ id: "education", label: "教育学习" },
-];
-
-const MOCK_AGENTS: MarketplaceAgent[] = [
-	{
-		id: "code-reviewer",
-		name: "代码审查助手",
-		description:
-			"专业的代码审查工具，支持多种编程语言，提供详细的代码质量分析和改进建议",
-		category: "coding",
-		author: "A3S Lab",
-		avatar: "code-reviewer",
-		downloads: 15234,
-		rating: 4.8,
-		tags: ["代码审查", "质量分析", "最佳实践"],
-		installed: false,
-		image: "ghcr.io/a3s-lab/agent-code-reviewer:latest",
-	},
-	{
-		id: "doc-generator",
-		name: "技术文档生成器",
-		description:
-			"自动生成高质量的技术文档，支持 API 文档、用户手册、开发指南等多种格式",
-		category: "writing",
-		author: "DocGen Team",
-		avatar: "doc-writer",
-		downloads: 8932,
-		rating: 4.6,
-		tags: ["文档生成", "API 文档", "Markdown"],
-		installed: true,
-		image: "ghcr.io/a3s-lab/agent-doc-generator:latest",
-		containerId: "doc-gen-001",
-	},
-	{
-		id: "data-analyst",
-		name: "数据分析专家",
-		description: "强大的数据分析工具，支持数据清洗、统计分析、可视化等功能",
-		category: "research",
-		author: "DataLab",
-		avatar: "data-analyst",
-		downloads: 12456,
-		rating: 4.9,
-		tags: ["数据分析", "可视化", "统计"],
-		installed: false,
-		image: "ghcr.io/a3s-lab/agent-data-analyst:latest",
-	},
+	{ id: "automation", label: "工业自动化" },
+	{ id: "manufacturing", label: "生产制造" },
+	{ id: "quality", label: "质量管理" },
+	{ id: "maintenance", label: "设备维护" },
+	{ id: "safety", label: "安全管理" },
+	{ id: "supply-chain", label: "供应链" },
+	{ id: "energy", label: "能源管理" },
+	{ id: "iiot", label: "工业物联网" },
+	{ id: "analytics", label: "数据分析" },
 ];
 
 export function AgentMarketSection() {
+	const navigate = useNavigate();
 	const state = useReactive({
 		search: "",
 		category: "all",
 		sortBy: "popular" as "popular" | "rating" | "recent",
-		agents: MOCK_AGENTS,
+		agents: MARKETPLACE_AGENTS,
 		loading: false,
 		installingId: null as string | null,
 	});
@@ -102,7 +63,7 @@ export function AgentMarketSection() {
 			// TODO: Replace with actual API call
 			// const agents = await marketplaceApi.listMarketplaceAgents();
 			const synced = await marketplaceApi.syncMarketplaceWithBox(
-				MOCK_AGENTS,
+				MARKETPLACE_AGENTS,
 				[],
 			);
 			state.agents = synced.agents;
@@ -118,7 +79,7 @@ export function AgentMarketSection() {
 		state.installingId = agent.id;
 		try {
 			toast.loading(`正在安装 ${agent.name}...`, { id: agent.id });
-			const containerId = await marketplaceApi.installAgent(agent);
+			const sessionId = await marketplaceApi.installAgent(agent);
 
 			// Update local state
 			const index = state.agents.findIndex((a) => a.id === agent.id);
@@ -126,11 +87,17 @@ export function AgentMarketSection() {
 				state.agents[index] = {
 					...state.agents[index],
 					installed: true,
-					containerId,
+					sessionId,
 				};
 			}
 
-			toast.success(`${agent.name} 安装成功`, { id: agent.id });
+			toast.success(`${agent.name} 安装成功，正在跳转...`, { id: agent.id });
+
+			// Navigate to agent page after successful installation
+			// Wait a bit to ensure state is updated
+			setTimeout(() => {
+				navigate("/");
+			}, 800);
 		} catch (error) {
 			console.error("Failed to install agent:", error);
 			toast.error(
@@ -145,12 +112,12 @@ export function AgentMarketSection() {
 	};
 
 	const handleUninstall = async (agent: MarketplaceAgent) => {
-		if (!agent.containerId) return;
+		if (!agent.sessionId) return;
 
 		state.installingId = agent.id;
 		try {
 			toast.loading(`正在卸载 ${agent.name}...`, { id: agent.id });
-			await marketplaceApi.uninstallAgent(agent.containerId);
+			await marketplaceApi.uninstallAgent(agent.sessionId);
 
 			// Update local state
 			const index = state.agents.findIndex((a) => a.id === agent.id);
@@ -158,7 +125,7 @@ export function AgentMarketSection() {
 				state.agents[index] = {
 					...state.agents[index],
 					installed: false,
-					containerId: undefined,
+					sessionId: undefined,
 				};
 			}
 

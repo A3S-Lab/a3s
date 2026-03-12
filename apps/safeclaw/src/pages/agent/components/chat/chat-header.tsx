@@ -30,11 +30,14 @@ import {
 	Plus,
 	Search,
 	Trash2,
+	ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMemo, useState } from "react";
 import NiceAvatar, { genConfig } from "react-nice-avatar";
 import { useSnapshot } from "valtio";
+import { invoke } from "@tauri-apps/api/core";
+import { toast } from "sonner";
 
 export function ChatHeader({
 	sessionId,
@@ -43,6 +46,7 @@ export function ChatHeader({
 	onSessionChange,
 	viewMode,
 	onViewModeChange,
+	cwd,
 }: {
 	sessionId: string;
 	searchQuery?: string;
@@ -50,15 +54,13 @@ export function ChatHeader({
 	onSessionChange?: (id: string) => void;
 	viewMode?: "chat" | "workspace";
 	onViewModeChange?: (mode: "chat" | "workspace") => void;
+	cwd?: string;
 }) {
 	const { sdkSessions, sessionNames } = useSnapshot(agentModel.state);
 	const personaSnap = useSnapshot(personaModel.state);
 	const persona = personaModel.getSessionPersona(sessionId);
 	const personaId = personaSnap.sessionPersonas[sessionId];
-	const avatarConfig = useMemo(
-		() => genConfig(persona.avatar),
-		[persona.avatar],
-	);
+	const avatarConfig = useMemo(() => persona.avatar, [persona.avatar]);
 	const [actionLoading, setActionLoading] = useState<"delete" | null>(null);
 	const [pickWorkdirOpen, setPickWorkdirOpen] = useState(false);
 	const [searchOpen, setSearchOpen] = useState(false);
@@ -128,6 +130,20 @@ export function ChatHeader({
 			setSearchOpen(false);
 		} else {
 			setSearchOpen(true);
+		}
+	};
+
+	const handleOpenFolder = async () => {
+		if (!cwd) {
+			toast.error("当前会话没有工作目录");
+			return;
+		}
+		try {
+			await invoke("open_folder", { path: cwd });
+		} catch (err) {
+			console.error("Failed to open folder:", err);
+			const errorMsg = err instanceof Error ? err.message : String(err);
+			toast.error(`打开文件夹失败: ${errorMsg}`);
 		}
 	};
 
@@ -315,6 +331,17 @@ export function ChatHeader({
 						</div>
 					)}
 					<div className="flex items-center gap-1 shrink-0">
+						{cwd && (
+							<button
+								type="button"
+								className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors"
+								aria-label={`打开工作文件夹: ${cwd}`}
+								title={`打开工作文件夹\n${cwd}`}
+								onClick={handleOpenFolder}
+							>
+								<ExternalLink className="size-4" />
+							</button>
+						)}
 						<button
 							type="button"
 							className="flex items-center justify-center size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-foreground/[0.04] transition-colors"

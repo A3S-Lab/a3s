@@ -121,7 +121,9 @@ export default function CreateSessionDialog({
 	const [permissionMode, setPermissionMode] = useState(
 		defaults?.permissionMode || "default",
 	);
-	const [cwd, setCwd] = useState(settingsModel.state.agentDefaults.defaultCwd);
+	const [cwd, setCwd] = useState(
+		settingsModel.state.agentDefaults.workspaceRoot,
+	);
 	const [baseUrl, setBaseUrl] = useState(
 		resolveBaseUrl(
 			preferredSessionModel.providerName,
@@ -274,7 +276,7 @@ export default function CreateSessionDialog({
 		setSystemPrompt("");
 		setModel(preferred.modelId);
 		setPermissionMode("default");
-		setCwd(settingsModel.state.agentDefaults.defaultCwd);
+		setCwd(settingsModel.state.agentDefaults.workspaceRoot);
 		setBaseUrl(resolveBaseUrl(preferred.providerName, preferred.modelId));
 		setApiKey(resolveApiKey(preferred.providerName, preferred.modelId));
 		setAdvancedOpen(false);
@@ -294,6 +296,7 @@ export default function CreateSessionDialog({
 		let finalPermMode = permissionMode;
 		let finalPrompt = systemPrompt;
 		let finalName = sessionName;
+		let finalSkills: string[] | undefined;
 
 		if (tab === "market" && selectedPersonaId) {
 			const persona =
@@ -305,6 +308,7 @@ export default function CreateSessionDialog({
 				finalPermMode = persona.defaultPermissionMode || permissionMode;
 				finalPrompt = persona.systemPrompt || systemPrompt;
 				finalName = finalName || persona.name;
+				finalSkills = persona.defaultSkills;
 			}
 		}
 
@@ -319,6 +323,7 @@ export default function CreateSessionDialog({
 				base_url: baseUrl || undefined,
 				api_key: apiKey || undefined,
 				system_prompt: finalPrompt || undefined,
+				skills: finalSkills,
 			});
 			if (result.error) {
 				setError(result.error);
@@ -329,6 +334,14 @@ export default function CreateSessionDialog({
 					const { default: agentModel } = await import("@/models/agent.model");
 					agentModel.setSessionName(sid, finalName);
 					agentApi.updateSession(sid, { name: finalName }).catch(() => {});
+				}
+
+				// Initialize persona defaults (skills and flows)
+				if (personaId) {
+					const { initializePersonaDefaults } = await import(
+						"@/lib/workspace-utils"
+					);
+					await initializePersonaDefaults(sid, personaId);
 				}
 
 				if (tab === "custom" && saveAsPersona && sessionName.trim()) {

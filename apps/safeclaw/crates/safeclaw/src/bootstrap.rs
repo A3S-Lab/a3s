@@ -254,8 +254,7 @@ pub async fn start_gateway(
         .tee_enabled(tee_enabled)
         .build()?;
 
-    let agent_state =
-        build_agent_state(models.clone(), skills_config).await?;
+    let agent_state = build_agent_state(models.clone(), skills_config).await?;
     if let Some(ref path) = config_path {
         agent_state.engine.set_config_path(path.clone()).await;
     }

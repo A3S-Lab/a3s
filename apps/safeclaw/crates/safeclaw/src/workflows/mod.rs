@@ -24,7 +24,9 @@ pub struct WorkflowDoc {
     pub updated_at: i64,
     /// Serialized flowgram document (nodes + edges JSON).
     pub document: serde_json::Value,
-    /// Agent session bound to this workflow, if any.
+    /// Agent that owns this workflow.
+    pub agent_id: Option<String>,
+    /// Session ID bound to this workflow.
     pub session_id: Option<String>,
 }
 
@@ -41,6 +43,7 @@ pub struct UpdateWorkflow {
     pub name: Option<String>,
     pub description: Option<String>,
     pub document: Option<serde_json::Value>,
+    pub agent_id: Option<String>,
     pub session_id: Option<String>,
 }
 
@@ -67,6 +70,7 @@ impl WorkflowStore {
         }
         let conn = Connection::open(&db_path)
             .with_context(|| format!("open sqlite db {}", db_path.display()))?;
+        // Step 1: create table with legacy schema (session_id) if it doesn't exist yet
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS workflows (
                 id          TEXT    PRIMARY KEY,
@@ -75,10 +79,27 @@ impl WorkflowStore {
                 created_at  INTEGER NOT NULL,
                 updated_at  INTEGER NOT NULL,
                 document    TEXT    NOT NULL DEFAULT '{}',
-                session_id  TEXT
+                session_id  TEXT,
+                agent_id    TEXT
             );",
         )
         .context("run workflow migrations")?;
+
+        // Step 2: migrate old schema if needed - add agent_id if missing
+        let has_agent_id: bool = {
+            let mut stmt = conn
+                .prepare("PRAGMA table_info(workflows)")
+                .context("pragma table_info")?;
+            let cols: Vec<String> = stmt
+                .query_map([], |row| row.get::<_, String>(1))?
+                .filter_map(|r| r.ok())
+                .collect();
+            cols.iter().any(|c| c == "agent_id")
+        };
+        if !has_agent_id {
+            conn.execute_batch("ALTER TABLE workflows ADD COLUMN agent_id TEXT;")
+                .context("add agent_id column")?;
+        }
         tracing::info!(path = %db_path.display(), "WorkflowStore initialized");
         Ok(Self {
             conn: Arc::new(Mutex::new(conn)),
@@ -92,7 +113,7 @@ impl WorkflowStore {
         tokio::task::spawn_blocking(move || {
             let conn = conn.lock().unwrap();
             let mut stmt = conn.prepare(
-                "SELECT id, name, description, created_at, updated_at, document, session_id
+                "SELECT id, name, description, created_at, updated_at, document, agent_id, session_id
                  FROM workflows ORDER BY updated_at DESC",
             )?;
             let rows = stmt.query_map([], row_to_doc)?;
@@ -108,7 +129,7 @@ impl WorkflowStore {
         tokio::task::spawn_blocking(move || {
             let conn = conn.lock().unwrap();
             let mut stmt = conn.prepare(
-                "SELECT id, name, description, created_at, updated_at, document, session_id
+                "SELECT id, name, description, created_at, updated_at, document, agent_id, session_id
                  FROM workflows WHERE id = ?1",
             )?;
             let mut rows = stmt.query_map([&id], row_to_doc)?;
@@ -129,6 +150,7 @@ impl WorkflowStore {
             created_at: now,
             updated_at: now,
             document,
+            agent_id: None,
             session_id: None,
         };
         let conn = self.conn.clone();
@@ -155,7 +177,7 @@ impl WorkflowStore {
             let conn = conn.lock().unwrap();
             // Read current row
             let mut stmt = conn.prepare(
-                "SELECT id, name, description, created_at, updated_at, document, session_id
+                "SELECT id, name, description, created_at, updated_at, document, agent_id, session_id
                  FROM workflows WHERE id = ?1",
             )?;
             let existing: Option<WorkflowDoc> =
@@ -172,6 +194,9 @@ impl WorkflowStore {
             if let Some(doc) = patch.document {
                 wf.document = doc;
             }
+            if patch.agent_id.is_some() {
+                wf.agent_id = patch.agent_id;
+            }
             if patch.session_id.is_some() {
                 wf.session_id = patch.session_id;
             }
@@ -179,7 +204,7 @@ impl WorkflowStore {
             let doc_str = serde_json::to_string(&wf.document)?;
             conn.execute(
                 "UPDATE workflows
-                 SET name = ?2, description = ?3, updated_at = ?4, document = ?5, session_id = ?6
+                 SET name = ?2, description = ?3, updated_at = ?4, document = ?5, agent_id = ?6, session_id = ?7
                  WHERE id = ?1",
                 params![
                     wf.id,
@@ -187,6 +212,7 @@ impl WorkflowStore {
                     wf.description,
                     wf.updated_at,
                     doc_str,
+                    wf.agent_id,
                     wf.session_id
                 ],
             )?;
@@ -222,7 +248,8 @@ fn row_to_doc(row: &rusqlite::Row<'_>) -> rusqlite::Result<WorkflowDoc> {
         created_at: row.get(3)?,
         updated_at: row.get(4)?,
         document,
-        session_id: row.get(6)?,
+        agent_id: row.get(6)?,
+        session_id: row.get(7)?,
     })
 }
 

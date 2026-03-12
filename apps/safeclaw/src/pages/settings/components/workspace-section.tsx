@@ -2,23 +2,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import settingsModel from "@/models/settings.model";
 import { FolderOpen } from "lucide-react";
-import { useState } from "react";
 import { toast } from "sonner";
 import { useSnapshot } from "valtio";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
 export function WorkspaceSection() {
 	const snap = useSnapshot(settingsModel.state);
-	const [defaultCwd, setDefaultCwd] = useState(snap.agentDefaults.defaultCwd);
 
-	const handleSave = () => {
-		settingsModel.setAgentDefaults({ defaultCwd: defaultCwd.trim() });
-		toast.success("工作区配置已保存");
+	const handleChange = (value: string) => {
+		settingsModel.setAgentDefaults({ workspaceRoot: value });
 	};
 
-	const handlePickDir = async () => {
+	const handlePick = async () => {
 		const selected = await openDialog({ directory: true, multiple: false });
-		if (typeof selected === "string") setDefaultCwd(selected);
+		if (typeof selected === "string") handleChange(selected);
+	};
+
+	const handleSave = () => {
+		toast.success("工作区配置已保存");
 	};
 
 	return (
@@ -26,40 +27,41 @@ export function WorkspaceSection() {
 			<div>
 				<h2 className="text-base font-semibold mb-1">工作区配置</h2>
 				<p className="text-sm text-muted-foreground">
-					配置 Agent
-					会话的默认工作区目录。每个新会话将在此目录下自动创建独立子文件夹。
+					配置统一的工作区根目录，智能体和会话的工作区将自动在此目录下创建。
 				</p>
 			</div>
 
-			<div className="space-y-5">
-				<div className="space-y-1.5">
-					<label
-						htmlFor="workspace-default-cwd"
-						className="text-sm font-medium"
+			<div className="space-y-1.5">
+				<label htmlFor="workspace-root" className="text-sm font-medium">
+					工作区根目录
+				</label>
+				<div className="flex gap-1.5">
+					<Input
+						id="workspace-root"
+						value={snap.agentDefaults.workspaceRoot}
+						onChange={(e) => handleChange(e.target.value)}
+						className="h-9 font-mono text-sm"
+						placeholder="/path/to/workspace"
+					/>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						className="h-9 px-2.5 shrink-0"
+						title="浏览目录"
+						onClick={handlePick}
 					>
-						默认工作区根目录
-					</label>
-					<div className="flex gap-1.5">
-						<Input
-							id="workspace-default-cwd"
-							value={defaultCwd}
-							onChange={(e) => setDefaultCwd(e.target.value)}
-							className="h-9 font-mono text-sm"
-							placeholder="/path/to/workspace"
-						/>
-						<Button
-							type="button"
-							variant="outline"
-							size="sm"
-							className="h-9 px-2.5 shrink-0"
-							title="浏览目录"
-							onClick={handlePickDir}
-						>
-							<FolderOpen className="size-4" />
-						</Button>
-					</div>
-					<p className="text-xs text-muted-foreground">
-						每个新会话会在此目录下自动创建独立子文件夹作为工作区。必须先配置此项才能创建会话。
+						<FolderOpen className="size-4" />
+					</Button>
+				</div>
+				<div className="text-xs text-muted-foreground space-y-0.5">
+					<p>程序将在此目录下自动创建：</p>
+					<p className="font-mono pl-2">
+						agents/&lt;agent-id&gt;/ — 智能体默认工作区（含
+						skills/、flows/、tasks/、knowledge/）
+					</p>
+					<p className="font-mono pl-2">
+						sessions/&lt;session-folder&gt;/ — 每个会话的独立工作区
 					</p>
 				</div>
 			</div>

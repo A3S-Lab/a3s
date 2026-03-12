@@ -170,10 +170,7 @@ const MessageItem = React.memo(function MessageItem({
 	const isUser = msg.role === "user";
 	const isSubAgent = !isUser && !!msg.parentToolUseId;
 	const persona = personaModel.getSessionPersona(sessionId);
-	const avatarConfig = useMemo(
-		() => genConfig(persona.avatar),
-		[persona.avatar],
-	);
+	const avatarConfig = useMemo(() => persona.avatar, [persona.avatar]);
 	const { user } = useSnapshot(globalModel.state);
 
 	// Extract plain text for copy

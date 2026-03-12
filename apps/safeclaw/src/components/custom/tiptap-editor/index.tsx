@@ -27,17 +27,8 @@ import "./tiptap.css";
 // Data sources for / and @
 // =============================================================================
 
-/** Items available for @mention: agents and workspace files */
-const MENTION_ITEMS: SuggestionItem[] = [
-	// Agents
-	...BUILTIN_PERSONAS.filter((p) => p.id !== "company-group").map((p) => ({
-		id: p.id,
-		label: p.name,
-		description: p.description,
-		group: "智能体",
-		icon: <User className="size-3 text-primary" />,
-	})),
-];
+/** Items available for @mention: workspace files only (no agents) */
+const MENTION_ITEMS: SuggestionItem[] = [];
 
 /**
  * Fetch workspace files and directories
@@ -48,6 +39,14 @@ async function fetchWorkspaceFiles(
 ): Promise<SuggestionItem[]> {
 	try {
 		console.log("[TiptapEditor] Fetching workspace files from:", workspaceDir);
+
+		if (!workspaceDir) {
+			console.warn(
+				"[TiptapEditor] workspaceDir is empty, returning empty list",
+			);
+			return [];
+		}
+
 		// Use Tauri's fs plugin to read directory
 		const { readDir } = await import("@tauri-apps/plugin-fs");
 		const entries = await readDir(workspaceDir, { recursive: false });
@@ -99,10 +98,19 @@ async function fetchSubdirectoryFiles(
 	level: number,
 ): Promise<SuggestionItem[]> {
 	try {
-		console.log("[TiptapEditor] fetchSubdirectoryFiles - dirPath:", dirPath, "level:", level);
+		console.log(
+			"[TiptapEditor] fetchSubdirectoryFiles - dirPath:",
+			dirPath,
+			"level:",
+			level,
+		);
 		const { readDir } = await import("@tauri-apps/plugin-fs");
 		const entries = await readDir(dirPath, { recursive: false });
-		console.log("[TiptapEditor] fetchSubdirectoryFiles - raw entries:", entries.length, entries);
+		console.log(
+			"[TiptapEditor] fetchSubdirectoryFiles - raw entries:",
+			entries.length,
+			entries,
+		);
 
 		const filtered = entries.filter((entry) => {
 			const name = entry.name || "";
@@ -114,7 +122,10 @@ async function fetchSubdirectoryFiles(
 				name !== "build"
 			);
 		});
-		console.log("[TiptapEditor] fetchSubdirectoryFiles - filtered entries:", filtered.length);
+		console.log(
+			"[TiptapEditor] fetchSubdirectoryFiles - filtered entries:",
+			filtered.length,
+		);
 
 		return filtered.map((entry) => ({
 			id: `file:${dirPath}/${entry.name}`,
@@ -132,7 +143,11 @@ async function fetchSubdirectoryFiles(
 			),
 		}));
 	} catch (error) {
-		console.error("[TiptapEditor] Failed to fetch subdirectory:", dirPath, error);
+		console.error(
+			"[TiptapEditor] Failed to fetch subdirectory:",
+			dirPath,
+			error,
+		);
 		return [];
 	}
 }
@@ -195,7 +210,9 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 		ref,
 	) => {
 		const [workspaceFiles, setWorkspaceFiles] = useState<SuggestionItem[]>([]);
-		const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+		const [expandedFolders, setExpandedFolders] = useState<Set<string>>(
+			new Set(),
+		);
 		const workspaceDirRef = useRef<string>("");
 
 		const resolvedMentionItems = useMemo(() => {
@@ -225,7 +242,10 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 			if (dir) {
 				console.log("[TiptapEditor] Refreshing workspace files for:", dir);
 				const newFiles = await fetchWorkspaceFiles(dir);
-				console.log("[TiptapEditor] Refreshed workspace files:", newFiles.length);
+				console.log(
+					"[TiptapEditor] Refreshed workspace files:",
+					newFiles.length,
+				);
 
 				// Only update if the directory hasn't changed
 				if (workspaceDirRef.current === dir) {
@@ -237,7 +257,10 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 						setWorkspaceFiles(newFiles);
 					} else {
 						// Re-expand folders that were previously expanded
-						console.log("[TiptapEditor] Re-expanding folders:", currentExpandedPaths);
+						console.log(
+							"[TiptapEditor] Re-expanding folders:",
+							currentExpandedPaths,
+						);
 
 						// Build the complete list with expanded folders
 						const result: SuggestionItem[] = [];
@@ -246,9 +269,21 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 							result.push(file);
 
 							// If this folder was expanded, load and insert its children
-							if (file.isDirectory && file.path && currentExpandedPaths.includes(file.path)) {
-								const children = await fetchSubdirectoryFiles(file.path, (file.level || 0) + 1);
-								console.log("[TiptapEditor] Re-loaded children for", file.path, ":", children.length);
+							if (
+								file.isDirectory &&
+								file.path &&
+								currentExpandedPaths.includes(file.path)
+							) {
+								const children = await fetchSubdirectoryFiles(
+									file.path,
+									(file.level || 0) + 1,
+								);
+								console.log(
+									"[TiptapEditor] Re-loaded children for",
+									file.path,
+									":",
+									children.length,
+								);
 
 								// Mark folder as expanded
 								result[result.length - 1] = { ...file, expanded: true };
@@ -265,61 +300,88 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 		}, [expandedFolders]);
 
 		// Handle folder expansion/collapse
-		const handleFolderClick = useCallback(async (folder: SuggestionItem) => {
-			console.log("[TiptapEditor] handleFolderClick called:", folder);
-			if (!folder.path || !folder.isDirectory) return;
+		const handleFolderClick = useCallback(
+			async (folder: SuggestionItem) => {
+				console.log("[TiptapEditor] handleFolderClick called:", folder);
+				if (!folder.path || !folder.isDirectory) return;
 
-			const folderPath = folder.path;
-			const currentlyExpanded = expandedFolders.has(folderPath);
+				const folderPath = folder.path;
+				const currentlyExpanded = expandedFolders.has(folderPath);
 
-			console.log("[TiptapEditor] Folder path:", folderPath, "currently expanded:", currentlyExpanded);
+				console.log(
+					"[TiptapEditor] Folder path:",
+					folderPath,
+					"currently expanded:",
+					currentlyExpanded,
+				);
 
-			if (currentlyExpanded) {
-				// Collapse
-				console.log("[TiptapEditor] Collapsing folder");
-				setExpandedFolders(prev => {
-					const next = new Set(prev);
-					next.delete(folderPath);
-					console.log("[TiptapEditor] Updated expandedFolders (collapse):", next.size);
-					return next;
-				});
+				if (currentlyExpanded) {
+					// Collapse
+					console.log("[TiptapEditor] Collapsing folder");
+					setExpandedFolders((prev) => {
+						const next = new Set(prev);
+						next.delete(folderPath);
+						console.log(
+							"[TiptapEditor] Updated expandedFolders (collapse):",
+							next.size,
+						);
+						return next;
+					});
 
-				setWorkspaceFiles(prev => {
-					const result = prev
-						.filter(item => !item.path || !item.path.startsWith(folderPath + "/"))
-						.map(item => item.path === folderPath ? { ...item, expanded: false } : item);
-					console.log("[TiptapEditor] Updated workspaceFiles (collapse):", result.length);
-					return result;
-				});
-			} else {
-				// Expand
-				console.log("[TiptapEditor] Expanding folder");
-				const children = await fetchSubdirectoryFiles(folderPath, (folder.level || 0) + 1);
-				console.log("[TiptapEditor] Loaded children:", children.length);
+					setWorkspaceFiles((prev) => {
+						const result = prev
+							.filter(
+								(item) => !item.path || !item.path.startsWith(folderPath + "/"),
+							)
+							.map((item) =>
+								item.path === folderPath ? { ...item, expanded: false } : item,
+							);
+						console.log(
+							"[TiptapEditor] Updated workspaceFiles (collapse):",
+							result.length,
+						);
+						return result;
+					});
+				} else {
+					// Expand
+					console.log("[TiptapEditor] Expanding folder");
+					const children = await fetchSubdirectoryFiles(
+						folderPath,
+						(folder.level || 0) + 1,
+					);
+					console.log("[TiptapEditor] Loaded children:", children.length);
 
-				setExpandedFolders(prev => {
-					const next = new Set(prev);
-					next.add(folderPath);
-					console.log("[TiptapEditor] Updated expandedFolders (expand):", next.size);
-					return next;
-				});
+					setExpandedFolders((prev) => {
+						const next = new Set(prev);
+						next.add(folderPath);
+						console.log(
+							"[TiptapEditor] Updated expandedFolders (expand):",
+							next.size,
+						);
+						return next;
+					});
 
-				setWorkspaceFiles(prev => {
-					const result: SuggestionItem[] = [];
-					for (const item of prev) {
-						if (item.path === folderPath) {
-							result.push({ ...item, expanded: true });
-							result.push(...children);
-						} else {
-							result.push(item);
+					setWorkspaceFiles((prev) => {
+						const result: SuggestionItem[] = [];
+						for (const item of prev) {
+							if (item.path === folderPath) {
+								result.push({ ...item, expanded: true });
+								result.push(...children);
+							} else {
+								result.push(item);
+							}
 						}
-					}
-					console.log("[TiptapEditor] Updated workspaceFiles (expand):", result.length);
-					return result;
-				});
-			}
-			console.log("[TiptapEditor] handleFolderClick completed");
-		}, [expandedFolders]); // Remove expandedFolders from dependencies
+						console.log(
+							"[TiptapEditor] Updated workspaceFiles (expand):",
+							result.length,
+						);
+						return result;
+					});
+				}
+				console.log("[TiptapEditor] handleFolderClick completed");
+			},
+			[expandedFolders],
+		); // Remove expandedFolders from dependencies
 
 		// Use a ref to store the latest handleFolderClick so the suggestion
 		// closure always reads the latest callback without recreating the editor
@@ -343,7 +405,11 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 
 		const mentionItemsRef = useRef<SuggestionItem[]>(resolvedMentionItems);
 		useEffect(() => {
-			console.log("[TiptapEditor] Updating mentionItemsRef:", resolvedMentionItems.length, "items");
+			console.log(
+				"[TiptapEditor] Updating mentionItemsRef:",
+				resolvedMentionItems.length,
+				"items",
+			);
 			mentionItemsRef.current = resolvedMentionItems;
 		}, [resolvedMentionItems]);
 
@@ -374,7 +440,6 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 				createSuggestionRenderer(
 					(q) => {
 						const items = filterItems(mentionItemsRef.current, q);
-						console.log("[TiptapEditor] getItems called for mention, query:", q, "returned:", items.length, "items");
 						return items;
 					},
 					() => {
@@ -383,6 +448,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 					(item) => handleFolderClickRef.current(item),
 					() => refreshWorkspaceFilesRef.current(),
 					suggestionOpenRef,
+					true, // enableSearch
 				),
 			// eslint-disable-next-line react-hooks/exhaustive-deps
 			[],
@@ -421,7 +487,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 					},
 				}),
 				SlashCommandNode,
-			SlashCommand.configure({
+				SlashCommand.configure({
 					suggestion: {
 						...(slashSuggestion as any),
 					},

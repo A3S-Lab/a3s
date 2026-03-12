@@ -41,6 +41,7 @@ export function createSuggestionRenderer(
 	onFolderClick?: (item: SuggestionItem) => void,
 	onOpen?: () => void,
 	suggestionOpenRef?: React.MutableRefObject<boolean>,
+	enableSearch?: boolean,
 ): Pick<SuggestionOptions<SuggestionItem>, "items" | "render"> {
 	return {
 		items: ({ query }) => getItems(query),
@@ -63,7 +64,9 @@ export function createSuggestionRenderer(
 			// Wrapped folder click handler that triggers re-render
 			const wrappedFolderClick = (item: SuggestionItem) => {
 				if (onFolderClick) {
-					console.log("[SuggestionRenderer] Folder clicked, calling onFolderClick");
+					console.log(
+						"[SuggestionRenderer] Folder clicked, calling onFolderClick",
+					);
 					onFolderClick(item);
 
 					// Schedule update with multiple requestAnimationFrame for better timing
@@ -75,7 +78,10 @@ export function createSuggestionRenderer(
 								requestAnimationFrame(() => {
 									if (root && container) {
 										const items = getItems(currentQuery);
-										console.log("[SuggestionRenderer] Re-rendering after folder click, items:", items.length);
+										console.log(
+											"[SuggestionRenderer] Re-rendering after folder click, items:",
+											items.length,
+										);
 										root.render(
 											<MentionList
 												ref={(ref) => {
@@ -84,6 +90,7 @@ export function createSuggestionRenderer(
 												items={items}
 												command={wrappedCommand}
 												onFolderClick={wrappedFolderClick}
+												enableSearch={enableSearch}
 											/>,
 										);
 										updateScheduled = false;
@@ -126,6 +133,7 @@ export function createSuggestionRenderer(
 							items={props.items}
 							command={wrappedCommand}
 							onFolderClick={wrappedFolderClick}
+							enableSearch={enableSearch}
 						/>,
 					);
 
@@ -137,7 +145,10 @@ export function createSuggestionRenderer(
 								requestAnimationFrame(() => {
 									if (root && container) {
 										const updatedItems = getItems(currentQuery);
-										console.log("[SuggestionRenderer] Re-rendering after onOpen, items:", updatedItems.length);
+										console.log(
+											"[SuggestionRenderer] Re-rendering after onOpen, items:",
+											updatedItems.length,
+										);
 										root.render(
 											<MentionList
 												ref={(ref) => {
@@ -146,6 +157,7 @@ export function createSuggestionRenderer(
 												items={updatedItems}
 												command={wrappedCommand}
 												onFolderClick={wrappedFolderClick}
+												enableSearch={enableSearch}
 											/>,
 										);
 									}
@@ -171,6 +183,7 @@ export function createSuggestionRenderer(
 							items={props.items}
 							command={wrappedCommand}
 							onFolderClick={wrappedFolderClick}
+							enableSearch={enableSearch}
 						/>,
 					);
 				},

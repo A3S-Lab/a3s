@@ -28,14 +28,52 @@ fn mkdir_all(path: String) -> Result<(), String> {
 ///   ├── A3sfile.hcl      (workspace config, created only if absent)
 ///   ├── agents/          (agent definition files)
 ///   └── skills/          (custom skill scripts)
+///
+/// If `persona_id` is `"document-expert"`, document-office skill templates
+/// are copied from the app bundle into `<path>/skills/`.
 #[tauri::command]
-fn init_workspace(path: String) -> Result<(), String> {
+fn init_workspace(path: String, persona_id: Option<String>) -> Result<(), String> {
     let root = std::path::Path::new(&path);
     std::fs::create_dir_all(root).map_err(|e| format!("create workspace: {e}"))?;
     std::fs::create_dir_all(root.join("agents"))
         .map_err(|e| format!("create agents/: {e}"))?;
-    std::fs::create_dir_all(root.join("skills"))
+    let skills_dir = root.join("skills");
+    std::fs::create_dir_all(&skills_dir)
         .map_err(|e| format!("create skills/: {e}"))?;
+
+    // Copy document-office skill templates for the document-expert persona
+    if persona_id.as_deref() == Some("document-expert") {
+        if let Ok(exe) = std::env::current_exe() {
+            // macOS bundle: <App>.app/Contents/MacOS/<bin> → Resources is two levels up
+            let bundle_resources = exe
+                .parent()
+                .and_then(|p| p.parent())
+                .map(|p| p.join("Resources").join("skills").join("document-office"));
+            // Dev / non-bundle: next to the binary
+            let dev_resources = exe
+                .parent()
+                .map(|p| p.join("resources").join("skills").join("document-office"));
+
+            let src = [bundle_resources, dev_resources]
+                .into_iter()
+                .flatten()
+                .find(|p| p.exists());
+
+            if let Some(src) = src {
+                if let Ok(entries) = std::fs::read_dir(&src) {
+                    for entry in entries.flatten() {
+                        let src_path = entry.path();
+                        if src_path.extension().and_then(|s| s.to_str()) == Some("md") {
+                            if let Some(filename) = src_path.file_name() {
+                                let _ = std::fs::copy(&src_path, skills_dir.join(filename));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     let a3sfile = root.join("A3sfile.hcl");
     if !a3sfile.exists() {
         std::fs::write(&a3sfile, "# A3S workspace configuration\n")
@@ -47,6 +85,32 @@ fn init_workspace(path: String) -> Result<(), String> {
 #[tauri::command]
 fn get_gateway_url() -> String {
     std::env::var("SAFECLAW_GATEWAY_URL").unwrap_or_else(|_| "http://127.0.0.1:18790".to_string())
+}
+
+#[tauri::command]
+fn open_folder(path: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -70,6 +134,7 @@ pub fn run() {
             mkdir_all,
             init_workspace,
             get_gateway_url,
+            open_folder,
             browser::browser_open,
             browser::browser_navigate,
             browser::browser_close,

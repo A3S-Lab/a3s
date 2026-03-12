@@ -1,9 +1,24 @@
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/time";
 import agentModel from "@/models/agent.model";
 import personaModel from "@/models/persona.model";
+import settingsModel, {
+	getPreferredSessionModel,
+	resolveApiKey,
+	resolveBaseUrl,
+} from "@/models/settings.model";
 import { connectSession } from "@/hooks/use-agent-ws";
 import { agentApi } from "@/lib/agent-api";
 import type { AgentProcessInfo } from "@/typings/agent";
@@ -19,6 +34,10 @@ import {
 	Search,
 	Terminal,
 	Wrench,
+	GitBranch,
+	Clock,
+	Shield,
+	Trash2,
 } from "lucide-react";
 import Avatar, { genConfig } from "react-nice-avatar";
 import { useCallback, useMemo, useState } from "react";
@@ -82,6 +101,11 @@ const AgentItem = React.memo(function AgentItem({
 	lastMessageTime,
 	onSelect,
 	onAvatarClick,
+	onManageWorkflows,
+	onManageSchedules,
+	onManagePermissions,
+	onManageSkills,
+	onUninstall,
 }: {
 	persona: AgentPersona;
 	sessions: AgentProcessInfo[];
@@ -99,8 +123,15 @@ const AgentItem = React.memo(function AgentItem({
 	lastMessageTime: Record<string, number>;
 	onSelect: () => void;
 	onAvatarClick: () => void;
+	onManageWorkflows?: (personaId: string) => void;
+	onManageSchedules?: (personaId: string) => void;
+	onManagePermissions?: (personaId: string) => void;
+	onManageSkills?: (personaId: string) => void;
+	onUninstall?: (personaId: string) => void;
 }) {
-	const cfg = useMemo(() => genConfig(persona.avatar), [persona.avatar]);
+	// Use persona avatar directly without genConfig to avoid random generation
+	const cfg = persona.avatar;
+	const isSuperAdmin = persona.id === "super-admin";
 	const activeSessions = useMemo(
 		() =>
 			[...sessions]
@@ -132,19 +163,13 @@ const AgentItem = React.memo(function AgentItem({
 
 	const activeProgress = latestSid ? toolProgress[latestSid] : null;
 
-	// Context usage from latest session state
-	const contextPct = latestSid
-		? (sessionStates[latestSid]?.context_used_percent ?? 0)
-		: 0;
-	const isCompacting = healthStatus === "compacting";
-
 	return (
 		<div
 			role="option"
 			aria-selected={isActive}
 			tabIndex={-1}
 			className={cn(
-				"group flex items-start gap-3 px-3 py-3 w-full cursor-pointer transition-colors",
+				"group flex flex-col px-3 py-3 w-full cursor-pointer transition-colors",
 				"hover:bg-accent/[0.08]",
 				isActive && "bg-primary/[0.08]",
 			)}
@@ -156,140 +181,180 @@ const AgentItem = React.memo(function AgentItem({
 				}
 			}}
 		>
-			{/* Avatar with health dot */}
-			<div className="relative shrink-0">
-				<button
-					type="button"
-					className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50 hover:ring-2 hover:ring-primary/30 transition-all"
-					onClick={(e) => {
-						e.stopPropagation();
-						onAvatarClick();
-					}}
-					aria-label={`查看 ${persona.name} 详情`}
-				>
-					<Avatar className="w-9 h-9" {...cfg} />
-				</button>
-				{healthStatus && (
-					<span
+			<div className="flex items-start gap-3">
+				{/* Avatar with health dot */}
+				<div className="relative shrink-0">
+					{isSuperAdmin && (
+						<div className="absolute -top-1 -left-1 z-10">
+							<Shield className="size-4 text-amber-500 fill-amber-400/80" />
+						</div>
+					)}
+					<button
+						type="button"
 						className={cn(
-							"absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-background",
-							healthStatus === "running" && "bg-green-500",
-							healthStatus === "compacting" && "bg-yellow-500",
-							healthStatus === "idle" && "bg-muted-foreground/40",
+							"rounded-full focus:outline-none transition-all",
+							isSuperAdmin
+								? "ring-2 ring-amber-400/70 hover:ring-amber-400/90"
+								: "focus:ring-2 focus:ring-primary/50 hover:ring-2 hover:ring-primary/30",
 						)}
-						title={
-							healthStatus === "running"
-								? "运行中"
-								: healthStatus === "compacting"
-									? "压缩中"
-									: "就绪"
-						}
-					/>
-				)}
-			</div>
-
-			<div className="flex-1 min-w-0">
-				{/* Row 1: name + unread + time */}
-				<div className="flex justify-between items-center">
-					<div className="flex items-center gap-1 min-w-0">
-						<span className="text-sm font-medium truncate">{persona.name}</span>
-						{persona.undeletable && (
-							<Lock className="size-3 text-muted-foreground/50 shrink-0" />
-						)}
-					</div>
-					<div className="flex items-center gap-1.5 shrink-0 ml-2">
-						{unreadCount > 0 && (
-							<span className="flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1 leading-none">
-								{unreadCount > 99 ? "99+" : unreadCount}
-							</span>
-						)}
-						{latestSid && (
-							<time className="text-[10px] text-muted-foreground/80">
-								{relativeTime(
-									lastMessageTime[latestSid] ?? activeSessions[0].created_at,
-								)}
-							</time>
-						)}
-					</div>
+						onClick={(e) => {
+							e.stopPropagation();
+							onAvatarClick();
+						}}
+						aria-label={`查看 ${persona.name} 详情`}
+					>
+						<Avatar className="w-9 h-9" {...cfg} />
+					</button>
+					{healthStatus && (
+						<span
+							className={cn(
+								"absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-background",
+								healthStatus === "running" && "bg-green-500",
+								healthStatus === "compacting" && "bg-yellow-500",
+								healthStatus === "idle" && "bg-muted-foreground/40",
+							)}
+							title={
+								healthStatus === "running"
+									? "运行中"
+									: healthStatus === "compacting"
+										? "压缩中"
+										: "就绪"
+							}
+						/>
+					)}
 				</div>
 
-				{/* Row 2: current task */}
-				{activeProgress ? (
-					<div className="flex items-center gap-1.5 mt-0.5">
-						<Loader2 className="size-3 text-primary animate-spin shrink-0" />
-						<span
-							className={cn(
-								"shrink-0",
-								getToolIcon(activeProgress.tool_name).color,
-							)}
-						>
-							{getToolIcon(activeProgress.tool_name).icon}
-						</span>
-						<span className="text-[11px] font-medium text-foreground truncate">
-							{activeProgress.tool_name}
-						</span>
-						{activeProgress.elapsed_time_seconds > 0 && (
-							<span className="text-[10px] text-muted-foreground/60 shrink-0">
-								{Math.round(activeProgress.elapsed_time_seconds)}s
+				<div className="flex-1 min-w-0">
+					{/* Row 1: name + unread + time */}
+					<div className="flex justify-between items-center">
+						<div className="flex items-center gap-1 min-w-0">
+							<span className="text-sm font-medium truncate">
+								{persona.name}
 							</span>
-						)}
-					</div>
-				) : (
-					<p
-						className={cn(
-							"text-[11px] truncate mt-0.5 leading-tight",
-							healthStatus === "running"
-								? "text-green-600 dark:text-green-400"
-								: "text-muted-foreground/70",
-						)}
-					>
-						{healthStatus === "running" && (
-							<span className="inline-block size-1.5 rounded-full bg-green-500 mr-1 mb-px animate-pulse" />
-						)}
-						{taskLine}
-					</p>
-				)}
-
-				{/* Row 3: context bar — always shown when session exists */}
-				{latestSid && (
-					<div className="mt-1.5 flex items-center gap-1.5">
-						<div className="flex-1 h-[3px] rounded-full bg-foreground/8 overflow-hidden">
-							<div
-								className={cn(
-									"h-full rounded-full transition-all duration-700",
-									isCompacting
-										? "bg-yellow-500 animate-pulse"
-										: contextPct >= 90
-											? "bg-red-500"
-											: contextPct >= 75
-												? "bg-orange-400"
-												: contextPct >= 50
-													? "bg-primary/60"
-													: "bg-primary/30",
-								)}
-								style={{ width: `${Math.max(contextPct, 2)}%` }}
-							/>
+							{persona.undeletable && (
+								<Lock className="size-3 text-muted-foreground/50 shrink-0" />
+							)}
+							{!persona.builtin && !persona.undeletable && onUninstall && (
+								<button
+									type="button"
+									onClick={(e) => {
+										e.stopPropagation();
+										onUninstall(persona.id);
+									}}
+									className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-destructive/10 rounded"
+									title="卸载智能体"
+								>
+									<Trash2 className="size-3 text-destructive" />
+								</button>
+							)}
 						</div>
-						<span
+						<div className="flex items-center gap-1.5 shrink-0 ml-2">
+							{unreadCount > 0 && (
+								<span className="flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1 leading-none">
+									{unreadCount > 99 ? "99+" : unreadCount}
+								</span>
+							)}
+							{latestSid && (
+								<time className="text-[10px] text-muted-foreground/80">
+									{relativeTime(
+										lastMessageTime[latestSid] ?? activeSessions[0].created_at,
+									)}
+								</time>
+							)}
+						</div>
+					</div>
+
+					{/* Row 2: current task */}
+					{activeProgress ? (
+						<div className="flex items-center gap-1.5 mt-0.5">
+							<Loader2 className="size-3 text-primary animate-spin shrink-0" />
+							<span
+								className={cn(
+									"shrink-0",
+									getToolIcon(activeProgress.tool_name).color,
+								)}
+							>
+								{getToolIcon(activeProgress.tool_name).icon}
+							</span>
+							<span className="text-[11px] font-medium text-foreground truncate">
+								{activeProgress.tool_name}
+							</span>
+							{activeProgress.elapsed_time_seconds > 0 && (
+								<span className="text-[10px] text-muted-foreground/60 shrink-0">
+									{Math.round(activeProgress.elapsed_time_seconds)}s
+								</span>
+							)}
+						</div>
+					) : (
+						<p
 							className={cn(
-								"text-[10px] tabular-nums shrink-0 w-7 text-right",
-								isCompacting
-									? "text-yellow-500 font-medium"
-									: contextPct >= 90
-										? "text-red-500 font-medium"
-										: contextPct >= 75
-											? "text-orange-400"
-											: "text-muted-foreground/60",
+								"text-[11px] truncate mt-0.5 leading-tight",
+								healthStatus === "running"
+									? "text-green-600 dark:text-green-400"
+									: "text-muted-foreground/70",
 							)}
 						>
-							{isCompacting
-								? "压缩"
-								: contextPct > 0
-									? `${Math.round(contextPct)}%`
-									: "—"}
-						</span>
-					</div>
-				)}
+							{healthStatus === "running" && (
+								<span className="inline-block size-1.5 rounded-full bg-green-500 mr-1 mb-px animate-pulse" />
+							)}
+							{taskLine}
+						</p>
+					)}
+				</div>
+			</div>
+
+			{/* Row 4: Management buttons - horizontally scrollable, aligned with avatar */}
+			<div className="mt-2 pt-2 border-t border-border/40 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+				<div className="flex items-center gap-1 min-w-max">
+					<button
+						type="button"
+						onClick={(e) => {
+							e.stopPropagation();
+							onManageSkills?.(persona.id);
+						}}
+						className="flex items-center gap-1 px-2 py-1 text-[10px] rounded hover:bg-accent/10 transition-colors text-muted-foreground hover:text-foreground whitespace-nowrap"
+						title="技能"
+					>
+						<Wrench className="size-3 shrink-0" />
+						<span>技能</span>
+					</button>
+					<button
+						type="button"
+						onClick={(e) => {
+							e.stopPropagation();
+							onManageWorkflows?.(persona.id);
+						}}
+						className="flex items-center gap-1 px-2 py-1 text-[10px] rounded hover:bg-accent/10 transition-colors text-muted-foreground hover:text-foreground whitespace-nowrap"
+						title="工作流"
+					>
+						<GitBranch className="size-3 shrink-0" />
+						<span>工作流</span>
+					</button>
+					<button
+						type="button"
+						onClick={(e) => {
+							e.stopPropagation();
+							onManageSchedules?.(persona.id);
+						}}
+						className="flex items-center gap-1 px-2 py-1 text-[10px] rounded hover:bg-accent/10 transition-colors text-muted-foreground hover:text-foreground whitespace-nowrap"
+						title="定时任务"
+					>
+						<Clock className="size-3 shrink-0" />
+						<span>定时任务</span>
+					</button>
+					<button
+						type="button"
+						onClick={(e) => {
+							e.stopPropagation();
+							onManagePermissions?.(persona.id);
+						}}
+						className="flex items-center gap-1 px-2 py-1 text-[10px] rounded hover:bg-accent/10 transition-colors text-muted-foreground hover:text-foreground whitespace-nowrap"
+						title="权限管理"
+					>
+						<Shield className="size-3 shrink-0" />
+						<span>权限</span>
+					</button>
+				</div>
 			</div>
 		</div>
 	);
@@ -321,6 +386,10 @@ export default function AgentSessionList() {
 	const [pickWorkdirPersonaId, setPickWorkdirPersonaId] = useState<
 		string | null
 	>(null);
+	const [uninstallDialogOpen, setUninstallDialogOpen] = useState(false);
+	const [uninstallPersonaId, setUninstallPersonaId] = useState<string | null>(
+		null,
+	);
 	const q = search.trim().toLowerCase();
 
 	// Group sessions by persona
@@ -401,7 +470,7 @@ export default function AgentSessionList() {
 
 	// Select agent → select its latest session; if none, prompt for working directory
 	const handleSelectAgent = useCallback(
-		(personaId: string) => {
+		async (personaId: string) => {
 			const sessions = [...(sessionsByPersona[personaId] || [])]
 				.filter((s) => !s.archived)
 				.sort((a, b) => b.created_at - a.created_at);
@@ -410,6 +479,69 @@ export default function AgentSessionList() {
 				const sid = sessions[0].session_id;
 				agentModel.setCurrentSession(sid);
 				agentModel.clearUnread(sid);
+			} else if (personaId === "super-admin") {
+				// Super-admin: create session directly without workspace dialog
+				const persona = personaModel
+					.getAllPersonas()
+					.find((p) => p.id === personaId);
+				if (!persona) return;
+
+				try {
+					// Get home directory for super-admin
+					const { homeDir } = await import("@tauri-apps/api/path");
+					const homePath = await homeDir();
+
+					const preferred = getPreferredSessionModel();
+					const modelId =
+						persona.defaultModel || preferred.modelId || undefined;
+					const providerName = persona.defaultModel?.includes("/")
+						? persona.defaultModel.split("/")[0]
+						: preferred.providerName;
+					const apiKey = modelId
+						? resolveApiKey(providerName, modelId.split("/").pop() || modelId)
+						: "";
+					const baseUrl = modelId
+						? resolveBaseUrl(providerName, modelId.split("/").pop() || modelId)
+						: "";
+
+					const result = await agentApi.createSession({
+						persona_id: personaId,
+						model: modelId,
+						permission_mode: persona.defaultPermissionMode || "default",
+						cwd: homePath,
+						system_prompt: persona.systemPrompt || undefined,
+						api_key: apiKey || undefined,
+						base_url: baseUrl || undefined,
+						skills: persona.defaultSkills,
+					});
+
+					if (result?.error) {
+						console.error(
+							"Failed to create super-admin session:",
+							result.error,
+						);
+						return;
+					}
+
+					const sid = result.session_id;
+					personaModel.setSessionPersona(sid, personaId);
+					agentModel.setMessages(sid, []);
+
+					// Initialize persona defaults (skills and flows)
+					const { initializePersonaDefaults } = await import(
+						"@/lib/workspace-utils"
+					);
+					await initializePersonaDefaults(sid, personaId);
+
+					const updated = await agentApi.listSessions();
+					if (Array.isArray(updated)) agentModel.setSdkSessions(updated);
+
+					connectSession(sid);
+					agentModel.setCurrentSession(sid);
+					agentModel.clearUnread(sid);
+				} catch (e) {
+					console.error("Failed to create super-admin session:", e);
+				}
 			} else {
 				// No active session — ask user to pick a working directory first
 				setPickWorkdirPersonaId(personaId);
@@ -418,6 +550,71 @@ export default function AgentSessionList() {
 		},
 		[sessionsByPersona],
 	);
+
+	// Management handlers - navigate to management pages
+	const handleManageSkills = useCallback(
+		(personaId: string) => {
+			navigate(`/agent/${personaId}/skills`);
+		},
+		[navigate],
+	);
+
+	const handleManageWorkflows = useCallback(
+		(personaId: string) => {
+			navigate(`/agent/${personaId}/workflows`);
+		},
+		[navigate],
+	);
+
+	const handleManageSchedules = useCallback(
+		(personaId: string) => {
+			navigate(`/agent/${personaId}/tasks`);
+		},
+		[navigate],
+	);
+
+	const handleManagePermissions = useCallback(
+		(personaId: string) => {
+			navigate(`/agent/${personaId}/permissions`);
+		},
+		[navigate],
+	);
+
+	const handleUninstall = useCallback((personaId: string) => {
+		setUninstallPersonaId(personaId);
+		setUninstallDialogOpen(true);
+	}, []);
+
+	const confirmUninstall = useCallback(async () => {
+		if (!uninstallPersonaId) return;
+
+		const sessions = sessionsByPersona[uninstallPersonaId] || [];
+
+		try {
+			// Delete all sessions for this persona
+			if (sessions.length > 0) {
+				const { uninstallAgent } = await import("@/lib/marketplace-api");
+				for (const session of sessions) {
+					await uninstallAgent(session.session_id);
+				}
+			}
+
+			// Remove custom persona
+			personaModel.deleteCustomPersona(uninstallPersonaId);
+
+			// Reload sessions
+			const updatedSessions = await agentApi.listSessions();
+			if (Array.isArray(updatedSessions)) {
+				agentModel.setSdkSessions(updatedSessions);
+			}
+
+			setUninstallDialogOpen(false);
+			setUninstallPersonaId(null);
+		} catch (err) {
+			console.error("Failed to uninstall agent:", err);
+			alert(`卸载失败: ${err instanceof Error ? err.message : String(err)}`);
+		}
+	}, [uninstallPersonaId, sessionsByPersona]);
 
 	return (
 		<div className="flex flex-col h-full overflow-hidden border-r">
@@ -446,6 +643,7 @@ export default function AgentSessionList() {
 							key={persona.id}
 							persona={persona}
 							sessions={sessionsByPersona[persona.id] || []}
+							onUninstall={handleUninstall}
 							sessionStates={snap.sessions as any}
 							isActive={currentPersonaId === persona.id}
 							unreadCount={unreadByPersona[persona.id] || 0}
@@ -455,6 +653,10 @@ export default function AgentSessionList() {
 							lastMessageTime={lastMessageTimeBySession}
 							onSelect={() => handleSelectAgent(persona.id)}
 							onAvatarClick={() => navigate(`/agent/${persona.id}`)}
+							onManageSkills={handleManageSkills}
+							onManageWorkflows={handleManageWorkflows}
+							onManageSchedules={handleManageSchedules}
+							onManagePermissions={handleManagePermissions}
 						/>
 					))}
 
@@ -484,6 +686,31 @@ export default function AgentSessionList() {
 				personaId={pickWorkdirPersonaId}
 				onCreated={handleCreated}
 			/>
+
+			<AlertDialog
+				open={uninstallDialogOpen}
+				onOpenChange={setUninstallDialogOpen}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>确认卸载智能体</AlertDialogTitle>
+						<AlertDialogDescription>
+							{uninstallPersonaId && sessionsByPersona[uninstallPersonaId]
+								? `此操作将删除该智能体的 ${sessionsByPersona[uninstallPersonaId].length} 个会话及所有相关数据。此操作无法撤销。`
+								: "此操作将删除该智能体及所有相关数据。此操作无法撤销。"}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>取消</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={confirmUninstall}
+							className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						>
+							确认卸载
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }

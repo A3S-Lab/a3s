@@ -35,12 +35,6 @@ const router = createHashRouter([
 				}),
 			},
 			{
-				path: "workflow",
-				lazy: async () => ({
-					Component: (await import("@/pages/workflow")).default,
-				}),
-			},
-			{
 				path: "workflow/:id",
 				lazy: async () => ({
 					Component: (await import("@/pages/workflow/editor")).default,
@@ -64,6 +58,12 @@ const router = createHashRouter([
 					Component: (await import("@/pages/skill-marketplace")).default,
 				}),
 			},
+			{
+				path: "knowledge",
+				lazy: async () => ({
+					Component: (await import("@/pages/agent/knowledge")).default,
+				}),
+			},
 		],
 	},
 	{
@@ -74,6 +74,30 @@ const router = createHashRouter([
 				index: true,
 				lazy: async () => ({
 					Component: (await import("@/pages/agent-detail")).default,
+				}),
+			},
+			{
+				path: "skills",
+				lazy: async () => ({
+					Component: (await import("@/pages/agent/skills")).default,
+				}),
+			},
+			{
+				path: "tasks",
+				lazy: async () => ({
+					Component: (await import("@/pages/agent/tasks")).default,
+				}),
+			},
+			{
+				path: "permissions",
+				lazy: async () => ({
+					Component: (await import("@/pages/agent/permissions")).default,
+				}),
+			},
+			{
+				path: "workflows",
+				lazy: async () => ({
+					Component: (await import("@/pages/agent/workflows")).default,
 				}),
 			},
 		],

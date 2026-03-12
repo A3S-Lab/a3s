@@ -8,12 +8,7 @@ import {
 import { sendToSession } from "@/hooks/use-agent-ws";
 import { cn } from "@/lib/utils";
 import agentModel from "@/models/agent.model";
-import {
-	Circle,
-	Gauge,
-	Loader2,
-	Sparkles,
-} from "lucide-react";
+import { Circle, Gauge, Loader2, Sparkles } from "lucide-react";
 import { useSnapshot } from "valtio";
 
 export function SessionStatusBar({

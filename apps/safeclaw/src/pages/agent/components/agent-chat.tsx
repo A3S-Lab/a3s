@@ -408,6 +408,7 @@ export default function AgentChat({
 					searchQuery={searchQuery}
 					onSearchChange={setSearchQuery}
 					onSessionChange={onSessionChange}
+					cwd={cwd}
 				/>
 				{isExited && (
 					<div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b text-xs text-muted-foreground shrink-0">
