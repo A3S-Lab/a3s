@@ -273,6 +273,51 @@ async for event in session.stream("Refactor the auth module"):
 </Tab>
 </Tabs>
 
+## Cancel Ongoing Operation
+
+Call `session.cancel()` to interrupt an in-progress `send()` or `stream()` call. The LLM streaming and any running tool execution will stop as soon as possible.
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// Cancel from another async context while send() is running
+const sendPromise = session.send('Write a 10,000 line program');
+
+// Cancel after 5 seconds
+setTimeout(() => {
+  const cancelled = session.cancel();
+  console.log('Cancelled:', cancelled); // true
+}, 5000);
+
+await sendPromise; // resolves with partial result
+```
+</Tab>
+<Tab value="Python">
+```python
+import threading
+
+# Cancel from another thread while send() is running
+def cancel_after_delay():
+    import time
+    time.sleep(5)
+    cancelled = session.cancel()
+    print(f"Cancelled: {cancelled}")  # True
+
+t = threading.Thread(target=cancel_after_delay)
+t.start()
+
+result = session.send("Write a 10,000 line program")  # returns partial result
+t.join()
+```
+</Tab>
+</Tabs>
+
+`cancel()` returns `true` if an operation was in progress and was cancelled, `false` if nothing was running.
+
+<Callout type="info">
+Cancellation is cooperative — the operation stops at the next LLM streaming chunk boundary or tool execution checkpoint. The `send()` / `stream()` call returns normally with whatever partial result was accumulated.
+</Callout>
+
 ## Conversation History (Rust)
 
 Maintain multi-turn conversations by passing history:
@@ -712,7 +757,7 @@ See [Providers & Configuration](/docs/code/providers) for the full HCL config re
     permissive: {
       type: 'bool',
       default: 'false',
-      description: 'Allow all tools by default. TS: `permissive: true`, Python: `permissive=True`',
+      description: 'Allow all tools without confirmation. Required for basic usage unless you configure a ConfirmationProvider. TS: `permissive: true`, Python: `permissive=True`. See Security docs for production setup.',
     },
     planning: {
       type: 'bool',

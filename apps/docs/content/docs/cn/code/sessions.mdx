@@ -262,6 +262,51 @@ async for event in session.stream("Refactor the auth module"):
 </Tab>
 </Tabs>
 
+## 取消正在进行的操作
+
+调用 `session.cancel()` 可以中断正在进行的 `send()` 或 `stream()` 调用。LLM 流式输出和任何正在运行的工具执行将尽快停止。
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// 在 send() 运行时从另一个异步上下文取消
+const sendPromise = session.send('编写一个 10,000 行的程序');
+
+// 5 秒后取消
+setTimeout(() => {
+  const cancelled = session.cancel();
+  console.log('已取消:', cancelled); // true
+}, 5000);
+
+await sendPromise; // 返回部分结果
+```
+</Tab>
+<Tab value="Python">
+```python
+import threading
+
+# 在 send() 运行时从另一个线程取消
+def cancel_after_delay():
+    import time
+    time.sleep(5)
+    cancelled = session.cancel()
+    print(f"已取消: {cancelled}")  # True
+
+t = threading.Thread(target=cancel_after_delay)
+t.start()
+
+result = session.send("编写一个 10,000 行的程序")  # 返回部分结果
+t.join()
+```
+</Tab>
+</Tabs>
+
+`cancel()` 返回 `true` 表示有操作正在进行并已被取消，返回 `false` 表示没有操作正在运行。
+
+<Callout type="info">
+取消是协作式的 — 操作会在下一个 LLM 流式输出块边界或工具执行检查点停止。`send()` / `stream()` 调用会正常返回已累积的部分结果。
+</Callout>
+
 ## 对话历史（Rust）
 
 通过传递历史记录维护多轮对话：
@@ -725,7 +770,7 @@ print(r.text)  # Cancelled task [a1b2c3d4]
       description: "Python: model='provider/model' · TypeScript: model: 'provider/model' · 默认值: 配置默认值",
     },
     "宽松模式": {
-      description: "Python: permissive=True · TypeScript: permissive: true · 默认值: false",
+      description: "允许所有工具无需确认即可执行。基本使用必需，除非配置了 ConfirmationProvider。Python: permissive=True · TypeScript: permissive: true · 默认值: false。生产环境配置请参考安全文档。",
     },
     "规划": {
       description: "Python: planning=True · TypeScript: planning: true · 默认值: false",

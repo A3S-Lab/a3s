@@ -11,6 +11,10 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 The simplest way to use A3S Code: create an agent, bind it to a workspace, and send a prompt.
 
+<Callout type="error">
+**IMPORTANT:** You must configure `permissive: true` in SessionOptions, or you'll get the error: "confirmation manager isn't configured". This allows tools to execute without manual confirmation. See [Security](/docs/code/security) for production configurations.
+</Callout>
+
 ## Basic Send
 
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>

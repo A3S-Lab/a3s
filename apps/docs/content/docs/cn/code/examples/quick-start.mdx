@@ -11,6 +11,10 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 使用 A3S Code 最简单的方式：创建 agent，绑定到工作区，发送提示。
 
+<Callout type="error">
+**重要提示：** 必须在 SessionOptions 中配置 `permissive: true`，否则会遇到错误："confirmation manager isn't configured"。这允许工具在无需手动确认的情况下执行。生产环境配置请参考[安全](/docs/code/security)。
+</Callout>
+
 ## 基本 Send
 
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
