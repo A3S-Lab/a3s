@@ -112,16 +112,18 @@ a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
 
 | Project | Version | Description | Docs |
 |---------|---------|-------------|------|
-| [a3s](crates/dev/) | 0.1.0 | Developer CLI — service orchestration, brew deps, k3s, tool proxy, agent scaffolding | [README](crates/dev/README.md) |
-| [a3s-box](crates/box/) | 0.6.0 | MicroVM sandbox runtime — VM isolation + TEE, Docker-like CLI (52 commands), CRI for K8s | [README](crates/box/README.md) |
-| [a3s-code](crates/code/) | 0.8.0 | AI coding agent framework — parallel plan execution, 14 tools, skills, subagents, memory | [README](crates/code/README.md) |
-| [SafeClaw](apps/safeclaw/) | 0.1.0 | Secure personal AI assistant — TEE support, desktop app (Tauri), embedded gateway | [README](apps/safeclaw/crates/safeclaw/README.md) |
-| [a3s-gateway](crates/gateway/) | 0.1.0 | K8s Ingress Controller — reverse proxy, middlewares, privacy routing | [README](crates/gateway/README.md) |
+| [a3s](crates/dev/) | 0.1.3 | Developer CLI — service orchestration, brew deps, k3s, tool proxy, agent scaffolding | [README](crates/dev/README.md) |
+| [a3s-box](crates/box/) | 0.8.8 | MicroVM sandbox runtime — VM isolation + TEE, Docker-like CLI (52 commands), CRI for K8s, no_fsync optimization | [README](crates/box/README.md) |
+| [a3s-code](crates/code/) | 1.4.3 | AI coding agent framework — parallel plan execution, 20 extension points, skills, subagents, memory, 1477 tests | [README](crates/code/README.md) |
+| [SafeClaw](apps/safeclaw/) | 0.1.1 | Secure personal AI assistant — TEE support, desktop app (Tauri), embedded gateway | [README](apps/safeclaw/crates/safeclaw/README.md) |
+| [a3s-gateway](crates/gateway/) | 0.2.3 | K8s Ingress Controller — reverse proxy, middlewares, privacy routing | [README](crates/gateway/README.md) |
 | [a3s-lane](crates/lane/) | 0.4.0 | Per-session priority queue — 6 lanes, concurrency, retry/DLQ | [README](crates/lane/README.md) |
-| [a3s-power](crates/power/) | 0.2.0 | Local LLM inference engine — Ollama + OpenAI compatible API | [README](crates/power/README.md) |
+| [a3s-power](crates/power/) | 0.4.2 | Local LLM inference engine — Ollama + OpenAI compatible API | [README](crates/power/README.md) |
 | [a3s-search](crates/search/) | 0.8.0 | Meta search engine — 8 engines, consensus ranking | [README](crates/search/README.md) |
 | [a3s-event](crates/event/) | 0.3.0 | Pluggable event system — provider-agnostic pub/sub, encryption | [README](crates/event/README.md) |
-| [a3s-flow](crates/flow/) | 0.1.0 | Workflow engine — JSON DAG execution for agentic workflows (Dify/n8n style) | [README](crates/flow/README.md) |
+| [a3s-flow](crates/flow/) | 0.3.4 | Workflow engine — JSON DAG execution, concurrent wave scheduling, pause/resume/terminate lifecycle | [README](crates/flow/README.md) |
+| [a3s-memory](crates/memory/) | 0.1.1 | Long-term memory system — persistent agent memory across sessions | [README](crates/memory/README.md) |
+| [a3s-ahp](crates/ahp/) | 0.1.0 | Agent Harness Protocol — universal protocol for supervising autonomous AI agents | [README](crates/ahp/README.md) |
 | [a3s-updater](crates/updater/) | 0.2.0 | Self-update for CLI binaries via GitHub Releases | [Source](crates/updater/) |
 
 ## Quick start
