@@ -34,6 +34,10 @@ Thumbs.db
 # Apps
 apps/os/
 
+# SafeClaw - keep only README.md in remote
+apps/safeclaw/*
+!apps/safeclaw/README.md
+
 # Docs (local only)
 /docs/
 
