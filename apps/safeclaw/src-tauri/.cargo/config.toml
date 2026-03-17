@@ -1,4 +1,0 @@
-[env]
-# macOS 26 (Tahoe) SDK has broken std::filesystem availability markers in libc++
-# that cause whisper-rs-sys/ggml to fail. Disable the availability checks entirely.
-CXXFLAGS = "-D_LIBCPP_DISABLE_AVAILABILITY"
