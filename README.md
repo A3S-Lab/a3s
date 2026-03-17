@@ -125,6 +125,7 @@ a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
 | [a3s-memory](crates/memory/) | 0.1.1 | Long-term memory system — persistent agent memory across sessions | [README](crates/memory/README.md) |
 | [a3s-ahp](crates/ahp/) | 0.1.0 | Agent Harness Protocol — universal protocol for supervising autonomous AI agents | [README](crates/ahp/README.md) |
 | [a3s-updater](crates/updater/) | 0.2.0 | Self-update for CLI binaries via GitHub Releases | [Source](crates/updater/) |
+| [a3s-faas](crates/faas/) | 0.1.0 | Serverless execution engine with MicroVM isolation | [README](crates/faas/README.md) |
 
 ## Quick start
 
@@ -160,6 +161,7 @@ a3s/
 │   ├── common/          # Shared types: PII classification, tools, transport
 │   ├── dev/             # a3s developer CLI
 │   ├── event/           # a3s-event pub/sub system
+│   ├── faas/            # a3s-faas serverless execution engine
 │   ├── flow/            # a3s-flow workflow engine (JSON DAG)
 │   ├── gateway/         # a3s-gateway K8s Ingress Controller
 │   ├── lane/            # a3s-lane scheduling
