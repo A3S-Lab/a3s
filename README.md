@@ -112,7 +112,7 @@ a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
 
 | Project | Version | Description | Docs |
 |---------|---------|-------------|------|
-| [a3s](crates/dev/) | 0.1.3 | Developer CLI — service orchestration, brew deps, k3s, tool proxy, agent scaffolding | [README](crates/dev/README.md) |
+| [a3s](crates/cli/) | 0.1.4 | CLI — service orchestration, brew deps, k3s, tool proxy, agent scaffolding | [README](crates/cli/README.md) |
 | [a3s-box](crates/box/) | 0.8.8 | MicroVM sandbox runtime — VM isolation + TEE, Docker-like CLI (52 commands), CRI for K8s, no_fsync optimization | [README](crates/box/README.md) |
 | [a3s-code](crates/code/) | 1.4.3 | AI coding agent framework — parallel plan execution, 20 extension points, skills, subagents, memory, 1477 tests | [README](crates/code/README.md) |
 | [SafeClaw](apps/safeclaw/) | 0.1.1 | Secure personal AI assistant — TEE support, desktop app (Tauri), embedded gateway | [README](apps/safeclaw/crates/safeclaw/README.md) |
