@@ -7,34 +7,47 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Headless Browser
 
-Engines like Google, Baidu, and Bing China require JavaScript rendering. A3S Search provides a `BrowserPool` that manages a shared headless Chrome instance with tab concurrency control.
+Engines like Google, Baidu, and Bing China require JavaScript rendering. A3S Search provides a `BrowserPool` that manages a shared headless browser instance (Lightpanda or Chrome) with tab concurrency control.
+
+## Browser Backends
+
+A3S Search supports two headless browser backends:
+
+- **Lightpanda** (default) — Lightweight browser (59MB, <100ms startup), Linux/macOS only
+- **Chrome** (fallback) — Chrome for Testing (200MB, 1-2s startup), all platforms
+
+The SDK automatically selects Lightpanda on supported platforms and falls back to Chrome on Windows or if Lightpanda is unavailable.
 
 ## Feature Gate
 
-Headless browser support is enabled by default via the `headless` Cargo feature:
+Headless browser support is **enabled by default** in SDKs, **opt-in** in Rust library:
 
 ```toml
-# Enabled by default (9 engines)
+# Rust library (opt-in for smaller binary)
 [dependencies]
-a3s-search = "0.8"
+a3s-search = "0.9"  # 6 HTTP engines only
 
-# Disable headless for smaller binary (6 engines)
+# With headless browser support (9 engines)
 [dependencies]
-a3s-search = { version = "0.8", default-features = false }
+a3s-search = { version = "0.9", features = ["headless", "lightpanda"] }
 ```
+
+**Python/Node.js SDKs**: Headless support (Lightpanda) is enabled by default. Automatically downloads browser (~59MB) on first use.
 
 ## BrowserPool
 
-`BrowserPool` manages a single Chrome process with a tab semaphore for concurrency control:
+`BrowserPool` manages a single browser process (Lightpanda or Chrome) with a tab semaphore for concurrency control:
 
 ```rust
-use a3s_search::browser::{BrowserPool, BrowserPoolConfig};
+use a3s_search::browser::{BrowserPool, BrowserPoolConfig, BrowserBackend};
 use std::sync::Arc;
 
 let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
+    backend: BrowserBackend::Lightpanda,  // or BrowserBackend::Chrome
     max_tabs: 4,
     headless: true,
     chrome_path: None,
+    lightpanda_path: None,
     proxy_url: None,
     launch_args: vec![],
 }));
@@ -44,11 +57,13 @@ let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
 
 <TypeTable
   type={{
+    backend: { type: 'BrowserBackend', default: 'Lightpanda', description: 'Browser backend: Lightpanda (default) or Chrome' },
     max_tabs: { type: 'usize', default: '4', description: 'Maximum concurrent browser tabs' },
-    headless: { type: 'bool', default: 'true', description: 'Run Chrome without UI' },
-    chrome_path: { type: 'Option<String>', default: 'None', description: 'Explicit Chrome binary path' },
+    headless: { type: 'bool', default: 'true', description: 'Run browser without UI' },
+    chrome_path: { type: 'Option<String>', default: 'None', description: 'Explicit Chrome binary path (only used when backend=Chrome)' },
+    lightpanda_path: { type: 'Option<String>', default: 'None', description: 'Explicit Lightpanda binary path (only used when backend=Lightpanda)' },
     proxy_url: { type: 'Option<String>', default: 'None', description: 'Proxy URL for all browser traffic' },
-    launch_args: { type: 'Vec<String>', default: '[]', description: 'Additional Chrome launch arguments' },
+    launch_args: { type: 'Vec<String>', default: '[]', description: 'Additional browser launch arguments' },
   }}
 />
 
@@ -116,17 +131,28 @@ Each built-in headless engine uses an appropriate strategy:
   }}
 />
 
-## Chrome Auto-Detection
+## Browser Auto-Detection
 
-When `chrome_path` is `None`, A3S Search looks for Chrome in this order:
+When `chrome_path` or `lightpanda_path` is `None`, A3S Search automatically detects or downloads the browser:
+
+### Lightpanda (Default)
+
+1. `LIGHTPANDA` environment variable
+2. System PATH (`lightpanda` command)
+3. Cache: `~/.a3s/lightpanda/<tag>/lightpanda`
+4. Auto-download from GitHub releases (59MB)
+
+Supported platforms: macOS (arm64, x64), Linux (x64, arm64). First run downloads ~59MB, startup <100ms.
+
+### Chrome (Fallback)
 
 1. `CHROME` environment variable
 2. System PATH (`google-chrome`, `chromium`, `chrome`, etc.)
 3. Well-known install paths (macOS `/Applications/...`, Linux `/usr/bin/...`, Windows `C:\Program Files\...`)
-4. Auto-download Chrome for Testing from Google CDN
-5. Cache in `~/.a3s/chromium/`
+4. Cache: `~/.a3s/chromium/<version>/`
+5. Auto-download Chrome for Testing from Google CDN (200MB)
 
-Supported platforms: macOS (arm64, x64), Linux (x64), and Windows (x64, x86). The first run may download ~150MB.
+Supported platforms: macOS (arm64, x64), Linux (x64), Windows (x64, x86). First run downloads ~150MB, startup 1-2s.
 
 ## Using Headless Engines
 

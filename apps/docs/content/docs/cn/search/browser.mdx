@@ -7,34 +7,47 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 无头浏览器
 
-Google、Baidu 和 Bing China 等引擎需要 JavaScript 渲染。A3S Search 提供了 `BrowserPool`，用于管理共享的无头 Chrome 实例，并通过标签页并发控制来协调访问。
+Google、Baidu 和 Bing China 等引擎需要 JavaScript 渲染。A3S Search 提供了 `BrowserPool`，用于管理共享的无头浏览器实例（Lightpanda 或 Chrome），并通过标签页并发控制来协调访问。
+
+## 浏览器后端
+
+A3S Search 支持两种无头浏览器后端：
+
+- **Lightpanda**（默认）— 轻量级浏览器（59MB，<100ms 启动），仅支持 Linux/macOS
+- **Chrome**（备用）— Chrome for Testing（200MB，1-2s 启动），支持所有平台
+
+SDK 会在支持的平台上自动选择 Lightpanda，在 Windows 或 Lightpanda 不可用时回退到 Chrome。
 
 ## 功能开关
 
-无头浏览器支持通过 `headless` Cargo feature 默认启用：
+无头浏览器支持在 **SDK 中默认启用**，在 **Rust 库中需要手动启用**：
 
 ```toml
-# 默认启用（9 个引擎）
+# Rust 库（手动启用以减小二进制体积）
 [dependencies]
-a3s-search = "0.8"
+a3s-search = "0.9"  # 仅 6 个 HTTP 引擎
 
-# 禁用无头浏览器以减小二进制体积（6 个引擎）
+# 启用无头浏览器支持（9 个引擎）
 [dependencies]
-a3s-search = { version = "0.8", default-features = false }
+a3s-search = { version = "0.9", features = ["headless", "lightpanda"] }
 ```
+
+**Python/Node.js SDK**：无头浏览器支持（Lightpanda）默认启用。首次使用时自动下载浏览器（~59MB）。
 
 ## BrowserPool
 
-`BrowserPool` 管理单个 Chrome 进程，并通过标签页信号量进行并发控制：
+`BrowserPool` 管理单个浏览器进程（Lightpanda 或 Chrome），并通过标签页信号量进行并发控制：
 
 ```rust
-use a3s_search::browser::{BrowserPool, BrowserPoolConfig};
+use a3s_search::browser::{BrowserPool, BrowserPoolConfig, BrowserBackend};
 use std::sync::Arc;
 
 let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
+    backend: BrowserBackend::Lightpanda,  // 或 BrowserBackend::Chrome
     max_tabs: 4,
     headless: true,
     chrome_path: None,
+    lightpanda_path: None,
     proxy_url: None,
     launch_args: vec![],
 }));
@@ -44,11 +57,13 @@ let pool = Arc::new(BrowserPool::new(BrowserPoolConfig {
 
 <TypeTable
   type={{
-    max_tabs: { type: 'usize', default: '4', description: 'Maximum concurrent browser tabs' },
-    headless: { type: 'bool', default: 'true', description: 'Run Chrome without UI' },
-    chrome_path: { type: 'Option<String>', default: 'None', description: 'Explicit Chrome binary path' },
-    proxy_url: { type: 'Option<String>', default: 'None', description: 'Proxy URL for all browser traffic' },
-    launch_args: { type: 'Vec<String>', default: '[]', description: 'Additional Chrome launch arguments' },
+    backend: { type: 'BrowserBackend', default: 'Lightpanda', description: '浏览器后端：Lightpanda（默认）或 Chrome' },
+    max_tabs: { type: 'usize', default: '4', description: '最大并发浏览器标签页数' },
+    headless: { type: 'bool', default: 'true', description: '无 UI 模式运行浏览器' },
+    chrome_path: { type: 'Option<String>', default: 'None', description: '显式指定 Chrome 二进制路径（仅当 backend=Chrome 时使用）' },
+    lightpanda_path: { type: 'Option<String>', default: 'None', description: '显式指定 Lightpanda 二进制路径（仅当 backend=Lightpanda 时使用）' },
+    proxy_url: { type: 'Option<String>', default: 'None', description: '所有浏览器流量的代理 URL' },
+    launch_args: { type: 'Vec<String>', default: '[]', description: '额外的浏览器启动参数' },
   }}
 />
 

@@ -14,14 +14,20 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 ```toml
 [dependencies]
-a3s-search = "0.8"
+a3s-search = "0.9"
 tokio = { version = "1", features = ["full"] }
 ```
 
-Headless browser engines (Google, Baidu, Bing China) are enabled by default. HTTP-only:
+Headless browser engines (Google, Baidu, Bing China) are **opt-in** for Rust library. HTTP-only (default):
 
 ```toml
-a3s-search = { version = "0.7", default-features = false }
+a3s-search = "0.9"  # 6 HTTP engines only
+```
+
+With headless browser support (Lightpanda + Chrome):
+
+```toml
+a3s-search = { version = "0.9", features = ["headless", "lightpanda"] }  # 9 engines
 ```
 
 </Tab>
@@ -31,7 +37,7 @@ a3s-search = { version = "0.7", default-features = false }
 pip install a3s-search
 ```
 
-Python 3.9–3.13. Pre-built wheels for Linux (glibc/musl), macOS, and Windows.
+Python 3.9–3.13. Pre-built wheels for Linux (glibc/musl), macOS, and Windows. **Headless browser support (Lightpanda) is enabled by default** — automatically downloads browser (~59MB) on first use.
 
 </Tab>
 <Tab value="Node.js">
@@ -40,7 +46,7 @@ Python 3.9–3.13. Pre-built wheels for Linux (glibc/musl), macOS, and Windows.
 npm install @a3s-lab/search
 ```
 
-Node.js 16+. Native binary for Linux, macOS, and Windows (x64/arm64).
+Node.js 16+. Native binary for Linux, macOS, and Windows (x64/arm64). **Headless browser support (Lightpanda) is enabled by default** — automatically downloads browser (~59MB) on first use.
 
 </Tab>
 <Tab value="Homebrew">
