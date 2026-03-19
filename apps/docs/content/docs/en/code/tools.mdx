@@ -254,7 +254,7 @@ Multi-phase semantic code search. Extracts keywords from natural language, searc
 
 ### `agentic_parse`
 
-LLM-enhanced document parsing. Decodes binary formats via `DocumentParserRegistry`, then applies structural extraction and optionally an LLM pass for semantic QA.
+LLM-enhanced document parsing. Applies structural extraction and optionally an LLM pass for semantic QA.
 
 ```json
 {
@@ -269,30 +269,9 @@ LLM-enhanced document parsing. Decodes binary formats via `DocumentParserRegistr
 
 Omit `query` for a fast structural overview without LLM cost.
 
-### Document Parser Support
+### Supported Formats
 
-For binary formats (PDF, Excel, Word), pass a `DocumentParserRegistry` as a plugin option:
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-import { AgenticParse, DocumentParserRegistry } from '@a3s-lab/code';
-
-const session = agent.session('.', {
-  plugins: [
-    new AgenticParse({ documentParserRegistry: new DocumentParserRegistry() }),
-  ],
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-# DocumentParserRegistry is a signal enabling binary format support.
-# Custom parsers (PDF, Excel) are registered in Rust via the DocumentParser trait.
-opts.plugins = [AgenticParse()]
-```
-</Tab>
-</Tabs>
+`agentic_parse` supports plain-text formats out of the box: source code, Markdown, JSON, TOML, YAML, HCL, CSV, and more. Binary formats (PDF, Word, Excel) require a custom `DocumentParser` implementation in Rust — not currently exposed in the TypeScript or Python SDKs.
 
 ## Direct Tool Execution
 

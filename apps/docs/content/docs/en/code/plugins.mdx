@@ -89,34 +89,30 @@ This means plugin companion skills appear in the **first turn's system prompt** 
 
 If a plugin's `load()` call fails (e.g. `AgenticParse` without an LLM client), only that plugin is skipped. Other plugins continue loading normally. Failed plugins do **not** register their companion skills.
 
-## Document Parser Support
+## Supported File Formats
 
-For binary file formats (PDF, Excel, Word), pass a `DocumentParserRegistry` as a plugin option. This signals to the plugin that document parsing is enabled for that session.
+Both `AgenticSearch` and `AgenticParse` work with plain-text formats out of the box — no extra configuration needed:
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-import { AgenticSearch, AgenticParse, DocumentParserRegistry } from '@a3s-lab/code';
+| Category | Formats |
+|----------|---------|
+| Source code | Rust, Python, TypeScript, JavaScript, Go, Java, C/C++, and more |
+| Config / data | JSON, TOML, YAML, HCL, CSV, TSV |
+| Documents | Markdown, plain text |
 
-const session = agent.session('.', {
-  plugins: [
-    new AgenticSearch({ documentParserRegistry: new DocumentParserRegistry() }),
-    new AgenticParse({ documentParserRegistry: new DocumentParserRegistry() }),
-  ],
-});
+Binary formats (PDF, Word, Excel) require a custom `DocumentParser` implementation in Rust. The `DocumentParser` trait is:
+
+```rust
+pub trait DocumentParser: Send + Sync {
+    fn name(&self) -> &str;
+    fn supported_extensions(&self) -> &[&str];
+    fn parse(&self, path: &std::path::Path) -> Result<String>;
+}
 ```
-</Tab>
-<Tab value="Python">
-```python
-# In Python, plugins automatically use any registered document parsers
-# (custom parsers are registered in Rust via the DocumentParser trait)
-opts.plugins = [AgenticSearch(), AgenticParse()]
-```
-</Tab>
-</Tabs>
+
+Register a custom parser by calling `DocumentParserRegistry::register()` in Rust before building the session options. This is not currently exposed in the TypeScript or Python SDKs.
 
 <Callout type="info">
-`DocumentParserRegistry` in the SDK is a signal — it enables the binary-format parsing path. Custom parsers (PDF, Excel, DOCX) are implemented in Rust by implementing the `DocumentParser` trait and registering with `DocumentParserRegistry::register()`.
+The `DocumentParserRegistry` class in the Node.js SDK is reserved for future use and has no effect at runtime. Pass `new AgenticSearch()` or `new AgenticParse()` directly — no registry needed.
 </Callout>
 
 ## Building a Custom Plugin

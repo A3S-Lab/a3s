@@ -89,34 +89,20 @@ build_session(opts)
 
 如果某个插件的 `load()` 调用失败（例如 `AgenticParse` 没有 LLM 客户端），只有该插件会被跳过，其他插件正常继续加载。失败的插件**不会**注册其配套技能。
 
-## 文档解析器支持
+## 支持的文件格式
 
-对于二进制文件格式（PDF、Excel、Word），将 `DocumentParserRegistry` 作为插件选项传入。这会通知插件该会话已启用文档解析功能。
+`AgenticSearch` 和 `AgenticParse` 开箱即用地支持纯文本格式，无需额外配置：
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-import { AgenticSearch, AgenticParse, DocumentParserRegistry } from '@a3s-lab/code';
+| 类别 | 格式 |
+|------|------|
+| 源代码 | Rust、Python、TypeScript、JavaScript、Go、Java、C/C++ 等 |
+| 配置/数据 | JSON、TOML、YAML、HCL、CSV、TSV |
+| 文档 | Markdown、纯文本 |
 
-const session = agent.session('.', {
-  plugins: [
-    new AgenticSearch({ documentParserRegistry: new DocumentParserRegistry() }),
-    new AgenticParse({ documentParserRegistry: new DocumentParserRegistry() }),
-  ],
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-# Python 中，插件自动使用已注册的文档解析器
-# （自定义解析器通过 DocumentParser trait 在 Rust 中注册）
-opts.plugins = [AgenticSearch(), AgenticParse()]
-```
-</Tab>
-</Tabs>
+二进制格式（PDF、Word、Excel）需要在 Rust 中通过 `DocumentParser` trait 自定义实现。该接口当前未在 TypeScript 或 Python SDK 中暴露。
 
 <Callout type="info">
-SDK 中的 `DocumentParserRegistry` 是一个信号 — 它启用二进制格式解析路径。自定义解析器（PDF、Excel、DOCX）通过实现 `DocumentParser` trait 并调用 `DocumentParserRegistry::register()` 在 Rust 中注册。
+Node.js SDK 中的 `DocumentParserRegistry` 类保留供未来使用，当前在运行时不起任何作用。直接传入 `new AgenticSearch()` 或 `new AgenticParse()` 即可，无需注册表。
 </Callout>
 
 ## 构建自定义插件

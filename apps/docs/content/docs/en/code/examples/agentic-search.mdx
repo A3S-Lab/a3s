@@ -456,26 +456,23 @@ result = session.send("""
 
 ---
 
-### Example 6: Document Parsing Configuration
+### Example 6: Supported File Formats
 
-Enable parsing of binary documents (PDF, DOCX, etc.) by passing `DocumentParserRegistry` as a **plugin option**:
+`agentic_search` handles source code, Markdown, JSON, TOML, YAML, HCL, CSV, and other plain-text formats out of the box — no extra configuration needed. Just enable the plugin:
 
 <Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
 <Tab value="TypeScript">
 ```typescript
-import { Agent, AgenticSearch, DocumentParserRegistry } from '@a3s-lab/code';
+import { Agent, AgenticSearch } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.', {
-  plugins: [
-    new AgenticSearch({ documentParserRegistry: new DocumentParserRegistry() }),
-  ],
+  plugins: [new AgenticSearch()],
   builtinSkills: true,
 });
 
-// Now agentic_search can parse PDF, DOCX, and other binary documents
 const result = await session.send(
-  'Search for "privacy policy" in all documents including PDFs'
+  'Search for "privacy policy" across all source files'
 );
 ```
 </Tab>
@@ -485,40 +482,30 @@ from a3s_code import Agent, SessionOptions, AgenticSearch
 
 agent = Agent.create("agent.hcl")
 opts = SessionOptions()
-# Python plugins automatically use registered document parsers
 opts.plugins = [AgenticSearch()]
 opts.builtin_skills = True
 
 session = agent.session(".", opts)
-
-# Now agentic_search can parse PDF, DOCX, and other binary documents
-result = session.send(
-    "Search for 'privacy policy' in all documents including PDFs"
-)
+result = session.send("Search for 'privacy policy' across all source files")
 ```
 </Tab>
 <Tab value="Rust">
 ```rust
 use a3s_code_core::{Agent, AgenticSearchPlugin, SessionOptions};
-use a3s_code_core::DocumentParserRegistry;
-use std::sync::Arc;
 
 let agent = Agent::from_file("agent.hcl").await?;
 
 let opts = SessionOptions::new()
     .with_plugin(AgenticSearchPlugin::new())
-    .with_document_parser_registry(Arc::new(DocumentParserRegistry::new()))
     .with_builtin_skills(true);
 
 let session = agent.session(".", opts).await?;
-
-// Now agentic_search can parse PDF, DOCX, and other binary documents
-let result = session.send(
-    "Search for 'privacy policy' in all documents including PDFs"
-).await?;
+let result = session.send("Search for 'privacy policy' across all source files").await?;
 ```
 </Tab>
 </Tabs>
+
+Binary formats (PDF, Word, Excel) require a custom `DocumentParser` implementation in Rust via the `DocumentParser` trait. This is not currently exposed in the TypeScript or Python SDKs.
 
 <Callout type="info">
 Without `DocumentParserRegistry`, agentic_search only reads plain text files. Document parsing is optional and configured per-plugin.
