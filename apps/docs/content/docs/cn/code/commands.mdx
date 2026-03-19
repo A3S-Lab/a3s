@@ -1,0 +1,309 @@
+---
+title: 指令与调度
+description: 斜杠指令、BTW 临时问询和定时循环任务
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 指令与调度
+
+会话在将输入传给 LLM 之前会先拦截特殊命令。本文涵盖三项相关能力：用于会话控制的斜杠指令、用于临时侧问的 `btw()`，以及用于循环提示的定时调度器。
+
+## 斜杠指令
+
+在任意会话中输入 `/help` 可列出所有可用指令。指令在到达 LLM 之前被拦截执行 — 即时生效，不会向对话历史添加新轮次。
+
+| 指令 | 描述 |
+|------|------|
+| `/help` | 列出可用指令 |
+| `/model [provider/model]` | 显示或切换当前模型 |
+| `/cost` | 显示 token 使用量和估算费用 |
+| `/history` | 显示对话轮次数和 token 统计 |
+| `/clear` | 清空对话历史 |
+| `/compact` | 手动触发上下文压缩 |
+| `/tools` | 列出已注册的工具 |
+| `/mcp` | 列出已连接的 MCP 服务器及其工具 |
+| `/loop [interval] <prompt>` | 调度循环提示（默认间隔：10m） |
+| `/cron-list` | 列出所有已调度的循环提示 |
+| `/cron-cancel <id>` | 按 ID 取消定时任务 |
+
+### 列出所有指令（SDK）
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const commands = session.listCommands();
+for (const cmd of commands) {
+  const usage = cmd.usage ? `  usage: ${cmd.usage}` : '';
+  console.log(`/${cmd.name.padEnd(15)} ${cmd.description}${usage}`);
+}
+```
+</Tab>
+<Tab value="Python">
+```python
+commands = session.list_commands()
+for cmd in commands:
+    usage = f"  usage: {cmd['usage']}" if cmd.get('usage') else ''
+    print(f"/{cmd['name']:15s} {cmd['description']}{usage}")
+```
+</Tab>
+</Tabs>
+
+### 自定义指令
+
+注册在 LLM 之前处理的自定义斜杠指令：
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+function statusHandler(args: string, ctx: CommandContext): string {
+  console.log(`Model: ${ctx.model}, History: ${ctx.historyLen} msgs, args: ${args}`);
+  return `Status: OK`;
+}
+
+session.registerCommand("status", "显示会话状态", statusHandler);
+
+const result = await session.send("/status hello");
+console.log(result.text);
+// Command 'status' executed successfully
+```
+
+处理函数接收：
+- `args` — 指令名称之后的所有内容（字符串）
+- `ctx` — 包含 `sessionId`、`model`、`historyLen`、`totalTokens`、`totalCost`、`toolNames` 和 `mcpServers` 的对象
+
+<Callout type="warn">
+由于 napi-rs 的限制，处理函数的返回值当前无法被捕获。可在处理函数中使用 `console.log()` 或其他副作用。未来版本将支持返回值捕获。
+</Callout>
+
+</Tab>
+<Tab value="Python">
+```python
+def status_handler(args: str, ctx: dict) -> str:
+    return (
+        f"Model: {ctx['model']}, "
+        f"History: {ctx['history_len']} msgs, "
+        f"args: {args!r}"
+    )
+
+session.register_command("status", "Show session status", status_handler)
+
+result = session.send("/status hello")
+print(result.text)
+# Model: openai/gpt-4o, History: 2 msgs, args: 'hello'
+```
+
+处理函数接收：
+- `args` — 指令名称之后的所有内容（字符串）
+- `ctx` — 包含 `session_id`、`model` 和 `history_len` 的字典
+
+</Tab>
+</Tabs>
+
+---
+
+## BTW — 临时旁路问题
+
+`btw()` 方法允许你提出旁路问题，而不会影响对话历史。适用于快速查询、澄清或上下文检查——这些内容不应成为主任务流程的一部分。
+
+<Callout type="info">
+**关键特性：**
+- 问题和答案永远不会添加到对话历史中
+- 使用当前历史的只读快照作为上下文
+- 可与正在进行的 `send()` 或 `stream()` 操作并发调用
+- 不执行工具 — 答案仅基于 LLM 知识 + 当前上下文
+- 立即返回答案和 token 使用量
+</Callout>
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// 主对话
+const result = await session.send('解释认证系统');
+console.log(result.text);
+
+// 快速旁路问题（不添加到历史）
+const btw = await session.btw('法国的首都是什么？');
+console.log(btw.answer);        // "巴黎"
+console.log(btw.totalTokens);   // 此查询的 token 使用量
+
+// 继续主对话 — btw 问题不在历史中
+const result2 = await session.send('给我看登录代码');
+```
+</Tab>
+<Tab value="Python">
+```python
+# 主对话
+result = session.send("解释认证系统")
+print(result.text)
+
+# 快速旁路问题（不添加到历史）
+btw = session.btw("法国的首都是什么？")
+print(btw.answer)        # "巴黎"
+print(btw.total_tokens)  # 此查询的 token 使用量
+
+# 继续主对话 — btw 问题不在历史中
+result2 = session.send("给我看登录代码")
+```
+</Tab>
+</Tabs>
+
+### BtwResult
+
+<TypeTable
+  type={{
+    question: {
+      type: 'string',
+      description: '提出的原始问题',
+    },
+    answer: {
+      type: 'string',
+      description: 'LLM 对问题的回答',
+    },
+    prompt_tokens: {
+      type: 'number',
+      description: '提示词中的 token 数量（TS: `promptTokens`，Python: `prompt_tokens`）',
+    },
+    completion_tokens: {
+      type: 'number',
+      description: '补全中的 token 数量（TS: `completionTokens`，Python: `completion_tokens`）',
+    },
+    total_tokens: {
+      type: 'number',
+      description: '使用的总 token 数（TS: `totalTokens`，Python: `total_tokens`）',
+    },
+  }}
+/>
+
+### 使用场景
+
+- **快速查询**："语言 Y 中 X 的语法是什么？"
+- **澄清**："这个错误代码是什么意思？"
+- **上下文检查**："当前目录中有哪些文件？"
+- **辅助计算**："1000 的 15% 是多少？"
+- **常识问题**：与主任务无关的问题
+
+---
+
+## 定时任务
+
+会话通过 `/loop` 斜杠指令或程序化调度器 API 支持循环提示。定时任务在每次 `send()` 调用返回后、其间隔时间到期时触发。后台 ticker 在第一次 `send()` 时懒启动，会话销毁时自动停止。
+
+<Callout type="info">
+**限制：** 每个会话最多 50 个定时任务。任务在 3 天后自动过期。重入守卫（`is_processing_cron`）防止嵌套触发。
+</Callout>
+
+### 调度循环提示
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// 通过 /loop 斜杠指令
+const r = await session.send('/loop 30s check deployment status');
+console.log(r.text);
+// Scheduled [a1b2c3d4]: "check deployment status" — fires every 30s
+
+// 程序化（间隔单位为秒）
+const taskId = session.scheduleTask('summarize recent commits', 300);  // 每 5 分钟
+console.log(`Scheduled: ${taskId}`);
+```
+</Tab>
+<Tab value="Python">
+```python
+# 通过 /loop 斜杠指令
+r = session.send('/loop 30s check deployment status')
+print(r.text)
+# Scheduled [a1b2c3d4]: "check deployment status" — fires every 30s
+
+# 程序化（间隔单位为秒）
+task_id = session.schedule_task('summarize recent commits', 300)  # 每 5 分钟
+print(f'Scheduled: {task_id}')
+```
+</Tab>
+</Tabs>
+
+**间隔语法：**
+
+| 格式 | 示例 | 含义 |
+|------|------|------|
+| 秒 | `30s` | 每 30 秒 |
+| 分钟 | `5m` | 每 5 分钟 |
+| 小时 | `2h` | 每 2 小时 |
+| 天 | `1d` | 每天 |
+| 前置 | `/loop 5m <prompt>` | 间隔在提示词前 |
+| 后置 | `/loop <prompt> every 5m` | `every` 子句在末尾 |
+| 默认 | `/loop <prompt>` | 每 10 分钟 |
+
+### 列出定时任务
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// 程序化
+const tasks = session.listScheduledTasks();
+for (const t of tasks) {
+  console.log(`[${t.id}] every ${t.intervalSecs}s — fires in ${t.nextFireInSecs}s — "${t.prompt}"`);
+}
+
+// 通过斜杠指令
+const r = await session.send('/cron-list');
+console.log(r.text);
+```
+</Tab>
+<Tab value="Python">
+```python
+# 程序化
+tasks = session.list_scheduled_tasks()
+for t in tasks:
+    print(f"[{t['id']}] every {t['interval_secs']}s "
+          f"— fires in {t['next_fire_in_secs']}s "
+          f"— \"{t['prompt']}\"")
+
+# 通过斜杠指令
+r = session.send('/cron-list')
+print(r.text)
+```
+</Tab>
+</Tabs>
+
+### 取消定时任务
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// 程序化
+const ok = session.cancelScheduledTask(taskId);
+console.log(`Cancelled: ${ok}`);  // true
+
+// 通过斜杠指令
+const r = await session.send(`/cron-cancel ${taskId}`);
+console.log(r.text);  // Cancelled task [a1b2c3d4]
+```
+</Tab>
+<Tab value="Python">
+```python
+# 程序化
+ok = session.cancel_scheduled_task(task_id)
+print(f'Cancelled: {ok}')  # True
+
+# 通过斜杠指令
+r = session.send(f'/cron-cancel {task_id}')
+print(r.text)  # Cancelled task [a1b2c3d4]
+```
+</Tab>
+</Tabs>
+
+### ScheduledTaskInfo 字段
+
+<TypeTable
+  type={{
+    id: { type: 'string', description: '唯一 8 字符任务 ID（十六进制）' },
+    prompt: { type: 'string', description: '每次触发时执行的提示词' },
+    interval_secs: { type: 'number', description: '触发间隔（秒）' },
+    recurring: { type: 'bool', description: 'true = 循环，false = 单次' },
+    fire_count: { type: 'number', description: '已触发总次数' },
+    next_fire_in_secs: { type: 'number', description: '距下次触发的估计秒数' },
+  }}
+/>
