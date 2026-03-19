@@ -186,15 +186,17 @@ let evidence_score = file_relevance * weight_sum / (sampled.len() as f32).sqrt()
 
 ### Example 1: Basic Search
 
+`agentic_search` is a plugin tool — mount it via `plugins` before use.
+
 <Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
 <Tab value="TypeScript">
 ```typescript
-import { Agent } from '@a3s-lab/code';
+import { Agent, AgenticSearch } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.', {
+  plugins: [new AgenticSearch()],
   builtinSkills: true,
-  permissive: true,
 });
 
 // LLM will automatically call agentic_search tool
@@ -207,12 +209,12 @@ console.log(result.text);
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent, SessionOptions
+from a3s_code import Agent, SessionOptions, AgenticSearch
 
-agent = Agent("agent.hcl")
+agent = Agent.create("agent.hcl")
 opts = SessionOptions()
+opts.plugins = [AgenticSearch()]
 opts.builtin_skills = True
-opts.permissive = True
 
 session = agent.session(".", opts)
 
@@ -226,15 +228,15 @@ print(result.text)
 </Tab>
 <Tab value="Rust">
 ```rust
-use a3s_code_core::{Agent, SessionOptions};
+use a3s_code_core::{Agent, AgenticSearchPlugin, SessionOptions};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let agent = Agent::from_file("agent.hcl").await?;
 
-    let opts = SessionOptions::default()
-        .with_builtin_skills(true)
-        .with_permissive(true);
+    let opts = SessionOptions::new()
+        .with_plugin(AgenticSearchPlugin::new())
+        .with_builtin_skills(true);
 
     let session = agent.session(".", opts).await?;
 
@@ -456,16 +458,18 @@ result = session.send("""
 
 ### Example 6: Document Parsing Configuration
 
-Enable parsing of binary documents (PDF, DOCX, etc.) by configuring `DocumentParserRegistry`:
+Enable parsing of binary documents (PDF, DOCX, etc.) by passing `DocumentParserRegistry` as a **plugin option**:
 
 <Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
 <Tab value="TypeScript">
 ```typescript
-import { Agent, DocumentParserRegistry } from '@a3s-lab/code';
+import { Agent, AgenticSearch, DocumentParserRegistry } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.', {
-  documentParserRegistry: new DocumentParserRegistry(),
+  plugins: [
+    new AgenticSearch({ documentParserRegistry: new DocumentParserRegistry() }),
+  ],
   builtinSkills: true,
 });
 
@@ -477,11 +481,12 @@ const result = await session.send(
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent, SessionOptions, DocumentParserRegistry
+from a3s_code import Agent, SessionOptions, AgenticSearch
 
-agent = Agent("agent.hcl")
+agent = Agent.create("agent.hcl")
 opts = SessionOptions()
-opts.document_parser_registry = DocumentParserRegistry()
+# Python plugins automatically use registered document parsers
+opts.plugins = [AgenticSearch()]
 opts.builtin_skills = True
 
 session = agent.session(".", opts)
@@ -494,15 +499,15 @@ result = session.send(
 </Tab>
 <Tab value="Rust">
 ```rust
-use a3s_code_core::{Agent, SessionOptions};
-use a3s_code_core::tools::document_parser::DocumentParserRegistry;
+use a3s_code_core::{Agent, AgenticSearchPlugin, SessionOptions};
+use a3s_code_core::DocumentParserRegistry;
 use std::sync::Arc;
 
 let agent = Agent::from_file("agent.hcl").await?;
-let registry = DocumentParserRegistry::new();
 
-let opts = SessionOptions::default()
-    .with_document_parser_registry(Arc::new(registry))
+let opts = SessionOptions::new()
+    .with_plugin(AgenticSearchPlugin::new())
+    .with_document_parser_registry(Arc::new(DocumentParserRegistry::new()))
     .with_builtin_skills(true);
 
 let session = agent.session(".", opts).await?;
@@ -516,7 +521,7 @@ let result = session.send(
 </Tabs>
 
 <Callout type="info">
-Without `DocumentParserRegistry`, agentic_search only reads plain text files. Document parsing is optional and can be configured per-session.
+Without `DocumentParserRegistry`, agentic_search only reads plain text files. Document parsing is optional and configured per-plugin.
 </Callout>
 
 ---
@@ -661,6 +666,6 @@ const matches = await session.send(
 
 ## Related
 
-- [Agentic Search Tool Reference](/en/docs/code/tools/agentic-search) — Complete tool documentation
-- [Ripgrep Context Provider](/en/docs/code/examples/ripgrep-context) — Ripgrep-based context provider
+- [Plugin Tools Reference](/docs/code/tools#plugin-tools) — agentic_search and agentic_parse reference
+- [Ripgrep Context Provider](/docs/code/examples/ripgrep-context) — Ripgrep-based context provider
 - [Sirchmunk Paper](https://github.com/modelscope/sirchmunk) — Original inspiration

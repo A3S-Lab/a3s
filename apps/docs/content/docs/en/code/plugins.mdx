@@ -1,0 +1,310 @@
+---
+title: Plugin System
+description: Opt-in tool+skill bundles — mount agentic_search, agentic_parse, or build your own plugin
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Plugin System
+
+A3S Code's plugin system lets you mount optional capabilities onto a session. Each plugin is a self-contained bundle that registers:
+
+1. **One or more tools** into `ToolRegistry` — the LLM can call them during agent turns
+2. **Companion skills** into `SkillRegistry` — automatically injected into the system prompt so the LLM knows when and how to use the tools
+
+Plugins are **opt-in**. No plugin tools are loaded by default — you choose exactly which capabilities each session needs.
+
+## Built-in Plugins
+
+| Plugin class | Tool | Companion skill |
+|---|---|---|
+| `AgenticSearch` | `agentic_search` — multi-phase semantic code search | `agentic-search` — guides usage, modes, and best practices |
+| `AgenticParse` | `agentic_parse` — LLM-enhanced document parsing | `agentic-parse` — guides parse strategies and extraction |
+
+For parameters, search modes, and examples see the [Agentic Search deep dive](/docs/code/examples/agentic-search).
+
+## Mounting Plugins
+
+<Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent, AgenticSearch, AgenticParse } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('.', {
+  plugins: [
+    new AgenticSearch(),
+    new AgenticParse(),
+  ],
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions, AgenticSearch, AgenticParse
+
+agent = Agent.create("agent.hcl")
+opts = SessionOptions()
+opts.plugins = [AgenticSearch(), AgenticParse()]
+session = agent.session(".", opts)
+```
+</Tab>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions, AgenticSearchPlugin, AgenticParsePlugin};
+
+let session = agent
+    .session(workspace, SessionOptions::new()
+        .with_plugin(AgenticSearchPlugin::new())
+        .with_plugin(AgenticParsePlugin::new()))
+    .await?;
+```
+</Tab>
+</Tabs>
+
+## How Plugin Loading Works
+
+When `build_session()` is called, plugins are loaded **before** the system prompt is assembled:
+
+```
+build_session(opts)
+  │
+  ├─ 1. Build SkillRegistry (builtins + session skill_dirs)
+  │
+  ├─ 2. Load each plugin in order
+  │      plugin.load(tool_registry, ctx)    → registers tool
+  │      plugin.skills()                    → returns companion skills
+  │      skill_registry.register(skill)     → added before system prompt
+  │
+  ├─ 3. skill_registry.to_system_prompt()   → includes plugin skills
+  │
+  └─ 4. Session starts — LLM sees plugin tools + skills from turn 1
+```
+
+This means plugin companion skills appear in the **first turn's system prompt** — the LLM knows about them before any user message is processed.
+
+### Failure Isolation
+
+If a plugin's `load()` call fails (e.g. `AgenticParse` without an LLM client), only that plugin is skipped. Other plugins continue loading normally. Failed plugins do **not** register their companion skills.
+
+## Document Parser Support
+
+For binary file formats (PDF, Excel, Word), pass a `DocumentParserRegistry` as a plugin option. This signals to the plugin that document parsing is enabled for that session.
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { AgenticSearch, AgenticParse, DocumentParserRegistry } from '@a3s-lab/code';
+
+const session = agent.session('.', {
+  plugins: [
+    new AgenticSearch({ documentParserRegistry: new DocumentParserRegistry() }),
+    new AgenticParse({ documentParserRegistry: new DocumentParserRegistry() }),
+  ],
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+# In Python, plugins automatically use any registered document parsers
+# (custom parsers are registered in Rust via the DocumentParser trait)
+opts.plugins = [AgenticSearch(), AgenticParse()]
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+`DocumentParserRegistry` in the SDK is a signal — it enables the binary-format parsing path. Custom parsers (PDF, Excel, DOCX) are implemented in Rust by implementing the `DocumentParser` trait and registering with `DocumentParserRegistry::register()`.
+</Callout>
+
+## Building a Custom Plugin
+
+There are two levels of customization depending on your needs:
+
+| Approach | Languages | Injects skills | Registers tools |
+|---|---|---|---|
+| `SkillPlugin` | TypeScript, Python, Rust | ✅ | ❌ |
+| `Plugin` trait | Rust only | ✅ | ✅ |
+
+For custom tools, use [MCP](/docs/code/mcp) — it works with any language and is automatically available to the LLM.
+
+### SkillPlugin — TypeScript / Python / Rust
+
+`SkillPlugin` injects custom skills (LLM guidance, tool access rules, instructions) into the session without any Rust required. This covers the most common use case: shaping how the LLM behaves.
+
+A **skill** is a YAML frontmatter + markdown body:
+
+```markdown
+---
+name: my-skill
+description: Brief description used for skill selection
+allowed-tools: "bash(*), read(*)"
+kind: instruction
+---
+
+# My Skill
+
+Guidance text the LLM receives when this skill is active...
+```
+
+<Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent, AgenticSearch, SkillPlugin } from '@a3s-lab/code';
+
+const skillMd = `---
+name: my-skill
+description: Always explain commands before running them
+allowed-tools: "bash(*)"
+kind: instruction
+---
+Before executing any shell command, explain what it does and why.
+`;
+
+const session = agent.session('.', {
+  plugins: [
+    new AgenticSearch(),
+    new SkillPlugin('my-plugin', [skillMd]),
+  ],
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, AgenticSearch, SkillPlugin, SessionOptions
+
+skill_md = """---
+name: my-skill
+description: Always explain commands before running them
+allowed-tools: "bash(*)"
+kind: instruction
+---
+Before executing any shell command, explain what it does and why.
+"""
+
+opts = SessionOptions()
+opts.plugins = [AgenticSearch(), SkillPlugin("my-plugin", [skill_md])]
+session = agent.session(".", opts)
+```
+</Tab>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{AgenticSearchPlugin, SkillPlugin, SessionOptions};
+
+let skill_md = r#"---
+name: my-skill
+description: Always explain commands before running them
+allowed-tools: "bash(*)"
+kind: instruction
+---
+Before executing any shell command, explain what it does and why.
+"#;
+
+let session = agent
+    .session(workspace, SessionOptions::new()
+        .with_plugin(AgenticSearchPlugin::new())
+        .with_plugin(SkillPlugin::new("my-plugin").with_skill(skill_md)))
+    .await?;
+```
+</Tab>
+</Tabs>
+
+### Plugin trait (Rust) — full control
+
+Implement the `Plugin` trait in Rust when you need to register custom tools alongside skills:
+
+```rust
+use a3s_code_core::plugin::{Plugin, PluginContext};
+use a3s_code_core::skills::Skill;
+use a3s_code_core::tools::ToolRegistry;
+use anyhow::Result;
+use std::sync::Arc;
+
+pub struct MyPlugin;
+
+impl Plugin for MyPlugin {
+    fn name(&self) -> &str { "my-plugin" }
+    fn version(&self) -> &str { "1.0.0" }
+    fn tool_names(&self) -> &[&str] { &["my_tool"] }
+
+    fn load(&self, registry: &Arc<ToolRegistry>, _ctx: &PluginContext) -> Result<()> {
+        registry.register(Arc::new(MyTool::new()));
+        Ok(())
+    }
+
+    fn skills(&self) -> Vec<Arc<Skill>> {
+        let content = r#"---
+name: my-skill
+description: Guides the LLM on how to use my_tool
+allowed-tools: "my_tool(*)"
+kind: instruction
+---
+# My Skill
+
+Use `my_tool` when the user asks to...
+"#;
+        Skill::parse(content)
+            .map(|s| vec![Arc::new(s)])
+            .unwrap_or_default()
+    }
+}
+
+// Register:
+let session = agent
+    .session(workspace, SessionOptions::new()
+        .with_plugin(MyPlugin))
+    .await?;
+```
+
+### Plugin trait reference
+
+<TypeTable
+  type={{
+    "name()": { type: '&str', description: 'Unique identifier in kebab-case (e.g. "my-plugin"). Used for logging and unload-by-name.' },
+    "version()": { type: '&str', description: 'Semver version string (e.g. "1.0.0").' },
+    "tool_names()": { type: '&[&str]', description: 'Names of all tools registered by this plugin. Used by the default unload() to remove them.' },
+    "load()": { type: 'Result<()>', description: 'Register tools into ToolRegistry. Called once when the plugin is mounted. Return Err to abort loading (companion skills will not be registered).' },
+    "skills()": { type: 'Vec<Arc<Skill>>', description: 'Return companion skills to register into SkillRegistry. Called only on successful load(). Default: empty vec.' },
+    "unload()": { type: 'void', description: 'Remove plugin tools from ToolRegistry. Default: removes all tool_names(). Override for custom cleanup.' },
+    "description()": { type: '&str', description: 'Human-readable description. Default: empty string.' },
+  }}
+/>
+
+### PluginContext fields
+
+<TypeTable
+  type={{
+    "llm": { type: 'Option<Arc<dyn LlmClient>>', description: 'LLM client — required by tools that do inference (e.g. agentic_parse).' },
+    "document_parsers": { type: 'Option<Arc<DocumentParserRegistry>>', description: 'Document parser registry — for plugins that decode binary file formats.' },
+    "skill_registry": { type: 'Option<Arc<SkillRegistry>>', description: 'Skill registry — plugins may also register skills directly during load() if needed.' },
+  }}
+/>
+
+## PluginManager (Rust API)
+
+For advanced use cases, use `PluginManager` to manage plugin lifecycle independently:
+
+```rust
+use a3s_code_core::plugin::{PluginManager, PluginContext, AgenticSearchPlugin};
+
+let mut manager = PluginManager::new();
+manager.register(AgenticSearchPlugin::new());
+
+let ctx = PluginContext::new()
+    .with_llm(llm_client)
+    .with_skill_registry(skill_registry);
+
+manager.load_all(&tool_registry, &ctx);
+
+// Later: unload a single plugin
+manager.unload("agentic-search", &tool_registry);
+
+// Or unload all
+manager.unload_all(&tool_registry);
+
+// Query
+manager.is_loaded("agentic-search");  // → bool
+manager.plugin_names();               // → Vec<&str>
+```

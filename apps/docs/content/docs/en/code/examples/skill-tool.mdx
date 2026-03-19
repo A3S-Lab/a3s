@@ -8,11 +8,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Skill Tool - Permission Isolation
 
-The **Skill tool** (introduced in v1.3.4) allows skills to be invoked as first-class tools with temporary permission grants. This enforces skill-based access patterns and prevents agents from bypassing skills to directly access underlying tools.
-
-<Callout type="info">
-**GitHub Issue:** [#8 - Skill Tool mechanism for enforcing skill-based tool access](https://github.com/A3S-Lab/Code/issues/8)
-</Callout>
+The **Skill tool** allows skills to be invoked as first-class tools with temporary permission grants. This enforces skill-based access patterns and prevents agents from bypassing skills to directly access underlying tools.
 
 ## Overview
 
@@ -86,8 +82,7 @@ import { Agent } from '@a3s-lab/code';
 const agent = await Agent.create('agent.hcl');
 
 const session = agent.session('.', {
-  skillsDir: './skills',
-  permissive: true  // Allow automatic tool execution
+  skillDirs: ['./skills'],
 });
 
 // LLM can now invoke the skill
@@ -103,8 +98,7 @@ from a3s_code import Agent, SessionOptions
 agent = Agent.create("agent.hcl")
 
 session = agent.session(".", SessionOptions(
-    skills_dir="./skills",
-    permissive=True  # Allow automatic tool execution
+    skill_dirs=["./skills"],
 ))
 
 # LLM can now invoke the skill
@@ -130,7 +124,7 @@ const agent = await Agent.create('agent.hcl');
 
 // Agent can ONLY use Skill tool, not read/grep directly
 const session = agent.session('.', {
-  skillsDir: './skills',
+  skillDirs: ['./skills'],
   permissionPolicy: new PermissionPolicy({
     allow: [new PermissionRule('Skill(*)')],  // Only allow Skill tool
     deny: [
@@ -161,7 +155,7 @@ agent = Agent.create("agent.hcl")
 
 # Agent can ONLY use Skill tool, not read/grep directly
 session = agent.session(".", SessionOptions(
-    skills_dir="./skills",
+    skill_dirs=["./skills"],
     permission_policy=PermissionPolicy(
         allow=[PermissionRule("Skill(*)")],  # Only allow Skill tool
         deny=[
@@ -274,7 +268,7 @@ Analyze data files and generate insights. You can:
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('.', {
-  skillsDir: './skills',
+  skillDirs: ['./skills'],
   permissionPolicy: new PermissionPolicy({
     allow: [new PermissionRule('Skill(*)')],
     defaultDecision: 'deny'
@@ -290,7 +284,7 @@ const result = await session.send(
 <Tab value="Python">
 ```python
 session = agent.session(".", SessionOptions(
-    skills_dir="./skills",
+    skill_dirs=["./skills"],
     permission_policy=PermissionPolicy(
         allow=[PermissionRule("Skill(*)")],
         default_decision="deny"
@@ -314,7 +308,7 @@ result = session.send(
 
 ## Testing
 
-See the [test results](/docs/code/examples/skill-tool-test) for a complete test with the Kimi model.
+The Skill tool enforces permission isolation end-to-end:
 
 **Test Summary:**
 - ✅ LLM correctly invokes `Skill("file-reader")` tool

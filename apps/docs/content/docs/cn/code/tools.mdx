@@ -1,237 +1,425 @@
 ---
 title: 工具
-description: 内置工具、自定义工具和 MCP 工具集成
+description: 16 个内置工具与 2 个插件工具 — 文件操作、Shell 执行、搜索、网络访问、Git 工作树与子智能体委托
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
-import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 # 工具
 
-A3S Code 提供 15 个内置工具，支持自定义工具注册和 MCP 集成。所有工具通过 `ToolExecutor` 统一管理。
+A3S Code 内置 **16 个工具**（始终可用）和 **2 个插件工具**（按需加载）。所有工具均通过原生 Rust 实现在进程内执行。
 
 <Callout type="info">
-内置工具：15 个 | 自定义工具：通过 `Tool` trait | MCP 工具：通过 `mcp_servers` 配置
+`agentic_search` 和 `agentic_parse` 是**插件工具** — 默认不加载。通过 `SessionOptions.plugins` 挂载。每个插件在加载时，同时自动将其配套技能注册到会话的技能注册表中。
 </Callout>
 
-## 内置工具
-
-### 文件操作
+## 内置工具参考
 
 <TypeTable
   type={{
     "read": {
-      description: "描述: 读取文件内容 · 参数: file_path, offset?, limit?",
+      description: "用途: 带行号读取文件 · 示例: 查看源代码",
     },
     "write": {
-      description: "描述: 写入文件（创建或覆盖） · 参数: file_path, content",
+      description: "用途: 创建/覆盖文件 · 示例: 创建新文件",
     },
     "edit": {
-      description: "描述: 精确字符串替换 · 参数: file_path, old_string, new_string",
+      description: "用途: 字符串替换编辑 · 示例: 修改已有代码",
     },
     "patch": {
-      description: "描述: 多处编辑（批量替换） · 参数: file_path, patches[]",
+      description: "用途: 应用统一 diff 补丁 · 示例: 复杂多行编辑",
     },
-  }}
-/>
-
-### 搜索与导航
-
-<TypeTable
-  type={{
-    "glob": {
-      description: "描述: 按模式匹配文件 · 参数: pattern, path?",
+    "bash": {
+      description: "用途: 执行 Shell 命令 · 示例: git status, npm install",
     },
     "grep": {
-      description: "描述: 搜索文件内容 · 参数: pattern, path?, include?",
+      description: "用途: 搜索文件内容（ripgrep）· 示例: 查找函数定义",
+    },
+    "glob": {
+      description: "用途: 按模式查找文件 · 示例: **/*.ts, src/**/*.rs",
     },
     "ls": {
-      description: "描述: 列出目录内容 · 参数: path?",
+      description: "用途: 列出目录内容 · 示例: 探索项目结构",
     },
-  }}
-/>
-
-### 执行
-
-<TypeTable
-  type={{
-    "bash": {
-      description: "描述: 执行 shell 命令 · 参数: command, timeout?",
-    },
-  }}
-/>
-
-### 网络
-
-<TypeTable
-  type={{
     "web_fetch": {
-      description: "描述: 获取 URL 内容并转为 Markdown/文本（5MB 限制） · 参数: url, format?, timeout?",
+      description: "用途: 获取网页内容 · 示例: 下载文档",
     },
     "web_search": {
-      description: "描述: 多引擎聚合搜索（DuckDuckGo、Brave、Wikipedia 等） · 参数: query, engines?, limit?, timeout?, proxy?, format?",
-    },
-  }}
-/>
-
-### Git
-
-<TypeTable
-  type={{
-    "git_worktree": {
-      description: "描述: Git worktree 管理（并行工作区隔离） · 参数: command, branch?, path?",
-    },
-  }}
-/>
-
-### 高级
-
-<TypeTable
-  type={{
-    "batch": {
-      description: "描述: 并行执行多个工具 · 参数: invocations[]",
+      description: "用途: 搜索网络 · 示例: 多引擎聚合查询",
     },
     "task": {
-      description: "描述: 委托给子 Agent · 参数: agent, prompt",
+      description: "用途: 委托给子智能体 · 示例: 分派专项工作",
     },
     "parallel_task": {
-      description: "描述: 并发委托多个子 Agent · 参数: tasks[]",
+      description: "用途: 并发委托多个子智能体 · 示例: 跨模块并行分析",
     },
     "run_team": {
-      description: "描述: Lead → Worker → Reviewer 团队工作流 · 参数: goal, lead_agent?, worker_agent?, reviewer_agent?, max_steps?",
+      description: "用途: Lead → Worker → Reviewer 团队工作流 · 示例: 分解、执行、审查复杂目标",
+    },
+    "batch": {
+      description: "用途: 并行执行多个工具 · 示例: 单轮次运行多个工具",
+    },
+    "git_worktree": {
+      description: "用途: Git worktree 管理 · 示例: 并行工作区隔离",
+    },
+    "Skill": {
+      description: "用途: 将技能作为一等工具调用 · 示例: 基于技能的工具访问控制与指令注入",
     },
   }}
 />
 
-## 直接工具调用
+## 插件工具参考
+
+插件工具**默认不注册**，必须通过 `SessionOptions.plugins` 显式挂载。加载插件时，同时注册其工具和配套技能。
+
+<TypeTable
+  type={{
+    "agentic_search": {
+      description: "插件: AgenticSearch · 用途: 多阶段语义代码搜索，IDF 加权相关性排名 · 配套技能: agentic-search",
+    },
+    "agentic_parse": {
+      description: "插件: AgenticParse · 用途: LLM 增强的文档解析，支持 5 种解析策略（auto/structured/narrative/tabular/code）· 配套技能: agentic-parse",
+    },
+  }}
+/>
+
+## 文件操作
+
+### `read`
+
+读取带行号的文件内容，支持大文件的偏移和行数限制。
+
+```json
+{
+  "file_path": "src/main.rs",
+  "offset": 0,
+  "limit": 100
+}
+```
+
+### `write`
+
+创建或覆盖文件，自动创建父目录。
+
+```json
+{
+  "file_path": "src/config.rs",
+  "content": "pub struct Config {\n    pub port: u16,\n}\n"
+}
+```
+
+### `edit`
+
+替换文件中的指定字符串，适合精准修改。
+
+```json
+{
+  "file_path": "src/main.rs",
+  "old_string": "fn main() {",
+  "new_string": "fn main() -> Result<()> {"
+}
+```
+
+### `patch`
+
+应用统一 diff 补丁，适合复杂多行编辑。
+
+```json
+{
+  "file_path": "src/lib.rs",
+  "diff": "--- a/src/lib.rs\n+++ b/src/lib.rs\n@@ -1,3 +1,4 @@\n+use anyhow::Result;\n use std::io;\n"
+}
+```
+
+## 搜索
+
+### `grep`
+
+使用 ripgrep 模式搜索文件内容，支持正则、glob 和上下文行数。
+
+```json
+{
+  "pattern": "fn.*async",
+  "path": "src/",
+  "glob": "*.rs",
+  "context": 2
+}
+```
+
+### `glob`
+
+查找匹配 glob 模式的文件。
+
+```json
+{
+  "pattern": "src/**/*.rs"
+}
+```
+
+### `ls`
+
+列出目录内容及文件大小和类型。
+
+```json
+{
+  "path": "src/"
+}
+```
+
+## Shell
+
+### `bash`
+
+执行 Shell 命令，命令在会话工作区目录中运行。
+
+```json
+{
+  "command": "cargo test --lib -- test_name"
+}
+```
+
+**安全：** 使用[权限系统](/cn/docs/code/security)控制 bash 访问。
+
+## 网络
+
+### `web_fetch`
+
+从 URL 获取内容，返回从 HTML 中提取的文本。
+
+```json
+{
+  "url": "https://docs.rs/tokio/latest/tokio/"
+}
+```
+
+### `web_search`
+
+使用多个搜索引擎搜索网络。
+
+```json
+{
+  "query": "rust async trait object",
+  "engine": "google"
+}
+```
+
+## 插件工具
+
+插件工具按需加载 — 通过 `SessionOptions.plugins` 显式挂载。插件加载时，同时注册其**工具**（可被 LLM 调用）和**配套技能**（自动注入系统提示词）。
+
+### 挂载插件
 
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
-const content = await session.readFile('src/main.rs');
-const output = await session.bash('cargo test');
-const files = await session.glob('**/*.rs');
-const matches = await session.grep('fn main');
+import { Agent, AgenticSearch, AgenticParse } from '@a3s-lab/code';
 
-const result = await session.tool('write', {
-  file_path: 'output.txt',
-  content: 'Hello, world!',
+const session = agent.session('.', {
+  plugins: [
+    new AgenticSearch(),
+    new AgenticParse(),
+  ],
 });
 ```
 </Tab>
 <Tab value="Python">
 ```python
-content = session.read_file("src/main.rs")
-output = session.bash("cargo test")
-files = session.glob("**/*.rs")
-matches = session.grep("fn main")
+from a3s_code import SessionOptions, AgenticSearch, AgenticParse
 
-result = session.tool("write", {
-    "file_path": "output.txt",
-    "content": "Hello, world!",
-})
+opts = SessionOptions()
+opts.plugins = [AgenticSearch(), AgenticParse()]
+session = agent.session('.', opts)
 ```
 </Tab>
 </Tabs>
 
-## 自定义工具
+### `agentic_search`
 
-实现 `Tool` trait 来创建自定义工具：
+多阶段语义代码搜索。从自然语言中提取关键词，并行搜索后使用 IDF 加权评分对结果排序。
 
-### 注册自定义工具
-
-## 工具输出
-
-工具返回 `ToolOutput`，包含文本和可选的图片：
-
-## 工具权限
-
-工具执行受权限系统控制。参见 [安全](/cn/docs/code/security) 了解详情。
-
-## MCP 工具
-
-通过 MCP 协议集成外部工具服务器。参见 [MCP 支持](/cn/docs/code/mcp) 了解详情。
-
-```hcl
-mcp_servers {
-  name      = "filesystem"
-  transport = "stdio"
-  command   = "npx"
-  args      = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+```json
+{
+  "query": "authentication how does it work",
+  "max_results": 10,
+  "mode": "fast"
 }
 ```
 
-MCP 工具以 `mcp__<server>__<tool>` 格式命名。
+**搜索模式：**
+- `fast`（默认）— 关键词提取 + 并行搜索 + 相关性排名
+- `deep` — 围绕高评分区域的蒙特卡洛采样，全面分析
+- `filename_only` — 按文件名快速发现文件
 
-## API 参考
+### `agentic_parse`
 
-### Tool trait
+LLM 增强的文档解析。通过 `DocumentParserRegistry` 解码二进制格式，然后进行结构化提取，并可选地执行 LLM 语义问答。
 
-### ToolDefinition
+```json
+{
+  "path": "report.pdf",
+  "query": "关键发现是什么？",
+  "strategy": "auto",
+  "max_chars": 8000
+}
+```
 
-<TypeTable
-  type={{
-    "name": {
-      description: "类型: String · 描述: 工具名称",
-    },
-    "description": {
-      description: "类型: String · 描述: 工具描述（展示给 LLM）",
-    },
-    "parameters": {
-      description: "类型: Vec<ToolParameter> · 描述: 参数定义",
-    },
-  }}
-/>
+**解析策略：** `auto`（根据扩展名/内容推断）· `structured`（JSON/YAML/TOML/HCL）· `narrative`（Markdown/文本）· `tabular`（CSV/TSV）· `code`（源文件）
 
-### ToolParameter
+省略 `query` 可快速获取结构概览，无需 LLM 开销。
 
-<TypeTable
-  type={{
-    "name": {
-      description: "类型: String · 描述: 参数名称",
-    },
-    "description": {
-      description: "类型: String · 描述: 参数描述",
-    },
-    "param_type": {
-      description: "类型: String · 描述: 类型（string、number、boolean、object、array）",
-    },
-    "required": {
-      description: "类型: bool · 描述: 是否必填",
-    },
-    "enum_values": {
-      description: "类型: Option<Vec<String>> · 描述: 可选的枚举值列表",
-    },
-  }}
-/>
+### 文档解析器支持
 
-### ToolOutput
+对于二进制格式（PDF、Excel、Word），通过插件选项传入 `DocumentParserRegistry`：
 
-<TypeTable
-  type={{
-    "ToolOutput::success(text)": {
-      description: "创建成功输出",
-    },
-    "ToolOutput::error(text)": {
-      description: "创建错误输出",
-    },
-    ".with_images(attachments)": {
-      description: "附加图片到输出",
-    },
-  }}
-/>
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { AgenticParse, DocumentParserRegistry } from '@a3s-lab/code';
 
-### ToolContext
+const session = agent.session('.', {
+  plugins: [
+    new AgenticParse({ documentParserRegistry: new DocumentParserRegistry() }),
+  ],
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+# DocumentParserRegistry 是启用二进制格式支持的信号。
+# 自定义解析器（PDF、Excel）在 Rust 中通过 DocumentParser trait 注册。
+opts.plugins = [AgenticParse()]
+```
+</Tab>
+</Tabs>
 
-<TypeTable
-  type={{
-    "workspace": {
-      description: "类型: PathBuf · 描述: 当前工作区路径",
+## 直接工具调用
+
+不经过 LLM，直接在会话上调用工具：
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+// 便捷封装
+const content = await session.readFile('src/main.rs');
+const output = await session.bash('cargo test --lib');
+const files = await session.glob('**/*.rs');
+const matches = await session.grep('fn main');
+
+// 通用工具调用
+const result = await session.tool('edit', {
+  file_path: 'src/main.rs',
+  old_string: 'fn main() {',
+  new_string: 'fn main() -> Result<()> {',
+});
+console.log(`[${result.exitCode}] ${result.output}`);
+```
+</Tab>
+<Tab value="Python">
+```python
+# 便捷封装
+content = session.read_file("src/main.rs")
+output = session.bash("cargo test --lib")
+files = session.glob("**/*.rs")
+matches = session.grep("fn main")
+
+# 通用工具调用
+result = session.tool("edit", {
+    "file_path": "src/main.rs",
+    "old_string": "fn main() {",
+    "new_string": "fn main() -> Result<()> {"
+})
+print(f"[{result['exit_code']}] {result['output']}")
+```
+</Tab>
+</Tabs>
+
+## Git
+
+### `git_worktree`
+
+管理 Git 工作树，实现并行工作区隔离。支持 `status`、`create`、`list`、`remove` 子命令。
+
+```json
+{
+  "command": "create",
+  "branch": "feature-auth",
+  "path": "/repo/wt-feature-auth"
+}
+```
+
+## 子智能体委托
+
+### `task`
+
+将工作委托给专门的子智能体，子智能体在独立会话中运行，拥有独立的对话历史。
+
+```json
+{
+  "description": "为 auth 模块编写单元测试",
+  "prompt": "为 src/auth.rs 创建覆盖所有边界情况的完整测试"
+}
+```
+
+### `parallel_task`
+
+并发将多个任务委托给子智能体，每个任务并行运行，拥有独立的智能体实例。
+
+```json
+{
+  "tasks": [
+    {
+      "agent": "general",
+      "prompt": "分析 auth 模块的安全性"
     },
-    "session_id": {
-      description: "类型: String · 描述: 当前会话 ID",
-    },
-  }}
-/>
+    {
+      "agent": "general",
+      "prompt": "审查数据库层的性能"
+    }
+  ]
+}
+```
+
+### `run_team`
+
+协调 Lead → Worker → Reviewer 团队，处理需要分解、执行和质量审查的目标。
+
+```json
+{
+  "goal": "审计 authentication 模块的安全问题",
+  "lead_agent": "general",
+  "worker_agent": "general",
+  "reviewer_agent": "general",
+  "max_steps": 10
+}
+```
+
+## 沙箱路由（可选）
+
+没有独立的 `sandbox` 工具。当会话配置了 `BashSandbox` 句柄时，`bash` 命令会透明地路由到 A3S Box MicroVM：
+
+```rust
+SessionOptions::new().with_sandbox_handle(Arc::new(my_box_impl))
+```
+
+工作区挂载在 VM 内的 `/workspace`。详见 [隔离 → MicroVM 沙箱](/cn/docs/code/isolation)。
+
+## 文件版本历史
+
+所有文件修改工具（`write`、`edit`、`patch`）在修改前自动捕获快照。你可以：
+
+- 查看版本间的 diff
+- 恢复任意历史版本
+- 追踪会话中的所有修改
+
+每个会话最多维护 500 个快照。
+
+## 扩展自定义工具
+
+除内置工具外，A3S Code 支持通过以下方式集成外部工具：
+
+- **[MCP](/cn/docs/code/mcp)** — 通过模型上下文协议连接外部工具服务器（JSON-RPC 2.0, stdio + HTTP+SSE）
+- **自定义 Tool Trait** — 在 Rust 中实现 `Tool` trait 并注册到 `ToolRegistry`
+
+详见 [MCP](/cn/docs/code/mcp) 了解外部工具集成示例。

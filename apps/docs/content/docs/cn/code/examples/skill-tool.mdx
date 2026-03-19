@@ -8,11 +8,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # Skill Tool - 权限隔离
 
-**Skill 工具**（v1.3.4 引入）允许将 skills 作为一等工具调用，并在执行期间临时授予权限。这强制执行基于 skill 的访问模式，防止 agent 绕过 skills 直接访问底层工具。
-
-<Callout type="info">
-**GitHub Issue:** [#8 - Skill Tool 机制用于强制基于 skill 的工具访问](https://github.com/A3S-Lab/Code/issues/8)
-</Callout>
+**Skill 工具**允许将 skills 作为一等工具调用，并在执行期间临时授予权限。这强制执行基于 skill 的访问模式，防止 agent 绕过 skills 直接访问底层工具。
 
 ## 概述
 
@@ -86,7 +82,7 @@ import { Agent } from '@a3s-lab/code';
 const agent = await Agent.create('agent.hcl');
 
 const session = agent.session('.', {
-  skillsDir: './skills',
+  skillDirs: ['./skills'],
   permissive: true  // 允许自动执行工具
 });
 
@@ -103,7 +99,7 @@ from a3s_code import Agent, SessionOptions
 agent = Agent.create("agent.hcl")
 
 session = agent.session(".", SessionOptions(
-    skills_dir="./skills",
+    skill_dirs=["./skills"],
     permissive=True  # 允许自动执行工具
 ))
 
@@ -130,7 +126,7 @@ const agent = await Agent.create('agent.hcl');
 
 // Agent 只能使用 Skill 工具，不能直接使用 read/grep
 const session = agent.session('.', {
-  skillsDir: './skills',
+  skillDirs: ['./skills'],
   permissionPolicy: new PermissionPolicy({
     allow: [new PermissionRule('Skill(*)')],  // 只允许 Skill 工具
     deny: [
@@ -161,7 +157,7 @@ agent = Agent.create("agent.hcl")
 
 # Agent 只能使用 Skill 工具，不能直接使用 read/grep
 session = agent.session(".", SessionOptions(
-    skills_dir="./skills",
+    skill_dirs=["./skills"],
     permission_policy=PermissionPolicy(
         allow=[PermissionRule("Skill(*)")],  # 只允许 Skill 工具
         deny=[
@@ -274,7 +270,7 @@ allowed-tools: Skill(data-reader)
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('.', {
-  skillsDir: './skills',
+  skillDirs: ['./skills'],
   permissionPolicy: new PermissionPolicy({
     allow: [new PermissionRule('Skill(*)')],
     defaultDecision: 'deny'
@@ -290,7 +286,7 @@ const result = await session.send(
 <Tab value="Python">
 ```python
 session = agent.session(".", SessionOptions(
-    skills_dir="./skills",
+    skill_dirs=["./skills"],
     permission_policy=PermissionPolicy(
         allow=[PermissionRule("Skill(*)")],
         default_decision="deny"
@@ -314,7 +310,7 @@ result = session.send(
 
 ## 测试
 
-查看[测试结果](/cn/docs/code/examples/skill-tool-test)了解使用 Kimi 模型的完整测试。
+Skill 工具端到端强制权限隔离：
 
 **测试总结：**
 - ✅ LLM 正确调用 `Skill("file-reader")` 工具

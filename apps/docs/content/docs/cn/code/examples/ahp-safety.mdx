@@ -74,8 +74,10 @@ opts.ahp_transport = StdioTransport(
 )
 opts.builtin_skills = True
 
+opts.permissive = True
+
 # 创建受监控的会话
-session = agent.session(".", opts, permissive=True)
+session = agent.session(".", opts)
 
 # 安全操作 - 将被允许
 result = session.send("列出当前目录中的所有文件")
@@ -102,11 +104,12 @@ const opts: SessionOptions = {
     program: 'python3',
     args: ['examples/ahp_agent_monitors_agent.py']
   }),
-  builtinSkills: true
+  builtinSkills: true,
+  permissive: true,
 };
 
 // 创建受监控的会话
-const session = agent.session('.', opts, { permissive: true });
+const session = agent.session('.', opts);
 
 // 安全操作 - 将被允许
 const result = await session.send('列出当前目录中的所有文件');
@@ -135,9 +138,11 @@ agent = Agent.create("agent_kimi.hcl")
 skill_dir = str(Path(__file__).parent / "ahp_skills")
 session = agent.session(
     workspace,
-    permissive=True,
-    builtin_skills=False,
-    skill_dirs=[skill_dir],
+    SessionOptions(
+        permissive=True,
+        builtin_skills=False,
+        skill_dirs=[skill_dir],
+    ),
 )
 # AHP Server 智能体使用 /detect-dangerous-operation skill 分析每个工具调用
 ```

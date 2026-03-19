@@ -186,15 +186,17 @@ let evidence_score = file_relevance * weight_sum / (sampled.len() as f32).sqrt()
 
 ### 示例 1: 基础搜索
 
+`agentic_search` 是插件工具 — 使用前需通过 `plugins` 挂载。
+
 <Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
 <Tab value="TypeScript">
 ```typescript
-import { Agent } from '@a3s-lab/code';
+import { Agent, AgenticSearch } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.', {
+  plugins: [new AgenticSearch()],
   builtinSkills: true,
-  permissive: true,
 });
 
 // LLM 会自动调用 agentic_search 工具
@@ -207,12 +209,12 @@ console.log(result.text);
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent, SessionOptions
+from a3s_code import Agent, SessionOptions, AgenticSearch
 
-agent = Agent("agent.hcl")
+agent = Agent.create("agent.hcl")
 opts = SessionOptions()
+opts.plugins = [AgenticSearch()]
 opts.builtin_skills = True
-opts.permissive = True
 
 session = agent.session(".", opts)
 
@@ -226,15 +228,15 @@ print(result.text)
 </Tab>
 <Tab value="Rust">
 ```rust
-use a3s_code_core::{Agent, SessionOptions};
+use a3s_code_core::{Agent, AgenticSearchPlugin, SessionOptions};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let agent = Agent::from_file("agent.hcl").await?;
 
-    let opts = SessionOptions::default()
-        .with_builtin_skills(true)
-        .with_permissive(true);
+    let opts = SessionOptions::new()
+        .with_plugin(AgenticSearchPlugin::new())
+        .with_builtin_skills(true);
 
     let session = agent.session(".", opts).await?;
 
@@ -412,16 +414,18 @@ result = session.send("""
 
 ### 示例 6: 文档解析配置
 
-通过配置 `DocumentParserRegistry` 启用二进制文档（PDF、DOCX 等）的解析：
+将 `DocumentParserRegistry` 作为**插件选项**传入，启用二进制文档（PDF、DOCX 等）的解析：
 
 <Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
 <Tab value="TypeScript">
 ```typescript
-import { Agent, DocumentParserRegistry } from '@a3s-lab/code';
+import { Agent, AgenticSearch, DocumentParserRegistry } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.', {
-  documentParserRegistry: new DocumentParserRegistry(),
+  plugins: [
+    new AgenticSearch({ documentParserRegistry: new DocumentParserRegistry() }),
+  ],
   builtinSkills: true,
 });
 
@@ -433,11 +437,12 @@ const result = await session.send(
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent, SessionOptions, DocumentParserRegistry
+from a3s_code import Agent, SessionOptions, AgenticSearch
 
-agent = Agent("agent.hcl")
+agent = Agent.create("agent.hcl")
 opts = SessionOptions()
-opts.document_parser_registry = DocumentParserRegistry()
+# Python 插件自动使用已注册的文档解析器
+opts.plugins = [AgenticSearch()]
 opts.builtin_skills = True
 
 session = agent.session(".", opts)
@@ -450,15 +455,15 @@ result = session.send(
 </Tab>
 <Tab value="Rust">
 ```rust
-use a3s_code_core::{Agent, SessionOptions};
-use a3s_code_core::tools::document_parser::DocumentParserRegistry;
+use a3s_code_core::{Agent, AgenticSearchPlugin, SessionOptions};
+use a3s_code_core::DocumentParserRegistry;
 use std::sync::Arc;
 
 let agent = Agent::from_file("agent.hcl").await?;
-let registry = DocumentParserRegistry::new();
 
-let opts = SessionOptions::default()
-    .with_document_parser_registry(Arc::new(registry))
+let opts = SessionOptions::new()
+    .with_plugin(AgenticSearchPlugin::new())
+    .with_document_parser_registry(Arc::new(DocumentParserRegistry::new()))
     .with_builtin_skills(true);
 
 let session = agent.session(".", opts).await?;
@@ -472,7 +477,7 @@ let result = session.send(
 </Tabs>
 
 <Callout type="info">
-如果不配置 `DocumentParserRegistry`，agentic_search 只读取纯文本文件。文档解析是可选的，可以按会话配置。
+如果不配置 `DocumentParserRegistry`，agentic_search 只读取纯文本文件。文档解析是可选的，按插件配置。
 </Callout>
 
 ---
@@ -617,6 +622,6 @@ const matches = await session.send(
 
 ## 相关资源
 
-- [Agentic Search 工具参考](/cn/docs/code/tools/agentic-search) — 完整工具文档
+- [插件工具参考](/cn/docs/code/tools#插件工具参考) — agentic_search 与 agentic_parse 参考
 - [Ripgrep Context Provider](/cn/docs/code/examples/ripgrep-context) — 基于 ripgrep 的上下文提供器
 - [Sirchmunk 论文](https://github.com/modelscope/sirchmunk) — 原始灵感来源

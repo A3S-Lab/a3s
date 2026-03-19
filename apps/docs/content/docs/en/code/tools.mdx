@@ -1,16 +1,21 @@
 ---
-title: Built-in Tools
-description: 15 built-in tools for file operations, shell execution, search, web access, git worktree, and subagent delegation
+title: Tools
+description: 16 built-in tools and 2 opt-in plugin tools for file operations, shell execution, search, web access, git worktree, and subagent delegation
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
 
-# Built-in Tools
+# Tools
 
-A3S Code ships with 15 built-in tools covering file operations, shell execution, search, web access, git worktree, and subagent delegation. All tools execute in-process via native Rust implementations.
+A3S Code ships with **16 built-in tools** (always available) and **2 plugin tools** (opt-in). All tools execute in-process via native Rust implementations.
 
-## Tool Reference
+<Callout type="info">
+`agentic_search` and `agentic_parse` are **plugin tools** — not loaded by default. Mount them via `SessionOptions.plugins`. Each plugin also automatically registers its companion skill into the session's skill registry.
+</Callout>
+
+## Built-in Tool Reference
 
 <TypeTable
   type={{
@@ -33,7 +38,7 @@ A3S Code ships with 15 built-in tools covering file operations, shell execution,
       description: "Purpose: Search file contents (ripgrep) · Example: Find function definitions",
     },
     "glob": {
-      description: "Purpose: Find files by pattern · Example: /*.ts, src//*.rs",
+      description: "Purpose: Find files by pattern · Example: **/*.ts, src/**/*.rs",
     },
     "ls": {
       description: "Purpose: List directory contents · Example: Explore project structure",
@@ -58,6 +63,24 @@ A3S Code ships with 15 built-in tools covering file operations, shell execution,
     },
     "git_worktree": {
       description: "Purpose: Git worktree management · Example: Parallel workspace isolation",
+    },
+    "Skill": {
+      description: "Purpose: Invoke skills as first-class tools · Example: Skill-based tool access control and instruction injection",
+    },
+  }}
+/>
+
+## Plugin Tool Reference
+
+Plugin tools are **not registered by default**. They must be explicitly mounted via `SessionOptions.plugins`. Loading a plugin registers both its tool and its companion skill.
+
+<TypeTable
+  type={{
+    "agentic_search": {
+      description: "Plugin: AgenticSearch · Purpose: Multi-phase semantic code search with IDF-weighted relevance ranking · Companion skill: agentic-search",
+    },
+    "agentic_parse": {
+      description: "Plugin: AgenticParse · Purpose: LLM-enhanced document parsing with 5 parse strategies (auto/structured/narrative/tabular/code) · Companion skill: agentic-parse",
     },
   }}
 />
@@ -182,6 +205,95 @@ Search the web using multiple search engines.
 }
 ```
 
+## Plugin Tools
+
+Plugin tools are opt-in — mount them explicitly via `SessionOptions.plugins`. When a plugin loads, it registers both its **tool** (callable by the LLM) and its **companion skill** (injected into the system prompt automatically).
+
+### Mounting Plugins
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent, AgenticSearch, AgenticParse } from '@a3s-lab/code';
+
+const session = agent.session('.', {
+  plugins: [
+    new AgenticSearch(),
+    new AgenticParse(),
+  ],
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import SessionOptions, AgenticSearch, AgenticParse
+
+opts = SessionOptions()
+opts.plugins = [AgenticSearch(), AgenticParse()]
+session = agent.session('.', opts)
+```
+</Tab>
+</Tabs>
+
+### `agentic_search`
+
+Multi-phase semantic code search. Extracts keywords from natural language, searches in parallel, and ranks results using IDF-weighted scoring.
+
+```json
+{
+  "query": "how does authentication work",
+  "max_results": 10,
+  "mode": "fast"
+}
+```
+
+**Modes:**
+- `fast` (default) — keyword extraction + parallel search + relevance ranking
+- `deep` — Monte Carlo sampling around high-scoring regions for comprehensive analysis
+- `filename_only` — fast file discovery by name
+
+### `agentic_parse`
+
+LLM-enhanced document parsing. Decodes binary formats via `DocumentParserRegistry`, then applies structural extraction and optionally an LLM pass for semantic QA.
+
+```json
+{
+  "path": "report.pdf",
+  "query": "What are the key findings?",
+  "strategy": "auto",
+  "max_chars": 8000
+}
+```
+
+**Parse strategies:** `auto` (inferred from extension/content) · `structured` (JSON/YAML/TOML/HCL) · `narrative` (Markdown/text) · `tabular` (CSV/TSV) · `code` (source files)
+
+Omit `query` for a fast structural overview without LLM cost.
+
+### Document Parser Support
+
+For binary formats (PDF, Excel, Word), pass a `DocumentParserRegistry` as a plugin option:
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { AgenticParse, DocumentParserRegistry } from '@a3s-lab/code';
+
+const session = agent.session('.', {
+  plugins: [
+    new AgenticParse({ documentParserRegistry: new DocumentParserRegistry() }),
+  ],
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+# DocumentParserRegistry is a signal enabling binary format support.
+# Custom parsers (PDF, Excel) are registered in Rust via the DocumentParser trait.
+opts.plugins = [AgenticParse()]
+```
+</Tab>
+</Tabs>
+
 ## Direct Tool Execution
 
 Call tools directly on the session without going through the LLM:
@@ -252,6 +364,25 @@ Delegate work to a specialized child agent. The child agent runs in its own sess
 }
 ```
 
+### `parallel_task`
+
+Delegate multiple tasks to subagents concurrently. Each task runs in parallel with its own agent instance.
+
+```json
+{
+  "tasks": [
+    {
+      "agent": "general",
+      "prompt": "Analyze security in auth module"
+    },
+    {
+      "agent": "general",
+      "prompt": "Review performance in database layer"
+    }
+  ]
+}
+```
+
 ### `run_team`
 
 Coordinate a Lead → Worker → Reviewer team to tackle goals that require decomposition, execution, and quality review. The Lead breaks the goal into a task list; Workers claim and execute tasks in parallel; the Reviewer approves or rejects each result.
@@ -267,6 +398,19 @@ Coordinate a Lead → Worker → Reviewer team to tackle goals that require deco
 ```
 
 All agent type fields default to `"general"`. Only `goal` is required.
+
+### `Skill`
+
+Invoke skills as first-class tools with skill-based tool access control. When a skill is invoked, the agent temporarily gains access to the skill's allowed tools and receives the skill's instruction prompt.
+
+```json
+{
+  "skill_name": "code-review",
+  "args": "Review src/auth.rs for security issues"
+}
+```
+
+This enforces skill-based access patterns and prevents agents from bypassing skills to directly access underlying tools. See [Skills](/docs/code/skills) for details.
 
 ## Sandbox Routing (Optional)
 
@@ -353,6 +497,29 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
   }}
 />
 
+#### agentic_search _(plugin)_
+
+<TypeTable
+  type={{
+    query: { type: 'string', required: true, description: 'Natural language search query' },
+    max_results: { type: 'number', default: '10', description: 'Maximum results to return' },
+    mode: { type: '"fast" | "deep" | "filename_only"', default: '"fast"', description: 'Search mode' },
+    file_pattern: { type: 'string', description: 'File glob filter (e.g. `**/*.rs`)' },
+    context_lines: { type: 'number', default: '2', description: 'Lines of context around each match' },
+  }}
+/>
+
+#### agentic_parse _(plugin)_
+
+<TypeTable
+  type={{
+    path: { type: 'string', required: true, description: 'Path to the file to parse (relative to workspace or absolute)' },
+    query: { type: 'string', description: 'Extraction goal or question — triggers LLM-enhanced extraction' },
+    strategy: { type: '"auto" | "structured" | "narrative" | "tabular" | "code"', default: '"auto"', description: 'Parse strategy' },
+    max_chars: { type: 'number', default: '8000', description: 'Max characters of document content sent to the LLM' },
+  }}
+/>
+
 #### glob
 
 <TypeTable
@@ -413,6 +580,14 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
   }}
 />
 
+#### parallel_task
+
+<TypeTable
+  type={{
+    tasks: { type: 'array', required: true, description: 'Array of {agent, prompt} objects to run in parallel' },
+  }}
+/>
+
 #### run_team
 
 <TypeTable
@@ -422,6 +597,15 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
     worker_agent: { type: 'string', default: '"general"', description: 'Agent type for Worker roles' },
     reviewer_agent: { type: 'string', default: '"general"', description: 'Agent type for the Reviewer role' },
     max_steps: { type: 'number', description: 'Max tool rounds per team member' },
+  }}
+/>
+
+#### Skill
+
+<TypeTable
+  type={{
+    skill_name: { type: 'string', required: true, description: 'Name of the skill to invoke' },
+    args: { type: 'string', required: true, description: 'Arguments/prompt for the skill' },
   }}
 />
 

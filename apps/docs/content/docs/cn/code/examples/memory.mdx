@@ -47,22 +47,6 @@ result = s2.send("我们部署在哪里？")
 
 通过 `session.memory()` 在代码中主动存储和查询记忆：
 
-## 自定义后端
-
-实现 `a3s-memory` 中的 `MemoryStore` trait 接入任意存储系统：
-
-## 记忆事件
-
-通过流式 API 订阅记忆生命周期事件：
-
-## 相关性调优
-
-根据使用场景调整评分参数：
-
-## 索引重建
-
-`FileMemoryStore` 的索引损坏或丢失时，无需数据损失即可恢复：
-
 <Callout type="info">
 完整 API 参考请查看[记忆系统](/cn/docs/code/memory)。
 </Callout>

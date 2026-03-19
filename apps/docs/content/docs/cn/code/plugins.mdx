@@ -1,0 +1,310 @@
+---
+title: 插件系统
+description: 按需加载的工具+技能包 — 挂载 agentic_search、agentic_parse 或构建自己的插件
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 插件系统
+
+A3S Code 的插件系统允许你将可选能力挂载到会话中。每个插件是一个自包含的包，负责注册：
+
+1. **一个或多个工具**到 `ToolRegistry` — LLM 在智能体轮次中可以调用它们
+2. **配套技能**到 `SkillRegistry` — 自动注入系统提示词，让 LLM 知道何时以及如何使用这些工具
+
+插件是**按需加载**的。默认不加载任何插件工具 — 你可以为每个会话精确选择所需的能力。
+
+## 内置插件
+
+| 插件类 | 工具 | 配套技能 |
+|---|---|---|
+| `AgenticSearch` | `agentic_search` — 多阶段语义代码搜索 | `agentic-search` — 指导用法、模式与最佳实践 |
+| `AgenticParse` | `agentic_parse` — LLM 增强的文档解析 | `agentic-parse` — 指导解析策略与内容提取 |
+
+参数、搜索模式与示例请参阅 [Agentic Search 深度解析](/cn/docs/code/examples/agentic-search)。
+
+## 挂载插件
+
+<Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent, AgenticSearch, AgenticParse } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const session = agent.session('.', {
+  plugins: [
+    new AgenticSearch(),
+    new AgenticParse(),
+  ],
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, SessionOptions, AgenticSearch, AgenticParse
+
+agent = Agent.create("agent.hcl")
+opts = SessionOptions()
+opts.plugins = [AgenticSearch(), AgenticParse()]
+session = agent.session(".", opts)
+```
+</Tab>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{Agent, SessionOptions, AgenticSearchPlugin, AgenticParsePlugin};
+
+let session = agent
+    .session(workspace, SessionOptions::new()
+        .with_plugin(AgenticSearchPlugin::new())
+        .with_plugin(AgenticParsePlugin::new()))
+    .await?;
+```
+</Tab>
+</Tabs>
+
+## 插件加载机制
+
+调用 `build_session()` 时，插件在系统提示词组装**之前**加载：
+
+```
+build_session(opts)
+  │
+  ├─ 1. 构建 SkillRegistry（内置技能 + 会话 skill_dirs）
+  │
+  ├─ 2. 按顺序加载每个插件
+  │      plugin.load(tool_registry, ctx)    → 注册工具
+  │      plugin.skills()                    → 返回配套技能
+  │      skill_registry.register(skill)     → 在系统提示词前添加
+  │
+  ├─ 3. skill_registry.to_system_prompt()   → 包含插件技能
+  │
+  └─ 4. 会话启动 — LLM 从第一轮起即可看到插件工具 + 技能
+```
+
+这意味着插件配套技能出现在**第一轮的系统提示词**中 — 在处理任何用户消息之前，LLM 就已经知道它们的存在。
+
+### 故障隔离
+
+如果某个插件的 `load()` 调用失败（例如 `AgenticParse` 没有 LLM 客户端），只有该插件会被跳过，其他插件正常继续加载。失败的插件**不会**注册其配套技能。
+
+## 文档解析器支持
+
+对于二进制文件格式（PDF、Excel、Word），将 `DocumentParserRegistry` 作为插件选项传入。这会通知插件该会话已启用文档解析功能。
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+import { AgenticSearch, AgenticParse, DocumentParserRegistry } from '@a3s-lab/code';
+
+const session = agent.session('.', {
+  plugins: [
+    new AgenticSearch({ documentParserRegistry: new DocumentParserRegistry() }),
+    new AgenticParse({ documentParserRegistry: new DocumentParserRegistry() }),
+  ],
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+# Python 中，插件自动使用已注册的文档解析器
+# （自定义解析器通过 DocumentParser trait 在 Rust 中注册）
+opts.plugins = [AgenticSearch(), AgenticParse()]
+```
+</Tab>
+</Tabs>
+
+<Callout type="info">
+SDK 中的 `DocumentParserRegistry` 是一个信号 — 它启用二进制格式解析路径。自定义解析器（PDF、Excel、DOCX）通过实现 `DocumentParser` trait 并调用 `DocumentParserRegistry::register()` 在 Rust 中注册。
+</Callout>
+
+## 构建自定义插件
+
+根据需求，有两个层级的定制方式：
+
+| 方式 | 支持语言 | 注入技能 | 注册工具 |
+|---|---|---|---|
+| `SkillPlugin` | TypeScript、Python、Rust | ✅ | ❌ |
+| `Plugin` trait | 仅 Rust | ✅ | ✅ |
+
+如需自定义工具，使用 [MCP](/cn/docs/code/mcp) — 支持任意语言，工具会自动注册到会话。
+
+### SkillPlugin — TypeScript / Python / Rust
+
+`SkillPlugin` 将自定义技能（LLM 指导、工具访问规则、指令）注入会话，无需编写 Rust。这覆盖了最常见的场景：控制 LLM 的行为方式。
+
+**技能**是 YAML 前置元数据 + Markdown 正文：
+
+```markdown
+---
+name: my-skill
+description: 简短描述，用于技能匹配
+allowed-tools: "bash(*), read(*)"
+kind: instruction
+---
+
+# 我的技能
+
+LLM 激活此技能时接收到的指导文本...
+```
+
+<Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
+<Tab value="TypeScript">
+```typescript
+import { Agent, AgenticSearch, SkillPlugin } from '@a3s-lab/code';
+
+const skillMd = `---
+name: my-skill
+description: 执行命令前先解释
+allowed-tools: "bash(*)"
+kind: instruction
+---
+执行任何 Shell 命令前，先说明该命令的作用和原因。
+`;
+
+const session = agent.session('.', {
+  plugins: [
+    new AgenticSearch(),
+    new SkillPlugin('my-plugin', [skillMd]),
+  ],
+});
+```
+</Tab>
+<Tab value="Python">
+```python
+from a3s_code import Agent, AgenticSearch, SkillPlugin, SessionOptions
+
+skill_md = """---
+name: my-skill
+description: 执行命令前先解释
+allowed-tools: "bash(*)"
+kind: instruction
+---
+执行任何 Shell 命令前，先说明该命令的作用和原因。
+"""
+
+opts = SessionOptions()
+opts.plugins = [AgenticSearch(), SkillPlugin("my-plugin", [skill_md])]
+session = agent.session(".", opts)
+```
+</Tab>
+<Tab value="Rust">
+```rust
+use a3s_code_core::{AgenticSearchPlugin, SkillPlugin, SessionOptions};
+
+let skill_md = r#"---
+name: my-skill
+description: 执行命令前先解释
+allowed-tools: "bash(*)"
+kind: instruction
+---
+执行任何 Shell 命令前，先说明该命令的作用和原因。
+"#;
+
+let session = agent
+    .session(workspace, SessionOptions::new()
+        .with_plugin(AgenticSearchPlugin::new())
+        .with_plugin(SkillPlugin::new("my-plugin").with_skill(skill_md)))
+    .await?;
+```
+</Tab>
+</Tabs>
+
+### Plugin trait（Rust）— 完全控制
+
+当需要同时注册自定义工具和技能时，在 Rust 中实现 `Plugin` trait：
+
+```rust
+use a3s_code_core::plugin::{Plugin, PluginContext};
+use a3s_code_core::skills::Skill;
+use a3s_code_core::tools::ToolRegistry;
+use anyhow::Result;
+use std::sync::Arc;
+
+pub struct MyPlugin;
+
+impl Plugin for MyPlugin {
+    fn name(&self) -> &str { "my-plugin" }
+    fn version(&self) -> &str { "1.0.0" }
+    fn tool_names(&self) -> &[&str] { &["my_tool"] }
+
+    fn load(&self, registry: &Arc<ToolRegistry>, _ctx: &PluginContext) -> Result<()> {
+        registry.register(Arc::new(MyTool::new()));
+        Ok(())
+    }
+
+    fn skills(&self) -> Vec<Arc<Skill>> {
+        let content = r#"---
+name: my-skill
+description: 指导 LLM 如何使用 my_tool
+allowed-tools: "my_tool(*)"
+kind: instruction
+---
+# 我的技能
+
+当用户要求...时，使用 `my_tool`。
+"#;
+        Skill::parse(content)
+            .map(|s| vec![Arc::new(s)])
+            .unwrap_or_default()
+    }
+}
+
+// 注册:
+let session = agent
+    .session(workspace, SessionOptions::new()
+        .with_plugin(MyPlugin))
+    .await?;
+```
+
+### Plugin trait 参考
+
+<TypeTable
+  type={{
+    "name()": { type: '&str', description: 'kebab-case 唯一标识符（如 "my-plugin"）。用于日志记录和按名称卸载。' },
+    "version()": { type: '&str', description: 'Semver 版本字符串（如 "1.0.0"）。' },
+    "tool_names()": { type: '&[&str]', description: '此插件注册的所有工具名称。默认 unload() 使用此列表移除工具。' },
+    "load()": { type: 'Result<()>', description: '将工具注册到 ToolRegistry。插件挂载时调用一次。返回 Err 则中止加载（配套技能不会被注册）。' },
+    "skills()": { type: 'Vec<Arc<Skill>>', description: '返回要注册到 SkillRegistry 的配套技能。仅在 load() 成功后调用。默认: 空 vec。' },
+    "unload()": { type: 'void', description: '从 ToolRegistry 中移除插件工具。默认: 移除所有 tool_names()。可覆盖以实现自定义清理。' },
+    "description()": { type: '&str', description: '人类可读的描述。默认: 空字符串。' },
+  }}
+/>
+
+### PluginContext 字段
+
+<TypeTable
+  type={{
+    "llm": { type: 'Option<Arc<dyn LlmClient>>', description: 'LLM 客户端 — 需要推理的工具必须使用（如 agentic_parse）。' },
+    "document_parsers": { type: 'Option<Arc<DocumentParserRegistry>>', description: '文档解析器注册表 — 用于解码二进制文件格式的插件。' },
+    "skill_registry": { type: 'Option<Arc<SkillRegistry>>', description: '技能注册表 — 插件也可在 load() 期间直接注册技能（如需要）。' },
+  }}
+/>
+
+## PluginManager（Rust API）
+
+对于高级用例，可使用 `PluginManager` 独立管理插件生命周期：
+
+```rust
+use a3s_code_core::plugin::{PluginManager, PluginContext, AgenticSearchPlugin};
+
+let mut manager = PluginManager::new();
+manager.register(AgenticSearchPlugin::new());
+
+let ctx = PluginContext::new()
+    .with_llm(llm_client)
+    .with_skill_registry(skill_registry);
+
+manager.load_all(&tool_registry, &ctx);
+
+// 稍后：卸载单个插件
+manager.unload("agentic-search", &tool_registry);
+
+// 或卸载全部
+manager.unload_all(&tool_registry);
+
+// 查询
+manager.is_loaded("agentic-search");  // → bool
+manager.plugin_names();               // → Vec<&str>
+```

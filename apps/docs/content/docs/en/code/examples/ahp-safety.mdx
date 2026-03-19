@@ -74,8 +74,10 @@ opts.ahp_transport = StdioTransport(
 )
 opts.builtin_skills = True
 
+opts.permissive = True
+
 # Create monitored session
-session = agent.session(".", opts, permissive=True)
+session = agent.session(".", opts)
 
 # Safe operation - will be allowed
 result = session.send("List all files in current directory")
@@ -102,11 +104,12 @@ const opts: SessionOptions = {
     program: 'python3',
     args: ['examples/ahp_agent_monitors_agent.py']
   }),
-  builtinSkills: true
+  builtinSkills: true,
+  permissive: true,
 };
 
 // Create monitored session
-const session = agent.session('.', opts, { permissive: true });
+const session = agent.session('.', opts);
 
 // Safe operation - will be allowed
 const result = await session.send('List all files in current directory');
@@ -135,9 +138,11 @@ agent = Agent.create("agent_kimi.hcl")
 skill_dir = str(Path(__file__).parent / "ahp_skills")
 session = agent.session(
     workspace,
-    permissive=True,
-    builtin_skills=False,
-    skill_dirs=[skill_dir],
+    SessionOptions(
+        permissive=True,
+        builtin_skills=False,
+        skill_dirs=[skill_dir],
+    ),
 )
 # AHP Server agent uses /detect-dangerous-operation skill to analyze each tool call
 ```
