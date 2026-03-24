@@ -1,0 +1,82 @@
+name: SafeClaw Release Verify
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/safeclaw/**'
+      - 'crates/box/**'
+      - '.github/workflows/safeclaw-release-verify.yml'
+
+jobs:
+  verify-desktop-bundle:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: apps/safeclaw
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: apps/safeclaw/pnpm-lock.yaml
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-musl
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Backend cargo check
+        run: cargo check --message-format=short
+        working-directory: apps/safeclaw/crates/safeclaw
+
+      - name: Desktop cargo check
+        run: cargo check --message-format=short
+        working-directory: apps/safeclaw/src-tauri
+
+      - name: Build desktop bundle with bundled box validation
+        env:
+          SAFECLAW_REQUIRE_BOX_RESOURCES: "1"
+        run: pnpm tauri:build:validated
+
+      - name: Verify macOS app bundle resources
+        run: |
+          APP_RESOURCES="src-tauri/target/release/bundle/macos/SafeClaw.app/Contents/Resources"
+          if [ ! -d "$APP_RESOURCES" ]; then
+            echo "Expected app resources not found at $APP_RESOURCES" >&2
+            exit 1
+          fi
+          mkdir -p artifacts
+          node scripts/verify-box-resources.mjs \
+            --dir "$APP_RESOURCES" \
+            --json \
+            --output "artifacts/box-resource-report.json"
+
+      - name: Record bundle inventory
+        run: |
+          mkdir -p artifacts
+          find src-tauri/target/release/bundle -maxdepth 4 -print | sort > artifacts/bundle-tree.txt
+
+      - name: Upload verification artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: safeclaw-release-verify-macos
+          path: |
+            apps/safeclaw/artifacts/box-resource-report.json
+            apps/safeclaw/artifacts/bundle-tree.txt
+            apps/safeclaw/src-tauri/target/release/bundle/macos/SafeClaw.app
+            apps/safeclaw/src-tauri/target/release/bundle/dmg
+          if-no-files-found: error

@@ -258,6 +258,47 @@ Think of SafeClaw like a **bank vault** for your AI assistant:
 - **Unified REST API**: 34 endpoints (33 REST + 1 WebSocket) with CORS, privacy/audit/compliance APIs, webhook ingestion. See [API Reference](#api-reference)
 - **Secure Channels**: X25519 key exchange + AES-256-GCM encryption
 - **Memory System**: Three-layer data hierarchy — Resources (raw content), Artifacts (structured knowledge), Insights (cross-conversation synthesis)
+
+## SafeClaw Box Release Verification
+
+SafeClaw now bundles the embedded `a3s-box` runtime resources required by the
+agent-facing Box APIs. A release build is expected to contain:
+
+- `box/manifest.json`
+- `box/a3s-box-shim`
+- `box/a3s-box-guest-init`
+- `box/lib/*` runtime libraries on macOS/Linux release builds
+
+Validation commands:
+
+```bash
+cd apps/safeclaw
+pnpm tauri:build:validated
+pnpm check:box-resources
+node scripts/verify-box-resources.mjs --dir src-tauri/target/release/bundle/macos/SafeClaw.app/Contents/Resources
+node scripts/verify-box-resources.mjs --dir src-tauri/target/release/bundle/macos/SafeClaw.app/Contents/Resources --json --output artifacts/box-resource-report.json
+```
+
+`pnpm check:box-resources` expects a built desktop bundle to exist already. Use
+`pnpm tauri:build:validated` first when validating locally from a clean tree.
+
+Core bundled skills follow the same pattern: the backend-owned markdown files
+under `crates/safeclaw/src/embedded_skills` are the single source of truth, and
+`src-tauri/resources/skills` is a build-time mirror used for desktop
+distribution and `~/.safeclaw/skills` sync.
+
+CI workflow:
+
+- `.github/workflows/safeclaw-release-verify.yml`
+
+That workflow builds the desktop bundle on macOS, enforces bundled Box
+resources during release packaging, and validates the final `.app` resource
+directory instead of trusting build-time logs alone. It also uploads:
+
+- `box-resource-report.json`
+- `bundle-tree.txt`
+- the final `.app`
+- the generated `.dmg` directory contents
 - **Desktop UI**: Tauri v2 + React + TypeScript native desktop application
 - **656 tests**
 
@@ -396,9 +437,9 @@ a3s-code (agent service, separate process in same VM)
 ├── a3s-lane        (priority queue, concurrency control)
 └── a3s-privacy     (execution-time guards)
 
-NOT depended on by SafeClaw:
+NOT directly user-installed for SafeClaw:
   a3s-code          → separate process, called via local service
-  a3s-box-runtime   → host-side VM launcher, SafeClaw is the guest
+  a3s-box-runtime   → now embedded and packaged by SafeClaw for Box APIs; users do not install it separately
   a3s-gateway       → K8s Ingress, SafeClaw doesn't know about it
   a3s-event          → optional platform service, config-driven
 ```
