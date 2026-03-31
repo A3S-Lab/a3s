@@ -327,7 +327,7 @@ cargo build --release
 
 ```bash
 # Start the gateway
-safeclaw gateway --port 18790
+safeclaw gateway
 
 # Run diagnostics
 safeclaw doctor
@@ -882,7 +882,7 @@ SafeClaw uses JSON configuration files. Default location: `~/.safeclaw/config.js
 
   "gateway": {
     "host": "127.0.0.1",
-    "port": 18790,
+    "port": 29653,
     "tls": {
       "enabled": false,
       "cert_path": null,
