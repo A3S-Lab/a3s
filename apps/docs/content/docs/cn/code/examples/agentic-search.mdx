@@ -186,16 +186,15 @@ let evidence_score = file_relevance * weight_sum / (sampled.len() as f32).sqrt()
 
 ### 示例 1: 基础搜索
 
-`agentic_search` 是插件工具 — 使用前需通过 `plugins` 挂载。
+`agentic_search` 已内置，可直接使用；如需调整默认行为，请通过 `config.hcl` 配置。
 
 <Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
 <Tab value="TypeScript">
 ```typescript
-import { Agent, AgenticSearch } from '@a3s-lab/code';
+import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.', {
-  plugins: [new AgenticSearch()],
   builtinSkills: true,
 });
 
@@ -209,11 +208,10 @@ console.log(result.text);
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent, SessionOptions, AgenticSearch
+from a3s_code import Agent, SessionOptions
 
 agent = Agent.create("agent.hcl")
 opts = SessionOptions()
-opts.plugins = [AgenticSearch()]
 opts.builtin_skills = True
 
 session = agent.session(".", opts)
@@ -228,15 +226,13 @@ print(result.text)
 </Tab>
 <Tab value="Rust">
 ```rust
-use a3s_code_core::{Agent, AgenticSearchPlugin, SessionOptions};
+use a3s_code_core::{Agent, SessionOptions};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let agent = Agent::from_file("agent.hcl").await?;
 
-    let opts = SessionOptions::new()
-        .with_plugin(AgenticSearchPlugin::new())
-        .with_builtin_skills(true);
+    let opts = SessionOptions::new().with_builtin_skills(true);
 
     let session = agent.session(".", opts).await?;
 
@@ -414,18 +410,15 @@ result = session.send("""
 
 ### 示例 6: 文档解析配置
 
-将 `DocumentParserRegistry` 作为**插件选项**传入，启用二进制文档（PDF、DOCX 等）的解析：
+`agentic_search` 默认共享内置 `CompositeDocumentParser`，可直接解析常见富文档。Rust 宿主如果需要，也可以替换 `DocumentParserRegistry`：
 
 <Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
 <Tab value="TypeScript">
 ```typescript
-import { Agent, AgenticSearch, DocumentParserRegistry } from '@a3s-lab/code';
+import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.', {
-  plugins: [
-    new AgenticSearch({ documentParserRegistry: new DocumentParserRegistry() }),
-  ],
   builtinSkills: true,
 });
 
@@ -437,12 +430,10 @@ const result = await session.send(
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent, SessionOptions, AgenticSearch
+from a3s_code import Agent, SessionOptions
 
 agent = Agent.create("agent.hcl")
 opts = SessionOptions()
-# Python 插件自动使用已注册的文档解析器
-opts.plugins = [AgenticSearch()]
 opts.builtin_skills = True
 
 session = agent.session(".", opts)
@@ -455,14 +446,13 @@ result = session.send(
 </Tab>
 <Tab value="Rust">
 ```rust
-use a3s_code_core::{Agent, AgenticSearchPlugin, SessionOptions};
+use a3s_code_core::{Agent, SessionOptions};
 use a3s_code_core::DocumentParserRegistry;
 use std::sync::Arc;
 
 let agent = Agent::from_file("agent.hcl").await?;
 
 let opts = SessionOptions::new()
-    .with_plugin(AgenticSearchPlugin::new())
     .with_document_parser_registry(Arc::new(DocumentParserRegistry::new()))
     .with_builtin_skills(true);
 
@@ -477,7 +467,7 @@ let result = session.send(
 </Tabs>
 
 <Callout type="info">
-如果不配置 `DocumentParserRegistry`，agentic_search 只读取纯文本文件。文档解析是可选的，按插件配置。
+`agentic_search` 和 `agentic_parse` 共享同一个文档解析注册表。若在 Rust 中替换 `DocumentParserRegistry`，两个工具会同时看到新的解析行为。
 </Callout>
 
 ---
@@ -622,6 +612,7 @@ const matches = await session.send(
 
 ## 相关资源
 
-- [插件工具参考](/cn/docs/code/tools#插件工具参考) — agentic_search 与 agentic_parse 参考
+- [工具参考](/cn/docs/code/tools) — agentic_search 与 agentic_parse 参考
+- [Agentic Parse](/cn/docs/code/examples/agentic-parse) — parser runtime metadata 与 LLM 选块
 - [Ripgrep Context Provider](/cn/docs/code/examples/ripgrep-context) — 基于 ripgrep 的上下文提供器
 - [Sirchmunk 论文](https://github.com/modelscope/sirchmunk) — 原始灵感来源

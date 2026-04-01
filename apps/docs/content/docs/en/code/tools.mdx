@@ -1,6 +1,6 @@
 ---
 title: Tools
-description: 16 built-in tools and 2 opt-in plugin tools for file operations, shell execution, search, web access, git worktree, and subagent delegation
+description: 18 built-in tools for file operations, shell execution, search, web access, git worktree, subagent delegation, and document intelligence
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -9,10 +9,10 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 # Tools
 
-A3S Code ships with **16 built-in tools** (always available) and **2 plugin tools** (opt-in). All tools execute in-process via native Rust implementations.
+A3S Code ships with **18 built-in tools**. All tools execute in-process via native Rust implementations.
 
 <Callout type="info">
-`agentic_search` and `agentic_parse` are **plugin tools** — not loaded by default. Mount them via `SessionOptions.plugins`. Each plugin also automatically registers its companion skill into the session's skill registry.
+`agentic_search` and `agentic_parse` are built-in tools. They are registered by default and can be configured from `config.hcl`. Both delegate rich-document decoding to the shared `CompositeDocumentParser` pipeline.
 </Callout>
 
 ## Built-in Tool Reference
@@ -70,17 +70,15 @@ A3S Code ships with **16 built-in tools** (always available) and **2 plugin tool
   }}
 />
 
-## Plugin Tool Reference
-
-Plugin tools are **not registered by default**. They must be explicitly mounted via `SessionOptions.plugins`. Loading a plugin registers both its tool and its companion skill.
+## Agentic Tool Reference
 
 <TypeTable
   type={{
     "agentic_search": {
-      description: "Plugin: AgenticSearch · Purpose: Multi-phase semantic code search with IDF-weighted relevance ranking · Companion skill: agentic-search",
+      description: "Built-in · Purpose: Multi-phase semantic code search with IDF-weighted relevance ranking · Shared parser: CompositeDocumentParser",
     },
     "agentic_parse": {
-      description: "Plugin: AgenticParse · Purpose: LLM-enhanced document parsing with 5 parse strategies (auto/structured/narrative/tabular/code) · Companion skill: agentic-parse",
+      description: "Built-in · Purpose: LLM-enhanced document parsing with 5 parse strategies (auto/structured/narrative/tabular/code) · Shared parser: CompositeDocumentParser",
     },
   }}
 />
@@ -205,35 +203,9 @@ Search the web using multiple search engines.
 }
 ```
 
-## Plugin Tools
+## Built-in Agentic Tools
 
-Plugin tools are opt-in — mount them explicitly via `SessionOptions.plugins`. When a plugin loads, it registers both its **tool** (callable by the LLM) and its **companion skill** (injected into the system prompt automatically).
-
-### Mounting Plugins
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-import { Agent, AgenticSearch, AgenticParse } from '@a3s-lab/code';
-
-const session = agent.session('.', {
-  plugins: [
-    new AgenticSearch(),
-    new AgenticParse(),
-  ],
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import SessionOptions, AgenticSearch, AgenticParse
-
-opts = SessionOptions()
-opts.plugins = [AgenticSearch(), AgenticParse()]
-session = agent.session('.', opts)
-```
-</Tab>
-</Tabs>
+`agentic_search` and `agentic_parse` are registered automatically. Use `config.hcl` to disable or tune them; use the plugin system only for custom capabilities beyond the built-in toolset.
 
 ### `agentic_search`
 
@@ -271,7 +243,25 @@ Omit `query` for a fast structural overview without LLM cost.
 
 ### Supported Formats
 
-`agentic_parse` supports plain-text formats out of the box: source code, Markdown, JSON, TOML, YAML, HCL, CSV, and more. Binary formats (PDF, Word, Excel) require a custom `DocumentParser` implementation in Rust — not currently exposed in the TypeScript or Python SDKs.
+`agentic_parse` supports plain-text formats out of the box: source code, Markdown, JSON, TOML, YAML, HCL, CSV, and more.
+
+The built-in shared `CompositeDocumentParser` also decodes these richer formats by default:
+
+- Native structured decode: `pdf`, `docx`, `xlsx`, `xlsm`, `pptx`, `odt`, `ods`, `odp`, `epub`, `rtf`, `html`, `htm`, `xhtml`, `xml`, `eml`
+- Image decode through OCR: `png`, `jpg`, `jpeg`, `webp`, `gif`, `bmp`, `tif`, `tiff`
+
+OCR behavior depends on `document_parser.ocr` plus a runtime OCR provider supplied by the Rust host:
+
+- `pdf`: OCR fallback when extracted text is weak or empty
+- `docx`, `pptx`, `xlsx`, `xlsm`, `odt`, `ods`, `odp`: OCR fallback only when the native structured-text pass yields no extractable content
+- Image formats: OCR is the primary decode path
+
+When OCR is used, `agentic_parse` exposes runtime metadata including OCR format, provider, model, `max_images`, and `dpi`.
+
+`agentic_search` also exposes structured match metadata, including page / section
+locators derived from `CompositeDocumentParser` blocks. When `agentic_parse` runs with a
+`query`, tool metadata includes the exact structured blocks selected for LLM
+input (`metadata.llm_blocks`), so SDKs can surface page-aware LLM context.
 
 ## Direct Tool Execution
 
@@ -476,7 +466,7 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
   }}
 />
 
-#### agentic_search _(plugin)_
+#### agentic_search
 
 <TypeTable
   type={{
@@ -488,7 +478,7 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
   }}
 />
 
-#### agentic_parse _(plugin)_
+#### agentic_parse
 
 <TypeTable
   type={{

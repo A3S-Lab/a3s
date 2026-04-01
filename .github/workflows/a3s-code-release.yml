@@ -1,0 +1,403 @@
+name: A3S Code Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Existing git tag to publish, for example a3s-code-v1.5.8"
+        required: true
+        type: string
+      publish_pypi:
+        description: "Publish Python wheels to PyPI after creating the GitHub release"
+        required: false
+        default: true
+        type: boolean
+      publish_npm:
+        description: "Publish Node packages to npm after creating the GitHub release"
+        required: false
+        default: true
+        type: boolean
+  push:
+    tags:
+      - "a3s-code-v*"
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: a3s-code-release-${{ github.event.inputs.tag_name || github.ref_name || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  validate-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag_name: ${{ steps.version.outputs.tag_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag and package versions
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TAG_NAME="${{ github.event.inputs.tag_name || github.ref_name }}"
+          if [[ ! "$TAG_NAME" =~ ^a3s-code-v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "Expected tag format a3s-code-vX.Y.Z, got: $TAG_NAME" >&2
+            exit 1
+          fi
+
+          VERSION="${BASH_REMATCH[1]}"
+          CORE_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' crates/code/core/Cargo.toml | head -n 1)"
+          PY_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' crates/code/sdk/python/Cargo.toml | head -n 1)"
+          PYPROJECT_VERSION="$(sed -n 's/^version = "\(.*\)"/\1/p' crates/code/sdk/python/pyproject.toml | head -n 1)"
+          NODE_VERSION="$(node -p "require('./crates/code/sdk/node/package.json').version")"
+          NODE_OPTIONAL_VERSIONS="$(node - <<'NODE'
+          const pkg = require('./crates/code/sdk/node/package.json');
+          const versions = new Set(Object.values(pkg.optionalDependencies || {}));
+          if (versions.size !== 1) {
+            console.error('Node optionalDependencies versions are not aligned:', [...versions]);
+            process.exit(1);
+          }
+          process.stdout.write([...versions][0]);
+          NODE
+          )"
+
+          test "$VERSION" = "$CORE_VERSION"
+          test "$VERSION" = "$PY_VERSION"
+          test "$VERSION" = "$PYPROJECT_VERSION"
+          test "$VERSION" = "$NODE_VERSION"
+          test "$VERSION" = "$NODE_OPTIONAL_VERSIONS"
+
+          node - <<'NODE'
+          const pkg = require('./crates/code/sdk/node/package.json');
+          const lock = require('./crates/code/sdk/node/package-lock.json');
+          const root = lock.packages?.[''];
+          if (!root) {
+            console.error('Node package-lock.json is missing the root package entry');
+            process.exit(1);
+          }
+          if (root.version !== pkg.version) {
+            console.error(`Node package-lock version mismatch: ${root.version} != ${pkg.version}`);
+            process.exit(1);
+          }
+          const pkgOptional = JSON.stringify(pkg.optionalDependencies || {});
+          const lockOptional = JSON.stringify(root.optionalDependencies || {});
+          if (pkgOptional !== lockOptional) {
+            console.error('Node package-lock optionalDependencies mismatch with package.json');
+            process.exit(1);
+          }
+          NODE
+
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+  test-core:
+    runs-on: ubuntu-latest
+    needs: validate-version
+    defaults:
+      run:
+        working-directory: crates/code
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            crates/code -> target
+
+      - name: Run orchestrator tests
+        run: cargo test -p a3s-code-core orchestrator --manifest-path Cargo.toml
+
+  build-python:
+    runs-on: ${{ matrix.os }}
+    needs:
+      - validate-version
+      - test-core
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: python-wheel-linux
+          - os: macos-14
+            artifact_name: python-wheel-macos-arm64
+          - os: windows-latest
+            artifact_name: python-wheel-windows
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build Python wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          working-directory: crates/code/sdk/python
+          args: --release --out dist
+
+      - name: Upload Python artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: crates/code/sdk/python/dist/*
+          if-no-files-found: error
+
+  build-node:
+    runs-on: ${{ matrix.os }}
+    needs:
+      - validate-version
+      - test-core
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            node_file: index.linux-x64-gnu.node
+            artifact_name: node-binary-linux-x64-gnu
+            use_zig: true
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            node_file: index.linux-x64-musl.node
+            artifact_name: node-binary-linux-x64-musl
+            use_zig: true
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            node_file: index.linux-arm64-gnu.node
+            artifact_name: node-binary-linux-arm64-gnu
+            use_zig: true
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            node_file: index.linux-arm64-musl.node
+            artifact_name: node-binary-linux-arm64-musl
+            use_zig: true
+          - os: macos-13
+            target: x86_64-apple-darwin
+            node_file: index.darwin-x64.node
+            artifact_name: node-binary-macos-x64
+            use_zig: false
+          - os: macos-14
+            target: aarch64-apple-darwin
+            node_file: index.darwin-arm64.node
+            artifact_name: node-binary-macos-arm64
+            use_zig: false
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            node_file: index.win32-x64-msvc.node
+            artifact_name: node-binary-windows
+            use_zig: false
+    defaults:
+      run:
+        working-directory: crates/code/sdk/node
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: crates/code/sdk/node/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Setup Zig
+        if: matrix.use_zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.13.0
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            crates/code/sdk/node -> target
+            crates/code/core -> target
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --omit=optional
+
+      - name: Build Node addon
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_ARGS=(--platform --release --js index.js --dts index.d.ts --target "${{ matrix.target }}")
+          if [[ "${{ matrix.use_zig }}" == "true" ]]; then
+            BUILD_ARGS+=(--zig)
+          fi
+          npx napi build "${BUILD_ARGS[@]}"
+
+      - name: Package Node release artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp index.js index.d.ts package.json release/
+          cp "${{ matrix.node_file }}" release/
+          tar -czf "a3s-code-node-${{ needs.validate-version.outputs.version }}-${{ matrix.target }}.tar.gz" -C release .
+
+      - name: Upload Node artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: crates/code/sdk/node/a3s-code-node-${{ needs.validate-version.outputs.version }}-${{ matrix.target }}.tar.gz
+          if-no-files-found: error
+
+      - name: Upload Node addon for npm publish
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-addon-${{ matrix.target }}
+          path: crates/code/sdk/node/${{ matrix.node_file }}
+          if-no-files-found: error
+
+  publish-github-release:
+    runs-on: ubuntu-latest
+    needs:
+      - validate-version
+      - build-python
+      - build-node
+    outputs:
+      release_version: ${{ needs.validate-version.outputs.version }}
+    steps:
+      - name: Download Python release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: python-wheel-*
+          path: release-artifacts/python
+
+      - name: Download Node release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: node-binary-*
+          path: release-artifacts/node
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-artifacts
+          find . -type f ! -name 'SHA256SUMS.txt' -print0 | sort -z | xargs -0 shasum -a 256 > SHA256SUMS.txt
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.validate-version.outputs.tag_name }}
+          name: A3S Code v${{ needs.validate-version.outputs.version }}
+          generate_release_notes: true
+          files: release-artifacts/**/*
+
+  publish-pypi:
+    runs-on: ubuntu-latest
+    needs:
+      - validate-version
+      - publish-github-release
+    if: github.event_name == 'push' || inputs.publish_pypi == true
+    environment:
+      name: pypi
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Python artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: python-wheel-*
+          merge-multiple: true
+          path: dist
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install maturin
+        run: python -m pip install --upgrade pip maturin
+
+      - name: Publish wheels to PyPI
+        env:
+          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          test -n "$MATURIN_PYPI_TOKEN" || { echo "Missing PYPI_TOKEN secret" >&2; exit 1; }
+          python -m maturin upload --non-interactive dist/*
+
+  publish-npm:
+    runs-on: ubuntu-latest
+    needs:
+      - validate-version
+      - publish-github-release
+      - build-node
+    if: github.event_name == 'push' || inputs.publish_npm == true
+    environment:
+      name: npm
+    defaults:
+      run:
+        working-directory: crates/code/sdk/node
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Node addons
+        uses: actions/download-artifact@v4
+        with:
+          pattern: node-addon-*
+          merge-multiple: true
+          path: crates/code/sdk/node
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: crates/code/sdk/node/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --omit=optional
+
+      - name: Prepare npm packages
+        shell: bash
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${NPM_TOKEN:-}" || { echo "Missing NPM_TOKEN secret" >&2; exit 1; }
+          ls -1 *.node
+          rm -rf npm
+          npx napi prepublish -t npm
+          find npm -mindepth 1 -maxdepth 1 -type d -print
+          find . -maxdepth 1 -name '*.node' -delete
+
+      - name: Publish platform packages
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          for pkg in npm/*; do
+            (cd "$pkg" && npm publish --access public --ignore-scripts)
+          done
+
+      - name: Publish root package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --ignore-scripts

@@ -1,0 +1,138 @@
+---
+title: Agentic Parse
+description: Parse rich documents with CompositeDocumentParser, inspect document runtime metadata, and see which blocks were selected for LLM input
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Agentic Parse
+
+`agentic_parse` summarizes, analyzes, and answers questions over structured
+document content. Rich formats flow through the shared `CompositeDocumentParser`
+pipeline, so PDFs, Office files, HTML, EPUB, images, and emails can share the
+same block-oriented metadata model.
+
+## Runtime Metadata
+
+When OCR is used, `agentic_parse` surfaces runtime metadata such as OCR
+provider, model, `dpi`, and normalized parser config.
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const { parseDocumentRuntime } = require('@a3s-lab/code')
+
+const tool = await session.tool('agentic_parse', { path: 'docs/scanned.pdf' })
+console.log(tool.documentRuntime)
+
+const runtime = parseDocumentRuntime(tool)
+if (runtime?.ocr) {
+  console.log(runtime.ocr.provider, runtime.ocr.model, runtime.ocr.dpi)
+}
+```
+
+**Source:** [`crates/code/sdk/node/examples/test-document-ocr-provider.js`](https://github.com/A3S-Lab/Code/blob/main/crates/code/sdk/node/examples/test-document-ocr-provider.js)
+</Tab>
+<Tab value="Python">
+```python
+tool = session.tool("agentic_parse", {"path": "docs/scanned.pdf"})
+print(tool.document_runtime)
+
+runtime = tool.document_runtime_info
+if runtime and runtime.ocr:
+    print(runtime.ocr.provider, runtime.ocr.model, runtime.ocr.dpi)
+```
+
+**Source:** [`crates/code/sdk/python/examples/test_document_runtime_info.py`](https://github.com/A3S-Lab/Code/blob/main/crates/code/sdk/python/examples/test_document_runtime_info.py)
+</Tab>
+</Tabs>
+
+## LLM Block Selection
+
+When `agentic_parse` runs with a `query`, the tool metadata records which
+structured blocks were actually selected for LLM input. This makes the
+selection debuggable and preserves page / section locators in SDK helpers.
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const { parseAgenticParseLlmBlocks } = require('@a3s-lab/code')
+
+const tool = await session.tool('agentic_parse', {
+  path: 'docs/scanned.pdf',
+  query: 'overview',
+})
+
+for (const block of tool.agenticParseLlmBlocks ?? parseAgenticParseLlmBlocks(tool) ?? []) {
+  console.log(block.index, block.kind, block.label, block.location?.display)
+}
+```
+
+**Source:** [`crates/code/sdk/node/examples/test-agentic-parse-llm-blocks.js`](https://github.com/A3S-Lab/Code/blob/main/crates/code/sdk/node/examples/test-agentic-parse-llm-blocks.js)
+</Tab>
+<Tab value="Python">
+```python
+tool = session.tool(
+    "agentic_parse",
+    {"path": "docs/scanned.pdf", "query": "overview"},
+)
+
+for block in tool.agentic_parse_llm_blocks_info:
+    location = block.location.display if block.location else None
+    print(block.index, block.kind, block.label, location)
+```
+
+**Source:** [`crates/code/sdk/python/examples/test_document_runtime_info.py`](https://github.com/A3S-Lab/Code/blob/main/crates/code/sdk/python/examples/test_document_runtime_info.py)
+</Tab>
+</Tabs>
+
+<Callout type="info">
+`agentic_search` and `agentic_parse` share the same parser registry. Match
+locators from search results and LLM block locators from parse results both
+come from the same `CompositeDocumentParser` block graph.
+</Callout>
+
+## OCR Provider Injection
+
+If the host application needs a custom OCR backend, inject a provider at
+session creation time. Supplied providers take precedence over the built-in
+local-tool fallback.
+
+<Tabs groupId="lang" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+```typescript
+const session = agent.session('.', {
+  documentOcrProvider: {
+    name: 'js-mock-ocr',
+    formats: ['pdf', 'image'],
+    model: 'openai/gpt-4.1-mini',
+    async run(request) {
+      console.log(request.path, request.format)
+      return 'Scanned invoice total: 42 USD'
+    },
+  },
+})
+```
+
+**Source:** [`crates/code/sdk/node/examples/test-document-ocr-provider.js`](https://github.com/A3S-Lab/Code/blob/main/crates/code/sdk/node/examples/test-document-ocr-provider.js)
+</Tab>
+<Tab value="Python">
+```python
+opts.document_ocr_provider = DocumentOcrProvider(
+    "python-mock-ocr",
+    ocr_callback,
+    formats=["pdf", "image"],
+    model="openai/gpt-4.1-mini",
+)
+session = agent.session(".", opts)
+```
+
+**Source:** [`crates/code/sdk/python/examples/test_document_ocr_provider.py`](https://github.com/A3S-Lab/Code/blob/main/crates/code/sdk/python/examples/test_document_ocr_provider.py)
+</Tab>
+</Tabs>
+
+## Related
+
+- [Tools](/docs/code/tools) — full `agentic_parse` and `agentic_search` reference
+- [Agentic Search](/docs/code/examples/agentic-search) — search-side block locators and ranking behavior

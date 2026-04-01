@@ -12,7 +12,7 @@ import { Steps, Step } from 'fumadocs-ui/components/steps';
 **Rust framework for building agentic AI agents** — Embed agents that read, write, and execute code into any application. Tool calling, task planning, safety controls, multi-machine distribution — native Node.js and Python bindings included.
 
 <Callout type="info">
-**Test Coverage:** 1501 tests, 100% pass rate | **Extension Points:** 20 trait-based | **Built-in Tools:** 16 | **Plugin Tools:** 2 (opt-in) | **Built-in Skills:** 7
+**Test Coverage:** 1501 tests, 100% pass rate | **Extension Points:** 20 trait-based | **Built-in Tools:** 18 | **Built-in Skills:** 7
 </Callout>
 
 ## Why A3S Code?
@@ -153,10 +153,13 @@ print(result.text)
 Agent (config-driven)
   └── AgentSession (workspace-bound)
         ├── AgentLoop (core execution engine)
-        │     ├── ToolExecutor (16 built-in tools)
-        │     ├── PluginManager (opt-in tools + skills)
-        │     │     ├── AgenticSearchPlugin → agentic_search tool + agentic-search skill
-        │     │     └── AgenticParsePlugin  → agentic_parse tool  + agentic-parse skill
+        │     ├── ToolExecutor (18 built-in tools)
+        │     ├── Built-in agentic tools
+        │     │     ├── agentic_search → search + ranking over structured document content
+        │     │     └── agentic_parse  → block-aware parsing + optional LLM analysis
+        │     ├── CompositeDocumentParser pipeline
+        │     │     └── shared decode layer for pdf / office / email / html / xml
+        │     ├── PluginManager (custom opt-in tools + skills)
         │     ├── Planning (task decomposition + wave execution)
         │     └── HITL Confirmation
         ├── SessionLaneQueue (a3s-lane backed)
@@ -178,7 +181,7 @@ See [Architecture](/docs/code/architecture) for detailed documentation.
     <h3 className="text-lg font-semibold mb-2">Core</h3>
     <ul className="text-sm text-muted-foreground space-y-1">
       <li><a href="/docs/code/sessions">Sessions</a> — Lifecycle, send/stream, slash commands, scheduled tasks, vision</li>
-      <li><a href="/docs/code/tools">Tools</a> — 16 built-in tools + 2 plugin tools reference</li>
+      <li><a href="/docs/code/tools">Tools</a> — 18 built-in tools reference, including agentic_search and agentic_parse</li>
       <li><a href="/docs/code/tasks">Tasks</a> — Planning and wave-based execution</li>
       <li><a href="/docs/code/skills">Skills</a> — Skill system and tool restrictions</li>
     </ul>
@@ -208,7 +211,7 @@ See [Architecture](/docs/code/architecture) for detailed documentation.
     <h3 className="text-lg font-semibold mb-2">Extensions</h3>
     <ul className="text-sm text-muted-foreground space-y-1">
       <li><a href="/docs/code/providers">Providers</a> — LLM providers and full config reference</li>
-      <li><a href="/docs/code/plugins">Plugins</a> — Opt-in tools + skills (agentic_search, agentic_parse)</li>
+      <li><a href="/docs/code/plugins">Plugins</a> — Custom opt-in tools + skills beyond the built-in core</li>
       <li><a href="/docs/code/mcp">MCP</a> — External tool integration</li>
       <li><a href="/docs/code/subagents">Subagents</a> — Delegate to specialized agents</li>
       <li><a href="/docs/code/context">Context</a> — RAG providers</li>

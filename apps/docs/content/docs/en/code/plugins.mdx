@@ -1,6 +1,6 @@
 ---
 title: Plugin System
-description: Opt-in tool+skill bundles — mount agentic_search, agentic_parse, or build your own plugin
+description: Custom tool+skill bundles for optional capabilities beyond the built-in toolset
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -14,51 +14,51 @@ A3S Code's plugin system lets you mount optional capabilities onto a session. Ea
 1. **One or more tools** into `ToolRegistry` — the LLM can call them during agent turns
 2. **Companion skills** into `SkillRegistry` — automatically injected into the system prompt so the LLM knows when and how to use the tools
 
-Plugins are **opt-in**. No plugin tools are loaded by default — you choose exactly which capabilities each session needs.
+Plugins are **opt-in**. Use them for custom tools, MCP-backed capabilities, or extra skill bundles on top of the built-in core toolset.
 
-## Built-in Plugins
+<Callout type="info">
+`agentic_search` and `agentic_parse` are no longer mounted through the plugin system. They are built-in tools registered by default and configured through `config.hcl`.
+</Callout>
 
-| Plugin class | Tool | Companion skill |
-|---|---|---|
-| `AgenticSearch` | `agentic_search` — multi-phase semantic code search | `agentic-search` — guides usage, modes, and best practices |
-| `AgenticParse` | `agentic_parse` — LLM-enhanced document parsing | `agentic-parse` — guides parse strategies and extraction |
+## What Plugins Are For
 
-For parameters, search modes, and examples see the [Agentic Search deep dive](/docs/code/examples/agentic-search).
+- Add custom tools not shipped by core
+- Register extra skills and usage guidance
+- Compose optional capabilities per session
+- Integrate external tool surfaces through MCP or custom Rust plugins
 
 ## Mounting Plugins
 
 <Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
 <Tab value="TypeScript">
 ```typescript
-import { Agent, AgenticSearch, AgenticParse } from '@a3s-lab/code';
+import { Agent, SkillPlugin } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 const session = agent.session('.', {
   plugins: [
-    new AgenticSearch(),
-    new AgenticParse(),
+    new SkillPlugin('my-plugin', [skillMarkdown]),
   ],
 });
 ```
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent, SessionOptions, AgenticSearch, AgenticParse
+from a3s_code import Agent, SessionOptions, SkillPlugin
 
 agent = Agent.create("agent.hcl")
 opts = SessionOptions()
-opts.plugins = [AgenticSearch(), AgenticParse()]
+opts.plugins = [SkillPlugin("my-plugin", [skill_md])]
 session = agent.session(".", opts)
 ```
 </Tab>
 <Tab value="Rust">
 ```rust
-use a3s_code_core::{Agent, SessionOptions, AgenticSearchPlugin, AgenticParsePlugin};
+use a3s_code_core::{Agent, SessionOptions, SkillPlugin};
 
 let session = agent
     .session(workspace, SessionOptions::new()
-        .with_plugin(AgenticSearchPlugin::new())
-        .with_plugin(AgenticParsePlugin::new()))
+        .with_plugin(SkillPlugin::new("my-plugin", vec![skill_markdown])))
     .await?;
 ```
 </Tab>
@@ -87,11 +87,11 @@ This means plugin companion skills appear in the **first turn's system prompt** 
 
 ### Failure Isolation
 
-If a plugin's `load()` call fails (e.g. `AgenticParse` without an LLM client), only that plugin is skipped. Other plugins continue loading normally. Failed plugins do **not** register their companion skills.
+If a plugin's `load()` call fails, only that plugin is skipped. Other plugins continue loading normally. Failed plugins do **not** register their companion skills.
 
 ## Supported File Formats
 
-Both `AgenticSearch` and `AgenticParse` work with plain-text formats out of the box — no extra configuration needed:
+Built-in tools such as `agentic_search` and `agentic_parse` work with plain-text formats out of the box — no extra plugin configuration needed:
 
 | Category | Formats |
 |----------|---------|
@@ -99,7 +99,7 @@ Both `AgenticSearch` and `AgenticParse` work with plain-text formats out of the 
 | Config / data | JSON, TOML, YAML, HCL, CSV, TSV |
 | Documents | Markdown, plain text |
 
-Binary formats (PDF, Word, Excel) require a custom `DocumentParser` implementation in Rust. The `DocumentParser` trait is:
+Binary formats (PDF, Word, Excel) are handled through the shared document parser pipeline. The default registry includes `CompositeDocumentParser`, and custom parsers can still be added in Rust. The `DocumentParser` trait is:
 
 ```rust
 pub trait DocumentParser: Send + Sync {
@@ -110,10 +110,6 @@ pub trait DocumentParser: Send + Sync {
 ```
 
 Register a custom parser by calling `DocumentParserRegistry::register()` in Rust before building the session options. This is not currently exposed in the TypeScript or Python SDKs.
-
-<Callout type="info">
-The `DocumentParserRegistry` class in the Node.js SDK is reserved for future use and has no effect at runtime. Pass `new AgenticSearch()` or `new AgenticParse()` directly — no registry needed.
-</Callout>
 
 ## Building a Custom Plugin
 
@@ -148,7 +144,7 @@ Guidance text the LLM receives when this skill is active...
 <Tabs groupId="lang" items={['TypeScript', 'Python', 'Rust']}>
 <Tab value="TypeScript">
 ```typescript
-import { Agent, AgenticSearch, SkillPlugin } from '@a3s-lab/code';
+import { Agent, SkillPlugin } from '@a3s-lab/code';
 
 const skillMd = `---
 name: my-skill
@@ -161,7 +157,6 @@ Before executing any shell command, explain what it does and why.
 
 const session = agent.session('.', {
   plugins: [
-    new AgenticSearch(),
     new SkillPlugin('my-plugin', [skillMd]),
   ],
 });
@@ -169,7 +164,7 @@ const session = agent.session('.', {
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent, AgenticSearch, SkillPlugin, SessionOptions
+from a3s_code import Agent, SkillPlugin, SessionOptions
 
 skill_md = """---
 name: my-skill
@@ -181,13 +176,13 @@ Before executing any shell command, explain what it does and why.
 """
 
 opts = SessionOptions()
-opts.plugins = [AgenticSearch(), SkillPlugin("my-plugin", [skill_md])]
+opts.plugins = [SkillPlugin("my-plugin", [skill_md])]
 session = agent.session(".", opts)
 ```
 </Tab>
 <Tab value="Rust">
 ```rust
-use a3s_code_core::{AgenticSearchPlugin, SkillPlugin, SessionOptions};
+use a3s_code_core::{SkillPlugin, SessionOptions};
 
 let skill_md = r#"---
 name: my-skill
@@ -200,7 +195,6 @@ Before executing any shell command, explain what it does and why.
 
 let session = agent
     .session(workspace, SessionOptions::new()
-        .with_plugin(AgenticSearchPlugin::new())
         .with_plugin(SkillPlugin::new("my-plugin").with_skill(skill_md)))
     .await?;
 ```
@@ -283,10 +277,10 @@ let session = agent
 For advanced use cases, use `PluginManager` to manage plugin lifecycle independently:
 
 ```rust
-use a3s_code_core::plugin::{PluginManager, PluginContext, AgenticSearchPlugin};
+use a3s_code_core::plugin::{PluginManager, PluginContext};
 
 let mut manager = PluginManager::new();
-manager.register(AgenticSearchPlugin::new());
+manager.register(MyPlugin::default());
 
 let ctx = PluginContext::new()
     .with_llm(llm_client)
@@ -295,7 +289,7 @@ let ctx = PluginContext::new()
 manager.load_all(&tool_registry, &ctx);
 
 // Later: unload a single plugin
-manager.unload("agentic-search", &tool_registry);
+manager.unload("my-plugin", &tool_registry);
 
 // Or unload all
 manager.unload_all(&tool_registry);
