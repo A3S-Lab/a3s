@@ -37,3 +37,6 @@
 [submodule "crates/lambda"]
 	path = crates/lambda
 	url = git@github.com:A3S-Lab/Lambda.git
+[submodule "claude_prompts"]
+	path = claude_prompts
+	url = git@github.com:A3S-Lab/ClaudePrompts.git
