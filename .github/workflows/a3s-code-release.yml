@@ -88,8 +88,8 @@ jobs:
             console.error(`Node package-lock version mismatch: ${root.version} != ${pkg.version}`);
             process.exit(1);
           }
-          const pkgOptional = JSON.stringify(pkg.optionalDependencies || {});
-          const lockOptional = JSON.stringify(root.optionalDependencies || {});
+          const pkgOptional = JSON.stringify(Object.entries(pkg.optionalDependencies || {}).sort().reduce((o,[k,v]) => ({...o,[k]:v}), {}));
+          const lockOptional = JSON.stringify(Object.entries(root.optionalDependencies || {}).sort().reduce((o,[k,v]) => ({...o,[k]:v}), {}));
           if (pkgOptional !== lockOptional) {
             console.error('Node package-lock optionalDependencies mismatch with package.json');
             process.exit(1);
