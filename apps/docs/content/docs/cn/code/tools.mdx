@@ -1,6 +1,6 @@
 ---
 title: 工具
-description: 18 个内置工具 — 文件操作、Shell 执行、搜索、网络访问、Git 工作树、子智能体委托与文档智能
+description: 15 个内置工具 — 文件操作、Shell 执行、搜索、网络访问、Git 工作树、子智能体委托
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -9,11 +9,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 # 工具
 
-A3S Code 内置 **18 个工具**，所有工具均通过原生 Rust 实现在进程内执行。
-
-<Callout type="info">
-`agentic_search` 和 `agentic_parse` 已是内置工具，默认注册，可通过 `config.hcl` 调整。两者共享 `CompositeDocumentParser` 文档解析链路。
-</Callout>
+A3S Code 内置 **15 个工具**，所有工具均通过原生 Rust 实现在进程内执行。
 
 ## 内置工具参考
 
@@ -66,19 +62,6 @@ A3S Code 内置 **18 个工具**，所有工具均通过原生 Rust 实现在进
     },
     "Skill": {
       description: "用途: 将技能作为一等工具调用 · 示例: 基于技能的工具访问控制与指令注入",
-    },
-  }}
-/>
-
-## Agentic 工具参考
-
-<TypeTable
-  type={{
-    "agentic_search": {
-      description: "内置工具 · 用途: 多阶段语义代码搜索，IDF 加权相关性排名 · 共享解析器: CompositeDocumentParser",
-    },
-    "agentic_parse": {
-      description: "内置工具 · 用途: LLM 增强的文档解析，支持 5 种解析策略（auto/structured/narrative/tabular/code）· 共享解析器: CompositeDocumentParser",
     },
   }}
 />
@@ -202,66 +185,6 @@ A3S Code 内置 **18 个工具**，所有工具均通过原生 Rust 实现在进
   "engine": "google"
 }
 ```
-
-## 内置 Agentic 工具
-
-`agentic_search` 与 `agentic_parse` 会自动注册。通过 `config.hcl` 调整或关闭它们；插件系统只用于扩展内置工具集之外的能力。
-
-### `agentic_search`
-
-多阶段语义代码搜索。从自然语言中提取关键词，并行搜索后使用 IDF 加权评分对结果排序。
-
-```json
-{
-  "query": "authentication how does it work",
-  "max_results": 10,
-  "mode": "fast"
-}
-```
-
-**搜索模式：**
-- `fast`（默认）— 关键词提取 + 并行搜索 + 相关性排名
-- `deep` — 围绕高评分区域的蒙特卡洛采样，全面分析
-- `filename_only` — 按文件名快速发现文件
-
-### `agentic_parse`
-
-LLM 增强的文档解析。进行结构化提取，并可选地执行 LLM 语义问答。
-
-```json
-{
-  "path": "report.pdf",
-  "query": "关键发现是什么？",
-  "strategy": "auto",
-  "max_chars": 8000
-}
-```
-
-**解析策略：** `auto`（根据扩展名/内容推断）· `structured`（JSON/YAML/TOML/HCL）· `narrative`（Markdown/文本）· `tabular`（CSV/TSV）· `code`（源文件）
-
-省略 `query` 可快速获取结构概览，无需 LLM 开销。
-
-### 支持的格式
-
-`agentic_parse` 开箱即用地支持纯文本格式：源代码、Markdown、JSON、TOML、YAML、HCL、CSV 等。
-
-内置共享的 `CompositeDocumentParser` 还会默认解析这些富文档格式：
-
-- 原生结构化解析：`pdf`、`docx`、`xlsx`、`xlsm`、`pptx`、`odt`、`ods`、`odp`、`epub`、`rtf`、`html`、`htm`、`xhtml`、`xml`、`eml`
-- 通过 OCR 解析图片：`png`、`jpg`、`jpeg`、`webp`、`gif`、`bmp`、`tif`、`tiff`
-
-OCR 行为由 `document_parser.ocr` 配置和 Rust 宿主注入的 runtime OCR provider 共同决定：
-
-- `pdf`：当原生提取文本较弱或为空时触发 OCR fallback
-- `docx`、`pptx`、`xlsx`、`xlsm`、`odt`、`ods`、`odp`：只有原生结构化提取完全拿不到内容时才触发 OCR fallback
-- 图片格式：OCR 是主解析路径
-
-当实际使用 OCR 时，`agentic_parse` 会在输出 metadata 中暴露 OCR 运行态信息，包括格式、provider、model、`max_images` 和 `dpi`。
-
-`agentic_search` 还会暴露结构化匹配元数据，包括基于 `CompositeDocumentParser`
-结构块生成的页码 / 章节 locator。`agentic_parse` 在带 `query` 运行时，
-其 tool metadata 还会包含实际送入 LLM 的结构块列表（`metadata.llm_blocks`），
-便于 SDK 暴露带页面定位的 LLM 上下文。
 
 ## 直接工具调用
 

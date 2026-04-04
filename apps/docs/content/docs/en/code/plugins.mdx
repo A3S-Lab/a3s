@@ -16,10 +16,6 @@ A3S Code's plugin system lets you mount optional capabilities onto a session. Ea
 
 Plugins are **opt-in**. Use them for custom tools, MCP-backed capabilities, or extra skill bundles on top of the built-in core toolset.
 
-<Callout type="info">
-`agentic_search` and `agentic_parse` are no longer mounted through the plugin system. They are built-in tools registered by default and configured through `config.hcl`.
-</Callout>
-
 ## What Plugins Are For
 
 - Add custom tools not shipped by core
@@ -78,7 +74,7 @@ build_session(opts)
   │      plugin.skills()                    → returns companion skills
   │      skill_registry.register(skill)     → added before system prompt
   │
-  ├─ 3. skill_registry.to_system_prompt()   → includes plugin skills
+  ├─ 3. skill_registry.to_system_prompt() → includes plugin skills
   │
   └─ 4. Session starts — LLM sees plugin tools + skills from turn 1
 ```
@@ -91,25 +87,13 @@ If a plugin's `load()` call fails, only that plugin is skipped. Other plugins co
 
 ## Supported File Formats
 
-Built-in tools such as `agentic_search` and `agentic_parse` work with plain-text formats out of the box — no extra plugin configuration needed:
+Built-in tools work with plain-text formats out of the box:
 
 | Category | Formats |
 |----------|---------|
 | Source code | Rust, Python, TypeScript, JavaScript, Go, Java, C/C++, and more |
 | Config / data | JSON, TOML, YAML, HCL, CSV, TSV |
 | Documents | Markdown, plain text |
-
-Binary formats (PDF, Word, Excel) are handled through the shared document parser pipeline. The default registry includes `CompositeDocumentParser`, and custom parsers can still be added in Rust. The `DocumentParser` trait is:
-
-```rust
-pub trait DocumentParser: Send + Sync {
-    fn name(&self) -> &str;
-    fn supported_extensions(&self) -> &[&str];
-    fn parse(&self, path: &std::path::Path) -> Result<String>;
-}
-```
-
-Register a custom parser by calling `DocumentParserRegistry::register()` in Rust before building the session options. This is not currently exposed in the TypeScript or Python SDKs.
 
 ## Building a Custom Plugin
 
@@ -266,8 +250,7 @@ let session = agent
 
 <TypeTable
   type={{
-    "llm": { type: 'Option<Arc<dyn LlmClient>>', description: 'LLM client — required by tools that do inference (e.g. agentic_parse).' },
-    "document_parsers": { type: 'Option<Arc<DocumentParserRegistry>>', description: 'Document parser registry — for plugins that decode binary file formats.' },
+    "llm": { type: 'Option<Arc<dyn LlmClient>>', description: 'LLM client — required by tools that do inference.' },
     "skill_registry": { type: 'Option<Arc<SkillRegistry>>', description: 'Skill registry — plugins may also register skills directly during load() if needed.' },
   }}
 />
@@ -295,6 +278,6 @@ manager.unload("my-plugin", &tool_registry);
 manager.unload_all(&tool_registry);
 
 // Query
-manager.is_loaded("agentic-search");  // → bool
-manager.plugin_names();               // → Vec<&str>
+manager.is_loaded("my-plugin");  // → bool
+manager.plugin_names();           // → Vec<&str>
 ```

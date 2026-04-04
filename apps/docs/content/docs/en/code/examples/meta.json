@@ -16,8 +16,6 @@
     "skill-tool",
     "batch",
     "ripgrep-context",
-    "agentic-parse",
-    "agentic-search",
     "lane-queue",
     "external-tasks",
     "git-worktree",

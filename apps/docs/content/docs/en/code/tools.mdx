@@ -1,6 +1,6 @@
 ---
 title: Tools
-description: 18 built-in tools for file operations, shell execution, search, web access, git worktree, subagent delegation, and document intelligence
+description: 15 built-in tools for file operations, shell execution, search, web access, git worktree, subagent delegation
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -9,11 +9,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 # Tools
 
-A3S Code ships with **18 built-in tools**. All tools execute in-process via native Rust implementations.
-
-<Callout type="info">
-`agentic_search` and `agentic_parse` are built-in tools. They are registered by default and can be configured from `config.hcl`. Both delegate rich-document decoding to the shared `CompositeDocumentParser` pipeline.
-</Callout>
+A3S Code ships with **15 built-in tools**. All tools execute in-process via native Rust implementations.
 
 ## Built-in Tool Reference
 
@@ -66,19 +62,6 @@ A3S Code ships with **18 built-in tools**. All tools execute in-process via nati
     },
     "Skill": {
       description: "Purpose: Invoke skills as first-class tools · Example: Skill-based tool access control and instruction injection",
-    },
-  }}
-/>
-
-## Agentic Tool Reference
-
-<TypeTable
-  type={{
-    "agentic_search": {
-      description: "Built-in · Purpose: Multi-phase semantic code search with IDF-weighted relevance ranking · Shared parser: CompositeDocumentParser",
-    },
-    "agentic_parse": {
-      description: "Built-in · Purpose: LLM-enhanced document parsing with 5 parse strategies (auto/structured/narrative/tabular/code) · Shared parser: CompositeDocumentParser",
     },
   }}
 />
@@ -178,7 +161,7 @@ Execute shell commands. Commands run in the session's workspace directory.
 }
 ```
 
-**Security:** Use [Permission System](/docs/code/security) to control bash access:
+**Security:** Use [Permission System](/docs/code/security) to control bash access.
 
 ## Web
 
@@ -202,66 +185,6 @@ Search the web using multiple search engines.
   "engine": "google"
 }
 ```
-
-## Built-in Agentic Tools
-
-`agentic_search` and `agentic_parse` are registered automatically. Use `config.hcl` to disable or tune them; use the plugin system only for custom capabilities beyond the built-in toolset.
-
-### `agentic_search`
-
-Multi-phase semantic code search. Extracts keywords from natural language, searches in parallel, and ranks results using IDF-weighted scoring.
-
-```json
-{
-  "query": "how does authentication work",
-  "max_results": 10,
-  "mode": "fast"
-}
-```
-
-**Modes:**
-- `fast` (default) — keyword extraction + parallel search + relevance ranking
-- `deep` — Monte Carlo sampling around high-scoring regions for comprehensive analysis
-- `filename_only` — fast file discovery by name
-
-### `agentic_parse`
-
-LLM-enhanced document parsing. Applies structural extraction and optionally an LLM pass for semantic QA.
-
-```json
-{
-  "path": "report.pdf",
-  "query": "What are the key findings?",
-  "strategy": "auto",
-  "max_chars": 8000
-}
-```
-
-**Parse strategies:** `auto` (inferred from extension/content) · `structured` (JSON/YAML/TOML/HCL) · `narrative` (Markdown/text) · `tabular` (CSV/TSV) · `code` (source files)
-
-Omit `query` for a fast structural overview without LLM cost.
-
-### Supported Formats
-
-`agentic_parse` supports plain-text formats out of the box: source code, Markdown, JSON, TOML, YAML, HCL, CSV, and more.
-
-The built-in shared `CompositeDocumentParser` also decodes these richer formats by default:
-
-- Native structured decode: `pdf`, `docx`, `xlsx`, `xlsm`, `pptx`, `odt`, `ods`, `odp`, `epub`, `rtf`, `html`, `htm`, `xhtml`, `xml`, `eml`
-- Image decode through OCR: `png`, `jpg`, `jpeg`, `webp`, `gif`, `bmp`, `tif`, `tiff`
-
-OCR behavior depends on `document_parser.ocr` plus a runtime OCR provider supplied by the Rust host:
-
-- `pdf`: OCR fallback when extracted text is weak or empty
-- `docx`, `pptx`, `xlsx`, `xlsm`, `odt`, `ods`, `odp`: OCR fallback only when the native structured-text pass yields no extractable content
-- Image formats: OCR is the primary decode path
-
-When OCR is used, `agentic_parse` exposes runtime metadata including OCR format, provider, model, `max_images`, and `dpi`.
-
-`agentic_search` also exposes structured match metadata, including page / section
-locators derived from `CompositeDocumentParser` blocks. When `agentic_parse` runs with a
-`query`, tool metadata includes the exact structured blocks selected for LLM
-input (`metadata.llm_blocks`), so SDKs can surface page-aware LLM context.
 
 ## Direct Tool Execution
 
@@ -463,29 +386,6 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
     '-i': { type: 'boolean', description: 'Case-insensitive' },
     '-n': { type: 'boolean', description: 'Include line numbers' },
     context: { type: 'number', description: 'Lines of context around matches' },
-  }}
-/>
-
-#### agentic_search
-
-<TypeTable
-  type={{
-    query: { type: 'string', required: true, description: 'Natural language search query' },
-    max_results: { type: 'number', default: '10', description: 'Maximum results to return' },
-    mode: { type: '"fast" | "deep" | "filename_only"', default: '"fast"', description: 'Search mode' },
-    file_pattern: { type: 'string', description: 'File glob filter (e.g. `**/*.rs`)' },
-    context_lines: { type: 'number', default: '2', description: 'Lines of context around each match' },
-  }}
-/>
-
-#### agentic_parse
-
-<TypeTable
-  type={{
-    path: { type: 'string', required: true, description: 'Path to the file to parse (relative to workspace or absolute)' },
-    query: { type: 'string', description: 'Extraction goal or question — triggers LLM-enhanced extraction' },
-    strategy: { type: '"auto" | "structured" | "narrative" | "tabular" | "code"', default: '"auto"', description: 'Parse strategy' },
-    max_chars: { type: 'number', default: '8000', description: 'Max characters of document content sent to the LLM' },
   }}
 />
 
