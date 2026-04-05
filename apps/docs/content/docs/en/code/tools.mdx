@@ -1,6 +1,6 @@
 ---
 title: Tools
-description: 15 built-in tools for file operations, shell execution, search, web access, git worktree, subagent delegation
+description: 16 built-in tools for file operations, shell execution, search, web access, git, sandbox, subagent delegation
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -9,7 +9,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 # Tools
 
-A3S Code ships with **15 built-in tools**. All tools execute in-process via native Rust implementations.
+A3S Code ships with **16 built-in tools**. All tools execute in-process via native Rust implementations.
 
 ## Built-in Tool Reference
 
@@ -57,8 +57,11 @@ A3S Code ships with **15 built-in tools**. All tools execute in-process via nati
     "batch": {
       description: "Purpose: Parallel tool execution · Example: Run multiple tools in one turn",
     },
-    "git_worktree": {
-      description: "Purpose: Git worktree management · Example: Parallel workspace isolation",
+    "git": {
+      description: "Purpose: Git operations with auto-install · Example: status, log, branch, worktree, diff, stash",
+    },
+    "box": {
+      description: "Purpose: Run commands in A3S Box sandbox · Example: Execute untrusted code safely",
     },
     "Skill": {
       description: "Purpose: Invoke skills as first-class tools · Example: Skill-based tool access control and instruction injection",
@@ -229,19 +232,48 @@ print(f"[{result['exit_code']}] {result['output']}")
 
 ## Git
 
-### `git_worktree`
+### `git`
 
-Manage Git worktrees for parallel workspace isolation. Supports `status`, `create`, `list`, and `remove` subcommands.
+Execute Git operations with **auto-install support**. If git is not available, downloads and installs it automatically to `~/.local/git/bin/` on Windows, macOS, and Linux — no package manager required.
+
+Supports full git operations: `status`, `log`, `branch`, `checkout`, `diff`, `stash`, `remote`, and `worktree`.
 
 ```json
 {
-  "command": "create",
-  "branch": "feature-auth",
+  "command": "status"
+}
+```
+
+```json
+{
+  "command": "worktree",
+  "subcommand": "list"
+}
+```
+
+```json
+{
+  "command": "worktree",
+  "subcommand": "create",
+  "name": "feature-auth",
   "path": "/repo/wt-feature-auth"
 }
 ```
 
 See [Git Worktree Example](/docs/code/examples/git-worktree) for full multi-language examples.
+
+## Sandbox
+
+### `box`
+
+Run commands inside an A3S Box secure sandbox with VM-level isolation. Use this for safe execution of untrusted or experimental code with isolated filesystem, network, and process namespace.
+
+```json
+{
+  "command": "python3 -c 'print(__import__(\"sys\").version)'",
+  "image": "ubuntu-22.04"
+}
+```
 
 ## Subagent Delegation
 
@@ -486,13 +518,33 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
   }}
 />
 
-#### git_worktree
+#### git
 
 <TypeTable
   type={{
-    command: { type: 'string', required: true, description: '"status" | "create" | "list" | "remove"' },
-    branch: { type: 'string', description: 'Branch name (required for create)' },
-    path: { type: 'string', description: 'Worktree directory path (required for create/remove)' },
+    command: { type: 'string', required: true, description: '"status" | "log" | "branch" | "checkout" | "diff" | "stash" | "remote" | "worktree"' },
+    name: { type: 'string', description: 'Branch name for branch/checkout/worktree operations' },
+    path: { type: 'string', description: 'Path for worktree operations' },
+    ref: { type: 'string', description: 'Reference (branch, tag, commit) for checkout' },
+    target: { type: 'string', description: 'Target ref for diff (e.g., HEAD~1)' },
+    max_count: { type: 'number', description: 'Maximum log entries (default 10)' },
+    message: { type: 'string', description: 'Message for stash' },
+    include_untracked: { type: 'boolean', description: 'Include untracked files in stash' },
+    force: { type: 'boolean', description: 'Force checkout/create operation' },
+    new_branch: { type: 'boolean', description: 'Create new branch for worktree (default true)' },
+    base: { type: 'string', description: 'Base ref for new branch (default HEAD)' },
+    subcommand: { type: 'string', description: 'Subcommand for worktree: "list" | "create" | "remove"' },
+  }}
+/>
+
+#### box
+
+<TypeTable
+  type={{
+    command: { type: 'string', required: true, description: 'Command to execute inside the sandbox' },
+    image: { type: 'string', default: '"ubuntu-22.04"', description: 'Sandbox image to use' },
+    timeout: { type: 'number', default: '60000', description: 'Timeout in milliseconds' },
+    files: { type: 'object', description: 'Files to inject into sandbox (key=path, value=content)' },
   }}
 />
 

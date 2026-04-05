@@ -1,6 +1,6 @@
 ---
 title: Git Worktree
-description: 使用 git_worktree 内置工具实现并行工作区隔离 — 创建、列表、删除和状态查询
+description: 使用 git 内置工具实现并行工作区隔离 — 创建、列表、删除和状态查询
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -9,10 +9,10 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 # Git Worktree
 
-`git_worktree` 内置工具通过 Git worktree 提供并行工作区隔离。在独立目录中创建功能分支，独立开发，完成后清理 — 无需切换分支。
+`git` 内置工具提供 Git 操作，包括通过 Git worktree 实现并行工作区隔离。在独立目录中创建功能分支，独立开发，完成后清理 — 无需切换分支。Git 支持自动安装。
 
 <Callout type="info">
-`git_worktree` 工具要求会话工作区位于至少有一次提交的 Git 仓库中。
+`git` 工具要求会话工作区位于至少有一次提交的 Git 仓库中。
 </Callout>
 
 ## 直接工具调用
@@ -25,25 +25,27 @@ import { Agent } from '@a3s-lab/code';
 const agent = await Agent.create('~/.a3s/config.hcl');
 const session = agent.session('/my-git-repo');
 
-// 查看 worktree 状态
-let r = await session.tool('git_worktree', { command: 'status' });
+// 查看仓库状态
+let r = await session.tool('git', { command: 'status' });
 console.log(r.output);
 
 // 为功能分支创建 worktree
-r = await session.tool('git_worktree', {
-  command: 'create',
-  branch: 'feature-auth',
+r = await session.tool('git', {
+  command: 'worktree',
+  subcommand: 'create',
+  name: 'feature-auth',
   path: '/my-git-repo/wt-feature-auth',
 });
 assert(r.exitCode === 0);
 
 // 列出所有 worktree
-r = await session.tool('git_worktree', { command: 'list' });
+r = await session.tool('git', { command: 'worktree', subcommand: 'list' });
 console.log(r.output);
 
 // 删除 worktree
-r = await session.tool('git_worktree', {
-  command: 'remove',
+r = await session.tool('git', {
+  command: 'worktree',
+  subcommand: 'remove',
   path: '/my-git-repo/wt-feature-auth',
 });
 assert(r.exitCode === 0);
@@ -58,25 +60,27 @@ from a3s_code import Agent
 agent = Agent.create("~/.a3s/config.hcl")
 session = agent.session("/my-git-repo")
 
-# 查看 worktree 状态
-r = session.tool("git_worktree", {"command": "status"})
+# 查看仓库状态
+r = session.tool("git", {"command": "status"})
 print(r.output)
 
 # 为功能分支创建 worktree
-r = session.tool("git_worktree", {
-    "command": "create",
-    "branch": "feature-auth",
+r = session.tool("git", {
+    "command": "worktree",
+    "subcommand": "create",
+    "name": "feature-auth",
     "path": "/my-git-repo/wt-feature-auth",
 })
 assert r.exit_code == 0
 
 # 列出所有 worktree
-r = session.tool("git_worktree", {"command": "list"})
+r = session.tool("git", {"command": "worktree", "subcommand": "list"})
 print(r.output)
 
 # 删除 worktree
-r = session.tool("git_worktree", {
-    "command": "remove",
+r = session.tool("git", {
+    "command": "worktree",
+    "subcommand": "remove",
     "path": "/my-git-repo/wt-feature-auth",
 })
 assert r.exit_code == 0
@@ -88,35 +92,45 @@ assert r.exit_code == 0
 
 ## LLM 驱动使用
 
-Agent 可以在被要求并行开发功能时自主使用 `git_worktree`：
+Agent 可以在被要求并行开发功能时自主使用 `git worktree`：
 
 ## 子命令
 
 <TypeTable
   type={{
     "status": {
-      description: "显示当前 worktree 信息（分支、路径、是否干净）",
+      description: "显示当前仓库信息（分支、提交、是否干净、worktree 状态）",
     },
-    "create": {
-      description: "创建新 worktree。参数：branch（必需）、path（可选）",
+    "log": {
+      description: "显示提交日志。参数：max_count（可选，默认 10）",
     },
-    "list": {
+    "branch": {
+      description: "列出或创建分支。参数：name（创建时必需）",
+    },
+    "worktree list": {
       description: "列出所有 worktree 及其分支和路径信息",
     },
-    "remove": {
-      description: "按路径删除 worktree。参数：path（必需）",
+    "worktree create": {
+      description: "创建新 worktree。参数：name（必需）、path（可选）、new_branch（默认 true）",
+    },
+    "worktree remove": {
+      description: "按路径删除 worktree。参数：path（必需）、force（可选）",
     },
   }}
 />
 
 ## API 参考
 
-### git_worktree 输入模式
+### git 输入模式（worktree 命令）
 
 <TypeTable
   type={{
-    command: { type: 'string', required: true, description: '"status" | "create" | "list" | "remove"' },
-    branch: { type: 'string', description: '分支名称（create 时必需）' },
+    command: { type: 'string', required: true, description: '"worktree"' },
+    subcommand: { type: 'string', required: true, description: '"list" | "create" | "remove"' },
+    name: { type: 'string', description: '分支名称（create 时必需）' },
     path: { type: 'string', description: 'Worktree 目录路径（create/remove 时必需）' },
+    new_branch: { type: 'boolean', default: 'true', description: '为 worktree 创建新分支' },
+    base: { type: 'string', description: '新分支的基准引用（默认 HEAD）' },
+    force: { type: 'boolean', description: '强制删除（默认 false）' },
   }}
 />

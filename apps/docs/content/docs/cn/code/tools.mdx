@@ -1,6 +1,6 @@
 ---
 title: 工具
-description: 15 个内置工具 — 文件操作、Shell 执行、搜索、网络访问、Git 工作树、子智能体委托
+description: 16 个内置工具 — 文件操作、Shell 执行、搜索、网络访问、Git、沙箱、子智能体委托
 ---
 
 import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
@@ -9,7 +9,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 # 工具
 
-A3S Code 内置 **15 个工具**，所有工具均通过原生 Rust 实现在进程内执行。
+A3S Code 内置 **16 个工具**，所有工具均通过原生 Rust 实现在进程内执行。
 
 ## 内置工具参考
 
@@ -57,8 +57,11 @@ A3S Code 内置 **15 个工具**，所有工具均通过原生 Rust 实现在进
     "batch": {
       description: "用途: 并行执行多个工具 · 示例: 单轮次运行多个工具",
     },
-    "git_worktree": {
-      description: "用途: Git worktree 管理 · 示例: 并行工作区隔离",
+    "git": {
+      description: "用途: Git 操作（支持自动安装）· 示例: status、log、branch、worktree、diff、stash",
+    },
+    "box": {
+      description: "用途: 在 A3S Box 沙箱中运行命令 · 示例: 安全执行不受信任的代码",
     },
     "Skill": {
       description: "用途: 将技能作为一等工具调用 · 示例: 基于技能的工具访问控制与指令注入",
@@ -229,15 +232,44 @@ print(f"[{result['exit_code']}] {result['output']}")
 
 ## Git
 
-### `git_worktree`
+### `git`
 
-管理 Git 工作树，实现并行工作区隔离。支持 `status`、`create`、`list`、`remove` 子命令。
+执行 Git 操作，支持**自动安装**。如果系统没有 git，会自动下载并安装到 `~/.local/git/bin/`，支持 Windows、macOS、Linux，无需包管理器。
+
+支持完整的 git 操作：`status`、`log`、`branch`、`checkout`、`diff`、`stash`、`remote`、`worktree`。
 
 ```json
 {
-  "command": "create",
-  "branch": "feature-auth",
+  "command": "status"
+}
+```
+
+```json
+{
+  "command": "worktree",
+  "subcommand": "list"
+}
+```
+
+```json
+{
+  "command": "worktree",
+  "subcommand": "create",
+  "name": "feature-auth",
   "path": "/repo/wt-feature-auth"
+}
+```
+
+## 沙箱
+
+### `box`
+
+在 A3S Box 安全沙箱中运行命令，提供 VM 级隔离。适用于安全执行不受信任或实验性代码，具有独立的文件系统、网络和进程命名空间。
+
+```json
+{
+  "command": "python3 -c 'print(__import__(\"sys\").version)'",
+  "image": "ubuntu-22.04"
 }
 ```
 

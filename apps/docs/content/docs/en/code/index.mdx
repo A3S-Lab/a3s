@@ -12,7 +12,7 @@ import { Steps, Step } from 'fumadocs-ui/components/steps';
 **Rust framework for building agentic AI agents** — Embed agents that read, write, and execute code into any application. Tool calling, task planning, safety controls, multi-machine distribution — native Node.js and Python bindings included.
 
 <Callout type="info">
-**Extension Points:** 20 trait-based | **Built-in Tools:** 15 | **Built-in Skills:** 7
+**Extension Points:** 20 trait-based | **Built-in Tools:** 16 | **Built-in Skills:** 7
 </Callout>
 
 ## Why A3S Code?
@@ -153,7 +153,7 @@ print(result.text)
 Agent (config-driven)
   └── AgentSession (workspace-bound)
         ├── AgentLoop (core execution engine)
-        │     ├── ToolExecutor (15 built-in tools)
+        │     ├── ToolExecutor (16 built-in tools)
         │     ├── PluginManager (custom opt-in tools + skills)
         │     ├── Planning (task decomposition + wave execution)
         │     └── HITL Confirmation
@@ -176,7 +176,7 @@ See [Architecture](/docs/code/architecture) for detailed documentation.
     <h3 className="text-lg font-semibold mb-2">Core</h3>
     <ul className="text-sm text-muted-foreground space-y-1">
       <li><a href="/docs/code/sessions">Sessions</a> — Lifecycle, send/stream, slash commands, scheduled tasks, vision</li>
-      <li><a href="/docs/code/tools">Tools</a> — 15 built-in tools reference</li>
+      <li><a href="/docs/code/tools">Tools</a> — 16 built-in tools reference</li>
       <li><a href="/docs/code/tasks">Tasks</a> — Planning and wave-based execution</li>
       <li><a href="/docs/code/skills">Skills</a> — Skill system and tool restrictions</li>
     </ul>
