@@ -192,7 +192,7 @@ jobs:
             node_file: index.linux-arm64-musl.node
             artifact_name: node-binary-linux-arm64-musl
             use_zig: true
-          - os: macos-13
+          - os: macos-15-intel
             target: x86_64-apple-darwin
             node_file: index.darwin-x64.node
             artifact_name: node-binary-macos-x64
