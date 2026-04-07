@@ -159,8 +159,6 @@ memory {
 }
 ```
 
-Or in code:
-
 ## Storage Backends
 
 ### FileMemoryStore
@@ -176,19 +174,15 @@ memory/
 
 Key properties:
 - Atomic writes via `.tmp` → rename — no corruption on crash
-- Index loaded into memory on init for fast `search()` and `search_by_tags()`
+- Index loaded into memory on init for fast `recallSimilar()` and `recallByTags()`
 - Path traversal prevention on memory IDs
 - `rebuild_index()` recovers from index corruption by scanning item files
 
-### InMemoryStore
-
-Ephemeral, zero-config. Useful for testing and short-lived sessions:
-
-### Custom Backend
+### Custom Backend (Rust SDK)
 
 Implement `MemoryStore` to use any storage system — SQLite, Redis, a vector DB:
 
-`FileMemoryStore` uses substring matching for `search()`. A vector store replaces this with semantic similarity — no other changes needed.
+`FileMemoryStore` uses substring matching for search. A vector store replaces this with semantic similarity — no other changes needed.
 
 ## Context Injection
 

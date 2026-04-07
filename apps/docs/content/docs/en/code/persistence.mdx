@@ -153,7 +153,7 @@ What gets persisted per session:
   }}
 />
 
-### SessionData fields
+### SessionData fields (Rust SDK)
 
 <TypeTable
   type={{
@@ -173,17 +173,14 @@ What gets persisted per session:
 
 <TypeTable
   type={{
-    "Save session": {
-      description: "Description: Persist current state",
+    "session.save()": {
+      description: "Persist current session state to the configured store",
     },
-    "Load session": {
-      description: "Description: Resume from stored state",
+    "agent.resumeSession(id, options)": {
+      description: "Resume a saved session by ID (requires sessionStore in options)",
     },
-    "List sessions": {
-      description: "Description: List all saved session IDs",
-    },
-    "Delete session": {
-      description: "Description: Remove stored session",
+    "session.sessionId": {
+      description: "Property: Get the current session's unique ID",
     },
   }}
 />

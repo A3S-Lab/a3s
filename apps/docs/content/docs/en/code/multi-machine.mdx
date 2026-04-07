@@ -99,52 +99,45 @@ Tasks are routed to 4 priority lanes:
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
-import { Agent, SessionOptions, SessionQueueConfig } from '@a3s-lab/code';
-import { SessionLane, LaneHandlerConfig, TaskHandlerMode } from '@a3s-lab/code';
+import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.hcl');
 
 const session = agent.session('.', {
   queueConfig: {
-    queryMaxConcurrency: 20,
-    executeMaxConcurrency: 5,
+    queryConcurrency: 20,
+    executeConcurrency: 5,
     enableMetrics: true,
     enableDlq: true
   }
 });
 
-await session.setLaneHandler(SessionLane.Query, {
-  mode: TaskHandlerMode.External,
+await session.setLaneHandler('query', {
+  mode: 'external',
   timeoutMs: 120_000
 });
 ```
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import Agent, SessionOptions, SessionQueueConfig
-from a3s_code import SessionLane, LaneHandlerConfig, TaskHandlerMode
+from a3s_code import Agent, SessionQueueConfig
 
 agent = Agent.create("agent.hcl")
 
 # Configure queue
 queue_config = SessionQueueConfig(
-    query_max_concurrency=20,
-    execute_max_concurrency=5,
+    query_concurrency=20,
+    execute_concurrency=5,
     enable_metrics=True,
     enable_dlq=True
 )
 
-session = agent.session(".", SessionOptions(
-    queue_config=queue_config
-))
+session = agent.session(".", queue_config=queue_config)
 
 # Configure Query lane for external processing
 session.set_lane_handler(
-    SessionLane.QUERY,
-    LaneHandlerConfig(
-        mode=TaskHandlerMode.EXTERNAL,
-        timeout_ms=120_000
-    )
+    "query",
+    {"mode": "external", "timeout_ms": 120_000}
 )
 ```
 </Tab>

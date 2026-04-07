@@ -7,11 +7,14 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { Steps, Step } from 'fumadocs-ui/components/steps';
-import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 # Security
 
 A3S Code provides two built-in security layers: **Permission Policy** and **Human-in-the-Loop (HITL) Confirmation**. Additional security logic can be implemented via the `SecurityProvider` trait and `HookEngine`.
+
+<Callout type="warn">
+  **API Note**: The TypeScript SDK exposes a simplified security model. Many features described in this document (PermissionPolicy builder, ConfirmationPolicy, security events) are only available in the Rust SDK. The TypeScript SDK provides `permissive` mode and `DefaultSecurityProvider`.
+</Callout>
 
 ## Security Architecture
 
@@ -23,25 +26,13 @@ User Prompt → Agent Loop
   └─ SecurityProvider     ← Pluggable via trait (taint tracking, sanitization, etc.)
 ```
 
-## Permission Policy
+## Permission Policy (Rust SDK)
 
 The permission system controls which tools the agent can use. Rules are evaluated in order: **Deny → Allow → Ask → Default**.
 
-### Rule Types
-
-<TypeTable
-  type={{
-    "deny": {
-      description: "Block the tool call immediately",
-    },
-    "allow": {
-      description: "Permit the tool call",
-    },
-    "ask": {
-      description: "Prompt the user for confirmation (via HITL)",
-    },
-  }}
-/>
+<Callout type="info">
+  PermissionPolicy builder API is available in the Rust and Python SDKs. In TypeScript, use the `permissive` option on `SessionOptions` to bypass HITL confirmation for all tools.
+</Callout>
 
 ### Pattern Matching
 
@@ -83,139 +74,32 @@ Wildcards: `*` matches any character except `/`, `**` matches including `/`, `:*
   }}
 />
 
-### Building a Custom Policy
+## HITL Confirmation
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-import { PermissionPolicy } from '@a3s-lab/code';
+Human-in-the-Loop confirmation is **independent** of the permission system. Even if a tool is `allow`ed by permissions, HITL can still require user confirmation.
 
-const policy = new PermissionPolicy()
-  .deny('bash(rm -rf:*)')
-  .deny('bash(curl:*|sh)')
-  .allow('read(*)')
-  .allow('glob(*)')
-  .allow('grep(*)')
-  .ask('write(*)')
-  .ask('bash(*)');
+### TypeScript: Permissive Mode
 
-await session.setPermissionPolicy(policy);
-```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import PermissionPolicy
-
-policy = PermissionPolicy()
-policy.deny("bash(rm -rf:*)")
-policy.deny("bash(curl:*|sh)")
-policy.allow("read(*)")
-policy.allow("glob(*)")
-policy.allow("grep(*)")
-policy.ask("write(*)")
-policy.ask("bash(*)")
-
-session.set_permission_policy(policy)
-```
-</Tab>
-</Tabs>
-
-### Evaluation Order
-
-Rules are evaluated in this order:
-
-<Steps>
-<Step>**Deny rules** — If any deny rule matches, block immediately</Step>
-<Step>**Allow rules** — If any allow rule matches, permit</Step>
-<Step>**Ask rules** — If any ask rule matches, trigger HITL confirmation</Step>
-<Step>**Default policy** — If no rules match, use the default (permissive or strict)</Step>
-</Steps>
-
-Example:
-
-## Human-in-the-Loop (HITL)
-
-HITL confirmation is **independent** of the permission system. Even if a tool is `allow`ed by permissions, HITL can still require user confirmation.
-
-### Configuration
+In TypeScript, the simplest way to enable all tools without HITL confirmation is the `permissive` option:
 
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
 const session = agent.session('/project', {
-  confirmationPolicy: {
-    enabled: true,
-    timeoutMs: 30000,
-    timeoutAction: 'reject',
-  },
+  permissive: true,
 });
 ```
 </Tab>
 <Tab value="Python">
 ```python
-from a3s_code import ConfirmationPolicy
-
-session = agent.session("/project",
-    confirmation_policy=ConfirmationPolicy(
-        enabled=True,
-        timeout_ms=30000,
-        timeout_action="reject",
-    ))
+session = agent.session("/project", permissive=True)
 ```
 </Tab>
 </Tabs>
-
-### Handling Confirmation Events
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-for await (const event of session.stream('Clean up old logs')) {
-  if (event.type === 'confirmation_required') {
-    console.log(`🔒 Approve '${event.toolName}'?`, event.toolArgs);
-    await session.respondConfirmation(event.toolId, { approved: true });
-  } else if (event.type === 'permission_denied') {
-    console.log(`🚫 ${event.toolName} blocked: ${event.reason}`);
-  } else if (event.type === 'text_delta') {
-    process.stdout.write(event.text);
-  }
-}
-```
-</Tab>
-<Tab value="Python">
-```python
-for event in session.stream("Clean up old logs"):
-    if event.event_type == "confirmation_required":
-        print(f"🔒 Approve '{event.tool_name}'? {event.tool_args}")
-        session.respond_confirmation(event.tool_id, approved=True)
-    elif event.event_type == "permission_denied":
-        print(f"🚫 {event.tool_name} blocked: {event.reason}")
-    elif event.event_type == "text_delta":
-        print(event.text, end="", flush=True)
-```
-</Tab>
-</Tabs>
-
-### Timeout Behavior
-
-<TypeTable
-  type={{
-    "Reject": {
-      description: "Reject the tool call if no response within timeout (default)",
-    },
-    "Approve": {
-      description: "Approve the tool call if no response within timeout",
-    },
-  }}
-/>
-
-## Workspace Boundaries
-
-All file operations are restricted to the session's workspace directory. Attempts to access files outside the workspace are blocked.
 
 ## Built-in Security Provider
 
-A3S Code ships a `DefaultSecurityProvider` that is off by default. Call `with_default_security()` to activate it — no additional configuration required.
+A3S Code ships a `DefaultSecurityProvider` that provides input taint tracking and output sanitisation.
 
 ### Enabling
 
@@ -224,21 +108,8 @@ A3S Code ships a `DefaultSecurityProvider` that is off by default. Call `with_de
 ```typescript
 import { DefaultSecurityProvider } from '@a3s-lab/code';
 
-// Default security config
 const session = agent.session('/project', {
   securityProvider: new DefaultSecurityProvider(),
-});
-
-// Custom config
-const session = agent.session('/project', {
-  securityConfig: {
-    enableTaintTracking: true,
-    enableOutputSanitization: true,
-    enableInjectionDetection: true,
-    customPatterns: [
-      { name: 'internal_id', pattern: 'INT-\\d{6}', label: 'REDACTED:ID' },
-    ],
-  },
 });
 ```
 </Tab>
@@ -246,19 +117,7 @@ const session = agent.session('/project', {
 ```python
 from a3s_code import DefaultSecurityProvider
 
-# Default security config
-session = agent.session("/project",
-    security_provider=DefaultSecurityProvider())
-
-# Custom config
-session = agent.session("/project", security_config={
-    "enable_taint_tracking": True,
-    "enable_output_sanitization": True,
-    "enable_injection_detection": True,
-    "custom_patterns": [
-        {"name": "internal_id", "pattern": r"INT-\d{6}", "label": "REDACTED:ID"},
-    ],
-})
+session = agent.session("/project", security_provider=DefaultSecurityProvider())
 ```
 </Tab>
 </Tabs>
@@ -298,7 +157,7 @@ session = agent.session("/project", security_config={
 
 ### Prompt Injection Detection
 
-`DefaultSecurityProvider` scans user input in the `GenerateStart` hook for injection patterns:
+`DefaultSecurityProvider` scans user input for injection patterns:
 
 | Pattern | Example |
 |---------|---------|
@@ -309,43 +168,18 @@ session = agent.session("/project", security_config={
 | New instruction injection | "New instructions: ..." |
 | System prompt override | "System prompt override" |
 
-When injection is detected, it is reported via the `OnError` hook and emitted as a `SecurityAlert` in the agent event stream. Taint tracking also scans tool outputs to catch indirect injection (e.g., via poisoned files or web content read by the agent).
+## Workspace Boundaries
 
-### DefaultSecurityConfig Fields
-
-<TypeTable
-  type={{
-    "enable_taint_tracking": {
-      description: "Type: bool · Default: true · Detect and track sensitive data in user input",
-    },
-    "enable_output_sanitization": {
-      description: "Type: bool · Default: true · Redact sensitive data from LLM output",
-    },
-    "enable_injection_detection": {
-      description: "Type: bool · Default: true · Detect prompt injection patterns",
-    },
-    "custom_patterns": {
-      description: "Type: Vec<SensitivePattern> · Additional sensitive data patterns to detect",
-    },
-  }}
-/>
-
-## Extensible Security via Traits
-
-A3S Code provides a `SecurityProvider` trait for implementing custom security logic:
-
-### Example: Custom Security Provider
-
-See [Hooks](/docs/code/hooks) for lifecycle event integration.
+All file operations are restricted to the session's workspace directory. Attempts to access files outside the workspace are blocked.
 
 ## Best Practices
 
 <Steps>
-<Step>**Start with strict policy** — Use `PermissionPolicy::strict()` and explicitly allow only needed tools</Step>
+<Step>**Start with strict policy** — Use `PermissionPolicy::strict()` (Rust/Python) and explicitly allow only needed tools</Step>
 <Step>**Block dangerous patterns** — Always deny destructive bash commands: `bash(rm -rf:*)`, `bash(curl:*|sh)`</Step>
 <Step>**Enable HITL for writes** — Require confirmation for file modifications and bash execution</Step>
 <Step>**Use workspace boundaries** — Never disable workspace restrictions</Step>
-<Step>**Implement SecurityProvider** — Add custom taint tracking and output sanitization for sensitive data</Step>
+<Step>**Implement SecurityProvider** — Add custom taint tracking and output sanitization for sensitive data (Rust SDK)</Step>
 <Step>**Audit logs** — Use hooks to log all tool executions for security review</Step>
 </Steps>
 
@@ -355,96 +189,33 @@ The agent emits security-related events during streaming:
 
 <TypeTable
   type={{
-    "PermissionDenied": {
-      description: "Tool call blocked by permission policy",
-    },
-    "ConfirmationRequired": {
-      description: "HITL confirmation needed",
-    },
-    "ConfirmationTimeout": {
-      description: "User didn't respond within timeout",
-    },
-    "ConfirmationRejected": {
-      description: "User rejected the tool call",
+    "error": {
+      description: "Error occurred (may include security-related errors)",
     },
   }}
 />
 
-See [Sessions](/docs/code/sessions) for full event reference.
+<Callout type="info">
+  Detailed security events (PermissionDenied, ConfirmationRequired, etc.) are available in the Rust SDK. The TypeScript SDK surfaces security events through the general event stream with `event.type === 'error'` for security-related failures.
+</Callout>
 
 ## API Reference
 
-### PermissionPolicy
+### DefaultSecurityProvider
 
-<TypeTable
-  type={{
-    "PermissionPolicy::new()": {
-      description: "Create with permissive default",
-    },
-    "PermissionPolicy::strict()": {
-      description: "Create with deny-all default",
-    },
-    "PermissionPolicy::permissive()": {
-      description: "Create with allow-all default",
-    },
-    ".allow(pattern)": {
-      description: "Add allow rule",
-    },
-    ".deny(pattern)": {
-      description: "Add deny rule",
-    },
-    ".ask(pattern)": {
-      description: "Add ask (HITL) rule",
-    },
-    "session.set_permission_policy(p).await": {
-      description: "Apply to running session",
-    },
-  }}
-/>
+```typescript
+// TypeScript
+import { DefaultSecurityProvider } from '@a3s-lab/code';
+const provider = new DefaultSecurityProvider();
+agent.session('.', { securityProvider: provider });
+```
 
-### Pattern syntax
-
-<TypeTable
-  type={{
-    "bash(*)": {
-      description: "All bash calls",
-    },
-    "bash(rm -rf:*)": {
-      description: "Bash calls starting with rm -rf",
-    },
-    "read(src/**)": {
-      description: "Read any file under src/",
-    },
-    "write(*)": {
-      description: "All write calls",
-    },
-    "mcp__github": {
-      description: "All mcp__github__* tools",
-    },
-  }}
-/>
-
-### ConfirmationPolicy
-
-<TypeTable
-  type={{
-    enabled: {
-      type: 'bool',
-      default: 'false',
-      description: 'Enable HITL',
-    },
-    default_timeout_ms: {
-      type: 'u64',
-      default: '30000',
-      description: 'Confirmation timeout',
-    },
-    timeout_action: {
-      type: 'TimeoutAction',
-      default: 'Reject',
-      description: '`Reject` or `Allow` on timeout',
-    },
-  }}
-/>
+```python
+# Python
+from a3s_code import DefaultSecurityProvider
+provider = DefaultSecurityProvider()
+session = agent.session(".", security_provider=provider)
+```
 
 ### SecurityProvider trait (Rust)
 

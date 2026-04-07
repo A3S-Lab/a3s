@@ -170,14 +170,17 @@ session = agent.session("/project",
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
-for await (const event of session.stream('Clean up old logs')) {
-  if (event.type === 'confirmation_required') {
-    console.log(`🔒 Approve '${event.toolName}'?`, event.toolArgs);
-    await session.respondConfirmation(event.toolId, { approved: true });
-  } else if (event.type === 'permission_denied') {
-    console.log(`🚫 ${event.toolName} blocked: ${event.reason}`);
-  } else if (event.type === 'text_delta') {
-    process.stdout.write(event.text);
+const stream = await session.stream('Clean up old logs');
+while (true) {
+  const { value, done } = await stream.next();
+  if (done || !value) break;
+  if (value.type === 'confirmation_required') {
+    console.log(`🔒 Approve '${value.toolName}'?`, value.toolArgs);
+    await session.respondConfirmation(value.toolId, { approved: true });
+  } else if (value.type === 'permission_denied') {
+    console.log(`🚫 ${value.toolName} blocked: ${value.reason}`);
+  } else if (value.type === 'text_delta') {
+    process.stdout.write(value.text);
   }
 }
 ```

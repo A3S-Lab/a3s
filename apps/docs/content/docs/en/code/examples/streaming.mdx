@@ -47,7 +47,9 @@ const session = agent.session('/my-project', { permissive: true });
 
 const stream = await session.stream('Refactor the auth module');
 
-for await (const event of stream) {
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (!event || done) break;
   switch (event.type) {
     case 'text_delta':
       process.stdout.write(event.text);
@@ -119,10 +121,10 @@ The auth module has been refactored. Key changes:
       description: "Python: session.stream('prompt') · TypeScript: await session.stream('prompt')",
     },
     "Receive event": {
-      description: "Python: for event in session.stream(...) · TypeScript: for await (const event of stream)",
+      description: "Python: for event in session.stream(...) · TypeScript: stream.next() returns Promise<{value, done}>",
     },
     "Await completion": {
-      description: "Python: _(auto)_ · TypeScript: _(auto)_",
+      description: "Python: _(auto)_ · TypeScript: when done=true, stream is exhausted",
     },
   }}
 />

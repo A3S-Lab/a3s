@@ -53,41 +53,134 @@ session = agent.session("/my-project", model="openai/gpt-4o")
   type={{
     model: {
       type: 'string',
-      description: 'Model override in `provider/model` format (e.g., `openai/gpt-4o`). TS: `model: \'provider/model\'`, Python: `model=\'provider/model\'`',
+      description: 'Model override in `provider/model` format (e.g., `openai/gpt-4o`).',
     },
-    skill_dirs: {
+    builtinSkills: {
+      type: 'boolean',
+      default: 'false',
+      description: 'Enable built-in skills (code-search, code-review, explain-code, find-bugs, builtin-tools, delegate-task, find-skills).',
+    },
+    skillDirs: {
       type: 'string[]',
-      description: 'Extra directories to scan for skill files (merged with global `skill_dirs`). "path")`, TS: `skillDirs: ["path"]`, Python: `skill_dirs=["path"]`',
+      description: 'Extra directories to scan for skill files (.md with YAML frontmatter).',
     },
-    agent_dirs: {
+    agentDirs: {
       type: 'string[]',
-      description: 'Extra directories to scan for agent files (merged with global `agent_dirs`). "path")`, TS: `agentDirs: ["path"]`, Python: `agent_dirs=["path"]`',
+      description: 'Extra directories to scan for agent files.',
     },
-    parse_retries: {
+    queueConfig: {
+      type: 'SessionQueueConfig',
+      description: 'Lane queue configuration for external/hybrid tool dispatch.',
+    },
+    permissive: {
+      type: 'boolean',
+      default: 'false',
+      description: 'Allow all tools without HITL confirmation.',
+    },
+    planning: {
+      type: 'boolean',
+      default: 'false',
+      description: 'Enable planning mode.',
+    },
+    goalTracking: {
+      type: 'boolean',
+      default: 'false',
+      description: 'Enable goal tracking.',
+    },
+    maxParseRetries: {
       type: 'u32',
       default: '2',
-      description: 'Max consecutive malformed-tool-args errors before abort. TS: `maxParseRetries: n`, Python: `max_parse_retries=n`',
+      description: 'Max consecutive malformed-tool-args errors before abort.',
     },
-    tool_timeout_ms: {
-      type: 'Option<u64>',
-      description: 'Per-tool execution timeout in ms; timeout → error fed back to LLM. TS: `toolTimeoutMs: ms`, Python: `tool_timeout_ms=ms`',
+    toolTimeoutMs: {
+      type: 'u64',
+      description: 'Per-tool execution timeout in milliseconds.',
     },
-    circuit_breaker: {
+    circuitBreakerThreshold: {
       type: 'u32',
       default: '3',
-      description: 'Max LLM API failures before abort in non-streaming mode. TS: `circuitBreakerThreshold: n`, Python: `circuit_breaker_threshold=n`',
+      description: 'Max LLM API failures before abort in non-streaming mode.',
     },
-    resilience_defaults: {
-      type: '(bundle)',
-      description: 'Enables parse_retries=2, tool_timeout=120s, circuit_breaker=3',
+    autoCompact: {
+      type: 'boolean',
+      default: 'false',
+      description: 'Enable auto-compaction when context window fills up.',
     },
-    sandbox: {
-      type: 'SandboxConfig',
-      description: 'Route `bash` tool through A3S Box MicroVM (supply via `with_sandbox_handle()`)',
+    autoCompactThreshold: {
+      type: 'number',
+      default: '0.8',
+      description: 'Context usage threshold (0.0–1.0) to trigger auto-compaction.',
     },
-    prompt_slots: {
-      type: 'SystemPromptSlots',
-      description: 'Slot-based system prompt customization. TS: `role/guidelines/responseStyle/extra`, Python: `opts.role/guidelines/response_style/extra`',
+    memoryStore: {
+      type: 'FileMemoryStore',
+      description: 'Long-term memory store backend. Pass `new FileMemoryStore("./memory")`.',
+    },
+    sessionStore: {
+      type: 'FileSessionStore | MemorySessionStore',
+      description: 'Session persistence. Pass `new FileSessionStore("./sessions")` or `new MemorySessionStore()`.',
+    },
+    securityProvider: {
+      type: 'DefaultSecurityProvider',
+      description: 'Enable input taint tracking and output sanitisation. Pass `new DefaultSecurityProvider()`.',
+    },
+    plugins: {
+      type: 'SkillPlugin[]',
+      description: 'Plugins to mount. Pass `new SkillPlugin(name, skills)`.',
+    },
+    role: {
+      type: 'string',
+      description: 'Custom role/identity prepended before the core agentic prompt.',
+    },
+    guidelines: {
+      type: 'string',
+      description: 'Custom coding guidelines appended after the core prompt.',
+    },
+    responseStyle: {
+      type: 'string',
+      description: 'Custom response style (replaces the default Response Format section).',
+    },
+    extra: {
+      type: 'string',
+      description: 'Freeform extra instructions appended at the very end.',
+    },
+    inlineSkills: {
+      type: 'InlineSkill[]',
+      description: 'Inline skills registered programmatically without skill files.',
+    },
+    maxToolRounds: {
+      type: 'u32',
+      description: 'Override maximum number of tool-call rounds.',
+    },
+    temperature: {
+      type: 'number',
+      description: 'Sampling temperature (0.0–1.0). Only applied when `model` is also set.',
+    },
+    thinkingBudget: {
+      type: 'number',
+      description: 'Extended thinking token budget. Requires `model` also set and provider support.',
+    },
+    continuationEnabled: {
+      type: 'boolean',
+      default: 'true',
+      description: 'Enable continuation injection when LLM stops without completing.',
+    },
+    maxContinuationTurns: {
+      type: 'u32',
+      default: '3',
+      description: 'Maximum continuation injections per execution.',
+    },
+    sessionId: {
+      type: 'string',
+      description: 'Stable session ID for save/resume. Auto-generated if not set.',
+    },
+    autoSave: {
+      type: 'boolean',
+      default: 'false',
+      description: 'Automatically save session after each turn.',
+    },
+    ahpTransport: {
+      type: 'StdioTransport | HttpTransport | WebSocketTransport | UnixSocketTransport',
+      description: 'AHP transport for external agent supervision.',
     },
   }}
 />
@@ -234,19 +327,21 @@ Tools can return images alongside text output. When a tool returns images, they 
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
-// Returns an EventStream — use for await...of or call .next() manually
+// EventStream has .next() method — use while loop
 const stream = await session.stream('Refactor the auth module');
-for await (const event of stream) {
-  if (event.type === 'text_delta') process.stdout.write(event.text);
-  if (event.type === 'tool_start') console.log(`\n🔧 ${event.toolName}`);
-  if (event.type === 'tool_end') console.log(`  → ${event.toolOutput?.slice(0, 100)}`);
+while (true) {
+  const { value, done } = await stream.next();
+  if (done || !value) break;
+  if (value.type === 'text_delta') process.stdout.write(value.text);
+  if (value.type === 'tool_start') console.log(`\n🔧 ${value.toolName}`);
+  if (value.type === 'tool_end') console.log(`  → ${value.toolOutput?.slice(0, 100)}`);
 }
 
-// Or iterate manually with .next()
+// For multiple prompts, create separate stream instances
 const stream2 = await session.stream('Explain src/main.rs');
 while (true) {
   const { value, done } = await stream2.next();
-  if (done) break;
+  if (done || !value) break;
   if (value.type === 'text_delta') process.stdout.write(value.text);
 }
 ```

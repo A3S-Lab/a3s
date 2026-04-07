@@ -16,11 +16,11 @@ Agent Orchestrator is a main-sub agent coordinator built on a3s-event, providing
 
 ## Core Features
 
-- **Real AgentLoop Execution** - SubAgents run real LLM + tool loops via `create_with_agent()`
+- **Real AgentLoop Execution** - SubAgents run real LLM + tool loops when `Orchestrator.create(agent)` is used
 - **Real-time Monitoring** - Monitor all SubAgent lifecycles, state changes, progress, and tool executions
 - **Task List Query** - View all SubAgent task lists and current activities in real-time
 - **Activity Tracking** - Track each SubAgent's current activity (calling tools, requesting LLM, waiting for control)
-- **Dynamic Control** - Pause, resume, cancel SubAgents, adjust parameters, inject new prompts
+- **Dynamic Control** - Pause, resume, cancel SubAgents
 - **Event-Driven** - Unified event bus based on a3s-event
 - **Pluggable Communication** - Default memory-based events, supports custom NATS provider
 - **Concurrency Management** - Control maximum concurrent SubAgent count
@@ -133,7 +133,7 @@ print(f"Result: {result}")
 
 ## Real Execution
 
-`Orchestrator.create()` spawns subagents using an internal stub — for tests and demos only. To run **real LLM + tool execution**, use `AgentOrchestrator::from_agent(agent)` (Rust) or `create_with_agent()` (Python/TypeScript) to attach a real AgentLoop.
+`Orchestrator.create()` without an agent spawns subagents using an internal stub — for tests and demos only. To run **real LLM + tool execution**, pass a real `Agent` instance to `Orchestrator.create(agent)`.
 
 <Tabs items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
@@ -144,7 +144,7 @@ import { Agent, Orchestrator } from '@a3s-lab/code';
 const agent = await Agent.create('agent.hcl');
 
 // Wire the orchestrator to real AgentLoop execution
-const orch = Orchestrator.createWithAgent(agent, process.cwd());
+const orch = Orchestrator.create(agent);
 
 const handle = orch.spawnSubagent({
   agentType: 'general',
@@ -167,7 +167,7 @@ from a3s_code import Agent, Orchestrator, SubAgentConfig
 agent = Agent.create("agent.hcl")
 
 # 2. Wire the orchestrator to real AgentLoop execution
-orch = Orchestrator.create_with_agent(agent, workspace=".")
+orch = Orchestrator.create(agent)
 
 # 3. Spawn and run — uses real LLM + tool calls
 handle = orch.spawn_subagent(SubAgentConfig(
@@ -188,8 +188,8 @@ print(result)
 
 | Mode | API | Subagent runs |
 |------|-----|---------------|
-| Stub (default) | `Orchestrator.create()` | Internal placeholder — for tests & demos |
-| Real execution |  · Python/TS: `Orchestrator.create_with_agent(agent, ws)` | Full AgentLoop with real LLM + tools |
+| Stub | `Orchestrator.create()` | Internal placeholder — for tests & demos |
+| Real execution | `Orchestrator.create(agent)` | Full AgentLoop with real LLM + tools |
 
 ### Architecture with Real Execution
 
@@ -212,21 +212,19 @@ AgentOrchestrator::from_agent(agent)
 
 ## Event Types
 
-| Event | Description |
-|-------|-------------|
-| `SubAgentStarted` | SubAgent started |
-| `SubAgentCompleted` | SubAgent completed |
-| `SubAgentStateChanged` | State changed |
-| `SubAgentProgress` | Progress update |
-| `SubAgentInternalEvent` | Internal event (from AgentLoop) |
-| `PlanningStarted` | Planning started |
-| `PlanningCompleted` | Planning completed |
-| `ToolExecutionStarted` | Tool execution started |
-| `ToolExecutionCompleted` | Tool execution completed |
-| `ControlSignalReceived` | Control signal received |
-| `ControlSignalApplied` | Control signal applied |
-| `ExternalTaskPending` | A tool call is waiting for an external worker |
-| `ExternalTaskCompleted` | An external task was resolved (succeeded or failed) |
+`AgentEvent` is a flat interface with a `type` string field. Subscribe via `handle.events()` which returns a `SubAgentEventStream`.
+
+| Event type (`event.type`) | Fields | Description |
+|---------------------------|--------|-------------|
+| `start` | `prompt?` | SubAgent began execution |
+| `text_delta` | `text` | Text chunk from assistant |
+| `turn_start` | `turn` | New turn started |
+| `turn_end` | `turn`, `totalTokens?` | Turn completed |
+| `tool_start` | `toolName`, `toolId` | Tool call started |
+| `tool_end` | `toolName`, `toolId`, `toolOutput?`, `exitCode?` | Tool call finished |
+| `end` | `totalTokens?` | Generation finished |
+| `error` | `error` | Error occurred |
+| `btw_answer` | `question`, `answer` | Ephemeral side question answered |
 
 ## SubAgent States
 
@@ -234,13 +232,15 @@ AgentOrchestrator::from_agent(agent)
 
 | Method | Description |
 |--------|-------------|
-| `handle.pause().await?` | Pause execution; resumes later |
-| `handle.resume().await?` | Resume a paused SubAgent |
-| `handle.cancel().await?` | Abort immediately, cannot resume |
-| `handle.adjust_params(Some(20), Some(60000)).await?` | Update max steps and timeout |
-| `handle.inject_prompt("...").await?` | Inject a new prompt into the running SubAgent |
+| `handle.pause()` | Pause execution; can resume later |
+| `handle.resume()` | Resume a paused SubAgent |
+| `handle.cancel()` | Abort immediately, cannot resume |
+| `handle.wait()` | Block until SubAgent completes and return result |
+| `handle.events()` | Subscribe to SubAgent event stream |
 
-Python/TypeScript use the same method names without `.await?`.
+<Callout type="warn">
+  **`adjust_params` and `inject_prompt`** shown in older documentation do not exist in the current SDK.
+</Callout>
 
 ## Real-time Monitoring API
 

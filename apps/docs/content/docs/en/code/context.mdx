@@ -61,21 +61,9 @@ session = agent.session('/project', {
 
 ### Events
 
-The agent emits events during compaction:
-
-<TypeTable
-  type={{
-    "ContextWarning": {
-      description: "Context usage exceeds threshold",
-    },
-    "ContextCompacting": {
-      description: "Compaction started",
-    },
-    "ContextCompacted": {
-      description: "Compaction completed",
-    },
-  }}
-/>
+<Callout type="warn">
+  Context-related event types (ContextWarning, ContextCompacting, ContextCompacted) are available in the Rust SDK. In TypeScript, monitor context usage via `session.queueStats()` and the general event stream.
+</Callout>
 
 ## Context Providers
 

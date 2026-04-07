@@ -77,7 +77,9 @@ When enabled, the queue collects per-lane counters, gauges, and histograms (late
 
 ### Alerts
 
-Queue depth alerts fire when pending commands exceed thresholds (50 warning, 100 critical). These emit `AgentEvent::QueueAlert` events.
+<Callout type="info">
+  Queue alert events are available in the Rust SDK. In TypeScript, monitor queue depth via `session.queueStats()`.
+</Callout>
 
 ## Advanced Features (A3S Lane v0.4.0)
 

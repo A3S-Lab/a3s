@@ -13,8 +13,8 @@ A3S Code 提供两种基于团队的多智能体协作模式：
 
 | 模式 | API | 适用场景 |
 |------|-----|---------|
-| 团队工作流 | `run_team(goal, ws, slots)` | 自动组建 Lead → Worker → Reviewer 团队并协调执行 |
-| 任务板直接控制 | `AgentTeam` + `TeamRunner` | 需要完全控制编排逻辑的高级场景 |
+| 团队工作流 | `Orchestrator.runTeam(goal, ws, slots)` | 通过 `AgentSlot[]` 数组自动组建 Lead → Worker → Reviewer 团队 |
+| 任务板直接控制 | `TeamRunner.create(agent, ws)` + `addLead/addWorker/addReviewer` | 细粒度控制，支持每个成员独立的 model/prompt/workspace 覆盖 |
 
 <Callout type="info">
   **单智能体编排和实时监控**，请参阅 [智能体编排器](/docs/code/orchestrator)。
@@ -179,19 +179,21 @@ for task in result.done_tasks:
 
 ### TeamConfig
 
+所有字段均为可选字段，默认值如下：
+
 <TypeTable
   type={{
-    "max_tasks": {
-      description: "类型: usize · 默认: 50 · 任务板可同时持有的最大任务数",
+    "maxTasks": {
+      description: "类型: number · 默认: 50 · 任务板可同时持有的最大任务数",
     },
-    "channel_buffer": {
-      description: "类型: usize · 默认: 128 · 每个成员 mpsc 消息通道的缓冲区大小",
+    "channelBuffer": {
+      description: "类型: number · 默认: 128 · 每个成员消息通道的缓冲区大小",
     },
-    "max_rounds": {
-      description: "类型: usize · 默认: 10 · run_until_done 中 Reviewer 轮询的最大轮数",
+    "maxRounds": {
+      description: "类型: number · 默认: 10 · run_until_done 中 Reviewer 轮询的最大轮数",
     },
-    "poll_interval_ms": {
-      description: "类型: u64 · 默认: 200 · Worker 和 Reviewer 轮询新任务的时间间隔（毫秒）",
+    "pollIntervalMs": {
+      description: "类型: number · 默认: 200 · Worker 和 Reviewer 轮询新任务的时间间隔（毫秒）",
     },
   }}
 />

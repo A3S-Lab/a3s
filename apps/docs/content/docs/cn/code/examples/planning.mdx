@@ -62,13 +62,15 @@ print(f"Tool calls: {result.tool_calls_count}")
 <Tab value="TypeScript">
 ```typescript
 const stream = await session.stream('Refactor and test the auth module');
-for await (const event of stream) {
-  if (event.type === 'planning_start') {
-    console.log(`📋 Planning: ${event.prompt}`);
-  } else if (event.type === 'plan_ready') {
-    console.log(`Plan (${event.steps.length} steps):`);
-    event.steps.forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
-  } else if (event.type === 'end') {
+while (true) {
+  const { value, done } = await stream.next();
+  if (done || !value) break;
+  if (value.type === 'planning_start') {
+    console.log(`📋 Planning: ${value.prompt}`);
+  } else if (value.type === 'plan_ready') {
+    console.log(`Plan (${value.steps.length} steps):`);
+    value.steps.forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
+  } else if (value.type === 'end') {
     break;
   }
 }

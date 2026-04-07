@@ -83,10 +83,12 @@ The LLM summarization keeps the first 2 messages (system context), a summary of 
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
-for await (const event of stream) {
-  if (event.type === 'context_compacted') {
-    console.log(`Compacted: ${event.messagesBefore} → ${event.messagesAfter} messages`);
-  } else if (event.type === 'end') break;
+while (true) {
+  const { value, done } = await stream.next();
+  if (done || !value) break;
+  if (value.type === 'context_compacted') {
+    console.log(`Compacted: ${value.messagesBefore} → ${value.messagesAfter} messages`);
+  } else if (value.type === 'end') break;
 }
 ```
 </Tab>

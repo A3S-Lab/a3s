@@ -13,8 +13,8 @@ A3S Code provides two team-based multi-agent collaboration modes:
 
 | Mode | API | Use when |
 |------|-----|----------|
-| Team workflow | `run_team(goal, ws, slots)` | Automatically assemble Lead → Worker → Reviewer team and coordinate execution |
-| Direct task board | `AgentTeam` + `TeamRunner` | Advanced scenarios requiring full control over orchestration logic |
+| Team workflow | `Orchestrator.runTeam(goal, ws, slots)` | Automatically assemble Lead → Worker → Reviewer team via `AgentSlot[]` array |
+| Direct task board | `TeamRunner.create(agent, ws)` + `addLead/addWorker/addReviewer` | Fine-grained control with per-member model/prompt/workspace overrides |
 
 <Callout type="info">
   **For single-agent orchestration with real-time monitoring**, see [Agent Orchestrator](/docs/code/orchestrator).
@@ -157,14 +157,14 @@ for task in result.done_tasks:
 
 <TypeTable
   type={{
-    "done_tasks": {
-      description: "Type: Vec<TeamTask> · Tasks approved by the Reviewer",
+    "doneTasks": {
+      description: "Type: TeamTask[] · Tasks approved by the Reviewer",
     },
-    "rejected_tasks": {
-      description: "Type: Vec<TeamTask> · Tasks still rejected after max_rounds",
+    "rejectedTasks": {
+      description: "Type: TeamTask[] · Tasks still rejected after max_rounds",
     },
     "rounds": {
-      description: "Type: usize · Number of Reviewer polling rounds completed",
+      description: "Type: number · Number of Reviewer polling rounds completed",
     },
   }}
 />
@@ -179,19 +179,21 @@ For scenarios requiring full control over orchestration logic, use `AgentTeam` +
 
 ### TeamConfig
 
+All fields are optional and default to the values shown:
+
 <TypeTable
   type={{
-    "max_tasks": {
-      description: "Type: usize · Default: 50 · Maximum number of tasks the board can hold simultaneously",
+    "maxTasks": {
+      description: "Type: number · Default: 50 · Maximum number of tasks the board can hold simultaneously",
     },
-    "channel_buffer": {
-      description: "Type: usize · Default: 128 · Buffer size for each member's mpsc message channel",
+    "channelBuffer": {
+      description: "Type: number · Default: 128 · Buffer size for each member's message channel",
     },
-    "max_rounds": {
-      description: "Type: usize · Default: 10 · Maximum Reviewer polling rounds in run_until_done before stopping",
+    "maxRounds": {
+      description: "Type: number · Default: 10 · Maximum Reviewer polling rounds in run_until_done before stopping",
     },
-    "poll_interval_ms": {
-      description: "Type: u64 · Default: 200 · How often workers and reviewer poll the board for new work (ms)",
+    "pollIntervalMs": {
+      description: "Type: number · Default: 200 · How often workers and reviewer poll the board for new work (ms)",
     },
   }}
 />
@@ -217,27 +219,27 @@ post()      claim()       complete()
 <TypeTable
   type={{
     "id": {
-      description: "Type: String · Sequential task identifier (e.g., task-1, task-2)",
+      description: "Type: String · Task identifier",
     },
     "description": {
       description: "Type: String · Task description text as posted by the Lead",
     },
-    "posted_by": {
+    "postedBy": {
       description: "Type: String · Member ID of the task creator",
     },
-    "assigned_to": {
-      description: "Type: Option<String> · Member ID currently working on this task",
+    "assignedTo": {
+      description: "Type: String | undefined · Member ID currently working on this task",
     },
     "status": {
-      description: "Type: TaskStatus · Current task state",
+      description: "Type: String · Current task state: 'open', 'in_progress', 'in_review', 'done', or 'rejected'",
     },
     "result": {
-      description: "Type: Option<String> · Output text set by complete()",
+      description: "Type: String | undefined · Output text set by complete()",
     },
-    "created_at": {
+    "createdAt": {
       description: "Type: i64 · Unix timestamp when the task was posted",
     },
-    "updated_at": {
+    "updatedAt": {
       description: "Type: i64 · Unix timestamp of the last state change",
     },
   }}
@@ -245,9 +247,115 @@ post()      claim()       complete()
 
 ### TeamRunner
 
-`TeamRunner` binds real `AgentSession` instances (or any `AgentExecutor`) to team members and runs the full automated workflow:
+`TeamRunner` binds real `AgentSession` instances (or any `AgentExecutor`) to team members and runs the full automated workflow.
 
-`run_until_done` internals:
+There are two ways to create and use a TeamRunner:
+
+<Tabs items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+
+**Option 1: TeamRunner.create() (Recommended)**
+
+```typescript
+import { Agent, TeamRunner, TeamMemberOptions } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.hcl');
+const runner = TeamRunner.create(agent, '.');
+
+// Optional: per-member overrides via TeamMemberOptions
+const workerOpts: TeamMemberOptions = {
+  model: 'openai/kimi-k2.5',           // Override model
+  role: 'You are a terse answering machine.',  // Custom role prompt
+  guidelines: 'Reply in one word only.',
+  workspace: '/isolated/worktree',       // Isolated workspace
+  maxToolRounds: 10,
+};
+
+runner.addLead('general');
+runner.addWorker('general', workerOpts);  // With per-member options
+runner.addWorker('general');              // Inherits defaults
+runner.addReviewer('general');
+
+const result = await runner.runUntilDone('Your goal here');
+```
+
+**Option 2: Team + bindSession (Manual)**
+
+```typescript
+const team = new Team('my-team');
+team.addMember('lead', TeamRole.Lead);
+team.addMember('worker-1', TeamRole.Worker);
+team.addMember('reviewer', TeamRole.Reviewer);
+
+const runner = new TeamRunner(team);
+runner.bindSession('lead', leadSession);
+runner.bindSession('worker-1', workerSession);
+runner.bindSession('reviewer', reviewerSession);
+
+const result = await runner.runUntilDone('Goal');
+```
+
+</Tab>
+<Tab value="Python">
+
+**Option 1: TeamRunner.create() (Recommended)**
+
+```python
+from a3s_code import Agent, TeamRunner, TeamMemberOptions
+
+agent = Agent.create("agent.hcl")
+runner = TeamRunner.create(agent, ".")
+
+worker_opts = TeamMemberOptions(
+    model="openai/kimi-k2.5",
+    role="You are a terse answering machine.",
+    guidelines="Reply in one word only.",
+    workspace="/isolated/worktree",
+    max_tool_rounds=10,
+)
+
+runner.add_lead("general")
+runner.add_worker("general", worker_opts)
+runner.add_worker("general")  # Inherits defaults
+runner.add_reviewer("general")
+
+result = runner.run_until_done("Your goal here")
+```
+
+</Tab>
+</Tabs>
+
+#### TeamMemberOptions
+
+Per-member override fields (all optional, inherit from agent definition if unset):
+
+<TypeTable
+  type={{
+    "workspace": {
+      description: "Override the workspace for this member. Use isolated git worktrees for concurrent workers.",
+    },
+    "model": {
+      description: "Override the model for this member. Format: 'provider/model' (e.g. 'openai/kimi-k2.5').",
+    },
+    "role": {
+      description: "Custom role/identity prompt prepended before the core prompt.",
+    },
+    "guidelines": {
+      description: "Custom coding guidelines appended after the core prompt.",
+    },
+    "responseStyle": {
+      description: "Custom response style (replaces default Response Format section).",
+    },
+    "extra": {
+      description: "Freeform extra instructions appended at the end. Falls back to agent definition 'prompt' field.",
+    },
+    "maxToolRounds": {
+      description: "Override max tool-call rounds. Falls back to agent definition max_steps.",
+    },
+  }}
+/>
+
+#### run_until_done internals
 
 1. **Lead decomposition** — the Lead's session receives a prompt to output JSON tasks. The runner parses the JSON and calls `board.post()` for each task.
 

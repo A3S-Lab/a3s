@@ -193,18 +193,20 @@ const session = agent.session('.');
 // stdio server
 const toolCount = await session.addMcpServer(
   'filesystem',
-  { transport: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'] },
+  'stdio',
+  'npx',
+  ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
 );
 console.log(`Registered ${toolCount} tools`);
 
 // Streamable HTTP server
 await session.addMcpServer(
   'remote',
-  {
-    transport: 'streamable-http',
-    url: 'https://mcp.example.com/mcp',
-    headers: { Authorization: `Bearer ${process.env.API_TOKEN}` },
-  },
+  'streamable-http',
+  undefined,
+  undefined,
+  'https://mcp.example.com/mcp',
+  { Authorization: `Bearer ${process.env.API_TOKEN}` },
 );
 
 const result = await session.send('List files in /tmp');

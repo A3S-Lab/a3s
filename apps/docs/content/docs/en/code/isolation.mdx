@@ -40,41 +40,11 @@ Whenever the agent executes `write`, `edit`, or `patch`, A3S Code automatically 
 
 ### Using File History
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// List all versions of a file
-const versions = await session.listFileVersions('src/auth.rs');
-for (const v of versions) {
-  console.log(`v${v.version} — ${v.toolName} — ${v.timestamp}`);
-}
+<Callout type="warn">
+  File version history APIs (`listFileVersions`, `diffFileVersions`, `restoreFileVersion`) are available in the Rust SDK. The TypeScript SDK exposes file operations through the LLM tool calls (`read`, `write`, `edit`) rather than direct session methods.
+</Callout>
 
-// Generate diff
-const diff = await session.diffFileVersions('src/auth.rs', 0, 1);
-console.log(diff);
-
-// Restore to version 0
-await session.restoreFileVersion('src/auth.rs', 0);
-```
-</Tab>
-<Tab value="Python">
-```python
-# List all versions of a file
-versions = session.list_file_versions("src/auth.rs")
-for v in versions:
-    print(f"v{v.version} — {v.tool_name} — {v.timestamp}")
-
-# Generate diff
-diff = session.diff_file_versions("src/auth.rs", 0, 1)
-print(diff)
-
-# Restore to version 0
-session.restore_file_version("src/auth.rs", 0)
-```
-</Tab>
-</Tabs>
-
-### VersionSummary Fields
+### VersionSummary Fields (Rust SDK)
 
 <TypeTable
   type={{

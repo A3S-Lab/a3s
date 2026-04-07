@@ -70,9 +70,12 @@ const session = agent.session('/project', {
   goalTracking: true,
 });
 
-for await (const event of session.stream('Build a REST API with auth')) {
-  if (event.type === 'task_updated') {
-    for (const task of event.tasks) {
+const stream = await session.stream('Build a REST API with auth');
+while (true) {
+  const { value, done } = await stream.next();
+  if (done || !value) break;
+  if (value.type === 'task_updated') {
+    for (const task of value.tasks) {
       const icon = { pending: '⏳', in_progress: '🔄', completed: '✅', failed: '❌' }[task.status];
       console.log(`${icon} ${task.description}`);
     }

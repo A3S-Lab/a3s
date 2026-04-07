@@ -223,19 +223,21 @@ print(result.text)
 <Tabs groupId="lang" items={['TypeScript', 'Python']}>
 <Tab value="TypeScript">
 ```typescript
-// Returns an EventStream — use for await...of or call .next() manually
+// EventStream has .next() method — use while loop
 const stream = await session.stream('Refactor the auth module');
-for await (const event of stream) {
-  if (event.type === 'text_delta') process.stdout.write(event.text);
-  if (event.type === 'tool_start') console.log(`\n🔧 ${event.toolName}`);
-  if (event.type === 'tool_end') console.log(`  → ${event.toolOutput?.slice(0, 100)}`);
+while (true) {
+  const { value, done } = await stream.next();
+  if (done || !value) break;
+  if (value.type === 'text_delta') process.stdout.write(value.text);
+  if (value.type === 'tool_start') console.log(`\n🔧 ${value.toolName}`);
+  if (value.type === 'tool_end') console.log(`  → ${value.toolOutput?.slice(0, 100)}`);
 }
 
-// Or iterate manually with .next()
+// For multiple prompts, create separate stream instances
 const stream2 = await session.stream('Explain src/main.rs');
 while (true) {
   const { value, done } = await stream2.next();
-  if (done) break;
+  if (done || !value) break;
   if (value.type === 'text_delta') process.stdout.write(value.text);
 }
 ```
