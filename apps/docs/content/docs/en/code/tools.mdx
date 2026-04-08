@@ -259,19 +259,6 @@ Supports full git operations: `status`, `log`, `branch`, `checkout`, `diff`, `st
 
 See [Git Worktree Example](/docs/code/examples/git-worktree) for full multi-language examples.
 
-## Sandbox
-
-### `box`
-
-Run commands inside an A3S Box secure sandbox with VM-level isolation. Use this for safe execution of untrusted or experimental code with isolated filesystem, network, and process namespace.
-
-```json
-{
-  "command": "python3 -c 'print(__import__(\"sys\").version)'",
-  "image": "ubuntu-22.04"
-}
-```
-
 ## Subagent Delegation
 
 ### `task`
@@ -531,17 +518,6 @@ See [MCP](/docs/code/mcp) for external tool integration examples.
     new_branch: { type: 'boolean', description: 'Create new branch for worktree (default true)' },
     base: { type: 'string', description: 'Base ref for new branch (default HEAD)' },
     subcommand: { type: 'string', description: 'Subcommand for worktree: "list" | "create" | "remove"' },
-  }}
-/>
-
-#### box
-
-<TypeTable
-  type={{
-    command: { type: 'string', required: true, description: 'Command to execute inside the sandbox' },
-    image: { type: 'string', default: '"ubuntu-22.04"', description: 'Sandbox image to use' },
-    timeout: { type: 'number', default: '60000', description: 'Timeout in milliseconds' },
-    files: { type: 'object', description: 'Files to inject into sandbox (key=path, value=content)' },
   }}
 />
 

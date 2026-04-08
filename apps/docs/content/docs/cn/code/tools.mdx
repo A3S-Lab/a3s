@@ -60,9 +60,6 @@ A3S Code 内置 **16 个工具**，所有工具均通过原生 Rust 实现在进
     "git": {
       description: "用途: Git 操作（支持自动安装）· 示例: status、log、branch、worktree、diff、stash",
     },
-    "box": {
-      description: "用途: 在 A3S Box 沙箱中运行命令 · 示例: 安全执行不受信任的代码",
-    },
     "Skill": {
       description: "用途: 将技能作为一等工具调用 · 示例: 基于技能的工具访问控制与指令注入",
     },
@@ -257,19 +254,6 @@ print(f"[{result['exit_code']}] {result['output']}")
   "subcommand": "create",
   "name": "feature-auth",
   "path": "/repo/wt-feature-auth"
-}
-```
-
-## 沙箱
-
-### `box`
-
-在 A3S Box 安全沙箱中运行命令，提供 VM 级隔离。适用于安全执行不受信任或实验性代码，具有独立的文件系统、网络和进程命名空间。
-
-```json
-{
-  "command": "python3 -c 'print(__import__(\"sys\").version)'",
-  "image": "ubuntu-22.04"
 }
 ```
 
