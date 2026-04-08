@@ -126,6 +126,7 @@ a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
 | [a3s-ahp](crates/ahp/) | 0.1.0 | Agent Harness Protocol — universal protocol for supervising autonomous AI agents | [README](crates/ahp/README.md) |
 | [a3s-updater](crates/updater/) | 0.2.0 | Self-update for CLI binaries via GitHub Releases | [Source](crates/updater/) |
 | [a3s-faas](crates/faas/) | 0.1.0 | Serverless execution engine with MicroVM isolation | [README](crates/faas/README.md) |
+| [a3s-lambda](crates/lambda/cli/) | 0.1.0 | K8s-compatible REST API — 20+ resource types, SSE watch, SQLite state store | [Source](crates/lambda/cli/) |
 
 ## Quick start
 
