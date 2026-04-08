@@ -56,6 +56,64 @@ a3s/                            ← THIS IS THE MONOREPO ROOT
 
 ---
 
+## Git Safety Rules (MANDATORY — PREVENT DATA LOSS)
+
+### Core Principle: Never Lose Uncommitted Work
+
+**⛔ CRITICAL: `git stash pop` CAN DESTROY YOUR CHANGES**
+
+When running `git stash pop` after a failed merge/rebase, git may create an "autostash" that replaces your original stash. The original stash content can be LOST. This has caused real data loss.
+
+### Rules
+
+1. **Before `git pull --rebase`: ALWAYS commit or stash first**
+   ```bash
+   # BAD: pull with uncommitted changes — auto-stashes and can lose work
+   git pull --rebase origin main
+
+   # GOOD: commit first, then pull
+   git add -A && git commit -m "wip: my changes"
+   git pull --rebase origin main
+
+   # GOOD: stash explicitly, then pop carefully
+   git stash push -m "my changes"
+   git pull --rebase origin main
+   git stash pop  # CHECK DIFF AFTER!
+   ```
+
+2. **After `git stash pop` with conflicts: VERIFY your changes**
+   ```bash
+   # Check what changed
+   git diff --stat HEAD
+
+   # Verify critical files are correct
+   grep "your-feature" src/important-file.tsx
+
+   # If changes are missing, recover from reflog
+   git reflog | grep "stash"
+   git stash branch recovery-branch stash@{N}  # Create branch from stash
+   ```
+
+3. **When stash pop fails: Use `git stash branch` instead of autostash**
+   ```bash
+   # Create a new branch from the stash to be safe
+   git stash branch recovery stash@{0}
+
+   # Then manually merge the branch
+   git checkout your-branch
+   git merge recovery
+   ```
+
+4. **Always use `git stash push -m "message"` with descriptive messages**
+   - Unnamed stashes (`stash@{N}`) are hard to track
+   - Descriptive messages make recovery easier
+
+### Why This Matters
+
+`git pull --rebase` internally calls `git stash` to save uncommitted changes. If the rebase fails (due to conflicts) and you run `git stash pop`, git may create an "autostash" that overwrites the original stash. Your uncommitted work can be lost permanently.
+
+---
+
 ## Adding a New Crate (MANDATORY Procedure)
 
 **CRITICAL: Every new Rust crate MUST follow this exact procedure. No exceptions.**
