@@ -34,22 +34,8 @@ Thumbs.db
 # Apps
 apps/safeclaw/
 
-# OS - ignore most of it, but track lambda code
-apps/os/
-
-# Track lambda files even though apps/os is ignored
-!apps/os/api/src/lambda/
-!apps/os/api/src/lambda_cli/
-!apps/os/api/crates/
-!apps/os/api/Cargo.toml
-
-# OS build artifacts
-apps/os/api/target/
-apps/os/api/src/lambda/target/
-apps/os/api/src/lambda_cli/target/
-apps/os/data/
-apps/os/web/node_modules/
-apps/os/web/dist/
+# OS - completely ignored
+apps/os/*
 
 # SafeClaw - keep only README.md in remote
 apps/safeclaw/*
