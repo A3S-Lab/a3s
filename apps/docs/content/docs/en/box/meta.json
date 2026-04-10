@@ -10,8 +10,6 @@
     "networking",
     "---Security---",
     "tee",
-    "---SDK---",
-    "sdk",
     "---Operations---",
     "cri",
     "helm",
