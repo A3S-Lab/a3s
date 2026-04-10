@@ -31,6 +31,3 @@
 [submodule "crates/ahp"]
 	path = crates/ahp
 	url = git@github.com:A3S-Lab/AgentHarnessProtocol.git
-[submodule "crates/lambda"]
-	path = crates/lambda
-	url = git@github.com:A3S-Lab/Lambda.git

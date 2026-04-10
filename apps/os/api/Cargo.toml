@@ -1,0 +1,110 @@
+[workspace]
+members = [
+    "src/lambda",
+    "src/lambda_cli",
+]
+
+[package]
+name = "a3s-os"
+version = "0.1.0"
+edition = "2021"
+description = "A3S OS — Self-hosted GitHub alternative"
+license = "MIT"
+
+[[bin]]
+name = "a3s-os"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["net", "rt-multi-thread", "macros", "signal", "sync", "process"] }
+
+# HTTP framework
+axum = { version = "0.8", features = ["macros", "multipart"] }
+bytes = "1"
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "chrono", "json", "migrate"] }
+
+# Auth
+jsonwebtoken = "9"
+argon2 = "0.5"
+
+# Configuration
+hcl-rs = "0.18"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# Validation
+validator = { version = "0.19", features = ["derive"] }
+
+# IDs
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Errors
+thiserror = "2"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+# Error utilities for main / config
+anyhow = "1"
+
+# Async utilities
+async-trait = "0.1"
+
+# SHA-256 for PAT hashing + webhook signatures
+sha2 = "0.10"
+# HMAC-SHA256 for webhook signatures
+hmac = "0.12"
+
+# Random bytes for secrets
+rand = "0.8"
+# Base64 encoding for tokens
+base64 = "0.22"
+
+# Concurrent hash map for rate limiter
+dashmap = "6"
+
+# Hex encoding for signatures
+hex = "0.4"
+
+# URL encoding for signed URLs
+urlencoding = "2"
+
+# HTTP client for webhook delivery
+reqwest = { version = "0.12", features = ["json"] }
+
+# Ed25519 SSH key signing / verification
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+
+# TOTP / HOTP two-factor authentication
+totp-rs = { version = "5", features = ["gen_secret", "otpauth"] }
+
+# Markdown rendering
+pulldown-cmark = "0.12"
+
+# Full-text search for code search
+tantivy = "0.22"
+
+# Email / SMTP sending
+lettre = { version = "0.11", features = ["tokio1-native-tls", "smtp-transport"] }
+
+# Prometheus metrics
+prometheus-client = "0.22"
+
+# Redis for distributed caching and rate limiting
+redis = { version = "0.27", features = ["tokio-comp", "connection-manager"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["net", "rt-multi-thread", "macros", "signal", "test-util"] }
+axum-test = "16"

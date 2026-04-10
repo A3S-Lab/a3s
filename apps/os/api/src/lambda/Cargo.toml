@@ -1,0 +1,80 @@
+[package]
+name = "a3s-lambda"
+version = "0.1.0"
+edition = "2021"
+description = "A3S Lambda - Serverless execution engine with MicroVM isolation"
+license = "MIT"
+
+[[bin]]
+name = "a3s-lambda"
+path = "main.rs"
+
+[[bin]]
+name = "a3s-executor"
+path = "executor_main.rs"
+
+[lib]
+name = "a3s_lambda"
+path = "lib.rs"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[dependencies]
+# Core Lambda domain model and contracts
+a3s-lambda-core = { path = "../../crates/lambda-core" }
+
+# Async runtime
+tokio = { version = "1", features = ["fs", "sync", "rt"] }
+
+# A3S Box Core for MicroVM isolation
+a3s-box-core = { path = "../../../../../crates/box/src/core" }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+scraper = "0.24"
+
+# IDs
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Errors
+thiserror = "2"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# HTTP client (for agent downloads and HTTP tasks)
+reqwest = { version = "0.12", features = ["json"] }
+
+# URL encoding
+urlencoding = "2"
+
+# Cryptography (for SHA-256 verification)
+sha2 = "0.10"
+
+# Async trait
+async-trait = "0.1"
+
+# Task queue and scheduling
+a3s-lane = { path = "../../../../../crates/lane" }
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid", "chrono", "json"] }
+
+# HTTP server
+axum = "0.7"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors"] }
+
+# Configuration
+envy = "0.4"
+serde_yaml = "0.9"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util", "macros", "rt-multi-thread"] }
+tokio-stream = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tempfile = "3"
