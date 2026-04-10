@@ -25,14 +25,22 @@ Headless browser support is **enabled by default** in SDKs, **opt-in** in Rust l
 ```toml
 # Rust library (opt-in for smaller binary)
 [dependencies]
-a3s-search = "0.9"  # 6 HTTP engines only
+a3s-search = "0.9"  # HTTP engines only
 
-# With headless browser support (9 engines)
+# With Chrome backend
 [dependencies]
-a3s-search = { version = "0.9", features = ["headless", "lightpanda"] }
+a3s-search = { version = "0.9", features = ["chromium"] }
+
+# With Lightpanda backend (Linux/macOS only)
+[dependencies]
+a3s-search = { version = "0.9", features = ["lightpanda"] }
+
+# With both backends
+[dependencies]
+a3s-search = { version = "0.9", features = ["all-headless"] }
 ```
 
-**Python/Node.js SDKs**: Headless support (Lightpanda) is enabled by default. Automatically downloads browser (~59MB) on first use.
+**Python/Node.js SDKs**: Both Chrome and Lightpanda backends are enabled by default.
 
 ## BrowserPool
 

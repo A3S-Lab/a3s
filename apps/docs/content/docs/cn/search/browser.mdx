@@ -25,14 +25,22 @@ SDK 会在支持的平台上自动选择 Lightpanda，在 Windows 或 Lightpanda
 ```toml
 # Rust 库（手动启用以减小二进制体积）
 [dependencies]
-a3s-search = "0.9"  # 仅 6 个 HTTP 引擎
+a3s-search = "0.9"  # 仅 HTTP 引擎
 
-# 启用无头浏览器支持（9 个引擎）
+# 使用 Chrome 后端
 [dependencies]
-a3s-search = { version = "0.9", features = ["headless", "lightpanda"] }
+a3s-search = { version = "0.9", features = ["chromium"] }
+
+# 使用 Lightpanda 后端（仅 Linux/macOS）
+[dependencies]
+a3s-search = { version = "0.9", features = ["lightpanda"] }
+
+# 同时启用两个后端
+[dependencies]
+a3s-search = { version = "0.9", features = ["all-headless"] }
 ```
 
-**Python/Node.js SDK**：无头浏览器支持（Lightpanda）默认启用。首次使用时自动下载浏览器（~59MB）。
+**Python/Node.js SDK**：默认启用 Chrome 和 Lightpanda 两个后端。
 
 ## BrowserPool
 

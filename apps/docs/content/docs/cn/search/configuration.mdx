@@ -19,6 +19,14 @@ health {
   suspend_seconds = 120
 }
 
+# 无头浏览器配置（可选）
+headless {
+  backend      = "Chrome"   # 或 "Lightpanda"
+  browser_path = null         # 自动检测
+  max_tabs     = 4
+  launch_args  = []
+}
+
 engine "ddg" {
   enabled = true
   weight  = 1.0
@@ -37,6 +45,11 @@ engine "bing" {
 engine "wiki" {
   enabled = true
   weight  = 1.5
+}
+
+engine "google" {
+  enabled = true
+  weight  = 1.0
 }
 
 engine "sogou" {
