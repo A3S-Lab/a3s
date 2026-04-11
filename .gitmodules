@@ -31,3 +31,6 @@
 [submodule "crates/ahp"]
 	path = crates/ahp
 	url = git@github.com:A3S-Lab/AgentHarnessProtocol.git
+[submodule "apps/safeclaw/crates/kreuzberg"]
+	path = apps/safeclaw/crates/kreuzberg
+	url = https://github.com/kreuzberg-dev/kreuzberg.git
