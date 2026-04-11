@@ -9,33 +9,33 @@ import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 # A3S Code
 
-**用于构建 Agentic AI 应用的 Rust 框架** — 将能够读写、执行代码的智能体嵌入任意应用。工具调用、任务规划、安全控制、多机器分布式部署 — 原生支持 Node.js 和 Python 绑定。
+**意图驱动的 AI 编程智能体框架** — A3S Code 为 LLM 提供工作区、工具和记忆，然后使用**意图检测**和**上下文感知**在正确的时机注入正确的上下文。将能够读写、执行代码的智能体嵌入任意应用，原生支持 Node.js 和 Python 绑定。
 
 <Callout type="info">
-**扩展点：** 20 个基于 trait 的扩展点 | **内置工具：** 16 个 | **内置 Skills：** 7 个
+**扩展点：** 20 个基于 trait 的扩展点 | **内置工具：** 15 个 | **内置 Skills：** 7 个 | **AHP 驾驭点：** 18 个
 </Callout>
 
 ## 为什么选择 A3S Code？
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
   <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">🔧 可嵌入</h3>
-    <span className="text-sm text-muted-foreground">Rust 库，非服务。通过 Node.js/Python 绑定集成到你的应用中。</span>
+    <h3 className="text-lg font-semibold mb-2">🎯 意图驱动</h3>
+    <span className="text-sm text-muted-foreground">每个提示都会经过意图分析（定位、理解、检索、探索、推理、验证、比较、追踪）。上下文根据用户实际需求注入。</span>
   </div>
 
   <div className="border rounded-lg p-4">
     <h3 className="text-lg font-semibold mb-2">🛡️ 默认安全</h3>
-    <span className="text-sm text-muted-foreground">权限系统、HITL 确认、技能工具限制、错误恢复（解析重试、工具超时、熔断器）。</span>
+    <span className="text-sm text-muted-foreground">权限系统、HITL 确认、技能工具限制、AHP 驾驭监督、错误恢复（熔断器、自动压缩）。</span>
   </div>
 
   <div className="border rounded-lg p-4">
     <h3 className="text-lg font-semibold mb-2">🔌 可扩展</h3>
-    <span className="text-sm text-muted-foreground">20 个基于 trait 的扩展点，可替换任意策略实现。</span>
+    <span className="text-sm text-muted-foreground">20 个基于 trait 的扩展点，可替换任意组件 — LLM 客户端、工具、记忆、钩子、安全、上下文提供商。</span>
   </div>
 
   <div className="border rounded-lg p-4">
     <h3 className="text-lg font-semibold mb-2">📈 可伸缩</h3>
-    <span className="text-sm text-muted-foreground">基于 Lane 的优先级队列，支持多机器任务分发。</span>
+    <span className="text-sm text-muted-foreground">基于 Lane 的优先级队列，支持多机器任务分发。基于角色的子智能体团队任务分配。</span>
   </div>
 </div>
 

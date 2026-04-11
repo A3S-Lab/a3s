@@ -9,20 +9,74 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 
 # AHP Integration
 
-**Agent Harness Protocol (AHP)** is a universal, transport-agnostic protocol for supervising autonomous AI agents. A3S Code provides native AHP integration through the hook system, enabling external supervision, policy enforcement, and security controls.
+**Agent Harness Protocol (AHP) 2.2** is a universal, transport-agnostic protocol for supervising autonomous AI agents. A3S Code provides native AHP 2.2 integration through the hook system, enabling external supervision, policy enforcement, and **context-aware** security controls.
 
 <Callout type="info">
-AHP allows you to intercept agent actions before execution (pre-action) and sanitize outputs after execution (post-action), providing defense-in-depth security.
+AHP 2.2 provides **18 harness points** including PreAction, PostAction, ContextPerception, Idle, Confirmation, MemoryRecall, and more. ContextPerception enables intent-driven context injection based on what the user is actually trying to do.
 </Callout>
 
 ## Overview
 
-AHP provides a framework-agnostic interface for:
+AHP 2.2 provides a framework-agnostic interface for:
 - **Pre-action supervision** — Block dangerous operations before execution
 - **Post-action sanitization** — Clean untrusted outputs to prevent injection attacks
+- **Context perception** — Inject relevant context based on user intent
+- **Idle detection** — Trigger background consolidation when agent is idle
 - **Policy enforcement** — Apply security rules, rate limits, and access controls
 - **Audit logging** — Record all agent activities for compliance
 - **Dynamic control** — Pause, resume, or modify agent behavior at runtime
+
+## AHP 2.2 Harness Points
+
+AHP 2.2 defines **18 harness points** across the agent lifecycle:
+
+| Harness Point | Type | Description |
+|---------------|------|-------------|
+| `PreAction` | Blocking | Before tool execution — block, allow, or modify |
+| `PostAction` | Non-blocking | After tool execution — sanitize output |
+| `PrePrompt` | Blocking | Before LLM prompt — inject context, modify prompt |
+| `PostResponse` | Non-blocking | After LLM response — sanitize, filter |
+| `PreContextPerception` | Blocking | Before context injection — harness can inject context |
+| `PostContextPerception` | Non-blocking | After context resolution — enrich or filter |
+| `SessionStart` | Non-blocking | Session initialized — setup, policy load |
+| `SessionEnd` | Non-blocking | Session ended — cleanup, persist state |
+| `Idle` | Blocking | Agent idle — background consolidation (dream system) |
+| `Confirmation` | Blocking | Ambiguous operation — human approval required |
+| `Query` | Blocking | External query — harness provides guidance |
+| `Heartbeat` | Non-blocking | Periodic health check — status update |
+| `Error` | Non-blocking | Error occurred — error handling, recovery |
+| `Success` | Non-blocking | Task completed — success handling |
+| `MemoryRecall` | Blocking | Memory query — harness provides facts |
+| `Planning` | Blocking | Task planning — harness validates or modifies plan |
+| `Reasoning` | Blocking | Reasoning step — harness provides hints |
+| `RateLimit` | Non-blocking | Rate limit hit — backoff, retry strategy |
+
+### Context Perception Flow
+
+```
+User Prompt → Intent Detection (~7µs)
+                    ↓
+        ┌───────────────────────────┐
+        │ PreContextPerception     │
+        │ Harness decides:         │
+        │ • Inject context         │
+        │ • Modify context         │
+        │ • Skip (use providers)   │
+        └───────────────────────────┘
+                    ↓
+        ┌───────────────────────────┐
+        │ Context Resolution        │
+        │ (file search, memory,    │
+        │  knowledge base)          │
+        └───────────────────────────┘
+                    ↓
+        ┌───────────────────────────┐
+        │ PostContextPerception    │
+        │ Harness can enrich/filter│
+        └───────────────────────────┘
+                    ↓
+              LLM Prompt
+```
 
 ### Architecture Types
 

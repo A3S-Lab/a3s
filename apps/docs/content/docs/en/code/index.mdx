@@ -9,33 +9,33 @@ import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 # A3S Code
 
-**Rust framework for building agentic AI agents** — Embed agents that read, write, and execute code into any application. Tool calling, task planning, safety controls, multi-machine distribution — native Node.js and Python bindings included.
+**Intent-driven AI coding agent framework** — A3S Code gives an LLM a workspace, tools, and memory, then uses **intent detection** and **context perception** to inject the right context at the right time. Embed agents that read, write, and execute code into any application. Native Node.js and Python bindings.
 
 <Callout type="info">
-**Extension Points:** 14 trait-based | **Built-in Tools:** 16 | **Built-in Skills:** 7
+**Extension Points:** 20 trait-based | **Built-in Tools:** 15 | **Built-in Skills:** 7 | **AHP Harness Points:** 18
 </Callout>
 
 ## Why A3S Code?
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
   <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">🔧 Embeddable</h3>
-    <span className="text-sm text-muted-foreground">Rust library, not a service. Integrate into your app with Node.js/Python bindings.</span>
+    <h3 className="text-lg font-semibold mb-2">🎯 Intent-Driven</h3>
+    <span className="text-sm text-muted-foreground">Every prompt is analyzed for intent (locate, understand, retrieve, explore, reason, validate, compare, track). Context is injected based on what the user actually needs.</span>
   </div>
 
   <div className="border rounded-lg p-4">
     <h3 className="text-lg font-semibold mb-2">🛡️ Safe by Default</h3>
-    <span className="text-sm text-muted-foreground">Permission system, HITL confirmation, skill-based tool restrictions, and error recovery (parse retries, tool timeout, circuit breaker).</span>
+    <span className="text-sm text-muted-foreground">Permission system, HITL confirmation, skill-based tool restrictions, AHP harness supervision, and error recovery (circuit breaker, auto-compact).</span>
   </div>
 
   <div className="border rounded-lg p-4">
     <h3 className="text-lg font-semibold mb-2">🔌 Extensible</h3>
-    <span className="text-sm text-muted-foreground">14 trait-based extension points. Replace any policy with your own implementation.</span>
+    <span className="text-sm text-muted-foreground">20 trait-based extension points. Replace any component — LLM client, tools, memory, hooks, security, context providers.</span>
   </div>
 
   <div className="border rounded-lg p-4">
     <h3 className="text-lg font-semibold mb-2">📈 Scalable</h3>
-    <span className="text-sm text-muted-foreground">Lane-based priority queue with multi-machine task distribution.</span>
+    <span className="text-sm text-muted-foreground">Lane-based priority queue with multi-machine task distribution. Subagent teams with role-based task assignment.</span>
   </div>
 </div>
 
@@ -147,24 +147,25 @@ print(result.text)
 
 ## Architecture
 
-5 core components (stable, not replaceable) + 14 extension points (replaceable via traits):
+5 core components (stable, not replaceable) + 20 extension points (replaceable via traits):
 
 ```
 Agent (config-driven)
   └── AgentSession (workspace-bound)
-        ├── AgentLoop (core execution engine)
-        │     ├── ToolExecutor (16 built-in tools)
-        │     ├── PluginManager (custom opt-in tools + skills)
-        │     ├── Planning (task decomposition + wave execution)
-        │     └── HITL Confirmation
-        ├── SessionLaneQueue (a3s-lane backed)
-        │     ├── Control (P0) → Query (P1) → Execute (P2) → Generate (P3)
-        │     └── External Task Distribution
-        ├── HookEngine (11 lifecycle events)
-        ├── Security (PII redaction, injection detection)
-        ├── Skills (instruction injection + tool permissions)
-        ├── Context (RAG providers)
-        └── Memory (episodic, semantic, procedural, working)
+        └── AgentLoop (core execution engine)
+              ├── IntentDetector → ContextPerception (AHP 2.2)
+              ├── ToolExecutor (15 built-in tools)
+              ├── SkillRegistry (skill injection + tool permissions)
+              ├── PluginManager (custom opt-in tools + skills)
+              ├── Planning (task decomposition + wave execution)
+              ├── SessionLaneQueue (a3s-lane backed)
+              │     ├── Control (P0) → Query (P1) → Execute (P2) → Generate (P3)
+              │     └── External Task Distribution
+              ├── HookEngine (11 lifecycle events)
+              ├── AHP Executor (18 harness points)
+              ├── Security (permissions, taint, HITL, PII redaction)
+              ├── Context (RAG providers)
+              └── Memory (episodic, semantic, procedural, working)
 ```
 
 See [Architecture](/docs/code/architecture) for detailed documentation.

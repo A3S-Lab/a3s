@@ -9,20 +9,74 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 
 # AHP 集成
 
-**Agent Harness Protocol (AHP)** 是一个通用的、传输无关的协议，用于监督自主 AI 智能体。A3S Code 通过 hook 系统提供原生 AHP 集成，支持外部监督、策略执行和安全控制。
+**Agent Harness Protocol (AHP) 2.2** 是一个通用的、传输无关的协议，用于监督自主 AI 智能体。A3S Code 通过 hook 系统提供原生 AHP 2.2 集成，支持外部监督、策略执行和**上下文感知**安全控制。
 
 <Callout type="info">
-AHP 允许你在执行前拦截智能体动作（pre-action），在执行后净化输出（post-action），提供深度防御安全。
+AHP 2.2 提供 **18 个驾驭点**，包括 PreAction、PostAction、ContextPerception、Idle、Confirmation、MemoryRecall 等。ContextPerception 支持基于用户意图的上下文注入。
 </Callout>
 
 ## 概述
 
-AHP 提供框架无关的接口用于：
+AHP 2.2 提供框架无关的接口用于：
 - **执行前监督** — 在执行前阻止危险操作
 - **执行后净化** — 清理不可信输出以防止注入攻击
+- **上下文感知** — 基于用户意图注入相关上下文
+- **空闲检测** — 当智能体空闲时触发后台整合
 - **策略执行** — 应用安全规则、速率限制和访问控制
 - **审计日志** — 记录所有智能体活动以满足合规要求
 - **动态控制** — 在运行时暂停、恢复或修改智能体行为
+
+## AHP 2.2 驾驭点
+
+AHP 2.2 定义了 **18 个驾驭点**，覆盖智能体生命周期：
+
+| 驾驭点 | 类型 | 描述 |
+|--------|------|------|
+| `PreAction` | 阻塞 | 工具执行前 — 阻止、允许或修改 |
+| `PostAction` | 非阻塞 | 工具执行后 — 净化输出 |
+| `PrePrompt` | 阻塞 | LLM 提示前 — 注入上下文、修改提示 |
+| `PostResponse` | 非阻塞 | LLM 响应后 — 净化、过滤 |
+| `PreContextPerception` | 阻塞 | 上下文注入前 — harness 可注入上下文 |
+| `PostContextPerception` | 非阻塞 | 上下文解析后 — 丰富或过滤 |
+| `SessionStart` | 非阻塞 | 会话初始化 — 设置、加载策略 |
+| `SessionEnd` | 非阻塞 | 会话结束 — 清理、持久化状态 |
+| `Idle` | 阻塞 | 智能体空闲 — 后台整合（梦境系统） |
+| `Confirmation` | 阻塞 | 模糊操作 — 需要人工批准 |
+| `Query` | 阻塞 | 外部查询 — harness 提供指导 |
+| `Heartbeat` | 非阻塞 | 定期健康检查 — 状态更新 |
+| `Error` | 非阻塞 | 发生错误 — 错误处理、恢复 |
+| `Success` | 非阻塞 | 任务完成 — 成功处理 |
+| `MemoryRecall` | 阻塞 | 记忆查询 — harness 提供事实 |
+| `Planning` | 阻塞 | 任务规划 — harness 验证或修改计划 |
+| `Reasoning` | 阻塞 | 推理步骤 — harness 提供提示 |
+| `RateLimit` | 非阻塞 | 速率限制触发 — 退避、重试策略 |
+
+### 上下文感知流程
+
+```
+用户提示 → 意图检测 (~7µs)
+                   ↓
+       ┌───────────────────────────┐
+       │ PreContextPerception      │
+       │ Harness 决定：             │
+       │ • 注入上下文              │
+       │ • 修改上下文              │
+       │ • 跳过（使用提供商）      │
+       └───────────────────────────┘
+                   ↓
+       ┌───────────────────────────┐
+       │ 上下文解析                 │
+       │（文件搜索、记忆、         │
+       │  知识库）                  │
+       └───────────────────────────┘
+                   ↓
+       ┌───────────────────────────┐
+       │ PostContextPerception     │
+       │ Harness 可丰富/过滤       │
+       └───────────────────────────┘
+                   ↓
+             LLM 提示
+```
 
 ### 架构类型
 
