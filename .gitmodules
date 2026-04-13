@@ -1,9 +1,9 @@
 [submodule "crates/box"]
 	path = crates/box
-	url = git@github.com:A3S-Lab/Box.git
+	url = git@github.com:AI45Lab/Box.git
 [submodule "crates/code"]
 	path = crates/code
-	url = git@github.com:A3S-Lab/Code.git
+	url = git@github.com:AI45Lab/Code.git
 [submodule "crates/lane"]
 	path = crates/lane
 	url = git@github.com:A3S-Lab/Lane.git
