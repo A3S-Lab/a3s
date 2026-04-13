@@ -4,38 +4,6 @@ default:
     @just --list
 
 # ============================================================================
-# A3S Box
-# ============================================================================
-
-# Build a3s-box
-box-build:
-    cd crates/box && just build
-
-# Run a3s-box unit tests
-box-test:
-    cd crates/box && just test
-
-# Run a3s-box VM integration tests (requires built binary + HVF/KVM)
-# Usage: just box-test-vm                          # run all tests
-#        just box-test-vm test_alpine_full_lifecycle  # run a specific test
-box-test-vm *ARGS:
-    cd crates/box && just test-vm {{ARGS}}
-
-# Run a3s-box TEE integration tests (requires built binary + HVF/KVM)
-# Usage: just box-test-tee                              # run all TEE tests
-#        just box-test-tee test_tee_seal_unseal_lifecycle  # run a specific test
-box-test-tee *ARGS:
-    cd crates/box && just test-tee {{ARGS}}
-
-# ============================================================================
-# A3S Code
-# ============================================================================
-
-# Start a3s-code server (dev mode)
-code:
-    cd crates/code && just serve
-
-# ============================================================================
 # Documentation Site
 # ============================================================================
 
@@ -48,24 +16,38 @@ docs-build:
     cd apps/docs && bun run build
 
 # ============================================================================
-# Architecture Diagrams
+# A3S OS
 # ============================================================================
 
-# Start LikeC4 architecture diagram dev server
-arch:
-    npx likec4 serve docs/architecture
+# Start a3s-box infrastructure (postgres, redis, rustfs)
+os-up:
+    cd apps/os && docker compose up -d
 
-# Export architecture diagrams to PNG
-arch-export-png:
-    npx likec4 export png -o docs/architecture/output docs/architecture
+# Stop a3s-box infrastructure
+os-down:
+    cd apps/os && docker compose down
 
-# Export architecture diagrams to SVG
-arch-export-svg:
-    npx likec4 export svg -o docs/architecture/output docs/architecture
+# Start OS API server (requires running postgres/redis via os-up)
+os-api:
+    cd apps/os/api && cargo run --bin a3s-os -- --config ../config/dev.hcl
 
-# Build architecture diagrams as static site
-arch-build:
-    npx likec4 build -o docs/architecture/dist docs/architecture
+# Start OS web dev server
+os-web:
+    cd apps/os/web && npm run dev
+
+# Start both OS API and Web in parallel (requires os-up for infra)
+os-dev:
+    just os-api &
+    just os-web
+
+# Build OS web for production
+os-web-build:
+    cd apps/os/web && npm run build
+
+# Clean OS build artifacts
+os-clean:
+    cd apps/os/api && cargo clean
+    cd apps/os/web && rm -rf dist
 
 # ============================================================================
 # SafeClaw
@@ -123,5 +105,5 @@ clean:
     cd crates/power && just clean
     cd crates/search && just clean
     cd apps/safeclaw/crates/safeclaw && just clean
-    cd apps/os && just clean
     cd apps/safeclaw && just clean
+    just os-clean
