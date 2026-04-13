@@ -31,3 +31,6 @@
 [submodule "crates/ahp"]
 	path = crates/ahp
 	url = git@github.com:A3S-Lab/AgentHarnessProtocol.git
+[submodule "crates/rustfs"]
+	path = crates/rustfs
+	url = git@github.com:rustfs/rustfs.git

@@ -125,6 +125,30 @@ Before adding code, ask: "Is this core or extension?" If it can be replaced with
 8. Explicit Errors — self-documenting error messages
 9. Periodic Pruning — after every feature, audit for dead wrappers/orphaned exports
 
+### Rule 3: Reasonable File and Folder Splitting
+
+**Keep files focused, directories logically organized. Fight the "god object" and "dump everything in one folder" tendencies.**
+
+File splitting guidelines:
+- **File size**: If a file exceeds ~500 lines, consider splitting it. If it exceeds ~1000 lines, it MUST be split.
+- **Single responsibility per file**: One struct/trait + its closely related helpers. Don't mix unrelated concerns.
+- **Protocol handlers**: Each protocol (HTTP, WebSocket, gRPC, TCP, UDP) in its own file, not one massive `entrypoint.rs`.
+- **Middleware**: Each middleware type in its own file, not one `middleware/mod.rs` with 15 match arms.
+- **Managers**: Extract lifecycle managers (discovery, autoscaler, ACME, providers) into separate files, not all in `gateway.rs`.
+
+Directory structure guidelines:
+- **Group by concern, not by type**: `proxy/http.rs`, `proxy/websocket.rs` not `http_proxy.rs`, `ws_proxy.rs` scattered
+- **No "catch-all" directories**: `utils/`, `helpers/` with unrelated code are smells
+- **Nested depth**: Maximum 3 levels deep for source code (`src/a/b/c.rs`), 2 for tests
+
+Warning signs (refactor immediately):
+- `mod.rs` files that re-export 20+ items
+- `src/gateway.rs` with 1000+ lines
+- `src/entrypoint.rs` handling HTTP, TCP, UDP, TLS, ACME all in one file
+- Any file you need to scroll past 3 screens to understand
+
+When in doubt: err on the side of more files with clearer names over fewer files with clever organization.
+
 ### Typed Extension Options (SDK/API only)
 
 Extension/backend choices in SDK options MUST use typed objects, not raw primitives:
