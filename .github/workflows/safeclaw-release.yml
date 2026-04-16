@@ -83,6 +83,9 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Clean box staging (prevent cross-build contamination)
+        run: rm -rf src-tauri/resources/staging/box
+
       - name: Generate updater release config
         run: |
           node -e '
