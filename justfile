@@ -16,40 +16,6 @@ docs-build:
     cd apps/docs && bun run build
 
 # ============================================================================
-# A3S OS
-# ============================================================================
-
-# Start a3s-box infrastructure (postgres, redis, rustfs)
-os-up:
-    cd apps/os && docker compose up -d
-
-# Stop a3s-box infrastructure
-os-down:
-    cd apps/os && docker compose down
-
-# Start OS API server (requires running postgres/redis via os-up)
-os-api:
-    cd apps/os/api && cargo run --bin a3s-os -- --config ../config/dev.hcl
-
-# Start OS web dev server
-os-web:
-    cd apps/os/web && npm run dev
-
-# Start both OS API and Web in parallel (requires os-up for infra)
-os-dev:
-    just os-api &
-    just os-web
-
-# Build OS web for production
-os-web-build:
-    cd apps/os/web && npm run build
-
-# Clean OS build artifacts
-os-clean:
-    cd apps/os/api && cargo clean
-    cd apps/os/web && rm -rf dist
-
-# ============================================================================
 # SafeClaw
 # ============================================================================
 
