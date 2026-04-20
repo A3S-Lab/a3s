@@ -34,3 +34,6 @@
 [submodule "crates/rustfs"]
 	path = crates/rustfs
 	url = git@github.com:rustfs/rustfs.git
+[submodule "crates/acl"]
+	path = crates/acl
+	url = git@github.com:A3S-Lab/ACL.git
