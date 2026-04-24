@@ -47,6 +47,7 @@ apps/safeclaw/*
 # A3S runtime data & config (contains API keys)
 .a3s/
 config.hcl
+config.acl
 
 # Temporary test files (should not be in root)
 /test_*.py

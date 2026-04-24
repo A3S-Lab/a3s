@@ -10,7 +10,7 @@ a3s/                            ← MONOREPO ROOT (NOT a Rust workspace)
 │   ├── os/                     # A3S platform (NestJS + React)
 │   └── safeclaw/               # SafeClaw desktop app (Tauri + React)
 ├── crates/                     # Rust crates (submodules)
-│   ├── box/ code/ event/ flow/ gateway/ lane/ power/ search/ updater/
+│   ├── box/ code/ event/ gateway/ lane/ power/ search/ updater/
 │   └── common/                 # Shared types
 ├── docs/                       # Documentation
 └── homebrew-tap/              # Homebrew tap

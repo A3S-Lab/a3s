@@ -20,17 +20,13 @@ a3s-box              ← MicroVM runtime (standalone CLI or K8s RuntimeClass)
   └── MicroVM        ← TEE hardware encryption when available, VM isolation always
       ├── SafeClaw   ← security proxy: classify, sanitize, audit
       ├── a3s-code   ← imperative agent framework: Agent::new(), 14 tools, LLM, memory
-      ├── a3s-flow   ← workflow engine: FlowEngine · JSON DAG · pause/resume/terminate
-      │     └── FlowEngine.start() / pause() / resume() / terminate() / node_types()
-      └── a3s-lane   ← shared scheduling for a3s-code and a3s-flow
+      └── a3s-lane   ← shared scheduling for a3s-code
 a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
 ```
 
 **a3s** is the developer CLI. One binary to start services, manage dependencies, deploy k3s, proxy to ecosystem tools, and scaffold agents — all from a single `A3sfile.hcl`.
 
 **a3s-code** is a coding agent framework — not a standalone service. Import it as a library (`a3s-code-core`) and build agents with `Agent::new("agent.hcl")`. All subsystems (tools, hooks, security, memory, MCP, planning, subagents) are embedded and active by default. Complex tasks are decomposed into dependency graphs and independent steps execute **in parallel** via wave-based scheduling.
-
-**a3s-flow** is a workflow engine for declarative, DAG-driven agentic pipelines. Define workflows as JSON arrays of typed nodes with explicit `depends_on` edges. `FlowEngine` validates the graph, executes waves of independent nodes concurrently, and exposes full lifecycle control — start, pause, resume, and terminate — for each running execution. Designed to power platforms similar to Dify and n8n.
 
 **a3s-gateway** and **a3s-box** are infrastructure components. They are application-agnostic — they don't know or care what runs inside the VM.
 
@@ -74,16 +70,6 @@ a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
               │  │  ┌─────────────────────────────────┐    │ │
               │  │  │ a3s-code  (imperative agents)   │    │ │
               │  │  │ Agent::new() · 14 Tools · LLM   │    │ │
-              │  │  │ Skills · Memory · Subagents      │    │ │
-              │  │  └─────────────────────────────────┘    │ │
-              │  │                                          │ │
-              │  │  ┌─────────────────────────────────┐    │ │
-              │  │  │ a3s-flow  (workflow agents)      │    │ │
-              │  │  │ FlowEngine · JSON DAG · pause /  │    │ │
-              │  │  │ resume / terminate · node types  │    │ │
-              │  │  └─────────────────────────────────┘    │ │
-              │  │                                          │ │
-              │  │  a3s-lane scheduling (shared)            │ │
               │  └──────────────────────────────────────────┘ │
               └────────────────────────────────────────────────┘
                      │              │              │
@@ -103,7 +89,6 @@ a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
 | VM Runtime | a3s-box | MicroVM isolation + TEE (SEV-SNP/TDX), 52-command CLI, CRI for K8s |
 | Security Proxy | SafeClaw | 7-channel routing, privacy classification, injection detection, taint tracking, audit |
 | Agent Framework | a3s-code | Embeddable library: config-driven Agent, 14 tools, skills, subagents, memory, parallel execution |
-| Workflow Engine | a3s-flow | JSON DAG workflow engine: FlowEngine lifecycle API (start / pause / resume / terminate), concurrent wave execution, pluggable node types |
 | Scheduling | a3s-lane | Per-session priority queue: 6 lanes, concurrency, retry, dead letter |
 | Infrastructure | a3s-power / a3s-search / a3s-event | LLM inference / meta search / pub-sub events |
 | Shared | a3s-common | PII classification, tool types, vsock frame protocol |
@@ -121,7 +106,6 @@ a3s-gateway          ← K8s Ingress Controller: routes traffic, app-agnostic
 | [a3s-power](crates/power/) | 0.4.2 | Local LLM inference engine — Ollama + OpenAI compatible API | [README](crates/power/README.md) |
 | [a3s-search](crates/search/) | 0.8.0 | Meta search engine — 8 engines, consensus ranking | [README](crates/search/README.md) |
 | [a3s-event](crates/event/) | 0.3.0 | Pluggable event system — provider-agnostic pub/sub, encryption | [README](crates/event/README.md) |
-| [a3s-flow](crates/flow/) | 0.3.4 | Workflow engine — JSON DAG execution, concurrent wave scheduling, pause/resume/terminate lifecycle | [README](crates/flow/README.md) |
 | [a3s-memory](crates/memory/) | 0.1.1 | Long-term memory system — persistent agent memory across sessions | [README](crates/memory/README.md) |
 | [a3s-ahp](crates/ahp/) | 0.1.0 | Agent Harness Protocol — universal protocol for supervising autonomous AI agents | [README](crates/ahp/README.md) |
 | [a3s-updater](crates/updater/) | 0.2.0 | Self-update for CLI binaries via GitHub Releases | [Source](crates/updater/) |
@@ -163,7 +147,6 @@ a3s/
 │   ├── dev/             # a3s developer CLI
 │   ├── event/           # a3s-event pub/sub system
 │   ├── faas/            # a3s-faas serverless execution engine
-│   ├── flow/            # a3s-flow workflow engine (JSON DAG)
 │   ├── gateway/         # a3s-gateway K8s Ingress Controller
 │   ├── lane/            # a3s-lane scheduling
 │   ├── memory/          # a3s-memory long-term memory
