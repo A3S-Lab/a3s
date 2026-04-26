@@ -67,6 +67,255 @@ Key rules:
 
 ---
 
+## NestJS Guidelines
+
+**Module organization:** Each business module in its own folder
+
+**DDD layering:**
+- `domain/`: Entities, value objects, aggregate roots, domain events (pure TypeScript)
+- `application/`: Application services, command handlers, query handlers
+- `infrastructure/`: Database, Redis, external service implementations
+- `presentation/`: DTOs, controllers, guards
+
+**Dependency injection:** Use constructor injection, avoid `new` in classes
+
+**Configuration:** Use `@nestjs/config` with validated environment variables
+
+---
+
+## DDD Module Structure
+
+Every module MUST follow the 4-layer DDD structure. This is **mandatory** - violations are considered critical issues.
+
+### Required Directory Structure
+
+```
+modules/{module-name}/
+├── domain/                           # Pure TypeScript - no framework imports
+│   ├── entities/                      # Aggregate roots, entities
+│   │   └── *.entity.ts
+│   ├── value-objects/                 # Value objects
+│   │   └── *.vo.ts
+│   ├── repositories/                  # Repository interfaces ONLY
+│   │   └── *.repository.interface.ts
+│   ├── services/                      # Service interfaces ONLY (no implementations!)
+│   │   └── *.service.interface.ts
+│   └── events/                       # Domain events
+│       └── *.event.ts
+├── application/                       # CQRS handlers
+│   ├── commands/                      # Command handlers
+│   │   └── {feature}/
+│   │       ├── {feature}.command.ts
+│   │       ├── {feature}.handler.ts
+│   │       └── index.ts
+│   └── queries/                       # Query handlers
+│       └── {feature}/
+│           ├── {feature}.query.ts
+│           ├── {feature}.handler.ts
+│           └── index.ts
+├── infrastructure/                    # Implementations
+│   └── persistence/                  # Repository implementations
+│       └── *.repository.ts
+├── presentation/                      # HTTP layer
+│   ├── controllers/
+│   │   └── *.controller.ts
+│   └── dto/
+│       ├── request/                   # Request DTOs only
+│       │   └── *.request.dto.ts
+│       └── response/                  # Response DTOs only
+│           └── *.response.dto.ts
+└── {module}.module.ts
+```
+
+### Critical Rules
+
+**1. Domain Layer is PURE TypeScript**
+- NO NestJS imports (`@nestjs/common`, `@nestjs/cqrs`, etc.)
+- NO framework dependencies
+- Only interfaces, types, and domain logic
+
+**2. Domain Services Directory**
+- ONLY contain `.interface.ts` files with interface definitions
+- **NEVER** create re-export files like `*.service.ts` that re-export interfaces
+- Implementation goes to `infrastructure/persistence/`
+
+**3. Repository Interfaces**
+- Define in `domain/repositories/` with `I{Entity}Repository` naming
+- Symbol token: `{ENTITY}_REPOSITORY`
+- Implementation in `infrastructure/persistence/`
+
+**4. Service Interfaces**
+- Define in `domain/services/` with `I{Service}Service` naming
+- Symbol token: `{SERVICE}_SERVICE`
+- Implementation in `infrastructure/`
+
+**5. CQRS Handlers**
+- Use **subdirectory pattern**: `commands/{feature}/handler.ts`
+- NOT flat structure like `commands/handler.ts` in root
+- Register handlers in module: `CommandHandlers = [...]`, `QueryHandlers = [...]`
+
+**6. DTO Organization**
+- Request DTOs: `presentation/dto/request/`
+- Response DTOs: `presentation/dto/response/`
+- Application layer should NOT have DTOs (they belong to presentation)
+
+**7. Controller Rules**
+- Thin controllers only - delegate to CommandBus/QueryBus
+- No business logic in controllers
+- Use proper typing - no `any`
+
+### Common Mistakes to Avoid
+
+| Mistake | Why It's Wrong | Correct Approach |
+|---------|----------------|------------------|
+| Re-export files in `domain/services/` | Violates "interfaces only" rule | Delete `.service.ts` re-exports, keep only `.interface.ts` |
+| Handlers in flat `commands/` | Inconsistent organization | Use subdirectory: `commands/{feature}/` |
+| Business logic in controller | Violates separation of concerns | Move to command/query handlers |
+| Missing `infrastructure/` layer | Repository implementations have no home | Create `infrastructure/persistence/` |
+| DTOs in application layer | DTOs are HTTP concerns | Move to `presentation/dto/` |
+| `any` type in handlers | Defeats type safety | Use proper entity types |
+
+---
+
+## RESTful API Design
+
+### Response Format
+
+All API responses use a consistent wrapper format. The response format is enforced by `ApiResponseInterceptor`.
+
+#### Success Response
+
+```json
+{
+    "code": 200,
+    "message": "Success",
+    "data": { ... },
+    "requestId": "uuid",
+    "timestamp": "2026-04-17T00:00:00.000Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `code` | `number` | HTTP status code (e.g., 200, 201, 204) |
+| `message` | `string` | Human-readable response message |
+| `data` | `object \| array` | Response payload |
+| `requestId` | `string` | Request tracing ID (optional) |
+| `timestamp` | `string` | ISO 8601 timestamp |
+
+#### Paginated Response
+
+```json
+{
+    "code": 200,
+    "message": "Success",
+    "data": {
+        "items": [...],
+        "total": 100,
+        "page": 1,
+        "limit": 10,
+        "totalPages": 10,
+        "hasNext": true,
+        "hasPrevious": false
+    },
+    "requestId": "uuid",
+    "timestamp": "2026-04-17T00:00:00.000Z"
+}
+```
+
+#### Error Response
+
+```json
+{
+    "code": 404,
+    "statusCode": "NOT_FOUND",
+    "message": "Resource not found",
+    "details": { ... },
+    "requestId": "uuid",
+    "timestamp": "2026-04-17T00:00:00.000Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `code` | `number` | HTTP status code |
+| `statusCode` | `ErrorCode` | Business error code (string enum) |
+| `message` | `string` | Human-readable error message |
+| `details` | `object` | Additional error context (optional) |
+| `requestId` | `string` | Request tracing ID (optional) |
+| `timestamp` | `string` | ISO 8601 timestamp |
+
+### ErrorCode Enum
+
+The `ErrorCode` enum defines all business error codes:
+
+```typescript
+enum ErrorCode {
+    // 4xx Client Errors
+    BAD_REQUEST = 'BAD_REQUEST',
+    UNAUTHORIZED = 'UNAUTHORIZED',
+    FORBIDDEN = 'FORBIDDEN',
+    NOT_FOUND = 'NOT_FOUND',
+    CONFLICT = 'CONFLICT',
+
+    // 5xx Server Errors
+    INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
+    SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
+
+    // Business Errors (10xxx)
+    VALIDATION_ERROR = '10001',
+    DUPLICATE_ENTRY = '10002',
+    RESOURCE_NOT_FOUND = '10003',
+
+    // Auth Errors (20xxx)
+    TOKEN_EXPIRED = '20001',
+    TOKEN_INVALID = '20002',
+    PERMISSION_DENIED = '20004',
+
+    // Domain Errors (30xxx)
+    ENTITY_NOT_FOUND = '30001',
+    ENTITY_ALREADY_EXISTS = '30002',
+
+    // External Service Errors (40xxx)
+    EXTERNAL_SERVICE_ERROR = '40001',
+    EXTERNAL_SERVICE_TIMEOUT = '40002',
+}
+```
+
+### Key Design Principles
+
+1. **`code` is the HTTP status code** - Set by the HTTP layer
+2. **`statusCode` is the business error code** - Set by application/domain layer
+3. **Always use `ApiResponseInterceptor`** - Ensures consistent wrapper format
+4. **Use OpenAPI decorators** - Document all error codes in `@ApiResponse` schema
+
+---
+
+## Database Conventions
+
+### Kysely Usage
+
+- Use Kysely for type-safe SQL queries
+- Always use parameterized queries to prevent SQL injection
+- Migration files go in `migrations/` directory
+
+### pgvector Semantic Search
+
+- Knowledge bases use pgvector for semantic search
+- Vector fields use `vector(1536)` or appropriate dimensions
+
+### Naming Conventions
+
+| Object | Convention | Example |
+|--------|------------|---------|
+| Database table | snake_case | `user_accounts` |
+| Column | snake_case | `created_at` |
+| Class name | PascalCase | `UserAccount` |
+| Method/variable | camelCase | `findById` |
+| Constant | UPPER_SNAKE_CASE | `MAX_RETRY_COUNT` |
+
+---
+
 ## Language Policy
 
 All code and documentation MUST be in English. This includes:
@@ -175,6 +424,15 @@ This does NOT apply to: feature flags (`builtinSkills: boolean`), numeric/string
 - [ ] Pruning audit: no dead wrappers, orphaned exports, redundant modules
 - [ ] Typed extension options use objects (SDK only)
 - [ ] `cargo fmt --all` and `cargo clippy` pass
+
+### DDD Structure Compliance
+- [ ] Domain layer has NO framework imports (pure TypeScript)
+- [ ] `domain/services/` contains only `.interface.ts` files (no re-exports)
+- [ ] Repository implementations are in `infrastructure/persistence/`
+- [ ] Commands/queries use subdirectory pattern (not flat structure)
+- [ ] DTOs are in `presentation/dto/` (not `application/`)
+- [ ] Controller delegates to CommandBus/QueryBus (no business logic)
+- [ ] No `any` types - use proper entity interfaces
 
 ---
 
