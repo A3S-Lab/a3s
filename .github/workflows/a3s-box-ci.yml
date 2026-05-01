@@ -1,0 +1,76 @@
+name: A3S Box CI
+
+on:
+  pull_request:
+    paths:
+      - "crates/box/**"
+      - ".github/workflows/a3s-box-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "crates/box/**"
+      - ".github/workflows/a3s-box-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: a3s-box-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: crates/box/src
+    env:
+      A3S_DEPS_STUB: "1"
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-14
+          - windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            crates/box/src -> target
+
+      - name: Check core
+        run: cargo check --locked -p a3s-box-core
+
+      - name: Check runtime
+        run: cargo check --locked -p a3s-box-runtime
+
+      - name: Check CLI
+        run: cargo check --locked -p a3s-box-cli
+
+      - name: Check shim
+        run: cargo check --locked -p a3s-box-shim
+
+      - name: Check Windows launcher
+        run: cargo check --locked -p a3s-box-win
+
+      - name: Test platform model
+        run: cargo test --locked -p a3s-box-core platform::tests
+
+      - name: Test runtime metrics
+        run: cargo test --locked -p a3s-box-runtime prom::tests
+
+      - name: Test Windows launcher
+        run: cargo test --locked -p a3s-box-win

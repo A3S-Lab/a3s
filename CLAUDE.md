@@ -6,20 +6,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 a3s/                            ← MONOREPO ROOT (NOT a Rust workspace)
-├── apps/                       # Applications (desktop, web, CLI)
-│   ├── os/                     # A3S platform (NestJS + React)
-│   └── safeclaw/               # SafeClaw desktop app (Tauri + React)
+├── apps/
+│   └── docs/                   # Documentation site (Next.js/Fumadocs-style app)
 ├── crates/                     # Rust crates (submodules)
-│   ├── box/ code/ event/ gateway/ lane/ power/ search/ updater/
-│   └── common/                 # Shared types
-├── docs/                       # Documentation
+│   ├── acl/ ahp/ box/ code/ event/ gateway/
+│   ├── lane/ memory/ power/ search/ updater/
+│   └── common/                 # Shared types (local crate)
 └── homebrew-tap/              # Homebrew tap
 ```
 
 ### Root Rules (NEVER do in root)
 
-- No `Cargo.toml`, `src/`, `justfile` in root — root is NOT a Rust workspace
+- No `Cargo.toml` or `src/` in root — root is NOT a Rust workspace
 - No `cargo init` or `cargo new` in root
+- The root `justfile` is for monorepo orchestration only; do not treat root as a Rust crate
 - Git remote MUST point to `git@github.com:A3S-Lab/a3s.git`
 
 ---
@@ -321,7 +321,7 @@ enum ErrorCode {
 All code and documentation MUST be in English. This includes:
 - Rust doc comments (`//!`, `///`, `//`)
 - Python docstrings
-- README.md, docs/*.md, CLAUDE.md
+- README.md, CLAUDE.md, AGENTS.md, `apps/docs/content/`, and crate-local documentation
 
 ---
 
@@ -332,7 +332,7 @@ All code and documentation MUST be in English. This includes:
 For every feature:
 1. Update README.md Features section
 2. Update README.md Roadmap (mark ✅, add implementation notes)
-3. Update related `docs/*.md` files
+3. Update related documentation under `apps/docs/content/` or crate-local `docs/`
 4. Remove obsolete content (outdated docs, deprecated examples, completed TODOs)
 5. Verify code examples still work
 
@@ -423,7 +423,7 @@ This does NOT apply to: feature flags (`builtinSkills: boolean`), numeric/string
 - [ ] Single responsibility, boring code, no future-proofing
 - [ ] Pruning audit: no dead wrappers, orphaned exports, redundant modules
 - [ ] Typed extension options use objects (SDK only)
-- [ ] `cargo fmt --all` and `cargo clippy` pass
+- [ ] Relevant formatting, checks, and tests pass in the affected workspace or app
 
 ### DDD Structure Compliance
 - [ ] Domain layer has NO framework imports (pure TypeScript)
@@ -446,8 +446,8 @@ Rules:
 - Deleted features = deleted tests (no orphaned `#[ignore]` tests)
 - Integration tests required for CLI/network/cross-module workflows
 - Tests must NOT leave temp files/sockets behind
-- `cargo build --all-features` must succeed
+- Rust builds should be validated from the affected crate workspace; use `cargo build --all-features` where that crate supports it
 
-Run tests: `just test` (all) or `cargo test -p <crate>` (specific)
+Run tests from the affected project, not from the monorepo root unless a root recipe exists for that task. Use crate-local commands such as `cargo test -p <crate>`, crate-local `just` recipes, or app-local package scripts (`bun`, `npm`, `pnpm`) as appropriate.
 
 ---
