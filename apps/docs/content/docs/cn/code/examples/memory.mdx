@@ -1,52 +1,17 @@
 ---
-title: 记忆
-description: 文件记忆、自定义后端和记忆事件的实用示例
+title: "记忆"
+description: "记住并召回任务事实"
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { Callout } from 'fumadocs-ui/components/callout';
+# 记忆
 
-# 记忆示例
+```ts
+import { FileMemoryStore } from '@a3s-lab/code';
 
-## 文件持久化记忆
+const session = agent.session('/repo', {
+  memoryStore: new FileMemoryStore('./.a3s/memory'),
+});
 
-记忆在会话重启后仍然保留。多个会话指向同一目录即可共享长期知识。
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-import { Agent, FileMemoryStore } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-
-// 第一次会话
-const s1 = agent.session('.', { memoryStore: new FileMemoryStore('./memory') });
-await s1.send('记住：我们通过 GitHub Actions 部署到 AWS us-east-1');
-
-// 之后的会话 — 同一 memory 目录
-const s2 = agent.session('.', { memoryStore: new FileMemoryStore('./memory') });
-const result = await s2.send('我们部署在哪里？');
+await session.rememberSuccess('文档重写', ['grep', 'read'], '已移除过期配置说明');
+const memories = await session.recallSimilar('文档发布重写', 5);
 ```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import Agent, SessionOptions, FileMemoryStore
-
-agent = Agent.create("agent.hcl")
-
-s1 = agent.session(".", SessionOptions(memory_store=FileMemoryStore("./memory")))
-s1.send("记住：我们通过 GitHub Actions 部署到 AWS us-east-1")
-
-s2 = agent.session(".", SessionOptions(memory_store=FileMemoryStore("./memory")))
-result = s2.send("我们部署在哪里？")
-```
-</Tab>
-</Tabs>
-
-## 直接存储记忆
-
-通过 `session.memory()` 在代码中主动存储和查询记忆：
-
-<Callout type="info">
-完整 API 参考请查看[记忆系统](/cn/docs/code/memory)。
-</Callout>

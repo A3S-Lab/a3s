@@ -1,91 +1,27 @@
 ---
-title: Model Switching
-description: Switch providers and models at runtime with temperature and thinking budget
+title: "Model Switching"
+description: "Override the configured model per session"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
 
 # Model Switching
 
-Override the default model, provider, and generation parameters per session. Useful for routing different tasks to different models (e.g., fast model for simple queries, powerful model for complex refactors).
+Configure multiple models:
 
-## Example
+```text
+default_model = "openai/MiniMax-M2.7-highspeed"
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const agent = await Agent.create('~/.a3s/config.hcl');
+providers "openai" {
+  apiKey = env("A3S_OPENAI_API_KEY")
+  baseUrl = env("A3S_OPENAI_BASE_URL")
 
-// Use a specific model with custom temperature
-const session = agent.session('/my-project', {
-  permissive: true,
-  model: 'anthropic/claude-sonnet-4-20250514',
-  temperature: 0.3,
-});
-
-const result = await session.send('Explain the auth flow in this codebase');
-console.log(result.text);
-
-// Switch to a different provider
-const session2 = agent.session('/my-project', {
-  permissive: true,
-  model: 'openai/gpt-4o',
-});
-
-const result2 = await session2.send('List all TODO comments');
-console.log(result2.text);
+  models "MiniMax-M2.7-highspeed" { tool_call = true }
+  models "gpt-4o" { tool_call = true }
+}
 ```
 
-**Source:** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
-</Tab>
-<Tab value="Python">
-```python
-agent = a3s_code.Agent.create("~/.a3s/config.hcl")
+Override per session:
 
-# Use a specific model with custom temperature
-session = agent.session("/my-project",
-    permissive=True,
-    model="anthropic/claude-sonnet-4-20250514",
-    temperature=0.3,
-)
-
-result = session.send("Explain the auth flow in this codebase")
-print(result.text)
-
-# Switch to a different provider
-session2 = agent.session("/my-project",
-    permissive=True,
-    model="openai/gpt-4o",
-)
-
-result2 = session2.send("List all TODO comments")
-print(result2.text)
+```ts
+const fast = agent.session('/repo', { model: 'openai/MiniMax-M2.7-highspeed' });
+const review = agent.session('/repo', { model: 'openai/gpt-4o' });
 ```
-
-**Source:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
-</Tab>
-</Tabs>
-
-<Callout type="info">
-The model string format is `provider/model-name`. The provider must be configured in your `config.hcl`. If you set `temperature` or `thinking_budget` without a model override, a warning is logged.
-</Callout>
-
-## API Reference
-
-### SessionOptions — Model Override
-
-<TypeTable
-  type={{
-    "Model override": {
-      description: "Python: model='provider/model' · TypeScript: model: 'provider/model'",
-    },
-    "Temperature": {
-      description: "Python: temperature=0.3 · TypeScript: temperature: 0.3",
-    },
-    "Thinking budget": {
-      description: "Python: thinking_budget=10000 · TypeScript: thinkingBudget: 10000",
-    },
-  }}
-/>

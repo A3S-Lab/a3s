@@ -1,36 +1,10 @@
 ---
-title: 示例
-description: 可运行的 SDK 示例，支持 Rust、Python 和 TypeScript，均使用真实 LLM 配置
+title: "示例"
+description: "A3S Code v2.1.0 示例"
 ---
-
-import { Card, Cards } from 'fumadocs-ui/components/card';
-import { Callout } from 'fumadocs-ui/components/callout';
 
 # 示例
 
-每个示例均使用 `~/.a3s/config.hcl` 或 `$A3S_CONFIG` 中的真实 LLM 配置，并支持三种 SDK。
+这些示例使用 A3S Code v2.1.0 的当前概念：ACL 配置、环境变量注入、session API、基于 task 的委派、AHP 2.4、直接工具、验证和可选队列基础设施。
 
-<Callout type="info">
-运行任何示例前，请先设置 `A3S_CONFIG=/path/to/config.hcl` 或创建 `~/.a3s/config.hcl`。配置格式参见[提供商](/cn/docs/code/providers)。
-</Callout>
-
-<Cards>
-  <Card title="快速开始" href="/cn/docs/code/examples/quick-start" description="基本发送、流式传输和多轮对话" />
-  <Card title="流式传输" href="/cn/docs/code/examples/streaming" description="实时 AgentEvent 事件流" />
-  <Card title="模型切换" href="/cn/docs/code/examples/model-switching" description="运行时切换提供商和模型" />
-  <Card title="直接工具调用" href="/cn/docs/code/examples/direct-tools" description="绕过 LLM 直接调用工具" />
-  <Card title="任务规划" href="/cn/docs/code/examples/planning" description="任务分解与目标追踪" />
-  <Card title="钩子" href="/cn/docs/code/examples/hooks" description="生命周期事件拦截" />
-  <Card title="自动压缩" href="/cn/docs/code/examples/auto-compact" description="上下文窗口自动压缩" />
-  <Card title="记忆" href="/cn/docs/code/examples/memory" description="持久化文件记忆存储" />
-  <Card title="安全" href="/cn/docs/code/examples/security" description="输入污点追踪与输出净化" />
-  <Card title="技能" href="/cn/docs/code/examples/skills" description="内置和自定义技能系统" />
-  <Card title="批量工具" href="/cn/docs/code/examples/batch" description="单次调用并行执行多个工具" />
-  <Card title="Ripgrep 上下文" href="/cn/docs/code/examples/ripgrep-context" description="基于 ripgrep 的快速无索引代码搜索" />
-  <Card title="Agentic Parse" href="/cn/docs/code/examples/agentic-parse" description="Document runtime 元数据、OCR 注入与 LLM 选块" />
-  <Card title="Agentic Search" href="/cn/docs/code/examples/agentic-search" description="基于结构化文档内容的多阶段搜索" />
-  <Card title="通道队列" href="/cn/docs/code/examples/lane-queue" description="基于优先级的任务队列与抢占" />
-  <Card title="外部任务" href="/cn/docs/code/examples/external-tasks" description="多机器协调者/工作者模式" />
-  <Card title="Git Worktree" href="/cn/docs/code/examples/git-worktree" description="使用 git_worktree 工具实现并行工作区隔离" />
-  <Card title="提示词插槽" href="/cn/docs/code/examples/prompt-slots" description="插槽式系统提示词自定义（角色、准则、风格）" />
-</Cards>
+建议从[快速开始](/cn/docs/code/examples/quick-start)开始，然后阅读流式输出、模型切换、Hooks、安全和发布验证相关示例。

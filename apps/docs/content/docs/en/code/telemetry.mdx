@@ -1,273 +1,38 @@
 ---
-title: Telemetry
-description: Tracing spans, cost tracking, and tool execution metrics
+title: "Telemetry"
+description: "Trace events, verification summaries, and runtime observability"
 ---
-
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { Callout } from 'fumadocs-ui/components/callout';
 
 # Telemetry
 
-A3S Code emits structured telemetry via OpenTelemetry-compatible tracing spans. Every LLM call, tool execution, and agent turn is instrumented with detailed attributes for observability, cost tracking, and performance analysis.
+A3S Code exposes runtime evidence through events, traces, verification reports, and result metadata.
 
-## Span Hierarchy
+## Result Metadata
 
-The agent produces a nested span tree for each execution:
+```ts
+const result = await session.send('Run release checks');
 
-```
-a3s.agent.execute                    ← top-level span per send()/stream()
-├── a3s.agent.turn                   ← one per agent turn (LLM call + tool loop)
-│   ├── a3s.context.resolve          ← context provider resolution
-│   ├── a3s.llm.completion           ← LLM API call
-│   ├── a3s.tool.execute             ← tool execution (one per tool call)
-│   ├── a3s.llm.completion           ← follow-up LLM call after tool results
-│   └── a3s.tool.execute             ← ...
-├── a3s.agent.turn                   ← next turn
-│   └── ...
-└── (end)
+console.log(result.promptTokens);
+console.log(result.completionTokens);
+console.log(result.totalTokens);
+console.log(result.toolCallsCount);
+console.log(result.verificationStatus);
+console.log(result.verificationSummaryText);
 ```
 
-Each span carries attributes that describe what happened during that phase.
+## Trace And Verification
 
-## Span Attributes
-
-### Agent-level (`a3s.agent.execute`, `a3s.agent.turn`)
-
-<TypeTable
-  type={{
-    'a3s.session_id': { type: 'string', description: 'Session identifier' },
-    'a3s.turn': { type: 'int', description: 'Current turn number' },
-    'a3s.max_turns': { type: 'int', description: 'Maximum turns allowed' },
-    'a3s.tool_calls_count': { type: 'int', description: 'Total tool calls in this scope' },
-  }}
-/>
-
-### LLM-level (`a3s.llm.completion`)
-
-<TypeTable
-  type={{
-    'a3s.llm.model': { type: 'string', description: 'Model ID (e.g., `claude-sonnet-4-20250514`)' },
-    'a3s.llm.provider': { type: 'string', description: 'Provider name (e.g., `anthropic`)' },
-    'a3s.llm.streaming': { type: 'bool', description: 'Whether this was a streaming call' },
-    'a3s.llm.prompt_tokens': { type: 'int', description: 'Input tokens consumed' },
-    'a3s.llm.completion_tokens': { type: 'int', description: 'Output tokens generated' },
-    'a3s.llm.total_tokens': { type: 'int', description: 'Total tokens' },
-    'a3s.llm.cache_read_tokens': { type: 'int', description: 'Cached input tokens read' },
-    'a3s.llm.cache_write_tokens': { type: 'int', description: 'Cached input tokens written' },
-    'a3s.llm.stop_reason': { type: 'string', description: 'Why generation stopped' },
-  }}
-/>
-
-### Tool-level (`a3s.tool.execute`)
-
-<TypeTable
-  type={{
-    'a3s.tool.name': { type: 'string', description: 'Tool name (e.g., `Bash`, `Read`)' },
-    'a3s.tool.id': { type: 'string', description: 'Tool call ID' },
-    'a3s.tool.exit_code': { type: 'int', description: 'Exit code (0 = success)' },
-    'a3s.tool.success': { type: 'bool', description: 'Whether the tool succeeded' },
-    'a3s.tool.duration_ms': { type: 'int', description: 'Execution time in milliseconds' },
-    'a3s.tool.permission': { type: 'string', description: 'Permission decision (`allow`, `deny`, `ask`)' },
-  }}
-/>
-
-### Context-level (`a3s.context.resolve`)
-
-<TypeTable
-  type={{
-    'a3s.context.providers': { type: 'string', description: 'Comma-separated provider names' },
-    'a3s.context.items': { type: 'int', description: 'Number of context items returned' },
-    'a3s.context.tokens': { type: 'int', description: 'Total tokens from context items' },
-  }}
-/>
-
-## Cost Tracking
-
-The telemetry module tracks LLM costs per-call using `LlmCostRecord`:
-
-<TypeTable
-  type={{
-    model: { type: 'string', description: 'Model ID' },
-    provider: { type: 'string', description: 'Provider name' },
-    prompt_tokens: { type: 'u64', description: 'Input tokens' },
-    completion_tokens: { type: 'u64', description: 'Output tokens' },
-    total_tokens: { type: 'u64', description: 'Total tokens' },
-    cost_usd: { type: 'f64', description: 'Estimated cost in USD' },
-    timestamp: { type: 'DateTime', description: 'When the call was made' },
-    session_id: { type: 'string', description: 'Associated session' },
-  }}
-/>
-
-### Model Pricing
-
-Cost is calculated using `ModelPricing`:
-
-```
-cost_usd = (prompt_tokens * input_per_million / 1_000_000)
-         + (completion_tokens * output_per_million / 1_000_000)
+```ts
+const trace = session.traceEvents();
+const reports = session.verificationReports();
+const summary = session.verificationSummary();
+const text = session.verificationSummaryText();
 ```
 
-A built-in pricing registry (`default_model_pricing()`) covers common models from Anthropic, OpenAI, and others. Custom pricing can be specified in the agent config's `cost` block per model.
+## Streaming Events
 
-### Cost Aggregation
+Streaming returns `AgentEvent` objects with text, tool names, tool output, errors, token totals, and verification summaries when present.
 
-`CostSummary` provides aggregated cost data with breakdowns:
+## Logging
 
-- **By model** — cost per model across all sessions
-- **By day** — daily cost trends
-- **Total** — overall cost across the aggregation window
-
-Use `aggregate_cost_records()` to produce summaries from a collection of `LlmCostRecord` entries, with optional session and time-range filters.
-
-## Tool Metrics
-
-`ToolMetrics` tracks per-tool execution statistics within a session:
-
-<TypeTable
-  type={{
-    "Call count": {
-      description: "Total invocations",
-    },
-    "Success count": {
-      description: "Successful executions",
-    },
-    "Failure count": {
-      description: "Failed executions",
-    },
-    "Total duration": {
-      description: "Cumulative execution time",
-    },
-    "Average duration": {
-      description: "Mean execution time per call",
-    },
-  }}
-/>
-
-These metrics are recorded on tracing spans via `record_tool_result()` and can be aggregated for dashboards and alerting.
-
-## Integration
-
-The telemetry module emits standard OpenTelemetry spans. Spans fire automatically during every
-`send()` / `stream()` call — no changes to your agent code are needed.
-
-<Tabs items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-
-Telemetry is emitted automatically. Configure the collector via environment variables before
-starting your process:
-
-```typescript
-import { Agent } from '@a3s-lab/code';
-
-// Set env vars before running (or in your shell):
-// OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-// OTEL_SERVICE_NAME=my-agent
-
-const agent = await Agent.create('agent.hcl');
-const session = agent.session('/project');
-
-// Spans are emitted automatically — no extra code needed
-const result = await session.send('Analyze this codebase');
-```
-
-</Tab>
-<Tab value="Python">
-
-```python
-import os
-from a3s_code import Agent
-
-# Set env vars before running (or in your shell):
-# OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-# OTEL_SERVICE_NAME=my-agent
-os.environ['OTEL_EXPORTER_OTLP_ENDPOINT'] = 'http://localhost:4318'
-
-agent = Agent.create('agent.hcl')
-session = agent.session('/project')
-
-# Spans are emitted automatically — no extra code needed
-result = session.send('Analyze this codebase')
-```
-
-</Tab>
-</Tabs>
-
-## API Reference
-
-### Span hierarchy
-
-<TypeTable
-  type={{
-    "agent.session": {
-      description: "Parent: root · Key attributes: session.id, session.workspace",
-    },
-    "agent.turn": {
-      description: "Parent: agent.session · Key attributes: turn.index, turn.model",
-    },
-    "agent.generate": {
-      description: "Parent: agent.turn · Key attributes: llm.provider, llm.model, llm.tokens_in, llm.tokens_out",
-    },
-    "agent.tool": {
-      description: "Parent: agent.turn · Key attributes: tool.name, tool.exit_code, tool.duration_ms",
-    },
-    "agent.plan": {
-      description: "Parent: agent.turn · Key attributes: plan.steps, plan.waves",
-    },
-    "agent.hook": {
-      description: "Parent: agent.turn · Key attributes: hook.id, hook.event",
-    },
-  }}
-/>
-
-### Cost tracking fields
-
-<TypeTable
-  type={{
-    provider: { type: 'String', description: 'LLM provider name' },
-    model: { type: 'String', description: 'Model identifier' },
-    input_tokens: { type: 'u32', description: 'Prompt tokens' },
-    output_tokens: { type: 'u32', description: 'Completion tokens' },
-    cache_read_tokens: { type: 'u32', description: 'Prompt cache read tokens' },
-    cache_write_tokens: { type: 'u32', description: 'Prompt cache write tokens' },
-    cost_usd: { type: 'f64', description: 'Estimated cost in USD' },
-  }}
-/>
-
-### Setup
-
-<Tabs items={['TypeScript / Python']}>
-<Tab value="TypeScript / Python">
-
-Configure the OTLP collector endpoint via environment variables — no subscriber setup needed
-in application code:
-
-```bash
-# Development: stdout logging
-export RUST_LOG=a3s_code_core=debug
-
-# Production: OTLP exporter
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-export OTEL_SERVICE_NAME=my-agent
-```
-
-Spans are collected and exported automatically by the native Rust layer.
-
-</Tab>
-</Tabs>
-
-### Environment variables
-
-<TypeTable
-  type={{
-    "OTEL_EXPORTER_OTLP_ENDPOINT": {
-      description: "OTLP collector endpoint",
-    },
-    "OTEL_SERVICE_NAME": {
-      description: "Service name in traces",
-    },
-    "RUST_LOG": {
-      description: "Log level filter (e.g. a3s_code_core=debug)",
-    },
-  }}
-/>
+In Rust-hosted deployments, use `RUST_LOG` to turn up runtime logs. For product telemetry, prefer structured trace events and verification reports over scraping console output.

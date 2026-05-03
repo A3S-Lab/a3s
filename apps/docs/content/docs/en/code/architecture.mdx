@@ -1,262 +1,60 @@
 ---
-title: Architecture
-description: System architecture, data flow, and design decisions
+title: "Architecture"
+description: "The v2.1.0 harness loop and extension surface"
 ---
-
-import { Files, File, Folder } from 'fumadocs-ui/components/files';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
-import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 # Architecture
 
-## Library-First Design
+A3S Code v2.1.0 is organized around a small runtime kernel and a harness that controls the execution loop.
 
-A3S Code is a library-first framework. The core (`a3s-code-core`) embeds directly in your application via native bindings — no server, no IPC overhead.
-
-```
-Your Application (Rust / TypeScript / Python)
-    │
-    ▼ Agent::new("agent.hcl") / Agent.create("agent.hcl")
-┌──────────────────────────────────────────────────────┐
-│  Agent (config-driven, workspace-independent)         │
-│  ┌────────────┬──────────────┬─────────────────────┐ │
-│  │ LlmClient  │  CodeConfig  │   SessionManager    │ │
-│  └────────────┴──────────────┴─────────────────────┘ │
-│                       │                               │
-│        agent.session("/workspace", options?)           │
-│                       ▼                               │
-│  ┌──────────────────────────────────────────────┐    │
-│  │  AgentSession (workspace-bound)               │    │
-│  │  ┌─────────┬──────────┬──────────┬─────────┐ │    │
-│  │  │ Agent   │ Tool     │Permission│  LLM    │ │    │
-│  │  │ Loop    │ Executor │ System   │ Provider│ │    │
-│  │  │         │ (16)     │          │         │ │    │
-│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
-│  │  │ HITL    │ Subagent │  Hook    │  MCP    │ │    │
-│  │  │         │          │  Engine  │         │ │    │
-│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
-│  │  │ Llm     │ Security │ Memory   │ File    │ │    │
-│  │  │ Planner │ Provider │          │ History │ │    │
-│  │  ├─────────┼──────────┼──────────┼─────────┤ │    │
-│  │  │ Wave    │ Context  │ Cost     │Telemetry│ │    │
-│  │  │Scheduler│Compactor │ Tracking │         │ │    │
-│  │  └─────────┴──────────┴──────────┴─────────┘ │    │
-│  └──────────────────────────────────────────────┘    │
-└──────────────────────────────────────────────────────┘
+```text
+Prompt
+  -> context assembly
+  -> tool selection
+  -> LLM generation
+  -> programmatic tool calling
+  -> permission/security decision
+  -> tool execution
+  -> observation
+  -> verification
+  -> trace/artifact storage
+  -> compaction
 ```
 
-Native bindings:
+## Kernel
 
-<TypeTable
-  type={{
-    "Rust": {
-      description: "Package: a3s-code-core · Binding: Native",
-    },
-    "Python": {
-      description: "Package: a3s-code · Binding: PyO3",
-    },
-    "TypeScript": {
-      description: "Package: @a3s-lab/code · Binding: napi-rs",
-    },
-  }}
-/>
+The kernel maintains sessions, calls providers, executes tools through one executor, records observations, and returns structured events and results.
 
-## Core Concepts
+## Harness
 
-<TypeTable
-  type={{
-    "Agent": {
-      description: "Config-driven top-level object. Holds LLM client and config. Workspace-independent.",
-    },
-    "AgentSession": {
-      description: "Bound to a specific workspace. All LLM interaction and tool execution happens here.",
-    },
-    "SessionOptions": {
-      description: "Optional per-session override: model (provider/model format), planning, HITL, etc.",
-    },
-    "AgentLoop": {
-      description: "Core execution engine driving the LLM ↔ tool multi-turn loop.",
-    },
-    "ToolExecutor": {
-      description: "Tool registry and execution. Manages 16 built-in tools.",
-    },
-    "LlmPlanner": {
-      description: "JSON-structured planning — decomposes complex tasks into execution plans with dependency graphs.",
-    },
-    "WaveScheduler": {
-      description: "Groups independent plan steps into waves and executes them in parallel via JoinSet.",
-    },
-    "AgentEvent": {
-      description: "#[non_exhaustive] event enum emitted during streaming — safe for SDK evolution.",
-    },
-  }}
-/>
+The harness controls:
 
-## Agent Loop
+- which context is load-bearing
+- which tools are visible
+- whether actions are allowed, denied, or require confirmation
+- how outputs are summarized or stored as artifacts
+- which verification evidence is required before completion
+- how run snapshots, TaskList state, trace events, and artifacts are exposed to host applications
 
-The core execution cycle. Each round:
+## PTC Path
 
-<Steps>
-<Step>**GenerateStart hook** fires (optional)</Step>
-<Step>**LLM call** — streaming to Anthropic or OpenAI-compatible API</Step>
-<Step>**GenerateEnd hook** fires (optional)</Step>
-<Step>
+Programmatic Tool Calling is a harness path for deterministic workflows. The `program` tool runs a JavaScript script in an embedded QuickJS VM with a controlled `ctx` object. By default, scripts may call every registered tool except `program`; callers can narrow that surface with `allowed_tools`. The script can compose `glob`, `grep`, `readFile`, `bash`, `git`, MCP calls, and verification commands, then return one structured result to the agent.
 
-If LLM returns `tool_use`:
-- **PreToolUse hook** fires (optional)
-- **Permission check** — Deny → Allow → Ask → Default evaluation
-- **HITL confirmation** — if required, wait for user approval (with timeout)
-- **SecurityProvider check** — pluggable security logic via trait
-- **Tool execution** — run the tool, capture output
-- **PostToolUse hook** fires (optional)
+Use PTC when the operation is mostly mechanical:
 
-</Step>
-<Step>Feed tool result back to LLM, go to step 1</Step>
-<Step>If LLM returns text-only → done</Step>
-</Steps>
+- repository search and snippet collection
+- test discovery and verification command selection
+- package metadata inspection
+- release preflight evidence gathering
+- log parsing and summarization
+- artifact indexing
 
-Maximum rounds per generation configurable via `max_tool_rounds` (default: 50).
+Use ordinary model tool calls when the next action requires judgment. Use PTC when the action sequence is known and the model only needs the result. Scripts can be passed inline as `source` or loaded from a workspace-relative `.js` or `.mjs` file path; the VM itself gets no direct filesystem, network, subprocess, or environment access.
 
-## Security Layers
+## Extension Points
 
-Two built-in layers, plus extensibility via traits:
+Use session options, skills, agent definitions, hooks, MCP servers, memory/session stores, security providers, queue configuration, and AHP transports to adapt the runtime.
 
-<TypeTable
-  type={{
-    "1": {
-      description: "Component: Permission Policy · What it does: Deny → Allow → Ask → Default rule evaluation with glob patterns",
-    },
-    "2": {
-      description: "Component: HITL Confirmation · What it does: Independent of permissions — even Allow goes through HITL check",
-    },
-    "3": {
-      description: "Component: SecurityProvider · What it does: Pluggable trait for taint tracking, output sanitization, injection detection",
-    },
-    "4": {
-      description: "Component: Workspace Boundary · What it does: All file operations restricted to session workspace",
-    },
-    "5": {
-      description: "Component: HookEngine · What it does: Custom security logic via lifecycle hooks",
-    },
-  }}
-/>
+## Design Direction
 
-See [Security](/docs/code/security) for details.
-
-## Context Management
-
-When context usage exceeds the threshold (default 80% of model's context window):
-
-<Steps>
-<Step>Keep first 2 messages (system context)</Step>
-<Step>Keep last 20 messages (recent context)</Step>
-<Step>Summarize middle messages via LLM call</Step>
-<Step>Insert summary as a synthetic message</Step>
-</Steps>
-
-This keeps the session within context limits while preserving important context.
-
-## Planning & Parallel Execution
-
-When planning is enabled:
-
-<Steps>
-<Step>**LlmPlanner** decomposes the task into steps with dependencies</Step>
-<Step>**WaveScheduler** groups independent steps into waves</Step>
-<Step>Each wave executes in parallel via `tokio::JoinSet`</Step>
-<Step>Dependent steps wait for their dependencies to complete</Step>
-</Steps>
-
-```
-Wave 1: [Analyze auth] + [Analyze DB schema]  ← parallel
-Wave 2: [Implement JWT integration]           ← waits for wave 1
-Wave 3: [Write tests]                         ← waits for wave 2
-```
-
-See [Tasks](/docs/code/tasks) for details.
-
-## Lane Queue System
-
-The lane queue routes tool calls to different execution strategies:
-
-<TypeTable
-  type={{
-    "Control (P0)": {
-      description: "Highest priority — pause, resume, cancel signals",
-      default: "Internal (sequential)",
-    },
-    "Query (P1)": {
-      description: "Read-only operations (read, grep, glob, ls, web_fetch, web_search)",
-      default: "Internal (parallel)",
-    },
-    "Execute (P2)": {
-      description: "Write operations (write, edit, patch, bash)",
-      default: "Internal (sequential)",
-    },
-    "Generate (P3)": {
-      description: "LLM calls",
-      default: "Internal",
-    },
-  }}
-/>
-
-Each lane can be switched to **External** mode to offload execution to remote workers. See [Lane Queue](/docs/code/lane-queue) for details.
-
-## Memory System
-
-Four memory types with pluggable storage backends:
-
-<TypeTable
-  type={{
-    "Episodic": {
-      description: "Purpose: Session events and interactions · Storage: FileMemoryStore (default)",
-    },
-    "Semantic": {
-      description: "Purpose: Facts and knowledge · Storage: FileMemoryStore (default)",
-    },
-    "Procedural": {
-      description: "Purpose: Successful patterns and workflows · Storage: FileMemoryStore (default)",
-    },
-    "Working": {
-      description: "Purpose: Current task context · Storage: In-memory (short-lived)",
-    },
-  }}
-/>
-
-Default backend: `FileMemoryStore` — one JSON file per item + compact index. Custom backends via `MemoryStore` trait.
-
-See [Memory](/docs/code/memory) for details.
-
-## Extensibility
-
-A3S Code is designed for extensibility:
-
-<Accordions>
-<Accordion title="MCP Integration">
-Connect external tool servers via Model Context Protocol. Any MCP-compatible server can expose tools to the agent. See [MCP](/docs/code/mcp).
-</Accordion>
-<Accordion title="Custom Tools">
-Implement the `Tool` trait and register with `ToolRegistry`. Tools receive typed arguments and return `ToolOutput`. See [Tools](/docs/code/tools).
-</Accordion>
-<Accordion title="SecurityProvider">
-Implement custom taint tracking, output sanitization, and injection detection via the `SecurityProvider` trait. See [Security](/docs/code/security).
-</Accordion>
-<Accordion title="HookEngine">
-Register custom logic at 11 lifecycle events: `PreToolUse`, `PostToolUse`, `GenerateStart`, `GenerateEnd`, `SessionStart`, `SessionEnd`, `SkillLoad`, `SkillUnload`, `PrePrompt`, `PostResponse`, `OnError`. See [Hooks](/docs/code/hooks).
-</Accordion>
-<Accordion title="Subagents">
-Delegate specialized tasks to focused child agents defined in `.md` files. See [Subagents](/docs/code/subagents).
-</Accordion>
-<Accordion title="PermissionChecker">
-Implement custom permission logic via the `PermissionChecker` trait. Replace the default glob-based policy with any access control system.
-</Accordion>
-<Accordion title="ConfirmationProvider">
-Implement custom HITL logic via the `ConfirmationProvider` trait. Route confirmations to Slack, email, a web UI, or any approval system.
-</Accordion>
-<Accordion title="Planner">
-Implement custom planning logic via the `Planner` trait. Replace `LlmPlanner` with rule-based, graph-based, or any other decomposition strategy.
-</Accordion>
-</Accordions>
-
-All core systems use trait-based interfaces for maximum flexibility.
+Prefer compact evidence over full transcripts, programmatic tool calls over repeated LLM tool loops, and explicit verification over "looks done" responses.

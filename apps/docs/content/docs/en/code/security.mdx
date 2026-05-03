@@ -1,240 +1,48 @@
 ---
-title: Security
-description: Permission system, HITL confirmation, and extensible security traits
+title: "Security"
+description: "Permission policy, HITL, AHP, and verification gates"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 # Security
 
-A3S Code provides two built-in security layers: **Permission Policy** and **Human-in-the-Loop (HITL) Confirmation**. Additional security logic can be implemented via the `SecurityProvider` trait and `HookEngine`.
+A3S Code v2.1.0 routes side effects through one effective authorization path. Permission rules, workspace boundaries, skill grants, hooks, AHP decisions, and security providers combine into `Allow`, `Ask`, or `Deny`.
 
-<Callout type="warn">
-  **API Note**: The TypeScript SDK exposes a simplified security model. Many features described in this document (PermissionPolicy builder, ConfirmationPolicy, security events) are only available in the Rust SDK. The TypeScript SDK provides `permissive` mode and `DefaultSecurityProvider`.
-</Callout>
+## Permission Policy
 
-## Security Architecture
-
-```
-User Prompt → Agent Loop
-  ├─ Permission Policy    ← Deny → Allow → Ask → Default
-  ├─ HITL Confirmation    ← Independent of permissions
-  ├─ Tool Execution
-  └─ SecurityProvider     ← Pluggable via trait (taint tracking, sanitization, etc.)
-```
-
-## Permission Policy (Rust SDK)
-
-The permission system controls which tools the agent can use. Rules are evaluated in order: **Deny → Allow → Ask → Default**.
-
-<Callout type="info">
-  PermissionPolicy builder API is available in the Rust and Python SDKs. In TypeScript, use the `permissive` option on `SessionOptions` to bypass HITL confirmation for all tools.
-</Callout>
-
-### Pattern Matching
-
-Rules use glob-style pattern matching on tool names and arguments:
-
-```
-Tool(pattern)
-```
-
-<TypeTable
-  type={{
-    "bash(rm -rf:*)": {
-      description: "Any bash command starting with rm -rf",
-    },
-    "read(src/**)": {
-      description: "Read operations on any file under src/",
-    },
-    "write(*)": {
-      description: "All write operations",
-    },
-    "mcp__pencil": {
-      description: "All mcp__pencil__* tools (prefix matching)",
-    },
-  }}
-/>
-
-Wildcards: `*` matches any character except `/`, `**` matches including `/`, `:*` matches any suffix.
-
-### Preset Policies
-
-<TypeTable
-  type={{
-    "PermissionPolicy::permissive()": {
-      description: "Allow all tools by default (default)",
-    },
-    "PermissionPolicy::strict()": {
-      description: "Deny all tools by default",
-    },
-  }}
-/>
-
-## HITL Confirmation
-
-Human-in-the-Loop confirmation is **independent** of the permission system. Even if a tool is `allow`ed by permissions, HITL can still require user confirmation.
-
-### TypeScript: Permissive Mode
-
-In TypeScript, the simplest way to enable all tools without HITL confirmation is the `permissive` option:
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/project', {
-  permissive: true,
+```ts
+const session = agent.session('/repo', {
+  permissionPolicy: {
+    deny: ['bash(rm -rf*)', 'write(**/.env*)'],
+    ask: ['bash(git push*)', 'bash(npm publish*)'],
+    allow: ['read(*)', 'grep(*)', 'glob(*)', 'bash(cargo test*)'],
+    defaultDecision: 'ask',
+    enabled: true,
+  },
 });
 ```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/project", permissive=True)
-```
-</Tab>
-</Tabs>
 
-## Built-in Security Provider
+Avoid permissive defaults for release or production sessions. Make dangerous commands explicit and auditable.
 
-A3S Code ships a `DefaultSecurityProvider` that provides input taint tracking and output sanitisation.
+## Hooks
 
-### Enabling
+Hooks can block matching actions before tools run:
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-import { DefaultSecurityProvider } from '@a3s-lab/code';
-
-const session = agent.session('/project', {
-  securityProvider: new DefaultSecurityProvider(),
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import DefaultSecurityProvider
-
-session = agent.session("/project", security_provider=DefaultSecurityProvider())
-```
-</Tab>
-</Tabs>
-
-### Built-in PII Redaction Patterns
-
-`DefaultSecurityProvider` includes 8 built-in sensitive data patterns that are automatically redacted from LLM output:
-
-<TypeTable
-  type={{
-    "ssn": {
-      description: "Pattern: \\b\\d{3}-\\d{2}-\\d{4}\\b · Output: [REDACTED:SSN]",
-    },
-    "email": {
-      description: "Pattern: user@example.com format · Output: [REDACTED:EMAIL]",
-    },
-    "phone": {
-      description: "Pattern: +1-234-567-8900 and variants · Output: [REDACTED:PHONE]",
-    },
-    "api_key": {
-      description: "Pattern: sk-... / pk-... (20+ chars) · Output: [REDACTED:API_KEY]",
-    },
-    "credit_card": {
-      description: "Pattern: 16-digit card number (with or without separators) · Output: [REDACTED:CC]",
-    },
-    "aws_key": {
-      description: "Pattern: AKIA... · Output: [REDACTED:AWS_KEY]",
-    },
-    "github_token": {
-      description: "Pattern: ghp_... / gho_... / ghu_... · Output: [REDACTED:GITHUB_TOKEN]",
-    },
-    "jwt": {
-      description: "Pattern: eyJ...eyJ...signature format · Output: [REDACTED:JWT]",
-    },
-  }}
-/>
-
-### Prompt Injection Detection
-
-`DefaultSecurityProvider` scans user input for injection patterns:
-
-| Pattern | Example |
-|---------|---------|
-| Ignore prior instructions | "Ignore all previous instructions..." |
-| Disregard context | "Disregard all prior context..." |
-| Mode switch | "You are now in developer mode..." |
-| Forget instructions | "Forget everything you learned..." |
-| New instruction injection | "New instructions: ..." |
-| System prompt override | "System prompt override" |
-
-## Workspace Boundaries
-
-All file operations are restricted to the session's workspace directory. Attempts to access files outside the workspace are blocked.
-
-## Best Practices
-
-<Steps>
-<Step>**Start with strict policy** — Use `PermissionPolicy::strict()` (Rust/Python) and explicitly allow only needed tools</Step>
-<Step>**Block dangerous patterns** — Always deny destructive bash commands: `bash(rm -rf:*)`, `bash(curl:*|sh)`</Step>
-<Step>**Enable HITL for writes** — Require confirmation for file modifications and bash execution</Step>
-<Step>**Use workspace boundaries** — Never disable workspace restrictions</Step>
-<Step>**Implement SecurityProvider** — Add custom taint tracking and output sanitization for sensitive data (Rust SDK)</Step>
-<Step>**Audit logs** — Use hooks to log all tool executions for security review</Step>
-</Steps>
-
-## Security Events
-
-The agent emits security-related events during streaming:
-
-<TypeTable
-  type={{
-    "error": {
-      description: "Error occurred (may include security-related errors)",
-    },
-  }}
-/>
-
-<Callout type="info">
-  Detailed security events (PermissionDenied, ConfirmationRequired, etc.) are available in the Rust SDK. The TypeScript SDK surfaces security events through the general event stream with `event.type === 'error'` for security-related failures.
-</Callout>
-
-## API Reference
-
-### DefaultSecurityProvider
-
-```typescript
-// TypeScript
-import { DefaultSecurityProvider } from '@a3s-lab/code';
-const provider = new DefaultSecurityProvider();
-agent.session('.', { securityProvider: provider });
+```ts
+session.registerHook(
+  'no-secret-read',
+  'pre_tool_use',
+  { pathPattern: '**/.env*' },
+  { priority: 100 },
+  () => ({ action: 'block', reason: 'secret files are not readable' }),
+);
 ```
 
-```python
-# Python
-from a3s_code import DefaultSecurityProvider
-provider = DefaultSecurityProvider()
-session = agent.session(".", security_provider=provider)
-```
+Hooks propagate to delegated child runs spawned by `task`.
 
-### SecurityProvider trait (Rust)
+## AHP
 
-<TypeTable
-  type={{
-    "taint_input": {
-      description: "Signature: fn taint_input(&self, text: &str) · Description: Inspect user input for sensitive patterns",
-    },
-    "sanitize_output": {
-      description: "Signature: fn sanitize_output(&self, text: &str) -> String · Description: Redact sensitive patterns from LLM output",
-    },
-    "wipe": {
-      description: "Signature: fn wipe(&self) · Description: Clear cached sensitive state",
-    },
-    "register_hooks": {
-      description: "Signature: fn register_hooks(&self, engine: &HookEngine) · Description: Attach hooks for deeper interception",
-    },
-    "teardown": {
-      description: "Signature: fn teardown(&self) · Description: Called when session ends",
-    },
-  }}
-/>
+AHP lets an external harness observe and decide around prompts, actions, responses, errors, heartbeats, and idle events. Use it for centralized safety or organization policy.
+
+## Verification
+
+Verification reports and summaries are part of the result surface. Release workflows should require tests, package checks, CI checks, and real-provider smoke evidence.

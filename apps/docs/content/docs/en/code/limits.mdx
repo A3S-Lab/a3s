@@ -1,278 +1,36 @@
 ---
-title: Runtime Limits
-description: Control agent execution boundaries — tool rounds, timeouts, circuit breaker, parse retries, and auto-compaction
+title: "Limits"
+description: "Runtime limits, compaction, timeouts, and circuit breakers"
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+# Limits
 
-# Runtime Limits
+Limits keep the harness predictable under long-running work, noisy tools, and provider failures.
 
-A3S Code provides a set of runtime limit mechanisms to prevent agents from looping indefinitely, hanging, or consuming excessive resources. All limits are configured through `SessionOptions` without modifying core logic.
+## Session Options
 
-```
-Agent Execution
-  ├─ max_tool_rounds      ← Tool call round cap (default 50)
-  ├─ tool_timeout_ms      ← Per-tool execution timeout
-  ├─ circuit_breaker      ← Break on consecutive LLM failures
-  ├─ max_parse_retries    ← Tool argument parse error retry cap
-  ├─ continuation_turns   ← Continuation injection cap
-  ├─ retry_config         ← LLM API exponential backoff retry
-  └─ auto_compact         ← Context window auto-compaction
-```
-
-## Tool Round Cap
-
-`max_tool_rounds` limits the total tool call rounds within a single `send()` / `stream()`. When the limit is reached, the agent stops and returns the current result.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/project', {
-  maxToolRounds: 20,  // default 50
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/project", max_tool_rounds=20)  # default 50
-```
-</Tab>
-</Tabs>
-
-<Callout type="info">
-`max_tool_rounds` is a hard cap per execution. For multi-step tasks, combine with `planning_enabled` — the planner decomposes large tasks into sub-steps, each with its own independent round count.
-</Callout>
-
-## Tool Execution Timeout
-
-`tool_timeout_ms` sets a timeout for each individual tool call. A timeout does not crash the session — the timeout result is returned to the LLM as an error, and the LLM can choose to retry or try a different approach.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/project', {
-  toolTimeoutMs: 10_000,
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/project", tool_timeout_ms=10_000)
-```
-</Tab>
-</Tabs>
-
-On timeout, the agent receives a tool result like:
-
-```
-Tool 'bash' timed out after 10000ms
-```
-
-## Circuit Breaker
-
-`circuit_breaker_threshold` controls how many consecutive LLM API failures trigger an abort (non-streaming mode). Prevents the agent from retrying indefinitely when the API is unstable.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/project', {
-  circuitBreakerThreshold: 5,
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/project", circuit_breaker_threshold=5)
-```
-</Tab>
-</Tabs>
-
-<Callout type="info">
-In streaming mode (`stream()`), any LLM failure is fatal because event streams cannot be replayed. The circuit breaker only applies to `send()`.
-</Callout>
-
-## LLM API Retry Config
-
-A3S Code has built-in exponential backoff retry with `Retry-After` header support. By default it retries 429 (rate limit), 500, 502, 503, and 529 (Anthropic overload).
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/project', {
-  retryConfig: {
-    maxRetries: 5,
-    baseDelayMs: 500,
-    maxDelayMs: 60_000,
-  },
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/project", retry_config={
-    "max_retries": 5,
-    "base_delay_ms": 500,
-    "max_delay_ms": 60_000,
-})
-```
-</Tab>
-</Tabs>
-
-Backoff formula: `delay = base_delay × 2^attempt`, capped at `max_delay`, with ±25% jitter. If the response contains a `Retry-After` header, that value takes priority.
-
-To disable retries:
-
-## Parse Error Retries
-
-LLMs occasionally return malformed tool arguments. `max_parse_retries` controls how many consecutive parse errors are tolerated before aborting (default 2).
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/project', {
+```ts
+const session = agent.session('/repo', {
+  maxToolRounds: 24,
   maxParseRetries: 3,
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/project", max_parse_retries=3)
-```
-</Tab>
-</Tabs>
-
-## Continuation Cap
-
-When the LLM stops calling tools before the task is complete, A3S Code automatically injects a continuation message to keep execution going. `max_continuation_turns` limits how many times this can happen (default 3).
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/project', {
-  continuationEnabled: true,
-  maxContinuationTurns: 5,
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/project",
-    continuation_enabled=True,
-    max_continuation_turns=5,
-)
-```
-</Tab>
-</Tabs>
-
-## Auto-Compaction
-
-When context window usage exceeds the threshold, A3S Code automatically calls the LLM to summarize history, preventing context overflow.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/project', {
+  toolTimeoutMs: 120000,
+  circuitBreakerThreshold: 4,
   autoCompact: true,
   autoCompactThreshold: 0.75,
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/project",
-    auto_compact=True,
-    auto_compact_threshold=0.75,
-)
-```
-</Tab>
-</Tabs>
-
-See [Auto-Compact Example](/docs/code/examples/auto-compact) for a full walkthrough.
-
-## Combining Limits
-
-Recommended production combination:
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/project', {
-  maxToolRounds: 30,
-  toolTimeoutMs: 15_000,
-  circuitBreakerThreshold: 3,
-  maxParseRetries: 2,
   continuationEnabled: true,
   maxContinuationTurns: 3,
-  autoCompact: true,
-  autoCompactThreshold: 0.80,
 });
 ```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/project",
-    max_tool_rounds=30,
-    tool_timeout_ms=15_000,
-    circuit_breaker_threshold=3,
-    max_parse_retries=2,
-    continuation_enabled=True,
-    max_continuation_turns=3,
-    auto_compact=True,
-    auto_compact_threshold=0.80,
-)
-```
-</Tab>
-</Tabs>
 
-## API Reference
+## What Each Limit Does
 
-<TypeTable
-  type={{
-    "max_tool_rounds": {
-      description: "Type: usize · Default: 50 · Max tool call rounds per execution",
-    },
-    "tool_timeout_ms": {
-      description: "Type: Option<u64> · Default: None · Per-tool execution timeout in ms. None = no limit",
-    },
-    "circuit_breaker_threshold": {
-      description: "Type: u32 · Default: 3 · Consecutive LLM failures before abort (non-streaming only)",
-    },
-    "max_parse_retries": {
-      description: "Type: u32 · Default: 2 · Max consecutive tool argument parse errors before abort",
-    },
-    "continuation_enabled": {
-      description: "Type: bool · Default: true · Inject continuation message when LLM stops early",
-    },
-    "max_continuation_turns": {
-      description: "Type: u32 · Default: 3 · Max continuation injections per execution",
-    },
-    "auto_compact": {
-      description: "Type: bool · Default: false · Enable context auto-compaction",
-    },
-    "auto_compact_threshold": {
-      description: "Type: f32 · Default: 0.80 · Context usage ratio that triggers compaction (0.0–1.0)",
-    },
-  }}
-/>
+- `maxToolRounds` bounds the number of model-tool iterations in a turn.
+- `maxParseRetries` bounds malformed tool-call recovery.
+- `toolTimeoutMs` stops long-running tools.
+- `circuitBreakerThreshold` aborts after repeated provider failures.
+- `autoCompact` summarizes history and evidence before context pressure becomes unsafe.
+- `continuationEnabled` allows controlled follow-up turns for incomplete work.
 
-### RetryConfig
+## Practical Defaults
 
-<TypeTable
-  type={{
-    "max_retries": {
-      description: "Type: u32 · Default: 3 · Max retry attempts (0 = disabled)",
-    },
-    "base_delay_ms": {
-      description: "Type: u64 · Default: 1000 · Initial backoff delay in ms",
-    },
-    "max_delay_ms": {
-      description: "Type: u64 · Default: 30000 · Max backoff delay in ms",
-    },
-    "retryable_status_codes": {
-      description: "Type: Vec<u16> · Default: [429,500,502,503,529] · HTTP status codes that trigger retry",
-    },
-  }}
-/>
+Use strict limits for CI, release, and user-facing automation. Use larger budgets for exploratory local coding sessions, but keep verification commands explicit and required when the task has side effects.

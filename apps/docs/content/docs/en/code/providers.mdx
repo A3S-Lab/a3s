@@ -1,720 +1,103 @@
 ---
-title: Providers & Configuration
-description: Complete HCL configuration reference — LLM providers, model fields, OpenAI-compatible APIs, and local models via Ollama / GPUStack / A3S Power / OneAPI.
+title: "Providers"
+description: "ACL provider configuration and environment injection for v2.1.0"
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { Callout } from 'fumadocs-ui/components/callout';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
+# Providers
 
-All configuration lives in a single `.hcl` file. This page is the complete reference for every field, plus ready-to-paste configs for common LLM providers and local inference servers.
+A3S Code v2.1.0 reads runtime configuration from ACL. A config source can be a path to an `.acl` file or an inline ACL string. JSON and legacy HCL configs are intentionally not supported.
 
-<Callout type="info">
-A3S Code uses HCL (HashiCorp Configuration Language) as its primary config format. The `env()` function reads environment variables at parse time — use it to keep secrets out of config files.
-</Callout>
+## Basic Shape
 
----
+```text
+default_model = "provider/model-id"
 
-## Config File Location
+providers "provider" {
+  apiKey = env("PROVIDER_API_KEY")
+  baseUrl = env("PROVIDER_BASE_URL")
 
-`Agent::new("agent.hcl")` resolves the path relative to the current working directory. Any filename and any path (relative or absolute) work.
+  models "model-id" {
+    name = "Human readable model name"
+    tool_call = true
+  }
+}
 
-| Convention | Use case |
-|------------|----------|
-| `./agent.hcl` | Per-project config, can be checked into the repo |
-| `~/.a3s/config.hcl` | User-level default shared across projects |
-| `/etc/a3s/config.hcl` | System-wide config for multi-user servers |
+storage_backend = "file"
+```
 
----
+`apiKey` and `api_key` are accepted aliases. `baseUrl` and `base_url` are accepted aliases. Prefer environment variables for secrets and commit only templates or non-secret defaults.
 
-## Minimal Config
+## Anthropic
 
-The only required top-level field is `default_model`. For cloud providers, `api_key` at the provider level is also required.
-
-```hcl
+```text
 default_model = "anthropic/claude-sonnet-4-20250514"
 
-providers {
-  name    = "anthropic"
-  api_key = env("ANTHROPIC_API_KEY")
+providers "anthropic" {
+  apiKey = env("ANTHROPIC_API_KEY")
+}
+```
 
-  models {
-    id        = "claude-sonnet-4-20250514"
-    name      = "Claude Sonnet 4"
+## OpenAI-Compatible
+
+Any service compatible with OpenAI Chat Completions can be configured through the `openai` provider:
+
+```text
+default_model = "openai/gpt-4o"
+
+providers "openai" {
+  apiKey = env("A3S_OPENAI_API_KEY")
+  baseUrl = env("A3S_OPENAI_BASE_URL")
+}
+```
+
+For MiniMax release smoke tests the same provider block is used:
+
+```text
+default_model = "openai/MiniMax-M2.7-highspeed"
+
+providers "openai" {
+  apiKey = env("A3S_OPENAI_API_KEY")
+  baseUrl = env("A3S_OPENAI_BASE_URL")
+
+  models "MiniMax-M2.7-highspeed" {
+    name = "MiniMax M2.7 Highspeed"
     tool_call = true
   }
 }
 ```
 
-For fully local providers (e.g., Ollama) no `api_key` is needed — only a `base_url`.
+Test scripts map `MINIMAX_API_KEY` and `MINIMAX_BASE_URL` to `A3S_OPENAI_API_KEY` and `A3S_OPENAI_BASE_URL` when the latter are not set.
 
----
+## Storage
 
-## Top-Level Fields
-
-<TypeTable
-  type={{
-    default_model: {
-      description: 'Default model in `provider/model` format (e.g., `"anthropic/claude-sonnet-4-20250514"`). Used when no model is specified in `SessionOptions`.',
-      type: 'string',
-    },
-    max_tool_rounds: {
-      description: 'Maximum tool call iterations per agent turn. Prevents infinite tool loops.',
-      type: 'int',
-      default: '50',
-    },
-    thinking_budget: {
-      description: 'Token budget for extended reasoning (for Claude models with `reasoning = true`).',
-      type: 'int',
-    },
-    skill_dirs: {
-      description: 'Directories to scan for `*.md` skill files at startup.',
-      type: 'string[]',
-      default: '[]',
-    },
-    agent_dirs: {
-      description: 'Directories to scan for agent definition files.',
-      type: 'string[]',
-      default: '[]',
-    },
-    storage_backend: {
-      description: '`"memory"` (no disk), `"file"` (local JSON), or `"custom"` (via `storage_url`). Controls session persistence.',
-      type: 'string',
-      default: '"file"',
-    },
-    sessions_dir: {
-      description: 'Directory for file-based session storage.',
-      type: 'string',
-    },
-    storage_url: {
-      description: 'Connection URL for custom storage backends (e.g., `"redis://localhost:6379"`).',
-      type: 'string',
-    },
-  }}
-/>
-
----
-
-## Provider Fields
-
-<TypeTable
-  type={{
-    name: {
-      description: 'Provider identifier used in the `provider/model` selector (e.g., `"anthropic"`, `"openai"`, `"ollama"`). Must be unique across all provider blocks.',
-      type: 'string',
-    },
-    api_key: {
-      description: 'Default API key for all models in this provider. Individual model blocks can override this.',
-      type: 'string',
-    },
-    base_url: {
-      description: 'Default base URL for all models. Override per-model for proxy routing, regional endpoints, or self-hosted servers.',
-      type: 'string',
-    },
-  }}
-/>
-
----
-
-## Model Fields
-
-<TypeTable
-  type={{
-    id: {
-      description: 'Model identifier sent to the API (e.g., `"claude-sonnet-4-20250514"`, `"gpt-4o"`, `"llama3.2"`). Must be unique within a provider.',
-      type: 'string',
-    },
-    name: {
-      description: 'Human-readable display name shown in logs and cost reports.',
-      type: 'string',
-    },
-    family: {
-      description: 'Model family tag for grouping in cost reports (e.g., `"claude-sonnet"`, `"gpt"`, `"llama"`).',
-      type: 'string',
-    },
-    api_key: {
-      description: 'Per-model API key. Overrides the provider-level `api_key`.',
-      type: 'string',
-    },
-    base_url: {
-      description: 'Per-model base URL. Overrides the provider-level `base_url`. Use for proxies, local servers, or regional routing.',
-      type: 'string',
-    },
-    tool_call: {
-      description: 'Whether the model supports tool/function calling.',
-      type: 'bool',
-      default: 'false',
-    },
-    reasoning: {
-      description: 'Whether the model supports extended reasoning tokens (e.g., Claude thinking, DeepSeek-R1). Enables `thinking_budget` usage.',
-      type: 'bool',
-      default: 'false',
-    },
-    temperature: {
-      description: 'Whether the model accepts a `temperature` parameter. Some models (e.g., o1) ignore it.',
-      type: 'bool',
-      default: 'false',
-    },
-    attachment: {
-      description: 'Whether the model accepts file or image attachments in requests.',
-      type: 'bool',
-      default: 'false',
-    },
-    release_date: {
-      description: 'ISO 8601 release date (e.g., `"2025-05-14"`). Used for display and sorting in telemetry reports.',
-      type: 'string',
-    },
-    modalities: {
-      description: 'Input and output modality block. `input` can include `"text"`, `"image"`, `"pdf"`. `output` is typically `["text"]`.',
-      type: 'object',
-    },
-    cost: {
-      description: 'Token pricing in USD per million tokens. Fields: `input`, `output`, `cache_read`, `cache_write`.',
-      type: 'object',
-    },
-    limit: {
-      description: 'Token capacity. `context` = context window size, `output` = max response tokens.',
-      type: 'object',
-    },
-  }}
-/>
-
-### `modalities` block
-
-Declares what content types the model can receive and produce:
-
-```hcl
-# Multimodal model (text + vision)
-modalities {
-  input  = ["text", "image", "pdf"]
-  output = ["text"]
-}
-
-# Text-only model
-modalities {
-  input  = ["text"]
-  output = ["text"]
-}
+```text
+storage_backend = "memory"
+storage_backend = "file"
+storage_url = ".a3s/sessions"
 ```
 
-### `cost` block
+Use memory storage for short-lived tests. Use file storage for resumable local sessions.
 
-Pricing in USD per million tokens, consumed by the [Telemetry](/docs/code/telemetry) module for cost tracking:
+## Real Config Integration
 
-```hcl
-cost {
-  input       = 3.0    # per 1M input tokens
-  output      = 15.0   # per 1M output tokens
-  cache_read  = 0.3    # per 1M prompt-cache read tokens (Anthropic)
-  cache_write = 3.75   # per 1M prompt-cache write tokens (Anthropic)
-}
-```
+The release preflight does not mutate the real `.a3s/config.acl`. It extracts provider values, rewrites a temporary ACL file to use `env(...)`, injects those values into the process environment, and then verifies that the runtime resolves them correctly.
 
-### `limit` block
-
-```hcl
-limit {
-  context = 200000  # context window in tokens
-  output  = 64000   # max output tokens per response
-}
-```
-
----
-
-## Multiple Providers
-
-Define as many providers as needed. Switch between them per session via `SessionOptions`:
-
-```hcl
-default_model = "anthropic/claude-sonnet-4-20250514"
-
-providers {
-  name    = "anthropic"
-  api_key = env("ANTHROPIC_API_KEY")
-
-  models {
-    id        = "claude-sonnet-4-20250514"
-    name      = "Claude Sonnet 4"
-    tool_call = true
-  }
-
-  models {
-    id        = "claude-opus-4-5-20251101"
-    name      = "Claude Opus 4.5"
-    reasoning = true
-    tool_call = true
-  }
-}
-
-providers {
-  name    = "openai"
-  api_key = env("OPENAI_API_KEY")
-
-  models {
-    id        = "gpt-4o"
-    name      = "GPT-4o"
-    tool_call = true
-  }
-}
-```
-
-Select at runtime:
-
-<Tabs items={['Python', 'TypeScript']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('.', { model: 'openai/gpt-4o' });
-```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session(".", model="openai/gpt-4o")
-```
-</Tab>
-</Tabs>
-
----
-
-## Per-Model API Key & Base URL
-
-Provider-level `api_key` and `base_url` are defaults; model-level values override them. This enables:
-
-- **API key rotation** — different keys per model
-- **Proxy routing** — send specific models through a gateway
-- **Regional endpoints** — lower latency or data-residency compliance
-- **Self-hosted endpoints** — point individual models to local servers
-
-```hcl
-providers {
-  name     = "anthropic"
-  api_key  = env("ANTHROPIC_API_KEY")       # default for all models
-  base_url = "https://api.anthropic.com"    # default base URL
-
-  models {
-    id        = "claude-sonnet-4-20250514"
-    name      = "Claude Sonnet 4"
-    tool_call = true
-    # inherits provider api_key and base_url
-  }
-
-  models {
-    id        = "claude-sonnet-4-20250514"
-    name      = "Claude Sonnet 4 (EU)"
-    api_key   = env("ANTHROPIC_EU_KEY")           # override
-    base_url  = "https://eu.api.anthropic.com"    # override
-    tool_call = true
-  }
-}
-```
-
----
-
-## OpenAI-Compatible Providers
-
-Any service implementing the OpenAI Chat Completions API (`POST /v1/chat/completions`) works as a provider. Set `base_url` to point to the endpoint. The `name` field is arbitrary.
-
-This covers: **Ollama**, **GPUStack**, **A3S Power**, **OneAPI**, **Together AI**, **Groq**, **Fireworks**, **LM Studio**, **vLLM**, **llama.cpp**, and any other OpenAI-compatible backend.
-
----
-
-## Local LLM Providers
-
-Run inference locally for privacy, cost control, offline use, or to serve fine-tuned models. All four options below expose an OpenAI-compatible endpoint and follow the same config pattern.
-
-### Ollama
-
-[Ollama](https://ollama.com) runs open-source models locally and serves them at `http://localhost:11434/v1`.
-
-**Setup:**
+Use this pattern for private provider smoke tests:
 
 ```bash
-# macOS
-brew install ollama
-ollama serve
-
-# Pull models
-ollama pull llama3.2
-ollama pull qwen2.5-coder:7b
-ollama pull deepseek-r1:8b
+A3S_CONFIG_FILE=/path/to/.a3s/config.acl \
+  A3S_OPENAI_API_KEY="$A3S_OPENAI_API_KEY" \
+  A3S_OPENAI_BASE_URL="$A3S_OPENAI_BASE_URL" \
+  scripts/real_config_env_integration.sh
 ```
 
-**Config:**
+SDK parity is covered by a separate real-provider smoke script:
 
-```hcl
-default_model = "ollama/llama3.2"
-
-providers {
-  name     = "ollama"
-  base_url = "http://localhost:11434/v1"  # no api_key needed
-
-  models {
-    id          = "llama3.2"
-    name        = "Llama 3.2 (Ollama)"
-    family      = "llama"
-    tool_call   = true
-    temperature = true
-
-    modalities {
-      input  = ["text"]
-      output = ["text"]
-    }
-
-    limit {
-      context = 128000
-      output  = 4096
-    }
-  }
-
-  models {
-    id          = "qwen2.5-coder:7b"
-    name        = "Qwen 2.5 Coder 7B (Ollama)"
-    family      = "qwen"
-    tool_call   = true
-    temperature = true
-    limit { context = 32000  output = 4096 }
-  }
-
-  models {
-    id          = "deepseek-r1:8b"
-    name        = "DeepSeek-R1 8B (Ollama)"
-    family      = "deepseek"
-    tool_call   = false
-    reasoning   = true
-    temperature = false
-    limit { context = 64000  output = 8192 }
-  }
-}
-```
-
-<Callout type="info">
-Ollama does not require an API key. If the client library requires a non-empty value, use any placeholder string (e.g., `api_key = "ollama"`).
-</Callout>
-
----
-
-### GPUStack
-
-[GPUStack](https://gpustack.ai) manages GPU clusters and serves models via an OpenAI-compatible API. API keys use the format `gpustack_<token>`. Model IDs follow the convention `model--<org>--<model-name>` — find the exact value in your GPUStack dashboard.
-
-**Single-node config:**
-
-```hcl
-default_model = "gpustack/model--zhipuai--glm-4.7"
-
-providers {
-  name     = "gpustack"
-  api_key  = env("GPUSTACK_API_KEY")
-  base_url = "http://your-gpustack-host/v1"  # shared for all models
-
-  models {
-    id          = "model--zhipuai--glm-4.7"
-    name        = "GLM-4.7 (GPUStack)"
-    family      = "glm"
-    tool_call   = true
-    temperature = true
-    limit { context = 128000  output = 4096 }
-  }
-
-  models {
-    id          = "model--meta--llama-3.2-3b-instruct"
-    name        = "Llama 3.2 3B Instruct (GPUStack)"
-    family      = "llama"
-    tool_call   = true
-    temperature = true
-    limit { context = 128000  output = 4096 }
-  }
-}
-```
-
-**Multi-node config** — override `base_url` per model to route to different nodes:
-
-```hcl
-providers {
-  name    = "gpustack"
-  api_key = env("GPUSTACK_API_KEY")
-
-  models {
-    id       = "model--zhipuai--glm-4.7"
-    name     = "GLM-4.7 (node-1)"
-    base_url = "http://node-1.gpustack.internal/v1"
-    tool_call   = true
-    temperature = true
-    limit { context = 128000  output = 4096 }
-  }
-
-  models {
-    id       = "model--meta--llama-3.2-3b-instruct"
-    name     = "Llama 3.2 3B (node-2)"
-    base_url = "http://node-2.gpustack.internal/v1"
-    tool_call   = true
-    temperature = true
-    limit { context = 128000  output = 4096 }
-  }
-}
-```
-
----
-
-### A3S Power
-
-A3S Power provides managed inference backed by A3S infrastructure, with an OpenAI-compatible API.
-
-```hcl
-default_model = "power/qwen2.5-72b"
-
-providers {
-  name     = "power"
-  api_key  = env("A3S_POWER_API_KEY")
-  base_url = "http://your-a3s-power-host/v1"
-
-  models {
-    id          = "qwen2.5-72b"
-    name        = "Qwen 2.5 72B (A3S Power)"
-    family      = "qwen"
-    tool_call   = true
-    temperature = true
-    reasoning   = false
-
-    modalities {
-      input  = ["text"]
-      output = ["text"]
-    }
-
-    limit {
-      context = 128000
-      output  = 8192
-    }
-  }
-
-  models {
-    id          = "deepseek-r1:70b"
-    name        = "DeepSeek-R1 70B (A3S Power)"
-    family      = "deepseek"
-    tool_call   = true
-    reasoning   = true
-    temperature = false
-    limit { context = 64000  output = 8192 }
-  }
-}
-```
-
----
-
-### OneAPI
-
-[OneAPI](https://github.com/songquanpeng/one-api) is an open-source API aggregator that proxies multiple upstream providers (Anthropic, OpenAI, Azure, Gemini, etc.) behind a single endpoint and key.
-
-```hcl
-default_model = "oneapi/claude-sonnet-4-20250514"
-
-providers {
-  name     = "oneapi"
-  api_key  = env("ONEAPI_TOKEN")
-  base_url = "http://your-oneapi-host/v1"
-
-  models {
-    id          = "claude-sonnet-4-20250514"
-    name        = "Claude Sonnet 4 (via OneAPI)"
-    tool_call   = true
-    temperature = true
-    limit { context = 200000  output = 8192 }
-  }
-
-  models {
-    id          = "gpt-4o"
-    name        = "GPT-4o (via OneAPI)"
-    tool_call   = true
-    temperature = true
-    limit { context = 128000  output = 4096 }
-  }
-
-  models {
-    id          = "deepseek-chat"
-    name        = "DeepSeek Chat (via OneAPI)"
-    tool_call   = true
-    temperature = true
-    limit { context = 64000  output = 4096 }
-  }
-}
-```
-
-<Callout type="info">
-The `id` field must match the **channel model name** configured in your OneAPI instance, not necessarily the upstream provider's model ID. Verify the exact value in your OneAPI admin panel.
-</Callout>
-
----
-
-## Full Configuration Reference
-
-```hcl
-# ─── Global ──────────────────────────────────────────────────────────────────
-default_model   = "anthropic/claude-sonnet-4-20250514"
-max_tool_rounds = 20        # default: 50
-thinking_budget = 4096      # reasoning token budget (optional)
-
-# ─── Extensions ──────────────────────────────────────────────────────────────
-skill_dirs = ["./skills"]   # directories with *.md skill files
-agent_dirs = ["./agents"]   # directories with agent definition files
-
-# ─── Storage ─────────────────────────────────────────────────────────────────
-storage_backend = "file"                    # "memory" | "file" | "custom"
-sessions_dir    = "~/.a3s/sessions"         # path for "file" backend
-storage_url     = "redis://localhost:6379"  # URL for "custom" backend
-
-# ─── Cloud Provider ──────────────────────────────────────────────────────────
-providers {
-  name     = "anthropic"
-  api_key  = env("ANTHROPIC_API_KEY")
-  base_url = "https://api.anthropic.com"    # optional override
-
-  models {
-    id           = "claude-sonnet-4-20250514"
-    name         = "Claude Sonnet 4"
-    family       = "claude-sonnet"
-    tool_call    = true
-    reasoning    = false
-    temperature  = true
-    attachment   = true
-    release_date = "2025-05-14"
-
-    modalities {
-      input  = ["text", "image", "pdf"]
-      output = ["text"]
-    }
-
-    cost {
-      input       = 3.0
-      output      = 15.0
-      cache_read  = 0.3
-      cache_write = 3.75
-    }
-
-    limit {
-      context = 200000
-      output  = 64000
-    }
-  }
-}
-
-# ─── OpenAI-compatible cloud ─────────────────────────────────────────────────
-providers {
-  name    = "openai"
-  api_key = env("OPENAI_API_KEY")
-
-  models {
-    id          = "gpt-4o"
-    name        = "GPT-4o"
-    tool_call   = true
-    temperature = true
-    attachment  = true
-
-    modalities {
-      input  = ["text", "image"]
-      output = ["text"]
-    }
-
-    cost {
-      input  = 2.5
-      output = 10.0
-    }
-
-    limit {
-      context = 128000
-      output  = 16384
-    }
-  }
-
-  # Per-model API key + base_url override
-  models {
-    id          = "gpt-4o"
-    name        = "GPT-4o (via proxy)"
-    api_key     = env("PROXY_API_KEY")
-    base_url    = "https://proxy.example.com/v1"
-    tool_call   = true
-    temperature = true
-    limit { context = 128000  output = 4096 }
-  }
-}
-
-# ─── Local provider (Ollama) ─────────────────────────────────────────────────
-providers {
-  name     = "ollama"
-  base_url = "http://localhost:11434/v1"
-
-  models {
-    id          = "llama3.2"
-    name        = "Llama 3.2 (Ollama)"
-    tool_call   = true
-    temperature = true
-    limit { context = 128000  output = 4096 }
-  }
-}
-
-# ─── Queue (optional) ────────────────────────────────────────────────────────
-queue {
-  query_max_concurrency    = 5    # default: 5
-  execute_max_concurrency  = 2    # default: 2
-  generate_max_concurrency = 1    # default: 1
-  enable_metrics           = true
-  enable_dlq               = true
-
-  retry_policy {
-    strategy         = "exponential"  # "fixed" | "exponential"
-    max_retries      = 3
-    initial_delay_ms = 100
-  }
-}
-
-# ─── Search (optional) ───────────────────────────────────────────────────────
-search {
-  timeout = 30
-
-  health {
-    max_failures    = 3
-    suspend_seconds = 60
-  }
-
-  engine {
-    ddg   { enabled = true  weight = 1.5 }
-    wiki  { enabled = true  weight = 1.2 }
-    brave { enabled = true  weight = 1.0  timeout = 20 }
-  }
-}
-```
-
----
-
-## The `env()` Function
-
-Use `env("VAR")` anywhere a string value is expected. The variable is resolved once at parse time — if unset, `Agent::new()` returns an error immediately at startup.
-
-```hcl
-providers {
-  name    = "anthropic"
-  api_key = env("ANTHROPIC_API_KEY")
-}
-```
-
-<Tabs groupId="os" items={['Linux / macOS', 'Windows PowerShell', 'Windows CMD']}>
-<Tab value="Linux / macOS">
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
-export OPENAI_API_KEY="sk-..."
-export GPUSTACK_API_KEY="gpustack_..."
+A3S_CONFIG_FILE=/path/to/.a3s/config.acl \
+  scripts/sdk_real_config_env_integration.sh
 ```
-</Tab>
-<Tab value="Windows PowerShell">
-```powershell
-$env:ANTHROPIC_API_KEY = "sk-ant-..."
-$env:OPENAI_API_KEY = "sk-..."
-$env:GPUSTACK_API_KEY = "gpustack_..."
-```
-</Tab>
-<Tab value="Windows CMD">
-```cmd
-set ANTHROPIC_API_KEY=sk-ant-...
-set OPENAI_API_KEY=sk-...
-set GPUSTACK_API_KEY=gpustack_...
-```
-</Tab>
-</Tabs>
+
+That script exercises Node and Python against the same temporary env-injected
+ACL, including `Agent.create`, `send`, `btw`, `program`, tool schemas, run replay,
+and delegation smoke paths.

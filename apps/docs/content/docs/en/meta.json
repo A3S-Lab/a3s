@@ -8,10 +8,8 @@
     "box",
     "power",
     "gateway",
-    "safeclaw",
     "---Libraries---",
     "lane",
-    "event",
     "search",
     "memory"
   ]

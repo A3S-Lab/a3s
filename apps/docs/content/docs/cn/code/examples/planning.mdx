@@ -1,130 +1,21 @@
 ---
-title: 规划
-description: 带目标追踪的任务分解
+title: "Planning"
+description: "启用 planning 与 goal tracking"
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
+# Planning
 
-# 规划
-
-规划模式在执行前将复杂提示分解为结构化执行计划。每个步骤独立追踪，支持面向目标的多步骤任务。
-
-<Callout type="info">
-规划会额外增加一次 LLM 调用来生成计划。适用于复杂的多文件任务；简单查询可跳过。
-</Callout>
-
-## 启用规划
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
-  planning: true,
+```ts
+const session = agent.session('/repo', {
+  planningMode: 'enabled',
   goalTracking: true,
+  maxToolRounds: 24,
 });
 
-const result = await session.send(
-  'Add input validation to all API endpoints, write tests, and update the README'
-);
-
+const result = await session.send('规划并完成发布就绪检查');
 console.log(result.text);
-console.log(`Tool calls: ${result.toolCallsCount}`);
 ```
 
-**源码：** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/my-project",
-    permissive=True,
-    planning=True,
-    goal_tracking=True,
-)
+`planningMode: 'auto'` 是默认结构化预分析路径，`'enabled'` 强制启用 planning，`'disabled'` 用于低延迟请求。Planning 状态会挂到 run 上，宿主 UI 可以从 run events 渲染 TaskList 并追踪完成情况。
 
-result = session.send(
-    "Add input validation to all API endpoints, write tests, and update the README"
-)
-
-print(result.text)
-print(f"Tool calls: {result.tool_calls_count}")
-```
-
-**源码：** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
-</Tab>
-</Tabs>
-
-## 流式规划事件
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const stream = await session.stream('Refactor and test the auth module');
-while (true) {
-  const { value, done } = await stream.next();
-  if (done || !value) break;
-  if (value.type === 'planning_start') {
-    console.log(`📋 Planning: ${value.prompt}`);
-  } else if (value.type === 'plan_ready') {
-    console.log(`Plan (${value.steps.length} steps):`);
-    value.steps.forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
-  } else if (value.type === 'end') {
-    break;
-  }
-}
-```
-</Tab>
-<Tab value="Python">
-```python
-for event in session.stream("Refactor and test the auth module"):
-    t = event.get("type")
-    if t == "planning_start":
-        print(f"📋 Planning: {event['prompt']}")
-    elif t == "plan_ready":
-        print(f"Plan ({len(event['steps'])} steps):")
-        for i, step in enumerate(event["steps"], 1):
-            print(f"  {i}. {step}")
-    elif t == "end":
-        break
-```
-</Tab>
-</Tabs>
-
-## API 参考
-
-### SessionOptions
-
-<TypeTable
-  type={{
-    "启用规划": {
-      description: "Python: planning=True · TypeScript: planning: true · 默认值: false",
-    },
-    "启用目标追踪": {
-      description: "Python: goal_tracking=True · TypeScript: goalTracking: true · 默认值: false",
-    },
-  }}
-/>
-
-### 规划事件
-
-<TypeTable
-  type={{
-    "规划开始": {
-      description: "Rust 变体: AgentEvent::PlanningStart · Python/TypeScript type: planning_start · 字段: prompt",
-    },
-    "计划生成": {
-      description: "Rust 变体: AgentEvent::PlanReady · Python/TypeScript type: plan_ready · 字段: steps[], wave_count",
-    },
-    "步骤开始": {
-      description: "Rust 变体: AgentEvent::StepStart · Python/TypeScript type: step_start · 字段: step, index",
-    },
-    "步骤完成": {
-      description: "Rust 变体: AgentEvent::StepEnd · Python/TypeScript type: step_end · 字段: step, index, success",
-    },
-    "目标更新": {
-      description: "Rust 变体: AgentEvent::GoalUpdated · Python/TypeScript type: goal_updated · 字段: goal, status",
-    },
-  }}
-/>
+完成证据仍然来自验证命令。

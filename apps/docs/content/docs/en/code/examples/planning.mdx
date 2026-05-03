@@ -1,130 +1,24 @@
 ---
-title: Planning
-description: Task decomposition with goal tracking
+title: "Planning"
+description: "Enable planning and goal tracking"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
 
 # Planning
 
-Planning mode decomposes a complex prompt into a structured execution plan before running. Each step is tracked independently, enabling goal-oriented multi-step tasks.
-
-<Callout type="info">
-Planning adds one extra LLM call to generate the plan. Use it for complex multi-file tasks; skip it for simple queries.
-</Callout>
-
-## Enable Planning
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
-  planning: true,
+```ts
+const session = agent.session('/repo', {
+  planningMode: 'enabled',
   goalTracking: true,
+  maxToolRounds: 24,
 });
 
-const result = await session.send(
-  'Add input validation to all API endpoints, write tests, and update the README'
-);
-
+const result = await session.send('Plan and complete the release-readiness review');
 console.log(result.text);
-console.log(`Tool calls: ${result.toolCallsCount}`);
 ```
 
-**Source:** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/my-project",
-    permissive=True,
-    planning=True,
-    goal_tracking=True,
-)
+`planningMode: 'auto'` is the default structured pre-analysis path,
+`'enabled'` forces planning, and `'disabled'` turns it off for low-latency
+requests. Planning state is attached to the run so a host UI can render a
+TaskList and update task completion from run events.
 
-result = session.send(
-    "Add input validation to all API endpoints, write tests, and update the README"
-)
-
-print(result.text)
-print(f"Tool calls: {result.tool_calls_count}")
-```
-
-**Source:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
-</Tab>
-</Tabs>
-
-## Streaming Planning Events
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const stream = await session.stream('Refactor and test the auth module');
-while (true) {
-  const { value, done } = await stream.next();
-  if (done || !value) break;
-  if (value.type === 'planning_start') {
-    console.log(`📋 Planning: ${value.prompt}`);
-  } else if (value.type === 'plan_ready') {
-    console.log(`Plan (${value.steps.length} steps):`);
-    value.steps.forEach((step, i) => console.log(`  ${i + 1}. ${step}`));
-  } else if (value.type === 'end') {
-    break;
-  }
-}
-```
-</Tab>
-<Tab value="Python">
-```python
-for event in session.stream("Refactor and test the auth module"):
-    t = event.get("type")
-    if t == "planning_start":
-        print(f"📋 Planning: {event['prompt']}")
-    elif t == "plan_ready":
-        print(f"Plan ({len(event['steps'])} steps):")
-        for i, step in enumerate(event["steps"], 1):
-            print(f"  {i}. {step}")
-    elif t == "end":
-        break
-```
-</Tab>
-</Tabs>
-
-## API Reference
-
-### SessionOptions
-
-<TypeTable
-  type={{
-    "Enable planning": {
-      description: "Python: planning=True · TypeScript: planning: true · Default: false",
-    },
-    "Enable goal tracking": {
-      description: "Python: goal_tracking=True · TypeScript: goalTracking: true · Default: false",
-    },
-  }}
-/>
-
-### Planning Events
-
-<TypeTable
-  type={{
-    "Planning started": {
-      description: "Rust variant: AgentEvent::PlanningStart · Python/TypeScript type: planning_start · Fields: prompt",
-    },
-    "Plan generated": {
-      description: "Rust variant: AgentEvent::PlanReady · Python/TypeScript type: plan_ready · Fields: steps[], wave_count",
-    },
-    "Step started": {
-      description: "Rust variant: AgentEvent::StepStart · Python/TypeScript type: step_start · Fields: step, index",
-    },
-    "Step completed": {
-      description: "Rust variant: AgentEvent::StepEnd · Python/TypeScript type: step_end · Fields: step, index, success",
-    },
-    "Goal updated": {
-      description: "Rust variant: AgentEvent::GoalUpdated · Python/TypeScript type: goal_updated · Fields: goal, status",
-    },
-  }}
-/>
+Verification commands still provide the completion evidence.

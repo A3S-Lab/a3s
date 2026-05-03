@@ -1,52 +1,17 @@
 ---
-title: Memory
-description: Practical examples for file memory, custom backends, and memory events
+title: "Memory"
+description: "Remember and recall task facts"
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { Callout } from 'fumadocs-ui/components/callout';
+# Memory
 
-# Memory Examples
+```ts
+import { FileMemoryStore } from '@a3s-lab/code';
 
-## File-Backed Memory
+const session = agent.session('/repo', {
+  memoryStore: new FileMemoryStore('./.a3s/memory'),
+});
 
-Memories persist across session restarts. Point multiple sessions at the same directory to share long-term knowledge.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-import { Agent, FileMemoryStore } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-
-// First session
-const s1 = agent.session('.', { memoryStore: new FileMemoryStore('./memory') });
-await s1.send('Remember: we deploy to AWS us-east-1 via GitHub Actions');
-
-// Later session — same memory dir
-const s2 = agent.session('.', { memoryStore: new FileMemoryStore('./memory') });
-const result = await s2.send('Where do we deploy?');
+await session.rememberSuccess('docs rewrite', ['grep', 'read'], 'stale HCL references removed');
+const memories = await session.recallSimilar('docs release rewrite', 5);
 ```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import Agent, SessionOptions, FileMemoryStore
-
-agent = Agent.create("agent.hcl")
-
-s1 = agent.session(".", SessionOptions(memory_store=FileMemoryStore("./memory")))
-s1.send("Remember: we deploy to AWS us-east-1 via GitHub Actions")
-
-s2 = agent.session(".", SessionOptions(memory_store=FileMemoryStore("./memory")))
-result = s2.send("Where do we deploy?")
-```
-</Tab>
-</Tabs>
-
-## Storing Memories Directly
-
-Use `session.memory()` to store and query memories from your own code:
-
-<Callout type="info">
-For the full API reference, see [Memory](/docs/code/memory).
-</Callout>

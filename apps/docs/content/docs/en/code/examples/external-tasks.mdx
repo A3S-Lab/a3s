@@ -1,141 +1,20 @@
 ---
-title: External Tasks
-description: Multi-machine coordinator/worker pattern using external task handlers
+title: "External Tasks"
+description: "Complete work from outside the agent process"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
 
 # External Tasks
 
-External task handling enables a coordinator/worker pattern where tasks are dispatched to remote workers instead of executing locally. This is the foundation for multi-machine A3S Code deployments.
+```ts
+const pending = await session.pendingExternalTasks();
 
-<Callout type="info">
-For the full multi-machine architecture guide, see [Multi-Machine Distribution](/docs/code/multi-machine).
-</Callout>
-
-## Handler Modes
-
-<TypeTable
-  type={{
-    "Internal": {
-      description: "Tasks execute in-process (default)",
-    },
-    "External": {
-      description: "Tasks dispatched to external worker",
-    },
-    "Hybrid": {
-      description: "Try external first, fall back to internal",
-    },
-  }}
-/>
-
-## Basic External Handler
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
-  queueConfig: { enableAllFeatures: true },
-});
-
-// Register external task handler
-session.setExternalTaskHandler(async (task) => {
-  console.log(`Worker received task: ${task.id}`);
-  return { success: true, result: { output: 'task completed' } };
+await session.completeExternalTask(pending[0].id, {
+  success: true,
+  result: {
+    summary: 'worker completed the test run',
+    command: 'npm run build',
+  },
 });
 ```
 
-**Run:** `node examples/test_external_task_handler.ts`
-**Source:** [`sdk/node/examples/test_external_task_handler.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_external_task_handler.ts)
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import SessionQueueConfig
-
-queue_config = SessionQueueConfig()
-queue_config.enable_all_features = True
-
-session = agent.session("/my-project",
-    permissive=True,
-    queue_config=queue_config,
-)
-
-# Register external task handler
-def handle_task(task):
-    print(f"Worker received task: {task['id']}")
-    return {"success": True, "result": {"output": "task completed"}}
-
-session.set_external_task_handler(handle_task)
-```
-
-**Run:** `python examples/test_external_task_handler.py`
-**Source:** [`sdk/python/examples/test_external_task_handler.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_external_task_handler.py)
-</Tab>
-</Tabs>
-
-## Parallel Processing
-
-Distribute work across multiple sessions in parallel:
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const files = ['auth.rs', 'db.rs', 'handler.rs', 'config.rs'];
-
-const results = await Promise.all(
-  files.map(async (file) => {
-    const session = agent.session('/my-project', { permissive: true });
-    return await session.send(`Review ${file} for issues`);
-  })
-);
-
-results.forEach((r) => console.log(r.text));
-```
-
-**Run:** `node examples/test_parallel_processing.ts`
-**Source:** [`sdk/node/examples/test_parallel_processing.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_parallel_processing.ts)
-</Tab>
-<Tab value="Python">
-```python
-from concurrent.futures import ThreadPoolExecutor
-
-files = ["auth.rs", "db.rs", "handler.rs", "config.rs"]
-
-def review_file(file):
-    session = agent.session("/my-project", permissive=True)
-    return session.send(f"Review {file} for issues")
-
-with ThreadPoolExecutor() as executor:
-    results = list(executor.map(review_file, files))
-for r in results:
-    print(r.text)
-```
-
-**Run:** `python examples/test_parallel_processing.py`
-**Source:** [`sdk/python/examples/test_parallel_processing.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_parallel_processing.py)
-</Tab>
-</Tabs>
-
-## API Reference
-
-### LaneHandlerConfig
-
-<TypeTable
-  type={{
-    mode: { type: '"internal" | "external" | "hybrid"', description: 'Task execution mode' },
-    timeout_ms: { type: 'Option<u64>', description: 'Max wait time for external worker response' },
-  }}
-/>
-
-### ExternalTaskResult fields
-
-<TypeTable
-  type={{
-    success: { type: 'bool', description: 'Whether the task completed successfully' },
-    result: { type: 'Option<Value>', description: 'Task output payload' },
-    error: { type: 'Option<String>', description: 'Error message if `success` is `false`' },
-  }}
-/>
+External workers should return compact structured evidence, not raw logs only.

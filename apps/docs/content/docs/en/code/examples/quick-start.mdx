@@ -1,163 +1,33 @@
 ---
-title: Quick Start
-description: Basic send, streaming, and multi-turn conversation
+title: "Quick Start"
+description: "Create an ACL config and run a first session"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
 
 # Quick Start
 
-The simplest way to use A3S Code: create an agent, bind it to a workspace, and send a prompt.
+Create `agent.acl`:
 
-<Callout type="error">
-**IMPORTANT:** You must configure `permissive: true` in SessionOptions, or you'll get the error: "confirmation manager isn't configured". This allows tools to execute without manual confirmation. See [Security](/docs/code/security) for production configurations.
-</Callout>
+```text
+default_model = "openai/MiniMax-M2.7-highspeed"
 
-## Basic Send
+providers "openai" {
+  apiKey = env("A3S_OPENAI_API_KEY")
+  baseUrl = env("A3S_OPENAI_BASE_URL")
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
+  models "MiniMax-M2.7-highspeed" {
+    name = "MiniMax M2.7 Highspeed"
+    tool_call = true
+  }
+}
+```
+
+Run a session:
+
+```ts
 import { Agent } from '@a3s-lab/code';
 
-const agent = await Agent.create('~/.a3s/config.hcl');
-const session = agent.session('/my-project', { permissive: true });
-
-const result = await session.send('What files handle authentication?');
+const agent = await Agent.create('agent.acl');
+const session = agent.session(process.cwd(), { builtinSkills: true });
+const result = await session.send('Summarize the repository structure');
 console.log(result.text);
-console.log(`Tokens: ${result.totalTokens}`);
 ```
-
-**Run:** `node examples/agentic_loop_demo.ts`
-**Source:** [`sdk/node/examples/agentic_loop_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/agentic_loop_demo.ts)
-</Tab>
-<Tab value="Python">
-```python
-import a3s_code
-
-agent = a3s_code.Agent.create("~/.a3s/config.hcl")
-session = agent.session("/my-project", permissive=True)
-
-result = session.send("What files handle authentication?")
-print(result.text)
-print(f"Tokens: {result.total_tokens}")
-```
-
-**Run:** `python examples/agentic_loop_demo.py`
-**Source:** [`sdk/python/examples/agentic_loop_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/agentic_loop_demo.py)
-</Tab>
-</Tabs>
-
-## Multi-Turn Conversation
-
-History is automatically accumulated after each `send()` call.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', { permissive: true });
-
-const r1 = await session.send('Create a file called hello.rs');
-console.log('Turn 1:', r1.text);
-
-const r2 = await session.send('Now add a main function to it');
-console.log('Turn 2:', r2.text);
-
-const r3 = await session.send('Run it and show me the output');
-console.log('Turn 3:', r3.text);
-
-const history = session.history();
-console.log('Total messages:', history.length);
-```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/my-project", permissive=True)
-
-r1 = session.send("Create a file called hello.rs")
-print(f"Turn 1: {r1.text}")
-
-r2 = session.send("Now add a main function to it")
-print(f"Turn 2: {r2.text}")
-
-r3 = session.send("Run it and show me the output")
-print(f"Turn 3: {r3.text}")
-
-history = session.history()
-print(f"Total messages: {len(history)}")
-```
-</Tab>
-</Tabs>
-
-## Resilient Session
-
-Configure parse retries, tool timeout, and circuit breaker for production use.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
-  maxParseRetries: 3,
-  toolTimeoutMs: 30_000,
-  circuitBreakerThreshold: 5,
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/my-project",
-    permissive=True,
-    max_parse_retries=3,
-    tool_timeout_ms=30_000,
-    circuit_breaker_threshold=5,
-)
-```
-</Tab>
-</Tabs>
-
-<Callout type="warn">
-`permissive: true` skips HITL confirmation — suitable for demos and CI. In production, configure a [permission policy](/docs/code/security) instead.
-</Callout>
-
-## API Reference
-
-### SessionOptions
-
-<TypeTable
-  type={{
-    "Permissive policy": {
-      description: "Python: permissive=True · TypeScript: permissive: true · Default: false",
-    },
-    "Parse retries": {
-      description: "Python: max_parse_retries=n · TypeScript: maxParseRetries: n · Default: 3",
-    },
-    "Tool timeout": {
-      description: "Python: tool_timeout_ms=ms · TypeScript: toolTimeoutMs: ms · Default: 30000",
-    },
-    "Circuit breaker": {
-      description: "Python: circuit_breaker_threshold=n · TypeScript: circuitBreakerThreshold: n · Default: 5",
-    },
-  }}
-/>
-
-### AgentResponse
-
-<TypeTable
-  type={{
-    "Final text": {
-      description: "Python: result.text · TypeScript: result.text",
-    },
-    "Total tokens": {
-      description: "Python: result.total_tokens · TypeScript: result.totalTokens",
-    },
-    "Tool call count": {
-      description: "Python: result.tool_calls_count · TypeScript: result.toolCallsCount",
-    },
-    "History": {
-      description: "Python: session.history() · TypeScript: session.history()",
-    },
-  }}
-/>

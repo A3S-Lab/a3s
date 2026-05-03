@@ -1,129 +1,17 @@
 ---
-title: Auto-Compact
-description: Automatic context window compaction when token usage exceeds threshold
+title: "Auto Compact"
+description: "Keep long sessions inside context budget"
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
+# Auto Compact
 
-# Auto-Compact
-
-When a session's context window fills up, auto-compact automatically:
-1. Prunes old large tool outputs (cheap, no LLM call)
-2. Summarizes old conversation turns via LLM (if still over threshold)
-
-This keeps long-running sessions alive without manual intervention.
-
-<Callout type="info">
-Auto-compact triggers when `used_tokens / max_tokens >= threshold`. Default threshold: 80%.
-</Callout>
-
-## Enable Auto-Compact
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
+```ts
+const session = agent.session('/repo', {
   autoCompact: true,
-  autoCompactThreshold: 0.80,
+  autoCompactThreshold: 0.75,
+  continuationEnabled: true,
+  maxContinuationTurns: 3,
 });
-
-// Long-running conversation — context is compacted automatically
-for (let i = 0; i < 20; i++) {
-  const result = await session.send(`Step ${i}: analyze the next module`);
-  console.log(`Step ${i}: ${result.usage.totalTokens} tokens`);
-}
 ```
 
-**Run:** `node examples/test_advanced_features.ts`
-**Source:** [`sdk/node/examples/test_advanced_features.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.ts)
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import SessionOptions
-
-opts = SessionOptions()
-opts.auto_compact = True
-opts.auto_compact_threshold = 0.80
-
-session = agent.session("/my-project", options=opts)
-
-# Long-running conversation — context is compacted automatically
-for i in range(20):
-    result = session.send(f"Step {i}: analyze the next module")
-    print(f"Step {i}: {result.usage.total_tokens} tokens")
-```
-
-**Run:** `python examples/test_advanced_features.py`
-**Source:** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
-</Tab>
-</Tabs>
-
-## How It Works
-
-```
-After each LLM turn:
-  1. Check: used_tokens / max_tokens >= threshold?
-  2. If yes → prune old large tool outputs (no LLM call)
-  3. If still over threshold → summarize old messages via LLM
-  4. Emit ContextCompacted event
-```
-
-Tool outputs older than the most recent 40k tokens are replaced with:
-```
-[output pruned — re-read file or re-run command if needed]
-```
-
-The LLM summarization keeps the first 2 messages (system context), a summary of old turns, and the last 20 messages intact.
-
-## Compaction Event
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-while (true) {
-  const { value, done } = await stream.next();
-  if (done || !value) break;
-  if (value.type === 'context_compacted') {
-    console.log(`Compacted: ${value.messagesBefore} → ${value.messagesAfter} messages`);
-  } else if (value.type === 'end') break;
-}
-```
-</Tab>
-<Tab value="Python">
-```python
-for event in session.stream("Long task..."):
-    if event.get("type") == "context_compacted":
-        print(f"Compacted: {event['messages_before']} → {event['messages_after']} messages")
-    elif event.get("type") == "end":
-        break
-```
-</Tab>
-</Tabs>
-
-## API Reference
-
-### SessionOptions
-
-<TypeTable
-  type={{
-    "Enable auto-compact": {
-      description: "Python: auto_compact=True · TypeScript: autoCompact: true · Default: false",
-    },
-    "Threshold (0.0–1.0)": {
-      description: "Python: auto_compact_threshold=f · TypeScript: autoCompactThreshold: f · Default: 0.8",
-    },
-  }}
-/>
-
-### ContextCompacted Event
-
-<TypeTable
-  type={{
-    messages_before: { type: 'usize', description: 'Message count before compaction. Python: `messages_before`, TypeScript: `messagesBefore`' },
-    messages_after: { type: 'usize', description: 'Message count after compaction. Python: `messages_after`, TypeScript: `messagesAfter`' },
-    tokens_saved: { type: 'usize', description: 'Approximate tokens freed. Python: `tokens_saved`, TypeScript: `tokensSaved`' },
-  }}
-/>
+Compaction preserves decisions and evidence while removing incidental transcript text.

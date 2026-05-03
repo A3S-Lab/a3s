@@ -1,217 +1,32 @@
 ---
-title: 任务
-description: 统一任务系统：规划、追踪和并行执行
+title: "任务"
+description: "使用 task 与 parallel_task 进行常规委派"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 # 任务
 
-A3S Code 提供统一的任务系统，支持 LLM 驱动的规划、目标追踪和并行执行。任务系统将复杂请求分解为结构化的执行计划。
+v2.1.0 的常规多智能体路径是 `task` 和 `parallel_task`，旧的公开 Team Runner API 不再使用。
 
-<Callout type="info">
-**核心功能：** LLM 规划器 | Wave 调度器 | 目标追踪 | 依赖图 | 并行执行
-</Callout>
+`task` 适合单个有边界的子任务，`parallel_task` 适合互相独立的并行 lane。委派子运行应返回摘要、检查/修改过的文件、证据引用、风险、置信度和 trace 引用，不应把完整 transcript 注入父 agent。
 
-## 概述
+宿主已经知道任务边界时，可以直接调用 SDK helper：
 
-当启用规划时，Agent 会：
-
-<Steps>
-<Step>**LlmPlanner** 将任务分解为带依赖关系的步骤</Step>
-<Step>**WaveScheduler** 将独立步骤分组为 wave</Step>
-<Step>每个 wave 通过 `tokio::JoinSet` 并行执行</Step>
-<Step>依赖步骤等待其前置步骤完成</Step>
-</Steps>
-
-```
-Wave 1: [分析认证模块] + [分析数据库 schema]  ← 并行
-Wave 2: [实现 JWT 集成]                       ← 等待 wave 1
-Wave 3: [编写测试]                             ← 等待 wave 2
-```
-
-## 启用规划
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const agent = await Agent.create('agent.hcl');
-
-const session = agent.session('/project', {
-  planning: true,
+```ts
+await session.delegateTask({
+  agent: 'explore',
+  description: '检查认证模块',
+  prompt: '返回检查过的文件、发现、风险和置信度。',
 });
 
-const result = await session.send('Refactor the auth module to use JWT');
-```
-</Tab>
-<Tab value="Python">
-```python
-agent = Agent.create("agent.hcl")
-
-session = agent.session("/project", planning=True)
-
-result = session.send("Refactor the auth module to use JWT")
-```
-</Tab>
-</Tabs>
-
-## 目标追踪
-
-启用目标追踪后，Agent 会维护一个任务列表并在流式事件中报告进度：
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/project', {
-  planning: true,
-  goalTracking: true,
-});
-
-const stream = await session.stream('Build a REST API with auth');
-while (true) {
-  const { value, done } = await stream.next();
-  if (done || !value) break;
-  if (value.type === 'task_updated') {
-    for (const task of value.tasks) {
-      const icon = { pending: '⏳', in_progress: '🔄', completed: '✅', failed: '❌' }[task.status];
-      console.log(`${icon} ${task.description}`);
-    }
-  }
-}
-```
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/project", planning=True, goal_tracking=True)
-
-for event in session.stream("Build a REST API with auth"):
-    if event.event_type == "task_updated":
-        for task in event.tasks:
-            icons = {"pending": "⏳", "in_progress": "🔄", "completed": "✅", "failed": "❌"}
-            print(f"{icons[task.status]} {task.description}")
-```
-</Tab>
-</Tabs>
-
-## 执行计划结构
-
-LlmPlanner 生成 JSON 结构化的执行计划：
-
-```json
-{
-  "steps": [
-    {
-      "id": "step-1",
-      "description": "Analyze current auth implementation",
-      "dependencies": [],
-      "tools": ["read", "grep", "glob"]
-    },
-    {
-      "id": "step-2",
-      "description": "Analyze database schema",
-      "dependencies": [],
-      "tools": ["read", "grep"]
-    },
-    {
-      "id": "step-3",
-      "description": "Implement JWT middleware",
-      "dependencies": ["step-1", "step-2"],
-      "tools": ["write", "edit"]
-    },
-    {
-      "id": "step-4",
-      "description": "Write integration tests",
-      "dependencies": ["step-3"],
-      "tools": ["write", "bash"]
-    }
-  ]
-}
+await session.parallelTask([
+  { agent: 'explore', description: '检查配置', prompt: '检查 provider 解析。' },
+  { agent: 'verification', description: '验证 SDK', prompt: '检查 SDK 声明。' },
+]);
 ```
 
-## Wave 调度
-
-WaveScheduler 将独立步骤分组为 wave 并行执行：
-
-```
-依赖图:
-  step-1 ──┐
-            ├──→ step-3 ──→ step-4
-  step-2 ──┘
-
-Wave 分组:
-  Wave 1: [step-1, step-2]  ← 无依赖，并行执行
-  Wave 2: [step-3]          ← 依赖 step-1 和 step-2
-  Wave 3: [step-4]          ← 依赖 step-3
+```ts
+const session = agent.session('/repo', { agentDirs: ['./agents'] });
+session.registerAgentDir('./more-agents');
 ```
 
-每个 wave 中的步骤通过 `tokio::JoinSet` 并行执行。
-
-## TaskStatus
-
-<TypeTable
-  type={{
-    "Pending": {
-      description: "等待执行",
-    },
-    "InProgress": {
-      description: "正在执行",
-    },
-    "Completed": {
-      description: "执行成功",
-    },
-    "Failed": {
-      description: "执行失败",
-    },
-  }}
-/>
-
-## 事件
-
-任务相关的流式事件：
-
-<TypeTable
-  type={{
-    "TaskUpdated": {
-      description: "任务列表变更（新增、状态更新）",
-    },
-  }}
-/>
-
-参见 [会话](/cn/docs/code/sessions) 获取完整事件参考。
-
-## API 参考
-
-### SessionOptions
-
-<TypeTable
-  type={{
-    "规划": {
-      description: "Python: planning=True · TypeScript: planning: true · 默认值: false",
-    },
-    "目标追踪": {
-      description: "Python: goal_tracking=True · TypeScript: goalTracking: true · 默认值: false",
-    },
-  }}
-/>
-
-### TaskInfo
-
-<TypeTable
-  type={{
-    "id": {
-      description: "类型: String · 描述: 任务唯一标识",
-    },
-    "description": {
-      description: "类型: String · 描述: 任务描述",
-    },
-    "status": {
-      description: "类型: TaskStatus · 描述: 当前状态",
-    },
-    "dependencies": {
-      description: "类型: Vec<String> · 描述: 前置任务 ID 列表",
-    },
-  }}
-/>
+常规团队协作请优先用 `task` / `parallel_task`。旧生命周期控制面 API 已移除；需要 UI 状态时，应用应消费 streaming events、run replay，以及 `cancelRun(runId)` / `cancel_run(run_id)`。

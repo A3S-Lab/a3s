@@ -1,309 +1,38 @@
 ---
-title: Commands & Scheduling
-description: Slash commands, BTW ephemeral queries, and recurring scheduled tasks
+title: "Commands"
+description: "Command surfaces and recommended v2.1.0 control flows"
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
+# Commands
 
-# Commands & Scheduling
+A3S Code is primarily SDK-driven in v2.1.0. Product CLIs and UIs usually map commands to session APIs rather than depending on legacy public lifecycle commands.
 
-Sessions intercept special inputs before the LLM sees them. This covers three related capabilities: slash commands for session control, `btw()` for ephemeral side questions, and the scheduler for recurring prompts.
+## Recommended Mappings
 
-## Slash Commands
+| User action | Session API |
+| --- | --- |
+| Send a prompt | `session.send(prompt)` |
+| Stream a prompt | `session.stream(prompt)` |
+| Ask a side question | `session.btw(question)` |
+| Run a deterministic tool | `session.tool(name, args)` |
+| Read history | `session.history()` |
+| Save state | `session.save()` |
+| Resume state | `agent.resumeSession(id, options)` |
+| Inspect tools | `session.toolNames()` / `session.toolDefinitions()` |
+| Verify work | `session.verifyCommands(subject, commands)` |
+| Replay run state | `session.runs()` / `session.runEvents(runId)` |
+| Cancel active work | `session.currentRun()` / `session.cancelRun(runId)` |
 
-Type `/help` in any session to list all available commands. Commands are intercepted before the LLM — they execute instantly and do not add a turn to conversation history.
+## Building Slash Commands
 
-| Command | Description |
-|---------|-------------|
-| `/help` | List available commands |
-| `/model [provider/model]` | Show or switch the current model |
-| `/cost` | Show token usage and estimated cost |
-| `/history` | Show conversation turn count and token stats |
-| `/clear` | Clear conversation history |
-| `/compact` | Manually trigger context compaction |
-| `/tools` | List registered tools |
-| `/mcp` | List connected MCP servers and their tools |
-| `/loop [interval] <prompt>` | Schedule a recurring prompt (default interval: 10m) |
-| `/cron-list` | List all scheduled recurring prompts |
-| `/cron-cancel <id>` | Cancel a scheduled task by ID |
+If your app exposes slash commands, keep them thin:
 
-### List All Commands (SDK)
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const commands = session.listCommands();
-for (const cmd of commands) {
-  const usage = cmd.usage ? `  usage: ${cmd.usage}` : '';
-  console.log(`/${cmd.name.padEnd(15)} ${cmd.description}${usage}`);
+```ts
+if (input === '/tools') console.log(session.toolNames());
+if (input === '/tool-schemas') console.log(session.toolDefinitions());
+if (input === '/verify') {
+  await session.verifyCommands('current task', session.verificationPresets());
 }
 ```
-</Tab>
-<Tab value="Python">
-```python
-commands = session.list_commands()
-for cmd in commands:
-    usage = f"  usage: {cmd['usage']}" if cmd.get('usage') else ''
-    print(f"/{cmd['name']:15s} {cmd['description']}{usage}")
-```
-</Tab>
-</Tabs>
 
-### Custom Commands
-
-Register custom slash commands handled before the LLM:
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-function statusHandler(args: string, ctx: CommandContext): string {
-  console.log(`Model: ${ctx.model}, History: ${ctx.historyLen} msgs, args: ${args}`);
-  return `Status: OK`;
-}
-
-session.registerCommand("status", "Show session status", statusHandler);
-
-const result = await session.send("/status hello");
-console.log(result.text);
-// Command 'status' executed successfully
-```
-
-The handler receives:
-- `args` — string with everything after the command name
-- `ctx` — object with `sessionId`, `model`, `historyLen`, `totalTokens`, `totalCost`, `toolNames`, and `mcpServers`
-
-<Callout type="warn">
-Due to napi-rs limitations, the return value from the handler function is not currently captured. Use `console.log()` or other side effects in your handler. Future versions will support return value capture.
-</Callout>
-
-</Tab>
-<Tab value="Python">
-```python
-def status_handler(args: str, ctx: dict) -> str:
-    return (
-        f"Model: {ctx['model']}, "
-        f"History: {ctx['history_len']} msgs, "
-        f"args: {args!r}"
-    )
-
-session.register_command("status", "Show session status", status_handler)
-
-result = session.send("/status hello")
-print(result.text)
-# Model: openai/gpt-4o, History: 2 msgs, args: 'hello'
-```
-
-The handler receives:
-- `args` — string with everything after the command name
-- `ctx` — dict with `session_id`, `model`, and `history_len`
-
-</Tab>
-</Tabs>
-
----
-
-## BTW — Ephemeral Side Questions
-
-The `btw()` method lets you ask side questions without affecting conversation history. Useful for quick lookups, clarifications, or context checks that shouldn't be part of the main task flow.
-
-<Callout type="info">
-**Key properties:**
-- Questions and answers are never added to conversation history
-- Uses a read-only snapshot of current history for context
-- Safe to call concurrently with ongoing `send()` or `stream()` operations
-- No tool execution — answers are based on LLM knowledge + current context only
-- Returns immediately with answer and token usage
-</Callout>
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Main conversation
-const result = await session.send('Explain the authentication system');
-console.log(result.text);
-
-// Quick side question (not added to history)
-const btw = await session.btw('What is the capital of France?');
-console.log(btw.answer);        // "Paris"
-console.log(btw.totalTokens);   // token usage for this query
-
-// Continue main conversation — btw question is not in history
-const result2 = await session.send('Show me the login code');
-```
-</Tab>
-<Tab value="Python">
-```python
-# Main conversation
-result = session.send("Explain the authentication system")
-print(result.text)
-
-# Quick side question (not added to history)
-btw = session.btw("What is the capital of France?")
-print(btw.answer)        # "Paris"
-print(btw.total_tokens)  # token usage for this query
-
-# Continue main conversation — btw question is not in history
-result2 = session.send("Show me the login code")
-```
-</Tab>
-</Tabs>
-
-### BtwResult
-
-<TypeTable
-  type={{
-    question: {
-      type: 'string',
-      description: 'The original question asked',
-    },
-    answer: {
-      type: 'string',
-      description: "The LLM's answer to the question",
-    },
-    prompt_tokens: {
-      type: 'number',
-      description: 'Number of tokens in the prompt (TS: `promptTokens`, Python: `prompt_tokens`)',
-    },
-    completion_tokens: {
-      type: 'number',
-      description: 'Number of tokens in the completion (TS: `completionTokens`, Python: `completion_tokens`)',
-    },
-    total_tokens: {
-      type: 'number',
-      description: 'Total tokens used (TS: `totalTokens`, Python: `total_tokens`)',
-    },
-  }}
-/>
-
-### Use Cases
-
-- **Quick lookups**: "What's the syntax for X in language Y?"
-- **Clarifications**: "What does this error code mean?"
-- **Context checks**: "What files are in the current directory?"
-- **Side calculations**: "What's 15% of 1000?"
-- **General knowledge**: Questions unrelated to the main task
-
----
-
-## Scheduled Tasks
-
-Sessions support recurring prompts via the `/loop` slash command or the programmatic scheduler API. Scheduled tasks fire after each `send()` call when their interval has elapsed. The background ticker starts lazily on the first `send()` and stops automatically when the session is dropped.
-
-<Callout type="info">
-**Limits:** Max 50 scheduled tasks per session. Tasks auto-expire after 3 days. A reentrance guard prevents nested firing.
-</Callout>
-
-### Schedule a Recurring Prompt
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Via /loop slash command
-const r = await session.send('/loop 30s check deployment status');
-console.log(r.text);
-// Scheduled [a1b2c3d4]: "check deployment status" — fires every 30s
-
-// Programmatic (interval in seconds)
-const taskId = session.scheduleTask('summarize recent commits', 300);  // every 5 min
-console.log(`Scheduled: ${taskId}`);
-```
-</Tab>
-<Tab value="Python">
-```python
-# Via /loop slash command
-r = session.send('/loop 30s check deployment status')
-print(r.text)
-# Scheduled [a1b2c3d4]: "check deployment status" — fires every 30s
-
-# Programmatic (interval in seconds)
-task_id = session.schedule_task('summarize recent commits', 300)  # every 5 min
-print(f'Scheduled: {task_id}')
-```
-</Tab>
-</Tabs>
-
-**Interval syntax:**
-
-| Format | Example | Meaning |
-|--------|---------|---------|
-| Seconds | `30s` | Every 30 seconds |
-| Minutes | `5m` | Every 5 minutes |
-| Hours | `2h` | Every 2 hours |
-| Days | `1d` | Every day |
-| Leading | `/loop 5m <prompt>` | Interval before the prompt |
-| Trailing | `/loop <prompt> every 5m` | `every` clause at end |
-| Default | `/loop <prompt>` | Every 10 minutes |
-
-### List Scheduled Tasks
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Programmatic
-const tasks = session.listScheduledTasks();
-for (const t of tasks) {
-  console.log(`[${t.id}] every ${t.intervalSecs}s — fires in ${t.nextFireInSecs}s — "${t.prompt}"`);
-}
-
-// Via slash command
-const r = await session.send('/cron-list');
-console.log(r.text);
-```
-</Tab>
-<Tab value="Python">
-```python
-# Programmatic
-tasks = session.list_scheduled_tasks()
-for t in tasks:
-    print(f"[{t['id']}] every {t['interval_secs']}s "
-          f"— fires in {t['next_fire_in_secs']}s "
-          f"— \"{t['prompt']}\"")
-
-# Via slash command
-r = session.send('/cron-list')
-print(r.text)
-```
-</Tab>
-</Tabs>
-
-### Cancel a Scheduled Task
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Programmatic
-const ok = session.cancelScheduledTask(taskId);
-console.log(`Cancelled: ${ok}`);  // true
-
-// Via slash command
-const r = await session.send(`/cron-cancel ${taskId}`);
-console.log(r.text);  // Cancelled task [a1b2c3d4]
-```
-</Tab>
-<Tab value="Python">
-```python
-# Programmatic
-ok = session.cancel_scheduled_task(task_id)
-print(f'Cancelled: {ok}')  # True
-
-# Via slash command
-r = session.send(f'/cron-cancel {task_id}')
-print(r.text)  # Cancelled task [a1b2c3d4]
-```
-</Tab>
-</Tabs>
-
-### ScheduledTaskInfo Fields
-
-<TypeTable
-  type={{
-    id: { type: 'string', description: 'Unique 8-char task ID (hex)' },
-    prompt: { type: 'string', description: 'Prompt executed on each fire' },
-    interval_secs: { type: 'number', description: 'Fire interval in seconds' },
-    recurring: { type: 'bool', description: 'true = recurring, false = one-shot' },
-    fire_count: { type: 'number', description: 'Total number of times fired' },
-    next_fire_in_secs: { type: 'number', description: 'Estimated seconds until next fire' },
-  }}
-/>
+Avoid hidden loops or background schedulers. Make recurring automation explicit in your host application so it can be audited and cancelled.

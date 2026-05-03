@@ -1,167 +1,20 @@
 ---
-title: 外部任务
-description: 使用外部任务处理器的多机器协调者/Worker 模式
+title: "外部任务"
+description: "从 agent 进程外完成工作"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
 
 # 外部任务
 
-外部任务处理支持协调者/worker 模式，将任务分发到远程 worker 而非本地执行。这是多机器 A3S Code 部署的基础。
+```ts
+const pending = await session.pendingExternalTasks();
 
-<Callout type="info">
-完整的多机器架构指南，请参阅[多机器分布](/cn/docs/code/multi-machine)。
-</Callout>
-
-## 处理器模式
-
-<TypeTable
-  type={{
-    "Internal": {
-      description: "任务在进程内执行（默认）",
-    },
-    "External": {
-      description: "任务分发到外部 worker",
-    },
-    "Hybrid": {
-      description: "先尝试外部，失败后回退到内部",
-    },
-  }}
-/>
-
-## 基本外部处理器
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
-  queueConfig: { enableAllFeatures: true },
-});
-
-// 注册外部任务处理器
-session.setExternalTaskHandler(async (task) => {
-  console.log(`Worker received task: ${task.id}`);
-  return { success: true, result: { output: 'task completed' } };
+await session.completeExternalTask(pending[0].id, {
+  success: true,
+  result: {
+    summary: 'worker 已完成测试运行',
+    command: 'npm run build',
+  },
 });
 ```
 
-**运行：** `node examples/test_external_task_handler.ts`
-**源码：** [`sdk/node/examples/test_external_task_handler.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_external_task_handler.ts)
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import SessionQueueConfig
-
-queue_config = SessionQueueConfig()
-queue_config.enable_all_features = True
-
-session = agent.session("/my-project",
-    permissive=True,
-    queue_config=queue_config,
-)
-
-# 注册外部任务处理器
-def handle_task(task):
-    print(f"Worker received task: {task['id']}")
-    return {"success": True, "result": {"output": "task completed"}}
-
-session.set_external_task_handler(handle_task)
-```
-
-**运行：** `python examples/test_external_task_handler.py`
-**源码：** [`sdk/python/examples/test_external_task_handler.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_external_task_handler.py)
-</Tab>
-</Tabs>
-
-## 并行处理
-
-将工作分布到多个并行会话：
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const files = ['auth.rs', 'db.rs', 'handler.rs', 'config.rs'];
-
-const results = await Promise.all(
-  files.map(async (file) => {
-    const session = agent.session('/my-project', { permissive: true });
-    return await session.send(`Review ${file} for issues`);
-  })
-);
-
-results.forEach((r) => console.log(r.text));
-```
-
-**运行：** `node examples/test_parallel_processing.ts`
-**源码：** [`sdk/node/examples/test_parallel_processing.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_parallel_processing.ts)
-</Tab>
-<Tab value="Python">
-```python
-from concurrent.futures import ThreadPoolExecutor
-
-files = ["auth.rs", "db.rs", "handler.rs", "config.rs"]
-
-def review_file(file):
-    session = agent.session("/my-project", permissive=True)
-    return session.send(f"Review {file} for issues")
-
-with ThreadPoolExecutor() as executor:
-    results = list(executor.map(review_file, files))
-for r in results:
-    print(r.text)
-```
-
-**运行：** `python examples/test_parallel_processing.py`
-**源码：** [`sdk/python/examples/test_parallel_processing.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_parallel_processing.py)
-</Tab>
-</Tabs>
-
-## API 参考
-
-### LaneHandlerConfig
-
-<TypeTable
-  type={{
-    "mode": {
-      description: "类型: 'internal'  · 描述: 'external'",
-    },
-    "timeout_ms": {
-      description: "类型: Option<u64> · 描述: 等待外部 worker 响应的最大时间",
-    },
-  }}
-/>
-
-### 外部任务方法
-
-<TypeTable
-  type={{
-    "设置处理器": {
-      description: "Python: session.set_external_task_handler(fn) · TypeScript: session.setExternalTaskHandler(fn)",
-    },
-    "轮询待处理": {
-      description: "Python: session.pending_external_tasks() · TypeScript: await session.pendingExternalTasks()",
-    },
-    "完成任务": {
-      description: "Python: session.complete_external_task(id, result) · TypeScript: await session.completeExternalTask(id, result)",
-    },
-  }}
-/>
-
-### ExternalTaskResult 字段
-
-<TypeTable
-  type={{
-    "success": {
-      description: "类型: bool · 描述: 任务是否成功完成",
-    },
-    "result": {
-      description: "类型: Option<Value> · 描述: 任务输出载荷",
-    },
-    "error": {
-      description: "类型: Option<String> · 描述: success 为 false 时的错误消息",
-    },
-  }}
-/>
+外部 worker 应返回紧凑的结构化证据，而不是只有原始日志。

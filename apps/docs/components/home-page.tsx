@@ -5,9 +5,7 @@ import {
   Box,
   Cpu,
   Globe,
-  Shield,
   Layers,
-  Radio,
   Search,
   Database,
   Github,
@@ -42,11 +40,6 @@ const t = {
         body: 'Every agent runs inside a MicroVM backed by AMD SEV-SNP or Intel TDX. The host cannot read agent memory. Attestation is built in, not bolted on.',
       },
       {
-        icon: Shield,
-        title: 'Privacy-aware at every layer',
-        body: 'SafeClaw classifies PII, tracks data taint through tool calls, detects prompt injection, and audits every interaction — before it reaches the LLM.',
-      },
-      {
         icon: Zap,
         title: 'Production-grade performance',
         body: 'Lane delivers 33k–50k ops/sec priority scheduling. Box cold-starts VMs in ~200ms. Power runs local LLMs with RA-TLS attestation. All in pure Rust.',
@@ -54,7 +47,7 @@ const t = {
       {
         icon: Puzzle,
         title: 'Composable, not monolithic',
-        body: 'Use Code standalone, add Box for isolation, plug in SafeClaw for security. Every module has a trait interface — swap any piece without touching the rest.',
+        body: 'Use Code standalone, add Box for isolation, and compose only the modules you need. Every module has a trait interface — swap any piece without touching the rest.',
       },
     ],
 
@@ -92,11 +85,6 @@ const t = {
         body: '每个 Agent 运行在由 AMD SEV-SNP 或 Intel TDX 支持的 MicroVM 中。宿主机无法读取 Agent 内存，远程证明内置而非外挂。',
       },
       {
-        icon: Shield,
-        title: '每一层都感知隐私',
-        body: 'SafeClaw 对 PII 分类、追踪工具调用中的数据污点、检测提示词注入，并在数据到达 LLM 之前审计每次交互。',
-      },
-      {
         icon: Zap,
         title: '生产级性能',
         body: 'Lane 提供 33k–50k ops/sec 优先级调度，Box VM 冷启动约 200ms，Power 支持带 RA-TLS 证明的本地 LLM 推理，全部纯 Rust 实现。',
@@ -104,7 +92,7 @@ const t = {
       {
         icon: Puzzle,
         title: '可组合，非单体',
-        body: '单独使用 Code，加入 Box 获得隔离，接入 SafeClaw 增强安全。每个模块都有 trait 接口——替换任意组件无需改动其余部分。',
+        body: '单独使用 Code，加入 Box 获得隔离，只组合当前需要的模块。每个模块都有 trait 接口——替换任意组件无需改动其余部分。',
       },
     ],
 
@@ -138,8 +126,8 @@ function getModules(lang: Lang) {
       tag: lang === 'cn' ? 'Agent 框架' : 'Agent Framework',
       description:
         lang === 'cn'
-          ? '可嵌入的 AI 编程 Agent 库 — 多会话、12 个内置工具、技能、子 Agent、规划、Hooks、MCP。'
-          : 'Embeddable AI coding agent library — multi-session, 12 built-in tools, skills, subagents, planning, hooks, MCP.',
+          ? 'v2.0 驾驭式编程 Agent 运行时 — ACL 配置、PTC、task / parallel_task、AHP 2.3、验证证据、Hooks、MCP。'
+          : 'v2.0 harness-driven coding agent runtime — ACL config, PTC, task / parallel_task, AHP 2.3, verification evidence, hooks, MCP.',
       href: `${base}/docs/code`,
       icon: Bot,
       lightColor: 'bg-indigo-50 text-indigo-600',
@@ -184,18 +172,6 @@ function getModules(lang: Lang) {
       lightColor: 'bg-sky-50 text-sky-600',
       darkColor: 'dark:bg-sky-900/40 dark:text-sky-400',
     },
-    {
-      name: 'SafeClaw',
-      tag: lang === 'cn' ? '安全代理' : 'Security Proxy',
-      description:
-        lang === 'cn'
-          ? 'PII 分类、污点追踪、注入检测、合规审计（HIPAA / PCI-DSS / GDPR）。'
-          : 'PII classification, taint tracking, injection detection, compliance audit (HIPAA / PCI-DSS / GDPR).',
-      href: `${base}/docs/safeclaw`,
-      icon: Shield,
-      lightColor: 'bg-rose-50 text-rose-600',
-      darkColor: 'dark:bg-rose-900/40 dark:text-rose-400',
-    },
   ];
 
   const libraries = [
@@ -210,18 +186,6 @@ function getModules(lang: Lang) {
       icon: Layers,
       lightColor: 'bg-amber-50 text-amber-600',
       darkColor: 'dark:bg-amber-900/40 dark:text-amber-400',
-    },
-    {
-      name: 'Event',
-      tag: lang === 'cn' ? '发布/订阅' : 'Pub/Sub',
-      description:
-        lang === 'cn'
-          ? '可插拔事件总线 — NATS JetStream + 内存模式、Schema 校验、AES-256-GCM 加密。'
-          : 'Pluggable event bus — NATS JetStream + in-memory, schema validation, AES-256-GCM encryption.',
-      href: `${base}/docs/event`,
-      icon: Radio,
-      lightColor: 'bg-pink-50 text-pink-600',
-      darkColor: 'dark:bg-pink-900/40 dark:text-pink-400',
     },
     {
       name: 'Search',

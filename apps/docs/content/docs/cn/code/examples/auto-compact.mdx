@@ -1,135 +1,17 @@
 ---
-title: 自动压缩
-description: 当 token 使用量超过阈值时自动压缩上下文窗口
+title: "自动压缩"
+description: "让长 session 保持在上下文预算内"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
 
 # 自动压缩
 
-当会话的上下文窗口填满时，自动压缩会自动：
-1. 裁剪旧的大型工具输出（低成本，无需 LLM 调用）
-2. 通过 LLM 总结旧的对话轮次（如果仍超过阈值）
-
-这使长时间运行的会话无需手动干预即可保持活跃。
-
-<Callout type="info">
-自动压缩在 `used_tokens / max_tokens >= threshold` 时触发。默认阈值：80%。
-</Callout>
-
-## 启用自动压缩
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  permissive: true,
+```ts
+const session = agent.session('/repo', {
   autoCompact: true,
-  autoCompactThreshold: 0.80,
+  autoCompactThreshold: 0.75,
+  continuationEnabled: true,
+  maxContinuationTurns: 3,
 });
-
-// 长时间对话 — 上下文自动压缩
-for (let i = 0; i < 20; i++) {
-  const result = await session.send(`Step ${i}: analyze the next module`);
-  console.log(`Step ${i}: ${result.usage.totalTokens} tokens`);
-}
 ```
 
-**运行：** `node examples/test_advanced_features.ts`
-**源码：** [`sdk/node/examples/test_advanced_features.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/test_advanced_features.ts)
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import SessionOptions
-
-opts = SessionOptions()
-opts.auto_compact = True
-opts.auto_compact_threshold = 0.80
-
-session = agent.session("/my-project", options=opts)
-
-# 长时间对话 — 上下文自动压缩
-for i in range(20):
-    result = session.send(f"Step {i}: analyze the next module")
-    print(f"Step {i}: {result.usage.total_tokens} tokens")
-```
-
-**运行：** `python examples/test_advanced_features.py`
-**源码：** [`sdk/python/examples/test_advanced_features.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/test_advanced_features.py)
-</Tab>
-</Tabs>
-
-## 工作原理
-
-```
-每个 LLM 轮次后：
-  1. 检查：used_tokens / max_tokens >= threshold？
-  2. 如果是 → 裁剪旧的大型工具输出（无需 LLM 调用）
-  3. 如果仍超过阈值 → 通过 LLM 总结旧消息
-  4. 发出 ContextCompacted 事件
-```
-
-超过最近 40k token 的工具输出会被替换为：
-```
-[output pruned — re-read file or re-run command if needed]
-```
-
-LLM 总结保留前 2 条消息（系统上下文）、旧轮次的摘要以及最后 20 条消息。
-
-## 压缩事件
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-while (true) {
-  const { value, done } = await stream.next();
-  if (done || !value) break;
-  if (value.type === 'context_compacted') {
-    console.log(`Compacted: ${value.messagesBefore} → ${value.messagesAfter} messages`);
-  } else if (value.type === 'end') break;
-}
-```
-</Tab>
-<Tab value="Python">
-```python
-for event in session.stream("Long task..."):
-    if event.get("type") == "context_compacted":
-        print(f"Compacted: {event['messages_before']} → {event['messages_after']} messages")
-    elif event.get("type") == "end":
-        break
-```
-</Tab>
-</Tabs>
-
-## API 参考
-
-### SessionOptions
-
-<TypeTable
-  type={{
-    "启用自动压缩": {
-      description: "Python: auto_compact=True · TypeScript: autoCompact: true · 默认值: false",
-    },
-    "阈值（0.0–1.0）": {
-      description: "Python: auto_compact_threshold=f · TypeScript: autoCompactThreshold: f · 默认值: 0.8",
-    },
-  }}
-/>
-
-### ContextCompacted 事件
-
-<TypeTable
-  type={{
-    "压缩前消息数": {
-      description: "Python/TypeScript: messages_before / messagesBefore · 描述: 压缩前的消息数量",
-    },
-    "压缩后消息数": {
-      description: "Python/TypeScript: messages_after / messagesAfter · 描述: 压缩后的消息数量",
-    },
-    "节省的 token": {
-      description: "Python/TypeScript: tokens_saved / tokensSaved · 描述: 大约释放的 token 数",
-    },
-  }}
-/>
+压缩会保留决策和证据，同时移除偶然产生的 transcript 文本。

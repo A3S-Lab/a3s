@@ -1,195 +1,122 @@
 ---
-title: A3S Code
-description: 用于构建Agentic AI 应用的 Rust 框架，原生支持 Node.js 和 Python 绑定
+title: "A3S Code"
+description: "面向 Rust、Node.js 和 Python 的驾驭式编程智能体运行时"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 # A3S Code
 
-**意图驱动的 AI 编程智能体框架** — A3S Code 为 LLM 提供工作区、工具和记忆，然后使用**意图检测**和**上下文感知**在正确的时机注入正确的上下文。将能够读写、执行代码的智能体嵌入任意应用，原生支持 Node.js 和 Python 绑定。
+A3S Code v2.1.0 是一个驾驭式编程智能体运行时。模型负责推理；驾驭层负责上下文、工具可见性、权限、执行、验证证据、追踪、产物和压缩。
 
-<Callout type="info">
-**扩展点：** 20 个基于 trait 的扩展点 | **内置工具：** 15 个 | **内置 Skills：** 7 个 | **AHP 驾驭点：** 18 个
-</Callout>
+## v2.1.0 新特性
 
-## 为什么选择 A3S Code？
+| 领域 | v2.1.0 新内容 |
+| --- | --- |
+| 配置 | 只支持 ACL 配置，使用带标签的 `providers` 和 `models` 块；`env(...)` 是标准凭证注入方式。 |
+| Provider smoke | 真实 OpenAI 兼容 provider 检查支持 `A3S_OPENAI_*`，也支持 MiniMax 别名 `MINIMAX_API_KEY` / `MINIMAX_BASE_URL`。 |
+| 委派 | `task` 和 `parallel_task` 是默认多运行路径，委派子运行返回紧凑摘要而不是完整 transcript。 |
+| SDK 对齐 | Rust、Node 和 Python 均暴露显式 planning mode、run replay、工具 schema、program 执行和委派 helper。 |
+| 驾驭控制 | AHP 2.4 transports、hooks、显式权限策略和 security provider 汇入同一个有效动作决策。 |
+| 验证 | `AgentResult` 暴露验证状态、计数、结构化摘要、token 使用、trace 数据和 artifact 引用。 |
+| 工具表面 | 核心工具保持小而稳定；web、git、batch、skill 管理和 MCP 工具按意图启用。 |
+| PTC | Programmatic Tool Calling 在内嵌 QuickJS 中运行有边界的 JavaScript；Node/Python 通过 `session.program(...)` 对齐核心 `program` 工具。 |
+| 持久化 | file/memory store 支持可恢复 session、显式 `save()`、`autoSave`、memory recall 和 session ID。 |
+| 基础设施 | lane queue 是可选且显式的外部/混合分发基础设施；普通 session 默认不启用队列。 |
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">🎯 意图驱动</h3>
-    <span className="text-sm text-muted-foreground">每个提示都会经过意图分析（定位、理解、检索、探索、推理、验证、比较、追踪）。上下文根据用户实际需求注入。</span>
-  </div>
+当前执行形态是：
 
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">🛡️ 默认安全</h3>
-    <span className="text-sm text-muted-foreground">权限系统、HITL 确认、技能工具限制、AHP 驾驭监督、错误恢复（熔断器、自动压缩）。</span>
-  </div>
-
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">🔌 可扩展</h3>
-    <span className="text-sm text-muted-foreground">20 个基于 trait 的扩展点，可替换任意组件 — LLM 客户端、工具、记忆、钩子、安全、上下文提供商。</span>
-  </div>
-
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">📈 可伸缩</h3>
-    <span className="text-sm text-muted-foreground">基于 Lane 的优先级队列，支持多机器任务分发。基于角色的子智能体团队任务分配。</span>
-  </div>
-</div>
-
-## 快速开始
-
-<Steps>
-<Step>
-
-### 安装
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```bash
-npm install @a3s-lab/code
+```text
+Agent / AgentSession
+  -> 上下文组装
+  -> 工具选择
+  -> 确定性任务走 PTC
+  -> 权限与确认策略
+  -> 执行
+  -> 追踪、产物、验证证据
+  -> 压缩
 ```
-</Tab>
-<Tab value="Python">
+
+## 安装
+
 ```bash
 pip install a3s-code
+npm install @a3s-lab/code
 ```
-</Tab>
-</Tabs>
 
-</Step>
-<Step>
+Rust 应用依赖 `a3s-code-core`。
 
-### 配置
+## 配置
 
-创建 `~/.a3s/config.hcl`（或在项目根目录创建 `./agent.hcl`）：
+v2.1.0 只使用 ACL。配置文件使用 `.acl` 后缀和带标签的块；旧的 HCL 配置不再支持。
 
-<Tabs groupId="provider" items={['Anthropic', 'OpenAI 兼容']}>
-<Tab value="Anthropic">
-```hcl
+```text
 default_model = "anthropic/claude-sonnet-4-20250514"
 
-providers {
-  name    = "anthropic"
-  api_key = env("ANTHROPIC_API_KEY")
+providers "anthropic" {
+  apiKey = env("ANTHROPIC_API_KEY")
+}
+```
 
-  models {
-    id        = "claude-sonnet-4-20250514"
-    name      = "Claude Sonnet 4"
+MiniMax 等 OpenAI 兼容服务使用 `openai` provider 和 `baseUrl`：
+
+```text
+default_model = "openai/MiniMax-M2.7-highspeed"
+
+providers "openai" {
+  apiKey = env("A3S_OPENAI_API_KEY")
+  baseUrl = env("A3S_OPENAI_BASE_URL")
+
+  models "MiniMax-M2.7-highspeed" {
+    name = "MiniMax M2.7 Highspeed"
     tool_call = true
   }
 }
+
+storage_backend = "file"
 ```
-</Tab>
-<Tab value="OpenAI 兼容">
-```hcl
-# 适用于 DeepSeek、Kimi、Together AI、Groq、Ollama、vLLM 等
-default_model = "openai/gpt-4o"
 
-providers {
-  name     = "openai"
-  api_key  = env("OPENAI_API_KEY")
-  base_url = "https://api.openai.com/v1"   # 改为你的服务商 URL
+发布集成脚本也接受 `MINIMAX_API_KEY` 和 `MINIMAX_BASE_URL`，并把它们映射成 OpenAI 兼容 provider 使用的环境变量。
 
-  models {
-    id        = "gpt-4o"
-    name      = "GPT-4o"
-    tool_call = true
-  }
-}
-```
-</Tab>
-</Tabs>
+## 使用
 
-然后导出 API Key（macOS/Linux：`export ANTHROPIC_API_KEY="sk-ant-..."`，PowerShell：`$env:ANTHROPIC_API_KEY`）。
-
-<Callout type="info">
-任何实现了 OpenAI Chat Completions API 的服务都可以作为 provider — 只需设置 `base_url`。详见 [提供商配置](/cn/docs/code/providers) 了解 Ollama、GPUStack、A3S Power、OneAPI 等完整配置参考。
-</Callout>
-
-</Step>
-<Step>
-
-### 基本用法
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
+```ts
 import { Agent } from '@a3s-lab/code';
 
-const agent = await Agent.create('agent.hcl');
-const session = agent.session('.', {
+const agent = await Agent.create('agent.acl');
+const session = agent.session('/my-project', {
   builtinSkills: true,
-  planning: true,
+  planningMode: 'enabled',
 });
 
-const result = await session.send('重构 auth 模块并更新测试');
+const result = await session.send('定位认证错误处理逻辑并总结流程');
 console.log(result.text);
+console.log(result.verificationSummaryText);
 ```
-</Tab>
-<Tab value="Python">
-```python
+
+```py
 from a3s_code import Agent
 
-agent = Agent.create("agent.hcl")
-session = agent.session(".", builtin_skills=True, planning=True)
+agent = Agent.create("agent.acl")
+session = agent.session("/my-project", builtin_skills=True, planning_mode="enabled")
 
-result = session.send("重构 auth 模块并更新测试")
+result = session.send("定位认证错误处理逻辑并总结流程")
 print(result.text)
 ```
-</Tab>
-</Tabs>
 
-</Step>
-</Steps>
+## 当前 v2.1.0 能力面
 
-## 文档
+- `.acl` 是唯一支持的配置格式。
+- `Agent.create()` 接受 `.acl` 文件或内联 ACL 字符串；不支持 JSON 配置。
+- OpenAI 兼容 provider 使用 `apiKey`、`baseUrl` 和 model blocks；MiniMax 发布测试已覆盖环境变量注入。
+- Planning 是明确的 `auto` / `enabled` / `disabled` 契约；`auto` 使用结构化预分析，不再依赖关键词门控。
+- Run tracking 通过 `runs`、`runSnapshot`、`runEvents`、`currentRun` 和按 run 取消能力公开给 SDK。
+- PTC 把搜索、读取、排序、摘要、验证等确定性工具链移到宿主代码里执行，避免反复消耗 LLM 工具回合。
+- 常规委派使用 `task` 和 `parallel_task` 工具。
+- Node/Python 暴露 `delegateTask` / `delegate_task`、`parallelTask` / `parallel_task`、`program` 和 `toolDefinitions` / `tool_definitions`。
+- 旧生命周期控制面 API 已移除；应用侧状态使用 streaming events、run replay 与按 run 取消能力。
+- 父 session 注册的 hooks 会传播到 `task` 创建的委派子运行。
+- AHP 2.4 支持 stdio、HTTP、WebSocket 和 Unix socket transports；Unix socket 仅支持 Unix target。
+- 普通 session 默认不启用队列；lane queue 是显式的外部或混合分发基础设施。
+- 权限策略由规则列表和默认决策组成。
+- 结果会暴露 token 统计、验证状态、验证摘要、追踪事件和产物引用。
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">核心</h3>
-    <ul className="text-sm text-muted-foreground space-y-1">
-      <li><a href="/cn/docs/code/sessions">会话</a> — 生命周期、send/stream、斜杠指令、定时任务、视觉</li>
-      <li><a href="/cn/docs/code/tools">工具</a> — 16 个内置工具参考</li>
-      <li><a href="/cn/docs/code/tasks">任务</a> — 规划与 wave 并行执行</li>
-      <li><a href="/cn/docs/code/skills">技能</a> — 技能系统与工具限制</li>
-    </ul>
-  </div>
-
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">驾驭工程</h3>
-    <ul className="text-sm text-muted-foreground space-y-1">
-      <li><a href="/cn/docs/code/security">安全</a> — 权限规则（Deny/Allow/Ask）、HITL、内置 PII 脱敏与注入检测</li>
-      <li><a href="/cn/docs/code/hooks">钩子</a> — 11 个生命周期拦截点，自动传播到全部子智能体</li>
-      <li><a href="/cn/docs/code/orchestrator">编排器</a> — 子智能体暂停、恢复、取消与提示注入</li>
-      <li><a href="/cn/docs/code/limits">运行时限制</a> — 工具轮次上限、超时、熔断器、自动压缩</li>
-      <li><a href="/cn/docs/code/isolation">隔离策略</a> — 工作区边界、文件版本历史、Git 工作树、MicroVM 沙箱</li>
-    </ul>
-  </div>
-
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">基础设施</h3>
-    <ul className="text-sm text-muted-foreground space-y-1">
-      <li><a href="/cn/docs/code/architecture">架构</a> — 系统设计概览</li>
-      <li><a href="/cn/docs/code/lane-queue">通道队列</a> — 优先级路由与队列特性</li>
-      <li><a href="/cn/docs/code/multi-machine">多机器</a> — 水平扩展指南</li>
-    </ul>
-  </div>
-
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">扩展</h3>
-    <ul className="text-sm text-muted-foreground space-y-1">
-      <li><a href="/cn/docs/code/providers">提供商</a> — LLM 提供商与完整配置参考</li>
-      <li><a href="/cn/docs/code/plugins">插件</a> — 内置核心能力之外的按需扩展工具 + 技能包</li>
-      <li><a href="/cn/docs/code/mcp">MCP</a> — 外部工具集成</li>
-      <li><a href="/cn/docs/code/subagents">子智能体</a> — 委托给专门智能体</li>
-      <li><a href="/cn/docs/code/context">上下文</a> — RAG 提供商</li>
-      <li><a href="/cn/docs/code/memory">记忆</a> — 长期记忆</li>
-      <li><a href="/cn/docs/code/hooks">钩子</a> — 生命周期事件</li>
-      <li><a href="/cn/docs/code/persistence">持久化</a> — 会话存储</li>
-      <li><a href="/cn/docs/code/telemetry">遥测</a> — 成本追踪与指标</li>
-    </ul>
-  </div>
-</div>
+建议从[会话](/cn/docs/code/sessions)、[Provider 配置](/cn/docs/code/providers)和[示例](/cn/docs/code/examples)开始。

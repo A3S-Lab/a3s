@@ -1,240 +1,125 @@
 ---
-title: A3S Code
-description: Rust framework for building agentic AI agents with native Node.js and Python bindings
+title: "A3S Code"
+description: "Harness-driven coding agent runtime for Rust, Node.js, and Python"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 # A3S Code
 
-**Intent-driven AI coding agent framework** — A3S Code gives an LLM a workspace, tools, and memory, then uses **intent detection** and **context perception** to inject the right context at the right time. Embed agents that read, write, and execute code into any application. Native Node.js and Python bindings.
+A3S Code v2.1.0 is a harness-driven runtime for coding agents. The model reasons; the harness controls context, tool visibility, permissions, execution, verification evidence, traces, artifacts, and compaction.
 
-<Callout type="info">
-**Extension Points:** 20 trait-based | **Built-in Tools:** 15 | **Built-in Skills:** 7 | **AHP Harness Points:** 18
-</Callout>
+## v2.1.0 Highlights
 
-## Why A3S Code?
+| Area | New in v2.1.0 |
+| --- | --- |
+| Configuration | ACL-only config with labeled `providers` and `models` blocks; `env(...)` is the standard credential path. |
+| Provider smoke | Real OpenAI-compatible provider checks support `A3S_OPENAI_*` and MiniMax aliases `MINIMAX_API_KEY` / `MINIMAX_BASE_URL`. |
+| Delegation | `task` and `parallel_task` are the default multi-agent path, returning compact child summaries instead of full transcripts. |
+| SDK parity | Rust, Node, and Python expose explicit planning mode, run replay, tool schemas, program execution, and delegation helpers. |
+| Harness control | AHP 2.4 transports, hooks, explicit permission policy, and security providers all feed one effective action decision. |
+| Verification | `AgentResult` exposes verification status, counts, structured summaries, token usage, trace data, and artifact references. |
+| Tool surface | Core tools stay small; web, git, batch, skill administration, and MCP tools are intent-gated. |
+| PTC | Programmatic Tool Calling runs bounded JavaScript in embedded QuickJS; Node/Python expose `session.program(...)` helpers over the core `program` tool. |
+| Persistence | File and memory stores support resumable sessions, explicit `save()`, `autoSave`, memory recall, and session IDs. |
+| Infrastructure | Lane queues are optional and explicit for external/hybrid dispatch; ordinary sessions stay queue-free. |
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">🎯 Intent-Driven</h3>
-    <span className="text-sm text-muted-foreground">Every prompt is analyzed for intent (locate, understand, retrieve, explore, reason, validate, compare, track). Context is injected based on what the user actually needs.</span>
-  </div>
+The current execution shape is:
 
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">🛡️ Safe by Default</h3>
-    <span className="text-sm text-muted-foreground">Permission system, HITL confirmation, skill-based tool restrictions, AHP harness supervision, and error recovery (circuit breaker, auto-compact).</span>
-  </div>
-
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">🔌 Extensible</h3>
-    <span className="text-sm text-muted-foreground">20 trait-based extension points. Replace any component — LLM client, tools, memory, hooks, security, context providers.</span>
-  </div>
-
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">📈 Scalable</h3>
-    <span className="text-sm text-muted-foreground">Lane-based priority queue with multi-machine task distribution. Subagent teams with role-based task assignment.</span>
-  </div>
-</div>
-
-## Quick Start
-
-<Steps>
-<Step>
-
-### Installation
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```bash
-npm install @a3s-lab/code
+```text
+Agent / AgentSession
+  -> context assembly
+  -> tool selection
+  -> programmatic tool calling when deterministic
+  -> permission and confirmation policy
+  -> execution
+  -> trace, artifacts, verification evidence
+  -> compaction
 ```
-</Tab>
-<Tab value="Python">
+
+## Install
+
 ```bash
 pip install a3s-code
+npm install @a3s-lab/code
 ```
-</Tab>
-</Tabs>
 
-</Step>
-<Step>
+Rust applications depend on `a3s-code-core`.
 
-### Configuration
+## Configure
 
-Create `~/.a3s/config.hcl` (or `./agent.hcl` for per-project config):
+v2.1.0 uses ACL only. Use `.acl` files and labeled blocks; legacy HCL files are not supported.
 
-<Tabs groupId="provider" items={['Anthropic', 'OpenAI-Compatible']}>
-<Tab value="Anthropic">
-```hcl
+```text
 default_model = "anthropic/claude-sonnet-4-20250514"
 
-providers {
-  name    = "anthropic"
-  api_key = env("ANTHROPIC_API_KEY")
+providers "anthropic" {
+  apiKey = env("ANTHROPIC_API_KEY")
+}
+```
 
-  models {
-    id        = "claude-sonnet-4-20250514"
-    name      = "Claude Sonnet 4"
+OpenAI-compatible services, including MiniMax, use the `openai` provider with `baseUrl`:
+
+```text
+default_model = "openai/MiniMax-M2.7-highspeed"
+
+providers "openai" {
+  apiKey = env("A3S_OPENAI_API_KEY")
+  baseUrl = env("A3S_OPENAI_BASE_URL")
+
+  models "MiniMax-M2.7-highspeed" {
+    name = "MiniMax M2.7 Highspeed"
     tool_call = true
   }
 }
+
+storage_backend = "file"
 ```
-</Tab>
-<Tab value="OpenAI-Compatible">
-```hcl
-# Works with DeepSeek, Kimi, Together AI, Groq, Ollama, vLLM, etc.
-default_model = "openai/gpt-4o"
 
-providers {
-  name     = "openai"
-  api_key  = env("OPENAI_API_KEY")
-  base_url = "https://api.openai.com/v1"   # change to your provider's URL
+The release integration scripts also accept `MINIMAX_API_KEY` and `MINIMAX_BASE_URL` as aliases for the OpenAI-compatible environment variables.
 
-  models {
-    id        = "gpt-4o"
-    name      = "GPT-4o"
-    tool_call = true
-  }
-}
-```
-</Tab>
-</Tabs>
+## Use
 
-Then export your API key (`export ANTHROPIC_API_KEY="sk-ant-..."` on macOS/Linux, `$env:ANTHROPIC_API_KEY` on PowerShell).
-
-<Callout type="info">
-Any service implementing the OpenAI Chat Completions API works as a provider — just set `base_url`. See [Providers](/docs/code/providers) for Ollama, GPUStack, A3S Power, OneAPI, and full config reference.
-</Callout>
-
-</Step>
-<Step>
-
-### Basic Usage
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
+```ts
 import { Agent } from '@a3s-lab/code';
 
-const agent = await Agent.create('agent.hcl');
-const session = agent.session('.', {
+const agent = await Agent.create('agent.acl');
+const session = agent.session('/my-project', {
   builtinSkills: true,
-  planning: true,
+  planningMode: 'enabled',
 });
 
-const result = await session.send('Refactor auth + update tests');
+const result = await session.send(
+  'Find where authentication errors are handled and summarize the flow',
+);
+
 console.log(result.text);
+console.log(result.verificationSummaryText);
 ```
-</Tab>
-<Tab value="Python">
-```python
+
+```py
 from a3s_code import Agent
 
-agent = Agent.create("agent.hcl")
-session = agent.session(".", builtin_skills=True, planning=True)
+agent = Agent.create("agent.acl")
+session = agent.session("/my-project", builtin_skills=True, planning_mode="enabled")
 
-result = session.send("Refactor auth + update tests")
+result = session.send("Find where authentication errors are handled and summarize the flow")
 print(result.text)
 ```
-</Tab>
-</Tabs>
 
-</Step>
-</Steps>
+## Current v2.1.0 Surface
 
-## Architecture
+- `.acl` is the supported configuration format.
+- `Agent.create()` accepts `.acl` files or inline ACL strings; JSON config is not supported.
+- OpenAI-compatible providers use `apiKey`, `baseUrl`, and model blocks; MiniMax release tests are covered by env injection.
+- Planning is an explicit `auto` / `enabled` / `disabled` contract; `auto` uses structured pre-analysis instead of keyword gates.
+- Run tracking is public through `runs`, `runSnapshot`, `runEvents`, `currentRun`, and run-scoped cancellation.
+- PTC moves deterministic tool chains such as search, read, rank, summarize, and verify into host code instead of repeated LLM tool loops.
+- Routine delegation uses the `task` and `parallel_task` tools.
+- Node/Python expose `delegateTask` / `delegate_task`, `parallelTask` / `parallel_task`, `program`, and `toolDefinitions` / `tool_definitions`.
+- Legacy lifecycle control-plane APIs are removed; use streaming events, run replay, and run-scoped cancellation for application state.
+- Hooks registered on a parent session propagate to delegated child runs created by `task`.
+- AHP 2.4 supports stdio, HTTP, WebSocket, and Unix socket transports; Unix sockets are Unix-target only.
+- Sessions are queue-free by default; lane queues are explicit infrastructure for external or hybrid dispatch.
+- Permission policy is explicit: rule lists plus a default decision.
+- Results expose token counts, verification status, verification summaries, trace events, and artifact references.
 
-5 core components (stable, not replaceable) + 20 extension points (replaceable via traits):
-
-```
-Agent (config-driven)
-  └── AgentSession (workspace-bound)
-        └── AgentLoop (core execution engine)
-              ├── IntentDetector → ContextPerception (AHP 2.2)
-              ├── ToolExecutor (15 built-in tools)
-              ├── SkillRegistry (skill injection + tool permissions)
-              ├── PluginManager (custom opt-in tools + skills)
-              ├── Planning (task decomposition + wave execution)
-              ├── SessionLaneQueue (a3s-lane backed)
-              │     ├── Control (P0) → Query (P1) → Execute (P2) → Generate (P3)
-              │     └── External Task Distribution
-              ├── HookEngine (11 lifecycle events)
-              ├── AHP Executor (18 harness points)
-              ├── Security (permissions, taint, HITL, PII redaction)
-              ├── Context (RAG providers)
-              └── Memory (episodic, semantic, procedural, working)
-```
-
-See [Architecture](/docs/code/architecture) for detailed documentation.
-
-## Documentation
-
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">Core</h3>
-    <ul className="text-sm text-muted-foreground space-y-1">
-      <li><a href="/docs/code/sessions">Sessions</a> — Lifecycle, send/stream, slash commands, scheduled tasks, vision</li>
-      <li><a href="/docs/code/tools">Tools</a> — 16 built-in tools reference</li>
-      <li><a href="/docs/code/tasks">Tasks</a> — Planning and wave-based execution</li>
-      <li><a href="/docs/code/skills">Skills</a> — Skill system and tool restrictions</li>
-    </ul>
-  </div>
-
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">Harness Engineering</h3>
-    <ul className="text-sm text-muted-foreground space-y-1">
-      <li><a href="/docs/code/security">Security</a> — Permission policies, HITL, built-in PII redaction and injection detection</li>
-      <li><a href="/docs/code/hooks">Hooks</a> — 11 lifecycle hooks with automatic propagation to sub-agents</li>
-      <li><a href="/docs/code/orchestrator">Orchestrator</a> — Sub-agent pause, resume, cancel, and prompt injection</li>
-      <li><a href="/docs/code/limits">Runtime Limits</a> — Tool round cap, timeouts, circuit breaker, auto-compaction</li>
-      <li><a href="/docs/code/isolation">Isolation</a> — Workspace boundary, file history, Git worktrees, MicroVM sandbox</li>
-    </ul>
-  </div>
-
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">Infrastructure</h3>
-    <ul className="text-sm text-muted-foreground space-y-1">
-      <li><a href="/docs/code/architecture">Architecture</a> — System design overview</li>
-      <li><a href="/docs/code/lane-queue">Lane Queue</a> — Priority routing and queue features</li>
-      <li><a href="/docs/code/multi-machine">Multi-Machine</a> — Horizontal scaling guide</li>
-    </ul>
-  </div>
-
-  <div className="border rounded-lg p-4">
-    <h3 className="text-lg font-semibold mb-2">Extensions</h3>
-    <ul className="text-sm text-muted-foreground space-y-1">
-      <li><a href="/docs/code/providers">Providers</a> — LLM providers and full config reference</li>
-      <li><a href="/docs/code/plugins">Plugins</a> — Custom opt-in tools + skills beyond the built-in core</li>
-      <li><a href="/docs/code/mcp">MCP</a> — External tool integration</li>
-      <li><a href="/docs/code/subagents">Subagents</a> — Delegate to specialized agents</li>
-      <li><a href="/docs/code/context">Context</a> — RAG providers</li>
-      <li><a href="/docs/code/memory">Memory</a> — Long-term memory</li>
-      <li><a href="/docs/code/hooks">Hooks</a> — Lifecycle events</li>
-      <li><a href="/docs/code/persistence">Persistence</a> — Session storage</li>
-      <li><a href="/docs/code/telemetry">Telemetry</a> — Cost tracking and metrics</li>
-    </ul>
-  </div>
-</div>
-
-## Testing
-
-```bash
-cargo test          # All tests
-cargo test --lib    # Unit tests only
-```
-
-**Test Coverage:** 1501 tests, 100% pass rate
-
-## License
-
-MIT License
-
-## Related Projects
-
-- **[A3S Lane](/docs/lane)** — Priority-based task queue with DLQ
-- **[A3S Search](/docs/search)** — Multi-engine web search aggregator
-- **[A3S Box](/docs/box)** — Secure sandbox runtime with TEE support
-- **[A3S Event](/docs/event)** — Event-driven architecture primitives
+Start with [Sessions](/docs/code/sessions), [Providers](/docs/code/providers), and [Examples](/docs/code/examples).

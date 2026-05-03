@@ -1,277 +1,46 @@
 ---
-title: Memory
-description: Pluggable long-term memory for agents — store, search, and recall knowledge across sessions
+title: "Memory"
+description: "Session memory stores and explicit recall"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Steps, Step } from 'fumadocs-ui/components/steps';
 
 # Memory
 
-A3S Code uses a two-layer memory architecture. The storage layer (`a3s-memory`) owns the `MemoryStore` trait and its default implementations. The agent layer (`a3s-code`) owns the three-tier session memory (`AgentMemory`) and context injection (`MemoryContextProvider`).
+Memory records reusable facts about previous work. It should help the harness recall patterns without flooding every prompt.
 
-```
-a3s-memory                          a3s-code
-──────────────────────────────      ──────────────────────────────
-MemoryStore (trait)                 AgentMemory
-InMemoryStore                         ├── working    (Vec, max 10)
-FileMemoryStore                       ├── short_term (VecDeque, max 100)
-MemoryItem                            └── long_term  (→ MemoryStore)
-MemoryType
-RelevanceConfig                     MemoryConfig
-                                    MemoryContextProvider
-```
+## Configure Stores
 
-This separation means you can swap the storage backend without touching any agent code.
+```ts
+import { FileMemoryStore } from '@a3s-lab/code';
 
-## Quick Start
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-import { Agent, FileMemoryStore } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-const session = agent.session('.', {
-  memoryStore: new FileMemoryStore('./memory'),
+const session = agent.session('/repo', {
+  memoryStore: new FileMemoryStore('./.a3s/memory'),
 });
-
-const result = await session.send('Remember: this project deploys to AWS us-east-1');
-```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import Agent, SessionOptions, FileMemoryStore
-
-agent = Agent.create("agent.hcl")
-session = agent.session(".", SessionOptions(
-    memory_store=FileMemoryStore("./memory"),
-))
-
-result = session.send("Remember: this project deploys to AWS us-east-1")
-```
-</Tab>
-</Tabs>
-
-## Memory Types
-
-<TypeTable
-  type={{
-    "Episodic": {
-      description: "Specific events and interactions",
-      default: "0.5",
-    },
-    "Semantic": {
-      description: "Facts and domain knowledge",
-      default: "0.5–0.8",
-    },
-    "Procedural": {
-      description: "Successful patterns (auto-stored on turn complete)",
-      default: "0.8",
-    },
-    "Working": {
-      description: "Active context for the current task",
-      default: "varies",
-    },
-  }}
-/>
-
-Failures are stored as `Episodic` with importance `0.9` — higher than successes so the agent avoids repeating them.
-
-## Three-Tier Session Memory
-
-```
-Working memory   — active context, auto-trimmed by relevance when over capacity (max 10)
-Short-term       — current session, FIFO trim when over capacity (max 100)
-Long-term        — persisted via MemoryStore, survives session restarts
 ```
 
-`remember()` writes to both long-term and short-term simultaneously.
+Use memory storage in short-lived tests and file storage for durable local sessions.
 
-## MemoryItem
+## Write Memory
 
-Every memory is a `MemoryItem`. The builder API makes construction ergonomic:
+```ts
+await session.rememberSuccess(
+  'release preflight',
+  ['bash', 'grep'],
+  'Release checks passed after real-provider smoke',
+);
 
-<TypeTable
-  type={{
-    id: {
-      type: 'String',
-      description: 'UUID, auto-generated',
-    },
-    content: {
-      type: 'String',
-      description: 'The memory text',
-    },
-    memory_type: {
-      type: 'MemoryType',
-      description: '`Episodic`, `Semantic`, `Procedural`, `Working`',
-    },
-    importance: {
-      type: 'f32',
-      description: '0.0–1.0, clamped',
-    },
-    tags: {
-      type: 'Vec<String>',
-      description: 'Categorization tags',
-    },
-    metadata: {
-      type: 'HashMap<String, String>',
-      description: 'Arbitrary key-value pairs',
-    },
-    timestamp: {
-      type: 'DateTime<Utc>',
-      description: 'Creation time',
-    },
-    access_count: {
-      type: 'u32',
-      description: 'Retrieval count',
-    },
-    last_accessed: {
-      type: 'Option<DateTime<Utc>>',
-      description: 'Last retrieval time',
-    },
-  }}
-/>
-
-## Relevance Scoring
-
-When the agent needs context, memories are ranked by a score that combines importance and recency:
-
-```
-score = importance × importance_weight + exp(−age_days / decay_days) × recency_weight
+await session.rememberFailure(
+  'provider smoke',
+  'missing A3S_OPENAI_BASE_URL',
+  ['bash'],
+);
 ```
 
-Default config: `importance_weight = 0.7`, `recency_weight = 0.3`, `decay_days = 30`.
+## Recall
 
-Configure via HCL:
-
-```hcl
-memory {
-  relevance {
-    decay_days        = 30.0
-    importance_weight = 0.7
-    recency_weight    = 0.3
-  }
-  max_short_term = 100
-  max_working    = 10
-}
+```ts
+const related = await session.recallSimilar('release provider smoke', 5);
+const recent = await session.recallRecent(10);
+const tagged = await session.recallByTags(['release'], 10);
 ```
 
-## Storage Backends
-
-### FileMemoryStore
-
-The default persistent backend. One JSON file per item, plus a compact index for fast search:
-
-```
-memory/
-  index.json          ← lightweight index (id, tags, importance, timestamp)
-  items/
-    {uuid}.json       ← full item content, written atomically
-```
-
-Key properties:
-- Atomic writes via `.tmp` → rename — no corruption on crash
-- Index loaded into memory on init for fast `recallSimilar()` and `recallByTags()`
-- Path traversal prevention on memory IDs
-- `rebuild_index()` recovers from index corruption by scanning item files
-
-### Custom Backend (Rust SDK)
-
-Implement `MemoryStore` to use any storage system — SQLite, Redis, a vector DB:
-
-`FileMemoryStore` uses substring matching for search. A vector store replaces this with semantic similarity — no other changes needed.
-
-## Context Injection
-
-`MemoryContextProvider` is registered automatically when memory is active. On each turn:
-
-1. Retrieves up to 5 relevant memories by substring match against the current prompt
-2. Injects them into the system prompt as structured context blocks
-3. After turn completion, stores the interaction as a `Procedural` memory
-
-```
-System Prompt
-├── Base instructions
-├── [memory] User prefers TypeScript           ← MemoryContextProvider
-├── [memory] Deploy via `just release`         ← MemoryContextProvider
-├── [resource] Related code snippets           ← FileSystemContextProvider
-└── Tool definitions
-```
-
-## Events
-
-<TypeTable
-  type={{
-    "MemoryStored": {
-      description: "A memory item was persisted",
-    },
-    "MemoryRecalled": {
-      description: "A memory item was retrieved for context",
-    },
-    "MemoriesSearched": {
-      description: "A search was performed",
-    },
-    "MemoryCleared": {
-      description: "All memories were cleared",
-    },
-  }}
-/>
-
-## API Reference
-
-### SessionOptions
-
-<TypeTable
-  type={{
-    ".with_file_memory(path)": {
-      description: "Enable FileMemoryStore at the given path",
-    },
-    ".with_memory(Arc<dyn MemoryStore>)": {
-      description: "Use a custom backend",
-    },
-    ".with_memory_config(MemoryConfig)": {
-      description: "Configure relevance scoring and tier capacities",
-    },
-  }}
-/>
-
-### MemoryStore trait
-
-<TypeTable
-  type={{
-    "store(item)": {
-      description: "Persist a memory item (upsert by ID)",
-    },
-    "retrieve(id)": {
-      description: "Fetch a single item by ID",
-    },
-    "search(query, limit)": {
-      description: "Substring search, ranked by relevance",
-    },
-    "search_by_tags(tags, limit)": {
-      description: "Filter by tags, ranked by relevance",
-    },
-    "get_recent(limit)": {
-      description: "Most recently created items",
-    },
-    "get_important(threshold, limit)": {
-      description: "Items above importance threshold, sorted descending",
-    },
-    "delete(id)": {
-      description: "Remove a single item",
-    },
-    "clear()": {
-      description: "Remove all items",
-    },
-    "count()": {
-      description: "Total item count",
-    },
-  }}
-/>
-
-<Callout type="info">
-`a3s-memory` is a standalone crate. Add it directly if you need the storage layer without the full agent framework: `cargo add a3s-memory`
-</Callout>
+Use recalled memory as supporting context. Verification evidence still comes from current commands and traces.

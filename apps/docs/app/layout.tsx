@@ -22,7 +22,6 @@ export const metadata: Metadata = {
     'secure AI',
     'agent framework',
     'Rust',
-    'SafeClaw',
     'Box',
     'MCP',
     'model context protocol',

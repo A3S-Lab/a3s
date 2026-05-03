@@ -1,795 +1,107 @@
 ---
-title: Sessions
-description: Create sessions, send prompts, stream responses, and manage conversation history
+title: "Sessions"
+description: "Creating, streaming, resuming, and saving workspace-bound sessions"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 # Sessions
 
-Each session is bound to a workspace directory. The Agent creates sessions via `agent.session(workspace, options?)`. Sessions hold their own LLM client, conversation history, and tool context.
+`Agent` owns configuration and provider state. `Session` binds that agent to one workspace and one conversation lifecycle.
 
-The generation APIs — `send()` and `stream()` — send prompts to the LLM and return responses. The agent loop handles tool execution automatically.
-
-## Create Session
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
+```ts
 import { Agent } from '@a3s-lab/code';
 
-const agent = await Agent.create('agent.hcl');
-
-// Default session
-const session = agent.session('/my-project');
-
-// Session with model override
-const session = agent.session('/my-project', {
-  model: 'openai/gpt-4o',
+const agent = await Agent.create('agent.acl');
+const session = agent.session('/repo', {
+  model: 'openai/MiniMax-M2.7-highspeed',
+  builtinSkills: true,
+  planningMode: 'enabled',
+  goalTracking: true,
 });
 ```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import Agent
 
-agent = Agent.create("agent.hcl")
+`planningMode` is explicit: use `'auto'` for the default structured pre-analysis
+path, `'enabled'` to force planning, and `'disabled'` to turn planning off for
+latency-sensitive calls. The legacy boolean `planning` option remains available
+for compatibility.
 
-# Default session
-session = agent.session("/my-project")
+Planning emits run-scoped state. Hosts can render that state as a TaskList and
+update each item as the runtime records progress instead of trying to infer
+progress from text tokens.
 
-# Session with model override
-session = agent.session("/my-project", model="openai/gpt-4o")
-```
-</Tab>
-</Tabs>
+## Send
 
-## SessionOptions
+```ts
+const result = await session.send('Review this repository and list release blockers');
 
-<TypeTable
-  type={{
-    model: {
-      type: 'string',
-      description: 'Model override in `provider/model` format (e.g., `openai/gpt-4o`).',
-    },
-    builtinSkills: {
-      type: 'boolean',
-      default: 'false',
-      description: 'Enable built-in skills (code-search, code-review, explain-code, find-bugs, builtin-tools, delegate-task, find-skills).',
-    },
-    skillDirs: {
-      type: 'string[]',
-      description: 'Extra directories to scan for skill files (.md with YAML frontmatter).',
-    },
-    agentDirs: {
-      type: 'string[]',
-      description: 'Extra directories to scan for agent files.',
-    },
-    queueConfig: {
-      type: 'SessionQueueConfig',
-      description: 'Lane queue configuration for external/hybrid tool dispatch.',
-    },
-    permissive: {
-      type: 'boolean',
-      default: 'false',
-      description: 'Allow all tools without HITL confirmation.',
-    },
-    planning: {
-      type: 'boolean',
-      default: 'false',
-      description: 'Enable planning mode.',
-    },
-    goalTracking: {
-      type: 'boolean',
-      default: 'false',
-      description: 'Enable goal tracking.',
-    },
-    maxParseRetries: {
-      type: 'u32',
-      default: '2',
-      description: 'Max consecutive malformed-tool-args errors before abort.',
-    },
-    toolTimeoutMs: {
-      type: 'u64',
-      description: 'Per-tool execution timeout in milliseconds.',
-    },
-    circuitBreakerThreshold: {
-      type: 'u32',
-      default: '3',
-      description: 'Max LLM API failures before abort in non-streaming mode.',
-    },
-    autoCompact: {
-      type: 'boolean',
-      default: 'false',
-      description: 'Enable auto-compaction when context window fills up.',
-    },
-    autoCompactThreshold: {
-      type: 'number',
-      default: '0.8',
-      description: 'Context usage threshold (0.0–1.0) to trigger auto-compaction.',
-    },
-    memoryStore: {
-      type: 'FileMemoryStore',
-      description: 'Long-term memory store backend. Pass `new FileMemoryStore("./memory")`.',
-    },
-    sessionStore: {
-      type: 'FileSessionStore | MemorySessionStore',
-      description: 'Session persistence. Pass `new FileSessionStore("./sessions")` or `new MemorySessionStore()`.',
-    },
-    securityProvider: {
-      type: 'DefaultSecurityProvider',
-      description: 'Enable input taint tracking and output sanitisation. Pass `new DefaultSecurityProvider()`.',
-    },
-    plugins: {
-      type: 'SkillPlugin[]',
-      description: 'Plugins to mount. Pass `new SkillPlugin(name, skills)`.',
-    },
-    role: {
-      type: 'string',
-      description: 'Custom role/identity prepended before the core agentic prompt.',
-    },
-    guidelines: {
-      type: 'string',
-      description: 'Custom coding guidelines appended after the core prompt.',
-    },
-    responseStyle: {
-      type: 'string',
-      description: 'Custom response style (replaces the default Response Format section).',
-    },
-    extra: {
-      type: 'string',
-      description: 'Freeform extra instructions appended at the very end.',
-    },
-    inlineSkills: {
-      type: 'InlineSkill[]',
-      description: 'Inline skills registered programmatically without skill files.',
-    },
-    maxToolRounds: {
-      type: 'u32',
-      description: 'Override maximum number of tool-call rounds.',
-    },
-    temperature: {
-      type: 'number',
-      description: 'Sampling temperature (0.0–1.0). Only applied when `model` is also set.',
-    },
-    thinkingBudget: {
-      type: 'number',
-      description: 'Extended thinking token budget. Requires `model` also set and provider support.',
-    },
-    continuationEnabled: {
-      type: 'boolean',
-      default: 'true',
-      description: 'Enable continuation injection when LLM stops without completing.',
-    },
-    maxContinuationTurns: {
-      type: 'u32',
-      default: '3',
-      description: 'Maximum continuation injections per execution.',
-    },
-    sessionId: {
-      type: 'string',
-      description: 'Stable session ID for save/resume. Auto-generated if not set.',
-    },
-    autoSave: {
-      type: 'boolean',
-      default: 'false',
-      description: 'Automatically save session after each turn.',
-    },
-    ahpTransport: {
-      type: 'StdioTransport | HttpTransport | WebSocketTransport | UnixSocketTransport',
-      description: 'AHP transport for external agent supervision.',
-    },
-  }}
-/>
-
-The model must be defined in the agent's config file under `providers`. The format is `provider_name/model_id`.
-
-Global `skill_dirs` and `agent_dirs` are set in the agent config. Per-session dirs merge with the global ones — see [Skills](/docs/code/skills) for details.
-
-## System Prompt Customization (Slot-Based)
-
-Customize the agent's behavior without overriding core agentic capabilities. Four named slots let you inject custom personality while preserving tool usage strategy, autonomous behavior, and completion criteria:
-
-| Slot | Position | Behavior |
-|------|----------|----------|
-| `role` | Before core | Replaces default "You are A3S Code..." identity |
-| `guidelines` | After core | Appended as `## Guidelines` section |
-| `response_style` | Replaces section | Replaces default `## Response Format` |
-| `extra` | End | Freeform instructions (backward-compatible) |
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', {
-  role: 'You are a senior Rust developer.',
-  guidelines: 'Use clippy. No unwrap(). Prefer Result.',
-  responseStyle: 'Be concise. Use bullet points.',
-  extra: 'This project uses tokio and axum.',
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import SessionOptions
-
-opts = SessionOptions()
-opts.role = "You are a senior Rust developer."
-opts.guidelines = "Use clippy. No unwrap(). Prefer Result."
-opts.response_style = "Be concise. Use bullet points."
-opts.extra = "This project uses tokio and axum."
-session = agent.session("/my-project", options=opts)
-```
-</Tab>
-</Tabs>
-
-See [Prompt Slots Example](/docs/code/examples/prompt-slots) for full multi-language examples.
-
-## Error Recovery & Resilience
-
-Three layers of error recovery protect long-running sessions:
-
-<Accordions>
-<Accordion title="Parse Error Recovery">
-When the LLM returns malformed tool arguments (`__parse_error`), the error is fed back as a tool result so the model can self-correct. After `max_parse_retries` consecutive failures the loop aborts.
-</Accordion>
-<Accordion title="Tool Execution Timeout">
-Each tool call is wrapped in `tokio::time::timeout`. A timed-out tool produces an error message that is fed back to the LLM; the session continues.
-</Accordion>
-<Accordion title="Circuit Breaker">
-Transient LLM API failures (network errors, rate limits) are retried up to `circuit_breaker_threshold` times in non-streaming mode with short exponential backoff. In streaming mode any failure is fatal (events cannot be replayed).
-</Accordion>
-</Accordions>
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Individual controls
-const session = agent.session('.', {
-  maxParseRetries: 3,        // bail after 3 consecutive parse errors
-  toolTimeoutMs: 30000,      // 30s per tool
-  circuitBreakerThreshold: 5 // retry LLM up to 5 times
-});
-```
-</Tab>
-<Tab value="Python">
-```python
-# Individual controls
-session = agent.session(".",
-  max_parse_retries=3,        # bail after 3 consecutive parse errors
-  tool_timeout_ms=30000,      # 30s per tool
-  circuit_breaker_threshold=5 # retry LLM up to 5 times
-)
-```
-</Tab>
-</Tabs>
-
-## Send (Non-Streaming)
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const result = await session.send('What files handle authentication?');
 console.log(result.text);
-console.log(`Tools: ${result.toolCallsCount}, Tokens: ${result.totalTokens}`);
+console.log(result.totalTokens);
+console.log(result.verificationStatus);
 ```
-</Tab>
-<Tab value="Python">
-```python
-result = session.send("What files handle authentication?")
-print(result.text)
-print(f"Tools: {result.tool_calls_count}, Tokens: {result.total_tokens}")
-```
-</Tab>
-</Tabs>
-
-## Send with Attachments (Vision)
-
-Send image attachments alongside text prompts. Requires a vision-capable model (Claude Sonnet, GPT-4o).
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const image = await fs.readFile('screenshot.png');
-const result = await session.sendWithAttachments(
-  "What's in this screenshot?",
-  [{ data: image, mediaType: 'image/png' }],
-);
-console.log(result.text);
-```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import Attachment
-
-image = Attachment.from_file("screenshot.png")
-result = session.send_with_attachments(
-    "What's in this screenshot?",
-    [image],
-)
-print(result.text)
-```
-</Tab>
-</Tabs>
-
-Supported image formats: JPEG, PNG, GIF, WebP.
-
-Streaming variant:
-
-### Tool Image Output
-
-Tools can return images alongside text output. When a tool returns images, they are included as multi-modal content blocks in the tool result message sent to the LLM.
 
 ## Stream
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// EventStream has .next() method — use while loop
-const stream = await session.stream('Refactor the auth module');
-while (true) {
-  const { value, done } = await stream.next();
-  if (done || !value) break;
-  if (value.type === 'text_delta') process.stdout.write(value.text);
-  if (value.type === 'tool_start') console.log(`\n🔧 ${value.toolName}`);
-  if (value.type === 'tool_end') console.log(`  → ${value.toolOutput?.slice(0, 100)}`);
-}
+```ts
+const stream = await session.stream('Run the focused tests and explain failures');
 
-// For multiple prompts, create separate stream instances
-const stream2 = await session.stream('Explain src/main.rs');
-while (true) {
-  const { value, done } = await stream2.next();
-  if (done || !value) break;
-  if (value.type === 'text_delta') process.stdout.write(value.text);
+for await (const event of stream) {
+  if (event.text) process.stdout.write(event.text);
+  if (event.toolName) console.log('tool:', event.toolName);
 }
 ```
-</Tab>
-<Tab value="Python">
-```python
-# Sync iteration (works without an event loop)
-for event in session.stream("Refactor the auth module"):
-    if event.event_type == "text_delta":
-        print(event.text, end="", flush=True)
-    elif event.event_type == "tool_start":
-        print(f"\n🔧 {event.tool_name}")
-    elif event.event_type == "tool_end":
-        print(f"  → {event.tool_output[:100]}")
 
-# Async iteration (inside async def)
-async for event in session.stream("Refactor the auth module"):
-    if event.event_type == "text_delta":
-        print(event.text, end="", flush=True)
-    elif event.event_type == "end":
-        print(f"\nDone — {event.total_tokens} tokens")
-        break
+## Side Questions
+
+`btw()` asks an ephemeral read-only side question. It snapshots the current history and does not append the answer back into the session.
+
+```ts
+const answer = await session.btw('What files has this session already inspected?');
+console.log(answer.answer);
 ```
-</Tab>
-</Tabs>
 
-## BTW — Ephemeral Side Questions
+## Resume
 
-The `btw()` method asks a side question without adding it to conversation history. See [Commands & Scheduling](/docs/code/commands#btw--ephemeral-side-questions) for full reference.
+```ts
+import { Agent, FileSessionStore } from '@a3s-lab/code';
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const btw = await session.btw('What is the capital of France?');
-console.log(btw.answer);       // "Paris"
-console.log(btw.totalTokens);  // token usage — question not added to history
+const agent = await Agent.create('agent.acl');
+const session = agent.resumeSession('release-review', {
+  sessionStore: new FileSessionStore('./.a3s/sessions'),
+});
 ```
-</Tab>
-<Tab value="Python">
-```python
-btw = session.btw("What is the capital of France?")
-print(btw.answer)        # "Paris"
-print(btw.total_tokens)  # token usage — question not added to history
+
+Set `autoSave: true` or call `await session.save()` when using a session store.
+
+## Run Replay
+
+Each `send()` or `stream()` creates a run record. Applications can inspect those
+records for UI state, audit, replay, cancellation, and tests:
+
+```ts
+const runs = await session.runs();
+const latest = runs.at(-1);
+
+if (latest) {
+  console.log(await session.runSnapshot(latest.id));
+  console.log(await session.runEvents(latest.id));
+}
 ```
-</Tab>
-</Tabs>
 
-## Cancel Ongoing Operation
+While a stream is active, `currentRun()` returns the active run snapshot:
 
-Call `session.cancel()` to interrupt an in-progress `send()` or `stream()` call. The LLM streaming and any running tool execution will stop as soon as possible.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Cancel from another async context while send() is running
-const sendPromise = session.send('Write a 10,000 line program');
-
-// Cancel after 5 seconds
-setTimeout(() => {
-  const cancelled = session.cancel();
-  console.log('Cancelled:', cancelled); // true
-}, 5000);
-
-await sendPromise; // resolves with partial result
+```ts
+const active = await session.currentRun();
+if (active?.id) await session.cancelRun(active.id);
 ```
-</Tab>
-<Tab value="Python">
-```python
-import threading
 
-# Cancel from another thread while send() is running
-def cancel_after_delay():
-    import time
-    time.sleep(5)
-    cancelled = session.cancel()
-    print(f"Cancelled: {cancelled}")  # True
+Python exposes the same surface as `runs()`, `run_snapshot(run_id)`,
+`run_events(run_id)`, `current_run()`, and `cancel_run(run_id)`.
 
-t = threading.Thread(target=cancel_after_delay)
-t.start()
+## Agent Definitions
 
-result = session.send("Write a 10,000 line program")  # returns partial result
-t.join()
+`sessionForAgent()` applies a named agent definition from built-in agents or configured `agentDirs`.
+
+```ts
+const session = agent.sessionForAgent('/repo', 'explore', ['./agents'], {
+  builtinSkills: true,
+});
 ```
-</Tab>
-</Tabs>
-
-`cancel()` returns `true` if an operation was in progress and was cancelled, `false` if nothing was running.
-
-<Callout type="info">
-Cancellation is cooperative — the operation stops at the next LLM streaming chunk boundary or tool execution checkpoint. The `send()` / `stream()` call returns normally with whatever partial result was accumulated.
-</Callout>
-
-## Conversation History (Rust)
-
-Maintain multi-turn conversations by passing history:
-
-## Direct Tool Execution
-
-Call tools directly without going through the LLM:
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-await session.readFile('src/main.rs');
-await session.bash('cargo test');
-await session.glob('**/*.rs');
-await session.grep('fn main');
-await session.tool('write', { file_path: 'x.rs', content: '...' });
-```
-</Tab>
-<Tab value="Python">
-```python
-session.read_file("src/main.rs")
-session.bash("cargo test")
-session.glob("**/*.rs")
-session.grep("fn main")
-session.tool("write", {"file_path": "x.rs", "content": "..."})
-```
-</Tab>
-</Tabs>
-
-## Slash Commands & Scheduled Tasks
-
-Sessions intercept slash commands before the LLM. Built-in commands include `/help`, `/model`, `/cost`, `/clear`, `/compact`, `/tools`, `/mcp`, `/loop`, `/cron-list`, and `/cron-cancel`. You can also register custom commands.
-
-See [Commands & Scheduling](/docs/code/commands) for the full reference including BTW, `/loop` syntax, scheduler API, and custom command registration.
-
-## Configuration
-
-See [Providers & Configuration](/docs/code/providers) for the full HCL config reference including all fields, the `env()` function, queue and search configuration.
-
-## Return Types
-
-### AgentResult
-
-<TypeTable
-  type={{
-    text: {
-      type: 'string',
-      description: 'Final LLM response text',
-    },
-    messages: {
-      type: 'Vec<Message>',
-      description: 'Full conversation history (Rust only)',
-    },
-    usage: {
-      type: 'TokenUsage',
-      description: 'Token usage statistics',
-    },
-    tool_calls_count: {
-      type: 'usize',
-      description: 'Number of tool calls',
-    },
-  }}
-/>
-
-### TokenUsage
-
-<TypeTable
-  type={{
-    prompt_tokens: {
-      type: 'usize',
-      description: 'Input tokens',
-    },
-    completion_tokens: {
-      type: 'usize',
-      description: 'Output tokens',
-    },
-    total_tokens: {
-      type: 'usize',
-      description: 'Total tokens',
-    },
-    cache_read_tokens: {
-      type: 'Option<usize>',
-      description: 'Cached input tokens read',
-    },
-    cache_write_tokens: {
-      type: 'Option<usize>',
-      description: 'Cached input tokens written',
-    },
-  }}
-/>
-
-### AgentEvent
-
-`AgentEvent` is `#[non_exhaustive]` — always include a wildcard arm when matching in Rust.
-
-**Agent lifecycle:**
-
-<TypeTable
-  type={{
-    Start: { type: 'prompt', description: 'Processing started' },
-    TurnStart: { type: 'turn', description: 'New turn started' },
-    TextDelta: { type: 'text', description: 'Text chunk from assistant' },
-    TurnEnd: { type: 'turn, total_tokens', description: 'Turn completed' },
-    End: { type: 'text, total_tokens', description: 'Generation finished' },
-    Error: { type: 'error', description: 'Error occurred' },
-    BtwAnswer: { type: 'question, answer, total_tokens', description: 'BTW side question answered (not added to history)' },
-  }}
-/>
-
-**Tool execution:**
-
-<TypeTable
-  type={{
-    ToolStart: { type: 'tool_id, tool_name', description: 'Tool call started' },
-    ToolEnd: { type: 'tool_id, tool_name, tool_output, exit_code', description: 'Tool call completed' },
-    ToolOutputDelta: { type: 'tool_id, tool_name, text', description: 'Tool output increment' },
-  }}
-/>
-
-**HITL and permissions:**
-
-<TypeTable
-  type={{
-    ConfirmationRequired: { type: 'tool_id, tool_name, args, timeout_ms', description: 'HITL confirmation needed' },
-    ConfirmationReceived: { type: 'tool_id, approved, reason', description: 'HITL confirmation received' },
-    ConfirmationTimeout: { type: 'tool_id, action_taken', description: 'HITL confirmation timed out' },
-    PermissionDenied: { type: 'tool_id, tool_name, args, reason', description: 'Tool blocked by permission policy' },
-  }}
-/>
-
-**Context and memory:**
-
-<TypeTable
-  type={{
-    ContextResolving: { type: 'providers', description: 'Context resolution started' },
-    ContextResolved: { type: 'total_items, total_tokens', description: 'Context resolution completed' },
-    MemoryStored: { type: '—', description: 'Memory item stored' },
-    MemoryRecalled: { type: '—', description: 'Memory item recalled' },
-    MemoriesSearched: { type: '—', description: 'Memory search completed' },
-    MemoryCleared: { type: '—', description: 'Memory cleared' },
-  }}
-/>
-
-**Tasks, subagents, and lane queue:**
-
-<TypeTable
-  type={{
-    TaskUpdated: { type: 'session_id, tasks', description: 'Task list changed' },
-    SubagentStart: { type: '—', description: 'Subagent execution started' },
-    ExternalTaskPending: { type: '—', description: 'External task queued' },
-    ExternalTaskCompleted: { type: '—', description: 'External task finished' },
-    CommandDeadLettered: { type: '—', description: 'Lane command dead-lettered' },
-    CommandRetry: { type: '—', description: 'Lane command retried' },
-    QueueAlert: { type: '—', description: 'Queue alert emitted' },
-  }}
-/>
-
-## API Reference
-
-### Agent
-
-<TypeTable
-  type={{
-    "new": {
-      description: "Signature: Agent::new(config: &str) -> Result<Agent> · Description: Load from HCL file or string",
-    },
-    "from_config": {
-      description: "Signature: Agent::from_config(config: AgentConfig) -> Result<Agent> · Description: Load from struct",
-    },
-    "session": {
-      description: "Signature: agent.session(workspace, options?) -> Result<AgentSession> · Description: Create a workspace-bound session",
-    },
-  }}
-/>
-
-### AgentSession
-
-<TypeTable
-  type={{
-    "Send prompt": {
-      description: "Python: session.send(prompt) · TypeScript: await session.send(prompt)",
-    },
-    "Stream events": {
-      description: "Python: session.stream(prompt) · TypeScript: await session.stream(prompt)",
-    },
-    "BTW (side question)": {
-      description: "Python: session.btw(question) · TypeScript: await session.btw(question) · Returns BtwResult with answer and token usage. Question/answer not added to history.",
-    },
-    "Send with image": {
-      description: "Python: session.send_with_attachments(p, [img]) · TypeScript: await session.sendWithAttachments(p, [img])",
-    },
-    "Read file": {
-      description: "Python: session.read_file(path) · TypeScript: await session.readFile(path)",
-    },
-    "Run bash": {
-      description: "Python: session.bash(cmd) · TypeScript: await session.bash(cmd)",
-    },
-    "Glob": {
-      description: "Python: session.glob(pattern) · TypeScript: await session.glob(pattern)",
-    },
-    "Grep": {
-      description: "Python: session.grep(pattern) · TypeScript: await session.grep(pattern)",
-    },
-    "Call tool": {
-      description: "Python: session.tool(name, args) · TypeScript: await session.tool(name, args)",
-    },
-    "History": {
-      description: "Python: session.history() · TypeScript: session.history()",
-    },
-    "List commands": {
-      description: "Python: session.list_commands() · TypeScript: session.listCommands()",
-    },
-    "Register command": {
-      description: "Python: session.register_command(name, desc, handler) · TypeScript: session.registerCommand(name, desc, handler)",
-    },
-    "Schedule task": {
-      description: "Python: session.schedule_task(prompt, interval_secs) · TypeScript: session.scheduleTask(prompt, intervalSecs) · Also: session.send('/loop 5m <prompt>')",
-    },
-    "List scheduled tasks": {
-      description: "Python: session.list_scheduled_tasks() · TypeScript: session.listScheduledTasks() · Also: session.send('/cron-list')",
-    },
-    "Cancel scheduled task": {
-      description: "Python: session.cancel_scheduled_task(id) → bool · TypeScript: session.cancelScheduledTask(id) → boolean · Also: session.send('/cron-cancel <id>')",
-    },
-  }}
-/>
-
-### SessionOptions
-
-<TypeTable
-  type={{
-    model: {
-      type: 'string',
-      default: 'config default',
-      description: 'Model in `provider/model` format. TS: `model: \'...\'`, Python: `model=\'...\'`',
-    },
-    permissive: {
-      type: 'bool',
-      default: 'false',
-      description: 'Allow all tools without confirmation. Required for basic usage unless you configure a ConfirmationProvider. TS: `permissive: true`, Python: `permissive=True`. See Security docs for production setup.',
-    },
-    planning: {
-      type: 'bool',
-      default: 'false',
-      description: 'Enable LLM task planning. TS: `planning: true`, Python: `planning=True`',
-    },
-    goal_tracking: {
-      type: 'bool',
-      default: 'false',
-      description: 'Track goal progress. TS: `goalTracking: true`, Python: `goal_tracking=True`',
-    },
-    builtin_skills: {
-      type: 'bool',
-      default: 'false',
-      description: 'Load built-in skills. TS: `builtinSkills: true`, Python: `builtin_skills=True`',
-    },
-    skill_dirs: {
-      type: 'string[]',
-      default: '[]',
-      description: 'Directories to scan for skill files. TS: `skillDirs: [path]`, Python: `skill_dirs=[path]`',
-    },
-    default_security: {
-      type: 'bool',
-      default: 'false',
-      description: 'Enable default security provider. TS: `securityProvider: new DefaultSecurityProvider()`, Python: `security_provider=DefaultSecurityProvider()`',
-    },
-    file_memory: {
-      type: 'Option<string>',
-      default: 'None',
-      description: 'Path for file-backed memory. TS: `memoryStore: new FileMemoryStore(path)`, Python: `memory_store=FileMemoryStore(path)`',
-    },
-    auto_compact: {
-      type: 'bool',
-      default: 'false',
-      description: 'Enable auto context compaction. TS: `autoCompact: true`, Python: `auto_compact=True`',
-    },
-    auto_compact_threshold: {
-      type: 'f32',
-      default: '0.8',
-      description: 'Context usage fraction to trigger compaction. TS: `autoCompactThreshold: f`, Python: `auto_compact_threshold=f`',
-    },
-    fs_context: {
-      type: 'Option<string>',
-      default: 'None',
-      description: 'Filesystem context path for RAG. TS: `fsContext: path`, Python: `fs_context=path`',
-    },
-    queue_config: {
-      type: 'Option<SessionQueueConfig>',
-      default: 'None',
-      description: 'Lane queue configuration. TS: `queueConfig: cfg`, Python: `queue_config=cfg`',
-    },
-    parse_retries: {
-      type: 'u32',
-      default: '2',
-      description: 'Max consecutive parse errors before abort. TS: `maxParseRetries: n`, Python: `max_parse_retries=n`',
-    },
-    tool_timeout_ms: {
-      type: 'Option<u64>',
-      default: 'None',
-      description: 'Per-tool execution timeout in ms. TS: `toolTimeoutMs: ms`, Python: `tool_timeout_ms=ms`',
-    },
-    circuit_breaker: {
-      type: 'u32',
-      default: '3',
-      description: 'Max LLM API failures before abort. TS: `circuitBreakerThreshold: n`, Python: `circuit_breaker_threshold=n`',
-    },
-    sandbox_handle: {
-      type: 'Arc<dyn BashSandbox>',
-      default: 'None',
-      description: 'Route `bash` through a MicroVM sandbox. Supply a concrete `BashSandbox` impl via `with_sandbox_handle()`. See [Isolation](/docs/code/isolation).',
-    },
-    permission_checker: {
-      type: 'Arc<dyn PermissionChecker>',
-      default: 'PermissionPolicy',
-      description: 'Custom permission checker',
-    },
-    confirmation_manager: {
-      type: 'Option<Arc<dyn ConfirmationManager>>',
-      default: 'None',
-      description: 'Custom HITL confirmation manager',
-    },
-    security_provider: {
-      type: 'Option<Arc<dyn SecurityProvider>>',
-      default: 'None',
-      description: 'Custom security provider',
-    },
-    context_provider: {
-      type: 'Option<Arc<dyn ContextProvider>>',
-      default: 'None',
-      description: 'Custom context/RAG provider',
-    },
-    memory: {
-      type: 'Arc<dyn MemoryStore>',
-      default: 'InMemoryStore',
-      description: 'Memory storage backend',
-    },
-    hook_engine: {
-      type: 'HookEngine',
-      default: 'HookEngine',
-      description: 'Custom hook engine',
-    },
-  }}
-/>
-
-### AgentResponse
-
-<TypeTable
-  type={{
-    "Text": {
-      description: "Python: result.text · TypeScript: result.text",
-    },
-    "Total tokens": {
-      description: "Python: result.usage.total_tokens · TypeScript: result.usage.totalTokens",
-    },
-    "Tool call count": {
-      description: "Python: result.tool_calls_count · TypeScript: result.toolCallsCount",
-    },
-  }}
-/>

@@ -1,207 +1,26 @@
 ---
-title: 会话持久化
-description: 可插拔的会话存储后端，用于对话持久化
+title: "持久化"
+description: "保存与恢复 session"
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
+# 持久化
 
-# 会话持久化
+持久化让 session 可以跨进程恢复，也让产品界面拥有稳定 session ID。
 
-A3S Code 支持可插拔的会话存储后端。会话保存对话历史，可以在重启后恢复。
+```ts
+import { FileSessionStore } from '@a3s-lab/code';
 
-## 快速开始
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-import { Agent, FileSessionStore } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-
-// 创建并启用自动保存
-const session = agent.session('.', {
-  sessionStore: new FileSessionStore('.a3s/sessions'),
-  sessionId: 'my-session',
+const session = agent.session('/repo', {
+  sessionId: 'release-review',
+  sessionStore: new FileSessionStore('./.a3s/sessions'),
   autoSave: true,
 });
 
-await session.send('Refactor auth');
+await session.save();
 
-// 恢复会话
-const resumed = agent.resumeSession('my-session', {
-  sessionStore: new FileSessionStore('.a3s/sessions'),
+const resumed = agent.resumeSession('release-review', {
+  sessionStore: new FileSessionStore('./.a3s/sessions'),
 });
 ```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import Agent, FileSessionStore
 
-agent = Agent.create("agent.hcl")
-
-session = agent.session(".",
-    session_store=FileSessionStore(".a3s/sessions"),
-    session_id="my-session",
-    auto_save=True,
-)
-
-session.send("Refactor auth")
-
-# 恢复会话
-resumed = agent.resume_session("my-session",
-    session_store=FileSessionStore(".a3s/sessions"),
-)
-```
-</Tab>
-</Tabs>
-
-## 文件存储
-
-`FileSessionStore` 将每个会话存储为 JSON 文件：
-
-```
-sessions_dir/
-├── my-session.json
-├── other-session.json
-└── ...
-```
-
-- 原子写入（写入 `.tmp` → 重命名）— 崩溃时安全
-- 完整对话历史保留
-- 人类可读的 JSON 格式
-
-## 会话 API
-
-<TypeTable
-  type={{
-    "session_id()": {
-      description: "返回会话的唯一 ID",
-    },
-    "save()": {
-      description: "将当前历史持久化到存储（无存储时为空操作）",
-    },
-    "agent.resume_session(id, opts)": {
-      description: "加载已保存的会话并恢复历史",
-    },
-  }}
-/>
-
-## 自动保存
-
-设置 `with_auto_save(true)` 后，会话在每次使用内部历史的 `send()` 调用后自动保存。失败会记录为警告（非致命）。
-
-## 自定义存储后端
-
-对于生产部署（PostgreSQL、Redis、S3 等），实现 `SessionStore` trait：
-
-## SessionData 结构
-
-每个会话持久化的内容：
-
-<TypeTable
-  type={{
-    "id": {
-      description: "会话标识符",
-    },
-    "messages": {
-      description: "完整对话历史",
-    },
-    "config.workspace": {
-      description: "工作区路径",
-    },
-    "config.system_prompt": {
-      description: "组装后的系统提示（由提示词插槽构建）",
-    },
-    "config.planning_enabled": {
-      description: "规划标志",
-    },
-    "tool_names": {
-      description: "工具名称（恢复时重建）",
-    },
-  }}
-/>
-
-## API 参考
-
-### SessionOptions
-
-<TypeTable
-  type={{
-    "自定义存储": {
-      description: "Python: _（仅 Rust）_ · TypeScript: _（仅 Rust）_ · 默认值: FileSessionStore",
-    },
-  }}
-/>
-
-### SessionStore trait（Rust）
-
-<TypeTable
-  type={{
-    "save": {
-      description: "签名: async fn save(&self, data: &SessionData) -> Result<()> · 描述: 持久化会话数据",
-    },
-    "load": {
-      description: "签名: async fn load(&self, id: &str) -> Result<Option<SessionData>> · 描述: 按 ID 加载会话",
-    },
-    "delete": {
-      description: "签名: async fn delete(&self, id: &str) -> Result<()> · 描述: 删除会话",
-    },
-    "list": {
-      description: "签名: async fn list(&self) -> Result<Vec<String>> · 描述: 列出所有会话 ID",
-    },
-  }}
-/>
-
-### SessionData 字段
-
-<TypeTable
-  type={{
-    "id": {
-      description: "类型: String · 描述: 会话标识符",
-    },
-    "messages": {
-      description: "类型: Vec<Message> · 描述: 完整对话历史",
-    },
-    "tasks": {
-      description: "类型: Vec<AgentTask> · 描述: 任务列表（别名：todos）",
-    },
-    "config.workspace": {
-      description: "类型: String · 描述: 工作区路径",
-    },
-    "config.system_prompt": {
-      description: "类型: String · 描述: 组装后的系统提示（由提示词插槽构建）",
-    },
-    "config.planning_enabled": {
-      description: "类型: bool · 描述: 规划标志",
-    },
-    "tool_names": {
-      description: "类型: Vec<String> · 描述: 工具名称（恢复时重建）",
-    },
-    "created_at": {
-      description: "类型: DateTime<Utc> · 描述: 会话创建时间",
-    },
-    "updated_at": {
-      description: "类型: DateTime<Utc> · 描述: 最后保存时间",
-    },
-  }}
-/>
-
-### 会话管理方法
-
-<TypeTable
-  type={{
-    "保存会话": {
-      description: "描述: 持久化当前状态",
-    },
-    "加载会话": {
-      description: "描述: 从存储状态恢复",
-    },
-    "列出会话": {
-      description: "描述: 列出所有已保存的会话 ID",
-    },
-    "删除会话": {
-      description: "描述: 删除已存储的会话",
-    },
-  }}
-/>
+Session persistence 保存对话状态；memory 保存可复用任务事实。包含私有 prompt、tool output 或路径的 store 不应公开提交。

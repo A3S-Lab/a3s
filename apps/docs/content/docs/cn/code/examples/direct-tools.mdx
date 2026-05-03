@@ -1,116 +1,22 @@
 ---
-title: 直接工具调用
-description: 绕过 LLM 直接调用工具 — 适用于脚本编写、测试和自定义流水线
+title: "直接工具"
+description: "不经过 LLM 回合运行确定性工具"
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
+# 直接工具
 
-# 直接工具调用
-
-无需 LLM 往返即可直接调用任何内置工具。适用于脚本编写、测试或在 A3S Code 工具层之上构建自定义流水线。
-
-## 底层接口: `session.tool()`
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', { permissive: true });
-
-// 写入文件
-const r1 = await session.tool('write', { path: 'hello.txt', content: '你好！' });
-console.log(`write: exit=${r1.exitCode}`);
-
-// 读取文件
-const r2 = await session.tool('read', { path: 'hello.txt' });
-console.log(`内容: ${r2.output}`);
-
-// 执行命令
-const r3 = await session.tool('bash', { command: 'cat hello.txt' });
-console.log(`bash: ${r3.output}`);
+```ts
+const files = await session.glob('content/docs/**/*.mdx');
+const matches = await session.grep('default_model|providers "openai"|baseUrl');
+const readme = await session.readFile('README.md');
+const tests = await session.bash('npm run build');
+const raw = await session.tool('read', { file_path: 'README.md' });
+const schemas = session.toolDefinitions();
+const program = await session.program({
+  source: 'export default async function run(ctx, inputs) { return ctx.grep(inputs.q); }',
+  inputs: { q: 'planningMode' },
+  allowedTools: ['grep'],
+});
 ```
 
-**源码:** [`sdk/node/examples/advanced_features_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/advanced_features_demo.ts)
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/my-project", permissive=True)
-
-# 写入文件
-r = session.tool("write", {"path": "hello.txt", "content": "你好！"})
-print(f"write: exit={r.exit_code}")
-
-# 读取文件
-r = session.tool("read", {"path": "hello.txt"})
-print(f"内容: {r.output}")
-
-# 执行命令
-r = session.tool("bash", {"command": "cat hello.txt"})
-print(f"bash: {r.output}")
-```
-
-**源码:** [`sdk/python/examples/advanced_features_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/advanced_features_demo.py)
-</Tab>
-</Tabs>
-
-## 便捷方法
-
-常用操作的高级封装：
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const content = await session.readFile('src/main.rs');
-const output = await session.bash('cargo test');
-const files = await session.glob('**/*.rs');
-const matches = await session.grep('TODO');
-```
-</Tab>
-<Tab value="Python">
-```python
-content = session.read_file("src/main.rs")
-output = session.bash("cargo test")
-files = session.glob("**/*.rs")
-matches = session.grep("TODO")
-```
-</Tab>
-</Tabs>
-
-<Callout type="info">
-直接工具调用完全绕过 LLM — 不消耗 token，不产生流式事件。但仍然遵守会话的权限策略和工作区范围。
-</Callout>
-
-## API 参考
-
-### session.tool()
-
-<TypeTable
-  type={{
-    "通用工具调用": {
-      description: "Python: session.tool(name, args) · TypeScript: await session.tool(name, args)",
-    },
-    "返回类型": {
-      description: "ToolOutput { exit_code: i32, output: String }",
-    },
-  }}
-/>
-
-### 便捷方法
-
-<TypeTable
-  type={{
-    "读取文件": {
-      description: "Python: session.read_file(path) · TypeScript: session.readFile(path)",
-    },
-    "执行命令": {
-      description: "Python: session.bash(cmd) · TypeScript: session.bash(cmd)",
-    },
-    "搜索文件": {
-      description: "Python: session.glob(pattern) · TypeScript: session.glob(pattern)",
-    },
-    "搜索内容": {
-      description: "Python: session.grep(pattern) · TypeScript: session.grep(pattern)",
-    },
-  }}
-/>
+直接工具适合测试、迁移和宿主应用工作流。它们仍然在 session 工作区和有效策略下执行。

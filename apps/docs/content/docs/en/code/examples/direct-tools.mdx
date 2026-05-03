@@ -1,116 +1,22 @@
 ---
-title: Direct Tools
-description: Call tools directly without involving the LLM — useful for scripting, testing, and custom pipelines
+title: "Direct Tools"
+description: "Run deterministic tools without an LLM turn"
 ---
-
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
 
 # Direct Tools
 
-Call any built-in tool directly without an LLM round-trip. This is useful for scripting, testing, or building custom pipelines on top of A3S Code's tool layer.
-
-## Low-Level: `session.tool()`
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const session = agent.session('/my-project', { permissive: true });
-
-// Write a file
-const r1 = await session.tool('write', { path: 'hello.txt', content: 'Hello!' });
-console.log(`write: exit=${r1.exitCode}`);
-
-// Read it back
-const r2 = await session.tool('read', { path: 'hello.txt' });
-console.log(`content: ${r2.output}`);
-
-// Run bash
-const r3 = await session.tool('bash', { command: 'cat hello.txt' });
-console.log(`bash: ${r3.output}`);
+```ts
+const files = await session.glob('content/docs/**/*.mdx');
+const matches = await session.grep('default_model|providers "openai"|baseUrl');
+const readme = await session.readFile('README.md');
+const tests = await session.bash('npm run build');
+const raw = await session.tool('read', { file_path: 'README.md' });
+const schemas = session.toolDefinitions();
+const program = await session.program({
+  source: 'export default async function run(ctx, inputs) { return ctx.grep(inputs.q); }',
+  inputs: { q: 'planningMode' },
+  allowedTools: ['grep'],
+});
 ```
 
-**Source:** [`sdk/node/examples/advanced_features_demo.ts`](https://github.com/A3S-Lab/Code/blob/main/sdk/node/examples/advanced_features_demo.ts)
-</Tab>
-<Tab value="Python">
-```python
-session = agent.session("/my-project", permissive=True)
-
-# Write a file
-r = session.tool("write", {"path": "hello.txt", "content": "Hello!"})
-print(f"write: exit={r.exit_code}")
-
-# Read it back
-r = session.tool("read", {"path": "hello.txt"})
-print(f"content: {r.output}")
-
-# Run bash
-r = session.tool("bash", {"command": "cat hello.txt"})
-print(f"bash: {r.output}")
-```
-
-**Source:** [`sdk/python/examples/advanced_features_demo.py`](https://github.com/A3S-Lab/Code/blob/main/sdk/python/examples/advanced_features_demo.py)
-</Tab>
-</Tabs>
-
-## Convenience Methods
-
-Higher-level wrappers for common operations:
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-const content = await session.readFile('src/main.rs');
-const output = await session.bash('cargo test');
-const files = await session.glob('**/*.rs');
-const matches = await session.grep('TODO');
-```
-</Tab>
-<Tab value="Python">
-```python
-content = session.read_file("src/main.rs")
-output = session.bash("cargo test")
-files = session.glob("**/*.rs")
-matches = session.grep("TODO")
-```
-</Tab>
-</Tabs>
-
-<Callout type="info">
-Direct tool calls bypass the LLM entirely — no tokens consumed, no streaming events. They still respect the session's permission policy and workspace scope.
-</Callout>
-
-## API Reference
-
-### session.tool()
-
-<TypeTable
-  type={{
-    "Generic tool call": {
-      description: "Python: session.tool(name, args) · TypeScript: await session.tool(name, args)",
-    },
-    "Return type": {
-      description: "ToolOutput { exit_code: i32, output: String }",
-    },
-  }}
-/>
-
-### Convenience Methods
-
-<TypeTable
-  type={{
-    "Read file": {
-      description: "Python: session.read_file(path) · TypeScript: session.readFile(path)",
-    },
-    "Run bash": {
-      description: "Python: session.bash(cmd) · TypeScript: session.bash(cmd)",
-    },
-    "Glob files": {
-      description: "Python: session.glob(pattern) · TypeScript: session.glob(pattern)",
-    },
-    "Grep content": {
-      description: "Python: session.grep(pattern) · TypeScript: session.grep(pattern)",
-    },
-  }}
-/>
+Direct tools are useful for tests, migrations, and host application workflows. They still execute under the session's workspace and effective policy.

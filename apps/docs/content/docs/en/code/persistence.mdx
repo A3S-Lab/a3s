@@ -1,186 +1,39 @@
 ---
-title: Session Persistence
-description: Pluggable session storage backends for conversation persistence
+title: "Persistence"
+description: "Saving and resuming sessions"
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
+# Persistence
 
-# Session Persistence
+Persistence lets a session survive process restarts and gives product surfaces a stable session ID.
 
-A3S Code supports pluggable session storage backends. Sessions save conversation history and can be resumed across restarts.
+## File Session Store
 
-## Quick Start
+```ts
+import { FileSessionStore } from '@a3s-lab/code';
 
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-import { Agent, FileSessionStore } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-
-// Create with auto-save
-const session = agent.session('.', {
-  sessionStore: new FileSessionStore('.a3s/sessions'),
-  sessionId: 'my-session',
+const session = agent.session('/repo', {
+  sessionId: 'release-review',
+  sessionStore: new FileSessionStore('./.a3s/sessions'),
   autoSave: true,
 });
 
-await session.send('Refactor auth');
+await session.send('Review release readiness');
+await session.save();
+```
 
-// Resume
-const resumed = agent.resumeSession('my-session', {
-  sessionStore: new FileSessionStore('.a3s/sessions'),
+## Resume
+
+```ts
+const resumed = agent.resumeSession('release-review', {
+  sessionStore: new FileSessionStore('./.a3s/sessions'),
 });
 ```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import Agent, FileSessionStore
 
-agent = Agent.create("agent.hcl")
+## Memory And Sessions
 
-session = agent.session(".",
-    session_store=FileSessionStore(".a3s/sessions"),
-    session_id="my-session",
-    auto_save=True,
-)
+Session persistence stores conversation state. Memory stores reusable task facts. Use both when you want resumable workflows that also learn from repeated tasks.
 
-session.send("Refactor auth")
+## Operational Notes
 
-# Resume
-resumed = agent.resume_session("my-session",
-    session_store=FileSessionStore(".a3s/sessions"),
-)
-```
-</Tab>
-</Tabs>
-
-## File Storage
-
-`FileSessionStore` stores each session as a JSON file:
-
-```
-sessions_dir/
-├── my-session.json
-├── other-session.json
-└── ...
-```
-
-- Atomic writes (write `.tmp` → rename) — safe on crash
-- Full conversation history preserved
-- Human-readable JSON format
-
-## Session API
-
-<TypeTable
-  type={{
-    "session_id()": {
-      description: "Return the session's unique ID",
-    },
-    "save()": {
-      description: "Persist current history to the store (no-op if no store)",
-    },
-    "agent.resume_session(id, opts)": {
-      description: "Load a saved session and restore history",
-    },
-  }}
-/>
-
-## Auto-Save
-
-When `with_auto_save(true)` is set, the session saves after each `send()` call that uses internal history. Failures are logged as warnings (non-fatal).
-
-## Custom Storage Backend
-
-For production deployments (PostgreSQL, Redis, S3, etc.), implement the `SessionStore` trait:
-
-## SessionData Structure
-
-What gets persisted per session:
-
-<TypeTable
-  type={{
-    "id": {
-      description: "Session identifier",
-    },
-    "messages": {
-      description: "Full conversation history",
-    },
-    "config.workspace": {
-      description: "Workspace path",
-    },
-    "config.system_prompt": {
-      description: "Assembled system prompt (built from prompt slots)",
-    },
-    "config.planning_enabled": {
-      description: "Planning flag",
-    },
-    "tool_names": {
-      description: "Tool names (rebuilt on resume)",
-    },
-  }}
-/>
-
-## API Reference
-
-### SessionOptions
-
-<TypeTable
-  type={{
-    "Custom store": {
-      description: "Python: _(Rust only)_ · TypeScript: _(Rust only)_ · Default: FileSessionStore",
-    },
-  }}
-/>
-
-### SessionStore trait (Rust)
-
-<TypeTable
-  type={{
-    "save": {
-      description: "Signature: async fn save(&self, data: &SessionData) -> Result<()> · Description: Persist session data",
-    },
-    "load": {
-      description: "Signature: async fn load(&self, id: &str) -> Result<Option<SessionData>> · Description: Load session by ID",
-    },
-    "delete": {
-      description: "Signature: async fn delete(&self, id: &str) -> Result<()> · Description: Remove session",
-    },
-    "list": {
-      description: "Signature: async fn list(&self) -> Result<Vec<String>> · Description: List all session IDs",
-    },
-  }}
-/>
-
-### SessionData fields (Rust SDK)
-
-<TypeTable
-  type={{
-    id: { type: 'String', description: 'Session identifier' },
-    messages: { type: 'Vec<Message>', description: 'Full conversation history' },
-    tasks: { type: 'Vec<AgentTask>', description: 'Task list (alias: `todos`)' },
-    'config.workspace': { type: 'String', description: 'Workspace path' },
-    'config.system_prompt': { type: 'String', description: 'Assembled system prompt (built from prompt slots)' },
-    'config.planning_enabled': { type: 'bool', description: 'Planning flag' },
-    tool_names: { type: 'Vec<String>', description: 'Tool names (rebuilt on resume)' },
-    created_at: { type: 'DateTime<Utc>', description: 'Session creation time' },
-    updated_at: { type: 'DateTime<Utc>', description: 'Last save time' },
-  }}
-/>
-
-### Session management methods
-
-<TypeTable
-  type={{
-    "session.save()": {
-      description: "Persist current session state to the configured store",
-    },
-    "agent.resumeSession(id, options)": {
-      description: "Resume a saved session by ID (requires sessionStore in options)",
-    },
-    "session.sessionId": {
-      description: "Property: Get the current session's unique ID",
-    },
-  }}
-/>
+Keep session stores out of public commits when they may contain prompts, tool output, or private file paths.

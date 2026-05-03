@@ -1,235 +1,37 @@
 ---
-title: Isolation Strategies
-description: Workspace boundaries, file version history, Git worktrees, and MicroVM sandbox
+title: "Isolation"
+description: "Workspace, context, and delegated-task isolation"
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
-import { Callout } from 'fumadocs-ui/components/callout';
-import { Steps, Step } from 'fumadocs-ui/components/steps';
+# Isolation
 
-# Isolation Strategies
-
-A3S Code provides four isolation layers to prevent agent operations from affecting files or system resources outside the intended scope.
-
-```
-Isolation Layers
-  ├─ Workspace Boundary   ← File ops confined to the session directory (always on)
-  ├─ File Version History ← Auto-snapshot before writes; diff and restore any version
-  ├─ Git Worktree         ← Agent works on an isolated branch; discard with one command
-  └─ MicroVM Sandbox      ← bash runs inside an isolated VM (host app supplies BashSandbox impl)
-```
+Isolation in v2.1.0 is mostly a harness concern: each session binds to one workspace, each delegated child run receives bounded context, and side effects go through permission checks.
 
 ## Workspace Boundary
 
-All file operations (`read`, `write`, `edit`, `glob`, `grep`) are confined to the directory specified when creating the session. Attempts to access paths outside the workspace are intercepted immediately — no retry, no path disclosure to the LLM.
+```ts
+const session = agent.session('/repo');
+```
 
-This boundary is **always active** and cannot be disabled through configuration.
+Relative file, search, shell, and git operations are evaluated from the session workspace. Security providers and hooks can tighten access further.
 
-## File Version History
+## Delegated Context
 
-Whenever the agent executes `write`, `edit`, or `patch`, A3S Code automatically captures a snapshot of the file before the modification. Snapshots are stored in session memory and support version listing, diff generation, and restore.
+`task` and `parallel_task` isolate child reasoning. The parent receives compact results instead of full transcripts. This avoids prompt pollution and makes evidence review easier.
 
-### Snapshot Triggers
+## Storage Isolation
 
-| Tool | Snapshot Taken |
-|------|---------------|
-| `write` | Before overwriting |
-| `edit` | Before string replacement |
-| `patch` | Before applying patch |
+Use separate memory and session store directories for different products, tenants, or test suites:
 
-### Using File History
+```ts
+import { FileMemoryStore, FileSessionStore } from '@a3s-lab/code';
 
-<Callout type="warn">
-  File version history APIs (`listFileVersions`, `diffFileVersions`, `restoreFileVersion`) are available in the Rust SDK. The TypeScript SDK exposes file operations through the LLM tool calls (`read`, `write`, `edit`) rather than direct session methods.
-</Callout>
-
-### VersionSummary Fields (Rust SDK)
-
-<TypeTable
-  type={{
-    "version": {
-      description: "Type: usize · Version number (0-indexed, monotonically increasing per file)",
-    },
-    "path": {
-      description: "Type: String · File path",
-    },
-    "timestamp": {
-      description: "Type: DateTime<Utc> · When the snapshot was taken",
-    },
-    "tool_name": {
-      description: "Type: String · Tool that triggered the snapshot (write/edit/patch)",
-    },
-    "size": {
-      description: "Type: usize · File content size in bytes",
-    },
-  }}
-/>
-
-<Callout type="info">
-File history is session-scoped in-memory storage and is not persisted after the session ends. For cross-session change tracking, use the Git Worktree approach instead.
-</Callout>
-
-## Git Worktree
-
-The `git_worktree` tool lets the agent work on an isolated Git worktree (branch). All agent changes stay on the isolated branch — the main branch is completely unaffected. If an experiment fails, remove the worktree with a single command to discard all changes.
-
-### Workflow
-
-<Steps>
-<Step>**Create worktree** — establish an isolated workspace on a new branch</Step>
-<Step>**Work in isolation** — all agent file changes are committed to this branch</Step>
-<Step>**Review results** — inspect changes, decide to merge or discard</Step>
-<Step>**Merge or discard** — if satisfied, merge; if not, `remove` the entire worktree</Step>
-</Steps>
-
-### Example
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-// Create isolated worktree
-await session.callTool('git_worktree', {
-  command: 'create',
-  branch: 'agent/refactor-auth',
-  path: '/tmp/agent-worktrees/refactor-auth',
-  newBranch: true,
-  base: 'main',
-});
-
-// Create session pointing at the worktree
-const isolatedSession = agent.session('/tmp/agent-worktrees/refactor-auth');
-
-// All changes on isolated branch
-const result = await isolatedSession.send('Refactor auth module to use JWT');
-
-// List all worktrees
-const list = await session.callTool('git_worktree', { command: 'list' });
-
-// Discard if not satisfied
-await session.callTool('git_worktree', {
-  command: 'remove',
-  path: '/tmp/agent-worktrees/refactor-auth',
+const session = agent.session('/repo', {
+  memoryStore: new FileMemoryStore('./.a3s/memory'),
+  sessionStore: new FileSessionStore('./.a3s/sessions'),
 });
 ```
-</Tab>
-<Tab value="Python">
-```python
-# Create isolated worktree
-session.call_tool("git_worktree", {
-    "command": "create",
-    "branch": "agent/refactor-auth",
-    "path": "/tmp/agent-worktrees/refactor-auth",
-    "new_branch": True,
-    "base": "main",
-})
 
-# Create session pointing at the worktree
-isolated_session = agent.session("/tmp/agent-worktrees/refactor-auth")
+## External Harness
 
-# All changes on isolated branch
-result = isolated_session.send("Refactor auth module to use JWT")
-
-# Discard entire worktree if not satisfied
-session.call_tool("git_worktree", {
-    "command": "remove",
-    "path": "/tmp/agent-worktrees/refactor-auth",
-})
-```
-</Tab>
-</Tabs>
-
-### git_worktree Parameters
-
-<TypeTable
-  type={{
-    "command": {
-      description: "Type: string (required) · Enum: create / list / remove / status",
-    },
-    "branch": {
-      description: "Type: string · Branch name (for create)",
-    },
-    "path": {
-      description: "Type: string · Worktree path (for create / remove)",
-    },
-    "new_branch": {
-      description: "Type: bool · Default: true · Create a new branch (for create)",
-    },
-    "base": {
-      description: "Type: string · Default: HEAD · Base ref for the new branch (for create)",
-    },
-    "force": {
-      description: "Type: bool · Force remove even with uncommitted changes (for remove)",
-    },
-  }}
-/>
-
-See [Git Worktree Example](/docs/code/examples/git-worktree) for a full walkthrough.
-
-## MicroVM Sandbox
-
-When `bash` tool commands need to run inside an A3S Box MicroVM instead of the host process, the host application supplies a concrete `BashSandbox` implementation via `SessionOptions::with_sandbox_handle()`. The workspace directory is mounted read-write at `/workspace` inside the VM.
-
-<Callout type="info">
-No Cargo feature flag is required. `a3s-code-core` ships the `BashSandbox` trait as an open extension point. The host application (e.g. SafeClaw) provides the concrete sandbox implementation.
-</Callout>
-
-### Rust — wiring in a custom sandbox
-
-```rust
-use a3s_code::{sandbox::BashSandbox, agent_api::SessionOptions};
-use std::sync::Arc;
-
-// Any type that implements BashSandbox can be supplied here.
-// SafeClaw ships an a3s-box–backed implementation; you can provide your own.
-let opts = SessionOptions::default()
-    .with_sandbox_handle(Arc::new(my_sandbox_impl));
-
-let session = agent.session("/project", opts).await?;
-```
-
-### BashSandbox trait
-
-```rust
-#[async_trait]
-pub trait BashSandbox: Send + Sync {
-    /// Execute a shell command inside the sandbox.
-    async fn run(&self, command: &str, config: &SandboxConfig) -> Result<SandboxOutput>;
-}
-```
-
-### SandboxConfig Fields
-
-<TypeTable
-  type={{
-    "image": {
-      description: "Type: String · Default: alpine:latest · OCI image reference",
-    },
-    "memory_mb": {
-      description: "Type: u32 · Default: 512 · Memory limit in MB",
-    },
-    "cpus": {
-      description: "Type: u32 · Default: 1 · Number of vCPUs",
-    },
-    "network": {
-      description: "Type: bool · Default: false · Enable outbound networking (off by default — safer)",
-    },
-    "env": {
-      description: "Type: HashMap<String,String> · Environment variables injected into the sandbox",
-    },
-  }}
-/>
-
-<Callout type="info">
-Networking is disabled by default (`network: false`). Enable only when the agent needs to run `npm install`, `pip install`, or similar network operations — and consider pairing it with a permission policy to restrict which commands can run.
-</Callout>
-
-## Choosing an Isolation Strategy
-
-| Scenario | Recommended approach |
-|----------|---------------------|
-| Prevent reading files outside the project | Workspace boundary (always on) |
-| Undo agent file writes | File version history |
-| Agent works on an experimental branch | Git worktree |
-| Isolate system side-effects of bash commands | MicroVM sandbox |
-| High-security production environment | Git worktree + MicroVM sandbox |
+AHP can enforce organization-level boundaries. Hooks can enforce local process rules. Permission policy keeps final tool execution auditable.

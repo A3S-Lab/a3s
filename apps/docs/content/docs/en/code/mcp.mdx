@@ -1,258 +1,46 @@
 ---
-title: MCP Support
-description: Extend the agent with external tools via Model Context Protocol
+title: "MCP"
+description: "Model Context Protocol server integration"
 ---
 
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { TypeTable } from 'fumadocs-ui/components/type-table';
+# MCP
 
-# MCP Support
+MCP connects A3S Code sessions to external tool servers. Tools from a server are registered into the session and named `mcp__<server>__<tool>`.
 
-A3S Code supports the [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) for integrating external tool servers. MCP tools are automatically registered in the ToolExecutor when a server connects.
+## Add A Server
 
-## Transports
-
-<TypeTable
-  type={{
-    "stdio": {
-      type: "JSON-RPC 2.0 over stdin/stdout",
-      description: "Local tools, CLI-based servers",
-    },
-    "http": {
-      type: "JSON-RPC 2.0 over HTTP + Server-Sent Events",
-      description: "Remote servers, shared infrastructure (legacy SSE transport)",
-    },
-    "streamable-http": {
-      type: "JSON-RPC 2.0 over HTTP (MCP 2025-03-26)",
-      description: "Remote servers — single endpoint, supports both JSON and SSE responses, session management via Mcp-Session-Id header",
-    },
-  }}
-/>
-
-## Configuration
-
-### stdio Transport
-
-For local MCP servers that run as child processes:
-
-```hcl
-mcp_servers {
-  name      = "filesystem"
-  transport = "stdio"
-  command   = "npx"
-  args      = ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
-  enabled   = true
-}
-
-mcp_servers {
-  name      = "github"
-  transport = "stdio"
-  command   = "npx"
-  args      = ["-y", "@modelcontextprotocol/server-github"]
-  enabled   = true
-  env = {
-    GITHUB_TOKEN = "ghp_..."
-  }
-}
-```
-
-### HTTP+SSE Transport
-
-For remote MCP servers using the legacy SSE transport:
-
-```hcl
-mcp_servers {
-  name      = "remote-tools"
-  transport = "http"
-  url       = "https://mcp.example.com/sse"
-  enabled   = true
-  headers = {
-    Authorization = "Bearer token-..."
-  }
-}
-```
-
-Requests are sent via HTTP POST to the base URL; responses stream back via Server-Sent Events from a `/sse` endpoint.
-
-### Streamable HTTP Transport
-
-For remote MCP servers implementing the MCP 2025-03-26 spec:
-
-```hcl
-mcp_servers {
-  name      = "remote-tools"
-  transport = "streamable-http"
-  url       = "https://mcp.example.com/mcp"
-  enabled   = true
-  headers = {
-    Authorization = "Bearer token-..."
-  }
-}
-```
-
-All communication goes through a single endpoint. The server may respond with plain JSON or an SSE stream. Sessions are tracked via the `Mcp-Session-Id` header and terminated with a DELETE request on close.
-
-## Tool Naming
-
-MCP tools are namespaced with the server name to avoid collisions:
-
-```
-mcp__<server_name>__<tool_name>
-```
-
-For example, a tool `read_file` from server `filesystem` becomes `mcp__filesystem__read_file`.
-
-## Permission Integration
-
-MCP tools respect the same permission system as built-in tools. Use the namespaced prefix in permission rules:
-
-```
-mcp__filesystem  → matches all tools from the filesystem server
-mcp__github      → matches all tools from the github server
-```
-
-## Shadowing Prevention
-
-MCP tools cannot shadow built-in tool names. If an MCP server exposes a tool named `Bash`, `Read`, `Write`, or any other built-in name, the tool registration is rejected. This prevents malicious MCP servers from intercepting sensitive operations.
-
-## Execution Timeout
-
-MCP tool executions have a configurable timeout (default: 60 seconds). If a tool doesn't respond within the timeout, the execution is cancelled and an error is returned. This prevents hanging MCP servers from blocking the agent.
-
-## API Reference
-
-### HCL configuration
-
-```hcl
-mcp_servers {
-  name    = "filesystem"
-  command = "npx"
-  args    = ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
-}
-
-mcp_servers {
-  name = "github"
-  command = "npx"
-  args    = ["-y", "@modelcontextprotocol/server-github"]
-  env     = { GITHUB_TOKEN = env("GITHUB_TOKEN") }
-}
-
-mcp_servers {
-  name      = "remote"
-  transport = "streamable-http"
-  url       = "https://mcp.example.com/mcp"
-  headers   = { Authorization = "Bearer token" }
-}
-```
-
-### MCP server config fields
-
-<TypeTable
-  type={{
-    name: { type: 'string', required: true, description: 'Server identifier (used in tool name prefix)' },
-    transport: { type: 'string', default: '"stdio"', description: '`stdio`, `http`, or `streamable-http`' },
-    command: { type: 'string', description: 'Executable to launch (stdio only)' },
-    args: { type: 'string[]', description: 'Command arguments (stdio only)' },
-    url: { type: 'string', description: 'Server endpoint URL (http / streamable-http only)' },
-    headers: { type: 'object', description: 'HTTP headers (http / streamable-http only)' },
-    env: { type: 'object', description: 'Environment variables (stdio only)' },
-    timeout_ms: { type: 'number', default: '60000', description: 'Tool execution timeout' },
-  }}
-/>
-
-### Tool naming
-
-MCP tools are namespaced as `mcp__{server}__{tool}`. Use this prefix in permission rules:
-
-<TypeTable
-  type={{
-    "mcp__filesystem": {
-      description: "All tools from the filesystem server",
-    },
-    "mcp__github__create_issue": {
-      description: "Specific tool",
-    },
-    "mcp__*": {
-      description: "All MCP tools",
-    },
-  }}
-/>
-
-## Dynamic MCP Server Registration
-
-Use `add_mcp_server()` to connect an MCP server to a live session at runtime — without restarting the agent or reloading config. The server is launched, its tools are discovered, and they are immediately available for the next LLM turn.
-
-<Tabs groupId="lang" items={['TypeScript', 'Python']}>
-<Tab value="TypeScript">
-```typescript
-import { Agent } from '@a3s-lab/code'; // v0.9.5
-
-const agent = await Agent.create('agent.hcl');
-const session = agent.session('.');
-
-// stdio server
-const toolCount = await session.addMcpServer(
+```ts
+const count = await session.addMcpServer(
   'filesystem',
   'stdio',
   'npx',
-  ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+  ['-y', '@modelcontextprotocol/server-filesystem', '/repo'],
 );
-console.log(`Registered ${toolCount} tools`);
 
-// Streamable HTTP server
+console.log('registered tools:', count);
+```
+
+HTTP and streamable HTTP servers are also supported:
+
+```ts
 await session.addMcpServer(
-  'remote',
-  'streamable-http',
-  undefined,
-  undefined,
-  'https://mcp.example.com/mcp',
-  { Authorization: `Bearer ${process.env.API_TOKEN}` },
+  'search',
+  'http',
+  null,
+  null,
+  'http://localhost:7777/mcp',
+  { Authorization: `Bearer ${process.env.MCP_TOKEN}` },
 );
-
-const result = await session.send('List files in /tmp');
 ```
-</Tab>
-<Tab value="Python">
-```python
-from a3s_code import Agent  # v0.9.5
 
-agent = Agent.create("agent.hcl")
-session = agent.session(".")
+## Inspect And Remove
 
-# stdio server
-tool_count = session.add_mcp_server(
-    "filesystem",
-    transport="stdio",
-    command="npx",
-    args=["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
-)
-print(f"Registered {tool_count} tools")
-
-# Streamable HTTP server
-session.add_mcp_server(
-    "remote",
-    transport="streamable-http",
-    url="https://mcp.example.com/mcp",
-    headers={"Authorization": f"Bearer {os.environ['API_TOKEN']}"},
-)
-
-result = session.send("List files in /tmp")
+```ts
+console.log(await session.mcpStatus());
+console.log(session.toolNames().filter(name => name.startsWith('mcp__')));
+await session.removeMcpServer('filesystem');
 ```
-</Tab>
-</Tabs>
 
-### add_mcp_server parameters
+## Security
 
-<TypeTable
-  type={{
-    name: { type: 'string', required: true, description: 'Server identifier — used as the tool name prefix (`mcp__{name}__{tool}`)' },
-    transport: { type: "'stdio' | 'http' | 'streamable-http'", default: '"stdio"', description: 'Transport protocol' },
-    command: { type: 'string', description: 'Executable to launch — required for `stdio` transport' },
-    args: { type: 'string[]', description: 'Command-line arguments passed to the server process (stdio only)' },
-    url: { type: 'string', description: 'Server endpoint URL — required for `http` and `streamable-http` transports' },
-    headers: { type: 'object', description: 'HTTP headers sent with every request (http / streamable-http only)' },
-    env: { type: 'object', description: 'Extra environment variables for the server process (stdio only)' },
-  }}
-/>
-
-Returns the number of tools registered from the server. Throws if the server fails to start or the initial `list_tools` call fails.
+MCP tools still pass through permission policy, hooks, and security providers. Treat external tool servers as privileged integrations and keep secrets in environment variables.

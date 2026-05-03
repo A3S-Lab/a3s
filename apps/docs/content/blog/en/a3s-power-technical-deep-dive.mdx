@@ -1028,10 +1028,10 @@ A3S Power is the inference engine of the A3S privacy-preserving AI platform, run
 │  └──────────────────────────────────────────────────────────┘    │
 │       ▲ Vsock                                                     │
 │       │                                                           │
-│  ┌────┴─────────┐  ┌──────────────┐  ┌────────────────────────┐  │
-│  │  a3s-gateway │  │  a3s-event   │  │  a3s-code              │  │
-│  │  (API routing│  │  (event bus) │  │  (AI coding agent)     │  │
-│  └──────────────┘  └──────────────┘  └────────────────────────┘  │
+│  ┌────┴─────────┐  ┌────────────────────────┐                    │
+│  │  a3s-gateway │  │  a3s-code              │                    │
+│  │  (API routing│  │  (AI coding agent)     │                    │
+│  └──────────────┘  └────────────────────────┘                    │
 │                                                                   │
 │  Client:                                                          │
 │  ┌──────────────────────────────────────────────────────────┐    │
@@ -1046,7 +1046,6 @@ A3S Power is the inference engine of the A3S privacy-preserving AI platform, run
 | **a3s-box** | Hosts Power inside TEE MicroVM |
 | **a3s-code** | Uses Power as local inference backend |
 | **a3s-gateway** | Routes inference requests to Power instances |
-| **a3s-event** | Distributes inference events |
 | **verify SDK** | Client attestation verification |
 
 ### Technical Roadmap
