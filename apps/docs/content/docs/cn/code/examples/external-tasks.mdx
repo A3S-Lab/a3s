@@ -8,13 +8,15 @@ description: "从 agent 进程外完成工作"
 ```ts
 const pending = await session.pendingExternalTasks();
 
-await session.completeExternalTask(pending[0].id, {
-  success: true,
-  result: {
-    summary: 'worker 已完成测试运行',
-    command: 'npm run build',
-  },
-});
+if (pending.length > 0) {
+  await session.completeExternalTask(pending[0].id, {
+    success: true,
+    result: {
+      summary: 'worker 已完成测试运行',
+      command: 'npm run build',
+    },
+  });
+}
 ```
 
 外部 worker 应返回紧凑的结构化证据，而不是只有原始日志。

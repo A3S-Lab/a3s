@@ -1,0 +1,448 @@
+---
+title: "API 契约"
+description: "本地集成检查覆盖的 v2.1.0 SDK 机制"
+---
+
+# API 契约
+
+本页只记录 `crates/code/scripts/docs_api_contract_smoke.mjs` 覆盖过的
+A3S Code v2.1.0 Node SDK 行为。该脚本会启动一个临时的
+OpenAI-compatible 本地测试服务，创建真实 SDK session，调用 native binding，
+并断言返回值。不需要 docs build。
+
+在 `crates/code` 下运行：
+
+```bash
+node scripts/docs_api_contract_smoke.mjs
+```
+
+## Agent
+
+已验证入口：
+
+```ts
+const agent = await Agent.create(aclSource);
+await agent.refreshMcpTools();
+
+const session = agent.session(workspace, options);
+const named = agent.sessionForAgent(workspace, 'explore', [], options);
+```
+
+`Agent.create()` 接受 ACL source text 或 `.acl` 文件路径。JSON config 不在
+已验证契约内。集成检查覆盖 `apiKey`/`baseUrl` 和
+`api_key`/`base_url` 两组 provider alias。`sessionForAgent()` 已用内置
+`explore` agent 验证。
+
+集成检查也覆盖 ACL 文件存储字段：
+
+```text
+storage_backend = "file"
+storage_url = "/tmp/a3s-doc-stores/acl-storage"
+```
+
+## Session Options
+
+已验证的 option 形状：
+
+```ts
+const session = agent.session(workspace, {
+  model: 'openai/docs-alt',
+  builtinSkills: true,
+  planningMode: 'disabled',
+  memoryStore: new FileMemoryStore(memoryDir),
+  sessionStore: new FileSessionStore(sessionDir),
+  sessionId: 'docs-contract',
+  autoSave: true,
+  securityProvider: new DefaultSecurityProvider(),
+  skillDirs: [path.join(workspace, 'skills')],
+  inlineSkills: [
+    {
+      name: 'strict-release-review',
+      kind: 'instruction',
+      content: 'Always separate blockers from nice-to-have improvements.',
+    },
+  ],
+  maxToolRounds: 24,
+  maxParseRetries: 3,
+  toolTimeoutMs: 120000,
+  circuitBreakerThreshold: 4,
+  autoCompact: true,
+  autoCompactThreshold: 0.75,
+  continuationEnabled: true,
+  maxContinuationTurns: 3,
+});
+```
+
+`model` 是 per-session override。检查已覆盖使用
+`model: 'openai/docs-alt'` 创建的 session 会把 `docs-alt` 发送给本地
+provider。
+
+基础 session accessor 已验证：
+
+```ts
+console.log(session.sessionId);
+console.log(session.workspace);
+console.log(session.initWarning);
+console.log(session.history());
+console.log(session.cancel());
+```
+
+`workspace` 返回 SDK canonical workspace path。
+
+`planningMode` 使用显式三态：`'auto'`、`'enabled'`、`'disabled'`。
+
+检查也覆盖 session 创建时接受这个 `permissionPolicy` 形状：
+
+```ts
+agent.session(workspace, {
+  permissionPolicy: {
+    deny: ['write(**/.env*)', 'bash(rm -rf*)'],
+    ask: ['bash(git push*)', 'bash(npm publish*)'],
+    allow: ['read(*)', 'grep(*)', 'glob(*)', 'bash(npm run build*)'],
+    defaultDecision: 'ask',
+    enabled: true,
+  },
+});
+```
+
+Prompt slot options 是字符串：
+
+```ts
+agent.session(workspace, {
+  role: 'release-readiness reviewer',
+  guidelines: 'Find blockers before improvements. Require command evidence for done claims.',
+  responseStyle: 'concise, findings first',
+  goalTracking: true,
+});
+```
+
+## Result Shape
+
+`session.send()` 返回的 `AgentResult` 字段在 result 对象自身：
+
+```ts
+const result = await session.send('Return a short answer');
+
+console.log(result.text);
+console.log(result.toolCallsCount);
+console.log(result.promptTokens);
+console.log(result.completionTokens);
+console.log(result.totalTokens);
+console.log(result.verificationStatus);
+console.log(result.pendingVerificationCount);
+console.log(result.failedVerificationCount);
+console.log(result.verificationReportCount);
+console.log(result.verificationSummaryJson);
+console.log(result.verificationSummaryText);
+```
+
+trace events 和 verification reports 是 session API，不是 `AgentResult` 字段。
+
+## Streaming
+
+`session.stream()` 返回 `EventStream`。已验证的读取方式是 `.next()`：
+
+```ts
+const stream = await session.stream('Stream one sentence');
+
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (done) break;
+  if (!event) continue;
+  if (event.text) process.stdout.write(event.text);
+}
+```
+
+不要依赖 `for await`，除非你安装的 SDK 版本已经单独验证支持 async
+iteration。
+
+## Direct Tools
+
+已验证的宿主侧直接工具调用：
+
+```ts
+await session.readFile('README.md');
+await session.glob('src/*.rs');
+await session.grep('PermissionPolicy');
+await session.bash('printf docs-bash');
+await session.tool('read', { file_path: 'README.md' });
+await session.git('status');
+await session.git('diff');
+await session.git('log', undefined, undefined, undefined, undefined, undefined, undefined, 5);
+await session.tool('search_skills', { query: 'release blockers', limit: 5 });
+
+session.toolNames();
+session.toolDefinitions();
+session.registerAgentDir(path.join(workspace, 'agents'));
+```
+
+已验证的 `toolNames()` 集合包含 `read`、`write`、`edit`、`patch`、`grep`、
+`glob`、`ls`、`bash`、`task`、`parallel_task`、`search_skills`、`Skill`、
+`program`、`git`、`batch`、`web_fetch` 和 `web_search`。
+
+直接工具调用是宿主侧特权能力。把它暴露给最终用户之前，应在宿主应用内做权限判断。
+
+## AGENTS.md
+
+脚本会在 workspace 写入一个 `AGENTS.md`，并断言其中的 instruction token
+出现在本地 provider request body 中：
+
+```md
+# Project Instructions
+
+Always mention docs-contract-agents-md-token when asked for project instructions.
+```
+
+项目指令应保持可操作，并且不要包含 secret。
+
+## Programmatic Tool Calling
+
+`session.program()` 在内嵌 QuickJS runtime 中运行有边界的 JavaScript：
+
+```ts
+const result = await session.program({
+  source: `
+    export default async function run(ctx, inputs) {
+      const text = await ctx.readFile('README.md');
+      const hits = await ctx.grep(inputs.q, { glob: '*.md' });
+      return { summary: 'ok', hasHits: text.includes(inputs.q) && hits.includes(inputs.q) };
+    }
+  `,
+  inputs: { q: 'planningMode' },
+  allowedTools: ['read', 'grep'],
+  limits: { timeoutMs: 30000, maxToolCalls: 12, maxOutputBytes: 65536 },
+});
+
+const meta = JSON.parse(result.metadataJson);
+console.log(meta.script_result);
+console.log(meta.program.tool_calls);
+```
+
+已验证的 `ctx` helper：`readFile`、`read`、`grep`、`glob`、`ls`、`bash`、
+`git` 和通用 `tool(name, args)`。`allowedTools` 限制脚本能调用的已注册
+tool。`program` 不会出现在它自己的默认 tool set 里。
+
+## Verification
+
+验证信息是 session 级能力：
+
+```ts
+const report = await session.verifyCommands('docs api check', [
+  { id: 'echo', kind: 'command', description: 'echo works', command: 'printf verify', required: true },
+]);
+
+console.log(report.subject);
+console.log(session.verificationReports());
+console.log(session.verificationSummary());
+console.log(session.verificationSummaryText());
+console.log(session.verificationPresets());
+console.log(formatVerificationSummary(session.verificationSummary()));
+```
+
+## Memory
+
+Node memory 已用 `FileMemoryStore` 验证：
+
+```ts
+const session = agent.session(workspace, {
+  memoryStore: new FileMemoryStore(memoryDir),
+});
+
+console.log(session.hasMemory);
+await session.rememberSuccess('docs memory success', ['grep'], 'remembered');
+await session.rememberFailure('docs memory failure', 'expected failure', ['bash']);
+await session.memoryRecent(10);
+await session.recallSimilar('docs memory', 5);
+await session.recallByTags(['grep'], 10);
+```
+
+当前 Node SDK 已验证的 recent-memory 方法是 `memoryRecent()`。`recallRecent()`
+不存在于当前 Node SDK surface。
+
+## Skills
+
+文件型和 inline skills 已通过 `search_skills` 验证：
+
+```ts
+const session = agent.session(workspace, {
+  skillDirs: [path.join(workspace, 'skills')],
+  inlineSkills: [
+    {
+      name: 'strict-release-review',
+      kind: 'instruction',
+      content: 'Always separate blockers from nice-to-have improvements.',
+    },
+  ],
+});
+
+await session.tool('search_skills', { query: 'release blockers', limit: 5 });
+await session.tool('search_skills', { query: 'strict release review', limit: 5 });
+```
+
+skill-file 检查使用带 YAML frontmatter 的 Markdown，并覆盖了
+`allowed-tools` key。
+
+## Side Questions
+
+`btw()` 提出一次只读临时问题，并返回独立结果：
+
+```ts
+const side = await session.btw('What is this test?');
+console.log(side.question);
+console.log(side.answer);
+console.log(side.totalTokens);
+```
+
+## Runs And Cancellation
+
+每次 `send()` 或 `stream()` 都会记录可回放的 run state：
+
+```ts
+const runs = await session.runs();
+const latest = runs.at(-1);
+
+if (latest) {
+  console.log(await session.runSnapshot(latest.id));
+  console.log(await session.runEvents(latest.id));
+}
+
+const current = await session.currentRun();
+if (current?.id && current.status === 'running') {
+  await session.cancelRun(current.id);
+}
+
+console.log(session.traceEvents());
+```
+
+`currentRun()` 用于读取当前操作。空闲时，v2.1.0 可能返回 `null`，也可能
+因前序控制流保留一个 snapshot。已完成历史请使用 `runs()`。
+
+## Persistence
+
+文件型 session persistence 已验证稳定 `sessionId`、`autoSave`、显式
+`save()` 和 `resumeSession()`：
+
+```ts
+const session = agent.session(workspace, {
+  sessionStore: new FileSessionStore(sessionDir),
+  sessionId: 'docs-contract',
+  autoSave: true,
+});
+
+await session.save();
+
+const resumed = agent.resumeSession('docs-contract', {
+  sessionStore: new FileSessionStore(sessionDir),
+});
+console.log(resumed.history());
+```
+
+Node 进程需要及时释放 session 级后台资源时，调用 `session.close()`。
+
+## Delegation
+
+已验证核心委派工具的直接 helper：
+
+```ts
+await session.delegateTask({
+  agent: 'general',
+  description: 'docs delegated check',
+  prompt: 'Return a short response.',
+  maxSteps: 1,
+});
+
+await session.parallelTask([
+  { agent: 'general', description: 'one', prompt: 'Return one response.', maxSteps: 1 },
+  { agent: 'general', description: 'two', prompt: 'Return another response.', maxSteps: 1 },
+]);
+```
+
+它们返回来自 `task` 和 `parallel_task` 的 `ToolResult`。
+
+## Hooks
+
+已验证的 hook 管理面：
+
+```ts
+session.registerHook(
+  'docs-observer',
+  'pre_tool_use',
+  { tool: 'bash' },
+  { priority: 1, timeoutMs: 1000 },
+  () => ({ action: 'continue' }),
+);
+
+console.log(session.hookCount());
+session.unregisterHook('docs-observer');
+```
+
+把 hook 行为作为生产关卡前，需要对你依赖的具体 event path 做集成测试。
+
+## Slash Commands
+
+自定义 slash command 通过 `session.send()` 触发：
+
+```ts
+session.registerCommand('docs_status', 'Return docs command status', (args, ctx) => {
+  return `status args=${args}; session=${ctx.sessionId}; workspace=${ctx.workspace}`;
+});
+
+console.log(session.listCommands());
+const result = await session.send('/docs_status check');
+console.log(result.text);
+```
+
+## Lane Queue
+
+Queue infrastructure 是显式 opt-in：
+
+```ts
+const queued = agent.session(workspace, {
+  queueConfig: { enableDlq: true, enableMetrics: true },
+});
+
+console.log(queued.hasQueue());
+await queued.setLaneHandler('execute', { mode: 'external', timeoutMs: 1000 });
+await queued.pendingExternalTasks();
+await queued.completeExternalTask('missing', { success: true, result: { ok: true } });
+await queued.queueStats();
+await queued.queueMetrics();
+await queued.deadLetters();
+```
+
+没有传入 `queueConfig` 的普通 session 不会启用 queue。
+
+## MCP
+
+集成检查覆盖一个真实 stdio MCP server：
+
+```ts
+const count = await session.addMcpServer(
+  'echo',
+  'stdio',
+  process.execPath,
+  ['tools/mcp_echo_server.mjs', 'secret'],
+);
+
+console.log(count);
+console.log(await session.mcpStatus());
+console.log(session.toolNames().filter(name => name.startsWith('mcp__echo__')));
+
+await session.tool('mcp__echo__echo', { message: 'docs mcp ok' });
+await session.removeMcpServer('echo');
+```
+
+server 注册出的 tool 名称格式是 `mcp__<server>__<tool>`。
+
+## AHP Transport Objects
+
+已验证 constructor 形状和 `kind` 值：
+
+```ts
+new HttpTransport('http://localhost:8080/ahp', 'token').kind; // 'http'
+new WebSocketTransport('ws://localhost:8080/ahp', 'token').kind; // 'websocket'
+new StdioTransport('node', ['server.mjs']).kind; // 'stdio'
+new UnixSocketTransport('/tmp/a3s.sock').kind; // 'unix_socket'
+```
+
+该检查不断言 live AHP server exchange。

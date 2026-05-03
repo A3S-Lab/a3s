@@ -8,7 +8,11 @@ description: "在回合运行时读取 AgentEvent"
 ```ts
 const stream = await session.stream('运行测试并解释失败原因');
 
-for await (const event of stream) {
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (done) break;
+  if (!event) continue;
+
   if (event.text) process.stdout.write(event.text);
   if (event.toolName) console.log('\n[tool]', event.toolName);
   if (event.error) console.error(event.error);

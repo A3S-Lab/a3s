@@ -5,7 +5,10 @@ description: "Workspace, context, and delegated-task isolation"
 
 # Isolation
 
-Isolation in v2.1.0 is mostly a harness concern: each session binds to one workspace, each delegated child run receives bounded context, and side effects go through permission checks.
+Isolation in v2.1.0 starts with the session boundary: each session binds to one
+workspace, and each delegated child run receives bounded context. Direct host
+tool calls are privileged host operations; gate them in the host application
+before exposing them to users.
 
 ## Workspace Boundary
 
@@ -13,7 +16,9 @@ Isolation in v2.1.0 is mostly a harness concern: each session binds to one works
 const session = agent.session('/repo');
 ```
 
-Relative file, search, shell, and git operations are evaluated from the session workspace. Security providers and hooks can tighten access further.
+Relative file, search, shell, and git operations are evaluated from the session
+workspace. Security providers and hooks are session options; validate the exact
+policy path you depend on before using them as a production boundary.
 
 ## Delegated Context
 
@@ -34,4 +39,6 @@ const session = agent.session('/repo', {
 
 ## External Harness
 
-AHP can enforce organization-level boundaries. Hooks can enforce local process rules. Permission policy keeps final tool execution auditable.
+AHP transport objects, hooks, and permission policy are exposed as integration
+points. Test live organization policy with your own harness before treating it
+as a production boundary.

@@ -1,296 +1,96 @@
 ---
-title: 构建消息雷达智能体
-description: 使用 A3S Code + WebMCP 构建多渠道新闻聚合分析智能体 — 并行抓取搜索引擎、RSS 订阅和网页，LLM 提取分析，流式生成每日简报。
+title: 构建消息雷达流程
+description: 使用 A3S Code v2.1.0 的 stdio MCP 注册、direct tools 与流式输出，并明确 live source 边界。
 full: true
 ---
 
-import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-本教程将构建一个**消息雷达**智能体，自动从多个渠道聚合新闻，通过 LLM 分析提炼，生成结构化的每日简报。它使用：
+# 构建消息雷达流程
 
-1. **WebMCP**（MCP Fetch 服务器）抓取 RSS 订阅和网页
-2. **内置 web_search** 获取搜索引擎结果
-3. **并行抓取** 同时从所有渠道获取数据
-4. **LLM 提取** 将原始内容转化为结构化新闻条目
-5. **流式合成** 生成专业的简报报告
+这篇教程展示消息流程中的 A3S Code 部分：注册 stdio MCP server、直接调用工具，
+并把返回内容流式合成为简报。
 
-<Callout type="info">
-  先安装 SDK：`pip install a3s-code`。配置 `~/.a3s/config.hcl` 填入 LLM 提供商密钥。安装 MCP Fetch 服务器：`npx -y @modelcontextprotocol/server-fetch`。
+<Callout type="warn">
+第三方 fetch server、复杂网页抓取、RSS 语义和搜索新鲜度都属于应用层责任。把
+这些 live sources 当作生产输入前，应先在你的应用中测试。
 </Callout>
 
----
+## 构件
 
-## 架构
+- `session.toolNames()` 包含 `web_search` 与 `web_fetch`。
+- `session.addMcpServer()` 可以启动 stdio MCP server。
+- `session.mcpStatus()` 可以报告已注册 MCP server。
+- `session.tool('mcp__server__tool', args)` 可以调用已注册 MCP tool。
+- `session.stream()` 可以合成简报；消费方式使用 `.next()`。
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    消息雷达智能体                          │
-├─────────────┬──────────────┬────────────────────────────┤
-│  web_search │  MCP Fetch   │  MCP Fetch                 │
-│  (内置搜索)  │  (RSS 订阅)  │  (网页抓取)                 │
-├─────────────┴──────────────┴────────────────────────────┤
-│              并行抓取 (Lane Queue)                        │
-├──────────────────────────────────────────────────────────┤
-│              去重 (内容哈希)                               │
-├──────────────────────────────────────────────────────────┤
-│              LLM 提取 (结构化 JSON)                       │
-├──────────────────────────────────────────────────────────┤
-│              LLM 合成 (流式报告)                          │
-└──────────────────────────────────────────────────────────┘
-```
+## Session
 
----
+```ts
+import { Agent } from '@a3s-lab/code';
 
-## 详细步骤
+const agent = await Agent.create('agent.acl');
+const session = agent.session(process.cwd(), {
+  builtinSkills: true,
+  planningMode: 'enabled',
+});
 
-<Steps>
-<Step>
-
-### 项目结构
-
-三个文件：`agent.hcl` 配置智能体 + MCP + 队列，`main.py` 完整流水线，可选 `--schedule` 参数实现每日 08:00 UTC 定时运行。
-
-```text
-news-radar/
-├── agent.hcl   # 智能体 + MCP 服务器 + 队列 + 搜索配置
-├── main.py     # 协调器：抓取 → 去重 → 提取 → 报告
-└── reports/    # 生成的每日简报（自动创建）
+console.log(session.toolNames());
 ```
 
-</Step>
-<Step>
+## 注册 Stdio MCP Server
 
-### 智能体配置 (HCL)
+这个示例使用一个最小本地 stdio MCP server，并调用 `mcp__echo__echo` 与
+`mcp__echo__get_secret` 调用。
+下面的示例假设 workspace 中存在
+`tools/mcp_echo_server.mjs`；替换成自己的 stdio MCP server 前，应先测试那个
+server。
 
-`agent.hcl` 配置 LLM 提供商，启用 Lane 队列实现并行抓取，配置多引擎网页搜索，注册 MCP Fetch 服务器用于 HTTP/RSS 获取。
+```ts
+await session.addMcpServer('echo', 'stdio', process.execPath, [
+  'tools/mcp_echo_server.mjs',
+  'secret',
+]);
 
-```hcl
-default_model = "openai/kimi-k2.5"
+console.log(await session.mcpStatus());
 
-providers {
-  name = "openai"
-  models {
-    id       = "kimi-k2.5"
-    api_key  = env("OPENAI_API_KEY")
-    base_url = env("OPENAI_BASE_URL")
-    tool_call = true
-  }
-}
+const echo = await session.tool('mcp__echo__echo', {
+  message: 'news-radar check',
+});
 
-queue {
-  query_max_concurrency   = 10
-  execute_max_concurrency = 4
-  enable_metrics          = true
-  enable_dlq              = true
-  retry_policy {
-    strategy         = "exponential"
-    max_retries      = 3
-    initial_delay_ms = 500
-  }
-}
+console.log(echo.output);
+```
 
-# WebMCP — HTTP 抓取 RSS 和网页
-mcp_servers {
-  name      = "fetch"
-  transport = "stdio"
-  command   = "npx"
-  args      = ["-y", "@modelcontextprotocol/server-fetch"]
-  enabled   = true
+## Live Fetch 边界
+
+`web_search` 和 `web_fetch` 已出现在 tool registry 中。这里不断言真实网络结果、
+新鲜度或来源质量。把 production news-fetching pipeline 接入前，应先测试计划使用
+的 live sources。
+
+## 流式生成简报
+
+```ts
+const stream = await session.stream(`
+Create a concise news briefing from these source excerpts.
+Separate confirmed facts from uncertain or missing data.
+
+Source excerpt:
+${echo.output}
+`);
+
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (done) break;
+  if (event?.text) process.stdout.write(event.text);
 }
 ```
 
-</Step>
-<Step>
+## 移除 MCP Server
 
-### 定义新闻渠道
-
-每个渠道有三种来源：搜索查询（内置 `web_search`）、RSS 订阅（MCP `fetch`）、网页抓取（MCP `fetch`）。三种来源按渠道并行执行。
-
-```python
-DEFAULT_CHANNELS = {
-    "tech": {
-        "search_queries": [
-            "latest technology news today",
-            "AI artificial intelligence breakthroughs",
-        ],
-        "rss_feeds": [
-            "https://news.ycombinator.com/rss",
-            "https://www.reddit.com/r/technology/.rss",
-        ],
-        "sites": [
-            "https://news.ycombinator.com",
-        ],
-    },
-    "ai": {
-        "search_queries": ["AI research papers this week"],
-        "rss_feeds": ["https://arxiv.org/rss/cs.AI"],
-        "sites": ["https://huggingface.co/blog"],
-    },
-}
+```ts
+await session.removeMcpServer('echo');
+console.log(await session.mcpStatus());
 ```
 
-</Step>
-<Step>
-
-### 阶段 1 — 并行多渠道抓取
-
-三个抓取函数按渠道并发执行。`web_search` 直接调用内置工具（不经过 LLM）。RSS 和网页抓取通过 MCP `fetch` 服务器：`session.tool("mcp__fetch__fetch", ...)`。
-
-```python
-async def fetch_via_search(session, queries, topic):
-    async def search_one(query):
-        r = await asyncio.to_thread(
-            session.tool, "web_search",
-            {"query": query, "limit": 10, "timeout": 20, "format": "text"},
-        )
-        if r.exit_code == 0 and r.output:
-            return {"channel": "search", "topic": topic, "content": r.output}
-    raw = await asyncio.gather(*[search_one(q) for q in queries])
-    return [r for r in raw if r]
-
-async def fetch_via_mcp_rss(session, feeds, topic):
-    async def fetch_one(url):
-        r = await asyncio.to_thread(
-            session.tool, "mcp__fetch__fetch",
-            {"url": url, "max_length": 50000, "raw": False},
-        )
-        if r.exit_code == 0 and r.output:
-            return {"channel": "rss", "topic": topic, "content": r.output}
-    raw = await asyncio.gather(*[fetch_one(u) for u in feeds])
-    return [r for r in raw if r]
-```
-
-</Step>
-<Step>
-
-### 阶段 2 — 去重
-
-对前 500 字符做内容哈希，去除跨渠道的近似重复（同一新闻常同时出现在搜索结果和 RSS 中）。
-
-```python
-def deduplicate(raw_items):
-    seen = set()
-    unique = []
-    for item in raw_items:
-        h = hashlib.sha256(
-            item["content"][:500].strip().lower().encode()
-        ).hexdigest()[:12]
-        if h not in seen:
-            seen.add(h)
-            unique.append(item)
-    return unique
-```
-
-</Step>
-<Step>
-
-### 阶段 3 — LLM 提取
-
-将原始内容分批（每批 5 条）送入 LLM，提取结构化 JSON：标题、摘要、来源、主题、影响等级、关键实体。将嘈杂的网页内容转化为干净的可分析数据。
-
-```python
-EXTRACT_PROMPT = """
-你是新闻分析师。提取结构化新闻条目为 JSON 数组：
-- "title": 简洁标题 (< 80 字符)
-- "summary": 2-3 句摘要
-- "impact": "high" | "medium" | "low"
-- "entities": [关键人物、公司、技术]
-仅返回 JSON 数组。跳过广告和模板内容。
-
-原始内容：
-{content}
-"""
-
-for chunk in batched(raw_items, 5):
-    combined = "\n---\n".join(r["content"][:3000] for r in chunk)
-    result = session.send(EXTRACT_PROMPT.format(content=combined))
-    items = json.loads(result.text)
-```
-
-</Step>
-<Step>
-
-### 阶段 4 — 流式报告
-
-将所有提取的条目传给 LLM，流式生成最终简报。报告包含头条新闻、按主题分类、关键实体表、趋势分析和行动建议。
-
-```python
-for event in session.stream(report_prompt):
-    if event.event_type == "text_delta":
-        print(event.text, end="", flush=True)
-    elif event.event_type == "end":
-        print(f"\n✓ {event.total_tokens} tokens")
-        break
-
-# 保存到文件
-Path("reports").mkdir(exist_ok=True)
-Path(f"reports/news-radar-{date}.md").write_text(report)
-```
-
-</Step>
-<Step>
-
-### 运行
-
-```bash
-# 单次运行
-python main.py
-
-# 筛选主题
-python main.py --topics ai,dev
-
-# 定时模式（每日 08:00 UTC）
-python main.py --schedule
-
-# 自定义定时小时
-python main.py --schedule --hour 9
-```
-
-</Step>
-</Steps>
-
----
-
-## 进阶
-
-<Steps>
-<Step>
-
-### 添加自定义渠道
-
-定义行业专属的新闻源：
-
-```python
-channels["fintech"] = {
-    "search_queries": ["fintech news today", "cryptocurrency regulation"],
-    "rss_feeds": ["https://www.coindesk.com/arc/outboundfeeds/rss/"],
-    "sites": ["https://techcrunch.com/category/fintech/"],
-}
-```
-
-</Step>
-<Step>
-
-### 使用 Puppeteer 处理 JS 渲染页面
-
-部分网站需要 JavaScript 渲染。添加 Puppeteer MCP 服务器，使用 `mcp__puppeteer__navigate` + `mcp__puppeteer__screenshot`：
-
-```python
-r = session.tool("mcp__puppeteer__navigate", {"url": "https://example.com"})
-r = session.tool("mcp__puppeteer__screenshot", {})
-```
-
-</Step>
-<Step>
-
-### 多语言报告
-
-覆盖报告提示词，生成不同语言的简报：
-
-```python
-prompt = f"用中文（简体）生成报告。\n\n{base_prompt}"
-```
-
-</Step>
-</Steps>
+第三方 fetch server、browser automation server 或定时生产抓取，只有在你的环境中
+测试通过后，才应纳入这套流程。

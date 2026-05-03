@@ -13,20 +13,21 @@ A3S Code v2.1.0 supports multi-machine architectures through explicit external o
 coordinator session
   -> task or lane dispatch
   -> external worker
-  -> result, artifacts, verification evidence
+  -> result, changed files, verification evidence
   -> coordinator merge
 ```
 
 ## Coordinator
 
-The coordinator owns the conversation, final synthesis, permission policy, and release decision. It can expose selected queue lanes to external workers.
+The coordinator owns the conversation, final synthesis, application policy, and
+release decision. It can expose selected queue lanes to external workers.
 
 ## Worker
 
 Workers should receive bounded task payloads and return compact results:
 
 - summary
-- files or artifacts inspected
+- files inspected or changed
 - commands run
 - verification status
 - errors and retry state

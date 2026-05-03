@@ -4,6 +4,7 @@
     "index",
     "examples",
     "---Core---",
+    "api-contract",
     "sessions",
     "commands",
     "tools",

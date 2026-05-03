@@ -39,10 +39,12 @@ Lane names are `control`, `query`, `execute`, and `generate`.
 ```ts
 const pending = await session.pendingExternalTasks();
 
-await session.completeExternalTask(pending[0].id, {
-  success: true,
-  result: { summary: 'completed by worker' },
-});
+if (pending.length > 0) {
+  await session.completeExternalTask(pending[0].id, {
+    success: true,
+    result: { summary: 'completed by worker' },
+  });
+}
 ```
 
 Keep queue use explicit. Do not introduce it for normal local agent sessions.

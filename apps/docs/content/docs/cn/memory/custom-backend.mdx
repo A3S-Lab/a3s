@@ -103,11 +103,11 @@ impl MemoryStore for VectorStore {
 
 ## 与 A3S Code 配合使用
 
-```rust
-use std::sync::Arc;
+A3S Code v2.1.0 Node SDK 支持 `FileMemoryStore` 和 `MemorySessionStore`。把任意
+Rust `MemoryStore` 实现传入 A3S Code session 不属于本页范围。
 
-SessionOptions::new().with_memory(Arc::new(VectorStore::new()))
-```
+本页用于说明 standalone `a3s-memory` backend 设计。自定义 memory adapter 应先在
+你的应用中测试，再接入 A3S Code 流程。
 
 ## 独立使用
 

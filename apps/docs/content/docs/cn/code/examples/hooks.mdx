@@ -1,20 +1,21 @@
 ---
 title: "Hooks"
-description: "阻断或观察生命周期事件"
+description: "注册生命周期事件回调"
 ---
 
 # Hooks
 
 ```ts
 session.registerHook(
-  'no-env-read',
+  'observe-env-read',
   'pre_tool_use',
   { pathPattern: '**/.env*' },
   { priority: 100 },
-  () => ({ action: 'block', reason: '禁止读取密钥文件' }),
+  () => ({ action: 'continue' }),
 );
 
 console.log(session.hookCount());
+session.unregisterHook('observe-env-read');
 ```
 
-父 session hooks 会传播到 `task` 创建的委派子运行。
+把 hook 当作生产关卡前，需要验证你依赖的具体 event path。

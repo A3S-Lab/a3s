@@ -25,3 +25,6 @@ Override per session:
 const fast = agent.session('/repo', { model: 'openai/MiniMax-M2.7-highspeed' });
 const review = agent.session('/repo', { model: 'openai/gpt-4o' });
 ```
+
+Per-session `model` override lets one agent configuration drive different model
+choices for different sessions.

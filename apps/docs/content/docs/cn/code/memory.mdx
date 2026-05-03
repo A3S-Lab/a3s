@@ -14,9 +14,10 @@ const session = agent.session('/repo', {
   memoryStore: new FileMemoryStore('./.a3s/memory'),
 });
 
-await session.rememberSuccess('release preflight', ['bash', 'grep'], '真实 provider smoke 通过');
-const related = await session.recallSimilar('release provider smoke', 5);
-const recent = await session.recallRecent(10);
+await session.rememberSuccess('release preflight', ['bash', 'grep'], 'provider 验证通过');
+const related = await session.recallSimilar('release provider verification', 5);
+const recent = await session.memoryRecent(10);
+const tagged = await session.recallByTags(['grep'], 10);
 ```
 
 Memory 是辅助上下文，当前任务的验证证据仍来自当前命令和 trace。

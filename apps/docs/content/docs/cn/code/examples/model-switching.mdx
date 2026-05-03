@@ -25,3 +25,5 @@ providers "openai" {
 const fast = agent.session('/repo', { model: 'openai/MiniMax-M2.7-highspeed' });
 const review = agent.session('/repo', { model: 'openai/gpt-4o' });
 ```
+
+per-session `model` override 可让同一个 agent 配置为不同 session 选择不同模型。

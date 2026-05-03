@@ -5,42 +5,38 @@ description: "Model Context Protocol server integration"
 
 # MCP
 
-MCP connects A3S Code sessions to external tool servers. Tools from a server are registered into the session and named `mcp__<server>__<tool>`.
+MCP connects A3S Code sessions to external tool servers. A stdio server can be
+added to a live session, inspected, called through its registered tools, and
+removed. Tools from a server are registered into the session and named
+`mcp__<server>__<tool>`.
 
 ## Add A Server
 
 ```ts
 const count = await session.addMcpServer(
-  'filesystem',
+  'echo',
   'stdio',
-  'npx',
-  ['-y', '@modelcontextprotocol/server-filesystem', '/repo'],
+  process.execPath,
+  ['tools/mcp_echo_server.mjs', 'secret'],
 );
 
 console.log('registered tools:', count);
 ```
 
-HTTP and streamable HTTP servers are also supported:
-
-```ts
-await session.addMcpServer(
-  'search',
-  'http',
-  null,
-  null,
-  'http://localhost:7777/mcp',
-  { Authorization: `Bearer ${process.env.MCP_TOKEN}` },
-);
-```
+The TypeScript signature also exposes `'http'` and `'streamable-http'`
+transport values. Validate those against your server before relying on them in
+production docs or release notes.
 
 ## Inspect And Remove
 
 ```ts
 console.log(await session.mcpStatus());
 console.log(session.toolNames().filter(name => name.startsWith('mcp__')));
-await session.removeMcpServer('filesystem');
+await session.tool('mcp__echo__echo', { message: 'docs mcp ok' });
+await session.removeMcpServer('echo');
 ```
 
 ## Security
 
-MCP tools still pass through permission policy, hooks, and security providers. Treat external tool servers as privileged integrations and keep secrets in environment variables.
+Treat external tool servers as privileged integrations and keep secrets in
+environment variables.

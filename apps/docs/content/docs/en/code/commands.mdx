@@ -21,18 +21,22 @@ A3S Code is primarily SDK-driven in v2.1.0. Product CLIs and UIs usually map com
 | Inspect tools | `session.toolNames()` / `session.toolDefinitions()` |
 | Verify work | `session.verifyCommands(subject, commands)` |
 | Replay run state | `session.runs()` / `session.runEvents(runId)` |
-| Cancel active work | `session.currentRun()` / `session.cancelRun(runId)` |
+| Inspect or cancel the current run | `session.currentRun()` / `session.cancelRun(runId)` |
 
 ## Building Slash Commands
 
-If your app exposes slash commands, keep them thin:
+If your app exposes slash commands, keep them thin. Register the handler, list
+the available commands, and invoke the command through `session.send()`:
 
 ```ts
-if (input === '/tools') console.log(session.toolNames());
-if (input === '/tool-schemas') console.log(session.toolDefinitions());
-if (input === '/verify') {
-  await session.verifyCommands('current task', session.verificationPresets());
-}
+session.registerCommand('docs_status', 'Return docs command status', (args, ctx) => {
+  return `status args=${args}; session=${ctx.sessionId}; workspace=${ctx.workspace}`;
+});
+
+console.log(session.listCommands());
+
+const result = await session.send('/docs_status check');
+console.log(result.text);
 ```
 
 Avoid hidden loops or background schedulers. Make recurring automation explicit in your host application so it can be audited and cancelled.

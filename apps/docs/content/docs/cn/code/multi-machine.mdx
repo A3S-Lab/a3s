@@ -11,8 +11,8 @@ description: "跨 coordinator 和 worker 运行 A3S Code"
 coordinator session
   -> task 或 lane dispatch
   -> external worker
-  -> result, artifacts, verification evidence
+  -> result, changed files, verification evidence
   -> coordinator merge
 ```
 
-Coordinator 拥有对话、最终合并、权限策略和发布决策。Worker 接收有边界的任务，返回摘要、产物、命令、验证状态和错误信息。HTTP、消息队列、任务系统或内部 RPC 都可以作为传输层。
+Coordinator 拥有对话、最终合并、应用策略和发布决策。Worker 接收有边界的任务，返回摘要、检查或修改过的文件、命令、验证状态和错误信息。HTTP、消息队列、任务系统或内部 RPC 都可以作为传输层。

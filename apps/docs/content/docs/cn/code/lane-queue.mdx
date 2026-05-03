@@ -24,3 +24,18 @@ await session.setLaneHandler('execute', {
 ```
 
 lane 名称是 `control`、`query`、`execute` 和 `generate`。
+
+外部 worker 完成任务时调用：
+
+```ts
+const pending = await session.pendingExternalTasks();
+
+if (pending.length > 0) {
+  await session.completeExternalTask(pending[0].id, {
+    success: true,
+    result: { summary: 'worker completed the task' },
+  });
+}
+```
+
+普通本地 agent session 不需要引入队列。

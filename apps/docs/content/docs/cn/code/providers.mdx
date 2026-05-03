@@ -50,7 +50,7 @@ providers "openai" {
 }
 ```
 
-MiniMax 的发布 smoke 测试也使用同一个 provider：
+MiniMax 也使用同一个 provider：
 
 ```text
 default_model = "openai/MiniMax-M2.7-highspeed"
@@ -76,11 +76,11 @@ storage_backend = "file"
 storage_url = ".a3s/sessions"
 ```
 
-短测试使用 memory，需恢复的本地 session 使用 file。
+短测试使用 memory，需恢复的本地 session 使用带 `storage_url` 的 file。
 
-## 真实配置集成测试
+## 私有 Provider 检查
 
-发布 preflight 不会修改真实 `.a3s/config.acl`。脚本会提取 provider 值，把临时 ACL 改写成 `env(...)`，再把这些值注入当前进程环境，并验证运行时可以正确解析。
+验证私有 provider 时，应使用临时 env-injected ACL。发布脚本设计上不会修改真实 `.a3s/config.acl`：它们会提取 provider 值，写入使用 `env(...)` 的临时 ACL，再把这些值注入当前进程环境。
 
 ```bash
 A3S_CONFIG_FILE=/path/to/.a3s/config.acl \
@@ -89,11 +89,11 @@ A3S_CONFIG_FILE=/path/to/.a3s/config.acl \
   scripts/real_config_env_integration.sh
 ```
 
-SDK 对齐由单独的真实 provider smoke 脚本覆盖：
+SDK 对齐由单独的真实 provider 检查脚本覆盖：
 
 ```bash
 A3S_CONFIG_FILE=/path/to/.a3s/config.acl \
   scripts/sdk_real_config_env_integration.sh
 ```
 
-该脚本会让 Node 和 Python 使用同一个临时 env 注入 ACL，覆盖 `Agent.create`、`send`、`btw`、`program`、工具 schema、run replay 和委派 smoke 路径。
+把实际 provider 证据保存在发布记录里。完整本地 API 表面见 [API Contract](/cn/docs/code/api-contract)。

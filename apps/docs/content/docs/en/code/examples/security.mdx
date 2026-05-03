@@ -17,3 +17,5 @@ const session = agent.session('/repo', {
 ```
 
 Keep release and publish actions on the `ask` or `deny` path unless automation owns the final step.
+Direct host calls such as `session.tool()` are privileged host operations; gate
+them in the application before exposing them to users.

@@ -5,12 +5,13 @@ description: "提示时技能、内联技能与 Skill 工具"
 
 # Skills
 
-Skills 是可复用指令，由驾驭层发现、排序并按需注入。
+Skills 是可复用指令。built-in skills、文件型 skill 目录、inline skills 和
+`search_skills` 使用同一套 discovery 路径。
 
 ```ts
 const session = agent.session('/repo', {
   builtinSkills: true,
-  skillDirs: ['./skills'],
+  skillDirs: ['/repo/skills'],
   inlineSkills: [{
     name: 'strict-release-review',
     kind: 'instruction',
@@ -19,4 +20,15 @@ const session = agent.session('/repo', {
 });
 ```
 
-内置 skills 只保留代码搜索、代码审查、解释代码和查找 bug 四类常用指令；更大的角色行为应放进项目 skill 文件或 agent 定义。Skill 文件是带 frontmatter 的 Markdown。可用 `allowed-tools` 限定工具，例如 `bash(cargo test*)`。`search_skills` 用于查找相关 skill，`Skill` 用于在当前回合应用命名 skill；skill 管理现在由 SDK 或文件系统完成，不再作为模型可见的管理工具暴露。
+内置 skills 只保留代码搜索、代码审查、解释代码和查找 bug 四类常用指令；更大的角色行为应放进项目 skill 文件或 agent 定义。Skill 文件是带 frontmatter 的 Markdown。可用 `allowed-tools` 限定工具，例如 `read(*), grep(*), bash(cargo test*)`。
+
+`search_skills` 用于查找相关 skill：
+
+```ts
+await session.tool('search_skills', {
+  query: 'release blockers',
+  limit: 5,
+});
+```
+
+带 `allowed-tools` frontmatter 的 Markdown skill file 和 inline skill 都能被发现。skill 管理现在由 SDK 或文件系统完成，不再作为模型可见的管理工具暴露。

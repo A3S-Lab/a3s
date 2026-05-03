@@ -26,10 +26,16 @@ RelevanceConfig
 a3s-memory = "0.1"
 ```
 
-如果你正在使用 A3S Code，记忆功能已内置——通过 `SessionOptions` 配置即可：
+A3S Code v2.1.0 Node SDK 当前经过集成测试的路径，是在 `agent.session()`
+options 中传入 `FileMemoryStore`：
 
-```rust
-SessionOptions::new().with_file_memory("./memory")
+```ts
+import { Agent, FileMemoryStore } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.acl');
+const session = agent.session(process.cwd(), {
+  memoryStore: new FileMemoryStore('./memory'),
+});
 ```
 
 ## 本 crate 包含的内容
@@ -74,5 +80,5 @@ SessionOptions::new().with_file_memory("./memory")
 />
 
 <Callout type="info">
-如果你在使用 A3S Code 构建智能体，请参阅 [Memory](/docs/code/memory) 获取完整的智能体层文档。
+如果你在使用 A3S Code 构建智能体，请参阅 [Memory](/cn/docs/code/memory) 与 [API Contract](/cn/docs/code/api-contract) 了解经过集成测试的智能体层行为。
 </Callout>

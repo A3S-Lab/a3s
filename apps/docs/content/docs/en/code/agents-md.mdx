@@ -5,7 +5,9 @@ description: "Project instructions as first-class context"
 
 # AGENTS.md
 
-`AGENTS.md` files give the harness stable project instructions without forcing every prompt to repeat them. A3S Code reads them as context and applies the closest relevant instructions to the workspace.
+`AGENTS.md` files give the harness stable project instructions without forcing
+every prompt to repeat them. Workspace instructions are included in provider
+request context.
 
 ## What To Put In AGENTS.md
 
@@ -15,14 +17,16 @@ description: "Project instructions as first-class context"
 - Use `cargo test -p a3s-code-core` for core changes.
 - Never commit secrets from `.a3s/config.acl`.
 - Prefer `rg` for search.
-- Release checks must include package metadata and provider smoke tests.
+- Release checks must include package metadata, CI, and provider verification.
 ```
 
 Keep instructions operational: build commands, safety rules, code style, directories, and release practices.
 
 ## Precedence
 
-Session options, explicit user instructions, skill constraints, security policy, and AGENTS.md are composed by the harness. For side effects, the effective permission/security decision still wins.
+Session options, explicit user instructions, skills, and AGENTS.md are composed
+by the harness. Keep side-effect policy in host application controls and
+verified integration tests.
 
 ## Good Practice
 

@@ -5,7 +5,8 @@ description: "Runtime limits, compaction, timeouts, and circuit breakers"
 
 # Limits
 
-Limits keep the harness predictable under long-running work, noisy tools, and provider failures.
+Limit options are session-level controls for long-running work, noisy tools, and
+provider failures.
 
 ## Session Options
 
@@ -22,14 +23,14 @@ const session = agent.session('/repo', {
 });
 ```
 
-## What Each Limit Does
+## Option Intent
 
-- `maxToolRounds` bounds the number of model-tool iterations in a turn.
-- `maxParseRetries` bounds malformed tool-call recovery.
-- `toolTimeoutMs` stops long-running tools.
-- `circuitBreakerThreshold` aborts after repeated provider failures.
-- `autoCompact` summarizes history and evidence before context pressure becomes unsafe.
-- `continuationEnabled` allows controlled follow-up turns for incomplete work.
+- `maxToolRounds` is the tool-iteration budget for a turn.
+- `maxParseRetries` is the malformed tool-call recovery budget.
+- `toolTimeoutMs` is the per-tool timeout in milliseconds.
+- `circuitBreakerThreshold` is the repeated provider failure threshold.
+- `autoCompact` and `autoCompactThreshold` enable context compaction behavior.
+- `continuationEnabled` and `maxContinuationTurns` control continuation injection.
 
 ## Practical Defaults
 

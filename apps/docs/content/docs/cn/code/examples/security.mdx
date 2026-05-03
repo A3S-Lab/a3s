@@ -17,3 +17,4 @@ const session = agent.session('/repo', {
 ```
 
 除非最终步骤由受控自动化负责，否则 release 和 publish 操作应保持在 `ask` 或 `deny` 路径上。
+`session.tool()` 这类宿主直接调用是特权操作；暴露给用户前应由宿主应用先做权限判断。

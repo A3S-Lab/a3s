@@ -50,7 +50,7 @@ providers "openai" {
 }
 ```
 
-For MiniMax release smoke tests the same provider block is used:
+For MiniMax, use the same provider block:
 
 ```text
 default_model = "openai/MiniMax-M2.7-highspeed"
@@ -76,13 +76,14 @@ storage_backend = "file"
 storage_url = ".a3s/sessions"
 ```
 
-Use memory storage for short-lived tests. Use file storage for resumable local sessions.
+Use memory storage for short-lived tests. Use file storage with `storage_url`
+for resumable local sessions.
 
-## Real Config Integration
+## Private Provider Check
 
-The release preflight does not mutate the real `.a3s/config.acl`. It extracts provider values, rewrites a temporary ACL file to use `env(...)`, injects those values into the process environment, and then verifies that the runtime resolves them correctly.
+Use a temporary environment-injected ACL when validating a private provider. The release scripts are designed to avoid mutating the real `.a3s/config.acl`: they extract provider values, write a temporary ACL that uses `env(...)`, and inject those values into the process environment.
 
-Use this pattern for private provider smoke tests:
+Use this pattern for private provider checks:
 
 ```bash
 A3S_CONFIG_FILE=/path/to/.a3s/config.acl \
@@ -91,13 +92,12 @@ A3S_CONFIG_FILE=/path/to/.a3s/config.acl \
   scripts/real_config_env_integration.sh
 ```
 
-SDK parity is covered by a separate real-provider smoke script:
+SDK parity is covered by a separate real-provider check:
 
 ```bash
 A3S_CONFIG_FILE=/path/to/.a3s/config.acl \
   scripts/sdk_real_config_env_integration.sh
 ```
 
-That script exercises Node and Python against the same temporary env-injected
-ACL, including `Agent.create`, `send`, `btw`, `program`, tool schemas, run replay,
-and delegation smoke paths.
+Keep the resulting provider evidence with the release. For the complete local
+API surface, see [API Contract](/docs/code/api-contract).

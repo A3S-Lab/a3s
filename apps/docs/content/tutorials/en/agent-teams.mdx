@@ -1,471 +1,142 @@
 ---
-title: Build a Multi-Agent Code Review Pipeline
-description: Use AgentTeam and TeamRunner to orchestrate a Lead → Worker → Reviewer pipeline that automatically decomposes a goal, executes tasks in parallel, and quality-gates every result before marking it done.
+title: Build a Multi-Agent Review Flow
+description: Use A3S Code v2.1.0 task delegation, registered agent directories, and run inspection from the Node SDK.
 full: true
 ---
 
-import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Callout } from 'fumadocs-ui/components/callout';
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
-In this tutorial you'll build an **automated code review pipeline** powered by three collaborating AI agents:
+# Build a Multi-Agent Review Flow
 
-1. A **Lead** agent breaks a broad goal ("Review the auth module") into concrete, self-contained tasks
-2. **Worker** agents claim tasks from a shared board and execute them in parallel
-3. A **Reviewer** agent reads each result and either **approves** it (→ Done) or **rejects** it (→ back to the queue for retry)
-
-The pipeline runs until every task is Done — or until `max_rounds` is hit, whichever comes first.
+This tutorial builds a review flow from the current A3S Code v2.1.0 Node SDK:
+one parent session delegates focused work, gathers compact child results, and
+uses run replay for inspection.
 
 <Callout type="info">
-  Install the SDK first: `pip install a3s-code`. Configure `~/.a3s/config.hcl` with your LLM provider key.
+The snippets below use these Node SDK entry points:
+`Agent.create`, `agent.session`, `session.registerAgentDir`,
+`session.delegateTask`, `session.parallelTask`, `session.runs`, and
+`session.runEvents`.
 </Callout>
 
----
+## What Changed
 
-## How it works
+In v2.1.0, routine multi-agent work is driven through task delegation from a
+normal session. Child runs return compact results instead of pushing full
+transcripts back into the parent prompt.
 
-```
-Goal
-  │
-  ▼
-┌─────────────┐     JSON task list
-│  Lead LLM   │ ─────────────────────────────────────┐
-└─────────────┘                                       │
-                                                      ▼
-                                             ┌─────────────────┐
-                                             │  TeamTaskBoard  │
-                                             │  ┌───────────┐  │
-                                             │  │  task-1   │  │ Open
-                                             │  │  task-2   │  │ Open
-                                             │  │  task-3   │  │ Open
-                                             │  └───────────┘  │
-                                             └────────┬────────┘
-                                                      │ claim()
-              ┌──────────────┬──────────────┐         │
-              ▼              ▼              ▼         │
-        ┌──────────┐  ┌──────────┐  ┌──────────┐    │
-        │ Worker 1 │  │ Worker 2 │  │ Worker 3 │◄───┘
-        └────┬─────┘  └────┬─────┘  └────┬─────┘
-             │              │              │ complete()
-             └──────────────┴──────────────┘
-                                      │
-                                      ▼ InReview
-                              ┌───────────────┐
-                              │   Reviewer    │
-                              └───────┬───────┘
-                                      │
-                      ┌───────────────┴───────────────┐
-                      ▼                               ▼
-                   APPROVED                        REJECTED
-                   (→ Done)              (→ back to Open, re-claimed)
+```text
+review goal
+  -> lead session
+  -> delegateTask / parallelTask
+  -> child summaries
+  -> run replay and verification evidence
 ```
 
----
+## Agent Config
 
-## Walkthrough
+Use ACL, not legacy HCL:
 
-<ScrollyCoding>
-<ScrollySteps>
+```text
+default_model = "openai/docs-model"
 
-<ScrollyStep index={0}>
+providers "openai" {
+  apiKey = env("A3S_OPENAI_API_KEY")
+  baseUrl = env("A3S_OPENAI_BASE_URL")
 
-### Project structure
-
-Two files: `agent.hcl` for the LLM provider config, and `review.py` for the pipeline logic.
-
-No queue or external workers needed — the team runner handles all concurrency internally using Tokio tasks.
-
-</ScrollyStep>
-
-<ScrollyStep index={1}>
-
-### Agent config (HCL)
-
-`agent.hcl` only needs the provider and model. Team coordination is pure in-process — no Lane queue required unless you want to rate-limit LLM calls.
-
-The same config is reused for all three roles (Lead, Worker, Reviewer). Each role gets its own `AgentSession` with independent context.
-
-</ScrollyStep>
-
-<ScrollyStep index={2}>
-
-### Build the team
-
-Create an `AgentTeam`, add members with their roles, then wrap it in a `TeamRunner`.
-
-The team is **consumed** when you create the runner — any further `team.add_member()` calls after this point will raise an error.
-
-- **`max_rounds`** — how many reviewer polling rounds before giving up on pending tasks (default: 10)
-- **`poll_interval_ms`** — how often workers and reviewer check for new work (default: 200 ms)
-
-</ScrollyStep>
-
-<ScrollyStep index={3}>
-
-### Bind sessions
-
-Each member needs a `Session` that acts as its LLM executor. Call `agent.session(workspace)` once per role.
-
-`bind_session` validates that the member ID exists in the team and stores the session internally.
-Workers that share similar tasks can even share the same session object — the runner will call `session.send()` concurrently across Tokio tasks.
-
-</ScrollyStep>
-
-<ScrollyStep index={4}>
-
-### Run the workflow
-
-`runner.run_until_done(goal)` blocks until all tasks are Done (or `max_rounds` expires).
-
-Internally:
-1. Lead receives a planning prompt and responds with `{"tasks": ["...", "..."]}` — the runner parses this JSON automatically
-2. Worker tasks are spawned concurrently, each polling the board
-3. The reviewer task runs in parallel, approving or rejecting each InReview task
-
-</ScrollyStep>
-
-<ScrollyStep index={5}>
-
-### Inspect results
-
-`result.done_tasks` contains every task the reviewer approved. Each `TeamTask` has:
-
-- `id` — unique task ID (sequential, e.g., `task-1`)
-- `description` — the original task text posted by the Lead
-- `result` — the Worker's output text
-- `status` — always `"done"` in this list
-
-`result.rejected_tasks` holds tasks still `"rejected"` after `max_rounds` — these could not be approved in time.
-
-</ScrollyStep>
-
-<ScrollyStep index={6}>
-
-### Low-level board access
-
-You can post tasks manually, bypass the Lead entirely, and drive the board directly. Useful when you already know the task list and just want parallel execution + review.
-
-`board.stats()` returns `(open, in_progress, in_review, done, rejected)` — useful for progress bars or dashboards.
-
-</ScrollyStep>
-
-<ScrollyStep index={7}>
-
-### Full pipeline
-
-The complete `review.py`. Run it:
-
-```bash
-python review.py "Review the auth module for security issues"
-```
-
-You'll see the Lead decompose the goal, workers execute tasks in parallel, and the reviewer validate each result before marking it Done.
-
-</ScrollyStep>
-
-</ScrollySteps>
-
-<ScrollyCode>
-
-```text project structure
-code-review/
-├── agent.hcl   # LLM provider config
-└── review.py   # pipeline: team setup → bind → run → inspect
-```
-
-```hcl agent config
-# agent.hcl
-default_model = "anthropic/claude-sonnet-4-20250514"
-
-providers {
-  name    = "anthropic"
-  api_key = env("ANTHROPIC_API_KEY")
+  models "docs-model" {
+    name = "Docs Model"
+    tool_call = true
+  }
 }
 ```
 
-```python build the team
-from a3s_code import Team, TeamRunner, TeamConfig
+## Optional Role Files
 
-config = TeamConfig(
-    max_tasks=30,        # board capacity
-    max_rounds=8,        # reviewer polling rounds before giving up
-    poll_interval_ms=150,
-)
+`registerAgentDir()` loads role definitions from a directory. Keep role files
+small and operational.
 
-team = Team("code-review", config)
-team.add_member("lead",       "lead")     # decomposes the goal
-team.add_member("worker-sec", "worker")   # security review
-team.add_member("worker-perf","worker")   # performance review
-team.add_member("reviewer",   "reviewer") # quality gate
-
-runner = TeamRunner(team)  # team is consumed here
+```text
+agents/
+  release-reviewer.yaml
 ```
 
-```python bind sessions
-from a3s_code import Agent
-
-agent = Agent.create("agent.hcl")
-
-# Each member gets an independent session (own context window)
-runner.bind_session("lead",        agent.session("."))
-runner.bind_session("worker-sec",  agent.session("."))
-runner.bind_session("worker-perf", agent.session("."))
-runner.bind_session("reviewer",    agent.session("."))
+```yaml
+name: release-reviewer
+description: Reviews release blockers and separates required fixes from follow-up work.
+prompt: |
+  Inspect the requested scope. Report blockers first, then risks, then optional improvements.
 ```
 
-```python run the workflow
-goal = (
-    "Review the authentication module (src/auth/) for issues. "
-    "Cover: JWT validation, token expiry, refresh flow, and error handling."
-)
+## Coordinator
 
-print(f"Goal: {goal}\n")
-result = runner.run_until_done(goal)
+```ts
+import { Agent } from '@a3s-lab/code';
+import path from 'node:path';
 
-print(f"\nWorkflow complete:")
-print(f"  ✅ Done:     {len(result.done_tasks)} tasks")
-print(f"  ❌ Rejected: {len(result.rejected_tasks)} tasks")
-print(f"  🔄 Rounds:   {result.rounds}")
+const agent = await Agent.create('agent.acl');
+const session = agent.session(process.cwd(), {
+  builtinSkills: true,
+  planningMode: 'enabled',
+});
+
+const registered = session.registerAgentDir(path.join(process.cwd(), 'agents'));
+console.log({ registered });
+
+const summary = await session.delegateTask({
+  agent: 'general',
+  description: 'Review auth release blockers',
+  prompt: 'Review src/auth for release blockers. Focus on token validation and error handling.',
+  maxSteps: 4,
+});
+
+const parallel = await session.parallelTask([
+  {
+    agent: 'general',
+    description: 'Auth security review',
+    prompt: 'Review src/auth for security risks.',
+    maxSteps: 3,
+  },
+  {
+    agent: 'general',
+    description: 'Auth test review',
+    prompt: 'Review src/auth tests for missing edge cases.',
+    maxSteps: 3,
+  },
+]);
+
+const final = await session.send(`
+Merge these child review results into a findings-first release note.
+
+Single review:
+${summary.output}
+
+Parallel reviews:
+${parallel.output}
+`);
+
+console.log(final.text);
+console.log(final.verificationSummaryText);
+console.log(await session.runs());
 ```
 
-```python inspect results
-for task in result.done_tasks:
-    # Trim result to first 200 chars for display
-    snippet = (task.result or "")[:200].replace("\n", " ")
-    print(f"\n── {task.description}")
-    print(f"   {snippet}{'...' if len(task.result or '') > 200 else ''}")
+## Inspect the Run
 
-if result.rejected_tasks:
-    print("\nTasks that could not be approved:")
-    for task in result.rejected_tasks:
-        print(f"  ⚠ {task.description}")
-```
+Use replay APIs for run evidence:
 
-```python low-level board access
-from a3s_code import Team, TeamRunner, TeamConfig
-
-# Skip the Lead — post tasks directly
-team = Team("manual-review")
-team.add_member("lead",     "lead")
-team.add_member("worker-1", "worker")
-team.add_member("reviewer", "reviewer")
-
-runner = TeamRunner(team)
-runner.bind_session("lead",     agent.session("."))
-runner.bind_session("worker-1", agent.session("."))
-runner.bind_session("reviewer", agent.session("."))
-
-board = runner.task_board()
-
-# Post tasks manually (bypasses Lead decomposition)
-board.post("Check JWT expiry validation in src/auth/jwt.py",     "lead")
-board.post("Verify refresh token rotation in src/auth/refresh.py","lead")
-board.post("Audit error messages for information leakage",        "lead")
-
-# Check board before running
-(open_c, prog, rev, done, rej) = board.stats()
-print(f"Board: {open_c} open, {done} done")
-```
-
-```python full pipeline
-# review.py
-import sys
-from a3s_code import Agent, Team, TeamRunner, TeamConfig
-
-def main(goal: str):
-    agent = Agent.create("agent.hcl")
-
-    config = TeamConfig(max_tasks=30, max_rounds=8, poll_interval_ms=150)
-    team = Team("code-review", config)
-    team.add_member("lead",        "lead")
-    team.add_member("worker-sec",  "worker")
-    team.add_member("worker-perf", "worker")
-    team.add_member("reviewer",    "reviewer")
-
-    runner = TeamRunner(team)
-    runner.bind_session("lead",        agent.session("."))
-    runner.bind_session("worker-sec",  agent.session("."))
-    runner.bind_session("worker-perf", agent.session("."))
-    runner.bind_session("reviewer",    agent.session("."))
-
-    print(f"🚀 Starting review pipeline\nGoal: {goal}\n")
-    result = runner.run_until_done(goal)
-
-    print(f"\n{'─' * 60}")
-    print(f"Results: {len(result.done_tasks)} done, "
-          f"{len(result.rejected_tasks)} rejected, "
-          f"{result.rounds} rounds")
-    print(f"{'─' * 60}")
-
-    for task in result.done_tasks:
-        snippet = (task.result or "")[:300].replace("\n", " ")
-        print(f"\n✅ {task.description}")
-        print(f"   {snippet}{'...' if len(task.result or '') > 300 else ''}")
-
-    if result.rejected_tasks:
-        print(f"\n⚠ Tasks not completed ({len(result.rejected_tasks)}):")
-        for t in result.rejected_tasks:
-            print(f"  • {t.description}")
-
-if __name__ == "__main__":
-    goal = sys.argv[1] if len(sys.argv) > 1 else (
-        "Review the authentication module for security issues"
-    )
-    main(goal)
-```
-
-</ScrollyCode>
-</ScrollyCoding>
-
----
-
-## Going further
-
-<Steps>
-
-<Step>
-
-### Add role-specific instructions
-
-Give each role a focused identity using `SessionOptions`:
-
-```python
-from a3s_code import SessionOptions
-
-sec_opts = SessionOptions()
-sec_opts.role = "You are a security engineer specializing in authentication systems."
-sec_opts.guidelines = (
-    "Focus on: JWT validation, token expiry, CSRF, session fixation, "
-    "timing attacks, and information leakage in error messages. "
-    "Be specific — cite file paths and line numbers when possible."
-)
-
-perf_opts = SessionOptions()
-perf_opts.role = "You are a performance engineer."
-perf_opts.guidelines = (
-    "Focus on: O(n²) patterns, missing caching, blocking I/O, "
-    "N+1 queries, and unnecessary cryptographic operations."
-)
-
-rev_opts = SessionOptions()
-rev_opts.role = "You are a senior engineering lead doing final sign-off."
-rev_opts.guidelines = (
-    "Approve if the result is specific, actionable, and covers the task. "
-    "Reject if the result is vague, incomplete, or off-topic."
-)
-
-runner.bind_session("worker-sec",  agent.session(".", sec_opts))
-runner.bind_session("worker-perf", agent.session(".", perf_opts))
-runner.bind_session("reviewer",    agent.session(".", rev_opts))
-```
-
-</Step>
-
-<Step>
-
-### Scale workers
-
-Add more workers with the same `"worker"` role to process tasks faster. All workers share the same board — the `claim()` method is atomic, so each task is executed exactly once:
-
-```python
-for i in range(4):
-    team.add_member(f"worker-{i}", "worker")
-
-runner = TeamRunner(team)
-for i in range(4):
-    runner.bind_session(f"worker-{i}", agent.session("."))
-```
-
-</Step>
-
-<Step>
-
-### TypeScript / Node.js
-
-The same pipeline works in Node.js with identical semantics:
-
-```typescript
-import { Agent, Team, TeamRunner } from '@a3s-lab/code';
-
-const agent = await Agent.create('agent.hcl');
-
-const team = new Team('code-review', { maxRounds: 8, maxTasks: 30, channelBuffer: 128, pollIntervalMs: 150 });
-team.addMember('lead',        'lead');
-team.addMember('worker-sec',  'worker');
-team.addMember('worker-perf', 'worker');
-team.addMember('reviewer',    'reviewer');
-
-const runner = new TeamRunner(team);
-runner.bindSession('lead',        agent.session('.'));
-runner.bindSession('worker-sec',  agent.session('.'));
-runner.bindSession('worker-perf', agent.session('.'));
-runner.bindSession('reviewer',    agent.session('.'));
-
-const result = await runner.runUntilDone(
-  'Review the authentication module for security issues'
-);
-console.log(`Done: ${result.doneTasks.length}, Rounds: ${result.rounds}`);
-```
-
-</Step>
-
-<Step>
-
-### Rust
-
-For maximum performance — embed the pipeline directly in your Rust application:
-
-```rust
-use a3s_code_core::{
-    Agent, SessionOptions,
-    agent_teams::{AgentTeam, TeamConfig, TeamRole, TeamRunner},
-};
-use std::sync::Arc;
-
-let agent = Agent::new("agent.hcl").await?;
-
-let config = TeamConfig {
-    max_rounds: 8,
-    poll_interval_ms: 150,
-    ..TeamConfig::default()
-};
-
-let mut team = AgentTeam::new("code-review", config);
-team.add_member("lead",        TeamRole::Lead);
-team.add_member("worker-sec",  TeamRole::Worker);
-team.add_member("worker-perf", TeamRole::Worker);
-team.add_member("reviewer",    TeamRole::Reviewer);
-
-let mut runner = TeamRunner::new(team);
-runner.bind_session("lead",        Arc::new(agent.session(".", None)?))?;
-runner.bind_session("worker-sec",  Arc::new(agent.session(".", None)?))?;
-runner.bind_session("worker-perf", Arc::new(agent.session(".", None)?))?;
-runner.bind_session("reviewer",    Arc::new(agent.session(".", None)?))?;
-
-let result = runner.run_until_done(
-    "Review the authentication module for security issues"
-).await?;
-
-println!("Done: {} tasks, {} rounds", result.done_tasks.len(), result.rounds);
-for task in &result.done_tasks {
-    println!("  ✅ {}: {}", task.id, task.description);
+```ts
+const runs = await session.runs();
+for (const run of runs) {
+  console.log(run.id, run.status);
+  console.log(await session.runEvents(run.id));
 }
 ```
 
-</Step>
+`currentRun()` may be `null` when the session is idle. Use `runs()` for completed
+history and inspect a run's status before attempting cancellation.
 
-</Steps>
+## Production Boundary
 
----
-
-## Key concepts
-
-| Concept | Description |
-|---------|-------------|
-| `AgentTeam` | The team registry — holds members and the shared `TeamTaskBoard`. Consumed when passed to `TeamRunner`. |
-| `TeamRunner` | The execution engine — binds `AgentSession` to each member and drives the Lead → Worker → Reviewer loop. |
-| `TeamTaskBoard` | Thread-safe task queue. States: `Open → InProgress → InReview → Done` (or `Rejected → Open` on retry). |
-| `TeamConfig.max_rounds` | Maximum reviewer polling rounds. When exceeded, remaining tasks are returned as `rejected_tasks`. |
-| `claim()` | Atomic claim — returns the next `Open` or `Rejected` task and marks it `InProgress`. Safe to call from multiple concurrent workers. |
-| Lead prompt | Built-in. Instructs the LLM to return `{"tasks": ["...", "..."]}` and nothing else. You do not write this prompt. |
-| Reviewer prompt | Built-in. Instructs the reviewer to respond `APPROVED: <reason>` or `REJECTED: <feedback>`. |
+Direct host calls such as `session.bash()`, `session.tool()`, and
+`session.git()` are privileged host operations. Gate them in your application
+before exposing this flow to untrusted users.

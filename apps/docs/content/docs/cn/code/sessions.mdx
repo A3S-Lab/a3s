@@ -21,6 +21,20 @@ const stream = await session.stream('运行聚焦测试并解释失败');
 const side = await session.btw('这个 session 已经看过哪些文件？');
 ```
 
+Node 的 stream 返回 `EventStream`，当前 v2.1.0 经过验证的读取方式是
+重复调用 `.next()`：
+
+```ts
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (done) break;
+  if (!event) continue;
+
+  if (event.text) process.stdout.write(event.text);
+  if (event.toolName) console.log('tool:', event.toolName);
+}
+```
+
 `planningMode` 是显式三态：`'auto'` 使用默认结构化预分析，`'enabled'`
 强制 planning，`'disabled'` 在低延迟调用中关闭 planning。旧的布尔
 `planning` 选项仍保留兼容。
@@ -43,11 +57,14 @@ if (latest) {
 }
 ```
 
-流式执行期间，`currentRun()` 会返回当前活跃 run：
+`currentRun()` 用来读取调用当下的 current run。`send()` 或 `stream()` 仍在
+执行时，可以把它的 `id` 传给 `cancelRun(id)` 请求取消。空闲时，v2.1.0
+可能返回 `null`，也可能保留一个 run snapshot；已完成历史应使用 `runs()`，
+取消前必须检查 `status`：
 
 ```ts
-const active = await session.currentRun();
-if (active?.id) await session.cancelRun(active.id);
+const current = await session.currentRun();
+if (current?.id && current.status === 'running') {
+  await session.cancelRun(current.id);
+}
 ```
-
-Python 暴露同等能力：`runs()`、`run_snapshot(run_id)`、`run_events(run_id)`、`current_run()` 和 `cancel_run(run_id)`。

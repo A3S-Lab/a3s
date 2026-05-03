@@ -5,19 +5,22 @@ description: "Model Context Protocol 服务集成"
 
 # MCP
 
-MCP 把 A3S Code session 连接到外部工具服务器。
+MCP 把 A3S Code session 连接到外部工具服务器。stdio server 可以加入 live
+session、检查状态、通过注册工具调用，并在不需要时移除。
 
 ```ts
 const count = await session.addMcpServer(
-  'filesystem',
+  'echo',
   'stdio',
-  'npx',
-  ['-y', '@modelcontextprotocol/server-filesystem', '/repo'],
+  process.execPath,
+  ['tools/mcp_echo_server.mjs', 'secret'],
 );
 
 console.log(await session.mcpStatus());
 console.log(session.toolNames().filter(name => name.startsWith('mcp__')));
-await session.removeMcpServer('filesystem');
+await session.tool('mcp__echo__echo', { message: 'docs mcp ok' });
+await session.removeMcpServer('echo');
 ```
 
-MCP tool 名称格式是 `mcp__server__tool`。外部 tool server 仍会经过权限策略、hooks 和 security provider。
+MCP tool 名称格式是 `mcp__server__tool`。TypeScript signature 也暴露
+`'http'` 和 `'streamable-http'` transport 值；在生产文档或发布说明里依赖前，应先针对你的 server 做集成测试。外部 tool server 应视为特权集成，secret 放在环境变量里。

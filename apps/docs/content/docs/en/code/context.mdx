@@ -19,7 +19,12 @@ Context can come from:
 - MCP tools and context providers
 - AHP harness responses
 - delegated task summaries
-- trace and artifact references
+- trace events
+
+AGENTS.md injection, skills discovery, memory APIs, direct tool results,
+delegated task helpers, and `traceEvents()` are part of the documented Node SDK
+surface. Validate MCP/AHP context behavior against your own live integrations
+before documenting it as product behavior.
 
 ## Assembly
 
@@ -27,7 +32,7 @@ Context can come from:
 sources -> ContextItem -> rank -> dedupe -> budget -> render
 ```
 
-Long grep output, logs, and child transcripts should be stored as artifacts or trace data, then summarized into prompt-safe evidence.
+Long grep output, logs, and child transcripts should be preserved outside the prompt and summarized into prompt-safe evidence. Use `session.traceEvents()` for compact runtime evidence.
 
 ## Compaction
 
@@ -40,4 +45,5 @@ const session = agent.session('/repo', {
 });
 ```
 
-The goal is to preserve decisions and evidence while dropping incidental text.
+Validate the exact compaction behavior for any product workflow that depends on
+it.

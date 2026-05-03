@@ -5,7 +5,8 @@ description: "Tool selection, direct tool calls, and verification evidence"
 
 # Tools
 
-v2.1.0 keeps a registry of available tools but exposes only the useful subset to the model for the current turn. This reduces prompt clutter and keeps side effects behind one permission path.
+v2.1.0 keeps a registry of available tools. `toolNames()` returns the current
+session tool surface.
 
 ## Default Core Tools
 
@@ -17,13 +18,15 @@ v2.1.0 keeps a registry of available tools but exposes only the useful subset to
 | Delegation | `task`, `parallel_task` |
 | Skills | `search_skills`, `Skill` |
 
-## Intent-Gated Tools
+## Additional Registered Tools
 
-`web_fetch`, `web_search`, `git`, `batch`, and MCP tools are made visible when the turn requires them.
+`web_fetch`, `web_search`, `git`, `batch`, `program`, and MCP tools are also
+part of the broader tool surface. Validate model-visible selection behavior in
+the product flow that depends on it.
 
 ## Direct Tool Calls
 
-SDK callers can bypass the model for deterministic operations:
+SDK callers can call deterministic tools directly:
 
 ```ts
 const files = await session.glob('src/**/*.rs');
@@ -34,7 +37,8 @@ const raw = await session.tool('read', { file_path: 'README.md' });
 const schemas = session.toolDefinitions();
 ```
 
-Direct calls still execute inside the session's workspace and effective security policy.
+Direct calls execute inside the session workspace and should be treated as
+privileged host operations.
 
 For delegated child work, use SDK helpers over the same core tools:
 
@@ -102,11 +106,11 @@ await session.program({
 
 `session.program(...)` is equivalent to `session.tool('program', { type: 'script', language: 'javascript', ... })` but uses SDK-native naming. When `allowedTools` / `allowed_tools` is omitted, the script can call every registered tool except `program`. Provide an allow-list when a workflow should run with a smaller capability surface.
 
-The QuickJS VM receives no filesystem, network, subprocess, or environment permissions. The only useful capabilities are the `ctx` methods wired back to A3S Code tools. PTC output should be structured: summary, findings, evidence refs, artifacts, risks, and suggested next actions. Raw output belongs in traces or artifacts, not repeatedly in the prompt.
+The QuickJS VM receives no filesystem, network, subprocess, or environment permissions. The only useful capabilities are the `ctx` methods wired back to A3S Code tools. PTC returns a readable `ToolResult.output` and structured data in `ToolResult.metadataJson`. Keep large raw output out of the prompt; summarize findings, evidence refs, risks, and suggested next actions.
 
 ## Tool Results
 
-`ToolResult` includes `name`, `output`, `exitCode`, and optional structured metadata. Long outputs should be preserved as trace or artifact data and summarized before they are fed back to the model.
+`ToolResult` includes `name`, `output`, `exitCode`, and optional `metadataJson`. Long outputs should be summarized before they are fed back to the model.
 
 ## Verification
 

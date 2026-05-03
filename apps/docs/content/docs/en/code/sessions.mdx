@@ -43,7 +43,11 @@ console.log(result.verificationStatus);
 ```ts
 const stream = await session.stream('Run the focused tests and explain failures');
 
-for await (const event of stream) {
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (done) break;
+  if (!event) continue;
+
   if (event.text) process.stdout.write(event.text);
   if (event.toolName) console.log('tool:', event.toolName);
 }
@@ -86,15 +90,18 @@ if (latest) {
 }
 ```
 
-While a stream is active, `currentRun()` returns the active run snapshot:
+`currentRun()` is for the operation that is current at the time of the call.
+During an active `send()` or `stream()`, pass its `id` to `cancelRun(id)` to
+request cancellation. When idle, v2.1.0 may return `null` or a retained run
+snapshot depending on the preceding control flow, so use `runs()` for completed
+history and inspect `status` before treating a snapshot as cancellable:
 
 ```ts
-const active = await session.currentRun();
-if (active?.id) await session.cancelRun(active.id);
+const current = await session.currentRun();
+if (current?.id && current.status === 'running') {
+  await session.cancelRun(current.id);
+}
 ```
-
-Python exposes the same surface as `runs()`, `run_snapshot(run_id)`,
-`run_events(run_id)`, `current_run()`, and `cancel_run(run_id)`.
 
 ## Agent Definitions
 

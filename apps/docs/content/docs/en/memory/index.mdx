@@ -26,10 +26,16 @@ RelevanceConfig
 a3s-memory = "0.1"
 ```
 
-Or if you're using A3S Code, memory is already included — configure it via `SessionOptions`:
+For the A3S Code v2.1.0 Node SDK, the integration-tested path is
+`FileMemoryStore` in `agent.session()` options:
 
-```rust
-SessionOptions::new().with_file_memory("./memory")
+```ts
+import { Agent, FileMemoryStore } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.acl');
+const session = agent.session(process.cwd(), {
+  memoryStore: new FileMemoryStore('./memory'),
+});
 ```
 
 ## What's in this crate
@@ -74,5 +80,5 @@ SessionOptions::new().with_file_memory("./memory")
 />
 
 <Callout type="info">
-If you're building an agent with A3S Code, see [Memory](/docs/code/memory) for the full agent-layer documentation.
+If you're building an agent with A3S Code, see [Memory](/docs/code/memory) and [API Contract](/docs/code/api-contract) for the integration-tested agent-layer behavior.
 </Callout>

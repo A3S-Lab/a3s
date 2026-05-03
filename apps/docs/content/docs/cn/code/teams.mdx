@@ -25,9 +25,10 @@ await session.send(`
 `);
 ```
 
-如果宿主已经知道需要哪些 lane，也可以绕过模型直接调用
-`session.delegateTask(...)` 或 `session.parallelTask(...)`。
+如果宿主已经知道需要哪些 lane，也可以直接调用 `session.delegateTask(...)`
+或 `session.parallelTask(...)`。
 
 ## 运行状态
 
-旧生命周期控制面 API 已移除。应用应通过 streaming events 和 run replay 快照展示状态，需要取消时使用 `cancelRun(runId)` / `cancel_run(run_id)`。
+旧生命周期控制面 API 已移除。应用应通过 streaming events 和 run replay
+快照展示状态，Node 侧需要取消时使用 `cancelRun(runId)`。

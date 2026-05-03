@@ -11,4 +11,4 @@ const diff = await session.git('diff');
 const log = await session.git('log', undefined, undefined, undefined, undefined, undefined, undefined, 5);
 ```
 
-Git 命令仍会经过权限策略。push、publish 和 release 命令应放在 `ask` 或 `deny` 后面。
+直接 git 调用是宿主侧特权操作。push、publish 和 release workflow 应放在应用级确认或自动化关卡后面。

@@ -1,24 +1,24 @@
 ---
 title: "A3S Code"
-description: "面向 Rust、Node.js 和 Python 的驾驭式编程智能体运行时"
+description: "带 v2.1.0 Node SDK 的驾驭式编程智能体运行时"
 ---
 
 # A3S Code
 
-A3S Code v2.1.0 是一个驾驭式编程智能体运行时。模型负责推理；驾驭层负责上下文、工具可见性、权限、执行、验证证据、追踪、产物和压缩。
+A3S Code v2.1.0 是一个驾驭式编程智能体运行时。本节文档聚焦当前 Node SDK 能力面。
 
 ## v2.1.0 新特性
 
 | 领域 | v2.1.0 新内容 |
 | --- | --- |
 | 配置 | 只支持 ACL 配置，使用带标签的 `providers` 和 `models` 块；`env(...)` 是标准凭证注入方式。 |
-| Provider smoke | 真实 OpenAI 兼容 provider 检查支持 `A3S_OPENAI_*`，也支持 MiniMax 别名 `MINIMAX_API_KEY` / `MINIMAX_BASE_URL`。 |
+| Provider 配置 | OpenAI 兼容 provider 支持 `A3S_OPENAI_*`，也支持 MiniMax 别名 `MINIMAX_API_KEY` / `MINIMAX_BASE_URL`。 |
 | 委派 | `task` 和 `parallel_task` 是默认多运行路径，委派子运行返回紧凑摘要而不是完整 transcript。 |
-| SDK 对齐 | Rust、Node 和 Python 均暴露显式 planning mode、run replay、工具 schema、program 执行和委派 helper。 |
-| 驾驭控制 | AHP 2.4 transports、hooks、显式权限策略和 security provider 汇入同一个有效动作决策。 |
-| 验证 | `AgentResult` 暴露验证状态、计数、结构化摘要、token 使用、trace 数据和 artifact 引用。 |
+| SDK 能力面 | Node 暴露显式 planning mode、run replay、工具 schema、program 执行和委派 helper。 |
+| 驾驭控制 | AHP transport objects、hooks、显式权限策略和 security provider 是 session 级集成点。 |
+| 验证 | `AgentResult` 暴露验证状态、计数、结构化摘要和 token 使用；trace 与验证报告通过 session 检查 API 获取。 |
 | 工具表面 | 核心工具保持小而稳定；web、git、batch、skill 管理和 MCP 工具按意图启用。 |
-| PTC | Programmatic Tool Calling 在内嵌 QuickJS 中运行有边界的 JavaScript；Node/Python 通过 `session.program(...)` 对齐核心 `program` 工具。 |
+| PTC | Programmatic Tool Calling 在内嵌 QuickJS 中运行有边界的 JavaScript；Node SDK 通过 `session.program(...)` 对齐核心 `program` 工具。 |
 | 持久化 | file/memory store 支持可恢复 session、显式 `save()`、`autoSave`、memory recall 和 session ID。 |
 | 基础设施 | lane queue 是可选且显式的外部/混合分发基础设施；普通 session 默认不启用队列。 |
 
@@ -29,20 +29,17 @@ Agent / AgentSession
   -> 上下文组装
   -> 工具选择
   -> 确定性任务走 PTC
-  -> 权限与确认策略
+  -> 已配置的权限与确认策略
   -> 执行
-  -> 追踪、产物、验证证据
+  -> 追踪与验证证据
   -> 压缩
 ```
 
 ## 安装
 
 ```bash
-pip install a3s-code
 npm install @a3s-lab/code
 ```
-
-Rust 应用依赖 `a3s-code-core`。
 
 ## 配置
 
@@ -92,31 +89,21 @@ console.log(result.text);
 console.log(result.verificationSummaryText);
 ```
 
-```py
-from a3s_code import Agent
-
-agent = Agent.create("agent.acl")
-session = agent.session("/my-project", builtin_skills=True, planning_mode="enabled")
-
-result = session.send("定位认证错误处理逻辑并总结流程")
-print(result.text)
-```
-
 ## 当前 v2.1.0 能力面
 
 - `.acl` 是唯一支持的配置格式。
 - `Agent.create()` 接受 `.acl` 文件或内联 ACL 字符串；不支持 JSON 配置。
-- OpenAI 兼容 provider 使用 `apiKey`、`baseUrl` 和 model blocks；MiniMax 发布测试已覆盖环境变量注入。
+- OpenAI 兼容 provider 使用 `apiKey`/`api_key`、`baseUrl`/`base_url` 和 model blocks。
 - Planning 是明确的 `auto` / `enabled` / `disabled` 契约；`auto` 使用结构化预分析，不再依赖关键词门控。
 - Run tracking 通过 `runs`、`runSnapshot`、`runEvents`、`currentRun` 和按 run 取消能力公开给 SDK。
 - PTC 把搜索、读取、排序、摘要、验证等确定性工具链移到宿主代码里执行，避免反复消耗 LLM 工具回合。
 - 常规委派使用 `task` 和 `parallel_task` 工具。
-- Node/Python 暴露 `delegateTask` / `delegate_task`、`parallelTask` / `parallel_task`、`program` 和 `toolDefinitions` / `tool_definitions`。
+- Node 暴露 `delegateTask`、`parallelTask`、`program` 和 `toolDefinitions`。
 - 旧生命周期控制面 API 已移除；应用侧状态使用 streaming events、run replay 与按 run 取消能力。
-- 父 session 注册的 hooks 会传播到 `task` 创建的委派子运行。
-- AHP 2.4 支持 stdio、HTTP、WebSocket 和 Unix socket transports；Unix socket 仅支持 Unix target。
+- Hook 注册、计数和卸载是公开 session API；把 hook 作为生产关卡前需要验证具体 event path。
+- AHP 2.4 暴露 stdio、HTTP、WebSocket 和 Unix socket transport objects；Unix socket 仅支持 Unix target。
 - 普通 session 默认不启用队列；lane queue 是显式的外部或混合分发基础设施。
 - 权限策略由规则列表和默认决策组成。
-- 结果会暴露 token 统计、验证状态、验证摘要、追踪事件和产物引用。
+- 结果会暴露 token 统计、验证状态和验证摘要。追踪事件与验证报告通过 `session.traceEvents()`、`session.verificationReports()` 和 run replay API 获取。
 
-建议从[会话](/cn/docs/code/sessions)、[Provider 配置](/cn/docs/code/providers)和[示例](/cn/docs/code/examples)开始。
+建议从 [API 契约](/cn/docs/code/api-contract)、[会话](/cn/docs/code/sessions)和[Provider 配置](/cn/docs/code/providers)开始。

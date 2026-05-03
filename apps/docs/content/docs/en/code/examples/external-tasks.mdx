@@ -8,13 +8,15 @@ description: "Complete work from outside the agent process"
 ```ts
 const pending = await session.pendingExternalTasks();
 
-await session.completeExternalTask(pending[0].id, {
-  success: true,
-  result: {
-    summary: 'worker completed the test run',
-    command: 'npm run build',
-  },
-});
+if (pending.length > 0) {
+  await session.completeExternalTask(pending[0].id, {
+    success: true,
+    result: {
+      summary: 'worker completed the test run',
+      command: 'npm run build',
+    },
+  });
+}
 ```
 
 External workers should return compact structured evidence, not raw logs only.

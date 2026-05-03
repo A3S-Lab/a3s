@@ -8,10 +8,7 @@ description: "程序化角色、准则与回复风格"
 ```ts
 const session = agent.session('/repo', {
   role: '发布就绪检查员',
-  guidelines: [
-    '先找阻塞项，再列改进建议。',
-    '所有完成声明都必须有命令证据。',
-  ],
+  guidelines: '先找阻塞项，再列改进建议。所有完成声明都必须有命令证据。',
   responseStyle: '简洁，发现优先',
 });
 ```

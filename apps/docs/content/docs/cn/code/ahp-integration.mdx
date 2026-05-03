@@ -5,11 +5,13 @@ description: "Agent Harness Protocol 2.4 集成"
 
 # AHP 集成
 
-AHP 2.4 让外部驾驭层观察和引导 agent loop。它适合集中策略、上下文注入、idle 决策、审计和组织级安全。
+A3S Code 暴露 AHP 2.4 transport 配置，用于把外部 harness 接入 agent loop。Node
+session 接受 stdio、HTTP、WebSocket 和 Unix socket transport object；live harness
+行为应针对你部署的 AHP server 测试。
 
 AHP 事件包括 handshake、session start/end、pre-action、post-action、pre-prompt、post-response、error、query、heartbeat 和 idle。
 
-AHP 的决策会进入同一条驾驭路径：可以补充上下文、要求确认、允许或拒绝动作、影响 idle 处理并附加审计元数据，但不会绕过上下文预算和最终权限决策。
+把 AHP 决策视为你与外部 harness 的集成契约。组织级策略行为必须在实际部署的 AHP server 上测试后再依赖。
 
 ```ts
 import { HttpTransport } from '@a3s-lab/code';

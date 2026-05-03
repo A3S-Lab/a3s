@@ -5,7 +5,10 @@ description: "Permission policy, HITL, AHP, and verification gates"
 
 # Security
 
-A3S Code v2.1.0 routes side effects through one effective authorization path. Permission rules, workspace boundaries, skill grants, hooks, AHP decisions, and security providers combine into `Allow`, `Ask`, or `Deny`.
+A3S Code v2.1.0 exposes security controls at session creation time and through
+session lifecycle hooks. Treat direct host calls such as `session.tool()` and
+`session.bash()` as privileged host operations: the application that calls them
+is responsible for deciding whether to expose that power to a user.
 
 ## Permission Policy
 
@@ -25,19 +28,21 @@ Avoid permissive defaults for release or production sessions. Make dangerous com
 
 ## Hooks
 
-Hooks can block matching actions before tools run:
+Hooks are registered on a session with an event type, matcher, optional config,
+and handler:
 
 ```ts
 session.registerHook(
-  'no-secret-read',
+  'observe-secret-read',
   'pre_tool_use',
   { pathPattern: '**/.env*' },
   { priority: 100 },
-  () => ({ action: 'block', reason: 'secret files are not readable' }),
+  () => ({ action: 'continue' }),
 );
-```
 
-Hooks propagate to delegated child runs spawned by `task`.
+console.log(session.hookCount());
+session.unregisterHook('observe-secret-read');
+```
 
 ## AHP
 
@@ -45,4 +50,6 @@ AHP lets an external harness observe and decide around prompts, actions, respons
 
 ## Verification
 
-Verification reports and summaries are part of the result surface. Release workflows should require tests, package checks, CI checks, and real-provider smoke evidence.
+Verification reports and summaries are available from the session and selected
+result fields. Release workflows should require tests, package checks, CI
+checks, and provider evidence.

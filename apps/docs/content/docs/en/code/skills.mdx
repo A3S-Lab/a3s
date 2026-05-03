@@ -5,7 +5,9 @@ description: "Prompt-time skills, inline skills, and the Skill tool"
 
 # Skills
 
-Skills are reusable instructions that the harness can discover, rank, and inject when relevant. They are not always dumped into the prompt; v2.1.0 treats skills as budgeted context.
+Skills are reusable instructions that the harness can discover and rank.
+Built-in skills, file-backed skill directories, inline skills, and
+`search_skills` share the same discovery path.
 
 ## Enable Built-Ins
 
@@ -25,7 +27,7 @@ Store Markdown files with frontmatter in a skill directory:
 ---
 name: release-review
 description: Review release blockers and verification evidence
-allowed-tools: "grep, read, bash(cargo test*)"
+allowed-tools: "read(*), grep(*), bash(cargo test*)"
 ---
 
 Check package metadata, changelog, release scripts, and CI status.
@@ -34,7 +36,7 @@ Return blockers first.
 
 ```ts
 const session = agent.session('/repo', {
-  skillDirs: ['./skills'],
+  skillDirs: ['/repo/skills'],
 });
 ```
 
@@ -54,4 +56,15 @@ const session = agent.session('/repo', {
 
 ## Skill Tool
 
-`search_skills` finds relevant skills. `Skill` applies a named skill for a turn. Skill administration is now an SDK or filesystem concern rather than a model-visible management tool.
+`search_skills` finds relevant skills:
+
+```ts
+await session.tool('search_skills', {
+  query: 'release blockers',
+  limit: 5,
+});
+```
+
+Markdown skill files with `allowed-tools` frontmatter and inline skills are both
+discoverable. Skill administration is an SDK or filesystem concern rather than
+a model-visible management tool.

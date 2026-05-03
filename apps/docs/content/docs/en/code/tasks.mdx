@@ -23,7 +23,6 @@ A child agent should return a compact contract:
 - evidence references
 - risks and unknowns
 - confidence
-- trace reference
 
 The parent should not ingest the full child transcript.
 
@@ -66,4 +65,5 @@ const session = agent.session('/repo', { agentDirs: ['./agents'] });
 const loaded = session.registerAgentDir('./more-agents');
 ```
 
-Legacy lifecycle control-plane APIs are removed. Applications that need UI state should consume streaming events, run replay, and `cancelRun(runId)` / `cancel_run(run_id)`.
+Legacy lifecycle control-plane APIs are removed. Applications that need UI state
+should consume streaming events, run replay, and Node `cancelRun(runId)`.

@@ -7,10 +7,10 @@ description: "可靠编程智能体的预算化上下文组装"
 
 A3S Code 把上下文当作有预算的资源。
 
-上下文来源包括用户 prompt、历史、AGENTS.md、skills、memory、文件搜索、直接工具结果、MCP、AHP、委派子运行摘要、trace 和 artifact 引用。
+上下文来源包括用户 prompt、历史、AGENTS.md、skills、memory、文件搜索、直接工具结果、MCP、AHP、委派子运行摘要和 trace event。AGENTS.md 注入、skills discovery、memory API、直接工具结果、委派 helper 和 `traceEvents()` 属于 Node SDK 文档表面；MCP/AHP context 行为应针对你的 live integration 单独验证。
 
 ```text
 sources -> ContextItem -> rank -> dedupe -> budget -> render
 ```
 
-长 grep 输出、日志和委派子运行 transcript 应存为 artifact 或 trace，再总结成适合 prompt 的证据。
+长 grep 输出、日志和委派子运行 transcript 不应直接塞进 prompt；应保存在 prompt 之外，再总结成适合 prompt 的证据。紧凑运行证据可通过 `session.traceEvents()` 获取。

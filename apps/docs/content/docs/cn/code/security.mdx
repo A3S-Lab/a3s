@@ -5,7 +5,7 @@ description: "权限策略、HITL、AHP 与验证关卡"
 
 # 安全
 
-A3S Code 把副作用统一放到一个有效授权路径中。
+A3S Code v2.1.0 在创建 session 时暴露安全控制，并通过 session hook 暴露生命周期回调。宿主直接调用 `session.tool()`、`session.bash()` 等 API 时，应把它们视为宿主侧特权操作；是否把这些能力暴露给用户，由宿主应用自己判断。
 
 ```ts
 const session = agent.session('/repo', {
@@ -19,4 +19,19 @@ const session = agent.session('/repo', {
 });
 ```
 
-Hooks 可以在工具执行前阻断操作，并会传播到 `task` 创建的委派子运行。AHP 可把组织级策略放到外部驾驭层。发布流程应要求测试、包检查、CI 和真实 provider smoke 的验证证据。
+Hook API 的管理面包括注册、计数和卸载：
+
+```ts
+session.registerHook(
+  'observe-secret-read',
+  'pre_tool_use',
+  { pathPattern: '**/.env*' },
+  { priority: 100 },
+  () => ({ action: 'continue' }),
+);
+
+console.log(session.hookCount());
+session.unregisterHook('observe-secret-read');
+```
+
+AHP 可把组织级策略放到外部驾驭层。发布流程应要求测试、包检查、CI 和 provider 验证证据。

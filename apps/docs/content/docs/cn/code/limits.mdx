@@ -5,7 +5,8 @@ description: "运行时限制、压缩、超时与熔断"
 
 # 运行限制
 
-限制让长任务、嘈杂工具和 provider 失败变得可控。
+Limit options 是 session 级控制项，用于长任务、噪声工具输出和 provider
+失败场景。
 
 ```ts
 const session = agent.session('/repo', {
@@ -19,5 +20,14 @@ const session = agent.session('/repo', {
   maxContinuationTurns: 3,
 });
 ```
+
+这些 option 的意图：
+
+- `maxToolRounds` 是单个 turn 的 tool iteration 预算。
+- `maxParseRetries` 是 malformed tool-call recovery 预算。
+- `toolTimeoutMs` 是每个 tool 的超时时间，单位毫秒。
+- `circuitBreakerThreshold` 是连续 provider 失败阈值。
+- `autoCompact` 和 `autoCompactThreshold` 控制 context compaction 行为。
+- `continuationEnabled` 和 `maxContinuationTurns` 控制 continuation injection。
 
 CI、发布和用户可见自动化应使用严格限制；本地探索可以放宽预算，但有副作用的任务仍要显式验证。

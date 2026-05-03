@@ -13,11 +13,11 @@ Prompt
   -> tool selection
   -> LLM generation
   -> programmatic tool calling
-  -> permission/security decision
+  -> configured permission/security integration
   -> tool execution
   -> observation
   -> verification
-  -> trace/artifact storage
+  -> trace storage
   -> compaction
 ```
 
@@ -27,18 +27,24 @@ The kernel maintains sessions, calls providers, executes tools through one execu
 
 ## Harness
 
-The harness controls:
+The harness coordinates:
 
 - which context is load-bearing
 - which tools are visible
-- whether actions are allowed, denied, or require confirmation
-- how outputs are summarized or stored as artifacts
+- configured permission, hook, AHP, and security-provider integration points
+- how outputs are summarized before they re-enter context
 - which verification evidence is required before completion
-- how run snapshots, TaskList state, trace events, and artifacts are exposed to host applications
+- how run snapshots, TaskList state, and trace events are exposed to host applications
 
 ## PTC Path
 
-Programmatic Tool Calling is a harness path for deterministic workflows. The `program` tool runs a JavaScript script in an embedded QuickJS VM with a controlled `ctx` object. By default, scripts may call every registered tool except `program`; callers can narrow that surface with `allowed_tools`. The script can compose `glob`, `grep`, `readFile`, `bash`, `git`, MCP calls, and verification commands, then return one structured result to the agent.
+Programmatic Tool Calling is a harness path for deterministic workflows. The
+`program` tool runs a JavaScript script in an embedded QuickJS VM with a
+controlled `ctx` object. By default, scripts may call every registered tool
+except `program`; callers can narrow that surface with `allowed_tools`. The docs
+contract verifies scripts that compose `readFile`, `read`, `glob`, `grep`, `ls`,
+`bash`, `git`, and generic `tool(name, args)`, then return one structured result
+to the agent.
 
 Use PTC when the operation is mostly mechanical:
 
@@ -47,7 +53,7 @@ Use PTC when the operation is mostly mechanical:
 - package metadata inspection
 - release preflight evidence gathering
 - log parsing and summarization
-- artifact indexing
+- trace indexing
 
 Use ordinary model tool calls when the next action requires judgment. Use PTC when the action sequence is known and the model only needs the result. Scripts can be passed inline as `source` or loaded from a workspace-relative `.js` or `.mjs` file path; the VM itself gets no direct filesystem, network, subprocess, or environment access.
 

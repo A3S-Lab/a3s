@@ -7,7 +7,7 @@ description: "使用 task 与 parallel_task 进行常规委派"
 
 v2.1.0 的常规多智能体路径是 `task` 和 `parallel_task`，旧的公开 Team Runner API 不再使用。
 
-`task` 适合单个有边界的子任务，`parallel_task` 适合互相独立的并行 lane。委派子运行应返回摘要、检查/修改过的文件、证据引用、风险、置信度和 trace 引用，不应把完整 transcript 注入父 agent。
+`task` 适合单个有边界的子任务，`parallel_task` 适合互相独立的并行 lane。委派子运行应返回摘要、检查/修改过的文件、证据引用、风险和置信度，不应把完整 transcript 注入父 agent。
 
 宿主已经知道任务边界时，可以直接调用 SDK helper：
 
@@ -29,4 +29,4 @@ const session = agent.session('/repo', { agentDirs: ['./agents'] });
 session.registerAgentDir('./more-agents');
 ```
 
-常规团队协作请优先用 `task` / `parallel_task`。旧生命周期控制面 API 已移除；需要 UI 状态时，应用应消费 streaming events、run replay，以及 `cancelRun(runId)` / `cancel_run(run_id)`。
+常规团队协作请优先用 `task` / `parallel_task`。旧生命周期控制面 API 已移除；需要 UI 状态时，应用应消费 streaming events、run replay，以及 Node `cancelRun(runId)`。

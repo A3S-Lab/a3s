@@ -5,16 +5,18 @@ description: "Agent Harness Protocol 2.4 integration"
 
 # AHP Integration
 
-A3S Code integrates with AHP 2.4 so an external harness can observe and guide the agent loop. AHP is for supervision: policy, context injection, idle decisions, audit, and organization-level safety.
+A3S Code exposes AHP 2.4 transport configuration so an external harness can be
+connected to the agent loop. Node sessions accept stdio, HTTP, WebSocket, and
+Unix socket transport objects; validate live harness behavior against the AHP
+server you deploy.
 
 ## Event Surface
 
 AHP events include handshake, session start/end, pre-action, post-action, pre-prompt, post-response, error, query, heartbeat, and idle.
 
-AHP decisions are advisory inputs to the same harness path as local policy. They
-can add context, request confirmation, deny or allow an action, influence idle
-handling, and attach audit metadata, but they do not bypass context budgeting or
-the final effective permission decision.
+Treat AHP decisions as an integration contract with your harness. Do not rely on
+organization policy behavior until it has been tested against the live AHP
+server you deploy.
 
 ## Transports
 
@@ -54,4 +56,6 @@ ahp = {
 
 ## Recommended Use
 
-Keep AHP decisions small and explicit. Let the coding agent continue doing local reasoning, while the harness answers safety, context, approval, and idle-control questions.
+Keep AHP decisions small and explicit. Let the coding agent continue doing local
+reasoning, while the harness handles the safety, context, approval, or idle
+control paths that your live integration test covers.

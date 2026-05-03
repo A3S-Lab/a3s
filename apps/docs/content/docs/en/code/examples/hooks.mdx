@@ -1,20 +1,21 @@
 ---
 title: "Hooks"
-description: "Block or observe lifecycle events"
+description: "Register lifecycle event callbacks"
 ---
 
 # Hooks
 
 ```ts
 session.registerHook(
-  'no-env-read',
+  'observe-env-read',
   'pre_tool_use',
   { pathPattern: '**/.env*' },
   { priority: 100 },
-  () => ({ action: 'block', reason: 'secret files are blocked' }),
+  () => ({ action: 'continue' }),
 );
 
 console.log(session.hookCount());
+session.unregisterHook('observe-env-read');
 ```
 
-Parent-session hooks propagate to delegated child runs spawned by `task`.
+Validate the event path you depend on before using a hook as a production gate.

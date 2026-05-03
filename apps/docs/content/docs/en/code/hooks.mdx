@@ -5,7 +5,8 @@ description: "Lifecycle interception and policy callbacks"
 
 # Hooks
 
-Hooks observe or intercept lifecycle events inside a session. They are useful for policy enforcement, audit logs, metrics, and release gates.
+Hooks register lifecycle callbacks inside a session. The registration lifecycle
+is `registerHook()`, `hookCount()`, and `unregisterHook()`.
 
 ## Events
 
@@ -25,30 +26,31 @@ post_response
 on_error
 ```
 
-## Blocking Example
+## Registration Example
 
 ```ts
 session.registerHook(
-  'release-publish-approval',
+  'release-publish-observer',
   'pre_tool_use',
   { tool: 'bash', commandPattern: 'npm publish|twine upload|cargo publish' },
   { priority: 50, timeoutMs: 1000 },
-  event => ({
-    action: 'block',
-    reason: 'publishing must be performed by release automation',
-  }),
+  () => ({ action: 'continue' }),
 );
 ```
 
-A handler returns `{ action: 'continue' }`, `{ action: 'skip' }`, `{ action: 'block', reason }`, or `null`/`undefined` to continue.
+A handler may return `{ action: 'continue' }`, `{ action: 'skip' }`,
+`{ action: 'block', reason }`, or `null`/`undefined` to continue. Validate the
+specific event path you depend on before using a hook as a production gate.
 
 ## Propagation
 
-Hooks registered on a parent session automatically propagate to delegated child runs created by `task`, including deeper descendants. This keeps security and audit logic consistent across a delegation tree.
+Delegation uses the `task` and `parallel_task` tools. When a product depends on
+hook behavior across delegated runs, cover that product path with an integration
+test.
 
 ## Management
 
 ```ts
 console.log(session.hookCount());
-session.unregisterHook('release-publish-approval');
+session.unregisterHook('release-publish-observer');
 ```

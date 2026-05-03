@@ -11,4 +11,5 @@ const diff = await session.git('diff');
 const log = await session.git('log', undefined, undefined, undefined, undefined, undefined, undefined, 5);
 ```
 
-Git commands still pass through permission policy. Put push, publish, and release commands behind `ask` or `deny`.
+Direct git calls are privileged host operations. Put push, publish, and release
+workflows behind application-level approval or automation gates.

@@ -32,9 +32,11 @@ Use parallel_task and return a single prioritized report.
 `);
 ```
 
-SDK callers can also bypass the model and call `session.delegateTask(...)` or
+SDK callers can also call `session.delegateTask(...)` or
 `session.parallelTask(...)` directly when the host already knows the lanes.
 
 ## Runtime State
 
-Legacy lifecycle control-plane APIs are removed. Applications should observe streaming events and run replay snapshots, then cancel active work with `cancelRun(runId)` / `cancel_run(run_id)` when needed.
+Legacy lifecycle control-plane APIs are removed. Applications should observe
+streaming events and run replay snapshots, then cancel active Node work with
+`cancelRun(runId)` when needed.

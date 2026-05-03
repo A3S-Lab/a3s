@@ -5,7 +5,8 @@ description: "作为一等上下文的项目指令"
 
 # AGENTS.md
 
-`AGENTS.md` 为项目提供稳定指令，避免每个 prompt 都重复说明。
+`AGENTS.md` 为项目提供稳定指令，避免每个 prompt 都重复说明。workspace
+`AGENTS.md` instruction 会进入 provider request context。
 
 ```md
 # Project Instructions
@@ -13,7 +14,7 @@ description: "作为一等上下文的项目指令"
 - Core 变更运行 `cargo test -p a3s-code-core`。
 - 不要提交 `.a3s/config.acl` 里的真实密钥。
 - 搜索优先使用 `rg`。
-- 发布检查必须包含包元数据、CI 和真实 provider smoke。
+- 发布检查必须包含包元数据、CI 和 provider 验证。
 ```
 
 `AGENTS.md` 适合放构建命令、安全规则、代码风格、目录说明和发布流程。不要把密钥写进去。只有当子目录规则确实不同，才添加嵌套 `AGENTS.md`。

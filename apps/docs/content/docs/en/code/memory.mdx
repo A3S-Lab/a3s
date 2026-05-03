@@ -25,11 +25,11 @@ Use memory storage in short-lived tests and file storage for durable local sessi
 await session.rememberSuccess(
   'release preflight',
   ['bash', 'grep'],
-  'Release checks passed after real-provider smoke',
+  'Release checks passed after provider verification',
 );
 
 await session.rememberFailure(
-  'provider smoke',
+  'provider verification',
   'missing A3S_OPENAI_BASE_URL',
   ['bash'],
 );
@@ -38,8 +38,8 @@ await session.rememberFailure(
 ## Recall
 
 ```ts
-const related = await session.recallSimilar('release provider smoke', 5);
-const recent = await session.recallRecent(10);
+const related = await session.recallSimilar('release provider verification', 5);
+const recent = await session.memoryRecent(10);
 const tagged = await session.recallByTags(['release'], 10);
 ```
 

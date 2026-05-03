@@ -1,417 +1,139 @@
 ---
-title: 构建 DeepResearch 智能体
-description: 使用 A3S Code 构建生产级研究智能体 — 多机器并行网页搜索、实时流式合成、结构化报告生成。
+title: 构建 Research Agent
+description: 使用 A3S Code v2.1.0 Node SDK 组合 PTC、任务委派、流式输出与队列检查能力。
 full: true
 ---
 
-import { Step, Steps } from 'fumadocs-ui/components/steps';
 import { Callout } from 'fumadocs-ui/components/callout';
 
-本教程将带你构建一个真正意义上的 **DeepResearch** 智能体，远超简单的"搜索+总结"循环。它充分利用 A3S Code 的核心能力实现真正的并行研究：
+# 构建 Research Agent
 
-1. 将问题分解为多个聚焦的子查询
-2. 通过 Lane 队列将每个搜索任务分发到**外部 Worker**（独立机器/进程）
-3. 结果到达时实时流式合成
-4. 生成带引用的结构化 Markdown 报告
+这篇教程组合确定性本地扫描、委派式子调查、流式合成、队列检查与 run replay。
 
-<Callout type="info">
-  先安装 SDK：`pip install a3s-code`。在 `~/.a3s/config.hcl` 中配置好 LLM 提供商密钥。
+<Callout type="warn">
+真实网页搜索、远程 worker 和第三方 MCP server 都依赖你的运行环境。生产使用前，
+应在应用中测试这些集成。
 </Callout>
 
----
+## 结构
 
-## 演示流程
-
-<ScrollyCoding>
-<ScrollySteps>
-
-<ScrollyStep index={0}>
-
-### 项目结构
-
-三个文件：`agent.hcl` 智能体 + 队列 + 搜索配置，`main.py` 协调器，`worker.py` 远程任务执行器。
-
-</ScrollyStep>
-
-<ScrollyStep index={1}>
-
-### 智能体配置（HCL）
-
-`agent.hcl` 配置模型、启用 Lane 队列（`query_max_concurrency = 8`）以及内置多引擎搜索（Google、Bing、DuckDuckGo）。
-
-</ScrollyStep>
-
-<ScrollyStep index={2}>
-
-### 创建智能体和会话
-
-`Agent.create()` 加载配置。`SessionQueueConfig` 在代码中镜像 HCL 队列设置。`set_lane_handler("execute", mode="external")` 将所有 `bash`/`write` 工具调用路由到外部 Worker，而非本地执行。
-
-</ScrollyStep>
-
-<ScrollyStep index={3}>
-
-### 分解问题
-
-向智能体发送规划提示，返回 JSON 格式的子查询数组。并行阶段开始前先解析这些子查询——解析失败则回退到原始问题。
-
-</ScrollyStep>
-
-<ScrollyStep index={4}>
-
-### 跨 Worker 并行搜索
-
-用 `asyncio.to_thread` + `asyncio.gather` 并发运行所有子查询。每个任务直接调用 `session.tool("web_search", ...)` — 无需 LLM 往返。Lane 队列将并发数限制在 8。
-
-</ScrollyStep>
-
-<ScrollyStep index={5}>
-
-### 外部任务处理器
-
-后台线程轮询 `session.pending_external_tasks()`。当智能体触发 `bash`/`write` 任务时，轮询器接收任务、发送到远程 Worker，再调用 `session.complete_external_task()` 恢复智能体。生产环境中将 `worker.execute()` 替换为 gRPC / SSH / 消息队列。
-
-</ScrollyStep>
-
-<ScrollyStep index={6}>
-
-### 流式合成
-
-将所有搜索结果传回智能体。遍历 `session.stream()` — `text_delta` 事件实时打印输出，`tool_start`/`tool_end` 显示工具活动，`end` 携带最终 Token 用量。
-
-</ScrollyStep>
-
-<ScrollyStep index={7}>
-
-### 完整协调器
-
-完整的 `main.py`。运行方式：
-
-```bash
-python main.py "机密计算领域的最新进展"
+```text
+问题
+  -> 用 PTC 做确定性本地扫描
+  -> 可选委派子调查
+  -> 流式合成
+  -> run 与 queue 检查
 ```
 
-</ScrollyStep>
+## 创建 Session
 
-</ScrollySteps>
+```ts
+import { Agent } from '@a3s-lab/code';
 
-<ScrollyCode>
-
-```text 项目结构
-deep-research/
-├── agent.hcl   # 智能体 + 队列 + 搜索配置
-├── main.py     # 协调器：规划 → 并行搜索 → 合成
-└── worker.py   # 远程 Worker：执行 ExternalTask
+const agent = await Agent.create('agent.acl');
+const session = agent.session(process.cwd(), {
+  builtinSkills: true,
+  planningMode: 'enabled',
+  maxToolRounds: 24,
+  autoCompact: true,
+});
 ```
 
-```hcl 智能体配置
-# agent.hcl
-default_model = "anthropic/claude-sonnet-4-20250514"
+## 用 PTC 做确定性扫描
 
-providers {
-  name    = "anthropic"
-  api_key = env("ANTHROPIC_API_KEY")
-}
+Programmatic Tool Calling 适合有边界、可重复的工具链。运行时暴露
+`ctx.readFile`、`ctx.read`、`ctx.grep`、`ctx.glob`、`ctx.ls`、
+`ctx.bash`、`ctx.git` 和通用 `ctx.tool`。
 
-# Lane 队列 — 控制并行执行
-queue {
-  query_max_concurrency   = 8   # 最多 8 个并行搜索
-  execute_max_concurrency = 4
-  enable_metrics          = true
-  enable_dlq              = true
+```ts
+const scan = await session.program({
+  source: `
+    export default async function run(ctx, inputs) {
+      const files = await ctx.glob(inputs.glob);
+      const hits = await ctx.grep(inputs.query, { glob: inputs.glob });
+      const status = await ctx.git('status');
+      return { files, hits, status };
+    }
+  `,
+  inputs: {
+    glob: '**/*.{ts,tsx,js,md}',
+    query: 'authentication',
+  },
+  allowedTools: ['glob', 'grep', 'git'],
+  limits: {
+    timeoutMs: 30000,
+    maxToolCalls: 12,
+    maxOutputBytes: 65536,
+  },
+});
 
-  retry_policy {
-    strategy         = "exponential"
-    max_retries      = 3
-    initial_delay_ms = 200
-  }
-}
+const metadata = JSON.parse(scan.metadataJson);
+console.log(metadata.script_result);
+console.log(metadata.program.tool_calls);
+```
 
-# 内置多引擎搜索
-search {
-  timeout = 30
+## 委派聚焦调查
 
-  engine {
-    google     { enabled = true; weight = 1.5 }
-    bing       { enabled = true; weight = 1.0 }
-    duckduckgo { enabled = true; weight = 1.2 }
-  }
+```ts
+const investigations = await session.parallelTask([
+  {
+    agent: 'general',
+    description: 'Auth release blockers',
+    prompt: 'Inspect authentication error handling and list release blockers.',
+    maxSteps: 4,
+  },
+  {
+    agent: 'general',
+    description: 'Auth test coverage',
+    prompt: 'Inspect tests around authentication edge cases and list missing coverage.',
+    maxSteps: 4,
+  },
+]);
+```
+
+`parallelTask()` 返回核心 `parallel_task` tool 的 `ToolResult`。
+
+## 流式合成
+
+使用 `.next()` 消费 `EventStream`：
+
+```ts
+const stream = await session.stream(`
+Write a concise research report.
+
+PTC scan:
+${scan.output}
+
+Child investigations:
+${investigations.output}
+`);
+
+while (true) {
+  const { value: event, done } = await stream.next();
+  if (done) break;
+  if (event?.text) process.stdout.write(event.text);
 }
 ```
 
-```python 创建智能体和会话
-# main.py
-import asyncio
-import threading
-import sys
-import json
-from a3s_code import Agent, SessionQueueConfig
-import worker
+## 检查 Queue 与 Replay 状态
 
-def create_session(config_path):
-    agent = Agent.create(config_path)
+队列 API 是 session 检查与 external-task primitive：
 
-    # 与 HCL 队列配置保持一致
-    qc = SessionQueueConfig()
-    qc.set_query_concurrency(8)
-    qc.set_execute_concurrency(4)
-    qc.enable_metrics()
-    qc.enable_dlq()
+```ts
+const queued = agent.session(process.cwd(), {
+  queueConfig: { enableDlq: true, enableMetrics: true },
+});
 
-    session = agent.session(".", queue_config=qc, permissive=True)
+console.log(queued.hasQueue());
+console.log(await queued.queueStats());
+console.log(await queued.queueMetrics());
+console.log(await queued.pendingExternalTasks());
+console.log(await queued.deadLetters());
 
-    # 将 Execute 通道路由到外部 Worker
-    session.set_lane_handler(
-        "execute", mode="external", timeout_ms=60_000
-    )
-    return session
+for (const run of await session.runs()) {
+  console.log(run.id, run.status, await session.runEvents(run.id));
+}
 ```
 
-```python 分解问题
-def plan_sub_queries(session, question):
-    result = session.send(
-        f"将以下研究问题拆解为 5-8 个聚焦的子查询，"
-        f"用于并行网页搜索。只返回 JSON 字符串数组。\n\n"
-        f"问题：{question}"
-    )
-    try:
-        sub_queries = json.loads(result.text)
-        if isinstance(sub_queries, list):
-            return sub_queries
-    except json.JSONDecodeError:
-        pass
-    # 解析失败时回退到原始问题
-    return [question]
-```
-
-```python 跨 Worker 并行搜索
-async def parallel_search(session, sub_queries):
-    print(f"📋 已规划 {len(sub_queries)} 个子查询")
-
-    async def search_one(query):
-        print(f"  🔍 搜索中：{query}")
-        result = await asyncio.to_thread(
-            session.tool,
-            "web_search",
-            {
-                "query":   query,
-                "engines": "google,bing,ddg",
-                "limit":   8,
-                "timeout": 20,
-                "format":  "text",
-            },
-        )
-        return result.output if result.exit_code == 0 else ""
-
-    results = await asyncio.gather(
-        *[search_one(q) for q in sub_queries],
-        return_exceptions=True,
-    )
-
-    # 过滤掉错误结果
-    return [r for r in results if isinstance(r, str) and r]
-```
-
-```python 外部任务处理器
-def start_external_worker(session, stop_event):
-    """后台线程：轮询并分发 ExternalTask。"""
-    def poll():
-        while not stop_event.is_set():
-            try:
-                tasks = session.pending_external_tasks()
-                for task in tasks:
-                    tid  = task["task_id"]
-                    kind = task["command_type"]
-                    print(f"  📥 外部任务：{tid[:8]} ({kind})")
-
-                    # --- 在此处转发到远程 Worker ---
-                    out = worker.execute(task)
-
-                    session.complete_external_task(
-                        tid,
-                        success=out["success"],
-                        result={
-                            "output":    out["output"],
-                            "exit_code": out["exit_code"],
-                        },
-                        error=out.get("error"),
-                    )
-                    print(f"  📤 任务 {tid[:8]} 已完成")
-            except Exception:
-                pass
-            stop_event.wait(timeout=0.2)
-
-    t = threading.Thread(target=poll, daemon=True)
-    t.start()
-    return t
-```
-
-```python 流式合成
-async def synthesize(session, question, results):
-    context = "\n\n---\n\n".join(results)
-    prompt = (
-        f"你是一位研究分析师。根据以下搜索结果，"
-        f"撰写关于"{question}"的完整 Markdown 报告。\n\n"
-        f"要求：\n"
-        f"- 每个子主题使用清晰的 ## 标题\n"
-        f"- 顶部列出"核心发现"要点\n"
-        f"- 使用 [标题](url) 格式内联引用\n"
-        f"- 明确标注矛盾观点\n"
-        f"- 末尾附"参考来源"章节\n\n"
-        f"搜索结果：\n{context}"
-    )
-
-    print("\n# 研究报告\n")
-
-    for event in session.stream(prompt):
-        if event.event_type == "text_delta":
-            print(event.text, end="", flush=True)
-        elif event.event_type == "tool_start":
-            print(f"\n  🔧 工具：{event.tool_name}", flush=True)
-        elif event.event_type == "end":
-            print(f"\n\n---\n✓ 共消耗 {event.total_tokens} tokens")
-            break
-        elif event.event_type == "error":
-            print(f"\n❌ {event.error}")
-            break
-```
-
-```python 完整协调器
-# main.py — 完整文件
-import asyncio
-import threading
-import sys
-import json
-from pathlib import Path
-from a3s_code import Agent, SessionQueueConfig
-import worker
-
-
-def find_config():
-    p = Path.home() / ".a3s" / "config.hcl"
-    if p.exists():
-        return str(p)
-    raise FileNotFoundError("~/.a3s/config.hcl 未找到")
-
-
-async def main():
-    question = (
-        sys.argv[1] if len(sys.argv) > 1
-        else "机密计算领域的最新进展"
-    )
-
-    agent = Agent.create(find_config())
-
-    qc = SessionQueueConfig()
-    qc.set_query_concurrency(8)
-    qc.set_execute_concurrency(4)
-    qc.enable_metrics()
-    qc.enable_dlq()
-
-    session = agent.session(".", queue_config=qc, permissive=True)
-    session.set_lane_handler("execute", mode="external", timeout_ms=60_000)
-
-    # 启动外部任务轮询器
-    stop = threading.Event()
-    start_external_worker(session, stop)
-
-    # 规划
-    result = session.send(
-        f"拆解为 5-8 个子查询用于并行搜索，"
-        f"只返回 JSON 数组。\n\n问题：{question}"
-    )
-    try:
-        sub_queries = json.loads(result.text)
-    except Exception:
-        sub_queries = [question]
-
-    # 并行搜索
-    async def search_one(query):
-        r = await asyncio.to_thread(
-            session.tool, "web_search",
-            {"query": query, "engines": "google,bing,ddg",
-             "limit": 8, "timeout": 20, "format": "text"},
-        )
-        return r.output if r.exit_code == 0 else ""
-
-    raw = await asyncio.gather(*[search_one(q) for q in sub_queries])
-    results = [r for r in raw if r]
-    print(f"✓ {len(results)} 个搜索已完成")
-
-    # 合成
-    context = "\n\n---\n\n".join(results)
-    for event in session.stream(
-        f"撰写关于"{question}"的完整 Markdown 报告。\n\n"
-        f"使用 ## 标题、内联引用、顶部核心发现、"
-        f"末尾参考来源。\n\n搜索结果：\n{context}"
-    ):
-        if event.event_type == "text_delta":
-            print(event.text, end="", flush=True)
-        elif event.event_type == "end":
-            print(f"\n✓ {event.total_tokens} tokens")
-            break
-        elif event.event_type == "error":
-            print(f"\n❌ {event.error}")
-            break
-
-    stop.set()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-</ScrollyCode>
-</ScrollyCoding>
-
----
-
-## 进阶扩展
-
-<Steps>
-<Step>
-
-### 动态切换 Worker 模式
-
-运行时随时切换通道处理器 — `internal` 本地执行、`external` 远程执行、`hybrid` 同时执行并通知外部系统：
-
-```python
-# 切换到混合模式：本地执行 + 通知外部系统
-session.set_lane_handler("execute", mode="hybrid", timeout_ms=30_000)
-```
-
-</Step>
-<Step>
-
-### 监控队列压力
-
-用队列指标在积压时自动扩缩 Worker：
-
-```python
-if session.has_queue():
-    stats = session.queue_stats()
-    print(f"等待中：{stats['total_pending']}")
-    print(f"执行中：{stats['total_active']}")
-    print(f"失败数：{stats['total_failed']}")
-    print(f"DLQ：  {stats['dlq_size']}")
-```
-
-</Step>
-<Step>
-
-### 启用规划和目标追踪
-
-开启内置规划器，让智能体在搜索前自动分解研究任务：
-
-```python
-session = agent.session(
-    ".",
-    queue_config=qc,
-    planning=True,
-    goal_tracking=True,
-    permissive=True,
-)
-```
-
-</Step>
-</Steps>
+这是一套本地 research workflow。真实 web、远程 worker 或第三方 MCP 服务应先在
+你的部署环境中测试，再进入生产流程。

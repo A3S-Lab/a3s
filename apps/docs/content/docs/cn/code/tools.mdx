@@ -5,9 +5,9 @@ description: "工具选择、直接工具调用与验证证据"
 
 # 工具
 
-v2.1.0 会保留完整工具注册表，但每一轮只把有用工具暴露给模型。
+v2.1.0 会保留工具注册表。`toolNames()` 返回当前 session 的工具表面。
 
-默认核心工具包括 `read`、`write`、`edit`、`patch`、`grep`、`glob`、`ls`、`bash`、`task`、`parallel_task`、`search_skills` 和 `Skill`。`web_fetch`、`web_search`、`git`、`batch` 与 MCP 工具会按意图启用。
+默认核心工具包括 `read`、`write`、`edit`、`patch`、`grep`、`glob`、`ls`、`bash`、`task`、`parallel_task`、`search_skills` 和 `Skill`。`web_fetch`、`web_search`、`git`、`batch`、`program` 与 MCP 工具属于更宽的工具表面；模型可见选择行为应在依赖它的产品流程中单独验证。
 
 ```ts
 const files = await session.glob('src/**/*.rs');
@@ -18,7 +18,7 @@ const raw = await session.tool('read', { file_path: 'README.md' });
 const schemas = session.toolDefinitions();
 ```
 
-直接工具调用依然处于 session 工作区、权限策略、hooks 和 security provider 的约束下。长输出应作为 trace 或 artifact 保存，再用摘要喂给模型。
+直接工具调用在 session 工作区下执行，应视为宿主侧特权操作。长输出应在进入 prompt 前先摘要。
 
 委派子任务可以直接使用 SDK helper，它们底层仍是同一组核心工具：
 
@@ -86,4 +86,4 @@ await session.program({
 
 `session.program(...)` 等价于 `session.tool('program', { type: 'script', language: 'javascript', ... })`，只是使用 SDK 原生命名。如果省略 `allowedTools` / `allowed_tools`，脚本可以调用除 `program` 之外的所有已注册工具。需要更小能力面时，再显式传入 allow-list。
 
-QuickJS VM 不获得文件系统、网络、子进程或环境变量权限。脚本唯一有用的能力来自 `ctx`，这些方法会回到 A3S Code 的受控工具执行路径。PTC 的输出应该是结构化的：摘要、发现、证据引用、artifact、风险和建议下一步。原始大输出应进入 trace 或 artifact，而不是反复塞进 prompt。
+QuickJS VM 不获得文件系统、网络、子进程或环境变量权限。脚本唯一有用的能力来自 `ctx`，这些方法会回到 A3S Code 的受控工具执行路径。PTC 会返回可读的 `ToolResult.output`，结构化数据位于 `ToolResult.metadataJson`。原始大输出不应反复塞进 prompt；应先总结发现、证据引用、风险和建议下一步。

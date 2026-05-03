@@ -8,10 +8,7 @@ description: "Programmatic role, guidelines, and response style"
 ```ts
 const session = agent.session('/repo', {
   role: 'release-readiness reviewer',
-  guidelines: [
-    'Find blockers before improvements.',
-    'Require command evidence for done claims.',
-  ],
+  guidelines: 'Find blockers before improvements. Require command evidence for done claims.',
   responseStyle: 'concise, findings first',
 });
 ```

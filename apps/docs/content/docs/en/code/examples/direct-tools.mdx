@@ -19,4 +19,6 @@ const program = await session.program({
 });
 ```
 
-Direct tools are useful for tests, migrations, and host application workflows. They still execute under the session's workspace and effective policy.
+Direct tools are useful for tests, migrations, and host application workflows.
+They execute under the session workspace and should be treated as privileged
+host operations.
