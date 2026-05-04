@@ -1,12 +1,12 @@
 ---
 title: "API 契约"
-description: "本地集成检查覆盖的 v2.1.0 SDK 机制"
+description: "本地集成检查覆盖的 v2.2.0 SDK 机制"
 ---
 
 # API 契约
 
 本页只记录 `crates/code/scripts/docs_api_contract_smoke.mjs` 覆盖过的
-A3S Code v2.1.0 Node SDK 行为。该脚本会启动一个临时的
+A3S Code v2.2.0 Node SDK 行为。该脚本会启动一个临时的
 OpenAI-compatible 本地测试服务，创建真实 SDK session，调用 native binding，
 并断言返回值。不需要 docs build。
 
@@ -70,6 +70,12 @@ const session = agent.session(workspace, {
   autoCompactThreshold: 0.75,
   continuationEnabled: true,
   maxContinuationTurns: 3,
+  maxExecutionTimeMs: 300000,  // 5 分钟超时
+  confirmationPolicy: {
+    enabled: true,
+    defaultTimeoutMs: 60000,
+    timeoutAction: 'reject',
+  },
 });
 ```
 

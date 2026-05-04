@@ -1,11 +1,11 @@
 ---
 title: "API Contract"
-description: "v2.1.0 SDK mechanisms covered by the local integration check"
+description: "v2.2.0 SDK mechanisms covered by the local integration check"
 ---
 
 # API Contract
 
-This page documents only the A3S Code v2.1.0 Node SDK behavior covered by
+This page documents only the A3S Code v2.2.0 Node SDK behavior covered by
 `crates/code/scripts/docs_api_contract_smoke.mjs`. The script starts a temporary
 OpenAI-compatible local test server, creates real SDK sessions, calls the native
 binding, and asserts the returned values. It does not require a docs build.
@@ -71,6 +71,12 @@ const session = agent.session(workspace, {
   autoCompactThreshold: 0.75,
   continuationEnabled: true,
   maxContinuationTurns: 3,
+  maxExecutionTimeMs: 300000,  // 5 minutes timeout
+  confirmationPolicy: {
+    enabled: true,
+    defaultTimeoutMs: 60000,
+    timeoutAction: 'reject',
+  },
 });
 ```
 
