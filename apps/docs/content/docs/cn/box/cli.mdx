@@ -1,110 +1,168 @@
 ---
 title: CLI 参考
-description: A3S Box 命令行工具完整参考
+description: A3S Box 类 Docker CLI 的真实命令边界
 ---
-
-import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # CLI 参考
 
-A3S Box CLI 提供 52 个命令，兼容 Docker CLI 语法。
+A3S Box 暴露 55 个顶层命令。它们是面向 MicroVM 运行时的类 Docker 命令，不代表完整 Docker CLI 兼容。
 
-## 命令分类
+box 可用 name、完整 ID 或唯一短 ID 前缀引用。
 
-### VM 管理
-<TypeTable
-  type={{
-    "run": {
-      description: "创建并运行 VM",
-    },
-    "create": {
-      description: "创建 VM（不启动）",
-    },
-    "start": {
-      description: "启动已创建的 VM",
-    },
-    "stop": {
-      description: "停止运行中的 VM",
-    },
-    "restart": {
-      description: "重启 VM",
-    },
-    "rm": {
-      description: "删除 VM",
-    },
-    "ps": {
-      description: "列出 VM",
-    },
-    "inspect": {
-      description: "查看 VM 详情",
-    },
-    "exec": {
-      description: "在运行中的 VM 执行命令",
-    },
-    "logs": {
-      description: "查看 VM 日志",
-    },
-    "top": {
-      description: "查看 VM 内进程",
-    },
-    "stats": {
-      description: "实时资源使用",
-    },
-    "diff": {
-      description: "文件系统变更",
-    },
-  }}
-/>
+## 命令分组
 
-### 镜像管理
-<TypeTable
-  type={{
-    "pull": {
-      description: "拉取镜像",
-    },
-    "push": {
-      description: "推送镜像",
-    },
-    "build": {
-      description: "构建镜像",
-    },
-    "images": {
-      description: "列出本地镜像",
-    },
-    "rmi": {
-      description: "删除镜像",
-    },
-    "tag": {
-      description: "标记镜像",
-    },
-  }}
-/>
+| 分组 | 命令 |
+| --- | --- |
+| 生命周期 | `run`, `create`, `start`, `stop`, `restart`, `rm`, `kill`, `pause`, `unpause`, `wait`, `rename` |
+| 执行 | `exec`, `attach`, `top`, `shell` |
+| 镜像 | `pull`, `push`, `build`, `images`, `rmi`, `tag`, `image-inspect`, `history`, `image-prune`, `save`, `load`, `commit` |
+| 文件系统 | `cp`, `export`, `diff` |
+| 网络 | `network`, `port` |
+| 卷 | `volume` |
+| 快照 | `snapshot` |
+| Compose | `compose` |
+| 可观测性 | `ps`, `logs`, `inspect`, `stats`, `events`, `df`, `audit` |
+| 系统 | `system-prune`, `container-update`, `monitor`, `pool`, `login`, `logout`, `version`, `info`, `help` |
+| TEE | `attest`, `seal`, `unseal`, `inject-secret` |
 
-### 其他
-<TypeTable
-  type={{
-    "network": {
-      description: "网络管理",
-    },
-    "volume": {
-      description: "卷管理",
-    },
-    "snapshot": {
-      description: "快照管理",
-    },
-    "compose": {
-      description: "多服务编排",
-    },
-    "attest": {
-      description: "TEE 远程证明",
-    },
-    "events": {
-      description: "流式事件",
-    },
-    "system-prune": {
-      description: "清理资源",
-    },
-  }}
-/>
+## 生命周期
 
-详细文档请参阅[英文版](/docs/en/box/cli)。
+```bash
+a3s-box run [OPTIONS] IMAGE [-- CMD...]
+a3s-box create [OPTIONS] IMAGE [-- CMD...]
+a3s-box start BOX [BOX...]
+a3s-box stop BOX [BOX...]
+a3s-box restart BOX [BOX...]
+a3s-box kill BOX [BOX...]
+a3s-box pause BOX [BOX...]
+a3s-box unpause BOX [BOX...]
+a3s-box wait BOX [BOX...]
+a3s-box rename OLD NEW
+a3s-box rm [-f] BOX [BOX...]
+```
+
+`run` 会拉取镜像、创建状态、启动 VM；前台命令会等待结束，后台模式会在启动后返回。`create` 持久化同样的配置，但不启动，直到 `start`。
+
+常用支持选项：
+
+| 选项 | 说明 |
+| --- | --- |
+| `--name NAME` | 设置稳定名称。 |
+| `-d`, `--detach` | 后台运行。 |
+| `-i`, `--interactive`, `-t`, `--tty` | stdin / PTY。后台 TTY 会被拒绝。 |
+| `--rm` | 退出后自动删除。 |
+| `--cpus N`, `--memory SIZE` | 启动时 vCPU 和内存。 |
+| `-e KEY=VALUE`, `--env-file FILE` | 合并环境变量；inline 覆盖 env file。 |
+| `--entrypoint`, `CMD...` | 覆盖镜像入口和命令。 |
+| `-u USER`, `-w DIR` | root、UID、UID:GID 和绝对工作目录。 |
+| `--hostname`, `--add-host HOST:IP` | 写入 guest hostname 和 hosts。 |
+| `-v HOST:GUEST[:ro]` | bind mount 或命名卷。 |
+| `-p HOST:GUEST[/tcp]` | 发布 TCP 端口。 |
+| `--network NAME` | 加入已存在的 A3S bridge 网络。 |
+| `--restart POLICY` | `no`, `always`, `on-failure[:N]`, `unless-stopped`。 |
+| `--health-*`, `--no-healthcheck` | 配置或禁用健康检查。 |
+| `--cap-add`, `--cap-drop`, `--security-opt`, `--privileged` | 支持的 guest 安全选项。 |
+| `--tee`, `--tee-simulate` | 启用硬件或模拟 TEE 流程。 |
+
+`--device`、`--gpus`、不支持的安全标签、不支持的用户、非法工作目录和不支持的端口语法会在持久化状态前失败。
+
+## 执行
+
+```bash
+a3s-box exec [OPTIONS] BOX -- CMD [ARG...]
+a3s-box exec -it BOX -- /bin/sh
+a3s-box attach BOX
+a3s-box shell BOX
+a3s-box top BOX
+```
+
+`exec` 支持环境变量覆盖、root、数字 UID、UID:GID 和绝对工作目录。停止的 box 或缺失控制 socket 会给出明确错误。
+
+## 镜像
+
+```bash
+a3s-box pull IMAGE
+a3s-box push IMAGE
+a3s-box build -t TAG PATH
+a3s-box images
+a3s-box image-inspect IMAGE
+a3s-box history IMAGE
+a3s-box tag IMAGE NEW_TAG
+a3s-box rmi IMAGE [IMAGE...]
+a3s-box image-prune --force
+a3s-box save -o FILE.tar IMAGE
+a3s-box load -i FILE.tar --tag TAG
+a3s-box commit BOX -t TAG
+```
+
+边界：
+
+- `build --platform` 只接受单一目标平台，不生成 multi-platform index。
+- Dockerfile `RUN` 需要可 root 的 Linux。
+- macOS `RUN` 默认失败，只有设置 `A3S_BOX_UNSAFE_HOST_RUN=1` 才会走 unsafe 本地实验路径。
+- 不支持的 Dockerfile flag 会明确失败。
+
+## 网络
+
+```bash
+a3s-box network create NAME --subnet CIDR
+a3s-box network ls
+a3s-box network inspect NAME
+a3s-box network connect NETWORK BOX
+a3s-box network disconnect NETWORK BOX
+a3s-box network rm [-f] NAME [NAME...]
+a3s-box port BOX
+```
+
+当前只支持 `bridge` driver 和 `none` isolation。`strict` / `custom` 会被拒绝，因为还没有包过滤执行层。`connect` / `disconnect` 只作用于未运行 box。
+
+## 卷、文件和快照
+
+```bash
+a3s-box volume create NAME
+a3s-box volume ls
+a3s-box volume inspect NAME
+a3s-box volume rm NAME [NAME...]
+a3s-box volume prune
+
+a3s-box cp SRC DST
+a3s-box export BOX -o FILE.tar
+a3s-box diff BOX
+
+a3s-box snapshot create BOX NAME
+a3s-box snapshot restore SNAPSHOT --name NEW_BOX
+a3s-box snapshot ls
+a3s-box snapshot inspect SNAPSHOT
+a3s-box snapshot rm SNAPSHOT
+```
+
+快照不是 live memory checkpoint；应把它理解为 Box 管理的持久化状态/文件系统快照。
+
+## Compose
+
+```bash
+a3s-box compose -f compose.yaml config
+a3s-box compose -f compose.yaml up -d
+a3s-box compose -f compose.yaml ps
+a3s-box compose -f compose.yaml logs -f
+a3s-box compose -f compose.yaml down
+```
+
+支持常用子集：`image`、`command`、`entrypoint`、`environment`、`env_file`、`ports`、`volumes`、`depends_on`、`networks`、`dns`、`tmpfs`、`working_dir`、`hostname`、`extra_hosts`、`labels`、`healthcheck`、`restart`、`cpus`、`mem_limit`、`cap_add`、`cap_drop`、`privileged`。
+
+## 诊断
+
+```bash
+a3s-box info
+a3s-box ps -a
+a3s-box logs --tail 100 BOX
+a3s-box inspect BOX
+a3s-box stats --no-stream BOX
+a3s-box events --json
+a3s-box audit --box BOX
+a3s-box monitor
+a3s-box pool start|stop|status
+a3s-box system-prune --force
+```
+
+新主机上优先运行 `a3s-box info`，它会告诉你平台、网络和 TEE 边界。

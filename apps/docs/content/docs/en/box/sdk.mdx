@@ -1,20 +1,20 @@
 ---
 title: SDK
-description: A3S Box 工作负载的 Rust 执行抽象
+description: Rust execution abstractions for A3S Box workloads
 ---
 
 # SDK
 
-当前 SDK 面是 Rust crate：`a3s-box-sdk`。它不是 Docker 风格 client SDK，也没有旧文档中提到的 Python 或 TypeScript 客户端。
+The current SDK surface is a Rust crate, `a3s-box-sdk`. It is not a Docker-style client SDK and does not currently provide the Python or TypeScript clients that older docs referenced.
 
-## 提供什么
+## What It Provides
 
-- `ExecutionRegistry`：工作负载执行策略入口。
-- `ExecutionAdapter`：可插拔执行后端。
-- `BoxWorkloadEnvelope` 与 `BoxRuntimeSpec`：来自 `a3s-box-core` 的共享类型。
-- `VmExecutor` 与 pool stats 抽象：用于把 Box 集成到更高层运行时。
+- `ExecutionRegistry` as the entry point for workload execution policy.
+- `ExecutionAdapter` for pluggable backends.
+- `BoxWorkloadEnvelope` and `BoxRuntimeSpec` shared types from `a3s-box-core`.
+- `VmExecutor` and pool statistics abstractions for integrating Box into higher-level runtimes.
 
-## 示例
+## Example
 
 ```rust
 use a3s_box_sdk::{
@@ -47,6 +47,6 @@ async fn main() {
 }
 ```
 
-## 边界
+## Boundary
 
-普通本地开发优先使用 CLI。需要把 A3S Box 嵌入另一个 Rust runtime，并且已经采用 Box workload envelope 和执行策略时，再使用 SDK。
+Use the CLI for general local development. Use the SDK when embedding A3S Box into another Rust runtime that already understands Box workload envelopes and execution policy.

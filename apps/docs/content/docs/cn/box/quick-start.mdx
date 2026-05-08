@@ -1,269 +1,155 @@
 ---
 title: 快速开始
-description: 几分钟内运行第一个 MicroVM
+description: 运行和管理第一个 A3S Box MicroVM
 ---
 
 # 快速开始
 
-## 安装
+本页只使用核心 CLI 路径。先确认 `a3s-box info` 在当前主机上报告可用的 VM 后端。
+
+## 1. 安装
 
 ```bash
-# macOS（Apple Silicon）
+# macOS / Linux，通过 Homebrew tap
 brew install a3s-lab/tap/a3s-box
 
-# Linux / macOS（直接下载）
-curl -fsSL https://github.com/A3S-Lab/Box/releases/latest/download/install.sh | sh
+# 或从源码构建
+git clone https://github.com/A3S-Lab/Box.git
+cd Box/src
+cargo build --release
 ```
 
-验证安装：
+检查主机能力：
 
 ```bash
 a3s-box version
+a3s-box info
 ```
 
----
+`info` 会报告平台、VM 后端、控制通道、bridge 后端、端口发布和 TEE 可用性。
 
-## 运行 MicroVM
+## 2. 运行一个命令
 
 ```bash
-# 交互式 shell
-a3s-box run -it alpine:latest -- /bin/sh
-
-# 后台运行
-a3s-box run -d --name web nginx:alpine
-
-# 指定资源限制
-a3s-box run -d --name worker \
-  --cpus 4 --memory 2g \
-  --timeout 3600 \
-  my-image:latest
+a3s-box run --name hello alpine:latest -- echo "hello from a3s-box"
 ```
 
----
+这个命令会在需要时拉取镜像、准备 rootfs、启动 MicroVM、运行命令、捕获输出并停止 box。
 
-## 生命周期管理
+## 3. 交互式 shell
 
 ```bash
-# 列出运行中的 VM
+a3s-box run -it --name dev alpine:latest -- /bin/sh
+```
+
+对已运行的 box：
+
+```bash
+a3s-box exec -it dev -- /bin/sh
+```
+
+## 4. 后台服务
+
+```bash
+a3s-box run -d --name web --cpus 2 --memory 1g -p 8080:80 nginx:alpine
+
 a3s-box ps
+a3s-box port web
+a3s-box logs -f web
+```
 
-# 列出所有 VM（包括已停止）
-a3s-box ps -a
+端口发布只支持 `host_port:guest_port[/tcp]`。UDP、绑定指定 host IP、单端口简写和端口范围都会被拒绝。
 
-# 停止 / 启动 / 重启
+## 5. 执行和检查
+
+```bash
+a3s-box exec web -- nginx -v
+a3s-box stats --no-stream web
+a3s-box inspect web
+a3s-box top web
+```
+
+需要用户、目录和环境变量时：
+
+```bash
+a3s-box exec -u root -w /tmp -e DEBUG=1 web -- sh -c 'id && pwd && env | grep DEBUG'
+```
+
+## 6. 停止和删除
+
+```bash
 a3s-box stop web
-a3s-box start web
-a3s-box restart web
-
-# 强制删除
-a3s-box rm -f web
+a3s-box wait web
+a3s-box rm web
 ```
 
----
+只有在明确需要强制清理时才使用 `rm -f`。
 
-## 执行命令
+## 7. 命名卷
 
 ```bash
-# 运行命令
-a3s-box exec my-box -- ls /app
-
-# 交互式 shell
-a3s-box exec -it my-box -- /bin/bash
-
-# 指定环境变量和工作目录
-a3s-box exec -e DEBUG=1 -w /app my-box -- ./run.sh
+a3s-box volume create data
+a3s-box run -d --name store -v data:/data alpine:latest -- sleep 3600
+a3s-box cp ./local.txt store:/data/local.txt
+a3s-box exec store -- ls -la /data
+a3s-box rm -f store
+a3s-box volume rm data
 ```
 
----
-
-## 查看日志
+## 8. Bridge 网络
 
 ```bash
-a3s-box logs my-box
-a3s-box logs -f my-box           # 持续跟踪
-a3s-box logs --tail 100 my-box   # 最后 100 行
-a3s-box logs -t my-box           # 带时间戳
+a3s-box network create backend --subnet 10.89.0.0/24
+a3s-box run -d --name api --network backend -p 8080:80 alpine:latest -- sleep 3600
+a3s-box network inspect backend
+a3s-box network rm --force backend
 ```
 
----
+平台边界：
 
-## 构建镜像
+- Linux bridge 使用 `passt`，报告支持 outbound NAT。
+- macOS bridge 使用 `netproxy` 做 peer 网络和 TCP 端口发布；不支持 bridge outbound NAT。
+- macOS 工作负载需要外网时，使用默认 TSI。
 
-```bash
-# 从当前目录构建
-a3s-box build -t my-app:v1 .
-
-# 带构建参数
-a3s-box build -t my-app:v1 --build-arg VERSION=1.2.3 .
-
-# 多平台构建
-a3s-box build -t my-app:v1 --platform linux/amd64,linux/arm64 .
-```
-
-### Dockerfile 特性
-
-`ADD` 支持 HTTP/HTTPS URL 下载和 tar 自动解压：
+## 9. 构建简单镜像
 
 ```dockerfile
-FROM alpine:latest
-ADD https://example.com/config.tar.gz /etc/myapp/
-COPY . /app
-RUN echo "built"
+# Dockerfile
+FROM scratch
+COPY hello.txt /hello.txt
+CMD ["cat", "/hello.txt"]
 ```
-
-`ONBUILD` 触发器在子镜像使用此镜像作为基础时继承并触发：
-
-```dockerfile
-FROM alpine:latest
-ONBUILD COPY . /app
-ONBUILD RUN cd /app && make
-```
-
----
-
-## 拉取并验证签名
 
 ```bash
-# 使用 cosign 公钥验证
-a3s-box pull --verify-key cosign.pub ghcr.io/my-org/my-image:v1
-
-# 无密钥（OIDC）验证
-a3s-box pull \
-  --verify-issuer https://accounts.google.com \
-  --verify-identity user@example.com \
-  my-image:latest
+echo hello > hello.txt
+a3s-box build -t hello:local .
+a3s-box run --rm hello:local
 ```
 
----
+Dockerfile `RUN` 需要可 root 的 Linux。macOS 默认拒绝 `RUN`，避免静默在宿主机上执行构建命令。
 
-## 卷与文件
-
-```bash
-# 绑定挂载
-a3s-box run -v /host/data:/app/data my-image
-
-# 命名卷
-a3s-box volume create my-data
-a3s-box run -v my-data:/app/data my-image
-
-# 复制文件
-a3s-box cp my-box:/app/output.txt ./output.txt
-a3s-box cp ./config.json my-box:/app/config.json
-```
-
----
-
-## 网络
-
-```bash
-# 默认 TSI — 端口映射
-a3s-box run -d --name web -p 8080:80 nginx:alpine
-
-# Bridge 网络 — 容器间通信
-a3s-box network create my-net
-a3s-box run -d --name db --network my-net postgres:15
-a3s-box run -d --name app --network my-net my-app:latest
-# app 可通过 "db:5432" 访问 db
-
-# 气隙隔离
-a3s-box run --network none alpine:latest
-```
-
----
-
-## 快照
-
-```bash
-# 保存 VM 状态
-a3s-box snapshot create my-box checkpoint-1
-
-# 恢复
-a3s-box snapshot restore my-box checkpoint-1
-
-# 列出快照
-a3s-box snapshot ls my-box
-```
-
----
-
-## Compose
+## 10. Compose 子集
 
 ```yaml
-# compose.yaml
 services:
-  db:
-    image: postgres:15
+  worker:
+    image: alpine:latest
+    command: ["sleep", "3600"]
     environment:
-      POSTGRES_PASSWORD: secret
-  app:
-    image: my-app:latest
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "8080:8080"
+      A3S_EXAMPLE: "1"
 ```
 
 ```bash
-a3s-box compose up -d
-a3s-box compose ps
-a3s-box compose down
+a3s-box compose -f compose.yaml config
+a3s-box compose -f compose.yaml up -d
+a3s-box compose -f compose.yaml ps
+a3s-box compose -f compose.yaml down
 ```
-
----
-
-## TEE（机密计算）
-
-```bash
-# 使用 AMD SEV-SNP 运行
-a3s-box run -d --name secure --tee alpine:latest -- sleep 3600
-
-# 模拟模式（无需 AMD 硬件）
-a3s-box run -d --name dev --tee --tee-simulate alpine:latest -- sleep 3600
-
-# 证明 VM
-a3s-box attest secure --ratls
-
-# 通过 RA-TLS 注入密钥
-a3s-box inject-secret secure --secret "API_KEY=my-secret" --set-env
-
-# 密封数据（只能在相同 TEE 上下文中解密）
-a3s-box seal secure --data "sensitive" --context myapp
-a3s-box unseal secure --context myapp
-```
-
----
-
-## 检查与监控
-
-```bash
-# 详细 VM 信息（JSON）
-a3s-box inspect my-box
-
-# 实时资源使用
-a3s-box stats
-
-# VM 内进程
-a3s-box top my-box
-
-# 文件系统变更
-a3s-box diff my-box
-
-# 流式事件
-a3s-box events --json
-```
-
----
 
 ## 清理
 
 ```bash
-# 删除已停止的 VM 和未使用的镜像
-a3s-box system-prune -f
-
-# 仅清理未使用的镜像
-a3s-box image-prune
-
-# 清理未使用的卷
-a3s-box volume prune
+a3s-box system-prune --force
+a3s-box image-prune --force
+a3s-box volume prune --force
 ```

@@ -1,285 +1,51 @@
 ---
 title: Kubernetes CRI
-description: Container Runtime Interface implementation for running Box as a Kubernetes RuntimeClass
+description: Experimental CRI surface for evaluating A3S Box with kubelet and crictl
 ---
-
-import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Kubernetes CRI
 
-A3S Box implements the Kubernetes [Container Runtime Interface (CRI)](https://kubernetes.io/docs/concepts/architecture/cri/) via gRPC, allowing it to be used as a Kubernetes RuntimeClass. Each pod runs in its own MicroVM with full VM-level isolation.
+A3S Box includes an experimental Kubernetes CRI server. It is useful for evaluation, development, and targeted smoke tests, but the current product priority is the local Docker-like runtime. Do not read this page as a production certification statement.
 
-## Architecture
+Windows CRI is intentionally unsupported.
 
-```
-┌──────────────────────────────────┐
-│          kubelet                 │
-│  RuntimeService · ImageService   │
-└──────────┬───────────────────────┘
-           │ gRPC (CRI v1)
-┌──────────▼───────────────────────┐
-│       a3s-box-cri server         │
-│  ┌──────────────────────────┐    │
-│  │    RuntimeService        │    │
-│  │  Pod Sandbox → VmManager │    │
-│  │  Container → Session     │    │
-│  ├──────────────────────────┤    │
-│  │    ImageService          │    │
-│  │  Pull → ImagePuller      │    │
-│  │  Status → ImageStore     │    │
-│  ├──────────────────────────┤    │
-│  │    Streaming Server      │    │
-│  │  Exec · Attach · PF      │    │
-│  │  HTTP :18800             │    │
-│  ├──────────────────────────┤    │
-│  │    State Stores          │    │
-│  │  SandboxStore (in-memory)│    │
-│  │  ContainerStore          │    │
-│  └──────────────────────────┘    │
-└──────────────────────────────────┘
-           │ vsock
-┌──────────▼───────────────────────┐
-│       MicroVM (per pod)          │
-│  guest-init · Exec · PTY         │
-└──────────────────────────────────┘
+## What Exists
+
+| CRI area | Current state |
+| --- | --- |
+| RuntimeService | Pod sandbox lifecycle, container lifecycle, status, stats, selected update/status paths. |
+| ImageService | Pull, list, status, filesystem info, and remove paths backed by the local image store. |
+| Streaming | Exec, attach, and port-forward paths exist with Unix-socket bridge logic on Unix hosts. |
+| Networking | Sandbox port mappings and an `a3s.box/network` annotation path exist for A3S bridge networks. |
+| Tests | Unit tests cover fake ready-VM paths; `crictl_smoke.rs` is ignored and requires a real host setup. |
+
+## Mental Model
+
+```text
+kubelet / crictl
+  |
+  | CRI v1 gRPC
+  v
+a3s-box-cri
+  RuntimeService + ImageService + streaming server
+  |
+  v
+A3S Box runtime and MicroVM
 ```
 
-## CRI to Box Mapping
+A pod sandbox maps to a Box VM. Container support is evolving around rootfs handoff and guest exec/session behavior.
 
-<TypeTable
-  type={{
-    "Pod Sandbox": {
-      description: "Box Equivalent: VmManager instance · Description: One MicroVM per pod",
-    },
-    "Container": {
-      description: "Box Equivalent: Session within VM · Description: Multiple containers share the VM",
-    },
-    "Image Pull": {
-      description: "Box Equivalent: ImagePuller · Description: OCI registry pull with caching",
-    },
-    "Image Remove": {
-      description: "Box Equivalent: ImageStore · Description: Remove from local cache",
-    },
-  }}
-/>
+## Run for Evaluation
 
-## RuntimeService
-
-Maps CRI pod and container lifecycle to Box VM management:
-
-### Lifecycle
-
-<TypeTable
-  type={{
-    "RunPodSandbox": {
-      description: "Create and boot a new VmManager",
-    },
-    "StopPodSandbox": {
-      description: "Stop the VM",
-    },
-    "RemovePodSandbox": {
-      description: "Remove VM and clean up resources",
-    },
-    "PodSandboxStatus": {
-      description: "Return VM state and metadata",
-    },
-    "ListPodSandbox": {
-      description: "List all tracked sandboxes",
-    },
-    "CreateContainer": {
-      description: "Register container in ContainerStore",
-    },
-    "StartContainer": {
-      description: "Exec container process in the VM",
-    },
-    "StopContainer": {
-      description: "Kill the container process",
-    },
-    "RemoveContainer": {
-      description: "Remove from ContainerStore",
-    },
-    "ContainerStatus": {
-      description: "Return container state",
-    },
-    "ListContainers": {
-      description: "List containers in a sandbox",
-    },
-  }}
-/>
-
-### Exec & Attach
-
-<TypeTable
-  type={{
-    "ExecSync": {
-      description: "Execute command via ExecClient, return stdout/stderr/exit code",
-    },
-    "Exec": {
-      description: "Register streaming session, return URL for interactive exec",
-    },
-    "Attach": {
-      description: "Register streaming session, return URL for container attach",
-    },
-  }}
-/>
-
-### Port Forward & Resources
-
-<TypeTable
-  type={{
-    "PortForward": {
-      description: "Register streaming session, return URL for TCP port proxy",
-    },
-    "UpdateContainerResources": {
-      description: "Acknowledge (microVM resources are fixed at boot)",
-    },
-    "ReopenContainerLog": {
-      description: "Truncate container log file for rotation",
-    },
-  }}
-/>
-
-## Streaming Server
-
-CRI uses a two-phase protocol for interactive operations (`kubectl exec`, `kubectl attach`, `kubectl port-forward`):
-
-1. Kubelet calls the gRPC method (e.g., `Exec`) → returns a streaming URL
-2. Kubelet connects to the URL via HTTP → bidirectional I/O
-
-A3S Box runs an HTTP streaming server (default `127.0.0.1:18800`) that bridges these connections to the existing vsock exec/PTY infrastructure inside the MicroVM.
-
-```
-kubectl exec -it pod -- /bin/sh
-    │
-    ▼
-kubelet → gRPC Exec() → returns http://127.0.0.1:18800/exec/<token>
-    │
-    ▼
-kubelet → HTTP connect to streaming URL
-    │
-    ▼
-Streaming Server → PTY Unix socket → vsock → Guest PTY Server
-    │                                              │
-    └──────── bidirectional terminal I/O ──────────┘
+```bash
+# From the Box repository
+helm install a3s-box deploy/helm/a3s-box/ \
+  -n a3s-box-system --create-namespace
 ```
 
-### Exec Modes
+Or run the CRI binary directly in a controlled development environment and point `crictl` or kubelet at its socket.
 
-<TypeTable
-  type={{
-    "Non-interactive": {
-      description: "TTY: No · Transport: ExecClient (HTTP/JSON) · Use Case: kubectl exec pod -- ls -la",
-    },
-    "Interactive": {
-      description: "TTY: Yes · Transport: PtyClient (frame protocol) · Use Case: kubectl exec -it pod -- /bin/sh",
-    },
-  }}
-/>
-
-### Attach
-
-Attach connects to a shell (`/bin/sh`) in the container via the PTY server. This provides the same experience as `kubectl attach -it`.
-
-### Port Forward
-
-Port forwarding proxies TCP connections to guest ports. The streaming server establishes a `socat` bridge inside the guest VM:
-
-```
-kubectl port-forward pod 8080:80
-    │
-    ▼
-Streaming Server → exec "socat STDIO TCP:127.0.0.1:80" in guest
-    │
-    └── bidirectional TCP proxy ──→ guest port 80
-```
-
-### Configuration
-
-The streaming server address can be configured when creating the CRI server:
-
-```rust
-let server = CriServer::new(socket_path, image_store, auth)
-    .with_streaming_addr("0.0.0.0:18800".parse().unwrap());
-```
-
-## ImageService
-
-<TypeTable
-  type={{
-    "PullImage": {
-      description: "Pull OCI image via ImagePuller",
-    },
-    "RemoveImage": {
-      description: "Remove from ImageStore",
-    },
-    "ImageStatus": {
-      description: "Return image metadata",
-    },
-    "ListImages": {
-      description: "List cached images",
-    },
-  }}
-/>
-
-## Config Mapping
-
-The `config_mapper` module translates CRI pod configuration into `BoxConfig`:
-
-```
-CRI PodSandboxConfig
-    ├── metadata (name, namespace, uid) → BoxConfig.name
-    ├── dns_config → BoxConfig.dns
-    ├── port_mappings → BoxConfig.port_map
-    ├── linux.resources → BoxConfig.resources
-    │   ├── cpu_period / cpu_quota → ResourceLimits
-    │   ├── memory_limit → ResourceConfig.memory_mb
-    │   └── pids_limit → ResourceLimits.pids_limit
-    ├── annotations → feature flags
-    │   ├── "a3s.box/tee" → TeeConfig
-    │   ├── "a3s.box/network-mode" → NetworkMode
-    │   └── "a3s.box/pool" → PoolConfig
-    └── labels → metadata tracking
-```
-
-## State Stores
-
-### SandboxStore
-
-```rust
-pub struct PodSandbox {
-    pub id: String,
-    pub metadata: PodSandboxMetadata,
-    pub state: SandboxState,       // "ready" or "notready"
-    pub created_at: i64,
-    pub vm_manager: VmManager,
-}
-
-pub struct SandboxStore {
-    sandboxes: RwLock<HashMap<String, PodSandbox>>,
-}
-```
-
-### ContainerStore
-
-```rust
-pub struct Container {
-    pub id: String,
-    pub sandbox_id: String,
-    pub metadata: ContainerMetadata,
-    pub state: ContainerState,     // "running" or "exited"
-    pub exit_code: Option<i32>,
-}
-
-pub struct ContainerStore {
-    containers: RwLock<HashMap<String, Container>>,
-}
-```
-
-Both stores are currently in-memory. State is lost on CRI server restart, which may orphan running VMs.
-
-## Kubernetes Integration
-
-### RuntimeClass
+## RuntimeClass Example
 
 ```yaml
 apiVersion: node.k8s.io/v1
@@ -289,57 +55,22 @@ metadata:
 handler: a3s-box
 ```
 
-### Pod Spec
-
 ```yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  name: secure-workload
-  annotations:
-    a3s.box/tee: "sev-snp"
-    a3s.box/network-mode: "bridge"
+  name: hello
 spec:
   runtimeClassName: a3s-box
   containers:
     - name: app
-      image: my-app:latest
-      resources:
-        limits:
-          cpu: "2"
-          memory: "1Gi"
+      image: alpine:latest
+      command: ["sleep", "3600"]
 ```
 
-### TEE via Annotations
+## Known Boundaries
 
-Enable confidential computing for specific pods:
-
-```yaml
-metadata:
-  annotations:
-    a3s.box/tee: "sev-snp"
-    a3s.box/tee-generation: "genoa"
-    a3s.box/workload-id: "secure-inference"
-```
-
-## Limitations
-
-<TypeTable
-  type={{
-    "In-memory state": {
-      description: "CRI server restart loses all sandbox/container tracking",
-    },
-    "Single node": {
-      description: "No multi-node coordination (handled by Kubernetes)",
-    },
-    "No live migration": {
-      description: "VMs cannot be migrated between nodes",
-    },
-    "Bridge networking": {
-      description: "Required for pod-to-pod communication within a node",
-    },
-    "Fixed resources": {
-      description: "UpdateContainerResources is acknowledged but microVM CPU/memory cannot be changed after boot",
-    },
-  }}
-/>
+- No Windows CRI support.
+- Host must provide image availability, virtualization support, and the expected CRI tooling.
+- The ignored `crictl` smoke suite must be run explicitly on a suitable host.
+- Treat CNI/networking, multi-container edge cases, checkpointing, and full kubelet conformance as work in progress.

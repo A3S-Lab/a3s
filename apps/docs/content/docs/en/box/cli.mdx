@@ -1,869 +1,170 @@
 ---
 title: CLI Reference
-description: Complete reference for all 52 Docker-compatible CLI commands
+description: Truthful command reference for the A3S Box Docker-like CLI
 ---
-
-import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # CLI Reference
 
-A3S Box provides a Docker-compatible CLI with 52 commands. Boxes can be referenced by full ID, 12-character short ID prefix, or name.
+A3S Box exposes 55 top-level commands. They are Docker-like commands for a MicroVM runtime, not a promise of Docker CLI parity.
 
-## Lifecycle Management
+Boxes can be referenced by name, full ID, or a unique short ID prefix.
 
-### run
+## Command Families
 
-Pull, create, and start a box in one command.
+| Family | Commands |
+| --- | --- |
+| Lifecycle | `run`, `create`, `start`, `stop`, `restart`, `rm`, `kill`, `pause`, `unpause`, `wait`, `rename` |
+| Execution | `exec`, `attach`, `top`, `shell` |
+| Images | `pull`, `push`, `build`, `images`, `rmi`, `tag`, `image-inspect`, `history`, `image-prune`, `save`, `load`, `commit` |
+| Filesystem | `cp`, `export`, `diff` |
+| Networking | `network`, `port` |
+| Volumes | `volume` |
+| Snapshots | `snapshot` |
+| Compose | `compose` |
+| Observability | `ps`, `logs`, `inspect`, `stats`, `events`, `df`, `audit` |
+| System | `system-prune`, `container-update`, `monitor`, `pool`, `login`, `logout`, `version`, `info`, `help` |
+| TEE | `attest`, `seal`, `unseal`, `inject-secret` |
 
-```bash
-a3s-box run [OPTIONS] IMAGE [-- COMMAND [ARGS...]]
-```
-
-**Common flags:**
-
-<TypeTable
-  type={{
-    "-d, --detach": {
-      description: "Description: Run in background",
-    },
-    "-i, --interactive": {
-      description: "Description: Keep stdin open",
-    },
-    "-t, --tty": {
-      description: "Description: Allocate a pseudo-TTY",
-    },
-    "--rm": {
-      description: "Description: Remove box after it exits",
-    },
-    "--name NAME": {
-      description: "Description: Assign a name",
-    },
-    "--restart POLICY": {
-      description: "Default: no · Description: no · always · on-failure[:N] · unless-stopped",
-    },
-    "--cpus N": {
-      description: "Default: 2 · Description: Number of vCPUs",
-    },
-    "--memory SIZE": {
-      description: "Default: 512m · Description: Memory (512m, 2g, etc.)",
-    },
-    "-p HOST:GUEST": {
-      description: "Description: Publish port (repeatable)",
-    },
-    "-v HOST:GUEST[:ro]": {
-      description: "Description: Bind mount or named volume (repeatable)",
-    },
-    "-e KEY=VALUE": {
-      description: "Description: Environment variable (repeatable)",
-    },
-    "--env-file FILE": {
-      description: "Description: Load env vars from file (repeatable)",
-    },
-    "-w, --workdir DIR": {
-      description: "Description: Working directory",
-    },
-    "-u, --user USER": {
-      description: "Description: Run as user",
-    },
-    "--entrypoint CMD": {
-      description: "Description: Override image entrypoint",
-    },
-    "--hostname NAME": {
-      description: "Description: Set hostname",
-    },
-    "--network NAME": {
-      description: "Description: Connect to network",
-    },
-    "--dns IP": {
-      description: "Description: Custom DNS server (repeatable)",
-    },
-    "--add-host HOST:IP": {
-      description: "Description: Add /etc/hosts entry (repeatable)",
-    },
-    "-l, --label KEY=VALUE": {
-      description: "Description: Set label (repeatable)",
-    },
-    "--tmpfs PATH": {
-      description: "Description: Mount tmpfs (repeatable)",
-    },
-    "--platform PLATFORM": {
-      description: "Description: Target platform (e.g. linux/amd64)",
-    },
-    "--init": {
-      description: "Description: Run init process as PID 1",
-    },
-    "--read-only": {
-      description: "Description: Read-only root filesystem",
-    },
-    "--privileged": {
-      description: "Description: Extended privileges",
-    },
-    "--cap-add CAP": {
-      description: "Description: Add capability (repeatable)",
-    },
-    "--cap-drop CAP": {
-      description: "Description: Drop capability (repeatable)",
-    },
-    "--security-opt OPT": {
-      description: "Description: Security option (repeatable)",
-    },
-    "--device PATH": {
-      description: "Description: Device passthrough (stored, not enforced)",
-    },
-    "--gpus VALUE": {
-      description: "Description: GPU access (stored, not enforced)",
-    },
-    "--pids-limit N": {
-      description: "Description: PID limit",
-    },
-    "--cpuset-cpus CPUS": {
-      description: "Description: CPU pinning (e.g. 0-3)",
-    },
-    "--cpu-shares N": {
-      description: "Description: CPU shares (cgroup weight)",
-    },
-    "--cpu-quota N": {
-      description: "Description: CPU quota in microseconds",
-    },
-    "--cpu-period N": {
-      description: "Description: CPU period in microseconds",
-    },
-    "--memory-reservation SIZE": {
-      description: "Description: Memory soft limit",
-    },
-    "--memory-swap SIZE": {
-      description: "Description: Memory + swap limit",
-    },
-    "--ulimit TYPE=SOFT:HARD": {
-      description: "Description: ulimit (repeatable)",
-    },
-    "--health-cmd CMD": {
-      description: "Description: Health check command",
-    },
-    "--health-interval N": {
-      description: "Default: 30 · Description: Health check interval (seconds)",
-    },
-    "--health-timeout N": {
-      description: "Default: 5 · Description: Health check timeout (seconds)",
-    },
-    "--health-retries N": {
-      description: "Default: 3 · Description: Health check retries",
-    },
-    "--health-start-period N": {
-      description: "Default: 0 · Description: Health check start period (seconds)",
-    },
-    "--log-driver DRIVER": {
-      description: "Default: json-file · Description: json-file · syslog · none",
-    },
-    "--log-opt KEY=VALUE": {
-      description: "Description: Logging option (repeatable)",
-    },
-    "--tee": {
-      description: "Description: Enable AMD SEV-SNP",
-    },
-    "--tee-workload-id ID": {
-      description: "Description: TEE workload identifier",
-    },
-    "--tee-simulate": {
-      description: "Description: TEE simulation mode (dev only)",
-    },
-  }}
-/>
-
-**Examples:**
+## Lifecycle
 
 ```bash
-# Interactive shell
-a3s-box run -it alpine:latest -- /bin/sh
-
-# Detached with resource limits
-a3s-box run -d --name web --cpus 4 --memory 2g nginx:alpine
-
-# With health check and restart policy
-a3s-box run -d --name api \
-  --health-cmd "curl -f http://localhost:8080/health" \
-  --health-interval 10 \
-  --restart on-failure:3 \
-  my-api:latest
-
-# With security options
-a3s-box run -d --cap-drop ALL --cap-add NET_BIND_SERVICE \
-  --security-opt seccomp=default --read-only nginx:alpine
-
-# TEE simulation
-a3s-box run -d --name secure --tee --tee-simulate alpine:latest -- sleep 3600
-```
-
-### create
-
-Create a box without starting it. Accepts the same flags as `run`.
-
-```bash
-a3s-box create [OPTIONS] IMAGE [-- COMMAND [ARGS...]]
-```
-
-### start / stop / restart
-
-```bash
+a3s-box run [OPTIONS] IMAGE [-- CMD...]
+a3s-box create [OPTIONS] IMAGE [-- CMD...]
 a3s-box start BOX [BOX...]
 a3s-box stop BOX [BOX...]
 a3s-box restart BOX [BOX...]
-```
-
-### kill
-
-Force-terminate a box with a signal.
-
-```bash
 a3s-box kill BOX [BOX...]
-```
-
-### rm
-
-```bash
-a3s-box rm [OPTIONS] BOX [BOX...]
-```
-
-<TypeTable
-  type={{
-    "-f, --force": {
-      description: "Force remove running boxes",
-    },
-  }}
-/>
-
-### pause / unpause
-
-Suspend and resume a box (SIGSTOP / SIGCONT).
-
-```bash
-a3s-box pause BOX
-a3s-box unpause BOX
-```
-
-### rename
-
-```bash
-a3s-box rename BOX NEW_NAME
-```
-
-### wait
-
-Block until boxes stop and print their exit codes.
-
-```bash
+a3s-box pause BOX [BOX...]
+a3s-box unpause BOX [BOX...]
 a3s-box wait BOX [BOX...]
+a3s-box rename OLD NEW
+a3s-box rm [-f] BOX [BOX...]
 ```
 
-### container-update
+`run` pulls if needed, creates state, boots the VM, and either waits for the foreground command or returns after a detached boot. `create` persists the same configuration but does not boot until `start`.
 
-Hot-update resource limits of a running box.
+Common supported `run` / `create` options:
 
-```bash
-a3s-box container-update BOX [OPTIONS]
-```
+| Option | Meaning |
+| --- | --- |
+| `--name NAME` | Assign a stable box name. |
+| `-d`, `--detach` | Run in the background. |
+| `-i`, `--interactive`, `-t`, `--tty` | Keep stdin open and/or allocate a PTY. Detached TTY is rejected. |
+| `--rm` | Remove the box after it exits. |
+| `--cpus N`, `--memory SIZE` | Set boot-time vCPU and memory size. |
+| `-e KEY=VALUE`, `--env-file FILE` | Merge container environment. Inline env overrides env files. |
+| `--entrypoint`, `CMD...` | Override image entrypoint and command. |
+| `-u USER`, `-w DIR` | Run as root, UID, or UID:GID, and set an absolute workdir. |
+| `--hostname`, `--add-host HOST:IP` | Write host identity and static hosts entries inside the guest. |
+| `-v HOST:GUEST[:ro]` | Bind mount or named volume. |
+| `-p HOST:GUEST[/tcp]` | Publish a TCP port. |
+| `--network NAME` | Join an existing A3S bridge network. |
+| `--restart POLICY` | `no`, `always`, `on-failure[:N]`, or `unless-stopped`. |
+| `--health-*`, `--no-healthcheck` | Configure or disable health checks. |
+| `--cap-add`, `--cap-drop`, `--security-opt`, `--privileged` | Configure supported guest security options. |
+| `--tee`, `--tee-simulate` | Enable hardware or simulated TEE flow. |
 
-<TypeTable
-  type={{
-    "--cpus N": {
-      description: "Update vCPU count",
-    },
-    "--memory SIZE": {
-      description: "Update memory limit",
-    },
-    "--restart POLICY": {
-      description: "Update restart policy",
-    },
-  }}
-/>
+Guarded options such as `--device`, `--gpus`, unsupported security labels, unsupported users, invalid workdirs, and unsupported port syntax fail before state is persisted.
 
----
-
-## Execution and Terminal
-
-### exec
-
-Run a command inside a running box.
+## Execution
 
 ```bash
-a3s-box exec [OPTIONS] BOX -- COMMAND [ARGS...]
-```
-
-<TypeTable
-  type={{
-    "-i, --interactive": {
-      description: "Description: Keep stdin open",
-    },
-    "-t, --tty": {
-      description: "Description: Allocate a pseudo-TTY",
-    },
-    "-e, --env KEY=VALUE": {
-      description: "Description: Environment variable (repeatable)",
-    },
-    "-w, --workdir DIR": {
-      description: "Description: Working directory",
-    },
-    "-u, --user USER": {
-      description: "Description: Run as user",
-    },
-    "--timeout N": {
-      description: "Default: 5 · Description: Timeout in seconds",
-    },
-  }}
-/>
-
-```bash
-# Interactive shell
-a3s-box exec -it my-box -- /bin/bash
-
-# Run as root with env var
-a3s-box exec -u root -e DEBUG=1 my-box -- /bin/sh -c "env"
-```
-
-### attach
-
-Attach to a box's console.
-
-```bash
-a3s-box attach [-it] BOX
-```
-
-### top
-
-Show processes running inside a box.
-
-```bash
+a3s-box exec [OPTIONS] BOX -- CMD [ARG...]
+a3s-box exec -it BOX -- /bin/sh
+a3s-box attach BOX
+a3s-box shell BOX
 a3s-box top BOX
 ```
 
----
+`exec` supports environment overrides, numeric users, root, UID:GID, and absolute workdirs. PTY and non-PTY exec use guest control sockets; missing sockets and stopped boxes report contextual errors.
 
-## Image Management
-
-### pull
+## Images
 
 ```bash
 a3s-box pull [OPTIONS] IMAGE
-```
-
-<TypeTable
-  type={{
-    "--verify-key FILE": {
-      description: "Verify cosign signature with public key",
-    },
-    "--verify-issuer ISSUER": {
-      description: "Verify keyless OIDC issuer",
-    },
-    "--verify-identity IDENTITY": {
-      description: "Verify keyless subject identity",
-    },
-  }}
-/>
-
-```bash
-a3s-box pull alpine:latest
-a3s-box pull --verify-key cosign.pub ghcr.io/my-org/my-image:v1
-a3s-box pull --verify-issuer https://accounts.google.com \
-             --verify-identity user@example.com my-image:latest
-```
-
-### push
-
-```bash
 a3s-box push IMAGE
-```
-
-### build
-
-Build an OCI image from a Dockerfile.
-
-```bash
 a3s-box build [OPTIONS] PATH
-```
-
-<TypeTable
-  type={{
-    "-t, --tag NAME:TAG": {
-      description: "Image name and tag (repeatable)",
-    },
-    "-f, --file PATH": {
-      description: "Dockerfile path (default: PATH/Dockerfile)",
-    },
-    "--build-arg KEY=VALUE": {
-      description: "Build argument (repeatable)",
-    },
-    "--platform PLATFORM": {
-      description: "Target platform(s), comma-separated",
-    },
-    "--quiet": {
-      description: "Suppress build output",
-    },
-    "--no-cache": {
-      description: "Disable layer cache",
-    },
-  }}
-/>
-
-```bash
-# Single platform
-a3s-box build -t my-app:v1 .
-
-# Multi-platform image index
-a3s-box build -t my-app:v1 --platform linux/amd64,linux/arm64 .
-
-# With build args
-a3s-box build -t my-app:v1 --build-arg VERSION=1.2.3 -f Dockerfile.prod .
-```
-
-### images
-
-```bash
-a3s-box images [OPTIONS]
-```
-
-<TypeTable
-  type={{
-    "-q, --quiet": {
-      description: "Only show image IDs",
-    },
-    "--format FORMAT": {
-      description: "Go template format ({{.Repository}}, {{.Tag}}, {{.Digest}}, {{.Size}}, {{.CreatedAt}})",
-    },
-  }}
-/>
-
-### rmi
-
-```bash
-a3s-box rmi IMAGE [IMAGE...]
-```
-
-### tag
-
-```bash
-a3s-box tag SOURCE TARGET
-```
-
-### image-inspect
-
-Show image metadata as JSON.
-
-```bash
+a3s-box images
 a3s-box image-inspect IMAGE
-```
-
-### image-prune
-
-Remove unused images.
-
-```bash
-a3s-box image-prune
-```
-
-### history
-
-Show image layer history.
-
-```bash
 a3s-box history IMAGE
+a3s-box tag IMAGE NEW_TAG
+a3s-box rmi IMAGE [IMAGE...]
+a3s-box image-prune [--force]
+a3s-box save -o FILE.tar IMAGE
+a3s-box load -i FILE.tar [--tag TAG]
+a3s-box commit BOX -t TAG
 ```
 
-### save / load
+Important boundaries:
 
-```bash
-a3s-box save IMAGE -o FILE.tar
-a3s-box load -i FILE.tar
-```
-
-### commit
-
-Create a new image from a box's filesystem changes.
-
-```bash
-a3s-box commit [OPTIONS] BOX IMAGE:TAG
-```
-
-<TypeTable
-  type={{
-    "-m, --message MSG": {
-      description: "Commit message",
-    },
-    "-a, --author AUTHOR": {
-      description: "Author",
-    },
-    "-c, --change INSTRUCTION": {
-      description: "Apply Dockerfile instruction",
-    },
-  }}
-/>
-
-### export
-
-Export a box's filesystem as a tar archive.
-
-```bash
-a3s-box export BOX -o FILE.tar
-```
-
----
-
-## Inspection and Monitoring
-
-### ps
-
-```bash
-a3s-box ps [OPTIONS]
-```
-
-<TypeTable
-  type={{
-    "-a, --all": {
-      description: "Show all boxes (including stopped)",
-    },
-    "-q, --quiet": {
-      description: "Only show IDs",
-    },
-    "-f, --filter KEY=VALUE": {
-      description: "Filter: name=, id=, status=, label=, image=",
-    },
-    "--format FORMAT": {
-      description: "Go template: {{.ID}}, {{.Name}}, {{.Image}}, {{.Status}}, {{.CreatedAt}}, {{.Health}}",
-    },
-  }}
-/>
-
-```bash
-a3s-box ps -a --filter status=running
-a3s-box ps --format "{{.ID}}\t{{.Name}}\t{{.Status}}"
-```
-
-### inspect
-
-Show detailed box information as JSON.
-
-```bash
-a3s-box inspect BOX
-```
-
-### logs
-
-```bash
-a3s-box logs [OPTIONS] BOX
-```
-
-<TypeTable
-  type={{
-    "-f, --follow": {
-      description: "Follow log output",
-    },
-    "--tail N": {
-      description: "Last N lines",
-    },
-    "--since TIMESTAMP": {
-      description: "Show logs since timestamp",
-    },
-    "--until TIMESTAMP": {
-      description: "Show logs until timestamp",
-    },
-    "-t, --timestamps": {
-      description: "Show timestamps",
-    },
-  }}
-/>
-
-### stats
-
-Live resource usage for running boxes.
-
-```bash
-a3s-box stats [BOX...]
-```
-
-Displays CPU %, memory usage, and disk I/O.
-
-### events
-
-Stream system events.
-
-```bash
-a3s-box events [OPTIONS]
-```
-
-<TypeTable
-  type={{
-    "--filter KEY=VALUE": {
-      description: "Filter by type=, action=, box=",
-    },
-    "--json": {
-      description: "Output as JSON lines",
-    },
-  }}
-/>
-
-### diff
-
-Show filesystem changes in a box (A=added, C=changed, D=deleted).
-
-```bash
-a3s-box diff BOX
-```
-
-### port
-
-List port mappings for a box.
-
-```bash
-a3s-box port BOX
-```
-
-### df
-
-Show disk usage.
-
-```bash
-a3s-box df
-```
-
----
+- `build --platform` accepts one target platform. Multi-platform indexes are not implemented.
+- Dockerfile `RUN` requires root-capable Linux for isolated `chroot` execution.
+- macOS Dockerfile `RUN` fails by default unless `A3S_BOX_UNSAFE_HOST_RUN=1` is set for local experiments.
+- Unsupported Dockerfile flags fail explicitly.
 
 ## Networking
 
-### network create
-
 ```bash
-a3s-box network create [OPTIONS] NAME
-```
-
-<TypeTable
-  type={{
-    "--subnet CIDR": {
-      description: "Network subnet (e.g. 10.88.0.0/24)",
-    },
-    "--gateway IP": {
-      description: "Gateway address",
-    },
-    "--isolation POLICY": {
-      description: "none` · `strict` · `custom",
-    },
-  }}
-/>
-
-### network ls / inspect / rm
-
-```bash
+a3s-box network create NAME [--subnet CIDR] [--driver bridge] [--isolation none]
 a3s-box network ls
 a3s-box network inspect NAME
-a3s-box network rm NAME
-```
-
-### network connect / disconnect
-
-```bash
 a3s-box network connect NETWORK BOX
 a3s-box network disconnect NETWORK BOX
+a3s-box network rm [-f] NAME [NAME...]
+a3s-box port BOX
 ```
 
----
+Only the `bridge` driver and `none` isolation mode are attachable today. `strict` and `custom` policies are rejected because packet filtering is not implemented. Live hot-plug is not implemented; connect and disconnect inactive boxes only.
 
-## Volumes
-
-### volume create / ls / inspect / rm / prune
+## Volumes, Files, and Snapshots
 
 ```bash
 a3s-box volume create NAME
 a3s-box volume ls
 a3s-box volume inspect NAME
-a3s-box volume rm NAME
+a3s-box volume rm NAME [NAME...]
 a3s-box volume prune
-```
 
----
+a3s-box cp SRC DST
+a3s-box export BOX -o FILE.tar
+a3s-box diff BOX
 
-## File Operations
-
-### cp
-
-Copy files between host and box. Copying between two boxes is not supported.
-
-```bash
-a3s-box cp BOX:SRC_PATH DEST_PATH   # box → host
-a3s-box cp SRC_PATH BOX:DEST_PATH   # host → box
-```
-
----
-
-## Snapshots
-
-### snapshot create / restore / ls / rm / inspect
-
-```bash
 a3s-box snapshot create BOX NAME
-a3s-box snapshot restore BOX NAME
-a3s-box snapshot ls BOX
-a3s-box snapshot rm BOX NAME
-a3s-box snapshot inspect BOX NAME
+a3s-box snapshot restore SNAPSHOT --name NEW_BOX
+a3s-box snapshot ls
+a3s-box snapshot inspect SNAPSHOT
+a3s-box snapshot rm SNAPSHOT
 ```
 
----
+Snapshots are not live memory checkpoints; treat them as Box-managed persisted state/filesystem snapshots.
 
 ## Compose
 
-### compose up / down / ps / config
-
 ```bash
-a3s-box compose up [-f FILE] [-d]
-a3s-box compose down [-f FILE]
-a3s-box compose ps [-f FILE]
-a3s-box compose config [-f FILE]
+a3s-box compose -f compose.yaml config
+a3s-box compose -f compose.yaml up -d
+a3s-box compose -f compose.yaml ps
+a3s-box compose -f compose.yaml logs -f
+a3s-box compose -f compose.yaml down
 ```
 
-Default compose file: `compose.yaml` or `docker-compose.yaml` in the current directory.
+Supported keys include `image`, `command`, `entrypoint`, `environment`, `env_file`, `ports`, `volumes`, `depends_on` with `service_started` or `service_healthy`, `networks`, `dns`, `tmpfs`, `working_dir`, `hostname`, `extra_hosts`, `labels`, `healthcheck`, `restart`, `cpus`, `mem_limit`, `cap_add`, `cap_drop`, and `privileged`.
 
----
-
-## TEE / Security
-
-### attest
-
-Request a TEE attestation report from a running box.
+## Observability and System
 
 ```bash
-a3s-box attest BOX [OPTIONS]
-```
-
-<TypeTable
-  type={{
-    "--ratls": {
-      description: "Use RA-TLS for attestation",
-    },
-    "--policy FILE": {
-      description: "Attestation policy file",
-    },
-    "--nonce HEX": {
-      description: "Custom nonce (hex)",
-    },
-    "--raw": {
-      description: "Output raw report bytes",
-    },
-    "--quiet": {
-      description: "Suppress output",
-    },
-    "--allow-simulated": {
-      description: "Accept simulated reports",
-    },
-  }}
-/>
-
-### seal / unseal
-
-```bash
-a3s-box seal BOX --data "DATA" --context CTX [--policy POLICY] [--allow-simulated]
-a3s-box unseal BOX --context CTX [--allow-simulated]
-```
-
-<TypeTable
-  type={{
-    "measurement-and-chip": {
-      description: "Tied to image measurement + specific chip (default)",
-    },
-    "measurement-only": {
-      description: "Portable across hardware, same image",
-    },
-    "chip-only": {
-      description: "Portable across images, same hardware",
-    },
-  }}
-/>
-
-### inject-secret
-
-Inject a secret into a running TEE-protected box over RA-TLS.
-
-```bash
-a3s-box inject-secret BOX --secret "KEY=VALUE" [--set-env] [--allow-simulated]
-```
-
-Secret is written to `/run/secrets/KEY` (mode 0400). `--set-env` also sets it as an environment variable.
-
----
-
-## Audit
-
-### audit
-
-Query the persistent audit log.
-
-```bash
-a3s-box audit [OPTIONS]
-```
-
-<TypeTable
-  type={{
-    "--action ACTION": {
-      description: "Filter by action (e.g. run, exec, stop)",
-    },
-    "--box BOX": {
-      description: "Filter by box name or ID",
-    },
-    "--outcome OUTCOME": {
-      description: "Filter by success or failure",
-    },
-  }}
-/>
-
----
-
-## System
-
-### system-prune
-
-Remove stopped boxes and unused images.
-
-```bash
-a3s-box system-prune [-f]
-```
-
-### monitor
-
-Background daemon that auto-restarts boxes with `restart=always` or `restart=on-failure`.
-
-```bash
+a3s-box ps [-a]
+a3s-box logs [-f] [--tail N] BOX
+a3s-box inspect BOX
+a3s-box stats [--no-stream] [BOX]
+a3s-box events [--json]
+a3s-box df [--verbose]
+a3s-box audit [--action ACTION] [--box BOX] [--outcome success|failure]
+a3s-box info
+a3s-box version
 a3s-box monitor
+a3s-box pool start|stop|status
+a3s-box system-prune --force
 ```
 
-### version / info / df
-
-```bash
-a3s-box version    # Show version
-a3s-box info       # System information
-a3s-box df         # Disk usage
-```
-
-### login / logout
-
-```bash
-a3s-box login REGISTRY [-u USERNAME] [--password-stdin]
-a3s-box logout REGISTRY
-```
-
-Credentials stored in `~/.a3s/auth.json`.
-
----
-
-## Box Identification
-
-Boxes can be referenced by:
-
-<TypeTable
-  type={{
-    "Full UUID": {
-      description: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    },
-    "Short ID (12-char prefix)": {
-      description: "a1b2c3d4e5f6",
-    },
-    "Name": {
-      description: "my-box",
-    },
-  }}
-/>
+`info` should be the first diagnostic command on a new host because it reports platform capability and network/TEE boundaries.

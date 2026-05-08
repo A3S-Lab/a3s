@@ -1,28 +1,50 @@
 ---
 title: Kubernetes CRI
-description: Kubernetes 容器运行时接口集成
+description: 用于 kubelet 和 crictl 评估的实验性 CRI 面
 ---
 
 # Kubernetes CRI
 
-A3S Box 实现了完整的 Kubernetes CRI v1 接口，可作为 Kubernetes 节点的容器运行时，以 MicroVM 替代传统容器。
+A3S Box 包含实验性的 Kubernetes CRI server。它适合评估、开发和定向 smoke test；当前产品优先级仍是本地类 Docker 运行时。不要把本页理解为生产级 Kubernetes 兼容声明。
 
-## 特性
+Windows CRI 明确不支持。
 
-- 完整 CRI v1 gRPC 实现（RuntimeService + ImageService）
-- RuntimeClass 支持，可按 Pod 选择运行时
-- 流式 exec/attach/port-forward
-- Helm Chart 一键部署
+## 已有能力
 
-## 配置 Kubernetes
+| CRI 领域 | 当前状态 |
+| --- | --- |
+| RuntimeService | Pod sandbox lifecycle、container lifecycle、status、stats 和部分 update/status 路径。 |
+| ImageService | pull、list、status、filesystem info、remove，背后复用本地 image store。 |
+| Streaming | exec、attach、port-forward 路径已存在；Unix 主机通过 Unix socket bridge。 |
+| 网络 | sandbox port mapping 和 `a3s.box/network` annotation 可接入 A3S bridge 网络。 |
+| 测试 | 单元测试覆盖 fake ready-VM；`crictl_smoke.rs` 被 ignore，需要真实宿主机。 |
 
-在 kubelet 中指定 CRI socket：
+## 模型
 
-```bash
-kubelet --container-runtime-endpoint unix:///run/a3s-box-cri.sock
+```text
+kubelet / crictl
+  |
+  | CRI v1 gRPC
+  v
+a3s-box-cri
+  RuntimeService + ImageService + streaming server
+  |
+  v
+A3S Box runtime and MicroVM
 ```
 
-创建 RuntimeClass：
+Pod sandbox 映射为 Box VM。container 支持围绕 rootfs handoff 和 guest exec/session 演进。
+
+## 评估运行
+
+```bash
+helm install a3s-box deploy/helm/a3s-box/ \
+  -n a3s-box-system --create-namespace
+```
+
+也可以在受控开发环境中直接运行 CRI binary，并让 `crictl` 或 kubelet 指向它的 socket。
+
+## RuntimeClass 示例
 
 ```yaml
 apiVersion: node.k8s.io/v1
@@ -32,14 +54,22 @@ metadata:
 handler: a3s-box
 ```
 
-在 Pod 中使用：
-
 ```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello
 spec:
   runtimeClassName: a3s-box
   containers:
     - name: app
-      image: my-app:latest
+      image: alpine:latest
+      command: ["sleep", "3600"]
 ```
 
-详细文档请参阅[英文版](/docs/en/box/cri)。
+## 已知边界
+
+- 不支持 Windows CRI。
+- 宿主机必须具备镜像、虚拟化和 CRI 工具链条件。
+- ignored `crictl` smoke suite 必须在合适主机上显式运行。
+- CNI/networking、多容器边界、checkpointing 和完整 kubelet conformance 仍是进行中工作。

@@ -1,242 +1,46 @@
 ---
 title: Helm Deployment
-description: Deploy A3S Box as a Kubernetes RuntimeClass using Helm
+description: Experimental Helm deployment path for the A3S Box CRI server
 ---
-
-import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Helm Deployment
 
-Deploy A3S Box as a Kubernetes CRI runtime using the official Helm chart. The chart installs a DaemonSet, RuntimeClass, RBAC, and ConfigMap.
+The Helm chart installs the experimental A3S Box CRI path for Kubernetes evaluation. It is not the primary local-runtime path and should not be treated as production-ready without host-specific validation.
 
 ## Prerequisites
 
-- Kubernetes 1.26+
-- Helm 3.x
-- Nodes with KVM support (`/dev/kvm` accessible)
-- Node label: `a3s-box.io/runtime: "true"`
+- Kubernetes node that can run the A3S Box CRI pod with the required privileges.
+- Linux host virtualization support, typically KVM-accessible nodes.
+- A container image or locally built image for the CRI server.
+- RuntimeClass and kubelet/container-runtime wiring that matches your cluster setup.
 
-## Install
+## Install from the Repository
 
 ```bash
 helm install a3s-box deploy/helm/a3s-box/ \
   -n a3s-box-system --create-namespace
 ```
 
-### Custom Values
+This path assumes you are working from the Box repository. Values depend on your local image publishing flow.
+
+## What the Chart Represents
+
+- A DaemonSet for the CRI server.
+- A RuntimeClass handler name.
+- RBAC and configuration needed for the server pod.
+- Host mounts needed for VM/runtime operation.
+
+## Validation
+
+After deployment, validate with `crictl` first, then with a small RuntimeClass pod. Keep the test image simple, for example Alpine with `sleep 3600`.
 
 ```bash
-helm install a3s-box deploy/helm/a3s-box/ \
-  -n a3s-box-system --create-namespace \
-  --set image.tag=v0.5.3 \
-  --set config.logLevel=debug \
-  --set config.imageCacheSize=21474836480 \
-  --set resources.limits.memory=1Gi
+crictl --runtime-endpoint unix:///run/a3s-box-cri.sock info
 ```
 
-### Uninstall
+## Boundaries
 
-```bash
-helm uninstall a3s-box -n a3s-box-system
-```
-
-## Chart Values
-
-<TypeTable
-  type={{
-    'image.repository': { type: 'string', default: '"ghcr.io/a3s-lab/a3s-box-cri"', description: 'CRI container image' },
-    'image.tag': { type: 'string', default: '"latest"', description: 'Image tag' },
-    'image.pullPolicy': { type: 'string', default: '"IfNotPresent"', description: 'Pull policy' },
-    nodeSelector: { type: 'object', default: '`a3s-box.io/runtime: "true"`', description: 'DaemonSet node selector' },
-    'config.socketPath': { type: 'string', default: '"/var/run/a3s-box/a3s-box.sock"', description: 'CRI socket path' },
-    'config.imageCacheSize': { type: 'number', default: '10737418240', description: 'Image cache size (bytes)' },
-    'config.logLevel': { type: 'string', default: '"info"', description: 'Log level' },
-    'overhead.memory': { type: 'string', default: '"30Mi"', description: 'Per-pod VM memory overhead' },
-    'overhead.cpu': { type: 'string', default: '"50m"', description: 'Per-pod VM CPU overhead' },
-    'resources.requests.cpu': { type: 'string', default: '"100m"', description: 'CRI pod CPU request' },
-    'resources.requests.memory': { type: 'string', default: '"128Mi"', description: 'CRI pod memory request' },
-    'resources.limits.cpu': { type: 'string', default: '"500m"', description: 'CRI pod CPU limit' },
-    'resources.limits.memory': { type: 'string', default: '"512Mi"', description: 'CRI pod memory limit' },
-    runtimeHandler: { type: 'string', default: '"a3s-box"', description: 'RuntimeClass handler name' },
-    'serviceAccount.create': { type: 'bool', default: 'true', description: 'Create ServiceAccount' },
-    'serviceAccount.name': { type: 'string', default: '"a3s-box-cri"', description: 'ServiceAccount name' },
-  }}
-/>
-
-## What Gets Deployed
-
-### DaemonSet
-
-Runs `a3s-box-cri` on every labeled node. The pod mounts:
-- `/dev/kvm` — hardware virtualization
-- `/var/run/a3s-box/` — CRI socket directory
-- Host network for kubelet communication
-
-```yaml
-securityContext:
-  privileged: true  # Required for /dev/kvm access
-```
-
-### RuntimeClass
-
-```yaml
-apiVersion: node.k8s.io/v1
-kind: RuntimeClass
-metadata:
-  name: a3s-box
-handler: a3s-box
-overhead:
-  podFixed:
-    memory: "30Mi"
-    cpu: "50m"
-```
-
-### RBAC
-
-- ServiceAccount: `a3s-box-cri`
-- ClusterRole with permissions for node status, pods, and events
-
-## Running Pods
-
-Once deployed, schedule pods on A3S Box by setting `runtimeClassName`:
-
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: hello
-spec:
-  runtimeClassName: a3s-box
-  containers:
-    - name: alpine
-      image: alpine:latest
-      command: ["sleep", "3600"]
-```
-
-### TEE-Enabled Pod
-
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: secure-workload
-  annotations:
-    a3s.box/tee: "sev-snp"
-    a3s.box/tee-generation: "genoa"
-    a3s.box/workload-id: "secure-inference"
-spec:
-  runtimeClassName: a3s-box
-  containers:
-    - name: app
-      image: my-app:latest
-      resources:
-        limits:
-          cpu: "2"
-          memory: "1Gi"
-```
-
-### TDX-Enabled Pod
-
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: tdx-workload
-  annotations:
-    a3s.box/tee: "tdx"
-    a3s.box/workload-id: "my-tdx-workload"
-spec:
-  runtimeClassName: a3s-box
-  containers:
-    - name: app
-      image: my-app:latest
-```
-
-> Intel TDX has config support but runtime is pending. Use `sev-snp` for production TEE workloads.
-
-## Prometheus Metrics
-
-The CRI pod exposes 19 Prometheus metrics on port `9090` at `/metrics`. Enable scraping via annotations:
-
-```yaml
-# values.yaml
-podAnnotations:
-  prometheus.io/scrape: "true"
-  prometheus.io/port: "9090"
-  prometheus.io/path: "/metrics"
-```
-
-Key metrics:
-
-<TypeTable
-  type={{
-    "a3s_box_vm_boot_duration_seconds": {
-      type: "Histogram",
-      description: "VM boot latency",
-    },
-    "a3s_box_vm_count": {
-      type: "Gauge",
-      description: "Running VM count by state",
-    },
-    "a3s_box_vm_created_total": {
-      type: "Counter",
-      description: "Total VMs created",
-    },
-    "a3s_box_exec_total": {
-      type: "Counter",
-      description: "Total exec calls",
-    },
-    "a3s_box_exec_duration_seconds": {
-      type: "Histogram",
-      description: "Exec latency",
-    },
-    "a3s_box_image_pull_total": {
-      type: "Counter",
-      description: "Total image pulls",
-    },
-    "a3s_box_image_build_total": {
-      type: "Counter",
-      description: "Total image builds",
-    },
-    "a3s_box_rootfs_cache_hits": {
-      type: "Counter",
-      description: "Rootfs cache hits",
-    },
-    "a3s_box_warm_pool_size": {
-      type: "Gauge",
-      description: "Current idle pool size",
-    },
-    "a3s_box_warm_pool_capacity": {
-      type: "Gauge",
-      description: "Configured pool capacity",
-    },
-  }}
-/>
-
-## Health Checks
-
-The Helm chart configures liveness and readiness probes:
-
-```yaml
-livenessProbe:
-  initialDelaySeconds: 5
-  periodSeconds: 10
-
-readinessProbe:
-  initialDelaySeconds: 3
-  periodSeconds: 5
-```
-
-## Node Labeling
-
-Label nodes that should run A3S Box:
-
-```bash
-kubectl label node <node-name> a3s-box.io/runtime=true
-```
-
-To remove:
-
-```bash
-kubectl label node <node-name> a3s-box.io/runtime-
-```
+- This is an evaluation path for the experimental CRI server.
+- It is Linux-focused; Windows CRI is unsupported.
+- Full Kubernetes conformance is not claimed.
+- Node security, image distribution, CNI integration, and operational hardening remain deployment-specific work.

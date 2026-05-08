@@ -23,9 +23,9 @@ const t = {
   en: {
     badge: 'Open Source · MIT License · Built in Rust',
     heroTitle1: 'Run AI Agents',
-    heroGradient: 'Inside Hardware-Isolated VMs',
+    heroGradient: 'Inside MicroVM Sandboxes',
     heroSub:
-      'A3S is a modular Rust ecosystem for production AI agents — hardware TEE isolation, privacy-aware security, and a full agent framework in one coherent stack.',
+      'A3S is a modular Rust ecosystem for production AI agents — VM-isolated execution, opt-in hardware attestation on capable hosts, privacy-aware security, and a full agent framework in one coherent stack.',
     getStarted: 'Get Started',
     viewGithub: 'View on GitHub',
 
@@ -36,13 +36,13 @@ const t = {
     pillars: [
       {
         icon: Lock,
-        title: 'Hardware isolation by default',
-        body: 'Every agent runs inside a MicroVM backed by AMD SEV-SNP or Intel TDX. The host cannot read agent memory. Attestation is built in, not bolted on.',
+        title: 'VM isolation by default',
+        body: 'Run sensitive agents inside MicroVMs, and use SEV-SNP attestation when the host can prove it. Isolation is explicit instead of assumed.',
       },
       {
         icon: Zap,
         title: 'Production-grade performance',
-        body: 'Lane delivers 33k–50k ops/sec priority scheduling. Box cold-starts VMs in ~200ms. Power runs local LLMs with RA-TLS attestation. All in pure Rust.',
+        body: 'Lane provides high-throughput priority scheduling, Box focuses on fast MicroVM startup, and Power can run local LLMs with RA-TLS-aware integration. All in Rust.',
       },
       {
         icon: Puzzle,
@@ -68,10 +68,10 @@ const t = {
   },
   cn: {
     badge: '开源 · MIT 协议 · Rust 构建',
-    heroTitle1: '在硬件隔离的 VM 中',
+    heroTitle1: '在 MicroVM 隔离环境中',
     heroGradient: '安全运行 AI Agent',
     heroSub:
-      'A3S 是面向生产环境的模块化 Rust 生态 — 硬件 TEE 隔离、隐私感知安全和完整的 Agent 框架，构成一套连贯的技术栈。',
+      'A3S 是面向生产环境的模块化 Rust 生态 — VM 隔离执行、在能力宿主机上可选硬件证明、隐私感知安全和完整的 Agent 框架，构成一套连贯的技术栈。',
     getStarted: '快速开始',
     viewGithub: '查看 GitHub',
 
@@ -81,13 +81,13 @@ const t = {
     pillars: [
       {
         icon: Lock,
-        title: '默认硬件隔离',
-        body: '每个 Agent 运行在由 AMD SEV-SNP 或 Intel TDX 支持的 MicroVM 中。宿主机无法读取 Agent 内存，远程证明内置而非外挂。',
+        title: '默认 VM 隔离',
+        body: '把敏感 Agent 放进 MicroVM；当宿主机能证明 SEV-SNP 能力时再启用硬件证明。隔离能力明确可见，而不是默认假设。',
       },
       {
         icon: Zap,
         title: '生产级性能',
-        body: 'Lane 提供 33k–50k ops/sec 优先级调度，Box VM 冷启动约 200ms，Power 支持带 RA-TLS 证明的本地 LLM 推理，全部纯 Rust 实现。',
+        body: 'Lane 提供高吞吐优先级调度，Box 聚焦快速 MicroVM 启动，Power 可集成 RA-TLS 感知的本地 LLM 推理，全部由 Rust 构建。',
       },
       {
         icon: Puzzle,
@@ -141,8 +141,8 @@ function getModules(lang: Lang) {
       tag: lang === 'cn' ? 'MicroVM 运行时' : 'MicroVM Runtime',
       description:
         lang === 'cn'
-          ? 'VM 隔离沙箱 — OCI 镜像、Docker CLI、WarmPool、CRI、TEE 支持。'
-          : 'VM-isolated sandbox — OCI images, Docker CLI, WarmPool, CRI, TEE support.',
+          ? 'VM 隔离沙箱 — OCI 镜像、类 Docker CLI、WarmPool、实验性 CRI、硬件依赖 TEE。'
+          : 'VM-isolated sandbox — OCI images, Docker-like CLI, WarmPool, experimental CRI, hardware-gated TEE.',
       href: `${base}/docs/box`,
       icon: Box,
       lightColor: 'bg-violet-50 text-violet-600',

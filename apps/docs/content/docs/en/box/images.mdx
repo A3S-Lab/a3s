@@ -1,229 +1,93 @@
 ---
-title: Images
-description: OCI image pulling, building, caching, and registry management
+title: Images and Builds
+description: OCI image pull, cache, build subset, save/load, push, and signing
 ---
 
-import { TypeTable } from 'fumadocs-ui/components/type-table';
+# Images and Builds
 
-# Images
+A3S Box works with Linux OCI images. The local image store is shared by `pull`, `run`, `build`, `load`, `save`, `tag`, and `image-inspect`.
 
-A3S Box supports standard OCI container images with a full pull/build/cache pipeline compatible with Docker registries.
-
-## Image Reference Format
-
-```rust
-pub struct ImageReference {
-    pub registry: Option<String>,     // e.g., "ghcr.io"
-    pub namespace: Option<String>,    // e.g., "a3s-lab"
-    pub name: String,                 // e.g., "box"
-    pub tag: Option<String>,          // e.g., "v0.1.0"
-    pub digest: Option<String>,       // e.g., "sha256:abc123..."
-}
-```
+## References and Cache Resolution
 
 Examples:
 
-<TypeTable
-  type={{
-    "alpine:latest": {
-      description: "Registry: Docker Hub · Name: alpine · Tag: latest",
-    },
-    "ghcr.io/a3s-lab/box:v0.1.0": {
-      description: "Registry: ghcr.io · Namespace: a3s-lab · Name: box · Tag: v0.1.0",
-    },
-    "alpine@sha256:abc...": {
-      description: "Registry: Docker Hub · Name: alpine · Tag: (by digest)",
-    },
-  }}
-/>
+| Input | Meaning |
+| --- | --- |
+| `alpine` | Docker Hub `docker.io/library/alpine:latest`. |
+| `alpine:3.20` | Docker Hub `docker.io/library/alpine:3.20`. |
+| `ghcr.io/org/app:v1` | Explicit registry, repository, and tag. |
+| `image@sha256:<digest>` | Digest reference. |
+| `sha256:<prefix>` | Local digest lookup when it uniquely identifies a cached image. |
 
-## Pulling Images
+Docker Hub aliases resolve to the same cached image when unambiguous.
+
+## Pull and Auth
 
 ```bash
-# Pull from Docker Hub
-a3s-box pull alpine:latest
-
-# Pull from private registry
-a3s-box pull ghcr.io/a3s-lab/my-image:v1
-
-# Pull by digest
-a3s-box pull alpine@sha256:abc123...
-```
-
-### Registry Authentication
-
-```bash
-# Login to a registry
-a3s-box login ghcr.io -u USERNAME
-
-# Login with token via stdin
-echo $GITHUB_TOKEN | a3s-box login ghcr.io -u USERNAME --password-stdin
-
-# Logout
+a3s-box login ghcr.io -u USER -p TOKEN
+a3s-box pull ghcr.io/org/app:v1
 a3s-box logout ghcr.io
 ```
 
-Credentials are stored in `~/.a3s/auth.json`.
+Credentials are stored in the A3S home directory. Registry operations require network access and are intentionally separated from pure unit tests.
 
-## Building Images
-
-Build OCI images from Dockerfiles:
+## Signature Verification
 
 ```bash
-# Build from current directory
-a3s-box build -t my-app:v1 .
+# Cosign public-key verification
+a3s-box pull --verify-key cosign.pub ghcr.io/org/app:v1
 
-# Build with specific Dockerfile
-a3s-box build -t my-app:v1 -f Dockerfile.prod .
-
-# Build with build arguments
-a3s-box build -t my-app:v1 --build-arg VERSION=1.0 .
+# Cosign keyless verification
+a3s-box pull \
+  --verify-issuer https://accounts.google.com \
+  --verify-identity user@example.com \
+  ghcr.io/org/app:v1
 ```
 
-### Supported Dockerfile Instructions
+Keyless verification needs registry and Sigstore/Fulcio/Rekor-related network access. Offline tests cover parser and payload pieces; end-to-end verification must run in a network-enabled environment.
 
-<TypeTable
-  type={{
-    "FROM": {
-      description: "Base image (supports AS alias for multi-stage)",
-    },
-    "RUN": {
-      description: "Execute command in build layer",
-    },
-    "CMD": {
-      description: "Default command",
-    },
-    "ENTRYPOINT": {
-      description: "Container entrypoint",
-    },
-    "ENV": {
-      description: "Set environment variable",
-    },
-    "WORKDIR": {
-      description: "Set working directory",
-    },
-    "COPY": {
-      description: "Copy files from build context (supports --from=stage)",
-    },
-    "ADD": {
-      description: "Copy files, URLs (HTTP/HTTPS download), or tar auto-extraction",
-    },
-    "EXPOSE": {
-      description: "Declare exposed ports",
-    },
-    "VOLUME": {
-      description: "Declare volume mount points",
-    },
-    "USER": {
-      description: "Set user for RUN/CMD/ENTRYPOINT",
-    },
-    "ARG": {
-      description: "Build-time variables",
-    },
-    "LABEL": {
-      description: "Add metadata",
-    },
-    "SHELL": {
-      description: "Override default shell",
-    },
-    "STOPSIGNAL": {
-      description: "Set stop signal",
-    },
-    "HEALTHCHECK": {
-      description: "Configure health check",
-    },
-    "ONBUILD": {
-      description: "Register trigger for child image builds",
-    },
-  }}
-/>
-
-## Image Configuration
-
-Each image carries its OCI configuration:
-
-```rust
-pub struct OciImageConfig {
-    pub entrypoint: Option<Vec<String>>,
-    pub cmd: Option<Vec<String>>,
-    pub env: Vec<(String, String)>,
-    pub working_dir: Option<String>,
-    pub user: Option<String>,
-    pub exposed_ports: Vec<String>,
-    pub labels: HashMap<String, String>,
-    pub volumes: Vec<String>,
-    pub stop_signal: Option<String>,
-    pub health_check: Option<OciHealthCheck>,
-    pub onbuild: Vec<String>,   // ONBUILD triggers from base image
-}
-```
-
-The manifest digest is also available via `OciImage::manifest_digest()` and is surfaced in `PulledImage::digest` returned by the `ImageRegistry` trait.
-
-## Caching Pipeline
-
-```
-RegistryPuller
-    ↓ fetch manifest + layers
-Layer Cache (~/.a3s/images/)
-    ↓ content-addressed by layer digest
-OciRootfsBuilder
-    ↓ compose layers into rootfs
-Rootfs Cache
-    ↓ content-addressed by combined SHA256
-Ready for VM boot
-```
-
-### Cache Behavior
-
-- **Layer cache**: Stores compressed layer blobs indexed by digest. Shared across images that use the same base layers.
-- **Rootfs cache**: Stores the composed filesystem indexed by the combined digest of all layers. Avoids re-extraction on repeated runs.
-- **Cache directory**: `~/.a3s/cache/` by default (configurable via `CacheConfig.cache_dir`)
-- **Size limit**: 10 GB default (configurable via `max_cache_bytes` or `A3S_IMAGE_CACHE_SIZE`)
-- **Entry limit**: 10 rootfs entries by default (`max_rootfs_entries`)
-- **Eviction**: LRU when limits are exceeded
-
-## Image Management Commands
+## Inspect, Save, Load, Tag
 
 ```bash
-# List local images
 a3s-box images
-
-# Inspect image metadata
 a3s-box image-inspect alpine:latest
-
-# Show layer history
 a3s-box history alpine:latest
-
-# Tag an image
-a3s-box tag alpine:latest my-alpine:v1
-
-# Push to registry
-a3s-box push ghcr.io/a3s-lab/my-image:v1
-
-# Save image to tar archive
-a3s-box save alpine:latest -o alpine.tar
-
-# Load image from tar archive
-a3s-box load -i alpine.tar
-
-# Remove an image
-a3s-box rmi alpine:latest
-
-# Remove unused images
-a3s-box image-prune
-
-# Create image from box changes
-a3s-box commit my-box my-snapshot:v1
+a3s-box tag alpine:latest local/alpine:test
+a3s-box save -o alpine.tar alpine:latest
+a3s-box load -i alpine.tar --tag local/alpine:test
+a3s-box rmi local/alpine:test
 ```
 
-## StoredImage
+`image-inspect` includes image config such as entrypoint, cmd, env, workdir, user, exposed ports, volumes, labels, stop signal, healthcheck, and ONBUILD metadata when present.
 
-```rust
-pub struct StoredImage {
-    pub reference: ImageReference,
-    pub digest: String,           // Full SHA256 digest
-    pub size: u64,                // Size in bytes
-    pub created_at: DateTime<Utc>,
-}
+## Build Subset
+
+```bash
+a3s-box build -t app:dev .
+a3s-box build -t app:dev -f Containerfile .
+a3s-box build -t app:dev --build-arg VERSION=1.2.3 --platform linux/amd64 .
 ```
+
+Supported Dockerfile instructions:
+
+- `FROM`, including `scratch`;
+- shell-form `RUN`;
+- shell-form `COPY` and `ADD`;
+- `WORKDIR`, `ENV`, `ENTRYPOINT`, `CMD`, `EXPOSE`, `LABEL`, `USER`, `ARG`, `SHELL`, `STOPSIGNAL`, `HEALTHCHECK`, `ONBUILD` metadata triggers, and `VOLUME`.
+
+Important boundaries:
+
+- `RUN` uses isolated Linux `chroot` and requires root-capable Linux.
+- macOS rejects `RUN` by default. Set `A3S_BOX_UNSAFE_HOST_RUN=1` only for local unsafe experiments.
+- Unsupported flags, for example `COPY --chown` and `ADD --chown`, fail explicitly.
+- `--platform` accepts one target platform. Multi-platform indexes are not implemented.
+- This is not a buildx replacement.
+
+## Push
+
+```bash
+a3s-box tag app:dev registry.example/org/app:dev
+a3s-box push registry.example/org/app:dev
+```
+
+Push uses the OCI registry path and requires a reachable registry. Signing after push is supported through the CLI `--sign-key` path where configured.

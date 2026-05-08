@@ -1,58 +1,85 @@
 ---
-title: 镜像管理
-description: OCI 镜像的拉取、构建、推送和管理
+title: 镜像与构建
+description: OCI 镜像拉取、缓存、构建子集、save/load、push 和签名
 ---
 
-# 镜像管理
+# 镜像与构建
 
-## 基本操作
+A3S Box 使用 Linux OCI 镜像。本地镜像仓库由 `pull`、`run`、`build`、`load`、`save`、`tag` 和 `image-inspect` 共享。
+
+## 引用与缓存
+
+| 输入 | 含义 |
+| --- | --- |
+| `alpine` | Docker Hub `docker.io/library/alpine:latest`。 |
+| `alpine:3.20` | Docker Hub `docker.io/library/alpine:3.20`。 |
+| `ghcr.io/org/app:v1` | 显式 registry、repository 和 tag。 |
+| `image@sha256:<digest>` | digest 引用。 |
+| `sha256:<prefix>` | 本地唯一匹配时按 digest 前缀查找。 |
+
+Docker Hub alias 在无歧义时会复用同一缓存镜像。
+
+## Pull 和认证
 
 ```bash
-# 拉取镜像
-a3s-box pull ubuntu:22.04
+a3s-box login ghcr.io -u USER -p TOKEN
+a3s-box pull ghcr.io/org/app:v1
+a3s-box logout ghcr.io
+```
 
-# 列出本地镜像
+registry 操作需要网络；相关端到端测试不会混入纯单元测试。
+
+## 签名验证
+
+```bash
+# cosign 公钥验证
+a3s-box pull --verify-key cosign.pub ghcr.io/org/app:v1
+
+# cosign keyless 验证
+a3s-box pull \
+  --verify-issuer https://accounts.google.com \
+  --verify-identity user@example.com \
+  ghcr.io/org/app:v1
+```
+
+keyless 验证需要 registry 与 Sigstore/Fulcio/Rekor 相关网络访问。
+
+## Inspect、Save、Load、Tag
+
+```bash
 a3s-box images
-
-# 检查镜像详情
-a3s-box inspect ubuntu:22.04
-
-# 删除镜像
-a3s-box rmi ubuntu:22.04
-
-# 标记镜像
-a3s-box tag ubuntu:22.04 my-ubuntu:latest
-
-# 推送镜像
-a3s-box push my-ubuntu:latest
+a3s-box image-inspect alpine:latest
+a3s-box history alpine:latest
+a3s-box tag alpine:latest local/alpine:test
+a3s-box save -o alpine.tar alpine:latest
+a3s-box load -i alpine.tar --tag local/alpine:test
+a3s-box rmi local/alpine:test
 ```
 
-## 构建镜像
+`image-inspect` 会展示 entrypoint、cmd、env、workdir、user、exposed ports、volumes、labels、stop signal、healthcheck 和 ONBUILD metadata。
+
+## Dockerfile 构建子集
 
 ```bash
-# 从 Dockerfile 构建
-a3s-box build -t myapp:latest .
-
-# 多阶段构建
-a3s-box build -t myapp:latest --target production .
-
-# 多平台构建
-a3s-box build -t myapp:latest --platform linux/amd64,linux/arm64 .
+a3s-box build -t app:dev .
+a3s-box build -t app:dev -f Containerfile .
+a3s-box build -t app:dev --build-arg VERSION=1.2.3 --platform linux/amd64 .
 ```
 
-## 支持的 Dockerfile 指令
+支持的指令：`FROM`（含 `scratch`）、shell-form `RUN`、shell-form `COPY`/`ADD`、`WORKDIR`、`ENV`、`ENTRYPOINT`、`CMD`、`EXPOSE`、`LABEL`、`USER`、`ARG`、`SHELL`、`STOPSIGNAL`、`HEALTHCHECK`、`ONBUILD` metadata triggers、`VOLUME`。
 
-全部 17 条指令均受支持：`FROM`、`RUN`、`CMD`、`LABEL`、`EXPOSE`、`ENV`、`ADD`、`COPY`、`ENTRYPOINT`、`VOLUME`、`USER`、`WORKDIR`、`ARG`、`ONBUILD`、`STOPSIGNAL`、`HEALTHCHECK`、`SHELL`。
+边界：
 
-## 镜像签名验证
+- `RUN` 使用 Linux `chroot`，要求可 root 的 Linux。
+- macOS 默认拒绝 `RUN`；`A3S_BOX_UNSAFE_HOST_RUN=1` 仅用于 unsafe 本地实验。
+- `COPY --chown`、`ADD --chown` 等不支持 flag 会明确失败。
+- `--platform` 只接受一个目标平台，不生成 multi-platform index。
+
+## Push
 
 ```bash
-# cosign 密钥验证
-a3s-box pull --verify-key cosign.pub ghcr.io/my-org/my-image:v1
-
-# 无密钥（OIDC）验证
-a3s-box pull --verify-issuer https://accounts.google.com \
-  --verify-identity user@example.com my-image:latest
+a3s-box tag app:dev registry.example/org/app:dev
+a3s-box push registry.example/org/app:dev
 ```
 
-详细文档请参阅[英文版](/docs/en/box/images)。
+Push 需要可访问的 OCI registry。配置 `--sign-key` 时可走 push 后签名路径。

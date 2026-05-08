@@ -1,70 +1,73 @@
 ---
 title: 配置
-description: A3S Box 配置文件和环境变量
+description: A3S Box 状态目录、环境变量、运行参数和限制
 ---
-
-import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 配置
 
-## 默认路径
+A3S Box 当前主要由 CLI 参数驱动。CLI 路径还没有产品化的 HCL 配置文件合约。稳定配置来源是命令行参数、`A3S_HOME` 下的持久化状态，以及少量环境变量。
 
-<TypeTable
-  type={{
-    "~/.a3s/": {
-      description: "基础目录（可通过 $A3S_BOX_HOME 覆盖）",
-    },
-    "~/.a3s/boxes.json": {
-      description: "VM 状态文件",
-    },
-    "~/.a3s/images/": {
-      description: "镜像存储",
-    },
-    "~/.a3s/volumes/": {
-      description: "卷存储",
-    },
-  }}
-/>
+## 状态目录
+
+| 路径 | 作用 |
+| --- | --- |
+| `~/.a3s/boxes.json` | box 状态、名称、镜像、端口、网络、健康状态、退出码。 |
+| `~/.a3s/images/` | 本地 OCI 镜像缓存。 |
+| `~/.a3s/volumes/` | 命名卷数据。 |
+| `~/.a3s/networks.json` | 自定义网络和 endpoint。 |
+| `~/.a3s/audit.jsonl` | 持久化审计事件。 |
+| `~/.a3s/boxes/<id>/` | 单个 box 的 rootfs、socket、日志和运行时文件。 |
+
+隔离环境时设置 `A3S_HOME`：
+
+```bash
+A3S_HOME=/tmp/a3s-box-dev a3s-box ps -a
+```
 
 ## 环境变量
 
-<TypeTable
-  type={{
-    "A3S_BOX_HOME": {
-      description: "覆盖基础目录",
-    },
-    "A3S_BOX_LOG": {
-      description: "日志级别（debug/info/warn/error）",
-    },
-    "A3S_BOX_WARM_POOL_SIZE": {
-      description: "热池预启动 VM 数量",
-    },
-    "A3S_BOX_WARM_POOL_TTL": {
-      description: "热池空闲 VM 超时时间（秒）",
-    },
-  }}
-/>
+| 变量 | 说明 |
+| --- | --- |
+| `A3S_HOME` | 数据目录，默认 `~/.a3s`。 |
+| `A3S_IMAGE_CACHE_SIZE` | 镜像缓存大小，默认 `10g`。 |
+| `A3S_TEE_SIMULATE` | 启用模拟 TEE 行为。 |
+| `A3S_REGISTRY_PROTOCOL` | registry 协议覆盖，主要用于本地/insecure registry 测试。 |
+| `A3S_BOX_CRI_AGENT_IMAGE` | 默认 CRI sandbox agent/rootfs 镜像。 |
+| `A3S_BOX_UNSAFE_HOST_RUN` | 允许 macOS Dockerfile `RUN` 走 unsafe host 实验路径。 |
+| `RUST_LOG` | Rust tracing 日志级别。 |
 
-## 配置文件
+## 资源
 
-A3S Box 支持 HCL 配置文件（`~/.a3s/box.hcl`）：
-
-```hcl
-warm_pool {
-  size     = 2
-  idle_ttl = 300
-}
-
-logging {
-  driver = "json-file"
-  max_size   = "100m"
-  max_files  = 5
-  compress   = true
-}
-
-network {
-  default_mode = "tsi"
-}
+```bash
+a3s-box run --cpus 4 --memory 2g alpine:latest -- sleep 3600
 ```
 
-详细配置选项请参阅[英文版](/docs/en/box/configuration)。
+vCPU 和内存在 MicroVM 启动前配置。运行中的 VM 不能热修改 vCPU 或内存大小，因为 libkrun 没有对应 API。
+
+支持的限制选项包括：
+
+- `--pids-limit`；
+- `--cpuset-cpus`；
+- `--ulimit name=soft:hard`；
+- `--cpu-shares`、`--cpu-quota`、`--cpu-period`；
+- `--memory-reservation`、`--memory-swap`。
+
+Linux cgroup v2 控制是 best-effort，取决于宿主机权限和 cgroup 委派。
+
+## 进程配置
+
+A3S Box 按顺序合并：镜像 metadata、env file、inline `--env`、CLI entrypoint/CMD/workdir/user/health/stop-signal 覆盖。
+
+不支持的 named user、相对 workdir、非法 hostname、非法 `--add-host` 和不支持的安全选项都会在启动或写入状态前失败。
+
+## 日志、健康检查和重启
+
+```bash
+a3s-box run -d --name api \
+  --log-driver json-file \
+  --health-cmd 'curl -f http://localhost/health || exit 1' \
+  --restart on-failure:3 \
+  myapi:latest
+```
+
+`json-file` 是默认日志驱动；`none` 禁用日志捕获。`monitor` 命令负责后台 restart policy 恢复。

@@ -1,269 +1,155 @@
 ---
 title: Quick Start
-description: Run your first MicroVM with A3S Box in minutes
+description: Run and manage your first A3S Box MicroVM
 ---
 
 # Quick Start
 
-## Install
+This guide uses only the core CLI path. Run commands from a host where `a3s-box info` reports a usable VM backend.
+
+## 1. Install
 
 ```bash
-# macOS (Apple Silicon)
+# macOS / Linux through the Homebrew tap
 brew install a3s-lab/tap/a3s-box
 
-# Linux / macOS (direct download)
-curl -fsSL https://github.com/A3S-Lab/Box/releases/latest/download/install.sh | sh
+# Or build from source
+git clone https://github.com/A3S-Lab/Box.git
+cd Box/src
+cargo build --release
 ```
 
-Verify:
+Check the host:
 
 ```bash
 a3s-box version
+a3s-box info
 ```
 
----
+`info` is intentionally important: it reports the host platform, VM backend, control channel, bridge backend, published-port support, and TEE availability.
 
-## Run a MicroVM
+## 2. Run a command
 
 ```bash
-# Interactive shell
-a3s-box run -it alpine:latest -- /bin/sh
-
-# Detached background box
-a3s-box run -d --name web nginx:alpine
-
-# With resource limits
-a3s-box run -d --name worker \
-  --cpus 4 --memory 2g \
-  --timeout 3600 \
-  my-image:latest
+a3s-box run --name hello alpine:latest -- echo "hello from a3s-box"
 ```
 
----
+This pulls the image if needed, prepares a rootfs, boots a MicroVM, runs the command, captures output, and stops the box.
 
-## Lifecycle
+## 3. Start an interactive shell
 
 ```bash
-# List running boxes
+a3s-box run -it --name dev alpine:latest -- /bin/sh
+```
+
+For a running box:
+
+```bash
+a3s-box exec -it dev -- /bin/sh
+```
+
+## 4. Run a detached service
+
+```bash
+a3s-box run -d --name web --cpus 2 --memory 1g -p 8080:80 nginx:alpine
+
 a3s-box ps
+a3s-box port web
+a3s-box logs -f web
+```
 
-# List all (including stopped)
-a3s-box ps -a
+Published ports support TCP mappings in `host_port:guest_port[/tcp]` form. UDP, host-IP binds, shorthand, and ranges are rejected.
 
-# Stop / start / restart
+## 5. Execute and inspect
+
+```bash
+a3s-box exec web -- nginx -v
+a3s-box stats --no-stream web
+a3s-box inspect web
+a3s-box top web
+```
+
+Use `--user`, `--workdir`, and `--env` on `exec` when the image supports them:
+
+```bash
+a3s-box exec -u root -w /tmp -e DEBUG=1 web -- sh -c 'id && pwd && env | grep DEBUG'
+```
+
+## 6. Stop and remove
+
+```bash
 a3s-box stop web
-a3s-box start web
-a3s-box restart web
-
-# Force remove
-a3s-box rm -f web
+a3s-box wait web
+a3s-box rm web
 ```
 
----
+Use `rm -f` only when you intentionally want to force cleanup.
 
-## Execute Commands
+## 7. Use a named volume
 
 ```bash
-# Run a command
-a3s-box exec my-box -- ls /app
-
-# Interactive shell
-a3s-box exec -it my-box -- /bin/bash
-
-# With env var and working directory
-a3s-box exec -e DEBUG=1 -w /app my-box -- ./run.sh
+a3s-box volume create data
+a3s-box run -d --name store -v data:/data alpine:latest -- sleep 3600
+a3s-box cp ./local.txt store:/data/local.txt
+a3s-box exec store -- ls -la /data
+a3s-box rm -f store
+a3s-box volume rm data
 ```
 
----
-
-## Logs
+## 8. Use a bridge network
 
 ```bash
-a3s-box logs my-box
-a3s-box logs -f my-box           # follow
-a3s-box logs --tail 100 my-box   # last 100 lines
-a3s-box logs -t my-box           # with timestamps
+a3s-box network create backend --subnet 10.89.0.0/24
+a3s-box run -d --name api --network backend -p 8080:80 alpine:latest -- sleep 3600
+a3s-box network inspect backend
+a3s-box network rm --force backend
 ```
 
----
+Platform boundary:
 
-## Build Images
+- Linux bridge uses `passt` and reports outbound NAT support.
+- macOS bridge uses `netproxy` for peer networking and published TCP ports; bridge outbound NAT is unsupported.
+- Use default TSI mode when a macOS workload needs outbound internet access.
 
-```bash
-# Build from current directory
-a3s-box build -t my-app:v1 .
-
-# With build args
-a3s-box build -t my-app:v1 --build-arg VERSION=1.2.3 .
-
-# Multi-platform
-a3s-box build -t my-app:v1 --platform linux/amd64,linux/arm64 .
-```
-
-### Dockerfile features
-
-`ADD` supports HTTP/HTTPS URL download and tar auto-extraction:
+## 9. Build a simple image
 
 ```dockerfile
-FROM alpine:latest
-ADD https://example.com/config.tar.gz /etc/myapp/
-COPY . /app
-RUN echo "built"
+# Dockerfile
+FROM scratch
+COPY hello.txt /hello.txt
+CMD ["cat", "/hello.txt"]
 ```
-
-`ONBUILD` triggers are inherited and fired when a child image uses this as a base:
-
-```dockerfile
-FROM alpine:latest
-ONBUILD COPY . /app
-ONBUILD RUN cd /app && make
-```
-
----
-
-## Pull with Signature Verification
 
 ```bash
-# Verify with cosign public key
-a3s-box pull --verify-key cosign.pub ghcr.io/my-org/my-image:v1
-
-# Keyless (OIDC) verification
-a3s-box pull \
-  --verify-issuer https://accounts.google.com \
-  --verify-identity user@example.com \
-  my-image:latest
+echo hello > hello.txt
+a3s-box build -t hello:local .
+a3s-box run --rm hello:local
 ```
 
----
+For Dockerfile `RUN`, use root-capable Linux. macOS rejects `RUN` by default to avoid silently running build steps on the host.
 
-## Volumes and Files
-
-```bash
-# Bind mount
-a3s-box run -v /host/data:/app/data my-image
-
-# Named volume
-a3s-box volume create my-data
-a3s-box run -v my-data:/app/data my-image
-
-# Copy files
-a3s-box cp my-box:/app/output.txt ./output.txt
-a3s-box cp ./config.json my-box:/app/config.json
-```
-
----
-
-## Networking
-
-```bash
-# Default TSI — port mapping
-a3s-box run -d --name web -p 8080:80 nginx:alpine
-
-# Bridge network — inter-container communication
-a3s-box network create my-net
-a3s-box run -d --name db --network my-net postgres:15
-a3s-box run -d --name app --network my-net my-app:latest
-# app can reach db at "db:5432"
-
-# Air-gapped
-a3s-box run --network none alpine:latest
-```
-
----
-
-## Snapshots
-
-```bash
-# Save box state
-a3s-box snapshot create my-box checkpoint-1
-
-# Restore
-a3s-box snapshot restore my-box checkpoint-1
-
-# List snapshots
-a3s-box snapshot ls my-box
-```
-
----
-
-## Compose
+## 10. Try Compose subset
 
 ```yaml
-# compose.yaml
 services:
-  db:
-    image: postgres:15
+  worker:
+    image: alpine:latest
+    command: ["sleep", "3600"]
     environment:
-      POSTGRES_PASSWORD: secret
-  app:
-    image: my-app:latest
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "8080:8080"
+      A3S_EXAMPLE: "1"
 ```
 
 ```bash
-a3s-box compose up -d
-a3s-box compose ps
-a3s-box compose down
+a3s-box compose -f compose.yaml config
+a3s-box compose -f compose.yaml up -d
+a3s-box compose -f compose.yaml ps
+a3s-box compose -f compose.yaml down
 ```
 
----
-
-## TEE (Confidential Computing)
+## Clean Up
 
 ```bash
-# Run with AMD SEV-SNP
-a3s-box run -d --name secure --tee alpine:latest -- sleep 3600
-
-# Simulation mode (no AMD hardware required)
-a3s-box run -d --name dev --tee --tee-simulate alpine:latest -- sleep 3600
-
-# Attest the VM
-a3s-box attest secure --ratls
-
-# Inject a secret over RA-TLS
-a3s-box inject-secret secure --secret "API_KEY=my-secret" --set-env
-
-# Seal data (only decryptable in same TEE context)
-a3s-box seal secure --data "sensitive" --context myapp
-a3s-box unseal secure --context myapp
-```
-
----
-
-## Inspection
-
-```bash
-# Detailed box info (JSON)
-a3s-box inspect my-box
-
-# Live resource usage
-a3s-box stats
-
-# Processes inside a box
-a3s-box top my-box
-
-# Filesystem changes
-a3s-box diff my-box
-
-# Stream events
-a3s-box events --json
-```
-
----
-
-## Cleanup
-
-```bash
-# Remove stopped boxes and unused images
-a3s-box system-prune -f
-
-# Unused images only
-a3s-box image-prune
-
-# Unused volumes
-a3s-box volume prune
+a3s-box system-prune --force
+a3s-box image-prune --force
+a3s-box volume prune --force
 ```

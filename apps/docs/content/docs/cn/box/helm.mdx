@@ -1,22 +1,46 @@
 ---
 title: Helm 部署
-description: 使用 Helm Chart 在 Kubernetes 上部署 A3S Box
+description: A3S Box 实验性 CRI server 的 Helm 部署路径
 ---
 
 # Helm 部署
 
+Helm chart 用于部署实验性的 A3S Box CRI 路径，适合 Kubernetes 评估。它不是本地 CLI 运行时的主路径；没有经过目标宿主机验证前，不应视为生产就绪。
+
+## 前置条件
+
+- Kubernetes 节点能以所需权限运行 A3S Box CRI pod。
+- Linux 节点具备虚拟化能力，通常需要可访问 KVM。
+- 已准备 CRI server 镜像或本地构建产物。
+- RuntimeClass 与 kubelet/container-runtime wiring 与集群配置一致。
+
+## 从仓库安装
+
 ```bash
-helm repo add a3s-lab https://charts.a3s.dev
-helm repo update
-helm install a3s-box a3s-lab/a3s-box
+helm install a3s-box deploy/helm/a3s-box/ \
+  -n a3s-box-system --create-namespace
 ```
 
-## 自定义配置
+这假设你在 Box 仓库内工作。values 取决于你的镜像发布方式。
+
+## Chart 表达的内容
+
+- CRI server DaemonSet。
+- RuntimeClass handler 名称。
+- server pod 需要的 RBAC 和配置。
+- VM/runtime 操作所需的宿主机挂载。
+
+## 验证
+
+先用 `crictl` 验证，再运行小型 RuntimeClass Pod。测试镜像保持简单，例如 Alpine + `sleep 3600`。
 
 ```bash
-helm install a3s-box a3s-lab/a3s-box \
-  --set warmPool.size=4 \
-  --set resources.limits.memory=8Gi
+crictl --runtime-endpoint unix:///run/a3s-box-cri.sock info
 ```
 
-详细文档请参阅[英文版](/docs/en/box/helm)。
+## 边界
+
+- 这是实验性 CRI server 的评估路径。
+- 聚焦 Linux；不支持 Windows CRI。
+- 不声明完整 Kubernetes conformance。
+- 节点安全、镜像分发、CNI 集成和运维加固仍需要部署方完成。

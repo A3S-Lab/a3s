@@ -1,256 +1,59 @@
 ---
 title: TEE Security
-description: AMD SEV-SNP attestation, sealed storage, RA-TLS, and secret injection
+description: SEV-SNP attestation, RA-TLS, sealing, secret injection, and simulation boundaries
 ---
-
-import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # TEE Security
 
-A3S Box supports AMD SEV-SNP (Secure Encrypted Virtualization - Secure Nested Paging) for confidential computing. This provides hardware-based memory encryption, remote attestation, sealed storage, and secure secret injection.
+A3S Box has a SEV-SNP-oriented confidential-computing path. The feature set includes attestation report handling, RA-TLS, sealed storage, secret injection, and a simulation mode for development.
 
-## TEE Architecture
+The security rule is simple: **simulation proves the plumbing; only hardware-backed attestation can support a confidentiality claim**.
 
-```
-┌────────────────────────────────────────────┐
-│          Host (a3s-box CLI)                │
-│  attest, seal, unseal, inject-secret       │
-│  Verifies attestation reports              │
-└──────────────────┬─────────────────────────┘
-                   │ RA-TLS (vsock:4091)
-┌──────────────────▼─────────────────────────┐
-│          Guest VM (SEV-SNP encrypted)      │
-│  Attestation Server (port 4091)            │
-│  Generates SNP reports                     │
-│  Signs with ECDSA-P384                     │
-└────────────────────────────────────────────┘
-                   │
-┌──────────────────▼─────────────────────────┐
-│          AMD Hardware                       │
-│  SEV-SNP firmware · PSP (Platform          │
-│  Security Processor) · Memory encryption   │
-└────────────────────────────────────────────┘
-```
+## Capability Matrix
 
-## Configuration
+| Feature | Current state |
+| --- | --- |
+| SEV-SNP report parsing | Implemented. |
+| ECDSA-P384 report verification | Implemented. |
+| Certificate-chain handling | Implemented for the SEV-SNP flow. |
+| RA-TLS | Implemented with SNP report data in certificate extensions. |
+| Sealing | AES-256-GCM with HKDF-SHA256 and policy context. |
+| Secret injection | RA-TLS-based delivery to `/run/secrets/` and optional env export. |
+| Simulation | Implemented through `--tee-simulate` or `A3S_TEE_SIMULATE`. |
+| TDX | Not productized. |
 
-```rust
-pub enum TeeConfig {
-    None,
-    SevSnp {
-        workload_id: String,
-        generation: SevSnpGeneration,
-        simulate: bool,
-    },
-}
-
-pub enum SevSnpGeneration {
-    Milan,  // AMD EPYC 3rd gen
-    Genoa,  // AMD EPYC 4th gen
-}
-```
-
-### Enable TEE
+## Hardware Flow
 
 ```bash
-# Run with SEV-SNP on Milan hardware
-a3s-box run --tee --tee-generation milan alpine:latest
-
-# Run with SEV-SNP on Genoa hardware
-a3s-box run --tee --tee-generation genoa alpine:latest
-
-# Simulation mode (development only)
-a3s-box run --tee --tee-simulate alpine:latest
+a3s-box run -d --name secure --tee myimage:latest -- sleep 3600
+a3s-box attest secure --ratls
+a3s-box inject-secret secure --secret DB_PASSWORD=secret --set-env
+a3s-box seal secure --data "encryption-key" --context app/key --policy measurement-and-chip
 ```
 
-## Remote Attestation
+Requirements are host-specific: SEV-SNP-capable AMD EPYC hardware or an equivalent cloud VM, kernel/device support such as `/dev/sev` or `/dev/sev-guest`, and a libkrun build that can use the TEE path.
 
-Verify that a VM is running inside genuine AMD SEV-SNP hardware with a specific software measurement:
+## Simulation Flow
 
 ```bash
-# Request attestation report
-a3s-box attest my-box
-
-# Attestation with RA-TLS
-a3s-box attest my-box --ratls
-
-# Allow simulated reports (dev only)
-a3s-box attest my-box --ratls --allow-simulated
+a3s-box run -d --name dev --tee --tee-simulate alpine:latest -- sleep 3600
+a3s-box attest dev --ratls --allow-simulated
+a3s-box inject-secret dev --secret API_KEY=secret --set-env --allow-simulated
 ```
 
-### Attestation Report
+Simulation is useful for application development, CI, and testing secret-delivery code. It must not be used as evidence that a workload ran on confidential hardware.
 
-```rust
-pub struct AttestationReport {
-    pub report_data: [u8; 64],
-    pub measurement: String,          // SHA256 of guest image
-    pub policy: u64,                  // Guest policy flags
-    pub signature: Vec<u8>,           // ECDSA-P384 signature
-    pub cert_chain: CertificateChain, // VCEK, ASK, ARK
-}
-```
+## Sealing Policies
 
-### Verification Chain
+| Policy | Meaning |
+| --- | --- |
+| `measurement-and-chip` | Bind to workload measurement and chip identity. Strongest but least portable. |
+| `measurement-only` | Bind to workload measurement. More portable across chips with the same measurement. |
+| `chip-only` | Bind to chip identity. Useful for host-bound secrets. |
 
-```
-/dev/sev-guest (Linux kernel device)
-    ↓
-SNP Report (64 bytes report_data, ECDSA-P384 signature)
-    ↓
-AMD KDS Client (fetches VCEK, ASK, ARK certificates)
-    ↓
-Certificate Chain Validation
-    VCEK (chip key) → ASK (AMD signing key) → ARK (AMD root key)
-    ↓
-Report Data Binding (optionally bound to TLS public key)
-```
+## Operational Guidance
 
-## RA-TLS (Remote Attestation TLS)
-
-RA-TLS embeds the SNP attestation report inside an X.509 certificate during the TLS handshake:
-
-1. Guest generates a TLS key pair
-2. Guest creates SNP report with `report_data = SHA256(TLS public key)`
-3. Guest embeds the SNP report in the X.509 certificate extension
-4. Host connects via TLS and verifies both the certificate and the SNP report
-
-This binds the TLS channel to the hardware attestation in a single verification step. RA-TLS is used for secret injection.
-
-## Secret Injection
-
-Inject secrets into a running TEE-protected VM over RA-TLS:
-
-```bash
-# Inject a secret as a file
-a3s-box inject-secret my-box --secret "API_KEY=my-secret-value"
-
-# Inject and set as environment variable
-a3s-box inject-secret my-box --secret "DB_PASSWORD=s3cret" --set-env
-```
-
-Process:
-1. Host connects to guest attestation server (vsock:4091) via RA-TLS
-2. Host verifies the SNP attestation report embedded in the TLS certificate
-3. Host sends secret encrypted within the RA-TLS channel
-4. Guest writes secret to `/run/secrets/API_KEY` (mode 0400, read-only by root)
-5. If `--set-env` is used, the secret is also set as an environment variable
-
-## Sealed Storage
-
-Encrypt data that can only be decrypted within the same TEE context:
-
-```bash
-# Seal data
-a3s-box seal my-box --data "sensitive data" --context myapp
-
-# Seal with specific policy
-a3s-box seal my-box --data "secret" --context myapp --policy measurement-and-chip
-
-# Unseal data
-a3s-box unseal my-box --context myapp
-```
-
-### Sealing Policies
-
-```rust
-pub enum SealingPolicy {
-    MeasurementAndChip,   // Tied to image + specific hardware
-    MeasurementOnly,      // Portable across hardware (same image)
-    ChipOnly,             // Portable across images (same hardware)
-}
-```
-
-<TypeTable
-  type={{
-    "MeasurementAndChip": {
-      description: "Portable Across Hardware: No · Portable Across Images: No",
-    },
-    "MeasurementOnly": {
-      description: "Portable Across Hardware: Yes · Portable Across Images: No",
-    },
-    "ChipOnly": {
-      description: "Portable Across Hardware: No · Portable Across Images: Yes",
-    },
-  }}
-/>
-
-### Sealing Implementation
-
-```rust
-pub struct SealedData {
-    pub ciphertext: Vec<u8>,    // AES-256-GCM encrypted
-    pub nonce: Vec<u8>,         // HKDF-SHA256 derived
-    pub tag: Vec<u8>,           // GCM authentication tag
-    pub policy: SealingPolicy,
-}
-```
-
-Key derivation: `HKDF-SHA256(measurement || chip_id, context_string)` produces a unique 256-bit key. The `context` parameter acts as a domain separator, allowing multiple independent sealed data stores within the same VM.
-
-## Image Signing
-
-A3S Box verifies cosign signatures during `pull` to ensure images haven't been tampered with before they run in a TEE.
-
-### Sign an image
-
-```bash
-# Key-based signing
-cosign sign --key cosign.key ghcr.io/my-org/my-image:v1
-
-# Keyless signing (OIDC — GitHub Actions, Google, etc.)
-cosign sign ghcr.io/my-org/my-image:v1
-```
-
-### Pull with verification
-
-```bash
-# Verify with public key
-a3s-box pull --verify-key cosign.pub ghcr.io/my-org/my-image:v1
-
-# Keyless verification
-a3s-box pull \
-  --verify-issuer https://token.actions.githubusercontent.com \
-  --verify-identity https://github.com/my-org/my-repo/.github/workflows/release.yml@refs/heads/main \
-  ghcr.io/my-org/my-image:v1
-```
-
-Verification uses the Rekor transparency log for keyless signatures. Pull fails with an error if verification does not pass.
-
-## Re-attestation
-
-Request a fresh attestation report from a running box at any time — useful for periodic compliance checks or after a workload update:
-
-```bash
-# Re-attest with a fresh nonce
-a3s-box attest my-box --ratls --nonce $(openssl rand -hex 32)
-
-# Verify measurement matches expected value
-a3s-box attest my-box --policy policy.json
-```
-
-The attestation server inside the guest generates a new SNP report on every request, bound to the provided nonce. This prevents replay attacks.
-
-## Rollback Protection
-
-Sealed data includes a monotonic counter stored in the SNP report. Attempting to unseal data with an older counter value fails, preventing rollback to a previous VM state.
-
-```bash
-# Seal with rollback protection (default)
-a3s-box seal my-box --data "secret" --context myapp --policy measurement-and-chip
-
-# The sealed blob cannot be decrypted after a VM restart with a lower counter
-```
-
-For development without AMD hardware:
-
-```bash
-export A3S_TEE_SIMULATE=1
-a3s-box run --tee --tee-simulate alpine:latest
-a3s-box attest my-box --ratls --allow-simulated
-```
-
-Simulation mode:
-- Generates structurally valid but cryptographically insecure SNP reports
-- Uses deterministic keys instead of hardware-derived keys
-- Allows testing the full TEE workflow on non-AMD hardware (including Apple Silicon)
-- **Not production-safe**: no real hardware attestation guarantee
+- Require `--allow-simulated` only in development or test environments.
+- Treat attestation evidence as part of deployment policy, not as a log message.
+- Rotate secrets when workload measurement, base image, or host trust root changes.
+- Keep TEE claims out of production documentation unless hardware validation has run on the target host class.

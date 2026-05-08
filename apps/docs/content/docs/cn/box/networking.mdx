@@ -1,55 +1,76 @@
 ---
 title: 网络
-description: A3S Box 网络模式配置
+description: TSI、bridge、TCP 端口发布、DNS 和平台边界
 ---
-
-import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 网络
 
-## 网络模式
+A3S Box 有三种网络模式：默认 TSI、自定义 bridge、none。选择能满足需求的最小模式。
 
-<TypeTable
-  type={{
-    "tsi（默认）": {
-      description: "透明子网隔离，零配置，支持端口映射",
-    },
-    "bridge": {
-      description: "passt 桥接，支持容器间 DNS 解析",
-    },
-    "none": {
-      description: "无网络（气隙隔离）",
-    },
-  }}
-/>
+## 模式矩阵
+
+| 模式 | 使用场景 | 工作方式 | 边界 |
+| --- | --- | --- | --- |
+| TSI | 需要简单外网访问或 host TCP 端口发布。 | guest socket 通过宿主机代理。 | 没有自定义 peer 网络。 |
+| Bridge | 多个 box 需要固定私网 IP 和 peer 发现。 | 通过平台后端为 guest 接入真实网卡。 | 不同 OS 行为不同。 |
+| None | 工作负载需要离线。 | 不配置网络。 | 没有入站或出站连接。 |
 
 ```bash
-# 默认 TSI 模式，端口映射
+# 默认 TSI
+a3s-box run -d --name web -p 8080:80 nginx:alpine
+
+# Bridge
+a3s-box network create backend --subnet 10.89.0.0/24
+a3s-box run -d --name api --network backend -p 8080:80 myapi:latest
+
+# 无网络
+a3s-box run --network none alpine:latest -- true
+```
+
+## 端口发布
+
+支持：
+
+```bash
 a3s-box run -d -p 8080:80 nginx:alpine
-
-# Bridge 模式，容器间通信
-a3s-box network create my-net
-a3s-box run -d --name db --network my-net postgres:15
-a3s-box run -d --name app --network my-net my-app:latest
-
-# 气隙隔离
-a3s-box run --network none alpine:latest
+a3s-box run -d -p 8443:443/tcp nginx:alpine
+a3s-box port web
 ```
 
-## 网络管理
+不支持并会验证失败：
+
+- UDP：`8080:80/udp`；
+- host-IP 绑定：`127.0.0.1:8080:80`；
+- 简写：`80`；
+- 范围：`8000-8010:80`。
+
+## Bridge 后端
+
+| 宿主机 | 后端 | peer 网络 | TCP 端口发布 | outbound NAT |
+| --- | --- | --- | --- | --- |
+| Linux | `passt` | 支持 | 支持 | 支持 |
+| macOS | 内置 `netproxy` | 支持 | 支持 | bridge 模式不支持 |
+| Windows | 非文档化产品路径 | 未文档化 | 未文档化 | 未文档化 |
+
+用 `a3s-box info` 查看当前主机报告的能力。macOS 工作负载需要外网时，使用默认 TSI。
+
+## 网络命令
 
 ```bash
-# 创建网络
-a3s-box network create my-net
-
-# 列出网络
+a3s-box network create backend --subnet 10.89.0.0/24
 a3s-box network ls
-
-# 检查网络
-a3s-box network inspect my-net
-
-# 删除网络
-a3s-box network rm my-net
+a3s-box network inspect backend
+a3s-box network connect backend stopped-box
+a3s-box network disconnect backend stopped-box
+a3s-box network rm --force backend
 ```
 
-详细文档请参阅[英文版](/docs/en/box/networking)。
+`network connect` 和 `network disconnect` 只配置未运行 box 的下一次启动。实时网络热插拔尚未实现。
+
+## DNS 与 hosts
+
+bridge 网络会为自身和已知 peer 写入 `/etc/hosts`。`--hostname` 和 `--add-host HOST:IP` 在启动前验证，并复用同一 hosts 生成路径。
+
+## 网络策略
+
+数据模型包含 `none`、`strict`、`custom`。当前只有 `none` 可 attach。`strict` 和 `custom` 会被拒绝，因为包过滤尚未实现。

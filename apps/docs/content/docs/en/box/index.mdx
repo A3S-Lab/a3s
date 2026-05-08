@@ -1,180 +1,70 @@
 ---
 title: A3S Box
-description: Lightweight MicroVM runtime with Docker-like CLI, Kubernetes CRI, and hardware-based TEE security
+description: Docker-like MicroVM runtime for Linux OCI workloads
 ---
-
-import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # A3S Box
 
-A3S Box is a **MicroVM runtime** — run any OCI image in a hardware-isolated virtual machine. Built on [libkrun](https://github.com/containers/libkrun), it provides ~200ms cold start, a Docker-compatible CLI, Kubernetes CRI integration, and optional AMD SEV-SNP confidential computing.
+A3S Box runs Linux OCI workloads inside libkrun MicroVMs. It gives you a Docker-like CLI and local image store while keeping the workload behind a VM boundary instead of only a namespace boundary.
 
-## What is a MicroVM?
+The most important rule: **read A3S Box as a runtime with explicit boundaries, not as a drop-in Docker or Kubernetes replacement**.
 
-A MicroVM is a lightweight virtual machine optimized for short-lived workloads. Unlike containers (which share the host kernel), each MicroVM runs its own Linux kernel — providing stronger isolation while maintaining fast startup times.
+## Status at a Glance
 
-A3S Box sits between containers and traditional VMs:
-- **Faster than VMs**: ~200ms cold start vs seconds for full VMs
-- **Stronger than containers**: Hardware isolation, separate kernel
-- **OCI compatible**: Run any Docker/OCI image
+| Area | Current state |
+| --- | --- |
+| CLI runtime | Primary product surface. macOS Apple Silicon/HVF and Linux/KVM-style hosts are the intended targets. |
+| Images | Pull, load, save, tag, inspect, history, remove, local cache resolution, push, and cosign verification/signing paths exist. Registry-dependent paths need registry access to validate. |
+| Dockerfile build | Truthful subset. `RUN` uses Linux `chroot` and requires root-capable Linux. macOS rejects `RUN` by default unless unsafe host execution is explicitly enabled. |
+| Networking | TSI default networking, TCP published ports, user-defined bridge networks, and peer `/etc/hosts` discovery are implemented with platform-specific NAT limits. |
+| Compose | Useful local subset; not full Docker Compose parity. |
+| TEE | SEV-SNP-oriented attestation, RA-TLS, sealing, secret injection, and simulation mode. Hardware trust depends on capable hosts. TDX is not productized. |
+| Kubernetes CRI | Experimental. Useful for evaluation and test harnesses, not the current core completion target. Windows CRI is unsupported. |
+| Windows | Native runtime code paths exist, but documentation and smoke coverage focus on macOS/Linux. |
 
-## Architecture
+## Mental Model
 
-```
-┌──────────────────────────────────────────────────────┐
-│                Host (a3s-box CLI)                     │
-│  ┌────────────────────────────────────────────────┐  │
-│  │              CLI (52 commands)                  │  │
-│  │  run, create, exec, logs, ps, network...       │  │
-│  └───────────────────┬────────────────────────────┘  │
-│                      │                                │
-│  ┌───────────────────▼────────────────────────────┐  │
-│  │         Runtime Engine                          │  │
-│  │  VmManager · OCI · WarmPool · TEE · Network    │  │
-│  └───────────────────┬────────────────────────────┘  │
-│                      │ vsock                          │
-└──────────────────────┼───────────────────────────────┘
-                       │
-┌──────────────────────▼───────────────────────────────┐
-│              Guest VM (aarch64-linux)                  │
-│  ┌────────────────────────────────────────────────┐  │
-│  │         guest-init (PID 1)                      │  │
-│  │  Exec :4089 · PTY :4090 · Attest :4091         │  │
-│  └───────────────────┬────────────────────────────┘  │
-│                      │                                │
-│  ┌───────────────────▼────────────────────────────┐  │
-│  │         User Namespace                           │  │
-│  │  /a3s/workspace/ · /run/secrets/               │  │
-│  └────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────┘
+```text
+Host
+  a3s-box CLI
+    image store, box state, volume store, network store
+    VmManager
+      |
+      | shim process + libkrun
+      v
+MicroVM
+  guest-init (PID 1)
+  exec server, PTY server, attestation server
+  user workload from OCI image
 ```
 
-## Crate Structure
+The host prepares the rootfs and starts a shim. The shim configures libkrun. Inside the VM, guest-init starts control services and launches the workload command.
 
-<TypeTable
-  type={{
-    "a3s-box-core": {
-      description: "Shared types: config, errors, events, network modes, volume/PTY/DNS types",
-    },
-    "a3s-box-runtime": {
-      description: "VM lifecycle, OCI images, warm pool, TEE, networking, gRPC clients",
-    },
-    "a3s-box-cli": {
-      description: "Docker-like CLI with 52 commands, state persistence, output formatting",
-    },
-    "a3s-box-cri": {
-      description: "Kubernetes Container Runtime Interface (CRI) over gRPC",
-    },
-    "a3s-box-shim": {
-      description: "VM subprocess that bridges host and VM via libkrun (HVF/KVM/WHPX)",
-    },
-    "a3s-box-guest-init": {
-      description: "Guest PID 1: mounts filesystems, starts servers, spawns user entrypoint",
-    },
-  }}
-/>
+## What Works Well Today
 
-## VM Lifecycle
+- Running standard Linux OCI images in foreground, detached, and interactive modes.
+- Persisted `create` / `start` flows with command, entrypoint, env, workdir, user, hostname, and hosts configuration.
+- Exec, PTY, attach, logs, wait, stats, inspect, pause/unpause, restart, and cleanup flows.
+- Image lifecycle: pull, load, save, tag, inspect, history, prune, remove, and selected push/signing workflows.
+- Volumes, `cp`, `diff`, `export`, `commit`, and configuration/filesystem snapshots.
+- TCP port publishing and bridge peer discovery on supported hosts.
+- Compose subset for local multi-service development.
 
-```
-Created ──→ Ready ──→ Busy ──→ Compacting ──→ Ready ──→ Stopped
- (create)   (boot)   (exec)   (context gc)    (done)    (kill)
-```
+## Product Boundaries
 
-<TypeTable
-  type={{
-    "Created": {
-      description: "Config captured, no VM started",
-    },
-    "Ready": {
-      description: "VM booted, agent initialized, gRPC healthy",
-    },
-    "Busy": {
-      description: "A session is actively processing",
-    },
-    "Compacting": {
-      description: "Context compression in progress",
-    },
-    "Stopped": {
-      description: "VM terminated, resources freed",
-    },
-  }}
-/>
+- No full Docker daemon API.
+- No full Dockerfile/buildx parity; multi-platform indexes are not implemented.
+- No live network hot-plug or hot-unplug; stop the box first.
+- No enforced strict/custom network policy yet; unsupported policies are rejected.
+- No macOS bridge outbound NAT; use default TSI mode for outbound internet on macOS.
+- No production Windows CRI.
+- No TDX product path yet.
 
-## Vsock Communication
+## Next Pages
 
-Host and guest communicate over vsock (virtio socket):
-
-<TypeTable
-  type={{
-    "4088": {
-      description: "Agent control · gRPC (health, metrics)",
-    },
-    "4089": {
-      description: "Exec server · gRPC (command execution)",
-    },
-    "4090": {
-      description: "PTY server · gRPC (terminal I/O)",
-    },
-    "4091": {
-      description: "Attestation server · gRPC + RA-TLS (TEE operations)",
-    },
-  }}
-/>
-
-## Key Features
-
-### Runtime
-
-- **Sub-200ms cold start** via libkrun (Apple HVF / Linux KVM / Windows WHPX)
-- **OCI image support** — pull, push, build, cache, tag, inspect; manifest digest exposed
-- **Dockerfile build** — all instructions, `ADD <url>`, `ONBUILD` triggers, multi-stage, multi-platform
-- **Image signing** — cosign key-based and keyless verification on pull
-- **Warm pool** — pre-booted VMs for instant allocation
-- **Snapshots** — create, restore, list, remove point-in-time VM state
-
-### Network Modes
-
-- **TSI** (default) — Transparent Socket Impersonation, zero-config
-- **Bridge** — Real `eth0` via virtio-net, inter-container DNS
-- **None** — Air-gapped
-
-### Security
-
-- **Namespace isolation** — mount, PID, IPC, UTS, user, cgroup within VM
-- **AMD SEV-SNP** — hardware memory encryption, remote attestation, RA-TLS
-- **Sealed storage** — AES-256-GCM sealed to TEE measurement and/or chip identity
-- **Secret injection** — secrets delivered over RA-TLS to `/run/secrets/`
-- **Resource controls** — CPU pinning, cgroup v2 quotas, PID limits, ulimits
-- **Capabilities** — `--cap-add/drop` with bounding + ambient set clearing
-- **Seccomp** — BPF filter with architecture validation
-
-### Observability
-
-- **19 Prometheus metrics** — VM boot, exec, image pull, cache, pool
-- **OpenTelemetry tracing** — spans for VM lifecycle, exec, destroy
-- **Audit log** — persistent JSON-lines with query filters
-
-### Kubernetes
-
-- **CRI v1** — RuntimeService + ImageService for kubelet
-- **Helm chart** — DaemonSet + RuntimeClass deployment
-- **Streaming** — exec, attach, port-forward over CRI
-
-## Platform Support
-
-| Platform | Backend | Status |
-|----------|---------|--------|
-| macOS ARM64 | Apple HVF | Production |
-| Linux x86_64 | KVM | Production |
-| Linux ARM64 | KVM | Production |
-| Windows x86_64 | WHPX | Production |
-
-## Next Steps
-
-- [Quick Start](/docs/en/box/quick-start) — Run your first MicroVM
-- [CLI Reference](/docs/en/box/cli) — All 52 commands
-- [Configuration](/docs/en/box/configuration) — BoxConfig, resources, caching
-- [Networking](/docs/en/box/networking) — TSI, bridge, DNS
-- [TEE](/docs/en/box/tee) — AMD SEV-SNP, attestation, sealed storage
-- [Kubernetes CRI](/docs/en/box/cri) — RuntimeClass deployment
+- [Quick Start](/docs/box/quick-start) starts a VM and shows the core loop.
+- [Images](/docs/box/images) explains pull, build, cache, save/load, and signing boundaries.
+- [Networking](/docs/box/networking) explains TSI, bridge, ports, and NAT limits.
+- [TEE Security](/docs/box/tee) separates simulation from hardware trust.
+- [Kubernetes CRI](/docs/box/cri) documents the experimental CRI surface.
+- [CLI Reference](/docs/box/cli) lists the command families and unsupported options.
