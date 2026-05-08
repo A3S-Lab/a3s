@@ -63,7 +63,7 @@ Your workload
 | Project | Version | Description | Docs |
 | --- | --- | --- | --- |
 | [a3s](crates/cli/) | 0.1.4 | CLI for orchestration, dependencies, k3s, tool proxy, and scaffolding | [README](crates/cli/README.md) |
-| [a3s-box](crates/box/) | 2.0.3 | Docker-like MicroVM runtime for Linux OCI workloads; local CLI is primary, CRI/TEE/Windows paths are platform-gated | [README](crates/box/README.md) |
+| [a3s-box](crates/box/) | 2.0.4 | Docker-like MicroVM runtime for Linux OCI workloads; local CLI is primary, CRI/TEE/Windows paths are platform-gated | [README](crates/box/README.md) |
 | [a3s-code](crates/code/) | 2.1.0 | Harness-driven coding-agent runtime with ACL config, SDKs, planning, run replay, PTC, delegation, and memory | [README](crates/code/README.md) |
 | [a3s-gateway](crates/gateway/) | 0.2.3 | Kubernetes ingress/reverse proxy with middleware and privacy routing | [README](crates/gateway/README.md) |
 | [a3s-lane](crates/lane/) | 0.4.0 | Priority queues with lanes, concurrency, retry, and DLQ | [README](crates/lane/README.md) |
