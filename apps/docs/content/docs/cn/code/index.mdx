@@ -1,26 +1,33 @@
 ---
 title: "A3S Code"
-description: "带 v2.1.0 Node SDK 的驾驭式编程智能体运行时"
+description: "带 v2.3.0 Node SDK 的驾驭式编程智能体运行时"
 ---
 
 # A3S Code
 
-A3S Code v2.1.0 是一个驾驭式编程智能体运行时。本节文档聚焦当前 Node SDK 能力面。
+A3S Code v2.3.0 是一个驾驭式编程智能体运行时。本节文档聚焦当前 Node SDK 能力面。
 
-## v2.1.0 新特性
+## v2.3.0 新特性
 
-| 领域 | v2.1.0 新内容 |
+| 领域 | v2.3.0 新内容 |
+| --- | --- |
+| SDK API | 紧凑的对象形式方法：`send()`、`run()`、`stream()`、`task()`、`tasks()`、`git()`、`addMcp()`、`removeMcp()`、`mcps()` 用于长期集成。 |
+| 可观测性 | 通过活跃工具快照和更丰富的 run replay API 实现实时 run/tool 可观测性，覆盖 Rust、Node.js 和 Python SDK。 |
+| Python SDK | Worker agents、HITL 确认策略/控制、session-for-worker、实时 worker 注册和 session close 的完整功能对等。 |
+| AHP 集成 | 单一驾驭/咨询/控制平面，具有更丰富的事件上下文、心跳状态、运行时状态快照和决策映射。 |
+| 架构 | 将大型 agent 和 session API 实现文件拆分为聚焦的运行时模块，提升可维护性。 |
+| 文档 | 在 `manual/SDK_API_DESIGN.md` 下添加持久的 SDK API 设计契约。 |
+| 清理 | 移除过时的 sidecar/copilot/BTW/strategize/BTE 机制及相关 prompts、docs、configs 和 examples。 |
+
+### 继承自 v2.0-2.2
+
+| 领域 | 特性 |
 | --- | --- |
 | 配置 | 只支持 ACL 配置，使用带标签的 `providers` 和 `models` 块；`env(...)` 是标准凭证注入方式。 |
-| Provider 配置 | OpenAI 兼容 provider 支持 `A3S_OPENAI_*`，也支持 MiniMax 别名 `MINIMAX_API_KEY` / `MINIMAX_BASE_URL`。 |
 | 委派 | `task` 和 `parallel_task` 是默认多运行路径，委派子运行返回紧凑摘要而不是完整 transcript。 |
-| SDK 能力面 | Node 暴露显式 planning mode、run replay、工具 schema、program 执行和委派 helper。 |
-| 驾驭控制 | AHP transport objects、hooks、显式权限策略和 security provider 是 session 级集成点。 |
-| 验证 | `AgentResult` 暴露验证状态、计数、结构化摘要和 token 使用；trace 与验证报告通过 session 检查 API 获取。 |
 | 工具表面 | 核心工具保持小而稳定；web、git、batch、skill 管理和 MCP 工具按意图启用。 |
 | PTC | Programmatic Tool Calling 在内嵌 QuickJS 中运行有边界的 JavaScript；Node SDK 通过 `session.program(...)` 对齐核心 `program` 工具。 |
 | 持久化 | file/memory store 支持可恢复 session、显式 `save()`、`autoSave`、memory recall 和 session ID。 |
-| 基础设施 | lane queue 是可选且显式的外部/混合分发基础设施；普通 session 默认不启用队列。 |
 
 当前执行形态是：
 
@@ -43,7 +50,7 @@ npm install @a3s-lab/code
 
 ## 配置
 
-v2.1.0 只使用 ACL。配置文件使用 `.acl` 后缀和带标签的块；旧的 HCL 配置不再支持。
+v2.3.0 只使用 ACL。配置文件使用 `.acl` 后缀和带标签的块；旧的 HCL 配置不再支持。
 
 ```text
 default_model = "anthropic/claude-sonnet-4-20250514"
@@ -89,21 +96,28 @@ console.log(result.text);
 console.log(result.verificationSummaryText);
 ```
 
-## 当前 v2.1.0 能力面
+## 当前 v2.3.0 能力面
 
-- `.acl` 是唯一支持的配置格式。
-- `Agent.create()` 接受 `.acl` 文件或内联 ACL 字符串；不支持 JSON 配置。
-- OpenAI 兼容 provider 使用 `apiKey`/`api_key`、`baseUrl`/`base_url` 和 model blocks。
-- Planning 是明确的 `auto` / `enabled` / `disabled` 契约；`auto` 使用结构化预分析，不再依赖关键词门控。
-- Run tracking 通过 `runs`、`runSnapshot`、`runEvents`、`currentRun` 和按 run 取消能力公开给 SDK。
-- PTC 把搜索、读取、排序、摘要、验证等确定性工具链移到宿主代码里执行，避免反复消耗 LLM 工具回合。
-- 常规委派使用 `task` 和 `parallel_task` 工具。
-- Node 暴露 `delegateTask`、`parallelTask`、`program` 和 `toolDefinitions`。
-- 旧生命周期控制面 API 已移除；应用侧状态使用 streaming events、run replay 与按 run 取消能力。
-- Hook 注册、计数和卸载是公开 session API；把 hook 作为生产关卡前需要验证具体 event path。
-- AHP 2.4 暴露 stdio、HTTP、WebSocket 和 Unix socket transport objects；Unix socket 仅支持 Unix target。
-- 普通 session 默认不启用队列；lane queue 是显式的外部或混合分发基础设施。
-- 权限策略由规则列表和默认决策组成。
-- 结果会暴露 token 统计、验证状态和验证摘要。追踪事件与验证报告通过 `session.traceEvents()`、`session.verificationReports()` 和 run replay API 获取。
+### 核心 API
+
+- **紧凑 SDK 方法**：`send()`、`run()`、`stream()` 用于对话；`task()`、`tasks()` 用于委派；`git()` 用于 git 操作；`addMcp()`、`removeMcp()`、`mcps()` 用于 MCP 管理。
+- **可观测性**：`runs()`、`runSnapshot()`、`runEvents()`、`activeTools()`、`cancelRun()` 用于实时 run/tool 追踪。
+- **配置**：`.acl` 是唯一支持的格式；`Agent.create()` 接受 `.acl` 文件或内联 ACL 字符串。
+- **Planning**：明确的 `auto` / `enabled` / `disabled` 契约；`auto` 使用结构化预分析而非关键词门控。
+- **PTC**：Programmatic Tool Calling 通过 `session.program(...)` 将确定性工具链移到宿主代码执行。
+- **委派**：`task()` 和 `tasks()`（原 `parallel_task`）返回紧凑子摘要而非完整 transcript。
+
+### Python SDK 功能对等
+
+- Worker agents、HITL 确认策略/控制、`session_for_worker()`、实时 worker 注册和 `close()`。
+- 与 Node.js SDK 完全功能对等，适用于生产集成。
+
+### 基础设施
+
+- **AHP 集成**：单一驾驭/咨询/控制平面，具有更丰富的事件上下文、心跳状态和决策映射。
+- **Hooks**：注册、计数和卸载是公开 session API。
+- **权限**：显式规则列表加默认决策。
+- **Sessions**：默认不启用队列；lane queue 是显式的外部或混合分发基础设施。
+- **结果**：通过 `session.traceEvents()`、`session.verificationReports()` 和 run replay API 获取 token 统计、验证状态和验证摘要。
 
 建议从 [API 契约](/cn/docs/code/api-contract)、[会话](/cn/docs/code/sessions)和[Provider 配置](/cn/docs/code/providers)开始。

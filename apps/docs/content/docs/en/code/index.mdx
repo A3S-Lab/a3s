@@ -1,27 +1,34 @@
 ---
 title: "A3S Code"
-description: "Harness-driven coding agent runtime with the v2.1.0 Node SDK"
+description: "Harness-driven coding agent runtime with the v2.3.0 Node SDK"
 ---
 
 # A3S Code
 
-A3S Code v2.1.0 is a harness-driven runtime for coding agents. This section
+A3S Code v2.3.0 is a harness-driven runtime for coding agents. This section
 focuses on the current Node SDK surface.
 
-## v2.1.0 Highlights
+## v2.3.0 Highlights
 
-| Area | New in v2.1.0 |
+| Area | New in v2.3.0 |
+| --- | --- |
+| SDK API | Compact, object-shaped methods: `send()`, `run()`, `stream()`, `task()`, `tasks()`, `git()`, `addMcp()`, `removeMcp()`, `mcps()` for long-lived integrations. |
+| Observability | Live run/tool observability through active tool snapshots and richer run replay APIs across Rust, Node.js, and Python SDKs. |
+| Python SDK | Full parity for worker agents, HITL confirmation policy/control, session-for-worker, live worker registration, and session close. |
+| AHP Integration | Single harness/advisory/control plane with richer event context, heartbeat state, runtime state snapshots, and decision mapping. |
+| Architecture | Split large agent and session API implementation files into focused runtime modules for maintainability. |
+| Documentation | Added durable SDK API design contract under `manual/SDK_API_DESIGN.md`. |
+| Cleanup | Removed obsolete sidecar/copilot/BTW/strategize/BTE mechanism and related prompts, docs, configs, and examples. |
+
+### Inherited from v2.0-2.2
+
+| Area | Features |
 | --- | --- |
 | Configuration | ACL-only config with labeled `providers` and `models` blocks; `env(...)` is the standard credential path. |
-| Provider setup | OpenAI-compatible providers support `A3S_OPENAI_*` and MiniMax aliases `MINIMAX_API_KEY` / `MINIMAX_BASE_URL`. |
 | Delegation | `task` and `parallel_task` are the default multi-agent path, returning compact child summaries instead of full transcripts. |
-| SDK surface | Node exposes explicit planning mode, run replay, tool schemas, program execution, and delegation helpers. |
-| Harness control | AHP transport objects, hooks, explicit permission policy, and security providers are session-level integration points. |
-| Verification | `AgentResult` exposes verification status, counts, structured summaries, and token usage; trace and verification reports are available from session inspection APIs. |
 | Tool surface | Core tools stay small; web, git, batch, skill administration, and MCP tools are intent-gated. |
 | PTC | Programmatic Tool Calling runs bounded JavaScript in embedded QuickJS; the Node SDK exposes `session.program(...)` over the core `program` tool. |
 | Persistence | File and memory stores support resumable sessions, explicit `save()`, `autoSave`, memory recall, and session IDs. |
-| Infrastructure | Lane queues are optional and explicit for external/hybrid dispatch; ordinary sessions stay queue-free. |
 
 The current execution shape is:
 
@@ -44,7 +51,7 @@ npm install @a3s-lab/code
 
 ## Configure
 
-v2.1.0 uses ACL only. Use `.acl` files and labeled blocks; legacy HCL files are not supported.
+v2.3.0 uses ACL only. Use `.acl` files and labeled blocks; legacy HCL files are not supported.
 
 ```text
 default_model = "anthropic/claude-sonnet-4-20250514"
@@ -93,21 +100,28 @@ console.log(result.text);
 console.log(result.verificationSummaryText);
 ```
 
-## Current v2.1.0 Surface
+## Current v2.3.0 Surface
 
-- `.acl` is the supported configuration format.
-- `Agent.create()` accepts `.acl` files or inline ACL strings; JSON config is not supported.
-- OpenAI-compatible providers use `apiKey`/`api_key`, `baseUrl`/`base_url`, and model blocks.
-- Planning is an explicit `auto` / `enabled` / `disabled` contract; `auto` uses structured pre-analysis instead of keyword gates.
-- Run tracking is public through `runs`, `runSnapshot`, `runEvents`, `currentRun`, and run-scoped cancellation.
-- PTC moves deterministic tool chains such as search, read, rank, summarize, and verify into host code instead of repeated LLM tool loops.
-- Routine delegation uses the `task` and `parallel_task` tools.
-- Node exposes `delegateTask`, `parallelTask`, `program`, and `toolDefinitions`.
-- Legacy lifecycle control-plane APIs are removed; use streaming events, run replay, and run-scoped cancellation for application state.
-- Hook registration, counting, and unregistration are public session APIs; validate event paths before using hooks as production gates.
-- AHP 2.4 exposes stdio, HTTP, WebSocket, and Unix socket transport objects; Unix sockets are Unix-target only.
-- Sessions are queue-free by default; lane queues are explicit infrastructure for external or hybrid dispatch.
-- Permission policy is explicit: rule lists plus a default decision.
-- Results expose token counts, verification status, and verification summaries. Use `session.traceEvents()`, `session.verificationReports()`, and run replay APIs for session-level evidence.
+### Core API
+
+- **Compact SDK methods**: `send()`, `run()`, `stream()` for conversation; `task()`, `tasks()` for delegation; `git()` for git operations; `addMcp()`, `removeMcp()`, `mcps()` for MCP management.
+- **Observability**: `runs()`, `runSnapshot()`, `runEvents()`, `activeTools()`, `cancelRun()` for live run/tool tracking.
+- **Configuration**: `.acl` is the only supported format; `Agent.create()` accepts `.acl` files or inline ACL strings.
+- **Planning**: Explicit `auto` / `enabled` / `disabled` contract; `auto` uses structured pre-analysis instead of keyword gates.
+- **PTC**: Programmatic Tool Calling moves deterministic tool chains into host code via `session.program(...)`.
+- **Delegation**: `task()` and `tasks()` (formerly `parallel_task`) return compact child summaries instead of full transcripts.
+
+### Python SDK Parity
+
+- Worker agents, HITL confirmation policy/control, `session_for_worker()`, live worker registration, and `close()`.
+- Full feature parity with Node.js SDK for production integrations.
+
+### Infrastructure
+
+- **AHP Integration**: Single harness/advisory/control plane with richer event context, heartbeat state, and decision mapping.
+- **Hooks**: Registration, counting, and unregistration are public session APIs.
+- **Permissions**: Explicit rule lists plus a default decision.
+- **Sessions**: Queue-free by default; lane queues are explicit infrastructure for external or hybrid dispatch.
+- **Results**: Token counts, verification status, and verification summaries via `session.traceEvents()`, `session.verificationReports()`, and run replay APIs.
 
 Start with [API Contract](/docs/code/api-contract), [Sessions](/docs/code/sessions), and [Providers](/docs/code/providers).
