@@ -1,49 +1,70 @@
 ---
 title: 可观测性
-description: Prometheus 指标、结构化日志、分布式追踪与控制台 API
+description: Prometheus 指标、结构化日志、分布式追踪、CLI 检查与可选 Dashboard API
 ---
-
-import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # 可观测性
 
-A3S Gateway 内置 Prometheus 指标、结构化访问日志、分布式追踪和控制台 API。
+A3S Gateway 内置 Prometheus 指标、结构化访问日志、分布式追踪、CLI 配置检查，
+并可在独立 management listener 上启用 Dashboard API。
 
-## 控制台 API
+## 管理检查
 
-<TypeTable
-  type={{
-    "GET /api/gateway/health": {
-      description: "Health status (JSON)",
-    },
-    "GET /api/gateway/metrics": {
-      description: "Prometheus metrics (text)",
-    },
-    "GET /api/gateway/config": {
-      description: "Current configuration (JSON)",
-    },
-    "GET /api/gateway/routes": {
-      description: "Active routes (JSON)",
-    },
-    "GET /api/gateway/services": {
-      description: "Active services and backends (JSON)",
-    },
-    "GET /api/gateway/version": {
-      description: "Build version info (JSON)",
-    },
-  }}
-/>
+本地和 CI/CD 工作流建议使用 CLI：
 
-### 健康状态响应
+```bash
+a3s-gateway validate --config gateway.acl
+a3s-gateway config --config gateway.acl summary
+a3s-gateway config --config gateway.acl entrypoints
+a3s-gateway config --config gateway.acl routes
+a3s-gateway config --config gateway.acl services
+a3s-gateway config --config gateway.acl middlewares
+a3s-gateway config --config gateway.acl providers
+a3s-gateway config --config gateway.acl json
+a3s-gateway management events --url http://127.0.0.1:9090/api/gateway
+a3s-gateway management validate --url http://127.0.0.1:9090/api/gateway --file gateway.acl
+a3s-gateway management reload --url http://127.0.0.1:9090/api/gateway --file gateway.acl
+```
 
-```json
-{
-  "state": "Running",
-  "uptime_secs": 3600,
-  "active_connections": 42,
-  "total_requests": 12345
+需要远程检查时，可以显式启用 Dashboard API：
+
+```acl
+management {
+  enabled        = true
+  address        = "127.0.0.1:9090"
+  path_prefix    = "/api/gateway"
+  auth_token_env = "A3S_GATEWAY_ADMIN_TOKEN"
+  allowed_ips    = ["127.0.0.1", "::1"]
+
+  tls {
+    cert_file           = "/etc/a3s/admin/server.crt"
+    key_file            = "/etc/a3s/admin/server.key"
+    client_ca_file      = "/etc/a3s/admin/client-ca.crt"
+    require_client_cert = true
+  }
 }
 ```
+
+设置 `auth_token_env` 后，Dashboard 请求必须携带
+`Authorization: Bearer <token>`；请求来源也必须匹配 `allowed_ips`。当
+`management.tls.require_client_cert = true` 时，客户端还必须提供由
+`client_ca_file` 签发的证书。
+
+如果 management listener 启用了 mTLS，可以为 `management events` CLI 命令添加
+`--ca-cert`、`--client-cert` 和 `--client-key`。
+
+| Endpoint | Response |
+| --- | --- |
+| `GET /api/gateway/health` | Gateway health JSON |
+| `GET /api/gateway/metrics` | Prometheus text format |
+| `GET /api/gateway/config` | Active configuration JSON |
+| `GET /api/gateway/routes` | Configured routes |
+| `GET /api/gateway/services` | Services with backend health |
+| `GET /api/gateway/backends` | Backends with connection counts |
+| `GET /api/gateway/events` | Recent management security audit events |
+| `GET /api/gateway/version` | Binary version |
+| `POST /api/gateway/config/validate` | Validate an ACL payload without applying it |
+| `POST /api/gateway/config/reload` | Transactionally reload from an ACL payload |
 
 ## Prometheus 指标
 
@@ -107,10 +128,10 @@ rate(gateway_response_bytes_total[5m])
 
 ```bash
 # Via CLI
-a3s-gateway --config gateway.hcl --log-level debug
+a3s-gateway --config gateway.acl --log-level debug
 
 # Via environment
-RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.hcl
+RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.acl
 ```
 
 <TypeTable

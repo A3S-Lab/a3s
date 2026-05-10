@@ -7,7 +7,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # A3S Gateway
 
-A3S Gateway 是 AI 原生服务的流量层。基于 [hyper](https://hyper.rs/) 和 [rustls](https://github.com/rustls/rustls) 构建，以单一静态链接二进制发布，配置完全使用 HCL（HashiCorp 配置语言）定义。
+A3S Gateway 是 AI 原生服务的流量层。基于 [hyper](https://hyper.rs/) 和 [rustls](https://github.com/rustls/rustls) 构建，以单一静态链接二进制发布，配置完全使用 ACL（Agent Configuration Language）定义。
 
 ## 为什么选择 A3S Gateway
 
@@ -53,7 +53,7 @@ TLS 终止（rustls + ACME / Let's Encrypt）
 后端服务
 ```
 
-热重载在 `Service` 层通过 `Arc` 原子替换路由表和服务注册表。配置变更期间不中断任何连接。
+热重载通过共享运行时快照原子替换路由表和服务注册表。HTTP/TCP entrypoint 配置不变时不会重新绑定流量端口；新增或迁移 HTTP/TCP listener 时按名称增量协调，如果新端口绑定失败，未变化的 listener 会继续工作。UDP entrypoint 仍会显式重启。
 
 ## 核心组件
 
@@ -91,7 +91,7 @@ TLS 终止（rustls + ACME / Let's Encrypt）
 <TypeTable
   type={{
     "HTTP/1.1 & HTTP/2": {
-      description: "完整反向代理，含逐跳头过滤和连接池管理",
+      description: "完整反向代理，含逐跳头过滤、标准化 X-Forwarded-* 元数据和连接池管理",
     },
     "SSE / 流式传输": {
       description: "针对 LLM Token 流优化的分块传输中继 — 首字节立即转发，零响应缓冲",
@@ -138,8 +138,9 @@ pub enum GatewayState {
 - 主动 HTTP 健康探测 + 被动错误计数后端剔除
 - 会话保持 — Cookie 亲和，含 TTL 和 LRU 淘汰
 - 故障转移 — 主后端无健康实例时自动切换到备用池
+- 转发头 — 上游 HTTP 请求自动带有标准化的 `X-Forwarded-For`、`X-Forwarded-Host`、`X-Forwarded-Proto` 和 `X-Forwarded-Port`
 - 纯 Rust TLS（rustls）— ACME/Let's Encrypt，支持 HTTP-01 和 DNS-01（Cloudflare、Route53）
-- 热重载 — inotify/kqueue 文件监听，连接零中断
+- 热重载 — inotify/kqueue 文件监听，HTTP/TCP entrypoint 不变时无需重绑端口
 
 **中间件（15 种内置）**
 - 认证：JWT（HS256）、API Key、Basic Auth、Forward Auth
@@ -154,7 +155,7 @@ pub enum GatewayState {
 
 **运维**
 - 单一静态链接二进制 — 无运行时依赖，无 OpenSSL
-- 仅 HCL 配置 — 一致、可读、可版本控制
-- 内置仪表盘 API — 健康、指标、配置、路由、服务、后端、版本
+- 仅 ACL 配置 — 一致、可读、可版本控制
+- CLI-first 管理 — 可选的认证/mTLS Dashboard API 运行在独立 listener 上
 - Kubernetes Helm Chart、Docker 镜像、Homebrew 公式
-- 877 个测试，覆盖所有模块
+- 1000+ 个测试，覆盖所有模块

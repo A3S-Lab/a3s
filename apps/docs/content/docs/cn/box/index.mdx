@@ -20,7 +20,7 @@ A3S Box 用 libkrun MicroVM 运行 Linux OCI 工作负载。它提供类 Docker 
 | Compose | 支持常用本地开发子集，不等同完整 Docker Compose。 |
 | TEE | 支持 SEV-SNP 方向的证明、RA-TLS、密封、密钥注入和模拟模式。硬件信任取决于目标主机。TDX 未产品化。 |
 | Kubernetes CRI | 实验性。可用于评估与测试，不是当前核心完成目标。Windows CRI 不支持。 |
-| Windows | 存在原生运行时代码路径，但当前文档和 smoke 覆盖聚焦 macOS/Linux。 |
+| Windows | 原生 WHPX 路径，通过 libkrun 直接在 Windows 上运行。需要启用 Windows Hypervisor Platform，不依赖 WSL。 |
 
 ## 心智模型
 
@@ -57,7 +57,7 @@ MicroVM
 - 不支持运行中网络热插拔；需要先停止 box。
 - strict/custom 网络策略尚未执行；当前会拒绝，避免伪安全。
 - macOS bridge 模式不支持 outbound NAT；需要外网访问时用默认 TSI。
-- 不支持 Windows CRI。
+- 不支持 Windows CRI；Windows 包装使用原生 WHPX 路径。
 - TDX 还不是产品化路径。
 
 ## 阅读顺序

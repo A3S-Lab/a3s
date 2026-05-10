@@ -7,7 +7,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # A3S Gateway
 
-A3S Gateway is the traffic layer for AI-native services. It is built on [hyper](https://hyper.rs/) and [rustls](https://github.com/rustls/rustls), ships as a single statically-linked binary, and is configured exclusively in HCL (HashiCorp Configuration Language).
+A3S Gateway is the traffic layer for AI-native services. It is built on [hyper](https://hyper.rs/) and [rustls](https://github.com/rustls/rustls), ships as a single statically-linked binary, and is configured exclusively in ACL (Agent Configuration Language).
 
 ## Why A3S Gateway
 
@@ -53,7 +53,7 @@ Proxy  (HTTP / WebSocket / SSE / gRPC / TCP / UDP)
 Backend Service
 ```
 
-Hot reload replaces the router table and service registry atomically under an `Arc` swap at the `Service` layer. No connection is dropped during a configuration change.
+Hot reload replaces the router table and service registry atomically through a shared runtime snapshot. HTTP/TCP entrypoints are not rebound when listener configuration is unchanged. Added or moved HTTP/TCP listeners are reconciled by name, and unchanged listeners stay active if a new bind fails. UDP entrypoints restart explicitly.
 
 ## Core Components
 
@@ -91,7 +91,7 @@ Hot reload replaces the router table and service registry atomically under an `A
 <TypeTable
   type={{
     "HTTP/1.1 & HTTP/2": {
-      description: "Full reverse proxy with hop-by-hop header filtering and connection pooling",
+      description: "Full reverse proxy with hop-by-hop header filtering, normalized X-Forwarded-* metadata, and connection pooling",
     },
     "SSE / Streaming": {
       description: "Chunked transfer relay optimized for LLM token streams — first byte forwarded immediately, no response buffering",
@@ -138,8 +138,9 @@ pub enum GatewayState {
 - Active HTTP health probes + passive error-count backend eviction
 - Sticky sessions — cookie-based affinity with TTL and LRU eviction
 - Failover — automatic switch to secondary pool when primary has no healthy backends
+- Forwarded headers — normalized `X-Forwarded-For`, `X-Forwarded-Host`, `X-Forwarded-Proto`, and `X-Forwarded-Port` on upstream HTTP requests
 - Pure Rust TLS via rustls — ACME/Let's Encrypt with HTTP-01 and DNS-01 (Cloudflare, Route53)
-- Hot reload — inotify/kqueue file watcher, zero dropped connections
+- Hot reload — inotify/kqueue file watcher, no traffic port rebind when HTTP/TCP entrypoints are unchanged
 
 **Middleware (15 built-in)**
 - Auth: JWT (HS256), API Key, Basic Auth, Forward Auth
@@ -154,7 +155,7 @@ pub enum GatewayState {
 
 **Operations**
 - Single statically-linked binary — no runtime dependencies, no OpenSSL
-- HCL-only configuration — consistent, human-readable, version-controlled
-- Built-in dashboard API — health, metrics, config, routes, services, backends, version
+- ACL-only configuration — consistent, human-readable, version-controlled
+- CLI-first management with optional authenticated/mTLS Dashboard API on a dedicated listener
 - Helm chart for Kubernetes, Docker image, Homebrew formula
-- 877 tests across all modules
+- 1000+ tests across all modules

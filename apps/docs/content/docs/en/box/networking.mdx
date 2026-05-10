@@ -50,7 +50,7 @@ Unsupported forms fail during CLI or Compose validation:
 | --- | --- | --- | --- | --- |
 | Linux | `passt` | Supported | Supported through runtime path | Supported |
 | macOS | built-in `netproxy` | Supported | Supported | Unsupported in bridge mode |
-| Windows | Not a documented product path | Not documented | Not documented | Not documented |
+| Windows | Native WHPX path | Named-pipe vsock control and Windows port-forward worker where implemented | Bridge networking is not productized yet | Windows CRI is unsupported |
 
 Run `a3s-box info` to see what the current host reports. On macOS, use default TSI mode when a workload needs outbound internet access.
 

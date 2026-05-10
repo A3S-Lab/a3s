@@ -14,9 +14,15 @@ description: 运行和管理第一个 A3S Box MicroVM
 brew install a3s-lab/tap/a3s-box
 
 # 或从源码构建
-git clone https://github.com/A3S-Lab/Box.git
+git clone https://github.com/AI45Lab/Box.git
 cd Box/src
 cargo build --release
+```
+
+Windows 使用发布包中的原生 WHPX 版本，并启用 Windows Hypervisor Platform：
+
+```powershell
+Enable-WindowsOptionalFeature -Online -FeatureName HypervisorPlatform
 ```
 
 检查主机能力：

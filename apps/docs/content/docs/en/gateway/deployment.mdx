@@ -17,11 +17,11 @@ helm install gateway deploy/helm/a3s-gateway
 
 ### Custom Configuration
 
-Pass a custom `gateway.hcl` via `--set-file`:
+Pass a custom `gateway.acl` via `--set-file`:
 
 ```bash
 helm install gateway deploy/helm/a3s-gateway \
-  --set-file config=my-gateway.hcl
+  --set-file config=my-gateway.acl
 ```
 
 Or override individual values:
@@ -54,13 +54,14 @@ helm install gateway deploy/helm/a3s-gateway \
   --set ingress.hosts[0].paths[0].pathType=Prefix
 ```
 
-### Dashboard
+### CLI Management
 
-The dashboard is enabled by default on port 9090:
+The chart exposes only the configured traffic entrypoints. Management is done
+with the CLI before rollout or from an operator/debug container:
 
 ```bash
-kubectl port-forward svc/gateway-a3s-gateway 9090:9090
-curl http://127.0.0.1:9090/api/gateway/health
+a3s-gateway validate --config gateway.acl
+a3s-gateway config --config gateway.acl summary
 ```
 
 ### Helm Values
@@ -72,9 +73,7 @@ curl http://127.0.0.1:9090/api/gateway/health
     'image.tag': { type: 'string', default: 'Chart appVersion', description: 'Image tag' },
     'service.type': { type: 'string', default: '"ClusterIP"', description: 'Service type' },
     'service.port': { type: 'number', default: '8080', description: 'HTTP port' },
-    'dashboard.enabled': { type: 'bool', default: 'true', description: 'Enable dashboard port' },
-    'dashboard.port': { type: 'number', default: '9090', description: 'Dashboard port' },
-    config: { type: 'string', default: 'minimal HCL', description: 'Gateway HCL configuration' },
+    config: { type: 'string', default: 'minimal ACL', description: 'Gateway ACL configuration' },
     'resources.requests.cpu': { type: 'string', default: '"100m"', description: 'CPU request' },
     'resources.requests.memory': { type: 'string', default: '"64Mi"', description: 'Memory request' },
     'resources.limits.cpu': { type: 'string', default: '"500m"', description: 'CPU limit' },
@@ -92,9 +91,9 @@ deploy/helm/a3s-gateway/
 ├── values.yaml
 └── templates/
     ├── _helpers.tpl
-    ├── configmap.yaml       # gateway.hcl from values.config
+    ├── configmap.yaml       # gateway.acl from values.config
     ├── deployment.yaml      # Pod spec with config volume
-    ├── service.yaml         # ClusterIP with http + dashboard
+    ├── service.yaml         # ClusterIP/NodePort for configured traffic
     ├── serviceaccount.yaml
     ├── ingress.yaml         # Optional
     ├── hpa.yaml             # Optional
@@ -107,11 +106,11 @@ The ConfigMap checksum is included as a pod annotation, so config changes trigge
 
 ```bash
 docker run -d \
-  -v $(pwd)/gateway.hcl:/etc/a3s-gateway/gateway.hcl \
+  -v $(pwd)/gateway.acl:/etc/a3s-gateway/gateway.acl \
   -p 8080:8080 \
   -p 9090:9090 \
   ghcr.io/a3s-lab/gateway:latest \
-  --config /etc/a3s-gateway/gateway.hcl
+  --config /etc/a3s-gateway/gateway.acl
 ```
 
 ## Binary
@@ -122,10 +121,10 @@ curl -L https://github.com/A3S-Lab/Gateway/releases/latest/download/a3s-gateway 
 chmod +x a3s-gateway
 
 # Run
-./a3s-gateway --config gateway.hcl
+./a3s-gateway --config gateway.acl
 
 # Validate config
-./a3s-gateway validate --config gateway.hcl
+./a3s-gateway validate --config gateway.acl
 
 # Systemd service
 cat > /etc/systemd/system/a3s-gateway.service << EOF
@@ -134,7 +133,7 @@ Description=A3S Gateway
 After=network.target
 
 [Service]
-ExecStart=/usr/local/bin/a3s-gateway --config /etc/a3s-gateway/gateway.hcl
+ExecStart=/usr/local/bin/a3s-gateway --config /etc/a3s-gateway/gateway.acl
 Restart=always
 User=a3s-gateway
 
@@ -150,5 +149,5 @@ systemctl enable --now a3s-gateway
 ```bash
 brew tap a3s-lab/tap
 brew install a3s-gateway
-a3s-gateway --config gateway.hcl
+a3s-gateway --config gateway.acl
 ```

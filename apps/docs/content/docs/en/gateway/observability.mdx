@@ -1,49 +1,71 @@
 ---
 title: Observability
-description: Prometheus metrics, structured logging, distributed tracing, and dashboard API
+description: Prometheus metrics, structured logging, distributed tracing, CLI inspection, and optional Dashboard API
 ---
-
-import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Observability
 
-A3S Gateway provides built-in Prometheus metrics, structured access logging, distributed tracing, and a dashboard API.
+A3S Gateway provides built-in Prometheus metrics, structured access logging,
+distributed tracing, CLI-based configuration inspection, and an optional
+Dashboard API on a dedicated management listener.
 
-## Dashboard API
+## Management Inspection
 
-<TypeTable
-  type={{
-    "GET /api/gateway/health": {
-      description: "Health status (JSON)",
-    },
-    "GET /api/gateway/metrics": {
-      description: "Prometheus metrics (text)",
-    },
-    "GET /api/gateway/config": {
-      description: "Current configuration (JSON)",
-    },
-    "GET /api/gateway/routes": {
-      description: "Active routes (JSON)",
-    },
-    "GET /api/gateway/services": {
-      description: "Active services and backends (JSON)",
-    },
-    "GET /api/gateway/version": {
-      description: "Build version info (JSON)",
-    },
-  }}
-/>
+Use the CLI for local and CI/CD workflows:
 
-### Health Response
+```bash
+a3s-gateway validate --config gateway.acl
+a3s-gateway config --config gateway.acl summary
+a3s-gateway config --config gateway.acl entrypoints
+a3s-gateway config --config gateway.acl routes
+a3s-gateway config --config gateway.acl services
+a3s-gateway config --config gateway.acl middlewares
+a3s-gateway config --config gateway.acl providers
+a3s-gateway config --config gateway.acl json
+a3s-gateway management events --url http://127.0.0.1:9090/api/gateway
+a3s-gateway management validate --url http://127.0.0.1:9090/api/gateway --file gateway.acl
+a3s-gateway management reload --url http://127.0.0.1:9090/api/gateway --file gateway.acl
+```
 
-```json
-{
-  "state": "Running",
-  "uptime_secs": 3600,
-  "active_connections": 42,
-  "total_requests": 12345
+Enable the Dashboard API only when you need remote inspection:
+
+```acl
+management {
+  enabled        = true
+  address        = "127.0.0.1:9090"
+  path_prefix    = "/api/gateway"
+  auth_token_env = "A3S_GATEWAY_ADMIN_TOKEN"
+  allowed_ips    = ["127.0.0.1", "::1"]
+
+  tls {
+    cert_file           = "/etc/a3s/admin/server.crt"
+    key_file            = "/etc/a3s/admin/server.key"
+    client_ca_file      = "/etc/a3s/admin/client-ca.crt"
+    require_client_cert = true
+  }
 }
 ```
+
+Dashboard requests must include `Authorization: Bearer <token>` when
+`auth_token_env` is set. Requests must also come from `allowed_ips`. When
+`management.tls.require_client_cert = true`, clients must present a certificate
+signed by `client_ca_file`.
+
+For mTLS-protected management listeners, add `--ca-cert`, `--client-cert`, and
+`--client-key` to the `management events` CLI command.
+
+| Endpoint | Response |
+| --- | --- |
+| `GET /api/gateway/health` | Gateway health JSON |
+| `GET /api/gateway/metrics` | Prometheus text format |
+| `GET /api/gateway/config` | Active configuration JSON |
+| `GET /api/gateway/routes` | Configured routes |
+| `GET /api/gateway/services` | Services with backend health |
+| `GET /api/gateway/backends` | Backends with connection counts |
+| `GET /api/gateway/events` | Recent management security audit events |
+| `GET /api/gateway/version` | Binary version |
+| `POST /api/gateway/config/validate` | Validate an ACL payload without applying it |
+| `POST /api/gateway/config/reload` | Transactionally reload from an ACL payload |
 
 ## Prometheus Metrics
 
@@ -107,10 +129,10 @@ Structured JSON access logs via the `tracing` crate:
 
 ```bash
 # Via CLI
-a3s-gateway --config gateway.hcl --log-level debug
+a3s-gateway --config gateway.acl --log-level debug
 
 # Via environment
-RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.hcl
+RUST_LOG=a3s_gateway=debug a3s-gateway --config gateway.acl
 ```
 
 <TypeTable

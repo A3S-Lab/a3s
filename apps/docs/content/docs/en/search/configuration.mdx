@@ -1,17 +1,17 @@
 ---
 title: Configuration
-description: HCL configuration files and health monitoring for engine management
+description: ACL configuration files and health monitoring for engine management
 ---
 
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 
 # Configuration
 
-A3S Search supports HCL configuration files for engine settings and health monitoring. Load settings from a `.hcl` file instead of hardcoding them.
+A3S Search supports ACL configuration files for engine settings and health monitoring. Load settings from a `.acl` file instead of hardcoding them.
 
-## HCL Config File
+## ACL Config File
 
-```hcl
+```acl
 timeout = 10
 
 health {
@@ -63,7 +63,7 @@ engine "sogou" {
 use a3s_search::config::SearchConfig;
 
 // Load from file
-let config = SearchConfig::load("search.hcl")?;
+let config = SearchConfig::load("search.acl")?;
 
 // Or parse a string
 let config = SearchConfig::parse(r#"
@@ -75,10 +75,10 @@ let config = SearchConfig::parse(r#"
 <TypeTable
   type={{
     "SearchConfig::load(path)": {
-      description: "Load config from .hcl file",
+      description: "Load config from .acl file",
     },
     "SearchConfig::parse(content)": {
-      description: "Parse HCL string",
+      description: "Parse ACL string",
     },
     "health_config()": {
       description: "Get HealthConfig from config",
@@ -128,16 +128,16 @@ search.add_engine(Bing::new());
 4. When `count >= max_failures`, the engine is suspended
 5. After `suspend_duration`, the engine is re-enabled and the count resets
 
-### From HCL Config
+### From ACL Config
 
-Combine HCL config with health monitoring:
+Combine ACL config with health monitoring:
 
 ```rust
 use a3s_search::{Search, SearchQuery};
 use a3s_search::config::SearchConfig;
 use a3s_search::engines::{DuckDuckGo, Brave, Bing, Wikipedia};
 
-let config = SearchConfig::load("search.hcl")?;
+let config = SearchConfig::load("search.acl")?;
 
 let mut search = if let Some(health) = config.health_config() {
     Search::with_health_config(health)

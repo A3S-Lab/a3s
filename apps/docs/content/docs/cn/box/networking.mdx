@@ -50,7 +50,7 @@ a3s-box port web
 | --- | --- | --- | --- | --- |
 | Linux | `passt` | 支持 | 支持 | 支持 |
 | macOS | 内置 `netproxy` | 支持 | 支持 | bridge 模式不支持 |
-| Windows | 非文档化产品路径 | 未文档化 | 未文档化 | 未文档化 |
+| Windows | 原生 WHPX 路径 | 已实现部分 named-pipe vsock 控制与 Windows 端口转发 worker | bridge 网络尚未产品化 | Windows CRI 不支持 |
 
 用 `a3s-box info` 查看当前主机报告的能力。macOS 工作负载需要外网时，使用默认 TSI。
 

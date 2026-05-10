@@ -15,7 +15,7 @@ description: A3S Box 能力和边界的实用问答
 
 ## 应该用哪些平台？
 
-本地开发优先 macOS Apple Silicon/HVF；Linux 验证用 KVM/libkrun 支持的主机。Windows runtime 代码存在，但当前文档化和测试覆盖聚焦 macOS/Linux。Windows CRI 不支持。
+本地开发可用 macOS Apple Silicon/HVF；Linux 验证用 KVM/libkrun 支持的主机；Windows x64 主机需要启用 Windows Hypervisor Platform，走原生 WHPX 后端。Windows 包不依赖 WSL。Windows CRI 不支持。
 
 ## 可以运行 nginx 吗？
 

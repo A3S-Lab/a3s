@@ -28,11 +28,12 @@ Services define backend pools with load balancing, health checks, sticky session
   }}
 />
 
-```hcl
+```acl
 services "api" {
   load_balancer {
-    strategy = "weighted"
-    servers  = [
+    strategy        = "weighted"
+    request_timeout = "30s"
+    servers         = [
       { url = "http://127.0.0.1:8001", weight = 3 },
       { url = "http://127.0.0.1:8002", weight = 1 }
     ]
@@ -40,11 +41,23 @@ services "api" {
 }
 ```
 
+`request_timeout` controls the maximum time the gateway waits for a buffered
+plain HTTP upstream response before returning `504 Gateway Timeout`. It accepts millisecond,
+second, or minute values such as `"500ms"`, `"30s"`, or `"2m"`.
+
+<TypeTable
+  type={{
+    strategy: { type: 'string', default: '"round-robin"', description: 'Load balancing strategy' },
+    request_timeout: { type: 'string', default: '"30s"', description: 'Maximum buffered plain HTTP upstream request time before a 504 response' },
+    servers: { type: 'array', required: true, description: 'Backend URLs and optional weights' },
+  }}
+/>
+
 ## Health Checks
 
 Active HTTP probes with configurable thresholds. Unhealthy backends are automatically excluded from load balancing.
 
-```hcl
+```acl
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -79,7 +92,7 @@ Passive health checks also track error counts and automatically remove backends 
 
 Route the same client to the same backend using cookies:
 
-```hcl
+```acl
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -97,7 +110,7 @@ On the first request, the gateway selects a backend and sets a `Set-Cookie` head
 
 Copy a percentage of live traffic to a shadow service for testing without affecting the primary response:
 
-```hcl
+```acl
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -121,7 +134,7 @@ services "api" {
 
 Automatic fallback to a secondary backend pool when the primary has zero healthy backends:
 
-```hcl
+```acl
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -147,7 +160,7 @@ services "backup-pool" {
 
 Optional autoscaling with scale-to-zero, request buffering, and concurrency-based decisions:
 
-```hcl
+```acl
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -185,7 +198,7 @@ services "api" {
 
 Split traffic across named revisions for canary deployments:
 
-```hcl
+```acl
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -206,7 +219,7 @@ Traffic percentages must sum to 100.
 
 Automatically shift traffic from one revision to another with safety guardrails:
 
-```hcl
+```acl
 services "api" {
   load_balancer {
     strategy = "round-robin"

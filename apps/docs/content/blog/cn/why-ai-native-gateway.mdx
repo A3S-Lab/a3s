@@ -300,7 +300,7 @@ if is_sse {
 
 当 `min_replicas = 0` 时，网关在副本为零时将请求放入有界队列（`RequestBuffer`），触发扩容，等待副本通过健康检查，然后重放请求：
 
-```hcl
+```acl
 services "llm-backend" {
   scaling {
     min_replicas          = 0      # 允许缩容到零
@@ -320,7 +320,7 @@ desired_replicas = ⌈ (in_flight + queue_depth) / (container_concurrency × tar
 
 ### 版本流量分割与自动回滚
 
-```hcl
+```acl
 services "llm-service" {
   revisions = [
     { name = "v1", traffic_percent = 95, servers = [{ url = "http://v1:8080" }] },
@@ -342,7 +342,7 @@ services "llm-service" {
 
 ### 流量镜像
 
-```hcl
+```acl
 services "llm-service" {
   mirror {
     service    = "llm-v2-shadow"  # 影子后端
@@ -359,7 +359,7 @@ services "llm-service" {
 
 每个后端实例有一个独立的错误率追踪器。当实例的错误率在滑动窗口内超过阈值，它被标记为不健康，从负载均衡池中移除。当错误率恢复，它重新加入：
 
-```hcl
+```acl
 services "llm-service" {
   load_balancer {
     strategy = "least-connections"  # 主动选择负载最低的实例
@@ -392,7 +392,7 @@ services "llm-service" {
 
 Envoy 在技术能力上最接近，但它的使用成本是隐性的高：你需要一个控制平面（Istio、xDS API），需要 Kubernetes，需要一个理解 Envoy 配置模型的工程师。对于一个把 AI 推理作为核心业务的团队来说，维护一套完整的 Service Mesh 是额外的认知负担。
 
-A3S Gateway 的设计取舍是：只做 AI 服务流量层需要的事，用 HCL 配置文件完整描述，单个二进制部署。不需要数据库、不需要控制平面、不需要 Kubernetes（尽管支持）。
+A3S Gateway 的设计取舍是：只做 AI 服务流量层需要的事，用 ACL 配置文件完整描述，单个二进制部署。不需要数据库、不需要控制平面、不需要 Kubernetes（尽管支持）。
 
 ---
 
@@ -400,12 +400,12 @@ A3S Gateway 的设计取舍是：只做 AI 服务流量层需要的事，用 HCL
 
 到这里，我们已经理解了为什么需要 AI 原生网关。下面是一个完整的落地示例：把 A3S Gateway 部署在一个运行 Ollama 的 LLM 服务前面，覆盖认证、限流、熔断、流式传输和弹性扩缩容。
 
-### 第一步：写 gateway.hcl
+### 第一步：写 gateway.acl
 
 这份配置代理一个本地 Ollama 实例，开放给外部调用。它加了 JWT 认证、每分钟 60 次的请求限流、熔断器，以及 TLS 终止：
 
-```hcl
-# gateway.hcl
+```acl
+# gateway.acl
 
 # ── 入口点 ──────────────────────────────────────────────────────────────
 entrypoints "web" {
@@ -478,7 +478,7 @@ services "ollama-next" {
 # ── 中间件 ────────────────────────────────────────────────────────────────
 middlewares "jwt-auth" {
   type  = "jwt"
-  value = "${JWT_SECRET}"            # 从环境变量读取密钥
+  value = env("JWT_SECRET")            # 从环境变量读取密钥
 }
 
 middlewares "rate-limit" {
@@ -503,10 +503,10 @@ providers {
 }
 ```
 
-保存为 `gateway.hcl`，然后：
+保存为 `gateway.acl`，然后：
 
 ```bash
-a3s-gateway --config gateway.hcl
+a3s-gateway --config gateway.acl
 ```
 
 网关立刻开始监听，配置文件的任何变更会在几毫秒内生效。
@@ -542,13 +542,13 @@ RUN apk add --no-cache ca-certificates tzdata \
     && addgroup -S gateway && adduser -S gateway -G gateway
 
 COPY --from=builder /build/target/release/a3s-gateway /usr/local/bin/a3s-gateway
-COPY gateway.hcl /etc/a3s-gateway/gateway.hcl
+COPY gateway.acl /etc/a3s-gateway/gateway.acl
 
 USER gateway
 
 EXPOSE 8080 443
 
-ENTRYPOINT ["a3s-gateway", "--config", "/etc/a3s-gateway/gateway.hcl"]
+ENTRYPOINT ["a3s-gateway", "--config", "/etc/a3s-gateway/gateway.acl"]
 ```
 
 构建并运行：
@@ -570,16 +570,16 @@ docker run -d \
 
 ### 第三步：用 A3S Box 部署（单机沙箱）
 
-[A3S Box](https://github.com/A3S-Lab/Box) 是一个基于 microVM 的沙箱运行时。在不需要完整 Kubernetes 的场景下——比如边缘节点、开发机、或者资源受限的单台服务器——可以用 Box 替代 Docker Compose 来管理网关和 LLM 实例的生命周期。
+[A3S Box](https://github.com/AI45Lab/Box) 是一个基于 microVM 的沙箱运行时。在不需要完整 Kubernetes 的场景下——比如边缘节点、开发机、或者资源受限的单台服务器——可以用 Box 替代 Docker Compose 来管理网关和 LLM 实例的生命周期。
 
-Box 的配置也是 HCL。创建 `box.hcl`：
+Box 的配置也是 ACL。创建 `box.acl`：
 
-```hcl
-# box.hcl — 在 microVM 沙箱中运行网关 + Ollama
+```acl
+# box.acl — 在 microVM 沙箱中运行网关 + Ollama
 
 workloads "gateway" {
   binary = "/usr/local/bin/a3s-gateway"
-  args   = ["--config", "/etc/gateway/gateway.hcl"]
+  args   = ["--config", "/etc/gateway/gateway.acl"]
 
   resources {
     memory_mb = 512
@@ -589,13 +589,13 @@ workloads "gateway" {
   ports = [8080, 443]
 
   env = {
-    JWT_SECRET = "${JWT_SECRET}"
+    JWT_SECRET = env("JWT_SECRET")
     RUST_LOG   = "info,a3s_gateway=debug"
   }
 
   mounts {
-    host     = "./gateway.hcl"
-    guest    = "/etc/gateway/gateway.hcl"
+    host     = "./gateway.acl"
+    guest    = "/etc/gateway/gateway.acl"
     readonly = true
   }
 
@@ -638,7 +638,7 @@ workloads "ollama" {
 brew install a3s-lab/tap/a3s-box
 
 # 启动所有 workload
-a3s-box run --config box.hcl
+a3s-box run --config box.acl
 
 # 查看状态
 a3s-box status
@@ -655,7 +655,7 @@ Box 的 microVM 隔离意味着：即使 Ollama 因为 OOM 崩溃，网关进程
 
 对于需要高可用和水平扩展的生产环境，Helm chart 是推荐部署方式。
 
-先准备 `values-prod.yaml`，把完整的 HCL 配置嵌进去：
+先准备 `values-prod.yaml`，把完整的 ACL 配置嵌进去：
 
 ```yaml
 # values-prod.yaml
@@ -704,7 +704,7 @@ config: |
 
   middlewares "jwt-auth" {
     type  = "jwt"
-    value = "${JWT_SECRET}"
+    value = env("JWT_SECRET")
   }
 
   middlewares "rate-limit" {
@@ -749,11 +749,12 @@ helm upgrade llm-gateway deploy/helm/a3s-gateway \
 # 查看网关 Pod 状态
 kubectl get pods -n ai
 
-# 检查仪表盘
+# 发布前检查 ACL
+a3s-gateway validate --config gateway.acl
+a3s-gateway config --config gateway.acl routes
+
+# 转发流量端口
 kubectl port-forward -n ai svc/llm-gateway 9090:8080
-curl http://localhost:9090/api/gateway/health    # 健康状态
-curl http://localhost:9090/api/gateway/routes    # 当前路由表
-curl http://localhost:9090/api/gateway/metrics   # Prometheus 指标
 
 # 测试流式推理（应该立刻看到 token 逐个返回）
 curl -N http://localhost:9090/v1/chat/completions \

@@ -7,9 +7,9 @@ description: Get A3S Gateway running with a basic reverse proxy configuration
 
 ## Minimal Configuration
 
-Create a `gateway.hcl` file with an entrypoint, a router, and a service:
+Create a `gateway.acl` file with an entrypoint, a router, and a service:
 
-```hcl
+```acl
 entrypoints "web" {
   address = "0.0.0.0:80"
 }
@@ -31,19 +31,19 @@ services "api-backend" {
 ## Start the Gateway
 
 ```bash
-# Start with HCL config
-a3s-gateway --config gateway.hcl
+# Start with ACL config
+a3s-gateway --config gateway.acl
 
 # Start with debug logging
-a3s-gateway --config gateway.hcl --log-level debug
+a3s-gateway --config gateway.acl --log-level debug
 
 # Validate configuration without starting
-a3s-gateway validate --config gateway.hcl
+a3s-gateway validate --config gateway.acl
 ```
 
 ## Add HTTPS
 
-```hcl
+```acl
 entrypoints "web" {
   address = "0.0.0.0:80"
 }
@@ -73,7 +73,7 @@ services "api-backend" {
 
 ## Add Middleware
 
-```hcl
+```acl
 entrypoints "websecure" {
   address = "0.0.0.0:443"
 
@@ -114,7 +114,7 @@ services "api-backend" {
 
 ## Health Check
 
-```hcl
+```acl
 services "api-backend" {
   load_balancer {
     strategy = "least-connections"
@@ -135,25 +135,41 @@ services "api-backend" {
 }
 ```
 
-## Dashboard API
+## Management
 
-The gateway exposes a built-in dashboard API for health, metrics, and live configuration:
+Gateway management is CLI-first by default. If you need remote inspection for a
+console or operator, enable the Dashboard API on a dedicated listener. It does
+not reserve `/api/gateway/*` on traffic entrypoints.
 
 ```bash
-# Health status
-curl http://localhost:80/api/gateway/health
+a3s-gateway validate --config gateway.acl
+a3s-gateway config --config gateway.acl summary
+a3s-gateway config --config gateway.acl entrypoints
+a3s-gateway config --config gateway.acl routes
+a3s-gateway config --config gateway.acl services
+a3s-gateway config --config gateway.acl middlewares
+a3s-gateway config --config gateway.acl providers
+a3s-gateway config --config gateway.acl json
+a3s-gateway management events --url http://127.0.0.1:9090/api/gateway
+a3s-gateway management validate --url http://127.0.0.1:9090/api/gateway --file gateway.acl
+a3s-gateway management reload --url http://127.0.0.1:9090/api/gateway --file gateway.acl
+```
 
-# Prometheus metrics
-curl http://localhost:80/api/gateway/metrics
+```acl
+management {
+  enabled        = true
+  address        = "127.0.0.1:9090"
+  path_prefix    = "/api/gateway"
+  auth_token_env = "A3S_GATEWAY_ADMIN_TOKEN"
+  allowed_ips    = ["127.0.0.1", "::1"]
 
-# Current configuration
-curl http://localhost:80/api/gateway/config
-
-# Active routes
-curl http://localhost:80/api/gateway/routes
-
-# Registered services
-curl http://localhost:80/api/gateway/services
+  tls {
+    cert_file           = "/etc/a3s/admin/server.crt"
+    key_file            = "/etc/a3s/admin/server.key"
+    client_ca_file      = "/etc/a3s/admin/client-ca.crt"
+    require_client_cert = true
+  }
+}
 ```
 
 ## Programmatic Usage
@@ -163,7 +179,7 @@ use a3s_gateway::{Gateway, config::GatewayConfig};
 
 #[tokio::main]
 async fn main() -> a3s_gateway::Result<()> {
-    let config = GatewayConfig::from_file("gateway.hcl").await?;
+    let config = GatewayConfig::from_file("gateway.acl").await?;
     let gateway = Gateway::new(config)?;
 
     gateway.start().await?;

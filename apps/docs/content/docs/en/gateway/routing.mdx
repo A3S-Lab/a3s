@@ -44,7 +44,7 @@ rule = "Matcher(`value`) && Matcher(`value`)"
 
 Use `&&` to combine multiple matchers (AND logic):
 
-```hcl
+```acl
 routers "api-v1" {
   rule    = "Host(`api.example.com`) && PathPrefix(`/v1`)"
   service = "api-v1"
@@ -65,7 +65,7 @@ routers "internal" {
 
 When multiple routers match, the lowest `priority` value wins (default: `0`):
 
-```hcl
+```acl
 routers "specific" {
   rule     = "Host(`api.example.com`) && Path(`/health`)"
   service  = "health-service"
@@ -83,7 +83,7 @@ routers "general" {
 
 Routers only receive traffic from their bound entrypoints:
 
-```hcl
+```acl
 entrypoints "web" {
   address = "0.0.0.0:80"
 }
@@ -115,7 +115,7 @@ routers "web" {
 
 Middlewares are applied in the order listed. If any middleware rejects the request, the pipeline short-circuits immediately.
 
-```hcl
+```acl
 routers "api" {
   rule        = "Host(`api.example.com`)"
   service     = "api-service"
@@ -128,7 +128,7 @@ routers "api" {
 
 TCP entrypoints use SNI from the TLS ClientHello:
 
-```hcl
+```acl
 entrypoints "tcp-secure" {
   address  = "0.0.0.0:5432"
   protocol = "tcp"
@@ -147,7 +147,7 @@ UDP routing is port-based — each UDP entrypoint maps to a single service.
 
 ### API Versioning
 
-```hcl
+```acl
 routers "api-v2" {
   rule     = "Host(`api.example.com`) && PathPrefix(`/v2`)"
   service  = "api-v2"
@@ -169,7 +169,7 @@ routers "api-fallback" {
 
 ### Multi-Tenant
 
-```hcl
+```acl
 routers "tenant-a" {
   rule    = "Host(`a.example.com`)"
   service = "tenant-a-backend"
@@ -183,7 +183,7 @@ routers "tenant-b" {
 
 ### Header-Based Canary
 
-```hcl
+```acl
 routers "canary" {
   rule     = "Headers(`X-Canary`, `true`) && PathPrefix(`/api`)"
   service  = "canary-backend"

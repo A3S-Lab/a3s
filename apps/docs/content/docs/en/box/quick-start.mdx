@@ -14,9 +14,15 @@ This guide uses only the core CLI path. Run commands from a host where `a3s-box 
 brew install a3s-lab/tap/a3s-box
 
 # Or build from source
-git clone https://github.com/A3S-Lab/Box.git
+git clone https://github.com/AI45Lab/Box.git
 cd Box/src
 cargo build --release
+```
+
+On Windows, use the Windows release package and enable the native WHPX backend:
+
+```powershell
+Enable-WindowsOptionalFeature -Online -FeatureName HypervisorPlatform
 ```
 
 Check the host:

@@ -1,11 +1,11 @@
 ---
 title: Configuration
-description: HCL configuration for entrypoints, routers, services, middlewares, and providers
+description: ACL configuration for entrypoints, routers, services, middlewares, and providers
 ---
 
 # Configuration
 
-A3S Gateway uses HCL (HashiCorp Configuration Language) exclusively for configuration. The format is auto-detected by `.hcl` file extension. Configuration supports hot reload via file watching.
+A3S Gateway uses ACL (Agent Configuration Language) exclusively for configuration. The format is auto-detected by `.acl` file extension. Configuration supports hot reload via file watching.
 
 ## GatewayConfig
 
@@ -16,6 +16,7 @@ pub struct GatewayConfig {
     pub services: HashMap<String, ServiceConfig>,
     pub middlewares: HashMap<String, MiddlewareConfig>,
     pub providers: ProviderConfig,
+    pub management: ManagementConfig,
     pub shutdown_timeout_secs: u64, // default: 30
 }
 ```
@@ -24,13 +25,59 @@ pub struct GatewayConfig {
 
 ```rust
 // Load from file
-let config = GatewayConfig::from_file("gateway.hcl").await?;
+let config = GatewayConfig::from_file("gateway.acl").await?;
 
-// Parse from HCL string
-let config = GatewayConfig::from_hcl(hcl_content)?;
+// Parse from ACL string
+let config = GatewayConfig::from_acl(acl_content)?;
 
 // Validate (checks router→service, router→middleware, router→entrypoint references)
 config.validate()?;
+```
+
+## Management
+
+The Dashboard API is optional and runs on a dedicated listener. It never
+intercepts traffic entrypoints. Requests must match `allowed_ips` and, when
+`auth_token_env` is set, include `Authorization: Bearer <token>`. Enable the
+nested `tls` block when remote management needs HTTPS or client certificate
+validation. Rejected management requests and TLS handshake failures are retained
+in an in-memory audit ring buffer and exposed at `/events`.
+
+```rust
+pub struct ManagementConfig {
+    pub enabled: bool,                  // default: false
+    pub address: String,                // default: "127.0.0.1:9090"
+    pub path_prefix: String,            // default: "/api/gateway"
+    pub auth_token_env: Option<String>, // default: "A3S_GATEWAY_ADMIN_TOKEN"
+    pub allowed_ips: Vec<String>,       // default: ["127.0.0.1", "::1"]
+    pub tls: Option<ManagementTlsConfig>,
+}
+
+pub struct ManagementTlsConfig {
+    pub cert_file: String,
+    pub key_file: String,
+    pub client_ca_file: Option<String>,
+    pub require_client_cert: bool, // default: false
+    pub min_version: String,       // "1.2" (default) or "1.3"
+}
+```
+
+```acl
+management {
+  enabled        = true
+  address        = "127.0.0.1:9090"
+  path_prefix    = "/api/gateway"
+  auth_token_env = "A3S_GATEWAY_ADMIN_TOKEN"
+  allowed_ips    = ["127.0.0.1", "::1"]
+
+  tls {
+    cert_file           = "/etc/a3s/admin/server.crt"
+    key_file            = "/etc/a3s/admin/server.key"
+    client_ca_file      = "/etc/a3s/admin/client-ca.crt"
+    require_client_cert = true
+    min_version         = "1.3"
+  }
+}
 ```
 
 ## Entrypoints
@@ -49,7 +96,7 @@ pub struct EntrypointConfig {
 }
 ```
 
-```hcl
+```acl
 # HTTP listener
 entrypoints "web" {
   address = "0.0.0.0:80"
@@ -99,7 +146,7 @@ pub struct TlsConfig {
 
 TLS is handled by rustls (pure Rust, no OpenSSL dependency). ACME support enables automatic certificate provisioning from Let's Encrypt.
 
-```hcl
+```acl
 entrypoints "websecure" {
   address = "0.0.0.0:443"
   tls {
@@ -128,7 +175,7 @@ pub struct RouterConfig {
 }
 ```
 
-```hcl
+```acl
 routers "api" {
   rule        = "Host(`api.example.com`) && PathPrefix(`/v1`)"
   service     = "api-service"
@@ -166,7 +213,7 @@ pub struct LoadBalancerConfig {
 }
 ```
 
-```hcl
+```acl
 services "api-service" {
   load_balancer {
     strategy = "weighted"
@@ -194,7 +241,7 @@ services "api-service" {
 
 Copy a percentage of live traffic to a shadow backend for testing.
 
-```hcl
+```acl
 services "api-service" {
   load_balancer {
     strategy = "round-robin"
@@ -211,7 +258,7 @@ services "api-service" {
 
 Automatic fallback when the primary service has zero healthy backends.
 
-```hcl
+```acl
 services "api-service" {
   load_balancer {
     strategy = "round-robin"
@@ -229,10 +276,10 @@ See [Services](./services) for load balancing strategies and health check detail
 
 Middlewares are defined globally and referenced by name in routers.
 
-```hcl
+```acl
 middlewares "auth-jwt" {
   type  = "jwt"
-  value = "${JWT_SECRET}"
+  value = env("JWT_SECRET")
 }
 
 middlewares "rate-limit" {
@@ -267,10 +314,10 @@ See [Middleware](./middleware) for all 15 built-in middleware types.
 
 Configuration values support environment variable references:
 
-```hcl
+```acl
 middlewares "auth-jwt" {
   type  = "jwt"
-  value = "${JWT_SECRET}"
+  value = env("JWT_SECRET")
 }
 
 entrypoints "websecure" {
@@ -288,7 +335,7 @@ Configuration providers supply dynamic configuration.
 
 ### File Provider
 
-```hcl
+```acl
 providers {
   file {
     watch     = true
@@ -303,7 +350,7 @@ When `watch = true`, the gateway monitors the config file and directory for chan
 
 Health-based service discovery that polls backend seed URLs for `/.well-known/a3s-service.json` metadata.
 
-```hcl
+```acl
 providers {
   discovery {
     poll_interval_secs = 30
@@ -320,7 +367,7 @@ providers {
 
 Auto-discover services from container labels.
 
-```hcl
+```acl
 providers {
   docker {
     host               = "/var/run/docker.sock"
@@ -334,7 +381,7 @@ providers {
 
 Watch Ingress and IngressRoute CRD resources.
 
-```hcl
+```acl
 providers {
   kubernetes {
     namespace           = "default"
@@ -349,7 +396,7 @@ providers {
 
 ```rust
 // Programmatic reload
-let new_config = GatewayConfig::from_file("gateway.hcl").await?;
+let new_config = GatewayConfig::from_file("gateway.acl").await?;
 gateway.reload(new_config).await?;
 ```
 
@@ -357,12 +404,14 @@ During reload:
 1. Gateway transitions to `Reloading` state
 2. New configuration is validated
 3. Routers, services, and middlewares are rebuilt
-4. Existing connections continue on old config until complete
-5. Gateway transitions back to `Running`
+4. If HTTP/TCP entrypoints are unchanged, the runtime snapshot is swapped without rebinding traffic ports
+5. If HTTP/TCP listeners are added or moved, changed entrypoints are reconciled while unchanged listeners stay active on bind failure
+6. If a UDP entrypoint is involved, affected entrypoints restart explicitly
+7. Gateway transitions back to `Running`
 
 ## Full Example
 
-```hcl
+```acl
 # Entrypoints
 entrypoints "web" {
   address = "0.0.0.0:80"
@@ -415,7 +464,7 @@ services "web-service" {
 # Middlewares
 middlewares "auth-jwt" {
   type  = "jwt"
-  value = "${JWT_SECRET}"
+  value = env("JWT_SECRET")
 }
 
 middlewares "rate-limit" {

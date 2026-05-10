@@ -300,7 +300,7 @@ Every token travels from model output to client receipt with no buffering layer 
 
 When `min_replicas = 0`, the gateway places requests in a bounded queue (`RequestBuffer`) when replicas are zero, triggers scale-up, waits for replicas to pass health checks, then replays requests:
 
-```hcl
+```acl
 services "llm-backend" {
   scaling {
     min_replicas          = 0      # allow scale-to-zero
@@ -320,7 +320,7 @@ desired_replicas = ceil( (in_flight + queue_depth) / (container_concurrency x ta
 
 ### Version Traffic Splitting and Automatic Rollback
 
-```hcl
+```acl
 services "llm-service" {
   revisions = [
     { name = "v1", traffic_percent = 95, servers = [{ url = "http://v1:8080" }] },
@@ -342,7 +342,7 @@ Traffic splitting and rollback decisions close inside the gateway, without depen
 
 ### Traffic Mirroring
 
-```hcl
+```acl
 services "llm-service" {
   mirror {
     service    = "llm-v2-shadow"  # shadow backend
@@ -359,7 +359,7 @@ services "llm-service" {
 
 Each backend instance has an independent error rate tracker. When an instance's error rate exceeds a threshold within a sliding window, it is marked unhealthy and removed from the load balancing pool. When the error rate recovers, it rejoins:
 
-```hcl
+```acl
 services "llm-service" {
   load_balancer {
     strategy = "least-connections"  # actively route to the least-loaded instance
@@ -392,7 +392,7 @@ services "llm-service" {
 
 Envoy is technically the closest, but its hidden cost of use is high: you need a control plane (Istio, xDS API), you need Kubernetes, you need an engineer who understands the Envoy configuration model. For a team whose core business is AI inference, maintaining a full Service Mesh is extra cognitive overhead.
 
-A3S Gateway's design trade-off is: only do what an AI service traffic layer needs, fully described in an HCL config file, deployed as a single binary. No database, no control plane, no Kubernetes required (though supported).
+A3S Gateway's design trade-off is: only do what an AI service traffic layer needs, fully described in an ACL config file, deployed as a single binary. No database, no control plane, no Kubernetes required (though supported).
 
 ---
 
@@ -400,12 +400,12 @@ A3S Gateway's design trade-off is: only do what an AI service traffic layer need
 
 At this point we understand why an AI-native gateway is needed. Here is a complete real-world example: deploying A3S Gateway in front of an Ollama LLM service, covering authentication, rate limiting, circuit breaking, streaming, and autoscaling.
 
-### Step 1: Write gateway.hcl
+### Step 1: Write gateway.acl
 
 This config proxies a local Ollama instance and exposes it for external access. It adds JWT authentication, rate limiting at 60 requests per minute, a circuit breaker, and TLS termination:
 
-```hcl
-# gateway.hcl
+```acl
+# gateway.acl
 
 # ── Entrypoints ──────────────────────────────────────────────────────────
 entrypoints "web" {
@@ -478,7 +478,7 @@ services "ollama-next" {
 # ── Middlewares ───────────────────────────────────────────────────────────
 middlewares "jwt-auth" {
   type  = "jwt"
-  value = "${JWT_SECRET}"            # read secret from environment variable
+  value = env("JWT_SECRET")            # read secret from environment variable
 }
 
 middlewares "rate-limit" {
@@ -503,10 +503,10 @@ providers {
 }
 ```
 
-Save as , then:
+Save as `gateway.acl`, then:
 
 ```bash
-a3s-gateway --config gateway.hcl
+a3s-gateway --config gateway.acl
 ```
 
 The gateway starts listening immediately, and any changes to the config file take effect within milliseconds.
@@ -539,13 +539,13 @@ FROM alpine:3
 RUN apk add --no-cache ca-certificates tzdata     && addgroup -S gateway && adduser -S gateway -G gateway
 
 COPY --from=builder /build/target/release/a3s-gateway /usr/local/bin/a3s-gateway
-COPY gateway.hcl /etc/a3s-gateway/gateway.hcl
+COPY gateway.acl /etc/a3s-gateway/gateway.acl
 
 USER gateway
 
 EXPOSE 8080 443
 
-ENTRYPOINT ["a3s-gateway", "--config", "/etc/a3s-gateway/gateway.hcl"]
+ENTRYPOINT ["a3s-gateway", "--config", "/etc/a3s-gateway/gateway.acl"]
 ```
 
 Build and run:
@@ -562,16 +562,16 @@ The final image is about 12 MB with no runtime dependencies.
 
 ### Step 3: Deploy With A3S Box (Single-Machine Sandbox)
 
-[A3S Box](https://github.com/A3S-Lab/Box) is a microVM-based sandbox runtime. In scenarios where a full Kubernetes cluster is not needed — such as edge nodes, development machines, or resource-constrained single servers — Box can replace Docker Compose to manage the lifecycle of the gateway and LLM instances.
+[A3S Box](https://github.com/AI45Lab/Box) is a microVM-based sandbox runtime. In scenarios where a full Kubernetes cluster is not needed — such as edge nodes, development machines, or resource-constrained single servers — Box can replace Docker Compose to manage the lifecycle of the gateway and LLM instances.
 
-Box configuration is also HCL. Create :
+Box configuration is also ACL. Create `box.acl`:
 
-```hcl
-# box.hcl — run gateway + Ollama in microVM sandboxes
+```acl
+# box.acl — run gateway + Ollama in microVM sandboxes
 
 workloads "gateway" {
   binary = "/usr/local/bin/a3s-gateway"
-  args   = ["--config", "/etc/gateway/gateway.hcl"]
+  args   = ["--config", "/etc/gateway/gateway.acl"]
 
   resources {
     memory_mb = 512
@@ -581,13 +581,13 @@ workloads "gateway" {
   ports = [8080, 443]
 
   env = {
-    JWT_SECRET = "${JWT_SECRET}"
+    JWT_SECRET = env("JWT_SECRET")
     RUST_LOG   = "info,a3s_gateway=debug"
   }
 
   mounts {
-    host     = "./gateway.hcl"
-    guest    = "/etc/gateway/gateway.hcl"
+    host     = "./gateway.acl"
+    guest    = "/etc/gateway/gateway.acl"
     readonly = true
   }
 
@@ -630,7 +630,7 @@ Start:
 brew install a3s-lab/tap/a3s-box
 
 # Start all workloads
-a3s-box run --config box.hcl
+a3s-box run --config box.acl
 
 # Check status
 a3s-box status
@@ -647,7 +647,7 @@ Box's microVM isolation means: even if Ollama crashes due to OOM, the gateway pr
 
 For production environments requiring high availability and horizontal scaling, the Helm chart is the recommended deployment method.
 
-Prepare  with the full HCL config embedded:
+Prepare `values-prod.yaml` with the full ACL config embedded:
 
 ```yaml
 # values-prod.yaml
@@ -696,7 +696,7 @@ config: |
 
   middlewares "jwt-auth" {
     type  = "jwt"
-    value = "${JWT_SECRET}"
+    value = env("JWT_SECRET")
   }
 
   middlewares "rate-limit" {
@@ -733,11 +733,12 @@ Verify:
 # Check gateway Pod status
 kubectl get pods -n ai
 
-# Check dashboard
+# Check the ACL before rollout
+a3s-gateway validate --config gateway.acl
+a3s-gateway config --config gateway.acl routes
+
+# Forward the traffic port
 kubectl port-forward -n ai svc/llm-gateway 9090:8080
-curl http://localhost:9090/api/gateway/health    # health status
-curl http://localhost:9090/api/gateway/routes    # current routing table
-curl http://localhost:9090/api/gateway/metrics   # Prometheus metrics
 
 # Test streaming inference (should see tokens arriving one by one immediately)
 curl -N http://localhost:9090/v1/chat/completions   -H "Authorization: Bearer $JWT_TOKEN"   -H "Content-Type: application/json"   -d '{model:llama3,messages:[{role:user,content:Hello}],stream:true}'

@@ -1,11 +1,11 @@
 ---
 title: 配置
-description: 入口点、路由、服务、中间件和提供者的 HCL 配置
+description: 入口点、路由、服务、中间件和提供者的 ACL 配置
 ---
 
 # 配置
 
-A3S Gateway 使用 HCL（HashiCorp 配置语言）作为唯一配置格式，通过 `.hcl` 文件扩展名自动识别。配置支持通过文件监听实现热重载。
+A3S Gateway 使用 ACL（Agent Configuration Language）作为唯一配置格式，通过 `.acl` 文件扩展名自动识别。配置支持通过文件监听实现热重载。
 
 ## GatewayConfig
 
@@ -16,6 +16,7 @@ pub struct GatewayConfig {
     pub services: HashMap<String, ServiceConfig>,
     pub middlewares: HashMap<String, MiddlewareConfig>,
     pub providers: ProviderConfig,
+    pub management: ManagementConfig,
     pub shutdown_timeout_secs: u64, // default: 30
 }
 ```
@@ -24,13 +25,58 @@ pub struct GatewayConfig {
 
 ```rust
 // Load from file
-let config = GatewayConfig::from_file("gateway.hcl").await?;
+let config = GatewayConfig::from_file("gateway.acl").await?;
 
-// Parse from HCL string
-let config = GatewayConfig::from_hcl(hcl_content)?;
+// Parse from ACL string
+let config = GatewayConfig::from_acl(acl_content)?;
 
 // Validate (checks router→service, router→middleware, router→entrypoint references)
 config.validate()?;
+```
+
+## 管理
+
+Dashboard API 是可选能力，并运行在独立 listener 上，不会拦截业务流量入口。
+请求来源必须匹配 `allowed_ips`；设置 `auth_token_env` 后还必须携带
+`Authorization: Bearer <token>`。远程管理需要 HTTPS 或客户端证书校验时，
+启用嵌套的 `tls` 配置块。被拒绝的管理请求和 TLS 握手失败会保存在内存审计
+环形缓冲区中，并通过 `/events` 暴露。
+
+```rust
+pub struct ManagementConfig {
+    pub enabled: bool,                  // default: false
+    pub address: String,                // default: "127.0.0.1:9090"
+    pub path_prefix: String,            // default: "/api/gateway"
+    pub auth_token_env: Option<String>, // default: "A3S_GATEWAY_ADMIN_TOKEN"
+    pub allowed_ips: Vec<String>,       // default: ["127.0.0.1", "::1"]
+    pub tls: Option<ManagementTlsConfig>,
+}
+
+pub struct ManagementTlsConfig {
+    pub cert_file: String,
+    pub key_file: String,
+    pub client_ca_file: Option<String>,
+    pub require_client_cert: bool, // default: false
+    pub min_version: String,       // "1.2" (default) or "1.3"
+}
+```
+
+```acl
+management {
+  enabled        = true
+  address        = "127.0.0.1:9090"
+  path_prefix    = "/api/gateway"
+  auth_token_env = "A3S_GATEWAY_ADMIN_TOKEN"
+  allowed_ips    = ["127.0.0.1", "::1"]
+
+  tls {
+    cert_file           = "/etc/a3s/admin/server.crt"
+    key_file            = "/etc/a3s/admin/server.key"
+    client_ca_file      = "/etc/a3s/admin/client-ca.crt"
+    require_client_cert = true
+    min_version         = "1.3"
+  }
+}
 ```
 
 ## 入口点
@@ -49,7 +95,7 @@ pub struct EntrypointConfig {
 }
 ```
 
-```hcl
+```acl
 # HTTP listener
 entrypoints "web" {
   address = "0.0.0.0:80"
@@ -99,7 +145,7 @@ pub struct TlsConfig {
 
 TLS 由 rustls（纯 Rust，无 OpenSSL 依赖）处理。ACME 支持可从 Let's Encrypt 自动申请证书。
 
-```hcl
+```acl
 entrypoints "websecure" {
   address = "0.0.0.0:443"
   tls {
@@ -128,7 +174,7 @@ pub struct RouterConfig {
 }
 ```
 
-```hcl
+```acl
 routers "api" {
   rule        = "Host(`api.example.com`) && PathPrefix(`/v1`)"
   service     = "api-service"
@@ -166,7 +212,7 @@ pub struct LoadBalancerConfig {
 }
 ```
 
-```hcl
+```acl
 services "api-service" {
   load_balancer {
     strategy = "weighted"
@@ -194,7 +240,7 @@ services "api-service" {
 
 将一定比例的线上流量复制到影子后端，用于测试。
 
-```hcl
+```acl
 services "api-service" {
   load_balancer {
     strategy = "round-robin"
@@ -211,7 +257,7 @@ services "api-service" {
 
 当主服务没有健康后端时，自动切换到备用服务。
 
-```hcl
+```acl
 services "api-service" {
   load_balancer {
     strategy = "round-robin"
@@ -229,10 +275,10 @@ services "api-service" {
 
 中间件在全局定义，通过名称在路由中引用。
 
-```hcl
+```acl
 middlewares "auth-jwt" {
   type  = "jwt"
-  value = "${JWT_SECRET}"
+  value = env("JWT_SECRET")
 }
 
 middlewares "rate-limit" {
@@ -267,10 +313,10 @@ middlewares "circuit-breaker" {
 
 配置值支持引用环境变量：
 
-```hcl
+```acl
 middlewares "auth-jwt" {
   type  = "jwt"
-  value = "${JWT_SECRET}"
+  value = env("JWT_SECRET")
 }
 
 entrypoints "websecure" {
@@ -288,7 +334,7 @@ entrypoints "websecure" {
 
 ### 文件提供者
 
-```hcl
+```acl
 providers {
   file {
     watch     = true
@@ -303,7 +349,7 @@ providers {
 
 基于健康状态的服务发现，通过轮询后端种子 URL 的 `/.well-known/a3s-service.json` 元数据实现。
 
-```hcl
+```acl
 providers {
   discovery {
     poll_interval_secs = 30
@@ -320,7 +366,7 @@ providers {
 
 通过容器标签自动发现服务。
 
-```hcl
+```acl
 providers {
   docker {
     host               = "/var/run/docker.sock"
@@ -334,7 +380,7 @@ providers {
 
 监听 Ingress 和 IngressRoute CRD 资源。
 
-```hcl
+```acl
 providers {
   kubernetes {
     namespace           = "default"
@@ -349,7 +395,7 @@ providers {
 
 ```rust
 // Programmatic reload
-let new_config = GatewayConfig::from_file("gateway.hcl").await?;
+let new_config = GatewayConfig::from_file("gateway.acl").await?;
 gateway.reload(new_config).await?;
 ```
 
@@ -357,12 +403,14 @@ gateway.reload(new_config).await?;
 1. Gateway 切换到 `Reloading` 状态
 2. 验证新配置
 3. 重建路由、服务和中间件
-4. 现有连接继续使用旧配置直到重载完成
-5. Gateway 切换回 `Running` 状态
+4. 如果 HTTP/TCP entrypoint 未变化，直接替换运行时快照，不重新绑定流量端口
+5. 如果新增或迁移 HTTP/TCP listener，则按名称增量协调；新端口绑定失败时，未变化的 listener 继续工作
+6. 如果包含 UDP entrypoint，则显式重启受影响的 entrypoint
+7. Gateway 切换回 `Running` 状态
 
 ## 完整示例
 
-```hcl
+```acl
 # Entrypoints
 entrypoints "web" {
   address = "0.0.0.0:80"
@@ -415,7 +463,7 @@ services "web-service" {
 # Middlewares
 middlewares "auth-jwt" {
   type  = "jwt"
-  value = "${JWT_SECRET}"
+  value = env("JWT_SECRET")
 }
 
 middlewares "rate-limit" {
