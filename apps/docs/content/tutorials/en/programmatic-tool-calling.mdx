@@ -1,0 +1,209 @@
+---
+title: Programmatic Tool Calling (PTC)
+description: Replace multi-turn LLM tool loops with bounded, deterministic JavaScript programs using session.program().
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Programmatic Tool Calling (PTC)
+
+PTC replaces expensive multi-turn LLM tool loops with a single bounded
+JavaScript program. Instead of the model spending 5-10 turns doing
+`grep → read → grep → read → summarize`, you write a script that does it
+in one shot.
+
+<Callout type="info">
+PTC is for **deterministic, repeatable** tool chains. If the task requires
+judgment or reasoning between steps, let the agent loop handle it. If it's
+mechanical scanning/aggregation, PTC is faster and cheaper.
+</Callout>
+
+## When to Use PTC
+
+| Use PTC | Use Agent Loop |
+| --- | --- |
+| Scan files matching a pattern | Decide which files to look at |
+| Aggregate metrics from multiple sources | Interpret what metrics mean |
+| Run a fixed sequence of commands | Choose what to run based on results |
+| Extract structured data from known locations | Figure out where data lives |
+
+## Basic Usage
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// Inline script
+const result = await session.program({
+  source: `
+    export default async function run(ctx, inputs) {
+      const files = await ctx.glob(inputs.pattern);
+      const results = [];
+      for (const file of files.slice(0, 20)) {
+        const content = await ctx.readFile(file);
+        if (content.includes(inputs.keyword)) {
+          results.push({ file, lines: content.split('\\n').length });
+        }
+      }
+      return { matched: results.length, files: results };
+    }
+  `,
+  inputs: { pattern: 'src/**/*.ts', keyword: 'TODO' },
+  allowedTools: ['glob', 'read'],
+  limits: { timeoutMs: 30000, maxToolCalls: 50 },
+});
+
+console.log(result.output);
+```
+
+## Available Context Methods
+
+The `ctx` object provides these methods inside the QuickJS sandbox:
+
+| Method | Description |
+| --- | --- |
+| `ctx.readFile(path)` | Read a file's content |
+| `ctx.read(path, opts?)` | Read with offset/limit |
+| `ctx.grep(pattern, opts?)` | Search file contents |
+| `ctx.glob(pattern)` | Find files by pattern |
+| `ctx.ls(path?)` | List directory |
+| `ctx.bash(command)` | Execute shell command |
+| `ctx.git(command)` | Execute git command |
+| `ctx.tool(name, args)` | Call any registered tool |
+
+## File-Based Scripts
+
+For reusable scripts, put them in your workspace:
+
+```js
+// scripts/ptc/find-unused-exports.js
+export default async function run(ctx, inputs) {
+  const files = await ctx.glob('src/**/*.ts');
+  const exports = [];
+  const imports = [];
+
+  for (const file of files) {
+    const content = await ctx.readFile(file);
+    const exportMatches = content.match(/export\s+(const|function|class|type|interface)\s+(\w+)/g) || [];
+    exports.push(...exportMatches.map(m => ({ file, name: m.split(/\s+/).pop() })));
+
+    const importMatches = content.match(/import\s+\{([^}]+)\}/g) || [];
+    for (const imp of importMatches) {
+      const names = imp.replace(/import\s+\{/, '').replace(/\}/, '').split(',').map(s => s.trim());
+      imports.push(...names);
+    }
+  }
+
+  const unused = exports.filter(e => !imports.includes(e.name));
+  return {
+    total_exports: exports.length,
+    unused_exports: unused.length,
+    unused: unused.slice(0, 50),
+  };
+}
+```
+
+```ts
+const result = await session.program({
+  path: 'scripts/ptc/find-unused-exports.js',
+  inputs: {},
+  allowedTools: ['glob', 'read'],
+  limits: { timeoutMs: 60000, maxToolCalls: 200 },
+});
+```
+
+## Combining PTC with generate_object
+
+PTC gathers data deterministically, then `generate_object` structures it:
+
+```ts
+// Step 1: PTC scans the codebase
+const scan = await session.program({
+  source: `
+    export default async function run(ctx) {
+      const files = await ctx.glob('src/**/*.ts');
+      const deps = [];
+      for (const file of files.slice(0, 30)) {
+        const content = await ctx.readFile(file);
+        const imports = content.match(/from ['"]([^'"]+)['"]/g) || [];
+        deps.push({ file, imports: imports.map(i => i.replace(/from ['"]|['"]/g, '')) });
+      }
+      return { file_count: files.length, dependencies: deps };
+    }
+  `,
+  inputs: {},
+  allowedTools: ['glob', 'read'],
+});
+
+// Step 2: generate_object produces structured analysis
+const analysis = await session.tool('generate_object', {
+  schema: {
+    type: 'object',
+    required: ['summary', 'circular_risks', 'recommendations'],
+    properties: {
+      summary: { type: 'string' },
+      circular_risks: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['files', 'description'],
+          properties: {
+            files: { type: 'array', items: { type: 'string' } },
+            description: { type: 'string' },
+          },
+        },
+      },
+      recommendations: { type: 'array', items: { type: 'string' } },
+    },
+  },
+  prompt: `Analyze these dependency relationships for circular dependency risks:\n\n${scan.output}`,
+  schema_name: 'dep_analysis',
+});
+```
+
+## Limits and Security
+
+PTC runs in a sandboxed QuickJS VM with no filesystem, network, or subprocess
+access. The only capabilities come from `ctx` methods routed through A3S Code's
+tool execution path.
+
+```ts
+await session.program({
+  source: '...',
+  inputs: {},
+  allowedTools: ['grep', 'glob', 'read'], // restrict tool surface
+  limits: {
+    timeoutMs: 30000,      // kill after 30s
+    maxToolCalls: 100,     // max tool invocations
+    maxOutputBytes: 65536, // truncate output at 64KB
+  },
+});
+```
+
+## Python
+
+```python
+result = session.program({
+    "source": """
+export default async function run(ctx, inputs) {
+    const hits = await ctx.grep(inputs.pattern);
+    return { matches: hits.split('\\n').length };
+}
+""",
+    "inputs": {"pattern": "TODO|FIXME|HACK"},
+    "allowedTools": ["grep"],
+    "limits": {"timeoutMs": 15000},
+})
+```
+
+## Anti-Patterns
+
+- Don't use PTC for tasks that need reasoning between steps
+- Don't scan hundreds of files without `limits.maxToolCalls`
+- Don't put large outputs directly into prompts — summarize first
+- Don't use PTC when a single `session.grep()` or `session.glob()` suffices

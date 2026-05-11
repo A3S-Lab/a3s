@@ -1,0 +1,124 @@
+---
+title: Hook 系统
+description: 通过 Hook 系统在工具执行前后运行自定义逻辑。
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Hook 系统
+
+Hook 允许你在智能体生命周期事件中运行自定义 shell 命令。用于日志记录、校验、通知或执行自定义策略。
+
+## Hook 事件
+
+| 事件 | 触发时机 | 使用场景 |
+| --- | --- | --- |
+| `pre_tool` | 工具执行前 | 校验参数、记录意图 |
+| `post_tool` | 工具执行后 | 审计输出、触发 CI |
+| `pre_prompt` | LLM 调用前 | 注入上下文、限流 |
+| `post_response` | LLM 响应后 | 记录 token、过滤输出 |
+
+## 配置
+
+在 ACL 配置中定义 Hook：
+
+```text
+hooks "pre_tool" {
+  command = "node scripts/hooks/validate-tool.js"
+  timeout_ms = 5000
+}
+
+hooks "post_tool" {
+  command = "node scripts/hooks/audit-log.js"
+  timeout_ms = 3000
+}
+```
+
+## Hook 脚本
+
+Hook 脚本通过 stdin 接收事件数据（JSON），可以：
+- 退出码 0 表示允许操作
+- 退出码非 0 表示阻止操作（仅 pre_tool）
+- 写入 stdout 修改事件（高级用法）
+
+```js
+// scripts/hooks/validate-tool.js
+import { readFileSync } from 'fs';
+
+const event = JSON.parse(readFileSync('/dev/stdin', 'utf-8'));
+
+if (event.tool_name === 'bash') {
+  const cmd = event.args?.command || '';
+  // 阻止危险命令
+  if (cmd.includes('rm -rf') || cmd.includes('DROP TABLE')) {
+    console.error(`Blocked dangerous command: ${cmd}`);
+    process.exit(1);
+  }
+}
+
+process.exit(0); // 允许
+```
+
+```js
+// scripts/hooks/audit-log.js
+import { readFileSync, appendFileSync } from 'fs';
+
+const event = JSON.parse(readFileSync('/dev/stdin', 'utf-8'));
+
+const entry = {
+  timestamp: new Date().toISOString(),
+  tool: event.tool_name,
+  exit_code: event.exit_code,
+  duration_ms: event.duration_ms,
+};
+
+appendFileSync('audit.jsonl', JSON.stringify(entry) + '\n');
+```
+
+## SDK 级别 Hook
+
+以编程方式注册 Hook：
+
+```ts
+const session = agent.session('.', {
+  hooks: {
+    preTool: async (event) => {
+      console.log(`[hook] About to run: ${event.toolName}`);
+      // 返回 false 阻止执行
+      if (event.toolName === 'bash' && event.args.command.includes('sudo')) {
+        return false;
+      }
+      return true;
+    },
+    postTool: async (event) => {
+      if (event.exitCode !== 0) {
+        await notifySlack(`Tool ${event.toolName} failed`);
+      }
+    },
+  },
+});
+```
+
+## 结合 Hook 与结构化输出
+
+使用 post_tool Hook 对 generate_object 输出进行业务规则校验：
+
+```js
+// scripts/hooks/validate-output.js
+const event = JSON.parse(readFileSync('/dev/stdin', 'utf-8'));
+
+if (event.tool_name === 'generate_object' && event.exit_code === 0) {
+  const output = JSON.parse(event.output);
+  const obj = output.object;
+
+  // 业务规则：risk_score > 8 需要经理审批
+  if (obj.risk_score > 8) {
+    appendFileSync('alerts.jsonl', JSON.stringify({
+      type: 'high_risk',
+      score: obj.risk_score,
+      timestamp: new Date().toISOString(),
+    }) + '\n');
+  }
+}
+```

@@ -1,0 +1,128 @@
+---
+title: MCP 集成
+description: 使用 Model Context Protocol 将外部工具服务器连接到智能体。
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# MCP 集成
+
+Model Context Protocol (MCP) 允许你将外部工具服务器连接到智能体。任何兼容 MCP 的服务器都会成为智能体工具集的一部分。
+
+<Callout type="info">
+MCP 工具与内置工具并列显示。智能体可以自主调用它们，你也可以通过 `session.tool()` 直接调用。
+</Callout>
+
+## 添加 MCP 服务器
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// 连接基于 stdio 的 MCP 服务器
+await session.addMcp('database', {
+  command: 'npx',
+  args: ['-y', '@modelcontextprotocol/server-postgres', 'postgresql://localhost/mydb'],
+});
+
+// 连接基于 SSE 的 MCP 服务器
+await session.addMcp('analytics', {
+  url: 'http://localhost:3001/mcp',
+  authToken: process.env.MCP_TOKEN,
+});
+```
+
+## 使用 MCP 工具
+
+连接后，MCP 工具与其他工具使用方式相同：
+
+```ts
+// 智能体自主使用 MCP 工具
+const result = await session.send('Query the database for all users created this week');
+
+// 或直接调用
+const queryResult = await session.tool('database__query', {
+  sql: 'SELECT * FROM users WHERE created_at > NOW() - INTERVAL 7 DAY',
+});
+```
+
+## 列出已连接的服务器
+
+```ts
+const servers = session.mcps();
+console.log(servers); // ['database', 'analytics']
+```
+
+## 移除服务器
+
+```ts
+await session.removeMcp('database');
+```
+
+## ACL 配置中的 MCP
+
+在 `.acl` 配置文件中配置 MCP 服务器以实现自动连接：
+
+```text
+mcp "github" {
+  command = "npx"
+  args    = ["-y", "@modelcontextprotocol/server-github"]
+  env     = { GITHUB_TOKEN = env("GITHUB_TOKEN") }
+}
+
+mcp "filesystem" {
+  command = "npx"
+  args    = ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
+}
+```
+
+## 结合 MCP 与结构化输出
+
+```ts
+// MCP 提供原始数据，generate_object 将其结构化
+await session.addMcp('jira', { command: 'jira-mcp-server' });
+
+const result = await session.tool('generate_object', {
+  schema: {
+    type: 'object',
+    required: ['sprint_summary'],
+    properties: {
+      sprint_summary: {
+        type: 'object',
+        required: ['total', 'completed', 'blocked'],
+        properties: {
+          total: { type: 'integer' },
+          completed: { type: 'integer' },
+          blocked: { type: 'integer' },
+          blockers: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+  },
+  prompt: 'Summarize the current sprint status from Jira',
+  schema_name: 'sprint',
+});
+```
+
+## Python
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.permission_policy = PermissionPolicy(default_decision="allow")
+session = agent.session('.', opts)
+
+session.add_mcp('database', {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"],
+})
+
+result = session.send("List all tables in the database")
+```

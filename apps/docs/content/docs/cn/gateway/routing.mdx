@@ -44,7 +44,7 @@ rule = "Matcher(`value`) && Matcher(`value`)"
 
 使用 `&&` 组合多个匹配器（AND 逻辑）：
 
-```acl
+```text
 routers "api-v1" {
   rule    = "Host(`api.example.com`) && PathPrefix(`/v1`)"
   service = "api-v1"
@@ -65,7 +65,7 @@ routers "internal" {
 
 当多个路由匹配时，`priority` 值最小的优先（默认值：`0`）：
 
-```acl
+```text
 routers "specific" {
   rule     = "Host(`api.example.com`) && Path(`/health`)"
   service  = "health-service"
@@ -83,7 +83,7 @@ routers "general" {
 
 路由只接收来自其绑定入口点的流量：
 
-```acl
+```text
 entrypoints "web" {
   address = "0.0.0.0:80"
 }
@@ -115,7 +115,7 @@ routers "web" {
 
 中间件按列表顺序依次执行。任意中间件拒绝请求时，管道立即短路。
 
-```acl
+```text
 routers "api" {
   rule        = "Host(`api.example.com`)"
   service     = "api-service"
@@ -128,7 +128,7 @@ routers "api" {
 
 TCP 入口点使用 TLS ClientHello 中的 SNI：
 
-```acl
+```text
 entrypoints "tcp-secure" {
   address  = "0.0.0.0:5432"
   protocol = "tcp"
@@ -147,7 +147,7 @@ UDP 路由基于端口——每个 UDP 入口点映射到单个服务。
 
 ### API 版本控制
 
-```acl
+```text
 routers "api-v2" {
   rule     = "Host(`api.example.com`) && PathPrefix(`/v2`)"
   service  = "api-v2"
@@ -169,7 +169,7 @@ routers "api-fallback" {
 
 ### 多租户
 
-```acl
+```text
 routers "tenant-a" {
   rule    = "Host(`a.example.com`)"
   service = "tenant-a-backend"
@@ -183,7 +183,7 @@ routers "tenant-b" {
 
 ### 基于请求头的金丝雀发布
 
-```acl
+```text
 routers "canary" {
   rule     = "Headers(`X-Canary`, `true`) && PathPrefix(`/api`)"
   service  = "canary-backend"

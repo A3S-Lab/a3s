@@ -1,4 +1,19 @@
 {
   "title": "Tutorials",
-  "pages": ["deep-research", "news-radar", "agent-teams"]
+  "pages": [
+    "structured-output",
+    "programmatic-tool-calling",
+    "streaming",
+    "session-persistence",
+    "skills",
+    "mcp-integration",
+    "security-hitl",
+    "hooks",
+    "memory",
+    "---Use Cases---",
+    "deep-research",
+    "news-radar",
+    "agent-teams",
+    "contract-review"
+  ]
 }

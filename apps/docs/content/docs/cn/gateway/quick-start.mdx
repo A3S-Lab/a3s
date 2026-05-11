@@ -9,7 +9,7 @@ description: 使用基本反向代理配置启动 A3S Gateway
 
 创建 `gateway.acl` 文件，包含入口点、路由器和服务：
 
-```acl
+```text
 entrypoints "web" {
   address = "0.0.0.0:80"
 }
@@ -43,7 +43,7 @@ a3s-gateway validate --config gateway.acl
 
 ## 添加 HTTPS
 
-```acl
+```text
 entrypoints "web" {
   address = "0.0.0.0:80"
 }
@@ -73,7 +73,7 @@ services "api-backend" {
 
 ## 添加中间件
 
-```acl
+```text
 entrypoints "websecure" {
   address = "0.0.0.0:443"
 
@@ -114,7 +114,7 @@ services "api-backend" {
 
 ## 健康检查
 
-```acl
+```text
 services "api-backend" {
   load_balancer {
     strategy = "least-connections"
@@ -154,7 +154,7 @@ a3s-gateway management validate --url http://127.0.0.1:9090/api/gateway --file g
 a3s-gateway management reload --url http://127.0.0.1:9090/api/gateway --file gateway.acl
 ```
 
-```acl
+```text
 management {
   enabled        = true
   address        = "127.0.0.1:9090"

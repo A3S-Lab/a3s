@@ -25,7 +25,7 @@ a3s-gateway          <- application-agnostic ingress/reverse proxy layer
 
 **a3s** is the developer CLI. It starts services, manages dependencies, deploys k3s, proxies to ecosystem tools, and scaffolds agents from a single `A3sfile.hcl`.
 
-**a3s-code** is a coding-agent runtime library. It exposes ACL config, tools, hooks, security policy, memory, MCP, explicit planning mode, run replay, QuickJS PTC, and task delegation through runtime APIs and SDKs.
+**a3s-code** is a coding-agent runtime library. It exposes ACL config, tools, hooks, security policy, memory, MCP, structured output (`generate_object`), explicit planning mode, run replay, QuickJS PTC, and task delegation through runtime APIs and SDKs.
 
 **a3s-box** is a MicroVM runtime. Its local Docker-like CLI is the primary product surface today. Kubernetes CRI, hardware TEE, and Windows paths exist but are integration surfaces with explicit platform limits, not blanket production guarantees.
 
@@ -64,7 +64,7 @@ Your workload
 | --- | --- | --- | --- |
 | [a3s](crates/cli/) | 0.1.4 | CLI for orchestration, dependencies, k3s, tool proxy, and scaffolding | [README](crates/cli/README.md) |
 | [a3s-box](crates/box/) | 2.0.4 | Docker-like MicroVM runtime for Linux OCI workloads; local CLI is primary, CRI/TEE/Windows paths are platform-gated | [README](crates/box/README.md) |
-| [a3s-code](crates/code/) | 2.1.0 | Harness-driven coding-agent runtime with ACL config, SDKs, planning, run replay, PTC, delegation, and memory | [README](crates/code/README.md) |
+| [a3s-code](crates/code/) | 2.4.0 | Harness-driven coding-agent runtime with ACL config, SDKs, structured output, planning, run replay, PTC, delegation, and memory | [README](crates/code/README.md) |
 | [a3s-gateway](crates/gateway/) | 0.2.3 | Kubernetes ingress/reverse proxy with middleware and privacy routing | [README](crates/gateway/README.md) |
 | [a3s-lane](crates/lane/) | 0.4.0 | Priority queues with lanes, concurrency, retry, and DLQ | [README](crates/lane/README.md) |
 | [a3s-power](crates/power/) | 0.4.2 | Local LLM inference engine with OpenAI-compatible API | [README](crates/power/README.md) |

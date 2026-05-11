@@ -28,7 +28,7 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
   }}
 />
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy        = "weighted"
@@ -56,7 +56,7 @@ services "api" {
 
 主动 HTTP 探测，支持可配置的阈值。不健康的后端会自动从负载均衡中排除。
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -91,7 +91,7 @@ services "api" {
 
 通过 Cookie 将同一客户端路由到同一后端：
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -109,7 +109,7 @@ services "api" {
 
 将一定比例的线上流量复制到影子服务，用于测试，不影响主响应：
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -133,7 +133,7 @@ services "api" {
 
 当主后端池没有健康实例时，自动切换到备用后端池：
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -159,7 +159,7 @@ services "backup-pool" {
 
 可选的自动扩缩容，支持缩容至零、请求缓冲和基于并发的决策：
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -197,7 +197,7 @@ services "api" {
 
 将流量按比例分配到不同版本，用于金丝雀发布：
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -218,7 +218,7 @@ services "api" {
 
 自动将流量从一个版本迁移到另一个版本，并带有安全保障：
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"

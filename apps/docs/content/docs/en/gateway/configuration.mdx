@@ -62,7 +62,7 @@ pub struct ManagementTlsConfig {
 }
 ```
 
-```acl
+```text
 management {
   enabled        = true
   address        = "127.0.0.1:9090"
@@ -96,7 +96,7 @@ pub struct EntrypointConfig {
 }
 ```
 
-```acl
+```text
 # HTTP listener
 entrypoints "web" {
   address = "0.0.0.0:80"
@@ -146,7 +146,7 @@ pub struct TlsConfig {
 
 TLS is handled by rustls (pure Rust, no OpenSSL dependency). ACME support enables automatic certificate provisioning from Let's Encrypt.
 
-```acl
+```text
 entrypoints "websecure" {
   address = "0.0.0.0:443"
   tls {
@@ -175,7 +175,7 @@ pub struct RouterConfig {
 }
 ```
 
-```acl
+```text
 routers "api" {
   rule        = "Host(`api.example.com`) && PathPrefix(`/v1`)"
   service     = "api-service"
@@ -213,7 +213,7 @@ pub struct LoadBalancerConfig {
 }
 ```
 
-```acl
+```text
 services "api-service" {
   load_balancer {
     strategy = "weighted"
@@ -241,7 +241,7 @@ services "api-service" {
 
 Copy a percentage of live traffic to a shadow backend for testing.
 
-```acl
+```text
 services "api-service" {
   load_balancer {
     strategy = "round-robin"
@@ -258,7 +258,7 @@ services "api-service" {
 
 Automatic fallback when the primary service has zero healthy backends.
 
-```acl
+```text
 services "api-service" {
   load_balancer {
     strategy = "round-robin"
@@ -276,7 +276,7 @@ See [Services](./services) for load balancing strategies and health check detail
 
 Middlewares are defined globally and referenced by name in routers.
 
-```acl
+```text
 middlewares "auth-jwt" {
   type  = "jwt"
   value = env("JWT_SECRET")
@@ -314,7 +314,7 @@ See [Middleware](./middleware) for all 15 built-in middleware types.
 
 Configuration values support environment variable references:
 
-```acl
+```text
 middlewares "auth-jwt" {
   type  = "jwt"
   value = env("JWT_SECRET")
@@ -335,7 +335,7 @@ Configuration providers supply dynamic configuration.
 
 ### File Provider
 
-```acl
+```text
 providers {
   file {
     watch     = true
@@ -350,7 +350,7 @@ When `watch = true`, the gateway monitors the config file and directory for chan
 
 Health-based service discovery that polls backend seed URLs for `/.well-known/a3s-service.json` metadata.
 
-```acl
+```text
 providers {
   discovery {
     poll_interval_secs = 30
@@ -367,7 +367,7 @@ providers {
 
 Auto-discover services from container labels.
 
-```acl
+```text
 providers {
   docker {
     host               = "/var/run/docker.sock"
@@ -381,7 +381,7 @@ providers {
 
 Watch Ingress and IngressRoute CRD resources.
 
-```acl
+```text
 providers {
   kubernetes {
     namespace           = "default"
@@ -411,7 +411,7 @@ During reload:
 
 ## Full Example
 
-```acl
+```text
 # Entrypoints
 entrypoints "web" {
   address = "0.0.0.0:80"

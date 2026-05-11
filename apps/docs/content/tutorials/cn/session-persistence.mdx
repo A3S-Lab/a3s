@@ -1,0 +1,131 @@
+---
+title: Session 持久化
+description: 跨重启保存、恢复和管理长时间运行的智能体会话。
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Session 持久化
+
+Session 可以跨进程重启保存和恢复。这使得长时间运行的工作流、跨越数小时的多步骤任务以及有状态的智能体应用成为可能。
+
+## 快速开始
+
+```ts
+import { Agent, FileSessionStore } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  sessionStore: new FileSessionStore('./sessions'),
+  sessionId: 'my-project-review',
+  autoSave: true,
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// 执行工作...
+await session.send('Read and analyze the codebase');
+// 每轮结束后自动保存 Session
+```
+
+## 恢复 Session
+
+```ts
+// 稍后（即使进程已重启）：
+const resumed = agent.resumeSession('my-project-review', {
+  sessionStore: new FileSessionStore('./sessions'),
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// 带完整对话历史继续
+const result = await resumed.send('What did you find in the analysis?');
+```
+
+## 存储后端
+
+### FileSessionStore
+
+将 Session 以 JSON 文件持久化到磁盘：
+
+```ts
+import { FileSessionStore } from '@a3s-lab/code';
+
+const store = new FileSessionStore('./data/sessions');
+```
+
+### MemorySessionStore
+
+内存存储（适用于测试）：
+
+```ts
+import { MemorySessionStore } from '@a3s-lab/code';
+
+const store = new MemorySessionStore();
+```
+
+## 手动保存
+
+当 `autoSave` 为 false 时，需要显式保存：
+
+```ts
+const session = agent.session('.', {
+  sessionStore: new FileSessionStore('./sessions'),
+  sessionId: 'manual-save-demo',
+  autoSave: false,
+});
+
+await session.send('Do some work');
+// 在检查点显式保存
+await session.save();
+```
+
+## 会话历史
+
+访问对话历史：
+
+```ts
+const history = session.history();
+for (const msg of history) {
+  console.log(`[${msg.role}] ${msg.content?.slice(0, 80)}`);
+}
+```
+
+## Run 回放
+
+检查过去的执行记录：
+
+```ts
+const runs = await session.runs();
+for (const run of runs) {
+  console.log(`Run ${run.id}: ${run.status}`);
+  const events = await session.runEvents(run.id);
+  // 回放工具调用、文本输出等
+}
+```
+
+## 使用场景
+
+- **多日代码审查**：开始审查，次日带完整上下文恢复
+- **迭代开发**：智能体记住之前轮次中构建的内容
+- **有状态助手**：记住对话历史的客服机器人
+- **基于检查点的工作流**：在危险操作前保存，需要时从检查点恢复
+
+## Python
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy, FileSessionStore
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.permission_policy = PermissionPolicy(default_decision="allow")
+opts.session_store = FileSessionStore('./sessions')
+opts.session_id = 'my-session'
+opts.auto_save = True
+
+session = agent.session('.', opts)
+session.send('Start working on the task')
+
+# 稍后：
+resumed = agent.resume_session('my-session', opts)
+resumed.send('Continue where you left off')
+```

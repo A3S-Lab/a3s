@@ -24,7 +24,7 @@ Power auto-detects the TEE environment at startup:
 
 Enable TEE mode in config:
 
-```hcl
+```text
 tee_mode    = true
 redact_logs = true
 ```
@@ -41,7 +41,7 @@ A3S_TEE_SIMULATE=1 a3s-power serve
 
 When `tee_mode = true` and `model_hashes` is configured, Power verifies every model file's SHA-256 hash at startup. The server refuses to start if any model fails verification.
 
-```hcl
+```text
 tee_mode = true
 model_hashes = {
   "llama3.2:3b" = "sha256:a1b2c3d4e5f6..."
@@ -108,7 +108,7 @@ All inference buffers are wrapped in `SensitiveString` which auto-zeroizes on dr
 
 Model files can be encrypted with AES-256-GCM. Power decrypts them at load time and securely wipes the plaintext on unload.
 
-```hcl
+```text
 # Key from file
 model_key_source = { file = "/secure/model.key" }
 
@@ -121,7 +121,7 @@ in_memory_decrypt = true
 
 ### Key Rotation
 
-```hcl
+```text
 key_provider = "rotating"
 key_rotation_sources = [
   { env = "MODEL_KEY_NEW" },
@@ -135,7 +135,7 @@ Deploy the new key, call `rotate_key()`, then remove the old key — zero downti
 
 When `ra_tls = true`, the TLS certificate includes the TEE attestation report as a custom X.509 extension (OID `1.3.6.1.4.1.56560.1.1`). Clients can extract and verify this extension to confirm they are communicating with a genuine TEE before trusting inference output.
 
-```hcl
+```text
 tee_mode = true
 tls_port = 11443
 ra_tls   = true
@@ -147,7 +147,7 @@ Requires the `tls` feature: `cargo build --features tls`.
 
 For a3s-box MicroVM deployments, Power can listen on an AF_VSOCK socket instead of (or in addition to) TCP. This enables guest-host communication without any network configuration inside the VM.
 
-```hcl
+```text
 vsock_port = 4088
 ```
 

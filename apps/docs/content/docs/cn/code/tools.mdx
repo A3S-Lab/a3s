@@ -5,9 +5,9 @@ description: "工具选择、直接工具调用与验证证据"
 
 # 工具
 
-v2.1.0 会保留工具注册表。`toolNames()` 返回当前 session 的工具表面。
+v2.3.0 会保留工具注册表。`toolNames()` 返回当前 session 的工具表面。
 
-默认核心工具包括 `read`、`write`、`edit`、`patch`、`grep`、`glob`、`ls`、`bash`、`task`、`parallel_task`、`search_skills` 和 `Skill`。`web_fetch`、`web_search`、`git`、`batch`、`program` 与 MCP 工具属于更宽的工具表面；模型可见选择行为应在依赖它的产品流程中单独验证。
+默认核心工具包括 `read`、`write`、`edit`、`patch`、`grep`、`glob`、`ls`、`bash`、`task`、`parallel_task`、`search_skills`、`Skill` 和 `generate_object`。`web_fetch`、`web_search`、`git`、`batch`、`program` 与 MCP 工具属于更宽的工具表面；模型可见选择行为应在依赖它的产品流程中单独验证。
 
 ```ts
 const files = await session.glob('src/**/*.rs');
@@ -19,6 +19,68 @@ const schemas = session.toolDefinitions();
 ```
 
 直接工具调用在 session 工作区下执行，应视为宿主侧特权操作。长输出应在进入 prompt 前先摘要。
+
+## 结构化输出：`generate_object`
+
+`generate_object` 工具生成严格符合 JSON Schema 的对象。它有两种使用方式：
+
+1. **智能体自主调用**：LLM 在工具列表中看到 `generate_object`，在需要结构化输出时自行决定调用。
+2. **直接调用**：应用通过 `session.tool('generate_object', ...)` 绕过 LLM 决策，获得确定性结构化输出。
+
+```ts
+const result = await session.tool('generate_object', {
+  schema: {
+    type: 'object',
+    required: ['sentiment', 'confidence'],
+    properties: {
+      sentiment: { type: 'string', enum: ['positive', 'negative', 'neutral'] },
+      confidence: { type: 'number', minimum: 0, maximum: 1 },
+    },
+  },
+  prompt: '分类: "这个产品太棒了！"',
+  schema_name: 'sentiment',
+  mode: 'tool',
+  max_repair_attempts: 2,
+});
+
+const { object } = JSON.parse(result.output);
+// object = { sentiment: "positive", confidence: 0.95 }
+```
+
+### 参数
+
+| 参数 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `schema` | object | 是 | 输出必须符合的 JSON Schema |
+| `prompt` | string | 是 | 描述要生成或提取的内容 |
+| `schema_name` | string | 否 | 短名称（默认 "result"） |
+| `schema_description` | string | 否 | 合成工具的描述 |
+| `system` | string | 否 | 可选系统提示 |
+| `mode` | string | 否 | `"auto"` / `"tool"` / `"prompt"`（默认 auto） |
+| `max_repair_attempts` | integer | 否 | 0–5（默认 2） |
+
+### 模式
+
+- **tool**（默认）：注入一个合成工具，其参数就是 schema。LLM 被强制调用它。跨 provider 最可靠。
+- **prompt**：将 schema 指令追加到 prompt 中。可靠性较低，但不依赖 tool-calling 能力。
+- **auto**：根据 provider 能力自动选择最佳模式（当前解析为 `tool`）。
+
+### 流式
+
+通过 `session.stream()` 调用时，部分对象以 `tool_output_delta` 事件发出：
+
+```ts
+for await (const ev of await session.stream('提取所有发票...')) {
+  if (ev.type === 'tool_output_delta' && ev.toolName === 'generate_object') {
+    const { object_partial } = JSON.parse(ev.text);
+    renderProgress(object_partial);
+  }
+}
+```
+
+### 修复重试
+
+如果 LLM 输出未通过 schema 校验，工具会自动将校验错误反馈给模型并重试。这能处理缺少必填字段、枚举值错误等边界情况，无需应用层重试逻辑。
 
 委派子任务可以直接使用 SDK helper，它们底层仍是同一组核心工具：
 

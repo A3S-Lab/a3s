@@ -26,7 +26,7 @@ focuses on the current Node SDK surface.
 | --- | --- |
 | Configuration | ACL-only config with labeled `providers` and `models` blocks; `env(...)` is the standard credential path. |
 | Delegation | `task` and `parallel_task` are the default multi-agent path, returning compact child summaries instead of full transcripts. |
-| Tool surface | Core tools stay small; web, git, batch, skill administration, and MCP tools are intent-gated. |
+| Tool surface | Core tools stay small; web, git, batch, skill administration, and MCP tools are intent-gated. `generate_object` provides schema-validated structured output. |
 | PTC | Programmatic Tool Calling runs bounded JavaScript in embedded QuickJS; the Node SDK exposes `session.program(...)` over the core `program` tool. |
 | Persistence | File and memory stores support resumable sessions, explicit `save()`, `autoSave`, memory recall, and session IDs. |
 

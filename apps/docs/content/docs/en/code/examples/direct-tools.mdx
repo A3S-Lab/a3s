@@ -17,6 +17,20 @@ const program = await session.program({
   inputs: { q: 'planningMode' },
   allowedTools: ['grep'],
 });
+
+// Structured output: generate a schema-validated JSON object
+const structured = await session.tool('generate_object', {
+  schema: {
+    type: 'object',
+    required: ['count', 'language'],
+    properties: {
+      count: { type: 'integer' },
+      language: { type: 'string' },
+    },
+  },
+  prompt: 'How many .mdx files are there? What language are they in?',
+  schema_name: 'file_stats',
+});
 ```
 
 Direct tools are useful for tests, migrations, and host application workflows.

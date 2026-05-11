@@ -1,0 +1,126 @@
+---
+title: Skills System
+description: Extend agent capabilities with reusable, composable skills — prompt injections, personas, and tool-gated behaviors.
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Skills System
+
+Skills are reusable capability modules that extend what an agent can do.
+They inject specialized prompts, personas, or tool-access patterns into
+a session without modifying the core agent.
+
+## Skill Types
+
+| Type | Purpose | Example |
+| --- | --- | --- |
+| `instruction` | Inject domain knowledge or rules | "Always use parameterized SQL queries" |
+| `persona` | Replace the agent's default role | "You are a senior security auditor" |
+
+## Inline Skills (Programmatic)
+
+Register skills directly in code:
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  builtinSkills: true,
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// Add an instruction skill
+session.addInstruction('sql-safety', `
+  When writing SQL queries:
+  - Always use parameterized queries, never string concatenation
+  - Validate all user inputs before query construction
+  - Use LIMIT clauses on SELECT queries
+  - Log all query executions for audit
+`);
+
+// Add a persona skill
+session.addPersona('security-auditor', `
+  You are a senior application security engineer with 10 years of experience.
+  You focus on OWASP Top 10 vulnerabilities and secure coding practices.
+  You provide specific, actionable recommendations with code examples.
+`);
+```
+
+## File-Based Skills
+
+Create `.skill` files in a skills directory:
+
+```text
+skills/
+├── code-review.skill
+├── api-design.skill
+└── testing.skill
+```
+
+```text
+// skills/code-review.skill
+---
+name: code-review
+kind: instruction
+---
+
+When reviewing code:
+1. Check for security vulnerabilities (injection, XSS, CSRF)
+2. Verify error handling covers all failure modes
+3. Ensure tests exist for new functionality
+4. Flag any hardcoded secrets or credentials
+5. Check for proper input validation at system boundaries
+```
+
+Load from directory:
+
+```ts
+const session = agent.session('.', {
+  skillDirs: ['./skills'],
+  builtinSkills: true,
+});
+```
+
+## Skill Discovery
+
+The agent can search available skills:
+
+```ts
+// The agent sees search_skills and Skill tools
+const result = await session.send('What skills are available for security review?');
+// Agent will use search_skills to find relevant skills, then activate them
+```
+
+## Combining Skills with Structured Output
+
+```ts
+// Persona shapes HOW the agent thinks
+session.addPersona('contract-lawyer', `
+  You are a corporate contract lawyer specializing in technology agreements.
+  You identify risks from the perspective of the contracting party.
+`);
+
+// Then use generate_object for deterministic output
+const result = await session.send(`
+  Review the contract at contracts/saas-agreement.pdf
+  and use generate_object to output findings with this schema:
+  ${JSON.stringify(REVIEW_SCHEMA)}
+`);
+```
+
+## Python
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.permission_policy = PermissionPolicy(default_decision="allow")
+opts.builtin_skills = True
+opts.skill_dirs = ["./skills"]
+
+session = agent.session('.', opts)
+```

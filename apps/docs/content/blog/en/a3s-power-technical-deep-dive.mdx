@@ -93,7 +93,7 @@ RA-TLS (Remote Attestation TLS) embeds the attestation report directly into the 
 
 First, the config — three lines:
 
-```hcl
+```text
 tee_mode = true
 tls_port = 11443
 ra_tls   = true
@@ -205,7 +205,7 @@ API behavior might look completely normal — you can't reliably distinguish dif
 
 **Layer one: SHA-256 hash verification.** When `tee_mode = true`, each model file's hash is verified at startup. No match? Refuse to start.
 
-```hcl
+```text
 tee_mode = true
 model_hashes = {
   "llama3.2:3b" = "sha256:a1b2c3d4e5f6..."
@@ -215,7 +215,7 @@ model_hashes = {
 
 **Layer two: Ed25519 signature verification.** The model publisher signs the model file with an Ed25519 private key; the signature is stored at `<model_path>.sig` (64-byte raw signature). Verification happens at load time — confirming not only that the model hasn't been tampered with, but also that it genuinely came from the claimed publisher.
 
-```hcl
+```text
 model_signing_key = "a1b2c3d4..."  # Ed25519 public key (hex-encoded, 32 bytes)
 ```
 
@@ -629,7 +629,7 @@ Two built-in implementations:
 
 Key sources support two forms:
 
-```hcl
+```text
 # Load from file (64 hex characters = 32 bytes)
 model_key_source = { file = "/path/to/key.hex" }
 
@@ -931,7 +931,7 @@ If you need to get A3S Power running today, here's what you need to know.
 
 ### Fastest Start: Development Mode
 
-```hcl
+```text
 # power.hcl — minimal config
 bind = "0.0.0.0"
 port = 11434
@@ -954,7 +954,7 @@ curl http://localhost:11434/v1/chat/completions \
 
 ### Production Mode: Full TEE
 
-```hcl
+```text
 # power.hcl — production TEE config
 bind = "0.0.0.0"
 port = 11434

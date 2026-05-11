@@ -1,0 +1,139 @@
+---
+title: Security & Human-in-the-Loop
+description: Control agent permissions with policies, confirmation flows, and HITL patterns.
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Security & Human-in-the-Loop
+
+A3S Code provides layered security: permission policies control what tools
+the agent can use, and HITL (Human-in-the-Loop) confirmation gates dangerous
+operations behind human approval.
+
+## Permission Policies
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+
+// Allow all tools (development mode)
+const devSession = agent.session('.', {
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// Restrictive policy (production)
+const prodSession = agent.session('.', {
+  permissionPolicy: {
+    defaultDecision: 'deny',
+    allow: ['read', 'grep', 'glob', 'ls', 'generate_object'],
+    deny: ['bash(rm:*)', 'bash(sudo:*)', 'write'],
+  },
+});
+```
+
+## Policy Patterns
+
+| Pattern | Matches |
+| --- | --- |
+| `bash` | All bash commands |
+| `bash(rm:*)` | Bash commands starting with `rm` |
+| `bash(echo:*)` | Bash commands starting with `echo` |
+| `write` | All file writes |
+| `read` | All file reads |
+| `*` | Everything |
+
+## HITL Confirmation
+
+For interactive applications, require human approval for specific tools:
+
+```ts
+const session = agent.session('.', {
+  confirmationPolicy: {
+    requireConfirmation: ['bash', 'write', 'edit'],
+    timeoutMs: 60000, // 60s to respond
+  },
+  hitl: true,
+});
+
+const stream = await session.stream('Fix the bug in auth.ts');
+
+for await (const ev of stream) {
+  if (ev.type === 'confirmation_required') {
+    console.log(`Tool: ${ev.toolName}`);
+    console.log(`Args: ${JSON.stringify(ev.args, null, 2)}`);
+
+    const approved = await askUser('Approve this action? [y/n]');
+    session.confirmToolUse(ev.toolId, approved);
+  }
+  if (ev.type === 'text_delta') {
+    process.stdout.write(ev.text);
+  }
+}
+```
+
+## Read-Only Agent
+
+Create an agent that can only observe, never modify:
+
+```ts
+const readOnlySession = agent.session('.', {
+  permissionPolicy: {
+    defaultDecision: 'deny',
+    allow: ['read', 'grep', 'glob', 'ls', 'generate_object'],
+  },
+});
+
+// Agent can analyze but never write/execute
+const analysis = await readOnlySession.send('Review this codebase for security issues');
+```
+
+## Combining Security with Structured Output
+
+```ts
+// Read-only agent produces structured security report
+const session = agent.session('.', {
+  permissionPolicy: {
+    defaultDecision: 'deny',
+    allow: ['read', 'grep', 'glob', 'ls', 'generate_object'],
+  },
+});
+
+const result = await session.send(`
+  Analyze all files in src/ for security vulnerabilities.
+  Use generate_object to output a structured report with schema:
+  {
+    "type": "object",
+    "required": ["vulnerabilities", "risk_score"],
+    "properties": {
+      "vulnerabilities": {"type": "array", "items": {"type": "object",
+        "required": ["file", "type", "severity"],
+        "properties": {
+          "file": {"type": "string"},
+          "type": {"type": "string"},
+          "severity": {"type": "string", "enum": ["low", "medium", "high", "critical"]}
+        }}},
+      "risk_score": {"type": "number", "minimum": 0, "maximum": 10}
+    }
+  }
+`);
+```
+
+## Python
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy, ConfirmationPolicy
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+
+# Read-only policy
+opts.permission_policy = PermissionPolicy(
+    default_decision="deny",
+    allow=["read", "grep", "glob", "ls", "generate_object"],
+)
+
+session = agent.session('.', opts)
+```

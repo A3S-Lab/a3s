@@ -15,7 +15,7 @@ A3S Gateway provides 15 built-in middlewares that can be composed into ordered p
 
 Validates `Authorization: Bearer` tokens using HS256. Returns `401` on failure.
 
-```acl
+```text
 middlewares "auth-jwt" {
   type  = "jwt"
   value = env("JWT_SECRET")
@@ -26,7 +26,7 @@ middlewares "auth-jwt" {
 
 Validates a header value against an allowlist. Returns `401` on failure.
 
-```acl
+```text
 middlewares "auth-apikey" {
   type   = "api-key"
   header = "X-API-Key"
@@ -38,7 +38,7 @@ middlewares "auth-apikey" {
 
 HTTP Basic Auth. Returns `401` with `WWW-Authenticate` header on failure.
 
-```acl
+```text
 middlewares "auth-basic" {
   type     = "basic-auth"
   username = "admin"
@@ -50,7 +50,7 @@ middlewares "auth-basic" {
 
 Delegates auth to an external service. Copies specified headers from the auth response to the upstream request. Returns `401` if the auth service rejects.
 
-```acl
+```text
 middlewares "ext-auth" {
   type                          = "forward-auth"
   forward_auth_url              = "http://auth.internal:9090/verify"
@@ -62,7 +62,7 @@ middlewares "ext-auth" {
 
 Token bucket rate limiter. Returns `429 Too Many Requests` when exhausted.
 
-```acl
+```text
 middlewares "rate-limit" {
   type  = "rate-limit"
   rate  = 100
@@ -74,7 +74,7 @@ middlewares "rate-limit" {
 
 Distributed rate limiting via Redis. Requires `--features redis`.
 
-```acl
+```text
 middlewares "rate-limit-distributed" {
   type      = "rate-limit-redis"
   rate      = 200
@@ -87,7 +87,7 @@ middlewares "rate-limit-distributed" {
 
 Sets CORS response headers. Handles preflight `OPTIONS` requests automatically.
 
-```acl
+```text
 middlewares "cors" {
   type            = "cors"
   allowed_origins = ["https://example.com", "https://app.example.com"]
@@ -101,7 +101,7 @@ middlewares "cors" {
 
 Add or override request/response headers.
 
-```acl
+```text
 middlewares "custom-headers" {
   type = "headers"
   request_headers = {
@@ -118,7 +118,7 @@ middlewares "custom-headers" {
 
 Removes path prefixes before forwarding to the backend.
 
-```acl
+```text
 middlewares "strip-api" {
   type     = "strip-prefix"
   prefixes = ["/api/v1", "/api/v2"]
@@ -129,7 +129,7 @@ middlewares "strip-api" {
 
 Rejects requests exceeding the body size limit. Returns `413 Payload Too Large`.
 
-```acl
+```text
 middlewares "body-limit" {
   type           = "body-limit"
   max_body_bytes = 1048576
@@ -140,7 +140,7 @@ middlewares "body-limit" {
 
 Retries failed requests with a configurable interval.
 
-```acl
+```text
 middlewares "retry" {
   type              = "retry"
   max_retries       = 3
@@ -152,7 +152,7 @@ middlewares "retry" {
 
 Closed → Open → HalfOpen state machine. Opens after consecutive failures, tries half-open after cooldown.
 
-```acl
+```text
 middlewares "circuit-breaker" {
   type              = "circuit-breaker"
   failure_threshold = 5
@@ -165,7 +165,7 @@ middlewares "circuit-breaker" {
 
 Rejects requests from IPs not in the allowlist. Supports CIDR notation. Returns `403`.
 
-```acl
+```text
 middlewares "ip-allow" {
   type        = "ip-allow"
   allowed_ips = ["192.168.1.0/24", "10.0.0.0/8"]
@@ -176,7 +176,7 @@ middlewares "ip-allow" {
 
 Compresses responses using brotli (preferred), gzip, or deflate based on `Accept-Encoding`.
 
-```acl
+```text
 middlewares "compress" {
   type = "compress"
 }
@@ -186,7 +186,7 @@ middlewares "compress" {
 
 Connection-level filtering for TCP entrypoints: in-flight connection limit and IP allowlist. Configured via entrypoint fields:
 
-```acl
+```text
 entrypoints "tcp-db" {
   address         = "0.0.0.0:5432"
   protocol        = "tcp"

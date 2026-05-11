@@ -1,0 +1,119 @@
+---
+title: Programmatic Tool Calling (PTC)
+description: 使用 session.program() 将多轮 LLM 工具循环替换为有边界的确定性 JavaScript 程序。
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Programmatic Tool Calling (PTC)
+
+PTC 将昂贵的多轮 LLM 工具循环替换为单次有边界的 JavaScript 程序。模型不再花 5-10 轮做 `grep → read → grep → read → summarize`，而是一个脚本一次完成。
+
+<Callout type="info">
+PTC 适合**确定性、可重复**的工具链。如果任务需要步骤间的判断或推理，让 agent loop 处理。如果是机械性的扫描/聚合，PTC 更快更省。
+</Callout>
+
+## 何时使用 PTC
+
+| 用 PTC | 用 Agent Loop |
+| --- | --- |
+| 扫描匹配模式的文件 | 决定看哪些文件 |
+| 从多个来源聚合指标 | 解读指标含义 |
+| 运行固定命令序列 | 根据结果选择下一步 |
+| 从已知位置提取数据 | 找出数据在哪里 |
+
+## 基本用法
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+const result = await session.program({
+  source: `
+    export default async function run(ctx, inputs) {
+      const files = await ctx.glob(inputs.pattern);
+      const results = [];
+      for (const file of files.slice(0, 20)) {
+        const content = await ctx.readFile(file);
+        if (content.includes(inputs.keyword)) {
+          results.push({ file, lines: content.split('\\n').length });
+        }
+      }
+      return { matched: results.length, files: results };
+    }
+  `,
+  inputs: { pattern: 'src/**/*.ts', keyword: 'TODO' },
+  allowedTools: ['glob', 'read'],
+  limits: { timeoutMs: 30000, maxToolCalls: 50 },
+});
+```
+
+## 可用的 ctx 方法
+
+| 方法 | 说明 |
+| --- | --- |
+| `ctx.readFile(path)` | 读取文件内容 |
+| `ctx.grep(pattern, opts?)` | 搜索文件内容 |
+| `ctx.glob(pattern)` | 按模式查找文件 |
+| `ctx.ls(path?)` | 列出目录 |
+| `ctx.bash(command)` | 执行 shell 命令 |
+| `ctx.git(command)` | 执行 git 命令 |
+| `ctx.tool(name, args)` | 调用任何已注册工具 |
+
+## 结合 generate_object
+
+PTC 确定性地收集数据，然后 `generate_object` 结构化输出：
+
+```ts
+// 步骤 1: PTC 扫描代码库
+const scan = await session.program({
+  source: `
+    export default async function run(ctx) {
+      const files = await ctx.glob('src/**/*.ts');
+      const deps = [];
+      for (const file of files.slice(0, 30)) {
+        const content = await ctx.readFile(file);
+        const imports = content.match(/from ['"]([^'"]+)['"]/g) || [];
+        deps.push({ file, imports: imports.map(i => i.replace(/from ['"]|['"]/g, '')) });
+      }
+      return { file_count: files.length, dependencies: deps };
+    }
+  `,
+  allowedTools: ['glob', 'read'],
+});
+
+// 步骤 2: generate_object 生成结构化分析
+const analysis = await session.tool('generate_object', {
+  schema: {
+    type: 'object',
+    required: ['summary', 'risks'],
+    properties: {
+      summary: { type: 'string' },
+      risks: { type: 'array', items: { type: 'string' } },
+    },
+  },
+  prompt: `分析依赖关系中的循环依赖风险：\n\n${scan.output}`,
+  schema_name: 'dep_analysis',
+});
+```
+
+## 限制与安全
+
+PTC 在沙箱化的 QuickJS VM 中运行，无文件系统、网络或子进程访问。
+
+```ts
+await session.program({
+  source: '...',
+  allowedTools: ['grep', 'glob', 'read'],
+  limits: {
+    timeoutMs: 30000,
+    maxToolCalls: 100,
+    maxOutputBytes: 65536,
+  },
+});
+```

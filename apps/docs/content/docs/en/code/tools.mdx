@@ -5,7 +5,7 @@ description: "Tool selection, direct tool calls, and verification evidence"
 
 # Tools
 
-v2.1.0 keeps a registry of available tools. `toolNames()` returns the current
+v2.3.0 keeps a registry of available tools. `toolNames()` returns the current
 session tool surface.
 
 ## Default Core Tools
@@ -17,12 +17,79 @@ session tool surface.
 | Shell | `bash` |
 | Delegation | `task`, `parallel_task` |
 | Skills | `search_skills`, `Skill` |
+| Structured Output | `generate_object` |
 
 ## Additional Registered Tools
 
 `web_fetch`, `web_search`, `git`, `batch`, `program`, and MCP tools are also
 part of the broader tool surface. Validate model-visible selection behavior in
 the product flow that depends on it.
+
+## Structured Output with `generate_object`
+
+The `generate_object` tool produces a JSON object that strictly conforms to a
+provided JSON Schema. It works in two ways:
+
+1. **Agent-driven**: The LLM sees `generate_object` in its tool list and calls it autonomously when structured output is needed.
+2. **Direct call**: Your application calls `session.tool('generate_object', ...)` to bypass the LLM and get deterministic structured output.
+
+```ts
+const result = await session.tool('generate_object', {
+  schema: {
+    type: 'object',
+    required: ['sentiment', 'confidence'],
+    properties: {
+      sentiment: { type: 'string', enum: ['positive', 'negative', 'neutral'] },
+      confidence: { type: 'number', minimum: 0, maximum: 1 },
+    },
+  },
+  prompt: 'Classify: "This product is amazing!"',
+  schema_name: 'sentiment',
+  mode: 'tool',           // 'auto' | 'tool' | 'prompt'
+  max_repair_attempts: 2, // retries if schema validation fails
+});
+
+const { object } = JSON.parse(result.output);
+// object = { sentiment: "positive", confidence: 0.95 }
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `schema` | object | yes | JSON Schema the output must conform to |
+| `prompt` | string | yes | What to generate or extract |
+| `schema_name` | string | no | Short name (default: "result") |
+| `schema_description` | string | no | Description for the synthetic tool |
+| `system` | string | no | Optional system prompt |
+| `mode` | string | no | `"auto"` / `"tool"` / `"prompt"` (default: auto) |
+| `max_repair_attempts` | integer | no | 0–5 (default: 2) |
+
+### Modes
+
+- **tool** (default): Injects a synthetic tool whose parameters IS the schema. The LLM is forced to call it. Most reliable across all providers.
+- **prompt**: Appends schema instructions to the prompt. Less reliable but works without tool-calling support.
+- **auto**: Selects the best mode for the provider (currently resolves to `tool`).
+
+### Streaming
+
+When called through `session.stream()`, partial objects are emitted as
+`tool_output_delta` events:
+
+```ts
+for await (const ev of await session.stream('Extract all invoices...')) {
+  if (ev.type === 'tool_output_delta' && ev.toolName === 'generate_object') {
+    const { object_partial } = JSON.parse(ev.text);
+    renderProgress(object_partial);
+  }
+}
+```
+
+### Repair Loop
+
+If the LLM output fails schema validation, the tool automatically retries by
+feeding the validation errors back to the model. This handles edge cases like
+missing required fields or wrong enum values without application-level retry logic.
 
 ## Direct Tool Calls
 

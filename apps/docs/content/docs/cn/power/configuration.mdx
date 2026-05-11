@@ -13,7 +13,7 @@ A3S Power 使用 HCL（HashiCorp 配置语言）作为配置格式。
 
 ## 最小配置
 
-```hcl
+```text
 host = "127.0.0.1"
 port = 11434
 max_loaded_models = 1
@@ -22,7 +22,7 @@ keep_alive = "5m"
 
 ## 完整配置参考
 
-```hcl
+```text
 # 服务器
 host             = "127.0.0.1"
 port             = 11434
@@ -112,7 +112,7 @@ vsock_port = null              # Vsock 端口（仅 Linux，需要 vsock feature
 
 ## TEE 配置示例
 
-```hcl
+```text
 tee_mode    = true
 redact_logs = true
 

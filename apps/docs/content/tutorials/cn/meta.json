@@ -1,4 +1,19 @@
 {
   "title": "教程",
-  "pages": ["deep-research", "news-radar", "agent-teams"]
+  "pages": [
+    "structured-output",
+    "programmatic-tool-calling",
+    "streaming",
+    "session-persistence",
+    "skills",
+    "mcp-integration",
+    "security-hitl",
+    "hooks",
+    "memory",
+    "---实战案例---",
+    "deep-research",
+    "news-radar",
+    "agent-teams",
+    "contract-review"
+  ]
 }

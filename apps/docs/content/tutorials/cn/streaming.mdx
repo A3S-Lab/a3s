@@ -1,0 +1,174 @@
+---
+title: 流式与实时
+description: 使用 session.stream() 构建实时应用——逐 token 输出、工具进度和事件驱动 UI。
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 流式与实时
+
+本教程介绍如何使用 `session.stream()` 构建实时应用。你将学会处理文本增量、工具执行事件，以及构建展示智能体进度的响应式 UI。
+
+## 基本流式
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+const stream = await session.stream('Explain how async/await works in Rust');
+
+for await (const ev of stream) {
+  if (ev.type === 'text_delta') {
+    process.stdout.write(ev.text);
+  }
+}
+```
+
+## 事件类型
+
+| 事件 | 触发时机 | 关键字段 |
+| --- | --- | --- |
+| `text_delta` | LLM 产生文本 | `text` |
+| `tool_start` | 工具开始执行 | `toolName`, `toolId` |
+| `tool_output_delta` | 工具流式输出 | `toolName`, `text` |
+| `tool_end` | 工具执行完成 | `toolName`, `toolOutput`, `exitCode` |
+| `turn_end` | 一轮 LLM 调用完成 | `turn`, `totalTokens` |
+| `end` | 完整执行结束 | `text`, `totalTokens` |
+| `error` | 发生错误 | `error` |
+
+## 构建聊天 UI
+
+```ts
+async function handleUserMessage(session, message: string) {
+  const stream = await session.stream(message);
+  const events = [];
+
+  for await (const ev of stream) {
+    switch (ev.type) {
+      case 'text_delta':
+        appendToChat(ev.text);
+        break;
+      case 'tool_start':
+        showToolIndicator(ev.toolName);
+        break;
+      case 'tool_end':
+        hideToolIndicator(ev.toolName);
+        if (ev.exitCode !== 0) {
+          showToolError(ev.toolName, ev.toolOutput);
+        }
+        break;
+      case 'end':
+        markComplete(ev.totalTokens);
+        break;
+    }
+    events.push(ev);
+  }
+
+  return events;
+}
+```
+
+## 工具进度流式
+
+当智能体使用工具时，你可以获得细粒度的进度信息：
+
+```ts
+const stream = await session.stream('Read package.json and list all dependencies');
+
+for await (const ev of stream) {
+  if (ev.type === 'tool_start') {
+    console.log(`[tool] Starting: ${ev.toolName}`);
+  }
+  if (ev.type === 'tool_output_delta') {
+    // Bash 工具逐行流式输出 stdout
+    console.log(`[${ev.toolName}] ${ev.text}`);
+  }
+  if (ev.type === 'tool_end') {
+    console.log(`[tool] Done: ${ev.toolName} (exit: ${ev.exitCode})`);
+  }
+  if (ev.type === 'text_delta') {
+    process.stdout.write(ev.text);
+  }
+}
+```
+
+## 流式结构化输出
+
+将流式与 `generate_object` 结合，实现渐进式 JSON 渲染：
+
+```ts
+const stream = await session.stream(
+  'Analyze this codebase and use generate_object to produce a structured report'
+);
+
+let partialReport = null;
+
+for await (const ev of stream) {
+  if (ev.type === 'text_delta') {
+    showThinking(ev.text); // 智能体的推理过程
+  }
+  if (ev.type === 'tool_output_delta' && ev.toolName === 'generate_object') {
+    partialReport = JSON.parse(ev.text).object_partial;
+    renderReport(partialReport); // 渐进式 UI 更新
+  }
+  if (ev.type === 'tool_end' && ev.toolName === 'generate_object') {
+    const final = JSON.parse(ev.toolOutput).object;
+    renderReport(final); // 最终校验结果
+  }
+}
+```
+
+## 取消
+
+```ts
+const stream = await session.stream('Long running analysis...');
+
+// 10 秒后取消
+setTimeout(() => stream.cancel(), 10000);
+
+for await (const ev of stream) {
+  // 取消后将停止接收事件
+}
+```
+
+## Server-Sent Events (SSE) 模式
+
+对于 Web 应用，将流事件转发为 SSE：
+
+```ts
+// Express/Fastify 处理器
+app.post('/api/chat', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+
+  const stream = await session.stream(req.body.message);
+
+  for await (const ev of stream) {
+    res.write(`data: ${JSON.stringify(ev)}\n\n`);
+  }
+
+  res.end();
+});
+```
+
+## Python
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.permission_policy = PermissionPolicy(default_decision="allow")
+session = agent.session('.', opts)
+
+for event in session.stream("Explain Python generators"):
+    if event.type == "text_delta":
+        print(event.text, end="", flush=True)
+    elif event.type == "end":
+        print(f"\n[Done: {event.total_tokens} tokens]")
+```

@@ -24,7 +24,7 @@ Power 在启动时自动检测 TEE 环境：
 
 在配置文件中启用 TEE 模式：
 
-```hcl
+```text
 tee_mode    = true
 redact_logs = true
 ```
@@ -41,7 +41,7 @@ A3S_TEE_SIMULATE=1 a3s-power serve
 
 当 `tee_mode = true` 且配置了 `model_hashes` 时，Power 在启动时验证每个模型文件的 SHA-256 哈希值。任何模型验证失败，服务器拒绝启动。
 
-```hcl
+```text
 tee_mode = true
 model_hashes = {
   "llama3.2:3b" = "sha256:a1b2c3d4e5f6..."
@@ -108,7 +108,7 @@ curl "http://localhost:11434/v1/attestation?model=llama3.2:3b"
 
 模型文件可使用 AES-256-GCM 加密。Power 在加载时解密，卸载时安全擦除明文。
 
-```hcl
+```text
 # 从文件读取密钥
 model_key_source = { file = "/secure/model.key" }
 
@@ -121,7 +121,7 @@ in_memory_decrypt = true
 
 ### 密钥轮换
 
-```hcl
+```text
 key_provider = "rotating"
 key_rotation_sources = [
   { env = "MODEL_KEY_NEW" },
@@ -135,7 +135,7 @@ key_rotation_sources = [
 
 当 `ra_tls = true` 时，TLS 证书中包含 TEE 证明报告，作为自定义 X.509 扩展（OID `1.3.6.1.4.1.56560.1.1`）。客户端可提取并验证此扩展，在信任推理输出之前确认正在与真实 TEE 通信。
 
-```hcl
+```text
 tee_mode = true
 tls_port = 11443
 ra_tls   = true
@@ -147,7 +147,7 @@ ra_tls   = true
 
 对于 a3s-box MicroVM 部署，Power 可在 AF_VSOCK 套接字上监听，无需在 VM 内部进行任何网络配置即可实现宿主机通信。
 
-```hcl
+```text
 vsock_port = 4088
 ```
 

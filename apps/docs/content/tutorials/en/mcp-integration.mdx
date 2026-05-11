@@ -1,0 +1,130 @@
+---
+title: MCP Integration
+description: Connect external tool servers to your agent using the Model Context Protocol.
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# MCP Integration
+
+The Model Context Protocol (MCP) lets you connect external tool servers to
+your agent. Any MCP-compatible server becomes part of the agent's tool surface.
+
+<Callout type="info">
+MCP tools appear alongside built-in tools. The agent can call them autonomously,
+or you can invoke them directly via `session.tool()`.
+</Callout>
+
+## Adding an MCP Server
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// Connect a stdio-based MCP server
+await session.addMcp('database', {
+  command: 'npx',
+  args: ['-y', '@modelcontextprotocol/server-postgres', 'postgresql://localhost/mydb'],
+});
+
+// Connect an SSE-based MCP server
+await session.addMcp('analytics', {
+  url: 'http://localhost:3001/mcp',
+  authToken: process.env.MCP_TOKEN,
+});
+```
+
+## Using MCP Tools
+
+Once connected, MCP tools are available like any other tool:
+
+```ts
+// Agent uses MCP tools autonomously
+const result = await session.send('Query the database for all users created this week');
+
+// Or call directly
+const queryResult = await session.tool('database__query', {
+  sql: 'SELECT * FROM users WHERE created_at > NOW() - INTERVAL 7 DAY',
+});
+```
+
+## Listing Connected Servers
+
+```ts
+const servers = session.mcps();
+console.log(servers); // ['database', 'analytics']
+```
+
+## Removing a Server
+
+```ts
+await session.removeMcp('database');
+```
+
+## MCP in ACL Config
+
+Configure MCP servers in your `.acl` config for automatic connection:
+
+```text
+mcp "github" {
+  command = "npx"
+  args    = ["-y", "@modelcontextprotocol/server-github"]
+  env     = { GITHUB_TOKEN = env("GITHUB_TOKEN") }
+}
+
+mcp "filesystem" {
+  command = "npx"
+  args    = ["-y", "@modelcontextprotocol/server-filesystem", "/workspace"]
+}
+```
+
+## Combining MCP with Structured Output
+
+```ts
+// MCP provides raw data, generate_object structures it
+await session.addMcp('jira', { command: 'jira-mcp-server' });
+
+const result = await session.tool('generate_object', {
+  schema: {
+    type: 'object',
+    required: ['sprint_summary'],
+    properties: {
+      sprint_summary: {
+        type: 'object',
+        required: ['total', 'completed', 'blocked'],
+        properties: {
+          total: { type: 'integer' },
+          completed: { type: 'integer' },
+          blocked: { type: 'integer' },
+          blockers: { type: 'array', items: { type: 'string' } },
+        },
+      },
+    },
+  },
+  prompt: 'Summarize the current sprint status from Jira',
+  schema_name: 'sprint',
+});
+```
+
+## Python
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.permission_policy = PermissionPolicy(default_decision="allow")
+session = agent.session('.', opts)
+
+session.add_mcp('database', {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"],
+})
+
+result = session.send("List all tables in the database")
+```

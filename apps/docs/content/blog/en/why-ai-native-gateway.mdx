@@ -300,7 +300,7 @@ Every token travels from model output to client receipt with no buffering layer 
 
 When `min_replicas = 0`, the gateway places requests in a bounded queue (`RequestBuffer`) when replicas are zero, triggers scale-up, waits for replicas to pass health checks, then replays requests:
 
-```acl
+```text
 services "llm-backend" {
   scaling {
     min_replicas          = 0      # allow scale-to-zero
@@ -320,7 +320,7 @@ desired_replicas = ceil( (in_flight + queue_depth) / (container_concurrency x ta
 
 ### Version Traffic Splitting and Automatic Rollback
 
-```acl
+```text
 services "llm-service" {
   revisions = [
     { name = "v1", traffic_percent = 95, servers = [{ url = "http://v1:8080" }] },
@@ -342,7 +342,7 @@ Traffic splitting and rollback decisions close inside the gateway, without depen
 
 ### Traffic Mirroring
 
-```acl
+```text
 services "llm-service" {
   mirror {
     service    = "llm-v2-shadow"  # shadow backend
@@ -359,7 +359,7 @@ services "llm-service" {
 
 Each backend instance has an independent error rate tracker. When an instance's error rate exceeds a threshold within a sliding window, it is marked unhealthy and removed from the load balancing pool. When the error rate recovers, it rejoins:
 
-```acl
+```text
 services "llm-service" {
   load_balancer {
     strategy = "least-connections"  # actively route to the least-loaded instance
@@ -404,7 +404,7 @@ At this point we understand why an AI-native gateway is needed. Here is a comple
 
 This config proxies a local Ollama instance and exposes it for external access. It adds JWT authentication, rate limiting at 60 requests per minute, a circuit breaker, and TLS termination:
 
-```acl
+```text
 # gateway.acl
 
 # ── Entrypoints ──────────────────────────────────────────────────────────
@@ -566,7 +566,7 @@ The final image is about 12 MB with no runtime dependencies.
 
 Box configuration is also ACL. Create `box.acl`:
 
-```acl
+```text
 # box.acl — run gateway + Ollama in microVM sandboxes
 
 workloads "gateway" {

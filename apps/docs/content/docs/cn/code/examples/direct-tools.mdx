@@ -17,6 +17,20 @@ const program = await session.program({
   inputs: { q: 'planningMode' },
   allowedTools: ['grep'],
 });
+
+// 结构化输出：生成符合 schema 校验的 JSON 对象
+const structured = await session.tool('generate_object', {
+  schema: {
+    type: 'object',
+    required: ['count', 'language'],
+    properties: {
+      count: { type: 'integer' },
+      language: { type: 'string' },
+    },
+  },
+  prompt: '有多少 .mdx 文件？它们是什么语言的？',
+  schema_name: 'file_stats',
+});
 ```
 
 直接工具适合测试、迁移和宿主应用工作流。它们在 session 工作区下执行，应视为宿主侧特权操作。

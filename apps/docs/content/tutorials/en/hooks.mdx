@@ -1,0 +1,125 @@
+---
+title: Hooks
+description: Run custom logic before and after tool executions with the hook system.
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Hooks
+
+Hooks let you run custom shell commands in response to agent lifecycle events.
+Use them for logging, validation, notifications, or to enforce custom policies.
+
+## Hook Events
+
+| Event | When | Use Case |
+| --- | --- | --- |
+| `pre_tool` | Before a tool executes | Validate args, log intent |
+| `post_tool` | After a tool completes | Audit output, trigger CI |
+| `pre_prompt` | Before LLM call | Inject context, rate limit |
+| `post_response` | After LLM responds | Log tokens, filter output |
+
+## Configuration
+
+Define hooks in your ACL config:
+
+```text
+hooks "pre_tool" {
+  command = "node scripts/hooks/validate-tool.js"
+  timeout_ms = 5000
+}
+
+hooks "post_tool" {
+  command = "node scripts/hooks/audit-log.js"
+  timeout_ms = 3000
+}
+```
+
+## Hook Scripts
+
+Hook scripts receive event data via stdin (JSON) and can:
+- Exit 0 to allow the operation
+- Exit non-zero to block it (pre_tool only)
+- Write to stdout to modify the event (advanced)
+
+```js
+// scripts/hooks/validate-tool.js
+import { readFileSync } from 'fs';
+
+const event = JSON.parse(readFileSync('/dev/stdin', 'utf-8'));
+
+if (event.tool_name === 'bash') {
+  const cmd = event.args?.command || '';
+  // Block dangerous commands
+  if (cmd.includes('rm -rf') || cmd.includes('DROP TABLE')) {
+    console.error(`Blocked dangerous command: ${cmd}`);
+    process.exit(1);
+  }
+}
+
+process.exit(0); // allow
+```
+
+```js
+// scripts/hooks/audit-log.js
+import { readFileSync, appendFileSync } from 'fs';
+
+const event = JSON.parse(readFileSync('/dev/stdin', 'utf-8'));
+
+const entry = {
+  timestamp: new Date().toISOString(),
+  tool: event.tool_name,
+  exit_code: event.exit_code,
+  duration_ms: event.duration_ms,
+};
+
+appendFileSync('audit.jsonl', JSON.stringify(entry) + '\n');
+```
+
+## SDK-Level Hooks
+
+Register hooks programmatically:
+
+```ts
+const session = agent.session('.', {
+  hooks: {
+    preTool: async (event) => {
+      console.log(`[hook] About to run: ${event.toolName}`);
+      // Return false to block
+      if (event.toolName === 'bash' && event.args.command.includes('sudo')) {
+        return false;
+      }
+      return true;
+    },
+    postTool: async (event) => {
+      if (event.exitCode !== 0) {
+        await notifySlack(`Tool ${event.toolName} failed`);
+      }
+    },
+  },
+});
+```
+
+## Combining Hooks with Structured Output
+
+Use post_tool hooks to validate generate_object output against business rules:
+
+```js
+// scripts/hooks/validate-output.js
+const event = JSON.parse(readFileSync('/dev/stdin', 'utf-8'));
+
+if (event.tool_name === 'generate_object' && event.exit_code === 0) {
+  const output = JSON.parse(event.output);
+  const obj = output.object;
+
+  // Business rule: risk_score > 8 requires manager approval
+  if (obj.risk_score > 8) {
+    appendFileSync('alerts.jsonl', JSON.stringify({
+      type: 'high_risk',
+      score: obj.risk_score,
+      timestamp: new Date().toISOString(),
+    }) + '\n');
+  }
+}
+```

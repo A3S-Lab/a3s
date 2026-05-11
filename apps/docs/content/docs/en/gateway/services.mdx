@@ -28,7 +28,7 @@ Services define backend pools with load balancing, health checks, sticky session
   }}
 />
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy        = "weighted"
@@ -57,7 +57,7 @@ second, or minute values such as `"500ms"`, `"30s"`, or `"2m"`.
 
 Active HTTP probes with configurable thresholds. Unhealthy backends are automatically excluded from load balancing.
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -92,7 +92,7 @@ Passive health checks also track error counts and automatically remove backends 
 
 Route the same client to the same backend using cookies:
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -110,7 +110,7 @@ On the first request, the gateway selects a backend and sets a `Set-Cookie` head
 
 Copy a percentage of live traffic to a shadow service for testing without affecting the primary response:
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -134,7 +134,7 @@ services "api" {
 
 Automatic fallback to a secondary backend pool when the primary has zero healthy backends:
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -160,7 +160,7 @@ services "backup-pool" {
 
 Optional autoscaling with scale-to-zero, request buffering, and concurrency-based decisions:
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -198,7 +198,7 @@ services "api" {
 
 Split traffic across named revisions for canary deployments:
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"
@@ -219,7 +219,7 @@ Traffic percentages must sum to 100.
 
 Automatically shift traffic from one revision to another with safety guardrails:
 
-```acl
+```text
 services "api" {
   load_balancer {
     strategy = "round-robin"

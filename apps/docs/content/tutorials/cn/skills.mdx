@@ -1,0 +1,124 @@
+---
+title: 技能系统
+description: 通过可复用、可组合的技能扩展智能体能力——提示注入、角色和工具门控行为。
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 技能系统
+
+技能是可复用的能力模块，用于扩展智能体的功能。它们将专业提示、角色或工具访问模式注入 Session，而无需修改核心智能体。
+
+## 技能类型
+
+| 类型 | 用途 | 示例 |
+| --- | --- | --- |
+| `instruction` | 注入领域知识或规则 | "始终使用参数化 SQL 查询" |
+| `persona` | 替换智能体的默认角色 | "你是一位资深安全审计师" |
+
+## 内联技能（编程方式）
+
+在代码中直接注册技能：
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  builtinSkills: true,
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+// 添加指令技能
+session.addInstruction('sql-safety', `
+  When writing SQL queries:
+  - Always use parameterized queries, never string concatenation
+  - Validate all user inputs before query construction
+  - Use LIMIT clauses on SELECT queries
+  - Log all query executions for audit
+`);
+
+// 添加角色技能
+session.addPersona('security-auditor', `
+  You are a senior application security engineer with 10 years of experience.
+  You focus on OWASP Top 10 vulnerabilities and secure coding practices.
+  You provide specific, actionable recommendations with code examples.
+`);
+```
+
+## 文件技能
+
+在技能目录中创建 `.skill` 文件：
+
+```text
+skills/
+├── code-review.skill
+├── api-design.skill
+└── testing.skill
+```
+
+```text
+// skills/code-review.skill
+---
+name: code-review
+kind: instruction
+---
+
+When reviewing code:
+1. Check for security vulnerabilities (injection, XSS, CSRF)
+2. Verify error handling covers all failure modes
+3. Ensure tests exist for new functionality
+4. Flag any hardcoded secrets or credentials
+5. Check for proper input validation at system boundaries
+```
+
+从目录加载：
+
+```ts
+const session = agent.session('.', {
+  skillDirs: ['./skills'],
+  builtinSkills: true,
+});
+```
+
+## 技能发现
+
+智能体可以搜索可用技能：
+
+```ts
+// 智能体可以看到 search_skills 和 Skill 工具
+const result = await session.send('What skills are available for security review?');
+// 智能体会使用 search_skills 查找相关技能，然后激活它们
+```
+
+## 结合技能与结构化输出
+
+```ts
+// 角色塑造智能体的思维方式
+session.addPersona('contract-lawyer', `
+  You are a corporate contract lawyer specializing in technology agreements.
+  You identify risks from the perspective of the contracting party.
+`);
+
+// 然后使用 generate_object 获得确定性输出
+const result = await session.send(`
+  Review the contract at contracts/saas-agreement.pdf
+  and use generate_object to output findings with this schema:
+  ${JSON.stringify(REVIEW_SCHEMA)}
+`);
+```
+
+## Python
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.permission_policy = PermissionPolicy(default_decision="allow")
+opts.builtin_skills = True
+opts.skill_dirs = ["./skills"]
+
+session = agent.session('.', opts)
+```
