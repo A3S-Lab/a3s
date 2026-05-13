@@ -34,3 +34,6 @@
 [submodule "crates/acl"]
 	path = crates/acl
 	url = git@github.com:A3S-Lab/ACL.git
+[submodule "crates/tui"]
+	path = crates/tui
+	url = git@github.com:A3S-Lab/TUI.git

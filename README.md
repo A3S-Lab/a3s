@@ -52,6 +52,7 @@ a3s-gateway          <- application-agnostic ingress/reverse proxy layer
 | [a3s-acl](crates/acl/) | 0.2.1 | Agent Configuration Language (HCL-like config parser) | [README](crates/acl/README.md) |
 | [a3s-event](crates/event/) | 0.3.0 | Pluggable event subscription, dispatch, and persistence | [README](crates/event/README.md) |
 | [a3s-updater](crates/updater/) | 0.2.0 | Self-update for CLI binaries via GitHub Releases | [Source](crates/updater/) |
+| [a3s-tui](crates/tui/) | 0.1.0 | TEA (The Elm Architecture) framework for terminal UIs with Flexbox layout | [README](crates/tui/README.md) |
 | [a3s-common](crates/common/) | 0.1.1 | Shared primitives and transport types | [Source](crates/common/) |
 
 ## Quick start
@@ -85,6 +86,7 @@ a3s/
 │   ├── memory/          # a3s-memory
 │   ├── power/           # a3s-power LLM inference
 │   ├── search/          # a3s-search
+│   ├── tui/             # a3s-tui terminal UI framework
 │   └── updater/         # a3s-updater
 └── homebrew-tap/        # Homebrew formulae
 ```
