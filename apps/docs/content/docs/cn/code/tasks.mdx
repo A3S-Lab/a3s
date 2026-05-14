@@ -24,6 +24,51 @@ await session.parallelTask([
 ]);
 ```
 
+## Worker Agents
+
+通过 `workerAgents` 或 `registerWorkerAgent()` 注册一次性 worker agents：
+
+```ts
+const session = agent.session('/repo', {
+  workerAgents: [
+    {
+      name: 'frontend-cow',
+      description: '小型前端修复',
+      kind: 'implementer',
+      model: 'openai/gpt-4o',
+      maxSteps: 24,
+      confirmationInheritance: 'auto_approve',
+    },
+  ],
+});
+```
+
+### 确认继承
+
+通过 `confirmationInheritance` 控制子运行如何处理 Ask 决策：
+
+- `'auto_approve'`（默认）：子运行自动批准所有 Ask 决策
+- `'deny_on_ask'`：子运行遇到 Ask 时立即失败
+- `'inherit_parent'`：子运行继承父级的确认策略
+
+```ts
+const session = agent.session('/repo', {
+  workerAgents: [
+    {
+      name: 'restricted-writer',
+      description: '需要父级确认的文件写入',
+      kind: 'implementer',
+      confirmationInheritance: 'inherit_parent',  // 需要父级批准
+    },
+  ],
+});
+```
+
+当子运行需要人工批准敏感操作时使用 `'inherit_parent'`，
+或使用 `'deny_on_ask'` 确保子运行永远不会阻塞在确认提示上。
+
+## Agent 目录
+
 ```ts
 const session = agent.session('/repo', { agentDirs: ['./agents'] });
 session.registerAgentDir('./more-agents');

@@ -56,6 +56,49 @@ await session.parallelTask([
 ]);
 ```
 
+## Worker Agents
+
+Register disposable worker agents with `workerAgents` or `registerWorkerAgent()`:
+
+```ts
+const session = agent.session('/repo', {
+  workerAgents: [
+    {
+      name: 'frontend-cow',
+      description: 'Small verified frontend fixes',
+      kind: 'implementer',
+      model: 'openai/gpt-4o',
+      maxSteps: 24,
+      confirmationInheritance: 'auto_approve',
+    },
+  ],
+});
+```
+
+### Confirmation Inheritance
+
+Control how child runs resolve Ask decisions with `confirmationInheritance`:
+
+- `'auto_approve'` (default): Child runs auto-approve all Ask decisions
+- `'deny_on_ask'`: Child runs fail immediately when encountering an Ask
+- `'inherit_parent'`: Child runs inherit the parent's confirmation policy
+
+```ts
+const session = agent.session('/repo', {
+  workerAgents: [
+    {
+      name: 'restricted-writer',
+      description: 'Write files with parent confirmation',
+      kind: 'implementer',
+      confirmationInheritance: 'inherit_parent',  // requires parent approval
+    },
+  ],
+});
+```
+
+Use `'inherit_parent'` when child runs need human approval for sensitive operations,
+or `'deny_on_ask'` to ensure child runs never block on confirmation prompts.
+
 ## Agent Directories
 
 Load custom agent definitions through `agentDirs` or register them on a live session:
