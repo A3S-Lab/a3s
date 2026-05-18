@@ -20,7 +20,7 @@ a3s-box              <- Docker-like MicroVM runtime for Linux OCI workloads
 a3s-gateway          <- application-agnostic ingress/reverse proxy layer
 ```
 
-**a3s-code** is a coding-agent runtime library. It exposes ACL config, tools, hooks, security policy, memory, MCP, structured output (`generate_object`), explicit planning mode, run replay, QuickJS PTC, and task delegation through runtime APIs and SDKs.
+**a3s-code** is a coding-agent runtime library. It exposes ACL config, tools, hooks, security policy, memory, MCP, structured output (`generate_object`), explicit planning mode, run replay, QuickJS PTC, task delegation, and pluggable workspace backends (local filesystem / S3-compatible object storage) through runtime APIs and SDKs.
 
 **a3s-box** is a MicroVM runtime. Its local Docker-like CLI is the primary product surface. Kubernetes CRI, hardware TEE, and Windows paths are integration surfaces with explicit platform limits.
 
@@ -41,7 +41,7 @@ a3s-gateway          <- application-agnostic ingress/reverse proxy layer
 
 | Project | Version | Description | Docs |
 | --- | --- | --- | --- |
-| [a3s-code](crates/code/) | 2.4.0 | Harness-driven coding-agent runtime with ACL config, SDKs, structured output, planning, run replay, PTC, delegation, and memory | [README](crates/code/README.md) |
+| [a3s-code](crates/code/) | 2.6.0 | Harness-driven coding-agent runtime with ACL config, SDKs, structured output, planning, run replay, PTC, delegation, memory, and pluggable workspace backends (local / S3-compatible) | [README](crates/code/README.md) |
 | [a3s-box](crates/box/) | 2.0.4 | Docker-like MicroVM runtime for Linux OCI workloads | [README](crates/box/README.md) |
 | [a3s-gateway](crates/gateway/) | 0.2.5 | Reverse proxy with middleware, routing, and privacy features | [README](crates/gateway/README.md) |
 | [a3s-lane](crates/lane/) | 0.4.0 | Priority queues with lanes, concurrency, retry, and DLQ | [README](crates/lane/README.md) |
