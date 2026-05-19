@@ -220,15 +220,18 @@ The client supports two transport modes, configurable per-session:
 1. **Bearer token (default).** `Authorization: Bearer <token>`. Token
    provisioning is the host's responsibility (e.g. short-lived JWT minted
    by the same identity layer that gates S3 access).
-2. **mTLS.** Pass a client cert + key path via the backend config; the
-   underlying `reqwest::Client` is configured to present them.
+2. **mTLS.** Pass both `client_cert_pem` and `client_key_pem` paths via
+   the backend config. The client reads both files at construction,
+   concatenates them, and hands the result to `reqwest::Identity::from_pem`.
+   The `rustls-tls` backend expects the key in PKCS#8 PEM format.
+   Setting only one of the pair fails at construction with a clear error.
 
 Both are mutually compatible — a deployment that uses both for defence in
 depth simply sets both.
 
 No-auth mode (for localhost development) is supported by configuring an
-empty bearer token; the client emits a `tracing::warn!` on construction
-to make this visible.
+empty bearer token (and no mTLS); the client emits a `tracing::warn!`
+on construction to make this visible.
 
 ## 7. Error Model
 
