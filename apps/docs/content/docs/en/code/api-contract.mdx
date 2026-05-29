@@ -580,3 +580,104 @@ never mid-tool. If a process dies mid-tool the work of that round is
 lost; the LLM re-deliberates from the previous boundary. This trades
 retry cost for correctness — re-executing a non-idempotent tool
 across the boundary is worse than re-asking the LLM.
+
+### Retention caps for long-running sessions
+
+`SessionRetentionLimits` lets the host cap the four in-memory stores
+that grow with session age: the run records, per-run event buffers,
+trace events, and **terminal** subagent task snapshots. Each cap is
+optional (`None` keeps the unbounded default — fine for short
+sessions, a memory leak for hour- or day-long ones). Eviction is
+strict FIFO; running subagent tasks are never dropped.
+
+```rust
+use a3s_code_core::retention::SessionRetentionLimits;
+
+let limits = SessionRetentionLimits::new()
+    .with_max_runs(100)
+    .with_max_events_per_run(5_000)
+    .with_max_trace_events(10_000)
+    .with_max_terminal_subagent_tasks(1_000);
+
+let opts = SessionOptions::new().with_retention_limits(limits);
+```
+
+The host should pick caps from the same observability budget that
+caps the rest of its in-memory state (Prometheus carries history
+anyway). SDK shapes for retention land in a follow-up.
+
+### MCP idle disconnect
+
+`Agent::disconnect_idle_mcp(threshold_ms)` walks the connected MCP
+servers and drops any whose last activity is older than
+`now - threshold_ms`. The server's *registered config* stays — a
+later tool call will reconnect on demand. Returns the names of
+disconnected servers.
+
+```ts
+// Node — periodically reap quiet MCP subprocesses.
+setInterval(async () => {
+  const dropped = await agent.disconnectIdleMcp(5 * 60 * 1000); // 5 min
+  if (dropped.length) {
+    console.log('reaped idle MCP servers:', dropped);
+  }
+}, 60_000);
+```
+
+```python
+# Python — same shape.
+dropped = agent.disconnect_idle_mcp(5 * 60 * 1000)
+```
+
+Activity is stamped on `connect` and on every successful `call_tool`.
+Hosts that route tool traffic through a side channel can call
+`McpManager.touch(name)` to manually keep a server warm.
+
+### BudgetGuard SDK bridges
+
+Both SDKs accept the same decision shape:
+
+| Return                                                                | Effect                                                                |
+|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
+| `None` / `null` / `{decision:'allow'}`                                | proceed silently                                                      |
+| `{decision:'soft', resource, consumed, limit, message?}`              | emit `BudgetThresholdHit('soft')` event, proceed                      |
+| `{decision:'deny',  resource, reason}`                                | abort the call, throw `RuntimeError("Budget exhausted...")` (Python)  |
+|                                                                       | / reject with `"Budget exhausted..."` (Node)                          |
+
+Missing methods on the guard object are treated as a permissive
+default (Allow / no-op). Callback errors fall back to Allow — a
+misbehaving guard cannot halt a live session.
+
+```python
+# Python — attach via SessionOptions before agent.session(...)
+class MyGuard:
+    def check_before_llm(self, session_id, estimated_tokens):
+        return {"decision": "deny", "resource": "llm_tokens", "reason": "cap"}
+    def record_after_llm(self, session_id, usage):
+        track(session_id, usage["total_tokens"])
+
+opts = SessionOptions()
+opts.budget_guard = MyGuard()
+session = agent.session(workspace, opts)
+```
+
+```ts
+// Node — attach via session.setBudgetGuard after construction.
+// JsFunction values can't live inside the value-typed SessionOptions,
+// so the guard is installed on the Session itself; takes effect on
+// the next send/stream.
+session.setBudgetGuard({
+  checkBeforeLlm: (sessionId, estimatedTokens) => {
+    if (overBudget(sessionId)) {
+      return { decision: 'deny', resource: 'llm_tokens', reason: 'cap' };
+    }
+    return null;
+  },
+  recordAfterLlm: (sessionId, usage) => {
+    track(sessionId, usage.total_tokens);
+  },
+});
+```
+
+Pass `null` to `setBudgetGuard` (Node) or set `opts.budget_guard =
+None` and re-create the session (Python) to clear.
