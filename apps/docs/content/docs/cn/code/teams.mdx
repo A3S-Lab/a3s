@@ -78,6 +78,8 @@ const result = await session.tasks([
 console.log(result.output);
 ```
 
+当团队的 lane 结构固定、应当可复现且可恢复而非由模型选择时，使用 [编排](/cn/docs/code/orchestration) 中的可编程组合子（`session.parallel` / `session.pipeline` / `session.parallelResumable`）。
+
 ## Worker Agents
 
 当角色由宿主动态构造而不是存储在磁盘上时，通过 `workerAgents` 或 `registerWorkerAgent()` 注册一次性 worker agents：

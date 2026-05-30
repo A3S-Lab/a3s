@@ -1,6 +1,6 @@
 ---
 title: 构建多智能体审查流程
-description: 使用 A3S Code v3.1.0 的任务委派、.a3s/agents、自动 subagent 与 run 检查能力。
+description: 使用 A3S Code 的任务委派、.a3s/agents、自动 subagent 与 run 检查能力。
 full: true
 ---
 
@@ -8,8 +8,15 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 # 构建多智能体审查流程
 
-这篇教程使用当前 A3S Code v3.1.0 Node SDK 构建代码审查流程：父 session
+这篇教程使用当前 A3S Code Node SDK 构建代码审查流程：父 session
 委派聚焦任务、汇总紧凑的子任务结果，并通过 run replay 检查运行状态。
+
+<Callout type="info">
+这篇教程讲的是 **model-driven** delegation——由 LLM 通过 `task` / `tasks` /
+auto-delegation 决定委派什么。若需要**开发者编写的、确定性**的 step
+（`parallel` / `pipeline` / `parallelResumable`），参见
+[可编程编排](/cn/tutorials/orchestration)。
+</Callout>
 
 <Callout type="info">
 下面的示例使用这些 Node SDK 入口：
@@ -20,7 +27,7 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 ## 改了什么
 
-常规多智能体工作流从普通 session 通过 task delegation 驱动。v3.1.0 在启用
+常规多智能体工作流从普通 session 通过 task delegation 驱动。在启用
 `autoDelegation` 后也可以自动启动 subagent。子运行返回紧凑结果，不把完整
 transcript 塞回父 prompt。
 

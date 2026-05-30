@@ -151,3 +151,7 @@ Control how child runs resolve Ask decisions with `confirmationInheritance`:
 - `'inherit_parent'`: child runs inherit the parent's confirmation policy
 
 Legacy lifecycle control-plane APIs are removed. Applications that need UI state should consume streaming events, run replay, and Node `cancelRun(runId)`.
+
+## Programmable orchestration
+
+Everything on this page is model-driven: `task` / `parallel_task`, `session.task(...)` / `session.tasks(...)`, and auto-delegation let the LLM decide when and how to fan out. When the host already knows the shape of the work and wants it to be deterministic and reproducible, express it programmatically instead with `session.parallel(...)`, `session.pipeline(...)`, and `session.parallelResumable(...)`. See [Orchestration](/docs/code/orchestration) for developer-expressed fan-out, barrier-free pipelines, and resumable/migratable workflows.

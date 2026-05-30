@@ -1,6 +1,6 @@
 ---
 title: Build a Multi-Agent Review Flow
-description: Use A3S Code v3.1.0 task delegation, .a3s/agents, automatic subagents, and run inspection from the Node SDK.
+description: Use A3S Code task delegation, .a3s/agents, automatic subagents, and run inspection from the Node SDK.
 full: true
 ---
 
@@ -8,9 +8,16 @@ import { Callout } from 'fumadocs-ui/components/callout';
 
 # Build a Multi-Agent Review Flow
 
-This tutorial builds a review flow from the current A3S Code v3.1.0 Node SDK:
+This tutorial builds a review flow from the current A3S Code Node SDK:
 one parent session delegates focused work, gathers compact child results, and
 uses run replay for inspection.
+
+<Callout type="info">
+This tutorial covers **model-driven** delegation — the LLM decides what to
+delegate via `task` / `tasks` / auto-delegation. For **developer-authored,
+deterministic** steps (`parallel` / `pipeline` / `parallelResumable`), see
+[Programmable Orchestration](/tutorials/orchestration).
+</Callout>
 
 <Callout type="info">
 The snippets below use these Node SDK entry points:
@@ -22,7 +29,7 @@ The snippets below use these Node SDK entry points:
 ## What Changed
 
 Routine multi-agent work is driven through task delegation from a normal
-session. v3.1.0 can also launch automatic subagents when `autoDelegation` is
+session. It can also launch automatic subagents when `autoDelegation` is
 enabled. Child runs return compact results instead of pushing full transcripts
 back into the parent prompt.
 

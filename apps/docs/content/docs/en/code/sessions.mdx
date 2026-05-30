@@ -77,6 +77,107 @@ const session = agent.resumeSession('release-review', {
 
 Set `autoSave: true` or call `await session.save()` when using a session store.
 
+## Lifecycle and Close
+
+`session.close()` is a full graceful stop. The first call flips the session
+into the **closed** state — further `send`/`stream` calls fast-fail with
+`CodeError::SessionClosed` instead of starting a new run — then cancels the
+active run, every in-flight delegated subagent task, and all pending
+human-in-the-loop confirmations. Subsequent calls are no-ops and never panic.
+Check the closed state with `session.isClosed()` (Node) / `session.is_closed()`
+(Python).
+
+```ts
+await session.close();
+if (session.isClosed()) {
+  // send/stream now reject with CodeError::SessionClosed
+}
+```
+
+```python
+await session.close()
+if session.is_closed():
+    # send/stream now reject with CodeError::SessionClosed
+    pass
+```
+
+### Cancellation token
+
+Every run derives its per-operation cancellation token from a single
+session-level parent via `child_token()`, so `close()` cascades to all
+in-flight work in one shot. Embedders that need the raw token — for example to
+wire it into a host-side `select!` or to abort the session without the
+run-store and hook side effects of `close()` — can clone it through
+`AgentSession::session_cancel_token()`.
+
+### Agent-side registry
+
+The owning `Agent` tracks its live sessions by `Weak` reference (pruned
+lazily) so a control plane can drive lifecycle without holding a session
+handle:
+
+- `Agent::list_sessions()` returns the live session IDs (sorted, stable).
+- `Agent::close_session(id)` closes one session by ID — the same cleanup as
+  `AgentSession::close()`, invoked out-of-band.
+- `Agent::close()` closes every live session and tears down agent-owned
+  background resources (it also disconnects the global MCP connections).
+  After it returns, new `session` / `resumeSession` calls fail fast with
+  `CodeError::SessionClosed`.
+- `Agent::is_closed()` reports whether the agent itself has been closed.
+
+```ts
+const ids = await agent.listSessions();
+await agent.closeSession(ids[0]);
+await agent.close(); // closes all remaining sessions + global MCP
+console.log(agent.isClosed());
+```
+
+```python
+ids = await agent.list_sessions()
+await agent.close_session(ids[0])
+await agent.close()  # closes all remaining sessions + global MCP
+print(agent.is_closed())
+```
+
+See CHANGELOG `[3.3.0]` — "Session / Agent lifecycle control".
+
+## Host Identity Labels
+
+`SessionOptions` carries four opaque identity fields that the host can attach
+at session creation. The framework only transports them — it never interprets
+or enforces them. They are propagated into `SessionData`, hooks, and traces,
+and restored on resume, so the host can drive multi-tenant aggregation,
+billing, and distributed tracing:
+
+| Node (camelCase) | Python (snake_case) | Meaning |
+|------------------|---------------------|---------|
+| `tenantId` | `tenant_id` | Multi-tenant label |
+| `principal` | `principal` | User / service that triggered the session |
+| `agentTemplateId` | `agent_template_id` | Agent template / definition the session was instantiated from |
+| `correlationId` | `correlation_id` | Distributed-trace correlation id |
+
+```ts
+const session = agent.session('/repo', {
+  tenantId: 'acme-corp',
+  principal: 'user-42',
+  agentTemplateId: 'planner-v3',
+  correlationId: 'trace-deadbeef',
+});
+```
+
+```python
+opts = SessionOptions(
+    tenant_id='acme-corp',
+    principal='user-42',
+    agent_template_id='planner-v3',
+    correlation_id='trace-deadbeef',
+)
+session = agent.session('/repo', opts)
+print(session.tenant_id, session.principal)
+```
+
+See CHANGELOG `[3.3.0]` — "Host-provided identity labels".
+
 ## Run Replay
 
 Each `send()` or `stream()` creates a run record. Applications can inspect those

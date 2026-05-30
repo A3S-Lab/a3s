@@ -1,13 +1,13 @@
 ---
 title: "A3S Code"
-description: "带 v3.1.0 SDK 的驾驭式编程智能体运行时"
+description: "带 v3.4.0 SDK 的驾驭式编程智能体运行时"
 ---
 
 # A3S Code
 
-A3S Code v3.1.0 是一个驾驭式编程智能体运行时。运行时保持 agent loop 小而可观测，驾驭层负责上下文组装、工具执行、权限策略、任务委派、验证证据与 run replay。
+A3S Code v3.4.0 是一个驾驭式编程智能体运行时。运行时保持 agent loop 小而可观测，驾驭层负责上下文组装、工具执行、权限策略、任务委派、验证证据与 run replay。
 
-## v3.1.0 重点
+## v3.4.0 重点
 
 | 领域 | 当前能力 |
 | --- | --- |
@@ -15,6 +15,7 @@ A3S Code v3.1.0 是一个驾驭式编程智能体运行时。运行时保持 age
 | 内置 subagent | `explore`、`plan`、`general` / `general-purpose`、`verification`、`review` 可通过 `task`、`parallel_task`、`session.task(...)`、`session.tasks(...)` 和自动委派使用。 |
 | Agent 目录 | 自定义 Markdown/YAML agents 会从配置的 `agent_dirs`、项目/用户 `.a3s/agents` 以及 Claude 兼容的 `.claude/agents` 迁移路径加载。`.a3s/agents` 是 A3S 原生位置，并在同一作用域同名时优先。 |
 | 并行控制 | `max_parallel_tasks` 限制 sibling fan-out。`auto_parallel = false` / `autoParallel: false` 只全局关闭自动并行子 agent fan-out；手动 `parallel_task` 仍可用。 |
+| 可编程编排 | [`session.parallel`](/cn/docs/code/orchestration)、`session.pipeline`、`session.parallelResumable` 表达确定性 fan-out、无屏障 pipeline 以及可恢复/可迁移工作流，与模型驱动的 `task` / `tasks` 委派互补。 |
 | SDK 对齐 | Rust、Node.js 和 Python 暴露同一组核心委派、run replay、typed tool errors、workspace backend 与自动委派控制。 |
 | Workspace 栈 | 本地文件系统、S3 兼容对象存储和 HTTP/JSON remote-git backend 共享端到端 typed `ToolErrorKind`。 |
 
@@ -99,6 +100,7 @@ console.log(result.verificationSummaryText);
 
 - **对话**：`send()`、`run()` 和 `stream()` 用于同步与流式回合。
 - **委派**：`task()` 和 `tasks()` 封装核心 `task` / `parallel_task` 工具，并返回紧凑子任务摘要。
+- **编排**：`session.parallel(...)`、`session.pipeline(...)` 和 `session.parallelResumable(...)` 在 `AgentExecutor` seam 之上表达可编程 fan-out、无屏障 pipeline 以及可恢复/可迁移工作流。
 - **自动 subagent**：通过 `autoDelegation` 或 `auto_delegation` 启用，由 `maxParallelTasks` / `max_parallel_tasks` 限流，可用 `autoParallel: false` / `auto_parallel = false` 关闭自动并行。
 - **可观测性**：`runs()`、`runSnapshot()`、`runEvents()`、`activeTools()`、`cancelRun()` 用于实时 run/tool 追踪。
 - **PTC**：`session.program(...)` 在 QuickJS 中运行有边界的 JavaScript 工具链。

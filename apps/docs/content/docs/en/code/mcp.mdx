@@ -36,6 +36,42 @@ await session.tool('mcp__echo__echo', { message: 'docs mcp ok' });
 await session.removeMcpServer('echo');
 ```
 
+## Idle Disconnect
+
+A connected stdio MCP server holds resources — file descriptors and a
+background worker — even while it sits idle. In a long-lived cluster session
+those quiet servers accumulate. `disconnectIdleMcp` (CHANGELOG [3.3.0] "MCP idle
+disconnect") reaps them on demand: it disconnects every global MCP server whose
+last activity is older than the threshold, releasing the FDs and workers, **while
+keeping each server's registered config** so a later tool call reconnects on
+demand.
+
+This is an agent-level method (it operates on the agent's global MCP manager,
+backed by `McpManager::disconnect_idle(threshold_ms)`). It returns the list of
+disconnected server names.
+
+```ts
+// Reap servers idle longer than 5 minutes. Returns disconnected names.
+const dropped = await agent.disconnectIdleMcp(5 * 60 * 1000);
+console.log('disconnected:', dropped);
+```
+
+```python
+# Reap servers idle longer than 5 minutes. Returns disconnected names.
+dropped = agent.disconnect_idle_mcp(5 * 60 * 1000)
+print('disconnected:', dropped)
+```
+
+Hosts running thousands of long-lived sessions should call this periodically
+from a sweeper (e.g. every 60s with a 5-min threshold). A subsequent tool call
+on a disconnected server re-establishes the connection from its retained config
+— no re-registration needed.
+
+Disconnect also purges orphan timestamps: a `touch()`-without-connect entry
+(recorded for a server that was never actually connected) is swept on each
+`disconnect_idle` call so the activity map cannot grow unbounded over a
+long-running manager's lifetime (CHANGELOG [3.3.0] Fixed "MCP timestamp leak").
+
 ## Security
 
 Treat external tool servers as privileged integrations and keep secrets in

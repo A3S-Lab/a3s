@@ -34,6 +34,72 @@ const resumed = agent.resumeSession('release-review', {
 
 Session persistence stores conversation state. Memory stores reusable task facts. Use both when you want resumable workflows that also learn from repeated tasks.
 
+## Loop Checkpoints and Run Resumption
+
+When a `SessionStore` is configured, the agent loop persists a `LoopCheckpoint`
+after each completed tool round. The boundary policy is strict: checkpoints are
+taken **only** between tool rounds, never mid-tool. If a process dies while a
+tool is executing, that round's work is lost on resume and the LLM
+re-deliberates from the previous checkpoint — re-running a non-idempotent tool
+(write, bash) on the wrong side of the boundary is worse than re-asking the LLM.
+
+`session.resumeRun(runId)` (Node) / `session.resume_run(run_id)` (Python) — core
+`AgentSession::resume_run(checkpoint_run_id)` — loads the latest checkpoint
+stored under that run ID and replays the loop from the last boundary. Because
+the checkpoint lives in the shared store, resume can happen on **any** node that
+shares it. Cumulative accounting continues rather than restarting at zero:
+`total_usage` and `tool_calls_count` carry forward from the checkpoint. A new run
+ID is allocated for the resumed work; the old-to-new relationship is host
+metadata, not interpreted by the framework.
+
+```ts
+const result = await session.resumeRun('run-abc123');
+console.log(result.totalTokens);
+```
+
+```python
+result = await session.resume_run('run-abc123')
+print(result.total_tokens)
+```
+
+`resume_run` rejects when the session has no `sessionStore` configured (or when
+no checkpoint exists for the given ID). `SessionStore` gains
+`save_loop_checkpoint` / `load_loop_checkpoint` / `delete_loop_checkpoint`; the
+file store's writes are crash-atomic. `LoopCheckpoint::ensure_loadable()` is
+called right after deserialization and rejects checkpoints from a future,
+incompatible schema version, so neither `resume_run` nor the live-run sink acts
+on an unreadable checkpoint.
+
+See CHANGELOG `[3.3.0]` — "Loop checkpoints + run resumption" — and `[3.4.0]`
+"LoopCheckpoint::ensure_loadable()".
+
+## Workflow Checkpoints
+
+`WorkflowCheckpoint` is the step-boundary analogue of the tool-round
+`LoopCheckpoint`, one level up: it journals completed orchestration steps so an
+interrupted workflow resumes from the longest completed prefix. Its fields are
+`schema_version`, `workflow_id`, `steps`, and `checkpoint_ms`, with the schema
+pinned by the `WORKFLOW_CHECKPOINT_SCHEMA_VERSION` constant. A resuming run skips
+the recorded steps and re-dispatches only the rest.
+
+`SessionStore` gains `save_workflow_checkpoint` / `load_workflow_checkpoint` /
+`delete_workflow_checkpoint` (default no-ops; the file store writes
+crash-atomically). Loads from a future, incompatible schema version are rejected
+via `WorkflowCheckpoint::ensure_loadable()`.
+
+This pairs with the orchestration grammar — see
+[Orchestration](/docs/code/orchestration) and
+[Multi-Machine](/docs/code/multi-machine).
+
+See CHANGELOG `[3.4.0]` — "WorkflowCheckpoint".
+
+## Resuming on a Different Node
+
+Both checkpoint types are serializable. Combined with a shared `SessionStore`
+and a pluggable executor, this lets a host resume an interrupted run or workflow
+on a **different** node from the one that started it — the framework owns the
+serializable contract, the host owns placement and transport.
+
 ## Operational Notes
 
 Keep session stores out of public commits when they may contain prompts, tool output, or private file paths.

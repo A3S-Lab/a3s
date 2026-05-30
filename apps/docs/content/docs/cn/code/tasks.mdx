@@ -151,3 +151,7 @@ const session = agent.session('/repo', {
 - `'inherit_parent'`：子运行继承父级的确认策略
 
 旧生命周期控制面 API 已移除；需要 UI 状态时，应用应消费 streaming events、run replay，以及 Node `cancelRun(runId)`。
+
+## 可编程编排
+
+本页的所有内容都是模型驱动的：`task` / `parallel_task`、`session.task(...)` / `session.tasks(...)` 以及自动委派让 LLM 决定何时以及如何 fan-out。当宿主已经知道工作的形态、并希望它确定可复现时，改用 `session.parallel(...)`、`session.pipeline(...)` 和 `session.parallelResumable(...)` 以编程方式表达。开发者表达的 fan-out、无屏障 pipeline 以及可恢复/可迁移工作流见 [编排](/cn/docs/code/orchestration)。

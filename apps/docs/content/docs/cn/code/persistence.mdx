@@ -7,6 +7,8 @@ description: "保存与恢复 session"
 
 持久化让 session 可以跨进程恢复，也让产品界面拥有稳定 session ID。
 
+## File Session Store
+
 ```ts
 import { FileSessionStore } from '@a3s-lab/code';
 
@@ -16,11 +18,82 @@ const session = agent.session('/repo', {
   autoSave: true,
 });
 
+await session.send('检查发布就绪情况');
 await session.save();
+```
 
+## Resume
+
+```ts
 const resumed = agent.resumeSession('release-review', {
   sessionStore: new FileSessionStore('./.a3s/sessions'),
 });
 ```
 
-Session persistence 保存对话状态；memory 保存可复用任务事实。包含私有 prompt、tool output 或路径的 store 不应公开提交。
+## Memory And Sessions
+
+Session 持久化保存对话状态；memory 保存可复用任务事实。当你需要既可恢复、又能从重复任务中学习的工作流时，两者一起使用。
+
+## Loop Checkpoints and Run Resumption
+
+配置了 `SessionStore` 后，agent loop 会在每个完成的 tool round 之后持久化一个
+`LoopCheckpoint`。边界策略很严格：checkpoint **只**在 tool round 之间产生，
+绝不在 tool 执行中途。如果进程在某个 tool 执行时崩溃，那一轮的工作会在 resume
+时丢失，由 LLM 从上一个 checkpoint 重新推演——在边界错误的一侧重跑一个非幂等
+tool（write、bash）比让 LLM 重新提问更糟。
+
+`session.resumeRun(runId)`（Node）/ `session.resume_run(run_id)`（Python）——
+对应 core 的 `AgentSession::resume_run(checkpoint_run_id)`——会加载该 run ID 下
+最新的 checkpoint，并从最后一个边界回放 loop。由于 checkpoint 存放在共享 store
+中，resume 可以发生在**任何**共享该 store 的节点上。累计计量会延续而不是从零
+重启：`total_usage` 和 `tool_calls_count` 从 checkpoint 继续累加。resume 出来的
+工作会分配一个新的 run ID；新旧 run 的关系是宿主元数据，框架不予解释。
+
+```ts
+const result = await session.resumeRun('run-abc123');
+console.log(result.totalTokens);
+```
+
+```python
+result = await session.resume_run('run-abc123')
+print(result.total_tokens)
+```
+
+当 session 没有配置 `sessionStore`（或给定 ID 下不存在 checkpoint）时，
+`resume_run` 会拒绝。`SessionStore` 新增了 `save_loop_checkpoint` /
+`load_loop_checkpoint` / `delete_loop_checkpoint`；file store 的写入是
+crash-atomic 的。`LoopCheckpoint::ensure_loadable()` 在反序列化之后立即被调用，
+会拒绝来自未来的、不兼容 schema 版本的 checkpoint，因此 `resume_run` 和实时
+run 的 sink 都不会对一个无法读取的 checkpoint 采取行动。
+
+参见 CHANGELOG `[3.3.0]`——"Loop checkpoints + run resumption"——以及
+`[3.4.0]` 的 "LoopCheckpoint::ensure_loadable()"。
+
+## Workflow Checkpoints
+
+`WorkflowCheckpoint` 是 tool-round `LoopCheckpoint` 在上一层的 step 边界对应物：
+它把已完成的编排 step 记入日志，使被中断的工作流从最长的已完成前缀恢复。它的
+字段是 `schema_version`、`workflow_id`、`steps` 和 `checkpoint_ms`，schema 由
+`WORKFLOW_CHECKPOINT_SCHEMA_VERSION` 常量固定。恢复的 run 会跳过已记录的 step，
+只重新派发其余的。
+
+`SessionStore` 新增了 `save_workflow_checkpoint` / `load_workflow_checkpoint` /
+`delete_workflow_checkpoint`（默认 no-op；file store 以 crash-atomic 方式写入）。
+来自未来的、不兼容 schema 版本的加载会通过
+`WorkflowCheckpoint::ensure_loadable()` 被拒绝。
+
+这与编排语法配套使用——参见
+[Orchestration](/cn/docs/code/orchestration) 和
+[Multi-Machine](/cn/docs/code/multi-machine)。
+
+参见 CHANGELOG `[3.4.0]`——"WorkflowCheckpoint"。
+
+## Resuming on a Different Node
+
+两种 checkpoint 类型都是可序列化的。配合共享的 `SessionStore` 和可插拔的
+executor，宿主就能在与启动节点**不同**的节点上恢复被中断的 run 或工作流——
+框架持有可序列化的契约，宿主持有放置（placement）与传输（transport）。
+
+## Operational Notes
+
+包含私有 prompt、tool output 或路径的 store 不应公开提交。

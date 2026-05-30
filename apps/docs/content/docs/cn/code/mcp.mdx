@@ -24,3 +24,25 @@ await session.removeMcpServer('echo');
 
 MCP tool 名称格式是 `mcp__server__tool`。TypeScript signature 也暴露
 `'http'` 和 `'streamable-http'` transport 值；在生产文档或发布说明里依赖前，应先针对你的 server 做集成测试。外部 tool server 应视为特权集成，secret 放在环境变量里。
+
+## Idle Disconnect
+
+已连接的 stdio MCP server 即使处于空闲状态也会占用资源——file descriptor 和一个后台 worker。在长期运行的 cluster session 中，这些安静的 server 会越积越多。`disconnectIdleMcp`（CHANGELOG [3.3.0] "MCP idle disconnect"）按需回收它们：断开每个最后活动时间早于阈值的全局 MCP server，释放 FD 和 worker，**同时保留每个 server 已注册的 config**，这样后续的 tool 调用可以按需重连。
+
+这是一个 agent 级方法（它作用于 agent 的全局 MCP manager，底层由 `McpManager::disconnect_idle(threshold_ms)` 支持）。它返回被断开的 server 名称列表。
+
+```ts
+// 回收空闲超过 5 分钟的 server，返回被断开的名称。
+const dropped = await agent.disconnectIdleMcp(5 * 60 * 1000);
+console.log('disconnected:', dropped);
+```
+
+```python
+# 回收空闲超过 5 分钟的 server，返回被断开的名称。
+dropped = agent.disconnect_idle_mcp(5 * 60 * 1000)
+print('disconnected:', dropped)
+```
+
+运行成千上万长期 session 的 host 应通过 sweeper 周期性调用它（例如每 60s、阈值 5 分钟）。对已断开 server 的后续 tool 调用会从其保留的 config 重新建立连接——无需重新注册。
+
+disconnect 还会清除孤儿时间戳：`touch()`-without-connect 的条目（为一个从未真正连接过的 server 记录的时间戳）会在每次 `disconnect_idle` 调用时被清扫，使活动映射在 manager 的长期生命周期内不会无限增长（CHANGELOG [3.3.0] Fixed "MCP timestamp leak"）。

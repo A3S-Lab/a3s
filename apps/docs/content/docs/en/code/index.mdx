@@ -1,13 +1,13 @@
 ---
 title: "A3S Code"
-description: "Harness-driven coding agent runtime with the v3.1.0 SDKs"
+description: "Harness-driven coding agent runtime with the v3.4.0 SDKs"
 ---
 
 # A3S Code
 
-A3S Code v3.1.0 is a harness-driven runtime for coding agents. The runtime keeps the agent loop small and observable while the harness owns context assembly, tool execution, permission policy, delegation, verification evidence, and run replay.
+A3S Code v3.4.0 is a harness-driven runtime for coding agents. The runtime keeps the agent loop small and observable while the harness owns context assembly, tool execution, permission policy, delegation, verification evidence, and run replay.
 
-## v3.1.0 Highlights
+## v3.4.0 Highlights
 
 | Area | Current capability |
 | --- | --- |
@@ -15,6 +15,7 @@ A3S Code v3.1.0 is a harness-driven runtime for coding agents. The runtime keeps
 | Built-in subagents | `explore`, `plan`, `general` / `general-purpose`, `verification`, and `review` are available through `task`, `parallel_task`, `session.task(...)`, `session.tasks(...)`, and auto delegation. |
 | Agent directories | Custom Markdown/YAML agents load from configured `agent_dirs`, project/user `.a3s/agents`, and Claude-compatible `.claude/agents` migration paths. `.a3s/agents` is the native A3S location and wins for same-name agents in the same scope. |
 | Parallel controls | `max_parallel_tasks` bounds sibling fan-out. `auto_parallel = false` / `autoParallel: false` globally disables only automatic parallel child-agent fan-out; manual `parallel_task` remains available. |
+| Programmable orchestration | [`session.parallel`](/docs/code/orchestration), `session.pipeline`, and `session.parallelResumable` express deterministic fan-out, barrier-free pipelines, and resumable/migratable workflows, complementing model-driven `task` / `tasks` delegation. |
 | SDK parity | Rust, Node.js, and Python expose the same core delegation, run replay, typed tool errors, workspace backend, and automatic delegation controls. |
 | Workspace stack | Local filesystem, S3-compatible object storage, and HTTP/JSON remote-git backends share typed `ToolErrorKind` failures end-to-end. |
 
@@ -99,6 +100,7 @@ console.log(result.verificationSummaryText);
 
 - **Conversation**: `send()`, `run()`, and `stream()` for synchronous and streaming turns.
 - **Delegation**: `task()` and `tasks()` wrap the core `task` / `parallel_task` tools and return compact child summaries.
+- **Orchestration**: `session.parallel(...)`, `session.pipeline(...)`, and `session.parallelResumable(...)` express programmable fan-out, barrier-free pipelines, and resumable/migratable workflows over the `AgentExecutor` seam.
 - **Automatic subagents**: enabled with `autoDelegation` or `auto_delegation`, bounded by `maxParallelTasks` / `max_parallel_tasks`, and suppressible with `autoParallel: false` / `auto_parallel = false`.
 - **Observability**: `runs()`, `runSnapshot()`, `runEvents()`, `activeTools()`, and `cancelRun()` for live run/tool tracking.
 - **PTC**: `session.program(...)` runs bounded JavaScript in QuickJS for deterministic tool chains.

@@ -78,6 +78,8 @@ const result = await session.tasks([
 console.log(result.output);
 ```
 
+When the team's lane structure is fixed and should be reproducible and resumable rather than model-chosen, use the programmable combinators in [Orchestration](/docs/code/orchestration) (`session.parallel` / `session.pipeline` / `session.parallelResumable`).
+
 ## Worker Agents
 
 Register disposable worker agents with `workerAgents` or `registerWorkerAgent()` when the role is constructed by the host instead of stored on disk:

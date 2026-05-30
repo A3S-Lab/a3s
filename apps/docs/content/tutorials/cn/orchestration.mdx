@@ -1,0 +1,315 @@
+---
+title: 可编程编排
+description: 用代码表达确定性的多智能体编排：并行 fan-out、pipeline 与可恢复 workflow。
+full: true
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# 可编程编排
+
+<Callout type="info">
+下面的示例使用这些 Node SDK 入口：
+`session.parallel`、`session.pipeline` 和 `session.parallelResumable`。
+</Callout>
+
+## Model-Driven 与可编程
+
+智能体本身已经能通过 *model-driven* delegation 把工作 fan-out：LLM 决定调用
+`task` / `tasks`，启动哪些子任务完全由模型选择。当你希望智能体自行规划任务
+拆分时，这正是合适的工具（参见
+[构建多智能体审查流程](/cn/tutorials/agent-teams)）。
+
+这篇教程讲的是*可编程*这一层。在这里，开发者直接用代码表达 fan-out、pipeline
+或可恢复的 workflow，因此编排是 **reproducible、testable、budget-bounded 和
+resumable** 的——不受模型在某次运行中具体决定的影响。这套 grammar 恰好暴露为
+三个 `Session` 方法；没有顶层 orchestrate，也没有 executor 配置 API。
+
+```text
+目标
+  -> session.parallel        barrier fan-out（保留输入顺序）
+  -> session.pipeline        逐项 chain，stage 之间无 barrier
+  -> session.parallelResumable   journal 记录、可崩溃恢复的 fan-out
+```
+
+## 快速上手
+
+`session.parallel(specs)` 会按 session 配置的并行度运行一组 agent step 的
+fan-out，并以**输入顺序**返回每个 step 的 outcome。每个 spec 是一个
+`AgentStepSpecObject`，使用 camelCase 键：`taskId`、`agent`、`description`、
+`prompt`，以及可选的 `maxSteps`、`parentSessionId`、`outputSchema`。失败的
+step 以 `success: false` 浮现，而不会让整个 batch 失败。
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+const outcomes = await session.parallel([
+  {
+    taskId: 'sec',
+    agent: 'review',
+    description: 'Auth security review',
+    prompt: 'Review src/auth for security risks.',
+    maxSteps: 3,
+  },
+  {
+    taskId: 'map',
+    agent: 'explore',
+    description: 'Map the auth surface',
+    prompt: 'List every entry point under src/auth and what it trusts.',
+    maxSteps: 3,
+  },
+]);
+
+for (const outcome of outcomes) {
+  // outcome: { taskId, sessionId, agent, output, success, structured }
+  console.log(outcome.taskId, outcome.success, outcome.output);
+}
+```
+
+outcome 以与 `specs` 相同的顺序返回，因此无论哪个先完成，`outcomes[0]` 始终
+是 `sec` step。`explore`、`review`、`plan`、`general` 等 registry 键指定每个
+step 以哪个 agent 运行。
+
+## Schema 强制的 step 输出
+
+在 spec 上设置 `outputSchema`，该 step 就必须返回符合该 schema 的 JSON。验证
+通过的对象会落到 `outcome.structured`（复用与
+[结构化输出](/cn/tutorials/structured-output) 相同的 coercion 与 repair）。
+coercion 失败会把该 step 降级为 `success: false`，这样调用方就不会把未验证的
+文本当成承诺的对象。
+
+```ts
+const [triage] = await session.parallel([
+  {
+    taskId: 'triage',
+    agent: 'review',
+    description: 'Triage the failing test',
+    prompt: 'Classify the failure in tests/auth.test.ts.',
+    outputSchema: {
+      type: 'object',
+      required: ['category', 'severity'],
+      properties: {
+        category: { type: 'string', enum: ['flaky', 'regression', 'env'] },
+        severity: { type: 'string', enum: ['high', 'medium', 'low'] },
+      },
+    },
+  },
+]);
+
+if (triage.success) {
+  const { category, severity } = triage.structured; // validated object
+  console.log(category, severity);
+} else {
+  // schema coercion failed after repair — do not trust triage.output
+  console.error('triage did not conform to schema');
+}
+```
+
+## Pipeline
+
+`session.pipeline(items, stages)` 让每个 item 流过一条 `stages` chain，**stage
+之间没有 barrier**——item A 可以处在 stage 3，而 item B 还停在 stage 1。每个
+stage 是一个函数 `(ctx) => spec | null`，其中 `ctx` 为
+`{ previous: StepOutcomeObject | null, item }`：`previous` 是上一 stage 的
+outcome（首个 stage 之前为 `null`），`item` 是原始输入。返回一个
+`AgentStepSpecObject` 来运行该 step，或返回 `null` 停止该 item 的 chain。step
+失败时 chain 同样会停止（后续 stage 只会在失败结果上继续构建）。
+
+```ts
+const findings = await session.pipeline(
+  ['src/auth', 'src/billing'],
+  [
+    // Stage 1: explore the module.
+    (ctx) => ({
+      taskId: `explore-${ctx.item}`,
+      agent: 'explore',
+      description: 'Survey the module',
+      prompt: `Survey ${ctx.item} and list its risk surface.`,
+    }),
+    // Stage 2: review, building on stage 1's output.
+    (ctx) => {
+      try {
+        const prior = ctx.previous?.output ?? '';
+        return {
+          taskId: `review-${ctx.item}`,
+          agent: 'review',
+          description: 'Review the risks',
+          prompt: `Given this survey, find concrete bugs:\n\n${prior}`,
+        };
+      } catch {
+        return null; // never throw — return null to stop this chain
+      }
+    },
+  ],
+);
+
+// One entry per item (the last outcome, or null), in input order.
+for (const outcome of findings) {
+  if (outcome) console.log(outcome.taskId, outcome.output);
+}
+```
+
+<Callout type="warn">
+Node 的 stage 回调**绝不能 throw**——在当前 napi 版本里，返回值转换阶段的 JS
+throw 会 abort 进程（与 `setBudgetGuard` 相同的约束）。请用 `try`/`catch` 包住
+stage 逻辑，并在出错时返回 `null`。某个 stage 挂起超过 `timeoutMs`（默认
+30s，是 `pipeline` 可选的第三个参数）会 fail closed：它被当作 `null` 处理，只
+停止那一条 chain，而不会永久阻塞。
+</Callout>
+
+## 可恢复 workflow
+
+`session.parallelResumable(specs, workflowId)` 与 `parallel` 类似，但**可恢复**：
+进度会按 step 在 `workflowId` 下 journal 到一个 `WorkflowCheckpoint`，因此被
+中断的运行在下次调用时会跳过已完成的 step。它**要求 session 上配置
+`sessionStore`**，否则会 reject。
+
+只有*成功*的 step 会被记录，因此失败的 step 在 resume 时会重试（它的 effect
+从未完成）。完全成功时 checkpoint 会被删除——只有崩溃才会留下一个供 resume。
+
+```ts
+import { Agent, FileSessionStore } from '@a3s-lab/code';
+
+const agent = await Agent.create('config.acl');
+const session = agent.session('.', {
+  sessionStore: new FileSessionStore('./.a3s/sessions'),
+  permissionPolicy: { defaultDecision: 'allow' },
+});
+
+const specs = [
+  { taskId: 'a', agent: 'explore', description: 'Survey A', prompt: 'Survey module A.' },
+  { taskId: 'b', agent: 'review', description: 'Review B', prompt: 'Review module B.' },
+  { taskId: 'c', agent: 'plan', description: 'Plan C', prompt: 'Plan the fix for C.' },
+];
+
+// First call runs everything; if it crashes mid-run, the completed steps are
+// journaled. Re-invoking with the same workflowId skips them and runs the rest.
+const outcomes = await session.parallelResumable(specs, 'audit-2026-05');
+```
+
+由于 checkpoint 可序列化、executor 是一个 seam（`AgentExecutor`），在*另一个*
+节点上 resume 是由 host 驱动的：host 替换为自己的 executor 并传入相同的
+`workflowId`，combinator 就会复用已 journal 的 outcome，而不重跑已完成的 step。
+
+## Python
+
+同一套 grammar 暴露为三个 `Session` 方法，使用 snake_case 键。
+
+`session.parallel(specs)` 接收一组 spec dict，键为 `task_id`、`agent`、
+`description`、`prompt`，以及可选的 `max_steps`、`parent_session_id`、
+`output_schema`。它以输入顺序返回每个 step 的一个 outcome dict（`task_id` /
+`session_id` / `agent` / `output` / `success` / `structured`）；失败的 step 以
+`success: False` 浮现，而不会让 batch 失败。
+
+```python
+from a3s_code import Agent, SessionOptions, PermissionPolicy
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.permission_policy = PermissionPolicy(default_decision="allow")
+session = agent.session('.', opts)
+
+outcomes = session.parallel([
+    {
+        "task_id": "sec",
+        "agent": "review",
+        "description": "Auth security review",
+        "prompt": "Review src/auth for security risks.",
+        "max_steps": 3,
+    },
+    {
+        "task_id": "map",
+        "agent": "explore",
+        "description": "Map the auth surface",
+        "prompt": "List every entry point under src/auth and what it trusts.",
+        "max_steps": 3,
+    },
+])
+
+for outcome in outcomes:
+    print(outcome["task_id"], outcome["success"], outcome["output"])
+```
+
+在 spec 上设置 `output_schema`，可强制 schema 验证后的输出落到
+`outcome["structured"]`；coercion 失败会把该 step 降级为 `success: False`。
+
+```python
+triage, = session.parallel([
+    {
+        "task_id": "triage",
+        "agent": "review",
+        "description": "Triage the failing test",
+        "prompt": "Classify the failure in tests/auth.test.ts.",
+        "output_schema": {
+            "type": "object",
+            "required": ["category", "severity"],
+            "properties": {
+                "category": {"type": "string", "enum": ["flaky", "regression", "env"]},
+                "severity": {"type": "string", "enum": ["high", "medium", "low"]},
+            },
+        },
+    },
+])
+
+if triage["success"]:
+    structured = triage["structured"]  # validated object
+    print(structured["category"], structured["severity"])
+```
+
+`session.pipeline(items, stages)` 让每个 item 流过一条 stage chain，stage 之间
+无 barrier。每个 stage 是一个 callable `stage(ctx) -> dict | None`，其中
+`ctx = {"previous": <outcome dict or None>, "item": <item>}`。返回一个 spec
+dict 来运行该 step，或返回 `None` 停止该 item 的 chain。抛异常的 Python stage
+会被捕获并当作 `None`（只停止那一条 chain）。
+
+```python
+def explore_stage(ctx):
+    return {
+        "task_id": f"explore-{ctx['item']}",
+        "agent": "explore",
+        "description": "Survey the module",
+        "prompt": f"Survey {ctx['item']} and list its risk surface.",
+    }
+
+def review_stage(ctx):
+    prior = ctx["previous"]["output"] if ctx["previous"] else ""
+    return {
+        "task_id": f"review-{ctx['item']}",
+        "agent": "review",
+        "description": "Review the risks",
+        "prompt": f"Given this survey, find concrete bugs:\n\n{prior}",
+    }
+
+findings = session.pipeline(["src/auth", "src/billing"], [explore_stage, review_stage])
+
+for outcome in findings:
+    if outcome:
+        print(outcome["task_id"], outcome["output"])
+```
+
+`session.parallel_resumable(specs, workflow_id)` 与 `parallel` 对应，但会在
+`workflow_id` 下 journal 进度；它要求 session 上配置 `session_store`，否则会
+raise。只有成功的 step 会被记录（失败的 step 在 resume 时重试），完全成功时
+checkpoint 会被删除。
+
+```python
+from a3s_code import Agent, SessionOptions, FileSessionStore
+
+agent = Agent.create(open('config.acl').read())
+opts = SessionOptions()
+opts.session_store = FileSessionStore("./.a3s/sessions")
+session = agent.session('.', opts)
+
+specs = [
+    {"task_id": "a", "agent": "explore", "description": "Survey A", "prompt": "Survey module A."},
+    {"task_id": "b", "agent": "review", "description": "Review B", "prompt": "Review module B."},
+    {"task_id": "c", "agent": "plan", "description": "Plan C", "prompt": "Plan the fix for C."},
+]
+
+outcomes = session.parallel_resumable(specs, "audit-2026-05")
+```
