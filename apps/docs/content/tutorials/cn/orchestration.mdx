@@ -313,3 +313,23 @@ specs = [
 
 outcomes = session.parallel_resumable(specs, "audit-2026-05")
 ```
+
+## 为扇出设预算
+
+给 `parallel` 传入 token 预算，整个扇出就会共享**同一个账本**。不传预算时拿到的是
+原来的结果；传入后，`parallel` 返回 `{ outcomes, budget }`，且一旦达到上限，之后
+*启动*的 step 会被拒绝。它是软上限——在飞的扇出绝不会被强杀。
+
+```ts
+const { outcomes, budget } = await session.parallel(specs, 500_000);
+console.log(budget.consumedTokens, budget.limitTokens);
+```
+
+```python
+res = session.parallel(specs, budget_tokens=500_000)
+print(res["budget"]["consumed_tokens"], res["budget"]["limit_tokens"])
+```
+
+如需 Rust 中完整的可编程句柄——带命名、可恢复 `phase` 的 `session.workflow()`、
+`WorkflowEvent` 里程碑、`execute_loop` combinator 以及 `budget_snapshot()`——
+参见 [编排](/docs/code/orchestration)。

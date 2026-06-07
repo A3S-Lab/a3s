@@ -267,6 +267,114 @@ outcomes = session.parallel_resumable(specs, "release-batch-42")
 outcomes = session.parallel_resumable(specs, "release-batch-42")
 ```
 
+## Shared budget across a fan-out
+
+By default each child agent counts its own LLM cost. Pass a token budget to
+`parallel` and every child instead feeds **one shared ledger** — a single cap
+for the whole fan-out. It maps to the core `WorkflowBudget`, an aggregating
+`BudgetGuard` installed onto each child run.
+
+The budget is an **optional argument**, so it is backward compatible:
+
+- Without a budget, `parallel(specs)` returns the plain outcomes array, exactly
+  as before.
+- With a budget, `parallel(specs, budgetTokens)` resolves to `{ outcomes, budget }`,
+  where `budget` is the ledger snapshot (`consumedTokens` / `limitTokens`).
+
+Once the cap is reached, a step that *starts* afterwards is denied — its outcome
+is `success: false` with a budget-exhausted message. It is a **soft cap**:
+because usage is recorded *after* each LLM call, a wide fan-out can race a few
+in-flight turns past the cap before the ledger catches up. The framework never
+force-kills an in-flight fan-out; an exhausted budget simply denies the *next*
+LLM call.
+
+```ts
+// No budget → plain outcomes array (unchanged).
+const outcomes = await session.parallel(specs);
+
+// With a budget → { outcomes, budget }. All children share one ledger.
+const { outcomes: out, budget } = await session.parallel(specs, 500_000);
+console.log(budget.consumedTokens, budget.limitTokens); // e.g. 48213, 500000
+// TS return type is a union: Array<StepOutcome> | { outcomes, budget }.
+```
+
+```python
+# No budget → plain list (unchanged).
+outcomes = session.parallel(specs)
+
+# With a budget → {"outcomes": [...], "budget": {"consumed_tokens", "limit_tokens"}}.
+res = session.parallel(specs, budget_tokens=500_000)
+print(res["budget"]["consumed_tokens"], res["budget"]["limit_tokens"])
+```
+
+## Looping until done (`execute_loop`)
+
+For unknown-length, iterate-until-converge work (loop-until-dry, refine-until-good),
+the core grammar adds `execute_loop`. Each round is a barrier (`execute_steps_parallel`);
+a host-supplied predicate sees the round's outcomes and returns
+`LoopDecision::Continue(next_specs)` or `LoopDecision::Stop`. A required
+`max_iterations` is a **hard cap** — once reached the loop stops even if the
+predicate would continue, so an LLM-driven loop can never run away.
+
+```rust
+use a3s_code_core::orchestration::{execute_loop, AgentStepSpec, LoopDecision};
+
+let outcomes = execute_loop(executor, initial_specs, /* max_iterations */ 5, None, |round| {
+    // Stop when the round produced no new findings; otherwise fan out follow-ups.
+    let follow_ups = derive_follow_ups(round);
+    if follow_ups.is_empty() {
+        LoopDecision::Stop
+    } else {
+        LoopDecision::Continue(follow_ups)
+    }
+})
+.await;
+```
+
+> From the host SDKs you don't need a dedicated `loop` verb — write the loop in
+> your own language (`while`/`for`) around `parallel`, deciding the next round
+> from the outcomes. `execute_loop` exists for the Rust grammar and to give the
+> loop a single, enforced termination guard.
+
+## The Workflow facade (Rust / embedding)
+
+`session.workflow()` returns a cheaply-clonable `Workflow` that pre-wires the
+session's executor, persistence store, per-step event stream, and a stable,
+session-derived root id. It is the programmable handle that bundles everything
+above; control flow is ordinary Rust — `await` a verb, inspect the outcomes,
+decide what runs next.
+
+- **Verbs** — `agent` (one step), `parallel` (barrier fan-out), `phase` (a
+  *named*, resumable barrier that emits milestones), `pipeline` (per-item
+  chains), and the non-failing `log`. Each delegates to exactly one combinator.
+- **Phases & events** — `phase(name, specs)` derives a deterministic checkpoint
+  id (`{root}/{index}:{name}`), runs the resumable barrier when a store is
+  present, and emits `WorkflowEvent::PhaseStart` / `PhaseEnd` on a broadcast you
+  read with `subscribe()`. `log()` emits `WorkflowEvent::Log`.
+- **Budget** — `session.workflow_with_token_budget(Some(limit))` installs a
+  shared `WorkflowBudget`; `budget_snapshot()` reads the ledger and a
+  `WorkflowEvent::BudgetExhausted` fires once the cap is hit.
+
+```rust
+let wf = session.workflow(); // or session.workflow_with_token_budget(Some(500_000))
+let mut events = wf.subscribe();
+
+// One step, then a *variable* fan-out computed from its result — the "dynamic"
+// part: the shape is decided at run time, not declared up front.
+let plan = wf.agent(AgentStepSpec::new("plan", "plan", "plan", goal)).await;
+let specs = derive_specs(&plan);                 // your code
+let done = wf.phase("implement", specs).await;   // resumable barrier + milestones
+let reviews = wf.phase("review", to_review(&done)).await; // budget shared across phases
+
+if let Some(b) = wf.budget_snapshot() {
+    println!("spent {} / {:?} tokens", b.consumed_tokens, b.limit_tokens);
+}
+```
+
+The SDKs expose the flat `parallel` / `pipeline` / `parallelResumable` verbs (and
+the `parallel` budget overload above); the full `Workflow` handle — phases,
+event subscription, the loop combinator — is a Rust/embedding API.
+
 ## Schema-forced step output
 
 A spec carrying `output_schema` (`outputSchema` in Node) forces the step to

@@ -245,6 +245,107 @@ outcomes = session.parallel_resumable(specs, "release-batch-42")
 outcomes = session.parallel_resumable(specs, "release-batch-42")
 ```
 
+## 跨 fan-out 的共享预算 [#shared-budget]
+
+默认情况下，每个子代理各自统计自己的 LLM 成本。给 `parallel` 传入一个 token
+预算后，所有子代理改为汇入**同一个账本**——为整个 fan-out 设一个统一上限。它映射
+到核心的 `WorkflowBudget`：一个安装到每个子运行上的、聚合型 `BudgetGuard`。
+
+预算是一个**可选参数**，因此向后兼容：
+
+- 不传预算时，`parallel(specs)` 返回原来的结果数组，与之前完全一致。
+- 传入预算时，`parallel(specs, budgetTokens)` 解析为 `{ outcomes, budget }`，
+  其中 `budget` 是账本快照（`consumedTokens` / `limitTokens`）。
+
+一旦达到上限，之后*启动*的 step 会被拒绝——其结果为 `success: false`，并带有预算
+耗尽信息。它是一个**软上限**：由于用量是在每次 LLM 调用*之后*记账的，宽 fan-out
+可能在账本追上之前冲过上限几个在飞回合。框架**绝不**强杀在飞的 fan-out；预算耗尽
+只是拒绝*下一次* LLM 调用。
+
+```ts
+// 不传预算 → 原样返回结果数组（行为不变）。
+const outcomes = await session.parallel(specs);
+
+// 传入预算 → { outcomes, budget }。所有子代理共享一个账本。
+const { outcomes: out, budget } = await session.parallel(specs, 500_000);
+console.log(budget.consumedTokens, budget.limitTokens); // 例如 48213, 500000
+// TS 返回类型是联合类型：Array<StepOutcome> | { outcomes, budget }。
+```
+
+```python
+# 不传预算 → 原样返回列表（行为不变）。
+outcomes = session.parallel(specs)
+
+# 传入预算 → {"outcomes": [...], "budget": {"consumed_tokens", "limit_tokens"}}。
+res = session.parallel(specs, budget_tokens=500_000)
+print(res["budget"]["consumed_tokens"], res["budget"]["limit_tokens"])
+```
+
+## 循环直到完成（`execute_loop`）[#looping]
+
+对于长度未知、需要迭代至收敛的工作（loop-until-dry、反复打磨直到满意），核心语法
+提供了 `execute_loop`。每一轮都是一个屏障（`execute_steps_parallel`）；宿主提供的
+谓词看到本轮的结果，返回 `LoopDecision::Continue(next_specs)` 或
+`LoopDecision::Stop`。必填的 `max_iterations` 是一个**硬上限**——一旦达到，即使谓词
+还想继续也会停止，从而让 LLM 驱动的循环永远不会失控。
+
+```rust
+use a3s_code_core::orchestration::{execute_loop, AgentStepSpec, LoopDecision};
+
+let outcomes = execute_loop(executor, initial_specs, /* max_iterations */ 5, None, |round| {
+    // 本轮没有新发现就停止；否则扇出后续 step。
+    let follow_ups = derive_follow_ups(round);
+    if follow_ups.is_empty() {
+        LoopDecision::Stop
+    } else {
+        LoopDecision::Continue(follow_ups)
+    }
+})
+.await;
+```
+
+> 从宿主 SDK 你并不需要专门的 `loop` 动词——直接用你自己语言里的 `while`/`for`
+> 围绕 `parallel` 写循环，根据结果决定下一轮即可。`execute_loop` 是为 Rust 语法
+> 而存在，并为循环提供一个单一、强制的终止守卫。
+
+## Workflow facade（Rust / 嵌入）[#workflow-facade]
+
+`session.workflow()` 返回一个可廉价克隆的 `Workflow`，它预先接好了会话的
+executor、持久化 store、逐 step 事件流，以及一个稳定的、由会话派生的 root id。它是
+把以上能力打包起来的可编程句柄；控制流就是普通 Rust——`await` 一个动词、查看结果、
+决定下一步运行什么。
+
+- **动词**——`agent`（单步）、`parallel`（屏障式 fan-out）、`phase`（*命名*的、
+  可恢复的屏障，并发出里程碑）、`pipeline`（按条目的链），以及不会失败的 `log`。
+  每个动词都只委派给一个 combinator。
+- **Phase 与事件**——`phase(name, specs)` 派生确定性 checkpoint id
+  （`{root}/{index}:{name}`），在配置了 store 时走可恢复屏障，并在一个广播上发出
+  `WorkflowEvent::PhaseStart` / `PhaseEnd`，你可用 `subscribe()` 读取。`log()`
+  发出 `WorkflowEvent::Log`。
+- **预算**——`session.workflow_with_token_budget(Some(limit))` 安装一个共享的
+  `WorkflowBudget`；`budget_snapshot()` 读取账本，达到上限时会触发
+  `WorkflowEvent::BudgetExhausted`。
+
+```rust
+let wf = session.workflow(); // 或 session.workflow_with_token_budget(Some(500_000))
+let mut events = wf.subscribe();
+
+// 先跑一步，再根据其结果计算出一个*可变*数量的 fan-out——这正是“动态”所在：
+// 形状在运行时决定，而非提前声明。
+let plan = wf.agent(AgentStepSpec::new("plan", "plan", "plan", goal)).await;
+let specs = derive_specs(&plan);                 // 你的代码
+let done = wf.phase("implement", specs).await;   // 可恢复屏障 + 里程碑
+let reviews = wf.phase("review", to_review(&done)).await; // 预算在各 phase 间共享
+
+if let Some(b) = wf.budget_snapshot() {
+    println!("spent {} / {:?} tokens", b.consumed_tokens, b.limit_tokens);
+}
+```
+
+SDK 暴露的是扁平的 `parallel` / `pipeline` / `parallelResumable` 动词（以及上面
+`parallel` 的预算重载）；完整的 `Workflow` 句柄——phases、事件订阅、loop
+combinator——属于 Rust / 嵌入层 API。
+
 ## 强制 schema 的 step 输出 [#schema-forced-step-output]
 
 携带 `output_schema`（Node 中为 `outputSchema`）的 spec 会强制 step 返回符合该 JSON
