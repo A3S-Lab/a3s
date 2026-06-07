@@ -7,7 +7,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # 编排
 
-本页展示 A3S Code v3.4.0 中的三个可编程编排原语：用于扇出的 `session.parallel`、用于按条目执行多阶段链的 `session.pipeline`，以及用于在崩溃后仍可恢复的带日志运行的 `session.parallelResumable`。当你有多个相互独立的子代理任务时使用 parallel；当你需要让每个输入流经一组有序阶段时使用 pipeline。
+本页展示 A3S Code 中的可编程编排原语：用于扇出的 `session.parallel`、用于按条目执行多阶段链的 `session.pipeline`，以及用于在崩溃后仍可恢复的带日志运行的 `session.parallelResumable`。`parallel` 还接受一个可选的 token 预算，让整个扇出共享同一个账本。当你有多个相互独立的子代理任务时使用 parallel；当你需要让每个输入流经一组有序阶段时使用 pipeline。
 
 关于这些原语背后的概念模型，请参阅[编排](/cn/docs/code/orchestration)。
 
@@ -227,11 +227,68 @@ session.close()
 </Tab>
 </Tabs>
 
+## 用 `session.parallel` 做预算受限的扇出
+
+把 token 预算作为第二个参数传入，所有子代理就会汇入**同一个账本**。传入预算时，
+`parallel` 解析为 `{ outcomes, budget }`（账本快照）而非原来的结果数组；一旦达到
+上限，之后启动的 step 会被拒绝（`success: false`）。它是软上限——宽扇出可能冲过
+上限几个在飞回合；在飞工作绝不会被强杀。
+
+<Tabs groupId="lang" items={['Node.js', 'Python']}>
+<Tab value="Node.js">
+
+```ts
+import { Agent } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.acl');
+const session = agent.session('.', {});
+
+const specs = [
+  { taskId: 'a', agent: 'general', description: 'q1', prompt: 'Reply with one word: ready.', maxSteps: 2 },
+  { taskId: 'b', agent: 'general', description: 'q2', prompt: 'Reply with one word: go.', maxSteps: 2 },
+];
+
+// 传入预算时，parallel() 解析为 { outcomes, budget } —— 所有子代理共享一个账本。
+// （不传时，parallel(specs) 返回原来的数组。）
+const { outcomes, budget } = await session.parallel(specs, 50_000);
+for (const o of outcomes) console.log(`[budget] ${o.taskId}: success=${o.success}`);
+console.log(`spent ${budget.consumedTokens} / ${budget.limitTokens} tokens`);
+
+await session.close();
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent, SessionOptions
+
+agent = Agent.create(open("agent.acl").read())
+session = agent.session(".", SessionOptions())
+
+specs = [
+    {"task_id": "a", "agent": "general", "description": "q1", "prompt": "Reply with one word: ready.", "max_steps": 2},
+    {"task_id": "b", "agent": "general", "description": "q2", "prompt": "Reply with one word: go.", "max_steps": 2},
+]
+
+# 传入预算时，parallel() 返回 {"outcomes", "budget"}（共享账本）。
+res = session.parallel(specs, budget_tokens=50_000)
+for o in res["outcomes"]:
+    print(f"[budget] {o['task_id']}: success={o['success']}")
+print(f"spent {res['budget']['consumed_tokens']} / {res['budget']['limit_tokens']} tokens")
+
+session.close()
+```
+
+</Tab>
+</Tabs>
+
 说明：
 
 - 三个原语都返回按输入顺序对齐的结果：`{ taskId, success, output, error?, structured? }`（Node 对象）/ `{ "task_id", "success", "output", "error"?, "structured"? }`（Python 字典）。
 - 在 spec 上设置 `outputSchema` / `output_schema` 可在 `structured` 中拿到解析后的结果。
 - `maxSteps` / `max_steps` 限制每个子代理的步数；会话选项 `maxParallelTasks` / `max_parallel_tasks` 限制扇出并发量。
+- 给 `parallel` 传入 token 预算（第 2 个参数 `budgetTokens` / `budget_tokens=`）即可让整个扇出对同一个账本计数；此时返回形状变为 `{ outcomes, budget }`。它是软上限（用量在每次调用之后记账）。
 - Node 的 pipeline 阶段回调绝不能抛出异常——出错时返回 `null`。Python 的阶段可以抛出（抛出的阶段会被捕获并视为 `None`）。
 
 可运行版本见 `crates/code/sdk/node/examples/orchestration/parallel-pipeline.mjs` 和 `crates/code/sdk/python/examples/orchestration_workflow.py`。

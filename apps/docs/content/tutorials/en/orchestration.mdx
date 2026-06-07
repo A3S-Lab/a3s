@@ -321,3 +321,25 @@ specs = [
 
 outcomes = session.parallel_resumable(specs, "audit-2026-05")
 ```
+
+## Budgeting a Fan-out
+
+Pass a token budget to `parallel` so an entire fan-out shares **one ledger**.
+Without a budget you get the plain outcomes; with one, `parallel` returns
+`{ outcomes, budget }` and, once the cap is reached, a step that *starts*
+afterward is denied. It is a soft cap — the in-flight fan-out is never
+force-killed.
+
+```ts
+const { outcomes, budget } = await session.parallel(specs, 500_000);
+console.log(budget.consumedTokens, budget.limitTokens);
+```
+
+```python
+res = session.parallel(specs, budget_tokens=500_000)
+print(res["budget"]["consumed_tokens"], res["budget"]["limit_tokens"])
+```
+
+For the full programmable handle in Rust — `session.workflow()` with named,
+resumable `phase`s, `WorkflowEvent` milestones, the `execute_loop` combinator,
+and `budget_snapshot()` — see [Orchestration](/docs/code/orchestration).
