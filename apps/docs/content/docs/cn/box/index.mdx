@@ -16,6 +16,7 @@ A3S Box 用 libkrun MicroVM 运行 Linux OCI 工作负载。它提供类 Docker 
 | CLI 运行时 | 当前核心产品面。目标主机是 macOS Apple Silicon/HVF 与 Linux/KVM 类环境。 |
 | 镜像 | 已实现 pull、load、save、tag、inspect、history、remove、本地缓存解析、push 与 cosign 验证/签名路径。依赖 registry 的路径需要联网验证。 |
 | Dockerfile 构建 | 支持明确子集。`RUN` 使用 Linux `chroot`，要求可 root 的 Linux；macOS 默认拒绝 `RUN`，除非显式开启 unsafe host run。 |
+| 温池与快照分叉 | 温池通过 socket 提供预启动的 box。原生快照分叉（写时复制 microVM 克隆）从一个已启动模板恢复出多个分叉——单个分叉比冷启动快约 4 倍，在 `/dev/kvm` 上 100 个分叉约 1 秒内完成。通过 `pool start --snapshot-fork` 开启；仅限 Linux `/dev/kvm`。 |
 | 网络 | 支持默认 TSI、TCP 端口发布、自定义 bridge 网络和 peer `/etc/hosts` 发现；NAT 能力按平台不同。 |
 | Compose | 支持常用本地开发子集，不等同完整 Docker Compose。 |
 | TEE | 支持 SEV-SNP 方向的证明、RA-TLS、密封、密钥注入和模拟模式。硬件信任取决于目标主机。TDX 未产品化。 |
@@ -49,6 +50,7 @@ MicroVM
 - 卷、`cp`、`diff`、`export`、`commit` 和配置/文件系统级 snapshot。
 - 支持平台上的 TCP 端口发布和 bridge peer 发现。
 - 面向本地多服务开发的 Compose 子集。
+- 温池，并可选用写时复制（CoW）快照分叉填充，在 `/dev/kvm` 主机上实现快速、密集的 microVM 启动。
 
 ## 当前边界
 

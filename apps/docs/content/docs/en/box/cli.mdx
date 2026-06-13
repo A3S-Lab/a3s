@@ -5,7 +5,7 @@ description: Truthful command reference for the A3S Box Docker-like CLI
 
 # CLI Reference
 
-A3S Box exposes 55 top-level commands. They are Docker-like commands for a MicroVM runtime, not a promise of Docker CLI parity.
+A3S Box exposes 56 top-level commands. They are Docker-like commands for a MicroVM runtime, not a promise of Docker CLI parity.
 
 Boxes can be referenced by name, full ID, or a unique short ID prefix.
 
@@ -13,7 +13,7 @@ Boxes can be referenced by name, full ID, or a unique short ID prefix.
 
 | Family | Commands |
 | --- | --- |
-| Lifecycle | `run`, `create`, `start`, `stop`, `restart`, `rm`, `kill`, `pause`, `unpause`, `wait`, `rename` |
+| Lifecycle | `run`, `create`, `start`, `stop`, `restart`, `rm`, `kill`, `pause`, `unpause`, `wait`, `rename`, `prune` |
 | Execution | `exec`, `attach`, `top`, `shell` |
 | Images | `pull`, `push`, `build`, `images`, `rmi`, `tag`, `image-inspect`, `history`, `image-prune`, `save`, `load`, `commit` |
 | Filesystem | `cp`, `export`, `diff` |
@@ -39,7 +39,12 @@ a3s-box unpause BOX [BOX...]
 a3s-box wait BOX [BOX...]
 a3s-box rename OLD NEW
 a3s-box rm [-f] BOX [BOX...]
+a3s-box prune --force          # remove all created/stopped/dead boxes (alias: container-prune)
 ```
+
+`prune` is the box-only counterpart to `system-prune`: it removes every created,
+stopped, and dead box in one call (Docker `container prune`). Running and paused
+boxes are never touched, and it requires `--force`.
 
 `run` pulls if needed, creates state, boots the VM, and either waits for the foreground command or returns after a detached boot. `create` persists the same configuration but does not boot until `start`.
 
@@ -168,3 +173,33 @@ a3s-box system-prune --force
 ```
 
 `info` should be the first diagnostic command on a new host because it reports platform capability and network/TEE boundaries.
+
+## Warm Pool and Snapshot-Fork
+
+The warm pool keeps sandboxes pre-booted and serves them over a Unix socket, so
+a request runs in an already-warm microVM instead of paying a cold boot.
+
+```bash
+a3s-box pool start --image alpine:latest --size 8
+a3s-box pool start --image alpine:latest --size 8 --snapshot-fork   # CoW fill
+a3s-box pool run alpine:latest -- echo hi
+a3s-box pool status
+a3s-box pool stop
+```
+
+| Flag | Meaning |
+| --- | --- |
+| `--image IMAGE` | Image to pre-warm. Multiple pools are served lazily per image. |
+| `--size N` | Number of pre-warmed sandboxes to keep ready. |
+| `--snapshot-fork` | Fill the pool by Copy-on-Write restore from one booted template instead of cold booting each sandbox. Linux `/dev/kvm` only; off by default. |
+| `--deferred` | Run each request as the box's real main process (real exit code + json-file console logs). |
+
+`--snapshot-fork` is native Copy-on-Write microVM cloning: the pool cold-boots
+one template, snapshots its file-backed guest RAM plus KVM vCPU and virtio device
+state, then restores the rest of the pool from that snapshot. Each fork maps the
+template RAM `MAP_PRIVATE` and pays only for the pages it dirties. On a `/dev/kvm`
+host this is roughly 4× faster than a cold boot per fork and completes 100 forks
+in under ~1 s (~8 ms amortized each). The same mechanism is reachable below the
+pool through the `KRUN_SNAPSHOT_MEM_FILE`, `KRUN_SNAPSHOT_SOCK`, and
+`KRUN_RESTORE_FROM` environment variables. See [Configuration](./configuration)
+for the per-VM config fields.

@@ -34,6 +34,9 @@ A3S_HOME=/tmp/a3s-box-dev a3s-box ps -a
 | `A3S_REGISTRY_PROTOCOL` | Registry protocol override, mainly for local/insecure registry tests. |
 | `A3S_BOX_CRI_AGENT_IMAGE` | Default CRI sandbox agent/rootfs image. |
 | `A3S_BOX_UNSAFE_HOST_RUN` | Opt into unsafe macOS host execution for Dockerfile `RUN` experiments. |
+| `KRUN_SNAPSHOT_MEM_FILE` | Path the booted template writes its file-backed guest RAM to when capturing a snapshot-fork template. |
+| `KRUN_SNAPSHOT_SOCK` | Control socket the template listens on for the `snapshot <path>` command (Linux `/dev/kvm` only). |
+| `KRUN_RESTORE_FROM` | Path to a snapshot the microVM restores from as a Copy-on-Write fork instead of cold booting. |
 | `RUST_LOG` | Tracing log level. |
 
 Smoke-test variables are documented in the repository README and test files: `A3S_BOX_SMOKE_IMAGE`, `A3S_BOX_SMOKE_IMAGE_TAR`, `A3S_BOX_SMOKE_SKIP_PULL`, `A3S_BOX_SMOKE_TIMEOUT_SECS`, and `A3S_BOX_TEST_ALPINE_TAR`.
@@ -55,6 +58,28 @@ Supported resource limit flags include:
 - `--memory-reservation`, `--memory-swap`.
 
 Linux cgroup v2 controls are best-effort and depend on host permissions/delegation.
+
+## Warm Pool and Snapshot-Fork
+
+The warm pool keeps sandboxes pre-booted and serves them over a Unix socket.
+On a Linux `/dev/kvm` host it can fill the pool with native Copy-on-Write
+snapshot-fork instead of cold booting each sandbox:
+
+```bash
+a3s-box pool start --image alpine:latest --size 8 --snapshot-fork
+```
+
+Snapshot-fork cold-boots one template, snapshots its file-backed guest RAM plus
+KVM vCPU and virtio device state, then restores the rest of the pool from that
+snapshot. Each fork maps the template RAM `MAP_PRIVATE`, so it only pays for the
+pages it dirties.
+
+The mechanism is also reachable below the pool through environment variables —
+`KRUN_SNAPSHOT_MEM_FILE` / `KRUN_SNAPSHOT_SOCK` capture a template and
+`KRUN_RESTORE_FROM` restores a fork — or per box through the `BoxConfig` /
+`InstanceSpec` fields `snapshot_mem_file`, `snapshot_sock`, and `restore_from`.
+The per-VM fields take precedence over the process-global environment when set.
+Snapshot-fork is Linux `/dev/kvm` only and off by default.
 
 ## Process Configuration
 

@@ -16,6 +16,7 @@ The most important rule: **read A3S Box as a runtime with explicit boundaries, n
 | CLI runtime | Primary product surface. macOS Apple Silicon/HVF and Linux/KVM-style hosts are the intended targets. |
 | Images | Pull, load, save, tag, inspect, history, remove, local cache resolution, push, and cosign verification/signing paths exist. Registry-dependent paths need registry access to validate. |
 | Dockerfile build | Truthful subset. `RUN` uses Linux `chroot` and requires root-capable Linux. macOS rejects `RUN` by default unless unsafe host execution is explicitly enabled. |
+| Warm pool & snapshot-fork | Warm pool serves pre-booted sandboxes over a socket. Native snapshot-fork (Copy-on-Write microVM cloning) restores many forks from one booted template — ~4× faster than a cold boot per fork, 100 forks in under ~1 s on `/dev/kvm`. Opt-in via `pool start --snapshot-fork`; Linux `/dev/kvm` only. |
 | Networking | TSI default networking, TCP published ports, user-defined bridge networks, and peer `/etc/hosts` discovery are implemented with platform-specific NAT limits. |
 | Compose | Useful local subset; not full Docker Compose parity. |
 | TEE | SEV-SNP-oriented attestation, RA-TLS, sealing, secret injection, and simulation mode. Hardware trust depends on capable hosts. TDX is not productized. |
@@ -49,6 +50,7 @@ The host prepares the rootfs and starts a shim. The shim configures libkrun. Ins
 - Volumes, `cp`, `diff`, `export`, `commit`, and configuration/filesystem snapshots.
 - TCP port publishing and bridge peer discovery on supported hosts.
 - Compose subset for local multi-service development.
+- Warm pool with optional Copy-on-Write snapshot-fork fill for fast, dense microVM startup on `/dev/kvm` hosts.
 
 ## Product Boundaries
 

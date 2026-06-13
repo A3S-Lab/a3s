@@ -5,7 +5,7 @@ description: A3S Box 类 Docker CLI 的真实命令边界
 
 # CLI 参考
 
-A3S Box 暴露 55 个顶层命令。它们是面向 MicroVM 运行时的类 Docker 命令，不代表完整 Docker CLI 兼容。
+A3S Box 暴露 56 个顶层命令。它们是面向 MicroVM 运行时的类 Docker 命令，不代表完整 Docker CLI 兼容。
 
 box 可用 name、完整 ID 或唯一短 ID 前缀引用。
 
@@ -13,7 +13,7 @@ box 可用 name、完整 ID 或唯一短 ID 前缀引用。
 
 | 分组 | 命令 |
 | --- | --- |
-| 生命周期 | `run`, `create`, `start`, `stop`, `restart`, `rm`, `kill`, `pause`, `unpause`, `wait`, `rename` |
+| 生命周期 | `run`, `create`, `start`, `stop`, `restart`, `rm`, `kill`, `pause`, `unpause`, `wait`, `rename`, `prune` |
 | 执行 | `exec`, `attach`, `top`, `shell` |
 | 镜像 | `pull`, `push`, `build`, `images`, `rmi`, `tag`, `image-inspect`, `history`, `image-prune`, `save`, `load`, `commit` |
 | 文件系统 | `cp`, `export`, `diff` |
@@ -39,9 +39,14 @@ a3s-box unpause BOX [BOX...]
 a3s-box wait BOX [BOX...]
 a3s-box rename OLD NEW
 a3s-box rm [-f] BOX [BOX...]
+a3s-box prune --force          # 删除所有 created/stopped/dead 的 box（别名：container-prune）
 ```
 
 `run` 会拉取镜像、创建状态、启动 VM；前台命令会等待结束，后台模式会在启动后返回。`create` 持久化同样的配置，但不启动，直到 `start`。
+
+`prune` 是 `system-prune`（同时清理镜像和网络）的 box 专用版本：一次性删除所有
+created、stopped、dead 的 box（对应 Docker `container prune`）。运行中和暂停的 box
+不会被触碰，且必须加 `--force`。
 
 常用支持选项：
 
@@ -166,3 +171,30 @@ a3s-box system-prune --force
 ```
 
 新主机上优先运行 `a3s-box info`，它会告诉你平台、网络和 TEE 边界。
+
+## 温池与快照分叉（snapshot-fork）
+
+温池（warm pool）让 box 预先启动并通过 Unix socket 提供服务，请求会落在一个已经
+热起来的 microVM 上，而不必再付一次冷启动。
+
+```bash
+a3s-box pool start --image alpine:latest --size 8
+a3s-box pool start --image alpine:latest --size 8 --snapshot-fork   # CoW 填充
+a3s-box pool run alpine:latest -- echo hi
+a3s-box pool status
+a3s-box pool stop
+```
+
+| 选项 | 说明 |
+| --- | --- |
+| `--image IMAGE` | 预热的镜像。不同镜像各自惰性维护一个池。 |
+| `--size N` | 保持就绪的预热 box 数量。 |
+| `--snapshot-fork` | 用写时复制（CoW）从一个已启动模板恢复来填充池，而不是逐个冷启动。仅 Linux `/dev/kvm`，默认关闭。 |
+| `--deferred` | 把每个请求作为 box 的真实主进程运行（真实退出码 + json-file 控制台日志）。 |
+
+`--snapshot-fork` 是原生写时复制 microVM 克隆：池先冷启动一个模板，对其文件支撑的
+guest 内存以及 KVM vCPU、virtio 设备状态做快照，再从该快照恢复池中其余实例。每个
+分叉以 `MAP_PRIVATE` 映射模板内存，只为自己写脏的页付出代价。在 `/dev/kvm` 主机上，
+单个分叉比冷启动快约 4 倍，100 个分叉在约 1 秒内完成（每个分摊约 8ms）。同一机制也可
+通过 `KRUN_SNAPSHOT_MEM_FILE`、`KRUN_SNAPSHOT_SOCK` 和 `KRUN_RESTORE_FROM` 环境变量
+在池之下直接使用。每个 VM 的配置字段见 [配置](./configuration)。

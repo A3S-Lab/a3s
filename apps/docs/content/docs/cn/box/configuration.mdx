@@ -34,6 +34,9 @@ A3S_HOME=/tmp/a3s-box-dev a3s-box ps -a
 | `A3S_REGISTRY_PROTOCOL` | registry 协议覆盖，主要用于本地/insecure registry 测试。 |
 | `A3S_BOX_CRI_AGENT_IMAGE` | 默认 CRI sandbox agent/rootfs 镜像。 |
 | `A3S_BOX_UNSAFE_HOST_RUN` | 允许 macOS Dockerfile `RUN` 走 unsafe host 实验路径。 |
+| `KRUN_SNAPSHOT_MEM_FILE` | 捕获快照分叉模板时，已启动模板写入其文件支撑 guest 内存的路径。 |
+| `KRUN_SNAPSHOT_SOCK` | 模板监听 `snapshot <path>` 命令的控制 socket（仅 Linux `/dev/kvm`）。 |
+| `KRUN_RESTORE_FROM` | microVM 以写时复制分叉方式从该快照恢复，而不是冷启动。 |
 | `RUST_LOG` | Rust tracing 日志级别。 |
 
 ## 资源
@@ -53,6 +56,24 @@ vCPU 和内存在 MicroVM 启动前配置。运行中的 VM 不能热修改 vCPU
 - `--memory-reservation`、`--memory-swap`。
 
 Linux cgroup v2 控制是 best-effort，取决于宿主机权限和 cgroup 委派。
+
+## 温池与快照分叉
+
+温池让 box 预先启动并通过 Unix socket 提供服务。在 Linux `/dev/kvm` 主机上，可以用
+原生写时复制（CoW）快照分叉来填充池，而不是逐个冷启动：
+
+```bash
+a3s-box pool start --image alpine:latest --size 8 --snapshot-fork
+```
+
+快照分叉会先冷启动一个模板，对其文件支撑的 guest 内存以及 KVM vCPU、virtio 设备状态
+做快照，再从该快照恢复池中其余实例。每个分叉以 `MAP_PRIVATE` 映射模板内存，只为自己
+写脏的页付出代价。
+
+该机制也可在池之下使用：通过 `KRUN_SNAPSHOT_MEM_FILE` / `KRUN_SNAPSHOT_SOCK` 捕获模板，
+通过 `KRUN_RESTORE_FROM` 恢复分叉；或按 box 使用 `BoxConfig` / `InstanceSpec` 字段
+`snapshot_mem_file`、`snapshot_sock`、`restore_from`。设置时每个 VM 的字段优先于
+进程级环境变量。快照分叉仅限 Linux `/dev/kvm`，默认关闭。
 
 ## 进程配置
 
