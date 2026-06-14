@@ -11,9 +11,11 @@ Networking has three modes: default TSI, user-defined bridge, and none. Pick the
 
 | Mode | Use when | How it works | Boundary |
 | --- | --- | --- | --- |
-| TSI | The workload needs simple outbound access or host TCP publishing. | Guest socket operations are proxied through the host. | No user-defined peer network. |
-| Bridge | Boxes need stable private IPs and peer discovery. | A real guest network interface is attached through a platform backend. | Backend behavior differs by OS. |
+| TSI | The workload needs simple outbound access or host TCP publishing. | Guest socket operations are proxied through the host. | No user-defined peer network, and no in-guest loopback. |
+| Bridge | Boxes need stable private IPs, peer discovery, or working `localhost`. | A real guest network interface is attached through a platform backend. | Backend behavior differs by OS. |
 | None | The workload should be intentionally offline. | No network setup. | No outbound or inbound connectivity. |
+
+> **localhost under TSI:** because TSI proxies the guest's sockets to the host, a container's listener is not a real in-guest socket, so the container **cannot reach its own services over `localhost`/`127.0.0.1`** — a `localhost` health check, or `exec curl localhost`, will fail (the published host port still works). Use a **bridge network** when you need working localhost; there the guest has a real TCP stack and `localhost` works.
 
 ```bash
 # Default TSI

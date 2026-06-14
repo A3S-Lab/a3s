@@ -11,9 +11,11 @@ A3S Box 有三种网络模式：默认 TSI、自定义 bridge、none。选择能
 
 | 模式 | 使用场景 | 工作方式 | 边界 |
 | --- | --- | --- | --- |
-| TSI | 需要简单外网访问或 host TCP 端口发布。 | guest socket 通过宿主机代理。 | 没有自定义 peer 网络。 |
-| Bridge | 多个 box 需要固定私网 IP 和 peer 发现。 | 通过平台后端为 guest 接入真实网卡。 | 不同 OS 行为不同。 |
+| TSI | 需要简单外网访问或 host TCP 端口发布。 | guest socket 通过宿主机代理。 | 没有自定义 peer 网络，且 guest 内无回环。 |
+| Bridge | 多个 box 需要固定私网 IP、peer 发现,或需要可用的 `localhost`。 | 通过平台后端为 guest 接入真实网卡。 | 不同 OS 行为不同。 |
 | None | 工作负载需要离线。 | 不配置网络。 | 没有入站或出站连接。 |
+
+> **TSI 下的 localhost:** 因为 TSI 把 guest 的 socket 代理到宿主机,容器的监听并不是 guest 内的真实 socket,所以**容器无法通过 `localhost`/`127.0.0.1` 访问自己的服务** —— `localhost` 健康检查、`exec curl localhost` 都会失败(但宿主机发布端口仍可用)。需要可用的 localhost 时请用 **bridge 网络**:那里 guest 有真实 TCP 栈,`localhost` 正常工作。
 
 ```bash
 # 默认 TSI
