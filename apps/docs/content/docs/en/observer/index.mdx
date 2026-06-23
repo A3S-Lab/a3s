@@ -1,6 +1,6 @@
 ---
 title: A3S Observer
-description: eBPF-based, language-agnostic observability for AI agents — which agent ran which tools, called which LLM provider, and reached which endpoint, with zero code changes
+description: eBPF-based, language-agnostic observability for AI agents — which agent ran which tools, wrote which files, called which LLM provider (with bytes/latency/TTFT), and reached which endpoint, with zero code changes
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
@@ -8,60 +8,65 @@ import { Callout } from 'fumadocs-ui/components/callout';
 # A3S Observer
 
 `a3s-observer` turns kernel-level events into semantic AI-agent telemetry — **who**
-(process / k8s pod) ran **what** (tools, LLM calls) and reached **where** (endpoints) —
-captured with **eBPF**, with **zero changes to the agent**, across languages.
+(process / k8s pod) ran **what** (tools, files, LLM calls) and reached **where**
+(endpoints) — captured with **eBPF**, with **zero changes to the agent**, across languages.
 
 ```
-capture (eBPF probes)        enrich + correlate (userspace)      export
-─────────────────────        ──────────────────────────────     ─────────
-exec    (subprocess)         identity: /proc comm+ppid,          NDJSON
-tls-sni (LLM provider)                 k8s cgroup→pod             (or log)
-connect (peer IP)            (pid,fd)→peer correlation
+capture (eBPF probes)        enrich + correlate (userspace)       export
+─────────────────────        ───────────────────────────────     ──────────
+exec    (subprocess)         identity: k8s cgroup→pod,            NDJSON
+file    (writes)                       /proc + in-kernel comm      (or log)
+connect (peer IP)            (pid,fd)→peer correlation            → OTel
+tls-sni (LLM provider)       LLM req/resp bytes·latency·TTFT         Collector
 dns     (hostnames)
 ```
 
-A single event answers who / what / where:
+A single event answers who / what / where — here an LLM call with metrics:
 
 ```json
 {"identity":{"agent":"curl"},"provider":"Anthropic",
- "event":{"Egress":{"sni":"api.anthropic.com","peer":"160.79.104.10","bytes":512}}}
+ "event":{"LlmCall":{"sni":"api.anthropic.com","peer":"160.79.104.10",
+   "req_bytes":284,"resp_bytes":3832,
+   "latency":{"secs":1,"nanos":20000000},"ttft":{"secs":0,"nanos":318000000}}}}
 ```
 
 ## Why eBPF (not an SDK)
 
 - **Zero-instrumentation, language-agnostic** — observe any agent (Python / Node / Go /
   Rust) without touching its code or SDK.
-- **Sees what the app won't tell you** — real subprocess execs, network egress, including
-  the tool subprocesses an agent spawns.
+- **Sees what the app won't tell you** — real subprocess execs, file writes, network
+  egress, including the tool subprocesses an agent spawns.
 - **Low overhead, security-relevant** — runs in the kernel; an agent can't easily evade it.
 
 <Callout type="info">
 v1 uses only language-agnostic kernel hooks (no per-language uprobes), so it works on any
 runtime. Trade-off: no LLM prompt / model-name / exact-token visibility — that needs an
-opt-in TLS-payload extension (roadmap). The default captures provider, endpoint, bytes,
-tools, and identity.
+opt-in TLS-payload extension (roadmap). The default captures provider, endpoint, req/resp
+bytes, latency, TTFT, tools, files, and identity.
 </Callout>
 
 ## What it captures
 
 | Probe | Hook | Gives |
 |---|---|---|
-| `exec` | `sched_process_exec` | tools / subprocesses (argv) — incl. ones that bypass app instrumentation |
-| `tls-sni` | TLS ClientHello on send | LLM **provider** (from SNI), language-agnostic |
+| `exec` | `sys_enter_execve` | tools / subprocesses (argv) — incl. ones that bypass app instrumentation |
+| `file` | `sys_enter_openat` (write opens) | files the agent **writes** — opt-in via `A3S_OBSERVER_FILES=1` (high-volume on busy nodes) |
 | `connect` | `sys_enter_connect` | peer **IP:port** |
-| `dns` | `sys_enter_sendto` :53 | resolved **hostnames** |
+| `tls-sni` | TLS ClientHello on send | LLM **provider** (from SNI), language-agnostic |
+| `dns` | `sendto` / `sendmsg` / `sendmmsg` :53 | resolved **hostnames** |
+| LLM metrics | `read` / `recv` + `close`, per socket | req/resp **bytes**, **latency**, **TTFT** |
 
-Userspace enriches each event with **identity** (process `comm` + `ppid`, or k8s
-pod / container) and a `(pid,fd)→peer` correlation that fuses the LLM provider with its
-endpoint.
+Userspace enriches each event with **identity** (k8s pod/container via cgroup, or `/proc`
+comm+ppid, with an in-kernel `comm` fallback so short-lived processes are still attributed)
+and a `(pid,fd)→peer` correlation that fuses the LLM provider with its endpoint + metrics.
 
 ## Architecture (minimal core + extensions)
 
 Swappable traits around the probe core:
 
-- `IdentityResolver` — `/proc` (bare host) · k8s cgroup→pod
-- `ServiceClassifier` — SNI / IP → `Provider`
-- `Exporter` — NDJSON · log · *(roadmap)* OTLP
+- `IdentityResolver` — k8s cgroup→pod · `/proc` (bare host) · in-kernel `comm` fallback
+- `ServiceClassifier` — SNI / IP → `Provider` (14 LLM providers)
+- `Exporter` — NDJSON · log → OpenTelemetry Collector (filelog → OTLP)
 
 Crates: `a3s-observer` (contracts + model), `a3s-observer-common` (`no_std` shared types),
 `a3s-observer-ebpf` (the probes), `a3s-observer-collector` (loader + correlation + export).
@@ -81,11 +86,27 @@ sudo ./target/release/a3s-observer-collector                          # human-re
 A3S_OBSERVER_JSON=1 sudo -E ./target/release/a3s-observer-collector   # NDJSON → vector/Loki/jq
 ```
 
+## Export to OpenTelemetry
+
+a3s-observer stays lean — it emits NDJSON; shipping (batch / retry / route) is the
+OpenTelemetry Collector's job. The production pipeline:
+
+```
+capture (a3s-observer)  →  NDJSON  →  OTel Collector (filelog → OTLP)  →  your backend
+```
+
+A ready config ships in `deploy/otel-collector.yaml`. In Kubernetes, run a3s-observer as a
+DaemonSet writing to stdout and let a Collector DaemonSet tail the node logs. In-process
+OTLP push is intentionally not built — that's the Collector's job (and keeps the privileged
+probe binary minimal and decoupled from backend uptime).
+
 ## Status & roadmap
 
-**v1** (validated on Linux 6.8): `exec` / `tls-sni` / `connect` / `dns` probes, identity
-(proc + k8s), `(pid,fd)→peer` correlation, NDJSON + log export.
+**Implemented** (validated on Linux 6.8): `exec` / `file` (writes) / `connect` / `tls-sni` /
+`dns` probes + per-socket **LLM metrics** (req/resp bytes, latency, TTFT); identity (k8s,
+`/proc`, in-kernel `comm`); `(pid,fd)→peer` correlation; NDJSON / log export → OpenTelemetry
+Collector.
 
-**Roadmap:** OTLP exporter; byte / latency / TTFT metrics; an **opt-in SSL-payload**
-extension for prompt/response content (per TLS library, since it needs uprobes that aren't
-language-agnostic).
+**Roadmap:** an **opt-in SSL-payload** extension for prompt/response content (per TLS
+library, since it needs uprobes that aren't language-agnostic); in-guest probes for a3s-box
+MicroVMs.
