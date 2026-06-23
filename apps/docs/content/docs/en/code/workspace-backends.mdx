@@ -1,0 +1,203 @@
+---
+title: "Workspace Backends"
+description: "Run A3S Code sessions against local files, S3-compatible object storage, and remote git services."
+---
+
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+# Workspace Backends
+
+Workspace backends decide where built-in workspace tools read and write files.
+The default is the local filesystem rooted at the session workspace. v4.1.0 also
+exposes typed SDK backends for local files, S3-compatible object storage, and an
+optional HTTP/JSON remote git provider.
+
+Use this surface when the host owns workspace placement: local development,
+browser or container workspaces, object-storage workspaces, or Shuan OS managed
+sessions.
+
+## Capability Matrix
+
+| Backend | File tools | Search tools | Shell and local git |
+| --- | --- | --- | --- |
+| Default local workspace | `read`, `write`, `edit`, `patch`, `ls` | `grep`, `glob` | `bash`, `git` |
+| `LocalWorkspaceBackend` | Same as default local workspace | Same as default local workspace | Same as default local workspace |
+| `S3WorkspaceBackend` | `read`, `write`, `edit`, `patch`, `ls` | Optional degraded `grep` / `glob` when `searchEnabled` is set | Not registered |
+| `S3WorkspaceBackend` + `remoteGit` | S3 file tools | Optional degraded S3 search | `git` through remote git, no `bash` |
+
+Object storage cannot service local processes. Do not promise shell execution on
+an S3 workspace unless the host provides a separate sandbox through AHP, MCP, or
+A3S Box.
+
+## Local Backend
+
+The explicit local backend is useful when host code wants one option surface for
+both local and remote sessions.
+
+<Tabs groupId="lang" items={['Node.js', 'Python']}>
+<Tab value="Node.js">
+
+```ts
+import { Agent, LocalWorkspaceBackend } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.acl');
+const session = agent.session('/repo', {
+  workspaceBackend: new LocalWorkspaceBackend('/repo'),
+});
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+from a3s_code import Agent, LocalWorkspaceBackend, SessionOptions
+
+agent = Agent.create(open("agent.acl").read())
+opts = SessionOptions()
+opts.workspace_backend = LocalWorkspaceBackend("/repo")
+session = agent.session("/repo", opts)
+```
+
+</Tab>
+</Tabs>
+
+## S3 Backend
+
+`S3WorkspaceBackend` points the built-in file tools at any S3-compatible service,
+including AWS S3, MinIO, RustFS, Cloudflare R2, and Backblaze B2.
+
+<Tabs groupId="lang" items={['Node.js', 'Python']}>
+<Tab value="Node.js">
+
+```ts
+import { Agent, S3WorkspaceBackend } from '@a3s-lab/code';
+
+const backend = new S3WorkspaceBackend({
+  endpoint: 'https://minio.local:9000',
+  region: 'us-east-1',
+  accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+  secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+  bucket: 'workspace',
+  prefix: 'users/u1/sessions/s1',
+  forcePathStyle: true,
+  searchEnabled: false,
+});
+
+const agent = await Agent.create('agent.acl');
+const session = agent.session('s3://workspace/users/u1/sessions/s1', {
+  workspaceBackend: backend,
+});
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+import os
+
+from a3s_code import Agent, S3WorkspaceBackend, SessionOptions
+
+agent = Agent.create(open("agent.acl").read())
+opts = SessionOptions()
+opts.workspace_backend = S3WorkspaceBackend(
+    bucket="workspace",
+    prefix="users/u1/sessions/s1",
+    access_key_id=os.environ["S3_ACCESS_KEY_ID"],
+    secret_access_key=os.environ["S3_SECRET_ACCESS_KEY"],
+    endpoint="https://minio.local:9000",
+    region="us-east-1",
+    force_path_style=True,
+    search_enabled=False,
+)
+session = agent.session("s3://workspace/users/u1/sessions/s1", opts)
+```
+
+</Tab>
+</Tabs>
+
+S3 search is intentionally opt-in. When enabled, `grep` / `glob` degrade to
+object listing and bounded downloads. Configure `maxObjectsScanned`,
+`maxGrepBytesPerObject`, and `searchConcurrency` when the bucket can be large or
+the endpoint rate-limits.
+
+## Remote Git
+
+`remoteGit` attaches an HTTP/JSON git provider on top of `workspaceBackend`. It is
+designed for non-local workspaces where the built-in `git` tool cannot use a
+local `.git` directory.
+
+`remoteGit` requires `workspaceBackend`; passing it alone is rejected.
+
+<Tabs groupId="lang" items={['Node.js', 'Python']}>
+<Tab value="Node.js">
+
+```ts
+import { Agent, S3WorkspaceBackend } from '@a3s-lab/code';
+
+const backend = new S3WorkspaceBackend({
+  endpoint: 'https://minio.local:9000',
+  region: 'us-east-1',
+  accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+  secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+  bucket: 'workspace',
+  prefix: 'users/u1/sessions/s1',
+  forcePathStyle: true,
+});
+
+const agent = await Agent.create('agent.acl');
+const session = agent.session('s3://workspace/users/u1/sessions/s1', {
+  workspaceBackend: backend,
+  remoteGit: {
+    baseUrl: 'https://gitserver.internal',
+    repoId: 'u1/s1',
+    bearerToken: process.env.GITSERVER_TOKEN,
+  },
+});
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+import os
+
+from a3s_code import (
+    Agent,
+    RemoteGitBackendConfig,
+    S3WorkspaceBackend,
+    SessionOptions,
+)
+
+agent = Agent.create(open("agent.acl").read())
+opts = SessionOptions()
+opts.workspace_backend = S3WorkspaceBackend(
+    bucket="workspace",
+    prefix="users/u1/sessions/s1",
+    access_key_id=os.environ["S3_ACCESS_KEY_ID"],
+    secret_access_key=os.environ["S3_SECRET_ACCESS_KEY"],
+    endpoint="https://minio.local:9000",
+    region="us-east-1",
+    force_path_style=True,
+)
+opts.remote_git = RemoteGitBackendConfig(
+    base_url="https://gitserver.internal",
+    repo_id="u1/s1",
+    bearer_token=os.environ["GITSERVER_TOKEN"],
+)
+session = agent.session("s3://workspace/users/u1/sessions/s1", opts)
+```
+
+</Tab>
+</Tabs>
+
+Keep gitserver credentials out of `agent.acl` and agent directories. Inject them
+from the host environment or secret manager.
+
+## Choosing A Backend
+
+- Use the default local workspace for normal developer machines and CI checkouts.
+- Use `LocalWorkspaceBackend` when your host always passes a typed backend object.
+- Use `S3WorkspaceBackend` when workspace state must live in object storage.
+- Add `remoteGit` when a non-local workspace still needs the built-in `git` tool.
+- Use AHP, MCP, or A3S Box for shell-like execution that cannot run inside the
+  selected workspace backend.

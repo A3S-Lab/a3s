@@ -33,12 +33,16 @@ const named = agent.sessionForAgent(workspace, 'explore', [], options);
 `api_key`/`base_url` 两组 provider alias。`sessionForAgent()` 已用内置
 `explore` agent 验证。
 
-集成检查也覆盖 ACL 文件存储字段：
+集成检查也覆盖会创建文件型 session store 的 ACL 字段：
 
 ```text
 storage_backend = "file"
-storage_url = "/tmp/a3s-doc-stores/acl-storage"
+sessions_dir = "/tmp/a3s-doc-stores/acl-storage"
 ```
+
+`storage_url` 会被解析为自定义存储元数据，但它不是本地文件型 session
+persistence 路径。ACL 中使用 `sessions_dir`，或在 SDK options 中传
+`sessionStore`。
 
 ## Session Options
 
@@ -581,7 +585,7 @@ let limits = SessionRetentionLimits::new()
 let opts = SessionOptions::new().with_retention_limits(limits);
 ```
 
-上限建议跟 host 自己 Prometheus / 观测系统的内存预算保持一致。SDK 直接调用形式后续补。
+上限建议跟 host 自己 Prometheus / 观测系统的内存预算保持一致。Node 暴露为 `retentionLimits`；Python 暴露为 `opts.retention_limits`。
 
 ### MCP 闲置断开
 
@@ -634,16 +638,19 @@ session = agent.session(workspace, opts)
 // JsFunction 不能塞进值类型的 SessionOptions,所以 guard 在 Session 上注册,
 // 下一次 send/stream 生效。
 session.setBudgetGuard({
-  checkBeforeLlm: (sessionId, estimatedTokens) => {
-    if (overBudget(sessionId)) {
+  checkBeforeLlm: (ctx) => {
+    if (overBudget(ctx.sessionId)) {
       return { decision: 'deny', resource: 'llm_tokens', reason: 'cap' };
     }
     return null;
   },
-  recordAfterLlm: (sessionId, usage) => {
-    track(sessionId, usage.total_tokens);
+  recordAfterLlm: (ctx) => {
+    track(ctx.sessionId, ctx.usage.totalTokens);
   },
 });
 ```
+
+Node 回调接收单个 `ctx` 对象，且**绝不能 throw**；请用 `try/catch` 包裹并返回显式决策。
+卡住或无法解析的 `check*` 回调会 fail-closed 为 `deny`。Python 回调使用位置参数，异常会被捕获并视为 Allow。
 
 Node 用 `setBudgetGuard(null)` 清除;Python 把 `opts.budget_guard` 设回 `None` 后重建 session。

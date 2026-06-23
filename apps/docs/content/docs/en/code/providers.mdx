@@ -93,11 +93,14 @@ Test scripts map `MINIMAX_API_KEY` and `MINIMAX_BASE_URL` to `A3S_OPENAI_API_KEY
 ```text
 storage_backend = "memory"
 storage_backend = "file"
-storage_url = ".a3s/sessions"
+sessions_dir = ".a3s/sessions"
 ```
 
-Use memory storage for short-lived tests. Use file storage with `storage_url`
-for resumable local sessions.
+Use memory storage for short-lived tests. Use `sessions_dir` for resumable
+local sessions loaded from ACL. `storage_url` is parsed for custom storage
+metadata, but it does not create a file-backed session store by itself. SDK
+hosts can always pass `sessionStore: new FileSessionStore(...)` /
+`opts.session_store = FileSessionStore(...)` directly.
 
 ## Private Provider Check
 

@@ -64,11 +64,11 @@ def main():
     # Python: create() takes the ACL SOURCE TEXT.
     agent = Agent.create(open('agent.acl').read())
 
-    session = agent.session('/repo', SessionOptions(
-        role='release-readiness reviewer',
-        guidelines='Find blockers before improvements. Require command evidence for done claims.',
-        response_style='concise, findings first',
-    ))
+    opts = SessionOptions()
+    opts.role = 'release-readiness reviewer'
+    opts.guidelines = 'Find blockers before improvements. Require command evidence for done claims.'
+    opts.response_style = 'concise, findings first'
+    session = agent.session('/repo', opts)
 
     result = session.send('Is this repo ready to ship?')
     print(result.text)
@@ -122,27 +122,27 @@ const result = await session.send(
 
 ```python
 # 1. Custom role only.
-session = agent.session(workspace, SessionOptions(
-    role='You are a senior Rust developer who specializes in async programming.',
-))
+opts = SessionOptions()
+opts.role = 'You are a senior Rust developer who specializes in async programming.'
+session = agent.session(workspace, opts)
 
 # 2. Role + guidelines + response style.
-session = agent.session(workspace, SessionOptions(
-    role='You are a Python code reviewer.',
-    guidelines='Always check for type hints. Flag any use of `eval()`.',
-    response_style='Reply in bullet points. Be concise.',
-))
+opts = SessionOptions()
+opts.role = 'You are a Python code reviewer.'
+opts.guidelines = 'Always check for type hints. Flag any use of `eval()`.'
+opts.response_style = 'Reply in bullet points. Be concise.'
+session = agent.session(workspace, opts)
 
 # 3. Extra freeform instructions only.
-session = agent.session(workspace, SessionOptions(
-    extra="Always end your response with '-- A3S'",
-))
+opts = SessionOptions()
+opts.extra = "Always end your response with '-- A3S'"
+session = agent.session(workspace, opts)
 
 # Core tool behavior is preserved regardless of the slots.
-session = agent.session(workspace, SessionOptions(
-    role='You are a minimalist file manager.',
-    guidelines='Only create files when explicitly asked.',
-))
+opts = SessionOptions()
+opts.role = 'You are a minimalist file manager.'
+opts.guidelines = 'Only create files when explicitly asked.'
+session = agent.session(workspace, opts)
 result = session.send(
     "Create a file called test.txt with the content 'prompt slots work'. Then read it back.",
 )

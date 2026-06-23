@@ -268,6 +268,6 @@ print(f"tool calls: {result.tool_calls_count}, tokens: {result.total_tokens}")
 
 - 校验后的值位于解析后 `result.output` 的 `object` 键上。直接结构化调用传 `mode: 'tool'`，仅 prompt 的回退方式传 `mode: 'prompt'`。
 - 把你依赖的每个字段都列入 `required`——运行时会强制执行，因此缺失或类型错误的字段会导致校验失败，而不是悄悄返回部分数据。
-- `generate_object` 是内置工具，因此 session 需要启用 `builtinSkills` / `builtin_skills`（如上所示）。
+- `generate_object` 是独立注册的内置工具，不依赖 built-in skills。示例启用 `builtinSkills` / `builtin_skills` 是因为多数真实 session 也需要 skill catalog，而不是因为 `generate_object` 需要它。
 
 可运行版本随源码提供，位于 `crates/code/sdk/node/examples/basic/test_generate_object.ts` 和 `crates/code/sdk/python/examples/test_generate_object.py`。

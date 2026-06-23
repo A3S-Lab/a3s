@@ -65,14 +65,14 @@ const session = agent.session('/repo', {
 ```
 
 ```python
-session = agent.session('/repo', SessionOptions(
-    retention_limits={
-        'max_runs_retained': 100,
-        'max_events_per_run': 5000,
-        'max_trace_events': 20000,
-        'max_terminal_subagent_tasks': 500,
-    },
-))
+opts = SessionOptions()
+opts.retention_limits = {
+    'max_runs_retained': 100,
+    'max_events_per_run': 5000,
+    'max_trace_events': 20000,
+    'max_terminal_subagent_tasks': 500,
+}
+session = agent.session('/repo', opts)
 ```
 
 ## Budget Guard
@@ -138,7 +138,9 @@ class MyBudgetGuard:
     def check_before_tool(self, session_id, tool_name):
         return {'decision': 'allow'}
 
-session = agent.session('/repo', SessionOptions(budget_guard=MyBudgetGuard()))
+opts = SessionOptions()
+opts.budget_guard = MyBudgetGuard()
+session = agent.session('/repo', opts)
 ```
 
 决策返回 dict `{"decision": "deny", "resource": ..., "reason": ...}`（以及 `"soft"` / `"allow"`）在两个 SDK 上是相同的形状。

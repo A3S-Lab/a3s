@@ -223,7 +223,7 @@ deploy/helm/a3s-gateway/
 
 ### Provider 配置
 
-```acl
+```text
 providers {
   kubernetes {
     namespace           = ""               # "" = all namespaces; else a single namespace
@@ -311,7 +311,7 @@ subjects:
 
 可选的管理监听器是一个**专用、独立**的 TCP socket（`management {}` 块；不存在单独的 `dashboard` 块）。它绝不会拦截用户流量。它**默认是禁用的**。
 
-```acl
+```text
 management {
   enabled        = true
   address        = "127.0.0.1:9090"      # default
@@ -350,7 +350,7 @@ curl -H "Authorization: Bearer $A3S_GATEWAY_ADMIN_TOKEN" \
 
 gateway 在**不中断连接**的情况下重载配置，由一个基于 `notify` 的文件监视器驱动。仅当存在 `providers.file` 块且 `watch = true`（这是该块的默认值）时，该监视器才会运行。
 
-```acl
+```text
 providers {
   file {
     watch     = true                 # default

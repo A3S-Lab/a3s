@@ -9,7 +9,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 集群宿主平台在多个节点上运行长时运行的智能体会话。框架本身并不附带调度器或放置引擎，而是暴露一小组接缝：它定义决策点、发出结构化事件，并把策略交给宿主来提供。下文的所有内容都是你从框架外部接入的——你永远不需要分叉框架。
 
-本页会明确区分哪些接缝在两个 SDK 中都可用（以 Node.js + Python 代码展示），哪些是当前在 Rust 核心中配置的（以散文描述，SDK 接入随后跟进）。
+本页会明确区分哪些接缝在两个 SDK 中都可用（以 Node.js + Python 代码展示），哪些当前只在 Rust 核心中配置（没有 SDK 选项时以文字说明）。
 
 ## 身份标签
 
@@ -46,11 +46,11 @@ opts.agent_template_id = 'reviewer-v3'
 opts.correlation_id = 'req-9f2c'
 session = agent.session('/path/to/project', opts)
 
-# Getters are methods, return str | None
-print(session.tenant_id())          # 'acme-corp'
-print(session.principal())          # 'user:42'
-print(session.agent_template_id())  # 'reviewer-v3'
-print(session.correlation_id())     # 'req-9f2c'
+# Getters are properties, return str | None
+print(session.tenant_id)          # 'acme-corp'
+print(session.principal)          # 'user:42'
+print(session.agent_template_id)  # 'reviewer-v3'
+print(session.correlation_id)     # 'req-9f2c'
 ```
 
 </Tab>
@@ -65,14 +65,14 @@ print(session.correlation_id())     # 'req-9f2c'
 
 ```ts
 session.setBudgetGuard({
-  checkBeforeLlm(sessionId, estimatedTokens) {
-    if (overLimit(sessionId, estimatedTokens)) {
+  checkBeforeLlm(ctx) {
+    if (overLimit(ctx.sessionId, ctx.estimatedTokens)) {
       return { decision: 'deny', resource: 'tokens', reason: 'monthly cap reached' };
     }
     return { decision: 'allow' };
   },
-  recordAfterLlm(sessionId, usage) {
-    meter(sessionId, usage);
+  recordAfterLlm(ctx) {
+    meter(ctx.sessionId, ctx.usage);
   },
 });
 
@@ -80,7 +80,7 @@ session.setBudgetGuard({
 session.setBudgetGuard(null);
 ```
 
-守卫回调**绝不能抛出异常**——抛出的错误会被视为放行（Allow）。
+Node 回调接收单个 `ctx` 对象，且**绝不能抛出异常**。请用 `try/catch` 包裹逻辑并返回显式决策。卡住或无法解析的 `check*` 回调会 fail-closed 为 `deny`。
 
 </Tab>
 <Tab value="Python">
@@ -113,7 +113,7 @@ session = agent.session('/path/to/project', opts)
 | `{ decision: 'soft', resource, consumed, limit, message? }` | 发出 `BudgetThresholdHit`（kind 为 `soft`）并继续执行。 |
 | `{ decision: 'deny', resource, reason }` | 中止 LLM 调用。Python 抛出 `RuntimeError("Budget exhausted...")`；Node 以 `"Budget exhausted..."` 拒绝（reject）。 |
 
-这种健壮性是刻意为之的：**缺失的守卫方法**会被当作宽松默认值处理，而**回调出错则回退为放行（Allow）**。行为异常的守卫永远无法中止一个活动会话——只有显式的 `deny` 才能做到。
+这种健壮性是刻意为之，但两个 SDK 的失败语义不同：**缺失的守卫方法**会被当作宽松默认值处理。Python 回调出错会回退为 Allow。Node 回调不能 throw；超时或无法解析的 `check*` 返回会 fail-closed 为 `deny`。
 
 ## 集群事件词汇
 
@@ -181,7 +181,7 @@ result = session.resume_run('run-id-from-node-a')
 
 `SessionRetentionLimits` 为这四个存储分别设置上限。每个上限都是可选的：`None` 表示无上限的默认值。驱逐采用严格的 **FIFO**，并且**正在运行的子智能体任务永不被丢弃**——只有终态（已完成/已失败）快照会被驱逐。
 
-这是当前通过 Rust 核心的 `SessionRetentionLimits` 配置的；SDK 形态将在后续跟进落地，因此目前没有对应的 Node/Python 代码。关于已经存在于 SDK 面上的每会话资源上限，参见[限制](/cn/docs/code/limits)。
+Node 使用 `retentionLimits`，Python 使用 `opts.retention_limits`。Rust 宿主使用 `SessionOptions::with_retention_limits(...)`。字段名和示例见[限制](/cn/docs/code/limits)。
 
 ---
 

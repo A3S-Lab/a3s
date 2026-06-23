@@ -93,10 +93,13 @@ providers "openai" {
 ```text
 storage_backend = "memory"
 storage_backend = "file"
-storage_url = ".a3s/sessions"
+sessions_dir = ".a3s/sessions"
 ```
 
-短测试使用 memory，需恢复的本地 session 使用带 `storage_url` 的 file。
+短测试使用 memory；通过 ACL 加载的可恢复本地 session 使用 `sessions_dir`。
+`storage_url` 会被解析为自定义存储元数据，但它本身不会创建文件型 session
+store。SDK 宿主也可以直接传 `sessionStore: new FileSessionStore(...)` /
+`opts.session_store = FileSessionStore(...)`。
 
 ## 私有 Provider 检查
 

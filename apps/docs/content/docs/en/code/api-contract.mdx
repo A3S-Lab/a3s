@@ -34,12 +34,17 @@ not part of the verified contract. The integration check covers both
 OpenAI-compatible test server.
 `sessionForAgent()` was verified with the built-in `explore` agent.
 
-The integration check also covers ACL file storage fields:
+The integration check also covers the ACL field that creates a file-backed
+session store:
 
 ```text
 storage_backend = "file"
-storage_url = "/tmp/a3s-doc-stores/acl-storage"
+sessions_dir = "/tmp/a3s-doc-stores/acl-storage"
 ```
+
+`storage_url` is parsed for custom storage metadata, but it is not the local
+file-session persistence path. Use `sessions_dir` in ACL or pass
+`sessionStore` in SDK options.
 
 ## Session Options
 
@@ -628,9 +633,9 @@ let limits = SessionRetentionLimits::new()
 let opts = SessionOptions::new().with_retention_limits(limits);
 ```
 
-The host should pick caps from the same observability budget that
-caps the rest of its in-memory state (Prometheus carries history
-anyway). SDK shapes for retention land in a follow-up.
+The host should pick caps from the same observability budget that caps the rest
+of its in-memory state (Prometheus carries history anyway). Node exposes this
+as `retentionLimits`; Python exposes it as `opts.retention_limits`.
 
 ### MCP idle disconnect
 
@@ -693,17 +698,22 @@ session = agent.session(workspace, opts)
 // so the guard is installed on the Session itself; takes effect on
 // the next send/stream.
 session.setBudgetGuard({
-  checkBeforeLlm: (sessionId, estimatedTokens) => {
-    if (overBudget(sessionId)) {
+  checkBeforeLlm: (ctx) => {
+    if (overBudget(ctx.sessionId)) {
       return { decision: 'deny', resource: 'llm_tokens', reason: 'cap' };
     }
     return null;
   },
-  recordAfterLlm: (sessionId, usage) => {
-    track(sessionId, usage.total_tokens);
+  recordAfterLlm: (ctx) => {
+    track(ctx.sessionId, ctx.usage.totalTokens);
   },
 });
 ```
+
+Node callbacks receive a single `ctx` object and must not throw; wrap handler
+logic in `try/catch` and return an explicit decision. Hung or unreadable
+`check*` callbacks fail closed as `deny`. Python callbacks use positional
+arguments and catch exceptions as Allow.
 
 Pass `null` to `setBudgetGuard` (Node) or set `opts.budget_guard =
 None` and re-create the session (Python) to clear.

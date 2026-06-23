@@ -7,7 +7,8 @@ description: "Agent Harness Protocol 2.4 integration"
 
 A3S Code exposes AHP 2.4 transport configuration so an external harness can be
 connected to the agent loop. Node sessions accept stdio, HTTP, WebSocket, and
-Unix socket transport objects; validate live harness behavior against the AHP
+Unix socket transport objects. Python exposes the same transport families through
+`SessionOptions.ahp_transport`. Validate live harness behavior against the AHP
 server you deploy.
 
 ## Event Surface
@@ -20,7 +21,7 @@ server you deploy.
 
 ## Transports
 
-Node sessions accept AHP transport objects:
+Node sessions accept AHP transport objects through `ahpTransport`:
 
 ```ts
 import {
@@ -44,15 +45,20 @@ Available transports:
 
 Unix sockets are not available on Windows targets.
 
-## ACL
+Python uses `opts.ahp_transport`:
 
-```text
-ahp = {
-  enabled = true
-  url     = "http://harness:8080/ahp"
-  idle_ms = 10000
-}
+```python
+from a3s_code import Agent, HttpTransport, SessionOptions
+
+agent = Agent.create(open("agent.acl").read())
+opts = SessionOptions()
+opts.ahp_transport = HttpTransport("http://localhost:8080/ahp", "token")
+session = agent.session("/repo", opts)
 ```
+
+Rust attaches AHP at the core layer by creating an AHP hook executor and passing
+it through `SessionOptions::with_hook_executor(...)`. The current SDK contract
+does not include an ACL-level AHP block.
 
 ## Recommended Use
 

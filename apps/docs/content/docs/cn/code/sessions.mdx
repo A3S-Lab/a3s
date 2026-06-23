@@ -158,12 +158,11 @@ const session = agent.session('/repo', {
 ```
 
 ```python
-opts = SessionOptions(
-    tenant_id='acme-corp',
-    principal='user-42',
-    agent_template_id='planner-v3',
-    correlation_id='trace-deadbeef',
-)
+opts = SessionOptions()
+opts.tenant_id = 'acme-corp'
+opts.principal = 'user-42'
+opts.agent_template_id = 'planner-v3'
+opts.correlation_id = 'trace-deadbeef'
 session = agent.session('/repo', opts)
 print(session.tenant_id, session.principal)
 ```

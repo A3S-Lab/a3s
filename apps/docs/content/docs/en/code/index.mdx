@@ -1,23 +1,24 @@
 ---
 title: "A3S Code"
-description: "Harness-driven coding agent runtime with the v3.4.0 SDKs"
+description: "Harness-driven coding agent runtime with the v4.1.0 SDKs"
 ---
 
 # A3S Code
 
-A3S Code v3.4.0 is a harness-driven runtime for coding agents. The runtime keeps the agent loop small and observable while the harness owns context assembly, tool execution, permission policy, delegation, verification evidence, and run replay.
+A3S Code v4.1.0 is a harness-driven runtime for coding agents. The runtime keeps the agent loop small and observable while the harness owns context assembly, tool execution, permission policy, delegation, verification evidence, and run replay.
 
-## v3.4.0 Highlights
+## v4.1.0 Highlights
 
 | Area | Current capability |
 | --- | --- |
+| Filesystem-first | [Filesystem-first](/docs/code/filesystem-first) organizes `AGENTS.md`, `agent.acl`, `.a3s/agents/`, `skills/`, `tools/`, and `schedules/` into a reviewable, versioned agent product interface. |
 | Automatic delegation | Runtime-driven subagent delegation can trigger from explicit `@agent` mentions, high-confidence task descriptions, and proactive custom-agent descriptions. |
 | Built-in subagents | `explore`, `plan`, `general` / `general-purpose`, `verification`, and `review` are available through `task`, `parallel_task`, `session.task(...)`, `session.tasks(...)`, and auto delegation. |
-| Agent directories | Custom Markdown/YAML agents load from configured `agent_dirs`, project/user `.a3s/agents`, and Claude-compatible `.claude/agents` migration paths. `.a3s/agents` is the native A3S location and wins for same-name agents in the same scope. |
+| Role directories | Custom Markdown/YAML worker agents load from configured `agent_dirs`, project/user `.a3s/agents`, and Claude-compatible `.claude/agents` migration paths. `.a3s/agents` is the native A3S location and wins for same-name agents in the same scope. |
 | Parallel controls | `max_parallel_tasks` bounds sibling fan-out. `auto_parallel = false` / `autoParallel: false` globally disables only automatic parallel child-agent fan-out; manual `parallel_task` remains available. |
 | Programmable orchestration | [`session.parallel`](/docs/code/orchestration), `session.pipeline`, and `session.parallelResumable` express deterministic fan-out, barrier-free pipelines, and resumable/migratable workflows, complementing model-driven `task` / `tasks` delegation. |
 | SDK parity | Rust, Node.js, and Python expose the same core delegation, run replay, typed tool errors, workspace backend, and automatic delegation controls. |
-| Workspace stack | Local filesystem, S3-compatible object storage, and HTTP/JSON remote-git backends share typed `ToolErrorKind` failures end-to-end. |
+| Workspace stack | [Workspace Backends](/docs/code/workspace-backends) expose local filesystem, S3-compatible object storage, and optional HTTP/JSON remote-git backends through the SDKs. |
 
 The current execution shape is:
 
@@ -107,5 +108,6 @@ console.log(result.verificationSummaryText);
 - **Structured output**: `generate_object` produces schema-validated JSON with repair attempts.
 - **Configuration**: `.acl` file paths or inline ACL strings are accepted by `Agent.create()`.
 - **Persistence**: file and memory stores support resumable sessions, explicit `save()`, `autoSave`, memory recall, and session IDs.
+- **Workspace backends**: `LocalWorkspaceBackend`, `S3WorkspaceBackend`, and `remoteGit` let hosts run the same agent loop against local files or object-storage workspaces.
 
 Start with [API Contract](/docs/code/api-contract), [Sessions](/docs/code/sessions), [Tasks](/docs/code/tasks), and [Providers](/docs/code/providers).

@@ -269,7 +269,7 @@ config always wins on a name collision). This requires the image built with the
 
 ### Provider configuration
 
-```acl
+```text
 providers {
   kubernetes {
     namespace           = ""               # "" = all namespaces; else a single namespace
@@ -382,7 +382,7 @@ The optional management listener is a **dedicated, separate** TCP socket
 (`management {}` block; there is no separate `dashboard` block). It never
 intercepts user traffic. It is **disabled by default**.
 
-```acl
+```text
 management {
   enabled        = true
   address        = "127.0.0.1:9090"      # default
@@ -432,7 +432,7 @@ The gateway reloads configuration **without dropping connections**, driven by a
 `notify`-based file watcher. The watcher only runs when a `providers.file` block
 is present with `watch = true` (the default for that block).
 
-```acl
+```text
 providers {
   file {
     watch     = true                 # default

@@ -1,131 +1,42 @@
 ---
-title: "Filesystem-First Agents"
-description: "The agent-dir convention, cron schedules, and the serve daemon"
+title: "Agent Directory"
+description: "AgentDir structure, loading map, serve daemon, and durability boundaries"
 ---
 
-# Filesystem-First Agents
+# Agent Directory
 
-A *filesystem-first agent* is a single directory that defines a durable agent by
-convention. One folder holds the agent's role, its config, its skills, its cron
-schedules, and (later) its inbound channels. `AgentDir::load` reads that folder
-and synthesizes the existing A3S Code config objects — it does **not** add a new
-runtime or a new prompt system.
+AgentDir is a single directory that defines a durable agent by convention. One folder contains the main agent's role, runtime config, private skills, directory-scoped tools, and recurring schedules. `AgentDir::load` reads the directory and synthesizes existing A3S Code config objects; it does not introduce a new runtime or a new prompt system.
 
-The deliberate design choice: `instructions.md` is injected as a prompt **slot**,
-not as a system-prompt override. The harness keeps `BOUNDARIES`, the
-response-format contract, tool visibility, the safety gate, and verification
-authoritative. A scheduled or channel-triggered run is always a full harness
-turn (`AgentSession::send`), never a raw model call.
+The deliberate design choice: `instructions.md` is injected as a prompt **slot**, not as a system-prompt override. The harness keeps `BOUNDARIES`, response-format contracts, tool visibility, the safety gate, and verification authoritative. A scheduled run is always a full harness turn through `AgentSession::send`, never a raw model call.
 
-This feature is Rust-side and gated behind the `serve` Cargo feature.
-Library-only embedders that never enable `serve` pay nothing for it. `tools/`
-serves `kind: mcp` specs today (the `script` kind is the next increment), and
-channels are parsed but design-only (see [Status](#status)).
+This feature is Rust-side and gated behind the `serve` Cargo feature. Library-only embedders that never enable `serve` pay no extra cost.
 
-## The Agent Directory
+## Structure
 
 ```text
 my-agent/
-├── instructions.md   (required)  Role and guidelines. Injected as a prompt SLOT,
-│                                 not a system-prompt override.
-├── agent.acl         (optional)  Model, providers, queue (CodeConfig). Defaults
-│                                 are used when absent.
-├── skills/           (optional)  *.md skills, appended to skill_dirs.
-├── schedules/        (optional)  *.md cron jobs (YAML frontmatter + body prompt).
-├── channels/         (optional)  *.{md,acl} inbound adapters — parsed, served later.
-└── tools/            (optional)  *.md tool specs (kind: mcp → MCP servers).
+├── instructions.md   (required)  Role and guidelines. Injected as a prompt slot.
+├── agent.acl         (optional)  Model, providers, queue, and CodeConfig.
+├── skills/           (optional)  Private *.md skills.
+├── schedules/        (optional)  Cron jobs: frontmatter + body prompt.
+└── tools/            (optional)  Tool specs: kind: mcp or kind: script.
 ```
 
-Only `instructions.md` is required. Everything else is optional, and missing
-subdirectories simply contribute nothing.
+Only `instructions.md` is required. Everything else is optional; missing directories simply contribute no capability.
 
-`AgentDir::load` maps the directory onto existing objects:
+`AgentDir::load` maps paths onto existing objects:
 
 | Path | Becomes | Notes |
 | --- | --- | --- |
-| `instructions.md` | `SystemPromptSlots.role` | Trimmed file body. A slot, so the harness contract stays authoritative. |
-| `agent.acl` | `CodeConfig` | Parsed via `CodeConfig::from_file`. Defaults when absent. |
-| `skills/` | `skill_dirs` | The directory is appended; existing `*.md` skill format, zero adaptation. |
-| `schedules/*.md` | `Vec<ScheduleSpec>` | One spec per file. |
-| `channels/*.{md,acl}` | `Vec<ChannelSpec>` | Parsed only — adapters are design-only for now. |
+| `instructions.md` | `SystemPromptSlots.role` | Main-agent role slot; see [instructions.md](/docs/code/filesystem-instructions). |
+| `agent.acl` | `CodeConfig` | Model, provider, queue, and directory discovery; see [agent.acl](/docs/code/filesystem-config). |
+| `skills/` | `skill_dirs` | AgentDir-private skills; see [skills/ Skill Directory](/docs/code/filesystem-skills). |
+| `schedules/*.md` | `Vec<ScheduleSpec>` | One recurring turn per file; see [schedules/ Schedule Directory](/docs/code/filesystem-schedules). |
+| `tools/*.md` | `Vec<ToolSpec>` | One `kind: mcp` or `kind: script` tool per file; see [tools/ Tool Directory](/docs/code/filesystem-tools). |
 
-### instructions.md
+## Serve Daemon
 
-Plain Markdown, no frontmatter. The whole file is the agent's role slot:
-
-```md
-You are a release-notes agent for the A3S monorepo.
-Be terse and accurate. Separate shipped changes from in-progress work.
-Never invent version numbers — read them from the repository.
-```
-
-### agent.acl
-
-Standard A3S Code config (HCL/ACL). Set the model, providers, and queue here.
-Omit the file entirely to use defaults.
-
-```hcl
-default_model = "anthropic/claude-sonnet-4-20250514"
-
-providers "anthropic" {
-  api_key = "env:ANTHROPIC_API_KEY"
-  models "claude-sonnet-4-20250514" { name = "Claude Sonnet 4" }
-}
-```
-
-## Cron Schedules
-
-A file in `schedules/` is a recurring turn. YAML frontmatter carries the cron
-expression; the Markdown body is the prompt sent into the agent on every fire.
-
-`schedules/daily.md`:
-
-```md
----
-cron: "0 9 * * *"
-name: daily-report
-enabled: true
----
-Generate today's release-notes digest from the merged PRs since the last run,
-then post it. If nothing merged, say so in one line.
-```
-
-Frontmatter fields:
-
-| Field | Required | Default | Meaning |
-| --- | --- | --- | --- |
-| `cron` | yes | — | Cron expression (see below). |
-| `name` | no | file stem | Schedule name; also the session id suffix. |
-| `enabled` | no | `true` | Set `false` to keep the file but skip the schedule. |
-
-### Cron Expressions
-
-Both the standard 5-field form (`min hour dom mon dow`) and the 6-field form
-(`sec min hour dom mon dow`) are accepted. A 5-field expression is normalized to
-6 fields with a leading `0` seconds.
-
-| Expression | Fires |
-| --- | --- |
-| `0 9 * * *` | Every day at 09:00 |
-| `*/5 * * * *` | Every 5 minutes |
-| `0 0 * * 1` | Every Monday at midnight |
-| `* * * * * *` | Every second (6-field) |
-
-Times are evaluated in UTC. An invalid cron expression fails fast when the
-scheduler is built, naming the offending schedule.
-
-### Per-Schedule Sessions
-
-Each schedule runs on its **own** session with a stable id `schedule:<name>`.
-Repeated fires of the same schedule accumulate context and memory; distinct
-schedules stay isolated from one another. Every schedule session is injected with
-the agent dir's `instructions.md` prompt slots and `skills/` skill dirs.
-
-## The Serve Daemon
-
-`serve_agent_dir` loads schedules into per-schedule sessions and runs their cron
-loops until a cancellation token fires. Each fire routes the schedule's prompt
-through `AgentSession::send` — a full harness turn.
+`serve_agent_dir` loads schedules into independent sessions and runs their cron loops until a cancellation token fires. Every fire routes the schedule prompt through `AgentSession::send`.
 
 ```rust
 use a3s_code_core::config::AgentDir;
@@ -135,21 +46,9 @@ use tokio_util::sync::CancellationToken;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Load the agent dir convention into config + prompt slots + schedules.
     let agent_dir = AgentDir::load("./my-agent")?;
-
-    // Build the agent from the dir's synthesized CodeConfig.
     let agent = Agent::from_config(agent_dir.config.clone()).await?;
-
-    // Run every enabled schedule until cancelled (e.g. on Ctrl-C).
     let cancel = CancellationToken::new();
-    {
-        let cancel = cancel.clone();
-        tokio::spawn(async move {
-            let _ = tokio::signal::ctrl_c().await;
-            cancel.cancel();
-        });
-    }
 
     serve_agent_dir(&agent, &agent_dir, "./workspace", None, cancel).await?;
     Ok(())
@@ -163,13 +62,9 @@ Enable the feature in `Cargo.toml`:
 a3s-code-core = { version = "...", features = ["serve"] }
 ```
 
-### Overriding Session Options
+## Overriding Session Options
 
-The fourth argument to `serve_agent_dir` is an optional `SessionOptions` that
-merges into every schedule session — use it to pin the model, LLM client, or
-session store. Per-schedule `prompt_slots` and `session_id` set in that override
-are **not** clobbered, so a host can customize a specific schedule while the rest
-inherit the agent dir's defaults.
+The fourth argument to `serve_agent_dir` is an optional `SessionOptions` that merges into every schedule session. Use it to pin the model, LLM client, session store, or prompt slots. The daemon always assigns each schedule a stable `session_id` of `schedule:<name>`; any `session_id` in the extra options is intentionally ignored so schedules do not collide in the same store. If `prompt_slots` is omitted, the AgentDir `instructions.md` slot is used.
 
 ```rust
 use a3s_code_core::SessionOptions;
@@ -178,9 +73,20 @@ let extra = SessionOptions::new(); // set model, session_store, etc.
 serve_agent_dir(&agent, &agent_dir, "./workspace", Some(extra), cancel).await?;
 ```
 
-A graceful cancel lets in-flight turns finish their loop iteration and then
-stops; the daemon returns `Ok(())` once every job loop has exited. An agent dir
-with no enabled schedules returns immediately.
+Graceful cancellation lets in-flight turns finish the current loop iteration. An AgentDir with no enabled schedules returns immediately.
+
+## Durability
+
+By default every daemon boot starts schedule sessions fresh. Pass a `SessionStore` in `SessionOptions` to resume existing `schedule:<name>` sessions from stored conversation history.
+
+```rust
+use a3s_code_core::SessionOptions;
+
+let extra = SessionOptions::new().with_file_session_store("./sessions");
+serve_agent_dir(&agent, &agent_dir, "./workspace", Some(extra), cancel).await?;
+```
+
+Recovery restores history only. The current `instructions.md`, `skills/`, and `tools/` are re-applied on every boot, so directory edits take effect after restart even for resumed sessions.
 
 ## Status
 
@@ -188,48 +94,13 @@ with no enabled schedules returns immediately.
 | --- | --- |
 | `instructions.md`, `agent.acl`, `skills/` | Loaded and used. |
 | `schedules/` + serve daemon | Implemented (`serve` feature). |
-| `tools/` (`kind: mcp`) | Implemented — declarative MCP servers registered into each schedule session. |
-| `tools/` (`kind: script`) | Parsed-kind reserved; sandboxed-QuickJS backend is the next increment. |
-| `channels/` | Parsed into `ChannelSpec`, adapters not yet implemented. |
-
-## Tools
-
-A file in `tools/` declares a capability for the agent. Each `tools/<name>.md`
-has YAML frontmatter with a `kind` discriminant. Tool *definition* comes from the
-directory, but visibility and the safety gate stay harness-owned — an MCP tool is
-registered through the normal path, namespaced `mcp__<server>__<tool>`, and gated
-by the session's permission policy like any other tool.
-
-`tools/github.md` — a `kind: mcp` server:
-
-```md
----
-kind: mcp
-name: github
-transport: stdio
-command: npx
-args: ["-y", "@modelcontextprotocol/server-github"]
-env:
-  GITHUB_TOKEN: "${GITHUB_TOKEN}"   # keep secrets in env, not in the file
----
-GitHub issues and PR tools.
-```
-
-Each enabled schedule session connects this server on startup and gains its
-`mcp__github__*` tools. Duplicate tool names and unknown `kind`s fail closed at
-load. The sandboxed-script backend (`kind: script` → a named, pre-parameterized
-[`program`](/docs/code/tools) QuickJS call) is the next increment; until then use
-`kind: mcp` or the harness [MCP](/docs/code/mcp) system directly. Channels remain
-design-only.
+| Rehydrate on boot | Implemented with `SessionStore`. |
+| `tools/` (`kind: mcp`) | Implemented; declarative MCP servers register into schedule sessions. |
+| `tools/` (`kind: script`) | Implemented; sandboxed QuickJS tool over the `program` path. |
 
 ## Notes
 
-- `instructions.md` is a role **slot**, so the harness's `BOUNDARIES`,
-  response-format contract, and verification remain authoritative — you cannot
-  use it to bypass safety.
-- An `AgentDir` is the *primary* agent's directory. It is distinct from
-  `agent_dirs` / `registerAgentDir` (see [Tasks](/docs/code/tasks)), which scan a
-  directory for **worker/subagent** definitions.
-- Keep secrets in environment variables and reference them from `agent.acl`
-  (`env:ANTHROPIC_API_KEY`), not inline in the directory.
-
+- `instructions.md` is a role slot, so harness boundaries, response contracts, and verification remain authoritative.
+- AgentDir is the main-agent directory. It is different from `agent_dirs` / `registerAgentDir`, which scan [agents/ Role Directory](/docs/code/filesystem-agents) for worker definitions.
+- Keep secrets in environment variables or host secret systems, not in the directory.
+- `tools/` is installed by the serve daemon per schedule session. Normal interactive sessions should use direct tools, MCP/AHP, or SDK registration.

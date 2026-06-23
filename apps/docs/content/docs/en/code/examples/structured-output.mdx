@@ -268,6 +268,6 @@ The built-in validator supports:
 
 - The validated value is on the `object` key of the parsed `result.output`. Pass `mode: 'tool'` for direct structured calls, or `mode: 'prompt'` for a prompt-only fallback.
 - List every field you depend on in `required` — the runtime enforces it, so missing or mistyped fields fail validation instead of silently returning partial data.
-- `generate_object` is a built-in tool, so the session needs `builtinSkills` / `builtin_skills` enabled (shown above).
+- `generate_object` is a built-in tool registered independently of built-in skills. The examples enable `builtinSkills` / `builtin_skills` because most real sessions also want the skill catalog, not because `generate_object` depends on it.
 
 A runnable version ships at `crates/code/sdk/node/examples/basic/test_generate_object.ts` and `crates/code/sdk/python/examples/test_generate_object.py`.

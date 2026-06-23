@@ -1,23 +1,24 @@
 ---
 title: "A3S Code"
-description: "带 v3.4.0 SDK 的驾驭式编程智能体运行时"
+description: "带 v4.1.0 SDK 的驾驭式编程智能体运行时"
 ---
 
 # A3S Code
 
-A3S Code v3.4.0 是一个驾驭式编程智能体运行时。运行时保持 agent loop 小而可观测，驾驭层负责上下文组装、工具执行、权限策略、任务委派、验证证据与 run replay。
+A3S Code v4.1.0 是一个驾驭式编程智能体运行时。运行时保持 agent loop 小而可观测，驾驭层负责上下文组装、工具执行、权限策略、任务委派、验证证据与 run replay。
 
-## v3.4.0 重点
+## v4.1.0 重点
 
 | 领域 | 当前能力 |
 | --- | --- |
+| 文件系统优先 | [文件系统优先](/cn/docs/code/filesystem-first)把 `AGENTS.md`、`agent.acl`、`.a3s/agents/`、`skills/`、`tools/` 和 `schedules/` 组织成可审查、可版本化的 Agent 产品接口。 |
 | 自动委派 | 可根据显式 `@agent` 提及、高置信任务描述和自定义 agent 的 proactive 描述自动触发 subagent。 |
 | 内置 subagent | `explore`、`plan`、`general` / `general-purpose`、`verification`、`review` 可通过 `task`、`parallel_task`、`session.task(...)`、`session.tasks(...)` 和自动委派使用。 |
-| Agent 目录 | 自定义 Markdown/YAML agents 会从配置的 `agent_dirs`、项目/用户 `.a3s/agents` 以及 Claude 兼容的 `.claude/agents` 迁移路径加载。`.a3s/agents` 是 A3S 原生位置，并在同一作用域同名时优先。 |
+| 角色目录 | 自定义 Markdown/YAML worker agents 会从配置的 `agent_dirs`、项目/用户 `.a3s/agents` 以及 Claude 兼容的 `.claude/agents` 迁移路径加载。`.a3s/agents` 是 A3S 原生位置，并在同一作用域同名时优先。 |
 | 并行控制 | `max_parallel_tasks` 限制 sibling fan-out。`auto_parallel = false` / `autoParallel: false` 只全局关闭自动并行子 agent fan-out；手动 `parallel_task` 仍可用。 |
 | 可编程编排 | [`session.parallel`](/cn/docs/code/orchestration)、`session.pipeline`、`session.parallelResumable` 表达确定性 fan-out、无屏障 pipeline 以及可恢复/可迁移工作流，与模型驱动的 `task` / `tasks` 委派互补。 |
 | SDK 对齐 | Rust、Node.js 和 Python 暴露同一组核心委派、run replay、typed tool errors、workspace backend 与自动委派控制。 |
-| Workspace 栈 | 本地文件系统、S3 兼容对象存储和 HTTP/JSON remote-git backend 共享端到端 typed `ToolErrorKind`。 |
+| Workspace 栈 | [Workspace 后端](/cn/docs/code/workspace-backends) 通过 SDK 暴露本地文件系统、S3 兼容对象存储和可选 HTTP/JSON remote-git backend。 |
 
 当前执行形态：
 
@@ -107,5 +108,6 @@ console.log(result.verificationSummaryText);
 - **结构化输出**：`generate_object` 生成带修复重试的 schema 校验 JSON。
 - **配置**：`Agent.create()` 接受 `.acl` 文件路径或内联 ACL 字符串。
 - **持久化**：file/memory store 支持可恢复 session、显式 `save()`、`autoSave`、memory recall 和 session ID。
+- **Workspace backends**：`LocalWorkspaceBackend`、`S3WorkspaceBackend` 与 `remoteGit` 让宿主把同一个 agent loop 运行在本地文件或对象存储 workspace 上。
 
 建议从 [API 契约](/cn/docs/code/api-contract)、[会话](/cn/docs/code/sessions)、[任务](/cn/docs/code/tasks) 和 [Provider 配置](/cn/docs/code/providers)开始。

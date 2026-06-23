@@ -9,7 +9,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 A cluster host platform runs long-lived agent sessions across many nodes. The framework does not ship a scheduler or a placement engine. Instead it exposes a small set of seams: it defines the decision points, emits structured events, and lets the host supply the policy. Everything below is something you wire from outside the framework — you never fork it.
 
-This page is precise about which seams are available from both SDKs (shown with Node.js + Python code) and which are configured in the Rust core today (described in prose, with SDK wiring to follow).
+This page is precise about which seams are available from both SDKs (shown with Node.js + Python code) and which are configured in the Rust core today (described in prose when no SDK option exists yet).
 
 ## Identity labels
 
@@ -46,11 +46,11 @@ opts.agent_template_id = 'reviewer-v3'
 opts.correlation_id = 'req-9f2c'
 session = agent.session('/path/to/project', opts)
 
-# Getters are methods, return str | None
-print(session.tenant_id())          # 'acme-corp'
-print(session.principal())          # 'user:42'
-print(session.agent_template_id())  # 'reviewer-v3'
-print(session.correlation_id())     # 'req-9f2c'
+# Getters are properties, return str | None
+print(session.tenant_id)          # 'acme-corp'
+print(session.principal)          # 'user:42'
+print(session.agent_template_id)  # 'reviewer-v3'
+print(session.correlation_id)     # 'req-9f2c'
 ```
 
 </Tab>
@@ -65,14 +65,14 @@ A budget guard lets the host gate every LLM call against a cost or token budget.
 
 ```ts
 session.setBudgetGuard({
-  checkBeforeLlm(sessionId, estimatedTokens) {
-    if (overLimit(sessionId, estimatedTokens)) {
+  checkBeforeLlm(ctx) {
+    if (overLimit(ctx.sessionId, ctx.estimatedTokens)) {
       return { decision: 'deny', resource: 'tokens', reason: 'monthly cap reached' };
     }
     return { decision: 'allow' };
   },
-  recordAfterLlm(sessionId, usage) {
-    meter(sessionId, usage);
+  recordAfterLlm(ctx) {
+    meter(ctx.sessionId, ctx.usage);
   },
 });
 
@@ -80,7 +80,7 @@ session.setBudgetGuard({
 session.setBudgetGuard(null);
 ```
 
-Guard callbacks **must not throw** — a thrown error is treated as Allow.
+Node callbacks receive a single `ctx` object and **must not throw**. Wrap logic in `try/catch` and return an explicit decision. Hung or unreadable `check*` callbacks fail closed as `deny`.
 
 </Tab>
 <Tab value="Python">
@@ -113,7 +113,7 @@ The decision shape is identical across both SDKs:
 | `{ decision: 'soft', resource, consumed, limit, message? }` | Emits `BudgetThresholdHit` (kind `soft`) and proceeds. |
 | `{ decision: 'deny', resource, reason }` | Aborts the LLM call. Python raises `RuntimeError("Budget exhausted...")`; Node rejects with `"Budget exhausted..."`. |
 
-Robustness is intentional: a **missing guard method** is treated as the permissive default, and a **callback error falls back to Allow**. A misbehaving guard can never halt a live session — only an explicit `deny` does that.
+Robustness is intentional but SDK-specific: a **missing guard method** is treated as the permissive default. Python callback errors fall back to Allow. Node callbacks must not throw; timeouts and malformed `check*` returns fail closed as `deny`.
 
 ## Cluster event vocabulary
 
@@ -181,7 +181,7 @@ A session that runs for hours or days accumulates state in four in-memory stores
 
 `SessionRetentionLimits` caps each of the four stores. Every cap is optional: `None` means the unbounded default. Eviction is strict **FIFO**, and **running subagent tasks are never dropped** — only terminal (completed/failed) snapshots are evicted.
 
-This is configured via the Rust core `SessionRetentionLimits` today; the SDK shapes land in a follow-up, so there is no Node/Python code for it yet. See [Limits](/docs/code/limits) for the per-session resource caps that are already on the SDK surface.
+Use `retentionLimits` in Node or `opts.retention_limits` in Python. Rust hosts use `SessionOptions::with_retention_limits(...)`. See [Limits](/docs/code/limits) for field names and examples.
 
 ---
 

@@ -1,0 +1,68 @@
+---
+title: "agent.acl"
+description: "模型、provider、队列、技能目录和 worker agent 目录的文件化运行配置。"
+---
+
+# agent.acl
+
+`agent.acl` 是文件系统优先形态里的运行配置入口。它负责把模型、provider、并行度、队列、skill 目录和 worker agent 目录固化为可版本化配置。
+
+一个仓库根部的 `agent.acl` 通常服务于交互式 session；AgentDir 内的 `agent.acl` 服务于该目录的长期 Agent。两者格式一致，作用范围不同。
+
+## 基础配置
+
+```hcl
+default_model = "openai/MiniMax-M2.7-highspeed"
+max_parallel_tasks = 8
+auto_parallel = false
+
+providers "openai" {
+  apiKey = env("A3S_OPENAI_API_KEY")
+  baseUrl = env("A3S_OPENAI_BASE_URL")
+
+  models "MiniMax-M2.7-highspeed" {
+    name = "MiniMax M2.7 Highspeed"
+    tool_call = true
+  }
+}
+```
+
+把 token 通过环境变量注入，不要写进 `agent.acl`。配置文件进入仓库后，它就是产品行为的一部分，应该像代码一样审查。
+
+## 目录发现
+
+```hcl
+skill_dirs = ["./.a3s/skills"]
+agent_dirs = ["./.a3s/agents"]
+
+auto_delegation {
+  enabled        = true
+  min_confidence = 0.72
+  max_tasks      = 4
+  auto_parallel  = false
+}
+```
+
+`skill_dirs` 指向可复用技能目录；`agent_dirs` 指向 worker/subagent 定义目录。自动委派只决定是否让模型选择 worker，不会取消父 session 的权限策略、工具可见性或验证要求。
+
+## AgentDir 中的配置
+
+AgentDir 的 `agent.acl` 可以省略；省略时使用默认配置。存在时，`AgentDir::load` 会把它解析成 `CodeConfig`，并与 `instructions.md`、`skills/`、`tools/`、`schedules/` 一起合成长期 Agent。
+
+```text
+release-agent/
+├── instructions.md
+├── agent.acl
+├── skills/
+├── tools/
+└── schedules/
+```
+
+适合放在 AgentDir `agent.acl` 的内容包括该 Agent 默认模型、provider、运行限制、队列策略和私有 skill 目录。不要在这里硬编码部署环境差异；用环境变量或宿主注入区分开发、测试和生产。
+
+## 配置边界
+
+- 配置决定“可以连接什么”和“默认如何运行”，不决定“模型能越过权限门”。
+- 目录路径应相对 workspace 或 AgentDir，避免依赖个人机器绝对路径。
+- 自动委派需要和 `agents/` 的描述质量一起调优；低质量 description 会让运行时错误分派。
+- 高风险工具即使被目录发现，也应继续走 HITL 或 allow-list。

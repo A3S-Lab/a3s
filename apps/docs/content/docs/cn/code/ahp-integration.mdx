@@ -6,27 +6,44 @@ description: "Agent Harness Protocol 2.4 集成"
 # AHP 集成
 
 A3S Code 暴露 AHP 2.4 transport 配置，用于把外部 harness 接入 agent loop。Node
-session 接受 stdio、HTTP、WebSocket 和 Unix socket transport object；live harness
-行为应针对你部署的 AHP server 测试。
+session 通过 `ahpTransport` 接受 stdio、HTTP、WebSocket 和 Unix socket transport
+object；Python 通过 `SessionOptions.ahp_transport` 暴露同一类 transport。live
+harness 行为应针对你部署的 AHP server 测试。
 
 AHP 事件包括 handshake、session start/end、pre-action、post-action、pre-prompt、post-response、error、query、heartbeat 和 idle。
 
 把 AHP 决策视为你与外部 harness 的集成契约。组织级策略行为必须在实际部署的 AHP server 上测试后再依赖。
 
 ```ts
-import { HttpTransport } from '@a3s-lab/code';
+import { Agent, HttpTransport } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.acl');
 
 const session = agent.session('/repo', {
   ahpTransport: new HttpTransport('http://localhost:8080/ahp', 'token'),
 });
 ```
 
-可用 transport 包括 `StdioTransport`、`HttpTransport`、`WebSocketTransport` 和 Unix target 上的 `UnixSocketTransport`。Windows target 不支持 Unix socket。
+可用 transport 包括：
 
-```text
-ahp = {
-  enabled = true
-  url     = "http://harness:8080/ahp"
-  idle_ms = 10000
-}
+- `StdioTransport(program, args)`
+- `HttpTransport(url, authToken)`
+- `WebSocketTransport(url, authToken)`
+- Unix target 上的 `UnixSocketTransport(path)`
+
+Windows target 不支持 Unix socket。
+
+Python 使用 `opts.ahp_transport`：
+
+```python
+from a3s_code import Agent, HttpTransport, SessionOptions
+
+agent = Agent.create(open("agent.acl").read())
+opts = SessionOptions()
+opts.ahp_transport = HttpTransport("http://localhost:8080/ahp", "token")
+session = agent.session("/repo", opts)
 ```
+
+Rust 在 core 层创建 AHP hook executor，并通过
+`SessionOptions::with_hook_executor(...)` 挂入 session。当前 SDK 契约中没有 ACL 层
+AHP 配置块。

@@ -54,7 +54,7 @@ agent = Agent.create(open("agent.acl").read())
 
 opts = SessionOptions()
 # AHP transport: how the session reaches its external host.
-opts.transport = HttpTransport("http://localhost:8080/ahp", os.environ["AHP_TOKEN"])
+opts.ahp_transport = HttpTransport("http://localhost:8080/ahp", os.environ["AHP_TOKEN"])
 # Safety: the security provider vets each tool call; the permission
 # policy decides what runs unattended. These apply regardless of transport.
 opts.security_provider = DefaultSecurityProvider()

@@ -7,9 +7,11 @@ description: "Prompt-time skills, inline skills, and the Skill tool"
 
 Skills are reusable instructions that the harness can discover and rank.
 Built-in skills, file-backed skill directories, inline skills, and
-`search_skills` share the same discovery path.
+`search_skills` share the same discovery path. Built-ins are present in the
+default effective registry; `builtinSkills: true` is accepted by the SDKs, but
+it is not a disable switch.
 
-## Enable Built-Ins
+## Built-Ins
 
 ```ts
 const session = agent.session('/repo', {
@@ -17,7 +19,10 @@ const session = agent.session('/repo', {
 });
 ```
 
-Built-in skills include code search, code review, explanation, and bug finding. Larger role-specific behavior should live in project skill files or agent definitions.
+Built-in skills include code search, code review, explanation, and bug finding.
+Larger role-specific behavior should live in project skill files or agent
+definitions. Do not rely on the false value of the compatibility flag to remove
+built-ins in the current Node/Python SDKs.
 
 ## Skill Files
 
@@ -36,9 +41,12 @@ Return blockers first.
 
 ```ts
 const session = agent.session('/repo', {
-  skillDirs: ['/repo/skills'],
+  skillDirs: ['/repo/.a3s/skills'],
 });
 ```
+
+Use `skillDirs` for skill files. Use `agentDirs` for worker/subagent
+definitions.
 
 ## Inline Skills
 
@@ -68,3 +76,9 @@ await session.tool('search_skills', {
 Markdown skill files with `allowed-tools` frontmatter and inline skills are both
 discoverable. Skill administration is an SDK or filesystem concern rather than
 a model-visible management tool.
+
+When a skill is invoked through the `Skill` tool, `allowed-tools` is
+fail-secure: omitted frontmatter grants no tools to that skill invocation.
+Declare the smallest needed allow-list. Ordinary session tool calls are not
+restricted by active skills unless `enforceActiveSkillToolRestrictions` is
+explicitly enabled for legacy behavior.

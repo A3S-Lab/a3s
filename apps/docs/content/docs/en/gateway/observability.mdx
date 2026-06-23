@@ -23,7 +23,7 @@ three default to `true`**. There are no other keys (no OTLP endpoint, sample
 rate, propagation, or service-name keys — those belong to an internal struct
 that is not wired to ACL in v1.0.7).
 
-```acl
+```text
 observability {
   metrics_enabled    = true   # Prometheus per-router/-service/-backend counters
   access_log_enabled = true   # structured access log per request
@@ -234,7 +234,7 @@ is **disabled by default**, binds to `127.0.0.1:9090`, and never intercepts user
 traffic — `{path_prefix}/*` on your data-plane entrypoints stays normal user
 traffic.
 
-```acl
+```text
 management {
   enabled        = true
   address        = "127.0.0.1:9090"

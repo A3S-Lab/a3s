@@ -6,12 +6,13 @@ description: "提示时技能、内联技能与 Skill 工具"
 # Skills
 
 Skills 是可复用指令。built-in skills、文件型 skill 目录、inline skills 和
-`search_skills` 使用同一套 discovery 路径。
+`search_skills` 使用同一套 discovery 路径。built-ins 属于默认 effective
+registry；SDK 接受 `builtinSkills: true`，但它不是关闭开关。
 
 ```ts
 const session = agent.session('/repo', {
   builtinSkills: true,
-  skillDirs: ['/repo/skills'],
+  skillDirs: ['/repo/.a3s/skills'],
   inlineSkills: [{
     name: 'strict-release-review',
     kind: 'instruction',
@@ -20,7 +21,7 @@ const session = agent.session('/repo', {
 });
 ```
 
-内置 skills 只保留代码搜索、代码审查、解释代码和查找 bug 四类常用指令；更大的角色行为应放进项目 skill 文件或 agent 定义。Skill 文件是带 frontmatter 的 Markdown。可用 `allowed-tools` 限定工具，例如 `read(*), grep(*), bash(cargo test*)`。
+内置 skills 包含代码搜索、代码审查、解释代码和查找 bug 四类常用指令；更大的角色行为应放进项目 skill 文件或 agent 定义。不要依赖兼容标记的 false 值在当前 Node/Python SDK 中移除 built-ins。Skill 文件是带 frontmatter 的 Markdown。使用 `skillDirs` 加载技能文件，使用 `agentDirs` 加载 worker/subagent 定义。可用 `allowed-tools` 限定 Skill 调用期间的工具，例如 `read(*), grep(*), bash(cargo test*)`。
 
 `search_skills` 用于查找相关 skill：
 
@@ -32,3 +33,9 @@ await session.tool('search_skills', {
 ```
 
 带 `allowed-tools` frontmatter 的 Markdown skill file 和 inline skill 都能被发现。skill 管理现在由 SDK 或文件系统完成，不再作为模型可见的管理工具暴露。
+
+当 skill 通过 `Skill` 工具被调用时，`allowed-tools` 是 fail-secure 的：省略
+frontmatter 不会授予任何工具。请显式声明最小可用工具集。普通 session 的工具调用
+默认不会被 active skill 限制，除非显式打开
+`enforceActiveSkillToolRestrictions` / `enforce_active_skill_tool_restrictions`
+兼容旧行为。
