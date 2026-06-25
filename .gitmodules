@@ -43,3 +43,6 @@
 [submodule "crates/cli"]
 	path = crates/cli
 	url = git@github.com:A3S-Lab/Cli.git
+[submodule "crates/sentry"]
+	path = crates/sentry
+	url = git@github.com:A3S-Lab/Sentry.git
