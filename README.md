@@ -1,118 +1,169 @@
 # A3S
 
 <p align="center">
-  <strong>Agentic Adaptive Augmentation System</strong>
+  <strong>Infrastructure for running AI agents.</strong>
 </p>
 
 <p align="center">
-  <em>An agent infrastructure stack: embeddable coding agents, VM-isolated execution, gateway/runtime components, and supporting libraries.</em>
+  <em>The runtime, isolation, serving, routing, memory, observability, and control an autonomous
+  agent needs to operate in production — as a set of small, composable components.</em>
 </p>
 
 ---
 
-## Overview
+## Why a separate stack
 
-**A3S** is a monorepo for agent infrastructure. It contains an embeddable coding-agent runtime, a MicroVM runtime, a gateway, scheduling, memory, search, and LLM-serving components.
+An AI agent is a new kind of workload, and the difference is not incremental.
 
-```text
-a3s-code             <- harness-driven agent runtime (Rust + Node.js + Python SDKs)
-a3s-box              <- Docker-like MicroVM runtime for Linux OCI workloads
-a3s-gateway          <- application-agnostic ingress/reverse proxy layer
-```
+A web request is shaped by a developer; a batch job runs a program a human wrote. An agent does
+neither — it generates its own next action from a probabilistic model. That makes it at once **more
+autonomous** (no human in the loop for each step) and **less trustworthy** (the action was sampled,
+not authored) than anything the previous generation of infrastructure was built to carry.
 
-**a3s-code** is a coding-agent runtime library. It exposes ACL config, tools, hooks, security policy, memory, MCP, structured output (`generate_object`), explicit planning mode, run replay, QuickJS PTC, task delegation, automatic subagent delegation, and a pluggable workspace subsystem through runtime APIs and SDKs. v3.1 adds Claude Code-style built-in subagents (`explore`, `plan`, `general`, `verification`, `review`), native `.a3s/agents` custom-agent loading, and a global `auto_parallel` / `autoParallel` switch that disables automatic parallel fan-out while keeping manual `parallel_task` available. The v3 workspace stack includes local filesystem, S3-compatible object storage (with ETag CAS, opt-in degraded search, cost-bounded operations), and an HTTP/JSON `RemoteGitBackend` that keeps the `git` tool available on workspaces that have no `.git` directory. Failures surface as a typed `ToolErrorKind` discriminator (`version_conflict`, `not_found`, `timeout`, ...) end-to-end into Node and Python SDKs, so callers branch on `.type` instead of regex-matching messages.
+Almost everything that follows is a consequence of those two properties:
 
-**a3s-box** is a MicroVM runtime. Its local Docker-like CLI is the primary product surface. Kubernetes CRI, hardware TEE, and Windows paths are integration surfaces with explicit platform limits.
+- Because an agent **acts on its own**, the loop that drives it — tools, memory, planning, model
+  calls — is itself a runtime that has to be built, not a script you run once.
+- Because its actions are **model-generated and untrusted**, they cannot run on the host; they need
+  real isolation, not a permission flag.
+- Because the agent **will not honestly instrument itself**, observability has to come from below it —
+  the kernel — with zero cooperation from the code being watched.
+- Because a sampled action can be wrong or hostile, you need a **runtime veto**: something outside the
+  agent that can judge what it is doing and stop it, mid-flight.
 
-**a3s-gateway** is an application-agnostic reverse proxy with middleware, routing, and privacy features.
+Generic infrastructure — web gateways, container runtimes, APM agents — assumes a cooperative,
+deterministic program. None of those assumptions hold here. A3S is the stack you get when you take the
+agent's actual properties as the starting point.
 
-**a3s** (the CLI) is the interactive terminal app: `a3s code` launches a Claude Code-class coding-agent TUI built on a3s-code and a3s-tui, with prebuilt binaries for macOS, Linux, and Windows.
+## First principles: what an agent actually needs
+
+Strip an autonomous agent to its core and it is one loop — **observe → reason → act** — running
+against the real world. Ask what must exist for that loop to run in production, and the component list
+falls out. One component per irreducible need:
+
+| The agent must… | so A3S provides | which is |
+|---|---|---|
+| **drive its loop** — hold tools, memory, planning, model calls, the harness | **a3s-code** | a harness-driven agent runtime (Rust core + Node/Python SDKs) |
+| **act in isolation** — run model-generated code without trusting it | **a3s-box** | a Docker-like MicroVM runtime for Linux OCI workloads |
+| **reason** — call a model, privately | **a3s-power** | LLM inference, OpenAI-compatible, built for TEE/confidential environments |
+| **be reached & reach out** — ingress, routing, proxying | **a3s-gateway** | an AI-native reverse proxy: routing, middleware, SSE streaming, scale-to-zero |
+| **remember & retrieve** | **a3s-memory** · **a3s-search** | pluggable long-term memory; an embeddable meta-search engine |
+| **be scheduled** — many agents, priorities, retries | **a3s-lane** | lane-based priority queues with concurrency, retry, and dead-lettering |
+| **be seen** — ground truth on what it actually did | **a3s-observer** | language-agnostic **eBPF** telemetry (LLM calls, tools, files, egress), zero instrumentation |
+| **be stopped** — a veto on dangerous actions, at runtime | **a3s-sentry** | tiered runtime security control (L1 rules / L2 LLM / L3 agent) that judges observer's events and blocks via kernel guards |
+
+The last two are where A3S departs hardest from ordinary infrastructure, and the "untrustworthy" half
+of the thesis is why. **a3s-observer** watches from the kernel because the agent cannot be relied on to
+report itself; **a3s-sentry** is an *external* judge with a kernel-enforced veto because a sampled
+action needs to be stoppable by something the agent does not control. Observe is always-on and passive;
+intervene is opt-in and isolated, so a policy mistake can never blind the telemetry.
+
+Everything else is connective tissue — the libraries the components are built from:
+
+| Library | Role |
+|---|---|
+| **a3s-acl** | the configuration language (HCL-like) all components read |
+| **a3s-ahp** | the Agent Harness Protocol — transport-agnostic supervision of autonomous agents |
+| **a3s-event** | pluggable event subscription, dispatch, and persistence |
+| **a3s-common** | shared primitives — privacy classification, tool definitions, transport types |
+| **a3s-tui** | a TEA (Elm-Architecture) framework for terminal UIs |
+| **a3s-updater** | self-update for the CLI binaries via GitHub Releases |
+
+And **a3s** — the CLI — is the stack packaged as a usable product: `a3s code` launches an interactive
+terminal coding agent built on a3s-code and a3s-tui.
 
 ## Architecture
 
-| Layer | Component | Role |
-| --- | --- | --- |
-| Agent Framework | a3s-code | Embeddable coding-agent runtime with Rust, Node.js, and Python SDKs |
-| VM Runtime | a3s-box | MicroVM isolation, Docker-like CLI, OCI image lifecycle |
-| Ingress | a3s-gateway | Reverse proxy with middleware and routing |
-| Scheduling | a3s-lane | Per-session priority queues and retry/dead-letter behavior |
-| Infrastructure | a3s-power / a3s-search | LLM inference and meta search |
-| Observability | a3s-observer | eBPF-based, language-agnostic AI-agent telemetry (LLM calls, tools, files, egress) |
-| Security Control | a3s-sentry | Tiered (rules / LLM / agent) runtime guardrails — judges observer events, blocks dangerous actions |
-| Libraries | a3s-acl / a3s-ahp / a3s-event / a3s-memory / a3s-common | Configuration, harness protocol, events, memory, shared types |
+```
+   you ─▶  a3s (CLI)   ·   SDKs: Rust · Node · Python          drive an agent
+              │
+              ▼
+        a3s-code ───────────── the loop: tools · memory · planning · MCP · subagents
+              │
+        runs model-generated actions inside        reasons via            is reached / proxied by
+              ▼                                         ▼                        ▼
+        a3s-box (MicroVM isolation)              a3s-power (LLM serving)    a3s-gateway (ingress · routing)
+              │
+   ═══════════╪═══════════════════════════════════════════════  the agent acts; the kernel watches
+              ▼
+        a3s-observer ───────── eBPF: which agent ran which tool, made which LLM call,
+              │                touched which files, reached which endpoint  (no agent cooperation)
+        feeds │
+              ▼
+        a3s-sentry ─────────── judges each event (L1 rules → L2 LLM → L3 agent) and
+                               blocks the dangerous ones through observer's kernel guards
+
+   built from:  a3s-acl · a3s-ahp · a3s-event · a3s-memory · a3s-search · a3s-lane · a3s-tui · a3s-common
+```
+
+The spine is **drive → isolate → serve/route → observe → govern**. Observe and govern wrap the rest:
+whatever the agent does — through a3s-code, inside a3s-box, out through a3s-gateway — surfaces in
+a3s-observer and is answerable to a3s-sentry.
 
 ## Projects
 
-| Project | Version | Description | Docs |
-| --- | --- | --- | --- |
-| [a3s](crates/cli/) | 0.3.0 | Interactive terminal coding agent — `a3s code` launches a Claude Code-class TUI: streaming markdown, IDE-style diff editor, `/ide`, `/git`, `/effort` + ultracode, `/goal`, `/loop`, `/compact`, `@` file picker, image paste, CLAUDE.md compatibility, and `a3s update` self-upgrade. Prebuilt binaries for macOS, Linux, and Windows | [Source](crates/cli/) |
-| [a3s-code](crates/code/) | 3.1.0 | Harness-driven coding-agent runtime with ACL config, SDKs, structured output, planning, run replay, PTC, task/parallel_task delegation, automatic subagent delegation, `.a3s/agents`, memory, and a hexagonal workspace stack: local FS, S3 (ETag CAS, cost-bounded grep/glob), remote-git over HTTP/JSON, all with typed errors end-to-end | [README](crates/code/README.md) |
-| [a3s-box](crates/box/) | 2.0.4 | Docker-like MicroVM runtime for Linux OCI workloads | [README](crates/box/README.md) |
-| [a3s-gateway](crates/gateway/) | 0.2.5 | Reverse proxy with middleware, routing, and privacy features | [README](crates/gateway/README.md) |
-| [a3s-lane](crates/lane/) | 0.4.0 | Priority queues with lanes, concurrency, retry, and DLQ | [README](crates/lane/README.md) |
-| [a3s-power](crates/power/) | 0.4.2 | Local LLM inference engine with OpenAI-compatible API | [README](crates/power/README.md) |
-| [a3s-search](crates/search/) | 1.2.3 | Meta search engine with consensus ranking | [README](crates/search/README.md) |
-| [a3s-memory](crates/memory/) | 0.1.1 | Long-term memory storage for agents | [README](crates/memory/README.md) |
-| [a3s-ahp](crates/ahp/) | 2.4.0 | Agent Harness Protocol primitives | [README](crates/ahp/README.md) |
-| [a3s-acl](crates/acl/) | 0.2.1 | Agent Configuration Language (HCL-like config parser) | [README](crates/acl/README.md) |
-| [a3s-event](crates/event/) | 0.3.0 | Pluggable event subscription, dispatch, and persistence | [README](crates/event/README.md) |
-| [a3s-observer](crates/observer/) | 0.11.0 | eBPF-based, language-agnostic observability for AI agents (LLM calls, tools, files, network egress) + opt-in intervention | [README](crates/observer/README.md) |
-| [a3s-sentry](crates/sentry/) | 0.3.0 | Tiered runtime security control — L1 rules / L2 LLM / L3 **real a3s-code agent** judge observer events and block dangerous actions via observer's kernel guards; hot-reload policy + speculative parallel tiers; L2 + L3 validated against a live LLM + agent | [README](crates/sentry/README.md) |
-| [a3s-updater](crates/updater/) | 0.2.0 | Self-update for CLI binaries via GitHub Releases | [Source](crates/updater/) |
-| [a3s-tui](crates/tui/) | 0.1.4 | TEA (The Elm Architecture) framework for terminal UIs with Flexbox layout | [README](crates/tui/README.md) |
-| [a3s-common](crates/common/) | 0.1.1 | Shared primitives and transport types | [Source](crates/common/) |
+| Project | Version | Role |
+|---|---|---|
+| [a3s](crates/cli/) | 0.5.11 | Interactive terminal coding agent — `a3s code` launches the TUI. Prebuilt binaries for macOS, Linux, Windows |
+| [a3s-code](crates/code/) | 4.1.0 | Harness-driven agent runtime: ACL config, tools, hooks, security policy, memory, MCP, structured output, planning, subagents, pluggable workspaces — Rust core + Node/Python SDKs |
+| [a3s-box](crates/box/) | 2.6.0 | Docker-like MicroVM runtime for Linux OCI workloads |
+| [a3s-gateway](crates/gateway/) | 1.0.11 | AI-native reverse proxy — routing, middleware, SSE streaming, scale-to-zero, agent orchestration |
+| [a3s-power](crates/power/) | 0.4.2 | Privacy-preserving LLM inference for TEE environments (OpenAI-compatible) |
+| [a3s-search](crates/search/) | 1.3.0 | Embeddable meta-search engine with consensus ranking, CLI, and proxy pool |
+| [a3s-lane](crates/lane/) | 0.4.0 | Lane-based priority queues — concurrency, retry, dead-letter |
+| [a3s-memory](crates/memory/) | 0.1.1 | Pluggable long-term memory storage for agents |
+| [a3s-observer](crates/observer/) | 0.11.0 | Language-agnostic eBPF observability (LLM calls, tools, files, egress) + opt-in kernel intervention |
+| [a3s-sentry](crates/sentry/) | 0.6.0 | Tiered runtime security control — L1 rules / L2 LLM / L3 agent — judges observer events and blocks dangerous actions |
+| [a3s-ahp](crates/ahp/) | 2.4.0 | Agent Harness Protocol — transport-agnostic supervision primitives |
+| [a3s-acl](crates/acl/) | 0.2.1 | Agent Configuration Language (HCL-like parser) |
+| [a3s-event](crates/event/) | 0.3.0 | Pluggable event subscription, dispatch, and persistence |
+| [a3s-tui](crates/tui/) | 0.1.4 | TEA framework for terminal UIs with Flexbox layout |
+| [a3s-common](crates/common/) | 0.1.1 | Shared primitives and transport types |
+| [a3s-updater](crates/updater/) | 0.2.0 | Self-update for CLI binaries via GitHub Releases |
 
 ## Quick start
 
 ```bash
-# a3s CLI — interactive coding agent (`a3s code` launches the TUI)
+# CLI — the interactive coding agent (`a3s code` launches the TUI)
 brew install a3s-lab/tap/a3s
-# or grab a prebuilt binary (macOS / Linux / Windows):
-#   https://github.com/A3S-Lab/Cli/releases/latest
+# or a prebuilt binary (macOS / Linux / Windows): https://github.com/A3S-Lab/Cli/releases/latest
 
-# Node.js SDK
-npm install @a3s-lab/code
-
-# Python SDK
-pip install a3s-code
-
-# Rust crate
-cargo add a3s-code-core
+# SDKs
+npm install @a3s-lab/code        # Node.js
+pip install a3s-code             # Python
+cargo add a3s-code-core          # Rust
 ```
 
 ## Repository structure
 
 ```text
-a3s/
+a3s/                            ← monorepo root (NOT a Rust workspace)
 ├── apps/
-│   └── docs/            # Documentation site
-├── crates/              # Rust crates (submodules)
-│   ├── acl/             # a3s-acl config language
-│   ├── ahp/             # a3s-ahp harness protocol
-│   ├── box/             # a3s-box MicroVM runtime
-│   ├── cli/             # a3s — interactive coding-agent TUI (`a3s code`)
-│   ├── code/            # a3s-code agent framework
-│   ├── common/          # Shared types
-│   ├── event/           # a3s-event pub/sub
-│   ├── gateway/         # a3s-gateway
-│   ├── lane/            # a3s-lane scheduling
-│   ├── memory/          # a3s-memory
-│   ├── observer/        # a3s-observer eBPF observability
-│   ├── power/           # a3s-power LLM inference
-│   ├── search/          # a3s-search
-│   ├── sentry/          # a3s-sentry tiered security control
-│   ├── tui/             # a3s-tui terminal UI framework
-│   └── updater/         # a3s-updater
-└── homebrew-tap/        # Homebrew formulae
+│   └── docs/                   # documentation site
+├── crates/                     # components, each its own git submodule
+│   ├── cli/                    # a3s — interactive coding-agent TUI
+│   ├── code/                   # a3s-code — agent runtime + SDKs
+│   ├── box/                    # a3s-box — MicroVM runtime
+│   ├── power/                  # a3s-power — LLM serving
+│   ├── gateway/                # a3s-gateway — reverse proxy / ingress
+│   ├── observer/               # a3s-observer — eBPF observability
+│   ├── sentry/                 # a3s-sentry — runtime security control
+│   ├── search/ memory/ lane/   # retrieval · memory · scheduling
+│   ├── acl/ ahp/ event/        # config · protocol · events
+│   └── common/ tui/ updater/   # shared types · terminal UI · self-update
+└── homebrew-tap/               # Homebrew formulae
 ```
+
+Each crate lives in its own repository under the [A3S-Lab](https://github.com/A3S-Lab) org and is
+vendored here as a submodule; its README is the deep reference for that component.
 
 ## Documentation
 
-Full reference and tutorials: [a3s-lab.github.io/a3s](https://a3s-lab.github.io/a3s/)
+Full reference and tutorials: [a3s-lab.github.io/a3s](https://a3s-lab.github.io/a3s/).
 
 ## Community
 
-Join us on [Discord](https://discord.gg/XVg6Hu6H) for questions, discussions, and updates.
+Questions and discussion: [Discord](https://discord.gg/XVg6Hu6H).
 
 ## License
 
