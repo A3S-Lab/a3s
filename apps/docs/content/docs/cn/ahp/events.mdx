@@ -1,0 +1,69 @@
+---
+title: Events
+description: 阻塞事件族、通知、durable runtime contracts 和 batch 规则。
+---
+
+# AHP Events
+
+AHP event type 按同步语义和 decision shape 分组。
+
+## 事件矩阵
+
+| Event | 时机 | 阻塞 | Decision shape | 可 batch |
+| --- | --- | --- | --- | --- |
+| `pre_action` | 工具或 action 执行前 | 是 | `Decision` | 是 |
+| `post_action` | 工具或 action 完成后 | 否 | Notification | 是 |
+| `pre_prompt` | LLM request 前 | 是 | `Decision` | 是 |
+| `post_response` | LLM response 后 | 否 | Notification | 是 |
+| `session_start` | Session 开始 | 否 | Notification | 是 |
+| `session_end` | Session 结束 | 否 | Notification | 是 |
+| `error` | 操作失败 | 否 | Notification | 是 |
+| `heartbeat` | 周期性 liveness/status | 否 | Notification | 是 |
+| `success` | 操作成功 | 否 | Notification | 是 |
+| `idle` | agent 询问是否运行后台工作 | 是 | `IdleDecision` | 否 |
+| `intent_detection` | 深度上下文工作前识别用户 intent | 是 | `IntentDetectionDecision` | 否 |
+| `context_perception` | 获取或注入 workspace context | 是 | `ContextPerceptionDecision` | 否 |
+| `memory_recall` | 从 memory 检索 facts | 是 | `MemoryRecallDecision` | 否 |
+| `planning` | 选择或修改 planning strategy | 是 | `PlanningDecision` | 否 |
+| `reasoning` | 提供 reasoning hints 或阻断 reasoning | 是 | `ReasoningDecision` | 否 |
+| `rate_limit` | 命中 limit 后决定 backpressure | 是 | `RateLimitDecision` | 否 |
+| `confirmation` | 请求批准、拒绝或升级 | 是 | `ConfirmationDecision` | 否 |
+| `run_lifecycle` | 持久 run state transition | 否 | Notification | 是 |
+| `task_list` | 权威 task-list snapshot | 否 | Notification | 是 |
+| `verification` | Verification status 和 evidence snapshot | 否 | Notification | 是 |
+
+## Durable Runtime Contracts
+
+AHP v2.4 新增三个 durable notification contracts，用于 supervisors、dashboards、replay
+systems 和 audit logs：
+
+| Contract | 用途 |
+| --- | --- |
+| `run_lifecycle` | Run 的稳定状态迁移：`created`、`planning`、`executing`、`verifying`、`completed`、`failed`、`cancelled`。 |
+| `task_list` | 带 statuses、evidence、artifacts、dependencies、errors 的权威 task graph snapshot。 |
+| `verification` | 带 checks、artifacts、evidence、residual risks 和 status 的验证 snapshot。 |
+
+这些 contracts 不替代 `pre_action` 这类 policy hooks。它们提供可以从更丰富 SDK-specific
+events 归约出来的 runtime state snapshots。
+
+## Batching
+
+`ahp/batch` 用于摊薄同质 generic policy checks 的传输开销。它不是通用 multiplexing
+机制。
+
+规则：
+
+- Batch response 包含 `BatchResponse { decisions: Vec<Decision> }`。
+- Event 顺序保持不变。
+- 返回 decision 数必须等于提交 event 数。
+- server-side handler 失败会变成 `Decision::Block`。
+- Specialized decision events 会被拒绝。
+- `handshake` 和 `query` 不能进入 batch。
+- server 可以通过 `HarnessConfig.batch_size` 限制 batch 大小。
+
+返回类型不是通用 `Decision` 时，应使用单独的 typed event。
+
+## Depth
+
+`depth` 字段让递归 AHP 活动可见。Harness 可以通过 `HarnessConfig.max_depth` 宣告并执行
+最大深度；超过该深度的 event 会被拒绝。

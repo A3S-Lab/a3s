@@ -1,4 +1,9 @@
 {
   "title": "A3S AHP",
-  "pages": ["index"]
+  "pages": [
+    "index",
+    "protocol",
+    "events",
+    "transports"
+  ]
 }

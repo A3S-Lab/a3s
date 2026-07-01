@@ -5,8 +5,10 @@ description: 面向自主智能体监督的传输无关 JSON-RPC 协议。
 
 # Agent Harness Protocol
 
-AHP 把 agent 执行和策略执行分开。agent 在关键控制点发出结构化事件，harness
+AHP 把 agent 执行和策略执行分开。agent 在有意义的控制点发出结构化事件，harness
 评估事件并返回 decision，agent 在继续执行前应用该 decision。
+
+当前 crate 是 `a3s-ahp` `2.4.0`；线协议版本是 `2.4`。
 
 ## 能力地图
 
@@ -20,12 +22,11 @@ AHP 把 agent 执行和策略执行分开。agent 在关键控制点发出结构
 | 运行时契约 | run lifecycle、task-list snapshot、verification evidence 的持久非阻塞事件。 |
 | 批处理 | 通用 decision event 支持 batch request；handler 失败走 fail-closed。 |
 
-## 事件族
+## 从这里开始
 
-阻塞请求包括 pre-action、pre-prompt、idle、intent detection、context perception、
-memory recall、planning、reasoning、rate limit 和 confirmation。通知包括
-post-action、post-response、session lifecycle、heartbeat、error、run lifecycle、
-task list 和 verification。
+- [Protocol](/cn/docs/ahp/protocol) 解释 JSON-RPC 方法、handshake、request、notification 和 decision。
+- [Events](/cn/docs/ahp/events) 映射阻塞事件、通知、runtime contracts 和 batch 规则。
+- [Transports](/cn/docs/ahp/transports) 说明 feature flags、client/server lifecycle、auth 和 limits。
 
 ## 在系统中的位置
 
@@ -34,4 +35,5 @@ AHP hooks；其它 runtime 也可以说同一套协议，而不需要采用 A3S 
 
 ## 边界
 
-AHP 定义线协议和 decision 形状；真正执行 decision 的仍是接收 decision 的 agent 或 runtime。
+AHP 定义线协议和 decision 形状。它本身不执行工具、不运行模型、也不替 runtime enforce
+policy；真正执行 decision 的仍是接收 decision 的 agent 或 runtime。

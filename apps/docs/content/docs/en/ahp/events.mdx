@@ -1,0 +1,69 @@
+---
+title: Events
+description: Blocking event families, notifications, durable runtime contracts, and batching rules.
+---
+
+# AHP Events
+
+AHP event types are grouped by synchronization semantics and decision shape.
+
+## Event Matrix
+
+| Event | Timing | Blocking | Decision shape | Batchable |
+| --- | --- | --- | --- | --- |
+| `pre_action` | Before a tool or action executes | Yes | `Decision` | Yes |
+| `post_action` | After a tool or action completes | No | Notification | Yes |
+| `pre_prompt` | Before an LLM request | Yes | `Decision` | Yes |
+| `post_response` | After an LLM response | No | Notification | Yes |
+| `session_start` | Session begins | No | Notification | Yes |
+| `session_end` | Session ends | No | Notification | Yes |
+| `error` | Operation failed | No | Notification | Yes |
+| `heartbeat` | Periodic liveness/status | No | Notification | Yes |
+| `success` | Operation succeeded | No | Notification | Yes |
+| `idle` | Agent asks whether background work should run | Yes | `IdleDecision` | No |
+| `intent_detection` | Classify user intent before deeper context work | Yes | `IntentDetectionDecision` | No |
+| `context_perception` | Retrieve or inject workspace context | Yes | `ContextPerceptionDecision` | No |
+| `memory_recall` | Retrieve facts from memory | Yes | `MemoryRecallDecision` | No |
+| `planning` | Select or modify planning strategy | Yes | `PlanningDecision` | No |
+| `reasoning` | Provide reasoning hints or block reasoning | Yes | `ReasoningDecision` | No |
+| `rate_limit` | Decide backpressure after a limit is hit | Yes | `RateLimitDecision` | No |
+| `confirmation` | Ask for approval, rejection, or escalation | Yes | `ConfirmationDecision` | No |
+| `run_lifecycle` | Durable run state transition | No | Notification | Yes |
+| `task_list` | Authoritative task-list snapshot | No | Notification | Yes |
+| `verification` | Verification status and evidence snapshot | No | Notification | Yes |
+
+## Durable Runtime Contracts
+
+AHP v2.4 adds three durable notification contracts for supervisors, dashboards,
+replay systems, and audit logs:
+
+| Contract | Purpose |
+| --- | --- |
+| `run_lifecycle` | Stable state transition for a run: `created`, `planning`, `executing`, `verifying`, `completed`, `failed`, or `cancelled`. |
+| `task_list` | Authoritative task graph snapshot with statuses, evidence, artifacts, dependencies, and errors. |
+| `verification` | Validation snapshot with checks, artifacts, evidence, residual risks, and status. |
+
+These contracts do not replace policy hooks such as `pre_action`. They provide
+runtime state snapshots that can be reduced from richer SDK-specific events.
+
+## Batching
+
+`ahp/batch` amortizes transport overhead for homogeneous generic policy checks.
+It is not a general-purpose multiplexing mechanism.
+
+Rules:
+
+- Batch responses contain `BatchResponse { decisions: Vec<Decision> }`.
+- Event order is preserved.
+- The number of decisions must equal the number of submitted events.
+- Server-side handler failures become `Decision::Block`.
+- Specialized decision events are rejected.
+- `handshake` and `query` are rejected in batches.
+- The server can enforce `HarnessConfig.batch_size`.
+
+Use individual typed events when the return type is not the generic `Decision`.
+
+## Depth
+
+The `depth` field makes recursive AHP activity visible. A harness can advertise
+and enforce `HarnessConfig.max_depth`; events above that depth are rejected.

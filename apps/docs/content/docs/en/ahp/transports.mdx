@@ -1,0 +1,74 @@
+---
+title: Transports
+description: AHP Rust client/server lifecycle, feature flags, authentication, and validation limits.
+---
+
+# AHP Transports
+
+AHP is transport-agnostic at the protocol layer. The Rust crate provides client
+and server support behind Cargo feature flags.
+
+## Feature Flags
+
+| Feature | Status | Notes |
+| --- | --- | --- |
+| `stdio` | Implemented, default | Local subprocess harnesses. |
+| `http` | Implemented | HTTP client/server examples; supports API key and bearer auth. |
+| `websocket` | Implemented | WebSocket client/server examples; supports API key and bearer auth via URL query parameters. |
+| `unix-socket` | Implemented | Local IPC on Unix platforms. |
+| `grpc` | Reserved | Feature placeholder; the client returns unsupported for gRPC. |
+| `all-transports` | Convenience | Enables `stdio`, `http`, `websocket`, and `unix-socket`; it does not include `grpc`. |
+
+## Client Lifecycle
+
+1. Create `AhpClient` with a `Transport`.
+2. Run `handshake` with agent capabilities.
+3. Send blocking generic events with `send_event_decision`.
+4. Send specialized events with `send_typed_event`.
+5. Use full-event APIs when the runtime must preserve session, agent, depth,
+   context, or metadata.
+6. Send `ahp/batch` only for generic-decision events.
+7. Close the client transport when done.
+
+The Rust client validates JSON-RPC version, response id, error responses,
+missing results, completed handshake, batchability, and batch decision count.
+
+## Server Lifecycle
+
+`AhpServer` is built around an `EventHandler` implementation. The handler owns
+policy, enrichment, approval, audit, and backpressure logic. The server owns
+protocol validation and dispatch.
+
+The default server advertises:
+
+| Config | Default |
+| --- | --- |
+| `timeout_ms` | `10000` |
+| `batch_size` | `100` |
+| `max_depth` | `10` |
+
+Builder methods can override harness info, advertised capabilities, and limits.
+
+## Authentication
+
+HTTP and WebSocket transports can carry optional auth config:
+
+- API key auth.
+- Bearer auth.
+
+Use deployment secrets or environment variables for real credentials. Examples
+should use placeholders and avoid committed tokens.
+
+## Validation Boundaries
+
+The server validates:
+
+- Protocol major-version compatibility during handshake.
+- Blocking vs notification event direction.
+- Event depth against `max_depth`.
+- Batch size against `batch_size`.
+- Batch entries are batchable and return generic `Decision`.
+- `run_lifecycle`, `task_list`, and `verification` payload shapes.
+
+The protocol still depends on the runtime to enforce returned decisions. AHP
+does not sandbox the action itself.

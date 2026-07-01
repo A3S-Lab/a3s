@@ -1,0 +1,70 @@
+---
+title: Transports
+description: AHP Rust client/server lifecycle、feature flags、authentication 和 validation limits。
+---
+
+# AHP Transports
+
+AHP 在线协议层是 transport-agnostic 的。Rust crate 通过 Cargo feature flags 提供 client
+和 server 支持。
+
+## Feature Flags
+
+| Feature | 状态 | 说明 |
+| --- | --- | --- |
+| `stdio` | 已实现，默认启用 | 本地 subprocess harness。 |
+| `http` | 已实现 | HTTP client/server examples；支持 API key 和 bearer auth。 |
+| `websocket` | 已实现 | WebSocket client/server examples；通过 URL query parameters 支持 API key 和 bearer auth。 |
+| `unix-socket` | 已实现 | Unix 平台本地 IPC。 |
+| `grpc` | Reserved | Feature placeholder；client 对 gRPC 返回 unsupported。 |
+| `all-transports` | Convenience | 启用 `stdio`、`http`、`websocket`、`unix-socket`；不包含 `grpc`。 |
+
+## Client Lifecycle
+
+1. 使用 `Transport` 创建 `AhpClient`。
+2. 用 agent capabilities 执行 `handshake`。
+3. 通过 `send_event_decision` 发送阻塞 generic events。
+4. 通过 `send_typed_event` 发送 specialized events。
+5. runtime 需要保留 session、agent、depth、context 或 metadata 时，使用 full-event APIs。
+6. 只对 generic-decision events 使用 `ahp/batch`。
+7. 完成后关闭 client transport。
+
+Rust client 会校验 JSON-RPC version、response id、error response、missing result、handshake
+是否完成、是否可 batch，以及 batch decision 数量。
+
+## Server Lifecycle
+
+`AhpServer` 围绕 `EventHandler` 实现构建。handler 负责 policy、enrichment、approval、
+audit 和 backpressure logic；server 负责协议校验和 dispatch。
+
+默认 server 宣告：
+
+| Config | 默认值 |
+| --- | --- |
+| `timeout_ms` | `10000` |
+| `batch_size` | `100` |
+| `max_depth` | `10` |
+
+Builder methods 可以覆盖 harness info、advertised capabilities 和 limits。
+
+## Authentication
+
+HTTP 和 WebSocket transports 可以携带可选 auth config：
+
+- API key auth。
+- Bearer auth。
+
+真实凭据应来自部署密钥或环境变量。示例应使用占位符，不提交真实 token。
+
+## Validation Boundaries
+
+Server 会校验：
+
+- Handshake 中的协议 major version compatibility。
+- Blocking 与 notification event direction。
+- Event depth 是否超过 `max_depth`。
+- Batch size 是否超过 `batch_size`。
+- Batch entry 是否可 batch 并返回 generic `Decision`。
+- `run_lifecycle`、`task_list`、`verification` payload shapes。
+
+协议仍依赖 runtime enforce 返回的 decision。AHP 本身不 sandbox action。
