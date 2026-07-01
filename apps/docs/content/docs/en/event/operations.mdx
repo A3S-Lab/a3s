@@ -1,0 +1,95 @@
+---
+title: Operations
+description: Feature flags, publish/subscribe options, metrics, and responsibility boundaries for A3S Event.
+---
+
+# Event Operations
+
+A3S Event is a library, not a standalone daemon. Operational behavior comes from
+the selected provider plus the optional application-level modules you enable.
+
+## Feature Flags
+
+| Feature | Default | Adds |
+| --- | --- | --- |
+| `nats` | Yes | NATS JetStream provider. |
+| `encryption` | Yes | AES-256-GCM payload encryptor and key rotation support. |
+| `cloudevents` | Yes | CloudEvents v1.0 conversion. |
+| `routing` | Yes | Broker, Trigger, EventSink, and sink-backed DLQ. |
+| `full` | No | Enables all optional feature modules. |
+
+Minimal core still includes event types, `EventBus`, memory provider, schema
+registry, DLQ abstraction, metrics, and custom provider traits.
+
+## Publish Options
+
+`PublishOptions` exposes provider-native publishing controls. Providers that do
+not support an option may ignore it.
+
+| Option | Meaning |
+| --- | --- |
+| `msg_id` | Deduplication id, mapped to NATS message id when supported. |
+| `expected_sequence` | Optimistic concurrency guard. |
+| `timeout_secs` | Per-publish timeout override. |
+
+## Subscribe Options
+
+`SubscribeOptions` exposes provider-native consumer controls:
+
+| Option | Meaning |
+| --- | --- |
+| `max_deliver` | Maximum delivery attempts before drop or DLQ handling. |
+| `backoff_secs` | Redelivery backoff intervals. |
+| `max_ack_pending` | Backpressure cap for unacknowledged messages. |
+| `deliver_policy` | Where a consumer starts: all, last, new, by sequence, by time, or last per subject. |
+| `ack_wait_secs` | Redelivery wait after an unacked message. |
+
+NATS maps these to JetStream consumer settings where available. MemoryProvider
+is lightweight and does not provide durable delivery semantics.
+
+## Metrics
+
+`EventMetrics` uses lock-free atomic counters. `EventBus::metrics()` returns the
+live metrics object, and `snapshot()` gives a point-in-time view:
+
+| Metric | Meaning |
+| --- | --- |
+| `publish_count` / `publish_errors` | Successful and failed publishes. |
+| `subscribe_count` / `unsubscribe_count` | Subscription lifecycle operations. |
+| `dlq_count` | Events routed to DLQ. |
+| `validation_errors` | Schema validation failures. |
+| `encrypt_count` / `decrypt_count` | Payload crypto operations. |
+| `avg_publish_latency_us` / `max_publish_latency_us` | Publish latency summary. |
+
+The crate does not expose a metrics server; scrape or export snapshots from the
+host application.
+
+## Responsibility Boundary
+
+| Capability | Owner |
+| --- | --- |
+| Retry and backoff | Provider-native consumer settings. |
+| Backpressure | Provider-native flow control and `max_ack_pending`. |
+| Connection resilience | Provider client, such as async-nats reconnect behavior. |
+| Partitioning or sharding | Provider-native routing model. |
+| Transport encryption | Provider configuration such as TLS. |
+| Event versioning and schema | A3S Event. |
+| Payload encryption | A3S Event, before publish and after receive. |
+| Dead letter representation and routing | A3S Event. |
+| Subscription filter persistence | A3S Event state-store trait and host application. |
+| Metrics and tracing hooks | A3S Event plus host exporter. |
+
+This boundary is intentional: the crate avoids reimplementing the delivery
+mechanics that durable event providers already own.
+
+## Validation
+
+Focused validation should run from `crates/event`, not the monorepo root:
+
+```bash
+cargo test --all-features
+cargo test --no-default-features
+cargo test --features nats
+```
+
+NATS integration tests require a JetStream-enabled NATS server.

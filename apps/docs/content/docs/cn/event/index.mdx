@@ -9,6 +9,8 @@ description: Provider 无关的事件发布、订阅、历史、路由、schema 
 persistence。应用依赖 `EventBus` 和 `EventProvider` trait，再选择内存 provider、
 NATS JetStream 或自定义后端。
 
+当前 crate 是 `a3s-event` `0.3.0`。
+
 ## 能力地图
 
 | 领域 | 当前能力 |
@@ -20,6 +22,12 @@ NATS JetStream 或自定义后端。
 | Schema | Schema registry，支持事件类型校验和兼容性检查。 |
 | Metrics | publish、subscribe、error、latency 的 lock-free 计数器。 |
 | 可选特性 | AES-256-GCM payload encryption、CloudEvents v1.0 转换、Knative 风格 routing、trigger 和 sink。 |
+
+## 从这里开始
+
+- [Providers](/cn/docs/event/providers) 解释 `MemoryProvider`、`NatsProvider`、subject 命名和 custom provider contract。
+- [Schemas And Routing](/cn/docs/event/schemas-routing) 覆盖 typed events、schema compatibility、CloudEvents、broker/trigger routing、sinks 和 DLQ。
+- [Operations](/cn/docs/event/operations) 说明 feature flags、metrics、publish/subscribe options 和责任边界。
 
 ## Feature Flags
 

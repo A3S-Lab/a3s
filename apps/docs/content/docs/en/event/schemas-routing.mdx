@@ -1,0 +1,82 @@
+---
+title: Schemas And Routing
+description: Typed events, schema compatibility, CloudEvents conversion, broker/trigger routing, sinks, and DLQ.
+---
+
+# Schemas And Routing
+
+A3S Event separates provider transport from application-level semantics. Schemas,
+CloudEvents conversion, broker/trigger routing, sinks, and DLQ handling sit above
+the provider layer.
+
+## Schema Registry
+
+`SchemaRegistry` stores `EventSchema` definitions keyed by event type and
+version. The built-in `MemorySchemaRegistry` is intended for development and
+testing.
+
+| Capability | Behavior |
+| --- | --- |
+| Register | Event type must be non-empty; version must be `>= 1`. |
+| Validate | Required top-level payload fields are checked for registered typed events. |
+| Untyped events | Events with empty `event_type` pass validation. |
+| Missing schema | Typed events without a registered schema pass through. |
+| Compatibility | `Backward`, `Forward`, `Full`, or `None`. |
+
+Compatibility checks only reason about required top-level fields:
+
+| Mode | Rule |
+| --- | --- |
+| `Backward` | New schema cannot add new required fields that old consumers would miss. |
+| `Forward` | New schema cannot remove required fields from the previous version. |
+| `Full` | Required fields must be identical between adjacent versions. |
+| `None` | Skip compatibility checks. |
+
+## CloudEvents
+
+With the `cloudevents` feature, events can be converted to and from CloudEvents
+v1.0 envelopes. Use this when the event crosses systems that already understand
+CloudEvents. Provider-native subjects still carry delivery and filtering.
+
+## Broker And Trigger Routing
+
+With the `routing` feature, `Broker` evaluates `Trigger` filters and delivers
+matching events to sinks in parallel.
+
+Trigger filters support AND logic across:
+
+| Filter | Meaning |
+| --- | --- |
+| `event_type` | Exact event type match. |
+| `source` | Exact source match. |
+| `subject_pattern` | Subject wildcard match with `>` and `*`. |
+| `attributes` | Required metadata key/value pairs. |
+
+Routing is fire-and-forget. Delivery errors are logged and counted in the
+`RouteResult`, but they do not break the publisher's path.
+
+## Sinks
+
+| Sink | Use case |
+| --- | --- |
+| `TopicSink` | Re-publish matched events to a provider. |
+| `InProcessSink` | Call an async Rust handler directly. |
+| `LogSink` | Emit matched events through tracing for debugging. |
+| `CollectorSink` | Collect events in memory for tests. |
+| `FailingSink` | Exercise error paths in tests. |
+
+## Dead Letter Queue
+
+DLQ is application-level. Providers own retry and redelivery mechanics; A3S
+Event provides a unified way to represent and route events that permanently
+failed processing.
+
+| Type | Behavior |
+| --- | --- |
+| `DeadLetterEvent` | Original `ReceivedEvent` plus reason, timestamp, original subject, attempts, and first failure time. |
+| `MemoryDlqHandler` | Stores recent dead letters in memory. |
+| `SinkDlqHandler` | With `routing`, wraps dead letters as events and forwards them to a sink. |
+| `should_dead_letter` | Helper that checks `num_delivered >= max_deliver`. |
+
+Use DLQ for reprocessing, alerting, and audit; use provider-native retry/backoff
+for delivery mechanics.

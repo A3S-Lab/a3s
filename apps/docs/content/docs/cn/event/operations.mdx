@@ -1,0 +1,93 @@
+---
+title: Operations
+description: A3S Event 的 feature flags、publish/subscribe options、metrics 和责任边界。
+---
+
+# Event Operations
+
+A3S Event 是库，不是独立 daemon。运行行为由所选 provider 以及启用的 application-level
+可选模块共同决定。
+
+## Feature Flags
+
+| Feature | 默认 | 增加能力 |
+| --- | --- | --- |
+| `nats` | 是 | NATS JetStream provider。 |
+| `encryption` | 是 | AES-256-GCM payload encryptor 和 key rotation support。 |
+| `cloudevents` | 是 | CloudEvents v1.0 conversion。 |
+| `routing` | 是 | Broker、Trigger、EventSink 和 sink-backed DLQ。 |
+| `full` | 否 | 启用所有可选 feature modules。 |
+
+Minimal core 仍包含 event types、`EventBus`、memory provider、schema registry、DLQ
+abstraction、metrics 和 custom provider traits。
+
+## Publish Options
+
+`PublishOptions` 暴露 provider-native publishing controls。不支持某个 option 的 provider
+可以忽略它。
+
+| Option | 含义 |
+| --- | --- |
+| `msg_id` | Deduplication id；provider 支持时映射到 NATS message id。 |
+| `expected_sequence` | Optimistic concurrency guard。 |
+| `timeout_secs` | Per-publish timeout override。 |
+
+## Subscribe Options
+
+`SubscribeOptions` 暴露 provider-native consumer controls：
+
+| Option | 含义 |
+| --- | --- |
+| `max_deliver` | drop 或 DLQ handling 前的最大投递次数。 |
+| `backoff_secs` | Redelivery backoff intervals。 |
+| `max_ack_pending` | 未 ack 消息的 backpressure cap。 |
+| `deliver_policy` | Consumer 起点：all、last、new、by sequence、by time 或 last per subject。 |
+| `ack_wait_secs` | 未 ack 消息进入 redelivery 前的等待时间。 |
+
+NATS 会在可用处映射到 JetStream consumer settings。MemoryProvider 是轻量实现，不提供 durable
+delivery semantics。
+
+## Metrics
+
+`EventMetrics` 使用 lock-free atomic counters。`EventBus::metrics()` 返回 live metrics
+object，`snapshot()` 提供某一时刻的视图：
+
+| Metric | 含义 |
+| --- | --- |
+| `publish_count` / `publish_errors` | 成功和失败 publish 数。 |
+| `subscribe_count` / `unsubscribe_count` | Subscription lifecycle operations。 |
+| `dlq_count` | 路由到 DLQ 的 events。 |
+| `validation_errors` | Schema validation failures。 |
+| `encrypt_count` / `decrypt_count` | Payload crypto operations。 |
+| `avg_publish_latency_us` / `max_publish_latency_us` | Publish latency summary。 |
+
+crate 不内置 metrics server；由 host application scrape 或导出 snapshots。
+
+## 责任边界
+
+| Capability | Owner |
+| --- | --- |
+| Retry 和 backoff | Provider-native consumer settings。 |
+| Backpressure | Provider-native flow control 和 `max_ack_pending`。 |
+| Connection resilience | Provider client，例如 async-nats reconnect behavior。 |
+| Partitioning 或 sharding | Provider-native routing model。 |
+| Transport encryption | Provider configuration，例如 TLS。 |
+| Event versioning 和 schema | A3S Event。 |
+| Payload encryption | A3S Event，在 publish 前和 receive 后处理。 |
+| Dead letter representation 和 routing | A3S Event。 |
+| Subscription filter persistence | A3S Event state-store trait 与 host application。 |
+| Metrics 和 tracing hooks | A3S Event 加 host exporter。 |
+
+这个边界是刻意设计的：crate 不重新实现 durable event providers 已经拥有的 delivery mechanics。
+
+## Validation
+
+聚焦验证应在 `crates/event` 内运行，而不是 monorepo root：
+
+```bash
+cargo test --all-features
+cargo test --no-default-features
+cargo test --features nats
+```
+
+NATS integration tests 需要启用 JetStream 的 NATS server。

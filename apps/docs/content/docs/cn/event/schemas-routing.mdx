@@ -1,0 +1,78 @@
+---
+title: Schemas And Routing
+description: Typed events、schema compatibility、CloudEvents conversion、broker/trigger routing、sinks 和 DLQ。
+---
+
+# Schemas And Routing
+
+A3S Event 把 provider transport 和 application-level semantics 分开。Schemas、
+CloudEvents conversion、broker/trigger routing、sinks 和 DLQ handling 都在 provider 层之上。
+
+## Schema Registry
+
+`SchemaRegistry` 按 event type 和 version 存储 `EventSchema`。内置
+`MemorySchemaRegistry` 主要用于开发和测试。
+
+| 能力 | 行为 |
+| --- | --- |
+| Register | Event type 不能为空；version 必须 `>= 1`。 |
+| Validate | 对已注册 typed events 校验 payload 顶层必填字段。 |
+| Untyped events | `event_type` 为空的 event 会通过校验。 |
+| Missing schema | 没有注册 schema 的 typed event 会通过。 |
+| Compatibility | `Backward`、`Forward`、`Full` 或 `None`。 |
+
+Compatibility checks 只处理顶层 required fields：
+
+| Mode | 规则 |
+| --- | --- |
+| `Backward` | 新 schema 不能增加旧 consumer 缺失的新必填字段。 |
+| `Forward` | 新 schema 不能移除上一版本的必填字段。 |
+| `Full` | 相邻版本之间 required fields 必须完全相同。 |
+| `None` | 跳过兼容性检查。 |
+
+## CloudEvents
+
+启用 `cloudevents` feature 后，events 可以转换为 CloudEvents v1.0 envelopes，也可以从该
+envelope 转回。适用于事件需要跨越已经理解 CloudEvents 的系统时。Provider-native subjects
+仍负责投递和过滤。
+
+## Broker 和 Trigger Routing
+
+启用 `routing` feature 后，`Broker` 会评估 `Trigger` filters，并把匹配 event 并行投递到
+sinks。
+
+Trigger filters 支持以下 AND 条件：
+
+| Filter | 含义 |
+| --- | --- |
+| `event_type` | 精确匹配 event type。 |
+| `source` | 精确匹配 source。 |
+| `subject_pattern` | 使用 `>` 和 `*` 的 subject wildcard match。 |
+| `attributes` | 必须存在的 metadata key/value pairs。 |
+
+Routing 是 fire-and-forget。Delivery errors 会被记录并体现在 `RouteResult` 中，但不会破坏
+publisher path。
+
+## Sinks
+
+| Sink | 使用场景 |
+| --- | --- |
+| `TopicSink` | 把匹配 event 重新发布到 provider。 |
+| `InProcessSink` | 直接调用 async Rust handler。 |
+| `LogSink` | 通过 tracing 输出匹配 event，用于调试。 |
+| `CollectorSink` | 在内存中收集 event，用于测试。 |
+| `FailingSink` | 在测试中覆盖错误路径。 |
+
+## Dead Letter Queue
+
+DLQ 是 application-level。Provider 负责 retry 和 redelivery mechanics；A3S Event 提供统一方式
+表达和路由永久处理失败的 events。
+
+| Type | 行为 |
+| --- | --- |
+| `DeadLetterEvent` | 原始 `ReceivedEvent`，加上 reason、timestamp、original subject、attempts 和 first failure time。 |
+| `MemoryDlqHandler` | 在内存中保存最近 dead letters。 |
+| `SinkDlqHandler` | 启用 `routing` 后，把 dead letters 包装为 events 并转发到 sink。 |
+| `should_dead_letter` | 检查 `num_delivered >= max_deliver` 的 helper。 |
+
+DLQ 适合 reprocessing、alerting 和 audit；delivery mechanics 应使用 provider-native retry/backoff。

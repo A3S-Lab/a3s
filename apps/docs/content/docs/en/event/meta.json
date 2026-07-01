@@ -1,4 +1,9 @@
 {
   "title": "A3S Event",
-  "pages": ["index"]
+  "pages": [
+    "index",
+    "providers",
+    "schemas-routing",
+    "operations"
+  ]
 }

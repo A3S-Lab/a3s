@@ -9,6 +9,8 @@ description: Provider-agnostic event publish, subscribe, history, routing, schem
 and persistence. Applications depend on `EventBus` and `EventProvider` traits,
 then choose an in-memory provider, NATS JetStream, or a custom backend.
 
+The current crate is `a3s-event` `0.3.0`.
+
 ## Capability Map
 
 | Area | Current capability |
@@ -20,6 +22,12 @@ then choose an in-memory provider, NATS JetStream, or a custom backend.
 | Schema | Schema registry with event-type validation and compatibility checks. |
 | Metrics | Lock-free counters for publish, subscribe, errors, and latency. |
 | Optional features | AES-256-GCM payload encryption, CloudEvents v1.0 conversion, and Knative-inspired routing with triggers and sinks. |
+
+## Start Here
+
+- [Providers](/docs/event/providers) explains `MemoryProvider`, `NatsProvider`, subject naming, and custom provider contracts.
+- [Schemas And Routing](/docs/event/schemas-routing) covers typed events, schema compatibility, CloudEvents, broker/trigger routing, sinks, and DLQ.
+- [Operations](/docs/event/operations) documents feature flags, metrics, publish/subscribe options, and responsibility boundaries.
 
 ## Feature Flags
 
