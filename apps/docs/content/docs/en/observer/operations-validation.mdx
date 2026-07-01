@@ -1,0 +1,76 @@
+---
+title: Operations And Validation
+description: Heartbeats, Kubernetes liveness, backpressure, supply-chain posture, security boundaries, and upstream validation evidence.
+---
+
+# Observer Operations And Validation
+
+Observer is privileged infrastructure. Operate it as a node-level telemetry component with explicit opt-in for sensitive capture and enforcement.
+
+## Heartbeat Events
+
+`CollectorHeartbeat` is a control-plane event, not an agent action. It reports:
+
+| Field family | Purpose |
+| --- | --- |
+| Collector identity | Collector id, node name, namespace, pod name, version, and mode. |
+| Probe state | Attached probe count and enabled feature flags. |
+| Throughput | Per-window counts for exec, exit, egress, DNS, file, LLM, SSL, and security events. |
+| Loss signals | Ring-buffer drops and output drops. |
+| Coverage | Observed agent count and interval length. |
+
+Downstream platforms should use heartbeat for fleet health and coverage gaps. It should not be evaluated as suspicious agent behavior.
+
+## Kubernetes Liveness
+
+The reference DaemonSet runs one privileged Observer container per node, with host PID access and a liveness probe based on a refreshed heartbeat file. `terminationGracePeriodSeconds` gives the collector time to flush a final report on SIGTERM.
+
+The manifest does not require Kubernetes API access for pod identity because pod UID and container ID are read from `/proc/<pid>/cgroup`.
+
+## Resource Posture
+
+The reference manifest requests small CPU and memory, avoids a CPU limit, and sets a memory limit. Avoiding a CPU limit prevents the tracing agent from being throttled into event drops under bursty kernel activity.
+
+## Backpressure
+
+The NDJSON exporter uses a bounded queue. A slow stdout consumer or blocked log pipeline drops output lines and increments `output_dropped` instead of stalling the event loop. This keeps the heartbeat and liveness path from being blocked by backend availability.
+
+Use the OpenTelemetry Collector's `memory_limiter`, `batch`, retry, and sending queue to absorb backend pressure outside the privileged probe process.
+
+## Sensitive Surfaces
+
+| Surface | Posture |
+| --- | --- |
+| Privileged probe load | Treat the binary and image as trusted node infrastructure. |
+| `A3S_OBSERVER_SSL=1` | Captures OpenSSL plaintext. Enable only where prompt/response capture is acceptable and the NDJSON sink is secured. |
+| `A3S_OBSERVER_FILES=1` | Emits higher-volume file write/delete telemetry. Enable intentionally. |
+| Enforcement guards | Opt-in. Validate deny policies off production before broad rollout. |
+
+## Supply Chain
+
+The Observer repository documents GHCR release images that are scanned, keyless-signed, and shipped with SBOM and SLSA provenance. Verify release image signatures during production rollout according to the repository's `SECURITY.md`.
+
+Do not replace public release image references in documentation with local registry mirrors or internal URLs.
+
+## Validation Evidence
+
+The upstream README documents:
+
+| Area | Evidence |
+| --- | --- |
+| Linux target | Validated on Linux 6.8 with Aya. |
+| Observe soak | Sustained host observe soaks, a real A3S Code agent run, restart cycles, idle heartbeat, SIGTERM, concurrent collectors, backpressure, and connection churn. |
+| Kubernetes soak | Observe-only DaemonSet across an 8-node cluster with flat RSS, zero drops, and zero restarts in the reported run. |
+| Intervention | Egress, file/exec, and SSL-content guard paths validated in an isolated VM. |
+| Coverage | Repository README reports 79.6% library line coverage via `cargo llvm-cov`. |
+| Parser/classifier tests | Untrusted SNI, DNS, cgroup parsers, and the provider classifier are unit-tested. |
+
+Treat these as upstream evidence for the checked-in implementation. Validate again on your own kernel, distro, container runtime, and node policy before enforcing in production.
+
+## Known Boundaries
+
+- Always-on tracepoints cannot block; enforcement uses separate cgroup BPF and fanotify guard paths.
+- SSL plaintext capture is OpenSSL-specific and opt-in.
+- Encrypted client hello can reduce SNI-based classification.
+- Host-side Observer sees A3S Box guest egress through the host network path, but in-guest exec/file telemetry needs an in-guest collector.
+- A bad external policy can block legitimate traffic, even though passive observation should continue.

@@ -1,0 +1,76 @@
+---
+title: 运维与验证
+description: Heartbeats、Kubernetes liveness、backpressure、supply-chain posture、security boundaries 与 upstream validation evidence。
+---
+
+# Observer 运维与验证
+
+Observer 是 privileged infrastructure。应把它作为 node-level telemetry component 运行，并对 sensitive capture 和 enforcement 做显式 opt-in。
+
+## Heartbeat Events
+
+`CollectorHeartbeat` 是 control-plane event，不是 agent action。它报告：
+
+| Field family | 作用 |
+| --- | --- |
+| Collector identity | Collector id、node name、namespace、pod name、version 和 mode。 |
+| Probe state | Attached probe count 与 enabled feature flags。 |
+| Throughput | Exec、exit、egress、DNS、file、LLM、SSL 和 security events 的 per-window counts。 |
+| Loss signals | Ring-buffer drops 与 output drops。 |
+| Coverage | Observed agent count 与 interval length。 |
+
+Downstream platform 应将 heartbeat 用于 fleet health 和 coverage gaps。不要把它当作可疑 agent behavior 交给 policy 判断。
+
+## Kubernetes Liveness
+
+Reference DaemonSet 在每个 node 运行一个 privileged Observer container，使用 host PID access，并用刷新中的 heartbeat file 做 liveness probe。`terminationGracePeriodSeconds` 给 collector 在 SIGTERM 时 flush final report 的时间。
+
+Manifest 不需要 Kubernetes API access 来获得 pod identity，因为 pod UID 和 container ID 来自 `/proc/<pid>/cgroup`。
+
+## Resource Posture
+
+Reference manifest 使用较小 CPU 和 memory request，避免 CPU limit，并设置 memory limit。避免 CPU limit 可以防止 tracing agent 在 bursty kernel activity 下被 throttle 到 event drops。
+
+## Backpressure
+
+NDJSON exporter 使用 bounded queue。stdout consumer 或 log pipeline 变慢时，它会 drop output lines 并增加 `output_dropped`，而不是阻塞 event loop。这可以避免 heartbeat 和 liveness path 被 backend availability 卡住。
+
+用 OpenTelemetry Collector 的 `memory_limiter`、`batch`、retry 和 sending queue 在 privileged probe process 外部吸收 backend pressure。
+
+## Sensitive Surfaces
+
+| Surface | Posture |
+| --- | --- |
+| Privileged probe load | 将 binary 和 image 当作 trusted node infrastructure。 |
+| `A3S_OBSERVER_SSL=1` | 捕获 OpenSSL plaintext。只有在 prompt/response capture 可接受且 NDJSON sink 已加固时启用。 |
+| `A3S_OBSERVER_FILES=1` | 发出较高 volume 的 file write/delete telemetry。应有意启用。 |
+| Enforcement guards | Opt-in。大范围 rollout 前先在非生产环境验证 deny policies。 |
+
+## Supply Chain
+
+Observer 仓库文档说明 GHCR release images 会被扫描、keyless-signed，并附带 SBOM 和 SLSA provenance。生产 rollout 时按仓库 `SECURITY.md` 验证 release image signatures。
+
+不要在文档里用本地 registry mirror 或 internal URL 替换公开 release image references。
+
+## Validation Evidence
+
+Upstream README 记录：
+
+| Area | Evidence |
+| --- | --- |
+| Linux target | 基于 Aya，在 Linux 6.8 上验证。 |
+| Observe soak | Sustained host observe soaks、真实 A3S Code agent run、restart cycles、idle heartbeat、SIGTERM、concurrent collectors、backpressure 和 connection churn。 |
+| Kubernetes soak | 8-node cluster 上 observe-only DaemonSet，reported run 中 flat RSS、zero drops、zero restarts。 |
+| Intervention | Egress、file/exec、SSL-content guard paths 在 isolated VM 中验证。 |
+| Coverage | Repository README 记录 `cargo llvm-cov` library line coverage 为 79.6%。 |
+| Parser/classifier tests | Untrusted SNI、DNS、cgroup parsers 和 provider classifier 有 unit tests。 |
+
+这些是 checked-in implementation 的 upstream evidence。生产 enforcement 前，仍应在自己的 kernel、distro、container runtime 和 node policy 上再次验证。
+
+## Known Boundaries
+
+- Always-on tracepoints 不能 block；enforcement 使用独立 cgroup BPF 和 fanotify guard paths。
+- SSL plaintext capture 是 OpenSSL-specific 且 opt-in。
+- Encrypted client hello 可能削弱 SNI-based classification。
+- Host-side Observer 能看到 A3S Box guest egress 经过 host network path，但 in-guest exec/file telemetry 需要 in-guest collector。
+- 错误 external policy 可能 block 合法流量，即便 passive observation 应继续运行。
