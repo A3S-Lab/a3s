@@ -7,7 +7,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # AHP Transport & Safety
 
-A3S Code sessions can attach to an external host over a pluggable transport (AHP — the Agent Host Protocol). Whatever transport carries the messages, the safety layer is independent: a **security provider** vets tool calls and a **permission policy** decides what runs without a human in the loop. Use this page when you need a remote/host-driven session that still enforces a safe default posture.
+A3S Code sessions can attach to an external host over a pluggable transport (AHP — the Agent Host Protocol). Whatever transport carries the messages, the safety layer is independent: a **security provider** vets tool calls and a **permission policy** decides what runs without a human in the loop. Use this page when you need a remote/host-driven session while keeping tool policy explicit in the A3S Code harness.
 
 The transport and the safety layer are orthogonal. You can swap `HttpTransport` for a WebSocket or Unix-socket transport without touching the permission rules, and vice versa.
 
@@ -21,20 +21,20 @@ const agent = await Agent.create('agent.acl');
 
 const session = agent.session('/repo', {
   // AHP transport: how the session reaches its external host.
-  ahpTransport: new HttpTransport('http://localhost:8080/ahp', process.env.AHP_TOKEN),
+  ahpTransport: new HttpTransport('http://localhost:8080/ahp', process.env.AHP_AUTH_TOKEN),
   // Safety: the security provider vets each tool call; the permission
   // policy decides what runs unattended. These apply regardless of transport.
   securityProvider: new DefaultSecurityProvider(),
   permissionPolicy: { defaultDecision: 'ask' },
 });
 
-const result = await session.run('Audit the repo for hardcoded secrets.');
+const result = await session.run('Audit the repo for hardcoded credentials.');
 console.log(result);
 
 await session.close();
 ```
 
-Other transports follow the same shape — `WebSocketTransport`, `UnixSocketTransport`, and the in-process `StdioTransport` are all interchangeable here. Set `defaultDecision` to `'deny'` for a stricter, fully-gated posture, or `'allow'` only in trusted, sandboxed environments.
+Other transports follow the same shape — `WebSocketTransport`, `UnixSocketTransport`, and the in-process `StdioTransport` are all interchangeable here. Set `defaultDecision` to `'deny'` when unattended work should fail closed unless an allow rule matches, or `'allow'` only in trusted, sandboxed environments.
 
 </Tab>
 <Tab value="Python">
@@ -50,11 +50,14 @@ from a3s_code import (
     PermissionPolicy,
 )
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 
 opts = SessionOptions()
 # AHP transport: how the session reaches its external host.
-opts.ahp_transport = HttpTransport("http://localhost:8080/ahp", os.environ["AHP_TOKEN"])
+opts.ahp_transport = HttpTransport(
+    "http://localhost:8080/ahp",
+    os.environ.get("AHP_AUTH_TOKEN"),
+)
 # Safety: the security provider vets each tool call; the permission
 # policy decides what runs unattended. These apply regardless of transport.
 opts.security_provider = DefaultSecurityProvider()
@@ -62,13 +65,13 @@ opts.permission_policy = PermissionPolicy(default_decision="ask")
 
 session = agent.session("/repo", opts)
 
-result = session.run("Audit the repo for hardcoded secrets.")
+result = session.run("Audit the repo for hardcoded credentials.")
 print(result)
 
 session.close()
 ```
 
-Set `default_decision` to `"deny"` for a stricter, fully-gated posture, or `"allow"` only in trusted, sandboxed environments. The transport is independent of the safety layer.
+Set `default_decision` to `"deny"` when unattended work should fail closed unless an allow rule matches, or `"allow"` only in trusted, sandboxed environments. The transport is independent of the safety layer.
 
 </Tab>
 </Tabs>
@@ -76,6 +79,6 @@ Set `default_decision` to `"deny"` for a stricter, fully-gated posture, or `"all
 ## Notes
 
 - **AHP is the transport, not the policy.** Choosing HTTP, WebSocket, or a Unix socket changes *how* the session reaches its host; it does not change *what* the agent is allowed to do. Safety lives entirely in the security provider and permission policy.
-- **`DefaultSecurityProvider`** ships a sensible baseline. Supply your own provider when you need to enforce organization-specific rules (path allow-lists, command vetting, redaction).
+- **`DefaultSecurityProvider`** ships a baseline for taint tracking and output sanitization. Supply your own provider when you need to enforce organization-specific rules (path allow-lists, command vetting, redaction).
 - **Permission policy** (`defaultDecision` / `default_decision`) is the single most important safety knob. Prefer `'ask'` for interactive use and `'deny'` for unattended runs unless the workspace is sandboxed.
-- This example verifies the session option shape and transport constructor. Test your live AHP server before relying on policy, context injection, idle, audit, or supervision behavior.
+- This example verifies the session option shape and transport constructor. Test your live AHP server before relying on policy, context injection, idle, audit, or supervision behavior; if AHP setup fails, the SDK logs the failure and continues without that external executor.

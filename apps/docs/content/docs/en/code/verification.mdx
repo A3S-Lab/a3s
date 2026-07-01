@@ -157,9 +157,10 @@ print(session.verification_summary_text())
 </Tab>
 </Tabs>
 
-`verificationPresets()` returns the built-in check templates the runtime ships
-with, so you can compose your command list from known-good defaults instead of
-hand-writing every check.
+`verificationPresets()` returns workspace-aware check templates inferred from
+files such as `Cargo.toml`, `package.json`, `pyproject.toml`, and `go.mod`.
+Treat them as starting points: review the commands, timeouts, and required
+flags for the project before gating releases or user-visible automation.
 
 ## Why This Matters
 

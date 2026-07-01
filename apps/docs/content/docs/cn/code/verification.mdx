@@ -144,7 +144,9 @@ print(session.verification_summary_text())
 </Tab>
 </Tabs>
 
-`verificationPresets()` 返回运行时内置的检查模板，让你可以基于已知可靠的默认项组合命令列表，而不必手写每一条检查。
+`verificationPresets()` 返回根据 workspace 文件推断出的检查模板，例如
+`Cargo.toml`、`package.json`、`pyproject.toml` 和 `go.mod`。请把它们当作起点：
+在用来拦截发布或用户可见自动化之前，应审查命令、超时和 required 标记是否适合该项目。
 
 ## 为何重要
 
