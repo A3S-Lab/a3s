@@ -1,24 +1,65 @@
 ---
 title: A3S WebView
-description: Native popup helper for rendering A3S OS viewUrls from the a3s code TUI.
+description: Native popup helper for rendering runtime viewUrl popups from the a3s code TUI.
 ---
 
 # A3S WebView
 
-`a3s-webview` is a small native WebView helper for the `a3s code` terminal UI.
-The terminal grid cannot embed a browser view, so the TUI can spawn this helper
-when A3S OS returns a partial `viewUrl` intended for a sized popup.
+`a3s-webview` is a tiny native WebView helper for the `a3s code` terminal UI.
+The TUI cannot embed a browser inside its terminal grid, so it can spawn this
+helper when a runtime returns a partial `viewUrl` that is intended to open as a
+sized popup instead of a full browser tab.
+
+It opens one native window, loads one `http://` or `https://` URL, and exits
+when the window is closed.
 
 ## Capability Map
 
 | Area | Current capability |
 | --- | --- |
-| Window helper | Opens one native window at a requested logical size and title. |
-| URL policy | Accepts `http://` and `https://` URLs only. Plain links can still open in the system browser. |
-| Auth seeding | Reads an auth value from an environment variable and seeds browser storage before navigation, avoiding secrets in process arguments. |
+| Window helper | Opens one focused native window at a requested logical size and title. |
+| URL policy | Accepts only `http://` and `https://`; `file:`, `data:`, and custom schemes are rejected. |
+| Size guardrails | Width is clamped to `240..4000`; height is clamped to `180..3000`. Defaults are `900 x 680`. |
+| Auth seeding | Reads an access token from an environment variable before navigation and seeds browser storage without putting the token in argv. |
+| Refresh token | Also reads `A3S_OS_REFRESH_TOKEN` when present and stores it with the session. |
+| User bootstrap | Uses same-origin `GET /api/v1/users/me` to seed the user object before the embedded app boots. |
 | Headers | Supports repeated `--header 'Name: Value'` arguments for host-provided request metadata. |
-| Platform backends | macOS WKWebView, Linux WebKitGTK, and Windows WebView2 through `wry`/`tao`. |
-| Degradation | If the helper is unavailable, the TUI can fall back to the system browser. |
+| Navigation | macOS uses native titlebar buttons; Linux and Windows inject a small back/forward/reload toolbar. |
+| Platform backends | macOS WKWebView, Linux WebKitGTK, and Windows WebView2 through `wry` and `tao`. |
+
+## Usage
+
+```text
+a3s-webview --url <http(s)://URL> [--width N] [--height N] [--title T]
+            [--header 'Name: Value']... [--token-env NAME] [--no-auth]
+```
+
+| Flag | Behavior |
+| --- | --- |
+| `--url` | Required. Must start with `http://` or `https://`. |
+| `--width` / `--height` | Optional logical pixel size, clamped to safe bounds. |
+| `--title` | Optional native window title. Hosts should pass a product-appropriate title. |
+| `--header` | Adds one request header; repeatable. Header syntax must be `Name: Value`. |
+| `--token-env` | Environment variable that holds the access token. Default: `A3S_OS_TOKEN`. |
+| `--no-auth` | Disables browser-storage auth seeding. |
+
+Use environment variables for session credentials. `--header` values are command
+line arguments, so do not pass sensitive bearer tokens through that flag unless
+the host process model already treats argv as protected.
+
+## Auth Bootstrap
+
+Many embedded runtime pages restore login state from browser storage rather than
+cookies. `a3s-webview` handles that case before the page's own scripts run:
+
+1. Read the access token from `--token-env` or `A3S_OS_TOKEN`.
+2. Store it as both `access_token` and `auth_token`.
+3. If `A3S_OS_REFRESH_TOKEN` is set, store `refresh_token`.
+4. Resolve the current user with same-origin `GET /api/v1/users/me`.
+5. Store the returned user object as `auth_user`.
+
+If the access token is missing or `--no-auth` is set, the helper opens the URL
+without auth seeding.
 
 ## Install
 
@@ -27,9 +68,25 @@ brew install a3s-lab/tap/a3s-webview
 cargo install --git https://github.com/A3S-Lab/WebView
 ```
 
-The Homebrew `a3s` formula depends on `a3s-webview` on macOS.
+On macOS, the Homebrew `a3s` formula can install `a3s-webview` alongside the
+umbrella CLI.
 
-## Boundary
+## Platform Notes
 
-This helper is not the document site UI and not the agent runtime. It exists for
-sized native popup views that accompany terminal workflows.
+| Platform | Backend | Notes |
+| --- | --- | --- |
+| macOS | WKWebView | Uses the system framework and native titlebar navigation controls. |
+| Linux | WebKitGTK | Requires WebKitGTK development/runtime packages when building from source. |
+| Windows | WebView2 | Uses the WebView2 runtime that ships with modern Windows. |
+
+If the helper is not installed, `a3s code` can fall back to opening normal links
+in the system browser. That fallback is owned by the TUI host, not by the helper
+process itself.
+
+## Boundaries
+
+- This is not the documentation site UI.
+- This is not the agent runtime.
+- It is for partial, trusted runtime popup views that accompany terminal
+  workflows.
+- Plain inspectable links should still open in the user's normal browser.

@@ -1,24 +1,61 @@
 ---
 title: A3S WebView
-description: 从 a3s code TUI 渲染 A3S OS viewUrl 的原生弹窗 helper。
+description: 从 a3s code TUI 打开 runtime viewUrl 弹窗的原生 WebView helper。
 ---
 
 # A3S WebView
 
-`a3s-webview` 是 `a3s code` 终端 UI 的小型原生 WebView helper。终端网格不能嵌入
-浏览器视图，所以当 A3S OS 返回一个用于固定尺寸弹窗的 partial `viewUrl` 时，TUI
-可以启动这个 helper。
+`a3s-webview` 是 `a3s code` 终端 UI 的小型原生 WebView helper。TUI 不能在终端网格里
+嵌入浏览器，因此当 runtime 返回一个用于固定尺寸弹窗的 partial `viewUrl` 时，TUI
+可以启动这个 helper，而不是把它当成完整浏览器标签页打开。
+
+它会打开一个原生窗口，加载一个 `http://` 或 `https://` URL，并在窗口关闭时退出。
 
 ## 能力地图
 
 | 领域 | 当前能力 |
 | --- | --- |
-| Window helper | 按请求的逻辑尺寸和标题打开一个原生窗口。 |
-| URL 策略 | 只接受 `http://` 与 `https://` URL；普通链接仍可打开系统浏览器。 |
-| Auth seeding | 从环境变量读取认证值，在导航前写入 browser storage，避免敏感值出现在进程参数里。 |
+| Window helper | 按请求的逻辑尺寸和标题打开一个聚焦的原生窗口。 |
+| URL 策略 | 只接受 `http://` 和 `https://`；拒绝 `file:`、`data:` 与自定义 scheme。 |
+| 尺寸保护 | 宽度限制在 `240..4000`，高度限制在 `180..3000`；默认尺寸为 `900 x 680`。 |
+| Auth seeding | 导航前从环境变量读取 access token，并写入 browser storage，避免 token 出现在 argv。 |
+| Refresh token | 存在 `A3S_OS_REFRESH_TOKEN` 时，也会写入 `refresh_token`。 |
+| 用户初始化 | 通过同源 `GET /api/v1/users/me` 写入 `auth_user`，让嵌入页能恢复登录态。 |
 | Headers | 支持重复 `--header 'Name: Value'` 参数，注入宿主提供的请求 metadata。 |
-| 平台后端 | 通过 `wry`/`tao` 支持 macOS WKWebView、Linux WebKitGTK、Windows WebView2。 |
-| 降级 | helper 不可用时，TUI 可以退回系统浏览器。 |
+| 导航控件 | macOS 使用原生 titlebar 按钮；Linux/Windows 注入小型 back/forward/reload toolbar。 |
+| 平台后端 | 通过 `wry` 和 `tao` 使用 macOS WKWebView、Linux WebKitGTK、Windows WebView2。 |
+
+## 用法
+
+```text
+a3s-webview --url <http(s)://URL> [--width N] [--height N] [--title T]
+            [--header 'Name: Value']... [--token-env NAME] [--no-auth]
+```
+
+| 参数 | 行为 |
+| --- | --- |
+| `--url` | 必填。必须以 `http://` 或 `https://` 开头。 |
+| `--width` / `--height` | 可选逻辑像素尺寸，会被限制到安全范围。 |
+| `--title` | 可选原生窗口标题。宿主应传入适合当前产品的标题。 |
+| `--header` | 添加一个请求头，可重复；格式必须是 `Name: Value`。 |
+| `--token-env` | 保存 access token 的环境变量名。默认：`A3S_OS_TOKEN`。 |
+| `--no-auth` | 禁用 browser-storage auth seeding。 |
+
+会话凭据应优先通过环境变量传递。`--header` 的值属于命令行参数；除非宿主进程模型已经把
+argv 视为受保护数据，否则不要通过这个参数传敏感 bearer token。
+
+## Auth 初始化
+
+很多嵌入式 runtime 页面从 browser storage 而不是 cookie 恢复登录态。`a3s-webview`
+会在页面自身脚本运行前完成初始化：
+
+1. 从 `--token-env` 指定的变量或 `A3S_OS_TOKEN` 读取 access token。
+2. 同时写入 `access_token` 和 `auth_token`。
+3. 如果设置了 `A3S_OS_REFRESH_TOKEN`，写入 `refresh_token`。
+4. 使用同源 `GET /api/v1/users/me` 解析当前用户。
+5. 把返回的用户对象写入 `auth_user`。
+
+如果 access token 缺失，或传入了 `--no-auth`，helper 会直接打开 URL，不做 auth seeding。
 
 ## 安装
 
@@ -27,9 +64,22 @@ brew install a3s-lab/tap/a3s-webview
 cargo install --git https://github.com/A3S-Lab/WebView
 ```
 
-macOS 上 Homebrew `a3s` formula 会依赖 `a3s-webview`。
+macOS 上，Homebrew `a3s` formula 可以随 umbrella CLI 一起安装 `a3s-webview`。
+
+## 平台说明
+
+| 平台 | 后端 | 说明 |
+| --- | --- | --- |
+| macOS | WKWebView | 使用系统框架，并在原生 titlebar 中提供导航按钮。 |
+| Linux | WebKitGTK | 从源码构建时需要 WebKitGTK development/runtime packages。 |
+| Windows | WebView2 | 使用现代 Windows 自带的 WebView2 runtime。 |
+
+如果 helper 未安装，`a3s code` 可以退回到系统浏览器打开普通链接。这个降级由 TUI 宿主负责，
+不是 helper 进程自身负责。
 
 ## 边界
 
-这个 helper 不是文档站 UI，也不是 agent runtime。它只服务于终端工作流旁边的固定尺寸
-原生弹窗视图。
+- 它不是文档站 UI。
+- 它不是 agent runtime。
+- 它只服务于终端工作流旁边的 trusted partial runtime popup views。
+- 普通、需要检查的链接仍应交给用户常用浏览器打开。
