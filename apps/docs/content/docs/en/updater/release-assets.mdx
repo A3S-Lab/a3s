@@ -1,0 +1,60 @@
+---
+title: Release Assets
+description: Platform detection, expected asset naming, GitHub API client behavior, download, and safe tar.gz extraction.
+---
+
+# Release Assets
+
+A3S Updater expects GitHub Release assets to follow a strict naming convention.
+
+## Platform Detection
+
+`platform_target()` normalizes the host to:
+
+| Host | Normalized value |
+| --- | --- |
+| macOS | `darwin` |
+| Linux | `linux` |
+| aarch64 | `arm64` |
+| x86_64 | `x86_64` |
+
+Other operating systems or architectures return an unsupported-platform error.
+
+## Asset Naming
+
+Assets are matched exactly:
+
+```text
+<binary>-<version>-<os>-<arch>.tar.gz
+```
+
+For example, a binary named `a3s-tool` at version `0.3.0` on Linux x86_64 would
+look for:
+
+```text
+a3s-tool-0.3.0-linux-x86_64.tar.gz
+```
+
+The version comes from the parsed GitHub release tag, so both `v0.3.0` and
+`0.3.0` tags normalize to `0.3.0`.
+
+## GitHub Client
+
+`fetch_latest_release(owner, repo)` calls the GitHub Releases API with an
+`Accept: application/vnd.github+json` header and a stable updater user agent.
+Non-success responses include the response body in the error for diagnostics.
+
+## Download And Extract
+
+`download_and_extract(url, binary_name)`:
+
+1. Downloads the asset with a 300-second timeout.
+2. Creates a unique temporary directory.
+3. Decompresses the gzip stream.
+4. Reads tar entries.
+5. Extracts only regular files.
+6. Selects only the file whose final file name equals `binary_name`.
+7. Returns the extracted binary path plus the `TempDir` that keeps it alive.
+
+Symlinks and hardlinks are ignored during extraction to avoid crafted archive
+path issues.

@@ -1,0 +1,44 @@
+---
+title: Installation Safety
+description: Executable replacement、backup restore、Unix permissions、temp-dir ownership 和 updater boundaries。
+---
+
+# Installation Safety
+
+`replace_binary(new_binary_path)` 执行最后一步：原地替换当前 running executable。
+
+## Replacement Steps
+
+1. 解析 `std::env::current_exe()`。
+2. Canonicalize executable path。
+3. 把当前 binary rename 成 `.bak` path。
+4. 把 new binary copy 到原路径。
+5. 如果 copy 失败，恢复 backup。
+6. 在 Unix 上设置 permissions 为 `0755`。
+7. 成功替换后删除 backup。
+
+调用方拥有 `download_and_extract` 返回的 temporary directory。Replacement 结束后 drop 这个
+`TempDir` 会清理 extracted files。
+
+## Failure Handling
+
+| Failure | Behavior |
+| --- | --- |
+| 无法确定 current executable | 改动文件前返回 error。 |
+| 无法 canonicalize current executable | 改动文件前返回 error。 |
+| 无法 rename to backup | copy 前返回 error。 |
+| Copy fails | 尝试把 backup rename 回原位，然后返回 error。 |
+| Permission update fails | copy 后返回 error。 |
+
+## Boundaries
+
+A3S Updater 不负责：
+
+- refresh Homebrew taps
+- 管理 package-manager installations
+- 把 caller restart 到 new binary
+- 验证 detached signature
+- 支持 Windows binary replacement
+- 推断 configured naming convention 之外的 asset names
+
+这些职责属于 embedding CLI 或 release pipeline。

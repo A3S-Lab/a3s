@@ -1,0 +1,45 @@
+---
+title: Installation Safety
+description: Executable replacement, backup restore, Unix permissions, temp-dir ownership, and updater boundaries.
+---
+
+# Installation Safety
+
+`replace_binary(new_binary_path)` performs the final in-place replacement of the
+currently running executable.
+
+## Replacement Steps
+
+1. Resolve `std::env::current_exe()`.
+2. Canonicalize the executable path.
+3. Rename the current binary to a `.bak` path.
+4. Copy the new binary into the original path.
+5. Restore the backup if the copy fails.
+6. On Unix, set permissions to `0755`.
+7. Remove the backup after successful replacement.
+
+The caller owns the temporary directory returned by `download_and_extract`.
+Dropping that `TempDir` cleans up extracted files after replacement.
+
+## Failure Handling
+
+| Failure | Behavior |
+| --- | --- |
+| Cannot determine current executable | Return an error before changing files. |
+| Cannot canonicalize current executable | Return an error before changing files. |
+| Cannot rename to backup | Return an error before copying. |
+| Copy fails | Attempt to rename the backup back into place, then return an error. |
+| Permission update fails | Return an error after copy. |
+
+## Boundaries
+
+A3S Updater does not:
+
+- refresh Homebrew taps
+- manage package-manager installations
+- restart the caller into the new binary
+- verify a detached signature
+- support Windows binary replacement
+- infer asset names outside the configured naming convention
+
+Those responsibilities belong to the embedding CLI or release pipeline.

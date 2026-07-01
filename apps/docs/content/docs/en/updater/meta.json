@@ -1,4 +1,9 @@
 {
   "title": "A3S Updater",
-  "pages": ["index"]
+  "pages": [
+    "index",
+    "api-flow",
+    "release-assets",
+    "installation-safety"
+  ]
 }

@@ -8,16 +8,27 @@ description: 基于 GitHub Releases 的 A3S CLI 二进制自更新库。
 `a3s-updater` 是 A3S 命令行工具使用的小型库：检查 GitHub Releases、下载匹配当前
 平台的 archive、提取目标二进制，并替换当前运行的二进制。
 
+当前 crate version 是 `a3s-updater` `0.2.0`。
+
 ## 能力地图
 
 | 领域 | 当前能力 |
 | --- | --- |
-| Release 查询 | 从配置的 owner/repository 获取 latest GitHub release。 |
+| Release 查询 | 通过 GitHub Releases API 从配置的 owner/repository 获取 latest release。 |
 | 版本 | 解析带可选 `v` 前缀的 semver tag，并与当前二进制版本比较。 |
 | 平台匹配 | 将支持的目标规范化为 `darwin` 或 `linux`，以及 `arm64` 或 `x86_64`。 |
 | Asset 命名 | 查找 `<binary>-<version>-<os>-<arch>.tar.gz` 形态的 archive。 |
-| Archive 处理 | 下载 `.tar.gz`，只提取 regular file，并按文件名选择目标二进制。 |
+| Archive 处理 | 下载 `.tar.gz`，只把 regular files 提取到 temporary directory，并按文件名选择目标二进制。 |
 | 安装 | 当前 executable 先改名为 backup，再复制新 binary，设置 Unix executable 权限；复制失败会恢复 backup。 |
+
+## 从这里开始
+
+- [API Flow](/cn/docs/updater/api-flow) 解释 `UpdateConfig`、`run_update`、
+  release lookup、semver comparison 和 manual fallback message。
+- [Release Assets](/cn/docs/updater/release-assets) 说明 platform detection、
+  expected asset names、download 和 archive extraction。
+- [Installation Safety](/cn/docs/updater/installation-safety) 覆盖 executable
+  replacement、backup/restore behavior、permissions 和 boundaries。
 
 ## 边界
 

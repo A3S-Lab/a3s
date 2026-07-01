@@ -1,0 +1,56 @@
+---
+title: Release Assets
+description: Platform detection、expected asset naming、GitHub API client behavior、download 和 safe tar.gz extraction。
+---
+
+# Release Assets
+
+A3S Updater 要求 GitHub Release assets 遵循严格命名约定。
+
+## Platform Detection
+
+`platform_target()` 会把 host normalized 成：
+
+| Host | Normalized value |
+| --- | --- |
+| macOS | `darwin` |
+| Linux | `linux` |
+| aarch64 | `arm64` |
+| x86_64 | `x86_64` |
+
+其它 operating systems 或 architectures 会返回 unsupported-platform error。
+
+## Asset Naming
+
+Assets 必须精确匹配：
+
+```text
+<binary>-<version>-<os>-<arch>.tar.gz
+```
+
+例如，名为 `a3s-tool`、version `0.3.0`、运行在 Linux x86_64 的 binary 会查找：
+
+```text
+a3s-tool-0.3.0-linux-x86_64.tar.gz
+```
+
+Version 来自解析后的 GitHub release tag，因此 `v0.3.0` 和 `0.3.0` 都会 normalize 成 `0.3.0`。
+
+## GitHub Client
+
+`fetch_latest_release(owner, repo)` 使用 `Accept: application/vnd.github+json` header 和稳定 updater
+user agent 调用 GitHub Releases API。非成功 response 会把 response body 放入 error，方便诊断。
+
+## Download And Extract
+
+`download_and_extract(url, binary_name)`：
+
+1. 使用 300 秒 timeout 下载 asset。
+2. 创建 unique temporary directory。
+3. 解压 gzip stream。
+4. 读取 tar entries。
+5. 只提取 regular files。
+6. 只选择 final file name 等于 `binary_name` 的文件。
+7. 返回 extracted binary path，以及保持它存活的 `TempDir`。
+
+Extraction 会忽略 symlinks 和 hardlinks，以避免 crafted archive path 问题。
