@@ -1,0 +1,67 @@
+---
+title: Pruning And Tests
+description: PrunePolicy behavior、backend support、test coverage 与 implementation boundaries。
+---
+
+# Memory Pruning And Tests
+
+`MemoryStore` 包含一个可选 `prune` method。默认 trait implementation 为 no-op，以保持兼容；随 crate 提供的 stores 实现了真实 pruning。
+
+## PrunePolicy
+
+```rust
+use a3s_memory::PrunePolicy;
+
+let policy = PrunePolicy {
+    max_age_days: 90,
+    min_importance_to_keep: 0.5,
+    max_items: 1000,
+};
+```
+
+| Field | Default | 含义 |
+| --- | --- | --- |
+| `max_age_days` | `90` | Stale memory 的年龄阈值。 |
+| `min_importance_to_keep` | `0.5` | Importance 大于等于该值的 item 会被 age-based deletion 保护。 |
+| `max_items` | `0` | Age pruning 后的硬性上限。`0` 表示 unlimited。 |
+
+## Algorithm
+
+Pruning 有两个阶段：
+
+1. 删除同时满足 older than `max_age_days` 且 below `min_importance_to_keep` 的 items。
+2. 如果 `max_items` 大于零且 store 仍超过 cap，继续删除低排名 items，直到满足 cap。
+
+`InMemoryStore` 和 `FileMemoryStore` 在 cap 阶段使用 relevance ordering。`SqliteMemoryStore` 应用 hard cap 时保留更高 importance、更新的 rows。
+
+## Store Support
+
+| Store | Pruning support |
+| --- | --- |
+| `InMemoryStore` | 在内存中移除 stale low-importance items，并执行 `max_items`。 |
+| `FileMemoryStore` | 删除 stale item files，更新 `index.json`，并执行 `max_items`。 |
+| `SqliteMemoryStore` | 从 SQLite 删除 stale rows，并用 SQL 执行 `max_items`。 |
+| Custom store | 除非 override `prune`，否则使用 no-op default。 |
+
+## Tests
+
+仓库包含：
+
+| Area | Covered behavior |
+| --- | --- |
+| Contract tests | Store、retrieve、missing retrieval、content search、case-insensitive search、search limits、tag search、recent items、important items、delete、clear、count，以及 `InMemoryStore`/`FileMemoryStore` 上的 relevance ordering。 |
+| File store tests | Persistence across instances、`index.json` 删除后的 index rebuild、memory ID path traversal prevention。 |
+| Memory item tests | Builder chain、tag replacement、importance clamping、memory type、access recording、metadata，以及 object-safe `Arc<dyn MemoryStore>` usage。 |
+| Relevance tests | Custom weights 与 old-item decay behavior。 |
+| SQLite tests | Store/retrieve、FTS search、tag search、session-log roundtrip、important/episodic item 的 Markdown export、persistence、delete、clear、count 和 pruning。 |
+
+## Validation Boundary
+
+Tests 覆盖 public storage contract 和 feature-gated SQLite backend。它们不验证 A3S Code prompt injection、session memory tiering 或 external vector embedding quality，因为这些不属于 `a3s-memory`。
+
+## Operational Notes
+
+- Pruning 是显式动作；store 不运行 background retention task。
+- 高 importance 的 old memories 会被 age pruning 保护。
+- `max_items` 是 hard storage cap，可能移除本来有效的 memories。
+- 对 `SqliteMemoryStore` 来说，Markdown files 是 append-only review artifacts，database rows 删除时不会同步 prune。

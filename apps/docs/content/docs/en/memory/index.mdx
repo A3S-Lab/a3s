@@ -15,15 +15,23 @@ Core (stable)                   Extensions (replaceable)
 ─────────────────────────       ─────────────────────────
 MemoryStore (trait)             InMemoryStore
 MemoryItem                      FileMemoryStore
-MemoryType                      (your custom backend)
-RelevanceConfig
+MemoryType                      SqliteMemoryStore (feature-gated)
+RelevanceConfig                 (your custom backend)
+PrunePolicy
 ```
 
 ## Install
 
 ```toml
 [dependencies]
-a3s-memory = "0.1"
+a3s-memory = "0.1.1"
+```
+
+SQLite storage is feature-gated:
+
+```toml
+[dependencies]
+a3s-memory = { version = "0.1.1", features = ["sqlite"] }
 ```
 
 For the A3S Code v2.1.0 Node SDK, the integration-tested path is
@@ -54,11 +62,17 @@ const session = agent.session(process.cwd(), {
     "RelevanceConfig": {
       description: "Scoring parameters — decay, importance weight, recency weight",
     },
+    "PrunePolicy": {
+      description: "Automatic pruning parameters — max age, minimum importance to keep, hard item cap",
+    },
     "InMemoryStore": {
       description: "Ephemeral backend backed by tokio::sync::RwLock",
     },
     "FileMemoryStore": {
       description: "Persistent backend — atomic writes, in-memory index, index rebuild",
+    },
+    "SqliteMemoryStore": {
+      description: "Feature-gated persistent backend — SQLite WAL, FTS5 BM25 search, Markdown export, session log",
     },
   }}
 />

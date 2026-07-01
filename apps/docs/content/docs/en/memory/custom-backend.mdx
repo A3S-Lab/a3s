@@ -13,7 +13,7 @@ Implement the `MemoryStore` trait to use any storage system. The `search()` meth
 ## MemoryStore trait
 
 ```rust
-use a3s_memory::{MemoryItem, MemoryStore};
+use a3s_memory::{MemoryItem, MemoryStore, PrunePolicy};
 use async_trait::async_trait;
 
 struct MyStore { /* ... */ }
@@ -29,6 +29,7 @@ impl MemoryStore for MyStore {
     async fn delete(&self, id: &str) -> anyhow::Result<()> { todo!() }
     async fn clear(&self) -> anyhow::Result<()> { todo!() }
     async fn count(&self) -> anyhow::Result<usize> { todo!() }
+    async fn prune(&self, policy: &PrunePolicy) -> anyhow::Result<usize> { todo!() }
 }
 ```
 
@@ -62,6 +63,9 @@ impl MemoryStore for MyStore {
     },
     "count()": {
       description: "Total item count",
+    },
+    "prune(policy)": {
+      description: "Optional retention pass; default trait implementation is a no-op",
     },
   }}
 />
@@ -98,6 +102,7 @@ impl MemoryStore for VectorStore {
     # async fn delete(&self, id: &str) -> anyhow::Result<()> { todo!() }
     # async fn clear(&self) -> anyhow::Result<()> { todo!() }
     # async fn count(&self) -> anyhow::Result<usize> { todo!() }
+    # async fn prune(&self, policy: &a3s_memory::PrunePolicy) -> anyhow::Result<usize> { let _ = policy; Ok(0) }
 }
 ```
 

@@ -6,8 +6,10 @@
     "---核心---",
     "memory-item",
     "relevance",
+    "pruning-and-tests",
     "---存储后端---",
     "file-store",
+    "sqlite-store",
     "custom-backend"
   ]
 }

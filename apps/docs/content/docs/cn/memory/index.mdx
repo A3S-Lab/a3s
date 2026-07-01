@@ -15,15 +15,23 @@ import { TypeTable } from 'fumadocs-ui/components/type-table';
 ─────────────────────────       ─────────────────────────
 MemoryStore (trait)             InMemoryStore
 MemoryItem                      FileMemoryStore
-MemoryType                      （自定义后端）
-RelevanceConfig
+MemoryType                      SqliteMemoryStore（feature-gated）
+RelevanceConfig                 （自定义后端）
+PrunePolicy
 ```
 
 ## 安装
 
 ```toml
 [dependencies]
-a3s-memory = "0.1"
+a3s-memory = "0.1.1"
+```
+
+SQLite storage 需要启用 feature：
+
+```toml
+[dependencies]
+a3s-memory = { version = "0.1.1", features = ["sqlite"] }
 ```
 
 A3S Code v2.1.0 Node SDK 当前经过集成测试的路径，是在 `agent.session()`
@@ -54,11 +62,17 @@ const session = agent.session(process.cwd(), {
     "RelevanceConfig": {
       description: "评分参数——衰减、重要性权重、时效性权重",
     },
+    "PrunePolicy": {
+      description: "自动 pruning 参数——最大年龄、保留重要性阈值、硬性 item 上限",
+    },
     "InMemoryStore": {
       description: "基于 tokio::sync::RwLock 的临时后端",
     },
     "FileMemoryStore": {
       description: "持久化后端——原子写入、内存索引、索引重建",
+    },
+    "SqliteMemoryStore": {
+      description: "Feature-gated 持久化后端——SQLite WAL、FTS5 BM25 search、Markdown export、session log",
     },
   }}
 />
