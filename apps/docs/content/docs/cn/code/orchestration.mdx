@@ -230,6 +230,13 @@ store 相关见 [Persistence](/cn/docs/code/persistence)，迁移路径见
 [Multi-Machine](/cn/docs/code/multi-machine)。
 
 ```ts
+import { Agent, FileSessionStore } from '@a3s-lab/code';
+
+const agent = await Agent.create('agent.acl');
+const session = agent.session('/repo', {
+  sessionStore: new FileSessionStore('./.a3s/sessions'),
+});
+
 // First attempt — may be interrupted partway through.
 let outcomes = await session.parallelResumable(specs, 'release-batch-42');
 
@@ -238,6 +245,13 @@ outcomes = await session.parallelResumable(specs, 'release-batch-42');
 ```
 
 ```python
+from a3s_code import Agent, FileSessionStore, SessionOptions
+
+agent = Agent.create("agent.acl")
+opts = SessionOptions()
+opts.session_store = FileSessionStore("./.a3s/sessions")
+session = agent.session("/repo", opts)
+
 # First attempt — may be interrupted partway through.
 outcomes = session.parallel_resumable(specs, "release-batch-42")
 
