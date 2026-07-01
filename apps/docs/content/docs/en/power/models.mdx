@@ -73,7 +73,7 @@ curl -N http://localhost:11434/v1/models/pull \
 # Private/gated model with HF token
 curl -N http://localhost:11434/v1/models/pull \
   -H "Content-Type: application/json" \
-  -d '{"name": "meta-llama/Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Q4_K_M.gguf", "token": "hf_..."}'
+  -d '{"name": "meta-llama/Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Q4_K_M.gguf", "token": "HF_ACCESS_TOKEN"}'
 
 # Force re-download
 curl -N http://localhost:11434/v1/models/pull \
