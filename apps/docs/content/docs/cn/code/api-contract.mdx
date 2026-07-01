@@ -40,9 +40,8 @@ storage_backend = "file"
 sessions_dir = "/tmp/a3s-doc-stores/acl-storage"
 ```
 
-`storage_url` 会被解析为自定义存储元数据，但它不是本地文件型 session
-persistence 路径。ACL 中使用 `sessions_dir`，或在 SDK options 中传
-`sessionStore`。
+本契约不覆盖 `storage_url`。它不是本地文件型 session persistence 路径；
+ACL 中使用 `sessions_dir`，或在 SDK options 中传 `sessionStore`。
 
 ## Session Options
 

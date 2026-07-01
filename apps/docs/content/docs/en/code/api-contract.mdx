@@ -42,9 +42,9 @@ storage_backend = "file"
 sessions_dir = "/tmp/a3s-doc-stores/acl-storage"
 ```
 
-`storage_url` is parsed for custom storage metadata, but it is not the local
-file-session persistence path. Use `sessions_dir` in ACL or pass
-`sessionStore` in SDK options.
+This contract does not cover `storage_url`. It is not the local file-session
+persistence path; use `sessions_dir` in ACL or pass `sessionStore` in SDK
+options.
 
 ## Session Options
 
