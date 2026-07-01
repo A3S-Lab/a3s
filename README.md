@@ -67,7 +67,7 @@ Everything else is connective tissue — the libraries the components are built 
 | **a3s-event** | pluggable event subscription, dispatch, and persistence |
 | **a3s-common** | shared primitives — privacy classification, tool definitions, transport types |
 | **a3s-tui** | a TEA (Elm-Architecture) framework for terminal UIs |
-| **a3s-gui** | native cross-platform GUI renderer for Web-compatible React Aria apps |
+| **a3s-gui** | native cross-platform GUI renderer for Web-compatible React UI |
 | **a3s-updater** | self-update for the CLI binaries via GitHub Releases |
 
 And **a3s** — the CLI — is the stack packaged as a usable product: `a3s code` launches an interactive
@@ -119,7 +119,7 @@ a3s-observer and is answerable to a3s-sentry.
 | [a3s-acl](crates/acl/) | 0.2.1 | Agent Configuration Language (HCL-like parser) |
 | [a3s-event](crates/event/) | 0.3.0 | Pluggable event subscription, dispatch, and persistence |
 | [a3s-tui](crates/tui/) | 0.1.4 | TEA framework for terminal UIs with Flexbox layout |
-| [a3s-gui](crates/gui/) | 0.1.0 | Native cross-platform GUI renderer for Web-compatible React Aria apps - direct AppKit/WinUI/GTK target, no WebView |
+| [a3s-gui](crates/gui/) | 0.1.0 | Native cross-platform GUI renderer for Web-compatible React UI - direct AppKit/WinUI/GTK target, no WebView |
 | [a3s-common](crates/common/) | 0.1.1 | Shared primitives and transport types |
 | [a3s-updater](crates/updater/) | 0.2.0 | Self-update for CLI binaries via GitHub Releases |
 
