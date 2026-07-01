@@ -42,6 +42,20 @@ Agent / AgentSession
 
 ## 安装
 
+想使用交互式终端应用时安装 CLI：
+
+```bash
+brew install A3S-Lab/tap/a3s
+
+# 或从 crates.io 安装
+cargo install a3s
+
+# 或从 CLI 仓库安装
+cargo install --git https://github.com/A3S-Lab/Cli
+```
+
+当你要把 A3S Code 嵌入自己的产品时，安装 SDK 包：
+
 ```bash
 npm install @a3s-lab/code
 pip install a3s-code
@@ -51,7 +65,7 @@ cargo add a3s-code-core
 ## 配置
 
 A3S Code 使用 ACL。不要把真实 API Key、私有模型端点、本地配置路径或
-tenant/user 标识提交到仓库；提交只通过环境变量解析 secret 的模板。
+tenant/user 标识提交到仓库；提交只通过环境变量解析凭据的模板。
 
 ```text
 default_model = "provider/model-id"
@@ -79,7 +93,20 @@ storage_backend = "file"
 `auto_parallel = false` 只关闭自动并行子 agent fan-out。手动
 `parallel_task` 和 SDK `session.tasks(...)` 仍然可用，除非你单独关闭手动委派。
 
-## 使用
+## 使用 TUI
+
+在你希望 agent 检查的 workspace 中运行 `a3s code`：
+
+```bash
+a3s code
+a3s code resume <session-id>
+a3s update
+```
+
+TUI 会按顺序发现配置：`A3S_CONFIG_FILE`、从当前目录向上查找的
+`.a3s/config.acl`，以及 `~/.a3s/config.acl`。
+
+## 使用 SDK
 
 ```ts
 import { Agent } from '@a3s-lab/code';
@@ -104,6 +131,7 @@ console.log(result.verificationSummaryText);
 
 ## 入口
 
+- [文件系统优先](/cn/docs/code/filesystem-first)覆盖可审查的项目约定和 AgentDir 约定。
 - [API 契约](/cn/docs/code/api-contract)说明经过集成测试的 Node SDK surface。
 - [会话](/cn/docs/code/sessions)覆盖生命周期、streaming、run 状态、持久化与取消。
 - [工具](/cn/docs/code/tools)覆盖直接工具、typed tool errors、结构化输出与 QuickJS programs。

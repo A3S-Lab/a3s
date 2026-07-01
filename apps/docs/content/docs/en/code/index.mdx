@@ -45,6 +45,20 @@ Agent / AgentSession
 
 ## Install
 
+Install the CLI when you want the interactive terminal app:
+
+```bash
+brew install A3S-Lab/tap/a3s
+
+# or from crates.io
+cargo install a3s
+
+# or from the CLI repository
+cargo install --git https://github.com/A3S-Lab/Cli
+```
+
+Install an SDK package when you are embedding A3S Code in another product:
+
 ```bash
 npm install @a3s-lab/code
 pip install a3s-code
@@ -55,7 +69,7 @@ cargo add a3s-code-core
 
 A3S Code uses ACL. Keep real API keys, private model endpoints, local config
 paths, and tenant/user identifiers out of commits. Commit templates that resolve
-secrets from the environment.
+credentials from the environment.
 
 ```text
 default_model = "provider/model-id"
@@ -84,7 +98,20 @@ storage_backend = "file"
 Manual `parallel_task` and SDK `session.tasks(...)` remain available unless
 manual delegation is disabled separately.
 
-## Use
+## Use The TUI
+
+Run `a3s code` from the workspace you want the agent to inspect:
+
+```bash
+a3s code
+a3s code resume <session-id>
+a3s update
+```
+
+The TUI discovers config from `A3S_CONFIG_FILE`, then `.a3s/config.acl` walking
+upward from the current directory, then `~/.a3s/config.acl`.
+
+## Use The SDK
 
 ```ts
 import { Agent } from '@a3s-lab/code';
@@ -109,6 +136,7 @@ console.log(result.verificationSummaryText);
 
 ## Entry Points
 
+- [Filesystem-first](/docs/code/filesystem-first) covers reviewable project and AgentDir conventions.
 - [API Contract](/docs/code/api-contract) documents the integration-tested Node SDK surface.
 - [Sessions](/docs/code/sessions) covers lifecycle, streaming, run state, persistence, and cancellation.
 - [Tools](/docs/code/tools) covers direct tools, typed tool errors, structured output, and QuickJS programs.
