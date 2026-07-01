@@ -21,12 +21,16 @@ NATS JetStream 或自定义后端。
 | 可靠性 | manual ack/nak、dead-letter queue trait、provider 状态报告。 |
 | Schema | Schema registry，支持事件类型校验和兼容性检查。 |
 | Metrics | publish、subscribe、error、latency 的 lock-free 计数器。 |
-| 可选特性 | AES-256-GCM payload encryption、CloudEvents v1.0 转换、Knative 风格 routing、trigger 和 sink。 |
+| Security | 可选 AES-256-GCM payload encryption，包含 key id 和支持轮换的解密路径。 |
+| State | `FileStateStore` 与 `MemoryStateStore` 可在进程重启后恢复 subscription filters。 |
+| 可选特性 | CloudEvents v1.0 转换、Knative 风格 routing、trigger、sink、event sources 和 cross-session messaging traits。 |
 
 ## 从这里开始
 
 - [Providers](/cn/docs/event/providers) 解释 `MemoryProvider`、`NatsProvider`、subject 命名和 custom provider contract。
 - [Schemas And Routing](/cn/docs/event/schemas-routing) 覆盖 typed events、schema compatibility、CloudEvents、broker/trigger routing、sinks 和 DLQ。
+- [Payload Security](/cn/docs/event/payload-security) 说明 encrypted payload envelope、key rotation 以及 publish/list decrypt 行为。
+- [State And Messaging](/cn/docs/event/state-and-messaging) 说明 subscription state stores、event sources 和 cross-session messaging ports。
 - [Operations](/cn/docs/event/operations) 说明 feature flags、metrics、publish/subscribe options 和责任边界。
 
 ## Feature Flags

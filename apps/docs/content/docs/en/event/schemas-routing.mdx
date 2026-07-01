@@ -38,6 +38,26 @@ With the `cloudevents` feature, events can be converted to and from CloudEvents
 v1.0 envelopes. Use this when the event crosses systems that already understand
 CloudEvents. Provider-native subjects still carry delivery and filtering.
 
+Conversion is intentionally lossless for A3S-created events:
+
+| CloudEvents field | A3S mapping |
+| --- | --- |
+| `id` | `Event.id` |
+| `source` | `Event.source` |
+| `type` | `Event.event_type`, or `a3s.event` when the event is untyped. |
+| `subject` | `Event.subject` |
+| `data` | `Event.payload` |
+| `time` | `Event.timestamp` converted to RFC 3339 milliseconds. |
+| `a3scategory` | Extension for `Event.category`. |
+| `a3sversion` | Extension for `Event.version`. |
+| `a3ssummary` | Extension for `Event.summary`. |
+| `a3stimestamp` | Extension for the original Unix millisecond timestamp. |
+| `a3smeta_<key>` | Extension entries for string metadata. |
+
+External CloudEvents that do not include A3S extensions still convert into
+`Event`; missing A3S fields fall back to empty category, version `1`, empty
+summary, and `null` payload when no data is present.
+
 ## Broker And Trigger Routing
 
 With the `routing` feature, `Broker` evaluates `Trigger` filters and delivers

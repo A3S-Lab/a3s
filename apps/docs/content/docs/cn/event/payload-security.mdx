@@ -1,0 +1,61 @@
+---
+title: Payload Security
+description: AES-256-GCM event payload encryption、key rotation 和解密边界。
+---
+
+# Payload Security
+
+`encryption` feature 增加 application-level payload encryption。它独立于 transport security：TLS 保护连接，而 `EventEncryptor` 会在 event 写入 provider 前保护 JSON payload。
+
+## Encrypted Envelope
+
+`Aes256GcmEncryptor` 会把 `event.payload` 替换为 envelope：
+
+| 字段 | 含义 |
+| --- | --- |
+| `keyId` | 加密 payload 所用的 registered key。 |
+| `nonce` | Base64 编码的 96-bit AES-GCM nonce。 |
+| `ciphertext` | Base64 编码的 ciphertext 和 authentication tag。 |
+| `encrypted` | `EncryptedPayload::is_encrypted` 使用的 marker。 |
+
+Envelope 仍是普通 JSON，因此 provider history、NATS JetStream 和 custom providers 不需要特殊二进制处理。
+
+## 配置 Encryptor
+
+```rust
+use std::sync::Arc;
+use a3s_event::{Aes256GcmEncryptor, EventBus};
+use a3s_event::provider::memory::MemoryProvider;
+
+let mut bus = EventBus::new(MemoryProvider::default());
+let key = [0x42; 32];
+let encryptor = Arc::new(Aes256GcmEncryptor::new("key-2026-01", &key));
+
+bus.set_encryptor(encryptor);
+```
+
+配置 encryptor 后：
+
+- `publish(...)`、`publish_event(...)` 和 `publish_event_with_options(...)` 会在写入 provider 前加密 payload。
+- `list_events(...)` 会检测 encrypted envelope，并在返回 history 前 best-effort 解密。
+- `EventMetrics` 会为成功的加解密操作递增 encrypt/decrypt counters。
+- 解密使用 envelope 中的 `keyId`，因此只要旧 key 仍注册，轮换前的消息仍可读取。
+
+## Key Rotation
+
+`Aes256GcmEncryptor` 使用一个 active key 加密，并可用任意 registered key 解密。
+
+```rust
+let mut encryptor = Aes256GcmEncryptor::new("key-2026-01", &[0x42; 32]);
+
+encryptor.add_key("key-2026-02", &[0x7a; 32])?;
+encryptor.rotate_to("key-2026-02")?;
+```
+
+旧 key 应保留到所有由它加密的 provider history 过期或被重新加密。删除旧 key 会导致对应 envelope 无法解密。
+
+## 边界
+
+Payload encryption 只覆盖 `event.payload`。Subject、category、event type、version、summary、source、timestamp、metadata、provider headers 和 JetStream stream name 仍对 provider 可见，因为它们用于 routing、filtering、history 和 observability。
+
+传输保密应使用 provider TLS 或私有网络。payload 本身需要对 provider operator 或存储层保持不可见时，再启用 payload encryption。

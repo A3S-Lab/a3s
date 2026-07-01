@@ -36,6 +36,25 @@ Compatibility checks 只处理顶层 required fields：
 envelope 转回。适用于事件需要跨越已经理解 CloudEvents 的系统时。Provider-native subjects
 仍负责投递和过滤。
 
+对 A3S 创建的 event，转换是有意保持无损的：
+
+| CloudEvents 字段 | A3S 映射 |
+| --- | --- |
+| `id` | `Event.id` |
+| `source` | `Event.source` |
+| `type` | `Event.event_type`；未 typed 时使用 `a3s.event`。 |
+| `subject` | `Event.subject` |
+| `data` | `Event.payload` |
+| `time` | `Event.timestamp` 转成 RFC 3339 毫秒格式。 |
+| `a3scategory` | 保存 `Event.category` 的扩展字段。 |
+| `a3sversion` | 保存 `Event.version` 的扩展字段。 |
+| `a3ssummary` | 保存 `Event.summary` 的扩展字段。 |
+| `a3stimestamp` | 保存原始 Unix 毫秒 timestamp 的扩展字段。 |
+| `a3smeta_<key>` | 保存 string metadata 的扩展字段。 |
+
+没有 A3S 扩展字段的外部 CloudEvents 也可以转换成 `Event`；缺失字段会退回到空 category、
+version `1`、空 summary，以及无 data 时的 `null` payload。
+
 ## Broker 和 Trigger Routing
 
 启用 `routing` feature 后，`Broker` 会评估 `Trigger` filters，并把匹配 event 并行投递到

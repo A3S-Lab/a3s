@@ -4,6 +4,8 @@
     "index",
     "providers",
     "schemas-routing",
+    "payload-security",
+    "state-and-messaging",
     "operations"
   ]
 }

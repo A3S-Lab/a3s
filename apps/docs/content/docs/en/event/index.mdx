@@ -21,12 +21,16 @@ The current crate is `a3s-event` `0.3.0`.
 | Reliability | Manual ack/nak support, dead-letter queue traits, and provider status reporting. |
 | Schema | Schema registry with event-type validation and compatibility checks. |
 | Metrics | Lock-free counters for publish, subscribe, errors, and latency. |
-| Optional features | AES-256-GCM payload encryption, CloudEvents v1.0 conversion, and Knative-inspired routing with triggers and sinks. |
+| Security | Optional AES-256-GCM payload encryption with key IDs and rotation-aware decryption. |
+| State | `FileStateStore` and `MemoryStateStore` persist subscription filters across process restarts. |
+| Optional features | CloudEvents v1.0 conversion, Knative-inspired routing with triggers and sinks, event sources, and cross-session messaging traits. |
 
 ## Start Here
 
 - [Providers](/docs/event/providers) explains `MemoryProvider`, `NatsProvider`, subject naming, and custom provider contracts.
 - [Schemas And Routing](/docs/event/schemas-routing) covers typed events, schema compatibility, CloudEvents, broker/trigger routing, sinks, and DLQ.
+- [Payload Security](/docs/event/payload-security) covers encrypted payload envelopes, key rotation, and publish/list decrypt behavior.
+- [State And Messaging](/docs/event/state-and-messaging) covers subscription state stores, event sources, and cross-session messaging ports.
 - [Operations](/docs/event/operations) documents feature flags, metrics, publish/subscribe options, and responsibility boundaries.
 
 ## Feature Flags
