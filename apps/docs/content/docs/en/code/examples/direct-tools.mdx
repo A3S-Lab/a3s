@@ -30,7 +30,8 @@ console.log(`glob found ${files.length} TypeScript files`);
 
 // Grep: search file contents
 const matches = await session.grep('Agent.create');
-console.log(`grep found ${matches.length} matches`);
+const matchCount = matches.split('\n').filter(Boolean).length;
+console.log(`grep found ${matchCount} matching lines`);
 
 // Read a file
 const readme = await session.readFile('README.md');
@@ -38,7 +39,7 @@ console.log(`README is ${readme.length} bytes`);
 
 // Direct tool call by name
 const raw = await session.tool('read', { file_path: 'package.json' });
-console.log(`package.json via tool(): ${String(raw).length} bytes`);
+console.log(`package.json via tool(): ${raw.output.length} bytes`);
 
 // Inspect available tool schemas
 const schemas = session.toolDefinitions();
@@ -57,7 +58,10 @@ const structured = await session.tool('generate_object', {
   prompt: 'How many TypeScript files are in this project?',
   schema_name: 'file_stats',
 });
-console.log('structured output:', structured);
+if (structured.exitCode !== 0) {
+  throw new Error(structured.output);
+}
+console.log('structured output:', JSON.parse(structured.output).object);
 
 session.close();
 ```
@@ -66,6 +70,8 @@ session.close();
 <Tab value="Python">
 
 ```python
+import json
+
 from a3s_code import Agent, SessionOptions, PermissionPolicy
 
 agent = Agent.create("agent.acl")
@@ -79,7 +85,8 @@ print(f'glob found {len(files)} Python files')
 
 # Grep: search file contents
 matches = session.grep('Agent.create')
-print(f'grep found {len(matches)} matches')
+match_count = len([line for line in matches.splitlines() if line])
+print(f'grep found {match_count} matching lines')
 
 # Read a file
 readme = session.read_file('README.md')
@@ -87,7 +94,7 @@ print(f'README is {len(readme)} bytes')
 
 # Direct tool call by name
 raw = session.tool('read', {'file_path': 'pyproject.toml'})
-print(f'pyproject.toml via tool(): {len(str(raw))} bytes')
+print(f'pyproject.toml via tool(): {len(raw.output)} bytes')
 
 # Inspect available tool schemas
 schemas = session.tool_definitions()
@@ -106,7 +113,9 @@ structured = session.tool('generate_object', {
     'prompt': 'How many Python files are in this project?',
     'schema_name': 'file_stats',
 })
-print('structured output:', structured)
+if structured.exit_code != 0:
+    raise RuntimeError(structured.output)
+print('structured output:', json.loads(structured.output)['object'])
 
 session.close()
 ```

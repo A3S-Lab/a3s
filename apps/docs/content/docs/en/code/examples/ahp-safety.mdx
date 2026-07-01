@@ -33,7 +33,7 @@ const session = agent.session('/repo', {
 });
 
 const result = await session.run('Audit the repo for hardcoded credentials.');
-console.log(result);
+console.log(result.text);
 
 session.close();
 ```
@@ -70,7 +70,7 @@ opts.permission_policy = PermissionPolicy(default_decision="ask")
 session = agent.session("/repo", opts)
 
 result = session.run("Audit the repo for hardcoded credentials.")
-print(result)
+print(result.text)
 
 session.close()
 ```

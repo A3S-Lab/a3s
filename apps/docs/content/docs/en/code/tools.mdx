@@ -114,6 +114,11 @@ const status = await session.git('status');
 const output = await session.bash('cargo test -p a3s-code-core');
 const raw = await session.tool('read', { file_path: 'README.md' });
 const schemas = session.toolDefinitions();
+const hitLines = hits.split('\n').filter(Boolean).length;
+
+console.log(files.length, hitLines, output.length, schemas.length);
+console.log(status.output);
+console.log(raw.output);
 ```
 
 Direct calls execute inside the session workspace and should be treated as
@@ -193,7 +198,13 @@ The QuickJS VM receives no filesystem, network, subprocess, or environment permi
 
 ## Tool Results
 
-`ToolResult` includes `name`, `output`, `exitCode`, and optional `metadataJson`. Long outputs should be summarized before they are fed back to the model.
+`ToolResult` includes `name`, `output`, `exitCode`, and optional `metadataJson`.
+Direct `session.tool(...)`, `session.program(...)`, `session.git(...)`,
+`session.writeFile(...)`, `session.ls(...)`, `session.editFile(...)`, and
+`session.patchFile(...)` calls return `ToolResult`. The typed read/search/shell
+helpers return simpler values: `readFile`, `grep`, and `bash` return strings,
+while `glob` returns a string array. Long outputs should be summarized before
+they are fed back to the model.
 
 ## Verification
 

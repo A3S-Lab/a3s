@@ -33,7 +33,7 @@ console.log(session.toolNames());
 
 // Option A: let the model search for and apply a skill during a run.
 const run = await session.run('Search available skills, then apply the most relevant one.');
-console.log(run);
+console.log(run.text);
 
 // Option B: invoke a skill directly as a callable tool.
 // Canonical args: { skill_name, prompt? }.
@@ -41,7 +41,10 @@ const result = await session.tool('Skill', {
   skill_name: 'code-review',
   prompt: 'Review this patch for correctness and regressions.',
 });
-console.log(result);
+if (result.exitCode !== 0) {
+  throw new Error(result.output);
+}
+console.log(result.output);
 
 session.close();
 ```
@@ -63,7 +66,7 @@ print(session.tool_names())
 
 # Option A: let the model search for and apply a skill during a run.
 run = session.run('Search available skills, then apply the most relevant one.')
-print(run)
+print(run.text)
 
 # Option B: invoke a skill directly as a callable tool.
 # Canonical args: { skill_name, prompt? }.
@@ -71,7 +74,9 @@ result = session.tool('Skill', {
     'skill_name': 'code-review',
     'prompt': 'Review this patch for correctness and regressions.',
 })
-print(result)
+if result.exit_code != 0:
+    raise RuntimeError(result.output)
+print(result.output)
 
 session.close()
 ```

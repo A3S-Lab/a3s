@@ -16,9 +16,19 @@ const status = await session.git('status');
 const output = await session.bash('cargo test -p a3s-code-core');
 const raw = await session.tool('read', { file_path: 'README.md' });
 const schemas = session.toolDefinitions();
+const hitLines = hits.split('\n').filter(Boolean).length;
+
+console.log(files.length, hitLines, output.length, schemas.length);
+console.log(status.output);
+console.log(raw.output);
 ```
 
-直接工具调用在 session 工作区下执行，应视为宿主侧特权操作。长输出应在进入 prompt 前先摘要。
+直接工具调用在 session 工作区下执行，应视为宿主侧特权操作。`session.tool(...)`、
+`session.program(...)`、`session.git(...)`、`session.writeFile(...)`、
+`session.ls(...)`、`session.editFile(...)` 和 `session.patchFile(...)` 返回
+`ToolResult`，读取 `output`、`exitCode` 和可选的 `metadataJson`。类型化
+read/search/shell helper 返回更简单的值：`readFile`、`grep`、`bash` 返回字符串，
+`glob` 返回字符串数组。长输出应在进入 prompt 前先摘要。
 
 ## 结构化输出：`generate_object`
 

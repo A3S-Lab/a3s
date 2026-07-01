@@ -37,7 +37,7 @@ console.log('Commands:', session.listCommands());
 const result = await session.run(
   'Use the project conventions skill to scaffold a new module.',
 );
-console.log(result);
+console.log(result.text);
 
 session.close();
 ```
@@ -68,7 +68,7 @@ print('Commands:', session.list_commands())
 result = session.run(
     'Use the project conventions skill to scaffold a new module.',
 )
-print(result)
+print(result.text)
 
 session.close()
 ```
