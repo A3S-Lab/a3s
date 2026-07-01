@@ -10,8 +10,8 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 `session.tool(name, args)` (and the typed helpers like `glob`, `grep`, `readFile`)
 run a host tool directly, with no model call in the loop. Use them for tests,
 migrations, and host-driven workflows where you want deterministic results
-instead of an agent turn. For unattended calls, set the permission policy's
-`defaultDecision` to `allow` so the tools don't block on a confirmation prompt.
+instead of an agent turn. For unattended calls, prefer an explicit allow-list
+with a closed fallback so this example cannot grow into arbitrary tool access.
 
 <Tabs groupId="lang" items={['Node.js', 'Python']}>
 <Tab value="Node.js">
@@ -21,7 +21,12 @@ import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.acl');
 const session = agent.session('.', {
-  permissionPolicy: { defaultDecision: 'allow' },
+  permissionPolicy: {
+    allow: ['glob(*)', 'grep(*)', 'read(*)', 'generate_object(*)'],
+    deny: ['write(*)', 'bash(*)'],
+    defaultDecision: 'deny',
+    enabled: true,
+  },
 });
 
 // Glob: list files by pattern
@@ -76,7 +81,11 @@ from a3s_code import Agent, SessionOptions, PermissionPolicy
 
 agent = Agent.create("agent.acl")
 opts = SessionOptions()
-opts.permission_policy = PermissionPolicy(default_decision='allow')
+opts.permission_policy = PermissionPolicy(
+    allow=['glob(*)', 'grep(*)', 'read(*)', 'generate_object(*)'],
+    deny=['write(*)', 'bash(*)'],
+    default_decision='deny',
+)
 session = agent.session('.', opts)
 
 # Glob: list files by pattern

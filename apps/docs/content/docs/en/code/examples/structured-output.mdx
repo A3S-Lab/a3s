@@ -29,7 +29,10 @@ import { Agent } from '@a3s-lab/code';
 const agent = await Agent.create('agent.acl');
 const session = agent.session('.', {
   builtinSkills: true,
-  permissionPolicy: { defaultDecision: 'allow' },
+  permissionPolicy: {
+    allow: ['generate_object(*)'],
+    defaultDecision: 'deny',
+  },
 });
 
 const result = await session.tool('generate_object', {
@@ -72,7 +75,10 @@ from a3s_code import Agent, SessionOptions, PermissionPolicy
 agent = Agent.create('agent.acl')
 opts = SessionOptions()
 opts.builtin_skills = True
-opts.permission_policy = PermissionPolicy(default_decision="allow")
+opts.permission_policy = PermissionPolicy(
+    allow=["generate_object(*)"],
+    default_decision="deny",
+)
 session = agent.session('.', opts)
 
 result = session.tool("generate_object", {

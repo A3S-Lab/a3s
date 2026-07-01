@@ -7,7 +7,7 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 
 # 直接工具
 
-`session.tool(name, args)`（以及 `glob`、`grep`、`readFile` 等类型化辅助方法）会直接运行宿主工具，循环中不发起任何模型调用。它们适用于测试、迁移以及宿主驱动的工作流——你需要确定性结果，而不是一次智能体回合。对于无人值守的调用，请将权限策略的 `defaultDecision` 设为 `allow`，这样工具就不会因等待确认提示而阻塞。
+`session.tool(name, args)`（以及 `glob`、`grep`、`readFile` 等类型化辅助方法）会直接运行宿主工具，循环中不发起任何模型调用。它们适用于测试、迁移以及宿主驱动的工作流——你需要确定性结果，而不是一次智能体回合。对于无人值守调用，优先使用显式 allow-list 和关闭式兜底，避免示例后续扩展成任意工具访问。
 
 <Tabs groupId="lang" items={['Node.js', 'Python']}>
 <Tab value="Node.js">
@@ -17,7 +17,12 @@ import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.acl');
 const session = agent.session('.', {
-  permissionPolicy: { defaultDecision: 'allow' },
+  permissionPolicy: {
+    allow: ['glob(*)', 'grep(*)', 'read(*)', 'generate_object(*)'],
+    deny: ['write(*)', 'bash(*)'],
+    defaultDecision: 'deny',
+    enabled: true,
+  },
 });
 
 // Glob: list files by pattern
@@ -72,7 +77,11 @@ from a3s_code import Agent, SessionOptions, PermissionPolicy
 
 agent = Agent.create("agent.acl")
 opts = SessionOptions()
-opts.permission_policy = PermissionPolicy(default_decision='allow')
+opts.permission_policy = PermissionPolicy(
+    allow=['glob(*)', 'grep(*)', 'read(*)', 'generate_object(*)'],
+    deny=['write(*)', 'bash(*)'],
+    default_decision='deny',
+)
 session = agent.session('.', opts)
 
 # Glob: list files by pattern

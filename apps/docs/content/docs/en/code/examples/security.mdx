@@ -8,11 +8,12 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 # Security
 
 Every side effect an agent can produce — writing files, running `bash`, pushing
-git — flows through a permission policy. Set a `defaultDecision`, then list the
-patterns that should be `allow`-ed, `deny`-ed, or sent to the `ask` path. To
-keep a human in the loop, add a confirmation policy: `ask` decisions pause on a
-`confirmation_required` event so your application (or a person) can approve or
-reject each call. Use this whenever an agent runs against a real repository.
+git — flows through a permission policy. Start from an `ask` or `deny`
+fallback, then list the patterns that should be `allow`-ed, `deny`-ed, or sent
+to the `ask` path. To keep a human in the loop, add a confirmation policy:
+`ask` decisions pause on a `confirmation_required` event so your application
+(or a person) can approve or reject each call. Use this whenever an agent runs
+against a real repository.
 
 <Tabs groupId="lang" items={['Node.js', 'Python']}>
 <Tab value="Node.js">
@@ -24,9 +25,10 @@ const agent = await Agent.create('agent.acl');
 
 const session = agent.session(process.cwd(), {
   permissionPolicy: {
+    allow: ['read(*)', 'grep(*)', 'glob(*)', 'ls(*)', 'bash(git status:*)'],
     deny: ['write(**/.env*)', 'bash(rm -rf*)'],
-    ask: ['bash(git push*)', 'bash(npm publish*)'],
-    defaultDecision: 'allow',
+    ask: ['write(*)', 'edit(*)', 'bash(git push:*)', 'bash(npm publish:*)', 'bash(*)'],
+    defaultDecision: 'ask',
   },
   // Turn the `ask` patterns into a human-in-the-loop confirmation flow.
   confirmationPolicy: {
@@ -71,9 +73,10 @@ def main() -> None:
 
     opts = SessionOptions()
     opts.permission_policy = PermissionPolicy(
+        allow=["read(*)", "grep(*)", "glob(*)", "ls(*)", "bash(git status:*)"],
         deny=["write(**/.env*)", "bash(rm -rf*)"],
-        ask=["bash(git push*)", "bash(npm publish*)"],
-        default_decision="allow",
+        ask=["write(*)", "edit(*)", "bash(git push:*)", "bash(npm publish:*)", "bash(*)"],
+        default_decision="ask",
     )
     # Turn the `ask` patterns into a human-in-the-loop confirmation flow.
     opts.confirmation_policy = ConfirmationPolicy(
@@ -126,8 +129,9 @@ const agent = await Agent.create('agent.acl');
 const session = agent.session(process.cwd(), {
   securityProvider: new DefaultSecurityProvider(),
   permissionPolicy: {
-    ask: ['bash*'],
-    defaultDecision: 'allow',
+    allow: ['bash(echo:*)'],
+    ask: ['bash(*)'],
+    defaultDecision: 'ask',
   },
 });
 
@@ -151,8 +155,9 @@ def main() -> None:
     opts = SessionOptions()
     opts.security_provider = DefaultSecurityProvider()
     opts.permission_policy = PermissionPolicy(
-        ask=["bash*"],
-        default_decision="allow",
+        allow=["bash(echo:*)"],
+        ask=["bash(*)"],
+        default_decision="ask",
     )
 
     session = agent.session(".", opts)
@@ -174,7 +179,8 @@ if __name__ == "__main__":
 ## Notes
 
 - `defaultDecision` is the fallback for any pattern not matched by `allow` / `deny`
-  / `ask` (one of `allow`, `deny`, or `ask`). Open up only what automation needs.
+  / `ask` (one of `allow`, `deny`, or `ask`). Prefer `ask` for real repositories
+  and open up only what automation needs.
 - A `confirmationPolicy` with `enabled: true` is what turns `ask` decisions into a
   pausing `confirmation_required` event. Resolve each one with
   `session.confirmToolUse(toolId, approved, reason?)`; if no answer arrives within
