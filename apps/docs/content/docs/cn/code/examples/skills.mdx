@@ -39,7 +39,7 @@ const result = await session.run(
 );
 console.log(result);
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -48,7 +48,7 @@ await session.close();
 ```python
 from a3s_code import Agent, SessionOptions
 
-agent = Agent.create(open('agent.acl').read())
+agent = Agent.create("agent.acl")
 
 # Built-in skills 默认可用。这里额外加载项目 skills 和 agents。
 opts = SessionOptions()

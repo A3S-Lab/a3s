@@ -84,7 +84,7 @@ agent 任务，以及所有挂起的 human-in-the-loop 确认。后续调用是 
 查询关闭状态。
 
 ```ts
-await session.close();
+session.close();
 if (session.isClosed()) {
   // send/stream 现在会以 CodeError::SessionClosed 拒绝
 }

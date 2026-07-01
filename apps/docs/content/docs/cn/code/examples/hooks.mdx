@@ -41,7 +41,7 @@ await session.run('Read the project README and summarize it.');
 session.unregisterHook('observe-env-read');
 console.log('active hooks:', session.hookCount()); // 0
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -50,7 +50,7 @@ await session.close();
 ```python
 from a3s_code import Agent, SessionOptions
 
-agent = Agent.create(open('agent.acl').read())
+agent = Agent.create("agent.acl")
 session = agent.session('.', SessionOptions())
 
 # Register a named hook on a lifecycle event. The callback returns a decision.

@@ -43,7 +43,7 @@ import os
 
 from a3s_code import Agent, HttpTransport, SessionOptions
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 opts = SessionOptions()
 opts.ahp_transport = HttpTransport(
     "http://localhost:8080/ahp",

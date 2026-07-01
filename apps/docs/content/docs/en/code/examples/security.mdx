@@ -56,7 +56,7 @@ while (true) {
   }
 }
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -67,7 +67,7 @@ from a3s_code import Agent, SessionOptions, PermissionPolicy, ConfirmationPolicy
 
 
 def main() -> None:
-    agent = Agent.create(open("agent.acl").read())
+    agent = Agent.create("agent.acl")
 
     opts = SessionOptions()
     opts.permission_policy = PermissionPolicy(
@@ -135,7 +135,7 @@ const session = agent.session(process.cwd(), {
 const out = await session.bash('echo "screened by the security provider"');
 console.log(out);
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -146,7 +146,7 @@ from a3s_code import Agent, SessionOptions, PermissionPolicy, DefaultSecurityPro
 
 
 def main() -> None:
-    agent = Agent.create(open("agent.acl").read())
+    agent = Agent.create("agent.acl")
 
     opts = SessionOptions()
     opts.security_provider = DefaultSecurityProvider()

@@ -31,7 +31,7 @@ const session = agent.session('/repo', {
 const result = await session.run('Audit the repo for hardcoded credentials.');
 console.log(result);
 
-await session.close();
+session.close();
 ```
 
 其他传输遵循相同的写法——`WebSocketTransport`、`UnixSocketTransport` 以及进程内的 `StdioTransport` 在这里都可以互换。无人值守任务需要在没有匹配 allow 规则时失败关闭，可将 `defaultDecision` 设为 `'deny'`；仅在受信任的沙箱环境中才使用 `'allow'`。

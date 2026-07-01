@@ -49,7 +49,7 @@ const removed = await session.git({
 });
 if (removed.exitCode !== 0) throw new Error(`remove failed: ${removed.output}`);
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -59,7 +59,7 @@ await session.close();
 import os
 from a3s_code import Agent, SessionOptions
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 session = agent.session("/path/to/repo", SessionOptions())
 
 # Inspect the repo

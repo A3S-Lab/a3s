@@ -40,7 +40,7 @@ for (let i = 0; i < 50; i++) {
 console.log('history turns:', session.history().length);
 console.log('recent memory:', await session.memoryRecent(5));
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -49,7 +49,7 @@ await session.close();
 ```python
 from a3s_code import Agent, SessionOptions
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 
 opts = SessionOptions()
 # Compact older turns once context fills past the threshold.

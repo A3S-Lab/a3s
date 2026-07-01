@@ -48,7 +48,7 @@ const session = agent.session('/repo', {
 ```python
 from a3s_code import Agent, LocalWorkspaceBackend, SessionOptions
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 opts = SessionOptions()
 opts.workspace_backend = LocalWorkspaceBackend("/repo")
 session = agent.session("/repo", opts)
@@ -93,7 +93,7 @@ import os
 
 from a3s_code import Agent, S3WorkspaceBackend, SessionOptions
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 opts = SessionOptions()
 opts.workspace_backend = S3WorkspaceBackend(
     bucket=os.environ["WORKSPACE_S3_BUCKET"],
@@ -162,7 +162,7 @@ from a3s_code import (
     SessionOptions,
 )
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 opts = SessionOptions()
 opts.workspace_backend = S3WorkspaceBackend(
     bucket=os.environ["WORKSPACE_S3_BUCKET"],

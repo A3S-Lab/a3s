@@ -49,7 +49,7 @@ console.log(recent.length, byTags.length, similar.length);
 ```python
 from a3s_code import Agent, SessionOptions, FileMemoryStore
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 opts = SessionOptions()
 opts.memory_store = FileMemoryStore("./.a3s/memory")
 session = agent.session("/repo", opts)

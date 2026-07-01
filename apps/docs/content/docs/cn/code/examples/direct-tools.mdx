@@ -55,7 +55,7 @@ const structured = await session.tool('generate_object', {
 });
 console.log('structured output:', structured);
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -64,7 +64,7 @@ await session.close();
 ```python
 from a3s_code import Agent, SessionOptions, PermissionPolicy
 
-agent = Agent.create(open('agent.acl').read())
+agent = Agent.create("agent.acl")
 opts = SessionOptions()
 opts.permission_policy = PermissionPolicy(default_decision='allow')
 session = agent.session('.', opts)

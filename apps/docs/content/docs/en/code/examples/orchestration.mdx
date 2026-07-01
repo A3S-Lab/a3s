@@ -34,7 +34,7 @@ for (const o of outcomes) {
   console.log(`[parallel] ${o.taskId}: success=${o.success}`);
 }
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -43,7 +43,7 @@ await session.close();
 ```python
 from a3s_code import Agent, SessionOptions
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 session = agent.session(".", SessionOptions())
 
 # Independent steps; outcomes come back in input order, not completion order.
@@ -120,7 +120,7 @@ for (const r of results) {
   console.log(`[pipeline] final=${r === null ? null : JSON.stringify(r.output.slice(0, 60))}`);
 }
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -129,7 +129,7 @@ await session.close();
 ```python
 from a3s_code import Agent, SessionOptions
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 session = agent.session(".", SessionOptions())
 
 # Each item chains through stages; stage 2 builds on stage 1. Return None from a
@@ -194,7 +194,7 @@ const outcomes = await session.parallelResumable(
 // Re-running with the same workflowId replays completed steps from the journal.
 console.log(outcomes.map((o) => `${o.taskId}:${o.success}`).join(' '));
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -203,7 +203,7 @@ await session.close();
 ```python
 from a3s_code import Agent, SessionOptions, FileSessionStore
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 # parallel_resumable journals to the session store; it raises without one.
 opts = SessionOptions()
 opts.session_store = FileSessionStore("./.a3s/sessions")
@@ -256,7 +256,7 @@ const { outcomes, budget } = await session.parallel(specs, 50_000);
 for (const o of outcomes) console.log(`[budget] ${o.taskId}: success=${o.success}`);
 console.log(`spent ${budget.consumedTokens} / ${budget.limitTokens} tokens`);
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -265,7 +265,7 @@ await session.close();
 ```python
 from a3s_code import Agent, SessionOptions
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 session = agent.session(".", SessionOptions())
 
 specs = [

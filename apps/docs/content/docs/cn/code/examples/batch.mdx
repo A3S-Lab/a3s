@@ -37,7 +37,7 @@ if (!releaseScript.includes(pkgVersion)) mismatches.push(`release.sh is missing 
 
 console.log(mismatches.length ? mismatches.join('\n') : 'All files agree on the version.');
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -47,7 +47,7 @@ await session.close();
 import json
 from a3s_code import Agent, SessionOptions
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 session = agent.session("/path/to/project", SessionOptions())
 
 # Python helpers are synchronous — call them in sequence, no await.

@@ -38,7 +38,7 @@ const result = await session.send(
 console.log(result.text);
 console.log(`${result.toolCallsCount} tool calls executed`);
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -47,7 +47,7 @@ await session.close();
 ```python
 from a3s_code import Agent, SessionOptions
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 opts = SessionOptions()
 opts.planning_mode = "auto"
 session = agent.session("/repo", opts)

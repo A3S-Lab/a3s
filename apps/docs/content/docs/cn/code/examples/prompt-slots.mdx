@@ -43,7 +43,7 @@ async function main() {
   const result = await session.send('Is this repo ready to ship?');
   console.log(result.text);
 
-  await session.close();
+  session.close();
 }
 
 main().catch((err) => {

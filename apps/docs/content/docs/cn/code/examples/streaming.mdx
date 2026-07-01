@@ -43,7 +43,7 @@ while (true) {
 }
 
 console.log('\n[stream] complete');
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -56,7 +56,7 @@ from a3s_code import Agent, SessionOptions
 
 
 def main() -> None:
-    agent = Agent.create(open("agent.acl").read())
+    agent = Agent.create("agent.acl")
 
     opts = SessionOptions()
     opts.planning_mode = "disabled"

@@ -55,7 +55,7 @@ for (const task of pending) {
   }
 }
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -65,7 +65,7 @@ await session.close();
 import os
 from a3s_code import Agent
 
-agent = Agent.create(open("agent.acl").read())
+agent = Agent.create("agent.acl")
 session = agent.session(os.getcwd())
 
 # Route a lane to an external worker so its tools are queued, not executed.

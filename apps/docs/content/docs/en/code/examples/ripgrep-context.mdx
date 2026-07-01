@@ -46,7 +46,7 @@ console.log(answer);
 ```python
 from a3s_code import Agent
 
-agent = Agent.create(open('agent.acl').read())
+agent = Agent.create("agent.acl")
 session = agent.session('.')
 
 # 1. Find candidate files by glob pattern (returns a list of paths).

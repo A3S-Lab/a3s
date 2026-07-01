@@ -31,7 +31,7 @@ const session = agent.session('/repo', {
 const result = await session.run('Audit the repo for hardcoded credentials.');
 console.log(result);
 
-await session.close();
+session.close();
 ```
 
 Other transports follow the same shape — `WebSocketTransport`, `UnixSocketTransport`, and the in-process `StdioTransport` are all interchangeable here. Set `defaultDecision` to `'deny'` when unattended work should fail closed unless an allow rule matches, or `'allow'` only in trusted, sandboxed environments.

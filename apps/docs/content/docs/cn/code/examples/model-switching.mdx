@@ -62,7 +62,7 @@ await review.close();
 ```python
 from a3s_code import Agent, SessionOptions
 
-agent = Agent.create(open('agent.acl').read())
+agent = Agent.create("agent.acl")
 
 # A fast model for high-volume, low-stakes work.
 fast_opts = SessionOptions()
@@ -116,7 +116,7 @@ const findings = await session.task('scout', 'List every public API in src/.');
 const plan = await session.run(`Given these findings, propose a refactor:\n${findings}`);
 console.log(plan);
 
-await session.close();
+session.close();
 ```
 
 </Tab>
@@ -125,7 +125,7 @@ await session.close();
 ```python
 from a3s_code import Agent, SessionOptions, WorkerAgentSpec
 
-agent = Agent.create(open('agent.acl').read())
+agent = Agent.create("agent.acl")
 
 opts = SessionOptions()
 # Orchestrator stays on the stronger model.
