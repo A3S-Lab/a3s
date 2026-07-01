@@ -483,12 +483,18 @@ server 注册出的 tool 名称格式是 `mcp__<server>__<tool>`。
 已验证 constructor 形状和 `kind` 值：
 
 ```ts
+const requiredEnv = (name: string) => {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is required`);
+  return value;
+};
+
 new HttpTransport(
-  'http://localhost:8080/ahp',
+  requiredEnv('AHP_HTTP_ENDPOINT'),
   process.env.AHP_AUTH_TOKEN,
 ).kind; // 'http'
 new WebSocketTransport(
-  'ws://localhost:8080/ahp',
+  requiredEnv('AHP_WS_ENDPOINT'),
   process.env.AHP_AUTH_TOKEN,
 ).kind; // 'websocket'
 new StdioTransport('node', ['server.mjs']).kind; // 'stdio'

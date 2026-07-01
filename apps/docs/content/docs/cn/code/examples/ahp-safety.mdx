@@ -10,6 +10,8 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 A3S Code 会话可以通过可插拔的传输层（AHP，即 Agent Host Protocol，智能体宿主协议）连接到外部宿主。无论由哪种传输承载消息，安全层都是独立的：**安全提供器**会审查工具调用，而**权限策略**决定哪些操作可以在无人参与的情况下执行。当你需要一个由远程宿主驱动、且工具策略仍由 A3S Code harness 显式管控的会话时，请参考本页。
 
 传输层与安全层互相正交。你可以把 `HttpTransport` 换成 WebSocket 或 Unix 套接字传输，而无需改动权限规则，反之亦然。
+运行示例前，将 `AHP_ENDPOINT` 设置为已部署的宿主端点；`AHP_AUTH_TOKEN` 是可选的，
+需要时也应从环境变量读取。
 
 <Tabs groupId="lang" items={['Node.js', 'Python']}>
 <Tab value="Node.js">
@@ -18,10 +20,12 @@ A3S Code 会话可以通过可插拔的传输层（AHP，即 Agent Host Protocol
 import { Agent, HttpTransport, DefaultSecurityProvider } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.acl');
+const ahpEndpoint = process.env.AHP_ENDPOINT;
+if (!ahpEndpoint) throw new Error('AHP_ENDPOINT is required');
 
 const session = agent.session('/repo', {
   // AHP transport: how the session reaches its external host.
-  ahpTransport: new HttpTransport('http://localhost:8080/ahp', process.env.AHP_AUTH_TOKEN),
+  ahpTransport: new HttpTransport(ahpEndpoint, process.env.AHP_AUTH_TOKEN),
   // Safety: the security provider vets each tool call; the permission
   // policy decides what runs unattended. These apply regardless of transport.
   securityProvider: new DefaultSecurityProvider(),
@@ -55,7 +59,7 @@ agent = Agent.create("agent.acl")
 opts = SessionOptions()
 # AHP transport: how the session reaches its external host.
 opts.ahp_transport = HttpTransport(
-    "http://localhost:8080/ahp",
+    os.environ["AHP_ENDPOINT"],
     os.environ.get("AHP_AUTH_TOKEN"),
 )
 # Safety: the security provider vets each tool call; the permission

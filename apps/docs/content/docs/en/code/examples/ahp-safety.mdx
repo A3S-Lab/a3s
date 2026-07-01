@@ -10,6 +10,8 @@ import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
 A3S Code sessions can attach to an external host over a pluggable transport (AHP — the Agent Host Protocol). Whatever transport carries the messages, the safety layer is independent: a **security provider** vets tool calls and a **permission policy** decides what runs without a human in the loop. Use this page when you need a remote/host-driven session while keeping tool policy explicit in the A3S Code harness.
 
 The transport and the safety layer are orthogonal. You can swap `HttpTransport` for a WebSocket or Unix-socket transport without touching the permission rules, and vice versa.
+Set `AHP_ENDPOINT` to your deployed host endpoint before running the example;
+`AHP_AUTH_TOKEN` is optional and should come from the environment when needed.
 
 <Tabs groupId="lang" items={['Node.js', 'Python']}>
 <Tab value="Node.js">
@@ -18,10 +20,12 @@ The transport and the safety layer are orthogonal. You can swap `HttpTransport` 
 import { Agent, HttpTransport, DefaultSecurityProvider } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.acl');
+const ahpEndpoint = process.env.AHP_ENDPOINT;
+if (!ahpEndpoint) throw new Error('AHP_ENDPOINT is required');
 
 const session = agent.session('/repo', {
   // AHP transport: how the session reaches its external host.
-  ahpTransport: new HttpTransport('http://localhost:8080/ahp', process.env.AHP_AUTH_TOKEN),
+  ahpTransport: new HttpTransport(ahpEndpoint, process.env.AHP_AUTH_TOKEN),
   // Safety: the security provider vets each tool call; the permission
   // policy decides what runs unattended. These apply regardless of transport.
   securityProvider: new DefaultSecurityProvider(),
@@ -55,7 +59,7 @@ agent = Agent.create("agent.acl")
 opts = SessionOptions()
 # AHP transport: how the session reaches its external host.
 opts.ahp_transport = HttpTransport(
-    "http://localhost:8080/ahp",
+    os.environ["AHP_ENDPOINT"],
     os.environ.get("AHP_AUTH_TOKEN"),
 )
 # Safety: the security provider vets each tool call; the permission

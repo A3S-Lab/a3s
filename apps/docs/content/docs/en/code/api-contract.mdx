@@ -502,12 +502,18 @@ Tools from the server are named `mcp__<server>__<tool>`.
 Constructor shape and `kind` values were verified:
 
 ```ts
+const requiredEnv = (name: string) => {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is required`);
+  return value;
+};
+
 new HttpTransport(
-  'http://localhost:8080/ahp',
+  requiredEnv('AHP_HTTP_ENDPOINT'),
   process.env.AHP_AUTH_TOKEN,
 ).kind; // 'http'
 new WebSocketTransport(
-  'ws://localhost:8080/ahp',
+  requiredEnv('AHP_WS_ENDPOINT'),
   process.env.AHP_AUTH_TOKEN,
 ).kind; // 'websocket'
 new StdioTransport('node', ['server.mjs']).kind; // 'stdio'
