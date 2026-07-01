@@ -35,11 +35,13 @@ Return files inspected, findings, risks, and confidence.
 宿主已经知道任务边界时，可以直接调用 SDK helper：
 
 ```ts
-await session.task({
+const task = await session.task({
   agent: 'explore',
   description: 'Inspect auth module',
   prompt: 'Return files inspected, findings, risks, and confidence.',
 });
+if (task.exitCode !== 0) throw new Error(task.output);
+console.log(task.output);
 ```
 
 子 agent 应返回紧凑契约：
@@ -66,13 +68,18 @@ Merge the results into one release-readiness report.
 ```
 
 ```ts
-await session.tasks([
+const batch = await session.tasks([
   { agent: 'explore', description: 'Inspect config', prompt: 'Check provider parsing.' },
   { agent: 'verification', description: 'Verify SDK', prompt: 'Check SDK declarations.' },
 ]);
+if (batch.exitCode !== 0) throw new Error(batch.output);
+console.log(batch.output);
 ```
 
-session options 中的 `maxParallelTasks` 与 ACL 中的 `max_parallel_tasks` 会限制 sibling fan-out。
+`session.task(...)` 和 `session.tasks(...)` 返回来自 `task` / `parallel_task`
+工具的 `ToolResult`。读取 `output` 获取紧凑的子任务摘要，并在信任结果前检查
+`exitCode`。session options 中的 `maxParallelTasks` 与 ACL 中的
+`max_parallel_tasks` 会限制 sibling fan-out。
 
 ## 自动委派
 
@@ -136,7 +143,7 @@ const session = agent.session('/repo', {
       name: 'frontend-worker',
       description: 'Small verified frontend fixes',
       kind: 'implementer',
-      model: 'openai/gpt-4o',
+      model: 'provider/model-id',
       maxSteps: 24,
       confirmationInheritance: 'auto_approve',
     },

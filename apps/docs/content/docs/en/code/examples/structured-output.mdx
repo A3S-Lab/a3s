@@ -26,7 +26,7 @@ and parse the validated object out of the result.
 ```ts
 import { Agent } from '@a3s-lab/code';
 
-const agent = await Agent.create('config.acl');
+const agent = await Agent.create('agent.acl');
 const session = agent.session('.', {
   builtinSkills: true,
   permissionPolicy: { defaultDecision: 'allow' },
@@ -69,7 +69,7 @@ session.close();
 import json
 from a3s_code import Agent, SessionOptions, PermissionPolicy
 
-agent = Agent.create('config.acl')
+agent = Agent.create('agent.acl')
 opts = SessionOptions()
 opts.builtin_skills = True
 opts.permission_policy = PermissionPolicy(default_decision="allow")

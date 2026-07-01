@@ -75,8 +75,13 @@ const result = await session.tasks([
   { agent: 'review', description: 'Regression review', prompt: 'Review correctness risks.' },
 ]);
 
+if (result.exitCode !== 0) throw new Error(result.output);
 console.log(result.output);
 ```
+
+`session.tasks(...)` 是 `parallel_task` 的宿主侧封装；它返回 `ToolResult`，
+而不是 `StepOutcome[]`。当你需要每条 lane 都有独立结构化 outcome 时，使用
+`session.parallel(...)`。
 
 当团队的 lane 结构固定、应当可复现且可恢复而非由模型选择时，使用 [编排](/cn/docs/code/orchestration) 中的可编程组合子（`session.parallel` / `session.pipeline` / `session.parallelResumable`）。
 
@@ -91,7 +96,7 @@ const session = agent.session('/repo', {
       name: 'frontend-worker',
       description: 'Small verified frontend fixes',
       kind: 'implementer',
-      model: 'openai/gpt-4o',
+      model: 'provider/model-id',
       maxSteps: 24,
       confirmationInheritance: 'auto_approve',
     },

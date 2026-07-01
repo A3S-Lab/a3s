@@ -70,8 +70,9 @@ auto_delegation {
 `max_parallel_tasks` limits bounded sibling fan-out. `auto_delegation.enabled`
 turns on automatic subagent delegation. The top-level `auto_parallel = false`
 overrides `auto_delegation.auto_parallel` and disables only automatic parallel
-child-agent fan-out; manual `parallel_task` remains available unless
-`allow_manual_delegation` is set to `false`.
+child-agent fan-out; manual `task` and `parallel_task` remain available. When
+`allow_manual_delegation = false`, both model-visible child-agent tools are
+removed from the session tool surface.
 
 ## Storage
 

@@ -36,11 +36,13 @@ Return files inspected, findings, risks, and confidence.
 If the host already knows the task boundary, call the same core tool directly:
 
 ```ts
-await session.task({
+const task = await session.task({
   agent: 'explore',
   description: 'Inspect auth module',
   prompt: 'Return files inspected, findings, risks, and confidence.',
 });
+if (task.exitCode !== 0) throw new Error(task.output);
+console.log(task.output);
 ```
 
 A child agent should return a compact contract:
@@ -67,13 +69,18 @@ Merge the results into one release-readiness report.
 ```
 
 ```ts
-await session.tasks([
+const batch = await session.tasks([
   { agent: 'explore', description: 'Inspect config', prompt: 'Check provider parsing.' },
   { agent: 'verification', description: 'Verify SDK', prompt: 'Check SDK declarations.' },
 ]);
+if (batch.exitCode !== 0) throw new Error(batch.output);
+console.log(batch.output);
 ```
 
-`maxParallelTasks` in session options and `max_parallel_tasks` in ACL bound sibling fan-out.
+`session.task(...)` and `session.tasks(...)` return `ToolResult` values from the
+`task` and `parallel_task` tools. Read `output` for the compact child summary
+and check `exitCode` before treating the result as successful. `maxParallelTasks`
+in session options and `max_parallel_tasks` in ACL bound sibling fan-out.
 
 ## Automatic Delegation
 
@@ -137,7 +144,7 @@ const session = agent.session('/repo', {
       name: 'frontend-worker',
       description: 'Small verified frontend fixes',
       kind: 'implementer',
-      model: 'openai/gpt-4o',
+      model: 'provider/model-id',
       maxSteps: 24,
       confirmationInheritance: 'auto_approve',
     },

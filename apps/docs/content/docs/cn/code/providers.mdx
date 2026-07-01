@@ -65,8 +65,9 @@ auto_delegation {
 
 `max_parallel_tasks` 限制有边界的 sibling fan-out。`auto_delegation.enabled`
 开启自动 subagent 委派。顶层 `auto_parallel = false` 会覆盖
-`auto_delegation.auto_parallel`，只关闭自动并行子 agent fan-out；除非设置
-`allow_manual_delegation = false`，手动 `parallel_task` 仍可用。
+`auto_delegation.auto_parallel`，只关闭自动并行子 agent fan-out；手动
+`task` 与 `parallel_task` 仍可用。设置 `allow_manual_delegation = false` 时，
+这两个模型可见的子 agent 工具都会从 session 工具表面移除。
 
 ## 存储
 

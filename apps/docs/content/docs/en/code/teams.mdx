@@ -75,8 +75,13 @@ const result = await session.tasks([
   { agent: 'review', description: 'Regression review', prompt: 'Review correctness risks.' },
 ]);
 
+if (result.exitCode !== 0) throw new Error(result.output);
 console.log(result.output);
 ```
+
+`session.tasks(...)` is the host-driven wrapper around `parallel_task`; it
+returns a `ToolResult`, not a `StepOutcome[]`. Use `session.parallel(...)` when
+you need one structured outcome per lane.
 
 When the team's lane structure is fixed and should be reproducible and resumable rather than model-chosen, use the programmable combinators in [Orchestration](/docs/code/orchestration) (`session.parallel` / `session.pipeline` / `session.parallelResumable`).
 
@@ -91,7 +96,7 @@ const session = agent.session('/repo', {
       name: 'frontend-worker',
       description: 'Small verified frontend fixes',
       kind: 'implementer',
-      model: 'openai/gpt-4o',
+      model: 'provider/model-id',
       maxSteps: 24,
       confirmationInheritance: 'auto_approve',
     },
