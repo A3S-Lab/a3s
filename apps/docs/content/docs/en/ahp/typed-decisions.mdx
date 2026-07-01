@@ -1,0 +1,85 @@
+---
+title: Typed Decisions
+description: Specialized AHP decision contracts for context, memory, planning, reasoning, rate limits, confirmation, idle, and intent detection.
+---
+
+# Typed Decisions
+
+Generic `Decision` is enough for ordinary action and prompt gates. Some harness points need richer payloads, so AHP v2.4 defines specialized typed events and typed decisions.
+
+Typed events are blocking JSON-RPC requests, but they are not batchable because `ahp/batch` returns `Vec<Decision>`, not heterogeneous typed responses. Send them with `send_typed_event` or `send_typed_event_full`.
+
+## Handler Defaults
+
+`EventHandler` has explicit hooks for each specialized event:
+
+| Event | Handler | Default behavior |
+| --- | --- | --- |
+| `idle` | `handle_idle` | Allows idle processing. |
+| `intent_detection` | `handle_intent_detection` | Returns unsupported unless implemented. |
+| `context_perception` | `handle_context_perception` | Returns unsupported unless implemented. |
+| `memory_recall` | `handle_memory_recall` | Returns unsupported unless implemented. |
+| `planning` | `handle_planning` | Returns unsupported unless implemented. |
+| `reasoning` | `handle_reasoning` | Returns unsupported unless implemented. |
+| `rate_limit` | `handle_rate_limit` | Returns unsupported unless implemented. |
+| `confirmation` | `handle_confirmation` | Returns unsupported unless implemented. |
+
+The server deserializes the typed payload before calling the handler, and serializes the typed decision back into the JSON-RPC result.
+
+## Context Perception
+
+`context_perception` asks the harness for workspace or knowledge context before the model continues.
+
+| Field family | Examples |
+| --- | --- |
+| Intent | `recognize`, `understand`, `locate`, `retrieve`, `explore`, `reason`, `validate`, `compare`, `track`. |
+| Target | Entity, location, event, relation, rule, state, resource, or pattern. |
+| Domain | Coding, writing, data analysis, research, project management, conversation, operations, security, or general. |
+| Modality | Text, code, structured data, table, chart, image, audio, video, or any. |
+| Urgency | `critical`, `high`, `normal`, or `low`. |
+| Freshness | `realtime`, `recent`, or `static`. |
+| Constraints | Max results, max context length, and whether sources should be included. |
+
+The decision can:
+
+| Decision | Meaning |
+| --- | --- |
+| `allow` | Inject facts, file snippets, project summary, knowledge strings, and suggestions. |
+| `block` | Skip or deny context injection with a reason. |
+| `refine` | Ask the runtime to narrow intent, target, or scope before retrying. |
+
+Use `refine` when the agent's request is too broad for a useful context lookup.
+
+## Memory, Planning, And Reasoning
+
+| Event | Payload | Decision |
+| --- | --- | --- |
+| `memory_recall` | Session id, query, memory type, max results, and working directory. | `allow` with injected facts, or `block` with a reason. |
+| `planning` | Session id, task description, available strategies, and optional constraints. | `allow` with selected strategy/template, `modify` with a revised task and hints, or `block`. |
+| `reasoning` | Session id, reasoning type, problem statement, and optional hints. | `allow` with optional hints, or `block`. |
+
+Planning strategies include `none`, `step_by_step`, `tree_of_thoughts`, `graph_planning`, and `custom`. Reasoning types include `chain_of_thought`, `tree_of_thoughts`, `react`, `reflexion`, and `other`.
+
+## Rate Limit And Confirmation
+
+| Event | Use case | Decision |
+| --- | --- | --- |
+| `rate_limit` | Token, request, API, tool, or custom limit was hit. | `retry` with a delay, `queue`, or `skip` with a reason. |
+| `confirmation` | Safety, user, cost, or custom approval is required. | `approve`, `reject`, or `escalate`. |
+
+The runtime still owns enforcement: if the harness says `queue`, `skip`, `reject`, or `escalate`, the agent or host process must apply that result.
+
+## Intent Detection
+
+`intent_detection` runs before deeper context work. The payload includes session id, prompt, workspace, and an optional language hint. The harness can return:
+
+| Decision | Meaning |
+| --- | --- |
+| `allow` | Detected intent, confidence score from `0.0` to `1.0`, and optional target hints. |
+| `block` | Skip detection and let the runtime use a local fallback. |
+
+Target hints can include target type, target name, and domain.
+
+## Event Context
+
+Any AHP event can also carry `EventContext` outside the typed payload. It provides recent facts, memory summary, session stats, current task, and arbitrary client capabilities. Harnesses should ignore unrecognized capabilities and only depend on fields they explicitly need.

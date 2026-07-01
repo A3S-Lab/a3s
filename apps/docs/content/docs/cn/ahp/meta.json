@@ -4,6 +4,7 @@
     "index",
     "protocol",
     "events",
+    "typed-decisions",
     "transports"
   ]
 }
