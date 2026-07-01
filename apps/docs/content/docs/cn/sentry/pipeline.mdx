@@ -1,0 +1,55 @@
+---
+title: Pipeline
+description: L1 rules、L2 LLM、L3 A3S Code investigation、SAE signals、fail posture 与 speculative parallelism。
+---
+
+# Sentry Pipeline
+
+Sentry 是分层 judge。便宜的确定性逻辑先运行；只有低成本 tier 无法定论时，才运行更贵的判断。
+
+```text
+Observer event
+  -> L1 rules
+  -> L2 LLM classifier when L1 escalates
+  -> L3 A3S Code investigation when L2 escalates
+  -> decision + optional enforcement action
+```
+
+## Tiers
+
+| Tier | 机制 | 运行条件 | 输出 |
+| --- | --- | --- | --- |
+| L1 | 内置与 ACL-configured regex rules | 每个解析后的 Observer event | 带 severity 和可选 action 的 `allow`、`block` 或 `escalate`。 |
+| L2 | OpenAI-compatible chat classifier | L1 escalation events | 快速二次判断；可以 block、allow 或 escalate。 |
+| L3 | 带安全技能的 A3S Code agent | L2 escalation，或没有 L2 时直接从 L1 进入 | 深度上下文 investigation，带 attack-chain reasoning。 |
+| SAE | 面向模型输出 activations 的 Sparse Autoencoder score | 来自 A3S Power 的 `LlmActivations` events | 白盒 concept score 与可解释 feature drivers。 |
+
+每个 tier 都实现 judge 接口，因此 embedder 可以替换某个 tier，而不改变 escalation grammar。
+
+## L1 Rules
+
+内置规则集处理明确场景：提权、反弹 shell、pipe-to-shell、磁盘覆盖、credential-file access、
+cloud-metadata SSRF、observed I/O 中的 secret 或 injection marker。额外规则可以通过
+ACL policy 文件提供，并支持热加载。
+
+L1 是快速 triage 层，不是 sandbox。它刻意保守：遇到模糊情况就 escalate，而不是猜测。
+
+## L2 和 L3
+
+L2 是事件分类器，适合 false-positive reduction 和快速语义判断。
+
+L3 是真实 A3S Code agent。它加载安全技能，考虑 actor、观察到的 event、可能 attack chain
+和 blast radius，然后返回结构化 verdict。它更慢，但更深。
+
+## Speculation
+
+默认情况下，L3 只在 L2 escalate 后启动。开启 speculative parallelism 后，高 severity
+的 L1 escalation 会同时启动 L2 与 L3。快速 L2 block 可以短路；否则已经运行中的 L3
+更深 verdict 会更早可用。
+
+## Fail Posture
+
+Sentry 默认 fail-open：无法解决的 escalation 会 allow。只有在部署有足够 L2/L3 容量，
+或采用能承受 unknown blocking 的 allow-list 姿态时，才应启用 fail-closed。
+
+Rules-only fail-open 模式能执行直接 `block` 的规则，但不会执行只 `escalate` 的规则。

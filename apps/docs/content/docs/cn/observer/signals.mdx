@@ -1,0 +1,49 @@
+---
+title: 信号
+description: A3S Observer 发出的事件族，以及启用敏感信号的 opt-in 开关。
+---
+
+# Observer 信号
+
+A3S Observer 把内核事件和用户态关联结果导出为 NDJSON。默认信号集强调语言无关；
+敏感或高流量捕获需要显式环境变量开启。
+
+## 默认信号
+
+| 事件 | 来源 | 说明 |
+| --- | --- | --- |
+| `ToolExec` | `sys_enter_execve` | 工具或子进程启动，包含 argv、cwd、comm、uid、pid、ppid。 |
+| `ProcessExit` | `do_exit` kprobe | 进程退出码或 signal。 |
+| `Egress` | `sys_enter_connect` 与 socket 关联 | 出站连接 peer IP 和端口。 |
+| `Dns` | 端口 53 DNS send hooks | 进程尝试解析的主机名。 |
+| `LlmCall` | TLS SNI + 每 socket read/recv/close 指标 | Provider、endpoint、请求/响应字节、latency、TTFT。 |
+| `SecurityAction` | `setuid`、`ptrace`、`bind` syscall hooks | 提权、进程注入或打开监听端口。 |
+| `CollectorHeartbeat` | 用户态定时器 | Collector 身份、node/pod metadata、已挂载 probe、feature flags、事件计数、ring drops、output drops。 |
+
+`CollectorHeartbeat` 是控制平面健康证据，不应作为 agent action 送进安全策略。
+
+## Opt-In 信号
+
+| Flag | 事件 | 为什么 opt-in |
+| --- | --- | --- |
+| `A3S_OBSERVER_FILES=1` | `FileAccess`、`FileDelete` | 繁忙节点上的文件信号可能非常高流量。 |
+| `A3S_OBSERVER_SSL=1` | `SslContent`、`LlmApi` | 明文请求/响应内容敏感，而且只覆盖支持的 TLS 实现。 |
+
+`SslContent` 来自 OpenSSL `SSL_write` / `SSL_read` uprobes。当这些内容能被解析成
+LLM API 交互时，Observer 还会生成包含 model 和 token-usage 字段的 `LlmApi`。
+
+## 富化
+
+Observer 在导出前富化原始内核事件：
+
+- 从 Kubernetes cgroup、`/proc` 或内核 `comm` 兜底获取 identity。
+- 建立 `(pid, fd) -> peer` socket 关联。
+- 从 TLS SNI 和 endpoint metadata 分类 provider。
+- 设置 `A3S_OBSERVER_COLLECTOR_ID` 和 `A3S_NODE_NAME` 时使用稳定 collector/node 身份。
+
+## 边界
+
+- 随着 encrypted client hello 普及，SNI 可能消失；需要结合 IP、DNS 或 opt-in content 路径。
+- SSL 明文捕获是 OpenSSL-specific，不覆盖所有 TLS 栈。
+- Host-side eBPF 可以看到 A3S Box 通过 host network path 的 egress，但看不到 guest
+  kernel 内的 exec/file 活动。

@@ -1,0 +1,64 @@
+---
+title: Pipeline
+description: L1 rules, L2 LLM, L3 A3S Code investigation, SAE signals, fail posture, and speculative parallelism.
+---
+
+# Sentry Pipeline
+
+Sentry is a tiered judge. Cheap deterministic logic runs first; expensive
+judgment only runs when cheaper tiers cannot settle the event.
+
+```text
+Observer event
+  -> L1 rules
+  -> L2 LLM classifier when L1 escalates
+  -> L3 A3S Code investigation when L2 escalates
+  -> decision + optional enforcement action
+```
+
+## Tiers
+
+| Tier | Mechanism | Runs on | Output |
+| --- | --- | --- | --- |
+| L1 | Built-in and ACL-configured regex rules | Every parsed Observer event | `allow`, `block`, or `escalate` with severity and optional action. |
+| L2 | OpenAI-compatible chat classifier | Events escalated by L1 | Fast second opinion; can block, allow, or escalate. |
+| L3 | A3S Code agent with security skills | Events escalated by L2 or directly from L1 when no L2 is configured | Deep contextual investigation with attack-chain reasoning. |
+| SAE | Sparse-autoencoder score over model-output activations | `LlmActivations` events from A3S Power | White-box concept score with explainable feature drivers. |
+
+Every tier implements a judge interface, so embedders can replace a tier without
+changing the escalation grammar.
+
+## L1 Rules
+
+The built-in rule set targets unambiguous cases: privilege escalation, reverse
+shells, pipe-to-shell patterns, disk overwrite, credential-file access,
+cloud-metadata SSRF, and secret or injection markers in observed I/O. Extra
+rules can be provided through an ACL policy file and are hot-reloaded.
+
+L1 is a fast triage layer, not a sandbox. It is intentionally conservative: if a
+case is ambiguous, it escalates rather than guessing.
+
+## L2 And L3
+
+L2 is a classifier over the event. It is useful for false-positive reduction and
+quick semantic judgment.
+
+L3 is an actual A3S Code agent. It loads security skills, considers the actor,
+the observed event, the possible attack chain, and the blast radius, then
+returns a structured verdict. It is slower but deeper.
+
+## Speculation
+
+By default, L3 starts only after L2 escalates. With speculative parallelism,
+high-severity L1 escalations start L2 and L3 concurrently. A fast L2 block can
+short-circuit the result; otherwise L3's already-running deeper verdict becomes
+available sooner.
+
+## Fail Posture
+
+Sentry defaults to fail-open: unresolved escalation allows the event. Set
+fail-closed only when the deployment has enough L2/L3 capacity or an allow-list
+posture that can tolerate blocking unknowns.
+
+Rules-only fail-open mode catches direct `block` rules but does not enforce
+rules that only escalate.

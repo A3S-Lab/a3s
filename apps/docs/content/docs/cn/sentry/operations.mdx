@@ -1,0 +1,51 @@
+---
+title: Operations
+description: A3S Sentry 的 rollout、dry-run、metrics、deny files、queue tuning 和 failure modes。
+---
+
+# Sentry Operations
+
+Sentry 消费 Observer NDJSON，输出 decision audit lines，并为 Observer guards 写 deny
+records。进入 enforcement 前应先 shadow mode。
+
+## Rollout
+
+1. 启用 dry-run 部署，让 Sentry 判断事件但不写 deny files。
+2. 查看 non-allow audit lines 并调策略。
+3. 当 false-positive budget 可接受时，逐节点移除 dry-run。
+4. 即使 Sentry 关闭，也保持 Observer 运行；observe 和 intervene 是刻意分离的路径。
+
+## Deny Files
+
+Sentry 可以向 Observer guards 使用的同一组文件追加 egress、file、exec denies。
+Guard 会热加载这些文件。Deny files 是运行态，不是 source-of-truth policy；应由 events
+和 policy 生成。
+
+## Metrics
+
+配置后，Sentry 暴露 Prometheus metrics 和 health endpoint。最重要的告警计数器：
+
+| Metric | 含义 |
+| --- | --- |
+| `sentry_overload_degraded_total` | Escalation 无法处理，落入配置的 fail mode。 |
+| `sentry_enforce_failed_total` | Decision 需要 enforce，但写 deny record 失败。 |
+| `sentry_blocked_total` | 按 tier 和 event family 统计 block。 |
+| `sentry_events_total` | 总判断事件数。 |
+
+在 fail-open 部署中，overload degradation 或 enforce failure 都意味着某次 block 可能没有落地。
+
+## Queue 和 Timeout 调优
+
+L2 和 L3 在 ingest thread 之外的 worker pools 运行。需要调：
+
+- 并发 investigations 的 worker 数量。
+- 吸收 escalation burst 的 queue depth。
+- 匹配真实模型 latency 的 L2 timeout。
+- 深度 A3S Code investigation 的 L3 timeout。
+- 高 severity event 是否值得 L2/L3 parallel 的 speculation threshold。
+
+## 边界
+
+- Observer-event Sentry 是 reactive；它可能阻断下一步 action，而不是产生 event 的那一步。
+- Deny 可能比较粗：binary path 与 IP-based enforcement 可能影响同节点上的多个进程。
+- L2/L3 会读取攻击者影响的内容。确定性的 L1 底线和外部 kernel guard 仍然重要。

@@ -1,4 +1,10 @@
 {
   "title": "A3S Sentry",
-  "pages": ["index"]
+  "pages": [
+    "index",
+    "pipeline",
+    "inline-gate",
+    "operations",
+    "sdk"
+  ]
 }

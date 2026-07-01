@@ -1,0 +1,58 @@
+---
+title: Enforcement
+description: Optional Observer guards for denying egress, file access, and exec through external policy files.
+---
+
+# Observer Enforcement
+
+Observer is observe-only by default. Intervention is an opt-in extension: an
+external controller writes policy files, and separate guard binaries enforce
+those files from the kernel vantage point.
+
+```text
+events -> controller or Sentry -> deny files -> Observer guard -> kernel denies
+```
+
+## Shipped Guards
+
+| Guard | Binary | Mechanism | Denies |
+| --- | --- | --- | --- |
+| Egress | `a3s-observer-enforce` | eBPF `cgroup/connect4` | `connect()` to listed IPv4 addresses or hostnames resolved on reload. |
+| File/exec | `a3s-observer-fileguard` | fanotify `FAN_OPEN_PERM` and `FAN_OPEN_EXEC_PERM` | `open()` and `exec` for listed paths. |
+
+Both guards hot-reload their deny files. A denied operation returns `EPERM`.
+
+## External Policy Model
+
+Observer does not decide what is dangerous. It provides the signal and the
+enforcement primitive. Your controller, Sentry, or another policy service owns
+the decision:
+
+```text
+Observer NDJSON
+  -> policy engine
+  -> egress-deny.txt / file-exec-deny.txt
+  -> guard reload
+  -> kernel deny
+```
+
+This split keeps passive telemetry separate from blocking behavior. A bad policy
+can break an action, but it should not blind the observer.
+
+## Provider Policy
+
+The root crate also exposes a host-buildable `ProviderPolicy`: classify egress by
+LLM provider, allow a configured set, and deny known non-approved providers.
+Strict mode can deny unclassified destinations as well.
+
+Use provider allow-lists when the platform wants proactive control over which
+model APIs an agent may reach. Use Sentry when the decision depends on observed
+behavior and needs tiered judgment.
+
+## Fail Posture
+
+- Default posture is fail-open: unknown or missing policy allows the action.
+- A security-first deployment can combine allow-lists, Sentry fail-closed mode,
+  and explicit guard configuration.
+- Deny files are node-local operational state; they should be generated from
+  policy and telemetry, not committed as static product config.

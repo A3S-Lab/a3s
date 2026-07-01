@@ -27,6 +27,13 @@ observer NDJSON -> L1 rules -> L2 LLM -> L3 A3S Code agent
 | 运行模式 | Rules-only、dry-run、fail-closed、policy hot reload、高风险事件 L2/L3 speculative parallel。 |
 | SDK | Python 与 TypeScript 原生 SDK，提供同一 Rust engine 的进程内 evaluation。 |
 
+## 从这里开始
+
+- [Pipeline](/cn/docs/sentry/pipeline) 解释 L1 rules、L2 LLM、L3 agent investigation、SAE signals、speculation 和 fail posture。
+- [Inline Gate](/cn/docs/sentry/inline-gate) 文档化转发前 wire inspection 与 secret/PII masking。
+- [Operations](/cn/docs/sentry/operations) 覆盖部署、dry-run rollout、metrics、queues 和 deny-file 行为。
+- [SDK](/cn/docs/sentry/sdk) 解释 Python 与 TypeScript 进程内嵌入。
+
 ## 与 Observer 的关系
 
 Observer 提供信号和内核 enforcement primitive。Sentry 负责策略判断。这样 observe 和

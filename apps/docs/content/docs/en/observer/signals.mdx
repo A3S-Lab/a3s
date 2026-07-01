@@ -1,0 +1,54 @@
+---
+title: Signals
+description: Event families emitted by A3S Observer and the opt-in flags that enable sensitive signals.
+---
+
+# Observer Signals
+
+A3S Observer turns kernel and userspace correlation into NDJSON events. The
+default signal set is designed to be language-agnostic; sensitive or
+high-volume capture is behind explicit environment flags.
+
+## Default Signals
+
+| Event | Source | What it tells you |
+| --- | --- | --- |
+| `ToolExec` | `sys_enter_execve` | A tool or subprocess started, including argv, cwd, comm, uid, pid, and ppid. |
+| `ProcessExit` | `do_exit` kprobe | Exit code or signal for a process. |
+| `Egress` | `sys_enter_connect` and socket correlation | Peer IP and port for outbound connections. |
+| `Dns` | DNS send hooks on port 53 | Hostnames the process attempted to resolve. |
+| `LlmCall` | TLS SNI + per-socket read/recv/close metrics | Provider, endpoint, request/response bytes, latency, and TTFT. |
+| `SecurityAction` | `setuid`, `ptrace`, and `bind` syscall hooks | Privilege escalation, process injection, or opening a listening port. |
+| `CollectorHeartbeat` | Userspace timer | Collector identity, node/pod metadata, attached probes, feature flags, event counts, ring drops, and output drops. |
+
+`CollectorHeartbeat` is control-plane health evidence. Do not feed it into
+security policy as if it were an agent action.
+
+## Opt-In Signals
+
+| Flag | Events | Why opt-in |
+| --- | --- | --- |
+| `A3S_OBSERVER_FILES=1` | `FileAccess`, `FileDelete` | File signals can be high-volume on busy nodes. |
+| `A3S_OBSERVER_SSL=1` | `SslContent`, `LlmApi` | Plaintext request/response content is sensitive and only available for supported TLS implementations. |
+
+`SslContent` comes from OpenSSL `SSL_write` / `SSL_read` uprobes. When that
+content can be parsed as an LLM API exchange, Observer also emits `LlmApi` with
+model and token-usage fields.
+
+## Enrichment
+
+Observer enriches raw kernel events before export:
+
+- Identity from Kubernetes cgroups, `/proc`, or an in-kernel `comm` fallback.
+- `(pid, fd) -> peer` socket correlation.
+- Provider classification from TLS SNI and endpoint metadata.
+- Stable collector identity from `A3S_OBSERVER_COLLECTOR_ID` and node identity
+  from `A3S_NODE_NAME` when those are set.
+
+## Boundaries
+
+- SNI can disappear as encrypted client hello adoption grows; fall back to IP,
+  DNS, or opt-in content paths where appropriate.
+- SSL plaintext capture is OpenSSL-specific. It does not cover every TLS stack.
+- Host-side eBPF can see A3S Box egress through the host network path, but not
+  guest-kernel exec/file activity.

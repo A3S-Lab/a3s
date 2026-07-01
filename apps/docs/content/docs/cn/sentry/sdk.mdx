@@ -1,0 +1,50 @@
+---
+title: SDK 与嵌入
+description: Python 与 TypeScript 原生 SDK，以及 Rust 进程内 pipeline embedding。
+---
+
+# Sentry SDK 与嵌入
+
+Sentry 可以作为 Observer 后面的 daemon 运行，也可以进程内嵌入。SDK 包装的是 daemon
+使用的同一个 Rust engine。
+
+## Python
+
+Python SDK 暴露原生进程内 `Sentry` 对象，以及用于构造 Observer-shaped events 的 builders：
+egress、tool execution、DNS、file access、SSL content、security actions。
+
+```python
+from a3s_sentry import Sentry, egress, tool_exec
+
+sentry = Sentry.create("sentry.acl")
+decision = sentry.evaluate(egress(1, "169.254.169.254", 80))
+enforced = sentry.evaluate_and_enforce(tool_exec(2, ["/usr/bin/ncat", "host", "4444"]))
+```
+
+## TypeScript
+
+TypeScript SDK 通过 native package 暴露同一个 judge：
+
+```ts
+import { Sentry, egress } from '@a3s-lab/sentry';
+
+const sentry = Sentry.create('sentry.acl');
+const decision = sentry.evaluate(egress(1, '169.254.169.254', 80));
+```
+
+## 统一 ACL 配置
+
+SDK 配置可以描述：
+
+- L1 rules。
+- 可选 L2 backend。
+- 可选 L3 agent backend。
+- Deny-file sinks。
+- Fail posture 与 speculation 行为。
+
+真实 provider credentials 和本地路径不要进入已提交示例。使用环境变量或部署密钥。
+
+## Rust Embedding
+
+Rust host 可以直接用 `LiveRules`、`Pipeline` 和 judge implementations 构建 pipeline。
+当产品已经拥有 event source 和 enforcement sinks 时，这是最低层集成路径。

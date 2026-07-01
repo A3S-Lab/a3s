@@ -1,4 +1,9 @@
 {
   "title": "A3S Observer",
-  "pages": ["index"]
+  "pages": [
+    "index",
+    "signals",
+    "enforcement",
+    "deployment"
+  ]
 }

@@ -1,33 +1,31 @@
 ---
 title: A3S Observer
-description: eBPF-based, language-agnostic observability for AI agents — which agent ran which tools, wrote which files, called which LLM provider (with bytes/latency/TTFT), and reached which endpoint, with zero code changes
+description: eBPF-based, language-agnostic observability and optional kernel intervention for AI agents.
 ---
 
 import { Callout } from 'fumadocs-ui/components/callout';
 
 # A3S Observer
 
-`a3s-observer` turns kernel-level events into semantic AI-agent telemetry — **who**
-(process / k8s pod) ran **what** (tools, files, LLM calls) and reached **where**
-(endpoints) — captured with **eBPF**, with **zero changes to the agent**, across languages.
+`a3s-observer` turns kernel-level activity into semantic AI-agent telemetry:
+which process or pod ran which tool, touched which file, called which LLM
+provider, reached which endpoint, and triggered which security-sensitive syscall.
+It observes unmodified agents across languages, and it can optionally attach
+kernel guards that deny egress, file access, or exec through external policy
+files.
 
 ```
-capture (eBPF probes)        enrich + correlate (userspace)       export
-─────────────────────        ───────────────────────────────     ──────────
-exec    (subprocess)         identity: k8s cgroup→pod,            NDJSON
-file    (writes)                       /proc + in-kernel comm      (or log)
-connect (peer IP)            (pid,fd)→peer correlation            → OTel
-tls-sni (LLM provider)       LLM req/resp bytes·latency·TTFT         Collector
-dns     (hostnames)
-```
-
-A single event answers who / what / where — here an LLM call with metrics:
-
-```json
-{"identity":{"agent":"curl"},"provider":"Anthropic",
- "event":{"LlmCall":{"sni":"api.anthropic.com","peer":"160.79.104.10",
-   "req_bytes":284,"resp_bytes":3832,
-   "latency":{"secs":1,"nanos":20000000},"ttft":{"secs":0,"nanos":318000000}}}}
+agent + tool subprocesses
+        |
+        | exec, exit, connect, DNS, TLS ClientHello, file, unlink, security syscalls
+        v
+kernel probes / fanotify
+        |
+        v
+collector: identity + pid/fd correlation + provider classification
+        |
+        v
+NDJSON -> OpenTelemetry Collector / Sentry / your backend
 ```
 
 ## Why eBPF (not an SDK)
@@ -39,39 +37,43 @@ A single event answers who / what / where — here an LLM call with metrics:
 - **Low overhead, security-relevant** — runs in the kernel; an agent can't easily evade it.
 
 <Callout type="info">
-v1 uses only language-agnostic kernel hooks (no per-language uprobes), so it works on any
-runtime. Trade-off: no LLM prompt / model-name / exact-token visibility — that needs an
-opt-in TLS-payload extension (roadmap). The default captures provider, endpoint, req/resp
-bytes, latency, TTFT, tools, files, and identity.
+The observe path is passive by default. Interventions are opt-in and isolated:
+`a3s-observer-enforce` handles egress through cgroup BPF, while
+`a3s-observer-fileguard` uses fanotify for file and exec denial.
 </Callout>
 
-## What it captures
+## Current Capability
 
-| Probe | Hook | Gives |
-|---|---|---|
-| `exec` | `sys_enter_execve` | tools / subprocesses (argv) — incl. ones that bypass app instrumentation |
-| `file` | `sys_enter_openat` (write opens) | files the agent **writes** — opt-in via `A3S_OBSERVER_FILES=1` (high-volume on busy nodes) |
-| `connect` | `sys_enter_connect` | peer **IP:port** |
-| `tls-sni` | TLS ClientHello on send | LLM **provider** (from SNI), language-agnostic |
-| `dns` | `sendto` / `sendmsg` / `sendmmsg` :53 | resolved **hostnames** |
-| LLM metrics | `read` / `recv` + `close`, per socket | req/resp **bytes**, **latency**, **TTFT** |
-
-Userspace enriches each event with **identity** (k8s pod/container via cgroup, or `/proc`
-comm+ppid, with an in-kernel `comm` fallback so short-lived processes are still attributed)
-and a `(pid,fd)→peer` correlation that fuses the LLM provider with its endpoint + metrics.
+| Area | Implemented capability |
+| --- | --- |
+| Passive telemetry | `ToolExec`, `ProcessExit`, `Egress`, `Dns`, `LlmCall`, `SecurityAction`, collector heartbeat, and provider classification from SNI. |
+| Optional content capture | `A3S_OBSERVER_SSL=1` enables OpenSSL `SSL_write` / `SSL_read` uprobes that emit `SslContent`; `LlmApi` is parsed from that content when possible. |
+| Optional file signals | `A3S_OBSERVER_FILES=1` enables file write and delete signals. |
+| Identity | Kubernetes cgroup to pod identity, `/proc` process metadata, and in-kernel `comm` fallback for short-lived processes. |
+| Correlation | Userspace `(pid, fd) -> peer` correlation ties sockets, providers, endpoints, and LLM metrics together. |
+| Export | NDJSON or human log; production transport is delegated to an OpenTelemetry Collector or another log pipeline. |
+| Intervention | Egress deny via `a3s-observer-enforce`; file and exec deny via `a3s-observer-fileguard`; both driven by external hot-reloaded policy files. |
 
 ## Architecture (minimal core + extensions)
 
 Swappable traits around the probe core:
 
 - `IdentityResolver` — k8s cgroup→pod · `/proc` (bare host) · in-kernel `comm` fallback
-- `ServiceClassifier` — SNI / IP → `Provider` (14 LLM providers)
+- `ServiceClassifier` — SNI / IP → `Provider` (15 LLM providers)
 - `Exporter` — NDJSON · log → OpenTelemetry Collector (filelog → OTLP)
+- `Policy` — optional host-buildable decision seam for egress, file, and exec verdicts
 
 Crates: `a3s-observer` (contracts + model), `a3s-observer-common` (`no_std` shared types),
-`a3s-observer-ebpf` (the probes), `a3s-observer-collector` (loader + correlation + export).
+`a3s-observer-ebpf` (the probes), `a3s-observer-collector` (loader, correlation, export,
+`enforce`, and `fileguard`).
 
-## Build & run
+## Start Here
+
+- [Signals](/docs/observer/signals) lists every implemented event family and its opt-in flags.
+- [Enforcement](/docs/observer/enforcement) explains egress/file/exec denial and the external policy model.
+- [Deployment](/docs/observer/deployment) covers Linux requirements, NDJSON export, and Kubernetes deployment.
+
+## Build And Run
 
 The eBPF crate needs nightly + `rust-src` + `bpf-linker` (which borrows rustc's bundled
 LLVM — **no system LLVM required**):
@@ -86,27 +88,15 @@ sudo ./target/release/a3s-observer-collector                          # human-re
 A3S_OBSERVER_JSON=1 sudo -E ./target/release/a3s-observer-collector   # NDJSON → vector/Loki/jq
 ```
 
-## Export to OpenTelemetry
+Linux only; needs root or the relevant capabilities (`CAP_BPF`, `CAP_PERFMON`,
+and the permissions required by fanotify/guard paths).
 
-a3s-observer stays lean — it emits NDJSON; shipping (batch / retry / route) is the
-OpenTelemetry Collector's job. The production pipeline:
+## Boundaries
 
-```
-capture (a3s-observer)  →  NDJSON  →  OTel Collector (filelog → OTLP)  →  your backend
-```
-
-A ready config ships in `deploy/otel-collector.yaml`. In Kubernetes, run a3s-observer as a
-DaemonSet writing to stdout and let a Collector DaemonSet tail the node logs. In-process
-OTLP push is intentionally not built — that's the Collector's job (and keeps the privileged
-probe binary minimal and decoupled from backend uptime).
-
-## Status & roadmap
-
-**Implemented** (validated on Linux 6.8): `exec` / `file` (writes) / `connect` / `tls-sni` /
-`dns` probes + per-socket **LLM metrics** (req/resp bytes, latency, TTFT); identity (k8s,
-`/proc`, in-kernel `comm`); `(pid,fd)→peer` correlation; NDJSON / log export → OpenTelemetry
-Collector.
-
-**Roadmap:** an **opt-in SSL-payload** extension for prompt/response content (per TLS
-library, since it needs uprobes that aren't language-agnostic); in-guest probes for a3s-box
-MicroVMs.
+- The always-on core is passive. SSL content and file events are opt-in because
+  they are higher-volume and more sensitive.
+- OpenSSL plaintext capture only works for processes using OpenSSL symbols; Go's
+  `crypto/tls` path is not covered by that uprobe path.
+- A3S Box guests have their own kernel. Host-side Observer sees guest egress
+  through the host network path, but in-guest exec/file telemetry needs an
+  in-guest collector.

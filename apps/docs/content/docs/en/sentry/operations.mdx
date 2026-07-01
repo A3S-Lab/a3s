@@ -1,0 +1,57 @@
+---
+title: Operations
+description: Rollout, dry-run, metrics, deny files, queue tuning, and failure modes for A3S Sentry.
+---
+
+# Sentry Operations
+
+Sentry consumes Observer NDJSON, emits decision audit lines, and writes deny
+records for Observer guards. Start in shadow mode before enforcing.
+
+## Rollout
+
+1. Deploy with dry-run enabled so Sentry judges events but writes no deny files.
+2. Review non-allow audit lines and tune policies.
+3. Remove dry-run node by node when the false-positive budget is acceptable.
+4. Keep Observer running even if Sentry is disabled; observe and intervene are
+   deliberately separate paths.
+
+## Deny Files
+
+Sentry can append egress, file, and exec denies to the same files used by
+Observer guards. The guards hot-reload those files. Deny files are operational
+state, not source-of-truth policy; generate them from events and policy.
+
+## Metrics
+
+When configured, Sentry exposes Prometheus metrics and a health endpoint. The
+most important counters to alert on are:
+
+| Metric | Meaning |
+| --- | --- |
+| `sentry_overload_degraded_total` | An escalation could not be processed and fell through to the configured fail mode. |
+| `sentry_enforce_failed_total` | A decision wanted to enforce, but writing the deny record failed. |
+| `sentry_blocked_total` | Blocks by tier and event family. |
+| `sentry_events_total` | Total events judged. |
+
+In fail-open deployments, overload degradation or enforce failure means a block
+may not have landed.
+
+## Queue And Timeout Tuning
+
+L2 and L3 run in worker pools away from the ingest thread. Tune:
+
+- Worker count for concurrent investigations.
+- Queue depth for escalation bursts.
+- L2 timeout for the real model latency.
+- L3 timeout for deeper A3S Code investigation.
+- Speculation threshold when high-severity events deserve L2/L3 in parallel.
+
+## Boundaries
+
+- Observer-event Sentry is reactive; it may block the next action rather than the
+  action that produced the event.
+- Denies can be coarse: binary path and IP-based enforcement may affect more
+  than one process on the same node.
+- L2/L3 read attacker-influenced content. The deterministic L1 floor and
+  external kernel guard remain important.
