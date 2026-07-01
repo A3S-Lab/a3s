@@ -1,0 +1,57 @@
+---
+title: Updates
+description: CLI self-update behavior through a3s update, TUI /update, Homebrew refresh, direct release assets, version comparison, and verification.
+---
+
+# Updates
+
+A3S CLI has one update implementation shared by `a3s update`, `a3s code update`,
+and TUI `/update`.
+
+## Flow
+
+1. Read the current compiled CLI version.
+2. Resolve the latest release from GitHub release redirects.
+3. Compare numeric version components, allowing optional `v` prefixes.
+4. Prefer Homebrew when the current install is Homebrew-managed.
+5. Refresh the tap before upgrading so stale formula metadata does not block the
+   update.
+6. Verify that the installed binary reports the target version.
+7. Fall back to a standalone release download when Homebrew cannot complete or
+   verify the upgrade.
+
+## Supported Standalone Targets
+
+Standalone direct-download update targets:
+
+- `aarch64-apple-darwin`
+- `x86_64-apple-darwin`
+- `aarch64-unknown-linux-gnu`
+- `x86_64-unknown-linux-gnu`
+
+Unsupported targets are pointed at the latest release page instead of attempting
+an unsafe in-place update.
+
+## TUI Restart
+
+When `/update` succeeds from inside `a3s code`, the TUI exits cleanly, performs
+the upgrade in the restored shell, then restarts into:
+
+```bash
+a3s code resume <session-id>
+```
+
+That keeps the terminal state clean and returns the user to the saved session.
+
+## Older Builds
+
+Older builds whose `/update` path could not refresh the Homebrew tap need one
+manual bootstrap upgrade:
+
+```bash
+brew update
+brew upgrade a3s
+a3s --version
+```
+
+Current builds handle the tap refresh inside the updater.

@@ -1,0 +1,70 @@
+---
+title: Code TUI
+description: a3s code 的 session startup、config discovery、slash commands、panels、session persistence 和 smoke mode。
+---
+
+# Code TUI
+
+`a3s code` 启动交互式 coding-agent TUI。它嵌入 A3S Code 运行 agent loop，并使用
+A3S TUI 渲染。
+
+## Startup And Config
+
+Config discovery 按顺序检查：
+
+| Order | Location |
+| --- | --- |
+| 1 | 设置了 `A3S_CONFIG_FILE` 时使用它。 |
+| 2 | 从当前目录向上查找 `.a3s/config.acl`。 |
+| 3 | `~/.a3s/config.acl`。 |
+
+首次启动且找不到 config 时，CLI 会创建 starter `~/.a3s/config.acl`，并在内置 file editor
+中打开。真实 provider credentials 应通过环境变量或宿主 secret system 提供，不应提交到仓库文件。
+
+## Sessions
+
+Sessions 会持久化到当前 workspace 的 `.a3s/tui-sessions` 目录。退出时，CLI 会打印当前 session
+的 resume command。
+
+```bash
+a3s code resume <session-id>
+a3s code resume
+```
+
+第二种形式会恢复当前 workspace 中最新的 saved session。
+
+## Slash Commands
+
+| Command | Capability |
+| --- | --- |
+| `/model` | 切换 configured models，以及可用的 account-backed model tabs。 |
+| `/config` | 在 TUI editor 中打开 active ACL config。 |
+| `/theme` | 切换 code highlight themes。 |
+| `/workflow` | 查看最新 generated workflow artifact。 |
+| `/output` | 检查当前 session 的 tool calls 和 outputs。 |
+| `/login` / `/logout` | 当 endpoint 已配置时，登录或退出 configured platform account。 |
+| `/view` | 当存在 platform view 时，在 native window 中打开最新 view。 |
+| `/plugin` / `/reload` | 启用、禁用、重载 skills/plugins。 |
+| `/update` | 升级 CLI，并重启回 saved session。 |
+| `/btw <prompt>` | 在 background thread 中提出 side question。 |
+| `/top` | 在 TUI 内打开 process monitor panel。 |
+| `/ide` | 打开 workspace file tree 和 code viewer/editor。 |
+| `/git` | 打开 status、diff、staging、log、commit UI。 |
+| `/memory` | 用 timeline 浏览 long-term memory。 |
+| `/kb <text|file|folder>` | 向 project knowledge base 添加材料。 |
+| `/effort` | 调整 model effort。 |
+| `/compact` | summarize 并 compact context。 |
+| `/goal` | 设置或清除 persistent north-star goal。 |
+| `/loop` | 运行 task，并自动继续直到完成或停止。 |
+| `/relay` | 从其它 supported coding agent 继续 session。 |
+| `/auto` | 本 session 自动批准 tool confirmations。 |
+
+## Headless Smoke Mode
+
+设置 `A3S_CODE_TUI_SMOKE=1` 可以在不接管终端的情况下验证 agent-stream integration。这适合对
+configured model/session path 做 focused smoke validation。
+
+## Boundaries
+
+TUI 不应被理解为独立 hosted service。它是本地 terminal application，把 A3S Code、A3S TUI、
+workspace services、memory、skill loading、panels 和 update UX 绑定到一个 surface。

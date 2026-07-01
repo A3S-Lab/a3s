@@ -1,0 +1,51 @@
+---
+title: Box And Tools
+description: a3s box proxying、Box bootstrap、install locations、tool discovery 和 helper binary boundaries。
+---
+
+# Box And Tools
+
+`a3s box ...` 是 umbrella CLI 的 Box proxy。它让统一入口保持简单，同时把 sandbox/runtime
+行为留在 `a3s-box` binary 中。
+
+## Box Proxy Flow
+
+运行 `a3s box <args...>` 时，CLI 会：
+
+1. 查找 executable `a3s-box`。
+2. 当 `A3S_BOX_INSTALL_DIR` 已设置时优先检查它。
+3. 检查当前 `a3s` executable 旁边。
+4. 检查 `PATH`。
+5. 检查 user-local fallback location。
+6. 缺失时安装 Box，然后重新运行请求的 command。
+
+当 child command 失败时，proxy 会使用与 `a3s-box` 相同的 status code 退出。
+
+## Bootstrap Paths
+
+| Path | Behavior |
+| --- | --- |
+| Homebrew | 当 `brew` 可用时，尝试 `a3s-lab/tap/a3s-box` formula。 |
+| Standalone release | 下载 platform release archive，解压 Box binaries，安装到选定 bin directory，并复制 bundled libraries。 |
+| Existing install | 复用 configured install dir、CLI sibling dir、`PATH` 或 user-local fallback 中已有 executable。 |
+
+Standalone Box bootstrap 当前有 macOS arm64、Linux arm64、Linux x86_64 release targets。不支持的
+OS/arch 组合应从 release page 手动安装 Box。
+
+## Installed Box Binaries
+
+当 release archive 中存在这些文件时，bootstrap 会安装：
+
+- `a3s-box`
+- `a3s-box-shim`
+- `a3s-box-guest-init`
+- `a3s-box-cri`
+
+## Tool Listing
+
+`a3s list` 会扫描可见的 `a3s-*` executables，让用户知道本机有哪些 A3S product tools 可用。
+
+## Boundaries
+
+CLI 自身不实现 container isolation。它负责发现、安装和启动 Box；Box repository 负责 runtime、
+CRI、networking、image 和 TEE behavior。

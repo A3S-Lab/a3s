@@ -1,0 +1,37 @@
+---
+title: Commands
+description: a3s umbrella CLI 的 public command surface、dispatch behavior 和 boundaries。
+---
+
+# CLI Commands
+
+`a3s` 刻意保持轻量：它把用户路由到正确的 A3S surface，把更重的产品行为留给组件 crates。
+
+## Public Commands
+
+| Command | Behavior |
+| --- | --- |
+| `a3s code` | 启动交互式 coding-agent terminal UI。 |
+| `a3s code resume <id>` | 按 id 恢复 saved session。 |
+| `a3s code resume` | 恢复当前 workspace 最新 saved session。 |
+| `a3s code update` | CLI self-update path 的别名。 |
+| `a3s box <args...>` | 运行 `a3s-box <args...>`，缺失时 bootstrap Box。 |
+| `a3s list` | 打印 `PATH` 上找到的已安装 `a3s-*` tools。 |
+| `a3s top` | 打开 boxes、coding agents、sessions、events、processes 的 live monitor。 |
+| `a3s update` | 检查最新 release，并在可行时升级。 |
+| `a3s --version` | 打印 CLI version。 |
+| `a3s --help` | 打印内置 usage text。 |
+
+未知 top-level command 会报错退出，而不是猜测另一个 binary 名。
+
+## Dispatch Model
+
+`a3s code` 留在当前进程内调用 TUI module。`a3s box ...` 会在 discovery/bootstrap 后 shell out
+到 `a3s-box` binary。其它 product helpers 保持为独立 binaries，而不是链接进 umbrella CLI。
+
+## Runtime Boundaries
+
+- CLI 负责 command selection、packaging、first-use glue 和 self-update UX。
+- A3S Code 负责 agent session、model/tool execution、workspace services 和 persistence。
+- A3S TUI 负责 terminal rendering 和 input handling。
+- A3S Box 负责 sandbox/container runtime behavior。

@@ -1,0 +1,55 @@
+---
+title: Box And Tools
+description: a3s box proxying, Box bootstrap, install locations, tool discovery, and helper binary boundaries.
+---
+
+# Box And Tools
+
+`a3s box ...` is the umbrella CLI's Box proxy. It keeps the common entry point
+simple while leaving sandbox/runtime behavior in the `a3s-box` binary.
+
+## Box Proxy Flow
+
+When you run `a3s box <args...>`, the CLI:
+
+1. Looks for an executable `a3s-box`.
+2. Checks `A3S_BOX_INSTALL_DIR` first when it is set.
+3. Checks next to the current `a3s` executable.
+4. Checks `PATH`.
+5. Checks a user-local fallback location.
+6. Installs Box when missing, then re-runs the requested command.
+
+The proxy exits with the same status code as `a3s-box` when the child command
+fails.
+
+## Bootstrap Paths
+
+| Path | Behavior |
+| --- | --- |
+| Homebrew | Tries the `a3s-lab/tap/a3s-box` formula when `brew` is available. |
+| Standalone release | Downloads a platform release archive, extracts Box binaries, installs them into the chosen bin directory, and copies bundled libraries. |
+| Existing install | Reuses an existing executable from the configured install dir, CLI sibling dir, `PATH`, or user-local fallback. |
+
+Standalone Box bootstrap currently has release targets for macOS arm64, Linux
+arm64, and Linux x86_64. Unsupported OS/arch pairs should install Box manually
+from the release page.
+
+## Installed Box Binaries
+
+When present in the release archive, bootstrap installs:
+
+- `a3s-box`
+- `a3s-box-shim`
+- `a3s-box-guest-init`
+- `a3s-box-cri`
+
+## Tool Listing
+
+`a3s list` scans visible `a3s-*` executables so users can see which A3S product
+tools are available on their machine.
+
+## Boundaries
+
+The CLI does not implement container isolation itself. It discovers, installs,
+and launches Box; the Box repository owns runtime, CRI, networking, image, and
+TEE behavior.

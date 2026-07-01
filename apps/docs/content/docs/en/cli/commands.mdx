@@ -1,0 +1,41 @@
+---
+title: Commands
+description: Public command surface, dispatch behavior, and boundaries for the a3s umbrella CLI.
+---
+
+# CLI Commands
+
+`a3s` is intentionally small: it routes users to the right A3S surface and keeps
+the heavier product behavior in the component crates.
+
+## Public Commands
+
+| Command | Behavior |
+| --- | --- |
+| `a3s code` | Launch the interactive coding-agent terminal UI. |
+| `a3s code resume <id>` | Resume a saved session by id. |
+| `a3s code resume` | Resume the newest saved session in the current workspace. |
+| `a3s code update` | Alias for the CLI self-update path. |
+| `a3s box <args...>` | Run `a3s-box <args...>`, bootstrapping Box when missing. |
+| `a3s list` | Print installed `a3s-*` tools found on `PATH`. |
+| `a3s top` | Open the live monitor for boxes, coding agents, sessions, events, and processes. |
+| `a3s update` | Check the latest release and upgrade when possible. |
+| `a3s --version` | Print the CLI version. |
+| `a3s --help` | Print the built-in usage text. |
+
+Unknown top-level commands exit with an error instead of guessing another
+binary name.
+
+## Dispatch Model
+
+`a3s code` stays in-process and calls the TUI module. `a3s box ...` shells out to
+the `a3s-box` binary after discovery/bootstrap. Other product helpers remain
+separate binaries rather than being linked into the umbrella CLI.
+
+## Runtime Boundaries
+
+- The CLI owns command selection, packaging, first-use glue, and self-update UX.
+- A3S Code owns the agent session, model/tool execution, workspace services, and
+  persistence.
+- A3S TUI owns terminal rendering and input handling.
+- A3S Box owns sandbox/container runtime behavior.

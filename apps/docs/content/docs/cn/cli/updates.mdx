@@ -1,0 +1,51 @@
+---
+title: Updates
+description: CLI self-update behavior，覆盖 a3s update、TUI /update、Homebrew refresh、direct release assets、version comparison 和 verification。
+---
+
+# Updates
+
+A3S CLI 的 `a3s update`、`a3s code update` 和 TUI `/update` 共享同一个 update implementation。
+
+## Flow
+
+1. 读取当前 compiled CLI version。
+2. 通过 GitHub release redirects 解析 latest release。
+3. 比较 numeric version components，允许可选 `v` prefix。
+4. 当当前安装由 Homebrew 管理时，优先使用 Homebrew。
+5. Upgrade 前刷新 tap，避免 stale formula metadata 阻塞更新。
+6. 验证 installed binary 报告 target version。
+7. 当 Homebrew 无法完成或无法验证升级时，fallback 到 standalone release download。
+
+## Supported Standalone Targets
+
+Standalone direct-download update targets：
+
+- `aarch64-apple-darwin`
+- `x86_64-apple-darwin`
+- `aarch64-unknown-linux-gnu`
+- `x86_64-unknown-linux-gnu`
+
+不支持的 targets 会提示最新 release page，而不是尝试不安全的 in-place update。
+
+## TUI Restart
+
+从 `a3s code` 内执行 `/update` 成功时，TUI 会干净退出，在恢复后的 shell 中执行 upgrade，然后重启到：
+
+```bash
+a3s code resume <session-id>
+```
+
+这样可以保持 terminal state 干净，并把用户带回 saved session。
+
+## Older Builds
+
+早期 `/update` 无法刷新 Homebrew tap 的 build 需要一次手动 bootstrap upgrade：
+
+```bash
+brew update
+brew upgrade a3s
+a3s --version
+```
+
+当前 build 会在 updater 内部处理 tap refresh。

@@ -1,0 +1,74 @@
+---
+title: Code TUI
+description: a3s code session startup, config discovery, slash commands, panels, session persistence, and smoke mode.
+---
+
+# Code TUI
+
+`a3s code` launches the interactive coding-agent TUI. It embeds A3S Code for the
+agent loop and uses A3S TUI for rendering.
+
+## Startup And Config
+
+Config discovery checks, in order:
+
+| Order | Location |
+| --- | --- |
+| 1 | `A3S_CONFIG_FILE` when set. |
+| 2 | `.a3s/config.acl` while walking up from the current directory. |
+| 3 | `~/.a3s/config.acl`. |
+
+On first launch, when no config is found, the CLI creates a starter
+`~/.a3s/config.acl` and opens it in the built-in file editor. Real provider
+credentials should be supplied through environment variables or a host secret
+system rather than committed into repository files.
+
+## Sessions
+
+Sessions are persisted under the current workspace's `.a3s/tui-sessions`
+directory. On exit, the CLI prints the resume command for the current session.
+
+```bash
+a3s code resume <session-id>
+a3s code resume
+```
+
+The second form resumes the newest saved session in the current workspace.
+
+## Slash Commands
+
+| Command | Capability |
+| --- | --- |
+| `/model` | Switch configured models and account-backed model tabs when available. |
+| `/config` | Open the active ACL config in the TUI editor. |
+| `/theme` | Cycle code highlight themes. |
+| `/workflow` | View the latest generated workflow artifact. |
+| `/output` | Inspect tool calls and outputs from the current session. |
+| `/login` / `/logout` | Sign in or out of the configured platform account when an endpoint is configured. |
+| `/view` | Open the latest platform view in a native window when one exists. |
+| `/plugin` / `/reload` | Enable, disable, and reload skills/plugins. |
+| `/update` | Upgrade the CLI and restart into the saved session. |
+| `/btw <prompt>` | Ask a side question in a background thread. |
+| `/top` | Open the process monitor panel inside the TUI. |
+| `/ide` | Open the workspace file tree and code viewer/editor. |
+| `/git` | Open status, diff, staging, log, and commit UI. |
+| `/memory` | Browse long-term memory as a timeline. |
+| `/kb <text|file|folder>` | Add material to the project knowledge base. |
+| `/effort` | Adjust model effort. |
+| `/compact` | Summarize and compact context. |
+| `/goal` | Set or clear a persistent north-star goal. |
+| `/loop` | Run a task and auto-continue until completion or stop. |
+| `/relay` | Continue a session from another supported coding agent. |
+| `/auto` | Auto-approve tool confirmations for the session. |
+
+## Headless Smoke Mode
+
+Set `A3S_CODE_TUI_SMOKE=1` to exercise the agent-stream integration without
+taking over the terminal. This is useful for focused smoke validation of the
+configured model/session path.
+
+## Boundaries
+
+The TUI should not be treated as a separate hosted service. It is a local
+terminal application that binds A3S Code, A3S TUI, workspace services, memory,
+skill loading, panels, and update UX into one surface.

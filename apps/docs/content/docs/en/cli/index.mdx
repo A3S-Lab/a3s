@@ -9,15 +9,32 @@ description: Umbrella command for the A3S stack and the entry point for the a3s 
 coding-agent terminal experience and delegates product commands to the matching
 component binary.
 
+The current crate version is `a3s` `0.5.15`. Its repository metadata points to
+[`A3S-Lab/Cli`](https://github.com/A3S-Lab/Cli).
+
 ## What It Does
 
 | Surface | Capability |
 | --- | --- |
 | `a3s code` | Launches the interactive coding-agent TUI backed by `a3s-code-core` and rendered with `a3s-tui`. |
+| `a3s code resume <id>` | Resumes a saved TUI session from the current workspace. |
 | `a3s box ...` | Proxies to `a3s-box ...` and can bootstrap the Box runtime on first use. |
 | `a3s list` | Lists installed `a3s-*` tools visible to the CLI. |
+| `a3s top` | Opens the live process/container/agent monitor. |
+| `a3s update` | Checks the latest CLI release and upgrades through Homebrew or a standalone release asset. |
 | `a3s <tool> --help` | Passes help through to the selected tool. |
 | `/update` in the TUI | Updates the installed CLI from Homebrew or release assets, then verifies the reported target version. |
+
+## Start Here
+
+- [Commands](/docs/cli/commands) maps the public command surface and exit
+  behavior.
+- [Code TUI](/docs/cli/code-tui) documents `a3s code`, session resume,
+  slash commands, first-launch config, and headless smoke mode.
+- [Box And Tools](/docs/cli/box-and-tools) explains `a3s box ...`, tool
+  discovery, and Box bootstrap behavior.
+- [Updates](/docs/cli/updates) explains `a3s update`, TUI `/update`, Homebrew,
+  standalone release assets, and verification.
 
 ## Install
 
