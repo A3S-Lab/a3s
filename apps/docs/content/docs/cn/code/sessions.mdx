@@ -54,11 +54,19 @@ while (true) {
 
 ## Side Questions
 
-`btw()` 是临时只读问题。它会快照当前历史，但不会把答案写回 session 历史。
+SDK 不把 TUI 的 `/btw` 命令暴露为 `session.btw()`。要提出临时问题，可以先
+快照当前历史，再把它显式传给 `send` 或 `stream`。显式 history 只服务这一次
+调用，不会把答案写回 session 历史。
 
 ```ts
-const answer = await session.btw('这个 session 已经看过哪些文件？');
-console.log(answer.answer);
+const snapshot = session.history();
+const answer = await session.send(
+  '这个 session 已经看过哪些文件？',
+  snapshot,
+);
+
+console.log(answer.text);
+console.log(session.history().length === snapshot.length);
 ```
 
 ## Resume

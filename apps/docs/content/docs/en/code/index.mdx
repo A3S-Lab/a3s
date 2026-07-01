@@ -115,11 +115,12 @@ Run `a3s code` from the workspace you want the agent to inspect:
 ```bash
 a3s code
 a3s code resume <session-id>
-a3s update
+a3s code update
 ```
 
 The TUI discovers config from `A3S_CONFIG_FILE`, then `.a3s/config.acl` walking
 upward from the current directory, then `~/.a3s/config.acl`.
+The top-level `a3s update` command reaches the same updater.
 
 ## Use The SDK
 

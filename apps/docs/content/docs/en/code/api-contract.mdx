@@ -311,13 +311,15 @@ The skill-file check uses Markdown with YAML frontmatter and the
 
 > Full guide: [Sessions](/docs/code/sessions).
 
-`btw()` asks a read-only side question and returns a separate result:
+The current SDK surface has no `session.btw()` helper. Use explicit history
+when you want a side question that does not mutate the session transcript:
 
 ```ts
-const side = await session.btw('What is this test?');
-console.log(side.question);
-console.log(side.answer);
-console.log(side.totalTokens);
+const snapshot = session.history();
+const side = await session.send('What is this test?', snapshot);
+
+console.log(side.text);
+console.log(session.history().length === snapshot.length);
 ```
 
 ## Runs And Cancellation

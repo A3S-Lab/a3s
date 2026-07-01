@@ -57,11 +57,20 @@ while (true) {
 
 ## Side Questions
 
-`btw()` asks an ephemeral read-only side question. It snapshots the current history and does not append the answer back into the session.
+The SDK does not expose the TUI's `/btw` command as `session.btw()`. To ask an
+ephemeral side question, snapshot the current history and pass it explicitly to
+`send` or `stream`. Explicit history is used for that call only; it does not
+append the answer back into the session history.
 
 ```ts
-const answer = await session.btw('What files has this session already inspected?');
-console.log(answer.answer);
+const snapshot = session.history();
+const answer = await session.send(
+  'What files has this session already inspected?',
+  snapshot,
+);
+
+console.log(answer.text);
+console.log(session.history().length === snapshot.length);
 ```
 
 ## Resume

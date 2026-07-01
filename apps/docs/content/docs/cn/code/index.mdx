@@ -110,11 +110,12 @@ storage_backend = "file"
 ```bash
 a3s code
 a3s code resume <session-id>
-a3s update
+a3s code update
 ```
 
 TUI 会按顺序发现配置：`A3S_CONFIG_FILE`、从当前目录向上查找的
 `.a3s/config.acl`，以及 `~/.a3s/config.acl`。
+顶层 `a3s update` 命令会进入同一个 updater。
 
 ## 使用 SDK
 

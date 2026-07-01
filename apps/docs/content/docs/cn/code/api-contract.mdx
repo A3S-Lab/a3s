@@ -304,13 +304,15 @@ skill-file 检查使用带 YAML frontmatter 的 Markdown，并覆盖了
 
 > 完整指南：[会话](/cn/docs/code/sessions)。
 
-`btw()` 提出一次只读临时问题，并返回独立结果：
+当前 SDK surface 没有 `session.btw()` helper。需要不改变 session transcript
+的临时问题时，使用显式 history：
 
 ```ts
-const side = await session.btw('What is this test?');
-console.log(side.question);
-console.log(side.answer);
-console.log(side.totalTokens);
+const snapshot = session.history();
+const side = await session.send('What is this test?', snapshot);
+
+console.log(side.text);
+console.log(session.history().length === snapshot.length);
 ```
 
 ## Runs And Cancellation
