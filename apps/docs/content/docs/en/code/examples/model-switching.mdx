@@ -113,8 +113,12 @@ const session = agent.session('/repo', {
 });
 
 // Delegate exploration to the cheaper worker, then reason on the strong model.
-const findings = await session.task('scout', 'List every public API in src/.');
-const plan = await session.run(`Given these findings, propose a refactor:\n${findings}`);
+const findings = await session.task({
+  agent: 'scout',
+  description: 'List public APIs',
+  prompt: 'List every public API in src/.',
+});
+const plan = await session.run(`Given these findings, propose a refactor:\n${findings.output}`);
 console.log(plan);
 
 session.close();
@@ -142,8 +146,12 @@ opts.worker_agents = [
 session = agent.session('/repo', opts)
 
 # Delegate exploration to the cheaper worker, then reason on the strong model.
-findings = session.task('scout', 'List every public API in src/.')
-plan = session.run(f'Given these findings, propose a refactor:\n{findings}')
+findings = session.task({
+    "agent": "scout",
+    "description": "List public APIs",
+    "prompt": "List every public API in src/.",
+})
+plan = session.run(f'Given these findings, propose a refactor:\n{findings.output}')
 print(plan)
 
 session.close()
