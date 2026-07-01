@@ -1,37 +1,39 @@
 ---
 title: "A3S Code"
-description: "Harness-driven coding agent runtime with the v4.1.0 SDKs"
+description: "Harness-driven coding agent runtime with Rust, Node.js, and Python SDKs"
 ---
 
 # A3S Code
 
-A3S Code v4.1.0 is a harness-driven runtime for coding agents. The runtime keeps the agent loop small and observable while the harness owns context assembly, tool execution, permission policy, delegation, verification evidence, and run replay.
+A3S Code is the harness-driven runtime behind `a3s code` and the language
+SDKs. It keeps the agent loop observable while the harness owns context
+assembly, tool execution, permission policy, delegation, workspace access,
+persistence, verification evidence, and run replay.
 
-## v4.1.0 Highlights
+## Current Capability Map
 
 | Area | Current capability |
 | --- | --- |
-| Filesystem-first | [Filesystem-first](/docs/code/filesystem-first) organizes `AGENTS.md`, `agent.acl`, `.a3s/agents/`, `skills/`, `tools/`, and `schedules/` into a reviewable, versioned agent product interface. |
-| Automatic delegation | Runtime-driven subagent delegation can trigger from explicit `@agent` mentions, high-confidence task descriptions, and proactive custom-agent descriptions. |
-| Built-in subagents | `explore`, `plan`, `general` / `general-purpose`, `verification`, and `review` are available through `task`, `parallel_task`, `session.task(...)`, `session.tasks(...)`, and auto delegation. |
-| Role directories | Custom Markdown/YAML worker agents load from configured `agent_dirs`, project/user `.a3s/agents`, and Claude-compatible `.claude/agents` migration paths. `.a3s/agents` is the native A3S location and wins for same-name agents in the same scope. |
-| Parallel controls | `max_parallel_tasks` bounds sibling fan-out. `auto_parallel = false` / `autoParallel: false` globally disables only automatic parallel child-agent fan-out; manual `parallel_task` remains available. |
-| Programmable orchestration | [`session.parallel`](/docs/code/orchestration), `session.pipeline`, and `session.parallelResumable` express deterministic fan-out, barrier-free pipelines, and resumable/migratable workflows, complementing model-driven `task` / `tasks` delegation. |
-| SDK parity | Rust, Node.js, and Python expose the same core delegation, run replay, typed tool errors, workspace backend, and automatic delegation controls. |
-| Workspace stack | [Workspace Backends](/docs/code/workspace-backends) expose local filesystem, S3-compatible object storage, and optional HTTP/JSON remote-git backends through the SDKs. |
+| Agent sessions | `Agent` / `AgentSession` expose `send`, `stream`, direct tools, run state, cancellation, persistence, and lifecycle cleanup. |
+| Filesystem-first | [Filesystem-first](/docs/code/filesystem-first) organizes `AGENTS.md`, `agent.acl`, `.a3s/agents/`, `skills/`, `tools/`, and `schedules/` into a reviewable agent product interface. |
+| Tools | Stable tool names cover files, search, shell, git, web fetch/search, batch execution, structured output, programmatic QuickJS tool chains, skills, MCP tools, and child-task delegation. |
+| Delegation | Built-in roles and custom Markdown/YAML agents are available through `task`, `parallel_task`, `session.task(...)`, `session.tasks(...)`, and automatic delegation controls. |
+| Orchestration | [`session.parallel`](/docs/code/orchestration), `session.pipeline`, workflow phases, resumable checkpoints, loop caps, and workflow budget ledgers provide deterministic host-driven fan-out. |
+| Safety | Permission policies, HITL confirmation, workspace path checks, tool timeouts, sandbox handles, security providers, and prompt boundary injection all feed the same execution path. |
+| Workspaces | [Workspace Backends](/docs/code/workspace-backends) let built-in tools target local files, host-provided workspaces, optional S3-compatible storage, and optional remote-git services. |
+| Persistence | Memory/file stores, session IDs, auto-save, run snapshots/events, trace artifacts, memory recall, and retention caps support resumable sessions and replayable product state. |
 
-The current execution shape is:
+The execution shape is:
 
 ```text
 Agent / AgentSession
   -> context assembly
   -> optional planning
-  -> automatic subagent delegation when configured
-  -> tool selection or programmatic tool calling
+  -> selected tools or delegated child tasks
   -> permission and confirmation policy
   -> execution
   -> trace, artifacts, and verification evidence
-  -> compaction
+  -> compaction and persistence
 ```
 
 ## Install
@@ -44,36 +46,36 @@ cargo add a3s-code-core
 
 ## Configure
 
-A3S Code uses ACL config files. Prefer `.acl` files and labeled blocks; JSON and legacy HCL config files are not supported.
+A3S Code uses ACL. Keep real API keys, private model endpoints, local config
+paths, and tenant/user identifiers out of commits. Commit templates that resolve
+secrets from the environment.
 
 ```text
-default_model = "openai/MiniMax-M2.7-highspeed"
-max_parallel_tasks = 8
+default_model = "provider/model-id"
+max_parallel_tasks = 4
 auto_parallel = false
 
-providers "openai" {
-  apiKey = env("A3S_OPENAI_API_KEY")
-  baseUrl = env("A3S_OPENAI_BASE_URL")
+providers "provider" {
+  apiKey = env("PROVIDER_API_KEY")
+  baseUrl = env("PROVIDER_BASE_URL")
 
-  models "MiniMax-M2.7-highspeed" {
-    name = "MiniMax M2.7 Highspeed"
+  models "model-id" {
     tool_call = true
+    limit = {
+      context = 128000
+      output = 4096
+    }
   }
 }
 
 agent_dirs = ["./.a3s/agents"]
-
-auto_delegation {
-  enabled        = true
-  auto_parallel  = false
-  min_confidence = 0.72
-  max_tasks      = 4
-}
-
+skill_dirs = ["./skills"]
 storage_backend = "file"
 ```
 
-The top-level `auto_parallel` setting is a global kill switch for automatic parallel fan-out. It does not remove `parallel_task` or the SDK `session.tasks(...)` helper.
+`auto_parallel = false` disables automatic parallel child-agent fan-out only.
+Manual `parallel_task` and SDK `session.tasks(...)` remain available unless
+manual delegation is disabled separately.
 
 ## Use
 
@@ -81,33 +83,29 @@ The top-level `auto_parallel` setting is a global kill switch for automatic para
 import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.acl');
-const session = agent.session('/my-project', {
+const session = agent.session('/path/to/workspace', {
   builtinSkills: true,
   planningMode: 'auto',
-  autoDelegation: { enabled: true, maxTasks: 4 },
-  maxParallelTasks: 8,
-  autoParallel: false,
+  permissionPolicy: {
+    allow: ['read(*)', 'grep(*)', 'glob(*)'],
+    ask: ['bash(*)', 'write(*)'],
+    deny: ['write(**/.env*)', 'bash(rm -rf*)'],
+    defaultDecision: 'ask',
+    enabled: true,
+  },
 });
 
-const result = await session.send(
-  'Use @review to inspect the authentication changes and summarize release blockers',
-);
-
+const result = await session.send('Find the authentication entry points.');
 console.log(result.text);
 console.log(result.verificationSummaryText);
 ```
 
-## Current Surface
+## Entry Points
 
-- **Conversation**: `send()`, `run()`, and `stream()` for synchronous and streaming turns.
-- **Delegation**: `task()` and `tasks()` wrap the core `task` / `parallel_task` tools and return compact child summaries.
-- **Orchestration**: `session.parallel(...)`, `session.pipeline(...)`, and `session.parallelResumable(...)` express programmable fan-out, barrier-free pipelines, and resumable/migratable workflows over the `AgentExecutor` seam.
-- **Automatic subagents**: enabled with `autoDelegation` or `auto_delegation`, bounded by `maxParallelTasks` / `max_parallel_tasks`, and suppressible with `autoParallel: false` / `auto_parallel = false`.
-- **Observability**: `runs()`, `runSnapshot()`, `runEvents()`, `activeTools()`, and `cancelRun()` for live run/tool tracking.
-- **PTC**: `session.program(...)` runs bounded JavaScript in QuickJS for deterministic tool chains.
-- **Structured output**: `generate_object` produces schema-validated JSON with repair attempts.
-- **Configuration**: `.acl` file paths or inline ACL strings are accepted by `Agent.create()`.
-- **Persistence**: file and memory stores support resumable sessions, explicit `save()`, `autoSave`, memory recall, and session IDs.
-- **Workspace backends**: `LocalWorkspaceBackend`, `S3WorkspaceBackend`, and `remoteGit` let hosts run the same agent loop against local files or object-storage workspaces.
-
-Start with [API Contract](/docs/code/api-contract), [Sessions](/docs/code/sessions), [Tasks](/docs/code/tasks), and [Providers](/docs/code/providers).
+- [API Contract](/docs/code/api-contract) documents the integration-tested Node SDK surface.
+- [Sessions](/docs/code/sessions) covers lifecycle, streaming, run state, persistence, and cancellation.
+- [Tools](/docs/code/tools) covers direct tools, typed tool errors, structured output, and QuickJS programs.
+- [Tasks](/docs/code/tasks) covers model-driven child-task delegation.
+- [Orchestration](/docs/code/orchestration) covers host-driven fan-out, pipelines, and resumable workflows.
+- [Security](/docs/code/security) covers permissions, confirmations, hooks, and verification gates.
+- [Providers](/docs/code/providers) covers ACL provider configuration and environment injection.
