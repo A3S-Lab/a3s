@@ -1,257 +1,272 @@
-# Design System Inspired by MiniMax
 
-## 1. Visual Theme & Atmosphere
+## Overview
 
-MiniMax's website is a clean, product-showcase platform for a Chinese AI technology company that bridges consumer-friendly appeal with technical credibility. The design language is predominantly white-space-driven with a light, airy feel — pure white backgrounds (`#ffffff`) dominate, letting colorful product cards and AI model illustrations serve as the visual anchors. The overall aesthetic sits at the intersection of Apple's product marketing clarity and a playful, rounded design language that makes AI technology feel approachable.
+Vercel's Geist system is an exercise in subtraction. The page is a near-white sheet (`{colors.canvas}` — #fafafa) carrying near-black ink (`{colors.ink}` — #171717), and almost nothing else competes. Headings, body copy, primary buttons, and the thin 1px borders that define every card all draw from the same ink-and-grey ladder. The one place color is allowed to exist is the hero, where a soft multi-stop **mesh gradient** — cyan, blue, violet, magenta, amber — blooms behind or beside the headline as the brand's entire decorative system. Everywhere else, restraint.
 
-The typography system is notably multi-font: DM Sans serves as the primary UI workhorse, Outfit handles display headings with geometric elegance, Poppins appears for mid-tier headings, and Roboto handles data-heavy contexts. This variety reflects a brand in rapid growth — each font serves a distinct communicative purpose rather than competing for attention. The hero heading at 80px weight 500 in both DM Sans and Outfit with a tight 1.10 line-height creates a bold but not aggressive opening statement.
+Typography does the heavy lifting. **Geist Sans** sets the display headline in tightly-tracked weight-600 (the hero h1 runs -2.4px letter-spacing), and **Geist Mono** appears as small uppercase eyebrows labeling sections like a technical spec sheet. Buttons split into two shapes by context: the marketing CTAs are fully rounded black **pills** (`{rounded.pill}` — 100px, "Start Deploying" / "Get a Demo"), while nav and in-app controls use a tight 6px square (`{rounded.sm}`, "Sign Up" / "Log In"). The contrast between the rounded marketing pill and the square app button is itself a deliberate signal of which surface you're on.
 
-What makes MiniMax distinctive is its pill-button geometry (9999px radius) for navigation and primary actions, combined with softer 8px–24px radiused cards for product showcases. The product cards themselves are richly colorful — vibrant gradients in pink, purple, orange, and blue — creating a "gallery of AI capabilities" feel. Against the white canvas, these colorful cards pop like app icons on a phone home screen, making each AI model/product feel like a self-contained creative tool.
+Surfaces barely lift. Cards are white (`{colors.canvas-elevated}`) on the #fafafa canvas, separated by a 1px hairline (`{colors.hairline}` — #ebebeb) and, at most, a whisper-soft layered shadow. Feature sections are built from precise grids of these hairline cards, often holding thin node-graph or code-editor illustrations rendered in the same ink-on-white palette. The page reads like documentation that happens to be selling something — engineered, exact, and confident enough to let a single gradient be the only flourish.
 
 **Key Characteristics:**
-- White-dominant layout with colorful product card accents
-- Multi-font system: DM Sans (UI), Outfit (display), Poppins (mid-tier), Roboto (data)
-- Pill buttons (9999px radius) for primary navigation and CTAs
-- Generous rounded cards (20px–24px radius) for product showcases
-- Brand blue spectrum: from `#1456f0` (brand-6) through `#3b82f6` (primary-500) to `#60a5fa` (light)
-- Brand pink (`#ea5ec1`) as secondary accent
-- Near-black text (`#222222`, `#18181b`) on white backgrounds
-- Purple-tinted shadows (`rgba(44, 30, 116, 0.16)`) creating subtle brand-colored depth
-- Dark footer section (`#181e25`) with product/company links
 
-## 2. Color Palette & Roles
+- A single near-black ink (`{colors.ink}`) carries headings, body, primary CTAs, and borders on a near-white canvas (`{colors.canvas}`) — near-zero chromatic chrome.
+- The multi-stop mesh gradient (cyan → blue → violet → magenta → amber) is the entire decorative system, confined to the hero.
+- Two button shapes by context: rounded black **pills** (`{rounded.pill}`) for marketing CTAs, tight 6px squares (`{rounded.sm}`) for nav/app controls.
+- Geist Sans for tightly-tracked display type (`{typography.display-xl}` at -2.4px), Geist Mono for uppercase technical eyebrows (`{typography.mono-eyebrow}`).
+- Hairline-bordered white cards (`{colors.hairline}` on `{colors.canvas-elevated}`) in precise grids; depth via 1px border + whisper shadow, never heavy elevation.
+- The classic Vercel gradient trio (develop/preview/ship) survives as a named accent system: `{colors.gradient-develop-start}`→end, preview, ship.
+- Color-block page rhythm: white hero with mesh gradient → logo strip → hairline feature-card grid → code-editor band → template cards → black-text CTA band → grey footer.
 
-### Brand Primary
-- **Brand Blue** (`#1456f0`): `--brand-6`, primary brand identity color
-- **Sky Blue** (`#3daeff`): `--col-brand00`, lighter brand variant for accents
-- **Brand Pink** (`#ea5ec1`): `--col-brand02`, secondary brand accent
+## Colors
 
-### Blue Scale (Primary)
-- **Primary 200** (`#bfdbfe`): `--color-primary-200`, light blue backgrounds
-- **Primary Light** (`#60a5fa`): `--color-primary-light`, active states, highlights
-- **Primary 500** (`#3b82f6`): `--color-primary-500`, standard blue actions
-- **Primary 600** (`#2563eb`): `--color-primary-600`, hover states
-- **Primary 700** (`#1d4ed8`): `--color-primary-700`, pressed/active states
-- **Brand Deep** (`#17437d`): `--brand-3`, deep blue for emphasis
+> Source pages analyzed: the home page, the AI Gateway page, the customers page, and the pricing page. The ink/canvas/hairline trio recurs on every page; the accent blue (`{colors.link}`) surfaces on pricing, and the mesh-gradient stops live in the hero.
 
-### Text Colors
-- **Near Black** (`#222222`): `--col-text00`, primary text
-- **Dark** (`#18181b`): Button text, headings
-- **Charcoal** (`#181e25`): Dark surface text, footer background
-- **Dark Gray** (`#45515e`): `--col-text04`, secondary text
-- **Mid Gray** (`#8e8e93`): Tertiary text, muted labels
-- **Light Gray** (`#5f5f5f`): `--brand-2`, helper text
+### Brand & Accent
 
-### Surface & Background
-- **Pure White** (`#ffffff`): `--col-bg13`, primary background
-- **Light Gray** (`#f0f0f0`): Secondary button backgrounds
-- **Glass White** (`hsla(0, 0%, 100%, 0.4)`): `--fill-bg-white`, frosted glass overlay
-- **Border Light** (`#f2f3f5`): Subtle section dividers
-- **Border Gray** (`#e5e7eb`): Component borders
+- **Ink** (`{colors.primary}` / `{colors.ink}` — #171717): the brand's defining near-black. Headings, primary CTA fill, logo, and the darkest text tier. Paired with `{colors.on-primary}` (white).
+- **Vercel Blue** (`{colors.link}` — #0070f3): the link and accent blue — inline links, pricing highlights, focus signals. Darker press tone `{colors.link-deep}` (#0761d1), pale wash `{colors.link-soft}` (#d3e5ff).
+- **Violet** (`{colors.violet}` — #7928ca), **Cyan** (`{colors.cyan}` — #50e3c2), **Pink** (`{colors.pink}` — #ff0080), **Magenta** (`{colors.magenta}` — #eb367f): the chromatic accent family, used sparingly for illustration accents and as mesh-gradient stops, never as chrome fills.
+
+### Surface
+
+- **Canvas** (`{colors.canvas}` — #fafafa): the default page background — the near-white sheet everything sits on.
+- **Elevated** (`{colors.canvas-elevated}` — #ffffff): pure white for cards, buttons, inputs, and code blocks lifted off the canvas.
+- **Hairline-Soft Surface** (`{colors.hairline-soft}` — #f2f2f2): the faintest grey fill for subtle alternating panels and inset wells.
+
+### Text
+
+- **Ink** (`{colors.ink}` — #171717): primary headings and high-emphasis text.
+- **Body** (`{colors.body}` — #4d4d4d): standard paragraph and secondary copy, nav links.
+- **Mute** (`{colors.mute}` — #8f8f8f): lower-emphasis captions, logo-strip labels, metadata.
+- **Faint** (`{colors.faint}` — #a1a1a1): the lowest tier — placeholders, disabled labels.
+
+### Borders
+
+- **Hairline** (`{colors.hairline}` — #ebebeb): the 1px border on every card, input, and divider — the structural workhorse of the system.
 
 ### Semantic
-- **Success Background** (`#e8ffea`): `--success-bg`, positive state backgrounds
 
-### Shadows
-- **Standard** (`rgba(0, 0, 0, 0.08) 0px 4px 6px`): Default card shadow
-- **Soft Glow** (`rgba(0, 0, 0, 0.08) 0px 0px 22.576px`): Ambient soft shadow
-- **Brand Purple** (`rgba(44, 30, 116, 0.16) 0px 0px 15px`): Brand-tinted glow
-- **Brand Purple Offset** (`rgba(44, 30, 116, 0.11) 6.5px 2px 17.5px`): Directional brand glow
-- **Card Elevation** (`rgba(36, 36, 36, 0.08) 0px 12px 16px -4px`): Lifted card shadow
+- **Error** (`{colors.error}` — #ee0000): validation / destructive, with a deep press tier `{colors.error-deep}` (#c50000).
+- **Warning** (`{colors.warning}` — #f5a623): caution states, with soft `{colors.warning-soft}` and deep `{colors.warning-deep}` tiers.
+- **Success** maps to `{colors.link}` (#0070f3) — the blue doubles as the positive/active signal.
 
-## 3. Typography Rules
+### Brand Gradient
 
-### Font Families
-- **Primary UI**: `DM Sans`, with fallbacks: `Helvetica Neue, Helvetica, Arial`
-- **Display**: `Outfit`, with fallbacks: `Helvetica Neue, Helvetica, Arial`
-- **Mid-tier**: `Poppins`
-- **Data/Technical**: `Roboto`, with fallbacks: `Helvetica Neue, Helvetica, Arial`
+Three named two-stop gradients form the legacy Vercel gradient identity, surviving as illustration and accent washes:
+
+- **Develop**: `{colors.gradient-develop-start}` (#007cf0) → `{colors.gradient-develop-end}` (#00dfd8) — blue to cyan.
+- **Preview**: `{colors.gradient-preview-start}` (#7928ca) → `{colors.gradient-preview-end}` (#ff0080) — violet to pink.
+- **Ship**: `{colors.gradient-ship-start}` (#ff4d4d) → `{colors.gradient-ship-end}` (#f9cb28) — red to amber.
+  These, blended together, form the hero's multi-stop mesh.
+
+## Typography
+
+### Font Family
+
+The system runs entirely on **Geist** — Vercel's own type family. **Geist Sans** (with an `Arial` system fallback) sets all UI and prose; **Geist Mono** sets code, inline technical tokens, and the small uppercase section eyebrows. There is no third face. Geist Sans is a clean geometric-humanist sans; substitute **Inter** if Geist is unavailable, and **JetBrains Mono** or **IBM Plex Mono** for Geist Mono.
 
 ### Hierarchy
 
-| Role | Font | Size | Weight | Line Height | Notes |
-|------|------|------|--------|-------------|-------|
-| Display Hero | DM Sans / Outfit | 80px (5.00rem) | 500 | 1.10 (tight) | Hero headlines |
-| Section Heading | Outfit | 31px (1.94rem) | 600 | 1.50 | Feature section titles |
-| Section Heading Alt | Roboto / DM Sans | 32px (2.00rem) | 600 | 0.88 (tight) | Compact headers |
-| Card Title | Outfit | 28px (1.75rem) | 500–600 | 1.71 (relaxed) | Product card headings |
-| Sub-heading | Poppins | 24px (1.50rem) | 500 | 1.50 | Mid-tier headings |
-| Feature Label | Poppins | 18px (1.13rem) | 500 | 1.50 | Feature names |
-| Body Large | DM Sans | 20px (1.25rem) | 500 | 1.50 | Emphasized body |
-| Body | DM Sans | 16px (1.00rem) | 400–500 | 1.50 | Standard body text |
-| Body Bold | DM Sans | 16px (1.00rem) | 700 | 1.50 | Strong emphasis |
-| Nav/Link | DM Sans | 14px (0.88rem) | 400–500 | 1.50 | Navigation, links |
-| Button Small | DM Sans | 13px (0.81rem) | 600 | 1.50 | Compact buttons |
-| Caption | DM Sans / Poppins | 13px (0.81rem) | 400 | 1.70 (relaxed) | Metadata |
-| Small Label | DM Sans | 12px (0.75rem) | 500–600 | 1.25–1.50 | Tags, badges |
-| Micro | DM Sans / Outfit | 10px (0.63rem) | 400–500 | 1.50–1.80 | Tiny annotations |
+| Token                         | Size | Weight | Line Height | Letter Spacing | Use                                   |
+| ----------------------------- | ---- | ------ | ----------- | -------------- | ------------------------------------- |
+| `{typography.display-xl}`   | 48px | 600    | 48px        | -2.4px         | Hero headline                         |
+| `{typography.heading-lg}`   | 32px | 600    | 40px        | -1.28px        | Major section headings                |
+| `{typography.heading-md}`   | 20px | 600    | 28px        | -0.4px         | Sub-section / card headings           |
+| `{typography.label-sm}`     | 14px | 500    | 20px        | -0.28px        | Strong labels, nav emphasis           |
+| `{typography.mono-eyebrow}` | 12px | 500    | 16px        | 0              | Uppercase Geist Mono section eyebrows |
+| `{typography.body-lg}`      | 16px | 400    | 24px        | 0              | Lead paragraphs, large body           |
+| `{typography.body-md}`      | 14px | 400    | 20px        | 0              | Default body, nav links, table cells  |
+| `{typography.body-sm}`      | 12px | 400    | 16px        | 0              | Captions, footnotes, metadata         |
+| `{typography.button-lg}`    | 16px | 500    | 20px        | 0              | Marketing pill button labels          |
+| `{typography.button-md}`    | 14px | 500    | 20px        | 0              | Nav / app button labels               |
+| `{typography.code}`         | 14px | 400    | 20px        | 0              | Code blocks, inline code (Geist Mono) |
 
 ### Principles
-- **Multi-font purpose**: DM Sans = UI workhorse (body, nav, buttons); Outfit = geometric display (headings, product names); Poppins = friendly mid-tier (sub-headings, features); Roboto = technical/data contexts.
-- **Universal 1.50 line-height**: The overwhelming majority of text uses 1.50 line-height, creating a consistent reading rhythm regardless of font or size. Exceptions: display (1.10 tight) and some captions (1.70 relaxed).
-- **Weight 500 as default emphasis**: Most headings use 500 (medium) rather than bold, creating a modern, approachable tone. 600 for section titles, 700 reserved for strong emphasis.
-- **Compact hierarchy**: The size scale jumps from 80px display straight to 28–32px section, then 16–20px body — a deliberate compression that keeps the visual hierarchy feeling efficient.
 
-## 4. Component Stylings
+- Display type is defined by tight negative tracking — the larger the heading, the tighter (-2.4px at hero scale, -1.28px at section scale). Body type sits at neutral spacing.
+- Weight is binary: 600 for headings and 500 for buttons/labels; everything else is 400. There is no light or black weight, and no italic.
+- Geist Mono is reserved for two roles only — code, and the small uppercase eyebrow labels that introduce sections like spec-sheet headers.
+
+### Note on Font Substitutes
+
+Geist Sans and Geist Mono are freely available (open-source, via Vercel / Google Fonts). If unavailable, **Inter** (sans) and **JetBrains Mono** (mono) are the closest open substitutes; keep heading weight at 600 and preserve the negative display tracking.
+
+## Layout
+
+### Spacing System
+
+- **Base unit**: 4px. The scale steps 4 → 8 → 12 → 16 → 24 → 32 → 40 → 64 → 96 → 128px.
+- **Tokens**: `{spacing.xxs}` 4px · `{spacing.xs}` 8px · `{spacing.sm}` 12px · `{spacing.md}` 16px · `{spacing.lg}` 24px · `{spacing.xl}` 32px · `{spacing.2xl}` 40px · `{spacing.3xl}` 64px · `{spacing.4xl}` 96px · `{spacing.section}` 128px.
+- **Card interiors** sit at `{spacing.lg}`–`{spacing.xl}` (24–32px); **section bands** run `{spacing.4xl}`–`{spacing.section}` (96–128px) of vertical rhythm.
+- **Button padding** is horizontal-only — marketing pills run `0px 14px`, nav buttons `0px 6px` — with height set by line-height rather than vertical padding.
+
+### Grid & Container
+
+- Centered max-width container (~1200px) with comfortable gutters; the hero and CTA bands center their content.
+- Feature sections use 2-up, 3-up, and 4-up hairline-card grids that collapse toward 1-up on narrow widths.
+- The pricing page uses a multi-column tier grid; the customers page a logo / case-study grid.
+
+### Whitespace Philosophy
+
+Whitespace is structural. The near-white canvas and generous section padding do the separating work; cards are grouped by thin hairlines rather than heavy backgrounds. The page breathes — large vertical gaps between bands, tight internal rhythm inside cards.
+
+### Responsive Strategy
+
+#### Breakpoints
+
+| Name    | Width    | Key Changes                                                                               |
+| ------- | -------- | ----------------------------------------------------------------------------------------- |
+| Mobile  | ≤ 640px | Single-column stacks; nav → menu trigger; hero type scales down; pill CTAs go full-width |
+| Tablet  | 768px    | 2-up card grids; condensed nav                                                            |
+| Laptop  | 1024px   | 3–4-up grids; full nav row                                                               |
+| Desktop | 1200px+  | Centered max-width container, full multi-column grids                                     |
+
+#### Touch Targets
+
+Marketing pill CTAs (`{components.button-primary}`) and nav buttons clear the 44px WCAG-AAA target via line-height-driven height. Circular icon buttons (`{components.button-icon-circular}`) keep adequate hit area.
+
+#### Collapsing Strategy
+
+The nav row collapses behind a menu trigger; multi-column hairline-card grids reflow to a single column; code-editor and node-graph illustrations scale or scroll rather than shrink illegibly; the pricing tier grid stacks vertically.
+
+#### Image Behavior
+
+The hero mesh gradient is a CSS/SVG composition that scales fluidly. Feature illustrations (node graphs, code editors) are vector/HTML, ink-on-white, scaling crisply. Customer logos sit in a greyscale strip. No heavy raster photography.
+
+## Elevation & Depth
+
+| Level         | Treatment                                                                                      | Use                                                 |
+| ------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 0 — Flat     | 1px hairline (`{colors.hairline}`), no shadow                                                | Default feature cards, inputs, dividers, the canvas |
+| 1 — Whisper  | Border +`0px 1px 1px rgba(0,0,0,0.04)` micro-shadow                                          | Lightly-raised cards                                |
+| 2 — Floating | Layered soft shadow (`0px 2px 2px` + `0px 8px 16px -4px` low-alpha black) + inset hairline | Menus, modals, tooltips                             |
+
+Depth is deliberately minimal. The system prefers a crisp 1px hairline plus the near-white-on-white surface step to a shadow; when a surface floats, it uses a finely-layered, very-low-alpha shadow stack rather than a single heavy drop.
+
+### Decorative Depth
+
+The hero **mesh gradient** is the only atmospheric element — a soft multi-stop bloom of the brand accent colors against the white canvas. Feature illustrations (ink node-graphs, code editors) add a sense of product depth without color. No glows, no heavy gradients elsewhere.
+
+## Shapes
+
+### Border Radius Scale
+
+| Token                       | Value  | Use                                             |
+| --------------------------- | ------ | ----------------------------------------------- |
+| `{rounded.none}`          | 0px    | Full-bleed bands, dividers                      |
+| `{rounded.sm}`            | 6px    | Nav / app buttons, inputs                       |
+| `{rounded.md}`            | 12px   | Feature cards, code blocks                      |
+| `{rounded.lg}`            | 16px   | Pricing cards, larger panels                    |
+| `{rounded.pill-category}` | 64px   | Category-tab pills (AI Apps / Web Apps)         |
+| `{rounded.pill}`          | 100px  | Marketing CTA pills                             |
+| `{rounded.full}`          | 9999px | Circular icon buttons, avatars, nav ghost links |
+
+The radius language is bimodal: tight 6px squares for functional chrome, full pills for marketing CTAs and category tabs, with 12–16px on content cards in between.
+
+### Geometry
+
+Cards are rectangles at 12–16px radius; marketing buttons and category tabs are full pills; icon buttons and avatars are circular. Illustrations are line-weight vector graphics in ink on white.
+
+## Components
+
+> No hover states are documented. Each spec covers Default and (where extracted) pressed/active states. Variants live as separate `components:` entries.
+
+### Navigation
+
+**`nav-bar`** — top navigation
+
+- Background `{colors.canvas}`, bottom hairline `{colors.hairline}`, text `{colors.body}`, type `{typography.body-md}`, padding `{spacing.sm} {spacing.lg}`. Holds the black wordmark, ghost nav links, and the Sign Up / Log In buttons at right.
+
+**`nav-link`** — individual nav item
+
+- Body-grey text `{colors.body}`, type `{typography.body-md}`, fully rounded hit area `{rounded.full}`, padding `{spacing.xs} {spacing.sm}`. Transparent until interacted.
 
 ### Buttons
 
-**Pill Primary Dark**
-- Background: `#181e25`
-- Text: `#ffffff`
-- Padding: 11px 20px
-- Radius: 8px
-- Use: Primary CTA ("Get Started", "Learn More")
+**`button-primary`** — the black marketing pill ("Start Deploying", "Deploy")
 
-**Nav Button**
-- Background: `rgba(0, 0, 0, 0.05)` (subtle tint)
-- Text: `#18181b`
-- Radius: 8px
-- Use: Navigation tabs, filter toggles
+- Background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button-lg}`, fully rounded `{rounded.pill}` (100px), padding `0px 14px`.
 
-**Secondary Nav**
-- Background: `#ffffff`
-- Text: `rgba(24, 30, 37, 0.8)`
-- Radius: 8px
-- Opacity: 0.5 (default state)
-- Use: Secondary nav, inactive tabs
+**`button-secondary`** — the white marketing pill ("Get a Demo")
 
-**Secondary Light**
-- Background: `#f0f0f0`
-- Text: `#333333`
-- Padding: 11px 20px
-- Radius: 8px
-- Use: Secondary actions
+- Background `{colors.canvas-elevated}`, text `{colors.ink}`, type `{typography.button-lg}`, rounded `{rounded.pill}`, padding `0px 14px`. Same pill shape as primary, inverted fill.
 
-### Product Cards
-- Background: Vibrant gradients (pink/purple/orange/blue)
-- Radius: 20px–24px (generous rounding)
-- Shadow: `rgba(44, 30, 116, 0.16) 0px 0px 15px` (brand purple glow)
-- Content: Product name, model version, descriptive text
-- Each card has its own color palette matching the product identity
+**`button-primary-sm`** — the compact black nav CTA ("Sign Up")
 
-### AI Product Cards (Matrix)
-- Background: white with subtle shadow
-- Radius: 13px–16px
-- Shadow: `rgba(0, 0, 0, 0.08) 0px 4px 6px`
-- Icon/illustration centered above product name
-- Product name in DM Sans 14–16px weight 500
+- Background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button-md}`, tight square `{rounded.sm}` (6px), padding `0px 6px`.
 
-### Links
-- **Primary**: `#18181b` or `#181e25`, underline on dark text
-- **Secondary**: `#8e8e93`, muted for less emphasis
-- **On Dark**: `rgba(255, 255, 255, 0.8)` for footer and dark sections
+**`button-ghost-sm`** — the white nav/app button ("Log In", "Ask AI")
 
-### Navigation
-- Clean horizontal nav on white background
-- MiniMax logo left-aligned (red accent in logo)
-- DM Sans 14px weight 500 for nav items
-- Pill-shaped active indicators (9999px radius)
-- "Login" text link, minimal right-side actions
-- Sticky header behavior
+- Background `{colors.canvas-elevated}`, text `{colors.ink}`, 1px hairline `{colors.hairline}`, type `{typography.button-md}`, rounded `{rounded.sm}`, padding `0px 6px`.
 
-## 5. Layout Principles
+**`button-category-pill`** — the category-tab pill ("AI Apps", "Web Apps", "Ecommerce")
 
-### Spacing System
-- Base unit: 8px
-- Scale: 1px, 2px, 4px, 6px, 8px, 10px, 11px, 14px, 16px, 24px, 32px, 40px, 50px, 64px, 80px
+- Background `{colors.canvas-elevated}`, text `{colors.ink}`, type `{typography.button-md}`, rounded `{rounded.pill-category}` (64px), padding `0px 16px`.
 
-### Grid & Container
-- Max content width centered on page
-- Product card grids: horizontal scroll or 3–4 column layout
-- Full-width white sections with contained content
-- Dark footer at full-width
+**`button-icon-circular`** — circular icon / carousel control
 
-### Breakpoints
-| Name | Width | Key Changes |
-|------|-------|-------------|
-| Mobile | <768px | Single column, stacked cards |
-| Tablet | 768–1024px | 2-column grids |
-| Desktop | >1024px | Full layout, horizontal card scrolls |
+- Background `{colors.canvas-elevated}`, text `{colors.ink}`, 1px hairline `{colors.hairline}`, type `{typography.body-lg}`, rounded `{rounded.full}`, no padding.
 
-### Whitespace Philosophy
-- **Gallery spacing**: Products are presented like gallery items with generous white space between cards, letting each AI model breathe as its own showcase.
-- **Section rhythm**: Large vertical gaps (64px–80px) between major sections create distinct "chapters" of content.
-- **Card breathing**: Product cards use internal padding of 16px–24px with ample whitespace around text.
+### Inputs & Forms
 
-### Border Radius Scale
-- Minimal (4px): Small tags, micro badges
-- Standard (8px): Buttons, small cards
-- Comfortable (11px–13px): Medium cards, panels
-- Generous (16px–20px): Large product cards
-- Large (22px–24px): Hero product cards, major containers
-- Pill (30px–32px): Badge pills, rounded panels
-- Full (9999px): Buttons, nav tabs
+**`text-input`** — default form field
 
-## 6. Depth & Elevation
+- Background `{colors.canvas-elevated}`, ink text `{colors.ink}`, 1px hairline `{colors.hairline}`, type `{typography.body-md}`, rounded `{rounded.sm}`, padding `{spacing.xs} {spacing.sm}`.
 
-| Level | Treatment | Use |
-|-------|-----------|-----|
-| Flat (Level 0) | No shadow | White background, text blocks |
-| Subtle (Level 1) | `rgba(0, 0, 0, 0.08) 0px 4px 6px` | Standard cards, containers |
-| Ambient (Level 2) | `rgba(0, 0, 0, 0.08) 0px 0px 22.576px` | Soft glow around elements |
-| Brand Glow (Level 3) | `rgba(44, 30, 116, 0.16) 0px 0px 15px` | Featured product cards |
-| Elevated (Level 4) | `rgba(36, 36, 36, 0.08) 0px 12px 16px -4px` | Lifted cards, hover states |
+### Cards & Containers
 
-**Shadow Philosophy**: MiniMax uses a distinctive purple-tinted shadow (`rgba(44, 30, 116, ...)`) for featured elements, creating a subtle brand-color glow that connects the shadow system to the blue brand identity. Standard shadows use neutral black but at low opacity (0.08), keeping everything feeling light and airy. The directional shadow variant (6.5px offset) adds dimensional interest to hero product cards.
+**`feature-card`** — flat hairline content card
 
-## 7. Do's and Don'ts
+- Background `{colors.canvas-elevated}`, 1px hairline `{colors.hairline}`, ink text `{colors.ink}`, type `{typography.body-md}`, rounded `{rounded.md}`, padding `{spacing.lg}`. The workhorse grid tile, often holding a node-graph or code illustration.
+
+**`feature-card-elevated`** — lifted card variant
+
+- Same chrome as `feature-card` with the Level-2 floating shadow for menus / featured tiles.
+
+**`pricing-card`** — pricing tier card
+
+- Background `{colors.canvas-elevated}`, 1px hairline `{colors.hairline}`, ink text `{colors.ink}`, type `{typography.body-md}`, rounded `{rounded.lg}`, padding `{spacing.xl}`.
+
+**`code-block`** — code / terminal surface
+
+- Background `{colors.canvas-elevated}`, ink text `{colors.ink}`, 1px hairline `{colors.hairline}`, monospace `{typography.code}`, rounded `{rounded.md}`, padding `{spacing.md}`. Syntax rendered in the ink-and-accent palette.
+
+### Bands
+
+**`logo-strip`** — customer logo band
+
+- Background `{colors.canvas}`, mute text `{colors.mute}`, type `{typography.body-md}`, padding `{spacing.xl} {spacing.lg}`. A greyscale row of customer wordmarks.
+
+**`hero-band`** — full-width hero section
+
+- Background `{colors.canvas}` with the mesh gradient, ink text `{colors.ink}`, display type `{typography.display-xl}`, padding `{spacing.section} {spacing.lg}`.
+
+**`cta-band`** — end-of-page call-to-action band ("Start Deploying")
+
+- Background `{colors.canvas}`, ink text `{colors.ink}`, display type `{typography.display-xl}`, padding `{spacing.4xl} {spacing.lg}`, with a `{components.button-primary}` pill.
+
+### Footer
+
+**`footer`** — site footer
+
+- Background `{colors.canvas}`, top hairline `{colors.hairline}`, body-grey text `{colors.body}`, type `{typography.body-md}`, padding `{spacing.3xl} {spacing.lg}`. Multi-column link groups under the wordmark.
+
+## Do's and Don'ts
 
 ### Do
-- Use white as the dominant background — let product cards provide the color
-- Apply standard radius (8px) for navigation tabs and toggle buttons
-- Use generous border radius (20px–24px) for product showcase cards
-- Employ the purple-tinted shadow for featured/hero product cards
-- Keep body text at DM Sans weight 400–500 — heavier weights for buttons only
-- Use Outfit for display headings, DM Sans for everything functional
-- Maintain the universal 1.50 line-height across body text
-- Let colorful product illustrations/gradients serve as the primary visual interest
+
+- Keep the canvas near-white (`{colors.canvas}`) and let near-black ink (`{colors.ink}`) carry headings, CTAs, and borders — the system is a black-and-white duet.
+- Confine color to the hero mesh gradient and small illustration accents; reserve `{colors.link}` for links and focus.
+- Use the two button shapes by context: black pill (`{components.button-primary}`) for marketing CTAs, 6px square (`{components.button-primary-sm}`) for nav/app.
+- Define cards and inputs with a 1px hairline (`{colors.hairline}`) before any shadow — flat is the default.
+- Set display headings in Geist Sans 600 with tight negative tracking; label sections with uppercase Geist Mono eyebrows (`{typography.mono-eyebrow}`).
+- Step the grey text ladder deliberately: `{colors.ink}` → `{colors.body}` → `{colors.mute}` → `{colors.faint}`.
 
 ### Don't
-- Don't add colored backgrounds to main content sections — white is structural
-- Don't use sharp corners (0–4px radius) on product cards — the rounded aesthetic is core
-- Don't apply the brand pink (`#ea5ec1`) to text or buttons — it's for logo and decorative accents only
-- Don't mix more than one display font per section (Outfit OR Poppins, not both)
-- Don't use weight 700 for headings — 500–600 is the range, 700 is reserved for strong emphasis in body text
-- Don't darken shadows beyond 0.16 opacity — the light, airy feel requires restraint
-- Don't use Roboto for headings — it's the data/technical context font only
 
-## 8. Responsive Behavior
-
-### Breakpoints
-| Name | Width | Key Changes |
-|------|-------|-------------|
-| Mobile | <768px | Single column, stacked product cards, hamburger nav |
-| Tablet | 768–1024px | 2-column product grids, condensed spacing |
-| Desktop | >1024px | Full horizontal card layouts, expanded spacing |
-
-### Collapsing Strategy
-- Hero: 80px → responsive scaling to ~40px on mobile
-- Product card grid: horizontal scroll → 2-column → single column stacked
-- Navigation: horizontal → hamburger menu
-- Footer: multi-column → stacked sections
-- Spacing: 64–80px gaps → 32–40px on mobile
-
-## 9. Agent Prompt Guide
-
-### Quick Color Reference
-- Background: `#ffffff` (primary), `#181e25` (dark/footer)
-- Text: `#222222` (primary), `#45515e` (secondary), `#8e8e93` (muted)
-- Brand Blue: `#1456f0` (brand), `#3b82f6` (primary-500), `#2563eb` (hover)
-- Brand Pink: `#ea5ec1` (accent only)
-- Borders: `#e5e7eb`, `#f2f3f5`
-
-### Example Component Prompts
-- "Create a hero section on white background. Headline at 80px Outfit weight 500, line-height 1.10, near-black (#222222) text. Sub-text at 16px DM Sans weight 400, line-height 1.50, #45515e. Dark CTA button (#181e25, 8px radius, 11px 20px padding, white text)."
-- "Design a product card grid: white cards with 20px border-radius, shadow rgba(44,30,116,0.16) 0px 0px 15px. Product name at 28px Outfit weight 600. Internal gradient background for the product illustration area."
-- "Build navigation bar: white background, DM Sans 14px weight 500 for links, #18181b text. Active tab (8px radius, rgba(0,0,0,0.05) background). MiniMax logo left-aligned."
-- "Create an AI product matrix: 4-column grid of cards with 13px radius, subtle shadow rgba(0,0,0,0.08) 0px 4px 6px. Centered icon above product name in DM Sans 16px weight 500."
-- "Design footer on dark (#181e25) background. Product links in DM Sans 14px, rgba(255,255,255,0.8). Multi-column layout."
-
-### Iteration Guide
-1. Start with white — color comes from product cards and illustrations only
-2. Standard radius (8px) for nav/tabs, standard radius (8px) for CTA buttons
-3. Purple-tinted shadows for featured cards, neutral shadows for everything else
-4. DM Sans handles 70% of text — Outfit is display-only, Poppins is mid-tier only
-5. Keep weights moderate (500–600 for headings) — the brand tone is confident but approachable
-6. Large radius cards (20–24px) for products, smaller radius (8–13px) for UI elements
+- Don't fill large surfaces with the accent colors — violet/cyan/pink/blue live in the gradient and illustrations, not as chrome.
+- Don't mix the button shapes within one context — marketing CTAs stay pills, app/nav controls stay 6px squares.
+- Don't pile on shadows — depth is a 1px hairline plus, at most, a finely-layered low-alpha shadow stack.
+- Don't set body copy in pure black (`#000000`) — the brand's ink is #171717 and body steps to `{colors.body}`.
+- Don't add a second decorative system — the mesh gradient is the only flourish; everything else is ink on white.
+- Don't loosen the display tracking — large Geist headings carry tight negative letter-spacing by design.
