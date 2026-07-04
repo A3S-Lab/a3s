@@ -15,7 +15,7 @@ The two surfaces are intentionally different:
 
 | Surface | Owner | Purpose |
 | --- | --- | --- |
-| `a3s code` slash commands | CLI/TUI | Terminal controls such as `/model`, `/git`, `/memory`, `/btw`, `/update`, and `/exit`. |
+| `a3s code` slash commands | CLI/TUI | Terminal controls such as `/model`, `/flow`, `/memory`, `/kb`, `/btw`, `/update`, and `/exit`. |
 | SDK command registry | Host application | Product-defined commands registered with `session.registerCommand(...)` and invoked through `session.send("/name args")`. |
 
 SDK commands execute before the LLM sees the input. A handler receives the raw

@@ -112,7 +112,11 @@ verification API 构建不同控制面。
 | `/init` | 分析 workspace 并生成 `AGENTS.md`。 |
 | `/config` | 在编辑器中打开 `.a3s/config.acl`。 |
 | `/theme` | 切换代码高亮主题。 |
-| `/workflow` | 查看最新 dynamic workflow。 |
+| `/flow` | 选择或草拟 workflow asset，用于本地开发和 OS Workflow as a Service。 |
+| `/agent` | 选择 agent definition，用于本地开发或 OS deployment。 |
+| `/mcp` | 选择 MCP server asset，用于本地开发和 Function as a Service flows。 |
+| `/skill` | 选择 skill asset，用于本地开发和 Function as a Service deployment。 |
+| `/okf` | 选择 OKF package，用于本地开发和 OS Knowledge service deployment。 |
 | `/output` | 查看本 session 中的 tool calls。 |
 | `/login` 与 `/logout` | 登录或退出已配置的账号集成。 |
 | `/view` | 在原生窗口中打开最近生成的账号视图。 |
@@ -120,15 +124,16 @@ verification API 构建不同控制面。
 | `/btw` | 提出后台 side question。 |
 | `/top` | 打开实时进程与 agent monitor。 |
 | `/ide` | 打开 workspace 文件树和代码查看器。 |
-| `/git` | 查看 git status、diff、staging 与 commit flow。 |
 | `/memory` | 浏览长期记忆。 |
 | `/kb` | 把文本、文件或目录加入项目知识库。 |
+| `/ctx` | 搜索 past sessions、附加结果，或保存到 memory。 |
 | `/effort` | 在当前模型/provider 支持时调整 model effort。 |
 | `/compact` | 总结并压缩对话上下文。 |
 | `/goal` | 为 session 设置持续目标。 |
 | `/loop` | 自动继续执行任务，直到完成或停止。 |
-| `/relay` | 从另一个 agent 接续未完成任务。 |
+| `/sleep` | 把今天的工作整理进长期记忆。 |
 | `/help` | 显示 commands 与 shortcuts。 |
+| `/fork` | 从当前点分支出新的 saved session。 |
 | `/clear` | 重置 conversation。 |
 | `/auto` | 切换到 auto-approve mode。 |
 | `/update` | 将 CLI 升级到最新 release。 |

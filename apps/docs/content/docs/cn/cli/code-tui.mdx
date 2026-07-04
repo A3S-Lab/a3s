@@ -38,26 +38,35 @@ a3s code resume
 | Command | Capability |
 | --- | --- |
 | `/model` | 切换 configured models，以及可用的 account-backed model tabs。 |
+| `/init` | 分析 workspace 并生成 `AGENTS.md`。 |
 | `/config` | 在 TUI editor 中打开 active ACL config。 |
 | `/theme` | 切换 code highlight themes。 |
-| `/workflow` | 查看最新 generated workflow artifact。 |
+| `/flow` | 选择或草拟 workflow assets，用于本地开发和 OS workflow deployment。 |
+| `/agent` | 选择 agent definitions，用于本地开发或 OS deployment。 |
+| `/mcp` | 选择 MCP server assets，用于本地开发和 Function as a Service flows。 |
+| `/skill` | 选择 skill assets，用于本地开发和 Function as a Service deployment。 |
+| `/okf` | 选择 OKF packages，用于本地开发和 OS Knowledge service deployment。 |
 | `/output` | 检查当前 session 的 tool calls 和 outputs。 |
 | `/login` / `/logout` | 当 endpoint 已配置时，登录或退出 configured platform account。 |
 | `/view` | 当存在 platform view 时，在 native window 中打开最新 view。 |
 | `/plugin` / `/reload` | 启用、禁用、重载 skills/plugins。 |
 | `/update` | 升级 CLI，并重启回 saved session。 |
-| `/btw <prompt>` | 在 background thread 中提出 side question。 |
+| `/btw` | 在 background thread 中提出 side question。 |
 | `/top` | 在 TUI 内打开 process monitor panel。 |
 | `/ide` | 打开 workspace file tree 和 code viewer/editor。 |
-| `/git` | 打开 status、diff、staging、log、commit UI。 |
 | `/memory` | 用 timeline 浏览 long-term memory。 |
-| `/kb <text|file|folder>` | 向 project knowledge base 添加材料。 |
+| `/kb` | 向 project knowledge base 添加 text、files 或 folders。 |
+| `/ctx` | 搜索 past sessions、附加结果，或保存到 memory。 |
 | `/effort` | 调整 model effort。 |
 | `/compact` | summarize 并 compact context。 |
 | `/goal` | 设置或清除 persistent north-star goal。 |
 | `/loop` | 运行 task，并自动继续直到完成或停止。 |
-| `/relay` | 从其它 supported coding agent 继续 session。 |
+| `/sleep` | 把今天的工作整理进 long-term memory。 |
+| `/help` | 显示 commands 和 shortcuts。 |
+| `/fork` | 从当前 conversation 分支出新的 saved session。 |
+| `/clear` | 重置 conversation。 |
 | `/auto` | 本 session 自动批准 tool confirmations。 |
+| `/exit` | 退出 `a3s code`。 |
 
 ## Headless Smoke Mode
 

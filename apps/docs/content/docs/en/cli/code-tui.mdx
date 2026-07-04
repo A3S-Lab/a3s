@@ -40,26 +40,35 @@ The second form resumes the newest saved session in the current workspace.
 | Command | Capability |
 | --- | --- |
 | `/model` | Switch configured models and account-backed model tabs when available. |
+| `/init` | Analyze the workspace and generate `AGENTS.md`. |
 | `/config` | Open the active ACL config in the TUI editor. |
 | `/theme` | Cycle code highlight themes. |
-| `/workflow` | View the latest generated workflow artifact. |
+| `/flow` | Select or draft workflow assets for local work and OS workflow deployment. |
+| `/agent` | Select agent definitions for local development or OS deployment. |
+| `/mcp` | Select MCP server assets for local work and Function as a Service flows. |
+| `/skill` | Select skill assets for local work and Function as a Service deployment. |
+| `/okf` | Select OKF packages for local work and OS Knowledge service deployment. |
 | `/output` | Inspect tool calls and outputs from the current session. |
 | `/login` / `/logout` | Sign in or out of the configured platform account when an endpoint is configured. |
 | `/view` | Open the latest platform view in a native window when one exists. |
 | `/plugin` / `/reload` | Enable, disable, and reload skills/plugins. |
 | `/update` | Upgrade the CLI and restart into the saved session. |
-| `/btw <prompt>` | Ask a side question in a background thread. |
+| `/btw` | Ask a side question in a background thread. |
 | `/top` | Open the process monitor panel inside the TUI. |
 | `/ide` | Open the workspace file tree and code viewer/editor. |
-| `/git` | Open status, diff, staging, log, and commit UI. |
 | `/memory` | Browse long-term memory as a timeline. |
-| `/kb <text|file|folder>` | Add material to the project knowledge base. |
+| `/kb` | Add text, files, or folders to the project knowledge base. |
+| `/ctx` | Search past sessions, attach a result, or save it into memory. |
 | `/effort` | Adjust model effort. |
 | `/compact` | Summarize and compact context. |
 | `/goal` | Set or clear a persistent north-star goal. |
 | `/loop` | Run a task and auto-continue until completion or stop. |
-| `/relay` | Continue a session from another supported coding agent. |
+| `/sleep` | Consolidate today's work into long-term memory. |
+| `/help` | Show commands and shortcuts. |
+| `/fork` | Branch the current conversation into a new saved session. |
+| `/clear` | Reset the conversation. |
 | `/auto` | Auto-approve tool confirmations for the session. |
+| `/exit` | Quit `a3s code`. |
 
 ## Headless Smoke Mode
 

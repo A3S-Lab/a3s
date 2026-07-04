@@ -102,7 +102,7 @@ response contracts, and verification still run through A3S Code.
 
 The TUI treats `AgentSession::stream()` as the source of truth. Runtime events
 drive transcript text, tool-call progress, planning state, approval prompts,
-memory views, git/file panels, verification evidence, and replayable run state.
+memory views, file panels, verification evidence, and replayable run state.
 
 This split matters for product builders: the TUI is one opinionated client over
 the runtime. SDK embedders can build different controls over the same session,
@@ -118,7 +118,11 @@ Built-in slash commands include:
 | `/init` | Analyze the workspace and generate `AGENTS.md`. |
 | `/config` | Open `.a3s/config.acl` in the editor. |
 | `/theme` | Cycle the code-highlighting theme. |
-| `/workflow` | View the latest dynamic workflow. |
+| `/flow` | Select or draft a workflow asset for local work and OS Workflow as a Service. |
+| `/agent` | Select an agent definition for local development or OS deployment. |
+| `/mcp` | Select an MCP server asset for local work and Function as a Service flows. |
+| `/skill` | Select a skill asset for local work and Function as a Service deployment. |
+| `/okf` | Select an OKF package for local work and OS Knowledge service deployment. |
 | `/output` | View tool calls made during the session. |
 | `/login` and `/logout` | Sign in to or out of a configured account integration. |
 | `/view` | Open the last generated account view in a native window. |
@@ -126,15 +130,16 @@ Built-in slash commands include:
 | `/btw` | Ask a background side question. |
 | `/top` | Open the live process and agent monitor. |
 | `/ide` | Open the workspace file tree and code viewer. |
-| `/git` | Inspect git status, diff, staging, and commit flows. |
 | `/memory` | Browse long-term memory. |
 | `/kb` | Add text, files, or folders to the project knowledge base. |
+| `/ctx` | Search past sessions, attach a result, or save it into memory. |
 | `/effort` | Adjust model effort when the selected model/provider supports it. |
 | `/compact` | Summarize and compact conversation context. |
 | `/goal` | Set a persistent goal for the session. |
 | `/loop` | Run a task with auto-continuation until completion or stop. |
-| `/relay` | Continue an unfinished task from another agent. |
+| `/sleep` | Consolidate today's work into long-term memory. |
 | `/help` | Show commands and shortcuts. |
+| `/fork` | Branch the current session into a new saved session. |
 | `/clear` | Reset the conversation. |
 | `/auto` | Switch to auto-approve mode. |
 | `/update` | Upgrade the CLI to the latest release. |
