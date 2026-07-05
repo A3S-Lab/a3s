@@ -18,6 +18,14 @@ package, run, observe, and control agent-based applications. The repository
 root is an orchestration repository; each component under `crates/` is an
 independent git submodule with its own build and release lifecycle.
 
+The project focuses on production agent systems rather than a single runtime:
+
+- agent runtimes and SDKs for local and hosted coding assistants
+- terminal, native, and WebView UI surfaces for interactive agent workflows
+- MicroVM workload isolation, policy enforcement, and runtime supervision
+- durable workflows, eventing, retrieval, memory, and scheduling primitives
+- ingress, model-serving, update, and distribution tooling
+
 The project is organized around these component groups:
 
 | Area | Components |
@@ -40,12 +48,20 @@ application. `a3s code` launches an interactive terminal coding agent built on
    users / SDKs / services
               |
               v
+        a3s CLI / a3s-tui
+   interactive coding-agent UI
+              |
+              v
         a3s-code                 a3s-gateway
    agent runtime and SDKs   ingress, routing, streaming
               |                         |
               |                         v
               |                  a3s-power
               |             model-serving endpoint
+              |
+              v
+        a3s-flow
+   durable workflow runtime
               |
               v
         a3s-box
@@ -82,7 +98,7 @@ so each crate can be built, tested, versioned, and released independently.
 | [a3s-ahp](crates/ahp/) | 2.4.0 | Agent Harness Protocol for transport-agnostic supervision primitives |
 | [a3s-acl](crates/acl/) | 0.2.1 | Agent Configuration Language (HCL-like parser) |
 | [a3s-event](crates/event/) | 0.3.0 | Pluggable event subscription, dispatch, and persistence |
-| [a3s-tui](crates/tui/) | 0.1.4 | TEA framework for terminal UIs with Flexbox layout |
+| [a3s-tui](crates/tui/) | 0.1.4 | TEA framework for terminal UIs: element trees, Flexbox layout, diff rendering, input widgets, menus, tables, logs, pickers, and reusable CLI components |
 | [a3s-gui](crates/gui/) | 0.1.0 | Native GUI runtime for structured UI protocol frames with AppKit, WinUI, and GTK targets |
 | [a3s-webview](crates/webview/) | 0.1.1 | Native WebView popup helper for the a3s code TUI (RemoteUI); renders Shu'an OS viewUrls |
 | [a3s-common](crates/common/) | 0.1.1 | Shared primitives and transport types |
@@ -99,6 +115,17 @@ brew install a3s-lab/tap/a3s
 npm install @a3s-lab/code        # Node.js
 pip install a3s-code             # Python
 cargo add a3s-code-core          # Rust
+```
+
+To work on a component from this monorepo, initialize submodules and then run
+commands from the component directory:
+
+```bash
+git submodule update --init --recursive
+
+cd crates/tui
+cargo test
+cargo clippy --all-targets -- -D warnings
 ```
 
 ## Repository structure
@@ -128,6 +155,49 @@ a3s/                            # monorepo root (NOT a Rust workspace)
 Each crate lives in its own repository under the [A3S-Lab](https://github.com/A3S-Lab) org and is
 vendored here as a submodule. Component-specific README files contain the build,
 test, and usage details for each crate.
+
+## Working in this repository
+
+This repository root is not a Rust workspace. Do not run `cargo init`,
+`cargo new`, `cargo fmt --all`, or `cargo test` from the root expecting it to
+cover every component. Use the crate or app directory that owns the change.
+
+Typical Rust component workflow:
+
+```bash
+cd crates/<component>
+cargo fmt --all
+cargo test
+cargo clippy --all-targets -- -D warnings
+```
+
+Because crates are submodules, changes are committed in two places:
+
+```bash
+cd crates/<component>
+git add .
+git commit -m "Describe component change"
+
+cd ../..
+git add crates/<component>
+git commit -m "Update <component> snapshot"
+```
+
+For apps under `apps/`, use the app-local package manager and scripts. The root
+`justfile` is for orchestration only.
+
+## TUI status
+
+`a3s-tui` is the shared terminal UI layer used by the interactive `a3s code`
+experience. It includes:
+
+- an Elm/TEA-style update loop and command model
+- element trees with Flexbox layout and terminal painting
+- ANSI-aware truncation, wrapping, selection, and diff rendering
+- reusable components for prompts, menus, tabs, lists, tables, logs, progress,
+  text input, text areas, timelines, and status surfaces
+- regression coverage for narrow terminals, CJK text, ANSI styling,
+  zero-width marks, stale selection state, and empty viewport behavior
 
 ## Documentation
 
