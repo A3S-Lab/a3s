@@ -222,7 +222,7 @@ overlay uses `ChoicePrompt`; `/model` uses `TabbedMenuPanel`; `/memory`, `/ctx`,
 user input bubbles use `GutterBlock`; input prompt chrome uses `InputBorder` and
 `PromptLine`; live and completed tool output tail previews use `OutputBlock`;
 live reasoning uses `WrappedPrefixBlock`; pinned plan rows and task summaries
-use `Checklist`; live output rows use `ConnectorBlock`; live tool activity and
+use `Checklist`; `/kb` delete confirmations use `Confirm`; live output rows use `ConnectorBlock`; live tool activity and
 stdout tail previews use `ActivityBlock`; OS login/configuration warnings use
 `Alert`; overlay menus and prompts are composed with `TextOverlay`; `/ide` flash
 messages use `Toast`; `/compact` progress uses `Progress`; `/memory` importance
@@ -237,7 +237,7 @@ and the main footer uses `SessionStatus` plus `ModeLine`. The main transcript
 viewport appends its right gutter through `Scrollbar`. Menu bounds, selection
 windows, approval choices, RemoteUI action links, tool status truncation, shared
 alert rows, overlay composition, toast rows, live activity blocks, top process
-trends, loop key-value summaries, transcript gutters and input bubbles, prompt
+trends, loop key-value summaries, KB delete confirmations, transcript gutters and input bubbles, prompt
 continuation alignment, input border labels, shared
 display-width wrapping for live reasoning and detail text, completed output tail
 previews, pinned plan checklists, task status summaries, compaction progress
