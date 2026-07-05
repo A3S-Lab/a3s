@@ -213,10 +213,14 @@ cargo tree -i a3s-tui --locked --offline
 # └── a3s v0.6.0 (.../crates/cli)
 ```
 
-The `a3s code` command palette and `/model` account picker are rendered through
-the shared `MenuPanel` and `TabbedMenuPanel` components, so bounded menu,
-selection, scroll-window, and width-handling fixes in `a3s-tui` apply directly
-to the interactive CLI.
+Recent `a3s code` surfaces are wired through shared components from `a3s-tui`:
+the command palette and asset selectors use `MenuPanel`; `/model` uses
+`TabbedMenuPanel`; `/memory`, `/ctx`, `/kb`, resource, and `/loop` details use
+`DetailPanel`, `Timeline`, and `SectionHeader`; `/effort` uses `LevelSlider` and
+`ShimmerText`; SPF and `/ide` file metadata use `Breadcrumb`; and the main
+footer uses `SessionStatus` plus `ModeLine`. Menu bounds, selection windows,
+breadcrumbs, shimmer, detail rows, and footer width handling therefore exercise
+the shared TUI library directly inside the interactive CLI.
 
 ## Documentation
 
