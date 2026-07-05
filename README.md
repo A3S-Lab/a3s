@@ -227,11 +227,11 @@ pinned plan rows and task summaries use `Checklist`; live output rows use
 SPF and `/ide` file metadata use `Breadcrumb`; and the main footer uses
 `SessionStatus` plus `ModeLine`. Menu bounds, selection windows, tool status
 truncation, transcript gutters and input bubbles, prompt continuation alignment,
-input border labels, live reasoning wrapping, completed output tail previews,
-pinned plan checklists, task status summaries, compaction progress bars,
-connector rows, diff wrapping, framed panels, breadcrumbs, activity shimmer,
-detail rows, and footer width handling therefore exercise the shared TUI library
-directly inside the interactive CLI.
+input border labels, shared display-width wrapping for live reasoning and detail
+text, completed output tail previews, pinned plan checklists, task status
+summaries, compaction progress bars, connector rows, diff wrapping, framed
+panels, breadcrumbs, activity shimmer, detail rows, and footer width handling
+therefore exercise the shared TUI library directly inside the interactive CLI.
 
 ## Documentation
 
