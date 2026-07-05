@@ -200,9 +200,11 @@ experience. It includes:
   zero-width marks, stale selection state, and empty viewport behavior
 
 During monorepo development, `crates/cli/Cargo.toml` patches `a3s-tui` to the
-local `crates/tui` submodule. That means `a3s code` and `a3s top` exercise the
-same local TUI framework changes before they are published to crates.io. To
-verify the wiring:
+local `crates/tui` submodule. The CLI still pins the published crate version for
+release builds, but the monorepo patch overrides resolution to `../tui` when
+developing here. The `a3s code` TUI entrypoint imports `a3s_tui` directly from
+`crates/cli/src/tui/mod.rs`, so local framework fixes are exercised before they
+are published to crates.io. To verify the wiring:
 
 ```bash
 cd crates/cli
