@@ -70,7 +70,7 @@ so each crate can be built, tested, versioned, and released independently.
 |---|---|---|
 | [a3s](crates/cli/) | 0.5.11 | Interactive terminal coding agent; `a3s code` launches the TUI. Prebuilt binaries for macOS, Linux, Windows |
 | [a3s-code](crates/code/) | 4.1.0 | Harness-driven agent runtime: ACL config, tools, hooks, security policy, memory, MCP, structured output, planning, subagents, and pluggable workspaces. Rust core with Node/Python SDKs |
-| [a3s-flow](crates/flow/) | 0.1.0 | Rust SDK and durable workflow engine core: event-sourced runs, replay, steps, waits, hooks, retries, and a Perry-style native TypeScript runtime boundary |
+| [a3s-flow](crates/flow/) | 0.1.0 | Rust SDK and durable workflow engine core: event-sourced runs, replay, steps, waits, hooks, retries, and pluggable runtime backends |
 | [a3s-box](crates/box/) | 2.6.0 | Docker-like MicroVM runtime for Linux OCI workloads |
 | [a3s-gateway](crates/gateway/) | 1.0.11 | Reverse proxy for routing, middleware, SSE streaming, scale-to-zero, and agent orchestration |
 | [a3s-power](crates/power/) | 0.4.2 | Privacy-preserving LLM inference for TEE environments (OpenAI-compatible) |
