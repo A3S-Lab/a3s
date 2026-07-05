@@ -213,6 +213,11 @@ cargo tree -i a3s-tui --locked --offline
 # └── a3s v0.6.0 (.../crates/cli)
 ```
 
+The `a3s code` command palette and `/model` account picker are rendered through
+the shared `MenuPanel` and `TabbedMenuPanel` components, so bounded menu,
+selection, scroll-window, and width-handling fixes in `a3s-tui` apply directly
+to the interactive CLI.
+
 ## Documentation
 
 Full reference and tutorials: [a3s-lab.github.io/a3s](https://a3s-lab.github.io/a3s/).
