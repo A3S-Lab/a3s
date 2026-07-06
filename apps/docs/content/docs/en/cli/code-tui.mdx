@@ -1,14 +1,33 @@
 ---
 title: Code TUI
-description: a3s code session startup, config discovery, slash commands, panels, session persistence, and smoke mode.
+description: a3s code startup, config discovery, session resume, update behavior, and release smoke mode.
 ---
 
 # Code TUI
 
-`a3s code` launches the interactive coding-agent TUI. It embeds A3S Code for the
-agent loop and uses A3S TUI for rendering.
+`a3s code` launches the interactive A3S Code terminal workspace. The CLI owns
+startup, config discovery, session resume, updater handoff, and terminal
+lifecycle. The agent loop itself lives in the Rust `a3s-code-core` runtime and
+the screen is rendered with `a3s-tui`.
 
-## Startup And Config
+For the full product capability guide, see [A3S Code TUI](/docs/code/tui).
+
+## Start
+
+Run the TUI from the workspace the agent should inspect:
+
+```bash
+a3s code
+a3s code resume <session-id>
+a3s code resume
+a3s code update
+```
+
+`a3s code resume` without an id resumes the newest saved session in the current
+workspace. `a3s code update` enters the same updater path as `/update` inside
+the TUI.
+
+## Config Discovery
 
 Config discovery checks, in order:
 
@@ -19,65 +38,104 @@ Config discovery checks, in order:
 | 3 | `~/.a3s/config.acl`. |
 
 On first launch, when no config is found, the CLI creates a starter
-`~/.a3s/config.acl` and opens it in the built-in file editor. Real provider
+`~/.a3s/config.acl` and opens it in the built-in editor. Real provider
 credentials should be supplied through environment variables or a host secret
 system rather than committed into repository files.
 
-## Sessions
+Project-local config can set model/provider choices, OS endpoint, `flow_dir`,
+`agent_dir`, `mcp_dir`, `skill_dir`, memory and session storage, delegation,
+and asset paths.
 
-Sessions are persisted under the current workspace's `.a3s/tui-sessions`
-directory. On exit, the CLI prints the resume command for the current session.
+## Session Lifecycle
 
-```bash
-a3s code resume <session-id>
-a3s code resume
-```
+Sessions are persisted under the current workspace's TUI session store. On
+exit, the CLI prints the exact resume command for the current session.
 
-The second form resumes the newest saved session in the current workspace.
+The TUI can also branch and reset state from inside the session:
 
-## Slash Commands
-
-| Command | Capability |
+| Command | Effect |
 | --- | --- |
-| `/model` | Switch configured models and account-backed model tabs when available. |
-| `/init` | Analyze the workspace and generate `AGENTS.md`. |
-| `/config` | Open the active ACL config in the TUI editor. |
-| `/theme` | Cycle code highlight themes. |
-| `/flow` | Select or draft workflow assets for local work and OS workflow deployment. |
-| `/agent` | Select agent definitions for local development or OS deployment. |
-| `/mcp` | Select MCP server assets for local work and Function as a Service flows. |
-| `/skill` | Select skill assets for local work and Function as a Service deployment. |
-| `/okf` | Select OKF packages for local work and OS Knowledge service deployment. |
-| `/output` | Inspect tool calls and outputs from the current session. |
-| `/login` / `/logout` | Sign in or out of the configured platform account when an endpoint is configured. |
-| `/view` | Open the latest platform view in a native window when one exists. |
-| `/plugin` / `/reload` | Enable, disable, and reload skills/plugins. |
-| `/update` | Upgrade the CLI and restart into the saved session. |
-| `/btw` | Ask a side question in a background thread. |
-| `/top` | Open the process monitor panel inside the TUI. |
-| `/ide` | Open the workspace file tree and code viewer/editor. |
-| `/memory` | Browse long-term memory as a timeline. |
-| `/kb` | Add text, files, or folders to the project knowledge base. |
-| `/ctx` | Search past sessions, attach a result, or save it into memory. |
-| `/effort` | Adjust model effort. |
-| `/compact` | Summarize and compact context. |
-| `/goal` | Set or clear a persistent north-star goal. |
-| `/loop` | Run a task and auto-continue until completion or stop. |
-| `/sleep` | Consolidate today's work into long-term memory. |
-| `/help` | Show commands and shortcuts. |
-| `/fork` | Branch the current conversation into a new saved session. |
-| `/clear` | Reset the conversation. |
-| `/auto` | Auto-approve tool confirmations for the session. |
-| `/exit` | Quit `a3s code`. |
+| `/fork` | Creates a new saved session from the current transcript. |
+| `/clear` | Starts a fresh conversation in the current TUI surface. |
+| `/compact` | Summarizes older conversation context before continuing. |
+| `/sleep` | Consolidates useful facts into long-term memory. |
+| `/exit` | Persists session state and quits. |
+
+## Runtime Boundaries
+
+The terminal app is not a hosted service. It binds four local surfaces into one
+interactive product:
+
+| Layer | Responsibility |
+| --- | --- |
+| `a3s` CLI | Process startup, config discovery, update flow, resume commands, terminal lifecycle, and helper binaries such as `a3s-webview`. |
+| `a3s-code-core` | Agent sessions, model calls, tool registry, permissions, memory, delegation, dynamic workflows, persistence, verification, and event replay. |
+| `a3s-tui` | Terminal rendering, component library, layout, input surfaces, menus, overlays, panels, and transcript widgets. |
+| A3S OS integration | Optional signed-in capabilities such as Runtime batches, Workflow as a Service, Knowledge service deployment, RemoteUI ViewLinks, and asset activity. |
+
+Local work remains available without `/login`: chat, file edits, workspace
+tools, MCP, memory, `/ctx`, `/kb`, `task`, `parallel_task`, local asset
+drafting, DynamicWorkflowRuntime, DeepResearch fallback, and local loops.
+
+After `/login`, the session also registers the OS `runtime` tool and unlocks
+RemoteUI ViewLinks, OS asset publishing, Function as a Service, Workflow as a
+Service, Knowledge service deployment, and asset activity panels.
+
+## Slash Command Families
+
+The CLI command palette delegates to the A3S Code TUI command registry:
+
+| Family | Commands |
+| --- | --- |
+| Conversation | `/clear`, `/compact`, `/fork`, `/goal`, `/btw`, `/auto`, `/exit` |
+| Models and depth | `/model`, `/effort` |
+| Workspace | `/ide`, `/config`, `/output`, `/theme`, `/top`, `! <command>` |
+| Context | `/ctx <query>`, `/ctx <n>`, `/ctx save <n>`, `/sleep` |
+| Memory and knowledge | `/memory`, `/kb`, `/kb add`, `/kb import`, `/kb search`, `/kb vault` |
+| OS account | `/login`, `/logout`, `/view` |
+| Assets | `/agent`, `/mcp`, `/skill`, `/flow`, `/okf` |
+| Loops | `/loop init`, `/loop run`, `/loop audit`, `/loop logs`, `/loop <task>` |
+| Plugins and updates | `/plugin`, `/reload`, `/update`, `/help` |
+
+`/flow` is OS Workflow as a Service for workflow assets. It is intentionally
+separate from `DynamicWorkflowRuntime`, the local A3S Flow-backed runtime used
+by `ultracode` and `?` DeepResearch for per-turn dynamic orchestration.
+
+## Effort And Dynamic Work
+
+`/effort` changes the active depth profile. The TUI scales thinking budget,
+tool-round budget, continuation count, and prompt guidance from `low` through
+`max`. `ultracode` is the deepest profile: trivial turns can still run directly,
+while complex turns may use planning, goal tracking, `dynamic_workflow`, native
+host-side `parallel_task`, and signed-in `runtime`.
+
+PTC scripts run inside QuickJS, so they do not execute `parallel_task`
+directly. Dynamic workflows schedule a Flow step named `parallel_task`; the TUI
+host then runs the native local fan-out implementation outside QuickJS.
+
+## Updates
+
+`/update`, `a3s update`, and `a3s code update` use the same update machinery.
+Homebrew installs refresh the tap and upgrade the formula. Standalone installs
+download the matching release asset, swap the `a3s` binary, and verify the
+target version before treating the update as successful. If restart fails after
+a successful update, the TUI prints the resume command for the saved session.
 
 ## Headless Smoke Mode
 
 Set `A3S_CODE_TUI_SMOKE=1` to exercise the agent-stream integration without
-taking over the terminal. This is useful for focused smoke validation of the
-configured model/session path.
+taking over the terminal:
 
-## Boundaries
+```bash
+A3S_CODE_TUI_SMOKE=1 a3s code
+```
 
-The TUI should not be treated as a separate hosted service. It is a local
-terminal application that binds A3S Code, A3S TUI, workspace services, memory,
-skill loading, panels, and update UX into one surface.
+This is useful for release smoke validation of startup, config discovery, model
+selection, session creation, and `AgentSession::stream()` wiring.
+
+## Related Pages
+
+1. [A3S Code TUI](/docs/code/tui)
+2. [CLI Commands](/docs/cli/commands)
+3. [CLI Updates](/docs/cli/updates)
+4. [A3S Code Commands](/docs/code/commands)

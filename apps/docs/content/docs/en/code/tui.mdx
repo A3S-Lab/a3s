@@ -1,31 +1,32 @@
 ---
 title: "A3S Code TUI"
-description: "Install, configure, and use the a3s code terminal application"
+description: "Install, configure, and operate the a3s code terminal workspace"
 ---
 
 # A3S Code TUI
 
-`a3s code` is the interactive terminal application for A3S Code. It is shipped
-by the [`a3s` CLI](https://github.com/A3S-Lab/Cli), embeds the `a3s-code-core`
-runtime, and renders the runtime event stream with
+`a3s code` is the interactive terminal workspace for A3S Code. It is shipped by
+the [`a3s` CLI](https://github.com/A3S-Lab/Cli), drives the Rust
+`a3s-code-core` runtime, and renders the runtime event stream with
 [`a3s-tui`](https://github.com/A3S-Lab/TUI).
 
-Use the TUI when you want a ready coding-agent terminal. Use the SDK packages
-when you are building your own harness, IDE extension, server worker, workflow
-runner, or product UI.
+Use the TUI when you want the ready coding-agent product in a terminal. Use
+`a3s-code-core` when you are embedding the same runtime in another Rust host,
+runner, IDE bridge, or controlled product surface.
 
 ## Surface Map
 
 | Surface | Repository | Responsibility |
 | --- | --- | --- |
-| `a3s-code` | [AI45Lab/Code](https://github.com/AI45Lab/Code) | Runtime crates plus Node.js and Python SDKs. |
-| `a3s code` | [A3S-Lab/Cli](https://github.com/A3S-Lab/Cli) | Terminal coding-agent application that drives A3S Code sessions. |
-| `a3s-tui` | [A3S-Lab/TUI](https://github.com/A3S-Lab/TUI) | Terminal UI framework used by the CLI. It is not the agent runtime. |
+| `a3s-code-core` | [A3S-Lab/Code](https://github.com/A3S-Lab/Code) | Rust runtime crate for sessions, tools, memory, permissions, delegation, persistence, verification, and event replay. |
+| `a3s code` | [A3S-Lab/Cli](https://github.com/A3S-Lab/Cli) | Terminal coding-agent application that drives `a3s-code-core` sessions. |
+| `a3s-tui` | [A3S-Lab/TUI](https://github.com/A3S-Lab/TUI) | Terminal UI framework used by the CLI. It is the renderer and component library, not the agent runtime. |
+| A3S Flow | [A3S-Lab/Flow](https://github.com/A3S-Lab/Flow) | Durable workflow engine used by `DynamicWorkflowRuntime` for replayable per-turn dynamic workflows. |
 | A3S monorepo | [A3S-Lab/a3s](https://github.com/A3S-Lab/a3s) | Product docs, release orchestration, submodule pins, and related crates. |
 
-## Install
+## Install And Start
 
-Install the CLI, then run `a3s code` from the workspace you want the agent to
+Install the CLI, then run `a3s code` from the workspace the agent should
 inspect:
 
 ```bash
@@ -41,31 +42,33 @@ cargo install --git https://github.com/A3S-Lab/Cli
 ```bash
 a3s code
 a3s code resume <session-id>
+a3s code resume
 a3s code update
 ```
 
-The top-level `a3s update` command is also accepted by the CLI and routes to
-the same updater.
+The top-level `a3s update` command reaches the same updater as TUI `/update`.
 
-## Configuration
+## First Launch And Config
 
 The TUI discovers config in this order:
 
 1. `A3S_CONFIG_FILE`
-2. `.a3s/config.acl` walking upward from the current directory
+2. `.a3s/config.acl` while walking upward from the current directory
 3. `~/.a3s/config.acl`
 
-The TUI uses `.a3s/config.acl` for project-local configuration. SDK examples
-often use `agent.acl` because embedders pass the config path explicitly with
-`Agent.create("agent.acl")`. Both are ACL files; the important difference is
-who discovers the file.
+On first launch, when no config exists, the CLI creates a starter
+`~/.a3s/config.acl` and opens it in the built-in editor. Use `/config` later to
+edit the active ACL file from inside the TUI.
 
-Keep real keys, private provider URLs, tenant identifiers, and user-specific
-paths out of commits. Public templates should resolve credentials through
+Project-local config can set models, providers, OS endpoint, `flow_dir`,
+`agent_dir`, `mcp_dir`, `skill_dir`, storage, memory, delegation, and asset
+paths. Keep real keys, private provider URLs, tenant identifiers, and
+user-specific paths out of committed examples. Resolve credentials through
 environment variables:
 
 ```text
 default_model = "provider/model-id"
+max_parallel_tasks = 8
 
 providers "provider" {
   apiKey = env("PROVIDER_API_KEY")
@@ -81,77 +84,266 @@ providers "provider" {
 }
 ```
 
-## Filesystem-First Workflow
+## Capability Overview
 
-The TUI is workspace-oriented. When launched in a repository, it can load the
-same filesystem-first conventions used by SDK sessions:
+`a3s code` combines the coding chat loop, file and config editing, durable
+context, memory, local asset development, OS asset publishing, Runtime fan-out,
+RemoteUI views, and engineered automation loops.
 
-| Path | TUI role |
+| Area | What the TUI provides |
 | --- | --- |
-| `AGENTS.md` | Project instructions loaded into context. |
-| `.a3s/config.acl` | Project-local model, provider, skill, storage, and delegation policy. |
-| `.a3s/agents/` | Worker roles available to `task`, `parallel_task`, and automatic delegation. |
-| `.a3s/skills/` and `skills/` | Reusable project skills surfaced to the session. |
-| `.a3s/kb/` | Project knowledge base used by TUI knowledge workflows. |
+| Coding loop | Chat with the agent, stream reasoning/text/tool events, approve or deny gated tools, switch `/auto`, run direct shell turns with `!`, set a persistent `/goal`, ask background side questions with `/btw`, clear context, and fork sessions. |
+| Workspace UI | `/ide` opens a file tree and editor, `/config` edits the active config, `/output` shows tool calls with arguments/results, and file edits render bounded diffs through shared TUI components. |
+| Models | `/model` switches configured ACL providers, OS gateway models, and signed-in account-backed model tabs when available. |
+| Effort | `/effort` changes thinking budget, tool-round budget, continuation count, and rigor guidance from `low` through `max` and `ultracode`. |
+| Tools and safety | File, search, shell, git, web, structured-output, MCP, PTC `program`, `task`, and `parallel_task` tools all pass through workspace boundaries, permission policy, HITL approval, timeouts, hooks, and traces. |
+| Context and memory | The footer tracks context fill and auto-compaction. `/ctx` searches past sessions, `/ctx <n>` attaches a transcript window, `/ctx save <n>` promotes it to memory, `/sleep` consolidates the day, and `/memory` browses durable memories as an event/entity graph. |
+| Dynamic workflows | `ultracode` and `?` DeepResearch can use `DynamicWorkflowRuntime`, a local A3S Flow-backed runtime that records workflow and step history while sandboxed PTC scripts perform tool work. |
+| Parallel work | Local fan-out uses native host-side `parallel_task`. Dynamic workflows schedule a Flow step named `parallel_task` when they need local parallel subagents; QuickJS/PTC scripts do not call `parallel_task` directly. |
+| OS Runtime | After `/login`, the signed-in `runtime` tool is registered and becomes available to normal model turns and dynamic workflow PTC steps for OS Runtime batch execution. |
+| Deep research | Prefix a prompt with `?` to start DeepResearch. The TUI gathers evidence through `DynamicWorkflowRuntime`, uses OS `runtime` when signed in, falls back to local `parallel_task` when needed, then asks the model to synthesize a cited report and artifacts. |
+| Asset development | `/agent`, `/mcp`, `/skill`, and `/okf` enter local development modes with an active asset, review commands, clone/draft flows, and publish/deploy/status surfaces. |
+| Workflow assets | `/flow` manages OS Workflow as a Service assets. It selects or drafts workflow DAG files, publishes them as OS workflow assets, syncs runtime-binding metadata, and opens workflow designer/run/log/status surfaces. |
+| Knowledge | `/kb` manages a local personal knowledge vault. `/okf` manages shareable OKF knowledge-package assets and publishes them to the OS Knowledge service when signed in. |
+| Engineered loops | `/loop init`, `/loop run`, `/loop audit`, and `/loop logs` manage durable maker/checker loops under `.a3s/loops` with reports, budgets, state files, and Runtime/RemoteUI evidence when enabled. |
+| Operations | `/help` opens the command guide, `/theme` changes syntax themes, `/plugin` and `/reload` refresh skills/plugins, `/top` observes local agent process activity, `/view` reopens the latest RemoteUI ViewLink, and `/update` upgrades and restarts the CLI. |
 
-These files make behavior reviewable, but they do not bypass runtime gates.
-Permission policy, confirmation prompts, workspace checks, tool visibility,
-response contracts, and verification still run through A3S Code.
+## Interaction Model
 
-## Runtime Event Stream
+The main screen is an event-driven transcript. User messages, model text,
+reasoning deltas, tool starts, streamed tool output, approvals, subagent
+progress, plans, memory events, and final summaries arrive as structured
+runtime events and are rendered incrementally.
 
-The TUI treats `AgentSession::stream()` as the source of truth. Runtime events
-drive transcript text, tool-call progress, planning state, approval prompts,
-memory views, file panels, verification evidence, and replayable run state.
-
-This split matters for product builders: the TUI is one opinionated client over
-the runtime. SDK embedders can build different controls over the same session,
-tool, event, persistence, and verification APIs.
-
-## Slash Commands
-
-Built-in slash commands include:
-
-| Command | Purpose |
+| Input | Behavior |
 | --- | --- |
-| `/model` | Switch among configured models and signed-in account models. |
-| `/init` | Analyze the workspace and generate `AGENTS.md`. |
-| `/config` | Open `.a3s/config.acl` in the editor. |
-| `/theme` | Cycle the code-highlighting theme. |
-| `/flow` | Select or draft a workflow asset for local work and OS Workflow as a Service. |
-| `/agent` | Select an agent definition for local development or OS deployment. |
-| `/mcp` | Select an MCP server asset for local work and Function as a Service flows. |
-| `/skill` | Select a skill asset for local work and Function as a Service deployment. |
-| `/okf` | Select an OKF package for local work and OS Knowledge service deployment. |
-| `/output` | View tool calls made during the session. |
-| `/login` and `/logout` | Sign in to or out of a configured account integration. |
-| `/view` | Open the last generated account view in a native window. |
-| `/plugin` and `/reload` | Enable, disable, and rescan skills/plugins. |
-| `/btw` | Ask a background side question. |
-| `/top` | Open the live process and agent monitor. |
-| `/ide` | Open the workspace file tree and code viewer. |
-| `/memory` | Browse long-term memory. |
-| `/kb` | Add text, files, or folders to the project knowledge base. |
-| `/ctx` | Search past sessions, attach a result, or save it into memory. |
-| `/effort` | Adjust model effort when the selected model/provider supports it. |
-| `/compact` | Summarize and compact conversation context. |
-| `/goal` | Set a persistent goal for the session. |
-| `/loop` | Run a task with auto-continuation until completion or stop. |
-| `/sleep` | Consolidate today's work into long-term memory. |
-| `/help` | Show commands and shortcuts. |
-| `/fork` | Branch the current session into a new saved session. |
-| `/clear` | Reset the conversation. |
-| `/auto` | Switch to auto-approve mode. |
-| `/update` | Upgrade the CLI to the latest release. |
-| `/exit` | Quit `a3s code`. |
+| Normal prompt | Sends a coding-agent turn. If a turn is busy, the input is queued. |
+| `! <command>` | Runs a direct shell turn through the same workspace output surface. |
+| `? <question>` | Starts DeepResearch with dynamic workflow evidence gathering before synthesis. |
+| `@<path>` | Attaches a workspace file through the file picker path. |
+| `/` | Opens the command palette and slash command registry. |
+| `Shift+Enter` | Inserts a newline in the input. |
+| `Shift+Tab` | Cycles default, plan, and auto modes. |
+| `PgUp` / `PgDn` | Scrolls the transcript or active full-screen panel. |
+| `Shift+End` | Jumps to the latest transcript output. |
+| `Esc` | Interrupts the running turn or closes the active panel. |
+| `Ctrl+C` twice | Quits after session persistence runs. |
 
-Some commands are accepted only while the session is idle because they mutate
-conversation, model, context, or process state.
+The UI keeps long-running work observable. The transcript can show streamed
+model text, tool input/output, progress deltas, approvals, RemoteUI view
+buttons, dynamic-workflow artifacts, subagent activity, queue entries, memory
+events, and context-fill warnings. `/output` opens a normalized tool-call log
+for the current session, while `/top` shows local process activity.
+
+## Sessions And Safety
+
+Sessions auto-save under the workspace session store. Exiting prints the exact
+resume command; `a3s code resume` without an id resumes the newest saved
+session in the current workspace. `/fork` copies the current transcript into a
+new session id while keeping the original, and `/clear` starts a fresh
+conversation.
+
+The TUI owns human-in-the-loop approval. In default mode, mutating tools prompt
+through an approval overlay. `a` or `/auto` approves later tool calls for the
+session according to the active permission policy. Shift+Tab cycles default,
+plan, and auto modes. Plan mode auto-approves read-only discovery tools but
+still asks before writes. Tool execution timeouts and confirmation timeouts are
+tracked separately, so waiting for a human does not consume the command runtime
+budget.
+
+All local filesystem work stays under active workspace services and A3S Code
+permission policy. OS operations require `/login`; before login the TUI can
+still author local assets, run local subagents, use memory, use MCP, and
+execute `DynamicWorkflowRuntime`, but OS `runtime`, RemoteUI ViewLinks, OS asset
+publishing, and OS service activity panels are unavailable.
+
+## Tool Runtime
+
+A3S Code TUI exposes tools through the session registry, not by letting the
+model run arbitrary host APIs. Each tool call carries a name, JSON arguments,
+streamed output, timeout policy, permission decision, and traceable event id.
+
+| Tool family | TUI behavior |
+| --- | --- |
+| Workspace tools | `read`, `write`, `edit`, `patch`, `ls`, `glob`, `grep`, `bash`, `git`, `web_fetch`, and `web_search` run through workspace services, path boundaries, timeout handling, and confirmation policy. |
+| Structured output | `generate_object` lets the model request schema-shaped JSON while keeping the result in the same tool event stream as normal tools. |
+| MCP tools | Configured MCP servers are registered as `mcp__<server>__<tool>` names and use the same approval and output rendering path. |
+| PTC scripts | The `program` tool runs sandboxed JavaScript-compatible scripts with a host-provided `ctx` object. Recursive `program`, `dynamic_workflow`, and `parallel_task` calls are kept out of the default PTC allow-list. |
+| Delegation | `task` launches one child agent. `parallel_task` launches multiple child agents on the native host runtime, preserves input order, emits subagent progress events, and respects `max_parallel_tasks`. |
+| Dynamic workflow | `dynamic_workflow` is registered in the TUI because `ultracode` and `?` DeepResearch use it. It records A3S Flow history and can schedule host steps such as `parallel_task`. |
+| OS runtime | The `runtime` tool is registered only after `/login`. Once present, normal model turns and dynamic workflow PTC steps can call it for OS Runtime batch execution. |
+
+## Effort Profiles
+
+`/effort` rebuilds the active session with a different depth profile. The
+design scales work on three axes:
+
+- Thinking budget for providers that expose extended thinking.
+- Tool-round budget and continuation count for all providers.
+- Model-agnostic prompt guidance for rigor, verification, and decomposition.
+
+| Level | Thinking budget | Tool rounds | Continuations | Intended behavior |
+| --- | ---: | ---: | ---: | --- |
+| `low` | 1,024 | 120 | 2 | Fast, minimal changes with narrow verification. |
+| `medium` | 4,096 | 200 | 3 | Balanced default behavior without extra depth steering. |
+| `high` | 8,192 | 300 | 4 | More deliberate planning, relevant tests, and self-review. |
+| `xhigh` | 16,384 | 400 | 6 | Compare alternatives, probe edge cases, and verify thoroughly. |
+| `max` | 32,768 | 500 | 8 | Maximum rigor for correctness, adversarial checks, and completeness. |
+| `ultracode` | 32,768 | 600 | 8 | Message-gated dynamic workflow mode. Trivial turns stay direct; complex turns may use `dynamic_workflow`, A3S Flow replay, native `parallel_task`, and signed-in `runtime`. |
+
+All effort levels keep local `task` and `parallel_task` available, with the TUI
+session limiting sibling fan-out through `max_parallel_tasks`. `ultracode` adds
+automatic planning, goal tracking, and dynamic-workflow guidance, but the
+pre-analysis gate still decides whether a turn actually needs planning or
+fan-out.
+
+## Dynamic Workflows Vs `/flow`
+
+A3S Code has two workflow concepts and they are intentionally different:
+
+| Concept | Surface | Purpose |
+| --- | --- | --- |
+| `DynamicWorkflowRuntime` | Model-visible `dynamic_workflow` tool, used by `ultracode` and `?` DeepResearch | Per-turn dynamic orchestration. A sandboxed JavaScript PTC function returns A3S Flow commands such as `complete`, `fail`, `schedule_step`, or `schedule_steps`; A3S Flow records replayable workflow and step history. |
+| OS Workflow as a Service | `/flow`, `/flow publish`, `/flow run`, `/flow deploy`, `/flow open`, `/flow logs`, `/flow status` | Durable workflow asset lifecycle. Local DAG JSON files are published as OS `workflow` assets with runtime-binding metadata and opened in OS workflow designer/run surfaces. |
+
+Dynamic workflow scripts are runtime artifacts, not a separate TypeScript SDK.
+They run inside the existing `program` QuickJS sandbox and may call only the
+tools that the host allows through `ctx`.
+
+```javascript
+export default async function run(ctx, inputs) {
+  if (inputs.kind === "workflow") {
+    return {
+      type: "schedule_steps",
+      steps: [
+        {
+          step_id: "inspect",
+          step_name: "inspect_workspace",
+          input: { query: inputs.input.query }
+        },
+        {
+          step_id: "fanout",
+          step_name: "parallel_task",
+          input: {
+            tasks: [
+              {
+                task_id: "tests",
+                agent: "explore",
+                description: "Find test coverage",
+                prompt: "Inspect relevant tests and coverage gaps."
+              },
+              {
+                task_id: "risk",
+                agent: "review",
+                description: "Review risk",
+                prompt: "Review the approach for regressions."
+              }
+            ]
+          }
+        }
+      ]
+    };
+  }
+
+  if (inputs.step_name === "inspect_workspace") {
+    const hits = await ctx.grep(inputs.input.query, { glob: "*.rs" });
+    return { hits };
+  }
+
+  return { ok: true };
+}
+```
+
+PTC is hosted by QuickJS, so `parallel_task` stays native to the host. When a
+workflow needs parallel local subagents, it schedules a Flow step named
+`parallel_task`; the TUI host executes the native implementation outside
+QuickJS. After `/login`, dynamic workflow PTC steps may also call
+`ctx.tool("runtime", ...)` because the signed-in `runtime` tool is registered
+in the session.
+
+## OS, Runtime, And RemoteUI
+
+Add an OS endpoint to `config.acl`, then sign in:
+
+```hcl
+os = "https://os.example.com"
+```
+
+```text
+/login
+```
+
+Signed-out behavior is intentionally useful but local: chat, file editing,
+workspace tools, local MCP, local asset drafting, memory, `/ctx`, `/kb`,
+`task`, `parallel_task`, `dynamic_workflow`, DeepResearch fallback, and local
+loops keep working.
+
+Signed-in behavior adds OS assets, Function as a Service, Workflow as a
+Service, Knowledge service deployment, RemoteUI ViewLinks, asset activity
+panels, and the `runtime` tool.
+
+| Capability | Signed out | Signed in after `/login` |
+| --- | --- | --- |
+| Coding chat and workspace tools | Available with local permission checks and HITL approval. | Available with the same local safety path. |
+| Context, memory, and local knowledge | `/ctx`, `/memory`, `/sleep`, and `/kb` use local stores. | Local stores remain available; OS-backed reports can also return RemoteUI views. |
+| Dynamic workflows | `DynamicWorkflowRuntime` can run local Flow-backed orchestration and host-side `parallel_task` fallback. | Workflow PTC steps may also call the registered `runtime` tool for OS batch work. |
+| Asset authoring | `/agent`, `/mcp`, `/skill`, `/flow <description>`, and `/okf` can draft and review local assets. | Publish, deploy, run, open, logs, status, list, and activity commands can use OS services. |
+| RemoteUI | Unavailable except for existing browser URLs printed by local tools. | `.view` and `viewUrl` responses become `Open view` actions and `/view` history. |
+| Runtime activity | `/top` observes local processes. | Asset `activity` commands inspect OS Runtime jobs, runs, invocations, indexing, and workflow activity. |
+
+## Command Reference
+
+These commands are available outside the asset-specific flows:
+
+| Command | Capability |
+| --- | --- |
+| `/help` | Open the full command guide with slash commands, command forms, input modes, keys, panels, and resume help. |
+| `/model` | Switch among configured ACL models, OS gateway models, and signed-in account-backed model tabs when available. |
+| `/effort` | Change the active effort profile from `low` to `ultracode`. |
+| `/init` | Analyze the workspace and generate an `AGENTS.md` instruction file. |
+| `/config` | Edit the active ACL config in the built-in editor. |
+| `/login` / `/logout` | Sign in or out of the configured OS account; login registers OS capabilities and the `runtime` tool. |
+| `/view` | Reopen the latest captured OS RemoteUI ViewLink. |
+| `/output` | Inspect retained tool calls for the current session. |
+| `/top` | Inspect local agent process activity. |
+| `/ide` | Open the workspace file browser and editor. |
+| `/memory` | Browse durable memory as an event/entity graph with tiers, aliases, relations, conflicts, and forget candidates. |
+| `/ctx <query>` | Search past ctx-indexed sessions. |
+| `/ctx <n>` | Attach a previous search result to the next message. |
+| `/ctx save <n>` | Promote a previous session hit into durable memory. |
+| `/sleep` | Consolidate the day's work into memory. |
+| `/kb` | Manage the local personal knowledge base. |
+| `/btw <question>` | Ask a background side question outside the main chat path. |
+| `/goal <text>` | Set a persistent goal for the current session or active asset mode. |
+| `/compact` | Summarize and shrink the active conversation context. |
+| `/clear` | Start a fresh conversation in the current session surface. |
+| `/fork` | Branch the current transcript into a new session id. |
+| `/auto` | Switch the session into auto-approve mode. |
+| `/plugin` / `/reload` | Manage and hot-reload skills/plugins. |
+| `/theme` | Cycle syntax highlighting themes. |
+| `/update` | Upgrade the CLI and restart back into the saved session. |
+| `/exit` | Quit `a3s code` after session persistence runs. |
+
+Asset command families include `/agent`, `/mcp`, `/skill`, `/flow`, `/okf`,
+and `/loop`. Their publish, deploy, run, open, logs, status, list, activity,
+clone, review, and local development forms are scoped to the selected asset
+family.
+
+## Headless Smoke Mode
+
+Set `A3S_CODE_TUI_SMOKE=1` to exercise the same `AgentSession::stream()`
+integration without taking over the terminal. This is useful for release smoke
+checks of the configured model/session path.
+
+```bash
+A3S_CODE_TUI_SMOKE=1 a3s code
+```
 
 ## Related Pages
 
-1. [Filesystem-First](/docs/code/filesystem-first)
-2. [Sessions](/docs/code/sessions)
-3. [Commands](/docs/code/commands)
-4. [Tools](/docs/code/tools)
-5. [Security](/docs/code/security)
+1. [A3S CLI Code TUI](/docs/cli/code-tui)
+2. [Commands](/docs/code/commands)
+3. [Tools](/docs/code/tools)
+4. [Memory](/docs/code/memory)
+5. [Sessions](/docs/code/sessions)
+6. [Security](/docs/code/security)

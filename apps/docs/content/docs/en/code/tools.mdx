@@ -17,6 +17,7 @@ hide tools it cannot service.
 | Workspace-gated builtins | `read`, `write`, `edit`, `patch`, `grep`, `glob`, `ls`, `bash`, `git` | Registered only when `WorkspaceServices` advertises the required capability. For example, a browser or S3 workspace can expose file tools while hiding `bash` or local git. |
 | Runtime builtins | `web_fetch`, `web_search`, `batch`, `program` | Registered by the core tool executor. `batch` and `program` wrap the current registry, so their usable inner tools still depend on the session surface. |
 | Session bootstrap tools | `task`, `parallel_task`, `generate_object`, `search_skills`, `Skill` | Added while building an `AgentSession`. Delegation tools disappear when manual delegation is disabled; `generate_object` requires the configured LLM client; skill tools use the effective skill registry. |
+| TUI workflow tools | `dynamic_workflow` and, after `/login`, `runtime` | Registered by the `a3s code` host. `dynamic_workflow` powers `ultracode` and DeepResearch with A3S Flow replay; `runtime` is login-gated OS Runtime batch execution. |
 | Dynamic integrations | `mcp__<server>__<tool>` and host-registered tools | Added from MCP managers or host code after discovery. |
 
 Use `toolNames()` / `toolDefinitions()` in tests or application diagnostics when
@@ -199,6 +200,14 @@ await session.program({
 `session.program(...)` is equivalent to `session.tool('program', { type: 'script', language: 'javascript', ... })` but uses SDK-native naming. When `allowedTools` / `allowed_tools` is omitted, the script can call every registered tool except `program`. Provide an allow-list when a workflow should run with a smaller capability surface.
 
 The QuickJS VM receives no filesystem, network, subprocess, or environment permissions. The only useful capabilities are the `ctx` methods wired back to A3S Code tools. PTC returns a readable `ToolResult.output` and structured data in `ToolResult.metadataJson`. Keep large raw output out of the prompt; summarize findings, evidence refs, risks, and suggested next actions.
+
+In `a3s code`, PTC is also used by `DynamicWorkflowRuntime`. Recursive
+`program`, `dynamic_workflow`, and `parallel_task` calls are kept out of the
+default TUI PTC allow-list. When a dynamic workflow needs local parallel
+subagents, it schedules a Flow step named `parallel_task`; the TUI host runs
+the native `parallel_task` implementation outside QuickJS. After `/login`,
+dynamic workflow PTC steps may call `ctx.tool("runtime", ...)` because the OS
+`runtime` tool is registered in the session.
 
 ## Tool Results
 

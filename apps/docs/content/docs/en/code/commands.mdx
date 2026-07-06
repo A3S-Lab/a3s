@@ -23,6 +23,11 @@ argument string plus session metadata, and returns display text. Use commands
 for thin control-plane actions; use normal SDK methods for workflows, tools,
 verification, and persistence.
 
+Inside the TUI, `/flow` is an OS Workflow as a Service asset command. It is not
+the same surface as `DynamicWorkflowRuntime`, which is the local A3S
+Flow-backed runtime used by `ultracode` and `?` DeepResearch through the
+model-visible `dynamic_workflow` tool.
+
 ## Recommended Mappings
 
 | User action | Session API |
