@@ -1,0 +1,98 @@
+---
+title: Quick Start
+description: Start a durable A3S Flow run with an embedded Rust runtime.
+---
+
+# Flow Quick Start
+
+Use `FlowEngine::in_memory` for examples and tests. Move to local JSONL,
+SQLite, or Postgres storage when the host needs restart durability.
+
+## Add The Crate
+
+```toml
+[dependencies]
+a3s-flow = "0.4"
+async-trait = "0.1"
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+```
+
+## Define A Runtime
+
+Workflow code implements `FlowRuntime`. On every replay it receives the run
+history through `WorkflowContext` and returns the next durable command.
+
+```rust
+use a3s_flow::{
+    FlowRuntime, Result, RuntimeCommand, StepInvocation, WorkflowContext,
+};
+use async_trait::async_trait;
+use serde_json::json;
+
+struct DemoRuntime;
+
+#[async_trait]
+impl FlowRuntime for DemoRuntime {
+    async fn replay(&self, ctx: WorkflowContext) -> Result<RuntimeCommand> {
+        if let Some(value) = ctx.step_output("fetch_profile") {
+            return Ok(RuntimeCommand::Complete {
+                output: json!({ "profile": value }),
+            });
+        }
+
+        Ok(ctx.schedule_step("fetch_profile", json!({ "userId": "u_123" })))
+    }
+
+    async fn run_step(&self, step: StepInvocation) -> Result<serde_json::Value> {
+        match step.step_id.as_str() {
+            "fetch_profile" => Ok(json!({ "name": "Ada" })),
+            other => Err(a3s_flow::FlowError::runtime(format!("unknown step: {other}"))),
+        }
+    }
+}
+```
+
+## Start And Inspect A Run
+
+```rust
+use a3s_flow::{FlowEngine, WorkflowSpec};
+use serde_json::json;
+use std::sync::Arc;
+
+# async fn run() -> a3s_flow::Result<()> {
+let engine = FlowEngine::in_memory(Arc::new(DemoRuntime));
+let spec = WorkflowSpec::rust_embedded("demo.profile", "0.1.0", "demo", "main");
+
+let run_id = engine
+    .start(spec, json!({ "requestId": "req_1" }))
+    .await?;
+
+let snapshot = engine.snapshot(&run_id).await?;
+println!("status={:?}", snapshot.status);
+# Ok(())
+# }
+```
+
+Use `start_with_id` when the host has a stable business ID and wants retry-safe
+idempotent starts.
+
+## Run Examples
+
+From the `crates/flow` repository:
+
+```bash
+cargo run --example sequential_steps
+cargo run --example batch_steps
+cargo run --example retry_backoff
+cargo run --example hook_approval
+cargo run --example scheduler_worker
+```
+
+Feature-gated durability examples:
+
+```bash
+cargo run --example sqlite_durability --features sqlite
+A3S_FLOW_POSTGRES_URL=postgres://... \
+  cargo run --example postgres_durability --features postgres
+```

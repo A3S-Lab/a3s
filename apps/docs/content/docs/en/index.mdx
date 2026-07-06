@@ -15,6 +15,7 @@ runtime veto when an action is unsafe.
 | Need | Project | Role |
 | --- | --- | --- |
 | Drive the agent loop | [A3S Code](/docs/code) | Harness-driven coding-agent runtime with tools, permissions, memory, planning, MCP, verification, TUI integration, and Rust/Node/Python SDKs. |
+| Run durable workflows | [A3S Flow](/docs/flow) | Event-sourced workflow SDK for replay-safe steps, waits, hooks, retries, workers, SQLite/Postgres durability, and Native TypeScript adapters. |
 | Package the stack | [A3S CLI](/docs/cli) | Umbrella CLI; `a3s code` launches the interactive terminal agent and `a3s box ...` delegates to Box. |
 | Install release builds | [A3S Homebrew Tap](/docs/homebrew) | Homebrew formulae and cask entries for A3S command-line tools and app bundles. |
 | Isolate actions | [A3S Box](/docs/box) | Docker-like MicroVM runtime for Linux OCI workloads, with CRI, image, network, SDK, and TEE-oriented paths. |
@@ -36,6 +37,7 @@ you -> a3s CLI / SDKs
        v
     A3S Code  -- tools, memory, planning, MCP, subagents, verification
        |
+       +--> A3S Flow     -- durable workflows, waits, hooks, workers
        +--> A3S Box      -- isolated Linux OCI execution
        +--> A3S Power    -- model serving
        +--> A3S Gateway  -- ingress, proxying, middleware
@@ -51,6 +53,7 @@ distribution:
     Homebrew tap · release archives · formula checks · cask app bundles
 ```
 
-The spine is drive -> isolate -> serve/route -> observe -> govern. Observer and
-Sentry wrap the rest: whatever the agent does through Code, inside Box, or out
-through Gateway should be visible and answerable to an external control plane.
+The spine is drive -> orchestrate -> isolate -> serve/route -> observe ->
+govern. Observer and Sentry wrap the rest: whatever the agent does through Code,
+inside Flow workers, inside Box, or out through Gateway should be visible and
+answerable to an external control plane.

@@ -1,0 +1,72 @@
+---
+title: Native TypeScript Workflows
+description: Optional TypeScript authoring path for A3S Flow through a Rust-owned native runtime adapter.
+---
+
+# Native TypeScript Workflows
+
+A3S Flow is a Rust SDK. `NativeTsRuntime` is an optional runtime adapter for
+hosts that want workflow authors to write TypeScript while Rust still owns run
+creation, event storage, replay, workers, scheduling, and inspection.
+
+This is not a standalone TypeScript SDK. TypeScript source is compiled into a
+native artifact and invoked through a versioned JSON protocol.
+
+## Compiler Contract
+
+`NativeTsRuntime` expects a compiler executable with this command shape:
+
+```bash
+a3s-flow-native-compiler compile <entrypoint.ts> -o <artifact>
+```
+
+The produced artifact must:
+
+- be executable by the host,
+- accept `--a3s-flow-runtime`,
+- read one `NativeRuntimeRequest` JSON object from stdin,
+- write one `NativeRuntimeResponse` JSON object to stdout,
+- dispatch workflow requests to the configured export,
+- dispatch step requests by `payload.step_name`.
+
+## Configure The Runtime
+
+```rust
+use a3s_flow::{NativeTsRuntime, NativeTsRuntimeConfig};
+
+let runtime = NativeTsRuntime::new(NativeTsRuntimeConfig::new(
+    "/path/to/a3s-flow-native-compiler",
+    ".a3s-flow/native-ts",
+    ".",
+));
+```
+
+Examples can also read the compiler path from the environment:
+
+```bash
+A3S_FLOW_NATIVE_TS_COMPILER=/path/to/a3s-flow-native-compiler \
+  cargo run --example native_ts_greeting
+
+A3S_FLOW_NATIVE_TS_COMPILER=/path/to/a3s-flow-native-compiler \
+  cargo run --example native_ts_preflight
+```
+
+When that variable is not set, the examples print the missing prerequisite and
+exit successfully so normal Rust example suites remain portable.
+
+## Preflight
+
+Call `preflight(&spec)` when a host wants early validation:
+
+```rust
+let preflight = runtime.preflight(&spec).await?;
+
+println!("entrypoint={}", preflight.entrypoint.display());
+println!("artifact={}", preflight.artifact.display());
+println!("source_hash={}", preflight.source_hash);
+println!("cache_hit={}", preflight.cache_hit);
+```
+
+Preflight validates the spec, resolves the entrypoint, hashes the source and
+runtime identity, compiles only on a cold artifact cache, and surfaces compiler
+stderr as a runtime error when compilation fails.

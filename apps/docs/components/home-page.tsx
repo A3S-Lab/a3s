@@ -4,13 +4,20 @@ import {
   Bot,
   Box,
   Cpu,
+  Eye,
   Globe,
   Layers,
+  Monitor,
   Search,
   Database,
   Github,
   Package,
+  PanelTop,
   Lock,
+  RefreshCw,
+  ShieldCheck,
+  Terminal,
+  Workflow,
   Zap,
   Puzzle,
 } from 'lucide-react';
@@ -57,6 +64,8 @@ const t = {
     appsHeading: 'Infrastructure that runs agents safely',
     libsLabel: 'Libraries',
     libsHeading: 'Composable primitives',
+    obsLabel: 'Observability And Control',
+    obsHeading: 'See and govern what agents really do',
     installTitle: 'Quick Install',
     installSub: 'Available on crates.io, PyPI, npm, and Homebrew',
     ctaHeading: 'Ready to build?',
@@ -102,6 +111,8 @@ const t = {
     appsHeading: '安全运行 Agent 的基础设施',
     libsLabel: '库',
     libsHeading: '可组合的基础原语',
+    obsLabel: '可观测性与控制',
+    obsHeading: '看见并治理 Agent 的真实行动',
     installTitle: '快速安装',
     installSub: '支持 crates.io、PyPI、npm 和 Homebrew',
     ctaHeading: '准备好了吗？',
@@ -133,9 +144,33 @@ function getModules(lang: Lang) {
       lightColor: 'bg-indigo-50 text-indigo-600',
       darkColor: 'dark:bg-indigo-900/40 dark:text-indigo-400',
     },
+    {
+      name: 'Flow',
+      tag: lang === 'cn' ? '工作流引擎' : 'Workflow Engine',
+      description:
+        lang === 'cn'
+          ? '事件溯源 durable workflow SDK：replay-safe steps、waits、hooks、retries、workers、SQLite/Postgres durability。'
+          : 'Event-sourced durable workflow SDK: replay-safe steps, waits, hooks, retries, workers, SQLite/Postgres durability.',
+      href: `${base}/docs/flow`,
+      icon: Workflow,
+      lightColor: 'bg-cyan-50 text-cyan-600',
+      darkColor: 'dark:bg-cyan-900/40 dark:text-cyan-400',
+    },
   ];
 
   const applications = [
+    {
+      name: 'CLI',
+      tag: lang === 'cn' ? '终端应用' : 'Terminal App',
+      description:
+        lang === 'cn'
+          ? '`a3s code` 交互式 TUI、session resume、/top、/update、Box 代理和工具发现。'
+          : '`a3s code` interactive TUI, session resume, /top, /update, Box proxying, and tool discovery.',
+      href: `${base}/docs/cli`,
+      icon: Terminal,
+      lightColor: 'bg-slate-100 text-slate-700',
+      darkColor: 'dark:bg-slate-800 dark:text-slate-300',
+    },
     {
       name: 'Box',
       tag: lang === 'cn' ? 'MicroVM 运行时' : 'MicroVM Runtime',
@@ -171,6 +206,30 @@ function getModules(lang: Lang) {
       icon: Globe,
       lightColor: 'bg-sky-50 text-sky-600',
       darkColor: 'dark:bg-sky-900/40 dark:text-sky-400',
+    },
+    {
+      name: 'GUI',
+      tag: lang === 'cn' ? '原生 UI' : 'Native UI',
+      description:
+        lang === 'cn'
+          ? 'React Aria 语义树到 native IR 的原生 UI renderer 原型，覆盖 AppKit、WinUI、GTK 规划路径。'
+          : 'Native UI renderer prototype that lowers React Aria semantic trees into native IR for AppKit, WinUI, and GTK planning paths.',
+      href: `${base}/docs/gui`,
+      icon: Monitor,
+      lightColor: 'bg-fuchsia-50 text-fuchsia-600',
+      darkColor: 'dark:bg-fuchsia-900/40 dark:text-fuchsia-400',
+    },
+    {
+      name: 'WebView',
+      tag: lang === 'cn' ? '弹窗 Helper' : 'Popup Helper',
+      description:
+        lang === 'cn'
+          ? '供 A3S Code TUI 打开 RemoteUI viewUrl 的原生 WebView helper，支持 auth bootstrap 和跨平台窗口。'
+          : 'Native WebView helper for A3S Code RemoteUI viewUrls, with auth bootstrap and cross-platform popup windows.',
+      href: `${base}/docs/webview`,
+      icon: PanelTop,
+      lightColor: 'bg-blue-50 text-blue-600',
+      darkColor: 'dark:bg-blue-900/40 dark:text-blue-400',
     },
   ];
 
@@ -211,13 +270,64 @@ function getModules(lang: Lang) {
       lightColor: 'bg-indigo-50 text-indigo-600',
       darkColor: 'dark:bg-indigo-900/40 dark:text-indigo-400',
     },
+    {
+      name: 'TUI',
+      tag: lang === 'cn' ? '终端 UI' : 'Terminal UI',
+      description:
+        lang === 'cn'
+          ? 'TEA/Flexbox 终端 UI 框架，包含 menus、tables、pickers、diffs、logs、status surfaces。'
+          : 'TEA/Flexbox terminal UI framework with menus, tables, pickers, diffs, logs, and status surfaces.',
+      href: `${base}/docs/tui`,
+      icon: PanelTop,
+      lightColor: 'bg-purple-50 text-purple-600',
+      darkColor: 'dark:bg-purple-900/40 dark:text-purple-400',
+    },
+    {
+      name: 'Updater',
+      tag: lang === 'cn' ? '自更新' : 'Self Update',
+      description:
+        lang === 'cn'
+          ? 'CLI release 自更新库，覆盖 GitHub Releases、资产选择、安装安全和验证流程。'
+          : 'CLI self-update library for GitHub Releases, asset selection, installation safety, and verification flow.',
+      href: `${base}/docs/updater`,
+      icon: RefreshCw,
+      lightColor: 'bg-rose-50 text-rose-600',
+      darkColor: 'dark:bg-rose-900/40 dark:text-rose-400',
+    },
   ];
 
-  return { frameworks, applications, libraries };
+  const observability = [
+    {
+      name: 'Observer',
+      tag: lang === 'cn' ? 'eBPF 观测' : 'eBPF Telemetry',
+      description:
+        lang === 'cn'
+          ? '语言无关 eBPF telemetry，观测 agent tools、files、LLM calls、DNS、egress，并支持可选 kernel guards。'
+          : 'Language-agnostic eBPF telemetry for agent tools, files, LLM calls, DNS, egress, and optional kernel guards.',
+      href: `${base}/docs/observer`,
+      icon: Eye,
+      lightColor: 'bg-lime-50 text-lime-700',
+      darkColor: 'dark:bg-lime-900/40 dark:text-lime-400',
+    },
+    {
+      name: 'Sentry',
+      tag: lang === 'cn' ? '运行时安全' : 'Runtime Safety',
+      description:
+        lang === 'cn'
+          ? 'L1 规则、L2 LLM 检查、L3 agent review 的分层 runtime security control。'
+          : 'Tiered runtime security control with L1 rules, L2 LLM checks, and L3 agent review.',
+      href: `${base}/docs/sentry`,
+      icon: ShieldCheck,
+      lightColor: 'bg-red-50 text-red-600',
+      darkColor: 'dark:bg-red-900/40 dark:text-red-400',
+    },
+  ];
+
+  return { frameworks, applications, libraries, observability };
 }
 
 const installSnippets = [
-  { label: 'Rust', cmd: 'cargo add a3s-code-core' },
+  { label: 'Rust', cmd: 'cargo add a3s-code-core a3s-flow a3s-tui' },
   { label: 'Python', cmd: 'pip install a3s-code a3s-lane a3s-search' },
   { label: 'Node.js', cmd: 'npm install @a3s-lab/code @a3s-lab/lane' },
   { label: 'Homebrew', cmd: 'brew tap a3s-lab/tap && brew install a3s-search a3s-power' },
@@ -262,7 +372,7 @@ function ModuleCard({
 
 export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
   const tr = t[lang];
-  const { frameworks, applications, libraries } = getModules(lang);
+  const { frameworks, applications, libraries, observability } = getModules(lang);
   const docsHref = lang === 'cn' ? '/cn/docs/code' : '/docs/code';
 
   return (
@@ -327,7 +437,9 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
             <span className="text-xs font-semibold uppercase tracking-widest text-indigo-500">{tr.frameworkLabel}</span>
             <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{tr.frameworkHeading}</h2>
           </div>
-          <div className="max-w-xl">{frameworks.map((m) => <ModuleCard key={m.name} {...m} />)}</div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {frameworks.map((m) => <ModuleCard key={m.name} {...m} />)}
+          </div>
         </div>
       </section>
 
@@ -353,6 +465,19 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {libraries.map((m) => <ModuleCard key={m.name} {...m} />)}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Observability ── */}
+      <section className="px-4 py-16 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-8">
+            <span className="text-xs font-semibold uppercase tracking-widest text-lime-600 dark:text-lime-400">{tr.obsLabel}</span>
+            <h2 className="mt-1 text-2xl font-bold text-slate-900 dark:text-slate-100">{tr.obsHeading}</h2>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {observability.map((m) => <ModuleCard key={m.name} {...m} />)}
           </div>
         </div>
       </section>

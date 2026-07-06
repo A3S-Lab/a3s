@@ -1,0 +1,97 @@
+---
+title: Quick Start
+description: 使用 embedded Rust runtime 启动一个 durable A3S Flow run。
+---
+
+# Flow Quick Start
+
+示例和测试可以使用 `FlowEngine::in_memory`。当 host 需要 restart durability 时，再切换到
+local JSONL、SQLite 或 Postgres storage。
+
+## Add The Crate
+
+```toml
+[dependencies]
+a3s-flow = "0.4"
+async-trait = "0.1"
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+```
+
+## Define A Runtime
+
+Workflow code 实现 `FlowRuntime`。每次 replay 时，它通过 `WorkflowContext`
+接收 run history，并返回下一个 durable command。
+
+```rust
+use a3s_flow::{
+    FlowRuntime, Result, RuntimeCommand, StepInvocation, WorkflowContext,
+};
+use async_trait::async_trait;
+use serde_json::json;
+
+struct DemoRuntime;
+
+#[async_trait]
+impl FlowRuntime for DemoRuntime {
+    async fn replay(&self, ctx: WorkflowContext) -> Result<RuntimeCommand> {
+        if let Some(value) = ctx.step_output("fetch_profile") {
+            return Ok(RuntimeCommand::Complete {
+                output: json!({ "profile": value }),
+            });
+        }
+
+        Ok(ctx.schedule_step("fetch_profile", json!({ "userId": "u_123" })))
+    }
+
+    async fn run_step(&self, step: StepInvocation) -> Result<serde_json::Value> {
+        match step.step_id.as_str() {
+            "fetch_profile" => Ok(json!({ "name": "Ada" })),
+            other => Err(a3s_flow::FlowError::runtime(format!("unknown step: {other}"))),
+        }
+    }
+}
+```
+
+## Start And Inspect A Run
+
+```rust
+use a3s_flow::{FlowEngine, WorkflowSpec};
+use serde_json::json;
+use std::sync::Arc;
+
+# async fn run() -> a3s_flow::Result<()> {
+let engine = FlowEngine::in_memory(Arc::new(DemoRuntime));
+let spec = WorkflowSpec::rust_embedded("demo.profile", "0.1.0", "demo", "main");
+
+let run_id = engine
+    .start(spec, json!({ "requestId": "req_1" }))
+    .await?;
+
+let snapshot = engine.snapshot(&run_id).await?;
+println!("status={:?}", snapshot.status);
+# Ok(())
+# }
+```
+
+当 host 有稳定 business ID 并希望 start 可以安全重试时，使用 `start_with_id`。
+
+## Run Examples
+
+在 `crates/flow` 仓库中运行：
+
+```bash
+cargo run --example sequential_steps
+cargo run --example batch_steps
+cargo run --example retry_backoff
+cargo run --example hook_approval
+cargo run --example scheduler_worker
+```
+
+Feature-gated durability examples:
+
+```bash
+cargo run --example sqlite_durability --features sqlite
+A3S_FLOW_POSTGRES_URL=postgres://... \
+  cargo run --example postgres_durability --features postgres
+```

@@ -1,0 +1,85 @@
+---
+title: Durability And Workers
+description: A3S Flow 的 storage、task queues、schedulers、workers 与 recovery paths。
+---
+
+# Durability And Workers
+
+A3S Flow 把 workflow event durability 和 task dispatch durability 分开。Stores
+保存 run history，queues 保存 runnable work，workers 连接两者。
+
+## Event Stores
+
+| Store | Best fit |
+| --- | --- |
+| `InMemoryEventStore` | Tests、examples 和 ephemeral embedded hosts。 |
+| `LocalFileEventStore` | 使用 JSONL history files 的 local tools、desktop apps 和 single-process durable hosts。 |
+| `SqliteEventStore` | 想要一个 inspectable database 的 single-node hosts。 |
+| `PostgresEventStore` | 共享 event history 的 multi-process hosts 和 distributed workers。 |
+
+所有 stores 都实现同一个 `FlowEventStore` contract，并保存相同的 event envelope shape。
+
+## Local Durable Host
+
+```rust
+use a3s_flow::{
+    FlowEngine, FlowTaskQueue, FlowWorker, LocalFileEventStore, LocalFileFlowTaskQueue,
+};
+use std::sync::Arc;
+
+# async fn run(runtime: Arc<dyn a3s_flow::FlowRuntime>) -> a3s_flow::Result<()> {
+let store = Arc::new(LocalFileEventStore::new(".a3s-flow/events"));
+let queue = Arc::new(LocalFileFlowTaskQueue::new(".a3s-flow/tasks"));
+
+queue.requeue_inflight().await?;
+
+let engine = FlowEngine::new(store, runtime);
+let worker = FlowWorker::new(engine.clone(), queue.clone());
+# Ok(())
+# }
+```
+
+Directory layout:
+
+```text
+.a3s-flow/
+  events/
+    <run-id>.jsonl
+  tasks/
+    pending/
+    inflight/
+    dead/
+  artifacts/
+    native-ts/
+```
+
+## SQLite And Postgres
+
+SQLite 使用一个 local database，并在 transaction 中检查 expected sequence writes：
+
+```toml
+a3s-flow = { version = "0.4", features = ["sqlite"] }
+```
+
+Postgres 用于 shared event history 和 distributed workers：
+
+```toml
+a3s-flow = { version = "0.4", features = ["postgres"] }
+```
+
+Postgres task queues 可以恢复 stale leases，也可以 dead-letter poison tasks。
+Workers 只有在 task handling 成功后才 acknowledge leases，因此进程崩溃不会抹掉可运行的
+workflow work。
+
+## Scheduler And Worker Loop
+
+`FlowScheduler` 找到 due waits 和 delayed retries，然后 enqueue `FlowTask`。
+`FlowWorker` lease 这些 tasks，drive engine，并在 handling 成功时 acknowledge lease。
+
+常见 host loop：
+
+1. 启动时 requeue stale inflight tasks。
+2. 让 `FlowScheduler` 查找 due work。
+3. 无 due work 时 sleep 到 `next_wakeup_delay()`。
+4. 让一个或多个 workers drain queued tasks。
+5. 检查 dead-lettered tasks，并决定 retry 或 archive。

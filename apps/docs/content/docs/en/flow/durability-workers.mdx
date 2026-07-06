@@ -1,0 +1,89 @@
+---
+title: Durability And Workers
+description: Storage, task queues, schedulers, workers, and recovery paths in A3S Flow.
+---
+
+# Durability And Workers
+
+A3S Flow separates workflow event durability from task dispatch durability.
+Stores preserve run history. Queues preserve runnable work. Workers connect the
+two.
+
+## Event Stores
+
+| Store | Best fit |
+| --- | --- |
+| `InMemoryEventStore` | Tests, examples, and ephemeral embedded hosts. |
+| `LocalFileEventStore` | Local tools, desktop apps, and single-process durable hosts using JSONL history files. |
+| `SqliteEventStore` | Single-node hosts that want one inspectable database. |
+| `PostgresEventStore` | Multi-process hosts and distributed workers sharing event history. |
+
+All stores implement the same `FlowEventStore` contract and preserve the same
+event envelope shape.
+
+## Local Durable Host
+
+```rust
+use a3s_flow::{
+    FlowEngine, FlowTaskQueue, FlowWorker, LocalFileEventStore, LocalFileFlowTaskQueue,
+};
+use std::sync::Arc;
+
+# async fn run(runtime: Arc<dyn a3s_flow::FlowRuntime>) -> a3s_flow::Result<()> {
+let store = Arc::new(LocalFileEventStore::new(".a3s-flow/events"));
+let queue = Arc::new(LocalFileFlowTaskQueue::new(".a3s-flow/tasks"));
+
+queue.requeue_inflight().await?;
+
+let engine = FlowEngine::new(store, runtime);
+let worker = FlowWorker::new(engine.clone(), queue.clone());
+# Ok(())
+# }
+```
+
+Directory layout:
+
+```text
+.a3s-flow/
+  events/
+    <run-id>.jsonl
+  tasks/
+    pending/
+    inflight/
+    dead/
+  artifacts/
+    native-ts/
+```
+
+## SQLite And Postgres
+
+SQLite keeps one local database and uses transaction checks for expected
+sequence writes:
+
+```toml
+a3s-flow = { version = "0.4", features = ["sqlite"] }
+```
+
+Postgres is for shared event history and distributed workers:
+
+```toml
+a3s-flow = { version = "0.4", features = ["postgres"] }
+```
+
+Postgres task queues can recover stale leases and dead-letter poison tasks.
+Workers acknowledge leases only after successful handling, so a process crash
+does not erase runnable workflow work.
+
+## Scheduler And Worker Loop
+
+`FlowScheduler` finds waits and delayed retries that are due, then enqueues
+`FlowTask` values. `FlowWorker` leases those tasks, drives the engine, and
+acknowledges the lease when handling succeeds.
+
+Common host loop:
+
+1. Requeue stale inflight tasks on startup.
+2. Ask `FlowScheduler` for due work.
+3. Sleep until `next_wakeup_delay()` when no work is due.
+4. Let one or more workers drain queued tasks.
+5. Inspect dead-lettered tasks and decide whether to retry or archive them.

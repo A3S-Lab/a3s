@@ -1,0 +1,92 @@
+---
+title: Architecture
+description: A3S Flow 如何建模 deterministic replay、event sourcing、waits、hooks 与 inspection。
+---
+
+# Flow Architecture
+
+A3S Flow 把 workflow truth 放在 event history 中，而不是放在 long-running process
+的 call stack 里。每个 run 都由 committed events 投影出来，然后 replay，直到 runtime
+返回一个 durable command。
+
+## Layers
+
+```text
+Rust SDK layer
+  FlowEngine, FlowRuntime, FlowEventStore, snapshots
+          |
+          v
+Runtime adapter layer
+  host runtime, Rust embedded workflows, optional NativeTsRuntime
+          |
+          v
+Durable engine layer
+  replay loop, run inspection, retries, waits, hooks, cancellation
+          |
+          v
+Event store layer
+  append-only FlowEventStore, local files, SQLite, Postgres
+          |
+          v
+Dispatch layer
+  FlowTask, FlowTaskQueue, FlowWorker, FlowScheduler
+```
+
+## Replay Model
+
+Runtime 每次 replay 只返回一个 `RuntimeCommand`：
+
+| Command | Engine behavior |
+| --- | --- |
+| `ScheduleStep` | 持久化 step creation，执行 side-effecting step，持久化 output 或 failure，然后 replay。 |
+| `ScheduleSteps` | 校验稳定且唯一的 step ID batch，并对每个 step 应用同样的 durable lifecycle。 |
+| `WaitUntil` | 持久化 wait，并挂起直到 host 恢复它或 scheduler 发现它 due。 |
+| `CreateHook` | 持久化 callback hook，并挂起直到 host resume 或 dispose。 |
+| `Complete` | 持久化 terminal output。 |
+| `Fail` | 持久化 terminal failure。 |
+
+Replay validation 会拒绝 non-deterministic drift。如果 workflow code 用同一个
+step、wait 或 hook ID 但改变了 input、retry policy、deadline、token 或 metadata，
+engine 会返回错误，而不是默默扩展不兼容的 history。
+
+## Event Sourcing
+
+`FlowEventStore` 是 append-only。Engine writes 使用 expected sequence numbers，
+因此 stale writers 会得到明确 conflict，不会破坏顺序。
+
+Snapshots 是 projections：
+
+- `snapshot(run_id)` 返回当前 projected run。
+- `history(run_id)` 返回 committed envelopes。
+- `list_snapshots()` 和 `run_summary()` 支持 dashboards。
+- `list_open_suspensions()` 返回 waits、hooks 和 delayed retries。
+- `next_wakeup()` 让 host 可以睡到下一次 scheduled resume。
+- `list_active_hooks()` 用于构建 callback indexes 或 UI queues。
+
+## Timers And Hooks
+
+Timers 和 hooks 挂起时不占用 compute。
+
+Waits 适合：
+
+- retry backoff，
+- polling external jobs，
+- SLA deadlines，
+- agent/tool iterations 之间的 sleep。
+
+Hooks 适合：
+
+- human approval，
+- webhooks，
+- OAuth callbacks，
+- UI review gates，
+- 稍后到达的 host events。
+
+Hooks 可以通过 run/hook ID 或 public token resume。Disposal 会关闭 callback route，
+并让 workflow code replay 到 alternate path。
+
+## Observability
+
+Flow observers 在 store append 后镜像 committed events。这样 store 仍然是 authoritative，
+host 又能把 events fan out 到 local audit logs、A3S event records、metrics、dashboards
+或 runtime inspection views。
