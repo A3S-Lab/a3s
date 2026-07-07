@@ -57,6 +57,11 @@ const t = {
         title: 'Composable, not monolithic',
         body: 'Use Code standalone, add Box for isolation, and compose only the modules you need. Every module has a trait interface — swap any piece without touching the rest.',
       },
+      {
+        icon: Eye,
+        title: 'Observable control loops',
+        body: 'Capture agent actions, tool calls, network activity, and review decisions so teams can debug, audit, and govern production agents.',
+      },
     ],
 
     frameworkLabel: 'Framework',
@@ -71,8 +76,6 @@ const t = {
     libsHeading: 'Composable primitives',
     obsLabel: 'Observability And Control',
     obsHeading: 'See and govern what agents really do',
-    installTitle: 'Quick Install',
-    installSub: 'Available on crates.io, PyPI, npm, and Homebrew',
     ctaHeading: 'Ready to build?',
     ctaSub: 'Start with the Code framework and add modules as you need them.',
     readDocs: 'Read the Docs',
@@ -108,6 +111,11 @@ const t = {
         title: '可组合，非单体',
         body: '单独使用 Code，加入 Box 获得隔离，只组合当前需要的模块。每个模块都有 trait 接口——替换任意组件无需改动其余部分。',
       },
+      {
+        icon: Eye,
+        title: '可观测控制闭环',
+        body: '记录 Agent 行为、工具调用、网络活动和审查决策，让团队能调试、审计并治理生产环境中的 Agent。',
+      },
     ],
 
     frameworkLabel: '框架',
@@ -122,8 +130,6 @@ const t = {
     libsHeading: '可组合的基础原语',
     obsLabel: '可观测性与控制',
     obsHeading: '看见并治理 Agent 的真实行动',
-    installTitle: '快速安装',
-    installSub: '支持 crates.io、PyPI、npm 和 Homebrew',
     ctaHeading: '准备好了吗？',
     ctaSub: '从 Code 框架开始，按需添加模块。',
     readDocs: '阅读文档',
@@ -413,13 +419,6 @@ function getModules(lang: Lang) {
   return { frameworks, applications, distribution, middleware, libraries, observability };
 }
 
-const installSnippets = [
-  { label: 'Rust', cmd: 'cargo add a3s-code-core a3s-flow a3s-tui' },
-  { label: 'Python', cmd: 'pip install a3s-code a3s-lane a3s-search' },
-  { label: 'Node.js', cmd: 'npm install @a3s-lab/code @a3s-lab/lane' },
-  { label: 'Homebrew', cmd: 'brew tap a3s-lab/tap && brew install a3s-search a3s-power' },
-];
-
 // ─── ModuleCard ───────────────────────────────────────────────────────────────
 
 function ModuleCard({
@@ -591,33 +590,6 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {observability.map((m) => <ModuleCard key={m.name} {...m} />)}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Install ── */}
-      <section className="px-4 py-16 sm:px-6">
-        <div className="mx-auto max-w-7xl">
-          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-700 dark:bg-slate-800/60" style={{ boxShadow: 'var(--ct-shadow-card)' }}>
-            <div className="border-b border-slate-100 px-8 py-6 dark:border-slate-700">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-900/40">
-                  <Package className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{tr.installTitle}</h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{tr.installSub}</p>
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 divide-y divide-slate-100 dark:divide-slate-700 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-              {installSnippets.map(({ label, cmd }) => (
-                <div key={label} className="px-8 py-5">
-                  <span className="mb-2 block text-xs font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">{label}</span>
-                  <code className="block rounded-lg bg-slate-50 px-4 py-3 font-mono text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-300" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{cmd}</code>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       </section>
