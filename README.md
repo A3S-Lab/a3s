@@ -1,7 +1,7 @@
 # A3S
 
 <p align="center">
-  <strong>Rust-native application stack for A3S Code.</strong>
+  <strong>Rust-native platform for coding agents, isolated execution, and reproducible evaluation.</strong>
 </p>
 
 <p align="center">
@@ -14,13 +14,15 @@
 
 ## Overview
 
-A3S is the monorepo for A3S Code and its Rust-first platform components. The
-root repository is for orchestration only: crates under `crates/` are
-independent git submodules, and applications live under `apps/`.
+A3S is the orchestration repository for A3S Code, A3S Box, A3S Bench, and their
+Rust-first platform components. Crates under `crates/` are independent git
+submodules, and applications live under `apps/`.
 
-The primary product surface today is `a3s code`, the interactive terminal
-coding agent. Native desktop clients are built with `a3s-gui`, Rust function
-components, RSX view templates, and platform hosts for AppKit, GTK, and WinUI.
+The `a3s` command is the unified product entrypoint: `a3s code` launches the
+interactive coding agent, `a3s box` manages isolated runtimes, and `a3s bench`
+runs reproducible evaluations of coding agents and automated systems. Local
+Code, Runtime, provider/model, and Bench workflows do not require an A3S OS
+login unless the selected remote capability requires one.
 
 The stack is intentionally not a root Rust workspace and not a JavaScript UI
 runtime. Web and WebView packages are auxiliary surfaces; the core product path
@@ -30,11 +32,11 @@ is Rust.
 
 | Area | Paths | Purpose |
 | --- | --- | --- |
-| Product surfaces | `crates/cli`, `apps/desktop`, `apps/box`, `apps/docs` | CLI, native apps, and documentation site. |
+| Product surfaces | `crates/cli`, `crates/bench`, `apps/box`, `apps/docs` | CLI, benchmark control component, native app, and documentation site. |
 | Agent runtime | `crates/code`, `crates/ahp`, `crates/acl`, `crates/common` | Sessions, tools, policy, protocol, config, and shared types. |
 | UI systems | `crates/tui`, `crates/gui`, `crates/webview` | Terminal UI, native RSX UI, and trusted WebView helpers. |
 | State and coordination | `crates/memory`, `crates/event`, `crates/flow`, `crates/lane`, `crates/search` | Memory, events, workflows, queues, and retrieval. |
-| Runtime safety and operations | `crates/box`, `crates/observer`, `crates/sentry` | Isolation, observability, and runtime control. |
+| Runtime safety and operations | `crates/runtime`, `crates/box`, `crates/observer`, `crates/sentry` | Provider-neutral execution, isolation, observability, and runtime control. |
 | Services | `crates/boot`, `crates/gateway`, `crates/power` | Service framework, ingress, and model serving. |
 | Distribution | `crates/updater`, `homebrew-tap` | CLI self-update support and Homebrew formulae. |
 
@@ -42,10 +44,9 @@ is Rust.
 
 | Project | Version | Role |
 | --- | --- | --- |
-| [A3S Code Desktop](apps/desktop/) | 0.1.0 | Native shell for A3S Code. |
 | [A3S Box Desktop](apps/box/) | 0.1.0 | Native A3S Box management client. |
-| [a3s](crates/cli/) | 0.7.5 | End-user CLI; `a3s code` launches the TUI coding agent. |
-| [a3s-code](crates/code/) | core 4.3.2, SDKs 4.3.0 | Rust agent runtime plus Node and Python SDK bindings. |
+| [a3s](crates/cli/) | 0.7.7 | End-user CLI; `a3s code` launches the TUI coding agent. |
+| [a3s-code](crates/code/) | core and SDKs 4.3.3 | Rust agent runtime plus Node and Python SDK bindings. |
 | [a3s-gui](crates/gui/) | 0.1.0 | Native GUI runtime with hooks, RSX templates, semantic UI, and platform hosts. |
 | [a3s-tui](crates/tui/) | 0.1.6 | Terminal UI framework used by `a3s code`. |
 | [a3s-flow](crates/flow/) | 0.4.1 | Durable workflow engine with event-sourced runs and replay. |
@@ -53,6 +54,8 @@ is Rust.
 | [a3s-event](crates/event/) | 0.3.0 | Event subscription, dispatch, and persistence. |
 | [a3s-lane](crates/lane/) | 0.5.0 | Rust-only priority and job queue with Redis, flows, repeat jobs, worker leases, retry, and DLQ. |
 | [a3s-search](crates/search/) | 1.3.0 | Embeddable meta-search engine with consensus ranking. |
+| [a3s-bench](crates/bench/) | 0.1.0 | Reproducible evaluation of coding agents, automated systems, and deterministic tools. |
+| [a3s-runtime](crates/runtime/) | 0.1.0 | Provider-neutral execution contract and Runtime client. |
 | [a3s-box](crates/box/) | 3.0.5 | Docker-like MicroVM runtime for Linux OCI workloads. |
 | [a3s-observer](crates/observer/) | 0.11.0 | eBPF observability for LLM calls, tools, files, and egress. |
 | [a3s-sentry](crates/sentry/) | 0.6.0 | Tiered runtime security control. |
@@ -73,7 +76,44 @@ brew install a3s-lab/tap/a3s
 
 # Run the terminal coding agent.
 a3s code
+
+# Code is included with a3s. Box and Bench install on first real use.
+a3s list
+a3s box ps
+
+# Optional components can also be prepared explicitly.
+a3s install code   # verify/repair the included Code installation
+a3s install box
+a3s install bench
 ```
+
+`a3s update` remains the Code self-update alias. Use
+`a3s update code|box|bench` to update one component explicitly; updating a
+missing optional component tells you to install it first.
+
+Manage account-owned and configured model routes without copying Claude Code,
+Codex, or A3S OS credentials into `config.acl`:
+
+```bash
+a3s login                         # A3S OS browser OAuth
+a3s account list                  # Claude Code, Codex, and A3S OS status
+a3s model list                    # config.acl plus signed-in account models
+a3s model use codex/<model>       # persist the A3S Code model route
+```
+
+Run the short Bench conformance task after installing the stable Bench control
+component. Signed-out local execution defaults to Docker:
+
+```bash
+a3s bench list
+a3s bench run quick_file_edit --agent <candidate-adapter>
+a3s bench result
+```
+
+Bench v0.1.0 packages one short conformance task and 51 locally runnable
+long-horizon Task/Judge adapters. The long-horizon catalog is not a permanent
+task boundary. Local runs remain `local_unofficial`; official evaluation also
+requires signed Task admission and matching Runtime evidence.
 
 Local development:
 
@@ -83,11 +123,8 @@ git submodule update --init --recursive
 # Run A3S Code from source.
 just code
 
-# Run the native desktop app.
+# Run the default development surface.
 just dev
-
-# Check the desktop app.
-just desktop-check
 
 # Run the A3S Box desktop client.
 just box
@@ -127,8 +164,8 @@ git commit -m "Update <component> snapshot"
 ```
 
 Applications under `apps/` use app-local workflows. The root `justfile` only
-orchestrates common entry points such as `just code`, `just dev`, and
-`just desktop-check`.
+orchestrates common entry points such as `just code`, `just dev`, `just web`,
+and `just box-check`.
 
 ## Documentation
 
