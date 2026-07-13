@@ -101,6 +101,13 @@ The CLI command palette delegates to the A3S Code TUI command registry:
 separate from `DynamicWorkflowRuntime`, the local A3S Flow-backed runtime used
 by `ultracode` and `?` DeepResearch for per-turn dynamic orchestration.
 
+## Diff Rendering
+
+Completed file edits use a Codex-aligned semantic palette: muted gutters,
+green insert and red delete markers, dark changed-row backgrounds, and a fixed
+syntax-token palette that remains stable when `/theme` changes the editor.
+Long paths and source lines stay bounded to the active terminal viewport.
+
 ## Effort And Dynamic Work
 
 `/effort` changes the active depth profile. The TUI scales thinking budget,

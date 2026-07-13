@@ -68,6 +68,12 @@ a3s code resume
 | `/auto` | 本 session 自动批准 tool confirmations。 |
 | `/exit` | 退出 `a3s code`。 |
 
+## Diff Rendering
+
+完成的文件编辑使用与 Codex 对齐的语义配色：弱化 gutter、绿色新增标记、红色删除标记、
+深色变更行背景，以及不受 `/theme` editor 切换影响的固定 syntax-token 色板。
+长路径和源码行会限制在当前 terminal viewport 宽度内。
+
 ## Headless Smoke Mode
 
 设置 `A3S_CODE_TUI_SMOKE=1` 可以在不接管终端的情况下验证 agent-stream integration。这适合对
