@@ -3,7 +3,7 @@
 use serde::Deserialize;
 
 /// A GitHub release.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Release {
     /// Tag name (e.g. `"v0.3.0"`).
     pub tag_name: String,
@@ -14,32 +14,61 @@ pub struct Release {
 }
 
 /// A single release asset (downloadable file).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct Asset {
     /// File name (e.g. `"a3s-code-0.3.0-darwin-arm64.tar.gz"`).
     pub name: String,
     /// Direct download URL.
     pub browser_download_url: String,
+    /// GitHub-provided content digest, when available.
+    pub digest: Option<String>,
 }
 
 /// Fetch the latest release from a GitHub repository.
 pub async fn fetch_latest_release(owner: &str, repo: &str) -> anyhow::Result<Release> {
-    let url = format!(
-        "https://api.github.com/repos/{}/{}/releases/latest",
-        owner, repo
-    );
+    let api_base = github_api_base();
+    fetch_release_url(&format!("{api_base}/repos/{owner}/{repo}/releases/latest")).await
+}
 
+/// Fetch one release by semantic version, or the latest release when omitted.
+pub async fn fetch_release(
+    owner: &str,
+    repo: &str,
+    version: Option<&str>,
+) -> anyhow::Result<Release> {
+    let Some(version) = version else {
+        return fetch_latest_release(owner, repo).await;
+    };
+    let version = version.trim().trim_start_matches('v');
+    if version.is_empty() {
+        return Err(anyhow::anyhow!("release version cannot be empty"));
+    }
+    let api_base = github_api_base();
+    fetch_release_url(&format!(
+        "{api_base}/repos/{owner}/{repo}/releases/tags/v{version}"
+    ))
+    .await
+}
+
+fn github_api_base() -> String {
+    std::env::var("A3S_UPDATER_GITHUB_API_BASE")
+        .unwrap_or_else(|_| "https://api.github.com".to_string())
+        .trim_end_matches('/')
+        .to_string()
+}
+
+async fn fetch_release_url(url: &str) -> anyhow::Result<Release> {
     let client = reqwest::Client::builder()
         .user_agent("a3s-updater/0.1")
         .build()
         .map_err(|e| anyhow::anyhow!("Failed to build HTTP client: {}", e))?;
 
     let response = client
-        .get(&url)
+        .get(url)
         .header("Accept", "application/vnd.github+json")
         .send()
         .await
-        .map_err(|e| anyhow::anyhow!("Failed to fetch latest release from {}: {}", url, e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to fetch release from {}: {}", url, e))?;
 
     if !response.status().is_success() {
         let status = response.status();
