@@ -64,3 +64,6 @@
 [submodule "apps/cloud"]
 	path = apps/cloud
 	url = git@github.com:A3S-Lab/Cloud.git
+[submodule "crates/use"]
+	path = crates/use
+	url = git@github.com:A3S-Lab/Use.git
