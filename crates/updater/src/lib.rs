@@ -4,12 +4,20 @@
 //! [`run_update`] to check for a newer release, download the matching
 //! platform asset, and replace the running binary in-place.
 
+mod component;
 mod download;
 mod github;
 mod install;
 mod platform;
 
-pub use github::Release;
+pub use component::{
+    uninstall_owned_files, ComponentReceipt, DirectoryActivation, InstallProvenance, ReceiptStore,
+    RECEIPT_SCHEMA_VERSION,
+};
+pub use download::{download_asset, extract_tar_gz_archive, sha256_hex, verify_sha256};
+pub use github::{
+    fetch_latest_release, fetch_release, find_matching_asset, parse_version, Asset, Release,
+};
 
 /// Configuration for the update check — each binary provides its own.
 pub struct UpdateConfig {
@@ -161,10 +169,12 @@ mod tests {
                 github::Asset {
                     name: "a3s-code-0.3.0-darwin-arm64.tar.gz".to_string(),
                     browser_download_url: "https://example.com/darwin-arm64.tar.gz".to_string(),
+                    digest: None,
                 },
                 github::Asset {
                     name: "a3s-code-0.3.0-linux-x86_64.tar.gz".to_string(),
                     browser_download_url: "https://example.com/linux-x86_64.tar.gz".to_string(),
+                    digest: None,
                 },
             ],
         };

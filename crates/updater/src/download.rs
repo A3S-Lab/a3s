@@ -1,7 +1,126 @@
 //! Download and extract release assets.
 
+use anyhow::{bail, Context};
+use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
+
+const MAX_ARCHIVE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+
+/// Download one release asset into memory.
+pub async fn download_asset(url: &str) -> anyhow::Result<Vec<u8>> {
+    let client = reqwest::Client::builder()
+        .user_agent("a3s-updater/0.3")
+        .timeout(std::time::Duration::from_secs(300))
+        .build()
+        .context("failed to build release download client")?;
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .with_context(|| format!("failed to download release asset from {url}"))?;
+    if !response.status().is_success() {
+        bail!(
+            "release asset download returned HTTP {} for {}",
+            response.status(),
+            url
+        );
+    }
+    if response
+        .content_length()
+        .is_some_and(|size| size > MAX_ARCHIVE_BYTES)
+    {
+        bail!("release asset exceeds the {} byte limit", MAX_ARCHIVE_BYTES);
+    }
+    let bytes = response
+        .bytes()
+        .await
+        .with_context(|| format!("failed to read release asset body from {url}"))?;
+    if bytes.len() as u64 > MAX_ARCHIVE_BYTES {
+        bail!("release asset exceeds the {} byte limit", MAX_ARCHIVE_BYTES);
+    }
+    Ok(bytes.to_vec())
+}
+
+/// Return a lowercase SHA-256 digest.
+pub fn sha256_hex(data: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(data))
+}
+
+/// Verify bytes against a hexadecimal SHA-256 digest.
+pub fn verify_sha256(data: &[u8], expected: &str) -> anyhow::Result<()> {
+    let expected = expected
+        .trim()
+        .strip_prefix("sha256:")
+        .unwrap_or(expected.trim())
+        .to_ascii_lowercase();
+    if expected.len() != 64 || !expected.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        bail!("invalid SHA-256 digest '{expected}'");
+    }
+    let actual = sha256_hex(data);
+    if actual != expected {
+        bail!("release checksum mismatch: expected {expected}, got {actual}");
+    }
+    Ok(())
+}
+
+/// Safely extract a complete gzip-compressed tar archive.
+///
+/// Only directories and regular files are accepted. Links and special files
+/// are rejected, and every path must remain below the destination.
+pub fn extract_tar_gz_archive(data: &[u8], dest_dir: &Path) -> anyhow::Result<Vec<PathBuf>> {
+    std::fs::create_dir_all(dest_dir)
+        .with_context(|| format!("failed to create extraction root {}", dest_dir.display()))?;
+    let gz = flate2::read::GzDecoder::new(data);
+    let mut archive = tar::Archive::new(gz);
+    let mut extracted = Vec::new();
+
+    for entry in archive.entries().context("failed to read tar entries")? {
+        let mut entry = entry.context("failed to read tar entry")?;
+        let relative = entry.path().context("failed to read tar entry path")?;
+        if relative.is_absolute()
+            || relative.components().any(|component| {
+                matches!(
+                    component,
+                    std::path::Component::ParentDir | std::path::Component::RootDir
+                )
+            })
+        {
+            bail!(
+                "archive entry escapes extraction root: {}",
+                relative.display()
+            );
+        }
+        let output = dest_dir.join(relative.as_ref());
+        if !output.starts_with(dest_dir) {
+            bail!(
+                "archive entry escapes extraction root: {}",
+                relative.display()
+            );
+        }
+
+        let entry_type = entry.header().entry_type();
+        if entry_type.is_dir() {
+            std::fs::create_dir_all(&output)
+                .with_context(|| format!("failed to create {}", output.display()))?;
+        } else if entry_type.is_file() {
+            if let Some(parent) = output.parent() {
+                std::fs::create_dir_all(parent)
+                    .with_context(|| format!("failed to create {}", parent.display()))?;
+            }
+            entry
+                .unpack(&output)
+                .with_context(|| format!("failed to extract {}", output.display()))?;
+            extracted.push(output);
+        } else {
+            bail!(
+                "archive entry uses unsupported link or special type: {}",
+                relative.display()
+            );
+        }
+    }
+    Ok(extracted)
+}
 
 /// Download a `.tar.gz` asset and extract the binary from it.
 ///
@@ -92,4 +211,59 @@ fn extract_tar_gz(data: &[u8], dest_dir: &Path, binary_name: &str) -> anyhow::Re
         "Binary '{}' not found in archive",
         binary_name
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sha256_verification_accepts_prefix_and_rejects_mismatch() {
+        let digest = sha256_hex(b"a3s");
+        verify_sha256(b"a3s", &digest).unwrap();
+        verify_sha256(b"a3s", &format!("sha256:{digest}")).unwrap();
+        assert!(verify_sha256(b"other", &digest).is_err());
+        assert!(verify_sha256(b"a3s", "not-a-digest").is_err());
+    }
+
+    #[test]
+    fn full_archive_extraction_rejects_links() {
+        let mut tar_bytes = Vec::new();
+        {
+            let encoder =
+                flate2::write::GzEncoder::new(&mut tar_bytes, flate2::Compression::default());
+            let mut builder = tar::Builder::new(encoder);
+            let body = b"hello";
+            let mut header = tar::Header::new_gnu();
+            header.set_path("package/bin/a3s-use").unwrap();
+            header.set_size(body.len() as u64);
+            header.set_mode(0o755);
+            header.set_cksum();
+            builder.append(&header, &body[..]).unwrap();
+            builder.finish().unwrap();
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let files = extract_tar_gz_archive(&tar_bytes, temp.path()).unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(
+            std::fs::read_to_string(temp.path().join("package/bin/a3s-use")).unwrap(),
+            "hello"
+        );
+
+        let mut linked_archive = Vec::new();
+        {
+            let encoder =
+                flate2::write::GzEncoder::new(&mut linked_archive, flate2::Compression::default());
+            let mut builder = tar::Builder::new(encoder);
+            let mut header = tar::Header::new_gnu();
+            header.set_entry_type(tar::EntryType::Symlink);
+            header.set_path("package/escape").unwrap();
+            header.set_link_name("../../outside").unwrap();
+            header.set_size(0);
+            header.set_cksum();
+            builder.append(&header, std::io::empty()).unwrap();
+            builder.finish().unwrap();
+        }
+        assert!(extract_tar_gz_archive(&linked_archive, temp.path()).is_err());
+    }
 }
