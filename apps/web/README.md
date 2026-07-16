@@ -40,7 +40,10 @@ Product implementation is governed by the
   guidance, task goal timing, context usage, manual context compaction, and an
   upper-right task-runtime panel that appears for a real plan or subagent
   lifecycle and shows only the checklist, completion, elapsed time, and
-  parallel work actually published by the runtime.
+  parallel work actually published by the runtime. Dedicated Use workers are
+  identified by their observed standard MCP routes (`Use · Browser`,
+  `Use · Office`, or multiple deduplicated routes), while their evidence uses
+  readable domain actions instead of raw MCP tool names.
 - A bounded startup transition with explicit loading, version-mismatch,
   disconnected, retry, and technical-detail states. Older local services that
   lack the model-catalog route fall back to their configured Provider models
