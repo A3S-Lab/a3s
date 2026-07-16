@@ -91,10 +91,11 @@ installs Use as a side effect.
 
 The TUI projects standard child progress into a capability-oriented lifecycle.
 For example, `mcp__use_browser__browser_open` appears as `Using Browser` while
-live and `Used Browser` after success; a failed Office run appears as
-`Use · Office failed`. Multiple capability routes are deduplicated, and a
-restored tracker snapshot reconstructs the same identity. This presentation
-uses the existing subagent events and does not add a private RPC protocol.
+live and `Used Browser` after completion. Terminal outcomes remain explicit, so
+a failed Office run renders as `Agent failed: Used Office`. Multiple capability
+routes are deduplicated, and a restored tracker snapshot reconstructs the same
+identity. This presentation uses the existing subagent events and does not add
+a private RPC protocol.
 
 The current runtime and managed-component targets are macOS and Linux. Native
 Windows lifecycle support remains on the roadmap; WSL follows the Linux
