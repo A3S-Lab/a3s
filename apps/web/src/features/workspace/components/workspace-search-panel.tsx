@@ -4,18 +4,23 @@ import { useSnapshot } from 'valtio';
 import { Button, Dialog, IconButton } from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
 import type { WorkspaceActions } from '../workspace-actions';
+import { workspaceSearchMatchPreview, type WorkspaceSearchScope } from '../workspace-search';
 import { isFileEditorTabDirty } from '../workspace-state';
 
 export function WorkspaceSearchPanel({ actions, onClose }: { actions: WorkspaceActions; onClose: () => void }) {
   const state = useSnapshot(appState);
   const [query, setQuery] = useState(() => appState.workspaceSearchQuery);
+  const [scope, setScope] = useState<WorkspaceSearchScope>(() => appState.workspaceSearchScope);
   const [replacement, setReplacement] = useState('');
   const [replaceOpen, setReplaceOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(null);
   const files = state.workspaceSearchResults;
   const searchedQuery = state.workspaceSearchQuery;
-  const resultsCurrent = Boolean(searchedQuery && searchedQuery === query.trim());
+  const queryCurrent = Boolean(searchedQuery && searchedQuery === query.trim());
+  const scopeCurrent = state.workspaceSearchResultScope === scope;
+  const rootCurrent = state.workspaceSearchResultRoot === state.workspaceRoot;
+  const resultsCurrent = queryCurrent && scopeCurrent && rootCurrent;
   const matchCount = files.reduce((count, file) => count + file.matches.length, 0);
   const dirtyInScope = Boolean(
     state.editorTabs.some(
@@ -27,8 +32,8 @@ export function WorkspaceSearchPanel({ actions, onClose }: { actions: WorkspaceA
     inputRef.current?.focus();
     return () => restoreFocusRef.current?.focus();
   }, []);
-  const search = () => {
-    if (query.trim()) void actions.searchWorkspace(query.trim());
+  const search = (nextScope = scope) => {
+    if (query.trim()) void actions.searchWorkspace(query.trim(), { scope: nextScope });
   };
   const replace = async () => {
     try {
@@ -63,7 +68,7 @@ export function WorkspaceSearchPanel({ actions, onClose }: { actions: WorkspaceA
         </IconButton>
       </header>
       <div className='workspace-search-form'>
-        <label>
+        <label className='workspace-search-input'>
           <Search size={14} />
           <input
             ref={inputRef}
@@ -76,7 +81,7 @@ export function WorkspaceSearchPanel({ actions, onClose }: { actions: WorkspaceA
             placeholder='搜索工作区内容'
           />
         </label>
-        <label>
+        <label className='workspace-search-input'>
           <Replace size={14} />
           <input
             aria-label='替换为'
@@ -86,15 +91,50 @@ export function WorkspaceSearchPanel({ actions, onClose }: { actions: WorkspaceA
           />
         </label>
         <div>
-          <Button tone='primary' disabled={!query.trim()} loading={state.workspaceSearchLoading} onClick={search}>
+          <Button
+            tone='primary'
+            disabled={!query.trim()}
+            loading={state.workspaceSearchLoading}
+            onClick={() => search()}
+          >
             搜索
           </Button>
-          <Button disabled={!matchCount || !resultsCurrent} onClick={() => setReplaceOpen(true)}>
+          <Button
+            disabled={
+              !matchCount || !resultsCurrent || state.workspaceSearchLoading || state.workspaceSearchResultsTruncated
+            }
+            onClick={() => setReplaceOpen(true)}
+          >
             替换全部
           </Button>
         </div>
+        <label className='workspace-search-scope'>
+          <input
+            type='checkbox'
+            aria-label='包含依赖与构建目录'
+            checked={scope === 'all'}
+            onChange={(event) => {
+              const nextScope = event.currentTarget.checked ? 'all' : 'source';
+              setScope(nextScope);
+              void actions.searchWorkspace(query.trim(), { scope: nextScope });
+            }}
+          />
+          <span>
+            包含依赖与构建目录
+            <small>默认忽略版本库元数据、依赖缓存和构建产物</small>
+          </span>
+        </label>
         {searchedQuery && !resultsCurrent && (
-          <p className='search-scope-notice'>当前结果来自“{searchedQuery}”；重新搜索后才能替换。</p>
+          <p className='search-scope-notice'>
+            {!queryCurrent
+              ? `当前结果来自“${searchedQuery}”；重新搜索后才能替换。`
+              : !scopeCurrent
+                ? '搜索范围已变化；重新搜索后才能替换。'
+                : '工作区已变化；重新搜索后才能替换。'}
+          </p>
+        )}
+        {resultsCurrent && state.workspaceSearchResultsTruncated && (
+          <p className='search-scope-notice'>结果超过 300 处；请缩小搜索范围后再替换。</p>
         )}
       </div>
       <div className='workspace-search-results'>
@@ -131,7 +171,7 @@ export function WorkspaceSearchPanel({ actions, onClose }: { actions: WorkspaceA
                 <p>
                   {state.workspaceSearchError} {files.length ? '当前仍显示上一次结果。' : '可以检查连接后重新搜索。'}
                 </p>
-                <Button tone='primary' onClick={search}>
+                <Button tone='primary' onClick={() => search()}>
                   重新搜索
                 </Button>
               </div>
@@ -151,29 +191,36 @@ export function WorkspaceSearchPanel({ actions, onClose }: { actions: WorkspaceA
                   <strong>{relativePath(file.path, state.workspaceRoot)}</strong>
                   <span>{file.matches.length}</span>
                 </button>
-                {file.matches.map((match) => (
-                  <button
-                    type='button'
-                    className='workspace-search-match'
-                    aria-label={`打开 ${relativePath(file.path, state.workspaceRoot)} 第 ${match.line} 行`}
-                    key={`${match.line}:${match.column}`}
-                    onClick={() => {
-                      void actions
-                        .selectFile({
-                          path: file.path,
-                          isBinary: false,
-                          line: match.line,
-                          column: match.column,
-                        })
-                        .then((selected) => {
-                          if (selected) onClose();
-                        });
-                    }}
-                  >
-                    <span>{match.line}</span>
-                    <code>{match.text.trim()}</code>
-                  </button>
-                ))}
+                {file.matches.map((match) => {
+                  const preview = workspaceSearchMatchPreview(match, searchedQuery);
+                  return (
+                    <button
+                      type='button'
+                      className='workspace-search-match'
+                      aria-label={`打开 ${relativePath(file.path, state.workspaceRoot)} 第 ${match.line} 行`}
+                      key={`${match.line}:${match.column}`}
+                      onClick={() => {
+                        void actions
+                          .selectFile({
+                            path: file.path,
+                            isBinary: false,
+                            line: match.line,
+                            column: match.column,
+                          })
+                          .then((selected) => {
+                            if (selected) onClose();
+                          });
+                      }}
+                    >
+                      <span>{match.line}</span>
+                      <code>
+                        {preview.before}
+                        {preview.match && <mark>{preview.match}</mark>}
+                        {preview.after}
+                      </code>
+                    </button>
+                  );
+                })}
               </section>
             ))}
             {!files.length && !state.workspaceSearchError && (

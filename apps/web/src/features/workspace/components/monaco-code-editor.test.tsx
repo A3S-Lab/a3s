@@ -1,12 +1,15 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import * as monaco from 'monaco-editor';
+import { createRef, type Ref } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { codeApi } from '../../../lib/api';
 import type { CodeIntelligenceStatus } from '../../../types/api';
-import { MonacoCodeEditor } from './monaco-code-editor';
+import { workspaceEditorModelPath } from './monaco-editor-model-store';
+import { MonacoCodeEditor, type MonacoCodeEditorHandle } from './monaco-code-editor';
 
 const testMonaco = monaco as unknown as {
   __actions: Array<{ id: string; run: () => void | Promise<void> }>;
+  __editorActionRuns: string[];
   __documentSymbolProviders: Array<{
     languageSelector: string;
     provider: {
@@ -14,7 +17,15 @@ const testMonaco = monaco as unknown as {
       provideDocumentSymbols: (model: unknown, token: unknown) => Promise<unknown>;
     };
   }>;
+  __cursorSelectionListeners: Array<() => void>;
+  __modelContentListeners: Array<() => void>;
+  __editorMountCount: number;
+  __savedViewStates: unknown[];
+  __restoredViewStates: unknown[];
+  __pushEolCalls: number[];
   __position: { lineNumber: number; column: number };
+  __selections: Array<{ selectedText: string; isEmpty: () => boolean }>;
+  __eol: '\n' | '\r\n';
   __model: unknown;
   editor: { setModelMarkers: ReturnType<typeof vi.fn> };
 };
@@ -58,14 +69,150 @@ const unavailableStatus: CodeIntelligenceStatus = {
 describe('Monaco code-intelligence bridge', () => {
   beforeEach(() => {
     testMonaco.__actions.splice(0);
+    testMonaco.__editorActionRuns.splice(0);
     testMonaco.__documentSymbolProviders.splice(0);
+    testMonaco.__cursorSelectionListeners.splice(0);
+    testMonaco.__modelContentListeners.splice(0);
+    testMonaco.__pushEolCalls.splice(0);
     testMonaco.__position = { lineNumber: 1, column: 1 };
+    testMonaco.__selections = [{ selectedText: '', isEmpty: () => true }];
+    testMonaco.__eol = '\n';
     testMonaco.editor.setModelMarkers.mockClear();
   });
 
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+  });
+
+  it('reports live cursor, selection, and line-ending state from the Monaco model', async () => {
+    const onEditorStatusChange = vi.fn();
+    renderEditor({ value: 'first\r\nsecond', onEditorStatusChange });
+
+    await waitFor(() =>
+      expect(onEditorStatusChange).toHaveBeenLastCalledWith({
+        lineNumber: 1,
+        column: 1,
+        selectedCharacters: 0,
+        selectionCount: 1,
+        lineEnding: 'CRLF',
+      })
+    );
+
+    act(() => {
+      testMonaco.__position = { lineNumber: 2, column: 4 };
+      testMonaco.__selections = [{ selectedText: 'A😀', isEmpty: () => false }];
+      for (const listener of testMonaco.__cursorSelectionListeners) listener();
+    });
+    expect(onEditorStatusChange).toHaveBeenLastCalledWith({
+      lineNumber: 2,
+      column: 4,
+      selectedCharacters: 3,
+      selectionCount: 1,
+      lineEnding: 'CRLF',
+    });
+
+    act(() => {
+      testMonaco.__eol = '\n';
+      for (const listener of testMonaco.__modelContentListeners) listener();
+    });
+    expect(onEditorStatusChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ lineEnding: 'LF', lineNumber: 2, column: 4 })
+    );
+  });
+
+  it('changes line endings through Monaco history and restores editor focus', async () => {
+    const ref = createRef<MonacoCodeEditorHandle>();
+    const onChange = vi.fn();
+    const onEditorStatusChange = vi.fn();
+    renderEditor({ value: 'first\nsecond', onChange, onEditorStatusChange }, ref);
+    await waitFor(() => expect(ref.current).not.toBeNull());
+
+    act(() => ref.current?.setLineEnding('LF'));
+    expect(testMonaco.__pushEolCalls).toEqual([]);
+    expect(onChange).not.toHaveBeenCalled();
+
+    act(() => ref.current?.setLineEnding('CRLF'));
+
+    expect(testMonaco.__pushEolCalls).toEqual([1]);
+    expect(onChange).toHaveBeenCalledWith('first\r\nsecond');
+    expect(onEditorStatusChange).toHaveBeenLastCalledWith(expect.objectContaining({ lineEnding: 'CRLF' }));
+    expect(screen.getByRole('textbox', { name: '编辑 app.ts' })).toHaveFocus();
+  });
+
+  it('reports a successful imperative focus handoff once Monaco is mounted', async () => {
+    const ref = createRef<MonacoCodeEditorHandle>();
+    renderEditor({}, ref);
+    await waitFor(() => expect(ref.current).not.toBeNull());
+
+    let focused = false;
+    act(() => {
+      focused = ref.current?.focus() ?? false;
+    });
+
+    expect(focused).toBe(true);
+    expect(screen.getByRole('textbox', { name: '编辑 app.ts' })).toHaveFocus();
+  });
+
+  it('reports an explicit navigation target as consumed after applying it', async () => {
+    const onLocationApplied = vi.fn();
+
+    renderEditor({ location: { line: 7, column: 3 }, onLocationApplied });
+
+    await waitFor(() => expect(onLocationApplied).toHaveBeenCalledTimes(1));
+    expect(testMonaco.__position).toEqual({ lineNumber: 7, column: 3 });
+  });
+
+  it('keeps one editor instance and restores model-owned view state across document switches', async () => {
+    const modelA = workspaceEditorModelPath('task-a', '/repo/src/app.ts');
+    const modelB = workspaceEditorModelPath('task-a', '/repo/src/lib.rs');
+    const initialMountCount = testMonaco.__editorMountCount;
+    const view = renderEditor({ modelPath: modelA });
+    await screen.findByRole('textbox', { name: '编辑 app.ts' });
+    act(() => {
+      testMonaco.__position = { lineNumber: 8, column: 4 };
+    });
+
+    view.rerender(editorElement({ path: '/repo/src/lib.rs', modelPath: modelB, value: 'fn value() {}' }));
+    await waitFor(() => expect(testMonaco.__savedViewStates).toContainEqual(expect.objectContaining({ path: modelA })));
+    await waitFor(() => expect(testMonaco.__documentSymbolProviders[0]?.languageSelector).toBe('rust'));
+    act(() => {
+      testMonaco.__position = { lineNumber: 3, column: 2 };
+    });
+
+    view.rerender(editorElement({ modelPath: modelA }));
+
+    await waitFor(() =>
+      expect(testMonaco.__restoredViewStates).toContainEqual(expect.objectContaining({ path: modelA }))
+    );
+    expect(testMonaco.__position).toEqual({ lineNumber: 8, column: 4 });
+    expect(testMonaco.__editorMountCount).toBe(initialMountCount + 1);
+    expect(testMonaco.__documentSymbolProviders).toHaveLength(1);
+    expect(testMonaco.__documentSymbolProviders[0]?.languageSelector).toBe('typescript');
+  });
+
+  it('refreshes document symbols when a renamed retained model changes language', async () => {
+    const modelPath = workspaceEditorModelPath('task-a', '/repo/src/app.ts');
+    const initialMountCount = testMonaco.__editorMountCount;
+    const view = renderEditor({ modelPath });
+    await waitFor(() => expect(testMonaco.__documentSymbolProviders[0]?.languageSelector).toBe('typescript'));
+
+    view.rerender(editorElement({ path: '/repo/src/app.rs', modelPath, value: 'fn main() {}' }));
+
+    await waitFor(() => expect(testMonaco.__documentSymbolProviders[0]?.languageSelector).toBe('rust'));
+    expect(testMonaco.__editorMountCount).toBe(initialMountCount + 1);
+  });
+
+  it('does not let an imperative caller change a read-only model line ending', async () => {
+    const ref = createRef<MonacoCodeEditorHandle>();
+    const onChange = vi.fn();
+    renderEditor({ readOnly: true, onChange }, ref);
+    await waitFor(() => expect(ref.current).not.toBeNull());
+
+    act(() => ref.current?.setLineEnding('CRLF'));
+
+    expect(testMonaco.__pushEolCalls).toEqual([]);
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('loads saved-document diagnostics into the existing Monaco model', async () => {
@@ -482,6 +629,31 @@ describe('Monaco code-intelligence bridge', () => {
     expect(onStatusChange).toHaveBeenLastCalledWith('代码导航就绪 · 0 个问题 · 基于已保存版本');
   });
 
+  it('opens the Monaco file outline through the editor command handle', async () => {
+    vi.spyOn(codeApi, 'codeIntelligenceStatus').mockResolvedValue(readyStatus);
+    vi.spyOn(codeApi, 'codeDiagnostics').mockResolvedValue({
+      items: [],
+      truncated: false,
+      workspaceRevision: 2,
+      document: { revision: 2, contentHash: 'hash', stale: false },
+    });
+    const ref = createRef<MonacoCodeEditorHandle>();
+
+    renderEditor({}, ref);
+    await waitFor(() => expect(ref.current).not.toBeNull());
+    act(() => ref.current?.showOutline());
+
+    expect(testMonaco.__editorActionRuns).toEqual(['editor.action.quickOutline']);
+  });
+
+  it('does not register an outline provider with an undefined language selector', async () => {
+    renderEditor({ path: '/repo/src/notes.custom' });
+
+    await waitFor(() => expect(screen.getByRole('textbox', { name: '编辑 notes.custom' })).toBeInTheDocument());
+    expect(testMonaco.__documentSymbolProviders).toHaveLength(1);
+    expect(testMonaco.__documentSymbolProviders[0].languageSelector).toBe('plaintext');
+  });
+
   it('does not query a file outside the served workspace', async () => {
     const status = vi.spyOn(codeApi, 'codeIntelligenceStatus').mockResolvedValue(readyStatus);
     const diagnostics = vi.spyOn(codeApi, 'codeDiagnostics');
@@ -511,11 +683,21 @@ describe('Monaco code-intelligence bridge', () => {
 });
 
 function renderEditor(
-  overrides: Partial<React.ComponentProps<typeof MonacoCodeEditor>> = {}
+  overrides: Partial<React.ComponentProps<typeof MonacoCodeEditor>> = {},
+  ref?: Ref<MonacoCodeEditorHandle>
 ): ReturnType<typeof render> {
-  return render(
+  return render(editorElement(overrides, ref));
+}
+
+function editorElement(
+  overrides: Partial<React.ComponentProps<typeof MonacoCodeEditor>> = {},
+  ref?: Ref<MonacoCodeEditorHandle>
+): React.ReactElement {
+  return (
     <MonacoCodeEditor
+      ref={ref}
       path='/repo/src/app.ts'
+      modelPath={workspaceEditorModelPath('new-task', '/repo/src/app.ts')}
       value='const value = 1;'
       location={null}
       readOnly={false}
@@ -528,6 +710,8 @@ function renderEditor(
       onClose={vi.fn()}
       onNavigate={vi.fn(async () => true)}
       onStatusChange={vi.fn()}
+      onEditorStatusChange={vi.fn()}
+      onLocationApplied={vi.fn()}
       {...overrides}
     />
   );

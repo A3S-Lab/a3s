@@ -4,17 +4,30 @@ import { subscribeKey } from 'valtio/utils';
 import { codeApi, streamSessionMessage } from '../../lib/api';
 import {
   appState,
+  captureWorkspaceContext,
   formatApiError,
+  isWorkspaceContextCurrent,
   persistSessionTitle,
+  promoteActiveTask,
   reportTaskPersistenceResult,
+  removeWorkspaceTaskSnapshot,
   removePersistedSessionTitle,
+  replaceActiveWorkspace,
   showModelChangeNotice,
   showToast,
+  switchActiveTask,
 } from '../../state/app-state';
-import type { AgentEvent, ChatMessage, CodeSession } from '../../types/api';
+import type { AgentEvent, ChatMessage, CodeSession, SessionControls } from '../../types/api';
 import { parseGoalCommand, type GoalCommand } from './goal-command';
 import {
-  persistActiveTask,
+  beginSessionControlsRequest,
+  beginSessionMessagesRequest,
+  invalidateSessionControlsRequests,
+  invalidateSessionMessagesRequests,
+  isSessionControlsRequestCurrent,
+  isSessionMessagesRequestCurrent,
+} from './session-resource-order';
+import {
   persistGoalTimings,
   persistNewTaskConfig,
   persistPausedQueues,
@@ -102,21 +115,40 @@ function clearSessionToolDecisions(sessionId: string): void {
 }
 
 async function cacheWorkspaceDirectory(workspace: string): Promise<void> {
+  const context = captureWorkspaceContext();
   appState.directoryLoading[workspace] = true;
   delete appState.directoryErrors[workspace];
   try {
-    appState.filesByDirectory[workspace] = await codeApi.readDir(workspace);
+    const entries = await codeApi.readDir(workspace);
+    if (!isWorkspaceContextCurrent(context)) return;
+    appState.filesByDirectory[workspace] = entries;
     appState.expandedDirectories[workspace] = true;
   } catch (error) {
+    if (!isWorkspaceContextCurrent(context)) return;
     appState.directoryErrors[workspace] = formatApiError(error);
     throw error;
   } finally {
-    appState.directoryLoading[workspace] = false;
+    if (isWorkspaceContextCurrent(context)) appState.directoryLoading[workspace] = false;
   }
 }
 
 export function useTaskController() {
   const abortRef = useRef<AbortController | null>(null);
+  const invalidateMessageRequests = (sessionId: string) => {
+    invalidateSessionMessagesRequests(sessionId);
+    appState.messagesLoading[sessionId] = false;
+  };
+  const invalidateControlsRequests = (sessionId: string) => {
+    const request = invalidateSessionControlsRequests(sessionId);
+    appState.sessionControlsLoading[sessionId] = false;
+    return request;
+  };
+  const publishControlsMutation = (sessionId: string, controls: SessionControls) => {
+    invalidateSessionControlsRequests(sessionId);
+    appState.sessionControls[sessionId] = controls;
+    appState.sessionControlsLoading[sessionId] = false;
+    delete appState.sessionControlsErrors[sessionId];
+  };
   const persistCurrentDraft = useMemoizedFn(() => {
     const key = taskDraftKey(appState.activeSessionId);
     appState.draftsByTask[key] = {
@@ -125,12 +157,6 @@ export function useTaskController() {
       skillNames: [...appState.composerSkills],
     };
     reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
-  });
-  const restoreDraft = useMemoizedFn((sessionId: string | null) => {
-    const draft = appState.draftsByTask[taskDraftKey(sessionId)];
-    appState.composerValue = draft?.content ?? '';
-    appState.composerContextFiles = [...(draft?.contextFiles ?? [])];
-    appState.composerSkills = [...(draft?.skillNames ?? [])];
   });
   useEffect(() => {
     const persist = () => persistCurrentDraft();
@@ -144,45 +170,50 @@ export function useTaskController() {
     };
   }, [persistCurrentDraft]);
   const loadMessages = useMemoizedFn(async (sessionId: string) => {
+    const request = beginSessionMessagesRequest(sessionId);
     appState.messagesLoading[sessionId] = true;
     delete appState.messageErrors[sessionId];
     try {
-      appState.messagesBySession[sessionId] = (await codeApi.messages(sessionId)).items;
+      const messages = await codeApi.messages(sessionId);
+      if (!isSessionMessagesRequestCurrent(request)) return;
+      appState.messagesBySession[sessionId] = messages.items;
     } catch (error) {
+      if (!isSessionMessagesRequestCurrent(request)) return;
       const message = formatApiError(error);
       appState.messageErrors[sessionId] = message;
       showToast(message, 'error');
     } finally {
-      appState.messagesLoading[sessionId] = false;
+      if (isSessionMessagesRequestCurrent(request)) {
+        appState.messagesLoading[sessionId] = false;
+      }
     }
   });
   const loadControls = useMemoizedFn(async (sessionId: string) => {
+    const request = beginSessionControlsRequest(sessionId);
     appState.sessionControlsLoading[sessionId] = true;
     delete appState.sessionControlsErrors[sessionId];
     try {
       const controls = await codeApi.sessionControls(sessionId);
+      if (!isSessionControlsRequestCurrent(request)) return;
       appState.sessionControls[sessionId] = controls;
-      appState.activeEffort = controls.effort;
     } catch (error) {
+      if (!isSessionControlsRequestCurrent(request)) return;
       appState.sessionControlsErrors[sessionId] = formatApiError(error);
       throw error;
     } finally {
-      appState.sessionControlsLoading[sessionId] = false;
+      if (isSessionControlsRequestCurrent(request)) {
+        appState.sessionControlsLoading[sessionId] = false;
+      }
     }
   });
   const selectSession = useMemoizedFn(async (sessionId: string) => {
-    persistCurrentDraft();
     const session = appState.sessions.find((item) => item.sessionId === sessionId);
-    appState.activeSessionId = sessionId;
-    appState.taskView = 'conversation';
+    switchActiveTask(sessionId, session?.workspace);
     if (session?.workspace) {
-      appState.workspaceRoot = session.workspace;
       if (!appState.filesByDirectory[session.workspace]) {
         void cacheWorkspaceDirectory(session.workspace).catch(() => undefined);
       }
     }
-    reportTaskPersistenceResult(persistActiveTask(sessionId));
-    restoreDraft(sessionId);
     if (!appState.messagesBySession[sessionId]) await loadMessages(sessionId);
     try {
       await loadControls(sessionId);
@@ -209,21 +240,17 @@ export function useTaskController() {
     });
     const session = response.session;
     appState.sessions.unshift(session);
-    appState.activeSessionId = session.sessionId;
-    appState.taskView = 'conversation';
-    appState.workspaceRoot = session.workspace;
-    reportTaskPersistenceResult(persistActiveTask(session.sessionId));
+    promoteActiveTask(session.sessionId, session.workspace);
     appState.messagesBySession[session.sessionId] = [];
     reportTaskPersistenceResult(persistSessionTitle(session.sessionId, title));
+    const controlsMutationRequest = invalidateControlsRequests(session.sessionId);
     appState.sessionControlsLoading[session.sessionId] = true;
     try {
       const controls = await codeApi.updateSessionControls(session.sessionId, {
         effort: config.effort,
         goal: requestedGoal || null,
       });
-      appState.sessionControls[session.sessionId] = controls;
-      appState.activeEffort = controls.effort;
-      delete appState.sessionControlsErrors[session.sessionId];
+      publishControlsMutation(session.sessionId, controls);
       if (controls.goal) {
         appState.goalTimings[session.sessionId] =
           preparedGoalTiming?.goal === controls.goal
@@ -235,10 +262,11 @@ export function useTaskController() {
       appState.newTaskConfig.goal = '';
       reportTaskPersistenceResult(persistNewTaskConfig(appState.newTaskConfig));
     } catch (error) {
-      appState.sessionControlsErrors[session.sessionId] = formatApiError(error);
+      if (isSessionControlsRequestCurrent(controlsMutationRequest)) {
+        appState.sessionControlsErrors[session.sessionId] = formatApiError(error);
+        appState.sessionControlsLoading[session.sessionId] = false;
+      }
       throw error;
-    } finally {
-      appState.sessionControlsLoading[session.sessionId] = false;
     }
     return session;
   });
@@ -246,13 +274,17 @@ export function useTaskController() {
     if (appState.activeSessionId) throw new Error('只能在创建新任务时切换工作区。');
     const normalized = workspace.trim();
     if (!normalized) throw new Error('请选择一个有效的工作区。');
-    await cacheWorkspaceDirectory(normalized);
+    const context = captureWorkspaceContext();
+    const entries = await codeApi.readDir(normalized);
+    if (!isWorkspaceContextCurrent(context) || appState.activeSessionId) return;
     if (appState.newTaskConfig.workspace !== normalized) {
       appState.composerContextFiles = [];
       appState.composerSkills = [];
     }
     appState.newTaskConfig.workspace = normalized;
-    appState.workspaceRoot = normalized;
+    replaceActiveWorkspace(normalized);
+    appState.filesByDirectory[normalized] = entries;
+    appState.expandedDirectories[normalized] = true;
     reportTaskPersistenceResult(persistNewTaskConfig(appState.newTaskConfig));
   });
   const pickNewTaskWorkspace = useMemoizedFn(async (): Promise<string | null> => {
@@ -263,13 +295,9 @@ export function useTaskController() {
     return selected.path;
   });
   const newConversation = useMemoizedFn(() => {
-    persistCurrentDraft();
-    appState.activeSessionId = null;
-    appState.taskView = 'conversation';
-    reportTaskPersistenceResult(persistActiveTask(null));
-    restoreDraft(null);
+    const workspace = appState.newTaskConfig.workspace || appState.health?.workspace || appState.workspaceRoot;
+    switchActiveTask(null, workspace);
     appState.streamEvents = [];
-    appState.workspaceRoot = appState.newTaskConfig.workspace || appState.health?.workspace || appState.workspaceRoot;
   });
   const refreshSessions = useMemoizedFn(async () => {
     appState.sessions = (await codeApi.sessions()).items;
@@ -318,6 +346,7 @@ export function useTaskController() {
         else if ((appState.messagesBySession[sessionId]?.length ?? 0) === 0)
           reportTaskPersistenceResult(persistSessionTitle(sessionId, promptTitle(content)));
         const targetSessionId = sessionId;
+        invalidateMessageRequests(targetSessionId);
         const user = temporaryMessage(targetSessionId, 'user', transportContent);
         const assistant = temporaryMessage(targetSessionId, 'assistant', '');
         appState.messagesBySession[targetSessionId] ??= [];
@@ -444,9 +473,10 @@ export function useTaskController() {
       return;
     }
     appState.taskConfigSaving = 'goal';
+    invalidateControlsRequests(sessionId);
     try {
       const controls = await codeApi.updateSessionControls(sessionId, { goal });
-      appState.sessionControls[sessionId] = controls;
+      publishControlsMutation(sessionId, controls);
       if (controls.goal) appState.goalTimings[sessionId] = { goal: controls.goal, startedAt: Date.now() };
       else delete appState.goalTimings[sessionId];
       reportTaskPersistenceResult(persistGoalTimings(appState.goalTimings));
@@ -526,6 +556,8 @@ export function useTaskController() {
       await codeApi.deleteSession(sessionId);
       const index = sessionIndex(sessionId);
       if (index >= 0) appState.sessions.splice(index, 1);
+      invalidateMessageRequests(sessionId);
+      invalidateControlsRequests(sessionId);
       delete appState.messagesBySession[sessionId];
       delete appState.messagesLoading[sessionId];
       delete appState.messageErrors[sessionId];
@@ -544,11 +576,10 @@ export function useTaskController() {
       const titlePersisted = removePersistedSessionTitle(sessionId);
       if (appState.reviewSourceTaskId === sessionId) appState.reviewSourceTaskId = null;
       if (appState.activeSessionId === sessionId) {
-        appState.activeSessionId = null;
-        appState.taskView = 'conversation';
-        reportTaskPersistenceResult(persistActiveTask(null));
-        restoreDraft(null);
+        const workspace = appState.newTaskConfig.workspace || appState.health?.workspace || appState.workspaceRoot;
+        switchActiveTask(null, workspace);
       }
+      removeWorkspaceTaskSnapshot(sessionId);
       reportTaskPersistenceResult(titlePersisted);
     } catch (error) {
       showToast(formatApiError(error), 'error');
@@ -592,10 +623,10 @@ export function useTaskController() {
     const sessionId = appState.activeSessionId;
     if (!sessionId || appState.taskConfigSaving) return;
     appState.taskConfigSaving = 'effort';
+    invalidateControlsRequests(sessionId);
     try {
       const controls = await codeApi.updateSessionControls(sessionId, { effort });
-      appState.sessionControls[sessionId] = controls;
-      appState.activeEffort = controls.effort;
+      publishControlsMutation(sessionId, controls);
     } catch (error) {
       showToast(formatApiError(error), 'error');
     } finally {
