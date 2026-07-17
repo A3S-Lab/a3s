@@ -8,6 +8,7 @@ import { TasksPage } from '../features/tasks/pages/tasks-page';
 import { SettingsDialog } from '../features/settings/components/settings-dialog';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { Button } from '../design-system/primitives';
+import { WorkspaceQuickOpen } from '../features/workspace/components/workspace-quick-open';
 
 export function AppShell({ actions }: { actions: CodeActions }) {
   const state = useSnapshot(appState);
@@ -42,6 +43,7 @@ export function AppShell({ actions }: { actions: CodeActions }) {
         </output>
       )}
       {state.commandPaletteOpen && <CommandPalette actions={actions} />}
+      {state.fileQuickOpenOpen && <WorkspaceQuickOpen actions={actions} />}
     </main>
   );
 }

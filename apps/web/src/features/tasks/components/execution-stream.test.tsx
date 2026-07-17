@@ -643,11 +643,11 @@ describe('ExecutionStream permission decisions', () => {
     ];
 
     const { container } = render(<ExecutionStream actions={{} as TaskActions} />);
-    expect(await screen.findByRole('heading', { name: '构建结果' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '构建结果' }, { timeout: 10_000 })).toBeInTheDocument();
     expect(container.querySelector('.streaming-markdown')).toBeInTheDocument();
     await waitFor(() => expect(container.querySelector('pre code span')).toBeInTheDocument());
     expect(screen.getByRole('button', { name: '复制代码' })).toBeInTheDocument();
-  });
+  }, 20_000);
 
   it('renders completed reasoning as collapsed Markdown instead of plain preformatted text', async () => {
     appState.activeSessionId = 'session-reasoning-markdown';

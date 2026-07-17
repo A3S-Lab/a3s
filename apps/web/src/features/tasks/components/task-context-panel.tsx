@@ -1,9 +1,10 @@
-import { Files, GitBranch, History, PanelRightClose } from 'lucide-react';
-import { useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import { Files, GitBranch, History, Maximize2, Minimize2, PanelRightClose } from 'lucide-react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import { useSnapshot } from 'valtio';
 import type { CodeActions } from '../../code/use-code-controller';
 import type { TaskView } from '../../code/code-state';
 import { Button, IconButton } from '../../../design-system/primitives';
-import { navigateTask } from '../../../state/app-state';
+import { appState, navigateTask } from '../../../state/app-state';
 import { WorkspacePage } from '../../code/pages/workspace-page';
 import { RunsPage } from '../../runs/pages/runs-page';
 
@@ -26,8 +27,36 @@ function readPanelWidth() {
 }
 
 export function TaskContextPanel({ view, actions }: { view: Exclude<TaskView, 'conversation'>; actions: CodeActions }) {
+  const state = useSnapshot(appState);
   const [width, setWidth] = useState(readPanelWidth);
   const [changesOpen, setChangesOpen] = useState(false);
+  const panelRef = useRef<HTMLElement>(null);
+  const workspaceModeButtonRef = useRef<HTMLButtonElement>(null);
+  const activityModeButtonRef = useRef<HTMLButtonElement>(null);
+  const presentationButtonRef = useRef<HTMLButtonElement>(null);
+  const fullscreen = state.workspacePresentation === 'fullscreen';
+  const panelName = view === 'review' ? '任务工作区' : '任务活动面板';
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      if (!panel || panel.contains(document.activeElement)) return;
+      const target = view === 'review' ? workspaceModeButtonRef.current : activityModeButtonRef.current;
+      target?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [view]);
+  useEffect(() => {
+    if (!fullscreen) return;
+    const exitFullscreen = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Escape') return;
+      if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return;
+      event.preventDefault();
+      appState.workspacePresentation = 'docked';
+      requestAnimationFrame(() => presentationButtonRef.current?.focus());
+    };
+    window.addEventListener('keydown', exitFullscreen);
+    return () => window.removeEventListener('keydown', exitFullscreen);
+  }, [fullscreen]);
   const updateWidth = (next: number, persist = false) => {
     const normalized = clampPanelWidth(next);
     setWidth(normalized);
@@ -44,8 +73,9 @@ export function TaskContextPanel({ view, actions }: { view: Exclude<TaskView, 'c
   };
   return (
     <aside
-      className='task-context-panel'
-      aria-label={view === 'review' ? '任务工作区' : '任务活动面板'}
+      ref={panelRef}
+      className={`task-context-panel ${fullscreen ? 'fullscreen' : ''}`}
+      aria-label={panelName}
       style={{ '--task-context-width': `${width}px` } as CSSProperties}
     >
       <hr
@@ -79,6 +109,7 @@ export function TaskContextPanel({ view, actions }: { view: Exclude<TaskView, 'c
       <header className='task-context-header'>
         <nav aria-label='任务上下文面板'>
           <button
+            ref={workspaceModeButtonRef}
             type='button'
             className={view === 'review' ? 'active' : ''}
             aria-current={view === 'review' ? 'page' : undefined}
@@ -88,6 +119,7 @@ export function TaskContextPanel({ view, actions }: { view: Exclude<TaskView, 'c
             工作区
           </button>
           <button
+            ref={activityModeButtonRef}
             type='button'
             className={view === 'activity' ? 'active' : ''}
             aria-current={view === 'activity' ? 'page' : undefined}
@@ -112,6 +144,17 @@ export function TaskContextPanel({ view, actions }: { view: Exclude<TaskView, 'c
               工作区变更
             </Button>
           )}
+          <IconButton
+            ref={presentationButtonRef}
+            label={fullscreen ? `退出${panelName}全屏` : `全屏显示${panelName}`}
+            tooltip={fullscreen ? `退出${panelName}全屏 (Esc)` : `全屏显示${panelName}`}
+            selected={fullscreen}
+            onClick={() => {
+              appState.workspacePresentation = fullscreen ? 'docked' : 'fullscreen';
+            }}
+          >
+            {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          </IconButton>
           <IconButton label='关闭任务上下文面板' onClick={() => navigateTask('conversation')}>
             <PanelRightClose size={16} />
           </IconButton>

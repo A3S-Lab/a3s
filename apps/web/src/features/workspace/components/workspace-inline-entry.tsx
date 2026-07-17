@@ -27,13 +27,18 @@ export function WorkspaceInlineEntry({
   const [touched, setTouched] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const deleteCancelRef = useRef<HTMLButtonElement>(null);
   const nameError = validateWorkspaceEntryName(name);
   const unchanged = action.kind === 'rename' && name.trim() === action.entry.name;
 
   useEffect(() => {
+    if (action.kind === 'delete') {
+      deleteCancelRef.current?.focus();
+      return;
+    }
     inputRef.current?.focus();
     inputRef.current?.select();
-  }, []);
+  }, [action.kind]);
 
   if (action.kind === 'delete') {
     return (
@@ -49,7 +54,7 @@ export function WorkspaceInlineEntry({
             {dirtyDescendant ? '包含未保存编辑' : action.entry.isDirectory ? '同时删除内部内容' : '此操作无法撤销'}
           </small>
         </span>
-        <button type='button' disabled={busy} onClick={onComplete}>
+        <button ref={deleteCancelRef} type='button' disabled={busy} onClick={onComplete}>
           取消
         </button>
         <button

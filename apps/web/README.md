@@ -24,7 +24,13 @@ Product implementation is governed by the
 - A compact, grouped Code Task Library with on-demand search and one
   current-task workspace; rename and delete stay inline in the affected row.
 - A continuous task conversation with Workspace and Activity opened as
-  contextual right-side views.
+  contextual right-side views that can expand in place to a full content-area
+  presentation without remounting the editor or losing drafts. Conversation
+  headers expose launch actions only while no context panel is open; the
+  mounted panel then owns switching, presentation, and close actions so a
+  responsive overlay never leaves covered duplicate controls in the focus
+  order. Opening moves keyboard focus into the active panel mode, while closing
+  returns it to the control that opened the panel.
 - Natural-language task composition with a searchable recent-workspace picker,
   native local-folder selection, a lazy color-coded `@` workspace tree,
   searchable highlighted Skill suggestions, safe file/folder drop import, and
@@ -50,10 +56,21 @@ Product implementation is governed by the
   instead of blocking the workspace.
 - A VS Code-aligned Web IDE with a compact explorer, color-coded file and Git
   decorations, pointer and keyboard context menus with in-place file-operation
-  flows, lazy-loaded Monaco editing, independent dirty file tabs, keyboard
-  save/close/tab switching, search, replace, conflict protection, config
-  validation, and saved-file Code Intelligence for document symbols, semantic
-  navigation, and diagnostics.
+  flows, one roving tree tab stop with visual-order and hierarchical arrow-key
+  navigation, focused-row `F2` rename and confirmed `Delete` with focus
+  recovery, a global `Cmd/Ctrl+P` file picker with fuzzy name/path ranking,
+  lazy-loaded Monaco editing, independent dirty file tabs with shortest-unique
+  parent labels for same-named files, a semantic roving tab strip with
+  post-close focus recovery and editor-to-editor `Ctrl+Tab` focus handoff,
+  keyboard save/close/tab switching scoped to workspace focus, an editor-safe
+  `Cmd/Ctrl+B` task-sidebar toggle, bounded
+  back/forward location history,
+  a task-scoped full-screen workspace with Escape restoration,
+  source-focused search with an explicit dependency/build scope, reviewed
+  replacement, conflict protection, config validation,
+  and saved-file Code Intelligence for document symbols, semantic navigation,
+  and diagnostics, with one visible toolbar menu for definition, declaration,
+  references, implementations, and the file outline.
 - Workspace-wide Git review with complete original/modified Monaco diff tabs,
   stage, unstage, and commit.
 - A complete local configuration center for A3S OS account and endpoint,
@@ -67,8 +84,8 @@ Product implementation is governed by the
 - A source-grouped task model switcher that combines configured Provider models
   with valid local Claude Code, Codex, and WorkBuddy account models through the
   same runtime discovery and client routing used by the TUI.
-- A browser-native command palette (`Cmd/Ctrl+K`) for existing pages and
-  contextual actions.
+- Browser-native command (`Cmd/Ctrl+K`) and file (`Cmd/Ctrl+P`) palettes for
+  existing pages, contextual actions, and bounded workspace navigation.
 - Wide and compact desktop layouts, plus system, light, and dark themes.
 
 The primary journey is:
@@ -82,19 +99,103 @@ Create task → add context → execute → decide permissions
 ## Code Intelligence
 
 Monaco shares the workspace-scoped native Code Intelligence runtime owned by
-the CLI backend. Go to Symbol in Editor uses the saved document outline;
-definition, declaration, references, and implementations are editor actions;
-diagnostics appear as Monaco markers. Dirty buffers remain browser-local, and
-the status bar says when semantic results use the saved version.
+the CLI backend. The file toolbar exposes definition, declaration, references,
+implementations, and Go to Symbol in Editor together with their keyboard
+shortcuts. The same navigation commands remain available from Monaco's context
+menu; diagnostics appear as Monaco markers. The editor toolbar keeps a bounded,
+workspace-scoped location history: `Ctrl+-` returns to the previous file and
+caret, while `Ctrl+Shift+-` moves forward. Open drafts are reused rather than
+reread, a new navigation clears the forward branch, and file rename/delete
+operations reconcile stored locations. Dirty buffers remain browser-local, and
+the status bar says when semantic results use the saved version while also
+following the live cursor, selection, and Monaco model line ending. Its line
+ending control converts between LF and CRLF through Monaco's undo history and
+normal dirty-file protection. Files without a native language profile keep
+Monaco's local editing and outline features without exposing backend protocol
+errors; the document-symbol bridge always uses the mounted Monaco model's
+concrete language identifier, including plaintext fallback, so an unfamiliar
+extension cannot corrupt Monaco's provider registry. Genuine runtime failures
+remain visible as concise status messages.
+
+`Cmd/Ctrl+P` opens a keyboard-first workspace file picker from Monaco or the
+surrounding task surface. It ranks exact filenames, path fragments, and fuzzy
+subsequences, keeps open tabs at the top before a query, ignores dependency and
+build outputs, and reports bounded or truncated catalogs without blocking the
+current draft. Selecting an already-open file reuses that tab and its unsaved
+content. Explorer directory entries and quick-open results share one file-type
+contract: common source, configuration, and lockfile formats remain editable;
+known binary formats use extension hints and unfamiliar extensions are sampled
+before either entry point labels them as binary.
+
+The editor and diff viewer share one lazy local Monaco runtime. It retains the
+complete standalone editing surface and the JSON, CSS, HTML, JavaScript, and
+TypeScript language services, while registering tokenizers only for the file
+types the product opens as source text. The runtime does not import Monaco's
+broad package entry, so unused bundled languages and protocol clients stay out
+of the editor activation graph without weakening find, folding, suggestions,
+diagnostics, navigation, themes, workers, or diff behavior.
+
+Explorer mutations preserve the visible tree as well as open editors. Renaming
+an expanded directory rebases its loaded descendants, expansion state, and
+retry state; deleting a path evicts its entire cached subtree immediately.
+Late directory responses are ignored, so a failed parent refresh cannot bring
+back an old name or a deleted child. New files use the backend's atomic
+create-only operation, so a conflicting path reports an error in place without
+truncating the existing file.
+
+Text reads also return a content revision. A normal save sends that revision as
+its server-side precondition and performs no client-side read-before-write
+request. Restored legacy tabs without a revision use their last saved content as
+the precondition. A mismatch returns HTTP 412 without changing the file, after
+which the editor fetches the latest disk version and offers reload or explicit
+unconditional overwrite. Successful saves and both conflict resolutions update
+the tab's revision before the next edit.
+
+The entire editor workspace is task-scoped rather than repository-scoped.
+Switching tasks snapshots tabs, dirty drafts, the active selection and view,
+explorer and search state, Git review state, conflicts, and load errors, then
+restores the destination task even when both tasks use the same repository.
+Within one live page, every text document has a task-isolated Monaco model URI.
+The mounted editor switches models instead of remounting, so each open document
+keeps its undo/redo history, cursor and selections, folding, and scroll state
+across file and task switches. An explicit search or semantic location is
+consumed once; later tab returns restore the document's own view rather than
+replaying a stale jump. A successful file or parent-directory rename rebinds
+the new logical path to the document's existing immutable model URI before its
+tab path changes, preserving that same editing session and live status. If a
+different file is later opened at the old path while the renamed document is
+still retained, it receives a distinct URI instead of sharing undo or view
+state. Models remain retained only while referenced by an open tab in the
+active task or an inactive task snapshot. Cancelling a guarded dirty close
+keeps the model, while confirmed close and snapshot removal dispose the
+orphaned model deterministically. A page refresh restores persisted drafts and
+tabs but starts a new in-memory Monaco undo history.
+Because the switch does not discard content, dirty drafts do not interrupt it;
+destructive close, reload, replacement, and overwrite operations still require
+explicit resolution. Workspace reads and mutations carry a monotonic task
+generation guard, so responses from a previously selected task cannot write
+into the current editor. Versioned browser-local snapshots are debounced during
+editing and flushed synchronously on `pagehide`, so a normal refresh restores
+the active task as well as inactive task snapshots. Malformed data is ignored;
+if browser storage cannot fit the complete caches and clean documents, the
+fallback snapshot preserves dirty drafts and restores other tabs with an
+explicit retry state.
 
 The first release supports Rust through `rust-analyzer` and
 TypeScript/JavaScript through `typescript-language-server --stdio`. See the
 [Code Intelligence guide](../../crates/cli/docs/code-intelligence.md) for
 installation, shortcuts, saved-file behavior, and the typed local API.
 
-Text search, replace, file loading, and writes continue through the existing
-workspace APIs. Code Intelligence returns only semantic metadata and locations,
-then reuses the normal file-selection flow to open a target.
+Text search excludes repository metadata, dependency caches, and common build
+outputs by default so source matches remain useful. The Search panel can opt
+into those directories and reruns the current query immediately; query, scope,
+or workspace changes make the displayed replacement set stale until a search
+succeeds. Search renders at most 300 matches and probes one additional match;
+when that sentinel exists, the panel reports truncation and keeps replacement
+disabled until the user narrows the search. Search, replace, file loading, and
+writes continue through the existing workspace APIs. Code Intelligence returns
+only semantic metadata and locations, then reuses the normal file-selection
+flow to open a target.
 
 Memory browsing and consolidation, Knowledge, task branching, automation
 assets, plugins, and global processes are deliberately excluded until they

@@ -1,15 +1,49 @@
 import type { ReactNode } from 'react';
-import { createPortal } from 'react-dom';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface WorkspaceContextMenuItem {
   id: string;
   label: string;
+  ariaLabel?: string;
   icon: ReactNode;
   onSelect(): void;
+  shortcut?: string;
+  checked?: boolean;
   danger?: boolean;
   disabled?: boolean;
   separatorBefore?: boolean;
+}
+
+function WorkspaceContextMenuButton({ item, onSelect }: { item: WorkspaceContextMenuItem; onSelect(): void }) {
+  const content = (
+    <>
+      {item.icon}
+      <span>{item.label}</span>
+      {item.shortcut && <kbd>{item.shortcut}</kbd>}
+    </>
+  );
+  const props = {
+    type: 'button' as const,
+    'aria-label': item.ariaLabel,
+    className: item.danger ? 'danger' : undefined,
+    disabled: item.disabled,
+    onClick: onSelect,
+  };
+
+  if (item.checked !== undefined) {
+    return (
+      <button {...props} role='menuitemradio' aria-checked={item.checked}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <button {...props} role='menuitem'>
+      {content}
+    </button>
+  );
 }
 
 export function WorkspaceContextMenu({
@@ -95,19 +129,13 @@ export function WorkspaceContextMenu({
       {items.map((item) => (
         <div className='workspace-context-menu-item' key={item.id}>
           {item.separatorBefore && <hr />}
-          <button
-            type='button'
-            role='menuitem'
-            className={item.danger ? 'danger' : undefined}
-            disabled={item.disabled}
-            onClick={() => {
+          <WorkspaceContextMenuButton
+            item={item}
+            onSelect={() => {
               onClose();
               item.onSelect();
             }}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </button>
+          />
         </div>
       ))}
     </div>,

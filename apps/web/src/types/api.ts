@@ -196,8 +196,11 @@ export interface SkillCatalog {
 
 export interface WorkspaceSearchMatch {
   line: number;
+  /** One-based UTF-16 column, matching Monaco's position contract. */
   column: number;
+  /** Bounded context around this match rather than an unbounded source line. */
   text: string;
+  /** Zero-based UTF-16 offsets inside `text`. */
   matchStart: number;
   matchEnd: number;
 }
