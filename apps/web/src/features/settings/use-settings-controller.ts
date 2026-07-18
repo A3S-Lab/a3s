@@ -108,6 +108,27 @@ export function useSettingsController() {
       appState.defaultModelSaving = false;
     }
   });
+  const refreshModelCatalog = useMemoizedFn(async () => {
+    if (appState.modelCatalogRefreshing) return;
+    appState.modelCatalogRefreshing = true;
+    appState.modelCatalogRefreshError = null;
+    try {
+      const catalog = await codeApi.refreshModelCatalog();
+      appState.modelCatalog = catalog;
+      const fallbackModel = catalog.defaultModel || appState.llm?.defaultModel || '';
+      if (!catalog.items.some((model) => model.id === appState.selectedModel)) {
+        appState.selectedModel = fallbackModel;
+      }
+      if (!catalog.items.some((model) => model.id === appState.newTaskConfig.model)) {
+        appState.newTaskConfig.model = fallbackModel;
+      }
+      appState.modelCatalogRefreshedAt = Date.now();
+    } catch (error) {
+      appState.modelCatalogRefreshError = formatApiError(error);
+    } finally {
+      appState.modelCatalogRefreshing = false;
+    }
+  });
   const loginWithOs = useMemoizedFn(async () => {
     try {
       appState.osAccount = await codeApi.osLogin();
@@ -174,6 +195,7 @@ export function useSettingsController() {
     saveAgentSettings,
     saveContextSettings,
     saveIntegrationsSettings,
+    refreshModelCatalog,
     loginWithOs,
     logout,
     checkForUpdates,

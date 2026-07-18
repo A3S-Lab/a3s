@@ -13,6 +13,9 @@ describe('settings context boundaries', () => {
     appState.settingsCategorySaving = { llm: false, agent: false, context: false, integrations: false };
     appState.settingsCategoryErrors = { llm: null, agent: null, context: null, integrations: null };
     appState.settingsCategorySavedAt = { llm: null, agent: null, context: null, integrations: null };
+    appState.modelCatalogRefreshing = false;
+    appState.modelCatalogRefreshError = null;
+    appState.modelCatalogRefreshedAt = null;
   });
 
   afterEach(() => {
@@ -58,6 +61,68 @@ describe('settings context boundaries', () => {
     expect(appState.llm.defaultModel).toBe('model-a');
     expect(appState.selectedModel).toBe('model-a');
     expect(appState.defaultModelSaving).toBe(false);
+  });
+
+  it('refreshes local account models without replacing a still-valid Composer selection', async () => {
+    appState.llm = { defaultModel: 'openai/default', providers: [] };
+    appState.selectedModel = 'codex/gpt-5.4';
+    appState.newTaskConfig.model = 'missing/model';
+    vi.spyOn(codeApi, 'refreshModelCatalog').mockResolvedValue({
+      defaultModel: 'workbuddy/auto',
+      warnings: [],
+      items: [
+        {
+          id: 'codex/gpt-5.4',
+          name: 'gpt-5.4',
+          source: 'Codex',
+          reasoning: true,
+          toolCall: true,
+        },
+        {
+          id: 'workbuddy/auto',
+          name: 'auto',
+          source: 'WorkBuddy',
+          reasoning: true,
+          toolCall: true,
+        },
+      ],
+    });
+    const hook = renderHook(() => useSettingsController());
+
+    await act(() => hook.result.current.refreshModelCatalog());
+
+    expect(appState.modelCatalog?.items).toHaveLength(2);
+    expect(appState.selectedModel).toBe('codex/gpt-5.4');
+    expect(appState.newTaskConfig.model).toBe('workbuddy/auto');
+    expect(appState.modelCatalogRefreshedAt).not.toBeNull();
+    expect(appState.modelCatalogRefreshError).toBeNull();
+    expect(appState.modelCatalogRefreshing).toBe(false);
+    hook.unmount();
+  });
+
+  it('keeps the current catalog and an inline retry state when account refresh fails', async () => {
+    appState.modelCatalog = {
+      defaultModel: 'codex/gpt-5.4',
+      warnings: [],
+      items: [
+        {
+          id: 'codex/gpt-5.4',
+          name: 'gpt-5.4',
+          source: 'Codex',
+          reasoning: true,
+          toolCall: true,
+        },
+      ],
+    };
+    vi.spyOn(codeApi, 'refreshModelCatalog').mockRejectedValue(new Error('account discovery unavailable'));
+    const hook = renderHook(() => useSettingsController());
+
+    await act(() => hook.result.current.refreshModelCatalog());
+
+    expect(appState.modelCatalog.items[0].id).toBe('codex/gpt-5.4');
+    expect(appState.modelCatalogRefreshError).toBe('account discovery unavailable');
+    expect(appState.modelCatalogRefreshing).toBe(false);
+    hook.unmount();
   });
 
   it('keeps update-check failure inline and retryable', async () => {

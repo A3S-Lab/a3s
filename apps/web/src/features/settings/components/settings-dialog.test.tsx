@@ -23,6 +23,7 @@ const actions: SettingsActions = {
   saveIntegrationsSettings: vi.fn(async () => {
     throw new Error('not used in this test');
   }),
+  refreshModelCatalog: vi.fn(async () => undefined),
   loginWithOs: vi.fn(async () => undefined),
   logout: vi.fn(async () => undefined),
   checkForUpdates: vi.fn(async () => undefined),

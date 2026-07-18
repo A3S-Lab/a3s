@@ -8,6 +8,7 @@ export interface SettingsActions {
   saveAgentSettings(patch: Partial<AgentSettings>): Promise<AgentSettings>;
   saveContextSettings(patch: Partial<ContextSettings>): Promise<ContextSettings>;
   saveIntegrationsSettings(patch: Partial<IntegrationsSettings>): Promise<IntegrationsSettings>;
+  refreshModelCatalog(): Promise<void>;
   loginWithOs(): Promise<void>;
   logout(): Promise<void>;
   checkForUpdates(): Promise<void>;

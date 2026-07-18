@@ -74,6 +74,7 @@ Product implementation is governed by the
 - Workspace-wide Git review with complete original/modified Monaco diff tabs,
   stage, unstage, and commit.
 - A complete local configuration center for A3S OS account and endpoint,
+  runtime-detected Claude Code, Codex, and WorkBuddy account status and refresh,
   appearance, models and Providers, Agent execution and queues, session storage
   and memory policy, search and headless browsing, document/OCR parsing, MCP
   transports and OAuth, updates, service information, and searchable Help.
@@ -83,7 +84,9 @@ Product implementation is governed by the
   names and model IDs retain focus and disclosure state.
 - A source-grouped task model switcher that combines configured Provider models
   with valid local Claude Code, Codex, and WorkBuddy account models through the
-  same runtime discovery and client routing used by the TUI.
+  same runtime discovery and client routing used by the TUI. Account credentials
+  remain in the CLI, while Settings reports only connection state and available
+  model counts.
 - Browser-native command (`Cmd/Ctrl+K`) and file (`Cmd/Ctrl+P`) palettes for
   existing pages, contextual actions, and bounded workspace navigation.
 - Wide and compact desktop layouts, plus system, light, and dark themes.

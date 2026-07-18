@@ -374,7 +374,11 @@ Git state is never labelled as selected-task provenance.
 
 - Open Settings as a global modal over the current Code surface; do not replace,
   unmount, or reset that surface.
-- Configure account and appearance.
+- Configure the optional A3S OS account and appearance.
+- Show Claude Code, Codex, and WorkBuddy local account state from qualified
+  runtime catalog sources, with model counts, truthful sign-in guidance, and one
+  in-place refresh action. Do not infer account login from a configured
+  Anthropic or OpenAI Provider.
 - Configure the default model, providers, model capabilities, runtime limits,
   and locally held credentials.
 - Configure Agent execution limits, Skill and Agent directories, automatic
@@ -401,7 +405,8 @@ or shell shortcuts; each configuration category is lazy, retryable, and saved
 independently; a failed save preserves the local draft and authoritative saved
 state; secrets are masked and are never returned to the browser; effect labels
 distinguish new-task changes from restart-required changes; Help does not teach
-slash commands as the primary Web interaction.
+slash commands as the primary Web interaction; local account refresh failure
+retains the previous catalog and stays inline in the Account section.
 
 ## Excluded from this release
 
