@@ -1,0 +1,32 @@
+api_host := env_var_or_default("A3S_BENCH_API_HOST", "127.0.0.1")
+api_port := env_var_or_default("A3S_BENCH_API_PORT", "29655")
+
+default:
+    @just --list
+
+# Start the local Bench bridge and the Rsbuild frontend together.
+dev:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    A3S_BENCH_API_HOST='{{ api_host }}' A3S_BENCH_API_PORT='{{ api_port }}' bun run bridge &
+    bridge_pid=$!
+    trap 'kill "$bridge_pid" 2>/dev/null || true' EXIT INT TERM
+    A3S_BENCH_API_ORIGIN='http://{{ api_host }}:{{ api_port }}' bun run dev
+
+# Start only the loopback CLI bridge.
+bridge:
+    A3S_BENCH_API_HOST='{{ api_host }}' A3S_BENCH_API_PORT='{{ api_port }}' bun run bridge
+
+# Start only the frontend against an existing bridge.
+dev-web:
+    A3S_BENCH_API_ORIGIN='http://{{ api_host }}:{{ api_port }}' bun run dev
+
+build:
+    bun run build
+
+check:
+    bun run format:check
+    bun run typecheck
+    bun run lint:check
+    bun run test
+    bun run build

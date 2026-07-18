@@ -1,0 +1,235 @@
+@import './styles/hangar-stage.css';
+@import './styles/hangar-controls.css';
+@import './styles/hangar-roster.css';
+
+.hangar-workspace {
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.hangar-workspace__header {
+  flex: 0 0 auto;
+  min-height: 88px;
+  padding: 12px 22px;
+}
+
+.hangar-workspace__header-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.hangar-workspace__summary {
+  display: grid;
+  min-width: 148px;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 18px;
+  padding: 10px 12px;
+  border: 1px solid var(--lab-line-strong);
+  border-radius: 9px;
+  background: var(--lab-panel);
+}
+
+.hangar-workspace__summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--lab-muted);
+  font-size: 10px;
+}
+
+.hangar-workspace__summary svg {
+  color: var(--a3s-blue);
+}
+
+.hangar-workspace__summary strong {
+  grid-row: 1;
+  grid-column: 2;
+  color: #e6f0f2;
+  font-family: var(--mono-font);
+  font-size: 18px;
+  font-weight: 520;
+}
+
+.hangar-workspace__deploy {
+  display: flex;
+  min-width: 174px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 15px;
+  border: 1px solid rgb(108 163 255 / 58%);
+  border-radius: 9px;
+  background:
+    linear-gradient(120deg, rgb(108 163 255 / 24%), rgb(116 108 240 / 10%)),
+    #0a1820;
+  color: #dceaff;
+  text-align: left;
+  transition: 150ms ease;
+}
+
+.hangar-workspace__deploy:hover:not(:disabled) {
+  border-color: var(--a3s-blue);
+  box-shadow: 0 0 22px rgb(108 163 255 / 14%);
+  transform: translateY(-1px);
+}
+
+.hangar-workspace__deploy > svg {
+  color: var(--a3s-blue);
+}
+
+.hangar-workspace__deploy > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.hangar-workspace__deploy strong {
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.hangar-workspace__deploy small {
+  margin-top: 2px;
+  color: var(--lab-muted);
+  font-size: 8px;
+}
+
+.hangar-workspace__deploy:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.hangar-workspace__layout {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(590px, 1.5fr) minmax(400px, 0.72fr);
+  gap: 1px;
+  background: var(--lab-line);
+}
+
+.hangar-workspace__stage {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr) auto;
+  background: #071115;
+}
+
+.hangar-workspace__stage .hangar-preview {
+  min-height: 0;
+}
+
+.hangar-workspace__note {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--lab-line);
+  background: #081216;
+  color: var(--lab-muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.hangar-workspace__note svg {
+  flex: 0 0 auto;
+  color: var(--lab-green);
+}
+
+.hangar-workspace__note.is-blocked {
+  border-top-color: color-mix(in srgb, var(--lab-red) 32%, var(--lab-line));
+  background: color-mix(in srgb, var(--lab-red) 4%, #081216);
+  color: #d2a1a1;
+}
+
+.hangar-workspace__note.is-blocked svg {
+  color: var(--lab-red);
+}
+
+.hangar-workspace__sidebar {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: var(--lab-panel);
+}
+
+.hangar-workspace__sidebar > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.hangar-workspace__sidebar .hangar-configurator {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.hangar-workspace__squadron-dock {
+  position: relative;
+  z-index: 6;
+  flex: 0 0 auto;
+  border-top: 1px solid var(--lab-line-strong);
+  background: rgb(6 15 19 / 98%);
+  box-shadow: 0 -12px 30px rgb(0 0 0 / 20%);
+}
+
+.hangar-workspace__error {
+  display: block;
+  margin: 0 18px 18px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--lab-red) 35%, var(--lab-line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--lab-red) 5%, var(--lab-panel));
+  color: #dca1a1;
+  font-size: 10px;
+}
+
+@media (max-width: 1180px) {
+  .hangar-workspace__layout {
+    grid-template-columns: minmax(500px, 1fr) 390px;
+  }
+}
+
+@media (max-width: 960px) {
+  .hangar-workspace {
+    overflow: auto;
+  }
+
+  .hangar-workspace__layout {
+    display: block;
+  }
+
+  .hangar-workspace__sidebar {
+    display: block;
+    overflow: visible;
+  }
+
+  .hangar-workspace__sidebar .hangar-configurator {
+    overflow: visible;
+  }
+
+  .hangar-workspace__stage .hangar-preview {
+    min-height: 540px;
+  }
+
+  .hangar-workspace__squadron-dock {
+    border-top: 0;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .hangar-workspace__header-actions {
+    width: 100%;
+  }
+
+  .hangar-workspace__summary,
+  .hangar-workspace__deploy {
+    flex: 1;
+  }
+}

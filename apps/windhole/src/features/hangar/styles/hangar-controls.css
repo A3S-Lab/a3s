@@ -1,0 +1,584 @@
+.hangar-configurator {
+  width: 100%;
+  min-width: 0;
+  padding: 18px;
+  border-bottom: 1px solid var(--lab-line);
+}
+
+.hangar-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.hangar-section-heading > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.hangar-section-heading span:first-child {
+  color: var(--a3s-blue);
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.hangar-section-heading h2 {
+  margin: 4px 0 0;
+  color: #dbe8ea;
+  font-size: 15px;
+  font-weight: 610;
+}
+
+.hangar-section-heading > svg {
+  color: var(--lab-faint);
+}
+
+.hangar-control-group {
+  min-width: 0;
+  margin: 0;
+  padding: 16px 0;
+  border: 0;
+  border-top: 1px solid var(--lab-line);
+}
+
+.hangar-control-group:first-of-type {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.hangar-control-group:disabled {
+  opacity: 0.55;
+}
+
+.hangar-control-group legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0;
+  color: #a8bdc1;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.hangar-control-group legend span {
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 8px;
+}
+
+.hangar-selection-note {
+  margin: 9px 0 0;
+  color: var(--lab-muted);
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.hangar-pilot-options {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.hangar-pilot-options button {
+  --pilot-primary: var(--lab-muted);
+  --pilot-secondary: var(--lab-faint);
+  --pilot-suit: #28343a;
+  --pilot-visor: #bed2d6;
+  display: grid;
+  min-width: 0;
+  min-height: 78px;
+  grid-template-columns: 48px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 9px;
+  padding: 9px;
+  border: 1px solid var(--lab-line);
+  border-radius: 9px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--pilot-primary) 7%, transparent), transparent 52%),
+    #071115;
+  text-align: left;
+  transition: 150ms ease;
+}
+
+.hangar-pilot-options button[data-pilot='a3s'] {
+  --pilot-primary: #6ca3ff;
+  --pilot-secondary: #746cf0;
+  --pilot-suit: #233858;
+  --pilot-visor: #c7e4ff;
+}
+
+.hangar-pilot-options button[data-pilot='codex'] {
+  --pilot-primary: #10a37f;
+  --pilot-secondary: #9cd9c8;
+  --pilot-suit: #123e35;
+  --pilot-visor: #a9f1d9;
+}
+
+.hangar-pilot-options button[data-pilot='claude'] {
+  --pilot-primary: #d97757;
+  --pilot-secondary: #f0c69d;
+  --pilot-suit: #513127;
+  --pilot-visor: #ffe0bf;
+}
+
+.hangar-pilot-options button[data-pilot='generic'] {
+  --pilot-primary: #a88cf2;
+  --pilot-secondary: #bac4d7;
+  --pilot-suit: #382d50;
+  --pilot-visor: #e0d5ff;
+}
+
+.hangar-pilot-options button:hover,
+.hangar-effort-options button:hover {
+  border-color: color-mix(in srgb, var(--a3s-blue) 55%, var(--lab-line));
+  transform: translateY(-1px);
+}
+
+.hangar-pilot-options button.is-selected,
+.hangar-effort-options button.is-selected {
+  border-color: color-mix(in srgb, var(--pilot-primary, var(--a3s-blue)) 75%, var(--lab-line));
+  box-shadow: inset 2px 0 0 var(--pilot-primary, var(--a3s-blue));
+}
+
+.hangar-pilot-options__avatar {
+  position: relative;
+  display: block;
+  width: 48px;
+  height: 56px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--pilot-primary) 55%, var(--lab-line));
+  border-radius: 22px 22px 9px 9px;
+  background:
+    radial-gradient(circle at 50% 14%, color-mix(in srgb, var(--pilot-visor) 18%, transparent), transparent 35%),
+    linear-gradient(180deg, color-mix(in srgb, var(--pilot-primary) 13%, #071115), #050c10);
+}
+
+.pilot-portrait__helmet,
+.pilot-portrait__visor,
+.pilot-portrait__suit,
+.pilot-portrait__harness {
+  position: absolute;
+  display: block;
+}
+
+.pilot-portrait__suit {
+  right: 5px;
+  bottom: -7px;
+  left: 5px;
+  height: 31px;
+  border: 1px solid color-mix(in srgb, var(--pilot-primary) 72%, #e7f3f5);
+  border-radius: 14px 14px 3px 3px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--pilot-secondary) 36%, var(--pilot-suit)), var(--pilot-suit));
+  clip-path: polygon(12% 16%, 35% 0, 65% 0, 88% 16%, 100% 100%, 0 100%);
+}
+
+.pilot-portrait__harness {
+  right: 10px;
+  bottom: 2px;
+  left: 10px;
+  height: 17px;
+  border-right: 2px solid color-mix(in srgb, var(--pilot-secondary) 78%, white);
+  border-left: 2px solid color-mix(in srgb, var(--pilot-primary) 78%, white);
+  transform: skewX(-18deg);
+  opacity: 0.92;
+}
+
+.pilot-portrait__helmet {
+  top: 5px;
+  left: 10px;
+  width: 28px;
+  height: 27px;
+  border: 1px solid color-mix(in srgb, var(--pilot-primary) 75%, #e8f2f4);
+  border-radius: 52% 52% 40% 40%;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--pilot-primary) 58%, #1a262d), #111a20);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--pilot-primary) 20%, transparent);
+}
+
+.pilot-portrait__visor {
+  top: 12px;
+  left: 14px;
+  width: 20px;
+  height: 9px;
+  border: 1px solid color-mix(in srgb, var(--pilot-visor) 72%, var(--pilot-primary));
+  border-radius: 7px 7px 4px 4px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--pilot-visor) 72%, transparent), rgb(4 12 16 / 78%));
+  box-shadow: 0 0 7px color-mix(in srgb, var(--pilot-primary) 32%, transparent);
+}
+
+.hangar-pilot-options__avatar b {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  color: var(--pilot-visor);
+  font-family: var(--mono-font);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.hangar-pilot-options button[data-pilot='a3s'] .pilot-portrait__helmet {
+  border-radius: 4px 4px 10px 10px;
+  clip-path: polygon(18% 0, 82% 0, 100% 34%, 86% 100%, 14% 100%, 0 34%);
+}
+
+.hangar-pilot-options button[data-pilot='codex'] .pilot-portrait__visor {
+  height: 12px;
+  border-radius: 50% 50% 7px 7px;
+}
+
+.hangar-pilot-options button[data-pilot='claude'] .pilot-portrait__helmet {
+  border-radius: 50% 50% 28% 28%;
+  transform: rotate(-3deg);
+}
+
+.hangar-pilot-options button[data-pilot='claude'] .pilot-portrait__harness {
+  border-right: 0;
+  border-left-width: 4px;
+  transform: skewX(22deg);
+}
+
+.hangar-pilot-options button[data-pilot='generic'] .pilot-portrait__helmet {
+  border-style: dashed;
+  border-radius: 9px 9px 4px 4px;
+}
+
+.hangar-pilot-options button[data-pilot='generic'] .pilot-portrait__visor {
+  background: transparent;
+}
+
+.hangar-pilot-options__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.hangar-pilot-options strong,
+.hangar-pilot-options small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hangar-pilot-options strong {
+  color: #c9d9dc;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.hangar-pilot-options small {
+  margin-top: 3px;
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 7px;
+}
+
+.hangar-pilot-options small.is-missing,
+.hangar-pilot-options small.is-unsupported {
+  color: #d39494;
+}
+
+.hangar-pilot-options__attire {
+  display: flex;
+  gap: 3px;
+  margin-top: 8px;
+}
+
+.hangar-pilot-options__attire i {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--pilot-primary);
+}
+
+.hangar-pilot-options__attire i:nth-child(2) {
+  width: 11px;
+  background: var(--pilot-secondary);
+}
+
+.hangar-pilot-options__attire i:nth-child(3) {
+  width: 6px;
+  opacity: 0.55;
+}
+
+.hangar-pilot-options button > svg {
+  color: var(--pilot-primary);
+}
+
+.hangar-effort-options {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.hangar-effort-options button {
+  display: grid;
+  min-width: 0;
+  min-height: 66px;
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-content: center;
+  align-items: center;
+  gap: 2px 6px;
+  padding: 8px;
+  border: 1px solid var(--lab-line);
+  border-radius: 8px;
+  background: #071115;
+  text-align: left;
+  transition: 150ms ease;
+}
+
+.hangar-effort-options svg {
+  grid-row: 1 / 3;
+  color: var(--lab-faint);
+}
+
+.hangar-effort-options button.is-selected svg,
+.hangar-effort-options button.is-selected strong {
+  color: var(--a3s-blue);
+}
+
+.hangar-effort-options strong {
+  color: #b9cbce;
+  font-size: 9px;
+  font-weight: 610;
+}
+
+.hangar-effort-options small {
+  overflow: hidden;
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 6.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hangar-effort-options__slots {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 3px;
+  margin-top: 6px;
+}
+
+.hangar-effort-options__slots i {
+  width: 100%;
+  height: 3px;
+  border-radius: 1px;
+  background: var(--lab-line-strong);
+}
+
+.hangar-effort-options__slots i.is-filled {
+  background: var(--a3s-blue);
+  box-shadow: 0 0 5px rgb(108 163 255 / 45%);
+}
+
+.hangar-advanced-config {
+  border-top: 1px solid var(--lab-line);
+}
+
+.hangar-advanced-config summary {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 0;
+  color: #a8bdc1;
+  cursor: pointer;
+  list-style: none;
+}
+
+.hangar-advanced-config summary::-webkit-details-marker {
+  display: none;
+}
+
+.hangar-advanced-config summary > span {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hangar-advanced-config summary strong {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.hangar-advanced-config summary small {
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 7px;
+}
+
+.hangar-advanced-config summary svg {
+  color: var(--a3s-blue);
+}
+
+.hangar-advanced-config fieldset {
+  margin: 0;
+  padding: 2px 0 14px;
+  border: 0;
+}
+
+.hangar-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.hangar-field-grid label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hangar-field-grid label > span {
+  color: var(--lab-muted);
+  font-size: 9px;
+}
+
+.hangar-field-grid input {
+  width: 100%;
+  height: 36px;
+  min-width: 0;
+  padding: 0 9px;
+  border: 1px solid var(--lab-line);
+  border-radius: 7px;
+  outline: 0;
+  background: #071115;
+  color: #c7d9dc;
+  font-family: var(--mono-font);
+  font-size: 9px;
+}
+
+.hangar-field-grid input:focus {
+  border-color: var(--a3s-blue);
+  box-shadow: 0 0 0 2px rgb(108 163 255 / 9%);
+}
+
+.hangar-field-grid input::placeholder {
+  color: var(--lab-faint);
+}
+
+.hangar-candidate-status {
+  color: var(--lab-muted) !important;
+  font-size: 8px !important;
+  line-height: 1.45;
+}
+
+.hangar-candidate-status.is-bundled {
+  color: var(--lab-green) !important;
+}
+
+.hangar-candidate-status.is-local,
+.hangar-candidate-status.is-oci {
+  color: #8eb4e8 !important;
+}
+
+.hangar-candidate-status.is-missing,
+.hangar-candidate-status.is-unsupported {
+  color: #d39494 !important;
+}
+
+.hangar-field-grid__wide {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 961px) and (max-height: 800px) {
+  .hangar-configurator {
+    padding: 12px 14px;
+  }
+
+  .hangar-configurator .hangar-section-heading {
+    margin-bottom: 10px;
+  }
+
+  .hangar-control-group {
+    padding: 10px 0;
+  }
+
+  .hangar-control-group legend {
+    margin-bottom: 7px;
+  }
+
+  .hangar-pilot-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .hangar-pilot-options button {
+    min-height: 58px;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .hangar-pilot-options__avatar {
+    width: 34px;
+    height: 48px;
+    border-radius: 17px 17px 7px 7px;
+  }
+
+  .hangar-pilot-options__avatar i {
+    right: 6px;
+    left: 6px;
+  }
+
+  .hangar-pilot-options small,
+  .hangar-pilot-options button > svg {
+    display: none;
+  }
+
+  .hangar-pilot-options__attire {
+    margin-top: 6px;
+  }
+
+  .hangar-pilot-options__attire i {
+    width: 13px;
+  }
+
+  .hangar-pilot-options__attire i:nth-child(2) {
+    width: 8px;
+  }
+
+  .hangar-effort-options {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .hangar-effort-options button {
+    min-height: 54px;
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 4px;
+    padding: 6px;
+    text-align: center;
+  }
+
+  .hangar-effort-options svg,
+  .hangar-effort-options small {
+    display: none;
+  }
+
+  .hangar-effort-options__slots {
+    width: 100%;
+    grid-column: 1;
+    margin-top: 3px;
+  }
+
+  .hangar-selection-note {
+    display: none;
+  }
+
+  .hangar-advanced-config summary {
+    padding: 9px 0;
+  }
+}
