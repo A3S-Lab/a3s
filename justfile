@@ -1,5 +1,9 @@
 # A3S - Justfile
 
+use_e2e_target := env_var_or_default("A3S_USE_E2E_TARGET", justfile_directory() / "target/use-hotplug-e2e")
+use_e2e_use_target := use_e2e_target / "use"
+use_e2e_code_target := use_e2e_target / "code"
+
 default:
     @just --list
 
@@ -41,6 +45,12 @@ playground:
 # Start the A3S Code TUI in the current repository
 code:
     cargo --config 'patch.crates-io.a3s-code-core.path="crates/code/core"' --config 'patch.crates-io.a3s-memory.path="crates/memory"' --config 'patch.crates-io.a3s-tui.path="crates/tui"' run --manifest-path crates/cli/Cargo.toml -- code
+
+# Test Code hot-plug and first-use startup against an independently built Use process
+use-hotplug-e2e:
+    CARGO_TARGET_DIR='{{ use_e2e_use_target }}' cargo build --manifest-path crates/use/Cargo.toml -p a3s-use -p a3s-use-browser-driver
+    CARGO_TARGET_DIR='{{ use_e2e_code_target }}' A3S_USE_E2E_BIN='{{ use_e2e_use_target }}/debug/a3s-use' cargo test --manifest-path crates/cli/Cargo.toml --lib use_registry::tests::real_use_process_converges_install_upgrade_rebuild_disable_and_enable -- --ignored --nocapture
+    CARGO_TARGET_DIR='{{ use_e2e_code_target }}' A3S_USE_E2E_BIN='{{ use_e2e_use_target }}/debug/a3s-use' A3S_USE_E2E_SOURCE_ROOT='{{ justfile_directory() }}/crates/use' cargo test --manifest-path crates/cli/Cargo.toml --test code_use_first_use code_tui_first_use_installs_a_real_use_release_before_the_first_turn -- --ignored --nocapture
 
 # Build and start the A3S Web application
 web:

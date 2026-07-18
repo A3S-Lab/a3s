@@ -83,11 +83,21 @@ Service, Knowledge service deployment, and asset activity panels.
 
 ## Use Workers
 
-When the explicitly installed Use component is ready, Code registers one
-restricted `use` worker in the live `task` and `parallel_task` agent catalogs.
-It can call only `mcp__use_*` tools: it cannot use the workspace, shell,
-unrelated MCP servers, or recursive delegation, and starting Code never
-installs Use as a side effect.
+Before terminal takeover, Code reuses a healthy A3S Use installation or installs
+its verified release when networking and automatic setup are allowed.
+`--offline`, `A3S_OFFLINE=1`, and `A3S_NO_AUTO_INSTALL=1` remain strict
+zero-network, zero-receipt boundaries. Setup failure is non-fatal and Code
+continues without application routes.
+
+When Use is ready, Code gives initial registry discovery one second and initial
+MCP projection a separate five-second budget. Ready Browser, native Office, OCR,
+and installed extension routes are advertised before the first model turn;
+slower routes continue converging in the background.
+
+Code registers one restricted `use` worker in the live `task` and
+`parallel_task` agent catalogs. It can call only `mcp__use_*` tools: it cannot
+use the workspace, shell, unrelated MCP servers, or recursive delegation. The
+primary model never receives the raw application tools.
 
 The TUI projects standard child progress into a capability-oriented lifecycle.
 For example, `mcp__use_browser__browser_open` appears as `Using Browser` while
