@@ -1,0 +1,353 @@
+.tunnel-panel {
+  display: flex;
+  flex-direction: column;
+  background: #071014;
+}
+
+.tunnel-toolbar {
+  z-index: 5;
+  display: flex;
+  height: 38px;
+  flex: 0 0 38px;
+  align-items: center;
+  gap: 16px;
+  padding: 0 13px;
+  border-bottom: 1px solid var(--lab-line);
+  background: #081216;
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.tunnel-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-right: auto;
+  color: #8ca3a8;
+}
+
+.tunnel-title svg {
+  color: var(--lab-cyan);
+}
+
+.tunnel-axis {
+  white-space: nowrap;
+}
+
+.flow-health {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--lab-green);
+  white-space: nowrap;
+}
+
+.flow-health i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 7px currentColor;
+}
+
+.flow-health.is-warning {
+  color: var(--lab-orange);
+}
+
+.tunnel-viewport {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 48%, rgb(52 103 111 / 13%), transparent 58%),
+    #071014;
+}
+
+.three-mount,
+.three-mount canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  inset: 0;
+}
+
+.three-mount canvas {
+  display: block;
+  touch-action: none;
+}
+
+.three-mount canvas[data-interaction='idle'] {
+  cursor: default;
+}
+
+.three-mount canvas[data-interaction='grab'] {
+  cursor: grab;
+}
+
+.three-mount canvas[data-interaction='grabbing'] {
+  cursor: grabbing;
+}
+
+.three-mount canvas:focus-visible {
+  outline: 2px solid var(--a3s-blue);
+  outline-offset: -3px;
+}
+
+.tunnel-viewport::before {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 22%), transparent 16%, transparent 84%, rgb(0 0 0 / 28%)),
+    repeating-linear-gradient(0deg, transparent 0 3px, rgb(107 212 224 / 1.2%) 3px 4px);
+  content: '';
+  pointer-events: none;
+}
+
+.tunnel-viewport::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgb(0 0 0 / 33%) 100%);
+  content: '';
+  pointer-events: none;
+}
+
+.webgl-error {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: #071014;
+  color: var(--lab-red);
+  text-align: center;
+}
+
+.webgl-error strong {
+  margin-top: 10px;
+  color: var(--lab-ink);
+  font-size: 13px;
+}
+
+.webgl-error span {
+  max-width: 420px;
+  margin-top: 4px;
+  color: var(--lab-muted);
+  font-size: 11px;
+}
+
+.view-corner {
+  position: absolute;
+  z-index: 4;
+  width: 22px;
+  height: 22px;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.view-corner-tl {
+  top: 14px;
+  left: 14px;
+  border-top: 1px solid var(--lab-cyan);
+  border-left: 1px solid var(--lab-cyan);
+}
+
+.view-corner-tr {
+  top: 14px;
+  right: 14px;
+  border-top: 1px solid var(--lab-cyan);
+  border-right: 1px solid var(--lab-cyan);
+}
+
+.view-corner-bl {
+  bottom: 14px;
+  left: 14px;
+  border-bottom: 1px solid var(--lab-cyan);
+  border-left: 1px solid var(--lab-cyan);
+}
+
+.view-corner-br {
+  right: 14px;
+  bottom: 14px;
+  border-right: 1px solid var(--lab-cyan);
+  border-bottom: 1px solid var(--lab-cyan);
+}
+
+.viewport-reticle {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  width: 20px;
+  height: 1px;
+  background: rgb(100 220 229 / 32%);
+  pointer-events: none;
+}
+
+.viewport-reticle::before {
+  position: absolute;
+  top: -10px;
+  width: 1px;
+  height: 20px;
+  background: inherit;
+  content: '';
+}
+
+.reticle-left {
+  left: 8px;
+}
+
+.reticle-left::before {
+  left: 0;
+}
+
+.reticle-right {
+  right: 8px;
+}
+
+.reticle-right::before {
+  right: 0;
+}
+
+.specimen-label {
+  position: absolute;
+  z-index: 5;
+  top: 24px;
+  left: 26px;
+  display: flex;
+  max-width: min(380px, 55%);
+  flex-direction: column;
+  padding-left: 10px;
+  border-left: 2px solid var(--aircraft-accent, var(--a3s-blue));
+  pointer-events: none;
+}
+
+.specimen-label > span {
+  color: var(--aircraft-accent, var(--a3s-blue));
+  font-family: var(--mono-font);
+  font-size: 8px;
+  letter-spacing: 0.11em;
+}
+
+.specimen-label strong {
+  overflow: hidden;
+  margin-top: 4px;
+  color: #d5e5e7;
+  font-size: 12px;
+  font-weight: 580;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.specimen-label small {
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.specimen-controls {
+  display: flex;
+  min-height: 26px;
+  align-items: center;
+  gap: 6px;
+  margin-top: 7px;
+  color: #8ca3a8;
+  font-size: 9px;
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgb(0 0 0 / 80%);
+}
+
+.specimen-controls > svg {
+  color: var(--a3s-blue);
+}
+
+.specimen-controls button {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  place-items: center;
+  border: 1px solid rgb(108 163 255 / 22%);
+  border-radius: 5px;
+  background: rgb(6 15 19 / 70%);
+  color: var(--lab-muted);
+  cursor: pointer;
+  pointer-events: auto;
+  text-shadow: none;
+}
+
+.specimen-controls button:hover {
+  border-color: rgb(108 163 255 / 38%);
+  background: rgb(108 163 255 / 12%);
+  color: var(--lab-ink);
+}
+
+.specimen-controls button:focus-visible {
+  outline: 2px solid var(--a3s-blue);
+  outline-offset: 2px;
+}
+
+.weather-badge {
+  position: absolute;
+  z-index: 5;
+  right: 27px;
+  bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--lab-muted);
+  font-family: var(--mono-font);
+  font-size: 8px;
+  pointer-events: none;
+}
+
+.weather-badge svg {
+  color: var(--lab-cyan);
+}
+
+.viewport-scale {
+  position: absolute;
+  z-index: 5;
+  bottom: 23px;
+  left: 28px;
+  display: grid;
+  width: 120px;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 8px;
+  pointer-events: none;
+}
+
+.viewport-scale i {
+  height: 4px;
+  border-right: 1px solid var(--lab-muted);
+  border-bottom: 1px solid var(--lab-muted);
+  border-left: 1px solid var(--lab-muted);
+}
+
+@media (max-width: 1180px) {
+  .tunnel-axis {
+    display: none;
+  }
+
+}
+
+@media (max-width: 820px) {
+  .specimen-controls span,
+  .weather-badge,
+  .viewport-scale {
+    display: none;
+  }
+}

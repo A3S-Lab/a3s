@@ -1,0 +1,43 @@
+{
+  "name": "@a3s/windhole",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "rsbuild dev",
+    "bridge": "node scripts/bench-bridge.mjs",
+    "build": "rsbuild build",
+    "preview": "rsbuild preview",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint --write .",
+    "lint:check": "biome lint .",
+    "test": "vitest run && node --test scripts/bench-arguments.test.mjs",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "lucide-react": "^0.544.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "three": "^0.179.1",
+    "valtio": "^2.3.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.14",
+    "@rsbuild/core": "^2.1.5",
+    "@rsbuild/plugin-react": "^2.1.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^24.3.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.179.0",
+    "jsdom": "^28.1.0",
+    "typescript": "7.0.2",
+    "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

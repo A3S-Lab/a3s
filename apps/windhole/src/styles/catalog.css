@@ -1,0 +1,490 @@
+.task-catalog {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--lab-line);
+  background:
+    linear-gradient(180deg, rgb(31 72 82 / 10%), transparent 26%),
+    var(--lab-panel);
+}
+
+.mission-heading {
+  min-height: 60px;
+  padding: 10px 14px;
+  background:
+    linear-gradient(90deg, rgb(108 163 255 / 7%), transparent 68%),
+    repeating-linear-gradient(90deg, transparent 0 20px, rgb(100 220 229 / 2.5%) 20px 21px);
+}
+
+.mission-heading h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.mission-heading > div > p {
+  margin: 3px 0 0;
+  color: var(--lab-muted);
+  font-size: 8px;
+}
+
+.mission-ready-count {
+  display: grid;
+  min-width: 46px;
+  justify-items: end;
+}
+
+.mission-ready-count span {
+  color: #dff9f7;
+  font-family: var(--mono-font);
+  font-size: 22px;
+  font-weight: 380;
+  line-height: 1;
+  text-shadow: 0 0 18px rgb(105 224 178 / 25%);
+}
+
+.mission-ready-count small {
+  margin-top: 4px;
+  color: var(--lab-green);
+  font-size: 8px;
+}
+
+.mission-filters {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--lab-line);
+  background: rgb(3 11 14 / 38%);
+}
+
+.mission-filters > summary {
+  display: grid;
+  min-height: 38px;
+  grid-template-columns: 1fr auto 14px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 13px;
+  list-style: none;
+  color: var(--lab-muted);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.mission-filters > summary::-webkit-details-marker,
+.task-run-settings > summary::-webkit-details-marker,
+.mission-intel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.mission-filters > summary > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mission-filters > summary output {
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 8px;
+}
+
+.mission-filters > summary > svg,
+.task-run-settings > summary > svg:last-child {
+  transition: transform 150ms ease;
+}
+
+.mission-filters[open] > summary > svg,
+.task-run-settings[open] > summary > svg:last-child {
+  transform: rotate(180deg);
+}
+
+.mission-filter-panel {
+  padding: 0 12px 11px;
+}
+
+.search-control {
+  display: flex;
+  height: 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  border: 1px solid var(--lab-line);
+  border-radius: 7px;
+  background: #050f13;
+  color: var(--lab-muted);
+  transition: 150ms ease;
+}
+
+.search-control:focus-within {
+  border-color: color-mix(in srgb, var(--a3s-blue) 65%, var(--lab-line));
+  box-shadow: 0 0 0 2px rgb(108 163 255 / 9%);
+}
+
+.search-control input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--lab-ink);
+  font-size: 11px;
+}
+
+.search-control input::placeholder {
+  color: var(--lab-faint);
+}
+
+.search-control kbd {
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.catalog-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.category-select,
+.blocked-toggle {
+  display: flex;
+  height: 29px;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 0 7px;
+  border: 1px solid var(--lab-line);
+  border-radius: 6px;
+  color: var(--lab-muted);
+}
+
+.category-select select {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--lab-muted);
+  font-size: 9px;
+}
+
+.blocked-toggle {
+  font-size: 9px;
+}
+
+.blocked-toggle input,
+.task-lock-toggle input {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  accent-color: var(--a3s-blue);
+}
+
+.mission-board {
+  min-height: 0;
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 0 10px;
+}
+
+.selected-mission {
+  position: relative;
+  margin: 11px 9px 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--mission-sky) 45%, var(--lab-line));
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--mission-sky) 8%, #071216), #071115 42%),
+    var(--lab-panel-soft);
+  box-shadow: inset 0 0 36px rgb(0 0 0 / 20%);
+}
+
+.selected-mission::before,
+.selected-mission::after {
+  position: absolute;
+  z-index: 3;
+  width: 14px;
+  height: 14px;
+  content: '';
+  pointer-events: none;
+}
+
+.selected-mission::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--lab-cyan);
+  border-left: 2px solid var(--lab-cyan);
+}
+
+.selected-mission::after {
+  right: -1px;
+  bottom: -1px;
+  border-right: 2px solid var(--a3s-blue);
+  border-bottom: 2px solid var(--a3s-blue);
+}
+
+.mission-visual {
+  position: relative;
+  height: 70px;
+  overflow: hidden;
+  border-bottom: 1px solid color-mix(in srgb, var(--mission-sky) 28%, var(--lab-line));
+  background:
+    radial-gradient(circle at 80% 30%, color-mix(in srgb, var(--mission-sky) 42%, transparent), transparent 35%),
+    linear-gradient(135deg, color-mix(in srgb, var(--mission-sky) 24%, #071217), #061014 62%);
+}
+
+.mission-visual::after {
+  position: absolute;
+  z-index: 0;
+  right: -4%;
+  bottom: -3px;
+  left: -4%;
+  height: 32px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--theater-ground) 86%, #0a171a), #071114);
+  clip-path: polygon(0 76%, 16% 48%, 31% 63%, 48% 29%, 66% 56%, 82% 32%, 100% 59%, 100% 100%, 0 100%);
+  content: '';
+  opacity: 0.78;
+}
+
+.selected-mission[data-theater='littoral-front'] .mission-visual::after,
+.selected-mission[data-theater='ocean-platforms'] .mission-visual::after {
+  background: linear-gradient(160deg, var(--theater-ground) 0 42%, color-mix(in srgb, var(--mission-sky) 55%, #123c48) 44%);
+  clip-path: polygon(0 42%, 28% 30%, 47% 54%, 62% 38%, 100% 55%, 100% 100%, 0 100%);
+}
+
+.selected-mission[data-theater='industrial-city'] .mission-visual::after {
+  clip-path: polygon(0 62%, 13% 62%, 13% 23%, 25% 23%, 25% 68%, 42% 68%, 42% 11%, 58% 11%, 58% 51%, 76% 51%, 76% 28%, 100% 28%, 100% 100%, 0 100%);
+}
+
+.mission-visual > * {
+  z-index: 1;
+}
+
+.mission-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(188 239 243 / 7%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(188 239 243 / 7%) 1px, transparent 1px);
+  background-size: 16px 16px;
+  mask-image: linear-gradient(90deg, #000, transparent 94%);
+  transform: perspective(140px) rotateX(54deg) scale(1.3) translateY(19px);
+}
+
+.mission-route {
+  position: absolute;
+  height: 1px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, transparent, var(--lab-cyan), transparent);
+  filter: drop-shadow(0 0 4px var(--lab-cyan));
+  opacity: 0.65;
+}
+
+.route-one {
+  top: 56px;
+  left: 18px;
+  width: 130px;
+  transform: rotate(-13deg);
+}
+
+.route-two {
+  top: 38px;
+  left: 128px;
+  width: 94px;
+  transform: rotate(18deg);
+}
+
+.mission-target-pulse {
+  position: absolute;
+  top: 23px;
+  left: 48%;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid rgb(100 220 229 / 35%);
+  border-radius: 50%;
+  color: var(--lab-cyan-bright);
+  box-shadow: 0 0 18px rgb(100 220 229 / 18%);
+}
+
+.mission-target-pulse::after {
+  position: absolute;
+  inset: -6px;
+  border: 1px solid rgb(100 220 229 / 16%);
+  border-radius: 50%;
+  content: '';
+  animation: mission-pulse 2.2s ease-out infinite;
+}
+
+.mission-weather-mark {
+  position: absolute;
+  top: 11px;
+  right: 19px;
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid rgb(224 248 250 / 12%);
+  border-radius: 50%;
+  background: rgb(4 13 17 / 40%);
+  color: #d8f1f3;
+  backdrop-filter: blur(5px);
+}
+
+.mission-visual > small {
+  position: absolute;
+  bottom: 7px;
+  left: 9px;
+  color: rgb(218 240 243 / 58%);
+  font-family: var(--mono-font);
+  font-size: 7px;
+  letter-spacing: 0.11em;
+}
+
+.selected-mission-copy {
+  padding: 9px 11px 3px;
+}
+
+.mission-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--lab-cyan);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.mission-eyebrow code {
+  min-width: 0;
+  overflow: hidden;
+  margin-left: auto;
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 7px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-mission h3 {
+  margin: 5px 0 7px;
+  color: #eef8f9;
+  font-size: 15px;
+  font-weight: 660;
+  line-height: 1.25;
+}
+
+.mission-meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mission-meta > span,
+.map-card-status > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px;
+  border: 1px solid var(--lab-line);
+  border-radius: 4px;
+  color: var(--lab-muted);
+  font-size: 7.5px;
+  white-space: nowrap;
+}
+
+.difficulty-low {
+  border-color: rgb(105 224 178 / 25%) !important;
+  color: var(--lab-green) !important;
+}
+
+.difficulty-medium {
+  border-color: rgb(108 163 255 / 28%) !important;
+  color: var(--a3s-blue) !important;
+}
+
+.difficulty-high {
+  border-color: rgb(240 163 95 / 29%) !important;
+  color: var(--lab-orange) !important;
+}
+
+.difficulty-locked {
+  border-color: rgb(241 113 113 / 28%) !important;
+  color: var(--lab-red) !important;
+}
+
+.mission-objective {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 6px;
+  margin-top: 9px;
+  padding: 7px 8px;
+  border-left: 2px solid var(--lab-cyan);
+  background: rgb(100 220 229 / 4%);
+  color: var(--lab-cyan);
+}
+
+.mission-objective p {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: -1px 0 0;
+  color: #a7bdc1;
+  font-size: 9.5px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mission-intel {
+  margin: 7px 10px 9px;
+  color: var(--lab-muted);
+  font-size: 8px;
+}
+
+.mission-intel > summary {
+  width: max-content;
+  list-style: none;
+  cursor: pointer;
+}
+
+.mission-intel > summary::before {
+  margin-right: 5px;
+  color: var(--lab-faint);
+  content: '+ ';
+}
+
+.mission-intel[open] > summary::before {
+  content: '− ';
+}
+
+.mission-intel dl {
+  display: grid;
+  gap: 4px;
+  margin: 7px 0 0;
+  padding: 7px;
+  border: 1px solid var(--lab-line);
+  border-radius: 5px;
+  background: rgb(3 10 13 / 38%);
+  font-family: var(--mono-font);
+}
+
+.mission-intel dl div {
+  display: grid;
+  grid-template-columns: 43px minmax(0, 1fr);
+  gap: 7px;
+}
+
+.mission-intel dt {
+  color: var(--lab-faint);
+}
+
+.mission-intel dd {
+  overflow: hidden;
+  margin: 0;
+  color: #8fa6ab;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,0 +1,278 @@
+.deployment-scope-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 4px;
+  margin: 0;
+  border: 1px solid var(--lab-line);
+  border-radius: 9px;
+  background:
+    linear-gradient(110deg, rgb(108 163 255 / 5%), transparent 55%),
+    rgb(3 11 14 / 56%);
+}
+
+.deployment-scope-picker__option {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 44px;
+  grid-template-columns: 27px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--lab-muted);
+  text-align: left;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.deployment-scope-picker__option:hover:not(:disabled) {
+  border-color: var(--lab-line-strong);
+  background: rgb(255 255 255 / 2.8%);
+  color: var(--lab-ink);
+}
+
+.deployment-scope-picker__option[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--a3s-blue) 55%, var(--lab-line));
+  background:
+    linear-gradient(90deg, rgb(108 163 255 / 13%), transparent),
+    rgb(7 18 24 / 72%);
+  box-shadow: inset 2px 0 var(--a3s-blue);
+  color: var(--lab-ink);
+}
+
+.deployment-scope-picker__option:disabled {
+  opacity: 0.42;
+}
+
+.deployment-scope-picker__icon {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border: 1px solid var(--lab-line);
+  border-radius: 6px;
+  background: rgb(2 9 12 / 72%);
+  color: var(--lab-faint);
+}
+
+.deployment-scope-picker__option[aria-pressed='true'] .deployment-scope-picker__icon {
+  border-color: rgb(108 163 255 / 34%);
+  color: var(--a3s-blue);
+  box-shadow: 0 0 13px rgb(108 163 255 / 12%);
+}
+
+.candidate-deployment-status.is-campaign.is-deployable {
+  border-color: color-mix(in srgb, var(--lab-green) 35%, var(--lab-line));
+  background: linear-gradient(90deg, rgb(55 220 169 / 9%), transparent);
+}
+
+.deployment-scope-picker__option > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.deployment-scope-picker__option strong {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 670;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deployment-scope-picker__option small {
+  overflow: hidden;
+  margin-top: 1px;
+  color: var(--lab-faint);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.campaign-roster-strip {
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+
+.campaign-roster-strip ol {
+  display: flex;
+  min-width: max-content;
+  gap: 5px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.campaign-roster-strip li {
+  --campaign-status: var(--lab-muted);
+  width: clamp(132px, 14vw, 176px);
+}
+
+.campaign-roster-strip li[data-status='ready'],
+.campaign-roster-strip li[data-status='completed'] {
+  --campaign-status: var(--lab-green);
+}
+
+.campaign-roster-strip li[data-status='queued'],
+.campaign-roster-strip li[data-status='starting'] {
+  --campaign-status: var(--lab-yellow);
+}
+
+.campaign-roster-strip li[data-status='running'] {
+  --campaign-status: var(--lab-cyan);
+}
+
+.campaign-roster-strip li[data-status='blocked'],
+.campaign-roster-strip li[data-status='failed'] {
+  --campaign-status: var(--lab-red);
+}
+
+.campaign-roster-strip li[data-status='tracking_stopped'] {
+  --campaign-status: var(--lab-orange);
+}
+
+.campaign-roster-strip button {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-height: 49px;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 1px 6px;
+  padding: 6px 7px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--campaign-status) 25%, var(--lab-line));
+  border-radius: 7px;
+  background:
+    linear-gradient(105deg, color-mix(in srgb, var(--campaign-status) 8%, transparent), transparent 68%),
+    rgb(4 13 17 / 84%);
+  color: var(--lab-ink);
+  text-align: left;
+  transition:
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.campaign-roster-strip button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--campaign-status) 62%, var(--lab-line));
+  transform: translateY(-1px);
+}
+
+.campaign-roster-strip button[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--a3s-blue) 72%, var(--campaign-status));
+  box-shadow:
+    inset 2px 0 var(--a3s-blue),
+    0 0 14px rgb(108 163 255 / 8%);
+}
+
+.campaign-roster-strip button:disabled {
+  opacity: 0.58;
+}
+
+.campaign-roster-strip__index {
+  display: grid;
+  width: 19px;
+  height: 19px;
+  grid-row: 1 / span 2;
+  place-items: center;
+  border: 1px solid var(--lab-line);
+  border-radius: 4px;
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 7px;
+}
+
+.campaign-roster-strip__identity {
+  display: contents;
+}
+
+.campaign-roster-strip__identity strong {
+  overflow: hidden;
+  align-self: end;
+  font-size: 9px;
+  font-weight: 690;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.campaign-roster-strip__identity small {
+  overflow: hidden;
+  align-self: start;
+  color: var(--lab-faint);
+  font-size: 6.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.campaign-roster-strip__status {
+  display: inline-flex;
+  grid-row: 1;
+  grid-column: 3;
+  align-items: center;
+  gap: 4px;
+  color: var(--campaign-status);
+  font-family: var(--mono-font);
+  font-size: 6.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.campaign-roster-strip__status i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 7px currentColor;
+}
+
+.campaign-roster-strip li[data-status='queued'] .campaign-roster-strip__status i,
+.campaign-roster-strip li[data-status='starting'] .campaign-roster-strip__status i,
+.campaign-roster-strip li[data-status='running'] .campaign-roster-strip__status i {
+  animation: campaign-status-pulse 1.15s ease-in-out infinite alternate;
+}
+
+.campaign-roster-strip__score {
+  overflow: hidden;
+  grid-row: 2;
+  grid-column: 3;
+  align-self: start;
+  color: var(--lab-green);
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes campaign-status-pulse {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 780px) {
+  .deployment-scope-picker__option {
+    grid-template-columns: 23px minmax(0, 1fr);
+    padding-inline: 5px;
+  }
+
+  .deployment-scope-picker__icon {
+    width: 23px;
+    height: 23px;
+  }
+}

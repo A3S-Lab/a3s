@@ -1,0 +1,423 @@
+.aircraft-hud {
+  --aircraft-hud-accent: var(--a3s-blue);
+  --aircraft-hud-status: var(--lab-muted);
+  position: absolute;
+  z-index: 9;
+  width: min(340px, calc(100% - 32px));
+  min-width: 264px;
+  color: var(--lab-ink);
+  pointer-events: none;
+  filter: drop-shadow(0 16px 32px rgb(0 0 0 / 34%));
+  animation: aircraft-hud-reveal 160ms ease-out both;
+}
+
+.aircraft-hud[data-placement='right'] {
+  transform: translate(18px, -50%);
+}
+
+.aircraft-hud[data-placement='left'] {
+  transform: translate(calc(-100% - 18px), -50%);
+}
+
+.aircraft-hud[data-placement='above'] {
+  transform: translate(-50%, calc(-100% - 18px));
+}
+
+.aircraft-hud[data-placement='below'] {
+  transform: translate(-50%, 18px);
+}
+
+.aircraft-hud[data-status-tone='ready'],
+.aircraft-hud[data-status-tone='success'] {
+  --aircraft-hud-status: var(--lab-green);
+}
+
+.aircraft-hud[data-status-tone='running'] {
+  --aircraft-hud-status: var(--aircraft-hud-accent);
+}
+
+.aircraft-hud[data-status-tone='warning'] {
+  --aircraft-hud-status: var(--a3s-warning, var(--lab-orange));
+}
+
+.aircraft-hud[data-status-tone='error'] {
+  --aircraft-hud-status: var(--a3s-red, var(--lab-red));
+}
+
+.aircraft-hud__connector {
+  position: absolute;
+  z-index: 1;
+  background: color-mix(in srgb, var(--aircraft-hud-accent) 68%, transparent);
+}
+
+.aircraft-hud[data-placement='right'] .aircraft-hud__connector,
+.aircraft-hud[data-placement='left'] .aircraft-hud__connector {
+  top: 50%;
+  width: 18px;
+  height: 1px;
+}
+
+.aircraft-hud[data-placement='right'] .aircraft-hud__connector {
+  left: -18px;
+}
+
+.aircraft-hud[data-placement='left'] .aircraft-hud__connector {
+  right: -18px;
+}
+
+.aircraft-hud[data-placement='above'] .aircraft-hud__connector,
+.aircraft-hud[data-placement='below'] .aircraft-hud__connector {
+  left: 50%;
+  width: 1px;
+  height: 18px;
+}
+
+.aircraft-hud[data-placement='above'] .aircraft-hud__connector {
+  bottom: -18px;
+}
+
+.aircraft-hud[data-placement='below'] .aircraft-hud__connector {
+  top: -18px;
+}
+
+.aircraft-hud__surface {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--aircraft-hud-accent) 28%, var(--lab-line-strong));
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--aircraft-hud-accent) 7%, transparent), transparent 40%),
+    rgb(7 16 20 / 92%);
+  backdrop-filter: blur(14px) saturate(116%);
+}
+
+.aircraft-hud__surface::before {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(100 220 229 / 2.5%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(100 220 229 / 2.5%) 1px, transparent 1px);
+  background-size: 16px 16px;
+  content: '';
+  pointer-events: none;
+}
+
+.aircraft-hud__corner {
+  position: absolute;
+  z-index: 2;
+  right: 7px;
+  width: 10px;
+  height: 10px;
+  border-right: 1px solid var(--aircraft-hud-accent);
+  opacity: 0.72;
+}
+
+.aircraft-hud__corner--top {
+  top: 7px;
+  border-top: 1px solid var(--aircraft-hud-accent);
+}
+
+.aircraft-hud__corner--bottom {
+  bottom: 7px;
+  border-bottom: 1px solid var(--aircraft-hud-accent);
+}
+
+.aircraft-hud__header,
+.aircraft-hud__agent,
+.aircraft-hud__configuration,
+.aircraft-hud__task,
+.aircraft-hud__telemetry {
+  position: relative;
+  z-index: 1;
+}
+
+.aircraft-hud__header {
+  padding: 14px 15px 12px;
+  border-bottom: 1px solid var(--lab-line);
+}
+
+.aircraft-hud__eyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--aircraft-hud-accent);
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+}
+
+.aircraft-hud__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--aircraft-hud-status);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.aircraft-hud__status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.aircraft-hud__model {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 9px;
+}
+
+.aircraft-hud__model h3 {
+  margin: 0;
+  color: #edf7f8;
+  font-size: 19px;
+  font-weight: 620;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.aircraft-hud__model p,
+.aircraft-hud__status-detail {
+  margin: 4px 0 0;
+  color: var(--lab-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.aircraft-hud__model code {
+  flex: 0 0 auto;
+  padding: 3px 5px;
+  border: 1px solid var(--lab-line-strong);
+  border-radius: 5px;
+  color: #9cb0b5;
+  font-family: var(--mono-font);
+  font-size: 9px;
+}
+
+.aircraft-hud__status-detail {
+  color: color-mix(in srgb, var(--aircraft-hud-status) 66%, var(--lab-muted));
+  font-family: var(--mono-font);
+}
+
+.aircraft-hud__agent {
+  display: grid;
+  grid-template-columns: 94px minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 10px;
+  min-height: 52px;
+  padding: 9px 15px;
+  border-bottom: 1px solid var(--lab-line);
+}
+
+.aircraft-hud__agent > span,
+.aircraft-hud__configuration span,
+.aircraft-hud__task > span {
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.aircraft-hud__agent strong {
+  overflow: hidden;
+  color: #d8e7e9;
+  font-size: 12px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aircraft-hud__agent small {
+  grid-column: 2;
+  color: var(--lab-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.aircraft-hud__configuration {
+  display: grid;
+  grid-template-columns: minmax(92px, 0.7fr) minmax(0, 1.3fr);
+  border-bottom: 1px solid var(--lab-line);
+}
+
+.aircraft-hud__configuration > div {
+  min-width: 0;
+  padding: 10px 15px 11px;
+}
+
+.aircraft-hud__configuration > div + div {
+  border-left: 1px solid var(--lab-line);
+}
+
+.aircraft-hud__effort strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--aircraft-hud-accent);
+  font-family: var(--mono-font);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.aircraft-hud__effort small {
+  display: block;
+  margin-top: 2px;
+  color: var(--lab-muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.aircraft-hud__loadout ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.aircraft-hud__loadout li {
+  max-width: 100%;
+  overflow: hidden;
+  padding: 2px 5px;
+  border: 1px solid var(--lab-line-strong);
+  border-radius: 5px;
+  color: #98adb1;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aircraft-hud__task {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--lab-line);
+}
+
+.aircraft-hud__task div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.aircraft-hud__task strong,
+.aircraft-hud__task code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aircraft-hud__task strong {
+  color: #c9dadd;
+  font-size: 11px;
+  font-weight: 580;
+}
+
+.aircraft-hud__task code {
+  margin-top: 2px;
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 9px;
+}
+
+.aircraft-hud__telemetry {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(68px, 1fr));
+  margin: 0;
+}
+
+.aircraft-hud__telemetry > div {
+  min-width: 0;
+  padding: 9px 10px 10px;
+  border-right: 1px solid var(--lab-line);
+}
+
+.aircraft-hud__telemetry > div:last-child {
+  border-right: 0;
+}
+
+.aircraft-hud__telemetry dt {
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 9px;
+  letter-spacing: 0.07em;
+}
+
+.aircraft-hud__telemetry dd {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 4px;
+  margin: 4px 0 0;
+}
+
+.aircraft-hud__telemetry strong {
+  overflow: hidden;
+  color: #d7e6e8;
+  font-family: var(--mono-font);
+  font-size: 13px;
+  font-weight: 570;
+  text-overflow: ellipsis;
+}
+
+.aircraft-hud__telemetry dd span {
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 8px;
+}
+
+.aircraft-hud__telemetry [data-tone='accent'] strong {
+  color: var(--aircraft-hud-accent);
+}
+
+.aircraft-hud__telemetry [data-tone='positive'] strong {
+  color: var(--lab-green);
+}
+
+.aircraft-hud__telemetry [data-tone='warning'] strong {
+  color: var(--a3s-warning, var(--lab-orange));
+}
+
+.aircraft-hud__telemetry [data-tone='negative'] strong {
+  color: var(--a3s-red, var(--lab-red));
+}
+
+@keyframes aircraft-hud-reveal {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 1180px) {
+  .aircraft-hud {
+    width: min(286px, calc(100% - 24px));
+    min-width: 244px;
+  }
+
+  .aircraft-hud__configuration {
+    grid-template-columns: 1fr;
+  }
+
+  .aircraft-hud__configuration > div + div {
+    border-top: 1px solid var(--lab-line);
+    border-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aircraft-hud {
+    animation: none;
+  }
+}
