@@ -45,7 +45,10 @@ a3s install use/browser
 a3s install use/office       # 可选 OfficeCLI 兼容 provider
 a3s install use/ocr          # 可选：提前安装或修复模型
 
-# OCR 通过 ONNX Runtime 在本地运行。
+# 直接首次使用只准备实际需要的 runtime。
+a3s use browser open https://example.com
+a3s use office native create report.docx --json  # 无需额外 provider
+a3s use office get report.docx /body --json      # 准备 OfficeCLI 兼容层
 a3s use ocr doctor --json
 a3s use ocr extract ./scan.png --json  # 首次使用自动准备模型
 ```
@@ -59,11 +62,11 @@ Skill 热插拔进 session。
 
 主 model 不会看到 `mcp__use_*`，而是把应用请求委派给只能调用这组工具的专用 `use`
 worker。closed-world read-only 操作（包括 PP-OCRv6 doctor 与提取）无需额外确认，除非
-父级策略显式拒绝。doctor 发现 OCR 模型缺失或损坏时，worker 会通过父级确认请求幂等
-`ocr_install` 网络 mutation，成功后继续提取；直接运行 `a3s use ocr extract` 也会自动
-准备同一组固定模型。网络/open-world、Office 或 Browser mutation、destructive、submit，
-以及缺少 behavior annotations 的操作都会升级到父 TUI HITL。父级 deny 始终有效，
-Office mutation 也不会自动重试。
+父级策略显式拒绝。Browser 缺少 runtime 时使用需确认的共享安装器；原生 Office 无需
+provider，只有兼容操作才会通过父级确认请求 `office_install_compat`；OCR 缺少模型时
+同样请求幂等 `ocr_install`。直接 Browser 启动、Office 兼容命令和 OCR 提取都会按需自动
+准备资源。网络/open-world、mutation、destructive、submit，以及缺少 behavior annotations
+的操作都会升级到父 TUI HITL。父级 deny 始终有效，Office mutation 也不会自动重试。
 
 完整 route、artifact、OCR 模型与安全契约见
 [通过 A3S Use 使用 Browser、Office 与 OCR](/cn/docs/code/tui#通过-a3s-use-使用-browseroffice-与-ocr)。

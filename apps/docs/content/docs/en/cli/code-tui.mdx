@@ -95,7 +95,10 @@ a3s install use/browser
 a3s install use/office       # optional OfficeCLI compatibility
 a3s install use/ocr          # optional model pre-warm or repair
 
-# OCR runs locally through ONNX Runtime.
+# Direct first use prepares only the runtime that is actually needed.
+a3s use browser open https://example.com
+a3s use office native create report.docx --json  # no extra provider
+a3s use office get report.docx /body --json      # prepares OfficeCLI compatibility
 a3s use ocr doctor --json
 a3s use ocr extract ./scan.png --json  # first use prepares models
 ```
@@ -112,10 +115,13 @@ The primary model does not see `mcp__use_*` tools. It delegates application
 requests to the dedicated `use` worker, which is restricted to those tools.
 Closed-world read-only operations, including PP-OCRv6 doctor and extraction,
 run without an extra prompt unless the parent policy explicitly denies them.
-If doctor reports missing or damaged OCR models, the worker requests the
-idempotent `ocr_install` network mutation through parent confirmation and then
-continues to extraction. Direct `a3s use ocr extract` prepares the same pinned
-models automatically. Open-world/network access, Office or Browser mutations,
+Missing Browser assets use the confirmed shared installer. Native Office needs
+no provider; an operation outside its surface can request
+`office_install_compat` through parent confirmation. If OCR doctor reports
+missing or damaged models, the worker similarly requests the idempotent
+`ocr_install` mutation and continues after installation. Direct Browser
+launches, Office compatibility commands, and OCR extraction prepare their
+required assets automatically. Open-world/network access, mutations,
 destructive operations, submit risk, and missing behavior annotations escalate
 to the parent TUI. Parent denials remain authoritative, and Office mutations
 are never retried automatically.
