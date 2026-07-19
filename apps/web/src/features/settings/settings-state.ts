@@ -39,6 +39,9 @@ export interface SettingsState {
   settingsCategorySavedAt: Record<ConfigCategory, number | null>;
   selectedModel: string;
   defaultModelSaving: boolean;
+  modelCatalogRefreshing: boolean;
+  modelCatalogRefreshError: string | null;
+  modelCatalogRefreshedAt: number | null;
   updateStatus: UpdateStatus | null;
   updateChecking: boolean;
   updateInstalling: boolean;
@@ -62,6 +65,9 @@ export function createSettingsState(): SettingsState {
     settingsCategorySavedAt: { llm: null, agent: null, context: null, integrations: null },
     selectedModel: '',
     defaultModelSaving: false,
+    modelCatalogRefreshing: false,
+    modelCatalogRefreshError: null,
+    modelCatalogRefreshedAt: null,
     updateStatus: null,
     updateChecking: false,
     updateInstalling: false,
