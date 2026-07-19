@@ -71,6 +71,7 @@ interactive product:
 | `a3s` CLI | Process startup, config discovery, update flow, resume commands, terminal lifecycle, and helper binaries such as `a3s-webview`. |
 | `a3s-code-core` | Agent sessions, model calls, tool registry, permissions, memory, delegation, dynamic workflows, persistence, verification, and event replay. |
 | `a3s-tui` | Terminal rendering, component library, layout, input surfaces, menus, overlays, panels, and transcript widgets. |
+| Optional A3S Use integration | Built-in Browser, native Office, OCR, optional OfficeCLI compatibility, and signed external application domains projected through standard MCP and managed Skills. |
 | A3S OS integration | Optional signed-in capabilities such as Runtime batches, Workflow as a Service, Knowledge service deployment, RemoteUI ViewLinks, and asset activity. |
 
 Local work remains available without `/login`: chat, file edits, workspace
@@ -81,6 +82,43 @@ After `/login`, the session also registers the OS `runtime` tool and unlocks
 RemoteUI ViewLinks, OS asset publishing, Function as a Service, Workflow as a
 Service, Knowledge service deployment, and asset activity panels.
 
+## A3S Use Application Capabilities
+
+`a3s code` treats A3S Use as a first-use component: it reuses a healthy install
+or prepares the verified release before terminal takeover when automatic setup
+and networking are allowed. Offline mode and `A3S_NO_AUTO_INSTALL=1` remain
+strict no-mutation boundaries. Providers may also be prepared explicitly:
+
+```bash
+a3s install use --source release
+a3s install use/browser
+a3s install use/office       # optional OfficeCLI compatibility
+a3s install use/ocr          # pinned local PP-OCRv6 models
+
+# OCR runs locally through ONNX Runtime.
+a3s use ocr doctor --json
+```
+
+When Use is ready at startup, the TUI watches its versioned registry and
+hot-plugs Browser, native Office, Office compatibility, OCR, and other signed
+extensions as standard MCP plus verified Skills. `/use` and `/use status`
+report binary, registry, provider, MCP, and Skill readiness. `/use repair`
+prints explicit commands but never installs or mutates anything itself. If
+first-use setup was disabled or failed, restart Code once after explicitly
+installing the parent.
+
+The primary model does not see `mcp__use_*` tools. It delegates application
+requests to the dedicated `use` worker, which is restricted to those tools.
+Closed-world read-only operations, including PP-OCRv6 doctor and extraction,
+run without an extra prompt unless the parent policy explicitly denies them.
+Open-world/network access, Office or Browser mutations, destructive operations,
+submit risk, and missing behavior annotations escalate to the parent TUI.
+Parent denials remain authoritative, and Office mutations are never retried
+automatically.
+
+For the complete route, artifact, OCR model, and safety contract, see
+[Browser, Office, And OCR Through A3S Use](/docs/code/tui#browser-office-and-ocr-through-a3s-use).
+
 ## Slash Command Families
 
 The CLI command palette delegates to the A3S Code TUI command registry:
@@ -90,6 +128,7 @@ The CLI command palette delegates to the A3S Code TUI command registry:
 | Conversation | `/clear`, `/compact`, `/fork`, `/goal`, `/btw`, `/auto`, `/exit` |
 | Models and depth | `/model`, `/effort` |
 | Workspace | `/ide`, `/config`, `/output`, `/theme`, `/top`, `! <command>` |
+| Applications | `/use`, `/use status`, `/use repair` |
 | Context | `/ctx <query>`, `/ctx <n>`, `/ctx save <n>`, `/sleep` |
 | Memory and knowledge | `/memory`, `/kb`, `/kb add`, `/kb import`, `/kb search`, `/kb vault` |
 | OS account | `/login`, `/logout`, `/view` |

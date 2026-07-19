@@ -33,6 +33,38 @@ a3s code resume
 
 第二种形式会恢复当前 workspace 中最新的 saved session。
 
+## A3S Use 应用能力
+
+`a3s code` 会把 A3S Use 作为 first-use 组件：终端接管前复用健康安装，或在网络与自动
+准备策略允许时安装经过校验的 release。离线模式和 `A3S_NO_AUTO_INSTALL=1` 始终禁止该
+修改。provider 也可以显式提前准备：
+
+```bash
+a3s install use --source release
+a3s install use/browser
+a3s install use/office       # 可选 OfficeCLI 兼容 provider
+a3s install use/ocr          # 固定版本的本地 PP-OCRv6 模型
+
+# OCR 通过 ONNX Runtime 在本地运行。
+a3s use ocr doctor --json
+```
+
+Use 在 TUI 启动时 ready 后，Code 会监听其带版本 registry，并把内置 Browser、原生
+Office、OCR、可选 Office 兼容层与已安装的其他签名 extension 作为标准 MCP 和已校验
+Skill 热插拔进 session。
+`/use` 与 `/use status` 查看 binary、registry、provider、MCP 和 Skill readiness；
+`/use repair` 自身只输出显式命令，绝不会自动安装或修改状态。若 first-use 准备被禁用
+或失败，显式安装主程序后需重启 Code 一次。
+
+主 model 不会看到 `mcp__use_*`，而是把应用请求委派给只能调用这组工具的专用 `use`
+worker。closed-world read-only 操作（包括 PP-OCRv6 doctor 与提取）无需额外确认，除非
+父级策略显式拒绝；网络/open-world、Office 或 Browser mutation、destructive、submit，
+以及缺少 behavior annotations 的操作都会升级到父 TUI HITL。父级 deny 始终有效，
+Office mutation 也不会自动重试。
+
+完整 route、artifact、OCR 模型与安全契约见
+[通过 A3S Use 使用 Browser、Office 与 OCR](/cn/docs/code/tui#通过-a3s-use-使用-browseroffice-与-ocr)。
+
 ## Slash Commands
 
 | Command | Capability |
@@ -40,6 +72,7 @@ a3s code resume
 | `/model` | 切换 configured models，以及可用的 account-backed model tabs。 |
 | `/init` | 分析 workspace 并生成 `AGENTS.md`。 |
 | `/config` | 在 TUI editor 中打开 active ACL config。 |
+| `/use` / `/use status` / `/use repair` | 查看 A3S Use capability 状态，或显示不会自动执行的修复指引。 |
 | `/theme` | 切换 code highlight themes。 |
 | `/flow` | 选择或草拟 workflow assets，用于本地开发和 OS workflow deployment。 |
 | `/agent` | 选择 agent definitions，用于本地开发或 OS deployment。 |

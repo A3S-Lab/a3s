@@ -20,6 +20,7 @@ runner, IDE bridge, or controlled product surface.
 | --- | --- | --- |
 | `a3s-code-core` | [A3S-Lab/Code](https://github.com/A3S-Lab/Code) | Rust runtime crate for sessions, tools, memory, permissions, delegation, persistence, verification, and event replay. |
 | `a3s code` | [A3S-Lab/Cli](https://github.com/A3S-Lab/Cli) | Terminal coding-agent application that drives `a3s-code-core` sessions. |
+| A3S Use | [A3S-Lab/Use](https://github.com/A3S-Lab/Use) | Independently released Browser, native Office, built-in OCR, optional Office compatibility, and signed external application capabilities projected into Code through standard MCP and Skills. |
 | `a3s-tui` | [A3S-Lab/TUI](https://github.com/A3S-Lab/TUI) | Terminal UI framework used by the CLI. It is the renderer and component library, not the agent runtime. |
 | A3S Flow | [A3S-Lab/Flow](https://github.com/A3S-Lab/Flow) | Durable workflow engine used by `DynamicWorkflowRuntime` for replayable per-turn dynamic workflows. |
 | A3S monorepo | [A3S-Lab/a3s](https://github.com/A3S-Lab/a3s) | Product docs, release orchestration, submodule pins, and related crates. |
@@ -97,6 +98,7 @@ RemoteUI views, and engineered automation loops.
 | Models | `/model` switches configured ACL providers, OS gateway models, and signed-in account-backed model tabs when available. |
 | Effort | `/effort` changes thinking budget, tool-round budget, continuation count, and rigor guidance from `low` through `max` and `ultracode`. |
 | Tools and safety | File, search, shell, git, web, structured-output, MCP, PTC `program`, `task`, and `parallel_task` tools all pass through workspace boundaries, permission policy, HITL approval, timeouts, hooks, and traces. |
+| Application capabilities | A3S Use is prepared on first TUI use when policy allows, then projects built-in Browser, native Office, OCR, optional OfficeCLI compatibility, and installed signed external domains into a dedicated `use` worker. |
 | Context and memory | The footer tracks context fill and auto-compaction. `/ctx` searches past sessions, `/ctx <n>` attaches a transcript window, `/ctx save <n>` promotes it to memory, `/sleep` consolidates the day, and `/memory` browses durable memories as an event/entity graph. |
 | Dynamic workflows | `ultracode` and `?` DeepResearch can use `DynamicWorkflowRuntime`, a local A3S Flow-backed runtime that records workflow and step history while sandboxed PTC scripts perform tool work. |
 | Parallel work | Local fan-out uses native host-side `parallel_task`. Dynamic workflows schedule a Flow step named `parallel_task` when they need local parallel subagents; QuickJS/PTC scripts do not call `parallel_task` directly. |
@@ -107,6 +109,71 @@ RemoteUI views, and engineered automation loops.
 | Knowledge | `/kb` manages a local personal knowledge vault. `/okf` manages shareable OKF knowledge-package assets and publishes them to the OS Knowledge service when signed in. |
 | Engineered loops | `/loop init`, `/loop run`, `/loop audit`, and `/loop logs` manage durable maker/checker loops under `.a3s/loops` with reports, budgets, state files, and Runtime/RemoteUI evidence when enabled. |
 | Operations | `/help` opens the command guide, `/theme` changes syntax themes, `/plugin` and `/reload` refresh skills/plugins, `/top` observes local agent process activity, `/view` reopens the latest RemoteUI ViewLink, and `/update` upgrades and restarts the CLI. |
+
+## Browser, Office, And OCR Through A3S Use
+
+A3S Use is an independently released first-use component. Before terminal
+takeover, `a3s code` reuses a healthy install or installs the verified release
+when networking and automatic setup are allowed. `--offline`,
+`A3S_OFFLINE=1`, and `A3S_NO_AUTO_INSTALL=1` remain strict no-mutation
+boundaries. Setup failure is non-fatal and remains visible through `/use`.
+Runtimes and model assets can also be prepared explicitly:
+
+```bash
+a3s install use --source release
+a3s install use/browser
+
+# Optional OfficeCLI compatibility provider. Native Office is built into Use.
+a3s install use/office
+
+# Install or repair the pinned local PP-OCRv6 models.
+a3s install use/ocr
+a3s use ocr doctor --json
+```
+
+When the parent Use binary is ready, Code consumes its versioned
+capability registry and watches both its generation and content revision.
+Provider changes and extension enable, disable, install, or upgrade events then
+hot-plug their MCP and verified `SKILL.md` surfaces into the current session.
+If first-use setup was disabled or failed, install the parent explicitly and
+restart Code once; later capability changes do not require a restart.
+
+Use `/use` or `/use status` to inspect the binary path/version, registry
+convergence, provider readiness, MCP connection/tool count, and verified/loaded
+Skills. `/use repair` prints non-destructive repair guidance only. It never
+runs an installer or changes extension state.
+
+The primary coding model intentionally does not receive raw `mcp__use_*`
+definitions. It sees a dedicated `use` worker through `task` and delegates
+application work to that worker. The worker can see only `mcp__use_*`; it
+cannot use shell, workspace, unrelated MCP, or recursive delegation tools.
+Managed Skills provide domain guidance but cannot widen this permission
+boundary. Ask naturally, for example, “Use Browser to inspect this page,”
+“Use Office to update this workbook,” or “Use OCR on this scan.” If a
+capability is unavailable, the worker reports the typed failure instead of
+falling back to another tool. The default Browser surface includes doctor and a
+bounded installer; missing managed Browser files can therefore be prepared
+inside the Use worker only after parent TUI confirmation.
+
+The projected routes are intentionally distinct:
+
+| Capability | Code surface | Provider behavior |
+| --- | --- | --- |
+| Browser | `mcp__use_browser__*` | Uses a discovered browser or requests the managed provider through a mutation that requires parent HITL. Closed-world session inspection can run without an extra prompt; navigation, network/open-world reads, input, clicks, and submits require HITL. |
+| Native Office | `mcp__use_office__*` | Uses the bounded native Office package kernel and its revision/conflict checks. Reads are closed-world; mutations and destructive saves require HITL. |
+| Built-in OCR | `mcp__use_ocr__*` | Runs the pinned `PP-OCRv6_small` detection and recognition models locally through ONNX Runtime. Doctor and extraction are closed-world read-only tools; source bytes never leave the device. |
+
+MCP behavior metadata is escalation-only. An operation is frictionless only
+when it declares `readOnlyHint=true`, `openWorldHint=false`, and is not
+destructive. Missing annotations, open-world access, mutation, destruction, or
+submit risk asks the parent TUI; a parent denial remains authoritative. Office
+mutations are never retried automatically. In particular,
+`use.office.outcome_unknown` means the change may already have been applied, so
+the worker preserves the evidence and stops.
+
+Structured MCP output is not flattened away: Code retains output schemas,
+`structuredContent`, images, text/blob resources, protocol metadata, and
+SHA-256-addressed bounded artifacts for the normal transcript/tool-result path.
 
 ## Interaction Model
 
@@ -302,6 +369,7 @@ These commands are available outside the asset-specific flows:
 | `/effort` | Change the active effort profile from `low` to `ultracode`. |
 | `/init` | Analyze the workspace and generate an `AGENTS.md` instruction file. |
 | `/config` | Edit the active ACL config in the built-in editor. |
+| `/use` / `/use status` / `/use repair` | Inspect live A3S Use capabilities or print explicit, non-mutating repair guidance. |
 | `/login` / `/logout` | Sign in or out of the configured OS account; login registers OS capabilities and the `runtime` tool. |
 | `/view` | Reopen the latest captured OS RemoteUI ViewLink. |
 | `/output` | Inspect retained tool calls for the current session. |

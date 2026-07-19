@@ -19,6 +19,7 @@ server worker、workflow runner 或产品 UI 时使用 SDK 包。
 | --- | --- | --- |
 | `a3s-code` | [AI45Lab/Code](https://github.com/AI45Lab/Code) | 运行时 crates，以及 Node.js 和 Python SDK。 |
 | `a3s code` | [A3S-Lab/Cli](https://github.com/A3S-Lab/Cli) | 驱动 A3S Code session 的终端编程 agent 应用。 |
+| A3S Use | [A3S-Lab/Use](https://github.com/A3S-Lab/Use) | 独立发布的 Browser、原生 Office、内置 OCR、可选 Office 兼容层，以及通过标准 MCP 与 Skill 投影到 Code 的签名外部应用能力。 |
 | `a3s-tui` | [A3S-Lab/TUI](https://github.com/A3S-Lab/TUI) | CLI 使用的终端 UI 框架，不是 agent runtime。 |
 | A3S monorepo | [A3S-Lab/a3s](https://github.com/A3S-Lab/a3s) | 产品文档、发布编排、submodule pin 与相关 crates。 |
 
@@ -92,6 +93,58 @@ filesystem-first 约定：
 这些文件让行为可审查，但不会绕过运行时边界。权限策略、确认提示、
 workspace 检查、工具可见性、响应契约与验证仍然通过 A3S Code 执行路径。
 
+## 通过 A3S Use 使用 Browser、Office 与 OCR
+
+A3S Use 是独立发布的 first-use 组件。终端接管前，`a3s code` 会复用健康安装；网络和
+自动准备策略允许时，会安装经过校验的 release。`--offline`、`A3S_OFFLINE=1` 和
+`A3S_NO_AUTO_INSTALL=1` 始终禁止该修改。准备失败不会阻止 Code 启动，并会通过 `/use`
+保持可诊断。runtime 与模型资源也可以显式提前准备：
+
+```bash
+a3s install use --source release
+a3s install use/browser
+
+# 可选的 OfficeCLI 兼容 provider；原生 Office 已内置在 Use 中。
+a3s install use/office
+
+# 安装或修复固定版本的本地 PP-OCRv6 模型。
+a3s install use/ocr
+a3s use ocr doctor --json
+```
+
+当 Use 主程序 ready 后，Code 会读取它带版本的 capability registry，
+并同时监听 generation 与内容 revision。之后 provider 变化，以及 extension 的安装、升级、
+启用或禁用，都会把对应 MCP 与已校验的 `SKILL.md` 热插拔到当前 session。如果启动时缺少
+首次准备被禁用或失败，则需要在显式安装后重启 Code 一次；之后的 capability 变化不需要重启。
+
+`/use` 与 `/use status` 会显示 Use binary 路径/版本、registry 收敛状态、provider
+readiness、MCP 连接与工具数量，以及 Skill 的校验/加载状态。`/use repair` 只打印非破坏性的
+修复指引，绝不会自动执行安装或改变 extension 状态。
+
+主 coding model 有意看不到原始 `mcp__use_*` definitions；它通过 `task` 看到专用的
+`use` worker，并把应用操作委派给该 worker。Use worker 只能看到 `mcp__use_*`，不能使用
+shell、workspace、无关 MCP 或递归委派工具。受管 Skill 只提供领域指引，不能扩大权限。
+用户可以直接说“用 Browser 检查这个页面”“用 Office 更新这个工作簿”或“对这张扫描图做
+OCR”，无需手写工具名。能力不可用时，worker 会返回 typed failure，不会换用其他工具兜底。
+默认 Browser surface 包含 doctor 和有界安装工具；缺少 managed Browser 时，只能在父
+TUI 确认后由 Use worker 请求安装。
+
+| 能力 | Code surface | Provider 与确认行为 |
+| --- | --- | --- |
+| Browser | `mcp__use_browser__*` | 使用已发现的 browser，或通过需父级 HITL 的 mutation 请求 managed provider。封闭会话内的只读检查可直接执行；导航、网络/open-world 读取、输入、点击与提交需要 HITL。 |
+| 原生 Office | `mcp__use_office__*` | 使用带 revision/conflict 检查的有界原生 Office package kernel。读取是 closed-world；修改与破坏性保存需要 HITL。 |
+| 内置 OCR | `mcp__use_ocr__*` | 通过 ONNX Runtime 在本地运行固定版本的 `PP-OCRv6_small` 检测与识别模型。doctor 与提取均为 closed-world read-only 工具，source bytes 不会离开设备。 |
+
+MCP behavior metadata 只能提升风险，不能降低父级策略。只有同时声明
+`readOnlyHint=true`、`openWorldHint=false` 且不是 destructive 的操作才无额外确认。
+缺少 annotations、open-world、mutation、destructive 或 submit 风险都会向父 TUI 请求
+确认；父级 deny 始终有效。Office mutation 绝不会被自动重试，尤其
+`use.office.outcome_unknown` 表示变更可能已经落地，worker 必须保留证据并停止。
+
+Code 也不会把 MCP 结果压扁成纯文本：`outputSchema`、`structuredContent`、图片、
+text/blob resources、协议 metadata 和带 SHA-256 的有界 artifacts 都会进入正常的
+transcript/tool-result 路径。
+
 ## Runtime Event Stream
 
 TUI 将 `AgentSession::stream()` 视为事实来源。运行时事件驱动 transcript 文本、
@@ -111,6 +164,7 @@ verification API 构建不同控制面。
 | `/model` | 在已配置模型和已登录账号模型之间切换。 |
 | `/init` | 分析 workspace 并生成 `AGENTS.md`。 |
 | `/config` | 在编辑器中打开 `.a3s/config.acl`。 |
+| `/use` / `/use status` / `/use repair` | 查看实时 A3S Use capability 状态，或打印不会自动执行的显式修复指引。 |
 | `/theme` | 切换代码高亮主题。 |
 | `/flow` | 选择或草拟 workflow asset，用于本地开发和 OS Workflow as a Service。 |
 | `/agent` | 选择 agent definition，用于本地开发或 OS deployment。 |
