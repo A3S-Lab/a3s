@@ -59,6 +59,9 @@ overload.
 - The bundled daemon audits incomplete-evidence escalations but does not provide
   a durable external L3 queue. A staged SDK consumer must persist and dispatch
   them when deeper work is required.
+- `PolicyEnvelope::verify` proves canonical policy bytes and exact desired-state
+  binding. The current daemon does not apply envelopes, restore them after
+  restart, or gate workload readiness on an applied digest.
 - Denies can be coarse: binary path and IP-based enforcement may affect more
   than one process on the same node.
 - L2/L3 read attacker-influenced content. The deterministic L1 floor and

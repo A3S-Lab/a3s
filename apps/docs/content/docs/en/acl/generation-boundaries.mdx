@@ -17,6 +17,7 @@ and structured while leaving sensitive value resolution to the host component.
 | Lists and objects | Values are generated inline. |
 | Function calls | Calls are preserved as syntax, for example `env("PROVIDER_API_KEY")`. |
 | Labels | Output writes every label in its native ACL block header. |
+| Document root shape | Root assignments remain assignments for every value kind; one-attribute blocks with distinct block and attribute names retain braces. |
 
 Native ACL is the only output mode. Neither SDK provides a label-as-attribute
 generator mode, and Node rejects generator options instead of silently

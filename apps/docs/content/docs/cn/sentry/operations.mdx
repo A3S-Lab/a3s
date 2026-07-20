@@ -54,5 +54,8 @@ L2 和 L3 在 ingest thread 之外的 worker pools 运行。需要调：
 - Bundled daemon 会 audit incomplete-evidence escalation，但不提供 durable
   external L3 queue。需要 deeper work 时，staged SDK consumer 必须负责持久化
   和 dispatch。
+- `PolicyEnvelope::verify` 证明 canonical policy bytes 与精确 desired-state
+  binding。当前 daemon 不会应用 envelope、在 restart 后恢复它，也不会根据
+  applied digest gate workload readiness。
 - Deny 可能比较粗：binary path 与 IP-based enforcement 可能影响同节点上的多个进程。
 - L2/L3 会读取攻击者影响的内容。确定性的 L1 底线和外部 kernel guard 仍然重要。
