@@ -9,9 +9,9 @@ component "acl" {
   package = "a3s-acl"
   path = "crates/acl"
   repository = "git@github.com:A3S-Lab/ACL.git"
-  revision = "00ef94826225c41268c99caf386c21c572e596c8"
+  revision = "5317e166222495585909d81f2caffdca90273c99"
   source = "git"
-  version = "0.2.2"
+  version = "0.3.0"
 }
 component "boot" {
   owner = "A3S-Lab/Boot"
@@ -26,7 +26,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "85f5d13104e5129a3b9be3f46456b5cb0099ba77"
+  revision = "1f597d5fb2159fd0fe6ef3efb69aab967ae0c7a0"
   source = "git"
   version = "0.1.0"
 }
@@ -53,7 +53,7 @@ component "gateway" {
   package = "a3s-gateway"
   path = "crates/gateway"
   repository = "git@github.com:A3S-Lab/Gateway.git"
-  revision = "d20c6eb22628d80c21daa5de42b362a768d99946"
+  revision = "f8500b89284e75342dd0286a0200b3a6e3f51e32"
   source = "git"
   version = "1.0.12"
 }
@@ -71,7 +71,7 @@ component "runtime" {
   package = "a3s-runtime"
   path = "crates/runtime"
   repository = "git@github.com:A3S-Lab/Runtime.git"
-  revision = "010588fc36c850b5ef86f1847c0a0e976f1eda82"
+  revision = "cfaac63af6f76beebdc64a1ec228cedc42bb98ec"
   source = "git"
   version = "0.2.0"
 }
@@ -80,7 +80,7 @@ component "sentry" {
   package = "a3s-sentry"
   path = "crates/sentry"
   repository = "git@github.com:A3S-Lab/Sentry.git"
-  revision = "2502afd000707b3d0758659b104c8f2ae8cd1fb7"
+  revision = "c1b45120662224fe1f3065d6888da0d291b4ff07"
   source = "git"
   version = "0.7.0"
 }
