@@ -9,6 +9,7 @@ const workbookMocks = vi.hoisted(() => ({
   allowEdit: undefined as boolean | undefined,
   calculateFormula: vi.fn(),
   mounts: 0,
+  onChange: undefined as ((sheets: WorkSpreadsheetContent['sheets']) => void) | undefined,
   sheets: undefined as WorkSpreadsheetContent['sheets'] | undefined,
 }));
 
@@ -17,7 +18,15 @@ vi.mock('@fortune-sheet/react', async () => {
   return {
     Workbook: React.forwardRef(
       (
-        { allowEdit, data }: { allowEdit?: boolean; data: WorkSpreadsheetContent['sheets'] },
+        {
+          allowEdit,
+          data,
+          onChange,
+        }: {
+          allowEdit?: boolean;
+          data: WorkSpreadsheetContent['sheets'];
+          onChange?: (sheets: WorkSpreadsheetContent['sheets']) => void;
+        },
         ref: React.ForwardedRef<{ calculateFormula: typeof workbookMocks.calculateFormula }>
       ) => {
         React.useEffect(() => {
@@ -27,6 +36,7 @@ vi.mock('@fortune-sheet/react', async () => {
           calculateFormula: workbookMocks.calculateFormula,
         }));
         workbookMocks.allowEdit = allowEdit;
+        workbookMocks.onChange = onChange;
         workbookMocks.sheets = data;
         return <div data-testid='fortune-sheet'>{data.map((sheet) => sheet.name).join(',')}</div>;
       }
@@ -40,6 +50,7 @@ describe('Work spreadsheet editor regressions', () => {
     workbookMocks.allowEdit = undefined;
     workbookMocks.calculateFormula.mockReset();
     workbookMocks.mounts = 0;
+    workbookMocks.onChange = undefined;
     workbookMocks.sheets = undefined;
   });
 
@@ -81,6 +92,17 @@ describe('Work spreadsheet editor regressions', () => {
         v: { v: '预览回归通过', m: '预览回归通过' },
       },
     ]);
+  });
+
+  it('keeps the FortuneSheet change callback stable across parent renders', () => {
+    const content = spreadsheetContent();
+    const onChange = vi.fn();
+    const { rerender } = render(<SpreadsheetEditor content={content} preview={false} onChange={onChange} />);
+    const firstCallback = workbookMocks.onChange;
+
+    rerender(<SpreadsheetEditor content={{ ...content }} preview={false} onChange={onChange} />);
+
+    expect(workbookMocks.onChange).toBe(firstCallback);
   });
 });
 

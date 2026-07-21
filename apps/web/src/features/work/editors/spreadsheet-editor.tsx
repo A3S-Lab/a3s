@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   TableProperties,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WorkspaceContextMenu } from '../../workspace/components/workspace-context-menu';
 import { spreadsheetAgentMenuItems } from '../components/work-editor-agent-menus';
 import { applySpreadsheetAgentProposalChanges } from '../work-agent-proposal-apply';
@@ -89,6 +89,8 @@ export function SpreadsheetEditor({
 }: SpreadsheetEditorProps) {
   const materializedContent = useMemo(() => refreshSpreadsheetPivotTables(content), [content]);
   const contentRef = useRef(materializedContent);
+  const onChangeRef = useRef(onChange);
+  const previewRef = useRef(preview);
   const workbookRef = useRef<WorkbookInstance>(null);
   const [ribbonTab, setRibbonTab] = useState<SpreadsheetRibbonTabId>('home');
   const [panel, setPanel] = useState<SpreadsheetWorkbookPanelView | null>(null);
@@ -98,6 +100,8 @@ export function SpreadsheetEditor({
     content.sheets.find((sheet) => sheet.status === 1)?.id ?? content.sheets.find((sheet) => !sheet.hide)?.id ?? '';
   const activeSheetIdRef = useRef(activeSheetId);
   contentRef.current = materializedContent;
+  onChangeRef.current = onChange;
+  previewRef.current = preview;
   const conditionalStylesBySheet = useMemo(
     () =>
       new Map(
@@ -228,6 +232,11 @@ export function SpreadsheetEditor({
     });
     return true;
   };
+  const handleWorkbookChange = useCallback((sheets: WorkSpreadsheetContent['sheets']) => {
+    if (previewRef.current) return;
+    const withCharts = reconcileSpreadsheetChartPreviews(contentRef.current, sheets);
+    onChangeRef.current(reconcileSpreadsheetPivots(contentRef.current, withCharts.sheets));
+  }, []);
   return (
     <section className={`work-spreadsheet-editor ${preview ? 'preview' : ''}`} aria-label='表格工作区'>
       {preview && <div className='work-preview-notice'>只读预览 · {content.sheets.length} 个工作表</div>}
@@ -378,12 +387,7 @@ export function SpreadsheetEditor({
           defaultRowHeight={24}
           defaultColWidth={96}
           hooks={workbookHooks}
-          onChange={(sheets) => {
-            if (!preview) {
-              const withCharts = reconcileSpreadsheetChartPreviews(contentRef.current, sheets);
-              onChange(reconcileSpreadsheetPivots(contentRef.current, withCharts.sheets));
-            }
-          }}
+          onChange={handleWorkbookChange}
         />
       </div>
       <WorkOfficeStatusBar
