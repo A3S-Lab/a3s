@@ -246,6 +246,40 @@ describe('codeApi memory visualization', () => {
   });
 });
 
+describe('codeApi local evolution', () => {
+  it('uses the review, materialization, rejection, reopen, and rollback routes', async () => {
+    const fetch = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ code: 200, data: {} }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    await codeApi.evolution();
+    await codeApi.scanEvolution();
+    await codeApi.materializeEvolution('skill/one');
+    await codeApi.rejectEvolution('skill/one', 'Not reusable');
+    await codeApi.reopenEvolution('skill/one');
+    await codeApi.rollbackEvolution('skill/one', 2);
+
+    expect(fetch.mock.calls.map(([path]) => path)).toEqual([
+      '/api/v1/evolution',
+      '/api/v1/evolution/scan',
+      '/api/v1/evolution/skill%2Fone/materialize',
+      '/api/v1/evolution/skill%2Fone/reject',
+      '/api/v1/evolution/skill%2Fone/reopen',
+      '/api/v1/evolution/skill%2Fone/rollback',
+    ]);
+    expect(requestJson(fetch, 1)).toEqual({});
+    expect(requestJson(fetch, 2)).toEqual({ force: false });
+    expect(requestJson(fetch, 3)).toEqual({ reason: 'Not reusable' });
+    expect(requestJson(fetch, 4)).toEqual({});
+    expect(requestJson(fetch, 5)).toEqual({ targetVersion: 2 });
+  });
+});
+
 describe('codeApi workspace code intelligence', () => {
   it('uses fixed-workspace routes with relative paths and UTF-16 positions', async () => {
     const fetch = vi.fn(
@@ -274,3 +308,7 @@ describe('codeApi workspace code intelligence', () => {
     ]);
   });
 });
+
+function requestJson(fetch: ReturnType<typeof vi.fn>, call: number): unknown {
+  return JSON.parse(String(fetch.mock.calls[call]?.[1]?.body));
+}

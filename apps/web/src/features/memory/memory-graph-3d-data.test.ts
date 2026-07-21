@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  activeMemoryGraphNodeId,
+  connectedMemoryGraphNodeIds,
   limitMemoryGraphFor3D,
   MEMORY_GRAPH_EDGE_RENDER_LIMIT,
   MEMORY_GRAPH_NODE_RENDER_LIMIT,
@@ -7,6 +9,16 @@ import {
 import type { MemoryGraphProjection, MemoryVisualNode } from './memory-projection';
 
 describe('3D memory graph limits', () => {
+  it('keeps a selected node sticky and otherwise highlights the hovered neighbourhood', () => {
+    const nodes = [graphNode('selected', 0), graphNode('hovered', 1), graphNode('neighbour', 2)];
+    const edges = [{ id: 1, from: 'hovered', to: 'neighbour', kind: 'mentions', weight: 1, memoryId: 'memory-0' }];
+
+    expect(activeMemoryGraphNodeId(nodes, 'selected', 'hovered')).toBe('selected');
+    const activeNodeId = activeMemoryGraphNodeId(nodes, undefined, 'hovered');
+    expect(activeNodeId).toBe('hovered');
+    expect(connectedMemoryGraphNodeIds(edges, activeNodeId)).toEqual(new Set(['hovered', 'neighbour']));
+  });
+
   it('keeps the selected node and its neighbourhood in a capped overview', () => {
     const nodes = Array.from({ length: MEMORY_GRAPH_NODE_RENDER_LIMIT + 10 }, (_, index) =>
       graphNode(`node-${index}`, index)

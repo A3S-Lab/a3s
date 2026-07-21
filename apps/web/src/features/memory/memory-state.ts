@@ -1,10 +1,11 @@
-import type { MemoryForgetSignal, MemoryOverview, MemoryTier } from '../../types/api';
+import type { EvolutionOverview, MemoryForgetSignal, MemoryOverview, MemoryTier } from '../../types/api';
 
 export type MemoryLoadPhase = 'idle' | 'loading' | 'ready' | 'error';
 export type MemoryViewMode = 'graph' | 'timeline';
 export type MemoryGraphScope = 'balanced' | 'complete';
 export type MemoryTimeRange = 'all' | '7d' | '30d' | '90d';
 export type MemoryLifecycleFilter = 'llm' | 'consolidated' | 'conflicts';
+export type MemorySection = 'memory' | 'evolution';
 
 export type MemoryInspectorSelection = { kind: 'memory'; id: string } | { kind: 'entity'; id: string } | null;
 
@@ -24,6 +25,14 @@ export interface MemoryState {
   memoryLifecycleFilters: MemoryLifecycleFilter[];
   memoryTimeRange: MemoryTimeRange;
   memoryInspector: MemoryInspectorSelection;
+  memorySection: MemorySection;
+  evolutionPhase: MemoryLoadPhase;
+  evolutionRefreshing: boolean;
+  evolutionError: string | null;
+  evolutionData: EvolutionOverview | null;
+  evolutionLastLoadedAt: number | null;
+  evolutionSelectedId: string | null;
+  evolutionBusyId: string | null;
 }
 
 export function createMemoryState(): MemoryState {
@@ -43,5 +52,13 @@ export function createMemoryState(): MemoryState {
     memoryLifecycleFilters: [],
     memoryTimeRange: 'all',
     memoryInspector: null,
+    memorySection: 'memory',
+    evolutionPhase: 'idle',
+    evolutionRefreshing: false,
+    evolutionError: null,
+    evolutionData: null,
+    evolutionLastLoadedAt: null,
+    evolutionSelectedId: null,
+    evolutionBusyId: null,
   };
 }

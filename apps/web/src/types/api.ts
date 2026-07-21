@@ -114,6 +114,122 @@ export interface MemoryOverview {
   pagination?: MemoryPagination;
 }
 
+export type EvolutionKind = 'preference' | 'skill' | 'okf';
+export type EvolutionCandidateState = 'observing' | 'ready' | 'materialized' | 'rejected' | 'rolledBack';
+
+export interface EvolutionEvidence {
+  id: string;
+  memoryId: string;
+  sessionId?: string | null;
+  source: string;
+  content: string;
+  reason?: string | null;
+  timestamp: string;
+  importance: number;
+  confidence: number;
+  conflictsWith: string[];
+  explicitSignal: boolean;
+}
+
+export interface EvolutionVersion {
+  version: number;
+  createdAt: string;
+  assetPath: string;
+  snapshotPath: string;
+  contentHash: string;
+  evidenceIds: string[];
+  automatic: boolean;
+}
+
+export interface EvolutionAuditEvent {
+  action: 'ready' | 'materialized' | 'updated' | 'rejected' | 'reopened' | 'rolledBack' | 'activated' | 'deactivated';
+  at: string;
+  version?: number | null;
+  note?: string | null;
+  recoveryPath?: string | null;
+}
+
+export interface EvolutionCandidate {
+  id: string;
+  kind: EvolutionKind;
+  patternKey: string;
+  patternAliases: string[];
+  title: string;
+  summary: string;
+  instructions: string[];
+  state: EvolutionCandidateState;
+  evidence: EvolutionEvidence[];
+  occurrences: number;
+  distinctSessions: number;
+  confidence: number;
+  importance: number;
+  maturity: number;
+  hasConflicts: boolean;
+  updateAvailable: boolean;
+  activationPending: boolean;
+  createdAt: string;
+  updatedAt: string;
+  readyAt?: string | null;
+  materializedAt?: string | null;
+  rejectedAt?: string | null;
+  rolledBackAt?: string | null;
+  rejectionReason?: string | null;
+  assetPath?: string | null;
+  currentVersion?: number | null;
+  versions: EvolutionVersion[];
+  audit: EvolutionAuditEvent[];
+}
+
+export interface EvolutionOverview {
+  schema: string;
+  revision: number;
+  root: string;
+  workspaceRoot: string;
+  skillRoot: string;
+  okfRoot: string;
+  updatedAt: string;
+  stats: {
+    total: number;
+    observing: number;
+    ready: number;
+    materialized: number;
+    rejected: number;
+    rolledBack: number;
+    updateAvailable: number;
+    activationPending: number;
+    byKind: Record<string, number>;
+  };
+  candidates: EvolutionCandidate[];
+  policy: {
+    readyEvidence: number;
+    autoMaterializeEvidence: number;
+    autoMaterializeSessions: number;
+    autoMaterializeConfidence: number;
+    localOnly: boolean;
+    reviewSupported: boolean;
+  };
+}
+
+export interface EvolutionMutationResult {
+  candidate: EvolutionCandidate;
+  requiresSessionReload: boolean;
+  recoveryPath?: string | null;
+}
+
+export interface RebuiltCodeSession {
+  sessionId: string;
+  workspace: string;
+  skillDirCount: number;
+  builtinSkillActive: boolean;
+  capabilitySkillActive: boolean;
+  runtimeToolActive: boolean;
+}
+
+export interface EvolutionMutationResponse {
+  result: EvolutionMutationResult;
+  rebuiltSessions: RebuiltCodeSession[];
+}
+
 export interface OsAccount {
   configured: boolean;
   address?: string | null;

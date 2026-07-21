@@ -3,19 +3,19 @@ import type { MemoryForgetSignal, MemoryTier } from '../../types/api';
 const memoryTypeLabels: Record<string, string> = {
   episodic: '经历',
   semantic: '知识',
-  procedural: '流程',
-  working: '工作',
+  procedural: '做法',
+  working: '当前任务',
   memory: '记忆',
 };
 
 const entityKindLabels: Record<string, string> = {
   source: '来源',
   tag: '标签',
-  provider: '提供方',
-  session: '会话',
-  'ctx-event': '上下文事件',
+  provider: '服务',
+  session: '对话',
+  'ctx-event': '对话',
   date: '日期',
-  prompt: '提示',
+  prompt: '提问',
   error: '错误',
   tool: '工具',
   topic: '主题',
@@ -26,31 +26,17 @@ const entityKindLabels: Record<string, string> = {
 };
 
 const memorySourceLabels: Record<string, string> = {
-  success: '成功任务',
-  failure: '失败任务',
-  project_fact: '项目事实',
-  workflow: '工作流程',
-  decision: '决策',
-  preference: '用户偏好',
-  sleep: '整理归并',
-  consolidation: '整理归并',
-  llm_extractor: '自动提取',
-  ctx: '上下文记录',
-  memory: '记忆记录',
-};
-
-const relationKindLabels: Record<string, string> = {
-  from: '来源',
-  via: '来源',
-  tagged: '标签',
-  touches: '涉及文件',
-  used: '使用工具',
-  'co-occurs': '共同出现',
-  aliases: '别名',
-  'resulted-in': '产生结果',
-  'in-session': '所属会话',
-  references: '引用',
-  mentions: '提及',
+  success: '完成的任务',
+  failure: '问题记录',
+  project_fact: '项目信息',
+  workflow: '任务记录',
+  decision: '决定',
+  preference: '偏好',
+  sleep: '自动整理',
+  consolidation: '自动整理',
+  llm_extractor: 'A3S 保存',
+  ctx: '对话',
+  memory: '手动记录',
 };
 
 const hiddenMemoryTags = new Set([
@@ -78,9 +64,9 @@ const memoryTagLabels: Record<string, string> = {
 };
 
 const systemTagEntityLabels: Record<string, string> = {
-  llm: '自动提取',
-  extracted: '提取标记',
-  consolidated: '已合并重复',
+  llm: 'A3S 保存',
+  extracted: 'A3S 保存',
+  consolidated: '已去重',
   conflict: '待处理冲突',
   keep: '正常保留',
   pinned: '重点保留',
@@ -88,19 +74,15 @@ const systemTagEntityLabels: Record<string, string> = {
 };
 
 export function memoryTypeLabel(type: string): string {
-  return memoryTypeLabels[type] ?? type;
+  return memoryTypeLabels[type] ?? '其他';
 }
 
 export function entityKindLabel(kind: string): string {
-  return entityKindLabels[kind] ?? kind;
+  return entityKindLabels[kind] ?? '相关内容';
 }
 
 export function memorySourceLabel(source: string): string {
-  return memorySourceLabels[source] ?? source;
-}
-
-export function relationKindLabel(kind: string): string {
-  return relationKindLabels[kind] ?? kind;
+  return memorySourceLabels[source] ?? '相关记录';
 }
 
 export function memoryTagLabel(tag: string): string | null {
@@ -125,7 +107,7 @@ export function tierLabel(tier: MemoryTier): string {
 
 export function forgetSignalLabel(signal: MemoryForgetSignal): string {
   if (signal === 'protected') return '重点保留';
-  if (signal === 'candidate') return '建议清理';
+  if (signal === 'candidate') return '可清理';
   if (signal === 'cooling') return '观察中';
   return '正常保留';
 }

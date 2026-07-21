@@ -27,6 +27,9 @@ import type {
   SkillCatalog,
   TurnQueue,
   MemoryOverview,
+  EvolutionOverview,
+  EvolutionCandidate,
+  EvolutionMutationResponse,
   PluginActivityCatalog,
   PluginActivityContent,
   PluginMarketplaceCatalog,
@@ -177,6 +180,33 @@ function loadMemoryPage(offset: number, includeGraph: boolean, signal?: AbortSig
 export const codeApi = {
   health: () => apiRequest<HealthResponse>('/api/v1/health'),
   memory: loadMemoryOverview,
+  evolution: (signal?: AbortSignal) => apiRequest<EvolutionOverview>('/api/v1/evolution', { signal }),
+  scanEvolution: (signal?: AbortSignal) =>
+    apiRequest<{ observed: number; overview: EvolutionOverview }>('/api/v1/evolution/scan', {
+      method: 'POST',
+      signal,
+      ...jsonBody({}),
+    }),
+  materializeEvolution: (id: string, force = false) =>
+    apiRequest<EvolutionMutationResponse>(`/api/v1/evolution/${encodeURIComponent(id)}/materialize`, {
+      method: 'POST',
+      ...jsonBody({ force }),
+    }),
+  rejectEvolution: (id: string, reason?: string) =>
+    apiRequest<EvolutionCandidate>(`/api/v1/evolution/${encodeURIComponent(id)}/reject`, {
+      method: 'POST',
+      ...jsonBody({ reason }),
+    }),
+  reopenEvolution: (id: string) =>
+    apiRequest<EvolutionCandidate>(`/api/v1/evolution/${encodeURIComponent(id)}/reopen`, {
+      method: 'POST',
+      ...jsonBody({}),
+    }),
+  rollbackEvolution: (id: string, targetVersion?: number) =>
+    apiRequest<EvolutionMutationResponse>(`/api/v1/evolution/${encodeURIComponent(id)}/rollback`, {
+      method: 'POST',
+      ...jsonBody({ targetVersion }),
+    }),
   osAccount: () => apiRequest<OsAccount>('/api/v1/os/account'),
   osLogin: () =>
     apiRequest<OsAccount>('/api/v1/os/login/browser', {

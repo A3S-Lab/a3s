@@ -6,7 +6,7 @@ import type {
   MemoryOverview,
   MemoryTier,
 } from '../../types/api';
-import { entityNameLabel } from './memory-format';
+import { entityNameLabel, memoryTagLabel } from './memory-format';
 import type { MemoryGraphScope, MemoryLifecycleFilter, MemoryTimeRange } from './memory-state';
 
 export interface MemoryFilters {
@@ -145,7 +145,10 @@ export function projectMemoryGraph(
     shownLinkedEntityIds.add(selectedEntityId);
   }
   const allEntities = data.graph.entities.filter(
-    (entity) => allLinkedEntityIds.has(entity.id) && entity.memoryIds.some((memoryId) => visibleMemoryIds.has(memoryId))
+    (entity) =>
+      (entity.kind !== 'tag' || memoryTagLabel(entity.name) !== null) &&
+      allLinkedEntityIds.has(entity.id) &&
+      entity.memoryIds.some((memoryId) => visibleMemoryIds.has(memoryId))
   );
   allEntities.sort((left, right) => {
     if (left.id === selectedEntityId) return -1;

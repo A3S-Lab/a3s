@@ -15,6 +15,28 @@ interface GraphNeighbour {
   weight: number;
 }
 
+export function activeMemoryGraphNodeId(
+  nodes: readonly MemoryVisualNode[],
+  selectedNodeId?: string,
+  hoveredNodeId?: string
+): string | undefined {
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  if (selectedNodeId && nodeIds.has(selectedNodeId)) return selectedNodeId;
+  if (hoveredNodeId && nodeIds.has(hoveredNodeId)) return hoveredNodeId;
+  return undefined;
+}
+
+export function connectedMemoryGraphNodeIds(edges: readonly MemoryVisualEdge[], activeNodeId?: string): Set<string> {
+  const connected = new Set<string>();
+  if (!activeNodeId) return connected;
+  connected.add(activeNodeId);
+  for (const edge of edges) {
+    if (edge.from === activeNodeId) connected.add(edge.to);
+    if (edge.to === activeNodeId) connected.add(edge.from);
+  }
+  return connected;
+}
+
 export function selectedMemoryGraphNodeId(
   graph: MemoryGraphProjection,
   selectedMemoryId?: string,

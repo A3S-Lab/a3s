@@ -36,15 +36,14 @@ describe('MemoryTimeline', () => {
     if (!timeline) throw new Error('Timeline did not render');
     expect(timeline.querySelectorAll('.memory-timeline-entry')).toHaveLength(60);
     expect(timeline.querySelectorAll('.memory-timeline-copy > p')).toHaveLength(0);
-    expect(timeline.querySelector('.memory-timeline-pagination')).toHaveTextContent('已显示 60 / 65 条');
-    expect(timeline.querySelector('.memory-source')).toHaveTextContent('用户偏好');
+    expect(timeline.querySelector('.memory-timeline-pagination')).toHaveTextContent('60 / 65 条');
+    expect(timeline.querySelector('.memory-source')).toHaveTextContent('偏好');
 
     const continueButton = timeline.querySelector('.memory-timeline-pagination button');
     expect(continueButton).not.toBeNull();
     fireEvent.click(continueButton as HTMLButtonElement);
 
     expect(timeline.querySelectorAll('.memory-timeline-entry')).toHaveLength(65);
-    expect(timeline.querySelector('.memory-timeline-pagination')).toHaveTextContent('已显示 65 / 65 条');
-    expect(timeline.querySelector('.memory-timeline-pagination button')).not.toBeInTheDocument();
+    expect(timeline.querySelector('.memory-timeline-pagination')).not.toBeInTheDocument();
   });
 });
