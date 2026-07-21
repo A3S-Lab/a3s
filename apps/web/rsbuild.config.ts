@@ -26,8 +26,8 @@ export default defineConfig({
         to: 'vendor/pptxgen.bundle.js',
       },
       {
-        from: './node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
-        to: 'vendor/pdf.worker.min.mjs',
+        from: './node_modules/@embedpdf/pdfium/dist/pdfium.wasm',
+        to: 'vendor/embedpdf/pdfium.wasm',
       },
     ],
     distPath: {
