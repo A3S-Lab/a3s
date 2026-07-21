@@ -1,0 +1,26 @@
+.work-document-caption {
+  margin: 8px 0 16px;
+  color: #4d5668;
+  font-size: 0.9em;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.work-document-caption::before {
+  content: attr(data-caption-label) " " attr(data-caption-number) "　";
+  color: #30394b;
+  font-weight: 650;
+}
+
+.work-document-cross-reference {
+  padding: 0 1px;
+  border-bottom: 1px dotted #8da9dd;
+  color: #245fc4;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.work-document-cross-reference[data-reference-orphaned="true"] {
+  border-bottom-color: #d69b9b;
+  color: #b53b3b;
+}

@@ -1,0 +1,181 @@
+.work-sidebar-folders {
+  max-height: 176px;
+  margin-top: 16px;
+  padding-top: 14px;
+  overflow-y: auto;
+  border-top: 1px solid var(--a3s-line);
+}
+
+.work-sidebar-folders button {
+  flex: 0 0 32px;
+}
+
+.work-sidebar-folders button span {
+  overflow: hidden;
+  flex: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-sidebar-folders button svg {
+  color: #d49b35;
+}
+
+.work-sidebar-folders button.active {
+  color: var(--a3s-blue);
+  font-weight: 650;
+}
+
+.work-folder-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.work-folder-card {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  height: 66px;
+  align-items: center;
+  border: 1px solid var(--a3s-line);
+  border-radius: 11px;
+  background: var(--a3s-panel);
+}
+
+.work-folder-card:hover,
+.work-folder-card:focus-within {
+  border-color: var(--a3s-line-strong);
+  box-shadow: 0 7px 18px rgb(24 31 48 / 6%);
+}
+
+.work-folder-card > button {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  padding: 0 38px 0 13px;
+  border: 0;
+  background: transparent;
+  color: #d49b35;
+  text-align: left;
+  cursor: pointer;
+}
+
+.work-folder-card > button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.work-folder-card > button > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.work-folder-card strong {
+  overflow: hidden;
+  color: var(--a3s-ink);
+  font-size: 11px;
+  font-weight: 640;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-folder-card small {
+  margin-top: 3px;
+  color: var(--a3s-faint);
+  font-size: 9px;
+}
+
+.work-folder-card > details {
+  position: absolute;
+  right: 7px;
+}
+
+.work-folder-card summary {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--a3s-faint);
+  cursor: pointer;
+  list-style: none;
+}
+
+.work-folder-card summary:hover {
+  background: var(--a3s-panel-strong);
+  color: var(--a3s-ink);
+}
+
+.work-folder-card details > div {
+  position: absolute;
+  z-index: 15;
+  top: 32px;
+  right: 0;
+  display: flex;
+  width: 150px;
+  flex-direction: column;
+  padding: 6px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 9px;
+  background: var(--a3s-panel);
+  box-shadow: var(--a3s-shadow-soft);
+}
+
+.work-folder-card details button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--a3s-ink);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.work-folder-card details button:hover {
+  background: var(--a3s-panel-soft);
+}
+
+.work-folder-card details button.danger {
+  color: var(--a3s-red);
+}
+
+.work-move-control {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 7px;
+  border-radius: 6px;
+  color: var(--a3s-ink);
+  font-size: 11px;
+}
+
+.work-move-control select {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 1420px) {
+  .work-folder-grid {
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
+  }
+}
+
+@media (max-width: 1120px) {
+  .work-folder-grid {
+    grid-template-columns: repeat(3, minmax(145px, 1fr));
+  }
+}

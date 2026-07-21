@@ -1,0 +1,560 @@
+.hangar-preview {
+  display: grid;
+  min-width: 0;
+  min-height: 390px;
+  grid-template-rows: 58px minmax(0, 1fr) 42px;
+  background: #061014;
+}
+
+.hangar-preview__header,
+.hangar-preview__footer {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 17px;
+  border-bottom: 1px solid var(--lab-line);
+  background: rgb(7 17 21 / 88%);
+}
+
+.hangar-preview__header > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.hangar-preview__kicker {
+  color: var(--a3s-blue);
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+}
+
+.hangar-preview__header strong {
+  overflow: hidden;
+  color: #e4eef0;
+  font-size: 14px;
+  font-weight: 610;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hangar-preview__status {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--lab-muted);
+  font-family: var(--mono-font);
+  font-size: 9px;
+}
+
+.hangar-preview__status.is-ready {
+  color: var(--lab-green);
+}
+
+.hangar-preview__status.is-loading {
+  color: var(--a3s-blue);
+}
+
+.hangar-preview__status.is-unavailable {
+  color: var(--lab-orange);
+}
+
+.hangar-preview__viewport {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, rgb(67 123 142 / 18%), transparent 34%),
+    linear-gradient(180deg, #08161b 0%, #061014 66%, #09171b 100%);
+  isolation: isolate;
+}
+
+.hangar-preview__stage-grid {
+  position: absolute;
+  z-index: 0;
+  right: -20%;
+  bottom: -38%;
+  left: -20%;
+  height: 72%;
+  background-image:
+    linear-gradient(rgb(83 141 153 / 15%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(83 141 153 / 15%) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: linear-gradient(180deg, transparent 2%, #000 48%);
+  transform: perspective(540px) rotateX(62deg);
+  transform-origin: center bottom;
+}
+
+.hangar-preview__viewport::before,
+.hangar-preview__viewport::after {
+  position: absolute;
+  z-index: 1;
+  content: '';
+  pointer-events: none;
+}
+
+.hangar-preview__viewport::before {
+  inset: 16px;
+  border: 1px solid rgb(108 163 255 / 12%);
+}
+
+.hangar-preview__viewport::after {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 28%;
+  background: linear-gradient(180deg, transparent, rgb(4 10 13 / 65%));
+}
+
+.hangar-preview__content {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+}
+
+.hangar-preview__content > * {
+  width: 100%;
+  height: 100%;
+}
+
+.hangar-scene-preview,
+.hangar-scene-preview__mount {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.hangar-scene-preview__error {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  left: 18px;
+  padding: 9px 11px;
+  border: 1px solid rgb(241 113 113 / 34%);
+  border-radius: 7px;
+  background: rgb(32 12 15 / 86%);
+  color: #e5acac;
+  font-family: var(--mono-font);
+  font-size: 9px;
+  text-align: center;
+}
+
+.hangar-preview__empty {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  width: min(360px, calc(100% - 48px));
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--lab-muted);
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.hangar-preview__empty-icon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  margin-bottom: 4px;
+  place-items: center;
+  border: 1px solid var(--lab-line-strong);
+  border-radius: 50%;
+  color: var(--a3s-blue);
+  background: color-mix(in srgb, var(--a3s-blue) 6%, var(--lab-panel));
+}
+
+.hangar-preview__empty strong {
+  color: #c9dadd;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hangar-preview__empty > span:last-child {
+  max-width: 310px;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.hangar-preview__axis {
+  position: absolute;
+  z-index: 4;
+  top: 25px;
+  right: 26px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 7px;
+}
+
+.hangar-preview__axis i {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-right: 1px solid var(--lab-cyan);
+  border-bottom: 1px solid var(--a3s-blue);
+  transform: rotate(-45deg);
+  opacity: 0.58;
+}
+
+.hangar-preview__axis span:first-child {
+  position: absolute;
+  top: -2px;
+  right: 2px;
+}
+
+.hangar-preview__axis span:last-child {
+  position: absolute;
+  bottom: -1px;
+  left: 1px;
+}
+
+.hangar-preview__reticle {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  width: 82px;
+  height: 82px;
+  border: 1px solid rgb(100 220 229 / 9%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.hangar-preview__reticle::before,
+.hangar-preview__reticle::after,
+.hangar-preview__reticle i {
+  position: absolute;
+  background: rgb(100 220 229 / 14%);
+  content: '';
+}
+
+.hangar-preview__reticle::before {
+  top: 50%;
+  right: -18px;
+  left: -18px;
+  height: 1px;
+}
+
+.hangar-preview__reticle::after {
+  top: -18px;
+  bottom: -18px;
+  left: 50%;
+  width: 1px;
+}
+
+.hangar-preview__reticle i {
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.hangar-preview__identity {
+  position: absolute;
+  z-index: 4;
+  bottom: 22px;
+  left: 24px;
+  display: flex;
+  min-width: 240px;
+  flex-direction: column;
+  padding-left: 12px;
+  border-left: 2px solid var(--a3s-blue);
+}
+
+.hangar-preview__identity span {
+  color: var(--a3s-blue);
+  font-family: var(--mono-font);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.hangar-preview__identity strong {
+  margin-top: 2px;
+  color: #edf5f6;
+  font-size: clamp(30px, 4vw, 50px);
+  font-weight: 420;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.hangar-preview__identity small {
+  margin-top: 7px;
+  color: var(--lab-muted);
+  font-family: var(--mono-font);
+  font-size: 9px;
+}
+
+.hangar-preview__telemetry {
+  position: absolute;
+  z-index: 4;
+  right: 24px;
+  bottom: 22px;
+  display: grid;
+  width: min(330px, 42%);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  border: 1px solid var(--lab-line);
+  background: rgb(7 17 21 / 76%);
+  backdrop-filter: blur(10px);
+}
+
+.hangar-preview__telemetry div {
+  min-width: 0;
+  padding: 9px 10px;
+}
+
+.hangar-preview__telemetry div + div {
+  border-left: 1px solid var(--lab-line);
+}
+
+.hangar-preview__telemetry dt,
+.hangar-preview__telemetry dd {
+  overflow: hidden;
+  margin: 0;
+  font-family: var(--mono-font);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hangar-preview__telemetry dt {
+  color: var(--lab-faint);
+  font-size: 7px;
+  letter-spacing: 0.1em;
+}
+
+.hangar-preview__telemetry dd {
+  margin-top: 4px;
+  color: #b8cbce;
+  font-size: 8px;
+}
+
+.hangar-preview__footer {
+  border-top: 1px solid var(--lab-line);
+  border-bottom: 0;
+  color: var(--lab-muted);
+  font-size: 9px;
+}
+
+.hangar-preview__footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.hangar-preview__footer svg {
+  color: var(--lab-cyan);
+}
+
+.hangar-preview__footer button {
+  padding: 4px 7px;
+  border: 1px solid var(--lab-line);
+  border-radius: 6px;
+  background: transparent;
+  color: #9eb2b6;
+  font-size: 9px;
+}
+
+.hangar-airframe-selector {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--lab-line);
+  background: #081216;
+}
+
+.hangar-airframe-selector > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 9px;
+}
+
+.hangar-airframe-selector > header div {
+  display: flex;
+  flex-direction: column;
+}
+
+.hangar-airframe-selector > header span {
+  color: var(--a3s-blue);
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.hangar-airframe-selector > header strong {
+  margin-top: 3px;
+  color: #d6e4e6;
+  font-size: 12px;
+  font-weight: 610;
+}
+
+.hangar-airframe-selector > header p {
+  overflow: hidden;
+  max-width: 60%;
+  margin: 0;
+  color: var(--lab-muted);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hangar-airframe-rail {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  grid-template-columns: repeat(5, minmax(126px, 1fr));
+  gap: 6px;
+  padding-bottom: 2px;
+}
+
+.hangar-airframe-rail button {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 64px;
+  grid-template-columns: 22px minmax(0, 1fr) 15px;
+  align-items: center;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid var(--lab-line);
+  border-radius: 7px;
+  background: #071115;
+  text-align: left;
+  transition: 150ms ease;
+}
+
+.hangar-airframe-rail button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--a3s-blue) 52%, var(--lab-line));
+  transform: translateY(-1px);
+}
+
+.hangar-airframe-rail button.is-selected {
+  border-color: var(--a3s-blue);
+  background: color-mix(in srgb, var(--a3s-blue) 8%, #071115);
+  box-shadow: inset 0 -2px 0 var(--a3s-blue);
+}
+
+.hangar-airframe-rail button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.hangar-airframe-rail__index {
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 8px;
+}
+
+.hangar-airframe-rail__copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.hangar-airframe-rail__copy strong {
+  overflow: hidden;
+  color: #cbdadd;
+  font-size: 10px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hangar-airframe-rail__copy small,
+.hangar-airframe-rail code {
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hangar-airframe-rail code {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  margin: 0;
+  color: color-mix(in srgb, var(--a3s-blue) 72%, var(--lab-faint));
+}
+
+.hangar-airframe-rail button > svg {
+  color: var(--lab-faint);
+}
+
+.hangar-airframe-rail button.is-selected > svg {
+  color: var(--a3s-blue);
+}
+
+@media (max-width: 1180px) {
+  .hangar-preview__telemetry {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .hangar-preview {
+    min-height: 540px;
+  }
+}
+
+@media (min-width: 961px) {
+  .hangar-airframe-rail {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .hangar-airframe-rail button {
+    min-height: 54px;
+    grid-template-columns: minmax(0, 1fr) 13px;
+    gap: 4px;
+    padding: 7px;
+  }
+
+  .hangar-airframe-rail__index,
+  .hangar-airframe-rail__copy small {
+    display: none;
+  }
+
+  .hangar-airframe-rail code {
+    top: 4px;
+    right: 5px;
+  }
+}
+
+@media (min-width: 961px) and (max-height: 800px) {
+  .hangar-airframe-selector {
+    padding: 8px 10px 9px;
+  }
+
+  .hangar-airframe-selector > header {
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .hangar-airframe-selector > header p {
+    display: none;
+  }
+}

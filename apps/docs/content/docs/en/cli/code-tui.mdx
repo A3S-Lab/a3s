@@ -24,8 +24,10 @@ a3s code update
 ```
 
 `a3s code resume` without an id resumes the newest saved session in the current
-workspace. `a3s code update` enters the same updater path as `/update` inside
-the TUI.
+workspace. On exit, the CLI prints the complete
+`a3s code resume <session-id>` command and highlights it when color output is
+enabled. `a3s code update` enters the same updater path as `/update` inside the
+TUI.
 
 ## Config Discovery
 
@@ -42,24 +44,142 @@ On first launch, when no config is found, the CLI creates a starter
 credentials should be supplied through environment variables or a host secret
 system rather than committed into repository files.
 
-Project-local config can set model/provider choices, OS endpoint, `flow_dir`,
-`agent_dir`, `mcp_dir`, `skill_dir`, memory and session storage, delegation,
-and asset paths.
+Project-local config can set model/provider choices, an optional A3S OS endpoint
+with `os = "https://..."`, `flow_dir`, `agent_dir`, `mcp_dir`, `skill_dir`,
+memory and session storage, delegation, and asset paths.
+
+## Local Account Models
+
+`/model` includes configured models plus tabs for locally available Claude
+Code, Codex, Kimi, WorkBuddy, and A3S OS accounts. A Kimi tab appears when Kimi
+Desktop or Kimi Code is signed in. A3S prefers Kimi Desktop's Daimon model
+configuration and coding API key, then falls back to Kimi Code OAuth state
+under `~/.kimi-code` or `~/.kimi`.
+
+Kimi credentials remain in Kimi-owned files: A3S reads them only to authenticate
+model requests and never copies them into `config.acl`, command output, or logs.
+OAuth refresh updates that Kimi credential file under a lock with atomic
+replacement. The selected route is persisted as `kimi/<model>` and is restored
+with the session's credential source.
 
 ## Session Lifecycle
 
-Sessions are persisted under the current workspace's TUI session store. On
-exit, the CLI prints the exact resume command for the current session.
+Core session snapshots are persisted under
+`.a3s/tui/sessions/v1/sessions` in the current workspace. TUI-owned per-session
+state is stored alongside them under `.a3s/tui/session-state/v1`. Resume restores
+the selected model and credential source, effort profile, execution mode
+(`default`, `plan`, or `auto`), and syntax theme instead of resetting them to
+launch defaults.
+
+When exit interrupts a durable `/goal`, the TUI saves it as paused. Resuming the
+session opens a startup picker with `Resume goal` and `Leave paused`. The first
+choice continues the next goal iteration without changing the restored execution
+mode. The second enters the session with the goal still paused; run
+`/goal resume` when it should continue.
+
+`/permissions` opens the exact grant catalog without interrupting a running
+turn. Session and project grants are visibly separate and searchable by tool or
+canonical arguments. Enter opens full details; `X` or Delete must be repeated
+before revocation. Project revocation atomically rewrites
+`.a3s/permissions.acl` through `a3s-acl`. Revocation changes future checks and
+does not cancel tools already running.
 
 The TUI can also branch and reset state from inside the session:
 
 | Command | Effect |
 | --- | --- |
-| `/fork` | Creates a new saved session from the current transcript. |
+| `/fork` / `/fork session` | Creates a new saved session from the current transcript. |
+| `/fork worktree` | Creates an isolated Git branch/worktree, transfers current workspace content without changing the real index, and copies the complete session. |
+| `/rewind` | Forks the pre-turn conversation and reverses the last completed turn's file patch only when a whole-patch conflict check succeeds. |
+| `/relay` | Opens the multi-session/background-work dashboard; native rows show state, model, age, unfinished runs, and background agents, while external rows relay their latest task. |
+| `/copy` / `/copy transcript` | Copies the latest assistant source Markdown or the complete semantic session with explicit native/OSC 52 delivery feedback. |
+| `/export [path]` | Atomically creates a private Markdown session snapshot inside the workspace and refuses to overwrite an existing target. |
 | `/clear` | Starts a fresh conversation in the current TUI surface. |
 | `/compact` | Summarizes older conversation context before continuing. |
 | `/sleep` | Consolidates useful facts into long-term memory. |
+| `/goal resume` | Continues a durable goal that was left paused at startup. |
+| `/auto` | Selects non-interactive Auto mode for future submissions. Calls run only while every check keeps them inside the active boundary. Any confirmation request, including a tool-owned request, is rejected before HITL. Running and queued turns retain their submission-time mode. |
 | `/exit` | Persists session state and quits. |
+
+## Execution Modes And Local Sandbox
+
+The TUI separates process confinement from approval routing:
+
+| Mode | Inside the established boundary | Outside the boundary |
+| --- | --- | --- |
+| Default | Workspace writes, governed orchestration, and sandboxed Bash run without repeated prompts. | Explicit host escalation, missing-sandbox Bash, protected control metadata, mutating Git operations, and annotated external side effects require approval. |
+| Plan | Read-only discovery tools remain available. | File mutation, Bash, and escalation are denied. Approved implementation starts as a new Default turn. |
+| Auto | Uses the same workspace and process sandbox as Default. | Never enters HITL; escape requests and missing-sandbox Bash fail closed. |
+
+Permission and confirmation routing are frozen when Core admits a run.
+Delegated, parallel, Skill, and background descendants keep that exact mode
+snapshot after the composer advances to another turn.
+
+Before terminal takeover, `a3s code` reuses a verified user-wide managed SRT
+installation or the immutable support tree shipped in an official release.
+Source builds can prepare the exact supported package when networking and
+automatic first-use setup are allowed. Preparation requires Node.js 20.11 or
+newer and npm, disables package lifecycle scripts, validates registry integrity
+and the complete installed tree, and atomically activates the runtime under the
+A3S component data root. A global `srt` installation is neither required nor
+selected.
+
+The JavaScript payload does not replace native OS facilities. macOS requires
+`sandbox-exec` and `ripgrep`; Linux requires `bubblewrap`, `socat`, `ripgrep`,
+and permitted unprivileged user namespaces. Homebrew declares these
+dependencies; direct-archive users provide them. Windows requires the one-time
+elevated machine sandbox setup. The TUI performs a 15-second command probe
+through the real OS boundary before marking the sandbox ready.
+
+The sandbox denies command networking, local listeners, and Unix sockets;
+limits writes to the active workspace and a private scratch directory;
+protects repository and agent-control metadata; blocks common credential
+reads; removes shell, dynamic-loader, Node, Python, Ruby, Perl, Lua, and JVM
+bootstrap injection variables; denies existing `.env*` files at every governed
+source-tree depth; masks pre-existing multi-link source files for reads and
+writes; and passes a scrubbed environment. Stdout and stderr remain separate
+under one global byte limit. A command deadline covers
+both output draining and process exit, and timeout or cancellation kills the
+Unix process group, including descendants. There is no unsandboxed fallback:
+offline mode and `A3S_NO_AUTO_INSTALL=1` can reuse a verified installation but
+cannot prepare one. If setup is unavailable or fails, the startup warning
+explains that Default will ask for exact host Bash execution and Auto will deny
+Bash.
+
+In-process workspace tools use the corresponding Core credential policy.
+Direct and range reads, writes, edits, patches, and both manifest-backed and
+fallback grep cannot bypass the command boundary. Explicit sensitive targets
+fail closed, directory grep omits denied files, and source-tree hardlink
+aliases are rejected before a write can truncate them. Ordinary package-store
+hardlinks remain usable unless they alias a discovered credential inode.
+Read-only Git diff regenerates output only for allowed changed paths;
+option-like revisions cannot become Git flags, and displayed remotes omit
+embedded HTTP credentials and query tokens.
+
+Release publication is gated on real macOS and Linux execution of the exact
+generated payload. The test proves workspace writes and ordinary offline
+toolchain commands succeed, while outside and symlink writes, protected
+metadata, credential reads, network egress, local listeners, and Unix sockets
+remain blocked.
+
+The same ownership rule covers host bootstrap helpers. Managed npm and Node
+probes, live capability-registry commands, and account-backed model CLI
+requests run in dedicated Unix process groups. Their timeout, cancellation, or
+TUI shutdown path terminates descendants and performs a bounded wait; closing
+stdout early cannot detach a helper from cancellation.
+
+Tasks, Skills, and dynamic workflows inherit the same sandbox and parent
+confirmation boundary. Child-local confirmation behavior resolves only
+child-local `Ask` decisions; parent or tool-owned escalations remain governed
+by the parent provider. One cancelled or expired invocation settles only its
+own confirmation, and terminal confirmation timeouts always reject. Use this
+lightweight local boundary for routine
+repository commands. Route dependency-heavy, untrusted, OCI, and
+stronger-isolation workloads to A3S Box or an A3S Runtime provider.
+
+The npm preparation path is a source-development fallback. Official archives,
+Homebrew, and standalone updates carry the release-owned support tree without
+changing Code's sandbox interface or execution modes.
 
 ## Runtime Boundaries
 
@@ -71,16 +191,16 @@ interactive product:
 | `a3s` CLI | Process startup, config discovery, update flow, resume commands, terminal lifecycle, and helper binaries such as `a3s-webview`. |
 | `a3s-code-core` | Agent sessions, model calls, tool registry, permissions, memory, delegation, dynamic workflows, persistence, verification, and event replay. |
 | `a3s-tui` | Terminal rendering, component library, layout, input surfaces, menus, overlays, panels, and transcript widgets. |
-| Optional A3S Use integration | Built-in Browser, Document, native Office, local OCR, optional OfficeCLI compatibility, and signed external application domains projected through standard MCP and managed Skills. |
-| A3S OS integration | Optional signed-in capabilities such as Runtime batches, Workflow as a Service, Knowledge service deployment, RemoteUI ViewLinks, and asset activity. |
+| Optional A3S Use integration | Built-in Browser, native Office, OCR, optional OfficeCLI compatibility, and signed external application domains projected through standard MCP and managed Skills. |
+| Optional A3S OS integration | A signed-in A3S OS session can add runtime batches, hosted workflow and knowledge operations, trusted view links, and asset activity. |
 
 Local work remains available without `/login`: chat, file edits, workspace
 tools, MCP, memory, `/ctx`, `/kb`, `task`, `parallel_task`, local asset
-drafting, DynamicWorkflowRuntime, DeepResearch fallback, and local loops.
+drafting, DynamicWorkflowRuntime, DeepResearch with validated local reports,
+and local loops.
 
-After `/login`, the session also registers the OS `runtime` tool and unlocks
-RemoteUI ViewLinks, OS asset publishing, Function as a Service, Workflow as a
-Service, Knowledge service deployment, and asset activity panels.
+After `/login`, A3S OS can register runtime tools and unlock hosted asset
+publishing, trusted view links, and activity panels.
 
 ## A3S Use Application Capabilities
 
@@ -92,49 +212,32 @@ strict no-mutation boundaries. Providers may also be prepared explicitly:
 ```bash
 a3s install use --source release
 a3s install use/browser
-a3s install use/document     # native parser plus shared OCR model pre-warm
 a3s install use/office       # optional OfficeCLI compatibility
-a3s install use/ocr          # same PP-OCRv6 bundle as Document
+a3s install use/ocr          # pinned local PP-OCRv6 models
 
-# Direct first use prepares only the runtime that is actually needed.
-a3s use browser open https://example.com
-a3s use office native create report.docx --json  # no extra provider
-a3s use office get report.docx /body --json      # prepares OfficeCLI compatibility
-a3s use document inspect report.docx --json      # native, read-only, no install
-a3s use document parse report.docx --ocr auto --json
+# OCR runs locally through ONNX Runtime.
 a3s use ocr doctor --json
-a3s use ocr extract ./scan.png --json  # packaged or first-use models
 ```
 
 When Use is ready at startup, the TUI watches its versioned registry and
-hot-plugs Browser, Document, native Office, Office compatibility, OCR, and
-other signed extensions as standard MCP plus verified Skills. The verified Use
-archive already contains all four Skills and PP-OCRv6 Small ONNX models.
-Browser and Search share one `a3s-use-browser` Chrome cache, while Document and
-OCR share one model directory. `/use` and `/use status` report binary,
-registry, provider, MCP, and Skill readiness. `/use repair` prints explicit
-commands but never installs or mutates anything itself. If first-use setup was
-disabled or failed, restart Code once after explicitly installing the parent.
+hot-plugs Browser, native Office, Office compatibility, OCR, and other signed
+extensions as standard MCP plus verified Skills. `/use` and `/use status`
+report binary, registry, provider, MCP, and Skill readiness. `/use repair`
+prints explicit commands but never installs or mutates anything itself. If
+first-use setup was disabled or failed, restart Code once after explicitly
+installing the parent.
 
 The primary model does not see `mcp__use_*` tools. It delegates application
 requests to the dedicated `use` worker, which is restricted to those tools.
 Closed-world read-only operations, including PP-OCRv6 doctor and extraction,
-native document inspection, and document parsing, run without an extra prompt
-unless the parent policy explicitly denies them. Missing Browser assets use the
-confirmed shared installer. Native Office needs no provider; an operation
-outside its surface can request `office_install_compat` through parent
-confirmation. If Document or OCR reports missing or damaged models, the worker
-requests `document_install_ocr` or `ocr_install`; both prepare the same
-idempotent PP-OCRv6 bundle and continue only after parent confirmation. Direct
-Browser launches, Office compatibility commands, OCR extraction, and Document
-parsing with selected raster evidence prepare their required assets
-automatically. Open-world/network access, mutations, destructive operations,
+run without an extra prompt unless the parent policy explicitly denies them.
+Open-world/network access, Office or Browser mutations, destructive operations,
 submit risk, and missing behavior annotations escalate to the parent TUI.
 Parent denials remain authoritative, and Office mutations are never retried
 automatically.
 
 For the complete route, artifact, OCR model, and safety contract, see
-[Browser, Document, Office, And OCR Through A3S Use](/docs/code/tui#browser-document-office-and-ocr-through-a3s-use).
+[Browser, Office, And OCR Through A3S Use](/docs/code/tui#browser-office-and-ocr-through-a3s-use).
 
 ## Slash Command Families
 
@@ -142,20 +245,167 @@ The CLI command palette delegates to the A3S Code TUI command registry:
 
 | Family | Commands |
 | --- | --- |
-| Conversation | `/clear`, `/compact`, `/fork`, `/goal`, `/btw`, `/auto`, `/exit` |
+| Conversation | `/clear`, `/compact`, `/fork`, `/fork worktree`, `/rewind`, `/relay`, `/copy`, `/copy transcript`, `/export`, `/goal`, `/goal resume`, `/auto`, `/exit` |
 | Models and depth | `/model`, `/effort` |
-| Workspace | `/ide`, `/config`, `/output`, `/theme`, `/top`, `! <command>` |
+| Control and safety | `/queue`, `/history`, `/tasks`, `/permissions`, `/terminal`, `/checkup` |
+| Workspace | `/ide`, `/config`, `/theme`, `/island on`, `/island off`, `/island status`, `! <command>` |
 | Applications | `/use`, `/use status`, `/use repair` |
 | Context | `/ctx <query>`, `/ctx <n>`, `/ctx save <n>`, `/sleep` |
 | Memory and knowledge | `/memory`, `/kb`, `/kb add`, `/kb import`, `/kb search`, `/kb vault` |
-| OS account | `/login`, `/logout`, `/view` |
+| Account integration | `/login`, `/logout`, inline `Open view` actions |
 | Assets | `/agent`, `/mcp`, `/skill`, `/flow`, `/okf` |
 | Loops | `/loop init`, `/loop run`, `/loop audit`, `/loop logs`, `/loop <task>` |
 | Plugins and updates | `/plugin`, `/reload`, `/update`, `/help` |
 
-`/flow` is OS Workflow as a Service for workflow assets. It is intentionally
-separate from `DynamicWorkflowRuntime`, the local A3S Flow-backed runtime used
-by `ultracode` and `?` DeepResearch for per-turn dynamic orchestration.
+`/checkup` is an audit-first setup workflow rather than a passive status
+screen. It first locks the composer and collects a typed host snapshot of the
+installed-component set, active-executable and `PATH` shadowing, bounded ACL
+syntax and semantic validity, skill/plugin context size and duplicate names,
+indexed `AGENTS.md` size, and in-memory MCP connection/tool counts. The
+preflight does not start MCP servers and withholds raw component paths, MCP
+error text, ACL contents, and credentials. The host then forces a read-only
+Plan turn to audit applicable `AGENTS.md`, integrations, update state, and
+runtime policy. Findings and confirmation-sized remediations stop at the
+existing Approve / Revise / Abandon boundary; only an approved follow-up turn
+can make changes, and normal HITL remains authoritative. Auto mode is presented
+only as an optional saved-session preference; an exact read-only permission
+grant is offered only when the existing transcript proves repeated denial of
+the same canonical tool and arguments.
+
+`/flow` manages workflow assets. It is intentionally separate from
+`DynamicWorkflowRuntime`, the local A3S Flow-backed runtime used by `ultracode`
+and `?` DeepResearch for per-turn dynamic orchestration.
+
+`Ctrl+T` opens the complete live semantic session
+transcript, including user and assistant messages, plans, every tool lifecycle
+and full tool output, subagent state, and the current streaming Markdown tail.
+It uses a dedicated full-width viewport that preserves the ANSI semantics of
+user surfaces, tool states, and diffs rather than presenting an editor with a
+file tree, line numbers, or a synthetic `transcript.txt` file. In both views,
+one compositor-owned blank row separates every top-level message, notice,
+reasoning block, tool call, subagent result, and live or finalized assistant
+cell. Adjacent tools do not use a denser exception.
+
+## Whole-System Agent Island
+
+On supported graphical desktops, the first fresh exact non-idle A3S lifecycle
+or recognized coding-agent process launches one native Agent Island for the
+current user session. Every `a3s code` publisher uses the same per-user snapshot
+and singleton lock, so concurrent TUIs still render only one island. The
+persisted user preference is enabled by default. Use `/island off` to turn it
+off and `/island on` to restore it; `/island status` reports the saved state.
+Merely opening an idle TUI does not open the island, but detecting a supported
+Codex or other coding-agent process does. It is a separate transparent,
+borderless window at the physical display's top center, so it remains visible
+when the terminal is covered or minimized. Click the compact black pill to
+expand or collapse its bounded detail view. Automatic attention expansion does
+not steal keyboard focus; after expansion, users can focus its controls and
+reply field directly. The expanded view also has a `Turn off` action; because a
+disabled island is no longer visible, it is restored from the TUI with
+`/island on`.
+
+The ordinary compact surface is `392 × 60` logical pixels and expands to a
+scrollable `560 × 360` view. The transparent native window adds 48 logical
+pixels of horizontal and 32 pixels of vertical bleed on every side (`488 × 124`
+collapsed and `656 × 424` expanded), so the multilayer glow can diffuse beyond
+the rounded surface without clipped or pointed corners. Each activity row shows
+the agent, task, exact or inferred status, workspace, and elapsed time; a
+terminal duration freezes at its reported finish time. Original CSS robot
+geometry uses each vendor only as a color palette and does not copy vendor
+logos or mascots. Any exact `Planning` / `Working` row or recognized process
+enables the Apple-style multicolor neon breathing border. Reduced-motion mode
+uses a static color border.
+
+On macOS, the helper derives centered-notch geometry from `NSScreen` safe areas
+rather than a model-name list. The surface then starts at the physical top edge
+with square top corners, and compact information occupies the two unobstructed
+side wings. Its width grows when necessary to fit the hardware gap, 12 logical
+pixels of clearance on each side, and two 160-pixel content wings; a 212-pixel
+notch produces a `556 × 60` surface inside a `652 × 124` native window. A small
+visible handle below the notch starts native dragging. Once the user moves the
+window, periodic recentering stops, notch-fusion styling detaches, and
+expand/collapse preserves the moved surface's top-center.
+
+The expanded surface is an attention workbench with live `All`, `Needs you`,
+`Running`, and `Recent` counts. `Needs you` includes approval waits, input
+waits, and failures. `Recent` includes completed, failed, and cancelled
+outcomes, so failures intentionally appear in both views. A filtered child keeps
+its parent as labeled context; parent rows show settled direct-child progress.
+Process-only observations remain clearly inferred under `All` and are also
+counted under `Running` as live process evidence.
+
+A previously unseen actionable approval or input request automatically selects
+`Needs you` and expands the island without taking focus. The same control token
+is handled only once: continued heartbeats cannot reopen the island after the
+user collapses it. A later request with a new identity can expand it again, and
+manual filter choices remain stable until that new request arrives.
+
+The surface is owned by the standalone `a3s-webview` helper. Tao/Wry hosts
+offline embedded HTML, CSS, and JavaScript in WKWebView, WebKitGTK, or WebView2;
+the island is not rendered by `a3s-tui`, the A3S GUI crate, React, or Next.js.
+
+The helper launch is best effort and never prevents the TUI from starting.
+`A3S_AGENT_ISLAND=0` is an environment-level launch override, while
+`A3S_AGENT_ISLAND_BIN` selects an explicit `a3s-webview` helper. The persisted
+`/island off` preference remains authoritative until the user turns it on again.
+The preference controls only the floating surface; the private exact-presence
+heartbeat continues for other system status consumers.
+macOS and Windows support the native floating
+window behavior, and X11 desktops receive the corresponding top-center,
+keep-above window hints. Standard Wayland compositors do not permit arbitrary
+global placement, so exact top-center placement there depends on compositor or
+XWayland support.
+
+Cooperating `a3s code` TUI instances publish a versioned heartbeat every two
+seconds, so their parent state, approval wait, plan execution, terminal outcome,
+and child agents are exact. Heartbeats expire after ten seconds. `a3s code exec`
+and `a3s web` do not publish authoritative TUI lifecycle state. Claude Code,
+Codex, Cursor, Gemini, WorkBuddy, and recognized A3S non-TUI processes are
+process-level observations only; those rows say `detected / process` because a
+process proves presence rather than an exact task lifecycle. They nevertheless
+trigger and keep the island visible, count as running evidence, and activate the
+working glow. Third-party command arguments are never displayed or persisted by
+the island.
+
+Exact terminal outcomes remain visible for eight seconds. Once every cooperating
+A3S TUI is idle, that retention window has elapsed, and no fresh recognized
+process evidence remains, a fresh idle snapshot closes the island.
+
+Exact rows expose only controls backed by a current TUI grant. Approval waits
+display a sanitized reason of at most 240 characters and use larger `Allow`,
+`Always`, and `Deny` buttons. A live parent stream may show `Stop`, a running
+child may show `Cancel`, and an eligible exact parent row includes a reply field
+and `Send` button. Replies are limited to 1,000 characters / 4 KiB; `Enter`
+sends and `Shift+Enter` inserts a newline. During approval, a reply queues a
+normal follow-up and does not implicitly approve or deny the tool. Process-only
+rows never receive controls. An action is checked against the helper's latest
+sanitized snapshot, then written as a versioned request to the private
+`control-requests` queue. The target TUI revalidates the short-lived, one-shot
+grant against its current instance, activity, session, and tool or task context
+before invoking its normal submission, approval, interrupt, or
+child-cancellation path. The first valid action consumes the shared activity
+token, so sibling controls and replay fail closed until the next heartbeat
+publishes a fresh grant.
+
+Heartbeats persist only a sanitized, bounded workspace basename, never the full
+path. Parent and child task descriptions are omitted on disk by default, while
+their full text remains local to the owning process.
+`A3S_AGENT_STATUS_SHARE_TASKS=1` opts into sharing sanitized, single-line,
+bounded task labels with other local TUI instances. The CLI atomically exports a
+second bounded, sanitized snapshot for the display helper; the native window
+only reads that snapshot and never receives the TUI's unredacted in-memory task
+or workspace path.
+
+The registry, display snapshot, and singleton lock live under the platform's
+per-user A3S state root. The helper holds the exclusive lock for its entire
+event loop; a second helper exits cleanly, while another surviving TUI can take
+over after the owner disappears. Unix files use private `0700`/`0600`
+permissions. On Unix, the control queue and its request files use the same
+`0700`/`0600` boundary. On Windows, the default directory is beneath the current
+user's `%LOCALAPPDATA%` tree and relies on inherited ACLs; A3S does not install
+a dedicated ACL.
+`A3S_AGENT_STATUS_DIR` is available for diagnostics and hermetic tests and
+should point to a user-private directory.
 
 ## Diff Rendering
 
@@ -166,15 +416,111 @@ Long paths and source lines stay bounded to the active terminal viewport.
 
 ## Effort And Dynamic Work
 
+The last successfully applied effort profile is saved as a user preference and
+restored the next time the TUI starts. If no valid preference exists, the TUI
+uses its existing default profile.
 `/effort` changes the active depth profile. The TUI scales thinking budget,
 tool-round budget, continuation count, and prompt guidance from `low` through
 `max`. `ultracode` is the deepest profile: trivial turns can still run directly,
 while complex turns may use planning, goal tracking, `dynamic_workflow`, native
 host-side `parallel_task`, and signed-in `runtime`.
 
+| Level | Thinking budget | Tool rounds | Continuations | Parallel tasks |
+| --- | ---: | ---: | ---: | ---: |
+| `low` | 2,048 | 240 | 4 | 4 |
+| `medium` | 8,192 | 800 | 8 | 8 |
+| `high` | 16,384 | 1,200 | 12 | 12 |
+| `xhigh` | 32,768 | 1,800 | 16 | 16 |
+| `max` | 65,536 | 2,400 | 24 | 24 |
+| `ultracode` | 65,536 | 3,200 | 32 | 32 |
+
 PTC scripts run inside QuickJS, so they do not execute `parallel_task`
 directly. Dynamic workflows schedule a Flow step named `parallel_task`; the TUI
 host then runs the native local fan-out implementation outside QuickJS.
+
+DeepResearch uses a transient, host-managed Loop Engineering contract. One
+tool-free planner creates up to four stable research tracks, four exact provider
+queries, optional canonical seed URLs, evidence requirements, and observable
+completion criteria. The fixed stage graph then permits one initial retrieval,
+one closed semantic selection, at most one typed-coverage supplement, one closed
+obligation-review stage, Host assessment, and one durable report transaction.
+There is no maker/checker loop, adaptive route, query-generating follow-up wave,
+or hidden continuation.
+
+Web queries are sent byte-for-byte to the fixed AnySearch, Tavily, and
+DuckDuckGo ensemble. Web plans have eight initial fetch slots and local-only
+plans have zero. Seed URLs enter the same semantic catalog as provider results
+without reserving a slot. A semantic candidate-ID decision fills the available
+initial slots with coverage opportunities and useful authoritative alternatives
+when enough candidates exist. Provider rank, title, snippet, engine, and date are
+discovery metadata only; only fetched source text can become evidence or
+establish a report date. Fetched pages, bounded document ranges, and
+Host-reread local ranges enter one closed multilingual chunk catalog.
+
+Selectors return only closed chunk IDs plus typed source/obligation relevance
+edges and full criterion/role coverage edges. Relevance keeps useful partial
+text reviewable; a criterion is covered only when the selected fetched text
+resolves every material element. Catalogs over 10 chunks
+use one complete selector per canonical source, retain at most four excerpts per
+source, and never split a source into positional windows. Each source becomes
+one accepted evidence item, keeping its claims and citations source-local.
+Missing typed coverage or evidence lost to an initial fetch/source-selection
+failure may authorize one supplement of at most two additional previously
+unselected candidates. The supplement never searches again or rewrites a query,
+and avoids a fetch-failed transport surface when a distinct candidate remains.
+The initial evidence portfolio is durably checkpointed first; if the shared
+retrieval deadline interrupts optional supplemental work, the Host validates
+and restores that exact run/query checkpoint instead of erasing completed
+material evidence.
+Questions linked to the same obligation share one closed-evidence review over
+their relevance-linked evidence plus unscoped legacy evidence before Host
+assessment and cited section generation. Models return short Host-owned
+evidence references such as `E1`; the Host maps them to exact evidence IDs per
+question. It decodes each expected question independently, so one malformed
+entry or invalid reference cannot discard a valid sibling answer. An entry that
+claims `answered` while carrying an explicit limitation is safely downgraded to
+`partial`.
+
+Enter `? <query>` or `? --web <query>` in the TUI. Use
+`? --local-only <query>` (or `--offline`) to enforce workspace-only evidence.
+Free-form phrases such as “do not use web” do not change scope. A successful or
+qualified run writes `.a3s/research/<slug>/report.md` and `index.html`; the HTML
+opens through a loopback-only viewer without `/login`. Insufficient or
+untraceable evidence produces an explicitly degraded Recovery report instead
+of a false completed result.
+
+The report phase is closed to new evidence and validates accepted claim/source
+bindings, exact inline citations, headings, replay identity, and artifact
+quality. Every committed evidence binding requires one exact same-binding
+source citation; if the first draft misses one, the single targeted revision
+receives that uncited binding and its accepted source alternatives. Bounded
+claim excerpts control factual transcription, and ISO, English, and Chinese
+full dates must normalize to a committed claim before publication. Each
+closed review, section/revision, and editorial frame preserves source-field
+meaning and forbids unstated interval calculations, dependency-to-incompatibility
+inference, discontinuation-to-no-future-fix inference, unsupported replacement
+properties, and ecosystem-wide conclusions from a few examples. Internal
+fetch/review diagnostics stay out of the reader-facing source ledger.
+Reader-facing review, section/revision, and frame text stays in the query
+language, and a question-local evidence gap cannot become a report-wide
+absence. Each
+obligation review and report section has an independent durable
+Flow identity, completed siblings survive interruption, and the complete
+transaction shares bounded deadlines and one targeted-revision allowance.
+Every complete replacement receives exact citation alternatives for all
+bindings. Only a strict same-origin child path can be reduced to the longest
+committed parent; similar or wider URLs still fail closed.
+
+The same pipeline is available without the full-screen TUI:
+
+```bash
+a3s code research [--local-only|--web] <query>
+```
+
+`research` is canonical; `deepresearch` and `deep-research` remain aliases.
+The retired `--runtime`, `--local`, and `--os` routes are rejected. The command
+writes `report.md` and `index.html` in the selected workspace and reports a
+terminal `completed`, `qualified`, or `degraded` outcome explicitly.
 
 ## Updates
 

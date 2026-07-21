@@ -1,0 +1,186 @@
+.work-spreadsheet-formula-manager {
+  display: grid;
+  grid-template-columns: minmax(190px, 230px) minmax(780px, 1fr);
+  min-height: 198px;
+}
+
+.work-spreadsheet-formula-manager > aside {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 6px;
+  padding: 9px;
+  border-right: 1px solid var(--a3s-line);
+}
+
+.work-spreadsheet-formula-manager > aside > div {
+  display: grid;
+  gap: 1px;
+  min-height: 48px;
+  align-content: center;
+  padding: 6px 8px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 6px;
+  background: var(--a3s-bg);
+}
+
+.work-spreadsheet-formula-manager > aside strong {
+  font-size: 14px;
+}
+
+.work-spreadsheet-formula-manager > aside span {
+  color: var(--a3s-faint);
+  font-size: 8px;
+}
+
+.work-spreadsheet-formula-manager > aside > div.error strong {
+  color: var(--a3s-red);
+}
+
+.work-spreadsheet-formula-manager > form {
+  display: grid;
+  grid-template-columns: minmax(480px, 1.15fr) minmax(300px, 0.85fr);
+  gap: 10px;
+  padding: 9px 11px;
+}
+
+.work-spreadsheet-calculation-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(130px, 1fr));
+  align-content: start;
+  gap: 7px 9px;
+}
+
+.work-spreadsheet-calculation-fields label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--a3s-muted);
+  font-size: 9px;
+}
+
+.work-spreadsheet-calculation-fields input,
+.work-spreadsheet-calculation-fields select {
+  width: 100%;
+  height: 27px;
+  min-width: 0;
+  padding: 0 7px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 5px;
+  outline: 0;
+  background: var(--a3s-bg);
+  color: var(--a3s-ink);
+  font: inherit;
+}
+
+.work-spreadsheet-calculation-fields input:focus,
+.work-spreadsheet-calculation-fields select:focus {
+  border-color: var(--a3s-blue);
+}
+
+.work-spreadsheet-calculation-fields input:disabled {
+  opacity: 0.45;
+}
+
+.work-spreadsheet-calculation-fields label.toggle {
+  display: flex;
+  min-height: 27px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 5px;
+}
+
+.work-spreadsheet-calculation-fields label.toggle input {
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  accent-color: var(--a3s-blue);
+}
+
+.work-spreadsheet-calculation-fields .actions {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.work-spreadsheet-calculation-fields .actions .status {
+  margin-right: auto;
+  color: var(--a3s-faint);
+  font-size: 8px;
+}
+
+.work-spreadsheet-formula-diagnostics {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 6px;
+}
+
+.work-spreadsheet-formula-diagnostics > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.work-spreadsheet-formula-diagnostics > header strong {
+  font-size: 9px;
+}
+
+.work-spreadsheet-formula-diagnostics > header span {
+  color: var(--a3s-faint);
+  font-size: 8px;
+}
+
+.work-spreadsheet-formula-diagnostics > div {
+  display: grid;
+  max-height: 142px;
+  gap: 4px;
+  overflow: auto;
+}
+
+.work-spreadsheet-formula-diagnostics article {
+  padding: 5px 7px;
+  border-left: 2px solid var(--a3s-line-strong);
+  border-radius: 3px;
+  background: var(--a3s-panel-soft);
+}
+
+.work-spreadsheet-formula-diagnostics article.warning {
+  border-left-color: var(--a3s-warning);
+}
+
+.work-spreadsheet-formula-diagnostics article.error {
+  border-left-color: var(--a3s-red);
+}
+
+.work-spreadsheet-formula-diagnostics article strong {
+  font-size: 8px;
+}
+
+.work-spreadsheet-formula-diagnostics article p,
+.work-spreadsheet-formula-diagnostics article small,
+.work-spreadsheet-formula-diagnostics .empty {
+  margin: 2px 0 0;
+  color: var(--a3s-faint);
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.work-spreadsheet-formula-diagnostics article small {
+  display: block;
+}
+
+.work-spreadsheet-formula-diagnostics .empty {
+  margin: 18px 6px;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .work-spreadsheet-formula-manager {
+    grid-template-columns: 190px minmax(820px, 1fr);
+  }
+}

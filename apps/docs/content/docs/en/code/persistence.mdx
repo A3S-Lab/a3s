@@ -11,7 +11,7 @@ A3S Code persists three related but different things:
 
 | Object | Written by | Resumed by | Purpose |
 | --- | --- | --- | --- |
-| Session snapshot | `session.save()` or `autoSave` | `agent.resumeSession(id, options)` | Rehydrate a conversation plus runtime evidence such as artifacts, traces, run records, verification reports, and subagent task snapshots. |
+| `SessionSnapshotV1` | `session.save()` or `autoSave` | `agent.resumeSession(id, options)` | Rehydrate one versioned generation containing the conversation, artifacts, traces, run records, verification reports, and subagent task snapshots. |
 | Loop checkpoint | Agent loop while a run is in progress | `session.resumeRun(runId)` | Continue an interrupted run from the last completed tool-round boundary. Completed in-process runs delete this checkpoint. |
 | Workflow checkpoint | `parallelResumable` / workflow phases | `parallelResumable(specs, workflowId)` | Skip already-completed orchestration steps after a process restart. |
 
@@ -30,6 +30,37 @@ await session.send('Review release readiness');
 await session.save();
 ```
 
+## Atomic Snapshot Generations
+
+`session.save()` gathers the current persisted state into one
+`SessionSnapshotV1` and calls `SessionStore::save_snapshot` once. The envelope
+contains:
+
+- `schema_version` and `SessionData`
+- tool artifacts
+- trace events and run records
+- verification reports
+- delegated subagent task snapshots
+
+The file store writes one complete JSON envelope to a synced temporary file and
+atomically replaces `<session-id>.json`. Readers therefore observe the previous
+generation or the next one, not a new conversation paired with old run or trace
+fragments. The memory store publishes the same aggregate under one lock. Both
+report `SessionStoreCapabilities { atomic_session_snapshots: true }`.
+
+Historical files remain readable. A bare `SessionData` file is combined with
+the legacy artifact/trace/run/verification/subagent fragment locations during
+load, then restored through the v1 in-memory shape. Once a new aggregate is
+saved, the single envelope is authoritative. A document that already looks like
+an aggregate but has a malformed or unsupported schema is rejected rather than
+reinterpreted as legacy data.
+
+Custom stores must implement `save_snapshot` explicitly. Its default returns an
+error; it does not fan an aggregate out into independent writes or silently
+acknowledge a no-op. The default `load_snapshot` exists only as best-effort
+legacy assembly, and `capabilities()` lets a host distinguish that behavior
+from an atomic backend.
+
 ## Resume
 
 ```ts
@@ -41,7 +72,8 @@ const resumed = agent.resumeSession('release-review', {
 `resumeSession` restores a saved session snapshot. It is not the same as
 `resumeRun`: use `resumeSession` when the user is continuing a saved
 conversation, and use `resumeRun(runId)` only when a run checkpoint exists for
-an interrupted run.
+an interrupted run. Resume validates the snapshot schema before restoring any
+history or runtime evidence.
 
 ## Memory And Sessions
 

@@ -6,9 +6,9 @@ description: "Rust coding-agent runtime and the execution core behind the a3s co
 # A3S Code
 
 A3S Code is the Rust runtime behind `a3s code`. It keeps coding-agent sessions
-observable while the harness owns context assembly, tool execution, permission
-policy, delegation, dynamic workflow execution, workspace access, memory,
-persistence, verification evidence, and run replay.
+observable while one runtime kernel owns context assembly, governed provider
+and tool invocation, delegation, dynamic workflow execution, workspace access,
+memory, persistence, verification evidence, and run replay.
 
 `a3s-code-core` is the embeddable Rust runtime. `a3s code` is the ready terminal
 workspace shipped by the [`a3s` CLI](https://github.com/A3S-Lab/Cli); it drives
@@ -33,16 +33,17 @@ surface around the same runtime.
 
 | Area | Current capability |
 | --- | --- |
-| Agent sessions | `Agent` and `AgentSession` expose `send`, `stream`, direct tools, run state, cancellation, persistence, memory, verification, and lifecycle cleanup. |
-| TUI | [`a3s code`](/docs/code/tui) streams runtime events into a terminal workspace with tool activity, approvals, memory, files, sessions, OS assets, effort profiles, DynamicWorkflowRuntime, and RemoteUI controls. |
+| Agent sessions | Async-first `SessionBuilder` construction produces workspace-bound `AgentSession` values. Transcript operations are fail-fast single-flight and expose `send`, `stream`, run state, cancellation, persistence, memory, verification, and lifecycle cleanup. |
+| TUI | [`a3s code`](/docs/code/tui) streams runtime events into a terminal workspace with tool activity, approvals, memory, files, sessions, local assets, effort profiles, DynamicWorkflowRuntime, and trusted view controls. |
 | Filesystem-first | [Filesystem-first](/docs/code/filesystem-first) organizes `AGENTS.md`, ACL config, `.a3s/agents/`, `skills/`, `tools/`, and `schedules/` into a reviewable agent product interface. |
-| Tools | Stable tool names cover files, search, shell, git, web fetch/search, structured output, QuickJS PTC programs, skills, MCP tools, child-task delegation, and native host-side `parallel_task`. |
-| Dynamic workflows | `DynamicWorkflowRuntime` uses A3S Flow to record replayable per-turn workflow and step history for `ultracode` and DeepResearch. It is separate from `/flow`, which manages OS Workflow as a Service assets. |
+| Tools | Stable tool names cover files, search, shell, git, web fetch/search, structured output, QuickJS PTC programs, skills, MCP tools, child-task delegation, and native host-side `parallel_task`. Model, nested, delegated, and trusted host-direct calls use one invocation kernel with explicit origin policy. |
+| Dynamic workflows | `DynamicWorkflowRuntime` uses A3S Flow to record replayable per-turn workflow and step history for `ultracode` and DeepResearch. It is separate from `/flow`, which manages workflow asset files and optional host integrations. |
 | Delegation | Built-in roles and custom Markdown/YAML agents are available through `task`, `parallel_task`, and automatic delegation controls. |
 | Memory | Default file-backed memory, recall, LLM extraction, `/memory`, `/ctx`, `/ctx save`, and `/sleep` support cross-session facts without flooding every prompt. |
-| Safety | Permission policies, HITL confirmation, workspace path checks, tool timeouts, sandbox handles, hooks, AHP, and prompt boundary injection all feed the same execution path. |
+| Safety | One run invocation context propagates identity, cancellation, events, and governance. Permission policies, HITL confirmation, budgets, workspace path checks, tool timeouts, hooks, and output sanitization feed the same provider/tool boundaries. |
 | Workspaces | [Workspace Backends](/docs/code/workspace-backends) let built-in tools target local files, host-provided workspaces, optional S3-compatible storage, and optional remote-git services. |
-| Persistence | Memory/file stores, session IDs, auto-save, run snapshots/events, trace artifacts, loop/workflow checkpoints, memory recall, and retention caps support resumable sessions and replayable product state. |
+| Events | `EventEnvelopeV1` is a lossless Rust/Node/Python wire shape with an open event type and preserved payload/metadata for future events. |
+| Persistence | Atomic `SessionSnapshotV1` generations, memory/file stores, session IDs, auto-save, run snapshots/events, trace artifacts, loop/workflow checkpoints, memory recall, and retention caps support resumable sessions and replayable product state. |
 | Verification | [Verification](/docs/code/verification) covers explicit verification commands, presets, structured reports, summaries, artifacts, trace events, and run replay evidence. |
 
 The execution shape is:
@@ -127,7 +128,7 @@ Common first-run flow:
 
 ```text
 /init          # inspect the repository and create or update AGENTS.md
-/model         # pick a configured provider, OS gateway model, or account model
+/model         # pick a configured provider or account-backed model
 /effort        # choose low, medium, high, xhigh, max, or ultracode
 /ide           # open the workspace tree and terminal editor
 /help          # open the full command and shortcut guide
@@ -141,15 +142,16 @@ use a3s_code_core::{Agent, AgentEvent, SessionOptions};
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let agent = Agent::new("agent.acl").await?;
-    let session = agent.session(
-        "/path/to/workspace",
-        Some(
+    let session = agent
+        .session_builder("/path/to/workspace")
+        .options(
             SessionOptions::new()
                 .with_planning(true)
                 .with_max_parallel_tasks(4)
                 .with_tool_timeout(120_000),
-        ),
-    )?;
+        )
+        .build()
+        .await?;
 
     let result = session
         .send("Find the authentication entry points.", None)
@@ -171,12 +173,18 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
+Rust construction is async-first. The synchronous `Agent::session` method is a
+strict compatibility path for an explicitly pre-initialized memory store and
+other already-ready resources; async-only options return
+`CodeError::AsyncSessionBuildRequired`. A session-option MCP manager always uses
+the async path for capability discovery.
+
 Direct Rust host tool calls are privileged control-plane operations. Gate them
 in the embedding application before exposing them to users.
 
 ## Entry Points
 
-- [A3S Code TUI](/docs/code/tui) explains install, config discovery, slash commands, effort profiles, dynamic workflows, OS Runtime, and RemoteUI.
+- [A3S Code TUI](/docs/code/tui) explains install, config discovery, slash commands, effort profiles, dynamic workflows, optional runtime tools, and trusted views.
 - [A3S CLI Code TUI](/docs/cli/code-tui) covers CLI startup, resume, update, smoke mode, and terminal lifecycle boundaries.
 - [Filesystem-first](/docs/code/filesystem-first) covers reviewable project and AgentDir conventions.
 - [Sessions](/docs/code/sessions) covers lifecycle, streaming, run state, persistence, and cancellation.

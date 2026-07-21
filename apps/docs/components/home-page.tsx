@@ -239,8 +239,8 @@ function getModules(lang: Lang) {
       tag: lang === 'cn' ? '弹窗 Helper' : 'Popup Helper',
       description:
         lang === 'cn'
-          ? '供 A3S Code TUI 打开 RemoteUI viewUrl 的原生 WebView helper，支持 auth bootstrap 和跨平台窗口。'
-          : 'Native WebView helper for A3S Code RemoteUI viewUrls, with auth bootstrap and cross-platform popup windows.',
+          ? '供 A3S Code TUI 打开受信任 runtime URL 的原生 WebView helper，支持 auth bootstrap 和跨平台窗口。'
+          : 'Native WebView helper for trusted A3S Code runtime URLs, with auth bootstrap and cross-platform popup windows.',
       href: `${base}/docs/webview`,
       icon: PanelTop,
       lightColor: 'bg-blue-50 text-blue-600',

@@ -1,6 +1,6 @@
 ---
 title: Build a Research Agent
-description: Compose A3S Code v3.1.0 programmatic tool calling, task delegation, streaming, and queue inspection with the Node SDK.
+description: Compose A3S Code v4.3.3 programmatic tool calling, task delegation, streaming, and queue inspection with the Node SDK.
 full: true
 ---
 
@@ -34,7 +34,6 @@ import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.acl');
 const session = agent.session(process.cwd(), {
-  builtinSkills: true,
   planningMode: 'enabled',
   maxToolRounds: 24,
   autoCompact: true,

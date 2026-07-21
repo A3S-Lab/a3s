@@ -14,8 +14,9 @@ call these tools during a run, or invoke a skill directly from the SDK with
 `session.tool('Skill', ...)`.
 
 Register a skill directory (a folder of `SKILL.md` files) via `skillDirs` / `skill_dirs`,
-or rely on built-in discovery with `builtinSkills` / `builtin_skills`. Either way the
-skills become visible through `Skill` and `search_skills`.
+or pass inline skills through session options. A3S Code no longer ships default
+embedded skills, so `builtinSkills` / `builtin_skills` is only a compatibility
+flag. Registered skills become visible through `Skill` and `search_skills`.
 
 <Tabs groupId="lang" items={['Node.js', 'Python']}>
 <Tab value="Node.js">
@@ -25,7 +26,6 @@ import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.acl');
 const session = agent.session(process.cwd(), {
-  builtinSkills: true,
   skillDirs: ['./skills'], // a folder of SKILL.md files
 });
 
@@ -39,8 +39,8 @@ console.log(run.text);
 // Option B: invoke a skill directly as a callable tool.
 // Canonical args: { skill_name, prompt? }.
 const result = await session.tool('Skill', {
-  skill_name: 'code-review',
-  prompt: 'Review this patch for correctness and regressions.',
+  skill_name: 'release-review',
+  prompt: 'Review this release patch for blockers and verification gaps.',
 });
 if (result.exitCode !== 0) {
   throw new Error(result.output);
@@ -58,7 +58,6 @@ from a3s_code import Agent, SessionOptions
 
 agent = Agent.create("agent.acl")
 opts = SessionOptions()
-opts.builtin_skills = True
 opts.skill_dirs = ['./skills']  # a folder of SKILL.md files
 session = agent.session('.', opts)
 
@@ -72,8 +71,8 @@ print(run.text)
 # Option B: invoke a skill directly as a callable tool.
 # Canonical args: { skill_name, prompt? }.
 result = session.tool('Skill', {
-    'skill_name': 'code-review',
-    'prompt': 'Review this patch for correctness and regressions.',
+    'skill_name': 'release-review',
+    'prompt': 'Review this release patch for blockers and verification gaps.',
 })
 if result.exit_code != 0:
     raise RuntimeError(result.output)

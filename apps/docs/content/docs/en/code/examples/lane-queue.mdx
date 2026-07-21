@@ -18,7 +18,7 @@ The four lanes are `control`, `query`, `execute`, and `generate`. Each handler h
 import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('./agent.acl');
-const session = agent.session(process.cwd(), { builtinSkills: true });
+const session = agent.session(process.cwd());
 
 // Route the "execute" lane to an external worker.
 // Tools on this lane are NOT run by the agent; they are queued for
@@ -51,7 +51,6 @@ from a3s_code import Agent, SessionOptions
 
 agent = Agent.create("agent.acl")
 opts = SessionOptions()
-opts.builtin_skills = True
 session = agent.session(".", opts)
 
 # Route the "execute" lane to an external worker.

@@ -18,7 +18,6 @@ import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.acl');
 const session = agent.session(process.cwd(), {
-  builtinSkills: true,
   planningMode: 'enabled',
 });
 
@@ -34,7 +33,7 @@ console.log(result.verificationSummaryText);
 
 - ACL configuration with `providers` and `models` blocks.
 - OpenAI-compatible `apiKey`/`baseUrl` and `api_key`/`base_url` aliases.
-- Session options for model override, builtin skills, prompt slots, planning,
+- Session options for model override, skill directories, prompt slots, planning,
   file-backed memory/session stores, auto-save, compaction, continuation, and
   permission-policy shape.
 - Direct tools: read, glob, grep, bash, git, generic `tool`, skill search, and

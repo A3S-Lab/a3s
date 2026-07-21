@@ -1,0 +1,256 @@
+import { ChevronDown, FilterX, Search, SlidersHorizontal, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useSnapshot } from 'valtio';
+import { appState } from '../../../state/app-state';
+import type { MemoryForgetSignal, MemoryOverview, MemoryTier } from '../../../types/api';
+import { forgetSignalLabel, memorySourceLabel, memoryTypeLabel, tierLabel } from '../memory-format';
+import { countActiveMemoryFilters, memoryTypeCounts } from '../memory-projection';
+import type { MemoryLifecycleFilter, MemoryTimeRange } from '../memory-state';
+
+export function MemoryFiltersPanel({ data, visibleCount }: { data: MemoryOverview; visibleCount: number }) {
+  const state = useSnapshot(appState);
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
+  const types = useMemo(() => memoryTypeCounts(data.entries), [data]);
+  const sources = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const event of data.graph.events) counts.set(event.source, (counts.get(event.source) ?? 0) + 1);
+    return [...counts].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]));
+  }, [data]);
+  const filters = {
+    query: state.memoryQuery,
+    types: [...state.memoryTypeFilters],
+    sources: [...state.memorySourceFilters],
+    tiers: [...state.memoryTierFilters],
+    signals: [...state.memorySignalFilters],
+    lifecycle: [...state.memoryLifecycleFilters],
+    timeRange: state.memoryTimeRange,
+  };
+  const activeCount = countActiveMemoryFilters(filters);
+  const advancedCount =
+    state.memorySourceFilters.length +
+    state.memoryTierFilters.length +
+    state.memorySignalFilters.length +
+    state.memoryLifecycleFilters.length;
+
+  const clearAll = () => {
+    clearMemoryFilters();
+    setMoreFiltersOpen(false);
+  };
+
+  return (
+    <aside className='memory-filters' aria-label='记忆筛选'>
+      <div className='memory-filter-heading'>
+        <div>
+          <strong>筛选</strong>
+          <span>{visibleCount} 条结果</span>
+        </div>
+        {activeCount > 0 && (
+          <button type='button' onClick={clearAll}>
+            <FilterX size={13} /> 清除 {activeCount}
+          </button>
+        )}
+      </div>
+      <label className='memory-search'>
+        <Search size={14} />
+        <input
+          type='search'
+          value={state.memoryQuery}
+          onChange={(event) => {
+            appState.memoryQuery = event.target.value;
+          }}
+          placeholder='搜索内容、标签或实体'
+          aria-label='搜索记忆'
+        />
+        {state.memoryQuery && (
+          <button
+            type='button'
+            aria-label='清除搜索'
+            onClick={() => {
+              appState.memoryQuery = '';
+            }}
+          >
+            <X size={13} />
+          </button>
+        )}
+      </label>
+      <FilterGroup title='时间'>
+        <div className='memory-filter-segments'>
+          {(
+            [
+              ['all', '全部'],
+              ['7d', '7 天'],
+              ['30d', '30 天'],
+              ['90d', '90 天'],
+            ] as Array<[MemoryTimeRange, string]>
+          ).map(([value, label]) => (
+            <button
+              type='button'
+              className={state.memoryTimeRange === value ? 'active' : ''}
+              aria-pressed={state.memoryTimeRange === value}
+              key={value}
+              onClick={() => {
+                appState.memoryTimeRange = value;
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </FilterGroup>
+      <FilterGroup title='记忆类型'>
+        <div className='memory-filter-options'>
+          {types.map(([type, count]) => (
+            <FilterOption
+              key={type}
+              label={memoryTypeLabel(type)}
+              count={count}
+              pressed={state.memoryTypeFilters.includes(type)}
+              tone={type}
+              onClick={() => {
+                appState.memoryTypeFilters = toggleValue(appState.memoryTypeFilters, type);
+              }}
+            />
+          ))}
+        </div>
+      </FilterGroup>
+      <button
+        type='button'
+        className='memory-more-filters-toggle'
+        aria-expanded={moreFiltersOpen}
+        aria-controls='memory-more-filters'
+        onClick={() => setMoreFiltersOpen((open) => !open)}
+      >
+        <span>
+          <SlidersHorizontal size={13} />
+          更多筛选
+        </span>
+        {advancedCount > 0 && <small>{advancedCount} 项已启用</small>}
+        <ChevronDown size={14} aria-hidden='true' />
+      </button>
+      {moreFiltersOpen && (
+        <div className='memory-more-filters' id='memory-more-filters'>
+          <FilterGroup title='保留层级'>
+            <div className='memory-filter-options'>
+              {(['short', 'mid', 'long'] as MemoryTier[]).map((tier) => (
+                <FilterOption
+                  key={tier}
+                  label={tierLabel(tier)}
+                  count={data.graph.stats[tier]}
+                  pressed={state.memoryTierFilters.includes(tier)}
+                  tone={tier}
+                  onClick={() => {
+                    appState.memoryTierFilters = toggleValue(appState.memoryTierFilters, tier);
+                  }}
+                />
+              ))}
+            </div>
+          </FilterGroup>
+          <FilterGroup title='系统建议'>
+            <div className='memory-filter-options'>
+              {(['protected', 'candidate', 'cooling', 'keep'] as MemoryForgetSignal[]).map((signal) => {
+                const count = data.graph.events.filter((event) => event.forget === signal).length;
+                return (
+                  <FilterOption
+                    key={signal}
+                    label={forgetSignalLabel(signal)}
+                    count={count}
+                    pressed={state.memorySignalFilters.includes(signal)}
+                    tone={signal}
+                    onClick={() => {
+                      appState.memorySignalFilters = toggleValue(appState.memorySignalFilters, signal);
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </FilterGroup>
+          <FilterGroup title='处理状态'>
+            <div className='memory-filter-options'>
+              {(
+                [
+                  ['llm', '自动提取', data.graph.stats.llmExtracted],
+                  ['consolidated', '已合并重复', data.graph.stats.consolidated],
+                  ['conflicts', '待处理冲突', data.graph.stats.conflicts],
+                ] as Array<[MemoryLifecycleFilter, string, number]>
+              ).map(([filter, label, count]) => (
+                <FilterOption
+                  key={filter}
+                  label={label}
+                  count={count}
+                  pressed={state.memoryLifecycleFilters.includes(filter)}
+                  tone={filter}
+                  onClick={() => {
+                    appState.memoryLifecycleFilters = toggleValue(appState.memoryLifecycleFilters, filter);
+                  }}
+                />
+              ))}
+            </div>
+          </FilterGroup>
+          {sources.length > 0 && (
+            <FilterGroup title='来源'>
+              <div className='memory-filter-options source-options'>
+                {sources.map(([source, count]) => (
+                  <FilterOption
+                    key={source}
+                    label={memorySourceLabel(source)}
+                    count={count}
+                    pressed={state.memorySourceFilters.includes(source)}
+                    tone='source'
+                    onClick={() => {
+                      appState.memorySourceFilters = toggleValue(appState.memorySourceFilters, source);
+                    }}
+                  />
+                ))}
+              </div>
+            </FilterGroup>
+          )}
+        </div>
+      )}
+    </aside>
+  );
+}
+
+function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className='memory-filter-group'>
+      <h2>{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function FilterOption({
+  label,
+  count,
+  pressed,
+  tone,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  pressed: boolean;
+  tone: string;
+  onClick: () => void;
+}) {
+  return (
+    <button type='button' className={pressed ? 'active' : ''} aria-pressed={pressed} data-tone={tone} onClick={onClick}>
+      <i aria-hidden='true' />
+      <span>{label}</span>
+      <small>{count}</small>
+    </button>
+  );
+}
+
+function toggleValue<T extends string>(values: T[], value: T): T[] {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+export function clearMemoryFilters(): void {
+  appState.memoryQuery = '';
+  appState.memoryTypeFilters = [];
+  appState.memorySourceFilters = [];
+  appState.memoryTierFilters = [];
+  appState.memorySignalFilters = [];
+  appState.memoryLifecycleFilters = [];
+  appState.memoryTimeRange = 'all';
+}

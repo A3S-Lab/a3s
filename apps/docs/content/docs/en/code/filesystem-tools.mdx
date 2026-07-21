@@ -60,6 +60,6 @@ Find authentication-related files and return an evidence list.
 
 ## Current Scope
 
-`tools/` is installed by `serve_agent_dir` per schedule session. It serves durable agents and recurring work. Normal interactive sessions should use host direct tools, MCP/AHP connections, or SDK `session.tool(...)` registration.
+`tools/` is installed by `serve_agent_dir` per schedule session. It serves durable agents and recurring work. Normal interactive sessions should use host direct tools, MCP connections, or SDK `session.tool(...)` registration.
 
-If a capability is a project-wide connector, prefer host config or MCP/AHP. If it belongs only to one durable scheduled agent, put it in that AgentDir's `tools/`.
+If a capability is a project-wide connector, prefer host config or MCP. If it belongs only to one durable scheduled agent, put it in that AgentDir's `tools/`.

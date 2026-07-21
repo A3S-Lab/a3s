@@ -1,0 +1,180 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { WorkActions } from '../use-work-controller';
+import { createWorkArtifact } from '../work-templates';
+import { WorkEditorShell } from './work-editor-shell';
+
+describe('Work presentation print controls', () => {
+  afterEach(cleanup);
+
+  it('opens a dedicated preview and switches both PDF surfaces to the selected handout layout', () => {
+    const artifact = createWorkArtifact('strategy-deck');
+    const actions = {
+      activeArtifact: artifact,
+      saveState: 'saved',
+      storageMode: 'local',
+      exporting: false,
+      exportingPdf: false,
+      closeArtifact: vi.fn(),
+      saveNow: vi.fn(),
+      updateArtifact: vi.fn(),
+      toggleFavorite: vi.fn(),
+      downloadSource: vi.fn(),
+      exportArtifact: vi.fn(),
+      exportPdf: vi.fn(),
+      sourceBlob: vi.fn(),
+    } as unknown as WorkActions;
+
+    render(<WorkEditorShell actions={actions} />);
+    fireEvent.click(screen.getByRole('button', { name: '打开打印预览' }));
+    fireEvent.change(screen.getByLabelText('演示打印版式'), { target: { value: 'handout-2' } });
+
+    expect(
+      document.querySelectorAll('[data-work-pdf-surface="export"] [data-presentation-print-layout="handout-2"]')
+    ).toHaveLength(2);
+    expect(
+      document.querySelectorAll('[data-work-pdf-surface="preview"] [data-presentation-print-layout="handout-2"]')
+    ).toHaveLength(2);
+    expect(screen.getByLabelText('打印页数')).toHaveTextContent('2 页');
+  });
+
+  it('opens print preview with Cmd/Ctrl+P and passes the selected page range to PDF export', () => {
+    const artifact = createWorkArtifact('strategy-deck');
+    const actions = {
+      activeArtifact: artifact,
+      saveState: 'saved',
+      storageMode: 'local',
+      exporting: false,
+      exportingPdf: false,
+      closeArtifact: vi.fn(),
+      saveNow: vi.fn().mockResolvedValue(true),
+      updateArtifact: vi.fn(),
+      toggleFavorite: vi.fn(),
+      downloadSource: vi.fn(),
+      exportArtifact: vi.fn(),
+      exportPdf: vi.fn(),
+      sourceBlob: vi.fn(),
+    } as unknown as WorkActions;
+
+    render(<WorkEditorShell actions={actions} />);
+    fireEvent.keyDown(window, { key: 'p', metaKey: true });
+    fireEvent.click(screen.getByLabelText('自定义范围'));
+    fireEvent.change(screen.getByLabelText('自定义页码范围'), { target: { value: '1, 3' } });
+    fireEvent.click(screen.getByRole('button', { name: '导出所选页面为 PDF' }));
+
+    expect(actions.exportPdf).toHaveBeenCalledWith({ pageIndexes: [0, 2] });
+  });
+
+  it('retains the selected range through compatibility confirmation', async () => {
+    const artifact = createWorkArtifact('strategy-deck');
+    artifact.compatibility = {
+      sourceFormat: 'PPTX',
+      sourceName: 'Strategy.pptx',
+      assessedAt: Date.now(),
+      issues: [
+        {
+          code: 'pptx.animation',
+          severity: 'warning',
+          feature: 'Animations',
+          message: 'Animations are not printed.',
+        },
+      ],
+    };
+    const actions = {
+      activeArtifact: artifact,
+      saveState: 'saved',
+      storageMode: 'local',
+      exporting: false,
+      exportingPdf: false,
+      closeArtifact: vi.fn(),
+      saveNow: vi.fn().mockResolvedValue(true),
+      updateArtifact: vi.fn(),
+      toggleFavorite: vi.fn(),
+      downloadSource: vi.fn(),
+      exportArtifact: vi.fn(),
+      exportPdf: vi.fn().mockResolvedValue(undefined),
+      sourceBlob: vi.fn(),
+    } as unknown as WorkActions;
+
+    render(<WorkEditorShell actions={actions} />);
+    fireEvent.click(screen.getByRole('button', { name: '打开打印预览' }));
+    fireEvent.click(screen.getByLabelText('自定义范围'));
+    fireEvent.change(screen.getByLabelText('自定义页码范围'), { target: { value: '2-3' } });
+    fireEvent.click(screen.getByRole('button', { name: '导出所选页面为 PDF' }));
+
+    expect(screen.getByRole('dialog', { name: '导出前兼容性检查' })).toBeInTheDocument();
+    expect(actions.exportPdf).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '仍然导出' }));
+
+    await waitFor(() => expect(actions.exportPdf).toHaveBeenCalledWith({ pageIndexes: [1, 2] }));
+  });
+
+  it('persists pending edits before opening the native print dialog', async () => {
+    const artifact = createWorkArtifact('strategy-deck');
+    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined);
+    const actions = {
+      activeArtifact: artifact,
+      saveState: 'dirty',
+      storageMode: 'local',
+      exporting: false,
+      exportingPdf: false,
+      closeArtifact: vi.fn(),
+      saveNow: vi.fn().mockResolvedValue(true),
+      updateArtifact: vi.fn(),
+      toggleFavorite: vi.fn(),
+      downloadSource: vi.fn(),
+      exportArtifact: vi.fn(),
+      exportPdf: vi.fn(),
+      sourceBlob: vi.fn(),
+    } as unknown as WorkActions;
+
+    render(<WorkEditorShell actions={actions} />);
+    fireEvent.click(screen.getByRole('button', { name: '打开打印预览' }));
+    fireEvent.click(screen.getByRole('button', { name: '打印所选页面' }));
+
+    await waitFor(() => {
+      expect(actions.saveNow).toHaveBeenCalled();
+      expect(print).toHaveBeenCalled();
+    });
+    print.mockRestore();
+  });
+
+  it('uses Cmd/Ctrl+S to write a bound Office artifact back to its local file', () => {
+    const artifact = createWorkArtifact('strategy-deck');
+    const actions = {
+      activeArtifact: artifact,
+      activeLocalBinding: {
+        artifactId: artifact.id,
+        path: '/docs/Strategy.pptx',
+        fingerprint: 'sha256:original',
+        size: 12,
+        updatedAt: Date.now(),
+      },
+      localSaveState: 'idle',
+      localConflict: null,
+      saveState: 'saved',
+      storageMode: 'local',
+      exporting: false,
+      exportingPdf: false,
+      closeArtifact: vi.fn(),
+      saveNow: vi.fn(),
+      saveLocalFile: vi.fn().mockResolvedValue(true),
+      saveLocalFileAs: vi.fn(),
+      checkLocalFile: vi.fn().mockResolvedValue(true),
+      dismissLocalConflict: vi.fn(),
+      updateArtifact: vi.fn(),
+      toggleFavorite: vi.fn(),
+      downloadSource: vi.fn(),
+      exportArtifact: vi.fn(),
+      exportPdf: vi.fn(),
+      sourceBlob: vi.fn(),
+    } as unknown as WorkActions;
+
+    render(<WorkEditorShell actions={actions} defaultLocalDirectory='/docs' onPickLocalDirectory={vi.fn()} />);
+    fireEvent.keyDown(window, { key: 's', metaKey: true });
+
+    expect(actions.saveLocalFile).toHaveBeenCalled();
+    expect(actions.saveNow).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '保存到原本地文件' })).toHaveAttribute('title', '/docs/Strategy.pptx');
+  });
+});

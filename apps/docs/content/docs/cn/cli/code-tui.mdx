@@ -20,18 +20,38 @@ Config discovery 按顺序检查：
 
 首次启动且找不到 config 时，CLI 会创建 starter `~/.a3s/config.acl`，并在内置 file editor
 中打开。真实 provider credentials 应通过环境变量或宿主 secret system 提供，不应提交到仓库文件。
+项目配置使用 `os = "https://..."` 设置可选 A3S OS endpoint。
+
+## 本机账号模型
+
+`/model` 除 configured models 外，还会显示本机可用的 Claude Code、Codex、Kimi、
+WorkBuddy 和 A3S OS 账号 tab。Kimi Desktop 或 Kimi Code 已登录时会出现 Kimi tab；
+A3S 优先使用 Kimi Desktop 的 Daimon 模型配置与 coding API key，再回退到
+`~/.kimi-code` 或 `~/.kimi` 中的 Kimi Code OAuth 状态。
+
+Kimi 凭据始终留在 Kimi 自己的文件中：A3S 只在验证模型请求时读取，不会复制到
+`config.acl`、命令输出或日志。OAuth 刷新会在文件锁保护下原子替换 Kimi 自己的凭据文件。
+选择结果以 `kimi/<model>` 路由持久化，并随 session 的 credential source 一起恢复。
 
 ## Sessions
 
-Sessions 会持久化到当前 workspace 的 `.a3s/tui-sessions` 目录。退出时，CLI 会打印当前 session
-的 resume command。
+Core session 快照会持久化到当前 workspace 的
+`.a3s/tui/sessions/v1/sessions`，TUI 自己维护的逐 session 状态则保存在
+`.a3s/tui/session-state/v1`。正常退出时，CLI 会打印完整的
+`a3s code resume <session-id>` 命令；启用颜色输出时，该命令会高亮显示。
 
 ```bash
 a3s code resume <session-id>
 a3s code resume
 ```
 
-第二种形式会恢复当前 workspace 中最新的 saved session。
+第二种形式会恢复当前 workspace 中最新的 saved session。恢复时会保留该 session
+选择的模型及 credential source、effort profile、执行模式（`default`、`plan` 或
+`auto`）和语法高亮主题，而不会重置为启动默认值。
+
+如果退出中断了 durable `/goal`，TUI 会把 goal 保存为 paused。恢复 session 时会先显示
+`Resume goal` 与 `Leave paused` 选择框：前者从下一次 goal iteration 继续，且不改变已恢复的
+执行模式；后者先进入 session 并保持暂停，之后可用 `/goal resume` 继续。
 
 ## A3S Use 应用能力
 
@@ -42,83 +62,259 @@ a3s code resume
 ```bash
 a3s install use --source release
 a3s install use/browser
-a3s install use/document     # 原生 parser 与共享 OCR model 预热
 a3s install use/office       # 可选 OfficeCLI 兼容 provider
-a3s install use/ocr          # 与 Document 相同的 PP-OCRv6 bundle
+a3s install use/ocr          # 固定版本的本地 PP-OCRv6 模型
 
-# 直接首次使用只准备实际需要的 runtime。
-a3s use browser open https://example.com
-a3s use office native create report.docx --json  # 无需额外 provider
-a3s use office get report.docx /body --json      # 准备 OfficeCLI 兼容层
-a3s use document inspect report.docx --json      # 原生只读，不安装
-a3s use document parse report.docx --ocr auto --json
+# OCR 通过 ONNX Runtime 在本地运行。
 a3s use ocr doctor --json
-a3s use ocr extract ./scan.png --json  # 使用 packaged/first-use 模型
 ```
 
-Use 在 TUI 启动时 ready 后，Code 会监听其带版本 registry，并把内置 Browser、
-Document、原生 Office、OCR、可选 Office 兼容层与已安装的其他签名 extension 作为标准
-MCP 和已校验 Skill 热插拔进 session。已校验的 Use archive 本身包含四类 Skill 与
-PP-OCRv6 Small ONNX 模型；Browser/Search 共用一个 Chrome cache，Document/OCR
-共用一个模型目录。
+Use 在 TUI 启动时 ready 后，Code 会监听其带版本 registry，并把内置 Browser、原生
+Office、OCR、可选 Office 兼容层与已安装的其他签名 extension 作为标准 MCP 和已校验
+Skill 热插拔进 session。
 `/use` 与 `/use status` 查看 binary、registry、provider、MCP 和 Skill readiness；
 `/use repair` 自身只输出显式命令，绝不会自动安装或修改状态。若 first-use 准备被禁用
 或失败，显式安装主程序后需重启 Code 一次。
 
 主 model 不会看到 `mcp__use_*`，而是把应用请求委派给只能调用这组工具的专用 `use`
-worker。closed-world read-only 操作（包括 PP-OCRv6 doctor/提取、原生 document inspect
-与 parse）无需额外确认，除非父级策略显式拒绝。Browser 缺少 runtime 时使用需确认的
-共享安装器；原生 Office 无需 provider，只有兼容操作才会通过父级确认请求
-`office_install_compat`；Document/OCR 缺少模型时请求 `document_install_ocr` 或
-`ocr_install`，两者准备同一份幂等 PP-OCRv6 bundle。直接 Browser 启动、Office
-兼容命令、OCR 提取，以及真正选择 raster evidence 的 Document parse 都会按需自动准备
-资源。网络/open-world、mutation、destructive、submit，以及缺少 behavior annotations
-的操作都会升级到父 TUI HITL。父级 deny 始终有效，Office mutation 也不会自动重试。
+worker。closed-world read-only 操作（包括 PP-OCRv6 doctor 与提取）无需额外确认，除非
+父级策略显式拒绝；网络/open-world、Office 或 Browser mutation、destructive、submit，
+以及缺少 behavior annotations 的操作都会升级到父 TUI HITL。父级 deny 始终有效，
+Office mutation 也不会自动重试。
 
 完整 route、artifact、OCR 模型与安全契约见
-[通过 A3S Use 使用 Browser、Document、Office 与 OCR](/cn/docs/code/tui#通过-a3s-use-使用-browserdocumentoffice-与-ocr)。
+[通过 A3S Use 使用 Browser、Office 与 OCR](/cn/docs/code/tui#通过-a3s-use-使用-browseroffice-与-ocr)。
 
 ## Slash Commands
 
 | Command | Capability |
 | --- | --- |
-| `/model` | 切换 configured models，以及可用的 account-backed model tabs。 |
+| `/model` | 切换 configured models，以及可用的 Claude Code、Codex、Kimi、WorkBuddy 和 A3S OS model tabs。 |
 | `/init` | 分析 workspace 并生成 `AGENTS.md`。 |
 | `/config` | 在 TUI editor 中打开 active ACL config。 |
+| `/checkup` | 在强制只读的 Plan mode 中审计安装、ACL、`AGENTS.md`、skills/plugins、MCP 与运行策略，再进入 Approve / Revise / Abandon 修复边界。 |
 | `/use` / `/use status` / `/use repair` | 查看 A3S Use capability 状态，或显示不会自动执行的修复指引。 |
 | `/theme` | 切换 code highlight themes。 |
-| `/flow` | 选择或草拟 workflow assets，用于本地开发和 OS workflow deployment。 |
-| `/agent` | 选择 agent definitions，用于本地开发或 OS deployment。 |
-| `/mcp` | 选择 MCP server assets，用于本地开发和 Function as a Service flows。 |
-| `/skill` | 选择 skill assets，用于本地开发和 Function as a Service deployment。 |
-| `/okf` | 选择 OKF packages，用于本地开发和 OS Knowledge service deployment。 |
-| `/output` | 检查当前 session 的 tool calls 和 outputs。 |
-| `/login` / `/logout` | 当 endpoint 已配置时，登录或退出 configured platform account。 |
-| `/view` | 当存在 platform view 时，在 native window 中打开最新 view。 |
+| `/island on` / `/island off` / `/island status` | 持久化开启或关闭 Agent 灵动岛，并查看当前用户设置。默认开启。 |
+| `/flow` | 选择或草拟 workflow assets，用于本地开发与可选宿主集成。 |
+| `/agent` | 选择 agent definitions，用于本地开发与可选宿主集成。 |
+| `/mcp` | 选择 MCP server assets，用于本地开发与可选宿主集成。 |
+| `/skill` | 选择 skill assets，用于本地开发与可选宿主集成。 |
+| `/okf` | 选择 OKF packages，用于本地开发与知识包管理。 |
+| `/login` / `/logout` | 当 `os` endpoint 已配置时，登录或退出 A3S OS account。 |
+| `Open view` | 点击内联按钮，打开最近的 validated local report 或 trusted runtime view。 |
 | `/plugin` / `/reload` | 启用、禁用、重载 skills/plugins。 |
 | `/update` | 升级 CLI，并重启回 saved session。 |
-| `/btw` | 在 background thread 中提出 side question。 |
-| `/top` | 在 TUI 内打开 process monitor panel。 |
 | `/ide` | 打开 workspace file tree 和 code viewer/editor。 |
-| `/memory` | 用 timeline 浏览 long-term memory。 |
-| `/kb` | 向 project knowledge base 添加 text、files 或 folders。 |
+| `/memory` | 以 event/entity graph 浏览 long-term memory。 |
+| `/kb` | 管理本地 personal knowledge vault。 |
 | `/ctx` | 搜索 past sessions、附加结果，或保存到 memory。 |
 | `/effort` | 调整 model effort。 |
 | `/compact` | summarize 并 compact context。 |
-| `/goal` | 设置或清除 persistent north-star goal。 |
+| `/goal <text>` | 设置 persistent north-star goal。 |
+| `/goal resume` | 继续 session 恢复时保留为 paused 的 durable goal。 |
 | `/loop` | 运行 task，并自动继续直到完成或停止。 |
 | `/sleep` | 把今天的工作整理进 long-term memory。 |
 | `/help` | 显示 commands 和 shortcuts。 |
 | `/fork` | 从当前 conversation 分支出新的 saved session。 |
 | `/clear` | 重置 conversation。 |
-| `/auto` | 本 session 自动批准 tool confirmations。 |
+| `/auto` | 为本 session 启用风险感知自动模式：工作区内的有界编辑可自动执行，但 shell、runtime、委派、未知/MCP 工具、强制 Git 和灾难性操作仍需确认或会被拒绝。 |
 | `/exit` | 退出 `a3s code`。 |
+
+`/checkup` 不是被动状态面板。它先锁定 composer，由宿主收集 typed、secret-free
+快照：installed components、active executable/`PATH` shadowing、有界 ACL syntax 和
+semantic validation、skill/plugin 上下文大小与重名、索引到的 `AGENTS.md` 大小，以及
+内存中的 MCP connection/tool 计数。该 preflight 不会启动 MCP server，也不会把 raw
+component path、MCP error、ACL 内容或 credential 放入 prompt。随后宿主在强制只读的
+Plan mode 中审计适用的 `AGENTS.md`、integrations、更新状态和 runtime policy。
+审计完成后只展示 findings 与拆分到单次确认粒度的 remediation，并停在现有
+Approve / Revise / Abandon 边界。只有用户明确批准后的独立回合才能修改状态，所有越界操作
+仍受正常 HITL 控制。Auto mode 仅作为可选的 saved-session preference 展示；只有现有
+transcript 能证明同一 canonical tool 和 arguments 被重复拒绝时，才会提出 exact read-only
+permission grant。
+
+`Ctrl+T` 打开完整、实时的语义会话 transcript，包括用户与助手消息、plan、每个工具
+的完整生命周期与完整输出、subagent 状态，以及当前仍在流式生成的 Markdown 尾部。该视图
+使用独立的全宽 viewport，并保留用户气泡、工具状态和 Diff 的 ANSI 语义配色；它不是带文件树、
+行号或 `transcript.txt` 外壳的 editor。主视图与 `Ctrl+T` 都由 compositor 在每两个顶层
+message、notice、reasoning block、tool call、subagent result，以及流式或终态 assistant cell
+之间统一插入一行空白；相邻工具调用不再采用更紧密的例外布局。
+
+## 全系统 Agent 灵动岛
+
+在受支持的图形桌面中，第一份新鲜、精确、非空闲 A3S 生命周期状态，或识别到的 coding-agent
+进程，都会为当前用户 session 启动原生 Agent 灵动岛。所有 `a3s code` publisher 共用同一份
+用户级 snapshot 与 singleton lock，因此同时启动多个 TUI 也只会渲染一个灵动岛。该用户设置
+默认开启；`/island off` 会持久化关闭，`/island on` 可重新开启，`/island status` 可查看设置。
+仅打开一个空闲 TUI 不会弹出灵动岛，但发现受支持的 Codex 或其他 coding-agent 进程会触发。
+它是位于物理屏幕顶部中央的独立透明、无边框窗口，因此 terminal 被其他窗口覆盖或最小化后
+仍然可见。点击紧凑的黑色胶囊即可展开或收起有界详情视图。因新请求自动展开时不会抢占键盘
+焦点；用户主动操作展开视图后，可以直接聚焦控制按钮和回复输入框。展开视图中的 `Turn off`
+也可直接关闭；关闭后需在 TUI 中运行 `/island on` 恢复。
+
+普通屏幕上的紧凑 surface 为 `392 × 60` 逻辑像素，展开后是可滚动的 `560 × 360` 详情视图。
+透明原生窗口会在每侧额外保留 48 逻辑像素的横向空间和 32 像素的纵向空间，因此实际窗口尺寸
+分别为 `488 × 124` 与 `656 × 424`；多层霓虹可在圆角 surface 外充分扩散，不再被裁切成透明尖角。
+每个 activity row 都会显示 agent、task、精确或推断状态、workspace 与执行耗时；终态耗时会
+冻结在上报的结束时间。原创 CSS 机器人只把厂商品牌用于主题配色，不复制厂商 Logo 或吉祥物。
+任意精确 `Planning` / `Working` row 或识别到的 agent 进程，都会启用 Apple 风格的彩色霓虹
+呼吸边框；系统开启 reduced-motion 时改为静态彩边。
+
+在 macOS 上，helper 根据 `NSScreen` safe area 几何识别居中刘海，不依赖机型名称列表。
+检测到刘海后，surface 会从物理屏幕顶边开始、顶部两角改为直角，紧凑信息分别放入左右两块
+无遮挡区域。宽度会按需增长，以容纳硬件刘海、左右各 12 逻辑像素的安全余量，以及左右各
+160 像素的内容区；例如 212 像素刘海会得到 `556 × 60` surface 和 `652 × 124` 原生窗口。
+刘海下方的小型可见手柄会启动系统原生拖动。用户成功移动后，两秒一次的自动居中会停止，
+刘海融合样式会解除，展开或收起也会保留移动后 surface 的顶部中心点，不再弹回屏幕中央。
+
+展开视图是带实时计数的注意力工作台，可按 `All`、`Needs you`、`Running` 和 `Recent`
+筛选。`Needs you` 包含等待审批、等待输入和失败；`Recent` 包含完成、失败和取消，因此失败会
+有意同时出现在两个视图中。筛选命中的 child 会保留带有明确标签的 parent 上下文，parent row
+还会显示直接 child 的 settled/total 进度。仅进程级观察会继续以推断状态出现在 `All` 中，
+同时作为实时进程证据计入 `Running`。
+
+每个此前未处理的、可执行的审批或输入请求都会自动切换到 `Needs you` 并展开灵动岛，但不会
+抢占键盘焦点。同一 control token 只处理一次：用户手动收起后，持续 heartbeat 不会反复弹开；
+出现新请求 identity 时才可再次展开。用户手动选择的筛选会保持不变，直到真正的新注意力请求
+到达。
+
+该界面由独立的 `a3s-webview` helper 持有。Tao/Wry 在 WKWebView、WebKitGTK 或 WebView2
+中加载离线内嵌的 HTML、CSS 与 JavaScript；灵动岛不使用 `a3s-tui`、A3S GUI crate、
+React 或 Next.js 渲染。
+
+helper 只会尽力启动，失败绝不会阻止 TUI 启动。`A3S_AGENT_ISLAND=0` 是环境级启动覆盖，
+`A3S_AGENT_ISLAND_BIN` 可指定 `a3s-webview` helper；持久化的 `/island off` 设置会一直生效，
+直到用户再次开启。该设置只控制浮窗；供其他系统状态界面使用的私有精确 heartbeat 会继续发布。
+macOS 与 Windows 支持原生浮窗行为，
+X11 桌面会收到对应的顶部居中与 keep-above window hints。标准 Wayland compositor 不允许
+任意全局定位，因此能否精确放在顶部中央取决于 compositor 或 XWayland 支持。
+
+协作中的 `a3s code` TUI 实例每两秒发布一次带版本的 heartbeat，因此 parent 状态、等待审批、
+plan 执行、终态和 child agents 都是精确状态；heartbeat 十秒后过期。`a3s code exec` 与
+`a3s web` 不发布权威的 TUI 生命周期状态。Claude Code、Codex、Cursor、Gemini、WorkBuddy
+和可识别的 A3S 非 TUI 进程都只提供进程级观察；这些行明确标为 `detected / process`，因为
+发现进程只能证明它存在，不能提供精确任务生命周期。它们仍会触发并维持灵动岛、计入
+`Running`，同时启用工作中的霓虹边框。灵动岛不会显示或持久化第三方进程的命令行参数。
+
+精确终态会继续显示八秒。所有协作中的 A3S TUI 都进入空闲、终态保留期结束，并且没有新鲜的
+受支持进程证据后，下一份空闲 snapshot 才会关闭灵动岛。
+
+精确 row 只显示当前 TUI grant 真正支持的控制。等待审批时显示 `Allow`、`Always` 和
+`Deny`，并在有界的专用字段中展示不超过 240 个字符、经过清理的操作原因；按钮也已放大。
+运行中的 parent stream 可以显示 `Stop`，运行中的 child 可以显示 `Cancel`，符合条件的精确
+parent row 还会显示回复输入框与 `Send` 按钮。回复最多为 1,000 个字符 / 4 KiB；`Enter`
+发送，`Shift+Enter` 换行。在审批期间发送回复只会排入普通 follow-up，不会隐式批准或拒绝
+当前工具。仅进程推断的 row 永远不会出现控制按钮。操作后，helper 先用最新的已清理 snapshot
+校验请求，再把带版本的请求写入私有 `control-requests` queue。目标 TUI 会根据当前 instance、
+activity、session 以及 tool 或 task context 重新校验短期、一次性 grant，然后复用正常的
+消息提交、审批、中断或 child cancellation 路径。最早有效的操作会消耗该 activity 的共享
+token，因此其他控制和重放会失效，直到下一次 heartbeat 发布新 grant。
+
+heartbeat 只持久化经过清理且有长度上限的 workspace basename，绝不会持久化完整路径。
+parent 与 child task 描述默认不会写入磁盘，完整文本只保留在所属进程内。设置
+`A3S_AGENT_STATUS_SHARE_TASKS=1` 后，才会向其他本地 TUI 实例共享经过清理、单行且有长度
+上限的 task label。CLI 还会为显示 helper 原子导出另一份有界、已清理的 snapshot；原生窗口
+只读取这份 snapshot，永远不会收到 TUI 内存中未经清理的 task 或完整 workspace path。
+
+registry、显示 snapshot 与 singleton lock 位于各平台的用户级 A3S state root。helper 会在
+整个原生 event loop 生命周期内持有独占锁；第二个 helper 会正常退出，owner 消失后仍存活的
+TUI 可以接管。Unix 上目录和文件分别使用 `0700` 与 `0600` 权限，control queue 与请求文件也
+使用相同的 `0700` / `0600` 边界。Windows 上的默认目录位于当前用户的
+`%LOCALAPPDATA%` tree 下并依赖继承的 ACL；A3S 不会安装专用 ACL。诊断和 hermetic tests
+可以通过 `A3S_AGENT_STATUS_DIR` 指向隔离目录，该目录应始终仅对当前用户开放。
 
 ## Diff Rendering
 
 完成的文件编辑使用与 Codex 对齐的语义配色：弱化 gutter、绿色新增标记、红色删除标记、
 深色变更行背景，以及不受 `/theme` editor 切换影响的固定 syntax-token 色板。
 长路径和源码行会限制在当前 terminal viewport 宽度内。
+
+成功应用的 effort 会保存为用户偏好，并在下次启动 TUI 时恢复；如果没有有效的已保存值，
+则继续使用现有默认值。
+## Effort 与 DeepResearch
+
+`/effort` 同时调整 thinking budget、tool rounds、continuations 和 local parallel tasks：
+
+| Level | Thinking budget | Tool rounds | Continuations | Parallel tasks |
+| --- | ---: | ---: | ---: | ---: |
+| `low` | 2,048 | 240 | 4 | 4 |
+| `medium` | 8,192 | 800 | 8 | 8 |
+| `high` | 16,384 | 1,200 | 12 | 12 |
+| `xhigh` | 32,768 | 1,800 | 16 | 16 |
+| `max` | 65,536 | 2,400 | 24 | 24 |
+| `ultracode` | 65,536 | 3,200 | 32 | 32 |
+
+DeepResearch 使用一次性的、由宿主管理的 Loop Engineering contract。一个不暴露工具的
+Planner 最多创建四个稳定 research tracks、四条原样 provider queries、可选 canonical seed
+URLs、evidence requirements 与可观察 completion criteria。固定 stage graph 随后只允许：
+一次初始检索、一次闭包语义选择、最多一次 gap-driven 补充、一次 obligation-level 闭包复核、Host
+assessment，以及一次 durable report transaction。运行路径中不存在 maker/checker loop、
+adaptive route、生成新 query 的 follow-up wave 或隐藏 continuation。
+
+Web query 会逐字节发送给固定的 AnySearch、Tavily 与 DuckDuckGo 组合。Web plan 固定拥有
+八个初始 fetch slots，local-only plan 为零。Seed URL 与 provider result
+进入同一个语义 candidate catalog，不会预占 slot。当候选足够时，candidate-ID 决策会填满
+可用的初始 slots，并保留覆盖机会与有用的权威备用来源。
+Provider rank、title、snippet、engine 与 date 仅属于发现元数据；只有实际抓取的 source text
+能进入 evidence 或证明报告中的日期。抓取页面、bounded document ranges 与 Host 重新读取的
+本地 ranges 会进入同一个闭包、多语言 chunk catalog。
+
+Selector 只返回闭包 chunk IDs、typed source/obligation relevance edges，以及完整的
+criterion/role coverage edges。Relevance edge 会保留有用的部分证据；只有当选中的抓取文本
+解决了 criterion 的每个重要要素时，该 criterion 才算覆盖。缺少 criterion、
+primary source、两个独立来源的 corroboration，或初始 fetch/source selector 丢失 evidence
+时，最多可以在八个初始 slots 之外，从原始 candidate catalog 补抓两个未选择来源；补充
+pass 不会再次搜索或改写 query；若仍有不同 transport surface 的候选，也不会重复已
+fetch-failed 的 surface。初始 evidence portfolio 会先成为独立 durable checkpoint；若共享
+retrieval deadline 中断可选补充，Host 只会校验并恢复同一 run/query 的 checkpoint，不会清空
+已经完成的 material evidence。超过 10 个 chunks 的 catalog 会为每个 canonical source
+运行一次完整 selector，每个 source 最多保留四个 excerpts，不按位置切分。每个 source
+只生成一个 accepted evidence item，因此其 claims 与 citations 不会跨来源借用。同一
+obligation 下的问题会合并为一次闭包 evidence review；review 只接收 relevance-linked evidence
+与显式 unscoped 的旧 evidence。模型只返回 `E1` 这类 Host-owned 短 evidence reference，
+Host 再逐问题映射到精确 evidence ID，并独立解码每个预期问题；因此一个 malformed entry
+或无效 reference 不会丢弃同组的有效 sibling answer。若 entry 声称 `answered` 却携带明确的
+非空 limitation，Host 会安全降级为 `partial`，然后才进入 Host assessment 与带引用的
+section generation。
+
+在 TUI 中输入 `? <query>` 或 `? --web <query>` 即可启动；使用
+`? --local-only <query>`（或 `--offline`）强制只用 workspace evidence。`不要联网` 等自由文本
+不会改变 scope。
+
+完成的 run 会写入：
+
+```text
+.a3s/research/<slug>/report.md
+.a3s/research/<slug>/index.html
+```
+
+本地 HTML 通过 loopback-only、no-auth viewer 提供，不登录 A3S OS 也可以使用
+`Open view`。当 evidence 不足或无法追溯时，A3S 会在同一路径写入明确标注的 degraded
+Recovery Report，而不是给出虚假的 completed 结果。报告阶段禁止获取新 evidence，并校验
+claim/source binding、精确 inline citation、heading、replay identity 与 artifact quality。
+每个已提交 evidence binding 都必须引用至少一个同 binding 的精确 source；若初稿遗漏，唯一一次
+targeted revision 会收到该未引用 binding 及其可接受 source alternatives。每个 binding 还会提供
+有界 accepted-claim 摘录；ISO、英文或中文完整日期必须能归一化回本 section 的 committed claim，
+否则无法发布并进入同一次 targeted revision。闭包 review、section/revision 与 editorial frame
+都会保留 source field 的原始语义，并禁止未声明的时间差计算、dependency 到 incompatibility 的
+推断、discontinuation 到“以后不会修复”的推断、没有证据的 replacement 属性，以及从少量样本
+外推整个 ecosystem；内部 fetch/review diagnostic 不会进入面向读者的 source ledger。面向读者的
+review、section/revision 与 frame 文本会使用 query 语言，单个问题的局部 evidence gap 不能扩大为
+整份报告都没有相关证据。每个 obligation
+review 和 report section 都有独立 durable Flow identity；已完成的 sibling
+在中断后会被复用。
+完整 replacement 会收到所有 binding 的精确 citation alternatives。只有严格同源的子路径可以
+收敛到最长的 committed parent；相似或更宽的 URL 仍会 fail closed。
+
+不进入全屏 TUI 时使用同一条 pipeline：
+
+```bash
+a3s code research [--local-only|--web] <query>
+```
+
+`research` 是 canonical command；`deepresearch` 与 `deep-research` 仍是 aliases。已移除的
+`--runtime`、`--local` 与 `--os` 会被拒绝。命令会在所选 workspace 写入 `report.md` 和
+`index.html`，并明确报告 `completed`、`qualified` 或 `degraded` terminal outcome。
 
 ## Headless Smoke Mode
 

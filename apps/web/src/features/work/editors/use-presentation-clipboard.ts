@@ -1,0 +1,212 @@
+import { useCallback, useEffect } from 'react';
+import { showToast } from '../../../state/app-state';
+import { withPresentationDesign } from '../work-presentation-layouts';
+import {
+  clonePresentationElementForPaste,
+  clonePresentationSlideForPaste,
+  copyPresentationElement,
+  copyPresentationSlide,
+  takePresentationClipboard,
+} from '../work-presentation-clipboard';
+import type { WorkPresentationContent, WorkSlide, WorkSlideElement } from '../work-types';
+import type { PresentationDesignMode } from './presentation-design-panel';
+
+export function usePresentationClipboard({
+  content,
+  preview,
+  mode,
+  targetId,
+  selectedSlide,
+  selectedElement,
+  onChange,
+  onSelectSlide,
+  onSelectElement,
+}: {
+  content: WorkPresentationContent;
+  preview: boolean;
+  mode: PresentationDesignMode;
+  targetId: string | undefined;
+  selectedSlide: WorkSlide | undefined;
+  selectedElement: WorkSlideElement | null;
+  onChange: (content: WorkPresentationContent) => void;
+  onSelectSlide: (id: string) => void;
+  onSelectElement: (id: string | null) => void;
+}) {
+  const copySelection = useCallback((): boolean => {
+    if (selectedElement) {
+      copyPresentationElement(selectedElement);
+      showToast('已复制演示元素', 'success');
+      return true;
+    }
+    if (mode !== 'slide' || !selectedSlide) return false;
+    copyPresentationSlide(selectedSlide);
+    showToast('已复制幻灯片', 'success');
+    return true;
+  }, [mode, selectedElement, selectedSlide]);
+
+  const deleteSelectedElement = useCallback((): boolean => {
+    if (!selectedElement || !targetId) return false;
+    const next = updateTargetElements(content, mode, targetId, (elements) =>
+      elements.filter((element) => element.id !== selectedElement.id)
+    );
+    if (!next) return false;
+    onChange(next);
+    onSelectElement(null);
+    return true;
+  }, [content, mode, onChange, onSelectElement, selectedElement, targetId]);
+
+  const cutSelection = useCallback((): boolean => {
+    if (selectedElement) {
+      copyPresentationElement(selectedElement);
+      if (!deleteSelectedElement()) return false;
+      showToast('已剪切演示元素', 'success');
+      return true;
+    }
+    if (mode !== 'slide' || !selectedSlide) return false;
+    if (content.slides.length === 1) {
+      showToast('演示文稿至少需要保留一张幻灯片。', 'info');
+      return true;
+    }
+    copyPresentationSlide(selectedSlide);
+    const index = content.slides.findIndex((slide) => slide.id === selectedSlide.id);
+    const slides = content.slides.filter((slide) => slide.id !== selectedSlide.id);
+    onChange({ ...content, slides });
+    onSelectSlide(slides[Math.min(index, slides.length - 1)].id);
+    onSelectElement(null);
+    showToast('已剪切幻灯片', 'success');
+    return true;
+  }, [content, deleteSelectedElement, mode, onChange, onSelectElement, onSelectSlide, selectedElement, selectedSlide]);
+
+  const pasteSelection = useCallback((): boolean => {
+    const clipboard = takePresentationClipboard();
+    if (!clipboard) {
+      showToast('没有可粘贴的演示内容。', 'info');
+      return true;
+    }
+    if (clipboard.payload.kind === 'element') {
+      if (!targetId) return false;
+      const pasted = clonePresentationElementForPaste(clipboard.payload.element, clipboard.offset);
+      const next = updateTargetElements(content, mode, targetId, (elements) => [...elements, pasted]);
+      if (!next) return false;
+      onChange(next);
+      onSelectElement(pasted.id);
+      showToast('已粘贴演示元素', 'success');
+      return true;
+    }
+    if (mode !== 'slide' || !selectedSlide) {
+      showToast('请返回幻灯片编辑后粘贴整张幻灯片。', 'info');
+      return true;
+    }
+    const pasted = clonePresentationSlideForPaste(clipboard.payload.slide);
+    const index = content.slides.findIndex((slide) => slide.id === selectedSlide.id);
+    const slides = [...content.slides];
+    slides.splice(index + 1, 0, pasted);
+    onChange({ ...content, slides });
+    onSelectSlide(pasted.id);
+    onSelectElement(null);
+    showToast('已粘贴幻灯片', 'success');
+    return true;
+  }, [content, mode, onChange, onSelectElement, onSelectSlide, selectedSlide, targetId]);
+
+  const duplicateSelection = useCallback((): boolean => {
+    if (selectedElement && targetId) {
+      const copy = clonePresentationElementForPaste(selectedElement, 2);
+      const next = updateTargetElements(content, mode, targetId, (elements) => [...elements, copy]);
+      if (!next) return false;
+      onChange(next);
+      onSelectElement(copy.id);
+      showToast('已复制演示元素', 'success');
+      return true;
+    }
+    if (mode !== 'slide' || !selectedSlide) return false;
+    const copy = clonePresentationSlideForPaste(selectedSlide);
+    const index = content.slides.findIndex((slide) => slide.id === selectedSlide.id);
+    const slides = [...content.slides];
+    slides.splice(index + 1, 0, copy);
+    onChange({ ...content, slides });
+    onSelectSlide(copy.id);
+    onSelectElement(null);
+    showToast('已复制幻灯片', 'success');
+    return true;
+  }, [content, mode, onChange, onSelectElement, onSelectSlide, selectedElement, selectedSlide, targetId]);
+
+  useEffect(() => {
+    if (preview) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isPresentationTextEditingTarget(event.target)) return;
+      const commandKey = event.metaKey || event.ctrlKey;
+      const key = event.key.toLocaleLowerCase();
+      let handled = false;
+      if (commandKey && key === 'c') handled = copySelection();
+      else if (commandKey && key === 'x') handled = cutSelection();
+      else if (commandKey && key === 'v') handled = pasteSelection();
+      else if (commandKey && key === 'd') handled = duplicateSelection();
+      else if ((event.key === 'Delete' || event.key === 'Backspace') && selectedElement) {
+        handled = deleteSelectedElement();
+      }
+      if (handled) event.preventDefault();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [
+    copySelection,
+    cutSelection,
+    deleteSelectedElement,
+    duplicateSelection,
+    pasteSelection,
+    preview,
+    selectedElement,
+  ]);
+
+  return { copySelection, cutSelection, pasteSelection };
+}
+
+function updateTargetElements(
+  content: WorkPresentationContent,
+  mode: PresentationDesignMode,
+  targetId: string,
+  update: (elements: WorkSlideElement[]) => WorkSlideElement[]
+): WorkPresentationContent | null {
+  if (mode === 'slide') {
+    if (!content.slides.some((slide) => slide.id === targetId)) return null;
+    return {
+      ...content,
+      slides: content.slides.map((slide) =>
+        slide.id === targetId ? { ...slide, elements: update(structuredCopy(slide.elements)) } : slide
+      ),
+    };
+  }
+  const normalized = withPresentationDesign(content);
+  if (mode === 'layout') {
+    if (!normalized.layouts?.some((layout) => layout.id === targetId)) return null;
+    return {
+      ...normalized,
+      layouts: normalized.layouts.map((layout) =>
+        layout.id === targetId ? { ...layout, elements: update(structuredCopy(layout.elements)) } : layout
+      ),
+    };
+  }
+  if (!normalized.masters?.some((master) => master.id === targetId)) return null;
+  return {
+    ...normalized,
+    masters: normalized.masters.map((master) =>
+      master.id === targetId ? { ...master, elements: update(structuredCopy(master.elements)) } : master
+    ),
+  };
+}
+
+function isPresentationTextEditingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target.isContentEditable ||
+    Boolean(target.closest('[data-slide-editor]'))
+  );
+}
+
+function structuredCopy<T>(value: T): T {
+  if (typeof structuredClone === 'function') return structuredClone(value);
+  return JSON.parse(JSON.stringify(value)) as T;
+}

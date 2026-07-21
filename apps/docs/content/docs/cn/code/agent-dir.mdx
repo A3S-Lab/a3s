@@ -103,4 +103,4 @@ serve_agent_dir(&agent, &agent_dir, "./workspace", Some(extra), cancel).await?;
 - `instructions.md` 是一个角色 slot，因此 harness 的边界、响应契约以及 verification 保持权威。
 - AgentDir 是主 Agent 的目录；它不同于 `agent_dirs` / `registerAgentDir`，后者扫描 [agents/ 角色目录](/cn/docs/code/filesystem-agents) 以获取 worker/subagent 定义。
 - secret 应放在环境变量或宿主密钥系统中，并从 `agent.acl` 引用，不要内联写进目录里。
-- `tools/` 由 serve 守护进程按调度 session 安装。普通交互式 session 应优先使用 direct tools、MCP/AHP 或 SDK 注册路径。
+- `tools/` 由 serve 守护进程按调度 session 安装。普通交互式 session 应优先使用 direct tools、MCP 或 SDK 注册路径。

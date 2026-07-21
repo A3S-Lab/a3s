@@ -1,0 +1,405 @@
+/* Settings content shared by account, appearance, and model sections */
+
+.settings-section {
+  width: 100%;
+  max-width: 760px;
+}
+
+.setting-heading h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.setting-heading p {
+  margin: 6px 0 0;
+  color: var(--a3s-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.theme-grid {
+  display: grid;
+  margin: 15px 0 24px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+}
+
+.theme-card {
+  position: relative;
+  display: flex;
+  min-height: 120px;
+  align-items: flex-start;
+  padding: 13px;
+  flex-direction: column;
+  border: 1px solid var(--a3s-line);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--a3s-panel-soft) 55%, var(--a3s-panel));
+  cursor: pointer;
+  text-align: left;
+}
+
+.theme-card:hover,
+.theme-card.active {
+  border-color: color-mix(in srgb, var(--a3s-blue) 55%, var(--a3s-line));
+}
+
+.theme-card > span {
+  display: flex;
+  width: 31px;
+  height: 31px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background: var(--a3s-panel-soft);
+  color: var(--a3s-blue);
+}
+
+.theme-card strong {
+  font-size: 12px;
+}
+
+.theme-card small {
+  margin-top: 4px;
+  color: var(--a3s-muted);
+  font-size: 11px;
+}
+
+.theme-card i {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  display: flex;
+  width: 19px;
+  height: 19px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--a3s-blue);
+  color: white;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 30px;
+  padding: 14px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--a3s-panel-soft) 52%, var(--a3s-panel));
+}
+
+.setting-row > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.setting-row strong {
+  font-size: 11px;
+}
+
+.setting-row span {
+  color: var(--a3s-muted);
+  font-size: 11px;
+}
+
+.setting-row code {
+  max-width: 300px;
+  overflow: hidden;
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: var(--a3s-panel-soft);
+  color: var(--a3s-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.default-model-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin: 17px 0;
+  padding: 15px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 11px;
+  background: var(--a3s-panel-soft);
+}
+
+.default-model-card > div {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.default-model-card strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.default-model-card span {
+  color: var(--a3s-muted);
+  font-size: 11px;
+}
+
+.settings-model-select {
+  max-width: 260px;
+  height: 34px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--a3s-line-strong);
+  border-radius: 8px;
+  background: var(--a3s-panel);
+  color: var(--a3s-ink);
+  font-size: 12px;
+}
+
+.provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.provider-list section {
+  padding: 14px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--a3s-panel-soft) 42%, var(--a3s-panel));
+}
+
+.provider-list section header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+
+.provider-list section header strong {
+  font-size: 12px;
+}
+
+.provider-list section > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.provider-list section > div span {
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: var(--a3s-panel-soft);
+  color: var(--a3s-muted);
+  font-size: 10px;
+}
+
+.settings-section > .btn,
+.settings-section > .btn-outline {
+  min-height: 37px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.settings-saving {
+  display: block;
+  margin: -9px 0 14px;
+  color: var(--a3s-muted);
+  font-size: 11px;
+}
+
+.account-settings-page .config-section {
+  margin-bottom: 28px;
+}
+
+.a3s-os-account-summary {
+  display: grid;
+  min-height: 76px;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 16px;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+}
+
+.a3s-os-account-summary img {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.account-provider-copy,
+.local-account-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.account-provider-copy strong,
+.local-account-copy > strong {
+  color: var(--a3s-ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.account-provider-copy > span,
+.local-account-copy > span {
+  overflow: hidden;
+  color: var(--a3s-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-capability-grid {
+  display: grid;
+  border-top: 1px solid var(--a3s-line);
+  border-bottom: 1px solid var(--a3s-line);
+  background: color-mix(in srgb, var(--a3s-panel-soft) 52%, var(--a3s-panel));
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.account-capability-grid > div {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 14px;
+  border-right: 1px solid var(--a3s-line);
+}
+
+.account-capability-grid > div:last-child {
+  border-right: 0;
+}
+
+.account-capability-grid span {
+  color: var(--a3s-muted);
+  font-size: 11px;
+}
+
+.account-capability-grid strong {
+  color: var(--a3s-faint);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.account-capability-grid strong.available {
+  color: var(--a3s-green);
+}
+
+.account-section-actions,
+.account-model-catalog-note {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 14px 10px 16px;
+}
+
+.account-section-actions > span,
+.account-model-catalog-note > span {
+  overflow: hidden;
+  color: var(--a3s-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-section-actions .ds-button {
+  min-height: 32px;
+  padding-inline: 11px;
+  font-size: 11px;
+}
+
+.local-model-account-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.local-model-account-list > li {
+  display: grid;
+  min-height: 70px;
+  align-items: center;
+  gap: 13px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--a3s-line);
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+}
+
+.local-account-mark {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--a3s-line);
+  border-radius: 9px;
+  background: var(--a3s-panel);
+  color: var(--a3s-ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.local-account-mark.codex {
+  background: var(--a3s-action);
+  color: var(--a3s-action-ink);
+}
+
+.local-account-mark.workbuddy {
+  background: color-mix(in srgb, var(--a3s-green) 9%, var(--a3s-panel));
+  color: var(--a3s-green);
+}
+
+.local-account-models {
+  max-width: 560px;
+}
+
+.local-account-guidance code {
+  padding: 2px 5px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 4px;
+  background: var(--a3s-panel);
+  color: var(--a3s-ink);
+  font: 10px/1.4 "SFMono-Regular", Consolas, monospace;
+}
+
+.account-model-refresh-error {
+  margin: 0;
+  padding: 9px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--a3s-red) 24%, var(--a3s-line));
+  background: color-mix(in srgb, var(--a3s-red) 5%, var(--a3s-panel));
+  color: var(--a3s-red);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.account-model-catalog-note {
+  min-height: 46px;
+  background: color-mix(in srgb, var(--a3s-panel-soft) 46%, var(--a3s-panel));
+}
+
+.account-model-catalog-note strong {
+  flex: 0 0 auto;
+  color: var(--a3s-green);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.settings-warning {
+  margin: 8px 0;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--a3s-warning, #d97706) 25%, var(--a3s-line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--a3s-warning, #d97706) 5%, var(--a3s-panel));
+  color: var(--a3s-warning, #d97706);
+  font-size: 11px;
+}

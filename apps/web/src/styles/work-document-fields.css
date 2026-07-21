@@ -1,0 +1,18 @@
+.work-document-field {
+  padding: 0 3px;
+  border-bottom: 1px dotted #8da9dd;
+  border-radius: 2px;
+  background: color-mix(in srgb, #dce9ff 45%, transparent);
+  color: #245fc4;
+  cursor: default;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.work-document-preview-pages .work-document-field,
+.work-pdf-export-page .work-document-field {
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+  color: inherit;
+}

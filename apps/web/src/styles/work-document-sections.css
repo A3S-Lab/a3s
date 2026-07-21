@@ -1,0 +1,477 @@
+.work-document-layout-panel > legend {
+  float: none;
+  margin: 0 4px 0 0;
+  color: var(--a3s-ink);
+  font-weight: 650;
+}
+
+.work-document-section-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.work-document-section-actions button {
+  height: 25px;
+  padding: 0 8px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 5px;
+  background: var(--a3s-bg);
+  color: var(--a3s-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.work-document-section-actions button:hover:not(:disabled) {
+  border-color: var(--a3s-blue);
+  color: var(--a3s-blue);
+}
+
+.work-document-section-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.work-document-layout-panel .work-document-columns-panel {
+  flex-wrap: wrap;
+}
+
+.work-document-layout-panel .work-document-column-option {
+  gap: 4px;
+}
+
+.work-document-layout-panel .work-document-column-option input,
+.work-document-layout-panel .work-document-page-number-option input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  padding: 0;
+}
+
+.work-document-custom-columns {
+  display: flex;
+  min-width: 100%;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 5px 0 0 43px;
+}
+
+.work-document-custom-column {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.work-document-custom-column strong {
+  color: var(--a3s-ink);
+  font-weight: 650;
+}
+
+.work-document-custom-columns > p {
+  min-width: 240px;
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--a3s-subtle);
+}
+
+.work-document-layout-panel .work-document-page-chrome-panel {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 100%;
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 1fr);
+  gap: 7px 10px;
+  padding-top: 7px;
+  border-top: 1px solid var(--a3s-line);
+}
+
+.work-document-layout-panel .work-document-page-chrome-panel > legend {
+  grid-column: 1 / -1;
+  color: var(--a3s-ink);
+  font-weight: 650;
+}
+
+.work-document-page-chrome-options {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.work-document-layout-panel .work-document-page-chrome-options > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.work-document-page-chrome-editor {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.work-document-page-chrome-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+}
+
+.work-document-page-chrome-toolbar button {
+  min-width: 24px;
+  height: 23px;
+  padding: 0 5px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 4px;
+  background: var(--a3s-bg);
+  color: var(--a3s-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.work-document-page-chrome-toolbar button:hover {
+  border-color: var(--a3s-blue);
+  color: var(--a3s-blue);
+}
+
+.work-document-page-chrome-color {
+  display: inline-grid;
+  width: 24px;
+  height: 23px;
+  place-items: center;
+  border: 1px solid var(--a3s-line);
+  border-radius: 4px;
+  background: var(--a3s-bg);
+}
+
+.work-document-page-chrome-color input {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 0;
+}
+
+.work-document-page-chrome-content {
+  min-height: 48px;
+  max-height: 100px;
+  padding: 6px 8px;
+  overflow: auto;
+  border: 1px solid var(--a3s-line);
+  border-radius: 5px;
+  outline: 0;
+  background: #ffffff;
+  color: var(--a3s-ink);
+  font-family: Georgia, "Songti SC", "STSong", serif;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.work-document-page-chrome-content:focus {
+  border-color: var(--a3s-blue);
+  box-shadow: 0 0 0 2px rgb(47 111 237 / 10%);
+}
+
+.work-document-page-chrome-content:empty::before {
+  color: #a0a8b7;
+  content: attr(data-placeholder);
+  pointer-events: none;
+}
+
+.work-document-page-chrome-content p,
+.work-document-page-chrome-html p {
+  margin: 0;
+}
+
+.work-document-page-chrome-content img,
+.work-document-page-chrome-html img {
+  max-width: 100%;
+  max-height: 48px;
+  object-fit: contain;
+}
+
+.work-document-page-chrome-panel > .work-document-page-number-option {
+  grid-column: 1 / -1;
+}
+
+.work-document-page-chrome-html {
+  min-width: 0;
+  width: 100%;
+  white-space: normal;
+}
+
+.work-document-page .tiptap > .work-document-section {
+  position: relative;
+  min-height: 120px;
+  column-count: var(--work-document-column-count, 1);
+  column-gap: var(--work-document-column-gap, 12mm);
+  column-rule: var(--work-document-column-rule, none);
+}
+
+.work-document-page .tiptap > .work-document-section:first-child {
+  min-height: 760px;
+}
+
+.work-document-page.landscape .tiptap > .work-document-section:first-child {
+  min-height: 460px;
+}
+
+.work-document-page .tiptap > .work-document-section + .work-document-section {
+  margin-top: 46px;
+  padding-top: 28px;
+  border-top: 1px dashed #9ea8b9;
+}
+
+.work-document-page .tiptap > .work-document-section + .work-document-section::before {
+  position: absolute;
+  top: -17px;
+  left: 50%;
+  padding: 1px 8px;
+  background: #ffffff;
+  color: #778196;
+  content: "分节符";
+  font-family: var(--a3s-ui-font, ui-sans-serif), "PingFang SC", sans-serif;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  transform: translateX(-50%);
+}
+
+.work-document-note-reference,
+[data-document-note-reference] {
+  margin-inline: 1px;
+  color: var(--a3s-blue);
+  cursor: default;
+  font-family: var(--a3s-ui-font, ui-sans-serif), "PingFang SC", sans-serif;
+  font-size: 0.72em;
+  font-weight: 650;
+  line-height: 0;
+  vertical-align: super;
+}
+
+.work-document-page .tiptap .work-document-note {
+  display: grid;
+  min-height: 28px;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-span: all;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #d8dee8;
+  color: #4d5668;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.work-document-page .tiptap .work-document-note::before {
+  color: var(--a3s-blue);
+  content: attr(data-note-number);
+  font-family: var(--a3s-ui-font, ui-sans-serif), "PingFang SC", sans-serif;
+  font-weight: 650;
+}
+
+.work-document-page .tiptap .work-document-note[data-note-kind="endnote"]::before {
+  content: "尾" attr(data-note-number);
+}
+
+.work-document-page .tiptap .work-document-note > * {
+  grid-column: 2;
+}
+
+.work-document-page .tiptap .work-document-note > :first-child {
+  margin-top: 0;
+}
+
+.work-document-page .tiptap .work-document-note > :last-child {
+  margin-bottom: 0;
+}
+
+.work-document-section > table,
+.work-document-section > .tableWrapper,
+.work-document-print-body table {
+  break-inside: avoid;
+}
+
+.work-document-preview-pages {
+  min-height: 0;
+  flex: 1;
+  padding: 28px max(28px, calc((100% - 850px) / 2)) 70px;
+  overflow: auto;
+  background: var(--a3s-bg);
+}
+
+.work-document-preview-page {
+  box-sizing: border-box;
+  display: flex;
+  width: min(100%, 794px);
+  min-height: 1123px;
+  flex-direction: column;
+  margin: 0 auto 28px;
+  border: 1px solid var(--a3s-line);
+  background: #ffffff;
+  box-shadow: 0 8px 30px rgb(30 38 55 / 7%);
+  color: #20232b;
+  font-family: Georgia, "Songti SC", "STSong", serif;
+  font-size: 15px;
+  line-height: 1.82;
+}
+
+.work-document-preview-page.letter {
+  width: min(100%, 816px);
+  min-height: 1056px;
+}
+
+.work-document-preview-page.a4.landscape {
+  width: min(100%, 1123px);
+  min-height: 794px;
+}
+
+.work-document-preview-page.letter.landscape {
+  width: min(100%, 1056px);
+  min-height: 816px;
+}
+
+.work-document-preview-page > header,
+.work-document-preview-page > footer {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  color: #7a8395;
+  font-family: var(--a3s-ui-font, ui-sans-serif), "PingFang SC", sans-serif;
+  font-size: 9px;
+  white-space: pre-wrap;
+}
+
+.work-document-preview-page > header {
+  min-height: 20px;
+  justify-content: center;
+  margin-bottom: 22px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid #e1e5ec;
+}
+
+.work-document-preview-page > footer {
+  min-height: 20px;
+  margin-top: 24px;
+  padding-top: 7px;
+  border-top: 1px solid #e1e5ec;
+}
+
+.work-document-print-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.work-document-print-body > article {
+  min-height: 0;
+  flex: 0 0 auto;
+}
+
+.work-document-print-body > .work-document-custom-column-layout {
+  display: grid;
+  align-items: start;
+}
+
+.work-document-custom-column-layout > [data-document-column-index] {
+  min-width: 0;
+  height: 100%;
+}
+
+.work-document-custom-column-layout > [data-document-column-index] > :first-child {
+  margin-top: 0;
+}
+
+.work-document-print-body > article + article {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #dfe3eb;
+}
+
+.work-document-page-notes {
+  flex: 0 0 auto;
+  margin-top: 18px;
+  padding-top: 8px;
+  border-top: 1px solid #aeb6c4;
+  color: #4d5668;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.work-document-page-notes.endnote {
+  margin-top: 22px;
+}
+
+.work-document-page-notes h3 {
+  margin: 0 0 6px;
+  color: #343d4e;
+  font-family: var(--a3s-ui-font, ui-sans-serif), "PingFang SC", sans-serif;
+  font-size: 11px;
+}
+
+.work-document-page-notes ol {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.work-document-page-notes li {
+  margin: 0 0 5px;
+  padding-left: 2px;
+}
+
+.work-document-page-notes li:last-child,
+.work-document-page-notes li p:last-child {
+  margin-bottom: 0;
+}
+
+.work-document-page-notes li p {
+  margin: 0 0 4px;
+}
+
+.work-document-blank-page-label {
+  display: grid;
+  min-height: 240px;
+  flex: 1;
+  place-items: center;
+  color: #a0a7b4;
+  font-family: var(--a3s-ui-font, ui-sans-serif), "PingFang SC", sans-serif;
+  font-size: 11px;
+}
+
+.work-document-preview-page h1 {
+  margin: 0 0 24px;
+  color: #172033;
+  font-family: var(--a3s-ui-font, ui-sans-serif), "PingFang SC", sans-serif;
+  font-size: 32px;
+}
+
+.work-document-preview-page h2 {
+  margin: 28px 0 12px;
+  color: #1b263d;
+  font-family: var(--a3s-ui-font, ui-sans-serif), "PingFang SC", sans-serif;
+  font-size: 21px;
+}
+
+.work-document-preview-page p {
+  margin: 0 0 13px;
+}
+
+.work-document-preview-page img,
+.work-document-preview-page table {
+  max-width: 100%;
+}
+
+@media (max-width: 1080px) {
+  .work-document-layout-panel .work-document-page-chrome-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .work-document-page-chrome-panel > * {
+    grid-column: 1;
+  }
+
+  .work-document-preview-page {
+    padding-right: 62px !important;
+    padding-left: 62px !important;
+  }
+}

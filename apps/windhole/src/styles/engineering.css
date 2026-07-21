@@ -1,0 +1,328 @@
+.engineering-workspace {
+  background:
+    linear-gradient(rgb(100 220 229 / 2.5%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(100 220 229 / 2.5%) 1px, transparent 1px),
+    radial-gradient(circle at 18% 12%, rgb(100 220 229 / 9%), transparent 30%),
+    var(--lab-bg);
+  background-size: 34px 34px, 34px 34px, auto, auto;
+}
+
+.engineering-command-header {
+  position: relative;
+  background:
+    linear-gradient(90deg, rgb(7 19 23 / 98%), rgb(11 20 31 / 86%)),
+    var(--lab-panel);
+}
+
+.engineering-command-header::after {
+  position: absolute;
+  right: 32px;
+  bottom: 0;
+  left: 32px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--lab-cyan), var(--a3s-blue), transparent 74%);
+  content: '';
+}
+
+.engineering-grid {
+  display: grid;
+  max-width: 1340px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 auto;
+  padding: 26px 28px 82px;
+}
+
+.engineering-card {
+  --module-accent: var(--a3s-blue);
+
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 360px;
+  flex-direction: column;
+  padding: 20px;
+  border: 1px solid var(--lab-line);
+  border-radius: 8px;
+  overflow: hidden;
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--module-accent) 7%, transparent), transparent 46%),
+    linear-gradient(180deg, #0a171c, #071115);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 16%);
+}
+
+.engineering-card::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: linear-gradient(180deg, var(--module-accent), transparent 76%);
+  content: '';
+}
+
+.engineering-card::after {
+  position: absolute;
+  top: 11px;
+  right: 11px;
+  width: 8px;
+  height: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--module-accent) 58%, var(--lab-line-strong));
+  border-right: 1px solid color-mix(in srgb, var(--module-accent) 58%, var(--lab-line-strong));
+  content: '';
+}
+
+.doctor-card {
+  --module-accent: var(--lab-green);
+
+  min-height: 130px;
+  grid-column: 1 / 4;
+  display: grid;
+  grid-template-columns: 42px minmax(260px, 1fr) minmax(260px, 0.9fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.validation-card {
+  --module-accent: var(--lab-cyan);
+}
+
+.task-lock-card {
+  --module-accent: var(--lab-orange);
+}
+
+.candidate-lock-card {
+  --module-accent: var(--a3s-purple);
+}
+
+.engineering-card-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--module-accent) 36%, var(--lab-line));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--module-accent) 7%, var(--lab-panel-raised));
+  color: var(--module-accent);
+}
+
+.engineering-card-copy {
+  margin-bottom: 17px;
+}
+
+.doctor-card .engineering-card-copy {
+  margin-bottom: 0;
+}
+
+.card-index {
+  color: var(--module-accent);
+  font-family: var(--mono-font);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.engineering-card-copy h2 {
+  margin: 6px 0 0;
+  color: #d9e7e9;
+  font-size: 17px;
+  font-weight: 620;
+}
+
+.engineering-card-copy p {
+  margin: 7px 0 0;
+  color: var(--lab-muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.runtime-readout {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 11px 16px;
+  border: 1px solid rgb(105 224 178 / 14%);
+  border-radius: 7px;
+  background: rgb(105 224 178 / 3%);
+}
+
+.runtime-readout > span {
+  color: color-mix(in srgb, var(--lab-green) 58%, var(--lab-faint));
+  font-family: var(--mono-font);
+  font-size: 7.5px;
+  letter-spacing: 0.1em;
+}
+
+.runtime-readout dl {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 0.8fr 1.3fr 1fr;
+  gap: 12px;
+  margin: 8px 0 0;
+}
+
+.runtime-readout dl > div {
+  min-width: 0;
+}
+
+.runtime-readout dt {
+  color: var(--lab-muted);
+  font-size: 8px;
+}
+
+.runtime-readout dd {
+  overflow: hidden;
+  margin: 4px 0 0;
+  color: var(--lab-green);
+  font-family: var(--mono-font);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.field-pair-three {
+  grid-template-columns: 1fr 1fr;
+}
+
+.field-pair-three .stacked-field:last-child {
+  grid-column: 1 / 3;
+}
+
+.command-disclosure {
+  margin-top: 11px;
+  color: var(--lab-muted);
+  font-size: 9px;
+}
+
+.command-disclosure summary {
+  width: max-content;
+  cursor: pointer;
+  color: var(--lab-faint);
+  font-family: var(--mono-font);
+  letter-spacing: 0.04em;
+}
+
+.command-disclosure code {
+  display: block;
+  overflow: auto;
+  margin-top: 7px;
+  padding: 8px;
+  border: 1px solid var(--lab-line);
+  border-radius: 5px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--module-accent) 5%, transparent), transparent),
+    #050d10;
+  color: #8da6ab;
+  font-family: var(--mono-font);
+  font-size: 8.5px;
+  white-space: nowrap;
+}
+
+.engineering-card > .primary-action {
+  width: 100%;
+  align-self: stretch;
+  margin-top: auto;
+}
+
+.operation-status {
+  position: fixed;
+  z-index: 20;
+  right: 20px;
+  bottom: 18px;
+  display: flex;
+  width: min(540px, calc(100vw - 40px));
+  min-height: 42px;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 12px;
+  border: 1px solid var(--lab-line-strong);
+  border-radius: 7px;
+  background:
+    linear-gradient(90deg, rgb(108 163 255 / 7%), transparent),
+    rgb(9 19 23 / 96%);
+  box-shadow: var(--lab-shadow);
+  color: var(--lab-muted);
+  font-size: 10.5px;
+  backdrop-filter: blur(16px);
+}
+
+.operation-status svg {
+  flex: 0 0 auto;
+  color: var(--a3s-blue);
+}
+
+.operation-status.is-success {
+  border-color: rgb(105 224 178 / 27%);
+  color: #aac4ba;
+}
+
+.operation-status.is-success svg {
+  color: var(--lab-green);
+}
+
+.operation-status.is-error {
+  border-color: rgb(241 113 113 / 30%);
+  color: #d3a3a3;
+}
+
+.operation-status.is-error svg {
+  color: var(--lab-red);
+}
+
+@media (max-width: 1180px) {
+  .engineering-grid {
+    grid-template-columns: 1fr 1fr;
+    padding: 20px 20px 76px;
+  }
+
+  .doctor-card {
+    grid-column: 1 / 3;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+  }
+
+  .doctor-card .runtime-readout {
+    grid-column: 2 / 4;
+  }
+
+  .doctor-card > .secondary-action {
+    grid-row: 1;
+    grid-column: 3;
+  }
+}
+
+@media (max-width: 760px) {
+  .engineering-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-card {
+    grid-column: 1;
+    display: flex;
+  }
+
+  .runtime-readout {
+    width: 100%;
+    padding: 10px;
+    border-top: 1px solid var(--lab-line);
+  }
+
+  .runtime-readout dl {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .field-pair,
+  .field-pair-three {
+    grid-template-columns: 1fr;
+  }
+
+  .field-pair-three .stacked-field:last-child {
+    grid-column: 1;
+  }
+}

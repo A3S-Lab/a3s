@@ -28,8 +28,8 @@ use a3s_flow::{
 use std::sync::Arc;
 
 # async fn run(runtime: Arc<dyn a3s_flow::FlowRuntime>) -> a3s_flow::Result<()> {
-let store = Arc::new(LocalFileEventStore::new(".a3s-flow/events"));
-let queue = Arc::new(LocalFileFlowTaskQueue::new(".a3s-flow/tasks"));
+let store = Arc::new(LocalFileEventStore::new(".a3s/flow/events"));
+let queue = Arc::new(LocalFileFlowTaskQueue::new(".a3s/flow/tasks"));
 
 queue.requeue_inflight().await?;
 
@@ -42,7 +42,7 @@ let worker = FlowWorker::new(engine.clone(), queue.clone());
 Directory layout:
 
 ```text
-.a3s-flow/
+.a3s/flow/
   events/
     <run-id>.jsonl
   tasks/

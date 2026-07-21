@@ -93,7 +93,6 @@ import path from 'node:path';
 
 const agent = await Agent.create('agent.acl');
 const session = agent.session(process.cwd(), {
-  builtinSkills: true,
   planningMode: 'auto',
   autoDelegation: { enabled: true, maxTasks: 3 },
   autoParallel: false,

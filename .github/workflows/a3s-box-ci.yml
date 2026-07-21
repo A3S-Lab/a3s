@@ -3,12 +3,20 @@ name: A3S Box CI
 on:
   pull_request:
     paths:
+      - "crates/box"
       - "crates/box/**"
+      - "crates/gui"
+      - "crates/gui/**"
+      - "apps/box/**"
       - ".github/workflows/a3s-box-ci.yml"
   push:
     branches: [main]
     paths:
+      - "crates/box"
       - "crates/box/**"
+      - "crates/gui"
+      - "crates/gui/**"
+      - "apps/box/**"
       - ".github/workflows/a3s-box-ci.yml"
   workflow_dispatch:
 
@@ -74,3 +82,44 @@ jobs:
 
       - name: Test Windows launcher
         run: cargo test --locked -p a3s-box-win
+
+  desktop:
+    name: Desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    env:
+      A3S_DEPS_STUB: "1"
+    defaults:
+      run:
+        working-directory: apps/box
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-14
+          - windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@1.95.0
+
+      - name: Install GTK4 dependencies
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-4-dev pkg-config
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            apps/box -> target
+
+      - name: Test desktop app
+        run: cargo test --locked --all-targets
