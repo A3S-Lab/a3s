@@ -13,7 +13,7 @@ import {
   presentationChartTrendlineCount,
   presentationChartXValues,
 } from '../work-presentation-charts';
-import type { WorkSlideChart, WorkSlideChartLegendPosition } from '../work-types';
+import type { WorkSlideChart } from '../work-types';
 import {
   drawPresentationChartSeriesAnalysis,
   drawPresentationChartXyLine,
@@ -24,22 +24,17 @@ import {
   drawPresentationRadarAxes,
   drawPresentationXyAxes,
   type PresentationCartesianAxisCanvas,
+  type PresentationChartRect,
 } from './presentation-chart-axis-canvas';
 import { drawPresentationChartDataLabel } from './presentation-chart-data-labels';
+import {
+  drawPresentationChartLegend,
+  PRESENTATION_CHART_COLORS,
+  presentationChartCanvasLayout,
+  presentationChartLegendItems,
+} from './presentation-chart-legend-canvas';
 
-interface ChartRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-interface ChartLegendItem {
-  color: string;
-  label: string;
-}
-
-const CHART_COLORS = ['#4472c4', '#ed7d31', '#a5a5a5', '#ffc000', '#5b9bd5', '#70ad47'];
+type ChartRect = PresentationChartRect;
 
 export function SlideChart({ chart, label }: { chart: WorkSlideChart; label: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -106,7 +101,7 @@ function drawChart(canvas: HTMLCanvasElement, chart: WorkSlideChart) {
     height: Math.max(18, height - titleHeight - 7),
   };
   const legendItems = presentationChartLegendItems(chart);
-  const layout = chartLayout(chart, content, legendItems.length > 0);
+  const layout = presentationChartCanvasLayout(chart, content, legendItems.length > 0);
   if (chart.type === 'pie' || chart.type === 'doughnut') {
     drawPieChart(context, chart, layout.plot);
   } else if (chart.type === 'radar') {
@@ -116,7 +111,7 @@ function drawChart(canvas: HTMLCanvasElement, chart: WorkSlideChart) {
   } else {
     drawCartesianChart(context, chart, layout.plot);
   }
-  if (layout.legend) drawChartLegend(context, legendItems, layout.legend, layout.legendPosition);
+  if (layout.legend) drawPresentationChartLegend(context, legendItems, layout.legend, layout.legendPosition);
 }
 
 function drawXyChart(context: CanvasRenderingContext2D, chart: WorkSlideChart, sourceRect: ChartRect) {
@@ -137,7 +132,7 @@ function drawXyChart(context: CanvasRenderingContext2D, chart: WorkSlideChart, s
   const maximumBubbleRadius = Math.max(4, Math.min(plot.width, plot.height) * 0.1 * bubbleScale);
 
   for (const [seriesIndex, series] of chart.series.entries()) {
-    const color = CHART_COLORS[seriesIndex % CHART_COLORS.length];
+    const color = PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length];
     const points = series.values.flatMap((value, index) => {
       const x = xValues[index];
       return Number.isFinite(x) && Number.isFinite(value)
@@ -201,102 +196,6 @@ function drawXyChart(context: CanvasRenderingContext2D, chart: WorkSlideChart, s
   }
 }
 
-function chartLayout(
-  chart: WorkSlideChart,
-  content: ChartRect,
-  hasLegendItems: boolean
-): { plot: ChartRect; legend?: ChartRect; legendPosition: WorkSlideChartLegendPosition } {
-  const legendPosition = normalizePresentationChartLegendPosition(chart.legendPosition);
-  if (!presentationChartShowsLegend(chart) || !hasLegendItems) return { plot: content, legendPosition };
-  const gap = 6;
-  if (legendPosition === 'top' || legendPosition === 'bottom') {
-    const legendHeight = Math.min(34, Math.max(20, content.height * 0.19));
-    const plotHeight = Math.max(18, content.height - legendHeight - gap);
-    if (legendPosition === 'top') {
-      return {
-        plot: { ...content, y: content.y + legendHeight + gap, height: plotHeight },
-        legend: { ...content, height: legendHeight },
-        legendPosition,
-      };
-    }
-    return {
-      plot: { ...content, height: plotHeight },
-      legend: { ...content, y: content.y + plotHeight + gap, height: legendHeight },
-      legendPosition,
-    };
-  }
-
-  const legendWidth = Math.min(104, Math.max(66, content.width * 0.24));
-  const plotWidth = Math.max(24, content.width - legendWidth - gap);
-  if (legendPosition === 'left') {
-    return {
-      plot: { ...content, x: content.x + legendWidth + gap, width: plotWidth },
-      legend: { ...content, width: legendWidth },
-      legendPosition,
-    };
-  }
-  return {
-    plot: { ...content, width: plotWidth },
-    legend: { ...content, x: content.x + plotWidth + gap, width: legendWidth },
-    legendPosition,
-  };
-}
-
-function presentationChartLegendItems(chart: WorkSlideChart): ChartLegendItem[] {
-  if (chart.type === 'pie' || chart.type === 'doughnut') {
-    const itemCount = Math.max(chart.categories.length, chart.series[0]?.values.length ?? 0);
-    return Array.from({ length: itemCount }, (_, index) => ({
-      color: CHART_COLORS[index % CHART_COLORS.length],
-      label: chart.categories[index]?.trim() || `分类 ${index + 1}`,
-    }));
-  }
-  return chart.series.map((series, index) => ({
-    color: CHART_COLORS[index % CHART_COLORS.length],
-    label: series.name.trim() || `系列 ${index + 1}`,
-  }));
-}
-
-function drawChartLegend(
-  context: CanvasRenderingContext2D,
-  items: ChartLegendItem[],
-  rect: ChartRect,
-  position: WorkSlideChartLegendPosition
-) {
-  context.font = `${Math.max(7, Math.min(11, rect.height / 3))}px sans-serif`;
-  context.textAlign = 'left';
-  context.textBaseline = 'middle';
-  if (position === 'top' || position === 'bottom') {
-    const itemWidth = rect.width / Math.max(1, items.length);
-    const y = rect.y + rect.height / 2;
-    for (const [index, item] of items.entries()) {
-      const x = rect.x + index * itemWidth + 3;
-      drawLegendItem(context, item, x, y, Math.max(5, Math.min(9, rect.height * 0.3)));
-    }
-    return;
-  }
-  const itemHeight = Math.max(13, Math.min(20, rect.height / Math.max(1, items.length)));
-  const startY =
-    position === 'topRight'
-      ? rect.y + itemHeight / 2 + 2
-      : rect.y + rect.height / 2 - ((items.length - 1) * itemHeight) / 2;
-  for (const [index, item] of items.entries()) {
-    drawLegendItem(context, item, rect.x + 3, startY + index * itemHeight, Math.max(5, Math.min(9, itemHeight * 0.46)));
-  }
-}
-
-function drawLegendItem(
-  context: CanvasRenderingContext2D,
-  item: ChartLegendItem,
-  x: number,
-  y: number,
-  swatchSize: number
-) {
-  context.fillStyle = item.color;
-  context.fillRect(x, y - swatchSize / 2, swatchSize, swatchSize);
-  context.fillStyle = '#526078';
-  context.fillText(item.label, x + swatchSize + 4, y);
-}
-
 function drawPieChart(context: CanvasRenderingContext2D, chart: WorkSlideChart, rect: ChartRect) {
   const values = chart.series[0]?.values ?? [];
   const total = values.reduce((sum, value) => sum + Math.max(0, value), 0) || 1;
@@ -311,7 +210,7 @@ function drawPieChart(context: CanvasRenderingContext2D, chart: WorkSlideChart, 
     context.moveTo(centerX, centerY);
     context.arc(centerX, centerY, radius, angle, next);
     context.closePath();
-    context.fillStyle = CHART_COLORS[index % CHART_COLORS.length];
+    context.fillStyle = PRESENTATION_CHART_COLORS[index % PRESENTATION_CHART_COLORS.length];
     context.fill();
     slices.push({ angle: (angle + next) / 2, index });
     angle = next;
@@ -343,7 +242,7 @@ function drawRadarChart(context: CanvasRenderingContext2D, chart: WorkSlideChart
   const values = chart.series.flatMap((series) => series.values).filter(Number.isFinite);
   const { point, valueRatio } = drawPresentationRadarAxes(context, chart, sourceRect, categoryCount, values);
   for (const [seriesIndex, series] of chart.series.entries()) {
-    const seriesColor = CHART_COLORS[seriesIndex % CHART_COLORS.length];
+    const seriesColor = PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length];
     const points = Array.from({ length: categoryCount }, (_, index) =>
       point(index, valueRatio(series.values[index] ?? 0))
     );
@@ -411,11 +310,11 @@ function drawLineChart(
       context.lineTo(categoryPosition(0), baseline);
       context.closePath();
       context.globalAlpha = 0.2;
-      context.fillStyle = CHART_COLORS[seriesIndex % CHART_COLORS.length];
+      context.fillStyle = PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length];
       context.fill();
       context.globalAlpha = 1;
     }
-    context.strokeStyle = CHART_COLORS[seriesIndex % CHART_COLORS.length];
+    context.strokeStyle = PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length];
     context.lineWidth = 2;
     context.stroke();
   }
@@ -429,7 +328,7 @@ function drawLineChart(
       chart,
       seriesIndex,
       xValues,
-      color: CHART_COLORS[seriesIndex % CHART_COLORS.length],
+      color: PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length],
       trendlinePosition: (x, y) => [categoryPosition(x - 1), valuePosition(y)],
       errorBarPosition: (_direction, pointIndex, value) => [categoryPosition(pointIndex), valuePosition(value)],
     });
@@ -455,7 +354,7 @@ function drawBarChart(
   for (const [seriesIndex, series] of chart.series.entries()) {
     for (const [index, value] of series.values.entries()) {
       const end = valuePosition(value);
-      context.fillStyle = CHART_COLORS[seriesIndex % CHART_COLORS.length];
+      context.fillStyle = PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length];
       if (chart.type === 'bar') {
         const barHeight = Math.max(2, groupSize / seriesCount - 2);
         const y = categoryPosition(index) - groupSize / 2 + seriesIndex * (barHeight + 2) + 1;
@@ -483,7 +382,7 @@ function drawBarChart(
       chart,
       seriesIndex,
       xValues,
-      color: CHART_COLORS[seriesIndex % CHART_COLORS.length],
+      color: PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length],
       trendlinePosition: position,
       errorBarPosition: (_direction, pointIndex, value) => position(pointIndex + 1, value),
     });
