@@ -253,7 +253,16 @@ The first active Work release includes:
   visibility, and area/width sizing. These settings, doughnut hole sizes, and
   standard, marker, or filled radar styles share the editor, thumbnail,
   playback, and PDF preview path and survive supported PPTX round-trips.
-  Legend placement uses that same path. Primary horizontal and vertical axes
+  Legend placement and plot-area overlay use that same path. Applicable column,
+  bar, line, and area charts expose standard, clustered, stacked, and
+  percent-stacked grouping. Column and bar charts expose category gap and series
+  overlap, while line charts expose smoothing. Positive and negative stacks
+  accumulate independently, percentage stacks normalize per category, and
+  stacked areas render against cumulative lower boundaries. Each series exposes
+  portable solid sRGB fill and transparency, line color, width and four dash
+  patterns, plus applicable marker symbol, size, fill, and outline controls.
+  Layout and appearance share the editor, preview, playback/PDF, AI Assistant,
+  and native PPTX ChartML paths. Primary horizontal and vertical axes
   support titles, reverse order, four label positions, four major-tick styles,
   category-label intervals, value bounds, major units, major-gridline
   visibility, and number formats across editing, playback/PDF rendering, AI
@@ -528,6 +537,12 @@ every command in a traditional office suite.
   PDF output. Custom widths use deterministic ordered block flow in browser
   preview and PDF; exact intra-paragraph reflow remains part of accurate
   pagination.
+- [x] Organize document commands into a WPS-inspired Home, Insert, Page,
+  References, Review, View, and Tools ribbon with keyboard-navigable tabs.
+  Present the editable page on a centered paper canvas, provide page and web
+  views, apply real 50–200% canvas scaling, and expose current/total page and
+  section, word count, toggleable browser proofing, live save state, view
+  controls, and zoom controls in the bottom status bar.
 - [x] Footnotes and endnotes are editable, retain common inline formatting,
   survive native DOCX round-trips, and render as page-specific footnotes or
   document-end endnotes in shared preview and PDF output.
@@ -553,14 +568,15 @@ every command in a traditional office suite.
   applies to typed/pasted/replaced text and AI Assistant replacements, remains
   visible in preview/PDF, and preserves DOCX revision author/date metadata plus
   the native `trackRevisions` setting. Browser-native spelling assistance is
-  enabled on the editable surface.
+  enabled on the editable surface and can be toggled from the Review ribbon or
+  the document status bar.
 - [x] Anchored body-text comments are editable and reviewable with replies,
   resolve/reopen, navigation, and deletion. Anchors, plain-text thread content,
   authors, dates, replies, and resolved state survive native DOCX round-trips.
   Read-only preview highlights anchors; print/PDF output keeps the text without
   comment markup styling. Rich comment-body formatting and embedded structures
   are explicitly diagnosed and normalized to plain text.
-- [ ] Accurate pagination, managed dictionaries and proofing controls, and
+- [ ] Accurate pagination, managed dictionaries and advanced proofing, and
   structural, moved-content, formatting, numbering, and table revision
   tracking.
 
@@ -694,7 +710,15 @@ every command in a traditional office suite.
   and standard, marker, or filled radar style survive PPTX
   round-trips and render through the shared editor, preview, playback, and PDF
   path. Legend visibility and right, left, top, bottom, or top-right placement
-  share that path. Primary horizontal and vertical axes support titles, reverse
+  share that path, including optional plot-area overlay. Applicable column,
+  bar, line, and area charts support standard, clustered, stacked, and
+  percent-stacked grouping; column and bar charts expose category gap and series
+  overlap, and line charts expose smoothing. Positive and negative stacks are
+  independent and percentage stacks normalize per category. Per-series
+  appearance includes solid sRGB fill and transparency, line color, width and
+  four dash patterns, plus applicable marker symbol, size, fill, and outline.
+  These settings share editing, preview, playback/PDF, AI Assistant, and native
+  PPTX ChartML paths. Primary horizontal and vertical axes support titles, reverse
   order, four label positions, four major-tick styles, category-label
   intervals, value bounds, major units, major-gridline visibility, and number
   formats across the editor canvas, playback/PDF rendering, AI Assistant
@@ -734,10 +758,11 @@ every command in a traditional office suite.
 - [ ] Advanced transition families, embedded media, and advanced chart
   fidelity. Combination, 3D, stock, surface, live workbook references,
   independent per-series X-value lists, secondary/date/logarithmic axes, minor
-  units and gridlines, display units, custom crossing points, legend overlays and per-entry
+  units and gridlines, display units, custom crossing points, per-entry legend
   formatting, per-series or per-point data-label overrides, data-label number
   formats, leader lines and detailed label styling, custom trendline-label
-  placement, and detailed chart styling remain open for presentation charts.
+  placement, theme/gradient/pattern/effect fills, per-point formatting, and
+  custom line dashes remain open for presentation charts.
 - [ ] Stable element positioning and font substitution diagnostics.
 
 ### Online collaboration

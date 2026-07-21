@@ -139,7 +139,7 @@ export function SpreadsheetErrorBarEditor({
               </label>
             )}
             {item.valueType === 'custom' && item.barType !== 'plus' && customInput === 'references' && (
-              <label className='error-reference' htmlFor={`work-error-values-${seriesNumber}-${errorBarNumber}-plus`}>
+              <label className='error-reference'>
                 <span>负误差引用</span>
                 <input
                   aria-label={`${labelPrefix} 负误差引用`}
@@ -150,7 +150,7 @@ export function SpreadsheetErrorBarEditor({
               </label>
             )}
             {item.valueType === 'custom' && item.barType !== 'minus' && customInput === 'values' && (
-              <label className='error-reference'>
+              <label className='error-reference' htmlFor={`work-error-values-${seriesNumber}-${errorBarNumber}-plus`}>
                 <span>正误差值</span>
                 <CustomErrorValuesInput
                   label={`${labelPrefix} 正误差值`}

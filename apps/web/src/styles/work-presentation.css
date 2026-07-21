@@ -371,6 +371,54 @@
   accent-color: #db663b;
 }
 
+.work-presentation-chart-layout {
+  display: grid;
+  min-width: 650px;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--a3s-panel-soft) 58%, transparent);
+}
+
+.work-presentation-chart-layout > header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.work-presentation-chart-layout > header strong {
+  color: var(--a3s-ink);
+  font-size: 9px;
+}
+
+.work-presentation-chart-layout > header span,
+.work-presentation-chart-layout > p {
+  color: var(--a3s-faint);
+  font-size: 8px;
+}
+
+.work-presentation-chart-layout > div {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+
+.work-presentation-chart-layout label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.work-presentation-chart-layout label.check {
+  min-width: 76px;
+}
+
+.work-presentation-chart-layout > p {
+  margin: 0;
+}
+
 .work-presentation-chart-data-labels {
   display: flex;
   min-width: 330px;
@@ -436,6 +484,33 @@
   min-width: 248px;
   align-content: start;
   gap: 6px;
+}
+
+.work-presentation-chart-series-card > .work-spreadsheet-chart-series-style {
+  min-width: 360px;
+}
+
+.work-presentation-chart-series-card > .work-spreadsheet-chart-series-style label {
+  display: grid;
+  gap: 3px;
+  color: var(--a3s-muted);
+}
+
+.work-presentation-chart-series-card > .work-spreadsheet-chart-series-style label.check {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  gap: 5px;
+}
+
+.work-presentation-chart-series-card > .work-spreadsheet-chart-series-style input,
+.work-presentation-chart-series-card > .work-spreadsheet-chart-series-style select {
+  width: 100%;
+}
+
+.work-presentation-chart-series-card > .work-spreadsheet-chart-series-style input[type='checkbox'] {
+  width: 13px;
+  height: 13px;
 }
 
 .work-presentation-chart-series-card > fieldset {

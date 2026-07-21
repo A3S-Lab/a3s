@@ -8,6 +8,8 @@ import {
 import { finiteChartNumber } from './work-spreadsheet-chart-svg-utils';
 import type { WorkSpreadsheetChart } from './work-types';
 
+type SpreadsheetChartSeriesLayoutSource = Pick<WorkSpreadsheetChart, 'categories' | 'grouping' | 'series' | 'type'>;
+
 export interface SpreadsheetChartSeriesLayoutPoint {
   categoryIndex: number;
   rawValue: number;
@@ -29,7 +31,7 @@ export interface SpreadsheetChartBarGeometry {
   offset: (seriesIndex: number) => number;
 }
 
-export function spreadsheetChartSeriesLayout(chart: WorkSpreadsheetChart): SpreadsheetChartSeriesLayout {
+export function spreadsheetChartSeriesLayout(chart: SpreadsheetChartSeriesLayoutSource): SpreadsheetChartSeriesLayout {
   const grouping = normalizeWorkSpreadsheetChartGrouping(chart.grouping, chart.type);
   const stacked = workSpreadsheetChartGroupingIsStacked(grouping);
   const categoryCount = Math.max(1, chart.categories.length, ...chart.series.map((series) => series.values.length));

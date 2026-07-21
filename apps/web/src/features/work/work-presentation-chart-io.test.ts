@@ -389,6 +389,143 @@ describe('Work presentation chart interoperability', () => {
     );
     expect(reopened.compatibility?.issues.some((issue) => issue.code === 'pptx.chart.type')).toBe(false);
   });
+
+  it('round-trips presentation legend overlay, plot layout, smoothing, and series appearance through ChartML', async () => {
+    const artifact = createWorkArtifact('blank-presentation');
+    if (artifact.content.type !== 'presentation') return;
+    artifact.content.slides[0].elements = [
+      chartElement('chart-layout-column', 8, {
+        type: 'column',
+        title: 'Revenue layout',
+        categories: ['Q1', 'Q2'],
+        series: [
+          {
+            name: 'Revenue',
+            values: [42, 58],
+            style: {
+              fillColor: '#112233',
+              fillTransparency: 35,
+              lineColor: '#445566',
+              lineWidth: 3.25,
+              lineDash: 'dashDot',
+            },
+          },
+          { name: 'Target', values: [50, 60] },
+        ],
+        showLegend: true,
+        legendPosition: 'bottom',
+        legendOverlay: true,
+        grouping: 'clustered',
+        gapWidth: 240,
+        overlap: -25,
+      }),
+      chartElement('chart-layout-line', 54, {
+        type: 'line',
+        title: 'Share trend',
+        categories: ['Q1', 'Q2'],
+        series: [
+          {
+            name: 'Revenue',
+            values: [40, 60],
+            style: {
+              lineColor: '#2255AA',
+              lineWidth: 2.75,
+              lineDash: 'dot',
+              marker: { symbol: 'star', size: 11, fillColor: '#FFCC00', lineColor: '#2255AA' },
+            },
+          },
+          { name: 'Cost', values: [60, 40] },
+        ],
+        grouping: 'percentStacked',
+        smoothLines: true,
+      }),
+    ];
+
+    const blob = await createPptxBlob(artifact, PptxGenJS);
+    const archive = await JSZip.loadAsync(await blob.arrayBuffer());
+    const chartParts = Object.keys(archive.files)
+      .filter((path) => /^ppt\/charts\/chart\d+\.xml$/.test(path))
+      .sort();
+    const chartXml = await Promise.all(chartParts.map((path) => archive.file(path)?.async('text')));
+
+    expect(
+      chartXml.some(
+        (xml) =>
+          xml?.includes('<c:barChart>') &&
+          xml.includes('<c:grouping val="clustered"/>') &&
+          xml.includes('<c:gapWidth val="240"/>') &&
+          xml.includes('<c:overlap val="-25"/>') &&
+          xml.includes('<c:overlay val="1"/>') &&
+          xml.includes('<a:srgbClr val="112233"><a:alpha val="65000"/>') &&
+          xml.includes('<a:ln w="41275">') &&
+          xml.includes('<a:prstDash val="dashDot"/>')
+      )
+    ).toBe(true);
+    expect(
+      chartXml.some(
+        (xml) =>
+          xml?.includes('<c:lineChart>') &&
+          xml.includes('<c:grouping val="percentStacked"/>') &&
+          xml.includes('<c:smooth val="1"/>') &&
+          xml.includes('<c:marker><c:symbol val="star"/><c:size val="11"/>') &&
+          xml.includes('<a:prstDash val="dot"/>')
+      )
+    ).toBe(true);
+
+    const reopened = await importWorkFile(
+      new File([blob], 'Presentation chart layout and style.pptx', {
+        type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      })
+    );
+    expect(reopened.content.type).toBe('presentation');
+    if (reopened.content.type !== 'presentation') return;
+    const charts = reopened.content.slides[0].elements.flatMap((element) => (element.chart ? [element.chart] : []));
+    expect(charts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'column',
+          legendPosition: 'bottom',
+          legendOverlay: true,
+          grouping: 'clustered',
+          gapWidth: 240,
+          overlap: -25,
+          series: [
+            expect.objectContaining({
+              style: {
+                fillColor: '#112233',
+                fillTransparency: 35,
+                lineColor: '#445566',
+                lineWidth: 3.25,
+                lineDash: 'dashDot',
+              },
+            }),
+            expect.any(Object),
+          ],
+        }),
+        expect.objectContaining({
+          type: 'line',
+          grouping: 'percentStacked',
+          smoothLines: true,
+          series: [
+            expect.objectContaining({
+              style: {
+                lineColor: '#2255AA',
+                lineWidth: 2.75,
+                lineDash: 'dot',
+                marker: { symbol: 'star', size: 11, fillColor: '#FFCC00', lineColor: '#2255AA' },
+              },
+            }),
+            expect.any(Object),
+          ],
+        }),
+      ])
+    );
+    expect(
+      reopened.compatibility?.issues.some((issue) =>
+        ['pptx.chart.format.legend', 'pptx.chart.format.layout', 'pptx.chart.format.series'].includes(issue.code)
+      )
+    ).toBe(false);
+  });
 });
 
 function chartElement(id: string, x: number, chart: WorkSlideChart): WorkSlideElement {

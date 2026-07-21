@@ -514,6 +514,57 @@ describe('presentation Copilot selection context', () => {
     expect(selection).toContain('数据标签：数值、分类名称；位置：外侧末端；分隔符：“ / ”');
   });
 
+  it('includes presentation plot layout and portable series appearance', () => {
+    const artifact = createWorkArtifact('blank-presentation');
+    if (artifact.content.type !== 'presentation') throw new Error('Presentation fixture is invalid');
+    const slide = artifact.content.slides[0];
+    const element = {
+      id: 'chart-layout-style',
+      type: 'chart' as const,
+      x: 10,
+      y: 20,
+      width: 80,
+      height: 55,
+      text: '',
+      fontSize: 14,
+      color: '#172033',
+      fill: '#ffffff',
+      bold: false,
+      align: 'center' as const,
+      chart: {
+        type: 'column' as const,
+        title: '收入占比',
+        categories: ['Q1', 'Q2'],
+        series: [
+          {
+            name: '收入',
+            values: [42, 58],
+            style: {
+              fillColor: '#112233',
+              fillTransparency: 35,
+              lineColor: '#445566',
+              lineWidth: 3.25,
+              lineDash: 'dashDot' as const,
+            },
+          },
+        ],
+        showLegend: true,
+        legendPosition: 'bottom' as const,
+        legendOverlay: true,
+        grouping: 'percentStacked' as const,
+        gapWidth: 240,
+        overlap: 100,
+      },
+    };
+    slide.elements.push(element);
+
+    const selection = presentationAgentSelection(slide, 0, 1, element);
+
+    expect(selection).toContain('图例：显示（底部）；叠加绘图区');
+    expect(selection).toContain('绘图区：百分比堆积，分类间距 240%，系列重叠 100%');
+    expect(selection).toContain('系列外观：填充 #112233（透明度 35%），线条 #445566、3.25 磅、点划线');
+  });
+
   it('includes presentation scatter and bubble data in bounded AI context', () => {
     const artifact = createWorkArtifact('blank-presentation');
     if (artifact.content.type !== 'presentation') throw new Error('Presentation fixture is invalid');

@@ -8,8 +8,20 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { Copy, Languages, MessageSquareText, Sparkles, TextQuote } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import {
+  CheckCheck,
+  Cloud,
+  Copy,
+  FileText,
+  Globe2,
+  Languages,
+  MessageSquareText,
+  Minus,
+  Plus,
+  Sparkles,
+  TextQuote,
+} from 'lucide-react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { WorkspaceContextMenu, type WorkspaceContextMenuItem } from '../../workspace/components/workspace-context-menu';
 import { showToast } from '../../../state/app-state';
 import {
@@ -69,17 +81,27 @@ import { DocumentChangesPanel } from './document-changes-panel';
 import { DocumentCitationsPanel } from './document-citations-panel';
 import { DocumentCommentsPanel } from './document-comments-panel';
 import { DocumentLayoutPanel } from './document-layout-panel';
-import { DocumentToolbar } from './document-toolbar';
+import { DocumentToolbar, type DocumentViewMode } from './document-toolbar';
 import { WorkDocumentPreview } from '../components/work-document-pages';
 
 interface DocumentEditorProps {
   content: WorkDocumentContent;
   preview: boolean;
+  saveStatus?: string;
   onChange: (content: WorkDocumentContent) => void;
   onAgentRequest?: (request: WorkEditorAgentRequest) => void | Promise<void>;
 }
 
-export function DocumentEditor({ content, preview, onChange, onAgentRequest }: DocumentEditorProps) {
+const MIN_DOCUMENT_ZOOM = 50;
+const MAX_DOCUMENT_ZOOM = 200;
+
+export function DocumentEditor({
+  content,
+  preview,
+  saveStatus = '已自动保存',
+  onChange,
+  onAgentRequest,
+}: DocumentEditorProps) {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const contentRef = useRef(content);
   const trackChangesRef = useRef(Boolean(content.trackChanges));
@@ -87,6 +109,9 @@ export function DocumentEditor({ content, preview, onChange, onAgentRequest }: D
   const [changesOpen, setChangesOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [citationsOpen, setCitationsOpen] = useState(false);
+  const [spellcheckEnabled, setSpellcheckEnabled] = useState(true);
+  const [viewMode, setViewMode] = useState<DocumentViewMode>('page');
+  const [zoom, setZoom] = useState(90);
   const [agentMenu, setAgentMenu] = useState<{
     x: number;
     y: number;
@@ -167,6 +192,10 @@ export function DocumentEditor({ content, preview, onChange, onAgentRequest }: D
     editor?.setEditable(!preview);
   }, [editor, preview]);
 
+  useEffect(() => {
+    editor?.view.dom.setAttribute('spellcheck', String(spellcheckEnabled));
+  }, [editor, spellcheckEnabled]);
+
   if (!editor) {
     return <output className='work-editor-loading'>正在准备文字编辑器…</output>;
   }
@@ -179,6 +208,7 @@ export function DocumentEditor({ content, preview, onChange, onAgentRequest }: D
     margins: layout.margins,
   });
   const pageCount = documentPageCount(editor);
+  const currentPage = Math.min(pageCount, documentCurrentPage(editor));
   const pageStart = Math.max(1, layout.pageNumberStart ?? 1);
   const pageChrome = normalizeDocumentPageChrome(layout.pageChrome, layout);
   const defaultChrome = pageChrome.default;
@@ -230,8 +260,14 @@ export function DocumentEditor({ content, preview, onChange, onAgentRequest }: D
         editor={editor}
         layoutOpen={layoutOpen}
         showPageNumbers={defaultChrome.showPageNumber}
+        spellcheckEnabled={spellcheckEnabled}
+        viewMode={viewMode}
+        zoom={zoom}
         onRequestImage={() => imageInputRef.current?.click()}
         onToggleLayout={() => setLayoutOpen((value) => !value)}
+        onToggleSpellcheck={() => setSpellcheckEnabled((value) => !value)}
+        onViewModeChange={setViewMode}
+        onZoomChange={(nextZoom) => setZoom(clampDocumentZoom(nextZoom))}
         onTogglePageNumbers={() => {
           const nextPageChrome = updateDocumentPageChromeVariant(pageChrome, 'default', {
             showPageNumber: !defaultChrome.showPageNumber,
@@ -392,74 +428,144 @@ export function DocumentEditor({ content, preview, onChange, onAgentRequest }: D
           onMergeSection={() => mergeDocumentSectionWithPrevious(editor)}
         />
       )}
-      <div className='work-document-scroll'>
-        <article
-          className={`work-document-page ${layout.pageSize} ${layout.orientation}`}
-          aria-label={preview ? '文字预览' : '文字页面'}
-          style={{
-            padding: `${millimetersToPixels(margins.top)}px ${millimetersToPixels(
-              margins.right
-            )}px ${millimetersToPixels(margins.bottom)}px ${millimetersToPixels(margins.left)}px`,
-          }}
+      <div className={`work-document-scroll ${viewMode}`}>
+        <div
+          className={`work-document-page-stage ${layout.pageSize} ${layout.orientation} ${viewMode}`}
+          data-testid='document-page-stage'
+          style={{ '--work-document-zoom': String(zoom / 100) } as CSSProperties}
         >
-          {(defaultChrome.headerHtml || layoutOpen) && (
-            <header className='work-document-page-header'>
-              {defaultChrome.headerHtml ? (
-                <div
-                  className='work-document-page-chrome-html'
-                  dangerouslySetInnerHTML={{ __html: defaultChrome.headerHtml }}
-                />
-              ) : (
-                '页眉'
-              )}
-            </header>
-          )}
-          <section
-            className='work-document-editable'
-            aria-label='文档内容编辑区域'
-            onContextMenu={(event) => {
-              if (!onAgentRequest) return;
-              const { from, to, empty } = editor.state.selection;
-              if (empty) return;
-              const rawSelection = editor.state.doc.textBetween(from, to, '\n');
-              const selection = rawSelection.trim();
-              if (!selection) return;
-              event.preventDefault();
-              setAgentMenu({ x: event.clientX, y: event.clientY, selection, rawSelection, from, to });
+          <article
+            className={`work-document-page ${layout.pageSize} ${layout.orientation}`}
+            aria-label={preview ? '文字预览' : '文字页面'}
+            style={{
+              padding: `${millimetersToPixels(margins.top)}px ${millimetersToPixels(
+                margins.right
+              )}px ${millimetersToPixels(margins.bottom)}px ${millimetersToPixels(margins.left)}px`,
             }}
           >
-            <EditorContent editor={editor} />
-          </section>
-          {(defaultChrome.footerHtml || defaultChrome.showPageNumber || layoutOpen) && (
-            <footer className='work-document-page-footer'>
-              {defaultChrome.footerHtml ? (
-                <div
-                  className='work-document-page-chrome-html'
-                  dangerouslySetInnerHTML={{ __html: defaultChrome.footerHtml }}
-                />
-              ) : (
-                <span>{layoutOpen ? '页脚' : ''}</span>
-              )}
-              {defaultChrome.showPageNumber && (
-                <span>
-                  {pageStart} / {pageStart + pageCount - 1}
-                </span>
-              )}
-            </footer>
-          )}
-        </article>
+            {(defaultChrome.headerHtml || layoutOpen) && (
+              <header className='work-document-page-header'>
+                {defaultChrome.headerHtml ? (
+                  <div
+                    className='work-document-page-chrome-html'
+                    dangerouslySetInnerHTML={{ __html: defaultChrome.headerHtml }}
+                  />
+                ) : (
+                  '页眉'
+                )}
+              </header>
+            )}
+            <section
+              className={`work-document-editable ${viewMode}`}
+              aria-label='文档内容编辑区域'
+              onContextMenu={(event) => {
+                if (!onAgentRequest) return;
+                const { from, to, empty } = editor.state.selection;
+                if (empty) return;
+                const rawSelection = editor.state.doc.textBetween(from, to, '\n');
+                const selection = rawSelection.trim();
+                if (!selection) return;
+                event.preventDefault();
+                setAgentMenu({ x: event.clientX, y: event.clientY, selection, rawSelection, from, to });
+              }}
+            >
+              <EditorContent editor={editor} />
+            </section>
+            {(defaultChrome.footerHtml || defaultChrome.showPageNumber || layoutOpen) && (
+              <footer className='work-document-page-footer'>
+                {defaultChrome.footerHtml ? (
+                  <div
+                    className='work-document-page-chrome-html'
+                    dangerouslySetInnerHTML={{ __html: defaultChrome.footerHtml }}
+                  />
+                ) : (
+                  <span>{layoutOpen ? '页脚' : ''}</span>
+                )}
+                {defaultChrome.showPageNumber && (
+                  <span>
+                    {pageStart} / {pageStart + pageCount - 1}
+                  </span>
+                )}
+              </footer>
+            )}
+          </article>
+        </div>
       </div>
       <footer className='work-document-status'>
-        <span>
-          {layout.pageSize === 'a4' ? 'A4' : 'Letter'} · {layout.orientation === 'portrait' ? '纵向' : '横向'} ·{' '}
-          {layout.columns.count} 栏{layout.columns.custom ? ' · 自定义栏宽' : ''}
-        </span>
-        <span>{editor.getText().trim().length} 字符</span>
-        <span>
-          {content.bibliography?.sources.length ?? 0} 条文献 · {citationCount} 处引文
-        </span>
-        <span>{section?.count ?? 1} 节</span>
-        <span>{pageCount} 页</span>
+        <div className='work-document-status-info'>
+          <output aria-label='页码状态'>
+            第 {currentPage} 页，共 {pageCount} 页
+          </output>
+          <output aria-label='分节状态'>
+            第 {(section?.index ?? 0) + 1} 节，共 {section?.count ?? 1} 节
+          </output>
+          <output aria-label='字数统计'>字数：{documentWordCount(editor.getText())}</output>
+          <button
+            type='button'
+            aria-label={`校对：${spellcheckEnabled ? '已开启' : '已关闭'}`}
+            aria-pressed={spellcheckEnabled}
+            onClick={() => setSpellcheckEnabled((value) => !value)}
+          >
+            <CheckCheck size={12} />
+            校对：{spellcheckEnabled ? '已开启' : '已关闭'}
+          </button>
+          <output aria-label='引用状态' className='work-document-status-detail'>
+            {content.bibliography?.sources.length ?? 0} 条文献 · {citationCount} 处引文
+          </output>
+          <output aria-label='文档保存状态' className='work-document-save-status'>
+            <Cloud size={12} />
+            {saveStatus}
+          </output>
+        </div>
+        <div className='work-document-status-view'>
+          <button
+            type='button'
+            aria-label='页面视图'
+            title='页面视图'
+            aria-pressed={viewMode === 'page'}
+            onClick={() => setViewMode('page')}
+          >
+            <FileText size={13} />
+          </button>
+          <button
+            type='button'
+            aria-label='网页视图'
+            title='网页视图'
+            aria-pressed={viewMode === 'web'}
+            onClick={() => setViewMode('web')}
+          >
+            <Globe2 size={13} />
+          </button>
+          <span className='work-document-status-divider' />
+          <button
+            type='button'
+            aria-label='缩小文档'
+            title='缩小文档'
+            disabled={zoom <= MIN_DOCUMENT_ZOOM}
+            onClick={() => setZoom((value) => clampDocumentZoom(value - 10))}
+          >
+            <Minus size={13} />
+          </button>
+          <output aria-label='文档缩放比例'>{zoom}%</output>
+          <input
+            type='range'
+            min={MIN_DOCUMENT_ZOOM}
+            max={MAX_DOCUMENT_ZOOM}
+            step={5}
+            value={zoom}
+            aria-label='文档缩放'
+            onChange={(event) => setZoom(clampDocumentZoom(Number(event.target.value)))}
+          />
+          <button
+            type='button'
+            aria-label='放大文档'
+            title='放大文档'
+            disabled={zoom >= MAX_DOCUMENT_ZOOM}
+            onClick={() => setZoom((value) => clampDocumentZoom(value + 10))}
+          >
+            <Plus size={13} />
+          </button>
+        </div>
       </footer>
       {agentMenu && onAgentRequest && (
         <WorkspaceContextMenu
@@ -642,6 +748,43 @@ function documentPageCount(editor: NonNullable<ReturnType<typeof useEditor>>): n
     if (sections[index].breakAfter !== 'continuous' && sections[index].breakAfter !== 'nextColumn') pages += 1;
   }
   return pages;
+}
+
+function documentCurrentPage(editor: NonNullable<ReturnType<typeof useEditor>>): number {
+  const selectionPosition = editor.state.selection.from;
+  let page = 1;
+  let previousBreakAfter: string | undefined;
+  let sectionIndex = 0;
+  editor.state.doc.forEach((node, position) => {
+    if (node.type.name !== 'documentSection') return;
+    if (
+      sectionIndex > 0 &&
+      position < selectionPosition &&
+      previousBreakAfter !== 'continuous' &&
+      previousBreakAfter !== 'nextColumn'
+    ) {
+      page += 1;
+    }
+    if (position < selectionPosition) {
+      node.descendants((child, childPosition) => {
+        if (child.type.name === 'documentNote') return false;
+        if (child.type.name === 'pageBreak' && position + childPosition + 1 < selectionPosition) page += 1;
+      });
+    }
+    previousBreakAfter = node.attrs.breakAfter;
+    sectionIndex += 1;
+  });
+  return page;
+}
+
+export function documentWordCount(value: string): number {
+  return Array.from(
+    value.matchAll(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]|[\p{L}\p{N}]+/gu)
+  ).length;
+}
+
+function clampDocumentZoom(zoom: number): number {
+  return Math.min(MAX_DOCUMENT_ZOOM, Math.max(MIN_DOCUMENT_ZOOM, Math.round(zoom)));
 }
 
 function fileToDataUrl(file: File): Promise<string> {

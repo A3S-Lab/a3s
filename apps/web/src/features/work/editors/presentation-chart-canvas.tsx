@@ -13,6 +13,16 @@ import {
   presentationChartTrendlineCount,
   presentationChartXValues,
 } from '../work-presentation-charts';
+import {
+  normalizeWorkSpreadsheetChartGapWidth,
+  normalizeWorkSpreadsheetChartGrouping,
+  normalizeWorkSpreadsheetChartLegendOverlay,
+  normalizeWorkSpreadsheetChartOverlap,
+  normalizeWorkSpreadsheetChartSmoothLines,
+  workSpreadsheetChartSupportsBarSpacing,
+  workSpreadsheetChartSupportsGrouping,
+  workSpreadsheetChartSupportsSmoothLines,
+} from '../work-spreadsheet-chart-layout';
 import type { WorkSlideChart } from '../work-types';
 import {
   drawPresentationChartSeriesAnalysis,
@@ -20,12 +30,11 @@ import {
   presentationChartAnalysisBounds,
 } from './presentation-chart-analysis-canvas';
 import {
-  drawPresentationCartesianAxes,
   drawPresentationRadarAxes,
   drawPresentationXyAxes,
-  type PresentationCartesianAxisCanvas,
   type PresentationChartRect,
 } from './presentation-chart-axis-canvas';
+import { drawPresentationCartesianChart } from './presentation-chart-cartesian-canvas';
 import { drawPresentationChartDataLabel } from './presentation-chart-data-labels';
 import {
   drawPresentationChartLegend,
@@ -33,6 +42,13 @@ import {
   presentationChartCanvasLayout,
   presentationChartLegendItems,
 } from './presentation-chart-legend-canvas';
+import {
+  drawPresentationChartMarker,
+  fillPresentationChartShape,
+  presentationChartSeriesFill,
+  presentationChartSeriesLine,
+  strokePresentationChartPath,
+} from './presentation-chart-series-canvas';
 
 type ChartRect = PresentationChartRect;
 
@@ -61,6 +77,35 @@ export function SlideChart({ chart, label }: { chart: WorkSlideChart; label: str
       data-presentation-chart-axes={String(Boolean(presentationChartAxes(chart)))}
       data-presentation-chart-trendlines={presentationChartTrendlineCount(chart)}
       data-presentation-chart-error-bars={presentationChartErrorBarCount(chart)}
+      data-presentation-chart-legend-overlay={
+        presentationChartShowsLegend(chart)
+          ? String(normalizeWorkSpreadsheetChartLegendOverlay(chart.legendOverlay))
+          : undefined
+      }
+      data-presentation-chart-grouping={
+        workSpreadsheetChartSupportsGrouping(chart.type)
+          ? normalizeWorkSpreadsheetChartGrouping(chart.grouping, chart.type)
+          : undefined
+      }
+      data-presentation-chart-gap-width={
+        workSpreadsheetChartSupportsBarSpacing(chart.type)
+          ? normalizeWorkSpreadsheetChartGapWidth(chart.gapWidth)
+          : undefined
+      }
+      data-presentation-chart-overlap={
+        workSpreadsheetChartSupportsBarSpacing(chart.type)
+          ? normalizeWorkSpreadsheetChartOverlap(
+              chart.overlap,
+              normalizeWorkSpreadsheetChartGrouping(chart.grouping, chart.type)
+            )
+          : undefined
+      }
+      data-presentation-chart-smooth-lines={
+        workSpreadsheetChartSupportsSmoothLines(chart.type)
+          ? String(normalizeWorkSpreadsheetChartSmoothLines(chart.smoothLines))
+          : undefined
+      }
+      data-presentation-chart-custom-series-styles={chart.series.filter((series) => series.style).length}
       data-presentation-chart-scatter-style={
         chart.type === 'scatter' ? normalizePresentationScatterStyle(chart.scatterStyle) : undefined
       }
@@ -109,7 +154,7 @@ function drawChart(canvas: HTMLCanvasElement, chart: WorkSlideChart) {
   } else if (chart.type === 'scatter' || chart.type === 'bubble') {
     drawXyChart(context, chart, layout.plot);
   } else {
-    drawCartesianChart(context, chart, layout.plot);
+    drawPresentationCartesianChart(context, chart, layout.plot);
   }
   if (layout.legend) drawPresentationChartLegend(context, legendItems, layout.legend, layout.legendPosition);
 }
@@ -132,7 +177,9 @@ function drawXyChart(context: CanvasRenderingContext2D, chart: WorkSlideChart, s
   const maximumBubbleRadius = Math.max(4, Math.min(plot.width, plot.height) * 0.1 * bubbleScale);
 
   for (const [seriesIndex, series] of chart.series.entries()) {
-    const color = PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length];
+    const defaultColor = PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length];
+    const line = presentationChartSeriesLine(series, seriesIndex, 2, defaultColor);
+    const fill = presentationChartSeriesFill(series, seriesIndex, 1, defaultColor);
     const points = series.values.flatMap((value, index) => {
       const x = xValues[index];
       return Number.isFinite(x) && Number.isFinite(value)
@@ -142,32 +189,23 @@ function drawXyChart(context: CanvasRenderingContext2D, chart: WorkSlideChart, s
     if (drawLine && points.length) {
       context.beginPath();
       drawPresentationChartXyLine(context, points, smooth);
-      context.strokeStyle = color;
-      context.lineWidth = 2;
-      context.stroke();
+      strokePresentationChartPath(context, line);
     }
-    if (drawMarker) {
-      context.fillStyle = color;
-      for (const point of points) {
-        context.beginPath();
-        context.arc(point.x, point.y, 3, 0, Math.PI * 2);
-        context.fill();
-      }
+    for (const point of points) {
+      drawPresentationChartMarker(context, series, seriesIndex, point.x, point.y, drawMarker, defaultColor);
     }
     if (chart.type === 'bubble') {
       const sizes = presentationChartBubbleSizes(series);
-      context.fillStyle = color;
       for (const point of points) {
         const size = sizes[point.sourceIndex] ?? 0;
         if (size === 0 || (size < 0 && !chart.showNegativeBubbles)) continue;
         const ratio = Math.abs(size) / maximumBubbleSize;
         const radius = Math.max(2, maximumBubbleRadius * (sizeRepresents === 'width' ? ratio : Math.sqrt(ratio)));
-        context.save();
-        context.globalAlpha = size < 0 ? 0.32 : 0.58;
-        context.beginPath();
-        context.arc(point.x, point.y, radius, 0, Math.PI * 2);
-        context.fill();
-        context.restore();
+        fillPresentationChartShape(context, { ...fill, opacity: fill.opacity * (size < 0 ? 0.32 : 0.58) }, () => {
+          context.beginPath();
+          context.arc(point.x, point.y, radius, 0, Math.PI * 2);
+          context.fill();
+        });
       }
     }
     drawPresentationChartSeriesAnalysis({
@@ -175,7 +213,7 @@ function drawXyChart(context: CanvasRenderingContext2D, chart: WorkSlideChart, s
       chart,
       seriesIndex,
       xValues,
-      color,
+      color: line.color,
       trendlinePosition: (x, y) => [xPosition(x), yPosition(y)],
       errorBarPosition: (direction, pointIndex, value) =>
         direction === 'x'
@@ -210,8 +248,13 @@ function drawPieChart(context: CanvasRenderingContext2D, chart: WorkSlideChart, 
     context.moveTo(centerX, centerY);
     context.arc(centerX, centerY, radius, angle, next);
     context.closePath();
-    context.fillStyle = PRESENTATION_CHART_COLORS[index % PRESENTATION_CHART_COLORS.length];
-    context.fill();
+    const fill = presentationChartSeriesFill(
+      chart.series[0],
+      0,
+      1,
+      PRESENTATION_CHART_COLORS[index % PRESENTATION_CHART_COLORS.length]
+    );
+    fillPresentationChartShape(context, fill, () => context.fill());
     slices.push({ angle: (angle + next) / 2, index });
     angle = next;
   }
@@ -242,7 +285,14 @@ function drawRadarChart(context: CanvasRenderingContext2D, chart: WorkSlideChart
   const values = chart.series.flatMap((series) => series.values).filter(Number.isFinite);
   const { point, valueRatio } = drawPresentationRadarAxes(context, chart, sourceRect, categoryCount, values);
   for (const [seriesIndex, series] of chart.series.entries()) {
-    const seriesColor = PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length];
+    const defaultColor = PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length];
+    const fill = presentationChartSeriesFill(
+      series,
+      seriesIndex,
+      chart.radarStyle === 'filled' ? 0.24 : 0,
+      defaultColor
+    );
+    const line = presentationChartSeriesLine(series, seriesIndex, 2, defaultColor);
     const points = Array.from({ length: categoryCount }, (_, index) =>
       point(index, valueRatio(series.values[index] ?? 0))
     );
@@ -253,164 +303,25 @@ function drawRadarChart(context: CanvasRenderingContext2D, chart: WorkSlideChart
     }
     context.closePath();
     if (chart.radarStyle === 'filled') {
-      context.save();
-      context.globalAlpha = 0.24;
-      context.fillStyle = seriesColor;
-      context.fill();
-      context.restore();
+      fillPresentationChartShape(context, fill, () => context.fill());
     }
-    context.strokeStyle = seriesColor;
-    context.lineWidth = 2;
-    context.stroke();
-    if (chart.radarStyle === 'marker') {
-      context.fillStyle = seriesColor;
-      for (const current of points) {
-        context.beginPath();
-        context.arc(current.x, current.y, 2.5, 0, Math.PI * 2);
-        context.fill();
-      }
+    strokePresentationChartPath(context, line);
+    for (const current of points) {
+      drawPresentationChartMarker(
+        context,
+        series,
+        seriesIndex,
+        current.x,
+        current.y,
+        chart.radarStyle === 'marker',
+        defaultColor
+      );
     }
   }
   for (const [seriesIndex, series] of chart.series.entries()) {
     for (const [index, value] of series.values.entries()) {
       const current = point(index, valueRatio(value));
       drawPresentationChartDataLabel(context, chart, seriesIndex, index, { kind: 'point', ...current });
-    }
-  }
-}
-
-function drawCartesianChart(context: CanvasRenderingContext2D, chart: WorkSlideChart, sourceRect: ChartRect) {
-  const categoryCount = Math.max(1, chart.categories.length, ...chart.series.map((series) => series.values.length));
-  const categoryValues = Array.from({ length: categoryCount }, (_, index) => index + 1);
-  const values = presentationChartAnalysisBounds(chart, categoryValues).y;
-  const axes = drawPresentationCartesianAxes(context, chart, sourceRect, values, categoryCount);
-  if (chart.type === 'line' || chart.type === 'area') {
-    drawLineChart(context, chart, axes);
-    return;
-  }
-  drawBarChart(context, chart, axes, categoryCount);
-}
-
-function drawLineChart(
-  context: CanvasRenderingContext2D,
-  chart: WorkSlideChart,
-  axes: PresentationCartesianAxisCanvas
-) {
-  const { baseline, categoryPosition, valuePosition } = axes;
-  for (const [seriesIndex, series] of chart.series.entries()) {
-    context.beginPath();
-    for (const [index, value] of series.values.entries()) {
-      const x = categoryPosition(index);
-      const y = valuePosition(value);
-      if (index === 0) context.moveTo(x, y);
-      else context.lineTo(x, y);
-    }
-    if (chart.type === 'area') {
-      context.lineTo(categoryPosition(Math.max(0, series.values.length - 1)), baseline);
-      context.lineTo(categoryPosition(0), baseline);
-      context.closePath();
-      context.globalAlpha = 0.2;
-      context.fillStyle = PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length];
-      context.fill();
-      context.globalAlpha = 1;
-    }
-    context.strokeStyle = PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length];
-    context.lineWidth = 2;
-    context.stroke();
-  }
-  const xValues = Array.from(
-    { length: Math.max(1, ...chart.series.map((series) => series.values.length)) },
-    (_, index) => index + 1
-  );
-  for (const [seriesIndex] of chart.series.entries()) {
-    drawPresentationChartSeriesAnalysis({
-      context,
-      chart,
-      seriesIndex,
-      xValues,
-      color: PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length],
-      trendlinePosition: (x, y) => [categoryPosition(x - 1), valuePosition(y)],
-      errorBarPosition: (_direction, pointIndex, value) => [categoryPosition(pointIndex), valuePosition(value)],
-    });
-  }
-  for (const [seriesIndex, series] of chart.series.entries()) {
-    for (const [index, value] of series.values.entries()) {
-      const x = categoryPosition(index);
-      const y = valuePosition(value);
-      drawPresentationChartDataLabel(context, chart, seriesIndex, index, { kind: 'point', x, y });
-    }
-  }
-}
-
-function drawBarChart(
-  context: CanvasRenderingContext2D,
-  chart: WorkSlideChart,
-  axes: PresentationCartesianAxisCanvas,
-  categoryCount: number
-) {
-  const { plot, baseline, categoryPosition, valuePosition } = axes;
-  const groupSize = (chart.type === 'bar' ? plot.height : plot.width) / categoryCount;
-  const seriesCount = Math.max(1, chart.series.length);
-  for (const [seriesIndex, series] of chart.series.entries()) {
-    for (const [index, value] of series.values.entries()) {
-      const end = valuePosition(value);
-      context.fillStyle = PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length];
-      if (chart.type === 'bar') {
-        const barHeight = Math.max(2, groupSize / seriesCount - 2);
-        const y = categoryPosition(index) - groupSize / 2 + seriesIndex * (barHeight + 2) + 1;
-        context.fillRect(Math.min(baseline, end), y, Math.max(1, Math.abs(end - baseline)), barHeight);
-      } else {
-        const barWidth = Math.max(2, groupSize / seriesCount - 2);
-        const x = categoryPosition(index) - groupSize / 2 + seriesIndex * (barWidth + 2) + 1;
-        context.fillRect(x, Math.min(baseline, end), barWidth, Math.max(1, Math.abs(end - baseline)));
-      }
-    }
-  }
-  const xValues = Array.from(
-    { length: Math.max(1, ...chart.series.map((series) => series.values.length)) },
-    (_, index) => index + 1
-  );
-  for (const [seriesIndex] of chart.series.entries()) {
-    const barSize = Math.max(2, groupSize / seriesCount - 2);
-    const seriesOffset = -groupSize / 2 + seriesIndex * (barSize + 2) + 1 + barSize / 2;
-    const position = (x: number, y: number): readonly [number, number] =>
-      chart.type === 'bar'
-        ? [valuePosition(y), categoryPosition(x - 1) + seriesOffset]
-        : [categoryPosition(x - 1) + seriesOffset, valuePosition(y)];
-    drawPresentationChartSeriesAnalysis({
-      context,
-      chart,
-      seriesIndex,
-      xValues,
-      color: PRESENTATION_CHART_COLORS[seriesIndex % PRESENTATION_CHART_COLORS.length],
-      trendlinePosition: position,
-      errorBarPosition: (_direction, pointIndex, value) => position(pointIndex + 1, value),
-    });
-  }
-  for (const [seriesIndex, series] of chart.series.entries()) {
-    for (const [index, value] of series.values.entries()) {
-      const end = valuePosition(value);
-      if (chart.type === 'bar') {
-        const barHeight = Math.max(2, groupSize / seriesCount - 2);
-        const y = categoryPosition(index) - groupSize / 2 + seriesIndex * (barHeight + 2) + 1 + barHeight / 2;
-        drawPresentationChartDataLabel(context, chart, seriesIndex, index, {
-          kind: 'horizontalBar',
-          y,
-          valueX: end,
-          baselineX: baseline,
-          value,
-        });
-      } else {
-        const barWidth = Math.max(2, groupSize / seriesCount - 2);
-        const x = categoryPosition(index) - groupSize / 2 + seriesIndex * (barWidth + 2) + 1 + barWidth / 2;
-        drawPresentationChartDataLabel(context, chart, seriesIndex, index, {
-          kind: 'verticalBar',
-          x,
-          valueY: end,
-          baselineY: baseline,
-          value,
-        });
-      }
     }
   }
 }

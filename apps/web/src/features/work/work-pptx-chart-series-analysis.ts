@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import { attribute, directChild, directChildren, firstDescendant, parseXml } from './work-ooxml-package';
+import { workSpreadsheetChartSupportsSeriesAnalysis } from './work-spreadsheet-chart-layout';
 import {
   normalizeWorkSpreadsheetErrorBars,
   normalizeWorkSpreadsheetTrendline,
@@ -145,12 +146,12 @@ export function writePptxChartSeriesAnalysis(document: Document, chartNode: Elem
       directChildren(seriesNode).find((child) =>
         ['cat', 'val', 'xVal', 'yVal', 'bubbleSize', 'smooth', 'extLst'].includes(child.localName)
       ) ?? null;
-    if (workSpreadsheetChartSupportsTrendlines(chart.type)) {
+    if (workSpreadsheetChartSupportsSeriesAnalysis(chart) && workSpreadsheetChartSupportsTrendlines(chart.type)) {
       for (const source of series.trendlines ?? []) {
         seriesNode.insertBefore(createTrendlineElement(document, seriesNode, source), anchor);
       }
     }
-    if (workSpreadsheetChartSupportsErrorBars(chart.type)) {
+    if (workSpreadsheetChartSupportsSeriesAnalysis(chart) && workSpreadsheetChartSupportsErrorBars(chart.type)) {
       const directions = new Set<string>();
       for (const source of series.errorBars ?? []) {
         const errorBars = normalizeWorkSpreadsheetErrorBars(source, chart.type);
@@ -343,7 +344,10 @@ function errorBarValueType(type: WorkSpreadsheetErrorBars['valueType']): string 
 }
 
 function chartHasSeriesAnalysis(chart: WorkSlideChart): boolean {
-  return chart.series.some((series) => series.trendlines?.length || series.errorBars?.length);
+  return (
+    workSpreadsheetChartSupportsSeriesAnalysis(chart) &&
+    chart.series.some((series) => series.trendlines?.length || series.errorBars?.length)
+  );
 }
 
 function numericSetting(parent: Element, localName: string): number | undefined {

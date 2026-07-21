@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  normalizePresentationChartSeriesStyle,
   presentationChartErrorBarCount,
+  presentationChartHasCustomSeriesStyles,
   presentationChartTrendlineCount,
+  withPresentationChartLayout,
   withPresentationChartSeriesAnalysis,
+  withPresentationChartSeriesStyle,
   withPresentationChartType,
 } from './work-presentation-charts';
 import type { WorkSlideChart } from './work-types';
@@ -45,6 +49,62 @@ describe('Work presentation chart series analysis', () => {
     expect(pie.series[0].errorBars).toBeUndefined();
     expect(presentationChartTrendlineCount(pie)).toBe(0);
     expect(presentationChartErrorBarCount(pie)).toBe(0);
+  });
+
+  it('normalizes editable plot layout and removes analysis when a chart becomes stacked', () => {
+    const source = withPresentationChartSeriesAnalysis(scatterChart(), 0, {
+      trendlines: [{ type: 'linear' }],
+      errorBars: [{ direction: 'y', barType: 'both', valueType: 'fixedValue', value: 2 }],
+    });
+    const column = withPresentationChartType(source, 'column');
+    const stacked = withPresentationChartLayout(column, {
+      legendOverlay: true,
+      grouping: 'stacked',
+      gapWidth: 900,
+      overlap: -140,
+    });
+
+    expect(stacked).toMatchObject({
+      legendOverlay: true,
+      grouping: 'stacked',
+      gapWidth: 500,
+      overlap: -100,
+    });
+    expect(stacked.series[0].trendlines).toBeUndefined();
+    expect(stacked.series[0].errorBars).toBeUndefined();
+    expect(presentationChartTrendlineCount(stacked)).toBe(0);
+    expect(presentationChartErrorBarCount(stacked)).toBe(0);
+  });
+
+  it('normalizes portable series appearance and removes markers from unsupported chart families', () => {
+    const styled = withPresentationChartSeriesStyle(scatterChart(), 0, {
+      fillColor: '#abc',
+      fillTransparency: 150,
+      lineColor: '112233',
+      lineWidth: 80,
+      lineDash: 'dashDot',
+      marker: { symbol: 'star', size: 90, fillColor: '#fed', lineColor: '#456' },
+    });
+
+    expect(styled.series[0].style).toEqual({
+      fillColor: '#AABBCC',
+      fillTransparency: 100,
+      lineColor: '#112233',
+      lineWidth: 20,
+      lineDash: 'dashDot',
+      marker: { symbol: 'star', size: 72, fillColor: '#FFEEDD', lineColor: '#445566' },
+    });
+    expect(presentationChartHasCustomSeriesStyles(styled)).toBe(true);
+    expect(normalizePresentationChartSeriesStyle(styled.series[0].style, 'scatter')).toEqual(styled.series[0].style);
+
+    const column = withPresentationChartType(styled, 'column');
+    expect(column.series[0].style).toEqual({
+      fillColor: '#AABBCC',
+      fillTransparency: 100,
+      lineColor: '#112233',
+      lineWidth: 20,
+      lineDash: 'dashDot',
+    });
   });
 });
 

@@ -887,8 +887,18 @@ Saving replaces the baseline only after the CLI returns the parsed
 authoritative configuration; failure retains the draft for retry.
 
 The Integrations view composes `SearchSettingsEditor`,
-`DocumentParserSettingsEditor`, and `McpSettingsEditor`. MCP servers and
-Providers use independently collapsible editors and inline add/remove actions.
+`DocumentParserSettingsEditor`, `OomolConnectorSettings`, and
+`McpSettingsEditor`. `OomolConnectorSettings` projects one standard
+`streamable-http` MCP server named `oomol-connector`: hosted mode fixes the official
+OOMOL endpoint and stores a raw API-key authorization header, while self-hosted
+mode accepts the runtime endpoint and stores a Bearer runtime token. It keeps
+masked secrets opaque across reads and clears them when a deployment switch
+changes the required authorization scheme. The managed OOMOL entry is excluded
+from the generic MCP list so a newly entered key cannot be duplicated into a
+plain header field. A same-name legacy entry using another transport stays in
+the generic editor until the user renames or removes it, and invalid self-hosted
+endpoint URLs cannot be saved. Other MCP servers and Providers use
+independently collapsible editors and inline add/remove actions.
 Advanced queue, model metadata, OCR, cache, transport, and OAuth fields stay in
 disclosures rather than competing with common settings.
 

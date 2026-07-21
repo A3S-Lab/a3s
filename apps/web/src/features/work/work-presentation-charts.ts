@@ -1,4 +1,10 @@
 import { presentationChartAxesForType } from './work-presentation-chart-axes';
+import {
+  normalizeWorkSpreadsheetChartLayout,
+  type WorkSpreadsheetChartLayout,
+  workSpreadsheetChartSupportsSeriesAnalysis,
+} from './work-spreadsheet-chart-layout';
+import { normalizeWorkSpreadsheetChartSeriesStyle } from './work-spreadsheet-chart-series-style';
 import { createWorkId } from './work-templates';
 import type {
   WorkSlideBubbleSizeRepresents,
@@ -7,6 +13,7 @@ import type {
   WorkSlideChartDataLabels,
   WorkSlideChartLegendPosition,
   WorkSlideChartSeries,
+  WorkSlideChartSeriesStyle,
   WorkSlideChartType,
   WorkSlideElement,
   WorkSlideRadarStyle,
@@ -97,7 +104,7 @@ export function withPresentationChartType(chart: WorkSlideChart, type: WorkSlide
       ? { trendlines: trendlines.map(normalizeWorkSpreadsheetTrendline) }
       : {}),
   }));
-  return {
+  return withPresentationChartLayout({
     ...base,
     categories: nextCategories,
     series: nextSeries,
@@ -114,7 +121,89 @@ export function withPresentationChartType(chart: WorkSlideChart, type: WorkSlide
           bubbleSizeRepresents: normalizePresentationBubbleSizeRepresents(bubbleSizeRepresents),
         }
       : {}),
+  });
+}
+
+export function withPresentationChartLayout(
+  chart: WorkSlideChart,
+  change: Partial<WorkSpreadsheetChartLayout & Pick<WorkSlideChart, 'showLegend'>> = {}
+): WorkSlideChart {
+  const source = { ...chart, ...change };
+  const normalized = normalizeWorkSpreadsheetChartLayout(source);
+  const supportsAnalysis = workSpreadsheetChartSupportsSeriesAnalysis({ ...source, ...normalized });
+  const {
+    gapWidth: _gapWidth,
+    grouping: _grouping,
+    legendOverlay: _legendOverlay,
+    legendPosition: _legendPosition,
+    overlap: _overlap,
+    series: _series,
+    smoothLines: _smoothLines,
+    ...base
+  } = source;
+  const series = source.series.map((item) => {
+    const { errorBars, style, trendlines, ...seriesBase } = item;
+    const normalizedStyle = normalizePresentationChartSeriesStyle(style, source.type);
+    return {
+      ...seriesBase,
+      ...(normalizedStyle ? { style: normalizedStyle } : {}),
+      ...(supportsAnalysis && workSpreadsheetChartSupportsErrorBars(source.type) && errorBars?.length
+        ? { errorBars: normalizePresentationChartErrorBars(errorBars, source.type) }
+        : {}),
+      ...(supportsAnalysis && workSpreadsheetChartSupportsTrendlines(source.type) && trendlines?.length
+        ? { trendlines: trendlines.map(normalizeWorkSpreadsheetTrendline) }
+        : {}),
+    };
+  });
+  return {
+    ...base,
+    series,
+    ...(source.legendPosition !== undefined ? { legendPosition: normalized.legendPosition } : {}),
+    ...(source.legendOverlay !== undefined ? { legendOverlay: normalized.legendOverlay } : {}),
+    ...(normalized.grouping !== undefined && source.grouping !== undefined ? { grouping: normalized.grouping } : {}),
+    ...(normalized.gapWidth !== undefined && source.gapWidth !== undefined ? { gapWidth: normalized.gapWidth } : {}),
+    ...(normalized.overlap !== undefined && source.overlap !== undefined ? { overlap: normalized.overlap } : {}),
+    ...(normalized.smoothLines !== undefined && source.smoothLines !== undefined
+      ? { smoothLines: normalized.smoothLines }
+      : {}),
   };
+}
+
+export function normalizePresentationChartSeriesStyle(
+  style: WorkSlideChartSeriesStyle | undefined,
+  type: WorkSlideChartType
+): WorkSlideChartSeriesStyle | undefined {
+  const normalized = normalizeWorkSpreadsheetChartSeriesStyle(style);
+  if (!normalized) return undefined;
+  if (presentationChartSupportsSeriesMarkers(type)) return normalized;
+  const { marker: _marker, ...withoutMarker } = normalized;
+  return Object.keys(withoutMarker).length ? withoutMarker : undefined;
+}
+
+export function withPresentationChartSeriesStyle(
+  chart: WorkSlideChart,
+  seriesIndex: number,
+  style: WorkSlideChartSeriesStyle | undefined
+): WorkSlideChart {
+  return withPresentationChartLayout({
+    ...chart,
+    series: chart.series.map((series, index) =>
+      index === seriesIndex
+        ? {
+            ...series,
+            style: normalizePresentationChartSeriesStyle(style, chart.type),
+          }
+        : series
+    ),
+  });
+}
+
+export function presentationChartSupportsSeriesMarkers(type: WorkSlideChartType): boolean {
+  return type === 'line' || type === 'radar' || type === 'scatter';
+}
+
+export function presentationChartHasCustomSeriesStyles(chart: WorkSlideChart): boolean {
+  return chart.series.some((series) => Boolean(normalizePresentationChartSeriesStyle(series.style, chart.type)));
 }
 
 export function parsePresentationChartCategories(value: string): string[] {
@@ -155,7 +244,7 @@ export function withPresentationChartSeriesAnalysis(
   seriesIndex: number,
   analysis: Pick<WorkSlideChartSeries, 'errorBars' | 'trendlines'>
 ): WorkSlideChart {
-  return {
+  return withPresentationChartLayout({
     ...chart,
     series: chart.series.map((series, index) => {
       if (index !== seriesIndex) return series;
@@ -172,16 +261,20 @@ export function withPresentationChartSeriesAnalysis(
         ...(trendlines?.length ? { trendlines } : {}),
       };
     }),
-  };
+  });
 }
 
 export function presentationChartTrendlineCount(chart: WorkSlideChart): number {
-  if (!workSpreadsheetChartSupportsTrendlines(chart.type)) return 0;
+  if (!workSpreadsheetChartSupportsSeriesAnalysis(chart) || !workSpreadsheetChartSupportsTrendlines(chart.type)) {
+    return 0;
+  }
   return chart.series.reduce((count, series) => count + (series.trendlines?.length ?? 0), 0);
 }
 
 export function presentationChartErrorBarCount(chart: WorkSlideChart): number {
-  if (!workSpreadsheetChartSupportsErrorBars(chart.type)) return 0;
+  if (!workSpreadsheetChartSupportsSeriesAnalysis(chart) || !workSpreadsheetChartSupportsErrorBars(chart.type)) {
+    return 0;
+  }
   return chart.series.reduce((count, series) => count + (series.errorBars?.length ?? 0), 0);
 }
 

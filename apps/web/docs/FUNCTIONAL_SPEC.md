@@ -290,6 +290,11 @@ Git state is never labelled as selected-task provenance.
 - Configure session storage, memory paths, relevance, extraction, and pruning.
 - Configure A3S OS address, Web search and headless browsing, document parsing,
   OCR, cache, MCP transports, environment, OAuth, and tool timeouts.
+- Configure the connector through either the OOMOL hosted MCP endpoint or a self-hosted
+  OpenConnector endpoint. Hosted authentication sends the OOMOL API key as the
+  raw `Authorization` value; self-hosted authentication sends the runtime token
+  as `Bearer <token>`. Existing secrets remain masked, and switching between
+  modes clears a server-held secret that cannot be transformed safely.
 - Check and install updates from the About tab.
 - Surface catalog warnings, missing configuration, disconnected service, and
   update failures with a useful retry.
@@ -310,7 +315,11 @@ independently; a failed save preserves the local draft and authoritative saved
 state; secrets are masked and are never returned to the browser; effect labels
 distinguish new-task changes from restart-required changes; Help does not teach
 slash commands as the primary Web interaction; local account refresh failure
-retains the previous catalog and stays inline in the Account section.
+retains the previous catalog and stays inline in the Account section. The
+connector setup produces a standard enabled `streamable-http` MCP server named
+`oomol-connector`, uses the documented endpoint and authorization format for the
+selected deployment, and makes the connector catalog, connection management, API-key,
+and self-hosting destinations explicit.
 
 ## F10 — Memory exploration
 

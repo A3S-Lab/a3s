@@ -274,3 +274,73 @@
     min-height: min(560px, calc(100vh - 32px));
   }
 }
+
+@media (max-width: 720px) {
+  .settings-overlay {
+    padding: 8px;
+    place-items: stretch;
+  }
+
+  .settings-dialog {
+    width: calc(100vw - 16px);
+    height: calc(100vh - 16px);
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    border-radius: 10px;
+  }
+
+  .settings-nav {
+    padding: 40px 8px 8px;
+    border-right: 0;
+    border-bottom: 1px solid var(--a3s-line);
+  }
+
+  .settings-nav nav {
+    overflow-x: auto;
+    flex-direction: row;
+    gap: 4px;
+    padding-bottom: 1px;
+    scrollbar-width: thin;
+  }
+
+  .settings-nav nav button {
+    height: 34px;
+    flex: 0 0 auto;
+    gap: 7px;
+    padding-inline: 10px;
+  }
+
+  .settings-nav > footer,
+  .settings-local-badge {
+    display: none;
+  }
+
+  .settings-content-header {
+    min-height: 0;
+    gap: 12px;
+    margin-inline: 16px;
+    padding: 16px 34px 13px 0;
+  }
+
+  .settings-content-header h2 {
+    font-size: 18px;
+  }
+
+  .settings-content-header p {
+    line-height: 1.45;
+  }
+
+  .settings-content-body {
+    padding: 12px 16px 24px;
+  }
+
+  .settings-close {
+    top: 8px;
+    right: 8px;
+  }
+
+  .settings-discard-overlay {
+    padding: 12px;
+  }
+}

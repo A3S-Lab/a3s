@@ -737,6 +737,7 @@ export interface WorkSlideTable {
 
 export type WorkSlideChartErrorBars = WorkSpreadsheetErrorBars;
 export type WorkSlideChartTrendline = WorkSpreadsheetTrendline;
+export type WorkSlideChartSeriesStyle = WorkSpreadsheetChartSeriesStyle;
 
 export interface WorkSlideChartSeries {
   name: string;
@@ -744,6 +745,7 @@ export interface WorkSlideChartSeries {
   bubbleSizes?: number[];
   errorBars?: WorkSlideChartErrorBars[];
   trendlines?: WorkSlideChartTrendline[];
+  style?: WorkSlideChartSeriesStyle;
 }
 
 export type WorkSlideChartType =
@@ -783,7 +785,7 @@ export interface WorkSlideChartDataLabels {
   position?: WorkSlideChartDataLabelPosition;
 }
 
-export interface WorkSlideChart {
+export interface WorkSlideChart extends WorkSpreadsheetChartLayout {
   type: WorkSlideChartType;
   title?: string;
   categories: string[];

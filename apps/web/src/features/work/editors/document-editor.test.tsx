@@ -36,6 +36,7 @@ describe('Work document editor', () => {
     expect(screen.getByRole('link', { name: 'A3S' })).toHaveAttribute('href', 'https://a3s.dev');
     expect(screen.getByAltText('A3S mark')).toBeInTheDocument();
 
+    openRibbonTab('插入');
     fireEvent.click(screen.getByRole('button', { name: '插入表格' }));
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith(
@@ -44,6 +45,87 @@ describe('Work document editor', () => {
         })
       );
     });
+  });
+
+  it('organizes document commands into a tabbed ribbon', async () => {
+    render(
+      <DocumentEditor
+        content={{
+          type: 'document',
+          pageSize: 'a4',
+          html: '<p>Ribbon workflow</p>',
+        }}
+        preview={false}
+        onChange={vi.fn()}
+      />
+    );
+
+    await waitFor(() => expect(screen.getByText('Ribbon workflow')).toBeInTheDocument());
+    expect(screen.getByRole('tablist', { name: '文字功能区' })).toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      '首页',
+      '插入',
+      '页面',
+      '引用',
+      '审阅',
+      '视图',
+      '工具',
+    ]);
+    expect(screen.getByRole('tab', { name: '首页' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: '加粗' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '插入图片' })).not.toBeInTheDocument();
+
+    openRibbonTab('插入');
+    expect(screen.getByRole('tab', { name: '插入' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: '插入图片' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '加粗' })).not.toBeInTheDocument();
+
+    fireEvent.keyDown(screen.getByRole('tab', { name: '插入' }), { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: '页面' })).toHaveAttribute('aria-selected', 'true');
+    await waitFor(() => expect(screen.getByRole('tab', { name: '页面' })).toHaveFocus());
+
+    openRibbonTab('审阅');
+    expect(screen.getByRole('button', { name: '修订模式' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '拼写检查' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('provides live page, word, proofing, save, view, and zoom status', async () => {
+    render(
+      <DocumentEditor
+        content={{
+          type: 'document',
+          pageSize: 'a4',
+          html: '<p>Alpha beta 中文</p><div data-page-break="true"></div><p>Second page</p>',
+        }}
+        preview={false}
+        saveStatus='已保存到 A3S'
+        onChange={vi.fn()}
+      />
+    );
+
+    await waitFor(() => expect(screen.getByText('Alpha beta 中文')).toBeInTheDocument());
+    expect(screen.getByLabelText('页码状态')).toHaveTextContent('第 1 页，共 2 页');
+    expect(screen.getByLabelText('字数统计')).toHaveTextContent('字数：6');
+    expect(screen.getByLabelText('文档保存状态')).toHaveTextContent('已保存到 A3S');
+
+    const textbox = screen.getByRole('textbox', { name: '文档正文' });
+    expect(textbox).toHaveAttribute('spellcheck', 'true');
+    fireEvent.click(screen.getByRole('button', { name: '校对：已开启' }));
+    expect(textbox).toHaveAttribute('spellcheck', 'false');
+    expect(screen.getByRole('button', { name: '校对：已关闭' })).toHaveAttribute('aria-pressed', 'false');
+
+    const pageStage = screen.getByTestId('document-page-stage');
+    expect(pageStage).toHaveStyle({ '--work-document-zoom': '0.9' });
+    fireEvent.click(screen.getByRole('button', { name: '放大文档' }));
+    expect(screen.getByLabelText('文档缩放比例')).toHaveTextContent('100%');
+    expect(pageStage).toHaveStyle({ '--work-document-zoom': '1' });
+    fireEvent.change(screen.getByRole('slider', { name: '文档缩放' }), { target: { value: '125' } });
+    expect(screen.getByLabelText('文档缩放比例')).toHaveTextContent('125%');
+    expect(pageStage).toHaveStyle({ '--work-document-zoom': '1.25' });
+
+    fireEvent.click(screen.getByRole('button', { name: '网页视图' }));
+    expect(screen.getByRole('button', { name: '网页视图' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('文档内容编辑区域')).toHaveClass('web');
   });
 
   it('edits page setup and inserts explicit page breaks', async () => {
@@ -69,6 +151,7 @@ describe('Work document editor', () => {
 
     render(<Harness />);
     await waitFor(() => expect(screen.getByText('First page')).toBeInTheDocument());
+    openRibbonTab('页面');
     fireEvent.click(screen.getByRole('button', { name: '页面设置' }));
     fireEvent.change(screen.getByLabelText('纸张大小'), { target: { value: 'letter' } });
     fireEvent.change(screen.getByLabelText('页面方向'), { target: { value: 'landscape' } });
@@ -104,7 +187,7 @@ describe('Work document editor', () => {
           html: expect.stringContaining('data-page-break'),
         })
       );
-      expect(screen.getByText('2 页')).toBeInTheDocument();
+      expect(screen.getByLabelText('页码状态')).toHaveTextContent('共 2 页');
     });
   });
 
@@ -131,6 +214,7 @@ describe('Work document editor', () => {
 
     render(<Harness />);
     await waitFor(() => expect(screen.getByText('First section')).toBeInTheDocument());
+    openRibbonTab('页面');
     fireEvent.click(screen.getByRole('button', { name: '页面设置' }));
     fireEvent.change(screen.getByLabelText('分栏数量'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('分栏间距'), { target: { value: '9.5' } });
@@ -138,7 +222,7 @@ describe('Work document editor', () => {
     fireEvent.change(screen.getByLabelText('分节方式'), { target: { value: 'continuous' } });
     fireEvent.click(screen.getByRole('button', { name: '插入分节符' }));
 
-    await waitFor(() => expect(screen.getByText('2 节')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText('分节状态')).toHaveTextContent('共 2 节'));
     let latest = onChange.mock.lastCall?.[0] as WorkDocumentContent;
     let sections = documentSections(latest);
     expect(sections).toHaveLength(2);
@@ -157,7 +241,7 @@ describe('Work document editor', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: '与上一节合并' }));
-    await waitFor(() => expect(screen.getByText('1 节')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByLabelText('分节状态')).toHaveTextContent('共 1 节'));
     latest = onChange.mock.lastCall?.[0] as WorkDocumentContent;
     sections = documentSections(latest);
     expect(sections).toHaveLength(1);
@@ -188,6 +272,7 @@ describe('Work document editor', () => {
 
     render(<Harness />);
     await waitFor(() => expect(screen.getByText('Unequal columns')).toBeInTheDocument());
+    openRibbonTab('页面');
     fireEvent.click(screen.getByRole('button', { name: '页面设置' }));
     fireEvent.change(screen.getByLabelText('分栏数量'), { target: { value: '2' } });
     fireEvent.click(screen.getByRole('checkbox', { name: '自定义栏宽' }));
@@ -221,6 +306,7 @@ describe('Work document editor', () => {
     );
 
     await waitFor(() => expect(screen.getByText('Statement requiring a source')).toBeInTheDocument());
+    openRibbonTab('引用');
     fireEvent.click(screen.getByRole('button', { name: '插入脚注' }));
 
     await waitFor(() => {
@@ -258,6 +344,7 @@ describe('Work document editor', () => {
 
     render(<Harness />);
     await waitFor(() => expect(screen.getByText('Caption workflow')).toBeInTheDocument());
+    openRibbonTab('引用');
     fireEvent.click(screen.getByRole('button', { name: '插入图片题注' }));
     await waitFor(() => {
       const latest = onChange.mock.lastCall?.[0] as WorkDocumentContent;
@@ -297,6 +384,7 @@ describe('Work document editor', () => {
 
     render(<Harness />);
     await waitFor(() => expect(screen.getByText('Field workflow')).toBeInTheDocument());
+    openRibbonTab('插入');
     fireEvent.change(screen.getByLabelText('插入正文域'), { target: { value: 'numPages' } });
 
     await waitFor(() => {
@@ -307,6 +395,7 @@ describe('Work document editor', () => {
     });
     expect(document.querySelector('[data-document-field]')).toHaveTextContent('1');
 
+    openRibbonTab('工具');
     fireEvent.click(screen.getByRole('button', { name: '更新所有正文域' }));
     expect(screen.getByRole('textbox', { name: '文档正文' })).toHaveFocus();
   });
@@ -334,6 +423,7 @@ describe('Work document editor', () => {
 
     render(<Harness />);
     await waitFor(() => expect(screen.getByText('Citation workflow')).toBeInTheDocument());
+    openRibbonTab('引用');
     fireEvent.click(screen.getByRole('button', { name: '文献库' }));
     fireEvent.change(screen.getByLabelText('引用标记'), {
       target: { value: 'Smith2026' },
@@ -371,7 +461,7 @@ describe('Work document editor', () => {
       expect(latest.html).toContain('data-document-bibliography');
       expect(latest.html).toContain('Agent-Native Office Systems');
     });
-    expect(screen.getByText('1 条文献 · 1 处引文')).toBeInTheDocument();
+    expect(screen.getByLabelText('引用状态')).toHaveTextContent('1 条文献 · 1 处引文');
 
     fireEvent.change(screen.getByLabelText('引用标记'), {
       target: { value: 'Smith2027' },
@@ -409,6 +499,7 @@ describe('Work document editor', () => {
     render(<Harness />);
 
     await waitFor(() => expect(screen.getByText('Rich page chrome')).toBeInTheDocument());
+    openRibbonTab('页面');
     fireEvent.click(screen.getByRole('button', { name: '页面设置' }));
     fireEvent.click(screen.getByRole('checkbox', { name: '首页页眉页脚不同' }));
     await waitFor(() => expect(screen.getByRole('checkbox', { name: '首页页眉页脚不同' })).toBeChecked());
@@ -467,6 +558,7 @@ describe('Work document editor', () => {
 
     render(<Harness />);
     await waitFor(() => expect(screen.getByText('added')).toBeInTheDocument());
+    openRibbonTab('审阅');
     expect(screen.getByRole('button', { name: '修订模式' })).toHaveAttribute('aria-pressed', 'true');
 
     fireEvent.click(screen.getByRole('button', { name: '审阅修订（2）' }));
@@ -517,6 +609,7 @@ describe('Work document editor', () => {
 
     render(<Harness />);
     await waitFor(() => expect(screen.getByText('this claim')).toBeInTheDocument());
+    openRibbonTab('审阅');
     fireEvent.click(screen.getByRole('button', { name: '审阅批注（1）' }));
     expect(screen.getByRole('region', { name: '批注审阅' })).toHaveTextContent('Please verify the source.');
 
@@ -590,3 +683,7 @@ describe('Work document editor', () => {
     );
   });
 });
+
+function openRibbonTab(name: string) {
+  fireEvent.click(screen.getByRole('tab', { name }));
+}

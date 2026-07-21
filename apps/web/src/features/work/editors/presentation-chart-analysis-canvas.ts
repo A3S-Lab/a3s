@@ -1,5 +1,6 @@
 import { roundChartNumber } from '../work-spreadsheet-chart-svg-utils';
 import { errorBarSourceValues, spreadsheetErrorBarAmounts } from '../work-spreadsheet-error-bars';
+import { workSpreadsheetChartSupportsSeriesAnalysis } from '../work-spreadsheet-chart-layout';
 import { fitSpreadsheetTrendline } from '../work-spreadsheet-trendlines';
 import {
   normalizeWorkSpreadsheetErrorBars,
@@ -22,6 +23,7 @@ export function presentationChartAnalysisBounds(
 ): PresentationChartAnalysisBounds {
   const x = xValues.filter(Number.isFinite);
   const y = chart.series.flatMap((series) => series.values).filter(Number.isFinite);
+  if (!workSpreadsheetChartSupportsSeriesAnalysis(chart)) return { x, y };
   for (const series of chart.series) {
     const analysisSeries = spreadsheetSeries(series, xValues);
     for (const source of series.errorBars ?? []) {
@@ -63,7 +65,7 @@ export function drawPresentationChartSeriesAnalysis({
   errorBarPosition: (direction: WorkSpreadsheetErrorBarDirection, pointIndex: number, value: number) => CanvasPoint;
 }): void {
   const series = chart.series[seriesIndex];
-  if (!series) return;
+  if (!series || !workSpreadsheetChartSupportsSeriesAnalysis(chart)) return;
   const analysisSeries = spreadsheetSeries(series, xValues);
   for (const source of series.errorBars ?? []) {
     const errorBars = normalizeWorkSpreadsheetErrorBars(source, chart.type);

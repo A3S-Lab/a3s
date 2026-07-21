@@ -1,4 +1,5 @@
 import { withPresentationChartSeriesAnalysis } from '../work-presentation-charts';
+import { workSpreadsheetChartSupportsSeriesAnalysis } from '../work-spreadsheet-chart-layout';
 import {
   type WorkSlideChart,
   workSpreadsheetChartSupportsErrorBars,
@@ -18,6 +19,7 @@ export function PresentationChartSeriesAnalysisEditor({
 }) {
   const series = chart.series[seriesIndex];
   if (!series) return null;
+  if (!workSpreadsheetChartSupportsSeriesAnalysis(chart)) return null;
   const supportsErrorBars = workSpreadsheetChartSupportsErrorBars(chart.type);
   const supportsTrendlines = workSpreadsheetChartSupportsTrendlines(chart.type);
   if (!supportsErrorBars && !supportsTrendlines) return null;

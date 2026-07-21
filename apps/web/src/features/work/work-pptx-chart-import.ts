@@ -1,6 +1,7 @@
 import { attribute, descendants, directChild, directChildren, firstDescendant } from './work-ooxml-package';
 import { readPptxChartAxisDiagnostics } from './work-pptx-chart-axis-diagnostics';
 import { readPptxChartDataLabels } from './work-pptx-chart-data-labels';
+import { readPptxChartLayoutAndSeriesStyles } from './work-pptx-chart-layout-style';
 import { readPptxChartSeriesAnalysis } from './work-pptx-chart-series-analysis';
 import {
   normalizeDoughnutHoleSize,
@@ -10,6 +11,7 @@ import {
   normalizePresentationScatterStyle,
   normalizeRadarStyle,
   presentationChartUsesNumericXAxis,
+  withPresentationChartLayout,
 } from './work-presentation-charts';
 import type { WorkSlideChart, WorkSlideChartLegendPosition } from './work-types';
 import { parseXlsxChartAxes } from './work-xlsx-chart-axes';
@@ -67,6 +69,7 @@ export function readPptxChart(document: Document): PptxChartImportResult {
                     : 'column';
   const numericXAxis = presentationChartUsesNumericXAxis(type);
   const seriesNodes = chartNode ? directChildren(chartNode, 'ser') : descendants(document, 'ser');
+  const formatting = readPptxChartLayoutAndSeriesStyles(document, chartNode, type, seriesNodes);
   const xValues = seriesNodes.map((node) => cachedValues(directChild(node, 'xVal')).map(finiteNumber));
   const seriesAnalysis = seriesNodes.map((node) => readPptxChartSeriesAnalysis(node, type));
   const series = seriesNodes.map((node, index) => ({
@@ -75,6 +78,7 @@ export function readPptxChart(document: Document): PptxChartImportResult {
     ...(type === 'bubble' ? { bubbleSizes: cachedValues(directChild(node, 'bubbleSize')).map(finiteNumber) } : {}),
     ...(seriesAnalysis[index]?.trendlines ? { trendlines: seriesAnalysis[index].trendlines } : {}),
     ...(seriesAnalysis[index]?.errorBars ? { errorBars: seriesAnalysis[index].errorBars } : {}),
+    ...(formatting.seriesStyles[index] ? { style: formatting.seriesStyles[index] } : {}),
   }));
   diagnostics.push(
     ...seriesAnalysis.flatMap((result) =>
@@ -101,11 +105,12 @@ export function readPptxChart(document: Document): PptxChartImportResult {
       feature: 'Chart axes',
     }))
   );
-  diagnostics.push({
-    code: 'pptx.chart.format',
-    feature: 'Chart formatting',
-    message: 'Chart data and its basic type are preserved; advanced chart styling is normalized on export.',
-  });
+  diagnostics.push(
+    ...formatting.diagnostics.map((diagnostic) => ({
+      ...diagnostic,
+      feature: 'Chart formatting',
+    }))
+  );
   const chart: WorkSlideChart = {
     type,
     title,
@@ -113,6 +118,8 @@ export function readPptxChart(document: Document): PptxChartImportResult {
     series,
     showLegend: Boolean(legend),
     ...(legend ? { legendPosition: pptxLegendPosition(legend) } : {}),
+    ...(formatting.legendOverlay !== undefined ? { legendOverlay: formatting.legendOverlay } : {}),
+    ...formatting.layout,
     ...(axes ? { axes } : {}),
   };
   const dataLabelResult = readPptxChartDataLabels(chartNode, type);
@@ -127,7 +134,7 @@ export function readPptxChart(document: Document): PptxChartImportResult {
   if (type === 'radar') readRadarSettings(chartNode, document, chart, diagnostics);
   if (type === 'scatter') readScatterSettings(chartNode, chart, diagnostics);
   if (type === 'bubble') readBubbleSettings(chartNode, chart, diagnostics);
-  return { chart, diagnostics };
+  return { chart: withPresentationChartLayout(chart), diagnostics };
 }
 
 function pptxLegendPosition(legend: Element): WorkSlideChartLegendPosition {

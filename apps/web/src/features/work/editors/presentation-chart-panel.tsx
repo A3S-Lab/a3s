@@ -4,29 +4,30 @@ import {
   normalizeDoughnutHoleSize,
   normalizePresentationBubbleScale,
   normalizePresentationBubbleSizeRepresents,
-  normalizePresentationChartLegendPosition,
   normalizePresentationScatterStyle,
   parsePresentationChartCategories,
   parsePresentationChartValues,
   parsePresentationChartXValues,
-  presentationChartShowsLegend,
+  presentationChartSupportsSeriesMarkers,
   presentationChartSupportsAxisTitles,
   presentationChartTypeLabel,
   presentationChartUsesNumericXAxis,
   withPresentationChartDataLabels,
+  withPresentationChartSeriesStyle,
   withPresentationChartType,
 } from '../work-presentation-charts';
 import type {
   WorkSlideBubbleSizeRepresents,
   WorkSlideChart,
-  WorkSlideChartLegendPosition,
   WorkSlideChartType,
   WorkSlideRadarStyle,
   WorkSlideScatterStyle,
 } from '../work-types';
 import { PresentationChartAxisEditor } from './presentation-chart-axis-editor';
 import { PresentationChartDataLabelEditor } from './presentation-chart-data-label-editor';
+import { PresentationChartLayoutEditor } from './presentation-chart-layout-editor';
 import { PresentationChartSeriesAnalysisEditor } from './presentation-chart-series-analysis-editor';
+import { SpreadsheetChartSeriesStyleEditor } from './spreadsheet-chart-series-style-editor';
 
 const CHART_TYPES: WorkSlideChartType[] = [
   'column',
@@ -51,7 +52,6 @@ export function PresentationChartPanel({
   onDelete: () => void;
   onClose: () => void;
 }) {
-  const showLegend = presentationChartShowsLegend(chart);
   const numericXAxis = presentationChartUsesNumericXAxis(chart.type);
   const updateSeries = (index: number, patch: Partial<WorkSlideChart['series'][number]>) => {
     onChange({
@@ -99,36 +99,7 @@ export function PresentationChartPanel({
             onChange={(event) => onChange({ ...chart, title: event.target.value || undefined })}
           />
         </label>
-        <label className='check'>
-          <span>图例</span>
-          <span className='work-presentation-chart-check-control'>
-            <input
-              type='checkbox'
-              aria-label='显示演示图表图例'
-              checked={showLegend}
-              onChange={(event) => onChange({ ...chart, showLegend: event.target.checked })}
-            />
-            显示
-          </span>
-        </label>
-        {showLegend && (
-          <label>
-            <span>图例位置</span>
-            <select
-              aria-label='演示图表图例位置'
-              value={normalizePresentationChartLegendPosition(chart.legendPosition)}
-              onChange={(event) =>
-                onChange({ ...chart, legendPosition: event.target.value as WorkSlideChartLegendPosition })
-              }
-            >
-              <option value='right'>右侧</option>
-              <option value='left'>左侧</option>
-              <option value='top'>顶部</option>
-              <option value='bottom'>底部</option>
-              <option value='topRight'>右上角</option>
-            </select>
-          </label>
-        )}
+        <PresentationChartLayoutEditor chart={chart} onChange={onChange} />
         {presentationChartSupportsAxisTitles(chart) && (
           <PresentationChartAxisEditor chart={chart} onChange={onChange} />
         )}
@@ -274,6 +245,12 @@ export function PresentationChartPanel({
                   <Trash2 size={12} />
                 </button>
               </fieldset>
+              <SpreadsheetChartSeriesStyleEditor
+                seriesNumber={index + 1}
+                supportsMarkers={presentationChartSupportsSeriesMarkers(chart.type)}
+                value={series.style}
+                onChange={(style) => onChange(withPresentationChartSeriesStyle(chart, index, style))}
+              />
               <PresentationChartSeriesAnalysisEditor chart={chart} seriesIndex={index} onChange={onChange} />
             </div>
           ))}

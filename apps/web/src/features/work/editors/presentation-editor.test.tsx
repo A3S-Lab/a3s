@@ -359,6 +359,47 @@ describe('Work presentation editor transitions', () => {
     });
   });
 
+  it('edits presentation chart overlay, plot layout, and per-series appearance', async () => {
+    const artifact = createWorkArtifact('blank-presentation');
+    if (artifact.content.type !== 'presentation') return;
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    const onChange = vi.fn();
+    render(<PresentationHarness initial={artifact.content} onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '图表' }));
+    fireEvent.click(screen.getByLabelText('演示图表图例叠加在绘图区'));
+    fireEvent.change(screen.getByLabelText('演示图表分组方式'), { target: { value: 'percentStacked' } });
+    fireEvent.change(screen.getByLabelText('演示图表分类间距（%）'), { target: { value: '240' } });
+    fireEvent.change(screen.getByLabelText('演示图表系列重叠（%）'), { target: { value: '85' } });
+    fireEvent.click(screen.getByLabelText('系列 1 使用自定义外观'));
+    fireEvent.change(screen.getByLabelText('系列 1 填充颜色'), { target: { value: '#112233' } });
+    fireEvent.change(screen.getByLabelText('系列 1 填充透明度'), { target: { value: '35' } });
+    fireEvent.change(screen.getByLabelText('系列 1 线条颜色'), { target: { value: '#445566' } });
+    fireEvent.change(screen.getByLabelText('系列 1 线条宽度'), { target: { value: '3.25' } });
+    fireEvent.change(screen.getByLabelText('系列 1 线条虚线'), { target: { value: 'dashDot' } });
+
+    await waitFor(() => {
+      const latest = onChange.mock.lastCall?.[0] as WorkPresentationContent;
+      expect(latest.slides[0].elements.at(-1)?.chart).toMatchObject({
+        legendOverlay: true,
+        grouping: 'percentStacked',
+        gapWidth: 240,
+        overlap: 85,
+        series: [
+          expect.objectContaining({
+            style: {
+              fillColor: '#112233',
+              fillTransparency: 35,
+              lineColor: '#445566',
+              lineWidth: 3.25,
+              lineDash: 'dashDot',
+            },
+          }),
+        ],
+      });
+    });
+  });
+
   it('edits presentation chart data-label content, placement, and separator', async () => {
     const artifact = createWorkArtifact('blank-presentation');
     if (artifact.content.type !== 'presentation') return;

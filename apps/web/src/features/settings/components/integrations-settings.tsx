@@ -7,10 +7,15 @@ import { useSettingsDraft } from '../use-settings-draft';
 import { SettingsEffectBadge } from './config/settings-effect-badge';
 import { SettingsTextField } from './config/settings-fields';
 import { SettingsRow } from './config/settings-row';
-import { SettingsLoadState, SettingsSaveState } from './config/settings-state-view';
 import { SettingsSection } from './config/settings-section';
-import { defaultDocumentParserSettings, DocumentParserSettingsEditor } from './integrations/document-parser-settings';
+import { SettingsLoadState, SettingsSaveState } from './config/settings-state-view';
+import { DocumentParserSettingsEditor, defaultDocumentParserSettings } from './integrations/document-parser-settings';
 import { McpSettingsEditor } from './integrations/mcp-settings';
+import {
+  OOMOL_CONNECTOR_SERVER_NAME,
+  OomolConnectorSettings,
+  oomolConnectorValidationMessage,
+} from './integrations/oomol-connector-settings';
 import { defaultSearchSettings, SearchSettingsEditor } from './integrations/search-settings';
 
 export function IntegrationsSettingsView({
@@ -23,6 +28,7 @@ export function IntegrationsSettingsView({
   const state = useSnapshot(appState);
   const source = state.integrationsSettings as IntegrationsSettings | null;
   const { draft, setDraft, dirty, accept, reset } = useSettingsDraft(source);
+  const oomolValidationError = draft ? oomolConnectorValidationMessage(draft.mcpServers) : null;
 
   useEffect(() => {
     if (!source) void actions.loadSettingsCategory('integrations');
@@ -57,6 +63,7 @@ export function IntegrationsSettingsView({
               dirty={dirty}
               saving={state.settingsCategorySaving.integrations}
               savedAt={state.settingsCategorySavedAt.integrations}
+              disabled={Boolean(oomolValidationError)}
               onReset={reset}
               onSave={() => void save()}
             />
@@ -125,8 +132,19 @@ export function IntegrationsSettingsView({
             )}
           </SettingsSection>
 
+          <SettingsSection title='连接器' description='通过 OOMOL OpenConnector 接入第三方账号和类型化 Action。'>
+            <OomolConnectorSettings
+              value={draft.mcpServers}
+              onChange={(mcpServers) => setDraft({ ...draft, mcpServers })}
+            />
+          </SettingsSection>
+
           <SettingsSection title='MCP' description='为 Agent 注册本地或远程工具服务；授权信息始终由本地 CLI 持有。'>
-            <McpSettingsEditor value={draft.mcpServers} onChange={(mcpServers) => setDraft({ ...draft, mcpServers })} />
+            <McpSettingsEditor
+              value={draft.mcpServers}
+              managedServerNames={[OOMOL_CONNECTOR_SERVER_NAME]}
+              onChange={(mcpServers) => setDraft({ ...draft, mcpServers })}
+            />
           </SettingsSection>
         </div>
       )}

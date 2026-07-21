@@ -1,5 +1,6 @@
 import { patchPptxChartAxes } from './work-pptx-chart-axes';
 import { patchPptxChartDataLabels } from './work-pptx-chart-data-labels';
+import { patchPptxChartLayoutAndSeriesStyles } from './work-pptx-chart-layout-style';
 import { patchPptxChartSeriesAnalysis } from './work-pptx-chart-series-analysis';
 import { patchPptxChartXySettings } from './work-pptx-chart-xy';
 import { patchPptxComments } from './work-pptx-comments';
@@ -64,7 +65,8 @@ export async function createPptxBlob(artifact: WorkArtifact, PptxGenJS: PptxCons
   const buffer = await presentationArrayBuffer(output);
   const slides = artifact.content.type === 'presentation' ? artifact.content.slides : [];
   const withChartXySettings = await patchPptxChartXySettings(buffer, slides);
-  const withChartDataLabels = await patchPptxChartDataLabels(withChartXySettings, slides);
+  const withChartLayoutAndStyles = await patchPptxChartLayoutAndSeriesStyles(withChartXySettings, slides);
+  const withChartDataLabels = await patchPptxChartDataLabels(withChartLayoutAndStyles, slides);
   const withChartAxes = await patchPptxChartAxes(withChartDataLabels, slides);
   const withChartSeriesAnalysis = await patchPptxChartSeriesAnalysis(withChartAxes, slides);
   const withTransitions = await patchPptxTransitions(withChartSeriesAnalysis, slides);

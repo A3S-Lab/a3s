@@ -1,4 +1,9 @@
 import { normalizePresentationChartLegendPosition, presentationChartShowsLegend } from '../work-presentation-charts';
+import { normalizeWorkSpreadsheetChartLegendOverlay } from '../work-spreadsheet-chart-layout';
+import {
+  normalizeWorkSpreadsheetChartSeriesStyle,
+  spreadsheetChartSeriesLegendColor,
+} from '../work-spreadsheet-chart-series-style';
 import type { WorkSlideChart, WorkSlideChartLegendPosition } from '../work-types';
 import type { PresentationChartRect } from './presentation-chart-axis-canvas';
 
@@ -21,8 +26,20 @@ export function presentationChartCanvasLayout(
   const legendPosition = normalizePresentationChartLegendPosition(chart.legendPosition);
   if (!presentationChartShowsLegend(chart) || !hasLegendItems) return { plot: content, legendPosition };
   const gap = 6;
+  const overlay = normalizeWorkSpreadsheetChartLegendOverlay(chart.legendOverlay);
   if (legendPosition === 'top' || legendPosition === 'bottom') {
     const legendHeight = Math.min(34, Math.max(20, content.height * 0.19));
+    if (overlay) {
+      return {
+        plot: content,
+        legend: {
+          ...content,
+          y: legendPosition === 'top' ? content.y : content.y + content.height - legendHeight,
+          height: legendHeight,
+        },
+        legendPosition,
+      };
+    }
     const plotHeight = Math.max(18, content.height - legendHeight - gap);
     if (legendPosition === 'top') {
       return {
@@ -39,6 +56,17 @@ export function presentationChartCanvasLayout(
   }
 
   const legendWidth = Math.min(104, Math.max(66, content.width * 0.24));
+  if (overlay) {
+    return {
+      plot: content,
+      legend: {
+        ...content,
+        x: legendPosition === 'left' ? content.x : content.x + content.width - legendWidth,
+        width: legendWidth,
+      },
+      legendPosition,
+    };
+  }
   const plotWidth = Math.max(24, content.width - legendWidth - gap);
   if (legendPosition === 'left') {
     return {
@@ -57,13 +85,14 @@ export function presentationChartCanvasLayout(
 export function presentationChartLegendItems(chart: WorkSlideChart): PresentationChartLegendItem[] {
   if (chart.type === 'pie' || chart.type === 'doughnut') {
     const itemCount = Math.max(chart.categories.length, chart.series[0]?.values.length ?? 0);
+    const seriesColor = normalizeWorkSpreadsheetChartSeriesStyle(chart.series[0]?.style)?.fillColor;
     return Array.from({ length: itemCount }, (_, index) => ({
-      color: PRESENTATION_CHART_COLORS[index % PRESENTATION_CHART_COLORS.length],
+      color: seriesColor ?? PRESENTATION_CHART_COLORS[index % PRESENTATION_CHART_COLORS.length],
       label: chart.categories[index]?.trim() || `分类 ${index + 1}`,
     }));
   }
   return chart.series.map((series, index) => ({
-    color: PRESENTATION_CHART_COLORS[index % PRESENTATION_CHART_COLORS.length],
+    color: spreadsheetChartSeriesLegendColor(series, index),
     label: series.name.trim() || `系列 ${index + 1}`,
   }));
 }

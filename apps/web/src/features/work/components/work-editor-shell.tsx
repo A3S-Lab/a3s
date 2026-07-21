@@ -317,6 +317,7 @@ export function WorkEditorShell({
           <DocumentEditor
             content={artifact.content}
             preview={preview}
+            saveStatus={workSaveStatusText(actions.saveState, actions.storageMode)}
             onChange={updateContent}
             onAgentRequest={onAgentRequest}
           />
@@ -460,13 +461,14 @@ function SaveStatus({
   return (
     <>
       <Cloud size={11} />
-      {state === 'saving'
-        ? '正在保存'
-        : state === 'dirty'
-          ? '等待保存'
-          : storageMode === 'server'
-            ? '已保存到 A3S'
-            : '已保存到此设备'}
+      {workSaveStatusText(state, storageMode)}
     </>
   );
+}
+
+function workSaveStatusText(state: WorkActions['saveState'], storageMode: WorkActions['storageMode']): string {
+  if (state === 'error') return '保存失败';
+  if (state === 'saving') return '正在保存';
+  if (state === 'dirty') return '等待保存';
+  return storageMode === 'server' ? '已保存到 A3S' : '已保存到此设备';
 }

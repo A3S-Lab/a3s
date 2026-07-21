@@ -83,8 +83,14 @@ sandbox, messaging, and review contracts are defined in
   print-preview workflow opens from the toolbar or Cmd/Ctrl+P, shows the actual
   document, worksheet, notes-page, slide, or handout pagination, supports page
   navigation and zoom, and applies all/current/custom page ranges to browser
-  printing and PDF export. Native document
-  editing includes tables, images, links, find/replace, page setup, margins,
+  printing and PDF export. Native document editing uses a WPS-inspired tabbed
+  ribbon for Home, Insert, Page, References, Review, View, and Tools, with the
+  existing commands grouped by workflow instead of placed in one scrolling
+  row. The centered paper canvas supports page and web views plus real 50–200%
+  visual scaling. Its status bar reports the current/total page and section,
+  word count, toggleable browser proofing, live save state, view controls, and
+  zoom controls. Document editing also includes tables, images, links,
+  find/replace, page setup, margins,
   explicit page and section breaks, per-section A4/Letter orientation and
   margins, one-to-six equal or proportional custom-width columns, headers,
   footers, and page numbers;
@@ -233,7 +239,16 @@ sandbox, messaging, and review contracts are defined in
   bubble visibility, and area/width sizing. These settings, doughnut hole sizes,
   and radar styles survive PPTX round-trips and share the editor, thumbnail,
   playback, and PDF preview path. Legend visibility and five-position placement
-  share that path. Primary horizontal and vertical chart axes expose titles,
+  share that path, including optional plot-area overlay. Column, bar, line, and
+  area charts expose applicable standard, clustered, stacked, and
+  percent-stacked grouping. Column and bar charts add editable category gap and
+  series overlap, while line charts add smoothing. Positive and negative stacks
+  accumulate independently and percentage stacks normalize per category. Each
+  series also exposes portable solid sRGB fill and transparency, line color,
+  width and four dash patterns, plus applicable marker symbol, size, fill, and
+  outline controls. Layout and series appearance use the same editor canvas,
+  thumbnail, playback/PDF, AI Assistant, and native PPTX ChartML paths. Primary
+  horizontal and vertical chart axes expose titles,
   reverse order, four label positions, four major-tick styles, category-label
   intervals, value bounds, major units, major-gridline visibility, and number
   formats. The same axis model drives the editor canvas, playback/PDF rendering,
@@ -253,8 +268,10 @@ sandbox, messaging, and review contracts are defined in
   are retained even when no worksheet is available. Trendlines and error bars
   share the editor, canvas, playback/PDF, AI Assistant, and native PPTX ChartML
   round-trip paths; unsupported parameters, duplicate directions, manual
-  trendline labels, and advanced styling receive explicit compatibility
-  diagnostics. A review strip locates, edits, and deletes comments across slides;
+  trendline labels, manual legend layouts, invalid plot settings, theme or
+  effect-based series formatting, and per-point styling receive explicit,
+  feature-specific compatibility diagnostics. A review strip locates, edits,
+  and deletes comments across slides;
   review markers stay out of slide-show and PDF output.
   Modern PowerPoint threaded replies, mentions, and resolved state remain
   explicit compatibility work. Fade, push, wipe, split, and cut slide
@@ -332,7 +349,13 @@ sandbox, messaging, and review contracts are defined in
   runtime-detected Claude Code, Codex, and WorkBuddy account status and refresh,
   appearance, models and Providers, Agent execution and queues, session storage
   and memory policy, search and headless browsing, document/OCR parsing, MCP
-  transports and OAuth, updates, service information, and searchable Help.
+  transports and OAuth, and a first-class connector backed by either the OOMOL
+  hosted service or a self-hosted OpenConnector runtime. The setup keeps
+  its API key/runtime token masked, applies the transport-specific
+  authorization scheme, and links directly to the connector catalog, connection
+  console, and self-hosting guide. See
+  [Connector integration](docs/OOMOL_CONNECTOR.md). Settings also covers updates,
+  service information, and searchable Help.
   Categories load and save independently; effect labels distinguish new-task
   changes from restart-required changes, and secrets remain masked.
   Configuration rows use aligned controls and explicit units; editable Provider

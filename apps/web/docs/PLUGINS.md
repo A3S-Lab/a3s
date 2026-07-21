@@ -12,6 +12,22 @@ disable, and removal. A contribution adds navigation and a non-callable HTML
 view only. Native actions continue to use the package's CLI, standard MCP, and
 Skill surfaces.
 
+The model combines two useful references without copying either runtime:
+
+- VS Code supplies the package identity, declarative contribution point,
+  Marketplace lifecycle, and enable/disable model.
+- [Paciolan remote-component](https://github.com/Paciolan/remote-component)
+  supplies the small loader boundary: an explicit content source, separate
+  loading/error/ready states, caller-controlled fallback UI, and rejection of
+  stale asynchronous loads.
+
+The equivalent of `remote-component` dependency injection is the versioned,
+bounded `host.init`/`postMessage` protocol. A plugin receives only declared host
+facts and proposal capabilities, never the host React runtime or an ambient
+`require` function. The equivalent of its custom fetcher is owned by A3S Code:
+it resolves content only from the installed package snapshot and verifies the
+registry revision and digest before rendering.
+
 ```acl
 contributes {
   activity_bar "research" {
@@ -44,8 +60,8 @@ content. The asset must be:
 
 A changed registry revision or asset digest invalidates cached content. Requests
 carry sequence IDs and abort signals so a stale response cannot replace a newer
-selection. This follows the useful part of Paciolan `remote-component`: loading,
-error, and rendered states are separate, and late loads are discarded.
+selection. Loading, error, and rendered states remain separate, and late loads
+are discarded.
 
 A3S does not adopt remote URL evaluation, runtime JavaScript compilation, or
 `new Function`. Plugin UI always comes from an installed, reviewed package.

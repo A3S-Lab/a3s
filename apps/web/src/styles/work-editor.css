@@ -702,6 +702,160 @@
   opacity: 0;
 }
 
+.work-document-ribbon {
+  z-index: 8;
+  display: flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  flex-direction: column;
+  border-bottom: 1px solid var(--a3s-line);
+  background: var(--a3s-panel);
+  box-shadow: 0 2px 7px rgb(24 31 46 / 4%);
+}
+
+.work-document-ribbon-tabs {
+  display: flex;
+  min-width: 0;
+  height: 33px;
+  flex: 0 0 33px;
+  align-items: stretch;
+  justify-content: center;
+  gap: 17px;
+  padding: 0 18px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.work-document-ribbon-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.work-document-ribbon-tabs button {
+  position: relative;
+  min-width: 42px;
+  padding: 0 3px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--a3s-muted);
+  font: inherit;
+  font-size: 10px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.work-document-ribbon-tabs button::after {
+  position: absolute;
+  right: 4px;
+  bottom: 0;
+  left: 4px;
+  height: 2px;
+  border-radius: 999px 999px 0 0;
+  background: transparent;
+  content: "";
+}
+
+.work-document-ribbon-tabs button:hover {
+  color: var(--a3s-ink);
+}
+
+.work-document-ribbon-tabs button:focus-visible {
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--a3s-blue);
+}
+
+.work-document-ribbon-tabs button[aria-selected="true"] {
+  color: var(--a3s-blue);
+  font-weight: 680;
+}
+
+.work-document-ribbon-tabs button[aria-selected="true"]::after {
+  background: var(--a3s-blue);
+}
+
+.work-document-ribbon-panel {
+  min-width: 0;
+}
+
+.work-document-ribbon .work-office-toolbar {
+  height: 70px;
+  min-height: 70px;
+  flex-basis: 70px;
+  align-items: stretch;
+  gap: 0;
+  padding: 4px 10px 5px;
+  border: 0;
+}
+
+.work-document-ribbon-group {
+  position: relative;
+  display: flex;
+  height: 61px;
+  flex: 0 0 auto;
+  align-items: stretch;
+  padding: 0 9px 12px;
+  border-right: 1px solid var(--a3s-line);
+}
+
+.work-document-ribbon-group:first-child {
+  padding-left: 2px;
+}
+
+.work-document-ribbon-group:last-child {
+  border-right: 0;
+}
+
+.work-document-ribbon-group > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+.work-document-ribbon-group > span {
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  left: 8px;
+  overflow: hidden;
+  color: var(--a3s-faint);
+  font-size: 7px;
+  line-height: 9px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-document-ribbon .work-office-toolbar button.with-label {
+  width: auto;
+  min-width: 52px;
+  height: 48px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 4px 7px 3px;
+}
+
+.work-document-ribbon .work-office-toolbar button.with-label > span {
+  max-width: 76px;
+  overflow: hidden;
+  font-size: 8px;
+  line-height: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-document-ribbon .work-office-toolbar select {
+  min-width: 104px;
+}
+
+.work-ribbon-glyph {
+  color: currentColor;
+  font-family: Georgia, serif;
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 19px;
+}
+
 /* Document */
 
 .work-document-editor {
@@ -1120,7 +1274,22 @@
   flex: 1;
   padding: 28px max(28px, calc((100% - 850px) / 2)) 70px;
   overflow: auto;
+  background: color-mix(in srgb, var(--a3s-bg) 80%, #dfe3e9);
   scroll-behavior: smooth;
+}
+
+.work-document-scroll.web {
+  padding: 18px 22px 54px;
+}
+
+.work-document-page-stage {
+  width: max-content;
+  margin: 0 auto;
+  zoom: var(--work-document-zoom, 1);
+}
+
+.work-document-page-stage.web {
+  width: 100%;
 }
 
 .work-document-layout-panel {
@@ -1196,7 +1365,7 @@
 
 .work-document-page {
   box-sizing: border-box;
-  width: min(100%, 794px);
+  width: 794px;
   min-height: 1123px;
   margin: 0 auto;
   padding: 86px 88px 96px;
@@ -1207,18 +1376,25 @@
 }
 
 .work-document-page.letter {
-  width: min(100%, 816px);
+  width: 816px;
   min-height: 1056px;
 }
 
 .work-document-page.a4.landscape {
-  width: min(100%, 1123px);
+  width: 1123px;
   min-height: 794px;
 }
 
 .work-document-page.letter.landscape {
-  width: min(100%, 1056px);
+  width: 1056px;
   min-height: 816px;
+}
+
+.work-document-page-stage.web .work-document-page {
+  width: 100%;
+  min-height: 100%;
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .work-document-page .tiptap {
@@ -1445,16 +1621,94 @@
 
 .work-document-status {
   display: flex;
-  height: 26px;
-  flex: 0 0 26px;
+  height: 29px;
+  flex: 0 0 29px;
   align-items: center;
-  justify-content: flex-end;
-  gap: 15px;
-  padding: 0 14px;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 9px 0 13px;
   border-top: 1px solid var(--a3s-line);
   background: var(--a3s-panel);
   color: var(--a3s-faint);
   font-size: 9px;
+}
+
+.work-document-status-info,
+.work-document-status-view {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  align-items: center;
+  gap: 12px;
+}
+
+.work-document-status-info {
+  overflow: hidden;
+}
+
+.work-document-status-info > output {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.work-document-status button {
+  display: inline-flex;
+  height: 22px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 5px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.work-document-status button:hover:not(:disabled),
+.work-document-status button[aria-pressed="true"] {
+  background: var(--a3s-panel-soft);
+  color: var(--a3s-ink);
+}
+
+.work-document-status button:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.work-document-save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: color-mix(in srgb, #159469 78%, var(--a3s-muted));
+}
+
+.work-document-status-view {
+  flex: 0 0 auto;
+  gap: 3px;
+}
+
+.work-document-status-divider {
+  width: 1px;
+  height: 14px;
+  margin: 0 4px;
+  background: var(--a3s-line);
+}
+
+.work-document-status-view output {
+  width: 34px;
+  color: var(--a3s-muted);
+  text-align: center;
+}
+
+.work-document-status-view input[type="range"] {
+  width: 84px;
+  height: 3px;
+  margin: 0 3px;
+  accent-color: var(--a3s-blue);
+  cursor: pointer;
 }
 
 @media (max-width: 1080px) {
@@ -1473,5 +1727,25 @@
   .work-document-page {
     padding-right: 62px;
     padding-left: 62px;
+  }
+
+  .work-document-status-detail,
+  .work-document-save-status {
+    display: none;
+  }
+
+  .work-document-ribbon-tabs {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  .work-document-status-info [aria-label="分节状态"],
+  .work-document-status-info button {
+    display: none;
+  }
+
+  .work-document-status-view input[type="range"] {
+    width: 58px;
   }
 }

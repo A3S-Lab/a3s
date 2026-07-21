@@ -1,4 +1,5 @@
 import { presentationChartAxes } from '../work-presentation-chart-axes';
+import { normalizeWorkSpreadsheetChartGrouping } from '../work-spreadsheet-chart-layout';
 import {
   formatSpreadsheetChartAxisNumber,
   spreadsheetChartAxisGridlinesVisible,
@@ -54,7 +55,12 @@ export function drawPresentationCartesianAxes(
 ): PresentationCartesianAxisCanvas {
   const { axes, plot } = presentationAxisPlot(context, chart, sourceRect);
   const horizontalBars = chart.type === 'bar';
-  const valueAxis = horizontalBars ? axes.bottom : axes.left;
+  const sourceValueAxis = horizontalBars ? axes.bottom : axes.left;
+  const valueAxis =
+    normalizeWorkSpreadsheetChartGrouping(chart.grouping, chart.type) === 'percentStacked' &&
+    !sourceValueAxis?.numberFormat
+      ? { ...sourceValueAxis, numberFormat: '0%' }
+      : sourceValueAxis;
   const categoryAxis = horizontalBars ? axes.left : axes.bottom;
   const valuePositionName = horizontalBars ? 'bottom' : 'left';
   const categoryPositionName = horizontalBars ? 'left' : 'bottom';

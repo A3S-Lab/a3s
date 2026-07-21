@@ -19,6 +19,18 @@ import {
   workSpreadsheetChartAxisTickMarkLabel,
 } from './work-spreadsheet-chart-axis';
 import {
+  normalizeWorkSpreadsheetChartGapWidth,
+  normalizeWorkSpreadsheetChartGrouping,
+  normalizeWorkSpreadsheetChartOverlap,
+  normalizeWorkSpreadsheetChartSmoothLines,
+  workSpreadsheetChartGroupingLabel,
+  workSpreadsheetChartSupportsBarSpacing,
+  workSpreadsheetChartSupportsGrouping,
+  workSpreadsheetChartSupportsSeriesAnalysis,
+  workSpreadsheetChartSupportsSmoothLines,
+} from './work-spreadsheet-chart-layout';
+import { spreadsheetChartSeriesStyleContext } from './work-spreadsheet-chart-series-style';
+import {
   type WorkSlide,
   type WorkSlideChart,
   type WorkSlideElement,
@@ -119,9 +131,10 @@ function slideElementDetails(element: WorkSlideElement): string[] {
         presentationChartShowsLegend(element.chart)
           ? `显示（${presentationChartLegendPositionLabel(
               normalizePresentationChartLegendPosition(element.chart.legendPosition)
-            )}）`
+            )}）${element.chart.legendOverlay ? '；叠加绘图区' : ''}`
           : '隐藏'
       }`,
+      ...presentationChartPlotLayoutLines(element.chart),
       ...presentationChartAxisLines(element.chart),
       ...presentationChartDataLabelLines(element.chart),
       ...(element.chart.type === 'doughnut' ? [`圆环孔径：${element.chart.doughnutHoleSize ?? 50}%`] : []),
@@ -155,9 +168,11 @@ function presentationChartDataLabelLines(chart: WorkSlideChart): string[] {
 
 function presentationChartSeriesLines(chart: WorkSlideChart): string[] {
   const analysisContext = (series: WorkSlideChart['series'][number]) =>
-    `${
-      workSpreadsheetChartSupportsTrendlines(chart.type) ? chartSeriesTrendlineContext(series) : ''
-    }${workSpreadsheetChartSupportsErrorBars(chart.type) ? chartSeriesErrorBarContext(series, chart.type) : ''}`;
+    `${workSpreadsheetChartSupportsSeriesAnalysis(chart) && workSpreadsheetChartSupportsTrendlines(chart.type) ? chartSeriesTrendlineContext(series) : ''}${
+      workSpreadsheetChartSupportsSeriesAnalysis(chart) && workSpreadsheetChartSupportsErrorBars(chart.type)
+        ? chartSeriesErrorBarContext(series, chart.type)
+        : ''
+    }${spreadsheetChartSeriesStyleContext(series.style)}`;
   if (!presentationChartUsesNumericXAxis(chart.type)) {
     return chart.series.map(
       (series) =>
@@ -175,6 +190,20 @@ function presentationChartSeriesLines(chart: WorkSlideChart): string[] {
           : ''
       }${analysisContext(series)}`
   );
+}
+
+function presentationChartPlotLayoutLines(chart: WorkSlideChart): string[] {
+  if (!workSpreadsheetChartSupportsGrouping(chart.type)) return [];
+  const grouping = normalizeWorkSpreadsheetChartGrouping(chart.grouping, chart.type);
+  const settings = [workSpreadsheetChartGroupingLabel(grouping)];
+  if (workSpreadsheetChartSupportsBarSpacing(chart.type)) {
+    settings.push(`分类间距 ${normalizeWorkSpreadsheetChartGapWidth(chart.gapWidth)}%`);
+    settings.push(`系列重叠 ${normalizeWorkSpreadsheetChartOverlap(chart.overlap, grouping)}%`);
+  }
+  if (workSpreadsheetChartSupportsSmoothLines(chart.type)) {
+    settings.push(normalizeWorkSpreadsheetChartSmoothLines(chart.smoothLines) ? '平滑线' : '直线');
+  }
+  return [`绘图区：${settings.join('，')}`];
 }
 
 function presentationBubbleSettingsLine(chart: WorkSlideChart): string {

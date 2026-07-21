@@ -41,8 +41,9 @@ describe('Work Office file interoperability', () => {
       sourceName: 'Quarterly Review.pptx',
     });
     expect(artifact.compatibility?.issues.map((issue) => issue.code)).toEqual(
-      expect.arrayContaining(['pptx.transition', 'pptx.group', 'pptx.chart.format'])
+      expect.arrayContaining(['pptx.transition', 'pptx.group'])
     );
+    expect(artifact.compatibility?.issues.some((issue) => issue.code.startsWith('pptx.chart.format'))).toBe(false);
     expect(artifact.content.type).toBe('presentation');
     if (artifact.content.type !== 'presentation') return;
 
