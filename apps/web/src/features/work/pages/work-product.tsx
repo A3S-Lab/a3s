@@ -213,7 +213,7 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
             onAgentRequest={requestDocumentAgent}
             defaultLocalDirectory={files.currentPath || files.rootPath}
             onPickLocalDirectory={async () => {
-              const selection = await codeApi.pickWorkspaceDirectory();
+              const selection = await codeApi.pickWorkspaceDirectory(files.currentPath || files.rootPath || undefined);
               return selection.cancelled ? null : selection.path;
             }}
             onLocalFileSaved={() => void files.refresh()}

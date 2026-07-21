@@ -153,7 +153,7 @@ export function useWorkFilesController(defaultRootPath = '') {
 
   const pickRoot = useCallback(async (): Promise<string | null> => {
     try {
-      const selection = await codeApi.pickWorkspaceDirectory();
+      const selection = await codeApi.pickWorkspaceDirectory(rootPath || normalizedDefaultRoot || undefined);
       if (selection.cancelled || !selection.path) return null;
       const path = selection.path;
       setFavoritePaths((current) => (rootPath && sameLocalPath(rootPath, path) ? current : []));
@@ -169,7 +169,7 @@ export function useWorkFilesController(defaultRootPath = '') {
       showToast(formatApiError(pickError), 'error');
       return null;
     }
-  }, [rootPath]);
+  }, [normalizedDefaultRoot, rootPath]);
 
   const navigateTo = useCallback(
     (path: string) => {

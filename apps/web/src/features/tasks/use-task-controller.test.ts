@@ -421,7 +421,7 @@ describe('task configuration', () => {
   it('opens a native folder picker and applies the returned directory', async () => {
     appState.activeSessionId = null;
     appState.newTaskConfig.workspace = '/repo';
-    vi.spyOn(codeApi, 'pickWorkspaceDirectory').mockResolvedValue({
+    const pickWorkspaceDirectory = vi.spyOn(codeApi, 'pickWorkspaceDirectory').mockResolvedValue({
       cancelled: false,
       path: '/local/design-system',
     });
@@ -430,6 +430,7 @@ describe('task configuration', () => {
 
     await expect(act(() => hook.result.current.pickNewTaskWorkspace())).resolves.toBe('/local/design-system');
 
+    expect(pickWorkspaceDirectory).toHaveBeenCalledWith('/repo');
     expect(appState.newTaskConfig.workspace).toBe('/local/design-system');
     hook.unmount();
   });

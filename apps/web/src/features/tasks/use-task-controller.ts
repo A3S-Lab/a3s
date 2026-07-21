@@ -337,7 +337,9 @@ export function useTaskController() {
   });
   const pickNewTaskWorkspace = useMemoizedFn(async (): Promise<string | null> => {
     if (appState.activeSessionId) throw new Error('只能在创建新任务时打开本地文件夹。');
-    const selected = await codeApi.pickWorkspaceDirectory();
+    const selected = await codeApi.pickWorkspaceDirectory(
+      appState.newTaskConfig.workspace || appState.workspaceRoot || appState.health?.workspace || undefined
+    );
     if (selected.cancelled || !selected.path) return null;
     await selectNewTaskWorkspace(selected.path);
     return selected.path;

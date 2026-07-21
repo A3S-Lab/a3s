@@ -377,10 +377,10 @@ export const codeApi = {
       method: 'POST',
       ...jsonBody({ componentId, enabled }),
     }),
-  pickWorkspaceDirectory: () =>
+  pickWorkspaceDirectory: (initialPath?: string) =>
     apiRequest<WorkspaceDirectorySelection>('/api/v1/workspace/actions/pick-directory', {
       method: 'POST',
-      ...jsonBody({}),
+      ...jsonBody(initialPath ? { initialPath } : {}),
     }),
   readDir: async (path: string) => {
     const entries = await apiRequest<Omit<WorkspaceEntry, 'path'>[]>(
