@@ -200,12 +200,17 @@ export function usePluginController() {
       .filter(Boolean)
       .join('\n\n');
     appendTaskInstruction(context);
-    if (!appState.composerSkills.includes(contribution.skill)) {
+    if (proposal.usePackageSkill && !appState.composerSkills.includes(contribution.skill)) {
       appState.composerSkills = [...appState.composerSkills, contribution.skill];
     }
     appState.pluginContextProposal = null;
     navigateTask('conversation');
-    showToast(`已将审核后的上下文和 ${contribution.skill} Skill 加入 Code。`, 'success');
+    showToast(
+      proposal.usePackageSkill
+        ? `已将审核后的上下文和 ${contribution.skill} Skill 加入 Code。`
+        : '已将审核后的科研上下文加入 Code。',
+      'success'
+    );
   });
 
   const dismissOperationReview = useMemoizedFn(() => {

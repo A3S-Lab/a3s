@@ -13,7 +13,7 @@ const contribution: PluginActivityItem = {
   version: '1.2.3',
   enabled: true,
   id: 'research',
-  title: 'Science',
+  title: '科研',
   description: 'Explore scientific sources.',
   icon: 'flask-conical',
   skill: 'a3s-use-science',
@@ -37,6 +37,8 @@ describe('usePluginController', () => {
       activeProduct: 'code',
       pluginCatalog: catalog,
       pluginCatalogStatus: 'ready',
+      composerValue: '',
+      composerSkills: [],
     });
   });
 
@@ -77,6 +79,81 @@ describe('usePluginController', () => {
 
     expect(appState.pluginContentByKey[contribution.key]?.html).toBe('<p>current</p>');
     expect(appState.pluginContentStatus).toBe('ready');
+    hook.unmount();
+  });
+
+  it('hands reviewed context and the same-package Skill back to Code', () => {
+    vi.spyOn(codeApi, 'pluginActivities').mockResolvedValue(catalog);
+    appState.activeProduct = 'plugin';
+    appState.activePluginKey = contribution.key;
+    const hook = renderHook(() => usePluginController());
+
+    act(() => {
+      hook.result.current.proposeContext({
+        sourceKey: contribution.key,
+        title: 'Review research context',
+        summary: 'Compare recent CRISPR evidence.',
+        prompt: 'Compare the selected studies and identify uncertainty.',
+        fields: [{ label: 'Source', value: 'PubMed' }],
+        usePackageSkill: true,
+      });
+    });
+    act(() => hook.result.current.acceptContextProposal());
+
+    expect(appState.activeProduct).toBe('code');
+    expect(window.location.hash).toBe('#code/conversation');
+    expect(appState.composerValue).toContain('[Reviewed plugin context: 科研]');
+    expect(appState.composerValue).toContain('- Source: PubMed');
+    expect(appState.composerValue).toContain('Compare the selected studies and identify uncertainty.');
+    expect(appState.composerSkills).toEqual(['a3s-use-science']);
+    expect(appState.pluginContextProposal).toBeNull();
+    hook.unmount();
+  });
+
+  it('hands general-discipline context to Code without attaching the biomedical package Skill', () => {
+    vi.spyOn(codeApi, 'pluginActivities').mockResolvedValue(catalog);
+    appState.activeProduct = 'plugin';
+    appState.activePluginKey = contribution.key;
+    const hook = renderHook(() => usePluginController());
+
+    act(() => {
+      hook.result.current.proposeContext({
+        sourceKey: contribution.key,
+        title: 'Review research context',
+        summary: 'Assess a software engineering question.',
+        prompt: 'Compare the selected software engineering evidence.',
+        fields: [{ label: 'Discipline', value: 'Computer Science' }],
+        usePackageSkill: false,
+      });
+    });
+    act(() => hook.result.current.acceptContextProposal());
+
+    expect(appState.composerValue).toContain('- Discipline: Computer Science');
+    expect(appState.composerSkills).toEqual([]);
+    expect(appState.pluginContextProposal).toBeNull();
+    hook.unmount();
+  });
+
+  it('drops a pending proposal if its package is disabled before review completes', () => {
+    vi.spyOn(codeApi, 'pluginActivities').mockResolvedValue(catalog);
+    const hook = renderHook(() => usePluginController());
+
+    act(() => {
+      hook.result.current.proposeContext({
+        sourceKey: contribution.key,
+        title: 'Review research context',
+        summary: 'Pending context.',
+        prompt: 'This must not reach Code.',
+        fields: [],
+        usePackageSkill: true,
+      });
+      appState.pluginCatalog = { ...catalog, items: [{ ...contribution, enabled: false }] };
+      hook.result.current.acceptContextProposal();
+    });
+
+    expect(appState.composerValue).toBe('');
+    expect(appState.composerSkills).toEqual([]);
+    expect(appState.pluginContextProposal).toBeNull();
     hook.unmount();
   });
 });

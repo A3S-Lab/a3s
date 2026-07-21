@@ -8,7 +8,7 @@ import { PluginMarketplacePage } from './plugin-marketplace-page';
 const marketplaceItem: PluginMarketplaceItem = {
   componentId: 'use/a3s/science',
   packageId: 'a3s/science',
-  displayName: 'Science',
+  displayName: '科研',
   registryName: 'a3s',
   registryUrl: 'https://packages.a3s.dev',
   version: '1.2.3',
@@ -53,22 +53,81 @@ describe('plugin marketplace page', () => {
 
   afterEach(() => cleanup());
 
-  it('shows verified registry provenance and plans an exact signed package install', () => {
+  it('shows one honest catalog and plans an exact signed package install', () => {
     const actions = createPluginActions();
     render(<PluginMarketplacePage actions={actions} />);
 
-    expect(screen.getByText('TUF 元数据已验证')).toBeInTheDocument();
-    expect(screen.getByText('SHA-256 aaaaaaaaaaaa…')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '审核并安装' }));
+    expect(screen.queryByRole('tab', { name: '推荐' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '插件', pressed: true })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '已安装 0' })).toBeInTheDocument();
+    expect(screen.getByRole('tabpanel', { name: '全部插件' })).toBeInTheDocument();
+    expect(screen.queryByText('SHA-256 aaaaaaaaaaaa…')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '查看并安装 科研' }));
     expect(actions.planOperation).toHaveBeenCalledWith({
       action: 'install',
       componentId: 'use/a3s/science',
       version: '1.2.3',
       channel: 'stable',
     });
+
+    fireEvent.click(screen.getByRole('button', { name: '来源' }));
+    expect(screen.getByText('已验证')).toBeInTheDocument();
+    expect(screen.getByText('https://packages.a3s.dev')).toBeInTheDocument();
   });
 
-  it('requires a second explicit confirmation for the digest-bound dry-run plan', async () => {
+  it('opens an installed-only catalog from the toolbar', () => {
+    const actions = createPluginActions();
+    appState.pluginMarketplace = {
+      ...appState.pluginMarketplace!,
+      items: [
+        { ...marketplaceItem, installed: true, enabled: true },
+        { ...marketplaceItem, componentId: 'use/a3s/finance', packageId: 'a3s/finance', displayName: '金融' },
+      ],
+    };
+    render(<PluginMarketplacePage actions={actions} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '已安装 1' }));
+    expect(screen.getByRole('heading', { name: '科研' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '金融' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '停用' })).toBeInTheDocument();
+  });
+
+  it('combines text search with release-channel filtering', () => {
+    const actions = createPluginActions();
+    appState.pluginMarketplace = {
+      ...appState.pluginMarketplace!,
+      items: [
+        marketplaceItem,
+        {
+          ...marketplaceItem,
+          componentId: 'use/a3s/finance-analysis',
+          packageId: 'a3s/finance-analysis',
+          displayName: '金融分析',
+          channel: 'beta',
+        },
+        {
+          ...marketplaceItem,
+          componentId: 'use/a3s/finance-news',
+          packageId: 'a3s/finance-news',
+          displayName: '金融资讯',
+          channel: 'nightly',
+        },
+      ],
+    };
+    render(<PluginMarketplacePage actions={actions} />);
+
+    fireEvent.change(screen.getByPlaceholderText('搜索插件'), { target: { value: '金融' } });
+    expect(screen.getByRole('heading', { name: '金融分析' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '金融资讯' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '科研' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '测试版' }));
+    expect(screen.getByRole('button', { name: '测试版', pressed: true })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '金融分析' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '金融资讯' })).not.toBeInTheDocument();
+  });
+
+  it('requires a second explicit confirmation while hiding technical plan details', async () => {
     const actions = createPluginActions();
     appState.pluginOperationReview = {
       request: { action: 'install', componentId: 'use/a3s/science', version: '1.2.3', channel: 'stable' },
@@ -90,8 +149,9 @@ describe('plugin marketplace page', () => {
     };
     render(<PluginMarketplacePage actions={actions} />);
 
-    expect(screen.getByRole('dialog', { name: '审核插件安装计划' })).toBeInTheDocument();
-    expect(screen.getByText('c'.repeat(64))).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '确认安装' })).toBeInTheDocument();
+    expect(screen.getByText('技术信息').closest('details')).not.toHaveAttribute('open');
+    expect(screen.getByText('c'.repeat(64))).not.toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: '确认安装' }));
     await waitFor(() => expect(actions.applyReviewedOperation).toHaveBeenCalledOnce());
   });
