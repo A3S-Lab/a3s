@@ -22,10 +22,10 @@
 ## Overview
 
 **A3S** is the orchestration repository for A3S Code, A3S Box, A3S Cloud,
-A3S Bench, and the independent Rust-first components behind them. Applications
-live under `apps/`; most independently versioned component crates are git
-submodules, while `crates/common` and `crates/updater` are root-owned shared
-crates.
+A3S Bench, A3S Science, and the independent Rust-first components behind them.
+Applications live under `apps/`, first-party product packages live under
+`packages/`, and most independently versioned component crates are git
+submodules. `crates/common` and `crates/updater` are root-owned shared crates.
 
 The `a3s` command is the unified product entrypoint. `a3s code` starts the
 terminal coding agent, `a3s web` starts its browser workspace, `a3s box`
@@ -84,6 +84,7 @@ a3s list
 | A3S Use | Built-in Browser, native Office, and OCR domains with external extension surfaces | `--offline`, `A3S_OFFLINE=1`, and `A3S_NO_AUTO_INSTALL=1` are strict no-download boundaries. |
 | A3S Box | Docker-like lifecycle for Linux OCI workloads through explicit MicroVM and Sandbox isolation classes | Host requirements and maturity vary by backend and operating system; see the [A3S Box capability matrix](crates/box/README.md#capability-matrix). |
 | A3S Bench | Local conformance and long-horizon task/judge adapters with durable result artifacts | Published Bench targets currently cover macOS ARM64 and GNU/Linux x64. Local results are `local_unofficial`; official evaluation additionally requires signed component and Task admission plus matching Runtime evidence. |
+| A3S Science | First-party scientific Skills, MCP data services, compute workflows, and research tooling under `packages/science` | Package contracts and release cadence are owned by the independent Science repository. |
 | A3S Cloud | Locked component revisions, package versions, ownership, protocols, and contract fixtures | `compat/cloud-stack.acl` is authoritative; a compatibility change is incomplete until the lock verifier and Cloud contract gates pass. |
 
 ## Quick Start
@@ -249,6 +250,7 @@ x64; other CLI platforms cannot run this Quick Start yet.
 | A3S Web | [`apps/web`](apps/web/) | Browser workspace served by the local CLI |
 | A3S Cloud | [`apps/cloud`](apps/cloud/) | Multi-tenant control plane, node agent, and versioned Cloud contracts |
 | A3S Docs | [`apps/docs`](apps/docs/) | Documentation site and tutorials |
+| A3S Science | [`packages/science`](packages/science/) | Scientific Skills, MCP data services, compute workflows, and research tooling |
 
 The project table intentionally does not duplicate release versions. For
 submodule-backed projects, each component manifest and release repository is
@@ -281,6 +283,7 @@ Main repository areas:
 | Area | Paths | Responsibility |
 | --- | --- | --- |
 | Product surfaces | `crates/cli`, `crates/code`, `crates/box`, `apps/desktop`, `apps/web`, `apps/cloud` | User-facing coding, isolation, and control-plane products |
+| Capability packages | `packages/science` | First-party scientific Skills, MCP data services, compute workflows, and research tooling |
 | Agent contracts | `crates/ahp`, `crates/acl`, `crates/common` | Supervision, bounded configuration and schema admission, canonical digests, protocol, and shared types |
 | UI systems | `crates/tui`, `crates/gui`, `crates/webview` | Terminal UI, native RSX UI, and trusted WebView helpers |
 | Use and retrieval | `crates/use`, `crates/search` | Browser, native Office, OCR, extensions, and search |
