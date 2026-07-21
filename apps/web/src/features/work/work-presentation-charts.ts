@@ -91,7 +91,7 @@ export function withPresentationChartType(chart: WorkSlideChart, type: WorkSlide
       ? { bubbleSizes: bubbleSizes?.map(finitePresentationChartNumber) ?? current.values.map(() => 1) }
       : {}),
     ...(workSpreadsheetChartSupportsErrorBars(type) && errorBars?.length
-      ? { errorBars: errorBars.map((item) => normalizeWorkSpreadsheetErrorBars(item, type)) }
+      ? { errorBars: normalizePresentationChartErrorBars(errorBars, type) }
       : {}),
     ...(workSpreadsheetChartSupportsTrendlines(type) && trendlines?.length
       ? { trendlines: trendlines.map(normalizeWorkSpreadsheetTrendline) }
@@ -161,7 +161,7 @@ export function withPresentationChartSeriesAnalysis(
       if (index !== seriesIndex) return series;
       const { errorBars: _errorBars, trendlines: _trendlines, ...base } = series;
       const errorBars = workSpreadsheetChartSupportsErrorBars(chart.type)
-        ? analysis.errorBars?.map((item) => normalizeWorkSpreadsheetErrorBars(item, chart.type))
+        ? normalizePresentationChartErrorBars(analysis.errorBars ?? [], chart.type)
         : undefined;
       const trendlines = workSpreadsheetChartSupportsTrendlines(chart.type)
         ? analysis.trendlines?.map(normalizeWorkSpreadsheetTrendline)
@@ -176,11 +176,26 @@ export function withPresentationChartSeriesAnalysis(
 }
 
 export function presentationChartTrendlineCount(chart: WorkSlideChart): number {
+  if (!workSpreadsheetChartSupportsTrendlines(chart.type)) return 0;
   return chart.series.reduce((count, series) => count + (series.trendlines?.length ?? 0), 0);
 }
 
 export function presentationChartErrorBarCount(chart: WorkSlideChart): number {
+  if (!workSpreadsheetChartSupportsErrorBars(chart.type)) return 0;
   return chart.series.reduce((count, series) => count + (series.errorBars?.length ?? 0), 0);
+}
+
+function normalizePresentationChartErrorBars(
+  sources: NonNullable<WorkSlideChartSeries['errorBars']>,
+  type: WorkSlideChartType
+): NonNullable<WorkSlideChartSeries['errorBars']> {
+  const directions = new Set<string>();
+  return sources.flatMap((source) => {
+    const errorBars = normalizeWorkSpreadsheetErrorBars(source, type);
+    if (directions.has(errorBars.direction)) return [];
+    directions.add(errorBars.direction);
+    return [errorBars];
+  });
 }
 
 export function normalizeDoughnutHoleSize(value: number | undefined): number {

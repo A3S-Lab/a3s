@@ -433,7 +433,7 @@
 
 .work-presentation-chart-series-card {
   display: grid;
-  min-width: 520px;
+  min-width: 248px;
   align-content: start;
   gap: 6px;
 }
@@ -479,6 +479,7 @@
 
 .work-presentation-chart-series-analysis {
   display: grid;
+  min-width: 500px;
   gap: 6px;
   padding: 6px;
   border: 1px solid var(--a3s-line);

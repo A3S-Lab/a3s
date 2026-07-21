@@ -465,6 +465,28 @@ describe('Work presentation editor transitions', () => {
         ],
       });
     });
+
+    fireEvent.change(screen.getByLabelText('系列 1 误差线 1 计算方式'), { target: { value: 'custom' } });
+    const plusValues = screen.getByLabelText('系列 1 误差线 1 正误差值');
+    fireEvent.change(plusValues, { target: { value: '1, 2, 3' } });
+    fireEvent.blur(plusValues);
+    const minusValues = screen.getByLabelText('系列 1 误差线 1 负误差值');
+    fireEvent.change(minusValues, { target: { value: '0.5, 1, 1.5' } });
+    fireEvent.blur(minusValues);
+
+    await waitFor(() => {
+      const latest = onChange.mock.lastCall?.[0] as WorkPresentationContent;
+      expect(latest.slides[0].elements.at(-1)?.chart?.series[0].errorBars).toEqual([
+        {
+          direction: 'y',
+          barType: 'both',
+          valueType: 'custom',
+          plusValues: [1, 2, 3],
+          minusValues: [0.5, 1, 1.5],
+          showEndCaps: false,
+        },
+      ]);
+    });
   });
 
   it('applies layouts and edits shared layout and master content', async () => {

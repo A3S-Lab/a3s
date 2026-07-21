@@ -1,4 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import {
   type WorkSpreadsheetChartType,
   type WorkSpreadsheetErrorBarDirection,
@@ -138,7 +139,7 @@ export function SpreadsheetErrorBarEditor({
               </label>
             )}
             {item.valueType === 'custom' && item.barType !== 'plus' && customInput === 'references' && (
-              <label className='error-reference'>
+              <label className='error-reference' htmlFor={`work-error-values-${seriesNumber}-${errorBarNumber}-plus`}>
                 <span>负误差引用</span>
                 <input
                   aria-label={`${labelPrefix} 负误差引用`}
@@ -151,13 +152,14 @@ export function SpreadsheetErrorBarEditor({
             {item.valueType === 'custom' && item.barType !== 'minus' && customInput === 'values' && (
               <label className='error-reference'>
                 <span>正误差值</span>
-                <input
-                  aria-label={`${labelPrefix} 正误差值`}
-                  value={item.plusValues?.join(', ') ?? ''}
-                  placeholder={item.plusReference ? '已保留导入引用；输入数值可替换' : '1, 2, 1.5'}
-                  onChange={(event) =>
+                <CustomErrorValuesInput
+                  label={`${labelPrefix} 正误差值`}
+                  id={`work-error-values-${seriesNumber}-${errorBarNumber}-plus`}
+                  values={item.plusValues}
+                  reference={item.plusReference}
+                  onCommit={(plusValues) =>
                     replaceErrorBars(index, {
-                      plusValues: parseCustomValues(event.target.value),
+                      plusValues,
                       plusReference: undefined,
                     })
                   }
@@ -166,15 +168,16 @@ export function SpreadsheetErrorBarEditor({
               </label>
             )}
             {item.valueType === 'custom' && item.barType !== 'plus' && customInput === 'values' && (
-              <label className='error-reference'>
+              <label className='error-reference' htmlFor={`work-error-values-${seriesNumber}-${errorBarNumber}-minus`}>
                 <span>负误差值</span>
-                <input
-                  aria-label={`${labelPrefix} 负误差值`}
-                  value={item.minusValues?.join(', ') ?? ''}
-                  placeholder={item.minusReference ? '已保留导入引用；输入数值可替换' : '1, 2, 1.5'}
-                  onChange={(event) =>
+                <CustomErrorValuesInput
+                  label={`${labelPrefix} 负误差值`}
+                  id={`work-error-values-${seriesNumber}-${errorBarNumber}-minus`}
+                  values={item.minusValues}
+                  reference={item.minusReference}
+                  onCommit={(minusValues) =>
                     replaceErrorBars(index, {
-                      minusValues: parseCustomValues(event.target.value),
+                      minusValues,
                       minusReference: undefined,
                     })
                   }
@@ -218,6 +221,34 @@ function errorBarsWithValueType(
 
 function optionalNumber(value: string): number | undefined {
   return value === '' ? undefined : Number(value);
+}
+
+function CustomErrorValuesInput({
+  label,
+  id,
+  values,
+  reference,
+  onCommit,
+}: {
+  label: string;
+  id: string;
+  values: number[] | undefined;
+  reference: string | undefined;
+  onCommit: (values: number[] | undefined) => void;
+}) {
+  const serialized = values?.join(', ') ?? '';
+  const [draft, setDraft] = useState(serialized);
+  useEffect(() => setDraft(serialized), [serialized]);
+  return (
+    <input
+      id={id}
+      aria-label={label}
+      value={draft}
+      placeholder={reference ? '已保留导入引用；输入数值可替换' : '1, 2, 1.5'}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => onCommit(parseCustomValues(draft))}
+    />
+  );
 }
 
 function parseCustomValues(value: string): number[] | undefined {
