@@ -16,9 +16,10 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
   const query = useDebounce(state.searchQuery.trim().toLowerCase(), { wait: 160 });
   const sessions = state.sessions.filter(
     (session) =>
-      !query ||
-      sessionTitle(session, state.sessionTitles).toLowerCase().includes(query) ||
-      session.workspace.toLowerCase().includes(query)
+      session.agentId !== 'work' &&
+      (!query ||
+        sessionTitle(session, state.sessionTitles).toLowerCase().includes(query) ||
+        session.workspace.toLowerCase().includes(query))
   );
   useEffect(() => {
     if (searchOpen) searchInputRef.current?.focus();

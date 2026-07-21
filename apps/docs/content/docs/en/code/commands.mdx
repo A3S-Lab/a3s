@@ -15,7 +15,7 @@ The two surfaces are intentionally different:
 
 | Surface | Owner | Purpose |
 | --- | --- | --- |
-| `a3s code` slash commands | CLI/TUI | Terminal controls such as `/model`, `/flow`, `/memory`, `/kb`, `/btw`, `/update`, and `/exit`. |
+| `a3s code` slash commands | CLI/TUI | Terminal controls such as `/model`, `/flow`, `/memory`, `/kb`, `/update`, and `/exit`. |
 | SDK command registry | Host application | Product-defined commands registered with `session.registerCommand(...)` and invoked through `session.send("/name args")`. |
 
 SDK commands execute before the LLM sees the input. A handler receives the raw
@@ -23,10 +23,10 @@ argument string plus session metadata, and returns display text. Use commands
 for thin control-plane actions; use normal SDK methods for workflows, tools,
 verification, and persistence.
 
-Inside the TUI, `/flow` is an OS Workflow as a Service asset command. It is not
-the same surface as `DynamicWorkflowRuntime`, which is the local A3S
-Flow-backed runtime used by `ultracode` and `?` DeepResearch through the
-model-visible `dynamic_workflow` tool.
+Inside the TUI, `/flow` manages workflow asset files and optional host
+integrations. It is not the same surface as `DynamicWorkflowRuntime`, which is
+the local A3S Flow-backed runtime used by `ultracode` and `?` DeepResearch
+through the model-visible `dynamic_workflow` tool.
 
 ## Recommended Mappings
 

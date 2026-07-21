@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { codeApi, consumeEventStream, streamSessionMessage, unwrapApiResponse } from './api';
+import {
+  codeApi,
+  consumeEventStream,
+  streamQueuedSessionMessage,
+  streamSessionMessage,
+  unwrapApiResponse,
+} from './api';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -78,12 +84,36 @@ describe('consumeEventStream', () => {
     );
     expect(events).toEqual([{ type: 'error', message: '模型不可用' }]);
   });
+
+  it('streams an atomically claimed service queue item without resending its content', async () => {
+    const encoder = new TextEncoder();
+    const fetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      expect(JSON.parse(String(init?.body))).toEqual({ queueId: 'turn/1' });
+      return new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(encoder.encode('data: {"type":"agent_end","text":"done"}\n\n'));
+            controller.close();
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'text/event-stream' } }
+      );
+    });
+    vi.stubGlobal('fetch', fetch);
+
+    await streamQueuedSessionMessage('task/a', 'turn/1', { onEvent: () => undefined });
+
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/kernel/sessions/task%2Fa/messages/stream',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
 });
 
 describe('codeApi session maintenance', () => {
   it('requests manual context compaction for one encoded session', async () => {
     const fetch = vi.fn(
-      async () =>
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
         new Response(
           JSON.stringify({
             code: 200,
@@ -105,6 +135,148 @@ describe('codeApi session maintenance', () => {
       '/api/v1/kernel/sessions/task%2Fa/actions/compact',
       expect.objectContaining({ method: 'POST' })
     );
+  });
+});
+
+describe('codeApi local binary files', () => {
+  it('reads raw workspace bytes without treating them as JSON', async () => {
+    const fetch = vi.fn(
+      async () =>
+        new Response(Uint8Array.from([0, 255, 17]), {
+          status: 200,
+          headers: { 'Content-Type': 'application/octet-stream' },
+        })
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(codeApi.readBinaryFile('/docs/Plan 2026.docx')).resolves.toEqual(Uint8Array.from([0, 255, 17]));
+    expect(fetch).toHaveBeenCalledWith('/api/v1/workspace/read-binary?path=%2Fdocs%2FPlan%202026.docx', {
+      headers: { Accept: 'application/octet-stream' },
+    });
+  });
+
+  it('writes workspace bytes without text encoding before an atomic replacement', async () => {
+    const fetch = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ code: 200, data: { success: true } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    await codeApi.writeBinaryFile('/docs/.Plan.docx.a3s-temp.tmp', Uint8Array.from([0, 255, 17]));
+
+    const [, init] = fetch.mock.calls[0];
+    expect(JSON.parse(String(init?.body))).toEqual({
+      path: '/docs/.Plan.docx.a3s-temp.tmp',
+      data: [0, 255, 17],
+      append: false,
+    });
+  });
+});
+
+describe('codeApi memory visualization', () => {
+  it('loads every paginated entry while requesting the complete graph only once', async () => {
+    const firstPageEntries = Array.from({ length: 500 }, (_, index) => ({ id: `memory-${index}` }));
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            code: 200,
+            data: {
+              root: '/memory',
+              entries: firstPageEntries,
+              stats: { entries: 501 },
+              graph: { events: [{ memoryId: 'memory-0' }] },
+              pagination: { offset: 0, limit: 500, returned: 500, total: 501, hasMore: true },
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            code: 200,
+            data: {
+              root: '/memory',
+              entries: [{ id: 'memory-500' }],
+              stats: { entries: 501 },
+              pagination: { offset: 500, limit: 500, returned: 1, total: 501, hasMore: false },
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      );
+    vi.stubGlobal('fetch', fetch);
+
+    const result = await codeApi.memory();
+
+    expect(result.entries).toHaveLength(501);
+    expect(result.entries.at(-1)?.id).toBe('memory-500');
+    expect(result.graph.events).toEqual([{ memoryId: 'memory-0' }]);
+    expect(result.pagination).toMatchObject({ returned: 501, total: 501, hasMore: false });
+    expect(fetch.mock.calls.map(([path]) => path)).toEqual([
+      '/api/v1/context/memory?offset=0&limit=500&includeGraph=true',
+      '/api/v1/context/memory?offset=500&limit=500&includeGraph=false',
+    ]);
+  });
+
+  it('remains compatible with a service response that predates pagination', async () => {
+    const fetch = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ code: 200, data: { entries: [], graph: { events: [] } } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    await codeApi.memory();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('codeApi local evolution', () => {
+  it('uses the review, materialization, rejection, reopen, and rollback routes', async () => {
+    const fetch = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ code: 200, data: {} }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    await codeApi.evolution();
+    await codeApi.scanEvolution();
+    await codeApi.materializeEvolution('skill/one');
+    await codeApi.rejectEvolution('skill/one', 'Not reusable');
+    await codeApi.reopenEvolution('skill/one');
+    await codeApi.rollbackEvolution('skill/one', 2);
+
+    expect(fetch.mock.calls.map(([path]) => path)).toEqual([
+      '/api/v1/evolution',
+      '/api/v1/evolution/scan',
+      '/api/v1/evolution/skill%2Fone/materialize',
+      '/api/v1/evolution/skill%2Fone/reject',
+      '/api/v1/evolution/skill%2Fone/reopen',
+      '/api/v1/evolution/skill%2Fone/rollback',
+    ]);
+    expect(requestJson(fetch, 1)).toEqual({});
+    expect(requestJson(fetch, 2)).toEqual({ force: false });
+    expect(requestJson(fetch, 3)).toEqual({ reason: 'Not reusable' });
+    expect(requestJson(fetch, 4)).toEqual({});
+    expect(requestJson(fetch, 5)).toEqual({ targetVersion: 2 });
   });
 });
 
@@ -219,3 +391,7 @@ describe('codeApi workspace mutations', () => {
     ]);
   });
 });
+
+function requestJson(fetch: ReturnType<typeof vi.fn>, call: number): unknown {
+  return JSON.parse(String(fetch.mock.calls[call]?.[1]?.body));
+}

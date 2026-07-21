@@ -31,7 +31,11 @@ const text = session.verificationSummaryText();
 
 ## Streaming Events
 
-Streaming returns `AgentEvent` objects with text, tool names, tool output, errors, token totals, and verification summaries when present.
+Streaming returns versioned `AgentEvent` envelopes. `version`, `type`,
+`payload`, and optional `metadata` are the stable lossless fields; text, tool
+names, tool output, errors, token totals, and verification summaries are
+convenience projections. Unknown future `type` values and their payloads remain
+available to hosts.
 
 ## Logging
 

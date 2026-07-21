@@ -1,0 +1,232 @@
+.work-spreadsheet-pivot-manager {
+  display: grid;
+  grid-template-columns: minmax(190px, 230px) minmax(860px, 1fr);
+  min-height: 214px;
+}
+
+.work-spreadsheet-pivot-manager > aside {
+  padding: 8px;
+  border-right: 1px solid var(--a3s-line);
+}
+
+.work-spreadsheet-pivot-manager .create,
+.work-spreadsheet-pivot-manager .refresh {
+  display: inline-flex;
+  width: 100%;
+  height: 27px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 5px;
+  background: var(--a3s-bg);
+  color: var(--a3s-muted);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.work-spreadsheet-pivot-manager .refresh {
+  margin-top: 5px;
+  background: transparent;
+}
+
+.work-spreadsheet-pivot-manager .refresh:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.work-spreadsheet-pivot-list {
+  display: grid;
+  max-height: 140px;
+  gap: 3px;
+  margin-top: 6px;
+  overflow: auto;
+}
+
+.work-spreadsheet-pivot-list > button {
+  display: grid;
+  gap: 1px;
+  padding: 6px 7px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--a3s-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.work-spreadsheet-pivot-list > button:hover,
+.work-spreadsheet-pivot-list > button.active {
+  background: var(--a3s-panel-soft);
+}
+
+.work-spreadsheet-pivot-list strong {
+  overflow: hidden;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-spreadsheet-pivot-list span,
+.work-spreadsheet-pivot-list > p {
+  color: var(--a3s-faint);
+  font-size: 8px;
+}
+
+.work-spreadsheet-pivot-list > p {
+  margin: 12px 4px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.work-spreadsheet-pivot-manager > form {
+  display: grid;
+  grid-template-columns: minmax(350px, 0.8fr) minmax(500px, 1.2fr);
+  align-content: start;
+  gap: 8px 10px;
+  padding: 9px 12px;
+}
+
+.work-spreadsheet-pivot-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  align-content: start;
+  gap: 7px 9px;
+}
+
+.work-spreadsheet-pivot-manager label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--a3s-muted);
+  font-size: 9px;
+}
+
+.work-spreadsheet-pivot-manager input,
+.work-spreadsheet-pivot-manager select {
+  width: 100%;
+  height: 27px;
+  min-width: 0;
+  padding: 0 7px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 5px;
+  outline: 0;
+  background: var(--a3s-bg);
+  color: var(--a3s-ink);
+  font: inherit;
+}
+
+.work-spreadsheet-pivot-manager input:focus,
+.work-spreadsheet-pivot-manager select:focus {
+  border-color: var(--a3s-blue);
+}
+
+.work-spreadsheet-pivot-manager label.check {
+  display: flex;
+  min-height: 27px;
+  align-items: center;
+  flex-direction: row;
+  gap: 6px;
+}
+
+.work-spreadsheet-pivot-manager label.check input {
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  accent-color: var(--a3s-blue);
+}
+
+.work-spreadsheet-pivot-layout {
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 6px;
+}
+
+.work-spreadsheet-pivot-layout > header {
+  display: grid;
+  gap: 1px;
+  margin-bottom: 5px;
+}
+
+.work-spreadsheet-pivot-layout > header strong {
+  font-size: 9px;
+}
+
+.work-spreadsheet-pivot-layout > header span,
+.work-spreadsheet-pivot-layout > p {
+  margin: 0;
+  color: var(--a3s-faint);
+  font-size: 8px;
+}
+
+.work-spreadsheet-pivot-layout > div {
+  display: grid;
+  max-height: 135px;
+  gap: 4px;
+  overflow: auto;
+}
+
+.work-spreadsheet-pivot-field-row {
+  display: grid;
+  grid-template-columns: minmax(95px, 0.8fr) 62px 84px 112px minmax(120px, 1fr);
+  align-items: center;
+  gap: 5px;
+}
+
+.work-spreadsheet-pivot-field-row strong {
+  overflow: hidden;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-spreadsheet-pivot-field-row > span {
+  color: var(--a3s-faint);
+  font-size: 8px;
+}
+
+.work-spreadsheet-pivot-field-row .placeholder {
+  grid-column: span 2;
+}
+
+.work-spreadsheet-pivot-manager .actions {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.work-spreadsheet-pivot-empty {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 5px;
+  min-height: 205px;
+  padding: 24px;
+  color: var(--a3s-muted);
+  text-align: center;
+}
+
+.work-spreadsheet-pivot-empty strong {
+  color: var(--a3s-ink);
+  font-size: 11px;
+}
+
+.work-spreadsheet-pivot-empty p {
+  max-width: 520px;
+  margin: 0;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.work-spreadsheet-pivot-empty .error {
+  color: var(--a3s-red);
+}
+
+@media (max-width: 900px) {
+  .work-spreadsheet-pivot-manager {
+    grid-template-columns: 190px minmax(900px, 1fr);
+  }
+}

@@ -9,7 +9,7 @@ import { ComposerSuggestionMenu, type ComposerSuggestionItem } from './composer-
 import { matchingSkills } from './composer-suggestion-ranking';
 import { ComposerWorkspaceTree, type ComposerWorkspaceTreeHandle } from './composer-workspace-tree';
 import { TaskPromptEditor, type TaskPromptEditorHandle } from './task-prompt-editor';
-import { importWorkspaceDrop } from './workspace-drop-import';
+import { hasDraggedWorkspaceFiles, importWorkspaceDrop } from '../../workspace/workspace-drop-import';
 
 export function TaskComposerInput({
   value,
@@ -153,25 +153,25 @@ export function TaskComposerInput({
 
   const currentIndex = Math.min(activeIndex, Math.max(0, items.length - 1));
   const handleDragEnter = (event: DragEvent<HTMLElement>) => {
-    if (!hasDraggedFiles(event.dataTransfer)) return;
+    if (!hasDraggedWorkspaceFiles(event.dataTransfer)) return;
     event.preventDefault();
     if (disabled || importing) return;
     dragDepth.current += 1;
     setDropActive(true);
   };
   const handleDragOver = (event: DragEvent<HTMLElement>) => {
-    if (!hasDraggedFiles(event.dataTransfer)) return;
+    if (!hasDraggedWorkspaceFiles(event.dataTransfer)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = disabled || importing ? 'none' : 'copy';
   };
   const handleDragLeave = (event: DragEvent<HTMLElement>) => {
-    if (!hasDraggedFiles(event.dataTransfer)) return;
+    if (!hasDraggedWorkspaceFiles(event.dataTransfer)) return;
     event.preventDefault();
     dragDepth.current = Math.max(0, dragDepth.current - 1);
     if (!dragDepth.current) setDropActive(false);
   };
   const handleDrop = async (event: DragEvent<HTMLElement>) => {
-    if (!hasDraggedFiles(event.dataTransfer)) return;
+    if (!hasDraggedWorkspaceFiles(event.dataTransfer)) return;
     event.preventDefault();
     event.stopPropagation();
     dragDepth.current = 0;
@@ -265,10 +265,6 @@ export function TaskComposerInput({
       )}
     </fieldset>
   );
-}
-
-function hasDraggedFiles(dataTransfer: DataTransfer) {
-  return Array.from(dataTransfer.types).includes('Files');
 }
 
 function skillSuggestion(skill: SkillCatalogItem): ComposerSuggestionItem {

@@ -46,18 +46,17 @@ fail-secure. Skills guide the model; they should not widen permissions.
 
 Use skills for repeated review checklists, product or protocol process, release and migration workflows, recommended tool order, and shared background for several worker agents.
 
-Do not use skills for independent roles that should be invoked by `task`; put those in `agents/`. Do not use skills for recurring jobs; put those in `schedules/`. Do not use skills to declare external capabilities; use `tools/`, MCP, or AHP.
+Do not use skills for independent roles that should be invoked by `task`; put those in `agents/`. Do not use skills for recurring jobs; put those in `schedules/`. Do not use skills to declare external capabilities; use `tools/` or MCP.
 
 ## Loading
 
 ```ts
 const session = agent.session('/repo', {
-  builtinSkills: true,
   skillDirs: ['./.a3s/skills'],
 });
 ```
 
-The model can use `search_skills` to find relevant skills. Built-in skills, file skills, and inline skills share discovery semantics. As directories grow, keep `name` and `description` searchable and unambiguous.
+The model can use `search_skills` to find relevant skills. File skills and inline skills share discovery semantics. As directories grow, keep `name` and `description` searchable and unambiguous.
 
 ## Maintenance
 

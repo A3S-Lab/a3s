@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { codeApi } from '../../../lib/api';
-import { importDroppedWorkspacePayload, type DroppedWorkspacePayload } from './workspace-drop-import';
+import { importDroppedWorkspacePayload, type DroppedWorkspacePayload } from '../../workspace/workspace-drop-import';
 
 function droppedFile(name: string, bytes: ArrayLike<number>): File {
   return {

@@ -18,15 +18,15 @@ component "boot" {
   package = "a3s-boot"
   path = "crates/boot"
   repository = "git@github.com:A3S-Lab/Boot.git"
-  revision = "aed8a8b213b1675f4c0b6d5a59599fb9fe9a0249"
+  revision = "3029e7eda4832c26c6d4dfa8578049e65de8dfbd"
   source = "git"
-  version = "0.1.1"
+  version = "0.1.2"
 }
 component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "6dcb99007ec9969b543d3717406273802f251ce4"
+  revision = "5d7307cc7bf5b155f708ca9f5bd3e5d06745b68d"
   source = "git"
   version = "0.1.0"
 }
@@ -44,9 +44,9 @@ component "flow" {
   package = "a3s-flow"
   path = "crates/flow"
   repository = "git@github.com:A3S-Lab/Flow.git"
-  revision = "d11cc9ab1e859b23c5108882158ade8d296d93ab"
+  revision = "ca17ae78968370eacd97992d9202dabf1cd82a2e"
   source = "git"
-  version = "0.4.1"
+  version = "0.4.2"
 }
 component "gateway" {
   owner = "A3S-Lab/Gateway"

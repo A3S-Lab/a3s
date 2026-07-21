@@ -1,0 +1,296 @@
+.work-document-citation {
+  padding: 0 3px;
+  border-bottom: 1px dotted #8da9dd;
+  border-radius: 2px;
+  background: color-mix(in srgb, #dce9ff 45%, transparent);
+  color: #245fc4;
+  cursor: default;
+  white-space: nowrap;
+}
+
+.work-document-citation[data-citation-orphaned="true"] {
+  border-bottom-color: #d69b9b;
+  background: color-mix(in srgb, #ffe3e0 62%, transparent);
+  color: #b53b3b;
+}
+
+.work-document-preview-pages .work-document-citation,
+.work-pdf-export-page .work-document-citation {
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.work-document-preview-pages .work-document-citation[data-citation-orphaned="true"],
+.work-pdf-export-page .work-document-citation[data-citation-orphaned="true"] {
+  color: #b53b3b;
+}
+
+.work-document-bibliography {
+  margin: 24px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid #d8dce5;
+}
+
+.work-document-bibliography h2 {
+  margin: 0 0 10px;
+  font-size: 1.1em;
+}
+
+.work-document-bibliography p {
+  margin: 0 0 7px;
+  padding-left: 24px;
+  text-indent: -24px;
+}
+
+.work-document-bibliography [data-bibliography-empty] {
+  padding-left: 0;
+  color: #7b8495;
+  text-indent: 0;
+}
+
+.work-document-citations-panel {
+  display: flex;
+  max-height: 440px;
+  flex: 0 0 auto;
+  flex-direction: column;
+  border-bottom: 1px solid var(--a3s-line);
+  background: var(--a3s-panel);
+  color: var(--a3s-ink);
+}
+
+.work-document-citations-panel > header {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 5px 12px;
+  border-bottom: 1px solid var(--a3s-line);
+}
+
+.work-document-citations-panel > header > div {
+  display: grid;
+  min-width: 180px;
+  flex: 1;
+  gap: 1px;
+}
+
+.work-document-citations-panel > header strong {
+  font-size: 11px;
+}
+
+.work-document-citations-panel > header span {
+  color: var(--a3s-faint);
+  font-size: 9px;
+}
+
+.work-document-citations-panel > header > label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.work-document-citations-panel button,
+.work-document-citations-panel input,
+.work-document-citations-panel select,
+.work-document-citations-panel textarea {
+  font: inherit;
+}
+
+.work-document-citations-panel button {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 8px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 5px;
+  background: var(--a3s-bg);
+  color: var(--a3s-muted);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.work-document-citations-panel button:hover:not(:disabled) {
+  border-color: var(--a3s-blue);
+  color: var(--a3s-blue);
+}
+
+.work-document-citations-panel button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.work-document-citations-panel > header button.close {
+  width: 27px;
+  flex: 0 0 27px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+
+.work-document-citations-panel select,
+.work-document-citations-panel input,
+.work-document-citations-panel textarea {
+  min-width: 0;
+  border: 1px solid var(--a3s-line);
+  border-radius: 5px;
+  outline: 0;
+  background: var(--a3s-bg);
+  color: var(--a3s-ink);
+  font-size: 9px;
+}
+
+.work-document-citations-panel select,
+.work-document-citations-panel input {
+  height: 27px;
+  padding: 0 7px;
+}
+
+.work-document-citations-panel textarea {
+  min-height: 54px;
+  resize: vertical;
+  padding: 6px 7px;
+  line-height: 1.4;
+}
+
+.work-document-citations-panel select:focus,
+.work-document-citations-panel input:focus,
+.work-document-citations-panel textarea:focus {
+  border-color: var(--a3s-blue);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--a3s-blue) 12%, transparent);
+}
+
+.work-document-citation-manager {
+  display: grid;
+  min-height: 0;
+  grid-template-columns: minmax(180px, 0.28fr) minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.work-document-citation-manager > aside {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px;
+  border-right: 1px solid var(--a3s-line);
+}
+
+.work-document-citation-manager > aside > button.create {
+  flex: 0 0 auto;
+}
+
+.work-document-citation-manager > aside > div {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  overflow: auto;
+}
+
+.work-document-citation-manager > aside > div > button {
+  display: grid;
+  min-width: 0;
+  height: auto;
+  justify-content: stretch;
+  gap: 2px;
+  padding: 7px 8px;
+  text-align: left;
+}
+
+.work-document-citation-manager > aside > div > button.active {
+  border-color: color-mix(in srgb, var(--a3s-blue) 54%, var(--a3s-line));
+  background: color-mix(in srgb, var(--a3s-blue) 9%, var(--a3s-bg));
+  color: var(--a3s-blue);
+}
+
+.work-document-citation-manager > aside strong,
+.work-document-citation-manager > aside span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-document-citation-manager > aside strong {
+  font-size: 9px;
+}
+
+.work-document-citation-manager > aside span,
+.work-document-citation-manager > aside p {
+  margin: 0;
+  color: var(--a3s-faint);
+  font-size: 8px;
+}
+
+.work-document-citation-manager > aside p {
+  padding: 16px 6px;
+  text-align: center;
+}
+
+.work-document-citation-manager > form {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 8px;
+  padding: 9px 10px 12px;
+  overflow: auto;
+}
+
+.work-document-citation-manager > form > label {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.work-document-citation-manager > form > label > span:first-child {
+  color: var(--a3s-muted);
+  font-size: 8px;
+}
+
+.work-document-citation-manager > form > .wide {
+  grid-column: 1 / -1;
+}
+
+.work-document-citation-manager .paired {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.work-document-citation-manager .actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.work-document-citation-manager .actions .error {
+  margin-right: auto;
+  color: var(--a3s-red);
+  font-size: 8px;
+}
+
+.work-document-citation-manager .actions button.primary {
+  border-color: var(--a3s-blue);
+  background: var(--a3s-blue);
+  color: white;
+}
+
+.work-document-citation-manager .actions button.danger:hover:not(:disabled) {
+  border-color: var(--a3s-red);
+  color: var(--a3s-red);
+}
+
+@media (max-width: 760px) {
+  .work-document-citations-panel > header > div span,
+  .work-document-citations-panel > header > label > span {
+    display: none;
+  }
+
+  .work-document-citation-manager {
+    grid-template-columns: 150px minmax(0, 1fr);
+  }
+}

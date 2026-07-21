@@ -17,8 +17,8 @@ TUI capabilities remain in TUI until their Web product journey is designed.
 | Live plan | Understand intended and current steps | Composer task tracker | Appears only after `PlanningEnd` or `TaskUpdated`, updates from step events, and clears at the next user turn |
 | Busy-submit queue | Direct follow-up work without interruption | Composer / Follow-up Queue | Integrated; editing preserves the current draft |
 | Stop/interrupt | Stop current work without losing context | Composer | Integrated |
-| Tool execution | Understand lifecycle, output, and failure | Execution Stream / Execution Details | Integrated; detail surface migration planned |
-| Tool confirmation | Decide a scoped sensitive action | Execution permission block | Integrated |
+| Tool execution | Understand lifecycle, output, and failure | Execution Stream / Execution Details | Integrated; command and generic-tool syntax, cwd, live output progress, collapsed output preview, timing, exit state, and raw details remain in one lifecycle block |
+| Tool confirmation | Decide a scoped sensitive action | Execution permission block | Integrated; denied and timed-out decisions remain terminal even when the runtime publishes a synthetic non-zero tool result afterward |
 | `/model` | Select current-task model | Composer task parameters | Integrated |
 | `/effort` | Control reasoning effort | Composer task parameters | Integrated |
 | Shift+Tab / `/auto` | Select permission behavior | Composer task parameters | Integrated |
@@ -27,15 +27,16 @@ TUI capabilities remain in TUI until their Web product journey is designed.
 | Ctrl+T | Inspect selected-task operations | Inline Execution Details | Integrated; separate Activity panel will be removed |
 | `/help` | Learn actual workflows and shortcuts | Settings / Help tab | Integrated without a separate full-screen page |
 | `@<path>` | Attach explicit file context | Composer / Files selection | Integrated |
-| `/ide` files | Browse and edit workspace | Result Workspace / Files | Integrated capability; shell migration planned |
-| `/ide` search | Search and replace workspace text | Files / Workspace Search | Integrated capability; shell migration planned |
-| File operations | Create, rename, copy, and delete | Files / File Navigator | Integrated capability; shell migration planned |
-| Git status/diff | Inspect workspace-wide changes | Result Workspace / Changes | Integrated capability; shell migration planned |
-| Stage/unstage | Prepare reviewed changes | Changes / Changed File Navigator | Integrated capability; shell migration planned |
+| `/ide` files | Browse and edit workspace | Result Workspace / Files | Integrated; Chinese Monaco commands and pointer/keyboard tab menus preserve guarded dirty-document workflows |
+| `/ide` search | Search and replace workspace text | Files / Workspace Search | Integrated |
+| File operations | Create, rename, copy, and delete | Files / File Navigator | Integrated; Chinese pointer/keyboard menus hand off to in-place mutation and recovery |
+| Git status/diff | Inspect workspace-wide changes | Result Workspace / Changes | Integrated |
+| Stage/unstage | Prepare reviewed changes | Changes / Changed File Navigator | Integrated |
 | Commit | Record reviewed changes | Commit Dialog | Integrated |
 | `/config` | Edit and validate configuration | Settings category views | Integrated for models, Agent, context, storage, search, document parsing, MCP, and A3S OS |
 | `/theme` | Choose presentation theme | Settings | Integrated |
 | `/login`, `/logout` | Manage optional A3S OS account | Account Settings | Integrated |
+| Local Claude Code, Codex, and WorkBuddy accounts | Reuse valid local account models without exposing credentials | Account Settings / runtime model catalog | Integrated; status and model counts come from qualified catalog sources and can be refreshed in place |
 | `/update` | Check and install CLI updates | Update Settings | Integrated |
 
 ## Deliberately deferred capability decisions
@@ -80,5 +81,6 @@ A mapped row becomes `Integrated` only when:
   binary file safely.
 - Open Changes, inspect a workspace diff, stage, commit, and return to the same
   task.
-- Verify disconnected Settings, model keyboard selection, and compact Results.
+- Verify disconnected Settings, local account-model refresh, model keyboard
+  selection, and compact Results.
 - Inspect browser console errors, close QA sessions, and stop temporary servers.

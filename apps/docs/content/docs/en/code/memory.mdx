@@ -31,39 +31,46 @@ const session = agent.session('/repo', {
 ## LLM Extraction
 
 LLM memory extraction is enabled by default when memory is available. The agent
-does not call the extractor after every input or tool result. It runs after a
-completed turn only when the turn looks durable: tools were used, the turn is
-long enough, or the request/answer contains memory, preference, workflow,
-decision, fix, failure, project, config, migration, or similar signals.
-When extraction runs, the prompt includes a small set of related existing
-memories, including existing `supersedes` / `conflicts_with` relation metadata
-when present, so the model can avoid duplicates and write consolidated
-standalone facts. If the model marks a new memory as superseding one of those
-related items, the runtime only accepts ids it actually supplied in that prompt,
-stores the consolidated item, and removes the superseded item from the session
-memory tiers and long-term store. Contradictory memories can instead be marked
-as `conflicts_with`; those older items are kept, while the new memory is tagged
-as `conflict` so future recall can surface the disagreement. Recalled memory
-context includes concise relation annotations and structured metadata for
-`supersedes` and `conflicts_with` when those fields are present.
+submits every completed non-empty session turn to the active model. The model,
+not a keyword list or tool-type heuristic, decides whether the turn contains
+anything that can change a future answer or action. It must return an empty
+`items` array when nothing qualifies. Tool calls and tool results are context
+for that judgment; they are never mechanically copied into long-term memory.
 
-Successful tool output is not mechanically written when LLM extraction is on.
-Failures are still stored immediately so the agent can avoid repeating unsafe or
-broken patterns. For streaming sessions such as the TUI, gated extraction is
-scheduled after the final response event and runs in the background so memory
-maintenance does not hold the UI open.
+Automatic output is deliberately narrow. The runtime accepts only `semantic`
+memories for durable facts, preferences, and decisions, or `procedural`
+memories for reusable workflows and failure lessons. Each item must include a
+validated `source`, `importance`, `confidence`, `scope`, and a non-empty
+future-value `reason`. Stored metadata also records the workspace, session ID,
+and `a3s.memory.durable.v1` schema. The runtime rejects malformed output and
+obvious API keys, tokens, password assignments, and private keys; these checks
+validate structure and safety rather than judging semantic value.
 
-Extractor output is still filtered by the runtime: obvious API keys, tokens,
-password assignments, and private keys are not written, and sensitive values in
-memory metadata are redacted.
+The extraction prompt includes a small set of related existing memories. The
+model can use `supersedes` for a directly replaced or consolidated memory and
+`conflicts_with` for a contradiction that should remain visible. The runtime
+accepts only relation IDs it supplied to the model. It removes accepted
+superseded items, preserves conflicts, and includes relation annotations in
+future recall. The storage layer otherwise merges only normalized exact
+duplicates; it does not infer semantic equivalence from term overlap.
+
+Streaming hosts such as the TUI and Code Web register extraction before they
+publish the final event, then process completed turns in FIFO order in the
+background. A slow extraction does not delay the final response, and a later
+turn is queued rather than dropped. Graceful session close waits up to its
+bounded extraction deadline for work accepted before close, preventing an
+immediate UI shutdown from silently losing the completed turn.
+
+`rememberSuccess` and `rememberFailure` remain explicit SDK operations for a
+host that intentionally wants to store those records. The normal agent runtime
+does not call them for each tool result.
 
 ## Store Hygiene
 
-Default memory stores return the canonical item that represents a fact. Exact
-duplicates and conservative near-duplicates are merged into the existing item,
-raising importance and preserving useful tags, provenance, and relation
-metadata. Conflict-like near matches, such as a memory that adds a `Do not`
-constraint, are kept as separate memories instead of being collapsed.
+Default memory stores return the canonical item for normalized exact duplicate
+content, raising importance and preserving useful tags, provenance, and
+relation metadata. Distinct but related wording remains separate unless the LLM
+explicitly consolidates it through `supersedes`.
 
 Automatic pruning removes stale, low-importance memories when configured, but it
 hard-protects curated memories: pinned/protected items, frequently recalled
@@ -72,7 +79,7 @@ items, consolidated memories, and memories carrying `supersedes` or
 
 You can tune extraction limits in `config.acl`:
 
-```hcl
+```acl
 memory {
   llmExtraction = true
   llmExtractionMaxItems = 5

@@ -11,9 +11,27 @@ describe('shell location synchronization', () => {
     appState.commandPaletteOpen = false;
     appState.fileQuickOpenOpen = false;
     appState.sidebarOpen = true;
+    appState.activeProduct = 'code';
+    appState.codeSurface = 'tasks';
     appState.activeSessionId = null;
+    appState.composerValue = '';
     appState.workspaceRoot = '';
     window.history.replaceState(null, '', '#code/conversation');
+  });
+
+  it('opens a direct Memory hash without discarding the current task state', () => {
+    appState.activeProduct = 'work';
+    appState.codeSurface = 'tasks';
+    appState.activeSessionId = 'task-keep';
+    appState.composerValue = 'keep this draft';
+    window.history.replaceState(null, '', '#code/memory');
+
+    renderHook(() => useShellShortcuts(() => undefined));
+
+    expect(appState.activeProduct).toBe('code');
+    expect(appState.codeSurface).toBe('memory');
+    expect(appState.activeSessionId).toBe('task-keep');
+    expect(appState.composerValue).toBe('keep this draft');
   });
 
   it('updates the active Code route on browser hash navigation', () => {

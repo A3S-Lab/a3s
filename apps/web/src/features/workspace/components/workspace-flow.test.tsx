@@ -119,20 +119,8 @@ describe('Workspace review flow', () => {
 
   it('closes a tab group in order without skipping dirty-file decisions', () => {
     const first = setOpenFileTab('/repo/first.ts', 'saved', 'first draft');
-    const clean: WorkspaceFileEditorTab = {
-      ...first,
-      id: fileEditorTabId('/repo/clean.ts'),
-      path: '/repo/clean.ts',
-      content: 'clean',
-      draft: 'clean',
-    };
-    const last: WorkspaceFileEditorTab = {
-      ...first,
-      id: fileEditorTabId('/repo/last.ts'),
-      path: '/repo/last.ts',
-      content: 'saved',
-      draft: 'last draft',
-    };
+    const clean = fileTab('/repo/clean.ts', 'clean');
+    const last = fileTab('/repo/last.ts', 'saved', 'last draft');
     appState.editorTabs = [first, clean, last];
     appState.activeEditorTabId = first.id;
     const hook = renderHook(() => useWorkspaceController());
@@ -151,7 +139,6 @@ describe('Workspace review flow', () => {
     expect(appState.pendingEditorTabCloseId).toBeNull();
     hook.unmount();
   });
-
   it('opens a complete Monaco diff as another editor tab', async () => {
     setOpenFileTab('/repo/app.ts', 'const value = 1;\n');
     vi.spyOn(codeApi, 'gitDiff').mockResolvedValue({
@@ -951,6 +938,23 @@ function setOpenFileTab(
   appState.editorTabs = [tab];
   appState.activeEditorTabId = tab.id;
   return appState.editorTabs[0] as WorkspaceFileEditorTab;
+}
+
+function fileTab(path: string, content: string, draft = content): WorkspaceFileEditorTab {
+  return {
+    id: fileEditorTabId(path),
+    kind: 'file',
+    path,
+    content,
+    draft,
+    revision: null,
+    isBinary: false,
+    location: null,
+    loading: false,
+    loadError: null,
+    saving: false,
+    configValidation: null,
+  };
 }
 
 function activeFileTab(): WorkspaceFileEditorTab | null {

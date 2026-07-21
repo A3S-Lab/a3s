@@ -1,8 +1,9 @@
 # A3S Web Super-App Product Architecture
 
-> Strategic direction. The current release activates A3S Code only. Work and
-> Science remain visible in the Activity Bar as coming-soon
-> destinations without empty product pages.
+> Strategic direction. Code and Work are built-in products in the current
+> shell, with Code as the default. Research, Finance, and other vertical
+> workbenches are contributed by A3S Use packages through the verified plugin
+> contract.
 
 ## Product decision
 
@@ -12,7 +13,7 @@ A3S Web is one desktop super app with three outcome-oriented products:
 A3S Web
 ├── A3S Work       办公
 ├── A3S Code       编码
-└── A3S Science    科学
+└── A3S Science    科研
 ```
 
 The classification follows durable user domains rather than backend modules,
@@ -32,13 +33,16 @@ Primary surface completes the selected object's workflow
 
 The fixed 52 px Activity Bar uses this order:
 
-1. A3S Work — 办公
-2. A3S Code — 编码
-3. A3S Science — 科学
+1. A3S Code — 编码
+2. A3S Work — 办公
+3. enabled `contributes.activity_bar` views, sorted by package order and title
+4. Code Memory, Plugin Marketplace, and Settings, pinned together in the
+   bottom system section
 
-One Settings button remains pinned to the bottom. Account management is a
-Settings section instead of a separate Activity Bar destination. Product order
-is stable because it communicates the A3S product model.
+Account management remains a Settings section. Package contributions are
+identified by `<route>:<activity-id>` and disappear when their package is
+disabled or uninstalled. The full trust and isolation contract lives in
+[PLUGINS.md](PLUGINS.md).
 
 WorkBuddy is the primary UX reference for task preparation and task interaction
 inside a product. It does not replace the Activity Bar, product identities, or
@@ -67,29 +71,34 @@ disconnected tools.
 
 ### Outcome
 
-Turn everyday knowledge work into reviewed deliverables.
+Turn existing local folders and files into reviewed, agent-assisted work while
+keeping deliverables where the user put them.
 
 ### Primary objects
 
-- task;
-- document;
-- presentation;
-- spreadsheet;
+- local workspace root;
+- file, folder, and selection;
+- AI Assistant conversation and reviewable proposal;
+- document, presentation, and spreadsheet handler;
 - meeting and decision record;
 - project workspace.
 
 ### Core journey
 
 ```text
-Describe outcome → add files or sources → draft → revise
-→ review → export or share → continue in the same task
+Choose a local folder → browse, create, or preview real files → select context
+→ ask AI Assistant or edit → review proposed changes → save in place
 ```
 
 ### Product boundary
 
-Work owns general productivity and coordination. It may request implementation
-from Code or evidence from Science. It does not embed those specialist
-workbenches.
+Work owns a Finder-inspired local-file shell, contextual AI Assistant, and the
+format handlers needed to preview or edit everyday work files. Its managed
+artifact store supports autosave, compatibility, recovery, and versioning; it
+is not a second primary filesystem. Its initial root is the default A3S Code
+workspace shown in Settings, with an explicit persistent Work override when the
+user switches folders. Work may request implementation from Code
+or evidence from Science, but it does not embed those specialist workbenches.
 
 ## A3S Code — 编码
 
@@ -107,6 +116,7 @@ task.
 - instruction and follow-up queue;
 - file and change;
 - managed preview target;
+- durable memory and linked knowledge entity;
 - validation evidence;
 - commit receipt.
 
@@ -121,12 +131,15 @@ Describe coding task → add workspace context → execute
 
 ### Current status
 
-Code is the only active product. Its internal UX follows a Conversation-led
+Code is an active product. Its internal UX follows a Conversation-led
 WorkBuddy task model: task results open in an on-demand Result Workspace with
 Overview, Files, Browser, and Changes modes. A3S-specific execution,
-permissions, verification, workspace, and Git truth remain authoritative.
+permissions, verification, workspace, and Git truth remain authoritative. A
+separate read-only Memory surface exposes complete-store graph, timeline,
+retention, search, filters, and inspection without becoming a new product or
+Result Workspace mode.
 
-## A3S Science — 科学
+## A3S Science — 科研
 
 ### Outcome
 
@@ -216,13 +229,18 @@ sidebar, but the Activity Bar and primary action remain available.
 
 ## Current release boundary
 
-The current implementation activates Code only:
+The current implementation activates Code, Memory, and verified plugin views:
 
-- Work and Science buttons remain visible and announce coming soon;
-- Science's first-party capability catalog is maintained in
-  `packages/science`, while its interactive workspace remains roadmap work;
-- future products do not navigate to placeholder workspaces;
-- Settings is the only shared shell destination in the Activity Bar;
+- the owned Work route still opens a Finder-inspired view of a selected local folder, a contextual
+  right-side AI Assistant, direct current-folder DOCX/XLSX/PPTX creation, and
+  document, spreadsheet, or presentation handlers; its
+  complete filesystem-first contract is defined in
+  [WORK_OFFICE.md](WORK_OFFICE.md);
+- installed packages such as `a3s/science` may contribute real views; its
+  first-party capability catalog is maintained under `packages/science`, and
+  there are no coming-soon product buttons or placeholder workspaces;
+- Memory is an owned Code capability shortcut; Marketplace and Settings are
+  shared shell destinations;
 - Account remains available inside Settings;
 - no Code page may accumulate a future product's disconnected controls merely
   because the backend exposes an endpoint.
@@ -231,7 +249,8 @@ The current implementation activates Code only:
 
 1. **Code** proves task execution, review, permissions, and local workspace
    integration.
-2. **Work** establishes general deliverables and cross-product handoffs.
+2. **Work** establishes a trustworthy local-file workspace with contextual AI;
+   Office interoperability supports that experience rather than defining it.
 3. **Science** combines evidence research with reproducible studies.
 
 Each product requires its own discovery, domain model, core journeys, component

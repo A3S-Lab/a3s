@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { codeApi } from '../../lib/api';
 import { appState, reportTaskPersistenceResult, setTheme } from '../../state/app-state';
 import { fileEditorTabId, type WorkspaceFileEditorTab } from '../workspace/workspace-state';
-import { createTaskState, newTaskDraftKey, persistQueuedPrompts, persistTaskDrafts } from './task-state';
+import { createTaskState, newTaskDraftKey, persistTaskDrafts } from './task-state';
 import { applyAssistantStreamEvent, composeTaskPrompt, useTaskController } from './use-task-controller';
 
 afterEach(() => {
@@ -18,11 +18,13 @@ afterEach(() => {
   appState.gitStatus = null;
   appState.taskView = 'conversation';
   localStorage.removeItem('a3s-code-web.active-task');
+  localStorage.removeItem('a3s-work.ai-assistant.active-session');
   localStorage.removeItem('a3s-code-web.task-drafts');
   localStorage.removeItem('a3s-code-web.queued-prompts');
   localStorage.removeItem('a3s-code-web.paused-queues');
   localStorage.removeItem('a3s-code-web.new-task-config');
   localStorage.removeItem('a3s-code-web.goal-timings');
+  appState.activeProduct = 'code';
 });
 
 describe('task file context protocol', () => {
@@ -274,7 +276,7 @@ describe('task-scoped draft recovery', () => {
     hook.unmount();
   });
 
-  it('restores the active draft and follow-up queue after refresh', () => {
+  it('restores drafts but leaves execution queues to the service after refresh', () => {
     localStorage.setItem('a3s-code-web.active-task', 'task-a');
     localStorage.setItem(
       'a3s-code-web.task-drafts',
@@ -289,8 +291,6 @@ describe('task-scoped draft recovery', () => {
     expect(restored.composerValue).toBe('continue after refresh');
     expect(restored.composerContextFiles).toEqual(['src/app.ts']);
     expect(restored.composerSkills).toEqual([]);
-    expect(restored.queuedPrompts['task-a'][0].content).toBe('run tests');
-    expect(restored.pausedQueues['task-a']).toBe(true);
   });
 
   it('keeps in-memory drafts and warns once when browser persistence fails', () => {
@@ -303,15 +303,11 @@ describe('task-scoped draft recovery', () => {
     const draftPersisted = persistTaskDrafts({
       'task-a': { content: 'important draft', contextFiles: ['src/app.ts'] },
     });
-    const queuePersisted = persistQueuedPrompts({
-      'task-a': [{ id: 'q1', content: 'run tests', contextFiles: [] }],
-    });
     reportTaskPersistenceResult(draftPersisted);
     const warningId = appState.toast?.id;
-    reportTaskPersistenceResult(queuePersisted);
+    reportTaskPersistenceResult(false);
 
     expect(draftPersisted).toBe(false);
-    expect(queuePersisted).toBe(false);
     expect(appState.taskPersistenceWarningShown).toBe(true);
     expect(appState.toast?.message).toContain('刷新前请复制重要草稿');
     expect(appState.toast?.id).toBe(warningId);
@@ -425,7 +421,7 @@ describe('task configuration', () => {
   it('opens a native folder picker and applies the returned directory', async () => {
     appState.activeSessionId = null;
     appState.newTaskConfig.workspace = '/repo';
-    vi.spyOn(codeApi, 'pickWorkspaceDirectory').mockResolvedValue({
+    const pickWorkspaceDirectory = vi.spyOn(codeApi, 'pickWorkspaceDirectory').mockResolvedValue({
       cancelled: false,
       path: '/local/design-system',
     });
@@ -434,6 +430,7 @@ describe('task configuration', () => {
 
     await expect(act(() => hook.result.current.pickNewTaskWorkspace())).resolves.toBe('/local/design-system');
 
+    expect(pickWorkspaceDirectory).toHaveBeenCalledWith('/repo');
     expect(appState.newTaskConfig.workspace).toBe('/local/design-system');
     hook.unmount();
   });
@@ -468,7 +465,6 @@ describe('task configuration', () => {
     appState.composerValue = '/goal clear';
     appState.composerContextFiles = [];
     appState.composerSkills = [];
-    appState.queuedPrompts = {};
     appState.goalTimings['task-a'] = { goal: 'Previous goal', startedAt: Date.now() - 1_000 };
     const updateControls = vi.spyOn(codeApi, 'updateSessionControls').mockResolvedValue({
       sessionId: 'task-a',
@@ -482,7 +478,6 @@ describe('task configuration', () => {
     await act(() => hook.result.current.sendMessage());
 
     expect(updateControls).toHaveBeenCalledWith('task-a', { goal: null });
-    expect(appState.queuedPrompts['task-a']).toBeUndefined();
     expect(appState.composerValue).toBe('');
     expect(appState.goalTimings['task-a']).toBeUndefined();
     hook.unmount();
@@ -498,6 +493,49 @@ describe('task configuration', () => {
 
     expect(appState.composerValue).toBe('/goal');
     expect(appState.toast?.message).toContain('/goal 所有重点测试通过');
+    hook.unmount();
+  });
+
+  it('submits follow-up instructions to the authoritative service queue', async () => {
+    appState.activeSessionId = 'task-a';
+    appState.streamingSessionId = 'task-a';
+    appState.composerValue = 'Run the focused tests next';
+    appState.composerContextFiles = ['src/app.ts'];
+    appState.composerSkills = ['review'];
+    appState.turnQueues = {};
+    const enqueue = vi.spyOn(codeApi, 'enqueueTurn').mockResolvedValue({
+      sessionId: 'task-a',
+      status: 'running',
+      paused: false,
+      active: null,
+      items: [
+        {
+          id: 'turn-1',
+          kind: 'user',
+          content: 'Run the focused tests next',
+          contextFiles: ['src/app.ts'],
+          skillNames: ['review'],
+          priority: 0,
+          enqueuedAt: 1,
+        },
+      ],
+      total: 1,
+      nextItemId: 'turn-1',
+      acceptedItemId: 'turn-1',
+    });
+    const hook = renderHook(() => useTaskController());
+
+    await act(() => hook.result.current.sendMessage());
+
+    expect(enqueue).toHaveBeenCalledWith('task-a', {
+      content: 'Run the focused tests next',
+      contextFiles: ['src/app.ts'],
+      skillNames: ['review'],
+    });
+    expect(appState.turnQueues['task-a'].items[0].id).toBe('turn-1');
+    expect(appState.composerValue).toBe('');
+    expect(appState.composerContextFiles).toEqual([]);
+    expect(appState.composerSkills).toEqual([]);
     hook.unmount();
   });
 
@@ -541,6 +579,7 @@ describe('task configuration', () => {
       model: 'codex/gpt-5.6-sol',
       title: 'New task',
       permissionMode: 'plan',
+      agentId: 'default',
     });
     expect(updateControls).toHaveBeenCalledWith('task-new', {
       effort: 'high',
@@ -548,6 +587,56 @@ describe('task configuration', () => {
     });
     expect(appState.sessionControls['task-new']?.effort).toBe('high');
     expect(appState.newTaskConfig.goal).toBe('');
+    hook.unmount();
+  });
+
+  it('creates Work AI assistant sessions without reusing the Code workspace or goal', async () => {
+    appState.activeProduct = 'work';
+    appState.activeSessionId = null;
+    appState.workspaceRoot = '/work-documents';
+    appState.sessions = [];
+    appState.messagesBySession = {};
+    appState.newTaskConfig = {
+      workspace: '/code-project',
+      model: 'codex/gpt-5.6-sol',
+      effort: 'medium',
+      permissionMode: 'default',
+      goal: 'Keep the Code goal',
+    };
+    const session = {
+      sessionId: 'work-assistant',
+      workspace: '/work-documents',
+      cwd: '/work-documents',
+      model: 'codex/gpt-5.6-sol',
+      followDefaultModel: false,
+      permissionMode: 'default',
+      state: 'idle',
+      agentId: 'work',
+      createdAt: 1,
+    };
+    vi.spyOn(codeApi, 'createSession').mockResolvedValue({ success: true, session });
+    vi.spyOn(codeApi, 'updateSessionControls').mockResolvedValue({
+      sessionId: 'work-assistant',
+      effort: 'medium',
+      goal: null,
+      planningMode: 'disabled',
+      goalTracking: true,
+    });
+    const hook = renderHook(() => useTaskController());
+
+    await act(() => hook.result.current.createSession('整理文档'));
+
+    expect(codeApi.createSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspace: '/work-documents',
+        cwd: '/work-documents',
+        agentId: 'work',
+      })
+    );
+    expect(localStorage.getItem('a3s-work.ai-assistant.active-session')).toBe('work-assistant');
+    expect(localStorage.getItem('a3s-code-web.active-task')).toBeNull();
+    expect(appState.newTaskConfig.workspace).toBe('/code-project');
+    expect(appState.newTaskConfig.goal).toBe('Keep the Code goal');
     hook.unmount();
   });
 

@@ -18,6 +18,7 @@ import {
 
 describe('workspace editor model lifecycle', () => {
   beforeEach(() => {
+    appState.activeProduct = 'code';
     appState.activeSessionId = 'task-a';
     appState.editorModelScope = 'scope-a';
     appState.workspaceRoot = '/repo';
@@ -92,6 +93,22 @@ describe('workspace editor model lifecycle', () => {
     act(() => hook.result.current.confirmEditorTabClose());
     await waitFor(() => expect(model.dispose).toHaveBeenCalledTimes(1));
     expect(appState.editorTabs).toEqual([]);
+  });
+
+  it('keeps Work WebIDE models alive while Work is active and releases them after returning to Code', async () => {
+    appState.activeProduct = 'work';
+    const workModel = fakeModel();
+    saveWorkspaceEditorModel(workspaceEditorModelPath('work', '/repo/work.ts'), workModel.value, null);
+
+    renderHook(() => useWorkspaceEditorModelLifecycle());
+
+    await act(async () => undefined);
+    expect(workModel.dispose).not.toHaveBeenCalled();
+
+    act(() => {
+      appState.activeProduct = 'code';
+    });
+    await waitFor(() => expect(workModel.dispose).toHaveBeenCalledTimes(1));
   });
 });
 

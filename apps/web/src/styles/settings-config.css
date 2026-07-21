@@ -767,6 +767,100 @@
   padding: 14px 13px;
 }
 
+.oomol-connector-empty {
+  display: grid;
+  min-height: 138px;
+  padding: 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px 20px;
+}
+
+.oomol-connector-empty > div:first-child {
+  min-width: 0;
+}
+
+.oomol-connector-empty strong {
+  color: var(--a3s-ink);
+  font-size: 13px;
+  font-weight: 630;
+}
+
+.oomol-connector-empty p {
+  max-width: 520px;
+  margin: 4px 0 0;
+  color: var(--a3s-muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.oomol-connector-setup-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.oomol-connector-setup-actions .ds-button {
+  min-height: 32px;
+  padding-inline: 10px;
+  font-size: 10px;
+}
+
+.oomol-connector-links {
+  display: flex;
+  min-height: 42px;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 13px;
+  border-top: 1px solid var(--a3s-line);
+  color: var(--a3s-muted);
+  font-size: 10px;
+}
+
+.oomol-connector-empty > .oomol-connector-links {
+  margin: 2px -16px -16px;
+}
+
+.oomol-connector-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--a3s-blue);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.oomol-connector-links a:hover {
+  text-decoration: underline;
+}
+
+.oomol-connector-links > span {
+  margin-left: auto;
+  color: var(--a3s-faint);
+}
+
+.oomol-connector-settings > .config-delete-button {
+  align-self: flex-start;
+}
+
+.oomol-connector-field {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.oomol-connector-field .config-field-error {
+  text-align: left;
+}
+
+.oomol-connector-warning code {
+  color: var(--a3s-ink);
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+
 .settings-state-card {
   display: flex;
   min-height: 84px;
@@ -1581,12 +1675,82 @@
   max-width: none;
 }
 
-@media (max-height: 700px) {
+@media (max-height: 700px) and (min-width: 721px) {
   .settings-nav {
     padding-top: 24px;
   }
 
   .settings-nav nav button {
     height: 35px;
+  }
+}
+
+@media (max-width: 720px) {
+  .settings-config-page {
+    padding-bottom: 24px;
+  }
+
+  .settings-config-toolbar {
+    top: -12px;
+    min-height: 48px;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: -12px;
+  }
+
+  .settings-save-state {
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .config-section {
+    margin-bottom: 24px;
+  }
+
+  .config-section-header,
+  .config-nested-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .config-row {
+    min-height: 0;
+    gap: 10px;
+    padding: 14px;
+  }
+
+  .config-row:not(.vertical) {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .config-row:not(.vertical) .config-row-control {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .oomol-connector-empty {
+    padding: 14px;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .oomol-connector-empty > .oomol-connector-links {
+    margin: 2px -14px -14px;
+  }
+
+  .oomol-connector-setup-actions,
+  .oomol-connector-links {
+    flex-wrap: wrap;
+  }
+
+  .oomol-connector-links {
+    gap: 8px 12px;
+  }
+
+  .oomol-connector-links > span {
+    width: 100%;
+    margin-left: 0;
   }
 }

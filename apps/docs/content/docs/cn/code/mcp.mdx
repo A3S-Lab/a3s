@@ -44,11 +44,41 @@ await session.tool('mcp__echo__echo', { message: 'docs mcp ok' });
 await session.removeMcpServer('echo');
 ```
 
+## 所有权与 Session 隔离
+
+MCP capability discovery 与 live mutation 分属不同 owner：
+
+- Agent-global manager 持有从全局配置加载的 server。
+- 通过 Rust `SessionOptions` 传入的 manager 是该 session 继承的只读 capability
+  source。
+- 每个已构建 session 都新建一个私有 manager，专门承接 live `addMcp` 与
+  `removeMcpServer` 操作。
+
+Session assembly 会读取继承 source 的 tool definition，但不会把 session 配置 merge
+回这些 manager。本地新增 server 可以在当前 session 内 shadow 同名的 inherited
+fully-qualified tool；移除本地 server 后，继承工具会重新出现。这个操作不会
+unregister、disconnect 或改变 global/host-owned source，sibling session 也不会受
+影响。
+
+Delegated child 会收到有序 capability source，从而调用同一批 MCP tool，但不会
+取得 owner 身份。`session.close()` 只断开私有 manager 的 server；`agent.close()`
+和 `disconnectIdleMcp(...)` 仍负责 agent-global manager。
+
+Rust 中，宿主传入的 MCP source 需要异步 session 构建，使 discovery 不阻塞：
+
+```rust
+let session = agent
+    .session_builder("/repo")
+    .options(SessionOptions::new().with_mcp(manager))
+    .build()
+    .await?;
+```
+
 ## Idle Disconnect
 
 已连接的 stdio MCP server 即使处于空闲状态也会占用资源——file descriptor 和一个后台 worker。在长期运行的 cluster session 中，这些安静的 server 会越积越多。`disconnectIdleMcp`（CHANGELOG [3.3.0] "MCP idle disconnect"）按需回收它们：断开每个最后活动时间早于阈值的全局 MCP server，释放 FD 和 worker，**同时保留每个 server 已注册的 config**，这样后续的 tool 调用可以按需重连。
 
-这是一个 agent 级方法（它作用于 agent 的全局 MCP manager，底层由 `McpManager::disconnect_idle(threshold_ms)` 支持）。它返回被断开的 server 名称列表。
+这是一个 agent 级方法（它只作用于 agent 的全局 MCP manager，底层由 `McpManager::disconnect_idle(threshold_ms)` 支持）。它返回被断开的 server 名称列表。
 
 ```ts
 // 回收空闲超过 5 分钟的 server，返回被断开的名称。

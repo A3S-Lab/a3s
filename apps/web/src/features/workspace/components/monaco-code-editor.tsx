@@ -28,6 +28,11 @@ import { configureMonaco, languageForPath, monacoTheme } from './monaco-environm
 
 const markerOwner = 'a3s-code-intelligence';
 
+export interface MonacoAssistantRequest {
+  instruction: string;
+  selection?: string;
+}
+
 export interface MonacoCodeEditorHandle {
   focus: () => boolean;
   navigate: (kind: CodeNavigationKind) => void;
@@ -53,6 +58,7 @@ export const MonacoCodeEditor = forwardRef<
     onNavigate: (selection: WorkspaceFileSelection) => Promise<boolean>;
     onStatusChange: (label: string) => void;
     onEditorStatusChange: (status: MonacoEditorStatus | null) => void;
+    onAssistantRequest?: (request: MonacoAssistantRequest) => void | Promise<void>;
     onLocationApplied?: () => void;
     onReadyChange?: (ready: boolean) => void;
   }
@@ -73,6 +79,7 @@ export const MonacoCodeEditor = forwardRef<
     onNavigate,
     onStatusChange,
     onEditorStatusChange,
+    onAssistantRequest,
     onLocationApplied,
     onReadyChange,
   },
@@ -89,7 +96,15 @@ export const MonacoCodeEditor = forwardRef<
   const diagnosticCountRef = useRef<number | undefined>(undefined);
   const diagnosticStaleRef = useRef(false);
   const navigationAbortRef = useRef<AbortController | null>(null);
-  const propsRef = useRef({ path, workspaceRoot, sessionId, savedDocument, onNavigate, onStatusChange });
+  const propsRef = useRef({
+    path,
+    workspaceRoot,
+    sessionId,
+    savedDocument,
+    onNavigate,
+    onStatusChange,
+    onAssistantRequest,
+  });
   const editorStatusChangeRef = useRef(onEditorStatusChange);
   const locationAppliedRef = useRef(onLocationApplied);
   const readyChangeRef = useRef(onReadyChange);
@@ -103,7 +118,15 @@ export const MonacoCodeEditor = forwardRef<
   readyChangeRef.current = onReadyChange;
   editorStatusChangeRef.current = onEditorStatusChange;
   locationAppliedRef.current = onLocationApplied;
-  propsRef.current = { path, workspaceRoot, sessionId, savedDocument, onNavigate, onStatusChange };
+  propsRef.current = {
+    path,
+    workspaceRoot,
+    sessionId,
+    savedDocument,
+    onNavigate,
+    onStatusChange,
+    onAssistantRequest,
+  };
   modelPathRef.current = modelPath;
 
   const saveCurrentEditorModel = (): void => {
@@ -260,6 +283,7 @@ export const MonacoCodeEditor = forwardRef<
     editorDisposablesRef.current = [
       observeMonacoEditorStatus(editor, (status) => editorStatusChangeRef.current(status)),
       ...navigationActions(editor, monaco, runNavigation),
+      ...assistantActions(editor, () => propsRef.current.onAssistantRequest),
       editor.onDidChangeModel(activateCurrentEditorModel),
     ];
     activateCurrentEditorModel();
@@ -526,6 +550,31 @@ function navigationActions(
       contextMenuOrder: 4,
       run: () => navigate('implementations'),
     }),
+  ];
+}
+
+function assistantActions(
+  editor: editor.IStandaloneCodeEditor,
+  request: () => ((request: MonacoAssistantRequest) => void | Promise<void>) | undefined
+): IDisposable[] {
+  if (!request()) return [];
+  const add = (id: string, label: string, instruction: string, order: number) =>
+    editor.addAction({
+      id,
+      label,
+      contextMenuGroupId: 'a3s-work-ai',
+      contextMenuOrder: order,
+      run: () => {
+        const selection = editor.getSelection();
+        const text = selection ? editor.getModel()?.getValueInRange(selection).trim() : '';
+        return request()?.({ instruction, selection: text || undefined });
+      },
+    });
+  return [
+    add('a3s.work-ai.ask', '询问 AI 助手', '请回答我关于当前代码的问题：', 1),
+    add('a3s.work-ai.explain', 'AI 助手：解释代码', '请解释这段代码的作用、关键逻辑和潜在风险。', 2),
+    add('a3s.work-ai.improve', 'AI 助手：改进代码', '请审查并改进这段代码，先给出可审阅的修改建议。', 3),
+    add('a3s.work-ai.tests', 'AI 助手：生成测试', '请为这段代码设计并生成有价值的测试。', 4),
   ];
 }
 

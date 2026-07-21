@@ -583,21 +583,29 @@ One execution ID produces one block that updates in place. Do not render raw
 start and end events separately.
 
 Assistant Markdown uses Streamdown in streaming mode while a response is live
-and static mode after completion. Fenced code is highlighted with Shiki in both
-themes. Tool start, argument, output-delta, completion, denial, timeout, and
-confirmation events are projected into one Web-native timeline row. Completed
-successful calls collapse by default; running, failed, and HITL calls remain
-open. The owning HITL decision card is the primary reading path for operation,
-reason, scope, risk, and timeout; raw arguments remain available but start
-collapsed so the same command is not repeated through the decision surface.
-Full output remains available without permanent truncation, while file editing
-calls hand off to the Monaco review surface instead of embedding a large
-terminal-style diff. Missing ids on streamed argument deltas resolve to the
-latest compatible open call rather than manufacturing another row. A settled
-parent response turns any unclosed call or confirmation into a visible,
-non-actionable interrupted state. Above six calls, attention states and the
-four latest successes stay visible in chronological order while one quiet
-control reveals earlier successful history.
+and static mode after completion. Typography, spacing, and containment are
+defined for headings, nested and task lists, quotes, tables, links, media,
+inline code, and responsive widths. Fenced code is highlighted with Shiki in
+both themes, carries line numbers, and keeps localized copy controls. Tool
+start, argument, output-delta, completion, denial, timeout, and confirmation
+events are projected into one Web-native timeline row. Expanded shell calls
+lead with a TUI-aligned command preview whose program, flags, strings, paths,
+variables, operators, and redirections are visually distinct; generic tools use
+the same grammar for their most useful typed arguments. Working directory,
+running state, live output line count, and copy action remain immediately
+visible. Completed successful calls collapse by default and retain a compact
+recent-output excerpt; running, failed, and HITL calls remain open. The owning
+HITL decision card is the primary reading path for operation, reason, scope,
+risk, and timeout; raw arguments remain available but start collapsed so the
+same command is not repeated through the decision surface. Full output remains
+available without permanent truncation, while file editing calls hand off to
+the Monaco review surface instead of embedding a large terminal-style diff.
+Missing ids on streamed argument deltas resolve to the latest compatible open
+call rather than manufacturing another row. A settled parent response turns
+any unclosed call or confirmation into a visible, non-actionable interrupted
+state. Above six calls, attention states and the four latest successes stay
+visible in chronological order while one quiet control reveals earlier
+successful history.
 
 Each visible turn uses one stable message grammar:
 
@@ -916,9 +924,14 @@ background. Do not copy WorkBuddy's mint color as a new brand primitive.
 - File and diff documents share one horizontally scrollable editor tab strip.
   Opening another document preserves every draft; only closing a dirty file
   requires Save, Don't Save, or Cancel.
+- Editor tabs expose one Chinese pointer/keyboard context menu with close,
+  close others, close right, close all, copy path, and copy relative path.
+  Multi-tab close resolves every dirty document in order, while Escape or
+  cancellation restores focus and stops the remaining close request.
 - Monaco is loaded locally and on demand. It owns syntax highlighting, folding,
   search, cursor navigation, model view state, and `Cmd/Ctrl+S`; browser text
-  areas are not code editors.
+  areas are not code editors. Its bundled interface strings and A3S navigation
+  actions are Simplified Chinese.
 - Diff uses Monaco's original/modified document model, automatically switches
   to inline presentation when width is constrained, and uses semantic added
   and removed colors with accessible labels.

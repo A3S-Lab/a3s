@@ -9,6 +9,7 @@ export function Dialog({
   footer,
   onClose,
   closeDisabled = false,
+  className,
 }: {
   title: string;
   description?: string;
@@ -16,6 +17,7 @@ export function Dialog({
   footer?: ReactNode;
   onClose: () => void;
   closeDisabled?: boolean;
+  className?: string;
 }) {
   const titleId = useId();
   const dialogRef = useRef<HTMLElement>(null);
@@ -67,7 +69,7 @@ export function Dialog({
     >
       <section
         ref={dialogRef}
-        className='ds-dialog'
+        className={`ds-dialog${className ? ` ${className}` : ''}`}
         role='dialog'
         aria-modal='true'
         aria-labelledby={titleId}

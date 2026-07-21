@@ -1,80 +1,197 @@
 ---
 title: "Architecture"
-description: "The harness loop and extension surface"
+description: "Session construction, run scope, governed invocation, events, and persistence"
 ---
 
 # Architecture
 
-A3S Code is organized around a small runtime kernel and a harness that controls the execution loop.
+A3S Code separates configuration resolution, per-run execution, stable wire
+contracts, and persistence. The TUI and SDKs use the same runtime kernel; they do
+not get separate execution paths.
 
 ```text
-Prompt
-  -> context assembly
-  -> optional planning and automatic subagent delegation
-  -> LLM generation
-  -> model-selected, delegated, or programmatic tool calls
-  -> permission, hook, AHP, confirmation, and security checks
-  -> tool execution
-  -> observation
-  -> verification
-  -> trace storage
-  -> compaction
+CodeConfig + SessionOptions
+  -> validate and resolve async resources
+  -> ResolvedSessionConfig
+  -> AgentSession
+       -> single-flight run admission
+       -> InvocationContext
+            ├─ LLM invoker  -> provider calls
+            ├─ tool invoker -> model, nested, delegated, and host-direct calls
+            └─ events       -> EventEnvelopeV1 -> Rust / Node / Python consumers
+       -> SessionSnapshotV1 -> atomic store generation
 ```
 
-## Kernel
+## Async-First Session Construction
 
-The kernel maintains sessions, calls providers, executes tools through one
-executor, records observations, and returns structured events and results. Tool
-calls can originate from the model, a delegated child run, or the `program`
-tool. Direct SDK helpers are a separate host-control-plane entry point: the host
-authorizes them before calling the SDK, and they then use the same registry,
-workspace services, artifacts, and result shapes.
+`SessionOptions` is a public patch, not partially initialized runtime state. The
+async construction path merges it with `CodeConfig`, validates conflicting
+options, initializes async resources, and produces one internal
+`ResolvedSessionConfig`. Session assembly consumes that resolved value instead
+of resolving the same choice in multiple layers.
 
-## Harness
+For Rust hosts, prefer:
 
-The harness coordinates:
+```rust
+let session = agent
+    .session_builder("/repo")
+    .options(options)
+    .build()
+    .await?;
+```
 
-- which context is load-bearing
-- which tools are visible
-- configured permission, hook, AHP, and security-provider integration points
-- how outputs are summarized before they re-enter context
-- which verification evidence is required before completion
-- how run snapshots, TaskList state, and trace events are exposed to host applications
+`Agent::session_async`, `resume_session_async`, `session_for_agent_async`, and
+`session_for_worker_async` use the same construction kernel. File-backed memory
+and session stores, queues, trajectory recording, and session MCP discovery are
+initialized asynchronously and return typed `SessionConfiguration` or
+`SessionInitialization` errors with the failing resource.
 
-This is the key boundary: the runtime does not treat the TUI as special.
-`a3s code` is one client that streams these events into a terminal, while SDK
-hosts can render, approve, persist, and replay the same facts in their own
-product surface.
+The synchronous `Agent::session` method exists only for compatibility with
+hosts that explicitly supply a pre-initialized memory store and have already
+initialized every other resource. It never starts or blocks a Tokio runtime.
+Configuration that requires async work fails with
+`CodeError::AsyncSessionBuildRequired`; the runtime does not silently replace
+the requested resource with an easier backend. A manager passed through
+`SessionOptions::with_mcp` always requires async capability discovery. The sync
+path can only inherit agent-global MCP tools already cached at agent startup.
 
-## PTC Path
+## Single-Flight Conversation State
 
-Programmatic Tool Calling is a harness path for deterministic workflows. The
-`program` tool runs a JavaScript script in an embedded QuickJS VM with a
-controlled `ctx` object. When the model invokes `program` inside an agent turn,
-it goes through the same permission, hook/AHP, confirmation, timeout, artifact,
-trace, and workspace-capability path as other model-selected tools. When host
-code calls `session.program(...)` directly, it is a direct SDK call and must be
-authorized by the host first. By default, scripts may call every registered
-tool except `program`; callers can narrow that surface with `allowed_tools`.
-The docs contract verifies scripts that compose `readFile`, `read`, `glob`,
-`grep`, `ls`, `bash`, `git`, and generic `tool(name, args)`, then return one
-structured result to the agent.
+Conversation history is serialized by admission, not by optimistic locking.
+Only one transcript-affecting operation may be active on a session. This covers
+`send`, `stream`, both attachment variants, slash commands, and `resume_run`.
+An overlap fails immediately with `CodeError::SessionBusy` before history is
+read or a command is dispatched.
 
-Use PTC when the operation is mostly mechanical:
+A stream retains its admission lease until the stream runtime finishes. Dropping
+or aborting the public handle does not briefly admit a second operation while
+the original producer is still writing events or history. Direct host tool
+calls are control-plane operations and do not claim the conversation lease.
 
-- repository search and snippet collection
-- test discovery and verification command selection
-- package metadata inspection
-- release preflight evidence gathering
-- log parsing and summarization
-- trace indexing
+## Invocation Context
 
-Use ordinary model tool calls when the next action requires judgment. Use PTC when the action sequence is known and the model only needs the result. Scripts can be passed inline as `source` or loaded from a workspace-relative `.js` or `.mjs` file path; the VM itself gets no direct filesystem, network, subprocess, or environment access.
+Each admitted run creates one immutable `InvocationContext` containing:
+
+- run ID and session ID
+- the run cancellation token
+- the event sender
+- the governance snapshot, including the active budget guard
+
+That context is the source of truth for provider and tool work. It installs the
+same cancellation token and session identity into `ToolContext`, so cancellation
+reaches queued tools, nested `batch`/`program` calls, delegated work, planning,
+structured-output repair, compaction, and other run-owned helper calls.
+
+## LLM Invocation Boundary
+
+Run-owned provider work uses one scoped LLM invoker. It checks budget and
+cancellation before each provider call, records usage after each successful
+response, proxies streaming completion so terminal usage is recorded, and
+combines caller and run cancellation. Normal turns, planning, structured output
+and repair, compaction, and memory/helper paths use this boundary instead of
+maintaining independent budget logic.
+
+A hard budget denial is an error and is never converted into an ungoverned
+fallback. Soft limits emit a `budget_threshold_hit` event and allow the call to
+continue.
+
+## Tool Invocation Boundary
+
+The tool invoker is the governance kernel for model-selected, nested,
+programmatic, delegated, and direct host calls. For model-owned work it applies
+active-skill restrictions, permission policy, pre/post hooks, budget checks,
+human confirmation, queue/timeout handling, cancellation, recursive-invocation
+protection, and output sanitization. `batch` and `program` receive the scoped
+invoker rather than calling a raw registry, so inner calls cannot escape those
+checks.
+
+Direct SDK helpers have an explicit `HostDirectPolicy::TrustedControlPlane`
+origin.
+The host is the authority that chose the operation, so model-facing permission
+and confirmation decisions are skipped. Pre-hooks can still block the call, and
+budget, queue/timeout, cancellation, recursion protection, post-hooks, and
+output sanitization remain active. Applications must authorize end users before
+exposing this privileged path.
+
+Trust propagation is structural rather than ambient. Only built-in
+control-plane orchestrators can convert an explicit host-direct call into the
+internal trusted-nested origin for host-selected children. Public
+`InvocationRuntime::invoke_tool` always creates an ordinary governed nested
+call, even when the extension itself was called directly. Model dispatch also
+removes inherited host-direct policy before it creates a `ToolContext`, so a
+Skill, Task, or other model sub-run cannot use `batch` or `program` to amplify
+its parent's authority.
+
+## Stable Event Protocol
+
+`AgentEvent` is the internal Rust runtime enum. The cross-language contract is
+the lossless envelope:
+
+```json
+{
+  "version": 1,
+  "type": "tool_end",
+  "payload": {},
+  "metadata": {}
+}
+```
+
+The v1 event catalog and the exhaustive Rust mapping share one source of truth,
+so adding a runtime variant without a canonical wire name is a compile-time
+failure. Node and Python consume the centralized projection for convenience
+fields such as `text`, `toolName`, and `tool_name`. `type` remains an open
+string: unknown future types preserve their full payload and metadata rather
+than collapsing to an `unknown` sentinel.
+
+## Atomic Session Persistence
+
+`SessionSnapshotV1` is one versioned persistence generation. It contains the
+conversation plus artifacts, trace events, run records, verification reports,
+and delegated-task snapshots. `session.save()` materializes that aggregate and
+calls `SessionStore::save_snapshot` once.
+
+The file store writes one complete JSON envelope through a synced temporary
+file and atomic replacement. The memory store replaces one aggregate entry
+under one lock. Both advertise atomic snapshot capability. Historical bare
+`SessionData` and fragment directories remain loadable for migration, but new
+saves do not publish fragmented generations. A custom store must implement
+aggregate save explicitly; the default method returns an error rather than
+acknowledging a partial or no-op save.
+
+## MCP Ownership And Isolation
+
+MCP managers have explicit ownership:
+
+1. The agent-global manager owns servers loaded from global configuration.
+2. A host-supplied manager in session options is an inherited, read-only
+   capability source.
+3. Every session owns a new private live manager.
+
+Capabilities are assembled in that order, so a session-local tool can shadow an
+inherited tool only inside that session. Live `add_mcp_server` and
+`remove_mcp_server` calls mutate only the private manager; removing a local
+shadow reveals the inherited capability again. Sibling sessions cannot mutate
+one another, and delegated children inherit the ordered manager sources needed
+to call the same tools without transferring ownership.
+
+A local stdio transport also owns the complete server process lifetime. It
+starts the server as a Unix process-group leader, drains protocol output and
+stderr separately, and terminates the group on close or drop. Outstanding
+requests fail when either pipe closes instead of waiting for an unrelated
+request deadline.
+
+## Programmatic Tool Calling
+
+The `program` tool runs JavaScript in an embedded QuickJS VM with a controlled
+`ctx` object. The VM has no direct filesystem, network, subprocess, or
+environment access. Its useful capabilities are tool calls routed back through
+the scoped tool invoker. Use ordinary model tool calls when the next action
+requires judgment; use a bounded program when the action sequence is already
+known and only its result needs model interpretation.
 
 ## Extension Points
 
-Use session options, skills, agent definitions, `.a3s/agents`, hooks, MCP servers, memory/session stores, security providers, queue configuration, and AHP transports to adapt the runtime.
-
-## Design Direction
-
-Prefer compact evidence over full transcripts, programmatic tool calls over repeated LLM tool loops, and explicit verification over "looks done" responses.
+Use typed session options, skills, agent definitions, hooks, MCP servers,
+memory/session stores, security providers, queue configuration, and workspace
+services to adapt the runtime. Prefer explicit policy and replayable evidence
+over alternate execution paths.

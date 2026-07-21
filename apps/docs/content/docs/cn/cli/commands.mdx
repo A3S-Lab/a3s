@@ -12,13 +12,20 @@ description: a3s umbrella CLI 的 public command surface、dispatch behavior 和
 | Command | Behavior |
 | --- | --- |
 | `a3s code` | 启动交互式 coding-agent terminal UI。 |
+| `a3s code research [--local-only\|--web] QUERY` | 不进入全屏 TUI，运行由宿主管理的 DeepResearch pipeline，并写入本地 `report.md` 与 `index.html` artifacts。`deepresearch` 与 `deep-research` 仍为 aliases；已移除的 runtime-selection flags 会被拒绝。 |
 | `a3s code resume <id>` | 按 id 恢复 saved session。 |
 | `a3s code resume` | 恢复当前 workspace 最新 saved session。 |
 | `a3s code update` | CLI self-update path 的别名。 |
+| `a3s web` | 在前台启动本地 A3S Code API 与 A3S Web 工作区。 |
+| `a3s web -d` | 在后台启动或复用同一工作区的健康服务；就绪后输出 URL、PID 和日志路径。 |
+| `a3s web -d --replace` | 只对 A3S 管理且通过身份校验的实例执行优雅关闭和重启；绝不终止无关端口进程。 |
 | `a3s box <args...>` | 运行 `a3s-box <args...>`，缺失时 bootstrap Box。 |
-| `a3s list` | 打印 `PATH` 上找到的已安装 `a3s-*` tools。 |
+| `a3s use <args...>` | 解析 `a3s-use`，并转发 Browser、Office、OCR 或已安装外部 domain 的参数与退出状态。 |
+| `a3s list [--json]` | 报告 catalog components、delegated Use capabilities、ownership、health，以及未注册的本地 `a3s-*` tools；默认不访问网络。 |
+| `a3s install <component>...` | 安装或修复 `use`、`use/browser`、`use/office` 等已注册 components；不带 component 时只列出 typed catalog。 |
+| `a3s uninstall <component>...` | 只删除 receipt 证明由 A3S 拥有的文件；删除 children 或用户数据需要显式选项。 |
 | `a3s top` | 打开 boxes、coding agents、sessions、events、processes 的 live monitor。 |
-| `a3s update` | 检查最新 release，并在可行时升级。 |
+| `a3s update [component]` | 不带 target 时保留 Code self-update 别名；带 target 时显式更新选中的 managed components。 |
 | `a3s --version` | 打印 CLI version。 |
 | `a3s --help` | 打印内置 usage text。 |
 
@@ -26,12 +33,24 @@ description: a3s umbrella CLI 的 public command surface、dispatch behavior 和
 
 ## Dispatch Model
 
-`a3s code` 留在当前进程内调用 TUI module。`a3s box ...` 会在 discovery/bootstrap 后 shell out
-到 `a3s-box` binary。其它 product helpers 保持为独立 binaries，而不是链接进 umbrella CLI。
+`a3s code` 留在当前进程内调用 TUI module。`a3s web` 在当前进程运行 Web service；
+`a3s web -d` 派生独立进程组并将输出写入本地日志。`a3s box ...` 会在
+discovery/bootstrap 后 shell out 到 `a3s-box` binary。其它 product helpers
+保持为独立 binaries，而不是链接进 umbrella CLI。`a3s use ...` 转发到已解析的
+`a3s-use` binary。Component lifecycle commands 使用 trusted catalog 和 ownership
+receipts；discovery 只报告未注册 PATH tools，绝不执行它们。
+
+Web 启动是幂等的：同一工作区的健康 managed instance 会被直接复用；指定地址上的
+健康前台或旧版 A3S Web 也可以被发现，但不会因此获得 stop 权限。端口检查先于
+assets、配置和会话恢复，因此重复启动不会先输出无关的历史会话警告。只有显式
+`--replace` 才会通过私有 control endpoint 优雅替换 managed instance。
 
 ## Runtime Boundaries
 
-- CLI 负责 command selection、packaging、first-use glue 和 self-update UX。
+- CLI 负责 command selection、trusted component catalog、ownership-safe
+  lifecycle operations、first-use glue 和 self-update UX。
+- A3S Use 负责 typed Browser、原生 Office 与 OCR domains，以及通过 ACL 显式安装、声明
+  native CLI、standard MCP 和/或 `SKILL.md` surfaces 的外部 packages。
 - A3S Code 负责 agent session、model/tool execution、workspace services 和 persistence。
 - A3S TUI 负责 terminal rendering 和 input handling。
 - A3S Box 负责 sandbox/container runtime behavior。

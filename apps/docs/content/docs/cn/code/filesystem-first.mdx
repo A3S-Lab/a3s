@@ -43,7 +43,7 @@ release-agent/
 
 ## 加载顺序
 
-一次典型 session 会先解析 `agent.acl`，再绑定 workspace，随后加载项目指令、skills、agent definitions、direct tools、MCP/AHP 连接和运行时策略。AgentDir 的 `serve_agent_dir` 会先用 `instructions.md`、本地 `agent.acl`、`skills/`、`tools/` 和 `schedules/` 合成配置，再为每个 schedule 创建独立 session。
+一次典型 session 会先解析 `agent.acl`，再绑定 workspace，随后加载项目指令、skills、agent definitions、direct tools、MCP 连接和运行时策略。AgentDir 的 `serve_agent_dir` 会先用 `instructions.md`、本地 `agent.acl`、`skills/`、`tools/` 和 `schedules/` 合成配置，再为每个 schedule 创建独立 session。
 
 路径越靠近具体 Agent，语义越局部：仓库根部的 `AGENTS.md` 描述整个项目，`.a3s/agents/*.md` 描述某个 worker，AgentDir 内的 `instructions.md` 描述该目录的主 Agent。不要把全局规则复制到每个文件里，除非确实需要覆盖上下文边界。
 

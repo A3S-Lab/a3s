@@ -9,6 +9,7 @@ export interface WorkspaceContextMenuItem {
   icon: ReactNode;
   onSelect(): void;
   shortcut?: string;
+  ariaKeyShortcut?: string;
   checked?: boolean;
   danger?: boolean;
   disabled?: boolean;
@@ -25,7 +26,8 @@ function WorkspaceContextMenuButton({ item, onSelect }: { item: WorkspaceContext
   );
   const props = {
     type: 'button' as const,
-    'aria-label': item.ariaLabel,
+    'aria-label': item.ariaLabel ?? item.label,
+    'aria-keyshortcuts': item.ariaKeyShortcut,
     className: item.danger ? 'danger' : undefined,
     disabled: item.disabled,
     onClick: onSelect,

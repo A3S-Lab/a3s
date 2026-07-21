@@ -15,20 +15,78 @@ hide tools it cannot service.
 | Layer | Tools | Registration rule |
 | --- | --- | --- |
 | Workspace-gated builtins | `read`, `write`, `edit`, `patch`, `grep`, `glob`, `ls`, `bash`, `git` | Registered only when `WorkspaceServices` advertises the required capability. For example, a browser or S3 workspace can expose file tools while hiding `bash` or local git. |
-| Runtime builtins | `web_fetch`, `web_search`, `batch`, `program` | Registered by the core tool executor. `batch` and `program` wrap the current registry, so their usable inner tools still depend on the session surface. |
+| Runtime builtins | `web_fetch`, `web_search`, `batch`, `program` | Registered by the core tool executor. `batch` and `program` receive the current scoped invoker, so their usable inner tools depend on the session surface and keep the caller's governance scope. |
 | Session bootstrap tools | `task`, `parallel_task`, `generate_object`, `search_skills`, `Skill` | Added while building an `AgentSession`. Delegation tools disappear when manual delegation is disabled; `generate_object` requires the configured LLM client; skill tools use the effective skill registry. |
-| TUI workflow tools | `dynamic_workflow` and, after `/login`, `runtime` | Registered by the `a3s code` host. `dynamic_workflow` powers `ultracode` and DeepResearch with A3S Flow replay; `runtime` is login-gated OS Runtime batch execution. |
+| TUI workflow tools | `dynamic_workflow` and, after `/login`, optional host runtime tools | Registered by the `a3s code` host. `dynamic_workflow` powers `ultracode` and DeepResearch with A3S Flow replay; host runtime tools are login-gated integrations. |
 | Dynamic integrations | `mcp__<server>__<tool>` and host-registered tools | Added from MCP managers or host code after discovery. |
 
 Use `toolNames()` / `toolDefinitions()` in tests or application diagnostics when
 a workflow depends on a specific tool being visible. Tool visibility is not a
 security grant. Model-selected tool calls inside `send`, `run`, and `stream`
-pass through permission policy, confirmation, hooks/AHP, timeouts, artifact
-limits, and workspace path checks. Direct SDK calls such as `session.tool(...)`
-are host control-plane calls; authorize them in your application before calling
-the SDK.
+pass through active-skill restrictions, permission policy, confirmation, hooks,
+budget, queue/timeouts, cancellation, recursive-call protection, output
+sanitization, artifact limits, and workspace path checks. Direct SDK calls such
+as `session.tool(...)` are host control-plane calls with a different explicit
+policy, described below.
 Use `activeTools()` for a different question: which tool calls are currently
 running in an active operation.
+
+## One Invocation Kernel
+
+The runtime attaches an origin to every invocation:
+
+| Origin | Examples | Permission / confirmation policy |
+| --- | --- | --- |
+| Agent | A model emits a tool call during `send` or `stream` | Full model-facing policy and HITL apply. |
+| Governed nested | Inner calls from a model-owned `batch`, `program`, workflow, or public custom `InvocationRuntime` | Re-enters the model-facing policy and inherits the invocation stack, cancellation, budget, hooks, and sandbox. Ambient host-direct context cannot change this origin. |
+| Host direct | `session.tool(...)`, typed read/write/git helpers, `session.program(...)`, and direct task helpers | Trusted control plane: model-facing permission/HITL are skipped because the host selected the call. |
+| Trusted host-direct nested | A built-in `batch`, `program`, or dynamic workflow that the host called directly invokes a host-selected child | Retains trusted control-plane authority for that built-in nested operation. Third-party tools cannot construct this origin through the public API. |
+
+Model sub-runs created by a host-direct Skill, Task, or custom tool start again
+with the Agent origin. A public custom tool can make nested calls only through
+`InvocationRuntime`, which always creates the governed nested origin. This
+prevents one direct call to arbitrary extension code from becoming a reusable
+authority token.
+
+All origins use the same invocation kernel. Pre-hooks can block them;
+budget checks run before side effects; queue/timeout, cancellation, recursive
+invocation protection, post-hooks, and security-provider output sanitization
+remain active. A nested call cannot fall back to a raw registry while a scoped
+invoker is installed.
+
+The host-direct policy is not an end-user authorization system. The embedding
+application must authenticate and authorize a user before translating their
+request into a direct SDK helper. Closing the session cancels an in-flight
+host-direct tool through the session cancellation scope.
+
+## Bounded Tool Contracts
+
+Governed agent, nested, and session calls validate arguments against each
+tool's cached JSON Schema before confirmation or side effects. Tools also
+publish per-invocation scheduling capabilities: read-only, idempotent,
+resumable, cancellation-safe, pagination support, maximum parallelism, and
+output kind.
+
+`read`, `ls`, `glob`, Git log/list/diff, and `web_fetch` return explicit
+continuation cursors or offsets. Shell capture is byte-bounded across both
+streams, retains the beginning and end with exact accounting, and still
+exposes stdout and stderr separately to a sandbox host. A command deadline
+includes both output draining and `child.wait()`, so closing both pipes cannot
+evade it. Timeout and cancellation terminate the complete Unix process group.
+Large file changes replace full before/after event payloads with bounded
+previews and unified diff text plus hashes, sizes, and artifact references.
+
+`batch` accepts at most 32 calls and applies at most 16-way concurrency. It
+fans out only when every child declares safe read-only, idempotent behavior;
+mutating and unknown tools are serialized. A partial batch identifies failed
+indices while treating the orchestration as completed, so callers retry only
+failed items. `parallel_task` has the same 32-task bound and settles cancelled
+children before publishing terminal state.
+
+`web_search` reports `complete`, `partial`, or `failed` in metadata. Empty
+results with engine errors are failures rather than successful empty searches.
+Timeout, cancellation, invalid-argument, partial-failure, and rate-limit errors
+carry structured error kinds.
 
 ## Structured Output with `generate_object`
 
@@ -74,6 +132,7 @@ const { object } = JSON.parse(result.output);
 | `system` | string | no | Optional system prompt |
 | `mode` | string | no | `"auto"` / `"strict"` / `"json"` / `"tool"` / `"prompt"` (default: auto) |
 | `max_repair_attempts` | integer | no | 0–5 (default: 2) |
+| `timeout_ms` | integer | no | Independent generation deadline, 1,000–600,000 ms (default: 120,000) |
 
 ### Modes
 
@@ -85,7 +144,9 @@ const { object } = JSON.parse(result.output);
 ### Streaming
 
 When called through `session.stream()`, partial objects are emitted as
-`tool_output_delta` events:
+`tool_output_delta` events. Snapshots are rate-limited to one event per 100 ms;
+objects over the event budget emit byte accounting instead of duplicating the
+full value in the stream:
 
 ```ts
 const stream = await session.stream('Extract all invoices...');
@@ -127,7 +188,8 @@ console.log(raw.output);
 ```
 
 Direct calls execute inside the session workspace and should be treated as
-privileged host operations.
+privileged host operations. They do not claim the session's single-flight
+conversation lease because they do not update transcript history.
 
 For delegated child work, use SDK helpers over the same core tools:
 
@@ -206,8 +268,8 @@ In `a3s code`, PTC is also used by `DynamicWorkflowRuntime`. Recursive
 default TUI PTC allow-list. When a dynamic workflow needs local parallel
 subagents, it schedules a Flow step named `parallel_task`; the TUI host runs
 the native `parallel_task` implementation outside QuickJS. After `/login`,
-dynamic workflow PTC steps may call `ctx.tool("runtime", ...)` because the OS
-`runtime` tool is registered in the session.
+dynamic workflow PTC steps may call `ctx.tool("runtime", ...)` when a host
+runtime tool is registered in the session.
 
 ## Tool Results
 

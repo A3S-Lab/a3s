@@ -60,6 +60,6 @@ Find authentication-related files and return an evidence list.
 
 ## 当前作用域
 
-`tools/` 由 `serve_agent_dir` 按调度 session 安装。也就是说，它服务于长期 Agent 和周期性任务。普通交互式 session 应优先使用宿主 direct tools、MCP/AHP 连接或 SDK 的 `session.tool(...)` 注册路径。
+`tools/` 由 `serve_agent_dir` 按调度 session 安装。也就是说，它服务于长期 Agent 和周期性任务。普通交互式 session 应优先使用宿主 direct tools、MCP 连接或 SDK 的 `session.tool(...)` 注册路径。
 
-如果一个能力是项目通用连接器，放在宿主配置或 MCP/AHP 层更清晰；如果它只属于某个长期 Agent 的定时工作，放进该 AgentDir 的 `tools/`。
+如果一个能力是项目通用连接器，放在宿主配置或 MCP 层更清晰；如果它只属于某个长期 Agent 的定时工作，放进该 AgentDir 的 `tools/`。

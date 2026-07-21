@@ -14,24 +14,31 @@ behavior remains in the component that implements it.
 | Command | Behavior |
 | --- | --- |
 | `a3s code [command]` | Launch or automate A3S Code, including session resume and update compatibility paths. |
-| `a3s web [command]` | Run the local A3S Web application and API. |
-| `a3s top` | Monitor agents, containers, sessions, events, and processes. |
-| `a3s box <args...>` | Run the registered A3S Box product. |
+| `a3s code research [--local-only\|--web] QUERY` | Run the host-managed DeepResearch pipeline without the full-screen TUI and write local `report.md` and `index.html` artifacts. `deepresearch` and `deep-research` remain aliases; retired runtime-selection flags are rejected. |
+| `a3s code resume <id>` | Resume a saved session by id. |
+| `a3s code resume` | Resume the newest saved session in the current workspace. |
+| `a3s code update` | Alias for the CLI self-update path. |
+| `a3s web [command]` | Run the local A3S Web application and API; the bare command starts them in the foreground. |
+| `a3s web -d` | Start or reuse the healthy workspace service in the background and print its URL, PID, and log path. |
+| `a3s web -d --replace` | Gracefully stop and restart only an identity-verified A3S-managed instance; never terminate an unrelated port owner. |
+| `a3s top` | Open the live monitor for boxes, coding agents, sessions, events, and processes. |
+| `a3s box <args...>` | Run the registered A3S Box product, bootstrapping it when supported and missing. |
 | `a3s bench <args...>` | Run the registered A3S Bench product. |
 | `a3s search <args...>` | Run the registered A3S Search product. |
-| `a3s use <domain> <args...>` | Use Browser, Office, or an installed external Use domain. |
-| `a3s auth ...` | Manage account authentication. |
-| `a3s model ...` | Discover and select runtime models. |
-| `a3s config ...` | Inspect and edit A3S ACL configuration. |
-| `a3s list` | List registered component state and separately discovered external tools. |
+| `a3s use <domain> <args...>` | Resolve A3S Use and forward Browser, native Office, OCR, or an installed external-domain command and exit status. |
+| `a3s auth ...` | Manage account authentication; compatibility login and account routes retain the same credential boundary. |
+| `a3s model ...` | Discover, inspect, and select configured or account-backed runtime models. |
+| `a3s config ...` | Inspect, initialize, validate, and edit A3S ACL configuration. |
+| `a3s list [--json]` | Report registered state, delegated Use capabilities, ownership, health, and separately discovered unregistered `a3s-*` tools without network access by default. |
 | `a3s info <component>` | Explain component state, sources, provenance, and available versions. |
-| `a3s install <component>...` | Install or repair registered components. With no IDs, list installable components without mutation. |
+| `a3s install <component>...` | Install or repair registered components such as `use`, `use/browser`, and `use/office`; with no IDs, list installable components without mutation. |
 | `a3s upgrade [<component>...]` | List upgrades or upgrade selected installed components. |
-| `a3s uninstall <component>...` | Remove only files proven to be owned by the selected component. |
+| `a3s uninstall <component>...` | Remove only files proven by receipts to be owned by the selected component; child and user-data removal require explicit options. |
 | `a3s doctor [component]` | Run read-only installation and health diagnostics. |
 | `a3s registry ...` | Manage trusted component registries. |
 | `a3s cache ...` | Inspect or remove recreatable cache data. |
 | `a3s self ...` | Manage the umbrella executable itself. |
+| `a3s update [component]` | Keep the Code self-update alias with no target, or update selected managed components explicitly. |
 | `a3s version` / `a3s --version` | Print version information. |
 | `a3s completion <shell>` | Generate shell completion source. |
 | `a3s help [path]` / `a3s --help` | Show help for the root or one command path. |
@@ -48,11 +55,26 @@ command.
 ## Dispatch And Installation
 
 `a3s code` and the local Web backend run through the integrated Code runtime.
-Product proxies resolve a typed component ID from the trusted catalog and then
-execute the recorded absolute path. Components that explicitly opt in may use
-a visible first-use installation; `--offline`, `A3S_OFFLINE=1`, or
-`A3S_NO_AUTO_INSTALL=1` prevents downloads. Read-only help, version, listing,
-and status paths do not trigger delayed installation.
+The TUI stays in-process; `a3s web` runs the Web service in the current process,
+while `a3s web -d` starts an independent process group and redirects output to
+the local Web log. Product proxies resolve a typed component ID from the trusted
+catalog and execute its recorded absolute path: Box runs after
+discovery/bootstrap and Use receives the forwarded domain arguments. Components
+that explicitly opt in may use visible first-use installation, while `--offline`,
+`A3S_OFFLINE=1`, and `A3S_NO_AUTO_INSTALL=1` prevent downloads. Read-only help,
+version, listing, and status paths never trigger delayed installation.
+
+Component lifecycle commands use the trusted catalog and ownership receipts;
+unregistered PATH tools are reported but never executed by discovery. Product
+helpers remain separate binaries instead of being linked into the umbrella CLI.
+
+Web startup is idempotent. A healthy managed instance for the workspace is
+reused; a healthy foreground or legacy A3S Web instance on the requested
+address can be discovered without granting stop authority. Port ownership is
+checked before assets, configuration, and saved sessions are restored, so a
+repeat invocation does not emit unrelated session warnings first. Only explicit
+`--replace` uses the private control endpoint to gracefully replace a managed
+instance.
 
 `a3s install` is not a universal frontend for Homebrew, APT, DNF, Pacman,
 Winget, npm, pip, Cargo, or arbitrary package names. It manages registered A3S

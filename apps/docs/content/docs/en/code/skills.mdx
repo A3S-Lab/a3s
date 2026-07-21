@@ -6,12 +6,12 @@ description: "Prompt-time skills, inline skills, and the Skill tool"
 # Skills
 
 Skills are reusable instructions that the harness can discover and rank.
-Built-in skills, file-backed skill directories, inline skills, and
-`search_skills` share the same discovery path. Built-ins are present in the
-default effective registry; `builtinSkills: true` is accepted by the SDKs, but
-it is not a disable switch.
+File-backed skill directories, inline skills, explicit registries, and
+`search_skills` share the same discovery path. A3S Code no longer ships default
+embedded skills; `builtinSkills: true` is accepted by the SDKs as a compatibility
+no-op.
 
-## Built-Ins
+## Compatibility Flag
 
 ```ts
 const session = agent.session('/repo', {
@@ -19,10 +19,8 @@ const session = agent.session('/repo', {
 });
 ```
 
-Built-in skills include code search, code review, explanation, and bug finding.
-Larger role-specific behavior should live in project skill files or agent
-definitions. Do not rely on the false value of the compatibility flag to remove
-built-ins in the current Node/Python SDKs.
+This flag does not add default skills. Put reusable behavior in project skill
+files, inline skills, or agent definitions.
 
 ## Skill Files
 

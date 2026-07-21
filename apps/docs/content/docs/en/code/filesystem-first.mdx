@@ -43,7 +43,7 @@ These conventions are not a new prompt system. `AGENTS.md`, `instructions.md`, a
 
 ## Loading Order
 
-A typical session parses `agent.acl`, binds a workspace, then loads project instructions, skills, agent definitions, direct tools, MCP/AHP connections, and runtime policy. `serve_agent_dir` loads an AgentDir by combining `instructions.md`, local `agent.acl`, `skills/`, `tools/`, and `schedules/`, then creates one independent session for every schedule.
+A typical session parses `agent.acl`, binds a workspace, then loads project instructions, skills, agent definitions, direct tools, MCP connections, and runtime policy. `serve_agent_dir` loads an AgentDir by combining `instructions.md`, local `agent.acl`, `skills/`, `tools/`, and `schedules/`, then creates one independent session for every schedule.
 
 The closer a path is to a specific agent, the more local its meaning should be. Root `AGENTS.md` describes the whole project, `.a3s/agents/*.md` describes one worker, and AgentDir `instructions.md` describes the directory's main agent.
 

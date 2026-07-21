@@ -1,6 +1,7 @@
 import { Check, Laptop, Moon, Sun, type LucideIcon } from 'lucide-react';
 import { useSnapshot } from 'valtio';
 import { appState, setTheme, type ThemePreference } from '../../../state/app-state';
+import { codeDefaultWorkspace } from '../../workspace/code-default-workspace';
 
 const themeOptions: Array<{
   id: ThemePreference;
@@ -15,6 +16,11 @@ const themeOptions: Array<{
 
 export function AppearanceSettings() {
   const state = useSnapshot(appState);
+  const defaultWorkspace = codeDefaultWorkspace({
+    newTaskWorkspace: state.newTaskConfig.workspace,
+    serviceWorkspace: state.health?.workspace,
+    currentWorkspace: state.workspaceRoot,
+  });
   return (
     <div className='settings-section'>
       <div className='setting-heading'>
@@ -46,9 +52,9 @@ export function AppearanceSettings() {
       <div className='setting-row'>
         <div>
           <strong>工作区</strong>
-          <span>当前 A3S Code 的默认项目根目录</span>
+          <span>A3S Code 的默认项目根目录；Work 首次打开时会沿用</span>
         </div>
-        <code>{state.workspaceRoot}</code>
+        <code>{defaultWorkspace}</code>
       </div>
     </div>
   );

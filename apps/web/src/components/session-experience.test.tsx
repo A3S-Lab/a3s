@@ -72,8 +72,9 @@ describe('Web-native session experiences', () => {
     appState.composerValue = '';
     appState.composerContextFiles = [];
     appState.composerSkills = [];
-    appState.queuedPrompts = {};
-    appState.pausedQueues = {};
+    appState.turnQueues = {};
+    appState.turnQueueLoading = {};
+    appState.turnQueueErrors = {};
     appState.sessionOutputError = null;
     appState.sessionOutputErrorSessionId = null;
     appState.workspaceRoot = '/repo';
@@ -426,10 +427,27 @@ describe('Web-native session experiences', () => {
     appState.streamingSessionId = 'session-1';
     appState.composerValue = 'Keep this unsent draft';
     appState.composerContextFiles = ['draft.ts'];
-    appState.queuedPrompts = {
-      'session-1': [{ id: 'queued-1', content: 'Run the focused tests next', contextFiles: ['src/app.ts'] }],
+    appState.turnQueues['session-1'] = {
+      sessionId: 'session-1',
+      status: 'running',
+      paused: false,
+      active: null,
+      items: [
+        {
+          id: 'queued-1',
+          kind: 'user',
+          content: 'Run the focused tests next',
+          contextFiles: ['src/app.ts'],
+          skillNames: [],
+          priority: 0,
+          enqueuedAt: 1,
+        },
+      ],
+      total: 1,
+      nextItemId: 'queued-1',
     };
-    render(<TaskComposer actions={{} as CodeActions} />);
+    const updateQueuedMessage = vi.fn(async () => undefined);
+    render(<TaskComposer actions={{ updateQueuedMessage } as unknown as CodeActions} />);
     expect(screen.getByText('执行中')).toBeInTheDocument();
     expect(screen.queryByText('任务执行中，可输入后续指令加入队列')).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: '后续指令队列' })).toHaveTextContent('Run the focused tests next');
@@ -443,9 +461,7 @@ describe('Web-native session experiences', () => {
 
     expect(appState.composerValue).toBe('Keep this unsent draft');
     expect(appState.composerContextFiles).toEqual(['draft.ts']);
-    expect(appState.queuedPrompts['session-1']).toEqual([
-      { id: 'queued-1', content: 'Run the focused tests and typecheck', contextFiles: ['src/app.ts'] },
-    ]);
+    expect(updateQueuedMessage).toHaveBeenCalledWith('session-1', 'queued-1', 'Run the focused tests and typecheck');
     await waitFor(() => expect(screen.getByRole('button', { name: '停止任务' })).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: '发送任务' })).not.toBeInTheDocument();
   });
@@ -467,10 +483,25 @@ describe('Web-native session experiences', () => {
 
   it('requires an explicit action before a stopped queue resumes', () => {
     appState.streamingSessionId = null;
-    appState.queuedPrompts = {
-      'session-1': [{ id: 'queued-paused', content: 'Run after approval', contextFiles: [] }],
+    appState.turnQueues['session-1'] = {
+      sessionId: 'session-1',
+      status: 'paused',
+      paused: true,
+      active: null,
+      items: [
+        {
+          id: 'queued-paused',
+          kind: 'user',
+          content: 'Run after approval',
+          contextFiles: [],
+          skillNames: [],
+          priority: 0,
+          enqueuedAt: 1,
+        },
+      ],
+      total: 1,
+      nextItemId: 'queued-paused',
     };
-    appState.pausedQueues = { 'session-1': true };
     const resumeQueue = vi.fn(async () => undefined);
 
     render(<TaskComposer actions={{ resumeQueue } as unknown as CodeActions} />);

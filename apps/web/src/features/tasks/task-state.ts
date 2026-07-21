@@ -1,4 +1,4 @@
-import type { AgentEvent, ChatMessage, CodeSession, EffortLevel, SessionControls } from '../../types/api';
+import type { AgentEvent, ChatMessage, CodeSession, EffortLevel, SessionControls, TurnQueue } from '../../types/api';
 
 export interface TaskState {
   sessions: CodeSession[];
@@ -13,8 +13,9 @@ export interface TaskState {
   composerContextFiles: string[];
   composerSkills: string[];
   draftsByTask: Record<string, TaskDraft>;
-  queuedPrompts: Record<string, QueuedPrompt[]>;
-  pausedQueues: Record<string, boolean>;
+  turnQueues: Record<string, TurnQueue>;
+  turnQueueLoading: Record<string, boolean>;
+  turnQueueErrors: Record<string, string>;
   searchQuery: string;
   sessionControls: Record<string, SessionControls>;
   sessionControlsLoading: Record<string, boolean>;
@@ -35,12 +36,6 @@ export interface ModelChangeNotice {
   sessionId: string | null;
   previousModel: string;
   currentModel: string;
-}
-export interface QueuedPrompt {
-  id: string;
-  content: string;
-  contextFiles: string[];
-  skillNames?: string[];
 }
 export interface TaskDraft {
   content: string;
@@ -72,9 +67,8 @@ function readTitles(): Record<string, string> {
   }
 }
 const activeTaskKey = 'a3s-code-web.active-task';
+const workActiveTaskKey = 'a3s-work.ai-assistant.active-session';
 const taskDraftsKey = 'a3s-code-web.task-drafts';
-const queuedPromptsKey = 'a3s-code-web.queued-prompts';
-const pausedQueuesKey = 'a3s-code-web.paused-queues';
 const newTaskConfigKey = 'a3s-code-web.new-task-config';
 const goalTimingsKey = 'a3s-code-web.goal-timings';
 export const newTaskDraftKey = '__new_task__';
@@ -87,44 +81,31 @@ function readRecord<T>(key: string): Record<string, T> {
     return {};
   }
 }
-function readActiveTask(): string | null {
+export type TaskProduct = 'code' | 'work';
+
+export function readActiveTask(product: TaskProduct = 'code'): string | null {
   try {
-    return localStorage.getItem(activeTaskKey);
+    return localStorage.getItem(product === 'work' ? workActiveTaskKey : activeTaskKey);
   } catch {
     return null;
   }
 }
-export function persistActiveTask(sessionId: string | null): boolean {
+export function persistActiveTask(sessionId: string | null, product: TaskProduct = 'code'): boolean {
   try {
-    if (sessionId) localStorage.setItem(activeTaskKey, sessionId);
-    else localStorage.removeItem(activeTaskKey);
+    const key = product === 'work' ? workActiveTaskKey : activeTaskKey;
+    if (sessionId) localStorage.setItem(key, sessionId);
+    else localStorage.removeItem(key);
     return true;
   } catch {
     return false;
   }
 }
-export function taskDraftKey(sessionId: string | null): string {
-  return sessionId || newTaskDraftKey;
+export function taskDraftKey(sessionId: string | null, product: TaskProduct = 'code'): string {
+  return sessionId || (product === 'work' ? '__work_ai_assistant__' : newTaskDraftKey);
 }
 export function persistTaskDrafts(drafts: Record<string, TaskDraft>): boolean {
   try {
     localStorage.setItem(taskDraftsKey, JSON.stringify(drafts));
-    return true;
-  } catch {
-    return false;
-  }
-}
-export function persistQueuedPrompts(queues: Record<string, QueuedPrompt[]>): boolean {
-  try {
-    localStorage.setItem(queuedPromptsKey, JSON.stringify(queues));
-    return true;
-  } catch {
-    return false;
-  }
-}
-export function persistPausedQueues(queues: Record<string, boolean>): boolean {
-  try {
-    localStorage.setItem(pausedQueuesKey, JSON.stringify(queues));
     return true;
   } catch {
     return false;
@@ -175,15 +156,10 @@ function readNewTaskConfig(): NewTaskConfig {
     return { workspace: '', model: '', effort: 'medium', permissionMode: 'default', goal: '' };
   }
 }
-export function createTaskState(): TaskState {
-  const activeSessionId = readActiveTask();
+export function createTaskState(product: TaskProduct = 'code'): TaskState {
+  const activeSessionId = readActiveTask(product);
   const draftsByTask = readRecord<TaskDraft>(taskDraftsKey);
-  const queuedPrompts = readRecord<QueuedPrompt[]>(queuedPromptsKey);
-  const pausedQueues = readRecord<boolean>(pausedQueuesKey);
-  for (const [sessionId, queue] of Object.entries(queuedPrompts)) {
-    if (queue.length) pausedQueues[sessionId] = true;
-  }
-  const activeDraft = draftsByTask[taskDraftKey(activeSessionId)];
+  const activeDraft = draftsByTask[taskDraftKey(activeSessionId, product)];
   return {
     sessions: [],
     sessionTitles: readTitles(),
@@ -197,8 +173,9 @@ export function createTaskState(): TaskState {
     composerContextFiles: activeDraft?.contextFiles ?? [],
     composerSkills: activeDraft?.skillNames ?? [],
     draftsByTask,
-    queuedPrompts,
-    pausedQueues,
+    turnQueues: {},
+    turnQueueLoading: {},
+    turnQueueErrors: {},
     searchQuery: '',
     sessionControls: {},
     sessionControlsLoading: {},

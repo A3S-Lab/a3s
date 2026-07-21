@@ -149,7 +149,7 @@ describe('TaskRuntimeFloatingPanel', () => {
       </>
     );
 
-    expect(screen.getByLabelText('目标执行耗时 00:10')).toHaveTextContent('目标00:10');
+    expect(screen.getByLabelText('目标执行耗时 00:10')).toHaveTextContent('目标执行中00:10');
     expect(screen.queryByLabelText('任务进度浮窗')).not.toBeInTheDocument();
   });
 

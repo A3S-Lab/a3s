@@ -16,10 +16,12 @@ const StreamingMarkdown = lazy(() => import('./streaming-markdown'));
 export function AssistantResponse({
   message,
   actions,
+  assistantLabel = 'Code',
   retryContent,
 }: {
   message: ChatMessage;
   actions: TaskActions;
+  assistantLabel?: string;
   retryContent?: string;
 }) {
   const toolCalls = projectToolCalls(message.events ?? [], message.contentBlocks ?? [], {
@@ -30,13 +32,13 @@ export function AssistantResponse({
   return (
     <article
       className={`execution-response${message.pending ? ' pending' : ''}`}
-      aria-label={message.pending ? 'Code 正在回复' : 'Code 回复'}
+      aria-label={message.pending ? `${assistantLabel} 正在回复` : `${assistantLabel} 回复`}
     >
       <header className='execution-response-header'>
         <span className='execution-agent-avatar' aria-hidden='true'>
           <img src='/logo.png' alt='' />
         </span>
-        <strong>Code</strong>
+        <strong>{assistantLabel}</strong>
         {stateLabel && (
           <output className='execution-agent-state' aria-live='polite'>
             <LoaderCircle className='spin' size={12} />

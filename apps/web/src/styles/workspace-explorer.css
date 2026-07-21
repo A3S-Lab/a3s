@@ -375,7 +375,7 @@
 .workspace-context-menu {
   position: fixed;
   z-index: 180;
-  width: 206px;
+  width: 220px;
   padding: 6px;
   border: 1px solid var(--a3s-line-strong);
   border-radius: 8px;
@@ -406,6 +406,21 @@
   cursor: default;
   font-size: 12px;
   text-align: left;
+}
+
+.workspace-context-menu-item > button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-context-menu-item > button > kbd {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--a3s-faint);
+  font: 10px/1.2 "SFMono-Regular", "Cascadia Code", Consolas, monospace;
 }
 
 .workspace-context-menu-item > button svg {

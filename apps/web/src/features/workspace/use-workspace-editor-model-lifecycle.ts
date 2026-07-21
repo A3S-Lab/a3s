@@ -9,17 +9,24 @@ export function useWorkspaceEditorModelLifecycle(): void {
   const retainedModelPaths = useMemo(() => {
     const retained = new Set<string>();
     addFileTabModelPaths(retained, state.editorModelScope, state.editorTabs);
-    const activeTaskKey = taskDraftKey(state.activeSessionId);
+    const activeTaskKey = taskDraftKey(state.activeSessionId, state.activeProduct === 'work' ? 'work' : 'code');
     for (const [taskKey, snapshot] of Object.entries(state.workspaceSnapshotsByTask)) {
       if (taskKey === activeTaskKey) continue;
       addFileTabModelPaths(retained, snapshot.state.editorModelScope, snapshot.state.editorTabs);
     }
     return retained;
-  }, [state.activeSessionId, state.editorModelScope, state.editorTabs, state.workspaceSnapshotsByTask]);
+  }, [
+    state.activeProduct,
+    state.activeSessionId,
+    state.editorModelScope,
+    state.editorTabs,
+    state.workspaceSnapshotsByTask,
+  ]);
 
   useEffect(() => {
+    if (state.activeProduct === 'work') return;
     disposeWorkspaceEditorModelsExcept(retainedModelPaths);
-  }, [retainedModelPaths]);
+  }, [retainedModelPaths, state.activeProduct]);
 }
 
 function addFileTabModelPaths(

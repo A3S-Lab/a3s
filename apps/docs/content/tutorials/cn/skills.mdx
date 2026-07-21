@@ -26,7 +26,6 @@ import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('config.acl');
 const session = agent.session('.', {
-  builtinSkills: true,
   permissionPolicy: { defaultDecision: 'allow' },
 });
 
@@ -78,7 +77,6 @@ When reviewing code:
 ```ts
 const session = agent.session('.', {
   skillDirs: ['./skills'],
-  builtinSkills: true,
 });
 ```
 
@@ -117,7 +115,6 @@ from a3s_code import Agent, SessionOptions, PermissionPolicy
 agent = Agent.create(open('config.acl').read())
 opts = SessionOptions()
 opts.permission_policy = PermissionPolicy(default_decision="allow")
-opts.builtin_skills = True
 opts.skill_dirs = ["./skills"]
 
 session = agent.session('.', opts)

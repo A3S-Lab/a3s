@@ -119,6 +119,11 @@
   color: var(--a3s-ink);
 }
 
+.workspace-editor-tab:focus-visible {
+  z-index: 1;
+  outline: 2px solid color-mix(in srgb, var(--a3s-blue) 72%, white);
+  outline-offset: -2px;
+}
 .workspace-editor-tab.active {
   background: var(--a3s-panel);
   color: var(--a3s-ink);

@@ -32,8 +32,10 @@ import {
   ToolCollapsedOutputPreview,
   ToolCommandPreview,
   ToolInvocationInline,
+  ToolJsonPreview,
 } from './tool-command-preview';
 import {
+  canonicalToolName,
   isFileEditCall,
   selectToolCallsForDisplay,
   summarizeToolCalls,
@@ -185,7 +187,7 @@ function ToolCallItem({
             <ToolExecutionMeta call={call} />
             {argumentsText && (
               <ToolInlineDisclosure className='tool-call-arguments' label='调用参数' icon={<Braces size={12} />}>
-                <pre>{argumentsText}</pre>
+                <ToolJsonPreview content={argumentsText} />
               </ToolInlineDisclosure>
             )}
             {reviewAvailable ? (
@@ -363,17 +365,11 @@ function truncateEvidence(value: string): string {
 }
 
 function ToolIcon({ name }: { name: string }) {
-  const normalized = name.trim().toLowerCase().split(/[.:/]/).at(-1);
-  switch (normalized) {
+  switch (canonicalToolName(name)) {
     case 'bash':
-    case 'execute':
-    case 'execute_command':
-    case 'run_command':
     case 'shell':
-    case 'shell_command':
     case 'run':
     case 'exec':
-    case 'terminal':
       return <SquareTerminal size={15} />;
     case 'read':
     case 'cat':
@@ -384,6 +380,10 @@ function ToolIcon({ name }: { name: string }) {
     case 'patch':
     case 'apply_patch':
       return <FilePenLine size={15} />;
+    case 'delete':
+    case 'remove':
+    case 'unlink':
+      return <CircleX size={15} />;
     case 'grep':
     case 'search':
     case 'search_skills':

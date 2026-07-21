@@ -257,7 +257,8 @@ describe('ExecutionStream permission decisions', () => {
     expect(screen.getByText('Executes a local process')).toBeInTheDocument();
     expect(screen.getByText('30 秒')).toBeInTheDocument();
     const argumentsDisclosure = screen.getByRole('button', { name: '调用参数' });
-    const rawArguments = screen.getByText(/"command": "cargo test"/);
+    const rawArguments = document.querySelector<HTMLElement>('.tool-json-preview');
+    expect(rawArguments).toHaveTextContent('"command": "cargo test"');
     expect(argumentsDisclosure).toHaveAttribute('aria-expanded', 'false');
     expect(rawArguments).not.toBeVisible();
     fireEvent.click(argumentsDisclosure);
@@ -697,6 +698,44 @@ describe('ExecutionStream permission decisions', () => {
     expect(container.querySelector('pre code')?.className).toContain('counter-reset');
     expect(screen.getByRole('button', { name: '复制代码' })).toBeInTheDocument();
   }, 20_000);
+
+  it('renders refined GFM document elements with accessible semantics', async () => {
+    appState.activeSessionId = 'session-refined-markdown';
+    appState.messagesBySession['session-refined-markdown'] = [
+      {
+        id: 'assistant-refined-markdown',
+        sessionId: 'session-refined-markdown',
+        role: 'assistant',
+        content: [
+          '## 发布检查',
+          '',
+          '> 请先完成验证。',
+          '',
+          '- [x] 类型检查',
+          '- [ ] 浏览器验收',
+          '',
+          '| 项目 | 状态 |',
+          '| --- | --- |',
+          '| 构建 | 通过 |',
+          '',
+          '---',
+          '',
+          '[查看文档](https://example.com/docs)',
+        ].join('\n'),
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    const { container } = render(<ExecutionStream actions={{} as TaskActions} />);
+
+    expect(await screen.findByRole('heading', { name: '发布检查' })).toBeInTheDocument();
+    expect(container.querySelector('.streaming-markdown')).toHaveClass('a3s-document-markdown');
+    expect(container.querySelector('blockquote')).toHaveTextContent('请先完成验证');
+    expect(container.querySelectorAll('input[type="checkbox"]')).toHaveLength(2);
+    expect(screen.getByRole('table')).toHaveTextContent('构建');
+    expect(container.querySelector('hr')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '查看文档' })).toHaveAttribute('data-streamdown', 'link');
+  });
 
   it('renders refined GFM document elements with accessible semantics', async () => {
     appState.activeSessionId = 'session-refined-markdown';

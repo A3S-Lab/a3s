@@ -1,6 +1,6 @@
 ---
 title: 构建 Research Agent
-description: 使用 A3S Code v3.1.0 Node SDK 组合 PTC、任务委派、流式输出与队列检查能力。
+description: 使用 A3S Code v4.3.3 Node SDK 组合 PTC、任务委派、流式输出与队列检查能力。
 full: true
 ---
 
@@ -32,7 +32,6 @@ import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.acl');
 const session = agent.session(process.cwd(), {
-  builtinSkills: true,
   planningMode: 'enabled',
   maxToolRounds: 24,
   autoCompact: true,

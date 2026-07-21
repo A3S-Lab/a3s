@@ -4,6 +4,7 @@ import {
   type ToolInvocationPresentation,
   type ToolSyntaxToken,
   toolInvocationPresentation,
+  toolJsonSyntaxTokens,
   toolOutputExcerpt,
 } from './tool-call-syntax';
 import { CopyButton } from './conversation-message-actions';
@@ -72,6 +73,14 @@ export function ToolCollapsedOutputPreview({ output }: { output: string }) {
         {excerpt.truncated && <span className='tool-output-omitted'>输出预览已截断</span>}
       </code>
     </section>
+  );
+}
+
+export function ToolJsonPreview({ content }: { content: string }) {
+  return (
+    <pre className='tool-json-preview'>
+      <SyntaxTokens tokens={toolJsonSyntaxTokens(content)} />
+    </pre>
   );
 }
 

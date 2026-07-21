@@ -18,7 +18,6 @@ Teams are a harness pattern built from named agent definitions plus the `task` a
 ```ts
 const session = agent.session('/repo', {
   agentDirs: ['./.a3s/agents'],
-  builtinSkills: true,
   planningMode: 'auto',
   autoDelegation: { enabled: true, maxTasks: 4 },
   maxParallelTasks: 8,

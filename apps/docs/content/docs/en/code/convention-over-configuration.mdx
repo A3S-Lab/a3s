@@ -17,7 +17,7 @@ If you are evaluating directory-first agent frameworks, treat A3S Code as a
 lower-level and more embeddable runtime. Directory conventions, tools,
 connections, child agents, schedules, persistence, and observability are all
 present, but they are not tied to one frontend channel or deployment platform.
-A host can connect them to managed sessions, open-platform APIs, AHP, MCP,
+A host can connect them to managed sessions, open-platform APIs, MCP,
 A3S Box, or its own task system.
 
 ## Capability Map
@@ -26,11 +26,11 @@ A3S Box, or its own task system.
 | --- | --- | --- |
 | Agent as a directory | [Agent Directory](/docs/code/agent-dir) | `instructions.md`, `agent.acl`, `skills/`, `tools/`, and `schedules/` synthesize a runnable agent. |
 | Markdown instructions | `instructions.md`, `AGENTS.md`, prompt slots | Instructions are injected as slots, so they cannot override harness boundaries, response contracts, or safety gates. |
-| Markdown skills | [Skills](/docs/code/skills) | File skills, inline skills, and built-in skills share discovery semantics. |
+| Markdown skills | [Skills](/docs/code/skills) | File skills, inline skills, and explicit registries share discovery semantics. A3S Code ships no default embedded skills. |
 | TypeScript tools | `program`, direct tools, MCP tools, AgentDir script tools | A3S Code focuses on tool registration, permission gates, typed errors, and verification evidence; script tools run in a constrained QuickJS environment. |
 | Sandbox | `program` sandbox, permission policy, HITL, A3S Box | A3S Code handles tool permissions and script sandboxing; process, filesystem, and network isolation belong in A3S Box. |
-| Channels | Managed sessions, open-platform WebSocket/SSE, AHP, host UI | A3S Code does not hard-code channels. Hosts connect streaming events and run replay to any frontend. |
-| Connections | MCP, AHP, provider config, host-injected credentials | Connections are configured and authorized by the host. Do not put tokens in the agent directory. |
+| Channels | Managed sessions, open-platform WebSocket/SSE, host UI | A3S Code does not hard-code channels. Hosts connect streaming events and run replay to any frontend. |
+| Connections | MCP, provider config, host-injected credentials | Connections are configured and authorized by the host. Do not put tokens in the agent directory. |
 | Subagents | [Tasks](/docs/code/tasks), [Teams](/docs/code/teams), `workerAgents` | Supports manual `task`, parallel `parallel_task`, automatic delegation, and dynamic worker agents. |
 | Schedules | AgentDir `schedules/` + `serve_agent_dir` | Every schedule has an independent session id and can recover context after restart when a session store is configured. |
 | Durable execution | `SessionStore`, run replay, `parallelResumable` | Session history, run events, and resumable workflow checkpoints can be persisted; failed steps retry on resume. |
@@ -93,7 +93,6 @@ import { Agent } from '@a3s-lab/code';
 const agent = await Agent.create('agent.acl');
 
 const session = agent.session('/repo', {
-  builtinSkills: true,
   skillDirs: ['./.a3s/skills'],
   agentDirs: ['./.a3s/agents'],
   autoDelegation: { enabled: true, minConfidence: 0.72, maxTasks: 4 },
@@ -160,7 +159,7 @@ A3S Code exposes tools in three layers:
 | Layer | Usage | Good for |
 | --- | --- | --- |
 | Built-in and direct tools | `session.tool(...)`, file, shell, git, `generate_object` | The host knows exactly what to run or needs deterministic calls. |
-| MCP / AHP | MCP servers, AHP transport | GitHub, Linear, internal systems, remote host tools, or cross-process capabilities. |
+| MCP | MCP servers | GitHub, Linear, internal systems, remote host tools, or cross-process capabilities. |
 | AgentDir script tools | `tools/*.md` + QuickJS `program` | Wrapping constrained scripts as model-visible tools. |
 
 Tools are not unlimited just because a file exists. Visibility, permission gates, HITL, allow-lists, and sandboxing are controlled by the harness or the AgentDir loader. Give high-privilege tools only to trusted directories, and inject secrets through environment variables and host connections.
@@ -194,14 +193,14 @@ records, debug panels, and workflow node states.
 
 ## Relationship To A3S Box
 
-A3S Code owns the agent loop, tools, delegation, state, and verification. A3S Box owns stronger runtime isolation: MicroVMs, OCI workloads, networking, and TEE. If "the model may run shell, but the process must be isolated" is a requirement, run the tool execution through A3S Box or expose isolated capabilities through AHP/MCP.
+A3S Code owns the agent loop, tools, delegation, state, and verification. A3S Box owns stronger runtime isolation: MicroVMs, OCI workloads, networking, and TEE. If "the model may run shell, but the process must be isolated" is a requirement, run the tool execution through A3S Box or expose isolated capabilities through MCP.
 
 Typical composition:
 
 ```text
 A3S Code session
   -> permission policy and HITL
-  -> AHP or MCP tool adapter
+  -> MCP tool adapter
   -> A3S Box isolated workload
   -> typed result and verification evidence
 ```
@@ -219,7 +218,7 @@ Use this shape for:
 Avoid it when:
 
 - A single deterministic API call is enough; use a tool contract instead.
-- The task requires full GUI automation but has no structured tool interface; provide MCP/AHP or browser tools first, then let A3S Code schedule them.
+- The task requires full GUI automation but has no structured tool interface; provide MCP or browser tools first, then let A3S Code schedule them.
 - The task needs strong OS-level isolation but only has a local shell enabled; integrate A3S Box.
 
 ## Reading Order

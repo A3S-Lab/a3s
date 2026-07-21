@@ -243,18 +243,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          BUILD_ARGS=(--platform --release --js index.js --dts index.d.ts --target "${{ matrix.target }}")
+          BUILD_ARGS=(--platform --release --js index.js --dts generated.d.ts --target "${{ matrix.target }}")
           if [[ "${{ matrix.use_zig }}" == "true" ]]; then
             BUILD_ARGS+=(--zig)
           fi
           npx napi build "${BUILD_ARGS[@]}"
+          node scripts/patch-loader.mjs
 
       - name: Package Node release artifact
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p release
-          cp index.js index.d.ts package.json release/
+          cp index.js index.d.ts generated.d.ts extra-types.d.ts event-protocol-v1.d.ts package.json release/
           cp "${{ matrix.node_file }}" release/
           tar -czf "a3s-code-node-${{ needs.validate-version.outputs.version }}-${{ matrix.target }}.tar.gz" -C release .
 

@@ -79,6 +79,10 @@ describe('Workspace editor tabs', () => {
     expect(menu).toHaveTextContent('关闭右侧标签页');
     expect(menu).toHaveTextContent('关闭全部标签页');
     expect(menu).toHaveTextContent('复制相对路径');
+    expect(within(menu).getByRole('menuitem', { name: '关闭' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      expect.stringMatching(/^(Meta|Control)\+W$/)
+    );
     fireEvent.click(within(menu).getByRole('menuitem', { name: '关闭右侧标签页' }));
 
     expect(closeEditorTabs).toHaveBeenCalledWith([fileEditorTabId('/repo/README.md')]);

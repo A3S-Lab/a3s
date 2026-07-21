@@ -1,6 +1,6 @@
 ---
 title: "安全"
-description: "权限策略、HITL、AHP 与验证关卡"
+description: "权限策略、HITL、hook 与验证关卡"
 ---
 
 # 安全
@@ -36,4 +36,4 @@ console.log(session.hookCount());
 session.unregisterHook('observe-secret-read');
 ```
 
-AHP 可把组织级策略放到外部驾驭层。发布流程应要求测试、包检查、CI 和 provider 验证证据。
+发布流程应要求测试、包检查、CI 和 provider 验证证据。

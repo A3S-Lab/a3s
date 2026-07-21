@@ -62,6 +62,17 @@ describe('CommandPalette', () => {
     expect(appState.settingsTab).toBe('help');
     expect(window.location.hash).toBe('#settings/help');
   });
+  it('opens the Memory visualization from global navigation', () => {
+    appState.commandPaletteOpen = true;
+    render(<CommandPalette actions={{ newConversation: vi.fn() } as unknown as CodeActions} />);
+
+    fireEvent.click(screen.getByRole('option', { name: /记忆图谱/ }));
+
+    expect(appState.activeProduct).toBe('code');
+    expect(appState.codeSurface).toBe('memory');
+    expect(window.location.hash).toBe('#code/memory');
+    expect(appState.commandPaletteOpen).toBe(false);
+  });
 
   it('offers file quick open only for an active task', () => {
     appState.activeSessionId = 'task-1';

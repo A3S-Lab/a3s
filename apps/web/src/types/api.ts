@@ -7,6 +7,229 @@ export interface HealthResponse {
   model?: string | null;
 }
 
+export type MemoryTier = 'short' | 'mid' | 'long';
+export type MemoryForgetSignal = 'keep' | 'cooling' | 'candidate' | 'protected';
+
+export interface MemoryEntry {
+  id: string;
+  content: string;
+  preview: string;
+  tags: string[];
+  importance: number;
+  timestamp: string;
+  memoryType: string;
+  metadata?: Record<string, string> | null;
+  accessCount: number;
+  lastAccessed?: string | null;
+}
+
+export interface MemoryStats {
+  entries: number;
+  types: Record<string, number>;
+  tags: number;
+  important: number;
+  ctxSources: number;
+}
+
+export interface MemoryGraphStats {
+  events: number;
+  entities: number;
+  relations: number;
+  aliases: number;
+  short: number;
+  mid: number;
+  long: number;
+  forgetCandidates: number;
+  llmExtracted: number;
+  consolidated: number;
+  conflicts: number;
+}
+
+export interface MemoryGraphEvent {
+  id: string;
+  memoryId: string;
+  label: string;
+  source: string;
+  tier: MemoryTier;
+  forget: MemoryForgetSignal;
+  retentionScore: number;
+  timestamp: string;
+  entityIds: string[];
+}
+
+export interface MemoryGraphEntity {
+  id: string;
+  kind: string;
+  name: string;
+  aliases: string[];
+  mentions: number;
+  importance: number;
+  firstSeen?: string | null;
+  lastSeen?: string | null;
+  memoryIds: string[];
+}
+
+export interface MemoryGraphRelation {
+  id: number;
+  from: string;
+  to: string;
+  kind: string;
+  memoryId: string;
+  weight: number;
+}
+
+export interface MemoryGraphFacet {
+  eventId: string;
+  tier: MemoryTier;
+  forget: MemoryForgetSignal;
+  retentionScore: number;
+  llmExtracted: boolean;
+  consolidated: boolean;
+  conflicts: boolean;
+  entityIds: string[];
+  relationIds: number[];
+}
+
+export interface MemoryGraph {
+  stats: MemoryGraphStats;
+  events: MemoryGraphEvent[];
+  entities: MemoryGraphEntity[];
+  relations: MemoryGraphRelation[];
+  facets: Record<string, MemoryGraphFacet>;
+}
+
+export interface MemoryPagination {
+  offset: number;
+  limit: number;
+  returned: number;
+  total: number;
+  hasMore: boolean;
+}
+
+export interface MemoryOverview {
+  root: string;
+  entries: MemoryEntry[];
+  stats: MemoryStats;
+  graph: MemoryGraph;
+  pagination?: MemoryPagination;
+}
+
+export type EvolutionKind = 'preference' | 'skill' | 'okf';
+export type EvolutionCandidateState = 'observing' | 'ready' | 'materialized' | 'rejected' | 'rolledBack';
+
+export interface EvolutionEvidence {
+  id: string;
+  memoryId: string;
+  sessionId?: string | null;
+  source: string;
+  content: string;
+  reason?: string | null;
+  timestamp: string;
+  importance: number;
+  confidence: number;
+  conflictsWith: string[];
+  explicitSignal: boolean;
+}
+
+export interface EvolutionVersion {
+  version: number;
+  createdAt: string;
+  assetPath: string;
+  snapshotPath: string;
+  contentHash: string;
+  evidenceIds: string[];
+  automatic: boolean;
+}
+
+export interface EvolutionAuditEvent {
+  action: 'ready' | 'materialized' | 'updated' | 'rejected' | 'reopened' | 'rolledBack' | 'activated' | 'deactivated';
+  at: string;
+  version?: number | null;
+  note?: string | null;
+  recoveryPath?: string | null;
+}
+
+export interface EvolutionCandidate {
+  id: string;
+  kind: EvolutionKind;
+  patternKey: string;
+  patternAliases: string[];
+  title: string;
+  summary: string;
+  instructions: string[];
+  state: EvolutionCandidateState;
+  evidence: EvolutionEvidence[];
+  occurrences: number;
+  distinctSessions: number;
+  confidence: number;
+  importance: number;
+  maturity: number;
+  hasConflicts: boolean;
+  updateAvailable: boolean;
+  activationPending: boolean;
+  createdAt: string;
+  updatedAt: string;
+  readyAt?: string | null;
+  materializedAt?: string | null;
+  rejectedAt?: string | null;
+  rolledBackAt?: string | null;
+  rejectionReason?: string | null;
+  assetPath?: string | null;
+  currentVersion?: number | null;
+  versions: EvolutionVersion[];
+  audit: EvolutionAuditEvent[];
+}
+
+export interface EvolutionOverview {
+  schema: string;
+  revision: number;
+  root: string;
+  workspaceRoot: string;
+  skillRoot: string;
+  okfRoot: string;
+  updatedAt: string;
+  stats: {
+    total: number;
+    observing: number;
+    ready: number;
+    materialized: number;
+    rejected: number;
+    rolledBack: number;
+    updateAvailable: number;
+    activationPending: number;
+    byKind: Record<string, number>;
+  };
+  candidates: EvolutionCandidate[];
+  policy: {
+    readyEvidence: number;
+    autoMaterializeEvidence: number;
+    autoMaterializeSessions: number;
+    autoMaterializeConfidence: number;
+    localOnly: boolean;
+    reviewSupported: boolean;
+  };
+}
+
+export interface EvolutionMutationResult {
+  candidate: EvolutionCandidate;
+  requiresSessionReload: boolean;
+  recoveryPath?: string | null;
+}
+
+export interface RebuiltCodeSession {
+  sessionId: string;
+  workspace: string;
+  skillDirCount: number;
+  builtinSkillActive: boolean;
+  capabilitySkillActive: boolean;
+  runtimeToolActive: boolean;
+}
+
+export interface EvolutionMutationResponse {
+  result: EvolutionMutationResult;
+  rebuiltSessions: RebuiltCodeSession[];
+}
+
 export interface OsAccount {
   configured: boolean;
   address?: string | null;
@@ -192,6 +415,113 @@ export interface SkillCatalog {
   total: number;
   enabledCount: number;
   disabledCount: number;
+}
+
+export interface PluginActivityItem {
+  key: string;
+  packageId: string;
+  route: string;
+  version: string;
+  enabled: boolean;
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  skill: string;
+  order: number;
+  sha256: string;
+  mediaType: 'text/html';
+}
+
+export interface PluginActivityCatalog {
+  schemaVersion: number;
+  available: boolean;
+  generation: number;
+  revision: string;
+  items: PluginActivityItem[];
+}
+
+export interface PluginActivityContent {
+  key: string;
+  packageId: string;
+  skill: string;
+  registryRevision: string;
+  sha256: string;
+  mediaType: 'text/html';
+  html: string;
+}
+
+export interface PluginMarketplaceRegistry {
+  name: string;
+  url: string;
+  configured: boolean;
+  verified: boolean;
+  error?: string;
+  hostTarget?: string;
+  metadata?: {
+    rootVersion: number;
+    timestampVersion: number;
+    snapshotVersion: number;
+    targetsVersion: number;
+    packageTargets: number;
+  };
+}
+
+export interface PluginMarketplaceItem {
+  componentId: string;
+  packageId: string;
+  displayName: string;
+  registryName: string;
+  registryUrl: string;
+  version: string;
+  channel: 'stable' | 'beta' | 'nightly';
+  target: string;
+  archiveName: string;
+  length: number;
+  sha256: string;
+  signedPlanDigest: string;
+  installed: boolean;
+  enabled: boolean;
+}
+
+export interface PluginMarketplaceCatalog {
+  schemaVersion: number;
+  verifiedAt: string;
+  registries: PluginMarketplaceRegistry[];
+  items: PluginMarketplaceItem[];
+}
+
+export type PluginOperationAction = 'install' | 'upgrade' | 'uninstall';
+
+export interface PluginOperationRequest {
+  action: PluginOperationAction;
+  componentId: string;
+  version?: string;
+  channel?: 'stable' | 'beta' | 'nightly';
+}
+
+export interface PluginOperationPlan {
+  dryRun: true;
+  planSchemaVersion: number;
+  planCommand: string;
+  planDigest: string;
+  plans: Array<{
+    component: string;
+    action: string;
+    source: string;
+    mutates: boolean;
+    message: string;
+    resolvedRegistryPackages?: Record<string, unknown>;
+  }>;
+}
+
+export interface PluginOperationResult {
+  planDigest: string;
+  operations: Array<{
+    component: string;
+    changed: boolean;
+    message: string;
+  }>;
 }
 
 export interface WorkspaceSearchMatch {
@@ -405,6 +735,7 @@ export interface SessionControls {
   sessionId: string;
   effort: string;
   goal?: string | null;
+  goalState?: GoalState | null;
   planningMode: string;
   goalTracking: boolean;
   context?: {
@@ -415,6 +746,49 @@ export interface SessionControls {
     compacted: boolean;
     compactSummary?: string | null;
   };
+}
+
+export type GoalStatus = 'active' | 'paused' | 'retrying' | 'achieved';
+
+export interface GoalState {
+  status: GoalStatus;
+  startedAt: number;
+  updatedAt: number;
+  completedAt?: number | null;
+  attempts: number;
+  progressPercent: number;
+  completedSteps: number;
+  totalSteps: number;
+  lastError?: string | null;
+  extractedGoal?: string | null;
+}
+
+export type QueuedTurnKind = 'user' | 'goalContinuation';
+
+export interface QueuedTurn {
+  id: string;
+  kind: QueuedTurnKind;
+  content: string;
+  contextFiles: string[];
+  skillNames: string[];
+  priority: number;
+  enqueuedAt: number;
+}
+
+export interface ActiveTurn {
+  turn: QueuedTurn;
+  startedAt: number;
+}
+
+export interface TurnQueue {
+  sessionId: string;
+  status: 'idle' | 'pending' | 'running' | 'paused';
+  paused: boolean;
+  active?: ActiveTurn | null;
+  items: QueuedTurn[];
+  total: number;
+  nextItemId?: string | null;
+  acceptedItemId?: string;
 }
 
 export interface SessionCompaction {

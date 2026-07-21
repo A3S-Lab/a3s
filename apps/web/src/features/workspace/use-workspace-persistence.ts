@@ -10,7 +10,7 @@ function persistActiveWorkspace(): void {
   reportTaskPersistenceResult(
     persistWorkspaceTaskSnapshots(
       appState.workspaceSnapshotsByTask,
-      taskDraftKey(appState.activeSessionId),
+      taskDraftKey(appState.activeSessionId, appState.activeProduct === 'work' ? 'work' : 'code'),
       appState,
       appState.taskView
     )

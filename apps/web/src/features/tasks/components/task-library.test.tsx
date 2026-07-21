@@ -47,6 +47,15 @@ describe('TaskLibrary management', () => {
     expect(screen.queryByRole('button', { name: /打开任务 Parser task/ })).not.toBeInTheDocument();
   });
 
+  it('keeps Work AI assistant sessions out of the Code task list', () => {
+    appState.sessions = [task, { ...task, sessionId: 'work-assistant', title: 'Work conversation', agentId: 'work' }];
+    render(<TaskLibrary actions={{} as TaskActions} />);
+
+    expect(screen.getByRole('button', { name: '任务 (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /打开任务 Parser task/ })).toBeInTheDocument();
+    expect(screen.queryByText('Work conversation')).not.toBeInTheDocument();
+  });
+
   it('keeps deletion confirmation open when deleting the task fails', async () => {
     const removeSession = vi.fn(async () => {
       throw new Error('delete failed');

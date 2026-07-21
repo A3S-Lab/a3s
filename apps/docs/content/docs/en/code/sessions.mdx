@@ -13,13 +13,39 @@ import { Agent } from '@a3s-lab/code';
 const agent = await Agent.create('agent.acl');
 const session = agent.session('/repo', {
   model: 'provider/model-id',
-  builtinSkills: true,
   planningMode: 'enabled',
   goalTracking: true,
   autoDelegation: { enabled: true, maxTasks: 4 },
   autoParallel: false,
 });
 ```
+
+## Rust Construction
+
+Rust session construction is async-first because default memory, file-backed
+stores, queues, trajectory recording, and MCP discovery can require I/O:
+
+```rust
+let session = agent
+    .session_builder("/repo")
+    .options(options)
+    .build()
+    .await?;
+```
+
+`session_async`, `resume_session_async`, `session_for_agent_async`, and
+`session_for_worker_async` are direct async alternatives. Node and Python keep
+their existing factory names and delegate to this async construction kernel
+inside the native binding.
+
+The synchronous Rust `Agent::session` factory is a strict compatibility path.
+It accepts explicitly pre-initialized resources and never starts or blocks an
+async runtime. A default/file memory store, file session store, queue,
+trajectory recorder, or any host MCP manager supplied in `SessionOptions`
+returns `CodeError::AsyncSessionBuildRequired`; session-option MCP capability
+discovery is always async. Use the builder instead of catching that error and
+silently changing backends. The sync path can only inherit agent-global MCP
+tools already cached during agent initialization.
 
 `planningMode` is explicit: use `'auto'` for the default structured pre-analysis
 path, `'enabled'` to force planning, and `'disabled'` to turn planning off for
@@ -29,6 +55,24 @@ for compatibility.
 Planning emits run-scoped state. Hosts can render that state as a TaskList and
 update each item as the runtime records progress instead of trying to infer
 progress from text tokens.
+
+## Single-Flight Operations
+
+A session admits only one transcript-affecting operation at a time. `send`,
+`stream`, their attachment variants, slash commands, and `resumeRun` share the
+same fail-fast admission gate. An overlapping call returns
+`CodeError::SessionBusy` before reading history or dispatching a command; it is
+not queued behind the active operation.
+
+Wait for the active result, consume the stream to completion, or cancel it
+before starting another conversation operation. The runtime retains a stream's
+lease until its producer has actually stopped, even if the public stream handle
+is dropped or aborted. Direct host tool helpers do not mutate the transcript and
+do not claim this lease.
+
+Node and Python stream iterators wait for that lifecycle cleanup at the terminal
+boundary. Once a fully consumed iterator reports completion, an immediate next
+conversation operation will not inherit a stale busy state from that stream.
 
 ## Send
 
@@ -55,12 +99,17 @@ while (true) {
 }
 ```
 
+Every SDK event is an `EventEnvelopeV1` projection with `version === 1`, an open
+`type` string, complete `payload`, and optional `metadata`. Convenience fields
+such as `text` and `toolName` are derived from that envelope. Keep a default
+branch and retain the payload for future event types.
+
 ## Side Questions
 
-The SDK does not expose the TUI's `/btw` command as `session.btw()`. To ask an
-ephemeral side question, snapshot the current history and pass it explicitly to
-`send` or `stream`. Explicit history is used for that call only; it does not
-append the answer back into the session history.
+The SDK does not expose a dedicated ephemeral-question helper. Snapshot the
+current history and pass it explicitly to `send` or `stream`. Explicit history
+is used for that call only; it does not append the answer back into the session
+history.
 
 ```ts
 const snapshot = session.history();
@@ -222,6 +271,6 @@ if (current?.id && current.status === 'running') {
 
 ```ts
 const session = agent.sessionForAgent('/repo', 'explore', ['./agents'], {
-  builtinSkills: true,
+  planningMode: 'auto',
 });
 ```

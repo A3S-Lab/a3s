@@ -126,6 +126,7 @@ function unique(values: string[]): string[] {
 
 function isInternalOrchestrationPrompt(content: string): boolean {
   if (isSynthesisContinuation(content)) return true;
+  if (/^\s*\[goal continuation\](?:\s|$)/i.test(content)) return true;
   if (/\n\s*Planner-optimized request:\s*\n/i.test(content)) return true;
   if (/^\s*Original user request:\s*\n[\s\S]*\n\s*Hook-modified planning task:\s*\n/i.test(content)) return true;
   if (/^\s*Planning hook guidance:\s*\n/i.test(content)) return true;

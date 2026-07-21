@@ -60,7 +60,9 @@ preparing → waiting for permission → running
 
 An execution may expose input, output, duration, exit status, and permission
 decision. Persisted and live representations with the same identity collapse
-into one rendered block.
+into one rendered block. Denial and timeout are decision outcomes, not execution
+failures: a later synthetic non-zero tool completion can add output and exit
+metadata but cannot replace either terminal state.
 
 ## Permission request
 
@@ -167,6 +169,50 @@ Lifecycle states include unavailable, starting, ready, stopped, failed, and
 disconnected. Browser mode is unavailable when no valid target exists. The Web
 client does not infer or start arbitrary public browsing from a raw URL.
 
+## Memory overview
+
+The service-authoritative, read-only snapshot used by Memory exploration.
+
+```text
+MemoryOverview
+├── local store root
+├── entries
+│   ├── content, preview, type, tags, and metadata
+│   ├── importance and timestamp
+│   └── access count and last access
+├── aggregate statistics
+├── graph
+│   ├── memory events
+│   ├── knowledge entities and aliases
+│   ├── semantic relations
+│   └── per-memory retention and lifecycle facets
+└── pagination
+```
+
+The client follows pagination until every entry is present and reuses graph
+topology from the first page. A memory event anchors one entry in the graph. An
+entity can link many memories. A facet contains retention tier and score,
+forgetting signal, extraction, consolidation, conflict, entity IDs, and
+relation IDs. These values are descriptive; they do not authorize mutation.
+
+## Memory exploration state
+
+Client-owned continuity for the dedicated Code Memory surface.
+
+```text
+MemoryState
+├── load phase, refresh state, last success, and recoverable error
+├── authoritative MemoryOverview snapshot
+├── graph / timeline view
+├── clarity / complete graph scope
+├── query and combinable filters
+└── selected memory or entity
+```
+
+Only the latest active request may replace the snapshot. A refresh failure
+retains stale data, an unmounted initial request returns to idle, and a
+selection that no longer exists is cleared after successful refresh.
+
 ## Run configuration
 
 ```text
@@ -183,9 +229,11 @@ within backend policy.
 
 ## State ownership
 
-- The service owns sessions, messages, controls, output, files, and Git truth.
+- The service owns sessions, messages, controls, output, files, Git truth, and
+  durable Memory truth.
 - Shared client state owns the rendered snapshot, selected task, task-scoped
-  Result Workspace state, and cross-feature navigation intent.
+  Result Workspace state, Memory exploration state, and cross-feature
+  navigation intent.
 - Local storage is best-effort for drafts, queues, task titles, active task,
   safe Result Workspace continuity, and theme.
 - Component state owns bounded overlay input and focus only.

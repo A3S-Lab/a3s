@@ -44,6 +44,36 @@ export interface ToolTimelineSummary {
 }
 
 const terminalStates = new Set<ToolCallState>(['succeeded', 'failed', 'denied', 'timed-out', 'interrupted']);
+const toolNameAliases: Readonly<Record<string, string>> = {
+  append_to_file: 'write',
+  cat_file: 'read',
+  create_file: 'create',
+  delete_file: 'delete',
+  edit_file: 'edit',
+  exec_command: 'exec',
+  execute: 'exec',
+  execute_command: 'exec',
+  fetch_url: 'web_fetch',
+  find_files: 'find',
+  grep_search: 'grep',
+  list_directory: 'ls',
+  list_files: 'ls',
+  patch_file: 'patch',
+  read_directory: 'ls',
+  read_file: 'read',
+  read_text_file: 'read',
+  remove_file: 'delete',
+  replace_in_file: 'edit',
+  rg: 'grep',
+  ripgrep: 'grep',
+  run_command: 'run',
+  search_code: 'grep',
+  search_files: 'search',
+  shell_command: 'shell',
+  terminal: 'shell',
+  write_file: 'write',
+  write_text_file: 'write',
+};
 
 export function projectToolCalls(
   events: AgentEvent[],
@@ -121,7 +151,8 @@ export function projectToolCalls(
         const exitCode = numberValue(event.exit_code);
         const errorKind = stringValue(event.error_kind);
         const failed = Boolean(event.is_error) || (exitCode !== undefined && exitCode !== 0) || Boolean(errorKind);
-        call.state = failed ? 'failed' : 'succeeded';
+        const settledDecision = call.state === 'denied' || call.state === 'timed-out' ? call.state : undefined;
+        call.state = settledDecision ?? (failed ? 'failed' : 'succeeded');
         call.args = recordValue(event.args) ?? call.args;
         call.output = stringValue(event.output) ?? call.output;
         call.exitCode = exitCode;
@@ -235,7 +266,7 @@ export function summarizeToolCalls(calls: readonly ToolCallProjection[]): ToolTi
 }
 
 export function toolActionLabel(call: Pick<ToolCallProjection, 'name' | 'state'>): string {
-  switch (normalizeName(call.name)) {
+  switch (canonicalToolName(call.name)) {
     case 'bash':
     case 'shell':
     case 'run':
@@ -251,6 +282,10 @@ export function toolActionLabel(call: Pick<ToolCallProjection, 'name' | 'state'>
     case 'patch':
     case 'apply_patch':
       return statefulLabel(call.state, '正在修改文件', '已修改文件', '修改文件失败', '未修改文件');
+    case 'delete':
+    case 'remove':
+    case 'unlink':
+      return statefulLabel(call.state, '正在删除文件', '已删除文件', '删除文件失败', '未删除文件');
     case 'grep':
     case 'search':
       return statefulLabel(call.state, '正在搜索代码', '已搜索代码', '搜索代码失败', '未搜索代码');
@@ -283,7 +318,7 @@ export function toolActionLabel(call: Pick<ToolCallProjection, 'name' | 'state'>
 }
 
 export function toolOperationLabel(call: Pick<ToolCallProjection, 'name'>): string {
-  switch (normalizeName(call.name)) {
+  switch (canonicalToolName(call.name)) {
     case 'bash':
     case 'shell':
     case 'run':
@@ -299,6 +334,10 @@ export function toolOperationLabel(call: Pick<ToolCallProjection, 'name'>): stri
     case 'patch':
     case 'apply_patch':
       return '修改工作区文件';
+    case 'delete':
+    case 'remove':
+    case 'unlink':
+      return '删除工作区文件';
     case 'web_search':
       return '搜索外部网页';
     case 'web_fetch':
@@ -312,7 +351,7 @@ export function toolOperationLabel(call: Pick<ToolCallProjection, 'name'>): stri
 }
 
 export function toolRiskSummary(call: Pick<ToolCallProjection, 'name'>): string {
-  switch (normalizeName(call.name)) {
+  switch (canonicalToolName(call.name)) {
     case 'bash':
     case 'shell':
     case 'run':
@@ -324,6 +363,10 @@ export function toolRiskSummary(call: Pick<ToolCallProjection, 'name'>): string 
     case 'patch':
     case 'apply_patch':
       return '该操作会修改工作区文件，请确认目标路径和变更范围。';
+    case 'delete':
+    case 'remove':
+    case 'unlink':
+      return '该操作会删除工作区文件，请确认目标路径和影响范围。';
     case 'web_search':
     case 'web_fetch':
       return '该操作会访问外部网络，请确认请求内容不包含不应发送的信息。';
@@ -351,7 +394,7 @@ function statefulLabel(
 export function toolArgumentSummary(call: Pick<ToolCallProjection, 'name' | 'args' | 'inputText'>): string {
   const args = call.args;
   if (!args) return truncate(call.inputText.replace(/\s+/g, ' ').trim(), 140);
-  const name = normalizeName(call.name);
+  const name = canonicalToolName(call.name);
   const keys =
     name === 'grep' || name === 'search'
       ? ['pattern', 'path']
@@ -368,7 +411,9 @@ export function toolArgumentSummary(call: Pick<ToolCallProjection, 'name' | 'arg
 }
 
 export function isFileEditCall(call: Pick<ToolCallProjection, 'name'>): boolean {
-  return ['write', 'create', 'edit', 'patch', 'apply_patch'].includes(normalizeName(call.name));
+  return ['write', 'create', 'edit', 'patch', 'apply_patch', 'delete', 'remove', 'unlink'].includes(
+    canonicalToolName(call.name)
+  );
 }
 
 export function toolFilePath(call: Pick<ToolCallProjection, 'args' | 'metadata'>): string | undefined {
@@ -416,11 +461,18 @@ function eventId(
     .filter((call): call is ToolCallProjection => Boolean(call && !terminalStates.has(call.state)));
   const matching = openCalls.find((call) => call.name === name);
   if (matching) return matching.id;
-  if (name === 'tool' || openCalls.length === 1) return openCalls[0]?.id ?? `${normalizeName(name)}-${index}`;
-  return `${normalizeName(name)}-${index}`;
+  if (name === 'tool' || openCalls.length === 1) return openCalls[0]?.id ?? `${normalizedToolName(name)}-${index}`;
+  return `${normalizedToolName(name)}-${index}`;
 }
 
-function normalizeName(value: string): string {
+export function canonicalToolName(value: string): string {
+  const normalized = normalizedToolName(value);
+  if (normalized.startsWith('mcp__')) return normalized;
+  const unqualified = normalized.split(/[.:/]/).at(-1) || normalized;
+  return toolNameAliases[unqualified] ?? unqualified;
+}
+
+function normalizedToolName(value: string): string {
   return value.trim().toLowerCase();
 }
 

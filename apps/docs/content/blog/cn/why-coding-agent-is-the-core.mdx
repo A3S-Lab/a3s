@@ -17,7 +17,6 @@ import { Agent } from '@a3s-lab/code';
 
 const agent = await Agent.create('agent.acl');
 const session = agent.session(process.cwd(), {
-  builtinSkills: true,
   planningMode: 'enabled',
 });
 
@@ -33,7 +32,7 @@ console.log(result.verificationSummaryText);
 
 - 使用 `providers` 与 `models` block 的 ACL 配置。
 - OpenAI-compatible 的 `apiKey`/`baseUrl` 与 `api_key`/`base_url` alias。
-- session options：model override、builtin skills、prompt slots、planning、
+- session options：model override、skill directories、prompt slots、planning、
   file-backed memory/session stores、auto-save、compaction、continuation 与
   permission-policy shape。
 - Direct tools：read、glob、grep、bash、git、generic `tool`、skill search 与

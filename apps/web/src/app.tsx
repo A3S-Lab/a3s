@@ -3,10 +3,12 @@ import { AppShell } from './components/app-shell';
 import { ToastRegion } from './components/toast-region';
 import { CodeBootScreen } from './features/code/components/code-boot-screen';
 import { useCodeController } from './features/code/use-code-controller';
+import { usePluginController } from './features/plugins/use-plugin-controller';
 import { appState } from './state/app-state';
 
 export function App() {
   const actions = useCodeController();
+  const pluginActions = usePluginController();
   const state = useSnapshot(appState);
 
   if (state.bootPhase === 'loading') {
@@ -19,7 +21,7 @@ export function App() {
 
   return (
     <>
-      <AppShell actions={actions} />
+      <AppShell actions={actions} pluginActions={pluginActions} />
       <ToastRegion />
     </>
   );

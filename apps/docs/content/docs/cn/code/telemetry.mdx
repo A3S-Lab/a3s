@@ -21,4 +21,6 @@ console.log(session.traceEvents());
 console.log(session.verificationReports());
 ```
 
-流式输出返回 `AgentEvent`，包含文本、工具名、工具输出、错误、token 总数和验证摘要。
+流式输出返回版本化 `AgentEvent` 信封。`version`、`type`、`payload` 和可选
+`metadata` 是稳定、无损的字段；文本、工具名、工具输出、错误、token 总数和验证摘要
+是便捷投影。未来未知的 `type` 及其 payload 仍会完整提供给宿主。

@@ -1,0 +1,156 @@
+.work-pdf-export-page.presentation-print {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 54px 64px;
+  font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+.work-pdf-export-page.presentation-print.portrait {
+  width: 794px;
+  min-height: 1123px;
+}
+
+.work-pdf-export-page.presentation-print.landscape {
+  width: 1120px;
+  min-height: 794px;
+}
+
+.work-pdf-export-page.presentation-print.slides {
+  width: 1120px;
+  min-height: 630px;
+  aspect-ratio: 16 / 9;
+  gap: 0;
+  padding: 0;
+}
+
+.work-pdf-export-page.presentation-print.slides > .work-slide-canvas {
+  width: 100%;
+}
+
+.work-presentation-print-heading {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #d9dce3;
+  color: #20273a;
+}
+
+.work-presentation-print-heading strong {
+  font-size: 18px;
+}
+
+.work-presentation-print-heading span {
+  color: #747b89;
+  font-size: 12px;
+}
+
+.work-presentation-print-notes-slide {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: center;
+}
+
+.work-presentation-print-notes-slide .work-slide-canvas {
+  width: 100%;
+  border: 1px solid #d9dce3;
+}
+
+.work-presentation-print-notes {
+  min-height: 310px;
+  flex: 1;
+  padding: 24px 0 0;
+  border-top: 1px solid #d9dce3;
+}
+
+.work-presentation-print-notes h2 {
+  margin: 0 0 16px;
+  color: #747b89;
+  font-size: 13px;
+}
+
+.work-presentation-print-notes p {
+  margin: 0;
+  color: #20273a;
+  font-size: 16px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.work-presentation-handout-grid {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  gap: 22px;
+}
+
+.work-presentation-handout-grid.handout-2,
+.work-presentation-handout-grid.handout-3 {
+  grid-template-columns: 1fr;
+}
+
+.work-presentation-handout-grid.handout-2 {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.work-presentation-handout-grid.handout-3 {
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+
+.work-presentation-handout-grid.handout-6 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+
+.work-presentation-handout-slide {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.work-presentation-handout-slide > span {
+  align-self: start;
+  color: #747b89;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.work-presentation-handout-slide > div:not(.work-presentation-handout-lines) {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.work-presentation-handout-slide .work-slide-canvas {
+  width: 100%;
+  border: 1px solid #d9dce3;
+}
+
+.work-presentation-handout-slide strong {
+  color: #4f5665;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.work-presentation-handout-grid.handout-3 .work-presentation-handout-slide {
+  grid-template-columns: 22px minmax(0, 0.9fr) minmax(0, 1fr);
+}
+
+.work-presentation-handout-lines {
+  width: 100%;
+  height: 100%;
+  min-height: 150px;
+  background: repeating-linear-gradient(to bottom, transparent 0 29px, #d9dce3 29px 30px);
+}
+
+.work-presentation-handout-grid.handout-6 .work-presentation-handout-slide {
+  align-items: start;
+}

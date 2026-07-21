@@ -32,12 +32,12 @@ const tabs: Array<{
   description: string;
   icon: LucideIcon;
 }> = [
-  { id: 'account', label: '账户', description: '管理 A3S OS 授权与本地运行时能力', icon: UserRound },
+  { id: 'account', label: '账户', description: '管理 A3S OS 授权与本地开发工具模型', icon: UserRound },
   { id: 'general', label: '通用', description: '调整外观、工作区与本机偏好', icon: Settings2 },
   { id: 'model', label: '模型与 Provider', description: '管理模型来源、能力、密钥和新任务默认模型', icon: Box },
   { id: 'agent', label: 'Agent 与执行', description: '配置工具边界、自动委派、目录和任务队列', icon: Bot },
   { id: 'context', label: '上下文与存储', description: '配置会话存储、记忆目录与上下文生命周期', icon: Database },
-  { id: 'integrations', label: '集成', description: '配置搜索、文档解析、MCP 与 A3S OS 地址', icon: Plug },
+  { id: 'integrations', label: '集成', description: '配置连接器、MCP、搜索与文档解析', icon: Plug },
   { id: 'about', label: '关于与更新', description: '查看版本、连接状态与更新', icon: Info },
   { id: 'help', label: '帮助', description: '查找 Code 工作流、安全说明与键盘操作', icon: CircleHelp },
 ];

@@ -8,7 +8,13 @@ import type { TaskActions } from '../task-actions';
 import { projectConversation } from './conversation-projection';
 import { ConversationTurnView } from './conversation-turn';
 
-export function ExecutionStream({ actions }: { actions: TaskActions }) {
+export function ExecutionStream({
+  actions,
+  assistantLabel = 'Code',
+}: {
+  actions: TaskActions;
+  assistantLabel?: string;
+}) {
   const state = useSnapshot(appState);
   const sessionId = state.activeSessionId;
   const messages = (sessionId ? (state.messagesBySession[sessionId] ?? []) : []) as unknown as readonly ChatMessage[];
@@ -64,6 +70,7 @@ export function ExecutionStream({ actions }: { actions: TaskActions }) {
               key={turn.id}
               turn={turn}
               actions={actions}
+              assistantLabel={assistantLabel}
               isLatestTurn={index === turns.length - 1}
             />
           ))}

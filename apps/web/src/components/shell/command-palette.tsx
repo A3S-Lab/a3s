@@ -1,4 +1,5 @@
 import {
+  BrainCircuit,
   CircleHelp,
   FileDiff,
   FileSearch,
@@ -12,7 +13,7 @@ import {
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import type { CodeActions } from '../../features/code/use-code-controller';
-import { appState, navigateSettings, navigateTask } from '../../state/app-state';
+import { appState, navigateMemory, navigateSettings, navigateTask } from '../../state/app-state';
 
 export function CommandPalette({ actions }: { actions: CodeActions }) {
   const state = useSnapshot(appState);
@@ -58,6 +59,12 @@ export function CommandPalette({ actions }: { actions: CodeActions }) {
             },
           ]
         : []),
+      {
+        label: '记忆图谱',
+        description: '浏览长期记忆、实体关系和保留状态',
+        icon: BrainCircuit,
+        run: navigateMemory,
+      },
       {
         label: '新建任务',
         description: '创建一个新的独立 Code 任务',

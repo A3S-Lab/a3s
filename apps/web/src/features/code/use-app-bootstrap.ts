@@ -21,6 +21,7 @@ import {
   type SessionResourceRequest,
 } from '../tasks/session-resource-order';
 import { persistNewTaskConfig } from '../tasks/task-state';
+import { applyTurnQueueSnapshot } from '../tasks/turn-queue-state';
 
 interface BootstrapResult {
   activeSessionId: string | null;
@@ -33,10 +34,12 @@ interface BootstrapResult {
   rootFiles: Awaited<ReturnType<typeof codeApi.readDir>>;
   activeMessages?: Awaited<ReturnType<typeof codeApi.messages>>;
   activeControls?: Awaited<ReturnType<typeof codeApi.sessionControls>>;
+  activeTurnQueue?: Awaited<ReturnType<typeof codeApi.turnQueue>>;
   activeMessagesRequest?: SessionResourceRequest;
   activeControlsRequest?: SessionResourceRequest;
   activeMessagesError?: string;
   activeControlsError?: string;
+  activeTurnQueueError?: string;
 }
 
 async function loadBootstrapResult(): Promise<BootstrapResult> {
@@ -56,21 +59,26 @@ async function loadBootstrapResult(): Promise<BootstrapResult> {
   const modelCatalog = modelCatalogResult.value ?? fallbackModelCatalog(llm);
   let activeMessages: BootstrapResult['activeMessages'];
   let activeControls: BootstrapResult['activeControls'];
+  let activeTurnQueue: BootstrapResult['activeTurnQueue'];
   let activeMessagesRequest: SessionResourceRequest | undefined;
   let activeControlsRequest: SessionResourceRequest | undefined;
   let activeMessagesError: string | undefined;
   let activeControlsError: string | undefined;
+  let activeTurnQueueError: string | undefined;
   if (activeSessionId && sessionList.items.some((session) => session.sessionId === activeSessionId)) {
     activeMessagesRequest = beginSessionMessagesRequest(activeSessionId);
     activeControlsRequest = beginSessionControlsRequest(activeSessionId);
-    const [messages, controls] = await Promise.allSettled([
+    const [messages, controls, turnQueue] = await Promise.allSettled([
       codeApi.messages(activeSessionId),
       codeApi.sessionControls(activeSessionId),
+      codeApi.turnQueue(activeSessionId),
     ]);
     if (messages.status === 'fulfilled') activeMessages = messages.value;
     else activeMessagesError = formatApiError(messages.reason);
     if (controls.status === 'fulfilled') activeControls = controls.value;
     else activeControlsError = formatApiError(controls.reason);
+    if (turnQueue.status === 'fulfilled') activeTurnQueue = turnQueue.value;
+    else activeTurnQueueError = formatApiError(turnQueue.reason);
   }
   return {
     activeSessionId,
@@ -83,10 +91,12 @@ async function loadBootstrapResult(): Promise<BootstrapResult> {
     rootFiles,
     activeMessages,
     activeControls,
+    activeTurnQueue,
     activeMessagesRequest,
     activeControlsRequest,
     activeMessagesError,
     activeControlsError,
+    activeTurnQueueError,
   };
 }
 
@@ -117,12 +127,11 @@ function applyBootstrapResult(result: BootstrapResult) {
     appState.newTaskConfig.model = appState.selectedModel || '';
   }
   appState.sessions = result.sessionList.items;
-  if (
-    appState.activeSessionId === result.activeSessionId &&
-    result.activeSessionId &&
-    !result.sessionList.items.some((session) => session.sessionId === result.activeSessionId)
-  )
-    switchActiveTask(null);
+  if (appState.activeSessionId === result.activeSessionId && result.activeSessionId) {
+    const active = result.sessionList.items.find((session) => session.sessionId === result.activeSessionId);
+    const correctProduct = appState.activeProduct === 'work' ? active?.agentId === 'work' : active?.agentId !== 'work';
+    if (!active || !correctProduct) switchActiveTask(null);
+  }
   const messagesCurrent = Boolean(
     result.activeMessagesRequest && isSessionMessagesRequestCurrent(result.activeMessagesRequest)
   );
@@ -140,6 +149,14 @@ function applyBootstrapResult(result: BootstrapResult) {
   if (result.activeSessionId && controlsCurrent && result.activeControls) {
     appState.sessionControls[result.activeSessionId] = result.activeControls;
   }
+  if (appState.activeSessionId === result.activeSessionId && result.activeSessionId && result.activeTurnQueue) {
+    applyTurnQueueSnapshot(result.activeTurnQueue);
+  }
+  if (appState.activeSessionId === result.activeSessionId && result.activeSessionId) {
+    appState.turnQueueLoading[result.activeSessionId] = false;
+    if (result.activeTurnQueueError) appState.turnQueueErrors[result.activeSessionId] = result.activeTurnQueueError;
+    else delete appState.turnQueueErrors[result.activeSessionId];
+  }
   if (result.activeSessionId && controlsCurrent) {
     appState.sessionControlsLoading[result.activeSessionId] = false;
     if (result.activeControlsError) appState.sessionControlsErrors[result.activeSessionId] = result.activeControlsError;
@@ -156,7 +173,12 @@ function applyBootstrapResult(result: BootstrapResult) {
   const activeWorkspace = result.sessionList.items.find(
     (session) => session.sessionId === appState.activeSessionId
   )?.workspace;
-  const workspaceRoot = activeWorkspace || appState.newTaskConfig.workspace || result.health.workspace;
+  const workspaceRoot =
+    activeWorkspace ||
+    (appState.activeProduct === 'work'
+      ? appState.workspaceRoot || appState.newTaskConfig.workspace
+      : appState.newTaskConfig.workspace) ||
+    result.health.workspace;
   replaceActiveWorkspace(workspaceRoot);
   appState.filesByDirectory[result.health.workspace] = result.rootFiles;
   appState.expandedDirectories[result.health.workspace] = true;

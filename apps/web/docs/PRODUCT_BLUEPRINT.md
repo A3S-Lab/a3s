@@ -3,8 +3,8 @@
 ## Product definition
 
 A3S Code Web is a desktop task workspace for completing coding work with an
-agent. It is not a browser copy of the TUI, a generic chat client, or a complete
-browser IDE.
+agent and inspecting the durable memory formed from that work. It is not a
+browser copy of the TUI, a generic chat client, or a complete browser IDE.
 
 The product organizes one continuous loop:
 
@@ -30,9 +30,12 @@ events or leaving the task:
 
 ## Current product boundary
 
-The Activity Bar reserves the A3S super-app structure. A3S Code is the only
-available product in this release. Work and Science remain visible as
-coming-soon destinations and do not open placeholder products.
+The Activity Bar keeps Code first and Work second as built-in products, then
+loads additional workbench views from verified A3S Use package contributions.
+It does not reserve hardcoded Research or Finance placeholders. This document
+continues to define Code only. The owned Work route is governed by
+[WORK_OFFICE.md](WORK_OFFICE.md), while plugin trust and isolation are governed
+by [PLUGINS.md](PLUGINS.md).
 
 A3S Code owns:
 
@@ -47,6 +50,8 @@ A3S Code owns:
   configuration validation;
 - browser preview when a preview target is available;
 - workspace-wide Git review, staging, and commit;
+- a dedicated read-only Memory surface with full-store search and filters,
+  graph and timeline projections, retention signals, and memory/entity detail;
 - account, model, appearance, update, and help settings.
 
 Operational task activity belongs to the semantic execution stream. It does not
@@ -62,6 +67,9 @@ receive placeholder controls or unused API clients.
 | Artifact | A file, diff, preview, report, or verification result produced or referenced by a task |
 | Result Workspace | The task-scoped inspection state for artifacts |
 | Workspace | The served local project and its authoritative files and Git state |
+| Memory | One durable local knowledge or experience entry |
+| Memory entity | A source, provider, tool, file, tag, session, or other concept linked across memories |
+| Retention facet | The tier, score, forgetting signal, and lifecycle flags projected for one memory |
 | Verification | Evidence supporting a delivery claim |
 | Commit receipt | Authoritative record of a successful Git commit |
 
@@ -87,26 +95,35 @@ authored them. An Artifact may point to workspace truth without duplicating it.
    discard, stage, and commit controls state what happens next.
 8. **No command-language dependency.** Discoverable Web interactions are the
    primary path; slash commands are not required.
+9. **Memory truth before memory mutation.** Exploration is complete and
+   read-only until consolidation or forgetting has an explicit review,
+   consequence, and recovery contract.
 
 ## Information architecture
 
 ```text
 A3S Super App
-├── Work                                      coming soon
+├── Work                                      active; separate local-workspace contract
 ├── Code                                      available
-│   ├── Task Library
-│   └── Current Task
-│       ├── Conversation                      always primary
-│       │   ├── Turns
-│       │   ├── Execution and decisions
-│       │   ├── Delivery and artifact entries
-│       │   └── Composer and follow-up queue
-│       └── Result Workspace                  optional, task-scoped
-│           ├── Overview
-│           ├── Files
-│           ├── Browser
-│           └── Changes
-├── Science                                   coming soon
+│   ├── Tasks
+│   │   ├── Task Library
+│   │   └── Current Task
+│   │       ├── Conversation                  always primary
+│   │       │   ├── Turns
+│   │       │   ├── Execution and decisions
+│   │       │   ├── Delivery and artifact entries
+│   │       │   └── Composer and follow-up queue
+│   │       └── Result Workspace              optional, task-scoped
+│   │           ├── Overview
+│   │           ├── Files
+│   │           ├── Browser
+│   │           └── Changes
+│   └── Memory                                dedicated Code capability
+│       ├── Summary and filters
+│       ├── Knowledge graph / timeline
+│       └── Memory / entity inspector
+├── Installed plugin Activities               contribution-owned, sandboxed
+├── Plugin Marketplace                        TUF and plan-review owned
 └── Settings
 ```
 
@@ -114,6 +131,10 @@ The Result Workspace is a supporting plane, not a second product or a route
 that replaces the task. Search is a Files-mode capability. Git stage and commit
 are Changes-mode capabilities. Detailed execution activity stays with the turn
 that produced it.
+
+Memory is local durable knowledge exposed as a separate Code surface, not a
+fifth Result Workspace mode and not a task-side panel. Returning to Tasks
+restores the existing task, draft, Conversation, and Result Workspace state.
 
 ## Core journey
 
@@ -137,6 +158,13 @@ flowchart LR
     Verify --> Continue
     Commit --> Continue
     Continue --> Run
+```
+
+The secondary Memory journey is:
+
+```text
+Open Memory → understand retention → search or filter
+→ explore graph or timeline → inspect a memory or entity → return to Code
 ```
 
 ## Desktop layout
@@ -280,7 +308,8 @@ workspace, including its useful clean state.
 | 4 | Overview and Files | Understand delivery, inspect files, and make bounded corrections | `OverviewMode`, `FilesMode`, `WorkspaceNavigator`, `ArtifactViewport` |
 | 5 | Changes | Review authoritative Git changes and commit safely | `ChangesMode`, `ChangedFileList`, `DiffViewer`, `CommitDialog` |
 | 6 | Browser | Verify a runnable result in a managed preview | `BrowserMode`, `PreviewNavigator`, `BrowserViewport` |
-| 7 | Product hardening | Restore state and handle disconnects, conflicts, compact desktop, keyboard, and accessibility | recovery states across every owning component |
+| 7 | Memory | Explore complete local memory truth without mutating it | `MemoryPage`, `MemoryFiltersPanel`, `MemoryGraph`, `MemoryTimeline`, `MemoryInspector` |
+| 8 | Product hardening | Restore state and handle disconnects, conflicts, compact desktop, keyboard, and accessibility | recovery states across every owning component |
 
 This order defines product dependencies, not permission to render placeholders.
 A later module appears only when its full entry, useful state, recovery, and next
@@ -302,14 +331,20 @@ action are implemented.
 - A failed preview retains its target and gives one useful retry or diagnostic.
 - A failed Git mutation preserves selection, diff, staging context, and retry.
 - Editing a queued follow-up never replaces the Composer draft.
+- Opening or leaving Memory does not reset the selected task, draft, open
+  artifacts, filters, view mode, or valid inspector selection.
+- A failed Memory refresh retains the last successful snapshot and one inline
+  retry; an aborted initial load returns to a loadable idle state.
 - Service disconnects are explicit and never presented as successful progress.
 
 ## Deferred products and capabilities
 
-Work and Science require separate product discovery before
-implementation. Task branching, long-term memory, knowledge bases,
-plugin management, automation authoring, remote workspaces, team collaboration,
-and mobile layouts are outside the current Code boundary.
+Work has a separate product contract and implementation boundary. Research and
+Finance workbenches remain installable package capabilities rather than Code
+features. Task branching, memory mutation and manual consolidation,
+knowledge-base management, callable plugin UI APIs, automation authoring,
+remote workspaces, team collaboration, and mobile layouts are outside the
+current Code boundary.
 
 Any future capability must first identify:
 

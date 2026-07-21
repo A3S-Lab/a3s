@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This specification defines the component boundaries for the planned A3S Code
+This specification defines the component boundaries for the implemented A3S Code
 journey. It is an ownership and continuity contract, not a catalog of backend
 capabilities.
 
@@ -25,29 +25,37 @@ App
 ├── CodeBootScreen
 └── AppShell
     ├── ActivityBar
-    ├── TaskLibrary
     ├── ProductWorkspace
-│   ├── TasksPage
-│   │   ├── NewTaskPreparation
-│   │   │   ├── NewTaskWelcome
-│   │   │   ├── TaskStarters
-│   │   │   └── TaskComposer
-│   │   │       └── NewTaskWorkspaceControl
-│   │   └── ActiveTask
-│   │       ├── TaskHeader
-│   │       └── ActiveTaskLayout
-│   │           ├── Conversation
-│   │           │   ├── TaskRuntimeFloatingPanel
-│   │           │   ├── ExecutionStream
-│   │           │   ├── ArtifactEntries
-│   │           │   └── TaskComposer
-│   │           └── ResultWorkspace
-│   │               ├── ResultWorkspaceHeader
-│   │               │   └── ArtifactTabs
-│   │               ├── WorkspaceModeSwitcher
-│   │               └── ResultWorkspaceBody
-│   │                   ├── ModeNavigator
-│   │                   └── ArtifactViewport
+    │   ├── WorkProduct                      separate local-workspace contract
+    │   └── CodeProduct
+    │       ├── TasksSurface
+    │       │   ├── TaskLibrary
+    │       │   └── TasksPage
+    │       │       ├── NewTaskPreparation
+    │       │       │   ├── NewTaskWelcome
+    │       │       │   ├── TaskStarters
+    │       │       │   └── TaskComposer
+    │       │       │       └── NewTaskWorkspaceControl
+    │       │       └── ActiveTask
+    │       │           ├── TaskHeader
+    │       │           └── ActiveTaskLayout
+    │       │               ├── Conversation
+    │       │               │   ├── TaskRuntimeFloatingPanel
+    │       │               │   ├── ExecutionStream
+    │       │               │   ├── ArtifactEntries
+    │       │               │   └── TaskComposer
+    │       │               └── ResultWorkspace
+    │       │                   ├── ResultWorkspaceHeader
+    │       │                   │   └── ArtifactTabs
+    │       │                   ├── WorkspaceModeSwitcher
+    │       │                   └── ResultWorkspaceBody
+    │       │                       ├── ModeNavigator
+    │       │                       └── ArtifactViewport
+    │       └── MemoryPage
+    │           ├── MemoryFiltersPanel
+    │           ├── MemoryGraph / MemoryTimeline
+    │           ├── MemoryInspector
+    │           └── EvolutionWorkbench
     └── GlobalOverlays
         ├── SettingsDialog
         │   ├── AccountSettings
@@ -89,11 +97,15 @@ banner disappears. Unsaved client state remains available while disconnected.
 
 ### `ActivityBar`
 
-**Role:** switch top-level A3S products and open Settings.
+**Role:** open built-in Code and Work, verified plugin workbench views, Memory,
+Marketplace, and Settings.
 
-**Current behavior:** Code is available. Work and Science announce
-coming soon and do not navigate to empty product shells. The bottom contains
-only Settings. Each icon exposes one Chinese-name tooltip without an A3S prefix.
+**Current behavior:** Code is always first and is the default; built-in Work is
+second. Enabled A3S Use `activity_bar` contributions follow in manifest order,
+with unsupported icon names using a neutral plugin glyph. Memory, Marketplace,
+and Settings share the pinned bottom system section. Research and Finance are
+not hardcoded, and unknown or removed plugin hashes normalize to Code after the
+catalog loads. Each icon exposes one concise tooltip.
 
 **Does not own:** tasks, artifacts, result modes, or feature commands.
 
@@ -131,8 +143,9 @@ preparation Composer.
 actions.
 
 **Contract:** commands are filtered by current validity. It does not expose
-hidden slash commands or future modes. Arrow keys, Enter, and Escape manage
-selection and restore focus.
+hidden slash commands or future modes. Tasks, Memory, and Settings navigation
+use the same owned routes as the Activity Bar. Arrow keys, Enter, and Escape
+manage selection and restore focus.
 
 ## Task-surface components
 
@@ -205,7 +218,8 @@ entries.
 
 - assistant Markdown uses Streamdown streaming mode while pending and static
   mode after completion, with Chinese control text, light/dark Shiki themes,
-  line-numbered code blocks, normalized embedded-HTML indentation, and
+  line-numbered code blocks, bounded scrolling, normalized embedded-HTML
+  indentation, and
   document typography for headings, paragraphs, nested lists, task lists,
   quotations, tables, links, images, footnotes, and inline code;
 - `InstructionMessage` removes transport wrappers while retaining selected
@@ -246,17 +260,16 @@ calls remain open. Full output stays available in a scrollable disclosure and
 is never permanently sliced. File-editing calls hand off to the Monaco review
 surface, with raw tool output remaining available as a secondary disclosure.
 Running output follows its own bottom only until the reader scrolls away.
-Shell calls expose the exact command, syntax-highlighted program, flags,
-strings, paths, operators, redirections, and variables, plus the working
-directory when supplied. Detection accepts both plain and provider-qualified
-tool names such as `bash`, `shell_command`, and
-`functions.shell_command`. Other tools use a compact highlighted
-`tool(key=value)` presentation with the highest-signal arguments first.
-Preparing and running calls publish a live state; output reports its line count,
-offers copying, and follows the tail until the reader scrolls away. A collapsed
-completed call retains the final two output lines with explicit omission and
-truncation labels instead of hiding all execution evidence.
-
+Shell calls expose an exact, copyable command with semantic program, flag,
+string, path, variable, keyword, operator, redirection, number, and comment
+tokens plus the working directory when supplied. Detection accepts plain and
+provider-qualified names such as `bash`, `shell_command`, and
+`functions.shell_command`. Other tools use the same grammar for a compact
+highlighted `tool(key=value)` signature with the highest-signal arguments
+first. Preparing and running calls publish live state; output reports its line
+count, offers copying, and follows the tail until the reader scrolls away. A
+collapsed completed call retains the final two output lines with explicit
+omission and truncation labels instead of hiding all execution evidence.
 Output copy, permission outcomes, and safe recovery belong to the same tool
 block. A global recovery card is omitted only when its normalized error message
 explicitly repeats failed-tool output or typed error evidence, or is the exact
@@ -269,7 +282,10 @@ exist, all attention states and the four most recent successes remain visible;
 one inline disclosure reveals the earlier successful history without changing
 chronological order. Every tool, argument, and raw-output disclosure uses a
 native button with `aria-expanded`; no complex `summary` element is used as an
-implicit control.
+implicit control. A denied or timed-out decision remains the semantic terminal
+state when the runtime subsequently emits a synthetic `tool_end` with a
+non-zero exit code; output, metadata, duration, and exit status are still
+absorbed without relabeling the operation as an execution failure.
 
 ### `ExecutionDetails`
 
@@ -713,9 +729,10 @@ known binary extensions directly and content-sample unfamiliar extensions.
 **Role:** keep file and diff documents in one ordered, horizontally scrollable
 tab model.
 
-**Actions:** activate, close, middle-click close, keyboard traversal, expose
-per-file loading and dirty state, and open a tab context menu by pointer or
-`Shift+F10`.
+**Actions:** activate, close, middle-click close, keyboard traversal, and expose
+per-file loading and dirty state. Pointer right-click, the Context Menu key, or
+`Shift+F10` opens a Chinese menu for close, close others, close right, close
+all, copy path, and copy relative path.
 
 **Contract:** opening another file never discards a draft. A dirty close offers
 Save and Close, Don't Save, and Cancel. `Cmd/Ctrl+W` follows the same guard.
@@ -731,10 +748,11 @@ still-connected control elsewhere keeps focus. Any active-tab change that
 disconnects its invoking control falls back to the newly active tab.
 The viewport-bounded Chinese context menu closes the selected tab, all other
 tabs, tabs to its right, or all tabs, and copies either the absolute or
-workspace-relative path. Multi-tab close processes dirty documents in tab
-order through the existing Save/Don't Save/Cancel guard. Cancelling stops the
-remaining close queue, and a workspace-generation change invalidates it so an
-old task cannot close tabs in the newly selected workspace.
+workspace-relative path. It supports keyboard navigation and Escape, and
+restores focus to the invoking tab after dismissal. Multi-tab close processes
+dirty documents in tab order through the existing Save/Don't Save/Cancel guard.
+Cancelling stops the remaining close queue, and a workspace-generation change
+invalidates it so an old task cannot close tabs in the newly selected workspace.
 
 ### `MonacoFileEditor`
 
@@ -746,8 +764,9 @@ model view state, saved-document diagnostics, and semantic navigation.
 references, implementations, and file outline. Monaco shortcuts and its editor
 context menu invoke the same navigation boundary.
 
-**Contract:** Monaco and its language workers are bundled locally and loaded on
-demand. The Simplified Chinese NLS catalog loads before any editor module, so
+**Contract:** Monaco, its Simplified Chinese NLS catalog, and its language
+workers are bundled locally and loaded on demand. The NLS catalog loads before
+any editor module, so
 Monaco's native context menu, command palette, and built-in editing actions
 match the Chinese A3S navigation commands. The shared editor/diff runtime keeps
 Monaco's complete standalone contribution surface, four worker-backed
@@ -939,6 +958,92 @@ affected path or scope, disables duplicate submission, and preserves context on
 failure. Explorer mutations instead stay in the affected tree location after a
 context-menu choice.
 
+## Memory surface
+
+### `MemoryPage`
+
+**Role:** compose the complete read-only Memory journey at `#code/memory`.
+
+**Contract:** initial entry loads once, refresh is explicit, and a stale
+snapshot remains usable when refresh fails. Loading, empty, no-results, initial
+error, stale, and compact states do not overlap. Returning to Tasks preserves
+task state; returning to Memory preserves filters, view, and any selection that
+still exists after refresh.
+
+**Visual contract:** use the same compact shell hierarchy, shared button
+primitives, 230 px explorer / 300 px inspector workspace proportions, border-led
+panels, typography scale, and design tokens as the Code and Work surfaces. The
+default workspace has only explorer and visualization columns; the inspector is
+added after a selection. At compact widths it becomes a dismissible overlay
+instead of squeezing the graph.
+
+### `MemoryFiltersPanel`
+
+**Role:** search and combine time, type, source, tier, forgetting-signal, and
+lifecycle constraints.
+
+**Contract:** search includes entry content, tags, metadata, sources, entity
+names, and aliases. Search, time, and memory type stay visible; retention,
+system suggestion, processing state, and source live behind a More filters
+disclosure that reports active hidden filters. Counts and reset state remain
+truthful, and zero results lead to one clear-all action without discarding the
+loaded store. User-facing labels never expose source, lifecycle, relation, or
+system-tag enum values.
+
+### `MemoryGraph`
+
+**Role:** project memory events, knowledge entities, and semantic relations as
+an explorable, lazy-loaded 3D graph.
+
+**Contract:** focused mode caps the upstream event/entity projection and reports
+totals from the complete filtered graph. Panorama starts from the complete
+filtered topology, then retains a connected, selection-aware render sample of
+at most 600 nodes and 4,000 relations. The scene follows light/dark theme,
+resizes with its container, pauses on unmount, auto-frames once, and supports
+rotation, pan, zoom, node focus, neighbourhood highlighting, and background
+clear. A DOM node browser owns keyboard and screen-reader selection because the
+WebGL canvas has no semantic nodes.
+
+### `MemoryTimeline`
+
+**Role:** present the same filtered entries chronologically with type,
+retention, lifecycle, tags, source, and importance context.
+
+**Contract:** render the newest 60 entries first and reveal additional batches
+on demand. Similar title and preview text is not repeated.
+
+**Continuity:** switching between graph and timeline keeps the current filters
+and memory selection; a selected entry expands the visible batch when needed.
+
+### `MemoryInspector`
+
+**Role:** inspect either one memory or one entity without exposing internal
+scoring as primary product content.
+
+**Contract:** memory detail prioritizes content, any service-provided
+plain-language explanation of why the item was retained, source and use
+activity, tags, and linked entities. It can copy memory content. Scores, raw
+metadata, paths, and internal identity are not rendered. Entity detail
+prioritizes aliases, mentions, recent appearance, and linked memories.
+Cross-links update the same inspector. No control mutates or deletes a stored
+memory.
+
+### `EvolutionWorkbench`
+
+**Role:** let a user review what A3S proposes to reuse as a preference, working
+method, or project fact.
+
+**Contract:** candidates are service-authoritative LLM output. The browser shows
+only ready candidates and saved candidates with updates until the user chooses
+View all. Save and update are direct reviewed actions; ignore, return to the
+unmaterialized baseline, and version restore require confirmation. Baseline
+rollback removes the active asset while keeping immutable versions and a
+recovery copy. Reconsider is reversible. Evidence is visible in plain language,
+while versions and audit history are collapsed. Internal paths and identifiers
+are not rendered. The client never derives candidate kind or recommendation
+state from keywords. Automatic local materialization and runtime activation
+remain service-owned; the browser never publishes a learned asset.
+
 ## Settings and help
 
 ### `SettingsDialog`
@@ -957,6 +1062,12 @@ actionable. Opening stores the invoking focus and underlying route. Close or
 Escape restores both. Focus is trapped while open. Update installation disables
 every in-app dismissal path, including shell shortcuts.
 
+`AccountSettings` composes `A3sOsAccount` and `LocalModelAccounts`. The local
+account rows recognize only qualified Claude Code, Codex, and WorkBuddy catalog
+sources, show the available model count without exposing credentials, and keep
+refresh loading, success, and failure inside the section. A failed refresh
+retains the previously usable catalog.
+
 ### Configuration category views
 
 `ModelSettings`, `AgentSettingsView`, `ContextSettingsView`, and
@@ -966,8 +1077,18 @@ Saving replaces the baseline only after the CLI returns the parsed
 authoritative configuration; failure retains the draft for retry.
 
 The Integrations view composes `SearchSettingsEditor`,
-`DocumentParserSettingsEditor`, and `McpSettingsEditor`. MCP servers and
-Providers use independently collapsible editors and inline add/remove actions.
+`DocumentParserSettingsEditor`, `OomolConnectorSettings`, and
+`McpSettingsEditor`. `OomolConnectorSettings` projects one standard
+`streamable-http` MCP server named `oomol-connector`: hosted mode fixes the official
+OOMOL endpoint and stores a raw API-key authorization header, while self-hosted
+mode accepts the runtime endpoint and stores a Bearer runtime token. It keeps
+masked secrets opaque across reads and clears them when a deployment switch
+changes the required authorization scheme. The managed OOMOL entry is excluded
+from the generic MCP list so a newly entered key cannot be duplicated into a
+plain header field. A same-name legacy entry using another transport stays in
+the generic editor until the user renames or removes it, and invalid self-hosted
+endpoint URLs cannot be saved. Other MCP servers and Providers use
+independently collapsible editors and inline add/remove actions.
 Advanced queue, model metadata, OCR, cache, transport, and OAuth fields stay in
 disclosures rather than competing with common settings.
 
@@ -1023,6 +1144,9 @@ mounted underneath while this tab is selected.
 | Preview behavior | `BrowserMode` | retry, report problem, or continue |
 | Review changes | `ChangesMode` | correct, stage, or commit |
 | Commit | `CommitDialog` | receipt and same Conversation |
+| Explore memory | `MemoryPage` | filter, choose a view, or return to Tasks |
+| Inspect memory knowledge | `MemoryGraph` / `MemoryTimeline` | `MemoryInspector` |
+| Follow a memory relation | `MemoryInspector` | linked memory or entity |
 
 If a proposed component cannot be placed in this table with both a previous and
 next step, it is not ready for implementation.

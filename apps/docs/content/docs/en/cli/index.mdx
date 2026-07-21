@@ -18,10 +18,10 @@ The current crate version is `a3s` `0.9.1`. Its repository metadata points to
 | --- | --- |
 | `a3s code` | Launches the interactive coding-agent TUI backed by `a3s-code-core` and rendered with `a3s-tui`. |
 | `a3s code resume <id>` | Resumes a saved TUI session from the current workspace. |
-| `a3s web` | Runs the local A3S Code Web application and API. |
-| `a3s box ...`, `a3s bench ...`, `a3s search ...` | Run registered product components through the typed catalog. |
+| `a3s web` / `a3s web -d` | Starts local A3S Web in the foreground or background, reuses a healthy repeat start, and only replaces a managed instance with `--replace`. |
+| `a3s box ...`, `a3s bench ...`, `a3s search ...` | Run registered product components through the typed catalog; Box can bootstrap on first supported use. |
 | `a3s use ...` | Routes Browser, Office, and installed external Use domains. |
-| `a3s list` | Lists registered component state and separately discovered external tools. |
+| `a3s list` | Reports registered state, ownership, delegated Use capabilities, and separately discovered external tools without network access by default. |
 | `a3s install`, `a3s upgrade`, `a3s uninstall` | Apply ownership-safe lifecycle operations to registered A3S components. |
 | `a3s top` | Opens the live process/container/agent monitor. |
 | `a3s self update` | Updates the umbrella executable through Homebrew or a verified standalone release asset. |
@@ -51,8 +51,8 @@ cargo install --git https://github.com/A3S-Lab/Cli
 
 The terminal agent is not a separate hosted service. It is an application that
 embeds A3S Code, streams `AgentEvent` updates, and adds terminal controls for
-models, config, git, memory, files, plugins, updates, dynamic workflows, OS
-Runtime, and A3S OS views.
+models, config, git, memory, files, plugins, updates, dynamic workflows, local
+runtime tools, and trusted runtime views.
 
 It can use normal ACL model configuration and, where the host has opted in,
 account-backed model tabs. The CLI keeps host tools inside the A3S Code adapter

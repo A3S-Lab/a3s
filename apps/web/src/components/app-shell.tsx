@@ -8,17 +8,38 @@ import { TasksPage } from '../features/tasks/pages/tasks-page';
 import { SettingsDialog } from '../features/settings/components/settings-dialog';
 import { RefreshCw, WifiOff } from 'lucide-react';
 import { Button } from '../design-system/primitives';
+import { MemoryPage } from '../features/memory/pages/memory-page';
+import { WorkProduct } from '../features/work/pages/work-product';
+import type { PluginActions } from '../features/plugins/use-plugin-controller';
+import { PluginHostPage } from '../features/plugins/pages/plugin-host-page';
+import { PluginMarketplacePage } from '../features/plugins/pages/plugin-marketplace-page';
 import { WorkspaceQuickOpen } from '../features/workspace/components/workspace-quick-open';
 
-export function AppShell({ actions }: { actions: CodeActions }) {
+export function AppShell({ actions, pluginActions }: { actions: CodeActions; pluginActions?: PluginActions }) {
   const state = useSnapshot(appState);
 
   return (
     <main className='app-shell'>
       <ActivityBar />
-      {state.sidebarOpen && <TaskLibrary actions={actions} />}
+      {state.activeProduct === 'code' && state.codeSurface === 'tasks' && state.sidebarOpen && (
+        <TaskLibrary actions={actions} />
+      )}
       <section className='product-workspace'>
-        <TasksPage actions={actions} />
+        {state.activeProduct === 'plugin' ? (
+          pluginActions ? (
+            <PluginHostPage actions={pluginActions} />
+          ) : null
+        ) : state.activeProduct === 'plugins' ? (
+          pluginActions ? (
+            <PluginMarketplacePage actions={pluginActions} />
+          ) : null
+        ) : state.activeProduct === 'work' ? (
+          <WorkProduct actions={actions} />
+        ) : state.codeSurface === 'memory' ? (
+          <MemoryPage actions={actions} />
+        ) : (
+          <TasksPage actions={actions} />
+        )}
       </section>
       {state.settingsOpen && <SettingsDialog actions={actions} />}
       {state.serviceStatus !== 'connected' && (
@@ -42,8 +63,8 @@ export function AppShell({ actions }: { actions: CodeActions }) {
           </Button>
         </output>
       )}
-      {state.commandPaletteOpen && <CommandPalette actions={actions} />}
-      {state.fileQuickOpenOpen && <WorkspaceQuickOpen actions={actions} />}
+      {state.activeProduct === 'code' && state.commandPaletteOpen && <CommandPalette actions={actions} />}
+      {state.activeProduct === 'code' && state.fileQuickOpenOpen && <WorkspaceQuickOpen actions={actions} />}
     </main>
   );
 }

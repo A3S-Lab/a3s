@@ -11,7 +11,7 @@ A3S Code 会持久化三种相关但不同的对象：
 
 | 对象 | 写入方 | 恢复入口 | 用途 |
 | --- | --- | --- | --- |
-| Session snapshot | `session.save()` 或 `autoSave` | `agent.resumeSession(id, options)` | 恢复对话，以及 artifact、trace、run record、verification report、subagent task snapshot 等运行证据。 |
+| `SessionSnapshotV1` | `session.save()` 或 `autoSave` | `agent.resumeSession(id, options)` | 恢复一个带版本的完整 generation，其中包含对话、artifact、trace、run record、verification report 与 subagent task snapshot。 |
 | Loop checkpoint | run 执行中的 agent loop | `session.resumeRun(runId)` | 从上一个完成的 tool-round 边界继续一次被中断的 run。进程内正常完成的 run 会删除这个 checkpoint。 |
 | Workflow checkpoint | `parallelResumable` / workflow phase | `parallelResumable(specs, workflowId)` | 进程重启后跳过已经完成的编排 step。 |
 
@@ -30,6 +30,32 @@ await session.send('检查发布就绪情况');
 await session.save();
 ```
 
+## 原子 Snapshot Generation
+
+`session.save()` 会把当前持久化状态收集成一个 `SessionSnapshotV1`，并且只调用一次
+`SessionStore::save_snapshot`。Envelope 包含：
+
+- `schema_version` 与 `SessionData`
+- tool artifact
+- trace event 与 run record
+- verification report
+- delegated subagent task snapshot
+
+File store 会把完整 JSON envelope 写入并同步临时文件，然后 atomic replace
+`<session-id>.json`。因此 reader 看到的是上一代或下一代，不会读到“新 conversation
+搭配旧 run/trace fragment”的组合。Memory store 在同一把锁下发布同一个 aggregate。
+两者都报告 `SessionStoreCapabilities { atomic_session_snapshots: true }`。
+
+历史文件仍可读取。Bare `SessionData` 会在 load 时与旧 artifact/trace/run/
+verification/subagent fragment location 合并，再通过 v1 内存形状恢复。新 aggregate
+保存后，单个 envelope 成为 authoritative generation。已经具有 aggregate 外形、但
+schema 损坏或版本不支持的文档会直接被拒绝，不会重新解释成 legacy data。
+
+自定义 store 必须显式实现 `save_snapshot`。默认实现返回错误，不会把 aggregate
+拆成多次独立 write，也不会把 no-op 当成成功。默认 `load_snapshot` 只用于
+best-effort legacy assembly；宿主可以通过 `capabilities()` 区分这种行为与 atomic
+backend。
+
 ## Resume
 
 ```ts
@@ -40,7 +66,8 @@ const resumed = agent.resumeSession('release-review', {
 
 `resumeSession` 恢复的是已保存的 session snapshot。它不同于
 `resumeRun`：用户继续一个已保存对话时用 `resumeSession`；只有存在中断 run 的
-checkpoint 时，才用 `resumeRun(runId)`。
+checkpoint 时，才用 `resumeRun(runId)`。Resume 会在恢复任何 history 或 runtime
+evidence 前先校验 snapshot schema。
 
 ## Memory And Sessions
 

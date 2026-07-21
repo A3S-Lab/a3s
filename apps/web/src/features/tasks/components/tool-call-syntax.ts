@@ -1,4 +1,4 @@
-import type { ToolCallProjection } from './tool-call-projection';
+import { canonicalToolName, type ToolCallProjection } from './tool-call-projection';
 
 export type ToolSyntaxRole =
   | 'plain'
@@ -89,15 +89,17 @@ const argumentPriority = [
 ];
 
 export function toolInvocationPresentation(source: InvocationSource): ToolInvocationPresentation | null {
-  const name = source.name.trim() || 'tool';
-  const normalizedName = name.toLowerCase();
-  const unqualifiedName = normalizedName.split(/[.:/]/).at(-1) ?? normalizedName;
-  if (shellToolNames.has(unqualifiedName)) {
+  const rawName = source.name.trim() || 'tool';
+  const name = displayToolName(rawName);
+  const canonicalName = canonicalToolName(rawName);
+  if (shellToolNames.has(canonicalName)) {
     const rawCommand =
-      stringArgument(source.args, ['command', 'cmd']) ?? extractPartialJsonString(source.inputText, 'command');
+      stringArgument(source.args, ['command', 'cmd']) ??
+      extractPartialJsonString(source.inputText, 'command') ??
+      extractPartialJsonString(source.inputText, 'cmd');
     if (!rawCommand?.trim()) return null;
     const command =
-      unqualifiedName === 'git' && !rawCommand.trimStart().startsWith('git ') ? `git ${rawCommand}` : rawCommand;
+      canonicalName === 'git' && !rawCommand.trimStart().startsWith('git ') ? `git ${rawCommand}` : rawCommand;
     return {
       kind: 'shell',
       text: command,
@@ -206,6 +208,62 @@ export function shellSyntaxTokens(command: string): ToolSyntaxToken[] {
   return spans;
 }
 
+export function toolJsonSyntaxTokens(value: string): ToolSyntaxToken[] {
+  const tokens: ToolSyntaxToken[] = [];
+  let cursor = 0;
+
+  while (cursor < value.length) {
+    const start = cursor;
+    const character = nextCharacter(value, cursor);
+    if (/\s/u.test(character)) {
+      cursor += character.length;
+      while (cursor < value.length && /\s/u.test(nextCharacter(value, cursor))) {
+        cursor += nextCharacter(value, cursor).length;
+      }
+      tokens.push({ text: value.slice(start, cursor), role: 'plain' });
+      continue;
+    }
+    if (character === '"') {
+      cursor = quotedTokenEnd(value, cursor, '"');
+      let lookahead = cursor;
+      while (lookahead < value.length && /\s/u.test(nextCharacter(value, lookahead))) {
+        lookahead += nextCharacter(value, lookahead).length;
+      }
+      tokens.push({
+        text: value.slice(start, cursor),
+        role: nextCharacter(value, lookahead) === ':' ? 'key' : 'string',
+      });
+      continue;
+    }
+    const number = /^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/u.exec(value.slice(cursor))?.[0];
+    if (number) {
+      cursor += number.length;
+      tokens.push({ text: number, role: 'number' });
+      continue;
+    }
+    const keyword = /^(?:true|false|null)\b/u.exec(value.slice(cursor))?.[0];
+    if (keyword) {
+      cursor += keyword.length;
+      tokens.push({ text: keyword, role: 'keyword' });
+      continue;
+    }
+    if ('{}[],:'.includes(character)) {
+      cursor += character.length;
+      tokens.push({ text: character, role: 'operator' });
+      continue;
+    }
+    cursor += character.length;
+    while (cursor < value.length) {
+      const next = nextCharacter(value, cursor);
+      if (/\s/u.test(next) || next === '"' || '{}[],:'.includes(next)) break;
+      cursor += next.length;
+    }
+    tokens.push({ text: value.slice(start, cursor), role: 'argument' });
+  }
+
+  return tokens;
+}
+
 export function toolOutputExcerpt(output: string, maxLines = 2, maxCharacters = 320): ToolOutputExcerpt {
   const allLines = output.replace(/\r\n?/g, '\n').split('\n');
   while (allLines.at(-1) === '') allLines.pop();
@@ -231,6 +289,15 @@ export function toolOutputExcerpt(output: string, maxLines = 2, maxCharacters = 
     omittedLines,
     truncated,
   };
+}
+
+function displayToolName(name: string): string {
+  const normalized = name.trim();
+  if (normalized.toLowerCase().startsWith('mcp__')) {
+    const [server, ...tool] = normalized.slice(5).split('__');
+    if (server && tool.length) return `${server}.${tool.join('__')}`;
+  }
+  return normalized.split(/[.:/]/).at(-1) || normalized;
 }
 
 function shellTokens(command: string): ShellToken[] {

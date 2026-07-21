@@ -191,6 +191,47 @@ state visible. In-progress mutations block close and duplicate submission.
 **Acceptance outcome:** review, correction, commit, and continued agent work
 feel like one continuous task rather than separate applications.
 
+## Journey 6: Explore durable memory
+
+**Intent:** understand what A3S has retained and review what it proposes to
+reuse, without exposing implementation detail as the main experience.
+
+1. The user opens Memory from the Activity Bar or command palette. The current
+   task and Result Workspace state remain mounted conceptually and are restored
+   when the user returns.
+2. Memory loads all entry pages and one complete graph topology. The page shows
+   the memories directly with one truthful filtered/total count; internal scores
+   and identifiers do not occupy the default layout.
+3. The user searches content, tags, metadata, sources, or entity names and may
+   combine time, type, source, retention, forgetting, and lifecycle filters.
+4. Graph opens in focused 3D mode with an accurate rendered/total count. The
+   user may rotate, pan, zoom, reset, switch to a connected whole-store
+   panorama, and select nodes by pointer or through the keyboard-accessible DOM
+   browser.
+5. Timeline presents the same filtered memories chronologically without losing
+   the current query or selection.
+6. Selecting a memory explains its content, any available retention reason,
+   source, recent use, and linked content. Scores, raw metadata, paths, and
+   internal identifiers are not shown. Cross-links continue in the same
+   inspector.
+7. In Learning, the user initially sees only items that need confirmation or
+   have updates. They can review evidence, save or ignore the item, request the
+   full catalog, return a saved item to its unmaterialized baseline, and restore
+   any preserved version when needed. Automatically matured local assets appear
+   in the same auditable history and are never published automatically.
+8. The user returns to Tasks or opens Memory settings. No exploration or
+   learning-review action deletes or rewrites a source memory.
+
+**Recovery:** an initial failure offers retry; an empty store explains how the
+first memory appears; zero filtered results preserve the filters with one reset
+action; refresh failure retains the last successful snapshot; disconnect
+remains explicit at shell level.
+
+**Acceptance outcome:** every indexed entry can participate in search,
+filtering, timeline, and whole-store graph projection. WebGL work remains
+bounded, complete totals stay visible, the default graph remains readable, and
+the surface stays non-destructive.
+
 ## Journey-level quality gates
 
 All journeys are tested at 1440 px and compact desktop around 1024 px for:

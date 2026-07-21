@@ -39,6 +39,7 @@ describe('WorkspaceExplorer', () => {
     expect(screen.getByRole('menu', { name: 'app.ts 操作' })).toBeInTheDocument();
     const renameItem = screen.getByRole('menuitem', { name: '重命名' });
     expect(renameItem).toHaveTextContent('F2');
+    expect(renameItem).toHaveAttribute('aria-keyshortcuts', 'F2');
     fireEvent.click(renameItem);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     const input = screen.getByRole('textbox', { name: '文件或文件夹名称' });

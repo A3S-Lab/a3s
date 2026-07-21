@@ -1,0 +1,241 @@
+import { FolderOpen, MessageSquarePlus, Sparkles, WandSparkles, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useSnapshot } from 'valtio';
+import type { CodeActions } from '../../code/use-code-controller';
+import { ExecutionStream } from '../../tasks/components/execution-stream';
+import { TaskComposer } from '../../tasks/components/task-composer';
+import { appState, formatApiError, sessionTitle, showToast } from '../../../state/app-state';
+import {
+  type WorkAgentProposalMessage,
+  type WorkAgentProposalRequest,
+  workAgentProposalStatus,
+} from '../work-agent-proposal';
+import { bindWorkAgentWorkspace, type WorkAgentRequest } from '../work-agent-request';
+import { localPathBasename, relativeLocalPath, sameLocalPath } from '../work-local-files';
+import { WorkAgentProposalReview } from './work-agent-proposal-review';
+
+const widthStorageKey = 'a3s-work.ai-assistant-width';
+const legacyWidthStorageKey = 'a3s-work.copilot-width';
+const defaultWidth = 420;
+const minimumWidth = 360;
+
+export function WorkCopilot({
+  actions,
+  workspaceRoot,
+  currentPath,
+  onClose,
+  onPickRoot,
+  onAgentRequest,
+  proposal,
+  onDismissProposal,
+}: {
+  actions: CodeActions;
+  workspaceRoot: string;
+  currentPath: string;
+  onClose: () => void;
+  onPickRoot: () => void | Promise<void>;
+  onAgentRequest: (request: WorkAgentRequest) => void | Promise<void>;
+  proposal?: WorkAgentProposalRequest | null;
+  onDismissProposal?: () => void;
+}) {
+  const state = useSnapshot(appState);
+  const [width, setWidth] = useState(readCopilotWidth);
+  const actionsRef = useRef(actions);
+  actionsRef.current = actions;
+
+  useEffect(() => {
+    if (!workspaceRoot) return;
+    void bindWorkAgentWorkspace(actionsRef.current, workspaceRoot).catch((error) => {
+      showToast(formatApiError(error), 'error');
+    });
+  }, [workspaceRoot]);
+
+  const activeSession = state.sessions.find((session) => session.sessionId === state.activeSessionId);
+  const compatibleSession =
+    activeSession?.agentId === 'work' && sameLocalPath(activeSession.workspace, workspaceRoot)
+      ? activeSession
+      : undefined;
+  const messages = compatibleSession ? (state.messagesBySession[compatibleSession.sessionId] ?? []) : [];
+  const proposalStatus = proposal
+    ? workAgentProposalStatus(messages as unknown as readonly WorkAgentProposalMessage[], proposal)
+    : null;
+  const showExecution =
+    Boolean(compatibleSession) &&
+    (messages.length > 0 ||
+      Boolean(state.messagesLoading[compatibleSession!.sessionId]) ||
+      Boolean(state.messageErrors[compatibleSession!.sessionId]));
+  const folderLabel = currentPath
+    ? relativeLocalPath(currentPath, workspaceRoot) || localPathBasename(workspaceRoot)
+    : localPathBasename(workspaceRoot);
+
+  const updateWidth = (nextWidth: number) => {
+    const maximum = Math.max(minimumWidth, Math.min(680, window.innerWidth * 0.58));
+    const normalized = Math.round(Math.max(minimumWidth, Math.min(maximum, nextWidth)));
+    setWidth(normalized);
+    persistCopilotWidth(normalized);
+  };
+
+  return (
+    <aside className='work-copilot' aria-label='Work AI 助手' style={{ width }}>
+      <hr
+        className='work-copilot-resizer'
+        tabIndex={0}
+        aria-label='调整 Work AI 助手宽度'
+        aria-orientation='vertical'
+        aria-valuemin={minimumWidth}
+        aria-valuemax={680}
+        aria-valuenow={width}
+        onPointerDown={(event) => {
+          event.preventDefault();
+          const onMove = (moveEvent: PointerEvent) => updateWidth(window.innerWidth - moveEvent.clientX);
+          const onUp = () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            document.body.classList.remove('resizing-work-copilot');
+          };
+          document.body.classList.add('resizing-work-copilot');
+          window.addEventListener('pointermove', onMove);
+          window.addEventListener('pointerup', onUp, { once: true });
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            updateWidth(width + 20);
+          } else if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            updateWidth(width - 20);
+          }
+        }}
+      />
+      <header className='work-copilot-header'>
+        <span className='work-copilot-mark'>
+          <Sparkles size={15} />
+        </span>
+        <div>
+          <strong>AI 助手</strong>
+          <small title={compatibleSession?.workspace || currentPath}>
+            {compatibleSession ? sessionTitle(compatibleSession, state.sessionTitles) : folderLabel || '等待工作区'}
+          </small>
+        </div>
+        <button
+          type='button'
+          aria-label='新建 Work AI 助手对话'
+          disabled={!workspaceRoot}
+          onClick={() => {
+            actions.newConversation();
+            void bindWorkAgentWorkspace(actions, workspaceRoot).catch((error) =>
+              showToast(formatApiError(error), 'error')
+            );
+          }}
+        >
+          <MessageSquarePlus size={15} />
+        </button>
+        <button type='button' aria-label='关闭 Work AI 助手' onClick={onClose}>
+          <X size={16} />
+        </button>
+      </header>
+      {!workspaceRoot ? (
+        <section className='work-copilot-no-workspace'>
+          <span>
+            <FolderOpen size={22} />
+          </span>
+          <strong>先连接一个本地文件夹</strong>
+          <p>AI 助手会以这个文件夹作为独立工作区，并只在你发送指令后开始工作。</p>
+          <button type='button' onClick={() => void onPickRoot()}>
+            选择文件夹
+          </button>
+        </section>
+      ) : (
+        <div className='work-copilot-thread'>
+          {proposal && proposalStatus && (
+            <WorkAgentProposalReview
+              request={proposal}
+              status={proposalStatus}
+              onDismiss={() => onDismissProposal?.()}
+            />
+          )}
+          {showExecution ? (
+            <ExecutionStream actions={actions} assistantLabel='AI 助手' />
+          ) : (
+            <WorkCopilotWelcome
+              folderLabel={folderLabel}
+              onRequest={(instruction) =>
+                onAgentRequest({
+                  workspaceRoot,
+                  paths: currentPath ? [currentPath] : [],
+                  instruction,
+                })
+              }
+            />
+          )}
+          <TaskComposer actions={actions} variant={compatibleSession ? 'active' : 'preparation'} />
+        </div>
+      )}
+    </aside>
+  );
+}
+
+function WorkCopilotWelcome({
+  folderLabel,
+  onRequest,
+}: {
+  folderLabel: string;
+  onRequest: (instruction: string) => void | Promise<void>;
+}) {
+  return (
+    <section className='work-copilot-welcome'>
+      <span>
+        <WandSparkles size={20} />
+      </span>
+      <h2>和当前文件一起工作</h2>
+      <p>
+        已连接 <strong>{folderLabel}</strong>。从文件右键菜单加入上下文，或先选择一个常用任务。
+      </p>
+      <div>
+        <button
+          type='button'
+          onClick={() =>
+            void onRequest('请概览当前文件夹的内容，说明主要文件、用途和最近值得关注的变化。不要修改文件。')
+          }
+        >
+          概览当前文件夹
+        </button>
+        <button
+          type='button'
+          onClick={() =>
+            void onRequest(
+              '请分析当前文件夹的组织方式，提出更清晰的归档和命名建议。先只给出方案，不要移动、重命名或删除文件。'
+            )
+          }
+        >
+          提出整理建议
+        </button>
+        <button
+          type='button'
+          onClick={() =>
+            void onRequest('请找出当前文件夹中可能重复、过期或命名含糊的文件，并说明判断依据。不要修改文件。')
+          }
+        >
+          查找重复与过期内容
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function readCopilotWidth(): number {
+  try {
+    const value = Number(localStorage.getItem(widthStorageKey) ?? localStorage.getItem(legacyWidthStorageKey));
+    return Number.isFinite(value) && value >= minimumWidth ? value : defaultWidth;
+  } catch {
+    return defaultWidth;
+  }
+}
+
+function persistCopilotWidth(width: number): void {
+  try {
+    localStorage.setItem(widthStorageKey, String(width));
+  } catch {
+    // Resizing remains available for the current page when storage is unavailable.
+  }
+}

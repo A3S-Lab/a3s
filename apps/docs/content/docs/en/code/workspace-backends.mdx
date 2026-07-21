@@ -25,7 +25,7 @@ browser or container workspaces, object-storage workspaces, or managed sessions.
 | `S3WorkspaceBackend` + `remoteGit` | S3 file tools | Optional degraded S3 search | `git` through remote git, no `bash` |
 
 Object storage cannot service local processes. Do not promise shell execution on
-an S3 workspace unless the host provides a separate sandbox through AHP, MCP, or
+an S3 workspace unless the host provides a separate sandbox through MCP or
 A3S Box.
 
 ## Local Backend
@@ -229,5 +229,5 @@ from the host environment or secret manager.
 - Use `LocalWorkspaceBackend` when your host always passes a typed backend object.
 - Use `S3WorkspaceBackend` when workspace state must live in object storage.
 - Add `remoteGit` when a non-local workspace still needs the built-in `git` tool.
-- Use AHP, MCP, or A3S Box for shell-like execution that cannot run inside the
+- Use MCP or A3S Box for shell-like execution that cannot run inside the
   selected workspace backend.

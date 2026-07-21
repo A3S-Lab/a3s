@@ -3,7 +3,9 @@ import type { HealthResponse } from '../../types/api';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type BootPhase = 'loading' | 'ready' | 'error';
 export type ServiceStatus = 'connected' | 'checking' | 'disconnected';
+export type ProductId = 'work' | 'code' | 'plugin' | 'plugins';
 export type TaskView = 'conversation' | 'review' | 'activity';
+export type CodeSurface = 'tasks' | 'memory';
 export interface ToastState {
   id: number;
   tone: 'info' | 'success' | 'error';
@@ -16,6 +18,8 @@ export interface CodeShellState {
   serviceError: string | null;
   health: HealthResponse | null;
   theme: ThemePreference;
+  activeProduct: ProductId;
+  codeSurface: CodeSurface;
   sidebarOpen: boolean;
   taskView: TaskView;
   settingsOpen: boolean;
@@ -27,6 +31,14 @@ export interface CodeShellState {
 function readTaskView(): TaskView {
   const view = window.location.hash.match(/^#code\/(conversation|review|activity)$/)?.[1];
   return view === 'review' || view === 'activity' ? view : 'conversation';
+}
+function readCodeSurface(): CodeSurface {
+  return window.location.hash === '#code/memory' ? 'memory' : 'tasks';
+}
+function readActiveProduct(): ProductId {
+  if (window.location.hash.startsWith('#plugin/')) return 'plugin';
+  if (window.location.hash === '#plugins') return 'plugins';
+  return window.location.hash.startsWith('#work') ? 'work' : 'code';
 }
 function readTheme(): ThemePreference {
   try {
@@ -51,6 +63,8 @@ export function createCodeShellState(): CodeShellState {
     serviceError: null,
     health: null,
     theme: readTheme(),
+    activeProduct: readActiveProduct(),
+    codeSurface: readCodeSurface(),
     sidebarOpen: true,
     taskView: readTaskView(),
     settingsOpen: readSettingsOpen(),

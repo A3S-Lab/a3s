@@ -9,8 +9,8 @@ import {
   navigateTask,
   showToast,
 } from '../../state/app-state';
-import { useEditorNavigationHistory } from './use-editor-navigation-history';
 import { rebaseWorkspaceEditorModelPath } from './components/monaco-editor-model-store';
+import { useEditorNavigationHistory } from './use-editor-navigation-history';
 import {
   DEFAULT_WORKSPACE_SEARCH_EXCLUDE_PATTERN,
   limitWorkspaceSearchResults,

@@ -3,6 +3,20 @@ import { createElement, useEffect, useRef } from 'react';
 import { afterEach, vi } from 'vitest';
 import { clearWorkspaceEditorModels } from '../features/workspace/components/monaco-editor-model-store';
 
+if (!Range.prototype.getClientRects) {
+  Object.defineProperty(Range.prototype, 'getClientRects', {
+    configurable: true,
+    value: () => [] as unknown as DOMRectList,
+  });
+}
+
+if (!Range.prototype.getBoundingClientRect) {
+  Object.defineProperty(Range.prototype, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => new DOMRect(),
+  });
+}
+
 const monacoMock = vi.hoisted(() => ({
   editor: {
     defineTheme: vi.fn(),
@@ -90,6 +104,7 @@ const monacoMock = vi.hoisted(() => ({
     getLanguageId: () => monacoMock.__language,
     getEOL: () => monacoMock.__eol,
     getEndOfLineSequence: () => (monacoMock.__eol === '\r\n' ? 1 : 0),
+    getValueInRange: (selection: MonacoSelection) => selection.selectedText,
     getValueLengthInRange: (selection: MonacoSelection) => selection.selectedText.length,
     pushEOL: (sequence: number) => {
       monacoMock.__pushEolCalls.push(sequence);
@@ -162,6 +177,7 @@ vi.mock('@monaco-editor/react', () => {
           },
           getModel: () => monacoMock.__model,
           getPosition: () => monacoMock.__position,
+          getSelection: () => monacoMock.__selections[0] ?? null,
           getSelections: () => monacoMock.__selections,
           onDidChangeCursorSelection: (listener: () => void) =>
             mockRegistration(monacoMock.__cursorSelectionListeners, listener),
@@ -224,6 +240,10 @@ vi.mock('@monaco-editor/react', () => {
     loader: { config: vi.fn() },
   };
 });
+
+vi.mock('../features/memory/components/memory-graph-3d', () => ({
+  default: () => createElement('div', { 'data-testid': 'memory-graph-3d-scene' }),
+}));
 
 interface MonacoEditorMockProps {
   value?: string;

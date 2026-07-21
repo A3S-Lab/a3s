@@ -46,10 +46,12 @@ When present in the release archive, bootstrap installs:
 
 ## Component And Tool Listing
 
-`a3s list` reports every registered component and its bundled, managed,
-delegated, external, missing, or unsupported state. Additional `a3s-*`
-executables discovered on `PATH` are listed separately as unregistered external
-tools; their presence does not activate them as trusted components.
+`a3s list` reports every trusted catalog component, its bundled, managed,
+delegated, external, missing, or unsupported state, installed ownership receipt,
+and delegated Use capabilities. Additional visible `a3s-*` executables on
+`PATH` are listed separately as unregistered external tools; local status is
+network-free by default, discovery never executes them, and their presence does
+not activate them as trusted components.
 
 ## Boundaries
 

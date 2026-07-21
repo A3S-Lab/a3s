@@ -25,6 +25,17 @@ import type {
   GitDiff,
   ConfigValidation,
   SkillCatalog,
+  TurnQueue,
+  MemoryOverview,
+  EvolutionOverview,
+  EvolutionCandidate,
+  EvolutionMutationResponse,
+  PluginActivityCatalog,
+  PluginActivityContent,
+  PluginMarketplaceCatalog,
+  PluginOperationPlan,
+  PluginOperationRequest,
+  PluginOperationResult,
 } from '../types/api';
 import type { AgentSettings, ContextSettings, IntegrationsSettings } from '../types/settings';
 
@@ -104,6 +115,17 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   return unwrapApiResponse<T>(payload);
 }
 
+async function binaryApiRequest(path: string): Promise<Uint8Array> {
+  const response = await fetch(path, {
+    headers: { Accept: 'application/octet-stream' },
+  });
+  if (!response.ok) {
+    const payload = await parseResponse(response);
+    throw new ApiError(errorMessage(payload, `Request failed with HTTP ${response.status}`), response.status, payload);
+  }
+  return new Uint8Array(await response.arrayBuffer());
+}
+
 function jsonBody(value: unknown): Pick<RequestInit, 'body' | 'headers'> {
   return {
     body: JSON.stringify(value),
@@ -116,8 +138,85 @@ export interface CodeIntelligenceRequestOptions {
   signal?: AbortSignal;
 }
 
+const MEMORY_PAGE_LIMIT = 500;
+type MemoryOverviewPage = Omit<MemoryOverview, 'graph'> & { graph?: MemoryOverview['graph'] };
+
+async function loadMemoryOverview(signal?: AbortSignal): Promise<MemoryOverview> {
+  const first = await loadMemoryPage(0, true, signal);
+  if (!first.graph) throw new Error('记忆服务没有返回图谱数据。');
+  const overview: MemoryOverview = { ...first, graph: first.graph };
+  if (!first.pagination?.hasMore) return overview;
+
+  const entries = [...first.entries];
+  const ids = new Set(entries.map((entry) => entry.id));
+  let pagination = first.pagination;
+
+  while (pagination.hasMore) {
+    const offset = pagination.offset + pagination.returned;
+    if (pagination.returned === 0) break;
+    const page = await loadMemoryPage(offset, false, signal);
+    for (const entry of page.entries) {
+      if (!ids.has(entry.id)) {
+        ids.add(entry.id);
+        entries.push(entry);
+      }
+    }
+    if (!page.pagination || page.pagination.offset <= pagination.offset) break;
+    pagination = page.pagination;
+  }
+
+  return {
+    ...overview,
+    entries,
+    pagination: {
+      offset: 0,
+      limit: entries.length,
+      returned: entries.length,
+      total: first.pagination.total,
+      hasMore: pagination.hasMore,
+    },
+  };
+}
+
+function loadMemoryPage(offset: number, includeGraph: boolean, signal?: AbortSignal): Promise<MemoryOverviewPage> {
+  const parameters = new URLSearchParams({
+    offset: String(offset),
+    limit: String(MEMORY_PAGE_LIMIT),
+    includeGraph: String(includeGraph),
+  });
+  return apiRequest<MemoryOverviewPage>(`/api/v1/context/memory?${parameters}`, { signal });
+}
+
 export const codeApi = {
   health: () => apiRequest<HealthResponse>('/api/v1/health'),
+  memory: loadMemoryOverview,
+  evolution: (signal?: AbortSignal) => apiRequest<EvolutionOverview>('/api/v1/evolution', { signal }),
+  scanEvolution: (signal?: AbortSignal) =>
+    apiRequest<{ observed: number; overview: EvolutionOverview }>('/api/v1/evolution/scan', {
+      method: 'POST',
+      signal,
+      ...jsonBody({}),
+    }),
+  materializeEvolution: (id: string, force = false) =>
+    apiRequest<EvolutionMutationResponse>(`/api/v1/evolution/${encodeURIComponent(id)}/materialize`, {
+      method: 'POST',
+      ...jsonBody({ force }),
+    }),
+  rejectEvolution: (id: string, reason?: string) =>
+    apiRequest<EvolutionCandidate>(`/api/v1/evolution/${encodeURIComponent(id)}/reject`, {
+      method: 'POST',
+      ...jsonBody({ reason }),
+    }),
+  reopenEvolution: (id: string) =>
+    apiRequest<EvolutionCandidate>(`/api/v1/evolution/${encodeURIComponent(id)}/reopen`, {
+      method: 'POST',
+      ...jsonBody({}),
+    }),
+  rollbackEvolution: (id: string, targetVersion?: number) =>
+    apiRequest<EvolutionMutationResponse>(`/api/v1/evolution/${encodeURIComponent(id)}/rollback`, {
+      method: 'POST',
+      ...jsonBody({ targetVersion }),
+    }),
   osAccount: () => apiRequest<OsAccount>('/api/v1/os/account'),
   osLogin: () =>
     apiRequest<OsAccount>('/api/v1/os/login/browser', {
@@ -164,10 +263,11 @@ export const codeApi = {
     model?: string;
     title?: string;
     permissionMode?: string;
+    agentId?: string;
   }) =>
     apiRequest<{ success: boolean; session: CodeSession }>('/api/v1/kernel/sessions', {
       method: 'POST',
-      ...jsonBody({ ...input, agentId: 'default' }),
+      ...jsonBody({ ...input, agentId: input.agentId || 'default' }),
     }),
   updateSession: (sessionId: string, patch: Record<string, unknown>) =>
     apiRequest<CodeSession>(`/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}`, {
@@ -218,12 +318,69 @@ export const codeApi = {
       method: 'PATCH',
       ...jsonBody(patch),
     }),
+  goalAction: (sessionId: string, action: 'pause' | 'resume' | 'retry') =>
+    apiRequest<SessionControls>(
+      `/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}/goal/actions/${encodeURIComponent(action)}`,
+      { method: 'POST' }
+    ),
+  turnQueue: (sessionId: string) =>
+    apiRequest<TurnQueue>(`/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}/turn-queue`),
+  enqueueTurn: (sessionId: string, input: { content: string; contextFiles?: string[]; skillNames?: string[] }) =>
+    apiRequest<TurnQueue>(`/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}/turn-queue`, {
+      method: 'POST',
+      ...jsonBody(input),
+    }),
+  updateQueuedTurn: (
+    sessionId: string,
+    turnId: string,
+    input: { content: string; contextFiles?: string[]; skillNames?: string[] }
+  ) =>
+    apiRequest<TurnQueue>(
+      `/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}/turn-queue/${encodeURIComponent(turnId)}`,
+      { method: 'PATCH', ...jsonBody(input) }
+    ),
+  deleteQueuedTurn: (sessionId: string, turnId: string) =>
+    apiRequest<TurnQueue>(
+      `/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}/turn-queue/${encodeURIComponent(turnId)}`,
+      { method: 'DELETE' }
+    ),
+  reorderQueuedTurns: (sessionId: string, orderedIds: string[]) =>
+    apiRequest<TurnQueue>(`/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}/turn-queue/reorder`, {
+      method: 'POST',
+      ...jsonBody({ orderedIds }),
+    }),
+  turnQueueAction: (sessionId: string, action: 'pause' | 'resume') =>
+    apiRequest<TurnQueue>(
+      `/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}/turn-queue/actions/${encodeURIComponent(action)}`,
+      { method: 'POST' }
+    ),
   effortLevels: () => apiRequest<{ items: EffortLevel[] }>('/api/v1/kernel/session-controls/efforts'),
   skills: (workspace: string) => apiRequest<SkillCatalog>(`/api/v1/plugins?workspace=${encodeURIComponent(workspace)}`),
-  pickWorkspaceDirectory: () =>
+  pluginActivities: (signal?: AbortSignal) =>
+    apiRequest<PluginActivityCatalog>('/api/v1/plugins/activities', { signal }),
+  pluginActivityContent: (key: string, signal?: AbortSignal) =>
+    apiRequest<PluginActivityContent>(`/api/v1/plugins/activities/${encodeURIComponent(key)}`, { signal }),
+  pluginMarketplace: (signal?: AbortSignal) =>
+    apiRequest<PluginMarketplaceCatalog>('/api/v1/plugins/marketplace', { signal }),
+  planPluginOperation: (request: PluginOperationRequest) =>
+    apiRequest<PluginOperationPlan>('/api/v1/plugins/operations/plan', {
+      method: 'POST',
+      ...jsonBody(request),
+    }),
+  applyPluginOperation: (request: PluginOperationRequest & { planDigest: string }) =>
+    apiRequest<PluginOperationResult>('/api/v1/plugins/operations/apply', {
+      method: 'POST',
+      ...jsonBody(request),
+    }),
+  setPluginPackageEnabled: (componentId: string, enabled: boolean) =>
+    apiRequest<unknown>('/api/v1/plugins/packages/enabled', {
+      method: 'POST',
+      ...jsonBody({ componentId, enabled }),
+    }),
+  pickWorkspaceDirectory: (initialPath?: string) =>
     apiRequest<WorkspaceDirectorySelection>('/api/v1/workspace/actions/pick-directory', {
       method: 'POST',
-      ...jsonBody({}),
+      ...jsonBody(initialPath ? { initialPath } : {}),
     }),
   readDir: async (path: string) => {
     const entries = await apiRequest<Omit<WorkspaceEntry, 'path'>[]>(
@@ -240,6 +397,7 @@ export const codeApi = {
     ),
   readFile: (path: string) =>
     apiRequest<{ content: string; revision?: string }>(`/api/v1/workspace/read?path=${encodeURIComponent(path)}`),
+  readBinaryFile: (path: string) => binaryApiRequest(`/api/v1/workspace/read-binary?path=${encodeURIComponent(path)}`),
   writeFile: (path: string, content: string, precondition: WorkspaceWritePrecondition = {}) =>
     apiRequest<{ success: boolean; revision?: string }>('/api/v1/workspace/write', {
       method: 'POST',
@@ -349,6 +507,16 @@ export async function streamSessionMessage(
   handlers: StreamHandlers,
   signal?: AbortSignal
 ): Promise<void> {
+  return streamSessionMessageRequest(sessionId, { content }, handlers, signal, content);
+}
+
+async function streamSessionMessageRequest(
+  sessionId: string,
+  body: Record<string, string>,
+  handlers: StreamHandlers,
+  signal?: AbortSignal,
+  fallbackContent?: string
+): Promise<void> {
   const path = `/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}/messages/stream`;
   const response = await fetch(path, {
     method: 'POST',
@@ -356,12 +524,13 @@ export async function streamSessionMessage(
       Accept: 'text/event-stream',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify(body),
     signal,
   });
 
   if (response.status === 404 || response.status === 405) {
-    const result = await codeApi.runMessage(sessionId, content);
+    if (!fallbackContent) throw new ApiError('The local A3S Code service does not support durable turn queues', 409);
+    const result = await codeApi.runMessage(sessionId, fallbackContent);
     for (const event of result.events ?? []) handlers.onEvent(event);
     return;
   }
@@ -377,6 +546,15 @@ export async function streamSessionMessage(
     if (event.type === 'error') terminalError = typeof event.message === 'string' ? event.message : '任务执行失败';
   });
   if (terminalError) throw new ApiError(terminalError, 500);
+}
+
+export async function streamQueuedSessionMessage(
+  sessionId: string,
+  queueId: string,
+  handlers: StreamHandlers,
+  signal?: AbortSignal
+): Promise<void> {
+  return streamSessionMessageRequest(sessionId, { queueId }, handlers, signal);
 }
 
 export async function consumeEventStream(

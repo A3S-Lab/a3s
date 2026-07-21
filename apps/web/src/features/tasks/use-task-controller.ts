@@ -1,7 +1,7 @@
 import { useMemoizedFn } from 'ahooks';
 import { useEffect, useRef } from 'react';
 import { subscribeKey } from 'valtio/utils';
-import { codeApi, streamSessionMessage } from '../../lib/api';
+import { codeApi, streamQueuedSessionMessage } from '../../lib/api';
 import {
   appState,
   captureWorkspaceContext,
@@ -17,7 +17,7 @@ import {
   showToast,
   switchActiveTask,
 } from '../../state/app-state';
-import type { AgentEvent, ChatMessage, CodeSession, SessionControls } from '../../types/api';
+import type { AgentEvent, ChatMessage, CodeSession, QueuedTurn, SessionControls, TurnQueue } from '../../types/api';
 import { parseGoalCommand, type GoalCommand } from './goal-command';
 import {
   beginSessionControlsRequest,
@@ -30,12 +30,12 @@ import {
 import {
   persistGoalTimings,
   persistNewTaskConfig,
-  persistPausedQueues,
-  persistQueuedPrompts,
   persistTaskDrafts,
   newTaskDraftKey,
   taskDraftKey,
+  type TaskProduct,
 } from './task-state';
+import { applyTurnQueueSnapshot } from './turn-queue-state';
 
 function temporaryMessage(sessionId: string, role: 'user' | 'assistant', content: string): ChatMessage {
   return {
@@ -79,6 +79,14 @@ function activeAssistant(sessionId: string): ChatMessage | undefined {
   return [...(appState.messagesBySession[sessionId] ?? [])]
     .reverse()
     .find((message) => message.role === 'assistant' && message.pending);
+}
+
+function activeTaskProduct(): TaskProduct {
+  return appState.activeProduct === 'work' ? 'work' : 'code';
+}
+
+function sessionProduct(session: Pick<CodeSession, 'agentId'> | undefined): TaskProduct {
+  return session?.agentId === 'work' ? 'work' : 'code';
 }
 
 export function applyAssistantStreamEvent(assistant: ChatMessage, event: AgentEvent): void {
@@ -150,7 +158,7 @@ export function useTaskController() {
     delete appState.sessionControlsErrors[sessionId];
   };
   const persistCurrentDraft = useMemoizedFn(() => {
-    const key = taskDraftKey(appState.activeSessionId);
+    const key = taskDraftKey(appState.activeSessionId, activeTaskProduct());
     appState.draftsByTask[key] = {
       content: appState.composerValue,
       contextFiles: [...appState.composerContextFiles],
@@ -206,8 +214,23 @@ export function useTaskController() {
       }
     }
   });
+  const loadTurnQueue = useMemoizedFn(async (sessionId: string): Promise<TurnQueue> => {
+    appState.turnQueueLoading[sessionId] = true;
+    delete appState.turnQueueErrors[sessionId];
+    try {
+      const queue = await codeApi.turnQueue(sessionId);
+      applyTurnQueueSnapshot(queue);
+      return queue;
+    } catch (error) {
+      appState.turnQueueErrors[sessionId] = formatApiError(error);
+      throw error;
+    } finally {
+      appState.turnQueueLoading[sessionId] = false;
+    }
+  });
   const selectSession = useMemoizedFn(async (sessionId: string) => {
     const session = appState.sessions.find((item) => item.sessionId === sessionId);
+    if (session && sessionProduct(session) !== activeTaskProduct()) return;
     switchActiveTask(sessionId, session?.workspace);
     if (session?.workspace) {
       if (!appState.filesByDirectory[session.workspace]) {
@@ -216,7 +239,7 @@ export function useTaskController() {
     }
     if (!appState.messagesBySession[sessionId]) await loadMessages(sessionId);
     try {
-      await loadControls(sessionId);
+      await Promise.all([loadControls(sessionId), loadTurnQueue(sessionId)]);
     } catch {
       // The Composer owns the persistent error and retry path.
     }
@@ -224,24 +247,42 @@ export function useTaskController() {
   const reloadActiveTask = useMemoizedFn(async () => {
     const sessionId = appState.activeSessionId;
     if (!sessionId) return;
-    await Promise.all([loadMessages(sessionId), loadControls(sessionId).catch(() => undefined)]);
+    await Promise.all([
+      loadMessages(sessionId),
+      loadControls(sessionId).catch(() => undefined),
+      loadTurnQueue(sessionId).catch(() => undefined),
+    ]);
   });
   const createSession = useMemoizedFn(async (title = '新任务', model?: string): Promise<CodeSession> => {
+    const product = activeTaskProduct();
     const config = appState.newTaskConfig;
-    const requestedGoal = config.goal.trim();
+    const requestedGoal = product === 'work' ? '' : config.goal.trim();
     const preparedGoalTiming = appState.goalTimings[newTaskDraftKey];
-    const workspace = config.workspace.trim() || appState.workspaceRoot || appState.health?.workspace;
+    const workspace =
+      product === 'work'
+        ? appState.workspaceRoot || appState.health?.workspace
+        : config.workspace.trim() || appState.workspaceRoot || appState.health?.workspace;
     const response = await codeApi.createSession({
       workspace,
       cwd: workspace,
       model: model || config.model || appState.selectedModel || appState.llm?.defaultModel || undefined,
       title,
       permissionMode: config.permissionMode,
+      agentId: product === 'work' ? 'work' : 'default',
     });
     const session = response.session;
     appState.sessions.unshift(session);
     promoteActiveTask(session.sessionId, session.workspace);
     appState.messagesBySession[session.sessionId] = [];
+    applyTurnQueueSnapshot({
+      sessionId: session.sessionId,
+      status: 'idle',
+      paused: false,
+      active: null,
+      items: [],
+      total: 0,
+      nextItemId: null,
+    });
     reportTaskPersistenceResult(persistSessionTitle(session.sessionId, title));
     const controlsMutationRequest = invalidateControlsRequests(session.sessionId);
     appState.sessionControlsLoading[session.sessionId] = true;
@@ -259,8 +300,10 @@ export function useTaskController() {
       }
       delete appState.goalTimings[newTaskDraftKey];
       reportTaskPersistenceResult(persistGoalTimings(appState.goalTimings));
-      appState.newTaskConfig.goal = '';
-      reportTaskPersistenceResult(persistNewTaskConfig(appState.newTaskConfig));
+      if (product === 'code') {
+        appState.newTaskConfig.goal = '';
+        reportTaskPersistenceResult(persistNewTaskConfig(appState.newTaskConfig));
+      }
     } catch (error) {
       if (isSessionControlsRequestCurrent(controlsMutationRequest)) {
         appState.sessionControlsErrors[session.sessionId] = formatApiError(error);
@@ -277,25 +320,36 @@ export function useTaskController() {
     const context = captureWorkspaceContext();
     const entries = await codeApi.readDir(normalized);
     if (!isWorkspaceContextCurrent(context) || appState.activeSessionId) return;
+    replaceActiveWorkspace(normalized);
+    appState.filesByDirectory[normalized] = entries;
+    appState.expandedDirectories[normalized] = true;
+    if (activeTaskProduct() === 'work') {
+      appState.composerContextFiles = [];
+      appState.composerSkills = [];
+      return;
+    }
     if (appState.newTaskConfig.workspace !== normalized) {
       appState.composerContextFiles = [];
       appState.composerSkills = [];
     }
     appState.newTaskConfig.workspace = normalized;
-    replaceActiveWorkspace(normalized);
-    appState.filesByDirectory[normalized] = entries;
-    appState.expandedDirectories[normalized] = true;
     reportTaskPersistenceResult(persistNewTaskConfig(appState.newTaskConfig));
   });
   const pickNewTaskWorkspace = useMemoizedFn(async (): Promise<string | null> => {
     if (appState.activeSessionId) throw new Error('只能在创建新任务时打开本地文件夹。');
-    const selected = await codeApi.pickWorkspaceDirectory();
+    const selected = await codeApi.pickWorkspaceDirectory(
+      appState.newTaskConfig.workspace || appState.workspaceRoot || appState.health?.workspace || undefined
+    );
     if (selected.cancelled || !selected.path) return null;
     await selectNewTaskWorkspace(selected.path);
     return selected.path;
   });
   const newConversation = useMemoizedFn(() => {
-    const workspace = appState.newTaskConfig.workspace || appState.health?.workspace || appState.workspaceRoot;
+    const product = activeTaskProduct();
+    const workspace =
+      product === 'work'
+        ? appState.workspaceRoot
+        : appState.newTaskConfig.workspace || appState.health?.workspace || appState.workspaceRoot;
     switchActiveTask(null, workspace);
     appState.streamEvents = [];
   });
@@ -305,10 +359,12 @@ export function useTaskController() {
   const applyStreamEvent = useMemoizedFn((sessionId: string, event: AgentEvent) => {
     appState.streamEvents.push(event);
     if (event.type === 'goal_achieved') {
-      const timing = appState.goalTimings[sessionId];
-      if (timing && !timing.completedAt) {
-        timing.completedAt = Date.now();
-        reportTaskPersistenceResult(persistGoalTimings(appState.goalTimings));
+      const goalState = appState.sessionControls[sessionId]?.goalState;
+      if (goalState && goalState.status !== 'achieved') {
+        goalState.status = 'achieved';
+        goalState.progressPercent = 100;
+        goalState.completedAt = Date.now();
+        goalState.updatedAt = goalState.completedAt;
       }
     }
     const assistant = activeAssistant(sessionId);
@@ -329,98 +385,89 @@ export function useTaskController() {
     }
     applyAssistantStreamEvent(assistant, event);
   });
-  const executeMessage = useMemoizedFn(
-    async (
-      sessionId: string | null,
-      content: string,
-      contextFiles: string[],
-      skillNames: string[],
-      onAccepted?: () => void
-    ) => {
-      const transportContent = composeTaskPrompt(content, contextFiles, skillNames);
-      let completed = false;
-      let executionStatus: 'completed' | 'cancelled' | 'failed' = 'failed';
-      let executionStartedAt: number | undefined;
-      try {
-        if (!sessionId) sessionId = (await createSession(promptTitle(content))).sessionId;
-        else if ((appState.messagesBySession[sessionId]?.length ?? 0) === 0)
-          reportTaskPersistenceResult(persistSessionTitle(sessionId, promptTitle(content)));
-        const targetSessionId = sessionId;
-        invalidateMessageRequests(targetSessionId);
-        const user = temporaryMessage(targetSessionId, 'user', transportContent);
-        const assistant = temporaryMessage(targetSessionId, 'assistant', '');
-        appState.messagesBySession[targetSessionId] ??= [];
-        appState.messagesBySession[targetSessionId].push(user, assistant);
-        appState.streamingSessionId = targetSessionId;
-        appState.streamEvents = [];
-        executionStartedAt = Date.now();
-        appState.executionTimings[targetSessionId] = {
-          startedAt: executionStartedAt,
+  const executeQueuedTurn = useMemoizedFn(async (sessionId: string, turn: QueuedTurn) => {
+    const transportContent =
+      turn.kind === 'goalContinuation'
+        ? `[goal continuation]\n${turn.content}`
+        : composeTaskPrompt(turn.content, turn.contextFiles, turn.skillNames);
+    let completed = false;
+    let executionStatus: 'completed' | 'cancelled' | 'failed' = 'failed';
+    const executionStartedAt = Date.now();
+    try {
+      const currentQueue = appState.turnQueues[sessionId];
+      if (currentQueue) {
+        const pendingItems = currentQueue.items.filter((item) => item.id !== turn.id);
+        applyTurnQueueSnapshot({
+          ...currentQueue,
           status: 'running',
-        };
-        onAccepted?.();
-        const controller = new AbortController();
-        abortRef.current = controller;
-        await streamSessionMessage(
-          targetSessionId,
-          transportContent,
-          { onEvent: (event) => applyStreamEvent(targetSessionId, event) },
-          controller.signal
-        );
-        executionStatus = 'completed';
-        const pending = activeAssistant(targetSessionId);
-        if (pending) pending.pending = false;
-        await loadMessages(targetSessionId);
-        await refreshSessions();
-        await loadControls(targetSessionId).catch(() => undefined);
-        completed = true;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          executionStatus = 'cancelled';
-          const assistant = sessionId ? activeAssistant(sessionId) : undefined;
-          if (assistant) {
-            assistant.pending = false;
-            assistant.events ??= [];
-            assistant.events.push({ type: 'cancelled', message: '任务已由用户停止' });
-          }
-        } else {
-          executionStatus = 'failed';
-          const message = formatApiError(error);
-          const assistant = sessionId ? activeAssistant(sessionId) : undefined;
-          if (assistant) {
-            assistant.pending = false;
-            assistant.events ??= [];
-            assistant.events.push({ type: 'error', message });
-          }
-          showToast(message, 'error');
+          active: { turn, startedAt: executionStartedAt },
+          items: pendingItems,
+          total: pendingItems.length,
+          nextItemId: pendingItems[0]?.id ?? null,
+        });
+      }
+      invalidateMessageRequests(sessionId);
+      const user = temporaryMessage(sessionId, 'user', transportContent);
+      const assistant = temporaryMessage(sessionId, 'assistant', '');
+      appState.messagesBySession[sessionId] ??= [];
+      appState.messagesBySession[sessionId].push(user, assistant);
+      appState.streamingSessionId = sessionId;
+      appState.streamEvents = [];
+      appState.executionTimings[sessionId] = {
+        startedAt: executionStartedAt,
+        status: 'running',
+      };
+      const controller = new AbortController();
+      abortRef.current = controller;
+      await streamQueuedSessionMessage(
+        sessionId,
+        turn.id,
+        { onEvent: (event) => applyStreamEvent(sessionId, event) },
+        controller.signal
+      );
+      executionStatus = 'completed';
+      const pending = activeAssistant(sessionId);
+      if (pending) pending.pending = false;
+      completed = true;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        executionStatus = 'cancelled';
+        const assistant = activeAssistant(sessionId);
+        if (assistant) {
+          assistant.pending = false;
+          assistant.events ??= [];
+          assistant.events.push({ type: 'cancelled', message: '任务已由用户停止' });
         }
-      } finally {
-        if (sessionId && executionStartedAt) {
-          const timing = appState.executionTimings[sessionId];
-          if (timing?.startedAt === executionStartedAt) {
-            timing.completedAt = Date.now();
-            timing.status = executionStatus;
-          }
+      } else {
+        executionStatus = 'failed';
+        const message = formatApiError(error);
+        const assistant = activeAssistant(sessionId);
+        if (assistant) {
+          assistant.pending = false;
+          assistant.events ??= [];
+          assistant.events.push({ type: 'error', message });
         }
-        abortRef.current = null;
-        appState.streamingSessionId = null;
-        if (sessionId) clearSessionToolDecisions(sessionId);
-        if (!completed && sessionId && appState.queuedPrompts[sessionId]?.length) {
-          appState.pausedQueues[sessionId] = true;
-          reportTaskPersistenceResult(persistPausedQueues(appState.pausedQueues));
-        }
-        if (completed && sessionId && !appState.pausedQueues[sessionId]) {
-          const next = appState.queuedPrompts[sessionId]?.shift();
-          reportTaskPersistenceResult(persistQueuedPrompts(appState.queuedPrompts));
-          if (next) void executeMessage(sessionId, next.content, next.contextFiles, next.skillNames ?? []);
-          else {
-            delete appState.pausedQueues[sessionId];
-            reportTaskPersistenceResult(persistPausedQueues(appState.pausedQueues));
-          }
-        }
+        showToast(message, 'error');
+      }
+    } finally {
+      const timing = appState.executionTimings[sessionId];
+      if (timing?.startedAt === executionStartedAt) {
+        timing.completedAt = Date.now();
+        timing.status = executionStatus;
+      }
+      abortRef.current = null;
+      appState.streamingSessionId = null;
+      clearSessionToolDecisions(sessionId);
+      const [, , queue] = await Promise.all([
+        loadMessages(sessionId),
+        Promise.all([refreshSessions(), loadControls(sessionId)]).catch(() => undefined),
+        loadTurnQueue(sessionId).catch(() => undefined),
+      ]);
+      if (completed && queue && !queue.paused && queue.items[0]) {
+        void executeQueuedTurn(sessionId, queue.items[0]);
       }
     }
-  );
+  });
   const sendMessage = useMemoizedFn(async () => {
     const content = appState.composerValue.trim();
     if (!content) return;
@@ -431,26 +478,21 @@ export function useTaskController() {
     }
     const contextFiles = [...appState.composerContextFiles];
     const skillNames = [...appState.composerSkills];
-    const sessionId = appState.activeSessionId;
-    if (appState.streamingSessionId) {
-      if (!sessionId || sessionId !== appState.streamingSessionId) {
-        return;
+    let sessionId = appState.activeSessionId;
+    if (!sessionId) sessionId = (await createSession(promptTitle(content))).sessionId;
+    else if ((appState.messagesBySession[sessionId]?.length ?? 0) === 0)
+      reportTaskPersistenceResult(persistSessionTitle(sessionId, promptTitle(content)));
+    if (appState.streamingSessionId && appState.streamingSessionId !== sessionId) return;
+    try {
+      const queue = await codeApi.enqueueTurn(sessionId, { content, contextFiles, skillNames });
+      applyTurnQueueSnapshot(queue);
+      clearComposer();
+      if (!appState.streamingSessionId && !queue.paused && queue.items[0]) {
+        await executeQueuedTurn(sessionId, queue.items[0]);
       }
-      appState.queuedPrompts[sessionId] ??= [];
-      appState.queuedPrompts[sessionId].push({ id: crypto.randomUUID(), content, contextFiles, skillNames });
-      appState.pausedQueues[sessionId] = false;
-      reportTaskPersistenceResult(persistQueuedPrompts(appState.queuedPrompts));
-      reportTaskPersistenceResult(persistPausedQueues(appState.pausedQueues));
-      appState.composerValue = '';
-      appState.composerContextFiles = [];
-      appState.composerSkills = [];
-      return;
+    } catch (error) {
+      showToast(formatApiError(error), 'error');
     }
-    await executeMessage(sessionId, content, contextFiles, skillNames, () => {
-      appState.composerValue = '';
-      appState.composerContextFiles = [];
-      appState.composerSkills = [];
-    });
   });
   const applyGoalCommand = useMemoizedFn(async (command: GoalCommand) => {
     if (command.kind === 'missing') {
@@ -493,6 +535,7 @@ export function useTaskController() {
     abortRef.current?.abort();
     try {
       await codeApi.cancelSession(sessionId);
+      await Promise.all([loadControls(sessionId), loadTurnQueue(sessionId)]);
     } catch (error) {
       if (!(error instanceof Error && error.message.includes('404'))) showToast(formatApiError(error), 'error');
     }
@@ -512,21 +555,73 @@ export function useTaskController() {
     } finally {
       delete appState.contextCompacting[sessionId];
       delete appState.executionTimings[sessionId];
-      delete appState.goalTimings[sessionId];
     }
   });
   const resumeQueue = useMemoizedFn(async (sessionId: string) => {
-    if (appState.streamingSessionId || appState.activeSessionId !== sessionId) return;
-    const next = appState.queuedPrompts[sessionId]?.shift();
-    if (!next) {
-      delete appState.pausedQueues[sessionId];
-      reportTaskPersistenceResult(persistPausedQueues(appState.pausedQueues));
-      return;
+    if (appState.activeSessionId !== sessionId) return;
+    try {
+      const queue = await codeApi.turnQueueAction(sessionId, 'resume');
+      applyTurnQueueSnapshot(queue);
+      if (!appState.streamingSessionId && queue.items[0]) await executeQueuedTurn(sessionId, queue.items[0]);
+    } catch (error) {
+      showToast(formatApiError(error), 'error');
     }
-    appState.pausedQueues[sessionId] = false;
-    reportTaskPersistenceResult(persistQueuedPrompts(appState.queuedPrompts));
-    reportTaskPersistenceResult(persistPausedQueues(appState.pausedQueues));
-    await executeMessage(sessionId, next.content, next.contextFiles, next.skillNames ?? []);
+  });
+  const pauseQueue = useMemoizedFn(async (sessionId: string) => {
+    try {
+      applyTurnQueueSnapshot(await codeApi.turnQueueAction(sessionId, 'pause'));
+    } catch (error) {
+      showToast(formatApiError(error), 'error');
+    }
+  });
+  const updateQueuedMessage = useMemoizedFn(async (sessionId: string, turnId: string, content: string) => {
+    const turn = appState.turnQueues[sessionId]?.items.find((item) => item.id === turnId);
+    if (!turn) return;
+    try {
+      applyTurnQueueSnapshot(
+        await codeApi.updateQueuedTurn(sessionId, turnId, {
+          content,
+          contextFiles: [...turn.contextFiles],
+          skillNames: [...turn.skillNames],
+        })
+      );
+    } catch (error) {
+      showToast(formatApiError(error), 'error');
+      throw error;
+    }
+  });
+  const moveQueuedMessage = useMemoizedFn(async (sessionId: string, turnId: string, offset: number) => {
+    const items = appState.turnQueues[sessionId]?.items ?? [];
+    const index = items.findIndex((item) => item.id === turnId);
+    const target = index + offset;
+    if (index < 0 || target < 0 || target >= items.length) return;
+    const orderedIds = items.map((item) => item.id);
+    [orderedIds[index], orderedIds[target]] = [orderedIds[target], orderedIds[index]];
+    try {
+      applyTurnQueueSnapshot(await codeApi.reorderQueuedTurns(sessionId, orderedIds));
+    } catch (error) {
+      showToast(formatApiError(error), 'error');
+    }
+  });
+  const removeQueuedMessage = useMemoizedFn(async (sessionId: string, turnId: string) => {
+    try {
+      applyTurnQueueSnapshot(await codeApi.deleteQueuedTurn(sessionId, turnId));
+    } catch (error) {
+      showToast(formatApiError(error), 'error');
+    }
+  });
+  const updateGoalAction = useMemoizedFn(async (action: 'pause' | 'resume' | 'retry') => {
+    const sessionId = appState.activeSessionId;
+    if (!sessionId) return;
+    try {
+      publishControlsMutation(sessionId, await codeApi.goalAction(sessionId, action));
+      const queue = await loadTurnQueue(sessionId);
+      if (action !== 'pause' && !appState.streamingSessionId && queue.items[0]) {
+        await executeQueuedTurn(sessionId, queue.items[0]);
+      }
+    } catch (error) {
+      showToast(formatApiError(error), 'error');
+    }
   });
   const confirmToolUse = useMemoizedFn(async (sessionId: string, toolId: string, approved: boolean) => {
     const key = `${sessionId}:${toolId}`;
@@ -553,6 +648,8 @@ export function useTaskController() {
       throw error;
     }
     try {
+      const session = appState.sessions.find((candidate) => candidate.sessionId === sessionId);
+      const product = sessionProduct(session);
       await codeApi.deleteSession(sessionId);
       const index = sessionIndex(sessionId);
       if (index >= 0) appState.sessions.splice(index, 1);
@@ -566,17 +663,19 @@ export function useTaskController() {
       delete appState.sessionControlsErrors[sessionId];
       delete appState.contextCompacting[sessionId];
       clearSessionToolDecisions(sessionId);
-      delete appState.queuedPrompts[sessionId];
-      delete appState.pausedQueues[sessionId];
-      delete appState.draftsByTask[taskDraftKey(sessionId)];
-      reportTaskPersistenceResult(persistQueuedPrompts(appState.queuedPrompts));
-      reportTaskPersistenceResult(persistPausedQueues(appState.pausedQueues));
+      delete appState.turnQueues[sessionId];
+      delete appState.turnQueueLoading[sessionId];
+      delete appState.turnQueueErrors[sessionId];
+      delete appState.draftsByTask[taskDraftKey(sessionId, product)];
       reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
       reportTaskPersistenceResult(persistGoalTimings(appState.goalTimings));
       const titlePersisted = removePersistedSessionTitle(sessionId);
       if (appState.reviewSourceTaskId === sessionId) appState.reviewSourceTaskId = null;
       if (appState.activeSessionId === sessionId) {
-        const workspace = appState.newTaskConfig.workspace || appState.health?.workspace || appState.workspaceRoot;
+        const workspace =
+          product === 'work'
+            ? appState.workspaceRoot
+            : appState.newTaskConfig.workspace || appState.health?.workspace || appState.workspaceRoot;
         switchActiveTask(null, workspace);
       }
       removeWorkspaceTaskSnapshot(sessionId);
@@ -658,6 +757,11 @@ export function useTaskController() {
     cancelMessage,
     compactSession,
     resumeQueue,
+    pauseQueue,
+    updateQueuedMessage,
+    moveQueuedMessage,
+    removeQueuedMessage,
+    updateGoalAction,
     confirmToolUse,
     removeSession,
     renameSession,

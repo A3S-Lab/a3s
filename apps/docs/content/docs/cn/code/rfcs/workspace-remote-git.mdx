@@ -414,9 +414,11 @@ let ws = WorkspaceServices::s3_with_remote_git(
     .bearer_token(token),
 );
 
-let session = agent.session("s3://workspace/sessions/example", Some(
-    SessionOptions::new().with_workspace_backend(ws),
-))?;
+let session = agent
+    .session_builder("s3://workspace/sessions/example")
+    .options(SessionOptions::new().with_workspace_backend(ws))
+    .build()
+    .await?;
 ```
 
 该会话注册的工具：`read`、`write`、`edit`、`patch`、`ls`、`grep`、`glob`、

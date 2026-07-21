@@ -18,7 +18,6 @@ description: "用 agent 定义、task 工具和自动委派构建团队"
 ```ts
 const session = agent.session('/repo', {
   agentDirs: ['./.a3s/agents'],
-  builtinSkills: true,
   planningMode: 'auto',
   autoDelegation: { enabled: true, maxTasks: 4 },
   maxParallelTasks: 8,

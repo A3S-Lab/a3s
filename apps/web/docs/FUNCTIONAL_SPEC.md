@@ -13,8 +13,8 @@ The current release supports one local user, one served workspace, one A3S Code
 agent identity, and multiple durable tasks. It is desktop-only. A3S OS account
 connection is optional.
 
-The super-app direction is documented in [SUPER_APP.md](SUPER_APP.md), but only
-Code is active in this release.
+The super-app direction is documented in [SUPER_APP.md](SUPER_APP.md). Code and
+the first Work local-files surface are active; this document defines Code.
 
 ## Functional success criteria
 
@@ -33,6 +33,8 @@ Code is active in this release.
   state without losing drafts, tabs, or unsaved edits.
 - Review never attributes unrelated workspace changes to the selected task.
 - A user can inspect, correct, stage, and commit without losing task context.
+- A user can search and filter the complete local memory store, move between
+  graph and timeline views, and inspect a memory or entity without mutating it.
 - Disconnect, refresh, failed mutation, preview failure, and editor conflict
   recovery are honest.
 - The complete journey works at 1440 px and compact desktop around 1024 px.
@@ -52,6 +54,10 @@ flowchart TB
     Results --> Files[Files and search]
     Results --> Browser[Browser preview]
     Results --> Changes[Diff, stage, and commit]
+    Code --> Memory[Memory exploration]
+    Memory --> Graph[Knowledge graph]
+    Memory --> Timeline[Timeline]
+    Memory --> Inspector[Memory and entity detail]
     Overview --> Conversation
     Files --> Conversation
     Browser --> Conversation
@@ -73,6 +79,9 @@ flowchart TB
 - Return the local account fallback catalog during bootstrap and refresh
   WorkBuddy entitlements in the background; account CLI startup must not delay
   the transition into the task workspace.
+- Let the Account Settings surface refresh the same runtime catalog explicitly;
+  preserve the previous usable catalog on failure and never reset a still-valid
+  Composer model selection.
 - Use the same authoritative reload path for initial load and reconnect.
 - Show a bounded startup transition for loading and an actionable recovery card
   for connection or page/service version failures; keep raw request details
@@ -124,10 +133,19 @@ tabs without writing them to disk.
 - Highlight recognized command tokens such as `/goal` inside the editor while
   preserving plain-text transport.
 - Reject paths outside the served workspace.
-- Render assistant Markdown incrementally through Streamdown, including Shiki
-  syntax highlighting for fenced code in light and dark themes.
+- Render assistant Markdown incrementally through Streamdown with deliberate
+  typography and spacing for headings, paragraphs, nested and task lists,
+  quotes, links, tables, media, and inline code. Fenced code uses Shiki in light
+  and dark themes, visible line numbers, bounded scrolling, and localized copy
+  controls.
 - Create a semantic execution stream from messages, plans, merged tool
   lifecycle events, permissions, replies, verification, and artifact references.
+- Present shell tools as readable command lines with TUI-aligned token roles,
+  working-directory context, copy action, running state, and live output line
+  count. Present generic tools with the same visual grammar and a compact
+  typed-argument signature. Keep raw arguments and complete output available as
+  secondary disclosures, and retain a concise output excerpt when a completed
+  call is collapsed.
 - Preserve selected Skill and workspace-file context in restored user
   instructions; Continue editing restores those resources with the text.
 - Anchor each assistant turn with a stable Code identity row, local pending
@@ -159,11 +177,12 @@ tabs without writing them to disk.
 
 Acceptance: live output never leaks across tasks; duplicate persisted and live
 tool blocks are removed; complete tool output remains available without
-permanent truncation; stopped queues do not auto-run; execution detail can be
-expanded without moving the user away from the Conversation; compaction
-refreshes both messages and usage while preserving task identity. Tool-level
-failure and permission recovery render once inside the owning execution rather
-than being repeated as a global notice.
+permanent truncation; shell commands, generic calls, cwd, and output progress
+remain legible without opening raw JSON; stopped queues do not auto-run;
+execution detail can be expanded without moving the user away from the
+Conversation; compaction refreshes both messages and usage while preserving
+task identity. Tool-level failure and permission recovery render once inside
+the owning execution rather than being repeated as a global notice.
 
 ## F4 — Decisions, recovery, delivery, and artifact entry
 
@@ -256,6 +275,12 @@ opening control on close.
 - Open files and Git comparisons in one multi-tab strip; preserve independent
   drafts while switching tabs or tasks, and require explicit resolution only
   when an operation would discard or overwrite a dirty draft.
+- Localize Monaco's built-in editor menu and A3S semantic navigation actions in
+  Simplified Chinese.
+- Open a tab menu through pointer right-click, the Context Menu key, or
+  `Shift+F10`; offer close, close others, close right, close all, copy path, and
+  copy relative path in Chinese. Batch close requests must resolve every dirty
+  tab in order rather than silently skipping protected documents.
 - Keep unique filenames compact, but add the shortest unique workspace-parent
   suffix when two open tabs have the same visible name. Apply the same
   disambiguation to the tab, its accessible name, and its close action.
@@ -321,7 +346,9 @@ opening control on close.
 
 Acceptance: file read failure preserves the previous artifact; same-file
 selection does not reread a dirty draft; Save and Close, Don't Save, and Cancel
-protect dirty tab closure; semantic navigation always has a visible entry and
+protect dirty tab closure, including batch-close operations; pointer and
+keyboard menus stay within the viewport and restore focus after dismissal;
+semantic navigation always has a visible entry and
 labels dirty-buffer results as saved-document results; an unsupported native
 language leaves local editing and file outline usable without raw backend text;
 editor shortcuts never consume Conversation keystrokes; parent rename rebases
@@ -386,6 +413,11 @@ Git state is never labelled as selected-task provenance.
 - Configure session storage, memory paths, relevance, extraction, and pruning.
 - Configure A3S OS address, Web search and headless browsing, document parsing,
   OCR, cache, MCP transports, environment, OAuth, and tool timeouts.
+- Configure the connector through either the OOMOL hosted MCP endpoint or a self-hosted
+  OpenConnector endpoint. Hosted authentication sends the OOMOL API key as the
+  raw `Authorization` value; self-hosted authentication sends the runtime token
+  as `Bearer <token>`. Existing secrets remain masked, and switching between
+  modes clears a server-held secret that cannot be transformed safely.
 - Check and install updates from the About tab.
 - Surface catalog warnings, missing configuration, disconnected service, and
   update failures with a useful retry.
@@ -406,16 +438,71 @@ independently; a failed save preserves the local draft and authoritative saved
 state; secrets are masked and are never returned to the browser; effect labels
 distinguish new-task changes from restart-required changes; Help does not teach
 slash commands as the primary Web interaction; local account refresh failure
-retains the previous catalog and stays inline in the Account section.
+retains the previous catalog and stays inline in the Account section. The
+connector setup produces a standard enabled `streamable-http` MCP server named
+`oomol-connector`, uses the documented endpoint and authorization format for the
+selected deployment, and makes the connector catalog, connection management, API-key,
+and self-hosting destinations explicit.
+
+## F10 — Memory exploration
+
+- Open Memory as a dedicated Code surface from the Activity Bar, command
+  palette, or `#code/memory`; do not mount it as a Result Workspace mode or
+  discard the current task state.
+- Retrieve all memory-entry pages for search, filtering, timeline, and complete
+  graph projection while fetching the full graph topology only once.
+- Keep the default surface focused on the memories themselves. Show one
+  filtered/total count, keep secondary retention and conflict controls inside
+  More filters, and omit raw paths, identifiers, and other internal fields.
+- Search content, previews, tags, metadata, sources, entity names, and aliases.
+- Combine time, memory-type, source, retention-tier, forgetting-signal, and
+  lifecycle filters, and provide one truthful reset action.
+- Default the graph to a capped focused projection with accurate rendered/total
+  counts. Offer an explicit whole-store panorama whose connected,
+  selection-aware render sample remains bounded at 600 nodes and 4,000
+  relations. Lazy-load the 3D scene and provide rotation, pan, wheel zoom,
+  reset, pointer selection, neighbourhood highlighting, and a keyboard
+  accessible node browser outside WebGL.
+- Switch to a chronological timeline without losing filters or inspector
+  selection.
+- Inspect memory content, any service-provided plain-language retention reason,
+  source, saved and recent-use times, tags, and linked entities. Do not render
+  scores, raw metadata, paths, or internal identifiers.
+- Provide a Learning tab backed by the typed Evolution API. Show ready items and
+  saved items with updates by default; reveal the full catalog only on request.
+  A user can save, ignore, reconsider, update, undo the first save, or restore
+  an older version with confirmation and recovery. Candidate detection remains
+  an LLM/backend responsibility; the browser must not invent recommendations
+  with keyword rules.
+- Keep the surface read-only. It must not imply that selecting a forgetting
+  candidate deletes it or that a lifecycle badge triggers consolidation.
+- Provide honest initial loading, empty-store, no-results, initial error,
+  stale-after-refresh-failure, retry, disconnected, and compact-layout states.
+
+Acceptance: the visible result count reflects the complete store; both graph
+modes report totals from all filtered events rather than their render caps; a
+failed refresh preserves the last successful snapshot; an aborted or
+superseded request cannot settle newer loading state; invalid selections are
+cleared after refresh; graph nodes and view controls are keyboard operable
+without relying on canvas semantics; the surface remains usable at wide
+desktop and compact widths.
+Learning mutations preserve the last successful overview on refresh failure,
+prevent duplicate submission, and rebuild affected Code Web sessions only when
+the server response requires it.
 
 ## Excluded from this release
 
-- Work and Science product workspaces;
+- hardcoded vertical-product Activity destinations such as Research or Finance;
+  installed packages can contribute sandboxed views under
+  [PLUGINS.md](PLUGINS.md), while the built-in Work route is governed by
+  [WORK_OFFICE.md](WORK_OFFICE.md);
 - task branching, archive/restore, and conversation clearing;
 - image attachments, direct shell-command Composer syntax, and input history;
-- memory browsing, context search, knowledge-base management, and manual
-  consolidation workflows; configuration of the memory runtime is supported;
-- automation assets, plugins, global processes, and deployment activity;
+- memory deletion, manual forgetting or consolidation, context search, and
+  knowledge-base management; read-only memory exploration and runtime
+  configuration are supported;
+- automation assets, callable plugin UI actions, global processes, and
+  deployment activity;
 - unrestricted public browsing, remote filesystems, shared teams, roles, and
   mobile layouts.
 

@@ -7,10 +7,12 @@ import { InterruptedTurnNotice } from './interrupted-turn-notice';
 export function ConversationTurnView({
   turn,
   actions,
+  assistantLabel = 'Code',
   isLatestTurn,
 }: {
   turn: ConversationTurn;
   actions: TaskActions;
+  assistantLabel?: string;
   isLatestTurn: boolean;
 }) {
   return (
@@ -28,6 +30,7 @@ export function ConversationTurnView({
             key={response.id}
             message={response}
             actions={actions}
+            assistantLabel={assistantLabel}
             retryContent={turn.instruction?.content}
           />
         ))}

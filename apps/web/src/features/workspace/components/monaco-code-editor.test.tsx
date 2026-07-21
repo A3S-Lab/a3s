@@ -97,6 +97,28 @@ describe('Monaco code-intelligence bridge', () => {
     ]);
   });
 
+  it('adds Work AI actions and sends the current selection to the independent AI assistant', async () => {
+    const onAssistantRequest = vi.fn();
+    renderEditor({ onAssistantRequest });
+
+    await waitFor(() => expect(testMonaco.__actions).toHaveLength(8));
+    expect(testMonaco.__actions.slice(4).map(({ id, label }) => [id, label])).toEqual([
+      ['a3s.work-ai.ask', '询问 AI 助手'],
+      ['a3s.work-ai.explain', 'AI 助手：解释代码'],
+      ['a3s.work-ai.improve', 'AI 助手：改进代码'],
+      ['a3s.work-ai.tests', 'AI 助手：生成测试'],
+    ]);
+
+    testMonaco.__selections = [{ selectedText: 'const value = 1;', isEmpty: () => false }];
+    const explain = testMonaco.__actions.find((action) => action.id === 'a3s.work-ai.explain');
+    await act(async () => explain?.run());
+
+    expect(onAssistantRequest).toHaveBeenCalledWith({
+      instruction: '请解释这段代码的作用、关键逻辑和潜在风险。',
+      selection: 'const value = 1;',
+    });
+  });
+
   it('reports live cursor, selection, and line-ending state from the Monaco model', async () => {
     const onEditorStatusChange = vi.fn();
     renderEditor({ value: 'first\r\nsecond', onEditorStatusChange });

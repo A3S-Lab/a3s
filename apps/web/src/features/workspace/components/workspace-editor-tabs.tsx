@@ -169,11 +169,14 @@ function tabContextMenuItems(
   const rightIds = tabs.slice(index + 1).map((candidate) => candidate.id);
   const relativePath = workspaceRelativePath(tab.path, workspaceRoot);
   const absolutePath = absoluteWorkspacePath(tab.path, workspaceRoot);
+  const closeShortcut = primaryShortcut('W');
   return [
     {
       id: 'close',
       label: '关闭',
       icon: <X size={14} />,
+      shortcut: closeShortcut.label,
+      ariaKeyShortcut: closeShortcut.aria,
       onSelect: () => actions.closeEditorTabs([tab.id]),
     },
     {
@@ -210,6 +213,12 @@ function tabContextMenuItems(
       onSelect: () => void copyPath(relativePath),
     },
   ];
+}
+
+function primaryShortcut(key: string): { label: string; aria: string } {
+  const applePlatform =
+    typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/u.test(`${navigator.platform} ${navigator.userAgent}`);
+  return applePlatform ? { label: `⌘${key}`, aria: `Meta+${key}` } : { label: `Ctrl+${key}`, aria: `Control+${key}` };
 }
 
 async function copyPath(path: string): Promise<void> {

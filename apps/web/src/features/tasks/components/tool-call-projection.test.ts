@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canonicalToolName,
   projectToolCalls,
   selectToolCallsForDisplay,
   summarizeToolCalls,
@@ -78,6 +79,43 @@ describe('projectToolCalls', () => {
     expect(denied[0]).toMatchObject({ state: 'denied', reason: 'Outside the workspace policy' });
   });
 
+  it('preserves a rejected HITL decision when the runtime reports its synthetic non-zero tool result', () => {
+    const [call] = projectToolCalls([
+      { type: 'tool_start', id: 'tool-rejected', name: 'bash' },
+      {
+        type: 'confirmation_required',
+        tool_id: 'tool-rejected',
+        tool_name: 'bash',
+        args: { command: 'rm generated.txt' },
+      },
+      {
+        type: 'confirmation_received',
+        tool_id: 'tool-rejected',
+        approved: false,
+        reason: 'User rejected it',
+      },
+      {
+        type: 'tool_end',
+        id: 'tool-rejected',
+        name: 'bash',
+        output: 'execution was REJECTED by the user',
+        exit_code: 1,
+        duration_ms: 42,
+        metadata: { policy: 'hitl' },
+      },
+    ]);
+
+    expect(call).toMatchObject({
+      state: 'denied',
+      reason: 'User rejected it',
+      output: 'execution was REJECTED by the user',
+      exitCode: 1,
+      durationMs: 42,
+      metadata: { policy: 'hitl' },
+    });
+    expect(toolActionLabel(call)).toBe('命令未执行');
+  });
+
   it('settles stale confirmations when the parent turn ends', () => {
     const [call] = projectToolCalls([
       {
@@ -138,6 +176,45 @@ describe('projectToolCalls', () => {
         output: 'complete persisted output',
       }),
     ]);
+  });
+
+  it('uses the same product semantics for Web API and namespaced tool aliases', () => {
+    const calls = projectToolCalls(
+      [],
+      [
+        {
+          type: 'tool_use',
+          id: 'shell-api',
+          name: 'shell_command',
+          input: { command: 'just web', cwd: '/workspace' },
+        },
+        {
+          type: 'tool_result',
+          toolUseId: 'shell-api',
+          content: 'server started',
+          isError: false,
+          exitCode: 0,
+        },
+        {
+          type: 'tool_use',
+          id: 'read-api',
+          name: 'functions.read_file',
+          input: { path: 'README.md' },
+        },
+        {
+          type: 'tool_result',
+          toolUseId: 'read-api',
+          content: '# A3S',
+          isError: false,
+        },
+      ]
+    );
+
+    expect(canonicalToolName('functions.shell_command')).toBe('shell');
+    expect(toolActionLabel(calls[0])).toBe('已执行命令');
+    expect(toolOperationLabel(calls[0])).toBe('运行本地命令');
+    expect(toolActionLabel(calls[1])).toBe('已读取文件');
+    expect(toolArgumentSummary(calls[1])).toBe('README.md');
   });
 
   it('uses a product label for the Skill discovery tool', () => {

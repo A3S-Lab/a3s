@@ -560,17 +560,40 @@
   margin: 8px 0 0;
 }
 
+.composer-goal-control {
+  position: relative;
+  height: 32px;
+}
+
+.composer-goal-control > summary {
+  list-style: none;
+}
+
+.composer-goal-control > summary::-webkit-details-marker {
+  display: none;
+}
+
 .composer-goal-timing {
   display: inline-flex;
   height: 32px;
-  max-width: 180px;
+  max-width: 210px;
   align-items: center;
   gap: 5px;
   padding: 0 7px;
+  border: 1px solid transparent;
   border-radius: 7px;
+  background: transparent;
   color: var(--a3s-muted);
-  font-size: 10px;
+  cursor: pointer;
+  font-size: 11px;
   white-space: nowrap;
+}
+
+.composer-goal-timing:hover,
+.composer-goal-control[open] .composer-goal-timing {
+  border-color: var(--a3s-line);
+  background: var(--a3s-panel-soft);
+  color: var(--a3s-ink);
 }
 
 .composer-goal-timing svg {
@@ -582,9 +605,177 @@
   font: 10px/1 "SFMono-Regular", Consolas, monospace;
 }
 
-.composer-goal-timing.completed svg,
-.composer-goal-timing.completed time {
+.composer-goal-control.achieved .composer-goal-timing svg,
+.composer-goal-control.achieved .composer-goal-timing time {
   color: var(--a3s-green);
+}
+
+.composer-goal-control.paused .composer-goal-timing svg,
+.composer-goal-control.paused .composer-goal-timing time,
+.composer-goal-control.retrying .composer-goal-timing svg {
+  color: var(--a3s-warning);
+}
+
+.composer-goal-popover {
+  position: absolute;
+  z-index: 110;
+  bottom: calc(100% + 10px);
+  left: 0;
+  width: min(320px, calc(100vw - 64px));
+  padding: 14px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 13px;
+  background: var(--a3s-panel);
+  box-shadow: var(--a3s-shadow-soft);
+}
+
+.composer-goal-popover > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--a3s-faint);
+  font-size: 10px;
+}
+
+.composer-goal-popover > header strong {
+  color: var(--a3s-ink);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.composer-goal-popover > p {
+  margin: 9px 0 12px;
+  color: var(--a3s-ink);
+  font-size: 12px;
+  font-weight: 560;
+  line-height: 1.55;
+}
+
+.composer-goal-progress {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--a3s-panel-strong);
+}
+
+.composer-goal-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--a3s-blue);
+  transition: width 180ms ease;
+}
+
+.composer-goal-popover dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin: 10px 0;
+}
+
+.composer-goal-popover dl > div {
+  min-width: 0;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--a3s-panel-soft);
+}
+
+.composer-goal-popover dt {
+  color: var(--a3s-faint);
+  font-size: 9px;
+}
+
+.composer-goal-popover dd {
+  margin: 4px 0 0;
+  color: var(--a3s-ink);
+  font: 11px/1.2 "SFMono-Regular", Consolas, monospace;
+}
+
+.composer-goal-popover > small {
+  display: block;
+  margin-top: 10px;
+  color: var(--a3s-faint);
+  font-size: 9px;
+}
+
+.composer-goal-error {
+  display: block;
+  max-height: 52px;
+  padding: 8px;
+  overflow: auto;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--a3s-red) 6%, var(--a3s-panel));
+  color: var(--a3s-red) !important;
+  line-height: 1.45;
+}
+
+.composer-goal-popover > footer {
+  display: flex;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.composer-goal-popover > footer button {
+  display: inline-flex;
+  height: 29px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 7px;
+  background: var(--a3s-panel);
+  color: var(--a3s-ink);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.composer-goal-popover > footer button:hover {
+  background: var(--a3s-panel-soft);
+}
+
+.follow-up-queue {
+  border-color: var(--a3s-line);
+  border-radius: 13px;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 7%);
+}
+
+.follow-up-queue > header {
+  min-height: 38px;
+  padding: 4px 8px 4px 11px;
+  background: color-mix(in srgb, var(--a3s-panel-soft) 62%, var(--a3s-panel));
+}
+
+.follow-up-queue > header .ds-button {
+  min-height: 27px;
+  border-color: var(--a3s-line);
+  background: var(--a3s-panel);
+  color: var(--a3s-ink);
+}
+
+.follow-up-row {
+  min-height: 42px;
+  padding: 5px 8px;
+}
+
+.follow-up-row.goal-continuation {
+  background: color-mix(in srgb, var(--a3s-blue) 3%, var(--a3s-panel));
+}
+
+.follow-up-row.goal-continuation > span {
+  background: color-mix(in srgb, var(--a3s-blue) 9%, var(--a3s-panel));
+  color: var(--a3s-blue);
+}
+
+.follow-up-row strong {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.follow-up-row.goal-continuation strong svg {
+  flex: 0 0 auto;
+  color: var(--a3s-blue);
 }
 
 .composer-suggestion-menu {

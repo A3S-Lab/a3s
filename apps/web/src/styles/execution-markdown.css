@@ -1,10 +1,17 @@
+.execution-markdown .streaming-markdown-region {
+  min-width: 0;
+}
+
 .execution-markdown .streaming-markdown {
   --markdown-soft-accent: color-mix(in srgb, var(--a3s-blue) 6%, var(--a3s-panel));
+  --markdown-heading-accent: color-mix(in srgb, var(--a3s-blue) 72%, var(--a3s-purple));
   min-width: 0;
   color: var(--a3s-ink);
   font-size: inherit;
+  font-kerning: normal;
   line-height: 1.72;
   letter-spacing: 0.002em;
+  line-break: strict;
   overflow-wrap: anywhere;
   text-wrap: pretty;
 }
@@ -45,9 +52,21 @@
 }
 
 .execution-markdown .streaming-markdown :where(h2) {
-  padding-bottom: 0.32em;
+  position: relative;
+  padding: 0 0 0.36em 0.72em;
   border-bottom: 1px solid color-mix(in srgb, var(--a3s-line) 82%, transparent);
   font-size: 1.32em;
+}
+
+.execution-markdown .streaming-markdown :where(h2)::before {
+  position: absolute;
+  top: 0.14em;
+  bottom: 0.5em;
+  left: 0;
+  width: 3px;
+  border-radius: 99px;
+  background: var(--markdown-heading-accent);
+  content: "";
 }
 
 .execution-markdown .streaming-markdown :where(h3) {
@@ -68,12 +87,12 @@
   margin: 0.78em 0;
 }
 
-.execution-markdown .streaming-markdown :where(strong) {
+.execution-markdown .streaming-markdown :where(strong, [data-streamdown="strong"]) {
   color: color-mix(in srgb, var(--a3s-ink) 94%, black);
   font-weight: 670;
 }
 
-:root.dark .execution-markdown .streaming-markdown :where(strong) {
+:root.dark .execution-markdown .streaming-markdown :where(strong, [data-streamdown="strong"]) {
   color: color-mix(in srgb, var(--a3s-ink) 96%, white);
 }
 
@@ -103,6 +122,10 @@
 
 .execution-markdown .streaming-markdown :where(li > ul, li > ol) {
   margin: 0.34em 0 0.2em;
+}
+
+.execution-markdown .streaming-markdown :where(li > p + p) {
+  margin-top: 0.55em;
 }
 
 .execution-markdown .streaming-markdown :where(ul > li)::marker {
@@ -157,6 +180,12 @@
   text-decoration-color: currentColor;
 }
 
+.execution-markdown .streaming-markdown :where(a, [data-streamdown="link"]):focus-visible {
+  border-radius: 3px;
+  outline: 2px solid color-mix(in srgb, var(--a3s-blue) 42%, transparent);
+  outline-offset: 2px;
+}
+
 .execution-markdown .streaming-markdown :where(blockquote) {
   padding: 0.68em 0.9em 0.68em 1em;
   border: 1px solid color-mix(in srgb, var(--a3s-blue) 12%, var(--a3s-line));
@@ -173,6 +202,16 @@
 
 .execution-markdown .streaming-markdown :where(blockquote > :last-child) {
   margin-bottom: 0;
+}
+
+.execution-markdown .streaming-markdown :where(blockquote blockquote) {
+  margin-right: 0;
+  padding-top: 0.42em;
+  padding-bottom: 0.42em;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  background: transparent;
 }
 
 .execution-markdown .streaming-markdown :where(hr) {
@@ -210,6 +249,7 @@
   margin: 0;
   border-collapse: collapse;
   font-size: 0.92em;
+  font-variant-numeric: tabular-nums;
   line-height: 1.5;
 }
 
@@ -227,11 +267,22 @@
 }
 
 .execution-markdown .streaming-markdown :where(th) {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: color-mix(in srgb, var(--a3s-panel-soft) 88%, var(--a3s-panel));
   color: var(--a3s-muted);
   font-size: 0.94em;
   font-weight: 650;
   letter-spacing: 0.015em;
+}
+
+.execution-markdown .streaming-markdown :where(caption) {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--a3s-line);
+  color: var(--a3s-muted);
+  font-size: 0.92em;
+  text-align: left;
 }
 
 .execution-markdown .streaming-markdown :where(tbody tr:nth-child(even)) {
@@ -343,6 +394,7 @@
 .execution-markdown [data-streamdown="code-block-body"] pre {
   margin: 0;
   font: 11.5px/1.72 "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+  font-variant-ligatures: none;
   tab-size: 2;
 }
 

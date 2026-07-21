@@ -1,10 +1,10 @@
-import { ArrowDown, ArrowUp, ListOrdered, LoaderCircle, Pencil, Square, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ListOrdered, LoaderCircle, Pause, Pencil, Square, Target, X } from 'lucide-react';
 import { useState } from 'react';
 import { useSnapshot } from 'valtio';
+import type { QueuedTurn } from '../../../types/api';
 import type { TaskActions } from '../task-actions';
 import { Button, Dialog } from '../../../design-system/primitives';
-import { appState, reportTaskPersistenceResult } from '../../../state/app-state';
-import { persistPausedQueues, persistQueuedPrompts, type QueuedPrompt } from '../task-state';
+import { appState } from '../../../state/app-state';
 import { TaskComposerTrailingControls } from './task-composer-controls';
 import { ComposerResourceChips } from './composer-resource-chips';
 import { TaskComposerInput } from './task-composer-input';
@@ -25,13 +25,15 @@ export function TaskComposer({
   const currentTask = state.sessions.find((session) => session.sessionId === state.activeSessionId);
   const workspaceRoot =
     currentTask?.workspace ||
+    (state.activeProduct === 'work' ? state.workspaceRoot : '') ||
     (variant === 'preparation' ? state.newTaskConfig.workspace : '') ||
     state.workspaceRoot ||
     state.health?.workspace ||
     '';
   const currentTaskRunning = Boolean(state.streamingSessionId && state.activeSessionId === state.streamingSessionId);
   const anotherTaskRunning = Boolean(state.streamingSessionId && state.activeSessionId !== state.streamingSessionId);
-  const queue = state.activeSessionId ? (state.queuedPrompts[state.activeSessionId] ?? []) : [];
+  const turnQueue = state.activeSessionId ? state.turnQueues[state.activeSessionId] : undefined;
+  const queue = turnQueue?.items ?? [];
   const addContext = (path: string) => {
     const normalized = workspaceContextPath(path, workspaceRoot);
     const currentFiles = appState.composerContextFiles;
@@ -47,10 +49,10 @@ export function TaskComposer({
     <div className={`task-composer-dock ${variant}`}>
       {queue.length > 0 && (
         <FollowUpQueue
-          items={queue as QueuedPrompt[]}
+          items={queue as unknown as QueuedTurn[]}
           sessionId={state.activeSessionId!}
           running={currentTaskRunning}
-          paused={Boolean(state.pausedQueues[state.activeSessionId!])}
+          paused={Boolean(turnQueue?.paused)}
           actions={actions}
         />
       )}
@@ -86,7 +88,7 @@ export function TaskComposer({
         <footer>
           <div>
             <TaskComposerModeControl actions={actions} />
-            <TaskComposerGoalTiming />
+            {state.activeProduct !== 'work' && <TaskComposerGoalTiming actions={actions} />}
           </div>
           <div>
             <TaskComposerTrailingControls actions={actions} />
@@ -111,7 +113,7 @@ export function TaskComposer({
             </button>
           </div>
         </footer>
-        {variant === 'preparation' && (
+        {variant === 'preparation' && state.activeProduct !== 'work' && (
           <div className='composer-preparation-meta'>
             <NewTaskWorkspaceControl actions={actions} />
           </div>
@@ -142,7 +144,7 @@ function FollowUpQueue({
   paused,
   actions,
 }: {
-  items: QueuedPrompt[];
+  items: QueuedTurn[];
   sessionId: string;
   running: boolean;
   paused: boolean;
@@ -150,19 +152,12 @@ function FollowUpQueue({
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
-  const persistQueue = () => {
-    if (!appState.queuedPrompts[sessionId]?.length) delete appState.pausedQueues[sessionId];
-    reportTaskPersistenceResult(persistQueuedPrompts(appState.queuedPrompts));
-    reportTaskPersistenceResult(persistPausedQueues(appState.pausedQueues));
-  };
   const move = (index: number, offset: number) => {
-    const queue = appState.queuedPrompts[sessionId];
-    const target = index + offset;
-    if (!queue || target < 0 || target >= queue.length) return;
-    [queue[index], queue[target]] = [queue[target], queue[index]];
-    persistQueue();
+    const item = items[index];
+    if (!item) return;
+    void actions.moveQueuedMessage(sessionId, item.id, offset);
   };
-  const startEditing = (item: QueuedPrompt) => {
+  const startEditing = (item: QueuedTurn) => {
     setEditingId(item.id);
     setEditingValue(item.content);
   };
@@ -171,12 +166,9 @@ function FollowUpQueue({
     setEditingValue('');
   };
   const saveEditing = () => {
-    const item = appState.queuedPrompts[sessionId]?.find((entry) => entry.id === editingId);
     const content = editingValue.trim();
-    if (!item || !content) return;
-    item.content = content;
-    persistQueue();
-    closeEditing();
+    if (!editingId || !content) return;
+    void actions.updateQueuedMessage(sessionId, editingId, content).then(closeEditing);
   };
   return (
     <section className='follow-up-queue' aria-label='后续指令队列'>
@@ -186,21 +178,46 @@ function FollowUpQueue({
           后续指令
         </span>
         <small>{running ? '当前执行完成后按顺序继续' : paused ? '队列已暂停，只有主动恢复才会继续' : '等待执行'}</small>
-        {!running && paused && (
+        {!running && (
           <Button
             onClick={() => {
               void actions.resumeQueue(sessionId);
             }}
           >
-            恢复队列
+            {paused ? '恢复队列' : '执行下一条'}
+          </Button>
+        )}
+        {running && !paused && (
+          <Button
+            tone='quiet'
+            onClick={() => {
+              void actions.pauseQueue(sessionId);
+            }}
+          >
+            <Pause size={12} />
+            暂停后续
+          </Button>
+        )}
+        {running && paused && (
+          <Button
+            tone='quiet'
+            onClick={() => {
+              void actions.resumeQueue(sessionId);
+            }}
+          >
+            恢复后续
           </Button>
         )}
       </header>
       {items.map((item, index) => (
-        <div className='follow-up-row' key={item.id}>
+        <div className={`follow-up-row ${item.kind === 'goalContinuation' ? 'goal-continuation' : ''}`} key={item.id}>
           <span>{index + 1}</span>
           <div>
-            <strong>{item.content}</strong>
+            <strong>
+              {item.kind === 'goalContinuation' && <Target size={13} />}
+              {item.kind === 'goalContinuation' ? '继续推进目标' : item.content}
+            </strong>
+            {item.kind === 'goalContinuation' && <small>{item.content}</small>}
             {(item.contextFiles.length > 0 || item.skillNames?.length) && (
               <small>
                 {[
@@ -212,33 +229,36 @@ function FollowUpQueue({
               </small>
             )}
           </div>
+          {item.kind === 'user' && (
+            <>
+              <button
+                type='button'
+                aria-label={`提前第 ${index + 1} 条指令`}
+                disabled={index === 0}
+                onClick={() => move(index, -1)}
+              >
+                <ArrowUp size={13} />
+              </button>
+              <button
+                type='button'
+                aria-label={`后移第 ${index + 1} 条指令`}
+                disabled={index === items.length - 1}
+                onClick={() => move(index, 1)}
+              >
+                <ArrowDown size={13} />
+              </button>
+              <button type='button' aria-label={`编辑第 ${index + 1} 条指令`} onClick={() => startEditing(item)}>
+                <Pencil size={13} />
+              </button>
+            </>
+          )}
           <button
             type='button'
-            aria-label={`提前第 ${index + 1} 条指令`}
-            disabled={index === 0}
-            onClick={() => move(index, -1)}
-          >
-            <ArrowUp size={13} />
-          </button>
-          <button
-            type='button'
-            aria-label={`后移第 ${index + 1} 条指令`}
-            disabled={index === items.length - 1}
-            onClick={() => move(index, 1)}
-          >
-            <ArrowDown size={13} />
-          </button>
-          <button type='button' aria-label={`编辑第 ${index + 1} 条指令`} onClick={() => startEditing(item)}>
-            <Pencil size={13} />
-          </button>
-          <button
-            type='button'
-            aria-label={`移除第 ${index + 1} 条指令`}
+            aria-label={item.kind === 'goalContinuation' ? '暂停目标续跑' : `移除第 ${index + 1} 条指令`}
             onClick={() => {
-              appState.queuedPrompts[sessionId] = appState.queuedPrompts[sessionId].filter(
-                (entry) => entry.id !== item.id
-              );
-              persistQueue();
+              void (item.kind === 'goalContinuation'
+                ? actions.updateGoalAction('pause')
+                : actions.removeQueuedMessage(sessionId, item.id));
             }}
           >
             <X size={13} />

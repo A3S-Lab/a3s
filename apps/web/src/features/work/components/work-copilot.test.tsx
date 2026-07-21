@@ -1,0 +1,148 @@
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CodeActions } from '../../code/use-code-controller';
+import { appState } from '../../../state/app-state';
+import { createWorkAgentProposalRequest, WORK_AGENT_PROPOSAL_PROTOCOL } from '../work-agent-proposal';
+import { WorkCopilot } from './work-copilot';
+
+describe('Work Copilot panel', () => {
+  beforeEach(() => {
+    localStorage.removeItem('a3s-work.copilot-width');
+    localStorage.removeItem('a3s-work.ai-assistant-width');
+    appState.sessions = [];
+    appState.activeSessionId = null;
+    appState.streamingSessionId = null;
+    appState.messagesBySession = {};
+    appState.messagesLoading = {};
+    appState.messageErrors = {};
+    appState.turnQueues = {};
+    appState.composerValue = '';
+    appState.composerContextFiles = [];
+    appState.composerSkills = [];
+    appState.workspaceRoot = '/docs';
+    appState.filesByDirectory = { '/docs': [] };
+    appState.newTaskConfig = {
+      workspace: '/docs',
+      model: '',
+      effort: 'medium',
+      permissionMode: 'default',
+      goal: '',
+    };
+    appState.modelCatalog = { defaultModel: '', warnings: [], items: [] };
+    appState.effortLevels = [{ id: 'medium', label: 'Medium' }];
+    appState.taskConfigSaving = null;
+    appState.modelChangeNotice = null;
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it('prefills a folder task and leaves sending under user control', () => {
+    const onAgentRequest = vi.fn();
+    const sendMessage = vi.fn();
+    render(
+      <WorkCopilot
+        actions={{ sendMessage } as unknown as CodeActions}
+        workspaceRoot='/docs'
+        currentPath='/docs/Reports'
+        onClose={vi.fn()}
+        onPickRoot={vi.fn()}
+        onAgentRequest={onAgentRequest}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '概览当前文件夹' }));
+    expect(onAgentRequest).toHaveBeenCalledWith({
+      workspaceRoot: '/docs',
+      paths: ['/docs/Reports'],
+      instruction: expect.stringContaining('概览'),
+    });
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('supports keyboard resizing and persists the chosen width', () => {
+    render(
+      <WorkCopilot
+        actions={{} as CodeActions}
+        workspaceRoot='/docs'
+        currentPath='/docs'
+        onClose={vi.fn()}
+        onPickRoot={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+
+    const separator = screen.getByRole('separator', { name: '调整 Work AI 助手宽度' });
+    expect(separator).toHaveAttribute('aria-valuenow', '420');
+    fireEvent.keyDown(separator, { key: 'ArrowLeft' });
+    expect(separator).toHaveAttribute('aria-valuenow', '440');
+    expect(localStorage.getItem('a3s-work.ai-assistant-width')).toBe('440');
+  });
+
+  it('projects a matching assistant proposal into an explicit review surface', () => {
+    const apply = vi.fn(() => ({ appliedTargetIds: ['selection'], conflicts: [] }));
+    const proposal = createWorkAgentProposalRequest({
+      id: 'proposal-copilot-test',
+      title: '审阅文字改写',
+      description: '选中文本',
+      targets: [{ id: 'selection', label: '选中文本', before: '原文' }],
+      apply,
+    });
+    appState.sessions = [
+      {
+        sessionId: 'work-session',
+        workspace: '/docs',
+        cwd: '/docs',
+        model: 'codex/gpt',
+        followDefaultModel: false,
+        permissionMode: 'default',
+        state: 'connected',
+        title: 'Work',
+        agentId: 'work',
+        createdAt: 1,
+      },
+    ];
+    appState.activeSessionId = 'work-session';
+    appState.messagesBySession['work-session'] = [
+      {
+        id: 'user-1',
+        sessionId: 'work-session',
+        role: 'user',
+        content: `请求 ID：${proposal.id}`,
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'assistant-1',
+        sessionId: 'work-session',
+        role: 'assistant',
+        content: JSON.stringify({
+          protocol: WORK_AGENT_PROPOSAL_PROTOCOL,
+          requestId: proposal.id,
+          summary: '建议精简表达',
+          changes: [{ targetId: 'selection', after: '新文', reason: '更简洁' }],
+        }),
+        createdAt: new Date().toISOString(),
+      },
+    ];
+
+    render(
+      <WorkCopilot
+        actions={{} as CodeActions}
+        workspaceRoot='/docs'
+        currentPath='/docs'
+        onClose={vi.fn()}
+        onPickRoot={vi.fn()}
+        onAgentRequest={vi.fn()}
+        proposal={proposal}
+        onDismissProposal={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('region', { name: 'AI 修改建议审阅' })).toHaveTextContent('原文');
+    expect(screen.getByRole('region', { name: 'AI 修改建议审阅' })).toHaveTextContent('新文');
+    fireEvent.click(screen.getByRole('button', { name: '应用 1 项' }));
+    expect(apply).toHaveBeenCalledTimes(1);
+  });
+});

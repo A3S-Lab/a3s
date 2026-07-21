@@ -43,7 +43,9 @@ OS/arch 组合应从 release page 手动安装 Box。
 
 ## Tool Listing
 
-`a3s list` 会扫描可见的 `a3s-*` executables，让用户知道本机有哪些 A3S product tools 可用。
+`a3s list` 会分开报告 trusted component catalog、安装 ownership receipts、delegated
+Use capabilities 与可见但未注册的 `a3s-*` executables。默认的本地 status 不访问网络，
+discovery 也绝不会执行未注册的 PATH tool。
 
 ## Boundaries
 

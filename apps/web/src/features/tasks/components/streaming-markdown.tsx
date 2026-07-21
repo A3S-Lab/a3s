@@ -1,3 +1,4 @@
+import { cjk } from '@streamdown/cjk';
 import { code } from '@streamdown/code';
 import { Streamdown, type StreamdownTranslations } from 'streamdown';
 
@@ -35,24 +36,25 @@ const translations: StreamdownTranslations = {
 
 export default function StreamingMarkdown({ content, streaming }: { content: string; streaming: boolean }) {
   return (
-    <Streamdown
-      className={`streaming-markdown a3s-document-markdown${streaming ? ' is-streaming' : ''}`}
-      dir='auto'
-      aria-busy={streaming || undefined}
-      mode={streaming ? 'streaming' : 'static'}
-      isAnimating={streaming}
-      parseIncompleteMarkdown
-      normalizeHtmlIndentation
-      plugins={{ code }}
-      shikiTheme={['github-light', 'github-dark']}
-      controls={{
-        code: { copy: true, download: false },
-        table: { copy: true, download: false, fullscreen: true },
-      }}
-      lineNumbers
-      translations={translations}
-    >
-      {content}
-    </Streamdown>
+    <div className='streaming-markdown-region' aria-busy={streaming || undefined}>
+      <Streamdown
+        className={`streaming-markdown a3s-document-markdown${streaming ? ' is-streaming' : ''}`}
+        dir='auto'
+        mode={streaming ? 'streaming' : 'static'}
+        isAnimating={streaming}
+        parseIncompleteMarkdown
+        normalizeHtmlIndentation
+        plugins={{ cjk, code }}
+        shikiTheme={['github-light', 'github-dark']}
+        controls={{
+          code: { copy: true, download: false },
+          table: { copy: true, download: false, fullscreen: true },
+        }}
+        lineNumbers
+        translations={translations}
+      >
+        {content}
+      </Streamdown>
+    </div>
   );
 }

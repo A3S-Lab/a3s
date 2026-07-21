@@ -1,3 +1,4 @@
+import 'monaco-editor/esm/nls.messages.zh-cn.js';
 import { loader } from '@monaco-editor/react';
 import type * as MonacoNamespace from 'monaco-editor';
 import { monaco } from './monaco-runtime';

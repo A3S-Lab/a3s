@@ -3,14 +3,18 @@
 ## Scope
 
 This architecture implements the A3S Code journey defined in
-[PRODUCT_BLUEPRINT.md](PRODUCT_BLUEPRINT.md). It excludes future super-app
-products and disconnected backend capability browsers.
+[PRODUCT_BLUEPRINT.md](PRODUCT_BLUEPRINT.md). It includes the owned Memory
+exploration journey and excludes future super-app products and disconnected
+backend capability browsers.
 
 ## Shell and navigation model
 
 ```mermaid
 flowchart LR
     ActivityBar[Activity Bar] --> Code[Code product]
+    ActivityBar --> Plugin[Verified plugin Activity]
+    ActivityBar --> Marketplace[Plugin Marketplace]
+    ActivityBar --> Memory[Code Memory]
     Code --> TaskLibrary[Task Library]
     TaskLibrary --> Draft[New-task preparation]
     TaskLibrary --> Task[Current Task]
@@ -28,7 +32,7 @@ Navigation state has four distinct levels:
 
 | Level | Owner | Examples |
 | --- | --- | --- |
-| Product / system | `ActivityBar` | Code, Settings |
+| Product / system | `ActivityBar` | Code Tasks, verified plugin Activities, Code Memory, Marketplace, Settings |
 | Object | `TaskLibrary` | New task, selected task |
 | Supporting plane | `ResultWorkspace` | Closed, docked, full screen |
 | Result mode and artifact | `WorkspaceModeSwitcher`, `ArtifactTabs` | Overview, Files, Browser, Changes, selected tab |
@@ -42,27 +46,35 @@ Overlays never become hidden page-level navigation.
 ```text
 AppShell
 ├── ActivityBar                         fixed product rail
-├── TaskLibrary                        Code-local object list
 └── ProductWorkspace
-    └── TasksPage
-        ├── NewTaskPreparation
-        │   ├── NewTaskWelcome
-        │   ├── TaskStarters
-        │   └── TaskComposer
-        └── ActiveTask
-            ├── TaskHeader
-            └── ActiveTaskLayout
-                ├── Conversation
-                │   ├── ExecutionStream
-                │   ├── ArtifactEntries
-                │   └── TaskComposer
-                └── ResultWorkspace           optional, resizable
-                    ├── ResultWorkspaceHeader
-                    │   └── ArtifactTabs
-                    ├── WorkspaceModeSwitcher
-                    └── ResultWorkspaceBody
-                        ├── ModeNavigator
-                        └── ArtifactViewport
+    ├── PluginHostPage                  sandboxed package Activity
+    ├── PluginMarketplacePage           signed lifecycle review
+    ├── TasksPage
+    │   ├── TaskLibrary                 Code-local object list
+    │   └── TaskSurface
+    │       ├── NewTaskPreparation
+    │       │   ├── NewTaskWelcome
+    │       │   ├── TaskStarters
+    │       │   └── TaskComposer
+    │       └── ActiveTask
+    │           ├── TaskHeader
+    │           └── ActiveTaskLayout
+    │               ├── Conversation
+    │               │   ├── ExecutionStream
+    │               │   ├── ArtifactEntries
+    │               │   └── TaskComposer
+    │               └── ResultWorkspace       optional, resizable
+    │                   ├── ResultWorkspaceHeader
+    │                   │   └── ArtifactTabs
+    │                   ├── WorkspaceModeSwitcher
+    │                   └── ResultWorkspaceBody
+    │                       ├── ModeNavigator
+    │                       └── ArtifactViewport
+    └── MemoryPage
+        ├── MemoryFiltersPanel
+        ├── MemoryGraph / MemoryTimeline
+        ├── MemoryInspector
+        └── EvolutionWorkbench
 ```
 
 The active mode supplies the navigator and viewport content:
@@ -140,6 +152,23 @@ Owns authoritative workspace Git status, changed-file metrics, complete
 original/modified diff documents, stage, unstage, commit, and commit receipts.
 It never infers task provenance.
 
+### `features/memory`
+
+Owns paged overview loading, refresh authority, Memory UI state, whole-store
+filtering, bounded connected 3D graph projection, timeline grouping, and
+memory/entity inspection. It also adapts the typed Evolution overview and
+review mutations into the Learning tab; candidate inference remains in the
+LLM-backed CLI service. The first page owns graph topology; later pages add
+entries without repeating that payload. The Three.js renderer is a lazy
+boundary and never enters the initial shell bundle. A failed refresh keeps the
+last successful snapshot, and only the latest non-aborted request may settle
+shared state.
+
+Memory exploration is read-only and independent of task-scoped Result Workspace
+state. Learning review may materialize or roll back versioned derived assets,
+but does not mutate source memories. The feature does not own extraction,
+candidate classification, consolidation, pruning, or configuration mutation.
+
 ### `features/settings`
 
 Owns account connection, model defaults, theme, updates, and service
@@ -200,9 +229,9 @@ flowchart LR
 State ownership:
 
 - service responses own sessions, messages, controls, output, filesystem,
-  preview capability, preview lifecycle, and Git truth;
+  preview capability, preview lifecycle, Git truth, and Memory store truth;
 - `appState` owns the current authoritative snapshot plus selected task and
-  shared Result Workspace UI state;
+  shared Result Workspace and Memory UI state;
 - per-task client state owns selected mode, tabs, selected artifact, navigator
   width, workspace width, scroll restoration keys, and drafts;
 - local storage is best-effort for safe UI continuity only;
@@ -321,6 +350,11 @@ Backend availability is not sufficient reason to add a client wrapper. New API
 methods are added together with an owned controller action, visible journey
 step, error state, and test.
 
+Memory overview responses expose offset pagination and an `includeGraph`
+switch. The client follows every page and requests graph topology on the first
+page only; the detail endpoint is not wrapped while overview data already owns
+the inspector journey.
+
 ## Target source structure
 
 ```text
@@ -334,6 +368,7 @@ src/
 │   ├── files/                     file tree, editor, search, validation
 │   ├── preview/                   managed browser preview
 │   ├── changes/                   Git review and commit
+│   ├── memory/                    Memory exploration and projection
 │   ├── settings/                  global settings dialog and preferences
 │   └── help/                      product guidance
 ├── lib/                           API transport

@@ -45,12 +45,14 @@ export function SettingsSaveState({
   savedAt,
   onReset,
   onSave,
+  disabled = false,
 }: {
   dirty: boolean;
   saving: boolean;
   savedAt?: number | null;
   onReset?(): void;
   onSave(): void;
+  disabled?: boolean;
 }) {
   return (
     <div className='settings-save-state' aria-live='polite'>
@@ -71,7 +73,7 @@ export function SettingsSaveState({
             撤销
           </Button>
         )}
-        <Button tone='primary' loading={saving} disabled={!dirty} onClick={onSave}>
+        <Button tone='primary' loading={saving} disabled={!dirty || disabled} onClick={onSave}>
           保存更改
         </Button>
       </span>

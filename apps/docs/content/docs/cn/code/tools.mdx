@@ -13,15 +13,36 @@ workspace capability 与 session 级集成共同组装；因此非本地 workspa
 | 层级 | 工具 | 注册规则 |
 | --- | --- | --- |
 | Workspace-gated builtins | `read`、`write`、`edit`、`patch`、`grep`、`glob`、`ls`、`bash`、`git` | 仅在 `WorkspaceServices` 声明具备所需 capability 时注册。例如 browser 或 S3 workspace 可以暴露文件工具，同时隐藏 `bash` 或本地 git。 |
-| Runtime builtins | `web_fetch`、`web_search`、`batch`、`program` | 由 core tool executor 注册。`batch` 和 `program` 会包住当前 registry，因此其内部可用工具仍取决于当前 session surface。 |
+| Runtime builtins | `web_fetch`、`web_search`、`batch`、`program` | 由 core tool executor 注册。`batch` 和 `program` 接收当前 scoped invoker，因此内部工具既受 session surface 限制，也继承调用方的 governance scope。 |
 | Session bootstrap tools | `task`、`parallel_task`、`generate_object`、`search_skills`、`Skill` | 构建 `AgentSession` 时加入。关闭 manual delegation 后会移除委派工具；`generate_object` 需要已配置的 LLM client；skill 工具使用有效 skill registry。 |
 | Dynamic integrations | `mcp__<server>__<tool>` 与宿主注册工具 | 从 MCP manager 或宿主代码发现后加入。 |
 
 当某个工作流依赖特定工具可见时，在测试或应用诊断中使用 `toolNames()` /
 `toolDefinitions()` 验证。工具可见性不是安全授权。`send`、`run`、`stream`
-中的模型选择工具调用会经过 permission policy、confirmation、hooks/AHP、timeout、
-artifact limit 与 workspace path check。`session.tool(...)` 这类 direct SDK call 是宿主控制面调用；调用 SDK 前应先在你的应用中授权。
+中的模型选择工具调用会经过 active-skill restriction、permission policy、
+confirmation、hooks、budget、queue/timeout、cancellation、递归调用保护、output
+sanitization、artifact limit 与 workspace path check。`session.tool(...)` 这类
+direct SDK call 使用另一条显式 policy，见下文。
 `activeTools()` 回答的是另一个问题：当前 active operation 中哪些工具调用正在运行。
+
+## 统一 Invocation 内核
+
+Runtime 会为每次调用标记 origin：
+
+| Origin | 示例 | Permission / confirmation policy |
+| --- | --- | --- |
+| Agent | 模型在 `send` 或 `stream` 中发出 tool call | 应用完整的模型侧 policy 与 HITL。 |
+| Nested | `batch`、`program` 或其他 orchestrator 的内部调用 | 继承调用方的 governed invoker 与 invocation stack。 |
+| Host direct | `session.tool(...)`、typed read/write/git helper、`session.program(...)` 与直接 task helper | Trusted control plane：宿主已经选择该调用，因此跳过模型侧 permission/HITL。 |
+
+三种 origin 都经过同一个 invocation kernel。Pre-hook 可以阻止调用；budget check
+在 side effect 前执行；queue/timeout、cancellation、递归保护、post-hook 与
+security-provider output sanitization 仍然有效。安装 scoped invoker 后，nested call
+不能回退到 raw registry。
+
+Host-direct policy 不是面向终端用户的授权系统。Embedding application 必须先完成
+用户身份认证和授权，再把请求翻译成 direct SDK helper。关闭 session 会通过 session
+cancellation scope 中止正在执行的 host-direct tool。
 
 ```ts
 const files = await session.glob('src/**/*.rs');
@@ -37,7 +58,8 @@ console.log(status.output);
 console.log(raw.output);
 ```
 
-直接工具调用在 session 工作区下执行，应视为宿主侧特权操作。`session.tool(...)`、
+直接工具调用在 session 工作区下执行，应视为宿主侧特权操作。它们不更新 transcript，
+因此不占用 session 的 single-flight conversation lease。`session.tool(...)`、
 `session.program(...)`、`session.git(...)`、`session.writeFile(...)`、
 `session.ls(...)`、`session.editFile(...)` 和 `session.patchFile(...)` 返回
 `ToolResult`，读取 `output`、`exitCode` 和可选的 `metadataJson`。类型化
