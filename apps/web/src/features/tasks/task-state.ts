@@ -23,7 +23,6 @@ export interface TaskState {
   toolDecisionState: Record<string, 'approving' | 'denying' | 'approved' | 'denied'>;
   toolDecisionErrors: Record<string, string>;
   effortLevels: EffortLevel[];
-  activeEffort: string;
   newTaskConfig: NewTaskConfig;
   taskConfigSaving: 'model' | 'effort' | 'permission' | 'goal' | null;
   contextCompacting: Record<string, boolean>;
@@ -184,7 +183,6 @@ export function createTaskState(product: TaskProduct = 'code'): TaskState {
     toolDecisionState: {},
     toolDecisionErrors: {},
     effortLevels: [],
-    activeEffort: 'medium',
     newTaskConfig: readNewTaskConfig(),
     taskConfigSaving: null,
     contextCompacting: {},

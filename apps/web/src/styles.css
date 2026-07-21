@@ -5,6 +5,7 @@
 @import "./styles/workspace-editor.css";
 @import "./styles/workspace-changes.css";
 @import "./styles/workspace-search.css";
+@import "./styles/workspace-quick-open.css";
 @import "./styles/settings.css";
 @import "./styles/settings-config.css";
 @import "./styles/settings-sections.css";

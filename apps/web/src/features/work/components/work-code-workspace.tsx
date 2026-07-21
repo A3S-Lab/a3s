@@ -4,6 +4,8 @@ import { useSnapshot } from 'valtio';
 import { appState } from '../../../state/app-state';
 import type { WorkspaceEntry } from '../../../types/api';
 import { MonacoCodeEditor } from '../../workspace/components/monaco-code-editor';
+import { workspaceEditorModelPath } from '../../workspace/components/monaco-editor-model-store';
+import type { MonacoEditorStatus } from '../../workspace/components/monaco-editor-status';
 import type { WorkCodeActions } from '../use-work-code-controller';
 import type { WorkAgentRequest } from '../work-agent-request';
 import { localPathBasename, relativeLocalPath, workFileExtension } from '../work-local-files';
@@ -31,11 +33,15 @@ export function WorkCodeWorkspace({
 }) {
   const state = useSnapshot(appState);
   const [intelligenceStatus, setIntelligenceStatus] = useState('代码导航连接中');
+  const [editorStatus, setEditorStatus] = useState<MonacoEditorStatus | null>(null);
   const tab = actions.activeTab;
   const dark =
     state.theme === 'dark' || (state.theme === 'system' && document.documentElement.dataset.theme === 'dark');
 
-  useEffect(() => setIntelligenceStatus('代码导航连接中'), [tab?.path]);
+  useEffect(() => {
+    setIntelligenceStatus('代码导航连接中');
+    setEditorStatus(null);
+  }, [tab?.path]);
 
   return (
     <section className='work-code-workspace' aria-label='Work WebIDE'>
@@ -151,8 +157,8 @@ export function WorkCodeWorkspace({
                     aria-label={isMarkdown(tab.path) ? 'Markdown 编辑区' : '代码编辑区'}
                   >
                     <MonacoCodeEditor
-                      key={tab.path}
                       path={tab.path}
+                      modelPath={workspaceEditorModelPath('work', tab.path)}
                       value={tab.draft}
                       location={tab.location}
                       readOnly={false}
@@ -165,6 +171,7 @@ export function WorkCodeWorkspace({
                       onClose={() => actions.closeTab(tab.path)}
                       onNavigate={actions.openFile}
                       onStatusChange={setIntelligenceStatus}
+                      onEditorStatusChange={setEditorStatus}
                       onAssistantRequest={(request) =>
                         onAgentRequest({
                           workspaceRoot: rootPath,
@@ -195,12 +202,16 @@ export function WorkCodeWorkspace({
                       : workFileExtension(tab.path).toLocaleUpperCase() || 'Plain Text'}
                   </span>
                   <span>{tab.draft.split(/\r?\n/).length} 行</span>
+                  {editorStatus && <span>{`行 ${editorStatus.lineNumber}，列 ${editorStatus.column}`}</span>}
+                  {editorStatus && editorStatus.selectedCharacters > 0 && (
+                    <span>{`已选择 ${editorStatus.selectedCharacters} 个字符`}</span>
+                  )}
                   {isMarkdown(tab.path) && <span>左侧编辑 · 右侧实时预览</span>}
                 </span>
                 <span className='work-code-statusbar-group'>
                   <span>{tab.content === tab.draft ? '已保存' : '未保存'}</span>
                   <span>UTF-8</span>
-                  <span>LF</span>
+                  <span>{editorStatus?.lineEnding ?? 'LF'}</span>
                   {!tab.loading && !tab.loadError && <span>{intelligenceStatus}</span>}
                 </span>
               </output>

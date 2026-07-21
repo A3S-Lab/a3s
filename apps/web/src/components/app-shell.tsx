@@ -13,6 +13,7 @@ import { WorkProduct } from '../features/work/pages/work-product';
 import type { PluginActions } from '../features/plugins/use-plugin-controller';
 import { PluginHostPage } from '../features/plugins/pages/plugin-host-page';
 import { PluginMarketplacePage } from '../features/plugins/pages/plugin-marketplace-page';
+import { WorkspaceQuickOpen } from '../features/workspace/components/workspace-quick-open';
 
 export function AppShell({ actions, pluginActions }: { actions: CodeActions; pluginActions?: PluginActions }) {
   const state = useSnapshot(appState);
@@ -63,6 +64,7 @@ export function AppShell({ actions, pluginActions }: { actions: CodeActions; plu
         </output>
       )}
       {state.activeProduct === 'code' && state.commandPaletteOpen && <CommandPalette actions={actions} />}
+      {state.activeProduct === 'code' && state.fileQuickOpenOpen && <WorkspaceQuickOpen actions={actions} />}
     </main>
   );
 }

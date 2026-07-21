@@ -9,6 +9,11 @@ describe('CommandPalette', () => {
     cleanup();
     appState.settingsOpen = false;
     appState.commandPaletteOpen = false;
+    appState.fileQuickOpenOpen = false;
+    appState.activeSessionId = null;
+    appState.workspaceRoot = '';
+    appState.workspacePresentation = 'docked';
+    appState.taskView = 'conversation';
     window.history.replaceState(null, '', '#code/conversation');
   });
 
@@ -57,7 +62,6 @@ describe('CommandPalette', () => {
     expect(appState.settingsTab).toBe('help');
     expect(window.location.hash).toBe('#settings/help');
   });
-
   it('opens the Memory visualization from global navigation', () => {
     appState.commandPaletteOpen = true;
     render(<CommandPalette actions={{ newConversation: vi.fn() } as unknown as CodeActions} />);
@@ -68,5 +72,30 @@ describe('CommandPalette', () => {
     expect(appState.codeSurface).toBe('memory');
     expect(window.location.hash).toBe('#code/memory');
     expect(appState.commandPaletteOpen).toBe(false);
+  });
+
+  it('offers file quick open only for an active task', () => {
+    appState.activeSessionId = 'task-1';
+    appState.workspaceRoot = '/repo';
+    appState.commandPaletteOpen = true;
+    render(<CommandPalette actions={{ newConversation: vi.fn() } as unknown as CodeActions} />);
+
+    fireEvent.click(screen.getByRole('option', { name: /快速打开文件/ }));
+
+    expect(appState.commandPaletteOpen).toBe(false);
+    expect(appState.fileQuickOpenOpen).toBe(true);
+  });
+
+  it('toggles the current task workspace presentation', () => {
+    appState.activeSessionId = 'task-1';
+    appState.workspaceRoot = '/repo';
+    appState.taskView = 'review';
+    appState.commandPaletteOpen = true;
+    render(<CommandPalette actions={{ newConversation: vi.fn() } as unknown as CodeActions} />);
+
+    fireEvent.click(screen.getByRole('option', { name: /全屏显示工作区/ }));
+
+    expect(appState.commandPaletteOpen).toBe(false);
+    expect(appState.workspacePresentation).toBe('fullscreen');
   });
 });
