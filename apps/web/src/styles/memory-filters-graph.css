@@ -428,21 +428,6 @@
   color: var(--a3s-blue);
 }
 
-.memory-graph-range {
-  position: absolute;
-  z-index: 4;
-  bottom: 12px;
-  left: 12px;
-  padding: 4px 8px;
-  border: 1px solid var(--a3s-line);
-  border-radius: 7px;
-  background: color-mix(in srgb, var(--a3s-panel) 93%, transparent);
-  color: var(--a3s-muted);
-  font-size: 10px;
-  line-height: 16px;
-  backdrop-filter: blur(10px);
-}
-
 .memory-graph-node-browser {
   position: absolute;
   z-index: 6;

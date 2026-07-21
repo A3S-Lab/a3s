@@ -53,13 +53,13 @@ describe('MemoryGraph', () => {
     expect(screen.getByRole('button', { name: /标签：Entity one/ })).toBeInTheDocument();
   });
 
-  it('states the visible range when the 3D view contains only part of the graph', () => {
+  it('does not add a technical range counter when the 3D view is simplified', () => {
     const graph = graphProjection(1);
     graph.totalNodes = 12;
     graph.truncated = true;
     render(<MemoryGraph graph={graph} onSelectMemory={vi.fn()} onSelectEntity={vi.fn()} onClearSelection={vi.fn()} />);
 
-    expect(screen.getByText('图中 2 / 12 项')).toBeInTheDocument();
+    expect(screen.queryByText('图中 2 / 12 项')).not.toBeInTheDocument();
   });
 
   it('clears selection before manually reframing the graph', () => {

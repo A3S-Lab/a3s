@@ -96,7 +96,6 @@ export function EvolutionCandidateDetail({
         <header>
           <FileText size={14} />
           <h3>为什么学到它</h3>
-          <span>{candidate.evidence.length} 条</span>
         </header>
         <div className='evolution-evidence-list'>
           {candidate.evidence.map((evidence) => (
@@ -123,7 +122,6 @@ export function EvolutionCandidateDetail({
             <header>
               <History size={14} />
               <h3>保存记录</h3>
-              <span>{candidate.versions.length} 个</span>
             </header>
             {candidate.versions.length === 0 ? (
               <p className='evolution-muted'>还没有保存记录。</p>
@@ -158,7 +156,6 @@ export function EvolutionCandidateDetail({
             <header>
               <Clock size={14} />
               <h3>修改记录</h3>
-              <span>{candidate.audit.length} 项</span>
             </header>
             {candidate.audit.length ? (
               <ul className='evolution-audit-list'>

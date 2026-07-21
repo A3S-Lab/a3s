@@ -173,7 +173,7 @@ describe('useMemoryController', () => {
     expect(codeApi.materializeEvolution).toHaveBeenCalledWith(candidate.id);
     expect(codeApi.evolution).toHaveBeenCalled();
     expect(appState.evolutionBusyId).toBeNull();
-    expect(appState.toast?.message).toContain('当前对话已更新');
+    expect(appState.toast?.message).toBe('已保存，当前对话已更新');
     hook.unmount();
   });
 

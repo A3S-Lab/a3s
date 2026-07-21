@@ -34,7 +34,7 @@ describe('EvolutionWorkbench', () => {
     fireEvent.click(screen.getByRole('button', { name: /查看全部/ }));
     fireEvent.click(screen.getByRole('button', { name: /Focused verification/ }));
     await screen.findByRole('heading', { name: 'Focused verification' });
-    expect(screen.getByRole('heading', { name: '为什么学到它' }).parentElement).toHaveTextContent('4 条');
+    expect(screen.getByRole('heading', { name: '为什么学到它' }).parentElement).not.toHaveTextContent('4 条');
     expect(screen.getByText('第 2 版')).not.toBeVisible();
     fireEvent.click(screen.getByText('历史记录'));
     expect(screen.getByText('第 2 版')).toBeInTheDocument();
@@ -132,14 +132,15 @@ describe('EvolutionWorkbench', () => {
     render(<EvolutionWorkbench actions={actions()} />);
 
     expect(screen.getByLabelText('学习内容')).toHaveTextContent('待处理2 项');
+    expect(screen.getByRole('button', { name: '查看全部' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Focused verification/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Obsolete library notes/ })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /查看全部/ }));
+    fireEvent.click(screen.getByRole('button', { name: '查看全部' }));
 
     expect(screen.getByLabelText('学习内容')).toHaveTextContent('全部内容3 项');
     expect(screen.getByRole('button', { name: /Obsolete library notes/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /只看待处理/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '只看待处理' })).toBeInTheDocument();
   });
 
   it('keeps the visible selection when switching from pending content to all content', () => {

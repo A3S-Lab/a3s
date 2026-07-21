@@ -138,10 +138,9 @@ function MemoryEntryInspector({
           {memoryTypeLabel(entry.memoryType)}
         </span>
       </div>
-      <section className='memory-inspector-section'>
-        <h3>内容</h3>
+      <div className='memory-inspector-section'>
         <div className='memory-inspector-content'>{content}</div>
-      </section>
+      </div>
       {extractionReason && (
         <section className='memory-inspector-section'>
           <h3>为什么会记住</h3>

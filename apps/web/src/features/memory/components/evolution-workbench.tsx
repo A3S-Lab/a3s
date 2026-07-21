@@ -28,7 +28,6 @@ export function EvolutionWorkbench({ actions }: { actions: EvolutionActions }) {
     () => (showAll && data ? data.candidates : actionableCandidates),
     [actionableCandidates, data, showAll]
   );
-  const actionableCount = actionableCandidates.length;
   const selected = useMemo(
     () => candidates.find((candidate) => candidate.id === state.evolutionSelectedId) ?? candidates[0] ?? null,
     [candidates, state.evolutionSelectedId]
@@ -79,7 +78,7 @@ export function EvolutionWorkbench({ actions }: { actions: EvolutionActions }) {
                     setShowAll(nextShowAll);
                   }}
                 >
-                  {showAll ? `只看待处理 ${actionableCount}` : `查看全部 ${data.candidates.length}`}
+                  {showAll ? '只看待处理' : '查看全部'}
                 </button>
               )}
             </header>

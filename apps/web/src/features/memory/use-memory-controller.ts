@@ -96,9 +96,8 @@ export function useMemoryController() {
   const materializeEvolution = useMemoizedFn(async (id: string) => {
     await runEvolutionMutation(id, async () => {
       const response = await codeApi.materializeEvolution(id);
-      const version = response.result.candidate.currentVersion ?? 0;
       const reload = response.result.requiresSessionReload ? '，当前对话已更新' : '';
-      showToast(`已保存 v${version}${reload}`, 'success');
+      showToast(`已保存${reload}`, 'success');
     });
   });
 

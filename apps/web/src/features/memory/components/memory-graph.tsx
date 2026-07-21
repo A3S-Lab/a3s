@@ -63,8 +63,6 @@ export function MemoryGraph({
         />
       </Suspense>
 
-      {renderedGraph.truncated && <span className='memory-graph-range'>{visibleGraphRange(renderedGraph)}</span>}
-
       <fieldset className='memory-graph-controls'>
         <legend>关系图控制</legend>
         <button type='button' aria-label='放大关系图' onClick={() => graphRef.current?.zoomIn()}>
@@ -150,9 +148,4 @@ export function MemoryGraph({
 function nodeAriaLabel(node: MemoryVisualNode): string {
   if (node.nodeType === 'event') return `记忆：${node.label}`;
   return `${entityKindLabel(node.tone)}：${node.label}，关联 ${node.relatedMemoryIds.length} 条记忆`;
-}
-
-function visibleGraphRange(graph: MemoryGraphProjection): string {
-  if (graph.nodes.length < graph.totalNodes) return `图中 ${graph.nodes.length} / ${graph.totalNodes} 项`;
-  return `图中 ${graph.edges.length} / ${graph.totalEdges} 条关联`;
 }
