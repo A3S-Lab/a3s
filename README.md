@@ -167,23 +167,23 @@ and hardware still have to be available.
 | [A3S Web](apps/web/) | 0.1.0 | Browser workspace for the A3S Code product, served by the local CLI. |
 | [A3S Box Desktop](apps/box/) | 0.1.0 | Native A3S Box management client. |
 | [A3S Cloud](apps/cloud/) | 0.1.0 | Multi-tenant control plane, node agent, and versioned Cloud contracts. |
-| [a3s](crates/cli/) | 0.9.1 | End-user CLI and typed component-management entrypoint. |
-| [a3s-code](crates/code/) | core and SDKs 5.3.1 | Rust agent runtime plus Node and Python SDK bindings. |
+| [a3s](crates/cli/) | 0.9.9 | End-user CLI and typed component-management entrypoint. |
+| [a3s-code](crates/code/) | core and SDKs 6.1.0 | Rust agent runtime plus Node and Python SDK bindings. |
 | [a3s-gui](crates/gui/) | 0.1.0 | Native GUI runtime with hooks, RSX templates, semantic UI, and platform hosts. |
-| [a3s-tui](crates/tui/) | 0.1.10 | Terminal UI framework used by `a3s code`. |
-| [a3s-flow](crates/flow/) | 0.4.1 | Durable workflow engine with event-sourced runs and replay. |
+| [a3s-tui](crates/tui/) | 0.1.13 | Terminal UI framework used by `a3s code`. |
+| [a3s-flow](crates/flow/) | 0.4.2 | Durable workflow engine with event-sourced runs and replay. |
 | [a3s-orm](crates/orm/) | 0.1.0 | Typed SQL, migrations, and PostgreSQL/SQLite persistence. |
 | [a3s-memory](crates/memory/) | 0.1.2 | Pluggable long-term memory storage for agents. |
 | [a3s-event](crates/event/) | 0.3.0 | Event subscription, dispatch, and persistence. |
-| [a3s-lane](crates/lane/) | 0.5.0 | Rust-only priority and job queue with Redis, flows, repeat jobs, worker leases, retry, and DLQ. |
-| [a3s-use](crates/use/) | 0.1.1 | Typed Browser, native Office, and OCR capability layer plus native CLI, standard MCP, and Skill extension surfaces. |
-| [a3s-search](crates/search/) | 1.4.3 | Embeddable meta-search engine using `a3s-use-browser` for headless browsing. |
+| [a3s-lane](crates/lane/) | 0.5.1 | Rust-only priority and job queue with Redis, flows, repeat jobs, worker leases, retry, and DLQ. |
+| [a3s-use](crates/use/) | 0.1.2 | Typed Browser, native Office, and OCR capability layer plus native CLI, standard MCP, and Skill extension surfaces. |
+| [a3s-search](crates/search/) | 2.0.0 | Embeddable meta-search engine using `a3s-use-browser` for headless browsing. |
 | [a3s-bench](crates/bench/) | 0.1.0 | Reproducible evaluation of coding agents, automated systems, and deterministic tools. |
 | [a3s-runtime](crates/runtime/) | 0.2.0 | Provider-neutral execution contract and Runtime client. |
-| [a3s-box](crates/box/) | 3.0.5 | Docker-like MicroVM runtime for Linux OCI workloads. |
+| [a3s-box](crates/box/) | 3.0.10 | Docker-like MicroVM runtime for Linux OCI workloads. |
 | [a3s-observer](crates/observer/) | 0.11.0 | eBPF observability for LLM calls, tools, files, and egress. |
 | [a3s-sentry](crates/sentry/) | 0.7.0 | Tiered runtime security control with staged L3 dispatch, incomplete-evidence safeguards, and digest-bound workload policy envelopes. |
-| [a3s-boot](crates/boot/) | 0.1.1 | Nest-inspired modular service framework for Rust APIs. |
+| [a3s-boot](crates/boot/) | 0.1.2 | Nest-inspired modular service framework for Rust APIs. |
 | [a3s-gateway](crates/gateway/) | 1.0.12 | Reverse proxy, routing, middleware, streaming, and scale-to-zero. |
 | [a3s-power](crates/power/) | 0.4.2 | Privacy-preserving LLM inference for TEE environments. |
 | [a3s-ahp](crates/ahp/) | 2.4.0 | Agent Harness Protocol supervision primitives. |
