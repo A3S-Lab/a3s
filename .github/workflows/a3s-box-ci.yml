@@ -77,6 +77,7 @@ jobs:
         run: cargo test --locked -p a3s-box-core platform::tests
 
       - name: Test runtime metrics
+        if: runner.os != 'Windows'
         run: cargo test --locked -p a3s-box-runtime prom::tests
 
   desktop:
