@@ -186,9 +186,13 @@ function ContextReviewDialog({
       <div className='plugin-context-review'>
         <div className='plugin-review-assurance'>
           <ShieldCheck size={15} />
-          <span>
-            只会附加你确认的上下文，以及宿主从同一签名包验证的 <code>{skill}</code> Skill。
-          </span>
+          {proposal.usePackageSkill ? (
+            <span>
+              只会附加你确认的上下文，以及宿主从同一签名包验证的 <code>{skill}</code> Skill。
+            </span>
+          ) : (
+            <span>只会附加你确认的上下文，不会附加该包的专业 Skill；Code 将使用当前可用的通用能力。</span>
+          )}
         </div>
         <section>
           <h3>摘要</h3>

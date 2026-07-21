@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import ForceGraph3D, { type ForceGraphMethods } from 'react-force-graph-3d';
 import * as THREE from 'three';
+import { activeMemoryGraphNodeId, connectedMemoryGraphNodeIds } from '../memory-graph-3d-data';
 import type { MemoryGraphProjection, MemoryVisualNode } from '../memory-projection';
 
 const LABEL_LIMIT = 28;
@@ -61,7 +62,6 @@ interface Graph3DLink {
 type GraphInstance = ForceGraphMethods<Graph3DNode, Graph3DLink>;
 
 export interface MemoryGraph3DHandle {
-  focusNode: (id: string) => void;
   resetView: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -85,6 +85,7 @@ const MemoryGraph3D = forwardRef<MemoryGraph3DHandle, MemoryGraph3DProps>(functi
   const autoFittedRef = useRef(false);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [dark, setDark] = useState(detectDarkMode);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string>();
   const [webglAvailable] = useState(
     () => typeof window === 'undefined' || typeof window.WebGLRenderingContext !== 'undefined'
   );
@@ -179,18 +180,11 @@ const MemoryGraph3D = forwardRef<MemoryGraph3DHandle, MemoryGraph3DProps>(functi
   }, [dataSignature]);
 
   const nodeById = useMemo(() => new Map(graphData.nodes.map((node) => [node.id, node])), [graphData.nodes]);
-  const connectedNodeIds = useMemo(() => {
-    const connected = new Set<string>();
-    if (!selectedNodeId) return connected;
-    connected.add(selectedNodeId);
-    for (const link of graphData.links) {
-      const source = linkEndId(link.source);
-      const target = linkEndId(link.target);
-      if (source === selectedNodeId) connected.add(target);
-      if (target === selectedNodeId) connected.add(source);
-    }
-    return connected;
-  }, [graphData.links, selectedNodeId]);
+  const activeNodeId = activeMemoryGraphNodeId(graph.nodes, selectedNodeId, hoveredNodeId);
+  const connectedNodeIds = useMemo(
+    () => connectedMemoryGraphNodeIds(graph.edges, activeNodeId),
+    [activeNodeId, graph.edges]
+  );
 
   const labelledNodeIds = useMemo(
     () =>
@@ -210,30 +204,30 @@ const MemoryGraph3D = forwardRef<MemoryGraph3DHandle, MemoryGraph3DProps>(functi
   );
 
   const nodeVal = useCallback(
-    (node: Graph3DNode) => (node.id === selectedNodeId ? node.val * 1.9 : node.val),
-    [selectedNodeId]
+    (node: Graph3DNode) => (node.id === activeNodeId ? node.val * (selectedNodeId ? 1.9 : 1.45) : node.val),
+    [activeNodeId, selectedNodeId]
   );
   const nodeColor = useCallback(
     (node: Graph3DNode) => {
-      if (node.id === selectedNodeId) return palette.selected;
-      if (selectedNodeId && !connectedNodeIds.has(node.id)) return palette.dimNode;
+      if (node.id === activeNodeId) return palette.selected;
+      if (activeNodeId && !connectedNodeIds.has(node.id)) return palette.dimNode;
       return toneColor(node, palette);
     },
-    [connectedNodeIds, palette, selectedNodeId]
+    [activeNodeId, connectedNodeIds, palette]
   );
   const isSelectedLink = useCallback(
     (link: Graph3DLink) => {
-      if (!selectedNodeId) return false;
-      return linkEndId(link.source) === selectedNodeId || linkEndId(link.target) === selectedNodeId;
+      if (!activeNodeId) return false;
+      return linkEndId(link.source) === activeNodeId || linkEndId(link.target) === activeNodeId;
     },
-    [selectedNodeId]
+    [activeNodeId]
   );
   const linkColor = useCallback(
     (link: Graph3DLink) => {
-      if (!selectedNodeId) return palette.edge;
+      if (!activeNodeId) return palette.edge;
       return isSelectedLink(link) ? palette.activeEdge : palette.dimEdge;
     },
-    [isSelectedLink, palette, selectedNodeId]
+    [activeNodeId, isSelectedLink, palette]
   );
   const linkWidth = useCallback(
     (link: Graph3DLink) => (isSelectedLink(link) ? 1.5 : Math.max(0.25, link.weight * 0.42)),
@@ -272,7 +266,7 @@ const MemoryGraph3D = forwardRef<MemoryGraph3DHandle, MemoryGraph3DProps>(functi
         const instance = graphRef.current;
         if (node && instance && node.x !== undefined && node.y !== undefined && node.z !== undefined) {
           const length = Math.hypot(node.x, node.y, node.z || 1);
-          const ratio = 1 + 105 / Math.max(length, 1);
+          const ratio = 1 + 180 / Math.max(length, 1);
           instance.cameraPosition(
             { x: node.x * ratio, y: node.y * ratio, z: (node.z || 1) * ratio },
             { x: node.x, y: node.y, z: node.z },
@@ -313,22 +307,17 @@ const MemoryGraph3D = forwardRef<MemoryGraph3DHandle, MemoryGraph3DProps>(functi
   useImperativeHandle(
     ref,
     () => ({
-      focusNode: (id) => {
-        focusNode(id);
-      },
       resetView: fitView,
       zoomIn: () => changeZoom(0.78),
       zoomOut: () => changeZoom(1.28),
     }),
-    [changeZoom, fitView, focusNode]
+    [changeZoom, fitView]
   );
 
   return (
     <div ref={attachContainer} className='memory-graph-scene' data-testid='memory-graph-3d-scene'>
       {!webglAvailable ? (
-        <output className='memory-graph-webgl-fallback'>
-          当前浏览器无法启用 WebGL。你仍可通过“浏览节点”查看和选择记忆。
-        </output>
+        <output className='memory-graph-webgl-fallback'>当前浏览器无法显示 3D 关系图。你仍可使用列表查看记忆。</output>
       ) : size.width > 0 && size.height > 0 ? (
         <ForceGraph3D<Graph3DNode, Graph3DLink>
           ref={setGraphInstance as never}
@@ -358,10 +347,10 @@ const MemoryGraph3D = forwardRef<MemoryGraph3DHandle, MemoryGraph3DProps>(functi
           warmupTicks={28}
           cooldownTicks={170}
           enableNodeDrag
+          onNodeHover={(node) => setHoveredNodeId(node?.id)}
           onNodeClick={(node) => {
             const sourceNode = graph.nodes.find((item) => item.id === node.id);
             if (sourceNode) onSelectNode(sourceNode);
-            focusNode(node.id);
           }}
           onBackgroundClick={onClearSelection}
           onEngineStop={() => {
@@ -431,7 +420,7 @@ function makeLabelSprite(text: string, color: string, stroke: string): THREE.Spr
 }
 
 function nodeTooltip(node: Graph3DNode): string {
-  const kind = node.nodeType === 'event' ? '记忆' : '实体';
+  const kind = node.nodeType === 'event' ? '记忆' : '相关内容';
   return `${kind} · ${node.name}\n${node.degree} 条关联`;
 }
 

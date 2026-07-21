@@ -19,6 +19,7 @@ export interface PluginContextProposal {
   summary: string;
   prompt: string;
   fields: PluginContextField[];
+  usePackageSkill: boolean;
 }
 
 export interface PluginOperationReview {

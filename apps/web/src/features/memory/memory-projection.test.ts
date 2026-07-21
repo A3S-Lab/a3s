@@ -127,6 +127,33 @@ describe('memory projection', () => {
     expect(graph.truncated).toBe(true);
   });
 
+  it('keeps internal system tags out of the user-facing relationship graph', () => {
+    const data = memoryTestData();
+    data.graph.entities.push({
+      id: 'tag:llm',
+      kind: 'tag',
+      name: 'llm',
+      aliases: [],
+      mentions: 1,
+      importance: 0.9,
+      memoryIds: ['semantic-1'],
+    });
+    data.graph.events[0].entityIds.push('tag:llm');
+    data.graph.relations.push({
+      id: 7,
+      from: 'event:semantic-1',
+      to: 'tag:llm',
+      kind: 'tagged',
+      memoryId: 'semantic-1',
+      weight: 0.9,
+    });
+
+    const graph = projectMemoryGraph(data, data.entries, 'complete');
+
+    expect(graph.nodes.some((node) => node.id === 'tag:llm')).toBe(false);
+    expect(graph.edges.some((edge) => edge.to === 'tag:llm')).toBe(false);
+  });
+
   it('counts each active filter so the reset action remains truthful', () => {
     expect(
       countActiveMemoryFilters({

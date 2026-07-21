@@ -361,9 +361,7 @@
   to { transform: rotate(360deg); }
 }
 
-.memory-graph-legend,
-.memory-graph-controls,
-.memory-graph-footnote {
+.memory-graph-controls {
   position: absolute;
   z-index: 4;
   display: flex;
@@ -374,23 +372,6 @@
   backdrop-filter: blur(10px);
 }
 
-.memory-graph-legend {
-  top: 12px;
-  left: 12px;
-  gap: 10px;
-  padding: 6px 9px;
-  color: var(--a3s-muted);
-  font-size: 10px;
-  line-height: 16px;
-}
-
-.memory-graph-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.memory-graph-legend i,
 .memory-entity-links i,
 .memory-graph-node-list i {
   display: inline-block;
@@ -599,30 +580,6 @@
   color: var(--a3s-muted);
   font-size: 13px;
   text-align: center;
-}
-
-.memory-graph-footnote {
-  right: 12px;
-  bottom: 12px;
-  left: 12px;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 10px;
-  color: var(--a3s-muted);
-  font-size: 10px;
-  line-height: 16px;
-  pointer-events: none;
-}
-
-.memory-graph-footnote .attention {
-  color: var(--a3s-warning);
-  font-weight: 550;
-}
-
-@media (max-width: 1180px) {
-  .memory-graph-legend span:nth-child(n + 5) {
-    display: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -22,25 +22,10 @@
   font-size: 8px;
 }
 
-.work-pdf-integration-bar > span {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  align-items: center;
-  gap: 8px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.work-pdf-integration-bar strong {
-  color: var(--a3s-ink);
-  font-size: 9px;
-}
-
 .work-pdf-integration-bar output {
   display: inline-flex;
   min-width: 94px;
+  margin-left: auto;
   align-items: center;
   justify-content: flex-end;
   gap: 4px;

@@ -111,7 +111,6 @@
 .memory-timeline-meta,
 .memory-timeline-footer,
 .memory-inspector-badges,
-.memory-lifecycle-badges,
 .memory-inspector-tags {
   display: flex;
   align-items: center;
@@ -199,23 +198,6 @@
   gap: 6px;
   margin-top: 8px;
   color: var(--a3s-muted);
-}
-
-.memory-importance {
-  display: block;
-  width: 42px;
-  height: 4px;
-  margin-right: 2px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--a3s-panel-strong);
-}
-
-.memory-importance i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--memory-event);
 }
 
 .memory-tag {
@@ -369,8 +351,7 @@
   margin-top: 14px;
 }
 
-.memory-inspector-section h3,
-.memory-retention-heading h3 {
+.memory-inspector-section h3 {
   margin: 0 0 8px;
   color: var(--a3s-muted);
   font-size: 11px;
@@ -409,75 +390,15 @@
   line-height: 18px;
 }
 
-.memory-retention-reason small,
-.memory-retention-help {
-  display: block;
-  margin-top: 6px;
-  color: var(--a3s-muted);
-  font-size: 9px;
-  line-height: 15px;
-}
-
-.memory-retention-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.memory-retention-heading h3 {
-  margin: 0;
-}
-
-.memory-retention-heading strong {
-  color: var(--a3s-ink);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.memory-retention-meter {
-  display: block;
-  width: 100%;
-  height: 5px;
-  margin-top: 8px;
-  appearance: none;
-  overflow: hidden;
-  border: 0;
-  border-radius: 999px;
-  background: var(--a3s-panel-strong);
-}
-
-.memory-retention-meter::-webkit-meter-bar {
-  border: 0;
-  border-radius: inherit;
-  background: var(--a3s-panel-strong);
-}
-
-.memory-retention-meter::-webkit-meter-optimum-value,
-.memory-retention-meter::-moz-meter-bar {
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--a3s-blue), var(--a3s-green));
-}
-
-.memory-retention-help {
-  margin-bottom: 0;
-}
-
-.memory-lifecycle-badges {
-  gap: 7px 10px;
-  margin-top: 9px;
-}
-
-.memory-lifecycle-badges span {
+.memory-inspector-conflict {
   display: inline-flex;
+  width: fit-content;
   align-items: center;
   gap: 5px;
-  color: var(--a3s-muted);
+  margin: 12px 0 0;
+  color: var(--a3s-warning);
   font-size: 10px;
   line-height: 16px;
-}
-
-.memory-lifecycle-badges .attention {
-  color: var(--a3s-warning);
 }
 
 .memory-detail-grid {
@@ -579,35 +500,6 @@
   line-height: 16px;
 }
 
-.memory-metadata {
-  display: flex;
-  margin: 0;
-  flex-direction: column;
-}
-
-.memory-metadata > div {
-  display: grid;
-  grid-template-columns: minmax(82px, 0.38fr) minmax(0, 1fr);
-  gap: 8px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--a3s-line);
-}
-
-.memory-metadata dt {
-  overflow: hidden;
-  color: var(--a3s-muted);
-  font: 10px/17px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  text-overflow: ellipsis;
-}
-
-.memory-metadata dd {
-  margin: 0;
-  color: var(--a3s-muted);
-  font-size: 10px;
-  line-height: 17px;
-  overflow-wrap: anywhere;
-}
-
 .memory-technical-details {
   margin-top: 14px;
   border-top: 1px solid var(--a3s-line);
@@ -639,13 +531,6 @@
   line-height: 17px;
 }
 
-.memory-technical-details summary small {
-  color: var(--a3s-muted);
-  font-size: 9px;
-  font-weight: 400;
-  line-height: 14px;
-}
-
 .memory-technical-details summary > svg {
   flex: 0 0 auto;
   transition: transform 140ms ease;
@@ -657,48 +542,6 @@
 
 .memory-technical-details[open] summary > svg {
   transform: rotate(180deg);
-}
-
-.memory-technical-details .memory-metadata {
-  padding: 0 2px 4px;
-}
-
-.memory-technical-details .memory-metadata:last-child > div:last-child {
-  border-bottom: 0;
-}
-
-.memory-metadata code {
-  color: inherit;
-  font: inherit;
-}
-
-.memory-inspector-readonly {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  margin-top: 16px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  background: var(--a3s-panel-soft);
-  color: var(--a3s-muted);
-  font-size: 10px;
-  line-height: 16px;
-}
-
-.memory-inspector-readonly > svg {
-  flex: 0 0 auto;
-  margin-top: 1px;
-}
-
-.memory-inspector-readonly button {
-  display: inline;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--a3s-blue);
-  cursor: pointer;
-  font: inherit;
-  font-weight: 600;
 }
 
 .memory-entity-hero {

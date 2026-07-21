@@ -7,7 +7,7 @@ import { forgetSignalLabel, memorySourceLabel, memoryTypeLabel, tierLabel } from
 import { countActiveMemoryFilters, memoryTypeCounts } from '../memory-projection';
 import type { MemoryLifecycleFilter, MemoryTimeRange } from '../memory-state';
 
-export function MemoryFiltersPanel({ data, visibleCount }: { data: MemoryOverview; visibleCount: number }) {
+export function MemoryFiltersPanel({ data }: { data: MemoryOverview }) {
   const state = useSnapshot(appState);
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const types = useMemo(() => memoryTypeCounts(data.entries), [data]);
@@ -40,13 +40,10 @@ export function MemoryFiltersPanel({ data, visibleCount }: { data: MemoryOvervie
   return (
     <aside className='memory-filters' aria-label='记忆筛选'>
       <div className='memory-filter-heading'>
-        <div>
-          <strong>筛选</strong>
-          <span>{visibleCount} 条结果</span>
-        </div>
+        <strong>筛选</strong>
         {activeCount > 0 && (
           <button type='button' onClick={clearAll}>
-            <FilterX size={13} /> 清除 {activeCount}
+            <FilterX size={13} /> 清除
           </button>
         )}
       </div>
@@ -58,7 +55,7 @@ export function MemoryFiltersPanel({ data, visibleCount }: { data: MemoryOvervie
           onChange={(event) => {
             appState.memoryQuery = event.target.value;
           }}
-          placeholder='搜索内容、标签或实体'
+          placeholder='搜索记忆'
           aria-label='搜索记忆'
         />
         {state.memoryQuery && (
@@ -97,7 +94,7 @@ export function MemoryFiltersPanel({ data, visibleCount }: { data: MemoryOvervie
           ))}
         </div>
       </FilterGroup>
-      <FilterGroup title='记忆类型'>
+      <FilterGroup title='类型'>
         <div className='memory-filter-options'>
           {types.map(([type, count]) => (
             <FilterOption
@@ -124,12 +121,12 @@ export function MemoryFiltersPanel({ data, visibleCount }: { data: MemoryOvervie
           <SlidersHorizontal size={13} />
           更多筛选
         </span>
-        {advancedCount > 0 && <small>{advancedCount} 项已启用</small>}
+        {advancedCount > 0 && <small>已选 {advancedCount} 项</small>}
         <ChevronDown size={14} aria-hidden='true' />
       </button>
       {moreFiltersOpen && (
         <div className='memory-more-filters' id='memory-more-filters'>
-          <FilterGroup title='保留层级'>
+          <FilterGroup title='保存期限'>
             <div className='memory-filter-options'>
               {(['short', 'mid', 'long'] as MemoryTier[]).map((tier) => (
                 <FilterOption
@@ -145,7 +142,7 @@ export function MemoryFiltersPanel({ data, visibleCount }: { data: MemoryOvervie
               ))}
             </div>
           </FilterGroup>
-          <FilterGroup title='系统建议'>
+          <FilterGroup title='状态'>
             <div className='memory-filter-options'>
               {(['protected', 'candidate', 'cooling', 'keep'] as MemoryForgetSignal[]).map((signal) => {
                 const count = data.graph.events.filter((event) => event.forget === signal).length;
@@ -162,28 +159,18 @@ export function MemoryFiltersPanel({ data, visibleCount }: { data: MemoryOvervie
                   />
                 );
               })}
-            </div>
-          </FilterGroup>
-          <FilterGroup title='处理状态'>
-            <div className='memory-filter-options'>
-              {(
-                [
-                  ['llm', '自动提取', data.graph.stats.llmExtracted],
-                  ['consolidated', '已合并重复', data.graph.stats.consolidated],
-                  ['conflicts', '待处理冲突', data.graph.stats.conflicts],
-                ] as Array<[MemoryLifecycleFilter, string, number]>
-              ).map(([filter, label, count]) => (
-                <FilterOption
-                  key={filter}
-                  label={label}
-                  count={count}
-                  pressed={state.memoryLifecycleFilters.includes(filter)}
-                  tone={filter}
-                  onClick={() => {
-                    appState.memoryLifecycleFilters = toggleValue(appState.memoryLifecycleFilters, filter);
-                  }}
-                />
-              ))}
+              <FilterOption
+                label='有冲突'
+                count={data.graph.stats.conflicts}
+                pressed={state.memoryLifecycleFilters.includes('conflicts')}
+                tone='conflicts'
+                onClick={() => {
+                  appState.memoryLifecycleFilters = toggleValue<MemoryLifecycleFilter>(
+                    appState.memoryLifecycleFilters,
+                    'conflicts'
+                  );
+                }}
+              />
             </div>
           </FilterGroup>
           {sources.length > 0 && (

@@ -52,10 +52,10 @@ App
     │       │                       ├── ModeNavigator
     │       │                       └── ArtifactViewport
     │       └── MemoryPage
-    │           ├── MemorySummary
     │           ├── MemoryFiltersPanel
     │           ├── MemoryGraph / MemoryTimeline
-    │           └── MemoryInspector
+    │           ├── MemoryInspector
+    │           └── EvolutionWorkbench
     └── GlobalOverlays
         ├── SettingsDialog
         │   ├── AccountSettings
@@ -977,14 +977,6 @@ default workspace has only explorer and visualization columns; the inspector is
 added after a selection. At compact widths it becomes a dismissible overlay
 instead of squeezing the graph.
 
-### `MemorySummary`
-
-**Role:** explain store size, graph scale, retention distribution, lifecycle
-signals, importance, and tag counts before the user explores individual nodes.
-
-**Contract:** totals come from service statistics; visible count comes from the
-current whole-store projection.
-
 ### `MemoryFiltersPanel`
 
 **Role:** search and combine time, type, source, tier, forgetting-signal, and
@@ -1025,16 +1017,32 @@ and memory selection; a selected entry expands the visible batch when needed.
 
 ### `MemoryInspector`
 
-**Role:** inspect either one memory or one entity.
+**Role:** inspect either one memory or one entity without exposing internal
+scoring as primary product content.
 
-**Contract:** memory detail prioritizes content, a plain-language explanation of
-why the item was retained, retention priority, lifecycle, activity, tags, and
-linked entities. It can copy memory content. Raw metadata and identity stay in
-a collapsed Technical information disclosure. Entity detail includes aliases,
-mentions, importance, first/last seen, user-facing relation labels, and linked
-memories. Cross-links update the same inspector. The page explicitly identifies
-itself as read-only and routes policy changes to Memory settings; no control
-mutates or deletes memory.
+**Contract:** memory detail prioritizes content, any service-provided
+plain-language explanation of why the item was retained, source and use
+activity, tags, and linked entities. It can copy memory content. Scores, raw
+metadata, paths, and internal identity are not rendered. Entity detail
+prioritizes aliases, mentions, recent appearance, and linked memories.
+Cross-links update the same inspector. No control mutates or deletes a stored
+memory.
+
+### `EvolutionWorkbench`
+
+**Role:** let a user review what A3S proposes to reuse as a preference, working
+method, or project fact.
+
+**Contract:** candidates are service-authoritative LLM output. The browser shows
+only ready candidates and saved candidates with updates until the user chooses
+View all. Save and update are direct reviewed actions; ignore, return to the
+unmaterialized baseline, and version restore require confirmation. Baseline
+rollback removes the active asset while keeping immutable versions and a
+recovery copy. Reconsider is reversible. Evidence is visible in plain language,
+while versions and audit history are collapsed. Internal paths and identifiers
+are not rendered. The client never derives candidate kind or recommendation
+state from keywords. Automatic local materialization and runtime activation
+remain service-owned; the browser never publishes a learned asset.
 
 ## Settings and help
 

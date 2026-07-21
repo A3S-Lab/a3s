@@ -451,9 +451,9 @@ and self-hosting destinations explicit.
   discard the current task state.
 - Retrieve all memory-entry pages for search, filtering, timeline, and complete
   graph projection while fetching the full graph topology only once.
-- Summarize total memories, entities, relations, aliases, retention tiers,
-  high-importance entries, tags, extraction, consolidation, conflicts, and
-  forgetting candidates.
+- Keep the default surface focused on the memories themselves. Show one
+  filtered/total count, keep secondary retention and conflict controls inside
+  More filters, and omit raw paths, identifiers, and other internal fields.
 - Search content, previews, tags, metadata, sources, entity names, and aliases.
 - Combine time, memory-type, source, retention-tier, forgetting-signal, and
   lifecycle filters, and provide one truthful reset action.
@@ -465,9 +465,15 @@ and self-hosting destinations explicit.
   accessible node browser outside WebGL.
 - Switch to a chronological timeline without losing filters or inspector
   selection.
-- Inspect memory content, type, tags, importance, access activity, retention,
-  lifecycle, metadata, linked entities, aliases, relations, and linked
-  memories.
+- Inspect memory content, any service-provided plain-language retention reason,
+  source, saved and recent-use times, tags, and linked entities. Do not render
+  scores, raw metadata, paths, or internal identifiers.
+- Provide a Learning tab backed by the typed Evolution API. Show ready items and
+  saved items with updates by default; reveal the full catalog only on request.
+  A user can save, ignore, reconsider, update, undo the first save, or restore
+  an older version with confirmation and recovery. Candidate detection remains
+  an LLM/backend responsibility; the browser must not invent recommendations
+  with keyword rules.
 - Keep the surface read-only. It must not imply that selecting a forgetting
   candidate deletes it or that a lifecycle badge triggers consolidation.
 - Provide honest initial loading, empty-store, no-results, initial error,
@@ -480,6 +486,9 @@ superseded request cannot settle newer loading state; invalid selections are
 cleared after refresh; graph nodes and view controls are keyboard operable
 without relying on canvas semantics; the surface remains usable at wide
 desktop and compact widths.
+Learning mutations preserve the last successful overview on refresh failure,
+prevent duplicate submission, and rebuild affected Code Web sessions only when
+the server response requires it.
 
 ## Excluded from this release
 

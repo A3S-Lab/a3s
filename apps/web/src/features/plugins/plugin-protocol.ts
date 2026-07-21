@@ -26,6 +26,8 @@ export function parsePluginMessage(value: unknown, sourceKey: string): PluginHos
   const summary = boundedText(value.payload.summary, 1_000);
   const prompt = boundedText(value.payload.prompt, 8_000);
   if (!title || !summary || !prompt) return null;
+  if (value.payload.usePackageSkill !== undefined && typeof value.payload.usePackageSkill !== 'boolean') return null;
+  const usePackageSkill = value.payload.usePackageSkill ?? true;
   const rawFields = Array.isArray(value.payload.fields) ? value.payload.fields.slice(0, 12) : [];
   const fields = rawFields.flatMap((field) => {
     if (!isRecord(field)) return [];
@@ -35,7 +37,7 @@ export function parsePluginMessage(value: unknown, sourceKey: string): PluginHos
   });
   return {
     type: 'context',
-    proposal: { sourceKey, title, summary, prompt, fields },
+    proposal: { sourceKey, title, summary, prompt, fields, usePackageSkill },
   };
 }
 

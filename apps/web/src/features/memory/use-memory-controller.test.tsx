@@ -2,6 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { codeApi } from '../../lib/api';
 import { appState } from '../../state/app-state';
+import { evolutionTestData } from './evolution-test-data';
 import { createMemoryState } from './memory-state';
 import { memoryTestData } from './memory-test-data';
 import { useMemoryController } from './use-memory-controller';
@@ -115,6 +116,83 @@ describe('useMemoryController', () => {
     expect(signal?.aborted).toBe(true);
     expect(appState.memoryPhase).toBe('idle');
     expect(appState.memoryRefreshing).toBe(false);
+  });
+
+  it('loads the evolution catalog and selects the first available candidate', async () => {
+    const data = evolutionTestData();
+    vi.spyOn(codeApi, 'evolution').mockResolvedValue(data);
+    appState.evolutionSelectedId = 'missing-candidate';
+    const hook = renderHook(() => useMemoryController());
+
+    await act(() => hook.result.current.loadEvolution());
+
+    expect(appState.evolutionPhase).toBe('ready');
+    expect(appState.evolutionData?.revision).toBe(8);
+    expect(appState.evolutionSelectedId).toBe(data.candidates[0].id);
+    expect(appState.evolutionLastLoadedAt).not.toBeNull();
+    hook.unmount();
+  });
+
+  it('rescans memory signals and applies the returned catalog without a second request', async () => {
+    const data = evolutionTestData();
+    vi.spyOn(codeApi, 'scanEvolution').mockResolvedValue({ observed: 7, overview: data });
+    const evolution = vi.spyOn(codeApi, 'evolution');
+    const hook = renderHook(() => useMemoryController());
+
+    await act(() => hook.result.current.scanEvolution());
+
+    expect(appState.evolutionPhase).toBe('ready');
+    expect(appState.evolutionData?.candidates).toHaveLength(3);
+    expect(appState.evolutionRefreshing).toBe(false);
+    expect(appState.toast?.message).toBe('找到 7 项内容');
+    expect(evolution).not.toHaveBeenCalled();
+    hook.unmount();
+  });
+
+  it('materializes a candidate, then refreshes the shared catalog', async () => {
+    const data = evolutionTestData();
+    const candidate = data.candidates[1];
+    vi.spyOn(codeApi, 'materializeEvolution').mockResolvedValue({
+      result: { candidate, requiresSessionReload: true },
+      rebuiltSessions: [
+        {
+          sessionId: 'session-one',
+          workspace: '/tmp/a3s',
+          skillDirCount: 2,
+          builtinSkillActive: true,
+          capabilitySkillActive: false,
+          runtimeToolActive: false,
+        },
+      ],
+    });
+    vi.spyOn(codeApi, 'evolution').mockResolvedValue(data);
+    const hook = renderHook(() => useMemoryController());
+
+    await act(() => hook.result.current.materializeEvolution(candidate.id));
+
+    expect(codeApi.materializeEvolution).toHaveBeenCalledWith(candidate.id);
+    expect(codeApi.evolution).toHaveBeenCalled();
+    expect(appState.evolutionBusyId).toBeNull();
+    expect(appState.toast?.message).toBe('已保存，当前对话已更新');
+    hook.unmount();
+  });
+
+  it('passes the review reason when rejecting and exposes mutation errors without losing data', async () => {
+    const data = evolutionTestData();
+    Object.assign(appState, {
+      evolutionPhase: 'ready',
+      evolutionData: data,
+    });
+    vi.spyOn(codeApi, 'rejectEvolution').mockRejectedValue(new Error('candidate is already materialized'));
+    const hook = renderHook(() => useMemoryController());
+
+    await act(() => hook.result.current.rejectEvolution('candidate-one', 'Not reusable'));
+
+    expect(codeApi.rejectEvolution).toHaveBeenCalledWith('candidate-one', 'Not reusable');
+    expect(appState.evolutionData).toEqual(data);
+    expect(appState.evolutionError).toBe('candidate is already materialized');
+    expect(appState.evolutionBusyId).toBeNull();
+    hook.unmount();
   });
 });
 

@@ -10,7 +10,7 @@ export function PdfViewer({
   fileName = 'document.pdf',
   loadSource,
   onSave,
-  saveLabel = '保存到 A3S',
+  saveLabel = '保存',
   sourceKey,
 }: {
   fileName?: string;
@@ -85,8 +85,8 @@ export function PdfViewer({
     return (
       <section className='work-pdf-state error' role='alert'>
         <AlertCircle size={24} />
-        <strong>PDF 加载失败</strong>
-        <span>{loadError}</span>
+        <strong>无法打开 PDF</strong>
+        <span title={loadError}>请重试。</span>
         <button type='button' onClick={() => setRetryCount((value) => value + 1)}>
           重试
         </button>
@@ -107,12 +107,8 @@ export function PdfViewer({
     <section className='work-pdf-viewer' aria-label={`PDF 编辑器：${fileName}`}>
       {onSave && (
         <div className='work-pdf-integration-bar'>
-          <span>
-            <strong>EmbedPDF · PDFium</strong>
-            批注、表单、签名、盖章和涂黑会写入导出的 PDF
-          </span>
           <output className={saveState} aria-label='PDF 保存状态'>
-            {saveState === 'saving' && '正在生成 PDF…'}
+            {saveState === 'saving' && '正在保存…'}
             {saveState === 'saved' && (
               <>
                 <Check size={13} /> 已保存

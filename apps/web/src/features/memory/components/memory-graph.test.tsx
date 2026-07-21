@@ -19,13 +19,15 @@ describe('MemoryGraph', () => {
     );
 
     expect(await screen.findByTestId('memory-graph-3d-scene')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '浏览图谱节点' }));
+    fireEvent.click(screen.getByRole('button', { name: '浏览图中内容' }));
 
     const memoryNode = screen.getByRole('button', { name: '记忆：Memory one' });
     fireEvent.click(memoryNode);
     expect(onSelectMemory).toHaveBeenCalledWith('memory-1');
+    expect(screen.queryByRole('searchbox', { name: '搜索图中内容' })).not.toBeInTheDocument();
 
-    const entityNode = screen.getByRole('button', { name: /标签实体：Entity one/ });
+    fireEvent.click(screen.getByRole('button', { name: '浏览图中内容' }));
+    const entityNode = screen.getByRole('button', { name: /标签：Entity one/ });
     fireEvent.click(entityNode);
     expect(onSelectEntity).toHaveBeenCalledWith('tag:entity-1');
   });
@@ -40,22 +42,24 @@ describe('MemoryGraph', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '浏览图谱节点' }));
+    fireEvent.click(screen.getByRole('button', { name: '浏览图中内容' }));
     expect(screen.getByRole('button', { name: '记忆：Memory one' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /标签实体：Entity one/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /标签：Entity one/ })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByRole('searchbox', { name: '筛选图谱节点' }), {
+    fireEvent.change(screen.getByRole('searchbox', { name: '搜索图中内容' }), {
       target: { value: 'entity' },
     });
     expect(screen.queryByRole('button', { name: '记忆：Memory one' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /标签实体：Entity one/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /标签：Entity one/ })).toBeInTheDocument();
   });
 
-  it('reports both shown and complete node and relation totals', () => {
-    const graph = { ...graphProjection(1), totalNodes: 8, totalEdges: 12, truncated: true };
+  it('does not add a technical range counter when the 3D view is simplified', () => {
+    const graph = graphProjection(1);
+    graph.totalNodes = 12;
+    graph.truncated = true;
     render(<MemoryGraph graph={graph} onSelectMemory={vi.fn()} onSelectEntity={vi.fn()} onClearSelection={vi.fn()} />);
 
-    expect(screen.getByText('已渲染 2/8 个节点 · 1/12 条关系')).toBeInTheDocument();
+    expect(screen.queryByText('图中 2 / 12 项')).not.toBeInTheDocument();
   });
 
   it('clears selection before manually reframing the graph', () => {

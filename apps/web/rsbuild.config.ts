@@ -25,6 +25,10 @@ export default defineConfig({
         from: './node_modules/pptxgenjs/dist/pptxgen.bundle.js',
         to: 'vendor/pptxgen.bundle.js',
       },
+      {
+        from: './node_modules/@embedpdf/pdfium/dist/pdfium.wasm',
+        to: 'vendor/embedpdf/pdfium.wasm',
+      },
     ],
     distPath: {
       root: 'dist/workspace',

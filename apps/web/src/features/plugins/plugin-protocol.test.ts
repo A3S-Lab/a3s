@@ -13,6 +13,7 @@ describe('plugin activity protocol', () => {
             summary: 'Review recent CRISPR evidence.',
             prompt: 'Compare the selected sources.',
             fields: [{ label: 'Source', value: 'PubMed' }],
+            usePackageSkill: false,
             skill: 'untrusted-skill',
           },
         },
@@ -26,8 +27,38 @@ describe('plugin activity protocol', () => {
         summary: 'Review recent CRISPR evidence.',
         prompt: 'Compare the selected sources.',
         fields: [{ label: 'Source', value: 'PubMed' }],
+        usePackageSkill: false,
       },
     });
+  });
+
+  it('defaults legacy proposals to the verified package Skill and rejects invalid routing flags', () => {
+    expect(
+      parsePluginMessage(
+        {
+          protocol: activityProtocol,
+          type: 'context.propose',
+          payload: { title: 'Legacy', summary: 'Legacy proposal.', prompt: 'Continue.' },
+        },
+        'science:research'
+      )
+    ).toMatchObject({ type: 'context', proposal: { usePackageSkill: true } });
+
+    expect(
+      parsePluginMessage(
+        {
+          protocol: activityProtocol,
+          type: 'context.propose',
+          payload: {
+            title: 'Invalid',
+            summary: 'Invalid routing flag.',
+            prompt: 'Continue.',
+            usePackageSkill: 'false',
+          },
+        },
+        'science:research'
+      )
+    ).toBeNull();
   });
 
   it('rejects wrong protocols and oversized prompts', () => {

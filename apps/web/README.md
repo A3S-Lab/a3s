@@ -314,12 +314,12 @@ sandbox, messaging, and review contracts are defined in
   than a separate full-screen page.
 - A compact, grouped Code Task Library with on-demand search and one
   current-task workspace; rename and delete stay inline in the affected row.
-- A dedicated, read-only Code Memory workspace with complete-store retrieval,
-  retention and lifecycle summaries, content/entity search, combinable filters,
-  a lazy-loaded 3D knowledge graph, a chronological timeline, and memory/entity
-  inspectors. The graph defaults to a focused projection and can switch to a
-  bounded whole-store panorama without sending unbounded topology into the
-  force simulation.
+- A dedicated Code Memory workspace with complete-store retrieval,
+  plain-language search and filters, a lazy-loaded 3D relationship view, a
+  chronological list, and focused memory/entity detail. Internal scores, paths,
+  raw fields, and identifiers are not shown. A separate Learning tab shows
+  only items that need review by default and supports save, ignore, reconsider,
+  update, and recoverable version rollback.
 - A continuous task conversation with Workspace and Activity opened as
   contextual right-side views that can expand in place to a full content-area
   presentation without remounting the editor or losing drafts. Conversation
@@ -529,6 +529,19 @@ nodes and 4,000 relations, while always reporting rendered and complete totals.
 An accessible node browser provides keyboard selection outside the canvas.
 Refresh failure keeps the last successful snapshot visible with an inline
 retry.
+
+Learning candidates come from the CLI's LLM-structured memory evolution
+service; the browser does not infer them with keyword rules. Matching evidence
+accumulates across sessions, and a conflict-free candidate can become a local
+versioned asset automatically only after strict maturity thresholds. It is
+never published automatically. The default list contains ready candidates and
+saved candidates with updates. Saving, returning to the unmaterialized
+baseline, or restoring a learned preference or method uses the typed Evolution
+API. Preference instructions are injected into bounded prompt context, Skills
+are loaded into the registry, and the activation barrier clears only after all
+affected live sessions rebuild successfully. Existing versions, audit history,
+and recovery actions remain available in a collapsed History section without
+crowding the review flow.
 
 Memory visualization is intentionally non-destructive. Manual consolidation,
 forgetting, and knowledge-base mutation remain excluded until those actions

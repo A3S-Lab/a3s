@@ -1,15 +1,12 @@
-import { Bookmark, Clock3, GitMerge, Sparkles, TriangleAlert } from 'lucide-react';
+import { Bookmark, Clock3, TriangleAlert } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { MemoryEntry, MemoryOverview } from '../../../types/api';
 import {
-  forgetSignalLabel,
   memoryDayLabel,
   memorySourceLabel,
   memoryTagLabel,
   memoryTypeLabel,
-  percent,
   relativeMemoryTime,
-  tierLabel,
 } from '../memory-format';
 
 const TIMELINE_BATCH_SIZE = 60;
@@ -76,33 +73,18 @@ export function MemoryTimeline({
                         <span className='memory-type-badge' data-tone={entry.memoryType}>
                           {memoryTypeLabel(entry.memoryType)}
                         </span>
-                        {facet && (
-                          <>
-                            <span className='memory-tier-badge' data-tier={facet.tier}>
-                              {tierLabel(facet.tier)}
-                            </span>
-                            <span className='memory-signal-badge' data-signal={facet.forget}>
-                              {forgetSignalLabel(facet.forget)}
-                            </span>
-                          </>
-                        )}
                         <time dateTime={entry.timestamp}>{relativeMemoryTime(entry.timestamp)}</time>
                       </span>
                       <strong>{title}</strong>
                       {preview && <p>{preview}</p>}
                       <span className='memory-timeline-footer'>
-                        <span className='memory-importance' title={`重要度 ${percent(entry.importance)}`}>
-                          <i style={{ width: percent(entry.importance) }} />
-                        </span>
-                        {tags.slice(0, 4).map((tag) => (
+                        {tags.slice(0, 3).map((tag) => (
                           <span className='memory-tag' key={tag.key}>
                             {tag.label}
                           </span>
                         ))}
-                        {tags.length > 4 && <span className='memory-tag'>+{tags.length - 4}</span>}
-                        {facet?.llmExtracted && <Sparkles size={12} aria-label='自动提取' />}
-                        {facet?.consolidated && <GitMerge size={12} aria-label='已合并重复' />}
-                        {facet?.conflicts && <TriangleAlert size={12} aria-label='待处理冲突' />}
+                        {tags.length > 3 && <span className='memory-tag'>+{tags.length - 3}</span>}
+                        {facet?.conflicts && <TriangleAlert size={12} aria-label='有冲突' />}
                         {facet?.forget === 'protected' && <Bookmark size={12} aria-label='重点保留' />}
                         <span className='memory-source'>
                           <Clock3 size={11} /> {memorySourceLabel(event?.source || 'memory')}
@@ -116,19 +98,19 @@ export function MemoryTimeline({
           </ul>
         </section>
       ))}
-      <footer className='memory-timeline-pagination' aria-live='polite'>
-        <span>
-          已显示 {visibleEntries.length} / {entries.length} 条
-        </span>
-        {visibleEntries.length < entries.length && (
+      {visibleEntries.length < entries.length && (
+        <footer className='memory-timeline-pagination' aria-live='polite'>
+          <span>
+            {visibleEntries.length} / {entries.length} 条
+          </span>
           <button
             type='button'
             onClick={() => setVisibleCount((count) => Math.min(entries.length, count + TIMELINE_BATCH_SIZE))}
           >
             继续显示
           </button>
-        )}
-      </footer>
+        </footer>
+      )}
     </section>
   );
 }
