@@ -243,6 +243,15 @@ Queued turns retain the execution mode captured at submission. `/queue`
 inspects those pending turns and can send the exact selected row now, remove
 one row, or explicitly confirm clearing the queue without losing attachments,
 Plan state, or untouched Lane ordering.
+Memory evolution accepts only validated, LLM-authored reuse signals rather
+than promoting ordinary memories through keyword matching. Repeated,
+conflict-free evidence can materialize a versioned local Preference, Skill, or
+OKF asset after strict maturity thresholds. Preferences enter bounded prompt
+context, Skills enter the session registry, and affected TUI or Web sessions
+must all refresh before activation is acknowledged. Review surfaces expose the
+evidence, audit trail, immutable versions, rejection, reconsideration, version
+restore, and a recoverable return to the unmaterialized baseline. Local assets
+are never published automatically.
 `/checkup` first locks the composer and collects a typed, secret-free host
 snapshot of installed components, executable/PATH shadowing, bounded ACL
 validity, skill/plugin and `AGENTS.md` context size, and in-memory MCP status

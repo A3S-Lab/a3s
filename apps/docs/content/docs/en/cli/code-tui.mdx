@@ -251,7 +251,7 @@ The CLI command palette delegates to the A3S Code TUI command registry:
 | Workspace | `/ide`, `/config`, `/theme`, `/island on`, `/island off`, `/island status`, `! <command>` |
 | Applications | `/use`, `/use status`, `/use repair` |
 | Context | `/ctx <query>`, `/ctx <n>`, `/ctx save <n>`, `/sleep` |
-| Memory and knowledge | `/memory`, `/kb`, `/kb add`, `/kb import`, `/kb search`, `/kb vault` |
+| Memory and knowledge | `/memory`, `/evolution`, `/kb`, `/kb add`, `/kb import`, `/kb search`, `/kb vault` |
 | Account integration | `/login`, `/logout`, inline `Open view` actions |
 | Assets | `/agent`, `/mcp`, `/skill`, `/flow`, `/okf` |
 | Loops | `/loop init`, `/loop run`, `/loop audit`, `/loop logs`, `/loop <task>` |
@@ -271,6 +271,19 @@ can make changes, and normal HITL remains authoritative. Auto mode is presented
 only as an optional saved-session preference; an exact read-only permission
 grant is offered only when the existing transcript proves repeated denial of
 the same canonical tool and arguments.
+
+`/evolution` reviews reusable Preference, Skill, and OKF candidates emitted as
+validated LLM-authored memory signals. Ordinary memories are never promoted by
+keyword matching. Matching evidence accumulates across sessions; a
+conflict-free candidate can save as a local versioned asset automatically only
+after the stricter recurrence, session, confidence, importance, and explicit
+signal thresholds all pass. The panel exposes evidence, activation state,
+immutable versions, and the audit trail, and supports explicit save, ignore,
+reconsider, version restore, and return to the unmaterialized baseline. A
+baseline rollback removes the active asset but preserves recovery data and old
+versions. Active Preferences enter bounded system-prompt context and active
+Skills enter the Skill registry after the current session refreshes. Learned
+assets are never published automatically.
 
 `/flow` manages workflow assets. It is intentionally separate from
 `DynamicWorkflowRuntime`, the local A3S Flow-backed runtime used by `ultracode`
