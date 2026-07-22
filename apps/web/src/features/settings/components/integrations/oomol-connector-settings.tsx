@@ -1,5 +1,5 @@
-import { ExternalLink, Plus, Trash2 } from 'lucide-react';
-import { Button } from '../../../../design-system/primitives';
+import { ExternalLink, Plug, Plus, Trash2 } from 'lucide-react';
+import { Button, InlineNotice, StateView } from '../../../../design-system/primitives';
 import type { McpServerSettings, McpTransportSettings } from '../../../../types/settings';
 import {
   configuredSecret,
@@ -36,21 +36,25 @@ export function OomolConnectorSettings({
 
   if (!server) {
     return (
-      <div className='oomol-connector-empty'>
-        <div>
-          <strong>把连接器注册为 Agent 工具</strong>
-          <p>托管版直接使用 OOMOL 已连接账号；自部署版把凭据、策略和运行记录留在你的环境中。</p>
-        </div>
-        <div className='oomol-connector-setup-actions'>
-          <Button tone='primary' onClick={() => onChange([...value, defaultOomolServer('hosted')])}>
-            <Plus size={13} /> 接入 OOMOL 托管版
-          </Button>
-          <Button tone='secondary' onClick={() => onChange([...value, defaultOomolServer('self-hosted')])}>
-            接入自部署版
-          </Button>
-        </div>
+      <StateView
+        className='oomol-connector-empty'
+        size='compact'
+        icon={<Plug size={21} />}
+        title='把连接器注册为 Agent 工具'
+        description='托管版直接使用 OOMOL 已连接账号；自部署版把凭据、策略和运行记录留在你的环境中。'
+        actions={
+          <>
+            <Button tone='primary' onClick={() => onChange([...value, defaultOomolServer('hosted')])}>
+              <Plus size={13} /> 接入 OOMOL 托管版
+            </Button>
+            <Button tone='secondary' onClick={() => onChange([...value, defaultOomolServer('self-hosted')])}>
+              接入自部署版
+            </Button>
+          </>
+        }
+      >
         <OomolLinks deployment={null} />
-      </div>
+      </StateView>
     );
   }
 
@@ -58,10 +62,10 @@ export function OomolConnectorSettings({
   if (transport.type !== 'streamable-http') {
     return (
       <div className='config-stack'>
-        <div className='config-empty-inline oomol-connector-warning'>
+        <InlineNotice className='oomol-connector-warning' tone='warning' role='note' title='连接器名称冲突'>
           名为 <code>{OOMOL_CONNECTOR_SERVER_NAME}</code> 的现有 MCP Server 不是 streamable-http 服务。请先在下方 MCP
           列表中重命名或删除它，再添加连接器。
-        </div>
+        </InlineNotice>
         <OomolLinks deployment={null} />
       </div>
     );

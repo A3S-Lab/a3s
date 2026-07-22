@@ -1,10 +1,11 @@
 import { FolderOpen, MessageSquarePlus, Sparkles, WandSparkles, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
+import { SplitHandle } from '../../../design-system/primitives';
+import { appState, formatApiError, sessionTitle, showToast } from '../../../state/app-state';
 import type { CodeActions } from '../../code/use-code-controller';
 import { ExecutionStream } from '../../tasks/components/execution-stream';
 import { TaskComposer } from '../../tasks/components/task-composer';
-import { appState, formatApiError, sessionTitle, showToast } from '../../../state/app-state';
 import {
   type WorkAgentProposalMessage,
   type WorkAgentProposalRequest,
@@ -16,7 +17,7 @@ import { WorkAgentProposalReview } from './work-agent-proposal-review';
 
 const widthStorageKey = 'a3s-work.ai-assistant-width';
 const legacyWidthStorageKey = 'a3s-work.copilot-width';
-const defaultWidth = 420;
+const defaultWidth = 460;
 const minimumWidth = 360;
 
 export function WorkCopilot({
@@ -68,44 +69,27 @@ export function WorkCopilot({
     ? relativeLocalPath(currentPath, workspaceRoot) || localPathBasename(workspaceRoot)
     : localPathBasename(workspaceRoot);
 
-  const updateWidth = (nextWidth: number) => {
-    const maximum = Math.max(minimumWidth, Math.min(680, window.innerWidth * 0.58));
+  const maximumWidth = Math.max(minimumWidth, Math.min(680, window.innerWidth * 0.58));
+  const updateWidth = (nextWidth: number, persist = false) => {
+    const maximum = maximumWidth;
     const normalized = Math.round(Math.max(minimumWidth, Math.min(maximum, nextWidth)));
     setWidth(normalized);
-    persistCopilotWidth(normalized);
+    if (persist) persistCopilotWidth(normalized);
   };
 
   return (
     <aside className='work-copilot' aria-label='Work AI 助手' style={{ width }}>
-      <hr
+      <SplitHandle
         className='work-copilot-resizer'
-        tabIndex={0}
-        aria-label='调整 Work AI 助手宽度'
-        aria-orientation='vertical'
-        aria-valuemin={minimumWidth}
-        aria-valuemax={680}
-        aria-valuenow={width}
-        onPointerDown={(event) => {
-          event.preventDefault();
-          const onMove = (moveEvent: PointerEvent) => updateWidth(window.innerWidth - moveEvent.clientX);
-          const onUp = () => {
-            window.removeEventListener('pointermove', onMove);
-            window.removeEventListener('pointerup', onUp);
-            document.body.classList.remove('resizing-work-copilot');
-          };
-          document.body.classList.add('resizing-work-copilot');
-          window.addEventListener('pointermove', onMove);
-          window.addEventListener('pointerup', onUp, { once: true });
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowLeft') {
-            event.preventDefault();
-            updateWidth(width + 20);
-          } else if (event.key === 'ArrowRight') {
-            event.preventDefault();
-            updateWidth(width - 20);
-          }
-        }}
+        label='调整 Work AI 助手宽度'
+        value={width}
+        min={minimumWidth}
+        max={maximumWidth}
+        defaultValue={defaultWidth}
+        direction='reverse'
+        valueText={(value) => `${value} 像素`}
+        onChange={updateWidth}
+        onCommit={(value) => updateWidth(value, true)}
       />
       <header className='work-copilot-header'>
         <span className='work-copilot-mark'>
@@ -114,7 +98,7 @@ export function WorkCopilot({
         <div>
           <strong>AI 助手</strong>
           <small title={compatibleSession?.workspace || currentPath}>
-            {compatibleSession ? sessionTitle(compatibleSession, state.sessionTitles) : folderLabel || '等待工作区'}
+            {compatibleSession ? sessionTitle(compatibleSession, state.sessionTitles) : folderLabel || '等待选择文件夹'}
           </small>
         </div>
         <button
@@ -140,7 +124,7 @@ export function WorkCopilot({
             <FolderOpen size={22} />
           </span>
           <strong>先连接一个本地文件夹</strong>
-          <p>AI 助手会以这个文件夹作为独立工作区，并只在你发送指令后开始工作。</p>
+          <p>AI 助手会读取这个文件夹，并只在你发送指令后开始工作。</p>
           <button type='button' onClick={() => void onPickRoot()}>
             选择文件夹
           </button>

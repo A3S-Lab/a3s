@@ -1,9 +1,21 @@
 import { Minus, Plus } from 'lucide-react';
-import { useId, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { type ButtonHTMLAttributes, Fragment, type ReactNode, useId, useRef, useState } from 'react';
+import { Popover, Tabs } from '../../../design-system/primitives';
+import { OfficeSlider } from './office-controls';
 
 export interface WorkOfficeRibbonTab<T extends string> {
   id: T;
   label: string;
+}
+
+export interface WorkOfficeFileAction {
+  id: string;
+  label: string;
+  icon?: ReactNode;
+  shortcut?: string;
+  disabled?: boolean;
+  separatorBefore?: boolean;
+  onSelect: () => void | Promise<void>;
 }
 
 export function WorkOfficeRibbon<T extends string>({
@@ -13,6 +25,7 @@ export function WorkOfficeRibbon<T extends string>({
   activeTab,
   onTabChange,
   panels,
+  fileActions,
   className = '',
   toolbarClassName = '',
 }: {
@@ -22,6 +35,7 @@ export function WorkOfficeRibbon<T extends string>({
   activeTab?: T;
   onTabChange?: (tab: T) => void;
   panels: Record<T, ReactNode>;
+  fileActions?: readonly WorkOfficeFileAction[];
   className?: string;
   toolbarClassName?: string;
 }) {
@@ -29,6 +43,7 @@ export function WorkOfficeRibbon<T extends string>({
   const [internalTab, setInternalTab] = useState(defaultTab);
   const selectedTab = activeTab ?? internalTab;
   const selectedLabel = tabs.find((tab) => tab.id === selectedTab)?.label ?? tabs[0]?.label ?? '';
+  const selectedPanel = panels[selectedTab];
   const selectTab = (tab: T) => {
     if (activeTab === undefined) setInternalTab(tab);
     onTabChange?.(tab);
@@ -36,45 +51,139 @@ export function WorkOfficeRibbon<T extends string>({
 
   return (
     <section className={`work-office-ribbon ${className}`.trim()} aria-label={ariaLabel}>
-      <div className='work-office-ribbon-tabs' role='tablist' aria-label={ariaLabel}>
-        {tabs.map((tab) => (
-          <button
-            type='button'
-            id={`${reactId}-tab-${tab.id}`}
-            key={tab.id}
-            role='tab'
-            aria-controls={`${reactId}-panel`}
-            aria-selected={selectedTab === tab.id}
-            tabIndex={selectedTab === tab.id ? 0 : -1}
-            onClick={() => selectTab(tab.id)}
-            onKeyDown={(event) => {
-              const next = nextRibbonTab(tabs, selectedTab, event.key);
-              if (!next) return;
-              event.preventDefault();
-              selectTab(next);
-              requestAnimationFrame(() => document.getElementById(`${reactId}-tab-${next}`)?.focus());
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className='work-office-ribbon-tabs-row'>
+        {fileActions?.length ? <WorkOfficeFileMenu actions={fileActions} /> : null}
+        <Tabs
+          ariaLabel={ariaLabel}
+          value={selectedTab}
+          variant='line'
+          size='compact'
+          className='work-office-ribbon-tabs'
+          items={tabs.map((tab) => ({
+            ...tab,
+            tabId: `${reactId}-tab-${tab.id}`,
+            panelId: `${reactId}-panel`,
+          }))}
+          onChange={selectTab}
+        />
       </div>
       <div
         id={`${reactId}-panel`}
         className='work-office-ribbon-panel'
+        data-empty={selectedPanel === null || selectedPanel === undefined ? 'true' : undefined}
         role='tabpanel'
         aria-labelledby={`${reactId}-tab-${selectedTab}`}
       >
-        <div
-          className={`work-office-toolbar ${toolbarClassName}`.trim()}
-          role='toolbar'
-          aria-label={`${selectedLabel}工具栏`}
-        >
-          {panels[selectedTab]}
-        </div>
+        {selectedPanel !== null && selectedPanel !== undefined && (
+          <div
+            className={`work-office-toolbar ${toolbarClassName}`.trim()}
+            role='toolbar'
+            aria-label={`${selectedLabel}工具栏`}
+          >
+            {selectedPanel}
+          </div>
+        )}
       </div>
     </section>
   );
+}
+
+function WorkOfficeFileMenu({ actions }: { actions: readonly WorkOfficeFileAction[] }) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLElement>(null);
+  const focusEdgeRef = useRef<'first' | 'last'>('first');
+
+  const focusRequestedAction = () =>
+    requestAnimationFrame(() => {
+      const buttons = [...(menuRef.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])];
+      const button = focusEdgeRef.current === 'last' ? buttons.at(-1) : buttons[0];
+      button?.focus();
+    });
+
+  return (
+    <Popover
+      label='文件'
+      panelLabel='文件菜单'
+      panelRole='menu'
+      className='work-office-file-menu'
+      panelClassName='work-office-file-popover'
+      panelRef={menuRef}
+      onPanelKeyDown={(event) => moveFileMenuFocus(event, triggerRef)}
+      onOpenChange={(open) => {
+        if (open) focusRequestedAction();
+      }}
+      trigger={(triggerProps, { open }) => (
+        <button
+          {...triggerProps}
+          ref={(element) => {
+            triggerProps.ref(element);
+            triggerRef.current = element;
+          }}
+          className='work-office-file-trigger'
+          onKeyDown={(event) => {
+            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+            event.preventDefault();
+            focusEdgeRef.current = event.key === 'ArrowUp' ? 'last' : 'first';
+            if (!open) event.currentTarget.click();
+            else focusRequestedAction();
+          }}
+        >
+          文件
+        </button>
+      )}
+    >
+      {(close) => (
+        <>
+          {actions.map((action) => (
+            <Fragment key={action.id}>
+              {action.separatorBefore && <hr className='work-office-file-separator' />}
+              <button
+                type='button'
+                role='menuitem'
+                disabled={action.disabled}
+                onClick={() => {
+                  close();
+                  void action.onSelect();
+                }}
+              >
+                <span className='work-office-file-action-icon' aria-hidden='true'>
+                  {action.icon}
+                </span>
+                <span>{action.label}</span>
+                {action.shortcut && <kbd>{action.shortcut}</kbd>}
+              </button>
+            </Fragment>
+          ))}
+        </>
+      )}
+    </Popover>
+  );
+}
+
+function moveFileMenuFocus(
+  event: React.KeyboardEvent<HTMLElement>,
+  triggerRef: React.RefObject<HTMLButtonElement | null>
+) {
+  if (event.key === 'Tab') return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    triggerRef.current?.focus();
+    return;
+  }
+  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+  const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')];
+  if (!buttons.length) return;
+  event.preventDefault();
+  const currentIndex = buttons.indexOf(document.activeElement as HTMLButtonElement);
+  const nextIndex =
+    event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? buttons.length - 1
+        : event.key === 'ArrowDown'
+          ? (currentIndex + 1 + buttons.length) % buttons.length
+          : (currentIndex - 1 + buttons.length) % buttons.length;
+  buttons[nextIndex]?.focus();
 }
 
 export function WorkOfficeRibbonGroup({ label, children }: { label: string; children: ReactNode }) {
@@ -90,7 +199,7 @@ export function WorkOfficeRibbonButton({
   label,
   visibleLabel = label,
   badge,
-  active = false,
+  active,
   displayLabel = true,
   className = '',
   children,
@@ -107,7 +216,7 @@ export function WorkOfficeRibbonButton({
     <button
       type='button'
       aria-label={label}
-      aria-pressed={active || undefined}
+      aria-pressed={active}
       className={`${displayLabel ? 'with-label' : ''} ${active ? 'active' : ''} ${className}`.trim()}
       {...props}
     >
@@ -169,14 +278,14 @@ export function WorkOfficeZoomControls({
         <Minus size={13} />
       </button>
       <output aria-label={outputLabel}>{zoom}%</output>
-      <input
-        type='range'
+      <OfficeSlider
+        className='work-office-status-slider'
+        ariaLabel={sliderLabel}
         min={minimum}
         max={maximum}
         step={step}
         value={zoom}
-        aria-label={sliderLabel}
-        onChange={(event) => onChange(clamp(Number(event.target.value)))}
+        onValueChange={(value) => onChange(clamp(value))}
       />
       <button
         type='button'
@@ -189,16 +298,4 @@ export function WorkOfficeZoomControls({
       </button>
     </>
   );
-}
-
-function nextRibbonTab<T extends string>(tabs: readonly WorkOfficeRibbonTab<T>[], current: T, key: string): T | null {
-  const currentIndex = Math.max(
-    0,
-    tabs.findIndex((tab) => tab.id === current)
-  );
-  if (key === 'Home') return tabs[0]?.id ?? null;
-  if (key === 'End') return tabs.at(-1)?.id ?? null;
-  if (key === 'ArrowRight') return tabs[(currentIndex + 1) % tabs.length]?.id ?? null;
-  if (key === 'ArrowLeft') return tabs[(currentIndex - 1 + tabs.length) % tabs.length]?.id ?? null;
-  return null;
 }

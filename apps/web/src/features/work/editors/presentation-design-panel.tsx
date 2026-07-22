@@ -1,5 +1,6 @@
 import { Copy, LayoutTemplate, Plus, Trash2, X } from 'lucide-react';
 import type { WorkPresentationContent, WorkPresentationLayout, WorkPresentationMaster, WorkSlide } from '../work-types';
+import { OfficeCheckbox, OfficeColorPicker, OfficeSelect, OfficeTextField } from './office-controls';
 
 export type PresentationDesignMode = 'slide' | 'layout' | 'master';
 
@@ -60,25 +61,23 @@ export function PresentationDesignPanel({
       </header>
 
       <div className='work-presentation-design-controls'>
-        <label>
+        <div className='work-office-field'>
           <span>当前布局</span>
-          <select aria-label='幻灯片布局' value={layout.id} onChange={(event) => onApplyLayout(event.target.value)}>
-            {content.layouts?.map((candidate) => (
-              <option value={candidate.id} key={candidate.id}>
-                {candidate.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className='toggle'>
-          <input
-            type='checkbox'
-            aria-label='使用布局背景'
-            checked={slide.useLayoutBackground === true}
-            onChange={(event) => onToggleLayoutBackground(event.target.checked)}
+          <OfficeSelect
+            ariaLabel='幻灯片布局'
+            value={layout.id}
+            options={(content.layouts ?? []).map((candidate) => ({ value: candidate.id, label: candidate.name }))}
+            onValueChange={onApplyLayout}
           />
+        </div>
+        <OfficeCheckbox
+          className='toggle'
+          ariaLabel='使用布局背景'
+          checked={slide.useLayoutBackground === true}
+          onCheckedChange={onToggleLayoutBackground}
+        >
           使用布局背景
-        </label>
+        </OfficeCheckbox>
         <button type='button' className={mode === 'layout' ? 'active' : ''} onClick={onEditLayout}>
           编辑当前布局
         </button>
@@ -106,28 +105,29 @@ export function PresentationDesignPanel({
       {mode === 'layout' && (
         <div className='work-presentation-design-editing' data-design-mode='layout'>
           <strong>正在编辑布局</strong>
-          <label>
+          <div className='work-office-field'>
             <span>名称</span>
-            <input aria-label='布局名称' value={layout.name} onChange={(event) => onRenameLayout(event.target.value)} />
-          </label>
-          <label className='work-color-tool' title='布局背景'>
-            <span style={{ background: layout.background ?? master.background }} />
-            <input
-              type='color'
-              aria-label='布局背景颜色'
-              value={layout.background ?? master.background}
-              onInput={(event) => onSetLayoutBackground(event.currentTarget.value)}
+            <OfficeTextField
+              aria-label='布局名称'
+              value={layout.name}
+              onChange={(event) => onRenameLayout(event.target.value)}
             />
-          </label>
-          <label className='toggle'>
-            <input
-              type='checkbox'
-              aria-label='布局使用母版背景'
-              checked={!layout.background}
-              onChange={(event) => onSetLayoutBackground(event.target.checked ? undefined : master.background)}
-            />
+          </div>
+          <OfficeColorPicker
+            compact
+            className='work-color-tool'
+            ariaLabel='布局背景颜色'
+            value={layout.background ?? master.background}
+            onValueChange={onSetLayoutBackground}
+          />
+          <OfficeCheckbox
+            className='toggle'
+            ariaLabel='布局使用母版背景'
+            checked={!layout.background}
+            onCheckedChange={(checked) => onSetLayoutBackground(checked ? undefined : master.background)}
+          >
             使用母版背景
-          </label>
+          </OfficeCheckbox>
           <PlaceholderButtons onAdd={onAddPlaceholder} />
           <button type='button' onClick={onReturnToSlide}>
             返回幻灯片编辑
@@ -138,19 +138,21 @@ export function PresentationDesignPanel({
       {mode === 'master' && (
         <div className='work-presentation-design-editing' data-design-mode='master'>
           <strong>正在编辑母版</strong>
-          <label>
+          <div className='work-office-field'>
             <span>名称</span>
-            <input aria-label='母版名称' value={master.name} onChange={(event) => onRenameMaster(event.target.value)} />
-          </label>
-          <label className='work-color-tool' title='母版背景'>
-            <span style={{ background: master.background }} />
-            <input
-              type='color'
-              aria-label='母版背景颜色'
-              value={master.background}
-              onInput={(event) => onSetMasterBackground(event.currentTarget.value)}
+            <OfficeTextField
+              aria-label='母版名称'
+              value={master.name}
+              onChange={(event) => onRenameMaster(event.target.value)}
             />
-          </label>
+          </div>
+          <OfficeColorPicker
+            compact
+            className='work-color-tool'
+            ariaLabel='母版背景颜色'
+            value={master.background}
+            onValueChange={onSetMasterBackground}
+          />
           <PlaceholderButtons onAdd={onAddPlaceholder} />
           <button type='button' onClick={onReturnToSlide}>
             返回幻灯片编辑

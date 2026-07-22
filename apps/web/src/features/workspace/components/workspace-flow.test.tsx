@@ -9,6 +9,7 @@ import { WorkspaceSearchPanel } from './workspace-search-panel';
 import { useWorkspaceController } from '../use-workspace-controller';
 import { codeApi } from '../../../lib/api';
 import { fileEditorTabId, type WorkspaceFileEditorTab } from '../workspace-state';
+import type { WorkspaceChangeEvent } from '../../../types/api';
 
 describe('Workspace review flow', () => {
   afterEach(() => {
@@ -349,6 +350,40 @@ describe('Workspace review flow', () => {
     expect(activeFileTab()?.content).toBe('external edit');
     expect(activeFileTab()?.draft).toBe('external edit');
     hook.unmount();
+  });
+
+  it('refreshes the file tree and a clean open preview after a native workspace event', async () => {
+    appState.workspaceRoot = '/repo';
+    appState.filesByDirectory = { '/repo': [] };
+    setOpenFileTab('/repo/app.ts', 'before', 'before');
+    let publishChange: ((event: WorkspaceChangeEvent) => void) | undefined;
+    const closeWatch = vi.fn();
+    vi.spyOn(codeApi, 'watchWorkspace').mockImplementation((_root, onChange) => {
+      publishChange = onChange;
+      return closeWatch;
+    });
+    vi.spyOn(codeApi, 'readDir').mockResolvedValue([
+      {
+        name: 'app.ts',
+        path: '/repo/app.ts',
+        isDirectory: false,
+        isFile: true,
+        size: 12,
+        isBinary: false,
+      },
+    ]);
+    vi.spyOn(codeApi, 'readFile').mockResolvedValue({ content: 'after' });
+    const hook = renderHook(() => useWorkspaceController());
+    await waitFor(() => expect(publishChange).toBeTypeOf('function'));
+
+    act(() => {
+      publishChange?.({ type: 'workspace_change', kind: 'modify', paths: ['/repo/app.ts'] });
+    });
+
+    await waitFor(() => expect(activeFileTab()?.draft).toBe('after'));
+    expect(appState.filesByDirectory['/repo']).toHaveLength(1);
+    hook.unmount();
+    expect(closeWatch).toHaveBeenCalledTimes(1);
   });
 
   it('does not discard a dirty draft when the same file is selected again', async () => {

@@ -11,7 +11,7 @@ import {
   RotateCcw,
   Sparkles,
 } from 'lucide-react';
-import { Button, Dialog } from '../../../design-system/primitives';
+import { Button, Dialog, InlineNotice } from '../../../design-system/primitives';
 import type { EvolutionAuditEvent, EvolutionCandidate, EvolutionVersion } from '../../../types/api';
 import { evolutionAuditLabel, evolutionSourceLabel, formatEvolutionDate } from '../evolution-format';
 import { KindBadge, StateBadge } from './evolution-shared';
@@ -72,10 +72,14 @@ export function EvolutionCandidateDetail({
         </div>
       </header>
       {candidate.hasConflicts && (
-        <div className='evolution-conflict-notice' role='note'>
-          <AlertTriangle size={16} />
-          <span>相关记忆互相矛盾，请确认后再保存。</span>
-        </div>
+        <InlineNotice
+          className='evolution-conflict-notice'
+          tone='warning'
+          role='note'
+          icon={<AlertTriangle size={16} />}
+        >
+          相关记忆互相矛盾，请确认后再保存。
+        </InlineNotice>
       )}
       <section className='evolution-section'>
         <header>

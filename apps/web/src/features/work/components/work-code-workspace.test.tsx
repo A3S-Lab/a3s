@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { codeApi } from '../../../lib/api';
 import { appState } from '../../../state/app-state';
@@ -11,7 +11,7 @@ vi.mock('../../workspace/components/monaco-code-editor', () => ({
   ),
 }));
 
-describe('Work WebIDE workspace', () => {
+describe('Work code file detail page', () => {
   beforeEach(() => {
     vi.spyOn(codeApi, 'readDir').mockResolvedValue([]);
     appState.theme = 'light';
@@ -23,7 +23,7 @@ describe('Work WebIDE workspace', () => {
     vi.restoreAllMocks();
   });
 
-  it('keeps Markdown source on the left and renders a live preview on the right', async () => {
+  it('uses the Office detail-page chrome with a Monaco body and no WebIDE navigation', () => {
     const updateDraft = vi.fn();
     const tab = {
       path: '/repo/README.md',
@@ -55,12 +55,16 @@ describe('Work WebIDE workspace', () => {
         rootPath='/repo'
         assistantOpen={false}
         onBack={vi.fn()}
-        onOpenEntry={vi.fn()}
         onToggleAssistant={vi.fn()}
         onAgentRequest={vi.fn()}
       />
     );
 
+    expect(screen.getByRole('button', { name: '返回办公文件' })).toBeInTheDocument();
+    expect(screen.getByText('README.md')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '保存代码文件' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '打开 AI 助手' })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'WebIDE 编辑器标签' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('Markdown 编辑区')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Markdown 实时预览' })).toHaveTextContent('Project');
     expect(screen.getByRole('region', { name: 'Markdown 实时预览' })).toHaveTextContent('Ready');
@@ -72,6 +76,6 @@ describe('Work WebIDE workspace', () => {
       target: { value: '# Updated' },
     });
     expect(updateDraft).toHaveBeenCalledWith('/repo/README.md', '# Updated');
-    await waitFor(() => expect(codeApi.readDir).toHaveBeenCalledWith('/repo'));
+    expect(codeApi.readDir).not.toHaveBeenCalled();
   });
 });

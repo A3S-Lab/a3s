@@ -1,5 +1,6 @@
 import { MapPin, Trash2, X } from 'lucide-react';
 import type { WorkSlide } from '../work-types';
+import { OfficeTextArea } from './office-controls';
 
 interface PresentationCommentView {
   slideId: string;
@@ -57,7 +58,7 @@ export function PresentationCommentsPanel({
               <strong>{comment.author}</strong>
               <time dateTime={comment.date}>{formatCommentDate(comment.date)}</time>
             </header>
-            <textarea
+            <OfficeTextArea
               aria-label={`编辑演示批注 ${index + 1}`}
               value={comment.text}
               onFocus={() => onLocate(comment.slideId, comment.id)}

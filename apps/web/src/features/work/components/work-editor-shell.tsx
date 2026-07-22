@@ -21,11 +21,13 @@ import {
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { DocumentEditor } from '../editors/document-editor';
+import { OfficeTextField } from '../editors/office-controls';
 import { PresentationEditor } from '../editors/presentation-editor';
+import type { WorkOfficeFileAction } from '../editors/work-office-chrome';
 import type { WorkActions } from '../use-work-controller';
+import type { WorkEditorAgentRequest } from '../work-agent-request';
 import { localPathParent } from '../work-local-files';
 import type { WorkArtifactContent, WorkArtifactKind, WorkPresentationPrintLayout } from '../work-types';
-import type { WorkEditorAgentRequest } from '../work-agent-request';
 import { workArtifactExtension, workArtifactKindLabel } from '../work-types';
 import { WorkCompatibilityDialog } from './work-compatibility-dialog';
 import { WorkLocalFileConflictDialog, WorkLocalSaveDialog } from './work-local-save-dialog';
@@ -78,8 +80,19 @@ export function WorkEditorShell({
     }
     void saveBoundLocalFile();
   };
+  const requestPrimarySave = () => {
+    if (!artifact || artifact.kind === 'pdf') return;
+    if (actions.activeLocalBinding) requestBoundLocalSave();
+    else void actions.saveNow();
+  };
+  const requestLocalSaveAs = () => {
+    if (!artifact || artifact.kind === 'pdf') return;
+    if (artifact.compatibility?.issues.length) setCompatibilityMode('local-as');
+    else setShowLocalSaveAs(true);
+  };
 
   useEffect(() => {
+    setPreview(false);
     setPresentationPrintLayout('slides');
     setShowPrintPreview(false);
     setPendingPdfPageIndexes(null);
@@ -87,15 +100,24 @@ export function WorkEditorShell({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey)) return;
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.altKey ||
+        !(event.metaKey || event.ctrlKey) ||
+        !artifact ||
+        artifact.kind === 'pdf'
+      ) {
+        return;
+      }
       const key = event.key.toLowerCase();
-      if (key === 'p' && artifact?.kind !== 'pdf') {
+      if (key === 'p' && !event.shiftKey) {
         event.preventDefault();
         setShowPrintPreview(true);
       } else if (key === 's') {
         event.preventDefault();
-        if (actions.activeLocalBinding && artifact?.kind !== 'pdf') requestBoundLocalSave();
-        else void actions.saveNow();
+        if (event.shiftKey) requestLocalSaveAs();
+        else requestPrimarySave();
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -130,6 +152,62 @@ export function WorkEditorShell({
     }
     void actions.exportPdf({ pageIndexes });
   };
+  const requestNativeExport = () => {
+    if (artifact.compatibility?.issues.length) setCompatibilityMode('native');
+    else void actions.exportArtifact();
+  };
+  const officeFileActions: readonly WorkOfficeFileAction[] =
+    artifact.kind === 'pdf'
+      ? []
+      : [
+          {
+            id: 'save',
+            label: '保存',
+            icon: <Save size={16} />,
+            shortcut: 'Cmd/Ctrl+S',
+            disabled: actions.saveState === 'saving' || actions.localSaveState === 'saving',
+            onSelect: requestPrimarySave,
+          },
+          {
+            id: 'save-as',
+            label: '另存为',
+            icon: <FolderOutput size={16} />,
+            shortcut: 'Cmd/Ctrl+Shift+S',
+            onSelect: requestLocalSaveAs,
+          },
+          {
+            id: 'print',
+            label: '打印',
+            icon: <Printer size={16} />,
+            shortcut: 'Cmd/Ctrl+P',
+            separatorBefore: true,
+            onSelect: () => setShowPrintPreview(true),
+          },
+          {
+            id: 'export',
+            label: `导出 ${workArtifactExtension(artifact.kind).toUpperCase()}`,
+            icon: <Download size={16} />,
+            disabled: actions.exporting,
+            onSelect: requestNativeExport,
+          },
+          ...(artifact.source
+            ? [
+                {
+                  id: 'download-source',
+                  label: '下载原文件',
+                  icon: <FileDown size={16} />,
+                  onSelect: () => void actions.downloadSource(),
+                },
+              ]
+            : []),
+          {
+            id: 'versions',
+            label: '版本记录',
+            icon: <History size={16} />,
+            separatorBefore: true,
+            onSelect: () => setShowVersions(true),
+          },
+        ];
 
   return (
     <section className={`work-editor-shell ${artifact.kind}`}>
@@ -137,7 +215,7 @@ export function WorkEditorShell({
         <button
           type='button'
           className='work-editor-back'
-          aria-label='返回 Work 文件中心'
+          aria-label='返回办公文件中心'
           onClick={() => void actions.closeArtifact()}
         >
           <ArrowLeft size={17} />
@@ -146,7 +224,7 @@ export function WorkEditorShell({
           <WorkKindIcon kind={artifact.kind} />
         </span>
         <div className='work-editor-identity'>
-          <input
+          <OfficeTextField
             value={artifact.title}
             aria-label='文件名'
             onChange={(event) => {
@@ -168,136 +246,113 @@ export function WorkEditorShell({
           </span>
         </div>
         <div className='work-editor-header-actions'>
-          {onToggleCopilot && (
-            <button
-              type='button'
-              className={`work-icon-button ${copilotOpen ? 'active' : ''}`}
-              aria-label={copilotOpen ? '关闭 Work AI 助手' : '打开 Work AI 助手'}
-              aria-pressed={copilotOpen}
-              onClick={onToggleCopilot}
-            >
-              <Sparkles size={16} />
-            </button>
-          )}
           <button
             type='button'
             className={`work-icon-button ${artifact.favorite ? 'active' : ''}`}
             aria-label={artifact.favorite ? '取消收藏' : '收藏'}
+            aria-pressed={artifact.favorite}
+            title={artifact.favorite ? '取消收藏' : '收藏'}
             onClick={() => actions.toggleFavorite(artifact.id)}
           >
             <Star size={16} fill={artifact.favorite ? 'currentColor' : 'none'} />
           </button>
-          {artifact.source && (
+          {artifact.kind !== 'pdf' && (
             <button
               type='button'
-              className='work-icon-button'
-              aria-label={`下载原始文件 ${artifact.source.name}`}
-              title={`下载原始文件：${artifact.source.name}`}
-              onClick={() => void actions.downloadSource()}
+              className='work-local-save-button'
+              aria-label={actions.activeLocalBinding ? '保存到原本地文件' : '保存到 A3S'}
+              title={actions.activeLocalBinding?.path}
+              disabled={actions.saveState === 'saving' || actions.localSaveState === 'saving'}
+              onClick={requestPrimarySave}
             >
-              <FileDown size={16} />
+              <Save size={15} />
+              {actions.saveState === 'saving' || actions.localSaveState === 'saving' ? '正在保存…' : '保存'}
             </button>
-          )}
-          <button
-            type='button'
-            className='work-icon-button'
-            aria-label='查看版本历史'
-            onClick={() => setShowVersions(true)}
-          >
-            <History size={16} />
-          </button>
-          {artifact.kind !== 'pdf' && (
-            <>
-              <button
-                type='button'
-                className='work-local-save-button'
-                aria-label={actions.activeLocalBinding ? '保存到原本地文件' : '另存为本地文件'}
-                title={actions.activeLocalBinding?.path}
-                disabled={actions.localSaveState === 'saving'}
-                onClick={() => {
-                  if (actions.activeLocalBinding) requestBoundLocalSave();
-                  else if (artifact.compatibility?.issues.length) setCompatibilityMode('local-as');
-                  else setShowLocalSaveAs(true);
-                }}
-              >
-                <Save size={15} />
-                {actions.localSaveState === 'saving' ? '正在保存…' : actions.activeLocalBinding ? '保存' : '另存为'}
-              </button>
-              {actions.activeLocalBinding && (
-                <button
-                  type='button'
-                  className='work-icon-button'
-                  aria-label='另存为本地文件'
-                  onClick={() => {
-                    if (artifact.compatibility?.issues.length) setCompatibilityMode('local-as');
-                    else setShowLocalSaveAs(true);
-                  }}
-                >
-                  <FolderOutput size={16} />
-                </button>
-              )}
-            </>
           )}
           {artifact.kind !== 'pdf' && (
             <fieldset className='work-preview-switch'>
               <legend className='sr-only'>编辑或预览</legend>
-              <button type='button' className={!preview ? 'active' : ''} onClick={() => setPreview(false)}>
+              <button
+                type='button'
+                className={!preview ? 'active' : ''}
+                aria-pressed={!preview}
+                onClick={() => setPreview(false)}
+              >
                 <Pencil size={14} />
                 编辑
               </button>
-              <button type='button' className={preview ? 'active' : ''} onClick={() => setPreview(true)}>
+              <button
+                type='button'
+                className={preview ? 'active' : ''}
+                aria-pressed={preview}
+                onClick={() => setPreview(true)}
+              >
                 <Eye size={15} />
                 预览
               </button>
             </fieldset>
           )}
-          {artifact.kind !== 'pdf' && (
+          {onToggleCopilot && (
             <button
               type='button'
-              className='work-pdf-export-button'
-              disabled={actions.exportingPdf || actions.exporting}
-              aria-label='打开打印预览'
-              onClick={() => setShowPrintPreview(true)}
+              className={`work-editor-ai-button ${copilotOpen ? 'active' : ''}`}
+              aria-label={copilotOpen ? '关闭 AI 助手' : '打开 AI 助手'}
+              aria-pressed={copilotOpen}
+              onClick={onToggleCopilot}
             >
-              <Printer size={15} />
-              打印预览
+              <Sparkles size={15} />
+              AI 助手
             </button>
           )}
-          <button
-            type='button'
-            className='work-export-button'
-            disabled={actions.exporting}
-            onClick={() => {
-              if (artifact.kind === 'pdf') void actions.downloadSource();
-              else if (artifact.compatibility?.issues.length) setCompatibilityMode('native');
-              else void actions.exportArtifact();
-            }}
-          >
-            <Download size={15} />
-            {actions.exporting
-              ? '正在导出…'
-              : artifact.kind === 'pdf'
-                ? '下载原始 PDF'
-                : `导出 ${workArtifactExtension(artifact.kind).toUpperCase()}`}
-          </button>
+          {artifact.kind === 'pdf' && (
+            <>
+              {artifact.source && (
+                <button
+                  type='button'
+                  className='work-icon-button'
+                  aria-label={`下载原始文件 ${artifact.source.name}`}
+                  title={`下载原始文件：${artifact.source.name}`}
+                  onClick={() => void actions.downloadSource()}
+                >
+                  <FileDown size={16} />
+                </button>
+              )}
+              <button
+                type='button'
+                className='work-icon-button'
+                aria-label='查看版本历史'
+                onClick={() => setShowVersions(true)}
+              >
+                <History size={16} />
+              </button>
+              <button
+                type='button'
+                className='work-export-button'
+                disabled={actions.exporting}
+                onClick={() => void actions.downloadSource()}
+              >
+                <Download size={15} />
+                {actions.exporting ? '正在下载…' : '下载 PDF'}
+              </button>
+            </>
+          )}
         </div>
       </header>
 
-      {actions.activeLocalBinding ? (
-        <output
-          className={`work-source-copy-banner local-binding ${actions.localSaveState === 'conflict' ? 'conflict' : ''}`}
-        >
-          {actions.localSaveState === 'conflict' ? <AlertTriangle size={14} /> : <Save size={14} />}
+      {actions.activeLocalBinding && actions.localSaveState === 'conflict' ? (
+        <output className='work-source-copy-banner local-binding conflict'>
+          <AlertTriangle size={14} />
           <span>
-            已连接本地文件 <strong title={actions.activeLocalBinding.path}>{actions.activeLocalBinding.path}</strong>
-            ；自动保存进入 A3S，按 Cmd/Ctrl+S 才会写回本地。
+            本地文件已在外部修改：
+            <strong title={actions.activeLocalBinding.path}>{actions.activeLocalBinding.path}</strong>
           </span>
         </output>
       ) : artifact.source ? (
         <output className='work-source-copy-banner'>
           <Info size={14} />
           <span>
-            正在编辑 <strong>{artifact.source.name}</strong> 的 Work 副本；原始本地文件不会自动改写。
+            副本：<strong>{artifact.source.name}</strong>
+            {' · 原文件不受影响'}
           </span>
         </output>
       ) : null}
@@ -315,9 +370,11 @@ export function WorkEditorShell({
       <div className='work-editor-body'>
         {artifact.content.type === 'document' && (
           <DocumentEditor
+            key={artifact.id}
             content={artifact.content}
             preview={preview}
             saveStatus={workSaveStatusText(actions.saveState, actions.storageMode)}
+            fileActions={officeFileActions}
             onChange={updateContent}
             onAgentRequest={onAgentRequest}
           />
@@ -325,9 +382,11 @@ export function WorkEditorShell({
         {artifact.content.type === 'spreadsheet' && (
           <Suspense fallback={<output className='work-editor-loading'>正在准备表格编辑器…</output>}>
             <SpreadsheetEditor
+              key={artifact.id}
               content={artifact.content}
               preview={preview}
               saveStatus={workSaveStatusText(actions.saveState, actions.storageMode)}
+              fileActions={officeFileActions}
               onChange={updateContent}
               onAgentRequest={onAgentRequest}
             />
@@ -335,9 +394,11 @@ export function WorkEditorShell({
         )}
         {artifact.content.type === 'presentation' && (
           <PresentationEditor
+            key={artifact.id}
             content={artifact.content}
             preview={preview}
             saveStatus={workSaveStatusText(actions.saveState, actions.storageMode)}
+            fileActions={officeFileActions}
             onChange={updateContent}
             onAgentRequest={onAgentRequest}
             onStartSlideshow={() => setPreview(true)}
@@ -346,6 +407,7 @@ export function WorkEditorShell({
         {artifact.content.type === 'pdf' && (
           <Suspense fallback={<output className='work-editor-loading'>正在准备 PDF 预览器…</output>}>
             <PdfViewer
+              key={artifact.id}
               fileName={artifact.source?.name ?? `${artifact.title}.pdf`}
               loadSource={actions.sourceBlob}
               saveLabel={actions.activeLocalBinding ? '保存并写回本地' : '保存到 A3S'}

@@ -210,33 +210,17 @@
   color: var(--a3s-file-config);
 }
 
-.workspace-tree > [role="tree"] > p,
-.workspace-tree p {
-  margin: 0;
-  padding: 15px 8px;
-  color: var(--a3s-faint);
-  font-size: 11px;
-  text-align: center;
-}
-
-.directory-state {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.directory-state.ds-collection-state {
+  width: auto;
+  min-height: 32px;
   margin: 4px 3px;
   padding: 7px 8px;
-  border-radius: 5px;
-  color: var(--a3s-muted);
+  justify-content: flex-start;
   font-size: 10px;
+  text-align: left;
 }
 
-.directory-state.error {
-  border: 1px solid color-mix(in srgb, var(--a3s-red) 25%, var(--a3s-line));
-  background: color-mix(in srgb, var(--a3s-red) 5%, var(--a3s-panel));
-  color: var(--a3s-red);
-}
-
-.directory-state.error span {
+.directory-state.ds-collection-state > span:not(.ds-collection-state-actions) {
   min-width: 0;
   flex: 1;
   overflow: hidden;
@@ -244,13 +228,9 @@
   white-space: nowrap;
 }
 
-.directory-state.error button {
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  font-size: 10px;
-  font-weight: 650;
+.directory-empty.ds-collection-state {
+  min-height: 46px;
+  font-size: 11px;
 }
 
 .explorer-inline-treeitem {

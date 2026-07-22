@@ -155,24 +155,13 @@
   gap: 7px;
 }
 
-.update-error,
-.update-success {
-  display: block;
+.update-notice.ds-inline-notice {
   margin: 12px 0 0;
   padding: 10px;
   border-radius: 8px;
+}
+
+.update-notice .ds-inline-notice-copy {
   font-size: 11px;
   line-height: 1.55;
-}
-
-.update-error {
-  border: 1px solid color-mix(in srgb, var(--a3s-red) 25%, var(--a3s-line));
-  background: color-mix(in srgb, var(--a3s-red) 5%, var(--a3s-panel));
-  color: var(--a3s-red);
-}
-
-.update-success {
-  border: 1px solid color-mix(in srgb, var(--a3s-green) 25%, var(--a3s-line));
-  background: color-mix(in srgb, var(--a3s-green) 6%, var(--a3s-panel));
-  color: var(--a3s-green);
 }

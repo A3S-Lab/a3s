@@ -70,23 +70,16 @@
   font-size: 11px;
 }
 
-.evolution-conflict-notice {
-  display: flex;
+.evolution-conflict-notice.ds-inline-notice {
   min-height: 42px;
-  align-items: center;
-  gap: 9px;
   margin: 12px 20px 0;
   padding: 8px 10px;
-  border: 1px solid color-mix(in srgb, var(--a3s-warning) 24%, var(--a3s-line));
   border-radius: 8px;
-  background: color-mix(in srgb, var(--a3s-warning) 6%, var(--a3s-panel));
-  color: var(--a3s-warning);
-  font-size: 10px;
-  line-height: 17px;
 }
 
-.evolution-conflict-notice svg {
-  flex: 0 0 auto;
+.evolution-conflict-notice .ds-inline-notice-copy {
+  font-size: 10px;
+  line-height: 17px;
 }
 
 .evolution-section {
@@ -479,11 +472,11 @@
     color: var(--a3s-muted);
   }
 
-  .memory-section-switcher button.active svg {
+  .memory-section-switcher button[aria-selected="true"] svg {
     color: var(--a3s-blue);
   }
 
-  .memory-section-switcher button i {
+  .memory-section-switcher .ds-tabs-badge {
     display: none;
   }
 
@@ -507,33 +500,20 @@
     padding-inline: 8px;
   }
 
-  .memory-page-title {
-    flex: 0 0 30px;
-    gap: 0;
-  }
-
-  .memory-page-title > div {
-    display: none;
-  }
-
-  .memory-page-actions {
-    gap: 2px;
-  }
-
-  .memory-page-actions .ds-button {
+  .memory-page-header .ds-page-header-actions .ds-button {
     min-height: 32px;
     gap: 4px;
     padding-inline: 7px;
     font-size: 11px;
   }
 
-  .memory-page-actions .memory-settings-action {
+  .memory-page-header .memory-settings-action {
     width: 32px;
     padding-inline: 0;
     font-size: 0;
   }
 
-  .memory-page-actions .memory-settings-action svg {
+  .memory-page-header .memory-settings-action svg {
     flex: 0 0 auto;
   }
 

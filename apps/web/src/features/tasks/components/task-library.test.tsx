@@ -30,7 +30,10 @@ describe('TaskLibrary management', () => {
     appState.sessions = [{ ...task, createdAt: Date.now() - 7 * 60 * 60 * 1000 }];
     render(<TaskLibrary actions={{} as TaskActions} />);
 
-    expect(screen.getByText('A3S Code')).toBeInTheDocument();
+    expect(screen.getByText('编码')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '收起编码侧边栏' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '收起编码侧边栏' }));
+    expect(appState.sidebarOpen).toBe(false);
     expect(screen.getByRole('button', { name: '任务 (1)' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('7小时前')).toBeInTheDocument();
     expect(screen.queryByText('codex/gpt')).not.toBeInTheDocument();

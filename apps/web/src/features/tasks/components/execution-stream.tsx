@@ -1,8 +1,8 @@
 import { ArrowDown, CircleStop, LoaderCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { appState } from '../../../state/app-state';
 import { Button } from '../../../design-system/primitives';
+import { appState } from '../../../state/app-state';
 import type { ChatMessage } from '../../../types/api';
 import type { TaskActions } from '../task-actions';
 import { projectConversation } from './conversation-projection';
@@ -39,6 +39,8 @@ export function ExecutionStream({
       setShowLatest(true);
     }
   }, [streamRevision]);
+  if (sessionId && state.taskSubmissionState && !messages.length)
+    return <TaskLoadState title='正在启动任务' description='正在创建会话、应用运行参数并准备首次执行。' loading />;
   if (sessionId && state.messagesLoading[sessionId] && !messages.length)
     return <TaskLoadState title='正在加载任务记录' description='正在恢复该任务的对话和执行上下文。' loading />;
   if (sessionId && state.messageErrors[sessionId] && !messages.length)

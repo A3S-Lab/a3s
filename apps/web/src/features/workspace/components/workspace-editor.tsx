@@ -14,9 +14,7 @@ import {
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { Button, IconButton } from '../../../design-system/primitives';
-import type { WorkspaceActions } from '../workspace-actions';
-import { isFileEditorTabDirty, workspaceRelativePath } from '../workspace-state';
+import { Button, IconButton, StateView } from '../../../design-system/primitives';
 import {
   appendTaskInstruction,
   appState,
@@ -25,6 +23,8 @@ import {
   showToast,
   switchActiveTask,
 } from '../../../state/app-state';
+import type { WorkspaceActions } from '../workspace-actions';
+import { isFileEditorTabDirty, workspaceRelativePath } from '../workspace-state';
 import { WorkspaceEditorTabs } from './workspace-editor-tabs';
 import { WorkspaceFileIcon } from './workspace-file-icon';
 
@@ -323,14 +323,16 @@ function WorkspaceEditorEmpty() {
   const state = useSnapshot(appState);
   return (
     <section className='workspace-editor-empty' id='workspace-editor-active-panel'>
-      <div className='workspace-editor-empty-content'>
-        <FileCode2 size={30} />
-        <strong>{state.reviewIntent === 'select-context' ? '选择一个上下文文件' : '打开文件开始工作'}</strong>
-        <p>
-          {state.reviewIntent === 'select-context'
+      <StateView
+        className='workspace-editor-empty-content'
+        icon={<FileCode2 size={30} />}
+        title={state.reviewIntent === 'select-context' ? '选择一个上下文文件' : '打开文件开始工作'}
+        description={
+          state.reviewIntent === 'select-context'
             ? '从左侧资源管理器打开文件，确认内容后将它加入当前任务。'
-            : '文件和差异会保留在同一标签栏，切换标签不会丢失草稿。'}
-        </p>
+            : '文件和差异会保留在同一标签栏，切换标签不会丢失草稿。'
+        }
+      >
         <div className='workspace-editor-shortcuts'>
           <span>
             保存 <kbd>⌘/Ctrl S</kbd>
@@ -342,7 +344,7 @@ function WorkspaceEditorEmpty() {
             切换标签 <kbd>Ctrl Tab</kbd>
           </span>
         </div>
-      </div>
+      </StateView>
     </section>
   );
 }

@@ -2,6 +2,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../../../design-system/primitives';
 import type { SearchSettings } from '../../../../types/settings';
 import { SettingsDisclosure } from '../config/settings-disclosure';
+import { SettingsEmptyNotice } from '../config/settings-empty-notice';
 import { SettingsField } from '../config/settings-field';
 import { SettingsNumberField, SettingsSelect, SettingsTextField } from '../config/settings-fields';
 import { SettingsRow } from '../config/settings-row';
@@ -124,7 +125,7 @@ export function SearchSettingsEditor({
             </button>
           </div>
         ))}
-        {!Object.keys(value.engine).length && <div className='config-empty-inline'>没有配置搜索引擎。</div>}
+        {!Object.keys(value.engine).length && <SettingsEmptyNotice>没有配置搜索引擎。</SettingsEmptyNotice>}
       </div>
 
       <SettingsDisclosure

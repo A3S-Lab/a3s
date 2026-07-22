@@ -135,9 +135,10 @@
   max-width: min(82%, 650px);
   align-self: flex-end;
   padding: 11px 13px 7px;
-  border: 1px solid var(--a3s-line);
+  border: 1px solid color-mix(in srgb, var(--a3s-blue) 34%, var(--a3s-line));
   border-radius: 12px;
-  background: color-mix(in srgb, var(--a3s-panel-soft) 74%, var(--a3s-panel));
+  background: color-mix(in srgb, var(--a3s-blue) 14%, var(--a3s-panel));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--a3s-blue) 8%, transparent);
 }
 
 .execution-instruction-body {
@@ -448,43 +449,8 @@
   }
 }
 
-.interrupted-turn-notice {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 12px;
-  border: 1px solid var(--a3s-line);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--a3s-warning) 3%, var(--a3s-panel));
-}
-
-.interrupted-turn-icon {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--a3s-warning) 10%, var(--a3s-panel));
-  color: var(--a3s-warning);
-}
-
-.interrupted-turn-notice > div {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-}
-
-.interrupted-turn-notice strong {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.interrupted-turn-notice p {
-  margin: 1px 0 0;
-  color: var(--a3s-muted);
-  font-size: 11px;
-  line-height: 1.5;
+.interrupted-turn-status {
+  display: block;
 }
 
 .artifact-entries {
@@ -782,6 +748,21 @@
   background: var(--a3s-panel);
   box-shadow: var(--a3s-shadow-soft);
   font-size: 11px;
+}
+
+.task-composer.submitting {
+  border-color: color-mix(in srgb, var(--a3s-blue) 50%, var(--a3s-line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--a3s-blue) 8%, transparent), var(--a3s-shadow-composer);
+}
+
+.composer-running.submission-pending {
+  border-color: color-mix(in srgb, var(--a3s-blue) 28%, var(--a3s-line));
+  background: color-mix(in srgb, var(--a3s-blue) 8%, var(--a3s-panel));
+  color: var(--a3s-ink);
+}
+
+.composer-running.submission-pending > svg {
+  color: var(--a3s-blue);
 }
 
 @media (max-width: 1250px) {

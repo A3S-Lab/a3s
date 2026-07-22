@@ -9,6 +9,38 @@
   background: var(--a3s-panel);
 }
 
+.work-code-detail-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, currentcolor 12%, var(--a3s-line));
+  border-radius: 9px;
+  background: color-mix(in srgb, currentcolor 7%, var(--a3s-panel));
+  color: var(--a3s-blue);
+}
+
+.work-code-detail-identity > strong {
+  height: 24px;
+  padding: 0 4px;
+  overflow: hidden;
+  color: var(--a3s-ink);
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-code-detail-body {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  background: var(--a3s-panel);
+}
+
 .work-code-header {
   display: flex;
   height: 54px;
@@ -221,15 +253,14 @@
   color: var(--a3s-faint);
 }
 
-.work-ide-tree-state {
-  display: block;
+.work-ide-tree-state.ds-collection-state {
+  width: auto;
+  min-height: 28px;
   margin: 5px 10px;
-  color: var(--a3s-faint);
+  padding: 4px;
+  justify-content: flex-start;
   font-size: 9px;
-}
-
-.work-ide-tree-state.error {
-  color: var(--a3s-red);
+  text-align: left;
 }
 
 .work-code-editor {
@@ -340,28 +371,19 @@
   background: var(--a3s-panel-strong);
 }
 
-.work-code-empty,
-.work-code-editor-state {
-  display: flex;
+.work-code-state.ds-state-view {
+  width: auto;
+  max-width: none;
   min-height: 0;
   flex: 1;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 10px;
-  color: var(--a3s-faint);
-  text-align: center;
 }
 
-.work-code-empty strong,
-.work-code-editor-state strong {
-  color: var(--a3s-ink);
+.work-code-state.ds-state-view h2 {
   font-size: 13px;
 }
 
-.work-code-empty p {
+.work-code-state.ds-state-view > p {
   max-width: 430px;
-  margin: 0;
   font-size: 10px;
   line-height: 1.7;
 }
@@ -479,65 +501,44 @@
   white-space: nowrap;
 }
 
-.work-code-conflict {
+.work-code-conflict.ds-inline-notice {
   position: absolute;
   z-index: 40;
   right: 18px;
   bottom: 18px;
-  display: flex;
+  width: auto;
   max-width: min(620px, calc(100% - 36px));
   align-items: center;
-  gap: 8px;
   padding: 10px 11px 10px 14px;
-  border: 1px solid color-mix(in srgb, #d59632 40%, var(--a3s-line));
-  border-radius: 11px;
-  background: var(--a3s-panel);
   box-shadow: 0 14px 38px rgb(20 27 43 / 18%);
 }
 
-.work-code-conflict > div {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  gap: 2px;
+.work-code-conflict .ds-inline-notice-copy {
+  min-width: 160px;
 }
 
-.work-code-conflict strong {
-  color: var(--a3s-ink);
+.work-code-conflict .ds-inline-notice-copy strong {
   font-size: 10px;
 }
 
-.work-code-conflict span {
+.work-code-conflict code {
+  display: block;
   overflow: hidden;
   color: var(--a3s-faint);
-  font-size: 8px;
+  font: 8px/1.4 "SFMono-Regular", Consolas, monospace;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.work-code-conflict > button {
-  height: 28px;
-  padding: 0 9px;
-  border: 1px solid var(--a3s-line);
-  border-radius: 7px;
-  background: var(--a3s-panel);
-  color: var(--a3s-muted);
+.work-code-conflict .ds-button {
+  min-height: 28px;
+  padding-inline: 9px;
   font-size: 9px;
-  cursor: pointer;
 }
 
-.work-code-conflict > button.primary {
-  border-color: var(--a3s-action);
-  background: var(--a3s-action);
-  color: var(--a3s-action-ink);
-}
-
-.work-code-conflict > button:last-child {
-  display: grid;
+.work-code-conflict .ds-icon-button {
   width: 28px;
-  padding: 0;
-  place-items: center;
+  height: 28px;
 }
 
 @media (max-width: 1100px) {

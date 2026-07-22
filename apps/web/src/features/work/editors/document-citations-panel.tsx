@@ -1,18 +1,19 @@
 import type { Editor } from '@tiptap/core';
 import { BookMarked, Plus, Quote, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import {
-  documentCitationStyle,
-  documentCitationStyleDetails,
-  isValidDocumentCitationTag,
-  createDocumentBibliography,
-} from '../work-document-citations';
+import { CollectionState, InlineNotice } from '../../../design-system/primitives';
 import {
   insertDocumentBibliography,
   insertDocumentCitation,
   refreshDocumentCitations,
   renameDocumentCitationTag,
 } from '../work-document-citation-editor';
+import {
+  createDocumentBibliography,
+  documentCitationStyle,
+  documentCitationStyleDetails,
+  isValidDocumentCitationTag,
+} from '../work-document-citations';
 import { createWorkId } from '../work-templates';
 import type {
   WorkDocumentBibliography,
@@ -21,6 +22,7 @@ import type {
   WorkDocumentCitationStyle,
   WorkDocumentContent,
 } from '../work-types';
+import { OfficeSelect, OfficeTextArea, OfficeTextField } from './office-controls';
 
 interface CitationSourceDraft {
   id?: string;
@@ -191,19 +193,20 @@ export function DocumentCitationsPanel({
           <strong>文献库</strong>
           <span>{bibliography.sources.length} 条文献源 · 正文引文与参考文献同步更新</span>
         </div>
-        <label>
+        <div className='work-office-field'>
           <span>样式</span>
-          <select
-            aria-label='引文样式'
+          <OfficeSelect
+            ariaLabel='引文样式'
             value={documentCitationStyle(bibliography.style)}
-            onChange={(event) => changeStyle(documentCitationStyle(event.target.value))}
-          >
-            <option value='apa'>APA</option>
-            <option value='mla'>MLA</option>
-            <option value='chicago'>Chicago</option>
-            <option value='ieee'>IEEE</option>
-          </select>
-        </label>
+            options={[
+              { value: 'apa', label: 'APA' },
+              { value: 'mla', label: 'MLA' },
+              { value: 'chicago', label: 'Chicago' },
+              { value: 'ieee', label: 'IEEE' },
+            ]}
+            onValueChange={changeStyle}
+          />
+        </div>
         <button
           type='button'
           aria-label='插入参考文献'
@@ -236,7 +239,11 @@ export function DocumentCitationsPanel({
                 </span>
               </button>
             ))}
-            {!bibliography.sources.length && <p>还没有文献源。</p>}
+            {!bibliography.sources.length && (
+              <CollectionState className='work-office-collection-empty' role='status'>
+                还没有文献源。
+              </CollectionState>
+            )}
           </div>
         </aside>
         <form
@@ -245,155 +252,156 @@ export function DocumentCitationsPanel({
             saveSource();
           }}
         >
-          <label>
+          <div className='work-office-field'>
             <span>引用标记</span>
-            <input
+            <OfficeTextField
               aria-label='引用标记'
               value={draft.tag}
               maxLength={80}
               placeholder='例如 Smith2026'
               onChange={(event) => setDraft({ ...draft, tag: event.target.value })}
             />
-          </label>
-          <label>
+          </div>
+          <div className='work-office-field'>
             <span>来源类型</span>
-            <select
-              aria-label='文献来源类型'
+            <OfficeSelect
+              ariaLabel='文献来源类型'
               value={draft.sourceType}
-              onChange={(event) => setDraft({ ...draft, sourceType: event.target.value })}
-            >
-              {!knownSourceType && draft.sourceType && (
-                <option value={draft.sourceType}>{draft.sourceType}（原始类型）</option>
-              )}
-              {SOURCE_TYPES.map(([value, label]) => (
-                <option value={value} key={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className='wide'>
+              options={[
+                ...(!knownSourceType && draft.sourceType
+                  ? [{ value: draft.sourceType, label: `${draft.sourceType}（原始类型）` }]
+                  : []),
+                ...SOURCE_TYPES.map(([value, label]) => ({ value, label })),
+              ]}
+              onValueChange={(sourceType) => setDraft({ ...draft, sourceType })}
+            />
+          </div>
+          <div className='work-office-field wide'>
             <span>标题</span>
-            <input
+            <OfficeTextField
               aria-label='文献标题'
               value={draft.title}
               onChange={(event) => setDraft({ ...draft, title: event.target.value })}
             />
-          </label>
-          <label>
+          </div>
+          <div className='work-office-field'>
             <span>年份</span>
-            <input
+            <OfficeTextField
               aria-label='文献年份'
               value={draft.year}
               inputMode='numeric'
               placeholder='2026'
               onChange={(event) => setDraft({ ...draft, year: event.target.value })}
             />
-          </label>
-          <label>
+          </div>
+          <div className='work-office-field'>
             <span>机构作者</span>
-            <input
+            <OfficeTextField
               aria-label='机构作者'
               value={draft.corporateAuthor}
               placeholder='与个人作者二选一'
               onChange={(event) => setDraft({ ...draft, corporateAuthor: event.target.value })}
             />
-          </label>
-          <label className='wide'>
+          </div>
+          <div className='work-office-field wide'>
             <span>个人作者</span>
-            <textarea
+            <OfficeTextArea
               aria-label='个人作者'
               value={draft.authors}
               placeholder={'每行一位，例如：\nSmith, Jane\nLi, Ming'}
               onChange={(event) => setDraft({ ...draft, authors: event.target.value })}
             />
-          </label>
-          <label>
+          </div>
+          <div className='work-office-field'>
             <span>出版者</span>
-            <input
+            <OfficeTextField
               aria-label='出版者'
               value={draft.publisher}
               onChange={(event) => setDraft({ ...draft, publisher: event.target.value })}
             />
-          </label>
-          <label>
+          </div>
+          <div className='work-office-field'>
             <span>出版城市</span>
-            <input
+            <OfficeTextField
               aria-label='出版城市'
               value={draft.city}
               onChange={(event) => setDraft({ ...draft, city: event.target.value })}
             />
-          </label>
-          <label>
+          </div>
+          <div className='work-office-field'>
             <span>期刊名</span>
-            <input
+            <OfficeTextField
               aria-label='期刊名'
               value={draft.journalName}
               onChange={(event) => setDraft({ ...draft, journalName: event.target.value })}
             />
-          </label>
-          <label>
+          </div>
+          <div className='work-office-field'>
             <span>卷 / 期</span>
             <span className='paired'>
-              <input
+              <OfficeTextField
                 aria-label='卷'
                 value={draft.volume}
                 placeholder='卷'
                 onChange={(event) => setDraft({ ...draft, volume: event.target.value })}
               />
-              <input
+              <OfficeTextField
                 aria-label='期'
                 value={draft.issue}
                 placeholder='期'
                 onChange={(event) => setDraft({ ...draft, issue: event.target.value })}
               />
             </span>
-          </label>
-          <label>
+          </div>
+          <div className='work-office-field'>
             <span>页码</span>
-            <input
+            <OfficeTextField
               aria-label='文献页码'
               value={draft.pages}
               placeholder='12–28'
               onChange={(event) => setDraft({ ...draft, pages: event.target.value })}
             />
-          </label>
-          <label>
+          </div>
+          <div className='work-office-field'>
             <span>ISBN / DOI</span>
-            <input
+            <OfficeTextField
               aria-label='标准编号'
               value={draft.standardNumber}
               onChange={(event) => setDraft({ ...draft, standardNumber: event.target.value })}
             />
-          </label>
-          <label>
+          </div>
+          <div className='work-office-field'>
             <span>会议名称</span>
-            <input
+            <OfficeTextField
               aria-label='会议名称'
               value={draft.conferenceName}
               onChange={(event) => setDraft({ ...draft, conferenceName: event.target.value })}
             />
-          </label>
-          <label>
+          </div>
+          <div className='work-office-field'>
             <span>报告机构</span>
-            <input
+            <OfficeTextField
               aria-label='报告机构'
               value={draft.institution}
               onChange={(event) => setDraft({ ...draft, institution: event.target.value })}
             />
-          </label>
-          <label className='wide'>
+          </div>
+          <div className='work-office-field wide'>
             <span>网址</span>
-            <input
+            <OfficeTextField
               aria-label='文献网址'
               value={draft.url}
               inputMode='url'
               placeholder='https://'
               onChange={(event) => setDraft({ ...draft, url: event.target.value })}
             />
-          </label>
+          </div>
           <div className='actions wide'>
-            {error && <output className='error'>{error}</output>}
+            {error && (
+              <InlineNotice className='work-office-form-error' tone='danger' role='alert'>
+                {error}
+              </InlineNotice>
+            )}
             <button
               type='button'
               disabled={!selectedSource}

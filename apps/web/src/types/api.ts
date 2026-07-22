@@ -340,6 +340,7 @@ export interface SessionList {
 
 export interface ContentBlock {
   type: string;
+  text?: string;
   id?: string;
   name?: string;
   input?: Record<string, unknown>;
@@ -380,6 +381,12 @@ export interface WorkspaceEntry {
   mtimeMs?: number | null;
   extension?: string | null;
   isBinary: boolean;
+}
+
+export interface WorkspaceChangeEvent {
+  type: 'workspace_change';
+  kind: 'create' | 'modify' | 'remove' | 'rename' | 'other';
+  paths: string[];
 }
 
 export interface WorkspaceDirectorySelection {
@@ -449,20 +456,23 @@ export interface PluginActivityContent {
   sha256: string;
   mediaType: 'text/html';
   html: string;
+  styles: string[];
+  scripts: string[];
 }
 
 export interface PluginMarketplaceRegistry {
   name: string;
   url: string;
+  sourceKind?: 'registry' | 'release-bundle';
   configured: boolean;
   verified: boolean;
   error?: string;
   hostTarget?: string;
   metadata?: {
-    rootVersion: number;
-    timestampVersion: number;
-    snapshotVersion: number;
-    targetsVersion: number;
+    rootVersion?: number;
+    timestampVersion?: number;
+    snapshotVersion?: number;
+    targetsVersion?: number;
     packageTargets: number;
   };
 }
@@ -473,13 +483,15 @@ export interface PluginMarketplaceItem {
   displayName: string;
   registryName: string;
   registryUrl: string;
+  sourceKind?: 'registry' | 'release-bundle';
   version: string;
   channel: 'stable' | 'beta' | 'nightly';
   target: string;
   archiveName: string;
   length: number;
   sha256: string;
-  signedPlanDigest: string;
+  signedPlanDigest?: string;
+  integrityDigest?: string;
   installed: boolean;
   enabled: boolean;
 }
@@ -511,6 +523,7 @@ export interface PluginOperationPlan {
     source: string;
     mutates: boolean;
     message: string;
+    resolvedReleaseBundles?: Record<string, unknown>;
     resolvedRegistryPackages?: Record<string, unknown>;
   }>;
 }
@@ -523,6 +536,74 @@ export interface PluginOperationResult {
     message: string;
   }>;
 }
+
+export interface KnowledgeMarketplaceItem {
+  id: string;
+  name: string;
+  description: string;
+  publisher: string;
+  version: string;
+  category: string;
+  tags: string[];
+  featured: boolean;
+  updatedAt: string;
+  sourceCount: number;
+  conceptCount: number;
+  installed: boolean;
+}
+
+export interface KnowledgeMarketplaceCatalog {
+  schemaVersion: number;
+  format: 'okf';
+  workspaceRoot: string;
+  source: {
+    id: string;
+    label: string;
+    kind: 'builtin' | 'remote';
+    verified: boolean;
+  };
+  items: KnowledgeMarketplaceItem[];
+  warnings: string[];
+}
+
+export type KnowledgeBaseOrigin = 'workspace' | 'created' | 'marketplace' | 'imported';
+
+export interface PersonalKnowledgeBase {
+  id: string;
+  name: string;
+  description: string;
+  origin: KnowledgeBaseOrigin;
+  marketplaceId?: string | null;
+  version: string;
+  pinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+  path: string;
+  sourceCount: number;
+  conceptCount: number;
+  bytes: number;
+}
+
+export interface PersonalKnowledgeBaseCatalog {
+  schemaVersion: number;
+  workspaceRoot: string;
+  root: string;
+  items: PersonalKnowledgeBase[];
+  total: number;
+  warnings: string[];
+}
+
+export interface KnowledgeBaseMutation {
+  changed: boolean;
+  knowledgeBase: PersonalKnowledgeBase;
+}
+
+export interface KnowledgeBaseImportRequest {
+  path: string;
+  name?: string;
+}
+
+export * from './weixin';
 
 export interface WorkspaceSearchMatch {
   line: number;

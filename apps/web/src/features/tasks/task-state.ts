@@ -8,6 +8,7 @@ export interface TaskState {
   messagesLoading: Record<string, boolean>;
   messageErrors: Record<string, string>;
   streamingSessionId: string | null;
+  taskSubmissionState: 'creating' | 'queueing' | null;
   streamEvents: AgentEvent[];
   composerValue: string;
   composerContextFiles: string[];
@@ -169,6 +170,7 @@ export function createTaskState(product: TaskProduct = 'code'): TaskState {
     messagesLoading: {},
     messageErrors: {},
     streamingSessionId: null,
+    taskSubmissionState: null,
     streamEvents: [],
     composerValue: activeDraft?.content ?? '',
     composerContextFiles: activeDraft?.contextFiles ?? [],

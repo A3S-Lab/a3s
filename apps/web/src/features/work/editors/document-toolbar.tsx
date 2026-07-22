@@ -33,19 +33,25 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import type { WorkDocumentCaptionKind } from '../work-document-captions';
 import type { WorkDocumentFieldKind } from '../work-document-fields';
 import type { WorkDocumentNoteKind } from '../work-document-notes';
+import { OfficeColorPicker, OfficeSelect, useOfficeDialog } from './office-controls';
+import {
+  type WorkOfficeFileAction,
+  WorkOfficeRibbon,
+  WorkOfficeRibbonButton,
+  WorkOfficeRibbonGroup,
+} from './work-office-chrome';
 
 const documentRibbonTabs = [
-  { id: 'home', label: '首页' },
+  { id: 'home', label: '开始' },
   { id: 'insert', label: '插入' },
-  { id: 'page', label: '页面' },
+  { id: 'page', label: '页面布局' },
   { id: 'references', label: '引用' },
   { id: 'review', label: '审阅' },
   { id: 'view', label: '视图' },
-  { id: 'tools', label: '工具' },
 ] as const;
 
 type DocumentRibbonTabId = (typeof documentRibbonTabs)[number]['id'];
@@ -80,6 +86,8 @@ interface DocumentToolbarProps {
   trackChanges: boolean;
   changesOpen: boolean;
   changeCount: number;
+  fileActions?: readonly WorkOfficeFileAction[];
+  onRibbonTabChange?: (tab: DocumentRibbonTabId) => void;
   onToggleTrackChanges: () => void;
   onToggleChanges: () => void;
   onReplaceText: (from: number, to: number, replacement: string) => boolean;
@@ -114,50 +122,97 @@ export function DocumentToolbar({
   trackChanges,
   changesOpen,
   changeCount,
+  fileActions,
+  onRibbonTabChange,
   onToggleTrackChanges,
   onToggleChanges,
   onReplaceText,
 }: DocumentToolbarProps) {
   const [activeTab, setActiveTab] = useState<DocumentRibbonTabId>('home');
-  const activeTabLabel = documentRibbonTabs.find((tab) => tab.id === activeTab)?.label ?? '首页';
+  const officeDialog = useOfficeDialog();
+  const toggleLink = async () => {
+    if (editor.isActive('link')) {
+      editor.chain().focus().unsetLink().run();
+      return;
+    }
+    const href = await officeDialog.prompt({
+      title: '链接地址',
+      initialValue: editor.getAttributes('link').href ?? 'https://',
+      placeholder: 'https://',
+      confirmLabel: '添加链接',
+    });
+    if (href?.trim()) editor.chain().focus().setLink({ href: href.trim() }).run();
+  };
+  const findText = useCallback(
+    async (replace: boolean) => {
+      const query = await officeDialog.prompt({ title: replace ? '查找要替换的文字' : '查找文字' });
+      if (!query) return;
+      const range = textRange(editor, query, editor.state.selection.to) ?? textRange(editor, query, 0);
+      if (!range) {
+        await officeDialog.notice({ title: '没有找到', description: `文档中没有“${query}”。` });
+        return;
+      }
+      const chain = editor.chain().focus().setTextSelection(range);
+      if (!replace) {
+        chain.run();
+        return;
+      }
+      const replacement = await officeDialog.prompt({ title: '替换为', initialValue: query });
+      if (replacement !== null) {
+        if (onReplaceText) onReplaceText(range.from, range.to, replacement);
+        else chain.insertContent(replacement).run();
+      }
+    },
+    [editor, officeDialog, onReplaceText]
+  );
+
+  useEffect(() => {
+    const root = editor.view.dom.closest<HTMLElement>('.work-document-editor');
+    if (!root) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat || event.altKey || !(event.metaKey || event.ctrlKey)) return;
+      const key = event.key.toLowerCase();
+      if ((key === 'f' || key === 'h') && !event.shiftKey) {
+        event.preventDefault();
+        void findText(key === 'h');
+        return;
+      }
+      if (
+        key !== 'enter' ||
+        event.shiftKey ||
+        !(event.target instanceof Node) ||
+        !editor.view.dom.contains(event.target)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      editor.chain().focus().insertContent({ type: 'pageBreak' }).run();
+    };
+    root.addEventListener('keydown', onKeyDown);
+    return () => root.removeEventListener('keydown', onKeyDown);
+  }, [editor, findText]);
 
   return (
-    <section className='work-document-ribbon' aria-label='文字编辑功能区'>
-      <div className='work-document-ribbon-tabs' role='tablist' aria-label='文字功能区'>
-        {documentRibbonTabs.map((tab) => (
-          <button
-            type='button'
-            id={`document-ribbon-tab-${tab.id}`}
-            key={tab.id}
-            role='tab'
-            aria-controls='document-ribbon-panel'
-            aria-selected={activeTab === tab.id}
-            tabIndex={activeTab === tab.id ? 0 : -1}
-            onClick={() => setActiveTab(tab.id)}
-            onKeyDown={(event) => {
-              const nextTab = nextDocumentRibbonTab(activeTab, event.key);
-              if (!nextTab) return;
-              event.preventDefault();
-              setActiveTab(nextTab);
-              requestAnimationFrame(() => document.getElementById(`document-ribbon-tab-${nextTab}`)?.focus());
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-      <div
-        id='document-ribbon-panel'
-        className='work-document-ribbon-panel'
-        role='tabpanel'
-        aria-labelledby={`document-ribbon-tab-${activeTab}`}
-      >
-        <div className='work-office-toolbar document-toolbar' role='toolbar' aria-label={`${activeTabLabel}工具栏`}>
-          {activeTab === 'home' && (
+    <>
+      <WorkOfficeRibbon
+        ariaLabel='文字功能区'
+        tabs={documentRibbonTabs}
+        defaultTab='home'
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          onRibbonTabChange?.(tab);
+        }}
+        fileActions={fileActions}
+        className='work-document-ribbon'
+        toolbarClassName='document-toolbar'
+        panels={{
+          home: (
             <>
               <RibbonGroup label='撤销'>
                 <ToolbarButton
                   label='撤销'
+                  shortcut='Cmd/Ctrl+Z'
                   disabled={!editor.can().chain().focus().undo().run()}
                   onClick={() => editor.chain().focus().undo().run()}
                 >
@@ -165,6 +220,7 @@ export function DocumentToolbar({
                 </ToolbarButton>
                 <ToolbarButton
                   label='重做'
+                  shortcut='Cmd/Ctrl+Shift+Z'
                   disabled={!editor.can().chain().focus().redo().run()}
                   onClick={() => editor.chain().focus().redo().run()}
                 >
@@ -172,8 +228,8 @@ export function DocumentToolbar({
                 </ToolbarButton>
               </RibbonGroup>
               <RibbonGroup label='样式'>
-                <select
-                  aria-label='段落样式'
+                <OfficeSelect
+                  ariaLabel='段落样式'
                   value={
                     editor.isActive('heading', { level: 1 })
                       ? 'h1'
@@ -183,8 +239,13 @@ export function DocumentToolbar({
                           ? 'h3'
                           : 'paragraph'
                   }
-                  onChange={(event) => {
-                    const value = event.target.value;
+                  options={[
+                    { value: 'paragraph', label: '正文' },
+                    { value: 'h1', label: '标题 1' },
+                    { value: 'h2', label: '标题 2' },
+                    { value: 'h3', label: '标题 3' },
+                  ]}
+                  onValueChange={(value) => {
                     if (value === 'paragraph') editor.chain().focus().setParagraph().run();
                     else
                       editor
@@ -193,16 +254,12 @@ export function DocumentToolbar({
                         .toggleHeading({ level: Number(value.slice(1)) as 1 | 2 | 3 })
                         .run();
                   }}
-                >
-                  <option value='paragraph'>正文</option>
-                  <option value='h1'>标题 1</option>
-                  <option value='h2'>标题 2</option>
-                  <option value='h3'>标题 3</option>
-                </select>
+                />
               </RibbonGroup>
               <RibbonGroup label='字体'>
                 <ToolbarButton
                   label='加粗'
+                  shortcut='Cmd/Ctrl+B'
                   active={editor.isActive('bold')}
                   onClick={() => editor.chain().focus().toggleBold().run()}
                 >
@@ -210,6 +267,7 @@ export function DocumentToolbar({
                 </ToolbarButton>
                 <ToolbarButton
                   label='斜体'
+                  shortcut='Cmd/Ctrl+I'
                   active={editor.isActive('italic')}
                   onClick={() => editor.chain().focus().toggleItalic().run()}
                 >
@@ -217,6 +275,7 @@ export function DocumentToolbar({
                 </ToolbarButton>
                 <ToolbarButton
                   label='下划线'
+                  shortcut='Cmd/Ctrl+U'
                   active={editor.isActive('underline')}
                   onClick={() => editor.chain().focus().toggleUnderline().run()}
                 >
@@ -229,15 +288,13 @@ export function DocumentToolbar({
                 >
                   <Strikethrough size={16} />
                 </ToolbarButton>
-                <label className='work-color-tool' title='文字颜色'>
-                  <span style={{ background: editor.getAttributes('textStyle').color ?? '#172033' }} />
-                  <input
-                    type='color'
-                    value={editor.getAttributes('textStyle').color ?? '#172033'}
-                    aria-label='文字颜色'
-                    onInput={(event) => editor.chain().focus().setColor(event.currentTarget.value).run()}
-                  />
-                </label>
+                <OfficeColorPicker
+                  compact
+                  className='work-color-tool'
+                  value={editor.getAttributes('textStyle').color ?? '#172033'}
+                  ariaLabel='文字颜色'
+                  onValueChange={(color) => editor.chain().focus().setColor(color).run()}
+                />
                 <ToolbarButton
                   label='突出显示'
                   active={editor.isActive('highlight')}
@@ -284,16 +341,29 @@ export function DocumentToolbar({
                 </ToolbarButton>
               </RibbonGroup>
               <RibbonGroup label='编辑'>
-                <ToolbarButton label='查找' onClick={() => findDocumentText(editor, false)}>
+                <ToolbarButton label='查找' shortcut='Cmd/Ctrl+F' onClick={() => void findText(false)}>
                   <Search size={16} />
                 </ToolbarButton>
-                <ToolbarButton label='替换' onClick={() => findDocumentText(editor, true, onReplaceText)}>
+                <ToolbarButton label='替换' shortcut='Cmd/Ctrl+H' onClick={() => void findText(true)}>
                   <Replace size={16} />
                 </ToolbarButton>
               </RibbonGroup>
+              {editor.isActive('table') && (
+                <RibbonGroup label='表格'>
+                  <ToolbarButton label='添加行' onClick={() => editor.chain().focus().addRowAfter().run()}>
+                    + 行
+                  </ToolbarButton>
+                  <ToolbarButton label='添加列' onClick={() => editor.chain().focus().addColumnAfter().run()}>
+                    + 列
+                  </ToolbarButton>
+                  <ToolbarButton label='删除表格' onClick={() => editor.chain().focus().deleteTable().run()}>
+                    × 表
+                  </ToolbarButton>
+                </RibbonGroup>
+              )}
             </>
-          )}
-          {activeTab === 'insert' && (
+          ),
+          insert: (
             <>
               <RibbonGroup label='插图与表格'>
                 <ToolbarButton label='插入图片' displayLabel onClick={onRequestImage}>
@@ -310,6 +380,7 @@ export function DocumentToolbar({
               <RibbonGroup label='页面'>
                 <ToolbarButton
                   label='插入分页符'
+                  shortcut='Cmd/Ctrl+Enter'
                   displayLabel
                   onClick={() => editor.chain().focus().insertContent({ type: 'pageBreak' }).run()}
                 >
@@ -321,17 +392,17 @@ export function DocumentToolbar({
                   label={editor.isActive('link') ? '取消链接' : '添加链接'}
                   displayLabel
                   active={editor.isActive('link')}
-                  onClick={() => toggleDocumentLink(editor)}
+                  onClick={() => void toggleLink()}
                 >
                   <Link2 size={19} />
                 </ToolbarButton>
               </RibbonGroup>
-              <RibbonGroup label='域'>
+              <RibbonGroup label='页码和日期'>
                 <DocumentFieldSelect onInsertField={onInsertField} />
               </RibbonGroup>
             </>
-          )}
-          {activeTab === 'page' && (
+          ),
+          page: (
             <>
               <RibbonGroup label='页面设置'>
                 <ToolbarButton label='页面设置' displayLabel active={layoutOpen} onClick={onToggleLayout}>
@@ -344,6 +415,7 @@ export function DocumentToolbar({
               <RibbonGroup label='分隔符'>
                 <ToolbarButton
                   label='插入分页符'
+                  shortcut='Cmd/Ctrl+Enter'
                   displayLabel
                   onClick={() => editor.chain().focus().insertContent({ type: 'pageBreak' }).run()}
                 >
@@ -354,8 +426,8 @@ export function DocumentToolbar({
                 </ToolbarButton>
               </RibbonGroup>
             </>
-          )}
-          {activeTab === 'references' && (
+          ),
+          references: (
             <>
               <RibbonGroup label='脚注与尾注'>
                 <ToolbarButton label='插入脚注' displayLabel onClick={() => onInsertNote('footnote')}>
@@ -376,9 +448,9 @@ export function DocumentToolbar({
                   <Link2 size={19} />
                 </ToolbarButton>
               </RibbonGroup>
-              <RibbonGroup label='引文'>
+              <RibbonGroup label='引用来源'>
                 <ToolbarButton
-                  label={`文献库${citationSourceCount ? `（${citationSourceCount}）` : ''}`}
+                  label={`引用来源${citationSourceCount ? `（${citationSourceCount}）` : ''}`}
                   displayLabel
                   active={citationsOpen}
                   onClick={onToggleCitations}
@@ -386,9 +458,14 @@ export function DocumentToolbar({
                   <BookOpen size={19} />
                 </ToolbarButton>
               </RibbonGroup>
+              <RibbonGroup label='更新'>
+                <ToolbarButton label='更新页码和日期' displayLabel onClick={onRefreshFields}>
+                  <RefreshCw size={19} />
+                </ToolbarButton>
+              </RibbonGroup>
             </>
-          )}
-          {activeTab === 'review' && (
+          ),
+          review: (
             <>
               <RibbonGroup label='校对'>
                 <ToolbarButton label='拼写检查' displayLabel active={spellcheckEnabled} onClick={onToggleSpellcheck}>
@@ -400,7 +477,7 @@ export function DocumentToolbar({
                   <MessageSquarePlus size={19} />
                 </ToolbarButton>
                 <ToolbarButton
-                  label={`审阅批注${commentCount ? `（${commentCount}）` : ''}`}
+                  label={`查看批注${commentCount ? `（${commentCount}）` : ''}`}
                   displayLabel
                   active={commentsOpen}
                   onClick={onToggleComments}
@@ -413,7 +490,7 @@ export function DocumentToolbar({
                   <FileDiff size={19} />
                 </ToolbarButton>
                 <ToolbarButton
-                  label={`审阅修订${changeCount ? `（${changeCount}）` : ''}`}
+                  label={`查看修订${changeCount ? `（${changeCount}）` : ''}`}
                   displayLabel
                   active={changesOpen}
                   onClick={onToggleChanges}
@@ -422,8 +499,8 @@ export function DocumentToolbar({
                 </ToolbarButton>
               </RibbonGroup>
             </>
-          )}
-          {activeTab === 'view' && (
+          ),
+          view: (
             <>
               <RibbonGroup label='文档视图'>
                 <ToolbarButton
@@ -462,43 +539,17 @@ export function DocumentToolbar({
                 </ToolbarButton>
               </RibbonGroup>
             </>
-          )}
-          {activeTab === 'tools' && (
-            <>
-              <RibbonGroup label='文档工具'>
-                <ToolbarButton label='更新所有正文域' displayLabel onClick={onRefreshFields}>
-                  <RefreshCw size={19} />
-                </ToolbarButton>
-                <ToolbarButton label='查找' displayLabel onClick={() => findDocumentText(editor, false)}>
-                  <Search size={19} />
-                </ToolbarButton>
-                <ToolbarButton label='替换' displayLabel onClick={() => findDocumentText(editor, true, onReplaceText)}>
-                  <Replace size={19} />
-                </ToolbarButton>
-              </RibbonGroup>
-              {editor.isActive('table') && (
-                <RibbonGroup label='表格工具'>
-                  <ToolbarButton label='添加行' onClick={() => editor.chain().focus().addRowAfter().run()}>
-                    + 行
-                  </ToolbarButton>
-                  <ToolbarButton label='添加列' onClick={() => editor.chain().focus().addColumnAfter().run()}>
-                    + 列
-                  </ToolbarButton>
-                  <ToolbarButton label='删除表格' onClick={() => editor.chain().focus().deleteTable().run()}>
-                    × 表
-                  </ToolbarButton>
-                </RibbonGroup>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </section>
+          ),
+        }}
+      />
+      {officeDialog.dialog}
+    </>
   );
 }
 
 function ToolbarButton({
   label,
+  shortcut,
   active = false,
   disabled = false,
   displayLabel = false,
@@ -506,6 +557,7 @@ function ToolbarButton({
   children,
 }: {
   label: string;
+  shortcut?: string;
   active?: boolean;
   disabled?: boolean;
   displayLabel?: boolean;
@@ -513,91 +565,41 @@ function ToolbarButton({
   children: ReactNode;
 }) {
   return (
-    <button
-      type='button'
-      className={[active ? 'active' : '', displayLabel ? 'with-label' : ''].filter(Boolean).join(' ')}
-      aria-label={label}
-      title={label}
-      aria-pressed={active}
+    <WorkOfficeRibbonButton
+      label={label}
+      visibleLabel={label.replace(/（\d+）$/, '')}
+      title={shortcut ? `${label}（${shortcut}）` : label}
+      active={active}
+      displayLabel={displayLabel}
       disabled={disabled}
       onClick={onClick}
     >
       {children}
-      {displayLabel && <span>{label.replace(/（\d+）$/, '')}</span>}
-    </button>
+    </WorkOfficeRibbonButton>
   );
 }
 
-function RibbonGroup({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <section className='work-document-ribbon-group' aria-label={label}>
-      <div>{children}</div>
-      <span>{label}</span>
-    </section>
-  );
-}
+const RibbonGroup = WorkOfficeRibbonGroup;
 
 function DocumentFieldSelect({ onInsertField }: { onInsertField: (kind: WorkDocumentFieldKind) => void }) {
   return (
-    <select
-      aria-label='插入正文域'
+    <OfficeSelect
+      ariaLabel='插入页码或日期'
       value=''
-      onChange={(event) => {
-        const kind = event.target.value as WorkDocumentFieldKind;
+      options={[
+        { value: '', label: '页码或日期' },
+        { value: 'page', label: '页码' },
+        { value: 'numPages', label: '总页数' },
+        { value: 'section', label: '当前节号' },
+        { value: 'sectionPages', label: '本节页数' },
+        { value: 'date', label: '当前日期' },
+        { value: 'time', label: '当前时间' },
+      ]}
+      onValueChange={(kind) => {
         if (kind) onInsertField(kind);
       }}
-    >
-      <option value=''>插入域</option>
-      <option value='page'>当前页码</option>
-      <option value='numPages'>总页数</option>
-      <option value='section'>当前节号</option>
-      <option value='sectionPages'>本节页数</option>
-      <option value='date'>当前日期</option>
-      <option value='time'>当前时间</option>
-    </select>
+    />
   );
-}
-
-function toggleDocumentLink(editor: Editor) {
-  if (editor.isActive('link')) {
-    editor.chain().focus().unsetLink().run();
-    return;
-  }
-  const href = window.prompt('链接地址', editor.getAttributes('link').href ?? 'https://');
-  if (href?.trim()) editor.chain().focus().setLink({ href: href.trim() }).run();
-}
-
-function nextDocumentRibbonTab(current: DocumentRibbonTabId, key: string): DocumentRibbonTabId | null {
-  const currentIndex = documentRibbonTabs.findIndex((tab) => tab.id === current);
-  if (key === 'Home') return documentRibbonTabs[0].id;
-  if (key === 'End') return documentRibbonTabs[documentRibbonTabs.length - 1].id;
-  if (key !== 'ArrowLeft' && key !== 'ArrowRight') return null;
-  const offset = key === 'ArrowRight' ? 1 : -1;
-  return documentRibbonTabs[(currentIndex + offset + documentRibbonTabs.length) % documentRibbonTabs.length].id;
-}
-
-function findDocumentText(
-  editor: Editor,
-  replace: boolean,
-  onReplaceText?: (from: number, to: number, replacement: string) => boolean
-) {
-  const query = window.prompt(replace ? '查找要替换的文字' : '查找文字');
-  if (!query) return;
-  const range = textRange(editor, query, editor.state.selection.to) ?? textRange(editor, query, 0);
-  if (!range) {
-    window.alert(`没有找到“${query}”。`);
-    return;
-  }
-  const chain = editor.chain().focus().setTextSelection(range);
-  if (!replace) {
-    chain.run();
-    return;
-  }
-  const replacement = window.prompt('替换为', query);
-  if (replacement !== null) {
-    if (onReplaceText) onReplaceText(range.from, range.to, replacement);
-    else chain.insertContent(replacement).run();
-  }
 }
 
 function textRange(editor: Editor, query: string, from: number): { from: number; to: number } | null {

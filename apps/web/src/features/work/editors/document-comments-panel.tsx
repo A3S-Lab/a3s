@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core';
 import { CheckCircle2, MessageSquareReply, RotateCcw, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import type { WorkDocumentCommentView } from '../work-document-comments';
+import { OfficeTextArea } from './office-controls';
 
 export function DocumentCommentsPanel({
   editor,
@@ -72,7 +73,7 @@ export function DocumentCommentsPanel({
             </section>
             <label className='work-document-comment-reply'>
               <span className='sr-only'>回复批注 {index + 1}</span>
-              <textarea
+              <OfficeTextArea
                 aria-label={`回复批注 ${index + 1}`}
                 value={drafts[comment.id] ?? ''}
                 placeholder='回复此批注…'

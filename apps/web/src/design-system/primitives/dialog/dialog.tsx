@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
-import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef } from 'react';
+import { type ReactNode, useId } from 'react';
 import { IconButton } from '../button/icon-button';
+import { useDialogFocusScope } from '../overlay/dialog-focus-scope';
 
 export function Dialog({
   title,
@@ -20,43 +21,7 @@ export function Dialog({
   className?: string;
 }) {
   const titleId = useId();
-  const dialogRef = useRef<HTMLElement>(null);
-  const restoreFocusRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const root = dialogRef.current;
-    const initial =
-      root?.querySelector<HTMLElement>('[data-autofocus]') ??
-      root?.querySelector<HTMLElement>('input:not(:disabled), textarea:not(:disabled), select:not(:disabled)') ??
-      root?.querySelector<HTMLElement>(':scope > footer button:not(:disabled)') ??
-      root?.querySelector<HTMLElement>('button:not(:disabled)');
-    initial?.focus();
-    return () => restoreFocusRef.current?.focus();
-  }, []);
-  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === 'Escape' && !closeDisabled) {
-      event.preventDefault();
-      event.stopPropagation();
-      onClose();
-      return;
-    }
-    if (event.key !== 'Tab') return;
-    const focusable = [
-      ...(dialogRef.current?.querySelectorAll<HTMLElement>(
-        'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])'
-      ) ?? []),
-    ].filter((element) => !element.hasAttribute('hidden'));
-    if (!focusable.length) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
+  const focusScope = useDialogFocusScope<HTMLElement>({ onEscape: onClose, escapeDisabled: closeDisabled });
   return (
     <dialog
       open
@@ -68,12 +33,12 @@ export function Dialog({
       }}
     >
       <section
-        ref={dialogRef}
+        ref={focusScope.scopeRef}
         className={`ds-dialog${className ? ` ${className}` : ''}`}
         role='dialog'
         aria-modal='true'
         aria-labelledby={titleId}
-        onKeyDown={handleKeyDown}
+        onKeyDown={focusScope.handleKeyDown}
       >
         <header>
           <div>

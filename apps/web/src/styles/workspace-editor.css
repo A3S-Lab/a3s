@@ -427,7 +427,7 @@
   flex: 1;
 }
 
-.workspace-editor-empty-content,
+.workspace-editor-empty-content.ds-state-view,
 .workspace-editor-state {
   display: flex;
   min-height: 0;
@@ -440,7 +440,7 @@
   text-align: center;
 }
 
-.workspace-editor-empty-content strong,
+.workspace-editor-empty-content.ds-state-view h2,
 .workspace-editor-state strong {
   margin-top: 11px;
   color: var(--a3s-muted);
@@ -448,7 +448,7 @@
   font-weight: 600;
 }
 
-.workspace-editor-empty-content p,
+.workspace-editor-empty-content.ds-state-view > p,
 .workspace-editor-state span {
   max-width: 380px;
   margin: 5px 0 0;

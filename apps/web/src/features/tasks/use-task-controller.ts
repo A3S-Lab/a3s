@@ -6,21 +6,21 @@ import {
   appState,
   formatApiError,
   persistSessionTitle,
-  reportTaskPersistenceResult,
   removePersistedSessionTitle,
+  reportTaskPersistenceResult,
   showModelChangeNotice,
   showToast,
 } from '../../state/app-state';
 import type { AgentEvent, ChatMessage, CodeSession, QueuedTurn, TurnQueue } from '../../types/api';
-import { parseGoalCommand, type GoalCommand } from './goal-command';
+import { type GoalCommand, parseGoalCommand } from './goal-command';
 import {
+  newTaskDraftKey,
   persistActiveTask,
   persistGoalTimings,
   persistNewTaskConfig,
   persistTaskDrafts,
-  newTaskDraftKey,
-  taskDraftKey,
   type TaskProduct,
+  taskDraftKey,
 } from './task-state';
 import { applyTurnQueueSnapshot } from './turn-queue-state';
 
@@ -441,7 +441,7 @@ export function useTaskController() {
   });
   const sendMessage = useMemoizedFn(async () => {
     const content = appState.composerValue.trim();
-    if (!content) return;
+    if (!content || appState.taskSubmissionState) return;
     const goalCommand = parseGoalCommand(content);
     if (goalCommand) {
       await applyGoalCommand(goalCommand);
@@ -450,19 +450,25 @@ export function useTaskController() {
     const contextFiles = [...appState.composerContextFiles];
     const skillNames = [...appState.composerSkills];
     let sessionId = appState.activeSessionId;
-    if (!sessionId) sessionId = (await createSession(promptTitle(content))).sessionId;
-    else if ((appState.messagesBySession[sessionId]?.length ?? 0) === 0)
-      reportTaskPersistenceResult(persistSessionTitle(sessionId, promptTitle(content)));
-    if (appState.streamingSessionId && appState.streamingSessionId !== sessionId) return;
+    appState.taskSubmissionState = sessionId ? 'queueing' : 'creating';
     try {
+      if (!sessionId) sessionId = (await createSession(promptTitle(content))).sessionId;
+      else if ((appState.messagesBySession[sessionId]?.length ?? 0) === 0)
+        reportTaskPersistenceResult(persistSessionTitle(sessionId, promptTitle(content)));
+      if (appState.streamingSessionId && appState.streamingSessionId !== sessionId) return;
       const queue = await codeApi.enqueueTurn(sessionId, { content, contextFiles, skillNames });
       applyTurnQueueSnapshot(queue);
       clearComposer();
+      let execution: Promise<void> | undefined;
       if (!appState.streamingSessionId && !queue.paused && queue.items[0]) {
-        await executeQueuedTurn(sessionId, queue.items[0]);
+        execution = executeQueuedTurn(sessionId, queue.items[0]);
       }
+      appState.taskSubmissionState = null;
+      if (execution) await execution;
     } catch (error) {
       showToast(formatApiError(error), 'error');
+    } finally {
+      appState.taskSubmissionState = null;
     }
   });
   const applyGoalCommand = useMemoizedFn(async (command: GoalCommand) => {

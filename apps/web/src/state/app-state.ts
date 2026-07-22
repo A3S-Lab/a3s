@@ -1,30 +1,47 @@
 import { proxy } from 'valtio';
-import type { CodeSession } from '../types/api';
 import {
+  type CodeShellState,
   createCodeShellState,
   type ProductId,
   type TaskView,
-  type CodeShellState,
   type ThemePreference,
   type ToastState,
 } from '../features/code/code-state';
+import { createKnowledgeState, type KnowledgeState } from '../features/knowledge/knowledge-state';
+import { createMemoryState, type MemoryState } from '../features/memory/memory-state';
+import { createPluginsState, type PluginsState } from '../features/plugins/plugin-state';
+import { createRunsState, type RunsState } from '../features/runs/runs-state';
+import {
+  type ChannelSettingsTab,
+  createSettingsState,
+  type SettingsState,
+  type SettingsTab,
+  settingsHashForTab,
+} from '../features/settings/settings-state';
 import {
   createTaskState,
   persistActiveTask,
   persistTaskDrafts,
   readActiveTask,
-  taskDraftKey,
   type TaskProduct,
   type TaskState,
+  taskDraftKey,
 } from '../features/tasks/task-state';
+import { createWeixinRemoteState, type WeixinRemoteState } from '../features/weixin-remote/weixin-remote-state';
 import { createWorkspaceState, type WorkspaceState } from '../features/workspace/workspace-state';
-import { createRunsState, type RunsState } from '../features/runs/runs-state';
-import { createSettingsState, type SettingsState } from '../features/settings/settings-state';
-import type { SettingsTab } from '../features/settings/settings-state';
-import { createMemoryState, type MemoryState } from '../features/memory/memory-state';
-import { createPluginsState, type PluginsState } from '../features/plugins/plugin-state';
+import type { CodeSession } from '../types/api';
+
 export type { ProductId, TaskView, ThemePreference } from '../features/code/code-state';
-type AppState = CodeShellState & TaskState & WorkspaceState & RunsState & SettingsState & MemoryState & PluginsState;
+
+type AppState = CodeShellState &
+  TaskState &
+  WorkspaceState &
+  RunsState &
+  SettingsState &
+  MemoryState &
+  PluginsState &
+  KnowledgeState &
+  WeixinRemoteState;
 
 const titleStorageKey = 'a3s-code-web.session-titles';
 const themeStorageKey = 'a3s-code-web.theme';
@@ -41,6 +58,8 @@ export const appState = proxy<AppState>({
   ...createSettingsState(),
   ...createMemoryState(),
   ...createPluginsState(),
+  ...createKnowledgeState(),
+  ...createWeixinRemoteState(),
 });
 
 export function persistSessionTitle(sessionId: string, title: string): boolean {
@@ -169,6 +188,10 @@ export function navigateProduct(product: ProductId): void {
     navigatePlugins();
     return;
   }
+  if (product === 'knowledge') {
+    navigateKnowledge();
+    return;
+  }
   appState.settingsOpen = false;
   appState.commandPaletteOpen = false;
   appState.activeProduct = product;
@@ -194,6 +217,13 @@ export function navigatePlugins(): void {
   appState.commandPaletteOpen = false;
   appState.activeProduct = 'plugins';
   window.history.replaceState(null, '', '#plugins');
+}
+
+export function navigateKnowledge(): void {
+  appState.settingsOpen = false;
+  appState.commandPaletteOpen = false;
+  appState.activeProduct = 'knowledge';
+  window.history.replaceState(null, '', '#knowledge');
 }
 
 function activeTaskProduct(): TaskProduct {
@@ -224,7 +254,14 @@ function activateTaskProduct(product: TaskProduct): void {
 export function navigateSettings(tab: SettingsTab): void {
   appState.settingsOpen = true;
   appState.settingsTab = tab;
-  window.history.replaceState(null, '', `#settings/${tab}`);
+  window.history.replaceState(null, '', settingsHashForTab(tab, appState.settingsChannel));
+}
+
+export function navigateSettingsChannel(channel: ChannelSettingsTab): void {
+  appState.settingsOpen = true;
+  appState.settingsTab = 'channels';
+  appState.settingsChannel = channel;
+  window.history.replaceState(null, '', settingsHashForTab('channels', channel));
 }
 
 export function closeSettings(): void {
@@ -236,11 +273,13 @@ export function closeSettings(): void {
       ? `#plugin/${encodeURIComponent(appState.activePluginKey)}`
       : appState.activeProduct === 'plugins'
         ? '#plugins'
-        : appState.activeProduct === 'work'
-          ? '#work/home'
-          : appState.codeSurface === 'memory'
-            ? '#code/memory'
-            : `#code/${appState.taskView}`
+        : appState.activeProduct === 'knowledge'
+          ? '#knowledge'
+          : appState.activeProduct === 'work'
+            ? '#work/home'
+            : appState.codeSurface === 'memory'
+              ? '#code/memory'
+              : `#code/${appState.taskView}`
   );
 }
 

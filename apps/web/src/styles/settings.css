@@ -172,6 +172,32 @@
   min-height: 100%;
 }
 
+.channel-settings-page,
+.channel-settings-panel {
+  min-width: 0;
+}
+
+.channel-settings-tabs {
+  margin-bottom: 16px;
+}
+
+.channel-settings-panel {
+  width: 100%;
+}
+
+.channel-settings-controller-unavailable {
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 10px;
+  color: var(--a3s-muted);
+  font-size: 12px;
+}
+
+.channel-settings-placeholder {
+  min-height: 430px;
+}
+
 .settings-close {
   position: absolute;
   z-index: 2;

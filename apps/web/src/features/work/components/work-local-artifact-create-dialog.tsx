@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Button, Dialog } from '../../../design-system/primitives';
+import { Button, Dialog, InlineNotice } from '../../../design-system/primitives';
 import { workLocalArtifactFileName } from '../work-local-artifact-create';
 import { WORK_TEMPLATES } from '../work-templates';
 import type { WorkArtifactKind } from '../work-types';
@@ -29,7 +29,7 @@ export function WorkLocalArtifactCreateDialog({
   return (
     <Dialog
       title={dialogTitle(kind)}
-      description='文件会直接写入当前本地文件夹，并立即在 Work 中打开。'
+      description='文件会直接保存到当前文件夹并打开。'
       closeDisabled={submitting}
       onClose={onClose}
       footer={
@@ -97,9 +97,9 @@ export function WorkLocalArtifactCreateDialog({
           />
         </label>
         {error && (
-          <p className='work-local-save-message error' role='alert'>
+          <InlineNotice className='work-local-save-message' tone='danger' role='alert' title='创建失败'>
             {error}
-          </p>
+          </InlineNotice>
         )}
       </form>
     </Dialog>

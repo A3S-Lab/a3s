@@ -16,6 +16,7 @@ afterEach(() => {
   localStorage.removeItem('a3s-code-web.new-task-config');
   localStorage.removeItem('a3s-code-web.goal-timings');
   appState.activeProduct = 'code';
+  appState.taskSubmissionState = null;
 });
 
 describe('task file context protocol', () => {
@@ -241,6 +242,87 @@ describe('task configuration', () => {
 
     expect(appState.composerValue).toBe('/goal');
     expect(appState.toast?.message).toContain('/goal 所有重点测试通过');
+    hook.unmount();
+  });
+
+  it('exposes an immediate starting state while the first task session is being created', async () => {
+    appState.activeSessionId = null;
+    appState.streamingSessionId = null;
+    appState.taskSubmissionState = null;
+    appState.workspaceRoot = '/repo';
+    appState.sessions = [];
+    appState.messagesBySession = {};
+    appState.composerValue = 'Inspect the release workflow';
+    appState.composerContextFiles = [];
+    appState.composerSkills = [];
+    appState.newTaskConfig = {
+      workspace: '/repo',
+      model: 'codex/gpt-5.6-sol',
+      effort: 'medium',
+      permissionMode: 'default',
+      goal: '',
+    };
+    const session = {
+      sessionId: 'task-new',
+      workspace: '/repo',
+      cwd: '/repo',
+      model: 'codex/gpt-5.6-sol',
+      followDefaultModel: false,
+      permissionMode: 'default',
+      state: 'idle',
+      createdAt: 1,
+    };
+    let resolveCreate!: (value: Awaited<ReturnType<typeof codeApi.createSession>>) => void;
+    vi.spyOn(codeApi, 'createSession').mockReturnValue(
+      new Promise((resolve) => {
+        resolveCreate = resolve;
+      })
+    );
+    vi.spyOn(codeApi, 'updateSessionControls').mockResolvedValue({
+      sessionId: 'task-new',
+      effort: 'medium',
+      goal: null,
+      planningMode: 'enabled',
+      goalTracking: true,
+    });
+    vi.spyOn(codeApi, 'enqueueTurn').mockResolvedValue({
+      sessionId: 'task-new',
+      status: 'paused',
+      paused: true,
+      active: null,
+      items: [
+        {
+          id: 'turn-new',
+          kind: 'user',
+          content: 'Inspect the release workflow',
+          contextFiles: [],
+          skillNames: [],
+          priority: 0,
+          enqueuedAt: 1,
+        },
+      ],
+      total: 1,
+      nextItemId: 'turn-new',
+      acceptedItemId: 'turn-new',
+    });
+    const hook = renderHook(() => useTaskController());
+    let submission!: Promise<void>;
+
+    act(() => {
+      submission = hook.result.current.sendMessage();
+    });
+
+    expect(appState.taskSubmissionState).toBe('creating');
+    expect(appState.activeSessionId).toBeNull();
+
+    await act(async () => {
+      resolveCreate({ success: true, session });
+      await submission;
+    });
+
+    expect(appState.taskSubmissionState).toBeNull();
+    expect(appState.activeSessionId).toBe('task-new');
+    expect(appState.composerValue).toBe('');
     hook.unmount();
   });
 

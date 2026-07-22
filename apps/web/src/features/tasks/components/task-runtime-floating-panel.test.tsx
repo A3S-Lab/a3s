@@ -11,6 +11,7 @@ describe('TaskRuntimeFloatingPanel', () => {
     vi.setSystemTime(11_000);
     appState.activeSessionId = 'task-1';
     appState.streamingSessionId = 'task-1';
+    appState.taskSubmissionState = null;
     appState.goalTimings = { 'task-1': { goal: '完成运行态体验', startedAt: 1_000 } };
     appState.executionTimings = { 'task-1': { startedAt: 5_000, status: 'running' } };
     appState.sessionControls = {
@@ -40,16 +41,29 @@ describe('TaskRuntimeFloatingPanel', () => {
 
   afterEach(() => {
     cleanup();
+    appState.taskSubmissionState = null;
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
-  it('stays hidden while planning has not emitted tasks or parallel work', () => {
+  it('appears as soon as planning starts, before task rows are available', () => {
     setEvents([{ type: 'planning_start' }]);
 
     render(<TaskRuntimeFloatingPanel />);
 
-    expect(screen.queryByLabelText('任务进度浮窗')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('任务进度浮窗')).toHaveTextContent('正在制定执行计划');
+    expect(screen.getByRole('region', { name: '任务规划与执行' })).toHaveTextContent('计划生成后会在这里持续更新');
+    expect(screen.queryByRole('list', { name: '任务列表' })).not.toBeInTheDocument();
+  });
+
+  it('appears while the first session is being created', () => {
+    appState.streamingSessionId = null;
+    appState.taskSubmissionState = 'creating';
+
+    render(<TaskRuntimeFloatingPanel />);
+
+    expect(screen.getByLabelText('任务进度浮窗')).toHaveTextContent('正在创建任务');
+    expect(screen.getByRole('region', { name: '任务规划与执行' })).toHaveTextContent('正在启动任务会话');
   });
 
   it('shows real parallel subagents without manufacturing a plan', () => {
@@ -104,7 +118,7 @@ describe('TaskRuntimeFloatingPanel', () => {
     expect(screen.getByRole('region', { name: '并行执行详情' })).toHaveTextContent('检查窄对话区布局');
   });
 
-  it('measures the pane when the first runtime evidence mounts after planning started', () => {
+  it('keeps compact placement when subagent evidence arrives after planning starts', () => {
     setEvents([{ type: 'planning_start' }]);
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
       if (this.classList.contains('task-conversation-pane')) return runtimeRect(0, 0, 640, 900);
@@ -117,7 +131,7 @@ describe('TaskRuntimeFloatingPanel', () => {
         <TaskRuntimeFloatingPanel />
       </section>
     );
-    expect(screen.queryByLabelText('并行子智能体浮窗')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('任务进度浮窗')).toHaveAttribute('data-layout', 'compact');
 
     act(() => {
       setEvents([
@@ -150,7 +164,8 @@ describe('TaskRuntimeFloatingPanel', () => {
     );
 
     expect(screen.getByLabelText('目标执行耗时 00:10')).toHaveTextContent('目标执行中00:10');
-    expect(screen.queryByLabelText('任务进度浮窗')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('任务进度浮窗')).toHaveTextContent('正在分析任务');
+    expect(screen.getByLabelText('任务进度浮窗')).not.toHaveTextContent('完成运行态体验');
   });
 
   it('appears after PlanningEnd and shows the task list and completion', () => {

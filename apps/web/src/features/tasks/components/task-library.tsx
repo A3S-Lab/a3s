@@ -1,10 +1,11 @@
 import { useDebounce } from 'ahooks';
-import { ChevronDown, CirclePlus, PanelLeftClose, Search } from 'lucide-react';
+import { ChevronDown, CirclePlus, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { IconButton } from '../../../design-system/primitives';
-import type { TaskActions } from '../task-actions';
+import { SidebarProductHeader } from '../../../components/sidebar-product-header';
+import { CollectionState } from '../../../design-system/primitives';
 import { appState, sessionTitle } from '../../../state/app-state';
+import type { TaskActions } from '../task-actions';
 import { TaskLibraryItem } from './task-library-item';
 
 export function TaskLibrary({ actions }: { actions: TaskActions }) {
@@ -26,37 +27,28 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
   }, [searchOpen]);
   return (
     <aside className='task-library' aria-label='Code 任务'>
-      <header>
-        <div className='task-library-brand'>
-          <span>A3S Code</span>
-          {state.health?.version && <small>v{state.health.version}</small>}
-        </div>
-        <div className='task-library-header-actions'>
-          <button
-            ref={searchTriggerRef}
-            type='button'
-            className={`ds-icon-button ${searchOpen ? 'selected' : ''}`}
-            aria-label={searchOpen ? '关闭任务搜索' : '搜索任务'}
-            title={searchOpen ? '关闭任务搜索' : '搜索任务'}
-            aria-expanded={searchOpen}
-            onClick={() => {
-              if (searchOpen) appState.searchQuery = '';
-              else setTasksExpanded(true);
-              setSearchOpen(!searchOpen);
-            }}
-          >
-            <Search size={15} />
-          </button>
-          <IconButton
-            label='收起任务列表'
-            onClick={() => {
-              appState.sidebarOpen = false;
-            }}
-          >
-            <PanelLeftClose size={16} />
-          </IconButton>
-        </div>
-      </header>
+      <SidebarProductHeader
+        title='编码'
+        onCollapse={() => {
+          appState.sidebarOpen = false;
+        }}
+      >
+        <button
+          ref={searchTriggerRef}
+          type='button'
+          className={`ds-icon-button ${searchOpen ? 'selected' : ''}`}
+          aria-label={searchOpen ? '关闭任务搜索' : '搜索任务'}
+          title={searchOpen ? '关闭任务搜索' : '搜索任务'}
+          aria-expanded={searchOpen}
+          onClick={() => {
+            if (searchOpen) appState.searchQuery = '';
+            else setTasksExpanded(true);
+            setSearchOpen(!searchOpen);
+          }}
+        >
+          <Search size={15} />
+        </button>
+      </SidebarProductHeader>
       <button
         type='button'
         className={`task-library-new ${state.activeSessionId ? '' : 'active'}`}
@@ -123,9 +115,9 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
             })}
           </div>
         ) : tasksExpanded ? (
-          <div className='task-list-empty'>
-            <span>{query ? '没有匹配的任务' : '暂无任务'}</span>
-          </div>
+          <CollectionState className='task-list-empty' role='status'>
+            {query ? '没有匹配的任务' : '暂无任务'}
+          </CollectionState>
         ) : null}
       </section>
     </aside>

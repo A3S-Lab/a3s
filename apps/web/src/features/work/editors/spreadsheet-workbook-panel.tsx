@@ -1,9 +1,11 @@
 import type { Selection } from '@fortune-sheet/core';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { CollectionState, InlineNotice } from '../../../design-system/primitives';
 import { isValidSpreadsheetDefinedName } from '../work-spreadsheet-ranges';
 import { createWorkId } from '../work-templates';
 import type { WorkSpreadsheetContent, WorkSpreadsheetNamedRange } from '../work-types';
+import { OfficeSelect, OfficeTextField } from './office-controls';
 import { SpreadsheetChartPanel } from './spreadsheet-chart-panel';
 import { SpreadsheetConditionalFormatPanel } from './spreadsheet-conditional-format-panel';
 import { SpreadsheetFormulaPanel } from './spreadsheet-formula-panel';
@@ -246,7 +248,11 @@ function NamedRangeManager({
               </span>
             </button>
           ))}
-          {!ranges.length && <p>还没有定义名称。</p>}
+          {!ranges.length && (
+            <CollectionState className='work-office-collection-empty' role='status'>
+              还没有定义名称。
+            </CollectionState>
+          )}
         </div>
       </aside>
       <form
@@ -255,52 +261,53 @@ function NamedRangeManager({
           saveRange();
         }}
       >
-        <label>
+        <div className='work-office-field'>
           <span>名称</span>
-          <input
+          <OfficeTextField
             aria-label='名称'
             value={draft.name}
             maxLength={255}
             placeholder='例如 Revenue_2026'
             onChange={(event) => setDraft({ ...draft, name: event.target.value })}
           />
-        </label>
-        <label>
+        </div>
+        <div className='work-office-field'>
           <span>作用域</span>
-          <select
-            aria-label='名称作用域'
+          <OfficeSelect
+            ariaLabel='名称作用域'
             value={draft.scopeSheetId}
-            onChange={(event) => setDraft({ ...draft, scopeSheetId: event.target.value })}
-          >
-            <option value=''>工作簿</option>
-            {content.sheets.map((sheet) => (
-              <option value={sheet.id} key={sheet.id ?? sheet.name}>
-                {sheet.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className='reference'>
+            options={[
+              { value: '', label: '工作簿' },
+              ...content.sheets.flatMap((sheet) => (sheet.id ? [{ value: sheet.id, label: sheet.name }] : [])),
+            ]}
+            onValueChange={(scopeSheetId) => setDraft({ ...draft, scopeSheetId })}
+          />
+        </div>
+        <div className='work-office-field reference'>
           <span>引用位置</span>
-          <input
+          <OfficeTextField
             aria-label='名称引用位置'
             value={draft.reference}
             placeholder="'工作表1'!$A$1:$B$20"
             onChange={(event) => setDraft({ ...draft, reference: event.target.value })}
           />
-        </label>
-        <label className='comment'>
+        </div>
+        <div className='work-office-field comment'>
           <span>备注</span>
-          <input
+          <OfficeTextField
             aria-label='名称备注'
             value={draft.comment}
             maxLength={255}
             placeholder='可选'
             onChange={(event) => setDraft({ ...draft, comment: event.target.value })}
           />
-        </label>
+        </div>
         <div className='actions'>
-          {error && <output className='error'>{error}</output>}
+          {error && (
+            <InlineNotice className='work-office-form-error' tone='danger' role='alert'>
+              {error}
+            </InlineNotice>
+          )}
           <button type='button' className='danger' disabled={!draft.id} onClick={deleteRange}>
             <Trash2 size={13} />
             删除

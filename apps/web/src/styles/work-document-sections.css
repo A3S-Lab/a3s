@@ -99,7 +99,7 @@
   gap: 10px;
 }
 
-.work-document-layout-panel .work-document-page-chrome-options > label {
+.work-document-layout-panel .work-document-page-chrome-options > .work-office-field {
   display: inline-flex;
   align-items: center;
   gap: 4px;

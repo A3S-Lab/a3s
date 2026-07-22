@@ -469,7 +469,7 @@ describe('Web-native session experiences', () => {
 
   it('offers searchable help as pages and workflows, not slash commands', () => {
     render(<HelpSettings />);
-    fireEvent.change(screen.getByRole('textbox', { name: '搜索帮助' }), { target: { value: 'Git' } });
+    fireEvent.change(screen.getByRole('searchbox', { name: '搜索帮助' }), { target: { value: 'Git' } });
     expect(screen.getByText('Git 工作流')).toBeInTheDocument();
     expect(screen.queryByText('/help')).not.toBeInTheDocument();
   });

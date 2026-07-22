@@ -14,6 +14,8 @@ export interface ToolCallProjection {
   id: string;
   name: string;
   state: ToolCallState;
+  firstEventIndex?: number;
+  firstBlockIndex?: number;
   args?: Record<string, unknown>;
   inputText: string;
   output: string;
@@ -83,16 +85,24 @@ export function projectToolCalls(
   const calls = new Map<string, ToolCallProjection>();
   const order: string[] = [];
 
-  const ensure = (id: string, name: string): ToolCallProjection => {
+  const ensure = (
+    id: string,
+    name: string,
+    source: { eventIndex?: number; blockIndex?: number } = {}
+  ): ToolCallProjection => {
     const existing = calls.get(id);
     if (existing) {
       if (existing.name === 'tool' && name !== 'tool') existing.name = name;
+      existing.firstEventIndex ??= source.eventIndex;
+      existing.firstBlockIndex ??= source.blockIndex;
       return existing;
     }
     const call: ToolCallProjection = {
       id,
       name: name || 'tool',
       state: 'preparing',
+      firstEventIndex: source.eventIndex,
+      firstBlockIndex: source.blockIndex,
       inputText: '',
       output: '',
     };
@@ -105,7 +115,7 @@ export function projectToolCalls(
     if (!isToolEvent(event.type)) return;
     const name = eventName(event);
     const id = eventId(event, name, index, order, calls);
-    const call = ensure(id, name);
+    const call = ensure(id, name, { eventIndex: index });
 
     switch (event.type) {
       case 'tool_start':
@@ -169,7 +179,7 @@ export function projectToolCalls(
   contentBlocks.forEach((block, index) => {
     if (!isToolBlock(block)) return;
     const id = block.toolUseId || block.id || `content-tool-${index}`;
-    const call = ensure(id, block.name || 'tool');
+    const call = ensure(id, block.name || 'tool', { blockIndex: index });
     if (block.input) call.args = block.input;
     if (block.content !== undefined) {
       if (!call.output) call.output = block.content;

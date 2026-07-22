@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CodeActions } from '../../code/use-code-controller';
 import { appState } from '../../../state/app-state';
+import type { CodeActions } from '../../code/use-code-controller';
 import { createWorkAgentProposalRequest, WORK_AGENT_PROPOSAL_PROTOCOL } from '../work-agent-proposal';
 import { WorkCopilot } from './work-copilot';
 
@@ -63,7 +63,7 @@ describe('Work Copilot panel', () => {
     expect(sendMessage).not.toHaveBeenCalled();
   });
 
-  it('supports keyboard resizing and persists the chosen width', () => {
+  it('starts wider, supports keyboard resizing, and persists the chosen width', () => {
     render(
       <WorkCopilot
         actions={{} as CodeActions}
@@ -76,10 +76,32 @@ describe('Work Copilot panel', () => {
     );
 
     const separator = screen.getByRole('separator', { name: '调整 Work AI 助手宽度' });
-    expect(separator).toHaveAttribute('aria-valuenow', '420');
+    expect(separator).toHaveAttribute('aria-valuenow', '460');
     fireEvent.keyDown(separator, { key: 'ArrowLeft' });
-    expect(separator).toHaveAttribute('aria-valuenow', '440');
-    expect(localStorage.getItem('a3s-work.ai-assistant-width')).toBe('440');
+    expect(separator).toHaveAttribute('aria-valuenow', '480');
+    expect(localStorage.getItem('a3s-work.ai-assistant-width')).toBe('480');
+  });
+
+  it('resizes by dragging the panel border', () => {
+    render(
+      <WorkCopilot
+        actions={{} as CodeActions}
+        workspaceRoot='/docs'
+        currentPath='/docs'
+        onClose={vi.fn()}
+        onPickRoot={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+
+    const separator = screen.getByRole('separator', { name: '调整 Work AI 助手宽度' });
+    fireEvent.pointerDown(separator, { button: 0, pointerId: 7, clientX: window.innerWidth - 460 });
+    expect(document.documentElement).toHaveAttribute('data-ds-resizing', 'vertical');
+    fireEvent.pointerMove(window, { pointerId: 7, clientX: window.innerWidth - 520 });
+    fireEvent.pointerUp(window, { pointerId: 7, clientX: window.innerWidth - 520 });
+    expect(separator).toHaveAttribute('aria-valuenow', '520');
+    expect(document.documentElement).not.toHaveAttribute('data-ds-resizing');
+    expect(localStorage.getItem('a3s-work.ai-assistant-width')).toBe('520');
   });
 
   it('projects a matching assistant proposal into an explicit review surface', () => {

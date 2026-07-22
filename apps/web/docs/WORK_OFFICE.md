@@ -17,14 +17,14 @@ Choose local folder → browse and select → add file or text context
 → explicitly save back or Save As
 ```
 
-The Work product owns local-file navigation, Office editing, and a complete
-local-file WebIDE. Its focused conversational AI Assistant uses the same A3S
+The Work product owns local-file navigation and consistent Office-style detail
+editing for both Office and code files. Its focused conversational AI Assistant uses the same A3S
 runtime engine as Code while keeping a separate Work-tagged session, active
 conversation, draft, and workspace boundary. File and selection actions prepare
 context and draft instructions; they do not auto-send or silently mutate data.
 
 Work targets WPS-class everyday Office editing while adding an AI-native Finder
-and WebIDE. The local path is the stable user-facing
+and a shared file-detail shell. The local path is the stable user-facing
 identity, the center surface browses or opens that path, the right rail holds a
 continuous AI Assistant conversation, and contextual menus turn file or editor
 selections into explicit agent context. Document, spreadsheet, presentation,
@@ -62,9 +62,14 @@ The first active Work release includes:
   root and current location, back/forward/up history, breadcrumbs, grid and list
   modes, current-folder filtering, and bounded recursive whole-workspace
   filename search. Before the user chooses a Work-specific root, the workspace
-  follows the default A3S Code workspace exposed in Settings; the sidebar keeps
-  an explicit Switch workspace action, and that choice becomes the persisted
-  Work override. Search has an explicit current-folder/root scope switch,
+  follows the default A3S Code workspace exposed in Settings. The sidebar
+  exposes the active workspace as a compact selector with recently used roots
+  and native folder picking; the same selector remains available in the file
+  toolbar while the sidebar is collapsed. A successful choice becomes the
+  persisted Work override, while an unreadable recent root leaves the active
+  workspace unchanged. File and folder glyphs use one scalable Office-style
+  visual language across grid, list, Quick Look, code detail, and managed-folder
+  surfaces. Search has an explicit current-folder/root scope switch,
   preserves real entry metadata and parent locations, keeps results available
   to Quick Look, file operations, and AI Assistant, and reports partial results when
   directory, entry, result, or permission limits are reached. Name/date/size/kind sorting, multi-selection,
@@ -96,10 +101,10 @@ The first active Work release includes:
   opening an editable copy remains an explicit action. Text is limited to
   2 MiB, supported binary previews to 50 MiB, and unknown binary formats are not
   read;
-- a Work-native WebIDE for all non-binary text and code files. Its lazy tree,
-  multiple Monaco tabs, language detection, diagnostics, semantic navigation,
-  status bar, keyboard save/close commands, external-change conflict review,
-  and AI context-menu actions operate directly on the selected local root.
+- a single-file Monaco detail editor for all non-binary text and code files. It
+  shares the Office detail header and return flow while retaining language
+  detection, diagnostics, semantic navigation, a status bar, keyboard save and
+  close commands, external-change conflict review, and AI context-menu actions.
   Markdown always places editable source on the left and a semantic live
   preview on the right;
 - a resizable right-side Work AI Assistant that binds the selected local root as
@@ -300,7 +305,10 @@ The first active Work release includes:
   design elements. The editor, thumbnails, playback, presenter view, PDF
   slides, notes pages, and handouts render the same inherited layers;
 - server-owned autosave under the A3S configuration directory, atomic artifact
-  writes, optimistic revision checks, and a 50-entry version history;
+  writes, optimistic revision checks, and a 50-entry version history. Managed
+  saves use one serialized drain: duplicate requests for the same revision join
+  the in-flight save, later revisions wait their turn, and recent-open metadata
+  is persisted without presenting the document as unsaved;
 - IndexedDB as a browser cache and compatibility fallback, with a local-storage
   fallback for restricted browser environments and one-time migration into the
   server store;
@@ -479,12 +487,12 @@ every command in a traditional office suite.
 - [x] Bind Work AI Assistant to the selected root, pass workspace-relative selected
   paths, use Work-only sessions and drafts, switch away from incompatible Work
   workspaces, and prefill rather than auto-send contextual actions.
-- [x] Open every non-binary code or text file in a Work-native Monaco WebIDE
-  with multiple tabs, a lazy file tree, semantic navigation, diagnostics,
-  conflict-safe saves, and AI Assistant editor actions.
+- [x] Open every non-binary code or text file in an Office-aligned single-file
+  detail page with Monaco, semantic navigation, diagnostics, conflict-safe saves,
+  and AI Assistant editor actions.
 - [x] Edit Markdown as source on the left with a continuously updated semantic
   preview on the right.
-- [x] Use one coherent Work icon language across Finder and WebIDE surfaces,
+- [x] Use one coherent Work icon language across Finder and file-detail surfaces,
   including framed commands and color-coded extension-badged file glyphs.
 - [x] Offer selection-aware ask, summarize, rewrite, and translate actions in
   the document editor.
@@ -811,8 +819,7 @@ A3S shell
     │   ├── WorkFilesController
     │   ├── WorkQuickLook
     │   └── local workspace API
-    ├── WorkCodeWorkspace
-    │   ├── WorkIdeExplorer
+    ├── WorkCodeWorkspace (single-file detail shell)
     │   ├── MonacoCodeEditor
     │   └── Markdown live preview
     ├── WorkHome (managed artifact compatibility surface)
@@ -851,7 +858,7 @@ Office interoperability
 └── html2canvas + jsPDF  PDF export
 ```
 
-Work filesystem, WebIDE, Office editor, AI session, and AI draft state are
+Work filesystem, file-detail editors, AI session, and AI draft state are
 isolated from Code product state. The shared Activity Bar selects a product;
 Work reuses execution and composer components without reusing Code sessions.
 Product switches persist and restore each product's own active conversation.
@@ -890,13 +897,18 @@ write fails, Work attempts to remove the just-created recovery artifact.
 Managed autosave never silently overwrites that path. Explicit save-back and
 Save As run compatibility review, compare the current source fingerprint, write
 a hidden sibling temporary file, replace the destination, and verify the
-result. The current service does not yet expose a conditional atomic-replace
+result. Before local serialization, save-back waits for the managed save drain
+and reads the latest editor snapshot, so auto-save and Cmd/Ctrl+S cannot submit
+the same revision concurrently or write an older revision to disk. The current
+service does not yet expose a conditional atomic-replace
 operation or file watcher, so a cross-process change in the narrow
 check-to-replace window is not claimed to be solved on every platform.
 Compatibility diagnostics remain attached to converted artifacts and are shown
-before saving or exporting. Supported basic DOCX and PPTX content has round-trip
-tests, but export must not be described as lossless while advanced Office
-features remain source-only.
+before saving or exporting. The decision view starts with a concise Chinese
+summary; source diagnostics remain available behind an explicit technical-detail
+control. Supported basic DOCX and PPTX content has round-trip tests, but export
+must not be described as lossless while advanced Office features remain
+source-only.
 
 ## Validation
 

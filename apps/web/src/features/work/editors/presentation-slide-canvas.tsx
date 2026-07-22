@@ -1,5 +1,6 @@
 import { presentationSlideView } from '../work-presentation-layouts';
 import type { WorkPresentationContent, WorkSlide, WorkSlideElement } from '../work-types';
+import { OfficeTextArea } from './office-controls';
 import { SlideChart } from './presentation-chart-canvas';
 
 export function SlideCanvas({
@@ -115,7 +116,7 @@ export function EditableSlideTable({
               const Cell = rowIndex < (table.headerRows ?? 0) ? 'th' : 'td';
               return (
                 <Cell key={columnIndex}>
-                  <textarea
+                  <OfficeTextArea
                     aria-label={`第 ${rowIndex + 1} 行第 ${columnIndex + 1} 列`}
                     value={cell}
                     onChange={(event) => {

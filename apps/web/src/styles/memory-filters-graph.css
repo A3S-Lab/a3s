@@ -56,60 +56,8 @@
 }
 
 .memory-search {
-  display: flex;
-  height: 32px;
   flex: 0 0 32px;
-  align-items: center;
-  gap: 8px;
   margin: 6px 0 14px;
-  padding: 0 8px;
-  border: 1px solid var(--a3s-line);
-  border-radius: 8px;
-  background: var(--a3s-panel);
-  color: var(--a3s-muted);
-}
-
-.memory-search:focus-within {
-  border-color: color-mix(in srgb, var(--a3s-blue) 58%, var(--a3s-line));
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--a3s-blue) 8%, transparent);
-  color: var(--a3s-blue);
-}
-
-.memory-search input {
-  min-width: 0;
-  flex: 1;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--a3s-ink);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.memory-search input::placeholder {
-  color: var(--a3s-muted);
-}
-
-.memory-search input::-webkit-search-cancel-button {
-  display: none;
-}
-
-.memory-search button {
-  display: grid;
-  width: 24px;
-  height: 24px;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--a3s-muted);
-  cursor: pointer;
-}
-
-.memory-search button:hover {
-  background: var(--a3s-panel-soft);
-  color: var(--a3s-ink);
 }
 
 .memory-filter-group {

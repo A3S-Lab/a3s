@@ -1,10 +1,10 @@
 import { Files, GitBranch, History, PanelRightClose } from 'lucide-react';
-import { useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
-import type { CodeActions } from '../../code/use-code-controller';
-import type { TaskView } from '../../code/code-state';
-import { Button, IconButton } from '../../../design-system/primitives';
+import { type CSSProperties, useState } from 'react';
+import { Button, IconButton, SplitHandle } from '../../../design-system/primitives';
 import { navigateTask } from '../../../state/app-state';
+import type { TaskView } from '../../code/code-state';
 import { WorkspacePage } from '../../code/pages/workspace-page';
+import type { CodeActions } from '../../code/use-code-controller';
 import { RunsPage } from '../../runs/pages/runs-page';
 
 const panelWidthKey = 'a3s-code-web.task-context-width';
@@ -38,43 +38,24 @@ export function TaskContextPanel({ view, actions }: { view: Exclude<TaskView, 'c
       // Resizing remains available when local persistence is unavailable.
     }
   };
-  const resizeFromPointer = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-    updateWidth(window.innerWidth - event.clientX);
-  };
   return (
     <aside
       className='task-context-panel'
       aria-label={view === 'review' ? '任务工作区' : '任务活动面板'}
       style={{ '--task-context-width': `${width}px` } as CSSProperties}
     >
-      <hr
+      <SplitHandle
         className='task-context-resizer'
-        aria-label='调整任务工作区宽度'
-        aria-orientation='vertical'
-        aria-valuemin={minPanelWidth}
-        aria-valuemax={maxPanelWidth}
-        aria-valuenow={width}
-        tabIndex={0}
-        onDoubleClick={() => updateWidth(defaultPanelWidth, true)}
-        onKeyDown={(event) => {
-          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-          event.preventDefault();
-          updateWidth(width + (event.key === 'ArrowLeft' ? 24 : -24), true);
-        }}
-        onPointerDown={(event) => {
-          event.currentTarget.setPointerCapture(event.pointerId);
-          document.documentElement.classList.add('resizing-task-context');
-        }}
-        onPointerMove={resizeFromPointer}
-        onPointerUp={(event) => {
-          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-          }
-          document.documentElement.classList.remove('resizing-task-context');
-          updateWidth(window.innerWidth - event.clientX, true);
-        }}
-        onPointerCancel={() => document.documentElement.classList.remove('resizing-task-context')}
+        label='调整任务工作区宽度'
+        value={width}
+        min={minPanelWidth}
+        max={maxPanelWidth}
+        defaultValue={defaultPanelWidth}
+        step={24}
+        direction='reverse'
+        valueText={(value) => `${value} 像素`}
+        onChange={updateWidth}
+        onCommit={(value) => updateWidth(value, true)}
       />
       <header className='task-context-header'>
         <nav aria-label='任务上下文面板'>

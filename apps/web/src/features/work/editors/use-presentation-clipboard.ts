@@ -1,6 +1,5 @@
 import { useCallback, useEffect } from 'react';
 import { showToast } from '../../../state/app-state';
-import { withPresentationDesign } from '../work-presentation-layouts';
 import {
   clonePresentationElementForPaste,
   clonePresentationSlideForPaste,
@@ -8,6 +7,7 @@ import {
   copyPresentationSlide,
   takePresentationClipboard,
 } from '../work-presentation-clipboard';
+import { withPresentationDesign } from '../work-presentation-layouts';
 import type { WorkPresentationContent, WorkSlide, WorkSlideElement } from '../work-types';
 import type { PresentationDesignMode } from './presentation-design-panel';
 
@@ -21,6 +21,8 @@ export function usePresentationClipboard({
   onChange,
   onSelectSlide,
   onSelectElement,
+  onUndo,
+  onRedo,
 }: {
   content: WorkPresentationContent;
   preview: boolean;
@@ -31,6 +33,8 @@ export function usePresentationClipboard({
   onChange: (content: WorkPresentationContent) => void;
   onSelectSlide: (id: string) => void;
   onSelectElement: (id: string | null) => void;
+  onUndo: () => boolean;
+  onRedo: () => boolean;
 }) {
   const copySelection = useCallback((): boolean => {
     if (selectedElement) {
@@ -130,18 +134,56 @@ export function usePresentationClipboard({
     return true;
   }, [content, mode, onChange, onSelectElement, onSelectSlide, selectedElement, selectedSlide, targetId]);
 
+  const nudgeSelection = useCallback(
+    (key: string, distance: number): boolean => {
+      if (!selectedElement || !targetId) return false;
+      const horizontal = key === 'ArrowLeft' ? -distance : key === 'ArrowRight' ? distance : 0;
+      const vertical = key === 'ArrowUp' ? -distance : key === 'ArrowDown' ? distance : 0;
+      if (!horizontal && !vertical) return false;
+      const next = updateTargetElements(content, mode, targetId, (elements) =>
+        elements.map((element) =>
+          element.id === selectedElement.id
+            ? {
+                ...element,
+                x: clampPresentationPosition(element.x + horizontal, element.width),
+                y: clampPresentationPosition(element.y + vertical, element.height),
+              }
+            : element
+        )
+      );
+      if (!next) return false;
+      onChange(next);
+      return true;
+    },
+    [content, mode, onChange, selectedElement, targetId]
+  );
+
   useEffect(() => {
     if (preview) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isPresentationTextEditingTarget(event.target)) return;
+      if (event.defaultPrevented || isPresentationTextEditingTarget(event.target)) return;
       const commandKey = event.metaKey || event.ctrlKey;
       const key = event.key.toLocaleLowerCase();
       let handled = false;
-      if (commandKey && key === 'c') handled = copySelection();
-      else if (commandKey && key === 'x') handled = cutSelection();
-      else if (commandKey && key === 'v') handled = pasteSelection();
-      else if (commandKey && key === 'd') handled = duplicateSelection();
-      else if ((event.key === 'Delete' || event.key === 'Backspace') && selectedElement) {
+      if (commandKey && !event.altKey && key === 'z') handled = event.shiftKey ? onRedo() : onUndo();
+      else if (commandKey && !event.altKey && !event.shiftKey && key === 'y') handled = onRedo();
+      else if (commandKey && !event.altKey && !event.shiftKey && key === 'c') handled = copySelection();
+      else if (commandKey && !event.altKey && !event.shiftKey && key === 'x') handled = cutSelection();
+      else if (commandKey && !event.altKey && !event.shiftKey && key === 'v') handled = pasteSelection();
+      else if (commandKey && !event.altKey && !event.shiftKey && key === 'd') handled = duplicateSelection();
+      else if (
+        !commandKey &&
+        !event.altKey &&
+        selectedElement &&
+        event.key.startsWith('Arrow') &&
+        isPresentationObjectKeyboardTarget(event.target)
+      ) {
+        handled = nudgeSelection(event.key, event.shiftKey ? 5 : 1);
+      } else if (
+        (event.key === 'Delete' || event.key === 'Backspace') &&
+        selectedElement &&
+        isPresentationObjectKeyboardTarget(event.target)
+      ) {
         handled = deleteSelectedElement();
       }
       if (handled) event.preventDefault();
@@ -153,12 +195,19 @@ export function usePresentationClipboard({
     cutSelection,
     deleteSelectedElement,
     duplicateSelection,
+    nudgeSelection,
+    onRedo,
+    onUndo,
     pasteSelection,
     preview,
     selectedElement,
   ]);
 
   return { copySelection, cutSelection, pasteSelection };
+}
+
+function clampPresentationPosition(value: number, size: number): number {
+  return Math.min(Math.max(value, 0), Math.max(0, 100 - size));
 }
 
 function updateTargetElements(
@@ -204,6 +253,10 @@ function isPresentationTextEditingTarget(target: EventTarget | null): boolean {
     target.isContentEditable ||
     Boolean(target.closest('[data-slide-editor]'))
   );
+}
+
+function isPresentationObjectKeyboardTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLElement && Boolean(target.closest('[data-slide-element-origin]'));
 }
 
 function structuredCopy<T>(value: T): T {

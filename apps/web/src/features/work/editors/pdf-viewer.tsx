@@ -1,6 +1,7 @@
-import { PDFViewer, type ExportPlugin, type PluginRegistry } from '@embedpdf/react-pdf-viewer';
+import { type ExportPlugin, PDFViewer, type PluginRegistry } from '@embedpdf/react-pdf-viewer';
 import { AlertCircle, Check, Loader2, Save } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button, StateView } from '../../../design-system/primitives';
 
 type PdfSaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -72,7 +73,16 @@ export function PdfViewer({
   useEffect(() => {
     if (!onSave) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 's') return;
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.altKey ||
+        event.shiftKey ||
+        !(event.metaKey || event.ctrlKey) ||
+        event.key.toLowerCase() !== 's'
+      ) {
+        return;
+      }
       event.preventDefault();
       event.stopImmediatePropagation();
       void savePdf();
@@ -83,23 +93,27 @@ export function PdfViewer({
 
   if (loadError) {
     return (
-      <section className='work-pdf-state error' role='alert'>
-        <AlertCircle size={24} />
-        <strong>无法打开 PDF</strong>
-        <span title={loadError}>请重试。</span>
-        <button type='button' onClick={() => setRetryCount((value) => value + 1)}>
-          重试
-        </button>
-      </section>
+      <StateView
+        className='work-pdf-state'
+        tone='danger'
+        role='alert'
+        icon={<AlertCircle size={24} />}
+        title='无法打开 PDF'
+        description='请重试。'
+        descriptionTitle={loadError}
+        actions={<Button onClick={() => setRetryCount((value) => value + 1)}>重试</Button>}
+      />
     );
   }
 
   if (!sourceUrl) {
     return (
-      <output className='work-pdf-state' aria-live='polite'>
-        <Loader2 className='spin' size={22} />
-        正在加载 PDF…
-      </output>
+      <StateView
+        className='work-pdf-state'
+        role='status'
+        icon={<Loader2 className='spin' size={22} />}
+        title='正在加载 PDF…'
+      />
     );
   }
 
@@ -116,10 +130,15 @@ export function PdfViewer({
             )}
             {saveState === 'error' && '保存失败，请重试'}
           </output>
-          <button type='button' disabled={!viewerReady || saveState === 'saving'} onClick={() => void savePdf()}>
+          <Button
+            tone='secondary'
+            title={`${saveLabel}（Cmd/Ctrl+S）`}
+            disabled={!viewerReady || saveState === 'saving'}
+            onClick={() => void savePdf()}
+          >
             <Save size={14} />
             {saveLabel}
-          </button>
+          </Button>
         </div>
       )}
       <div className='work-pdf-embed'>

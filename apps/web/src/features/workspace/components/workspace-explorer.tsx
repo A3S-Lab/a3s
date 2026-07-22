@@ -15,14 +15,14 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { IconButton } from '../../../design-system/primitives';
+import { Button, CollectionState, IconButton } from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
 import type { WorkspaceEntry } from '../../../types/api';
 import type { WorkspaceActions } from '../workspace-actions';
 import { isFileEditorTabDirty, normalizePath, workspaceRelativePath } from '../workspace-state';
-import { WorkspaceFileIcon } from './workspace-file-icon';
 import { WorkspaceContextMenu, type WorkspaceContextMenuItem } from './workspace-context-menu';
-import { WorkspaceInlineEntry, type WorkspaceInlineAction, workspaceInlineActionKey } from './workspace-inline-entry';
+import { WorkspaceFileIcon } from './workspace-file-icon';
+import { type WorkspaceInlineAction, WorkspaceInlineEntry, workspaceInlineActionKey } from './workspace-inline-entry';
 
 interface ContextMenuState {
   entry: Readonly<WorkspaceEntry> | null;
@@ -180,18 +180,23 @@ function Directory({
         />
       )}
       {loading && (
-        <output className='directory-state'>
-          <LoaderCircle className='spin' size={13} />
+        <CollectionState className='directory-state' role='status' icon={<LoaderCircle className='spin' size={13} />}>
           正在读取 {basename(directory)}
-        </output>
+        </CollectionState>
       )}
       {error && !loading && (
-        <div className='directory-state error' role='alert'>
-          <span>{error}</span>
-          <button type='button' onClick={() => void actions.refreshDirectory(directory)}>
-            重试
-          </button>
-        </div>
+        <CollectionState
+          className='directory-state'
+          tone='danger'
+          role='alert'
+          actions={
+            <Button tone='quiet' onClick={() => void actions.refreshDirectory(directory)}>
+              重试
+            </Button>
+          }
+        >
+          {error}
+        </CollectionState>
       )}
       {visible.map((entry) => {
         const activeInlineEntry =
@@ -278,7 +283,11 @@ function Directory({
           </div>
         );
       })}
-      {!visible.length && !createAction && !loading && !error && <p>{query ? '没有匹配文件' : '目录为空'}</p>}
+      {!visible.length && !createAction && !loading && !error && (
+        <CollectionState className='directory-empty' role='status'>
+          {query ? '没有匹配文件' : '目录为空'}
+        </CollectionState>
+      )}
     </>
   );
   return <div>{content}</div>;

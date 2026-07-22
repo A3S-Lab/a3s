@@ -1,34 +1,43 @@
-import type { Hooks, Selection } from '@fortune-sheet/core';
+import type { Cell, Hooks, Selection } from '@fortune-sheet/core';
 import { Workbook, type WorkbookInstance } from '@fortune-sheet/react';
 import '@fortune-sheet/react/dist/index.css';
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   BarChart3,
+  Bold,
   Bookmark,
   Calculator,
   Cloud,
   Grid3X3,
+  Italic,
+  Merge,
   Palette,
   Printer,
+  Redo2,
   ShieldCheck,
   TableProperties,
+  Underline,
+  Undo2,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { WorkspaceContextMenu } from '../../workspace/components/workspace-context-menu';
 import { spreadsheetAgentMenuItems } from '../components/work-editor-agent-menus';
 import { applySpreadsheetAgentProposalChanges } from '../work-agent-proposal-apply';
 import type { WorkEditorAgentRequest } from '../work-agent-request';
 import { spreadsheetAgentSelection, type WorkSpreadsheetAgentSelection } from '../work-spreadsheet-agent-context';
 import {
-  drawSpreadsheetCommentMarker,
-  drawSpreadsheetConditionalDataBar,
-} from '../work-spreadsheet-conditional-canvas';
-import { drawSpreadsheetConditionalIcon } from '../work-spreadsheet-conditional-icons';
-import { spreadsheetConditionalFormatStyles } from '../work-spreadsheet-conditional-format';
-import {
   reconcileSpreadsheetChartPreviews,
   spreadsheetChartCount,
   spreadsheetSheetsWithChartPreviews,
 } from '../work-spreadsheet-charts';
+import {
+  drawSpreadsheetCommentMarker,
+  drawSpreadsheetConditionalDataBar,
+} from '../work-spreadsheet-conditional-canvas';
+import { spreadsheetConditionalFormatStyles } from '../work-spreadsheet-conditional-format';
+import { drawSpreadsheetConditionalIcon } from '../work-spreadsheet-conditional-icons';
 import { spreadsheetFormulaCount } from '../work-spreadsheet-formula-analysis';
 import {
   reconcileSpreadsheetPivots,
@@ -39,10 +48,12 @@ import {
 } from '../work-spreadsheet-pivots';
 import { protectedSheetCount, spreadsheetProtectionKey } from '../work-spreadsheet-protection';
 import type { WorkSpreadsheetContent } from '../work-types';
+import { OfficeColorPicker, OfficeSelect } from './office-controls';
 import { managedConditionalFormatCount } from './spreadsheet-conditional-format-panel';
 import { spreadsheetPrintSettingCount } from './spreadsheet-print-settings-panel';
 import { SpreadsheetWorkbookPanel, type SpreadsheetWorkbookPanelView } from './spreadsheet-workbook-panel';
 import {
+  type WorkOfficeFileAction,
   WorkOfficeRibbon,
   WorkOfficeRibbonButton,
   WorkOfficeRibbonGroup,
@@ -51,8 +62,9 @@ import {
 } from './work-office-chrome';
 
 const spreadsheetRibbonTabs = [
-  { id: 'home', label: '首页' },
+  { id: 'home', label: '开始' },
   { id: 'insert', label: '插入' },
+  { id: 'pageLayout', label: '页面布局' },
   { id: 'formulas', label: '公式' },
   { id: 'data', label: '数据' },
   { id: 'review', label: '审阅' },
@@ -61,10 +73,13 @@ const spreadsheetRibbonTabs = [
 
 type SpreadsheetRibbonTabId = (typeof spreadsheetRibbonTabs)[number]['id'];
 
+const spreadsheetFontSizes = [9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 28, 36, 48, 72] as const;
+
 interface SpreadsheetEditorProps {
   content: WorkSpreadsheetContent;
   preview: boolean;
   saveStatus?: string;
+  fileActions?: readonly WorkOfficeFileAction[];
   onChange: (content: WorkSpreadsheetContent) => void;
   onAgentRequest?: (request: WorkEditorAgentRequest) => void | Promise<void>;
 }
@@ -84,11 +99,14 @@ export function SpreadsheetEditor({
   content,
   preview,
   saveStatus = '已自动保存',
+  fileActions,
   onChange,
   onAgentRequest,
 }: SpreadsheetEditorProps) {
   const materializedContent = useMemo(() => refreshSpreadsheetPivotTables(content), [content]);
   const contentRef = useRef(materializedContent);
+  const onChangeRef = useRef(onChange);
+  const previewRef = useRef(preview);
   const workbookRef = useRef<WorkbookInstance>(null);
   const [ribbonTab, setRibbonTab] = useState<SpreadsheetRibbonTabId>('home');
   const [panel, setPanel] = useState<SpreadsheetWorkbookPanelView | null>(null);
@@ -98,6 +116,8 @@ export function SpreadsheetEditor({
     content.sheets.find((sheet) => sheet.status === 1)?.id ?? content.sheets.find((sheet) => !sheet.hide)?.id ?? '';
   const activeSheetIdRef = useRef(activeSheetId);
   contentRef.current = materializedContent;
+  onChangeRef.current = onChange;
+  previewRef.current = preview;
   const conditionalStylesBySheet = useMemo(
     () =>
       new Map(
@@ -110,6 +130,11 @@ export function SpreadsheetEditor({
   useEffect(() => {
     activeSheetIdRef.current = activeSheetId;
   }, [activeSheetId]);
+  useEffect(() => {
+    if (!preview) return;
+    setPanel(null);
+    setAgentMenu(null);
+  }, [preview]);
   const workbookHooks = useMemo<Hooks>(
     () => ({
       afterActivateSheet: (id) => {
@@ -178,8 +203,30 @@ export function SpreadsheetEditor({
   const protectionKey = spreadsheetProtectionKey(content.sheets);
   const printSettingCount = spreadsheetPrintSettingCount(content);
   const formulaCount = useMemo(() => spreadsheetFormulaCount(materializedContent), [materializedContent]);
+  const formulaInitializationKey = useMemo(
+    () => spreadsheetFormulaInitializationKey(materializedContent),
+    [materializedContent]
+  );
   const pivotCount = useMemo(() => spreadsheetPivotCount(materializedContent), [materializedContent]);
-  const workbookSheets = useMemo(() => spreadsheetSheetsWithChartPreviews(materializedContent), [materializedContent]);
+  const renderedWorkbookSheets = useMemo(
+    () => spreadsheetSheetsWithFiniteSelections(spreadsheetSheetsWithChartPreviews(materializedContent)),
+    [materializedContent]
+  );
+  const workbookSheets = useMemo(() => spreadsheetSheetsForFortune(renderedWorkbookSheets), [renderedWorkbookSheets]);
+  const workbookSheetsRef = useRef(workbookSheets);
+  workbookSheetsRef.current = workbookSheets;
+  useEffect(() => {
+    if (!formulaInitializationKey) return;
+    const timeout = window.setTimeout(() => workbookRef.current?.calculateFormula(), 0);
+    return () => window.clearTimeout(timeout);
+  }, [formulaInitializationKey]);
+  const handleWorkbookChange = useCallback((sheets: WorkSpreadsheetContent['sheets']) => {
+    if (previewRef.current || sameSpreadsheetWorkbookState(sheets, workbookSheetsRef.current)) return;
+    const withCharts = reconcileSpreadsheetChartPreviews(contentRef.current, sheets);
+    const next = reconcileSpreadsheetPivots(contentRef.current, withCharts.sheets);
+    contentRef.current = next;
+    onChangeRef.current(next);
+  }, []);
   const chartPreviewKey = workbookSheets
     .flatMap((sheet) =>
       (sheet.images ?? [])
@@ -225,6 +272,30 @@ export function SpreadsheetEditor({
     });
     return true;
   };
+  const toolbarSheetId = selectionState?.sheetId ?? activeSheetId;
+  const toolbarSheet = workbookSheets.find((sheet) => sheet.id === toolbarSheetId);
+  const toolbarSelection = finiteSpreadsheetSelection(
+    selectionState?.selection ?? toolbarSheet?.luckysheet_select_save?.at(-1)
+  );
+  const toolbarCell = spreadsheetCellAt(
+    toolbarSheet,
+    toolbarSelection.row_focus ?? toolbarSelection.row[0],
+    toolbarSelection.column_focus ?? toolbarSelection.column[0]
+  );
+  const selectedRange = spreadsheetSingleRange(toolbarSelection);
+  const multipleCellsSelected =
+    selectedRange.row[0] !== selectedRange.row[1] || selectedRange.column[0] !== selectedRange.column[1];
+  const applyCellFormat = (attribute: keyof Cell, value: unknown) => {
+    const workbook = workbookRef.current;
+    if (!workbook || !toolbarSheetId) return;
+    const liveSelection = workbook.getSelection()?.at(-1);
+    workbook.setCellFormatByRange(
+      attribute,
+      value,
+      liveSelection ? spreadsheetSingleRange(liveSelection) : selectedRange,
+      { id: toolbarSheetId }
+    );
+  };
   return (
     <section className={`work-spreadsheet-editor ${preview ? 'preview' : ''}`} aria-label='表格工作区'>
       {preview && <div className='work-preview-notice'>只读预览 · {content.sheets.length} 个工作表</div>}
@@ -234,31 +305,157 @@ export function SpreadsheetEditor({
           tabs={spreadsheetRibbonTabs}
           defaultTab='home'
           activeTab={ribbonTab}
-          onTabChange={setRibbonTab}
+          onTabChange={(tab) => {
+            setRibbonTab(tab);
+            setPanel(null);
+          }}
+          fileActions={fileActions}
           className='work-spreadsheet-ribbon'
           toolbarClassName='work-spreadsheet-ribbon-toolbar'
           panels={{
             home: (
-              <WorkOfficeRibbonGroup label='样式'>
-                <SpreadsheetRibbonTool
-                  label='条件格式'
-                  count={managedConditionalFormatCount(content)}
-                  icon={<Palette size={19} />}
-                  active={panel === 'conditional-formatting'}
-                  onClick={() =>
-                    setPanel((value) => (value === 'conditional-formatting' ? null : 'conditional-formatting'))
-                  }
-                />
-              </WorkOfficeRibbonGroup>
+              <>
+                <WorkOfficeRibbonGroup label='撤销与恢复'>
+                  <WorkOfficeRibbonButton
+                    label='撤销'
+                    title='撤销（Cmd/Ctrl+Z）'
+                    onClick={() => workbookRef.current?.handleUndo()}
+                  >
+                    <Undo2 size={19} />
+                  </WorkOfficeRibbonButton>
+                  <WorkOfficeRibbonButton
+                    label='重做'
+                    title='重做（Cmd/Ctrl+Shift+Z）'
+                    onClick={() => workbookRef.current?.handleRedo()}
+                  >
+                    <Redo2 size={19} />
+                  </WorkOfficeRibbonButton>
+                </WorkOfficeRibbonGroup>
+                <WorkOfficeRibbonGroup label='字体'>
+                  <OfficeSelect
+                    ariaLabel='字号'
+                    value={String(toolbarCell?.fs ?? 10)}
+                    options={spreadsheetFontSizeOptions(toolbarCell?.fs)}
+                    onValueChange={(value) => applyCellFormat('fs', Number(value))}
+                  />
+                  <WorkOfficeRibbonButton
+                    label='加粗'
+                    title='加粗（Cmd/Ctrl+B）'
+                    displayLabel={false}
+                    active={Number(toolbarCell?.bl) === 1}
+                    onClick={() => applyCellFormat('bl', Number(toolbarCell?.bl) === 1 ? 0 : 1)}
+                  >
+                    <Bold size={15} />
+                  </WorkOfficeRibbonButton>
+                  <WorkOfficeRibbonButton
+                    label='斜体'
+                    title='斜体（Cmd/Ctrl+I）'
+                    displayLabel={false}
+                    active={Number(toolbarCell?.it) === 1}
+                    onClick={() => applyCellFormat('it', Number(toolbarCell?.it) === 1 ? 0 : 1)}
+                  >
+                    <Italic size={15} />
+                  </WorkOfficeRibbonButton>
+                  <WorkOfficeRibbonButton
+                    label='下划线'
+                    title='下划线（Cmd/Ctrl+U）'
+                    displayLabel={false}
+                    active={Number(toolbarCell?.un) === 1}
+                    onClick={() => applyCellFormat('un', Number(toolbarCell?.un) === 1 ? 0 : 1)}
+                  >
+                    <Underline size={15} />
+                  </WorkOfficeRibbonButton>
+                  <OfficeColorPicker
+                    compact
+                    className='work-color-tool'
+                    ariaLabel='文字颜色'
+                    value={typeof toolbarCell?.fc === 'string' ? toolbarCell.fc : '#172033'}
+                    onValueChange={(value) => applyCellFormat('fc', value)}
+                  />
+                  <OfficeColorPicker
+                    compact
+                    className='work-color-tool work-spreadsheet-fill-color'
+                    ariaLabel='填充颜色'
+                    value={typeof toolbarCell?.bg === 'string' ? toolbarCell.bg : '#ffffff'}
+                    onValueChange={(value) => applyCellFormat('bg', value)}
+                  />
+                </WorkOfficeRibbonGroup>
+                <WorkOfficeRibbonGroup label='对齐'>
+                  <WorkOfficeRibbonButton
+                    label='左对齐'
+                    displayLabel={false}
+                    active={String(toolbarCell?.ht ?? '1') === '1'}
+                    onClick={() => applyCellFormat('ht', '1')}
+                  >
+                    <AlignLeft size={15} />
+                  </WorkOfficeRibbonButton>
+                  <WorkOfficeRibbonButton
+                    label='居中'
+                    displayLabel={false}
+                    active={String(toolbarCell?.ht) === '0'}
+                    onClick={() => applyCellFormat('ht', '0')}
+                  >
+                    <AlignCenter size={15} />
+                  </WorkOfficeRibbonButton>
+                  <WorkOfficeRibbonButton
+                    label='右对齐'
+                    displayLabel={false}
+                    active={String(toolbarCell?.ht) === '2'}
+                    onClick={() => applyCellFormat('ht', '2')}
+                  >
+                    <AlignRight size={15} />
+                  </WorkOfficeRibbonButton>
+                </WorkOfficeRibbonGroup>
+                <WorkOfficeRibbonGroup label='单元格'>
+                  <WorkOfficeRibbonButton
+                    label={toolbarCell?.mc ? '取消合并' : '合并单元格'}
+                    disabled={!toolbarCell?.mc && !multipleCellsSelected}
+                    onClick={() => {
+                      const workbook = workbookRef.current;
+                      if (!workbook || !toolbarSheetId) return;
+                      const range = workbook.getSelection()?.at(-1) ?? selectedRange;
+                      if (toolbarCell?.mc)
+                        workbook.cancelMerge([spreadsheetSingleRange(range)], { id: toolbarSheetId });
+                      else workbook.mergeCells([spreadsheetSingleRange(range)], 'merge-all', { id: toolbarSheetId });
+                    }}
+                  >
+                    <Merge size={19} />
+                  </WorkOfficeRibbonButton>
+                </WorkOfficeRibbonGroup>
+              </>
             ),
             insert: (
-              <WorkOfficeRibbonGroup label='插入'>
+              <>
+                <WorkOfficeRibbonGroup label='图表'>
+                  <SpreadsheetRibbonTool
+                    label='插入图表'
+                    count={spreadsheetChartCount(content)}
+                    icon={<BarChart3 size={19} />}
+                    active={panel === 'charts'}
+                    onClick={() => setPanel((value) => (value === 'charts' ? null : 'charts'))}
+                  />
+                </WorkOfficeRibbonGroup>
+                <WorkOfficeRibbonGroup label='样式'>
+                  <SpreadsheetRibbonTool
+                    label='条件格式'
+                    count={managedConditionalFormatCount(content)}
+                    icon={<Palette size={19} />}
+                    active={panel === 'conditional-formatting'}
+                    onClick={() =>
+                      setPanel((value) => (value === 'conditional-formatting' ? null : 'conditional-formatting'))
+                    }
+                  />
+                </WorkOfficeRibbonGroup>
+              </>
+            ),
+            pageLayout: (
+              <WorkOfficeRibbonGroup label='页面设置'>
                 <SpreadsheetRibbonTool
-                  label='图表'
-                  count={spreadsheetChartCount(content)}
-                  icon={<BarChart3 size={19} />}
-                  active={panel === 'charts'}
-                  onClick={() => setPanel((value) => (value === 'charts' ? null : 'charts'))}
+                  label='打印设置'
+                  count={printSettingCount}
+                  icon={<Printer size={19} />}
+                  active={panel === 'print-area'}
+                  onClick={() => setPanel((value) => (value === 'print-area' ? null : 'print-area'))}
                 />
               </WorkOfficeRibbonGroup>
             ),
@@ -307,26 +504,16 @@ export function SpreadsheetEditor({
               </WorkOfficeRibbonGroup>
             ),
             view: (
-              <>
-                <WorkOfficeRibbonGroup label='工作簿视图'>
-                  <WorkOfficeRibbonButton
-                    label={gridLinesVisible ? '隐藏网格线' : '显示网格线'}
-                    active={gridLinesVisible}
-                    onClick={() => updateActiveSheet((sheet) => ({ ...sheet, showGridLines: !gridLinesVisible }))}
-                  >
-                    <Grid3X3 size={19} />
-                  </WorkOfficeRibbonButton>
-                </WorkOfficeRibbonGroup>
-                <WorkOfficeRibbonGroup label='打印'>
-                  <SpreadsheetRibbonTool
-                    label='打印设置'
-                    count={printSettingCount}
-                    icon={<Printer size={19} />}
-                    active={panel === 'print-area'}
-                    onClick={() => setPanel((value) => (value === 'print-area' ? null : 'print-area'))}
-                  />
-                </WorkOfficeRibbonGroup>
-              </>
+              <WorkOfficeRibbonGroup label='工作簿视图'>
+                <WorkOfficeRibbonButton
+                  label={gridLinesVisible ? '隐藏网格线' : '显示网格线'}
+                  visibleLabel='网格线'
+                  active={gridLinesVisible}
+                  onClick={() => updateActiveSheet((sheet) => ({ ...sheet, showGridLines: !gridLinesVisible }))}
+                >
+                  <Grid3X3 size={19} />
+                </WorkOfficeRibbonButton>
+              </WorkOfficeRibbonGroup>
             ),
           }}
         />
@@ -363,11 +550,11 @@ export function SpreadsheetEditor({
       >
         <Workbook
           ref={workbookRef}
-          key={`${preview ? 'spreadsheet-preview' : 'spreadsheet-edit'}:${conditionalFormatKey}:${protectionKey}:${chartPreviewKey}`}
+          key={`spreadsheet:${conditionalFormatKey}:${protectionKey}:${chartPreviewKey}`}
           data={workbookSheets}
           lang='zh'
           allowEdit={!preview}
-          showToolbar={!preview && ribbonTab === 'home'}
+          showToolbar={false}
           showFormulaBar
           showSheetTabs
           row={60}
@@ -375,12 +562,7 @@ export function SpreadsheetEditor({
           defaultRowHeight={24}
           defaultColWidth={96}
           hooks={workbookHooks}
-          onChange={(sheets) => {
-            if (!preview) {
-              const withCharts = reconcileSpreadsheetChartPreviews(contentRef.current, sheets);
-              onChange(reconcileSpreadsheetPivots(contentRef.current, withCharts.sheets));
-            }
-          }}
+          onChange={handleWorkbookChange}
         />
       </div>
       <WorkOfficeStatusBar
@@ -474,6 +656,34 @@ function spreadsheetSelectionReference(selection: Selection): string {
   return start === end ? start : `${start}:${end}`;
 }
 
+function spreadsheetSingleRange(selection: Pick<Selection, 'row' | 'column'>): { row: number[]; column: number[] } {
+  return {
+    row: finiteSpreadsheetSelectionAxis(selection.row),
+    column: finiteSpreadsheetSelectionAxis(selection.column),
+  };
+}
+
+function spreadsheetCellAt(
+  sheet: WorkSpreadsheetContent['sheets'][number] | undefined,
+  row: number | undefined,
+  column: number | undefined
+): Cell | null {
+  if (!sheet) return null;
+  const safeRow = finiteSpreadsheetIndex(row, 0);
+  const safeColumn = finiteSpreadsheetIndex(column, 0);
+  return (
+    sheet.data?.[safeRow]?.[safeColumn] ??
+    sheet.celldata?.find((entry) => entry.r === safeRow && entry.c === safeColumn)?.v ??
+    null
+  );
+}
+
+function spreadsheetFontSizeOptions(current: number | undefined): { value: string; label: string }[] {
+  const values: number[] = [...spreadsheetFontSizes];
+  if (current && !values.includes(current)) values.push(current);
+  return values.sort((left, right) => left - right).map((value) => ({ value: String(value), label: String(value) }));
+}
+
 function spreadsheetColumnLabel(column: number): string {
   let value = Math.max(0, column) + 1;
   let label = '';
@@ -483,4 +693,100 @@ function spreadsheetColumnLabel(column: number): string {
     value = Math.floor(value / 26);
   }
   return label;
+}
+
+function spreadsheetSheetsWithFiniteSelections(
+  sheets: WorkSpreadsheetContent['sheets']
+): WorkSpreadsheetContent['sheets'] {
+  return sheets.map((sheet) => ({
+    ...sheet,
+    luckysheet_select_save: (sheet.luckysheet_select_save?.length ? sheet.luckysheet_select_save : [undefined]).map(
+      finiteSpreadsheetSelection
+    ),
+  }));
+}
+
+function spreadsheetSheetsForFortune(sheets: WorkSpreadsheetContent['sheets']): WorkSpreadsheetContent['sheets'] {
+  return structuredClone(sheets).map((sheet) => {
+    for (const merge of Object.values(sheet.config?.merge ?? {})) {
+      for (let rowIndex = merge.r; rowIndex < merge.r + merge.rs; rowIndex += 1) {
+        const row = sheet.data?.[rowIndex];
+        if (!row) continue;
+        for (let columnIndex = merge.c; columnIndex < merge.c + merge.cs; columnIndex += 1) {
+          row[columnIndex] = {
+            ...(row[columnIndex] ?? {}),
+            mc: rowIndex === merge.r && columnIndex === merge.c ? { ...merge } : { r: merge.r, c: merge.c },
+          };
+        }
+      }
+    }
+    return {
+      ...sheet,
+      celldata: sheet.data
+        ? sheet.data.flatMap((row, rowIndex) =>
+            row.flatMap((cell, columnIndex) => (cell == null ? [] : [{ r: rowIndex, c: columnIndex, v: cell }]))
+          )
+        : (sheet.celldata ?? []),
+    };
+  });
+}
+
+function spreadsheetFormulaInitializationKey(content: WorkSpreadsheetContent): string {
+  return content.sheets
+    .flatMap((sheet) =>
+      (sheet.data ?? []).flatMap((row, rowIndex) =>
+        row.flatMap((cell, columnIndex) =>
+          cell?.f ? [`${sheet.id ?? sheet.name}:${rowIndex}:${columnIndex}:${cell.f}`] : []
+        )
+      )
+    )
+    .join('|');
+}
+
+function finiteSpreadsheetSelection(selection: Selection | undefined): Selection {
+  const row = finiteSpreadsheetSelectionAxis(selection?.row);
+  const column = finiteSpreadsheetSelectionAxis(selection?.column);
+  const normalized: Selection = {
+    ...selection,
+    row,
+    column,
+    row_focus: finiteSpreadsheetFocus(selection?.row_focus, row),
+    column_focus: finiteSpreadsheetFocus(selection?.column_focus, column),
+  };
+  return normalized;
+}
+
+function finiteSpreadsheetSelectionAxis(axis: number[] | undefined): number[] {
+  const first = finiteSpreadsheetIndex(axis?.[0], 0);
+  const second = finiteSpreadsheetIndex(axis?.[1], first);
+  return [Math.min(first, second), Math.max(first, second)];
+}
+
+function finiteSpreadsheetFocus(value: unknown, axis: number[]): number {
+  const focus = finiteSpreadsheetIndex(value, axis[0] ?? 0);
+  return Math.min(axis[1] ?? focus, Math.max(axis[0] ?? focus, focus));
+}
+
+function finiteSpreadsheetIndex(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : fallback;
+}
+
+function sameSpreadsheetWorkbookState(
+  changed: WorkSpreadsheetContent['sheets'],
+  rendered: WorkSpreadsheetContent['sheets']
+): boolean {
+  return (
+    JSON.stringify(changed.map(spreadsheetSheetWithoutTransientSelection)) ===
+    JSON.stringify(rendered.map(spreadsheetSheetWithoutTransientSelection))
+  );
+}
+
+function spreadsheetSheetWithoutTransientSelection(sheet: WorkSpreadsheetContent['sheets'][number]) {
+  const {
+    celldata: _cellData,
+    luckysheet_select_save: _selection,
+    luckysheet_selection_range: _range,
+    ...content
+  } = sheet;
+  return content;
 }

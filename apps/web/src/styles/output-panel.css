@@ -5,8 +5,7 @@
 .output-panel > header span { color: var(--a3s-faint); font-size: 8px; }
 .output-panel > header > div:last-child { display: flex; gap: 6px; }
 .output-toolbar { display: flex; min-height: 52px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--a3s-line); background: color-mix(in srgb, var(--a3s-panel-soft) 70%, var(--a3s-panel)); }
-.output-toolbar > label { display: flex; width: min(360px, 55%); height: 34px; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--a3s-line); border-radius: 8px; background: var(--a3s-panel); color: var(--a3s-muted); }
-.output-toolbar input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--a3s-ink); font-size: 10px; }
+.output-toolbar > .ds-search-field { width: min(360px, 55%); height: 34px; }
 .output-toolbar > fieldset { display: flex; margin: 0; padding: 3px; border: 0; border-radius: 8px; background: var(--a3s-panel-strong); }
 .output-toolbar > fieldset button { height: 27px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; color: var(--a3s-muted); font-size: 8px; }
 .output-toolbar > fieldset button.active { background: var(--a3s-panel); color: var(--a3s-ink); box-shadow: 0 1px 3px rgb(18 24 45 / 8%); }

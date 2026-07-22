@@ -23,12 +23,11 @@ describe('Work presentation editor transitions', () => {
     );
 
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
-      '首页',
+      '开始',
       '插入',
       '设计',
       '切换',
-      '动画',
-      '放映',
+      '幻灯片放映',
       '审阅',
       '视图',
     ]);
@@ -53,9 +52,9 @@ describe('Work presentation editor transitions', () => {
     render(<PresentationHarness initial={artifact.content} onChange={onChange} />);
 
     fireEvent.click(screen.getByRole('tab', { name: '切换' }));
-    fireEvent.change(screen.getByLabelText('幻灯片切换效果'), { target: { value: 'push' } });
-    fireEvent.change(screen.getByLabelText('切换方向'), { target: { value: 'right' } });
-    fireEvent.change(screen.getByLabelText('切换速度'), { target: { value: 'slow' } });
+    chooseOfficeOption('幻灯片切换效果', '推进');
+    chooseOfficeOption('切换方向', '向右');
+    chooseOfficeOption('切换速度', '慢速');
     fireEvent.click(screen.getByLabelText('单击鼠标后换片'));
     fireEvent.click(screen.getByLabelText('自动换片'));
     fireEvent.change(screen.getByLabelText('自动换片秒数'), { target: { value: '3' } });
@@ -192,11 +191,10 @@ describe('Work presentation editor transitions', () => {
       },
     ];
     const onChange = vi.fn();
-    vi.spyOn(window, 'prompt').mockReturnValue('Add the launch owner.');
     render(<PresentationHarness initial={artifact.content} onChange={onChange} />);
 
     fireEvent.click(screen.getByRole('tab', { name: '审阅' }));
-    fireEvent.click(screen.getByRole('button', { name: '审阅演示批注（1）' }));
+    fireEvent.click(screen.getByRole('button', { name: '查看批注（1）' }));
     expect(screen.getByRole('region', { name: '演示批注审阅' })).toHaveTextContent('Verify the supporting evidence.');
     fireEvent.click(screen.getByRole('button', { name: '定位演示批注 1' }));
     expect(screen.getByRole('region', { name: '核心判断编辑画布' })).toBeInTheDocument();
@@ -206,7 +204,11 @@ describe('Work presentation editor transitions', () => {
     });
     await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[1].comments?.[0].text).toBe('Evidence verified.'));
 
-    fireEvent.click(screen.getByRole('button', { name: '添加演示批注' }));
+    fireEvent.click(screen.getByRole('button', { name: '新建批注' }));
+    fireEvent.change(await screen.findByRole('textbox', { name: '批注内容' }), {
+      target: { value: 'Add the launch owner.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '添加批注' }));
     await waitFor(() => {
       const comments = onChange.mock.lastCall?.[0].slides[1].comments;
       expect(comments).toHaveLength(2);
@@ -218,7 +220,7 @@ describe('Work presentation editor transitions', () => {
         y: 50,
       });
     });
-    expect(screen.getByRole('button', { name: '审阅演示批注（2）' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '查看批注（2）' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '打开演示批注 2' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '删除演示批注 1' }));
@@ -249,19 +251,80 @@ describe('Work presentation editor transitions', () => {
     if (artifact.content.type !== 'presentation') return;
     const onChange = vi.fn();
     render(<PresentationHarness initial={artifact.content} onChange={onChange} />);
-    fireEvent.focus(screen.getByDisplayValue('单击添加标题'));
+    const selectedElement = screen.getByRole('group', { name: '单击添加标题' });
+    expect(selectedElement).toHaveAttribute('tabindex', '0');
+    fireEvent.focus(selectedElement);
 
-    fireEvent.keyDown(window, { key: 'c', ctrlKey: true });
-    fireEvent.keyDown(window, { key: 'v', ctrlKey: true });
+    fireEvent.keyDown(selectedElement, { key: 'c', ctrlKey: true });
+    fireEvent.keyDown(selectedElement, { key: 'v', ctrlKey: true });
     await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements).toHaveLength(3));
     const pasted = onChange.mock.lastCall?.[0].slides[0].elements[2];
     expect(pasted).toMatchObject({ text: '单击添加标题', x: 14, y: 27 });
     expect(pasted.id).not.toBe(artifact.content.slides[0].elements[0].id);
 
-    fireEvent.keyDown(window, { key: 'x', ctrlKey: true });
+    fireEvent.keyDown(selectedElement, { key: 'x', ctrlKey: true });
     await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements).toHaveLength(2));
-    fireEvent.keyDown(window, { key: 'v', ctrlKey: true });
+    fireEvent.keyDown(selectedElement, { key: 'v', ctrlKey: true });
     await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements).toHaveLength(3));
+  });
+
+  it('does not move a selected object while navigating the ribbon with arrow keys', async () => {
+    const artifact = createWorkArtifact('blank-presentation');
+    if (artifact.content.type !== 'presentation') return;
+    const onChange = vi.fn();
+    render(<PresentationHarness initial={artifact.content} onChange={onChange} />);
+    fireEvent.focus(screen.getByRole('group', { name: '单击添加标题' }));
+
+    fireEvent.keyDown(screen.getByRole('tab', { name: '开始' }), { key: 'ArrowRight' });
+
+    await waitFor(() => expect(screen.getByRole('tab', { name: '插入' })).toHaveFocus());
+    expect(onChange).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(screen.getByRole('button', { name: '图片' }), { key: 'ArrowRight' });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('nudges a focused element and supports undo and redo from the ribbon and keyboard', async () => {
+    const artifact = createWorkArtifact('blank-presentation');
+    if (artifact.content.type !== 'presentation') return;
+    const originalX = artifact.content.slides[0].elements[0].x;
+    const originalY = artifact.content.slides[0].elements[0].y;
+    const onChange = vi.fn();
+    render(<PresentationHarness initial={artifact.content} onChange={onChange} />);
+    const selectedElement = screen.getByRole('group', { name: '单击添加标题' });
+    fireEvent.focus(selectedElement);
+
+    fireEvent.keyDown(selectedElement, { key: 'ArrowRight' });
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements[0].x).toBe(originalX + 1));
+    await waitFor(() => expect(screen.getByRole('button', { name: '撤销' })).toBeEnabled());
+
+    fireEvent.keyDown(screen.getByRole('group', { name: '单击添加标题' }), {
+      key: 'ArrowDown',
+      shiftKey: true,
+    });
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements[0].y).toBe(originalY + 5));
+
+    fireEvent.keyDown(screen.getByRole('group', { name: '单击添加标题' }), { key: 'z', ctrlKey: true });
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements[0].y).toBe(originalY));
+    expect(screen.getByRole('button', { name: '重做' })).toBeEnabled();
+
+    fireEvent.keyDown(screen.getByRole('group', { name: '单击添加标题' }), {
+      key: 'z',
+      ctrlKey: true,
+      shiftKey: true,
+    });
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements[0].y).toBe(originalY + 5));
+
+    fireEvent.click(screen.getByRole('button', { name: '撤销' }));
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements[0].y).toBe(originalY));
+    fireEvent.keyDown(screen.getByRole('group', { name: '单击添加标题' }), { key: 'y', ctrlKey: true });
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements[0].y).toBe(originalY + 5));
+
+    fireEvent.click(screen.getByRole('button', { name: '撤销' }));
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements[0].y).toBe(originalY));
+    fireEvent.click(screen.getByRole('button', { name: '重做' }));
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements[0].y).toBe(originalY + 5));
+    expect(onChange.mock.lastCall?.[0].slides[0].elements[0].x).toBe(originalX + 1);
   });
 
   it('copies and pastes a full slide from the toolbar with fresh nested identities', async () => {
@@ -280,8 +343,8 @@ describe('Work presentation editor transitions', () => {
     const onChange = vi.fn();
     render(<PresentationHarness initial={artifact.content} onChange={onChange} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '复制所选元素或幻灯片' }));
-    fireEvent.click(screen.getByRole('button', { name: '粘贴演示内容' }));
+    fireEvent.click(screen.getByRole('button', { name: '复制' }));
+    fireEvent.click(screen.getByRole('button', { name: '粘贴' }));
 
     await waitFor(() => expect(onChange.mock.lastCall?.[0].slides).toHaveLength(4));
     const pasted = onChange.mock.lastCall?.[0].slides[1];
@@ -302,7 +365,7 @@ describe('Work presentation editor transitions', () => {
     fireEvent.click(screen.getByRole('button', { name: '图表' }));
     expect(screen.getByRole('region', { name: '演示图表数据' })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('演示图表类型'), { target: { value: 'doughnut' } });
+    chooseOfficeOption('演示图表类型', '圆环图');
     fireEvent.change(screen.getByLabelText('圆环孔径'), { target: { value: '68' } });
     fireEvent.change(screen.getByLabelText('演示图表标题'), { target: { value: '区域收入' } });
     fireEvent.change(screen.getByLabelText('演示图表分类'), { target: { value: '华东\n华南\n华北' } });
@@ -349,11 +412,11 @@ describe('Work presentation editor transitions', () => {
     fireEvent.click(screen.getByRole('tab', { name: '插入' }));
     fireEvent.click(screen.getByRole('button', { name: '图表' }));
     expect(screen.getByLabelText('显示演示图表图例')).toBeChecked();
-    fireEvent.change(screen.getByLabelText('演示图表图例位置'), { target: { value: 'bottom' } });
+    chooseOfficeOption('演示图表图例位置', '底部');
     fireEvent.change(screen.getByLabelText('演示图表横轴标题'), { target: { value: '季度' } });
     fireEvent.click(screen.getByLabelText('演示图表横轴逆序'));
-    fireEvent.change(screen.getByLabelText('演示图表横轴标签位置'), { target: { value: 'high' } });
-    fireEvent.change(screen.getByLabelText('演示图表横轴主要刻度线'), { target: { value: 'outside' } });
+    chooseOfficeOption('演示图表横轴标签位置', '高位');
+    chooseOfficeOption('演示图表横轴主要刻度线', '向外');
     fireEvent.change(screen.getByLabelText('演示图表横轴标签间隔'), { target: { value: '2' } });
     fireEvent.change(screen.getByLabelText('演示图表纵轴标题'), { target: { value: '收入（万元）' } });
     fireEvent.change(screen.getByLabelText('演示图表纵轴最小值'), { target: { value: '0' } });
@@ -405,15 +468,15 @@ describe('Work presentation editor transitions', () => {
     fireEvent.click(screen.getByRole('tab', { name: '插入' }));
     fireEvent.click(screen.getByRole('button', { name: '图表' }));
     fireEvent.click(screen.getByLabelText('演示图表图例叠加在绘图区'));
-    fireEvent.change(screen.getByLabelText('演示图表分组方式'), { target: { value: 'percentStacked' } });
+    chooseOfficeOption('演示图表分组方式', '百分比堆积');
     fireEvent.change(screen.getByLabelText('演示图表分类间距（%）'), { target: { value: '240' } });
     fireEvent.change(screen.getByLabelText('演示图表系列重叠（%）'), { target: { value: '85' } });
     fireEvent.click(screen.getByLabelText('系列 1 使用自定义外观'));
-    fireEvent.change(screen.getByLabelText('系列 1 填充颜色'), { target: { value: '#112233' } });
+    chooseOfficeColor('系列 1 填充颜色', '#112233');
     fireEvent.change(screen.getByLabelText('系列 1 填充透明度'), { target: { value: '35' } });
-    fireEvent.change(screen.getByLabelText('系列 1 线条颜色'), { target: { value: '#445566' } });
+    chooseOfficeColor('系列 1 线条颜色', '#445566');
     fireEvent.change(screen.getByLabelText('系列 1 线条宽度'), { target: { value: '3.25' } });
-    fireEvent.change(screen.getByLabelText('系列 1 线条虚线'), { target: { value: 'dashDot' } });
+    chooseOfficeOption('系列 1 线条虚线', '点划线');
 
     await waitFor(() => {
       const latest = onChange.mock.lastCall?.[0] as WorkPresentationContent;
@@ -450,7 +513,7 @@ describe('Work presentation editor transitions', () => {
     fireEvent.click(screen.getByLabelText('显示演示图表数据标签'));
     fireEvent.click(screen.getByLabelText('演示图表数据标签显示分类名称'));
     fireEvent.click(screen.getByLabelText('演示图表数据标签显示系列名称'));
-    fireEvent.change(screen.getByLabelText('演示图表数据标签位置'), { target: { value: 'outsideEnd' } });
+    chooseOfficeOption('演示图表数据标签位置', '外侧末端');
     fireEvent.change(screen.getByLabelText('演示图表数据标签分隔符'), { target: { value: ' / ' } });
 
     await waitFor(() => {
@@ -474,10 +537,10 @@ describe('Work presentation editor transitions', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: '插入' }));
     fireEvent.click(screen.getByRole('button', { name: '图表' }));
-    fireEvent.change(screen.getByLabelText('演示图表类型'), { target: { value: 'scatter' } });
+    chooseOfficeOption('演示图表类型', '散点图');
     fireEvent.change(screen.getByLabelText('演示图表 X 值'), { target: { value: '1, 2, 4' } });
     fireEvent.change(screen.getByLabelText('演示图表系列 1 Y 值'), { target: { value: '3, 5, 9' } });
-    fireEvent.change(screen.getByLabelText('演示散点图样式'), { target: { value: 'smoothMarker' } });
+    chooseOfficeOption('演示散点图样式', '平滑线和数据标记');
 
     await waitFor(() => {
       const latest = onChange.mock.lastCall?.[0] as WorkPresentationContent;
@@ -489,10 +552,10 @@ describe('Work presentation editor transitions', () => {
       });
     });
 
-    fireEvent.change(screen.getByLabelText('演示图表类型'), { target: { value: 'bubble' } });
+    chooseOfficeOption('演示图表类型', '气泡图');
     fireEvent.change(screen.getByLabelText('演示气泡图系列 1 大小'), { target: { value: '9, 16, 25' } });
     fireEvent.change(screen.getByLabelText('演示气泡图缩放'), { target: { value: '140' } });
-    fireEvent.change(screen.getByLabelText('演示气泡大小表示'), { target: { value: 'width' } });
+    chooseOfficeOption('演示气泡大小表示', '宽度');
     fireEvent.click(screen.getByLabelText('显示负气泡'));
     fireEvent.click(screen.getByLabelText('显示演示图表数据标签'));
     fireEvent.click(screen.getByLabelText('演示图表数据标签显示气泡大小'));
@@ -522,12 +585,12 @@ describe('Work presentation editor transitions', () => {
     fireEvent.click(screen.getByRole('button', { name: '图表' }));
     expect(screen.getByRole('region', { name: '演示图表系列 1 高级分析' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '添加系列 1 趋势线' }));
-    fireEvent.change(screen.getByLabelText('系列 1 趋势线 1 类型'), { target: { value: 'polynomial' } });
+    chooseOfficeOption('系列 1 趋势线 1 类型', '多项式');
     fireEvent.change(screen.getByLabelText('系列 1 趋势线 1 阶数'), { target: { value: '3' } });
     fireEvent.click(screen.getByLabelText('系列 1 趋势线 1 显示公式'));
     fireEvent.click(screen.getByLabelText('系列 1 趋势线 1 显示 R 方'));
     fireEvent.click(screen.getByRole('button', { name: '添加系列 1 Y 误差线' }));
-    fireEvent.change(screen.getByLabelText('系列 1 误差线 1 计算方式'), { target: { value: 'percentage' } });
+    chooseOfficeOption('系列 1 误差线 1 计算方式', '百分比');
     fireEvent.change(screen.getByLabelText('系列 1 误差线 1 数值'), { target: { value: '10' } });
     fireEvent.click(screen.getByLabelText('系列 1 误差线 1 显示端帽'));
 
@@ -547,7 +610,7 @@ describe('Work presentation editor transitions', () => {
       });
     });
 
-    fireEvent.change(screen.getByLabelText('系列 1 误差线 1 计算方式'), { target: { value: 'custom' } });
+    chooseOfficeOption('系列 1 误差线 1 计算方式', '自定义范围');
     const plusValues = screen.getByLabelText('系列 1 误差线 1 正误差值');
     fireEvent.change(plusValues, { target: { value: '1, 2, 3' } });
     fireEvent.blur(plusValues);
@@ -575,10 +638,8 @@ describe('Work presentation editor transitions', () => {
     render(<PresentationHarness initial={presentationWithLayouts()} onChange={onChange} />);
 
     fireEvent.click(screen.getByRole('tab', { name: '设计' }));
-    fireEvent.click(screen.getByRole('button', { name: '母版与布局' }));
-    fireEvent.change(screen.getByLabelText('幻灯片布局'), {
-      target: { value: 'layout-title' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: '母版和版式' }));
+    chooseOfficeOption('幻灯片布局', 'Title layout');
     await waitFor(() => {
       const latest = onChange.mock.lastCall?.[0] as WorkPresentationContent;
       expect(latest.slides[0]).toMatchObject({ layoutId: 'layout-title' });
@@ -609,9 +670,7 @@ describe('Work presentation editor transitions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '编辑当前母版' }));
     expect(screen.getByRole('region', { name: 'Brand master母版编辑画布' })).toBeInTheDocument();
-    fireEvent.input(screen.getByLabelText('母版背景颜色'), {
-      target: { value: '#334455' },
-    });
+    chooseOfficeColor('母版背景颜色', '#334455');
     fireEvent.click(screen.getByRole('tab', { name: '插入' }));
     fireEvent.click(screen.getByRole('button', { name: '文本框' }));
     await waitFor(() => {
@@ -643,6 +702,17 @@ function PresentationHarness({
       }}
     />
   );
+}
+
+function chooseOfficeOption(label: string, option: string) {
+  fireEvent.click(screen.getByRole('combobox', { name: label }));
+  fireEvent.click(screen.getByRole('option', { name: option }));
+}
+
+function chooseOfficeColor(label: string, value: string) {
+  fireEvent.click(screen.getByRole('button', { name: label }));
+  fireEvent.change(screen.getByRole('textbox', { name: '自定义颜色值' }), { target: { value } });
+  fireEvent.click(screen.getByRole('button', { name: '应用' }));
 }
 
 function presentationWithLayouts(): WorkPresentationContent {

@@ -94,6 +94,21 @@ describe('Work EmbedPDF editor', () => {
     expect(screen.getByLabelText('PDF 保存状态')).toHaveTextContent('已保存');
   });
 
+  it('handles only the plain Cmd/Ctrl+S save shortcut', async () => {
+    const onSave = vi.fn(async (_pdf: Blob) => true);
+    render(<PdfViewer loadSource={async () => new Blob(['pdf'], { type: 'application/pdf' })} onSave={onSave} />);
+    await screen.findByTestId('embedpdf-viewer');
+    await waitFor(() => expect(screen.getByRole('button', { name: '保存' })).toBeEnabled());
+
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true, shiftKey: true });
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true, altKey: true });
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true, repeat: true });
+    expect(onSave).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+  });
+
   it('uses a read-only native viewer when no persistence callback is provided', async () => {
     render(<PdfViewer loadSource={async () => new Blob(['pdf'], { type: 'application/pdf' })} />);
 

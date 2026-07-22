@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useSnapshot } from 'valtio';
+import { Button, InlineNotice } from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
 import type { CodeActions } from '../../code/use-code-controller';
 import {
   EvolutionCandidateDetail,
-  EvolutionConfirmationDialog,
   type EvolutionConfirmation,
+  EvolutionConfirmationDialog,
 } from './evolution-candidate-detail';
 import { CandidateButton, EvolutionEmptyState, EvolutionErrorState, EvolutionLoadingState } from './evolution-shared';
 
@@ -49,12 +50,18 @@ export function EvolutionWorkbench({ actions }: { actions: EvolutionActions }) {
   return (
     <div className='evolution-surface'>
       {state.evolutionError && (
-        <output className='memory-stale-notice'>
+        <InlineNotice
+          className='memory-stale-notice'
+          tone='warning'
+          role='status'
+          actions={
+            <Button tone='quiet' onClick={() => void actions.loadEvolution(true)}>
+              重试
+            </Button>
+          }
+        >
           <span title={state.evolutionError}>更新失败，当前显示上次结果。</span>
-          <button type='button' onClick={() => void actions.loadEvolution(true)}>
-            重试
-          </button>
-        </output>
+        </InlineNotice>
       )}
       {data.candidates.length === 0 ? (
         <EvolutionEmptyState />

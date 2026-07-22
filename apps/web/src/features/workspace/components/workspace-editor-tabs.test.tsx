@@ -70,6 +70,25 @@ describe('WorkspaceEditorTabs context menu', () => {
     fireEvent.keyDown(menu, { key: 'Escape' });
     expect(tab).toHaveFocus();
   });
+
+  it('shares Home and End roving navigation with the system tab contract', () => {
+    const activateEditorTab = vi.fn();
+    render(
+      <WorkspaceEditorTabs actions={{ closeEditorTabs: vi.fn(), activateEditorTab } as unknown as WorkspaceActions} />
+    );
+
+    const first = screen.getByRole('tab', { name: /app\.ts/ });
+    const last = screen.getByRole('tab', { name: /README\.md/ });
+    first.focus();
+    fireEvent.keyDown(first, { key: 'End' });
+
+    expect(last).toHaveFocus();
+    expect(activateEditorTab).toHaveBeenLastCalledWith(tabs[2].id);
+
+    fireEvent.keyDown(last, { key: 'Home' });
+    expect(first).toHaveFocus();
+    expect(activateEditorTab).toHaveBeenLastCalledWith(tabs[0].id);
+  });
 });
 
 function fileTab(path: string): WorkspaceEditorTab {

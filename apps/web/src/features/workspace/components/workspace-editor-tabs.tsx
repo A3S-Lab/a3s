@@ -1,6 +1,7 @@
 import { Copy, FileDiff, Files, LoaderCircle, PanelRightClose, X, XCircle } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSnapshot } from 'valtio';
+import { useTabNavigation } from '../../../design-system/primitives';
 import { appState, showToast } from '../../../state/app-state';
 import type { WorkspaceActions } from '../workspace-actions';
 import { isFileEditorTabDirty, type WorkspaceEditorTab, workspaceRelativePath } from '../workspace-state';
@@ -15,18 +16,20 @@ interface TabContextMenuState {
 
 export function WorkspaceEditorTabs({ actions }: { actions: WorkspaceActions }) {
   const state = useSnapshot(appState);
-  const activeRef = useRef<HTMLDivElement>(null);
   const [contextMenu, setContextMenu] = useState<TabContextMenuState | null>(null);
+  const tabNavigation = useTabNavigation({ items: state.editorTabs, onChange: actions.activateEditorTab });
   useEffect(() => {
-    activeRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
-  }, [state.activeEditorTabId]);
+    if (state.activeEditorTabId) {
+      tabNavigation.getTabElement(state.activeEditorTabId)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    }
+  }, [state.activeEditorTabId, tabNavigation.getTabElement]);
   if (!state.editorTabs.length) return null;
   const contextualTab = contextMenu ? state.editorTabs.find((tab) => tab.id === contextMenu.tabId) : undefined;
 
   return (
     <>
       <div className='workspace-editor-tabs' role='tablist' aria-label='已打开的编辑器'>
-        {state.editorTabs.map((tab, index) => {
+        {state.editorTabs.map((tab) => {
           const active = tab.id === state.activeEditorTabId;
           const dirty = tab.kind === 'file' && isFileEditorTabDirty(tab);
           const relativePath = workspaceRelativePath(tab.path, state.workspaceRoot);
@@ -36,7 +39,7 @@ export function WorkspaceEditorTabs({ actions }: { actions: WorkspaceActions }) 
               : basename(tab.path);
           return (
             <div
-              ref={active ? activeRef : undefined}
+              ref={(element) => tabNavigation.setTabElement(tab.id, element)}
               className={`workspace-editor-tab ${active ? 'active' : ''} ${dirty ? 'dirty' : ''} ${
                 contextMenu?.tabId === tab.id ? 'contextual' : ''
               }`}
@@ -72,15 +75,9 @@ export function WorkspaceEditorTabs({ actions }: { actions: WorkspaceActions }) 
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
                   actions.activateEditorTab(tab.id);
+                  return;
                 }
-                if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-                  event.preventDefault();
-                  const direction = event.key === 'ArrowRight' ? 1 : -1;
-                  const next =
-                    state.editorTabs[(index + direction + state.editorTabs.length) % state.editorTabs.length];
-                  actions.activateEditorTab(next.id);
-                  requestAnimationFrame(() => activeRef.current?.focus());
-                }
+                tabNavigation.handleTabKeyDown(event, tab.id);
               }}
             >
               {tab.kind === 'diff' ? (

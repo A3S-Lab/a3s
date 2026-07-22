@@ -1,4 +1,4 @@
-import { Cloud, Grid2X2, PanelsTopLeft, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { WorkspaceContextMenu } from '../../workspace/components/workspace-context-menu';
 import { presentationAgentMenuItems } from '../components/work-editor-agent-menus';
@@ -19,11 +19,11 @@ import type {
   WorkSlide,
   WorkSlideElement,
 } from '../work-types';
-import { PresentationPlayer } from './presentation-player';
+import { OfficeFileInput, OfficeTextArea, useOfficeDialog } from './office-controls';
 import { SlideChart } from './presentation-chart-canvas';
 import { PresentationChartPanel } from './presentation-chart-panel';
-import { presentationCommentCount, PresentationCommentsPanel } from './presentation-comments-panel';
-import { PresentationDesignPanel, type PresentationDesignMode } from './presentation-design-panel';
+import { PresentationCommentsPanel, presentationCommentCount } from './presentation-comments-panel';
+import { type PresentationDesignMode, PresentationDesignPanel } from './presentation-design-panel';
 import {
   clamp,
   fileToDataUrl,
@@ -32,6 +32,8 @@ import {
   updatePresentationElements,
   updateSlide,
 } from './presentation-editor-operations';
+import { PresentationPlayer } from './presentation-player';
+import { PresentationStatusBar } from './presentation-status-bar';
 import {
   EditableSlideTable,
   RichEditableText,
@@ -42,12 +44,14 @@ import {
 } from './presentation-slide-canvas';
 import { PresentationToolbar } from './presentation-toolbar';
 import { usePresentationClipboard } from './use-presentation-clipboard';
-import { WorkOfficeStatusBar, WorkOfficeZoomControls } from './work-office-chrome';
+import { usePresentationHistory } from './use-presentation-history';
+import type { WorkOfficeFileAction } from './work-office-chrome';
 
 interface PresentationEditorProps {
   content: WorkPresentationContent;
   preview: boolean;
   saveStatus?: string;
+  fileActions?: readonly WorkOfficeFileAction[];
   onChange: (content: WorkPresentationContent) => void;
   onAgentRequest?: (request: WorkEditorAgentRequest) => void | Promise<void>;
   onStartSlideshow?: () => void;
@@ -78,6 +82,7 @@ export function PresentationEditor({
   content,
   preview,
   saveStatus = '已自动保存',
+  fileActions,
   onChange,
   onAgentRequest,
   onStartSlideshow,
@@ -92,6 +97,7 @@ export function PresentationEditor({
   const [agentMenu, setAgentMenu] = useState<PresentationAgentMenuState | null>(null);
   const [viewMode, setViewMode] = useState<'normal' | 'sorter'>('normal');
   const [zoom, setZoom] = useState(90);
+  const officeDialog = useOfficeDialog();
   const canvasRef = useRef<HTMLElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -168,6 +174,8 @@ export function PresentationEditor({
     }
   }, [content.slides, selectedSlideId]);
 
+  const history = usePresentationHistory({ content, onChange });
+
   const clipboard = usePresentationClipboard({
     content,
     preview,
@@ -178,6 +186,8 @@ export function PresentationEditor({
     onChange,
     onSelectSlide: setSelectedSlideId,
     onSelectElement: setSelectedElementId,
+    onUndo: history.undo,
+    onRedo: history.redo,
   });
 
   if (preview) return <PresentationPlayer content={content} />;
@@ -301,25 +311,26 @@ export function PresentationEditor({
   };
 
   const addComment = () => {
-    const text = window.prompt('批注内容', '');
-    if (!text?.trim()) return;
-    const comment = {
-      id: createWorkId('slide-comment'),
-      author: 'A3S Work 用户',
-      initials: 'AW',
-      date: new Date().toISOString(),
-      text: text.trim(),
-      x: clamp(selectedElement ? selectedElement.x + selectedElement.width : 50, 2, 98),
-      y: clamp(selectedElement ? selectedElement.y : 50, 2, 98),
-    };
-    updateSlide(
-      content,
-      selectedSlide.id,
-      (slide) => ({ ...slide, comments: [...(slide.comments ?? []), comment] }),
-      onChange
-    );
-    setActiveCommentId(comment.id);
-    setCommentsOpen(true);
+    void officeDialog.prompt({ title: '批注内容', multiline: true, confirmLabel: '添加批注' }).then((text) => {
+      if (!text?.trim()) return;
+      const comment = {
+        id: createWorkId('slide-comment'),
+        author: 'A3S Work 用户',
+        initials: 'AW',
+        date: new Date().toISOString(),
+        text: text.trim(),
+        x: clamp(selectedElement ? selectedElement.x + selectedElement.width : 50, 2, 98),
+        y: clamp(selectedElement ? selectedElement.y : 50, 2, 98),
+      };
+      updateSlide(
+        content,
+        selectedSlide.id,
+        (slide) => ({ ...slide, comments: [...(slide.comments ?? []), comment] }),
+        onChange
+      );
+      setActiveCommentId(comment.id);
+      setCommentsOpen(true);
+    });
   };
 
   const addSlide = () => {
@@ -526,10 +537,8 @@ export function PresentationEditor({
 
   return (
     <section className='work-presentation-editor'>
-      <input
+      <OfficeFileInput
         ref={imageInputRef}
-        className='work-file-input'
-        type='file'
         accept='image/*'
         aria-label='插入图片'
         onChange={(event) => {
@@ -540,6 +549,7 @@ export function PresentationEditor({
       />
       <PresentationToolbar
         selectedSlide={selectedSlide}
+        fileActions={fileActions}
         selectedElement={selectedElement}
         slideCount={content.slides.length}
         onAddSlide={addSlide}
@@ -548,6 +558,10 @@ export function PresentationEditor({
         onCopySelection={clipboard.copySelection}
         onCutSelection={clipboard.cutSelection}
         onPasteSelection={clipboard.pasteSelection}
+        canUndo={history.canUndo}
+        canRedo={history.canRedo}
+        onUndo={history.undo}
+        onRedo={history.redo}
         onAddElement={addElement}
         onRequestImage={() => imageInputRef.current?.click()}
         onAddTable={addTable}
@@ -577,6 +591,8 @@ export function PresentationEditor({
           })
         }
         onStartSlideshow={onStartSlideshow}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
       {designOpen && selectedLayout && selectedMaster && (
         <PresentationDesignPanel
@@ -763,82 +779,88 @@ export function PresentationEditor({
                   {definition.placeholder?.prompt ?? '单击添加内容'}
                 </button>
               ))}
-              {activeElements.map((element) => (
-                <fieldset
-                  className={`work-slide-element ${element.type} ${element.placeholder ? 'placeholder' : ''} ${
-                    element.id === selectedElementId ? 'selected' : ''
-                  }`}
-                  key={element.id}
-                  data-slide-element-origin={designMode}
-                  style={slideElementStyle(element)}
-                  onFocus={() => setSelectedElementId(element.id)}
-                  onContextMenu={(event) => {
-                    setSelectedElementId(element.id);
-                    if (designMode !== 'slide') return;
-                    openAgentMenu(
-                      event,
-                      selectedSlide,
-                      content.slides.findIndex((slide) => slide.id === selectedSlide.id),
-                      element
-                    );
-                  }}
-                  onPointerDown={(event) => {
-                    if (
-                      event.target instanceof HTMLTextAreaElement ||
-                      (event.target instanceof HTMLElement && event.target.closest('[data-slide-editor]'))
-                    ) {
+              {activeElements.map((element) => {
+                return (
+                  <fieldset
+                    key={element.id}
+                    className={`work-slide-element ${element.type} ${element.placeholder ? 'placeholder' : ''} ${
+                      element.id === selectedElementId ? 'selected' : ''
+                    }`}
+                    // biome-ignore lint/a11y/noNoninteractiveTabindex: Slide objects are keyboard-selectable and support editing shortcuts.
+                    tabIndex={0}
+                    data-slide-element-origin={designMode}
+                    style={slideElementStyle(element)}
+                    onFocus={() => setSelectedElementId(element.id)}
+                    onContextMenu={(event) => {
                       setSelectedElementId(element.id);
-                      event.stopPropagation();
-                      return;
-                    }
-                    beginDrag(event, element, 'move');
-                  }}
-                >
-                  <legend className='sr-only'>{element.altText?.trim() || element.text?.trim() || '幻灯片元素'}</legend>
-                  {element.type === 'image' && element.image ? (
-                    <img src={element.image.dataUrl} alt={element.altText ?? element.image.name} draggable={false} />
-                  ) : element.type === 'table' && element.table ? (
-                    <EditableSlideTable
-                      element={element}
-                      onChange={(rows) => updateElement({ table: { ...element.table, rows } })}
-                    />
-                  ) : element.type === 'chart' && element.chart ? (
-                    <SlideChart chart={element.chart} label={element.altText ?? element.chart.title ?? '图表'} />
-                  ) : element.textRuns?.length ? (
-                    <RichEditableText
-                      element={element}
-                      onCommit={(text) => updateElement({ text, textRuns: undefined })}
-                    />
-                  ) : element.text || element.type === 'text' || element.type === 'shape' ? (
-                    <textarea
-                      value={element.text}
-                      aria-label='幻灯片文本'
-                      placeholder={element.placeholder?.prompt}
-                      spellCheck
-                      style={slideTextStyle(element)}
-                      onFocus={() => setSelectedElementId(element.id)}
-                      onChange={(event) => {
+                      if (designMode !== 'slide') return;
+                      openAgentMenu(
+                        event,
+                        selectedSlide,
+                        content.slides.findIndex((slide) => slide.id === selectedSlide.id),
+                        element
+                      );
+                    }}
+                    onPointerDown={(event) => {
+                      if (
+                        event.target instanceof HTMLTextAreaElement ||
+                        (event.target instanceof HTMLElement && event.target.closest('[data-slide-editor]'))
+                      ) {
                         setSelectedElementId(element.id);
-                        updateElement({ text: event.target.value, textRuns: undefined });
-                      }}
-                    />
-                  ) : null}
-                  {element.id === selectedElementId && (
-                    <>
-                      <span
-                        className='work-slide-move-handle'
-                        aria-hidden='true'
-                        onPointerDown={(event) => beginDrag(event, element, 'move')}
+                        event.stopPropagation();
+                        return;
+                      }
+                      beginDrag(event, element, 'move');
+                    }}
+                  >
+                    <legend className='sr-only'>
+                      {element.altText?.trim() || element.text?.trim() || '幻灯片元素'}
+                    </legend>
+                    {element.type === 'image' && element.image ? (
+                      <img src={element.image.dataUrl} alt={element.altText ?? element.image.name} draggable={false} />
+                    ) : element.type === 'table' && element.table ? (
+                      <EditableSlideTable
+                        element={element}
+                        onChange={(rows) => updateElement({ table: { ...element.table, rows } })}
                       />
-                      <span
-                        className='work-slide-resize-handle'
-                        aria-hidden='true'
-                        onPointerDown={(event) => beginDrag(event, element, 'resize')}
+                    ) : element.type === 'chart' && element.chart ? (
+                      <SlideChart chart={element.chart} label={element.altText ?? element.chart.title ?? '图表'} />
+                    ) : element.textRuns?.length ? (
+                      <RichEditableText
+                        element={element}
+                        onCommit={(text) => updateElement({ text, textRuns: undefined })}
                       />
-                    </>
-                  )}
-                </fieldset>
-              ))}
+                    ) : element.text || element.type === 'text' || element.type === 'shape' ? (
+                      <OfficeTextArea
+                        value={element.text}
+                        aria-label='幻灯片文本'
+                        placeholder={element.placeholder?.prompt}
+                        spellCheck
+                        style={slideTextStyle(element)}
+                        onFocus={() => setSelectedElementId(element.id)}
+                        onChange={(event) => {
+                          setSelectedElementId(element.id);
+                          updateElement({ text: event.target.value, textRuns: undefined });
+                        }}
+                      />
+                    ) : null}
+                    {element.id === selectedElementId && (
+                      <>
+                        <span
+                          className='work-slide-move-handle'
+                          aria-hidden='true'
+                          onPointerDown={(event) => beginDrag(event, element, 'move')}
+                        />
+                        <span
+                          className='work-slide-resize-handle'
+                          aria-hidden='true'
+                          onPointerDown={(event) => beginDrag(event, element, 'resize')}
+                        />
+                      </>
+                    )}
+                  </fieldset>
+                );
+              })}
               {designMode === 'slide' &&
                 (selectedSlide.comments ?? []).map((comment, index) => (
                   <button
@@ -873,9 +895,10 @@ export function PresentationEditor({
               </span>
             </footer>
             {designMode === 'slide' && (
-              <label className='work-slide-notes'>
+              <div className='work-slide-notes'>
                 <span>演讲者备注</span>
-                <textarea
+                <OfficeTextArea
+                  aria-label='演讲者备注'
                   value={selectedSlide.notes ?? ''}
                   placeholder='添加演讲者备注'
                   onChange={(event) =>
@@ -887,7 +910,7 @@ export function PresentationEditor({
                     )
                   }
                 />
-              </label>
+              </div>
             )}
           </div>
         </div>
@@ -915,50 +938,15 @@ export function PresentationEditor({
           ))}
         </section>
       )}
-      <WorkOfficeStatusBar
-        className='work-presentation-status'
-        controls={
-          <>
-            <button
-              type='button'
-              aria-label='普通演示视图'
-              title='普通演示视图'
-              aria-pressed={viewMode === 'normal'}
-              onClick={() => setViewMode('normal')}
-            >
-              <PanelsTopLeft size={13} />
-            </button>
-            <button
-              type='button'
-              aria-label='幻灯片浏览视图'
-              title='幻灯片浏览视图'
-              aria-pressed={viewMode === 'sorter'}
-              onClick={() => setViewMode('sorter')}
-            >
-              <Grid2X2 size={13} />
-            </button>
-            <span className='work-office-status-divider' />
-            <WorkOfficeZoomControls
-              zoom={zoom}
-              decreaseLabel='缩小演示文稿'
-              increaseLabel='放大演示文稿'
-              outputLabel='演示缩放比例'
-              sliderLabel='演示缩放'
-              onChange={setZoom}
-            />
-          </>
-        }
-      >
-        <output aria-label='幻灯片状态'>
-          幻灯片 {content.slides.findIndex((slide) => slide.id === selectedSlide.id) + 1} / {content.slides.length}
-        </output>
-        <output aria-label='演示备注状态'>{selectedSlide.notes?.trim() ? '已添加演讲者备注' : '无演讲者备注'}</output>
-        <output aria-label='演示批注状态'>批注：{presentationCommentCount(content.slides)}</output>
-        <output aria-label='演示保存状态' className='work-office-save-status'>
-          <Cloud size={12} />
-          {saveStatus}
-        </output>
-      </WorkOfficeStatusBar>
+      <PresentationStatusBar
+        content={content}
+        selectedSlide={selectedSlide}
+        viewMode={viewMode}
+        zoom={zoom}
+        saveStatus={saveStatus}
+        onViewModeChange={setViewMode}
+        onZoomChange={setZoom}
+      />
       {designMode === 'slide' && agentMenu && onAgentRequest && (
         <WorkspaceContextMenu
           label={agentMenu.target === 'element' ? '演示元素 AI 操作' : '幻灯片 AI 操作'}
@@ -987,6 +975,7 @@ export function PresentationEditor({
           onClose={() => setAgentMenu(null)}
         />
       )}
+      {officeDialog.dialog}
     </section>
   );
 }
