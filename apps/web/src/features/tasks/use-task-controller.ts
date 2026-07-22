@@ -9,16 +9,16 @@ import {
   isWorkspaceContextCurrent,
   persistSessionTitle,
   promoteActiveTask,
-  reportTaskPersistenceResult,
   removePersistedSessionTitle,
   removeWorkspaceTaskSnapshot,
   replaceActiveWorkspace,
+  reportTaskPersistenceResult,
   showModelChangeNotice,
   showToast,
   switchActiveTask,
 } from '../../state/app-state';
 import type { AgentEvent, ChatMessage, CodeSession, QueuedTurn, SessionControls, TurnQueue } from '../../types/api';
-import { parseGoalCommand, type GoalCommand } from './goal-command';
+import { type GoalCommand, parseGoalCommand } from './goal-command';
 import {
   beginSessionControlsRequest,
   beginSessionMessagesRequest,
@@ -479,6 +479,7 @@ export function useTaskController() {
     const contextFiles = [...appState.composerContextFiles];
     const skillNames = [...appState.composerSkills];
     let sessionId = appState.activeSessionId;
+    const submittedDraftKey = taskDraftKey(sessionId, activeTaskProduct());
     appState.taskSubmissionState = sessionId ? 'queueing' : 'creating';
     try {
       if (!sessionId) sessionId = (await createSession(promptTitle(content))).sessionId;
@@ -487,7 +488,7 @@ export function useTaskController() {
       if (appState.streamingSessionId && appState.streamingSessionId !== sessionId) return;
       const queue = await codeApi.enqueueTurn(sessionId, { content, contextFiles, skillNames });
       applyTurnQueueSnapshot(queue);
-      clearComposer();
+      clearComposer(submittedDraftKey);
       let execution: Promise<void> | undefined;
       if (!appState.streamingSessionId && !queue.paused && queue.items[0]) {
         execution = executeQueuedTurn(sessionId, queue.items[0]);
@@ -777,8 +778,15 @@ export function useTaskController() {
   };
 }
 
-function clearComposer() {
+function clearComposer(submittedDraftKey?: string) {
   appState.composerValue = '';
   appState.composerContextFiles = [];
   appState.composerSkills = [];
+  if (!submittedDraftKey) return;
+  appState.draftsByTask[submittedDraftKey] = {
+    content: '',
+    contextFiles: [],
+    skillNames: [],
+  };
+  reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
 }

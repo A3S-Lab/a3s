@@ -72,6 +72,7 @@ export function TaskComposer({
           }}
         />
         <TaskComposerInput
+          key={`${state.activeSessionId ?? 'new'}:${submitting ? 'submitting' : 'ready'}`}
           value={state.composerValue}
           disabled={anotherTaskRunning || resourcesImporting || submitting}
           workspaceRoot={workspaceRoot}

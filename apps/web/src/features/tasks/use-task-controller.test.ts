@@ -507,6 +507,13 @@ describe('task configuration', () => {
     appState.composerValue = 'Inspect the release workflow';
     appState.composerContextFiles = [];
     appState.composerSkills = [];
+    appState.draftsByTask = {
+      [newTaskDraftKey]: {
+        content: 'Inspect the release workflow',
+        contextFiles: [],
+        skillNames: [],
+      },
+    };
     appState.newTaskConfig = {
       workspace: '/repo',
       model: 'codex/gpt-5.6-sol',
@@ -575,6 +582,12 @@ describe('task configuration', () => {
     expect(appState.taskSubmissionState).toBeNull();
     expect(appState.activeSessionId).toBe('task-new');
     expect(appState.composerValue).toBe('');
+    expect(appState.draftsByTask[newTaskDraftKey]).toEqual({ content: '', contextFiles: [], skillNames: [] });
+    expect(JSON.parse(localStorage.getItem('a3s-code-web.task-drafts') ?? '{}')[newTaskDraftKey]).toEqual({
+      content: '',
+      contextFiles: [],
+      skillNames: [],
+    });
     hook.unmount();
   });
 

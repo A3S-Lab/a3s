@@ -289,6 +289,24 @@ describe('Web-native session experiences', () => {
     expect(screen.getByRole('region', { name: '任务规划与执行' })).toHaveTextContent('正在启动任务会话');
   });
 
+  it('replaces the submitted editor when first-task startup settles', async () => {
+    appState.activeSessionId = null;
+    appState.taskSubmissionState = 'creating';
+    appState.composerValue = 'Submitted first instruction';
+    render(<TaskComposer actions={{} as CodeActions} />);
+    const submittingEditor = screen.getByRole('textbox', { name: '任务指令' });
+
+    act(() => {
+      appState.activeSessionId = session.sessionId;
+      appState.composerValue = '';
+      appState.taskSubmissionState = null;
+    });
+
+    await waitFor(() => expect(screen.getByRole('textbox', { name: '任务指令' })).toHaveTextContent(/^$/));
+    expect(screen.getByRole('textbox', { name: '任务指令' })).not.toBe(submittingEditor);
+    expect(appState.composerValue).toBe('');
+  });
+
   it('opens task context panels without changing task identity', async () => {
     appState.reviewSourceTaskId = 'older-task';
     render(<TaskHeader />);
