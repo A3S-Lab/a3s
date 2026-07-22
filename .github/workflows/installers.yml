@@ -136,7 +136,9 @@ jobs:
           if ($output -notmatch '^a3s (\d+\.\d+\.\d+)$') {
             throw "unexpected version output: $output"
           }
-          $index = Join-Path $env:A3S_DATA_HOME "web\$($Matches[1])\index.html"
+          $versionText = $Matches[1]
+          $installedVersion = [version]$versionText
+          $index = Join-Path $env:A3S_DATA_HOME "web\$versionText\index.html"
           if (-not (Test-Path -LiteralPath $index -PathType Leaf)) {
             throw "missing Web workspace: $index"
           }
@@ -151,6 +153,14 @@ jobs:
           $env:A3S_CACHE_HOME = Join-Path $env:RUNNER_TEMP 'a3s-smoke\cache'
           $env:A3S_RUNTIME_HOME = Join-Path $env:RUNNER_TEMP 'a3s-smoke\runtime'
           $env:A3S_WEBVIEW_INSTALL_DIR = Join-Path $env:RUNNER_TEMP 'a3s-smoke\components\webview'
+          if ($installedVersion -lt [version]'0.10.0') {
+            # Released CLIs before 0.10.0 require HOME even on native Windows.
+            $env:HOME = Join-Path $env:RUNNER_TEMP 'a3s-smoke\legacy-home'
+            New-Item -ItemType Directory -Force -Path $env:HOME | Out-Null
+          } else {
+            # Native Windows normally exposes USERPROFILE rather than HOME.
+            Remove-Item Env:HOME -ErrorAction SilentlyContinue
+          }
           $siblingWebview = Join-Path $installDir 'a3s-webview.exe'
           if (-not (Test-Path -LiteralPath $siblingWebview -PathType Leaf)) {
             & $binary --no-progress install webview
