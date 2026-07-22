@@ -16,6 +16,7 @@ export interface DialogFocusScopeOptions {
   initialFocus?: () => HTMLElement | null;
   getActiveScope?: () => HTMLElement | null;
   restoreFocus?: boolean;
+  restoreFocusTarget?: () => HTMLElement | null;
 }
 
 export function useDialogFocusScope<T extends HTMLElement>({
@@ -24,13 +25,15 @@ export function useDialogFocusScope<T extends HTMLElement>({
   initialFocus,
   getActiveScope,
   restoreFocus = true,
+  restoreFocusTarget,
 }: DialogFocusScopeOptions = {}) {
   const scopeRef = useRef<T>(null);
   const restoreFocusRef = useRef<HTMLElement | null>(
-    typeof document !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null
+    restoreFocusTarget?.() ??
+      (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null)
   );
   const optionsRef = useRef<DialogFocusScopeOptions>({});
-  optionsRef.current = { onEscape, escapeDisabled, initialFocus, getActiveScope, restoreFocus };
+  optionsRef.current = { onEscape, escapeDisabled, initialFocus, getActiveScope, restoreFocus, restoreFocusTarget };
 
   const focusInitial = useCallback((scope = scopeRef.current as HTMLElement | null) => {
     if (!scope) return;
@@ -46,6 +49,7 @@ export function useDialogFocusScope<T extends HTMLElement>({
       if (optionsRef.current.restoreFocus === false || !restoreTarget?.isConnected) return;
       restoreTarget.focus();
       window.setTimeout(() => {
+        if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
         const active = document.activeElement;
         if (
           restoreTarget.isConnected &&
@@ -65,7 +69,12 @@ export function useDialogFocusScope<T extends HTMLElement>({
       options.onEscape();
       return;
     }
-    if (event.key !== 'Tab') return;
+    if (event.key !== 'Tab') {
+      const commandKey = event.metaKey || event.ctrlKey;
+      if (commandKey && ['f', 'h', 'p', 's'].includes(event.key.toLocaleLowerCase())) event.preventDefault();
+      if (commandKey || event.altKey) event.stopPropagation();
+      return;
+    }
 
     const scope = options.getActiveScope?.() ?? scopeRef.current;
     if (!scope) return;

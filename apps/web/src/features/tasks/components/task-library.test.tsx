@@ -88,4 +88,22 @@ describe('TaskLibrary management', () => {
     fireEvent.click(screen.getByRole('button', { name: '保存任务名称' }));
     expect(renameSession).toHaveBeenCalledWith('task-1', 'Parser follow-up');
   });
+
+  it('associates an inline rename failure with the task name field', async () => {
+    const renameSession = vi.fn(async () => {
+      throw new Error('rename failed');
+    });
+    render(<TaskLibrary actions={{ renameSession } as unknown as TaskActions} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '重命名 Parser task' }));
+    const input = screen.getByRole('textbox', { name: '任务名称' });
+    fireEvent.change(input, { target: { value: 'Parser follow-up' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存任务名称' }));
+
+    await waitFor(() => expect(renameSession).toHaveBeenCalledWith('task-1', 'Parser follow-up'));
+    const error = screen.getByRole('alert');
+    expect(error).toHaveTextContent('重命名失败，请重试');
+    expect(input).toHaveAttribute('aria-describedby', error.id);
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+  });
 });

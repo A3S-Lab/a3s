@@ -158,11 +158,11 @@
   color: var(--a3s-red);
 }
 
-.work-presentation-comment-list > p {
-  margin: 12px;
-  color: var(--a3s-faint);
+.work-presentation-comments-empty.ds-collection-state {
+  min-height: 58px;
+  margin: 6px;
+  padding: 8px;
   font-size: 9px;
-  text-align: center;
 }
 
 .work-presentation-layout {

@@ -1,7 +1,15 @@
-import { FileSearch, LoaderCircle, Replace, Search, X } from 'lucide-react';
+import { FileSearch, LoaderCircle, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { Button, Dialog, IconButton, InlineNotice, StateView } from '../../../design-system/primitives';
+import {
+  Button,
+  Dialog,
+  Field,
+  IconButton,
+  InlineNotice,
+  SearchField,
+  StateView,
+} from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
 import type { WorkspaceActions } from '../workspace-actions';
 import { isFileEditorTabDirty } from '../workspace-state';
@@ -54,7 +62,7 @@ export function WorkspaceSearchPanel({ actions, onClose }: { actions: WorkspaceA
       }}
     >
       <header>
-        <div>
+        <div className='workspace-search-actions'>
           <span className='eyebrow'>SEARCH</span>
           <strong>全局搜索</strong>
         </div>
@@ -63,28 +71,26 @@ export function WorkspaceSearchPanel({ actions, onClose }: { actions: WorkspaceA
         </IconButton>
       </header>
       <div className='workspace-search-form'>
-        <label>
-          <Search size={14} />
-          <input
-            ref={inputRef}
-            aria-label='全局搜索内容'
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') search();
-            }}
-            placeholder='搜索工作区内容'
-          />
-        </label>
-        <label>
-          <Replace size={14} />
+        <SearchField
+          ref={inputRef}
+          size='compact'
+          label='全局搜索内容'
+          clearLabel='清除全局搜索'
+          value={query}
+          onValueChange={setQuery}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') search();
+          }}
+          placeholder='搜索工作区内容'
+        />
+        <Field className='workspace-replace-field' label='替换为'>
           <input
             aria-label='替换为'
             value={replacement}
             onChange={(event) => setReplacement(event.target.value)}
             placeholder='替换为'
           />
-        </label>
+        </Field>
         <div>
           <Button tone='primary' disabled={!query.trim()} loading={state.workspaceSearchLoading} onClick={search}>
             搜索

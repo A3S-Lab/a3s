@@ -20,10 +20,6 @@
   opacity: 0.55;
 }
 
-.knowledge-sidebar-quick-actions .spinning {
-  animation: spin 0.8s linear infinite;
-}
-
 .knowledge-home {
   min-height: 0;
 }

@@ -8,6 +8,7 @@ const PANEL_RIGHT_INSET = 16;
 const PANEL_BOTTOM_GAP = 14;
 const INSTRUCTION_GAP = 12;
 const WIDE_PANEL_MIN_PANE_WIDTH = 1040;
+const WIDE_PANEL_MIN_PREPARATION_WIDTH = 1100;
 
 interface RuntimePanelRect {
   bottom: number;
@@ -94,29 +95,32 @@ export function useTaskRuntimeFloatingPlacement(identity: string, expanded: bool
   useLayoutEffect(() => {
     const panel = panelRef.current;
     const pane = panel?.closest<HTMLElement>('.task-conversation-pane');
-    if (!panel || !pane) return;
+    const surface = pane ?? panel?.closest<HTMLElement>('.new-task-product');
+    if (!panel || !surface) return;
 
-    const scroll = pane.querySelector<HTMLElement>('.execution-scroll');
+    const scroll = surface.querySelector<HTMLElement>('.execution-scroll');
     let frame: number | undefined;
 
     const measure = () => {
-      const instruction = pane.querySelector<HTMLElement>('[data-task-runtime-anchor="latest-instruction"]');
-      const composer = pane.querySelector<HTMLElement>('.task-composer-dock');
+      const instruction = surface.querySelector<HTMLElement>('[data-task-runtime-anchor="latest-instruction"]');
+      const composer = surface.querySelector<HTMLElement>('.task-composer-dock');
       const trigger = panel.querySelector<HTMLElement>('.task-runtime-floating-trigger');
       const content = panel.querySelector<HTMLElement>('.task-runtime-floating-content');
-      const paneRect = pane.getBoundingClientRect();
+      const surfaceRect = surface.getBoundingClientRect();
       const panelRect = panel.getBoundingClientRect();
-      const nextLayout = resolveTaskRuntimePanelLayout(paneRect.width);
-      pane.dataset.taskRuntimeLayout = nextLayout;
+      const nextLayout = pane
+        ? resolveTaskRuntimePanelLayout(surfaceRect.width)
+        : resolvePreparationRuntimePanelLayout(surfaceRect.width);
+      surface.dataset.taskRuntimeLayout = nextLayout;
       setLayout((current) => (current === nextLayout ? current : nextLayout));
       const triggerHeight = trigger?.getBoundingClientRect().height || PANEL_HEADER_HEIGHT;
       const contentHeight = content
         ? Math.min(content.scrollHeight || content.getBoundingClientRect().height, CONTENT_HEIGHT_LIMIT)
         : 0;
       const next = resolveTaskRuntimePanelPlacement({
-        composerTop: composer?.getBoundingClientRect().top ?? paneRect.bottom,
+        composerTop: composer?.getBoundingClientRect().top ?? surfaceRect.bottom,
         instruction: instruction?.getBoundingClientRect() ?? null,
-        pane: paneRect,
+        pane: surfaceRect,
         panelHeight: triggerHeight + contentHeight,
         panelHeaderHeight: triggerHeight,
         panelWidth: panelRect.width || 360,
@@ -143,9 +147,9 @@ export function useTaskRuntimeFloatingPlacement(identity: string, expanded: bool
     scroll?.addEventListener('scroll', scheduleMeasure, { passive: true });
 
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleMeasure);
-    observer?.observe(pane);
+    observer?.observe(surface);
     observer?.observe(panel);
-    const instruction = pane.querySelector<HTMLElement>('[data-task-runtime-anchor="latest-instruction"]');
+    const instruction = surface.querySelector<HTMLElement>('[data-task-runtime-anchor="latest-instruction"]');
     if (instruction) observer?.observe(instruction);
 
     return () => {
@@ -153,7 +157,7 @@ export function useTaskRuntimeFloatingPlacement(identity: string, expanded: bool
       window.removeEventListener('resize', scheduleMeasure);
       scroll?.removeEventListener('scroll', scheduleMeasure);
       observer?.disconnect();
-      delete pane.dataset.taskRuntimeLayout;
+      delete surface.dataset.taskRuntimeLayout;
     };
   }, [expanded, identity, visible]);
 
@@ -162,6 +166,11 @@ export function useTaskRuntimeFloatingPlacement(identity: string, expanded: bool
     '--task-runtime-panel-top': `${placement.top}px`,
   };
   return { layout, panelRef, style };
+}
+
+function resolvePreparationRuntimePanelLayout(surfaceWidth: number): RuntimePanelLayout {
+  if (!Number.isFinite(surfaceWidth) || surfaceWidth <= 0) return 'wide';
+  return surfaceWidth < WIDE_PANEL_MIN_PREPARATION_WIDTH ? 'compact' : 'wide';
 }
 
 function placementWithinComposer(

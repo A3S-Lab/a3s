@@ -49,9 +49,9 @@ export function WorkCodeWorkspace({
   return (
     <section className='work-code-workspace work-editor-shell' aria-label='代码文件详情'>
       <header className='work-editor-header work-code-detail-header'>
-        <button type='button' className='work-editor-back' aria-label='返回办公文件' onClick={onBack}>
+        <IconButton className='work-editor-back' label='返回办公文件' onClick={onBack}>
           <ArrowLeft size={17} />
-        </button>
+        </IconButton>
         <span className='work-code-detail-icon'>
           <WorkFileIcon path={tab?.path ?? ''} size={17} />
         </span>
@@ -65,19 +65,18 @@ export function WorkCodeWorkspace({
         </div>
         <div className='work-editor-header-actions'>
           {tab && (
-            <button
-              type='button'
+            <Button
               className='work-local-save-button'
               aria-label={tab.saving ? '正在保存代码文件' : '保存代码文件'}
               disabled={tab.loading || tab.saving || !dirty}
+              loading={tab.saving}
               onClick={() => void actions.saveFile(tab.path)}
             >
-              {tab.saving ? <LoaderCircle className='spin' size={14} /> : <Save size={15} />}
-              {tab.saving ? '保存中' : '保存'}
-            </button>
+              {!tab.saving && <Save size={15} />}
+              保存
+            </Button>
           )}
-          <button
-            type='button'
+          <Button
             className={`work-editor-ai-button ${assistantOpen ? 'active' : ''}`}
             aria-label={assistantOpen ? '关闭 AI 助手' : '打开 AI 助手'}
             aria-pressed={assistantOpen}
@@ -85,7 +84,7 @@ export function WorkCodeWorkspace({
           >
             <Sparkles size={15} />
             AI 助手
-          </button>
+          </Button>
         </div>
       </header>
       <main className='work-code-detail-body'>

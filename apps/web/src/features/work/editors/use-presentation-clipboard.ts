@@ -9,6 +9,7 @@ import {
 } from '../work-presentation-clipboard';
 import { withPresentationDesign } from '../work-presentation-layouts';
 import type { WorkPresentationContent, WorkSlide, WorkSlideElement } from '../work-types';
+import { isOfficeShortcutBlocked } from './office-shortcuts';
 import type { PresentationDesignMode } from './presentation-design-panel';
 
 export function usePresentationClipboard({
@@ -161,11 +162,18 @@ export function usePresentationClipboard({
   useEffect(() => {
     if (preview) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || isPresentationTextEditingTarget(event.target)) return;
+      if (event.defaultPrevented || isOfficeShortcutBlocked(event.target)) return;
       const commandKey = event.metaKey || event.ctrlKey;
       const key = event.key.toLocaleLowerCase();
+      const historyEditingTarget = isPresentationHistoryEditingTarget(event.target);
       let handled = false;
-      if (commandKey && !event.altKey && key === 'z') handled = event.shiftKey ? onRedo() : onUndo();
+      if (historyEditingTarget && commandKey && !event.altKey && key === 'z') {
+        handled = event.shiftKey ? onRedo() : onUndo();
+      } else if (historyEditingTarget && commandKey && !event.altKey && !event.shiftKey && key === 'y') {
+        handled = onRedo();
+      } else if (isPresentationTextEditingTarget(event.target)) {
+        return;
+      } else if (commandKey && !event.altKey && key === 'z') handled = event.shiftKey ? onRedo() : onUndo();
       else if (commandKey && !event.altKey && !event.shiftKey && key === 'y') handled = onRedo();
       else if (commandKey && !event.altKey && !event.shiftKey && key === 'c') handled = copySelection();
       else if (commandKey && !event.altKey && !event.shiftKey && key === 'x') handled = cutSelection();
@@ -253,6 +261,19 @@ function isPresentationTextEditingTarget(target: EventTarget | null): boolean {
     target.isContentEditable ||
     Boolean(target.closest('[data-slide-editor]'))
   );
+}
+
+function isPresentationHistoryEditingTarget(target: EventTarget | null): boolean {
+  if (
+    !(
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement
+    )
+  ) {
+    return false;
+  }
+  return Boolean(target.closest('.work-presentation-editor'));
 }
 
 function isPresentationObjectKeyboardTarget(target: EventTarget | null): boolean {

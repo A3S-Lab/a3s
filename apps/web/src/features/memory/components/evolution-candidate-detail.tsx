@@ -11,7 +11,7 @@ import {
   RotateCcw,
   Sparkles,
 } from 'lucide-react';
-import { Button, Dialog, InlineNotice } from '../../../design-system/primitives';
+import { Button, CollectionState, Dialog, Field, InlineNotice } from '../../../design-system/primitives';
 import type { EvolutionAuditEvent, EvolutionCandidate, EvolutionVersion } from '../../../types/api';
 import { evolutionAuditLabel, evolutionSourceLabel, formatEvolutionDate } from '../evolution-format';
 import { KindBadge, StateBadge } from './evolution-shared';
@@ -93,7 +93,9 @@ export function EvolutionCandidateDetail({
             ))}
           </ol>
         ) : (
-          <p className='evolution-muted'>还没有明确的做法。</p>
+          <CollectionState className='evolution-muted' role='status'>
+            还没有明确的做法。
+          </CollectionState>
         )}
       </section>
       <section className='evolution-section'>
@@ -128,7 +130,9 @@ export function EvolutionCandidateDetail({
               <h3>保存记录</h3>
             </header>
             {candidate.versions.length === 0 ? (
-              <p className='evolution-muted'>还没有保存记录。</p>
+              <CollectionState className='evolution-muted' role='status'>
+                还没有保存记录。
+              </CollectionState>
             ) : (
               <div className='evolution-version-list'>
                 {candidate.currentVersion != null && (
@@ -168,7 +172,9 @@ export function EvolutionCandidateDetail({
                 ))}
               </ul>
             ) : (
-              <p className='evolution-muted'>还没有修改记录。</p>
+              <CollectionState className='evolution-muted' role='status'>
+                还没有修改记录。
+              </CollectionState>
             )}
           </section>
         </div>
@@ -274,8 +280,7 @@ export function EvolutionConfirmationDialog({
         <p>{confirmation.candidate.summary}</p>
       </div>
       {rejecting && (
-        <label className='evolution-rejection-reason'>
-          <span>忽略原因（可选）</span>
+        <Field className='evolution-rejection-reason' label='忽略原因（可选）'>
           <textarea
             data-autofocus
             rows={3}
@@ -284,7 +289,7 @@ export function EvolutionConfirmationDialog({
             placeholder='为什么不需要这项内容'
             onChange={(event) => onReasonChange(event.target.value)}
           />
-        </label>
+        </Field>
       )}
     </Dialog>
   );

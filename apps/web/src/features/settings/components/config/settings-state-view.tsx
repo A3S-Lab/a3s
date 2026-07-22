@@ -1,6 +1,6 @@
 import { AlertCircle, Check, CircleDot, LoaderCircle, RotateCw } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { Button, InlineNotice, StateView } from '../../../../design-system/primitives';
+import { Button, InlineNotice, StateView, StatusBadge } from '../../../../design-system/primitives';
 import type { ConfigCategory } from '../../../../types/settings';
 import type { SettingsActions } from '../../settings-actions';
 
@@ -86,15 +86,15 @@ export function SettingsSaveState({
   return (
     <div className='settings-save-state' aria-live='polite'>
       {dirty ? (
-        <span className='dirty'>
+        <StatusBadge tone='warning'>
           <CircleDot size={12} /> 有未保存的更改
-        </span>
+        </StatusBadge>
       ) : savedAt ? (
-        <span className='saved'>
+        <StatusBadge tone='success'>
           <Check size={12} /> 已保存
-        </span>
+        </StatusBadge>
       ) : (
-        <span className='synced'>配置已同步</span>
+        <StatusBadge tone='neutral'>配置已同步</StatusBadge>
       )}
       <span className='settings-save-actions'>
         {dirty && onReset && (

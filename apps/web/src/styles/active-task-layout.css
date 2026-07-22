@@ -55,41 +55,22 @@
   background: var(--a3s-panel);
 }
 
-.task-context-header nav {
-  display: flex;
+.task-context-tabs.ds-tabs.line {
   height: 100%;
-  align-items: stretch;
   gap: 2px;
+  border-bottom: 0;
 }
 
-.task-context-header nav button {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.task-context-tabs.ds-tabs.line > button {
+  min-height: 100%;
   padding: 0 11px;
-  border: 0;
-  background: transparent;
-  color: var(--a3s-muted);
   font-size: 12px;
   font-weight: 550;
-  cursor: pointer;
 }
 
-.task-context-header nav button:hover,
-.task-context-header nav button.active {
-  color: var(--a3s-ink);
-}
-
-.task-context-header nav button.active::after {
-  position: absolute;
+.task-context-tabs.ds-tabs.line > button::after {
   right: 9px;
-  bottom: -1px;
   left: 9px;
-  height: 2px;
-  border-radius: 999px 999px 0 0;
-  background: var(--a3s-blue);
-  content: "";
 }
 
 .task-context-actions {

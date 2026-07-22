@@ -258,10 +258,12 @@ function TargetPreviewCard({
           )}
         </>
       ) : (
-        <div className='weixin-targets-state'>
-          <Bot size={18} />
-          <span>打开此页面后将读取本机的远程可见目标。</span>
-        </div>
+        <StateView
+          className='weixin-targets-state'
+          size='compact'
+          icon={<Bot size={18} />}
+          title='打开此页面后将读取本机的远程可见目标'
+        />
       )}
     </article>
   );

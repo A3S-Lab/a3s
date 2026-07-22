@@ -52,20 +52,8 @@
   white-space: nowrap;
 }
 
-.about-settings dd .status-dot {
-  width: 5px;
-  height: 5px;
-  flex-basis: 5px;
-}
-
-.about-settings dd .status-dot.checking {
-  background: var(--a3s-warning, #d97706);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--a3s-warning, #d97706) 13%, transparent);
-}
-
-.about-settings dd .status-dot.disconnected {
-  background: var(--a3s-red);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--a3s-red) 13%, transparent);
+.about-settings dd .ds-status-badge {
+  font-size: 10px;
 }
 
 .about-settings a {
@@ -109,15 +97,6 @@
 .update-versions span {
   color: var(--muted-foreground);
   font-size: 11px;
-}
-
-.update-card .btn-outline,
-.update-card .btn {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
 }
 
 .update-versions {

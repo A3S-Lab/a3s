@@ -239,6 +239,18 @@ describe('Work spreadsheet editor', () => {
     expect(workbookMocks.unmountCount).toBe(0);
   });
 
+  it('uses the shared status zoom in preview without changing workbook content', async () => {
+    const onChange = vi.fn();
+    render(<SpreadsheetEditor content={spreadsheetContent()} preview onChange={onChange} />);
+
+    expect(screen.getByRole('slider', { name: '表格缩放' })).toHaveValue(100);
+    fireEvent.click(screen.getByRole('button', { name: '放大表格' }));
+
+    await waitFor(() => expect(screen.getByRole('slider', { name: '表格缩放' })).toHaveValue(110));
+    expect(workbookMocks.sheets?.[0].zoomRatio).toBe(1.1);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('closes a workbook settings panel after moving to another ribbon tab', () => {
     render(<SpreadsheetEditor content={spreadsheetContent()} preview={false} onChange={vi.fn()} />);
     fireEvent.click(screen.getByRole('tab', { name: '插入' }));

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { Button, IconButton, useDialogFocusScope } from '../../../design-system/primitives';
+import { Button, IconButton, StatusBadge, useDialogFocusScope } from '../../../design-system/primitives';
 import { appState, closeSettings, navigateSettings } from '../../../state/app-state';
 import { ChannelSettingsPage } from '../../channels/pages/channel-settings-page';
 import type { WeixinRemoteActions } from '../../weixin-remote/use-weixin-remote-controller';
@@ -181,7 +181,7 @@ export function SettingsDialog({
               <h2 id={titleId}>{selectedTab.label}</h2>
               <p id={descriptionId}>{selectedTab.description}</p>
             </div>
-            <span className='settings-local-badge'>{tab === 'help' ? '本地帮助' : '设置保存在本机'}</span>
+            <StatusBadge className='settings-local-badge'>{tab === 'help' ? '本地帮助' : '设置保存在本机'}</StatusBadge>
           </header>
           <div ref={contentBodyRef} className='settings-content-body'>
             {visitedTabs.has('general') && (

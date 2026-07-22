@@ -1,13 +1,13 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CodeActions } from '../features/code/use-code-controller';
+import { RunsPage } from '../features/runs/pages/runs-page';
 import { HelpSettings } from '../features/settings/components/help-settings';
+import { TaskComposer } from '../features/tasks/components/task-composer';
+import { TaskHeader } from '../features/tasks/components/task-header';
+import { TasksPage } from '../features/tasks/pages/tasks-page';
 import { codeApi } from '../lib/api';
 import { appState } from '../state/app-state';
-import { TaskHeader } from '../features/tasks/components/task-header';
-import { TaskComposer } from '../features/tasks/components/task-composer';
-import { TasksPage } from '../features/tasks/pages/tasks-page';
-import { RunsPage } from '../features/runs/pages/runs-page';
 import { AppShell } from './app-shell';
 
 const session = {
@@ -28,6 +28,7 @@ describe('Web-native session experiences', () => {
     appState.sessionTitles = {};
     appState.activeSessionId = session.sessionId;
     appState.streamingSessionId = null;
+    appState.taskSubmissionState = null;
     appState.sessionControls = {
       'session-1': {
         sessionId: 'session-1',
@@ -253,6 +254,16 @@ describe('Web-native session experiences', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: '任务指令' })).toHaveTextContent('请实现以下功能'));
   });
 
+  it('shows task startup in the upper-right tracker before the first session exists', () => {
+    appState.activeSessionId = null;
+    appState.taskSubmissionState = 'creating';
+
+    render(<TasksPage actions={{} as CodeActions} />);
+
+    expect(screen.getByLabelText('任务进度浮窗')).toHaveTextContent('正在创建任务');
+    expect(screen.getByRole('region', { name: '任务规划与执行' })).toHaveTextContent('正在启动任务会话');
+  });
+
   it('opens task context panels without changing task identity', () => {
     appState.reviewSourceTaskId = 'older-task';
     render(<TaskHeader />);
@@ -291,7 +302,7 @@ describe('Web-native session experiences', () => {
     fireEvent.click(screen.getByRole('button', { name: '打开工作区' }));
 
     expect(screen.getByRole('textbox', { name: '任务指令' })).toBeInTheDocument();
-    expect(await screen.findByRole('navigation', { name: '任务上下文面板' })).toBeInTheDocument();
+    expect(await screen.findByRole('tablist', { name: '任务上下文面板' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '工作区变更' }));
     expect(screen.getByRole('complementary', { name: '变更与 Git' })).toHaveClass('compact-open');
     fireEvent.click(screen.getByRole('button', { name: '全局搜索' }));
@@ -301,7 +312,7 @@ describe('Web-native session experiences', () => {
     fireEvent.click(screen.getByRole('button', { name: '工作区变更' }));
     fireEvent.click(screen.getByRole('button', { name: '关闭工作区变更' }));
 
-    fireEvent.click(screen.getByRole('button', { name: '活动' }));
+    fireEvent.click(screen.getByRole('tab', { name: '活动' }));
     expect(screen.getByRole('textbox', { name: '任务指令' })).toBeInTheDocument();
     expect(await screen.findByRole('region', { name: '当前任务活动' })).toBeInTheDocument();
   });

@@ -30,7 +30,7 @@
   border-radius: 5px;
 }
 
-.work-spreadsheet-editor:not(.preview) .fortune-sheet-area-right {
+.work-spreadsheet-editor .fortune-sheet-area-right {
   display: none !important;
 }
 

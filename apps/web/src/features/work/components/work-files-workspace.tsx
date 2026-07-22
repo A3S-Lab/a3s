@@ -10,11 +10,10 @@ import {
   Grid2X2,
   List,
   RefreshCw,
-  Search,
   Sparkles,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Button, StateView, StatusBadge } from '../../../design-system/primitives';
+import { Button, IconButton, SearchField, StateView, StatusBadge } from '../../../design-system/primitives';
 import type { WorkspaceEntry } from '../../../types/api';
 import { hasDraggedWorkspaceFiles } from '../../workspace/workspace-drop-import';
 import { OfficeSelect } from '../editors/office-controls';
@@ -96,10 +95,10 @@ export function WorkFilesWorkspace({
         </span>
         <h1>打开本地文件夹</h1>
         <p>在这里浏览、编辑和整理本地文件。</p>
-        <button type='button' onClick={() => void actions.pickRoot()}>
+        <Button tone='primary' onClick={() => void actions.pickRoot()}>
           <FolderOpen size={16} />
           选择文件夹
-        </button>
+        </Button>
       </main>
     );
   }
@@ -121,15 +120,15 @@ export function WorkFilesWorkspace({
           </>
         )}
         <div className='work-files-history-actions'>
-          <button type='button' aria-label='后退' disabled={!actions.canGoBack} onClick={actions.goBack}>
+          <IconButton label='后退' disabled={!actions.canGoBack} onClick={actions.goBack}>
             <ChevronLeft size={17} />
-          </button>
-          <button type='button' aria-label='前进' disabled={!actions.canGoForward} onClick={actions.goForward}>
+          </IconButton>
+          <IconButton label='前进' disabled={!actions.canGoForward} onClick={actions.goForward}>
             <ChevronRight size={17} />
-          </button>
-          <button type='button' aria-label='上一级文件夹' disabled={!actions.canGoUp} onClick={actions.goUp}>
+          </IconButton>
+          <IconButton label='上一级文件夹' disabled={!actions.canGoUp} onClick={actions.goUp}>
             <ChevronUp size={17} />
-          </button>
+          </IconButton>
         </div>
         <nav className='work-files-breadcrumbs' aria-label='当前文件夹路径' title={actions.currentPath}>
           {breadcrumbs.map((breadcrumb, index) => (
@@ -190,41 +189,37 @@ export function WorkFilesWorkspace({
             </span>
           ))}
         </nav>
-        <label className='work-files-search'>
-          <Search size={14} />
-          <input
-            type='search'
-            aria-label={workspaceSearching ? '搜索全部文件' : '搜索当前文件夹'}
-            placeholder='搜索'
-            value={actions.query}
-            onChange={(event) => actions.setQuery(event.target.value)}
-          />
-        </label>
+        <SearchField
+          className='work-files-search'
+          size='compact'
+          label={workspaceSearching ? '搜索全部文件' : '搜索当前文件夹'}
+          clearLabel='清除文件搜索'
+          placeholder='搜索'
+          value={actions.query}
+          onValueChange={actions.setQuery}
+        />
         <div className='work-files-toolbar-actions'>
-          <button
-            type='button'
-            aria-label='新建文件夹'
+          <IconButton
+            label='新建文件夹'
             disabled={actions.loading || actions.dropImporting || Boolean(actions.error)}
             onClick={() => setCreateFolderRequest((value) => value + 1)}
           >
             <FolderPlus size={16} />
-          </button>
-          <button
-            type='button'
-            aria-label='刷新当前文件夹'
+          </IconButton>
+          <IconButton
+            label='刷新当前文件夹'
             disabled={actions.loading || actions.dropImporting}
             onClick={() => void actions.refresh()}
           >
             <RefreshCw className={actions.loading || actions.dropImporting ? 'spin' : ''} size={15} />
-          </button>
-          <button
-            type='button'
-            aria-label='快速查看所选项目'
+          </IconButton>
+          <IconButton
+            label='快速查看所选项目'
             disabled={actions.selectedEntries.length !== 1}
             onClick={() => setQuickLookPath(actions.selectedEntries[0]?.path ?? null)}
           >
             <Eye size={15} />
-          </button>
+          </IconButton>
           <OfficeSelect
             className='work-files-sort-select'
             ariaLabel='排序方式'
@@ -242,9 +237,8 @@ export function WorkFilesWorkspace({
               })
             }
           />
-          <button
-            type='button'
-            aria-label={actions.sort.direction === 'ascending' ? '切换为降序' : '切换为升序'}
+          <IconButton
+            label={actions.sort.direction === 'ascending' ? '切换为降序' : '切换为升序'}
             onClick={() =>
               actions.setSort({
                 ...actions.sort,
@@ -253,28 +247,28 @@ export function WorkFilesWorkspace({
             }
           >
             {actions.sort.direction === 'ascending' ? <ArrowDownAZ size={15} /> : <ArrowDownZA size={15} />}
-          </button>
+          </IconButton>
           <fieldset className='work-files-layout-toggle'>
             <legend className='sr-only'>文件布局</legend>
-            <button
-              type='button'
+            <IconButton
+              label='图标视图'
+              selected={actions.layout === 'grid'}
               className={actions.layout === 'grid' ? 'active' : ''}
-              aria-label='图标视图'
               onClick={() => actions.setLayout('grid')}
             >
               <Grid2X2 size={15} />
-            </button>
-            <button
-              type='button'
+            </IconButton>
+            <IconButton
+              label='列表视图'
+              selected={actions.layout === 'list'}
               className={actions.layout === 'list' ? 'active' : ''}
-              aria-label='列表视图'
               onClick={() => actions.setLayout('list')}
             >
               <List size={16} />
-            </button>
+            </IconButton>
           </fieldset>
-          <button
-            type='button'
+          <Button
+            tone='quiet'
             className={`work-copilot-toggle ${copilotOpen ? 'active' : ''}`}
             aria-label={copilotOpen ? '关闭 Work AI 助手' : '打开 Work AI 助手'}
             aria-pressed={copilotOpen}
@@ -282,7 +276,7 @@ export function WorkFilesWorkspace({
           >
             <Sparkles size={15} />
             <span>AI 助手</span>
-          </button>
+          </Button>
         </div>
       </header>
       {actions.query.trim() && (

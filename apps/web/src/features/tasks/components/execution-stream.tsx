@@ -1,7 +1,7 @@
 import { ArrowDown, CircleStop, LoaderCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { Button } from '../../../design-system/primitives';
+import { Button, StateView } from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
 import type { ChatMessage } from '../../../types/api';
 import type { TaskActions } from '../task-actions';
@@ -79,8 +79,8 @@ export function ExecutionStream({
         </div>
       </div>
       {showLatest && (
-        <button
-          type='button'
+        <Button
+          tone='secondary'
           className='execution-jump-latest'
           onClick={() => {
             const element = scrollRef.current;
@@ -92,7 +92,7 @@ export function ExecutionStream({
         >
           <ArrowDown size={14} />
           查看最新内容
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -129,16 +129,21 @@ function TaskLoadState({
   onRetry?: () => void;
 }) {
   return (
-    <section className='task-welcome task-load-state' role={loading ? 'status' : 'alert'}>
-      {loading ? <LoaderCircle className='spin' size={26} /> : <CircleStop size={26} />}
-      <h1>{title}</h1>
-      <p>{description}</p>
-      {onRetry && (
-        <Button tone='primary' onClick={onRetry}>
-          重新加载任务
-        </Button>
-      )}
-    </section>
+    <StateView
+      className='task-load-state'
+      tone={loading ? 'info' : 'danger'}
+      role={loading ? 'status' : 'alert'}
+      icon={loading ? <LoaderCircle className='spin' size={24} /> : <CircleStop size={24} />}
+      title={title}
+      description={description}
+      actions={
+        onRetry ? (
+          <Button tone='primary' onClick={onRetry}>
+            重新加载任务
+          </Button>
+        ) : undefined
+      }
+    />
   );
 }
 

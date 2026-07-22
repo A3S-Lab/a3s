@@ -134,9 +134,9 @@ export function PluginMarketplacePage({ actions }: { actions: PluginActions }) {
                 <span>{items.length} 个可用插件</span>
               </div>
               {filtersActive && (
-                <button type='button' onClick={clearFilters}>
+                <Button tone='quiet' className='memory-filter-clear' onClick={clearFilters}>
                   <FilterX size={13} /> 清除
-                </button>
+                </Button>
               )}
             </div>
             <SearchField

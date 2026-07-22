@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { CollectionState } from '../../../design-system/primitives';
 import {
   type WorkSpreadsheetChartType,
   type WorkSpreadsheetErrorBarDirection,
@@ -58,7 +59,11 @@ export function SpreadsheetErrorBarEditor({
           </button>
         </div>
       </header>
-      {!errorBars.length && <p>添加固定值、百分比、统计或自定义范围误差线。</p>}
+      {!errorBars.length && (
+        <CollectionState className='work-spreadsheet-error-bars-empty' role='status'>
+          添加固定值、百分比、统计或自定义范围误差线。
+        </CollectionState>
+      )}
       {errorBars.map((item, index) => {
         const errorBarNumber = index + 1;
         const labelPrefix = `系列 ${seriesNumber} 误差线 ${errorBarNumber}`;

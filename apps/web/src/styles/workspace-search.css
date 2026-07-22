@@ -40,33 +40,32 @@
   border-bottom: 1px solid var(--a3s-line);
 }
 
-.workspace-search-form label {
-  display: flex;
+.workspace-search-form > .ds-search-field {
   height: 31px;
-  align-items: center;
-  gap: 7px;
   padding: 0 8px;
-  border: 1px solid var(--a3s-line);
   border-radius: 5px;
-  background: var(--a3s-panel);
-  color: var(--a3s-muted);
 }
 
-.workspace-search-form label:focus-within {
+.workspace-search-form > .ds-search-field:focus-within {
   border-color: var(--a3s-blue);
 }
 
-.workspace-search-form input {
-  min-width: 0;
-  flex: 1;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--a3s-ink);
+.workspace-replace-field {
+  gap: 4px;
+}
+
+.workspace-replace-field .ds-field-label {
+  color: var(--a3s-muted);
+  font-size: 10px;
+}
+
+.workspace-replace-field input {
+  height: 31px;
+  border-radius: 5px;
   font-size: 11px;
 }
 
-.workspace-search-form > div {
+.workspace-search-form > .workspace-search-actions {
   display: flex;
   justify-content: flex-end;
   gap: 6px;

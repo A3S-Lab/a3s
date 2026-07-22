@@ -1,5 +1,6 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Dialog } from '../../../design-system/primitives';
 import { PdfViewer } from './pdf-viewer';
 
 const embedPdfMocks = vi.hoisted(() => ({
@@ -24,8 +25,44 @@ vi.mock('@embedpdf/react-pdf-viewer', async () => {
       config: Record<string, unknown>;
       onReady?: (value: typeof registry) => void;
     }) => {
+      const hostRef = React.useRef<HTMLDivElement>(null);
+      React.useLayoutEffect(() => {
+        const host = document.createElement('embedpdf-container');
+        const root = host.attachShadow({ mode: 'open' });
+        const overflowItem = document.createElement('div');
+        overflowItem.dataset.epdfI = 'overflow-tabs-button';
+        overflowItem.append(document.createElement('button'));
+        const zoom = document.createElement('input');
+        zoom.name = 'zoom';
+        zoom.type = 'text';
+        zoom.setAttribute('aria-label', 'Set zoom');
+        const searchItem = document.createElement('div');
+        searchItem.dataset.epdfI = 'search-button';
+        const searchButton = document.createElement('button');
+        searchButton.setAttribute('aria-label', '搜索');
+        searchButton.addEventListener('click', () => {
+          const current = root.querySelector('input[data-pdf-search]');
+          if (current) {
+            current.remove();
+            return;
+          }
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.dataset.pdfSearch = '';
+          root.append(input);
+        });
+        searchItem.append(searchButton);
+        root.append(overflowItem, zoom, searchItem);
+        hostRef.current?.append(host);
+        return () => host.remove();
+      }, []);
       React.useEffect(() => onReady?.(registry), [onReady]);
-      return <output data-testid='embedpdf-viewer'>{JSON.stringify(config)}</output>;
+      return (
+        <>
+          <output data-testid='embedpdf-viewer'>{JSON.stringify(config)}</output>
+          <div data-testid='embedpdf-shadow-host' ref={hostRef} />
+        </>
+      );
     },
   };
 });
@@ -92,6 +129,7 @@ describe('Work EmbedPDF editor', () => {
     expect(savedPdf?.type).toBe('application/pdf');
     expect(Array.from(new Uint8Array(await savedPdf!.arrayBuffer()))).toEqual([37, 80, 68, 70]);
     expect(screen.getByLabelText('PDF 保存状态')).toHaveTextContent('已保存');
+    expect(screen.getByText('已保存')).toHaveClass('ds-status-badge', 'success');
   });
 
   it('handles only the plain Cmd/Ctrl+S save shortcut', async () => {
@@ -107,6 +145,70 @@ describe('Work EmbedPDF editor', () => {
 
     fireEvent.keyDown(window, { key: 's', ctrlKey: true });
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+  });
+
+  it('does not save the PDF behind an open Office dialog', async () => {
+    const onSave = vi.fn(async (_pdf: Blob) => true);
+    render(
+      <>
+        <PdfViewer loadSource={async () => new Blob(['pdf'], { type: 'application/pdf' })} onSave={onSave} />
+        <Dialog title='版本记录' onClose={vi.fn()}>
+          <input aria-label='版本备注' />
+        </Dialog>
+      </>
+    );
+    await screen.findByTestId('embedpdf-viewer');
+    await waitFor(() => expect(screen.getByRole('button', { name: '保存' })).toBeEnabled());
+
+    await act(async () => {
+      expect(fireEvent.keyDown(screen.getByRole('textbox', { name: '版本备注' }), { key: 's', ctrlKey: true })).toBe(
+        false
+      );
+      await Promise.resolve();
+    });
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('labels compact viewer controls and opens focused PDF search with Cmd/Ctrl+F', async () => {
+    const { container } = render(
+      <PdfViewer
+        loadSource={async () => new Blob(['pdf'], { type: 'application/pdf' })}
+        onSave={vi.fn(async () => true)}
+      />
+    );
+    await screen.findByTestId('embedpdf-viewer');
+    await waitFor(() => expect(screen.getByRole('button', { name: '保存' })).toBeEnabled());
+    const root = container.querySelector('embedpdf-container')?.shadowRoot;
+    expect(root).not.toBeNull();
+
+    const overflowButton = root?.querySelector<HTMLButtonElement>('[data-epdf-i="overflow-tabs-button"] button');
+    const zoomInput = root?.querySelector<HTMLInputElement>('input[name="zoom"]');
+    await waitFor(() => expect(overflowButton).toHaveAccessibleName('更多工具'));
+    expect(zoomInput).toHaveAccessibleName('缩放比例');
+
+    expect(fireEvent.keyDown(window, { key: 'f', ctrlKey: true, shiftKey: true })).toBe(true);
+    expect(root?.querySelector('input[data-pdf-search]')).not.toBeInTheDocument();
+    const searchButton = root?.querySelector<HTMLButtonElement>('[data-epdf-i="search-button"] button');
+    fireEvent.click(searchButton!);
+    const clickSearchInput = await waitFor(() => {
+      const input = root?.querySelector<HTMLInputElement>('input[data-pdf-search]');
+      expect(input).toBeInTheDocument();
+      return input!;
+    });
+    await waitFor(() => expect(root?.activeElement).toBe(clickSearchInput));
+    expect(fireEvent.keyDown(clickSearchInput, { key: 'Escape' })).toBe(false);
+    await waitFor(() => expect(root?.querySelector('input[data-pdf-search]')).not.toBeInTheDocument());
+    await waitFor(() => expect(root?.activeElement).toBe(searchButton));
+
+    expect(fireEvent.keyDown(window, { key: 'f', ctrlKey: true })).toBe(false);
+    const searchInput = await waitFor(() => {
+      const input = root?.querySelector<HTMLInputElement>('input[data-pdf-search]');
+      expect(input).toBeInTheDocument();
+      return input!;
+    });
+    await waitFor(() => expect(root?.activeElement).toBe(searchInput));
+    expect(searchInput).toHaveAccessibleName('在 PDF 中搜索');
   });
 
   it('uses a read-only native viewer when no persistence callback is provided', async () => {

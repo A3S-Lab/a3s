@@ -34,10 +34,13 @@ export function CandidateButton({
 
 export function EvolutionLoadingState() {
   return (
-    <output className='evolution-loading' aria-label='正在加载学习内容'>
-      <Sparkles size={22} />
-      <span>正在加载…</span>
-    </output>
+    <StateView
+      className='evolution-loading'
+      size='compact'
+      role='status'
+      icon={<Sparkles size={22} />}
+      title='正在加载学习内容'
+    />
   );
 }
 

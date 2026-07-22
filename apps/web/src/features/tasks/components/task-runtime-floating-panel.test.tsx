@@ -57,13 +57,40 @@ describe('TaskRuntimeFloatingPanel', () => {
   });
 
   it('appears while the first session is being created', () => {
+    appState.activeSessionId = null;
     appState.streamingSessionId = null;
     appState.taskSubmissionState = 'creating';
+    appState.messagesBySession = {};
+    appState.executionTimings = {};
 
     render(<TaskRuntimeFloatingPanel />);
 
     expect(screen.getByLabelText('任务进度浮窗')).toHaveTextContent('正在创建任务');
     expect(screen.getByRole('region', { name: '任务规划与执行' })).toHaveTextContent('正在启动任务会话');
+  });
+
+  it('docks the pre-session tracker instead of covering a narrow preparation surface', () => {
+    appState.activeSessionId = null;
+    appState.streamingSessionId = null;
+    appState.taskSubmissionState = 'creating';
+    appState.messagesBySession = {};
+    appState.executionTimings = {};
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('new-task-product')) return runtimeRect(0, 0, 900, 700);
+      if (this.classList.contains('task-runtime-floating-panel')) return runtimeRect(524, 8, 360, 48);
+      if (this.classList.contains('task-runtime-floating-trigger')) return runtimeRect(524, 8, 360, 48);
+      return runtimeRect(0, 0, 0, 0);
+    });
+
+    render(
+      <section className='new-task-product'>
+        <TaskRuntimeFloatingPanel />
+      </section>
+    );
+
+    expect(screen.getByLabelText('任务进度浮窗')).toHaveAttribute('data-layout', 'compact');
+    expect(screen.getByRole('button', { name: '展开任务进度' })).toBeInTheDocument();
+    expect(document.querySelector('.new-task-product')).toHaveAttribute('data-task-runtime-layout', 'compact');
   });
 
   it('shows real parallel subagents without manufacturing a plan', () => {

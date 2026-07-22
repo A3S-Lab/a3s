@@ -121,14 +121,17 @@
   font-weight: 650;
 }
 
-.weixin-verification-form p,
 .weixin-verification-form small {
   margin: 0;
   color: var(--a3s-muted);
   font-size: 10px;
 }
 
-.weixin-verification-form > div {
+.weixin-verification-form > .ds-field {
+  gap: 6px;
+}
+
+.weixin-verification-control {
   display: flex;
   gap: 8px;
   margin-top: 4px;
@@ -196,7 +199,7 @@
 }
 
 @media (max-width: 540px) {
-  .weixin-verification-form > div {
+  .weixin-verification-control {
     align-items: stretch;
     flex-direction: column;
   }

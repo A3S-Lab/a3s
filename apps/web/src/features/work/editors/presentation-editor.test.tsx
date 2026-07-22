@@ -284,6 +284,28 @@ describe('Work presentation editor transitions', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it('does not undo the presentation behind an Office dialog', async () => {
+    const artifact = createWorkArtifact('blank-presentation');
+    if (artifact.content.type !== 'presentation') return;
+    const originalX = artifact.content.slides[0].elements[0].x;
+    const onChange = vi.fn();
+    render(<PresentationHarness initial={artifact.content} onChange={onChange} />);
+    const selectedElement = screen.getByRole('group', { name: '单击添加标题' });
+    fireEvent.focus(selectedElement);
+    fireEvent.keyDown(selectedElement, { key: 'ArrowRight' });
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements[0].x).toBe(originalX + 1));
+
+    fireEvent.click(screen.getByRole('tab', { name: '插入' }));
+    fireEvent.click(screen.getByRole('button', { name: '链接' }));
+    const link = await screen.findByRole('textbox', { name: '链接地址' });
+    const callCount = onChange.mock.calls.length;
+
+    fireEvent.keyDown(link, { key: 'z', ctrlKey: true });
+
+    expect(onChange).toHaveBeenCalledTimes(callCount);
+    expect(screen.getByRole('dialog', { name: '链接地址' })).toBeInTheDocument();
+  });
+
   it('nudges a focused element and supports undo and redo from the ribbon and keyboard', async () => {
     const artifact = createWorkArtifact('blank-presentation');
     if (artifact.content.type !== 'presentation') return;
@@ -325,6 +347,29 @@ describe('Work presentation editor transitions', () => {
     fireEvent.click(screen.getByRole('button', { name: '重做' }));
     await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements[0].y).toBe(originalY + 5));
     expect(onChange.mock.lastCall?.[0].slides[0].elements[0].x).toBe(originalX + 1);
+  });
+
+  it('uses presentation history for undo and redo while editing controlled slide text', async () => {
+    const artifact = createWorkArtifact('blank-presentation');
+    if (artifact.content.type !== 'presentation') return;
+    const originalText = artifact.content.slides[0].elements[0].text;
+    const onChange = vi.fn();
+    render(<PresentationHarness initial={artifact.content} onChange={onChange} />);
+    const textEditor = screen.getAllByRole('textbox', { name: '幻灯片文本' })[0];
+
+    fireEvent.focus(textEditor);
+    fireEvent.change(textEditor, { target: { value: `${originalText}（已修改）` } });
+    await waitFor(() =>
+      expect(onChange.mock.lastCall?.[0].slides[0].elements[0].text).toBe(`${originalText}（已修改）`)
+    );
+
+    fireEvent.keyDown(textEditor, { key: 'z', ctrlKey: true });
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements[0].text).toBe(originalText));
+
+    fireEvent.keyDown(textEditor, { key: 'z', ctrlKey: true, shiftKey: true });
+    await waitFor(() =>
+      expect(onChange.mock.lastCall?.[0].slides[0].elements[0].text).toBe(`${originalText}（已修改）`)
+    );
   });
 
   it('copies and pastes a full slide from the toolbar with fresh nested identities', async () => {

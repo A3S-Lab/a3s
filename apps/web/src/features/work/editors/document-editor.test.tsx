@@ -1,5 +1,5 @@
-import { Editor } from '@tiptap/core';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { Editor } from '@tiptap/core';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceContextMenu } from '../../workspace/components/workspace-context-menu';
@@ -118,6 +118,60 @@ describe('Work document editor', () => {
         expect.objectContaining({ html: expect.stringContaining('data-page-break="true"') })
       )
     );
+  });
+
+  it('does not restart document shortcuts from inside an Office dialog', async () => {
+    render(
+      <DocumentEditor
+        content={{
+          type: 'document',
+          pageSize: 'a4',
+          html: '<p>Shortcut workflow</p>',
+        }}
+        preview={false}
+        onChange={vi.fn()}
+      />
+    );
+    const editor = await screen.findByRole('textbox', { name: '文档正文' });
+    fireEvent.keyDown(editor, { key: 'f', ctrlKey: true });
+    const query = screen.getByRole('textbox', { name: '查找文字' });
+    fireEvent.change(query, { target: { value: 'Shortcut' } });
+
+    expect(fireEvent.keyDown(query, { key: 'f', ctrlKey: true })).toBe(false);
+
+    expect(screen.getByRole('textbox', { name: '查找文字' })).toHaveValue('Shortcut');
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  });
+
+  it('keeps focus in the replacement prompt and applies the replacement', async () => {
+    const onChange = vi.fn();
+    render(
+      <DocumentEditor
+        content={{
+          type: 'document',
+          pageSize: 'a4',
+          html: '<p>Shortcut workflow</p>',
+        }}
+        preview={false}
+        onChange={onChange}
+      />
+    );
+    const editor = await screen.findByRole('textbox', { name: '文档正文' });
+
+    fireEvent.keyDown(editor, { key: 'h', ctrlKey: true });
+    const query = screen.getByRole('textbox', { name: '查找要替换的文字' });
+    fireEvent.change(query, { target: { value: 'Shortcut' } });
+    fireEvent.click(screen.getByRole('button', { name: '确定' }));
+
+    const replacement = await screen.findByRole('textbox', { name: '替换为' });
+    await waitFor(() => expect(replacement).toHaveFocus());
+    fireEvent.change(replacement, { target: { value: 'Keyboard' } });
+    fireEvent.click(screen.getByRole('button', { name: '确定' }));
+
+    await waitFor(() =>
+      expect(onChange.mock.calls.some(([next]) => next.html.includes('Keyboard workflow'))).toBe(true)
+    );
+    await waitFor(() => expect(editor).toHaveFocus());
   });
 
   it('provides live page, word, proofing, save, view, and zoom status', async () => {

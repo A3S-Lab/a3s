@@ -178,9 +178,9 @@ function McpServerEditor({
         )}
       </SettingsDisclosure>
 
-      <button type='button' className='config-delete-button' onClick={onRemove}>
+      <Button tone='danger' className='config-delete-button' onClick={onRemove}>
         <Trash2 size={13} /> 删除 MCP Server
-      </button>
+      </Button>
     </SettingsDisclosure>
   );
 }

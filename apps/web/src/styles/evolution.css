@@ -82,6 +82,13 @@
   overflow: auto;
 }
 
+.evolution-candidate-empty.ds-collection-state {
+  min-height: 64px;
+  justify-content: flex-start;
+  padding-inline: 10px;
+  text-align: left;
+}
+
 .evolution-candidate {
   display: flex;
   width: 100%;

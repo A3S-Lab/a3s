@@ -45,6 +45,20 @@ describe('WorkspaceExplorer context menu operations', () => {
     await waitFor(() => expect(renameWorkspaceEntry).toHaveBeenCalledWith('/repo/app.ts', 'main.ts'));
   });
 
+  it('associates an invalid inline name with the workspace name field', () => {
+    render(<WorkspaceExplorer actions={{} as WorkspaceActions} onOpenSearch={vi.fn()} />);
+
+    fireEvent.contextMenu(screen.getByRole('treeitem', { name: 'app.ts' }), { clientX: 48, clientY: 72 });
+    fireEvent.click(screen.getByRole('menuitem', { name: '重命名' }));
+    const input = screen.getByRole('textbox', { name: '文件或文件夹名称' });
+    fireEvent.change(input, { target: { value: 'invalid/name.ts' } });
+
+    const error = screen.getByRole('alert');
+    expect(error).toHaveTextContent('名称不能包含路径分隔符。');
+    expect(input).toHaveAttribute('aria-describedby', error.id);
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+  });
+
   it('keeps a failed delete confirmation at the same tree row', async () => {
     const deleteWorkspaceEntry = vi.fn(async () => {
       throw new Error('delete failed');

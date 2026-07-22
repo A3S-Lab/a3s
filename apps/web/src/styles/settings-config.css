@@ -54,24 +54,11 @@
   gap: 12px;
 }
 
-.settings-save-state > span:not(.settings-save-actions) {
-  display: inline-flex;
-  align-items: center;
+.settings-save-state > .ds-status-badge {
+  min-height: 23px;
   gap: 5px;
-  color: var(--a3s-muted);
-  font-size: 12px;
-}
-
-.settings-save-state > span.dirty {
-  color: var(--a3s-warning);
-}
-
-.settings-save-state > span.saved {
-  color: var(--a3s-green);
-}
-
-.settings-save-state > span.synced {
-  color: var(--a3s-faint);
+  padding-inline: 8px;
+  font-size: 11px;
 }
 
 .settings-save-state .ds-button {
@@ -177,17 +164,6 @@
   border: 1px solid var(--a3s-line);
   border-radius: 10px;
   background: color-mix(in srgb, var(--a3s-panel-soft) 28%, var(--a3s-panel));
-}
-
-.config-section-collection .config-section-content {
-  overflow: visible;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-}
-
-.config-section-collection > .config-section-content > .config-card-list {
-  padding: 0;
 }
 
 .config-row {
@@ -705,16 +681,14 @@
   border-bottom: 0;
 }
 
-.config-card-list,
-.config-nested-list {
+.config-card-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 12px;
 }
 
-.config-card-list > .settings-disclosure,
-.config-nested-list > .settings-disclosure {
+.config-card-list > .settings-disclosure {
   overflow: hidden;
   border: 1px solid var(--a3s-line);
   border-radius: 10px;
@@ -830,13 +804,24 @@
 }
 
 .oomol-connector-field {
+  position: relative;
   display: flex;
   width: 100%;
   flex-direction: column;
   gap: 5px;
 }
 
-.oomol-connector-field .config-field-error {
+.oomol-connector-field > .ds-field-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.oomol-connector-field .ds-field-error {
   text-align: left;
 }
 

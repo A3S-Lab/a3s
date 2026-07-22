@@ -112,6 +112,7 @@ export function SpreadsheetEditor({
   const [panel, setPanel] = useState<SpreadsheetWorkbookPanelView | null>(null);
   const [selectionState, setSelectionState] = useState<SpreadsheetSelectionState | null>(null);
   const [agentMenu, setAgentMenu] = useState<SpreadsheetAgentMenuState | null>(null);
+  const [previewZoom, setPreviewZoom] = useState(100);
   const activeSheetId =
     content.sheets.find((sheet) => sheet.status === 1)?.id ?? content.sheets.find((sheet) => !sheet.hide)?.id ?? '';
   const activeSheetIdRef = useRef(activeSheetId);
@@ -213,8 +214,18 @@ export function SpreadsheetEditor({
     [materializedContent]
   );
   const workbookSheets = useMemo(() => spreadsheetSheetsForFortune(renderedWorkbookSheets), [renderedWorkbookSheets]);
+  const displayedWorkbookSheets = useMemo(
+    () =>
+      preview
+        ? workbookSheets.map((sheet) => ({
+            ...sheet,
+            zoomRatio: previewZoom / 100,
+          }))
+        : workbookSheets,
+    [preview, previewZoom, workbookSheets]
+  );
   const workbookSheetsRef = useRef(workbookSheets);
-  workbookSheetsRef.current = workbookSheets;
+  workbookSheetsRef.current = displayedWorkbookSheets;
   useEffect(() => {
     if (!formulaInitializationKey) return;
     const timeout = window.setTimeout(() => workbookRef.current?.calculateFormula(), 0);
@@ -241,6 +252,9 @@ export function SpreadsheetEditor({
     materializedContent.sheets.findIndex((sheet) => sheet.id === activeSheetId)
   );
   const zoom = Math.round((activeSheet?.zoomRatio ?? 1) * 100);
+  useEffect(() => {
+    if (preview) setPreviewZoom(zoom);
+  }, [preview, zoom]);
   const gridLinesVisible = activeSheet?.showGridLines !== false && activeSheet?.showGridLines !== 0;
   const updateActiveSheet = (
     update: (sheet: WorkSpreadsheetContent['sheets'][number]) => WorkSpreadsheetContent['sheets'][number]
@@ -551,7 +565,7 @@ export function SpreadsheetEditor({
         <Workbook
           ref={workbookRef}
           key={`spreadsheet:${conditionalFormatKey}:${protectionKey}:${chartPreviewKey}`}
-          data={workbookSheets}
+          data={displayedWorkbookSheets}
           lang='zh'
           allowEdit={!preview}
           showToolbar={false}
@@ -568,22 +582,23 @@ export function SpreadsheetEditor({
       <WorkOfficeStatusBar
         className='work-spreadsheet-status'
         controls={
-          !preview ? (
-            <>
-              <button type='button' aria-label='普通表格视图' title='普通表格视图' aria-pressed='true'>
-                <Grid3X3 size={13} />
-              </button>
-              <span className='work-office-status-divider' />
-              <WorkOfficeZoomControls
-                zoom={zoom}
-                decreaseLabel='缩小表格'
-                increaseLabel='放大表格'
-                outputLabel='表格缩放比例'
-                sliderLabel='表格缩放'
-                onChange={(nextZoom) => updateActiveSheet((sheet) => ({ ...sheet, zoomRatio: nextZoom / 100 }))}
-              />
-            </>
-          ) : undefined
+          <>
+            <button type='button' aria-label='普通表格视图' title='普通表格视图' aria-pressed='true'>
+              <Grid3X3 size={13} />
+            </button>
+            <span className='work-office-status-divider' />
+            <WorkOfficeZoomControls
+              zoom={preview ? previewZoom : zoom}
+              decreaseLabel='缩小表格'
+              increaseLabel='放大表格'
+              outputLabel='表格缩放比例'
+              sliderLabel='表格缩放'
+              onChange={(nextZoom) => {
+                if (preview) setPreviewZoom(nextZoom);
+                else updateActiveSheet((sheet) => ({ ...sheet, zoomRatio: nextZoom / 100 }));
+              }}
+            />
+          </>
         }
       >
         <output aria-label='工作表状态'>

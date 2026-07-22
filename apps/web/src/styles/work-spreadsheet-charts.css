@@ -481,11 +481,12 @@
   cursor: default;
 }
 
-.work-spreadsheet-error-bars > p {
-  margin: 0;
-  color: var(--a3s-faint);
+.work-spreadsheet-error-bars-empty.ds-collection-state {
+  min-height: 36px;
+  justify-content: flex-start;
+  padding: 5px 0;
   font-size: 8px;
-  line-height: 1.4;
+  text-align: left;
 }
 
 .work-spreadsheet-error-bars fieldset {

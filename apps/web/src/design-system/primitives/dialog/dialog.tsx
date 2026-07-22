@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { type ReactNode, useId } from 'react';
+import { type ReactNode, useEffect, useId } from 'react';
 import { IconButton } from '../button/icon-button';
 import { useDialogFocusScope } from '../overlay/dialog-focus-scope';
 
@@ -11,6 +11,8 @@ export function Dialog({
   onClose,
   closeDisabled = false,
   className,
+  focusKey,
+  restoreFocusTarget,
 }: {
   title: string;
   description?: string;
@@ -19,9 +21,18 @@ export function Dialog({
   onClose: () => void;
   closeDisabled?: boolean;
   className?: string;
+  focusKey?: string | number;
+  restoreFocusTarget?: () => HTMLElement | null;
 }) {
   const titleId = useId();
-  const focusScope = useDialogFocusScope<HTMLElement>({ onEscape: onClose, escapeDisabled: closeDisabled });
+  const focusScope = useDialogFocusScope<HTMLElement>({
+    onEscape: onClose,
+    escapeDisabled: closeDisabled,
+    restoreFocusTarget,
+  });
+  useEffect(() => {
+    if (focusKey !== undefined) focusScope.focusInitial();
+  }, [focusKey, focusScope.focusInitial]);
   return (
     <dialog
       open

@@ -211,7 +211,7 @@ describe('Workspace review flow', () => {
       throw new Error('replacement failed');
     });
     render(<WorkspaceSearchPanel actions={{ replaceWorkspace } as unknown as WorkspaceActions} onClose={vi.fn()} />);
-    fireEvent.change(screen.getByRole('textbox', { name: '全局搜索内容' }), { target: { value: 'oldValue' } });
+    fireEvent.change(screen.getByRole('searchbox', { name: '全局搜索内容' }), { target: { value: 'oldValue' } });
     fireEvent.change(screen.getByRole('textbox', { name: '替换为' }), { target: { value: 'newValue' } });
     fireEvent.click(screen.getByRole('button', { name: '替换全部' }));
     fireEvent.click(screen.getByRole('button', { name: '确认替换' }));
@@ -230,7 +230,7 @@ describe('Workspace review flow', () => {
       },
     ];
     render(<WorkspaceSearchPanel actions={{} as WorkspaceActions} onClose={vi.fn()} />);
-    fireEvent.change(screen.getByRole('textbox', { name: '全局搜索内容' }), { target: { value: 'newValue' } });
+    fireEvent.change(screen.getByRole('searchbox', { name: '全局搜索内容' }), { target: { value: 'newValue' } });
     expect(screen.getByText('当前结果来自“oldValue”；重新搜索后才能替换。')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '替换全部' })).toBeDisabled();
   });
@@ -244,7 +244,7 @@ describe('Workspace review flow', () => {
     const searchWorkspace = vi.fn(async () => undefined);
 
     render(<WorkspaceSearchPanel actions={{ searchWorkspace } as unknown as WorkspaceActions} onClose={vi.fn()} />);
-    fireEvent.change(screen.getByRole('textbox', { name: '全局搜索内容' }), { target: { value: 'target' } });
+    fireEvent.change(screen.getByRole('searchbox', { name: '全局搜索内容' }), { target: { value: 'target' } });
     expect(screen.getByRole('alert')).toHaveTextContent('搜索失败');
     expect(screen.queryByText(/没有匹配结果/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '重新搜索' }));

@@ -1,6 +1,7 @@
 import { Clock3, Files, FolderOpen, HardDrive, Home, Presentation, Sheet, Star, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 import { SidebarProductHeader } from '../../../components/sidebar-product-header';
+import { Button, IconButton } from '../../../design-system/primitives';
 import { hasDraggedWorkspaceFiles } from '../../workspace/workspace-drop-import';
 import {
   canMoveLocalPaths,
@@ -154,15 +155,14 @@ export function WorkSidebar({
                     <WorkFileIcon path={path} directory size={17} />
                     <span>{label}</span>
                   </button>
-                  <button
-                    type='button'
+                  <IconButton
                     className='work-sidebar-favorite-remove'
-                    aria-label={`从侧边栏移除 ${label}`}
-                    title='从侧边栏移除'
+                    label={`从侧边栏移除 ${label}`}
+                    tooltip='从侧边栏移除'
                     onClick={() => onRemoveLocalFavorite(path)}
                   >
                     <X size={12} />
-                  </button>
+                  </IconButton>
                 </div>
               );
             })}
@@ -225,24 +225,24 @@ export function WorkSidebar({
 
       <section className='work-sidebar-create' aria-label='快速新建'>
         <span>快速新建</span>
-        <button type='button' onClick={() => onCreate('blank-document')}>
+        <Button tone='quiet' onClick={() => onCreate('blank-document')}>
           <Files size={15} />
           文字
-        </button>
-        <button type='button' onClick={() => onCreate('blank-spreadsheet')}>
+        </Button>
+        <Button tone='quiet' onClick={() => onCreate('blank-spreadsheet')}>
           <Sheet size={15} />
           表格
-        </button>
-        <button type='button' onClick={() => onCreate('blank-presentation')}>
+        </Button>
+        <Button tone='quiet' onClick={() => onCreate('blank-presentation')}>
           <Presentation size={15} />
           演示
-        </button>
+        </Button>
       </section>
 
-      <button type='button' className='work-sidebar-import' onClick={onImport}>
+      <Button tone='secondary' className='work-sidebar-import' onClick={onImport}>
         <FolderOpen size={15} />
         导入文件
-      </button>
+      </Button>
     </aside>
   );
 }

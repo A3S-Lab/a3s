@@ -1,5 +1,6 @@
 import { FolderInput, LibraryBig, Plus, RefreshCw } from 'lucide-react';
 import { SidebarProductHeader } from '../../../components/sidebar-product-header';
+import { Button } from '../../../design-system/primitives';
 
 interface KnowledgeSidebarProps {
   count: number;
@@ -43,18 +44,18 @@ export function KnowledgeSidebar({
 
       <section className='work-sidebar-create knowledge-sidebar-quick-actions' aria-label='快速操作'>
         <span>快速操作</span>
-        <button type='button' onClick={onCreate}>
+        <Button tone='quiet' onClick={onCreate}>
           <Plus size={15} />
           新建
-        </button>
-        <button type='button' onClick={onImport}>
+        </Button>
+        <Button tone='quiet' onClick={onImport}>
           <FolderInput size={15} />
           导入
-        </button>
-        <button type='button' disabled={refreshing} aria-busy={refreshing || undefined} onClick={onRefresh}>
-          <RefreshCw className={refreshing ? 'spinning' : ''} size={15} />
+        </Button>
+        <Button tone='quiet' loading={refreshing} onClick={onRefresh}>
+          {!refreshing && <RefreshCw size={15} />}
           {refreshing ? '刷新中…' : '刷新'}
-        </button>
+        </Button>
       </section>
     </aside>
   );

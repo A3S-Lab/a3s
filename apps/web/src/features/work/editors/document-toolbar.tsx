@@ -38,6 +38,7 @@ import type { WorkDocumentCaptionKind } from '../work-document-captions';
 import type { WorkDocumentFieldKind } from '../work-document-fields';
 import type { WorkDocumentNoteKind } from '../work-document-notes';
 import { OfficeColorPicker, OfficeSelect, useOfficeDialog } from './office-controls';
+import { isOfficeShortcutBlocked } from './office-shortcuts';
 import {
   type WorkOfficeFileAction,
   WorkOfficeRibbon,
@@ -152,15 +153,14 @@ export function DocumentToolbar({
         await officeDialog.notice({ title: '没有找到', description: `文档中没有“${query}”。` });
         return;
       }
-      const chain = editor.chain().focus().setTextSelection(range);
       if (!replace) {
-        chain.run();
+        editor.chain().focus().setTextSelection(range).run();
         return;
       }
       const replacement = await officeDialog.prompt({ title: '替换为', initialValue: query });
       if (replacement !== null) {
         if (onReplaceText) onReplaceText(range.from, range.to, replacement);
-        else chain.insertContent(replacement).run();
+        else editor.chain().focus().setTextSelection(range).insertContent(replacement).run();
       }
     },
     [editor, officeDialog, onReplaceText]
@@ -170,7 +170,15 @@ export function DocumentToolbar({
     const root = editor.view.dom.closest<HTMLElement>('.work-document-editor');
     if (!root) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.repeat || event.altKey || !(event.metaKey || event.ctrlKey)) return;
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.altKey ||
+        isOfficeShortcutBlocked(event.target) ||
+        !(event.metaKey || event.ctrlKey)
+      ) {
+        return;
+      }
       const key = event.key.toLowerCase();
       if ((key === 'f' || key === 'h') && !event.shiftKey) {
         event.preventDefault();

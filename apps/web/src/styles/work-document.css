@@ -142,11 +142,11 @@
   white-space: nowrap;
 }
 
-.work-document-change-list > p {
-  margin: 12px;
+.work-document-changes-empty.ds-collection-state {
+  min-height: 52px;
+  padding: 12px;
   color: var(--a3s-faint);
   font-size: 9px;
-  text-align: center;
 }
 
 .work-document-comments-panel {
@@ -374,11 +374,11 @@
   color: var(--a3s-red);
 }
 
-.work-document-comment-list > p {
-  margin: 12px;
-  color: var(--a3s-faint);
+.work-document-comments-empty.ds-collection-state {
+  min-height: 58px;
+  margin: 6px;
+  padding: 8px;
   font-size: 9px;
-  text-align: center;
 }
 
 .work-document-editor [data-document-comment],
@@ -471,15 +471,6 @@
 
 .work-document-layout-panel .work-office-number-field {
   width: 47px;
-}
-
-.work-document-layout-panel .work-document-layout-text {
-  flex: 1 1 170px;
-}
-
-.work-document-layout-panel .work-document-layout-text .work-office-text-field {
-  min-width: 90px;
-  flex: 1;
 }
 
 .work-document-layout-panel .work-document-page-number-option.work-office-checkbox {
@@ -854,9 +845,6 @@
     display: none;
   }
 
-  .work-document-ribbon-tabs {
-    justify-content: flex-start;
-  }
 }
 
 @media (max-width: 760px) {

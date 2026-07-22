@@ -1,5 +1,5 @@
 import { ExternalLink, Plug, Plus, Trash2 } from 'lucide-react';
-import { Button, InlineNotice, StateView } from '../../../../design-system/primitives';
+import { Button, Field, InlineNotice, StateView } from '../../../../design-system/primitives';
 import type { McpServerSettings, McpTransportSettings } from '../../../../types/settings';
 import {
   configuredSecret,
@@ -109,7 +109,7 @@ export function OomolConnectorSettings({
         label='MCP 地址'
         description={deployment === 'hosted' ? 'OOMOL 官方托管端点。' : '完整地址必须包含 /mcp 路径。'}
       >
-        <div className='oomol-connector-field'>
+        <Field className='oomol-connector-field' label='OOMOL MCP 地址' error={urlValidationMessage}>
           <SettingsTextField
             type='url'
             label='OOMOL MCP 地址'
@@ -117,12 +117,7 @@ export function OomolConnectorSettings({
             disabled={deployment === 'hosted'}
             onChange={(url) => updateTransport({ ...transport, url })}
           />
-          {urlValidationMessage && (
-            <small className='config-field-error' role='alert'>
-              {urlValidationMessage}
-            </small>
-          )}
-        </div>
+        </Field>
       </SettingsRow>
       <SettingsRow
         label={deployment === 'hosted' ? 'OOMOL API Key' : 'Runtime Token'}
@@ -132,7 +127,11 @@ export function OomolConnectorSettings({
             : '在 OpenConnector 的 Access 页面创建；A3S 会自动添加 Bearer 前缀。'
         }
       >
-        <div className='oomol-connector-field'>
+        <Field
+          className='oomol-connector-field'
+          label={deployment === 'hosted' ? 'OOMOL API Key' : 'OOMOL Runtime Token'}
+          error={authorizationValidationMessage}
+        >
           <SettingsSecretField
             label={deployment === 'hosted' ? 'OOMOL API Key' : 'OOMOL Runtime Token'}
             value={token}
@@ -143,12 +142,7 @@ export function OomolConnectorSettings({
               })
             }
           />
-          {authorizationValidationMessage && (
-            <small className='config-field-error' role='alert'>
-              {authorizationValidationMessage}
-            </small>
-          )}
-        </div>
+        </Field>
       </SettingsRow>
       <SettingsRow label='工具超时' description='发现和执行 OOMOL Action 的单次最大等待时间。'>
         <SettingsNumberField
@@ -160,13 +154,13 @@ export function OomolConnectorSettings({
         />
       </SettingsRow>
       <OomolLinks deployment={deployment} />
-      <button
-        type='button'
+      <Button
+        tone='danger'
         className='config-delete-button'
         onClick={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}
       >
         <Trash2 size={13} /> 移除连接器
-      </button>
+      </Button>
     </div>
   );
 }

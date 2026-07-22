@@ -1,6 +1,6 @@
-import { ChevronDown, ChevronRight, FilePlus2, FolderTree, RefreshCw, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, FilePlus2, FolderTree, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CollectionState } from '../../../design-system/primitives';
+import { CollectionState, IconButton, SearchField } from '../../../design-system/primitives';
 import { codeApi } from '../../../lib/api';
 import { formatApiError, showToast } from '../../../state/app-state';
 import type { WorkspaceEntry } from '../../../types/api';
@@ -84,29 +84,27 @@ export function WorkIdeExplorer({
             <strong title={rootPath}>{localPathBasename(rootPath)}</strong>
           </span>
           <div>
-            <button type='button' aria-label='新建代码文件' onClick={() => void createFile()}>
+            <IconButton label='新建代码文件' onClick={() => void createFile()}>
               <FilePlus2 size={15} />
-            </button>
-            <button
-              type='button'
-              aria-label='刷新代码文件列表'
+            </IconButton>
+            <IconButton
+              label='刷新代码文件列表'
               disabled={loading.has(rootPath)}
               onClick={() => void loadDirectory(rootPath)}
             >
               <RefreshCw className={loading.has(rootPath) ? 'spin' : ''} size={14} />
-            </button>
+            </IconButton>
           </div>
         </header>
-        <label>
-          <Search size={14} />
-          <input
-            type='search'
-            aria-label='筛选代码文件'
-            placeholder='筛选文件'
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
+        <SearchField
+          className='work-ide-explorer-filter'
+          size='compact'
+          label='筛选代码文件'
+          clearLabel='清除代码文件筛选'
+          placeholder='筛选文件'
+          value={query}
+          onValueChange={setQuery}
+        />
         <div className='work-ide-tree' role='tree' aria-label='代码文件列表'>
           <IdeDirectory
             path={rootPath}

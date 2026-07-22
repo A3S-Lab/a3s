@@ -363,12 +363,16 @@ function EditorState({
   tone?: 'neutral' | 'error';
 }) {
   return (
-    <div className={`workspace-editor-state ${tone}`} role={tone === 'error' ? 'alert' : 'status'}>
-      {icon}
-      <strong>{title}</strong>
-      {description && <span>{description}</span>}
-      {action}
-    </div>
+    <StateView
+      className='workspace-editor-state'
+      size='compact'
+      tone={tone === 'error' ? 'danger' : 'neutral'}
+      role={tone === 'error' ? 'alert' : 'status'}
+      icon={icon}
+      title={title}
+      description={description}
+      actions={action}
+    />
   );
 }
 

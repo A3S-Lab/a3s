@@ -1,6 +1,7 @@
 import { BrainCircuit, Check, ChevronDown, Cpu, LoaderCircle, Settings2, Wrench } from 'lucide-react';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CatalogModel } from '../../../types/api';
+import { CollectionState } from '../feedback/collection-state';
 import { SearchField } from '../form/search-field';
 import { Tabs } from '../navigation/tabs';
 import { Popover } from '../overlay/popover';
@@ -202,7 +203,7 @@ export function ModelCombobox({
                 </em>
               </button>
             ))}
-            {!filtered.length && <p>没有匹配的模型</p>}
+            {!filtered.length && <CollectionState role='status'>没有匹配的模型</CollectionState>}
           </div>
           {onConfigure && (
             <footer className='ds-combobox-footer'>

@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
-import { Button } from '../../../../design-system/primitives';
+import { Button, IconButton } from '../../../../design-system/primitives';
 import type { SearchSettings } from '../../../../types/settings';
 import { SettingsDisclosure } from '../config/settings-disclosure';
 import { SettingsEmptyNotice } from '../config/settings-empty-notice';
@@ -112,9 +112,8 @@ export function SearchSettingsEditor({
               suffix='秒'
               onChange={(timeout) => updateEngine(name, name, { timeout })}
             />
-            <button
-              type='button'
-              aria-label={`删除搜索引擎 ${name}`}
+            <IconButton
+              label={`删除搜索引擎 ${name}`}
               onClick={() => {
                 const engines = { ...value.engine };
                 delete engines[name];
@@ -122,7 +121,7 @@ export function SearchSettingsEditor({
               }}
             >
               <Trash2 size={13} />
-            </button>
+            </IconButton>
           </div>
         ))}
         {!Object.keys(value.engine).length && <SettingsEmptyNotice>没有配置搜索引擎。</SettingsEmptyNotice>}

@@ -3,7 +3,7 @@ import { ChevronDown, CirclePlus, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { SidebarProductHeader } from '../../../components/sidebar-product-header';
-import { CollectionState } from '../../../design-system/primitives';
+import { CollectionState, IconButton, SearchField } from '../../../design-system/primitives';
 import { appState, sessionTitle } from '../../../state/app-state';
 import type { TaskActions } from '../task-actions';
 import { TaskLibraryItem } from './task-library-item';
@@ -33,12 +33,10 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
           appState.sidebarOpen = false;
         }}
       >
-        <button
+        <IconButton
           ref={searchTriggerRef}
-          type='button'
-          className={`ds-icon-button ${searchOpen ? 'selected' : ''}`}
-          aria-label={searchOpen ? '关闭任务搜索' : '搜索任务'}
-          title={searchOpen ? '关闭任务搜索' : '搜索任务'}
+          label={searchOpen ? '关闭任务搜索' : '搜索任务'}
+          selected={searchOpen}
           aria-expanded={searchOpen}
           onClick={() => {
             if (searchOpen) appState.searchQuery = '';
@@ -47,7 +45,7 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
           }}
         >
           <Search size={15} />
-        </button>
+        </IconButton>
       </SidebarProductHeader>
       <button
         type='button'
@@ -59,26 +57,25 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
         <span>新建任务</span>
       </button>
       {searchOpen && (
-        <label className='task-library-search'>
-          <Search size={14} />
-          <input
-            ref={searchInputRef}
-            type='search'
-            value={state.searchQuery}
-            onChange={(event) => {
-              appState.searchQuery = event.target.value;
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== 'Escape') return;
-              event.preventDefault();
-              appState.searchQuery = '';
-              setSearchOpen(false);
-              searchTriggerRef.current?.focus();
-            }}
-            placeholder='搜索任务'
-            aria-label='搜索任务'
-          />
-        </label>
+        <SearchField
+          ref={searchInputRef}
+          className='task-library-search'
+          size='compact'
+          label='搜索任务'
+          clearLabel='清除任务搜索'
+          value={state.searchQuery}
+          placeholder='搜索任务'
+          onValueChange={(value) => {
+            appState.searchQuery = value;
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            appState.searchQuery = '';
+            setSearchOpen(false);
+            searchTriggerRef.current?.focus();
+          }}
+        />
       )}
       <section className='task-list' aria-label='任务列表'>
         <button

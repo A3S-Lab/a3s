@@ -2,7 +2,7 @@ import { AlertTriangle, Check, LoaderCircle, QrCode, RotateCw, ScanLine } from '
 import { QRCodeSVG } from 'qrcode.react';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { Button, Dialog, InlineNotice } from '../../../design-system/primitives';
+import { Button, Dialog, Field, InlineNotice } from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
 import type { WeixinLoginAttempt, WeixinLoginState } from '../../../types/api';
 import type { WeixinRemoteActions } from '../use-weixin-remote-controller';
@@ -89,29 +89,34 @@ export function WeixinLoginDialog({ actions }: { actions: WeixinRemoteActions })
 
         {attempt.state === 'verificationRequired' && (
           <form className='weixin-verification-form' onSubmit={submit}>
-            <label htmlFor='weixin-pair-code'>微信要求输入配对验证码</label>
-            <p>请填写手机微信页面显示的数字验证码。本机最多允许提交 3 次。</p>
-            <div>
-              <input
-                id='weixin-pair-code'
-                data-autofocus
-                inputMode='numeric'
-                autoComplete='one-time-code'
-                pattern='[0-9]*'
-                maxLength={12}
-                placeholder='输入数字验证码'
-                value={code}
-                onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 12))}
-              />
-              <Button
-                tone='primary'
-                loading={state.weixinOperation === 'submittingVerification'}
-                disabled={!code || busy}
-                type='submit'
-              >
-                提交验证码
-              </Button>
-            </div>
+            <Field
+              label='微信要求输入配对验证码'
+              description='请填写手机微信页面显示的数字验证码。本机最多允许提交 3 次。'
+            >
+              {(controlProps) => (
+                <div className='weixin-verification-control'>
+                  <input
+                    {...controlProps}
+                    data-autofocus
+                    inputMode='numeric'
+                    autoComplete='one-time-code'
+                    pattern='[0-9]*'
+                    maxLength={12}
+                    placeholder='输入数字验证码'
+                    value={code}
+                    onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 12))}
+                  />
+                  <Button
+                    tone='primary'
+                    loading={state.weixinOperation === 'submittingVerification'}
+                    disabled={!code || busy}
+                    type='submit'
+                  >
+                    提交验证码
+                  </Button>
+                </div>
+              )}
+            </Field>
             <small>还可提交 {Math.max(0, MAX_VERIFICATION_SUBMISSIONS - attempt.verifySubmissions)} 次</small>
           </form>
         )}

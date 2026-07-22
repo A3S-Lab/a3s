@@ -111,4 +111,42 @@ describe('Office controls', () => {
     await waitFor(() => expect(onResult).toHaveBeenCalledWith('https://a3s.dev'));
     await waitFor(() => expect(trigger).toHaveFocus());
   });
+
+  it('moves focus into each prompt in a consecutive dialog flow and restores the original trigger', async () => {
+    const onResult = vi.fn();
+    function Harness() {
+      const officeDialog = useOfficeDialog();
+      const replace = async () => {
+        const query = await officeDialog.prompt({ title: '查找要替换的文字' });
+        if (!query) return;
+        const replacement = await officeDialog.prompt({ title: '替换为', initialValue: query });
+        onResult(replacement);
+      };
+      return (
+        <>
+          <button type='button' onClick={() => void replace()}>
+            替换
+          </button>
+          {officeDialog.dialog}
+        </>
+      );
+    }
+    render(<Harness />);
+
+    const trigger = screen.getByRole('button', { name: '替换' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const query = screen.getByRole('textbox', { name: '查找要替换的文字' });
+    expect(query).toHaveFocus();
+    fireEvent.change(query, { target: { value: '项目' } });
+    fireEvent.click(screen.getByRole('button', { name: '确定' }));
+
+    const replacement = await screen.findByRole('textbox', { name: '替换为' });
+    await waitFor(() => expect(replacement).toHaveFocus());
+    fireEvent.change(replacement, { target: { value: '计划' } });
+    fireEvent.click(screen.getByRole('button', { name: '确定' }));
+
+    await waitFor(() => expect(onResult).toHaveBeenCalledWith('计划'));
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
 });

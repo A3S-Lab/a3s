@@ -1,7 +1,7 @@
-import { MessageCircleMore, MessageSquareText } from 'lucide-react';
+import { AlertTriangle, MessageCircleMore, MessageSquareText } from 'lucide-react';
 import { useId } from 'react';
 import { useSnapshot } from 'valtio';
-import { Tabs, type TabItem } from '../../../design-system/primitives';
+import { StateView, type TabItem, Tabs } from '../../../design-system/primitives';
 import { appState, navigateSettingsChannel } from '../../../state/app-state';
 import type { ChannelSettingsTab } from '../../settings/settings-state';
 import { WeixinRemotePage } from '../../weixin-remote/pages/weixin-remote-page';
@@ -43,7 +43,15 @@ export function ChannelSettingsPage({ weixinActions }: { weixinActions?: WeixinR
         {weixinActions ? (
           <WeixinRemotePage actions={weixinActions} embedded />
         ) : (
-          <p className='channel-settings-controller-unavailable'>微信渠道控制器当前不可用。</p>
+          <StateView
+            className='channel-settings-controller-unavailable'
+            size='compact'
+            tone='danger'
+            role='alert'
+            icon={<AlertTriangle size={20} />}
+            title='微信渠道控制器当前不可用'
+            description='请重新连接本机 A3S Boot 后再试。'
+          />
         )}
       </section>
 

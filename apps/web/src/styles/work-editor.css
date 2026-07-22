@@ -232,30 +232,6 @@
   opacity: 0.6;
 }
 
-.work-pdf-export-button {
-  display: inline-flex;
-  height: 33px;
-  align-items: center;
-  gap: 6px;
-  padding: 0 10px;
-  border: 1px solid var(--a3s-line-strong);
-  border-radius: 8px;
-  background: var(--a3s-panel);
-  color: var(--a3s-ink);
-  font-size: 10px;
-  cursor: pointer;
-}
-
-.work-pdf-export-button:hover:not(:disabled) {
-  border-color: var(--a3s-blue);
-  color: var(--a3s-blue);
-}
-
-.work-pdf-export-button:disabled {
-  cursor: wait;
-  opacity: 0.55;
-}
-
 .work-local-save-form {
   display: grid;
   gap: 16px;
@@ -487,15 +463,17 @@
   font-size: 8px;
 }
 
-.work-editor-loading {
-  display: grid;
+.work-editor-loading.ds-state-view {
+  width: 100%;
   min-width: 0;
   min-height: 0;
+  margin: 0;
   flex: 1;
-  place-items: center;
   background: var(--a3s-bg);
-  color: var(--a3s-muted);
-  font-size: 12px;
+}
+
+.work-editor-loading.ds-state-view h2 {
+  font-size: 13px;
 }
 
 .work-version-history {
@@ -633,19 +611,6 @@
   background: var(--a3s-panel);
   color: var(--a3s-ink);
   font-size: 10px;
-}
-
-.work-toolbar-divider {
-  width: 1px;
-  height: 20px;
-  flex: 0 0 1px;
-  margin: 0 4px;
-  background: var(--a3s-line);
-}
-
-.work-toolbar-spacer {
-  min-width: 12px;
-  flex: 1;
 }
 
 .work-color-tool {

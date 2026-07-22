@@ -1,7 +1,7 @@
 import { ChevronDown, FilterX, SlidersHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { SearchField } from '../../../design-system/primitives';
+import { Button, SearchField } from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
 import type { MemoryForgetSignal, MemoryOverview, MemoryTier } from '../../../types/api';
 import { forgetSignalLabel, memorySourceLabel, memoryTypeLabel, tierLabel } from '../memory-format';
@@ -43,9 +43,9 @@ export function MemoryFiltersPanel({ data }: { data: MemoryOverview }) {
       <div className='memory-filter-heading'>
         <strong>筛选</strong>
         {activeCount > 0 && (
-          <button type='button' onClick={clearAll}>
+          <Button tone='quiet' className='memory-filter-clear' onClick={clearAll}>
             <FilterX size={13} /> 清除
-          </button>
+          </Button>
         )}
       </div>
       <SearchField

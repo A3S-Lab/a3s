@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { Button, CollectionState, IconButton } from '../../../design-system/primitives';
+import { Button, CollectionState, IconButton, SearchField } from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
 import type { WorkspaceEntry } from '../../../types/api';
 import type { WorkspaceActions } from '../workspace-actions';
@@ -78,16 +78,15 @@ export function WorkspaceExplorer({ actions, onOpenSearch }: { actions: Workspac
           </IconButton>
         </span>
       </header>
-      <label>
-        <Search size={14} />
-        <input
-          type='search'
-          aria-label='筛选文件'
-          placeholder='筛选文件'
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </label>
+      <SearchField
+        className='workspace-explorer-filter'
+        size='compact'
+        label='筛选文件'
+        clearLabel='清除文件筛选'
+        placeholder='筛选文件'
+        value={query}
+        onValueChange={setQuery}
+      />
       <div
         className='workspace-tree'
         role='tree'

@@ -25,6 +25,7 @@ import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { showToast } from '../../../state/app-state';
 import { WorkspaceContextMenu, type WorkspaceContextMenuItem } from '../../workspace/components/workspace-context-menu';
 import { WorkDocumentPreview } from '../components/work-document-pages';
+import { WorkEditorLoadingState } from '../components/work-editor-loading-state';
 import {
   createWorkAgentProposalRequest,
   type WorkAgentProposalRequest,
@@ -230,7 +231,7 @@ export function DocumentEditor({
   }, [content, editor, normalizedContent]);
 
   if (!editor) {
-    return <output className='work-editor-loading'>正在准备文字编辑器…</output>;
+    return <WorkEditorLoadingState title='正在准备文字编辑器' />;
   }
 
   const section = activeDocumentSection(editor);

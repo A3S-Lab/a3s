@@ -11,10 +11,10 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import type { RunActions } from '../run-actions';
+import { Button, IconButton, SearchField, StateView, StatusBadge } from '../../../design-system/primitives';
 import { appState, formatApiError, navigateTask, showToast } from '../../../state/app-state';
 import type { ToolOutputRecord } from '../../../types/api';
-import { Button, IconButton, SearchField, StateView } from '../../../design-system/primitives';
+import type { RunActions } from '../run-actions';
 
 type OutputFilter = 'all' | 'success' | 'error';
 
@@ -198,7 +198,7 @@ function OutputDetail({ item, onClose }: { item: ToolOutputRecord; onClose: () =
       <header>
         <div>
           <strong>{item.toolName}</strong>
-          <span className={item.isError ? 'error' : 'success'}>{item.isError ? '执行失败' : '执行成功'}</span>
+          <StatusBadge tone={item.isError ? 'danger' : 'success'}>{item.isError ? '执行失败' : '执行成功'}</StatusBadge>
         </div>
         <IconButton label='关闭详情' onClick={onClose}>
           <X size={16} />
@@ -261,8 +261,9 @@ function OutputCode({
     <section className='output-code'>
       <header>
         <strong>{title}</strong>
-        <button
-          type='button'
+        <Button
+          className='output-code-copy'
+          tone='quiet'
           aria-label={`复制${title}`}
           onClick={() => {
             void onCopy(value);
@@ -270,7 +271,7 @@ function OutputCode({
         >
           <Copy size={13} />
           复制
-        </button>
+        </Button>
       </header>
       <pre>{value || '—'}</pre>
     </section>

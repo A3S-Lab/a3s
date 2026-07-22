@@ -239,6 +239,7 @@
 }
 
 .task-list-inline-delete button {
+  min-height: 25px;
   height: 25px;
   padding: 0 6px;
   border: 0;

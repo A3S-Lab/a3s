@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowUp, ListOrdered, LoaderCircle, Pause, Pencil, Square, Target, X } from 'lucide-react';
 import { useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { Button, Dialog, Field } from '../../../design-system/primitives';
+import { Button, Dialog, Field, IconButton } from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
 import type { QueuedTurn } from '../../../types/api';
 import type { TaskActions } from '../task-actions';
@@ -247,30 +247,23 @@ function FollowUpQueue({
           </div>
           {item.kind === 'user' && (
             <>
-              <button
-                type='button'
-                aria-label={`提前第 ${index + 1} 条指令`}
-                disabled={index === 0}
-                onClick={() => move(index, -1)}
-              >
+              <IconButton label={`提前第 ${index + 1} 条指令`} disabled={index === 0} onClick={() => move(index, -1)}>
                 <ArrowUp size={13} />
-              </button>
-              <button
-                type='button'
-                aria-label={`后移第 ${index + 1} 条指令`}
+              </IconButton>
+              <IconButton
+                label={`后移第 ${index + 1} 条指令`}
                 disabled={index === items.length - 1}
                 onClick={() => move(index, 1)}
               >
                 <ArrowDown size={13} />
-              </button>
-              <button type='button' aria-label={`编辑第 ${index + 1} 条指令`} onClick={() => startEditing(item)}>
+              </IconButton>
+              <IconButton label={`编辑第 ${index + 1} 条指令`} onClick={() => startEditing(item)}>
                 <Pencil size={13} />
-              </button>
+              </IconButton>
             </>
           )}
-          <button
-            type='button'
-            aria-label={item.kind === 'goalContinuation' ? '暂停目标续跑' : `移除第 ${index + 1} 条指令`}
+          <IconButton
+            label={item.kind === 'goalContinuation' ? '暂停目标续跑' : `移除第 ${index + 1} 条指令`}
             onClick={() => {
               void (item.kind === 'goalContinuation'
                 ? actions.updateGoalAction('pause')
@@ -278,7 +271,7 @@ function FollowUpQueue({
             }}
           >
             <X size={13} />
-          </button>
+          </IconButton>
         </div>
       ))}
       {editingId && (

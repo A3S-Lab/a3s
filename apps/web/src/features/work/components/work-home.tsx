@@ -11,14 +11,13 @@ import {
   Pencil,
   Presentation,
   RotateCcw,
-  Search,
   Sheet,
   Star,
   Trash2,
   Upload,
 } from 'lucide-react';
 import { type CSSProperties, useMemo, useRef, useState } from 'react';
-import { Button, StateView } from '../../../design-system/primitives';
+import { Button, IconButton, SearchField, StateView } from '../../../design-system/primitives';
 import { OfficeSelect } from '../editors/office-controls';
 import { WORK_TEMPLATES } from '../work-templates';
 import type { WorkArtifact, WorkArtifactKind, WorkFolder, WorkLibraryView } from '../work-types';
@@ -130,29 +129,23 @@ export function WorkHome({
           <h1>{heading}</h1>
         </div>
         <div className='work-home-header-actions'>
-          <label className='work-search'>
-            <Search size={15} />
-            <input
-              type='search'
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder='搜索文件'
-              aria-label='搜索文件'
-            />
-          </label>
-          <button type='button' className='work-secondary-button' onClick={onImport}>
+          <SearchField
+            className='work-search'
+            label='搜索文件'
+            clearLabel='清除文件搜索'
+            value={query}
+            placeholder='搜索文件'
+            onValueChange={setQuery}
+          />
+          <Button onClick={onImport}>
             <Upload size={15} />
             打开文件
-          </button>
+          </Button>
           {(view === 'home' || view === 'folder') && (
-            <button
-              type='button'
-              className='work-secondary-button'
-              onClick={() => setOperation({ kind: 'create-folder' })}
-            >
+            <Button onClick={() => setOperation({ kind: 'create-folder' })}>
               <FolderPlus size={15} />
               新建文件夹
-            </button>
+            </Button>
           )}
         </div>
       </header>
@@ -220,22 +213,22 @@ export function WorkHome({
           </div>
           <fieldset className='work-layout-toggle'>
             <legend className='sr-only'>文件布局</legend>
-            <button
-              type='button'
+            <IconButton
+              label='网格视图'
+              selected={layout === 'grid'}
               className={layout === 'grid' ? 'active' : ''}
-              aria-label='网格视图'
               onClick={() => setLayout('grid')}
             >
               <Grid2X2 size={14} />
-            </button>
-            <button
-              type='button'
+            </IconButton>
+            <IconButton
+              label='列表视图'
+              selected={layout === 'list'}
               className={layout === 'list' ? 'active' : ''}
-              aria-label='列表视图'
               onClick={() => setLayout('list')}
             >
               <List size={15} />
-            </button>
+            </IconButton>
           </fieldset>
         </div>
 
@@ -341,14 +334,14 @@ function ArtifactCard({
       </button>
       <div className='work-artifact-actions'>
         {!trashed && (
-          <button
-            type='button'
+          <IconButton
+            label={artifact.favorite ? `取消收藏 ${artifact.title}` : `收藏 ${artifact.title}`}
+            selected={artifact.favorite}
             className={artifact.favorite ? 'active' : ''}
             onClick={onFavorite}
-            aria-label={artifact.favorite ? `取消收藏 ${artifact.title}` : `收藏 ${artifact.title}`}
           >
             <Star size={14} fill={artifact.favorite ? 'currentColor' : 'none'} />
-          </button>
+          </IconButton>
         )}
         <details ref={menuRef}>
           <summary aria-label={`${artifact.title} 更多操作`}>

@@ -15,8 +15,8 @@ export function TaskRuntimeFloatingPanel() {
   const sessionId = state.activeSessionId;
   const messages = sessionId ? (state.messagesBySession[sessionId] ?? []) : [];
   const streamOpen = Boolean(sessionId && state.streamingSessionId === sessionId);
-  const preparing = Boolean(sessionId && state.taskSubmissionState);
-  const starting = Boolean(sessionId && state.taskSubmissionState === 'creating');
+  const preparing = Boolean(state.taskSubmissionState);
+  const starting = state.taskSubmissionState === 'creating';
   const runtime = latestRuntimeContext(
     messages as unknown as readonly ChatMessage[],
     state.streamEvents as unknown as readonly AgentEvent[],

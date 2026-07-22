@@ -1,7 +1,7 @@
-import { BrainCircuit, CircleHelp, FileDiff, History, ListChecks, Search, Settings } from 'lucide-react';
+import { BrainCircuit, CircleHelp, FileDiff, History, ListChecks, Settings } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { useDialogFocusScope } from '../../design-system/primitives';
+import { CollectionState, SearchField, useDialogFocusScope } from '../../design-system/primitives';
 import type { CodeActions } from '../../features/code/use-code-controller';
 import { appState, navigateMemory, navigateSettings, navigateTask } from '../../state/app-state';
 
@@ -110,32 +110,30 @@ export function CommandPalette({ actions }: { actions: CodeActions }) {
         aria-label='快速导航'
         onKeyDown={focusScope.handleKeyDown}
       >
-        <label>
-          <Search size={16} />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder='搜索页面或操作'
-            aria-label='搜索页面或操作'
-            role='combobox'
-            aria-controls={resultId}
-            aria-expanded='true'
-            aria-activedescendant={visible[selectedIndex] ? `${resultId}-${selectedIndex}` : undefined}
-            onKeyDown={(event) => {
-              if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                setSelectedIndex((index) => Math.min(index + 1, visible.length - 1));
-              } else if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                setSelectedIndex((index) => Math.max(index - 1, 0));
-              } else if (event.key === 'Enter') {
-                event.preventDefault();
-                run(selectedIndex);
-              }
-            }}
-          />
-        </label>
+        <SearchField
+          ref={inputRef}
+          className='palette-search'
+          label='搜索页面或操作'
+          value={query}
+          onValueChange={setQuery}
+          placeholder='搜索页面或操作'
+          role='combobox'
+          aria-controls={resultId}
+          aria-expanded='true'
+          aria-activedescendant={visible[selectedIndex] ? `${resultId}-${selectedIndex}` : undefined}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              setSelectedIndex((index) => Math.min(index + 1, visible.length - 1));
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              setSelectedIndex((index) => Math.max(index - 1, 0));
+            } else if (event.key === 'Enter') {
+              event.preventDefault();
+              run(selectedIndex);
+            }
+          }}
+        />
         <div className='palette-results' id={resultId} role='listbox' aria-label='可用操作'>
           <span>CODE</span>
           {visible.map(({ label, description, icon: Icon, run }) => (
@@ -159,7 +157,7 @@ export function CommandPalette({ actions }: { actions: CodeActions }) {
               </span>
             </button>
           ))}
-          {!visible.length && query && <p>没有匹配的操作</p>}
+          {!visible.length && query && <CollectionState role='status'>没有匹配的操作</CollectionState>}
         </div>
         <footer>
           <kbd>Esc</kbd> 关闭

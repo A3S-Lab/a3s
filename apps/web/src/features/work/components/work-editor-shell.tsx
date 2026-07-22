@@ -20,8 +20,10 @@ import {
   Star,
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { Button, IconButton } from '../../../design-system/primitives';
 import { DocumentEditor } from '../editors/document-editor';
 import { OfficeTextField } from '../editors/office-controls';
+import { isOfficeShortcutBlocked } from '../editors/office-shortcuts';
 import { PresentationEditor } from '../editors/presentation-editor';
 import type { WorkOfficeFileAction } from '../editors/work-office-chrome';
 import type { WorkActions } from '../use-work-controller';
@@ -30,6 +32,7 @@ import { localPathParent } from '../work-local-files';
 import type { WorkArtifactContent, WorkArtifactKind, WorkPresentationPrintLayout } from '../work-types';
 import { workArtifactExtension, workArtifactKindLabel } from '../work-types';
 import { WorkCompatibilityDialog } from './work-compatibility-dialog';
+import { WorkEditorLoadingState } from './work-editor-loading-state';
 import { WorkLocalFileConflictDialog, WorkLocalSaveDialog } from './work-local-save-dialog';
 import { WorkPdfExportSurface } from './work-pdf-export-surface';
 import { WorkPrintPreviewDialog } from './work-print-preview-dialog';
@@ -104,6 +107,7 @@ export function WorkEditorShell({
         event.defaultPrevented ||
         event.repeat ||
         event.altKey ||
+        isOfficeShortcutBlocked(event.target) ||
         !(event.metaKey || event.ctrlKey) ||
         !artifact ||
         artifact.kind === 'pdf'
@@ -212,14 +216,9 @@ export function WorkEditorShell({
   return (
     <section className={`work-editor-shell ${artifact.kind}`}>
       <header className='work-editor-header'>
-        <button
-          type='button'
-          className='work-editor-back'
-          aria-label='返回办公文件中心'
-          onClick={() => void actions.closeArtifact()}
-        >
+        <IconButton className='work-editor-back' label='返回办公文件中心' onClick={() => void actions.closeArtifact()}>
           <ArrowLeft size={17} />
-        </button>
+        </IconButton>
         <span className={`work-file-kind-icon ${artifact.kind}`}>
           <WorkKindIcon kind={artifact.kind} />
         </span>
@@ -246,28 +245,26 @@ export function WorkEditorShell({
           </span>
         </div>
         <div className='work-editor-header-actions'>
-          <button
-            type='button'
+          <IconButton
+            label={artifact.favorite ? '取消收藏' : '收藏'}
+            selected={artifact.favorite}
             className={`work-icon-button ${artifact.favorite ? 'active' : ''}`}
-            aria-label={artifact.favorite ? '取消收藏' : '收藏'}
-            aria-pressed={artifact.favorite}
-            title={artifact.favorite ? '取消收藏' : '收藏'}
             onClick={() => actions.toggleFavorite(artifact.id)}
           >
             <Star size={16} fill={artifact.favorite ? 'currentColor' : 'none'} />
-          </button>
+          </IconButton>
           {artifact.kind !== 'pdf' && (
-            <button
-              type='button'
+            <Button
               className='work-local-save-button'
               aria-label={actions.activeLocalBinding ? '保存到原本地文件' : '保存到 A3S'}
               title={actions.activeLocalBinding?.path}
               disabled={actions.saveState === 'saving' || actions.localSaveState === 'saving'}
+              loading={actions.saveState === 'saving' || actions.localSaveState === 'saving'}
               onClick={requestPrimarySave}
             >
-              <Save size={15} />
-              {actions.saveState === 'saving' || actions.localSaveState === 'saving' ? '正在保存…' : '保存'}
-            </button>
+              {actions.saveState !== 'saving' && actions.localSaveState !== 'saving' && <Save size={15} />}
+              保存
+            </Button>
           )}
           {artifact.kind !== 'pdf' && (
             <fieldset className='work-preview-switch'>
@@ -293,8 +290,7 @@ export function WorkEditorShell({
             </fieldset>
           )}
           {onToggleCopilot && (
-            <button
-              type='button'
+            <Button
               className={`work-editor-ai-button ${copilotOpen ? 'active' : ''}`}
               aria-label={copilotOpen ? '关闭 AI 助手' : '打开 AI 助手'}
               aria-pressed={copilotOpen}
@@ -302,38 +298,32 @@ export function WorkEditorShell({
             >
               <Sparkles size={15} />
               AI 助手
-            </button>
+            </Button>
           )}
           {artifact.kind === 'pdf' && (
             <>
               {artifact.source && (
-                <button
-                  type='button'
+                <IconButton
                   className='work-icon-button'
-                  aria-label={`下载原始文件 ${artifact.source.name}`}
-                  title={`下载原始文件：${artifact.source.name}`}
+                  label={`下载原始文件 ${artifact.source.name}`}
+                  tooltip={`下载原始文件：${artifact.source.name}`}
                   onClick={() => void actions.downloadSource()}
                 >
                   <FileDown size={16} />
-                </button>
+                </IconButton>
               )}
-              <button
-                type='button'
-                className='work-icon-button'
-                aria-label='查看版本历史'
-                onClick={() => setShowVersions(true)}
-              >
+              <IconButton className='work-icon-button' label='查看版本历史' onClick={() => setShowVersions(true)}>
                 <History size={16} />
-              </button>
-              <button
-                type='button'
+              </IconButton>
+              <Button
                 className='work-export-button'
                 disabled={actions.exporting}
+                loading={actions.exporting}
                 onClick={() => void actions.downloadSource()}
               >
-                <Download size={15} />
-                {actions.exporting ? '正在下载…' : '下载 PDF'}
-              </button>
+                {!actions.exporting && <Download size={15} />}
+                下载 PDF
+              </Button>
             </>
           )}
         </div>
@@ -380,7 +370,7 @@ export function WorkEditorShell({
           />
         )}
         {artifact.content.type === 'spreadsheet' && (
-          <Suspense fallback={<output className='work-editor-loading'>正在准备表格编辑器…</output>}>
+          <Suspense fallback={<WorkEditorLoadingState title='正在准备表格编辑器' />}>
             <SpreadsheetEditor
               key={artifact.id}
               content={artifact.content}
@@ -405,7 +395,7 @@ export function WorkEditorShell({
           />
         )}
         {artifact.content.type === 'pdf' && (
-          <Suspense fallback={<output className='work-editor-loading'>正在准备 PDF 预览器…</output>}>
+          <Suspense fallback={<WorkEditorLoadingState title='正在准备 PDF 预览器' />}>
             <PdfViewer
               key={artifact.id}
               fileName={artifact.source?.name ?? `${artifact.title}.pdf`}

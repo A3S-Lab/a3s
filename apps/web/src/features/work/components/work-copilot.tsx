@@ -1,7 +1,7 @@
 import { FolderOpen, MessageSquarePlus, Sparkles, WandSparkles, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { SplitHandle } from '../../../design-system/primitives';
+import { Button, IconButton, SplitHandle } from '../../../design-system/primitives';
 import { appState, formatApiError, sessionTitle, showToast } from '../../../state/app-state';
 import type { CodeActions } from '../../code/use-code-controller';
 import { ExecutionStream } from '../../tasks/components/execution-stream';
@@ -101,9 +101,8 @@ export function WorkCopilot({
             {compatibleSession ? sessionTitle(compatibleSession, state.sessionTitles) : folderLabel || '等待选择文件夹'}
           </small>
         </div>
-        <button
-          type='button'
-          aria-label='新建 Work AI 助手对话'
+        <IconButton
+          label='新建 Work AI 助手对话'
           disabled={!workspaceRoot}
           onClick={() => {
             actions.newConversation();
@@ -113,10 +112,10 @@ export function WorkCopilot({
           }}
         >
           <MessageSquarePlus size={15} />
-        </button>
-        <button type='button' aria-label='关闭 Work AI 助手' onClick={onClose}>
+        </IconButton>
+        <IconButton label='关闭 Work AI 助手' onClick={onClose}>
           <X size={16} />
-        </button>
+        </IconButton>
       </header>
       {!workspaceRoot ? (
         <section className='work-copilot-no-workspace'>
@@ -125,9 +124,9 @@ export function WorkCopilot({
           </span>
           <strong>先连接一个本地文件夹</strong>
           <p>AI 助手会读取这个文件夹，并只在你发送指令后开始工作。</p>
-          <button type='button' onClick={() => void onPickRoot()}>
+          <Button tone='primary' onClick={() => void onPickRoot()}>
             选择文件夹
-          </button>
+          </Button>
         </section>
       ) : (
         <div className='work-copilot-thread'>

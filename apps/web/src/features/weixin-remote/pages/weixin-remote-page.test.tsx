@@ -207,6 +207,8 @@ describe('WeixinRemotePage', () => {
 
     render(<WeixinRemotePage actions={remoteActions} />);
     const input = screen.getByLabelText('微信要求输入配对验证码');
+    const description = screen.getByText('请填写手机微信页面显示的数字验证码。本机最多允许提交 3 次。');
+    expect(input).toHaveAttribute('aria-describedby', description.id);
     expect(screen.queryByTitle('微信绑定二维码')).not.toBeInTheDocument();
     fireEvent.change(input, { target: { value: '12ab34' } });
     expect(input).toHaveValue('1234');

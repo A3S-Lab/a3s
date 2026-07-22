@@ -29,15 +29,11 @@
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
-  color: var(--a3s-faint);
 }
 
-.work-pdf-integration-bar output.saved {
-  color: #17805c;
-}
-
-.work-pdf-integration-bar output.error {
-  color: var(--a3s-red);
+.work-pdf-integration-bar output .ds-status-badge {
+  padding: 2px 7px;
+  font-size: 8px;
 }
 
 .work-pdf-integration-bar > .ds-button {

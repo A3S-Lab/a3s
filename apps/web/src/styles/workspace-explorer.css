@@ -47,7 +47,7 @@
   border-radius: 5px;
 }
 
-.workspace-explorer > label {
+.workspace-explorer > .workspace-explorer-filter {
   display: flex;
   height: 28px;
   flex: 0 0 28px;
@@ -61,12 +61,12 @@
   color: var(--a3s-faint);
 }
 
-.workspace-explorer > label:focus-within {
+.workspace-explorer > .workspace-explorer-filter:focus-within {
   border-color: color-mix(in srgb, var(--a3s-blue) 60%, var(--a3s-line));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--a3s-blue) 14%, transparent);
 }
 
-.workspace-explorer > label input {
+.workspace-explorer > .workspace-explorer-filter input {
   min-width: 0;
   flex: 1;
   border: 0;
@@ -327,6 +327,7 @@
 }
 
 .explorer-inline-delete button {
+  min-height: 24px;
   height: 24px;
   padding: 0 5px;
   border: 0;

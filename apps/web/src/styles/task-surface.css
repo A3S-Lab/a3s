@@ -46,29 +46,6 @@
   font-size: 9px;
 }
 
-.task-stage-switcher {
-  gap: 2px;
-  padding: 4px;
-  border: 0;
-  border-radius: 11px;
-  background: var(--a3s-panel-soft);
-}
-
-.task-stage-switcher button {
-  height: 32px;
-  gap: 6px;
-  padding: 0 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 550;
-}
-
-.task-stage-switcher button.active {
-  background: var(--a3s-panel);
-  color: var(--a3s-blue);
-  box-shadow: 0 1px 4px rgb(20 24 40 / 8%);
-}
-
 .task-workspace {
   background: var(--a3s-panel);
 }
@@ -114,6 +91,10 @@
 .execution-jump-latest:hover {
   background: var(--a3s-panel-soft);
   color: var(--a3s-ink);
+}
+
+.execution-jump-latest.ds-button:hover:not(:disabled) {
+  transform: translateX(-50%) translateY(-1px);
 }
 
 .execution-column {
@@ -213,6 +194,14 @@
   color: var(--a3s-faint);
   cursor: pointer;
   font-size: 10px;
+}
+
+.conversation-message-actions .ds-icon-button {
+  width: 24px;
+}
+
+.conversation-message-actions .conversation-copy-action:not(.idle) {
+  width: auto;
 }
 
 .conversation-message-actions button:hover,
@@ -786,4 +775,8 @@
   .recovery-technical-details > button svg {
     transition: none;
   }
+}
+
+.task-load-state.ds-state-view .ds-button {
+  margin-top: 0;
 }

@@ -248,6 +248,49 @@ describe('Work presentation print controls', () => {
 
     expect(actions.saveNow).not.toHaveBeenCalled();
   });
+
+  it('does not run background save or print shortcuts while Save As is open', () => {
+    const artifact = createWorkArtifact('strategy-deck');
+    const actions = {
+      activeArtifact: artifact,
+      activeLocalBinding: null,
+      localSaveState: 'idle',
+      localConflict: null,
+      saveState: 'saved',
+      storageMode: 'local',
+      exporting: false,
+      exportingPdf: false,
+      closeArtifact: vi.fn(),
+      saveNow: vi.fn(),
+      saveLocalFile: vi.fn(),
+      saveLocalFileAs: vi.fn(),
+      checkLocalFile: vi.fn(),
+      dismissLocalConflict: vi.fn(),
+      updateArtifact: vi.fn(),
+      toggleFavorite: vi.fn(),
+      downloadSource: vi.fn(),
+      exportArtifact: vi.fn(),
+      exportPdf: vi.fn(),
+      sourceBlob: vi.fn(),
+    } as unknown as WorkActions;
+
+    render(
+      <WorkEditorShell
+        actions={actions}
+        defaultLocalDirectory='/docs'
+        onPickLocalDirectory={vi.fn(async () => '/docs')}
+      />
+    );
+    fireEvent.keyDown(window, { key: 's', metaKey: true, shiftKey: true });
+    const fileName = screen.getByRole('textbox', { name: '本地文件名' });
+
+    expect(fireEvent.keyDown(fileName, { key: 's', metaKey: true })).toBe(false);
+    expect(fireEvent.keyDown(fileName, { key: 'p', metaKey: true })).toBe(false);
+
+    expect(actions.saveNow).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: '另存为本地 Office 文件' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: '打印预览' })).not.toBeInTheDocument();
+  });
 });
 
 function openPrintPreview() {

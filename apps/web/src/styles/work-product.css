@@ -77,6 +77,7 @@
 .work-sidebar-import {
   display: flex;
   width: 100%;
+  min-height: 34px;
   height: 34px;
   align-items: center;
   gap: 10px;
@@ -120,6 +121,14 @@
 .work-sidebar-import:hover {
   background: var(--a3s-panel-strong);
   color: var(--a3s-ink);
+}
+
+.work-sidebar-create .ds-button:hover:not(:disabled),
+.work-sidebar-import.ds-button:hover:not(:disabled) {
+  background: var(--a3s-panel-strong);
+  color: var(--a3s-ink);
+  filter: none;
+  transform: none;
 }
 
 .work-sidebar nav button.active {
@@ -218,7 +227,7 @@
   color: #db663b;
 }
 
-.work-sidebar-import {
+.work-sidebar-import.ds-button {
   margin-top: auto;
   border: 1px solid var(--a3s-line);
   background: color-mix(in srgb, var(--a3s-panel) 70%, transparent);
@@ -267,27 +276,6 @@
 
 .work-search {
   width: min(280px, 25vw);
-}
-
-.work-secondary-button {
-  display: inline-flex;
-  height: 36px;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 0 13px;
-  border: 1px solid var(--a3s-line-strong);
-  border-radius: 9px;
-  background: var(--a3s-panel);
-  color: var(--a3s-ink);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.work-secondary-button:hover {
-  border-color: var(--a3s-blue);
-  color: var(--a3s-blue);
 }
 
 .work-template-section,

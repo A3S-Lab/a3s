@@ -345,6 +345,7 @@
 .work-files-layout-toggle > button {
   display: grid;
   width: 30px;
+  min-height: 30px;
   height: 30px;
   padding: 0;
   place-items: center;
