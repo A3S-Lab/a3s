@@ -33,7 +33,7 @@ tenant routes require an API token with the declared scope.
 
 Do not copy a generated schema into source documentation. Start the exact
 binary and retrieve `/api/v1/openapi.json`. Its registration is tied to the
-[pinned application source](https://github.com/A3S-Lab/Cloud/blob/5d7307cc7bf5b155f708ca9f5bd3e5d06745b68d/crates/control-plane/src/app.rs),
+[pinned application source](https://github.com/A3S-Lab/Cloud/blob/c2fc55950185429f3cc141ab45c525b1b9c1c4b8/crates/control-plane/src/app.rs),
 and the docs gate fails if that source marker changes.
 
 ## Events and node protocols
@@ -41,19 +41,19 @@ and the docs gate fails if that source marker changes.
 Event keys are lowercase dot-separated names. The envelope carries event ID,
 key, schema version, organization, aggregate identity/version, timestamps,
 correlation/causation IDs, and JSON payload; see the
-[pinned contract](https://github.com/A3S-Lab/Cloud/blob/5d7307cc7bf5b155f708ca9f5bd3e5d06745b68d/crates/contracts/src/event.rs).
+[pinned contract](https://github.com/A3S-Lab/Cloud/blob/c2fc55950185429f3cc141ab45c525b1b9c1c4b8/crates/contracts/src/event.rs).
 NATS is a relay of the PostgreSQL outbox, not a second business authority.
 
 Node request/response schemas live in the
-[pinned contracts directory](https://github.com/A3S-Lab/Cloud/tree/5d7307cc7bf5b155f708ca9f5bd3e5d06745b68d/crates/contracts/src/node).
+[pinned contracts directory](https://github.com/A3S-Lab/Cloud/tree/c2fc55950185429f3cc141ab45c525b1b9c1c4b8/crates/contracts/src/node).
 They are private infrastructure contracts authenticated by node identity; they
 must not be exposed as unauthenticated public REST.
 
 ## ACL
 
 ACL means A3S Agent Configuration Language, not HCL. The complete shipped
-[`cloud.acl`](https://github.com/A3S-Lab/Cloud/blob/5d7307cc7bf5b155f708ca9f5bd3e5d06745b68d/config/cloud.acl)
+[`cloud.acl`](https://github.com/A3S-Lab/Cloud/blob/c2fc55950185429f3cc141ab45c525b1b9c1c4b8/config/cloud.acl)
 and
-[`node.example.acl`](https://github.com/A3S-Lab/Cloud/blob/5d7307cc7bf5b155f708ca9f5bd3e5d06745b68d/config/node.example.acl)
+[`node.example.acl`](https://github.com/A3S-Lab/Cloud/blob/c2fc55950185429f3cc141ab45c525b1b9c1c4b8/config/node.example.acl)
 are the versioned references. Unknown blocks and fields fail closed. Secrets
 are referenced by environment-variable name; values do not belong in ACL.

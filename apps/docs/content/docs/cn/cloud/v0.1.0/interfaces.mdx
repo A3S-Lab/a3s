@@ -31,24 +31,24 @@ Snapshot: `cloud-0.1.0`
 
 不要把生成 schema 手工复制进源码文档。启动精确二进制并读取
 `/api/v1/openapi.json`。注册位置固定在
-[application source](https://github.com/A3S-Lab/Cloud/blob/5d7307cc7bf5b155f708ca9f5bd3e5d06745b68d/crates/control-plane/src/app.rs)；
+[application source](https://github.com/A3S-Lab/Cloud/blob/c2fc55950185429f3cc141ab45c525b1b9c1c4b8/crates/control-plane/src/app.rs)；
 该 source marker 改变时文档 gate 会失败。
 
 ## 事件与节点协议
 
 Event key 使用小写点分格式。envelope 携带 event ID、key、schema version、organization、
 aggregate identity/version、timestamp、correlation/causation ID 与 JSON payload；参见
-[固定 contract](https://github.com/A3S-Lab/Cloud/blob/5d7307cc7bf5b155f708ca9f5bd3e5d06745b68d/crates/contracts/src/event.rs)。
+[固定 contract](https://github.com/A3S-Lab/Cloud/blob/c2fc55950185429f3cc141ab45c525b1b9c1c4b8/crates/contracts/src/event.rs)。
 NATS 是 PostgreSQL outbox 的 relay，不是第二个业务权威来源。
 
 Node request/response schema 位于
-[固定 contracts 目录](https://github.com/A3S-Lab/Cloud/tree/5d7307cc7bf5b155f708ca9f5bd3e5d06745b68d/crates/contracts/src/node)。
+[固定 contracts 目录](https://github.com/A3S-Lab/Cloud/tree/c2fc55950185429f3cc141ab45c525b1b9c1c4b8/crates/contracts/src/node)。
 它们是由节点 identity 认证的私有基础设施 contract，不得作为未认证公共 REST 暴露。
 
 ## ACL
 
 ACL 指 A3S Agent Configuration Language，不是 HCL。完整发布参考是
-[`cloud.acl`](https://github.com/A3S-Lab/Cloud/blob/5d7307cc7bf5b155f708ca9f5bd3e5d06745b68d/config/cloud.acl)
+[`cloud.acl`](https://github.com/A3S-Lab/Cloud/blob/c2fc55950185429f3cc141ab45c525b1b9c1c4b8/config/cloud.acl)
 和
-[`node.example.acl`](https://github.com/A3S-Lab/Cloud/blob/5d7307cc7bf5b155f708ca9f5bd3e5d06745b68d/config/node.example.acl)。
+[`node.example.acl`](https://github.com/A3S-Lab/Cloud/blob/c2fc55950185429f3cc141ab45c525b1b9c1c4b8/config/node.example.acl)。
 未知 block 与字段会 fail closed。ACL 只引用环境变量名，不能包含 secret value。
