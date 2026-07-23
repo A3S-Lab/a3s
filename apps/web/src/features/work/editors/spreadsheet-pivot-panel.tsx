@@ -1,7 +1,7 @@
 import type { Selection } from '@fortune-sheet/core';
 import { Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CollectionState, InlineNotice, StateView } from '../../../design-system/primitives';
+import { Button, CollectionState, InlineNotice, StateView } from '../../../design-system/primitives';
 import { spreadsheetPivotFilterValueKey } from '../work-spreadsheet-pivot-values';
 import {
   createSpreadsheetPivotFromSelection,
@@ -190,14 +190,14 @@ export function SpreadsheetPivotPanel({ content, activeSheetId, selection, onCha
   return (
     <div className='work-spreadsheet-pivot-manager'>
       <aside aria-label='工作簿数据透视表'>
-        <button type='button' className='create' onClick={addPivot}>
+        <Button className='create' tone='secondary' onClick={addPivot}>
           <Plus size={13} />
           根据当前选区新建
-        </button>
-        <button type='button' className='refresh' disabled={!items.length} onClick={refreshAll}>
+        </Button>
+        <Button className='refresh' tone='secondary' disabled={!items.length} onClick={refreshAll}>
           <RefreshCw size={13} />
           刷新全部
-        </button>
+        </Button>
         <div className='work-spreadsheet-pivot-list'>
           {items.map((item) => (
             <button
@@ -411,18 +411,18 @@ export function SpreadsheetPivotPanel({ content, activeSheetId, selection, onCha
             )}
           </section>
           <div className='actions'>
-            <button type='button' className='danger' onClick={deletePivot}>
+            <Button tone='danger' onClick={deletePivot}>
               <Trash2 size={13} />
               删除
-            </button>
+            </Button>
             {error && (
               <InlineNotice className='work-office-form-error' tone='danger' role='alert'>
                 {error}
               </InlineNotice>
             )}
-            <button type='submit' className='primary'>
+            <Button type='submit' tone='primary'>
               保存并刷新
-            </button>
+            </Button>
           </div>
         </form>
       ) : (

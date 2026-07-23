@@ -11,6 +11,7 @@ const workbookMocks = vi.hoisted(() => ({
   cancelMerge: vi.fn(),
   handleRedo: vi.fn(),
   handleUndo: vi.fn(),
+  onKeyDown: vi.fn(),
   mergeCells: vi.fn(),
   setCellFormatByRange: vi.fn(),
   hooks: undefined as Hooks | undefined,
@@ -67,13 +68,22 @@ vi.mock('@fortune-sheet/react', async () => {
         workbookMocks.sheets = data;
         workbookMocks.showToolbar = showToolbar;
         return (
-          <button
-            type='button'
-            data-testid='fortune-sheet'
-            onMouseDown={() => hooks?.afterSelectionChange?.(data[0].id!, { row: [0, 1], column: [0, 1] })}
-          >
-            {data.map((sheet) => sheet.name).join(',')}
-          </button>
+          <div className='fortune-container' role='application' onKeyDown={(event) => workbookMocks.onKeyDown(event)}>
+            <button
+              type='button'
+              data-testid='fortune-sheet'
+              onMouseDown={() =>
+                hooks?.afterSelectionChange?.(data[0].id!, {
+                  row: [0, 1],
+                  column: [0, 1],
+                })
+              }
+            >
+              {data.map((sheet) => sheet.name).join(',')}
+            </button>
+            {/* biome-ignore lint/a11y/useSemanticElements: Fortune Sheet renders its formula bar as a contenteditable textbox. */}
+            <div className='fortune-fx-input' role='textbox' tabIndex={0} aria-label='当前单元格输入' contentEditable />
+          </div>
         );
       }
     ),
@@ -87,6 +97,7 @@ describe('Work spreadsheet editor', () => {
     workbookMocks.cancelMerge.mockReset();
     workbookMocks.handleRedo.mockReset();
     workbookMocks.handleUndo.mockReset();
+    workbookMocks.onKeyDown.mockReset();
     workbookMocks.mergeCells.mockReset();
     workbookMocks.setCellFormatByRange.mockReset();
     workbookMocks.hooks = undefined;
@@ -141,11 +152,13 @@ describe('Work spreadsheet editor', () => {
 
     expect(workbookMocks.showToolbar).toBe(false);
     expect(screen.getByRole('toolbar', { name: '开始工具栏' })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: '撤销' }));
-    fireEvent.click(screen.getByRole('button', { name: '重做' }));
-    expect(workbookMocks.handleUndo).toHaveBeenCalledTimes(1);
-    expect(workbookMocks.handleRedo).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: '撤销' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '重做' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '撤销' })).toHaveAttribute('aria-keyshortcuts', 'Control+Z Meta+Z');
+    expect(screen.getByRole('button', { name: '重做' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y'
+    );
 
     fireEvent.mouseDown(screen.getByTestId('fortune-sheet'));
     fireEvent.click(screen.getByRole('button', { name: '加粗' }));
@@ -160,6 +173,100 @@ describe('Work spreadsheet editor', () => {
     expect(workbookMocks.mergeCells).toHaveBeenCalledWith([{ row: [0, 1], column: [0, 1] }], 'merge-all', {
       id: sheetId,
     });
+  });
+
+  it('tracks workbook edits with accurate ribbon and keyboard undo and redo state', async () => {
+    const initial = spreadsheetContent();
+    const onChange = vi.fn();
+    render(<SpreadsheetHarness initial={initial} onChange={onChange} />);
+    const editedSheets = workbookMocks.sheets!.map((sheet, index) =>
+      index === 0
+        ? {
+            ...sheet,
+            data: [[{ v: '可撤销内容', m: '可撤销内容' }]],
+          }
+        : sheet
+    );
+
+    await act(async () => workbookMocks.onChange?.(editedSheets));
+    await waitFor(() => expect(screen.getByRole('button', { name: '撤销' })).toBeEnabled());
+    expect(screen.getByRole('button', { name: '重做' })).toBeDisabled();
+    const edited = onChange.mock.lastCall?.[0];
+    expect(edited?.sheets[0].data?.[0]?.[0]?.v).toBe('可撤销内容');
+
+    expect(
+      fireEvent.keyDown(screen.getByTestId('fortune-sheet'), {
+        key: 'z',
+        ctrlKey: true,
+      })
+    ).toBe(false);
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(initial));
+    expect(screen.getByRole('button', { name: '撤销' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '重做' })).toBeEnabled();
+
+    expect(
+      fireEvent.keyDown(screen.getByRole('textbox', { name: '当前单元格输入' }), {
+        key: 'z',
+        ctrlKey: true,
+        shiftKey: true,
+      })
+    ).toBe(false);
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(edited));
+
+    fireEvent.click(screen.getByRole('button', { name: '撤销' }));
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(initial));
+    expect(
+      fireEvent.keyDown(screen.getByTestId('fortune-sheet'), {
+        key: 'y',
+        ctrlKey: true,
+      })
+    ).toBe(false);
+    await waitFor(() => expect(onChange).toHaveBeenLastCalledWith(edited));
+
+    expect(workbookMocks.handleUndo).not.toHaveBeenCalled();
+    expect(workbookMocks.handleRedo).not.toHaveBeenCalled();
+  });
+
+  it('keeps native select-all inside the formula bar instead of selecting the workbook', () => {
+    render(<SpreadsheetEditor content={spreadsheetContent()} preview={false} onChange={vi.fn()} />);
+    const formulaBar = screen.getByRole('textbox', { name: '当前单元格输入' });
+    formulaBar.textContent = '=SUM(A1:A3)';
+
+    expect(
+      fireEvent.keyDown(formulaBar, {
+        key: 'a',
+        code: 'KeyA',
+        metaKey: true,
+      })
+    ).toBe(false);
+
+    expect(workbookMocks.onKeyDown).not.toHaveBeenCalled();
+    expect(window.getSelection()?.toString()).toBe('=SUM(A1:A3)');
+  });
+
+  it('keeps native text-field undo separate from workbook history', async () => {
+    const onChange = vi.fn();
+    render(<SpreadsheetHarness initial={spreadsheetContent()} onChange={onChange} />);
+    const editedSheets = workbookMocks.sheets!.map((sheet, index) =>
+      index === 0
+        ? {
+            ...sheet,
+            data: [[{ v: '工作簿历史', m: '工作簿历史' }]],
+          }
+        : sheet
+    );
+    await act(async () => workbookMocks.onChange?.(editedSheets));
+    await waitFor(() => expect(screen.getByRole('button', { name: '撤销' })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole('tab', { name: '公式' }));
+    fireEvent.click(screen.getByRole('button', { name: /^名称管理器/ }));
+    const reference = screen.getByLabelText('名称引用位置');
+    const changeCount = onChange.mock.calls.length;
+
+    expect(fireEvent.keyDown(reference, { key: 'z', ctrlKey: true })).toBe(true);
+    expect(onChange).toHaveBeenCalledTimes(changeCount);
+    fireEvent.click(screen.getByRole('tab', { name: '开始' }));
+    expect(screen.getByRole('button', { name: '撤销' })).toBeEnabled();
   });
 
   it('gives Fortune Sheet a finite A1 selection when a workbook has no saved selection', () => {
@@ -251,6 +358,25 @@ describe('Work spreadsheet editor', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  it('keeps the file menu available without exposing editing commands in preview', async () => {
+    const print = vi.fn();
+    render(
+      <SpreadsheetEditor
+        content={spreadsheetContent()}
+        preview
+        fileActions={[{ id: 'print', label: '打印', onSelect: print }]}
+        onChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('region', { name: '表格预览工具' })).toHaveTextContent('只读预览1 个工作表');
+    expect(screen.queryByRole('tablist', { name: '表格功能区' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '文件' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: '打印' }));
+
+    expect(print).toHaveBeenCalledTimes(1);
+  });
+
   it('closes a workbook settings panel after moving to another ribbon tab', () => {
     render(<SpreadsheetEditor content={spreadsheetContent()} preview={false} onChange={vi.fn()} />);
     fireEvent.click(screen.getByRole('tab', { name: '插入' }));
@@ -271,10 +397,16 @@ describe('Work spreadsheet editor', () => {
     fireEvent.click(screen.getByRole('tab', { name: '公式' }));
     fireEvent.click(screen.getByRole('button', { name: /^名称管理器/ }));
     fireEvent.click(screen.getByRole('button', { name: '新建名称' }));
-    fireEvent.change(screen.getByLabelText('名称'), { target: { value: '收入目标' } });
+    fireEvent.change(screen.getByLabelText('名称'), {
+      target: { value: '收入目标' },
+    });
     chooseOfficeOption('名称作用域', '工作表1');
-    fireEvent.change(screen.getByLabelText('名称引用位置'), { target: { value: '$b$2:$c$8' } });
-    fireEvent.change(screen.getByLabelText('名称备注'), { target: { value: '季度目标' } });
+    fireEvent.change(screen.getByLabelText('名称引用位置'), {
+      target: { value: '$b$2:$c$8' },
+    });
+    fireEvent.change(screen.getByLabelText('名称备注'), {
+      target: { value: '季度目标' },
+    });
     fireEvent.click(screen.getByRole('button', { name: '保存名称' }));
 
     await waitFor(() => {
@@ -292,12 +424,19 @@ describe('Work spreadsheet editor', () => {
       );
     });
 
-    fireEvent.change(screen.getByLabelText('名称引用位置'), { target: { value: '$B$2:$D$10' } });
+    fireEvent.change(screen.getByLabelText('名称引用位置'), {
+      target: { value: '$B$2:$D$10' },
+    });
     fireEvent.click(screen.getByRole('button', { name: '保存名称' }));
     await waitFor(() => {
       expect(onChange).toHaveBeenLastCalledWith(
         expect.objectContaining({
-          namedRanges: [expect.objectContaining({ name: '收入目标', reference: '$B$2:$D$10' })],
+          namedRanges: [
+            expect.objectContaining({
+              name: '收入目标',
+              reference: '$B$2:$D$10',
+            }),
+          ],
         })
       );
     });
@@ -316,14 +455,22 @@ describe('Work spreadsheet editor', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: '页面布局' }));
     fireEvent.click(screen.getByRole('button', { name: /^打印设置/ }));
-    fireEvent.change(screen.getByLabelText('打印范围'), { target: { value: 'A0:C4' } });
+    fireEvent.change(screen.getByLabelText('打印范围'), {
+      target: { value: 'A0:C4' },
+    });
     fireEvent.click(screen.getByRole('button', { name: '保存打印设置' }));
     expect(screen.getByText(/请输入有效的 A1 范围/)).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText('打印范围'), { target: { value: '$a$1:$j$40' } });
-    fireEvent.change(screen.getByLabelText('重复标题行'), { target: { value: '$2:$1' } });
-    fireEvent.change(screen.getByLabelText('重复标题列'), { target: { value: 'c:a' } });
+    fireEvent.change(screen.getByLabelText('打印范围'), {
+      target: { value: '$a$1:$j$40' },
+    });
+    fireEvent.change(screen.getByLabelText('重复标题行'), {
+      target: { value: '$2:$1' },
+    });
+    fireEvent.change(screen.getByLabelText('重复标题列'), {
+      target: { value: 'c:a' },
+    });
     fireEvent.change(screen.getByLabelText('手动水平分页符'), {
       target: { value: '35, 20, 35' },
     });
@@ -333,22 +480,44 @@ describe('Work spreadsheet editor', () => {
     chooseOfficeOption('纸张大小', 'Tabloid');
     chooseOfficeOption('页面方向', '纵向');
     chooseOfficeOption('缩放方式', '适合指定页数');
-    fireEvent.change(screen.getByLabelText('适合页宽'), { target: { value: '1' } });
-    fireEvent.change(screen.getByLabelText('适合页高'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('适合页宽'), {
+      target: { value: '1' },
+    });
+    fireEvent.change(screen.getByLabelText('适合页高'), {
+      target: { value: '2' },
+    });
     fireEvent.click(screen.getByLabelText('水平居中'));
     fireEvent.click(screen.getByLabelText('垂直居中'));
-    fireEvent.change(screen.getByLabelText('上边距（毫米）'), { target: { value: '20' } });
-    fireEvent.change(screen.getByLabelText('右边距（毫米）'), { target: { value: '23' } });
-    fireEvent.change(screen.getByLabelText('下边距（毫米）'), { target: { value: '21' } });
-    fireEvent.change(screen.getByLabelText('左边距（毫米）'), { target: { value: '22' } });
-    fireEvent.change(screen.getByLabelText('页眉边距（毫米）'), { target: { value: '8' } });
-    fireEvent.change(screen.getByLabelText('页脚边距（毫米）'), { target: { value: '9' } });
-    fireEvent.change(screen.getByLabelText('页眉左侧'), { target: { value: 'Confidential' } });
-    fireEvent.change(screen.getByLabelText('页眉中间'), { target: { value: '{sheet} · {file}' } });
+    fireEvent.change(screen.getByLabelText('上边距（毫米）'), {
+      target: { value: '20' },
+    });
+    fireEvent.change(screen.getByLabelText('右边距（毫米）'), {
+      target: { value: '23' },
+    });
+    fireEvent.change(screen.getByLabelText('下边距（毫米）'), {
+      target: { value: '21' },
+    });
+    fireEvent.change(screen.getByLabelText('左边距（毫米）'), {
+      target: { value: '22' },
+    });
+    fireEvent.change(screen.getByLabelText('页眉边距（毫米）'), {
+      target: { value: '8' },
+    });
+    fireEvent.change(screen.getByLabelText('页脚边距（毫米）'), {
+      target: { value: '9' },
+    });
+    fireEvent.change(screen.getByLabelText('页眉左侧'), {
+      target: { value: 'Confidential' },
+    });
+    fireEvent.change(screen.getByLabelText('页眉中间'), {
+      target: { value: '{sheet} · {file}' },
+    });
     fireEvent.change(screen.getByLabelText('页脚右侧'), {
       target: { value: 'Page {page} of {pages}' },
     });
-    fireEvent.change(screen.getByLabelText('起始页码'), { target: { value: '7' } });
+    fireEvent.change(screen.getByLabelText('起始页码'), {
+      target: { value: '7' },
+    });
     chooseOfficeOption('打印页顺序', '先向下，再向右');
     fireEvent.click(screen.getByLabelText('页眉页脚随文档缩放'));
     fireEvent.click(screen.getByLabelText('页眉页脚与页边距对齐'));
@@ -418,12 +587,16 @@ describe('Work spreadsheet editor', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: '插入' }));
     fireEvent.click(screen.getByRole('button', { name: /^条件格式/ }));
-    fireEvent.change(screen.getByLabelText('条件格式范围'), { target: { value: 'A0:A4' } });
+    fireEvent.change(screen.getByLabelText('条件格式范围'), {
+      target: { value: 'A0:A4' },
+    });
     fireEvent.click(screen.getByRole('button', { name: '保存规则' }));
     expect(screen.getByText(/请输入有效的单元格范围/)).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText('条件格式范围'), { target: { value: '$b$2:$b$4' } });
+    fireEvent.change(screen.getByLabelText('条件格式范围'), {
+      target: { value: '$b$2:$b$4' },
+    });
     chooseOfficeOption('色阶级数', '双色阶');
     chooseOfficeColor('最小值颜色', '#ff0000');
     chooseOfficeColor('最大值颜色', '#00ff00');
@@ -449,13 +622,21 @@ describe('Work spreadsheet editor', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '新建规则' }));
     chooseOfficeOption('条件格式规则类型', '数据条');
-    fireEvent.change(screen.getByLabelText('条件格式范围'), { target: { value: 'C2:C4' } });
+    fireEvent.change(screen.getByLabelText('条件格式范围'), {
+      target: { value: 'C2:C4' },
+    });
     chooseOfficeColor('数据条颜色', '#3366ff');
     fireEvent.click(screen.getByLabelText('显示数据条数值'));
-    fireEvent.change(screen.getByLabelText('数据条最短长度'), { target: { value: '20' } });
-    fireEvent.change(screen.getByLabelText('数据条最长长度'), { target: { value: '80' } });
+    fireEvent.change(screen.getByLabelText('数据条最短长度'), {
+      target: { value: '20' },
+    });
+    fireEvent.change(screen.getByLabelText('数据条最长长度'), {
+      target: { value: '80' },
+    });
     chooseOfficeOption('数据条阈值 1 类型', '数值');
-    fireEvent.change(screen.getByLabelText('数据条阈值 1'), { target: { value: '-10' } });
+    fireEvent.change(screen.getByLabelText('数据条阈值 1'), {
+      target: { value: '-10' },
+    });
     fireEvent.click(screen.getByRole('button', { name: '保存规则' }));
 
     await waitFor(() => {
@@ -478,11 +659,15 @@ describe('Work spreadsheet editor', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '新建规则' }));
     chooseOfficeOption('条件格式规则类型', '图标集');
-    fireEvent.change(screen.getByLabelText('条件格式范围'), { target: { value: 'D2:D4' } });
+    fireEvent.change(screen.getByLabelText('条件格式范围'), {
+      target: { value: 'D2:D4' },
+    });
     chooseOfficeOption('图标集', '四向彩色箭头');
     fireEvent.click(screen.getByLabelText('反转图标顺序'));
     fireEvent.click(screen.getByLabelText('显示单元格值'));
-    fireEvent.change(screen.getByLabelText('图标阈值 2'), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText('图标阈值 2'), {
+      target: { value: '20' },
+    });
     fireEvent.click(screen.getByRole('button', { name: '保存规则' }));
 
     await waitFor(() => {
@@ -535,10 +720,16 @@ describe('Work spreadsheet editor', () => {
     fireEvent.click(screen.getByRole('tab', { name: '插入' }));
     fireEvent.click(screen.getByRole('button', { name: /^条件格式/ }));
     chooseOfficeOption('条件格式规则类型', '单元格比较');
-    fireEvent.change(screen.getByLabelText('条件格式范围'), { target: { value: 'A2:A4' } });
+    fireEvent.change(screen.getByLabelText('条件格式范围'), {
+      target: { value: 'A2:A4' },
+    });
     chooseOfficeOption('条件比较运算符', '不介于');
-    fireEvent.change(screen.getByLabelText('条件比较下限'), { target: { value: '10' } });
-    fireEvent.change(screen.getByLabelText('条件比较上限'), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText('条件比较下限'), {
+      target: { value: '10' },
+    });
+    fireEvent.change(screen.getByLabelText('条件比较上限'), {
+      target: { value: '20' },
+    });
     fireEvent.click(screen.getByRole('button', { name: '保存规则' }));
 
     await waitFor(() => {
@@ -556,7 +747,9 @@ describe('Work spreadsheet editor', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /不介于/ }));
     chooseOfficeOption('条件比较运算符', '大于或等于');
-    fireEvent.change(screen.getByLabelText('条件比较值'), { target: { value: '12' } });
+    fireEvent.change(screen.getByLabelText('条件比较值'), {
+      target: { value: '12' },
+    });
     fireEvent.click(screen.getByLabelText('设置文字颜色'));
     fireEvent.click(screen.getByRole('button', { name: '保存规则' }));
 
@@ -608,7 +801,9 @@ describe('Work spreadsheet editor', () => {
     fireEvent.click(screen.getByRole('button', { name: /包含文本/ }));
     expect(screen.getByLabelText('条件格式规则类型')).toBeDisabled();
     expect(screen.getByLabelText('条件格式规则摘要')).toHaveValue('包含文本：“Ready”');
-    fireEvent.change(screen.getByLabelText('条件格式范围'), { target: { value: 'B2:B4' } });
+    fireEvent.change(screen.getByLabelText('条件格式范围'), {
+      target: { value: 'B2:B4' },
+    });
     fireEvent.click(screen.getByLabelText('匹配后停止后续规则'));
     fireEvent.click(screen.getByRole('button', { name: '保存规则' }));
     await waitFor(() => {
@@ -649,8 +844,12 @@ describe('Work spreadsheet editor', () => {
       });
     });
 
-    fireEvent.change(screen.getByLabelText('可编辑区域名称'), { target: { value: 'InputCells' } });
-    fireEvent.change(screen.getByLabelText('可编辑区域范围'), { target: { value: '$b$2:$b$3' } });
+    fireEvent.change(screen.getByLabelText('可编辑区域名称'), {
+      target: { value: 'InputCells' },
+    });
+    fireEvent.change(screen.getByLabelText('可编辑区域范围'), {
+      target: { value: '$b$2:$b$3' },
+    });
     fireEvent.click(screen.getByRole('button', { name: '保存区域' }));
     await waitFor(() => {
       const sheet = onChange.mock.lastCall?.[0].sheets[0];
@@ -714,7 +913,9 @@ describe('Work spreadsheet editor', () => {
       ]);
     });
 
-    fireEvent.change(await screen.findByLabelText('图表标题'), { target: { value: '季度收入趋势' } });
+    fireEvent.change(await screen.findByLabelText('图表标题'), {
+      target: { value: '季度收入趋势' },
+    });
     chooseOfficeOption('图表类型', '圆环图');
     const holeSize = screen.getByLabelText('圆环孔径（%）');
     fireEvent.change(holeSize, { target: { value: '91' } });
@@ -741,7 +942,9 @@ describe('Work spreadsheet editor', () => {
 
     chooseOfficeOption('图表类型', '散点图');
     chooseOfficeOption('散点图样式', '带数据标记的平滑线');
-    fireEvent.change(screen.getByLabelText('系列 1 X 值引用'), { target: { value: "'报告'!$A$2" } });
+    fireEvent.change(screen.getByLabelText('系列 1 X 值引用'), {
+      target: { value: "'报告'!$A$2" },
+    });
     fireEvent.click(screen.getByRole('button', { name: '保存图表' }));
     await waitFor(() => {
       expect(onChange.mock.lastCall?.[0].sheets[0].charts[0]).toMatchObject({
@@ -758,7 +961,9 @@ describe('Work spreadsheet editor', () => {
     fireEvent.change(bubbleScale, { target: { value: '135' } });
     fireEvent.click(screen.getByLabelText('显示负值气泡'));
     chooseOfficeOption('气泡大小表示', '宽度');
-    fireEvent.change(screen.getByLabelText('系列 1 气泡大小引用'), { target: { value: "'报告'!$B$2" } });
+    fireEvent.change(screen.getByLabelText('系列 1 气泡大小引用'), {
+      target: { value: "'报告'!$B$2" },
+    });
     fireEvent.click(screen.getByRole('button', { name: '保存图表' }));
     await waitFor(() => {
       expect(onChange.mock.lastCall?.[0].sheets[0].charts[0]).toMatchObject({
@@ -806,30 +1011,62 @@ describe('Work spreadsheet editor', () => {
     await waitFor(() => expect(onChange.mock.lastCall?.[0].sheets[0].charts).toHaveLength(1));
 
     fireEvent.click(await screen.findByRole('button', { name: '添加系列' }));
-    fireEvent.change(await screen.findByLabelText('系列 2 名称'), { target: { value: '利润率' } });
-    fireEvent.change(await screen.findByLabelText('系列 2 数值引用'), { target: { value: "'报告'!$C$2" } });
+    fireEvent.change(await screen.findByLabelText('系列 2 名称'), {
+      target: { value: '利润率' },
+    });
+    fireEvent.change(await screen.findByLabelText('系列 2 数值引用'), {
+      target: { value: "'报告'!$C$2" },
+    });
     chooseOfficeOption('图表类型', '组合图');
     chooseOfficeOption('系列 1 图表类型', '柱形图');
     chooseOfficeOption('系列 1 坐标轴', '主坐标轴');
     chooseOfficeOption('系列 2 图表类型', '折线图');
     chooseOfficeOption('系列 2 坐标轴', '次坐标轴');
-    fireEvent.change(screen.getByLabelText('横坐标轴标题'), { target: { value: '季度' } });
-    fireEvent.change(screen.getByLabelText('纵坐标轴标题'), { target: { value: '收入（万元）' } });
-    fireEvent.change(screen.getByLabelText('次横坐标轴标题'), { target: { value: '次分类' } });
-    fireEvent.change(screen.getByLabelText('次纵坐标轴标题'), { target: { value: '利润率' } });
-    fireEvent.change(screen.getByLabelText('次纵坐标轴标题引用'), { target: { value: "'报告'!$C$1" } });
-    fireEvent.change(screen.getByLabelText('纵坐标轴最小值'), { target: { value: '0' } });
-    fireEvent.change(screen.getByLabelText('纵坐标轴最大值'), { target: { value: '-1' } });
+    fireEvent.change(screen.getByLabelText('横坐标轴标题'), {
+      target: { value: '季度' },
+    });
+    fireEvent.change(screen.getByLabelText('纵坐标轴标题'), {
+      target: { value: '收入（万元）' },
+    });
+    fireEvent.change(screen.getByLabelText('次横坐标轴标题'), {
+      target: { value: '次分类' },
+    });
+    fireEvent.change(screen.getByLabelText('次纵坐标轴标题'), {
+      target: { value: '利润率' },
+    });
+    fireEvent.change(screen.getByLabelText('次纵坐标轴标题引用'), {
+      target: { value: "'报告'!$C$1" },
+    });
+    fireEvent.change(screen.getByLabelText('纵坐标轴最小值'), {
+      target: { value: '0' },
+    });
+    fireEvent.change(screen.getByLabelText('纵坐标轴最大值'), {
+      target: { value: '-1' },
+    });
     fireEvent.click(screen.getByRole('button', { name: '保存图表' }));
     expect(screen.getByText('纵坐标轴最小值必须小于最大值。')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('纵坐标轴最大值'), { target: { value: '100' } });
-    fireEvent.change(screen.getByLabelText('纵坐标轴主单位'), { target: { value: '25' } });
-    fireEvent.change(screen.getByLabelText('纵坐标轴数字格式'), { target: { value: '#,##0' } });
+    fireEvent.change(screen.getByLabelText('纵坐标轴最大值'), {
+      target: { value: '100' },
+    });
+    fireEvent.change(screen.getByLabelText('纵坐标轴主单位'), {
+      target: { value: '25' },
+    });
+    fireEvent.change(screen.getByLabelText('纵坐标轴数字格式'), {
+      target: { value: '#,##0' },
+    });
     fireEvent.click(screen.getByLabelText('纵坐标轴显示主要网格线'));
-    fireEvent.change(screen.getByLabelText('次纵坐标轴最小值'), { target: { value: '0' } });
-    fireEvent.change(screen.getByLabelText('次纵坐标轴最大值'), { target: { value: '0.3' } });
-    fireEvent.change(screen.getByLabelText('次纵坐标轴主单位'), { target: { value: '0.1' } });
-    fireEvent.change(screen.getByLabelText('次纵坐标轴数字格式'), { target: { value: '0.0%' } });
+    fireEvent.change(screen.getByLabelText('次纵坐标轴最小值'), {
+      target: { value: '0' },
+    });
+    fireEvent.change(screen.getByLabelText('次纵坐标轴最大值'), {
+      target: { value: '0.3' },
+    });
+    fireEvent.change(screen.getByLabelText('次纵坐标轴主单位'), {
+      target: { value: '0.1' },
+    });
+    fireEvent.change(screen.getByLabelText('次纵坐标轴数字格式'), {
+      target: { value: '0.0%' },
+    });
     fireEvent.click(screen.getByLabelText('次纵坐标轴链接源数字格式'));
     fireEvent.click(screen.getByLabelText('次纵坐标轴显示主要网格线'));
     fireEvent.click(screen.getByRole('button', { name: '保存图表' }));
@@ -861,7 +1098,10 @@ describe('Work spreadsheet editor', () => {
           },
         },
         series: [
-          expect.objectContaining({ chartType: 'column', axisGroup: 'primary' }),
+          expect.objectContaining({
+            chartType: 'column',
+            axisGroup: 'primary',
+          }),
           expect.objectContaining({
             name: '利润率',
             valuesReference: "'报告'!$C$2",
@@ -899,7 +1139,9 @@ function chooseOfficeOption(label: string, option: string) {
 
 function chooseOfficeColor(label: string, value: string) {
   fireEvent.click(screen.getByRole('button', { name: label }));
-  fireEvent.change(screen.getByRole('textbox', { name: '自定义颜色值' }), { target: { value } });
+  fireEvent.change(screen.getByRole('textbox', { name: '自定义颜色值' }), {
+    target: { value },
+  });
   fireEvent.click(screen.getByRole('button', { name: '应用' }));
 }
 

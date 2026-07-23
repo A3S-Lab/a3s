@@ -148,39 +148,6 @@
   color: #6453d9;
 }
 
-.work-preview-switch {
-  display: flex;
-  min-width: 0;
-  margin: 0;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--a3s-line);
-  border-radius: 8px;
-  background: var(--a3s-panel-soft);
-}
-
-.work-preview-switch button {
-  display: inline-flex;
-  height: 28px;
-  align-items: center;
-  gap: 5px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--a3s-muted);
-  font-size: 10px;
-  cursor: pointer;
-}
-
-.work-preview-switch button.active {
-  background: var(--a3s-panel);
-  box-shadow: 0 1px 4px rgb(24 31 46 / 7%);
-  color: var(--a3s-ink);
-  font-weight: 620;
-}
-
 .work-local-save-button {
   display: inline-flex;
   height: 33px;
@@ -645,7 +612,7 @@
   font-weight: 650;
 }
 
-.work-color-tool input {
+.work-color-tool > input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -658,4 +625,45 @@
   font-size: 21px;
   font-weight: 700;
   line-height: 19px;
+}
+
+@media (max-width: 1120px) {
+  .work-editor-header {
+    gap: 6px;
+    padding-inline: 8px;
+  }
+
+  .work-editor-identity {
+    min-width: 0;
+  }
+
+  .work-editor-header-actions {
+    gap: 4px;
+  }
+
+  .work-editor-header-actions > .work-icon-button {
+    display: none;
+  }
+
+  .work-local-save-button,
+  .work-editor-ai-button {
+    width: 32px;
+    min-width: 32px;
+    justify-content: center;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .work-preview-switch {
+    flex: 0 0 auto;
+  }
+
+  .work-preview-switch .ds-segmented-control-content {
+    width: 29px;
+    padding: 0;
+  }
+
+  .work-preview-switch .ds-segmented-control-label {
+    display: none;
+  }
 }

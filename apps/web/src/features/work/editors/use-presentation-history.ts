@@ -1,72 +1,60 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import type { WorkPresentationContent } from '../work-types';
-
-const PRESENTATION_HISTORY_LIMIT = 100;
-
-interface PresentationHistoryState {
-  past: WorkPresentationContent[];
-  present: WorkPresentationContent;
-  future: WorkPresentationContent[];
-}
+import { useOfficeHistory } from './use-office-history';
 
 export function usePresentationHistory({
   content,
   onChange,
+  selectedSlideId,
+  onSelectSlide,
 }: {
   content: WorkPresentationContent;
   onChange: (content: WorkPresentationContent) => void;
+  selectedSlideId: string;
+  onSelectSlide: (slideId: string) => void;
 }) {
-  const historyRef = useRef<PresentationHistoryState>({ past: [], present: content, future: [] });
-  const applyingHistoryRef = useRef(false);
+  const contentRef = useRef(content);
+  const selectedSlideIdRef = useRef(selectedSlideId);
   const onChangeRef = useRef(onChange);
-  const [, setVersion] = useState(0);
+  const onSelectSlideRef = useRef(onSelectSlide);
+  const selectionByContentRef = useRef(new WeakMap<WorkPresentationContent, string>());
+
+  contentRef.current = content;
+  selectedSlideIdRef.current = selectedSlideId;
   onChangeRef.current = onChange;
+  onSelectSlideRef.current = onSelectSlide;
+  selectionByContentRef.current.set(content, selectedSlideId);
 
-  useEffect(() => {
-    const history = historyRef.current;
-    if (applyingHistoryRef.current) {
-      applyingHistoryRef.current = false;
-      history.present = content;
-      setVersion((value) => value + 1);
-      return;
-    }
-    if (content === history.present) return;
-    history.past = [...history.past.slice(-(PRESENTATION_HISTORY_LIMIT - 1)), history.present];
-    history.present = content;
-    history.future = [];
-    setVersion((value) => value + 1);
-  }, [content]);
+  const applyHistory = useCallback((nextContent: WorkPresentationContent) => {
+    const currentContent = contentRef.current;
+    const currentSlideId = selectedSlideIdRef.current;
+    const rememberedSlideId = selectionByContentRef.current.get(nextContent);
+    const nextSlideId = resolveHistorySlideSelection(currentContent, nextContent, currentSlideId, rememberedSlideId);
 
-  const undo = useCallback((): boolean => {
-    const history = historyRef.current;
-    const previous = history.past.at(-1);
-    if (!previous) return false;
-    history.past = history.past.slice(0, -1);
-    history.future = [...history.future, history.present];
-    history.present = previous;
-    applyingHistoryRef.current = true;
-    setVersion((value) => value + 1);
-    onChangeRef.current(previous);
-    return true;
+    contentRef.current = nextContent;
+    selectedSlideIdRef.current = nextSlideId;
+    selectionByContentRef.current.set(nextContent, nextSlideId);
+    if (nextSlideId !== currentSlideId) onSelectSlideRef.current(nextSlideId);
+    onChangeRef.current(nextContent);
   }, []);
 
-  const redo = useCallback((): boolean => {
-    const history = historyRef.current;
-    const next = history.future.at(-1);
-    if (!next) return false;
-    history.future = history.future.slice(0, -1);
-    history.past = [...history.past, history.present].slice(-PRESENTATION_HISTORY_LIMIT);
-    history.present = next;
-    applyingHistoryRef.current = true;
-    setVersion((value) => value + 1);
-    onChangeRef.current(next);
-    return true;
-  }, []);
+  return useOfficeHistory({ content, onChange: applyHistory });
+}
 
-  return {
-    canUndo: historyRef.current.past.length > 0,
-    canRedo: historyRef.current.future.length > 0,
-    undo,
-    redo,
-  };
+function resolveHistorySlideSelection(
+  currentContent: WorkPresentationContent,
+  nextContent: WorkPresentationContent,
+  currentSlideId: string,
+  rememberedSlideId: string | undefined
+): string {
+  if (rememberedSlideId && nextContent.slides.some((slide) => slide.id === rememberedSlideId)) {
+    return rememberedSlideId;
+  }
+  if (nextContent.slides.some((slide) => slide.id === currentSlideId)) return currentSlideId;
+
+  const currentIndex = Math.max(
+    0,
+    currentContent.slides.findIndex((slide) => slide.id === currentSlideId)
+  );
+  return nextContent.slides[Math.min(currentIndex, Math.max(0, nextContent.slides.length - 1))]?.id ?? '';
 }

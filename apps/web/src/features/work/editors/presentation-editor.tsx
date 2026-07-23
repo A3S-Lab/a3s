@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { WorkspaceContextMenu } from '../../workspace/components/workspace-context-menu';
 import { presentationAgentMenuItems } from '../components/work-editor-agent-menus';
 import { applyPresentationAgentProposalChanges } from '../work-agent-proposal-apply';
@@ -33,19 +33,23 @@ import {
   updateSlide,
 } from './presentation-editor-operations';
 import { PresentationPlayer } from './presentation-player';
-import { PresentationStatusBar } from './presentation-status-bar';
 import {
   EditableSlideTable,
   RichEditableText,
-  SlideCanvas,
   SlideElementPreview,
   slideElementStyle,
   slideTextStyle,
 } from './presentation-slide-canvas';
+import { PresentationSlideThumbnail } from './presentation-slide-thumbnail';
+import { PresentationStatusBar } from './presentation-status-bar';
+import {
+  applyPresentationElementFormattingPatch,
+  presentationElementToolbarState,
+} from './presentation-text-formatting';
 import { PresentationToolbar } from './presentation-toolbar';
 import { usePresentationClipboard } from './use-presentation-clipboard';
 import { usePresentationHistory } from './use-presentation-history';
-import type { WorkOfficeFileAction } from './work-office-chrome';
+import { type WorkOfficeFileAction, WorkOfficePreviewBar } from './work-office-chrome';
 
 interface PresentationEditorProps {
   content: WorkPresentationContent;
@@ -114,6 +118,7 @@ export function PresentationEditor({
         ? (selectedMaster?.elements ?? [])
         : (selectedSlide?.elements ?? []);
   const selectedElement = activeElements.find((element) => element.id === selectedElementId) ?? null;
+  const toolbarSelectedElement = selectedElement ? presentationElementToolbarState(selectedElement) : null;
   const slideView = selectedSlide ? presentationSlideView(designContent, selectedSlide) : undefined;
   const activeBackground =
     designMode === 'layout'
@@ -174,7 +179,22 @@ export function PresentationEditor({
     }
   }, [content.slides, selectedSlideId]);
 
-  const history = usePresentationHistory({ content, onChange });
+  const addSlide = useCallback(() => {
+    const slide = newSlide(content.slides.length + 1);
+    onChange({ ...content, slides: [...content.slides, slide] });
+    setSelectedSlideId(slide.id);
+    setSelectedElementId(null);
+  }, [content, onChange]);
+
+  const history = usePresentationHistory({
+    content,
+    onChange,
+    selectedSlideId,
+    onSelectSlide: (slideId) => {
+      setSelectedSlideId(slideId);
+      setSelectedElementId(null);
+    },
+  });
 
   const clipboard = usePresentationClipboard({
     content,
@@ -188,9 +208,26 @@ export function PresentationEditor({
     onSelectElement: setSelectedElementId,
     onUndo: history.undo,
     onRedo: history.redo,
+    onAddSlide: addSlide,
+    onStartSlideshow,
   });
 
-  if (preview) return <PresentationPlayer content={content} />;
+  if (preview) {
+    const player = <PresentationPlayer content={content} />;
+    if (!fileActions?.length) return player;
+    return (
+      <section className='work-presentation-editor preview'>
+        <WorkOfficePreviewBar
+          ariaLabel='演示预览工具'
+          label='只读预览'
+          detail={`${content.slides.length} 张幻灯片`}
+          fileActions={fileActions}
+          className='work-presentation-ribbon'
+        />
+        {player}
+      </section>
+    );
+  }
   if (!selectedSlide) return null;
 
   const updateElement = (patch: Partial<WorkSlideElement>) => {
@@ -199,7 +236,10 @@ export function PresentationEditor({
       content,
       designMode,
       activeTargetId,
-      (elements) => elements.map((element) => (element.id === selectedElementId ? { ...element, ...patch } : element)),
+      (elements) =>
+        elements.map((element) =>
+          element.id === selectedElementId ? applyPresentationElementFormattingPatch(element, patch) : element
+        ),
       onChange
     );
   };
@@ -333,13 +373,6 @@ export function PresentationEditor({
     });
   };
 
-  const addSlide = () => {
-    const slide = newSlide(content.slides.length + 1);
-    onChange({ ...content, slides: [...content.slides, slide] });
-    setSelectedSlideId(slide.id);
-    setSelectedElementId(null);
-  };
-
   const duplicateSlide = () => {
     const copy: WorkSlide = {
       ...structuredCopy(selectedSlide),
@@ -355,14 +388,17 @@ export function PresentationEditor({
     setSelectedElementId(null);
   };
 
-  const deleteSlide = () => {
-    if (content.slides.length === 1) return;
-    const index = content.slides.findIndex((slide) => slide.id === selectedSlide.id);
-    const slides = content.slides.filter((slide) => slide.id !== selectedSlide.id);
+  const deleteSlideById = (slideId: string): boolean => {
+    if (content.slides.length === 1) return false;
+    const index = content.slides.findIndex((slide) => slide.id === slideId);
+    if (index < 0) return false;
+    const slides = content.slides.filter((slide) => slide.id !== slideId);
     onChange({ ...content, slides });
     setSelectedSlideId(slides[Math.min(index, slides.length - 1)].id);
     setSelectedElementId(null);
+    return true;
   };
+  const deleteSlide = () => deleteSlideById(selectedSlide.id);
 
   const beginDrag = (event: React.PointerEvent, element: WorkSlideElement, mode: DragState['mode']) => {
     if (event.button !== 0) return;
@@ -550,7 +586,7 @@ export function PresentationEditor({
       <PresentationToolbar
         selectedSlide={selectedSlide}
         fileActions={fileActions}
-        selectedElement={selectedElement}
+        selectedElement={toolbarSelectedElement}
         slideCount={content.slides.length}
         onAddSlide={addSlide}
         onDuplicateSlide={duplicateSlide}
@@ -701,24 +737,26 @@ export function PresentationEditor({
         <div className='work-presentation-layout'>
           <aside className='work-slide-strip' aria-label='幻灯片'>
             {content.slides.map((slide, index) => (
-              <button
-                type='button'
-                className={slide.id === selectedSlide.id ? 'active' : ''}
+              <PresentationSlideThumbnail
                 key={slide.id}
-                onClick={() => {
+                content={designContent}
+                slide={slide}
+                index={index}
+                selected={slide.id === selectedSlide.id}
+                aspectRatio={aspectRatio}
+                variant='strip'
+                onSelect={() => {
                   setSelectedSlideId(slide.id);
                   setSelectedElementId(null);
                   setDesignMode('slide');
                 }}
+                onDelete={() => deleteSlideById(slide.id)}
                 onContextMenu={(event) => {
                   setSelectedSlideId(slide.id);
                   setSelectedElementId(null);
                   openAgentMenu(event, slide, index);
                 }}
-              >
-                <span>{index + 1}</span>
-                <SlideCanvas content={designContent} slide={slide} interactive={false} aspectRatio={aspectRatio} />
-              </button>
+              />
             ))}
             <button type='button' className='work-slide-add' onClick={addSlide}>
               <Plus size={15} />
@@ -921,20 +959,21 @@ export function PresentationEditor({
           style={{ '--work-presentation-sorter-width': `${Math.round(220 * (zoom / 100))}px` } as React.CSSProperties}
         >
           {content.slides.map((slide, index) => (
-            <button
-              type='button'
-              className={slide.id === selectedSlide.id ? 'active' : ''}
+            <PresentationSlideThumbnail
               key={slide.id}
-              onClick={() => {
+              content={designContent}
+              slide={slide}
+              index={index}
+              selected={slide.id === selectedSlide.id}
+              aspectRatio={aspectRatio}
+              variant='sorter'
+              onSelect={() => {
                 setSelectedSlideId(slide.id);
                 setSelectedElementId(null);
               }}
+              onDelete={() => deleteSlideById(slide.id)}
               onDoubleClick={() => setViewMode('normal')}
-            >
-              <SlideCanvas content={designContent} slide={slide} interactive={false} aspectRatio={aspectRatio} />
-              <span>{index + 1}</span>
-              <strong>{slide.name}</strong>
-            </button>
+            />
           ))}
         </section>
       )}

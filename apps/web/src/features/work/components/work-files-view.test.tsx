@@ -196,7 +196,7 @@ describe('Work Finder file view', () => {
   it('switches between current-folder and whole-workspace search and shows result locations', () => {
     const setSearchScope = vi.fn();
     const nestedReport = { ...report, path: '/docs/Reports/Report.docx' };
-    render(
+    const { rerender } = render(
       <WorkFilesWorkspace
         actions={actions({
           currentPath: '/docs/Reports',
@@ -217,9 +217,28 @@ describe('Work Finder file view', () => {
     );
 
     expect(screen.getByRole('option', { name: /Report.docx/ })).toHaveTextContent('Reports');
-    fireEvent.click(screen.getByRole('button', { name: '仅搜索当前文件夹 Reports' }));
+    fireEvent.click(screen.getByRole('radio', { name: '仅搜索当前文件夹 Reports' }));
     expect(setSearchScope).toHaveBeenCalledWith('folder');
-    fireEvent.click(screen.getByRole('button', { name: '搜索全部文件 docs' }));
+    rerender(
+      <WorkFilesWorkspace
+        actions={actions({
+          currentPath: '/docs/Reports',
+          entries: [],
+          visibleEntries: [nestedReport],
+          query: 'report',
+          searchScope: 'folder',
+          setSearchScope,
+        })}
+        openingPath={null}
+        copilotOpen={false}
+        sidebarOpen={true}
+        onOpenFile={vi.fn()}
+        onAgentRequest={vi.fn()}
+        onOpenSidebar={vi.fn()}
+        onToggleCopilot={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('radio', { name: '搜索全部文件 docs' }));
     expect(setSearchScope).toHaveBeenCalledWith('workspace');
   });
 

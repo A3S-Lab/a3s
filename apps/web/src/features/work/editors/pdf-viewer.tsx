@@ -6,7 +6,8 @@ import { isOfficeShortcutBlocked } from './office-shortcuts';
 
 type PdfSaveState = 'idle' | 'saving' | 'saved' | 'error';
 
-const PDFIUM_WASM_PATH = '/workspace/vendor/embedpdf/pdfium.wasm';
+const PDFIUM_WASM_PATH = '/vendor/embedpdf/pdfium.wasm';
+const PDF_VIEWER_READY_TIMEOUT_MS = 20_000;
 
 export function PdfViewer({
   fileName = 'document.pdf',
@@ -57,6 +58,15 @@ export function PdfViewer({
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [loadSource, retryCount, sourceKey]);
+
+  useEffect(() => {
+    if (!sourceUrl || viewerReady || loadError) return;
+    const timeout = window.setTimeout(() => {
+      registryRef.current = null;
+      setLoadError('PDF 阅读器加载超时。');
+    }, PDF_VIEWER_READY_TIMEOUT_MS);
+    return () => window.clearTimeout(timeout);
+  }, [loadError, sourceUrl, viewerReady]);
 
   const savePdf = useCallback(async () => {
     const registry = registryRef.current;
@@ -189,12 +199,20 @@ function usePdfViewerControls(containerRef: RefObject<HTMLDivElement | null>, ac
     let rootObserver: MutationObserver | null = null;
     let rootFrame = 0;
     let focusFrame = 0;
+    let dialogFocusFrame = 0;
+    let menuFocusFrame = 0;
     let rootAttempts = 0;
     let focusAttempts = 0;
     let pendingSearchFocus = false;
+    let activeDialog: HTMLElement | null = null;
+    let dialogReturnFocus: HTMLElement | null = null;
+    let activeMenu: HTMLElement | null = null;
+    let menuReturnFocus: HTMLElement | null = null;
+    let lastControlFocus: HTMLElement | null = null;
+    let dialogSequence = 0;
 
     const searchInput = () =>
-      [...(root?.querySelectorAll<HTMLInputElement>('input[type="text"]:not([name="zoom"])') ?? [])].find(
+      [...(root?.querySelectorAll<HTMLInputElement>('input[type="text"][placeholder]:not([name="zoom"])') ?? [])].find(
         (input) => !input.disabled && input.getAttribute('aria-hidden') !== 'true' && !input.closest('[hidden]')
       ) ?? null;
 
@@ -224,6 +242,103 @@ function usePdfViewerControls(containerRef: RefObject<HTMLDivElement | null>, ac
       focusFrame = requestAnimationFrame(focusWhenReady);
     };
 
+    const enhanceDialog = () => {
+      if (!root) return;
+      const nextDialog = pdfNativeDialog(root);
+      if (activeDialog && activeDialog !== nextDialog) {
+        const returnTarget = dialogReturnFocus;
+        activeDialog = null;
+        dialogReturnFocus = null;
+        cancelAnimationFrame(dialogFocusFrame);
+        if (!nextDialog && returnTarget?.isConnected) {
+          dialogFocusFrame = requestAnimationFrame(() => {
+            dialogFocusFrame = requestAnimationFrame(() => {
+              if (returnTarget.isConnected) returnTarget.focus();
+            });
+          });
+        }
+      }
+      if (!nextDialog) return;
+
+      const heading = pdfDialogHeading(nextDialog);
+      if (heading) {
+        if (!heading.id) {
+          dialogSequence += 1;
+          heading.id = `a3s-pdf-dialog-${dialogSequence}`;
+        }
+        nextDialog.setAttribute('aria-labelledby', heading.id);
+      }
+      if (nextDialog.getAttribute('role') !== 'dialog') nextDialog.setAttribute('role', 'dialog');
+      if (nextDialog.getAttribute('aria-modal') !== 'true') nextDialog.setAttribute('aria-modal', 'true');
+
+      const closeButton = pdfDialogCloseButton(nextDialog);
+      if (closeButton && !closeButton.getAttribute('aria-label') && !closeButton.textContent?.trim()) {
+        closeButton.setAttribute(
+          'aria-label',
+          heading?.textContent?.trim() ? `关闭${heading.textContent.trim()}` : '关闭'
+        );
+      }
+      if (activeDialog === nextDialog) return;
+
+      const previousFocus = root.activeElement;
+      dialogReturnFocus =
+        previousFocus instanceof HTMLElement && previousFocus.isConnected && !nextDialog.contains(previousFocus)
+          ? previousFocus
+          : menuReturnFocus?.isConnected
+            ? menuReturnFocus
+            : lastControlFocus?.isConnected && !nextDialog.contains(lastControlFocus)
+              ? lastControlFocus
+              : null;
+      menuReturnFocus = null;
+      activeDialog = nextDialog;
+      cancelAnimationFrame(dialogFocusFrame);
+      dialogFocusFrame = requestAnimationFrame(() => {
+        if (disposed || !activeDialog || !root?.contains(activeDialog) || activeDialog.contains(root.activeElement))
+          return;
+        pdfDialogFocusTarget(activeDialog)?.focus();
+      });
+    };
+
+    const enhanceMenu = () => {
+      if (!root) return;
+      const nextMenu = pdfNativeMenu(root);
+      if (activeMenu && activeMenu !== nextMenu) {
+        const returnTarget = menuReturnFocus;
+        activeMenu = null;
+        cancelAnimationFrame(menuFocusFrame);
+        if (!nextMenu && !pdfNativeDialog(root) && returnTarget?.isConnected) {
+          menuFocusFrame = requestAnimationFrame(() => returnTarget.focus());
+        }
+      }
+      if (!nextMenu) return;
+
+      const items = pdfMenuItems(nextMenu);
+      if (!items.length) return;
+      if (nextMenu.getAttribute('role') !== 'menu') nextMenu.setAttribute('role', 'menu');
+      if (activeMenu === nextMenu) {
+        if (!nextMenu.contains(root.activeElement) && root.activeElement === menuReturnFocus) {
+          cancelAnimationFrame(menuFocusFrame);
+          menuFocusFrame = requestAnimationFrame(() => pdfMenuItems(nextMenu)[0]?.focus());
+        }
+        return;
+      }
+
+      const previousFocus = root.activeElement;
+      menuReturnFocus =
+        previousFocus instanceof HTMLElement && !nextMenu.contains(previousFocus) ? previousFocus : null;
+      if (menuReturnFocus?.isConnected) lastControlFocus = menuReturnFocus;
+      const menuLabel = pdfControlLabel(menuReturnFocus);
+      if (menuLabel && !nextMenu.getAttribute('aria-label') && !nextMenu.getAttribute('aria-labelledby')) {
+        nextMenu.setAttribute('aria-label', menuLabel);
+      }
+      activeMenu = nextMenu;
+      cancelAnimationFrame(menuFocusFrame);
+      menuFocusFrame = requestAnimationFrame(() => {
+        if (disposed || !activeMenu || !root?.contains(activeMenu) || activeMenu.contains(root.activeElement)) return;
+        pdfMenuItems(activeMenu)[0]?.focus();
+      });
+    };
+
     const enhanceControls = () => {
       if (!root) return;
       const overflowItem = root.querySelector<HTMLElement>('[data-epdf-i="overflow-tabs-button"]');
@@ -237,14 +352,31 @@ function usePdfViewerControls(containerRef: RefObject<HTMLDivElement | null>, ac
       }
       const zoomInput = root.querySelector<HTMLInputElement>('input[name="zoom"]');
       zoomInput?.setAttribute('aria-label', '缩放比例');
+      const pageNumberInput = root.querySelector<HTMLInputElement>(
+        'input[type="text"][inputmode="numeric"]:not([name="zoom"])'
+      );
+      pageNumberInput?.setAttribute('aria-label', '页码');
       searchInput()?.setAttribute('aria-label', '在 PDF 中搜索');
       if (pendingSearchFocus) focusSearchInput();
+      enhanceDialog();
+      enhanceMenu();
     };
 
     const onShadowClick = (event: Event) => {
-      const openedSearch = event
-        .composedPath()
-        .some((node) => node instanceof Element && node.getAttribute('data-epdf-i') === 'search-button');
+      const path = event.composedPath();
+      const clickedControl = path.find(
+        (node) =>
+          node instanceof HTMLButtonElement ||
+          node instanceof HTMLInputElement ||
+          node instanceof HTMLSelectElement ||
+          node instanceof HTMLTextAreaElement
+      );
+      if (clickedControl instanceof HTMLElement && !clickedControl.closest('[role="dialog"], [role="menuitem"]')) {
+        lastControlFocus = clickedControl;
+      }
+      const openedSearch = path.some(
+        (node) => node instanceof Element && node.getAttribute('data-epdf-i') === 'search-button'
+      );
       if (openedSearch) scheduleSearchFocus();
     };
 
@@ -261,12 +393,64 @@ function usePdfViewerControls(containerRef: RefObject<HTMLDivElement | null>, ac
         root = nextRoot;
         root.addEventListener('click', onShadowClick);
         rootObserver = new MutationObserver(enhanceControls);
-        rootObserver.observe(root, { childList: true, subtree: true });
+        rootObserver.observe(root, {
+          attributeFilter: ['class', 'hidden', 'role', 'style'],
+          attributes: true,
+          childList: true,
+          subtree: true,
+        });
       }
       enhanceControls();
     };
 
     const onKeyDown = (event: KeyboardEvent) => {
+      const currentDialog = root ? pdfNativeDialog(root) : null;
+      if (event.key === 'Escape' && currentDialog) {
+        const closeButton = pdfDialogCloseButton(currentDialog);
+        if (!closeButton) return;
+        dialogReturnFocus =
+          dialogReturnFocus?.isConnected && !currentDialog.contains(dialogReturnFocus)
+            ? dialogReturnFocus
+            : menuReturnFocus?.isConnected && !currentDialog.contains(menuReturnFocus)
+              ? menuReturnFocus
+              : lastControlFocus?.isConnected && !currentDialog.contains(lastControlFocus)
+                ? lastControlFocus
+                : null;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        closeButton.click();
+        return;
+      }
+      const currentMenu = root ? pdfNativeMenu(root) : null;
+      if (currentMenu) {
+        const items = pdfMenuItems(currentMenu);
+        if (event.key === 'Escape' && menuReturnFocus) {
+          const returnTarget = menuReturnFocus;
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          returnTarget.click();
+          cancelAnimationFrame(menuFocusFrame);
+          menuFocusFrame = requestAnimationFrame(() => {
+            if (returnTarget.isConnected) returnTarget.focus();
+          });
+          return;
+        }
+        if (items.length && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          const currentIndex = items.indexOf(root?.activeElement as HTMLButtonElement);
+          const nextIndex =
+            event.key === 'Home'
+              ? 0
+              : event.key === 'End'
+                ? items.length - 1
+                : event.key === 'ArrowDown'
+                  ? (currentIndex + 1 + items.length) % items.length
+                  : (currentIndex - 1 + items.length) % items.length;
+          items[nextIndex]?.focus();
+          return;
+        }
+      }
       const currentSearchInput = searchInput();
       if (event.key === 'Escape' && currentSearchInput && root?.activeElement === currentSearchInput) {
         const button = searchButton();
@@ -312,12 +496,76 @@ function usePdfViewerControls(containerRef: RefObject<HTMLDivElement | null>, ac
       disposed = true;
       cancelAnimationFrame(rootFrame);
       cancelAnimationFrame(focusFrame);
+      cancelAnimationFrame(dialogFocusFrame);
+      cancelAnimationFrame(menuFocusFrame);
       containerObserver.disconnect();
       rootObserver?.disconnect();
       root?.removeEventListener('click', onShadowClick);
       window.removeEventListener('keydown', onKeyDown, { capture: true });
     };
   }, [active, containerRef]);
+}
+
+function pdfNativeDialog(root: ShadowRoot): HTMLElement | null {
+  return (
+    [...root.querySelectorAll<HTMLElement>('div')].find((element) => {
+      const style = window.getComputedStyle(element);
+      const fixed = style.position === 'fixed' || element.style.position === 'fixed';
+      const zeroInset =
+        element.style.inset === '0px' ||
+        (isZeroInset(style.top) && isZeroInset(style.right) && isZeroInset(style.bottom) && isZeroInset(style.left)) ||
+        (element.classList.contains('fixed') && element.classList.contains('inset-0'));
+      return fixed && zeroInset && Boolean(pdfDialogHeading(element)) && Boolean(element.querySelector('button'));
+    }) ?? null
+  );
+}
+
+function pdfDialogHeading(dialog: HTMLElement): HTMLElement | null {
+  return dialog.querySelector<HTMLElement>('h1, h2, h3, [role="heading"]');
+}
+
+function pdfDialogCloseButton(dialog: HTMLElement): HTMLButtonElement | null {
+  const heading = pdfDialogHeading(dialog);
+  return heading?.parentElement?.querySelector<HTMLButtonElement>('button') ?? null;
+}
+
+function pdfDialogFocusTarget(dialog: HTMLElement): HTMLElement | null {
+  return (
+    pdfDialogCloseButton(dialog) ??
+    dialog.querySelector<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+  );
+}
+
+function pdfNativeMenu(root: ShadowRoot): HTMLElement | null {
+  const candidates = [...root.querySelectorAll<HTMLElement>('[data-epdf-i$="-menu"], [role="menu"]')];
+  for (let index = candidates.length - 1; index >= 0; index -= 1) {
+    const candidate = candidates[index];
+    if (candidate.closest('[role="dialog"]') || candidate.closest('[hidden]')) continue;
+    const style = window.getComputedStyle(candidate);
+    if (style.display === 'none' || style.visibility === 'hidden') continue;
+    if (pdfMenuItems(candidate).length) return candidate;
+  }
+  return null;
+}
+
+function pdfMenuItems(menu: HTMLElement): HTMLButtonElement[] {
+  return [...menu.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]:not([disabled])')];
+}
+
+function pdfControlLabel(control: HTMLElement | null): string {
+  if (!control) return '';
+  return (
+    control.getAttribute('aria-label')?.trim() ||
+    control.getAttribute('title')?.trim() ||
+    control.textContent?.trim() ||
+    ''
+  );
+}
+
+function isZeroInset(value: string): boolean {
+  return value === '0px' || value === '0';
 }
 
 function pdfErrorMessage(error: unknown): string {

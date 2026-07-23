@@ -49,11 +49,14 @@ import {
 import { protectedSheetCount, spreadsheetProtectionKey } from '../work-spreadsheet-protection';
 import type { WorkSpreadsheetContent } from '../work-types';
 import { OfficeColorPicker, OfficeSelect } from './office-controls';
+import { isOfficeShortcutBlocked } from './office-shortcuts';
 import { managedConditionalFormatCount } from './spreadsheet-conditional-format-panel';
 import { spreadsheetPrintSettingCount } from './spreadsheet-print-settings-panel';
 import { SpreadsheetWorkbookPanel, type SpreadsheetWorkbookPanelView } from './spreadsheet-workbook-panel';
+import { useOfficeHistory } from './use-office-history';
 import {
   type WorkOfficeFileAction,
+  WorkOfficePreviewBar,
   WorkOfficeRibbon,
   WorkOfficeRibbonButton,
   WorkOfficeRibbonGroup,
@@ -113,6 +116,7 @@ export function SpreadsheetEditor({
   const [selectionState, setSelectionState] = useState<SpreadsheetSelectionState | null>(null);
   const [agentMenu, setAgentMenu] = useState<SpreadsheetAgentMenuState | null>(null);
   const [previewZoom, setPreviewZoom] = useState(100);
+  const history = useOfficeHistory({ content, onChange });
   const activeSheetId =
     content.sheets.find((sheet) => sheet.status === 1)?.id ?? content.sheets.find((sheet) => !sheet.hide)?.id ?? '';
   const activeSheetIdRef = useRef(activeSheetId);
@@ -310,9 +314,61 @@ export function SpreadsheetEditor({
       { id: toolbarSheetId }
     );
   };
+  const handleHistoryShortcut = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (
+      preview ||
+      event.defaultPrevented ||
+      event.repeat ||
+      event.altKey ||
+      isOfficeShortcutBlocked(event.target) ||
+      isSpreadsheetNativeTextUndoTarget(event.target) ||
+      !(event.metaKey || event.ctrlKey)
+    ) {
+      return;
+    }
+    const key = event.key.toLocaleLowerCase();
+    const handled =
+      key === 'z'
+        ? event.shiftKey
+          ? history.redo()
+          : history.undo()
+        : key === 'y' && !event.shiftKey && history.redo();
+    if (!handled) return;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const handleSpreadsheetShortcut = (event: React.KeyboardEvent<HTMLElement>) => {
+    const formulaBar = spreadsheetFormulaBarSelectAllTarget(event);
+    if (formulaBar) {
+      event.preventDefault();
+      event.stopPropagation();
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(formulaBar);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      return;
+    }
+    handleHistoryShortcut(event);
+  };
   return (
-    <section className={`work-spreadsheet-editor ${preview ? 'preview' : ''}`} aria-label='表格工作区'>
-      {preview && <div className='work-preview-notice'>只读预览 · {content.sheets.length} 个工作表</div>}
+    <section
+      className={`work-spreadsheet-editor ${preview ? 'preview' : ''}`}
+      aria-label='表格工作区'
+      onKeyDownCapture={handleSpreadsheetShortcut}
+    >
+      {preview &&
+        (fileActions?.length ? (
+          <WorkOfficePreviewBar
+            ariaLabel='表格预览工具'
+            label='只读预览'
+            detail={`${content.sheets.length} 个工作表`}
+            fileActions={fileActions}
+            className='work-spreadsheet-ribbon'
+          />
+        ) : (
+          <div className='work-preview-notice'>只读预览 · {content.sheets.length} 个工作表</div>
+        ))}
       {!preview && (
         <WorkOfficeRibbon
           ariaLabel='表格功能区'
@@ -333,14 +389,18 @@ export function SpreadsheetEditor({
                   <WorkOfficeRibbonButton
                     label='撤销'
                     title='撤销（Cmd/Ctrl+Z）'
-                    onClick={() => workbookRef.current?.handleUndo()}
+                    aria-keyshortcuts='Control+Z Meta+Z'
+                    disabled={!history.canUndo}
+                    onClick={history.undo}
                   >
                     <Undo2 size={19} />
                   </WorkOfficeRibbonButton>
                   <WorkOfficeRibbonButton
                     label='重做'
                     title='重做（Cmd/Ctrl+Shift+Z）'
-                    onClick={() => workbookRef.current?.handleRedo()}
+                    aria-keyshortcuts='Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y'
+                    disabled={!history.canRedo}
+                    onClick={history.redo}
                   >
                     <Redo2 size={19} />
                   </WorkOfficeRibbonButton>
@@ -429,7 +489,9 @@ export function SpreadsheetEditor({
                       if (!workbook || !toolbarSheetId) return;
                       const range = workbook.getSelection()?.at(-1) ?? selectedRange;
                       if (toolbarCell?.mc)
-                        workbook.cancelMerge([spreadsheetSingleRange(range)], { id: toolbarSheetId });
+                        workbook.cancelMerge([spreadsheetSingleRange(range)], {
+                          id: toolbarSheetId,
+                        });
                       else workbook.mergeCells([spreadsheetSingleRange(range)], 'merge-all', { id: toolbarSheetId });
                     }}
                   >
@@ -523,7 +585,12 @@ export function SpreadsheetEditor({
                   label={gridLinesVisible ? '隐藏网格线' : '显示网格线'}
                   visibleLabel='网格线'
                   active={gridLinesVisible}
-                  onClick={() => updateActiveSheet((sheet) => ({ ...sheet, showGridLines: !gridLinesVisible }))}
+                  onClick={() =>
+                    updateActiveSheet((sheet) => ({
+                      ...sheet,
+                      showGridLines: !gridLinesVisible,
+                    }))
+                  }
                 >
                   <Grid3X3 size={19} />
                 </WorkOfficeRibbonButton>
@@ -595,7 +662,11 @@ export function SpreadsheetEditor({
               sliderLabel='表格缩放'
               onChange={(nextZoom) => {
                 if (preview) setPreviewZoom(nextZoom);
-                else updateActiveSheet((sheet) => ({ ...sheet, zoomRatio: nextZoom / 100 }));
+                else
+                  updateActiveSheet((sheet) => ({
+                    ...sheet,
+                    zoomRatio: nextZoom / 100,
+                  }));
               }}
             />
           </>
@@ -671,7 +742,10 @@ function spreadsheetSelectionReference(selection: Selection): string {
   return start === end ? start : `${start}:${end}`;
 }
 
-function spreadsheetSingleRange(selection: Pick<Selection, 'row' | 'column'>): { row: number[]; column: number[] } {
+function spreadsheetSingleRange(selection: Pick<Selection, 'row' | 'column'>): {
+  row: number[];
+  column: number[];
+} {
   return {
     row: finiteSpreadsheetSelectionAxis(selection.row),
     column: finiteSpreadsheetSelectionAxis(selection.column),
@@ -804,4 +878,32 @@ function spreadsheetSheetWithoutTransientSelection(sheet: WorkSpreadsheetContent
     ...content
   } = sheet;
   return content;
+}
+
+function isSpreadsheetNativeTextUndoTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.closest('.fortune-container')) return false;
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    target.isContentEditable ||
+    Boolean(target.closest('[contenteditable="true"]'))
+  );
+}
+
+function spreadsheetFormulaBarSelectAllTarget(event: React.KeyboardEvent<HTMLElement>): HTMLElement | null {
+  if (
+    event.defaultPrevented ||
+    event.repeat ||
+    event.altKey ||
+    event.shiftKey ||
+    !(event.metaKey || event.ctrlKey) ||
+    event.key.toLocaleLowerCase() !== 'a' ||
+    !(event.target instanceof Element)
+  ) {
+    return null;
+  }
+  const formulaBar = event.target.closest('.fortune-fx-input');
+  return formulaBar instanceof HTMLElement ? formulaBar : null;
 }

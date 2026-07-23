@@ -1,7 +1,7 @@
 import type { Selection } from '@fortune-sheet/core';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { CollectionState, InlineNotice } from '../../../design-system/primitives';
+import { Button, CollectionState, IconButton, InlineNotice } from '../../../design-system/primitives';
 import { isValidSpreadsheetDefinedName } from '../work-spreadsheet-ranges';
 import { createWorkId } from '../work-templates';
 import type { WorkSpreadsheetContent, WorkSpreadsheetNamedRange } from '../work-types';
@@ -49,9 +49,9 @@ export function SpreadsheetWorkbookPanel({
           <strong>{title.heading}</strong>
           <span>{title.description}</span>
         </div>
-        <button type='button' aria-label='关闭工作簿设置' onClick={onClose}>
+        <IconButton label='关闭工作簿设置' onClick={onClose}>
           <X size={14} />
-        </button>
+        </IconButton>
       </header>
       {view === 'names' ? (
         <NamedRangeManager content={content} onChange={onChange} />
@@ -228,10 +228,10 @@ function NamedRangeManager({
   return (
     <div className='work-spreadsheet-name-manager'>
       <aside aria-label='已定义名称'>
-        <button type='button' className='create' onClick={startNewRange}>
+        <Button className='create' tone='secondary' onClick={startNewRange}>
           <Plus size={13} />
           新建名称
-        </button>
+        </Button>
         <div className='work-spreadsheet-name-list'>
           {ranges.map((range) => (
             <button
@@ -308,13 +308,13 @@ function NamedRangeManager({
               {error}
             </InlineNotice>
           )}
-          <button type='button' className='danger' disabled={!draft.id} onClick={deleteRange}>
+          <Button tone='danger' disabled={!draft.id} onClick={deleteRange}>
             <Trash2 size={13} />
             删除
-          </button>
-          <button type='submit' className='primary'>
+          </Button>
+          <Button type='submit' tone='primary'>
             保存名称
-          </button>
+          </Button>
         </div>
       </form>
     </div>

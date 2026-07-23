@@ -1,7 +1,7 @@
 import { FolderOpen, MessageSquarePlus, Sparkles, WandSparkles, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { Button, IconButton, SplitHandle } from '../../../design-system/primitives';
+import { Button, IconButton, SplitHandle, StateView } from '../../../design-system/primitives';
 import { appState, formatApiError, sessionTitle, showToast } from '../../../state/app-state';
 import type { CodeActions } from '../../code/use-code-controller';
 import { ExecutionStream } from '../../tasks/components/execution-stream';
@@ -19,6 +19,9 @@ const widthStorageKey = 'a3s-work.ai-assistant-width';
 const legacyWidthStorageKey = 'a3s-work.copilot-width';
 const defaultWidth = 460;
 const minimumWidth = 360;
+const maximumWidth = 680;
+const compactOverlayBreakpoint = 960;
+const splitPaneViewportReserve = 664;
 
 export function WorkCopilot({
   actions,
@@ -27,6 +30,8 @@ export function WorkCopilot({
   onClose,
   onPickRoot,
   onAgentRequest,
+  width,
+  onWidthChange,
   proposal,
   onDismissProposal,
 }: {
@@ -36,11 +41,12 @@ export function WorkCopilot({
   onClose: () => void;
   onPickRoot: () => void | Promise<void>;
   onAgentRequest: (request: WorkAgentRequest) => void | Promise<void>;
+  width: number;
+  onWidthChange: (width: number) => void;
   proposal?: WorkAgentProposalRequest | null;
   onDismissProposal?: () => void;
 }) {
   const state = useSnapshot(appState);
-  const [width, setWidth] = useState(readCopilotWidth);
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
 
@@ -69,23 +75,29 @@ export function WorkCopilot({
     ? relativeLocalPath(currentPath, workspaceRoot) || localPathBasename(workspaceRoot)
     : localPathBasename(workspaceRoot);
 
-  const maximumWidth = Math.max(minimumWidth, Math.min(680, window.innerWidth * 0.58));
+  const viewportWidth = useViewportWidth();
+  const availableMaximumWidth = workCopilotMaximumWidth(viewportWidth);
+  const renderedWidth = clampWorkCopilotWidth(width, availableMaximumWidth);
   const updateWidth = (nextWidth: number, persist = false) => {
-    const maximum = maximumWidth;
-    const normalized = Math.round(Math.max(minimumWidth, Math.min(maximum, nextWidth)));
-    setWidth(normalized);
+    const normalized = clampWorkCopilotWidth(nextWidth, availableMaximumWidth);
+    onWidthChange(normalized);
     if (persist) persistCopilotWidth(normalized);
   };
 
   return (
-    <aside className='work-copilot' aria-label='Work AI 助手' style={{ width }}>
+    <aside
+      className='work-copilot'
+      aria-label='Work AI 助手'
+      data-office-shortcuts='ignore'
+      style={{ width: renderedWidth }}
+    >
       <SplitHandle
         className='work-copilot-resizer'
         label='调整 Work AI 助手宽度'
-        value={width}
+        value={renderedWidth}
         min={minimumWidth}
-        max={maximumWidth}
-        defaultValue={defaultWidth}
+        max={availableMaximumWidth}
+        defaultValue={Math.min(defaultWidth, availableMaximumWidth)}
         direction='reverse'
         valueText={(value) => `${value} 像素`}
         onChange={updateWidth}
@@ -118,16 +130,19 @@ export function WorkCopilot({
         </IconButton>
       </header>
       {!workspaceRoot ? (
-        <section className='work-copilot-no-workspace'>
-          <span>
-            <FolderOpen size={22} />
-          </span>
-          <strong>先连接一个本地文件夹</strong>
-          <p>AI 助手会读取这个文件夹，并只在你发送指令后开始工作。</p>
-          <Button tone='primary' onClick={() => void onPickRoot()}>
-            选择文件夹
-          </Button>
-        </section>
+        <StateView
+          className='work-copilot-no-workspace'
+          size='compact'
+          tone='info'
+          icon={<FolderOpen size={22} />}
+          title='先连接一个本地文件夹'
+          description='AI 助手会读取这个文件夹，并只在你发送指令后开始工作。'
+          actions={
+            <Button tone='primary' onClick={() => void onPickRoot()}>
+              选择文件夹
+            </Button>
+          }
+        />
       ) : (
         <div className='work-copilot-thread'>
           {proposal && proposalStatus && (
@@ -206,13 +221,33 @@ function WorkCopilotWelcome({
   );
 }
 
-function readCopilotWidth(): number {
+export function readWorkCopilotWidth(): number {
   try {
     const value = Number(localStorage.getItem(widthStorageKey) ?? localStorage.getItem(legacyWidthStorageKey));
     return Number.isFinite(value) && value >= minimumWidth ? value : defaultWidth;
   } catch {
     return defaultWidth;
   }
+}
+
+function workCopilotMaximumWidth(viewportWidth: number): number {
+  const viewportMaximum = Math.min(maximumWidth, viewportWidth * 0.58);
+  if (viewportWidth <= compactOverlayBreakpoint) return minimumWidth;
+  return Math.round(Math.max(minimumWidth, Math.min(viewportMaximum, viewportWidth - splitPaneViewportReserve)));
+}
+
+function clampWorkCopilotWidth(width: number, availableMaximumWidth: number): number {
+  return Math.round(Math.max(minimumWidth, Math.min(availableMaximumWidth, width)));
+}
+
+function useViewportWidth(): number {
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth);
+  useEffect(() => {
+    const update = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  return viewportWidth;
 }
 
 function persistCopilotWidth(width: number): void {

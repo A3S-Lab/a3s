@@ -238,6 +238,8 @@
   flex: 1;
   padding: 34px clamp(28px, 4vw, 62px) 60px;
   overflow: auto;
+  container-name: work-home;
+  container-type: inline-size;
   background:
     radial-gradient(circle at 82% -18%, color-mix(in srgb, var(--a3s-blue) 7%, transparent), transparent 34%),
     var(--a3s-bg);
@@ -321,7 +323,7 @@
 
 .work-template-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(132px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 13px;
 }
 
@@ -508,7 +510,7 @@
 
 .work-artifact-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(150px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -821,13 +823,12 @@
 
 @media (max-width: 1420px) {
   .work-template-grid {
-    grid-template-columns: repeat(3, minmax(150px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .work-artifact-grid {
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-
 }
 
 @media (max-width: 1120px) {
@@ -851,7 +852,56 @@
   }
 
   .work-artifact-grid {
-    grid-template-columns: repeat(3, minmax(145px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container work-home (max-width: 760px) {
+  .work-home-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
   }
 
+  .work-home-header-actions {
+    width: 100%;
+  }
+
+  .work-search {
+    width: auto;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .work-template-grid,
+  .work-artifact-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@container work-home (max-width: 620px) {
+  .work-template-grid,
+  .work-artifact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container work-home (max-width: 420px) {
+  .work-home-header-actions {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .work-search {
+    flex-basis: 100%;
+  }
+
+  .work-home-header-actions > .ds-button {
+    flex: 1;
+  }
+
+  .work-template-grid,
+  .work-artifact-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

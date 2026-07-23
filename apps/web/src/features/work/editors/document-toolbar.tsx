@@ -131,39 +131,41 @@ export function DocumentToolbar({
 }: DocumentToolbarProps) {
   const [activeTab, setActiveTab] = useState<DocumentRibbonTabId>('home');
   const officeDialog = useOfficeDialog();
-  const toggleLink = async () => {
+  const prompt = officeDialog.prompt;
+  const notice = officeDialog.notice;
+  const toggleLink = useCallback(async () => {
     if (editor.isActive('link')) {
       editor.chain().focus().unsetLink().run();
       return;
     }
-    const href = await officeDialog.prompt({
+    const href = await prompt({
       title: '链接地址',
       initialValue: editor.getAttributes('link').href ?? 'https://',
       placeholder: 'https://',
       confirmLabel: '添加链接',
     });
     if (href?.trim()) editor.chain().focus().setLink({ href: href.trim() }).run();
-  };
+  }, [editor, prompt]);
   const findText = useCallback(
     async (replace: boolean) => {
-      const query = await officeDialog.prompt({ title: replace ? '查找要替换的文字' : '查找文字' });
+      const query = await prompt({ title: replace ? '查找要替换的文字' : '查找文字' });
       if (!query) return;
       const range = textRange(editor, query, editor.state.selection.to) ?? textRange(editor, query, 0);
       if (!range) {
-        await officeDialog.notice({ title: '没有找到', description: `文档中没有“${query}”。` });
+        await notice({ title: '没有找到', description: `文档中没有“${query}”。` });
         return;
       }
       if (!replace) {
         editor.chain().focus().setTextSelection(range).run();
         return;
       }
-      const replacement = await officeDialog.prompt({ title: '替换为', initialValue: query });
+      const replacement = await prompt({ title: '替换为', initialValue: query });
       if (replacement !== null) {
         if (onReplaceText) onReplaceText(range.from, range.to, replacement);
         else editor.chain().focus().setTextSelection(range).insertContent(replacement).run();
       }
     },
-    [editor, officeDialog, onReplaceText]
+    [editor, notice, onReplaceText, prompt]
   );
 
   useEffect(() => {
@@ -180,17 +182,36 @@ export function DocumentToolbar({
         return;
       }
       const key = event.key.toLowerCase();
+      const insideEditor = event.target instanceof Node && editor.view.dom.contains(event.target);
+      if (insideEditor && key === 'z') {
+        event.preventDefault();
+        const command = event.shiftKey ? editor.chain().focus().redo() : editor.chain().focus().undo();
+        command.run();
+        return;
+      }
+      if (insideEditor && key === 'y' && !event.shiftKey) {
+        event.preventDefault();
+        editor.chain().focus().redo().run();
+        return;
+      }
+      if (!event.shiftKey && insideEditor && (key === 'b' || key === 'i' || key === 'u')) {
+        event.preventDefault();
+        if (key === 'b') editor.chain().focus().toggleBold().run();
+        else if (key === 'i') editor.chain().focus().toggleItalic().run();
+        else editor.chain().focus().toggleUnderline().run();
+        return;
+      }
+      if (key === 'k' && !event.shiftKey) {
+        event.preventDefault();
+        void toggleLink();
+        return;
+      }
       if ((key === 'f' || key === 'h') && !event.shiftKey) {
         event.preventDefault();
         void findText(key === 'h');
         return;
       }
-      if (
-        key !== 'enter' ||
-        event.shiftKey ||
-        !(event.target instanceof Node) ||
-        !editor.view.dom.contains(event.target)
-      ) {
+      if (key !== 'enter' || event.shiftKey || !insideEditor) {
         return;
       }
       event.preventDefault();
@@ -198,7 +219,7 @@ export function DocumentToolbar({
     };
     root.addEventListener('keydown', onKeyDown);
     return () => root.removeEventListener('keydown', onKeyDown);
-  }, [editor, findText]);
+  }, [editor, findText, toggleLink]);
 
   return (
     <>
@@ -398,6 +419,7 @@ export function DocumentToolbar({
               <RibbonGroup label='链接'>
                 <ToolbarButton
                   label={editor.isActive('link') ? '取消链接' : '添加链接'}
+                  shortcut='Cmd/Ctrl+K'
                   displayLabel
                   active={editor.isActive('link')}
                   onClick={() => void toggleLink()}

@@ -11,6 +11,10 @@ import { withPresentationDesign } from '../work-presentation-layouts';
 import type { WorkPresentationContent, WorkSlide, WorkSlideElement } from '../work-types';
 import { isOfficeShortcutBlocked } from './office-shortcuts';
 import type { PresentationDesignMode } from './presentation-design-panel';
+import {
+  applyPresentationElementFormattingPatch,
+  presentationElementToolbarState,
+} from './presentation-text-formatting';
 
 export function usePresentationClipboard({
   content,
@@ -24,6 +28,8 @@ export function usePresentationClipboard({
   onSelectElement,
   onUndo,
   onRedo,
+  onAddSlide,
+  onStartSlideshow,
 }: {
   content: WorkPresentationContent;
   preview: boolean;
@@ -36,6 +42,8 @@ export function usePresentationClipboard({
   onSelectElement: (id: string | null) => void;
   onUndo: () => boolean;
   onRedo: () => boolean;
+  onAddSlide: () => void;
+  onStartSlideshow?: () => void;
 }) {
   const copySelection = useCallback((): boolean => {
     if (selectedElement) {
@@ -159,15 +167,55 @@ export function usePresentationClipboard({
     [content, mode, onChange, selectedElement, targetId]
   );
 
+  const toggleBold = useCallback((): boolean => {
+    if (!selectedElement || !targetId) return false;
+    const bold = !presentationElementToolbarState(selectedElement).bold;
+    const next = updateTargetElements(content, mode, targetId, (elements) =>
+      elements.map((element) =>
+        element.id === selectedElement.id ? applyPresentationElementFormattingPatch(element, { bold }) : element
+      )
+    );
+    if (!next) return false;
+    onChange(next);
+    return true;
+  }, [content, mode, onChange, selectedElement, targetId]);
+
   useEffect(() => {
     if (preview) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || isOfficeShortcutBlocked(event.target)) return;
+      if (event.defaultPrevented) return;
       const commandKey = event.metaKey || event.ctrlKey;
       const key = event.key.toLocaleLowerCase();
+      const addSlideShortcut =
+        !event.repeat &&
+        !event.altKey &&
+        ((event.ctrlKey && !event.metaKey && !event.shiftKey && key === 'm') ||
+          (event.metaKey && !event.ctrlKey && event.shiftKey && key === 'n'));
+      if (isOfficeShortcutBlocked(event.target)) {
+        if (!event.repeat && !commandKey && !event.altKey && !event.shiftKey && key === 'f5' && onStartSlideshow) {
+          event.preventDefault();
+        }
+        return;
+      }
       const historyEditingTarget = isPresentationHistoryEditingTarget(event.target);
       let handled = false;
-      if (historyEditingTarget && commandKey && !event.altKey && key === 'z') {
+      if (!event.repeat && !commandKey && !event.altKey && !event.shiftKey && key === 'f5' && onStartSlideshow) {
+        onStartSlideshow();
+        handled = true;
+      } else if (addSlideShortcut) {
+        onAddSlide();
+        handled = true;
+      } else if (
+        !event.repeat &&
+        commandKey &&
+        !event.altKey &&
+        !event.shiftKey &&
+        key === 'b' &&
+        selectedElement &&
+        isPresentationObjectKeyboardTarget(event.target)
+      ) {
+        handled = toggleBold();
+      } else if (historyEditingTarget && commandKey && !event.altKey && key === 'z') {
         handled = event.shiftKey ? onRedo() : onUndo();
       } else if (historyEditingTarget && commandKey && !event.altKey && !event.shiftKey && key === 'y') {
         handled = onRedo();
@@ -204,11 +252,14 @@ export function usePresentationClipboard({
     deleteSelectedElement,
     duplicateSelection,
     nudgeSelection,
+    onAddSlide,
     onRedo,
+    onStartSlideshow,
     onUndo,
     pasteSelection,
     preview,
     selectedElement,
+    toggleBold,
   ]);
 
   return { copySelection, cutSelection, pasteSelection };

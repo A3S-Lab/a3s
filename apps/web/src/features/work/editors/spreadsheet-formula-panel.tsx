@@ -1,6 +1,6 @@
 import { Calculator, RefreshCw, Save } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { CollectionState } from '../../../design-system/primitives';
+import { Button, CollectionState } from '../../../design-system/primitives';
 import { spreadsheetFormulaAnalysis } from '../work-spreadsheet-formula-analysis';
 import { effectiveSpreadsheetCalculationSettings } from '../work-spreadsheet-formulas';
 import type { WorkSpreadsheetCalculationSettings, WorkSpreadsheetContent } from '../work-types';
@@ -143,18 +143,18 @@ export function SpreadsheetFormulaPanel({
           </OfficeCheckbox>
           <div className='actions'>
             {status && <span className='status'>{status}</span>}
-            <button type='button' disabled={!canRecalculateSelection} onClick={() => recalculate('selection')}>
+            <Button tone='secondary' disabled={!canRecalculateSelection} onClick={() => recalculate('selection')}>
               <RefreshCw size={12} />
               重新计算当前选区
-            </button>
-            <button type='button' onClick={() => recalculate('workbook')}>
+            </Button>
+            <Button tone='secondary' onClick={() => recalculate('workbook')}>
               <Calculator size={12} />
               重新计算工作簿
-            </button>
-            <button type='submit' className='primary'>
+            </Button>
+            <Button type='submit' tone='primary'>
               <Save size={12} />
               保存计算设置
-            </button>
+            </Button>
           </div>
         </div>
         <section className='work-spreadsheet-formula-diagnostics' aria-label='公式兼容性诊断'>

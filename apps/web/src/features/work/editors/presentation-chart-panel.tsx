@@ -1,4 +1,5 @@
 import { Plus, Trash2, X } from 'lucide-react';
+import { Button, IconButton } from '../../../design-system/primitives';
 import {
   createPresentationChartSeries,
   normalizeDoughnutHoleSize,
@@ -68,13 +69,13 @@ export function PresentationChartPanel({
           <span>编辑后的数据会同步到预览和原生 PPTX。</span>
         </div>
         <div>
-          <button type='button' className='danger' aria-label='删除演示图表' onClick={onDelete}>
+          <Button tone='danger' aria-label='删除演示图表' onClick={onDelete}>
             <Trash2 size={13} />
             删除图表
-          </button>
-          <button type='button' className='close' aria-label='关闭演示图表数据' onClick={onClose}>
+          </Button>
+          <IconButton className='close' label='关闭演示图表数据' onClick={onClose}>
             <X size={14} />
-          </button>
+          </IconButton>
         </div>
       </header>
       <div className='work-presentation-chart-controls'>
@@ -232,14 +233,13 @@ export function PresentationChartPanel({
                     }
                   />
                 )}
-                <button
-                  type='button'
-                  aria-label={`删除演示图表系列 ${index + 1}`}
+                <IconButton
+                  label={`删除演示图表系列 ${index + 1}`}
                   disabled={chart.series.length === 1}
                   onClick={() => onChange({ ...chart, series: chart.series.filter((_, current) => current !== index) })}
                 >
                   <Trash2 size={12} />
-                </button>
+                </IconButton>
               </fieldset>
               <SpreadsheetChartSeriesStyleEditor
                 seriesNumber={index + 1}
@@ -250,15 +250,15 @@ export function PresentationChartPanel({
               <PresentationChartSeriesAnalysisEditor chart={chart} seriesIndex={index} onChange={onChange} />
             </div>
           ))}
-          <button
-            type='button'
+          <Button
+            tone='secondary'
             className='add-series'
             aria-label='添加图表系列'
             onClick={() => onChange({ ...chart, series: [...chart.series, createPresentationChartSeries(chart)] })}
           >
             <Plus size={13} />
             添加系列
-          </button>
+          </Button>
         </div>
       </div>
     </section>

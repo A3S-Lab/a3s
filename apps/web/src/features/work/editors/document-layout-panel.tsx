@@ -1,4 +1,5 @@
 import { clampDocumentMargin } from '../work-document-layout';
+import { Button } from '../../../design-system/primitives';
 import { documentPageChromeLegacyFields, normalizeDocumentPageChrome } from '../work-document-page-chrome';
 import type { WorkDocumentMargins, WorkDocumentSectionLayout } from '../work-types';
 import { DocumentColumnsPanel } from './document-columns-panel';
@@ -48,12 +49,12 @@ export function DocumentLayoutPanel({
         />
       </div>
       <div className='work-document-section-actions'>
-        <button type='button' onClick={onInsertSection}>
+        <Button size='compact' onClick={onInsertSection}>
           插入新节
-        </button>
-        <button type='button' disabled={sectionIndex === 0} onClick={onMergeSection}>
+        </Button>
+        <Button size='compact' disabled={sectionIndex === 0} onClick={onMergeSection}>
           与上一节合并
-        </button>
+        </Button>
       </div>
       <div className='work-office-field'>
         <span>纸张</span>

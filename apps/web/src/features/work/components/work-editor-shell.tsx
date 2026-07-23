@@ -20,7 +20,7 @@ import {
   Star,
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Button, IconButton } from '../../../design-system/primitives';
+import { Button, IconButton, SegmentedControl } from '../../../design-system/primitives';
 import { DocumentEditor } from '../editors/document-editor';
 import { OfficeTextField } from '../editors/office-controls';
 import { isOfficeShortcutBlocked } from '../editors/office-shortcuts';
@@ -257,7 +257,7 @@ export function WorkEditorShell({
             <Button
               className='work-local-save-button'
               aria-label={actions.activeLocalBinding ? '保存到原本地文件' : '保存到 A3S'}
-              title={actions.activeLocalBinding?.path}
+              title={actions.activeLocalBinding?.path ?? '保存到 A3S'}
               disabled={actions.saveState === 'saving' || actions.localSaveState === 'saving'}
               loading={actions.saveState === 'saving' || actions.localSaveState === 'saving'}
               onClick={requestPrimarySave}
@@ -267,33 +267,24 @@ export function WorkEditorShell({
             </Button>
           )}
           {artifact.kind !== 'pdf' && (
-            <fieldset className='work-preview-switch'>
-              <legend className='sr-only'>编辑或预览</legend>
-              <button
-                type='button'
-                className={!preview ? 'active' : ''}
-                aria-pressed={!preview}
-                onClick={() => setPreview(false)}
-              >
-                <Pencil size={14} />
-                编辑
-              </button>
-              <button
-                type='button'
-                className={preview ? 'active' : ''}
-                aria-pressed={preview}
-                onClick={() => setPreview(true)}
-              >
-                <Eye size={15} />
-                预览
-              </button>
-            </fieldset>
+            <SegmentedControl<'edit' | 'preview'>
+              ariaLabel='编辑或预览'
+              value={preview ? 'preview' : 'edit'}
+              size='compact'
+              className='work-preview-switch'
+              items={[
+                { id: 'edit', label: '编辑', ariaLabel: '编辑', icon: <Pencil size={14} /> },
+                { id: 'preview', label: '预览', ariaLabel: '预览', icon: <Eye size={15} /> },
+              ]}
+              onChange={(mode) => setPreview(mode === 'preview')}
+            />
           )}
           {onToggleCopilot && (
             <Button
               className={`work-editor-ai-button ${copilotOpen ? 'active' : ''}`}
               aria-label={copilotOpen ? '关闭 AI 助手' : '打开 AI 助手'}
               aria-pressed={copilotOpen}
+              title={copilotOpen ? '关闭 AI 助手' : '打开 AI 助手'}
               onClick={onToggleCopilot}
             >
               <Sparkles size={15} />

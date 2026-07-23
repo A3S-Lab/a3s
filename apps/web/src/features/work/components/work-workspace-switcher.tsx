@@ -1,6 +1,6 @@
 import { Check, ChevronsUpDown, FolderOpen, LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
-import { Popover } from '../../../design-system/primitives';
+import { Button, Popover } from '../../../design-system/primitives';
 import { localPathBasename, sameLocalPath } from '../work-local-files';
 import { WorkFileIcon } from './work-file-icon';
 
@@ -89,11 +89,17 @@ export function WorkWorkspaceSwitcher({
               })}
             </div>
           )}
-          <button type='button' className='work-workspace-pick' disabled={busy} onClick={() => void pick(close)}>
+          <Button
+            size='compact'
+            tone='quiet'
+            className='work-workspace-pick'
+            disabled={busy}
+            onClick={() => void pick(close)}
+          >
             <FolderOpen size={16} />
             <span>打开其他文件夹</span>
             {picking && <LoaderCircle className='spin' size={14} />}
-          </button>
+          </Button>
         </>
       )}
     </Popover>

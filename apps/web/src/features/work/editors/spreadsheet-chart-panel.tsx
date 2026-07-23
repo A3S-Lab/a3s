@@ -1,7 +1,7 @@
 import type { Selection } from '@fortune-sheet/core';
 import { Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { CollectionState, InlineNotice, StateView } from '../../../design-system/primitives';
+import { Button, CollectionState, InlineNotice, StateView } from '../../../design-system/primitives';
 import { normalizeWorkSpreadsheetChartAxes } from '../work-spreadsheet-chart-axis';
 import {
   normalizeWorkSpreadsheetChartLayout,
@@ -333,10 +333,10 @@ export function SpreadsheetChartPanel({ content, activeSheetId, selection, onCha
   return (
     <div className='work-spreadsheet-chart-manager'>
       <aside aria-label='工作簿图表'>
-        <button type='button' className='create' onClick={addChart}>
+        <Button className='create' tone='secondary' onClick={addChart}>
           <Plus size={13} />
           根据当前选区新建
-        </button>
+        </Button>
         <div className='work-spreadsheet-chart-list'>
           {items.map((item) => (
             <button
@@ -760,13 +760,13 @@ export function SpreadsheetChartPanel({ content, activeSheetId, selection, onCha
                 {error}
               </InlineNotice>
             )}
-            <button type='button' className='danger' onClick={deleteChart}>
+            <Button tone='danger' onClick={deleteChart}>
               <Trash2 size={13} />
               删除图表
-            </button>
-            <button type='submit' className='primary'>
+            </Button>
+            <Button type='submit' tone='primary'>
               保存图表
-            </button>
+            </Button>
           </div>
         </form>
       ) : (

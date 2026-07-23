@@ -19,6 +19,57 @@
   --work-office-accent: #db663b;
 }
 
+.work-office-preview-bar {
+  --work-office-accent: var(--a3s-blue);
+
+  position: relative;
+  z-index: 8;
+  display: flex;
+  min-width: 0;
+  height: 36px;
+  flex: 0 0 36px;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--a3s-line);
+  background: var(--a3s-panel);
+  box-shadow: 0 2px 7px rgb(24 31 46 / 4%);
+}
+
+.work-office-preview-bar.work-spreadsheet-ribbon {
+  --work-office-accent: #159469;
+}
+
+.work-office-preview-bar.work-presentation-ribbon {
+  --work-office-accent: #db663b;
+}
+
+.work-office-preview-summary {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  color: var(--a3s-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.work-office-preview-summary > svg {
+  flex: 0 0 auto;
+  color: var(--work-office-accent, var(--a3s-blue));
+}
+
+.work-office-preview-summary strong {
+  color: var(--a3s-ink);
+  font-weight: 650;
+}
+
+.work-office-preview-summary span {
+  overflow: hidden;
+  color: var(--a3s-faint);
+  text-overflow: ellipsis;
+}
+
 .work-office-ribbon-tabs-row {
   position: relative;
   display: flex;
@@ -146,7 +197,7 @@
   height: 24px;
   place-items: center;
   border-radius: 6px;
-  color: var(--work-office-accent);
+  color: var(--work-office-accent, var(--a3s-blue));
 }
 
 .work-office-file-popover kbd {
@@ -163,6 +214,7 @@
 }
 
 .work-office-ribbon-panel {
+  position: relative;
   min-width: 0;
 }
 
@@ -178,6 +230,39 @@
   gap: 0;
   padding: 5px 10px 5px;
   border: 0;
+}
+
+.work-office-ribbon-scroll {
+  position: absolute;
+  z-index: 4;
+  top: 5px;
+  display: grid;
+  width: 27px;
+  height: 63px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--work-office-accent) 18%, var(--a3s-line));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--a3s-panel) 94%, transparent);
+  box-shadow: 0 3px 12px rgb(20 27 43 / 10%);
+  color: var(--work-office-accent);
+  cursor: pointer;
+}
+
+.work-office-ribbon-scroll.previous {
+  left: 4px;
+}
+
+.work-office-ribbon-scroll.next {
+  right: 4px;
+}
+
+.work-office-ribbon-scroll:hover,
+.work-office-ribbon-scroll:focus-visible {
+  outline: 0;
+  border-color: color-mix(in srgb, var(--work-office-accent) 38%, var(--a3s-line));
+  background: color-mix(in srgb, var(--work-office-accent) 8%, var(--a3s-panel));
+  box-shadow: 0 5px 16px rgb(20 27 43 / 14%);
 }
 
 .work-office-ribbon-group {
@@ -258,17 +343,6 @@
 
 .work-office-ribbon .work-office-toolbar button.active {
   color: var(--work-office-accent);
-}
-
-.work-office-ribbon-message {
-  display: inline-flex;
-  max-width: 520px;
-  min-height: 36px;
-  align-items: center;
-  padding: 0 14px;
-  color: var(--a3s-faint);
-  font-size: 10px;
-  line-height: 1.5;
 }
 
 .work-office-status {
@@ -356,4 +430,24 @@
 .work-office-save-status {
   gap: 4px;
   color: var(--a3s-faint);
+}
+
+@media (max-width: 1120px) {
+  .work-office-ribbon .work-office-toolbar {
+    padding-inline: 5px;
+  }
+
+  .work-office-ribbon-group {
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+
+  .work-office-ribbon-group:first-child {
+    padding-left: 0;
+  }
+
+  .work-office-ribbon-group > span {
+    right: 4px;
+    left: 4px;
+  }
 }

@@ -1,7 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import { BookMarked, Plus, Quote, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { CollectionState, InlineNotice } from '../../../design-system/primitives';
+import { Button, CollectionState, IconButton, InlineNotice } from '../../../design-system/primitives';
 import {
   insertDocumentBibliography,
   insertDocumentCitation,
@@ -207,24 +207,24 @@ export function DocumentCitationsPanel({
             onValueChange={changeStyle}
           />
         </div>
-        <button
-          type='button'
+        <Button
+          tone='secondary'
           aria-label='插入参考文献'
           onClick={() => insertDocumentBibliography(editor, bibliography)}
         >
           <BookMarked size={13} />
           插入参考文献
-        </button>
-        <button type='button' className='close' aria-label='关闭文献库' onClick={onClose}>
+        </Button>
+        <IconButton className='close' label='关闭文献库' onClick={onClose}>
           <X size={14} />
-        </button>
+        </IconButton>
       </header>
       <div className='work-document-citation-manager'>
         <aside aria-label='文献源列表'>
-          <button type='button' className='create' onClick={startNewSource}>
+          <Button className='create' tone='secondary' onClick={startNewSource}>
             <Plus size={13} />
             新建文献源
-          </button>
+          </Button>
           <div>
             {bibliography.sources.map((source) => (
               <button
@@ -402,21 +402,21 @@ export function DocumentCitationsPanel({
                 {error}
               </InlineNotice>
             )}
-            <button
-              type='button'
+            <Button
+              tone='secondary'
               disabled={!selectedSource}
               onClick={() => selectedSource && insertDocumentCitation(editor, selectedSource, bibliography)}
             >
               <Quote size={13} />
               插入引文
-            </button>
-            <button type='button' className='danger' disabled={!draft.id} onClick={deleteSource}>
+            </Button>
+            <Button tone='danger' disabled={!draft.id} onClick={deleteSource}>
               <Trash2 size={13} />
               删除
-            </button>
-            <button type='submit' className='primary'>
+            </Button>
+            <Button type='submit' tone='primary'>
               保存文献源
-            </button>
+            </Button>
           </div>
         </form>
       </div>

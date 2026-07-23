@@ -13,7 +13,14 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Button, IconButton, SearchField, StateView, StatusBadge } from '../../../design-system/primitives';
+import {
+  Button,
+  IconButton,
+  SearchField,
+  SegmentedControl,
+  StateView,
+  StatusBadge,
+} from '../../../design-system/primitives';
 import type { WorkspaceEntry } from '../../../types/api';
 import { hasDraggedWorkspaceFiles } from '../../workspace/workspace-drop-import';
 import { OfficeSelect } from '../editors/office-controls';
@@ -90,15 +97,19 @@ export function WorkFilesWorkspace({
             />
           </div>
         )}
-        <span className='work-files-onboarding-icon'>
-          <FolderOpen size={30} />
-        </span>
-        <h1>打开本地文件夹</h1>
-        <p>在这里浏览、编辑和整理本地文件。</p>
-        <Button tone='primary' onClick={() => void actions.pickRoot()}>
-          <FolderOpen size={16} />
-          选择文件夹
-        </Button>
+        <StateView
+          className='work-files-onboarding-state'
+          tone='info'
+          icon={<FolderOpen size={26} />}
+          title='打开本地文件夹'
+          description='在这里浏览、编辑和整理本地文件。'
+          actions={
+            <Button tone='primary' onClick={() => void actions.pickRoot()}>
+              <FolderOpen size={16} />
+              选择文件夹
+            </Button>
+          }
+        />
       </main>
     );
   }
@@ -280,26 +291,27 @@ export function WorkFilesWorkspace({
         </div>
       </header>
       {actions.query.trim() && (
-        <section className='work-files-search-scope' aria-label='搜索范围'>
+        <section className='work-files-search-scope' aria-label='文件搜索范围与状态'>
           <span>搜索范围</span>
-          <button
-            type='button'
-            className={actions.searchScope === 'folder' ? 'active' : ''}
-            aria-label={`仅搜索当前文件夹 ${localPathBasename(actions.currentPath)}`}
-            aria-pressed={actions.searchScope === 'folder'}
-            onClick={() => actions.setSearchScope('folder')}
-          >
-            {localPathBasename(actions.currentPath)}
-          </button>
-          <button
-            type='button'
-            className={actions.searchScope === 'workspace' ? 'active' : ''}
-            aria-label={`搜索全部文件 ${localPathBasename(actions.rootPath)}`}
-            aria-pressed={actions.searchScope === 'workspace'}
-            onClick={() => actions.setSearchScope('workspace')}
-          >
-            全部文件
-          </button>
+          <SegmentedControl<'folder' | 'workspace'>
+            ariaLabel='搜索范围'
+            value={actions.searchScope}
+            size='compact'
+            className='work-files-search-scope-control'
+            items={[
+              {
+                id: 'folder',
+                label: localPathBasename(actions.currentPath),
+                ariaLabel: `仅搜索当前文件夹 ${localPathBasename(actions.currentPath)}`,
+              },
+              {
+                id: 'workspace',
+                label: '全部文件',
+                ariaLabel: `搜索全部文件 ${localPathBasename(actions.rootPath)}`,
+              },
+            ]}
+            onChange={actions.setSearchScope}
+          />
           {workspaceSearching && actions.searchError && (
             <output aria-label='文件搜索失败'>
               <StatusBadge tone='danger'>搜索失败：{actions.searchError}</StatusBadge>

@@ -7,7 +7,7 @@ import type { CodeActions } from '../../code/use-code-controller';
 import { codeDefaultWorkspace } from '../../workspace/code-default-workspace';
 import { WorkCodeWorkspace } from '../components/work-code-workspace';
 import { WorkCompatibilityDialog } from '../components/work-compatibility-dialog';
-import { WorkCopilot } from '../components/work-copilot';
+import { readWorkCopilotWidth, WorkCopilot } from '../components/work-copilot';
 import { WorkEditorShell } from '../components/work-editor-shell';
 import { WorkFilesWorkspace } from '../components/work-files-workspace';
 import { WorkHome } from '../components/work-home';
@@ -19,6 +19,7 @@ import { useWorkFilesController } from '../use-work-files-controller';
 import { type WorkAgentProposalRequest, workAgentProposalInstruction } from '../work-agent-proposal';
 import { prepareWorkAgentRequest, type WorkAgentRequest, type WorkEditorAgentRequest } from '../work-agent-request';
 import { WORK_IMPORT_ACCEPT } from '../work-file-io';
+import { isOfficeShortcutBlocked } from '../editors/office-shortcuts';
 import { isWorkOfficePath, isWorkTextEditorEntry, localPathBasename, workFileMimeType } from '../work-local-files';
 
 const surfaceStorageKey = 'a3s-work.surface';
@@ -38,6 +39,7 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [surface, setSurface] = useState<'files' | 'library'>(readSurface);
   const [copilotOpen, setCopilotOpen] = useState(readCopilotOpen);
+  const [copilotWidth, setCopilotWidth] = useState(readWorkCopilotWidth);
   const [openingPath, setOpeningPath] = useState<string | null>(null);
   const [agentProposal, setAgentProposal] = useState<WorkAgentProposalRequest | null>(null);
   const [localCreateRequest, setLocalCreateRequest] = useState<{
@@ -76,7 +78,16 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey)) return;
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.altKey ||
+        event.shiftKey ||
+        isOfficeShortcutBlocked(event.target) ||
+        !(event.metaKey || event.ctrlKey)
+      ) {
+        return;
+      }
       const key = event.key.toLocaleLowerCase();
       if (key === 'n') {
         event.preventDefault();
@@ -326,6 +337,8 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
             await files.pickRoot();
           }}
           onAgentRequest={requestAgent}
+          width={copilotWidth}
+          onWidthChange={setCopilotWidth}
           proposal={agentProposal}
           onDismissProposal={() => setAgentProposal(null)}
         />

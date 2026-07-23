@@ -1,4 +1,5 @@
 import { Copy, LayoutTemplate, Plus, Trash2, X } from 'lucide-react';
+import { Button, IconButton } from '../../../design-system/primitives';
 import type { WorkPresentationContent, WorkPresentationLayout, WorkPresentationMaster, WorkSlide } from '../work-types';
 import { OfficeCheckbox, OfficeColorPicker, OfficeSelect, OfficeTextField } from './office-controls';
 
@@ -55,9 +56,9 @@ export function PresentationDesignPanel({
             {content.masters?.length ?? 0} 个母版 · {content.layouts?.length ?? 0} 个布局
           </span>
         </div>
-        <button type='button' className='close' aria-label='关闭母版与布局' onClick={onClose}>
+        <IconButton className='close' label='关闭母版与布局' onClick={onClose}>
           <X size={14} />
-        </button>
+        </IconButton>
       </header>
 
       <div className='work-presentation-design-controls'>
@@ -78,28 +79,40 @@ export function PresentationDesignPanel({
         >
           使用布局背景
         </OfficeCheckbox>
-        <button type='button' className={mode === 'layout' ? 'active' : ''} onClick={onEditLayout}>
+        <Button
+          size='compact'
+          tone={mode === 'layout' ? 'primary' : 'secondary'}
+          aria-pressed={mode === 'layout'}
+          onClick={onEditLayout}
+        >
           编辑当前布局
-        </button>
-        <button type='button' className={mode === 'master' ? 'active' : ''} onClick={onEditMaster}>
+        </Button>
+        <Button
+          size='compact'
+          tone={mode === 'master' ? 'primary' : 'secondary'}
+          aria-pressed={mode === 'master'}
+          onClick={onEditMaster}
+        >
           编辑当前母版
-        </button>
-        <button type='button' aria-label='新建布局' onClick={onCreateLayout}>
+        </Button>
+        <Button size='compact' aria-label='新建布局' onClick={onCreateLayout}>
           <Plus size={13} />
           新建布局
-        </button>
-        <button type='button' aria-label='复制当前布局' onClick={onDuplicateLayout}>
+        </Button>
+        <Button size='compact' aria-label='复制当前布局' onClick={onDuplicateLayout}>
           <Copy size={13} />
           复制布局
-        </button>
-        <button
-          type='button'
+        </Button>
+        <Button
+          size='compact'
+          tone='danger'
           aria-label='删除当前布局'
           disabled={(content.layouts?.length ?? 0) < 2}
           onClick={onDeleteLayout}
         >
           <Trash2 size={13} />
-        </button>
+          删除布局
+        </Button>
       </div>
 
       {mode === 'layout' && (
@@ -129,9 +142,9 @@ export function PresentationDesignPanel({
             使用母版背景
           </OfficeCheckbox>
           <PlaceholderButtons onAdd={onAddPlaceholder} />
-          <button type='button' onClick={onReturnToSlide}>
+          <Button size='compact' tone='quiet' onClick={onReturnToSlide}>
             返回幻灯片编辑
-          </button>
+          </Button>
         </div>
       )}
 
@@ -154,9 +167,9 @@ export function PresentationDesignPanel({
             onValueChange={onSetMasterBackground}
           />
           <PlaceholderButtons onAdd={onAddPlaceholder} />
-          <button type='button' onClick={onReturnToSlide}>
+          <Button size='compact' tone='quiet' onClick={onReturnToSlide}>
             返回幻灯片编辑
-          </button>
+          </Button>
         </div>
       )}
     </section>
@@ -166,12 +179,12 @@ export function PresentationDesignPanel({
 function PlaceholderButtons({ onAdd }: { onAdd: (type: 'title' | 'body') => void }) {
   return (
     <div className='work-presentation-placeholder-actions'>
-      <button type='button' aria-label='添加标题占位符' onClick={() => onAdd('title')}>
+      <Button size='compact' aria-label='添加标题占位符' onClick={() => onAdd('title')}>
         添加标题占位符
-      </button>
-      <button type='button' aria-label='添加内容占位符' onClick={() => onAdd('body')}>
+      </Button>
+      <Button size='compact' aria-label='添加内容占位符' onClick={() => onAdd('body')}>
         添加内容占位符
-      </button>
+      </Button>
     </div>
   );
 }

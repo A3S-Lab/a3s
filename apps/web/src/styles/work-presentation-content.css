@@ -359,7 +359,7 @@
   overflow: hidden;
 }
 
-.work-slide-element > span {
+.work-slide-element > span:not(.work-slide-move-handle):not(.work-slide-resize-handle) {
   display: flex;
   width: 100%;
   height: 100%;

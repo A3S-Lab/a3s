@@ -1,7 +1,7 @@
 import type { Sheet } from '@fortune-sheet/core';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { CollectionState, InlineNotice, StateView } from '../../../design-system/primitives';
+import { Button, CollectionState, InlineNotice, StateView } from '../../../design-system/primitives';
 import {
   defaultSpreadsheetConditionalIconThresholds,
   SPREADSHEET_CONDITIONAL_ICON_SETS,
@@ -173,10 +173,10 @@ export function SpreadsheetConditionalFormatPanel({ content, onChange }: Spreads
   return (
     <div className='work-spreadsheet-conditional-manager'>
       <aside aria-label='Work 条件格式规则'>
-        <button type='button' className='create' onClick={startNew}>
+        <Button className='create' tone='secondary' onClick={startNew}>
           <Plus size={13} />
           新建规则
-        </button>
+        </Button>
         <div className='work-spreadsheet-conditional-list'>
           {entries.map(({ sheet, rule, index }) => {
             const selected = selection?.sheetId === sheet.id && selection.index === index;
@@ -394,31 +394,31 @@ export function SpreadsheetConditionalFormatPanel({ content, onChange }: Spreads
               {error}
             </InlineNotice>
           )}
-          <button
-            type='button'
+          <Button
+            tone='secondary'
             disabled={!selection || selection.index <= 0}
             aria-label='提高优先级'
             onClick={() => moveRule(-1)}
           >
             <ArrowUp size={13} />
             提高优先级
-          </button>
-          <button
-            type='button'
+          </Button>
+          <Button
+            tone='secondary'
             disabled={!selection || selection.index >= selectedRuleCount - 1}
             aria-label='降低优先级'
             onClick={() => moveRule(1)}
           >
             <ArrowDown size={13} />
             降低优先级
-          </button>
-          <button type='button' className='danger' disabled={!selection} onClick={deleteRule}>
+          </Button>
+          <Button tone='danger' disabled={!selection} onClick={deleteRule}>
             <Trash2 size={13} />
             删除规则
-          </button>
-          <button type='submit' className='primary'>
+          </Button>
+          <Button type='submit' tone='primary'>
             保存规则
-          </button>
+          </Button>
         </div>
       </form>
     </div>

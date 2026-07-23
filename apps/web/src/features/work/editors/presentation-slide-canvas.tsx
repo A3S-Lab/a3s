@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { presentationSlideView } from '../work-presentation-layouts';
 import type { WorkPresentationContent, WorkSlide, WorkSlideElement } from '../work-types';
 import { OfficeTextArea } from './office-controls';
@@ -66,6 +67,7 @@ export function RichEditableText({
   element: WorkSlideElement;
   onCommit: (text: string) => void;
 }) {
+  const dirtyRef = useRef(false);
   return (
     // biome-ignore lint/a11y/useSemanticElements: A contentEditable surface preserves imported rich-text runs until the user edits them.
     <div
@@ -77,7 +79,14 @@ export function RichEditableText({
       role='textbox'
       aria-label='幻灯片富文本'
       style={slideTextStyle(element)}
-      onBlur={(event) => onCommit(event.currentTarget.innerText)}
+      onInput={() => {
+        dirtyRef.current = true;
+      }}
+      onBlur={(event) => {
+        if (!dirtyRef.current) return;
+        dirtyRef.current = false;
+        onCommit(event.currentTarget.innerText);
+      }}
     >
       {element.textRuns?.map((run, index) => (
         <span

@@ -1,6 +1,6 @@
 import { Check, Pipette } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Popover } from '../../../design-system/primitives';
+import { Button, Popover } from '../../../design-system/primitives';
 
 const OFFICE_COLORS = [
   '#111827',
@@ -57,6 +57,8 @@ export function OfficeColorPicker({
       label={ariaLabel}
       panelLabel={ariaLabel}
       panelRole='dialog'
+      placement='bottom-end'
+      portal
       className={`work-office-color-picker${compact ? ' compact' : ''}${className ? ` ${className}` : ''}`}
       panelClassName='work-office-color-menu'
       disabled={disabled}
@@ -99,9 +101,14 @@ export function OfficeColorPicker({
                 }
               }}
             />
-            <button type='button' disabled={!normalizeCssColor(draft)} onClick={() => applyDraft(close)}>
+            <Button
+              size='compact'
+              tone='primary'
+              disabled={!normalizeCssColor(draft)}
+              onClick={() => applyDraft(close)}
+            >
               应用
-            </button>
+            </Button>
           </div>
         </>
       )}

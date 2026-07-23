@@ -249,6 +249,41 @@ describe('Work presentation print controls', () => {
     expect(actions.saveNow).not.toHaveBeenCalled();
   });
 
+  it('does not take save or print shortcuts away from an excluded side panel', () => {
+    const artifact = createWorkArtifact('strategy-deck');
+    const actions = {
+      activeArtifact: artifact,
+      saveState: 'saved',
+      storageMode: 'local',
+      exporting: false,
+      exportingPdf: false,
+      closeArtifact: vi.fn(),
+      saveNow: vi.fn(),
+      updateArtifact: vi.fn(),
+      toggleFavorite: vi.fn(),
+      downloadSource: vi.fn(),
+      exportArtifact: vi.fn(),
+      exportPdf: vi.fn(),
+      sourceBlob: vi.fn(),
+    } as unknown as WorkActions;
+
+    render(
+      <>
+        <WorkEditorShell actions={actions} />
+        <aside data-office-shortcuts='ignore'>
+          <input aria-label='AI 指令' />
+        </aside>
+      </>
+    );
+    const prompt = screen.getByRole('textbox', { name: 'AI 指令' });
+
+    expect(fireEvent.keyDown(prompt, { key: 's', metaKey: true })).toBe(true);
+    expect(fireEvent.keyDown(prompt, { key: 'p', metaKey: true })).toBe(true);
+
+    expect(actions.saveNow).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: '打印预览' })).not.toBeInTheDocument();
+  });
+
   it('does not run background save or print shortcuts while Save As is open', () => {
     const artifact = createWorkArtifact('strategy-deck');
     const actions = {

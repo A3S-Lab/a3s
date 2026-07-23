@@ -145,7 +145,12 @@ export function PresentationToolbar({
                 </WorkOfficeRibbonButton>
               </WorkOfficeRibbonGroup>
               <WorkOfficeRibbonGroup label='幻灯片'>
-                <WorkOfficeRibbonButton label='新建幻灯片' onClick={onAddSlide}>
+                <WorkOfficeRibbonButton
+                  label='新建幻灯片'
+                  title='新建幻灯片（Ctrl+M / ⌘⇧N）'
+                  aria-keyshortcuts='Control+M Meta+Shift+N'
+                  onClick={onAddSlide}
+                >
                   <Plus size={19} />
                 </WorkOfficeRibbonButton>
                 <WorkOfficeRibbonButton label='复制幻灯片' onClick={onDuplicateSlide}>
@@ -181,6 +186,8 @@ export function PresentationToolbar({
                     </div>
                     <WorkOfficeRibbonButton
                       label='加粗'
+                      title='加粗（Cmd/Ctrl+B）'
+                      aria-keyshortcuts='Control+B Meta+B'
                       displayLabel={false}
                       active={Boolean(selectedElement.bold)}
                       onClick={() => onUpdateElement({ bold: !selectedElement.bold })}
@@ -300,7 +307,13 @@ export function PresentationToolbar({
           ),
           slideshow: (
             <WorkOfficeRibbonGroup label='开始放映'>
-              <WorkOfficeRibbonButton label='从头开始放映' disabled={!onStartSlideshow} onClick={onStartSlideshow}>
+              <WorkOfficeRibbonButton
+                label='从头开始放映'
+                title='从头开始放映（F5）'
+                aria-keyshortcuts='F5'
+                disabled={!onStartSlideshow}
+                onClick={onStartSlideshow}
+              >
                 <Play size={19} />
               </WorkOfficeRibbonButton>
             </WorkOfficeRibbonGroup>

@@ -57,6 +57,7 @@ export function OfficeSelect<T extends string>({
       label={ariaLabel}
       panelLabel={ariaLabel}
       panelRole='listbox'
+      portal
       className={`work-office-select${className ? ` ${className}` : ''}`}
       panelClassName='work-office-select-menu'
       open={open}

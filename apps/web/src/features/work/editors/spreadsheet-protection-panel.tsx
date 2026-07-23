@@ -1,7 +1,7 @@
 import type { Sheet } from '@fortune-sheet/core';
 import { KeyRound, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { CollectionState, InlineNotice, StateView } from '../../../design-system/primitives';
+import { Button, CollectionState, InlineNotice, StateView } from '../../../design-system/primitives';
 import {
   editableRangeCellCount,
   editableRangeRequiresCredentials,
@@ -154,10 +154,10 @@ export function SpreadsheetProtectionPanel({ content, onChange }: SpreadsheetPro
   return (
     <div className='work-spreadsheet-protection-manager'>
       <aside aria-label='允许编辑的区域'>
-        <button type='button' className='create' onClick={startNew}>
+        <Button className='create' tone='secondary' onClick={startNew}>
           <Plus size={13} />
           新建可编辑区域
-        </button>
+        </Button>
         <div className='work-spreadsheet-protection-list'>
           {ranges.map((range, index) => (
             <button
@@ -259,13 +259,13 @@ export function SpreadsheetProtectionPanel({ content, onChange }: SpreadsheetPro
               {error}
             </InlineNotice>
           )}
-          <button type='button' className='danger' disabled={selectedIndex === null} onClick={deleteRange}>
+          <Button tone='danger' disabled={selectedIndex === null} onClick={deleteRange}>
             <Trash2 size={13} />
             删除区域
-          </button>
-          <button type='submit' className='primary'>
+          </Button>
+          <Button type='submit' tone='primary'>
             保存区域
-          </button>
+          </Button>
         </div>
       </form>
     </div>

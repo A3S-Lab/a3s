@@ -1,5 +1,14 @@
-import { Minus, Plus } from 'lucide-react';
-import { type ButtonHTMLAttributes, Fragment, type ReactNode, useId, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Eye, Minus, Plus } from 'lucide-react';
+import {
+  type ButtonHTMLAttributes,
+  Fragment,
+  type ReactNode,
+  useCallback,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Popover, Tabs } from '../../../design-system/primitives';
 import { OfficeSlider } from './office-controls';
 
@@ -41,13 +50,80 @@ export function WorkOfficeRibbon<T extends string>({
 }) {
   const reactId = useId().replaceAll(':', '');
   const [internalTab, setInternalTab] = useState(defaultTab);
+  const [ribbonOverflow, setRibbonOverflow] = useState({ backward: false, forward: false });
+  const toolbarRef = useRef<HTMLDivElement>(null);
   const selectedTab = activeTab ?? internalTab;
   const selectedLabel = tabs.find((tab) => tab.id === selectedTab)?.label ?? tabs[0]?.label ?? '';
   const selectedPanel = panels[selectedTab];
+  const hasSelectedPanel = selectedPanel !== null && selectedPanel !== undefined;
+  const updateRibbonOverflow = useCallback(() => {
+    const toolbar = toolbarRef.current;
+    if (!toolbar) return;
+    const backward = toolbar.scrollLeft > 2;
+    const forward = toolbar.scrollLeft + toolbar.clientWidth < toolbar.scrollWidth - 2;
+    setRibbonOverflow((current) =>
+      current.backward === backward && current.forward === forward ? current : { backward, forward }
+    );
+  }, []);
+  const scrollRibbon = (direction: -1 | 1) => {
+    const toolbar = toolbarRef.current;
+    if (!toolbar) return;
+    const distance = Math.max(160, Math.round(toolbar.clientWidth * 0.7));
+    toolbar.scrollLeft = Math.max(
+      0,
+      Math.min(toolbar.scrollWidth - toolbar.clientWidth, toolbar.scrollLeft + distance * direction)
+    );
+    updateRibbonOverflow();
+  };
   const selectTab = (tab: T) => {
     if (activeTab === undefined) setInternalTab(tab);
     onTabChange?.(tab);
   };
+
+  useLayoutEffect(() => {
+    const toolbar = toolbarRef.current;
+    if (!toolbar) return;
+    toolbar.scrollLeft = 0;
+    updateRibbonOverflow();
+  }, [selectedTab, hasSelectedPanel, updateRibbonOverflow]);
+
+  useLayoutEffect(() => {
+    const toolbar = toolbarRef.current;
+    if (!toolbar) return;
+    let frame = requestAnimationFrame(updateRibbonOverflow);
+    const scheduleOverflowUpdate = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(updateRibbonOverflow);
+    };
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleOverflowUpdate);
+    const observeChild = (node: Node) => {
+      if (node instanceof Element) resizeObserver?.observe(node);
+    };
+    resizeObserver?.observe(toolbar);
+    for (const child of toolbar.children) observeChild(child);
+    const mutationObserver =
+      typeof MutationObserver === 'undefined'
+        ? null
+        : new MutationObserver((records) => {
+            for (const record of records) {
+              for (const node of record.addedNodes) observeChild(node);
+            }
+            scheduleOverflowUpdate();
+          });
+    mutationObserver?.observe(toolbar, {
+      attributes: true,
+      characterData: true,
+      childList: true,
+      subtree: true,
+    });
+    window.addEventListener('resize', scheduleOverflowUpdate);
+    return () => {
+      cancelAnimationFrame(frame);
+      resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
+      window.removeEventListener('resize', scheduleOverflowUpdate);
+    };
+  }, [hasSelectedPanel, updateRibbonOverflow]);
 
   return (
     <section className={`work-office-ribbon ${className}`.trim()} aria-label={ariaLabel}>
@@ -70,25 +146,76 @@ export function WorkOfficeRibbon<T extends string>({
       <div
         id={`${reactId}-panel`}
         className='work-office-ribbon-panel'
-        data-empty={selectedPanel === null || selectedPanel === undefined ? 'true' : undefined}
+        data-empty={hasSelectedPanel ? undefined : 'true'}
         role='tabpanel'
         aria-labelledby={`${reactId}-tab-${selectedTab}`}
       >
-        {selectedPanel !== null && selectedPanel !== undefined && (
-          <div
-            className={`work-office-toolbar ${toolbarClassName}`.trim()}
-            role='toolbar'
-            aria-label={`${selectedLabel}工具栏`}
-          >
-            {selectedPanel}
-          </div>
+        {hasSelectedPanel && (
+          <>
+            {ribbonOverflow.backward && (
+              <button
+                type='button'
+                className='work-office-ribbon-scroll previous'
+                aria-label={`向左查看更多${selectedLabel}工具`}
+                onClick={() => scrollRibbon(-1)}
+              >
+                <ChevronLeft size={15} />
+              </button>
+            )}
+            <div
+              ref={toolbarRef}
+              className={`work-office-toolbar ${toolbarClassName}`.trim()}
+              role='toolbar'
+              aria-label={`${selectedLabel}工具栏`}
+              onScroll={updateRibbonOverflow}
+            >
+              {selectedPanel}
+            </div>
+            {ribbonOverflow.forward && (
+              <button
+                type='button'
+                className='work-office-ribbon-scroll next'
+                aria-label={`向右查看更多${selectedLabel}工具`}
+                onClick={() => scrollRibbon(1)}
+              >
+                <ChevronRight size={15} />
+              </button>
+            )}
+          </>
         )}
       </div>
     </section>
   );
 }
 
+export function WorkOfficePreviewBar({
+  ariaLabel,
+  label,
+  detail,
+  fileActions,
+  className = '',
+}: {
+  ariaLabel: string;
+  label: string;
+  detail?: string;
+  fileActions?: readonly WorkOfficeFileAction[];
+  className?: string;
+}) {
+  if (!fileActions?.length) return null;
+  return (
+    <section className={`work-office-preview-bar ${className}`.trim()} aria-label={ariaLabel}>
+      <WorkOfficeFileMenu actions={fileActions} />
+      <div className='work-office-preview-summary'>
+        <Eye size={14} aria-hidden='true' />
+        <strong>{label}</strong>
+        {detail && <span>{detail}</span>}
+      </div>
+    </section>
+  );
+}
+
 function WorkOfficeFileMenu({ actions }: { actions: readonly WorkOfficeFileAction[] }) {
+  const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLElement>(null);
   const focusEdgeRef = useRef<'first' | 'last'>('first');
@@ -105,12 +232,15 @@ function WorkOfficeFileMenu({ actions }: { actions: readonly WorkOfficeFileActio
       label='文件'
       panelLabel='文件菜单'
       panelRole='menu'
+      portal
       className='work-office-file-menu'
       panelClassName='work-office-file-popover'
+      open={open}
       panelRef={menuRef}
-      onPanelKeyDown={(event) => moveFileMenuFocus(event, triggerRef)}
-      onOpenChange={(open) => {
-        if (open) focusRequestedAction();
+      onPanelKeyDown={(event) => moveFileMenuFocus(event, triggerRef, () => setOpen(false))}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) focusRequestedAction();
       }}
       trigger={(triggerProps, { open }) => (
         <button
@@ -140,6 +270,7 @@ function WorkOfficeFileMenu({ actions }: { actions: readonly WorkOfficeFileActio
               <button
                 type='button'
                 role='menuitem'
+                tabIndex={-1}
                 disabled={action.disabled}
                 onClick={() => {
                   close();
@@ -162,9 +293,13 @@ function WorkOfficeFileMenu({ actions }: { actions: readonly WorkOfficeFileActio
 
 function moveFileMenuFocus(
   event: React.KeyboardEvent<HTMLElement>,
-  triggerRef: React.RefObject<HTMLButtonElement | null>
+  triggerRef: React.RefObject<HTMLButtonElement | null>,
+  closeWithoutRestoringFocus: () => void
 ) {
-  if (event.key === 'Tab') return;
+  if (event.key === 'Tab') {
+    requestAnimationFrame(closeWithoutRestoringFocus);
+    return;
+  }
   if (event.key === 'Escape') {
     event.preventDefault();
     triggerRef.current?.focus();

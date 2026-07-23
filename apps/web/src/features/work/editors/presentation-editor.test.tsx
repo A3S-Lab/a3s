@@ -102,6 +102,27 @@ describe('Work presentation editor transitions', () => {
     expect(screen.getByText('2 / 3')).toBeInTheDocument();
   });
 
+  it('keeps the file menu available without exposing editing commands in preview', async () => {
+    const artifact = createWorkArtifact('strategy-deck');
+    if (artifact.content.type !== 'presentation') return;
+    const print = vi.fn();
+    render(
+      <PresentationEditor
+        content={artifact.content}
+        preview
+        fileActions={[{ id: 'print', label: '打印', onSelect: print }]}
+        onChange={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('region', { name: '演示预览工具' })).toHaveTextContent('只读预览3 张幻灯片');
+    expect(screen.queryByRole('tablist', { name: '演示功能区' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '文件' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: '打印' }));
+
+    expect(print).toHaveBeenCalledTimes(1);
+  });
+
   it('advances automatically when the current slide has a timed advance', () => {
     vi.useFakeTimers();
     const artifact = createWorkArtifact('strategy-deck');
@@ -268,6 +289,148 @@ describe('Work presentation editor transitions', () => {
     await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements).toHaveLength(3));
   });
 
+  it('uses standard shortcuts for bold text, a new slide, and starting the slide show', async () => {
+    const artifact = createWorkArtifact('blank-presentation');
+    if (artifact.content.type !== 'presentation') return;
+    const onChange = vi.fn();
+    const onStartSlideshow = vi.fn();
+    render(<PresentationHarness initial={artifact.content} onChange={onChange} onStartSlideshow={onStartSlideshow} />);
+    const selectedElement = screen.getByRole('group', { name: '单击添加标题' });
+    const initialBold = Boolean(artifact.content.slides[0].elements[0].bold);
+    fireEvent.focus(selectedElement);
+
+    expect(fireEvent.keyDown(selectedElement, { key: 'b', ctrlKey: true })).toBe(false);
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides[0].elements[0].bold).toBe(!initialBold));
+
+    expect(fireEvent.keyDown(selectedElement, { key: 'm', ctrlKey: true })).toBe(false);
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides).toHaveLength(2));
+
+    expect(fireEvent.keyDown(window, { key: 'n', metaKey: true, shiftKey: true })).toBe(false);
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides).toHaveLength(3));
+    expect(fireEvent.keyDown(window, { key: 'm', metaKey: true })).toBe(true);
+    expect(onChange.mock.lastCall?.[0].slides).toHaveLength(3);
+
+    expect(fireEvent.keyDown(window, { key: 'F5' })).toBe(false);
+    expect(onStartSlideshow).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies bold shortcuts to imported rich-text runs and reports their effective state', async () => {
+    const artifact = createWorkArtifact('blank-presentation');
+    if (artifact.content.type !== 'presentation') return;
+    const title = artifact.content.slides[0].elements[0];
+    const content = {
+      ...artifact.content,
+      slides: [
+        {
+          ...artifact.content.slides[0],
+          elements: [
+            {
+              ...title,
+              text: '导入标题',
+              bold: false,
+              textRuns: [
+                { text: '导入', bold: true, color: '#2563eb', fontSize: 30 },
+                { text: '标题', bold: true, color: '#2563eb', fontSize: 30 },
+              ],
+            },
+            ...artifact.content.slides[0].elements.slice(1),
+          ],
+        },
+      ],
+    };
+    const onChange = vi.fn();
+    render(<PresentationHarness initial={content} onChange={onChange} />);
+    const selectedElement = screen.getByRole('group', { name: '导入标题' });
+    fireEvent.focus(selectedElement);
+
+    expect(screen.getByRole('button', { name: '加粗' })).toHaveAttribute('aria-pressed', 'true');
+    expect(fireEvent.keyDown(selectedElement, { key: 'b', metaKey: true })).toBe(false);
+
+    await waitFor(() => {
+      const updated = onChange.mock.lastCall?.[0].slides[0].elements[0];
+      expect(updated.bold).toBe(false);
+      expect(updated.textRuns).toEqual([
+        { text: '导入', bold: false, color: '#2563eb', fontSize: 30 },
+        { text: '标题', bold: false, color: '#2563eb', fontSize: 30 },
+      ]);
+    });
+    expect(screen.getByRole('button', { name: '加粗' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('undoes and redoes a slide added with the presentation shortcut', async () => {
+    const artifact = createWorkArtifact('blank-presentation');
+    if (artifact.content.type !== 'presentation') return;
+    const onChange = vi.fn();
+    render(<PresentationHarness initial={artifact.content} onChange={onChange} />);
+    const selectedElement = screen.getByRole('group', { name: '单击添加标题' });
+    fireEvent.focus(selectedElement);
+
+    fireEvent.keyDown(selectedElement, { key: 'm', ctrlKey: true });
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides).toHaveLength(2));
+    await waitFor(() => expect(screen.getByRole('button', { name: '撤销' })).toBeEnabled());
+    expect(screen.getByRole('button', { name: /幻灯片 2：/ })).toHaveClass('active');
+
+    fireEvent.click(screen.getByRole('button', { name: '撤销' }));
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides).toHaveLength(1));
+    expect(screen.getByRole('button', { name: /幻灯片 1：/ })).toHaveClass('active');
+    expect(screen.getByRole('button', { name: '重做' })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: '重做' }));
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides).toHaveLength(2));
+    expect(screen.getByRole('button', { name: /幻灯片 2：/ })).toHaveClass('active');
+  });
+
+  it('does not add an equivalent persistence echo to presentation history', async () => {
+    const artifact = createWorkArtifact('blank-presentation');
+    if (artifact.content.type !== 'presentation') return;
+    const onChange = vi.fn();
+    render(<PresentationPersistenceEchoHarness initial={artifact.content} onChange={onChange} />);
+    const selectedElement = screen.getByRole('group', { name: '单击添加标题' });
+    fireEvent.focus(selectedElement);
+
+    fireEvent.keyDown(selectedElement, { key: 'm', ctrlKey: true });
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides).toHaveLength(2));
+    await act(async () => new Promise((resolve) => window.setTimeout(resolve, 0)));
+
+    fireEvent.click(screen.getByRole('button', { name: '撤销' }));
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides).toHaveLength(1));
+  });
+
+  it('navigates and deletes slide thumbnails without losing keyboard focus', async () => {
+    const artifact = createWorkArtifact('strategy-deck');
+    if (artifact.content.type !== 'presentation') return;
+    const content = artifact.content;
+    const onChange = vi.fn();
+    render(<PresentationHarness initial={content} onChange={onChange} />);
+    const firstSlide = screen.getByRole('button', {
+      name: `幻灯片 1：${content.slides[0].name}`,
+    });
+    fireEvent.focus(firstSlide);
+
+    expect(fireEvent.keyDown(firstSlide, { key: 'ArrowDown' })).toBe(false);
+    const secondSlide = screen.getByRole('button', {
+      name: `幻灯片 2：${content.slides[1].name}`,
+    });
+    await waitFor(() => expect(secondSlide).toHaveFocus());
+
+    expect(fireEvent.keyDown(secondSlide, { key: 'Delete' })).toBe(false);
+    await waitFor(() => {
+      expect(onChange.mock.lastCall?.[0].slides.map((slide: { id: string }) => slide.id)).toEqual([
+        content.slides[0].id,
+        content.slides[2].id,
+      ]);
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: `幻灯片 2：${content.slides[2].name}` })).toHaveFocus()
+    );
+
+    fireEvent.keyDown(screen.getByRole('button', { name: `幻灯片 2：${content.slides[2].name}` }), {
+      key: 'z',
+      ctrlKey: true,
+    });
+    await waitFor(() => expect(onChange.mock.lastCall?.[0].slides).toHaveLength(3));
+  });
+
   it('does not move a selected object while navigating the ribbon with arrow keys', async () => {
     const artifact = createWorkArtifact('blank-presentation');
     if (artifact.content.type !== 'presentation') return;
@@ -289,7 +452,8 @@ describe('Work presentation editor transitions', () => {
     if (artifact.content.type !== 'presentation') return;
     const originalX = artifact.content.slides[0].elements[0].x;
     const onChange = vi.fn();
-    render(<PresentationHarness initial={artifact.content} onChange={onChange} />);
+    const onStartSlideshow = vi.fn();
+    render(<PresentationHarness initial={artifact.content} onChange={onChange} onStartSlideshow={onStartSlideshow} />);
     const selectedElement = screen.getByRole('group', { name: '单击添加标题' });
     fireEvent.focus(selectedElement);
     fireEvent.keyDown(selectedElement, { key: 'ArrowRight' });
@@ -301,8 +465,12 @@ describe('Work presentation editor transitions', () => {
     const callCount = onChange.mock.calls.length;
 
     fireEvent.keyDown(link, { key: 'z', ctrlKey: true });
+    fireEvent.keyDown(link, { key: 'm', ctrlKey: true });
+    expect(fireEvent.keyDown(link, { key: 'n', metaKey: true, shiftKey: true })).toBe(false);
+    expect(fireEvent.keyDown(link, { key: 'F5' })).toBe(false);
 
     expect(onChange).toHaveBeenCalledTimes(callCount);
+    expect(onStartSlideshow).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: '链接地址' })).toBeInTheDocument();
   });
 
@@ -732,6 +900,29 @@ describe('Work presentation editor transitions', () => {
 function PresentationHarness({
   initial,
   onChange,
+  onStartSlideshow,
+}: {
+  initial: WorkPresentationContent;
+  onChange: (content: WorkPresentationContent) => void;
+  onStartSlideshow?: () => void;
+}) {
+  const [content, setContent] = useState(initial);
+  return (
+    <PresentationEditor
+      content={content}
+      preview={false}
+      onStartSlideshow={onStartSlideshow}
+      onChange={(next) => {
+        setContent(next);
+        onChange(next);
+      }}
+    />
+  );
+}
+
+function PresentationPersistenceEchoHarness({
+  initial,
+  onChange,
 }: {
   initial: WorkPresentationContent;
   onChange: (content: WorkPresentationContent) => void;
@@ -744,6 +935,7 @@ function PresentationHarness({
       onChange={(next) => {
         setContent(next);
         onChange(next);
+        window.setTimeout(() => setContent(JSON.parse(JSON.stringify(next)) as WorkPresentationContent), 0);
       }}
     />
   );

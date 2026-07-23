@@ -89,6 +89,25 @@ describe('Work document editor', () => {
     expect(screen.getByRole('button', { name: '拼写检查' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('keeps the file menu available without exposing editing commands in preview', async () => {
+    const print = vi.fn();
+    render(
+      <DocumentEditor
+        content={{ type: 'document', pageSize: 'a4', html: '<p>Preview workflow</p>' }}
+        preview
+        fileActions={[{ id: 'print', label: '打印', onSelect: print }]}
+        onChange={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByRole('region', { name: '文字预览工具' })).toHaveTextContent('只读预览1 页');
+    expect(screen.queryByRole('tablist', { name: '文字功能区' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '文件' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: '打印' }));
+
+    expect(print).toHaveBeenCalledTimes(1);
+  });
+
   it('routes document find, replace, and page-break shortcuts inside the editor', async () => {
     const onChange = vi.fn();
     render(
@@ -112,12 +131,41 @@ describe('Work document editor', () => {
     expect(screen.getByRole('dialog', { name: '查找要替换的文字' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '取消' }));
 
+    expect(fireEvent.keyDown(editor, { key: 'k', ctrlKey: true })).toBe(false);
+    expect(screen.getByRole('dialog', { name: '链接地址' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
+
     expect(fireEvent.keyDown(editor, { key: 'Enter', ctrlKey: true })).toBe(false);
     await waitFor(() =>
       expect(onChange).toHaveBeenLastCalledWith(
         expect.objectContaining({ html: expect.stringContaining('data-page-break="true"') })
       )
     );
+  });
+
+  it('supports formatting shortcuts with either platform command modifier', async () => {
+    render(
+      <DocumentEditor
+        content={{
+          type: 'document',
+          pageSize: 'a4',
+          html: '<p>Formatting shortcut</p>',
+        }}
+        preview={false}
+        onChange={vi.fn()}
+      />
+    );
+    const editor = await screen.findByRole('textbox', { name: '文档正文' });
+
+    expect(fireEvent.keyDown(editor, { key: 'b', metaKey: true })).toBe(false);
+    expect(fireEvent.keyDown(editor, { key: 'i', metaKey: true })).toBe(false);
+    expect(fireEvent.keyDown(editor, { key: 'u', metaKey: true })).toBe(false);
+    expect(fireEvent.keyDown(editor, { key: 'b', ctrlKey: true })).toBe(false);
+    expect(fireEvent.keyDown(editor, { key: 'i', ctrlKey: true })).toBe(false);
+    expect(fireEvent.keyDown(editor, { key: 'u', ctrlKey: true })).toBe(false);
+    expect(fireEvent.keyDown(editor, { key: 'z', ctrlKey: true })).toBe(false);
+    expect(fireEvent.keyDown(editor, { key: 'z', ctrlKey: true, shiftKey: true })).toBe(false);
+    expect(fireEvent.keyDown(editor, { key: 'y', ctrlKey: true })).toBe(false);
   });
 
   it('does not restart document shortcuts from inside an Office dialog', async () => {

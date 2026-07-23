@@ -1,4 +1,5 @@
 import { createWorkSlideTransition } from '../work-presentation-transition';
+import { Button } from '../../../design-system/primitives';
 import type {
   WorkSlideTransition,
   WorkSlideTransitionDirection,
@@ -134,9 +135,9 @@ export function PresentationTransitionPanel({
           }
         />
       </div>
-      <button type='button' onClick={onApplyToAll}>
+      <Button size='compact' onClick={onApplyToAll}>
         应用切换效果到全部幻灯片
-      </button>
+      </Button>
     </section>
   );
 }

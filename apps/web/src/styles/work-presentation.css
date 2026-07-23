@@ -135,7 +135,6 @@
   color: var(--a3s-faint);
 }
 
-.work-presentation-design-panel button,
 .work-presentation-design-panel select,
 .work-presentation-design-panel input:not([type="checkbox"], [type="color"]) {
   height: 27px;
@@ -147,28 +146,7 @@
   font: inherit;
 }
 
-.work-presentation-design-panel button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 0 8px;
-  cursor: pointer;
-}
-
-.work-presentation-design-panel button:hover:not(:disabled),
-.work-presentation-design-panel button.active {
-  border-color: color-mix(in srgb, #db663b 45%, var(--a3s-line));
-  background: color-mix(in srgb, #db663b 8%, var(--a3s-bg));
-  color: #b44e31;
-}
-
-.work-presentation-design-panel button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.work-presentation-design-panel button.close {
+.work-presentation-design-panel .ds-icon-button.close {
   width: 25px;
   height: 25px;
   padding: 0;
@@ -182,6 +160,11 @@
   gap: 7px;
   padding: 5px 12px;
   overflow-x: auto;
+}
+
+.work-presentation-design-controls > .ds-button,
+.work-presentation-design-editing > .ds-button {
+  flex: 0 0 auto;
 }
 
 .work-presentation-design-controls > label,
@@ -253,16 +236,9 @@
   gap: 4px;
 }
 
-.work-presentation-transition-panel button {
-  height: 27px;
+.work-presentation-transition-panel > .ds-button {
   flex: 0 0 auto;
-  padding: 0 9px;
-  border: 1px solid var(--a3s-line);
-  border-radius: 5px;
-  background: var(--a3s-bg);
-  color: var(--a3s-muted);
-  font-size: 9px;
-  cursor: pointer;
+  font-size: 10px;
 }
 
 .work-presentation-transition-panel :disabled {
@@ -326,6 +302,7 @@
 .work-presentation-chart-panel button {
   display: inline-flex;
   height: 27px;
+  min-height: 27px;
   align-items: center;
   justify-content: center;
   gap: 4px;

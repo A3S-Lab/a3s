@@ -85,7 +85,7 @@ import { DocumentCommentsPanel } from './document-comments-panel';
 import { DocumentLayoutPanel } from './document-layout-panel';
 import { DocumentToolbar, type DocumentViewMode } from './document-toolbar';
 import { OfficeFileInput, OfficeSlider, useOfficeDialog } from './office-controls';
-import type { WorkOfficeFileAction } from './work-office-chrome';
+import { type WorkOfficeFileAction, WorkOfficePreviewBar } from './work-office-chrome';
 
 interface DocumentEditorProps {
   content: WorkDocumentContent;
@@ -260,6 +260,13 @@ export function DocumentEditor({
   if (preview) {
     return (
       <section className='work-document-editor preview'>
+        <WorkOfficePreviewBar
+          ariaLabel='文字预览工具'
+          label='只读预览'
+          detail={`${pageCount} 页`}
+          fileActions={fileActions}
+          className='work-document-ribbon'
+        />
         <WorkDocumentPreview content={content} />
         <footer className='work-document-status'>
           <span>{pageCount} 页</span>

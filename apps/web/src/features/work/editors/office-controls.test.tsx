@@ -106,6 +106,8 @@ describe('Office controls', () => {
     fireEvent.click(trigger);
     const input = screen.getByRole('textbox', { name: '链接地址' });
     expect(input).toHaveFocus();
+    expect(fireEvent.keyDown(input, { key: 'k', ctrlKey: true })).toBe(false);
+    expect(input).toHaveFocus();
     fireEvent.change(input, { target: { value: 'https://a3s.dev' } });
     fireEvent.click(screen.getByRole('button', { name: '确定' }));
     await waitFor(() => expect(onResult).toHaveBeenCalledWith('https://a3s.dev'));

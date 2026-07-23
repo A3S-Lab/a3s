@@ -354,8 +354,7 @@
   font-size: 10px;
 }
 
-.work-copilot-welcome,
-.work-copilot-no-workspace {
+.work-copilot-welcome {
   display: flex;
   min-width: 0;
   min-height: 0;
@@ -377,8 +376,7 @@
   color: var(--a3s-blue);
 }
 
-.work-copilot-welcome h2,
-.work-copilot-no-workspace strong {
+.work-copilot-welcome h2 {
   margin: 0 0 6px;
   color: var(--a3s-ink);
   font-size: 16px;
@@ -386,8 +384,7 @@
   letter-spacing: -0.025em;
 }
 
-.work-copilot-welcome p,
-.work-copilot-no-workspace p {
+.work-copilot-welcome p {
   margin: 0;
   color: var(--a3s-muted);
   font-size: 11px;
@@ -428,22 +425,11 @@
   color: var(--a3s-ink);
 }
 
-.work-copilot-no-workspace {
-  align-items: center;
+.work-copilot-no-workspace.ds-state-view {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
   padding: 30px;
-  text-align: center;
-}
-
-.work-copilot-no-workspace > span {
-  width: 48px;
-  height: 48px;
-  margin-bottom: 13px;
-}
-
-.work-copilot-no-workspace > button {
-  height: 34px;
-  margin-top: 16px;
-  font-size: 11px;
 }
 
 .work-source-copy-banner {
@@ -496,13 +482,14 @@
   min-width: 0;
 }
 
-@media (max-width: 1120px) {
+@media (max-width: 960px) {
   .work-copilot {
     position: absolute;
     top: 0;
     right: 0;
     bottom: 0;
-    max-width: calc(100% - 110px);
+    min-width: min(360px, calc(100% - 64px));
+    max-width: calc(100% - 64px);
     box-shadow: -16px 0 42px rgb(20 24 40 / 14%);
   }
 }

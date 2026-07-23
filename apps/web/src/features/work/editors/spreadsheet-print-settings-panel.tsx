@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { InlineNotice } from '../../../design-system/primitives';
+import { Button, InlineNotice } from '../../../design-system/primitives';
 import {
   formatSpreadsheetColumnPageBreaks,
   formatSpreadsheetRowPageBreaks,
@@ -353,16 +353,16 @@ export function SpreadsheetPrintSettingsPanel({
             {error}
           </InlineNotice>
         )}
-        <button
-          type='button'
+        <Button
+          tone='secondary'
           disabled={!savedArea && !savedTitles && !savedPageBreaks && !savedPageSetup}
           onClick={clearSettings}
         >
           清除
-        </button>
-        <button type='submit' className='primary' disabled={!sheetId}>
+        </Button>
+        <Button type='submit' tone='primary' disabled={!sheetId}>
           保存打印设置
-        </button>
+        </Button>
       </div>
     </form>
   );

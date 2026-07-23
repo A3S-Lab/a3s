@@ -823,14 +823,6 @@
 }
 
 @media (max-width: 1080px) {
-  .work-editor-identity {
-    min-width: 140px;
-  }
-
-  .work-editor-header-actions > .work-icon-button {
-    display: none;
-  }
-
   .work-export-button {
     padding: 0 9px;
   }
