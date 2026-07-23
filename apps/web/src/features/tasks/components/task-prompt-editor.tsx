@@ -44,10 +44,14 @@ export const TaskPromptEditor = forwardRef<
   const onSubmitRef = useRef(onSubmit);
   const onTriggerChangeRef = useRef(onTriggerChange);
   const onTriggerKeyDownRef = useRef(onTriggerKeyDown);
+  const disabledRef = useRef(disabled);
+  const valueRef = useRef(value);
   onChangeRef.current = onChange;
   onSubmitRef.current = onSubmit;
   onTriggerChangeRef.current = onTriggerChange;
   onTriggerKeyDownRef.current = onTriggerKeyDown;
+  disabledRef.current = disabled;
+  valueRef.current = value;
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -79,7 +83,14 @@ export const TaskPromptEditor = forwardRef<
       },
     },
     onUpdate: ({ editor: current }) => {
-      onChangeRef.current(current.getMarkdown());
+      const nextValue = current.getMarkdown();
+      if (disabledRef.current) {
+        if (nextValue !== valueRef.current) {
+          current.commands.setContent(valueRef.current, { contentType: 'markdown', emitUpdate: false });
+        }
+        return;
+      }
+      onChangeRef.current(nextValue);
       onTriggerChangeRef.current?.(activeComposerTrigger(current));
     },
     onSelectionUpdate: ({ editor: current }) => {

@@ -104,6 +104,120 @@ describe('ExecutionStream rendering and recovery', () => {
     expect(screen.getByRole('button', { name: '查看文档' })).toHaveAttribute('data-streamdown', 'link');
   });
 
+  it('renders a complete GFM table while the response is still streaming', async () => {
+    appState.activeSessionId = 'session-streaming-table';
+    appState.messagesBySession['session-streaming-table'] = [
+      {
+        id: 'assistant-streaming-table',
+        sessionId: 'session-streaming-table',
+        role: 'assistant',
+        content: ['| 任务 | 验收 |', '| --- | --- |', '| workspace | CI 通过 |'].join('\n'),
+        createdAt: new Date().toISOString(),
+        pending: true,
+      },
+    ];
+
+    render(<ExecutionStream actions={{} as TaskActions} />);
+
+    expect(await screen.findByRole('table')).toHaveTextContent('workspace');
+  });
+
+  it('repairs a table whose row boundaries were collapsed into one line', async () => {
+    appState.activeSessionId = 'session-collapsed-table';
+    appState.messagesBySession['session-collapsed-table'] = [
+      {
+        id: 'assistant-collapsed-table',
+        sessionId: 'session-collapsed-table',
+        role: 'assistant',
+        content:
+          '| # | 任务 | 验收 | 估时 | | --- | --- | --- | --- | | 0.1 | workspace | CI 通过 | 1d | | 0.2 | 日志 | 可检索 | 2d |',
+        createdAt: new Date().toISOString(),
+        pending: true,
+      },
+    ];
+
+    render(<ExecutionStream actions={{} as TaskActions} />);
+
+    expect(await screen.findByRole('table')).toHaveTextContent('workspace');
+    expect(screen.getAllByRole('row')).toHaveLength(3);
+  });
+
+  it('keeps the research report actions while hiding its internal view marker', async () => {
+    appState.activeSessionId = 'session-research-report';
+    const report = '# 研究结论\n\n证据支持该结论。';
+    appState.messagesBySession['session-research-report'] = [
+      {
+        id: 'assistant-research-report',
+        sessionId: 'session-research-report',
+        role: 'assistant',
+        content: `${report}\n\nA3S_RESEARCH_VIEW: .a3s/research/topic/index.html`,
+        createdAt: new Date().toISOString(),
+        events: [
+          { type: 'tool_start', tool_id: 'deep-research-1', tool_name: 'deep_research' },
+          {
+            type: 'tool_end',
+            tool_id: 'deep-research-1',
+            tool_name: 'deep_research',
+            output: 'published',
+            exit_code: 0,
+            metadata: {
+              report: {
+                status: 'completed',
+                htmlPath: '.a3s/research/topic/index.html',
+                markdownPath: '.a3s/research/topic/report.md',
+              },
+            },
+          },
+        ],
+      },
+    ];
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+
+    render(<ExecutionStream actions={{} as TaskActions} />);
+
+    expect(await screen.findByRole('heading', { name: '研究结论' })).toBeInTheDocument();
+    expect(screen.queryByText(/A3S_RESEARCH_VIEW/)).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'DeepResearch 研究报告' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '复制消息' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(report));
+  });
+
+  it('renders persisted DeepResearch cancellation as stopped without failure recovery UI', () => {
+    const cancellation = 'DeepResearch was cancelled by the user.';
+    appState.activeSessionId = 'session-research-cancelled';
+    appState.messagesBySession['session-research-cancelled'] = [
+      {
+        id: 'assistant-research-cancelled',
+        sessionId: 'session-research-cancelled',
+        role: 'assistant',
+        content: cancellation,
+        createdAt: new Date().toISOString(),
+        events: [
+          { type: 'tool_start', id: 'deep-research-cancelled', name: 'deep_research' },
+          {
+            type: 'tool_end',
+            id: 'deep-research-cancelled',
+            name: 'deep_research',
+            output: cancellation,
+            exit_code: 1,
+            metadata: { duration_ms: 240 },
+          },
+          { type: 'error', message: cancellation },
+        ],
+      },
+    ];
+
+    render(<ExecutionStream actions={{} as TaskActions} />);
+
+    const stoppedCall = screen.getByText('深度研究已停止').closest('.tool-call-item');
+    expect(stoppedCall).toHaveAttribute('data-outcome', 'cancelled');
+    expect(screen.getByText('用户已停止深度研究。')).toBeInTheDocument();
+    expect(screen.queryByText(cancellation)).not.toBeInTheDocument();
+    expect(screen.queryByText('深度研究失败')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '让 Code 分析并修复' })).not.toBeInTheDocument();
+  });
+
   it('renders completed reasoning as collapsed Markdown instead of plain preformatted text', async () => {
     appState.activeSessionId = 'session-reasoning-markdown';
     appState.messagesBySession['session-reasoning-markdown'] = [

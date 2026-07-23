@@ -189,6 +189,24 @@
   opacity: 0.5;
 }
 
+.composer-research-mode.active {
+  border-color: color-mix(in srgb, var(--a3s-blue) 38%, var(--a3s-line));
+  background: color-mix(in srgb, var(--a3s-blue) 10%, var(--a3s-panel));
+  color: var(--a3s-blue);
+}
+
+.task-composer.deep-research {
+  border-color: color-mix(in srgb, var(--a3s-blue) 42%, var(--a3s-line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--a3s-blue) 7%, transparent), var(--a3s-shadow-composer);
+}
+
+.queued-turn-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--a3s-blue);
+}
+
 .composer-popover-control {
   position: relative;
   display: flex;

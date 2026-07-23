@@ -59,6 +59,20 @@ describe('TaskLibrary management', () => {
     expect(screen.queryByText('Work conversation')).not.toBeInTheDocument();
   });
 
+  it('closes the task overlay after selecting a task on a compact viewport', () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    appState.sidebarOpen = true;
+    const selectSession = vi.fn(async () => undefined);
+    render(<TaskLibrary actions={{ selectSession } as unknown as TaskActions} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /打开任务 Parser task/ }));
+
+    expect(selectSession).toHaveBeenCalledWith('task-1');
+    expect(appState.sidebarOpen).toBe(false);
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
+  });
+
   it('keeps deletion confirmation open when deleting the task fails', async () => {
     const removeSession = vi.fn(async () => {
       throw new Error('delete failed');

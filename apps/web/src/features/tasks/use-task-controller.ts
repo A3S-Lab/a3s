@@ -14,6 +14,7 @@ import {
 import type { AgentEvent, ChatMessage, CodeSession, QueuedTurn, TurnQueue } from '../../types/api';
 import { type GoalCommand, parseGoalCommand } from './goal-command';
 import {
+  createTaskDraft,
   newTaskDraftKey,
   persistActiveTask,
   persistGoalTimings,
@@ -127,11 +128,12 @@ export function useTaskController() {
   const abortRef = useRef<AbortController | null>(null);
   const persistCurrentDraft = useMemoizedFn(() => {
     const key = taskDraftKey(appState.activeSessionId, activeTaskProduct());
-    appState.draftsByTask[key] = {
-      content: appState.composerValue,
-      contextFiles: [...appState.composerContextFiles],
-      skillNames: [...appState.composerSkills],
-    };
+    appState.draftsByTask[key] = createTaskDraft(
+      appState.composerValue,
+      appState.composerContextFiles,
+      appState.composerSkills,
+      appState.composerMode
+    );
     reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
   });
   const restoreDraft = useMemoizedFn((sessionId: string | null) => {
@@ -139,16 +141,20 @@ export function useTaskController() {
     appState.composerValue = draft?.content ?? '';
     appState.composerContextFiles = [...(draft?.contextFiles ?? [])];
     appState.composerSkills = [...(draft?.skillNames ?? [])];
+    appState.composerMode =
+      draft?.mode === 'deepResearch' && activeTaskProduct() === 'code' ? 'deepResearch' : 'standard';
   });
   useEffect(() => {
     const persist = () => persistCurrentDraft();
     const unsubscribeValue = subscribeKey(appState, 'composerValue', persist, true);
     const unsubscribeContext = subscribeKey(appState, 'composerContextFiles', persist, true);
     const unsubscribeSkills = subscribeKey(appState, 'composerSkills', persist, true);
+    const unsubscribeMode = subscribeKey(appState, 'composerMode', persist, true);
     return () => {
       unsubscribeValue();
       unsubscribeContext();
       unsubscribeSkills();
+      unsubscribeMode();
     };
   }, [persistCurrentDraft]);
   const loadMessages = useMemoizedFn(async (sessionId: string) => {
@@ -449,16 +455,18 @@ export function useTaskController() {
     }
     const contextFiles = [...appState.composerContextFiles];
     const skillNames = [...appState.composerSkills];
+    const mode = activeTaskProduct() === 'code' ? appState.composerMode : 'standard';
     let sessionId = appState.activeSessionId;
+    const submittedDraftKey = taskDraftKey(sessionId, activeTaskProduct());
     appState.taskSubmissionState = sessionId ? 'queueing' : 'creating';
     try {
       if (!sessionId) sessionId = (await createSession(promptTitle(content))).sessionId;
       else if ((appState.messagesBySession[sessionId]?.length ?? 0) === 0)
         reportTaskPersistenceResult(persistSessionTitle(sessionId, promptTitle(content)));
       if (appState.streamingSessionId && appState.streamingSessionId !== sessionId) return;
-      const queue = await codeApi.enqueueTurn(sessionId, { content, contextFiles, skillNames });
+      const queue = await codeApi.enqueueTurn(sessionId, { content, contextFiles, skillNames, mode });
       applyTurnQueueSnapshot(queue);
-      clearComposer();
+      clearComposer(submittedDraftKey);
       let execution: Promise<void> | undefined;
       if (!appState.streamingSessionId && !queue.paused && queue.items[0]) {
         execution = executeQueuedTurn(sessionId, queue.items[0]);
@@ -742,8 +750,16 @@ export function useTaskController() {
   };
 }
 
-function clearComposer() {
+function clearComposer(submittedDraftKey?: string) {
   appState.composerValue = '';
   appState.composerContextFiles = [];
   appState.composerSkills = [];
+  appState.composerMode = 'standard';
+  if (!submittedDraftKey) return;
+  appState.draftsByTask[submittedDraftKey] = {
+    content: '',
+    contextFiles: [],
+    skillNames: [],
+  };
+  reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
 }

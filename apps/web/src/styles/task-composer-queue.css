@@ -303,7 +303,6 @@
 }
 
 @container (max-width: 650px) {
-  .composer-leading-controls,
   .composer-trailing-controls,
   .task-composer > footer > div {
     gap: 3px;

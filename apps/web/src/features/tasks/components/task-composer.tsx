@@ -1,4 +1,15 @@
-import { ArrowDown, ArrowUp, ListOrdered, LoaderCircle, Pause, Pencil, Square, Target, X } from 'lucide-react';
+import {
+  ArrowDown,
+  ArrowUp,
+  ListOrdered,
+  LoaderCircle,
+  Pause,
+  Pencil,
+  SearchCheck,
+  Square,
+  Target,
+  X,
+} from 'lucide-react';
 import { useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { Button, Dialog, Field, IconButton } from '../../../design-system/primitives';
@@ -11,6 +22,7 @@ import { TaskComposerTrailingControls } from './task-composer-controls';
 import { TaskComposerGoalTiming } from './task-composer-goal-timing';
 import { TaskComposerInput } from './task-composer-input';
 import { TaskComposerModeControl } from './task-composer-mode-control';
+import { TaskComposerResearchMode } from './task-composer-research-mode';
 import { TaskComposerModelChangeNotice } from './task-composer-model-change-notice';
 
 export function TaskComposer({
@@ -59,7 +71,12 @@ export function TaskComposer({
         />
       )}
       <TaskComposerModelChangeNotice />
-      <div className={`task-composer ${variant}${submitting ? ' submitting' : ''}`} aria-busy={submitting}>
+      <div
+        className={`task-composer ${variant}${submitting ? ' submitting' : ''}${
+          state.activeProduct !== 'work' && state.composerMode === 'deepResearch' ? ' deep-research' : ''
+        }`}
+        aria-busy={submitting}
+      >
         <ComposerResourceChips
           files={state.composerContextFiles}
           skills={state.composerSkills}
@@ -72,6 +89,7 @@ export function TaskComposer({
           }}
         />
         <TaskComposerInput
+          key={`${state.activeSessionId ?? 'new'}:${submitting ? 'submitting' : 'ready'}`}
           value={state.composerValue}
           disabled={anotherTaskRunning || resourcesImporting || submitting}
           workspaceRoot={workspaceRoot}
@@ -90,6 +108,9 @@ export function TaskComposer({
         <footer>
           <div>
             <TaskComposerModeControl actions={actions} />
+            {state.activeProduct !== 'work' && (
+              <TaskComposerResearchMode disabled={anotherTaskRunning || resourcesImporting || submitting} />
+            )}
             {state.activeProduct !== 'work' && <TaskComposerGoalTiming actions={actions} />}
           </div>
           <div>
@@ -242,6 +263,12 @@ function FollowUpQueue({
                 ]
                   .filter(Boolean)
                   .join(' · ')}
+              </small>
+            )}
+            {item.mode === 'deepResearch' && (
+              <small className='queued-turn-mode'>
+                <SearchCheck size={12} />
+                深度研究
               </small>
             )}
           </div>

@@ -674,6 +674,80 @@
   display: none;
 }
 
+.deep-research-report-card {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--a3s-blue) 30%, var(--a3s-line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--a3s-blue) 6%, var(--a3s-panel));
+}
+
+.deep-research-report-card.degraded {
+  border-color: color-mix(in srgb, var(--a3s-warning) 42%, var(--a3s-line));
+  background: color-mix(in srgb, var(--a3s-warning) 7%, var(--a3s-panel));
+}
+
+.deep-research-report-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--a3s-blue) 12%, var(--a3s-panel));
+  color: var(--a3s-blue);
+}
+
+.deep-research-report-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.deep-research-report-copy strong {
+  font-size: 12px;
+}
+
+.deep-research-report-copy small {
+  color: var(--a3s-muted);
+  font-size: 10px;
+}
+
+.deep-research-report-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.deep-research-report-actions > a {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--a3s-action);
+  color: var(--a3s-action-ink);
+  font-size: 10px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+@media (max-width: 620px) {
+  .deep-research-report-card {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .deep-research-report-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
 .task-composer-dock.active {
   padding: 20px 30px 18px;
   background: linear-gradient(0deg, var(--a3s-panel) 74%, transparent);
@@ -762,6 +836,56 @@
   .task-composer-dock.active {
     padding-right: 22px;
     padding-left: 22px;
+  }
+}
+
+@container (max-width: 420px) {
+  .task-composer > footer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 8px 6px;
+  }
+
+  .task-composer > footer > div {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .task-composer > footer > div:last-child {
+    justify-content: flex-end;
+  }
+
+  .composer-trailing-controls {
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .composer-trailing-controls .composer-quick-trigger,
+  .composer-model-control .ds-combobox-trigger {
+    width: 34px;
+    max-width: 34px;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+  }
+
+  .composer-context-status .composer-context-control .composer-quick-trigger {
+    padding: 0;
+  }
+
+  .composer-context-compact {
+    width: 28px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .composer-trailing-controls .composer-quick-trigger > span,
+  .composer-trailing-controls .composer-quick-trigger > svg:last-child,
+  .composer-context-compact > span,
+  .composer-model-control .ds-combobox-trigger strong,
+  .composer-model-control .ds-combobox-trigger > svg:last-child {
+    display: none;
   }
 }
 

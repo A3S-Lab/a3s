@@ -775,7 +775,7 @@ export type AgentEvent = {
   exit_code?: number;
   duration_ms?: number;
   metadata?: Record<string, unknown>;
-  error_kind?: string;
+  error_kind?: string | { type?: string; [key: string]: unknown };
   is_error?: boolean;
   tool_id?: string;
   tool_name?: string;
@@ -842,6 +842,7 @@ export interface GoalState {
 }
 
 export type QueuedTurnKind = 'user' | 'goalContinuation';
+export type QueuedTurnMode = 'standard' | 'deepResearch';
 
 export interface QueuedTurn {
   id: string;
@@ -849,6 +850,7 @@ export interface QueuedTurn {
   content: string;
   contextFiles: string[];
   skillNames: string[];
+  mode?: QueuedTurnMode;
   priority: number;
   enqueuedAt: number;
 }

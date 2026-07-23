@@ -3,8 +3,9 @@ import { lazy, Suspense } from 'react';
 import type { ChatMessage } from '../../../types/api';
 import type { TaskActions } from '../task-actions';
 import { ArtifactEntries } from './artifact-entries';
-import { projectAssistantResponseSegments } from './assistant-response-projection';
+import { projectAssistantResponseSegments, visibleAssistantContent } from './assistant-response-projection';
 import { ConversationMessageActions } from './conversation-message-actions';
+import { DeepResearchReportCard } from './deep-research-report-card';
 import { DeliverySummary } from './delivery-summary';
 import { ReasoningDisclosure } from './reasoning-disclosure';
 import { RecoveryNotice } from './recovery-notice';
@@ -30,6 +31,7 @@ export function AssistantResponse({
   });
   const segments = projectAssistantResponseSegments(message, toolCalls);
   const stateLabel = pendingResponseState(message, toolCalls);
+  const visibleContent = visibleAssistantContent(message.content, toolCalls);
 
   return (
     <article
@@ -47,7 +49,7 @@ export function AssistantResponse({
             {stateLabel}
           </output>
         )}
-        <ConversationMessageActions content={message.content} createdAt={message.createdAt} />
+        <ConversationMessageActions content={visibleContent} createdAt={message.createdAt} />
       </header>
       {message.reasoning?.trim() && (
         <ReasoningDisclosure content={message.reasoning.trim()} pending={Boolean(message.pending)} />
@@ -66,6 +68,7 @@ export function AssistantResponse({
         )}
       </div>
       <DeliverySummary sessionId={message.sessionId} events={message.events ?? []} />
+      <DeepResearchReportCard calls={toolCalls} sessionId={message.sessionId} actions={actions} />
       <ArtifactEntries calls={toolCalls} sessionId={message.sessionId} actions={actions} />
       <RecoveryNotice events={message.events ?? []} retryContent={retryContent} />
     </article>
@@ -83,7 +86,7 @@ function pendingResponseState(message: ChatMessage, calls: ReturnType<typeof pro
   if (eventTypes.has('planning_start') && !eventTypes.has('planning_end')) return '正在规划';
   if (eventTypes.has('planning_end') || eventTypes.has('task_updated') || eventTypes.has('step_start'))
     return '正在执行计划';
-  if (message.content.trim()) return '正在回答';
+  if (visibleAssistantContent(message.content, calls).trim()) return '正在回答';
   if (message.reasoning?.trim()) return '正在思考';
   return '正在准备';
 }

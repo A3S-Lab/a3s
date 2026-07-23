@@ -13,6 +13,7 @@ export interface TaskState {
   composerValue: string;
   composerContextFiles: string[];
   composerSkills: string[];
+  composerMode: ComposerMode;
   draftsByTask: Record<string, TaskDraft>;
   turnQueues: Record<string, TurnQueue>;
   turnQueueLoading: Record<string, boolean>;
@@ -43,7 +44,9 @@ export interface TaskDraft {
   content: string;
   contextFiles: string[];
   skillNames?: string[];
+  mode?: Extract<ComposerMode, 'deepResearch'>;
 }
+export type ComposerMode = 'standard' | 'deepResearch';
 export interface TaskExecutionTiming {
   startedAt: number;
   completedAt?: number;
@@ -113,6 +116,21 @@ export function persistTaskDrafts(drafts: Record<string, TaskDraft>): boolean {
     return false;
   }
 }
+
+export function createTaskDraft(
+  content: string,
+  contextFiles: readonly string[],
+  skillNames: readonly string[],
+  mode: ComposerMode
+): TaskDraft {
+  const draft: TaskDraft = {
+    content,
+    contextFiles: [...contextFiles],
+    skillNames: [...skillNames],
+  };
+  if (mode === 'deepResearch') draft.mode = mode;
+  return draft;
+}
 export function persistNewTaskConfig(config: NewTaskConfig): boolean {
   try {
     localStorage.setItem(newTaskConfigKey, JSON.stringify(config));
@@ -160,7 +178,7 @@ function readNewTaskConfig(): NewTaskConfig {
 }
 export function createTaskState(product: TaskProduct = 'code'): TaskState {
   const activeSessionId = readActiveTask(product);
-  const draftsByTask = readRecord<TaskDraft>(taskDraftsKey);
+  const draftsByTask = readTaskDrafts();
   const activeDraft = draftsByTask[taskDraftKey(activeSessionId, product)];
   return {
     sessions: [],
@@ -175,6 +193,7 @@ export function createTaskState(product: TaskProduct = 'code'): TaskState {
     composerValue: activeDraft?.content ?? '',
     composerContextFiles: activeDraft?.contextFiles ?? [],
     composerSkills: activeDraft?.skillNames ?? [],
+    composerMode: activeDraft?.mode === 'deepResearch' && product === 'code' ? 'deepResearch' : 'standard',
     draftsByTask,
     turnQueues: {},
     turnQueueLoading: {},
@@ -195,4 +214,32 @@ export function createTaskState(product: TaskProduct = 'code'): TaskState {
     modelChangeNotice: null,
     taskPersistenceWarningShown: false,
   };
+}
+
+function readTaskDrafts(): Record<string, TaskDraft> {
+  const drafts = readRecord<TaskDraft>(taskDraftsKey);
+  let changed = false;
+  for (const [key, draft] of Object.entries(drafts)) {
+    if (!isLegacyEditorInjectedDraft(draft)) continue;
+    delete drafts[key];
+    changed = true;
+  }
+  if (changed) persistTaskDrafts(drafts);
+  return drafts;
+}
+
+function isLegacyEditorInjectedDraft(draft: TaskDraft | undefined): boolean {
+  if (!draft || !Array.isArray(draft.contextFiles) || draft.contextFiles.length !== 1) return false;
+  const content = typeof draft.content === 'string' ? draft.content.trim() : '';
+  if (
+    ![
+      '请查看当前代码文件，并回答我的问题',
+      '请查看当前代码文件，并回答我的问题：',
+      '请查看当前代码文件，并回答我的问题。',
+    ].includes(content)
+  ) {
+    return false;
+  }
+  const fileName = draft.contextFiles[0]?.replaceAll('\\', '/').split('/').pop()?.toUpperCase();
+  return fileName === 'CLAUDE.MD' || fileName === 'CLAUD.MD';
 }

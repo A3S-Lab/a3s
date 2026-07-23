@@ -324,7 +324,10 @@ export const codeApi = {
     ),
   turnQueue: (sessionId: string) =>
     apiRequest<TurnQueue>(`/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}/turn-queue`),
-  enqueueTurn: (sessionId: string, input: { content: string; contextFiles?: string[]; skillNames?: string[] }) =>
+  enqueueTurn: (
+    sessionId: string,
+    input: { content: string; contextFiles?: string[]; skillNames?: string[]; mode?: 'standard' | 'deepResearch' }
+  ) =>
     apiRequest<TurnQueue>(`/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}/turn-queue`, {
       method: 'POST',
       ...jsonBody(input),

@@ -1,4 +1,5 @@
 import { RefreshCw, WifiOff } from 'lucide-react';
+import { useEffect } from 'react';
 import { useSnapshot } from 'valtio';
 import { Button } from '../design-system/primitives';
 import type { CodeActions } from '../features/code/use-code-controller';
@@ -29,6 +30,18 @@ export function AppShell({
   weixinActions?: WeixinRemoteActions;
 }) {
   const state = useSnapshot(appState);
+
+  useEffect(() => {
+    let compact = isCompactViewport();
+    if (compact) appState.sidebarOpen = false;
+    const handleResize = () => {
+      const nextCompact = isCompactViewport();
+      if (nextCompact && !compact) appState.sidebarOpen = false;
+      compact = nextCompact;
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <main className='app-shell'>
@@ -82,4 +95,8 @@ export function AppShell({
       {state.activeProduct === 'code' && state.commandPaletteOpen && <CommandPalette actions={actions} />}
     </main>
   );
+}
+
+function isCompactViewport(): boolean {
+  return window.innerWidth <= 620;
 }

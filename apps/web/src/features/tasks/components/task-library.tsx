@@ -51,7 +51,10 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
         type='button'
         className={`task-library-new ${state.activeSessionId ? '' : 'active'}`}
         aria-current={state.activeSessionId ? undefined : 'page'}
-        onClick={actions.newConversation}
+        onClick={() => {
+          actions.newConversation();
+          closeCompactTaskLibrary();
+        }}
       >
         <CirclePlus size={16} />
         <span>新建任务</span>
@@ -100,6 +103,7 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
                   running={state.streamingSessionId === session.sessionId}
                   onSelect={() => {
                     void actions.selectSession(session.sessionId);
+                    closeCompactTaskLibrary();
                   }}
                   onRename={(name) => actions.renameSession(session.sessionId, name)}
                   onDelete={
@@ -119,4 +123,8 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
       </section>
     </aside>
   );
+}
+
+function closeCompactTaskLibrary(): void {
+  if (window.innerWidth <= 620) appState.sidebarOpen = false;
 }

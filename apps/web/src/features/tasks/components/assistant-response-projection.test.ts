@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ChatMessage } from '../../../types/api';
-import { projectAssistantResponseSegments } from './assistant-response-projection';
+import { projectAssistantResponseSegments, visibleAssistantContent } from './assistant-response-projection';
 import { projectToolCalls } from './tool-call-projection';
 
 describe('assistant response projection', () => {
@@ -53,6 +53,48 @@ describe('assistant response projection', () => {
       'tool:read-2',
       'text:读取完毕。',
     ]);
+  });
+
+  it('removes the terminal research-view protocol marker from visible and copied content', () => {
+    const report = '# 研究结论\n\n证据支持该结论。';
+    const content = `${report}\n\nA3S_RESEARCH_VIEW: .a3s/research/topic/index.html`;
+    const message: ChatMessage = {
+      id: 'assistant-research',
+      sessionId: 'session-research',
+      role: 'assistant',
+      content,
+      createdAt: '2026-07-23T00:00:00Z',
+    };
+
+    expect(projectAssistantResponseSegments(message, []).map(segmentValue)).toEqual([`text:${report}`]);
+    expect(visibleAssistantContent(content)).toBe(report);
+    expect(visibleAssistantContent('`A3S_RESEARCH_VIEW: example`')).toBe('`A3S_RESEARCH_VIEW: example`');
+  });
+
+  it('does not repeat an internal DeepResearch cancellation result as assistant prose', () => {
+    const content = 'DeepResearch was cancelled by the user.';
+    const message: ChatMessage = {
+      id: 'assistant-research-cancelled',
+      sessionId: 'session-research-cancelled',
+      role: 'assistant',
+      content,
+      createdAt: '2026-07-23T00:00:00Z',
+      events: [
+        { type: 'tool_start', id: 'research-cancelled', name: 'deep_research' },
+        {
+          type: 'tool_end',
+          id: 'research-cancelled',
+          name: 'deep_research',
+          output: content,
+          exit_code: 1,
+          metadata: { cancelled: true, message: content },
+        },
+      ],
+    };
+    const calls = projectToolCalls(message.events ?? []);
+
+    expect(projectAssistantResponseSegments(message, calls).map(segmentValue)).toEqual(['tool:research-cancelled']);
+    expect(visibleAssistantContent(content, calls)).toBe('');
   });
 });
 

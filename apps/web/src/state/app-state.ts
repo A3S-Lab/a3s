@@ -20,6 +20,7 @@ import {
 } from '../features/settings/settings-state';
 import {
   createTaskState,
+  createTaskDraft,
   persistActiveTask,
   persistTaskDrafts,
   readActiveTask,
@@ -92,11 +93,12 @@ export function sessionTitle(
 export function switchActiveTask(sessionId: string | null): void {
   const product = activeTaskProduct();
   const currentKey = taskDraftKey(appState.activeSessionId, product);
-  appState.draftsByTask[currentKey] = {
-    content: appState.composerValue,
-    contextFiles: [...appState.composerContextFiles],
-    skillNames: [...appState.composerSkills],
-  };
+  appState.draftsByTask[currentKey] = createTaskDraft(
+    appState.composerValue,
+    appState.composerContextFiles,
+    appState.composerSkills,
+    appState.composerMode
+  );
   reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
   appState.activeSessionId = sessionId;
   reportTaskPersistenceResult(persistActiveTask(sessionId, product));
@@ -104,6 +106,7 @@ export function switchActiveTask(sessionId: string | null): void {
   appState.composerValue = next?.content ?? '';
   appState.composerContextFiles = [...(next?.contextFiles ?? [])];
   appState.composerSkills = [...(next?.skillNames ?? [])];
+  appState.composerMode = next?.mode === 'deepResearch' && product === 'code' ? 'deepResearch' : 'standard';
   appState.modelChangeNotice = null;
 }
 
@@ -234,11 +237,12 @@ function activateTaskProduct(product: TaskProduct): void {
   const currentProduct = activeTaskProduct();
   if (currentProduct === product) return;
   const currentKey = taskDraftKey(appState.activeSessionId, currentProduct);
-  appState.draftsByTask[currentKey] = {
-    content: appState.composerValue,
-    contextFiles: [...appState.composerContextFiles],
-    skillNames: [...appState.composerSkills],
-  };
+  appState.draftsByTask[currentKey] = createTaskDraft(
+    appState.composerValue,
+    appState.composerContextFiles,
+    appState.composerSkills,
+    appState.composerMode
+  );
   reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
   reportTaskPersistenceResult(persistActiveTask(appState.activeSessionId, currentProduct));
 
@@ -248,6 +252,7 @@ function activateTaskProduct(product: TaskProduct): void {
   appState.composerValue = draft?.content ?? '';
   appState.composerContextFiles = [...(draft?.contextFiles ?? [])];
   appState.composerSkills = [...(draft?.skillNames ?? [])];
+  appState.composerMode = draft?.mode === 'deepResearch' && product === 'code' ? 'deepResearch' : 'standard';
   appState.streamEvents = [];
 }
 

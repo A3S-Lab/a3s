@@ -58,6 +58,7 @@ export function ToolCallItem({
     call.args && Object.keys(call.args).length ? JSON.stringify(call.args, null, 2) : call.inputText;
   const argumentDetailsAvailable = shouldShowArgumentDetails(call, argumentsText, target);
   const fileEdit = isFileEditCall(call);
+  const cancelled = call.state === 'interrupted' && call.metadata?.cancelled === true;
   const reviewAvailable = fileEdit && call.state === 'succeeded';
   const filePath = toolFilePath(call);
   const running = call.state === 'preparing' || call.state === 'running';
@@ -98,6 +99,7 @@ export function ToolCallItem({
   return (
     <section
       className={`tool-call-item ${call.state}`}
+      data-outcome={cancelled ? 'cancelled' : undefined}
       aria-label={`${toolActionLabel(call)}${target ? `，${target}` : ''}，${stateLabel(call.state)}`}
     >
       <header className='tool-call-event'>

@@ -60,6 +60,10 @@
   background: var(--a3s-red);
 }
 
+.tool-call-item.interrupted[data-outcome='cancelled'] .tool-call-status-dot {
+  background: var(--a3s-faint);
+}
+
 .tool-call-title {
   display: flex;
   min-width: 0;
@@ -292,6 +296,10 @@
 .tool-call-message.timed-out,
 .tool-call-message.interrupted {
   color: var(--a3s-red);
+}
+
+.tool-call-item.interrupted[data-outcome='cancelled'] .tool-call-message.interrupted {
+  color: var(--a3s-muted);
 }
 
 .tool-call-decision-error {

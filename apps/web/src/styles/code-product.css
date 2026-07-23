@@ -108,3 +108,17 @@
     flex-basis: 224px;
   }
 }
+
+@media (max-width: 620px) {
+  .task-library {
+    position: absolute;
+    z-index: 60;
+    top: 0;
+    bottom: 0;
+    left: 52px;
+    width: min(260px, calc(100% - 52px));
+    height: auto;
+    flex-basis: auto;
+    box-shadow: 16px 0 36px rgb(20 24 40 / 16%);
+  }
+}

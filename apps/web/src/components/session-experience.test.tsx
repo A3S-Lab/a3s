@@ -29,6 +29,7 @@ describe('Web-native session experiences', () => {
     appState.activeSessionId = session.sessionId;
     appState.streamingSessionId = null;
     appState.taskSubmissionState = null;
+    appState.activeProduct = 'code';
     appState.sessionControls = {
       'session-1': {
         sessionId: 'session-1',
@@ -73,6 +74,7 @@ describe('Web-native session experiences', () => {
     appState.composerValue = '';
     appState.composerContextFiles = [];
     appState.composerSkills = [];
+    appState.composerMode = 'standard';
     appState.turnQueues = {};
     appState.turnQueueLoading = {};
     appState.turnQueueErrors = {};
@@ -195,6 +197,24 @@ describe('Web-native session experiences', () => {
     expect(modeTrigger).toHaveFocus();
   });
 
+  it('offers an explicit DeepResearch mode only in the Code composer', async () => {
+    const { rerender, container } = render(<TaskComposer actions={{} as CodeActions} />);
+
+    const researchMode = screen.getByRole('button', { name: '深度研究模式：关闭' });
+    expect(researchMode).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(researchMode);
+
+    expect(appState.composerMode).toBe('deepResearch');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: '深度研究模式：已开启' })).toHaveAttribute('aria-pressed', 'true')
+    );
+    expect(container.querySelector('.task-composer')).toHaveClass('deep-research');
+
+    appState.activeProduct = 'work';
+    rerender(<TaskComposer actions={{} as CodeActions} />);
+    expect(screen.queryByRole('button', { name: /深度研究模式/ })).not.toBeInTheDocument();
+  });
+
   it('keeps new-task parameters in the composer before a session exists', () => {
     appState.activeSessionId = null;
     appState.newTaskConfig = {
@@ -262,6 +282,24 @@ describe('Web-native session experiences', () => {
 
     expect(screen.getByLabelText('任务进度浮窗')).toHaveTextContent('正在创建任务');
     expect(screen.getByRole('region', { name: '任务规划与执行' })).toHaveTextContent('正在启动任务会话');
+  });
+
+  it('replaces the submitted editor when first-task startup settles', async () => {
+    appState.activeSessionId = null;
+    appState.taskSubmissionState = 'creating';
+    appState.composerValue = 'Submitted first instruction';
+    render(<TaskComposer actions={{} as CodeActions} />);
+    const submittingEditor = screen.getByRole('textbox', { name: '任务指令' });
+
+    act(() => {
+      appState.activeSessionId = session.sessionId;
+      appState.composerValue = '';
+      appState.taskSubmissionState = null;
+    });
+
+    await waitFor(() => expect(screen.getByRole('textbox', { name: '任务指令' })).toHaveTextContent(/^$/));
+    expect(screen.getByRole('textbox', { name: '任务指令' })).not.toBe(submittingEditor);
+    expect(appState.composerValue).toBe('');
   });
 
   it('opens task context panels without changing task identity', () => {
@@ -498,5 +536,16 @@ describe('Web-native session experiences', () => {
     expect(screen.getAllByText('Main task').length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole('button', { name: '重新连接' }));
     expect(retryConnection).toHaveBeenCalledTimes(1);
+  });
+
+  it('collapses the shared sidebar when the shell enters a compact viewport', async () => {
+    const originalWidth = window.innerWidth;
+    render(<AppShell actions={{} as CodeActions} />);
+
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    fireEvent(window, new Event('resize'));
+
+    await waitFor(() => expect(appState.sidebarOpen).toBe(false));
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalWidth });
   });
 });

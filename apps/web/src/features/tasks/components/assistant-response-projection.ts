@@ -9,18 +9,55 @@ export function projectAssistantResponseSegments(
   message: Pick<ChatMessage, 'content' | 'contentBlocks' | 'events' | 'pending'>,
   calls: readonly ToolCallProjection[]
 ): AssistantResponseSegment[] {
-  if (!calls.length) return message.content ? [{ id: 'text-0', kind: 'text', content: message.content }] : [];
+  let segments: AssistantResponseSegment[];
+  if (!calls.length) {
+    segments = message.content ? [{ id: 'text-0', kind: 'text', content: message.content }] : [];
+  } else {
+    const eventSegments = projectEventSegments(message, calls);
+    if (eventSegments.length > 0) {
+      segments = appendCanonicalRemainder(eventSegments, message.content);
+    } else {
+      const blockSegments = projectBlockSegments(message.contentBlocks ?? [], calls);
+      segments =
+        blockSegments.length > 0
+          ? appendCanonicalRemainder(blockSegments, message.content)
+          : [
+              ...calls.map((call) => ({ id: `tool-${call.id}`, kind: 'tool' as const, call })),
+              ...(message.content ? [{ id: 'text-0', kind: 'text' as const, content: message.content }] : []),
+            ];
+    }
+  }
+  return visibleSegments(segments, calls);
+}
 
-  const eventSegments = projectEventSegments(message, calls);
-  if (eventSegments.length > 0) return appendCanonicalRemainder(eventSegments, message.content);
+const TERMINAL_RESEARCH_VIEW_MARKER = /(?:^|\r?\n)[\t ]*A3S_RESEARCH_VIEW:[^\r\n]*(?:\r?\n[\t ]*)*$/;
 
-  const blockSegments = projectBlockSegments(message.contentBlocks ?? [], calls);
-  if (blockSegments.length > 0) return appendCanonicalRemainder(blockSegments, message.content);
+export function visibleAssistantContent(content: string, calls: readonly ToolCallProjection[] = []): string {
+  const marker = TERMINAL_RESEARCH_VIEW_MARKER.exec(content);
+  const visible = marker?.index === undefined ? content : content.slice(0, marker.index).trimEnd();
+  const normalized = visible.trim();
+  const repeatsCancellation = calls.some((call) => {
+    if (call.state !== 'interrupted' || call.metadata?.cancelled !== true) return false;
+    const message = call.metadata.message;
+    return typeof message === 'string' && normalized === message.trim();
+  });
+  return repeatsCancellation ? '' : visible;
+}
 
-  return [
-    ...calls.map((call) => ({ id: `tool-${call.id}`, kind: 'tool' as const, call })),
-    ...(message.content ? [{ id: 'text-0', kind: 'text' as const, content: message.content }] : []),
-  ];
+function visibleSegments(
+  segments: AssistantResponseSegment[],
+  calls: readonly ToolCallProjection[]
+): AssistantResponseSegment[] {
+  const visible: AssistantResponseSegment[] = [];
+  for (const segment of segments) {
+    if (segment.kind === 'tool') {
+      visible.push(segment);
+      continue;
+    }
+    const content = visibleAssistantContent(segment.content, calls);
+    if (content) visible.push({ ...segment, content });
+  }
+  return visible;
 }
 
 function projectEventSegments(

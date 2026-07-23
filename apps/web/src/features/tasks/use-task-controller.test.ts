@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { codeApi } from '../../lib/api';
 import { appState, reportTaskPersistenceResult, setTheme } from '../../state/app-state';
-import { createTaskState, persistTaskDrafts } from './task-state';
+import { createTaskState, newTaskDraftKey, persistTaskDrafts } from './task-state';
 import { applyAssistantStreamEvent, composeTaskPrompt, useTaskController } from './use-task-controller';
 
 afterEach(() => {
@@ -102,6 +102,28 @@ describe('task-scoped draft recovery', () => {
     expect(restored.composerValue).toBe('continue after refresh');
     expect(restored.composerContextFiles).toEqual(['src/app.ts']);
     expect(restored.composerSkills).toEqual([]);
+    expect(restored.composerMode).toBe('standard');
+  });
+
+  it('removes the legacy editor-injected CLAUDE.md prompt instead of restoring it forever', () => {
+    localStorage.setItem('a3s-code-web.active-task', 'task-a');
+    localStorage.setItem(
+      'a3s-code-web.task-drafts',
+      JSON.stringify({
+        'task-a': {
+          content: '请查看当前代码文件，并回答我的问题：',
+          contextFiles: ['CLAUDE.md'],
+          skillNames: [],
+        },
+      })
+    );
+
+    const restored = createTaskState();
+
+    expect(restored.composerValue).toBe('');
+    expect(restored.composerContextFiles).toEqual([]);
+    expect(restored.draftsByTask['task-a']).toBeUndefined();
+    expect(JSON.parse(localStorage.getItem('a3s-code-web.task-drafts') ?? '{}')['task-a']).toBeUndefined();
   });
 
   it('keeps in-memory drafts and warns once when browser persistence fails', () => {
@@ -255,6 +277,14 @@ describe('task configuration', () => {
     appState.composerValue = 'Inspect the release workflow';
     appState.composerContextFiles = [];
     appState.composerSkills = [];
+    appState.composerMode = 'deepResearch';
+    appState.draftsByTask = {
+      [newTaskDraftKey]: {
+        content: 'Inspect the release workflow',
+        contextFiles: [],
+        skillNames: [],
+      },
+    };
     appState.newTaskConfig = {
       workspace: '/repo',
       model: 'codex/gpt-5.6-sol',
@@ -297,6 +327,7 @@ describe('task configuration', () => {
           content: 'Inspect the release workflow',
           contextFiles: [],
           skillNames: [],
+          mode: 'deepResearch',
           priority: 0,
           enqueuedAt: 1,
         },
@@ -323,6 +354,19 @@ describe('task configuration', () => {
     expect(appState.taskSubmissionState).toBeNull();
     expect(appState.activeSessionId).toBe('task-new');
     expect(appState.composerValue).toBe('');
+    expect(appState.composerMode).toBe('standard');
+    expect(codeApi.enqueueTurn).toHaveBeenCalledWith('task-new', {
+      content: 'Inspect the release workflow',
+      contextFiles: [],
+      skillNames: [],
+      mode: 'deepResearch',
+    });
+    expect(appState.draftsByTask[newTaskDraftKey]).toEqual({ content: '', contextFiles: [], skillNames: [] });
+    expect(JSON.parse(localStorage.getItem('a3s-code-web.task-drafts') ?? '{}')[newTaskDraftKey]).toEqual({
+      content: '',
+      contextFiles: [],
+      skillNames: [],
+    });
     hook.unmount();
   });
 
@@ -361,6 +405,7 @@ describe('task configuration', () => {
       content: 'Run the focused tests next',
       contextFiles: ['src/app.ts'],
       skillNames: ['review'],
+      mode: 'standard',
     });
     expect(appState.turnQueues['task-a'].items[0].id).toBe('turn-1');
     expect(appState.composerValue).toBe('');
