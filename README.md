@@ -38,11 +38,11 @@ service and workload infrastructure.
 
 The `a3s` command is the unified product entrypoint: `a3s code` launches the
 interactive coding agent, `a3s box` manages isolated runtimes, `a3s bench` runs
-reproducible evaluations, and `a3s use` exposes Browser, native Office, OCR,
-and installed Use extensions. `a3s list`, `a3s install`, `a3s upgrade`, and
-`a3s uninstall` provide one typed component lifecycle. Local Code, Runtime,
-provider/model, and Bench workflows do not require an A3S OS login unless the
-selected remote capability requires one.
+reproducible evaluations, and `a3s use` exposes built-in Browser and OCR
+capabilities plus installed external domains such as A3S Office. `a3s list`,
+`a3s install`, `a3s upgrade`, and `a3s uninstall` provide one typed component
+lifecycle. Local Code, Runtime, provider/model, and Bench workflows do not
+require an A3S OS login unless the selected remote capability requires one.
 
 A3S is not one root Cargo workspace, one monolithic binary, or a hosted service.
 Many projects under `crates/`, `apps/`, and `packages/` are independent
@@ -61,10 +61,10 @@ selected product exposes them.
 | Area | Paths | Purpose |
 | --- | --- | --- |
 | Product surfaces | `crates/cli`, `crates/bench`, `apps/web`, `apps/desktop`, `apps/cloud`, `apps/docs` | CLI, browser workspace, benchmark control component, native app, Cloud control plane, and documentation site. |
-| Capability packages | `packages/science` | First-party scientific Skills, MCP data services, compute workflows, and research tooling. |
+| Capability packages | `packages/science`, `packages/office` | Independently released scientific capabilities and Office editors, native automation, MCP, and Skill surfaces. |
 | Agent runtime | `crates/code`, `crates/ahp`, `crates/acl`, `crates/common` | Sessions, tools, policy, protocol, config, and shared types. |
 | UI systems | `crates/tui`, `crates/gui`, `crates/webview` | Terminal UI, native RSX UI, and trusted WebView helpers. |
-| Use and retrieval | `crates/use`, `crates/search` | Browser, native Office, and OCR capability surfaces, external Use extensions, and search through the shared Browser runtime. |
+| Use and retrieval | `crates/use`, `crates/search` | Built-in Browser and OCR surfaces, external capability lifecycle and routing, and search through the shared Browser runtime. |
 | State and coordination | `crates/memory`, `crates/event`, `crates/flow`, `crates/lane`, `crates/orm` | Memory, events, workflows, queues, and typed persistence. |
 | Runtime safety and operations | `crates/runtime`, `crates/box`, `crates/observer`, `crates/sentry` | Provider-neutral execution, isolation, observability, and runtime control. |
 | Services | `crates/boot`, `crates/gateway`, `crates/power` | Service framework, ingress, and model serving. |
@@ -131,8 +131,9 @@ to loopback by default.
   MicroVM CLI on supported virtualization hosts
 - **Reproducible Evaluation**: Bind a Task, packaged Candidate adapter, and
   task-owned Judge into an identity-bound Bench result
-- **Typed Application Capabilities**: Automate Browser, native Office, and OCR domains through
-  typed Rust, native CLI, standard MCP, and Skill surfaces
+- **Typed Application Capabilities**: Automate built-in Browser and OCR domains
+  plus independently released capabilities such as A3S Office through typed
+  Rust, native CLI, standard MCP, and Skill surfaces
 - **Composable Runtime Foundations**: Reuse provider-neutral execution, durable
   workflows, events, priority queues, memory, search, and typed SQL independently
 - **Service Infrastructure**: Build modular async services with Boot, route AI
@@ -157,7 +158,7 @@ to loopback by default.
 | Scientific packages | A3S Science | First-party scientific Skills, MCP data services, compute workflows, and research tooling | Package contracts and release cadence are owned by the independent Science repository |
 | Isolation | A3S Box | Docker-like lifecycle for Linux OCI workloads in per-workload MicroVMs | Requires a supported host and virtualization backend; CRI, TEE, and Windows paths retain platform-specific validation requirements |
 | Evaluation | A3S Bench | Local Task/Candidate/Judge execution with immutable locks and results | The current local path requires Docker and produces `local_unofficial` results; official evaluation requires signed admission and matching Runtime evidence |
-| Application automation | A3S Use | Built-in Browser, native Office, and local PP-OCRv6 domains plus ACL-declared external domains | Domain availability depends on installed runtime/model assets; external packages keep their native CLI, standard MCP, or Skill contracts |
+| Application automation | A3S Use | Built-in Browser and local PP-OCRv6 domains plus schema-versioned external repository capabilities such as A3S Office | Domain availability depends on installed runtime/model assets; external packages declare host compatibility and keep their native CLI, standard MCP, and Skill contracts |
 | Search | A3S Search | Multi-engine aggregation, deduplication, consensus ranking, CLI output, and optional A3S Use browser rendering | Engines, proxies, and browser providers depend on network and local runtime availability |
 | General execution | A3S Runtime | Immutable finite Task and long-running Service generations with capabilities, idempotent lifecycle, observations, logs, and exec contracts | Runtime defines contracts and managed durability; callers still choose and supply a concrete provider |
 | Cloud control plane | A3S Cloud | Tenancy, PostgreSQL state, durable operations, node enrollment/control, observations, SSE, and a Web console | The [versioned Cloud 0.1.0 docs](apps/docs/content/docs/en/cloud/v0.1.0/) separate verified E0 behavior from experimental updater wiring and planned C0/S0/H0 work; `compat/cloud-stack.acl` is authoritative. |
@@ -439,7 +440,6 @@ a3s web
 # Manage the A3S Use parent or one delegated domain explicitly.
 a3s install use
 a3s upgrade use
-a3s uninstall use/office
 
 # Bench runs the short conformance Task through a packaged Candidate adapter.
 a3s bench list
@@ -459,9 +459,17 @@ a3s install use --source release
 # Run Use commands only after `a3s doctor use` reports Ready.
 a3s use capabilities --json
 a3s use browser doctor
-a3s use office doctor
 a3s use ocr doctor --json
 a3s install use/ocr
+
+# Package and install the independently released Office capability.
+packages/office/scripts/package-a3s-use-extension.sh /tmp/a3s-use-office
+a3s use component install a3s/office \
+  --from /tmp/a3s-use-office \
+  --allow-unsigned \
+  --json
+a3s use doctor office --json
+a3s use office --version
 
 # Delegated catalog inspection includes the built-in OCR route.
 a3s info use/ocr --sources
@@ -474,7 +482,6 @@ a3s use browser close --session research
 
 # A ready Use parent manages provider runtimes through delegated component IDs.
 a3s install use/browser
-a3s install use/office
 
 # External Use packages come from an explicitly pinned TUF registry.
 a3s registry add https://packages.example.org/a3s/ \
@@ -512,12 +519,12 @@ or follow that project's installation instructions. Set `A3S_NO_AUTO_INSTALL=1`
 or `A3S_OFFLINE=1` to prevent product proxy commands from attempting a first-use
 install.
 
-Browser, native Office, and OCR are built-in A3S Use domains. Before terminal
-takeover, `a3s code` reuses a healthy Use installation or installs its verified
-release when networking and automatic setup are allowed. `--offline`,
-`A3S_OFFLINE=1`, and `A3S_NO_AUTO_INSTALL=1` remain strict zero-network,
-zero-receipt boundaries, and setup failure never prevents Code from starting.
-External domains retain ACL-declared native CLI, standard MCP, and/or `SKILL.md`
+Browser and OCR are built-in A3S Use domains. Before terminal takeover,
+`a3s code` reuses a healthy Use installation or installs its verified release
+when networking and automatic setup are allowed. `--offline`, `A3S_OFFLINE=1`,
+and `A3S_NO_AUTO_INSTALL=1` remain strict zero-network, zero-receipt boundaries,
+and setup failure never prevents Code from starting. Office and other external
+domains retain ACL-declared native CLI, standard MCP, and/or `SKILL.md`
 surfaces; Use does not introduce a custom extension protocol. Search depends on
 the typed `a3s-use-browser` library instead of owning another browser runtime.
 
@@ -580,11 +587,12 @@ user
 Code is bundled with the CLI. Box, Bench, Search, and Use have independent owning
 repositories and entries in the component catalog; a catalog entry describes
 discovery and installation policy, not proof that every release channel currently
-contains a compatible artifact. Browser, native Office, and OCR are Use domains.
-The Code TUI may first-use install the verified Use release before terminal
-takeover. Browser runtime and pinned PP-OCRv6 model preparation remain owned by
-Use rather than adding a second umbrella-CLI protocol; OCR inference stays local
-through ONNX Runtime.
+contains a compatible artifact. Browser and OCR are built-in Use domains; Office
+is released independently and registers route `office` through the standard
+external repository package contract. The Code TUI may first-use install the
+verified Use release before terminal takeover. Browser runtime and pinned
+PP-OCRv6 model preparation remain owned by Use rather than adding a second
+umbrella-CLI protocol; OCR inference stays local through ONNX Runtime.
 
 ### Agent sessions
 
@@ -659,7 +667,8 @@ version or release channel.
 | [A3S Box](crates/box/) | Docker-like MicroVM runtime for Linux OCI workloads, with host-specific isolation and integration paths |
 | [A3S Bench](crates/bench/) | Reproducible evaluation of packaged Candidates against immutable Tasks and task-owned Judges |
 | [A3S Search](crates/search/) | Embeddable and command-line meta-search with ranking, deduplication, proxies, and optional browser rendering |
-| [A3S Use](crates/use/) | Typed Browser, native Office, OCR, external application, and standard MCP capability host |
+| [A3S Use](crates/use/) | Typed Browser and OCR runtime plus the standard lifecycle, compatibility, routing, and projection layer for external repository capabilities |
+| [A3S Office](packages/office/) | Rslib-packaged React, Vue, Web Component, and Core Office editors plus a native Rust OOXML engine, CLI, standard MCP server, Skill, and A3S Use extension package |
 | [A3S Science](packages/science/) | Independently versioned scientific Skills, MCP data services, compute workflows, and research tooling |
 | [A3S Cloud](apps/cloud/) | Self-hosted control plane for desired state, durable operations, outbound-managed Runtime nodes, and verified OCI deployment; the [versioned Cloud 0.1.0 reference](apps/docs/content/docs/en/cloud/v0.1.0/) records exact compatibility and maturity boundaries |
 | [Documentation](apps/docs/) | Next.js documentation, tutorials, project references, and versioned bilingual Cloud operations guidance |

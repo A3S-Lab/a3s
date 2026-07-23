@@ -79,3 +79,6 @@
 [submodule "packages/science"]
 	path = packages/science
 	url = git@github.com:A3S-Lab/Science.git
+[submodule "packages/office"]
+	path = packages/office
+	url = git@github.com:A3S-Lab/Office.git
