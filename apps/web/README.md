@@ -373,29 +373,37 @@ by the
 - A calm turn-based execution document with restored Skill/file context,
   stable Code response headers, local copy and continue-edit actions,
   lifecycle-aware Markdown reasoning, reader-controlled stream following, and
-  CJK-aware, typographically tuned Streamdown/Shiki rendering for headings,
-  lists, task lists, quotations, tables, links, images, footnotes, inline code,
-  and line-numbered code blocks. Model-generated tables with a short delimiter
-  row are repaired outside fenced code before rendering. Its semantic tool
-  timeline merges live events, output, HITL decisions, and recovery into one
-  execution block, with
-  TUI-aligned command, JSON-argument, and generic tool-call syntax highlighting
-  across persisted Web API aliases, working-directory context, live output
-  metrics, copy actions, and a compact tail preview after completion. Successful
-  file edits render an inline unified Diff with added/deleted counts, old/new
-  line numbers, and full red/green row backgrounds.
+  CJK-aware, typographically tuned Streamdown/Shiki rendering. Newly streamed
+  words fade in without replaying animation on existing content, and incoming
+  Markdown boundaries stay intact so paragraphs, lists, and tables settle as
+  their delimiters arrive. The transcript follows a growing response with
+  interruptible eased scrolling, stops when the reader moves away, and respects
+  reduced-motion preferences. Headings, lists, task lists, quotations, tables,
+  links, images, footnotes, inline code, and line-numbered code blocks share the
+  same document treatment. Model-generated tables with a short delimiter row
+  are repaired outside fenced code before rendering. Its semantic tool timeline
+  merges live events, output, HITL decisions, and recovery into one execution
+  block, with TUI-aligned command, JSON-argument, and generic tool-call syntax
+  highlighting across persisted Web API aliases, working-directory context,
+  live output metrics, copy actions, and a compact tail preview after completion.
+  Successful file edits render an inline unified Diff with added/deleted counts,
+  old/new line numbers, and full red/green row backgrounds.
 - Visible task execution mode with a mode-specific icon, provider-tabbed model
   selection, an independent Effort slider with English values and Chinese
   guidance, task goal timing, context usage, manual context compaction, and an
-  upper-right task-runtime panel that appears only after real planning or
-  subagent evidence exists, then shows only the checklist, completion, elapsed
-  time, and parallel work actually published by the runtime. Ordinary session
-  startup never creates a progress panel. First submission locks its controls
-  and shows creating or queueing feedback before the initial API round trip
-  completes.
+  upper-right task-runtime panel that appears only for a real planning or
+  subagent lifecycle, then shows only the checklist, completion, elapsed time,
+  and parallel work actually published by the runtime. Ordinary task creation,
+  analysis, and streaming never manufacture progress UI. First submission locks
+  its controls and shows creating or queueing feedback before the initial API
+  round trip completes.
   Dedicated Use workers are identified by their observed standard MCP routes
   (`Use · Browser`, `Use · Office`, or multiple deduplicated routes), while
   their evidence uses readable domain actions instead of raw MCP tool names.
+- Code Web shares the TUI execution boundaries: Default uses managed SRT for
+  ordinary Bash and asks only before host execution, Plan forces a read-only
+  planning run, and Auto never opens HITL—it executes inside SRT or denies an
+  unavailable sandbox, boundary escape, or unknown unbounded operation.
 - A bounded startup transition with explicit loading, version-mismatch,
   disconnected, retry, and technical-detail states. Older local services that
   lack the model-catalog route fall back to their configured Provider models
@@ -433,8 +441,10 @@ by the
   information, and searchable Help.
   Categories load and save independently; effect labels distinguish new-task
   changes from restart-required changes, and secrets remain masked.
-  Configuration rows use aligned controls and explicit units; editable Provider
-  names and model IDs retain focus and disclosure state.
+  The expanded dialog keeps the default model and common Provider connection
+  fields prominent, while runtime overrides, model limits, headers, and session
+  passthrough stay in disclosures. Editable Provider names and model IDs retain
+  focus and disclosure state.
 - A source-grouped task model switcher that combines configured Provider models
   with valid local Claude Code, Codex, and WorkBuddy account models through the
   same runtime discovery and client routing used by the TUI. Account credentials

@@ -438,6 +438,12 @@
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .execution-answer {
+    animation: none;
+  }
+}
+
 .interrupted-turn-status {
   display: block;
 }

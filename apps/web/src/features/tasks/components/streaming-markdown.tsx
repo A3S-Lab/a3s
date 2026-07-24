@@ -1,7 +1,15 @@
 import { cjk } from '@streamdown/cjk';
 import { code } from '@streamdown/code';
-import { Streamdown, type StreamdownTranslations } from 'streamdown';
+import { type AnimateOptions, Streamdown, type StreamdownTranslations } from 'streamdown';
 import { normalizeCollapsedMarkdownTables } from './markdown-normalization';
+
+const streamingAnimation: AnimateOptions = {
+  animation: 'fadeIn',
+  duration: 180,
+  easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+  sep: 'word',
+  stagger: 18,
+};
 
 const translations: StreamdownTranslations = {
   close: '关闭',
@@ -38,12 +46,13 @@ const translations: StreamdownTranslations = {
 export default function StreamingMarkdown({ content, streaming }: { content: string; streaming: boolean }) {
   const normalizedContent = normalizeCollapsedMarkdownTables(content);
   return (
-    <div className='streaming-markdown-region' aria-busy={streaming || undefined}>
+    <div className={`streaming-markdown-region${streaming ? ' is-streaming' : ''}`} aria-busy={streaming || undefined}>
       <Streamdown
         className={`streaming-markdown a3s-document-markdown${streaming ? ' is-streaming' : ''}`}
         dir='auto'
         mode={streaming ? 'streaming' : 'static'}
         isAnimating={streaming}
+        animated={streaming ? streamingAnimation : false}
         parseIncompleteMarkdown
         normalizeHtmlIndentation
         plugins={{ cjk, code }}

@@ -1,7 +1,7 @@
 import { ChevronDown, FilterX, SlidersHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { Button, SearchField } from '../../../design-system/primitives';
+import { Button, SearchField, SegmentedControl } from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
 import type { MemoryForgetSignal, MemoryOverview, MemoryTier } from '../../../types/api';
 import { forgetSignalLabel, memorySourceLabel, memoryTypeLabel, tierLabel } from '../memory-format';
@@ -60,28 +60,21 @@ export function MemoryFiltersPanel({ data }: { data: MemoryOverview }) {
         }}
       />
       <FilterGroup title='时间'>
-        <div className='memory-filter-segments'>
-          {(
-            [
-              ['all', '全部'],
-              ['7d', '7 天'],
-              ['30d', '30 天'],
-              ['90d', '90 天'],
-            ] as Array<[MemoryTimeRange, string]>
-          ).map(([value, label]) => (
-            <button
-              type='button'
-              className={state.memoryTimeRange === value ? 'active' : ''}
-              aria-pressed={state.memoryTimeRange === value}
-              key={value}
-              onClick={() => {
-                appState.memoryTimeRange = value;
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl<MemoryTimeRange>
+          ariaLabel='记忆时间范围'
+          value={state.memoryTimeRange}
+          layout='equal'
+          size='compact'
+          items={[
+            { id: 'all', label: '全部' },
+            { id: '7d', label: '7 天' },
+            { id: '30d', label: '30 天' },
+            { id: '90d', label: '90 天' },
+          ]}
+          onChange={(value) => {
+            appState.memoryTimeRange = value;
+          }}
+        />
       </FilterGroup>
       <FilterGroup title='类型'>
         <div className='memory-filter-options'>

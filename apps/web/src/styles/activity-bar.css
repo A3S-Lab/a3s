@@ -122,15 +122,3 @@
   opacity: 1;
   transition-delay: 220ms;
 }
-
-.coming-dot {
-  position: absolute;
-  right: 7px;
-  bottom: 7px;
-  width: 6px;
-  height: 6px;
-  border: 1px solid var(--a3s-panel);
-  border-radius: 50%;
-  background: var(--a3s-faint);
-  opacity: 0.55;
-}

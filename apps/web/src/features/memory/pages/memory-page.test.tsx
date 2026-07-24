@@ -173,7 +173,7 @@ describe('MemoryPage', () => {
 
     render(<MemoryPage actions={{ loadMemory: vi.fn() } as unknown as CodeActions} />);
 
-    expect(screen.getByLabelText('正在加载记忆')).toHaveTextContent('正在加载记忆');
+    expect(screen.getByRole('status')).toHaveTextContent('正在加载记忆');
     expect(screen.queryByRole('region', { name: '记忆关联图' })).not.toBeInTheDocument();
   });
 

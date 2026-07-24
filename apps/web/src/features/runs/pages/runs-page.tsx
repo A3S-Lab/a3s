@@ -11,7 +11,14 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { Button, IconButton, SearchField, StateView, StatusBadge } from '../../../design-system/primitives';
+import {
+  Button,
+  IconButton,
+  SearchField,
+  SegmentedControl,
+  StateView,
+  StatusBadge,
+} from '../../../design-system/primitives';
 import { appState, formatApiError, navigateTask, showToast } from '../../../state/app-state';
 import type { ToolOutputRecord } from '../../../types/api';
 import type { RunActions } from '../run-actions';
@@ -85,19 +92,17 @@ export function RunsPage({ actions }: { actions: RunActions }) {
 
         <div className='output-toolbar'>
           <SearchField label='搜索工具记录' value={query} placeholder='搜索工具、输入或输出' onValueChange={setQuery} />
-          <fieldset aria-label='工具状态筛选'>
-            {(['all', 'success', 'error'] as const).map((id) => (
-              <button
-                type='button'
-                aria-pressed={filter === id}
-                className={filter === id ? 'active' : ''}
-                key={id}
-                onClick={() => setFilter(id)}
-              >
-                {id === 'all' ? '全部' : id === 'success' ? '成功' : '失败'}
-              </button>
-            ))}
-          </fieldset>
+          <SegmentedControl<OutputFilter>
+            ariaLabel='工具状态筛选'
+            value={filter}
+            size='compact'
+            items={[
+              { id: 'all', label: '全部' },
+              { id: 'success', label: '成功' },
+              { id: 'error', label: '失败' },
+            ]}
+            onChange={setFilter}
+          />
         </div>
 
         <div className={`output-layout ${selected ? 'with-detail' : ''}`}>

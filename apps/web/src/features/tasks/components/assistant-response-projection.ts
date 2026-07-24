@@ -55,7 +55,7 @@ function visibleSegments(
       continue;
     }
     const content = visibleAssistantContent(segment.content, calls);
-    if (content) visible.push({ ...segment, content });
+    if (content.trim()) visible.push({ ...segment, content });
   }
   return visible;
 }

@@ -229,8 +229,8 @@ describe('plugin marketplace page', () => {
     expect(screen.getByRole('heading', { name: '金融资讯' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '科研' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '测试版' }));
-    expect(screen.getByRole('button', { name: '测试版', pressed: true })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('radio', { name: '测试版' }));
+    expect(screen.getByRole('radio', { name: '测试版', checked: true })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '金融分析' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '金融资讯' })).not.toBeInTheDocument();
   });

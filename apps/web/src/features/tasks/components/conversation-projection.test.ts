@@ -103,6 +103,15 @@ describe('projectConversation', () => {
     expect(turns[0].interrupted).toBe(true);
   });
 
+  it('preserves a pending Markdown boundary until the next stream delta arrives', () => {
+    const turns = projectConversation([
+      message('user-1', 'user', '列出检查结果'),
+      message('assistant-streaming', 'assistant', '第一段完成。\n\n', { pending: true }),
+    ]);
+
+    expect(turns[0].responses[0].content).toBe('第一段完成。\n\n');
+  });
+
   it('keeps canonical subagent lifecycle evidence visible without requiring answer text', () => {
     const turns = projectConversation([
       message('user-1', 'user', '并行检查实现'),
