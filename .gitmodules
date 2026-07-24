@@ -79,3 +79,6 @@
 [submodule "packages/science"]
 	path = packages/science
 	url = git@github.com:A3S-Lab/Science.git
+[submodule "crates/deep-research"]
+	path = crates/deep-research
+	url = git@github.com:A3S-Lab/DeepResearch.git

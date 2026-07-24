@@ -122,8 +122,10 @@ to loopback by default.
   Centered MacBook notches are derived from native safe-area geometry and fused
   into a top-edge layout, while a dedicated handle supports manual placement
   without later recenter or expand/collapse snap-back.
-- **Evidence-First Research**: Gather bounded local evidence and materialize
-  source-backed Markdown and HTML reports
+- **Evidence-First Research**: Use the standalone, domain-agnostic DeepResearch
+  engine to gather bounded evidence, compile a typed claim graph, and
+  materialize synthesized, qualified, or source-backed Markdown and HTML
+  reports
 - **Scientific Capability Packages**: Reuse the independently versioned A3S
   Science catalog of scientific Skills, MCP data services, compute workflows,
   and research tooling
@@ -153,7 +155,7 @@ to loopback by default.
 | Coding agent | A3S CLI, Code, TUI | Streaming TUI, workspace tools, sessions, context, memory, knowledge, local assets, subagents, and dynamic workflows | Model execution requires a configured provider or compatible account; remote OS actions require login |
 | Browser workspace | A3S CLI, Code Web | Local task conversations, tool approval, context, configuration, Monaco editing, Git review, and session persistence | Requires a compatible built frontend; binds to `127.0.0.1` by default; do not expose workspace APIs without an authenticated gateway |
 | Local command isolation | A3S CLI, Code | Managed SRT provider for routine workspace commands, with network denial, bounded filesystem access, scrubbed environment, timeout, streaming, and cancellation | Official CLI archives include the fixed support payload and require Node.js 20.11 or newer; source and Cargo installs may also need npm for development bootstrap |
-| Research | A3S CLI, Code, Flow | `a3s code research` runs a bounded local retrieval-summary workflow and writes Markdown and HTML report artifacts | The explicit OS research mode is reserved but currently disabled; signed-in Runtime remains available to ordinary Code workflows |
+| Research | A3S DeepResearch, CLI, Code, Flow | `a3s code research` runs exact-query bootstrap and bounded semantic planning concurrently, progressively publishes Markdown and HTML artifacts, and never depends on topic-specific routing | The explicit OS research mode is reserved but currently disabled; signed-in Runtime remains available to ordinary Code workflows |
 | Scientific packages | A3S Science | First-party scientific Skills, MCP data services, compute workflows, and research tooling | Package contracts and release cadence are owned by the independent Science repository |
 | Isolation | A3S Box | Docker-like lifecycle for Linux OCI workloads in per-workload MicroVMs | Requires a supported host and virtualization backend; CRI, TEE, and Windows paths retain platform-specific validation requirements |
 | Evaluation | A3S Bench | Local Task/Candidate/Judge execution with immutable locks and results | The current local path requires Docker and produces `local_unofficial` results; official evaluation requires signed admission and matching Runtime evidence |
@@ -408,9 +410,19 @@ a3s code research --local-only "Map this repository's release process"
 aliases. The command produces report artifacts instead of treating raw retrieval
 output as the final result. `--web` and `--local-only` select the evidence
 boundary explicitly; the retired `--runtime`, `--local`, and `--os` routes are
-rejected. Web research uses native AnySearch and Tavily discovery with
-DuckDuckGo, then admits only fetched source text into its closed evidence
-ledger. Provider ranking, snippets, and dates remain discovery metadata.
+rejected. The reusable orchestration, planning contracts, evidence admission,
+quality gates, and publication pipeline live in the independent
+[A3S DeepResearch](crates/deep-research/) project. The CLI supplies model,
+workflow, artifact-storage, and progress adapters through explicit ports.
+Search follows the active `config.acl` engine policy; the default policy uses
+DuckDuckGo and Wikipedia, while AnySearch is opt-in. Quota, provider, and empty
+result failures use the same generic fallback path and remain visible in run
+metadata. Only fetched source text enters the closed evidence boundary;
+provider ranking, snippets, and dates remain discovery metadata.
+The active report protocol validates exact dimension/source/chunk IDs, claim
+kinds, basis and derivation edges, contradiction relations, and typed gaps.
+Query words, language, publishers, domains, paths, and error prose never route
+or admit evidence.
 
 ### Manage optional products
 
@@ -648,6 +660,7 @@ version or release channel.
 | --- | --- |
 | [A3S CLI](crates/cli/) | Umbrella `a3s` command, A3S Code TUI host, local Web API, account/model configuration, and component lifecycle |
 | [A3S Code](crates/code/) | Governed async agent runtime with Rust Core plus Node.js and Python native SDKs |
+| [A3S DeepResearch](crates/deep-research/) | Standalone domain-agnostic research engine with port-based orchestration, bounded retrieval planning, evidence admission, report quality gates, and Markdown/HTML publication |
 | [A3S Web](apps/web/) | Local Code and Work browser products with task conversations, Monaco editing, file management, AI-assisted Office editors, and locally supplied assets |
 | [A3S Windhole](apps/windhole/) | Local React and Three.js wind-tunnel laboratory covering the complete A3S Bench catalog, run, result, validation, Doctor, and lock workflows through a loopback CLI bridge |
 | [A3S Box](crates/box/) | Docker-like MicroVM runtime for Linux OCI workloads, with host-specific isolation and integration paths |
