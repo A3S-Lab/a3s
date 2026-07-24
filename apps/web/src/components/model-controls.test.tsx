@@ -61,7 +61,7 @@ describe('model controls', () => {
     const actions = { saveLlmSettings } as unknown as CodeActions;
     render(<SettingsDialog actions={actions} />);
     fireEvent.click(screen.getByRole('button', { name: '模型与 Provider' }));
-    fireEvent.click(await screen.findByRole('button', { name: '设置默认模型' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^设置默认模型/ }));
     fireEvent.click(screen.getByRole('option', { name: /glm-5\.2/ }));
     expect(saveLlmSettings).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: '保存更改' }));

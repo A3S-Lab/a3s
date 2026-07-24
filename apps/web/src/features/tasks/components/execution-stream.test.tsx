@@ -7,6 +7,7 @@ import { ExecutionStream } from './execution-stream';
 describe('ExecutionStream permission decisions', () => {
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     appState.messagesLoading = {};
     appState.messageErrors = {};
     appState.streamingSessionId = null;
@@ -698,6 +699,19 @@ describe('ExecutionStream permission decisions', () => {
   });
 
   it('offers a direct way back to the latest content after the user scrolls upward', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn(() => ({
+        matches: true,
+        media: '(prefers-reduced-motion: reduce)',
+        onchange: null,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }))
+    );
     appState.activeSessionId = 'session-scroll-latest';
     appState.messagesBySession['session-scroll-latest'] = [
       {
@@ -716,11 +730,10 @@ describe('ExecutionStream permission decisions', () => {
       clientHeight: { configurable: true, value: 500 },
       scrollTop: { configurable: true, writable: true, value: 120 },
     });
-    scroll.scrollTo = vi.fn();
     fireEvent.scroll(scroll);
 
     fireEvent.click(screen.getByRole('button', { name: '查看最新内容' }));
-    expect(scroll.scrollTo).toHaveBeenCalledWith({ top: 1200, behavior: 'smooth' });
+    expect(scroll.scrollTop).toBe(700);
   });
 
   it('renders Markdown through Streamdown and highlights fenced code', async () => {
