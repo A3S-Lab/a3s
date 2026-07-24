@@ -55,7 +55,7 @@ export function projectConversation(
     currentTurn ??= createResponseOnlyTurn(message);
     if (!turns.includes(currentTurn)) turns.push(currentTurn);
 
-    const response = { ...message, content: message.content.trim() };
+    const response = { ...message, content: message.content };
     if (replaceLatestResponse && currentTurn.responses.length > 0) {
       currentTurn.responses[currentTurn.responses.length - 1] = response;
     } else {

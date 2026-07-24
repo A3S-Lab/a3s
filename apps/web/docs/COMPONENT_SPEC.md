@@ -220,9 +220,11 @@ entries.
   mode after completion, with Chinese control text, light/dark Shiki themes,
   line-numbered code blocks, bounded scrolling, normalized embedded-HTML
   indentation, repair for short model-generated table delimiter rows outside
-  fenced code, and
-  document typography for headings, paragraphs, nested lists, task lists,
-  quotations, tables, links, images, footnotes, and inline code;
+  fenced code, and document typography for headings, paragraphs, nested lists,
+  task lists, quotations, tables, links, images, footnotes, and inline code.
+  Pending content preserves transport whitespace and animates only newly
+  appended words with a short fade; previously rendered words use a
+  zero-duration update and static responses do not create animation spans;
 - `InstructionMessage` removes transport wrappers while retaining selected
   Skills and workspace files as typed resource chips; its Continue editing
   action restores both content and resources to the current draft;
@@ -247,8 +249,12 @@ entries.
 - operational detail expands in place through `ExecutionDetails`;
 - long turn-level failures lead with a concise summary and preserve the full
   diagnostic payload under an inline `查看技术详情` disclosure;
-- automatic transcript scrolling stops when the reader leaves the bottom, and
-  one floating latest-content action returns them without moving the Composer.
+- transcript following eases toward the dynamic bottom across animation frames
+  and observes delayed Markdown or code-height changes. It stops when the
+  reader leaves the bottom, survives streaming-state transitions without
+  resetting their position, and resumes from one floating latest-content
+  action without moving the Composer. Reduced-motion preference uses direct
+  positioning.
 
 ### `ToolCallProjection` and `ToolCallTimeline`
 
@@ -311,18 +317,18 @@ invent progress.
 parallel subagents visible without turning the Composer into a status toolbar.
 
 **Contract:** positioned at the upper-right of the task surface. It appears only
-for an active planning phase, a non-empty task list from `PlanningEnd` /
-`TaskUpdated`, or a real subagent lifecycle. Ordinary session creation,
-analysis, goal timing, and streaming without those events do not render or
-reserve space for the panel. Active-Conversation layout uses the
-measured Conversation pane, not the global viewport. A pane at least 1600 px
-wide has enough natural right-side whitespace for the floating surface beside
-the centered content; the panel never reserves a side rail or changes the
-transcript and Composer centering. The first evidence in a turn, the first
-available plan, and a new failed or interrupted branch expand it automatically.
-Additional healthy branches respect a manual collapse and update in place. A
-narrower pane, including Conversation beside Result Workspace, uses a docked
-summary between `TaskHeader` and the transcript. Compact detail never
+after `PlanningStart`, a non-empty task list from `PlanningEnd` /
+`TaskUpdated`, or a real subagent lifecycle. Session creation, ordinary
+analysis or streaming, goal timing, and turn execution timing alone never make
+it appear. Active-Conversation layout uses the measured Conversation pane, not
+the global viewport. A pane at least 1600 px wide has enough natural right-side
+whitespace for the floating surface beside the centered content; the panel
+never reserves a side rail or changes the transcript and Composer centering.
+The first planning or subagent evidence in a turn, the first available plan,
+and a new failed or interrupted branch expand it automatically. Additional
+healthy branches respect a manual collapse and update in place. A narrower
+pane, including Conversation beside Result Workspace, uses a docked summary
+between `TaskHeader` and the transcript. Compact detail never
 auto-expands and opens only from its trigger, so task attention cannot hide the
 answer the user is reading. Expanding compact detail reduces the transcript
 viewport while leaving `TaskComposer` fixed. The
@@ -381,6 +387,8 @@ parent event clears pending client state, including when the event wins a race
 with the confirmation HTTP response. The decision card owns the primary
 operation summary; serialized tool arguments remain available under a collapsed
 secondary disclosure and never repeat the command in the default reading path.
+Auto mode never creates this card: any attempted escalation is denied by the
+server-side execution boundary before an HITL event is emitted.
 
 ### `DeliverySummary`
 
@@ -1088,9 +1096,17 @@ The Integrations view composes `SearchSettingsEditor`,
 `DocumentParserSettingsEditor`, and `McpSettingsEditor`. There is no dedicated
 connector component; custom hosted or self-managed endpoints are ordinary MCP
 server entries. Existing connector-named entries remain editable through the
-generic MCP editor.
-Advanced queue, model metadata, OCR, cache, transport, and OAuth fields stay in
-disclosures rather than competing with common settings.
+generic MCP editor for stdio, Streamable HTTP, or compatible HTTP transports,
+with independently collapsible editors and inline add/remove actions.
+
+`ModelSettings` presents the default model first, then one selected Provider and
+its connection or model editor. Common Provider fields and model capabilities
+remain visible. Runtime overrides, model limits, connection overrides, headers,
+session passthrough, and other advanced metadata stay in disclosures rather than
+competing with the primary setup path.
+
+Advanced queue, OCR, cache, transport, and OAuth fields stay in disclosures
+rather than competing with common settings.
 
 Shared configuration components include `SettingsSection`, `SettingsRow`,
 `SettingsField`, `SettingsSwitch`, typed text/number/select/secret fields,
@@ -1109,11 +1125,6 @@ keystroke cannot remount the editor, drop focus, or collapse the current
 disclosure. Category save state remains sticky and distinguishes synced,
 unsaved, saving, saved, and failed states locally.
 
-`ModelSettings` keeps one Provider list and one detail surface. The selected
-Provider exposes connection fields and its model catalog in sequence; default
-model selection stays visible, while runtime limits and uncommon model metadata
-remain secondary disclosures.
-
 `ChannelSettingsPage` keeps one compact channel list beside the selected
 channel content without adding a second framed workspace container.
 
@@ -1128,14 +1139,23 @@ mounted underneath while this tab is selected.
 
 | Primitive | Responsibility |
 | --- | --- |
-| `Button` | tone, disabled, loading, and button semantics |
+| `Button` | tone, standard or compact density, disabled, loading, and button semantics |
 | `IconButton` | accessible label, selected state, compact icon action |
 | `Dialog` | focus trap, labelled structure, Escape, focus restoration |
 | `Popover` | anchored non-modal content, outside click, Escape, focus return |
-| `Tabs` | keyboard selection, close semantics, overflow |
+| `Tabs` | semantic tablist rendering, selected state, keyboard selection, and panel linkage |
+| `SegmentedControl` | one bounded filter or setting choice with native radio semantics; never substitutes for page tabs |
 | `SplitHandle` | pointer and keyboard resize with bounds |
 | `StatusBadge` | semantic state label without domain logic |
 | `ModelCombobox` | searchable model selection and keyboard navigation |
+| `SearchField` | labelled search input, compact density, clear action, and focus continuity |
+| `Field` | label, description, required state, validation message, and ARIA wiring for one control |
+| `InlineNotice` | contextual warning, error, success, or recovery feedback that preserves surrounding content |
+| `StateView` | primary-area loading, error, empty, unavailable, and recovery states |
+| `CollectionState` | bounded loading, error, and empty states inside lists, trees, selectors, and local collections |
+| `PageHeader` | shared page identity, description, status, navigation, accent, and action alignment |
+| `useTabNavigation` | roving focus plus Arrow, Home, and End behavior for domain-specific tab strips |
+| `useDialogFocusScope` | initial focus, modal tab containment, Escape handling, shortcut isolation, and focus restoration |
 
 ## Journey traceability
 

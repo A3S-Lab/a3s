@@ -23,6 +23,7 @@ import {
   InlineNotice,
   PageHeader,
   SearchField,
+  SegmentedControl,
   StateView,
   Tabs,
 } from '../../../design-system/primitives';
@@ -150,19 +151,18 @@ export function PluginMarketplacePage({ actions }: { actions: PluginActions }) {
             />
             <section className='memory-filter-group'>
               <h2>版本</h2>
-              <div className='memory-filter-segments plugin-channel-segments'>
-                {(['all', 'stable', 'beta', 'nightly'] as const).map((candidate) => (
-                  <button
-                    key={candidate}
-                    type='button'
-                    className={channel === candidate ? 'active' : ''}
-                    aria-pressed={channel === candidate}
-                    onClick={() => setChannel(candidate)}
-                  >
-                    {channelLabel(candidate)}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl<ChannelFilter>
+                ariaLabel='插件版本'
+                value={channel}
+                layout='equal'
+                size='compact'
+                className='plugin-channel-filter'
+                items={(['all', 'stable', 'beta', 'nightly'] as const).map((candidate) => ({
+                  id: candidate,
+                  label: channelLabel(candidate),
+                }))}
+                onChange={setChannel}
+              />
             </section>
             <section className='memory-filter-group'>
               <h2>来源</h2>

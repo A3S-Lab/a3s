@@ -7,6 +7,8 @@ import { ExecutionStream } from './execution-stream';
 describe('ExecutionStream rendering and recovery', () => {
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     appState.messagesLoading = {};
     appState.messageErrors = {};
     appState.streamingSessionId = null;
@@ -18,7 +20,47 @@ describe('ExecutionStream rendering and recovery', () => {
     appState.toolDecisionErrors = {};
   });
 
-  it('offers a direct way back to the latest content after the user scrolls upward', () => {
+  it('follows streaming content over progressive animation frames', async () => {
+    const frames = installAnimationFrameHarness();
+    appState.activeSessionId = 'session-progressive-follow';
+    appState.messagesBySession['session-progressive-follow'] = [
+      {
+        id: 'assistant-progressive-follow',
+        sessionId: 'session-progressive-follow',
+        role: 'assistant',
+        content: 'First fragment',
+        createdAt: new Date().toISOString(),
+        pending: true,
+      },
+    ];
+
+    const { container } = render(<ExecutionStream actions={{} as TaskActions} />);
+    const scroll = container.querySelector('.execution-scroll') as HTMLDivElement;
+    const geometry = configureScrollGeometry(scroll, {
+      scrollHeight: 1200,
+      clientHeight: 500,
+      scrollTop: 0,
+    });
+    act(() => frames.flushAll());
+    expect(scroll.scrollTop).toBe(700);
+    geometry.setScrollHeight(1400);
+
+    act(() => {
+      appState.messagesBySession['session-progressive-follow'][0].content += ' with more detail';
+    });
+
+    await waitFor(() => expect(container).toHaveTextContent('with more detail'));
+    expect(scroll.scrollTop).toBe(700);
+    expect(frames.pending()).toBe(1);
+    act(() => frames.flushNext());
+    expect(scroll.scrollTop).toBeGreaterThan(700);
+    expect(scroll.scrollTop).toBeLessThan(900);
+    act(() => frames.flushAll());
+    expect(scroll.scrollTop).toBe(900);
+  });
+
+  it('stops following after manual scroll and resumes from the latest-content action', async () => {
+    const frames = installAnimationFrameHarness();
     appState.activeSessionId = 'session-scroll-latest';
     appState.messagesBySession['session-scroll-latest'] = [
       {
@@ -27,21 +69,77 @@ describe('ExecutionStream rendering and recovery', () => {
         role: 'assistant',
         content: 'A long response',
         createdAt: new Date().toISOString(),
+        pending: true,
       },
     ];
 
     const { container } = render(<ExecutionStream actions={{} as TaskActions} />);
     const scroll = container.querySelector('.execution-scroll') as HTMLDivElement;
-    Object.defineProperties(scroll, {
-      scrollHeight: { configurable: true, value: 1200 },
-      clientHeight: { configurable: true, value: 500 },
-      scrollTop: { configurable: true, writable: true, value: 120 },
+    const geometry = configureScrollGeometry(scroll, {
+      scrollHeight: 1200,
+      clientHeight: 500,
+      scrollTop: 0,
     });
-    scroll.scrollTo = vi.fn();
-    fireEvent.scroll(scroll);
+    act(() => frames.flushAll());
+    expect(scroll.scrollTop).toBe(700);
 
+    scroll.scrollTop = 160;
+    fireEvent.scroll(scroll);
+    expect(screen.getByRole('button', { name: '查看最新内容' })).toBeInTheDocument();
+
+    geometry.setScrollHeight(1400);
+    act(() => {
+      appState.messagesBySession['session-scroll-latest'][0].content += ' with another paragraph';
+      appState.messagesBySession['session-scroll-latest'][0].pending = false;
+    });
+
+    await waitFor(() => expect(container).toHaveTextContent('with another paragraph'));
+    expect(scroll.scrollTop).toBe(160);
+    expect(frames.pending()).toBe(0);
     fireEvent.click(screen.getByRole('button', { name: '查看最新内容' }));
-    expect(scroll.scrollTo).toHaveBeenCalledWith({ top: 1200, behavior: 'smooth' });
+    expect(scroll.scrollTop).toBe(160);
+    act(() => frames.flushAll());
+    expect(scroll.scrollTop).toBe(900);
+    expect(screen.queryByRole('button', { name: '查看最新内容' })).not.toBeInTheDocument();
+  });
+
+  it('positions directly at the latest content when reduced motion is preferred', async () => {
+    const frames = installAnimationFrameHarness();
+    const matchMedia = vi.fn(() => ({
+      matches: true,
+      media: '(prefers-reduced-motion: reduce)',
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+    vi.stubGlobal('matchMedia', matchMedia);
+    appState.activeSessionId = 'session-reduced-motion-follow';
+    appState.messagesBySession['session-reduced-motion-follow'] = [
+      {
+        id: 'assistant-reduced-motion-follow',
+        sessionId: 'session-reduced-motion-follow',
+        role: 'assistant',
+        content: 'First fragment',
+        createdAt: new Date().toISOString(),
+        pending: true,
+      },
+    ];
+
+    const { container } = render(<ExecutionStream actions={{} as TaskActions} />);
+    const scroll = container.querySelector('.execution-scroll') as HTMLDivElement;
+    configureScrollGeometry(scroll, { scrollHeight: 1200, clientHeight: 500, scrollTop: 0 });
+
+    act(() => {
+      appState.messagesBySession['session-reduced-motion-follow'][0].content += ' and the rest';
+    });
+
+    await waitFor(() => expect(container).toHaveTextContent('and the rest'));
+    expect(matchMedia).toHaveBeenCalledWith('(prefers-reduced-motion: reduce)');
+    expect(scroll.scrollTop).toBe(700);
+    expect(frames.pending()).toBe(0);
   });
 
   it('renders Markdown through Streamdown and highlights fenced code', async () => {
@@ -523,3 +621,61 @@ describe('ExecutionStream rendering and recovery', () => {
     expect(container.querySelector('.recovery-notice pre')).toHaveTextContent('request_id=trace-42');
   });
 });
+
+function installAnimationFrameHarness() {
+  let nextId = 1;
+  const callbacks = new Map<number, FrameRequestCallback>();
+  vi.stubGlobal(
+    'requestAnimationFrame',
+    vi.fn((callback: FrameRequestCallback) => {
+      const id = nextId;
+      nextId += 1;
+      callbacks.set(id, callback);
+      return id;
+    })
+  );
+  vi.stubGlobal(
+    'cancelAnimationFrame',
+    vi.fn((id: number) => {
+      callbacks.delete(id);
+    })
+  );
+
+  const flushNext = () => {
+    const entry = callbacks.entries().next().value as [number, FrameRequestCallback] | undefined;
+    if (!entry) throw new Error('No animation frame is pending');
+    const [id, callback] = entry;
+    callbacks.delete(id);
+    callback(performance.now());
+  };
+
+  return {
+    pending: () => callbacks.size,
+    flushNext,
+    flushAll: () => {
+      let count = 0;
+      while (callbacks.size > 0) {
+        count += 1;
+        if (count > 100) throw new Error('Stream follow did not settle within 100 animation frames');
+        flushNext();
+      }
+    },
+  };
+}
+
+function configureScrollGeometry(
+  element: HTMLDivElement,
+  values: { scrollHeight: number; clientHeight: number; scrollTop: number }
+) {
+  let scrollHeight = values.scrollHeight;
+  Object.defineProperties(element, {
+    scrollHeight: { configurable: true, get: () => scrollHeight },
+    clientHeight: { configurable: true, get: () => values.clientHeight },
+    scrollTop: { configurable: true, writable: true, value: values.scrollTop },
+  });
+  return {
+    setScrollHeight: (value: number) => {
+      scrollHeight = value;
+    },
+  };
+}

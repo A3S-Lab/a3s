@@ -1,5 +1,4 @@
 import { ArrowDown, CircleStop, LoaderCircle } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { Button, StateView } from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
@@ -7,6 +6,7 @@ import type { ChatMessage } from '../../../types/api';
 import type { TaskActions } from '../task-actions';
 import { projectConversation } from './conversation-projection';
 import { ConversationTurnView } from './conversation-turn';
+import { useStreamFollow } from './use-stream-follow';
 
 export function ExecutionStream({
   actions,
@@ -19,26 +19,16 @@ export function ExecutionStream({
   const sessionId = state.activeSessionId;
   const messages = (sessionId ? (state.messagesBySession[sessionId] ?? []) : []) as unknown as readonly ChatMessage[];
   const turns = projectConversation(messages, { running: state.streamingSessionId === sessionId });
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const stickToBottomRef = useRef(true);
-  const [showLatest, setShowLatest] = useState(false);
   const streamRevision = messageRevision(messages, state.streamEvents as unknown as readonly Record<string, unknown>[]);
-
-  useEffect(() => {
-    stickToBottomRef.current = true;
-    setShowLatest(false);
-  }, [sessionId]);
-
-  useEffect(() => {
-    const element = scrollRef.current;
-    if (!element) return;
-    if (stickToBottomRef.current && typeof element.scrollTo === 'function') {
-      element.scrollTo({ top: element.scrollHeight, behavior: 'auto' });
-      setShowLatest(false);
-    } else {
-      setShowLatest(true);
-    }
-  }, [streamRevision]);
+  const streaming = Boolean(
+    state.streamingSessionId === sessionId ||
+      messages.some((message) => message.role === 'assistant' && message.pending)
+  );
+  const { contentRef, jumpToLatest, onScroll, scrollRef, showLatest } = useStreamFollow({
+    revision: streamRevision,
+    sessionId,
+    streaming,
+  });
   if (sessionId && state.taskSubmissionState && !messages.length)
     return <TaskLoadState title='正在启动任务' description='正在创建会话、应用运行参数并准备首次执行。' loading />;
   if (sessionId && state.messagesLoading[sessionId] && !messages.length)
@@ -56,17 +46,8 @@ export function ExecutionStream({
   if (!messages.length) return <TaskWelcome />;
   return (
     <div className='execution-scroll-shell'>
-      <div
-        className='execution-scroll'
-        ref={scrollRef}
-        onScroll={(event) => {
-          const element = event.currentTarget;
-          const nearBottom = element.scrollHeight - element.scrollTop - element.clientHeight < 96;
-          stickToBottomRef.current = nearBottom;
-          setShowLatest(!nearBottom);
-        }}
-      >
-        <div className='execution-column'>
+      <div className='execution-scroll' ref={scrollRef} onScroll={onScroll}>
+        <div className='execution-column' ref={contentRef}>
           {turns.map((turn, index) => (
             <ConversationTurnView
               key={turn.id}
@@ -79,17 +60,7 @@ export function ExecutionStream({
         </div>
       </div>
       {showLatest && (
-        <Button
-          tone='secondary'
-          className='execution-jump-latest'
-          onClick={() => {
-            const element = scrollRef.current;
-            if (!element || typeof element.scrollTo !== 'function') return;
-            stickToBottomRef.current = true;
-            element.scrollTo({ top: element.scrollHeight, behavior: 'smooth' });
-            setShowLatest(false);
-          }}
-        >
+        <Button tone='secondary' className='execution-jump-latest' onClick={jumpToLatest}>
           <ArrowDown size={14} />
           查看最新内容
         </Button>

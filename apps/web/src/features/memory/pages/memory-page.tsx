@@ -1,7 +1,17 @@
-import { BrainCircuit, Database, Focus, ListTree, Network, RefreshCw, Settings2, Sparkles } from 'lucide-react';
+import {
+  BrainCircuit,
+  Database,
+  Focus,
+  ListTree,
+  LoaderCircle,
+  Network,
+  RefreshCw,
+  Settings2,
+  Sparkles,
+} from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useSnapshot } from 'valtio';
-import { Button, InlineNotice, PageHeader, StateView, Tabs } from '../../../design-system/primitives';
+import { Button, InlineNotice, PageHeader, SegmentedControl, StateView, Tabs } from '../../../design-system/primitives';
 import { appState, navigateSettings } from '../../../state/app-state';
 import type { CodeActions } from '../../code/use-code-controller';
 import { EvolutionWorkbench } from '../components/evolution-workbench';
@@ -176,31 +186,27 @@ export function MemoryPage({ actions }: { actions: CodeActions }) {
                               : `${entries.length} / ${data.stats.entries} 条记忆`}
                           </span>
                           {state.memoryView === 'graph' && (
-                            <fieldset className='memory-scope-switcher'>
-                              <legend>显示范围</legend>
-                              <button
-                                type='button'
-                                className={state.memoryGraphScope === 'balanced' ? 'active' : ''}
-                                aria-pressed={state.memoryGraphScope === 'balanced'}
-                                title='显示重要内容'
-                                onClick={() => {
-                                  appState.memoryGraphScope = 'balanced';
-                                }}
-                              >
-                                <Focus size={14} /> 重点
-                              </button>
-                              <button
-                                type='button'
-                                className={state.memoryGraphScope === 'complete' ? 'active' : ''}
-                                aria-pressed={state.memoryGraphScope === 'complete'}
-                                title='显示全部内容'
-                                onClick={() => {
-                                  appState.memoryGraphScope = 'complete';
-                                }}
-                              >
-                                <Database size={14} /> 全部
-                              </button>
-                            </fieldset>
+                            <SegmentedControl
+                              ariaLabel='显示范围'
+                              value={state.memoryGraphScope}
+                              items={[
+                                {
+                                  id: 'balanced',
+                                  label: '重点',
+                                  description: '显示重要内容',
+                                  icon: <Focus size={14} />,
+                                },
+                                {
+                                  id: 'complete',
+                                  label: '全部',
+                                  description: '显示全部内容',
+                                  icon: <Database size={14} />,
+                                },
+                              ]}
+                              onChange={(scope) => {
+                                appState.memoryGraphScope = scope;
+                              }}
+                            />
                           )}
                         </div>
                       </header>
@@ -274,19 +280,13 @@ export function MemoryPage({ actions }: { actions: CodeActions }) {
 
 function MemoryLoadingState() {
   return (
-    <output className='memory-loading' aria-label='正在加载记忆'>
-      <div className='memory-loading-summary'>
-        {[0, 1, 2, 3].map((item) => (
-          <i key={item} />
-        ))}
-      </div>
-      <div className='memory-loading-workbench'>
-        <i />
-        <i />
-        <i />
-      </div>
-      <span>正在加载记忆…</span>
-    </output>
+    <StateView
+      className='memory-loading'
+      role='status'
+      icon={<LoaderCircle className='spin' size={22} />}
+      title='正在加载记忆'
+      description='正在读取已保存内容、关系和学习状态。'
+    />
   );
 }
 

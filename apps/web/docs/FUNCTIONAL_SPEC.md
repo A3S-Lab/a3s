@@ -137,8 +137,13 @@ tabs without writing them to disk.
   typography and spacing for headings, paragraphs, nested and task lists,
   quotes, links, tables, media, and inline code. Fenced code uses Shiki in light
   and dark themes, visible line numbers, bounded scrolling, and localized copy
-  controls. Repair a model-generated table delimiter with missing cells before
-  rendering, but never rewrite fenced code.
+  controls. Preserve pending response whitespace so arriving paragraph, list,
+  and table boundaries are parsed immediately. Fade in only newly appended
+  words, keep previously rendered words stable, disable token and block motion
+  for reduced-motion users, and omit animation wrappers after completion.
+  Repair model-generated GFM table delimiters with missing cells before
+  rendering, including aligned delimiter rows and Chinese content, but never
+  rewrite fenced code.
 - Create a semantic execution stream from messages, plans, merged tool
   lifecycle events, permissions, replies, verification, and artifact references.
 - Present shell tools as readable command lines with TUI-aligned token roles,
@@ -153,8 +158,11 @@ tabs without writing them to disk.
 - Anchor each assistant turn with a stable Code identity row, local pending
   state, timestamp, and copy feedback; render reasoning through the same
   Markdown pipeline in a lifecycle-aware disclosure.
-- Stop forced transcript and tool-output scrolling when the reader leaves the
-  bottom, and expose an explicit return-to-latest action.
+- Ease transcript following toward a dynamically growing bottom, including
+  delayed Markdown and code-height changes. Stop transcript and tool-output
+  following when the reader leaves the bottom, do not reset their position when
+  streaming starts or completes, and expose an explicit return-to-latest
+  action. Use direct positioning under reduced motion.
 - Keep detailed operational activity in the execution that produced it; do not
   require a separate Activity page.
 - Morph the primary Send action into Stop in place during execution; Enter
@@ -164,11 +172,22 @@ tabs without writing them to disk.
   trigger, provider-tabbed model selection, an independent Effort slider with
   English values and Chinese descriptions, goal state, context usage, and a
   directly adjacent manual compaction action.
+- Keep execution-mode semantics aligned with the Code TUI:
+  - Default performs bounded file work directly, runs ordinary Bash inside the
+    managed SRT sandbox when available, and asks before exact host execution.
+  - Plan forces planning, exposes only read-only tools, and cannot escalate into
+    workspace mutation or Bash execution.
+  - Auto is non-interactive: it runs ordinary Bash only inside a working managed
+    SRT sandbox and denies missing-sandbox execution, host escalation,
+    protected metadata changes, and unknown unbounded tools instead of opening
+    a permission prompt.
 - Keep persisted live `/goal` duration as a passive footer status. Expose the
-  upper-right task-runtime floating panel only for an active planning phase, a
-  non-empty plan, or a real subagent lifecycle. Project its checklist,
-  completed/total state, elapsed time, and parallel subagent evidence without
-  invented startup or analysis rows. A wide Conversation reserves a
+  upper-right task-runtime floating panel only after a real planning lifecycle,
+  non-empty plan, or subagent lifecycle is published. Ordinary session
+  creation, analysis, streaming, goal timing, and execution timing do not make
+  it appear. Project its checklist, completed/total state, elapsed time, and
+  parallel subagent evidence without invented plan rows. A wide Conversation
+  reserves a
   non-overlapping transcript rail and expands new runtime evidence there. A
   narrow Conversation or side-by-side Result Workspace uses a docked compact
   summary whose detail opens only on explicit request, while collapse never
@@ -176,10 +195,6 @@ tabs without writing them to disk.
   timestamps when volatile timing is unavailable.
 - Reflect model, Effort, execution-mode, HITL, cancellation, queue, and compact
   success through local state rather than redundant global success toasts.
-- Match TUI execution semantics: Plan is read-only and forces planning; Default
-  runs ordinary Bash through the managed local sandbox and asks only for a host
-  boundary crossing; Auto never opens HITL and denies escalation or Bash when
-  the sandbox is unavailable.
 
 Acceptance: live output never leaks across tasks; duplicate persisted and live
 tool blocks are removed; complete tool output remains available without
@@ -430,7 +445,7 @@ Git state is never labelled as selected-task provenance.
   preserve disclosure state and focus while editable Provider names or model IDs
   change, and never offer to reveal a secret value the browser did not receive.
 
-Acceptance: the dialog follows the quiet two-column WorkBuddy settings pattern
+Acceptance: the dialog follows an expanded, quiet two-column WorkBuddy settings pattern
 with neutral controls and A3S blue used only as an accent; close and Escape
 restore the underlying Code hash and invoking focus; Help is a searchable
 Settings tab at `#settings/help` and never becomes a separate full-screen
@@ -443,7 +458,10 @@ distinguish new-task changes from restart-required changes; Help does not teach
 slash commands as the primary Web interaction; local account refresh failure
 retains the previous catalog and stays inline in the Account section. Custom
 MCP endpoints remain ordinary MCP server entries rather than a dedicated
-connector component.
+connector component. Default
+model selection and common Provider connection fields remain prominent, while
+runtime overrides, model limits, headers, and session passthrough are collapsed
+until requested.
 
 ## F10 — Memory exploration
 

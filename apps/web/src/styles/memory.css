@@ -52,42 +52,6 @@
   border-bottom: 1px solid var(--a3s-line);
 }
 
-.memory-scope-switcher {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  margin: 0;
-  padding: 2px;
-  border: 0;
-  border-radius: 9px;
-  background: var(--a3s-panel-soft);
-}
-
-.memory-scope-switcher button {
-  display: inline-flex;
-  height: 32px;
-  align-items: center;
-  gap: 6px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--a3s-muted);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 550;
-}
-
-.memory-scope-switcher button:hover {
-  color: var(--a3s-ink);
-}
-
-.memory-scope-switcher button.active {
-  background: var(--a3s-panel);
-  box-shadow: 0 1px 3px rgb(20 24 40 / 8%);
-  color: var(--a3s-ink);
-}
-
 .memory-visualization-context {
   display: flex;
   align-items: center;
@@ -98,39 +62,6 @@
   color: var(--a3s-muted);
   font-size: 12px;
   line-height: 18px;
-  white-space: nowrap;
-}
-
-.memory-scope-switcher legend {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-}
-
-.memory-root-path {
-  display: flex;
-  min-height: 30px;
-  flex: 0 0 30px;
-  align-items: center;
-  gap: 7px;
-  padding: 0 16px;
-  border-top: 1px solid var(--a3s-line);
-  background: var(--a3s-panel-soft);
-  color: var(--a3s-muted);
-  font-size: 12px;
-  line-height: 18px;
-}
-
-.memory-root-path code {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--a3s-muted);
-  font: 12px/19px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -158,55 +89,14 @@
   flex: 1;
 }
 
-.memory-loading {
-  position: relative;
-  display: flex;
+.memory-loading.ds-state-view {
   min-height: 0;
   flex: 1;
-  padding: 20px 24px;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.memory-loading-summary {
-  display: grid;
-  height: 88px;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-}
-
-.memory-loading-summary i,
-.memory-loading-workbench i {
-  border-radius: 10px;
-  background: linear-gradient(90deg, var(--a3s-panel-soft), var(--a3s-panel-strong), var(--a3s-panel-soft));
-  background-size: 200% 100%;
-  animation: memory-shimmer 1.5s linear infinite;
-}
-
-.memory-loading-workbench {
-  display: grid;
-  min-height: 0;
-  flex: 1;
-  grid-template-columns: 230px minmax(0, 1fr);
-  gap: 12px;
-}
-
-.memory-loading > span {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-}
-
-@keyframes memory-shimmer {
-  to { background-position: -200% 0; }
 }
 
 @media (max-width: 1200px) {
   .memory-workbench,
-  .memory-workbench.with-inspector,
-  .memory-loading-workbench {
+  .memory-workbench.with-inspector {
     grid-template-columns: 210px minmax(0, 1fr);
   }
 
@@ -230,12 +120,5 @@
     width: min(320px, 72%);
     border-left-color: var(--a3s-line-strong);
     box-shadow: -18px 0 42px rgb(20 24 40 / 13%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .memory-loading-summary i,
-  .memory-loading-workbench i {
-    animation: none;
   }
 }

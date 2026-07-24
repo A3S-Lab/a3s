@@ -156,11 +156,8 @@
   min-height: 46px;
 }
 
-.plugin-channel-segments {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.plugin-channel-segments button {
+.plugin-channel-filter .ds-segmented-control-content {
+  padding-inline: 4px;
   font-size: 10px;
 }
 
