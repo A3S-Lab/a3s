@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError, codeApi } from '../../lib/api';
 import { appState } from '../../state/app-state';
-import { codeApi } from '../../lib/api';
 import { useSettingsController } from './use-settings-controller';
 
 describe('settings context boundaries', () => {
@@ -16,6 +16,7 @@ describe('settings context boundaries', () => {
     appState.modelCatalogRefreshing = false;
     appState.modelCatalogRefreshError = null;
     appState.modelCatalogRefreshedAt = null;
+    appState.toast = null;
   });
 
   afterEach(() => {
@@ -144,6 +145,25 @@ describe('settings context boundaries', () => {
     expect(appState.updateStatus).toBeNull();
     expect(appState.updateCheckError).toBe('update service unavailable');
     expect(appState.updateChecking).toBe(false);
+    expect(appState.toast).toBeNull();
+    hook.unmount();
+  });
+
+  it('explains an unavailable Boot update API without exposing its route', async () => {
+    appState.updateStatus = null;
+    appState.updateChecking = false;
+    appState.updateInstalling = false;
+    appState.updateCheckError = null;
+    vi.spyOn(codeApi, 'updateStatus').mockRejectedValue(
+      new ApiError('GET /api/v1/updates/status', 404, { message: 'GET /api/v1/updates/status' })
+    );
+    const hook = renderHook(() => useSettingsController());
+
+    await act(() => hook.result.current.checkForUpdates());
+
+    expect(appState.updateCheckError).toBe('当前 A3S Boot 版本尚未提供在线更新检查，请使用原安装渠道升级。');
+    expect(appState.updateCheckError).not.toContain('/api/');
+    expect(appState.toast).toBeNull();
     hook.unmount();
   });
 

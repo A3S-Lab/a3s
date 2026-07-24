@@ -56,7 +56,7 @@ describe('TaskRuntimeFloatingPanel', () => {
     expect(screen.queryByRole('list', { name: '任务列表' })).not.toBeInTheDocument();
   });
 
-  it('appears while the first session is being created', () => {
+  it('stays hidden while the first session is being created without task tracking', () => {
     appState.activeSessionId = null;
     appState.streamingSessionId = null;
     appState.taskSubmissionState = 'creating';
@@ -65,11 +65,11 @@ describe('TaskRuntimeFloatingPanel', () => {
 
     render(<TaskRuntimeFloatingPanel />);
 
-    expect(screen.getByLabelText('任务进度浮窗')).toHaveTextContent('正在创建任务');
-    expect(screen.getByRole('region', { name: '任务规划与执行' })).toHaveTextContent('正在启动任务会话');
+    expect(screen.queryByLabelText('任务进度浮窗')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('并行子智能体浮窗')).not.toBeInTheDocument();
   });
 
-  it('docks the pre-session tracker instead of covering a narrow preparation surface', () => {
+  it('does not reserve floating-panel space for ordinary pre-session startup', () => {
     appState.activeSessionId = null;
     appState.streamingSessionId = null;
     appState.taskSubmissionState = 'creating';
@@ -88,9 +88,8 @@ describe('TaskRuntimeFloatingPanel', () => {
       </section>
     );
 
-    expect(screen.getByLabelText('任务进度浮窗')).toHaveAttribute('data-layout', 'compact');
-    expect(screen.getByRole('button', { name: '展开任务进度' })).toBeInTheDocument();
-    expect(document.querySelector('.new-task-product')).toHaveAttribute('data-task-runtime-layout', 'compact');
+    expect(screen.queryByLabelText('任务进度浮窗')).not.toBeInTheDocument();
+    expect(document.querySelector('.new-task-product')).not.toHaveAttribute('data-task-runtime-layout');
   });
 
   it('shows real parallel subagents without manufacturing a plan', () => {
@@ -191,8 +190,7 @@ describe('TaskRuntimeFloatingPanel', () => {
     );
 
     expect(screen.getByLabelText('目标执行耗时 00:10')).toHaveTextContent('目标执行中00:10');
-    expect(screen.getByLabelText('任务进度浮窗')).toHaveTextContent('正在分析任务');
-    expect(screen.getByLabelText('任务进度浮窗')).not.toHaveTextContent('完成运行态体验');
+    expect(screen.queryByLabelText('任务进度浮窗')).not.toBeInTheDocument();
   });
 
   it('appears after PlanningEnd and shows the task list and completion', () => {

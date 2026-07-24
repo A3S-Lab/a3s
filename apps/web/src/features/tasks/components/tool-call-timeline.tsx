@@ -7,11 +7,13 @@ import { workspaceAbsolutePath } from '../../workspace/workspace-state';
 import type { TaskActions } from '../task-actions';
 import { CopyButton } from './conversation-message-actions';
 import { PermissionDecision, type ToolDecisionState } from './permission-decision';
+import { ToolCallFileDiff } from './tool-call-file-diff';
 import {
   isFileEditCall,
   type ToolCallProjection,
   toolActionLabel,
   toolArgumentSummary,
+  toolFileChange,
   toolFilePath,
 } from './tool-call-projection';
 import {
@@ -58,6 +60,8 @@ export function ToolCallItem({
     call.args && Object.keys(call.args).length ? JSON.stringify(call.args, null, 2) : call.inputText;
   const argumentDetailsAvailable = shouldShowArgumentDetails(call, argumentsText, target);
   const fileEdit = isFileEditCall(call);
+  const fileChange = call.state === 'succeeded' ? toolFileChange(call) : undefined;
+  const showFileDiff = Boolean(fileChange && fileChange.original !== fileChange.modified);
   const cancelled = call.state === 'interrupted' && call.metadata?.cancelled === true;
   const reviewAvailable = fileEdit && call.state === 'succeeded';
   const filePath = toolFilePath(call);
@@ -125,13 +129,15 @@ export function ToolCallItem({
               actions={actions}
             />
           )}
+          {showFileDiff && fileChange && <ToolCallFileDiff change={fileChange} />}
           {call.output &&
+            !showFileDiff &&
             (running ? (
               <ToolCallResult call={call} />
             ) : (
               <ToolOutputPreview output={call.output} error={call.state === 'failed'} />
             ))}
-          {!call.output && call.state === 'succeeded' && <ToolEmptyOutput />}
+          {!call.output && call.state === 'succeeded' && !showFileDiff && <ToolEmptyOutput />}
           {outcomeMessage && <p className={`tool-call-message ${call.state}`}>{outcomeMessage}</p>}
           {(argumentDetailsAvailable || outputNeedsDisclosure || reviewAvailable) && (
             <div className='tool-call-detail-actions'>

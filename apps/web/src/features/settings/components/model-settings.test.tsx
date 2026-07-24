@@ -51,7 +51,7 @@ describe('ModelSettings editing continuity', () => {
 
   it('keeps focus while the model id changes', () => {
     render(<ModelSettings actions={actions} />);
-    fireEvent.click(screen.getByRole('tab', { name: '模型目录 1' }));
+    fireEvent.click(screen.getByRole('button', { name: '编辑模型 openai/model-a' }));
     const input = screen.getByRole('textbox', { name: 'openai/model-a 模型标识' });
     input.focus();
 
@@ -59,17 +59,15 @@ describe('ModelSettings editing continuity', () => {
 
     const updatedInput = screen.getByRole('textbox', { name: 'openai/model-b 模型标识' });
     expect(updatedInput).toHaveFocus();
-    expect(screen.getByRole('option', { name: /Model A/ })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('groups the default-model picker by Provider', () => {
+  it('keeps the default-model picker compact and flat', () => {
     render(<ModelSettings actions={actions} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '设置默认模型' }));
+    fireEvent.click(screen.getByRole('button', { name: /设置默认模型/ }));
 
-    expect(screen.getByRole('tab', { name: '全部' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tab', { name: 'openai' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: /Model A/ })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
   });
 
   it('selects a newly added Provider for immediate editing', () => {
@@ -81,14 +79,38 @@ describe('ModelSettings editing continuity', () => {
     expect(screen.getByRole('textbox', { name: 'new-provider 名称' })).toHaveValue('new-provider');
   });
 
-  it('selects a newly added model and shows its editor', () => {
+  it('adds a model through the focused model dialog', () => {
     render(<ModelSettings actions={actions} />);
-    fireEvent.click(screen.getByRole('tab', { name: '模型目录 1' }));
 
     fireEvent.click(screen.getByRole('button', { name: '添加模型' }));
 
-    expect(screen.getByRole('option', { name: /new-model/ })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('dialog', { name: '为 openai 添加模型' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'openai/new-model 模型标识' })).toHaveValue('new-model');
+    fireEvent.click(screen.getByRole('button', { name: '保存模型' }));
+
+    expect(screen.queryByRole('dialog', { name: '为 openai 添加模型' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '编辑模型 openai/new-model' })).toBeInTheDocument();
+  });
+
+  it('shows connection and models together while keeping advanced settings collapsed', () => {
+    render(<ModelSettings actions={actions} />);
+
+    const runtimeDetails = screen.getByText('高级运行参数').closest('details');
+    expect(runtimeDetails).not.toHaveAttribute('open');
+    expect(screen.getByText('Provider 与模型').compareDocumentPosition(screen.getByText('高级运行参数'))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(screen.getByRole('textbox', { name: 'openai 名称' })).toBeVisible();
+    expect(screen.getByRole('table')).toBeVisible();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '编辑模型 openai/model-a' }));
+
+    const limitsDetails = screen.getByText('能力与限额').closest('details');
+    const connectionOverrideDetails = screen.getByText('模型级连接覆盖').closest('details');
+    expect(limitsDetails).not.toHaveAttribute('open');
+    expect(connectionOverrideDetails).not.toHaveAttribute('open');
+    expect(screen.getByRole('textbox', { name: 'openai/model-a 模型标识' })).toBeVisible();
   });
 
   it('lets the user undo an unsaved category draft', () => {

@@ -356,6 +356,7 @@ export function navigatePlugin(key: string): void {
     navigateTask('conversation');
     return;
   }
+  activateTaskProduct('code');
   appState.settingsOpen = false;
   appState.commandPaletteOpen = false;
   appState.activeProduct = 'plugin';
@@ -365,6 +366,7 @@ export function navigatePlugin(key: string): void {
 }
 
 export function navigatePlugins(): void {
+  activateTaskProduct('code');
   appState.settingsOpen = false;
   appState.commandPaletteOpen = false;
   appState.activeProduct = 'plugins';
@@ -372,6 +374,7 @@ export function navigatePlugins(): void {
 }
 
 export function navigateKnowledge(): void {
+  activateTaskProduct('code');
   appState.settingsOpen = false;
   appState.commandPaletteOpen = false;
   appState.activeProduct = 'knowledge';
@@ -382,7 +385,7 @@ function activeTaskProduct(): TaskProduct {
   return appState.activeProduct === 'work' ? 'work' : 'code';
 }
 
-function activateTaskProduct(product: TaskProduct): void {
+export function activateTaskProduct(product: TaskProduct): void {
   const currentProduct = activeTaskProduct();
   if (currentProduct === product) return;
   const currentKey = taskDraftKey(appState.activeSessionId, currentProduct);

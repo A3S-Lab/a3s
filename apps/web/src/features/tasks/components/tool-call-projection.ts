@@ -29,6 +29,13 @@ export interface ToolCallProjection {
   timeoutMs?: number;
 }
 
+export interface ToolFileChange {
+  path: string;
+  original: string;
+  modified: string;
+  compacted: boolean;
+}
+
 export interface ProjectToolCallsOptions {
   settleOpen?: boolean;
 }
@@ -451,6 +458,23 @@ export function toolFilePath(call: Pick<ToolCallProjection, 'args' | 'metadata'>
     if (typeof value === 'string' && value.trim()) return value;
   }
   return undefined;
+}
+
+export function toolFileChange(call: Pick<ToolCallProjection, 'args' | 'metadata'>): ToolFileChange | undefined {
+  const metadata = call.metadata;
+  if (!metadata) return undefined;
+  const before = stringValue(metadata.before);
+  const after = stringValue(metadata.after);
+  if (before === undefined && after === undefined) return undefined;
+  const path = toolFilePath(call);
+  if (!path) return undefined;
+  const change = recordValue(metadata.change);
+  return {
+    path,
+    original: before ?? '',
+    modified: after ?? '',
+    compacted: change?.compacted === true,
+  };
 }
 
 function isToolEvent(type: string): boolean {

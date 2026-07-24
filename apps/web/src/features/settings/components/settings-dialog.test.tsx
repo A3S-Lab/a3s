@@ -167,7 +167,7 @@ describe('SettingsDialog', () => {
     }
   });
 
-  it('hosts Weixin and Feishu as tabs inside the Channels page', async () => {
+  it('hosts Weixin and Feishu in one channel workspace', async () => {
     appState.settingsOpen = true;
     appState.weixinCapabilityStatus = 'unavailable';
     appState.weixinCapability = {
@@ -189,18 +189,18 @@ describe('SettingsDialog', () => {
     expect(appState.settingsChannel).toBe('weixin');
     expect(window.location.hash).toBe('#settings/channels/weixin');
     expect(screen.getByRole('dialog', { name: '渠道' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: '微信' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tab', { name: '飞书' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('button', { name: '微信' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '飞书' })).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('heading', { name: '微信渠道尚未就绪' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '扫码绑定' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: '飞书' }));
+    fireEvent.click(screen.getByRole('button', { name: '飞书' }));
 
     expect(appState.settingsTab).toBe('channels');
     expect(appState.settingsChannel).toBe('feishu');
     expect(window.location.hash).toBe('#settings/channels/feishu');
     expect(screen.getByRole('dialog', { name: '渠道' })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('tab', { name: '飞书' })).toHaveAttribute('aria-selected', 'true'));
+    await waitFor(() => expect(screen.getByRole('button', { name: '飞书' })).toHaveAttribute('aria-pressed', 'true'));
     expect(await screen.findByRole('heading', { name: '飞书渠道' })).toBeInTheDocument();
     expect(screen.getByText('敬请期待')).toBeInTheDocument();
   });

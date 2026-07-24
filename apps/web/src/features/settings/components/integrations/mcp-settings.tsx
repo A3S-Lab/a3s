@@ -17,18 +17,12 @@ import { SettingsSwitch } from '../config/settings-switch';
 export function McpSettingsEditor({
   value,
   onChange,
-  managedServerNames = [],
 }: {
   value: McpServerSettings[];
   onChange(value: McpServerSettings[]): void;
-  managedServerNames?: string[];
 }) {
   const update = (index: number, server: McpServerSettings) =>
     onChange(value.map((item, itemIndex) => (itemIndex === index ? server : item)));
-  const managedNames = new Set(managedServerNames);
-  const editableServers = value
-    .map((server, index) => ({ index, server }))
-    .filter(({ server }) => !managedNames.has(server.name) || server.transport.type !== 'streamable-http');
   return (
     <div className='config-stack'>
       <div className='config-nested-header'>
@@ -41,7 +35,7 @@ export function McpSettingsEditor({
         </Button>
       </div>
       <div className='config-card-list'>
-        {editableServers.map(({ server, index }) => (
+        {value.map((server, index) => (
           <McpServerEditor
             server={server}
             key={`${server.name}-${index}`}
@@ -49,7 +43,7 @@ export function McpSettingsEditor({
             onRemove={() => onChange(value.filter((_, itemIndex) => itemIndex !== index))}
           />
         ))}
-        {!editableServers.length && <SettingsEmptyNotice>尚未配置其他 MCP Server。</SettingsEmptyNotice>}
+        {!value.length && <SettingsEmptyNotice>尚未配置 MCP Server。</SettingsEmptyNotice>}
       </div>
     </div>
   );

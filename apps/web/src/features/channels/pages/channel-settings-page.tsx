@@ -1,45 +1,74 @@
 import { AlertTriangle, MessageCircleMore, MessageSquareText } from 'lucide-react';
-import { useId } from 'react';
+import { type KeyboardEvent, useRef } from 'react';
 import { useSnapshot } from 'valtio';
-import { StateView, type TabItem, Tabs } from '../../../design-system/primitives';
+import { StateView } from '../../../design-system/primitives';
 import { appState, navigateSettingsChannel } from '../../../state/app-state';
 import type { ChannelSettingsTab } from '../../settings/settings-state';
 import { WeixinRemotePage } from '../../weixin-remote/pages/weixin-remote-page';
 import type { WeixinRemoteActions } from '../../weixin-remote/use-weixin-remote-controller';
 import { FeishuChannelPage } from './feishu-channel-page';
 
-const channels: Array<{ id: ChannelSettingsTab; label: string }> = [
-  { id: 'weixin', label: '微信' },
-  { id: 'feishu', label: '飞书' },
-];
+const channels = [
+  { id: 'weixin', label: '微信', description: '扫码绑定本机微信' },
+  { id: 'feishu', label: '飞书', description: '开放平台应用接入' },
+] as const satisfies ReadonlyArray<{ id: ChannelSettingsTab; label: string; description: string }>;
 
 export function ChannelSettingsPage({ weixinActions }: { weixinActions?: WeixinRemoteActions }) {
   const state = useSnapshot(appState);
-  const tabListId = useId();
-  const items: readonly TabItem<ChannelSettingsTab>[] = channels.map((channel) => ({
-    ...channel,
-    icon: channel.id === 'weixin' ? <MessageCircleMore size={15} /> : <MessageSquareText size={15} />,
-    panelId: `${tabListId}-${channel.id}-panel`,
-  }));
+  const channelButtons = useRef<Array<HTMLButtonElement | null>>([]);
+  const weixinStatus = channelStatusLabel(state);
+
+  const selectChannel = (channel: ChannelSettingsTab) => {
+    navigateSettingsChannel(channel);
+  };
+  const handleChannelKeyDown = (index: number, event: KeyboardEvent<HTMLButtonElement>) => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1;
+    const nextIndex = (index + step + channels.length) % channels.length;
+    selectChannel(channels[nextIndex].id);
+    channelButtons.current[nextIndex]?.focus();
+  };
 
   return (
     <section className='channel-settings-page' aria-label='渠道设置'>
-      <Tabs
-        ariaLabel='渠道'
-        value={state.settingsChannel}
-        items={items}
-        variant='line'
-        className='channel-settings-tabs'
-        onChange={navigateSettingsChannel}
-      />
+      <aside className='channel-provider-list' aria-label='渠道列表'>
+        <header>
+          <strong>渠道</strong>
+          <span>选择一个渠道进行连接和管理。</span>
+        </header>
+        <nav aria-label='可用渠道'>
+          {channels.map((channel, index) => {
+            const selected = state.settingsChannel === channel.id;
+            const Icon = channel.id === 'weixin' ? MessageCircleMore : MessageSquareText;
+            return (
+              <button
+                ref={(element) => {
+                  channelButtons.current[index] = element;
+                }}
+                type='button'
+                className={selected ? 'selected' : ''}
+                aria-label={channel.label}
+                aria-current={selected ? 'page' : undefined}
+                aria-pressed={selected}
+                onClick={() => selectChannel(channel.id)}
+                onKeyDown={(event) => handleChannelKeyDown(index, event)}
+                key={channel.id}
+              >
+                <span className='channel-provider-icon' aria-hidden='true'>
+                  <Icon size={15} />
+                </span>
+                <span className='channel-provider-copy'>
+                  <strong>{channel.label}</strong>
+                  <small>{channel.id === 'weixin' ? weixinStatus : '即将支持'}</small>
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
 
-      <section
-        id={`${tabListId}-weixin-panel`}
-        className='channel-settings-panel'
-        role='tabpanel'
-        aria-label='微信'
-        hidden={state.settingsChannel !== 'weixin'}
-      >
+      <section className='channel-settings-panel' aria-label='微信' hidden={state.settingsChannel !== 'weixin'}>
         {weixinActions ? (
           <WeixinRemotePage actions={weixinActions} embedded />
         ) : (
@@ -55,15 +84,20 @@ export function ChannelSettingsPage({ weixinActions }: { weixinActions?: WeixinR
         )}
       </section>
 
-      <section
-        id={`${tabListId}-feishu-panel`}
-        className='channel-settings-panel'
-        role='tabpanel'
-        aria-label='飞书'
-        hidden={state.settingsChannel !== 'feishu'}
-      >
+      <section className='channel-settings-panel' aria-label='飞书' hidden={state.settingsChannel !== 'feishu'}>
         <FeishuChannelPage />
       </section>
     </section>
   );
+}
+
+function channelStatusLabel(state: {
+  weixinCapabilityStatus: string;
+  weixinAccount?: { bound?: boolean } | null;
+}): string {
+  if (state.weixinCapabilityStatus === 'loading') return '检查中';
+  if (state.weixinCapabilityStatus === 'error' || state.weixinCapabilityStatus === 'unavailable') return '未就绪';
+  if (state.weixinAccount?.bound) return '已连接';
+  if (state.weixinCapabilityStatus === 'ready') return '未连接';
+  return '未检查';
 }

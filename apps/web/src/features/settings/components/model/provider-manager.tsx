@@ -9,10 +9,12 @@ import { ProviderEditor } from './provider-editor';
 export function ProviderManager({
   providers,
   defaultModel,
+  onDefaultModelChange,
   onChange,
 }: {
   providers: ProviderInfo[];
   defaultModel: string;
+  onDefaultModelChange(defaultModel: string): void;
   onChange(providers: ProviderInfo[]): void;
 }) {
   const [selectedProviderIndex, setSelectedProviderIndex] = useState(0);
@@ -40,7 +42,7 @@ export function ProviderManager({
   return (
     <SettingsSection
       title='Provider 与模型'
-      description='选择一个 Provider 后，只编辑它的连接信息和模型目录。密钥始终保存在本机。'
+      description='左侧选择 Provider，右侧配置连接和模型。'
       className='model-provider-section'
       action={
         <Button tone='secondary' onClick={addProvider}>
@@ -89,6 +91,7 @@ export function ProviderManager({
             <ProviderEditor
               provider={selectedProvider}
               defaultModel={defaultModel}
+              onDefaultModelChange={onDefaultModelChange}
               onChange={updateSelectedProvider}
               onRemove={removeSelectedProvider}
             />

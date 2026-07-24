@@ -496,6 +496,56 @@ describe('ExecutionStream permission decisions', () => {
     expect(selectFile).toHaveBeenCalledTimes(1);
   });
 
+  it('renders successful file edits in the inline diff editor', async () => {
+    appState.activeSessionId = 'session-edit-diff';
+    appState.messagesBySession['session-edit-diff'] = [
+      {
+        id: 'assistant-edit-diff',
+        sessionId: 'session-edit-diff',
+        role: 'assistant',
+        content: '',
+        createdAt: new Date().toISOString(),
+        events: [
+          {
+            type: 'tool_end',
+            id: 'edit-diff-1',
+            name: 'edit',
+            args: {
+              file_path: 'src/app.ts',
+              old_string: 'const answer = 41;',
+              new_string: 'const answer = 42;',
+            },
+            output: 'Replaced 1 occurrence in src/app.ts',
+            exit_code: 0,
+            metadata: {
+              file_path: 'src/app.ts',
+              before: 'const answer = 41;\n',
+              after: 'const answer = 42;\n',
+            },
+          },
+        ],
+      },
+    ];
+
+    const { container } = render(<ExecutionStream actions={{} as TaskActions} />);
+
+    const diff = screen.getByRole('region', { name: '文件差异 src/app.ts' });
+    const removed = container.querySelector('.tool-call-diff-row.removed');
+    const added = container.querySelector('.tool-call-diff-row.added');
+
+    expect(diff).toHaveTextContent('+1');
+    expect(diff).toHaveTextContent('−1');
+    expect(within(diff).getByRole('table', { name: 'src/app.ts 行级差异' })).toBeInTheDocument();
+    expect(removed).toHaveTextContent('const answer = 41;');
+    expect(removed?.querySelector('.old-line')).toHaveTextContent('1');
+    expect(removed?.querySelector('.new-line')).toBeEmptyDOMElement();
+    expect(added).toHaveTextContent('const answer = 42;');
+    expect(added?.querySelector('.old-line')).toBeEmptyDOMElement();
+    expect(added?.querySelector('.new-line')).toHaveTextContent('1');
+    expect(container.querySelector('.tool-call-output-preview')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '打开文件' })).toBeInTheDocument();
+  });
+
   it('keeps successful tool output complete and collapsed until requested', () => {
     const completeOutput = `${'0123456789'.repeat(50)}\nfinal line must remain visible`;
     appState.activeSessionId = 'session-full-tool-output';

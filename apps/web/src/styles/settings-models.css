@@ -67,6 +67,35 @@
   z-index: 12;
 }
 
+.model-runtime-disclosure {
+  margin-bottom: 30px;
+  overflow: hidden;
+  border: 1px solid var(--a3s-line);
+  border-radius: 10px;
+}
+
+.model-runtime-disclosure > .settings-disclosure {
+  background: color-mix(in srgb, var(--a3s-panel-soft) 28%, var(--a3s-panel));
+}
+
+.model-runtime-status {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--a3s-panel-soft);
+  color: var(--a3s-muted);
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.model-runtime-status.configured {
+  background: color-mix(in srgb, var(--a3s-blue) 8%, var(--a3s-panel));
+  color: var(--a3s-blue);
+}
+
 .model-runtime-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -563,6 +592,300 @@
   }
 }
 
+/* The model page follows one simple path: choose Provider, edit connection, manage models. */
+
+.model-settings-toolbar-main {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+}
+
+.model-default-control {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.model-default-label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.model-default-label strong {
+  color: var(--a3s-ink);
+  font-size: 11px;
+  font-weight: 620;
+  white-space: nowrap;
+}
+
+.model-default-label small {
+  max-width: 150px;
+  overflow: hidden;
+  color: var(--a3s-muted);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.model-default-control .ds-combobox {
+  width: 230px;
+}
+
+.model-default-control .ds-combobox-trigger {
+  width: 100%;
+}
+
+.model-default-control .ds-combobox:has(.ds-combobox-popover) {
+  z-index: 12;
+}
+
+.model-provider-manager {
+  min-height: 500px;
+}
+
+.model-provider-workspace {
+  background: var(--a3s-panel);
+}
+
+.provider-connection-editor {
+  border-bottom: 1px solid var(--a3s-line);
+}
+
+.provider-workspace-heading {
+  display: flex;
+  min-height: 54px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+}
+
+.provider-workspace-heading > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.provider-workspace-heading strong {
+  color: var(--a3s-ink);
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.provider-workspace-heading span {
+  overflow: hidden;
+  color: var(--a3s-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-workspace-heading .ds-button {
+  min-height: 29px;
+  flex: 0 0 auto;
+  padding-inline: 9px;
+  font-size: 10px;
+}
+
+.provider-connection-grid {
+  display: grid;
+  padding: 0 14px 14px;
+  grid-template-columns: minmax(130px, 0.75fr) minmax(180px, 1fr) minmax(200px, 1.2fr);
+  gap: 10px;
+}
+
+.provider-connection-grid .config-input,
+.provider-connection-grid .config-secret-field {
+  height: 34px;
+}
+
+.provider-connection-editor > .settings-disclosure {
+  border-top: 1px solid var(--a3s-line);
+}
+
+.provider-connection-editor > .settings-disclosure > summary {
+  min-height: 48px;
+}
+
+.provider-models-editor {
+  min-width: 0;
+}
+
+.provider-models-editor > .provider-workspace-heading {
+  border-bottom: 1px solid var(--a3s-line);
+}
+
+.provider-model-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.provider-model-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.provider-model-table th,
+.provider-model-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--a3s-line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.provider-model-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.provider-model-table th {
+  background: color-mix(in srgb, var(--a3s-panel-soft) 58%, var(--a3s-panel));
+  color: var(--a3s-muted);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.provider-model-table td {
+  color: var(--a3s-muted);
+  font-size: 10px;
+}
+
+.provider-model-table td:nth-child(2) {
+  overflow: hidden;
+}
+
+.provider-model-table td strong,
+.provider-model-table td code {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-model-table td strong {
+  color: var(--a3s-ink);
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.provider-model-table td code {
+  margin-top: 2px;
+  color: var(--a3s-muted);
+  font-size: 9px;
+}
+
+.provider-model-default-column {
+  width: 52px;
+  text-align: center !important;
+}
+
+.provider-model-capability-column {
+  width: 104px;
+}
+
+.provider-model-limit-column {
+  width: 112px;
+  font-variant-numeric: tabular-nums;
+}
+
+.provider-model-actions-column {
+  width: 74px;
+  text-align: right !important;
+}
+
+.provider-model-default {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  margin: 0 auto;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--a3s-faint);
+  cursor: pointer;
+}
+
+.provider-model-default:hover {
+  background: var(--a3s-panel-soft);
+  color: var(--a3s-ink);
+}
+
+.provider-model-default.selected {
+  background: color-mix(in srgb, var(--a3s-blue) 8%, var(--a3s-panel));
+  color: var(--a3s-blue);
+}
+
+.provider-model-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.provider-model-row-actions .ds-button {
+  min-width: 27px;
+  min-height: 27px;
+  padding: 0;
+}
+
+.provider-model-row-actions .provider-model-delete:hover {
+  background: color-mix(in srgb, var(--a3s-red) 7%, var(--a3s-panel));
+  color: var(--a3s-red);
+}
+
+.provider-model-empty.ds-state-view {
+  min-height: 170px;
+  border-top: 0;
+}
+
+.model-editor-dialog {
+  display: flex;
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(760px, calc(100vh - 32px));
+  flex-direction: column;
+}
+
+.model-editor-dialog > header,
+.model-editor-dialog > footer {
+  flex: 0 0 auto;
+}
+
+.model-editor-dialog > .ds-dialog-body {
+  min-height: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
+.model-editor-form > .config-field-grid,
+.model-editor-form > .config-subsection-grid,
+.model-editor-form > .settings-disclosure {
+  border-top: 1px solid var(--a3s-line);
+}
+
+.model-editor-form > .config-field-grid:first-child {
+  border-top: 0;
+}
+
+.model-editor-form > .config-field-grid,
+.model-editor-form > .config-subsection-grid {
+  padding: 13px 18px;
+}
+
+.model-editor-form > .settings-disclosure > summary {
+  padding-inline: 18px;
+}
+
+.model-editor-field-error {
+  color: var(--a3s-red);
+  font-size: 10px;
+}
+
 .key-value-editor,
 .settings-path-list {
   display: flex;
@@ -789,26 +1112,65 @@
     justify-content: flex-start;
   }
 
-  .oomol-connector-empty.ds-state-view {
-    padding: 14px;
-    gap: 12px;
+  .model-settings-toolbar {
+    align-items: stretch;
   }
 
-  .oomol-connector-empty .oomol-connector-links {
-    margin: 2px -14px -14px;
-  }
-
-  .oomol-connector-empty .ds-state-view-actions,
-  .oomol-connector-links {
-    flex-wrap: wrap;
-  }
-
-  .oomol-connector-links {
-    gap: 8px 12px;
-  }
-
-  .oomol-connector-links > span {
+  .model-settings-toolbar-main {
     width: 100%;
-    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .model-default-control {
+    min-width: 0;
+    flex: 1;
+    justify-content: flex-end;
+  }
+
+  .model-default-label small {
+    display: none;
+  }
+
+  .model-default-control .ds-combobox {
+    width: min(230px, 100%);
+  }
+
+  .model-provider-manager {
+    display: block;
+    min-height: 0;
+    background: var(--a3s-panel);
+  }
+
+  .model-provider-list {
+    position: static;
+    overflow-x: auto;
+    flex-direction: row;
+    border-bottom: 1px solid var(--a3s-line);
+  }
+
+  .model-provider-list > button {
+    min-width: 150px;
+    flex: 0 0 150px;
+  }
+
+  .model-runtime-grid,
+  .model-editor-dialog .config-field-grid.two,
+  .model-editor-dialog .config-field-grid.three,
+  .model-editor-dialog .config-field-grid.four {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .provider-connection-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .provider-model-capability-column,
+  .provider-model-limit-column {
+    display: none;
+  }
+
+  .model-runtime-field + .model-runtime-field {
+    border-top: 1px solid var(--a3s-line);
+    border-left: 0;
   }
 }

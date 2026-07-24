@@ -47,27 +47,29 @@ describe('ChannelSettingsPage', () => {
     window.history.replaceState(null, '', '#code/conversation');
   });
 
-  it('switches internal channel tabs without changing the outer Settings page', async () => {
-    render(<ChannelSettingsPage weixinActions={weixinActions} />);
+  it('switches the channel workspace without changing the outer Settings page', async () => {
+    const { container } = render(<ChannelSettingsPage weixinActions={weixinActions} />);
 
-    expect(screen.getByRole('tab', { name: '微信' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: '微信' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('heading', { name: '微信渠道尚未就绪' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '微信' }).parentElement).toHaveClass('channel-settings-page');
+    expect(container.querySelector('.channel-provider-workspace')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: '飞书' }));
+    fireEvent.click(screen.getByRole('button', { name: '飞书' }));
 
     expect(appState.settingsTab).toBe('channels');
     expect(appState.settingsChannel).toBe('feishu');
     expect(window.location.hash).toBe('#settings/channels/feishu');
-    await waitFor(() => expect(screen.getByRole('tab', { name: '飞书' })).toHaveAttribute('aria-selected', 'true'));
+    await waitFor(() => expect(screen.getByRole('button', { name: '飞书' })).toHaveAttribute('aria-pressed', 'true'));
     expect(screen.getByRole('heading', { name: '飞书渠道' })).toBeInTheDocument();
     expect(screen.getByText('敬请期待')).toBeInTheDocument();
 
-    fireEvent.keyDown(screen.getByRole('tab', { name: '飞书' }), { key: 'ArrowLeft' });
+    fireEvent.keyDown(screen.getByRole('button', { name: '飞书' }), { key: 'ArrowLeft' });
 
     expect(appState.settingsTab).toBe('channels');
     expect(appState.settingsChannel).toBe('weixin');
     expect(window.location.hash).toBe('#settings/channels/weixin');
-    await waitFor(() => expect(screen.getByRole('tab', { name: '微信' })).toHaveAttribute('aria-selected', 'true'));
-    expect(screen.getByRole('tab', { name: '微信' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('button', { name: '微信' })).toHaveAttribute('aria-pressed', 'true'));
+    expect(screen.getByRole('button', { name: '微信' })).toHaveFocus();
   });
 });

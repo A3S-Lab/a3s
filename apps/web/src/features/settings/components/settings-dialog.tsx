@@ -39,10 +39,10 @@ interface SettingsTabDefinition {
 const primaryTabs: SettingsTabDefinition[] = [
   { id: 'account', label: '账户', description: '管理 A3S OS 授权与本地开发工具模型', icon: UserRound },
   { id: 'general', label: '通用', description: '调整外观、工作区与本机偏好', icon: Settings2 },
-  { id: 'model', label: '模型与 Provider', description: '管理模型来源、能力、密钥和新任务默认模型', icon: Box },
+  { id: 'model', label: '模型与 Provider', description: '选择默认模型并管理 Provider 连接与模型目录', icon: Box },
   { id: 'agent', label: 'Agent 与执行', description: '配置工具边界、自动委派、目录和任务队列', icon: Bot },
   { id: 'context', label: '上下文与存储', description: '配置会话存储、记忆目录与上下文生命周期', icon: Database },
-  { id: 'integrations', label: '集成', description: '配置连接器、MCP、搜索与文档解析', icon: Plug },
+  { id: 'integrations', label: '集成', description: '配置 MCP、搜索与文档解析', icon: Plug },
   {
     id: 'channels',
     label: '渠道',

@@ -117,6 +117,29 @@ describe('A3S activity bar', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: '知识' })).toHaveAttribute('aria-current', 'page'));
   });
 
+  it('does not carry an Office assistant draft into the Code home composer through Knowledge', () => {
+    appState.activeProduct = 'work';
+    appState.activeSessionId = null;
+    appState.composerValue = '请概览当前文件夹的内容，说明主要文件、用途和最近值得关注的变化。不要修改文件。';
+    appState.composerContextFiles = ['Reports'];
+    appState.draftsByTask = {
+      __new_task__: {
+        content: 'Code draft',
+        contextFiles: ['src/main.rs'],
+        skillNames: [],
+      },
+    };
+
+    render(<ActivityBar />);
+    fireEvent.click(screen.getByRole('button', { name: '知识' }));
+    fireEvent.click(screen.getByRole('button', { name: '编码' }));
+
+    expect(appState.activeProduct).toBe('code');
+    expect(appState.composerValue).toBe('Code draft');
+    expect(appState.composerContextFiles).toEqual(['src/main.rs']);
+    expect(appState.draftsByTask.__work_ai_assistant__?.content).toContain('概览当前文件夹');
+  });
+
   it('opens the signed plugin marketplace as a system entry', async () => {
     render(<ActivityBar />);
     fireEvent.click(screen.getByRole('button', { name: '市场' }));

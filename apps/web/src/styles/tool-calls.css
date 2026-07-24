@@ -109,6 +109,135 @@
   flex-direction: column;
 }
 
+.tool-call-file-diff {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: clamp(240px, 42vh, 440px);
+  overflow: hidden;
+  border: 1px solid var(--a3s-line);
+  border-radius: 8px;
+  background: var(--a3s-panel);
+}
+
+.tool-call-file-diff-summary {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--a3s-line);
+  background: var(--a3s-panel-soft);
+  color: var(--a3s-muted);
+  font-size: 10px;
+}
+
+.tool-call-file-diff-summary > span:first-child {
+  margin-right: auto;
+}
+
+.tool-call-file-diff-summary .added {
+  color: var(--a3s-green);
+  font-weight: 700;
+}
+
+.tool-call-file-diff-summary .removed {
+  color: var(--a3s-red);
+  font-weight: 700;
+}
+
+.tool-call-file-diff-notice {
+  flex: none;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--a3s-line);
+  color: var(--a3s-muted);
+  background: color-mix(in srgb, var(--a3s-warning) 7%, var(--a3s-panel));
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.tool-call-file-diff-lines {
+  width: 100%;
+  min-height: 0;
+  overflow: auto;
+  background: var(--a3s-panel);
+  font-family: "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+  font-size: 11px;
+  line-height: 20px;
+}
+
+.tool-call-file-diff-lines table {
+  width: max-content;
+  min-width: 100%;
+  border-spacing: 0;
+}
+
+.tool-call-diff-row {
+  height: 20px;
+  color: var(--a3s-ink);
+}
+
+.tool-call-diff-row.context:hover {
+  background: var(--a3s-panel-soft);
+}
+
+.tool-call-diff-row.added {
+  background: color-mix(in srgb, var(--a3s-green) 15%, var(--a3s-panel));
+}
+
+.tool-call-diff-row.removed {
+  background: color-mix(in srgb, var(--a3s-red) 14%, var(--a3s-panel));
+}
+
+.tool-call-diff-line-number {
+  width: 38px;
+  min-width: 38px;
+  padding: 0 8px 0 4px;
+  border-right: 1px solid color-mix(in srgb, var(--a3s-line) 82%, transparent);
+  color: var(--a3s-faint);
+  text-align: right;
+  user-select: none;
+}
+
+.tool-call-diff-row.added .tool-call-diff-line-number {
+  background: color-mix(in srgb, var(--a3s-green) 9%, transparent);
+}
+
+.tool-call-diff-row.removed .tool-call-diff-line-number {
+  background: color-mix(in srgb, var(--a3s-red) 9%, transparent);
+}
+
+.tool-call-diff-marker {
+  width: 22px;
+  min-width: 22px;
+  padding: 0;
+  text-align: center;
+  user-select: none;
+}
+
+.tool-call-diff-row.added .tool-call-diff-marker {
+  color: var(--a3s-green);
+}
+
+.tool-call-diff-row.removed .tool-call-diff-marker {
+  color: var(--a3s-red);
+}
+
+.tool-call-diff-code {
+  width: 100%;
+  padding: 0;
+}
+
+.tool-call-diff-code code {
+  display: block;
+  min-width: max-content;
+  padding: 0 14px 0 2px;
+  color: inherit;
+  font: inherit;
+  white-space: pre;
+}
+
 .tool-call-detail-actions {
   display: flex;
   min-width: 0;

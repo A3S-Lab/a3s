@@ -1,6 +1,6 @@
 import { useEventListener } from 'ahooks';
 import { useEffect } from 'react';
-import { appState, closeSettings, navigateSettings, navigateTask } from '../../state/app-state';
+import { activateTaskProduct, appState, closeSettings, navigateSettings, navigateTask } from '../../state/app-state';
 import { settingsChannelFromHash, settingsTabFromHash } from '../settings/settings-state';
 
 export function useShellShortcuts(newTask: () => void) {
@@ -22,11 +22,13 @@ export function useShellShortcuts(newTask: () => void) {
       return;
     }
     if (window.location.hash === '#plugins') {
+      activateTaskProduct('code');
       appState.settingsOpen = false;
       appState.activeProduct = 'plugins';
       return;
     }
     if (window.location.hash === '#knowledge') {
+      activateTaskProduct('code');
       appState.settingsOpen = false;
       appState.activeProduct = 'knowledge';
       appState.commandPaletteOpen = false;
@@ -34,12 +36,14 @@ export function useShellShortcuts(newTask: () => void) {
     }
     const pluginKey = pluginKeyFromHash(window.location.hash);
     if (pluginKey) {
+      activateTaskProduct('code');
       appState.settingsOpen = false;
       appState.activeProduct = 'plugin';
       appState.activePluginKey = pluginKey;
       return;
     }
     if (window.location.hash === '#code/memory') {
+      activateTaskProduct('code');
       appState.settingsOpen = false;
       appState.activeProduct = 'code';
       appState.codeSurface = 'memory';
@@ -47,6 +51,7 @@ export function useShellShortcuts(newTask: () => void) {
     }
     const view = window.location.hash.match(/^#code\/(conversation|review|activity)$/)?.[1];
     if (view === 'conversation' || view === 'review' || view === 'activity') {
+      activateTaskProduct('code');
       appState.settingsOpen = false;
       appState.activeProduct = 'code';
       appState.codeSurface = 'tasks';
@@ -55,6 +60,7 @@ export function useShellShortcuts(newTask: () => void) {
       return;
     }
     if (window.location.hash.startsWith('#work')) {
+      activateTaskProduct('work');
       appState.settingsOpen = false;
       appState.activeProduct = 'work';
       appState.commandPaletteOpen = false;

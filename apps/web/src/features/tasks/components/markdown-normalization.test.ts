@@ -34,4 +34,26 @@ describe('Markdown normalization', () => {
       ['| A |  | C |', '| --- | --- | --- |', '| 1 |  | 3 |'].join('\n')
     );
   });
+
+  it('repairs aligned short delimiters and boundaries collapsed without spaces', () => {
+    const collapsed = '| 左侧 | 右侧 || :-- | --: || 中文 | 42 |';
+
+    expect(normalizeCollapsedMarkdownTables(collapsed)).toBe(
+      ['| 左侧 | 右侧 |', '| :-- | --: |', '| 中文 | 42 |'].join('\n')
+    );
+  });
+
+  it('separates prose from a collapsed table and supports an empty streaming body', () => {
+    expect(normalizeCollapsedMarkdownTables('结果如下： | 项目 | 状态 | | --- | --- |')).toBe(
+      ['结果如下：', '| 项目 | 状态 |', '| --- | --- |'].join('\n')
+    );
+  });
+
+  it('pads a model-generated delimiter row that has fewer columns than its header', () => {
+    const malformed = ['| 目录 | 性质 | 删除依据 |', '|---|---|', '| `.cache/` | 临时目录 | 已确认可删除 |'].join('\n');
+
+    expect(normalizeCollapsedMarkdownTables(malformed)).toBe(
+      ['| 目录 | 性质 | 删除依据 |', '|---|---|---|', '| `.cache/` | 临时目录 | 已确认可删除 |'].join('\n')
+    );
+  });
 });

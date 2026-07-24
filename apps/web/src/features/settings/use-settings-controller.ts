@@ -1,8 +1,8 @@
 import { useMemoizedFn } from 'ahooks';
-import { codeApi } from '../../lib/api';
+import { ApiError, codeApi } from '../../lib/api';
+import { appState, formatApiError, showToast } from '../../state/app-state';
 import type { LlmSettings } from '../../types/api';
 import type { AgentSettings, ConfigCategory, ContextSettings, IntegrationsSettings } from '../../types/settings';
-import { appState, formatApiError, showToast } from '../../state/app-state';
 import { fallbackModelCatalog } from '../code/use-app-bootstrap';
 import type { UpdateStatus } from './settings-state';
 
@@ -155,10 +155,9 @@ export function useSettingsController() {
       appState.updateStatus = (await codeApi.updateStatus()) as UpdateStatus;
       if (!appState.updateStatus.updateAvailable) appState.updateInstalledVersion = null;
     } catch (error) {
-      const message = formatApiError(error);
+      const message = formatUpdateCheckError(error);
       appState.updateStatus = null;
       appState.updateCheckError = message;
-      showToast(message, 'error');
     } finally {
       appState.updateChecking = false;
     }
@@ -201,6 +200,13 @@ export function useSettingsController() {
     checkForUpdates,
     installUpdate,
   };
+}
+
+function formatUpdateCheckError(error: unknown): string {
+  if (error instanceof ApiError && error.status === 404) {
+    return '当前 A3S Boot 版本尚未提供在线更新检查，请使用原安装渠道升级。';
+  }
+  return formatApiError(error);
 }
 
 function categoryData(category: ConfigCategory) {

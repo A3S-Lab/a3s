@@ -1,6 +1,5 @@
 import { Server, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import { Button, Tabs } from '../../../../design-system/primitives';
+import { Button } from '../../../../design-system/primitives';
 import type { ProviderInfo } from '../../../../types/api';
 import { ProviderConnectionEditor } from './provider-connection-editor';
 import { ProviderModelsEditor } from './provider-models-editor';
@@ -8,15 +7,16 @@ import { ProviderModelsEditor } from './provider-models-editor';
 export function ProviderEditor({
   provider,
   defaultModel,
+  onDefaultModelChange,
   onChange,
   onRemove,
 }: {
   provider: ProviderInfo;
   defaultModel: string;
+  onDefaultModelChange(defaultModel: string): void;
   onChange(provider: ProviderInfo): void;
   onRemove(): void;
 }) {
-  const [activeView, setActiveView] = useState<'connection' | 'models'>('connection');
   const name = provider.name || '未命名 Provider';
   return (
     <div className='model-provider-editor'>
@@ -33,26 +33,13 @@ export function ProviderEditor({
         </Button>
       </header>
 
-      <Tabs
-        ariaLabel={`${name} 配置分类`}
-        value={activeView}
-        variant='line'
-        size='compact'
-        className='model-provider-tabs'
-        items={[
-          { id: 'connection', label: '连接设置' },
-          { id: 'models', label: '模型目录', badge: provider.models.length },
-        ]}
-        onChange={setActiveView}
+      <ProviderConnectionEditor provider={provider} onChange={onChange} />
+      <ProviderModelsEditor
+        provider={provider}
+        defaultModel={defaultModel}
+        onDefaultModelChange={onDefaultModelChange}
+        onChange={onChange}
       />
-
-      <div className='model-provider-detail-body'>
-        {activeView === 'connection' ? (
-          <ProviderConnectionEditor provider={provider} onChange={onChange} />
-        ) : (
-          <ProviderModelsEditor provider={provider} defaultModel={defaultModel} onChange={onChange} />
-        )}
-      </div>
     </div>
   );
 }

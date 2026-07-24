@@ -131,6 +131,11 @@
   transform: none;
 }
 
+.work-sidebar-create .ds-button {
+  justify-content: flex-start;
+  text-align: left;
+}
+
 .work-sidebar nav button.active {
   color: var(--a3s-blue);
   font-weight: 650;

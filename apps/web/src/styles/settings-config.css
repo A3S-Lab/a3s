@@ -2,7 +2,7 @@
 
 .settings-config-page {
   width: 100%;
-  max-width: 840px;
+  max-width: 920px;
   padding-bottom: 32px;
 }
 
@@ -316,66 +316,6 @@
   max-width: 280px;
 }
 
-.config-segmented-control {
-  display: grid;
-  width: 100%;
-  grid-auto-columns: minmax(0, 1fr);
-  grid-auto-flow: column;
-  gap: 3px;
-  padding: 3px;
-  border: 1px solid var(--a3s-line);
-  border-radius: 9px;
-  background: var(--a3s-panel-soft);
-}
-
-.config-segmented-control > label {
-  position: relative;
-  min-width: 0;
-  height: 30px;
-  border-radius: 6px;
-  color: var(--a3s-muted);
-  cursor: pointer;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.config-segmented-control > label > input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.config-segmented-control > label > span {
-  display: flex;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
-  padding: 0 9px;
-  border-radius: inherit;
-}
-
-.config-segmented-control > label:hover:has(input:not(:disabled)) {
-  color: var(--a3s-ink);
-}
-
-.config-segmented-control > label.selected {
-  background: var(--a3s-panel);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
-  color: var(--a3s-ink);
-  font-weight: 600;
-}
-
-.config-segmented-control > label:has(input:focus-visible) {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--a3s-blue) 32%, transparent);
-}
-
-.config-segmented-control > label:has(input:disabled) {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 .config-slider-field {
   display: grid;
   width: 100%;
@@ -587,8 +527,11 @@
 
 .config-subsection-grid {
   display: grid;
+  min-width: 0;
   gap: 8px;
+  margin: 0;
   padding: 12px 13px;
+  border: 0;
 }
 
 .config-subsection-grid.capabilities {
@@ -731,101 +674,4 @@
 
 .settings-empty-notice.ds-inline-notice {
   padding: 12px 13px;
-}
-
-.oomol-connector-empty.ds-state-view {
-  min-height: 138px;
-  padding: 16px;
-}
-
-.oomol-connector-empty .ds-state-view-details {
-  width: 100%;
-}
-
-.oomol-connector-empty.ds-state-view h2 {
-  font-size: 13px;
-}
-
-.oomol-connector-empty.ds-state-view > p {
-  max-width: 520px;
-  font-size: 11px;
-  line-height: 1.55;
-}
-
-.oomol-connector-empty .ds-state-view-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 7px;
-}
-
-.oomol-connector-empty .ds-state-view-actions .ds-button {
-  min-height: 32px;
-  padding-inline: 10px;
-  font-size: 10px;
-}
-
-.oomol-connector-links {
-  display: flex;
-  min-height: 42px;
-  grid-column: 1 / -1;
-  align-items: center;
-  gap: 14px;
-  padding: 9px 13px;
-  border-top: 1px solid var(--a3s-line);
-  color: var(--a3s-muted);
-  font-size: 10px;
-}
-
-.oomol-connector-empty .oomol-connector-links {
-  margin: 2px -16px -16px;
-}
-
-.oomol-connector-links a {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--a3s-blue);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.oomol-connector-links a:hover {
-  text-decoration: underline;
-}
-
-.oomol-connector-links > span {
-  margin-left: auto;
-  color: var(--a3s-faint);
-}
-
-.oomol-connector-settings > .config-delete-button {
-  align-self: flex-start;
-}
-
-.oomol-connector-field {
-  position: relative;
-  display: flex;
-  width: 100%;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.oomol-connector-field > .ds-field-label {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-}
-
-.oomol-connector-field .ds-field-error {
-  text-align: left;
-}
-
-.oomol-connector-warning code {
-  color: var(--a3s-ink);
-  font-family: "SFMono-Regular", Consolas, monospace;
 }

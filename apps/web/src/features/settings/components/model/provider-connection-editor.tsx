@@ -1,6 +1,7 @@
 import type { ProviderInfo } from '../../../../types/api';
 import { KeyValueEditor } from '../config/key-value-editor';
 import { SettingsDisclosure } from '../config/settings-disclosure';
+import { SettingsField } from '../config/settings-field';
 import { SettingsSecretField, SettingsTextField } from '../config/settings-fields';
 import { SettingsRow } from '../config/settings-row';
 
@@ -14,30 +15,38 @@ export function ProviderConnectionEditor({
   const label = provider.name || 'Provider';
   return (
     <div className='provider-connection-editor'>
-      <SettingsRow label='Provider 名称' description='模型引用中 `/` 前的唯一名称。'>
-        <SettingsTextField
-          label={`${label} 名称`}
-          value={provider.name}
-          placeholder='openai'
-          onChange={(name) => onChange({ ...provider, name })}
-        />
-      </SettingsRow>
-      <SettingsRow label='API 地址' description='OpenAI-compatible 或 Provider 原生服务地址。'>
-        <SettingsTextField
-          type='url'
-          label={`${label} API 地址`}
-          value={provider.baseUrl}
-          placeholder='使用 Provider 默认地址'
-          onChange={(baseUrl) => onChange({ ...provider, baseUrl: baseUrl || null })}
-        />
-      </SettingsRow>
-      <SettingsRow label='API Key' description='已保存的密钥不会返回浏览器；输入新值可替换。'>
-        <SettingsSecretField
-          label={`${label} API Key`}
-          value={provider.apiKey}
-          onChange={(apiKey) => onChange({ ...provider, apiKey })}
-        />
-      </SettingsRow>
+      <header className='provider-workspace-heading'>
+        <div>
+          <strong>连接</strong>
+          <span>API Key 和 Base URL 直接用于这个 Provider 下的模型。</span>
+        </div>
+      </header>
+      <div className='provider-connection-grid'>
+        <SettingsField label='Provider 名称'>
+          <SettingsTextField
+            label={`${label} 名称`}
+            value={provider.name}
+            placeholder='openai'
+            onChange={(name) => onChange({ ...provider, name })}
+          />
+        </SettingsField>
+        <SettingsField label='API Key'>
+          <SettingsSecretField
+            label={`${label} API Key`}
+            value={provider.apiKey}
+            onChange={(apiKey) => onChange({ ...provider, apiKey })}
+          />
+        </SettingsField>
+        <SettingsField label='Base URL'>
+          <SettingsTextField
+            type='url'
+            label={`${label} Base URL`}
+            value={provider.baseUrl}
+            placeholder='使用 Provider 默认地址'
+            onChange={(baseUrl) => onChange({ ...provider, baseUrl: baseUrl || null })}
+          />
+        </SettingsField>
+      </div>
       <SettingsDisclosure title='高级连接选项' description='请求头与会话标识透传；通常无需配置。'>
         <SettingsRow label='会话 ID Header' description='将运行时 session id 注入指定请求头。'>
           <SettingsTextField

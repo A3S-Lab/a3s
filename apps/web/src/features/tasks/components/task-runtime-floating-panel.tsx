@@ -15,8 +15,6 @@ export function TaskRuntimeFloatingPanel() {
   const sessionId = state.activeSessionId;
   const messages = sessionId ? (state.messagesBySession[sessionId] ?? []) : [];
   const streamOpen = Boolean(sessionId && state.streamingSessionId === sessionId);
-  const preparing = Boolean(state.taskSubmissionState);
-  const starting = state.taskSubmissionState === 'creating';
   const runtime = latestRuntimeContext(
     messages as unknown as readonly ChatMessage[],
     state.streamEvents as unknown as readonly AgentEvent[],
@@ -40,9 +38,8 @@ export function TaskRuntimeFloatingPanel() {
   const presentation = presentTaskRuntime({
     steps: plan.steps,
     agents,
-    running: turnRunning || preparing,
+    running: turnRunning,
     planning: plan.planning,
-    starting,
     executionStatus: execution?.status,
   });
   const now = useLiveNow(presentation.live);
@@ -57,8 +54,8 @@ export function TaskRuntimeFloatingPanel() {
   const progress = plan.steps.length ? Math.round((completedSteps / plan.steps.length) * 100) : 0;
   const hasPlan = plan.steps.length > 0;
   const hasAgents = agents.length > 0;
-  const tracksTask = hasPlan || plan.planning || preparing || (turnRunning && !hasAgents);
-  const visible = preparing || streamOpen || hasPlan || hasAgents;
+  const tracksTask = hasPlan || plan.planning;
+  const visible = tracksTask || hasAgents;
   const attentionIdentity = runtimeAttentionIdentity(plan.steps, agents);
   const { layout, panelRef, style } = useTaskRuntimeFloatingPlacement(turnIdentity, expanded, visible);
 
@@ -136,7 +133,7 @@ export function TaskRuntimeFloatingPanel() {
             </div>
           )}
           {hasPlan && <TaskRuntimePlanList steps={plan.steps} />}
-          {!hasPlan && !hasAgents && <RuntimeAwaitingState starting={starting} planning={plan.planning} />}
+          {!hasPlan && !hasAgents && <RuntimeAwaitingState />}
           {agents.length > 0 && (
             <TaskRuntimeSubagentList
               agents={agents}
@@ -151,17 +148,13 @@ export function TaskRuntimeFloatingPanel() {
   );
 }
 
-function RuntimeAwaitingState({ starting, planning }: { starting: boolean; planning: boolean }) {
-  const title = starting ? '正在启动任务会话' : planning ? '正在生成执行计划' : '正在分析任务';
-  const description = planning
-    ? '计划生成后会在这里持续更新任务进度和并行子智能体。'
-    : '任务计划和并行子智能体开始后会在这里实时更新。';
+function RuntimeAwaitingState() {
   return (
     <output className='task-runtime-awaiting'>
       <LoaderCircle className='spin' size={15} />
       <span>
-        <strong>{title}</strong>
-        <small>{description}</small>
+        <strong>正在生成执行计划</strong>
+        <small>计划生成后会在这里持续更新任务进度和并行子智能体。</small>
       </span>
     </output>
   );

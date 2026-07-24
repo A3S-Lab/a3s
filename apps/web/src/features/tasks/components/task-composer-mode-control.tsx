@@ -21,7 +21,7 @@ const EXECUTION_MODES = [
   {
     id: 'auto',
     label: '自动执行',
-    description: '在当前安全边界内连续完成任务',
+    description: '沙箱内连续执行，越界操作直接拒绝',
     icon: Zap,
   },
 ] as const;

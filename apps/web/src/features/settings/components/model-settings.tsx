@@ -58,8 +58,17 @@ export function ModelSettings({
 
   return (
     <div className='settings-config-page'>
-      <div className='settings-config-toolbar'>
-        <SettingsEffectBadge effect={source.effect} />
+      <div className='settings-config-toolbar model-settings-toolbar'>
+        <div className='model-settings-toolbar-main'>
+          <SettingsEffectBadge effect={source.effect} />
+          <DefaultModelSetting
+            models={catalog}
+            providerCount={draft.providers.length}
+            value={draft.defaultModel}
+            savedValue={source.defaultModel}
+            onChange={(defaultModel) => setDraft({ ...draft, defaultModel })}
+          />
+        </div>
         <SettingsSaveState
           dirty={dirty}
           saving={state.settingsCategorySaving.llm}
@@ -70,12 +79,11 @@ export function ModelSettings({
       </div>
       <SettingsCategoryError message={state.settingsCategoryErrors.llm} />
 
-      <DefaultModelSetting
-        models={catalog}
-        providerCount={draft.providers.length}
-        value={draft.defaultModel}
-        savedValue={source.defaultModel}
-        onChange={(defaultModel) => setDraft({ ...draft, defaultModel })}
+      <ProviderManager
+        providers={draft.providers}
+        defaultModel={draft.defaultModel}
+        onDefaultModelChange={(defaultModel) => setDraft({ ...draft, defaultModel })}
+        onChange={updateProviders}
       />
 
       <ModelRuntimeSettings
@@ -84,8 +92,6 @@ export function ModelSettings({
         onThinkingBudgetChange={(thinkingBudget) => setDraft({ ...draft, thinkingBudget })}
         onTimeoutChange={(llmApiTimeoutMs) => setDraft({ ...draft, llmApiTimeoutMs })}
       />
-
-      <ProviderManager providers={draft.providers} defaultModel={draft.defaultModel} onChange={updateProviders} />
     </div>
   );
 }

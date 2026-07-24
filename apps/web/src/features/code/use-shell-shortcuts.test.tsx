@@ -20,19 +20,27 @@ describe('shell location synchronization', () => {
     window.history.replaceState(null, '', '#code/conversation');
   });
 
-  it('opens a direct Memory hash without discarding the current task state', () => {
+  it('opens a direct Memory hash with the Code draft instead of an Office assistant draft', () => {
     appState.activeProduct = 'work';
     appState.codeSurface = 'tasks';
-    appState.activeSessionId = 'task-keep';
-    appState.composerValue = 'keep this draft';
+    appState.activeSessionId = null;
+    appState.composerValue = '请概览当前文件夹的内容，说明主要文件、用途和最近值得关注的变化。不要修改文件。';
+    appState.draftsByTask = {
+      __new_task__: {
+        content: 'Code draft',
+        contextFiles: [],
+        skillNames: [],
+      },
+    };
     window.history.replaceState(null, '', '#code/memory');
 
     renderHook(() => useShellShortcuts(() => undefined));
 
     expect(appState.activeProduct).toBe('code');
     expect(appState.codeSurface).toBe('memory');
-    expect(appState.activeSessionId).toBe('task-keep');
-    expect(appState.composerValue).toBe('keep this draft');
+    expect(appState.activeSessionId).toBeNull();
+    expect(appState.composerValue).toBe('Code draft');
+    expect(appState.draftsByTask.__work_ai_assistant__?.content).toContain('概览当前文件夹');
   });
 
   it('updates the active Code route on browser hash navigation', () => {

@@ -1,6 +1,6 @@
 import { CheckCircle2, ChevronDown, Eye, EyeOff, X } from 'lucide-react';
 import { type CSSProperties, useId, useState } from 'react';
-import { type FieldControlProps, IconButton } from '../../../../design-system/primitives';
+import { type FieldControlProps, IconButton, SegmentedControl } from '../../../../design-system/primitives';
 
 export const configuredSecret = '[configured]';
 
@@ -193,24 +193,20 @@ export function SettingsSegmentedControl<T extends string>({
   options: Array<{ value: T; label: string; description?: string }>;
   disabled?: boolean;
 }) {
-  const groupName = useId();
-
   return (
-    <div className='config-segmented-control' role='radiogroup' aria-label={label}>
-      {options.map((option) => (
-        <label className={value === option.value ? 'selected' : ''} title={option.description} key={option.value}>
-          <input
-            type='radio'
-            name={groupName}
-            value={option.value}
-            checked={value === option.value}
-            disabled={disabled}
-            onChange={() => onChange(option.value)}
-          />
-          <span>{option.label}</span>
-        </label>
-      ))}
-    </div>
+    <SegmentedControl
+      ariaLabel={label}
+      value={value}
+      layout='equal'
+      size='compact'
+      disabled={disabled}
+      items={options.map((option) => ({
+        id: option.value,
+        label: option.label,
+        description: option.description,
+      }))}
+      onChange={onChange}
+    />
   );
 }
 

@@ -299,14 +299,14 @@ describe('Web-native session experiences', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: '任务指令' })).toHaveTextContent('请实现以下功能'));
   });
 
-  it('shows task startup in the upper-right tracker before the first session exists', () => {
+  it('does not show task tracking before the first session has a plan or subagent', () => {
     appState.activeSessionId = null;
     appState.taskSubmissionState = 'creating';
 
     render(<TasksPage actions={{} as CodeActions} />);
 
-    expect(screen.getByLabelText('任务进度浮窗')).toHaveTextContent('正在创建任务');
-    expect(screen.getByRole('region', { name: '任务规划与执行' })).toHaveTextContent('正在启动任务会话');
+    expect(screen.queryByLabelText('任务进度浮窗')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('并行子智能体浮窗')).not.toBeInTheDocument();
   });
 
   it('replaces the submitted editor when first-task startup settles', async () => {

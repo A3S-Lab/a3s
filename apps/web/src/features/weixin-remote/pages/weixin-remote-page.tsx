@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Bot,
+  ChevronDown,
   CirclePause,
   CirclePlay,
   Clock3,
@@ -38,6 +39,18 @@ export function WeixinRemotePage({ actions, embedded = false }: { actions: Weixi
   const capability = state.weixinCapability;
   const account = state.weixinAccount;
   const busy = state.weixinOperation !== 'idle';
+  const accountCard = account ? (
+    <AccountCard
+      account={account}
+      protocolMode={capability?.protocolMode ?? account.protocolMode}
+      operation={state.weixinOperation}
+      error={state.weixinAccountError}
+      onBind={() => void actions.startLogin()}
+      onPause={() => void actions.pause()}
+      onResume={() => void actions.resume()}
+      onDisconnect={() => setDisconnectReviewOpen(true)}
+    />
+  ) : null;
 
   return (
     <section className={`weixin-remote-page${embedded ? ' is-settings' : ''}`} aria-label='微信远程管理'>
@@ -85,26 +98,43 @@ export function WeixinRemotePage({ actions, embedded = false }: { actions: Weixi
             message='正在确认本机是否已有微信绑定以及消息监控状态。'
           />
         ) : account ? (
-          <div className='weixin-page-grid'>
-            <AccountCard
-              account={account}
-              protocolMode={capability?.protocolMode ?? account.protocolMode}
-              operation={state.weixinOperation}
-              error={state.weixinAccountError}
-              onBind={() => void actions.startLogin()}
-              onPause={() => void actions.pause()}
-              onResume={() => void actions.resume()}
-              onDisconnect={() => setDisconnectReviewOpen(true)}
-            />
-            <TargetPreviewCard
-              snapshot={state.weixinTargets as RemoteTargetSnapshot | null}
-              status={state.weixinTargetsStatus}
-              error={state.weixinTargetsError}
-              onRefresh={actions.refreshTargets}
-            />
-            <SafetyCard scopes={[...(capability?.supportedScopes ?? [])]} mutationsEnabled={account.mutationsEnabled} />
-            <ReleaseCard mode={capability?.protocolMode ?? account.protocolMode} />
-          </div>
+          embedded ? (
+            <div className='weixin-settings-stack'>
+              {accountCard}
+              <details className='weixin-settings-details'>
+                <summary>
+                  <span>
+                    <strong>远程目标状态</strong>
+                    <small>查看微信端可见的脱敏智能体、会话和进程。</small>
+                  </span>
+                  <ChevronDown size={15} />
+                </summary>
+                <div>
+                  <TargetPreviewCard
+                    snapshot={state.weixinTargets as RemoteTargetSnapshot | null}
+                    status={state.weixinTargetsStatus}
+                    error={state.weixinTargetsError}
+                    onRefresh={actions.refreshTargets}
+                  />
+                </div>
+              </details>
+            </div>
+          ) : (
+            <div className='weixin-page-grid'>
+              {accountCard}
+              <TargetPreviewCard
+                snapshot={state.weixinTargets as RemoteTargetSnapshot | null}
+                status={state.weixinTargetsStatus}
+                error={state.weixinTargetsError}
+                onRefresh={actions.refreshTargets}
+              />
+              <SafetyCard
+                scopes={[...(capability?.supportedScopes ?? [])]}
+                mutationsEnabled={account.mutationsEnabled}
+              />
+              <ReleaseCard mode={capability?.protocolMode ?? account.protocolMode} />
+            </div>
+          )
         ) : (
           <PageState
             tone='danger'
