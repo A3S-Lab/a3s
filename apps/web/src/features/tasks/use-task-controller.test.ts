@@ -20,6 +20,7 @@ afterEach(() => {
   localStorage.removeItem('a3s-code-web.active-task');
   localStorage.removeItem('a3s-work.ai-assistant.active-session');
   localStorage.removeItem('a3s-code-web.task-drafts');
+  localStorage.removeItem('a3s-code-web.task-drafts-schema');
   localStorage.removeItem('a3s-code-web.queued-prompts');
   localStorage.removeItem('a3s-code-web.paused-queues');
   localStorage.removeItem('a3s-code-web.new-task-config');
@@ -293,6 +294,50 @@ describe('task-scoped draft recovery', () => {
     expect(restored.composerContextFiles).toEqual(['src/app.ts']);
     expect(restored.composerSkills).toEqual([]);
     expect(restored.composerMode).toBe('standard');
+  });
+
+  it('clears a legacy anonymous Code draft once without removing task or Work drafts', () => {
+    const leakedWorkPrompt = '请概览当前文件夹的内容，说明主要文件、用途和最近值得关注的变化。不要修改文件。';
+    localStorage.removeItem('a3s-code-web.task-drafts-schema');
+    localStorage.setItem(
+      'a3s-code-web.task-drafts',
+      JSON.stringify({
+        [newTaskDraftKey]: {
+          content: leakedWorkPrompt,
+          contextFiles: [],
+          skillNames: [],
+        },
+        __work_ai_assistant__: {
+          content: leakedWorkPrompt,
+          contextFiles: ['Reports'],
+          skillNames: [],
+        },
+        'task-a': {
+          content: 'Keep this task draft',
+          contextFiles: ['src/app.ts'],
+          skillNames: ['review'],
+        },
+      })
+    );
+
+    const migrated = createTaskState();
+
+    expect(migrated.composerValue).toBe('');
+    expect(migrated.draftsByTask[newTaskDraftKey]).toBeUndefined();
+    expect(migrated.draftsByTask.__work_ai_assistant__?.content).toBe(leakedWorkPrompt);
+    expect(migrated.draftsByTask['task-a']?.content).toBe('Keep this task draft');
+    expect(localStorage.getItem('a3s-code-web.task-drafts-schema')).toBe('2');
+
+    persistTaskDrafts({
+      ...migrated.draftsByTask,
+      [newTaskDraftKey]: {
+        content: 'A new intentional draft',
+        contextFiles: [],
+        skillNames: [],
+      },
+    });
+
+    expect(createTaskState().composerValue).toBe('A new intentional draft');
   });
 
   it('removes the legacy editor-injected CLAUDE.md prompt instead of restoring it forever', () => {
