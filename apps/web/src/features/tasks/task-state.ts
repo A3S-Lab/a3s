@@ -73,6 +73,8 @@ function readTitles(): Record<string, string> {
 const activeTaskKey = 'a3s-code-web.active-task';
 const workActiveTaskKey = 'a3s-work.ai-assistant.active-session';
 const taskDraftsKey = 'a3s-code-web.task-drafts';
+const taskDraftsSchemaKey = 'a3s-code-web.task-drafts-schema';
+const taskDraftsSchemaVersion = 2;
 const newTaskConfigKey = 'a3s-code-web.new-task-config';
 const goalTimingsKey = 'a3s-code-web.goal-timings';
 export const newTaskDraftKey = '__new_task__';
@@ -216,14 +218,42 @@ export function createTaskState(product: TaskProduct = 'code'): TaskState {
 
 function readTaskDrafts(): Record<string, TaskDraft> {
   const drafts = readRecord<TaskDraft>(taskDraftsKey);
+  const needsAnonymousDraftMigration = readTaskDraftsSchemaVersion() < taskDraftsSchemaVersion;
   let changed = false;
+  // Older builds could persist a Work assistant instruction as the anonymous
+  // Code task while navigating through a system page. Its origin is not
+  // recoverable, so invalidate only that anonymous draft once and preserve all
+  // named task and Work drafts.
+  if (needsAnonymousDraftMigration && Object.hasOwn(drafts, newTaskDraftKey)) {
+    delete drafts[newTaskDraftKey];
+    changed = true;
+  }
   for (const [key, draft] of Object.entries(drafts)) {
     if (!isLegacyEditorInjectedDraft(draft)) continue;
     delete drafts[key];
     changed = true;
   }
-  if (changed) persistTaskDrafts(drafts);
+  const draftsPersisted = !changed || persistTaskDrafts(drafts);
+  if (needsAnonymousDraftMigration && draftsPersisted) persistTaskDraftsSchemaVersion();
   return drafts;
+}
+
+function readTaskDraftsSchemaVersion(): number {
+  try {
+    const value = Number(localStorage.getItem(taskDraftsSchemaKey));
+    return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function persistTaskDraftsSchemaVersion(): boolean {
+  try {
+    localStorage.setItem(taskDraftsSchemaKey, String(taskDraftsSchemaVersion));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function isLegacyEditorInjectedDraft(draft: TaskDraft | undefined): boolean {
