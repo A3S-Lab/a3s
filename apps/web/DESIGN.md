@@ -62,8 +62,8 @@ in those references.
 | Familiar scenario chips | Helps users start without learning commands | Code-specific starters such as fix, explain, implement, test, and review |
 | Controls attached to the Composer | Keeps configuration connected to the instruction it affects | The mode-specific icon control owns execution mode; model, Effort, and context usage keep dedicated entries, while `/goal` stays inline |
 | Soft neutral surfaces with restrained accent color | Feels calm and contemporary without looking decorative | Neutral canvas and surfaces use black for primary actions and A3S blue only for focus, selection, and active progress |
-| Compact monochrome navigation | Keeps destinations recognizable without competing with the task | Preserve the A3S Activity Bar and Code task library with quieter inactive states |
-| Small product label, plain navigation rows, and collapsible object groups | Keeps the sidebar useful without turning it into a second dashboard | Show A3S Code and its version quietly, keep New task as a 34 px row, and group single-line task titles with relative time |
+| Compact navigation with one icon grammar | Keeps destinations recognizable without competing with the task | Preserve the A3S Activity Bar and use the shared framed command glyphs in every product sidebar |
+| Small product label, compact navigation rows, and collapsible object groups | Keeps the sidebar useful without turning it into a second dashboard | Keep New task as a 34 px row and group single-line task titles with relative time |
 | Short, conversational Chinese labels | Reduces technical intimidation | Use direct verbs and user outcomes; do not expose transport or backend language |
 
 The following visible patterns are not inherited:
@@ -331,24 +331,41 @@ task-critical actions.
 ### Activity Bar and product navigation
 
 The leftmost 52 px Activity Bar is the super-app product switcher. Its upper
-group contains Work (办公), Code (编码), and Science (科学) in
-fixed order. Its lower group contains one Settings button pinned to the bottom;
-account management is a Settings section, not a separate Activity Bar item.
+group contains Code (编码), Work (办公), Knowledge (知识), and enabled package
+contributions in that order. Its lower group contains Memory, Market, and
+Settings; account management is a Settings section, not a separate Activity
+Bar item.
 
 The selected product is indicated by an A3S-blue edge marker, icon treatment,
 and `aria-current`; color alone is insufficient. Product buttons remain
 icon-only and expose names through tooltips and accessible labels.
 
-A 220–280 px product-local sidebar sits immediately to the right. It owns the
-selected product's navigation and object lists. Product switching and local
-navigation must never be combined in the same list.
+A 232 px product-local sidebar sits immediately to the right and compacts to
+208 px on narrower desktop layouts. It owns the selected product's navigation
+and object lists. Product switching and local navigation must never be combined
+in the same list.
+
+Code, Work, and Knowledge use the same product-sidebar chrome:
+
+- one background, border, header hierarchy, and collapse action;
+- 34 px navigation rows with the same spacing, radius, hover, and selected
+  states;
+- 25 px framed command glyphs with a shared 1.75 Lucide stroke and explicit
+  semantic tones rather than position-dependent coloring;
+- product-specific object icons only where they carry real type information,
+  such as Work folders and Office files;
+- long Code task titles remain icon-free so title recognition and relative time
+  retain enough horizontal space.
+
+Memory and Market filter rails use the same width and surface tone, while
+remaining filter panels rather than product navigation.
 
 The Code Task Library follows the restrained density of the supplied WorkBuddy
 sidebar without copying its assistant, project, or automation taxonomy:
 
-- a small neutral `A3S Code v…` label identifies the local product;
-- New task is a plain 34 px navigation row, with a neutral selected background
-  only while the preparation surface is active;
+- a small neutral `编码` label identifies the local product;
+- New task is a shared 34 px navigation row with a framed blue command glyph
+  and selected state only while the preparation surface is active;
 - Search is a header action and expands a compact field only when requested;
 - tasks live under one collapsible `任务 (n)` group;
 - each task row is one line: title first, honest relative creation time second;

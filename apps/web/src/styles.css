@@ -18,6 +18,7 @@
 @import "./styles/activity-bar.css";
 @import "./styles/design-system.css";
 @import "./styles/design-system-forms.css";
+@import "./styles/product-sidebar.css";
 @import "./styles/code-product.css";
 @import "./styles/tasks.css";
 @import "./styles/task-composer.css";
@@ -37,6 +38,7 @@
 @import "./styles/work-product.css";
 @import "./styles/work-files.css";
 @import "./styles/work-files-content.css";
+@import "./styles/work-files-interactions.css";
 @import "./styles/work-code.css";
 @import "./styles/work-copilot.css";
 @import "./styles/work-library.css";

@@ -1,89 +1,13 @@
-.task-library {
-  display: flex;
-  width: 260px;
-  height: 100%;
-  flex: 0 0 260px;
-  flex-direction: column;
-  border-right: 1px solid var(--a3s-line);
-  background: color-mix(in srgb, var(--a3s-panel-soft) 42%, var(--a3s-panel));
-}
-
-.sidebar-product-header {
-  display: flex;
-  height: 62px;
-  flex: 0 0 62px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 8px 0 20px;
-}
-
-.sidebar-product-header > strong {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--a3s-ink);
-  font-size: 14px;
-  font-weight: 680;
-  letter-spacing: -0.015em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sidebar-product-header-actions {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 0;
-}
-
-.sidebar-product-header-actions .ds-icon-button {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-}
-
 .task-list {
   min-height: 0;
   flex: 1;
-  padding: 4px 8px 12px;
+  padding: 4px 0 0;
   overflow: auto;
 }
 
 .task-library-new {
-  display: flex;
-  height: 34px;
   flex: 0 0 34px;
-  align-items: center;
-  gap: 9px;
-  margin: 2px 8px 10px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--a3s-ink);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 140ms ease;
-}
-
-.task-library-new:hover {
-  background: var(--a3s-panel-soft);
-}
-
-.task-library-new.active {
-  background: var(--a3s-panel-strong);
-  font-weight: 600;
-}
-
-.task-library-new svg {
-  flex: 0 0 auto;
-  color: var(--a3s-muted);
-  stroke-width: 1.8;
-}
-
-.task-library-new.active svg {
-  color: var(--a3s-ink);
+  margin: 2px 0 10px;
 }
 
 .product-workspace {
@@ -102,13 +26,6 @@
   flex-direction: column;
 }
 
-@media (max-width: 1100px) {
-  .task-library {
-    width: 224px;
-    flex-basis: 224px;
-  }
-}
-
 @media (max-width: 620px) {
   .task-library {
     position: absolute;
@@ -116,7 +33,7 @@
     top: 0;
     bottom: 0;
     left: 52px;
-    width: min(260px, calc(100% - 52px));
+    width: min(var(--a3s-product-sidebar-width), calc(100% - 52px));
     height: auto;
     flex-basis: auto;
     box-shadow: 16px 0 36px rgb(20 24 40 / 16%);

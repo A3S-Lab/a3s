@@ -6,21 +6,6 @@
   overflow: hidden;
 }
 
-.work-sidebar-section-label {
-  padding: 4px 10px 5px;
-  color: var(--a3s-faint);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.work-sidebar-section-label.library {
-  margin-top: 13px;
-  padding-top: 13px;
-  border-top: 1px solid var(--a3s-line);
-}
-
 .work-workspace-switcher {
   position: relative;
   min-width: 0;
@@ -216,13 +201,6 @@
   min-width: 0;
   flex: 1;
   text-align: left;
-}
-
-.work-sidebar nav button > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .work-files-onboarding {
@@ -446,6 +424,7 @@
   color: var(--a3s-muted);
   font-size: 10px;
   font-weight: 620;
+  white-space: nowrap;
 }
 
 .work-files-toolbar-actions > .work-copilot-toggle.active {
@@ -493,4 +472,55 @@
   min-height: 21px;
   padding-inline: 7px;
   font-size: 8px;
+}
+
+.work-inline-name-editor {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 3px;
+}
+
+.work-inline-name-editor input {
+  min-width: 0;
+  height: 27px;
+  flex: 1;
+  padding: 0 7px;
+  border: 1px solid var(--a3s-line-strong);
+  border-radius: 5px;
+  outline: 0;
+  background: var(--a3s-panel);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--a3s-blue) 8%, transparent);
+  color: var(--a3s-ink);
+  font-size: 11px;
+}
+
+.work-inline-name-editor input:focus {
+  border-color: color-mix(in srgb, var(--a3s-blue) 64%, var(--a3s-line));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--a3s-blue) 12%, transparent);
+}
+
+.work-inline-name-editor input[aria-invalid="true"] {
+  border-color: color-mix(in srgb, var(--a3s-danger) 68%, var(--a3s-line));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--a3s-danger) 10%, transparent);
+}
+
+.work-inline-name-editor .ds-icon-button {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border-radius: 5px;
+}
+
+.work-inline-name-error {
+  display: grid;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 17px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--a3s-danger) 12%, transparent);
+  color: var(--a3s-danger);
+  font-size: 10px;
+  font-weight: 800;
 }

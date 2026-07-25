@@ -72,4 +72,38 @@ describe('Work recursive local-file search', () => {
     expect(result.unreadableDirectories).toBe(1);
     expect(result.truncated).toBe(true);
   });
+
+  it('skips generated and metadata trees without excluding the OKF knowledge directory', async () => {
+    const readDir = vi.fn(async (path: string) => {
+      if (path === '/workspace') {
+        return [
+          entry('/workspace/.git', true),
+          entry('/workspace/node_modules', true),
+          entry('/workspace/target', true),
+          entry('/workspace/dist', true),
+          entry('/workspace/.cloud-h0-2-native-snapshot', true),
+          entry('/workspace/.a3s', true),
+          entry('/workspace/docs', true),
+        ];
+      }
+      if (path === '/workspace/.a3s') return [entry('/workspace/.a3s/kb', true)];
+      if (path === '/workspace/.a3s/kb') return [entry('/workspace/.a3s/kb/project-app.md')];
+      if (path === '/workspace/docs') return [entry('/workspace/docs/app-guide.md')];
+      return [entry(`${path}/irrelevant-app.js`)];
+    });
+
+    const result = await searchWorkLocalFiles(readDir, '/workspace', 'app');
+
+    expect(result.entries.map((candidate) => candidate.path)).toEqual([
+      '/workspace/docs/app-guide.md',
+      '/workspace/.a3s/kb/project-app.md',
+    ]);
+    expect(readDir).not.toHaveBeenCalledWith('/workspace/.git');
+    expect(readDir).not.toHaveBeenCalledWith('/workspace/node_modules');
+    expect(readDir).not.toHaveBeenCalledWith('/workspace/target');
+    expect(readDir).not.toHaveBeenCalledWith('/workspace/dist');
+    expect(readDir).not.toHaveBeenCalledWith('/workspace/.cloud-h0-2-native-snapshot');
+    expect(readDir).toHaveBeenCalledWith('/workspace/.a3s/kb');
+    expect(result.truncated).toBe(false);
+  });
 });

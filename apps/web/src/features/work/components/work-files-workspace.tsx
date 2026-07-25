@@ -34,6 +34,7 @@ import {
   type WorkFilesSortKey,
   workBreadcrumbs,
 } from '../work-local-files';
+import type { WorkFileCreateArtifactRequest, WorkFileCreateArtifactResult } from './use-work-file-inline-operation';
 import { WorkFilesView } from './work-files-view';
 import { WorkQuickLook } from './work-quick-look';
 import { WorkSidebarOpenButton } from './work-sidebar-open-button';
@@ -47,6 +48,9 @@ export function WorkFilesWorkspace({
   onOpenFile,
   onAgentRequest,
   onCreateArtifact,
+  createArtifactRequest,
+  onCreateArtifactFile,
+  onConsumeCreateArtifactRequest,
   onOpenSidebar,
   onToggleCopilot,
 }: {
@@ -57,6 +61,12 @@ export function WorkFilesWorkspace({
   onOpenFile: (entry: WorkspaceEntry) => void | Promise<void>;
   onAgentRequest: (request: WorkAgentRequest) => void | Promise<void>;
   onCreateArtifact?: (templateId: string) => void;
+  createArtifactRequest?: WorkFileCreateArtifactRequest | null;
+  onCreateArtifactFile?: (
+    request: WorkFileCreateArtifactRequest,
+    fileName: string
+  ) => Promise<WorkFileCreateArtifactResult>;
+  onConsumeCreateArtifactRequest?: () => void;
   onOpenSidebar: () => void;
   onToggleCopilot: () => void;
 }) {
@@ -211,6 +221,7 @@ export function WorkFilesWorkspace({
         />
         <div className='work-files-toolbar-actions'>
           <IconButton
+            className='work-files-new-folder-command'
             label='新建文件夹'
             disabled={actions.loading || actions.dropImporting || Boolean(actions.error)}
             onClick={() => setCreateFolderRequest((value) => value + 1)}
@@ -218,6 +229,7 @@ export function WorkFilesWorkspace({
             <FolderPlus size={16} />
           </IconButton>
           <IconButton
+            className='work-files-refresh-command'
             label='刷新当前文件夹'
             disabled={actions.loading || actions.dropImporting}
             onClick={() => void actions.refresh()}
@@ -225,6 +237,7 @@ export function WorkFilesWorkspace({
             <RefreshCw className={actions.loading || actions.dropImporting ? 'spin' : ''} size={15} />
           </IconButton>
           <IconButton
+            className='work-files-quick-look-command'
             label='快速查看所选项目'
             disabled={actions.selectedEntries.length !== 1}
             onClick={() => setQuickLookPath(actions.selectedEntries[0]?.path ?? null)}
@@ -362,6 +375,9 @@ export function WorkFilesWorkspace({
             })
           }
           onCreateArtifact={onCreateArtifact}
+          createArtifactRequest={createArtifactRequest}
+          onCreateArtifactFile={onCreateArtifactFile}
+          onConsumeCreateArtifactRequest={onConsumeCreateArtifactRequest}
         />
       )}
       {(actions.loading || actions.dropImporting || actions.searchLoading) && (

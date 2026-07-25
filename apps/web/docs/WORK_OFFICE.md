@@ -66,10 +66,19 @@ The first active Work release includes:
   an explicit Switch workspace action, and that choice becomes the persisted
   Work override. Search has an explicit current-folder/root scope switch,
   preserves real entry metadata and parent locations, keeps results available
-  to Quick Look, file operations, and AI Assistant, and reports partial results when
-  directory, entry, result, or permission limits are reached. Name/date/size/kind sorting, multi-selection,
+  to Quick Look, file operations, and AI Assistant, skips metadata, dependency,
+  cache, and generated-output trees without excluding `.a3s/kb`, and reports
+  partial results when directory, entry, result, or permission limits are
+  reached.
+  Name/date/size/kind sorting, mouse-marquee and checkbox multi-selection,
+  additive range selection, clickable list-header sorting, a selection-aware
+  action shelf anchored above the status bar so file positions stay stable,
   folder traversal, metadata, folder creation, direct rename, and direct
-  duplication. Local folder favorites persist in the sidebar and rebase after
+  duplication. Folder
+  creation, native Office-file creation, rename, and duplicate naming are
+  edited in place in both grid and list modes. Escape cancels, Enter confirms,
+  and a rejected operation keeps the input and inline error available for
+  correction. Local folder favorites persist in the sidebar and rebase after
   Work-initiated moves or renames. Arrow keys, Shift-range selection, Home/End,
   Cmd/Ctrl+Up, and Cmd/Ctrl+Down provide Finder-style keyboard traversal.
   Internal drag and drop moves selected entries into visible folders, ancestor
@@ -81,10 +90,15 @@ The first active Work release includes:
   top-level names receive a safe numbered suffix, and a failed import removes
   the roots it created. Blank document, spreadsheet, and presentation actions
   create DOCX, XLSX, and PPTX files directly in the current local folder from
-  the sidebar, folder context menu, or Cmd/Ctrl+N. Creation validates the native
-  extension, refuses an existing destination, stages the recovery artifact,
-  writes and verifies the local file, binds its path, and opens the editor. A
-  failed local write attempts to purge the staging artifact;
+  the sidebar, folder context menu, or Cmd/Ctrl+N. The filename is entered
+  inline in the current grid or list. Creation validates the native extension,
+  refuses an existing destination, stages the recovery artifact, writes and
+  verifies the local file, binds its path, and opens the editor. A failed local
+  write attempts to purge the staging artifact;
+- managed-library folder creation and file/folder rename use the same inline
+  editor contract. Moving an active managed item to recoverable trash executes
+  directly; only permanent deletion from managed trash and permanent local
+  filesystem deletion require confirmation dialogs;
 - a bounded, read-only Finder-style Quick Look opened from Space, the toolbar,
   or the file context menu, with left/right navigation across the current
   filtered and sorted entries. Folders expose metadata without recursive reads;
@@ -106,8 +120,9 @@ The first active Work release includes:
   its workspace and leaves sending to the user. Its 460 px desktop default is
   capped as the viewport narrows so common laptop widths retain a usable Office
   pane; the Office ribbon also tightens group spacing below 1120 px, and the
-  assistant becomes an overlay only on compact screens. Work and Code share the
-  runtime implementation but never the active conversation: Work sessions are
+  assistant becomes a full Work-pane overlay at 1120 px and below instead of
+  compressing the file surface. Work and Code share the runtime implementation
+  but never the active conversation: Work sessions are
   tagged with `agentId=work`, persisted under a Work-only key, restored
   independently on product switches, and hidden from the Code task list;
 - shared Chinese Office detail chrome for documents, spreadsheets, and

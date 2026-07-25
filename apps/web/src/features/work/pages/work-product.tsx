@@ -11,15 +11,14 @@ import { readWorkCopilotWidth, WorkCopilot } from '../components/work-copilot';
 import { WorkEditorShell } from '../components/work-editor-shell';
 import { WorkFilesWorkspace } from '../components/work-files-workspace';
 import { WorkHome } from '../components/work-home';
-import { WorkLocalArtifactCreateDialog } from '../components/work-local-artifact-create-dialog';
 import { WorkSidebar } from '../components/work-sidebar';
+import { isOfficeShortcutBlocked } from '../editors/office-shortcuts';
 import { useWorkCodeController } from '../use-work-code-controller';
 import { useWorkController } from '../use-work-controller';
 import { useWorkFilesController } from '../use-work-files-controller';
 import { type WorkAgentProposalRequest, workAgentProposalInstruction } from '../work-agent-proposal';
 import { prepareWorkAgentRequest, type WorkAgentRequest, type WorkEditorAgentRequest } from '../work-agent-request';
 import { WORK_IMPORT_ACCEPT } from '../work-file-io';
-import { isOfficeShortcutBlocked } from '../editors/office-shortcuts';
 import { isWorkOfficePath, isWorkTextEditorEntry, localPathBasename, workFileMimeType } from '../work-local-files';
 
 const surfaceStorageKey = 'a3s-work.surface';
@@ -43,9 +42,11 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
   const [openingPath, setOpeningPath] = useState<string | null>(null);
   const [agentProposal, setAgentProposal] = useState<WorkAgentProposalRequest | null>(null);
   const [localCreateRequest, setLocalCreateRequest] = useState<{
+    requestId: number;
     templateId: string;
     directory: string;
   } | null>(null);
+  const localCreateRequestIdRef = useRef(0);
   const previousArtifactIdRef = useRef(actions.activeArtifact?.id ?? null);
   const openFilePicker = () => fileInputRef.current?.click();
   const updateSurface = (next: 'files' | 'library') => {
@@ -56,24 +57,29 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
     setCopilotOpen(open);
     persistValue(copilotStorageKey, String(open));
   };
-  const openLocalCreateDialog = useCallback(
+  const requestLocalArtifactCreate = useCallback(
     async (templateId: string) => {
       let directory = files.currentPath || files.rootPath;
       if (!files.rootPath) directory = (await files.pickRoot()) ?? '';
       if (!directory) return;
-      setLocalCreateRequest({ templateId, directory });
+      localCreateRequestIdRef.current += 1;
+      setLocalCreateRequest({
+        requestId: localCreateRequestIdRef.current,
+        templateId,
+        directory,
+      });
     },
     [files.currentPath, files.pickRoot, files.rootPath]
   );
   const createForSurface = useCallback(
     (templateId: string) => {
       if (surface === 'files') {
-        void openLocalCreateDialog(templateId);
+        void requestLocalArtifactCreate(templateId);
         return;
       }
       void actions.createArtifact(templateId);
     },
-    [actions.createArtifact, openLocalCreateDialog, surface]
+    [actions.createArtifact, requestLocalArtifactCreate, surface]
   );
 
   useEffect(() => {
@@ -175,22 +181,6 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
           if (file) void actions.importFile(file);
         }}
       />
-      {localCreateRequest && (
-        <WorkLocalArtifactCreateDialog
-          templateId={localCreateRequest.templateId}
-          directory={localCreateRequest.directory}
-          onClose={() => setLocalCreateRequest(null)}
-          onCreate={async (fileName) => {
-            const result = await actions.createLocalArtifact(
-              localCreateRequest.templateId,
-              localCreateRequest.directory,
-              fileName
-            );
-            if (result === 'created') await files.refresh();
-            return result;
-          }}
-        />
-      )}
       {actions.pendingImport?.artifact.compatibility && (
         <WorkCompatibilityDialog
           report={actions.pendingImport.artifact.compatibility}
@@ -289,7 +279,14 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
                 sidebarOpen={state.sidebarOpen}
                 onOpenFile={openLocalFile}
                 onAgentRequest={requestAgent}
-                onCreateArtifact={(templateId) => void openLocalCreateDialog(templateId)}
+                onCreateArtifact={(templateId) => void requestLocalArtifactCreate(templateId)}
+                createArtifactRequest={localCreateRequest}
+                onCreateArtifactFile={async (request, fileName) => {
+                  const result = await actions.createLocalArtifact(request.templateId, request.directory, fileName);
+                  if (result === 'created') await files.refresh();
+                  return result;
+                }}
+                onConsumeCreateArtifactRequest={() => setLocalCreateRequest(null)}
                 onOpenSidebar={() => {
                   appState.sidebarOpen = true;
                 }}
@@ -311,14 +308,14 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
                 onOpen={(id) => void actions.openArtifact(id)}
                 onImport={openFilePicker}
                 onToggleFavorite={actions.toggleFavorite}
-                onRename={(id, title) => void actions.patchStoredArtifact(id, { title: title.trim() })}
+                onRename={(id, title) => actions.patchStoredArtifact(id, { title: title.trim() })}
                 onCopy={(id) => void actions.copyArtifact(id)}
                 onMove={(id, folderId) => void actions.patchStoredArtifact(id, { folderId })}
                 onRestore={(id) => void actions.restoreArtifact(id)}
                 onDelete={(artifact) => void actions.removeArtifact(artifact.id)}
                 onOpenFolder={actions.openFolder}
-                onCreateFolder={(name) => void actions.createFolder(name)}
-                onRenameFolder={(id, name) => void actions.patchFolder(id, { name: name.trim() })}
+                onCreateFolder={actions.createFolder}
+                onRenameFolder={(id, name) => actions.patchFolder(id, { name: name.trim() })}
                 onRestoreFolder={(id) => void actions.restoreFolder(id)}
                 onDeleteFolder={(folder) => void actions.removeFolder(folder.id)}
                 onRetry={() => void actions.refresh()}

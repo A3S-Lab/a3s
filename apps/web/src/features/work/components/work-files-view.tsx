@@ -1,4 +1,6 @@
 import {
+  ArrowDown,
+  ArrowUp,
   Copy,
   Eye,
   FileInput,
@@ -16,7 +18,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, StateView } from '../../../design-system/primitives';
 import { showToast } from '../../../state/app-state';
 import type { WorkspaceEntry } from '../../../types/api';
@@ -36,9 +38,19 @@ import {
   sameLocalPath,
   workFileKindLabel,
   writeWorkLocalFileDragData,
+  type WorkFilesSortKey,
 } from '../work-local-files';
+import {
+  useWorkFileInlineOperation,
+  type WorkFileCreateArtifactRequest,
+  type WorkFileCreateArtifactResult,
+} from './use-work-file-inline-operation';
+import { WorkFileDeleteDialog } from './work-file-delete-dialog';
 import { WorkFileIcon } from './work-file-icon';
-import { type WorkFileOperation, WorkFileOperationDialog } from './work-file-operation-dialog';
+import { WorkFileInlineEditor } from './work-file-inline-editor';
+import { useWorkFileMarquee } from './work-file-marquee';
+import { WorkFileSelectionControl, WorkFilesSelectAllControl } from './work-file-selection-controls';
+import { WorkFilesSelectionToolbar } from './work-files-selection-toolbar';
 
 interface ContextMenuState {
   entry: WorkspaceEntry | null;
@@ -54,6 +66,9 @@ export function WorkFilesView({
   onQuickLook,
   onAgentRequest,
   onCreateArtifact,
+  createArtifactRequest,
+  onCreateArtifactFile,
+  onConsumeCreateArtifactRequest,
 }: {
   actions: WorkFilesActions;
   openingPath: string | null;
@@ -62,16 +77,34 @@ export function WorkFilesView({
   onQuickLook: (entry: WorkspaceEntry) => void;
   onAgentRequest: (request: WorkAgentRequest) => void | Promise<void>;
   onCreateArtifact?: (templateId: string) => void;
+  createArtifactRequest?: WorkFileCreateArtifactRequest | null;
+  onCreateArtifactFile?: (
+    request: WorkFileCreateArtifactRequest,
+    fileName: string
+  ) => Promise<WorkFileCreateArtifactResult>;
+  onConsumeCreateArtifactRequest?: () => void;
 }) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [operation, setOperation] = useState<WorkFileOperation | null>(null);
+  const [pendingDeleteEntries, setPendingDeleteEntries] = useState<WorkspaceEntry[] | null>(null);
   const [draggedPaths, setDraggedPaths] = useState<string[]>([]);
   const [dropTargetPath, setDropTargetPath] = useState<string | null>(null);
   const [externalDropTargetPath, setExternalDropTargetPath] = useState<string | null>(null);
+  const filesContentRef = useRef<HTMLDivElement>(null);
   const workspaceSearching = actions.searchScope === 'workspace' && Boolean(actions.query.trim());
+  const marquee = useWorkFileMarquee({
+    containerRef: filesContentRef,
+    visiblePaths: actions.visibleEntries.map((entry) => entry.path),
+    selectedPaths: actions.selectedPaths,
+    onSelectionChange: actions.replaceSelection,
+  });
+  const inlineOperation = useWorkFileInlineOperation(actions, {
+    createArtifactRequest,
+    onCreateArtifact: onCreateArtifactFile,
+    onConsumeCreateArtifactRequest,
+  });
   useEffect(() => {
-    if (createFolderRequest > 0) setOperation({ kind: 'create-folder' });
-  }, [createFolderRequest]);
+    if (createFolderRequest > 0) inlineOperation.startCreateFolder();
+  }, [createFolderRequest, inlineOperation.startCreateFolder]);
   const selectedCount = actions.selectedPaths.size;
   const openEntry = (entry: WorkspaceEntry) => {
     if (entry.isDirectory) {
@@ -95,7 +128,10 @@ export function WorkFilesView({
     selectedEntries: contextMenu?.entry ? selectedEntriesFor(contextMenu.entry) : [],
     onOpen: openEntry,
     onQuickLook,
-    onOperation: setOperation,
+    onCreateFolder: inlineOperation.startCreateFolder,
+    onRename: inlineOperation.startRename,
+    onDuplicate: inlineOperation.startDuplicate,
+    onDelete: (entries) => setPendingDeleteEntries([...entries]),
     favoritePaths: actions.favoritePaths,
     onToggleFavorite: actions.toggleFavoritePath,
     onAgentRequest,
@@ -105,15 +141,18 @@ export function WorkFilesView({
   return (
     <>
       <div
+        ref={filesContentRef}
         className={`work-files-content ${actions.layout} ${workspaceSearching ? 'workspace-search' : ''} ${externalDropTargetPath === actions.currentPath ? 'external-drop-target' : ''}`}
         role='listbox'
         aria-label='本地文件'
         aria-multiselectable='true'
         aria-busy={actions.dropImporting || actions.searchLoading}
         tabIndex={0}
-        onClick={(event) => {
-          if (event.target === event.currentTarget) actions.clearSelection();
-        }}
+        onClick={marquee.onClick}
+        onPointerDown={marquee.onPointerDown}
+        onPointerMove={marquee.onPointerMove}
+        onPointerUp={marquee.onPointerUp}
+        onPointerCancel={marquee.onPointerCancel}
         onContextMenu={(event) => {
           if (event.target !== event.currentTarget) return;
           event.preventDefault();
@@ -158,17 +197,17 @@ export function WorkFilesView({
             onQuickLook(actions.selectedEntries[0]);
           } else if (event.key === 'F2' && actions.selectedEntries.length === 1) {
             event.preventDefault();
-            setOperation({ kind: 'rename', entry: actions.selectedEntries[0] });
+            inlineOperation.startRename(actions.selectedEntries[0]);
           } else if (
             actions.selectedEntries.length > 0 &&
             (event.key === 'Delete' || (commandKey && event.key === 'Backspace'))
           ) {
             event.preventDefault();
-            setOperation({ kind: 'delete', entries: actions.selectedEntries });
+            setPendingDeleteEntries([...actions.selectedEntries]);
           } else if (event.key === 'Escape') {
             actions.clearSelection();
           } else {
-            const items = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[data-work-file-index]'));
+            const items = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[data-work-file-index]'));
             const nextIndex = finderKeyboardTargetIndex(
               event.key,
               actions.layout,
@@ -186,15 +225,77 @@ export function WorkFilesView({
         }}
       >
         {actions.layout === 'list' && actions.visibleEntries.length > 0 && (
-          <div className='work-files-list-header' aria-hidden='true'>
-            <span>名称</span>
-            <span>{workspaceSearching ? '位置' : '修改日期'}</span>
-            <span>大小</span>
-            <span>种类</span>
-          </div>
+          <table className='work-files-list-header' aria-label='文件列表列标题'>
+            <thead>
+              <tr>
+                <th
+                  className='work-files-list-name-heading'
+                  scope='col'
+                  aria-sort={actions.sort.key === 'name' ? actions.sort.direction : undefined}
+                >
+                  <WorkFilesSelectAllControl
+                    selectedCount={selectedCount}
+                    totalCount={actions.visibleEntries.length}
+                    onSelectAll={actions.selectAll}
+                    onClear={actions.clearSelection}
+                  />
+                  <span aria-hidden='true' />
+                  <WorkFilesSortHeading label='名称' sortKey='name' actions={actions} />
+                </th>
+                <th
+                  scope='col'
+                  aria-sort={
+                    !workspaceSearching && actions.sort.key === 'modified' ? actions.sort.direction : undefined
+                  }
+                >
+                  {workspaceSearching ? (
+                    '位置'
+                  ) : (
+                    <WorkFilesSortHeading label='修改日期' sortKey='modified' actions={actions} />
+                  )}
+                </th>
+                <th scope='col' aria-sort={actions.sort.key === 'size' ? actions.sort.direction : undefined}>
+                  <WorkFilesSortHeading label='大小' sortKey='size' actions={actions} />
+                </th>
+                <th scope='col' aria-sort={actions.sort.key === 'kind' ? actions.sort.direction : undefined}>
+                  <WorkFilesSortHeading label='种类' sortKey='kind' actions={actions} />
+                </th>
+              </tr>
+            </thead>
+          </table>
         )}
         <div className={`work-files-items ${actions.layout}`}>
+          {inlineOperation.operation && inlineOperation.operation.kind !== 'rename' && (
+            <WorkFileInlineEditor
+              key={`${inlineOperation.operation.kind}:${inlineOperation.operation.initialValue}`}
+              operation={inlineOperation.operation}
+              layout={actions.layout}
+              workspaceSearching={workspaceSearching}
+              rootPath={actions.rootPath}
+              onValueChange={inlineOperation.setValue}
+              onSave={inlineOperation.save}
+              onCancel={inlineOperation.cancel}
+            />
+          )}
           {actions.visibleEntries.map((entry, index) => {
+            if (
+              inlineOperation.operation?.kind === 'rename' &&
+              sameLocalPath(inlineOperation.operation.entry.path, entry.path)
+            ) {
+              return (
+                <WorkFileInlineEditor
+                  key={`rename:${entry.path}`}
+                  operation={inlineOperation.operation}
+                  layout={actions.layout}
+                  index={index}
+                  workspaceSearching={workspaceSearching}
+                  rootPath={actions.rootPath}
+                  onValueChange={inlineOperation.setValue}
+                  onSave={inlineOperation.save}
+                  onCancel={inlineOperation.cancel}
+                />
+              );
+            }
             const entryDragPaths = actions.selectedPaths.has(entry.path)
               ? actions.selectedEntries.map((item) => item.path)
               : [entry.path];
@@ -210,13 +311,18 @@ export function WorkFilesView({
                 disabled={openingPath === entry.path || moving}
                 draggable={openingPath !== entry.path && !moving}
                 key={entry.path}
-                onClick={(event) =>
+                onClick={(event) => {
+                  const selectionControl = isSelectionControlTarget(event.target);
+                  const commandKey = event.metaKey || event.ctrlKey;
                   actions.selectEntry(entry, {
-                    toggle: event.metaKey || event.ctrlKey,
-                    range: event.shiftKey,
-                  })
-                }
-                onDoubleClick={() => openEntry(entry)}
+                    toggle: selectionControl || commandKey,
+                    range: !selectionControl && event.shiftKey,
+                    additive: !selectionControl && commandKey && event.shiftKey,
+                  });
+                }}
+                onDoubleClick={(event) => {
+                  if (!isSelectionControlTarget(event.target)) openEntry(entry);
+                }}
                 onDragStart={(event) => {
                   if (!actions.selectedPaths.has(entry.path)) actions.selectEntry(entry);
                   writeWorkLocalFileDragData(event.dataTransfer, entryDragPaths);
@@ -283,7 +389,7 @@ export function WorkFilesView({
                 onKeyDown={(event) => {
                   if (event.key === 'F2') {
                     event.preventDefault();
-                    setOperation({ kind: 'rename', entry });
+                    inlineOperation.startRename(entry);
                   } else if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
                     event.preventDefault();
                     const bounds = event.currentTarget.getBoundingClientRect();
@@ -291,6 +397,7 @@ export function WorkFilesView({
                   }
                 }}
               >
+                <WorkFileSelectionControl selected={actions.selectedPaths.has(entry.path)} />
                 <span className='work-file-visual'>
                   <WorkFileIcon
                     path={entry.path}
@@ -316,6 +423,7 @@ export function WorkFilesView({
           })}
         </div>
         {!actions.visibleEntries.length &&
+          !inlineOperation.operation &&
           !actions.loading &&
           !actions.searchLoading &&
           !actions.error &&
@@ -328,7 +436,7 @@ export function WorkFilesView({
               description={actions.query ? '尝试缩短搜索词。' : '你可以直接在这里创建第一个文件夹。'}
               actions={
                 !actions.query && (
-                  <Button tone='primary' onClick={() => setOperation({ kind: 'create-folder' })}>
+                  <Button tone='primary' onClick={inlineOperation.startCreateFolder}>
                     <FolderPlus size={14} />
                     新建文件夹
                   </Button>
@@ -345,7 +453,37 @@ export function WorkFilesView({
             <small>文件夹会连同其中的内容一起复制</small>
           </output>
         )}
+        {marquee.rectangle && (
+          <span
+            className='work-files-marquee'
+            aria-hidden='true'
+            style={{
+              left: marquee.rectangle.left,
+              top: marquee.rectangle.top,
+              width: marquee.rectangle.width,
+              height: marquee.rectangle.height,
+            }}
+          />
+        )}
       </div>
+      {!marquee.deferSelectionToolbar && (
+        <WorkFilesSelectionToolbar
+          selectedEntries={actions.selectedEntries}
+          totalCount={actions.visibleEntries.length}
+          onSelectAll={actions.selectAll}
+          onQuickLook={onQuickLook}
+          onRename={inlineOperation.startRename}
+          onAskAssistant={(entries) =>
+            void onAgentRequest({
+              workspaceRoot: '',
+              paths: entries.map((entry) => entry.path),
+              instruction: '请查看已选文件或文件夹，并围绕它们回答我的问题：\n\n问题：',
+            })
+          }
+          onDelete={(entries) => setPendingDeleteEntries([...entries])}
+          onClear={actions.clearSelection}
+        />
+      )}
       <footer className='work-files-status'>
         <span>
           {selectedCount > 0
@@ -370,10 +508,54 @@ export function WorkFilesView({
           onClose={() => setContextMenu(null)}
         />
       )}
-      {operation && (
-        <WorkFileOperationDialog operation={operation} actions={actions} onClose={() => setOperation(null)} />
+      {pendingDeleteEntries && (
+        <WorkFileDeleteDialog
+          entries={pendingDeleteEntries}
+          actions={actions}
+          onClose={() => setPendingDeleteEntries(null)}
+        />
       )}
     </>
+  );
+}
+
+function WorkFilesSortHeading({
+  label,
+  sortKey,
+  actions,
+}: {
+  label: string;
+  sortKey: WorkFilesSortKey;
+  actions: WorkFilesActions;
+}) {
+  const active = actions.sort.key === sortKey;
+  const currentDirection = actions.sort.direction === 'ascending' ? '升序' : '降序';
+  const nextDirection = actions.sort.direction === 'ascending' ? '降序' : '升序';
+  return (
+    <button
+      type='button'
+      className={`work-files-sort-heading ${active ? 'active' : ''}`}
+      aria-label={active ? `${label}，当前${currentDirection}，切换为${nextDirection}` : `${label}，点击排序`}
+      onClick={() =>
+        actions.setSort({
+          key: sortKey,
+          direction:
+            active && actions.sort.direction === 'ascending'
+              ? 'descending'
+              : active
+                ? 'ascending'
+                : actions.sort.direction,
+        })
+      }
+    >
+      <span>{label}</span>
+      {active &&
+        (actions.sort.direction === 'ascending' ? (
+          <ArrowUp size={11} aria-hidden='true' />
+        ) : (
+          <ArrowDown size={11} aria-hidden='true' />
+        ))}
+    </button>
   );
 }
 
@@ -384,7 +566,10 @@ function contextMenuItems({
   selectedEntries,
   onOpen,
   onQuickLook,
-  onOperation,
+  onCreateFolder,
+  onRename,
+  onDuplicate,
+  onDelete,
   favoritePaths,
   onToggleFavorite,
   onAgentRequest,
@@ -396,7 +581,10 @@ function contextMenuItems({
   selectedEntries: WorkspaceEntry[];
   onOpen: (entry: WorkspaceEntry) => void;
   onQuickLook: (entry: WorkspaceEntry) => void;
-  onOperation: (operation: WorkFileOperation) => void;
+  onCreateFolder: () => void;
+  onRename: (entry: WorkspaceEntry) => void;
+  onDuplicate: (entry: WorkspaceEntry) => void;
+  onDelete: (entries: WorkspaceEntry[]) => void;
   favoritePaths: string[];
   onToggleFavorite: (path: string) => void;
   onAgentRequest: (request: WorkAgentRequest) => void | Promise<void>;
@@ -408,7 +596,7 @@ function contextMenuItems({
         id: 'new-folder',
         label: '新建文件夹',
         icon: <FolderPlus size={14} />,
-        onSelect: () => onOperation({ kind: 'create-folder' }),
+        onSelect: onCreateFolder,
       },
     ];
     if (onCreateArtifact) {
@@ -535,13 +723,13 @@ function contextMenuItems({
       shortcut: 'F2',
       ariaKeyShortcut: 'F2',
       separatorBefore: true,
-      onSelect: () => onOperation({ kind: 'rename', entry }),
+      onSelect: () => onRename(entry),
     },
     {
       id: 'duplicate',
       label: '创建副本',
       icon: <Copy size={14} />,
-      onSelect: () => onOperation({ kind: 'duplicate', entry }),
+      onSelect: () => onDuplicate(entry),
     },
     {
       id: 'delete',
@@ -550,7 +738,7 @@ function contextMenuItems({
       shortcut: 'Delete',
       ariaKeyShortcut: 'Delete',
       separatorBefore: true,
-      onSelect: () => onOperation({ kind: 'delete', entries: selectedEntries }),
+      onSelect: () => onDelete(selectedEntries),
     }
   );
   return items;
@@ -560,7 +748,7 @@ function finderKeyboardTargetIndex(
   key: string,
   layout: WorkFilesActions['layout'],
   currentIndex: number,
-  items: HTMLButtonElement[]
+  items: HTMLElement[]
 ): number | null {
   if (!items.length) return null;
   if (key === 'Home') return 0;
@@ -573,9 +761,13 @@ function finderKeyboardTargetIndex(
   return Math.max(0, Math.min(items.length - 1, currentIndex + offset));
 }
 
-function finderGridColumnCount(items: HTMLButtonElement[]): number {
+function finderGridColumnCount(items: HTMLElement[]): number {
   const firstTop = items[0]?.getBoundingClientRect().top;
   if (firstTop === undefined) return 1;
   const nextRow = items.findIndex((item, index) => index > 0 && item.getBoundingClientRect().top > firstTop + 1);
   return nextRow > 0 ? nextRow : 1;
+}
+
+function isSelectionControlTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && Boolean(target.closest('[data-work-file-selection-control]'));
 }

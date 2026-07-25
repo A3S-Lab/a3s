@@ -65,6 +65,7 @@ function actions(overrides: Partial<WorkFilesActions> = {}): WorkFilesActions {
     refresh: vi.fn(),
     selectEntry: vi.fn(),
     selectAll: vi.fn(),
+    replaceSelection: vi.fn(),
     clearSelection: vi.fn(),
     toggleFavoritePath: vi.fn(),
     createFolder: vi.fn(),
@@ -147,6 +148,159 @@ describe('Work Finder file view', () => {
     await waitFor(() => expect(deleteEntries).toHaveBeenCalledWith([report, archive]));
   });
 
+  it.each(['grid', 'list'] as const)('creates a folder inline in %s view', async (layout) => {
+    const createFolder = vi.fn().mockResolvedValue(undefined);
+    render(
+      <WorkFilesView
+        actions={actions({ layout, createFolder })}
+        openingPath={null}
+        createFolderRequest={1}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+
+    const input = await screen.findByRole('textbox', { name: '新建文件夹名称' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.change(input, { target: { value: '项目归档' } });
+    fireEvent.submit(input.closest('form') as HTMLFormElement);
+
+    await waitFor(() => expect(createFolder).toHaveBeenCalledWith('项目归档'));
+    expect(screen.queryByRole('textbox', { name: '新建文件夹名称' })).not.toBeInTheDocument();
+  });
+
+  it('renames the selected local file inline from F2 and supports Escape cancellation', async () => {
+    const renameEntry = vi.fn().mockResolvedValue(undefined);
+    render(
+      <WorkFilesView
+        actions={actions({
+          selectedPaths: new Set([report.path]),
+          selectedEntries: [report],
+          selectionFocusPath: report.path,
+          renameEntry,
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+    const listbox = screen.getByRole('listbox', { name: '本地文件' });
+
+    fireEvent.keyDown(listbox, { key: 'F2' });
+    let input = screen.getByRole('textbox', { name: `重命名 ${report.name}` });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(screen.queryByRole('textbox', { name: `重命名 ${report.name}` })).not.toBeInTheDocument();
+    expect(renameEntry).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(listbox, { key: 'F2' });
+    input = screen.getByRole('textbox', { name: `重命名 ${report.name}` });
+    fireEvent.change(input, { target: { value: 'Plan.docx' } });
+    fireEvent.submit(input.closest('form') as HTMLFormElement);
+    await waitFor(() => expect(renameEntry).toHaveBeenCalledWith(report, 'Plan.docx'));
+  });
+
+  it('names a local duplicate inline and keeps the editor open after an error', async () => {
+    const duplicateEntry = vi.fn().mockRejectedValueOnce(new Error('目标名称已存在')).mockResolvedValueOnce(undefined);
+    render(
+      <WorkFilesView
+        actions={actions({ duplicateEntry })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+
+    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), { clientX: 30, clientY: 40 });
+    fireEvent.click(screen.getByRole('menuitem', { name: '创建副本' }));
+    const input = screen.getByRole('textbox', { name: `副本名称，来源 ${report.name}` });
+    expect(input).toHaveValue('Report 副本.docx');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'Report 备份.docx' } });
+    fireEvent.submit(input.closest('form') as HTMLFormElement);
+    expect(await screen.findByRole('alert')).toHaveTextContent('目标名称已存在');
+    expect(screen.getByRole('textbox', { name: `副本名称，来源 ${report.name}` })).toHaveValue('Report 备份.docx');
+
+    fireEvent.submit(input.closest('form') as HTMLFormElement);
+    await waitFor(() => expect(duplicateEntry).toHaveBeenLastCalledWith(report, 'Report 备份.docx'));
+  });
+
+  it('rejects a duplicate name that is identical to its source before calling the filesystem', () => {
+    const duplicateEntry = vi.fn();
+    render(
+      <WorkFilesView
+        actions={actions({ duplicateEntry })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+
+    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), { clientX: 30, clientY: 40 });
+    fireEvent.click(screen.getByRole('menuitem', { name: '创建副本' }));
+    const input = screen.getByRole('textbox', { name: `副本名称，来源 ${report.name}` });
+    fireEvent.change(input, { target: { value: report.name } });
+    fireEvent.submit(input.closest('form') as HTMLFormElement);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('副本名称不能与原项目相同');
+    expect(input).toHaveValue(report.name);
+    expect(duplicateEntry).not.toHaveBeenCalled();
+  });
+
+  it('exposes prominent actions for the current multi-selection', () => {
+    const notes = {
+      ...report,
+      name: 'Notes.txt',
+      path: '/docs/Notes.txt',
+      extension: 'txt',
+    };
+    const selectAll = vi.fn();
+    const clearSelection = vi.fn();
+    const onAgentRequest = vi.fn();
+    render(
+      <WorkFilesView
+        actions={actions({
+          entries: [report, archive, notes],
+          visibleEntries: [report, archive, notes],
+          selectedPaths: new Set([report.path, archive.path]),
+          selectedEntries: [report, archive],
+          selectAll,
+          clearSelection,
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={onAgentRequest}
+      />
+    );
+
+    expect(screen.getByRole('toolbar', { name: '已选文件操作' })).toHaveTextContent('已选择 2 项');
+    fireEvent.click(screen.getByRole('button', { name: '选择全部 3 项' }));
+    expect(selectAll).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: '询问 AI 助手' }));
+    expect(onAgentRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paths: [report.path, archive.path],
+      })
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '取消选择' }));
+    expect(clearSelection).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: '永久删除所选 2 项' }));
+    expect(screen.getByRole('dialog', { name: '永久删除 2 项' })).toBeInTheDocument();
+  });
+
   it('creates native Office files from the current-folder context menu', () => {
     const onCreateArtifact = vi.fn();
     render(
@@ -164,6 +318,62 @@ describe('Work Finder file view', () => {
     fireEvent.contextMenu(screen.getByRole('listbox', { name: '本地文件' }), { clientX: 40, clientY: 60 });
     fireEvent.click(screen.getByRole('menuitem', { name: '新建文字文档' }));
     expect(onCreateArtifact).toHaveBeenCalledWith('blank-document');
+  });
+
+  it.each([
+    ['grid', 'blank-document', '新建文字文档名称', '新建文字文档.docx', '项目计划.docx'],
+    ['list', 'blank-spreadsheet', '新建电子表格名称', '新建电子表格.xlsx', '项目预算.xlsx'],
+    ['grid', 'blank-presentation', '新建演示文稿名称', '新建演示文稿.pptx', '项目汇报.pptx'],
+  ] as const)('creates %s-view Office files inline for %s', async (layout, templateId, inputLabel, defaultName, requestedName) => {
+    const request = { requestId: 7, templateId, directory: '/docs' };
+    const onCreateArtifactFile = vi.fn().mockResolvedValue('created');
+    const onConsumeCreateArtifactRequest = vi.fn();
+    render(
+      <WorkFilesView
+        actions={actions({ layout })}
+        openingPath={null}
+        createFolderRequest={0}
+        createArtifactRequest={request}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+        onCreateArtifactFile={onCreateArtifactFile}
+        onConsumeCreateArtifactRequest={onConsumeCreateArtifactRequest}
+      />
+    );
+
+    const input = await screen.findByRole('textbox', { name: inputLabel });
+    expect(input).toHaveValue(defaultName);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onConsumeCreateArtifactRequest).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(input, { target: { value: requestedName } });
+    fireEvent.submit(input.closest('form') as HTMLFormElement);
+    await waitFor(() => expect(onCreateArtifactFile).toHaveBeenCalledWith(request, requestedName));
+    expect(screen.queryByRole('textbox', { name: inputLabel })).not.toBeInTheDocument();
+  });
+
+  it('keeps inline Office creation open when the destination name exists', async () => {
+    const request = { requestId: 8, templateId: 'blank-document', directory: '/docs' };
+    const onCreateArtifactFile = vi.fn().mockResolvedValue('exists');
+    render(
+      <WorkFilesView
+        actions={actions()}
+        openingPath={null}
+        createFolderRequest={0}
+        createArtifactRequest={request}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+        onCreateArtifactFile={onCreateArtifactFile}
+      />
+    );
+
+    const input = await screen.findByRole('textbox', { name: '新建文字文档名称' });
+    fireEvent.submit(input.closest('form') as HTMLFormElement);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('当前文件夹中已有同名文件');
+    expect(input).toHaveValue('新建文字文档.docx');
   });
 
   it('prefills a selection-aware Copilot request without sending it', () => {
@@ -261,6 +471,52 @@ describe('Work Finder file view', () => {
     fireEvent.click(screen.getByRole('combobox', { name: '排序方式' }));
     fireEvent.click(screen.getByRole('option', { name: '修改日期' }));
     expect(setSort).toHaveBeenCalledWith({ key: 'modified', direction: 'ascending' });
+  });
+
+  it('sorts directly from list headers and exposes the active direction', () => {
+    const setSort = vi.fn();
+    const { rerender } = render(
+      <WorkFilesView
+        actions={actions({
+          entries: [archive, report],
+          visibleEntries: [archive, report],
+          layout: 'list',
+          sort: { key: 'name', direction: 'ascending' },
+          setSort,
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+
+    const nameHeader = screen.getByRole('columnheader', { name: /名称/ });
+    expect(nameHeader).toHaveAttribute('aria-sort', 'ascending');
+    fireEvent.click(screen.getByRole('button', { name: '名称，当前升序，切换为降序' }));
+    expect(setSort).toHaveBeenCalledWith({ key: 'name', direction: 'descending' });
+
+    fireEvent.click(screen.getByRole('button', { name: '修改日期，点击排序' }));
+    expect(setSort).toHaveBeenLastCalledWith({ key: 'modified', direction: 'ascending' });
+
+    rerender(
+      <WorkFilesView
+        actions={actions({
+          entries: [archive, report],
+          visibleEntries: [archive, report],
+          layout: 'list',
+          sort: { key: 'size', direction: 'descending' },
+          setSort,
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+    expect(screen.getByRole('columnheader', { name: /大小/ })).toHaveAttribute('aria-sort', 'descending');
   });
 
   it('opens Quick Look from the Space key and the contextual action', () => {
@@ -452,6 +708,192 @@ describe('Work Finder file view', () => {
 
     fireEvent.keyDown(listbox, { key: 'ArrowUp', metaKey: true });
     expect(goUp).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps command-shift click to an additive range selection', () => {
+    const selectEntry = vi.fn();
+    render(
+      <WorkFilesView
+        actions={actions({
+          entries: [archive, report],
+          visibleEntries: [archive, report],
+          selectedPaths: new Set([archive.path]),
+          selectedEntries: [archive],
+          selectionFocusPath: archive.path,
+          selectEntry,
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('option', { name: /Report.docx/ }), {
+      metaKey: true,
+      shiftKey: true,
+    });
+    expect(selectEntry).toHaveBeenCalledWith(report, {
+      toggle: true,
+      range: true,
+      additive: true,
+    });
+  });
+
+  it.each(['grid', 'list'] as const)('selects intersecting files with a mouse marquee in %s view', (layout) => {
+    const replaceSelection = vi.fn();
+    render(
+      <WorkFilesView
+        actions={actions({
+          entries: [archive, report],
+          visibleEntries: [archive, report],
+          layout,
+          replaceSelection,
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+    const listbox = screen.getByRole('listbox', { name: '本地文件' });
+    const [archiveItem, reportItem] = screen.getAllByRole('option');
+    vi.spyOn(listbox, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 500, 300));
+    vi.spyOn(archiveItem, 'getBoundingClientRect').mockReturnValue(new DOMRect(20, 20, 90, 70));
+    vi.spyOn(reportItem, 'getBoundingClientRect').mockReturnValue(new DOMRect(150, 20, 90, 70));
+    Object.assign(listbox, {
+      setPointerCapture: vi.fn(),
+      hasPointerCapture: vi.fn(() => true),
+      releasePointerCapture: vi.fn(),
+    });
+
+    fireEvent.pointerDown(listbox, {
+      pointerId: 4,
+      button: 0,
+      isPrimary: true,
+      clientX: 5,
+      clientY: 5,
+    });
+    fireEvent.pointerMove(listbox, {
+      pointerId: 4,
+      clientX: 130,
+      clientY: 100,
+    });
+
+    expect(replaceSelection).toHaveBeenLastCalledWith([archive.path]);
+    expect(listbox.querySelector('.work-files-marquee')).toBeInTheDocument();
+
+    fireEvent.pointerUp(listbox, {
+      pointerId: 4,
+      clientX: 130,
+      clientY: 100,
+    });
+    expect(listbox.querySelector('.work-files-marquee')).not.toBeInTheDocument();
+  });
+
+  it('keeps selection actions below the file surface so item coordinates stay stable', () => {
+    render(
+      <WorkFilesView
+        actions={actions({
+          entries: [archive, report],
+          visibleEntries: [archive, report],
+          selectedPaths: new Set([archive.path]),
+          selectedEntries: [archive],
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+    const listbox = screen.getByRole('listbox', { name: '本地文件' });
+    const toolbar = screen.getByRole('toolbar', { name: '已选文件操作' });
+
+    expect(listbox.nextElementSibling).toBe(toolbar);
+  });
+
+  it.each(['grid', 'list'] as const)('toggles an item from its visible selection control in %s view', (layout) => {
+    const selectEntry = vi.fn();
+    render(
+      <WorkFilesView
+        actions={actions({
+          entries: [archive, report],
+          visibleEntries: [archive, report],
+          layout,
+          selectEntry,
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+
+    const reportItem = screen.getByRole('option', { name: /Report.docx/ });
+    const selectionControl = reportItem.querySelector('[data-work-file-selection-control]');
+    expect(selectionControl).toBeInTheDocument();
+    fireEvent.click(selectionControl as Element);
+    expect(selectEntry).toHaveBeenCalledWith(
+      report,
+      expect.objectContaining({
+        toggle: true,
+      })
+    );
+  });
+
+  it('selects and clears every visible row from the list header checkbox', () => {
+    const selectAll = vi.fn();
+    const clearSelection = vi.fn();
+    const { rerender } = render(
+      <WorkFilesView
+        actions={actions({
+          entries: [archive, report],
+          visibleEntries: [archive, report],
+          selectedPaths: new Set([archive.path]),
+          selectedEntries: [archive],
+          layout: 'list',
+          selectAll,
+          clearSelection,
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+
+    const partialCheckbox = screen.getByRole('checkbox', { name: '选择全部 2 项' });
+    expect(partialCheckbox).toHaveAttribute('aria-checked', 'mixed');
+    fireEvent.click(partialCheckbox);
+    expect(selectAll).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <WorkFilesView
+        actions={actions({
+          entries: [archive, report],
+          visibleEntries: [archive, report],
+          selectedPaths: new Set([archive.path, report.path]),
+          selectedEntries: [archive, report],
+          layout: 'list',
+          selectAll,
+          clearSelection,
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+    const checkedCheckbox = screen.getByRole('checkbox', { name: '取消选择全部 2 项' });
+    expect(checkedCheckbox).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(checkedCheckbox);
+    expect(clearSelection).toHaveBeenCalledTimes(1);
   });
 
   it('imports operating-system drops into visible folders and the current folder background', () => {

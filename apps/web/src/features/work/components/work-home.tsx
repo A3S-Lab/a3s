@@ -16,14 +16,15 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { type CSSProperties, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, IconButton, SearchField, StateView } from '../../../design-system/primitives';
 import { OfficeSelect } from '../editors/office-controls';
 import { WORK_TEMPLATES } from '../work-templates';
 import type { WorkArtifact, WorkArtifactKind, WorkFolder, WorkLibraryView } from '../work-types';
 import { workArtifactExtension, workArtifactKindLabel } from '../work-types';
 import { WorkFileIcon } from './work-file-icon';
-import { type WorkLibraryOperation, WorkLibraryOperationDialog } from './work-library-operation-dialog';
+import { WorkInlineNameEditor } from './work-inline-name-editor';
+import { WorkLibraryDeleteDialog, type WorkLibraryDeleteTarget } from './work-library-delete-dialog';
 import { WorkSidebarOpenButton } from './work-sidebar-open-button';
 
 interface WorkHomeProps {
@@ -39,18 +40,46 @@ interface WorkHomeProps {
   onOpen: (id: string) => void;
   onImport: () => void;
   onToggleFavorite: (id: string) => void;
-  onRename: (id: string, title: string) => void;
+  onRename: (id: string, title: string) => void | Promise<void>;
   onCopy: (id: string) => void;
   onMove: (id: string, folderId: string | null) => void;
   onRestore: (id: string) => void;
   onDelete: (artifact: WorkArtifact) => void;
   onOpenFolder: (id: string) => void;
-  onCreateFolder: (name: string) => void;
-  onRenameFolder: (id: string, name: string) => void;
+  onCreateFolder: (name: string) => void | Promise<void>;
+  onRenameFolder: (id: string, name: string) => void | Promise<void>;
   onRestoreFolder: (id: string) => void;
   onDeleteFolder: (folder: WorkFolder) => void;
   onRetry: () => void;
 }
+
+type WorkLibraryInlineOperation =
+  | {
+      operationId: number;
+      kind: 'create-folder';
+      value: string;
+      initialValue: string;
+      submitting: boolean;
+      error: string | null;
+    }
+  | {
+      operationId: number;
+      kind: 'rename-folder';
+      folder: WorkFolder;
+      value: string;
+      initialValue: string;
+      submitting: boolean;
+      error: string | null;
+    }
+  | {
+      operationId: number;
+      kind: 'rename-artifact';
+      artifact: WorkArtifact;
+      value: string;
+      initialValue: string;
+      submitting: boolean;
+      error: string | null;
+    };
 
 export function WorkHome({
   artifacts,
@@ -79,7 +108,9 @@ export function WorkHome({
 }: WorkHomeProps) {
   const [query, setQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
-  const [operation, setOperation] = useState<WorkLibraryOperation | null>(null);
+  const [inlineOperation, setInlineOperation] = useState<WorkLibraryInlineOperation | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<WorkLibraryDeleteTarget | null>(null);
+  const nextInlineOperationIdRef = useRef(0);
   const visibleArtifacts = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return artifacts.filter((artifact) => {
@@ -109,16 +140,89 @@ export function WorkHome({
           : view === 'folder'
             ? (activeFolder?.name ?? '文件夹')
             : '我的文档';
-  const confirmOperation = (value?: string) => {
-    if (!operation) return;
-    if (operation.kind === 'create-folder' && value) onCreateFolder(value);
-    else if (operation.kind === 'rename-folder' && value && value !== operation.folder.name) {
-      onRenameFolder(operation.folder.id, value);
-    } else if (operation.kind === 'rename-artifact' && value && value !== operation.artifact.title) {
-      onRename(operation.artifact.id, value);
-    } else if (operation.kind === 'delete-folder') onDeleteFolder(operation.folder);
-    else if (operation.kind === 'delete-artifact') onDelete(operation.artifact);
-    setOperation(null);
+  useEffect(() => {
+    setInlineOperation(null);
+  }, [activeFolderId, view]);
+  const startCreateFolder = () => {
+    const value = '新建文件夹';
+    nextInlineOperationIdRef.current += 1;
+    setInlineOperation({
+      operationId: nextInlineOperationIdRef.current,
+      kind: 'create-folder',
+      value,
+      initialValue: value,
+      submitting: false,
+      error: null,
+    });
+  };
+  const startRenameFolder = (folder: WorkFolder) => {
+    nextInlineOperationIdRef.current += 1;
+    setInlineOperation({
+      operationId: nextInlineOperationIdRef.current,
+      kind: 'rename-folder',
+      folder,
+      value: folder.name,
+      initialValue: folder.name,
+      submitting: false,
+      error: null,
+    });
+  };
+  const startRenameArtifact = (artifact: WorkArtifact) => {
+    nextInlineOperationIdRef.current += 1;
+    setInlineOperation({
+      operationId: nextInlineOperationIdRef.current,
+      kind: 'rename-artifact',
+      artifact,
+      value: artifact.title,
+      initialValue: artifact.title,
+      submitting: false,
+      error: null,
+    });
+  };
+  const saveInlineOperation = async () => {
+    if (!inlineOperation || inlineOperation.submitting) return;
+    const value = inlineOperation.value.trim();
+    if (!value) {
+      setInlineOperation((current) => (current ? { ...current, error: '请输入名称。' } : current));
+      return;
+    }
+    if (
+      (inlineOperation.kind === 'rename-folder' && value === inlineOperation.folder.name) ||
+      (inlineOperation.kind === 'rename-artifact' && value === inlineOperation.artifact.title)
+    ) {
+      setInlineOperation(null);
+      return;
+    }
+    const activeOperation = inlineOperation;
+    setInlineOperation({ ...activeOperation, submitting: true, error: null });
+    try {
+      if (activeOperation.kind === 'create-folder') await onCreateFolder(value);
+      else if (activeOperation.kind === 'rename-folder') await onRenameFolder(activeOperation.folder.id, value);
+      else await onRename(activeOperation.artifact.id, value);
+      setInlineOperation((current) => (current?.operationId === activeOperation.operationId ? null : current));
+    } catch (operationError) {
+      setInlineOperation((current) =>
+        current?.operationId === activeOperation.operationId
+          ? {
+              ...current,
+              submitting: false,
+              error: operationError instanceof Error ? operationError.message : '操作失败，请重试。',
+            }
+          : current
+      );
+    }
+  };
+  const confirmPermanentDelete = () => {
+    if (!deleteTarget) return;
+    if (deleteTarget.kind === 'folder') onDeleteFolder(deleteTarget.folder);
+    else onDelete(deleteTarget.artifact);
+    setDeleteTarget(null);
+  };
+  const updateInlineValue = (value: string) => {
+    setInlineOperation((current) => (current ? { ...current, value, error: null } : current));
+  };
+  const cancelInlineOperation = () => {
+    setInlineOperation((current) => (current?.submitting ? current : null));
   };
 
   return (
@@ -142,7 +246,7 @@ export function WorkHome({
             打开文件
           </Button>
           {(view === 'home' || view === 'folder') && (
-            <Button onClick={() => setOperation({ kind: 'create-folder' })}>
+            <Button onClick={startCreateFolder}>
               <FolderPlus size={15} />
               新建文件夹
             </Button>
@@ -182,7 +286,7 @@ export function WorkHome({
         </section>
       )}
 
-      {visibleFolders.length > 0 && (
+      {(visibleFolders.length > 0 || inlineOperation?.kind === 'create-folder') && (
         <section className='work-folder-section' aria-labelledby='work-folders-title'>
           <div className='work-section-heading'>
             <div>
@@ -191,16 +295,38 @@ export function WorkHome({
             </div>
           </div>
           <div className='work-folder-grid'>
-            {visibleFolders.map((folder) => (
-              <FolderCard
-                key={folder.id}
-                folder={folder}
-                onOpen={() => onOpenFolder(folder.id)}
-                onRename={() => setOperation({ kind: 'rename-folder', folder })}
-                onRestore={() => onRestoreFolder(folder.id)}
-                onDelete={() => setOperation({ kind: 'delete-folder', folder })}
+            {inlineOperation?.kind === 'create-folder' && (
+              <FolderInlineEditorCard
+                key={`create-folder:${inlineOperation.operationId}`}
+                operation={inlineOperation}
+                onValueChange={updateInlineValue}
+                onSave={saveInlineOperation}
+                onCancel={cancelInlineOperation}
               />
-            ))}
+            )}
+            {visibleFolders.map((folder) =>
+              inlineOperation?.kind === 'rename-folder' && inlineOperation.folder.id === folder.id ? (
+                <FolderInlineEditorCard
+                  key={folder.id}
+                  operation={inlineOperation}
+                  onValueChange={updateInlineValue}
+                  onSave={saveInlineOperation}
+                  onCancel={cancelInlineOperation}
+                />
+              ) : (
+                <FolderCard
+                  key={folder.id}
+                  folder={folder}
+                  onOpen={() => onOpenFolder(folder.id)}
+                  onRename={() => startRenameFolder(folder)}
+                  onRestore={() => onRestoreFolder(folder.id)}
+                  onDelete={() => {
+                    if (folder.trashedAt) setDeleteTarget({ kind: 'folder', folder });
+                    else onDeleteFolder(folder);
+                  }}
+                />
+              )
+            )}
           </div>
         </section>
       )}
@@ -253,21 +379,36 @@ export function WorkHome({
           />
         ) : visibleArtifacts.length ? (
           <div className={`work-artifact-${layout}`}>
-            {visibleArtifacts.map((artifact) => (
-              <ArtifactCard
-                key={artifact.id}
-                artifact={artifact}
-                layout={layout}
-                onOpen={() => onOpen(artifact.id)}
-                onFavorite={() => onToggleFavorite(artifact.id)}
-                onRename={() => setOperation({ kind: 'rename-artifact', artifact })}
-                onCopy={() => onCopy(artifact.id)}
-                onMove={(folderId) => onMove(artifact.id, folderId)}
-                onRestore={() => onRestore(artifact.id)}
-                onDelete={() => setOperation({ kind: 'delete-artifact', artifact })}
-                folders={folders.filter((folder) => !folder.trashedAt)}
-              />
-            ))}
+            {visibleArtifacts.map((artifact) =>
+              inlineOperation?.kind === 'rename-artifact' && inlineOperation.artifact.id === artifact.id ? (
+                <ArtifactInlineEditorCard
+                  key={artifact.id}
+                  artifact={artifact}
+                  layout={layout}
+                  operation={inlineOperation}
+                  onValueChange={updateInlineValue}
+                  onSave={saveInlineOperation}
+                  onCancel={cancelInlineOperation}
+                />
+              ) : (
+                <ArtifactCard
+                  key={artifact.id}
+                  artifact={artifact}
+                  layout={layout}
+                  onOpen={() => onOpen(artifact.id)}
+                  onFavorite={() => onToggleFavorite(artifact.id)}
+                  onRename={() => startRenameArtifact(artifact)}
+                  onCopy={() => onCopy(artifact.id)}
+                  onMove={(folderId) => onMove(artifact.id, folderId)}
+                  onRestore={() => onRestore(artifact.id)}
+                  onDelete={() => {
+                    if (artifact.trashedAt) setDeleteTarget({ kind: 'artifact', artifact });
+                    else onDelete(artifact);
+                  }}
+                  folders={folders.filter((folder) => !folder.trashedAt)}
+                />
+              )
+            )}
           </div>
         ) : (
           <StateView
@@ -280,14 +421,92 @@ export function WorkHome({
           />
         )}
       </section>
-      {operation && (
-        <WorkLibraryOperationDialog
-          operation={operation}
-          onClose={() => setOperation(null)}
-          onConfirm={confirmOperation}
+      {deleteTarget && (
+        <WorkLibraryDeleteDialog
+          target={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={confirmPermanentDelete}
         />
       )}
     </section>
+  );
+}
+
+function FolderInlineEditorCard({
+  operation,
+  onValueChange,
+  onSave,
+  onCancel,
+}: {
+  operation: Extract<WorkLibraryInlineOperation, { kind: 'create-folder' | 'rename-folder' }>;
+  onValueChange: (value: string) => void;
+  onSave: () => void | Promise<void>;
+  onCancel: () => void;
+}) {
+  const creating = operation.kind === 'create-folder';
+  return (
+    <article className='work-folder-card work-library-inline-card'>
+      <div className='work-folder-inline-content'>
+        <WorkFileIcon path={creating ? operation.value : operation.folder.name} directory size={32} />
+        <WorkInlineNameEditor
+          className='work-library-inline-name'
+          value={operation.value}
+          label={creating ? '新建文件夹名称' : `重命名文件夹 ${operation.folder.name}`}
+          saveLabel={creating ? '创建文件夹' : '保存文件夹名称'}
+          cancelLabel={creating ? '取消新建文件夹' : '取消重命名文件夹'}
+          selectionEnd={operation.initialValue.length}
+          busy={operation.submitting}
+          error={operation.error}
+          onChange={onValueChange}
+          onSave={onSave}
+          onCancel={onCancel}
+        />
+      </div>
+    </article>
+  );
+}
+
+function ArtifactInlineEditorCard({
+  artifact,
+  layout,
+  operation,
+  onValueChange,
+  onSave,
+  onCancel,
+}: {
+  artifact: WorkArtifact;
+  layout: 'grid' | 'list';
+  operation: Extract<WorkLibraryInlineOperation, { kind: 'rename-artifact' }>;
+  onValueChange: (value: string) => void;
+  onSave: () => void | Promise<void>;
+  onCancel: () => void;
+}) {
+  return (
+    <article className={`work-artifact-card work-library-inline-card ${artifact.kind} ${layout}`}>
+      <div className='work-artifact-open'>
+        <span className='work-artifact-thumbnail'>
+          <ArtifactPreview artifact={artifact} />
+        </span>
+        <span className='work-artifact-details'>
+          <WorkInlineNameEditor
+            className='work-library-inline-name'
+            value={operation.value}
+            label={`重命名文件 ${artifact.title}`}
+            saveLabel='保存文件名称'
+            cancelLabel='取消重命名文件'
+            selectionEnd={operation.initialValue.length}
+            busy={operation.submitting}
+            error={operation.error}
+            onChange={onValueChange}
+            onSave={onSave}
+            onCancel={onCancel}
+          />
+          <small>
+            {workArtifactKindLabel(artifact.kind)} · {formatRecentTime(artifact.updatedAt)}
+          </small>
+        </span>
+      </div>
+    </article>
   );
 }
 

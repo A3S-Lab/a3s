@@ -57,12 +57,14 @@ describe('standalone knowledge page', () => {
     vi.restoreAllMocks();
   });
 
-  it('presents only the user local knowledge bases in the Work-style hierarchy', () => {
+  it('presents only the user local knowledge bases in the shared product-sidebar hierarchy', () => {
     const actions = createKnowledgeActions();
     const { container } = render(<KnowledgePage actions={actions} />);
 
     expect(screen.getByRole('region', { name: '知识' })).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: '知识导航' })).toBeInTheDocument();
+    expect(container.querySelector('.product-sidebar.knowledge-sidebar')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '我的知识库 1' }).querySelector('.sidebar-nav-icon')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '收起知识侧边栏' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '我的知识库 1' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('heading', { name: '我的知识库' })).toBeInTheDocument();

@@ -39,6 +39,12 @@ describe('Work Finder sidebar', () => {
         onImport={vi.fn()}
       />
     );
+    expect(container.querySelector('.product-sidebar.work-sidebar')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '全部文件' }).querySelector('.sidebar-nav-icon')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '文字' }).querySelector('.sidebar-nav-icon')).toHaveAttribute(
+      'data-tone',
+      'blue'
+    );
     expect(container.querySelector('.work-workspace-switcher')).toHaveClass('variant-sidebar');
     expect(container.querySelector('.work-workspace-switcher')).not.toHaveClass('sidebar');
     expect(screen.getByText('办公')).toBeInTheDocument();

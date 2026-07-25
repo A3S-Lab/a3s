@@ -28,9 +28,14 @@ describe('TaskLibrary management', () => {
 
   it('uses a quiet grouped task list with relative time and collapsible search', () => {
     appState.sessions = [{ ...task, createdAt: Date.now() - 7 * 60 * 60 * 1000 }];
-    render(<TaskLibrary actions={{} as TaskActions} />);
+    const { container } = render(<TaskLibrary actions={{} as TaskActions} />);
 
+    expect(container.querySelector('.product-sidebar.task-library')).toBeInTheDocument();
     expect(screen.getByText('编码')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '新建任务' }).querySelector('.sidebar-nav-icon')).toHaveAttribute(
+      'data-tone',
+      'blue'
+    );
     expect(screen.getByRole('button', { name: '收起编码侧边栏' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '收起编码侧边栏' }));
     expect(appState.sidebarOpen).toBe(false);

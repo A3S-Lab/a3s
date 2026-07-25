@@ -113,12 +113,14 @@ catalog loads. Each icon exposes one concise tooltip.
 
 **Role:** create, search, select, rename, and delete task objects.
 
-**Visual contract:** use a quiet product/version label, one plain New task row,
-an on-demand compact search field, and one collapsible `任务 (n)` group. Task
-rows are 36 px, single-line, and show a concise relative creation time instead
-of model metadata. The selected task uses neutral background plus stronger type;
-row actions appear only on hover or keyboard focus. This adapts WorkBuddy's
-sidebar restraint without importing WorkBuddy-specific destinations.
+**Visual contract:** use the shared `ProductSidebar` chrome, one 34 px New task
+row with the standard framed command glyph, an on-demand compact search field,
+and one collapsible `任务 (n)` group. Task rows are 36 px, single-line, and
+show a concise relative creation time instead of model metadata. They remain
+icon-free so long titles keep enough recognition space. The selected task uses
+neutral background plus stronger type; row actions appear only on hover or
+keyboard focus. This adapts WorkBuddy's sidebar restraint without importing
+WorkBuddy-specific destinations.
 
 **Mutation contract:** rename replaces the row with a focused input; Enter or
 the row action saves and Escape cancels. Delete replaces the same row with a

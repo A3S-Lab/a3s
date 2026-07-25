@@ -2,7 +2,7 @@ import { useDebounce } from 'ahooks';
 import { ChevronDown, CirclePlus, Search } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { SidebarProductHeader } from '../../../components/sidebar-product-header';
+import { ProductSidebar, SidebarNavIcon } from '../../../components/product-sidebar';
 import { CollectionState, IconButton, SearchField } from '../../../design-system/primitives';
 import { appState, sessionTitle } from '../../../state/app-state';
 import type { TaskActions } from '../task-actions';
@@ -26,13 +26,11 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
     if (searchOpen) searchInputRef.current?.focus();
   }, [searchOpen]);
   return (
-    <aside className='task-library' aria-label='Code 任务'>
-      <SidebarProductHeader
-        title='编码'
-        onCollapse={() => {
-          appState.sidebarOpen = false;
-        }}
-      >
+    <ProductSidebar
+      className='task-library'
+      label='Code 任务'
+      title='编码'
+      headerActions={
         <IconButton
           ref={searchTriggerRef}
           label={searchOpen ? '关闭任务搜索' : '搜索任务'}
@@ -46,18 +44,24 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
         >
           <Search size={15} />
         </IconButton>
-      </SidebarProductHeader>
+      }
+      onCollapse={() => {
+        appState.sidebarOpen = false;
+      }}
+    >
       <button
         type='button'
-        className={`task-library-new ${state.activeSessionId ? '' : 'active'}`}
+        className={`sidebar-nav-item task-library-new ${state.activeSessionId ? '' : 'active'}`}
         aria-current={state.activeSessionId ? undefined : 'page'}
         onClick={() => {
           actions.newConversation();
           closeCompactTaskLibrary();
         }}
       >
-        <CirclePlus size={16} />
-        <span>新建任务</span>
+        <SidebarNavIcon tone='blue'>
+          <CirclePlus size={15} />
+        </SidebarNavIcon>
+        <span className='sidebar-nav-label'>新建任务</span>
       </button>
       {searchOpen && (
         <SearchField
@@ -121,7 +125,7 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
           </CollectionState>
         ) : null}
       </section>
-    </aside>
+    </ProductSidebar>
   );
 }
 

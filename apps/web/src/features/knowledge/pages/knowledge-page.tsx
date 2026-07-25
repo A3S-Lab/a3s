@@ -1,7 +1,7 @@
 import { FolderInput, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { SidebarProductOpenButton } from '../../../components/sidebar-product-header';
+import { SidebarProductOpenButton } from '../../../components/product-sidebar';
 import { Button, SearchField } from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
 import type { PersonalKnowledgeBase } from '../../../types/api';

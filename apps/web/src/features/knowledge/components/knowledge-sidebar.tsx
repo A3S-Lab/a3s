@@ -1,5 +1,5 @@
-import { FolderInput, LibraryBig, Plus, RefreshCw } from 'lucide-react';
-import { SidebarProductHeader } from '../../../components/sidebar-product-header';
+import { FolderInput, LibraryBig, LoaderCircle, Plus, RefreshCw } from 'lucide-react';
+import { ProductSidebar, SidebarNavIcon } from '../../../components/product-sidebar';
 import { Button } from '../../../design-system/primitives';
 
 interface KnowledgeSidebarProps {
@@ -24,39 +24,54 @@ export function KnowledgeSidebar({
   onRefresh,
 }: KnowledgeSidebarProps) {
   return (
-    <aside className='work-sidebar knowledge-sidebar' aria-label='知识导航'>
-      <SidebarProductHeader title='知识' onCollapse={onCollapse} />
-
-      <nav aria-label='知识库范围'>
-        <span className='work-sidebar-section-label'>知识库</span>
+    <ProductSidebar className='work-sidebar knowledge-sidebar' label='知识导航' title='知识' onCollapse={onCollapse}>
+      <nav className='sidebar-nav-list' aria-label='知识库范围'>
+        <span className='sidebar-section-label'>知识库</span>
         <button
           type='button'
-          className={libraryActive ? 'active' : ''}
+          className={`sidebar-nav-item ${libraryActive ? 'active' : ''}`}
           aria-label={`我的知识库 ${count}`}
           aria-current={libraryActive ? 'page' : undefined}
           onClick={onShowLibrary}
         >
-          <LibraryBig size={16} />
-          <span>我的知识库</span>
-          <small>{count}</small>
+          <SidebarNavIcon>
+            <LibraryBig size={15} />
+          </SidebarNavIcon>
+          <span className='sidebar-nav-label'>我的知识库</span>
+          <small className='sidebar-nav-count'>{count}</small>
         </button>
       </nav>
 
-      <section className='work-sidebar-create knowledge-sidebar-quick-actions' aria-label='快速操作'>
-        <span>快速操作</span>
-        <Button tone='quiet' onClick={onCreate}>
-          <Plus size={15} />
-          新建
+      <section
+        className='sidebar-nav-list sidebar-action-group work-sidebar-create knowledge-sidebar-quick-actions'
+        aria-label='快速操作'
+      >
+        <span className='sidebar-section-label'>快速操作</span>
+        <Button className='sidebar-nav-item' tone='quiet' onClick={onCreate}>
+          <SidebarNavIcon tone='blue'>
+            <Plus size={15} />
+          </SidebarNavIcon>
+          <span className='sidebar-nav-label'>新建</span>
         </Button>
-        <Button tone='quiet' onClick={onImport}>
-          <FolderInput size={15} />
-          导入
+        <Button className='sidebar-nav-item' tone='quiet' onClick={onImport}>
+          <SidebarNavIcon tone='green'>
+            <FolderInput size={15} />
+          </SidebarNavIcon>
+          <span className='sidebar-nav-label'>导入</span>
         </Button>
-        <Button tone='quiet' loading={refreshing} onClick={onRefresh}>
-          {!refreshing && <RefreshCw size={15} />}
-          {refreshing ? '刷新中…' : '刷新'}
+        <Button
+          className='sidebar-nav-item'
+          tone='quiet'
+          disabled={refreshing}
+          aria-busy={refreshing || undefined}
+          onClick={onRefresh}
+        >
+          <SidebarNavIcon tone='orange'>
+            {refreshing ? <LoaderCircle className='spin' size={15} /> : <RefreshCw size={15} />}
+          </SidebarNavIcon>
+          <span className='sidebar-nav-label'>{refreshing ? '刷新中…' : '刷新'}</span>
         </Button>
       </section>
-    </aside>
+    </ProductSidebar>
   );
 }

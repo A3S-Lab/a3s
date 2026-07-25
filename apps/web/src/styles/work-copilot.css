@@ -482,14 +482,21 @@
   min-width: 0;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1120px) {
   .work-copilot {
     position: absolute;
     top: 0;
     right: 0;
     bottom: 0;
-    min-width: min(360px, calc(100% - 64px));
-    max-width: calc(100% - 64px);
-    box-shadow: -16px 0 42px rgb(20 24 40 / 14%);
+    left: 0;
+    width: 100% !important;
+    min-width: 100%;
+    max-width: 100%;
+    border-left: 0;
+    box-shadow: none;
+  }
+
+  .work-copilot-resizer {
+    display: none;
   }
 }

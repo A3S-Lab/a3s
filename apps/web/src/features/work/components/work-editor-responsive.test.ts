@@ -18,11 +18,13 @@ describe('Work editor responsive chrome', () => {
     expect(editorStyles).not.toMatch(/\.work-color-tool input\s*\{/);
   });
 
-  it('keeps common laptop widths split and reserves the Copilot overlay for compact screens', () => {
+  it('uses a full Work-pane Copilot overlay at common laptop widths', () => {
     expect(copilotStyles).toMatch(
-      /@media \(max-width: 960px\)[\s\S]*?\.work-copilot\s*\{[\s\S]*?position:\s*absolute;/
+      /@media \(max-width: 1120px\)[\s\S]*?\.work-copilot\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?left:\s*0;[\s\S]*?width:\s*100% !important;/
     );
-    expect(copilotStyles).not.toContain('@media (max-width: 1120px)');
+    expect(copilotStyles).toMatch(
+      /@media \(max-width: 1120px\)[\s\S]*?\.work-copilot-resizer\s*\{[\s\S]*?display:\s*none;/
+    );
     expect(editorStyles).toMatch(
       /@media \(max-width: 1120px\)[\s\S]*?\.work-local-save-button,\s*\.work-editor-ai-button\s*\{[\s\S]*?width:\s*32px;[\s\S]*?font-size:\s*0;/
     );

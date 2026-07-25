@@ -366,6 +366,10 @@ html[data-ds-resizing="horizontal"] * {
   background: color-mix(in srgb, var(--a3s-panel-soft) 24%, var(--a3s-panel));
 }
 
+.ds-page-header .lucide {
+  stroke-width: var(--a3s-shell-icon-stroke);
+}
+
 .ds-page-header.has-navigation {
   grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
 }
@@ -392,6 +396,11 @@ html[data-ds-resizing="horizontal"] * {
   border-radius: 9px;
   background: color-mix(in srgb, var(--ds-page-accent) 8%, var(--a3s-panel));
   color: var(--ds-page-accent);
+}
+
+.ds-page-header-icon > svg {
+  width: 18px;
+  height: 18px;
 }
 
 .ds-page-header[data-accent="blue"] { --ds-page-accent: var(--a3s-blue); }

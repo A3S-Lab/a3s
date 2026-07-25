@@ -7,6 +7,7 @@
   overflow: auto;
   outline: 0;
   background: var(--a3s-panel);
+  user-select: none;
 }
 
 .work-files-content.external-drop-target {
@@ -26,6 +27,7 @@
 }
 
 .work-file-item {
+  position: relative;
   min-width: 0;
   border: 0;
   background: transparent;
@@ -285,12 +287,24 @@
   top: -18px;
   height: 31px;
   margin: -18px -20px 2px;
-  padding: 0 20px 0 38px;
+  padding: 0 20px;
   border-bottom: 1px solid var(--a3s-line);
   background: color-mix(in srgb, var(--a3s-panel-soft) 50%, var(--a3s-panel));
   color: var(--a3s-faint);
   font-size: 9px;
   font-weight: 650;
+}
+
+.work-files-list-header > thead,
+.work-files-list-header > thead > tr {
+  display: contents;
+}
+
+.work-files-list-header th {
+  min-width: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
 }
 
 .work-files-items.list {
@@ -301,7 +315,7 @@
 .work-files-items.list .work-file-item {
   position: relative;
   min-height: 34px;
-  padding: 0 8px 0 36px;
+  padding: 0 8px 0 62px;
   border-radius: 6px;
   text-align: left;
 }
@@ -321,7 +335,7 @@
 .work-files-items.list .work-file-visual {
   position: absolute;
   top: 0;
-  left: 9px;
+  left: 34px;
   width: 22px;
   height: 34px;
   min-height: 0;
@@ -699,7 +713,16 @@
 }
 
 @media (max-width: 1320px) {
-  .work-files-sort-select {
+  .work-files-sort-select > button[role="combobox"] {
+    width: 74px;
+    min-width: 74px;
+  }
+
+  .work-files-quick-look-command {
+    display: none !important;
+  }
+
+  .work-files-toolbar-actions > .work-copilot-toggle > span {
     display: none;
   }
 
@@ -720,10 +743,6 @@
 }
 
 @media (max-width: 1120px) {
-  .work-files-toolbar-actions > .work-copilot-toggle > span {
-    display: none;
-  }
-
   .work-files-search {
     width: 120px;
     flex-basis: 120px;
@@ -731,10 +750,19 @@
 }
 
 @media (max-width: 820px) {
-  .work-files-search,
-  .work-files-layout-toggle,
-  .work-files-toolbar-actions > button:not(.work-copilot-toggle) {
-    display: none;
+  .work-files-search {
+    width: 100px;
+    flex-basis: 100px;
+  }
+
+  .work-files-sort-select > button[role="combobox"] {
+    width: 66px;
+    min-width: 66px;
+  }
+
+  .work-files-refresh-command,
+  .work-files-layout-toggle {
+    display: none !important;
   }
 
   .work-files-items.grid {
@@ -748,5 +776,14 @@
 
   .work-quick-look-footer > span {
     display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .work-files-search,
+  .work-files-new-folder-command,
+  .work-files-refresh-command,
+  .work-files-layout-toggle {
+    display: none !important;
   }
 }

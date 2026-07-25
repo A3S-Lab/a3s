@@ -1,6 +1,6 @@
 import { Clock3, Files, FolderOpen, HardDrive, Home, Presentation, Sheet, Star, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
-import { SidebarProductHeader } from '../../../components/sidebar-product-header';
+import { ProductSidebar, SidebarNavIcon } from '../../../components/product-sidebar';
 import { Button, IconButton } from '../../../design-system/primitives';
 import { hasDraggedWorkspaceFiles } from '../../workspace/workspace-drop-import';
 import {
@@ -112,9 +112,7 @@ export function WorkSidebar({
     setExternalDropTargetPath(null);
   };
   return (
-    <aside className='work-sidebar' aria-label='办公文件导航'>
-      <SidebarProductHeader title='办公' onCollapse={onCollapse} />
-
+    <ProductSidebar className='work-sidebar' label='办公文件导航' title='办公' onCollapse={onCollapse}>
       <WorkWorkspaceSwitcher
         rootPath={localRootPath}
         recentPaths={recentRootPaths}
@@ -122,22 +120,24 @@ export function WorkSidebar({
         onPick={onPickWorkspace}
       />
 
-      <nav aria-label='文件范围'>
-        <span className='work-sidebar-section-label'>位置</span>
+      <nav className='sidebar-nav-list' aria-label='文件范围'>
+        <span className='sidebar-section-label'>位置</span>
         <button
           type='button'
-          className={`${surface === 'files' && sameLocalPath(localCurrentPath, localRootPath) ? 'active' : ''} ${dropTargetPath === localRootPath || externalDropTargetPath === localRootPath ? 'drop-target' : ''} ${externalDropTargetPath === localRootPath ? 'external-drop-target' : ''}`}
+          className={`sidebar-nav-item ${surface === 'files' && sameLocalPath(localCurrentPath, localRootPath) ? 'active' : ''} ${dropTargetPath === localRootPath || externalDropTargetPath === localRootPath ? 'drop-target' : ''} ${externalDropTargetPath === localRootPath ? 'external-drop-target' : ''}`}
           onClick={onOpenLocalFiles}
           onDragOver={(event) => acceptDrop(event, localRootPath)}
           onDragLeave={clearDropTarget}
           onDrop={(event) => finishDrop(event, localRootPath)}
         >
-          <HardDrive size={16} />
-          <span>{localRootName ? '全部文件' : '本地文件'}</span>
+          <SidebarNavIcon>
+            <HardDrive size={15} />
+          </SidebarNavIcon>
+          <span className='sidebar-nav-label'>{localRootName ? '全部文件' : '本地文件'}</span>
         </button>
         {localFavoritePaths.length > 0 && (
           <section className='work-sidebar-local-favorites' aria-label='本地收藏文件夹'>
-            <span className='work-sidebar-section-label favorites'>个人收藏</span>
+            <span className='sidebar-section-label favorites'>个人收藏</span>
             {localFavoritePaths.map((path) => {
               const label = localPathBasename(path);
               return (
@@ -146,14 +146,14 @@ export function WorkSidebar({
                     type='button'
                     title={path}
                     aria-label={`打开收藏文件夹 ${label}`}
-                    className={`${surface === 'files' && sameLocalPath(localCurrentPath, path) ? 'active' : ''} ${dropTargetPath === path || externalDropTargetPath === path ? 'drop-target' : ''} ${externalDropTargetPath === path ? 'external-drop-target' : ''}`}
+                    className={`sidebar-nav-item ${surface === 'files' && sameLocalPath(localCurrentPath, path) ? 'active' : ''} ${dropTargetPath === path || externalDropTargetPath === path ? 'drop-target' : ''} ${externalDropTargetPath === path ? 'external-drop-target' : ''}`}
                     onClick={() => onOpenLocalFavorite(path)}
                     onDragOver={(event) => acceptDrop(event, path)}
                     onDragLeave={clearDropTarget}
                     onDrop={(event) => finishDrop(event, path)}
                   >
                     <WorkFileIcon path={path} directory size={17} />
-                    <span>{label}</span>
+                    <span className='sidebar-nav-label'>{label}</span>
                   </button>
                   <IconButton
                     className='work-sidebar-favorite-remove'
@@ -168,81 +168,97 @@ export function WorkSidebar({
             })}
           </section>
         )}
-        <span className='work-sidebar-section-label library'>我的文件</span>
+        <span className='sidebar-section-label library'>我的文件</span>
         <button
           type='button'
-          className={surface === 'library' && view === 'home' ? 'active' : ''}
+          className={`sidebar-nav-item ${surface === 'library' && view === 'home' ? 'active' : ''}`}
           onClick={() => onChangeView('home')}
         >
-          <Home size={16} />
-          <span>我的文档</span>
+          <SidebarNavIcon>
+            <Home size={15} />
+          </SidebarNavIcon>
+          <span className='sidebar-nav-label'>我的文档</span>
         </button>
         <button
           type='button'
-          className={surface === 'library' && view === 'recent' ? 'active' : ''}
+          className={`sidebar-nav-item ${surface === 'library' && view === 'recent' ? 'active' : ''}`}
           onClick={() => onChangeView('recent')}
         >
-          <Clock3 size={16} />
-          <span>最近</span>
-          <small>{totalCount}</small>
+          <SidebarNavIcon>
+            <Clock3 size={15} />
+          </SidebarNavIcon>
+          <span className='sidebar-nav-label'>最近</span>
+          <small className='sidebar-nav-count'>{totalCount}</small>
         </button>
         <button
           type='button'
-          className={surface === 'library' && view === 'favorites' ? 'active' : ''}
+          className={`sidebar-nav-item ${surface === 'library' && view === 'favorites' ? 'active' : ''}`}
           onClick={() => onChangeView('favorites')}
         >
-          <Star size={16} />
-          <span>收藏</span>
-          <small>{favoriteCount}</small>
+          <SidebarNavIcon>
+            <Star size={15} />
+          </SidebarNavIcon>
+          <span className='sidebar-nav-label'>收藏</span>
+          <small className='sidebar-nav-count'>{favoriteCount}</small>
         </button>
         <button
           type='button'
-          className={surface === 'library' && view === 'trash' ? 'active' : ''}
+          className={`sidebar-nav-item ${surface === 'library' && view === 'trash' ? 'active' : ''}`}
           onClick={() => onChangeView('trash')}
         >
-          <Trash2 size={16} />
-          <span>回收站</span>
-          <small>{trashCount}</small>
+          <SidebarNavIcon>
+            <Trash2 size={15} />
+          </SidebarNavIcon>
+          <span className='sidebar-nav-label'>回收站</span>
+          <small className='sidebar-nav-count'>{trashCount}</small>
         </button>
       </nav>
 
       {rootFolders.length > 0 && (
-        <section className='work-sidebar-folders' aria-label='文件夹'>
-          <span>文件夹</span>
+        <section className='sidebar-nav-list work-sidebar-folders' aria-label='文件夹'>
+          <span className='sidebar-section-label'>文件夹</span>
           {rootFolders.map((folder) => (
             <button
               type='button'
               key={folder.id}
-              className={surface === 'library' && view === 'folder' && activeFolderId === folder.id ? 'active' : ''}
+              className={`sidebar-nav-item ${surface === 'library' && view === 'folder' && activeFolderId === folder.id ? 'active' : ''}`}
               onClick={() => onOpenFolder(folder.id)}
             >
               <WorkFileIcon path={folder.name} directory size={17} />
-              <span>{folder.name}</span>
+              <span className='sidebar-nav-label'>{folder.name}</span>
             </button>
           ))}
         </section>
       )}
 
-      <section className='work-sidebar-create' aria-label='快速新建'>
-        <span>快速新建</span>
-        <Button tone='quiet' onClick={() => onCreate('blank-document')}>
-          <Files size={15} />
-          文字
+      <section className='sidebar-nav-list sidebar-action-group work-sidebar-create' aria-label='快速新建'>
+        <span className='sidebar-section-label'>快速新建</span>
+        <Button className='sidebar-nav-item' tone='quiet' onClick={() => onCreate('blank-document')}>
+          <SidebarNavIcon tone='blue'>
+            <Files size={15} />
+          </SidebarNavIcon>
+          <span className='sidebar-nav-label'>文字</span>
         </Button>
-        <Button tone='quiet' onClick={() => onCreate('blank-spreadsheet')}>
-          <Sheet size={15} />
-          表格
+        <Button className='sidebar-nav-item' tone='quiet' onClick={() => onCreate('blank-spreadsheet')}>
+          <SidebarNavIcon tone='green'>
+            <Sheet size={15} />
+          </SidebarNavIcon>
+          <span className='sidebar-nav-label'>表格</span>
         </Button>
-        <Button tone='quiet' onClick={() => onCreate('blank-presentation')}>
-          <Presentation size={15} />
-          演示
+        <Button className='sidebar-nav-item' tone='quiet' onClick={() => onCreate('blank-presentation')}>
+          <SidebarNavIcon tone='orange'>
+            <Presentation size={15} />
+          </SidebarNavIcon>
+          <span className='sidebar-nav-label'>演示</span>
         </Button>
       </section>
 
-      <Button tone='secondary' className='work-sidebar-import' onClick={onImport}>
-        <FolderOpen size={15} />
-        导入文件
+      <Button tone='secondary' className='sidebar-nav-item work-sidebar-import' onClick={onImport}>
+        <SidebarNavIcon>
+          <FolderOpen size={15} />
+        </SidebarNavIcon>
+        <span className='sidebar-nav-label'>导入文件</span>
       </Button>
-    </aside>
+    </ProductSidebar>
   );
 }

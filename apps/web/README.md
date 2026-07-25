@@ -69,28 +69,36 @@ by the
   Native folder selection, back/forward/up navigation,
   breadcrumbs, grid and list layouts, current-folder filtering, bounded
   recursive whole-workspace filename search with an explicit scope switch,
-  result locations and partial-result warnings, metadata sorting,
-  multi-selection, folder creation, rename, and duplication. Persisted local
-  folder favorites appear in the sidebar and follow Work-initiated moves or
-  renames. Finder-style arrow, Shift-range, Home/End, and Cmd/Ctrl navigation
+  result locations and partial-result warnings, generated-tree filtering that
+  retains `.a3s/kb`, metadata sorting from both the toolbar and clickable list
+  headers,
+  mouse-marquee and checkbox multi-selection, additive range selection, a
+  selection-aware action shelf anchored above the status bar so file positions
+  remain stable, folder creation, rename, and duplication. Folder
+  creation, Office-file naming, rename, and duplicate naming stay inline in
+  both grid and list layouts; only irreversible permanent deletion opens a
+  confirmation dialog.
+  Persisted local folder favorites appear in the sidebar and follow
+  Work-initiated moves or renames. Finder-style arrow, Shift-range, Home/End,
+  and Cmd/Ctrl navigation
   work in both layouts; selected files can be dragged into visible folders,
   ancestor breadcrumbs, the local root, or sidebar favorites after descendant
   and name-collision checks. Files and recursively read folders dragged from the
   operating system are copied into those same targets with bounded reads,
   collision-safe top-level names, and rollback of newly created roots after a
   failed import. New DOCX, XLSX, and PPTX files can be created directly in the
-  current local folder from the sidebar, the folder context menu, or Cmd/Ctrl+N;
-  Work refuses an existing name, writes through a verified sibling replacement,
-  binds the new path, and opens the matching editor immediately. A single
+  current local folder from the sidebar, the folder context menu, or Cmd/Ctrl+N.
+  Their names are entered inline in the file grid or list; Work refuses an
+  existing name, writes through a verified sibling replacement, binds the new
+  path, and opens the matching editor immediately. A single
   selection can open in a read-only Quick Look from
   Space, the toolbar, or its context menu, then move through adjacent visible
   items with the arrow keys. Quick Look safely previews bounded text, common
   raster images, PDFs, and in-memory
   DOCX/XLSX/XLS/ODS/CSV/PPTX conversions without creating or autosaving a Work
   artifact; folders expose metadata only, and unknown or oversized binaries are
-  not read. The first slice deliberately omits local deletion because the
-  current service deletes permanently rather than moving items to the
-  operating-system Trash.
+  not read. Local deletion is explicitly labeled as permanent and requires
+  confirmation because operating-system Trash integration is not yet available.
 - A single-file detail editor for every non-binary code or text file in the
   selected root. It uses the same header and return flow as Office details while
   keeping Monaco syntax highlighting, diagnostics, semantic navigation, safe
@@ -101,6 +109,8 @@ by the
   runtime but isolated from Code conversations. Work sessions use their own
   `agentId`, persisted active conversation, new-conversation draft, workspace,
   and product switch restoration; they are excluded from the Code task list.
+  At 1120 px and below the assistant becomes a full Work-pane overlay with a
+  persistent close action instead of squeezing the file surface.
   File context menus can prepare ask, summarize, organize, and naming
   requests; document selections can prepare ask, summarize, rewrite, and
   translate requests; spreadsheet ranges can prepare data analysis, formula
@@ -111,11 +121,16 @@ by the
   structured proposal protocol: Work shows trusted before/after values, lets
   the user select individual changes, and applies only targets whose live
   source still matches. Layout and formatting advice remains review-only.
-- A Work-specific visual icon language with compact framed command glyphs and
-  color-coded, extension-badged file tiles shared by Finder and file-detail views.
+- A shared product-sidebar visual language gives Code, Work, and Knowledge the
+  same dimensions, navigation rows, framed command glyphs, icon stroke, and
+  interaction states. Work keeps color-coded, extension-badged file tiles where
+  file type is meaningful.
 - A compatibility-preserved A3S Work artifact library with templates, recent
   files, favorites, server-owned autosave, folders, move/copy/rename,
-  recoverable trash, imported source-file recovery, version history,
+  recoverable trash, imported source-file recovery, version history. Folder
+  creation and file/folder rename use the same inline naming pattern as the
+  local workspace; moving an item to recoverable trash is immediate, while
+  permanent deletion from trash remains confirmed. It also supports
   DOCX/XLSX/PPTX import and export,
   source-backed PDF editing through EmbedPDF and a version-matched PDFium/WASM
   asset bundled from the installed `@embedpdf/pdfium` dependency,

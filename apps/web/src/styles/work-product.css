@@ -8,33 +8,12 @@
   background: var(--a3s-bg);
 }
 
-.work-product button > svg,
-.work-product label > svg,
-.work-product header > svg {
-  stroke-width: 1.65;
-}
-
 .work-file-input {
   position: fixed;
   width: 1px;
   height: 1px;
   opacity: 0;
   pointer-events: none;
-}
-
-.work-sidebar {
-  display: flex;
-  width: 232px;
-  height: 100%;
-  flex: 0 0 232px;
-  flex-direction: column;
-  padding: 0 12px 14px;
-  border-right: 1px solid var(--a3s-line);
-  background: color-mix(in srgb, var(--a3s-panel-soft) 58%, var(--a3s-panel));
-}
-
-.work-sidebar > .sidebar-product-header {
-  padding-left: 8px;
 }
 
 .work-icon-button {
@@ -63,91 +42,12 @@
   opacity: 0.28;
 }
 
-.work-sidebar nav,
-.work-sidebar-create,
-.work-sidebar-folders {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.work-sidebar nav button,
-.work-sidebar-create button,
-.work-sidebar-folders button,
-.work-sidebar-import {
-  display: flex;
-  width: 100%;
-  min-height: 34px;
-  height: 34px;
-  align-items: center;
-  gap: 10px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--a3s-muted);
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.work-sidebar nav > button > svg:first-child,
-.work-sidebar-create button > svg:first-child,
-.work-sidebar-folders button > svg:first-child,
-.work-sidebar-import > svg:first-child {
-  width: 25px;
-  height: 25px;
-  flex: 0 0 25px;
-  padding: 5px;
-  border: 1px solid color-mix(in srgb, currentcolor 12%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, currentcolor 7%, var(--a3s-panel));
-}
-
-.work-sidebar nav button > .work-local-file-icon:first-child,
-.work-sidebar-folders button > .work-local-file-icon:first-child {
+.work-sidebar .sidebar-nav-item > .work-local-file-icon:first-child {
   box-sizing: border-box;
   width: 25px !important;
   height: 25px !important;
   flex: 0 0 25px;
   padding: 3px;
-}
-
-.work-sidebar nav button:hover,
-.work-sidebar nav button.active,
-.work-sidebar-create button:hover,
-.work-sidebar-folders button:hover,
-.work-sidebar-folders button.active,
-.work-sidebar-import:hover {
-  background: var(--a3s-panel-strong);
-  color: var(--a3s-ink);
-}
-
-.work-sidebar-create .ds-button:hover:not(:disabled),
-.work-sidebar-import.ds-button:hover:not(:disabled) {
-  background: var(--a3s-panel-strong);
-  color: var(--a3s-ink);
-  filter: none;
-  transform: none;
-}
-
-.work-sidebar-create .ds-button {
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.work-sidebar nav button.active {
-  color: var(--a3s-blue);
-  font-weight: 650;
-}
-
-.work-sidebar nav button span {
-  flex: 1;
-}
-
-.work-sidebar nav button small {
-  color: var(--a3s-faint);
-  font-size: 10px;
 }
 
 .work-sidebar-local-favorites {
@@ -161,7 +61,7 @@
   scrollbar-width: thin;
 }
 
-.work-sidebar-section-label.favorites {
+.sidebar-section-label.favorites {
   flex: 0 0 auto;
 }
 
@@ -205,31 +105,7 @@
 }
 
 .work-sidebar-create {
-  margin-top: 22px;
-  padding-top: 16px;
-  border-top: 1px solid var(--a3s-line);
-}
-
-.work-sidebar-create > span,
-.work-sidebar-folders > span {
-  padding: 0 10px 6px;
-  color: var(--a3s-faint);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.work-sidebar-create button:nth-of-type(1) svg {
-  color: #3974e8;
-}
-
-.work-sidebar-create button:nth-of-type(2) svg {
-  color: #159469;
-}
-
-.work-sidebar-create button:nth-of-type(3) svg {
-  color: #db663b;
+  flex: 0 0 auto;
 }
 
 .work-sidebar-import.ds-button {
@@ -837,11 +713,6 @@
 }
 
 @media (max-width: 1120px) {
-  .work-sidebar {
-    width: 208px;
-    flex-basis: 208px;
-  }
-
   .work-home-header {
     align-items: flex-start;
     flex-direction: column;

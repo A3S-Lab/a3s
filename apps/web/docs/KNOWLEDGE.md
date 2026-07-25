@@ -7,9 +7,9 @@ It is not a marketplace and it does not install executable A3S Use packages.
 The signed plugin Market remains a separate system destination for reviewed
 Plugin packages and registry sources.
 
-The Knowledge product uses the same shell, sidebar, header hierarchy, spacing,
-and interaction patterns as Work. It appears directly below Work in the
-Activity Bar.
+The Knowledge product uses the shared `ProductSidebar` shell, navigation rows,
+framed command glyphs, header hierarchy, spacing, and interaction patterns used
+by Code and Work. It appears directly below Work in the Activity Bar.
 
 ## Local library
 

@@ -41,6 +41,9 @@
   --a3s-tooltip-ink: #ffffff;
   --a3s-radius: 16px;
   --a3s-radius-sm: 9px;
+  --a3s-product-sidebar-width: 232px;
+  --a3s-product-sidebar-compact-width: 208px;
+  --a3s-shell-icon-stroke: 1.75;
   font-family:
     ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;

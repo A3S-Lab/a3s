@@ -20,12 +20,12 @@
   min-width: 0;
   min-height: 0;
   flex: 1;
-  grid-template-columns: 230px minmax(0, 1fr);
+  grid-template-columns: var(--a3s-product-sidebar-width) minmax(0, 1fr);
   overflow: hidden;
 }
 
 .memory-workbench.with-inspector {
-  grid-template-columns: 230px minmax(0, 1fr) 300px;
+  grid-template-columns: var(--a3s-product-sidebar-width) minmax(0, 1fr) 300px;
 }
 
 .memory-inspector-scrim {
@@ -97,7 +97,7 @@
 @media (max-width: 1200px) {
   .memory-workbench,
   .memory-workbench.with-inspector {
-    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-columns: var(--a3s-product-sidebar-compact-width) minmax(0, 1fr);
   }
 
   .memory-inspector-scrim {

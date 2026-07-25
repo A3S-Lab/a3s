@@ -31,6 +31,12 @@ interface NavigationHistory {
 interface SelectionOptions {
   toggle?: boolean;
   range?: boolean;
+  additive?: boolean;
+}
+
+interface ReplaceSelectionOptions {
+  anchorPath?: string | null;
+  focusPath?: string | null;
 }
 
 export function useWorkFilesController(defaultRootPath = '') {
@@ -277,7 +283,11 @@ export function useWorkFilesController(defaultRootPath = '') {
           const targetIndex = paths.indexOf(entry.path);
           if (anchorIndex >= 0 && targetIndex >= 0) {
             const [start, end] = anchorIndex <= targetIndex ? [anchorIndex, targetIndex] : [targetIndex, anchorIndex];
-            return new Set(paths.slice(start, end + 1));
+            const rangePaths = paths.slice(start, end + 1);
+            if (!options.additive) return new Set(rangePaths);
+            const next = new Set(current);
+            for (const path of rangePaths) next.add(path);
+            return next;
           }
         }
         selectionAnchorRef.current = entry.path;
@@ -297,6 +307,24 @@ export function useWorkFilesController(defaultRootPath = '') {
     setSelectionFocusPath(visibleEntries.at(-1)?.path ?? null);
     selectionAnchorRef.current = visibleEntries.at(-1)?.path ?? null;
   }, [visibleEntries]);
+
+  const replaceSelection = useCallback(
+    (paths: readonly string[], options: ReplaceSelectionOptions = {}) => {
+      const requestedPaths = new Set(paths);
+      const nextPaths = visibleEntries.map((entry) => entry.path).filter((path) => requestedPaths.has(path));
+      const nextSet = new Set(nextPaths);
+      setSelectedPaths((current) =>
+        current.size === nextSet.size && [...current].every((path) => nextSet.has(path)) ? current : nextSet
+      );
+      const focusPath =
+        options.focusPath && nextSet.has(options.focusPath) ? options.focusPath : (nextPaths.at(-1) ?? null);
+      const anchorPath =
+        options.anchorPath && nextSet.has(options.anchorPath) ? options.anchorPath : (nextPaths.at(-1) ?? null);
+      setSelectionFocusPath(focusPath);
+      selectionAnchorRef.current = anchorPath;
+    },
+    [visibleEntries]
+  );
 
   const clearSelection = useCallback(() => {
     setSelectedPaths(new Set());
@@ -571,6 +599,7 @@ export function useWorkFilesController(defaultRootPath = '') {
     refresh,
     selectEntry,
     selectAll,
+    replaceSelection,
     clearSelection,
     toggleFavoritePath,
     createFolder,

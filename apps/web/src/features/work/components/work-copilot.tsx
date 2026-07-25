@@ -20,7 +20,7 @@ const legacyWidthStorageKey = 'a3s-work.copilot-width';
 const defaultWidth = 460;
 const minimumWidth = 360;
 const maximumWidth = 680;
-const compactOverlayBreakpoint = 960;
+const compactOverlayBreakpoint = 1120;
 const splitPaneViewportReserve = 664;
 
 export function WorkCopilot({

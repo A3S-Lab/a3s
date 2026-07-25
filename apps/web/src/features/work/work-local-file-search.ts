@@ -22,6 +22,29 @@ const defaultMaxDirectories = 400;
 const defaultMaxEntries = 10_000;
 const defaultMaxResults = 250;
 const defaultConcurrency = 6;
+const ignoredDirectoryNames = new Set([
+  '.cache',
+  '.git',
+  '.hg',
+  '.mypy_cache',
+  '.next',
+  '.nuxt',
+  '.parcel-cache',
+  '.pytest_cache',
+  '.root-cloud-web-entry',
+  '.svn',
+  '.svelte-kit',
+  '.turbo',
+  '.vite',
+  '__pycache__',
+  'build',
+  'coverage',
+  'dist',
+  'node_modules',
+  'out',
+  'target',
+]);
+const ignoredDirectoryPatterns = [/^\.cloud-.+-native-snapshot$/u];
 
 export async function searchWorkLocalFiles(
   readDirectory: WorkLocalDirectoryReader,
@@ -82,6 +105,7 @@ export async function searchWorkLocalFiles(
           break;
         }
         if (!localPathInside(root, entry.path)) continue;
+        if (entry.isDirectory && isIgnoredSearchDirectory(entry.name)) continue;
         scannedEntries += 1;
         if (entry.name.toLocaleLowerCase().includes(normalizedQuery)) entries.push(entry);
         if (entry.isDirectory) {
@@ -104,6 +128,14 @@ export async function searchWorkLocalFiles(
     truncated = true;
   }
   return { entries, scannedDirectories, scannedEntries, unreadableDirectories, truncated };
+}
+
+function isIgnoredSearchDirectory(name: string): boolean {
+  const normalizedName = name.toLocaleLowerCase();
+  return (
+    ignoredDirectoryNames.has(normalizedName) ||
+    ignoredDirectoryPatterns.some((pattern) => pattern.test(normalizedName))
+  );
 }
 
 function positiveLimit(value: number | undefined, fallback: number): number {

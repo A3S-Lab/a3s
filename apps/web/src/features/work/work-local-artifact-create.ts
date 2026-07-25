@@ -1,6 +1,6 @@
 import { codeApi } from '../../lib/api';
-import { createWorkArtifactBlob } from './work-file-io';
 import { fileNameWithoutExtension } from './work-file-download';
+import { createWorkArtifactBlob } from './work-file-io';
 import {
   type WorkLocalFileBinding,
   type WorkLocalFileSnapshot,
@@ -22,6 +22,12 @@ export interface WorkLocalArtifactCreateDependencies {
 export interface WorkLocalArtifactCreateResult {
   artifact: WorkArtifact;
   binding: WorkLocalFileBinding;
+}
+
+export function workLocalArtifactDefaultFileName(kind: WorkArtifactKind): string {
+  if (kind === 'spreadsheet') return '新建电子表格.xlsx';
+  if (kind === 'presentation') return '新建演示文稿.pptx';
+  return '新建文字文档.docx';
 }
 
 const defaultDependencies: WorkLocalArtifactCreateDependencies = {

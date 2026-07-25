@@ -7,23 +7,11 @@
 }
 
 .work-sidebar-folders button {
-  flex: 0 0 32px;
-}
-
-.work-sidebar-folders button span {
-  overflow: hidden;
-  flex: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 0 0 34px;
 }
 
 .work-sidebar-folders button svg {
   color: #d49b35;
-}
-
-.work-sidebar-folders button.active {
-  color: var(--a3s-blue);
-  font-weight: 650;
 }
 
 .work-folder-grid {
@@ -89,6 +77,70 @@
   margin-top: 3px;
   color: var(--a3s-faint);
   font-size: 9px;
+}
+
+.work-folder-inline-content {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 0 9px 0 13px;
+  color: #d49b35;
+}
+
+.work-folder-inline-content > .work-local-file-icon {
+  flex: 0 0 auto;
+}
+
+.work-library-inline-name {
+  min-width: 0;
+  flex: 1;
+}
+
+.work-library-inline-card {
+  border-color: color-mix(in srgb, var(--a3s-blue) 30%, var(--a3s-line));
+  background: color-mix(in srgb, var(--a3s-blue) 5%, var(--a3s-panel));
+}
+
+.work-artifact-card.work-library-inline-card .work-artifact-open {
+  cursor: default;
+}
+
+.work-artifact-card.grid .work-library-inline-name {
+  width: 100%;
+}
+
+.work-artifact-card.grid .work-library-inline-name .ds-icon-button {
+  position: absolute;
+  z-index: 2;
+  top: 8px;
+  background: color-mix(in srgb, var(--a3s-panel) 92%, transparent);
+  box-shadow: 0 1px 5px rgb(18 27 44 / 10%);
+}
+
+.work-artifact-card.grid .work-library-inline-name .ds-icon-button:first-of-type {
+  right: 38px;
+}
+
+.work-artifact-card.grid .work-library-inline-name .ds-icon-button:last-of-type {
+  right: 8px;
+}
+
+.work-artifact-card.grid .work-library-inline-name input {
+  text-align: left;
+}
+
+.work-artifact-card.work-library-inline-card .work-artifact-details {
+  padding-right: 10px;
+}
+
+.work-artifact-card.list.work-library-inline-card .work-artifact-details {
+  padding-right: 12px;
+}
+
+.work-library-inline-card:has(input[aria-invalid="true"]) {
+  border-color: color-mix(in srgb, var(--a3s-danger) 42%, var(--a3s-line));
 }
 
 .work-folder-card > details {

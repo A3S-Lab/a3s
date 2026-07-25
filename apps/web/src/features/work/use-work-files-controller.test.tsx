@@ -184,6 +184,27 @@ describe('Work local file controller', () => {
     await waitFor(() => expect(result.current.visibleEntries).toEqual([budget]));
   });
 
+  it('adds a command-shift range without discarding an existing selection', async () => {
+    localStorage.setItem(
+      'a3s-work.local-files',
+      JSON.stringify({
+        rootPath: '/docs',
+        currentPath: '/docs',
+        layout: 'grid',
+        sort: { key: 'name', direction: 'ascending' },
+      })
+    );
+    vi.spyOn(codeApi, 'readDir').mockResolvedValue([archive, folder, report]);
+    const { result } = renderHook(() => useWorkFilesController());
+    await waitFor(() => expect(result.current.visibleEntries).toHaveLength(3));
+
+    act(() => result.current.selectEntry(folder));
+    act(() => result.current.selectEntry(archive, { toggle: true }));
+    act(() => result.current.selectEntry(report, { range: true, additive: true }));
+
+    expect(result.current.selectedPaths).toEqual(new Set([archive.path, report.path, folder.path]));
+  });
+
   it('creates and renames real filesystem entries before refreshing the directory', async () => {
     localStorage.setItem(
       'a3s-work.local-files',

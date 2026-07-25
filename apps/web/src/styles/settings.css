@@ -70,7 +70,7 @@
 .settings-nav nav button svg {
   flex: 0 0 auto;
   color: var(--a3s-muted);
-  stroke-width: 1.8;
+  stroke-width: var(--a3s-shell-icon-stroke);
 }
 
 .settings-nav-label {

@@ -67,6 +67,10 @@
     color 150ms ease;
 }
 
+.activity-button > svg {
+  stroke-width: var(--a3s-shell-icon-stroke);
+}
+
 .activity-button:hover,
 .activity-button:focus-visible {
   background: var(--a3s-panel-soft);

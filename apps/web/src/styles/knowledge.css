@@ -8,12 +8,6 @@
   background: var(--a3s-bg);
 }
 
-.knowledge-product button > svg,
-.knowledge-product label > svg,
-.knowledge-product header > svg {
-  stroke-width: 1.65;
-}
-
 .knowledge-sidebar nav button:disabled,
 .knowledge-sidebar-quick-actions button:disabled {
   cursor: default;
