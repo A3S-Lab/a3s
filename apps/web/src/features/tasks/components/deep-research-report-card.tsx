@@ -1,24 +1,17 @@
 import { ExternalLink, FileText, SearchCheck } from 'lucide-react';
-import { Button } from '../../../design-system/primitives';
-import { appState } from '../../../state/app-state';
-import { workspaceAbsolutePath } from '../../workspace/workspace-state';
-import type { TaskActions } from '../task-actions';
 import type { ToolCallProjection } from './tool-call-projection';
 
 interface DeepResearchReport {
-  status: 'completed' | 'qualified' | 'degraded';
-  htmlPath: string;
-  markdownPath: string;
+  status: 'synthesized' | 'qualified' | 'source_backed' | 'no_evidence';
+  runId: string;
 }
 
 export function DeepResearchReportCard({
   calls,
   sessionId,
-  actions,
 }: {
   calls: readonly ToolCallProjection[];
   sessionId: string;
-  actions: TaskActions;
 }) {
   const report = calls
     .filter((call) => call.name === 'deep_research' && call.state === 'succeeded')
@@ -26,10 +19,8 @@ export function DeepResearchReportCard({
     .find((candidate): candidate is DeepResearchReport => Boolean(candidate));
   if (!report) return null;
 
-  const sessionRoot = appState.sessions.find((session) => session.sessionId === sessionId)?.workspace;
-  const href = `/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}/research-report?path=${encodeURIComponent(
-    report.htmlPath
-  )}`;
+  const htmlHref = researchArtifactHref(sessionId, report.runId, 'html');
+  const markdownHref = researchArtifactHref(sessionId, report.runId, 'markdown');
   const status = reportStatus(report.status);
 
   return (
@@ -42,20 +33,11 @@ export function DeepResearchReportCard({
         <small>{status}</small>
       </span>
       <span className='deep-research-report-actions'>
-        <Button
-          tone='quiet'
-          aria-label='在工作区打开 Markdown 研究报告'
-          onClick={() => {
-            void actions.selectFile({
-              path: workspaceAbsolutePath(report.markdownPath, sessionRoot || appState.workspaceRoot),
-              isBinary: false,
-            });
-          }}
-        >
+        <a href={markdownHref} target='_blank' rel='noopener noreferrer' aria-label='打开 Markdown 研究报告'>
           <FileText size={13} />
           Markdown
-        </Button>
-        <a href={href} target='_blank' rel='noopener noreferrer' aria-label='打开网页版研究报告'>
+        </a>
+        <a href={htmlHref} target='_blank' rel='noopener noreferrer' aria-label='打开网页版研究报告'>
           <ExternalLink size={13} />
           打开网页
         </a>
@@ -67,21 +49,28 @@ export function DeepResearchReportCard({
 function reportFromCall(call: ToolCallProjection): DeepResearchReport | null {
   const report = recordValue(call.metadata?.report);
   const status = stringValue(report?.status);
-  const htmlPath = stringValue(report?.htmlPath);
-  const markdownPath = stringValue(report?.markdownPath);
-  if (!['completed', 'qualified', 'degraded'].includes(status ?? '') || !htmlPath || !markdownPath) return null;
-  if (!isResearchArtifact(htmlPath, 'index.html') || !isResearchArtifact(markdownPath, 'report.md')) return null;
-  return { status: status as DeepResearchReport['status'], htmlPath, markdownPath };
+  const runId = stringValue(report?.runId);
+  const artifactKinds = stringArray(report?.artifactKinds);
+  if (!['synthesized', 'qualified', 'source_backed', 'no_evidence'].includes(status ?? '') || !runId) return null;
+  if (!isRunId(runId) || !artifactKinds.includes('html') || !artifactKinds.includes('markdown')) return null;
+  return { status: status as DeepResearchReport['status'], runId };
 }
 
-function isResearchArtifact(path: string, fileName: string): boolean {
-  return path.startsWith('.a3s/research/') && path.endsWith(`/${fileName}`) && !path.split('/').includes('..');
+function researchArtifactHref(sessionId: string, runId: string, kind: 'html' | 'markdown'): string {
+  return `/api/v1/kernel/sessions/${encodeURIComponent(sessionId)}/research-artifact?runId=${encodeURIComponent(
+    runId
+  )}&kind=${kind}`;
+}
+
+function isRunId(value: string): boolean {
+  return value.length <= 128 && /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value);
 }
 
 function reportStatus(status: DeepResearchReport['status']): string {
-  if (status === 'completed') return '质量门槛已通过';
+  if (status === 'synthesized') return '综合报告已通过质量门槛';
   if (status === 'qualified') return '证据充分，建议复核限定条件';
-  return '来源快照已生成，结论仍需复核';
+  if (status === 'source_backed') return '已保留来源报告，综合结论未通过准入';
+  return '未取得可安全发布的证据';
 }
 
 function recordValue(value: unknown): Record<string, unknown> | undefined {
@@ -90,4 +79,8 @@ function recordValue(value: unknown): Record<string, unknown> | undefined {
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 }

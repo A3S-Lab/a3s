@@ -921,6 +921,7 @@ export interface QueuedTurn {
   contextFiles: string[];
   skillNames: string[];
   mode?: QueuedTurnMode;
+  researchRunId?: string | null;
   priority: number;
   enqueuedAt: number;
 }
@@ -935,6 +936,16 @@ export interface TurnQueue {
   status: 'idle' | 'pending' | 'running' | 'paused';
   paused: boolean;
   active?: ActiveTurn | null;
+  research?: {
+    schemaVersion: 2;
+    runId: string;
+    sequence?: number;
+    recordedAt?: string;
+    lifecycle: 'running' | 'completed' | 'cancelled' | 'failed';
+    stage?: string | null;
+    publication?: 'synthesized' | 'qualified' | 'source_backed' | 'no_evidence' | null;
+    quality?: Record<string, number | string> | null;
+  } | null;
   items: QueuedTurn[];
   total: number;
   nextItemId?: string | null;

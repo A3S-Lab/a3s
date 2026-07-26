@@ -489,82 +489,85 @@ PTC scripts run inside QuickJS, so they do not execute `parallel_task`
 directly. Dynamic workflows schedule a Flow step named `parallel_task`; the TUI
 host then runs the native local fan-out implementation outside QuickJS.
 
-DeepResearch uses a transient, host-managed Loop Engineering contract. One
-tool-free planner creates up to four stable research tracks, four exact provider
-queries, optional canonical seed URLs, evidence requirements, and observable
-completion criteria. The fixed stage graph then permits one initial retrieval,
-one closed semantic selection, at most one typed-coverage supplement, one closed
-obligation-review stage, Host assessment, and one durable report transaction.
-There is no maker/checker loop, adaptive route, query-generating follow-up wave,
-or hidden continuation.
+DeepResearch is implemented by the independent `a3s-deep-research` engine. The
+CLI provides model execution, Flow-backed retrieval, workspace publication, and
+progress adapters through explicit ports; planning, fallback, evidence
+admission, quality gates, and rendering have no second CLI implementation.
+Headless CLI, TUI, and A3S Web launch the engine through the same typed
+`CodeDeepResearchRunner`. The runner creates an isolated read-only Code session,
+does not expose Web tools in local-only mode, and closes that session on
+success, failure, or settled cancellation.
 
-Web queries are sent byte-for-byte through `web_search`, which inherits the
-active `config.acl` engine selection. Without an engine block it uses
-DuckDuckGo and Wikipedia; AnySearch and Tavily are opt-in. Structured provider
-failures and empty results use the generic fallback policy, and degradation
-notices remain visible in partial research metadata. Web plans have eight
-initial fetch slots and local-only plans have zero. Seed URLs enter the same
-semantic catalog as provider results without reserving a slot. A semantic
-candidate-ID decision fills the available initial slots with coverage
-opportunities and useful authoritative alternatives when enough candidates
-exist. Provider rank, title, snippet, engine, and date are discovery metadata
-only; only fetched source text can become evidence or establish a report date.
-Fetched pages, bounded document ranges, and Host-reread local ranges enter one
-closed multilingual chunk catalog.
+Every run starts exact-query bootstrap retrieval and one tool-free semantic
+outline concurrently. The outline declares `focused` or `comprehensive` scope,
+one to four evidence tracks, observable completion criteria, and at most seven
+supplemental plain-text queries. It cannot return URLs, facts, conclusions, or
+transport budgets. The engine preserves the exact query, rejects duplicate and
+URL-shaped supplements, and falls back to the unchanged query plus one generic
+track when planning is unavailable or invalid. For Web-capable requests, up to
+three explicit HTTP(S) references in the user query are normalized as direct
+fetch seeds; credential-bearing URLs are rejected, and local-only requests do
+not emit URL seeds. Named comparisons receive a shared synthesis track, while
+required question roles are validated across the complete plan.
 
-Selectors return only closed chunk IDs plus typed source/obligation relevance
-edges and full criterion/role coverage edges. Relevance keeps useful partial
-text reviewable; a criterion is covered only when the selected fetched text
-resolves every material element. Catalogs over 10 chunks
-use one complete selector per canonical source, retain at most four excerpts per
-source, and never split a source into positional windows. Each source becomes
-one accepted evidence item, keeping its claims and citations source-local.
-Missing typed coverage or evidence lost to an initial fetch/source-selection
-failure may authorize one supplement of at most two additional previously
-unselected candidates. The supplement never searches again or rewrites a query,
-and avoids a fetch-failed transport surface when a distinct candidate remains.
-The initial evidence portfolio is durably checkpointed first; if the shared
-retrieval deadline interrupts optional supplemental work, the Host validates
-and restores that exact run/query checkpoint instead of erasing completed
-material evidence.
-Questions linked to the same obligation share one closed-evidence review over
-their relevance-linked evidence plus unscoped legacy evidence before Host
-assessment and cited section generation. Models return short Host-owned
-evidence references such as `E1`; the Host maps them to exact evidence IDs per
-question. It decodes each expected question independently, so one malformed
-entry or invalid reference cannot discard a valid sibling answer. An entry that
-claims `answered` while carrying an explicit limitation is safely downgraded to
-`partial`.
+The request language is inferred once and carried as a Host-owned BCP 47 output
+language through planning, report schema, admission, and publication. Planner
+titles, research tracks, report labels, claims, analysis, and limitations use
+that language. A supplemental query may use the native language of a likely
+primary source when that improves recall, but source language never changes the
+report language.
+
+`web_search` inherits the active `config.acl` engine policy. Without an
+override, it uses DuckDuckGo and Wikipedia; AnySearch and Tavily are opt-in.
+Quota exhaustion, provider errors, and empty results use the same generic
+fallback policy, and degradation notices remain visible in run metadata.
+Provider rank, title, snippet, engine, and date are discovery metadata only.
+Only safely fetched, query-relevant source text can support a report claim.
+Planned retrieval reuses the durable bootstrap packet, searches only validated
+supplements that bootstrap did not already cover, and merges both packets under
+fixed transport and fetch budgets. Candidate admission, source sanitization,
+and publication gates are domain-agnostic.
 
 Enter `? <query>` or `? --web <query>` in the TUI. Use
 `? --local-only <query>` (or `--offline`) to enforce workspace-only evidence.
-Free-form phrases such as “do not use web” do not change scope. A successful or
-qualified run writes `.a3s/research/<slug>/report.md` and `index.html`; the HTML
-opens through a loopback-only viewer without `/login`. Insufficient or
-untraceable evidence produces an explicitly degraded Recovery report instead
-of a false completed result.
+Free-form phrases such as “do not use web” do not change scope. Once safe
+evidence exists, the engine atomically stages a source-backed `report.md` and
+`index.html` before attempting one typed claim-graph proposal. The compiler
+validates exact dimension/source/chunk IDs, facts, inferences, recommendations,
+basis and derivation edges, contradiction relations, and typed gaps. Complete
+material coverage publishes `synthesized`; supported but incomplete work can
+publish `qualified` only after passing the same depth gate and retaining a typed
+material gap. Invalid or unavailable synthesis leaves the `source_backed`
+artifact intact, while an empty safe-source set produces `no_evidence`.
 
-The report phase is closed to new evidence and validates accepted claim/source
-bindings, exact inline citations, headings, replay identity, and artifact
-quality. Every committed evidence binding requires one exact same-binding
-source citation; if the first draft misses one, the single targeted revision
-receives that uncited binding and its accepted source alternatives. Bounded
-claim excerpts control factual transcription, and ISO, English, and Chinese
-full dates must normalize to a committed claim before publication. Each
-closed review, section/revision, and editorial frame preserves source-field
-meaning and forbids unstated interval calculations, dependency-to-incompatibility
-inference, discontinuation-to-no-future-fix inference, unsupported replacement
-properties, and ecosystem-wide conclusions from a few examples. Internal
-fetch/review diagnostics stay out of the reader-facing source ledger.
-Reader-facing review, section/revision, and frame text stays in the query
-language, and a question-local evidence gap cannot become a report-wide
-absence. Each
-obligation review and report section has an independent durable
-Flow identity, completed siblings survive interruption, and the complete
-transaction shares bounded deadlines and one targeted-revision allowance.
-Every complete replacement receives exact citation alternatives for all
-bindings. Only a strict same-origin child path can be reduced to the longest
-committed parent; similar or wider URLs still fail closed.
+Comprehensive output retains a report-wide floor of five findings, six admitted
+claims, two cited sources, and 1,200 substantive characters. Every resolved
+material dimension also needs two factual findings across two sources, two
+inferences, three analytical claims, one cross-source synthesis, and 800
+substantive characters. Source comparison, mechanism or trade-off, implication,
+and applicability boundary are separate analytical obligations. Repeated
+openings, near-duplicate claims, multi-cited facts, and source-by-source
+summaries do not satisfy this gate. If every dimension remains bounded, exactly
+one deeply analyzed partial dimension may qualify only through the same
+two-source analytical chain and an explicit gap.
+
+After claim admission, a closed narrative plan selects natural headings and
+groups adjacent claim IDs without adding, rewriting, or omitting evidence. The
+renderer produces continuous prose and keeps basis and derivation edges in a
+collapsed traceability disclosure. The editable, self-contained HTML follows
+the A3S Web design tokens with a sticky left action menu, centered report, sticky
+right table of contents, save and print actions, and a responsive stacked
+layout.
+
+Artifacts are isolated by run under
+`.a3s/research/artifacts/<run-id>/report.md` and `index.html`. The bounded typed
+journal lives at `.a3s/research/runs/<run-id>/journal-v2.jsonl`; it stores
+lifecycle, stage, publication, and quality events without absolute artifact
+paths. A3S Web restores live progress from that projection and serves reports
+only through a validated `runId` plus `html` or `markdown` kind. Web context
+attachments must be existing, non-empty, non-symlink relative workspace paths.
+Selected Skills are rejected explicitly because the isolated runner does not
+load the interactive session's Skill registry.
 
 The same pipeline is available without the full-screen TUI:
 
@@ -574,8 +577,8 @@ a3s code research [--local-only|--web] <query>
 
 `research` is canonical; `deepresearch` and `deep-research` remain aliases.
 The retired `--runtime`, `--local`, and `--os` routes are rejected. The command
-writes `report.md` and `index.html` in the selected workspace and reports a
-terminal `completed`, `qualified`, or `degraded` outcome explicitly.
+writes the run-scoped artifact pair and reports exactly one publication outcome:
+`synthesized`, `qualified`, `source_backed`, or `no_evidence`.
 
 ## Updates
 

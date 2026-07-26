@@ -14,7 +14,7 @@ behavior remains in the component that implements it.
 | Command | Behavior |
 | --- | --- |
 | `a3s code [command]` | Launch or automate A3S Code, including session resume and update compatibility paths. |
-| `a3s code research [--local-only\|--web] QUERY` | Run the host-managed DeepResearch pipeline without the full-screen TUI and write local `report.md` and `index.html` artifacts. `deepresearch` and `deep-research` remain aliases; retired runtime-selection flags are rejected. |
+| `a3s code research [--local-only\|--web] QUERY` | Run the shared typed DeepResearch engine without the full-screen TUI. Artifacts are written under `.a3s/research/artifacts/<run-id>/`, and the result distinguishes `synthesized`, `qualified`, `source_backed`, and `no_evidence`. `deepresearch` and `deep-research` remain aliases; retired runtime-selection flags are rejected. |
 | `a3s code resume <id>` | Resume a saved session by id. |
 | `a3s code resume` | Resume the newest saved session in the current workspace. |
 | `a3s code update` | Alias for the CLI self-update path. |
