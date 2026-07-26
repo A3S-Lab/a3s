@@ -68,7 +68,7 @@ export function AssistantResponse({
         )}
       </div>
       <DeliverySummary sessionId={message.sessionId} events={message.events ?? []} />
-      <DeepResearchReportCard calls={toolCalls} sessionId={message.sessionId} actions={actions} />
+      <DeepResearchReportCard calls={toolCalls} sessionId={message.sessionId} />
       <ArtifactEntries calls={toolCalls} sessionId={message.sessionId} actions={actions} />
       <RecoveryNotice events={message.events ?? []} retryContent={retryContent} />
     </article>

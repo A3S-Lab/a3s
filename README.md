@@ -122,8 +122,11 @@ to loopback by default.
   Centered MacBook notches are derived from native safe-area geometry and fused
   into a top-edge layout, while a dedicated handle supports manual placement
   without later recenter or expand/collapse snap-back.
-- **Evidence-First Research**: Gather bounded local evidence and materialize
-  source-backed Markdown and HTML reports
+- **Evidence-First Research**: Use the standalone, domain-agnostic DeepResearch
+  engine to gather bounded evidence, pin the report to the reader's language,
+  require cross-source analysis for comprehensive output, and materialize
+  synthesized, qualified, source-backed, or explicit no-evidence Markdown and
+  editable HTML reports
 - **Scientific Capability Packages**: Reuse the independently versioned A3S
   Science catalog of scientific Skills, MCP data services, compute workflows,
   and research tooling
@@ -158,7 +161,7 @@ to loopback by default.
 | Coding agent | A3S CLI, Code, TUI | Streaming TUI, workspace tools, sessions, context, memory, knowledge, local assets, subagents, and dynamic workflows | Model execution requires a configured provider or compatible account; remote OS actions require login |
 | Browser workspace | A3S CLI, Code Web | Local task conversations, tool approval, context, configuration, Monaco editing, Git review, and session persistence | Requires a compatible built frontend; binds to `127.0.0.1` by default; do not expose workspace APIs without an authenticated gateway |
 | Local command isolation | A3S CLI, Code | Managed SRT provider for routine workspace commands, with network denial, bounded filesystem access, scrubbed environment, timeout, streaming, and cancellation | Official CLI archives include the fixed support payload and require Node.js 20.11 or newer; source and Cargo installs may also need npm for development bootstrap |
-| Research | A3S CLI, Code, Flow | `a3s code research` runs a bounded local retrieval-summary workflow and writes Markdown and HTML report artifacts | The explicit OS research mode is reserved but currently disabled; signed-in Runtime remains available to ordinary Code workflows |
+| Research | A3S CLI, Code, Flow | CLI, TUI, and Web share the typed `a3s-deep-research` runtime and publish run-scoped Markdown and editable HTML artifacts | Evidence is admitted only from fetched text or validated workspace sources; local-only scope remains network-free |
 | Scientific packages | A3S Science | First-party scientific Skills, MCP data services, compute workflows, and research tooling | Package contracts and release cadence are owned by the independent Science repository |
 | Isolation | A3S Box | Docker-like lifecycle for Linux OCI workloads in per-workload MicroVMs | Requires a supported host and virtualization backend; CRI, TEE, and Windows paths retain platform-specific validation requirements |
 | OCI runtime foundation | A3S OCI Runtime | Versioned driver inventory with native Linux namespace/cgroup v2, Linux KVM, macOS HVF, and Windows WHPX evidence, plus the OCI create/start lifecycle state contract | Experimental: every driver remains `probe-only`; host availability does not mean that OCI workloads can launch |
@@ -417,12 +420,27 @@ a3s code research --local-only "Map this repository's release process"
 ```
 
 `research` is the canonical command; `deepresearch` and `deep-research` remain
-aliases. The command produces report artifacts instead of treating raw retrieval
-output as the final result. `--web` and `--local-only` select the evidence
+aliases. Headless CLI, TUI, and A3S Web launch the same typed
+`a3s-deep-research` runner. `--web` and `--local-only` select the evidence
 boundary explicitly; the retired `--runtime`, `--local`, and `--os` routes are
-rejected. Web research uses native AnySearch and Tavily discovery with
-DuckDuckGo, then admits only fetched source text into its closed evidence
-ledger. Provider ranking, snippets, and dates remain discovery metadata.
+rejected. Each run writes `report.md`, editable `index.html`, and a bounded
+event journal under `.a3s/research/`, keyed by an opaque run ID. Publication is
+reported as `synthesized`, `qualified`, `source_backed`, or `no_evidence`.
+
+The request language is pinned across planning, admission, and publication.
+Comprehensive reports must meet report-wide volume and diversity floors and a
+per-dimension depth gate: multi-source facts, explicit source comparison,
+mechanism or trade-off analysis, cross-source synthesis, and a supported
+implication or applicability boundary. A closed narrative plan groups admitted
+claims into natural sections and continuous prose without changing evidence.
+Source-by-source summaries, repeated openings, and near-duplicate claims cannot
+satisfy the depth gate.
+
+The self-contained HTML follows the A3S Web design system, with a left action
+menu, centered editable report, right table of contents, save and print actions,
+and a responsive stacked layout. Web report routes accept only a validated run
+ID and artifact kind; persisted events and streamed metadata never expose an
+absolute artifact path.
 
 ### Manage optional products
 

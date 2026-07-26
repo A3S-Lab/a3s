@@ -692,7 +692,8 @@
   background: color-mix(in srgb, var(--a3s-blue) 6%, var(--a3s-panel));
 }
 
-.deep-research-report-card.degraded {
+.deep-research-report-card.source_backed,
+.deep-research-report-card.no_evidence {
   border-color: color-mix(in srgb, var(--a3s-warning) 42%, var(--a3s-line));
   background: color-mix(in srgb, var(--a3s-warning) 7%, var(--a3s-panel));
 }
@@ -757,6 +758,20 @@
 .task-composer-dock.active {
   padding: 20px 30px 18px;
   background: linear-gradient(0deg, var(--a3s-panel) 74%, transparent);
+}
+
+.deep-research-refresh-status {
+  display: flex;
+  width: min(800px, 100%);
+  align-items: center;
+  gap: 7px;
+  margin: 0 auto 8px;
+  padding: 7px 11px;
+  border: 1px solid color-mix(in srgb, var(--a3s-blue) 24%, var(--a3s-line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--a3s-blue) 5%, var(--a3s-panel));
+  color: var(--a3s-muted);
+  font-size: 10px;
 }
 
 .task-composer.active {

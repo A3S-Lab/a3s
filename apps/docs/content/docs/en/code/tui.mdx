@@ -104,18 +104,37 @@ fan-out, trusted runtime views, and engineered automation loops.
 | Dynamic workflows | `ultracode` and `?` DeepResearch can use `DynamicWorkflowRuntime`, a local A3S Flow-backed runtime that records workflow and step history while sandboxed PTC scripts perform tool work. |
 | Parallel work | Local fan-out uses native host-side `parallel_task`. Dynamic workflows schedule a Flow step named `parallel_task` when they need local parallel subagents; QuickJS/PTC scripts do not call `parallel_task` directly. |
 | Optional runtime tools | A3S OS can register runtime tools after `/login`; local tools and `parallel_task` remain available without an account. |
-| Deep research | Prefix a prompt with `?` to start DeepResearch. The TUI gathers a bounded web seed, then either takes a direct fast path or runs local `parallel_task` tracks and bounded follow-up rounds before synthesizing cited report artifacts. A3S OS Runtime tool-call fan-out is currently disabled for DeepResearch until Function-as-a-Service support is available. |
+| Deep research | Prefix a prompt with `?` to start the standalone evidence-first engine. Exact-query bootstrap and bounded semantic planning run concurrently, fetched evidence is published before optional synthesis, and generic fallback never depends on a topic or named entity. |
 | Asset development | `/agent`, `/mcp`, `/skill`, and `/okf` enter local development modes with an active asset, review commands, clone/draft flows, and publish/deploy/status surfaces. |
 | Workflow assets | `/flow` selects or drafts workflow DAG files for local review and optional host publication. |
 | Knowledge | `/kb` manages a local personal knowledge vault. `/okf` manages shareable OKF knowledge-package assets. |
 | Engineered loops | `/loop init`, `/loop run`, `/loop audit`, and `/loop logs` manage durable maker/checker loops under `.a3s/loops` with reports, budgets, state files, and optional runtime/view evidence. |
 | Operations | `/help` opens the command guide, `/theme` changes syntax themes, `/plugin` and `/reload` refresh skills/plugins, `Open view` reopens the latest validated local report or trusted runtime view when shown, and `/update` upgrades and restarts the CLI. |
 
-DeepResearch writes completed artifacts to
-`.a3s/research/<slug>/report.md` and `.a3s/research/<slug>/index.html`. The HTML
-uses a loopback-only, no-auth viewer that remains available while signed out. If
-evidence collection cannot support a completed source-backed report, the same
-paths hold a clearly labeled, low-confidence recovery report instead.
+DeepResearch writes progressively publishable artifacts to
+`.a3s/research/artifacts/<run-id>/report.md` and
+`.a3s/research/artifacts/<run-id>/index.html`. The independent
+`a3s-deep-research` crate owns orchestration, evidence admission, typed
+claim-graph compilation, quality gates, and rendering; CLI, TUI, and A3S Web
+share one typed runner and supply only product adapters.
+
+The request language is pinned across planning, admission, and publication.
+Comprehensive publication requires report-wide volume and source diversity plus
+a multi-step analytical chain in every resolved material dimension: multi-source
+facts, comparison, mechanism or trade-off analysis, cross-source synthesis, and
+a supported implication or applicability boundary. Repeated openings,
+near-duplicate claims, and source-by-source summaries do not satisfy that gate.
+A closed narrative plan selects natural headings and paragraph groups without
+changing evidence; rendering uses continuous prose and keeps traceability in a
+collapsed disclosure.
+
+The self-contained HTML follows A3S Web's design tokens with a sticky left
+action menu, centered editable report, sticky right table of contents, save and
+print actions, and a responsive stacked layout. Each run also records a bounded
+`.a3s/research/runs/<run-id>/journal-v2.jsonl` projection without absolute
+artifact paths. Complete material coverage publishes `synthesized`; supported
+incomplete work may publish depth-gated `qualified`; failed synthesis preserves
+`source_backed`; and an empty safe-source set produces `no_evidence`.
 
 ## Browser, Office, And OCR Through A3S Use
 
@@ -222,7 +241,7 @@ from raw source without truncating headings, code, URLs, graphemes, or cells.
 | `/tasks` | Opens live delegated-task control with search, progress/output inspection, refresh, and confirmed cancellation. |
 | `/permissions` | Searches exact session/project grants, opens canonical arguments, and revokes only after a second matching confirmation. |
 | `! <command>` | Runs a direct shell turn through the same workspace output surface. |
-| `? <question>` | Starts DeepResearch with dynamic workflow evidence gathering before synthesis. |
+| `? <question>` | Starts exact-query bootstrap and bounded semantic planning, stages a source-backed report, then optionally compiles a typed claim graph into synthesized or qualified output. |
 | `@<path>` | Attaches a workspace file through the file picker path. |
 | `/` | Opens the command palette and slash command registry. |
 | `Shift+Enter` | Inserts a newline in the input. |

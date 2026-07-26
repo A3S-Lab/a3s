@@ -61,6 +61,12 @@ export function TaskComposer({
   };
   return (
     <div className={`task-composer-dock ${variant}`}>
+      {turnQueue?.research?.lifecycle === 'running' && (
+        <output className='deep-research-refresh-status'>
+          <SearchCheck size={14} />
+          <span>深度研究运行中 · {researchStageLabel(turnQueue.research.stage)}</span>
+        </output>
+      )}
       {queue.length > 0 && (
         <FollowUpQueue
           items={queue as unknown as QueuedTurn[]}
@@ -172,6 +178,25 @@ export function TaskComposer({
       </div>
     </div>
   );
+}
+
+function researchStageLabel(stage?: string | null): string {
+  switch (stage) {
+    case 'planning':
+      return '规划研究问题';
+    case 'bootstrap_retrieval':
+      return '收集初始证据';
+    case 'planned_retrieval':
+      return '检索计划证据';
+    case 'source_publication':
+      return '固化来源证据';
+    case 'report_generation':
+      return '生成研究报告';
+    case 'final_publication':
+      return '发布最终产物';
+    default:
+      return '初始化运行环境';
+  }
 }
 
 function FollowUpQueue({

@@ -3,9 +3,9 @@ import { splitComposerMatchText } from './composer-match-highlight';
 
 describe('Composer match highlighting', () => {
   it('highlights every case-insensitive query match without changing text', () => {
-    expect(splitComposerMatchText('Report Master report workflow', 'report')).toEqual([
+    expect(splitComposerMatchText('Report reviewer report workflow', 'report')).toEqual([
       { text: 'Report', highlighted: true },
-      { text: ' Master ', highlighted: false },
+      { text: ' reviewer ', highlighted: false },
       { text: 'report', highlighted: true },
       { text: ' workflow', highlighted: false },
     ]);

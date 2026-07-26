@@ -41,8 +41,8 @@ describe('task file context protocol', () => {
   });
 
   it('adds explicit Skill directives without leaking the picker query', () => {
-    expect(composeTaskPrompt('Review this change', ['src/app.ts'], ['report-master'])).toBe(
-      '[Selected skills]\n- Use your `report-master` skill.\n[/Selected skills]\n\n[Workspace context files]\n- src/app.ts\n[/Workspace context files]\n\nReview this change'
+    expect(composeTaskPrompt('Review this change', ['src/app.ts'], ['reviewer'])).toBe(
+      '[Selected skills]\n- Use your `reviewer` skill.\n[/Selected skills]\n\n[Workspace context files]\n- src/app.ts\n[/Workspace context files]\n\nReview this change'
     );
   });
 });

@@ -11,19 +11,19 @@ describe('Skill suggestion ranking', () => {
     const items = [
       skill('artifact-template-design-report'),
       skill('pdf', 'Create a polished report'),
-      skill('report-master'),
+      skill('report-reviewer'),
       skill('report'),
     ];
 
     expect(matchingSkills(items, 'report').map((item) => item.name)).toEqual([
       'report',
-      'report-master',
+      'report-reviewer',
       'artifact-template-design-report',
       'pdf',
     ]);
   });
 
   it('returns no unrelated Skills', () => {
-    expect(matchingSkills([skill('reviewer'), skill('report-master')], 'deploy')).toEqual([]);
+    expect(matchingSkills([skill('reviewer'), skill('report-reviewer')], 'deploy')).toEqual([]);
   });
 });

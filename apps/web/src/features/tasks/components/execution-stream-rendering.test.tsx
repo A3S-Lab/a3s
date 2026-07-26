@@ -260,9 +260,9 @@ describe('ExecutionStream rendering and recovery', () => {
             exit_code: 0,
             metadata: {
               report: {
-                status: 'completed',
-                htmlPath: '.a3s/research/topic/index.html',
-                markdownPath: '.a3s/research/topic/report.md',
+                runId: 'web-execution-rendering',
+                status: 'synthesized',
+                artifactKinds: ['markdown', 'html'],
               },
             },
           },
