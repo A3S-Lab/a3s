@@ -19,7 +19,9 @@ Product implementation is governed by the
 sandbox, messaging, and review contracts are defined in
 [A3S Web Plugin System](docs/PLUGINS.md). The separate, local knowledge-base
 library, editor, and external-import lifecycle are defined in
-[A3S Web Knowledge](docs/KNOWLEDGE.md). Native Rust WeChat/Weixin iLink
+[A3S Web Knowledge](docs/KNOWLEDGE.md), with the independent worker handoff in
+the [Knowledge Compilation Protocol](docs/KNOWLEDGE_COMPILATION_PROTOCOL.md).
+Native Rust WeChat/Weixin iLink
 remote management is defined by the
 [product and architecture](docs/WEIXIN_REMOTE_CONTROL.md), tracked in the
 [development plan](docs/WEIXIN_REMOTE_CONTROL_DEVELOPMENT_PLAN.md), and guarded
@@ -41,9 +43,13 @@ by the
 - A standalone, local-only Knowledge page lets users create, search, and pin
   personal knowledge bases; import Obsidian Vaults and other local folders; and
   open each base in an Obsidian-inspired file-tree, Markdown editing, and live
-  reading workspace. Import copies content into the managed workspace without
-  changing the source folder. Market remains focused on signed Plugins and
-  their verified Sources.
+  reading workspace. Work selections can create a source-backed knowledge base
+  without compiling it; users then compile explicitly or enable a per-base
+  smart automatic policy with stability, quiet-window, minimum-interval,
+  retry, and bulk-change safeguards. Only successfully promoted `wiki/`
+  generations are searchable. Import copies content into the managed workspace
+  without changing the source folder. Market remains focused on signed Plugins
+  and their verified Sources.
 - A single **Settings → Channels** page with a left-aligned WeChat and Feishu
   list, without a second framed workspace around the selected channel. WeChat
   is backed only by the native Rust `WeixinModule` in A3S Boot.
@@ -74,8 +80,10 @@ by the
   headers,
   mouse-marquee and checkbox multi-selection, additive range selection, a
   selection-aware action shelf anchored above the status bar so file positions
-  remain stable, folder creation, rename, and duplication. Folder
-  creation, Office-file naming, rename, and duplicate naming stay inline in
+  remain stable, background/item/keyboard context menus, Cmd/Ctrl copy, cut,
+  and collision-safe paste, operating-system reveal, and source-package
+  knowledge-base creation from single or mixed selections. Folder creation,
+  Office-file naming, rename, and duplicate naming stay inline in
   both grid and list layouts; only irreversible permanent deletion opens a
   confirmation dialog.
   Persisted local folder favorites appear in the sidebar and follow

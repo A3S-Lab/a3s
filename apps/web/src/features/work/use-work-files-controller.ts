@@ -39,6 +39,11 @@ interface ReplaceSelectionOptions {
   focusPath?: string | null;
 }
 
+export interface WorkFilesClipboard {
+  mode: 'copy' | 'cut';
+  entries: Array<Pick<WorkspaceEntry, 'name' | 'path' | 'isDirectory'>>;
+}
+
 export function useWorkFilesController(defaultRootPath = '') {
   const [initialPreferences] = useState(readWorkFilesPreferences);
   const [initialRoot] = useState(() => resolveInitialRoot(initialPreferences, defaultRootPath));
@@ -71,6 +76,7 @@ export function useWorkFilesController(defaultRootPath = '') {
   const [selectionFocusPath, setSelectionFocusPath] = useState<string | null>(null);
   const [operationPaths, setOperationPaths] = useState<Set<string>>(() => new Set());
   const [dropImporting, setDropImporting] = useState(false);
+  const [clipboard, setClipboard] = useState<WorkFilesClipboard | null>(null);
   const selectionAnchorRef = useRef<string | null>(null);
   const dropImportingRef = useRef(false);
   const requestSequenceRef = useRef(0);
@@ -416,6 +422,93 @@ export function useWorkFilesController(defaultRootPath = '') {
     [currentPath, loadDirectory]
   );
 
+  const copyEntries = useCallback((items: readonly WorkspaceEntry[]) => {
+    const entries = uniqueClipboardEntries(items);
+    if (!entries.length) return;
+    setClipboard({ mode: 'copy', entries });
+    showToast(`已复制 ${entries.length} 项，可在任意文件夹粘贴`, 'success');
+  }, []);
+
+  const cutEntries = useCallback((items: readonly WorkspaceEntry[]) => {
+    const entries = uniqueClipboardEntries(items);
+    if (!entries.length) return;
+    setClipboard({ mode: 'cut', entries });
+    showToast(`已剪切 ${entries.length} 项，粘贴后移动`, 'success');
+  }, []);
+
+  const pasteEntries = useCallback(
+    async (destinationDirectory = currentPath) => {
+      if (!clipboard?.entries.length) return;
+      if (!rootPath || !localPathInside(rootPath, destinationDirectory)) {
+        throw new Error('只能粘贴到当前本地根目录内。');
+      }
+      const sources = clipboard.entries.map((entry) => entry.path);
+      if (sources.some((path) => !localPathInside(rootPath, path))) {
+        throw new Error('剪贴板中包含当前本地根目录之外的项目。');
+      }
+      if (
+        clipboard.mode === 'cut' &&
+        sources.some(
+          (source) => sameLocalPath(source, destinationDirectory) || localPathInside(source, destinationDirectory)
+        )
+      ) {
+        throw new Error('不能将文件夹移动到自身内部。');
+      }
+
+      setOperationPaths(new Set(sources));
+      const completed: Array<{ source: string; destination: string }> = [];
+      try {
+        for (const entry of clipboard.entries) {
+          if (clipboard.mode === 'cut' && sameLocalPath(localPathParent(entry.path), destinationDirectory)) {
+            continue;
+          }
+          const destination = await availablePasteDestination(
+            destinationDirectory,
+            entry,
+            clipboard.mode === 'copy' && sameLocalPath(localPathParent(entry.path), destinationDirectory)
+          );
+          if (clipboard.mode === 'copy') await codeApi.copyPath(entry.path, destination);
+          else {
+            await codeApi.renamePath(entry.path, destination);
+            moveWorkLocalFileBindings(entry.path, destination);
+          }
+          completed.push({ source: entry.path, destination });
+        }
+        if (!completed.length) {
+          showToast('项目已经在这个文件夹中。', 'info');
+          return;
+        }
+        if (clipboard.mode === 'cut') {
+          setFavoritePaths((current) =>
+            current.map((path) =>
+              completed.reduce((rebased, move) => rebaseLocalPath(rebased, move.source, move.destination), path)
+            )
+          );
+          setClipboard(null);
+        }
+        await loadDirectory(currentPath);
+        setFilesystemRevision((current) => current + 1);
+        if (sameLocalPath(currentPath, destinationDirectory)) {
+          const destinations = completed.map((item) => item.destination);
+          setSelectedPaths(new Set(destinations));
+          setSelectionFocusPath(destinations.at(-1) ?? null);
+          selectionAnchorRef.current = destinations[0] ?? null;
+        }
+        showToast(`${completed.length} 项已${clipboard.mode === 'copy' ? '粘贴' : '移动'}`, 'success');
+      } catch (operationError) {
+        if (completed.length) {
+          await loadDirectory(currentPath).catch(() => undefined);
+          setFilesystemRevision((current) => current + 1);
+        }
+        showToast(formatApiError(operationError), 'error');
+        throw operationError;
+      } finally {
+        setOperationPaths(new Set());
+      }
+    },
+    [clipboard, currentPath, loadDirectory, rootPath]
+  );
+
   const deleteEntries = useCallback(
     async (items: readonly WorkspaceEntry[]) => {
       const paths = uniqueLocalPaths(items.map((entry) => entry.path));
@@ -583,6 +676,7 @@ export function useWorkFilesController(defaultRootPath = '') {
     selectionFocusPath,
     operationPaths,
     dropImporting,
+    clipboard,
     canGoBack: history.index > 0,
     canGoForward: history.index < history.paths.length - 1,
     canGoUp: Boolean(rootPath && currentPath && !sameLocalPath(rootPath, currentPath)),
@@ -605,6 +699,9 @@ export function useWorkFilesController(defaultRootPath = '') {
     createFolder,
     renameEntry,
     duplicateEntry,
+    copyEntries,
+    cutEntries,
+    pasteEntries,
     deleteEntries,
     moveEntries,
     importDroppedItems,
@@ -632,6 +729,39 @@ function uniqueLocalPaths(paths: readonly string[]): string[] {
     result.push(path);
   }
   return result;
+}
+
+function uniqueClipboardEntries(items: readonly WorkspaceEntry[]): WorkFilesClipboard['entries'] {
+  const entries: WorkFilesClipboard['entries'] = [];
+  for (const item of items) {
+    if (!item.path || entries.some((entry) => sameLocalPath(entry.path, item.path))) continue;
+    entries.push({ name: item.name, path: item.path, isDirectory: item.isDirectory });
+  }
+  return entries;
+}
+
+async function availablePasteDestination(
+  directory: string,
+  entry: Pick<WorkspaceEntry, 'name' | 'isDirectory'>,
+  forceCopyName: boolean
+): Promise<string> {
+  let copyIndex = forceCopyName ? 1 : 0;
+  for (let attempt = 0; attempt < 10_000; attempt += 1) {
+    const name = copyIndex === 0 ? entry.name : copyName(entry.name, entry.isDirectory, copyIndex);
+    const destination = joinLocalPath(directory, name);
+    if (!(await codeApi.pathExists(destination)).exists) return destination;
+    copyIndex = Math.max(1, copyIndex + 1);
+  }
+  throw new Error('无法为粘贴项目生成可用名称。');
+}
+
+function copyName(name: string, directory: boolean, index: number): string {
+  const suffix = index === 1 ? ' 副本' : ` 副本 ${index}`;
+  if (directory) return `${name}${suffix}`;
+  const extensionIndex = name.lastIndexOf('.');
+  return extensionIndex > 0
+    ? `${name.slice(0, extensionIndex)}${suffix}${name.slice(extensionIndex)}`
+    : `${name}${suffix}`;
 }
 
 function rememberRecentRoot(paths: readonly string[], path: string): string[] {

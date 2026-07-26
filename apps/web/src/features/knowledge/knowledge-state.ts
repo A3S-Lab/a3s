@@ -9,6 +9,8 @@ export interface KnowledgeState {
   knowledgeOperationStatus: KnowledgeLoadStatus;
   knowledgeOperationId: string | null;
   knowledgeOperationError: string | null;
+  requestedKnowledgeBaseId: string | null;
+  knowledgeWorkspace: string | null;
 }
 
 export function createKnowledgeState(): KnowledgeState {
@@ -19,5 +21,7 @@ export function createKnowledgeState(): KnowledgeState {
     knowledgeOperationStatus: 'idle',
     knowledgeOperationId: null,
     knowledgeOperationError: null,
+    requestedKnowledgeBaseId: null,
+    knowledgeWorkspace: null,
   };
 }

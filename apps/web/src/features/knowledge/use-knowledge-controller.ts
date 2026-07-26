@@ -2,7 +2,12 @@ import { useMemoizedFn } from 'ahooks';
 import { useEffect, useRef } from 'react';
 import { codeApi } from '../../lib/api';
 import { appState, formatApiError, showToast } from '../../state/app-state';
-import type { KnowledgeBaseImportRequest, KnowledgeBaseMutation, PersonalKnowledgeBase } from '../../types/api';
+import type {
+  KnowledgeBaseImportRequest,
+  KnowledgeBaseMutation,
+  KnowledgeCompilationPolicy,
+  PersonalKnowledgeBase,
+} from '../../types/api';
 
 export function useKnowledgeController() {
   const sequence = useRef(0);
@@ -18,7 +23,10 @@ export function useKnowledgeController() {
     }
     appState.knowledgeError = null;
     try {
-      const personal = await codeApi.personalKnowledgeBases(controller.signal);
+      const personal = await codeApi.personalKnowledgeBases(
+        controller.signal,
+        appState.knowledgeWorkspace ?? undefined
+      );
       if (controller.signal.aborted || request !== sequence.current) return;
       appState.personalKnowledgeBases = personal;
       appState.knowledgeStatus = 'ready';
@@ -34,7 +42,11 @@ export function useKnowledgeController() {
     appState.knowledgeOperationId = 'create';
     appState.knowledgeOperationError = null;
     try {
-      const mutation = await codeApi.createPersonalKnowledgeBase(input);
+      const workspace = activeKnowledgeWorkspace();
+      const mutation = await codeApi.createPersonalKnowledgeBase({
+        ...input,
+        ...(workspace ? { workspace } : {}),
+      });
       applyMutation(mutation);
       appState.knowledgeOperationStatus = 'ready';
       appState.knowledgeOperationId = null;
@@ -65,7 +77,11 @@ export function useKnowledgeController() {
       appState.knowledgeOperationId = 'import';
       appState.knowledgeOperationError = null;
       try {
-        const mutation = await codeApi.importPersonalKnowledgeBase(input);
+        const workspace = activeKnowledgeWorkspace();
+        const mutation = await codeApi.importPersonalKnowledgeBase({
+          ...input,
+          ...(workspace ? { workspace } : {}),
+        });
         applyMutation(mutation);
         appState.knowledgeOperationStatus = 'ready';
         appState.knowledgeOperationId = null;
@@ -86,10 +102,57 @@ export function useKnowledgeController() {
     appState.knowledgeOperationId = id;
     appState.knowledgeOperationError = null;
     try {
-      const mutation = await codeApi.setPersonalKnowledgeBasePinned(id, pinned);
+      const mutation = await codeApi.setPersonalKnowledgeBasePinned(id, pinned, activeKnowledgeWorkspace());
       applyMutation(mutation);
       appState.knowledgeOperationStatus = 'ready';
       appState.knowledgeOperationId = null;
+      return true;
+    } catch (error) {
+      appState.knowledgeOperationStatus = 'error';
+      appState.knowledgeOperationId = null;
+      appState.knowledgeOperationError = formatApiError(error);
+      return false;
+    }
+  });
+
+  const requestCompilation = useMemoizedFn(async (id: string) => {
+    appState.knowledgeOperationStatus = 'loading';
+    appState.knowledgeOperationId = `compile:${id}`;
+    appState.knowledgeOperationError = null;
+    try {
+      const mutation = await codeApi.requestKnowledgeCompilation(
+        id,
+        appState.personalKnowledgeBases?.workspaceRoot ?? appState.knowledgeWorkspace ?? undefined
+      );
+      applyMutation(mutation);
+      appState.knowledgeOperationStatus = 'ready';
+      appState.knowledgeOperationId = null;
+      showToast(mutation.changed ? '知识编译已加入队列。' : '知识编译已在处理中。', 'success');
+      void refreshKnowledge(true);
+      return true;
+    } catch (error) {
+      appState.knowledgeOperationStatus = 'error';
+      appState.knowledgeOperationId = null;
+      appState.knowledgeOperationError = formatApiError(error);
+      return false;
+    }
+  });
+
+  const setCompilationPolicy = useMemoizedFn(async (id: string, policy: KnowledgeCompilationPolicy) => {
+    appState.knowledgeOperationStatus = 'loading';
+    appState.knowledgeOperationId = `policy:${id}`;
+    appState.knowledgeOperationError = null;
+    try {
+      const mutation = await codeApi.setKnowledgeCompilationPolicy(
+        id,
+        policy,
+        appState.personalKnowledgeBases?.workspaceRoot ?? appState.knowledgeWorkspace ?? undefined
+      );
+      applyMutation(mutation);
+      appState.knowledgeOperationStatus = 'ready';
+      appState.knowledgeOperationId = null;
+      showToast(policy === 'smart_auto' ? '已开启智能自动编译。' : '已切换为手动编译。', 'success');
+      void refreshKnowledge(true);
       return true;
     } catch (error) {
       appState.knowledgeOperationStatus = 'error';
@@ -117,6 +180,8 @@ export function useKnowledgeController() {
     pickKnowledgeBaseDirectory,
     importKnowledgeBase,
     setPinned,
+    requestCompilation,
+    setCompilationPolicy,
     clearOperationError,
   };
 }
@@ -138,6 +203,10 @@ function applyMutation(mutation: KnowledgeBaseMutation): void {
       total: items.length,
     };
   }
+}
+
+function activeKnowledgeWorkspace(): string | undefined {
+  return appState.personalKnowledgeBases?.workspaceRoot ?? appState.knowledgeWorkspace ?? undefined;
 }
 
 export type KnowledgeActions = ReturnType<typeof useKnowledgeController>;

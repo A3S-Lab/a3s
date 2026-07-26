@@ -71,11 +71,27 @@ The first active Work release includes:
   partial results when directory, entry, result, or permission limits are
   reached.
   Name/date/size/kind sorting, mouse-marquee and checkbox multi-selection,
-  additive range selection, clickable list-header sorting, a selection-aware
+  additive range selection, clickable list-header sorting, folder traversal,
+  metadata, folder creation, direct rename and duplication, a selection-aware
   action shelf anchored above the status bar so file positions stay stable,
-  folder traversal, metadata, folder creation, direct rename, and direct
-  duplication. Folder
-  creation, native Office-file creation, rename, and duplicate naming are
+  and Finder/Explorer-style context menus. Right-clicking container padding,
+  grid gaps, the list tail, or an empty-state background clears the previous
+  selection and opens the folder-background menu; `Shift+F10` and the Context
+  Menu key open the same surface. That menu offers inline creation, paste,
+  select all, refresh, grid/list layout, name/date sorting, source-package
+  knowledge-base creation, AI organization, path copy, and operating-system
+  reveal. Right-clicking an item preserves an existing multi-selection and
+  scopes copy, cut, knowledge-base creation, AI actions, path copy, reveal,
+  rename, duplicate, paste-into-folder, favorite, and permanent deletion to the
+  valid selection.
+  Standard Cmd/Ctrl+C, Cmd/Ctrl+X, and Cmd/Ctrl+V shortcuts share an in-product
+  clipboard with the context menus and selection shelf. Cut items remain
+  visibly subdued until they are pasted or the clipboard changes. Same-folder
+  and destination collisions receive deterministic locale-appropriate,
+  numbered copy names; folder descendants cannot be pasted into themselves;
+  and partial failures refresh the visible directory without claiming an
+  all-or-nothing result. Folder creation, native Office-file creation, rename,
+  and duplicate naming are
   edited in place in both grid and list modes. Escape cancels, Enter confirms,
   and a rejected operation keeps the input and inline error available for
   correction. Local folder favorites persist in the sidebar and rebase after
@@ -95,6 +111,16 @@ The first active Work release includes:
   refuses an existing destination, stages the recovery artifact, writes and
   verifies the local file, binds its path, and opens the editor. A failed local
   write attempts to purge the staging artifact;
+- a non-modal, selection-aware knowledge-base composer for one file, one
+  folder, multiple files or folders, or a mixed selection. It previews
+  parent/child de-duplication, effective source roots, file count, and size,
+  then creates a managed `sources/` package without compiling it. The user can
+  explicitly queue compilation after creation or opt that individual base into
+  smart automatic compilation. Automatic work waits for 5 seconds of file
+  stability and 30 seconds of source quiet, runs at most once per 10 minutes,
+  and pauses on suspicious bulk deletion or replacement. The independent
+  compiler publishes only staged OKF Markdown; failed compilation retains the
+  last successful `wiki/`;
 - managed-library folder creation and file/folder rename use the same inline
   editor contract. Moving an active managed item to recoverable trash executes
   directly; only permanent deletion from managed trash and permanent local
@@ -948,6 +974,10 @@ back/forward navigation, persisted sidebar favorites, favorite-path rebasing,
 Finder keyboard selection, root-bounded drag/drop moves with descendant and
 collision guards, bounded operating-system file/folder drop imports with
 collision-safe names and rollback, direct folder creation and rename, raw binary reads,
+background/item/keyboard context-menu targeting, copy/cut/paste shortcuts,
+selection-preserving item context, cut-state presentation, collision-safe
+paste names, mixed-selection source-package preview and creation, explicit
+post-creation compilation, and smart-automatic policy selection,
 device-local path binding, binding-preserving Work renames, external-change
 fingerprints, temporary sibling replacement, post-write verification, Save As
 overwrite confirmation,

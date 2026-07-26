@@ -1,4 +1,4 @@
-import { CheckCircle2, Eye, ListChecks, Pencil, Sparkles, Trash2, X } from 'lucide-react';
+import { BookPlus, CheckCircle2, Copy, Eye, ListChecks, Pencil, Scissors, Sparkles, Trash2, X } from 'lucide-react';
 import { Button, IconButton } from '../../../design-system/primitives';
 import type { WorkspaceEntry } from '../../../types/api';
 
@@ -8,6 +8,9 @@ export function WorkFilesSelectionToolbar({
   onSelectAll,
   onQuickLook,
   onRename,
+  onCopy,
+  onCut,
+  onCreateKnowledgeBase,
   onAskAssistant,
   onDelete,
   onClear,
@@ -17,6 +20,9 @@ export function WorkFilesSelectionToolbar({
   onSelectAll: () => void;
   onQuickLook: (entry: WorkspaceEntry) => void;
   onRename: (entry: WorkspaceEntry) => void;
+  onCopy: (entries: readonly WorkspaceEntry[]) => void;
+  onCut: (entries: readonly WorkspaceEntry[]) => void;
+  onCreateKnowledgeBase: (entries: readonly WorkspaceEntry[]) => void;
   onAskAssistant: (entries: readonly WorkspaceEntry[]) => void;
   onDelete: (entries: readonly WorkspaceEntry[]) => void;
   onClear: () => void;
@@ -68,6 +74,36 @@ export function WorkFilesSelectionToolbar({
             </Button>
           </>
         )}
+        <Button
+          size='compact'
+          tone='quiet'
+          aria-label={`复制所选 ${selectedCount} 项`}
+          title='复制'
+          onClick={() => onCopy(selectedEntries)}
+        >
+          <Copy size={14} aria-hidden='true' />
+          <span>复制</span>
+        </Button>
+        <Button
+          size='compact'
+          tone='quiet'
+          aria-label={`剪切所选 ${selectedCount} 项`}
+          title='剪切'
+          onClick={() => onCut(selectedEntries)}
+        >
+          <Scissors size={14} aria-hidden='true' />
+          <span>剪切</span>
+        </Button>
+        <Button
+          size='compact'
+          tone='quiet'
+          aria-label='从所选项目创建知识库'
+          title='创建知识库'
+          onClick={() => onCreateKnowledgeBase(selectedEntries)}
+        >
+          <BookPlus size={14} aria-hidden='true' />
+          <span>创建知识库</span>
+        </Button>
         <Button
           size='compact'
           tone='quiet'

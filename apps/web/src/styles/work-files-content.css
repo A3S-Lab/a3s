@@ -43,6 +43,10 @@
   opacity: 0.48;
 }
 
+.work-file-item.cut {
+  opacity: 0.56;
+}
+
 .work-file-item.drop-target {
   border-color: color-mix(in srgb, var(--a3s-blue) 62%, var(--a3s-line)) !important;
   background: color-mix(in srgb, var(--a3s-blue) 14%, var(--a3s-panel)) !important;

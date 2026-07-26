@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { codeApi } from '../../../lib/api';
 import { appState } from '../../../state/app-state';
@@ -42,6 +42,8 @@ describe('standalone knowledge page', () => {
     appState.knowledgeOperationStatus = 'idle';
     appState.knowledgeOperationId = null;
     appState.knowledgeOperationError = null;
+    appState.requestedKnowledgeBaseId = null;
+    appState.knowledgeWorkspace = null;
     appState.personalKnowledgeBases = {
       schemaVersion: 1,
       workspaceRoot: '/workspace',
@@ -77,7 +79,8 @@ describe('standalone knowledge page', () => {
     expect(screen.getAllByRole('button', { name: '打开知识库 Project Notes' })).toHaveLength(2);
 
     fireEvent.click(screen.getByRole('button', { name: '新建知识库' }));
-    expect(screen.getByRole('dialog', { name: '新建知识库' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '新建知识库' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: '新建知识库' })).not.toBeInTheDocument();
   });
 
   it('opens a local knowledge base in a vault tree and saves Markdown edits', async () => {
@@ -106,7 +109,8 @@ describe('standalone knowledge page', () => {
     render(<KnowledgePage actions={actions} />);
 
     fireEvent.click(screen.getByRole('button', { name: '导入知识库' }));
-    expect(screen.getByRole('dialog', { name: '导入知识库' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '导入知识库' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: '导入知识库' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '选择文件夹' }));
     expect(await screen.findByDisplayValue('/Users/me/Research Vault')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '开始导入' }));
@@ -149,6 +153,51 @@ describe('standalone knowledge page', () => {
     expect(screen.getByPlaceholderText('搜索知识库')).toHaveValue('');
   });
 
+  it('keeps creation separate from compilation and exposes the smart-auto policy inline', async () => {
+    const selectionBase: PersonalKnowledgeBase = {
+      ...knowledgeBase,
+      id: 'research-pack',
+      name: 'Research Pack',
+      origin: 'selection',
+      compilation: {
+        policy: 'manual',
+        phase: 'source_ready',
+        sourceDigest: 'sha256:source',
+        lastCompiledDigest: null,
+        pendingChanges: true,
+        activeJobId: null,
+        lastRequestedAt: null,
+        lastSucceededAt: null,
+        lastFailedAt: null,
+        lastError: null,
+        pausedReason: null,
+        compilerVersion: null,
+        recompileRecommended: false,
+        nextAutoCompileAt: null,
+        stableWindowSeconds: 5,
+        quietWindowSeconds: 30,
+        minimumIntervalSeconds: 600,
+      },
+    };
+    appState.personalKnowledgeBases = {
+      ...appState.personalKnowledgeBases!,
+      items: [selectionBase],
+      total: 1,
+    };
+    vi.spyOn(codeApi, 'readDir').mockResolvedValue([]);
+    const actions = createKnowledgeActions();
+    render(<KnowledgePage actions={actions} />);
+
+    expect(screen.getAllByText('来源已准备')).toHaveLength(2);
+    fireEvent.click(screen.getAllByRole('button', { name: '打开知识库 Research Pack' })[0]);
+    expect(await screen.findByRole('region', { name: 'Research Pack 知识库编辑器' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '知识编译设置' })).toHaveTextContent('尚未运行知识编译');
+    fireEvent.click(screen.getByRole('button', { name: '立即编译' }));
+    expect(actions.requestCompilation).toHaveBeenCalledWith(selectionBase.id);
+    fireEvent.click(screen.getByRole('checkbox', { name: '原文件变化后智能自动编译' }));
+    expect(actions.setCompilationPolicy).toHaveBeenCalledWith(selectionBase.id, 'smart_auto');
+  });
+
   it('loads the local knowledge bases when the standalone page opens cold', () => {
     appState.knowledgeStatus = 'idle';
     appState.personalKnowledgeBases = null;
@@ -157,6 +206,41 @@ describe('standalone knowledge page', () => {
     render(<KnowledgePage actions={actions} />);
 
     expect(actions.refreshKnowledge).toHaveBeenCalledOnce();
+  });
+
+  it('waits for the requested workspace catalog before opening a knowledge base', async () => {
+    const requested = {
+      ...knowledgeBase,
+      id: 'workspace-pack',
+      name: 'Workspace Pack',
+      path: '/other/.a3s/kb/bases/workspace-pack',
+    };
+    appState.requestedKnowledgeBaseId = requested.id;
+    appState.knowledgeWorkspace = '/other';
+    appState.personalKnowledgeBases = {
+      ...appState.personalKnowledgeBases!,
+      items: [{ ...requested, name: 'Old Workspace Shadow' }],
+    };
+    vi.spyOn(codeApi, 'readDir').mockResolvedValue([]);
+
+    render(<KnowledgePage actions={createKnowledgeActions()} />);
+
+    expect(screen.queryByRole('region', { name: 'Old Workspace Shadow 知识库编辑器' })).not.toBeInTheDocument();
+    expect(appState.requestedKnowledgeBaseId).toBe(requested.id);
+
+    act(() => {
+      appState.personalKnowledgeBases = {
+        schemaVersion: 1,
+        workspaceRoot: '/other',
+        root: '/other/.a3s/kb/bases',
+        total: 1,
+        warnings: [],
+        items: [requested],
+      };
+    });
+
+    expect(await screen.findByRole('region', { name: 'Workspace Pack 知识库编辑器' })).toBeInTheDocument();
+    await waitFor(() => expect(appState.requestedKnowledgeBaseId).toBeNull());
   });
 });
 
@@ -167,6 +251,8 @@ function createKnowledgeActions(overrides: Partial<KnowledgeActions> = {}): Know
     pickKnowledgeBaseDirectory: vi.fn(async () => null),
     importKnowledgeBase: vi.fn(async () => null),
     setPinned: vi.fn(async () => true),
+    requestCompilation: vi.fn(async () => true),
+    setCompilationPolicy: vi.fn(async () => true),
     clearOperationError: vi.fn(),
     ...overrides,
   } as KnowledgeActions;

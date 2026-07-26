@@ -9,13 +9,15 @@ import {
   PinOff,
   Plus,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { useSnapshot } from 'valtio';
-import { Button, Dialog, Field, IconButton, InlineNotice, StateView } from '../../../design-system/primitives';
+import { Button, Field, IconButton, InlineNotice, StateView } from '../../../design-system/primitives';
 import { appState } from '../../../state/app-state';
 import type { PersonalKnowledgeBase } from '../../../types/api';
 import type { KnowledgeActions } from '../use-knowledge-controller';
+import { KnowledgeCompilationBadge } from '../components/knowledge-compilation';
 
 export function KnowledgeDirectory({
   actions,
@@ -226,6 +228,7 @@ function PersonalKnowledgeCard({
         <span className='personal-knowledge-icon' aria-hidden='true'>
           <FileText size={42} strokeWidth={1.25} />
         </span>
+        {item.origin === 'selection' && <KnowledgeCompilationBadge compilation={item.compilation} />}
         <dl>
           <div>
             <dt>来源</dt>
@@ -253,99 +256,26 @@ function PersonalKnowledgeCard({
   );
 }
 
-export function CreateKnowledgeBaseDialog({
+export function KnowledgeBaseInlineComposer({
+  mode,
   actions,
   onClose,
   onCreated,
+  onImported,
 }: {
+  mode: 'create' | 'import';
   actions: KnowledgeActions;
   onClose: () => void;
   onCreated: () => void;
-}) {
-  const state = useSnapshot(appState);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const submitting = state.knowledgeOperationStatus === 'loading' && state.knowledgeOperationId === 'create';
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    const created = await actions.createKnowledgeBase({
-      name: name.trim(),
-      description: description.trim() || undefined,
-    });
-    if (created) onCreated();
-  };
-  return (
-    <Dialog
-      title='新建知识库'
-      description='创建一个保存在当前工作区的个人知识库。'
-      className='knowledge-create-dialog'
-      closeDisabled={submitting}
-      onClose={onClose}
-      footer={
-        <>
-          <Button disabled={submitting} onClick={onClose}>
-            取消
-          </Button>
-          <Button
-            tone='primary'
-            loading={submitting}
-            disabled={!name.trim()}
-            onClick={() => undefined}
-            type='submit'
-            form='knowledge-create-form'
-          >
-            创建知识库
-          </Button>
-        </>
-      }
-    >
-      <form className='knowledge-create-form' id='knowledge-create-form' onSubmit={(event) => void submit(event)}>
-        <Field label='名称' required>
-          <input
-            autoFocus
-            maxLength={80}
-            value={name}
-            aria-label='名称'
-            placeholder='例如：项目资料库'
-            onChange={(event) => setName(event.target.value)}
-          />
-        </Field>
-        <Field label='描述'>
-          <textarea
-            maxLength={280}
-            rows={3}
-            value={description}
-            placeholder='说明这个知识库保存什么内容（可选）'
-            onChange={(event) => setDescription(event.target.value)}
-          />
-        </Field>
-        <InlineNotice tone='info' role='note' icon={<ShieldCheck size={15} />}>
-          内容保存在当前工作区，不会发布或上传。
-        </InlineNotice>
-        {state.knowledgeOperationError && (
-          <InlineNotice tone='danger' role='alert' title='无法创建知识库'>
-            {state.knowledgeOperationError}
-          </InlineNotice>
-        )}
-      </form>
-    </Dialog>
-  );
-}
-
-export function ImportKnowledgeBaseDialog({
-  actions,
-  onClose,
-  onImported,
-}: {
-  actions: KnowledgeActions;
-  onClose: () => void;
   onImported: (item: PersonalKnowledgeBase) => void;
 }) {
   const state = useSnapshot(appState);
   const [path, setPath] = useState('');
   const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [picking, setPicking] = useState(false);
-  const submitting = state.knowledgeOperationStatus === 'loading' && state.knowledgeOperationId === 'import';
+  const operationId = mode === 'create' ? 'create' : 'import';
+  const submitting = state.knowledgeOperationStatus === 'loading' && state.knowledgeOperationId === operationId;
   const pick = async () => {
     setPicking(true);
     const selected = await actions.pickKnowledgeBaseDirectory();
@@ -354,69 +284,91 @@ export function ImportKnowledgeBaseDialog({
   };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (mode === 'create') {
+      const created = await actions.createKnowledgeBase({
+        name: name.trim(),
+        description: description.trim() || undefined,
+      });
+      if (created) onCreated();
+      return;
+    }
     const imported = await actions.importKnowledgeBase({ path: path.trim(), name: name.trim() || undefined });
     if (imported) onImported(imported);
   };
   return (
-    <Dialog
-      title='导入知识库'
-      description='导入 Obsidian Vault 或其他包含 Markdown 的本地文件夹。'
-      className='knowledge-create-dialog knowledge-import-dialog'
-      closeDisabled={submitting}
-      onClose={onClose}
-      footer={
-        <>
-          <Button disabled={submitting} onClick={onClose}>
-            取消
-          </Button>
-          <Button
-            tone='primary'
-            loading={submitting}
-            disabled={!path.trim()}
-            onClick={() => undefined}
-            type='submit'
-            form='knowledge-import-form'
-          >
-            开始导入
-          </Button>
-        </>
-      }
-    >
-      <form className='knowledge-create-form' id='knowledge-import-form' onSubmit={(event) => void submit(event)}>
-        <Field label='本地文件夹' required>
-          {(controlProps) => (
-            <div className='knowledge-import-path'>
-              <input
-                {...controlProps}
-                value={path}
-                placeholder='选择文件夹或输入绝对路径'
-                onChange={(event) => setPath(event.target.value)}
-              />
-              <Button disabled={picking || submitting} onClick={() => void pick()}>
-                <FolderInput size={14} /> {picking ? '选择中…' : '选择文件夹'}
-              </Button>
-            </div>
-          )}
-        </Field>
-        <Field label='知识库名称（可选）'>
+    <section className='knowledge-inline-composer' aria-label={mode === 'create' ? '新建知识库' : '导入知识库'}>
+      <header>
+        <span>{mode === 'create' ? <Plus size={17} /> : <FolderInput size={17} />}</span>
+        <div>
+          <strong>{mode === 'create' ? '新建知识库' : '导入知识库'}</strong>
+          <p>
+            {mode === 'create'
+              ? '创建一个可直接编辑的本地知识库。'
+              : '复制 Obsidian Vault 或其他 Markdown 文件夹；原文件保持不变。'}
+          </p>
+        </div>
+        <IconButton label='关闭行内知识库面板' disabled={submitting} onClick={onClose}>
+          <X size={15} />
+        </IconButton>
+      </header>
+      <form className='knowledge-inline-composer-form' onSubmit={(event) => void submit(event)}>
+        {mode === 'import' && (
+          <Field label='本地文件夹' required>
+            {(controlProps) => (
+              <div className='knowledge-import-path'>
+                <input
+                  {...controlProps}
+                  value={path}
+                  placeholder='选择文件夹或输入绝对路径'
+                  onChange={(event) => setPath(event.target.value)}
+                />
+                <Button disabled={picking || submitting} onClick={() => void pick()}>
+                  <FolderInput size={14} /> {picking ? '选择中…' : '选择文件夹'}
+                </Button>
+              </div>
+            )}
+          </Field>
+        )}
+        <Field label={mode === 'create' ? '名称' : '知识库名称（可选）'} required={mode === 'create'}>
           <input
             maxLength={80}
             value={name}
-            aria-label='知识库名称'
-            placeholder='默认使用文件夹名称'
+            aria-label={mode === 'create' ? '名称' : '知识库名称'}
+            placeholder={mode === 'create' ? '例如：项目资料库' : '默认使用文件夹名称'}
             onChange={(event) => setName(event.target.value)}
           />
         </Field>
-        <InlineNotice tone='info' role='note' icon={<ShieldCheck size={15} />}>
-          A3S 会复制内容到当前工作区；原始 Vault 保持不变，.obsidian 配置不会导入。
-        </InlineNotice>
+        {mode === 'create' && (
+          <Field label='描述（可选）'>
+            <input
+              maxLength={280}
+              value={description}
+              placeholder='说明这个知识库保存什么内容'
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </Field>
+        )}
+        <div className='knowledge-inline-composer-note'>
+          <ShieldCheck size={14} />
+          <span>
+            {mode === 'create' ? '保存在当前工作区，不会上传。' : '复制到当前工作区，.obsidian 配置不会导入。'}
+          </span>
+        </div>
+        <Button
+          tone='primary'
+          type='submit'
+          loading={submitting}
+          disabled={mode === 'create' ? !name.trim() : !path.trim()}
+        >
+          {mode === 'create' ? '创建知识库' : '开始导入'}
+        </Button>
         {state.knowledgeOperationError && (
-          <InlineNotice tone='danger' role='alert' title='无法导入知识库'>
+          <InlineNotice className='knowledge-inline-composer-error' tone='danger' role='alert'>
             {state.knowledgeOperationError}
           </InlineNotice>
         )}
       </form>
-    </Dialog>
+    </section>
   );
 }
 
@@ -430,6 +382,7 @@ function stableTone(value: string): number {
 
 function originLabel(origin: PersonalKnowledgeBase['origin']): string {
   if (origin === 'workspace') return '工作区默认';
+  if (origin === 'selection') return '文件来源包';
   if (origin === 'imported') return '外部导入';
   if (origin === 'marketplace') return '已导入';
   return '本地创建';

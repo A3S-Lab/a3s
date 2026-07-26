@@ -26,15 +26,19 @@ import { codeApi } from '../../../lib/api';
 import { appState, formatApiError, showToast } from '../../../state/app-state';
 import type { PersonalKnowledgeBase, WorkspaceEntry } from '../../../types/api';
 import { localPathBasename } from '../../work/work-local-files';
+import { KnowledgeCompilationControls } from '../components/knowledge-compilation';
+import type { KnowledgeActions } from '../use-knowledge-controller';
 
 const StreamingMarkdown = lazy(() => import('../../tasks/components/streaming-markdown'));
 
 export function KnowledgeEditor({
   knowledgeBase,
+  actions,
   onBack,
   onRefreshKnowledge,
 }: {
   knowledgeBase: PersonalKnowledgeBase;
+  actions: KnowledgeActions;
   onBack: () => void;
   onRefreshKnowledge: () => void;
 }) {
@@ -175,6 +179,8 @@ export function KnowledgeEditor({
           </Button>
         </div>
       </header>
+
+      <KnowledgeCompilationControls knowledgeBase={knowledgeBase} actions={actions} />
 
       <div className='knowledge-editor-workbench'>
         <aside className='knowledge-vault-explorer' aria-label='知识库文件导航'>

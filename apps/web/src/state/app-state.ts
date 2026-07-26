@@ -382,6 +382,23 @@ export function navigateKnowledge(): void {
   window.history.replaceState(null, '', '#knowledge');
 }
 
+export function navigateKnowledgeBase(id: string, workspace?: string): void {
+  appState.requestedKnowledgeBaseId = id;
+  const normalizedWorkspace = workspace?.trim();
+  if (normalizedWorkspace) {
+    appState.knowledgeWorkspace = normalizedWorkspace;
+    if (
+      appState.personalKnowledgeBases &&
+      !sameWorkspaceRoot(appState.personalKnowledgeBases.workspaceRoot, normalizedWorkspace)
+    ) {
+      appState.personalKnowledgeBases = null;
+      appState.knowledgeStatus = 'idle';
+      appState.knowledgeError = null;
+    }
+  }
+  navigateKnowledge();
+}
+
 function activeTaskProduct(): TaskProduct {
   return appState.activeProduct === 'work' ? 'work' : 'code';
 }

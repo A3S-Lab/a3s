@@ -500,6 +500,71 @@ describe('codeApi workspace mutations', () => {
   });
 });
 
+describe('codeApi knowledge compilation', () => {
+  it('keeps source preparation, compilation, policy, and native reveal as explicit API operations', async () => {
+    const fetch = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ code: 200, data: {} }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    await codeApi.personalKnowledgeBases(undefined, '/repo with space');
+    await codeApi.createPersonalKnowledgeBase({ name: 'Research Pack', workspace: '/repo' });
+    await codeApi.importPersonalKnowledgeBase({ path: '/vault', workspace: '/repo' });
+    await codeApi.setPersonalKnowledgeBasePinned('research/pack', false, '/repo');
+    await codeApi.previewKnowledgeBaseSelection({ workspace: '/repo', paths: ['/repo/A', '/repo/note.md'] });
+    await codeApi.createKnowledgeBaseFromSelection({
+      workspace: '/repo',
+      paths: ['/repo/A', '/repo/note.md'],
+      name: 'Research Pack',
+      compilationPolicy: 'manual',
+    });
+    await codeApi.requestKnowledgeCompilation('research/pack', '/repo');
+    await codeApi.knowledgeCompilationStatus('research/pack', '/repo');
+    await codeApi.setKnowledgeCompilationPolicy('research/pack', 'smart_auto', '/repo');
+    await codeApi.revealWorkspacePath('/repo/note.md');
+
+    expect(
+      fetch.mock.calls.map(([path, init]) => [
+        path,
+        init?.method ?? 'GET',
+        typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+      ])
+    ).toEqual([
+      ['/api/v1/knowledge/bases?workspace=%2Frepo%20with%20space', 'GET', null],
+      ['/api/v1/knowledge/bases', 'POST', { name: 'Research Pack', workspace: '/repo' }],
+      ['/api/v1/knowledge/bases/import', 'POST', { path: '/vault', workspace: '/repo' }],
+      ['/api/v1/knowledge/bases/research%2Fpack/pinned', 'POST', { pinned: false, workspace: '/repo' }],
+      [
+        '/api/v1/knowledge/bases/from-selection/preview',
+        'POST',
+        { workspace: '/repo', paths: ['/repo/A', '/repo/note.md'] },
+      ],
+      [
+        '/api/v1/knowledge/bases/from-selection',
+        'POST',
+        {
+          workspace: '/repo',
+          paths: ['/repo/A', '/repo/note.md'],
+          name: 'Research Pack',
+          compilationPolicy: 'manual',
+        },
+      ],
+      ['/api/v1/knowledge/bases/research%2Fpack/compilations', 'POST', { workspace: '/repo' }],
+      ['/api/v1/knowledge/bases/research%2Fpack/compilation?workspace=%2Frepo', 'GET', null],
+      [
+        '/api/v1/knowledge/bases/research%2Fpack/compilation-policy',
+        'PATCH',
+        { policy: 'smart_auto', workspace: '/repo' },
+      ],
+      ['/api/v1/workspace/actions/reveal', 'POST', { path: '/repo/note.md' }],
+    ]);
+  });
+});
+
 function requestJson(fetch: ReturnType<typeof vi.fn>, call: number): unknown {
   return JSON.parse(String(fetch.mock.calls[call]?.[1]?.body));
 }

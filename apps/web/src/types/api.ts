@@ -566,7 +566,30 @@ export interface KnowledgeMarketplaceCatalog {
   warnings: string[];
 }
 
-export type KnowledgeBaseOrigin = 'workspace' | 'created' | 'marketplace' | 'imported';
+export type KnowledgeBaseOrigin = 'workspace' | 'created' | 'marketplace' | 'imported' | 'selection';
+
+export type KnowledgeCompilationPolicy = 'manual' | 'smart_auto';
+export type KnowledgeCompilationPhase = 'source_ready' | 'queued' | 'running' | 'succeeded' | 'failed' | 'paused';
+
+export interface KnowledgeCompilationSummary {
+  policy: KnowledgeCompilationPolicy;
+  phase: KnowledgeCompilationPhase;
+  sourceDigest?: string | null;
+  lastCompiledDigest?: string | null;
+  pendingChanges: boolean;
+  activeJobId?: string | null;
+  lastRequestedAt?: string | null;
+  lastSucceededAt?: string | null;
+  lastFailedAt?: string | null;
+  lastError?: string | null;
+  pausedReason?: string | null;
+  compilerVersion?: string | null;
+  recompileRecommended: boolean;
+  nextAutoCompileAt?: string | null;
+  stableWindowSeconds: number;
+  quietWindowSeconds: number;
+  minimumIntervalSeconds: number;
+}
 
 export interface PersonalKnowledgeBase {
   id: string;
@@ -582,6 +605,7 @@ export interface PersonalKnowledgeBase {
   sourceCount: number;
   conceptCount: number;
   bytes: number;
+  compilation?: KnowledgeCompilationSummary;
 }
 
 export interface PersonalKnowledgeBaseCatalog {
@@ -601,6 +625,49 @@ export interface KnowledgeBaseMutation {
 export interface KnowledgeBaseImportRequest {
   path: string;
   name?: string;
+  workspace?: string;
+}
+
+export interface KnowledgeSourceSelectionPreview {
+  schemaVersion: number;
+  selectedCount: number;
+  sourceRootCount: number;
+  deduplicatedCount: number;
+  fileCount: number;
+  directoryCount: number;
+  bytes: number;
+  contentDigest: string;
+  suggestedName: string;
+  items: Array<{
+    path: string;
+    destination: string;
+    kind: 'file' | 'directory';
+  }>;
+}
+
+export interface KnowledgeBaseFromSelectionRequest {
+  workspace: string;
+  paths: string[];
+  name: string;
+  description?: string;
+  compilationPolicy: KnowledgeCompilationPolicy;
+}
+
+export interface KnowledgeCompilationMutation {
+  changed: boolean;
+  knowledgeBase: PersonalKnowledgeBase;
+  job?: {
+    id: string;
+    knowledgeBaseId: string;
+    trigger: 'manual' | 'smart_auto' | 'retry';
+    phase: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+    sourceDigest: string;
+    createdAt: string;
+    startedAt?: string | null;
+    completedAt?: string | null;
+    outputPath: string;
+    error?: string | null;
+  } | null;
 }
 
 export * from './weixin';

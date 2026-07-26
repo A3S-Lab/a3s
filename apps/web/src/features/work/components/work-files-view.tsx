@@ -1,15 +1,24 @@
 import {
   ArrowDown,
   ArrowUp,
+  BookPlus,
+  Check,
+  ClipboardCopy,
+  ClipboardPaste,
   Copy,
   Eye,
   FileInput,
   FileText,
+  FolderSearch,
   FolderOpen,
   FolderPlus,
+  Grid2X2,
+  List,
   MessageSquareText,
   Pencil,
   Presentation,
+  RefreshCw,
+  Scissors,
   Sheet,
   Sparkles,
   Star,
@@ -20,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button, StateView } from '../../../design-system/primitives';
+import { codeApi } from '../../../lib/api';
 import { showToast } from '../../../state/app-state';
 import type { WorkspaceEntry } from '../../../types/api';
 import { WorkspaceContextMenu, type WorkspaceContextMenuItem } from '../../workspace/components/workspace-context-menu';
@@ -51,6 +61,7 @@ import { WorkFileInlineEditor } from './work-file-inline-editor';
 import { useWorkFileMarquee } from './work-file-marquee';
 import { WorkFileSelectionControl, WorkFilesSelectAllControl } from './work-file-selection-controls';
 import { WorkFilesSelectionToolbar } from './work-files-selection-toolbar';
+import { WorkKnowledgeBasePanel } from './work-knowledge-base-panel';
 
 interface ContextMenuState {
   entry: WorkspaceEntry | null;
@@ -89,6 +100,7 @@ export function WorkFilesView({
   const [draggedPaths, setDraggedPaths] = useState<string[]>([]);
   const [dropTargetPath, setDropTargetPath] = useState<string | null>(null);
   const [externalDropTargetPath, setExternalDropTargetPath] = useState<string | null>(null);
+  const [knowledgeBuilderPaths, setKnowledgeBuilderPaths] = useState<string[] | null>(null);
   const filesContentRef = useRef<HTMLDivElement>(null);
   const workspaceSearching = actions.searchScope === 'workspace' && Boolean(actions.query.trim());
   const marquee = useWorkFileMarquee({
@@ -132,6 +144,20 @@ export function WorkFilesView({
     onRename: inlineOperation.startRename,
     onDuplicate: inlineOperation.startDuplicate,
     onDelete: (entries) => setPendingDeleteEntries([...entries]),
+    clipboard: actions.clipboard,
+    onCopy: actions.copyEntries,
+    onCut: actions.cutEntries,
+    onPaste: actions.pasteEntries,
+    onCopyPath: copyPathsToClipboard,
+    onReveal: revealPath,
+    onCreateKnowledgeBase: (paths) => setKnowledgeBuilderPaths([...paths]),
+    visibleCount: actions.visibleEntries.length,
+    onSelectAll: actions.selectAll,
+    layout: actions.layout,
+    onSetLayout: actions.setLayout,
+    sort: actions.sort,
+    onSetSort: actions.setSort,
+    onRefresh: actions.refresh,
     favoritePaths: actions.favoritePaths,
     onToggleFavorite: actions.toggleFavoritePath,
     onAgentRequest,
@@ -154,8 +180,10 @@ export function WorkFilesView({
         onPointerUp={marquee.onPointerUp}
         onPointerCancel={marquee.onPointerCancel}
         onContextMenu={(event) => {
-          if (event.target !== event.currentTarget) return;
+          if (!isBackgroundContextTarget(event.target)) return;
           event.preventDefault();
+          actions.clearSelection();
+          event.currentTarget.focus({ preventScroll: true });
           setContextMenu({ entry: null, x: event.clientX, y: event.clientY });
         }}
         onDragOver={(event) => {
@@ -180,13 +208,34 @@ export function WorkFilesView({
         }}
         onKeyDown={(event) => {
           const commandKey = event.metaKey || event.ctrlKey;
-          if (commandKey && event.key === 'ArrowUp') {
+          const key = event.key.toLocaleLowerCase();
+          if (
+            (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) &&
+            event.target === event.currentTarget
+          ) {
+            event.preventDefault();
+            const bounds = event.currentTarget.getBoundingClientRect();
+            setContextMenu({
+              entry: null,
+              x: bounds.left + 18,
+              y: bounds.top + 18,
+            });
+          } else if (commandKey && key === 'c' && actions.selectedEntries.length > 0) {
+            event.preventDefault();
+            actions.copyEntries(actions.selectedEntries);
+          } else if (commandKey && key === 'x' && actions.selectedEntries.length > 0) {
+            event.preventDefault();
+            actions.cutEntries(actions.selectedEntries);
+          } else if (commandKey && key === 'v' && actions.clipboard) {
+            event.preventDefault();
+            void actions.pasteEntries(actions.currentPath).catch(() => undefined);
+          } else if (commandKey && event.key === 'ArrowUp') {
             event.preventDefault();
             actions.goUp();
           } else if (commandKey && event.key === 'ArrowDown' && actions.selectedEntries.length === 1) {
             event.preventDefault();
             openEntry(actions.selectedEntries[0]);
-          } else if (commandKey && event.key.toLocaleLowerCase() === 'a') {
+          } else if (commandKey && key === 'a') {
             event.preventDefault();
             actions.selectAll();
           } else if (event.key === 'Enter' && actions.selectedEntries.length === 1) {
@@ -219,7 +268,10 @@ export function WorkFilesView({
               const entry = actions.visibleEntries[nextIndex];
               actions.selectEntry(entry, { range: event.shiftKey });
               items[nextIndex]?.focus();
-              items[nextIndex]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+              items[nextIndex]?.scrollIntoView?.({
+                block: 'nearest',
+                inline: 'nearest',
+              });
             }
           }
         }}
@@ -307,7 +359,7 @@ export function WorkFilesView({
                 data-work-file-index={index}
                 aria-selected={actions.selectedPaths.has(entry.path)}
                 aria-label={`${entry.name}，${workFileKindLabel(entry)}`}
-                className={`work-file-item ${actions.selectedPaths.has(entry.path) ? 'selected' : ''} ${draggedPaths.some((path) => sameLocalPath(path, entry.path)) ? 'dragging' : ''} ${dropTargetPath === entry.path ? 'drop-target' : ''} ${externalDropTargetPath === entry.path ? 'external-drop-target' : ''}`}
+                className={`work-file-item ${actions.selectedPaths.has(entry.path) ? 'selected' : ''} ${actions.clipboard?.mode === 'cut' && actions.clipboard.entries.some((item) => sameLocalPath(item.path, entry.path)) ? 'cut' : ''} ${draggedPaths.some((path) => sameLocalPath(path, entry.path)) ? 'dragging' : ''} ${dropTargetPath === entry.path ? 'drop-target' : ''} ${externalDropTargetPath === entry.path ? 'external-drop-target' : ''}`}
                 disabled={openingPath === entry.path || moving}
                 draggable={openingPath !== entry.path && !moving}
                 key={entry.path}
@@ -393,7 +445,11 @@ export function WorkFilesView({
                   } else if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
                     event.preventDefault();
                     const bounds = event.currentTarget.getBoundingClientRect();
-                    setContextMenu({ entry, x: bounds.left + Math.min(bounds.width, 180), y: bounds.bottom });
+                    setContextMenu({
+                      entry,
+                      x: bounds.left + Math.min(bounds.width, 180),
+                      y: bounds.bottom,
+                    });
                   }
                 }}
               >
@@ -466,13 +522,23 @@ export function WorkFilesView({
           />
         )}
       </div>
-      {!marquee.deferSelectionToolbar && (
+      {knowledgeBuilderPaths && (
+        <WorkKnowledgeBasePanel
+          workspaceRoot={actions.rootPath}
+          paths={knowledgeBuilderPaths}
+          onClose={() => setKnowledgeBuilderPaths(null)}
+        />
+      )}
+      {!knowledgeBuilderPaths && !marquee.deferSelectionToolbar && (
         <WorkFilesSelectionToolbar
           selectedEntries={actions.selectedEntries}
           totalCount={actions.visibleEntries.length}
           onSelectAll={actions.selectAll}
           onQuickLook={onQuickLook}
           onRename={inlineOperation.startRename}
+          onCopy={actions.copyEntries}
+          onCut={actions.cutEntries}
+          onCreateKnowledgeBase={(entries) => setKnowledgeBuilderPaths(entries.map((entry) => entry.path))}
           onAskAssistant={(entries) =>
             void onAgentRequest({
               workspaceRoot: '',
@@ -570,6 +636,20 @@ function contextMenuItems({
   onRename,
   onDuplicate,
   onDelete,
+  clipboard,
+  onCopy,
+  onCut,
+  onPaste,
+  onCopyPath,
+  onReveal,
+  onCreateKnowledgeBase,
+  visibleCount,
+  onSelectAll,
+  layout,
+  onSetLayout,
+  sort,
+  onSetSort,
+  onRefresh,
   favoritePaths,
   onToggleFavorite,
   onAgentRequest,
@@ -585,6 +665,20 @@ function contextMenuItems({
   onRename: (entry: WorkspaceEntry) => void;
   onDuplicate: (entry: WorkspaceEntry) => void;
   onDelete: (entries: WorkspaceEntry[]) => void;
+  clipboard: WorkFilesActions['clipboard'];
+  onCopy: (entries: readonly WorkspaceEntry[]) => void;
+  onCut: (entries: readonly WorkspaceEntry[]) => void;
+  onPaste: (destinationDirectory?: string) => Promise<void>;
+  onCopyPath: (paths: readonly string[]) => void;
+  onReveal: (path: string) => void;
+  onCreateKnowledgeBase: (paths: readonly string[]) => void;
+  visibleCount: number;
+  onSelectAll: () => void;
+  layout: WorkFilesActions['layout'];
+  onSetLayout: WorkFilesActions['setLayout'];
+  sort: WorkFilesActions['sort'];
+  onSetSort: WorkFilesActions['setSort'];
+  onRefresh: () => Promise<void>;
   favoritePaths: string[];
   onToggleFavorite: (path: string) => void;
   onAgentRequest: (request: WorkAgentRequest) => void | Promise<void>;
@@ -621,19 +715,95 @@ function contextMenuItems({
         }
       );
     }
-    items.push({
-      id: 'organize',
-      label: '用 AI 助手整理当前文件夹',
-      icon: <Sparkles size={14} />,
-      separatorBefore: true,
-      onSelect: () =>
-        void onAgentRequest({
-          workspaceRoot: '',
-          paths: [currentPath],
-          instruction:
-            '请分析当前文件夹的内容和结构，提出一份清晰、可执行的整理方案。先只给出建议，不要移动、重命名或删除任何文件，除非我明确确认。',
-        }),
-    });
+    items.push(
+      {
+        id: 'paste',
+        label: clipboard ? `粘贴 ${clipboard.entries.length} 项` : '粘贴',
+        icon: <ClipboardPaste size={14} />,
+        shortcut: '⌘V',
+        ariaKeyShortcut: 'Control+V Meta+V',
+        disabled: !clipboard,
+        separatorBefore: true,
+        onSelect: () => void onPaste(currentPath).catch(() => undefined),
+      },
+      {
+        id: 'select-all',
+        label: '全选',
+        icon: <Check size={14} />,
+        shortcut: '⌘A',
+        ariaKeyShortcut: 'Control+A Meta+A',
+        disabled: visibleCount === 0,
+        onSelect: onSelectAll,
+      },
+      {
+        id: 'refresh',
+        label: '刷新',
+        icon: <RefreshCw size={14} />,
+        separatorBefore: true,
+        onSelect: () => void onRefresh(),
+      },
+      {
+        id: 'grid-view',
+        label: '图标视图',
+        icon: <Grid2X2 size={14} />,
+        checked: layout === 'grid',
+        onSelect: () => onSetLayout('grid'),
+      },
+      {
+        id: 'list-view',
+        label: '列表视图',
+        icon: <List size={14} />,
+        checked: layout === 'list',
+        onSelect: () => onSetLayout('list'),
+      },
+      {
+        id: 'sort-name',
+        label: '按名称排序',
+        icon: <ArrowDown size={14} />,
+        checked: sort.key === 'name',
+        separatorBefore: true,
+        onSelect: () => onSetSort({ ...sort, key: 'name' }),
+      },
+      {
+        id: 'sort-modified',
+        label: '按修改日期排序',
+        icon: <ArrowDown size={14} />,
+        checked: sort.key === 'modified',
+        onSelect: () => onSetSort({ ...sort, key: 'modified' }),
+      },
+      {
+        id: 'create-knowledge-base',
+        label: '从当前文件夹创建知识库',
+        icon: <BookPlus size={14} />,
+        separatorBefore: true,
+        onSelect: () => onCreateKnowledgeBase([currentPath]),
+      },
+      {
+        id: 'organize',
+        label: '用 AI 助手整理当前文件夹',
+        icon: <Sparkles size={14} />,
+        onSelect: () =>
+          void onAgentRequest({
+            workspaceRoot: '',
+            paths: [currentPath],
+            instruction:
+              '请分析当前文件夹的内容和结构，提出一份清晰、可执行的整理方案。先只给出建议，不要移动、重命名或删除任何文件，除非我明确确认。',
+          }),
+      },
+      {
+        id: 'copy-current-path',
+        label: '复制当前文件夹路径',
+        icon: <Copy size={14} />,
+        separatorBefore: true,
+        onSelect: () => onCopyPath([currentPath]),
+      },
+      {
+        id: 'reveal-current',
+        label: '在系统文件管理器中显示',
+        icon: <FolderSearch size={14} />,
+        onSelect: () => onReveal(currentPath),
+      }
+    );
     return items;
   }
 
@@ -665,29 +835,84 @@ function contextMenuItems({
           instruction: '请查看已选文件或文件夹，并围绕它们回答我的问题：\n\n问题：',
         }),
     },
+    {
+      id: 'create-knowledge-base',
+      label: selectedPaths.length > 1 ? `从所选 ${selectedPaths.length} 项创建知识库` : '创建知识库',
+      icon: <BookPlus size={14} />,
+      onSelect: () => onCreateKnowledgeBase(selectedPaths),
+    },
+    {
+      id: 'copy',
+      label: selectedEntries.length > 1 ? `复制 ${selectedEntries.length} 项` : '复制',
+      icon: <ClipboardCopy size={14} />,
+      shortcut: '⌘C',
+      ariaKeyShortcut: 'Control+C Meta+C',
+      separatorBefore: true,
+      onSelect: () => onCopy(selectedEntries),
+    },
+    {
+      id: 'cut',
+      label: selectedEntries.length > 1 ? `剪切 ${selectedEntries.length} 项` : '剪切',
+      icon: <Scissors size={14} />,
+      shortcut: '⌘X',
+      ariaKeyShortcut: 'Control+X Meta+X',
+      onSelect: () => onCut(selectedEntries),
+    },
+    {
+      id: 'copy-path',
+      label: selectedPaths.length > 1 ? `复制 ${selectedPaths.length} 个路径` : '复制路径',
+      icon: <Copy size={14} />,
+      onSelect: () => onCopyPath(selectedPaths),
+    },
   ];
+  if (selectedEntries.length === 1) {
+    items.push({
+      id: 'reveal',
+      label: '在系统文件管理器中显示',
+      icon: <FolderSearch size={14} />,
+      onSelect: () => onReveal(entry.path),
+    });
+  }
   if (entry.isDirectory) {
     const favorite = favoritePaths.some((path) => sameLocalPath(path, entry.path));
     items.push(
+      {
+        id: 'paste-into',
+        label: clipboard ? `粘贴 ${clipboard.entries.length} 项到此文件夹` : '粘贴到此文件夹',
+        icon: <ClipboardPaste size={14} />,
+        disabled: !clipboard,
+        onSelect: () => void onPaste(entry.path).catch(() => undefined),
+      },
       {
         id: 'favorite',
         label: favorite ? '从侧边栏移除' : '添加到侧边栏',
         icon: <Star size={14} fill={favorite ? 'currentColor' : 'none'} />,
         onSelect: () => onToggleFavorite(entry.path),
-      },
-      {
-        id: 'organize',
-        label: selectedPaths.length > 1 ? '用 AI 助手整理所选文件夹' : '用 AI 助手整理文件夹',
-        icon: <Sparkles size={14} />,
-        onSelect: () =>
-          void onAgentRequest({
-            workspaceRoot: '',
-            paths: selectedPaths,
-            instruction:
-              '请分析已选文件夹的内容和结构，提出一份清晰、可执行的整理方案。先只给出建议，不要移动、重命名或删除任何文件，除非我明确确认。',
-          }),
       }
     );
+  }
+  const selectedDirectoryCount = selectedEntries.filter((item) => item.isDirectory).length;
+  const selectionIncludesDirectories = selectedDirectoryCount > 0;
+  const selectionIncludesFiles = selectedDirectoryCount < selectedEntries.length;
+  if (selectionIncludesDirectories) {
+    const mixedSelection = selectionIncludesFiles;
+    items.push({
+      id: 'organize',
+      label: mixedSelection
+        ? '用 AI 助手整理所选项目'
+        : selectedPaths.length > 1
+          ? '用 AI 助手整理所选文件夹'
+          : '用 AI 助手整理文件夹',
+      icon: <Sparkles size={14} />,
+      onSelect: () =>
+        void onAgentRequest({
+          workspaceRoot: '',
+          paths: selectedPaths,
+          instruction: mixedSelection
+            ? '请分析已选文件和文件夹的内容与结构，提出一份清晰、可执行的整理方案。先只给出建议，不要移动、重命名或删除任何文件，除非我明确确认。'
+            : '请分析已选文件夹的内容和结构，提出一份清晰、可执行的整理方案。先只给出建议，不要移动、重命名或删除任何文件，除非我明确确认。',
+        }),
+    });
   } else {
     items.push(
       {
@@ -715,32 +940,34 @@ function contextMenuItems({
       }
     );
   }
-  items.push(
-    {
-      id: 'rename',
-      label: '重命名',
-      icon: <Pencil size={14} />,
-      shortcut: 'F2',
-      ariaKeyShortcut: 'F2',
-      separatorBefore: true,
-      onSelect: () => onRename(entry),
-    },
-    {
-      id: 'duplicate',
-      label: '创建副本',
-      icon: <Copy size={14} />,
-      onSelect: () => onDuplicate(entry),
-    },
-    {
-      id: 'delete',
-      label: selectedEntries.length > 1 ? `永久删除 ${selectedEntries.length} 项` : '永久删除',
-      icon: <Trash2 size={14} />,
-      shortcut: 'Delete',
-      ariaKeyShortcut: 'Delete',
-      separatorBefore: true,
-      onSelect: () => onDelete(selectedEntries),
-    }
-  );
+  if (selectedEntries.length === 1) {
+    items.push(
+      {
+        id: 'rename',
+        label: '重命名',
+        icon: <Pencil size={14} />,
+        shortcut: 'F2',
+        ariaKeyShortcut: 'F2',
+        separatorBefore: true,
+        onSelect: () => onRename(entry),
+      },
+      {
+        id: 'duplicate',
+        label: '创建副本',
+        icon: <Copy size={14} />,
+        onSelect: () => onDuplicate(entry),
+      }
+    );
+  }
+  items.push({
+    id: 'delete',
+    label: selectedEntries.length > 1 ? `永久删除 ${selectedEntries.length} 项` : '永久删除',
+    icon: <Trash2 size={14} />,
+    shortcut: 'Delete',
+    ariaKeyShortcut: 'Delete',
+    separatorBefore: true,
+    onSelect: () => onDelete(selectedEntries),
+  });
   return items;
 }
 
@@ -770,4 +997,31 @@ function finderGridColumnCount(items: HTMLElement[]): number {
 
 function isSelectionControlTarget(target: EventTarget | null): boolean {
   return target instanceof Element && Boolean(target.closest('[data-work-file-selection-control]'));
+}
+
+function isBackgroundContextTarget(target: EventTarget | null): boolean {
+  return !(
+    target instanceof Element &&
+    target.closest(
+      '[data-work-file-index], [data-work-inline-name-editor], .work-files-list-header, button, input, textarea, select, a, [contenteditable="true"]'
+    )
+  );
+}
+
+async function copyPathsToClipboard(paths: readonly string[]): Promise<void> {
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error('当前浏览器不支持写入剪贴板。');
+    await navigator.clipboard.writeText(paths.join('\n'));
+    showToast(paths.length > 1 ? `已复制 ${paths.length} 个路径` : '路径已复制', 'success');
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '无法复制路径。', 'error');
+  }
+}
+
+async function revealPath(path: string): Promise<void> {
+  try {
+    await codeApi.revealWorkspacePath(path);
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : '无法打开系统文件管理器。', 'error');
+  }
 }

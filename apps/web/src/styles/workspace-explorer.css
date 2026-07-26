@@ -357,7 +357,9 @@
   position: fixed;
   z-index: 180;
   width: 220px;
+  max-height: calc(100vh - 16px);
   padding: 6px;
+  overflow: auto;
   border: 1px solid var(--a3s-line-strong);
   border-radius: 8px;
   background: var(--a3s-panel);

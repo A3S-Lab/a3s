@@ -60,6 +60,27 @@ Raw `sources/` trees are excluded. They are compiler inputs, not searchable
 authority. Human-authored notes can participate after they are compiled or
 validated into an OKF `wiki/` tree.
 
+### Publication eligibility
+
+For a source-backed personal knowledge base, directory presence is not enough
+to establish search authority. The indexer admits only the managed
+`wiki/**/*.md` generation that the host has atomically promoted after a
+successful knowledge-compilation result. Knowledge-base creation alone creates
+no searchable documents. Compiler output under
+`.a3s/compilation-output/**`, queued or running output, and failed output are
+always excluded.
+
+If a newer compilation fails, the last successfully promoted `wiki/` remains
+eligible and searchable. The new generation becomes visible only after the
+host's atomic promotion completes. Legacy, marketplace, imported, and directly
+authored knowledge bases may already own a valid `wiki/` tree; they still pass
+the same per-document OKF conformance checks.
+
+The queue and worker handoff are defined separately in
+[Knowledge Compilation Protocol](KNOWLEDGE_COMPILATION_PROTOCOL.md). Search
+does not extract source formats, claim compiler jobs, or infer success from a
+staging directory.
+
 ### Conformance
 
 Every indexed file must:
@@ -341,6 +362,11 @@ stream. It does not create another recursive watcher.
 - burst: debounce and batch commits;
 - lagged change channel: reconcile against the manifest instead of guessing
   which events were missed.
+
+An atomic compiler promotion is observed as one committed generation change.
+The indexer must not subscribe to or traverse `.a3s/compilation-output`, and it
+must never publish a partially written generation while the compiler is still
+running.
 
 A successful commit reloads the reader. Failed parsing retains the last valid
 indexed version only when the path and content digest prove it is the same

@@ -7,28 +7,56 @@ import { appState } from '../../../state/app-state';
 import type { PersonalKnowledgeBase } from '../../../types/api';
 import { KnowledgeSidebar } from '../components/knowledge-sidebar';
 import type { KnowledgeActions } from '../use-knowledge-controller';
-import { CreateKnowledgeBaseDialog, ImportKnowledgeBaseDialog, KnowledgeDirectory } from './knowledge-directory';
+import { KnowledgeBaseInlineComposer, KnowledgeDirectory } from './knowledge-directory';
 import { KnowledgeEditor } from './knowledge-editor';
 
 export function KnowledgePage({ actions }: { actions: KnowledgeActions }) {
   const state = useSnapshot(appState);
   const [query, setQuery] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
-  const [selectedBaseId, setSelectedBaseId] = useState<string | null>(null);
+  const [composer, setComposer] = useState<'create' | 'import' | null>(null);
+  const [selectedBaseId, setSelectedBaseId] = useState<string | null>(() => appState.requestedKnowledgeBaseId);
   const knowledgeCount = state.personalKnowledgeBases?.total ?? 0;
-  const selectedBase =
-    (state.personalKnowledgeBases?.items.find((item) => item.id === selectedBaseId) as
-      | PersonalKnowledgeBase
-      | undefined) ?? null;
+  const catalogMatchesWorkspace =
+    !state.knowledgeWorkspace || state.personalKnowledgeBases?.workspaceRoot === state.knowledgeWorkspace;
+  const selectedBase = catalogMatchesWorkspace
+    ? ((state.personalKnowledgeBases?.items.find((item) => item.id === selectedBaseId) as
+        | PersonalKnowledgeBase
+        | undefined) ?? null)
+    : null;
 
   useEffect(() => {
     if (appState.knowledgeStatus === 'idle') void actions.refreshKnowledge();
   }, [actions.refreshKnowledge]);
 
   useEffect(() => {
-    if (selectedBaseId && state.personalKnowledgeBases && !selectedBase) setSelectedBaseId(null);
-  }, [selectedBase, selectedBaseId, state.personalKnowledgeBases]);
+    if (!selectedBaseId || state.knowledgeStatus !== 'ready' || !state.personalKnowledgeBases) return;
+    if (!catalogMatchesWorkspace) return;
+    if (selectedBase) {
+      if (appState.requestedKnowledgeBaseId === selectedBaseId) appState.requestedKnowledgeBaseId = null;
+      return;
+    }
+    setSelectedBaseId(null);
+    if (appState.requestedKnowledgeBaseId === selectedBaseId) appState.requestedKnowledgeBaseId = null;
+  }, [catalogMatchesWorkspace, selectedBase, selectedBaseId, state.knowledgeStatus, state.personalKnowledgeBases]);
+
+  useEffect(() => {
+    if (!state.requestedKnowledgeBaseId) return;
+    setSelectedBaseId(state.requestedKnowledgeBaseId);
+  }, [state.requestedKnowledgeBaseId]);
+
+  useEffect(() => {
+    const items = state.personalKnowledgeBases?.items ?? [];
+    const compiling = items.some(
+      (item) =>
+        item.origin === 'selection' && (item.compilation?.phase === 'queued' || item.compilation?.phase === 'running')
+    );
+    const watchingSources = items.some(
+      (item) => item.origin === 'selection' && item.compilation?.policy === 'smart_auto'
+    );
+    if (!compiling && !watchingSources) return;
+    const interval = window.setInterval(() => void actions.refreshKnowledge(true), compiling ? 5_000 : 30_000);
+    return () => window.clearInterval(interval);
+  }, [actions.refreshKnowledge, state.personalKnowledgeBases?.items]);
 
   const showLibrary = () => {
     setSelectedBaseId(null);
@@ -46,8 +74,8 @@ export function KnowledgePage({ actions }: { actions: KnowledgeActions }) {
           onCollapse={() => {
             appState.sidebarOpen = false;
           }}
-          onCreate={() => setCreateOpen(true)}
-          onImport={() => setImportOpen(true)}
+          onCreate={() => setComposer('create')}
+          onImport={() => setComposer('import')}
           onRefresh={() => void actions.refreshKnowledge()}
         />
       )}
@@ -55,6 +83,7 @@ export function KnowledgePage({ actions }: { actions: KnowledgeActions }) {
       {selectedBase ? (
         <KnowledgeEditor
           knowledgeBase={selectedBase}
+          actions={actions}
           onBack={showLibrary}
           onRefreshKnowledge={() => void actions.refreshKnowledge(true)}
         />
@@ -81,47 +110,43 @@ export function KnowledgePage({ actions }: { actions: KnowledgeActions }) {
                 placeholder='搜索知识库'
                 onValueChange={setQuery}
               />
-              <Button tone='secondary' onClick={() => setImportOpen(true)}>
+              <Button tone='secondary' onClick={() => setComposer('import')}>
                 <FolderInput size={15} />
                 导入知识库
               </Button>
-              <Button tone='secondary' onClick={() => setCreateOpen(true)}>
+              <Button tone='secondary' onClick={() => setComposer('create')}>
                 <Plus size={15} />
                 新建知识库
               </Button>
             </div>
           </header>
 
+          {composer && (
+            <KnowledgeBaseInlineComposer
+              key={composer}
+              mode={composer}
+              actions={actions}
+              onClose={() => setComposer(null)}
+              onCreated={() => {
+                setComposer(null);
+                showLibrary();
+              }}
+              onImported={(item) => {
+                setComposer(null);
+                setQuery('');
+                setSelectedBaseId(item.id);
+              }}
+            />
+          )}
+
           <KnowledgeDirectory
             actions={actions}
             query={query}
-            onCreate={() => setCreateOpen(true)}
-            onImport={() => setImportOpen(true)}
+            onCreate={() => setComposer('create')}
+            onImport={() => setComposer('import')}
             onOpen={(item) => setSelectedBaseId(item.id)}
           />
         </section>
-      )}
-
-      {createOpen && (
-        <CreateKnowledgeBaseDialog
-          actions={actions}
-          onClose={() => setCreateOpen(false)}
-          onCreated={() => {
-            setCreateOpen(false);
-            showLibrary();
-          }}
-        />
-      )}
-      {importOpen && (
-        <ImportKnowledgeBaseDialog
-          actions={actions}
-          onClose={() => setImportOpen(false)}
-          onImported={(item) => {
-            setImportOpen(false);
-            setQuery('');
-            setSelectedBaseId(item.id);
-          }}
-        />
       )}
     </section>
   );

@@ -337,6 +337,39 @@ describe('Work local file controller', () => {
     expect(renamePath).not.toHaveBeenCalled();
   });
 
+  it('copies and cuts multi-item clipboard entries with collision-safe inline paste semantics', async () => {
+    localStorage.setItem(
+      'a3s-work.local-files',
+      JSON.stringify({
+        rootPath: '/docs',
+        currentPath: '/docs',
+        layout: 'grid',
+        sort: { key: 'name', direction: 'ascending' },
+      })
+    );
+    vi.spyOn(codeApi, 'readDir').mockResolvedValue([archive, folder, report]);
+    vi.spyOn(codeApi, 'pathExists').mockResolvedValue({ exists: false });
+    const copyPath = vi.spyOn(codeApi, 'copyPath').mockResolvedValue({ success: true });
+    const renamePath = vi.spyOn(codeApi, 'renamePath').mockResolvedValue({ success: true });
+    const { result } = renderHook(() => useWorkFilesController());
+    await waitFor(() => expect(result.current.visibleEntries).toHaveLength(3));
+
+    act(() => result.current.copyEntries([report]));
+    expect(result.current.clipboard).toMatchObject({ mode: 'copy', entries: [{ path: report.path }] });
+    await act(async () => {
+      await result.current.pasteEntries('/docs');
+    });
+    expect(copyPath).toHaveBeenCalledWith('/docs/Plan.docx', '/docs/Plan 副本.docx');
+    expect(result.current.clipboard?.mode).toBe('copy');
+
+    act(() => result.current.cutEntries([folder]));
+    await act(async () => {
+      await result.current.pasteEntries(archive.path);
+    });
+    expect(renamePath).toHaveBeenCalledWith('/docs/Reports', '/docs/Archive/Reports');
+    expect(result.current.clipboard).toBeNull();
+  });
+
   it('imports operating-system drops into the current folder and selects the new roots', async () => {
     localStorage.setItem(
       'a3s-work.local-files',

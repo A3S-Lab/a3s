@@ -214,7 +214,11 @@
   padding: 56px;
   flex-direction: column;
   background:
-    radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--a3s-blue) 6%, transparent), transparent 28%),
+    radial-gradient(
+      circle at 50% 38%,
+      color-mix(in srgb, var(--a3s-blue) 6%, transparent),
+      transparent 28%
+    ),
     var(--a3s-bg);
   text-align: center;
 }
@@ -245,6 +249,8 @@
   flex: 1;
   flex-direction: column;
   overflow: hidden;
+  container-name: work-files;
+  container-type: inline-size;
   background: var(--a3s-panel);
 }
 
@@ -345,13 +351,15 @@
 
 .work-files-breadcrumbs button.drop-target {
   background: color-mix(in srgb, var(--a3s-blue) 12%, var(--a3s-panel));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--a3s-blue) 44%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--a3s-blue) 44%, transparent);
   color: var(--a3s-blue);
 }
 
 .work-files-breadcrumbs button.external-drop-target {
   background: color-mix(in srgb, var(--a3s-blue) 17%, var(--a3s-panel));
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--a3s-blue) 46%, transparent);
+  box-shadow: inset 0 0 0 2px
+    color-mix(in srgb, var(--a3s-blue) 46%, transparent);
 }
 
 .work-files-search {

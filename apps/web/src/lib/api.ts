@@ -16,8 +16,13 @@ import type {
   GitStatus,
   HealthResponse,
   KnowledgeBaseImportRequest,
+  KnowledgeBaseFromSelectionRequest,
   KnowledgeBaseMutation,
+  KnowledgeCompilationMutation,
+  KnowledgeCompilationPolicy,
+  KnowledgeCompilationSummary,
   KnowledgeMarketplaceCatalog,
+  KnowledgeSourceSelectionPreview,
   LlmSettings,
   MemoryOverview,
   MessageList,
@@ -391,9 +396,12 @@ export const codeApi = {
     }),
   knowledgeMarketplace: (signal?: AbortSignal) =>
     apiRequest<KnowledgeMarketplaceCatalog>('/api/v1/knowledge/marketplace', { signal }),
-  personalKnowledgeBases: (signal?: AbortSignal) =>
-    apiRequest<PersonalKnowledgeBaseCatalog>('/api/v1/knowledge/bases', { signal }),
-  createPersonalKnowledgeBase: (input: { name: string; description?: string }) =>
+  personalKnowledgeBases: (signal?: AbortSignal, workspace?: string) =>
+    apiRequest<PersonalKnowledgeBaseCatalog>(
+      `/api/v1/knowledge/bases${workspace ? `?workspace=${encodeURIComponent(workspace)}` : ''}`,
+      { signal }
+    ),
+  createPersonalKnowledgeBase: (input: { name: string; description?: string; workspace?: string }) =>
     apiRequest<KnowledgeBaseMutation>('/api/v1/knowledge/bases', {
       method: 'POST',
       ...jsonBody(input),
@@ -403,15 +411,41 @@ export const codeApi = {
       method: 'POST',
       ...jsonBody(input),
     }),
+  previewKnowledgeBaseSelection: (input: { workspace: string; paths: string[] }, signal?: AbortSignal) =>
+    apiRequest<KnowledgeSourceSelectionPreview>('/api/v1/knowledge/bases/from-selection/preview', {
+      method: 'POST',
+      signal,
+      ...jsonBody(input),
+    }),
+  createKnowledgeBaseFromSelection: (input: KnowledgeBaseFromSelectionRequest) =>
+    apiRequest<KnowledgeBaseMutation>('/api/v1/knowledge/bases/from-selection', {
+      method: 'POST',
+      ...jsonBody(input),
+    }),
+  requestKnowledgeCompilation: (id: string, workspace?: string) =>
+    apiRequest<KnowledgeCompilationMutation>(`/api/v1/knowledge/bases/${encodeURIComponent(id)}/compilations`, {
+      method: 'POST',
+      ...jsonBody(workspace ? { workspace } : {}),
+    }),
+  knowledgeCompilationStatus: (id: string, workspace?: string, signal?: AbortSignal) =>
+    apiRequest<KnowledgeCompilationSummary>(
+      `/api/v1/knowledge/bases/${encodeURIComponent(id)}/compilation${workspace ? `?workspace=${encodeURIComponent(workspace)}` : ''}`,
+      { signal }
+    ),
+  setKnowledgeCompilationPolicy: (id: string, policy: KnowledgeCompilationPolicy, workspace?: string) =>
+    apiRequest<KnowledgeCompilationMutation>(`/api/v1/knowledge/bases/${encodeURIComponent(id)}/compilation-policy`, {
+      method: 'PATCH',
+      ...jsonBody({ policy, ...(workspace ? { workspace } : {}) }),
+    }),
   installKnowledgeMarketplaceItem: (id: string) =>
     apiRequest<KnowledgeBaseMutation>(`/api/v1/knowledge/marketplace/${encodeURIComponent(id)}/install`, {
       method: 'POST',
       ...jsonBody({}),
     }),
-  setPersonalKnowledgeBasePinned: (id: string, pinned: boolean) =>
+  setPersonalKnowledgeBasePinned: (id: string, pinned: boolean, workspace?: string) =>
     apiRequest<KnowledgeBaseMutation>(`/api/v1/knowledge/bases/${encodeURIComponent(id)}/pinned`, {
       method: 'POST',
-      ...jsonBody({ pinned }),
+      ...jsonBody({ pinned, ...(workspace ? { workspace } : {}) }),
     }),
   weixinCapability: (signal?: AbortSignal) => apiRequest<WeixinCapability>('/api/v1/weixin/capability', { signal }),
   weixinAccount: (signal?: AbortSignal) => apiRequest<WeixinAccount>('/api/v1/weixin/account', { signal }),
@@ -456,6 +490,11 @@ export const codeApi = {
     apiRequest<WorkspaceDirectorySelection>('/api/v1/workspace/actions/pick-directory', {
       method: 'POST',
       ...jsonBody(initialPath ? { initialPath } : {}),
+    }),
+  revealWorkspacePath: (path: string) =>
+    apiRequest<{ revealed: boolean; path: string }>('/api/v1/workspace/actions/reveal', {
+      method: 'POST',
+      ...jsonBody({ path }),
     }),
   readDir: async (path: string) => {
     const entries = await apiRequest<Omit<WorkspaceEntry, 'path'>[]>(

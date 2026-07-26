@@ -1,7 +1,14 @@
 import '@testing-library/jest-dom/vitest';
+import { JSDOM } from 'jsdom';
 import { createElement, useEffect, useRef } from 'react';
 import { afterEach, vi } from 'vitest';
 import { clearWorkspaceEditorModels } from '../features/workspace/components/monaco-editor-model-store';
+
+const storageRealm = new JSDOM('', { url: 'http://localhost' }).window;
+Object.defineProperties(globalThis, {
+  Storage: { configurable: true, value: storageRealm.Storage },
+  localStorage: { configurable: true, value: storageRealm.localStorage },
+});
 
 if (!Range.prototype.getClientRects) {
   Object.defineProperty(Range.prototype, 'getClientRects', {

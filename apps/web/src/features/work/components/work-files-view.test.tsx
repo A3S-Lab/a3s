@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { codeApi } from '../../../lib/api';
 import type { WorkspaceEntry } from '../../../types/api';
 import type { WorkFilesActions } from '../use-work-files-controller';
 import { WorkFilesView } from './work-files-view';
@@ -49,6 +50,7 @@ function actions(overrides: Partial<WorkFilesActions> = {}): WorkFilesActions {
     selectionFocusPath: null,
     operationPaths: new Set<string>(),
     dropImporting: false,
+    clipboard: null,
     canGoBack: false,
     canGoForward: false,
     canGoUp: false,
@@ -71,6 +73,9 @@ function actions(overrides: Partial<WorkFilesActions> = {}): WorkFilesActions {
     createFolder: vi.fn(),
     renameEntry: vi.fn(),
     duplicateEntry: vi.fn(),
+    copyEntries: vi.fn(),
+    cutEntries: vi.fn(),
+    pasteEntries: vi.fn(),
     deleteEntries: vi.fn(),
     moveEntries: vi.fn(),
     importDroppedItems: vi.fn(),
@@ -79,7 +84,10 @@ function actions(overrides: Partial<WorkFilesActions> = {}): WorkFilesActions {
 }
 
 describe('Work Finder file view', () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
 
   it('restores the collapsed office sidebar from the file toolbar', () => {
     const onOpenSidebar = vi.fn();
@@ -139,7 +147,10 @@ describe('Work Finder file view', () => {
       />
     );
 
-    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), { clientX: 30, clientY: 40 });
+    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), {
+      clientX: 30,
+      clientY: 40,
+    });
     fireEvent.click(screen.getByRole('menuitem', { name: '永久删除 2 项' }));
     expect(screen.getByRole('dialog', { name: '永久删除 2 项' })).toBeInTheDocument();
     expect(deleteEntries).not.toHaveBeenCalled();
@@ -161,7 +172,9 @@ describe('Work Finder file view', () => {
       />
     );
 
-    const input = await screen.findByRole('textbox', { name: '新建文件夹名称' });
+    const input = await screen.findByRole('textbox', {
+      name: '新建文件夹名称',
+    });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     fireEvent.change(input, { target: { value: '项目归档' } });
     fireEvent.submit(input.closest('form') as HTMLFormElement);
@@ -216,9 +229,14 @@ describe('Work Finder file view', () => {
       />
     );
 
-    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), { clientX: 30, clientY: 40 });
+    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), {
+      clientX: 30,
+      clientY: 40,
+    });
     fireEvent.click(screen.getByRole('menuitem', { name: '创建副本' }));
-    const input = screen.getByRole('textbox', { name: `副本名称，来源 ${report.name}` });
+    const input = screen.getByRole('textbox', {
+      name: `副本名称，来源 ${report.name}`,
+    });
     expect(input).toHaveValue('Report 副本.docx');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
@@ -244,9 +262,14 @@ describe('Work Finder file view', () => {
       />
     );
 
-    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), { clientX: 30, clientY: 40 });
+    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), {
+      clientX: 30,
+      clientY: 40,
+    });
     fireEvent.click(screen.getByRole('menuitem', { name: '创建副本' }));
-    const input = screen.getByRole('textbox', { name: `副本名称，来源 ${report.name}` });
+    const input = screen.getByRole('textbox', {
+      name: `副本名称，来源 ${report.name}`,
+    });
     fireEvent.change(input, { target: { value: report.name } });
     fireEvent.submit(input.closest('form') as HTMLFormElement);
 
@@ -315,9 +338,158 @@ describe('Work Finder file view', () => {
       />
     );
 
-    fireEvent.contextMenu(screen.getByRole('listbox', { name: '本地文件' }), { clientX: 40, clientY: 60 });
+    fireEvent.contextMenu(screen.getByRole('listbox', { name: '本地文件' }), {
+      clientX: 40,
+      clientY: 60,
+    });
     fireEvent.click(screen.getByRole('menuitem', { name: '新建文字文档' }));
     expect(onCreateArtifact).toHaveBeenCalledWith('blank-document');
+  });
+
+  it('opens a complete current-folder menu from grid gaps and clears the previous selection', () => {
+    const clearSelection = vi.fn();
+    const refresh = vi.fn();
+    const setLayout = vi.fn();
+    render(
+      <WorkFilesView
+        actions={actions({
+          selectedPaths: new Set([report.path]),
+          selectedEntries: [report],
+          clearSelection,
+          refresh,
+          setLayout,
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+
+    const gridGap = document.querySelector('.work-files-items') as HTMLElement;
+    fireEvent.contextMenu(gridGap, { clientX: 310, clientY: 240 });
+
+    expect(clearSelection).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('menu', { name: '当前文件夹操作' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: '粘贴' })).toBeDisabled();
+    expect(screen.getByRole('menuitemradio', { name: '图标视图' })).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(screen.getByRole('menuitem', { name: '刷新' }));
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('creates a source-ready knowledge base from a mixed multi-selection in an inline panel', async () => {
+    vi.spyOn(codeApi, 'previewKnowledgeBaseSelection').mockResolvedValue({
+      schemaVersion: 1,
+      selectedCount: 2,
+      sourceRootCount: 2,
+      deduplicatedCount: 0,
+      fileCount: 2,
+      directoryCount: 1,
+      bytes: 2048,
+      contentDigest: 'sha256:sources',
+      suggestedName: 'Docs Pack',
+      items: [
+        { path: report.path, destination: 'sources/Report.docx', kind: 'file' },
+        {
+          path: archive.path,
+          destination: 'sources/Archive',
+          kind: 'directory',
+        },
+      ],
+    });
+    const sourceReady = {
+      id: 'docs-pack',
+      name: 'Docs Pack',
+      description: 'Mixed sources',
+      origin: 'selection' as const,
+      marketplaceId: null,
+      version: '1.0.0',
+      pinned: true,
+      createdAt: '2026-07-26T00:00:00Z',
+      updatedAt: '2026-07-26T00:00:00Z',
+      path: '/docs/.a3s/kb/bases/docs-pack',
+      sourceCount: 2,
+      conceptCount: 0,
+      bytes: 2048,
+      compilation: {
+        policy: 'manual' as const,
+        phase: 'source_ready' as const,
+        sourceDigest: 'sha256:sources',
+        lastCompiledDigest: null,
+        pendingChanges: true,
+        activeJobId: null,
+        lastRequestedAt: null,
+        lastSucceededAt: null,
+        lastFailedAt: null,
+        lastError: null,
+        pausedReason: null,
+        compilerVersion: null,
+        recompileRecommended: false,
+        nextAutoCompileAt: null,
+        stableWindowSeconds: 5,
+        quietWindowSeconds: 30,
+        minimumIntervalSeconds: 600,
+      },
+    };
+    const create = vi
+      .spyOn(codeApi, 'createKnowledgeBaseFromSelection')
+      .mockResolvedValue({ changed: true, knowledgeBase: sourceReady });
+    const queue = vi.spyOn(codeApi, 'requestKnowledgeCompilation').mockResolvedValue({
+      changed: true,
+      knowledgeBase: {
+        ...sourceReady,
+        compilation: {
+          ...sourceReady.compilation,
+          phase: 'queued',
+          activeJobId: 'job-1',
+        },
+      },
+      job: null,
+    });
+    render(
+      <WorkFilesView
+        actions={actions({
+          entries: [report, archive],
+          visibleEntries: [report, archive],
+          selectedPaths: new Set([report.path, archive.path]),
+          selectedEntries: [report, archive],
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={vi.fn()}
+      />
+    );
+
+    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), {
+      clientX: 30,
+      clientY: 40,
+    });
+    expect(screen.queryByRole('menuitem', { name: '重命名' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: '从所选 2 项创建知识库' }));
+
+    const panel = await screen.findByRole('complementary', {
+      name: '从所选项目创建知识库',
+    });
+    expect(panel).toHaveTextContent('创建与编译');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(await screen.findByRole('textbox', { name: '知识库名称' })).toHaveValue('Docs Pack');
+    fireEvent.click(screen.getByRole('button', { name: '创建知识库' }));
+    await waitFor(() =>
+      expect(create).toHaveBeenCalledWith({
+        workspace: '/docs',
+        paths: [report.path, archive.path],
+        name: 'Docs Pack',
+        description: undefined,
+        compilationPolicy: 'manual',
+      })
+    );
+    expect(await screen.findByText(/来源已准备，尚未编译/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '立即编译' }));
+    await waitFor(() => expect(queue).toHaveBeenCalledWith('docs-pack', '/docs'));
+    expect(await screen.findByRole('button', { name: '已加入队列' })).toBeDisabled();
   });
 
   it.each([
@@ -354,7 +526,11 @@ describe('Work Finder file view', () => {
   });
 
   it('keeps inline Office creation open when the destination name exists', async () => {
-    const request = { requestId: 8, templateId: 'blank-document', directory: '/docs' };
+    const request = {
+      requestId: 8,
+      templateId: 'blank-document',
+      directory: '/docs',
+    };
     const onCreateArtifactFile = vi.fn().mockResolvedValue('exists');
     render(
       <WorkFilesView
@@ -369,7 +545,9 @@ describe('Work Finder file view', () => {
       />
     );
 
-    const input = await screen.findByRole('textbox', { name: '新建文字文档名称' });
+    const input = await screen.findByRole('textbox', {
+      name: '新建文字文档名称',
+    });
     fireEvent.submit(input.closest('form') as HTMLFormElement);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('当前文件夹中已有同名文件');
@@ -392,13 +570,47 @@ describe('Work Finder file view', () => {
       />
     );
 
-    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), { clientX: 30, clientY: 40 });
+    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), {
+      clientX: 30,
+      clientY: 40,
+    });
     fireEvent.click(screen.getByRole('menuitem', { name: '总结文件' }));
     expect(onAgentRequest).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceRoot: '',
         paths: ['/docs/Report.docx'],
         instruction: expect.stringContaining('总结'),
+      })
+    );
+  });
+
+  it('uses mixed-selection wording for AI organization regardless of the right-clicked item kind', () => {
+    const onAgentRequest = vi.fn();
+    render(
+      <WorkFilesView
+        actions={actions({
+          entries: [archive, report],
+          visibleEntries: [archive, report],
+          selectedPaths: new Set([archive.path, report.path]),
+          selectedEntries: [archive, report],
+        })}
+        openingPath={null}
+        createFolderRequest={0}
+        onOpenFile={vi.fn()}
+        onQuickLook={vi.fn()}
+        onAgentRequest={onAgentRequest}
+      />
+    );
+
+    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), {
+      clientX: 30,
+      clientY: 40,
+    });
+    fireEvent.click(screen.getByRole('menuitem', { name: '用 AI 助手整理所选项目' }));
+    expect(onAgentRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paths: [archive.path, report.path],
+        instruction: expect.stringContaining('已选文件和文件夹'),
       })
     );
   });
@@ -470,7 +682,10 @@ describe('Work Finder file view', () => {
     expect(container.querySelector('select')).toBeNull();
     fireEvent.click(screen.getByRole('combobox', { name: '排序方式' }));
     fireEvent.click(screen.getByRole('option', { name: '修改日期' }));
-    expect(setSort).toHaveBeenCalledWith({ key: 'modified', direction: 'ascending' });
+    expect(setSort).toHaveBeenCalledWith({
+      key: 'modified',
+      direction: 'ascending',
+    });
   });
 
   it('sorts directly from list headers and exposes the active direction', () => {
@@ -495,10 +710,16 @@ describe('Work Finder file view', () => {
     const nameHeader = screen.getByRole('columnheader', { name: /名称/ });
     expect(nameHeader).toHaveAttribute('aria-sort', 'ascending');
     fireEvent.click(screen.getByRole('button', { name: '名称，当前升序，切换为降序' }));
-    expect(setSort).toHaveBeenCalledWith({ key: 'name', direction: 'descending' });
+    expect(setSort).toHaveBeenCalledWith({
+      key: 'name',
+      direction: 'descending',
+    });
 
     fireEvent.click(screen.getByRole('button', { name: '修改日期，点击排序' }));
-    expect(setSort).toHaveBeenLastCalledWith({ key: 'modified', direction: 'ascending' });
+    expect(setSort).toHaveBeenLastCalledWith({
+      key: 'modified',
+      direction: 'ascending',
+    });
 
     rerender(
       <WorkFilesView
@@ -536,11 +757,16 @@ describe('Work Finder file view', () => {
       />
     );
 
-    fireEvent.keyDown(screen.getByRole('listbox', { name: '本地文件' }), { key: ' ' });
+    fireEvent.keyDown(screen.getByRole('listbox', { name: '本地文件' }), {
+      key: ' ',
+    });
     expect(onQuickLook).toHaveBeenCalledWith(report);
 
     onQuickLook.mockClear();
-    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), { clientX: 30, clientY: 40 });
+    fireEvent.contextMenu(screen.getByRole('option', { name: /Report.docx/ }), {
+      clientX: 30,
+      clientY: 40,
+    });
     fireEvent.click(screen.getByRole('menuitem', { name: '快速查看' }));
     expect(onQuickLook).toHaveBeenCalledWith(report);
   });
@@ -867,7 +1093,9 @@ describe('Work Finder file view', () => {
       />
     );
 
-    const partialCheckbox = screen.getByRole('checkbox', { name: '选择全部 2 项' });
+    const partialCheckbox = screen.getByRole('checkbox', {
+      name: '选择全部 2 项',
+    });
     expect(partialCheckbox).toHaveAttribute('aria-checked', 'mixed');
     fireEvent.click(partialCheckbox);
     expect(selectAll).toHaveBeenCalledTimes(1);
@@ -890,7 +1118,9 @@ describe('Work Finder file view', () => {
         onAgentRequest={vi.fn()}
       />
     );
-    const checkedCheckbox = screen.getByRole('checkbox', { name: '取消选择全部 2 项' });
+    const checkedCheckbox = screen.getByRole('checkbox', {
+      name: '取消选择全部 2 项',
+    });
     expect(checkedCheckbox).toHaveAttribute('aria-checked', 'true');
     fireEvent.click(checkedCheckbox);
     expect(clearSelection).toHaveBeenCalledTimes(1);
