@@ -153,7 +153,7 @@ TUI 确认后由 Use worker 请求安装。
 | --- | --- | --- |
 | Browser | `mcp__use_browser__*` | 使用已发现的 browser，或通过需父级 HITL 的 mutation 请求 managed provider。封闭会话内的只读检查可直接执行；导航、网络/open-world 读取、输入、点击与提交需要 HITL。 |
 | 原生 Office | `mcp__use_office__*` | 使用带 revision/conflict 检查的有界原生 Office package kernel。读取是 closed-world；修改与破坏性保存需要 HITL。 |
-| 内置 OCR | `mcp__use_ocr__*` | 通过 ONNX Runtime 在本地运行固定版本的 `PP-OCRv6_small` 检测与识别模型。doctor 与提取均为 closed-world read-only 工具，source bytes 不会离开设备。 |
+| 内置 OCR 路由 | `mcp__use_ocr__*` | 面向对象安全的 `OcrProvider` 接口。A3S release 默认注入本地 `PP-OCRv6_small` ONNX provider；其他 provider 可声明不同的模型、可用性及数据是否离开设备，MCP annotations 会据此反映真实行为。 |
 
 MCP behavior metadata 只能提升风险，不能降低父级策略。只有同时声明
 `readOnlyHint=true`、`openWorldHint=false` 且不是 destructive 的操作才无额外确认。
