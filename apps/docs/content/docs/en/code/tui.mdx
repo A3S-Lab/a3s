@@ -187,7 +187,7 @@ The projected routes are intentionally distinct:
 | --- | --- | --- |
 | Browser | `mcp__use_browser__*` | Uses a discovered browser or requests the managed provider through a mutation that requires parent HITL. Closed-world session inspection can run without an extra prompt; navigation, network/open-world reads, input, clicks, and submits require HITL. |
 | Native Office | `mcp__use_office__*` | Uses the bounded native Office package kernel and its revision/conflict checks. Reads are closed-world; mutations and destructive saves require HITL. |
-| Built-in OCR | `mcp__use_ocr__*` | Runs the pinned `PP-OCRv6_small` detection and recognition models locally through ONNX Runtime. Doctor and extraction are closed-world read-only tools; source bytes never leave the device. |
+| Built-in OCR route | `mcp__use_ocr__*` | Uses the object-safe `OcrProvider` contract. A3S releases inject the local `PP-OCRv6_small` ONNX provider by default; other providers can declare different model, availability, and off-device behavior, which is reflected in MCP annotations. |
 
 MCP behavior metadata is escalation-only. An operation is frictionless only
 when it declares `readOnlyHint=true`, `openWorldHint=false`, and is not

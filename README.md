@@ -74,7 +74,7 @@ command routing. Product behavior remains with the component that implements it.
 | **Box** | `a3s box ps` | Optional isolated-workload product; eligible first use may install it visibly |
 | **Bench** | `a3s install bench` | Optional evaluation product with explicit installation |
 | **Search** | `a3s install search` | Optional meta-search product with explicit installation |
-| **Use** | `a3s install use` | Optional capability runtime; Browser and OCR are built in, while Office and other domains keep independent package contracts |
+| **Use** | `a3s install use` | Optional capability facade; Browser and OCR routes are built in from independently versioned repositories, while Office and other domains keep independent package contracts |
 | **Cloud** | Follow the [versioned Cloud guide](apps/docs/content/docs/en/cloud/v0.1.0/) | Self-hosted control-plane project with separately documented maturity gates |
 
 A catalog entry describes discovery and installation policy. It is not proof
@@ -144,10 +144,11 @@ a confident answer.
 
 ### Typed capabilities and components
 
-A3S Use owns built-in Browser and local OCR domains plus the lifecycle and
-routing layer for external capability packages. External packages retain
-standard native CLI, MCP, and/or `SKILL.md` surfaces rather than depending on a
-private extension protocol.
+A3S Use owns the built-in Browser/OCR route projection plus the lifecycle and
+routing layer for external capability packages. The independent Browser and OCR
+repositories own their provider contracts, implementations, tests, and release
+assets. External packages retain standard native CLI, MCP, and/or `SKILL.md`
+surfaces rather than depending on a private extension protocol.
 
 ~~~bash
 a3s list
@@ -323,7 +324,9 @@ distribution assets.
 | [A3S Box](crates/box/) | Docker-like MicroVM product for Linux OCI workloads |
 | [A3S Bench](crates/bench/) | Reproducible Task, Candidate, and Judge evaluation |
 | [A3S Search](crates/search/) | Multi-engine retrieval, ranking, deduplication, and optional browser rendering |
-| [A3S Use](crates/use/) | Browser/OCR runtime and standard lifecycle for external capability packages |
+| [A3S Browser](crates/browser/) | Provider-oriented typed rendering plus the process-isolated automation driver, Skills, and Dashboard |
+| [A3S OCR](crates/ocr/) | Object-safe `OcrProvider` contract with bounded source evidence and PP-OCRv6 as the default local provider |
+| [A3S Use](crates/use/) | Built-in Browser/OCR route facade and standard lifecycle for external capability packages |
 | [A3S Office](packages/office/) | Native OOXML engine, Office editors, CLI, MCP, Skill, and A3S Use package |
 | [A3S Science](packages/science/) | Independently versioned scientific Skills, MCP data services, compute workflows, and research tooling |
 | [A3S Cloud](apps/cloud/) | Self-hosted control plane for desired state, durable operations, nodes, and verified OCI deployment |

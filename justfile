@@ -5,6 +5,10 @@ port := env_var_or_default("A3S_CODE_WEB_PORT", "29653")
 use_e2e_target := env_var_or_default("A3S_USE_E2E_TARGET", justfile_directory() / "target/use-hotplug-e2e")
 use_e2e_use_target := use_e2e_target / "use"
 use_e2e_code_target := use_e2e_target / "code"
+use_e2e_executable := if os() == "windows" { "a3s-use.exe" } else { "a3s-use" }
+use_e2e_browser_executable := if os() == "windows" { "a3s-use-browser-driver.exe" } else { "a3s-use-browser-driver" }
+use_e2e_bin := use_e2e_use_target / "debug" / use_e2e_executable
+use_e2e_browser_bin := use_e2e_use_target / "debug" / use_e2e_browser_executable
 agent_island_target := justfile_directory() / "target/agent-island-dev"
 agent_island_executable := if os() == "windows" { "a3s-webview.exe" } else { "a3s-webview" }
 agent_island_bin := agent_island_target / "debug" / agent_island_executable
@@ -14,11 +18,13 @@ cli-submodules:
     sh scripts/ensure-dev-submodules.sh \
         crates/acl:Cargo.toml \
         crates/boot:Cargo.toml \
+        crates/browser:crates/browser-driver/Cargo.toml \
         crates/cli:Cargo.toml \
         crates/code:core/Cargo.toml \
         crates/flow:Cargo.toml \
         crates/lane:Cargo.toml \
         crates/memory:Cargo.toml \
+        crates/ocr:Cargo.toml \
         crates/search:Cargo.toml \
         crates/tui:Cargo.toml \
         crates/use:crates/extension/Cargo.toml
@@ -85,9 +91,9 @@ code: cli-submodules webview-submodule
 
 # Test Code hot-plug against a real, independently built A3S Use process
 use-hotplug-e2e: cli-submodules
-    CARGO_TARGET_DIR='{{ use_e2e_use_target }}' cargo build --manifest-path crates/use/Cargo.toml -p a3s-use -p a3s-use-browser-driver
-    CARGO_TARGET_DIR='{{ use_e2e_code_target }}' A3S_USE_E2E_BIN='{{ use_e2e_use_target }}/debug/a3s-use' cargo test --manifest-path crates/cli/Cargo.toml --lib use_registry::tests::real_use_process_converges_install_upgrade_rebuild_disable_and_enable -- --ignored --nocapture
-    CARGO_TARGET_DIR='{{ use_e2e_code_target }}' A3S_USE_E2E_BIN='{{ use_e2e_use_target }}/debug/a3s-use' A3S_USE_E2E_SOURCE_ROOT='{{ justfile_directory() }}/crates/use' cargo test --manifest-path crates/cli/Cargo.toml --test code_use_first_use code_tui_first_use_installs_a_real_use_release_before_the_first_turn -- --ignored --nocapture
+    CARGO_TARGET_DIR='{{ use_e2e_use_target }}' cargo build --manifest-path crates/use/Cargo.toml -p a3s-use
+    CARGO_TARGET_DIR='{{ use_e2e_use_target }}' cargo build --manifest-path crates/browser/Cargo.toml -p a3s-use-browser-driver
+    CARGO_TARGET_DIR='{{ use_e2e_code_target }}' A3S_USE_E2E_BIN='{{ use_e2e_bin }}' A3S_USE_E2E_BROWSER_BIN='{{ use_e2e_browser_bin }}' A3S_USE_E2E_SOURCE_ROOT='{{ justfile_directory() }}/crates/use' A3S_USE_E2E_BROWSER_SOURCE_ROOT='{{ justfile_directory() }}/crates/browser' A3S_USE_E2E_OCR_SOURCE_ROOT='{{ justfile_directory() }}/crates/ocr' bash scripts/test-use-hotplug-e2e.sh
 
 # Build and start the A3S Web application
 web: cli-submodules

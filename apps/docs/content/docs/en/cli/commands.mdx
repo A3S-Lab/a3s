@@ -96,7 +96,9 @@ contract.
   persistence.
 - A3S TUI owns terminal rendering and input handling.
 - A3S Box owns sandbox/container runtime behavior.
-- A3S Use owns Browser, Office, and external domain routing; it exposes native
-  CLI, standard MCP, and `SKILL.md` surfaces without a private JSON-RPC layer.
+- A3S Use owns built-in Browser/OCR route projection and external domain
+  routing. The independent Browser, OCR, and Office repositories own their
+  implementations and release assets; all surfaces remain native CLI, standard
+  MCP, and `SKILL.md` rather than a private JSON-RPC layer.
 - A3S Updater owns verified download, staging, activation, rollback, receipts,
   and ownership-safe removal primitives; it does not define the product catalog.

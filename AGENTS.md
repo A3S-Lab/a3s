@@ -14,8 +14,8 @@ a3s/
 ├── packages/
 │   └── science/      # Scientific Skills and research tooling (submodule)
 ├── crates/           # Rust crates as submodules
-│   ├── acl/ ahp/ bench/ box/ code/ event/ flow/ gateway/
-│   ├── lane/ memory/ orm/ power/ runtime/ search/ use/
+│   ├── acl/ ahp/ bench/ box/ browser/ code/ event/ flow/ gateway/
+│   ├── lane/ memory/ ocr/ orm/ power/ runtime/ search/ use/
 │   ├── updater/      # Root-owned shared crate
 │   └── common/       # Shared types (local crate)
 └── homebrew-tap/     # Homebrew tap

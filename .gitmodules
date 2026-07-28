@@ -85,3 +85,9 @@
 [submodule "crates/oci-runtime"]
 	path = crates/oci-runtime
 	url = git@github.com:A3S-Lab/OCI-Runtime.git
+[submodule "crates/browser"]
+	path = crates/browser
+	url = git@github.com:A3S-Lab/Browser.git
+[submodule "crates/ocr"]
+	path = crates/ocr
+	url = git@github.com:A3S-Lab/OCR.git
