@@ -1,258 +1,196 @@
 # A3S Web Super-App Product Architecture
 
-> Strategic direction. Code and Work are built-in products in the current
-> shell, with Code as the default. Research, Finance, and other vertical
-> workbenches are contributed by A3S Use packages through the verified plugin
-> contract.
-
 ## Product decision
 
-A3S Web is one desktop super app with three outcome-oriented products:
+A3S Web uses one horizontal product shell and one canonical Work workbench:
 
 ```text
 A3S Web
-├── A3S Work       办公
-├── A3S Code       编码
-└── A3S Science    科研
+├── Work             home, conversations, files, Office, code, AI
+├── Knowledge        local knowledge bases and compilation lifecycle
+├── Use activities   verified vertical plugin contributions
+└── System
+    ├── Memory
+    ├── Plugin Marketplace
+    └── Settings
 ```
 
-The classification follows durable user domains rather than backend modules,
-agent types, protocols, or technical capabilities. Evidence research is part
-of Science. Infrastructure automation is not a standalone Web product in the
-current architecture.
+Work is the first and default Activity Bar entry and owns `#home`. Coding is a
+file-handling scene inside Work. It is not a second product, route tree,
+sidebar, or session store.
 
 ## Shell and product boundary
 
-The A3S shell and each product own different navigation levels:
+The Activity Bar order is:
 
-```text
-Activity Bar     chooses a product
-Product sidebar chooses objects inside that product
-Primary surface completes the selected object's workflow
-```
+1. Work;
+2. Knowledge;
+3. enabled and verified A3S Use activity contributions in manifest order;
+4. Memory, Plugin Marketplace, and Settings in the pinned system section.
 
-The fixed 52 px Activity Bar uses this order:
+Research, Finance, and future vertical capabilities are package contributions,
+not hardcoded empty destinations. Messaging channels live inside Settings.
 
-1. A3S Code — 编码
-2. A3S Work — 办公
-3. enabled `contributes.activity_bar` views, sorted by package order and title
-4. Code Memory, Plugin Marketplace, and Settings, pinned together in the
-   bottom system section
+The shell owns:
 
-Account management remains a Settings section. Package contributions are
-identified by `<route>:<activity-id>` and disappear when their package is
-disabled or uninstalled. The full trust and isolation contract lives in
-[PLUGINS.md](PLUGINS.md).
+- product selection and canonical routes;
+- plugin contribution discovery and verification;
+- the global settings, update, and service-recovery surfaces;
+- consistent activity icons, tooltips, focus, and compact behavior.
 
-WorkBuddy is the primary UX reference for task preparation and task interaction
-inside a product. It does not replace the Activity Bar, product identities, or
-cross-product handoff model. A3S OS remains authoritative for brand identity,
-color, account, and shared platform state.
+The shell does not own file mutations, editor commands, domain-specific
+research behavior, or knowledge compilation.
 
 ## Shared experience rules
 
-Every product follows the same high-level interaction grammar:
+- The user chooses an outcome before implementation detail.
+- Work keeps one conversation list visible across home, files, Office, and
+  code scenes.
+- Product changes preserve the current Work session and draft.
+- Reversible naming and row actions remain inline.
+- Sensitive, destructive, conflicting, or compatibility-sensitive actions
+  require explicit review.
+- Context handoffs identify their source, scope, and intended destination.
+- A plugin cannot silently mutate another product's state.
+- Every enabled control has a useful success path and a recoverable failure
+  state.
 
-- a calm preparation state with one dominant Composer;
-- natural-language intent supported by editable scenario starters;
-- advanced parameters disclosed only when relevant;
-- durable objects in the product-local sidebar;
-- continuous execution and evidence instead of raw event logs;
-- explicit permission, recovery, and delivery states;
-- direct Chinese product language rather than slash-command discovery;
-- A3S Activity Bar always visible on desktop.
-
-Product-specific work surfaces may become dense after work begins. Code may use
-an editor and diff. Science may use a notebook and evidence table. These
-surfaces still return to the same task or object instead of becoming
-disconnected tools.
-
-## A3S Work — 办公
+## Work
 
 ### Outcome
 
-Turn existing local folders and files into reviewed, agent-assisted work while
-keeping deliverables where the user put them.
+Turn goals and real local files into reviewed, editable, and deliverable work
+without making the user choose between an Office app and a coding app.
 
 ### Primary objects
 
-- local workspace root;
-- file, folder, and selection;
-- AI Assistant conversation and reviewable proposal;
-- document, presentation, and spreadsheet handler;
-- meeting and decision record;
-- project workspace.
+- conversation;
+- local workspace and filesystem entry;
+- managed artifact and folder;
+- Office, PDF, code, text, and Markdown editor state;
+- task instruction, execution, decision, evidence, and proposal;
+- knowledge source package.
 
 ### Core journey
 
 ```text
-Choose a local folder → browse, create, or preview real files → select context
-→ ask AI Assistant or edit → review proposed changes → save in place
+Open #home
+→ describe an outcome or open a file
+→ select visible context
+→ execute with the shared AI Assistant
+→ inspect evidence or a structured proposal
+→ edit or approve explicitly
+→ save and validate
+→ optionally create a knowledge base
 ```
 
-### Product boundary
+### Boundary
 
-Work owns a Finder-inspired local-file shell, contextual AI Assistant, and the
-format handlers needed to preview or edit everyday work files. Its managed
-artifact store supports autosave, compatibility, recovery, and versioning; it
-is not a second primary filesystem. Its initial root is the default A3S Code
-workspace shown in Settings, with an explicit persistent Work override when the
-user switches folders. Work may request implementation from Code
-or evidence from Science, but it does not embed those specialist workbenches.
+Work owns the Finder-inspired filesystem, managed artifact compatibility
+library, Office and PDF handlers, code/text editor, unified conversations, and
+AI Assistant. The local filesystem is the primary file identity. Managed
+artifacts provide autosave, recovery, compatibility, and versioning where
+needed; they do not become a competing filesystem.
 
-## A3S Code — 编码
+## Knowledge
 
 ### Outcome
 
-Complete a coding task with explicit context, execution visibility, review, and
-verification while keeping Conversation and produced results in one continuous
-task.
+Turn selected or imported source material into a local, searchable, editable
+knowledge base with explicit provenance and safe generation promotion.
 
-### Primary objects
+### Boundary
 
-- task;
-- turn and artifact;
-- workspace;
-- instruction and follow-up queue;
-- file and change;
-- managed preview target;
-- durable memory and linked knowledge entity;
-- validation evidence;
-- commit receipt.
+Knowledge owns knowledge-base identity, source manifests, Markdown wiki output,
+search state, compilation policy, and generation status. Creating a base does
+not compile it. Compilation occurs only on user request or an enabled per-base
+automatic policy after stability and frequency safeguards pass.
 
-### Core journey
+## Memory
 
-```text
-Describe coding task → add workspace context → execute
-→ decide permissions → open the relevant result
-→ inspect files, preview, or changes → validate → commit
-→ continue in the same task
-```
+Memory is a system surface at `#memory`. It visualizes the complete local memory
+store, entities, relationships, timeline, retention, and evolution candidates.
+Opening Memory does not switch or duplicate the active Work conversation.
 
-### Current status
+## A3S Use activities
 
-Code is an active product. Its internal UX follows a Conversation-led
-WorkBuddy task model: task results open in an on-demand Result Workspace with
-Overview, Files, Browser, and Changes modes. A3S-specific execution,
-permissions, verification, workspace, and Git truth remain authoritative. A
-separate read-only Memory surface exposes complete-store graph, timeline,
-retention, search, filters, and inspection without becoming a new product or
-Result Workspace mode.
+Vertical products are signed package contributions. A contribution owns its
+isolated content and can propose a reviewed handoff back to Work. It does not
+receive task credentials, filesystem authority, or direct access to another
+product's state.
 
-## A3S Science — 科研
+Examples:
 
-### Outcome
-
-Investigate questions, evaluate evidence, run reproducible studies, and produce
-cited conclusions.
-
-### Primary objects
-
-- investigation;
-- source and evidence set;
-- hypothesis;
-- study and protocol;
-- dataset;
-- notebook and analysis;
-- reproducibility package.
-
-### Core journey
-
-```text
-Define question → collect and assess evidence → form hypothesis
-→ design study → run analysis → evaluate → reproduce → publish findings
-```
-
-### Product boundary
-
-Science includes literature and web research because evidence gathering and
-experimental validation belong to one knowledge workflow. It may hand
-implementation to Code.
+- Research can hand selected evidence to Work for synthesis or implementation.
+- Finance can hand a reviewed dataset or assumption set to Work.
+- Any vertical activity can attach its verified Skill when the user accepts the
+  handoff.
 
 ## Shared platform objects
 
-Products share identity and handoff contracts without sharing presentation
-state:
-
-| Object | Meaning | Typical products |
+| Object | Meaning | Consumers |
 | --- | --- | --- |
-| Workspace | Bounded files, sources, and policy context | All |
-| Task | Executable unit of user intent | All |
-| Thread | Human and agent communication for one object | All |
-| Artifact | Versioned user-visible deliverable | All |
-| Source | Evidence or authoritative input identity | Work, Science, Code |
-| Approval | Scoped human decision with consequence | Code, Science |
-| Receipt | Evidence that a consequential action completed | Code |
-| Handoff | Typed transfer between products | All |
-
-Shared objects do not imply a universal page. Each product presents the object
-according to its workflow and density.
+| Conversation | Durable AI work and execution history | Work |
+| Workspace | Bounded local files and policy context | Work, Knowledge |
+| Artifact | User-visible output with stable identity | Work, plugin handoffs |
+| Source | Evidence or authoritative input identity | Knowledge, plugins, Work |
+| Proposal | Reviewable requested change | Work editors |
+| Approval | Scoped human decision with consequence | Work, plugins |
+| Receipt | Evidence that a consequential action completed | Work, Knowledge |
+| Skill | Versioned behavior attached explicitly | Work, plugins |
 
 ## Cross-product handoffs
 
-A handoff creates a draft in the destination product and preserves provenance.
-It never executes work automatically.
-
 ```mermaid
 flowchart LR
-    Work -->|Implement| Code
-    Work -->|Investigate| Science
-    Science -->|Implement method| Code
+    Work -->|Create source package| Knowledge
+    Knowledge -->|Use reviewed context| Work
+    Plugin[Use activity] -->|Propose reviewed context and Skill| Work
+    Work -->|Open system memory| Memory
 ```
 
-Every handoff includes:
+Every handoff records:
 
 - source product and object;
-- requested outcome;
-- selected context and attachments;
-- assumptions and unresolved questions;
-- permissions that do not automatically transfer;
-- a destination draft that the user reviews before sending.
+- selected scope;
+- human-readable summary;
+- destination action;
+- whether a Skill will be attached;
+- approval, failure, and retry state.
 
-## Product-local layout
-
-All products use the same shell geometry:
+## Layout contract
 
 ```text
-┌──────┬──────────────────┬────────────────────────────────────────────┐
-│ A3S  │ Product sidebar  │ Product workspace                          │
-│ Work │                  │                                            │
-│ Code │ Objects          │ Preparation, active task, or artifact      │
-│ Sci. │ Search           │ Product-specific primary work surface      │
-│      │                  │                                            │
-│ Set. │                  │                                            │
-└──────┴──────────────────┴────────────────────────────────────────────┘
+┌──────┬────────────────────┬──────────────────────────────────────┐
+│ Bar  │ Product sidebar    │ Active product workspace             │
+│      │                    │                                      │
+│ Work │ Work conversations │ Home / files / Office / code + AI   │
+│ Know │ Knowledge tree     │ Knowledge editor / reader            │
+│ Use  │ Activity objects   │ Verified plugin host                 │
+└──────┴────────────────────┴──────────────────────────────────────┘
 ```
 
-Mobile is not a supported target. Compact desktop may collapse the product
-sidebar, but the Activity Bar and primary action remain available.
+Work always uses the conversation sidebar. A file scene may add its own local
+explorer inside the center workspace, but it never replaces the conversation
+collection with a second product sidebar.
 
-## Current release boundary
+## Route contract
 
-The current implementation activates Code, Memory, and verified plugin views:
+- `#home` — Work;
+- `#knowledge` — Knowledge;
+- `#memory` — Memory;
+- `#plugins` — Marketplace;
+- `#plugin/<key>` — verified contribution;
+- `#settings/<tab>` — Settings.
 
-- the owned Work route still opens a Finder-inspired view of a selected local folder, a contextual
-  right-side AI Assistant, direct current-folder DOCX/XLSX/PPTX creation, and
-  document, spreadsheet, or presentation handlers; its
-  complete filesystem-first contract is defined in
-  [WORK_OFFICE.md](WORK_OFFICE.md);
-- installed packages such as `a3s/science` may contribute real views; its
-  first-party capability catalog is maintained under `packages/science`, and
-  there are no coming-soon product buttons or placeholder workspaces;
-- Memory is an owned Code capability shortcut; Marketplace and Settings are
-  shared shell destinations;
-- Account remains available inside Settings;
-- no Code page may accumulate a future product's disconnected controls merely
-  because the backend exposes an endpoint.
+Work scene state is not encoded as a product-prefixed hash. Unknown or removed
+routes normalize to `#home`.
 
 ## Delivery order
 
-1. **Code** proves task execution, review, permissions, and local workspace
-   integration.
-2. **Work** establishes a trustworthy local-file workspace with contextual AI;
-   Office interoperability supports that experience rather than defining it.
-3. **Science** combines evidence research with reproducible studies.
-
-Each product requires its own discovery, domain model, core journeys, component
-contracts, and acceptance tests before activation. A visible coming-soon button
-does not authorize placeholder features.
+1. Keep Work coherent: one route, one conversation list, and working file
+   handlers.
+2. Improve file management, inline operations, context transfer, and review.
+3. Complete knowledge creation and independent compilation workflows.
+4. Add vertical capabilities through verified packages and explicit handoffs.
+5. Expand Memory and orchestration without weakening local-first safety.

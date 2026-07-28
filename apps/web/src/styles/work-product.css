@@ -118,7 +118,8 @@
   min-width: 0;
   flex: 1;
   padding: 34px clamp(28px, 4vw, 62px) 60px;
-  overflow: auto;
+  overflow-x: clip;
+  overflow-y: auto;
   container-name: work-home;
   container-type: inline-size;
   background:

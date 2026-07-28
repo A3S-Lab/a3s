@@ -663,7 +663,7 @@ async function streamSessionMessageRequest(
   });
 
   if (response.status === 404 || response.status === 405) {
-    if (!fallbackContent) throw new ApiError('The local A3S Code service does not support durable turn queues', 409);
+    if (!fallbackContent) throw new ApiError('The local A3S service does not support durable turn queues', 409);
     const result = await codeApi.runMessage(sessionId, fallbackContent);
     for (const event of result.events ?? []) handlers.onEvent(event);
     return;

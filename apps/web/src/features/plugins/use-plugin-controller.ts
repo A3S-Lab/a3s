@@ -38,7 +38,7 @@ export function usePluginController() {
       (!appState.activePluginKey || !items.some((item) => item.key === appState.activePluginKey && item.enabled))
     ) {
       navigateTask('conversation');
-      showToast('该插件已卸载或停用，已返回 Code。', 'info');
+      showToast('该插件已卸载或停用，已返回工作台。', 'info');
     }
   });
 
@@ -213,8 +213,8 @@ export function usePluginController() {
     navigateTask('conversation');
     showToast(
       proposal.usePackageSkill
-        ? `已将审核后的上下文和 ${contribution.skill} Skill 加入 Code。`
-        : '已将审核后的科研上下文加入 Code。',
+        ? `已将审核后的上下文和 ${contribution.skill} Skill 加入当前会话。`
+        : '已将审核后的科研上下文加入当前会话。',
       'success'
     );
   });

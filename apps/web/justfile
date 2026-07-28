@@ -25,7 +25,7 @@ dev: dependencies
 build: dependencies
     bun run build
 
-# Build and start the complete local A3S Code Web application.
+# Build and start the complete local A3S Web application.
 web: build
     cd ../.. && cargo run --manifest-path crates/cli/Cargo.toml -- web --replace --host {{host}} --port {{port}} --web-dir apps/web/dist/workspace
 

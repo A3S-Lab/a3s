@@ -11,55 +11,52 @@ describe('shell location synchronization', () => {
     appState.commandPaletteOpen = false;
     appState.fileQuickOpenOpen = false;
     appState.sidebarOpen = true;
-    appState.activeProduct = 'code';
-    appState.codeSurface = 'tasks';
+    appState.activeProduct = 'work';
     appState.settingsChannel = 'weixin';
     appState.activeSessionId = null;
     appState.composerValue = '';
     appState.workspaceRoot = '';
-    window.history.replaceState(null, '', '#code/conversation');
+    window.history.replaceState(null, '', '#home');
   });
 
-  it('opens a direct Memory hash with the Code draft instead of an Office assistant draft', () => {
+  it('opens Memory as a top-level product without switching the unified session draft', () => {
     appState.activeProduct = 'work';
-    appState.codeSurface = 'tasks';
     appState.activeSessionId = null;
-    appState.composerValue = '请概览当前文件夹的内容，说明主要文件、用途和最近值得关注的变化。不要修改文件。';
+    appState.composerValue = '保留当前工作草稿';
     appState.draftsByTask = {
       __new_task__: {
-        content: 'Code draft',
+        content: '保留当前工作草稿',
         contextFiles: [],
         skillNames: [],
       },
     };
-    window.history.replaceState(null, '', '#code/memory');
+    window.history.replaceState(null, '', '#memory');
 
     renderHook(() => useShellShortcuts(() => undefined));
 
-    expect(appState.activeProduct).toBe('code');
-    expect(appState.codeSurface).toBe('memory');
+    expect(appState.activeProduct).toBe('memory');
     expect(appState.activeSessionId).toBeNull();
-    expect(appState.composerValue).toBe('Code draft');
-    expect(appState.draftsByTask.__work_ai_assistant__?.content).toContain('概览当前文件夹');
+    expect(appState.composerValue).toBe('保留当前工作草稿');
+    expect(appState.draftsByTask.__new_task__?.content).toBe('保留当前工作草稿');
   });
 
-  it('updates the active Code route on browser hash navigation', () => {
+  it.each(['#code/activity', '#work/home'])('does not retain the removed %s route', (route) => {
     renderHook(() => useShellShortcuts(() => undefined));
-    window.location.hash = '#code/activity';
+    window.location.hash = route;
     window.dispatchEvent(new HashChangeEvent('hashchange'));
-    expect(appState.taskView).toBe('activity');
-    window.location.hash = '#code/review';
-    window.dispatchEvent(new HashChangeEvent('hashchange'));
-    expect(appState.taskView).toBe('review');
+    expect(appState.activeProduct).toBe('work');
+    expect(appState.taskView).toBe('conversation');
+    expect(window.location.hash).toBe('#home');
   });
 
-  it('updates system pages and returns to Code routes', () => {
+  it('updates system pages and returns to the unified home route', () => {
     renderHook(() => useShellShortcuts(() => undefined));
     window.location.hash = '#settings';
     window.dispatchEvent(new HashChangeEvent('hashchange'));
     expect(appState.settingsOpen).toBe(true);
-    window.location.hash = '#code/conversation';
+    window.location.hash = '#home';
     window.dispatchEvent(new HashChangeEvent('hashchange'));
+    expect(appState.activeProduct).toBe('work');
     expect(appState.taskView).toBe('conversation');
   });
 
@@ -72,18 +69,16 @@ describe('shell location synchronization', () => {
     expect(appState.activeProduct).toBe('knowledge');
   });
 
-  it('maps the legacy Weixin hash to its Settings tab without changing task drafts', () => {
+  it('does not retain the removed standalone Weixin route', () => {
     appState.activeSessionId = 'task-keep';
     appState.composerValue = 'keep this draft';
     window.history.replaceState(null, '', '#weixin');
 
     renderHook(() => useShellShortcuts(() => undefined));
 
-    expect(appState.activeProduct).toBe('code');
-    expect(appState.settingsOpen).toBe(true);
-    expect(appState.settingsTab).toBe('channels');
-    expect(appState.settingsChannel).toBe('weixin');
-    expect(window.location.hash).toBe('#weixin');
+    expect(appState.activeProduct).toBe('work');
+    expect(appState.settingsOpen).toBe(false);
+    expect(window.location.hash).toBe('#home');
     expect(appState.activeSessionId).toBe('task-keep');
     expect(appState.composerValue).toBe('keep this draft');
   });
@@ -109,24 +104,14 @@ describe('shell location synchronization', () => {
     expect(window.location.hash).toBe('#settings/help');
   });
 
-  it('maps the legacy Help hash to the Settings Help tab', () => {
+  it('does not retain the removed standalone Help route', () => {
     renderHook(() => useShellShortcuts(() => undefined));
     window.location.hash = '#help';
     window.dispatchEvent(new HashChangeEvent('hashchange'));
 
-    expect(appState.settingsOpen).toBe(true);
-    expect(appState.settingsTab).toBe('help');
-    expect(window.location.hash).toBe('#settings/help');
-  });
-
-  it('normalizes a directly opened legacy Help URL on mount', () => {
-    window.history.replaceState(null, '', '#help');
-
-    renderHook(() => useShellShortcuts(() => undefined));
-
-    expect(appState.settingsOpen).toBe(true);
-    expect(appState.settingsTab).toBe('help');
-    expect(window.location.hash).toBe('#settings/help');
+    expect(appState.settingsOpen).toBe(false);
+    expect(appState.activeProduct).toBe('work');
+    expect(window.location.hash).toBe('#home');
   });
 
   it('does not let global shortcuts dismiss settings while an update is installing', () => {

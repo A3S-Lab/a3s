@@ -25,7 +25,6 @@ import {
   persistActiveTask,
   persistTaskDrafts,
   readActiveTask,
-  type TaskProduct,
   type TaskState,
   taskDraftKey,
 } from '../features/tasks/task-state';
@@ -58,9 +57,8 @@ const themeStorageKey = 'a3s-code-web.theme';
 let modelChangeNoticeId = 0;
 
 const initialShellState = createCodeShellState();
-const initialTaskProduct: TaskProduct = initialShellState.activeProduct === 'work' ? 'work' : 'code';
-const initialTaskState = createTaskState(initialTaskProduct);
-const initialTaskKey = taskDraftKey(initialTaskState.activeSessionId, initialTaskProduct);
+const initialTaskState = createTaskState();
+const initialTaskKey = taskDraftKey(initialTaskState.activeSessionId);
 const initialWorkspaceState = createWorkspaceState(initialTaskKey);
 const initialWorkspaceSnapshot = initialWorkspaceState.workspaceSnapshotsByTask[initialTaskKey];
 if (initialWorkspaceSnapshot) initialShellState.taskView = initialWorkspaceSnapshot.taskView;
@@ -124,16 +122,16 @@ export function isWorkspaceContextCurrent(context: WorkspaceContext): boolean {
 }
 
 export function switchActiveTask(sessionId: string | null, workspaceRoot?: string): boolean {
-  const product = activeTaskProduct();
-  if (sessionId === appState.activeSessionId) {
-    const resolvedRoot = resolveWorkspaceRoot(sessionId, workspaceRoot, product);
+  const currentSessionId = appState.activeSessionId;
+  if (sessionId === currentSessionId) {
+    const resolvedRoot = resolveWorkspaceRoot(sessionId, workspaceRoot);
     if (resolvedRoot && !sameWorkspaceRoot(resolvedRoot, appState.workspaceRoot)) {
       replaceActiveWorkspace(resolvedRoot);
     }
     return true;
   }
 
-  const currentKey = taskDraftKey(appState.activeSessionId, product);
+  const currentKey = taskDraftKey(currentSessionId);
   appState.draftsByTask[currentKey] = createTaskDraft(
     appState.composerValue,
     appState.composerContextFiles,
@@ -143,9 +141,9 @@ export function switchActiveTask(sessionId: string | null, workspaceRoot?: strin
   reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
   appState.workspaceSnapshotsByTask[currentKey] = captureWorkspaceTaskSnapshot(appState, appState.taskView);
   appState.activeSessionId = sessionId;
-  reportTaskPersistenceResult(persistActiveTask(sessionId, product));
-  const nextKey = taskDraftKey(sessionId, product);
-  const resolvedRoot = resolveWorkspaceRoot(sessionId, workspaceRoot, product);
+  reportTaskPersistenceResult(persistActiveTask(sessionId));
+  const nextKey = taskDraftKey(sessionId);
+  const resolvedRoot = resolveWorkspaceRoot(sessionId, workspaceRoot);
   const stored = appState.workspaceSnapshotsByTask[nextKey];
   const nextWorkspace =
     stored && sameWorkspaceRoot(stored.state.workspaceRoot, resolvedRoot)
@@ -161,26 +159,48 @@ export function switchActiveTask(sessionId: string | null, workspaceRoot?: strin
   appState.composerValue = nextDraft?.content ?? '';
   appState.composerContextFiles = [...(nextDraft?.contextFiles ?? [])];
   appState.composerSkills = [...(nextDraft?.skillNames ?? [])];
-  appState.composerMode = nextDraft?.mode === 'deepResearch' && product === 'code' ? 'deepResearch' : 'standard';
+  appState.composerMode = nextDraft?.mode === 'deepResearch' ? 'deepResearch' : 'standard';
   appState.modelChangeNotice = null;
   reportTaskPersistenceResult(persistActiveWorkspaceTask());
   return true;
 }
 
-export function promoteActiveTask(sessionId: string, workspaceRoot: string): void {
-  const product = activeTaskProduct();
-  if (appState.activeSessionId) {
+export function promoteActiveTask(
+  sessionId: string,
+  workspaceRoot: string,
+  sourceSessionId: string | null = null
+): void {
+  const sourceKey = taskDraftKey(sourceSessionId);
+  const promotedKey = taskDraftKey(sessionId);
+  const sourceIsVisible = appState.activeSessionId === sourceSessionId;
+
+  if (!sourceIsVisible) {
+    const preparedDraft = appState.draftsByTask[sourceKey];
+    if (preparedDraft) appState.draftsByTask[promotedKey] = { ...preparedDraft };
+    if (sourceKey !== promotedKey) delete appState.draftsByTask[sourceKey];
+    reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
+
+    const preparedWorkspace = appState.workspaceSnapshotsByTask[sourceKey];
+    if (preparedWorkspace) appState.workspaceSnapshotsByTask[promotedKey] = preparedWorkspace;
+    if (sourceKey !== promotedKey) delete appState.workspaceSnapshotsByTask[sourceKey];
+    if (readActiveTask() === sourceSessionId) {
+      reportTaskPersistenceResult(persistActiveTask(sessionId));
+    }
+    reportTaskPersistenceResult(persistActiveWorkspaceTask());
+    return;
+  }
+
+  if (sourceSessionId) {
     switchActiveTask(sessionId, workspaceRoot);
     return;
   }
-  const preparedDraftKey = taskDraftKey(null, product);
-  appState.draftsByTask[taskDraftKey(sessionId, product)] = createTaskDraft(
+  appState.draftsByTask[promotedKey] = createTaskDraft(
     appState.composerValue,
     appState.composerContextFiles,
     appState.composerSkills,
     appState.composerMode
   );
-  delete appState.draftsByTask[preparedDraftKey];
+  delete appState.draftsByTask[sourceKey];
   reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
   const rootChanged = !sameWorkspaceRoot(appState.workspaceRoot, workspaceRoot);
   if (rootChanged) {
@@ -190,9 +210,9 @@ export function promoteActiveTask(sessionId: string, workspaceRoot: string): voi
   } else {
     appState.workspaceRoot = workspaceRoot;
   }
-  delete appState.workspaceSnapshotsByTask[preparedDraftKey];
+  delete appState.workspaceSnapshotsByTask[sourceKey];
   appState.activeSessionId = sessionId;
-  reportTaskPersistenceResult(persistActiveTask(sessionId, product));
+  reportTaskPersistenceResult(persistActiveTask(sessionId));
   appState.modelChangeNotice = null;
   reportTaskPersistenceResult(persistActiveWorkspaceTask());
 }
@@ -203,7 +223,7 @@ export function replaceActiveWorkspace(workspaceRoot: string): void {
     reportTaskPersistenceResult(persistActiveWorkspaceTask());
     return;
   }
-  const key = taskDraftKey(appState.activeSessionId, activeTaskProduct());
+  const key = taskDraftKey(appState.activeSessionId);
   delete appState.workspaceSnapshotsByTask[key];
   restoreWorkspaceTaskState(appState, createWorkspaceTaskState(workspaceRoot));
   appState.taskView = 'conversation';
@@ -213,37 +233,33 @@ export function replaceActiveWorkspace(workspaceRoot: string): void {
 }
 
 export function removeWorkspaceTaskSnapshot(sessionId: string): void {
-  delete appState.workspaceSnapshotsByTask[taskDraftKey(sessionId, activeTaskProduct())];
+  delete appState.workspaceSnapshotsByTask[taskDraftKey(sessionId)];
   reportTaskPersistenceResult(persistActiveWorkspaceTask());
 }
 
-function persistActiveWorkspaceTask(product: TaskProduct = activeTaskProduct()): boolean {
+function persistActiveWorkspaceTask(): boolean {
   return persistWorkspaceTaskSnapshots(
     appState.workspaceSnapshotsByTask,
-    taskDraftKey(appState.activeSessionId, product),
+    taskDraftKey(appState.activeSessionId),
     appState,
     appState.taskView
   );
 }
 
-function resolveWorkspaceRoot(
-  sessionId: string | null,
-  explicit?: string,
-  product: TaskProduct = activeTaskProduct()
-): string {
+function resolveWorkspaceRoot(sessionId: string | null, explicit?: string): string {
   const requested = explicit?.trim();
   if (requested) return requested;
   const sessionWorkspace = sessionId
     ? appState.sessions.find((session) => session.sessionId === sessionId)?.workspace.trim()
     : '';
   if (sessionWorkspace) return sessionWorkspace;
-  const storedWorkspace = appState.workspaceSnapshotsByTask[taskDraftKey(sessionId, product)]?.state.workspaceRoot;
-  if (product === 'work') return storedWorkspace || appState.workspaceRoot || appState.health?.workspace.trim() || '';
+  const storedWorkspace = appState.workspaceSnapshotsByTask[taskDraftKey(sessionId)]?.state.workspaceRoot;
   return (
-    appState.newTaskConfig.workspace.trim() ||
     storedWorkspace ||
+    appState.workspaceRoot ||
+    appState.newTaskConfig.workspace.trim() ||
     appState.health?.workspace.trim() ||
-    appState.workspaceRoot
+    ''
   );
 }
 
@@ -306,32 +322,29 @@ export function appendTaskInstruction(content: string): void {
 }
 
 export function navigateTask(view: TaskView): void {
-  activateTaskProduct('code');
   const previousView = appState.taskView;
   if (previousView === 'conversation' && view !== 'conversation') rememberTaskContextFocus(view);
   appState.settingsOpen = false;
-  appState.activeProduct = 'code';
-  appState.codeSurface = 'tasks';
+  appState.activeProduct = 'work';
   if (view === 'conversation') appState.workspacePresentation = 'docked';
   appState.taskView = view;
-  window.history.replaceState(null, '', `#code/${view}`);
+  window.history.replaceState(null, '', '#home');
   if (previousView !== 'conversation' && view === 'conversation') restoreTaskContextFocus(previousView);
 }
 
 export function navigateMemory(): void {
-  activateTaskProduct('code');
   appState.settingsOpen = false;
-  appState.activeProduct = 'code';
-  appState.codeSurface = 'memory';
-  window.history.replaceState(null, '', '#code/memory');
+  appState.commandPaletteOpen = false;
+  appState.fileQuickOpenOpen = false;
+  appState.activeProduct = 'memory';
+  window.history.replaceState(null, '', '#memory');
 }
 
 export function navigateProduct(product: ProductId): void {
-  if (product === 'code') {
-    navigateTask(appState.taskView);
+  if (product === 'memory') {
+    navigateMemory();
     return;
   }
-  if (product === 'work') activateTaskProduct('work');
   if (product === 'plugin') {
     if (appState.activePluginKey) navigatePlugin(appState.activePluginKey);
     else navigateTask('conversation');
@@ -348,7 +361,7 @@ export function navigateProduct(product: ProductId): void {
   appState.settingsOpen = false;
   appState.commandPaletteOpen = false;
   appState.activeProduct = product;
-  window.history.replaceState(null, '', '#work/home');
+  window.history.replaceState(null, '', '#home');
 }
 
 export function navigatePlugin(key: string): void {
@@ -357,7 +370,6 @@ export function navigatePlugin(key: string): void {
     navigateTask('conversation');
     return;
   }
-  activateTaskProduct('code');
   appState.settingsOpen = false;
   appState.commandPaletteOpen = false;
   appState.activeProduct = 'plugin';
@@ -367,7 +379,6 @@ export function navigatePlugin(key: string): void {
 }
 
 export function navigatePlugins(): void {
-  activateTaskProduct('code');
   appState.settingsOpen = false;
   appState.commandPaletteOpen = false;
   appState.activeProduct = 'plugins';
@@ -375,7 +386,6 @@ export function navigatePlugins(): void {
 }
 
 export function navigateKnowledge(): void {
-  activateTaskProduct('code');
   appState.settingsOpen = false;
   appState.commandPaletteOpen = false;
   appState.activeProduct = 'knowledge';
@@ -397,50 +407,6 @@ export function navigateKnowledgeBase(id: string, workspace?: string): void {
     }
   }
   navigateKnowledge();
-}
-
-function activeTaskProduct(): TaskProduct {
-  return appState.activeProduct === 'work' ? 'work' : 'code';
-}
-
-export function activateTaskProduct(product: TaskProduct): void {
-  const currentProduct = activeTaskProduct();
-  if (currentProduct === product) return;
-  const currentKey = taskDraftKey(appState.activeSessionId, currentProduct);
-  appState.draftsByTask[currentKey] = createTaskDraft(
-    appState.composerValue,
-    appState.composerContextFiles,
-    appState.composerSkills,
-    appState.composerMode
-  );
-  reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
-  reportTaskPersistenceResult(persistActiveTask(appState.activeSessionId, currentProduct));
-  appState.workspaceSnapshotsByTask[currentKey] = captureWorkspaceTaskSnapshot(appState, appState.taskView);
-
-  const sessionId = readActiveTask(product);
-  const nextKey = taskDraftKey(sessionId, product);
-  const draft = appState.draftsByTask[nextKey];
-  const workspaceRoot = resolveWorkspaceRoot(sessionId, undefined, product);
-  const storedWorkspace = appState.workspaceSnapshotsByTask[nextKey];
-  const nextWorkspace =
-    storedWorkspace && sameWorkspaceRoot(storedWorkspace.state.workspaceRoot, workspaceRoot)
-      ? storedWorkspace
-      : { taskView: 'conversation' as const, state: createWorkspaceTaskState(workspaceRoot) };
-  if (storedWorkspace && storedWorkspace !== nextWorkspace) delete appState.workspaceSnapshotsByTask[nextKey];
-  appState.activeSessionId = sessionId;
-  appState.activeProduct = product;
-  restoreWorkspaceTaskState(appState, nextWorkspace.state);
-  appState.taskView = nextWorkspace.taskView;
-  appState.workspaceGeneration += 1;
-  appState.composerValue = draft?.content ?? '';
-  appState.composerContextFiles = [...(draft?.contextFiles ?? [])];
-  appState.composerSkills = [...(draft?.skillNames ?? [])];
-  appState.composerMode = draft?.mode === 'deepResearch' && product === 'code' ? 'deepResearch' : 'standard';
-  appState.streamEvents = [];
-  appState.modelChangeNotice = null;
-  appState.fileQuickOpenOpen = false;
-  appState.commandPaletteOpen = false;
-  reportTaskPersistenceResult(persistActiveWorkspaceTask(product));
 }
 
 export function navigateSettings(tab: SettingsTab): void {
@@ -467,11 +433,9 @@ export function closeSettings(): void {
         ? '#plugins'
         : appState.activeProduct === 'knowledge'
           ? '#knowledge'
-          : appState.activeProduct === 'work'
-            ? '#work/home'
-            : appState.codeSurface === 'memory'
-              ? '#code/memory'
-              : `#code/${appState.taskView}`
+          : appState.activeProduct === 'memory'
+            ? '#memory'
+            : '#home'
   );
 }
 
@@ -481,7 +445,6 @@ export function clearToast(id: number): void {
 
 export function formatApiError(error: unknown): string {
   if (!(error instanceof Error)) return '发生了未知错误';
-  if (error.message === 'Failed to fetch' || error.message.includes('NetworkError'))
-    return '无法访问本地 A3S Code 服务。';
+  if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) return '无法访问本地 A3S 服务。';
   return error.message;
 }

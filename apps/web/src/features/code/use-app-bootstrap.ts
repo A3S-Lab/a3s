@@ -129,8 +129,7 @@ function applyBootstrapResult(result: BootstrapResult) {
   appState.sessions = result.sessionList.items;
   if (appState.activeSessionId === result.activeSessionId && result.activeSessionId) {
     const active = result.sessionList.items.find((session) => session.sessionId === result.activeSessionId);
-    const correctProduct = appState.activeProduct === 'work' ? active?.agentId === 'work' : active?.agentId !== 'work';
-    if (!active || !correctProduct) switchActiveTask(null);
+    if (!active) switchActiveTask(null);
   }
   const messagesCurrent = Boolean(
     result.activeMessagesRequest && isSessionMessagesRequestCurrent(result.activeMessagesRequest)
@@ -174,11 +173,7 @@ function applyBootstrapResult(result: BootstrapResult) {
     (session) => session.sessionId === appState.activeSessionId
   )?.workspace;
   const workspaceRoot =
-    activeWorkspace ||
-    (appState.activeProduct === 'work'
-      ? appState.workspaceRoot || appState.newTaskConfig.workspace
-      : appState.newTaskConfig.workspace) ||
-    result.health.workspace;
+    activeWorkspace || appState.workspaceRoot || appState.newTaskConfig.workspace || result.health.workspace;
   replaceActiveWorkspace(workspaceRoot);
   appState.filesByDirectory[result.health.workspace] = result.rootFiles;
   appState.expandedDirectories[result.health.workspace] = true;
@@ -257,7 +252,7 @@ export function useAppBootstrap() {
     try {
       applyBootstrapResult(await loadBootstrapResult());
       void refreshAccountModelCatalog();
-      showToast('已重新连接本地 A3S Code 服务', 'success');
+      showToast('已重新连接本地 A3S 服务', 'success');
     } catch (error) {
       appState.serviceStatus = 'disconnected';
       appState.serviceError = formatApiError(error);

@@ -9,6 +9,7 @@ export function TaskLibraryItem({
   title,
   active,
   running,
+  itemLabel = '任务',
   onSelect,
   onRename,
   onDelete,
@@ -17,6 +18,7 @@ export function TaskLibraryItem({
   title: string;
   active: boolean;
   running: boolean;
+  itemLabel?: string;
   onSelect: () => void;
   onRename: (title: string) => Promise<void>;
   onDelete?: () => Promise<void>;
@@ -81,7 +83,7 @@ export function TaskLibraryItem({
       >
         <input
           ref={inputRef}
-          aria-label='任务名称'
+          aria-label={`${itemLabel}名称`}
           value={name}
           maxLength={72}
           disabled={busy}
@@ -101,7 +103,11 @@ export function TaskLibraryItem({
             <span className='sr-only'>{error}</span>
           </span>
         )}
-        <IconButton label='保存任务名称' type='submit' disabled={!name.trim() || name.trim() === title || busy}>
+        <IconButton
+          label={`保存${itemLabel}名称`}
+          type='submit'
+          disabled={!name.trim() || name.trim() === title || busy}
+        >
           {busy ? <LoaderCircle className='spin' size={13} /> : <Check size={13} />}
         </IconButton>
         <IconButton label='取消重命名' disabled={busy} onClick={close}>
@@ -119,7 +125,7 @@ export function TaskLibraryItem({
       >
         <Trash2 size={13} />
         <span title={`工作区文件不会被删除：${session.workspace}`}>
-          <strong>{error ?? '删除此任务？'}</strong>
+          <strong>{error ?? `删除此${itemLabel}？`}</strong>
           <small>保留工作区文件</small>
         </span>
         <Button tone='quiet' disabled={busy} onClick={close}>
@@ -137,7 +143,7 @@ export function TaskLibraryItem({
       <button
         type='button'
         className='task-list-link'
-        aria-label={`打开任务 ${title}${running ? '，执行中' : ''}，${age}`}
+        aria-label={`打开${itemLabel} ${title}${running ? '，执行中' : ''}，${age}`}
         aria-current={active ? 'page' : undefined}
         title={`${title}\n${session.workspace}`}
         onClick={onSelect}

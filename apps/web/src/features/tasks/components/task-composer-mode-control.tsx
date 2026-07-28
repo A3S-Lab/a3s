@@ -2,6 +2,7 @@ import { Check, ChevronDown, ListChecks, ShieldCheck, Zap } from 'lucide-react';
 import { useSnapshot } from 'valtio';
 import { appState } from '../../../state/app-state';
 import type { TaskActions } from '../task-actions';
+import { findTaskSession } from '../task-state';
 import { ComposerPopover } from './composer-popover';
 import { updateNewTaskConfig } from './task-composer-config';
 
@@ -28,7 +29,7 @@ const EXECUTION_MODES = [
 
 export function TaskComposerModeControl({ actions }: { actions: TaskActions }) {
   const state = useSnapshot(appState);
-  const task = state.sessions.find((item) => item.sessionId === state.activeSessionId);
+  const task = findTaskSession(state.sessions, state.activeSessionId);
   const value = task ? task.permissionMode : state.newTaskConfig.permissionMode;
   const selected = EXECUTION_MODES.find((mode) => mode.id === value) ?? EXECUTION_MODES[0];
   const SelectedIcon = selected.icon;
@@ -54,7 +55,7 @@ export function TaskComposerModeControl({ actions }: { actions: TaskActions }) {
             <SelectedIcon size={15} />
             <span>
               <strong>执行模式</strong>
-              <small>决定 Code 如何推进当前任务</small>
+              <small>决定 AI 如何推进当前任务</small>
             </span>
           </header>
           <div className='composer-mode-options' role='listbox' aria-label='执行模式'>

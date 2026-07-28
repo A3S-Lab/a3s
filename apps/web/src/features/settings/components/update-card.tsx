@@ -86,7 +86,7 @@ export function UpdateCard({ actions }: { actions: SettingsActions }) {
       )}
       {installedVersion && (
         <InlineNotice className='update-notice' tone='success' role='status'>
-          {installedVersion} 已安装。请重启 A3S Code Web 服务后再检查更新，不要重复安装。
+          {installedVersion} 已安装。请重启 A3S Web 服务后再检查更新，不要重复安装。
         </InlineNotice>
       )}
       {status?.updateAvailable && !installedVersion && (

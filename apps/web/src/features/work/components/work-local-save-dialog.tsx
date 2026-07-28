@@ -154,8 +154,8 @@ export function WorkLocalFileConflictDialog({
       title={conflict.missing ? '原本地文件已不存在' : '本地文件已在别处更改'}
       description={
         conflict.missing
-          ? 'A3S Work 中的编辑内容仍然保留。你可以另存为，或明确重新创建原路径。'
-          : '为避免覆盖其他应用的修改，A3S Work 已停止写回。你可以另存为，或明确覆盖外部版本。'
+          ? 'A3S 中的编辑内容仍然保留。你可以另存为，或明确重新创建原路径。'
+          : '为避免覆盖其他应用的修改，A3S 已停止写回。你可以另存为，或明确覆盖外部版本。'
       }
       closeDisabled={overwriting}
       onClose={onClose}

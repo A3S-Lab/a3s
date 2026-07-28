@@ -5,10 +5,25 @@ import { useSnapshot } from 'valtio';
 import { ProductSidebar, SidebarNavIcon } from '../../../components/product-sidebar';
 import { CollectionState, IconButton, SearchField } from '../../../design-system/primitives';
 import { appState, sessionTitle } from '../../../state/app-state';
+import type { CodeSession } from '../../../types/api';
 import type { TaskActions } from '../task-actions';
 import { TaskLibraryItem } from './task-library-item';
 
-export function TaskLibrary({ actions }: { actions: TaskActions }) {
+export function TaskLibrary({
+  actions,
+  title = '会话',
+  label = '会话列表',
+  itemLabel = '会话',
+  onNewConversation,
+  onSelectSession,
+}: {
+  actions: TaskActions;
+  title?: string;
+  label?: string;
+  itemLabel?: string;
+  onNewConversation?: () => void;
+  onSelectSession?: (session: CodeSession) => void | Promise<void>;
+}) {
   const state = useSnapshot(appState);
   const [searchOpen, setSearchOpen] = useState(Boolean(state.searchQuery));
   const [tasksExpanded, setTasksExpanded] = useState(true);
@@ -17,10 +32,9 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
   const query = useDebounce(state.searchQuery.trim().toLowerCase(), { wait: 160 });
   const sessions = state.sessions.filter(
     (session) =>
-      session.agentId !== 'work' &&
-      (!query ||
-        sessionTitle(session, state.sessionTitles).toLowerCase().includes(query) ||
-        session.workspace.toLowerCase().includes(query))
+      !query ||
+      sessionTitle(session, state.sessionTitles).toLowerCase().includes(query) ||
+      session.workspace.toLowerCase().includes(query)
   );
   useEffect(() => {
     if (searchOpen) searchInputRef.current?.focus();
@@ -28,12 +42,12 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
   return (
     <ProductSidebar
       className='task-library'
-      label='Code 任务'
-      title='编码'
+      label={label}
+      title={title}
       headerActions={
         <IconButton
           ref={searchTriggerRef}
-          label={searchOpen ? '关闭任务搜索' : '搜索任务'}
+          label={searchOpen ? `关闭${itemLabel}搜索` : `搜索${itemLabel}`}
           selected={searchOpen}
           aria-expanded={searchOpen}
           onClick={() => {
@@ -54,24 +68,25 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
         className={`sidebar-nav-item task-library-new ${state.activeSessionId ? '' : 'active'}`}
         aria-current={state.activeSessionId ? undefined : 'page'}
         onClick={() => {
-          actions.newConversation();
+          if (onNewConversation) onNewConversation();
+          else actions.newConversation();
           closeCompactTaskLibrary();
         }}
       >
         <SidebarNavIcon tone='blue'>
           <CirclePlus size={15} />
         </SidebarNavIcon>
-        <span className='sidebar-nav-label'>新建任务</span>
+        <span className='sidebar-nav-label'>新建{itemLabel}</span>
       </button>
       {searchOpen && (
         <SearchField
           ref={searchInputRef}
           className='task-library-search'
           size='compact'
-          label='搜索任务'
-          clearLabel='清除任务搜索'
+          label={`搜索${itemLabel}`}
+          clearLabel={`清除${itemLabel}搜索`}
           value={state.searchQuery}
-          placeholder='搜索任务'
+          placeholder={`搜索${itemLabel}`}
           onValueChange={(value) => {
             appState.searchQuery = value;
           }}
@@ -84,14 +99,16 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
           }}
         />
       )}
-      <section className='task-list' aria-label='任务列表'>
+      <section className='task-list' aria-label={`${itemLabel}列表`}>
         <button
           type='button'
           className='task-list-label'
           aria-expanded={tasksExpanded}
           onClick={() => setTasksExpanded(!tasksExpanded)}
         >
-          <span>任务 ({sessions.length})</span>
+          <span>
+            {itemLabel} ({sessions.length})
+          </span>
           <ChevronDown size={13} />
         </button>
         {tasksExpanded && sessions.length ? (
@@ -106,9 +123,11 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
                   active={state.activeSessionId === session.sessionId}
                   running={state.streamingSessionId === session.sessionId}
                   onSelect={() => {
-                    void actions.selectSession(session.sessionId);
+                    if (onSelectSession) void onSelectSession(session as CodeSession);
+                    else void actions.selectSession(session.sessionId);
                     closeCompactTaskLibrary();
                   }}
+                  itemLabel={itemLabel}
                   onRename={(name) => actions.renameSession(session.sessionId, name)}
                   onDelete={
                     state.streamingSessionId === session.sessionId
@@ -121,7 +140,7 @@ export function TaskLibrary({ actions }: { actions: TaskActions }) {
           </div>
         ) : tasksExpanded ? (
           <CollectionState className='task-list-empty' role='status'>
-            {query ? '没有匹配的任务' : '暂无任务'}
+            {query ? `没有匹配的${itemLabel}` : `暂无${itemLabel}`}
           </CollectionState>
         ) : null}
       </section>

@@ -20,10 +20,10 @@ export async function bindWorkAgentWorkspace(actions: TaskActions, workspaceRoot
   const root = workspaceRoot.trim();
   if (!root) throw new Error('请先选择本地工作文件夹。');
   const active = appState.sessions.find((session) => session.sessionId === appState.activeSessionId);
-  if (active && (active.agentId !== 'work' || !sameLocalPath(active.workspace, root))) actions.newConversation();
+  if (active && !sameLocalPath(active.workspace, root)) actions.newConversation();
 
   const compatible = appState.sessions.find((session) => session.sessionId === appState.activeSessionId);
-  if (compatible?.agentId === 'work' && sameLocalPath(compatible.workspace, root)) {
+  if (compatible && sameLocalPath(compatible.workspace, root)) {
     appState.workspaceRoot = root;
     return;
   }

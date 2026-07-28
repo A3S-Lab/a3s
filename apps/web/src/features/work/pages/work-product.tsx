@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { codeApi } from '../../../lib/api';
-import { appState, formatApiError, showToast } from '../../../state/app-state';
-import type { WorkspaceEntry } from '../../../types/api';
+import { appState, formatApiError, sessionTitle, showToast } from '../../../state/app-state';
+import type { CodeSession, WorkspaceEntry, WorkspaceFileCatalogItem } from '../../../types/api';
 import type { CodeActions } from '../../code/use-code-controller';
+import { TaskLibrary } from '../../tasks/components/task-library';
 import { codeDefaultWorkspace } from '../../workspace/code-default-workspace';
+import { WorkspaceQuickOpen } from '../../workspace/components/workspace-quick-open';
 import { WorkCodeWorkspace } from '../components/work-code-workspace';
 import { WorkCompatibilityDialog } from '../components/work-compatibility-dialog';
 import { readWorkCopilotWidth, WorkCopilot } from '../components/work-copilot';
 import { WorkEditorShell } from '../components/work-editor-shell';
 import { WorkFilesWorkspace } from '../components/work-files-workspace';
 import { WorkHome } from '../components/work-home';
-import { WorkSidebar } from '../components/work-sidebar';
 import { isOfficeShortcutBlocked } from '../editors/office-shortcuts';
 import { useWorkCodeController } from '../use-work-code-controller';
 import { useWorkController } from '../use-work-controller';
@@ -81,6 +82,10 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
     },
     [actions.createArtifact, requestLocalArtifactCreate, surface]
   );
+  const findQuickOpenFiles = useCallback(
+    (query: string, maxResults: number) => codeApi.workspaceFiles(files.rootPath, query, maxResults),
+    [files.rootPath]
+  );
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -115,27 +120,50 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
       setAgentProposal(null);
     }
   }, [actions.activeArtifact?.id]);
-  const openLocalFile = async (entry: WorkspaceEntry) => {
-    if (openingPath) return;
+  const openLocalItem = async (
+    entry: Pick<WorkspaceEntry, 'path' | 'name' | 'isBinary' | 'isDirectory'>
+  ): Promise<boolean> => {
+    if (openingPath) return false;
     setOpeningPath(entry.path);
     try {
       if (isWorkTextEditorEntry(entry)) {
-        await code.openFile({ path: entry.path, isBinary: false });
-        return;
+        return await code.openFile({ path: entry.path, isBinary: false });
       }
       if (!isWorkOfficePath(entry.path)) {
         showToast('这个文件暂不能直接编辑。', 'info');
-        return;
+        return false;
       }
       const bytes = await codeApi.readBinaryFile(entry.path);
       const data = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
       const file = new File([data], entry.name, { type: workFileMimeType(entry.path) });
       await actions.importFile(file, { localPath: entry.path });
+      return true;
     } catch (error) {
       showToast(formatApiError(error), 'error');
+      return false;
     } finally {
       setOpeningPath(null);
     }
+  };
+  const openLocalFile = async (entry: WorkspaceEntry) => {
+    await openLocalItem(entry);
+  };
+  const openQuickFile = (entry: WorkspaceFileCatalogItem) =>
+    openLocalItem({
+      path: entry.path,
+      name: entry.name,
+      isBinary: entry.isBinary,
+      isDirectory: false,
+    });
+  const workTaskActions: CodeActions = {
+    ...codeActions,
+    selectFile: async (selection) =>
+      openLocalItem({
+        path: selection.path,
+        name: localPathBasename(selection.path),
+        isBinary: selection.isBinary,
+        isDirectory: false,
+      }),
   };
   const requestAgent = async (request: WorkAgentRequest, proposal?: WorkAgentProposalRequest) => {
     let workspaceRoot = request.workspaceRoot || files.rootPath;
@@ -160,12 +188,26 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
       {
         workspaceRoot: files.rootPath,
         paths: [],
-        instruction: `关于 Work 中正在编辑的“${title}”：\n${instruction}`,
+        instruction: `关于当前正在编辑的“${title}”：\n${instruction}`,
         selection: request.selection,
       },
       proposal
     );
   };
+  const startNewConversation = () => {
+    codeActions.newConversation();
+    updateCopilotOpen(false);
+    setAgentProposal(null);
+    updateSurface('library');
+  };
+  const selectConversation = async (session: CodeSession) => {
+    await codeActions.selectSession(session.sessionId);
+    if (session.workspace) await files.selectRoot(session.workspace);
+    updateCopilotOpen(true);
+  };
+  const activeSession = state.activeSessionId
+    ? state.sessions.find((session) => session.sessionId === state.activeSessionId)
+    : undefined;
 
   return (
     <section className='work-product'>
@@ -188,6 +230,13 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
           busy={actions.importing}
           onClose={actions.cancelImport}
           onConfirm={() => void actions.confirmImport()}
+        />
+      )}
+      {state.sidebarOpen && (
+        <TaskLibrary
+          actions={codeActions}
+          onNewConversation={startNewConversation}
+          onSelectSession={selectConversation}
         />
       )}
       <div className='work-primary-pane'>
@@ -218,59 +267,6 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
           />
         ) : (
           <>
-            {state.sidebarOpen && (
-              <WorkSidebar
-                surface={surface}
-                localRootName={files.rootPath ? localPathBasename(files.rootPath) : ''}
-                localRootPath={files.rootPath}
-                localCurrentPath={files.currentPath}
-                recentRootPaths={files.recentRootPaths}
-                localFavoritePaths={files.favoritePaths}
-                view={actions.libraryView}
-                totalCount={actions.artifacts.filter((artifact) => !artifact.trashedAt).length}
-                favoriteCount={actions.artifacts.filter((artifact) => artifact.favorite && !artifact.trashedAt).length}
-                trashCount={
-                  actions.artifacts.filter((artifact) => artifact.trashedAt).length +
-                  actions.folders.filter((folder) => folder.trashedAt).length
-                }
-                folders={actions.folders}
-                activeFolderId={actions.activeFolderId}
-                onOpenLocalFiles={() => {
-                  updateSurface('files');
-                  if (files.rootPath) files.navigateTo(files.rootPath);
-                }}
-                onSelectWorkspace={async (path) => {
-                  const selected = await files.selectRoot(path);
-                  if (selected) updateSurface('files');
-                  return selected;
-                }}
-                onPickWorkspace={async () => {
-                  const selected = await files.pickRoot();
-                  if (selected) updateSurface('files');
-                  return selected;
-                }}
-                onOpenLocalFavorite={(path) => {
-                  updateSurface('files');
-                  files.navigateTo(path);
-                }}
-                onRemoveLocalFavorite={files.toggleFavoritePath}
-                onMoveLocalEntries={files.moveEntries}
-                onImportLocalDrop={files.importDroppedItems}
-                onCollapse={() => {
-                  appState.sidebarOpen = false;
-                }}
-                onChangeView={(view) => {
-                  updateSurface('library');
-                  actions.setLibraryView(view);
-                }}
-                onOpenFolder={(id) => {
-                  updateSurface('library');
-                  actions.openFolder(id);
-                }}
-                onCreate={createForSurface}
-                onImport={openFilePicker}
-              />
-            )}
             {surface === 'files' ? (
               <WorkFilesWorkspace
                 actions={files}
@@ -290,6 +286,10 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
                 onOpenSidebar={() => {
                   appState.sidebarOpen = true;
                 }}
+                onOpenHome={() => {
+                  updateSurface('library');
+                  actions.setLibraryView('home');
+                }}
                 onToggleCopilot={() => updateCopilotOpen(!copilotOpen)}
               />
             ) : (
@@ -301,12 +301,21 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
                 loading={actions.loading}
                 error={actions.loadError}
                 sidebarOpen={state.sidebarOpen}
+                taskActions={codeActions}
+                activeSessionTitle={activeSession ? sessionTitle(activeSession, state.sessionTitles) : null}
                 onOpenSidebar={() => {
                   appState.sidebarOpen = true;
+                }}
+                onContinueSession={() => updateCopilotOpen(true)}
+                onTaskSubmit={() => updateCopilotOpen(true)}
+                onOpenWorkspace={() => {
+                  updateSurface('files');
+                  if (files.rootPath) files.navigateTo(files.rootPath);
                 }}
                 onCreate={(templateId) => void actions.createArtifact(templateId)}
                 onOpen={(id) => void actions.openArtifact(id)}
                 onImport={openFilePicker}
+                onChangeView={(view) => actions.setLibraryView(view)}
                 onToggleFavorite={actions.toggleFavorite}
                 onRename={(id, title) => actions.patchStoredArtifact(id, { title: title.trim() })}
                 onCopy={(id) => void actions.copyArtifact(id)}
@@ -326,7 +335,7 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
       </div>
       {copilotOpen && (
         <WorkCopilot
-          actions={codeActions}
+          actions={workTaskActions}
           workspaceRoot={files.rootPath}
           currentPath={files.currentPath}
           onClose={() => updateCopilotOpen(false)}
@@ -338,6 +347,20 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
           onWidthChange={setCopilotWidth}
           proposal={agentProposal}
           onDismissProposal={() => setAgentProposal(null)}
+          onNewConversation={startNewConversation}
+        />
+      )}
+      {state.fileQuickOpenOpen && (
+        <WorkspaceQuickOpen
+          rootPath={files.rootPath}
+          generation={state.workspaceGeneration}
+          openFiles={code.tabs.map((tab) => ({ path: tab.path, isBinary: false }))}
+          activePath={code.activePath}
+          findFiles={findQuickOpenFiles}
+          openFile={openQuickFile}
+          onClose={() => {
+            appState.fileQuickOpenOpen = false;
+          }}
         />
       )}
     </section>
@@ -346,17 +369,17 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
 
 function readSurface(): 'files' | 'library' {
   try {
-    return localStorage.getItem(surfaceStorageKey) === 'library' ? 'library' : 'files';
+    return localStorage.getItem(surfaceStorageKey) === 'files' ? 'files' : 'library';
   } catch {
-    return 'files';
+    return 'library';
   }
 }
 
 function readCopilotOpen(): boolean {
   try {
-    return localStorage.getItem(copilotStorageKey) !== 'false';
+    return localStorage.getItem(copilotStorageKey) === 'true';
   } catch {
-    return true;
+    return false;
   }
 }
 

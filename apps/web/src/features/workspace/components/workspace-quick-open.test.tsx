@@ -1,39 +1,31 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { appState } from '../../../state/app-state';
+import type { ComponentProps } from 'react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WorkspaceFileCatalog } from '../../../types/api';
-import type { WorkspaceActions } from '../workspace-actions';
-import { fileEditorTabId } from '../workspace-state';
 import { WorkspaceQuickOpen } from './workspace-quick-open';
 
 describe('WorkspaceQuickOpen', () => {
-  beforeEach(() => {
-    appState.activeSessionId = 'task-1';
-    appState.workspaceRoot = '/repo';
-    appState.editorTabs = [];
-    appState.activeEditorTabId = null;
-    appState.fileQuickOpenOpen = true;
-  });
-
   afterEach(() => {
     cleanup();
-    appState.activeSessionId = null;
-    appState.workspaceRoot = '';
-    appState.editorTabs = [];
-    appState.activeEditorTabId = null;
-    appState.fileQuickOpenOpen = false;
   });
 
   it('puts open files first and opens the keyboard-selected result', async () => {
-    const readmeId = fileEditorTabId('/repo/README.md');
-    appState.editorTabs = [fileTab('/repo/README.md')];
-    appState.activeEditorTabId = readmeId;
     const findWorkspaceFiles = vi
       .fn()
       .mockResolvedValue(catalog([file('/repo/src/app.ts', 'src/app.ts'), file('/repo/README.md', 'README.md')]));
     const selectFile = vi.fn().mockResolvedValue(true);
+    const onClose = vi.fn();
 
-    render(<WorkspaceQuickOpen actions={{ findWorkspaceFiles, selectFile } as unknown as WorkspaceActions} />);
+    render(
+      <WorkspaceQuickOpen
+        {...quickOpenProps(findWorkspaceFiles, {
+          openFiles: [{ path: '/repo/README.md', isBinary: false }],
+          activePath: '/repo/README.md',
+          openFile: selectFile,
+          onClose,
+        })}
+      />
+    );
 
     const input = screen.getByRole('combobox', { name: '按文件名或路径搜索' });
     expect(input).toHaveFocus();
@@ -44,8 +36,8 @@ describe('WorkspaceQuickOpen', () => {
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'Enter' });
 
-    await waitFor(() => expect(selectFile).toHaveBeenCalledWith({ path: '/repo/src/app.ts', isBinary: false }));
-    expect(appState.fileQuickOpenOpen).toBe(false);
+    await waitFor(() => expect(selectFile).toHaveBeenCalledWith(file('/repo/src/app.ts', 'src/app.ts')));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('publishes only the newest debounced query response', async () => {
@@ -56,7 +48,7 @@ describe('WorkspaceQuickOpen', () => {
       return query === 'a' ? first.promise : second.promise;
     });
 
-    render(<WorkspaceQuickOpen actions={{ findWorkspaceFiles, selectFile: vi.fn() } as unknown as WorkspaceActions} />);
+    render(<WorkspaceQuickOpen {...quickOpenProps(findWorkspaceFiles)} />);
     const input = screen.getByRole('combobox', { name: '按文件名或路径搜索' });
     fireEvent.change(input, { target: { value: 'a' } });
     await waitFor(() => expect(findWorkspaceFiles).toHaveBeenCalledWith('a', 120));
@@ -79,7 +71,7 @@ describe('WorkspaceQuickOpen', () => {
         truncated: true,
       });
 
-    render(<WorkspaceQuickOpen actions={{ findWorkspaceFiles, selectFile: vi.fn() } as unknown as WorkspaceActions} />);
+    render(<WorkspaceQuickOpen {...quickOpenProps(findWorkspaceFiles)} />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('index unavailable');
     fireEvent.click(screen.getByRole('button', { name: /重试/ }));
@@ -92,7 +84,7 @@ describe('WorkspaceQuickOpen', () => {
       .fn()
       .mockResolvedValue(catalog([file('/repo/public/logo.png', 'public/logo.png', true)]));
 
-    render(<WorkspaceQuickOpen actions={{ findWorkspaceFiles, selectFile: vi.fn() } as unknown as WorkspaceActions} />);
+    render(<WorkspaceQuickOpen {...quickOpenProps(findWorkspaceFiles)} />);
 
     expect(await screen.findByRole('option', { name: /logo\.png.*二进制/ })).toBeInTheDocument();
   });
@@ -106,20 +98,19 @@ function file(path: string, relativePath: string, isBinary = false) {
   return { path, relativePath, name: relativePath.split('/').pop() ?? relativePath, isBinary };
 }
 
-function fileTab(path: string) {
+function quickOpenProps(
+  findFiles: ComponentProps<typeof WorkspaceQuickOpen>['findFiles'],
+  overrides: Partial<ComponentProps<typeof WorkspaceQuickOpen>> = {}
+): ComponentProps<typeof WorkspaceQuickOpen> {
   return {
-    id: fileEditorTabId(path),
-    kind: 'file' as const,
-    path,
-    content: '',
-    draft: '',
-    revision: null,
-    isBinary: false,
-    location: null,
-    loading: false,
-    loadError: null,
-    saving: false,
-    configValidation: null,
+    rootPath: '/repo',
+    generation: 0,
+    openFiles: [],
+    activePath: null,
+    findFiles,
+    openFile: vi.fn(async () => true),
+    onClose: vi.fn(),
+    ...overrides,
   };
 }
 

@@ -1,13 +1,14 @@
 import { useSnapshot } from 'valtio';
 import { appState } from '../../../state/app-state';
 import type { TaskActions } from '../task-actions';
+import { findTaskSession } from '../task-state';
 import { TaskComposerContextControl } from './task-composer-context-control';
 import { TaskComposerEffortControl } from './task-composer-effort-control';
 import { TaskComposerModelControl } from './task-composer-model-control';
 
 export function TaskComposerTrailingControls({ actions }: { actions: TaskActions }) {
   const state = useSnapshot(appState);
-  const task = state.sessions.find((item) => item.sessionId === state.activeSessionId);
+  const task = findTaskSession(state.sessions, state.activeSessionId);
   const controls = task ? state.sessionControls[task.sessionId] : undefined;
 
   return (

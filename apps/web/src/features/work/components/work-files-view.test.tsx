@@ -104,7 +104,7 @@ describe('Work Finder file view', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '展开办公侧边栏' }));
+    fireEvent.click(screen.getByRole('button', { name: '展开会话侧边栏' }));
     expect(onOpenSidebar).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: '切换工作区，当前 docs' })).toBeInTheDocument();
   });

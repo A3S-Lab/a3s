@@ -70,14 +70,13 @@ function readTitles(): Record<string, string> {
     return {};
   }
 }
-const activeTaskKey = 'a3s-code-web.active-task';
-const workActiveTaskKey = 'a3s-work.ai-assistant.active-session';
+const activeTaskKey = 'a3s-work.active-session';
+const legacyActiveTaskKeys = ['a3s-work.ai-assistant.active-session', 'a3s-code-web.active-task'] as const;
 const taskDraftsKey = 'a3s-code-web.task-drafts';
-const taskDraftsSchemaKey = 'a3s-code-web.task-drafts-schema';
-const taskDraftsSchemaVersion = 2;
 const newTaskConfigKey = 'a3s-code-web.new-task-config';
 const goalTimingsKey = 'a3s-code-web.goal-timings';
 export const newTaskDraftKey = '__new_task__';
+const legacyWorkDraftKey = '__work_ai_assistant__';
 
 function readRecord<T>(key: string): Record<string, T> {
   try {
@@ -87,27 +86,36 @@ function readRecord<T>(key: string): Record<string, T> {
     return {};
   }
 }
-export type TaskProduct = 'code' | 'work';
+export function findTaskSession<T extends Pick<CodeSession, 'sessionId'>>(
+  sessions: readonly T[],
+  sessionId: string | null
+): T | undefined {
+  if (!sessionId) return undefined;
+  return sessions.find((candidate) => candidate.sessionId === sessionId);
+}
 
-export function readActiveTask(product: TaskProduct = 'code'): string | null {
+export function readActiveTask(): string | null {
   try {
-    return localStorage.getItem(product === 'work' ? workActiveTaskKey : activeTaskKey);
+    return (
+      localStorage.getItem(activeTaskKey) ??
+      legacyActiveTaskKeys.map((key) => localStorage.getItem(key)).find(Boolean) ??
+      null
+    );
   } catch {
     return null;
   }
 }
-export function persistActiveTask(sessionId: string | null, product: TaskProduct = 'code'): boolean {
+export function persistActiveTask(sessionId: string | null): boolean {
   try {
-    const key = product === 'work' ? workActiveTaskKey : activeTaskKey;
-    if (sessionId) localStorage.setItem(key, sessionId);
-    else localStorage.removeItem(key);
+    if (sessionId) localStorage.setItem(activeTaskKey, sessionId);
+    else localStorage.removeItem(activeTaskKey);
     return true;
   } catch {
     return false;
   }
 }
-export function taskDraftKey(sessionId: string | null, product: TaskProduct = 'code'): string {
-  return sessionId || (product === 'work' ? '__work_ai_assistant__' : newTaskDraftKey);
+export function taskDraftKey(sessionId: string | null): string {
+  return sessionId || newTaskDraftKey;
 }
 export function persistTaskDrafts(drafts: Record<string, TaskDraft>): boolean {
   try {
@@ -177,10 +185,10 @@ function readNewTaskConfig(): NewTaskConfig {
     return { workspace: '', model: '', effort: 'medium', permissionMode: 'default', goal: '' };
   }
 }
-export function createTaskState(product: TaskProduct = 'code'): TaskState {
-  const activeSessionId = readActiveTask(product);
+export function createTaskState(): TaskState {
+  const activeSessionId = readActiveTask();
   const draftsByTask = readTaskDrafts();
-  const activeDraft = draftsByTask[taskDraftKey(activeSessionId, product)];
+  const activeDraft = draftsByTask[taskDraftKey(activeSessionId)];
   return {
     sessions: [],
     sessionTitles: readTitles(),
@@ -194,7 +202,7 @@ export function createTaskState(product: TaskProduct = 'code'): TaskState {
     composerValue: activeDraft?.content ?? '',
     composerContextFiles: activeDraft?.contextFiles ?? [],
     composerSkills: activeDraft?.skillNames ?? [],
-    composerMode: activeDraft?.mode === 'deepResearch' && product === 'code' ? 'deepResearch' : 'standard',
+    composerMode: activeDraft?.mode === 'deepResearch' ? 'deepResearch' : 'standard',
     draftsByTask,
     turnQueues: {},
     turnQueueLoading: {},
@@ -218,14 +226,11 @@ export function createTaskState(product: TaskProduct = 'code'): TaskState {
 
 function readTaskDrafts(): Record<string, TaskDraft> {
   const drafts = readRecord<TaskDraft>(taskDraftsKey);
-  const needsAnonymousDraftMigration = readTaskDraftsSchemaVersion() < taskDraftsSchemaVersion;
   let changed = false;
-  // Older builds could persist a Work assistant instruction as the anonymous
-  // Code task while navigating through a system page. Its origin is not
-  // recoverable, so invalidate only that anonymous draft once and preserve all
-  // named task and Work drafts.
-  if (needsAnonymousDraftMigration && Object.hasOwn(drafts, newTaskDraftKey)) {
-    delete drafts[newTaskDraftKey];
+  const legacyWorkDraft = drafts[legacyWorkDraftKey];
+  if (legacyWorkDraft) {
+    drafts[newTaskDraftKey] ??= legacyWorkDraft;
+    delete drafts[legacyWorkDraftKey];
     changed = true;
   }
   for (const [key, draft] of Object.entries(drafts)) {
@@ -233,27 +238,8 @@ function readTaskDrafts(): Record<string, TaskDraft> {
     delete drafts[key];
     changed = true;
   }
-  const draftsPersisted = !changed || persistTaskDrafts(drafts);
-  if (needsAnonymousDraftMigration && draftsPersisted) persistTaskDraftsSchemaVersion();
+  if (changed) persistTaskDrafts(drafts);
   return drafts;
-}
-
-function readTaskDraftsSchemaVersion(): number {
-  try {
-    const value = Number(localStorage.getItem(taskDraftsSchemaKey));
-    return Number.isSafeInteger(value) && value >= 0 ? value : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function persistTaskDraftsSchemaVersion(): boolean {
-  try {
-    localStorage.setItem(taskDraftsSchemaKey, String(taskDraftsSchemaVersion));
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 function isLegacyEditorInjectedDraft(draft: TaskDraft | undefined): boolean {

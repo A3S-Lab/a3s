@@ -2,7 +2,7 @@ import { ArrowDown, Braces, FileDiff } from 'lucide-react';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { Button } from '../../../design-system/primitives';
-import { appendTaskInstruction, appState, navigateTask } from '../../../state/app-state';
+import { appendTaskInstruction, appState } from '../../../state/app-state';
 import { workspaceAbsolutePath } from '../../workspace/workspace-state';
 import type { TaskActions } from '../task-actions';
 import { CopyButton } from './conversation-message-actions';
@@ -63,8 +63,8 @@ export function ToolCallItem({
   const fileChange = call.state === 'succeeded' ? toolFileChange(call) : undefined;
   const showFileDiff = Boolean(fileChange && fileChange.original !== fileChange.modified);
   const cancelled = call.state === 'interrupted' && call.metadata?.cancelled === true;
-  const reviewAvailable = fileEdit && call.state === 'succeeded';
   const filePath = toolFilePath(call);
+  const reviewAvailable = fileEdit && call.state === 'succeeded' && Boolean(filePath);
   const running = call.state === 'preparing' || call.state === 'running';
   const outputNeedsDisclosure = Boolean(call.output && toolOutputNeedsDisclosure(call.output));
   const outcomeMessage = terminalOutcomeMessage(call);
@@ -87,13 +87,7 @@ export function ToolCallItem({
         : null;
 
   const openReview = () => {
-    appState.reviewSourceTaskId = sessionId;
-    appState.reviewIntent = 'review';
-    appState.gitStatus = null;
-    if (!filePath) {
-      navigateTask('review');
-      return;
-    }
+    if (!filePath) return;
     void actions.selectFile({
       path: workspaceAbsolutePath(filePath, appState.workspaceRoot),
       isBinary: false,
@@ -280,12 +274,10 @@ function ToolCallRecovery({ call }: { call: ToolCallProjection }) {
   return (
     <div className={`tool-call-recovery ${permissionOutcome ? 'permission' : 'failure'}`}>
       <span>
-        {permissionOutcome
-          ? '本次操作未执行；你可以让 Code 改用不需要该权限的方案。'
-          : '已保留失败输出，便于继续定位。'}
+        {permissionOutcome ? '本次操作未执行；你可以让 A3S 改用不需要该权限的方案。' : '已保留失败输出，便于继续定位。'}
       </span>
       <Button tone='quiet' onClick={continueSafely}>
-        {permissionOutcome ? '改用安全方案继续' : '让 Code 分析并修复'}
+        {permissionOutcome ? '改用安全方案继续' : '让 A3S 分析并修复'}
       </Button>
     </div>
   );

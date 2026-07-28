@@ -25,9 +25,6 @@ export function ArtifactEntries({
   if (!paths.length) return null;
 
   const openReview = async (path: string) => {
-    appState.reviewSourceTaskId = sessionId;
-    appState.reviewIntent = 'review';
-    appState.gitStatus = null;
     const sessionRoot = appState.sessions.find((session) => session.sessionId === sessionId)?.workspace;
     await actions.selectFile({
       path: workspaceAbsolutePath(path, sessionRoot || appState.workspaceRoot),

@@ -11,11 +11,12 @@ export function DeliverySummary({ sessionId, events }: { sessionId: string; even
   const metrics = projectDeliveryMetrics(verification);
   const completion = metrics.required ? Math.round((metrics.passed / metrics.required) * 100) : 0;
   const reviewReady = verification.status === 'passed' && metrics.failed === 0 && metrics.pending === 0;
-  const reviewChanges = () => {
-    appState.reviewSourceTaskId = sessionId;
-    appState.reviewIntent = 'review';
-    appState.gitStatus = null;
-    navigateTask('review');
+  const prepareReview = () => {
+    if (appState.activeSessionId !== sessionId) switchActiveTask(sessionId);
+    appendTaskInstruction(
+      '请基于本次任务的实际工作区变更和交付证据进行审阅：列出修改文件、关键差异、验证结果、剩余风险和建议检查项。先只给出审阅结论，不要继续修改文件。'
+    );
+    navigateTask('conversation');
   };
   const continueCorrection = () => {
     const failed = verification?.failed_subjects ?? [];
@@ -88,7 +89,7 @@ export function DeliverySummary({ sessionId, events }: { sessionId: string; even
       <footer>
         <span>
           <FileDiff size={13} />
-          进入审阅核对交付与当前工作区差异
+          在当前会话中继续核对交付与工作区变更
         </span>
         <div className='delivery-actions'>
           {!reviewReady && (
@@ -97,8 +98,8 @@ export function DeliverySummary({ sessionId, events }: { sessionId: string; even
               继续修正
             </Button>
           )}
-          <Button tone={reviewReady ? 'primary' : 'secondary'} onClick={reviewChanges}>
-            审阅变更
+          <Button tone={reviewReady ? 'primary' : 'secondary'} onClick={prepareReview}>
+            准备审阅
             <ArrowRight size={14} />
           </Button>
         </div>

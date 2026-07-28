@@ -16,6 +16,7 @@ import { Button, Dialog, Field, IconButton } from '../../../design-system/primit
 import { appState } from '../../../state/app-state';
 import type { QueuedTurn } from '../../../types/api';
 import type { TaskActions } from '../task-actions';
+import { findTaskSession } from '../task-state';
 import { ComposerResourceChips } from './composer-resource-chips';
 import { NewTaskWorkspaceControl } from './new-task-workspace-control';
 import { TaskComposerTrailingControls } from './task-composer-controls';
@@ -28,26 +29,33 @@ import { TaskComposerModelChangeNotice } from './task-composer-model-change-noti
 export function TaskComposer({
   actions,
   variant = 'active',
+  onSubmitStart,
 }: {
   actions: TaskActions;
   variant?: 'preparation' | 'active';
+  onSubmitStart?: () => void;
 }) {
   const state = useSnapshot(appState);
   const [resourcesImporting, setResourcesImporting] = useState(false);
-  const currentTask = state.sessions.find((session) => session.sessionId === state.activeSessionId);
+  const currentTask = findTaskSession(state.sessions, state.activeSessionId);
+  const sessionId = state.activeSessionId;
   const workspaceRoot =
     currentTask?.workspace ||
-    (state.activeProduct === 'work' ? state.workspaceRoot : '') ||
-    (variant === 'preparation' ? state.newTaskConfig.workspace : '') ||
     state.workspaceRoot ||
+    (variant === 'preparation' ? state.newTaskConfig.workspace : '') ||
     state.health?.workspace ||
     '';
-  const currentTaskRunning = Boolean(state.streamingSessionId && state.activeSessionId === state.streamingSessionId);
-  const anotherTaskRunning = Boolean(state.streamingSessionId && state.activeSessionId !== state.streamingSessionId);
+  const currentTaskRunning = Boolean(state.streamingSessionId && sessionId === state.streamingSessionId);
+  const anotherTaskRunning = Boolean(state.streamingSessionId && sessionId !== state.streamingSessionId);
   const submissionState = state.taskSubmissionState;
   const submitting = Boolean(submissionState);
-  const turnQueue = state.activeSessionId ? state.turnQueues[state.activeSessionId] : undefined;
+  const turnQueue = sessionId ? state.turnQueues[sessionId] : undefined;
   const queue = turnQueue?.items ?? [];
+  const submitMessage = () => {
+    if (!state.composerValue.trim() || anotherTaskRunning || resourcesImporting || submitting) return;
+    onSubmitStart?.();
+    void actions.sendMessage();
+  };
   const addContext = (path: string) => {
     const normalized = workspaceContextPath(path, workspaceRoot);
     const currentFiles = appState.composerContextFiles;
@@ -70,7 +78,7 @@ export function TaskComposer({
       {queue.length > 0 && (
         <FollowUpQueue
           items={queue as unknown as QueuedTurn[]}
-          sessionId={state.activeSessionId!}
+          sessionId={sessionId!}
           running={currentTaskRunning}
           paused={Boolean(turnQueue?.paused)}
           actions={actions}
@@ -79,7 +87,7 @@ export function TaskComposer({
       <TaskComposerModelChangeNotice />
       <div
         className={`task-composer ${variant}${submitting ? ' submitting' : ''}${
-          state.activeProduct !== 'work' && state.composerMode === 'deepResearch' ? ' deep-research' : ''
+          state.composerMode === 'deepResearch' ? ' deep-research' : ''
         }`}
         aria-busy={submitting}
       >
@@ -95,7 +103,7 @@ export function TaskComposer({
           }}
         />
         <TaskComposerInput
-          key={`${state.activeSessionId ?? 'new'}:${submitting ? 'submitting' : 'ready'}`}
+          key={`${sessionId ?? 'new'}:${submitting ? 'submitting' : 'ready'}`}
           value={state.composerValue}
           disabled={anotherTaskRunning || resourcesImporting || submitting}
           workspaceRoot={workspaceRoot}
@@ -105,7 +113,7 @@ export function TaskComposer({
             appState.composerValue = value;
           }}
           onSubmit={() => {
-            void actions.sendMessage();
+            submitMessage();
           }}
           onAddFile={addContext}
           onAddSkill={addSkill}
@@ -114,10 +122,8 @@ export function TaskComposer({
         <footer>
           <div>
             <TaskComposerModeControl actions={actions} />
-            {state.activeProduct !== 'work' && (
-              <TaskComposerResearchMode disabled={anotherTaskRunning || resourcesImporting || submitting} />
-            )}
-            {state.activeProduct !== 'work' && <TaskComposerGoalTiming actions={actions} />}
+            <TaskComposerResearchMode disabled={anotherTaskRunning || resourcesImporting || submitting} />
+            <TaskComposerGoalTiming actions={actions} />
           </div>
           <div>
             <TaskComposerTrailingControls actions={actions} />
@@ -137,7 +143,8 @@ export function TaskComposer({
                   : !state.composerValue.trim() || anotherTaskRunning || resourcesImporting || submitting
               }
               onClick={() => {
-                void (currentTaskRunning ? actions.cancelMessage() : actions.sendMessage());
+                if (currentTaskRunning) void actions.cancelMessage();
+                else submitMessage();
               }}
             >
               {currentTaskRunning ? (
@@ -150,7 +157,7 @@ export function TaskComposer({
             </button>
           </div>
         </footer>
-        {variant === 'preparation' && state.activeProduct !== 'work' && (
+        {variant === 'preparation' && !currentTask && (
           <div className='composer-preparation-meta'>
             <NewTaskWorkspaceControl actions={actions} />
           </div>

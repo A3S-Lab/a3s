@@ -170,7 +170,7 @@ export function SettingsDialog({
             ))}
           </nav>
           <footer>
-            <strong>A3S Code</strong>
+            <strong>A3S Web</strong>
             <span>本地 CLI {state.health?.version || '—'}</span>
           </footer>
         </aside>

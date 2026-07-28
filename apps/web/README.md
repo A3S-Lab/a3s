@@ -1,10 +1,11 @@
 # A3S Web
 
-A3S Web is a desktop super-app shell. Code is the first and default Activity
-Bar destination, Work is the second built-in product, and the standalone
-Knowledge destination follows Work. Installed A3S Use packages can add reviewed
-workbench views for vertical capabilities such as Research and Finance. Code is
-a task workspace, not a slash-command launcher or a generic chat client.
+A3S Web is a local-first AI workspace. Work is the single default workbench at
+`#home`; file management, Office editing, coding, and AI execution are scenes
+inside that workbench rather than separate products or conversations. The
+standalone Knowledge destination follows Work, while installed A3S Use packages
+can add reviewed workbench views for vertical capabilities such as Research and
+Finance.
 
 Product implementation is governed by the
 [super-app plan](docs/SUPER_APP.md),
@@ -21,6 +22,8 @@ sandbox, messaging, and review contracts are defined in
 library, editor, and external-import lifecycle are defined in
 [A3S Web Knowledge](docs/KNOWLEDGE.md), with the independent worker handoff in
 the [Knowledge Compilation Protocol](docs/KNOWLEDGE_COMPILATION_PROTOCOL.md).
+The task-first Work entry point and its staged evolution are defined in the
+[Work AI-Native Home plan](docs/WORK_AI_NATIVE_HOME.md).
 Native Rust WeChat/Weixin iLink
 remote management is defined by the
 [product and architecture](docs/WEIXIN_REMOTE_CONTROL.md), tracked in the
@@ -30,8 +33,10 @@ by the
 
 ## Current product surface
 
-- A VS Code-style Activity Bar with built-in Code, Work, and Knowledge entries;
-  Knowledge sits immediately below Work, followed by enabled package
+- A VS Code-style Activity Bar with built-in Work and Knowledge entries. Work
+  is the only task entry and always opens the canonical `#home` route; coding is
+  entered by opening a code or text file inside Work. Knowledge sits immediately
+  below Work, followed by enabled package
   contributions ordered from the live A3S Use registry. Memory, the verified
   plugin Market (A3S Use release bundles plus signed TUF sources), and Settings
   share the pinned bottom section.
@@ -53,8 +58,7 @@ by the
 - A single **Settings → Channels** page with a left-aligned WeChat and Feishu
   list, without a second framed workspace around the selected channel. WeChat
   is backed only by the native Rust `WeixinModule` in A3S Boot.
-  `#settings/channels/weixin` is the canonical route; the legacy
-  `#settings/weixin` and `#weixin` deep links open the same channel. The
+  `#settings/channels/weixin` is the only WeChat route. The
   Feishu channel is a “Coming soon” placeholder and performs no credential or
   network activity. The read-only Beta exposes
   truthful entitlement, binding, account, monitor, and
@@ -70,8 +74,8 @@ by the
   QR code or sending Tencent traffic. Public release injection and live Tencent
   validation remain gated on A3S entitlement and security review.
 - A Finder-inspired A3S Work local-files workspace backed by the real filesystem:
-  it initially follows the default A3S Code workspace shown in Settings, while
-  an explicit Work “Switch workspace” choice is persisted as a user override.
+  it initially follows the default workspace shown in Settings, while an
+  explicit “Switch workspace” choice is persisted as a user override.
   Native folder selection, back/forward/up navigation,
   breadcrumbs, grid and list layouts, current-folder filtering, bounded
   recursive whole-workspace filename search with an explicit scope switch,
@@ -107,16 +111,25 @@ by the
   artifact; folders expose metadata only, and unknown or oversized binaries are
   not read. Local deletion is explicitly labeled as permanent and requires
   confirmation because operating-system Trash integration is not yet available.
+- An AI-native A3S Work home that starts with the complete durable task
+  composer instead of a file grid. It preserves execution mode, model, effort,
+  `@` workspace references, `/` Skills, drag-and-drop context, and the real
+  queue submission path. Implemented shortcuts create Office artifacts, open
+  files, prepare editable data-analysis and file-organization drafts, or enter
+  the local-files workspace. The AI Assistant stays closed on a fresh
+  visit and opens when a home task is submitted; templates, folders, and recent
+  files remain directly available below the task entry, while Recent,
+  Favorites, Trash, and folder views remain focused file-management surfaces.
 - A single-file detail editor for every non-binary code or text file in the
   selected root. It uses the same header and return flow as Office details while
   keeping Monaco syntax highlighting, diagnostics, semantic navigation, safe
   Cmd/Ctrl+S writes with external-change conflict review, and editor context
   actions for the AI Assistant. Markdown uses a fixed left-source/right-live-
   preview layout instead of a mode switch.
-- A resizable right-side Work AI Assistant backed by the durable A3S task
-  runtime but isolated from Code conversations. Work sessions use their own
-  `agentId`, persisted active conversation, new-conversation draft, workspace,
-  and product switch restoration; they are excluded from the Code task list.
+- A resizable right-side AI Assistant backed by the durable A3S task runtime.
+  The home composer, file workspace, Office editors, and code editor all use the
+  same conversation list, active session, draft, workspace, and default agent.
+  Switching scenes never forks a hidden Code or Office conversation.
   At 1120 px and below the assistant becomes a full Work-pane overlay with a
   persistent close action instead of squeezing the file surface.
   File context menus can prepare ask, summarize, organize, and naming
@@ -129,10 +142,10 @@ by the
   structured proposal protocol: Work shows trusted before/after values, lets
   the user select individual changes, and applies only targets whose live
   source still matches. Layout and formatting advice remains review-only.
-- A shared product-sidebar visual language gives Code, Work, and Knowledge the
-  same dimensions, navigation rows, framed command glyphs, icon stroke, and
-  interaction states. Work keeps color-coded, extension-badged file tiles where
-  file type is meaningful.
+- A shared sidebar visual language gives the Work conversation list and
+  Knowledge navigation the same dimensions, navigation rows, framed command
+  glyphs, icon stroke, and interaction states. Work keeps color-coded,
+  extension-badged file tiles where file type is meaningful.
 - A compatibility-preserved A3S Work artifact library with templates, recent
   files, favorites, server-owned autosave, folders, move/copy/rename,
   recoverable trash, imported source-file recovery, version history. Folder
@@ -371,30 +384,27 @@ by the
   interoperability, collaboration, and fidelity requirements, are tracked in
   [the Work Office contract](docs/WORK_OFFICE.md).
 - A WorkBuddy-aligned global Settings dialog that preserves and dims the
-  current Code surface; Help and Shortcuts is a searchable dialog tab rather
-  than a separate full-screen page.
-- A compact, grouped Code Task Library with on-demand search and one
-  current-task workspace; rename and delete stay inline in the affected row.
-- A dedicated Code Memory workspace with complete-store retrieval,
+  current product; Help and Shortcuts is a searchable dialog tab rather than a
+  separate full-screen page.
+- A compact unified conversation list with on-demand search. All historical
+  sessions remain visible; new sessions use the default agent, and rename and
+  delete stay inline in the affected row.
+- A dedicated Memory product at `#memory` with complete-store retrieval,
   plain-language search and filters, a lazy-loaded 3D relationship view, a
   chronological list, and focused memory/entity detail. Internal scores, paths,
-  raw fields, and identifiers are not shown. A separate Learning tab shows
-  only items that need review by default and supports save, ignore, reconsider,
+  raw fields, and identifiers are not shown. A separate Learning tab shows only
+  items that need review by default and supports save, ignore, reconsider,
   update, and recoverable version rollback.
-- A continuous task conversation with Workspace and Activity opened as
-  contextual right-side views that can expand in place to a full content-area
-  presentation without remounting the editor or losing drafts. Conversation
-  headers expose launch actions only while no context panel is open; the
-  mounted panel then owns switching, presentation, and close actions so a
-  responsive overlay never leaves covered duplicate controls in the focus
-  order. Opening moves keyboard focus into the active panel mode, while closing
-  returns it to the control that opened the panel.
+- A continuous task conversation in the resizable AI Assistant. Home,
+  files, Office, and code scenes share its active session, draft, queue, model,
+  effort, and workspace; compact widths use an overlay with a persistent close
+  action.
 - Natural-language task composition with a searchable recent-workspace picker,
   native local-folder selection, a lazy color-coded `@` workspace tree,
   searchable highlighted Skill suggestions, safe file/folder drop import, and
   inline `/goal` control.
 - A calm turn-based execution document with restored Skill/file context,
-  stable Code response headers, local copy and continue-edit actions,
+  stable A3S response headers, local copy and continue-edit actions,
   lifecycle-aware Markdown reasoning, reader-controlled stream following, and
   CJK-aware, typographically tuned Streamdown/Shiki rendering. Newly streamed
   words fade in without replaying animation on existing content, and incoming
@@ -423,7 +433,7 @@ by the
   Dedicated Use workers are identified by their observed standard MCP routes
   (`Use · Browser`, `Use · Office`, or multiple deduplicated routes), while
   their evidence uses readable domain actions instead of raw MCP tool names.
-- Code Web shares the TUI execution boundaries: Default uses managed SRT for
+- A3S Web shares the TUI execution boundaries: Default uses managed SRT for
   ordinary Bash and asks only before host execution, Plan forces a read-only
   planning run, and Auto never opens HITL—it executes inside SRT or denies an
   unavailable sandbox, boundary escape, or unknown unbounded operation.
@@ -431,27 +441,13 @@ by the
   disconnected, retry, and technical-detail states. Older local services that
   lack the model-catalog route fall back to their configured Provider models
   instead of blocking the workspace.
-- A VS Code-aligned Web IDE with a compact explorer, color-coded file and Git
-  decorations, pointer and keyboard context menus with in-place file-operation
-  flows, one roving tree tab stop with visual-order and hierarchical arrow-key
-  navigation, focused-row `F2` rename and confirmed `Delete` with focus
-  recovery, a global `Cmd/Ctrl+P` file picker with fuzzy name/path ranking,
-  lazy-loaded Monaco editing, independent dirty file tabs with shortest-unique
-  parent labels for same-named files, a semantic roving tab strip with
-  post-close focus recovery and editor-to-editor `Ctrl+Tab` focus handoff,
-  Simplified Chinese Monaco and code-navigation menus, and pointer and keyboard
-  tab context menus for guarded close-one/other/right/all operations and path
-  copying. Keyboard save/close/tab switching stays scoped to workspace focus,
-  while an editor-safe `Cmd/Ctrl+B` task-sidebar toggle, bounded back/forward
-  location history, and a task-scoped full-screen workspace with Escape
-  restoration preserve continuous editing. Source-focused search has an
-  explicit dependency/build scope and reviewed replacement; saves retain
-  external-change conflict protection and configuration validation. Saved-file
-  Code Intelligence provides document symbols, semantic navigation, and
-  diagnostics through one visible toolbar menu for definition, declaration,
-  references, implementations, and the file outline.
-- Workspace-wide Git review with complete original/modified Monaco diff tabs,
-  stage, unstage, and commit.
+- A Work-native code and text scene with a compact lazy explorer, color-coded
+  file glyphs, `Cmd/Ctrl+P` quick open, lazy Monaco editing, independent dirty
+  tabs, Simplified Chinese code-navigation menus, keyboard save and guarded
+  close, external-change conflict protection, Markdown source/live preview,
+  and saved-file Code Intelligence for symbols, navigation, and diagnostics.
+  Quick open and AI artifact links delegate to Work's file handler, so Office
+  files and source files enter the correct mounted scene.
 - A larger, deliberately simple local configuration center for A3S OS account
   and endpoint,
   runtime-detected Claude Code, Codex, and WorkBuddy account status and refresh,
@@ -480,14 +476,11 @@ by the
 The primary journey is:
 
 ```text
-Work: choose a local folder → browse and select real files
-→ prepare file or text context in AI Assistant → review and send
-→ inspect and selectively apply eligible AI differences
-→ create or open a bound Office file → explicitly save back or Save As
-
-Code:
-Create task → add context → execute → decide permissions
-→ inspect evidence in context → correct and validate → stage/commit
+Open #home → describe an outcome or choose a local folder
+→ browse and select real files → prepare visible context in AI Assistant
+→ execute and decide permissions → inspect evidence or proposals
+→ open the resulting Office or code file in Work
+→ edit, validate, and explicitly save back or Save As
 → continue the same conversation
 ```
 
@@ -596,7 +589,7 @@ flow to open a target.
 
 ## Memory visualization
 
-Open Memory from the Activity Bar, the command palette, or `#code/memory`.
+Open Memory from the Activity Bar, the command palette, or `#memory`.
 The surface loads every indexed memory page while requesting graph topology
 once, so search, filtering, timeline results, and graph projection use the
 whole local store rather than the first response page. The WebGL renderer is

@@ -8,6 +8,7 @@ import {
   FolderOpen,
   FolderPlus,
   Grid2X2,
+  House,
   List,
   RefreshCw,
   Sparkles,
@@ -37,7 +38,7 @@ import {
 import type { WorkFileCreateArtifactRequest, WorkFileCreateArtifactResult } from './use-work-file-inline-operation';
 import { WorkFilesView } from './work-files-view';
 import { WorkQuickLook } from './work-quick-look';
-import { WorkSidebarOpenButton } from './work-sidebar-open-button';
+import { ConversationSidebarOpenButton } from './conversation-sidebar-open-button';
 import { WorkWorkspaceSwitcher } from './work-workspace-switcher';
 
 export function WorkFilesWorkspace({
@@ -52,6 +53,7 @@ export function WorkFilesWorkspace({
   onCreateArtifactFile,
   onConsumeCreateArtifactRequest,
   onOpenSidebar,
+  onOpenHome = () => undefined,
   onToggleCopilot,
 }: {
   actions: WorkFilesActions;
@@ -68,6 +70,7 @@ export function WorkFilesWorkspace({
   ) => Promise<WorkFileCreateArtifactResult>;
   onConsumeCreateArtifactRequest?: () => void;
   onOpenSidebar: () => void;
+  onOpenHome?: () => void;
   onToggleCopilot: () => void;
 }) {
   const [createFolderRequest, setCreateFolderRequest] = useState(0);
@@ -95,18 +98,19 @@ export function WorkFilesWorkspace({
   if (!actions.rootPath) {
     return (
       <main className='work-files-onboarding'>
-        {!sidebarOpen && (
-          <div className='work-files-onboarding-toolbar'>
-            <WorkSidebarOpenButton onOpen={onOpenSidebar} />
-            <WorkWorkspaceSwitcher
-              rootPath={actions.rootPath}
-              recentPaths={actions.recentRootPaths}
-              variant='compact'
-              onSelect={actions.selectRoot}
-              onPick={actions.pickRoot}
-            />
-          </div>
-        )}
+        <div className='work-files-onboarding-toolbar'>
+          {!sidebarOpen && <ConversationSidebarOpenButton onOpen={onOpenSidebar} />}
+          <IconButton label='返回工作首页' onClick={onOpenHome}>
+            <House size={16} />
+          </IconButton>
+          <WorkWorkspaceSwitcher
+            rootPath={actions.rootPath}
+            recentPaths={actions.recentRootPaths}
+            variant='compact'
+            onSelect={actions.selectRoot}
+            onPick={actions.pickRoot}
+          />
+        </div>
         <StateView
           className='work-files-onboarding-state'
           tone='info'
@@ -128,18 +132,17 @@ export function WorkFilesWorkspace({
   return (
     <main className='work-files-workspace'>
       <header className='work-files-toolbar'>
-        {!sidebarOpen && (
-          <>
-            <WorkSidebarOpenButton onOpen={onOpenSidebar} />
-            <WorkWorkspaceSwitcher
-              rootPath={actions.rootPath}
-              recentPaths={actions.recentRootPaths}
-              variant='compact'
-              onSelect={actions.selectRoot}
-              onPick={actions.pickRoot}
-            />
-          </>
-        )}
+        {!sidebarOpen && <ConversationSidebarOpenButton onOpen={onOpenSidebar} />}
+        <IconButton label='返回工作首页' onClick={onOpenHome}>
+          <House size={16} />
+        </IconButton>
+        <WorkWorkspaceSwitcher
+          rootPath={actions.rootPath}
+          recentPaths={actions.recentRootPaths}
+          variant='compact'
+          onSelect={actions.selectRoot}
+          onPick={actions.pickRoot}
+        />
         <div className='work-files-history-actions'>
           <IconButton label='后退' disabled={!actions.canGoBack} onClick={actions.goBack}>
             <ChevronLeft size={17} />
@@ -294,7 +297,7 @@ export function WorkFilesWorkspace({
           <Button
             tone='quiet'
             className={`work-copilot-toggle ${copilotOpen ? 'active' : ''}`}
-            aria-label={copilotOpen ? '关闭 Work AI 助手' : '打开 Work AI 助手'}
+            aria-label={copilotOpen ? '关闭 AI 助手' : '打开 AI 助手'}
             aria-pressed={copilotOpen}
             onClick={onToggleCopilot}
           >

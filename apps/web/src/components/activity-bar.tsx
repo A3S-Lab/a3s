@@ -3,7 +3,6 @@ import {
   BrainCircuit,
   BriefcaseBusiness,
   ChartNoAxesCombined,
-  Code2,
   Database,
   FileText,
   FlaskConical,
@@ -23,7 +22,6 @@ import {
   navigatePlugins,
   navigateProduct,
   navigateSettings,
-  navigateTask,
 } from '../state/app-state';
 
 const pluginIcons: Record<string, LucideIcon> = {
@@ -52,18 +50,8 @@ export function ActivityBar() {
       </div>
       <div className='activity-products'>
         <ActivityButton
-          label='编码'
-          tooltip='编码'
-          active={state.activeProduct === 'code' && state.codeSurface === 'tasks'}
-          icon={Code2}
-          onClick={() => {
-            appState.sidebarOpen = true;
-            navigateTask('conversation');
-          }}
-        />
-        <ActivityButton
-          label='办公'
-          tooltip='办公'
+          label='工作'
+          tooltip='工作'
           active={state.activeProduct === 'work'}
           icon={BriefcaseBusiness}
           onClick={() => {
@@ -96,7 +84,7 @@ export function ActivityBar() {
         <ActivityButton
           label='记忆'
           tooltip='记忆'
-          active={state.activeProduct === 'code' && state.codeSurface === 'memory'}
+          active={state.activeProduct === 'memory'}
           icon={BrainCircuit}
           onClick={navigateMemory}
         />

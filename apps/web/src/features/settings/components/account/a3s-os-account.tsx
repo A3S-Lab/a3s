@@ -53,7 +53,7 @@ export function A3sOsAccount({ actions }: { actions: SettingsActions }) {
         <span>
           {!state.osAccount?.configured && state.health?.configPath
             ? `配置文件：${state.health.configPath}`
-            : '授权状态由本机 A3S Code 服务校验'}
+            : '授权状态由本机 A3S 服务校验'}
         </span>
         <Button
           tone={signedIn ? 'danger' : 'primary'}

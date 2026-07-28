@@ -49,7 +49,7 @@ describe('Work local file controller', () => {
     vi.restoreAllMocks();
   });
 
-  it('uses the A3S Code default workspace until the user chooses a Work override', async () => {
+  it('uses the configured default workspace until the user chooses a Work override', async () => {
     const readDir = vi.spyOn(codeApi, 'readDir').mockResolvedValue([]);
     const { result, rerender } = renderHook(({ defaultRoot }) => useWorkFilesController(defaultRoot), {
       initialProps: { defaultRoot: '/code-default' },

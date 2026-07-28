@@ -184,13 +184,13 @@ function ContextReviewDialog({
   return (
     <Dialog
       title={proposal.title}
-      description={`${contributionTitle} 请求将以下内容交给 Code。`}
+      description={`${contributionTitle} 请求将以下内容交给当前 AI 会话。`}
       onClose={actions.dismissContextProposal}
       footer={
         <>
           <Button onClick={actions.dismissContextProposal}>取消</Button>
           <Button tone='primary' onClick={actions.acceptContextProposal}>
-            在 Code 中使用
+            在当前会话中使用
           </Button>
         </>
       }
@@ -204,7 +204,7 @@ function ContextReviewDialog({
               只会附加你确认的上下文，以及宿主从同一签名包验证的 <code>{skill}</code> Skill。
             </span>
           ) : (
-            <span>只会附加你确认的上下文，不会附加该包的专业 Skill；Code 将使用当前可用的通用能力。</span>
+            <span>只会附加你确认的上下文，不会附加该包的专业 Skill；AI 将使用当前可用的通用能力。</span>
           )}
         </div>
         <section>

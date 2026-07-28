@@ -94,7 +94,7 @@ export function KnowledgePage({ actions }: { actions: KnowledgeActions }) {
               {!state.sidebarOpen && (
                 <SidebarProductOpenButton
                   title='知识'
-                  className='work-sidebar-open-button'
+                  className='product-sidebar-open-button'
                   onOpen={() => {
                     appState.sidebarOpen = true;
                   }}

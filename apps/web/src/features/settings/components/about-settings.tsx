@@ -10,8 +10,8 @@ export function AboutSettings({ actions }: { actions: SettingsActions }) {
   return (
     <div className='settings-section about-settings'>
       <img src='/logo.png' alt='A3S' />
-      <h3>A3S Code Web</h3>
-      <p>单智能体、本地优先的 A3S Code 浏览器工作台。</p>
+      <h3>A3S Web</h3>
+      <p>单智能体、本地优先的 A3S 浏览器工作台。</p>
       <dl>
         <div>
           <dt>CLI 版本</dt>

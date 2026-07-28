@@ -18,7 +18,12 @@ export function NewTaskWorkspaceControl({ actions }: { actions: TaskActions }) {
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [openingLocalFolder, setOpeningLocalFolder] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const selectedPath = state.newTaskConfig.workspace.trim() || state.workspaceRoot || state.health?.workspace || '';
+  const selectedPath =
+    (state.activeProduct === 'work' ? state.workspaceRoot : state.newTaskConfig.workspace.trim()) ||
+    state.newTaskConfig.workspace.trim() ||
+    state.workspaceRoot ||
+    state.health?.workspace ||
+    '';
   const workspaces = useMemo(
     () => workspaceCandidates(selectedPath, state.health?.workspace, state.sessions),
     [selectedPath, state.health?.workspace, state.sessions]
@@ -125,7 +130,7 @@ export function NewTaskWorkspaceControl({ actions }: { actions: TaskActions }) {
                 <FolderOpen size={15} />
                 <span>
                   <strong>打开本地文件夹</strong>
-                  <small>从这台电脑选择 Code 要处理的目录</small>
+                  <small>从这台电脑选择 A3S 要处理的目录</small>
                 </span>
                 {openingLocalFolder && <LoaderCircle className='spin' size={14} />}
               </button>

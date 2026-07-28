@@ -3,9 +3,8 @@ import type { HealthResponse } from '../../types/api';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type BootPhase = 'loading' | 'ready' | 'error';
 export type ServiceStatus = 'connected' | 'checking' | 'disconnected';
-export type ProductId = 'work' | 'code' | 'knowledge' | 'plugin' | 'plugins';
+export type ProductId = 'work' | 'memory' | 'knowledge' | 'plugin' | 'plugins';
 export type TaskView = 'conversation' | 'review' | 'activity';
-export type CodeSurface = 'tasks' | 'memory';
 export interface ToastState {
   id: number;
   tone: 'info' | 'success' | 'error';
@@ -19,7 +18,6 @@ export interface CodeShellState {
   health: HealthResponse | null;
   theme: ThemePreference;
   activeProduct: ProductId;
-  codeSurface: CodeSurface;
   sidebarOpen: boolean;
   taskView: TaskView;
   settingsOpen: boolean;
@@ -28,18 +26,19 @@ export interface CodeShellState {
   toast: ToastState | null;
 }
 
-function readTaskView(): TaskView {
-  const view = window.location.hash.match(/^#code\/(conversation|review|activity)$/)?.[1];
-  return view === 'review' || view === 'activity' ? view : 'conversation';
-}
-function readCodeSurface(): CodeSurface {
-  return window.location.hash === '#code/memory' ? 'memory' : 'tasks';
-}
 function readActiveProduct(): ProductId {
   if (window.location.hash.startsWith('#plugin/')) return 'plugin';
   if (window.location.hash === '#plugins') return 'plugins';
   if (window.location.hash === '#knowledge') return 'knowledge';
-  return window.location.hash.startsWith('#work') ? 'work' : 'code';
+  if (window.location.hash === '#memory') return 'memory';
+  if (
+    window.location.hash !== '#home' &&
+    window.location.hash !== '#settings' &&
+    !window.location.hash.startsWith('#settings/')
+  ) {
+    window.history.replaceState(null, '', '#home');
+  }
+  return 'work';
 }
 function readTheme(): ThemePreference {
   try {
@@ -50,12 +49,7 @@ function readTheme(): ThemePreference {
   }
 }
 function readSettingsOpen() {
-  return (
-    window.location.hash === '#help' ||
-    window.location.hash === '#weixin' ||
-    window.location.hash === '#settings' ||
-    window.location.hash.startsWith('#settings/')
-  );
+  return window.location.hash === '#settings' || window.location.hash.startsWith('#settings/');
 }
 export function createCodeShellState(): CodeShellState {
   return {
@@ -66,9 +60,8 @@ export function createCodeShellState(): CodeShellState {
     health: null,
     theme: readTheme(),
     activeProduct: readActiveProduct(),
-    codeSurface: readCodeSurface(),
     sidebarOpen: true,
-    taskView: readTaskView(),
+    taskView: 'conversation',
     settingsOpen: readSettingsOpen(),
     commandPaletteOpen: false,
     fileQuickOpenOpen: false,

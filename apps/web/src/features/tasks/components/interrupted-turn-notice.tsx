@@ -16,7 +16,7 @@ export function InterruptedTurnNotice({ instruction }: { instruction: string }) 
           </Button>
         }
       >
-        任务记录里没有找到 Code 的回复，可能在连接中断或页面关闭时停止。
+        任务记录里没有找到 AI 的回复，可能在连接中断或页面关闭时停止。
       </InlineNotice>
     </output>
   );

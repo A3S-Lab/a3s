@@ -1,16 +1,12 @@
 import { useEventListener } from 'ahooks';
 import { useEffect } from 'react';
-import { activateTaskProduct, appState, closeSettings, navigateSettings, navigateTask } from '../../state/app-state';
+import { appState, closeSettings, navigateSettings, navigateTask } from '../../state/app-state';
 import { settingsChannelFromHash, settingsTabFromHash } from '../settings/settings-state';
 
 export function useShellShortcuts(newTask: () => void) {
   const syncLocation = () => {
     const settingsTab = settingsTabFromHash(window.location.hash);
     if (settingsTab) {
-      if (window.location.hash === '#help') {
-        navigateSettings('help');
-        return;
-      }
       appState.settingsOpen = true;
       appState.settingsTab = settingsTab;
       const settingsChannel = settingsChannelFromHash(window.location.hash);
@@ -22,13 +18,11 @@ export function useShellShortcuts(newTask: () => void) {
       return;
     }
     if (window.location.hash === '#plugins') {
-      activateTaskProduct('code');
       appState.settingsOpen = false;
       appState.activeProduct = 'plugins';
       return;
     }
     if (window.location.hash === '#knowledge') {
-      activateTaskProduct('code');
       appState.settingsOpen = false;
       appState.activeProduct = 'knowledge';
       appState.commandPaletteOpen = false;
@@ -36,36 +30,25 @@ export function useShellShortcuts(newTask: () => void) {
     }
     const pluginKey = pluginKeyFromHash(window.location.hash);
     if (pluginKey) {
-      activateTaskProduct('code');
       appState.settingsOpen = false;
       appState.activeProduct = 'plugin';
       appState.activePluginKey = pluginKey;
       return;
     }
-    if (window.location.hash === '#code/memory') {
-      activateTaskProduct('code');
+    if (window.location.hash === '#memory') {
       appState.settingsOpen = false;
-      appState.activeProduct = 'code';
-      appState.codeSurface = 'memory';
-      return;
-    }
-    const view = window.location.hash.match(/^#code\/(conversation|review|activity)$/)?.[1];
-    if (view === 'conversation' || view === 'review' || view === 'activity') {
-      activateTaskProduct('code');
-      appState.settingsOpen = false;
-      appState.activeProduct = 'code';
-      appState.codeSurface = 'tasks';
-      if (view === 'conversation') appState.workspacePresentation = 'docked';
-      appState.taskView = view;
-      return;
-    }
-    if (window.location.hash.startsWith('#work')) {
-      activateTaskProduct('work');
-      appState.settingsOpen = false;
-      appState.activeProduct = 'work';
+      appState.activeProduct = 'memory';
       appState.commandPaletteOpen = false;
       appState.fileQuickOpenOpen = false;
+      return;
     }
+    if (window.location.hash !== '#home') window.history.replaceState(null, '', '#home');
+    appState.settingsOpen = false;
+    appState.activeProduct = 'work';
+    appState.taskView = 'conversation';
+    appState.workspacePresentation = 'docked';
+    appState.commandPaletteOpen = false;
+    appState.fileQuickOpenOpen = false;
   };
   useEffect(syncLocation, []);
   useEventListener('hashchange', syncLocation);
@@ -91,7 +74,7 @@ export function useShellShortcuts(newTask: () => void) {
         else if (event.key === 'Escape' && !appState.updateInstalling) closeSettings();
         return;
       }
-      if (appState.activeProduct !== 'code') {
+      if (appState.activeProduct !== 'work') {
         if (modifier && event.key === ',') {
           event.preventDefault();
           navigateSettings('general');
@@ -101,7 +84,7 @@ export function useShellShortcuts(newTask: () => void) {
         }
         return;
       }
-      if (modifier && key === 'p' && appState.activeSessionId && appState.workspaceRoot) {
+      if (modifier && key === 'p' && appState.workspaceRoot) {
         event.preventDefault();
         appState.commandPaletteOpen = false;
         appState.fileQuickOpenOpen = true;

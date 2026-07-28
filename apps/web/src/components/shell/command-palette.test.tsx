@@ -14,7 +14,7 @@ describe('CommandPalette', () => {
     appState.workspaceRoot = '';
     appState.workspacePresentation = 'docked';
     appState.taskView = 'conversation';
-    window.history.replaceState(null, '', '#code/conversation');
+    window.history.replaceState(null, '', '#home');
   });
 
   it('filters every command and runs the selected result from the keyboard', () => {
@@ -24,7 +24,7 @@ describe('CommandPalette', () => {
     expect(input).toHaveFocus();
     fireEvent.change(input, { target: { value: '设置' } });
     expect(screen.getByRole('option', { name: /设置/ })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: /新建任务/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /新建会话/ })).not.toBeInTheDocument();
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(appState.settingsOpen).toBe(true);
     expect(window.location.hash).toBe('#settings/general');
@@ -40,16 +40,16 @@ describe('CommandPalette', () => {
     expect(screen.queryAllByRole('option')).toHaveLength(0);
   });
 
-  it('only offers task-scoped destinations when a task exists', () => {
+  it('offers quick file access whenever Work has a workspace', () => {
     appState.activeSessionId = null;
     const { unmount } = render(<CommandPalette actions={{ newConversation: vi.fn() } as unknown as CodeActions} />);
-    expect(screen.queryByRole('option', { name: /任务活动/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /快速打开文件/ })).not.toBeInTheDocument();
     expect(screen.getByRole('option', { name: /帮助与快捷键/ })).toBeInTheDocument();
     unmount();
 
-    appState.activeSessionId = 'task-1';
+    appState.workspaceRoot = '/repo';
     render(<CommandPalette actions={{ newConversation: vi.fn() } as unknown as CodeActions} />);
-    expect(screen.getByRole('option', { name: /任务活动/ })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /快速打开文件/ })).toBeInTheDocument();
   });
 
   it('opens Help as the selected Settings tab', () => {
@@ -68,9 +68,8 @@ describe('CommandPalette', () => {
 
     fireEvent.click(screen.getByRole('option', { name: /记忆图谱/ }));
 
-    expect(appState.activeProduct).toBe('code');
-    expect(appState.codeSurface).toBe('memory');
-    expect(window.location.hash).toBe('#code/memory');
+    expect(appState.activeProduct).toBe('memory');
+    expect(window.location.hash).toBe('#memory');
     expect(appState.commandPaletteOpen).toBe(false);
   });
 
@@ -97,8 +96,7 @@ describe('CommandPalette', () => {
     invoker.remove();
   });
 
-  it('offers file quick open only for an active task', () => {
-    appState.activeSessionId = 'task-1';
+  it('opens Work file quick open for the active workspace', () => {
     appState.workspaceRoot = '/repo';
     appState.commandPaletteOpen = true;
     render(<CommandPalette actions={{ newConversation: vi.fn() } as unknown as CodeActions} />);
@@ -107,18 +105,5 @@ describe('CommandPalette', () => {
 
     expect(appState.commandPaletteOpen).toBe(false);
     expect(appState.fileQuickOpenOpen).toBe(true);
-  });
-
-  it('toggles the current task workspace presentation', () => {
-    appState.activeSessionId = 'task-1';
-    appState.workspaceRoot = '/repo';
-    appState.taskView = 'review';
-    appState.commandPaletteOpen = true;
-    render(<CommandPalette actions={{ newConversation: vi.fn() } as unknown as CodeActions} />);
-
-    fireEvent.click(screen.getByRole('option', { name: /全屏显示工作区/ }));
-
-    expect(appState.commandPaletteOpen).toBe(false);
-    expect(appState.workspacePresentation).toBe('fullscreen');
   });
 });

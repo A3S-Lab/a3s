@@ -1,241 +1,244 @@
-# A3S Code Web Domain and State Model
+# A3S Web Domain and State Model
+
+## Work product
+
+Work is the single task product at `#home`.
+
+```text
+Work
+├── unified conversations
+├── active workspace
+├── home and managed artifacts
+├── local filesystem
+├── Office/PDF handlers
+├── code/text handler
+└── AI Assistant
+```
+
+Home, files, Office, and code are presentation scenes. They do not own product
+identity, routes, or separate session stores.
 
 ## Workspace
 
-The served local project boundary.
+The bounded local project or folder context.
 
 ```text
 Workspace
 ├── root path and service health
 ├── files and directories
-├── repository status
+├── repository metadata
+├── code intelligence
 ├── configuration diagnostics
-└── tasks
+└── conversations
 ```
 
-The service is authoritative. Client states are `checking`, `connected`, and
-`disconnected` with an optional error.
+The local service is authoritative for disk content. Client service states are
+`checking`, `connected`, and `disconnected`, with an optional recoverable error.
 
-## Task
+## Conversation
 
-The durable unit of user intent. A service session is adapted into a task; the
-Web UI does not expose transport mechanics as a separate product concept.
+The durable unit of user intent, adapted from a service session.
 
 ```text
-Task
+Conversation
 ├── identity and workspace
-├── conversation turns
+├── turns and messages
 ├── run configuration
 ├── active execution output
 ├── queued follow-up instructions
-├── file context references
+├── selected context
 ├── artifact references
-├── semantic execution activity
 └── verification delivery
 ```
 
-Relevant presentation states are draft, idle, running, waiting for a decision,
-stopped, failed, and completed. The exact service state remains available but
-unknown enum values must not be shown raw.
+All historical sessions belong to the same catalog. New sessions use the
+default agent. Presentation states include draft, idle, running, waiting for a
+decision, stopped, failed, and completed.
+
+## Draft
+
+A conversation-scoped or new-conversation input snapshot.
+
+```text
+Draft
+├── content
+├── workspace-relative context paths
+├── Skills
+├── model and effort
+└── execution mode
+```
+
+The Home composer and AI Assistant edit the same active draft. Switching Work
+scenes does not snapshot or replace it; switching conversations does.
 
 ## Turn
 
-One user instruction and its resulting assistant work. A turn may contain text,
-reasoning, a plan, semantic executions, permission requests, and verification.
-
-## Plan
-
-An agent-provided plan updated in place. Step states include pending,
-in-progress, completed, failed, skipped, and cancelled. No synthetic plan is
-created merely to fill the interface.
+One user instruction and its resulting assistant work. A turn can contain text,
+reasoning, a plan, executions, permission requests, proposals, artifacts, and
+verification evidence.
 
 ## Execution
 
-One semantic lifecycle for a tool or other runtime operation.
+One semantic lifecycle for a tool or runtime operation.
 
 ```text
 preparing → waiting for permission → running
           → succeeded | failed | denied | timed out | cancelled
 ```
 
-An execution may expose input, output, duration, exit status, and permission
-decision. Persisted and live representations with the same identity collapse
-into one rendered block. Denial and timeout are decision outcomes, not execution
-failures: a later synthetic non-zero tool completion can add output and exit
-metadata but cannot replace either terminal state.
+Persisted and live events with the same identity collapse into one projection.
+Denial and timeout remain terminal decision outcomes even if later transport
+events contain generic failure metadata.
 
 ## Permission request
 
 Contains execution identity, operation, reason, affected scope, timeout, and
-allowed decisions. It cannot be applied to a later execution.
+allowed decisions. It cannot be applied to another execution.
 
-## File context reference
+## Context reference
 
-A workspace-relative file path attached to the next instruction. It is a
-reference, not a second file copy. Current sources are typed workspace paths and
-Files-mode selection.
-
-## Follow-up instruction
-
-A task-scoped queued instruction with text and file references. Queue order is
-explicit. A stopped execution does not imply queued instructions will run.
-
-## Verification delivery
-
-Service evidence containing required, pending, failed, and residual-risk data.
-It is the only source for the delivery summary.
+A bounded reference attached to the next instruction. Sources include local
+paths, selected text, spreadsheet ranges, slides, elements, plugin evidence,
+and knowledge excerpts. A reference is visible and reviewable; it does not
+silently copy or mutate the source.
 
 ## Artifact reference
 
-An addressable result exposed from a task turn. It points to authoritative
-workspace or service state instead of copying that state into the transcript.
+An addressable result in a conversation turn.
 
 ```text
 ArtifactReference
 ├── stable identity
-├── owning task and turn
-├── kind                         file | change | preview | report | verification
-├── label and optional summary
-├── preferred result mode
-└── domain locator               path, diff target, preview target, or evidence id
+├── owning conversation and turn
+├── kind
+├── label and summary
+└── domain locator
 ```
 
-An artifact is task-scoped as an entry point. A referenced file, Git status, or
-preview lifecycle remains authoritative in its owning workspace domain.
+File artifacts open through Work's file handler. The reference never becomes a
+second copy of disk truth.
 
-## Result Workspace state
+## Verification delivery
 
-Task-scoped client continuity for inspecting artifacts beside Conversation.
+Service evidence containing required, passed, pending, failed, and residual-risk
+data. It is the source of delivery status. Preparing further review appends a
+request to the same conversation.
+
+## Local filesystem state
 
 ```text
-ResultWorkspaceState
-├── presentation                 closed | docked | full-screen
-├── selected mode                overview | files | browser | changes
-├── available modes
-├── open artifact tabs
-├── selected artifact
-├── navigator visibility and width
-├── workspace width
-└── safe restoration positions
+LocalFilesState
+├── root and current path
+├── navigation history
+├── entries and bounded search result
+├── grid/list, sort, and filter preferences
+├── selected paths and focus anchor
+├── favorites
+├── copy/cut clipboard
+├── inline operation
+└── active mutation paths
 ```
 
-Dirty file content is referenced from editor state and guards destructive
-workspace transitions. Result Workspace state is never used as repository or
-preview truth.
+Selection identity is the normalized absolute local path. Background actions
+clear item selection. Search results retain real path identity and parent
+location.
 
-## Workspace editor state
+## Code/text editor state
 
 ```text
-EditorState
-├── selected path
-├── loaded disk content
-├── current draft content
-├── binary flag
-├── dirty flag
-├── external conflict
-├── validation result
-└── optional search location
+WorkCodeState
+├── open tabs
+│   ├── path
+│   ├── loaded disk content
+│   ├── current draft
+│   ├── loading and save state
+│   └── optional navigation location
+├── active path
+├── external-change conflict
+└── guarded close request
 ```
 
-Disk and draft content remain separate so navigation and external changes can be
-resolved without silent data loss.
+Disk and draft content remain separate. The controller refuses silent overwrite
+after an external change and keeps dirty tabs until the user resolves them.
 
-## Search result set
-
-Owns the searched query, file matches, and exact line/column locations. Current
-input is separate; divergence makes the result set stale and replacement
-ineligible.
-
-## Repository status
-
-Workspace-wide Git truth: repository flag, branch, staged files, unstaged files,
-diff, mutation state, and last commit receipt. It is never treated as task
-provenance.
-
-## Preview target
-
-A backend-defined local application target that Browser mode may render.
+## Managed artifact
 
 ```text
-PreviewTarget
-├── stable identity and label
-├── bounded origin or route
-├── lifecycle state
-├── optional diagnostic
-└── last authoritative refresh
+WorkArtifact
+├── stable ID, kind, title, folder, and timestamps
+├── favorite and trash state
+├── revision and compatibility state
+├── optional local path binding and source fingerprint
+└── format-specific content
 ```
 
-Lifecycle states include unavailable, starting, ready, stopped, failed, and
-disconnected. Browser mode is unavailable when no valid target exists. The Web
-client does not infer or start arbitrary public browsing from a raw URL.
+Managed artifacts support autosave, recovery, versioning, and Office
+interoperability. A bound local path remains the user-facing file identity.
 
-## Memory overview
-
-The service-authoritative, read-only snapshot used by Memory exploration.
+## Structured proposal
 
 ```text
-MemoryOverview
-├── local store root
-├── entries
-│   ├── content, preview, type, tags, and metadata
-│   ├── importance and timestamp
-│   └── access count and last access
-├── aggregate statistics
-├── graph
-│   ├── memory events
-│   ├── knowledge entities and aliases
-│   ├── semantic relations
-│   └── per-memory retention and lifecycle facets
-└── pagination
+Proposal
+├── originating conversation response
+├── target artifact and bounded source selection
+├── typed changes with trusted before/after values
+├── per-change selection
+└── applied, stale, skipped, or failed result
 ```
 
-The client follows pagination until every entry is present and reuses graph
-topology from the first page. A memory event anchors one entry in the graph. An
-entity can link many memories. A facet contains retention tier and score,
-forgetting signal, extraction, consolidation, conflict, entity IDs, and
-relation IDs. These values are descriptive; they do not authorize mutation.
+The owning editor revalidates each selected target against live content before
+applying it.
 
-## Memory exploration state
+## Knowledge base
 
-Client-owned continuity for the dedicated Code Memory surface.
+```text
+KnowledgeBase
+├── identity, title, and workspace
+├── source package and manifest
+├── compilation policy
+├── staged and promoted generations
+├── searchable wiki
+└── compilation history and errors
+```
+
+Creation and compilation are separate state transitions. Failed compilation
+cannot replace the last successful promoted generation.
+
+## Memory state
 
 ```text
 MemoryState
-├── load phase, refresh state, last success, and recoverable error
-├── authoritative MemoryOverview snapshot
-├── graph / timeline view
-├── clarity / complete graph scope
+├── load and refresh phase
+├── last successful complete snapshot
 ├── query and combinable filters
-└── selected memory or entity
+├── graph/timeline view and bounded projection
+├── selected memory or entity
+└── evolution candidates and history
 ```
 
-Only the latest active request may replace the snapshot. A refresh failure
-retains stale data, an unmounted initial request returns to idle, and a
-selection that no longer exists is cleared after successful refresh.
+Only the latest active request can replace the snapshot. Refresh failure keeps
+stale successful data available.
 
-## Run configuration
+## Top-level navigation state
 
 ```text
-RunConfiguration
-├── optional goal
-├── model route
-├── effort
-├── permission mode
-└── context usage
+ProductId = work | memory | knowledge | plugins | plugin
 ```
 
-Permission modes are plan/read-only, confirm-sensitive/default, and automatic
-within backend policy.
+Work scene selection is not part of `ProductId`. Settings is an overlay with a
+canonical tab route and closes back to the underlying product.
 
 ## State ownership
 
-- The service owns sessions, messages, controls, output, files, Git truth, and
-  durable Memory truth.
-- Shared client state owns the rendered snapshot, selected task, task-scoped
-  Result Workspace state, Memory exploration state, and cross-feature
-  navigation intent.
-- Local storage is best-effort for drafts, queues, task titles, active task,
-  safe Result Workspace continuity, and theme.
-- Component state owns bounded overlay input and focus only.
-- A mutation failure retains the previous authoritative value.
-- A refresh cannot reconstruct durable truth solely from browser state.
+- The service owns sessions, messages, execution controls, output, disk files,
+  repository truth, durable Knowledge, and durable Memory.
+- shared client state owns the active product, unified conversation selection,
+  drafts, queues, workspace snapshots, overlays, and request guards;
+- `WorkProduct` owns current Work scene, local code tabs, and AI Assistant
+  presentation;
+- file and editor controllers own their bounded operation state;
+- local storage is best effort for theme, active conversation, drafts, safe
+  workspace continuity, and Work presentation preferences;
+- legacy keys can be read to recover data but are not new write targets;
+- mutation failure retains the previous authoritative value;
+- browser state cannot reconstruct durable service truth after a failed refresh.

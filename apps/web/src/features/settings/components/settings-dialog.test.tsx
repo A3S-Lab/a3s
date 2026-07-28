@@ -64,6 +64,7 @@ describe('SettingsDialog', () => {
     appState.settingsTab = 'general';
     appState.settingsChannel = 'weixin';
     appState.taskView = 'conversation';
+    appState.activeProduct = 'work';
     appState.sidebarOpen = true;
     appState.commandPaletteOpen = false;
     appState.updateInstalling = false;
@@ -82,7 +83,7 @@ describe('SettingsDialog', () => {
       configPath: '/repo/config.acl',
       workspace: '/repo',
     };
-    window.history.replaceState(null, '', '#code/conversation');
+    window.history.replaceState(null, '', '#home');
   });
 
   afterEach(() => {
@@ -90,22 +91,21 @@ describe('SettingsDialog', () => {
     Object.assign(appState, createWeixinRemoteState());
     appState.settingsOpen = false;
     appState.updateInstalling = false;
-    window.history.replaceState(null, '', '#code/conversation');
+    window.history.replaceState(null, '', '#home');
   });
 
-  it('keeps the current Code workspace mounted beneath the modal', () => {
+  it('keeps the unified workbench mounted beneath the modal', () => {
     appState.settingsOpen = true;
 
     render(<AppShell actions={actions as unknown as CodeActions} />);
 
-    expect(screen.getByRole('heading', { name: '让 Code 完成一项工作' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '从一个任务开始，完成文档、数据与文件工作' })).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: '通用' })).toBeInTheDocument();
-    expect(screen.getByRole('complementary', { name: 'Code 任务' })).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: '会话列表' })).toBeInTheDocument();
   });
 
-  it('closes back to the current Code route and restores focus to the invoker', async () => {
-    appState.taskView = 'activity';
-    window.history.replaceState(null, '', '#code/activity');
+  it('closes back to Home and restores focus to the invoker', async () => {
+    window.history.replaceState(null, '', '#home');
     render(<SettingsInvoker />);
     const invoker = screen.getByRole('button', { name: '打开设置' });
     invoker.focus();
@@ -117,13 +117,12 @@ describe('SettingsDialog', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(appState.settingsOpen).toBe(false);
-    expect(window.location.hash).toBe('#code/activity');
+    expect(window.location.hash).toBe('#home');
     expect(invoker).toHaveFocus();
   });
 
-  it('closes Help with Escape and returns to the unchanged Code route', async () => {
-    appState.taskView = 'activity';
-    window.history.replaceState(null, '', '#code/activity');
+  it('closes Help with Escape and returns to Home', async () => {
+    window.history.replaceState(null, '', '#home');
     render(<SettingsInvoker />);
     fireEvent.click(screen.getByRole('button', { name: '打开设置' }));
     fireEvent.click(await screen.findByRole('button', { name: '帮助' }));
@@ -132,11 +131,11 @@ describe('SettingsDialog', () => {
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(appState.settingsOpen).toBe(false);
-    expect(appState.taskView).toBe('activity');
-    expect(window.location.hash).toBe('#code/activity');
+    expect(appState.taskView).toBe('conversation');
+    expect(window.location.hash).toBe('#home');
   });
 
-  it('opens Help as a searchable Settings tab without unmounting Code', async () => {
+  it('opens Help as a searchable Settings tab without unmounting the workbench', async () => {
     render(<SettingsInvoker />);
     fireEvent.click(screen.getByRole('button', { name: '打开设置' }));
 

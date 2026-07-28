@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { codeDefaultWorkspace } from './code-default-workspace';
 
-describe('A3S Code default workspace', () => {
+describe('A3S default workspace', () => {
   it('prefers the persisted new-task workspace over runtime fallbacks', () => {
     expect(
       codeDefaultWorkspace({

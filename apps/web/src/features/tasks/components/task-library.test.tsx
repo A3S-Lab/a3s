@@ -31,37 +31,37 @@ describe('TaskLibrary management', () => {
     const { container } = render(<TaskLibrary actions={{} as TaskActions} />);
 
     expect(container.querySelector('.product-sidebar.task-library')).toBeInTheDocument();
-    expect(screen.getByText('编码')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '新建任务' }).querySelector('.sidebar-nav-icon')).toHaveAttribute(
+    expect(screen.getByText('会话')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '新建会话' }).querySelector('.sidebar-nav-icon')).toHaveAttribute(
       'data-tone',
       'blue'
     );
-    expect(screen.getByRole('button', { name: '收起编码侧边栏' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '收起编码侧边栏' }));
+    expect(screen.getByRole('button', { name: '收起会话侧边栏' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '收起会话侧边栏' }));
     expect(appState.sidebarOpen).toBe(false);
-    expect(screen.getByRole('button', { name: '任务 (1)' })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: '会话 (1)' })).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText('7小时前')).toBeInTheDocument();
     expect(screen.queryByText('codex/gpt')).not.toBeInTheDocument();
-    expect(screen.queryByRole('searchbox', { name: '搜索任务' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('searchbox', { name: '搜索会话' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: '搜索任务' }));
-    const search = screen.getByRole('searchbox', { name: '搜索任务' });
+    fireEvent.click(screen.getByRole('button', { name: '搜索会话' }));
+    const search = screen.getByRole('searchbox', { name: '搜索会话' });
     expect(search).toHaveFocus();
     fireEvent.keyDown(search, { key: 'Escape' });
-    expect(screen.queryByRole('searchbox', { name: '搜索任务' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '搜索任务' })).toHaveFocus();
+    expect(screen.queryByRole('searchbox', { name: '搜索会话' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '搜索会话' })).toHaveFocus();
 
-    fireEvent.click(screen.getByRole('button', { name: '任务 (1)' }));
-    expect(screen.queryByRole('button', { name: /打开任务 Parser task/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '会话 (1)' }));
+    expect(screen.queryByRole('button', { name: /打开会话 Parser task/ })).not.toBeInTheDocument();
   });
 
-  it('keeps Work AI assistant sessions out of the Code task list', () => {
+  it('shows sessions created by both former surfaces in one list', () => {
     appState.sessions = [task, { ...task, sessionId: 'work-assistant', title: 'Work conversation', agentId: 'work' }];
     render(<TaskLibrary actions={{} as TaskActions} />);
 
-    expect(screen.getByRole('button', { name: '任务 (1)' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /打开任务 Parser task/ })).toBeInTheDocument();
-    expect(screen.queryByText('Work conversation')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '会话 (2)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /打开会话 Parser task/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /打开会话 Work conversation/ })).toBeInTheDocument();
   });
 
   it('closes the task overlay after selecting a task on a compact viewport', () => {
@@ -71,7 +71,7 @@ describe('TaskLibrary management', () => {
     const selectSession = vi.fn(async () => undefined);
     render(<TaskLibrary actions={{ selectSession } as unknown as TaskActions} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /打开任务 Parser task/ }));
+    fireEvent.click(screen.getByRole('button', { name: /打开会话 Parser task/ }));
 
     expect(selectSession).toHaveBeenCalledWith('task-1');
     expect(appState.sidebarOpen).toBe(false);
@@ -102,9 +102,9 @@ describe('TaskLibrary management', () => {
     render(<TaskLibrary actions={{ renameSession } as unknown as TaskActions} />);
     fireEvent.click(screen.getByRole('button', { name: '重命名 Parser task' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '保存任务名称' })).toBeDisabled();
-    fireEvent.change(screen.getByRole('textbox', { name: '任务名称' }), { target: { value: 'Parser follow-up' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存任务名称' }));
+    expect(screen.getByRole('button', { name: '保存会话名称' })).toBeDisabled();
+    fireEvent.change(screen.getByRole('textbox', { name: '会话名称' }), { target: { value: 'Parser follow-up' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存会话名称' }));
     expect(renameSession).toHaveBeenCalledWith('task-1', 'Parser follow-up');
   });
 
@@ -115,9 +115,9 @@ describe('TaskLibrary management', () => {
     render(<TaskLibrary actions={{ renameSession } as unknown as TaskActions} />);
 
     fireEvent.click(screen.getByRole('button', { name: '重命名 Parser task' }));
-    const input = screen.getByRole('textbox', { name: '任务名称' });
+    const input = screen.getByRole('textbox', { name: '会话名称' });
     fireEvent.change(input, { target: { value: 'Parser follow-up' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存任务名称' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存会话名称' }));
 
     await waitFor(() => expect(renameSession).toHaveBeenCalledWith('task-1', 'Parser follow-up'));
     const error = screen.getByRole('alert');

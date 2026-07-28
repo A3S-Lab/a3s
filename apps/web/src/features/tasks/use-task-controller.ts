@@ -33,7 +33,6 @@ import {
   persistGoalTimings,
   persistNewTaskConfig,
   persistTaskDrafts,
-  type TaskProduct,
   taskDraftKey,
 } from './task-state';
 import { applyTurnQueueSnapshot } from './turn-queue-state';
@@ -80,14 +79,6 @@ function activeAssistant(sessionId: string): ChatMessage | undefined {
   return [...(appState.messagesBySession[sessionId] ?? [])]
     .reverse()
     .find((message) => message.role === 'assistant' && message.pending);
-}
-
-function activeTaskProduct(): TaskProduct {
-  return appState.activeProduct === 'work' ? 'work' : 'code';
-}
-
-function sessionProduct(session: Pick<CodeSession, 'agentId'> | undefined): TaskProduct {
-  return session?.agentId === 'work' ? 'work' : 'code';
 }
 
 export function applyAssistantStreamEvent(assistant: ChatMessage, event: AgentEvent): void {
@@ -159,7 +150,7 @@ export function useTaskController() {
     delete appState.sessionControlsErrors[sessionId];
   };
   const persistCurrentDraft = useMemoizedFn(() => {
-    const key = taskDraftKey(appState.activeSessionId, activeTaskProduct());
+    const key = taskDraftKey(appState.activeSessionId);
     appState.draftsByTask[key] = createTaskDraft(
       appState.composerValue,
       appState.composerContextFiles,
@@ -234,7 +225,6 @@ export function useTaskController() {
   });
   const selectSession = useMemoizedFn(async (sessionId: string) => {
     const session = appState.sessions.find((item) => item.sessionId === sessionId);
-    if (session && sessionProduct(session) !== activeTaskProduct()) return;
     switchActiveTask(sessionId, session?.workspace);
     if (session?.workspace) {
       if (!appState.filesByDirectory[session.workspace]) {
@@ -257,66 +247,76 @@ export function useTaskController() {
       loadTurnQueue(sessionId).catch(() => undefined),
     ]);
   });
-  const createSession = useMemoizedFn(async (title = '新任务', model?: string): Promise<CodeSession> => {
-    const product = activeTaskProduct();
-    const config = appState.newTaskConfig;
-    const requestedGoal = product === 'work' ? '' : config.goal.trim();
-    const preparedGoalTiming = appState.goalTimings[newTaskDraftKey];
-    const workspace =
-      product === 'work'
-        ? appState.workspaceRoot || appState.health?.workspace
-        : config.workspace.trim() || appState.workspaceRoot || appState.health?.workspace;
-    const response = await codeApi.createSession({
-      workspace,
-      cwd: workspace,
-      model: model || config.model || appState.selectedModel || appState.llm?.defaultModel || undefined,
-      title,
-      permissionMode: config.permissionMode,
-      agentId: product === 'work' ? 'work' : 'default',
-    });
-    const session = response.session;
-    appState.sessions.unshift(session);
-    promoteActiveTask(session.sessionId, session.workspace);
-    appState.messagesBySession[session.sessionId] = [];
-    applyTurnQueueSnapshot({
-      sessionId: session.sessionId,
-      status: 'idle',
-      paused: false,
-      active: null,
-      items: [],
-      total: 0,
-      nextItemId: null,
-    });
-    reportTaskPersistenceResult(persistSessionTitle(session.sessionId, title));
-    const controlsMutationRequest = invalidateControlsRequests(session.sessionId);
-    appState.sessionControlsLoading[session.sessionId] = true;
-    try {
-      const controls = await codeApi.updateSessionControls(session.sessionId, {
-        effort: config.effort,
-        goal: requestedGoal || null,
-      });
-      publishControlsMutation(session.sessionId, controls);
-      if (controls.goal) {
-        appState.goalTimings[session.sessionId] =
-          preparedGoalTiming?.goal === controls.goal
-            ? { ...preparedGoalTiming }
-            : { goal: controls.goal, startedAt: Date.now() };
+  const createSession = useMemoizedFn(
+    async (
+      title = '新任务',
+      model?: string,
+      sourceSessionId: string | null = appState.activeSessionId
+    ): Promise<CodeSession> => {
+      const config = { ...appState.newTaskConfig };
+      const requestedGoal = config.goal.trim();
+      const preparedGoalTiming = appState.goalTimings[newTaskDraftKey];
+      const workspace = appState.workspaceRoot || config.workspace.trim() || appState.health?.workspace;
+      if (appState.activeSessionId === sourceSessionId) {
+        const sourceKey = taskDraftKey(sourceSessionId);
+        appState.draftsByTask[sourceKey] = createTaskDraft(
+          appState.composerValue,
+          appState.composerContextFiles,
+          appState.composerSkills,
+          appState.composerMode
+        );
+        reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
       }
-      delete appState.goalTimings[newTaskDraftKey];
-      reportTaskPersistenceResult(persistGoalTimings(appState.goalTimings));
-      if (product === 'code') {
+      const response = await codeApi.createSession({
+        workspace,
+        cwd: workspace,
+        model: model || config.model || appState.selectedModel || appState.llm?.defaultModel || undefined,
+        title,
+        permissionMode: config.permissionMode,
+        agentId: 'default',
+      });
+      const session = response.session;
+      appState.sessions.unshift(session);
+      promoteActiveTask(session.sessionId, session.workspace, sourceSessionId);
+      appState.messagesBySession[session.sessionId] = [];
+      applyTurnQueueSnapshot({
+        sessionId: session.sessionId,
+        status: 'idle',
+        paused: false,
+        active: null,
+        items: [],
+        total: 0,
+        nextItemId: null,
+      });
+      reportTaskPersistenceResult(persistSessionTitle(session.sessionId, title));
+      const controlsMutationRequest = invalidateControlsRequests(session.sessionId);
+      appState.sessionControlsLoading[session.sessionId] = true;
+      try {
+        const controls = await codeApi.updateSessionControls(session.sessionId, {
+          effort: config.effort,
+          goal: requestedGoal || null,
+        });
+        publishControlsMutation(session.sessionId, controls);
+        if (controls.goal) {
+          appState.goalTimings[session.sessionId] =
+            preparedGoalTiming?.goal === controls.goal
+              ? { ...preparedGoalTiming }
+              : { goal: controls.goal, startedAt: Date.now() };
+        }
+        delete appState.goalTimings[newTaskDraftKey];
+        reportTaskPersistenceResult(persistGoalTimings(appState.goalTimings));
         appState.newTaskConfig.goal = '';
         reportTaskPersistenceResult(persistNewTaskConfig(appState.newTaskConfig));
+      } catch (error) {
+        if (isSessionControlsRequestCurrent(controlsMutationRequest)) {
+          appState.sessionControlsErrors[session.sessionId] = formatApiError(error);
+          appState.sessionControlsLoading[session.sessionId] = false;
+        }
+        throw error;
       }
-    } catch (error) {
-      if (isSessionControlsRequestCurrent(controlsMutationRequest)) {
-        appState.sessionControlsErrors[session.sessionId] = formatApiError(error);
-        appState.sessionControlsLoading[session.sessionId] = false;
-      }
-      throw error;
+      return session;
     }
-    return session;
-  });
+  );
   const selectNewTaskWorkspace = useMemoizedFn(async (workspace: string) => {
     if (appState.activeSessionId) throw new Error('只能在创建新任务时切换工作区。');
     const normalized = workspace.trim();
@@ -327,11 +327,6 @@ export function useTaskController() {
     replaceActiveWorkspace(normalized);
     appState.filesByDirectory[normalized] = entries;
     appState.expandedDirectories[normalized] = true;
-    if (activeTaskProduct() === 'work') {
-      appState.composerContextFiles = [];
-      appState.composerSkills = [];
-      return;
-    }
     if (appState.newTaskConfig.workspace !== normalized) {
       appState.composerContextFiles = [];
       appState.composerSkills = [];
@@ -349,12 +344,7 @@ export function useTaskController() {
     return selected.path;
   });
   const newConversation = useMemoizedFn(() => {
-    const product = activeTaskProduct();
-    const workspace =
-      product === 'work'
-        ? appState.workspaceRoot
-        : appState.newTaskConfig.workspace || appState.health?.workspace || appState.workspaceRoot;
-    switchActiveTask(null, workspace);
+    switchActiveTask(null, appState.workspaceRoot || appState.newTaskConfig.workspace || appState.health?.workspace);
     appState.streamEvents = [];
   });
   const refreshSessions = useMemoizedFn(async () => {
@@ -482,18 +472,20 @@ export function useTaskController() {
     }
     const contextFiles = [...appState.composerContextFiles];
     const skillNames = [...appState.composerSkills];
-    const mode = activeTaskProduct() === 'code' ? appState.composerMode : 'standard';
+    const mode = appState.composerMode;
     let sessionId = appState.activeSessionId;
-    const submittedDraftKey = taskDraftKey(sessionId, activeTaskProduct());
+    const submittedDraftKey = taskDraftKey(sessionId);
+    appState.draftsByTask[submittedDraftKey] = createTaskDraft(content, contextFiles, skillNames, mode);
+    reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
     appState.taskSubmissionState = sessionId ? 'queueing' : 'creating';
     try {
-      if (!sessionId) sessionId = (await createSession(promptTitle(content))).sessionId;
+      if (!sessionId) sessionId = (await createSession(promptTitle(content), undefined, null)).sessionId;
       else if ((appState.messagesBySession[sessionId]?.length ?? 0) === 0)
         reportTaskPersistenceResult(persistSessionTitle(sessionId, promptTitle(content)));
       if (appState.streamingSessionId && appState.streamingSessionId !== sessionId) return;
       const queue = await codeApi.enqueueTurn(sessionId, { content, contextFiles, skillNames, mode });
       applyTurnQueueSnapshot(queue);
-      clearComposer(submittedDraftKey);
+      clearComposer([submittedDraftKey, taskDraftKey(sessionId)]);
       let execution: Promise<void> | undefined;
       if (!appState.streamingSessionId && !queue.paused && queue.items[0]) {
         execution = executeQueuedTurn(sessionId, queue.items[0]);
@@ -517,13 +509,14 @@ export function useTaskController() {
     }
     const goal = command.kind === 'clear' ? null : command.goal;
     const sessionId = appState.activeSessionId;
+    const draftKey = taskDraftKey(sessionId);
     if (!sessionId) {
       appState.newTaskConfig.goal = goal ?? '';
       reportTaskPersistenceResult(persistNewTaskConfig(appState.newTaskConfig));
       if (goal) appState.goalTimings[newTaskDraftKey] = { goal, startedAt: Date.now() };
       else delete appState.goalTimings[newTaskDraftKey];
       reportTaskPersistenceResult(persistGoalTimings(appState.goalTimings));
-      clearComposer();
+      clearComposer([draftKey]);
       return;
     }
     appState.taskConfigSaving = 'goal';
@@ -534,7 +527,7 @@ export function useTaskController() {
       if (controls.goal) appState.goalTimings[sessionId] = { goal: controls.goal, startedAt: Date.now() };
       else delete appState.goalTimings[sessionId];
       reportTaskPersistenceResult(persistGoalTimings(appState.goalTimings));
-      clearComposer();
+      clearComposer([draftKey]);
     } catch (error) {
       showToast(formatApiError(error), 'error');
     } finally {
@@ -642,7 +635,7 @@ export function useTaskController() {
     delete appState.toolDecisionErrors[key];
     appState.toolDecisionState[key] = submitting;
     try {
-      await codeApi.confirmToolUse(sessionId, toolId, approved, approved ? undefined : 'Rejected in A3S Code Web');
+      await codeApi.confirmToolUse(sessionId, toolId, approved, approved ? undefined : 'Rejected in A3S Web');
       if (appState.toolDecisionState[key] === submitting)
         appState.toolDecisionState[key] = approved ? 'approved' : 'denied';
     } catch (error) {
@@ -660,8 +653,6 @@ export function useTaskController() {
       throw error;
     }
     try {
-      const session = appState.sessions.find((candidate) => candidate.sessionId === sessionId);
-      const product = sessionProduct(session);
       await codeApi.deleteSession(sessionId);
       const index = sessionIndex(sessionId);
       if (index >= 0) appState.sessions.splice(index, 1);
@@ -678,17 +669,16 @@ export function useTaskController() {
       delete appState.turnQueues[sessionId];
       delete appState.turnQueueLoading[sessionId];
       delete appState.turnQueueErrors[sessionId];
-      delete appState.draftsByTask[taskDraftKey(sessionId, product)];
+      delete appState.draftsByTask[taskDraftKey(sessionId)];
       reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
       reportTaskPersistenceResult(persistGoalTimings(appState.goalTimings));
       const titlePersisted = removePersistedSessionTitle(sessionId);
       if (appState.reviewSourceTaskId === sessionId) appState.reviewSourceTaskId = null;
       if (appState.activeSessionId === sessionId) {
-        const workspace =
-          product === 'work'
-            ? appState.workspaceRoot
-            : appState.newTaskConfig.workspace || appState.health?.workspace || appState.workspaceRoot;
-        switchActiveTask(null, workspace);
+        switchActiveTask(
+          null,
+          appState.workspaceRoot || appState.newTaskConfig.workspace || appState.health?.workspace
+        );
       }
       removeWorkspaceTaskSnapshot(sessionId);
       reportTaskPersistenceResult(titlePersisted);
@@ -783,16 +773,17 @@ export function useTaskController() {
   };
 }
 
-function clearComposer(submittedDraftKey?: string) {
+function clearComposer(draftKeys: readonly string[]) {
+  const uniqueDraftKeys = [...new Set(draftKeys)];
+  for (const draftKey of uniqueDraftKeys) {
+    appState.draftsByTask[draftKey] = { content: '', contextFiles: [], skillNames: [] };
+  }
+  reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
+
+  const visibleDraftKey = taskDraftKey(appState.activeSessionId);
+  if (!uniqueDraftKeys.includes(visibleDraftKey)) return;
   appState.composerValue = '';
   appState.composerContextFiles = [];
   appState.composerSkills = [];
   appState.composerMode = 'standard';
-  if (!submittedDraftKey) return;
-  appState.draftsByTask[submittedDraftKey] = {
-    content: '',
-    contextFiles: [],
-    skillNames: [],
-  };
-  reportTaskPersistenceResult(persistTaskDrafts(appState.draftsByTask));
 }

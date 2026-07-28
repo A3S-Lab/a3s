@@ -315,7 +315,7 @@ function FileEditorContent({
             </ul>
           )}
           {!tab.configValidation.valid && dirty && (
-            <p className='config-validation-save-hint'>请先保存当前编辑，再把磁盘上的配置问题交给 Code 修复。</p>
+            <p className='config-validation-save-hint'>请先保存当前编辑，再把磁盘上的配置问题交给 A3S 修复。</p>
           )}
         </section>
       )}

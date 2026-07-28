@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { codeApi } from '../../lib/api';
-import { appState, reportTaskPersistenceResult, setTheme } from '../../state/app-state';
+import { appState, reportTaskPersistenceResult, setTheme, switchActiveTask } from '../../state/app-state';
 import { fileEditorTabId, type WorkspaceFileEditorTab } from '../workspace/workspace-state';
 import { createTaskState, newTaskDraftKey, persistTaskDrafts } from './task-state';
 import { applyAssistantStreamEvent, composeTaskPrompt, useTaskController } from './use-task-controller';
@@ -19,13 +19,14 @@ afterEach(() => {
   appState.taskView = 'conversation';
   localStorage.removeItem('a3s-code-web.active-task');
   localStorage.removeItem('a3s-work.ai-assistant.active-session');
+  localStorage.removeItem('a3s-work.active-session');
   localStorage.removeItem('a3s-code-web.task-drafts');
   localStorage.removeItem('a3s-code-web.task-drafts-schema');
   localStorage.removeItem('a3s-code-web.queued-prompts');
   localStorage.removeItem('a3s-code-web.paused-queues');
   localStorage.removeItem('a3s-code-web.new-task-config');
   localStorage.removeItem('a3s-code-web.goal-timings');
-  appState.activeProduct = 'code';
+  appState.activeProduct = 'work';
   appState.taskSubmissionState = null;
 });
 
@@ -296,9 +297,8 @@ describe('task-scoped draft recovery', () => {
     expect(restored.composerMode).toBe('standard');
   });
 
-  it('clears a legacy anonymous Code draft once without removing task or Work drafts', () => {
+  it('migrates the former Work assistant draft into the unified anonymous draft', () => {
     const leakedWorkPrompt = '请概览当前文件夹的内容，说明主要文件、用途和最近值得关注的变化。不要修改文件。';
-    localStorage.removeItem('a3s-code-web.task-drafts-schema');
     localStorage.setItem(
       'a3s-code-web.task-drafts',
       JSON.stringify({
@@ -322,11 +322,10 @@ describe('task-scoped draft recovery', () => {
 
     const migrated = createTaskState();
 
-    expect(migrated.composerValue).toBe('');
-    expect(migrated.draftsByTask[newTaskDraftKey]).toBeUndefined();
-    expect(migrated.draftsByTask.__work_ai_assistant__?.content).toBe(leakedWorkPrompt);
+    expect(migrated.composerValue).toBe(leakedWorkPrompt);
+    expect(migrated.draftsByTask[newTaskDraftKey]?.content).toBe(leakedWorkPrompt);
+    expect(migrated.draftsByTask.__work_ai_assistant__).toBeUndefined();
     expect(migrated.draftsByTask['task-a']?.content).toBe('Keep this task draft');
-    expect(localStorage.getItem('a3s-code-web.task-drafts-schema')).toBe('2');
 
     persistTaskDrafts({
       ...migrated.draftsByTask,
@@ -435,6 +434,29 @@ function chatMessage(sessionId: string, content: string) {
     createdAt: new Date(0).toISOString(),
     pending: false,
     events: [],
+  };
+}
+
+function pausedQueue(sessionId: string) {
+  return {
+    sessionId,
+    status: 'paused' as const,
+    paused: true,
+    active: null,
+    items: [
+      {
+        id: `${sessionId}-turn`,
+        kind: 'user' as const,
+        content: 'Queued instruction',
+        contextFiles: [],
+        skillNames: [],
+        priority: 0,
+        enqueuedAt: 1,
+      },
+    ],
+    total: 1,
+    nextItemId: `${sessionId}-turn`,
+    acceptedItemId: `${sessionId}-turn`,
   };
 }
 
@@ -713,7 +735,7 @@ describe('task configuration', () => {
 
   it('applies composer parameters before the first instruction starts', async () => {
     appState.activeSessionId = null;
-    appState.workspaceRoot = '/repo';
+    appState.workspaceRoot = '/selected-workspace';
     appState.sessions = [];
     appState.messagesBySession = {};
     appState.newTaskConfig = {
@@ -725,8 +747,8 @@ describe('task configuration', () => {
     };
     const session = {
       sessionId: 'task-new',
-      workspace: '/repo',
-      cwd: '/repo',
+      workspace: '/selected-workspace',
+      cwd: '/selected-workspace',
       model: 'codex/gpt-5.6-sol',
       followDefaultModel: false,
       permissionMode: 'plan',
@@ -762,7 +784,7 @@ describe('task configuration', () => {
     hook.unmount();
   });
 
-  it('creates Work AI assistant sessions without reusing the Code workspace or goal', async () => {
+  it('creates one unified AI session in the current workspace', async () => {
     appState.activeProduct = 'work';
     appState.activeSessionId = null;
     appState.workspaceRoot = '/work-documents';
@@ -773,7 +795,7 @@ describe('task configuration', () => {
       model: 'codex/gpt-5.6-sol',
       effort: 'medium',
       permissionMode: 'default',
-      goal: 'Keep the Code goal',
+      goal: '整理完成后给出摘要',
     };
     const session = {
       sessionId: 'work-assistant',
@@ -783,14 +805,14 @@ describe('task configuration', () => {
       followDefaultModel: false,
       permissionMode: 'default',
       state: 'idle',
-      agentId: 'work',
+      agentId: 'default',
       createdAt: 1,
     };
     vi.spyOn(codeApi, 'createSession').mockResolvedValue({ success: true, session });
     vi.spyOn(codeApi, 'updateSessionControls').mockResolvedValue({
       sessionId: 'work-assistant',
       effort: 'medium',
-      goal: null,
+      goal: '整理完成后给出摘要',
       planningMode: 'disabled',
       goalTracking: true,
     });
@@ -802,14 +824,200 @@ describe('task configuration', () => {
       expect.objectContaining({
         workspace: '/work-documents',
         cwd: '/work-documents',
-        agentId: 'work',
+        agentId: 'default',
       })
     );
-    expect(localStorage.getItem('a3s-work.ai-assistant.active-session')).toBe('work-assistant');
+    expect(codeApi.updateSessionControls).toHaveBeenCalledWith('work-assistant', {
+      effort: 'medium',
+      goal: '整理完成后给出摘要',
+    });
+    expect(localStorage.getItem('a3s-work.active-session')).toBe('work-assistant');
+    expect(localStorage.getItem('a3s-work.ai-assistant.active-session')).toBeNull();
     expect(localStorage.getItem('a3s-code-web.active-task')).toBeNull();
     expect(appState.newTaskConfig.workspace).toBe('/code-project');
-    expect(appState.newTaskConfig.goal).toBe('Keep the Code goal');
+    expect(appState.newTaskConfig.goal).toBe('');
     hook.unmount();
+  });
+
+  it('queues on a session created by the former Code surface', async () => {
+    const codeTask = codeSession('code-task', '/code-project');
+    appState.activeProduct = 'work';
+    appState.activeSessionId = codeTask.sessionId;
+    appState.streamingSessionId = null;
+    appState.workspaceRoot = '/code-project';
+    appState.sessions = [codeTask];
+    appState.messagesBySession = { [codeTask.sessionId]: [chatMessage(codeTask.sessionId, 'Code only')] };
+    appState.composerValue = '整理这些工作文档';
+    appState.composerContextFiles = ['Reports/Q2.md'];
+    appState.composerSkills = [];
+    appState.newTaskConfig = {
+      workspace: '/code-project',
+      model: 'codex/gpt',
+      effort: 'medium',
+      permissionMode: 'default',
+      goal: 'Keep the Code goal',
+    };
+    const createSession = vi.spyOn(codeApi, 'createSession');
+    const enqueue = vi.spyOn(codeApi, 'enqueueTurn').mockResolvedValue(pausedQueue(codeTask.sessionId));
+    const hook = renderHook(() => useTaskController());
+
+    await act(() => hook.result.current.sendMessage());
+
+    expect(createSession).not.toHaveBeenCalled();
+    expect(enqueue).toHaveBeenCalledWith(
+      codeTask.sessionId,
+      expect.objectContaining({ content: '整理这些工作文档', contextFiles: ['Reports/Q2.md'] })
+    );
+    expect(appState.activeSessionId).toBe(codeTask.sessionId);
+    hook.unmount();
+  });
+
+  it('queues on a session created by the former Work assistant', async () => {
+    const workTask = {
+      ...codeSession('work-task', '/work-documents'),
+      agentId: 'work',
+    };
+    appState.activeProduct = 'work';
+    appState.activeSessionId = workTask.sessionId;
+    appState.streamingSessionId = null;
+    appState.workspaceRoot = '/code-project';
+    appState.sessions = [workTask];
+    appState.messagesBySession = { [workTask.sessionId]: [chatMessage(workTask.sessionId, 'Work only')] };
+    appState.composerValue = '修复编码页面';
+    appState.composerContextFiles = ['src/app.ts'];
+    appState.composerSkills = ['review'];
+    appState.newTaskConfig = {
+      workspace: '/code-project',
+      model: 'codex/gpt',
+      effort: 'medium',
+      permissionMode: 'default',
+      goal: '',
+    };
+    const createSession = vi.spyOn(codeApi, 'createSession');
+    const enqueue = vi.spyOn(codeApi, 'enqueueTurn').mockResolvedValue(pausedQueue(workTask.sessionId));
+    const hook = renderHook(() => useTaskController());
+
+    await act(() => hook.result.current.sendMessage());
+
+    expect(createSession).not.toHaveBeenCalled();
+    expect(enqueue).toHaveBeenCalledWith(
+      workTask.sessionId,
+      expect.objectContaining({ content: '修复编码页面', contextFiles: ['src/app.ts'], skillNames: ['review'] })
+    );
+    expect(appState.activeSessionId).toBe(workTask.sessionId);
+    hook.unmount();
+  });
+
+  it('does not overwrite the selected session when asynchronous creation finishes after navigation', async () => {
+    const selectedTask = codeSession('selected-task', '/code-project');
+    const createdTask = codeSession('created-task', '/work-documents');
+    appState.activeProduct = 'work';
+    appState.activeSessionId = null;
+    appState.streamingSessionId = null;
+    appState.workspaceRoot = '/work-documents';
+    appState.sessions = [selectedTask];
+    appState.messagesBySession = { [selectedTask.sessionId]: [] };
+    appState.composerValue = '总结本周文档';
+    appState.composerContextFiles = ['Weekly.md'];
+    appState.composerSkills = [];
+    appState.draftsByTask = {
+      [selectedTask.sessionId]: {
+        content: 'Keep the selected draft',
+        contextFiles: ['src/code.ts'],
+        skillNames: ['review'],
+      },
+    };
+    appState.newTaskConfig = {
+      workspace: '/code-project',
+      model: 'codex/gpt',
+      effort: 'medium',
+      permissionMode: 'default',
+      goal: '',
+    };
+    const create = deferred<Awaited<ReturnType<typeof codeApi.createSession>>>();
+    vi.spyOn(codeApi, 'createSession').mockReturnValue(create.promise);
+    vi.spyOn(codeApi, 'updateSessionControls').mockResolvedValue({
+      sessionId: createdTask.sessionId,
+      effort: 'medium',
+      goal: null,
+      planningMode: 'disabled',
+      goalTracking: false,
+    });
+    const enqueue = vi.spyOn(codeApi, 'enqueueTurn').mockResolvedValue(pausedQueue(createdTask.sessionId));
+    const hook = renderHook(() => useTaskController());
+    let submission!: Promise<void>;
+
+    act(() => {
+      submission = hook.result.current.sendMessage();
+    });
+    act(() => switchActiveTask(selectedTask.sessionId, selectedTask.workspace));
+
+    expect(appState.activeSessionId).toBe(selectedTask.sessionId);
+    expect(appState.composerValue).toBe('Keep the selected draft');
+    expect(appState.composerContextFiles).toEqual(['src/code.ts']);
+
+    await act(async () => {
+      create.resolve({ success: true, session: createdTask });
+      await submission;
+    });
+
+    expect(enqueue).toHaveBeenCalledWith(
+      createdTask.sessionId,
+      expect.objectContaining({ content: '总结本周文档', contextFiles: ['Weekly.md'] })
+    );
+    expect(appState.activeProduct).toBe('work');
+    expect(appState.activeSessionId).toBe(selectedTask.sessionId);
+    expect(appState.composerValue).toBe('Keep the selected draft');
+    expect(appState.composerContextFiles).toEqual(['src/code.ts']);
+    expect(appState.composerSkills).toEqual(['review']);
+    expect(localStorage.getItem('a3s-work.active-session')).toBe(selectedTask.sessionId);
+    expect(appState.draftsByTask[createdTask.sessionId]).toEqual({
+      content: '',
+      contextFiles: [],
+      skillNames: [],
+    });
+    hook.unmount();
+  });
+
+  it('switches drafts, context files, and queues across all unified sessions', () => {
+    const codeTask = codeSession('code-task', '/code-project');
+    const workTask = {
+      ...codeSession('work-task', '/work-documents'),
+      agentId: 'work',
+    };
+    appState.activeProduct = 'work';
+    appState.activeSessionId = codeTask.sessionId;
+    appState.sessions = [codeTask, workTask];
+    appState.workspaceRoot = '/code-project';
+    appState.composerValue = 'Code draft';
+    appState.composerContextFiles = ['src/code.ts'];
+    appState.composerSkills = ['review'];
+    appState.draftsByTask = {
+      [codeTask.sessionId]: { content: 'Code draft', contextFiles: ['src/code.ts'], skillNames: ['review'] },
+      [workTask.sessionId]: { content: 'Work draft', contextFiles: ['Reports/Q2.md'], skillNames: [] },
+    };
+    appState.turnQueues = {
+      [codeTask.sessionId]: pausedQueue(codeTask.sessionId),
+      [workTask.sessionId]: pausedQueue(workTask.sessionId),
+    };
+
+    act(() => switchActiveTask(workTask.sessionId, workTask.workspace));
+
+    expect(appState.activeSessionId).toBe(workTask.sessionId);
+    expect(appState.composerValue).toBe('Work draft');
+    expect(appState.composerContextFiles).toEqual(['Reports/Q2.md']);
+    expect(appState.turnQueues[workTask.sessionId].sessionId).toBe(workTask.sessionId);
+
+    act(() => switchActiveTask(codeTask.sessionId, codeTask.workspace));
+
+    expect(appState.activeSessionId).toBe(codeTask.sessionId);
+    expect(appState.composerValue).toBe('Code draft');
+    expect(appState.composerContextFiles).toEqual(['src/code.ts']);
+    expect(appState.composerSkills).toEqual(['review']);
+    expect(appState.turnQueues[codeTask.sessionId].sessionId).toBe(codeTask.sessionId);
+    expect(localStorage.getItem('a3s-work.active-session')).toBe(codeTask.sessionId);
+    expect(localStorage.getItem('a3s-code-web.active-task')).toBeNull();
+    expect(localStorage.getItem('a3s-work.ai-assistant.active-session')).toBeNull();
   });
 
   it('promotes prepared editor and composer state without leaking it into the next new task', async () => {

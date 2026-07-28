@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { appState } from '../../../state/app-state';
 import type { TaskActions } from '../task-actions';
+import { findTaskSession } from '../task-state';
 import { ComposerPopover } from './composer-popover';
 import { effortDescription, effortLabel, updateNewTaskConfig } from './task-composer-config';
 
 export function TaskComposerEffortControl({ actions }: { actions: TaskActions }) {
   const state = useSnapshot(appState);
-  const task = state.sessions.find((item) => item.sessionId === state.activeSessionId);
+  const task = findTaskSession(state.sessions, state.activeSessionId);
   const controls = task ? state.sessionControls[task.sessionId] : undefined;
   const controlsError = task ? state.sessionControlsErrors[task.sessionId] : undefined;
   const controlsLoading = task ? state.sessionControlsLoading[task.sessionId] || !controls : false;
