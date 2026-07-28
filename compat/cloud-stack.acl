@@ -18,15 +18,15 @@ component "boot" {
   package = "a3s-boot"
   path = "crates/boot"
   repository = "git@github.com:A3S-Lab/Boot.git"
-  revision = "3029e7eda4832c26c6d4dfa8578049e65de8dfbd"
+  revision = "3119d61f1ae9b995913e34abd467ceaadc378a5f"
   source = "git"
-  version = "0.1.2"
+  version = "0.1.3"
 }
 component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "c2fc55950185429f3cc141ab45c525b1b9c1c4b8"
+  revision = "d2a82cd936919d0121436eebc94137cc2c60b323"
   source = "git"
   version = "0.1.0"
 }
@@ -62,9 +62,9 @@ component "orm" {
   package = "a3s-orm"
   path = "crates/orm"
   repository = "git@github.com:A3S-Lab/ORM.git"
-  revision = "6fdeae38032a5134e858cf3985f47d60cb5180ac"
+  revision = "a09b4db0f55c29cff3cb7963f2d45125ed7b3936"
   source = "git"
-  version = "0.1.0"
+  version = "0.2.0"
 }
 component "runtime" {
   owner = "A3S-Lab/Runtime"
@@ -92,9 +92,9 @@ component "updater" {
   version = "0.3.0"
 }
 protocol "cloud-gateway-snapshot" {
-  level = 2
+  level = 3
   owner = "A3S-Lab/Cloud"
-  schema = "a3s.cloud.gateway-snapshot.v2"
+  schema = "a3s.cloud.gateway-snapshot.v3"
   source = "apps/cloud/crates/contracts/src/node/gateway.rs"
 }
 protocol "cloud-node-command" {
