@@ -389,6 +389,41 @@ export interface WorkspaceChangeEvent {
   paths: string[];
 }
 
+export type PreviewKind = 'staticSite' | 'localUrl' | 'pdf' | 'image' | 'office' | 'text';
+
+export type PreviewSource =
+  | {
+      type: 'path';
+      path: string;
+      rootPath: string;
+      name: string;
+      size: number;
+      mtimeMs?: number | null;
+      isDirectory: boolean;
+      isBinary: boolean;
+    }
+  | {
+      type: 'url';
+      url: string;
+    };
+
+export interface PreviewDescriptor {
+  id: string;
+  kind: PreviewKind;
+  title: string;
+  source: PreviewSource;
+  contentUrl: string;
+  watchRoot?: string | null;
+  createdAt: number;
+  expiresAt: number;
+  capabilities: {
+    liveReload: boolean;
+    responsive: boolean;
+    navigation: boolean;
+    openExternal: boolean;
+  };
+}
+
 export interface WorkspaceDirectorySelection {
   cancelled: boolean;
   path: string | null;

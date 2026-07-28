@@ -13,7 +13,7 @@ import {
   RefreshCw,
   Sparkles,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Button,
   IconButton,
@@ -35,10 +35,9 @@ import {
   type WorkFilesSortKey,
   workBreadcrumbs,
 } from '../work-local-files';
+import { ConversationSidebarOpenButton } from './conversation-sidebar-open-button';
 import type { WorkFileCreateArtifactRequest, WorkFileCreateArtifactResult } from './use-work-file-inline-operation';
 import { WorkFilesView } from './work-files-view';
-import { WorkQuickLook } from './work-quick-look';
-import { ConversationSidebarOpenButton } from './conversation-sidebar-open-button';
 import { WorkWorkspaceSwitcher } from './work-workspace-switcher';
 
 export function WorkFilesWorkspace({
@@ -55,6 +54,7 @@ export function WorkFilesWorkspace({
   onOpenSidebar,
   onOpenHome = () => undefined,
   onToggleCopilot,
+  onPreviewEntry = () => undefined,
 }: {
   actions: WorkFilesActions;
   openingPath: string | null;
@@ -72,29 +72,12 @@ export function WorkFilesWorkspace({
   onOpenSidebar: () => void;
   onOpenHome?: () => void;
   onToggleCopilot: () => void;
+  onPreviewEntry?: (entry: WorkspaceEntry) => void;
 }) {
   const [createFolderRequest, setCreateFolderRequest] = useState(0);
-  const [quickLookPath, setQuickLookPath] = useState<string | null>(null);
   const [breadcrumbDropPath, setBreadcrumbDropPath] = useState<string | null>(null);
   const [breadcrumbDropCopies, setBreadcrumbDropCopies] = useState(false);
   const workspaceSearching = actions.searchScope === 'workspace' && Boolean(actions.query.trim());
-  const quickLookEntry = quickLookPath
-    ? (actions.visibleEntries.find((entry) => entry.path === quickLookPath) ?? null)
-    : null;
-  const quickLookIndex = quickLookEntry
-    ? actions.visibleEntries.findIndex((entry) => entry.path === quickLookEntry.path)
-    : -1;
-  const previousQuickLookEntry = quickLookIndex > 0 ? actions.visibleEntries[quickLookIndex - 1] : null;
-  const nextQuickLookEntry =
-    quickLookIndex >= 0 && quickLookIndex < actions.visibleEntries.length - 1
-      ? actions.visibleEntries[quickLookIndex + 1]
-      : null;
-  useEffect(() => {
-    setQuickLookPath(null);
-  }, [actions.currentPath]);
-  useEffect(() => {
-    if (quickLookPath && !actions.visibleEntries.some((entry) => entry.path === quickLookPath)) setQuickLookPath(null);
-  }, [actions.visibleEntries, quickLookPath]);
   if (!actions.rootPath) {
     return (
       <main className='work-files-onboarding'>
@@ -243,7 +226,10 @@ export function WorkFilesWorkspace({
             className='work-files-quick-look-command'
             label='快速查看所选项目'
             disabled={actions.selectedEntries.length !== 1}
-            onClick={() => setQuickLookPath(actions.selectedEntries[0]?.path ?? null)}
+            onClick={() => {
+              const entry = actions.selectedEntries[0];
+              if (entry) onPreviewEntry(entry);
+            }}
           >
             <Eye size={15} />
           </IconButton>
@@ -370,7 +356,7 @@ export function WorkFilesWorkspace({
           openingPath={openingPath}
           createFolderRequest={createFolderRequest}
           onOpenFile={onOpenFile}
-          onQuickLook={(entry) => setQuickLookPath(entry.path)}
+          onQuickLook={onPreviewEntry}
           onAgentRequest={(request) =>
             onAgentRequest({
               ...request,
@@ -392,22 +378,6 @@ export function WorkFilesWorkspace({
               ? '正在搜索全部文件…'
               : '正在读取文件夹…'}
         </output>
-      )}
-      {quickLookEntry && (
-        <WorkQuickLook
-          entry={quickLookEntry}
-          previousEntry={previousQuickLookEntry}
-          nextEntry={nextQuickLookEntry}
-          onNavigate={(entry) => {
-            actions.selectEntry(entry);
-            setQuickLookPath(entry.path);
-          }}
-          onOpen={(entry) => {
-            if (entry.isDirectory) actions.navigateTo(entry.path);
-            else void onOpenFile(entry);
-          }}
-          onClose={() => setQuickLookPath(null)}
-        />
       )}
     </main>
   );

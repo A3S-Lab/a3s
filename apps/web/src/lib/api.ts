@@ -15,8 +15,8 @@ import type {
   GitDiff,
   GitStatus,
   HealthResponse,
-  KnowledgeBaseImportRequest,
   KnowledgeBaseFromSelectionRequest,
+  KnowledgeBaseImportRequest,
   KnowledgeBaseMutation,
   KnowledgeCompilationMutation,
   KnowledgeCompilationPolicy,
@@ -35,6 +35,7 @@ import type {
   PluginOperationPlan,
   PluginOperationRequest,
   PluginOperationResult,
+  PreviewDescriptor,
   RemoteTargetSnapshot,
   SessionCompaction,
   SessionControls,
@@ -490,6 +491,16 @@ export const codeApi = {
     apiRequest<WorkspaceDirectorySelection>('/api/v1/workspace/actions/pick-directory', {
       method: 'POST',
       ...jsonBody(initialPath ? { initialPath } : {}),
+    }),
+  createPreview: (target: string) =>
+    apiRequest<PreviewDescriptor>('/api/v1/previews', {
+      method: 'POST',
+      ...jsonBody({ target }),
+    }),
+  preview: (id: string) => apiRequest<PreviewDescriptor>(`/api/v1/previews/${encodeURIComponent(id)}`),
+  stopPreview: (id: string) =>
+    apiRequest<{ id: string; stopped: boolean }>(`/api/v1/previews/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
     }),
   revealWorkspacePath: (path: string) =>
     apiRequest<{ revealed: boolean; path: string }>('/api/v1/workspace/actions/reveal', {
