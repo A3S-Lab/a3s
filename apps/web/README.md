@@ -24,6 +24,9 @@ library, editor, and external-import lifecycle are defined in
 the [Knowledge Compilation Protocol](docs/KNOWLEDGE_COMPILATION_PROTOCOL.md).
 The task-first Work entry point and its staged evolution are defined in the
 [Work AI-Native Home plan](docs/WORK_AI_NATIVE_HOME.md).
+The persistent artifact surface, reload lifecycle, deep-link contract, and
+security boundary are defined in
+[A3S Work Live Preview](docs/LIVE_PREVIEW.md).
 Native Rust WeChat/Weixin iLink
 remote management is defined by the
 [product and architecture](docs/WEIXIN_REMOTE_CONTROL.md), tracked in the
@@ -102,14 +105,17 @@ by the
   current local folder from the sidebar, the folder context menu, or Cmd/Ctrl+N.
   Their names are entered inline in the file grid or list; Work refuses an
   existing name, writes through a verified sibling replacement, binds the new
-  path, and opens the matching editor immediately. A single
-  selection can open in a read-only Quick Look from
-  Space, the toolbar, or its context menu, then move through adjacent visible
-  items with the arrow keys. Quick Look safely previews bounded text, common
-  raster images, PDFs, and in-memory
-  DOCX/XLSX/XLS/ODS/CSV/PPTX conversions without creating or autosaving a Work
-  artifact; folders expose metadata only, and unknown or oversized binaries are
-  not read. Local deletion is explicitly labeled as permanent and requires
+  path, and opens the matching editor immediately. A single selection opens a
+  persistent, resizable live-preview panel from Space, the toolbar, or its
+  context menu instead of interrupting the file workflow with a dialog. The
+  same panel opens from the code editor and accepts an active-workspace path or
+  loopback development URL. Static sites reload after a debounced workspace
+  change and expose desktop, tablet, mobile, zoom, refresh, and pause controls.
+  Bounded text, common raster images, PDFs, and in-memory
+  DOCX/XLSX/XLS/ODS/CSV/PPTX conversions reuse the same read-only preview
+  surface without creating or autosaving a Work artifact. Folders require an
+  `index.html` entry for site preview; unknown or oversized binaries are not
+  read. Local deletion is explicitly labeled as permanent and requires
   confirmation because operating-system Trash integration is not yet available.
 - An AI-native A3S Work home that starts with the complete durable task
   composer instead of a file grid. It preserves execution mode, model, effort,
@@ -433,10 +439,11 @@ by the
   Dedicated Use workers are identified by their observed standard MCP routes
   (`Use · Browser`, `Use · Office`, or multiple deduplicated routes), while
   their evidence uses readable domain actions instead of raw MCP tool names.
-- A3S Web shares the TUI execution boundaries: Default uses managed SRT for
-  ordinary Bash and asks only before host execution, Plan forces a read-only
-  planning run, and Auto never opens HITL—it executes inside SRT or denies an
-  unavailable sandbox, boundary escape, or unknown unbounded operation.
+- A3S Web shares the TUI execution boundaries: Default uses the active
+  workspace's host command runner behind the shared Rust guardrail, silently
+  admits only commands proven read-only, and asks before unproven host work.
+  Plan denies Bash, while Auto admits only the proven read-only subset and
+  denies other host commands without opening HITL.
 - A bounded startup transition with explicit loading, version-mismatch,
   disconnected, retry, and technical-detail states. Older local services that
   lack the model-catalog route fall back to their configured Provider models

@@ -771,7 +771,8 @@ describe('Work Finder file view', () => {
     expect(onQuickLook).toHaveBeenCalledWith(report);
   });
 
-  it('opens Quick Look for the selected item from the Finder toolbar', async () => {
+  it('opens the inline live preview for the selected item from the Finder toolbar', () => {
+    const onPreviewEntry = vi.fn();
     render(
       <WorkFilesWorkspace
         actions={actions({
@@ -787,13 +788,13 @@ describe('Work Finder file view', () => {
         onAgentRequest={vi.fn()}
         onOpenSidebar={vi.fn()}
         onToggleCopilot={vi.fn()}
+        onPreviewEntry={onPreviewEntry}
       />
     );
 
     fireEvent.click(screen.getByRole('button', { name: '快速查看所选项目' }));
 
-    expect(screen.getByRole('dialog', { name: 'Archive' })).toBeInTheDocument();
-    expect(await screen.findByText('快速查看不会读取文件夹内的内容；打开文件夹后可以继续浏览。')).toBeInTheDocument();
+    expect(onPreviewEntry).toHaveBeenCalledWith(archive);
   });
 
   it('moves selected files to an ancestor breadcrumb', () => {

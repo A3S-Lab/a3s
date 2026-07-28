@@ -13,6 +13,7 @@ import { readWorkCopilotWidth, WorkCopilot } from '../components/work-copilot';
 import { WorkEditorShell } from '../components/work-editor-shell';
 import { WorkFilesWorkspace } from '../components/work-files-workspace';
 import { WorkHome } from '../components/work-home';
+import { WorkLivePreviewPanel } from '../components/work-live-preview-panel';
 import { isOfficeShortcutBlocked } from '../editors/office-shortcuts';
 import { useWorkCodeController } from '../use-work-code-controller';
 import { useWorkController } from '../use-work-controller';
@@ -24,6 +25,7 @@ import { isWorkOfficePath, isWorkTextEditorEntry, localPathBasename, workFileMim
 
 const surfaceStorageKey = 'a3s-work.surface';
 const copilotStorageKey = 'a3s-work.copilot-open';
+const previewWidthStorageKey = 'a3s-work.preview-width';
 
 export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) {
   const state = useSnapshot(appState);
@@ -40,6 +42,8 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
   const [surface, setSurface] = useState<'files' | 'library'>(readSurface);
   const [copilotOpen, setCopilotOpen] = useState(readCopilotOpen);
   const [copilotWidth, setCopilotWidth] = useState(readWorkCopilotWidth);
+  const [previewTarget, setPreviewTarget] = useState(readInitialPreviewTarget);
+  const [previewWidth, setPreviewWidth] = useState(readPreviewWidth);
   const [openingPath, setOpeningPath] = useState<string | null>(null);
   const [agentProposal, setAgentProposal] = useState<WorkAgentProposalRequest | null>(null);
   const [localCreateRequest, setLocalCreateRequest] = useState<{
@@ -58,6 +62,17 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
     setCopilotOpen(open);
     persistValue(copilotStorageKey, String(open));
   };
+  const updatePreviewTarget = useCallback((target: string | null) => {
+    setPreviewTarget(target);
+    try {
+      const url = new URL(window.location.href);
+      if (target) url.searchParams.set('preview', target);
+      else url.searchParams.delete('preview');
+      window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
+    } catch {
+      // The panel remains usable when URL history is unavailable.
+    }
+  }, []);
   const requestLocalArtifactCreate = useCallback(
     async (templateId: string) => {
       let directory = files.currentPath || files.rootPath;
@@ -264,6 +279,8 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
             }}
             onToggleAssistant={() => updateCopilotOpen(!copilotOpen)}
             onAgentRequest={requestAgent}
+            previewTarget={previewTarget}
+            onPreviewTarget={(target) => updatePreviewTarget(target)}
           />
         ) : (
           <>
@@ -291,6 +308,7 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
                   actions.setLibraryView('home');
                 }}
                 onToggleCopilot={() => updateCopilotOpen(!copilotOpen)}
+                onPreviewEntry={(entry) => updatePreviewTarget(entry.path)}
               />
             ) : (
               <WorkHome
@@ -333,6 +351,18 @@ export function WorkProduct({ actions: codeActions }: { actions: CodeActions }) 
           </>
         )}
       </div>
+      {previewTarget && (
+        <WorkLivePreviewPanel
+          target={previewTarget}
+          width={previewWidth}
+          onWidthChange={(nextWidth) => {
+            setPreviewWidth(nextWidth);
+            persistValue(previewWidthStorageKey, String(Math.round(nextWidth)));
+          }}
+          onTargetChange={(target) => updatePreviewTarget(target)}
+          onClose={() => updatePreviewTarget(null)}
+        />
+      )}
       {copilotOpen && (
         <WorkCopilot
           actions={workTaskActions}
@@ -381,6 +411,24 @@ function readCopilotOpen(): boolean {
   } catch {
     return false;
   }
+}
+
+function readInitialPreviewTarget(): string | null {
+  try {
+    return new URL(window.location.href).searchParams.get('preview');
+  } catch {
+    return null;
+  }
+}
+
+function readPreviewWidth(): number {
+  try {
+    const width = Number(localStorage.getItem(previewWidthStorageKey));
+    if (Number.isFinite(width) && width >= 380) return width;
+  } catch {
+    // Use the product default when browser storage is unavailable.
+  }
+  return 620;
 }
 
 function persistValue(key: string, value: string): void {

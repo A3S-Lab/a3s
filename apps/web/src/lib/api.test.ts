@@ -142,6 +142,35 @@ describe('codeApi workspace watch', () => {
   });
 });
 
+describe('codeApi live preview', () => {
+  it('creates, reads, and stops encoded preview sessions', async () => {
+    const fetch = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ code: 200, data: {} }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    await codeApi.createPreview('/repo/site/index.html');
+    await codeApi.preview('preview/id');
+    await codeApi.stopPreview('preview/id');
+
+    expect(
+      fetch.mock.calls.map(([path, init]) => [
+        path,
+        init?.method,
+        typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+      ])
+    ).toEqual([
+      ['/api/v1/previews', 'POST', { target: '/repo/site/index.html' }],
+      ['/api/v1/previews/preview%2Fid', undefined, null],
+      ['/api/v1/previews/preview%2Fid', 'DELETE', null],
+    ]);
+  });
+});
+
 describe('codeApi session maintenance', () => {
   it('requests manual context compaction for one encoded session', async () => {
     const fetch = vi.fn(

@@ -112,6 +112,13 @@ Monaco editing, Git review, local file management, knowledge-library creation
 and compilation workflows, and native document, spreadsheet, presentation, and
 PDF work backed by A3S Office.
 
+Work can keep a resizable live-preview panel beside the file manager or code
+editor. It previews static sites with debounced workspace reloads, loopback
+development servers, text, images, PDFs, and Office files without opening a
+blocking dialog. Static-site files remain confined to the active workspace and
+run in a sandboxed, opaque-origin frame; URL targets are limited to localhost
+and loopback addresses.
+
 ~~~bash
 a3s web
 a3s web status

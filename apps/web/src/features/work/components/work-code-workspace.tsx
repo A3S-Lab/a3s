@@ -1,4 +1,4 @@
-import { ArrowLeft, Braces, LoaderCircle, MessageSquareText, RefreshCw, Save, Sparkles, X } from 'lucide-react';
+import { ArrowLeft, Braces, Eye, LoaderCircle, MessageSquareText, RefreshCw, Save, Sparkles, X } from 'lucide-react';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { Button, Dialog, InlineNotice } from '../../../design-system/primitives';
@@ -23,6 +23,8 @@ export function WorkCodeWorkspace({
   onOpenEntry,
   onToggleAssistant,
   onAgentRequest,
+  previewTarget,
+  onPreviewTarget,
 }: {
   actions: WorkCodeActions;
   rootPath: string;
@@ -31,6 +33,8 @@ export function WorkCodeWorkspace({
   onOpenEntry: (entry: WorkspaceEntry) => void | Promise<void>;
   onToggleAssistant: () => void;
   onAgentRequest: (request: WorkAgentRequest) => void | Promise<void>;
+  previewTarget?: string | null;
+  onPreviewTarget?: (target: string) => void;
 }) {
   const state = useSnapshot(appState);
   const [intelligenceStatus, setIntelligenceStatus] = useState('代码导航连接中');
@@ -133,6 +137,18 @@ export function WorkCodeWorkspace({
             <section className='work-code-panel' aria-label={`编辑 ${localPathBasename(tab.path)}`}>
               <header className='work-code-toolbar'>
                 <span title={tab.path}>{relativeLocalPath(tab.path, rootPath)}</span>
+                {onPreviewTarget && (
+                  <button
+                    type='button'
+                    className={previewTarget === tab.path ? 'active' : ''}
+                    aria-label='在实时预览中打开当前文件'
+                    aria-pressed={previewTarget === tab.path}
+                    onClick={() => onPreviewTarget(tab.path)}
+                  >
+                    <Eye size={14} />
+                    预览
+                  </button>
+                )}
                 <button
                   type='button'
                   aria-label={tab.saving ? '正在保存代码文件' : '保存代码文件'}
@@ -208,6 +224,7 @@ export function WorkCodeWorkspace({
                     <span>{`已选择 ${editorStatus.selectedCharacters} 个字符`}</span>
                   )}
                   {isMarkdown(tab.path) && <span>左侧编辑 · 右侧实时预览</span>}
+                  {previewTarget === tab.path && <span>制品预览已连接</span>}
                 </span>
                 <span className='work-code-statusbar-group'>
                   <span>{tab.content === tab.draft ? '已保存' : '未保存'}</span>
