@@ -99,7 +99,7 @@ platform gates.
 Focused verification at this checkpoint:
 
 ```text
-cd crates/cli
+cd ../..
 cargo fmt --all -- --check
 cargo test --bin a3s api::code_web::remote -- --nocapture
 cargo test --bin a3s weixin_ -- --nocapture
@@ -183,19 +183,17 @@ narrows the first public release to macOS.
 
 ### Current workspace constraint
 
-The current root and `crates/cli` submodule worktrees contain substantial user
-changes. Several future integration files are already modified, including
+The root worktree can contain substantial user changes. Several future
+integration files may already be modified, including
 `app-shell.tsx`, `app-state.ts`, `lib/api.ts`, and `types/api.ts`.
 
 Before implementation begins:
 
-1. Record root and submodule status plus the current commit IDs.
+1. Record root status plus the current commit ID.
 2. Do not use `git stash pop`, reset, checkout-discard, or automatic rewrites.
 3. Establish a user-approved clean baseline or explicitly coordinate edits to
    overlapping files.
-4. Keep backend commits in the `crates/cli` repository and root Web/docs
-   commits in the root repository; update the CLI gitlink only after its commit
-   exists.
+4. Keep backend and Web/docs changes in focused commits in the root repository.
 
 This preparation is a scheduling dependency, not permission to modify or
 commit unrelated user work.
@@ -301,7 +299,7 @@ text-protocol contract tests.
 ### Backend file scope
 
 ```text
-crates/cli/src/api/code_web/
+src/api/code_web/
 ├── module.rs                         import WeixinModule
 └── weixin/
     ├── mod.rs
@@ -617,7 +615,7 @@ failure automatically downgrades mutations to read-only.
 
 ## Verification commands
 
-Run Rust checks from `crates/cli`, not the monorepo root:
+Run CLI Rust checks from the monorepo root:
 
 ```bash
 cargo fmt --all -- --check
@@ -648,21 +646,20 @@ run against a developer's personal production account by default.
 
 ## Review and merge plan
 
-Backend work lives in the `crates/cli` Git repository; Web and these planning
-documents live in the root repository. Use small logical changes and preserve
-cross-version compatibility.
+Backend, Web, and these planning documents live in the root repository. Use
+small logical changes and preserve cross-version compatibility.
 
 Recommended review sequence:
 
-1. **CLI PR A:** protocol DTOs, secure transport, mock server, disabled
+1. **Root PR A:** protocol DTOs, secure transport, mock server, disabled
    capability endpoint.
 2. **Root PR A:** unavailable/page shell and older-backend 404 handling.
-3. **CLI PR B:** credential/runtime stores, QR coordinator, monitor, account
+3. **Root PR B:** credential/runtime stores, QR coordinator, monitor, account
    APIs.
-4. **Root PR B:** QR/account UI and CLI gitlink update.
-5. **CLI PR C:** read-only target ports, intent routing, rendering, ingress.
-6. **Root PR C:** target preview/diagnostics and CLI gitlink update.
-7. **CLI PR D:** policy, confirmation, audit, archive, and managed commands.
+4. **Root PR B:** QR/account UI.
+5. **Root PR C:** read-only target ports, intent routing, rendering, ingress.
+6. **Root PR C:** target preview and diagnostics.
+7. **Root PR D:** policy, confirmation, audit, archive, and managed commands.
 8. **Root PR D:** policy/audit UI and CLI gitlink update.
 9. **CLI PR E:** cooperative controls, hardening, and release gates.
 10. **Root PR E:** final documentation, compatibility verification, and

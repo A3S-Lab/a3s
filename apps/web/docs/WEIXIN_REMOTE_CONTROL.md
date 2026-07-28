@@ -384,7 +384,7 @@ idempotency, and error types remain explicit.
 
 ### Module placement
 
-The backend belongs under `crates/cli/src/api/code_web/weixin/` and is imported
+The backend belongs under `src/api/code_web/weixin/` and is imported
 by `CodeWebModule`:
 
 ```text

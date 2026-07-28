@@ -595,7 +595,7 @@ describe('ExecutionStream permission decisions', () => {
             tool_name: 'bash',
             args: {
               command: 'cargo test -p a3s-cli --test web_cli',
-              cwd: '/repo/crates/cli',
+              cwd: '/repo',
             },
           },
           {
@@ -623,7 +623,7 @@ describe('ExecutionStream permission decisions', () => {
     expect(toolCall.querySelector('[data-syntax-role="program"]')).toHaveTextContent('cargo');
     expect(toolCall.querySelectorAll('[data-syntax-role="flag"]')).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: '参数' }));
-    expect(toolCall.querySelector('.tool-json-preview')).toHaveTextContent('/repo/crates/cli');
+    expect(toolCall.querySelector('.tool-json-preview')).toHaveTextContent('/repo');
     expect(screen.getByRole('log', { name: '实时工具输出' })).toHaveTextContent('test result: ok');
     expect(container.querySelector('.tool-call-result')).toHaveTextContent('实时输出 · 2 行');
   });

@@ -56,6 +56,7 @@ function Expect-Failure {
 }
 
 $global:A3sInstallerMockRelease = $null
+$global:A3sInstallerMockReleaseList = $null
 $global:A3sInstallerMockArchive = ''
 $global:A3sInstallerMoveFault = ''
 $global:A3sInstallerMoveFaultVersion = ''
@@ -77,6 +78,10 @@ function Invoke-RestMethod {
     }
     if ($null -eq $global:A3sInstallerMockRelease) {
         throw 'mock release was not configured'
+    }
+    if ([string]$Uri -like '*releases?per_page=100' -and
+        $null -ne $global:A3sInstallerMockReleaseList) {
+        return $global:A3sInstallerMockReleaseList
     }
     return $global:A3sInstallerMockRelease
 }
@@ -258,7 +263,7 @@ function Set-ReleaseFixture {
         name = $assetName
         state = 'uploaded'
         digest = "sha256:$digest"
-        browser_download_url = "https://github.com/A3S-Lab/CLI/releases/download/v$Version/$assetName"
+        browser_download_url = "https://github.com/A3S-Lab/a3s/releases/download/v$Version/$assetName"
     }
     $global:A3sInstallerMockRelease = [pscustomobject]@{
         tag_name = "v$Version"
@@ -329,6 +334,28 @@ try {
         Fail-Test 'legacy release unexpectedly installed a support payload'
     }
     Assert-NoGeneratedPaths -Root $legacyRoot
+
+    # `latest` ignores other product tags and prereleases in the monorepo.
+    $global:A3sInstallerMockReleaseList = @(
+        [pscustomobject]@{
+            tag_name = 'a3s-code-v9.0.0'
+            draft = $false
+            prerelease = $false
+        },
+        [pscustomobject]@{
+            tag_name = 'v9.0.0'
+            draft = $false
+            prerelease = $true
+        },
+        $global:A3sInstallerMockRelease
+    )
+    $latestRoot = Join-Path $testRoot 'latest-stable-cli'
+    Invoke-TestInstall -Version 'latest' -InstallDir (Join-Path $latestRoot 'bin') `
+        -DataHome (Join-Path $latestRoot 'data')
+    Assert-File (Join-Path $latestRoot 'bin\a3s.exe')
+    Assert-File (Join-Path $latestRoot 'data\web\1.2.2\index.html')
+    Assert-NoGeneratedPaths -Root $latestRoot
+    $global:A3sInstallerMockReleaseList = $null
 
     # Initial installation and upgrade keep both versioned Web caches.
     $upgradeRoot = Join-Path $testRoot 'upgrade path 用户'
@@ -583,6 +610,7 @@ try {
         [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], 'Process')
     }
     Remove-Variable -Name A3sInstallerMockRelease -Scope Global -ErrorAction SilentlyContinue
+    Remove-Variable -Name A3sInstallerMockReleaseList -Scope Global -ErrorAction SilentlyContinue
     Remove-Variable -Name A3sInstallerMockArchive -Scope Global -ErrorAction SilentlyContinue
     Remove-Variable -Name A3sInstallerMoveFault -Scope Global -ErrorAction SilentlyContinue
     Remove-Variable -Name A3sInstallerMoveFaultVersion -Scope Global -ErrorAction SilentlyContinue

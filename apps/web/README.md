@@ -580,7 +580,7 @@ explicit retry state.
 
 The first release supports Rust through `rust-analyzer` and
 TypeScript/JavaScript through `typescript-language-server --stdio`. See the
-[Code Intelligence guide](../../crates/cli/docs/code-intelligence.md) for
+[Code Intelligence guide](../../docs/code-intelligence.md) for
 installation, shortcuts, saved-file behavior, and the typed local API.
 
 Text search excludes repository metadata, dependency caches, and common build
@@ -653,7 +653,7 @@ bun install --frozen-lockfile
 Start the CLI API from the monorepo root:
 
 ```sh
-cargo run --manifest-path crates/cli/Cargo.toml -- \
+cargo run --manifest-path Cargo.toml -- \
   web --host 127.0.0.1 --port 29653 --web-dir apps/web/dist/workspace
 ```
 
@@ -688,7 +688,7 @@ bun run test
 bun run build
 ```
 
-The Web API is implemented in `crates/cli/src/api/code_web`. Browser code does
+The Web API is implemented in `src/api/code_web`. Browser code does
 not access A3S OS tokens directly; the CLI owns token storage and refresh. The
 plugin endpoints expose only verified catalogs and content plus digest-reviewed
 lifecycle operations; see [A3S Web Plugin System](docs/PLUGINS.md).
