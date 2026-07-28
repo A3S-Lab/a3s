@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/A3S-Lab/a3s/actions/workflows/installers.yml"><img alt="Installer tests" src="https://img.shields.io/github/actions/workflow/status/A3S-Lab/a3s/installers.yml?branch=main&amp;style=flat-square&amp;label=installers"></a>
-  <a href="https://github.com/A3S-Lab/CLI/releases/latest"><img alt="Latest A3S CLI release" src="https://img.shields.io/github/v/release/A3S-Lab/CLI?display_name=tag&amp;sort=semver&amp;style=flat-square&amp;color=2864e8"></a>
+  <a href="https://github.com/A3S-Lab/a3s/releases"><img alt="Latest A3S CLI release" src="https://img.shields.io/crates/v/a3s?style=flat-square&amp;color=2864e8&amp;label=CLI"></a>
   <a href="https://crates.io/crates/a3s"><img alt="a3s on crates.io" src="https://img.shields.io/crates/v/a3s?style=flat-square&amp;color=5420bd"></a>
   <a href="https://www.rust-lang.org/"><img alt="Rust native" src="https://img.shields.io/badge/Rust-native-a4a8b2?style=flat-square"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-17181a?style=flat-square"></a>
@@ -102,7 +102,7 @@ a3s code exec "Summarize the public API and run its focused tests."
 ~~~
 
 The complete TUI, permission, session, and component command reference lives in
-the [A3S CLI project](crates/cli/).
+the [CLI reference](docs/cli-reference.md).
 
 ### Local Web, Work, and knowledge
 
@@ -324,7 +324,7 @@ distribution assets.
 
 | Project | Role |
 | --- | --- |
-| [A3S CLI](crates/cli/) | Umbrella `a3s` command, Code TUI host, local Web API, configuration, authentication, and component lifecycle |
+| [A3S CLI](src/) | Root-owned umbrella `a3s` command, Code TUI host, local Web API, configuration, authentication, and component lifecycle |
 | [A3S Code](crates/code/) | Governed async agent runtime with Rust Core plus Node.js and Python SDKs |
 | [A3S Web](apps/web/) | Local Code, Work, file, knowledge, Office, and research browser surfaces |
 | [A3S Windhole](apps/windhole/) | Local visual laboratory for A3S Bench catalog, run, result, validation, and Doctor workflows |
@@ -338,6 +338,10 @@ distribution assets.
 | [A3S Science](packages/science/) | Independently versioned scientific Skills, MCP data services, compute workflows, and research tooling |
 | [A3S Cloud](apps/cloud/) | Self-hosted control plane for desired state, durable operations, nodes, and verified OCI deployment |
 | [Documentation](apps/docs/) | Documentation, tutorials, project references, and versioned Cloud operations guidance |
+
+The [CLI repository migration record](docs/cli-repository-migration.md)
+documents the imported source revision, preserved legacy history, and
+main-repository release ownership.
 
 ### Runtime, coordination, and data
 
@@ -393,12 +397,19 @@ just cloud-stack-check # verify the locked Cloud integration stack
 ~~~
 
 > [!IMPORTANT]
-> The repository root is not a Rust workspace. Do not create a root
-> `Cargo.toml` or run root-level Cargo commands expecting to validate every
-> project. Work inside the crate, submodule, package, or application that owns
-> the change.
+> The repository root is the `a3s` CLI package, not a Cargo workspace.
+> Root-level Cargo commands validate the CLI only. Work inside the relevant
+> submodule, package, or application for every other project.
 
-A typical Rust project validation starts from that project's workspace:
+A typical CLI validation runs from the repository root:
+
+~~~bash
+cargo fmt --all -- --check
+cargo test --all-targets
+cargo clippy --all-targets -- -D warnings
+~~~
+
+Other Rust project validation starts from that project's workspace:
 
 ~~~bash
 cd crates/<project>
@@ -437,7 +448,7 @@ structure.
 ## Documentation and community
 
 - Documentation: [a3s-lab.github.io/a3s](https://a3s-lab.github.io/a3s/)
-- Latest CLI release: [A3S-Lab/CLI releases](https://github.com/A3S-Lab/CLI/releases/latest)
+- CLI releases: [A3S-Lab/a3s releases](https://github.com/A3S-Lab/a3s/releases)
 - Questions and discussion: [Discord](https://discord.gg/XVg6Hu6H)
 
 Each project README records its detailed APIs, feature flags, platform

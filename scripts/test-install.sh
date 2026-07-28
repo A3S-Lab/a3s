@@ -81,17 +81,25 @@ set -eu
 : "${MOCK_CURL_CALLED:?}"
 : >"$MOCK_CURL_CALLED"
 destination=
+request_url=
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -o)
             destination=$2
             shift 2
             ;;
+        https://*)
+            request_url=$1
+            shift
+            ;;
         *) shift ;;
     esac
 done
 if [ -n "$destination" ]; then
     cp "$MOCK_ARCHIVE" "$destination"
+elif [ -n "${MOCK_RELEASE_LIST_JSON:-}" ] &&
+    printf '%s' "$request_url" | grep -F 'releases?per_page=100' >/dev/null; then
+    cat "$MOCK_RELEASE_LIST_JSON"
 else
     cat "$MOCK_RELEASE_JSON"
 fi
@@ -161,6 +169,7 @@ export REAL_MV="$real_mv"
 export MOCK_MV_FAULT_MARKER="$test_root/mv-fault.triggered"
 unset A3S_VERSION A3S_INSTALL_DIR A3S_DATA_HOME A3S_MODIFY_PATH A3S_GITHUB_TOKEN XDG_DATA_HOME
 unset MOCK_MV_FAULT MOCK_MV_FAULT_VERSION
+unset MOCK_RELEASE_LIST_JSON
 
 sha256_file() {
     if command -v sha256sum >/dev/null 2>&1; then
@@ -211,7 +220,7 @@ make_fixture() {
     MOCK_RELEASE_JSON="$fixture_root/release.json"
     export MOCK_ARCHIVE MOCK_RELEASE_JSON
     printf '%s' \
-        "{\"tag_name\":\"v${version}\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/CLI/releases/assets/1\",\"name\":\"unrelated.tar.gz\",\"uploader\":{\"login\":\"bot\"},\"state\":\"uploaded\",\"digest\":\"sha256:$(printf '0%.0s' {1..64})\",\"browser_download_url\":\"https://example.invalid/unrelated\"},{\"url\":\"https://api.github.com/repos/A3S-Lab/CLI/releases/assets/2\",\"name\":\"${asset_name}\",\"uploader\":{\"login\":\"bot\",\"following_url\":\"https://api.github.com/users/bot/following{/other_user}\"},\"state\":\"uploaded\",\"digest\":\"sha256:${digest}\",\"browser_download_url\":\"https://github.com/A3S-Lab/CLI/releases/download/v${version}/${asset_name}\"}]}" \
+        "{\"tag_name\":\"v${version}\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/a3s/releases/assets/1\",\"name\":\"unrelated.tar.gz\",\"uploader\":{\"login\":\"bot\"},\"state\":\"uploaded\",\"digest\":\"sha256:$(printf '0%.0s' {1..64})\",\"browser_download_url\":\"https://example.invalid/unrelated\"},{\"url\":\"https://api.github.com/repos/A3S-Lab/a3s/releases/assets/2\",\"name\":\"${asset_name}\",\"uploader\":{\"login\":\"bot\",\"following_url\":\"https://api.github.com/users/bot/following{/other_user}\"},\"state\":\"uploaded\",\"digest\":\"sha256:${digest}\",\"browser_download_url\":\"https://github.com/A3S-Lab/a3s/releases/download/v${version}/${asset_name}\"}]}" \
         >"$MOCK_RELEASE_JSON"
 }
 
@@ -242,6 +251,19 @@ assert_file "$legacy_root/data/web/1.2.2/index.html"
 [[ ! -e "$legacy_root/bin/support" ]] \
     || fail 'legacy release unexpectedly installed a support payload'
 assert_no_generated_paths "$legacy_root"
+
+# `latest` ignores other product tags and prereleases in the monorepo.
+latest_list="$fixture_root/releases.json"
+printf '%s' \
+    '[{"tag_name":"a3s-code-v9.0.0","draft":false,"prerelease":false},{"tag_name":"v9.0.0","draft":false,"prerelease":true},{"tag_name":"v1.2.2","draft":false,"prerelease":false}]' \
+    >"$latest_list"
+export MOCK_RELEASE_LIST_JSON="$latest_list"
+latest_root="$test_root/latest-stable-cli"
+run_install latest "$latest_root/bin" "$latest_root/data"
+assert_file "$latest_root/bin/a3s"
+assert_file "$latest_root/data/web/1.2.2/index.html"
+assert_no_generated_paths "$latest_root"
+unset MOCK_RELEASE_LIST_JSON
 
 # Every published Unix target maps to the exact release asset name.
 for target_case in \
@@ -302,7 +324,7 @@ make_fixture 1.2.6 x86_64-unknown-linux-gnu
 asset_name='a3s-v1.2.6-x86_64-unknown-linux-gnu.tar.gz'
 actual_digest=$(sha256_file "$MOCK_ARCHIVE")
 printf '%s' \
-    "{\"tag_name\":\"v1.2.6\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/CLI/releases/assets/3\",\"name\":\"${asset_name}\",\"state\":\"uploaded\",\"browser_download_url\":\"https://github.com/A3S-Lab/CLI/releases/download/v1.2.6/${asset_name}\"},{\"url\":\"https://api.github.com/repos/A3S-Lab/CLI/releases/assets/4\",\"name\":\"other.tar.gz\",\"state\":\"uploaded\",\"digest\":\"sha256:${actual_digest}\",\"browser_download_url\":\"https://example.invalid/other\"}]}" \
+    "{\"tag_name\":\"v1.2.6\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/a3s/releases/assets/3\",\"name\":\"${asset_name}\",\"state\":\"uploaded\",\"browser_download_url\":\"https://github.com/A3S-Lab/a3s/releases/download/v1.2.6/${asset_name}\"},{\"url\":\"https://api.github.com/repos/A3S-Lab/a3s/releases/assets/4\",\"name\":\"other.tar.gz\",\"state\":\"uploaded\",\"digest\":\"sha256:${actual_digest}\",\"browser_download_url\":\"https://example.invalid/other\"}]}" \
     >"$fixture_root/missing-digest.json"
 MOCK_RELEASE_JSON="$fixture_root/missing-digest.json"
 export MOCK_RELEASE_JSON
@@ -324,7 +346,7 @@ export MOCK_ARCHIVE
 unsafe_digest=$(sha256_file "$MOCK_ARCHIVE")
 unsafe_asset=$(basename "$MOCK_ARCHIVE")
 printf '%s' \
-    "{\"tag_name\":\"v1.2.7\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/CLI/releases/assets/5\",\"name\":\"${unsafe_asset}\",\"state\":\"uploaded\",\"digest\":\"sha256:${unsafe_digest}\",\"browser_download_url\":\"https://github.com/A3S-Lab/CLI/releases/download/v1.2.7/${unsafe_asset}\"}]}" \
+    "{\"tag_name\":\"v1.2.7\",\"draft\":false,\"prerelease\":false,\"assets\":[{\"url\":\"https://api.github.com/repos/A3S-Lab/a3s/releases/assets/5\",\"name\":\"${unsafe_asset}\",\"state\":\"uploaded\",\"digest\":\"sha256:${unsafe_digest}\",\"browser_download_url\":\"https://github.com/A3S-Lab/a3s/releases/download/v1.2.7/${unsafe_asset}\"}]}" \
     >"$fixture_root/unsafe.json"
 MOCK_RELEASE_JSON="$fixture_root/unsafe.json"
 export MOCK_RELEASE_JSON

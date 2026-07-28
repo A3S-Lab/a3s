@@ -99,7 +99,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Detect published CLI release
+        id: cli-release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tags="$(gh api --paginate \
+            "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name')"
+          if printf '%s\n' "$tags" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping live installer smoke until the first root-owned CLI release is published"
+          fi
+
       - name: Install latest release
+        if: steps.cli-release.outputs.available == 'true'
         env:
           A3S_GITHUB_TOKEN: ${{ github.token }}
           A3S_INSTALL_DIR: ${{ runner.temp }}/a3s-smoke/bin
@@ -107,6 +125,7 @@ jobs:
         run: sh install.sh --no-modify-path
 
       - name: Verify binary and Web workspace
+        if: steps.cli-release.outputs.available == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -123,7 +142,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Detect published CLI release
+        id: cli-release
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tags = @(& gh api --paginate `
+            "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" `
+            --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name')
+          if ($LASTEXITCODE -ne 0) {
+            throw "failed to query published releases"
+          }
+          $available = @($tags | Where-Object { $_ -match '^v\d+\.\d+\.\d+$' }).Count -gt 0
+          "available=$($available.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          if (-not $available) {
+            Write-Host "::notice::Skipping live installer smoke until the first root-owned CLI release is published"
+          }
+
       - name: Install and verify latest release
+        if: steps.cli-release.outputs.available == 'true'
         shell: powershell
         env:
           A3S_GITHUB_TOKEN: ${{ github.token }}

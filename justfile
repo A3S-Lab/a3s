@@ -14,19 +14,10 @@ agent_island_executable := if os() == "windows" { "a3s-webview.exe" } else { "a3
 agent_island_bin := agent_island_target / "debug" / agent_island_executable
 
 [private]
-cli-submodules:
+use-e2e-submodules:
     sh scripts/ensure-dev-submodules.sh \
-        crates/acl:Cargo.toml \
-        crates/boot:Cargo.toml \
         crates/browser:crates/browser-driver/Cargo.toml \
-        crates/cli:Cargo.toml \
-        crates/code:core/Cargo.toml \
-        crates/flow:Cargo.toml \
-        crates/lane:Cargo.toml \
-        crates/memory:Cargo.toml \
         crates/ocr:Cargo.toml \
-        crates/search:Cargo.toml \
-        crates/tui:Cargo.toml \
         crates/use:crates/extension/Cargo.toml
 
 [private]
@@ -81,22 +72,22 @@ playground:
 # Run the local umbrella CLI and forward all arguments
 
 # Example: `just a3s search status` or `just a3s --help`
-a3s *args: cli-submodules
-    cargo --config 'patch.crates-io.a3s-code-core.path="crates/code/core"' --config 'patch.crates-io.a3s-memory.path="crates/memory"' --config 'patch.crates-io.a3s-search.path="crates/search"' --config 'patch.crates-io.a3s-tui.path="crates/tui"' run --manifest-path crates/cli/Cargo.toml -- {{ args }}
+a3s *args:
+    cargo run --manifest-path Cargo.toml -- {{ args }}
 
 # Start the A3S Code TUI in the current repository
-code: cli-submodules webview-submodule
+code: webview-submodule
     CARGO_TARGET_DIR='{{ agent_island_target }}' cargo build --manifest-path crates/webview/Cargo.toml --bin a3s-webview
-    A3S_AGENT_ISLAND_BIN='{{ agent_island_bin }}' cargo --config 'patch.crates-io.a3s-code-core.path="crates/code/core"' --config 'patch.crates-io.a3s-memory.path="crates/memory"' --config 'patch.crates-io.a3s-tui.path="crates/tui"' run --manifest-path crates/cli/Cargo.toml -- code
+    A3S_AGENT_ISLAND_BIN='{{ agent_island_bin }}' cargo run --manifest-path Cargo.toml -- code
 
 # Test Code hot-plug against a real, independently built A3S Use process
-use-hotplug-e2e: cli-submodules
+use-hotplug-e2e: use-e2e-submodules
     CARGO_TARGET_DIR='{{ use_e2e_use_target }}' cargo build --manifest-path crates/use/Cargo.toml -p a3s-use
     CARGO_TARGET_DIR='{{ use_e2e_use_target }}' cargo build --manifest-path crates/browser/Cargo.toml -p a3s-use-browser-driver
     CARGO_TARGET_DIR='{{ use_e2e_code_target }}' A3S_USE_E2E_BIN='{{ use_e2e_bin }}' A3S_USE_E2E_BROWSER_BIN='{{ use_e2e_browser_bin }}' A3S_USE_E2E_SOURCE_ROOT='{{ justfile_directory() }}/crates/use' A3S_USE_E2E_BROWSER_SOURCE_ROOT='{{ justfile_directory() }}/crates/browser' A3S_USE_E2E_OCR_SOURCE_ROOT='{{ justfile_directory() }}/crates/ocr' bash scripts/test-use-hotplug-e2e.sh
 
 # Build and start the A3S Web application
-web: cli-submodules
+web:
     cd apps/web && A3S_HOST={{ host }} A3S_PORT={{ port }} just web
 
 # Start the Windhole visual A3S Bench laboratory

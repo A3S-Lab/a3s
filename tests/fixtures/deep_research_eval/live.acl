@@ -1,0 +1,568 @@
+corpus "deep-research-live-v1" {
+  schema           = "a3s/deep-research-live-eval/v1"
+  version          = "1.0.0"
+  runs_per_case    = 3
+  artifact_formats = ["markdown", "html"]
+
+  budget {
+    planner_generations  = 1
+    feedback_generations = 0
+    verifier_generations = 0
+    report_generations   = 1
+    max_queries          = 4
+    max_acquired_sources = 8
+    synthesis_packet_chars = 48000
+    public_excerpt_chars   = 12000
+    wall_clock_ms        = 900000
+    planner_timeout_ms   = 60000
+    verifier_timeout_ms  = 60000
+    search_timeout_ms    = 12000
+    fetch_timeout_ms     = 20000
+    report_timeout_ms    = 480000
+  }
+
+  case "C01" {
+    query = "截至评测当天，比较 Tokio 与 async-std 的维护状态、HTTP 与数据库生态兼容性，以及新项目和存量项目的生产选型取舍。优先使用项目或库的官方资料，区分事实、判断与证据缺口。"
+    report_language   = "zh"
+    evidence_scope    = "web"
+    expected_terminal = "report"
+    guardrails = [
+      "Do not relabel a documentation build timestamp as a crate release date.",
+      "Do not invent performance, adoption, or migration-cost comparisons.",
+      "Keep factual premises separate from recommendations.",
+    ]
+
+    dimension "maintenance" {
+      material   = true
+      question   = "What are the current maintenance and support positions of Tokio and async-std?"
+      acceptable = ["supported"]
+    }
+
+    dimension "http-ecosystem" {
+      material   = true
+      question   = "What do official HTTP-library sources establish about runtime requirements?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "database-ecosystem" {
+      material   = true
+      question   = "What do official database-library sources establish about runtime requirements?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "new-project-choice" {
+      material   = true
+      question   = "What bounded production choice follows for a new project?"
+      acceptable = ["supported"]
+    }
+
+    dimension "legacy-migration" {
+      material   = true
+      question   = "What bounded migration guidance follows for an existing async-std project?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "evidence-boundaries" {
+      material   = true
+      question   = "Which performance, adoption, or migration-cost comparisons remain unsupported?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    source_requirement "runtime-primary" {
+      description = "Official Tokio material and the async-std maintenance statement or RustSec advisory."
+      authority   = "primary"
+      transport   = "web"
+      dimensions  = ["maintenance", "new-project-choice", "legacy-migration", "evidence-boundaries"]
+    }
+
+    source_requirement "http-primary" {
+      description = "Official documentation from at least one relevant HTTP library."
+      authority   = "primary"
+      transport   = "web"
+      dimensions  = ["http-ecosystem"]
+    }
+
+    source_requirement "database-primary" {
+      description = "Official documentation from at least one relevant database library."
+      authority   = "primary"
+      transport   = "web"
+      dimensions  = ["database-ecosystem"]
+    }
+  }
+
+  case "C02" {
+    query = "As of the evaluation date, what Tokio LTS branches are supported, when does each support window end, and what MSRV does each branch declare? Use the canonical Tokio source and distinguish LTS information from the newest non-LTS release."
+    report_language   = "en"
+    evidence_scope    = "web"
+    expected_terminal = "report"
+    guardrails = [
+      "Do not treat a secondary summary as sufficient when the canonical source is accessible.",
+      "Do not merge newest-release facts into the LTS branch table.",
+      "State an unresolved newest-release question as a gap rather than guessing.",
+    ]
+
+    dimension "lts-branches" {
+      material   = true
+      question   = "Which Tokio LTS branches are supported at the evaluation date?"
+      acceptable = ["supported"]
+    }
+
+    dimension "support-windows" {
+      material   = true
+      question   = "When does each supported LTS branch's support window end?"
+      acceptable = ["supported"]
+    }
+
+    dimension "msrv" {
+      material   = true
+      question   = "What MSRV does each supported LTS branch declare?"
+      acceptable = ["supported"]
+    }
+
+    dimension "source-date" {
+      material   = true
+      question   = "What date or revision bounds the canonical LTS information?"
+      acceptable = ["supported"]
+    }
+
+    dimension "newest-release-boundary" {
+      material   = true
+      question   = "What is established about the newest non-LTS release, and what remains unresolved?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    source_requirement "tokio-canonical" {
+      description = "The canonical Tokio LTS policy or equivalent first-party record."
+      authority   = "primary"
+      transport   = "web"
+      dimensions  = ["lts-branches", "support-windows", "msrv", "source-date", "newest-release-boundary"]
+    }
+  }
+
+  case "C03" {
+    query = "截至评测当天，欧盟《人工智能法案》对通用人工智能模型提供者已经生效和即将生效的主要义务是什么？请区分法规原文、欧盟机构解释与第三方解读，并标明关键日期。"
+    report_language   = "zh"
+    evidence_scope    = "web"
+    expected_terminal = "report"
+    guardrails = [
+      "Do not present third-party interpretation as statutory text.",
+      "Do not collapse entry into force, application dates, and compliance deadlines.",
+      "Keep systemic-risk obligations distinct from obligations for all GPAI providers.",
+    ]
+
+    dimension "applicability" {
+      material   = true
+      question   = "Which providers and models fall within the relevant GPAI provisions?"
+      acceptable = ["supported"]
+    }
+
+    dimension "dates" {
+      material   = true
+      question   = "Which entry-into-force, application, and compliance dates are material?"
+      acceptable = ["supported"]
+    }
+
+    dimension "provider-obligations" {
+      material   = true
+      question   = "What obligations apply to GPAI model providers?"
+      acceptable = ["supported"]
+    }
+
+    dimension "systemic-risk" {
+      material   = true
+      question   = "How do systemic-risk duties differ from general GPAI provider duties?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "source-tiers" {
+      material   = true
+      question   = "Which statements come from primary law, EU institutional guidance, or third-party interpretation?"
+      acceptable = ["supported"]
+    }
+
+    source_requirement "eu-primary-law" {
+      description = "Official EU primary legal text for the material obligations and dates."
+      authority   = "primary"
+      transport   = "web"
+      dimensions  = ["applicability", "dates", "provider-obligations", "systemic-risk", "source-tiers"]
+    }
+
+    source_requirement "eu-institutional-guidance" {
+      description = "European Commission or another competent EU institution's explanatory material."
+      authority   = "official"
+      transport   = "web"
+      dimensions  = ["dates", "provider-obligations", "systemic-risk", "source-tiers"]
+    }
+  }
+
+  case "C04" {
+    query = "Compare PostgreSQL with pgvector and Qdrant for a production workload near 10 million vectors. Cover operational complexity, filtering, durability, scaling, and publicly supported performance boundaries. Recommend when each is the safer choice without inventing a benchmark result."
+    report_language   = "en"
+    evidence_scope    = "web"
+    expected_terminal = "report"
+    guardrails = [
+      "Keep vendor benchmark claims attributed to their source and test conditions.",
+      "Do not invent a comparable benchmark when the fetched evidence is not comparable.",
+      "Make workload recommendations conditional on admitted factual premises.",
+    ]
+
+    dimension "architecture-operations" {
+      material   = true
+      question   = "How do the architectures affect operational complexity?"
+      acceptable = ["supported"]
+    }
+
+    dimension "filtering" {
+      material   = true
+      question   = "What filtering capabilities and boundaries are publicly supported?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "durability" {
+      material   = true
+      question   = "What durability behavior is documented for each option?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "scaling" {
+      material   = true
+      question   = "What scaling models and limits are documented near the requested workload?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "performance-boundary" {
+      material   = true
+      question   = "Which public performance evidence is comparable, and which comparison remains unavailable?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "recommendation" {
+      material   = true
+      question   = "Under which workload conditions is each option the safer choice?"
+      acceptable = ["supported"]
+    }
+
+    source_requirement "postgres-pgvector-primary" {
+      description = "Official PostgreSQL and pgvector material for architecture, durability, filtering, and scaling claims."
+      authority   = "primary"
+      transport   = "web"
+      dimensions  = ["architecture-operations", "filtering", "durability", "scaling", "performance-boundary", "recommendation"]
+    }
+
+    source_requirement "qdrant-primary" {
+      description = "Official Qdrant material for architecture, durability, filtering, scaling, and performance claims."
+      authority   = "primary"
+      transport   = "web"
+      dimensions  = ["architecture-operations", "filtering", "durability", "scaling", "performance-boundary", "recommendation"]
+    }
+  }
+
+  case "C05" {
+    query = "In this repository, trace the active DeepResearch path from CLI or TUI submission through acquisition, evidence handling, report generation, artifact publication, and browser opening. Cite the local files that own each transition and identify inactive legacy paths."
+    report_language   = "en"
+    evidence_scope    = "local_only"
+    expected_terminal = "report"
+    guardrails = [
+      "Web sources are neither required nor a substitute for repository evidence.",
+      "Do not infer active status from filenames alone; trace call sites and configuration gates.",
+      "Cite repository-relative file identities for every material transition.",
+    ]
+
+    dimension "entrypoint" {
+      material   = true
+      question   = "Which CLI and TUI entrypoints accept a DeepResearch request?"
+      acceptable = ["supported"]
+    }
+
+    dimension "acquisition" {
+      material   = true
+      question   = "Which active code owns planning and evidence acquisition?"
+      acceptable = ["supported"]
+    }
+
+    dimension "evidence" {
+      material   = true
+      question   = "How is fetched or local evidence admitted and persisted?"
+      acceptable = ["supported"]
+    }
+
+    dimension "report" {
+      material   = true
+      question   = "Which active code constructs the reader-facing report?"
+      acceptable = ["supported"]
+    }
+
+    dimension "publication" {
+      material   = true
+      question   = "Which active code writes and settles Markdown and HTML artifacts?"
+      acceptable = ["supported"]
+    }
+
+    dimension "browser" {
+      material   = true
+      question   = "Which active code opens or presents the generated website?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "active-versus-legacy" {
+      material   = true
+      question   = "Which paths are active for new runs and which remain only for compatibility or replay?"
+      acceptable = ["supported"]
+    }
+
+    source_requirement "workspace-code" {
+      description = "Current repository source and configuration files that own each call transition."
+      authority   = "primary"
+      transport   = "workspace"
+      dimensions  = ["entrypoint", "acquisition", "evidence", "report", "publication", "browser", "active-versus-legacy"]
+    }
+  }
+
+  case "C06" {
+    query = "结合本仓库 Cargo.toml 中的 Tokio 依赖声明和 Tokio 官方支持策略，评估当前依赖方式是否锁定 LTS、可能采用哪些兼容版本，以及团队若要求固定 LTS 应如何修改。不要把 Cargo 的版本范围推断成当前 lockfile 的精确版本。"
+    report_language   = "zh"
+    evidence_scope    = "web_and_workspace"
+    expected_terminal = "report"
+    guardrails = [
+      "Do not convert a Cargo version requirement into the exact locked version.",
+      "State an exact locked version only when the relevant lockfile was inspected.",
+      "Separate Cargo range semantics from Tokio's LTS support policy.",
+    ]
+
+    dimension "manifest-declaration" {
+      material   = true
+      question   = "What Tokio dependency requirement does the relevant Cargo.toml declare?"
+      acceptable = ["supported"]
+    }
+
+    dimension "cargo-semantics" {
+      material   = true
+      question   = "Which versions can Cargo's declared requirement admit?"
+      acceptable = ["supported"]
+    }
+
+    dimension "locked-version" {
+      material   = true
+      question   = "What exact Tokio version is locked, if the relevant lockfile was inspected?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "lts-policy" {
+      material   = true
+      question   = "What does the canonical Tokio source establish about current LTS support?"
+      acceptable = ["supported"]
+    }
+
+    dimension "configuration-advice" {
+      material   = true
+      question   = "How should the dependency be changed if the team requires a fixed LTS policy?"
+      acceptable = ["supported"]
+    }
+
+    source_requirement "workspace-manifest" {
+      description = "The repository Cargo.toml and the relevant Cargo.lock when an exact locked version is discussed."
+      authority   = "primary"
+      transport   = "workspace"
+      dimensions  = ["manifest-declaration", "cargo-semantics", "locked-version", "configuration-advice"]
+    }
+
+    source_requirement "tokio-policy" {
+      description = "The canonical Tokio LTS support policy."
+      authority   = "primary"
+      transport   = "web"
+      dimensions  = ["lts-policy", "configuration-advice"]
+    }
+  }
+
+  case "C07" {
+    query = "研究一下 2026 年最好的 Rust Web 框架，并给出选择建议。"
+    report_language   = "zh"
+    evidence_scope    = "web"
+    expected_terminal = "report"
+    guardrails = [
+      "Do not declare one universal winner from popularity, promotional copy, or a small sample.",
+      "Make ranking criteria and the evidence window explicit.",
+      "Prefer bounded scenario recommendations to a fabricated total ranking.",
+    ]
+
+    dimension "criteria" {
+      material   = true
+      question   = "Which explicit criteria make a framework preferable for a given scenario?"
+      acceptable = ["supported"]
+    }
+
+    dimension "evidence-window" {
+      material   = true
+      question   = "What evaluation date and evidence window bound the comparison?"
+      acceptable = ["supported"]
+    }
+
+    dimension "scenario-comparison" {
+      material   = true
+      question   = "How do viable frameworks compare under the stated criteria and scenarios?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "recommendation" {
+      material   = true
+      question   = "Which framework is a bounded choice for each stated scenario?"
+      acceptable = ["supported"]
+    }
+
+    source_requirement "framework-primary" {
+      description = "Current first-party framework documentation for the criteria used in the comparison."
+      authority   = "primary"
+      transport   = "web"
+      dimensions  = ["criteria", "scenario-comparison", "recommendation"]
+    }
+
+    source_requirement "comparison-context" {
+      description = "Claim-appropriate evidence for any adoption, maintenance, or performance criterion actually used."
+      authority   = "mixed"
+      transport   = "web"
+      dimensions  = ["evidence-window", "scenario-comparison", "recommendation"]
+    }
+  }
+
+  case "C08" {
+    query = "Find verified private production incident rates for Tokio and async-std in Chinese financial institutions and determine which runtime causes fewer incidents."
+    report_language   = "en"
+    evidence_scope    = "web"
+    expected_terminal = "report"
+    guardrails = [
+      "Do not convert general documentation, downloads, or anecdotes into private incident rates.",
+      "Do not infer institution-level causality from runtime popularity or maintenance status.",
+      "Publish an explicit evidence boundary when verified public data is unavailable within budget.",
+    ]
+
+    dimension "incident-rate-evidence" {
+      material   = true
+      question   = "Is verified institution-level production incident-rate evidence publicly available?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "causal-comparison" {
+      material   = true
+      question   = "Does admissible evidence establish which runtime causes fewer incidents?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    source_requirement "institution-level-records" {
+      description = "Verifiable public records that report private production incidents at the requested institution and runtime granularity."
+      authority   = "primary"
+      transport   = "web"
+      dimensions  = ["incident-rate-evidence", "causal-comparison"]
+    }
+  }
+
+  case "C09" {
+    query = "截至评测当天，为一个新的 Rust 云服务比较 Tokio、smol 和 glommio，覆盖维护状态、网络与数据库库兼容性、结构化并发、取消安全、可观测性、资源占用、Linux 特性依赖、迁移成本和团队学习成本；给出 Kubernetes 通用服务、单机高吞吐服务和已有 async-std 项目三种建议，并明确哪些维度没有可比的一手证据。"
+    report_language   = "zh"
+    evidence_scope    = "web"
+    expected_terminal = "report"
+    guardrails = [
+      "Prioritize material decisions within the shared budget instead of silently omitting dimensions.",
+      "Do not compress unsupported dimensions into a broad comparative claim.",
+      "Preserve supported sibling findings and explicitly bound dimensions without comparable primary evidence.",
+    ]
+
+    dimension "maintenance" {
+      material   = true
+      question   = "What is the current maintenance status of Tokio, smol, and glommio?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "network-compatibility" {
+      material   = true
+      question   = "What network-library compatibility is established for each runtime?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "database-compatibility" {
+      material   = true
+      question   = "What database-library compatibility is established for each runtime?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "structured-concurrency" {
+      material   = true
+      question   = "What structured-concurrency behavior is documented for each runtime?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "cancellation-safety" {
+      material   = true
+      question   = "What cancellation-safety behavior or boundaries are documented?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "observability" {
+      material   = true
+      question   = "What observability integrations are documented for each runtime?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "resource-use" {
+      material   = true
+      question   = "What comparable primary evidence exists about resource use?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "linux-dependencies" {
+      material   = true
+      question   = "Which Linux-specific features or deployment constraints apply?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "migration-cost" {
+      material   = true
+      question   = "What evidence bounds migration cost from an existing async-std project?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "learning-cost" {
+      material   = true
+      question   = "What evidence bounds team learning cost?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "kubernetes-service" {
+      material   = true
+      question   = "Which bounded choice fits a general Kubernetes service?"
+      acceptable = ["supported"]
+    }
+
+    dimension "single-node-throughput" {
+      material   = true
+      question   = "Which bounded choice fits a single-node high-throughput service?"
+      acceptable = ["supported", "bounded"]
+    }
+
+    dimension "async-std-migration" {
+      material   = true
+      question   = "Which bounded choice fits an existing async-std project?"
+      acceptable = ["supported"]
+    }
+
+    source_requirement "runtime-primary" {
+      description = "First-party maintenance and runtime-behavior material for Tokio, smol, and glommio."
+      authority   = "primary"
+      transport   = "web"
+      dimensions  = ["maintenance", "structured-concurrency", "cancellation-safety", "observability", "resource-use", "linux-dependencies", "kubernetes-service", "single-node-throughput", "async-std-migration"]
+    }
+
+    source_requirement "ecosystem-primary" {
+      description = "Official network and database library documentation for claimed runtime compatibility."
+      authority   = "primary"
+      transport   = "web"
+      dimensions  = ["network-compatibility", "database-compatibility", "kubernetes-service", "single-node-throughput"]
+    }
+
+    source_requirement "migration-learning-evidence" {
+      description = "Claim-appropriate evidence for migration and learning-cost statements, or an explicit evidence gap."
+      authority   = "mixed"
+      transport   = "web"
+      dimensions  = ["migration-cost", "learning-cost", "async-std-migration"]
+    }
+  }
+}

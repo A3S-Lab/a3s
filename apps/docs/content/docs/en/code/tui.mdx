@@ -6,7 +6,7 @@ description: "Install, configure, and operate the a3s code terminal workspace"
 # A3S Code TUI
 
 `a3s code` is the interactive terminal workspace for A3S Code. It is shipped by
-the [`a3s` CLI](https://github.com/A3S-Lab/Cli), drives the Rust
+the [`a3s` CLI](https://github.com/A3S-Lab/a3s), drives the Rust
 `a3s-code-core` runtime, and renders the runtime event stream with
 [`a3s-tui`](https://github.com/A3S-Lab/TUI).
 
@@ -19,7 +19,7 @@ runner, IDE bridge, or controlled product surface.
 | Surface | Repository | Responsibility |
 | --- | --- | --- |
 | `a3s-code-core` | [A3S-Lab/Code](https://github.com/A3S-Lab/Code) | Rust runtime crate for sessions, tools, memory, permissions, delegation, persistence, verification, and event replay. |
-| `a3s code` | [A3S-Lab/Cli](https://github.com/A3S-Lab/Cli) | Terminal coding-agent application that drives `a3s-code-core` sessions. |
+| `a3s code` | [A3S-Lab/a3s](https://github.com/A3S-Lab/a3s) | Terminal coding-agent application that drives `a3s-code-core` sessions. |
 | A3S Use | [A3S-Lab/Use](https://github.com/A3S-Lab/Use) | Independently released Browser, native Office, built-in OCR, optional Office compatibility, and signed external application capabilities projected into Code through standard MCP and Skills. |
 | `a3s-tui` | [A3S-Lab/TUI](https://github.com/A3S-Lab/TUI) | Terminal UI framework used by the CLI. It is the renderer and component library, not the agent runtime. |
 | A3S Flow | [A3S-Lab/Flow](https://github.com/A3S-Lab/Flow) | Durable workflow engine used by `DynamicWorkflowRuntime` for replayable per-turn dynamic workflows. |
@@ -37,7 +37,7 @@ brew install A3S-Lab/tap/a3s
 cargo install a3s
 
 # or from the CLI repository
-cargo install --git https://github.com/A3S-Lab/Cli
+cargo install --git https://github.com/A3S-Lab/a3s
 ```
 
 ```bash

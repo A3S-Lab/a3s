@@ -11,7 +11,7 @@
 
 set -eu
 
-REPOSITORY="A3S-Lab/CLI"
+REPOSITORY="A3S-Lab/a3s"
 DEFAULT_INSTALL_DIR="${HOME:+$HOME/.local/bin}"
 
 version="${A3S_VERSION:-latest}"
@@ -223,7 +223,25 @@ download_asset() {
 }
 
 if [ "$version" = latest ]; then
-    release_api="https://api.github.com/repos/$REPOSITORY/releases/latest"
+    releases_api="https://api.github.com/repos/$REPOSITORY/releases?per_page=100"
+    info "resolving latest stable CLI release for $target"
+    releases_json=$(fetch_release "$releases_api") || die "failed to query $releases_api"
+    compact_releases=$(printf '%s' "$releases_json" | tr -d '\r\n')
+    release_tag=$(printf '%s' "$compact_releases" | awk -F'"tag_name":"' '
+        {
+            for (field = 2; field <= NF; field++) {
+                split($field, value, "\"")
+                if (value[1] ~ /^v[0-9]+\.[0-9]+\.[0-9]+$/ &&
+                    $field ~ /"draft":false/ &&
+                    $field ~ /"prerelease":false/) {
+                    print value[1]
+                    exit
+                }
+            }
+        }
+    ')
+    [ -n "$release_tag" ] || die "GitHub returned no published stable CLI release"
+    release_api="https://api.github.com/repos/$REPOSITORY/releases/tags/$release_tag"
 else
     release_api="https://api.github.com/repos/$REPOSITORY/releases/tags/$version"
 fi
@@ -231,7 +249,12 @@ fi
 info "resolving ${version} release for $target"
 release_json=$(fetch_release "$release_api") || die "failed to query $release_api"
 compact_json=$(printf '%s' "$release_json" | tr -d '\r\n')
-release_tag=$(printf '%s' "$compact_json" | awk -F'"tag_name":"' 'NF > 1 { split($2, value, "\""); print value[1]; exit }')
+resolved_release_tag=$(printf '%s' "$compact_json" | awk -F'"tag_name":"' 'NF > 1 { split($2, value, "\""); print value[1]; exit }')
+if [ "$version" != latest ]; then
+    release_tag=$resolved_release_tag
+elif [ "$resolved_release_tag" != "$release_tag" ]; then
+    die "GitHub returned release '$resolved_release_tag' while '$release_tag' was requested"
+fi
 
 printf '%s\n' "$release_tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' \
     || die "GitHub returned an invalid stable release tag"
@@ -248,7 +271,7 @@ expected_version=${release_tag#v}
 
 asset_name="a3s-$release_tag-$target.tar.gz"
 asset_marker="\"name\":\"$asset_name\""
-asset_separator='},{"url":"https://api.github.com/repos/A3S-Lab/CLI/releases/assets/'
+asset_separator='},{"url":"https://api.github.com/repos/A3S-Lab/a3s/releases/assets/'
 asset_json=$(printf '%s' "$compact_json" | awk \
     -v separator="$asset_separator" -v needle="$asset_marker" '
     function inspect(segment) {

@@ -25,7 +25,7 @@ param(
     $ErrorActionPreference = 'Stop'
     $ProgressPreference = 'SilentlyContinue'
 
-    $repository = 'A3S-Lab/CLI'
+    $repository = 'A3S-Lab/a3s'
     $target = 'x86_64-pc-windows-msvc'
 
     if ($PSVersionTable.PSVersion -lt [Version]'5.1') {
@@ -232,16 +232,29 @@ param(
         $apiHeaders.Authorization = "Bearer $($env:A3S_GITHUB_TOKEN)"
     }
 
-    $releaseApi = if ($RequestedVersion -eq 'latest') {
-        "https://api.github.com/repos/$repository/releases/latest"
+    $release = if ($RequestedVersion -eq 'latest') {
+        $releasesApi = "https://api.github.com/repos/$repository/releases?per_page=100"
+        Write-InstallerInfo "resolving latest stable CLI release for $target"
+        $releases = Invoke-InstallerRequest -Description 'GitHub releases lookup' -Operation {
+            @(Invoke-RestMethod -Uri $releasesApi -Headers $apiHeaders -TimeoutSec 60)
+        }
+        $stableRelease = @($releases | Where-Object {
+            -not [bool]$_.draft -and
+            -not [bool]$_.prerelease -and
+            [string]$_.tag_name -match '^v\d+\.\d+\.\d+$'
+        } | Select-Object -First 1)
+        if ($stableRelease.Count -ne 1) {
+            throw 'GitHub returned no published stable CLI release'
+        }
+        $stableRelease[0]
     } else {
-        "https://api.github.com/repos/$repository/releases/tags/$RequestedVersion"
+        $releaseApi = "https://api.github.com/repos/$repository/releases/tags/$RequestedVersion"
+        Invoke-InstallerRequest -Description 'GitHub release lookup' -Operation {
+            Invoke-RestMethod -Uri $releaseApi -Headers $apiHeaders -TimeoutSec 60
+        }
     }
 
     Write-InstallerInfo "resolving $RequestedVersion release for $target"
-    $release = Invoke-InstallerRequest -Description 'GitHub release lookup' -Operation {
-        Invoke-RestMethod -Uri $releaseApi -Headers $apiHeaders -TimeoutSec 60
-    }
     $releaseTag = [string]$release.tag_name
     if ($releaseTag -notmatch '^v\d+\.\d+\.\d+$') {
         throw 'GitHub returned an invalid stable release tag'

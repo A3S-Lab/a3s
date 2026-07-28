@@ -4,10 +4,15 @@ This file provides repository guidance for Codex and other coding agents working
 
 ## Repository Shape
 
-`a3s/` is a monorepo root, not a Rust workspace.
+`a3s/` is a monorepo root that also owns the umbrella `a3s` CLI package. It is
+not a Cargo workspace.
 
 ```text
 a3s/
+├── Cargo.toml          # Root-owned a3s CLI package
+├── src/                # CLI, TUI host, Web API, and component lifecycle
+├── tests/              # CLI integration tests
+├── skills/             # Skills shipped with the CLI
 ├── apps/
 │   ├── cloud/        # Cloud control plane and node agent (submodule)
 │   └── docs/         # Documentation site
@@ -23,9 +28,14 @@ a3s/
 
 Root rules:
 
-- Do not create `Cargo.toml`, `src/`, or a Rust workspace in the repository root.
+- The root `Cargo.toml`, `src/`, `tests/`, and `skills/` belong only to the
+  umbrella `a3s` CLI. Do not turn the root package into a Cargo workspace.
+- Root-level Cargo commands validate the CLI package, not every submodule.
+- Root CLI dependencies use exact published crate versions. Develop or validate
+  a component from its owning submodule instead of adding permanent root
+  `[patch.crates-io]` overrides.
 - Do not run `cargo init` or `cargo new` in the repository root.
-- The root `justfile` is for monorepo orchestration only; do not treat root as a Rust crate.
+- The root `justfile` orchestrates the monorepo and the root CLI package.
 - Work inside the relevant submodule, application, or package directory.
 - The root git remote should point to `git@github.com:A3S-Lab/a3s.git`.
 
@@ -75,7 +85,8 @@ Conventions:
 - Use `BoxError` from `core/src/error.rs` where available and include useful context.
 - Event keys are dot-separated lowercase: `<domain>.<subject>.<action>`.
 - Run formatting before completion: `cargo fmt --all`.
-- Run focused tests/checks from the crate workspace, not from the monorepo root.
+- Run CLI checks from the repository root. Run other focused tests/checks from
+  the crate workspace that owns them.
 - Prefer `cargo test -p <crate>` for focused validation; use crate-local `just` recipes only when that project defines them.
 
 ## Python SDK Guidelines

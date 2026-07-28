@@ -11,7 +11,7 @@ and tool invocation, delegation, dynamic workflow execution, workspace access,
 memory, persistence, verification evidence, and run replay.
 
 `a3s-code-core` is the embeddable Rust runtime. `a3s code` is the ready terminal
-workspace shipped by the [`a3s` CLI](https://github.com/A3S-Lab/Cli); it drives
+workspace shipped by the [`a3s` CLI](https://github.com/A3S-Lab/a3s); it drives
 A3S Code sessions and renders their event stream with the
 [`a3s-tui`](https://github.com/A3S-Lab/TUI) framework.
 
@@ -24,7 +24,7 @@ surface around the same runtime.
 | Name | Use it for | Repository |
 | --- | --- | --- |
 | `a3s-code-core` | Embedding coding-agent sessions through the Rust runtime API. | [A3S-Lab/Code](https://github.com/A3S-Lab/Code) |
-| `a3s code` TUI | Running the ready terminal coding-agent workspace. | [A3S-Lab/Cli](https://github.com/A3S-Lab/Cli) |
+| `a3s code` TUI | Running the ready terminal coding-agent workspace. | [A3S-Lab/a3s](https://github.com/A3S-Lab/a3s) |
 | `a3s-tui` | Building terminal UI surfaces; it is the UI framework, not the agent runtime. | [A3S-Lab/TUI](https://github.com/A3S-Lab/TUI) |
 | A3S Flow | Durable workflow engine used by `DynamicWorkflowRuntime`. | [A3S-Lab/Flow](https://github.com/A3S-Lab/Flow) |
 | A3S monorepo | Product docs, release orchestration, submodule pins, and related crates. | [A3S-Lab/a3s](https://github.com/A3S-Lab/a3s) |
@@ -70,7 +70,7 @@ brew install A3S-Lab/tap/a3s
 cargo install a3s
 
 # or from the CLI repository
-cargo install --git https://github.com/A3S-Lab/Cli
+cargo install --git https://github.com/A3S-Lab/a3s
 ```
 
 Install the Rust runtime crate when embedding A3S Code:

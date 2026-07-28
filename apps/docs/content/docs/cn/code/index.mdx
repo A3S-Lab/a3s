@@ -10,7 +10,7 @@ A3S Code 是 `a3s code` 背后的 Rust runtime。它让 agent loop 保持可观�
 委派、workspace 访问、持久化、验证证据与 run replay。
 
 `a3s-code` 是可嵌入的运行时和 SDK surface。`a3s code` 是
-[`a3s` CLI](https://github.com/A3S-Lab/Cli) 提供的交互式终端应用；它驱动
+[`a3s` CLI](https://github.com/A3S-Lab/a3s) 提供的交互式终端应用；它驱动
 A3S Code session，并用 [`a3s-tui`](https://github.com/A3S-Lab/TUI) 框架渲染
 事件流。想要现成 TUI 时安装 CLI；要构建自己的宿主、runner、IDE bridge 或产品
 UI 时安装 SDK。
@@ -20,7 +20,7 @@ UI 时安装 SDK。
 | 名称 | 用途 | 仓库 |
 | --- | --- | --- |
 | `a3s-code` | 通过 Rust、Node.js 或 Python API 嵌入 coding-agent session。 | [A3S-Lab/Code](https://github.com/A3S-Lab/Code) |
-| `a3s code` TUI | 运行现成的终端编程 agent。 | [A3S-Lab/Cli](https://github.com/A3S-Lab/Cli) |
+| `a3s code` TUI | 运行现成的终端编程 agent。 | [A3S-Lab/a3s](https://github.com/A3S-Lab/a3s) |
 | `a3s-tui` | 构建终端 UI surface；它是 UI 框架，不是 agent runtime。 | [A3S-Lab/TUI](https://github.com/A3S-Lab/TUI) |
 | A3S Flow | `DynamicWorkflowRuntime` 使用的持久化 workflow engine。 | [A3S-Lab/Flow](https://github.com/A3S-Lab/Flow) |
 | A3S monorepo | 产品文档、发布编排、submodule pin 与相关 crates。 | [A3S-Lab/a3s](https://github.com/A3S-Lab/a3s) |
@@ -67,7 +67,7 @@ brew install A3S-Lab/tap/a3s
 cargo install a3s
 
 # 或从 CLI 仓库安装
-cargo install --git https://github.com/A3S-Lab/Cli
+cargo install --git https://github.com/A3S-Lab/a3s
 ```
 
 当你要把 A3S Code 嵌入自己的产品时，安装 SDK 包：

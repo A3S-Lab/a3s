@@ -175,7 +175,7 @@ then reconcile through a background refresh.
 
 ## Validation
 
-Run backend checks from `crates/cli`:
+Run backend checks from the repository root:
 
 ```sh
 cargo fmt --all -- --check

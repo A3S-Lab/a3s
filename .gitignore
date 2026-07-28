@@ -3,7 +3,6 @@
 **/target/
 **/*.rs.bk
 *.pdb
-Cargo.lock
 
 # Coverage
 *.lcov
@@ -40,9 +39,6 @@ apps/os/*
 # SafeClaw - keep only README.md in remote
 apps/safeclaw/*
 !apps/safeclaw/README.md
-
-# Docs (local only)
-/docs/
 
 # A3S runtime data & config (contains API keys)
 .a3s/

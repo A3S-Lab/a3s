@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cli_source="${repository_root}/crates/cli"
+cli_source="${repository_root}"
 cli_copy="$(mktemp -d "${TMPDIR:-/tmp}/a3s-use-hotplug-cli.XXXXXX")"
 use_home="$(mktemp -d "${TMPDIR:-/tmp}/a3s-use-hotplug-home.XXXXXX")"
 
@@ -39,10 +39,9 @@ case "$(uname -s)" in
 esac
 
 tar \
-  --exclude='./.git' \
-  --exclude='./target' \
   -cf - \
-  -C "${cli_source}" . |
+  -C "${cli_source}" \
+  Cargo.toml Cargo.lock build.rs src tests skills .github/scripts/use-published-a3s-crates.sh |
   tar -xf - -C "${cli_copy}"
 
 bash "${cli_copy}/.github/scripts/use-published-a3s-crates.sh" \
