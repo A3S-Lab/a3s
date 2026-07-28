@@ -11,10 +11,10 @@ export default defineConfig({
     },
   },
   html: {
-    title: 'A3S Code',
+    title: 'A3S Web',
     favicon: './public/logo.png',
     meta: {
-      description: 'A3S Code in your browser',
+      description: 'A3S local AI workspace',
       'theme-color': '#f7f8fb',
     },
   },

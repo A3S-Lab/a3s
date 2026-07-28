@@ -61,10 +61,10 @@ describe('Work code file detail page', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: '返回 Work 文件管理器' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '返回文件管理器' })).toBeInTheDocument();
     expect(screen.getAllByText('README.md')).toHaveLength(2);
     expect(screen.getByRole('button', { name: '保存代码文件' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '打开 Work AI 助手' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '打开 AI 助手' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'WebIDE 编辑器标签' })).toBeInTheDocument();
     expect(screen.getByRole('tree', { name: '代码文件列表' })).toBeInTheDocument();
     expect(screen.getByLabelText('Markdown 编辑区')).toBeInTheDocument();

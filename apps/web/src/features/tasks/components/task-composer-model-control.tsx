@@ -2,11 +2,12 @@ import { useSnapshot } from 'valtio';
 import { ModelCombobox } from '../../../design-system/primitives';
 import { appState, navigateSettings, showModelChangeNotice } from '../../../state/app-state';
 import type { TaskActions } from '../task-actions';
+import { findTaskSession } from '../task-state';
 import { updateNewTaskConfig } from './task-composer-config';
 
 export function TaskComposerModelControl({ actions }: { actions: TaskActions }) {
   const state = useSnapshot(appState);
-  const task = state.sessions.find((item) => item.sessionId === state.activeSessionId);
+  const task = findTaskSession(state.sessions, state.activeSessionId);
   const model = task
     ? (task.model ?? state.selectedModel)
     : state.newTaskConfig.model || state.selectedModel || state.llm?.defaultModel || '';

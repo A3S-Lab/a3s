@@ -17,11 +17,11 @@ Choose local folder → browse and select → add file or text context
 → explicitly save back or Save As
 ```
 
-The Work product owns local-file navigation, Office editing, and a complete
-local-file WebIDE. Its focused conversational AI Assistant uses the same A3S
-runtime engine as Code while keeping a separate Work-tagged session, active
-conversation, draft, and workspace boundary. File and selection actions prepare
-context and draft instructions; they do not auto-send or silently mutate data.
+The Work product owns local-file navigation, Office editing, coding, and the AI
+conversation. Home, file management, Office, and the local WebIDE share one
+session list, active conversation, draft, and workspace boundary. File and
+selection actions prepare context and draft instructions; they do not auto-send
+or silently mutate data.
 
 Work targets WPS-class everyday Office editing while adding an AI-native Finder
 and WebIDE. The local path is the stable user-facing
@@ -62,9 +62,9 @@ The first active Work release includes:
   root and current location, back/forward/up history, breadcrumbs, grid and list
   modes, current-folder filtering, and bounded recursive whole-workspace
   filename search. Before the user chooses a Work-specific root, the workspace
-  follows the default A3S Code workspace exposed in Settings; the sidebar keeps
-  an explicit Switch workspace action, and that choice becomes the persisted
-  Work override. Search has an explicit current-folder/root scope switch,
+  follows the default workspace exposed in Settings; the sidebar keeps an
+  explicit Switch workspace action, and that choice becomes the persisted Work
+  override. Search has an explicit current-folder/root scope switch,
   preserves real entry metadata and parent locations, keeps results available
   to Quick Look, file operations, and AI Assistant, skips metadata, dependency,
   cache, and generated-output trees without excluding `.a3s/kb`, and reports
@@ -142,15 +142,13 @@ The first active Work release includes:
   and AI context-menu actions operate directly on the selected local root.
   Markdown always places editable source on the left and a semantic live
   preview on the right;
-- a resizable right-side Work AI Assistant that binds the selected local root as
+- a resizable right-side AI Assistant that binds the selected local root as
   its workspace and leaves sending to the user. Its 460 px desktop default is
   capped as the viewport narrows so common laptop widths retain a usable Office
   pane; the Office ribbon also tightens group spacing below 1120 px, and the
   assistant becomes a full Work-pane overlay at 1120 px and below instead of
-  compressing the file surface. Work and Code share the runtime implementation
-  but never the active conversation: Work sessions are
-  tagged with `agentId=work`, persisted under a Work-only key, restored
-  independently on product switches, and hidden from the Code task list;
+  compressing the file surface. All Work scenes use the same durable sessions,
+  `agentId=default`, active-session key, drafts, and conversation list;
 - shared Chinese Office detail chrome for documents, spreadsheets, and
   presentations, with a compact file menu, tabbed ribbon, explicit horizontal
   overflow controls, and a consistent status bar. File menus focus the first
@@ -489,8 +487,8 @@ The first active Work release includes:
 - preservation and streaming download of the original imported binary;
 - explicit 16 MiB native-artifact and 50 MiB source-file limits;
 - server version browsing and restoration from the editor;
-- storage that is independent from Code task state and never reports a failed
-  server save as successful.
+- artifact storage that remains independent from conversation persistence and
+  never reports a failed server save as successful.
 
 This is a functional local-workspace and Office foundation. It does not yet
 prove the full target described below.
@@ -522,7 +520,7 @@ every command in a traditional office suite.
   breadcrumbs; filter or search the whole root, sort, select, create folders,
   rename, and duplicate. Recursive filename search is bounded and exposes
   result locations, unreadable-directory counts, and truncation state.
-- [x] Use the Settings-visible A3S Code default workspace until the user
+- [x] Use the Settings-visible default workspace until the user
   explicitly switches Work to another folder; preserve an existing or newly
   selected Work root as the user override.
 - [x] Keep destructive local deletion out of the first slice while the service
@@ -533,9 +531,10 @@ every command in a traditional office suite.
 - [x] Treat a bound local Office path as a stable identity: reuse its existing
   artifact when the disk fingerprint is unchanged, and preserve the prior
   artifact as recovery state when changed disk bytes require a new binding.
-- [x] Bind Work AI Assistant to the selected root, pass workspace-relative selected
-  paths, use Work-only sessions and drafts, switch away from incompatible Work
-  workspaces, and prefill rather than auto-send contextual actions.
+- [x] Bind the AI Assistant to the selected root, pass workspace-relative
+  selected paths, preserve the unified session and draft across Work scenes,
+  switch away from incompatible workspaces, and prefill rather than auto-send
+  contextual actions.
 - [x] Open every non-binary code or text file in a Work-native Monaco WebIDE
   with multiple tabs, a lazy file tree, semantic navigation, diagnostics,
   conflict-safe saves, and AI Assistant editor actions.
@@ -863,7 +862,7 @@ every command in a traditional office suite.
 ```text
 A3S shell
 └── WorkProduct
-    ├── WorkSidebar
+    ├── TaskLibrary (unified conversation list)
     ├── WorkFilesWorkspace
     │   ├── WorkFilesController
     │   ├── WorkQuickLook
@@ -877,7 +876,7 @@ A3S shell
     │   ├── DocumentEditor
     │   ├── SpreadsheetEditor
     │   └── PresentationEditor
-    └── Work AI Assistant
+    └── AI Assistant
         ├── ExecutionStream
         └── TaskComposer
 
@@ -908,12 +907,10 @@ Office interoperability
 └── html2canvas + jsPDF  PDF export
 ```
 
-Work filesystem, WebIDE, Office editor, AI session, and AI draft state are
-isolated from Code product state. The shared Activity Bar selects a product;
-Work reuses execution and composer components without reusing Code sessions.
-Product switches persist and restore each product's own active conversation.
-Office runtime dependencies are loaded only when the relevant workflow needs
-them.
+Work filesystem, WebIDE, Office editor, AI session, and AI draft state form one
+product at `#home`. Coding is a file-handler scene, not an Activity Bar product,
+and it does not own a second session store or route. Office runtime dependencies
+are loaded only when the relevant workflow needs them.
 
 ## Native artifact model
 

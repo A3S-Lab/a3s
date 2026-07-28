@@ -2,7 +2,7 @@
 
 **Status:** Native production wiring implemented; activation is entitlement-gated
 **Last updated:** 2026-07-22
-**Decision owner:** A3S Code
+**Decision owner:** A3S Web
 **Production release status:** Code-complete for configured QR/read-only
 monitoring; public identity injection remains blocked on Tencent entitlement
 and a security review

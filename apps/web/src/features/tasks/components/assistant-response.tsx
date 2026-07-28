@@ -18,7 +18,7 @@ const StreamingMarkdown = lazy(() => import('./streaming-markdown'));
 export function AssistantResponse({
   message,
   actions,
-  assistantLabel = 'Code',
+  assistantLabel = 'A3S',
   retryContent,
 }: {
   message: ChatMessage;

@@ -34,6 +34,7 @@ export function WorkCopilot({
   onWidthChange,
   proposal,
   onDismissProposal,
+  onNewConversation,
 }: {
   actions: CodeActions;
   workspaceRoot: string;
@@ -45,23 +46,22 @@ export function WorkCopilot({
   onWidthChange: (width: number) => void;
   proposal?: WorkAgentProposalRequest | null;
   onDismissProposal?: () => void;
+  onNewConversation?: () => void;
 }) {
   const state = useSnapshot(appState);
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
+  const activeSession = state.sessions.find((session) => session.sessionId === state.activeSessionId);
 
   useEffect(() => {
-    if (!workspaceRoot) return;
+    if (!workspaceRoot || activeSession) return;
     void bindWorkAgentWorkspace(actionsRef.current, workspaceRoot).catch((error) => {
       showToast(formatApiError(error), 'error');
     });
-  }, [workspaceRoot]);
+  }, [activeSession, workspaceRoot]);
 
-  const activeSession = state.sessions.find((session) => session.sessionId === state.activeSessionId);
   const compatibleSession =
-    activeSession?.agentId === 'work' && sameLocalPath(activeSession.workspace, workspaceRoot)
-      ? activeSession
-      : undefined;
+    activeSession && sameLocalPath(activeSession.workspace, workspaceRoot) ? activeSession : undefined;
   const messages = compatibleSession ? (state.messagesBySession[compatibleSession.sessionId] ?? []) : [];
   const proposalStatus = proposal
     ? workAgentProposalStatus(messages as unknown as readonly WorkAgentProposalMessage[], proposal)
@@ -87,13 +87,13 @@ export function WorkCopilot({
   return (
     <aside
       className='work-copilot'
-      aria-label='Work AI 助手'
+      aria-label='AI 助手'
       data-office-shortcuts='ignore'
       style={{ width: renderedWidth }}
     >
       <SplitHandle
         className='work-copilot-resizer'
-        label='调整 Work AI 助手宽度'
+        label='调整 AI 助手宽度'
         value={renderedWidth}
         min={minimumWidth}
         max={availableMaximumWidth}
@@ -114,9 +114,13 @@ export function WorkCopilot({
           </small>
         </div>
         <IconButton
-          label='新建 Work AI 助手对话'
+          label='新建会话'
           disabled={!workspaceRoot}
           onClick={() => {
+            if (onNewConversation) {
+              onNewConversation();
+              return;
+            }
             actions.newConversation();
             void bindWorkAgentWorkspace(actions, workspaceRoot).catch((error) =>
               showToast(formatApiError(error), 'error')
@@ -125,7 +129,7 @@ export function WorkCopilot({
         >
           <MessageSquarePlus size={15} />
         </IconButton>
-        <IconButton label='关闭 Work AI 助手' onClick={onClose}>
+        <IconButton label='关闭 AI 助手' onClick={onClose}>
           <X size={16} />
         </IconButton>
       </header>

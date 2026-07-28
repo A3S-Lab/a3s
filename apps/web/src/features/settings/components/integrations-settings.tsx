@@ -84,7 +84,7 @@ export function IntegrationsSettingsView({
                 />
               </SettingsRow>
             ) : (
-              <SettingsEmptyNotice>未配置 A3S OS，A3S Code 继续以纯本地模式运行。</SettingsEmptyNotice>
+              <SettingsEmptyNotice>未配置 A3S OS，A3S Web 继续以纯本地模式运行。</SettingsEmptyNotice>
             )}
           </SettingsSection>
 

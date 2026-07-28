@@ -45,16 +45,16 @@ export function WorkCodeWorkspace({
   }, [tab?.path]);
 
   return (
-    <section className='work-code-workspace' aria-label='Work WebIDE'>
+    <section className='work-code-workspace' aria-label='代码工作区'>
       <header className='work-code-header'>
-        <button type='button' className='work-code-back' aria-label='返回 Work 文件管理器' onClick={onBack}>
+        <button type='button' className='work-code-back' aria-label='返回文件管理器' onClick={onBack}>
           <ArrowLeft size={17} />
         </button>
         <span className='work-code-brand-mark'>
           <Braces size={17} />
         </span>
         <div className='work-code-identity'>
-          <strong>Work WebIDE</strong>
+          <strong>代码</strong>
           <span title={rootPath}>{localPathBasename(rootPath)}</span>
         </div>
         <div className='work-code-header-actions'>
@@ -77,7 +77,7 @@ export function WorkCodeWorkspace({
           <button
             type='button'
             className={assistantOpen ? 'active' : ''}
-            aria-label={assistantOpen ? '关闭 Work AI 助手' : '打开 Work AI 助手'}
+            aria-label={assistantOpen ? '关闭 AI 助手' : '打开 AI 助手'}
             aria-pressed={assistantOpen}
             onClick={onToggleAssistant}
           >

@@ -157,7 +157,7 @@ describe('ExecutionStream rendering and recovery', () => {
     ];
 
     const { container } = render(<ExecutionStream actions={{} as TaskActions} />);
-    expect(await screen.findByRole('heading', { name: '构建结果' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '构建结果' }, { timeout: 3_000 })).toBeInTheDocument();
     expect(container.querySelector('.streaming-markdown')).toBeInTheDocument();
     await waitFor(() => expect(container.querySelector('pre code span')).toBeInTheDocument());
     expect(container.querySelector('pre code')?.className).toContain('counter-reset');
@@ -313,7 +313,7 @@ describe('ExecutionStream rendering and recovery', () => {
     expect(screen.getByText('用户已停止深度研究。')).toBeInTheDocument();
     expect(screen.queryByText(cancellation)).not.toBeInTheDocument();
     expect(screen.queryByText('深度研究失败')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '让 Code 分析并修复' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '让 A3S 分析并修复' })).not.toBeInTheDocument();
   });
 
   it('renders completed reasoning as collapsed Markdown instead of plain preformatted text', async () => {
@@ -437,7 +437,7 @@ describe('ExecutionStream rendering and recovery', () => {
     render(<ExecutionStream actions={{} as TaskActions} />);
 
     expect(screen.queryByLabelText('任务恢复操作')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '让 Code 分析并修复' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '让 A3S 分析并修复' })).toBeInTheDocument();
   });
 
   it('keeps an independent turn failure visible after a tool has already failed', () => {
@@ -467,7 +467,7 @@ describe('ExecutionStream rendering and recovery', () => {
 
     expect(screen.getByRole('region', { name: '工具输出' })).toHaveTextContent('interrupted state was not visible');
     expect(screen.getByLabelText('任务恢复操作')).toHaveTextContent('模型响应流已断开');
-    expect(screen.getByRole('button', { name: '让 Code 分析并修复' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '让 A3S 分析并修复' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '诊断并恢复' }));
     expect(appState.composerValue).toContain('保留现有草稿');
     expect(appState.composerValue).toContain('确认模型、连接与运行状态');

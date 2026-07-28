@@ -62,8 +62,8 @@ describe('Work Copilot request preparation', () => {
   });
 
   it('keeps a compatible conversation and its existing draft context', async () => {
-    appState.sessions = [session('work-task', '/docs')];
-    appState.activeSessionId = 'work-task';
+    appState.sessions = [session('unified-task', '/docs', 'default')];
+    appState.activeSessionId = 'unified-task';
     appState.filesByDirectory['/docs'] = [];
     appState.composerValue = '已有问题';
     appState.composerContextFiles = ['Overview.md'];

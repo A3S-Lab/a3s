@@ -1,355 +1,197 @@
-# A3S Code Product Blueprint
+# A3S Web Product Blueprint
 
-## Product definition
+## Product promise
 
-A3S Code Web is a desktop task workspace for completing coding work with an
-agent and inspecting the durable memory formed from that work. It is not a
-browser copy of the TUI, a generic chat client, or a complete browser IDE.
+A3S Web is a desktop, local-first AI workspace that lets a user start with an
+outcome, work directly with real files, supervise execution, and retain control
+of every meaningful change.
 
-The product organizes one continuous loop:
-
-```text
-Describe → execute → decide → inspect results → correct → verify → commit
-        ↑______________________________________________________________|
-```
-
-The task is the primary product object. Conversation is the continuous work
-surface. Code, files, previews, diffs, and verification are task results that
-open in an on-demand Result Workspace beside the Conversation.
-
-## User outcome
-
-A developer should be able to answer five questions without reconstructing raw
-events or leaving the task:
-
-1. What is A3S doing now?
-2. What decision does it need from me?
-3. What did it create or change?
-4. How can I inspect and verify the result?
-5. What is the safest useful next action?
-
-## Current product boundary
-
-The Activity Bar keeps Code first and Work second as built-in products, then
-loads additional workbench views from verified A3S Use package contributions.
-It does not reserve hardcoded Research or Finance placeholders. This document
-continues to define Code only. The owned Work route is governed by
-[WORK_OFFICE.md](WORK_OFFICE.md), while plugin trust and isolation are governed
-by [PLUGINS.md](PLUGINS.md).
-
-A3S Code owns:
-
-- a task library and a persistent new-task draft;
-- natural-language execution with explicit file context;
-- plan, execution, permission, recovery, and verification presentation;
-- task-scoped follow-up instructions while execution is running;
-- task-specific model, effort, goal, and permission settings;
-- an on-demand Result Workspace with Overview, Files, Browser, and Changes
-  modes;
-- file inspection, direct correction, search, conflict protection, and
-  configuration validation;
-- browser preview when a preview target is available;
-- workspace-wide Git review, staging, and commit;
-- a dedicated read-only Memory surface with full-store search and filters,
-  graph and timeline projections, retention signals, and memory/entity detail;
-- account, model, appearance, update, and help settings.
-
-Operational task activity belongs to the semantic execution stream. It does not
-occupy an independent right-side page. Capabilities outside this list do not
-receive placeholder controls or unused API clients.
-
-## Primary product objects
-
-| Object | Product meaning |
-| --- | --- |
-| Task | Durable user intent and its continuing Conversation |
-| Turn | One instruction and the resulting agent work |
-| Artifact | A file, diff, preview, report, or verification result produced or referenced by a task |
-| Result Workspace | The task-scoped inspection state for artifacts |
-| Workspace | The served local project and its authoritative files and Git state |
-| Memory | One durable local knowledge or experience entry |
-| Memory entity | A source, provider, tool, file, tag, session, or other concept linked across memories |
-| Retention facet | The tier, score, forgetting signal, and lifecycle flags projected for one memory |
-| Verification | Evidence supporting a delivery claim |
-| Commit receipt | Authoritative record of a successful Git commit |
-
-Workspace-wide changes are never presented as proof that the selected task
-authored them. An Artifact may point to workspace truth without duplicating it.
+The product is not a generic chat client and does not make Office and coding
+compete as separate destinations. Work at `#home` is the single task surface;
+file type and user intent determine the scene.
 
 ## Product principles
 
-1. **One task, one continuous journey.** Task selection establishes the context
-   for Conversation and its Result Workspace.
-2. **Conversation drives, results expand.** The right workspace opens from a
-   concrete artifact or review action; it is not an empty permanent panel.
-3. **One workspace shell, four result modes.** Overview, Files, Browser, and
-   Changes share the same header, mode switcher, tabs, close, and full-screen
-   behavior.
-4. **Progressive disclosure.** Configuration, file navigation, previews, diffs,
-   and operational detail appear only when relevant.
-5. **Evidence before claims.** Delivery language comes from verification
-   evidence, not assistant prose or Git status.
-6. **State survives navigation.** Drafts, queues, selected artifacts, open tabs,
-   panel size, and unsaved edits are preserved in the correct task scope.
-7. **Every action explains its consequence.** Stop, queue, permission, replace,
-   discard, stage, and commit controls state what happens next.
-8. **No command-language dependency.** Discoverable Web interactions are the
-   primary path; slash commands are not required.
-9. **Memory truth before memory mutation.** Exploration is complete and
-   read-only until consolidation or forgetting has an explicit review,
-   consequence, and recovery contract.
+1. **Outcome first.** The home composer asks what the user wants to accomplish.
+2. **One work identity.** Home, files, Office, code, and AI use one conversation
+   list and one active draft.
+3. **Real files remain visible.** Local paths and source fingerprints are
+   user-facing identities, not implementation details hidden behind uploads.
+4. **Review before consequence.** Sensitive tool use, destructive filesystem
+   actions, compatibility loss, and structured AI changes require explicit
+   review.
+5. **Inline for routine work.** Naming, rename, and reversible row actions stay
+   in context; dialogs are reserved for real risk.
+6. **Evidence over confidence.** Delivery separates passed, pending, failed,
+   and residual-risk checks.
+7. **Local by default.** The app remains useful without an A3S OS account and
+   keeps local state recoverable during disconnection.
+
+## Primary journey
+
+```text
+Open #home
+→ describe an outcome, resume a conversation, or open a file
+→ inspect and select context
+→ submit through the shared composer
+→ supervise execution and decisions in the AI Assistant
+→ open resulting files in the applicable Work scene
+→ edit, review, save, and validate
+→ optionally package selected sources into Knowledge
+```
 
 ## Information architecture
 
-```text
-A3S Super App
-├── Work                                      active; separate local-workspace contract
-├── Code                                      available
-│   ├── Tasks
-│   │   ├── Task Library
-│   │   └── Current Task
-│   │       ├── Conversation                  always primary
-│   │       │   ├── Turns
-│   │       │   ├── Execution and decisions
-│   │       │   ├── Delivery and artifact entries
-│   │       │   └── Composer and follow-up queue
-│   │       └── Result Workspace              optional, task-scoped
-│   │           ├── Overview
-│   │           ├── Files
-│   │           ├── Browser
-│   │           └── Changes
-│   └── Memory                                dedicated Code capability
-│       ├── Summary and filters
-│       ├── Knowledge graph / timeline
-│       └── Memory / entity inspector
-├── Installed plugin Activities               contribution-owned, sandboxed
-├── Plugin Marketplace                        TUF and plan-review owned
-└── Settings
-```
+### Activity Bar
 
-The Result Workspace is a supporting plane, not a second product or a route
-that replaces the task. Search is a Files-mode capability. Git stage and commit
-are Changes-mode capabilities. Detailed execution activity stays with the turn
-that produced it.
+- Work;
+- Knowledge;
+- enabled A3S Use activities;
+- Memory;
+- Plugin Marketplace;
+- Settings.
 
-Memory is local durable knowledge exposed as a separate Code surface, not a
-fifth Result Workspace mode and not a task-side panel. Returning to Tasks
-restores the existing task, draft, Conversation, and Result Workspace state.
+There is no separate Code or Office entry.
 
-## Core journey
+### Work sidebar
 
-```mermaid
-flowchart LR
-    Draft[Describe task] --> Run[Execute]
-    Run --> Decision{Decision needed?}
-    Decision -->|Allow or deny| Run
-    Run --> Result[Response and artifacts]
-    Result --> Inspect[Open Result Workspace]
-    Inspect --> Mode{Choose result mode}
-    Mode --> Overview
-    Mode --> Files
-    Mode --> Browser
-    Mode --> Changes
-    Files --> Correct[Correct or ask a follow-up]
-    Browser --> Verify[Verify behavior]
-    Changes --> Commit[Review and commit]
-    Overview --> Continue[Continue Conversation]
-    Correct --> Continue
-    Verify --> Continue
-    Commit --> Continue
-    Continue --> Run
-```
+The left sidebar is the unified conversation list:
 
-The secondary Memory journey is:
+- new conversation;
+- search;
+- selected conversation;
+- inline rename and delete;
+- truthful running state.
 
-```text
-Open Memory → understand retention → search or filter
-→ explore graph or timeline → inspect a memory or entity → return to Code
-```
+Historical sessions remain visible regardless of which earlier product created
+them. New sessions use the default agent.
 
-## Desktop layout
+### Work center
 
-### New-task preparation
+The center renders one scene at a time:
 
-```text
-┌──────┬──────────────────┬────────────────────────────────────────────┐
-│ A3S  │ Task Library     │                                            │
-│ Work │ + New task       │                                            │
-│ Code │ Search tasks     │          Task-oriented welcome             │
-│ Sci. │ Recent tasks     │     Fix · Implement · Explain · Review     │
-│ Fin. │                  │                                            │
-│      │                  │             Composer                       │
-│ Set. │                  │      Workspace · Permission · Model        │
-└──────┴──────────────────┴────────────────────────────────────────────┘
-```
+- AI-native home and managed artifact library;
+- local file manager;
+- Office/PDF editor;
+- code/text/Markdown editor.
 
-The preparation state contains one dominant Composer, concise guidance, and
-editable Code starters. It does not instantiate an empty transcript, Result
-Workspace, context meter, or delivery status.
+The active scene is local UI state. It does not change the canonical Work route
+or conversation identity.
 
-### Active task without an open result
+### AI Assistant
 
-```text
-┌──────┬──────────────────┬────────────────────────────────────────────┐
-│ A3S  │ Task Library     │ Task title                      Results    │
-│      │                  ├────────────────────────────────────────────┤
-│ Work │ + New task       │                                            │
-│ Code │ Search tasks     │ Continuous Conversation                    │
-│ Sci. │ Recent tasks     │ plan · execution · decisions · delivery    │
-│ Fin. │                  │                                            │
-│      │                  ├────────────────────────────────────────────┤
-│ Set. │                  │ Composer                                   │
-└──────┴──────────────────┴────────────────────────────────────────────┘
-```
+The resizable right pane displays the active conversation, execution, tool
+decisions, recovery, evidence, artifacts, and the same composer used by Home.
+On compact desktop widths it becomes an overlay.
 
-The Conversation uses the full product workspace until the user opens a
-specific result. Accepting the first instruction reveals task identity without
-moving the Composer into an unrelated page or window.
+## Home
 
-### Active task with Result Workspace
+The home page follows a task-first hierarchy:
 
-```text
-┌──────┬──────────────┬──────────────────────┬─────────────────────────┐
-│ A3S  │ Task Library │ Conversation         │ Result Workspace        │
-│      │              │                      │ tabs       full  close  │
-│ Work │ Tasks        │ turns and execution  ├──────────┬──────────────┤
-│ Code │              │                      │ mode     │ artifact      │
-│ Sci. │              │                      │ navigator│ viewport      │
-│ Fin. │              │                      │          │               │
-│      │              ├──────────────────────┤          │               │
-│ Set. │              │ Composer             │          │               │
-└──────┴──────────────┴──────────────────────┴──────────┴──────────────┘
-```
+1. concise Work identity and outcome promise;
+2. production task composer;
+3. implemented capability shortcuts;
+4. templates, folders, and recent files.
 
-At wide desktop sizes, Conversation and Result Workspace are resizable peers,
-with Conversation remaining the task anchor. Around 1024 px, the Result
-Workspace overlays Conversation instead of reducing either surface below its
-usable width. Mobile is not supported.
+The assistant starts closed and opens once after task submission. Prompt
+starters populate an editable draft and never auto-send.
 
-## Result Workspace contract
+## File management
 
-### Entry and exit
+The file manager follows familiar Finder and Windows Explorer behavior:
 
-The workspace opens only from a meaningful action:
+- real folder selection and persisted workspace;
+- back, forward, up, breadcrumbs, grid/list, filtering, sorting, and search;
+- marquee, checkbox, additive, range, and keyboard selection;
+- copy, cut, collision-safe paste, drag and drop, favorites, reveal, and Quick
+  Look;
+- background and item context menus;
+- inline create, rename, and duplicate naming;
+- a stable selection action shelf;
+- permanent deletion confirmation.
 
-- select an artifact or file card in a response;
-- choose “view all artifacts” or “view changes”;
-- open a browser preview;
-- reopen the last Result Workspace state from the task header.
+The empty-space context menu is a first-class folder command surface. It must
+not act on a stale item selection.
 
-Opening an entry selects its corresponding mode and artifact. Closing returns
-Conversation to full width without losing mode, open tabs, selection, scroll,
-or panel size. Full screen is reversible and keeps the same state.
+## Editing
 
-The product does not open a blank workspace automatically just because a task
-exists. It may announce newly available artifacts in Conversation, but the
-user controls whether the workspace expands.
+### Code, text, and Markdown
 
-### Shared shell
+Opening a non-binary text file enters the Work code scene with a lazy explorer,
+multiple Monaco tabs, language services, diagnostics, semantic navigation,
+safe saving, and external-change conflict review. Markdown shows source and
+live preview together.
 
-Every mode uses the same structure:
+### Office and PDF
 
-```text
-ResultWorkspace
-├── Header
-│   ├── Artifact tabs
-│   ├── Full-screen action
-│   └── Close action
-├── Mode switcher                    compact popover trigger
-├── Navigator                        mode-specific, collapsible
-└── Artifact viewport                dominant content surface
-```
+DOCX, spreadsheet, presentation, and PDF handlers use consistent Work chrome,
+format-specific editing, explicit save-back, compatibility review, preview,
+print, and export flows. Heavy dependencies load only when needed.
 
-The mode switcher is one compact labelled control. The four modes are not
-rendered as a permanent toolbar. Tabs represent open artifacts, not product
-navigation. Selecting a mode does not discard tabs from another mode.
+### AI proposals
 
-### Mode definitions
+Editor context actions add bounded selected content to an editable request.
+Actionable AI output uses a structured proposal with trusted before/after
+values and per-target approval. A stale target is skipped rather than
+overwritten.
 
-| Mode | User question | Navigator | Viewport | Primary next action |
-| --- | --- | --- | --- | --- |
-| Overview | What did this task produce and how was it verified? | Result groups | Delivery, verification, artifact summaries | Open a result or continue |
-| Files | What file exists and what does it contain? | Workspace file tree and search | Text, code, binary metadata, or direct correction | Save or attach a correction |
-| Browser | Does the result behave correctly? | Preview targets and recent pages | Managed local preview with status | Refresh, inspect, or report a problem |
-| Changes | What changed and what should be accepted? | Changed files with status and line counts | Diff or selected file | Stage, commit, or request correction |
+## Delivery and review
 
-Browser mode appears only when a valid preview target exists. Until preview
-lifecycle support is implemented, no disabled Browser placeholder is rendered.
-Overview is available after the task has a delivery or artifact. Files is
-available when the served workspace can be read. Changes is available for a Git
-workspace, including its useful clean state.
+Execution stays inside the active conversation. Tool calls show requested
+scope, permission state, progress, output, and recovery. Completed file entries
+open through Work's current file handlers.
 
-### Selection and tabs
+The delivery summary reports verification evidence. “Prepare review” adds an
+evidence-based review request to the same conversation; it never navigates to a
+deleted task workspace.
 
-- Opening an artifact focuses an existing tab for the same identity or creates
-  one new tab.
-- Selecting a tab activates the mode that owns that artifact.
-- Switching modes focuses that mode's most recent tab or its useful empty state;
-  it does not close tabs owned by other modes.
-- Closing the selected tab activates the nearest remaining tab or the mode's
-  useful empty state.
-- Changed-file entries show status and additions/deletions without claiming
-  task provenance.
-- Dirty file tabs cannot close, reload, replace, or overwrite destructively
-  without an explicit resolution.
-- A task switch snapshots dirty drafts with the originating task, restores that
-  task's complete workspace state on return, and never transfers another task's
-  selected artifact.
-- A normal browser refresh restores the active task and its unsaved editor
-  drafts from a versioned local snapshot without writing those drafts to disk.
+## Knowledge handoff
 
-## Functional modules and delivery order
+One or many selected files and folders can create a managed knowledge base.
+Creation records and copies the source package but does not compile it.
 
-| Order | Module | User outcome | Main product components |
-| --- | --- | --- | --- |
-| 1 | Task foundation | Create, find, select, and continue a coding task | `TaskLibrary`, `NewTaskPreparation`, `TaskHeader` |
-| 2 | Conversation and execution | Understand progress, decisions, recovery, and next action | `ExecutionStream`, `ExecutionDetails`, `PermissionDecision`, `TaskComposer`, `FollowUpQueue` |
-| 3 | Result Workspace shell | Open a result beside the task without losing context | `ResultWorkspace`, `ResultWorkspaceHeader`, `WorkspaceModeSwitcher`, `ArtifactTabs` |
-| 4 | Overview and Files | Understand delivery, inspect files, and make bounded corrections | `OverviewMode`, `FilesMode`, `WorkspaceNavigator`, `ArtifactViewport` |
-| 5 | Changes | Review authoritative Git changes and commit safely | `ChangesMode`, `ChangedFileList`, `DiffViewer`, `CommitDialog` |
-| 6 | Browser | Verify a runnable result in a managed preview | `BrowserMode`, `PreviewNavigator`, `BrowserViewport` |
-| 7 | Memory | Explore complete local memory truth without mutating it | `MemoryPage`, `MemoryFiltersPanel`, `MemoryGraph`, `MemoryTimeline`, `MemoryInspector` |
-| 8 | Product hardening | Restore state and handle disconnects, conflicts, compact desktop, keyboard, and accessibility | recovery states across every owning component |
+Compilation is a second action:
 
-This order defines product dependencies, not permission to render placeholders.
-A later module appears only when its full entry, useful state, recovery, and next
-action are implemented.
+- explicit user request; or
+- opt-in automatic policy after stability, quiet-window, minimum-interval,
+  retry, and bulk-change safeguards pass.
 
-## Continuity requirements
+Only a successfully promoted OKF wiki generation becomes searchable.
 
-- Selecting file context returns to the same task and draft.
-- Switching away from a running task does not transfer its running state.
-- Follow-up instructions queue only for the running task.
-- Result Workspace state is task-scoped; repository truth remains
-  workspace-scoped.
-- Opening an artifact preserves Conversation scroll and Composer content.
-- Closing or resizing the Result Workspace never discards open tabs or edits.
-- A failed file read keeps the previously opened artifact intact.
-- A failed search result open keeps the query, results, target, and retry action.
-- Unsaved content blocks destructive navigation, replacement, reload, and task
-  switching until resolved.
-- A failed preview retains its target and gives one useful retry or diagnostic.
-- A failed Git mutation preserves selection, diff, staging context, and retry.
-- Editing a queued follow-up never replaces the Composer draft.
-- Opening or leaving Memory does not reset the selected task, draft, open
-  artifacts, filters, view mode, or valid inspector selection.
-- A failed Memory refresh retains the last successful snapshot and one inline
-  retry; an aborted initial load returns to a loadable idle state.
-- Service disconnects are explicit and never presented as successful progress.
+## Memory
 
-## Deferred products and capabilities
+Memory is a standalone system surface at `#memory`. It loads the complete local
+store for search, filters, timeline, and bounded graph projection. Entering it
+preserves the current Work conversation and draft.
 
-Work has a separate product contract and implementation boundary. Research and
-Finance workbenches remain installable package capabilities rather than Code
-features. Task branching, memory mutation and manual consolidation,
-knowledge-base management, callable plugin UI APIs, automation authoring,
-remote workspaces, team collaboration, and mobile layouts are outside the
-current Code boundary.
+## Plugins
 
-Any future capability must first identify:
+Verified A3S Use packages can contribute Activity Bar views. A contribution is
+isolated and can propose reviewed context and an optional Skill back to the
+current Work draft. Unknown or disabled keys recover safely.
 
-1. the user outcome it enables;
-2. the journey step it extends or the complete new journey it creates;
-3. its authoritative domain object and recovery behavior;
-4. why it belongs in Web rather than remaining a CLI/TUI operation;
-5. which existing controls it replaces or simplifies.
+## Settings and Help
+
+Settings is a global modal with Account, Appearance, Model, Agent, Context,
+Integrations, Channels, About, and Help. Canonical channel routes are nested
+under `#settings/channels/`.
+
+## Success signals
+
+- time from opening `#home` to a meaningful action;
+- successful conversation continuation across scenes;
+- file operation completion and recovery rate;
+- rate of AI context requests that remain within selected scope;
+- proposal approval, stale-target, and rollback outcomes;
+- knowledge creation-to-compile conversion;
+- route, keyboard, narrow-width, and dark-theme regressions.
+
+## Release boundary
+
+The release excludes:
+
+- separate Code or Office products;
+- legacy product-prefixed Work routes;
+- silent destructive organization;
+- automatic publication of memory or failed knowledge generations;
+- controls whose destination or recovery path is not mounted.

@@ -286,7 +286,7 @@ one response.
 
 ### Ownership
 
-The reusable contract belongs in A3S Code Core, next to workspace services and
+The reusable contract belongs in A3S Core, next to workspace services and
 context providers. The Web controller must not own the index.
 
 ```text
@@ -352,7 +352,7 @@ during rebuild.
 
 ### Incremental updates
 
-The service subscribes to the existing A3S Code Core workspace manifest change
+The service subscribes to the existing A3S Core workspace manifest change
 stream. It does not create another recursive watcher.
 
 - create or change: parse, validate, delete old sections by document ID, insert

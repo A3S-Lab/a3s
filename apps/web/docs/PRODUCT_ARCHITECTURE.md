@@ -1,394 +1,256 @@
-# A3S Code Product Architecture
+# A3S Web Product Architecture
 
 ## Scope
 
-This architecture implements the A3S Code journey defined in
-[PRODUCT_BLUEPRINT.md](PRODUCT_BLUEPRINT.md). It includes the owned Memory
-exploration journey and excludes future super-app products and disconnected
-backend capability browsers.
+This architecture implements the unified Work journey defined in
+[PRODUCT_BLUEPRINT.md](PRODUCT_BLUEPRINT.md) and the cross-product boundaries in
+[SUPER_APP.md](SUPER_APP.md).
 
-## Shell and navigation model
+## Shell and navigation
 
 ```mermaid
-flowchart LR
-    ActivityBar[Activity Bar] --> Code[Code product]
-    ActivityBar --> Plugin[Verified plugin Activity]
-    ActivityBar --> Marketplace[Plugin Marketplace]
-    ActivityBar --> Memory[Code Memory]
-    Code --> TaskLibrary[Task Library]
-    TaskLibrary --> Draft[New-task preparation]
-    TaskLibrary --> Task[Current Task]
-    Task --> Conversation
-    Conversation --> ResultEntry[Artifact or review entry]
-    ResultEntry --> Results[Result Workspace]
-    Results --> Overview
-    Results --> Files
-    Results --> Browser
-    Results --> Changes
-    ActivityBar --> Settings
+flowchart TB
+    App --> Boot[Bootstrap and recovery]
+    Boot --> Shell[AppShell]
+    Shell --> Bar[ActivityBar]
+    Bar --> Work[WorkProduct at #home]
+    Bar --> Knowledge[KnowledgePage]
+    Bar --> Plugins[Verified plugin host]
+    Bar --> Memory[MemoryPage]
+    Bar --> Settings[SettingsDialog]
+    Work --> Sessions[TaskLibrary]
+    Work --> Scene{Active Work scene}
+    Scene --> Home[WorkHome]
+    Scene --> Files[WorkFilesWorkspace]
+    Scene --> Office[WorkEditorShell]
+    Scene --> Code[WorkCodeWorkspace]
+    Work --> Assistant[WorkCopilot]
 ```
 
-Navigation state has four distinct levels:
-
-| Level | Owner | Examples |
-| --- | --- | --- |
-| Product / system | `ActivityBar` | Code Tasks, verified plugin Activities, Code Memory, Marketplace, Settings |
-| Object | `TaskLibrary` | New task, selected task |
-| Supporting plane | `ResultWorkspace` | Closed, docked, full screen |
-| Result mode and artifact | `WorkspaceModeSwitcher`, `ArtifactTabs` | Overview, Files, Browser, Changes, selected tab |
-
-Product navigation never owns task actions. Opening a result never changes the
-selected task. Result modes are not routes and do not replace Conversation.
-Overlays never become hidden page-level navigation.
+`ProductId` contains Work, Memory, Knowledge, Marketplace, and a plugin host.
+It does not contain Code. Work scenes are local state owned by `WorkProduct` and
+all use `#home`.
 
 ## Runtime layout
 
 ```text
-AppShell
-├── ActivityBar                         fixed product rail
-└── ProductWorkspace
-    ├── PluginHostPage                  sandboxed package Activity
-    ├── PluginMarketplacePage           signed lifecycle review
-    ├── TasksPage
-    │   ├── TaskLibrary                 Code-local object list
-    │   └── TaskSurface
-    │       ├── NewTaskPreparation
-    │       │   ├── NewTaskWelcome
-    │       │   ├── TaskStarters
-    │       │   └── TaskComposer
-    │       └── ActiveTask
-    │           ├── TaskHeader
-    │           └── ActiveTaskLayout
-    │               ├── Conversation
-    │               │   ├── ExecutionStream
-    │               │   ├── ArtifactEntries
-    │               │   └── TaskComposer
-    │               └── ResultWorkspace       optional, resizable
-    │                   ├── ResultWorkspaceHeader
-    │                   │   └── ArtifactTabs
-    │                   ├── WorkspaceModeSwitcher
-    │                   └── ResultWorkspaceBody
-    │                       ├── ModeNavigator
-    │                       └── ArtifactViewport
-    └── MemoryPage
-        ├── MemoryFiltersPanel
-        ├── MemoryGraph / MemoryTimeline
-        ├── MemoryInspector
-        └── EvolutionWorkbench
+App
+├── CodeBootScreen
+└── AppShell
+    ├── ActivityBar
+    ├── WorkProduct
+    │   ├── TaskLibrary
+    │   ├── WorkHome / WorkFilesWorkspace / WorkEditorShell / WorkCodeWorkspace
+    │   ├── WorkCopilot
+    │   └── WorkspaceQuickOpen
+    ├── KnowledgePage / MemoryPage / PluginHostPage / Marketplace
+    └── SettingsDialog / CommandPalette / service banner
 ```
 
-The active mode supplies the navigator and viewport content:
-
-```text
-Overview → ResultNavigator      + OverviewViewport
-Files    → FileNavigator        + FileViewport
-Browser  → PreviewNavigator     + BrowserViewport
-Changes  → ChangedFileNavigator + DiffViewport
-```
-
-Search, dialogs, mode selection, and the command and file palettes are
-transient support surfaces. Task parameters remain inside `TaskComposer`. New-task preparation
-does not instantiate empty active-task or result components.
-
-At wide desktop sizes, Result Workspace is a resizable peer of Conversation.
-Around 1024 px it becomes an overlay. Full screen promotes the same workspace
-instance; it does not mount another editor or duplicate state. The obscured
-Conversation becomes inert until the task-scoped presentation returns to
-docked, including through Escape or panel close.
+Internal names inherited from the earlier implementation, such as
+`CodeActions` or `CodeBootScreen`, do not create user-visible product identity.
+They can be renamed incrementally after ownership is stable.
 
 ## Feature boundaries
 
+### `features/work`
+
+Owns:
+
+- AI-native home and managed artifact library;
+- real-files workspace, preferences, selection, clipboard, drag and drop,
+  context menus, Quick Look, and knowledge source packaging;
+- Office, spreadsheet, presentation, and PDF handlers;
+- code/text scene and local tab controller;
+- Work-level AI request preparation and structured editor proposals.
+
 ### `features/tasks`
 
-Owns task selection, drafts, messages, semantic execution, inline operational
-detail, follow-up queue, task controls, artifact entries, delivery, and recovery.
+Owns:
 
-It does not own repository or preview truth. It opens an addressable result but
-cannot claim that workspace-wide changes were authored by the task.
+- unified session catalog and active-session persistence;
+- drafts, context files, Skills, model, effort, execution mode, and queues;
+- conversation projection, execution stream, tool decisions, recovery,
+  evidence, artifacts, and delivery summaries;
+- async session creation correlation and stale-response protection.
 
-### `features/result-workspace`
+It does not own a mounted task page or product route.
 
-Owns the supporting-plane lifecycle, mode selection, artifact tabs, focus,
-resizing, full-screen state, task-scoped restoration, and composition of result
-modes.
+### `features/workspace`
 
-It does not fetch domain data or implement file, preview, or Git mutations. It
-adapts typed mode contracts into one stable workspace shell.
+Provides reusable local workspace APIs, code intelligence, Monaco components,
+file catalog search, and persistence helpers. Work's code scene is the mounted
+consumer. Earlier Result Workspace components are not reachable from shell
+navigation and must not be used for new flows.
 
-The existing `features/workspace` implementation should evolve into this
-boundary rather than coexist with a duplicate right-panel system.
+### `features/knowledge`
 
-### `features/files`
-
-Owns workspace tree state, the authoritative file/diff tab model, per-file dirty
-content, Monaco model identity, search scope, file conflicts, replacement, and
-configuration validation. Directory reads use newest-request-wins publication;
-confirmed rename and delete operations optimistically reconcile loaded subtree
-keys and rows before refresh. The service remains authoritative about disk
-content. Every asynchronous workspace read or mutation captures the active task
-generation and workspace root before it starts; a late response may update only
-the same task context and cannot publish into a subsequently selected task.
-Initial Monaco model identity combines a stable task scope with the normalized
-document path, so two tasks may open the same file without sharing undo history
-or view state. Because Monaco URIs are immutable, the model registry rebinds a
-renamed document's new logical path to its existing URI before tab paths change;
-an old path reopened concurrently receives a collision-free identity. One
-editor instance switches among those models. The registry owns view-state
-capture and deterministic disposal: active tabs and inactive task snapshots
-form the complete retention set, a cancelled dirty close remains in that set,
-and confirmed close or snapshot removal releases any unreferenced model.
-Explicit navigation coordinates are transient commands rather than persistent
-model state.
-
-### `features/preview`
-
-Owns backend-provided preview targets, lifecycle state, selected target,
-refresh, bounded navigation, diagnostics, and retry. It is absent when the
-service exposes no usable target.
-
-### `features/changes`
-
-Owns authoritative workspace Git status, changed-file metrics, complete
-original/modified diff documents, stage, unstage, commit, and commit receipts.
-It never infers task provenance.
+Owns knowledge-base identity, source packages, compilation policy, generations,
+tree/editor state, and local search.
 
 ### `features/memory`
 
-Owns paged overview loading, refresh authority, Memory UI state, whole-store
-filtering, bounded connected 3D graph projection, timeline grouping, and
-memory/entity inspection. It also adapts the typed Evolution overview and
-review mutations into the Learning tab; candidate inference remains in the
-LLM-backed CLI service. The first page owns graph topology; later pages add
-entries without repeating that payload. The Three.js renderer is a lazy
-boundary and never enters the initial shell bundle. A failed refresh keeps the
-last successful snapshot, and only the latest non-aborted request may settle
-shared state.
+Owns complete-store retrieval, filters, graph/timeline projection, inspector,
+and evolution review at `#memory`.
 
-Memory exploration is read-only and independent of task-scoped Result Workspace
-state. Learning review may materialize or roll back versioned derived assets,
-but does not mutate source memories. The feature does not own extraction,
-candidate classification, consolidation, pruning, or configuration mutation.
+### `features/plugins`
+
+Owns verified catalog loading, isolated content, lifecycle recovery, and
+reviewed context handoff.
 
 ### `features/settings`
 
-Owns account connection, model defaults, theme, updates, and service
-information. It renders as a shell-level dialog that preserves the current
-product surface and underlying route. Failed mutations retain the last
-authoritative value.
+Owns route parsing for canonical Settings tabs, independently loaded drafts,
+validation, saving, update state, Help, and Channels.
 
-### `features/code`
+### `design-system`
 
-Composes controllers and bootstraps authoritative service, account, model,
-session, task-control, message, artifact, filesystem, preview, and Git state. It
-does not contain visual components for unrelated future products.
+Owns primitives and tokens only. Product components remain in their feature
+directories.
 
-### `design-system/primitives`
+## Work scene state
 
-Contains interaction primitives only: buttons, icon buttons, dialogs, tabs,
-popovers, status, split handles, and model combobox. Domain meaning stays in
-feature components.
+`WorkProduct` selects scenes by concrete state:
 
-## Result-mode contract
+1. an active managed artifact renders `WorkEditorShell`;
+2. one or more open local code tabs render `WorkCodeWorkspace`;
+3. otherwise the persisted `files` or `library` surface renders.
 
-Every mode implements a typed contract equivalent to:
+The scene is not serialized into the URL. The file root and assistant-open
+preference are persisted locally. Leaving Work for Knowledge, Memory, or a
+plugin does not fork task state.
 
-```typescript
-interface ResultModeDefinition {
-  id: "overview" | "files" | "browser" | "changes";
-  label: string;
-  isAvailable: boolean;
-  navigator: ResultNavigatorDescriptor;
-  openArtifact(artifact: ArtifactReference): ResultTab;
-  getEmptyState(): ResultEmptyState;
-}
-```
+## Unified session state
 
-The actual types may follow local conventions, but the ownership constraints
-are required:
+New writes use:
 
-- availability is derived from useful data or service capability;
-- an artifact has a stable identity, type, task reference, and workspace
-  reference where applicable;
-- opening the same artifact focuses one tab rather than duplicating it;
-- mode components do not own docked/full-screen/close state;
-- the shell does not interpret file, preview, diff, or verification content.
+- one session catalog;
+- one active-session storage key;
+- one new-conversation draft key;
+- one workspace snapshot namespace;
+- `agentId=default` for new sessions.
 
-## State flow
+Legacy Code/Work storage keys may be read to recover user data, then normalized
+into the unified model. They are not used to choose a product or write new
+state.
+
+### Session switch
 
 ```mermaid
-flowchart LR
-    UI[Feature component] --> Action[Feature action interface]
-    Action --> Controller[Feature controller]
-    Controller --> API[codeApi]
-    API --> Service[A3S Code service]
-    Service --> Controller
-    Controller --> State[Valtio app state]
-    State --> UI
+sequenceDiagram
+    participant UI as TaskLibrary
+    participant State as appState
+    participant Store as Browser storage
+    participant API as Local A3S service
+    UI->>State: select session
+    State->>Store: persist current draft and workspace snapshot
+    State->>State: restore selected draft and workspace
+    State->>API: load selected messages and runtime state
+    API-->>State: scoped response
+    State-->>UI: render conversation in WorkCopilot
 ```
 
-State ownership:
+Responses carry session and workspace context guards. A response for an old
+selection cannot mutate the visible conversation or editor.
 
-- service responses own sessions, messages, controls, output, filesystem,
-  preview capability, preview lifecycle, Git truth, and Memory store truth;
-- `appState` owns the current authoritative snapshot plus selected task and
-  shared Result Workspace and Memory UI state;
-- per-task client state owns selected mode, tabs, selected artifact, navigator
-  width, workspace width, scroll restoration keys, and drafts;
-- local storage is best-effort for safe UI continuity only;
-- component-local state owns bounded popover, dialog input, and focus state;
-- local-storage failure degrades to in-memory continuity and reports one useful
-  warning.
+## File opening boundary
 
-Controllers update authoritative UI state only after a successful mutation or
-an explicit optimistic operation with rollback. Reconnect uses the same
-bootstrap path as initial load so health-only success cannot produce a false
-connected state.
+All mounted entry points delegate to Work:
 
-## Result Workspace state machine
+- file grid/list double click;
+- Quick Look “Open”;
+- command palette and Cmd/Ctrl+P quick open;
+- AI tool file entries and artifacts;
+- editor semantic navigation.
+
+Work routes each entry by type:
+
+- non-binary non-Office → `WorkCodeWorkspace`;
+- supported Office/PDF → `WorkEditorShell`;
+- directory → file navigation;
+- unsupported binary → truthful unsupported state.
+
+No entry point opens a retired Result Workspace.
+
+## AI request flow
 
 ```mermaid
-stateDiagram-v2
-    [*] --> Closed
-    Closed --> Docked: open artifact or review action
-    Docked --> Docked: switch mode / select tab
-    Docked --> FullScreen: expand
-    FullScreen --> Docked: restore
-    Docked --> Closed: close
-    FullScreen --> Closed: close
-    Closed --> Docked: reopen last safe state
+sequenceDiagram
+    participant Scene as Work scene
+    participant Product as WorkProduct
+    participant Task as Unified task controller
+    participant API as A3S service
+    Scene->>Product: instruction + bounded selection + paths
+    Product->>Task: bind workspace and prepare draft
+    Task->>API: create/select session and submit
+    API-->>Task: messages and events
+    Task-->>Scene: ExecutionStream in WorkCopilot
 ```
 
-An unresolved dirty artifact guards only transitions that would discard or
-overwrite its draft. Switching tasks is non-destructive: it stores the current
-task's tabs, dirty drafts, active selection, mode, explorer/search state, and Git
-review state, then restores the destination task's snapshot. It never transfers
-the selected artifact by position, even when both tasks use the same repository.
-The same snapshot model is persisted with a versioned browser-local envelope.
-Writes are debounced during interaction and flushed on `pagehide`; restoration
-normalizes transient loading/saving flags, rejects malformed entries, and falls
-back to dirty-draft-first recovery when full caches exceed storage capacity.
+Scene actions prepare drafts unless the user explicitly submits. Structured
+editor proposals are parsed, displayed, selected, revalidated, and applied by
+the owning editor.
 
-## Core task workflow
+## File mutation boundary
 
-```mermaid
-flowchart TD
-    Draft[New or selected task draft] --> Context{Need file context?}
-    Context -->|Yes| FileSelect[Files: inspect and select]
-    FileSelect --> Draft
-    Context -->|No| Send[Send instruction]
-    Send --> Running[Execution stream]
-    Running --> Permission{Permission required?}
-    Permission -->|Allow| Running
-    Permission -->|Deny| Safer[Offer safer continuation]
-    Running --> Delivery{Verification evidence?}
-    Delivery -->|No| Reply[Ordinary assistant reply]
-    Delivery -->|Yes| Summary[Delivery and artifact entries]
-    Summary --> Open[Open relevant result]
-    Open --> Inspect[Overview, Files, Browser, or Changes]
-    Inspect --> Fix[Continue with reviewed correction]
-    Inspect --> Commit[Review and commit]
-    Fix --> Running
-    Commit --> Draft
+- Reads and mutations are scoped to the selected root.
+- Reversible names are edited inline.
+- Copy and cut use an in-product clipboard with collision-safe destinations.
+- External drops are bounded by file, byte, and tree limits and roll back roots
+  created by a failed import.
+- Local deletion is permanent and confirmed.
+- Office save-back validates the source fingerprint and compatibility report.
+- Text/code save detects external changes before overwrite.
+
+## Knowledge compilation boundary
+
+Work creates a source package and calls Knowledge base creation. It does not
+compile Office/PDF content in the browser. The independent compiler consumes
+the package, stages OKF Markdown, validates it, and promotes a generation only
+after success.
+
+Automatic compilation is a policy decision owned by Knowledge and triggered
+only after stability, quiet, interval, retry, and bulk-change gates.
+
+## Routing state machine
+
+```text
+unknown/empty ───────────────→ #home / Work
+#home ───────────────────────→ Work
+#memory ─────────────────────→ Memory
+#knowledge ──────────────────→ Knowledge
+#plugins ────────────────────→ Marketplace
+#plugin/<verified key> ──────→ Plugin host
+#settings/<canonical tab> ───→ Settings over current product
 ```
 
-While running, a new instruction enters the task's visible queue. Stop and
-Queue remain separate. Stopping does not silently execute queued work.
-
-## Result review workflows
-
-```mermaid
-flowchart LR
-    Entry[Conversation result entry] --> Open[Open Result Workspace]
-    Open --> Overview
-    Open --> Files
-    Open --> Browser
-    Open --> Changes
-    Overview --> Artifact[Select artifact]
-    Files --> Edit[Inspect or correct]
-    Browser --> Verify[Verify behavior]
-    Changes --> Diff[Review diff]
-    Diff --> Commit[Stage and commit]
-    Artifact --> Continue[Continue task]
-    Edit --> Continue
-    Verify --> Continue
-    Commit --> Continue
-```
-
-Search retains its searched query, line, and column. Replace is blocked when the
-input no longer matches the result set or an affected file has unsaved content.
-Explorer and quick open consume the same service-owned binary classification;
-binary files never enter the text read or save path regardless of which entry
-point opened them. Preview navigation remains within the service-defined target
-boundary. Git mutations preserve review context on failure.
-
-Text file state carries a content-derived revision from the workspace service to
-the task-owned editor tab. Normal saves are conditional writes against that
-revision and do not perform a browser-side read-before-write sequence. Legacy
-persisted tabs fall back to comparing their saved content. A precondition
-mismatch leaves disk bytes untouched, returns HTTP 412, and moves the editor into
-the existing conflict state; reload refreshes both content and revision, while
-explicit overwrite is the only unconditional write path.
+Removed or malformed hashes normalize to `#home`. Settings closes to the
+canonical route of the underlying product.
 
 ## Overlay and focus rules
 
-- Only one modal dialog owns focus at a time.
-- Dialogs restore focus to their trigger and support Escape unless a mutation
-  is in progress.
-- The command palette lists only actions valid for the current task state.
-- The mode switcher is a non-modal popover and restores focus to its trigger.
-- Search is a Files-mode support surface, not a global product view.
-- Permission decisions live in the execution that they block.
-- Full screen preserves the same Result Workspace focus and state graph.
-- Closing the Result Workspace returns focus to the artifact entry or header
-  action that opened it.
-- A failed action keeps the relevant surface open with an inline retry path.
+- Settings, command palette, and quick open trap focus and restore the invoker.
+- Escape closes the top recoverable overlay unless an update or mutation is in
+  a non-dismissible phase.
+- Quick open is rendered by `WorkProduct` so file selection reaches the current
+  Work handler.
+- Compact AI Assistant mode overlays the Work pane and retains a visible close
+  action.
 
 ## API boundary
 
-`src/lib/api.ts` contains only endpoints exercised by the current product.
-Backend availability is not sufficient reason to add a client wrapper. New API
-methods are added together with an owned controller action, visible journey
-step, error state, and test.
+The browser consumes typed local APIs for bootstrap, sessions, messages,
+workspace reads and writes, file catalogs, code intelligence, Git metadata,
+Office binaries, knowledge bases, memory, plugins, Settings, and channels.
 
-Memory overview responses expose offset pagination and an `includeGraph`
-switch. The client follows every page and requests graph topology on the first
-page only; the detail endpoint is not wrapped while overview data already owns
-the inspector journey.
-
-## Target source structure
-
-```text
-src/
-├── components/                    shell and cross-feature composition
-├── design-system/primitives/      reusable interaction primitives
-├── features/
-│   ├── code/                      bootstrap and product composition
-│   ├── tasks/                     task and Conversation journey
-│   ├── result-workspace/          shared right-workspace shell
-│   ├── files/                     file tree, editor, search, validation
-│   ├── preview/                   managed browser preview
-│   ├── changes/                   Git review and commit
-│   ├── memory/                    Memory exploration and projection
-│   ├── settings/                  global settings dialog and preferences
-│   └── help/                      product guidance
-├── lib/                           API transport
-├── state/                         shared application state
-├── styles/                        tokens and feature styles
-└── types/                         service contracts
-```
-
-Migration must move existing ownership rather than duplicate it. Components do
-not call `fetch` or construct service clients. Files split when they own more
-than one journey concern, not merely to create more component names.
+The browser does not receive provider secrets, raw channel credentials, or
+compiler-internal source extraction authority.
 
 ## Acceptance boundary
 
-A component is product-complete only when:
-
-- it has a clear previous and next journey step;
-- loading, empty, success, failure, reconnect, and disabled states are honest;
-- keyboard and focus behavior are defined;
-- repeated submission and stale state are guarded;
-- destructive or irreversible effects are scoped and explicit;
-- it remains usable at 1440 px and compact desktop around 1024 px;
-- its removal would leave a named gap in the core journey.
+- No shell path mounts a separate Code or Office product.
+- Every file-opening action reaches a mounted Work scene.
+- Scene changes preserve the active session and draft.
+- Async task and workspace responses are context guarded.
+- Canonical route tests, focused feature tests, the full suite, type checking,
+  lint, formatting, production build, and browser regression pass.

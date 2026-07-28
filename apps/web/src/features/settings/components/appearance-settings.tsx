@@ -52,7 +52,7 @@ export function AppearanceSettings() {
       <div className='setting-row'>
         <div>
           <strong>工作区</strong>
-          <span>A3S Code 的默认项目根目录；Work 首次打开时会沿用</span>
+          <span>工作台默认使用的本地项目根目录</span>
         </div>
         <code>{defaultWorkspace}</code>
       </div>

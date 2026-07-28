@@ -55,7 +55,7 @@ function attempt(state: WeixinLoginAttempt['state']): WeixinLoginAttempt {
 describe('useWeixinRemoteController', () => {
   beforeEach(() => {
     Object.assign(appState, createWeixinRemoteState(), {
-      activeProduct: 'code',
+      activeProduct: 'work',
       bootPhase: 'ready',
       serviceStatus: 'connected',
       serviceError: null,

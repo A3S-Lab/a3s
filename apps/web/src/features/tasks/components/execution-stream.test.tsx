@@ -115,7 +115,7 @@ describe('ExecutionStream permission decisions', () => {
     expect(appState.composerSkills).toEqual(['review-master']);
   });
 
-  it('anchors every assistant response with a stable Code header', () => {
+  it('anchors every assistant response with a stable A3S header', () => {
     appState.activeSessionId = 'session-code-header';
     appState.messagesBySession['session-code-header'] = [
       {
@@ -136,8 +136,8 @@ describe('ExecutionStream permission decisions', () => {
 
     render(<ExecutionStream actions={{} as TaskActions} />);
 
-    const response = screen.getByRole('article', { name: 'Code 回复' });
-    expect(within(response).getByText('Code')).toBeInTheDocument();
+    const response = screen.getByRole('article', { name: 'A3S 回复' });
+    expect(within(response).getByText('A3S')).toBeInTheDocument();
     expect(within(response).getByRole('button', { name: '复制消息' })).toBeInTheDocument();
     expect(response.querySelector('time')).toHaveAttribute('datetime', '2026-07-14T08:01:00.000Z');
   });
@@ -219,7 +219,7 @@ describe('ExecutionStream permission decisions', () => {
 
     render(<ExecutionStream actions={{ reloadActiveTask } as unknown as TaskActions} />);
     expect(screen.getByRole('alert')).toHaveTextContent('无法加载任务记录');
-    expect(screen.queryByText('交给 Code 一个明确任务')).not.toBeInTheDocument();
+    expect(screen.queryByText('交给 A3S 一个明确任务')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '重新加载任务' }));
     expect(reloadActiveTask).toHaveBeenCalledTimes(1);
   });
@@ -308,9 +308,9 @@ describe('ExecutionStream permission decisions', () => {
     expect(screen.getByRole('button', { name: '拒绝' })).toBeEnabled();
   });
 
-  it('turns agent completion into a review handoff', () => {
+  it('prepares evidence-based review in the same unified conversation', () => {
     appState.activeSessionId = 'session-delivery';
-    appState.reviewSourceTaskId = null;
+    appState.composerValue = '';
     appState.messagesBySession['session-delivery'] = [
       {
         id: 'assistant-delivery',
@@ -336,10 +336,10 @@ describe('ExecutionStream permission decisions', () => {
     render(<ExecutionStream actions={{} as TaskActions} />);
     expect(screen.getByText('任务已可审阅')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: '交付检查完成度' })).toHaveAttribute('aria-valuenow', '100');
-    fireEvent.click(screen.getByRole('button', { name: '审阅变更' }));
-    expect(appState.reviewSourceTaskId).toBe('session-delivery');
-    expect(appState.reviewIntent).toBe('review');
-    expect(appState.taskView).toBe('review');
+    fireEvent.click(screen.getByRole('button', { name: '准备审阅' }));
+    expect(appState.composerValue).toContain('实际工作区变更和交付证据');
+    expect(appState.composerValue).toContain('不要继续修改文件');
+    expect(appState.taskView).toBe('conversation');
   });
 
   it('turns failed validation into a correction in the same task', () => {
@@ -465,7 +465,6 @@ describe('ExecutionStream permission decisions', () => {
 
   it('exposes a completed file edit as a direct artifact entry', () => {
     appState.activeSessionId = 'session-artifact';
-    appState.reviewSourceTaskId = null;
     appState.messagesBySession['session-artifact'] = [
       {
         id: 'assistant-artifact',
@@ -492,8 +491,6 @@ describe('ExecutionStream permission decisions', () => {
     expect(screen.getByLabelText('任务产物')).toHaveTextContent('app.ts');
     expect(screen.getByLabelText('任务产物')).toHaveTextContent('src');
     fireEvent.click(screen.getByRole('button', { name: '打开产物 src/app.ts' }));
-    expect(appState.reviewSourceTaskId).toBe('session-artifact');
-    expect(appState.reviewIntent).toBe('review');
     expect(selectFile).toHaveBeenCalledTimes(1);
   });
 
@@ -955,7 +952,7 @@ describe('ExecutionStream permission decisions', () => {
     render(<ExecutionStream actions={{} as TaskActions} />);
 
     expect(screen.queryByLabelText('任务恢复操作')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '让 Code 分析并修复' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '让 A3S 分析并修复' })).toBeInTheDocument();
   });
 
   it('keeps an independent turn failure visible after a tool has already failed', () => {
@@ -985,7 +982,7 @@ describe('ExecutionStream permission decisions', () => {
 
     expect(screen.getByRole('region', { name: '工具输出' })).toHaveTextContent('interrupted state was not visible');
     expect(screen.getByLabelText('任务恢复操作')).toHaveTextContent('模型响应流已断开');
-    expect(screen.getByRole('button', { name: '让 Code 分析并修复' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '让 A3S 分析并修复' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '诊断并恢复' }));
     expect(appState.composerValue).toContain('保留现有草稿');
     expect(appState.composerValue).toContain('确认模型、连接与运行状态');

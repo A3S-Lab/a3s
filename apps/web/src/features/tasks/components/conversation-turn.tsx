@@ -7,7 +7,7 @@ import { InterruptedTurnNotice } from './interrupted-turn-notice';
 export function ConversationTurnView({
   turn,
   actions,
-  assistantLabel = 'Code',
+  assistantLabel = 'A3S',
   isLatestTurn,
 }: {
   turn: ConversationTurn;

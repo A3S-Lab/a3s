@@ -27,15 +27,12 @@ const settingsTabs: readonly SettingsTab[] = [
 ];
 
 export function settingsTabFromHash(hash: string): SettingsTab | null {
-  if (hash === '#help') return 'help';
   if (settingsChannelFromHash(hash)) return 'channels';
   const value = hash.match(/^#settings\/([^/]+)$/)?.[1];
   return settingsTabs.find((tab) => tab === value) ?? null;
 }
 
 export function settingsChannelFromHash(hash: string): ChannelSettingsTab | null {
-  if (hash === '#weixin' || hash === '#settings/weixin' || hash === '#settings/channels') return 'weixin';
-  if (hash === '#settings/feishu') return 'feishu';
   const channel = hash.match(/^#settings\/channels\/(weixin|feishu)$/)?.[1];
   if (channel === 'weixin' || channel === 'feishu') return channel;
   return null;

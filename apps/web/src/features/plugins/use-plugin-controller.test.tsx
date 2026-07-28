@@ -34,7 +34,7 @@ describe('usePluginController', () => {
   beforeEach(() => {
     window.location.hash = '';
     Object.assign(appState, createPluginsState(), {
-      activeProduct: 'code',
+      activeProduct: 'work',
       pluginCatalog: catalog,
       pluginCatalogStatus: 'ready',
       composerValue: '',
@@ -82,7 +82,7 @@ describe('usePluginController', () => {
     hook.unmount();
   });
 
-  it('hands reviewed context and the same-package Skill back to Code', () => {
+  it('hands reviewed context and the same-package Skill back to the unified work session', () => {
     vi.spyOn(codeApi, 'pluginActivities').mockResolvedValue(catalog);
     appState.activeProduct = 'plugin';
     appState.activePluginKey = contribution.key;
@@ -100,8 +100,8 @@ describe('usePluginController', () => {
     });
     act(() => hook.result.current.acceptContextProposal());
 
-    expect(appState.activeProduct).toBe('code');
-    expect(window.location.hash).toBe('#code/conversation');
+    expect(appState.activeProduct).toBe('work');
+    expect(window.location.hash).toBe('#home');
     expect(appState.composerValue).toContain('[Reviewed plugin context: 科研]');
     expect(appState.composerValue).toContain('- Source: PubMed');
     expect(appState.composerValue).toContain('Compare the selected studies and identify uncertainty.');
@@ -110,7 +110,7 @@ describe('usePluginController', () => {
     hook.unmount();
   });
 
-  it('hands general-discipline context to Code without attaching the biomedical package Skill', () => {
+  it('hands general-discipline context to the current session without attaching the biomedical package Skill', () => {
     vi.spyOn(codeApi, 'pluginActivities').mockResolvedValue(catalog);
     appState.activeProduct = 'plugin';
     appState.activePluginKey = contribution.key;
@@ -215,7 +215,7 @@ describe('usePluginController', () => {
     expect(appState.pluginCatalog).toEqual(removedCatalog);
     expect(appState.pluginContextProposal).toBeNull();
     expect(appState.pluginOperationReview).toBeNull();
-    expect(appState.activeProduct).toBe('code');
+    expect(appState.activeProduct).toBe('work');
     expect(appState.toast?.message).toBe('科研插件已卸载。');
     hook.unmount();
   });

@@ -1,14 +1,4 @@
-import {
-  BrainCircuit,
-  CircleHelp,
-  FileDiff,
-  FileSearch,
-  History,
-  ListChecks,
-  Maximize2,
-  Minimize2,
-  Settings,
-} from 'lucide-react';
+import { BrainCircuit, CircleHelp, FileSearch, ListChecks, Settings } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useSnapshot } from 'valtio';
 import { CollectionState, SearchField, useDialogFocusScope } from '../../design-system/primitives';
@@ -23,36 +13,14 @@ export function CommandPalette({ actions }: { actions: CodeActions }) {
   const resultId = useId();
   const commands = useMemo(
     () => [
-      ...(state.activeSessionId && state.workspaceRoot
+      ...(state.workspaceRoot
         ? [
-            {
-              label: '当前任务',
-              description: '继续对话、计划和执行',
-              icon: ListChecks,
-              run: () => navigateTask('conversation'),
-            },
             {
               label: '快速打开文件',
               description: '按文件名或路径查找工作区文件',
               icon: FileSearch,
               run: () => {
                 appState.fileQuickOpenOpen = true;
-              },
-            },
-          ]
-        : []),
-      ...(state.activeSessionId && state.taskView !== 'conversation'
-        ? [
-            {
-              label: state.workspacePresentation === 'fullscreen' ? '退出工作区全屏' : '全屏显示工作区',
-              description:
-                state.workspacePresentation === 'fullscreen'
-                  ? '恢复对话与任务上下文的并排布局'
-                  : '让当前任务工作区占满可用内容区域',
-              icon: state.workspacePresentation === 'fullscreen' ? Minimize2 : Maximize2,
-              run: () => {
-                appState.workspacePresentation =
-                  appState.workspacePresentation === 'fullscreen' ? 'docked' : 'fullscreen';
               },
             },
           ]
@@ -64,34 +32,14 @@ export function CommandPalette({ actions }: { actions: CodeActions }) {
         run: navigateMemory,
       },
       {
-        label: '新建任务',
-        description: '创建一个新的独立 Code 任务',
+        label: '新建会话',
+        description: '在当前工作区开始一个独立 AI 会话',
         icon: ListChecks,
         run: () => {
           actions.newConversation();
           navigateTask('conversation');
         },
       },
-      {
-        label: '审阅工作区',
-        description: '检查文件、差异、配置验证和 Git',
-        icon: FileDiff,
-        run: () => {
-          appState.reviewIntent = 'review';
-          appState.reviewSourceTaskId = appState.activeSessionId;
-          navigateTask('review');
-        },
-      },
-      ...(state.activeSessionId
-        ? [
-            {
-              label: '任务活动',
-              description: '查看当前任务的工具执行记录',
-              icon: History,
-              run: () => navigateTask('activity'),
-            },
-          ]
-        : []),
       {
         label: '设置',
         description: '模型、账户、外观和更新',
@@ -105,7 +53,7 @@ export function CommandPalette({ actions }: { actions: CodeActions }) {
         run: () => navigateSettings('help'),
       },
     ],
-    [actions, state.activeSessionId, state.taskView, state.workspacePresentation, state.workspaceRoot]
+    [actions, state.workspaceRoot]
   );
   const visible = useMemo(
     () =>
@@ -169,7 +117,7 @@ export function CommandPalette({ actions }: { actions: CodeActions }) {
           }}
         />
         <div className='palette-results' id={resultId} role='listbox' aria-label='可用操作'>
-          <span>CODE</span>
+          <span>A3S</span>
           {visible.map(({ label, description, icon: Icon, run }) => (
             <button
               type='button'

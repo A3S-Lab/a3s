@@ -62,10 +62,7 @@ describe('Work Copilot panel', () => {
       instruction: expect.stringContaining('概览'),
     });
     expect(sendMessage).not.toHaveBeenCalled();
-    expect(screen.getByRole('complementary', { name: 'Work AI 助手' })).toHaveAttribute(
-      'data-office-shortcuts',
-      'ignore'
-    );
+    expect(screen.getByRole('complementary', { name: 'AI 助手' })).toHaveAttribute('data-office-shortcuts', 'ignore');
   });
 
   it('starts wider, supports keyboard resizing, and persists the chosen width', () => {
@@ -80,7 +77,7 @@ describe('Work Copilot panel', () => {
       />
     );
 
-    const separator = screen.getByRole('separator', { name: '调整 Work AI 助手宽度' });
+    const separator = screen.getByRole('separator', { name: '调整 AI 助手宽度' });
     expect(separator).toHaveAttribute('aria-valuenow', '460');
     fireEvent.keyDown(separator, { key: 'ArrowLeft' });
     expect(separator).toHaveAttribute('aria-valuenow', '480');
@@ -99,7 +96,7 @@ describe('Work Copilot panel', () => {
       />
     );
 
-    const separator = screen.getByRole('separator', { name: '调整 Work AI 助手宽度' });
+    const separator = screen.getByRole('separator', { name: '调整 AI 助手宽度' });
     fireEvent.pointerDown(separator, { button: 0, pointerId: 7, clientX: window.innerWidth - 460 });
     expect(document.documentElement).toHaveAttribute('data-ds-resizing', 'vertical');
     fireEvent.pointerMove(window, { pointerId: 7, clientX: window.innerWidth - 520 });
@@ -122,8 +119,8 @@ describe('Work Copilot panel', () => {
       />
     );
 
-    const panel = screen.getByRole('complementary', { name: 'Work AI 助手' });
-    const separator = screen.getByRole('separator', { name: '调整 Work AI 助手宽度' });
+    const panel = screen.getByRole('complementary', { name: 'AI 助手' });
+    const separator = screen.getByRole('separator', { name: '调整 AI 助手宽度' });
     expect(panel).toHaveStyle({ width: '360px' });
     expect(separator).toHaveAttribute('aria-valuemax', '360');
     expect(separator).toHaveAttribute('aria-valuenow', '360');
@@ -151,8 +148,8 @@ describe('Work Copilot panel', () => {
       />
     );
 
-    const panel = screen.getByRole('complementary', { name: 'Work AI 助手' });
-    const separator = screen.getByRole('separator', { name: '调整 Work AI 助手宽度' });
+    const panel = screen.getByRole('complementary', { name: 'AI 助手' });
+    const separator = screen.getByRole('separator', { name: '调整 AI 助手宽度' });
     expect(panel).toHaveStyle({ width: '360px' });
     expect(separator).toHaveAttribute('aria-valuemax', '360');
   });

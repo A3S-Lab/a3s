@@ -1,17 +1,32 @@
 import { LoaderCircle, RotateCcw, Search } from 'lucide-react';
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { useSnapshot } from 'valtio';
-import { appState, formatApiError } from '../../../state/app-state';
+import { formatApiError } from '../../../state/app-state';
 import type { WorkspaceFileCatalog, WorkspaceFileCatalogItem } from '../../../types/api';
-import type { WorkspaceActions } from '../workspace-actions';
 import { normalizePath, workspaceRelativePath } from '../workspace-state';
 import { WorkspaceFileIcon } from './workspace-file-icon';
 
 const QUICK_OPEN_RESULT_LIMIT = 120;
 const QUERY_DELAY_MS = 90;
 
-export function WorkspaceQuickOpen({ actions }: { actions: WorkspaceActions }) {
-  const state = useSnapshot(appState);
+interface WorkspaceQuickOpenProps {
+  rootPath: string;
+  generation: number;
+  openFiles: ReadonlyArray<{ path: string; isBinary: boolean }>;
+  activePath: string | null;
+  findFiles: (query: string, maxResults: number) => Promise<WorkspaceFileCatalog>;
+  openFile: (item: WorkspaceFileCatalogItem) => Promise<boolean>;
+  onClose: () => void;
+}
+
+export function WorkspaceQuickOpen({
+  rootPath,
+  generation,
+  openFiles,
+  activePath,
+  findFiles,
+  openFile,
+  onClose,
+}: WorkspaceQuickOpenProps) {
   const [query, setQuery] = useState('');
   const [catalog, setCatalog] = useState<WorkspaceFileCatalog | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,17 +59,16 @@ export function WorkspaceQuickOpen({ actions }: { actions: WorkspaceActions }) {
     const requestId = ++requestIdRef.current;
     setCatalog(null);
     setError(null);
-    setLoading(Boolean(state.workspaceRoot));
+    setLoading(Boolean(rootPath));
     selectedIndexRef.current = 0;
     setSelectedIndex(0);
-    if (!state.workspaceRoot) {
-      setError('当前任务没有可用的工作区。');
+    if (!rootPath) {
+      setError('当前没有可用的工作区。');
       return;
     }
     const timer = window.setTimeout(
       () => {
-        void actions
-          .findWorkspaceFiles(normalizedQuery, QUICK_OPEN_RESULT_LIMIT)
+        void findFiles(normalizedQuery, QUICK_OPEN_RESULT_LIMIT)
           .then((result) => {
             if (requestId !== requestIdRef.current) return;
             setCatalog(result);
@@ -70,27 +84,15 @@ export function WorkspaceQuickOpen({ actions }: { actions: WorkspaceActions }) {
       normalizedQuery ? QUERY_DELAY_MS : 0
     );
     return () => window.clearTimeout(timer);
-  }, [actions.findWorkspaceFiles, normalizedQuery, reloadToken, state.workspaceGeneration, state.workspaceRoot]);
+  }, [findFiles, generation, normalizedQuery, reloadToken, rootPath]);
 
   const options = useMemo(
-    () =>
-      quickOpenOptions(
-        catalog?.items ?? [],
-        normalizedQuery,
-        state.editorTabs,
-        state.activeEditorTabId,
-        state.workspaceRoot
-      ),
-    [catalog?.items, normalizedQuery, state.activeEditorTabId, state.editorTabs, state.workspaceRoot]
+    () => quickOpenOptions(catalog?.items ?? [], normalizedQuery, openFiles, activePath, rootPath),
+    [activePath, catalog?.items, normalizedQuery, openFiles, rootPath]
   );
   const openPaths = useMemo(
-    () =>
-      new Set(
-        state.editorTabs
-          .filter((tab) => tab.kind === 'file')
-          .map((tab) => comparablePath(tab.path, state.workspaceRoot))
-      ),
-    [state.editorTabs, state.workspaceRoot]
+    () => new Set(openFiles.map((file) => comparablePath(file.path, rootPath))),
+    [openFiles, rootPath]
   );
 
   useLayoutEffect(() => {
@@ -102,9 +104,6 @@ export function WorkspaceQuickOpen({ actions }: { actions: WorkspaceActions }) {
     optionRefs.current[selectedIndex]?.scrollIntoView?.({ block: 'nearest' });
   }, [selectedIndex]);
 
-  const close = () => {
-    appState.fileQuickOpenOpen = false;
-  };
   const moveSelection = (offset: number) => {
     if (!options.length) return;
     const index = (selectedIndexRef.current + offset + options.length) % options.length;
@@ -120,8 +119,8 @@ export function WorkspaceQuickOpen({ actions }: { actions: WorkspaceActions }) {
     setOpeningPath(item.path);
     setError(null);
     try {
-      const opened = await actions.selectFile({ path: item.path, isBinary: item.isBinary });
-      if (opened) close();
+      const opened = await openFile(item);
+      if (opened) onClose();
       else if (mountedRef.current) setError(`无法打开 ${item.name}。`);
     } catch (reason) {
       if (mountedRef.current) setError(formatApiError(reason));
@@ -139,16 +138,16 @@ export function WorkspaceQuickOpen({ actions }: { actions: WorkspaceActions }) {
       aria-label='快速打开文件'
       onCancel={(event) => {
         event.preventDefault();
-        close();
+        onClose();
       }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) close();
+        if (event.target === event.currentTarget) onClose();
       }}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.preventDefault();
           event.stopPropagation();
-          close();
+          onClose();
           return;
         }
         if (event.key !== 'Tab') return;
@@ -213,10 +212,10 @@ export function WorkspaceQuickOpen({ actions }: { actions: WorkspaceActions }) {
           aria-label='工作区文件'
           aria-busy={loading}
         >
-          <span>FILES · {basename(state.workspaceRoot)}</span>
+          <span>FILES · {basename(rootPath)}</span>
           {options.map((item, index) => {
             const selected = index === selectedIndex;
-            const open = openPaths.has(comparablePath(item.path, state.workspaceRoot));
+            const open = openPaths.has(comparablePath(item.path, rootPath));
             return (
               <button
                 ref={(element) => {
@@ -277,28 +276,21 @@ export function WorkspaceQuickOpen({ actions }: { actions: WorkspaceActions }) {
 function quickOpenOptions(
   catalogItems: WorkspaceFileCatalogItem[],
   query: string,
-  tabs: ReadonlyArray<{ id: string; kind: 'file' | 'diff'; path: string; isBinary: boolean }>,
-  activeTabId: string | null,
+  openFiles: ReadonlyArray<{ path: string; isBinary: boolean }>,
+  activePath: string | null,
   workspaceRoot: string
 ): WorkspaceFileCatalogItem[] {
   if (query) return [...catalogItems];
-  const openItems = tabs
-    .filter((tab) => tab.kind === 'file')
-    .map((tab) => ({
-      id: tab.id,
-      item: {
-        path: tab.path,
-        relativePath: workspaceRelativePath(tab.path, workspaceRoot),
-        name: basename(tab.path),
-        isBinary: tab.isBinary,
-      },
+  const openItems = openFiles
+    .map((file) => ({
+      path: file.path,
+      relativePath: workspaceRelativePath(file.path, workspaceRoot),
+      name: basename(file.path),
+      isBinary: file.isBinary,
     }))
-    .sort((left, right) => Number(right.id === activeTabId) - Number(left.id === activeTabId));
-  const seen = new Set(openItems.map(({ item }) => comparablePath(item.path, workspaceRoot)));
-  return [
-    ...openItems.map(({ item }) => item),
-    ...catalogItems.filter((item) => !seen.has(comparablePath(item.path, workspaceRoot))),
-  ];
+    .sort((left, right) => Number(right.path === activePath) - Number(left.path === activePath));
+  const seen = new Set(openItems.map((item) => comparablePath(item.path, workspaceRoot)));
+  return [...openItems, ...catalogItems.filter((item) => !seen.has(comparablePath(item.path, workspaceRoot)))];
 }
 
 function comparablePath(path: string, workspaceRoot: string): string {

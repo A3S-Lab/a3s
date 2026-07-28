@@ -177,7 +177,7 @@ export function useSettingsController() {
       throw error;
     }
     appState.updateInstalledVersion = version;
-    showToast(result.restartRequired ? '更新已安装，请重启 A3S Code Web 服务' : result.message, 'success');
+    showToast(result.restartRequired ? '更新已安装，请重启 A3S Web 服务' : result.message, 'success');
     try {
       appState.updateStatus = (await codeApi.updateStatus()) as UpdateStatus;
       if (!appState.updateStatus.updateAvailable) appState.updateInstalledVersion = null;

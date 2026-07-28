@@ -112,7 +112,7 @@ describe('model controls', () => {
     );
     render(<SettingsHarness />);
     fireEvent.click(screen.getByRole('button', { name: '关于与更新' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('无法访问本地 A3S Code 服务');
+    expect(await screen.findByRole('alert')).toHaveTextContent('无法访问本地 A3S 服务');
     expect(screen.getByText('无法检查更新')).toBeInTheDocument();
     expect(screen.queryByText('当前已是最新版本')).not.toBeInTheDocument();
   });

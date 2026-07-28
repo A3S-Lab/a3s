@@ -97,7 +97,7 @@ describe('plugin host page', () => {
     await waitFor(() => expect(screen.getByRole('dialog', { name: 'Review research context' })).toBeInTheDocument());
     expect(screen.getByText('a3s-use-science')).toBeInTheDocument();
     expect(screen.getByText('Compare the selected sources.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: '在 Code 中使用' }));
+    fireEvent.click(screen.getByRole('button', { name: '在当前会话中使用' }));
     expect(actions.acceptContextProposal).toHaveBeenCalledOnce();
   });
 

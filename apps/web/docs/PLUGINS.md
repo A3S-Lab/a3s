@@ -3,9 +3,9 @@
 ## Product model
 
 A3S Web treats an installed A3S Use package as the equivalent of a VS Code
-extension package. Code is the first and default Activity Bar entry, Work is
-the second built-in entry, and the non-executable Knowledge product follows
-Work. An enabled package can add a workbench view through the
+extension package. Work is the first and default Activity Bar entry, and the
+non-executable Knowledge product follows it. An enabled package can add a
+workbench view through the
 `contributes.activity_bar` contribution point; vertical products such as
 Research and Finance are not hardcoded shell entries.
 
@@ -31,7 +31,7 @@ The model combines two useful references without copying either runtime:
 The equivalent of `remote-component` dependency injection is the versioned,
 bounded `host.init`/`postMessage` protocol. A plugin receives only declared host
 facts and proposal capabilities, never the host React runtime or an ambient
-`require` function. The equivalent of its custom fetcher is owned by A3S Code:
+`require` function. The equivalent of its custom fetcher is owned by A3S Web:
 it resolves content only from the installed package snapshot and verifies the
 registry revision and digest before rendering.
 
@@ -58,7 +58,7 @@ plugin messages.
 
 Activity HTML and its explicitly declared CSS/JavaScript resources are validated
 twice: first by A3S Use while projecting the installed package, then
-independently by A3S Code before they become Web API content. Every asset must
+independently by A3S Web before they become Web API content. Every asset must
 be:
 
 - inside the immutable package root;
@@ -112,7 +112,7 @@ There is no generic execute message.
 
 `context.propose` always opens a host-owned review dialog. The user sees the
 summary, fields, exact prompt, and host-verified Skill decision before anything
-enters Code. `usePackageSkill` defaults to `true` for backward compatibility;
+enters the current Work draft. `usePackageSkill` defaults to `true` for backward compatibility;
 when it is `false`, accepting the review appends only the prompt and does not
 select a Skill. A plugin cannot name an arbitrary Skill: the host can attach
 only the Skill declared by the same installed package. Dismissing the proposal
@@ -121,7 +121,7 @@ has no side effect, and plugin HTML cannot submit a task directly.
 The Research contribution uses this distinction deliberately. Its workbench
 organizes a task as a project and follows a question → evidence → analysis →
 artifact → review loop. Life-science sources may request the verified
-`a3s-use-science` Skill. Other disciplines use Code's current general research
+`a3s-use-science` Skill. Other disciplines use A3S's current general research
 capabilities and do not receive the life-science Skill. Every brief asks for a
 reviewable research package with a provenance note covering sources, methods or
 code, execution records, key parameters, artifact relationships, and unfinished
@@ -130,7 +130,7 @@ verification items.
 The product organization takes inspiration from Claude Science's project and
 artifact-centered workbench and Open Science's plan → execute → produce →
 preview flow. A3S does not copy either shell or grant their runtime authority:
-the contribution remains an isolated A3S Web Code surface, and Code/Work own
+the contribution remains an isolated A3S Web plugin surface, while Work owns
 execution, files, editable artifacts, logs, and final review.
 
 ## Marketplace lifecycle
@@ -175,7 +175,7 @@ It builds the real `a3s-use` binary and packaged `a3s-use-science` release, then
 runs both supported source paths: an A3S Use release bundle with no configured
 registry and an ephemeral signed TUF repository. The checks exercise Web API
 install plan/apply, direct Activity opening, verified
-HTML/CSS/JavaScript delivery, reviewed workbench-to-Code handoff, packaged
+HTML/CSS/JavaScript delivery, reviewed workbench-to-Work handoff, packaged
 `science doctor`, all 13 namespaced Science MCP tools, uninstall plan/apply,
 `release-bundle`/`registry-tuf` receipt provenance, and package-directory
 cleanup. The test is local and does not claim that a package has been published

@@ -44,7 +44,7 @@ describe('ChannelSettingsPage', () => {
       settingsTab: 'general',
       settingsChannel: 'weixin',
     });
-    window.history.replaceState(null, '', '#code/conversation');
+    window.history.replaceState(null, '', '#home');
   });
 
   it('switches the channel workspace without changing the outer Settings page', async () => {

@@ -53,7 +53,7 @@ export function RecoveryNotice({ events, retryContent }: { events: AgentEvent[];
 function turnRecoveryAction(event: AgentEvent, message: string): { instruction: string; label: string } {
   if (event.tool_name) {
     return {
-      label: '让 Code 分析并修复',
+      label: '让 A3S 分析并修复',
       instruction: `请检查失败的 ${event.tool_name} 工具调用，定位原因并安全修复。\n\n失败信息：${message}`,
     };
   }

@@ -10,11 +10,8 @@ import { PluginHostPage } from '../features/plugins/pages/plugin-host-page';
 import { PluginMarketplacePage } from '../features/plugins/pages/plugin-marketplace-page';
 import type { PluginActions } from '../features/plugins/use-plugin-controller';
 import { SettingsDialog } from '../features/settings/components/settings-dialog';
-import { TaskLibrary } from '../features/tasks/components/task-library';
-import { TasksPage } from '../features/tasks/pages/tasks-page';
 import type { WeixinRemoteActions } from '../features/weixin-remote/use-weixin-remote-controller';
 import { WorkProduct } from '../features/work/pages/work-product';
-import { WorkspaceQuickOpen } from '../features/workspace/components/workspace-quick-open';
 import { appState } from '../state/app-state';
 import { ActivityBar } from './activity-bar';
 import { CommandPalette } from './shell/command-palette';
@@ -47,9 +44,6 @@ export function AppShell({
   return (
     <main className='app-shell'>
       <ActivityBar />
-      {state.activeProduct === 'code' && state.codeSurface === 'tasks' && state.sidebarOpen && (
-        <TaskLibrary actions={actions} />
-      )}
       <section className='product-workspace'>
         {state.activeProduct === 'plugin' ? (
           pluginActions ? (
@@ -63,12 +57,10 @@ export function AppShell({
           knowledgeActions ? (
             <KnowledgePage actions={knowledgeActions} />
           ) : null
-        ) : state.activeProduct === 'work' ? (
-          <WorkProduct actions={actions} />
-        ) : state.codeSurface === 'memory' ? (
+        ) : state.activeProduct === 'memory' ? (
           <MemoryPage actions={actions} />
         ) : (
-          <TasksPage actions={actions} />
+          <WorkProduct actions={actions} />
         )}
       </section>
       {state.settingsOpen && <SettingsDialog actions={actions} weixinActions={weixinActions} />}
@@ -97,8 +89,7 @@ export function AppShell({
           </span>
         </InlineNotice>
       )}
-      {state.activeProduct === 'code' && state.commandPaletteOpen && <CommandPalette actions={actions} />}
-      {state.activeProduct === 'code' && state.fileQuickOpenOpen && <WorkspaceQuickOpen actions={actions} />}
+      {state.activeProduct === 'work' && state.commandPaletteOpen && <CommandPalette actions={actions} />}
     </main>
   );
 }

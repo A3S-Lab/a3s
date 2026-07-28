@@ -7,7 +7,8 @@ import type { CatalogModel } from '../../../types/api';
 export function TaskComposerModelChangeNotice() {
   const state = useSnapshot(appState);
   const notice = state.modelChangeNotice;
-  if (!notice || notice.sessionId !== state.activeSessionId) return null;
+  const sessionId = state.activeSessionId;
+  if (!notice || notice.sessionId !== sessionId) return null;
 
   return (
     <ModelChangeNoticeItem
