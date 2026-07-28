@@ -276,6 +276,7 @@
 
 .work-live-preview-document {
   min-width: 0;
+  height: 100%;
   min-height: 100%;
   background: var(--a3s-panel);
 }
@@ -290,6 +291,13 @@
 .work-live-preview-document > .work-quick-look-artifact,
 .work-live-preview-document > .work-pdf-viewer {
   min-height: 100%;
+}
+
+.work-live-preview-document > .work-pdf-viewer,
+.work-live-preview-document .work-pdf-embed,
+.work-live-preview-document .work-pdf-native-viewer,
+.work-live-preview-document embedpdf-container {
+  height: 100%;
 }
 
 .work-live-preview-loading,
