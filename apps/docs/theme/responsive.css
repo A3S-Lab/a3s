@@ -1,32 +1,68 @@
-@media (max-width: 960px) {
+@media (max-width: 1180px) {
   .cli-hero {
-    min-height: auto;
-    padding-top: 76px;
-    gap: 56px;
-    grid-template-columns: 1fr;
+    min-height: 680px;
+    grid-template-columns: minmax(0, 52%) minmax(0, 48%);
   }
 
   .cli-hero__copy {
-    max-width: 760px;
+    padding: 76px 46px 58px;
   }
 
-  .cli-terminal {
-    width: min(100%, 720px);
-    justify-self: end;
+  .cli-hero__visual {
+    padding-right: 34px;
+    padding-left: 34px;
   }
 
-  .cli-section__header,
-  .cli-install-section {
-    gap: 34px;
-    grid-template-columns: 1fr;
-  }
-
-  .cli-section__header > p {
-    max-width: 700px;
+  .cli-section {
+    padding-right: 48px;
+    padding-left: 48px;
   }
 
   .cli-responsibility-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cli-responsibility-grid article {
+    min-height: 240px;
+  }
+}
+
+@media (max-width: 960px) {
+  .cli-hero {
+    min-height: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .cli-hero__copy {
+    padding-top: 78px;
+    border-right: 0;
+    border-bottom: 1px solid var(--cli-line);
+  }
+
+  .cli-hero__copy,
+  .cli-hero__visual {
+    padding-right: 48px;
+    padding-left: 48px;
+  }
+
+  .cli-hero__visual {
+    min-height: 650px;
+    padding-top: 82px;
+    padding-bottom: 58px;
+  }
+
+  .cli-canvas-grid {
+    width: min(100%, 700px);
+  }
+
+  .cli-section__header,
+  .cli-install-section {
+    gap: 36px;
+    grid-template-columns: 1fr;
+  }
+
+  .cli-section__header > p {
+    max-width: 720px;
   }
 
   .cli-product-grid {
@@ -34,26 +70,43 @@
   }
 
   .cli-install-section > div:last-child {
-    width: min(100%, 720px);
+    width: min(100%, 760px);
+  }
+
+  .cli-cta {
+    width: calc(100% - 64px);
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 700px) {
   .a3s-cli-home {
     min-height: calc(100vh - 62px);
+    background-size: 48px 48px;
+  }
+
+  .a3s-cli-home::after {
+    inset: 62px 0 0;
   }
 
   .cli-hero {
-    padding: 58px 18px 68px;
-    gap: 42px;
+    border-right: 0;
+    border-left: 0;
+  }
+
+  .cli-hero__copy {
+    padding: 62px 20px 52px;
   }
 
   .cli-hero h1 {
-    font-size: clamp(40px, 12.5vw, 56px);
+    margin-top: 23px;
+    font-size: clamp(42px, 12vw, 58px);
+    line-height: 1.02;
   }
 
   .cli-hero__copy > p {
+    margin-top: 22px;
     font-size: 15px;
+    line-height: 1.72;
   }
 
   .cli-hero__actions {
@@ -65,23 +118,54 @@
     width: 100%;
   }
 
+  .cli-hero__visual {
+    min-height: 520px;
+    padding: 70px 16px 34px;
+  }
+
+  .cli-hero__visual-label {
+    top: 25px;
+    right: 20px;
+    left: 20px;
+  }
+
+  .cli-canvas-grid {
+    height: 430px;
+  }
+
+  .cli-terminal > header {
+    min-height: 43px;
+    padding: 0 13px;
+  }
+
+  .cli-terminal > header em {
+    font-size: 8px;
+  }
+
   .cli-terminal__body {
-    min-height: 350px;
-    padding: 26px 20px;
+    min-height: 386px;
+    padding: 28px 21px;
   }
 
   .cli-terminal dl > div {
-    grid-template-columns: 74px 1fr;
+    min-height: 43px;
+    grid-template-columns: 76px 1fr;
   }
 
   .cli-section {
-    padding: 78px 18px;
+    padding: 82px 20px;
+    border-right: 0;
+    border-left: 0;
+  }
+
+  .cli-section__header {
+    gap: 24px;
   }
 
   .cli-section__header h2,
   .cli-install-section h2,
   .cli-cta h2 {
-    font-size: 34px;
+    font-size: 36px;
   }
 
   .cli-responsibility-grid,
@@ -90,19 +174,41 @@
     grid-template-columns: 1fr;
   }
 
+  .cli-responsibility-grid {
+    margin-top: 42px;
+  }
+
   .cli-responsibility-grid article {
-    min-height: 220px;
+    min-height: 210px;
+  }
+
+  .cli-responsibility-grid h3 {
+    margin-top: 36px;
+  }
+
+  .cli-command-list,
+  .cli-product-grid,
+  .cli-flow {
+    margin-top: 42px;
   }
 
   .cli-command-row {
-    min-height: 86px;
-    padding: 16px 18px;
+    min-height: 88px;
+    padding: 17px 18px;
     gap: 8px;
     grid-template-columns: 1fr;
   }
 
+  .cli-command-row code {
+    overflow-wrap: anywhere;
+  }
+
   .cli-product-grid > a {
-    min-height: 260px;
+    min-height: 270px;
+  }
+
+  .cli-flow article {
+    min-height: 210px;
   }
 
   .cli-flow article:not(:last-child)::after {
@@ -111,29 +217,64 @@
     bottom: -17px;
     width: 1px;
     height: 16px;
+    background: linear-gradient(
+      var(--cli-line-strong),
+      rgba(118, 169, 255, 0.54)
+    );
   }
 
   .cli-install-section {
-    padding-top: 78px;
-    padding-bottom: 84px;
+    padding-top: 82px;
+    padding-bottom: 90px;
   }
 
-  .cli-cta {
-    width: calc(100% - 36px);
-    margin-bottom: 64px;
-    padding: 34px 26px;
+  .cli-post-install {
     align-items: flex-start;
     flex-direction: column;
   }
 
+  .cli-cta {
+    width: calc(100% - 40px);
+    min-height: 0;
+    margin-bottom: 70px;
+    padding: 38px 27px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .cli-cta .cli-button {
+    width: 100%;
+  }
+
   .cli-footer {
-    min-height: 126px;
-    padding: 24px 18px;
+    min-height: 132px;
+    padding: 25px 20px;
     align-items: flex-start;
     grid-template-columns: 1fr;
   }
 
   .cli-footer a {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 390px) {
+  .cli-hero__visual-label small {
+    display: none;
+  }
+
+  .cli-install__tabs button {
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .cli-install__command {
+    align-items: start;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .cli-install__command button {
+    grid-column: 2;
     justify-self: start;
   }
 }

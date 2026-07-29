@@ -34,7 +34,7 @@ export default defineConfig({
     },
   ],
   head: [
-    ['meta', { name: 'theme-color', content: '#f7f8fb' }],
+    ['meta', { name: 'theme-color', content: '#090a0d' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:site_name', content: 'A3S CLI' }],
     ['meta', { property: 'og:image', content: `${siteUrl}social-card.svg` }],
@@ -50,10 +50,10 @@ export default defineConfig({
     ],
   ],
   themeConfig: {
-    darkMode: 'force-light',
+    darkMode: 'force-dark',
     search: false,
     localeRedirect: 'never',
-    enableContentAnimation: false,
+    enableContentAnimation: true,
     socialLinks: [
       {
         icon: 'github',

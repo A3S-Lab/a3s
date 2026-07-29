@@ -14,6 +14,9 @@ The site follows the same implementation model as the A3S Code website:
   product copy.
 - **A custom theme** owns navigation, CLI product content, installation
   switching, and responsive styles.
+- **Canvas UI Grid** is vendored as source and provides the pointer-responsive
+  canvas treatment in the hero command panel. Its license is recorded in
+  `THIRD_PARTY_NOTICES.md`.
 - **Static public assets** provide the favicon, social card, robots policy, and
   sitemap.
 

@@ -1,5 +1,6 @@
 import { useLang } from '@rspress/core/runtime';
 import { InstallSwitcher } from './InstallSwitcher';
+import { Grid } from './canvasui/Grid/Grid';
 
 type Locale = 'zh' | 'en';
 type Localized = Record<Locale, string>;
@@ -368,50 +369,85 @@ export function HomeLayout() {
           <InstallSwitcher locale={locale} />
         </div>
 
-        <aside className="cli-terminal" aria-label="A3S CLI command overview">
-          <header>
-            <span>
-              <i />
-              <i />
-              <i />
-            </span>
-            <code>a3s --help</code>
-          </header>
-          <div className="cli-terminal__body">
-            <p>
-              <span>$</span> a3s --help
-            </p>
-            <strong>A3S command-line interface</strong>
-            <dl>
-              <div>
-                <dt>code</dt>
-                <dd>{locale === 'zh' ? '终端工作区' : 'terminal workspace'}</dd>
-              </div>
-              <div>
-                <dt>web</dt>
-                <dd>
-                  {locale === 'zh' ? '浏览器工作区' : 'browser workspace'}
-                </dd>
-              </div>
-              <div>
-                <dt>config</dt>
-                <dd>{locale === 'zh' ? '配置管理' : 'configuration'}</dd>
-              </div>
-              <div>
-                <dt>model</dt>
-                <dd>{locale === 'zh' ? '模型选择' : 'model selection'}</dd>
-              </div>
-              <div>
-                <dt>install</dt>
-                <dd>{locale === 'zh' ? '安装组件' : 'install component'}</dd>
-              </div>
-              <div>
-                <dt>doctor</dt>
-                <dd>{locale === 'zh' ? '环境诊断' : 'diagnostics'}</dd>
-              </div>
-            </dl>
+        <div className="cli-hero__visual" data-canvas-ui="grid">
+          <div className="cli-hero__visual-label">
+            <span>{locale === 'zh' ? '命令路由' : 'COMMAND ROUTER'}</span>
+            <small>canvas-ui / grid</small>
           </div>
-        </aside>
+          <Grid
+            amplitude={0.82}
+            className="cli-canvas-grid"
+            cornerRadius={2}
+            fadeTime={0.42}
+            frequency={10}
+            gap={2}
+            idleRipples={4.8}
+            jitter={0.06}
+            liftHeight={26}
+            maxLift={0.7}
+            perspective={1_400}
+            shading={0.22}
+            tileSize={84}
+            tilt={0.34}
+            tint={[0.34, 0.58, 1]}
+            tintStrength={0.3}
+            waveSpeed={0.42}
+            waveWidth={0.075}
+          >
+            <aside
+              className="cli-terminal"
+              aria-label="A3S CLI command overview"
+            >
+              <header>
+                <span>
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                <code>a3s --help</code>
+                <em>{locale === 'zh' ? '就绪' : 'READY'}</em>
+              </header>
+              <div className="cli-terminal__body">
+                <p>
+                  <span>$</span> a3s --help
+                </p>
+                <strong>A3S command-line interface</strong>
+                <dl>
+                  <div>
+                    <dt>code</dt>
+                    <dd>
+                      {locale === 'zh' ? '终端工作区' : 'terminal workspace'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>web</dt>
+                    <dd>
+                      {locale === 'zh' ? '浏览器工作区' : 'browser workspace'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>config</dt>
+                    <dd>{locale === 'zh' ? '配置管理' : 'configuration'}</dd>
+                  </div>
+                  <div>
+                    <dt>model</dt>
+                    <dd>{locale === 'zh' ? '模型选择' : 'model selection'}</dd>
+                  </div>
+                  <div>
+                    <dt>install</dt>
+                    <dd>
+                      {locale === 'zh' ? '安装组件' : 'install component'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>doctor</dt>
+                    <dd>{locale === 'zh' ? '环境诊断' : 'diagnostics'}</dd>
+                  </div>
+                </dl>
+              </div>
+            </aside>
+          </Grid>
+        </div>
       </section>
 
       <section className="cli-section" id="responsibilities">

@@ -89,6 +89,14 @@ for (const [locale, html] of [
       `${locale} homepage has ${openingScripts} script openings but ${closingScripts} closings.`,
     );
   }
+
+  if (!html.includes('data-canvas-ui="grid"')) {
+    throw new Error(`${locale} homepage is missing the Canvas UI Grid.`);
+  }
+
+  if (!html.includes('content="#090a0d"')) {
+    throw new Error(`${locale} homepage is missing the dark theme color.`);
+  }
 }
 
 for (const marker of [
@@ -154,6 +162,7 @@ for (const selector of [
   '.a3s-cli-home',
   '.cli-command-row',
   '.cli-product-grid',
+  '.cli-canvas-grid',
 ]) {
   if (!css.includes(selector)) {
     throw new Error('Production CSS is missing: ' + selector);

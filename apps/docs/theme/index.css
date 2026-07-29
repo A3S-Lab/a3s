@@ -1,32 +1,45 @@
 :root {
-  --cli-bg: #f7f8fb;
-  --cli-surface: #ffffff;
-  --cli-surface-muted: #f1f3f7;
-  --cli-text: #172033;
-  --cli-muted: #667085;
-  --cli-faint: #8b94a5;
-  --cli-line: #dfe3ea;
-  --cli-line-strong: #cbd2dd;
-  --cli-accent: #4f69a6;
-  --cli-accent-dark: #3f568d;
-  --cli-accent-soft: #edf1fa;
-  --cli-terminal: #151a24;
-  --cli-terminal-line: #2b3342;
+  --cli-bg: #090a0d;
+  --cli-bg-deep: #07080a;
+  --cli-surface: #0f1116;
+  --cli-surface-raised: #14171d;
+  --cli-surface-muted: #111319;
+  --cli-text: #f5f7fa;
+  --cli-muted: #a2a8b3;
+  --cli-faint: #686f7c;
+  --cli-line: #252831;
+  --cli-line-soft: #1c1f26;
+  --cli-line-strong: #383d48;
+  --cli-accent: #76a9ff;
+  --cli-accent-bright: #9ac2ff;
+  --cli-accent-deep: #4e75bb;
+  --cli-violet: #8878ff;
+  --cli-green: #3ccf91;
+  --cli-amber: #f0b44d;
+  --cli-terminal: #0a0c11;
+  --cli-terminal-line: #292d37;
   --cli-mono:
     'SFMono-Regular', 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
   --cli-font:
     Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
-  --cli-max: 1180px;
+  --cli-max: 1440px;
   --rp-c-bg: var(--cli-bg);
-  --rp-c-bg-soft: var(--cli-surface-muted);
+  --rp-c-bg-soft: var(--cli-surface);
   --rp-c-bg-mute: var(--cli-surface-muted);
   --rp-c-text-1: var(--cli-text);
   --rp-c-text-2: var(--cli-muted);
+  --rp-c-text-3: var(--cli-faint);
   --rp-c-divider: var(--cli-line);
+  --rp-c-divider-light: var(--cli-line-soft);
   --rp-c-brand: var(--cli-accent);
-  --rp-c-brand-dark: var(--cli-accent-dark);
-  color-scheme: light;
+  --rp-c-brand-dark: var(--cli-accent-bright);
+  --rp-c-brand-darker: #bad3ff;
+  --rp-c-brand-light: var(--cli-accent-deep);
+  --rp-c-brand-lighter: #395680;
+  --rp-c-brand-tint: rgba(118, 169, 255, 0.12);
+  --rp-nav-height: 72px;
+  color-scheme: dark;
   font-family: var(--cli-font);
 }
 
@@ -53,18 +66,42 @@ button {
 }
 
 ::selection {
-  background: #dbe4f7;
-  color: var(--cli-text);
+  background: rgba(118, 169, 255, 0.3);
+  color: #fff;
+}
+
+.rp-doc-layout {
+  background: var(--cli-bg);
 }
 
 .a3s-cli-nav {
   position: sticky;
   z-index: 80;
   top: 0;
-  height: 68px;
-  border-bottom: 1px solid rgba(223, 227, 234, 0.92);
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(16px);
+  height: 72px;
+  border-bottom: 1px solid rgba(37, 40, 49, 0.92);
+  background: rgba(9, 10, 13, 0.86);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(18px) saturate(130%);
+}
+
+.a3s-cli-nav::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 4%,
+    rgba(118, 169, 255, 0.1) 30%,
+    rgba(136, 120, 255, 0.58) 50%,
+    rgba(60, 207, 145, 0.12) 72%,
+    transparent 96%
+  );
+  content: '';
+  opacity: 0.68;
+  pointer-events: none;
 }
 
 .a3s-cli-nav__inner {
@@ -72,7 +109,7 @@ button {
   width: min(100%, var(--cli-max));
   height: 100%;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 32px;
   align-items: center;
   grid-template-columns: auto 1fr auto;
 }
@@ -80,11 +117,11 @@ button {
 .a3s-cli-brand {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   color: var(--cli-text);
   font-size: 18px;
-  font-weight: 750;
-  letter-spacing: -0.03em;
+  font-weight: 740;
+  letter-spacing: -0.035em;
   text-decoration: none;
 }
 
@@ -93,7 +130,8 @@ button {
   height: 31px;
   color: var(--cli-accent);
   fill: none;
-  stroke: currentColor;
+  filter: drop-shadow(0 0 12px rgba(118, 169, 255, 0.16));
+  stroke: currentcolor;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 3.4;
@@ -111,7 +149,7 @@ button {
 .a3s-cli-nav__links {
   display: flex;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .a3s-cli-nav__links a,
@@ -122,8 +160,8 @@ button {
   font-weight: 600;
   text-decoration: none;
   transition:
-    background 150ms ease,
-    color 150ms ease;
+    background 160ms ease,
+    color 160ms ease;
 }
 
 .a3s-cli-nav__links a {
@@ -132,14 +170,14 @@ button {
 
 .a3s-cli-nav__links a:hover,
 .a3s-cli-nav__language:hover {
-  background: var(--cli-surface-muted);
+  background: rgba(255, 255, 255, 0.045);
   color: var(--cli-text);
 }
 
 .a3s-cli-nav__actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
 }
 
 .a3s-cli-nav__language,
@@ -154,7 +192,7 @@ button {
   min-width: 42px;
   padding: 0 9px;
   font-family: var(--cli-mono);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .a3s-cli-nav__github {
@@ -163,92 +201,146 @@ button {
   border-radius: 8px;
   color: var(--cli-muted);
   transition:
-    border-color 150ms ease,
-    color 150ms ease;
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease;
 }
 
 .a3s-cli-nav__github:hover {
   border-color: var(--cli-line-strong);
+  background: rgba(255, 255, 255, 0.035);
   color: var(--cli-text);
 }
 
 .a3s-cli-nav__github svg {
   width: 17px;
   height: 17px;
-  fill: currentColor;
+  fill: currentcolor;
 }
 
 .cli-button {
+  position: relative;
   display: inline-flex;
-  min-height: 44px;
-  padding: 0 17px;
+  min-height: 46px;
+  padding: 0 18px;
   border: 1px solid transparent;
   border-radius: 9px;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 9px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 680;
   text-decoration: none;
   transition:
-    background 150ms ease,
-    border-color 150ms ease;
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.cli-button:hover {
+  transform: translateY(-1px);
 }
 
 .cli-button svg {
   width: 17px;
   height: 17px;
   fill: none;
-  stroke: currentColor;
+  stroke: currentcolor;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.8;
 }
 
 .cli-button svg:has(path[d^='M12']) {
-  fill: currentColor;
+  fill: currentcolor;
   stroke: none;
 }
 
 .cli-button--primary {
-  background: var(--cli-accent);
-  color: #fff;
+  border-color: rgba(131, 108, 255, 0.9);
+  background:
+    linear-gradient(180deg, rgba(29, 31, 42, 0.96), rgba(15, 17, 23, 0.98))
+      padding-box,
+    linear-gradient(110deg, #55d8ff, #8066ff 52%, #b66bff) border-box;
+  color: #f8f9ff;
+  box-shadow:
+    0 0 0 1px rgba(126, 101, 255, 0.12),
+    0 12px 32px rgba(37, 28, 98, 0.22),
+    inset 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.cli-button--primary::after {
+  position: absolute;
+  border-radius: inherit;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.07);
+  content: '';
+  inset: 1px;
+  pointer-events: none;
 }
 
 .cli-button--primary:hover {
-  background: var(--cli-accent-dark);
+  border-color: #9b8aff;
   color: #fff;
+  box-shadow:
+    0 0 24px rgba(100, 85, 255, 0.2),
+    0 16px 38px rgba(25, 19, 72, 0.32),
+    inset 0 1px rgba(255, 255, 255, 0.11);
 }
 
 .cli-button--secondary {
   border-color: var(--cli-line-strong);
-  background: var(--cli-surface);
+  background: rgba(15, 17, 22, 0.78);
   color: var(--cli-text);
 }
 
 .cli-button--secondary:hover {
-  border-color: #aeb8c8;
-  background: #fafbfc;
-  color: var(--cli-text);
+  border-color: #505866;
+  background: rgba(20, 23, 30, 0.92);
+  color: #fff;
 }
 
 .cli-install {
+  position: relative;
   overflow: hidden;
-  border: 1px solid var(--cli-line);
+  border: 1px solid rgba(83, 91, 106, 0.68);
   border-radius: 11px;
-  background: var(--cli-surface);
+  background: rgba(10, 12, 17, 0.86);
+  box-shadow:
+    0 18px 46px rgba(0, 0, 0, 0.24),
+    inset 0 1px rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(14px);
+}
+
+.cli-install::before {
+  position: absolute;
+  top: 0;
+  left: 12%;
+  width: 76%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(118, 169, 255, 0.72),
+    rgba(136, 120, 255, 0.68),
+    transparent
+  );
+  content: '';
+  opacity: 0.46;
+  pointer-events: none;
 }
 
 .cli-install__tabs {
   display: flex;
   padding: 5px;
-  border-bottom: 1px solid var(--cli-line);
+  border-bottom: 1px solid var(--cli-terminal-line);
   gap: 3px;
 }
 
 .cli-install__tabs button {
-  min-height: 30px;
-  padding: 0 9px;
+  min-height: 31px;
+  padding: 0 10px;
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -256,52 +348,64 @@ button {
   cursor: pointer;
   font-family: var(--cli-mono);
   font-size: 10px;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.cli-install__tabs button:hover {
+  color: var(--cli-muted);
 }
 
 .cli-install__tabs button[aria-selected='true'] {
-  background: var(--cli-surface-muted);
-  color: var(--cli-text);
+  background: rgba(118, 169, 255, 0.09);
+  color: var(--cli-accent-bright);
 }
 
 .cli-install__command {
   display: grid;
-  min-height: 58px;
-  padding: 12px 12px 12px 15px;
+  min-height: 60px;
+  padding: 12px 12px 12px 16px;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   grid-template-columns: auto minmax(0, 1fr) auto;
 }
 
 .cli-install__command > span {
-  color: #72906f;
+  color: var(--cli-green);
   font-family: var(--cli-mono);
   font-size: 12px;
 }
 
 .cli-install__command code {
   overflow: hidden;
-  color: #384152;
+  color: #d5dae3;
   font-family: var(--cli-mono);
   font-size: 10px;
-  line-height: 1.5;
+  line-height: 1.55;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .cli-install__command button {
-  min-height: 30px;
-  padding: 0 9px;
-  border: 1px solid var(--cli-line);
+  min-height: 31px;
+  padding: 0 10px;
+  border: 1px solid var(--cli-terminal-line);
   border-radius: 6px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.025);
   color: var(--cli-muted);
   cursor: pointer;
   font-size: 10px;
   font-weight: 650;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    color 150ms ease;
 }
 
 .cli-install__command button:hover {
   border-color: var(--cli-line-strong);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--cli-text);
 }
 
@@ -313,14 +417,11 @@ button {
 
   .a3s-cli-nav__inner {
     padding: 0 18px;
+    grid-template-columns: 1fr auto;
   }
 
   .a3s-cli-nav__links {
     display: none;
-  }
-
-  .a3s-cli-nav__inner {
-    grid-template-columns: 1fr auto;
   }
 
   .a3s-cli-brand svg {
