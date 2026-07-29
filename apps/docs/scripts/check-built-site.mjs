@@ -174,6 +174,26 @@ for (const [locale, html] of [
     throw new Error(`${locale} homepage is missing the Canvas UI Grid.`);
   }
 
+  if (!html.includes('data-cli-terminal-showcase="true"')) {
+    throw new Error(`${locale} homepage is missing the CLI terminal playback.`);
+  }
+
+  for (const [scenario, command] of [
+    ['code', 'a3s code'],
+    ['web', 'a3s web'],
+    ['box', 'a3s box ps'],
+    ['use', 'a3s use capabilities --json'],
+    ['doctor', 'a3s doctor'],
+    ['upgrade', 'a3s upgrade'],
+  ]) {
+    const marker = `data-command="${command}" data-terminal-scenario="${scenario}"`;
+    if (!html.includes(marker)) {
+      throw new Error(
+        `${locale} homepage is missing the ${scenario} terminal scenario.`,
+      );
+    }
+  }
+
   if (!html.includes('content="#090a0d"')) {
     throw new Error(`${locale} homepage is missing the dark theme color.`);
   }
@@ -184,6 +204,8 @@ for (const marker of [
   'a3s code',
   'a3s doctor',
   'A3S CLI',
+  'A3S CLI 命令执行演示',
+  'Code 终端工作区已准备就绪',
   'Code、Web 和 Research 随 CLI 提供',
   'Work 是 #home 默认工作台',
   '编码 Agent 的能力和边界',
@@ -218,6 +240,8 @@ for (const [name, html, lang] of [
 for (const marker of [
   'Install and run A3S from one CLI',
   'One entry point, independent products',
+  'A3S CLI command playback',
+  'The Code terminal workspace is ready',
   'a3s upgrade --all --yes',
   'Code, Web, and Research ship with the CLI',
   'Work is the default #home workbench',

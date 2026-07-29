@@ -18,8 +18,9 @@ The site follows the same implementation model as the A3S Code website:
 - **A custom theme** owns navigation, CLI product content, installation
   switching, same-page locale and version switching, and responsive styles.
 - **Canvas UI Grid** is vendored as source and provides the pointer-responsive
-  canvas treatment in the hero command panel. Its license is recorded in
-  `THIRD_PARTY_NOTICES.md`.
+  canvas treatment around the hero's CLI playback. The playback demonstrates
+  representative command outcomes, pauses off-screen, and respects reduced
+  motion. The Canvas UI license is recorded in `THIRD_PARTY_NOTICES.md`.
 - **Static public assets** provide the favicon, social card, and robots policy.
   The official Rspress sitemap plugin derives the sitemap from generated routes
   so locale and version entries cannot drift.

@@ -119,7 +119,7 @@
   }
 
   .cli-hero__visual {
-    min-height: 520px;
+    min-height: 550px;
     padding: 70px 16px 34px;
   }
 
@@ -130,26 +130,75 @@
   }
 
   .cli-canvas-grid {
-    height: 430px;
+    height: 460px;
   }
 
   .cli-terminal > header {
     min-height: 43px;
     padding: 0 13px;
+    gap: 7px;
+    grid-template-columns: 0.8fr minmax(0, 2fr) 0.8fr;
   }
 
   .cli-terminal > header em {
+    display: none;
     font-size: 8px;
   }
 
-  .cli-terminal__body {
-    min-height: 386px;
-    padding: 28px 21px;
+  .cli-terminal > header button {
+    width: 23px;
+    height: 23px;
   }
 
-  .cli-terminal dl > div {
-    min-height: 43px;
-    grid-template-columns: 76px 1fr;
+  .cli-terminal__scenarios {
+    min-height: 49px;
+    padding: 8px 7px;
+    gap: 2px;
+  }
+
+  .cli-terminal__scenarios button {
+    padding-right: 2px;
+    padding-left: 2px;
+    font-size: 6px;
+    gap: 2px;
+    letter-spacing: 0.02em;
+  }
+
+  .cli-terminal__scenarios button span {
+    display: none;
+  }
+
+  .cli-terminal__body {
+    height: 315px;
+    padding: 25px 20px 20px;
+  }
+
+  .cli-terminal__output {
+    margin-top: 23px;
+  }
+
+  .cli-terminal__output li {
+    min-height: 42px;
+    gap: 12px;
+    grid-template-columns: 58px minmax(0, 1fr);
+  }
+
+  .cli-terminal__output li code {
+    font-size: 9px;
+  }
+
+  .cli-terminal__summary {
+    min-height: 39px;
+    margin-top: 15px;
+    padding-right: 10px;
+    padding-left: 10px;
+    font-size: 8px;
+  }
+
+  .cli-terminal__footer {
+    min-height: 52px;
+    padding-right: 11px;
+    padding-left: 14px;
   }
 
   .cli-section {

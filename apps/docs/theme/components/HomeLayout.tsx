@@ -1,4 +1,5 @@
 import { useLang } from '@rspress/core/runtime';
+import { CliTerminalShowcase } from './CliTerminalShowcase';
 import { CodeCapabilities, CodeCapabilitiesMarkdown } from './CodeCapabilities';
 import { InstallSwitcher } from './InstallSwitcher';
 import { Grid } from './canvasui/Grid/Grid';
@@ -373,7 +374,7 @@ export function HomeLayout() {
 
         <div className="cli-hero__visual" data-canvas-ui="grid">
           <div className="cli-hero__visual-label">
-            <span>{locale === 'zh' ? '命令路由' : 'COMMAND ROUTER'}</span>
+            <span>{locale === 'zh' ? '命令回放' : 'CLI PLAYBACK'}</span>
             <small>canvas-ui / grid</small>
           </div>
           <Grid
@@ -396,58 +397,7 @@ export function HomeLayout() {
             waveSpeed={0.42}
             waveWidth={0.075}
           >
-            <aside
-              className="cli-terminal"
-              aria-label="A3S CLI command overview"
-            >
-              <header>
-                <span>
-                  <i />
-                  <i />
-                  <i />
-                </span>
-                <code>a3s --help</code>
-                <em>{locale === 'zh' ? '就绪' : 'READY'}</em>
-              </header>
-              <div className="cli-terminal__body">
-                <p>
-                  <span>$</span> a3s --help
-                </p>
-                <strong>A3S command-line interface</strong>
-                <dl>
-                  <div>
-                    <dt>code</dt>
-                    <dd>
-                      {locale === 'zh' ? '终端工作区' : 'terminal workspace'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>web</dt>
-                    <dd>
-                      {locale === 'zh' ? '浏览器工作区' : 'browser workspace'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>config</dt>
-                    <dd>{locale === 'zh' ? '配置管理' : 'configuration'}</dd>
-                  </div>
-                  <div>
-                    <dt>model</dt>
-                    <dd>{locale === 'zh' ? '模型选择' : 'model selection'}</dd>
-                  </div>
-                  <div>
-                    <dt>install</dt>
-                    <dd>
-                      {locale === 'zh' ? '安装组件' : 'install component'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>doctor</dt>
-                    <dd>{locale === 'zh' ? '环境诊断' : 'diagnostics'}</dd>
-                  </div>
-                </dl>
-              </div>
-            </aside>
+            <CliTerminalShowcase locale={locale} />
           </Grid>
         </div>
       </section>
