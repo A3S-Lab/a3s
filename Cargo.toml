@@ -12,6 +12,7 @@ categories = ["command-line-utilities"]
 include = [
     "src/**",
     "tests/**",
+    "!tests/legacy_self_update_bridge.rs",
     "skills/**",
     "build.rs",
     "Cargo.toml",
@@ -19,6 +20,7 @@ include = [
     "CHANGELOG.md",
     "README.md",
     "LICENSE",
+    "!release-compat/**",
 ]
 
 [[bin]]

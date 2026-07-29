@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Restored self-updates from A3S 0.9.9 through 0.10.10 by shipping an inert
+  compatibility marker for their retired managed-SRT archive validation. The
+  marker contains no sandbox runtime and always fails closed if invoked.
+
 ## [0.11.0] - 2026-07-29
 
 ### Changed

@@ -552,7 +552,7 @@ jobs:
           bin: a3s
           target: ${{ matrix.target }}
           archive: a3s-$tag-$target
-          include: web,${{ matrix.helper }}
+          include: web,release-compat,${{ matrix.helper }}
           tar: all
           zip: windows
           checksum: sha256
@@ -598,6 +598,27 @@ jobs:
               exit 1
             fi
           done
+          bridge_root='release-compat/support/managed-srt'
+          bridge_lock="${bridge_root}/package-lock.json"
+          bridge_cli="${bridge_root}/node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js"
+          tar_entries="$(tar -tzf "${base}.tar.gz")"
+          for bridge_path in "$bridge_lock" "$bridge_cli"; do
+            bridge_count="$(grep -Ec "(^|/)${bridge_path}$" <<<"$tar_entries" || true)"
+            if [[ "$bridge_count" -ne 1 ]]; then
+              echo "::error::Release archive must contain exactly one legacy self-update bridge path ${bridge_path}; found ${bridge_count}"
+              exit 1
+            fi
+          done
+          if [[ "$RELEASE_TARGET" == "x86_64-pc-windows-msvc" ]]; then
+            zip_entries="$(unzip -Z1 "${base}.zip")"
+            for bridge_path in "$bridge_lock" "$bridge_cli"; do
+              bridge_count="$(grep -Ec "(^|/)${bridge_path}$" <<<"$zip_entries" || true)"
+              if [[ "$bridge_count" -ne 1 ]]; then
+                echo "::error::Windows release archive must contain exactly one legacy self-update bridge path ${bridge_path}; found ${bridge_count}"
+                exit 1
+              fi
+            done
+          fi
           gh release upload "$tag" "${assets[@]}" --clobber
 
   crate:

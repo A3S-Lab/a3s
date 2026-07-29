@@ -1,0 +1,9 @@
+{
+  "name": "a3s-managed-srt-retirement-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Inert release marker for legacy A3S self-updaters",
+  "dependencies": {
+    "@anthropic-ai/sandbox-runtime": "0.0.0-a3s-retired"
+  }
+}
