@@ -190,11 +190,9 @@
   border-top: 1px solid rgba(104, 137, 196, 0.24);
   border-bottom: 1px solid rgba(104, 137, 196, 0.24);
   background:
-    linear-gradient(rgba(109, 141, 195, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(109, 141, 195, 0.04) 1px, transparent 1px),
     radial-gradient(circle at 12% 50%, rgba(58, 91, 172, 0.18), transparent 32%),
-    #080b12;
-  background-size: 58px 58px, 58px 58px, auto, auto;
+    linear-gradient(180deg, rgba(8, 11, 18, 0.68), rgba(8, 11, 18, 0.46));
+  backdrop-filter: blur(2px);
 }
 
 .a3s-architecture::after {
@@ -302,7 +300,7 @@
   height: 7px;
   border: 1px solid currentColor;
   border-radius: 50%;
-  background: #080b12;
+  background: rgba(8, 11, 18, 0.82);
 }
 
 .a3s-stack-layer {
@@ -399,7 +397,7 @@
   padding: 27px;
   border-right: 1px solid var(--a3s-line);
   border-bottom: 1px solid var(--a3s-line);
-  background: #090c11;
+  background: rgba(9, 12, 17, 0.86);
   transition: background 180ms ease;
 }
 
@@ -407,7 +405,7 @@
   grid-column: span 2;
   background:
     radial-gradient(circle at 84% 15%, rgba(87, 148, 255, 0.2), transparent 33%),
-    linear-gradient(135deg, #101827, #0a0d13 64%);
+    linear-gradient(135deg, rgba(16, 24, 39, 0.9), rgba(10, 13, 19, 0.86) 64%);
 }
 
 .a3s-principle-card:hover {
@@ -457,7 +455,8 @@
 .a3s-ecosystem {
   border-top: 1px solid var(--a3s-line);
   border-bottom: 1px solid var(--a3s-line);
-  background: #090c11;
+  background: rgba(9, 12, 17, 0.68);
+  backdrop-filter: blur(8px);
 }
 
 .a3s-ecosystem__inner {
@@ -564,7 +563,8 @@
   overflow: hidden;
   border: 1px solid rgba(129, 154, 196, 0.3);
   border-radius: 13px;
-  background: #080b10;
+  background: rgba(8, 11, 16, 0.9);
+  backdrop-filter: blur(14px);
   box-shadow: 0 34px 84px rgba(0, 0, 0, 0.44), inset 0 1px rgba(255, 255, 255, 0.03);
 }
 
@@ -633,11 +633,7 @@
   margin: 0;
   padding: 46px 42px;
   overflow-x: auto;
-  background:
-    linear-gradient(rgba(130, 151, 186, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(130, 151, 186, 0.035) 1px, transparent 1px),
-    #080b10;
-  background-size: 28px 28px;
+  background: linear-gradient(180deg, rgba(8, 11, 16, 0.76), rgba(8, 11, 16, 0.94));
   color: #d9e2ef;
   font-family: var(--a3s-mono);
   font-size: 12px;
@@ -685,17 +681,9 @@
   background:
     radial-gradient(circle at 18% 80%, rgba(76, 125, 229, 0.26), transparent 38%),
     radial-gradient(circle at 86% 18%, rgba(126, 77, 219, 0.2), transparent 34%),
-    linear-gradient(125deg, #13284e, #18234b 42%, #251744 100%);
+    linear-gradient(125deg, rgba(19, 40, 78, 0.9), rgba(24, 35, 75, 0.88) 42%, rgba(37, 23, 68, 0.9) 100%);
   align-items: center;
   justify-content: center;
-}
-
-.a3s-cta__grid {
-  position: absolute;
-  background-image: linear-gradient(rgba(187, 210, 255, 0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(187, 210, 255, 0.07) 1px, transparent 1px);
-  background-size: 64px 64px;
-  inset: 0;
-  mask-image: radial-gradient(circle at center, #000, transparent 78%);
 }
 
 .a3s-cta__mark {
@@ -758,7 +746,8 @@
 .a3s-button--outline:hover { background: rgba(8, 14, 28, 0.32); }
 
 .a3s-footer {
-  background: #06080b;
+  background: rgba(6, 8, 11, 0.86);
+  backdrop-filter: blur(12px);
 }
 
 .a3s-footer__inner {

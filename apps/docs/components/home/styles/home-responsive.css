@@ -91,7 +91,6 @@
     color: #e5efff;
   }
 
-  .a3s-canvas-hero,
   .a3s-hero {
     min-height: 1210px;
   }
@@ -165,6 +164,10 @@
 }
 
 @media (max-width: 760px) {
+  .a3s-canvas-backdrop > canvas:last-child {
+    opacity: 0.18;
+  }
+
   .a3s-home-nav,
   .a3s-home-nav__inner {
     height: 64px;
@@ -184,7 +187,6 @@
     height: 31px;
   }
 
-  .a3s-canvas-hero,
   .a3s-hero,
   .a3s-hero__grid {
     min-height: 1130px;
@@ -414,7 +416,6 @@
     display: none;
   }
 
-  .a3s-canvas-hero,
   .a3s-hero,
   .a3s-hero__grid {
     min-height: 1060px;

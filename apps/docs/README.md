@@ -9,8 +9,9 @@ tutorials, and the engineering blog in one statically exported Next.js app.
 - **Fumadocs** owns documentation and tutorial content.
 - **Home components** under `components/home/` keep localized content, layout,
   interaction, and design tokens separate.
-- **Canvas UI Grid** provides the WebGL hero interaction with a progressive
-  fallback; its notice is recorded in `THIRD_PARTY_NOTICES.md`.
+- **Canvas UI Grid** provides the viewport-sized interactive background across
+  the homepage with a progressive CSS fallback; its notice is recorded in
+  `THIRD_PARTY_NOTICES.md`.
 - **GitHub Pages** receives the generated `out/` directory from the repository
   documentation workflow.
 

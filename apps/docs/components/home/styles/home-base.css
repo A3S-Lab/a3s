@@ -14,9 +14,14 @@
   --a3s-amber: #f0b65b;
   --a3s-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
   --a3s-max: 1440px;
+  position: relative;
   min-height: 100vh;
   overflow: clip;
-  background: var(--a3s-bg);
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 74% 7%, rgba(66, 75, 175, 0.16), transparent 21%),
+    radial-gradient(circle at 7% 62%, rgba(40, 85, 173, 0.08), transparent 20%),
+    var(--a3s-bg);
   color: var(--a3s-text);
   font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   text-rendering: optimizeLegibility;
@@ -40,6 +45,12 @@
 .a3s-site ::selection {
   background: rgba(87, 148, 255, 0.34);
   color: #fff;
+}
+
+.a3s-site > section,
+.a3s-site > footer {
+  position: relative;
+  z-index: 1;
 }
 
 .a3s-home-nav {
@@ -177,26 +188,41 @@
   display: none;
 }
 
-.a3s-canvas-hero {
-  position: relative;
-  min-height: 790px;
-  border-bottom: 1px solid var(--a3s-line);
-  background:
-    linear-gradient(rgba(151, 170, 203, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(151, 170, 203, 0.045) 1px, transparent 1px),
-    radial-gradient(circle at 76% 38%, rgba(63, 92, 190, 0.13), transparent 32%),
-    var(--a3s-bg);
-  background-size: 72px 72px, 72px 72px, auto, auto;
+.a3s-canvas-backdrop {
+  z-index: 0;
+  width: 100vw;
+  height: 100svh;
+  overflow: hidden;
+  pointer-events: none;
 }
 
-.a3s-canvas-hero > div {
-  overflow: visible !important;
+.a3s-canvas-backdrop > div {
+  overflow: hidden !important;
+}
+
+.a3s-canvas-backdrop__surface {
+  position: absolute;
+  background:
+    linear-gradient(rgba(151, 170, 203, 0.064) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(151, 170, 203, 0.064) 1px, transparent 1px),
+    radial-gradient(circle at 73% 24%, rgba(73, 94, 210, 0.12), transparent 31%),
+    radial-gradient(circle at 12% 82%, rgba(39, 104, 190, 0.08), transparent 28%);
+  background-size: 72px 72px, 72px 72px, auto, auto;
+  inset: 0;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.98), rgba(0, 0, 0, 0.7) 48%, rgba(0, 0, 0, 0.82));
+}
+
+.a3s-canvas-backdrop > canvas:last-child {
+  opacity: 0.24;
+  mix-blend-mode: screen;
 }
 
 .a3s-hero {
   position: relative;
   min-height: 790px;
   overflow: hidden;
+  border-bottom: 1px solid var(--a3s-line);
+  background: linear-gradient(90deg, rgba(7, 9, 13, 0.16), rgba(7, 9, 13, 0.42) 72%, rgba(7, 9, 13, 0.12));
 }
 
 .a3s-hero::before,
@@ -412,8 +438,9 @@
 .a3s-system-panel::before {
   position: absolute;
   z-index: 0;
-  background-image: radial-gradient(rgba(125, 153, 200, 0.16) 0.7px, transparent 0.7px);
-  background-size: 10px 10px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(87, 148, 255, 0.11), transparent 46%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.018), transparent 56%);
   content: '';
   inset: 43px 0 0;
   mask-image: linear-gradient(to bottom, #000, transparent 82%);
@@ -617,21 +644,10 @@
 .a3s-system-telemetry__row span { height: 1px; background: rgba(151, 170, 203, 0.12); flex: 1; }
 .a3s-system-telemetry__row b { color: #b9c9df; font-weight: 500; }
 
-.a3s-system-panel__scan {
-  position: absolute;
-  z-index: 4;
-  top: 44px;
-  right: 0;
-  left: 0;
-  height: 90px;
-  background: linear-gradient(to bottom, transparent, rgba(87, 148, 255, 0.035), rgba(132, 180, 255, 0.12), transparent);
-  pointer-events: none;
-  animation: a3s-panel-scan 6s linear infinite;
-}
-
 .a3s-signal-strip {
   border-bottom: 1px solid var(--a3s-line);
-  background: #090c11;
+  background: rgba(9, 12, 17, 0.72);
+  backdrop-filter: blur(12px);
 }
 
 .a3s-signal-strip > div {
@@ -714,9 +730,4 @@
   from { transform: translateX(-10px); opacity: 0; }
   35%, 65% { opacity: 1; }
   to { transform: translateX(10px); opacity: 0; }
-}
-
-@keyframes a3s-panel-scan {
-  from { transform: translateY(-120px); }
-  to { transform: translateY(520px); }
 }

@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { A3SMark } from '@/components/home/a3s-mark';
-import { CanvasHero } from '@/components/home/canvas-hero';
+import { CanvasBackdrop } from '@/components/home/canvas-backdrop';
 import { CopyCommand } from '@/components/home/copy-command';
 import { HomeNav } from '@/components/home/home-nav';
 import { homeContent, type Lang, type ProductCopy, type ProductId } from '@/components/home/home-content';
@@ -71,85 +71,83 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
 
   return (
     <main className="a3s-site">
+      <CanvasBackdrop />
       <HomeNav lang={lang} />
 
-      <CanvasHero>
-        <section className="a3s-hero" aria-labelledby="a3s-hero-title">
-          <div className="a3s-hero__ambient" aria-hidden="true" />
-          <div className="a3s-hero__grid">
-            <div className="a3s-hero__copy">
-              <div className="a3s-eyebrow">
-                <span />
-                {tr.hero.eyebrow}
-              </div>
-              <h1 id="a3s-hero-title">
-                <span>{tr.hero.lineOne}</span>
-                <span>{tr.hero.lineTwo}</span>
-                <em>{tr.hero.accent}</em>
-              </h1>
-              <p>{tr.hero.description}</p>
-              <div className="a3s-hero__actions">
-                <Link className="a3s-button a3s-button--primary" href={`${base}/docs`}>
-                  {tr.hero.primaryAction}
-                  <ArrowRight aria-hidden="true" />
-                </Link>
-                <a className="a3s-button a3s-button--ghost" href="#architecture">
-                  <CircleDot aria-hidden="true" />
-                  {tr.hero.secondaryAction}
-                </a>
-              </div>
-              <div className="a3s-hero__command" aria-label="A3S launch command">
-                <span>$</span>
-                <code>a3s code</code>
-                <i aria-hidden="true" />
-              </div>
+      <section className="a3s-hero" aria-labelledby="a3s-hero-title">
+        <div className="a3s-hero__ambient" aria-hidden="true" />
+        <div className="a3s-hero__grid">
+          <div className="a3s-hero__copy">
+            <div className="a3s-eyebrow">
+              <span />
+              {tr.hero.eyebrow}
             </div>
-
-            <div className="a3s-system-panel" aria-label="A3S governed execution topology">
-              <div className="a3s-system-panel__chrome">
-                <span><i /> <i /> <i /></span>
-                <code>{tr.hero.terminalTitle}</code>
-                <b>{tr.hero.terminalReady}</b>
-              </div>
-              <div className="a3s-system-panel__body">
-                <div className="a3s-system-flow">
-                  <div className="a3s-system-node a3s-system-node--intent">
-                    <span>01</span>
-                    <b>{tr.hero.intent}</b>
-                    <small>prompt / goal / context</small>
-                  </div>
-                  <div className="a3s-system-connector"><i /><i /><i /></div>
-                  <div className="a3s-system-node a3s-system-node--policy">
-                    <span>02</span>
-                    <b>{tr.hero.policy}</b>
-                    <small>model · tools · permissions</small>
-                  </div>
-                  <div className="a3s-system-connector"><i /><i /><i /></div>
-                  <div className="a3s-system-node a3s-system-node--runtime">
-                    <span>03</span>
-                    <b>{tr.hero.runtime}</b>
-                    <small>process · container · MicroVM</small>
-                  </div>
-                </div>
-                <div className="a3s-system-telemetry">
-                  <div className="a3s-system-telemetry__head">
-                    <span>LIVE TELEMETRY</span>
-                    <span><i /> {tr.hero.status}</span>
-                  </div>
-                  {tr.hero.terminalRows.map(([key, value]) => (
-                    <div className="a3s-system-telemetry__row" key={key}>
-                      <code>{key}</code>
-                      <span />
-                      <b>{value}</b>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="a3s-system-panel__scan" aria-hidden="true" />
+            <h1 id="a3s-hero-title">
+              <span>{tr.hero.lineOne}</span>
+              <span>{tr.hero.lineTwo}</span>
+              <em>{tr.hero.accent}</em>
+            </h1>
+            <p>{tr.hero.description}</p>
+            <div className="a3s-hero__actions">
+              <Link className="a3s-button a3s-button--primary" href={`${base}/docs`}>
+                {tr.hero.primaryAction}
+                <ArrowRight aria-hidden="true" />
+              </Link>
+              <a className="a3s-button a3s-button--ghost" href="#architecture">
+                <CircleDot aria-hidden="true" />
+                {tr.hero.secondaryAction}
+              </a>
+            </div>
+            <div className="a3s-hero__command" aria-label="A3S launch command">
+              <span>$</span>
+              <code>a3s code</code>
+              <i aria-hidden="true" />
             </div>
           </div>
-        </section>
-      </CanvasHero>
+
+          <div className="a3s-system-panel" aria-label="A3S governed execution topology">
+            <div className="a3s-system-panel__chrome">
+              <span><i /> <i /> <i /></span>
+              <code>{tr.hero.terminalTitle}</code>
+              <b>{tr.hero.terminalReady}</b>
+            </div>
+            <div className="a3s-system-panel__body">
+              <div className="a3s-system-flow">
+                <div className="a3s-system-node a3s-system-node--intent">
+                  <span>01</span>
+                  <b>{tr.hero.intent}</b>
+                  <small>prompt / goal / context</small>
+                </div>
+                <div className="a3s-system-connector"><i /><i /><i /></div>
+                <div className="a3s-system-node a3s-system-node--policy">
+                  <span>02</span>
+                  <b>{tr.hero.policy}</b>
+                  <small>model · tools · permissions</small>
+                </div>
+                <div className="a3s-system-connector"><i /><i /><i /></div>
+                <div className="a3s-system-node a3s-system-node--runtime">
+                  <span>03</span>
+                  <b>{tr.hero.runtime}</b>
+                  <small>process · container · MicroVM</small>
+                </div>
+              </div>
+              <div className="a3s-system-telemetry">
+                <div className="a3s-system-telemetry__head">
+                  <span>LIVE TELEMETRY</span>
+                  <span><i /> {tr.hero.status}</span>
+                </div>
+                {tr.hero.terminalRows.map(([key, value]) => (
+                  <div className="a3s-system-telemetry__row" key={key}>
+                    <code>{key}</code>
+                    <span />
+                    <b>{value}</b>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="a3s-signal-strip" aria-label="A3S characteristics">
         <div>
@@ -281,7 +279,6 @@ export default function HomePage({ lang = 'en' }: { lang?: Lang }) {
       </section>
 
       <section className="a3s-cta" aria-labelledby="a3s-cta-title">
-        <div className="a3s-cta__grid" aria-hidden="true" />
         <div className="a3s-cta__mark" aria-hidden="true">
           <A3SMark />
         </div>

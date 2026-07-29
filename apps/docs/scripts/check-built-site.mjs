@@ -43,7 +43,7 @@ for (const marker of [
   'id="products"',
   'id="architecture"',
   'id="principles"',
-  'a3s-canvas-hero',
+  'a3s-canvas-backdrop',
   'a3s code',
 ]) {
   assert(english.includes(marker), `English homepage is missing: ${marker}`);
@@ -60,7 +60,7 @@ const cssFiles = files.filter((file) => file.endsWith('.css'));
 assert(cssFiles.length > 0, 'Static export contains no CSS assets');
 
 const css = (await Promise.all(cssFiles.map((file) => readFile(file, 'utf8')))).join('\n');
-for (const selector of ['.a3s-home-nav', '.a3s-system-panel', '.a3s-product-card', '.a3s-stack-layer']) {
+for (const selector of ['.a3s-canvas-backdrop', '.a3s-home-nav', '.a3s-system-panel', '.a3s-product-card', '.a3s-stack-layer']) {
   assert(css.includes(selector), `Production CSS is missing: ${selector}`);
 }
 

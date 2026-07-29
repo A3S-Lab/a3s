@@ -21,12 +21,19 @@ import {
 export interface GridProps extends GridOptions {
   children: ReactNode;
   className?: string;
+  pointerTarget?: "self" | "window";
   style?: React.CSSProperties;
 }
 
 const emptySubscribe = () => () => {};
 
-export function Grid({ children, className, style, ...options }: GridProps) {
+export function Grid({
+  children,
+  className,
+  pointerTarget = "self",
+  style,
+  ...options
+}: GridProps) {
   const sourceRef = useRef<HTMLCanvasElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const outputRef = useRef<HTMLCanvasElement>(null);
@@ -47,7 +54,12 @@ export function Grid({ children, className, style, ...options }: GridProps) {
     const output = outputRef.current;
     if (!source || !content || !output) return;
     instanceRef.current = createGrid(
-      { source, content, output },
+      {
+        source,
+        content,
+        output,
+        pointerTarget: pointerTarget === "window" ? window : undefined,
+      },
       initialOptions,
     );
     if (native && !instanceRef.current) setFailed(true);
@@ -55,7 +67,7 @@ export function Grid({ children, className, style, ...options }: GridProps) {
       instanceRef.current?.destroy();
       instanceRef.current = null;
     };
-  }, [initialOptions, native]);
+  }, [initialOptions, native, pointerTarget]);
 
   useEffect(() => {
     instanceRef.current?.setOptions(options);

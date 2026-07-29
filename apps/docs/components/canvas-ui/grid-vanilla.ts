@@ -45,6 +45,8 @@ export interface GridElements {
   content: HTMLElement;
   /** Canvas the WebGL effect renders to. */
   output: HTMLCanvasElement;
+  /** Optional event target for effects that span beyond the component bounds. */
+  pointerTarget?: Window;
 }
 
 export interface GridInstance {
@@ -323,7 +325,7 @@ export function createGrid(
   options: GridOptions = {},
 ): GridInstance | null {
   const config = { ...DEFAULTS, ...options };
-  const { source, content, output } = elements;
+  const { source, content, output, pointerTarget } = elements;
 
   const gl = output.getContext("webgl2", {
     alpha: true,
@@ -720,7 +722,8 @@ export function createGrid(
   });
   intersection.observe(output);
 
-  const listenTarget = output.parentElement ?? output;
+  const listenTarget: EventTarget =
+    pointerTarget ?? output.parentElement ?? output;
 
   function onPointerMove(event: PointerEvent) {
     if (reducedMotion) return;
@@ -762,8 +765,8 @@ export function createGrid(
     start();
   }
 
-  listenTarget.addEventListener("pointermove", onPointerMove);
-  listenTarget.addEventListener("pointerleave", onPointerLeave);
+  listenTarget.addEventListener("pointermove", onPointerMove as EventListener);
+  listenTarget.addEventListener("pointerleave", onPointerLeave as EventListener);
 
   return {
     setOptions(next) {
@@ -780,8 +783,14 @@ export function createGrid(
       observer.disconnect();
       intersection.disconnect();
       motionQuery.removeEventListener("change", onMotionChange);
-      listenTarget.removeEventListener("pointermove", onPointerMove);
-      listenTarget.removeEventListener("pointerleave", onPointerLeave);
+      listenTarget.removeEventListener(
+        "pointermove",
+        onPointerMove as EventListener,
+      );
+      listenTarget.removeEventListener(
+        "pointerleave",
+        onPointerLeave as EventListener,
+      );
       gl!.deleteTexture(contentTexture);
       gl!.deleteTexture(trailTexture);
       if (tileTexture) gl!.deleteTexture(tileTexture);
