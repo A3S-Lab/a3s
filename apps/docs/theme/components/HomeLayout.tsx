@@ -1,4 +1,5 @@
 import { useLang } from '@rspress/core/runtime';
+import { CodeCapabilities, CodeCapabilitiesMarkdown } from './CodeCapabilities';
 import { InstallSwitcher } from './InstallSwitcher';
 import { Grid } from './canvasui/Grid/Grid';
 
@@ -330,6 +331,7 @@ function MarkdownHome({ locale }: { locale: Locale }) {
           <p>{value(product.body, locale)}</p>
         </section>
       ))}
+      <CodeCapabilitiesMarkdown locale={locale} />
     </main>
   );
 }
@@ -509,6 +511,8 @@ export function HomeLayout() {
           ))}
         </div>
       </section>
+
+      <CodeCapabilities locale={locale} />
 
       <section className="cli-section cli-flow-section">
         <header className="cli-section__header">

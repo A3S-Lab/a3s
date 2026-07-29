@@ -48,6 +48,10 @@ html {
   scroll-padding-top: 88px;
 }
 
+.doc-route-anchor {
+  scroll-margin-top: 88px;
+}
+
 body {
   margin: 0;
   background: var(--cli-bg);

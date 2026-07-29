@@ -68,14 +68,59 @@ async function resolvesToBuiltFile(relativeReference) {
   return false;
 }
 
+async function readBuiltRoute(relativeReference) {
+  const candidates = [
+    relativeReference + '.html',
+    path.join(relativeReference, 'index.html'),
+  ];
+
+  for (const candidate of candidates) {
+    const outputPath = path.resolve(outputRoot, candidate);
+    try {
+      if ((await stat(outputPath)).isFile()) {
+        return readFile(outputPath, 'utf8');
+      }
+    } catch {
+      // Try the other supported output form.
+    }
+  }
+
+  throw new Error('Missing built route: ' + relativeReference);
+}
+
 for (const file of requiredFiles) {
   await access(path.join(outputRoot, file));
 }
 
-const [chinese, english, sitemap] = await Promise.all([
+const requiredRoutes = [
+  'code/capabilities',
+  'code/code-intelligence',
+  'en/code/capabilities',
+  'en/code/code-intelligence',
+];
+
+for (const route of requiredRoutes) {
+  if (!(await resolvesToBuiltFile(route))) {
+    throw new Error('Missing built route: ' + route);
+  }
+}
+
+const [
+  chinese,
+  english,
+  sitemap,
+  chineseCapabilities,
+  chineseIntelligence,
+  englishCapabilities,
+  englishIntelligence,
+] = await Promise.all([
   readFile(path.join(outputRoot, 'index.html'), 'utf8'),
   readFile(path.join(outputRoot, 'en/index.html'), 'utf8'),
   readFile(path.join(outputRoot, 'sitemap.xml'), 'utf8'),
+  readBuiltRoute('code/capabilities'),
+  readBuiltRoute('code/code-intelligence'),
+  readBuiltRoute('en/code/capabilities'),
+  readBuiltRoute('en/code/code-intelligence'),
 ]);
 
 for (const [locale, html] of [
@@ -106,6 +151,9 @@ for (const marker of [
   'A3S CLI',
   'Code、Web 和 Research 随 CLI 提供',
   'Work 是 #home 默认工作台',
+  '编码 Agent 的能力和边界',
+  '按语义理解代码',
+  '/ctx 为什么 auth refresh 会失败',
 ]) {
   if (!chinese.includes(marker)) {
     throw new Error('Chinese homepage is missing: ' + marker);
@@ -119,9 +167,68 @@ for (const marker of [
   'Code, Web, and Research ship with the CLI',
   'Work is the default #home workbench',
   'Release pending',
+  'A coding agent should expose its operations',
+  'Ask the codebase by meaning',
+  '/ctx why did auth refresh fail',
 ]) {
   if (!english.includes(marker)) {
     throw new Error('English homepage is missing: ' + marker);
+  }
+}
+
+for (const [name, html, markers] of [
+  [
+    'Chinese capability page',
+    chineseCapabilities,
+    [
+      '渐进式工具 API',
+      'runtime',
+      '/ctx save &lt;n&gt;',
+      '6000 bytes',
+      'id="progressive-tool-api"',
+      'id="runtime-tool"',
+      'id="cross-session-context"',
+    ],
+  ],
+  [
+    'English capability page',
+    englishCapabilities,
+    [
+      'Progressive tool API',
+      'runtime',
+      '/ctx save &lt;n&gt;',
+      '6000 bytes',
+      'id="progressive-tool-api"',
+      'id="runtime-tool"',
+      'id="cross-session-context"',
+    ],
+  ],
+  [
+    'Chinese Code Intelligence page',
+    chineseIntelligence,
+    ['code_symbols', 'code_navigation', 'UTF-16', ':implementations'],
+  ],
+  [
+    'English Code Intelligence page',
+    englishIntelligence,
+    ['code_symbols', 'code_navigation', 'UTF-16', ':implementations'],
+  ],
+]) {
+  for (const marker of markers) {
+    if (!html.includes(marker)) {
+      throw new Error(`${name} is missing: ${marker}`);
+    }
+  }
+}
+
+for (const route of [
+  'https://a3s-lab.github.io/a3s/code/capabilities',
+  'https://a3s-lab.github.io/a3s/code/code-intelligence',
+  'https://a3s-lab.github.io/a3s/en/code/capabilities',
+  'https://a3s-lab.github.io/a3s/en/code/code-intelligence',
+]) {
+  if (!sitemap.includes(route)) {
+    throw new Error('Sitemap is missing: ' + route);
   }
 }
 
@@ -163,6 +270,8 @@ for (const selector of [
   '.cli-command-row',
   '.cli-product-grid',
   '.cli-canvas-grid',
+  '.code-capabilities',
+  '.code-context-demo',
 ]) {
   if (!css.includes(selector)) {
     throw new Error('Production CSS is missing: ' + selector);
@@ -175,6 +284,13 @@ const brokenReferences = [];
 
 for (const htmlFile of htmlFiles) {
   const html = await readFile(htmlFile, 'utf8');
+
+  if (html.includes('FastCtx')) {
+    throw new Error(
+      'A3S Code documentation contains a forbidden product reference: ' +
+        path.relative(outputRoot, htmlFile),
+    );
+  }
 
   for (const [, rawReference] of html.matchAll(referencePattern)) {
     if (

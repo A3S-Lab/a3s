@@ -1,5 +1,9 @@
 import './index.css';
 import './home.css';
+import './capabilities.css';
+import './capability-demos.css';
+import './capability-runtime-demos.css';
+import './capability-motion.css';
 import './responsive.css';
 
 export { HomeLayout } from './components/HomeLayout';

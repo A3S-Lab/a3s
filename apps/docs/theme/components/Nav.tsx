@@ -41,6 +41,9 @@ export function Nav() {
           <a href={`${homeHref}#components`}>
             {locale === 'zh' ? '组件' : 'Components'}
           </a>
+          <a href={`${homeHref}#capabilities`}>
+            {locale === 'zh' ? 'Code 能力' : 'Code capabilities'}
+          </a>
           <a href={`${homeHref}#install`}>
             {locale === 'zh' ? '安装' : 'Install'}
           </a>
