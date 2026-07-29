@@ -101,50 +101,33 @@ The TUI can also branch and reset state from inside the session:
 | `/auto` | Selects non-interactive Auto mode for future submissions. Calls run only while every check keeps them inside the active boundary. Any confirmation request, including a tool-owned request, is rejected before HITL. Running and queued turns retain their submission-time mode. |
 | `/exit` | Persists session state and quits. |
 
-## Execution Modes And Local Sandbox
+## Execution Modes And Host Guardrail
 
-The TUI separates process confinement from approval routing:
+The TUI separates command classification from approval routing:
 
-| Mode | Inside the established boundary | Outside the boundary |
+| Mode | Quiet execution | Boundary crossing |
 | --- | --- | --- |
-| Default | Workspace writes, governed orchestration, and sandboxed Bash run without repeated prompts. | Explicit host escalation, missing-sandbox Bash, protected control metadata, mutating Git operations, and annotated external side effects require approval. |
+| Default | Workspace writes, governed orchestration, and Bash that the Rust guardrail proves read-only run without repeated prompts. | Unproven host Bash, protected control metadata, mutating Git operations, and annotated external side effects require approval. |
 | Plan | Read-only discovery tools remain available. | File mutation, Bash, and escalation are denied. Approved implementation starts as a new Default turn. |
-| Auto | Uses the same workspace and process sandbox as Default. | Never enters HITL; escape requests and missing-sandbox Bash fail closed. |
+| Auto | Uses the same workspace tools and Rust-proven read-only Bash as Default. | Never enters HITL; unproven Bash and hard policy denials fail closed. |
 
 Permission and confirmation routing are frozen when Core admits a run.
 Delegated, parallel, Skill, and background descendants keep that exact mode
 snapshot after the composer advances to another turn.
 
-Before terminal takeover, `a3s code` reuses a verified user-wide managed SRT
-installation or the immutable support tree shipped in an official release.
-Source builds can prepare the exact supported package when networking and
-automatic first-use setup are allowed. Preparation requires Node.js 20.11 or
-newer and npm, disables package lifecycle scripts, validates registry integrity
-and the complete installed tree, and atomically activates the runtime under the
-A3S component data root. A global `srt` installation is neither required nor
-selected.
+The CLI does not install or launch a local process sandbox. Bash uses the active
+workspace backend's host command runner with the workspace as its current
+directory. The shared Rust guardrail rejects known critical commands and proves
+a narrow read-only subset by inspecting command structure, options, paths,
+pipelines, expansion, redirection, and workspace symlinks. Credential and
+control paths such as `.env*`, `.git/`, `.a3s/`, and SSH keys remain hard
+denials even when an older exact grant exists.
 
-The JavaScript payload does not replace native OS facilities. macOS requires
-`sandbox-exec` and `ripgrep`; Linux requires `bubblewrap`, `socat`, `ripgrep`,
-and permitted unprivileged user namespaces. Homebrew declares these
-dependencies; direct-archive users provide them. Windows requires the one-time
-elevated machine sandbox setup. The TUI performs a 15-second command probe
-through the real OS boundary before marking the sandbox ready.
-
-The sandbox denies command networking, local listeners, and Unix sockets;
-limits writes to the active workspace and a private scratch directory;
-protects repository and agent-control metadata; blocks common credential
-reads; removes shell, dynamic-loader, Node, Python, Ruby, Perl, Lua, and JVM
-bootstrap injection variables; denies existing `.env*` files at every governed
-source-tree depth; masks pre-existing multi-link source files for reads and
-writes; and passes a scrubbed environment. Stdout and stderr remain separate
-under one global byte limit. A command deadline covers
-both output draining and process exit, and timeout or cancellation kills the
-Unix process group, including descendants. There is no unsandboxed fallback:
-offline mode and `A3S_NO_AUTO_INSTALL=1` can reuse a verified installation but
-cannot prepare one. If setup is unavailable or fails, the startup warning
-explains that Default will ask for exact host Bash execution and Auto will deny
-Bash.
+Command deadlines cover output draining and process exit. Timeout,
+cancellation, or TUI shutdown terminates the command process group, including
+descendants, while stdout and stderr remain separately streamed under one
+global byte limit. Official archives and Homebrew installations carry no
+Node.js sandbox payload and require no sandbox-specific operating-system tools.
 
 In-process workspace tools use the corresponding Core credential policy.
 Direct and range reads, writes, edits, patches, and both manifest-backed and
@@ -156,11 +139,11 @@ Read-only Git diff regenerates output only for allowed changed paths;
 option-like revisions cannot become Git flags, and displayed remotes omit
 embedded HTTP credentials and query tokens.
 
-Release publication is gated on real macOS and Linux execution of the exact
-generated payload. The test proves workspace writes and ordinary offline
-toolchain commands succeed, while outside and symlink writes, protected
-metadata, credential reads, network egress, local listeners, and Unix sockets
-remain blocked.
+The Rust guardrail has direct tests and an opt-in real-LLM integration test.
+Together they verify that Default quietly executes a proven read-only command,
+unproven redirection enters approval without creating its target, Auto denies
+unproven Bash without HITL, protected credentials remain unreadable, and Plan
+does not expose Bash to the execution turn.
 
 The same ownership rule covers host bootstrap helpers. Managed npm and Node
 probes, live capability-registry commands, and account-backed model CLI
@@ -168,18 +151,13 @@ requests run in dedicated Unix process groups. Their timeout, cancellation, or
 TUI shutdown path terminates descendants and performs a bounded wait; closing
 stdout early cannot detach a helper from cancellation.
 
-Tasks, Skills, and dynamic workflows inherit the same sandbox and parent
+Tasks, Skills, and dynamic workflows inherit the same guardrail and parent
 confirmation boundary. Child-local confirmation behavior resolves only
 child-local `Ask` decisions; parent or tool-owned escalations remain governed
 by the parent provider. One cancelled or expired invocation settles only its
-own confirmation, and terminal confirmation timeouts always reject. Use this
-lightweight local boundary for routine
-repository commands. Route dependency-heavy, untrusted, OCI, and
+own confirmation, and terminal confirmation timeouts always reject. Host Bash
+is not an isolation boundary; route dependency-heavy, untrusted, OCI, and
 stronger-isolation workloads to A3S Box or an A3S Runtime provider.
-
-The npm preparation path is a source-development fallback. Official archives,
-Homebrew, and standalone updates carry the release-owned support tree without
-changing Code's sandbox interface or execution modes.
 
 ## Runtime Boundaries
 

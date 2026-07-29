@@ -1951,11 +1951,13 @@ version before treating the update as successful. If restart fails after a
 successful upgrade, the TUI prints the exact `a3s code resume <id>` command for
 the saved session.
 
-Transition note: standalone installations from 0.9.9 through 0.10.10 cannot
-self-update directly to the first SRT-free release because those legacy
-updaters require the support payload that release removes. Install that release
-once from its GitHub archive, or migrate to Homebrew; later standalone updates
-work normally. Homebrew upgrades are unaffected.
+Transition note: standalone installations from 0.9.9 through 0.10.10 can
+self-update directly to 0.11.1 or later. Current release archives carry an
+inert, fail-closed marker that satisfies those clients' retired managed-SRT
+archive check without restoring the sandbox runtime. The canonical archives
+are mirrored at the former `A3S-Lab/CLI` release endpoint for this one-time
+channel migration; after the update, the installed CLI reads releases from
+`A3S-Lab/a3s`. Homebrew upgrades are unaffected.
 
 Box retains its complete runtime bundle during installation and update. Bench
 downloads into a staging area, verifies the release checksum, component

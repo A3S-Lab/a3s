@@ -47,6 +47,12 @@ remains roadmap work, while the registered WebView component has a verified
 Windows x86_64 release and managed first-use lifecycle. WSL follows the Linux
 contract.
 
+Standalone A3S 0.9.9 through 0.10.10 read the former `A3S-Lab/CLI` release
+endpoint and require a retired managed-SRT package marker before replacing the
+binary. Version 0.11.1 and later canonical archives carry an inert, fail-closed
+four-file marker and are relayed byte for byte to that endpoint. After this
+one-time update, the installed CLI reads future releases from `A3S-Lab/a3s`.
+
 ## Component Upgrades
 
 `a3s upgrade` with no IDs is read-only. Select IDs explicitly, or use `--all`

@@ -334,14 +334,14 @@ TUI presents `Resume goal` and `Leave paused`: resume continues the next goal
 iteration without changing the restored execution mode, while leave enters the
 session with the goal paused so `/goal resume` can continue it later.
 
-The TUI owns human-in-the-loop approval, but approval is a sandbox-boundary
+The TUI owns human-in-the-loop approval, but approval is a policy-boundary
 event rather than a tool-category event:
 
 | Mode | Quiet execution | Boundary crossing |
 | --- | --- | --- |
-| Default | Workspace file mutations, governed orchestration, and ordinary Bash inside the installed local process sandbox. | Explicit host Bash escalation, Bash when no process sandbox is available, protected control metadata, mutating Git operations, and annotated external side effects enter HITL. |
+| Default | Workspace file mutations, governed orchestration, and Bash that the Rust guardrail proves read-only. | Unproven host Bash, protected control metadata, mutating Git operations, and annotated external side effects enter HITL. |
 | Plan | Read-only workspace and web discovery only. | Mutations, Bash, and escalation requests are denied. A completed plan is reviewed before implementation starts as a separate Default turn. |
-| Auto | The same bounded workspace mutations and process sandbox as Default. | Auto never opens HITL. Missing-sandbox Bash, host escalation, protected control metadata, and hard policy denials fail closed. |
+| Auto | The same bounded workspace mutations and Rust-proven read-only Bash as Default. | Auto never opens HITL. Unproven Bash, protected control metadata, mutating Git operations, and hard policy denials fail closed. |
 
 Shift+Tab cycles Default, Plan, and Auto. A running or queued turn keeps the
 mode captured when it was submitted. Permission and confirmation routing are
@@ -367,32 +367,20 @@ A3S Code TUI exposes tools through the session registry, not by letting the
 model run arbitrary host APIs. Each tool call carries a name, JSON arguments,
 streamed output, timeout policy, permission decision, and traceable event id.
 
-### Local process sandbox
+### Local host-command guardrail
 
-Before terminal takeover, the TUI reuses a verified user-wide managed SRT
-installation or the exact support tree carried by an official CLI archive. The
-release tree is accepted only after its package graph, file types, size bounds,
-and complete normalized digest match the CLI. It requires Node.js 20.11 or
-newer, performs the Core capability handshake, and does not select a global
-`srt` installation.
+The CLI does not install or launch a local process sandbox. Bash uses the active
+workspace backend's host command runner with the workspace as its current
+directory. One shared Rust guardrail rejects known critical commands and proves
+a deliberately narrow read-only subset by checking command structure, options,
+paths, pipelines, expansion, redirection, and workspace symlinks. Default asks
+before an unproven command; Plan denies Bash; Auto admits only the proven
+read-only subset and denies the rest without entering HITL.
 
-There is no silent host fallback. Offline mode and
-`A3S_NO_AUTO_INSTALL=1` may use verified state or the release payload without
-mutation. Source and Cargo installs without that payload may use a fixed npm
-development bootstrap only when automatic first-use setup is allowed. If no
-verified boundary is available, Default asks before running an exact Bash
-invocation on the host and Auto denies Bash. With the managed runtime, routine
-commands inherit an OS-enforced boundary that:
-
-- denies outbound networking, local listeners, and Unix sockets;
-- limits writes to the workspace and a private per-run scratch directory;
-- keeps repository, A3S, agent, editor, and tool control metadata read-only;
-- blocks reads from common credential stores and removes ambient secrets from
-  the command environment;
-- denies existing `.env*` files at every governed source-tree depth and masks
-  pre-existing multi-link source files for both reads and writes;
-- preserves bounded streaming output, timeout, cancellation, and process-group
-  cleanup.
+Credential and control paths such as `.env*`, `.git/`, `.a3s/`, and SSH keys
+remain hard denials even when an older exact grant exists. Command timeouts,
+process-group cancellation, bounded output, streaming deltas, and explicit
+environment values remain part of the host runner contract.
 
 The TUI also enables Core's local workspace credential policy for built-in
 file operations. Direct and range reads, writes, edits, patches, and both
@@ -404,30 +392,25 @@ Read-only Git diff is regenerated only for allowed changed paths;
 option-like revisions cannot become Git flags, and displayed remotes omit
 embedded HTTP credentials and query tokens.
 
-Delegated tasks, Skills, and dynamic workflow steps inherit the same sandbox,
+Delegated tasks, Skills, and dynamic workflow steps inherit the same guardrail,
 permission checker, and parent confirmation boundary. Child-local `Ask`
 decisions retain the worker's configured confirmation behavior, but a parent
 `Ask` or tool-owned escalation remains governed by the parent provider. A
 child-local allow rule or automatic confirmation provider cannot weaken the TUI
 boundary.
 
-The CLI release, Homebrew formula, and standalone self-update preserve the same
-verified support tree. npm is a development fallback, not the production
-release supply path.
-
-This local process sandbox is the low-latency boundary for routine repository
-commands. A3S Code owns permission and escalation policy; the sandbox provider
-owns OS enforcement. A3S Runtime owns provider-neutral Task and Service
-lifecycle and placement, not per-command approval. Dependency-heavy, untrusted,
-OCI, or stronger-isolation workloads belong on A3S Box or a provider selected
-through A3S Runtime.
+Host Bash is not an isolation boundary. Official archives and Homebrew carry no
+Node.js sandbox payload and require no `sandbox-exec`, `bubblewrap`, `socat`, or
+sandbox-specific `ripgrep` prerequisite. Dependency-heavy, untrusted, OCI, or
+stronger-isolation workloads belong on A3S Box or a provider selected through
+A3S Runtime.
 
 | Tool family | TUI behavior |
 | --- | --- |
-| Workspace tools | `read`, `write`, `edit`, `patch`, `ls`, `glob`, `grep`, `bash`, `git`, `web_fetch`, and `web_search` run through workspace services, path boundaries, timeout handling, sandbox enforcement, and confirmation policy. |
+| Workspace tools | `read`, `write`, `edit`, `patch`, `ls`, `glob`, `grep`, `bash`, `git`, `web_fetch`, and `web_search` run through workspace services, path boundaries, timeout handling, the Rust guardrail, and confirmation policy. |
 | Structured output | `generate_object` uses `Generating/Generated object` cards while keeping schema-shaped JSON in the same bounded event stream as normal tools. |
 | MCP tools | Configured MCP servers are registered as `mcp__<server>__<tool>` names and use the same approval and output rendering path. |
-| PTC scripts | The `program` tool runs sandboxed JavaScript-compatible scripts with a host-provided `ctx` object. Recursive `program`, `dynamic_workflow`, and `parallel_task` calls are kept out of the default PTC allow-list. |
+| PTC scripts | The `program` tool runs bounded JavaScript-compatible scripts with a host-provided `ctx` object. Recursive `program`, `dynamic_workflow`, and `parallel_task` calls are kept out of the default PTC allow-list. |
 | Delegation | `task` launches one child agent. `parallel_task` launches multiple child agents on the native host runtime, preserves input order, emits subagent progress events, and respects `max_parallel_tasks`. |
 | Dynamic workflow | `dynamic_workflow` is registered in the TUI because `ultracode` and `?` DeepResearch use it. It records project-local A3S Flow history under `.a3s/workflow` and can schedule host steps such as `parallel_task`. |
 | Optional runtime | Host-provided runtime tools are registered only after `/login`. Once present, normal model turns and dynamic workflow PTC steps can call them for hosted batch execution. |

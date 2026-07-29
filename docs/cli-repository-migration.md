@@ -26,3 +26,18 @@ and Homebrew formula from a tag reachable from `A3S-Lab/a3s` `main`.
 Standalone installers, matching Web downloads, and self-update all resolve
 published stable CLI releases from `A3S-Lab/a3s`. They deliberately ignore
 component release tags such as `a3s-code-vX.Y.Z`.
+
+## Legacy Update Endpoint
+
+A3S 0.9.9 through 0.10.10 hard-code `A3S-Lab/CLI` as their release endpoint and
+require a `support/managed-srt` tree before replacing the executable. Starting
+with 0.11.1, canonical binary archives include a four-file, inert compatibility
+marker that satisfies that retired package check and exits with failure if it
+is ever invoked. It does not contain the Anthropic sandbox runtime.
+
+The exact canonical archives are relayed to the former repository after their
+asset set, GitHub digests, checksum manifests, and marker contract pass
+verification. The relay publishes GitHub assets only; it has no crates.io or
+Homebrew authority. `A3S-Lab/CLI` must remain readable as an archived
+compatibility endpoint so an old installation can perform its one migration to
+the canonical release channel.

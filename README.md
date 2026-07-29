@@ -287,10 +287,11 @@ Use Cargo when a binary-only installation is intentional:
 cargo install a3s
 ~~~
 
-Cargo does not bundle the complete Web workspace, WebView helper, or managed
-sandbox support tree. When networking and automatic setup are allowed, the CLI
-can install exact-version managed components on first use. `A3S_OFFLINE=1` and
-`A3S_NO_AUTO_INSTALL=1` keep that boundary at zero network and zero mutation.
+Cargo does not bundle the complete Web workspace or WebView helper. When
+networking and automatic setup are allowed, the CLI can install exact-version
+managed components on first use. Local Bash uses the built-in Rust guardrail;
+no installation type downloads a local process sandbox. `A3S_OFFLINE=1` and
+`A3S_NO_AUTO_INSTALL=1` keep automatic setup at zero network and zero mutation.
 
 <details>
 <summary><strong>What the release installers verify</strong></summary>
@@ -313,6 +314,10 @@ Supported controls include `A3S_VERSION`, `A3S_INSTALL_DIR`, `A3S_DATA_HOME`,
 On macOS and Linux, a standalone installation can check or apply CLI updates
 with `a3s self update --check` and `a3s self update`. Homebrew-managed
 installations should use Homebrew.
+
+Standalone versions 0.9.9 through 0.10.10 can update directly to 0.11.1 or
+later through the retained `A3S-Lab/CLI` compatibility endpoint. The update
+then switches future release checks to this repository.
 
 ## Repository map
 
