@@ -5,8 +5,10 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prebuild": "npm run check:content",
     "build": "rspress build",
     "check": "npm run lint && npm run build && npm run check:site",
+    "check:content": "node scripts/check-docs-structure.mjs",
     "check:site": "node scripts/check-built-site.mjs",
     "dev": "rspress dev",
     "format": "prettier --write .",
@@ -15,7 +17,8 @@
     "preview": "rspress preview"
   },
   "dependencies": {
-    "@rspress/core": "^2.0.17"
+    "@rspress/core": "^2.0.17",
+    "@rspress/plugin-sitemap": "^2.0.18"
   },
   "devDependencies": {
     "@rslint/core": "^0.5.3",

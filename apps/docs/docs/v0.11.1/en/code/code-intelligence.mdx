@@ -1,0 +1,248 @@
+---
+title: Code Intelligence
+description: Native saved-file symbols, semantic navigation, diagnostics, and the coding-optimized repository loop.
+---
+
+# Code Intelligence
+
+A3S Code includes native, workspace-scoped Code Intelligence for semantic code
+queries. It owns language-server processes, normalizes their results, and gives
+agent tools, the `a3s code` terminal editor, and A3S Web the same saved-file
+contract.
+
+This is more than syntax highlighting. A coding turn can locate a symbol by
+meaning, read only the required source range, make a guarded edit, and verify the
+result without filling the model context with an unbounded repository scan.
+
+## Capability at a glance
+
+| Surface        | Available capability                                                                                                     |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Agent tools    | Read-only `code_symbols`, `code_navigation`, and `code_diagnostics` tools.                                               |
+| `a3s code` TUI | `/ide` exposes symbols, definitions, declarations, references, implementations, diagnostics, and navigable result lists. |
+| A3S Web        | Monaco uses the same saved-file outline, diagnostics, and navigation service.                                            |
+| HTTP           | Typed read-only endpoints expose status, outline, symbol search, navigation, and diagnostics.                            |
+
+The service is attached to `WorkspaceServices`. It shares the workspace
+manifest, filesystem, path validation, cancellation, and read-only query lane.
+It does not create a second file index, editing path, or session store.
+
+## Supported languages
+
+The current built-in profiles are explicit:
+
+| Profile                 | Source files                 | Project markers                  | Runtime                                                                                |
+| ----------------------- | ---------------------------- | -------------------------------- | -------------------------------------------------------------------------------------- |
+| Rust                    | `.rs`                        | `Cargo.toml`                     | `rust-analyzer`                                                                        |
+| TypeScript / JavaScript | `.ts`, `.tsx`, `.js`, `.jsx` | `package.json`, `tsconfig*.json` | Workspace TypeScript SDK plus `typescript-language-server`, or TypeScript 7 native LSP |
+
+Project markers may appear at any depth. A mixed Rust and TypeScript monorepo
+gets independent language runtimes with deduplicated project folders. Marker
+topology changes can replace a runtime; ordinary saved source changes reuse the
+process and resynchronize the document.
+
+Language runtimes start on demand. Install the runtime your project needs:
+
+```bash
+# Rust
+rustup component add rust-analyzer
+
+# TypeScript / JavaScript using the classic server
+npm install --global typescript-language-server typescript
+```
+
+For TypeScript and JavaScript, A3S Code searches package-local and hoisted
+locations for a TypeScript SDK. A classic SDK is passed through `tsserver.path`;
+a project-local TypeScript 7 SDK can use its native LSP. The executable on
+`PATH` remains the fallback.
+
+A missing executable degrades only that language profile. File tools, editing,
+the agent session, and another available language continue to work.
+
+## Agent tools
+
+The JSON Schemas reject unknown fields. All three tools return readable output
+and structured metadata.
+
+### `code_symbols`
+
+Use `outline` for one saved document or `search` for workspace symbols.
+
+| Parameter   | Type    | Required      | Contract                                     |
+| ----------- | ------- | ------------- | -------------------------------------------- |
+| `operation` | string  | yes           | `outline` or `search`.                       |
+| `path`      | string  | for `outline` | Saved workspace-relative document path.      |
+| `query`     | string  | for `search`  | Non-empty semantic symbol query.             |
+| `limit`     | integer | no            | Search only; default `100`, range `1`–`500`. |
+
+```json
+{
+  "operation": "outline",
+  "path": "src/lib.rs"
+}
+```
+
+```json
+{
+  "operation": "search",
+  "query": "WorkspaceClient",
+  "limit": 50
+}
+```
+
+An outline preserves symbol hierarchy, kind, full range, selection range,
+optional detail, and children. Workspace search returns name, kind, containing
+symbol, and location.
+
+### `code_navigation`
+
+Resolve a semantic location from a position in a saved document.
+
+| Parameter   | Type    | Required | Contract                                                         |
+| ----------- | ------- | -------- | ---------------------------------------------------------------- |
+| `operation` | string  | yes      | `definition`, `declaration`, `references`, or `implementations`. |
+| `path`      | string  | yes      | Saved workspace-relative document path.                          |
+| `line`      | integer | yes      | Zero-based line.                                                 |
+| `character` | integer | yes      | Zero-based UTF-16 code-unit offset, not a UTF-8 byte offset.     |
+
+```json
+{
+  "operation": "definition",
+  "path": "src/lib.rs",
+  "line": 12,
+  "character": 8
+}
+```
+
+The tool returns locations, not source text. Follow a returned location with
+`read` when the implementation itself is needed.
+
+### `code_diagnostics`
+
+Pass a saved document path for one-file diagnostics, or omit it for a bounded
+workspace query.
+
+```json
+{ "path": "src/lib.rs" }
+```
+
+```json
+{}
+```
+
+For a document query, an empty `items` array means diagnostics were received and
+cleared. A workspace query starts relevant language profiles independently. If
+one language is unavailable, other languages may still return diagnostics and
+the result is marked `truncated`.
+
+## Result evidence
+
+Every semantic result uses the same envelope:
+
+| Field                   | Meaning                                                                            |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| `items`                 | Symbols, locations, or diagnostics for the requested operation.                    |
+| `truncated`             | More results or language coverage existed than this bounded response could return. |
+| `workspace_revision`    | Workspace manifest revision observed by the query.                                 |
+| `document.revision`     | Monotonic saved-document revision for a document-scoped query.                     |
+| `document.content_hash` | Opaque hash of the saved contents used by the query.                               |
+| `document.stale`        | The saved file changed while the query was running.                                |
+
+Treat `truncated: true` as evidence of partial coverage, not proof that no other
+result exists. Source ranges are half-open and positions are zero-based UTF-16.
+
+## Code Intelligence in `/ide`
+
+Run `/ide`, open a supported saved source file, press `:`, and submit a command:
+
+| Command                  | Result                                                                |
+| ------------------------ | --------------------------------------------------------------------- |
+| `:status`                | Aggregate and per-language runtime state and negotiated capabilities. |
+| `:symbols`               | Hierarchical symbols for the open saved document.                     |
+| `:symbols <query>`       | Bounded workspace symbol search.                                      |
+| `:definition`            | Definitions at the current cursor.                                    |
+| `:declaration`           | Declarations at the current cursor.                                   |
+| `:references`            | References at the current cursor.                                     |
+| `:implementations`       | Implementations at the current cursor.                                |
+| `:diagnostics`           | Diagnostics for the open saved document.                              |
+| `:diagnostics workspace` | Bounded diagnostics across supported saved files.                     |
+
+The result list is navigable. Use Up/Down or `j`/`k`, Page Up/Page Down,
+Home/End or `g`/`G`, then Enter to open a selected saved-file location. Esc
+closes or cancels the current result.
+
+Queries intentionally use the saved file. When the editor buffer is dirty, the
+TUI marks the result as based on the saved version. It will not discard an
+unsaved buffer to jump to another file.
+
+## A3S Web and Monaco
+
+Monaco maps editor actions to the same service:
+
+| Action           | Monaco interaction                                      |
+| ---------------- | ------------------------------------------------------- |
+| Document outline | Quick outline action.                                   |
+| Definition       | `F12` or the navigation context menu.                   |
+| References       | `Shift+F12` or the navigation context menu.             |
+| Implementation   | `Ctrl/Cmd+F12` or the navigation context menu.          |
+| Declaration      | Navigation context menu.                                |
+| Diagnostics      | Saved-file markers appear automatically when supported. |
+
+The status surface distinguishes ready, starting, degraded, unavailable, stale,
+and saved-version states. A language-specific failure falls back to local
+editing instead of disabling the whole editor.
+
+The backing read-only HTTP endpoints cover:
+
+```text
+GET /v1/workspace/code-intelligence/status
+GET /v1/workspace/code-intelligence/outline
+GET /v1/workspace/code-intelligence/symbols
+GET /v1/workspace/code-intelligence/navigation
+GET /v1/workspace/code-intelligence/diagnostics
+```
+
+Paths must be relative to the served workspace. Absolute paths, traversal, and
+symlink escapes are rejected.
+
+## Coding-optimized repository loop
+
+Code Intelligence is the semantic-locate stage of the repository workflow:
+
+```text
+semantic locate       bounded evidence       guarded mutation       verification
+code_* tools      →   read / grep / glob  → edit / patch / write → tests / checks
+```
+
+The surrounding loop uses bounded reads and search, compare-and-swap-aware
+edits, strict patches, resumable large writes, and structured verification
+evidence. Semantic tools remain read-only and expose no refactor or mutation
+operation.
+
+Code Intelligence tools stay in the core per-turn tool set for ordinary coding
+work. Progressive disclosure affects unrelated specialized schemas; it does not
+hide the semantic tools required to understand a repository. See
+[A3S Code capabilities](./capabilities) for the full boundary model.
+
+## Runtime and safety
+
+- Concurrent startup is single-flight; sessions for the same canonical
+  workspace can reuse a runtime.
+- Document symbols, navigation, and diagnostics are bounded and cancellable.
+- An exited language process can restart on the next query.
+- Language-server output is untrusted. Invalid frames, URIs, and out-of-workspace
+  locations become typed errors.
+- The Rust profile disables build scripts, procedural macros, and automatic
+  check commands for read-only semantic queries.
+- Existing `read`, `write`, `edit`, and `patch` tools remain the source and
+  mutation path.
+
+## Troubleshooting
+
+| Symptom                                 | Check                                                                                                                |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Runtime remains unavailable             | Run `:status`; confirm the relevant language runtime is installed.                                                   |
+| One language works and another does not | Inspect per-language status. Mixed workspaces degrade independently.                                                 |
+| A result omits unsaved text             | Save the document; semantic queries intentionally use saved contents.                                                |
+| `truncated` is true                     | Narrow the symbol query or diagnostic scope before drawing a negative conclusion.                                    |
+| Unsupported file type                   | Continue with `grep`, `glob`, and `read`; built-in semantic profiles currently cover Rust and TypeScript/JavaScript. |

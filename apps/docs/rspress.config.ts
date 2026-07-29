@@ -1,5 +1,7 @@
 import * as path from 'node:path';
 import { defineConfig } from '@rspress/core';
+import { pluginSitemap } from '@rspress/plugin-sitemap';
+import documentation from './documentation.json';
 
 const base = process.env.SITE_BASE ?? '/a3s/';
 const siteOrigin = process.env.SITE_ORIGIN ?? 'https://a3s-lab.github.io';
@@ -12,26 +14,28 @@ export default defineConfig({
   title: 'A3S CLI',
   description:
     'Install, configure, and run the A3S local toolchain from one command-line interface.',
-  lang: 'zh',
+  lang: documentation.defaultLocale,
   icon: '/favicon.svg',
   logo: '/a3s-mark.svg',
   logoText: 'A3S CLI',
   outDir: 'doc_build',
   llms: true,
-  locales: [
-    {
-      lang: 'zh',
-      label: '简体中文',
-      title: 'A3S CLI',
-      description: '用一个 CLI 安装、配置和运行 A3S 本地工具链。',
-    },
-    {
-      lang: 'en',
-      label: 'English',
-      title: 'A3S CLI',
-      description:
-        'Install, configure, and run the A3S local toolchain from one command-line interface.',
-    },
+  locales: documentation.locales.map(({ lang, label, title, description }) => ({
+    lang,
+    label,
+    title,
+    description,
+  })),
+  multiVersion: {
+    default: documentation.defaultVersion,
+    versions: documentation.versions.map(({ id }) => id),
+  },
+  plugins: [
+    pluginSitemap({
+      siteUrl,
+      defaultChangeFreq: 'weekly',
+      defaultPriority: '0.8',
+    }),
   ],
   head: [
     ['meta', { name: 'theme-color', content: '#090a0d' }],
