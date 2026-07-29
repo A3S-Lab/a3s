@@ -2,17 +2,20 @@ import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
 import { ScrollToTop } from '@/components/scroll-to-top';
 import './global.css';
+import '@/components/home/styles/home-base.css';
+import '@/components/home/styles/home-sections.css';
+import '@/components/home/styles/home-responsive.css';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://a3s.dev';
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'A3S – Agentic Adaptive Augmentation System',
+    default: 'A3S — Governed Agents. Composable Infrastructure.',
     template: '%s | A3S',
   },
   description:
-    'A3S is an open-source Agentic Adaptive Augmentation System — runtime, TEE security, memory, tooling, and orchestration for production AI agents.',
+    'A Rust-native platform for governed agents, local AI work, and composable infrastructure.',
   keywords: [
     'A3S',
     'agentic agents',
@@ -35,17 +38,15 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: siteUrl,
     siteName: 'A3S',
-    title: 'A3S – Autonomous Agent System',
+    title: 'A3S — Governed Agents. Composable Infrastructure.',
     description:
-      'Open-source runtime, TEE security, memory, and orchestration for production AI agents.',
-    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'A3S – Autonomous Agent System' }],
+      'A Rust-native platform for governed agents, local AI work, and composable infrastructure.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'A3S – Autonomous Agent System',
+    title: 'A3S — Governed Agents. Composable Infrastructure.',
     description:
-      'Open-source runtime, TEE security, memory, and orchestration for production AI agents.',
-    images: ['/og.png'],
+      'A Rust-native platform for governed agents, local AI work, and composable infrastructure.',
   },
   robots: {
     index: true,

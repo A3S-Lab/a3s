@@ -66,9 +66,17 @@ jobs:
           cargo test --locked -p a3s-cloud-control-plane loads_shipped_cloud_acl
           cargo test --locked -p a3s-cloud-node-agent loads_shipped_node_example_acl
 
+      - name: Typecheck website
+        working-directory: apps/docs
+        run: bun run typecheck
+
       - name: Build
         working-directory: apps/docs
         run: bun run build
+
+      - name: Validate exported website
+        working-directory: apps/docs
+        run: bun run check:site
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

@@ -18,9 +18,9 @@ const jsonLd = {
   '@type': 'SoftwareApplication',
   name: 'A3S',
   description:
-    'Autonomous Agent System — runtime, TEE security, memory, tooling, and orchestration for production AI agents.',
+    'A Rust-native platform for governed agents, local AI work, and composable infrastructure.',
   applicationCategory: 'DeveloperApplication',
-  operatingSystem: 'Linux, macOS',
+  operatingSystem: 'Linux, macOS, Windows',
   url: siteUrl,
   author: {
     '@type': 'Organization',

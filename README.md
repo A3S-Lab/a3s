@@ -342,7 +342,7 @@ distribution assets.
 | [A3S Office](packages/office/) | Native OOXML engine, Office editors, CLI, MCP, Skill, and A3S Use package |
 | [A3S Science](packages/science/) | Independently versioned scientific Skills, MCP data services, compute workflows, and research tooling |
 | [A3S Cloud](apps/cloud/) | Self-hosted control plane for desired state, durable operations, nodes, and verified OCI deployment |
-| [Documentation](apps/docs/) | Documentation, tutorials, project references, and versioned Cloud operations guidance |
+| [Documentation](apps/docs/) | A3S product website, documentation, tutorials, project references, and versioned Cloud operations guidance |
 
 The [CLI repository migration record](docs/cli-repository-migration.md)
 documents the imported source revision, preserved legacy history, and
