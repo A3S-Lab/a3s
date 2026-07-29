@@ -32,6 +32,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SITE_URL: https://a3s-lab.github.io/a3s
     steps:
       - uses: actions/checkout@v4
         with:

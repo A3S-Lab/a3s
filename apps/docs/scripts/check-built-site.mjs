@@ -30,6 +30,14 @@ async function collectFiles(directory) {
 
 const [english, chinese] = await Promise.all([read('index.html'), read('cn.html')]);
 
+if (process.env.NEXT_PUBLIC_SITE_URL) {
+  const sitemap = await read('sitemap.xml');
+  assert(
+    sitemap.includes(`<loc>${process.env.NEXT_PUBLIC_SITE_URL}</loc>`),
+    `Sitemap is missing the public site URL: ${process.env.NEXT_PUBLIC_SITE_URL}`,
+  );
+}
+
 for (const marker of [
   'One command.',
   'id="products"',
