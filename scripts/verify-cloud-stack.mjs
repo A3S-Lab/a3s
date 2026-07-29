@@ -3,7 +3,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, isAbsolute, join, normalize, relative, resolve, sep } from 'node:path';
+import { dirname, isAbsolute, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
@@ -341,10 +341,14 @@ function exactDependencyVersion(declaration, label) {
   return version.slice(1);
 }
 
-function packageFromLock(source, name, label) {
+function packageFromLock(source, name, expectedVersion, label) {
   const entries = source.split('[[package]]').slice(1);
-  const entry = entries.find((candidate) => new RegExp(`^\\s*name = "${name}"\\s*$`, 'm').test(candidate));
-  invariant(entry, `${label} is missing package ${name}`);
+  const entry = entries.find(
+    (candidate) =>
+      new RegExp(`^\\s*name = "${name}"\\s*$`, 'm').test(candidate) &&
+      quotedTomlValue(candidate, 'version', `${label} package ${name}`) === expectedVersion,
+  );
+  invariant(entry, `${label} is missing package ${name} ${expectedVersion}`);
   return {
     version: quotedTomlValue(entry, 'version', `${label} package ${name}`),
     source: /^source = "([^"]+)"$/m.exec(entry)?.[1],
@@ -352,7 +356,7 @@ function packageFromLock(source, name, label) {
 }
 
 function assertLockVersion(lockSource, component, label, expectedRevision) {
-  const entry = packageFromLock(lockSource, component.package, label);
+  const entry = packageFromLock(lockSource, component.package, component.version, label);
   invariant(
     entry.version === component.version,
     `${label} locks ${component.package} ${entry.version}, expected ${component.version}`,
@@ -363,11 +367,6 @@ function assertLockVersion(lockSource, component, label, expectedRevision) {
       `${label} does not lock ${component.package} revision ${expectedRevision}`,
     );
   }
-}
-
-function relativeDependencyPath(fromManifest, targetPath) {
-  const value = relative(dirname(fromManifest), targetPath).split(sep).join('/');
-  return value.startsWith('.') ? value : `./${value}`;
 }
 
 function verifyDependencyBindings(root, componentMap) {
@@ -419,15 +418,20 @@ function verifyDependencyBindings(root, componentMap) {
     runtime.package,
     cloudManifestPath,
   );
-  const expectedRuntimePath = relativeDependencyPath(
-    cloudManifestPath,
-    join(root, runtime.path),
+  invariant(
+    exactDependencyVersion(runtimeDeclaration, 'Cloud a3s-runtime') === runtime.version,
+    'Cloud a3s-runtime version does not match the compatibility lock',
   );
   invariant(
-    dependencyField(runtimeDeclaration, 'path', 'Cloud a3s-runtime') === expectedRuntimePath,
-    `Cloud a3s-runtime path must be ${expectedRuntimePath}`,
+    dependencyField(runtimeDeclaration, 'git', 'Cloud a3s-runtime') ===
+      runtime.repository.replace('git@github.com:', 'https://github.com/'),
+    'Cloud a3s-runtime repository does not match the compatibility lock',
   );
-  assertLockVersion(cloudLock, runtime, 'apps/cloud/Cargo.lock');
+  invariant(
+    dependencyField(runtimeDeclaration, 'rev', 'Cloud a3s-runtime') === runtime.revision,
+    'Cloud a3s-runtime revision does not match the compatibility lock',
+  );
+  assertLockVersion(cloudLock, runtime, 'apps/cloud/Cargo.lock', runtime.revision);
 
   const gatewayManifestPath = join(root, gateway.path, 'Cargo.toml');
   const gatewayManifest = readFileSync(gatewayManifestPath, 'utf8');

@@ -184,8 +184,10 @@ component-owned files. They are not a general-purpose package manager.
 
 ### Isolation, evaluation, and services
 
-A3S Box runs Linux OCI workloads through Docker-like MicroVM workflows on
-supported virtualization hosts and exposes local SDKs for Rust, Python,
+A3S Box is the node-local OCI execution provider. Runtime integrations select
+its concrete MicroVM or shared-kernel Sandbox backend explicitly, without an
+automatic downgrade, while Cloud owns tenant state, placement, operations, and
+cleanup for finite Executions. Box exposes local SDKs for Rust, Python,
 TypeScript, and Go. Bench binds a Task, packaged Candidate adapter, and
 task-owned Judge into an identity-bound result. Its local path currently
 requires Docker and labels results `local_unofficial`; the source is present,
@@ -347,7 +349,7 @@ distribution assets.
 | [A3S Web](apps/web/) | Local browser product with Work as the default `#home` workbench, a separate Knowledge destination, and reviewed Use-package destinations |
 | [A3S Desktop](apps/desktop/) | Independently versioned native desktop host tracked by the integration snapshot |
 | [A3S Windhole](apps/windhole/) | Local visual laboratory for A3S Bench catalog, run, result, validation, and Doctor workflows |
-| [A3S Box](crates/box/) | Docker-like MicroVM product for Linux OCI workloads with Rust, Python, TypeScript, and Go local SDKs |
+| [A3S Box](crates/box/) | Node-local Linux OCI provider with explicit MicroVM or shared-kernel Sandbox selection and local SDKs |
 | [A3S Bench](crates/bench/) | Reproducible Task, Candidate, and Judge evaluation; source implemented, compatible umbrella component release pending |
 | [A3S Search](crates/search/) | Native AnySearch and Tavily providers, conventional HTTP/RSS retrieval, ranking, deduplication, and optional Browser rendering |
 | [A3S Browser](crates/browser/) | Provider-oriented typed rendering plus the process-isolated automation driver, Skills, and Dashboard |
@@ -355,7 +357,7 @@ distribution assets.
 | [A3S Use](crates/use/) | Built-in Browser/OCR routes, component-backed Box routing, and standard lifecycle for external packages |
 | [A3S Office](packages/office/) | Pre-1.0 Office package with five browser-native surfaces plus native CLI, MCP, and Skill automation |
 | [A3S Science](packages/science/) | TUF-signed 472-entry catalog with 35 A3S-native Skills, 25 A3S-native MCP resources, and scientific research tooling |
-| [A3S Cloud](apps/cloud/) | Self-hosted control plane with R0–E0 verified, G0/C0/H0 in progress, and later maturity gates planned |
+| [A3S Cloud](apps/cloud/) | Self-hosted control plane with durable tenant-scoped finite Executions, Runtime placement, cancellation, and cleanup |
 | [A3S CLI website](apps/docs/) | Bilingual Rspress product site for installing, configuring, diagnosing, and launching the root-owned `a3s` CLI |
 
 The [CLI repository migration record](docs/cli-repository-migration.md)

@@ -26,7 +26,7 @@ component "cloud" {
   owner = "A3S-Lab/Cloud"
   path = "apps/cloud"
   repository = "git@github.com:A3S-Lab/Cloud.git"
-  revision = "d2a82cd936919d0121436eebc94137cc2c60b323"
+  revision = "4ca33905191d337f0cf63d5a098a24b59bf48b29"
   source = "git"
   version = "0.1.0"
 }
@@ -71,7 +71,7 @@ component "runtime" {
   package = "a3s-runtime"
   path = "crates/runtime"
   repository = "git@github.com:A3S-Lab/Runtime.git"
-  revision = "cfaac63af6f76beebdc64a1ec228cedc42bb98ec"
+  revision = "25caf65ffed7ff9b82cedc4e7156c79f396896f7"
   source = "git"
   version = "0.2.0"
 }
@@ -110,9 +110,9 @@ protocol "flow-native-typescript" {
   source = "crates/flow/src/protocol.rs"
 }
 protocol "runtime-capabilities" {
-  level = 3
+  level = 4
   owner = "A3S-Lab/Runtime"
-  schema = "a3s.runtime.capabilities.v3"
+  schema = "a3s.runtime.capabilities.v4"
   source = "crates/runtime/src/contract/capabilities.rs"
 }
 protocol "runtime-observation" {

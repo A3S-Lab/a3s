@@ -53,3 +53,20 @@ test('multiline Cargo dependency declarations are read as one binding', () => {
   assert.match(boot, /version = "=0\.1\.3"/);
   assert.match(boot, /"openapi-schemas"/);
 });
+
+test('the Cloud Runtime dependency is bound to the locked Git revision', () => {
+  const cloudManifest = readFileSync(resolve(ROOT, 'apps/cloud/Cargo.toml'), 'utf8');
+  const runtime = parseCloudStackLock(LOCK_SOURCE).components.find(
+    (component) => component.id === 'runtime',
+  );
+  assert.ok(runtime);
+  const declaration = tomlDependency(
+    cloudManifest,
+    'workspace.dependencies',
+    runtime.package,
+    'apps/cloud/Cargo.toml',
+  );
+  assert.ok(declaration.includes(`version = "=${runtime.version}"`));
+  assert.ok(declaration.includes(`rev = "${runtime.revision}"`));
+  assert.match(declaration, /git = "https:\/\/github\.com\/A3S-Lab\/Runtime\.git"/);
+});
