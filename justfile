@@ -35,16 +35,16 @@ default:
 dev: code
 
 # ============================================================================
-# Documentation Site
+# A3S CLI Website
 # ============================================================================
 
-# Start docs dev server
+# Start the website development server
 docs:
-    cd apps/docs && bun run dev
+    cd apps/docs && npm run dev
 
-# Build docs site
+# Build the website
 docs-build:
-    cd apps/docs && bun run build
+    cd apps/docs && npm run build
 
 # ============================================================================
 # A3S Cloud

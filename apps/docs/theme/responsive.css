@@ -1,0 +1,139 @@
+@media (max-width: 960px) {
+  .cli-hero {
+    min-height: auto;
+    padding-top: 76px;
+    gap: 56px;
+    grid-template-columns: 1fr;
+  }
+
+  .cli-hero__copy {
+    max-width: 760px;
+  }
+
+  .cli-terminal {
+    width: min(100%, 720px);
+    justify-self: end;
+  }
+
+  .cli-section__header,
+  .cli-install-section {
+    gap: 34px;
+    grid-template-columns: 1fr;
+  }
+
+  .cli-section__header > p {
+    max-width: 700px;
+  }
+
+  .cli-responsibility-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cli-product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cli-install-section > div:last-child {
+    width: min(100%, 720px);
+  }
+}
+
+@media (max-width: 640px) {
+  .a3s-cli-home {
+    min-height: calc(100vh - 62px);
+  }
+
+  .cli-hero {
+    padding: 58px 18px 68px;
+    gap: 42px;
+  }
+
+  .cli-hero h1 {
+    font-size: clamp(40px, 12.5vw, 56px);
+  }
+
+  .cli-hero__copy > p {
+    font-size: 15px;
+  }
+
+  .cli-hero__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cli-hero__actions .cli-button {
+    width: 100%;
+  }
+
+  .cli-terminal__body {
+    min-height: 350px;
+    padding: 26px 20px;
+  }
+
+  .cli-terminal dl > div {
+    grid-template-columns: 74px 1fr;
+  }
+
+  .cli-section {
+    padding: 78px 18px;
+  }
+
+  .cli-section__header h2,
+  .cli-install-section h2,
+  .cli-cta h2 {
+    font-size: 34px;
+  }
+
+  .cli-responsibility-grid,
+  .cli-product-grid,
+  .cli-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .cli-responsibility-grid article {
+    min-height: 220px;
+  }
+
+  .cli-command-row {
+    min-height: 86px;
+    padding: 16px 18px;
+    gap: 8px;
+    grid-template-columns: 1fr;
+  }
+
+  .cli-product-grid > a {
+    min-height: 260px;
+  }
+
+  .cli-flow article:not(:last-child)::after {
+    top: auto;
+    right: 50%;
+    bottom: -17px;
+    width: 1px;
+    height: 16px;
+  }
+
+  .cli-install-section {
+    padding-top: 78px;
+    padding-bottom: 84px;
+  }
+
+  .cli-cta {
+    width: calc(100% - 36px);
+    margin-bottom: 64px;
+    padding: 34px 26px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .cli-footer {
+    min-height: 126px;
+    padding: 24px 18px;
+    align-items: flex-start;
+    grid-template-columns: 1fr;
+  }
+
+  .cli-footer a {
+    justify-self: start;
+  }
+}

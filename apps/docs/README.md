@@ -1,38 +1,39 @@
-# A3S website and documentation
+# A3S CLI website
 
-The public A3S site combines a product homepage, bilingual documentation,
-tutorials, and the engineering blog in one statically exported Next.js app.
+The public A3S site is a bilingual product page for the root-owned `a3s`
+command-line interface. It intentionally contains no documentation, tutorial,
+or blog routes.
 
 ## Architecture
 
-- **Next.js App Router** owns routes, metadata, and static export.
-- **Fumadocs** owns documentation and tutorial content.
-- **Home components** under `components/home/` keep localized content, layout,
-  interaction, and design tokens separate.
-- **Canvas UI Grid** provides the viewport-sized interactive background across
-  the homepage with a progressive CSS fallback; its notice is recorded in
-  `THIRD_PARTY_NOTICES.md`.
-- **GitHub Pages** receives the generated `out/` directory from the repository
-  documentation workflow.
+The site follows the same implementation model as the A3S Code website:
 
-The homepage structure follows the same maintainable pattern as the A3S Code
-site: one composition component, isolated client-side canvas behavior, and
-centralized visual tokens rather than route-local styling.
+- **Rspress** owns static generation, locales, metadata, and the Pages base
+  path.
+- **Localized MDX entry files** select the custom home layout without carrying
+  product copy.
+- **A custom theme** owns navigation, CLI product content, installation
+  switching, and responsive styles.
+- **Static public assets** provide the favicon, social card, robots policy, and
+  sitemap.
+
+The default route is Simplified Chinese. English is served from `/en/`.
 
 ## Local development
 
 ```bash
-bun install --frozen-lockfile
-bun run dev
+npm ci
+npm run dev
 ```
+
+The production site is served from `/a3s/`. Override `SITE_BASE` and
+`SITE_ORIGIN` only for another deployment target.
 
 ## Verification
 
 ```bash
-bun run typecheck
-bun run build
-bun run check:site
+npm run format:check
+npm run lint
+npm run build
+npm run check:site
 ```
-
-`check:site` validates both localized homepage exports and confirms the
-homepage CSS was emitted into the production bundle.

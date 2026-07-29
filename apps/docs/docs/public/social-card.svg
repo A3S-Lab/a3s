@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f7f8fb"/>
+  <rect x="56" y="56" width="1088" height="518" rx="26" fill="#fff" stroke="#dfe3ea" stroke-width="2"/>
+  <g transform="translate(104 102)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M35 0A35 35 0 1 0 66 52" stroke="#4f69a6" stroke-width="6"/>
+    <path d="M16 51 32 13l18 38M22 36h22" stroke="#172033" stroke-width="5"/>
+    <path d="M0 51c13-9 22-8 32-1s20 5 34-7" stroke="#4f69a6" stroke-width="6"/>
+  </g>
+  <text x="193" y="145" fill="#172033" font-family="Arial, sans-serif" font-size="34" font-weight="700">A3S CLI</text>
+  <text x="104" y="290" fill="#172033" font-family="Arial, sans-serif" font-size="72" font-weight="700" letter-spacing="-3">Install and run A3S</text>
+  <text x="104" y="372" fill="#172033" font-family="Arial, sans-serif" font-size="72" font-weight="700" letter-spacing="-3">from one command line.</text>
+  <rect x="104" y="448" width="466" height="72" rx="12" fill="#151a24"/>
+  <text x="132" y="493" fill="#79a77e" font-family="monospace" font-size="22">$</text>
+  <text x="164" y="493" fill="#e4e8ef" font-family="monospace" font-size="22">a3s code</text>
+  <text x="1050" y="513" fill="#667085" font-family="Arial, sans-serif" font-size="20" text-anchor="end">github.com/A3S-Lab/a3s</text>
+</svg>

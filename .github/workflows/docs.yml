@@ -1,22 +1,14 @@
-name: Deploy Docs
+name: Deploy A3S CLI Site
 
 on:
   pull_request:
     paths:
       - 'apps/docs/**'
-      - 'apps/cloud'
-      - 'crates/acl'
-      - 'crates/runtime'
-      - 'compat/cloud-stack.acl'
       - '.github/workflows/docs.yml'
   push:
     branches: [main]
     paths:
       - 'apps/docs/**'
-      - 'apps/cloud'
-      - 'crates/acl'
-      - 'crates/runtime'
-      - 'compat/cloud-stack.acl'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -33,57 +25,37 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_SITE_URL: https://a3s-lab.github.io/a3s
+      SITE_BASE: /a3s/
+      SITE_ORIGIN: https://a3s-lab.github.io
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
-
-      - name: Initialize locked Cloud documentation sources
-        run: >-
-          git -c url.https://github.com/.insteadOf=git@github.com:
-          submodule update --init --depth 1 apps/cloud crates/acl crates/runtime
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: apps/cloud -> target
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/docs/package-lock.json
 
       - name: Install dependencies
         working-directory: apps/docs
-        run: bun install --frozen-lockfile
+        run: npm ci
 
-      - name: Validate Cloud documentation contracts
+      - name: Lint website
         working-directory: apps/docs
-        run: bun run check:cloud
+        run: npm run lint
 
-      - name: Validate shipped Cloud ACL configurations
-        working-directory: apps/cloud
-        run: |
-          cargo test --locked -p a3s-cloud-control-plane loads_shipped_cloud_acl
-          cargo test --locked -p a3s-cloud-node-agent loads_shipped_node_example_acl
-
-      - name: Typecheck website
+      - name: Build website
         working-directory: apps/docs
-        run: bun run typecheck
-
-      - name: Build
-        working-directory: apps/docs
-        run: bun run build
+        run: npm run build
 
       - name: Validate exported website
         working-directory: apps/docs
-        run: bun run check:site
+        run: npm run check:site
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/docs/out
+          path: apps/docs/doc_build
 
   deploy:
     if: github.event_name != 'pull_request'

@@ -20,7 +20,7 @@
   <a href="#architecture">Architecture</a> ·
   <a href="#repository-map">Repository map</a> ·
   <a href="#development">Development</a> ·
-  <a href="https://a3s-lab.github.io/a3s/">Documentation</a>
+  <a href="https://a3s-lab.github.io/a3s/">A3S CLI website</a>
 </p>
 
 ---
@@ -75,7 +75,7 @@ command routing. Product behavior remains with the component that implements it.
 | **Bench** | `a3s install bench` | Optional evaluation product with explicit installation |
 | **Search** | `a3s install search` | Optional meta-search product with explicit installation |
 | **Use** | `a3s install use` | Optional capability facade; Browser and OCR routes are built in from independently versioned repositories, while Office and other domains keep independent package contracts |
-| **Cloud** | Follow the [versioned Cloud guide](apps/docs/content/docs/en/cloud/v0.1.0/) | Self-hosted control-plane project with separately documented maturity gates |
+| **Cloud** | Inspect the locked [Cloud compatibility manifest](compat/cloud-stack.acl) | Self-hosted control-plane project with separately documented maturity gates |
 
 A catalog entry describes discovery and installation policy. It is not proof
 that every platform or release channel currently contains a compatible artifact.
@@ -236,7 +236,7 @@ type, or parsed configuration from being mistaken for a finished deployment.
 | Box | Requires a supported host and virtualization backend; platform-specific CRI, TEE, and Windows paths have separate gates |
 | Bench | The local path requires Docker and produces `local_unofficial` results; official evaluation requires matching admission and Runtime evidence |
 | Use | Domain readiness depends on installed runtimes and model assets; external packages own their compatibility |
-| Cloud | Delivered, experimental, and planned behavior is separated in the [versioned Cloud documentation](apps/docs/content/docs/en/cloud/v0.1.0/) |
+| Cloud | Delivered, experimental, and planned behavior is recorded by the [locked Cloud compatibility manifest](compat/cloud-stack.acl) and the Cloud repository |
 | OCI Runtime | Experimental: every current platform driver remains `probe-only`; host detection is not workload-launch support |
 | Infrastructure libraries | Optional features expose integrations; external brokers, stores, providers, and services must still be operated |
 
@@ -342,7 +342,7 @@ distribution assets.
 | [A3S Office](packages/office/) | Native OOXML engine, Office editors, CLI, MCP, Skill, and A3S Use package |
 | [A3S Science](packages/science/) | Independently versioned scientific Skills, MCP data services, compute workflows, and research tooling |
 | [A3S Cloud](apps/cloud/) | Self-hosted control plane for desired state, durable operations, nodes, and verified OCI deployment |
-| [Documentation](apps/docs/) | A3S product website, documentation, tutorials, project references, and versioned Cloud operations guidance |
+| [A3S CLI website](apps/docs/) | Bilingual Rspress product site for installing, configuring, diagnosing, and launching the root-owned `a3s` CLI |
 
 The [CLI repository migration record](docs/cli-repository-migration.md)
 documents the imported source revision, preserved legacy history, and
@@ -395,7 +395,7 @@ The root `justfile` orchestrates common entry points:
 ~~~bash
 just code              # build the local helper and run A3S Code
 just web               # build and run the browser workspace
-just docs              # start the documentation site
+just docs              # start the A3S CLI website
 just windhole          # start the Bench visual laboratory
 just use-hotplug-e2e   # verify Use hot-plug and release-shaped first use
 just cloud-stack-check # verify the locked Cloud integration stack
@@ -450,9 +450,9 @@ submodule change in its owning repository before updating its gitlink here.
 Read [AGENTS.md](AGENTS.md) before adding crates or changing repository
 structure.
 
-## Documentation and community
+## Website and community
 
-- Documentation: [a3s-lab.github.io/a3s](https://a3s-lab.github.io/a3s/)
+- A3S CLI website: [a3s-lab.github.io/a3s](https://a3s-lab.github.io/a3s/)
 - CLI releases: [A3S-Lab/a3s releases](https://github.com/A3S-Lab/a3s/releases)
 - Questions and discussion: [Discord](https://discord.gg/XVg6Hu6H)
 

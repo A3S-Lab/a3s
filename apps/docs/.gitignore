@@ -1,37 +1,12 @@
-# dependencies
-node_modules/
-
-# next.js
-.next/
-out/
-
-# fumadocs
-.source/
-
-# production
-build/
-dist/
-*.tgz
-
-# dotenv environment variable files
-.env
-.env*.local
-
-# caches
-.eslintcache
-.cache
-*.tsbuildinfo
-
-# typescript
-next-env.d.ts
-
-# logs
-logs/
-*.log
-
-# IDEs
-.idea/
-
-# misc
+# Local
 .DS_Store
-*.pem
+*.local
+*.log*
+
+# Build
+node_modules/
+doc_build/
+
+# Editors
+.idea/
+.vscode/

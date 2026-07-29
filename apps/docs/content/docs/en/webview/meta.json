@@ -1,9 +1,0 @@
-{
-  "title": "A3S WebView",
-  "pages": [
-    "index",
-    "usage",
-    "auth-bootstrap",
-    "platforms-boundaries"
-  ]
-}

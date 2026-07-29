@@ -1,72 +1,189 @@
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { access, readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = process.cwd();
-const output = path.join(root, 'out');
+const websiteRoot = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+);
+const outputRoot = path.join(websiteRoot, 'doc_build');
+const base = process.env.SITE_BASE ?? '/a3s/';
 
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
-}
-
-async function read(relativePath) {
-  return readFile(path.join(output, relativePath), 'utf8');
-}
+const requiredFiles = [
+  'index.html',
+  'en/index.html',
+  '404.html',
+  'llms.txt',
+  'en/llms.txt',
+  'a3s-mark.svg',
+  'favicon.svg',
+  'social-card.svg',
+  'robots.txt',
+  'sitemap.xml',
+];
 
 async function collectFiles(directory) {
-  const entries = await readdir(directory);
+  const entries = await readdir(directory, { withFileTypes: true });
   const files = [];
 
   for (const entry of entries) {
-    const target = path.join(directory, entry);
-    if ((await stat(target)).isDirectory()) {
-      files.push(...(await collectFiles(target)));
+    const absolutePath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await collectFiles(absolutePath)));
     } else {
-      files.push(target);
+      files.push(absolutePath);
     }
   }
 
   return files;
 }
 
-const [english, chinese] = await Promise.all([read('index.html'), read('cn.html')]);
+async function resolvesToBuiltFile(relativeReference) {
+  const decodedReference = decodeURIComponent(relativeReference);
+  const candidates =
+    decodedReference === '' || decodedReference.endsWith('/')
+      ? [path.join(decodedReference, 'index.html')]
+      : [
+          decodedReference,
+          decodedReference + '.html',
+          path.join(decodedReference, 'index.html'),
+        ];
 
-if (process.env.NEXT_PUBLIC_SITE_URL) {
-  const sitemap = await read('sitemap.xml');
-  assert(
-    sitemap.includes(`<loc>${process.env.NEXT_PUBLIC_SITE_URL}</loc>`),
-    `Sitemap is missing the public site URL: ${process.env.NEXT_PUBLIC_SITE_URL}`,
-  );
+  for (const candidate of candidates) {
+    const outputPath = path.resolve(outputRoot, candidate);
+    if (
+      outputPath !== outputRoot &&
+      !outputPath.startsWith(outputRoot + path.sep)
+    ) {
+      continue;
+    }
+
+    try {
+      if ((await stat(outputPath)).isFile()) return true;
+    } catch {
+      // Try the next supported output form.
+    }
+  }
+
+  return false;
+}
+
+for (const file of requiredFiles) {
+  await access(path.join(outputRoot, file));
+}
+
+const [chinese, english, sitemap] = await Promise.all([
+  readFile(path.join(outputRoot, 'index.html'), 'utf8'),
+  readFile(path.join(outputRoot, 'en/index.html'), 'utf8'),
+  readFile(path.join(outputRoot, 'sitemap.xml'), 'utf8'),
+]);
+
+for (const marker of [
+  '用一个 CLI 安装和运行 A3S',
+  'a3s code',
+  'a3s doctor',
+  'A3S CLI',
+]) {
+  if (!chinese.includes(marker)) {
+    throw new Error('Chinese homepage is missing: ' + marker);
+  }
 }
 
 for (const marker of [
-  'One command.',
-  'id="products"',
-  'id="architecture"',
-  'id="principles"',
-  'a3s-canvas-backdrop',
-  'a3s code',
+  'Install and run A3S from one CLI',
+  'One entry point, independent products',
+  'a3s upgrade --all --yes',
 ]) {
-  assert(english.includes(marker), `English homepage is missing: ${marker}`);
+  if (!english.includes(marker)) {
+    throw new Error('English homepage is missing: ' + marker);
+  }
 }
 
-for (const marker of ['一个命令。', '每一道 Agent 边界', '从零启动一个可治理 Agent。']) {
-  assert(chinese.includes(marker), `Chinese homepage is missing: ${marker}`);
+for (const forbidden of ['/docs/', '/blog/', '/tutorials/']) {
+  if (chinese.includes(forbidden) || english.includes(forbidden)) {
+    throw new Error('Homepage contains removed route: ' + forbidden);
+  }
+  if (sitemap.includes(forbidden)) {
+    throw new Error('Sitemap contains removed route: ' + forbidden);
+  }
 }
 
-assert(!english.includes('/og.png'), 'Homepage still references the removed /og.png asset');
+if (!chinese.includes('https://a3s-lab.github.io/a3s/')) {
+  throw new Error('Chinese homepage has no canonical production URL.');
+}
+if (!english.includes('https://a3s-lab.github.io/a3s/en/')) {
+  throw new Error('English homepage has no canonical production URL.');
+}
 
-const files = await collectFiles(output);
+const files = await collectFiles(outputRoot);
 const cssFiles = files.filter((file) => file.endsWith('.css'));
-assert(cssFiles.length > 0, 'Static export contains no CSS assets');
+const css = (
+  await Promise.all(cssFiles.map((file) => readFile(file, 'utf8')))
+).join('\n');
 
-const css = (await Promise.all(cssFiles.map((file) => readFile(file, 'utf8')))).join('\n');
-for (const selector of ['.a3s-canvas-backdrop', '.a3s-home-nav', '.a3s-system-panel', '.a3s-product-card', '.a3s-stack-layer']) {
-  assert(css.includes(selector), `Production CSS is missing: ${selector}`);
+for (const selector of [
+  '.a3s-cli-nav',
+  '.a3s-cli-home',
+  '.cli-command-row',
+  '.cli-product-grid',
+]) {
+  if (!css.includes(selector)) {
+    throw new Error('Production CSS is missing: ' + selector);
+  }
 }
 
-assert(
-  files.some((file) => path.basename(file) === 'opengraph-image'),
-  'Static export is missing the generated Open Graph image',
-);
+const htmlFiles = files.filter((file) => file.endsWith('.html'));
+const referencePattern = /(?:href|src)="([^"]+)"/g;
+const brokenReferences = [];
 
-console.log(`Validated bilingual A3S homepage across ${files.length} exported files.`);
+for (const htmlFile of htmlFiles) {
+  const html = await readFile(htmlFile, 'utf8');
+
+  for (const [, rawReference] of html.matchAll(referencePattern)) {
+    if (
+      rawReference.startsWith('#') ||
+      rawReference.startsWith('data:') ||
+      rawReference.startsWith('mailto:') ||
+      /^[a-z]+:\/\//i.test(rawReference)
+    ) {
+      continue;
+    }
+
+    if (rawReference.startsWith('/') && !rawReference.startsWith(base)) {
+      brokenReferences.push(
+        path.relative(outputRoot, htmlFile) +
+          ' -> ' +
+          rawReference +
+          ' (outside ' +
+          base +
+          ')',
+      );
+      continue;
+    }
+
+    if (!rawReference.startsWith(base)) continue;
+
+    const withoutBase = rawReference
+      .slice(base.length)
+      .split(/[?#]/, 1)[0]
+      .replace(/\/+/g, '/');
+    if (!(await resolvesToBuiltFile(withoutBase))) {
+      brokenReferences.push(
+        path.relative(outputRoot, htmlFile) + ' -> ' + rawReference,
+      );
+    }
+  }
+}
+
+if (brokenReferences.length > 0) {
+  throw new Error(
+    'Built-site reference check failed:\n' +
+      brokenReferences.map((reference) => '  - ' + reference).join('\n'),
+  );
+}
+
+console.log(
+  'Validated the bilingual CLI site across ' +
+    htmlFiles.length +
+    ' HTML pages.',
+);
