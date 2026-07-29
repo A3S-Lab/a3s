@@ -1,4 +1,20 @@
-import { useLang, withBase } from '@rspress/core/runtime';
+import {
+  useLang,
+  useLocation,
+  usePage,
+  useVersion,
+} from '@rspress/core/runtime';
+import { Link } from '@rspress/core/theme-original';
+import { useRef } from 'react';
+import documentation from '../../documentation.json';
+
+interface SelectorItem {
+  current: boolean;
+  href: string;
+  hrefLang?: string;
+  id: string;
+  label: string;
+}
 
 function Mark() {
   return (
@@ -18,44 +34,181 @@ function GitHubIcon() {
   );
 }
 
+function ChevronIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 12 12">
+      <path d="m2.5 4.25 3.5 3.5 3.5-3.5" />
+    </svg>
+  );
+}
+
+function routeHref(locale: string, version: string, pureRoutePath: string) {
+  const segments = [];
+
+  if (version !== documentation.defaultVersion) segments.push(version);
+  if (locale !== documentation.defaultLocale) segments.push(locale);
+
+  const routeSegments = pureRoutePath.split('/').filter(Boolean);
+  segments.push(...routeSegments);
+
+  return segments.length === 0
+    ? '/'
+    : `/${segments.join('/')}${routeSegments.length === 0 ? '/' : ''}`;
+}
+
+function stripRouteContext(routePath: string, locale: string, version: string) {
+  const segments = routePath.split('/').filter(Boolean);
+
+  if (version !== documentation.defaultVersion && segments[0] === version) {
+    segments.shift();
+  }
+  if (locale !== documentation.defaultLocale && segments[0] === locale) {
+    segments.shift();
+  }
+
+  return segments.length === 0 ? '/' : `/${segments.join('/')}`;
+}
+
+function versionLabel(
+  version: (typeof documentation.versions)[number],
+  locale: string,
+) {
+  const labels: Record<string, string> = version.labels;
+  return labels[locale] ?? version.id;
+}
+
+function Selector({
+  items,
+  label,
+  menuLabel,
+}: {
+  items: SelectorItem[];
+  label: string;
+  menuLabel: string;
+}) {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+
+  return (
+    <details
+      ref={detailsRef}
+      className="a3s-cli-nav__selector"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          event.currentTarget.open = false;
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.currentTarget.open = false;
+          event.currentTarget.querySelector('summary')?.focus();
+        }
+      }}
+    >
+      <summary aria-label={menuLabel}>
+        <span>{label}</span>
+        <ChevronIcon />
+      </summary>
+      <ul aria-label={menuLabel}>
+        {items.map((item) => (
+          <li key={item.id}>
+            <Link
+              aria-current={item.current ? 'page' : undefined}
+              href={item.href}
+              hrefLang={item.hrefLang}
+              lang={item.hrefLang}
+              onClick={() => {
+                if (detailsRef.current) detailsRef.current.open = false;
+              }}
+              rel={item.hrefLang ? 'alternate' : undefined}
+            >
+              <span>{item.label}</span>
+              {item.current ? <span aria-hidden="true">✓</span> : null}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export function Nav() {
-  const locale = useLang() === 'en' ? 'en' : 'zh';
-  const homeHref = withBase(locale === 'en' ? '/en/' : '/');
-  const otherLocaleHref = withBase(locale === 'en' ? '/' : '/en/');
+  const requestedLocale = useLang();
+  const locale = documentation.locales.some(
+    ({ lang }) => lang === requestedLocale,
+  )
+    ? requestedLocale
+    : documentation.defaultLocale;
+  const version = useVersion() || documentation.defaultVersion;
+  const { page } = usePage();
+  const { hash, search } = useLocation();
+  const productHomeHref = routeHref(locale, documentation.defaultVersion, '/');
+  const currentLocale = documentation.locales.find(
+    ({ lang }) => lang === locale,
+  );
+  const currentVersion = documentation.versions.find(
+    ({ id }) => id === version,
+  );
+  const currentRoutePath =
+    typeof page.routePath === 'string' ? page.routePath : '/';
+  const pureRoutePath =
+    page.pageType === '404'
+      ? '/'
+      : stripRouteContext(currentRoutePath, locale, version);
+  const routeSuffix = `${search}${hash}`;
+  const languageItems = documentation.locales.map((item) => ({
+    current: item.lang === locale,
+    href: `${routeHref(item.lang, version, pureRoutePath)}${routeSuffix}`,
+    hrefLang: item.htmlLang,
+    id: item.lang,
+    label: item.label,
+  }));
+  const versionItems = documentation.versions.map((item) => ({
+    current: item.id === version,
+    href: `${routeHref(locale, item.id, pureRoutePath)}${routeSuffix}`,
+    id: item.id,
+    label: versionLabel(item, locale),
+  }));
 
   return (
     <header className="a3s-cli-nav">
       <div className="a3s-cli-nav__inner">
-        <a className="a3s-cli-brand" href={homeHref}>
+        <Link className="a3s-cli-brand" href={productHomeHref}>
           <Mark />
           <span>A3S</span>
           <small>CLI</small>
-        </a>
+        </Link>
         <nav
           className="a3s-cli-nav__links"
           aria-label={locale === 'zh' ? '主导航' : 'Primary navigation'}
         >
-          <a href={`${homeHref}#commands`}>
+          <Link href={`${productHomeHref}#commands`}>
             {locale === 'zh' ? '命令' : 'Commands'}
-          </a>
-          <a href={`${homeHref}#components`}>
+          </Link>
+          <Link href={`${productHomeHref}#components`}>
             {locale === 'zh' ? '组件' : 'Components'}
-          </a>
-          <a href={`${homeHref}#capabilities`}>
+          </Link>
+          <Link href={`${productHomeHref}#capabilities`}>
             {locale === 'zh' ? 'Code 能力' : 'Code capabilities'}
-          </a>
-          <a href={`${homeHref}#install`}>
+          </Link>
+          <Link href={`${productHomeHref}#install`}>
             {locale === 'zh' ? '安装' : 'Install'}
-          </a>
+          </Link>
         </nav>
         <div className="a3s-cli-nav__actions">
-          <a
-            className="a3s-cli-nav__language"
-            href={otherLocaleHref}
-            hrefLang={locale === 'zh' ? 'en' : 'zh-CN'}
-          >
-            {locale === 'zh' ? 'EN' : '中文'}
-          </a>
+          <Selector
+            items={versionItems}
+            label={
+              currentVersion ? versionLabel(currentVersion, locale) : version
+            }
+            menuLabel={
+              locale === 'zh' ? '切换文档版本' : 'Switch documentation version'
+            }
+          />
+          <Selector
+            items={languageItems}
+            label={currentLocale?.shortLabel ?? locale}
+            menuLabel={locale === 'zh' ? '切换语言' : 'Switch language'}
+          />
           <a
             className="a3s-cli-nav__github"
             href="https://github.com/A3S-Lab/a3s"

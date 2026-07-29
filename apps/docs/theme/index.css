@@ -157,7 +157,7 @@ button {
 }
 
 .a3s-cli-nav__links a,
-.a3s-cli-nav__language {
+.a3s-cli-nav__selector summary {
   border-radius: 7px;
   color: var(--cli-muted);
   font-size: 13px;
@@ -173,7 +173,8 @@ button {
 }
 
 .a3s-cli-nav__links a:hover,
-.a3s-cli-nav__language:hover {
+.a3s-cli-nav__selector summary:hover,
+.a3s-cli-nav__selector[open] summary {
   background: rgba(255, 255, 255, 0.045);
   color: var(--cli-text);
 }
@@ -184,7 +185,7 @@ button {
   gap: 7px;
 }
 
-.a3s-cli-nav__language,
+.a3s-cli-nav__selector summary,
 .a3s-cli-nav__github {
   display: inline-flex;
   height: 36px;
@@ -192,11 +193,91 @@ button {
   justify-content: center;
 }
 
-.a3s-cli-nav__language {
-  min-width: 42px;
-  padding: 0 9px;
+.a3s-cli-nav__selector {
+  position: relative;
+}
+
+.a3s-cli-nav__selector summary {
+  min-width: 48px;
+  padding: 0 8px 0 10px;
+  gap: 5px;
+  cursor: pointer;
   font-family: var(--cli-mono);
   font-size: 10px;
+  list-style: none;
+  user-select: none;
+}
+
+.a3s-cli-nav__selector summary::-webkit-details-marker {
+  display: none;
+}
+
+.a3s-cli-nav__selector summary:focus-visible,
+.a3s-cli-nav__selector a:focus-visible,
+.a3s-cli-nav__github:focus-visible {
+  outline: 2px solid var(--cli-accent);
+  outline-offset: 2px;
+}
+
+.a3s-cli-nav__selector summary svg {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+  transition: transform 160ms ease;
+}
+
+.a3s-cli-nav__selector[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.a3s-cli-nav__selector ul {
+  position: absolute;
+  z-index: 90;
+  top: calc(100% + 9px);
+  right: 0;
+  min-width: 150px;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--cli-line);
+  border-radius: 9px;
+  background: rgba(15, 17, 22, 0.98);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.42);
+  list-style: none;
+  backdrop-filter: blur(18px);
+}
+
+.a3s-cli-nav__selector li {
+  margin: 0;
+  padding: 0;
+}
+
+.a3s-cli-nav__selector li a {
+  display: flex;
+  min-height: 34px;
+  padding: 0 9px;
+  border-radius: 6px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: var(--cli-muted);
+  font-size: 11px;
+  font-weight: 620;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.a3s-cli-nav__selector li a:hover,
+.a3s-cli-nav__selector li a[aria-current='page'] {
+  background: rgba(118, 169, 255, 0.09);
+  color: var(--cli-text);
+}
+
+.a3s-cli-nav__selector li a[aria-current='page'] span:last-child {
+  color: var(--cli-accent);
 }
 
 .a3s-cli-nav__github {
@@ -426,6 +507,16 @@ button {
 
   .a3s-cli-nav__links {
     display: none;
+  }
+
+  .a3s-cli-nav__actions {
+    gap: 4px;
+  }
+
+  .a3s-cli-nav__selector summary {
+    min-width: 44px;
+    padding-right: 6px;
+    padding-left: 8px;
   }
 
   .a3s-cli-brand svg {

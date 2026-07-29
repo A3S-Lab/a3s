@@ -8,6 +8,24 @@ const websiteRoot = path.resolve(
 );
 const outputRoot = path.join(websiteRoot, 'doc_build');
 const base = process.env.SITE_BASE ?? '/a3s/';
+const documentation = JSON.parse(
+  await readFile(path.join(websiteRoot, 'documentation.json'), 'utf8'),
+);
+const stableVersion = documentation.versions.find(
+  ({ channel }) => channel === 'stable',
+);
+
+if (!stableVersion) {
+  throw new Error('At least one stable documentation version is required.');
+}
+
+function routePath(version, locale, page = '') {
+  const segments = [];
+  if (version !== documentation.defaultVersion) segments.push(version);
+  if (locale !== documentation.defaultLocale) segments.push(locale);
+  if (page) segments.push(page);
+  return segments.join('/');
+}
 
 const requiredFiles = [
   'index.html',
@@ -21,6 +39,14 @@ const requiredFiles = [
   'robots.txt',
   'sitemap.xml',
 ];
+
+for (const version of documentation.versions) {
+  for (const locale of documentation.locales) {
+    const prefix = routePath(version.id, locale.lang);
+    if (prefix) requiredFiles.push(`${prefix}/index.html`);
+    requiredFiles.push(prefix ? `${prefix}/llms.txt` : 'llms.txt');
+  }
+}
 
 async function collectFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -92,12 +118,13 @@ for (const file of requiredFiles) {
   await access(path.join(outputRoot, file));
 }
 
-const requiredRoutes = [
-  'code/capabilities',
-  'code/code-intelligence',
-  'en/code/capabilities',
-  'en/code/code-intelligence',
-];
+const requiredRoutes = documentation.versions.flatMap((version) =>
+  documentation.locales.flatMap((locale) =>
+    ['code/capabilities', 'code/code-intelligence'].map((page) =>
+      routePath(version.id, locale.lang, page),
+    ),
+  ),
+);
 
 for (const route of requiredRoutes) {
   if (!(await resolvesToBuiltFile(route))) {
@@ -113,6 +140,10 @@ const [
   chineseIntelligence,
   englishCapabilities,
   englishIntelligence,
+  stableChinese,
+  stableEnglish,
+  stableChineseCapabilities,
+  stableEnglishCapabilities,
 ] = await Promise.all([
   readFile(path.join(outputRoot, 'index.html'), 'utf8'),
   readFile(path.join(outputRoot, 'en/index.html'), 'utf8'),
@@ -121,6 +152,10 @@ const [
   readBuiltRoute('code/code-intelligence'),
   readBuiltRoute('en/code/capabilities'),
   readBuiltRoute('en/code/code-intelligence'),
+  readBuiltRoute(stableVersion.id),
+  readBuiltRoute(`${stableVersion.id}/en`),
+  readBuiltRoute(`${stableVersion.id}/code/capabilities`),
+  readBuiltRoute(`${stableVersion.id}/en/code/capabilities`),
 ]);
 
 for (const [locale, html] of [
@@ -157,6 +192,26 @@ for (const marker of [
 ]) {
   if (!chinese.includes(marker)) {
     throw new Error('Chinese homepage is missing: ' + marker);
+  }
+}
+
+for (const [name, html, marker] of [
+  ['Chinese stable landing page', stableChinese, '文档快照'],
+  ['English stable landing page', stableEnglish, 'documentation snapshot'],
+]) {
+  if (!html.includes(marker)) {
+    throw new Error(`${name} is missing: ${marker}`);
+  }
+}
+
+for (const [name, html, lang] of [
+  ['Chinese homepage', chinese, 'zh'],
+  ['English homepage', english, 'en'],
+  ['Chinese stable landing page', stableChinese, 'zh'],
+  ['English stable landing page', stableEnglish, 'en'],
+]) {
+  if (!html.includes(`<html lang="${lang}">`)) {
+    throw new Error(`${name} has the wrong HTML language.`);
   }
 }
 
@@ -221,12 +276,85 @@ for (const [name, html, markers] of [
   }
 }
 
-for (const route of [
-  'https://a3s-lab.github.io/a3s/code/capabilities',
-  'https://a3s-lab.github.io/a3s/code/code-intelligence',
-  'https://a3s-lab.github.io/a3s/en/code/capabilities',
-  'https://a3s-lab.github.io/a3s/en/code/code-intelligence',
+for (const [name, html, markers] of [
+  [
+    'Latest Chinese capability navigation',
+    chineseCapabilities,
+    [
+      'aria-label="切换文档版本"',
+      'aria-label="切换语言"',
+      'href="/a3s/en/code/capabilities"',
+      `href="/a3s/${stableVersion.id}/code/capabilities"`,
+    ],
+  ],
+  [
+    'Latest English capability navigation',
+    englishCapabilities,
+    [
+      'aria-label="Switch documentation version"',
+      'aria-label="Switch language"',
+      'href="/a3s/code/capabilities"',
+      `href="/a3s/${stableVersion.id}/en/code/capabilities"`,
+    ],
+  ],
+  [
+    'Stable Chinese capability navigation',
+    stableChineseCapabilities,
+    [
+      'href="/a3s/code/capabilities"',
+      `href="/a3s/${stableVersion.id}/en/code/capabilities"`,
+    ],
+  ],
+  [
+    'Stable English capability navigation',
+    stableEnglishCapabilities,
+    [
+      'href="/a3s/en/code/capabilities"',
+      `href="/a3s/${stableVersion.id}/code/capabilities"`,
+    ],
+  ],
 ]) {
+  for (const marker of markers) {
+    if (!html.includes(marker)) {
+      throw new Error(`${name} is missing: ${marker}`);
+    }
+  }
+}
+
+for (const [name, html, routePrefix] of [
+  ['Latest Chinese capability page', chineseCapabilities, ''],
+  ['Latest English capability page', englishCapabilities, ''],
+  [
+    'Stable Chinese capability page',
+    stableChineseCapabilities,
+    `${stableVersion.id}/`,
+  ],
+  [
+    'Stable English capability page',
+    stableEnglishCapabilities,
+    `${stableVersion.id}/`,
+  ],
+]) {
+  for (const alternate of [
+    `hreflang="zh" href="https://a3s-lab.github.io/a3s/${routePrefix}code/capabilities.html"`,
+    `hreflang="en" href="https://a3s-lab.github.io/a3s/${routePrefix}en/code/capabilities.html"`,
+  ]) {
+    if (!html.includes(alternate)) {
+      throw new Error(`${name} is missing alternate metadata: ${alternate}`);
+    }
+  }
+}
+
+const expectedSitemapRoutes = documentation.versions.flatMap((version) =>
+  documentation.locales.flatMap((locale) =>
+    ['', 'code/capabilities', 'code/code-intelligence'].map((page) => {
+      const route = routePath(version.id, locale.lang, page);
+      return `https://a3s-lab.github.io/a3s/${route}`;
+    }),
+  ),
+);
+
+for (const route of expectedSitemapRoutes) {
   if (!sitemap.includes(route)) {
     throw new Error('Sitemap is missing: ' + route);
   }
@@ -266,6 +394,7 @@ const css = (
 
 for (const selector of [
   '.a3s-cli-nav',
+  '.a3s-cli-nav__selector',
   '.a3s-cli-home',
   '.cli-command-row',
   '.cli-product-grid',
@@ -336,7 +465,7 @@ if (brokenReferences.length > 0) {
 }
 
 console.log(
-  'Validated the bilingual CLI site across ' +
+  'Validated the localized, versioned CLI site across ' +
     htmlFiles.length +
     ' HTML pages.',
 );

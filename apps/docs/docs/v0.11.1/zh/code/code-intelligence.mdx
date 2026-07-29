@@ -1,0 +1,234 @@
+---
+title: Code Intelligence
+description: 原生 saved-file symbols、语义导航、诊断与编码优化闭环。
+---
+
+# Code Intelligence
+
+A3S Code 内置 workspace-scoped Code Intelligence，用于语义级代码查询。它管理
+language-server 进程、规范化结果，并为 Agent 工具、`a3s code` 终端编辑器和 A3S
+Web 提供同一套 saved-file 契约。
+
+这不只是语法高亮。一次 coding Turn 可以先按语义定位 symbol，只读取需要的源码范围，
+再执行带保护的修改并验证结果，不必用无边界的仓库扫描填满模型上下文。
+
+## 能力概览
+
+| Surface        | 当前能力                                                                                |
+| -------------- | --------------------------------------------------------------------------------------- |
+| Agent 工具     | 只读的 `code_symbols`、`code_navigation` 与 `code_diagnostics`。                        |
+| `a3s code` TUI | `/ide` 提供 symbols、定义、声明、引用、实现、诊断和可跳转结果列表。                     |
+| A3S Web        | Monaco 使用同一套 saved-file outline、diagnostics 与 navigation service。               |
+| HTTP           | Typed read-only endpoints 提供状态、outline、symbol search、navigation 与 diagnostics。 |
+
+这项服务原生挂在 `WorkspaceServices` 上，与其它能力共享 workspace manifest、
+filesystem、路径校验、cancellation 和只读查询 lane。它不会再创建一套平行文件索引、
+编辑路径或 session store。
+
+## 支持的语言
+
+当前内置 profiles 是明确且有限的：
+
+| Profile                 | 源文件                       | Project markers                  | Runtime                                                                            |
+| ----------------------- | ---------------------------- | -------------------------------- | ---------------------------------------------------------------------------------- |
+| Rust                    | `.rs`                        | `Cargo.toml`                     | `rust-analyzer`                                                                    |
+| TypeScript / JavaScript | `.ts`、`.tsx`、`.js`、`.jsx` | `package.json`、`tsconfig*.json` | Workspace TypeScript SDK 加 `typescript-language-server`，或 TypeScript 7 原生 LSP |
+
+Project marker 可以出现在任意目录层级。混合 Rust 与 TypeScript 的 monorepo 会获得相互
+独立的 language runtimes，并去重 project folders。Marker topology 改变时可以替换
+runtime；普通 saved source 修改会复用现有进程并重新同步文档。
+
+Language runtimes 按需启动。查询前先安装项目需要的 runtime：
+
+```bash
+# Rust
+rustup component add rust-analyzer
+
+# 使用经典 server 的 TypeScript / JavaScript 项目
+npm install --global typescript-language-server typescript
+```
+
+对于 TypeScript 与 JavaScript，A3S Code 会搜索 package-local 与 hoisted 位置中的
+TypeScript SDK。经典 SDK 通过 `tsserver.path` 交给 server；project-local
+TypeScript 7 SDK 可以使用原生 LSP；`PATH` 中的 executable 是最终回退。
+
+缺少 executable 只会让对应 language profile 降级。文件工具、编辑、Agent session
+以及另一个可用语言仍会继续工作。
+
+## Agent 工具
+
+三个工具的 JSON Schema 都会拒绝未知字段，并同时返回可读输出与结构化 metadata。
+
+### `code_symbols`
+
+对单个 saved document 使用 `outline`，或用 `search` 搜索 workspace symbols。
+
+| 参数        | 类型    | 必填           | 契约                                     |
+| ----------- | ------- | -------------- | ---------------------------------------- |
+| `operation` | string  | 是             | `outline` 或 `search`。                  |
+| `path`      | string  | `outline` 必填 | Saved workspace-relative document path。 |
+| `query`     | string  | `search` 必填  | 非空 semantic symbol query。             |
+| `limit`     | integer | 否             | 仅 search；默认 `100`，范围 `1`–`500`。  |
+
+```json
+{
+  "operation": "outline",
+  "path": "src/lib.rs"
+}
+```
+
+```json
+{
+  "operation": "search",
+  "query": "WorkspaceClient",
+  "limit": 50
+}
+```
+
+Outline 会保留 symbol hierarchy、kind、完整 range、selection range、可选 detail 与
+children。Workspace search 返回 name、kind、container 与 location。
+
+### `code_navigation`
+
+从 saved document 中的一个位置解析语义 location。
+
+| 参数        | 类型    | 必填 | 契约                                                             |
+| ----------- | ------- | ---- | ---------------------------------------------------------------- |
+| `operation` | string  | 是   | `definition`、`declaration`、`references` 或 `implementations`。 |
+| `path`      | string  | 是   | Saved workspace-relative document path。                         |
+| `line`      | integer | 是   | 从 0 开始的行号。                                                |
+| `character` | integer | 是   | 从 0 开始的 UTF-16 code-unit offset，不是 UTF-8 byte offset。    |
+
+```json
+{
+  "operation": "definition",
+  "path": "src/lib.rs",
+  "line": 12,
+  "character": 8
+}
+```
+
+该工具只返回 locations，不返回 source text。需要实现源码时，应继续对返回位置使用
+`read`。
+
+### `code_diagnostics`
+
+传入 saved document path 查询单文件诊断；省略 `path` 则执行有边界的 workspace
+query。
+
+```json
+{ "path": "src/lib.rs" }
+```
+
+```json
+{}
+```
+
+对 document query 而言，空 `items` 表示 diagnostics 已经返回并清空。Workspace
+query 会分别启动相关 language profiles；即使一个语言不可用，其它语言仍可以返回
+diagnostics，同时结果会标记为 `truncated`。
+
+## 结果证据
+
+所有语义结果共用同一种 envelope：
+
+| 字段                    | 含义                                                        |
+| ----------------------- | ----------------------------------------------------------- |
+| `items`                 | 当前操作返回的 symbols、locations 或 diagnostics。          |
+| `truncated`             | 仍有结果或 language coverage 超出本次有界响应。             |
+| `workspace_revision`    | 查询观察到的 workspace manifest revision。                  |
+| `document.revision`     | Document-scoped query 使用的 saved document 单调 revision。 |
+| `document.content_hash` | 查询所用 saved contents 的 opaque hash。                    |
+| `document.stale`        | 查询执行期间 saved file 发生了变化。                        |
+
+看到 `truncated: true` 时，应理解为部分覆盖，而不是“已经证明不存在其它结果”。源码
+range 是 half-open，position 使用从 0 开始的 UTF-16。
+
+## `/ide` 中的 Code Intelligence
+
+运行 `/ide`，打开受支持且已经保存的源文件，按 `:` 后提交命令：
+
+| 命令                     | 结果                                                         |
+| ------------------------ | ------------------------------------------------------------ |
+| `:status`                | Aggregate/per-language runtime 状态与协商后的 capabilities。 |
+| `:symbols`               | 当前 open saved document 的层级 symbols。                    |
+| `:symbols <query>`       | 有边界的 workspace symbol search。                           |
+| `:definition`            | 当前 cursor 位置的定义。                                     |
+| `:declaration`           | 当前 cursor 位置的声明。                                     |
+| `:references`            | 当前 cursor 位置的引用。                                     |
+| `:implementations`       | 当前 cursor 位置的实现。                                     |
+| `:diagnostics`           | 当前 open saved document 的诊断。                            |
+| `:diagnostics workspace` | 跨受支持 saved files 的有界诊断。                            |
+
+结果列表可以导航。使用 Up/Down 或 `j`/`k`、Page Up/Page Down、Home/End 或
+`g`/`G` 移动，按 Enter 打开选中的 saved-file location，按 Esc 关闭或取消。
+
+查询有意使用 saved file。编辑器 buffer 为 dirty 时，TUI 会明确标出结果基于 saved
+version；它不会为了跳转到另一个文件而丢弃未保存 buffer。
+
+## A3S Web 与 Monaco
+
+Monaco 把编辑器操作映射到同一服务：
+
+| 操作             | Monaco 交互                                 |
+| ---------------- | ------------------------------------------- |
+| Document outline | Quick outline action。                      |
+| Definition       | `F12` 或 navigation context menu。          |
+| References       | `Shift+F12` 或 navigation context menu。    |
+| Implementation   | `Ctrl/Cmd+F12` 或 navigation context menu。 |
+| Declaration      | Navigation context menu。                   |
+| Diagnostics      | 支持时自动显示 saved-file markers。         |
+
+状态 surface 会区分 ready、starting、degraded、unavailable、stale 与 saved-version。
+某个语言失败时会回退到本地编辑，而不是禁用整个 editor。
+
+背后的只读 HTTP endpoints 包括：
+
+```text
+GET /v1/workspace/code-intelligence/status
+GET /v1/workspace/code-intelligence/outline
+GET /v1/workspace/code-intelligence/symbols
+GET /v1/workspace/code-intelligence/navigation
+GET /v1/workspace/code-intelligence/diagnostics
+```
+
+路径必须相对于 served workspace。Absolute path、traversal 与 symlink escape 都会被
+拒绝。
+
+## 编码优化闭环
+
+Code Intelligence 是 repository workflow 中的 semantic-locate 阶段：
+
+```text
+semantic locate       bounded evidence       guarded mutation       verification
+code_* tools      →   read / grep / glob  → edit / patch / write → tests / checks
+```
+
+周边闭环还包括有边界的 read/search、支持 compare-and-swap 的 edits、strict patches、
+可续写的大文件生成，以及结构化 verification evidence。Semantic tools 保持只读，不
+暴露 refactor 或 mutation 操作。
+
+常规编码 Turn 会把 Code Intelligence tools 保留在核心工具集中。渐进式披露会延后
+无关专用 schemas，但不会隐藏理解 repository 所需的语义工具。完整边界参见
+[A3S Code 能力边界](./capabilities)。
+
+## Runtime 与安全
+
+- Concurrent startup 使用 single-flight；同一 canonical workspace 的 sessions 可以
+  复用 runtime。
+- Document symbols、navigation 与 diagnostics 都有边界并支持 cancellation。
+- 退出的 language process 可以在下一次查询时重启。
+- Language-server output 是不可信输入。非法 frame、URI 与 workspace 外位置会变成
+  typed errors。
+- Rust profile 会为只读语义查询禁用 build scripts、procedural macros 与自动 check。
+- `read`、`write`、`edit` 和 `patch` 仍是唯一源码与 mutation path。
+
+## 排查问题
+
+| 现象                       | 检查项                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------- |
+| Runtime 一直 unavailable   | 运行 `:status`，确认对应 language runtime 已安装。                                            |
+| 一个语言可用，另一个不可用 | 查看 per-language status；混合 workspace 会独立降级。                                         |
+| 结果没有包含未保存文本     | 保存文件；语义查询有意读取 saved contents。                                                   |
+| `truncated` 为 true        | 缩小 symbol query 或 diagnostic scope 后再下结论。                                            |
+| 不支持当前文件类型         | 继续使用 `grep`、`glob` 与 `read`；内置语义 profiles 当前覆盖 Rust 与 TypeScript/JavaScript。 |

@@ -1,0 +1,43 @@
+{
+  "defaultLocale": "zh",
+  "defaultVersion": "latest",
+  "locales": [
+    {
+      "lang": "zh",
+      "label": "简体中文",
+      "shortLabel": "中文",
+      "htmlLang": "zh-CN",
+      "title": "A3S CLI",
+      "description": "用一个 CLI 安装、配置和运行 A3S 本地工具链。"
+    },
+    {
+      "lang": "en",
+      "label": "English",
+      "shortLabel": "EN",
+      "htmlLang": "en",
+      "title": "A3S CLI",
+      "description": "Install, configure, and run the A3S local toolchain from one command-line interface."
+    }
+  ],
+  "versions": [
+    {
+      "id": "latest",
+      "labels": {
+        "zh": "最新",
+        "en": "Latest"
+      },
+      "channel": "current",
+      "sourceRef": "main"
+    },
+    {
+      "id": "v0.11.1",
+      "labels": {
+        "zh": "v0.11.1",
+        "en": "v0.11.1"
+      },
+      "channel": "stable",
+      "sourceRef": "v0.11.1",
+      "releasedAt": "2026-07-29"
+    }
+  ]
+}
