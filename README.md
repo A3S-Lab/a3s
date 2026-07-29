@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="assets/readme/hero.svg" width="100%" alt="A3S routes one local CLI into governed Code, Web and Work, Research, Use, Box, Bench, and composable Rust foundations">
+  <img src="assets/readme/hero.svg" width="100%" alt="A3S CLI routes bundled Code, Web, and Research hosts plus managed Box, Search, Use, and Bench components">
 </p>
 
 <p align="center">
-  <strong>A Rust-native platform for governed agents, local AI work, and composable infrastructure.</strong>
+  <strong>One Rust CLI for A3S Code, Web, Research, shared configuration, and managed components.</strong>
 </p>
 
 <p align="center">
@@ -25,10 +25,10 @@
 
 ---
 
-A3S combines a unified `a3s` command with independently useful Rust products
-and libraries. Start with a governed local coding agent, then add browser work,
-knowledge compilation, research, isolated workloads, evaluation, or service
-infrastructure only when the workflow needs them.
+A3S is the root-owned `a3s` CLI and the integration snapshot for independently
+versioned A3S products and libraries. The CLI bundles Code, the Web host, and
+the Research runner; it also manages configuration, accounts, models, component
+lifecycle, diagnostics, and upgrades.
 
 ## Start with one command
 
@@ -43,9 +43,9 @@ cd /path/to/project
 a3s code
 ~~~
 
-Local Code, Web, configuration, component management, and Bench workflows do not
-require an A3S OS login. A model-backed session still needs a configured model
-provider or compatible local account.
+The local CLI, Code, Web, Research, configuration, and component inspection do
+not require an A3S OS login. A model-backed session still needs a configured
+model provider or compatible local account.
 
 After installation, these commands show the active paths and create a starter
 [A3S Agent Configuration Language](crates/acl/) configuration:
@@ -69,12 +69,12 @@ command routing. Product behavior remains with the component that implements it.
 | Surface | First action | Delivery boundary |
 | --- | --- | --- |
 | **Code** | `a3s code` | Bundled governed agent runtime and terminal workspace |
-| **Web + Work** | `a3s web` | Local browser workspace; full release bundles carry matching Web assets, while API-only mode needs no frontend |
+| **Web** | `a3s web` | Bundled local Web API and release assets; Work is the default workbench at `#home`, Knowledge is a separate built-in destination, and `--api-only` needs no frontend |
 | **Research** | `a3s code research --web "..."` | Bundled typed research runner with run-scoped Markdown and editable HTML artifacts |
-| **Box** | `a3s box ps` | Optional isolated-workload product; eligible first use may install it visibly |
-| **Bench** | `a3s install bench` | Optional evaluation product with explicit installation |
-| **Search** | `a3s install search` | Optional meta-search product with explicit installation |
-| **Use** | `a3s install use` | Optional capability facade; Browser and OCR routes are built in from independently versioned repositories, while Office and other domains keep independent package contracts |
+| **Box** | `a3s box ps` | Managed `a3s-box` product; eligible first use may install it visibly |
+| **Search** | `a3s search …` | Managed search product with native AnySearch and Tavily providers, conventional HTTP/RSS retrieval, and optional Browser rendering |
+| **Use** | `a3s use capabilities --json` | Managed capability facade with built-in Browser and OCR routes, a component-backed Box route, and external Office and Science packages |
+| **Bench** | `a3s bench …` | Command and source are implemented; a compatible umbrella-CLI component release is not yet published, and local execution currently requires Docker |
 | **Cloud** | Inspect the locked [Cloud compatibility manifest](compat/cloud-stack.acl) | Self-hosted control-plane project with separately documented maturity gates |
 
 A catalog entry describes discovery and installation policy. It is not proof
@@ -104,20 +104,21 @@ a3s code exec "Summarize the public API and run its focused tests."
 The complete TUI, permission, session, and component command reference lives in
 the [CLI reference](docs/cli-reference.md).
 
-### Local Web, Work, and knowledge
+### A3S Web
 
-`a3s web` serves the local Code workspace and the Work product when compatible
-assets are available. The current Web surface combines task conversations,
-Monaco editing, Git review, local file management, knowledge-library creation
-and compilation workflows, and native document, spreadsheet, presentation, and
-PDF work backed by A3S Office.
+`a3s web` serves the local A3S Web application when compatible assets are
+available. Work is Web's single default workbench at `#home`, not a parallel
+product. Knowledge is a separate built-in destination. Research and Finance
+destinations are reviewed A3S Use package contributions rather than hardcoded
+Web products.
 
-Work can keep a resizable live-preview panel beside the file manager or code
-editor. It previews static sites with debounced workspace reloads, loopback
-development servers, text, images, PDFs, and Office files without opening a
-blocking dialog. Static-site files remain confined to the active workspace and
-run in a sandboxed, opaque-origin frame; URL targets are limited to localhost
-and loopback addresses.
+The default workbench combines task conversations, Monaco editing, Git review,
+local file management, and a resizable live-preview panel. It previews static
+sites with debounced workspace reloads, loopback development servers, text,
+images, PDFs, and Office files without opening a blocking dialog. Static-site
+files remain confined to the active workspace and run in a sandboxed,
+opaque-origin frame; URL targets are limited to localhost and loopback
+addresses.
 
 ~~~bash
 a3s web
@@ -151,11 +152,19 @@ a confident answer.
 
 ### Typed capabilities and components
 
-A3S Use owns the built-in Browser/OCR route projection plus the lifecycle and
-routing layer for external capability packages. The independent Browser and OCR
-repositories own their provider contracts, implementations, tests, and release
-assets. External packages retain standard native CLI, MCP, and/or `SKILL.md`
-surfaces rather than depending on a private extension protocol.
+A3S Use owns the built-in Browser/OCR route projection, a component-backed Box
+route, and the lifecycle and routing layer for external capability packages.
+The independent Browser and OCR repositories own their provider contracts,
+implementations, tests, and release assets. Office and Science remain external
+packages with native CLI, MCP, and/or `SKILL.md` surfaces rather than depending
+on a private extension protocol.
+
+A3S Search ships native AnySearch and Tavily providers, conventional HTTP/RSS
+retrieval, and optional Browser rendering. A3S Office currently exposes five
+browser-native surfaces plus native CLI, MCP, and Skill automation; it remains
+pre-1.0 and its first npm release has not been published. A3S Science currently
+indexes 472 catalog entries, including 35 A3S-native Skills and 25 A3S-native
+MCP resources distributed through a TUF-signed package registry.
 
 ~~~bash
 a3s list
@@ -176,10 +185,13 @@ component-owned files. They are not a general-purpose package manager.
 ### Isolation, evaluation, and services
 
 A3S Box runs Linux OCI workloads through Docker-like MicroVM workflows on
-supported virtualization hosts. Bench binds a Task, packaged Candidate adapter,
-and task-owned Judge into an identity-bound result. Runtime, Flow, Event, Lane,
-Memory, ORM, Boot, and Gateway can also be used independently as lower-level
-building blocks.
+supported virtualization hosts and exposes local SDKs for Rust, Python,
+TypeScript, and Go. Bench binds a Task, packaged Candidate adapter, and
+task-owned Judge into an identity-bound result. Its local path currently
+requires Docker and labels results `local_unofficial`; the source is present,
+but the compatible umbrella-CLI component release is still pending. Runtime,
+Flow, Event, Lane, Memory, ORM, Boot, and Gateway can also be used independently
+as lower-level building blocks.
 
 Isolation is explicit rather than implied: installing the umbrella CLI does not
 make Docker, a hypervisor, browser engine, model, broker, database, or external
@@ -193,7 +205,7 @@ A3S is a collection of composable boundaries, not a mandatory vertical stack:
 terminal · browser · Rust / Node.js / Python SDKs
                          |
                  product hosts
-        CLI · Code Web · Bench · Cloud · services
+        CLI · Code · Web · Research · Bench · Cloud · services
                          |
        governed agents · capabilities · durable state
         Code / Use       Flow / Event / Lane / Memory
@@ -205,8 +217,8 @@ terminal · browser · Rust / Node.js / Python SDKs
 
 The architecture follows five rules:
 
-1. **Hosts own policy.** CLI, Web, Bench, and Cloud decide which models, tools,
-   providers, permissions, and workflows are active.
+1. **Hosts own policy.** CLI, Code, Web, Research, Bench, and Cloud decide which
+   models, tools, providers, permissions, and workflows are active.
 2. **Core contracts stay replaceable.** Runtime drivers, event providers, memory
    stores, SQL executors, HTTP adapters, and capability providers use explicit
    interfaces.
@@ -231,13 +243,14 @@ type, or parsed configuration from being mistaken for a finished deployment.
 | Area | Current boundary |
 | --- | --- |
 | Code | Model execution requires a configured provider or compatible account; remote OS actions require login |
-| Web + Work | Local-first and loopback by default; Office format fidelity depends on the exact editor and source feature |
+| Web | Local-first and loopback by default; Work is the default workbench, Knowledge is a separate built-in destination, and Office format fidelity depends on the exact editor and source feature |
 | Research | Evidence is admitted only from fetched text or validated workspace sources; local-only mode remains network-free |
 | Box | Requires a supported host and virtualization backend; platform-specific CRI, TEE, and Windows paths have separate gates |
-| Bench | The local path requires Docker and produces `local_unofficial` results; official evaluation requires matching admission and Runtime evidence |
+| Bench | The source and `a3s bench …` route exist, but a compatible component release is not yet published; local execution requires Docker and produces `local_unofficial` results |
 | Use | Domain readiness depends on installed runtimes and model assets; external packages own their compatibility |
-| Cloud | Delivered, experimental, and planned behavior is recorded by the [locked Cloud compatibility manifest](compat/cloud-stack.acl) and the Cloud repository |
-| OCI Runtime | Experimental: every current platform driver remains `probe-only`; host detection is not workload-launch support |
+| Office | Pre-1.0; five browser-native surfaces and native CLI/MCP/Skill automation exist, while the first npm package release is still pending |
+| Cloud | R0–E0 is the verified cumulative baseline; G0, C0, and H0 are in progress; P0, A0, S0, and I0 remain planned in the [locked Cloud compatibility manifest](compat/cloud-stack.acl) |
+| OCI Runtime | The default inventory remains `probe-only`; an explicit native Linux development path is experimental and is not the default workload-launch claim |
 | Infrastructure libraries | Optional features expose integrations; external brokers, stores, providers, and services must still be operated |
 
 A3S is also not one root Cargo workspace, one monolithic binary, or one shared
@@ -331,17 +344,18 @@ distribution assets.
 | --- | --- |
 | [A3S CLI](src/) | Root-owned umbrella `a3s` command, Code TUI host, local Web API, configuration, authentication, and component lifecycle |
 | [A3S Code](crates/code/) | Governed async agent runtime with Rust Core plus Node.js and Python SDKs |
-| [A3S Web](apps/web/) | Local Code, Work, file, knowledge, Office, and research browser surfaces |
+| [A3S Web](apps/web/) | Local browser product with Work as the default `#home` workbench, a separate Knowledge destination, and reviewed Use-package destinations |
+| [A3S Desktop](apps/desktop/) | Independently versioned native desktop host tracked by the integration snapshot |
 | [A3S Windhole](apps/windhole/) | Local visual laboratory for A3S Bench catalog, run, result, validation, and Doctor workflows |
-| [A3S Box](crates/box/) | Docker-like MicroVM product for Linux OCI workloads |
-| [A3S Bench](crates/bench/) | Reproducible Task, Candidate, and Judge evaluation |
-| [A3S Search](crates/search/) | Multi-engine retrieval, ranking, deduplication, and optional browser rendering |
+| [A3S Box](crates/box/) | Docker-like MicroVM product for Linux OCI workloads with Rust, Python, TypeScript, and Go local SDKs |
+| [A3S Bench](crates/bench/) | Reproducible Task, Candidate, and Judge evaluation; source implemented, compatible umbrella component release pending |
+| [A3S Search](crates/search/) | Native AnySearch and Tavily providers, conventional HTTP/RSS retrieval, ranking, deduplication, and optional Browser rendering |
 | [A3S Browser](crates/browser/) | Provider-oriented typed rendering plus the process-isolated automation driver, Skills, and Dashboard |
 | [A3S OCR](crates/ocr/) | Object-safe `OcrProvider` contract with bounded source evidence and PP-OCRv6 as the default local provider |
-| [A3S Use](crates/use/) | Built-in Browser/OCR route facade and standard lifecycle for external capability packages |
-| [A3S Office](packages/office/) | Native OOXML engine, Office editors, CLI, MCP, Skill, and A3S Use package |
-| [A3S Science](packages/science/) | Independently versioned scientific Skills, MCP data services, compute workflows, and research tooling |
-| [A3S Cloud](apps/cloud/) | Self-hosted control plane for desired state, durable operations, nodes, and verified OCI deployment |
+| [A3S Use](crates/use/) | Built-in Browser/OCR routes, component-backed Box routing, and standard lifecycle for external packages |
+| [A3S Office](packages/office/) | Pre-1.0 Office package with five browser-native surfaces plus native CLI, MCP, and Skill automation |
+| [A3S Science](packages/science/) | TUF-signed 472-entry catalog with 35 A3S-native Skills, 25 A3S-native MCP resources, and scientific research tooling |
+| [A3S Cloud](apps/cloud/) | Self-hosted control plane with R0–E0 verified, G0/C0/H0 in progress, and later maturity gates planned |
 | [A3S CLI website](apps/docs/) | Bilingual Rspress product site for installing, configuring, diagnosing, and launching the root-owned `a3s` CLI |
 
 The [CLI repository migration record](docs/cli-repository-migration.md)
@@ -353,7 +367,7 @@ main-repository release ownership.
 | Project | Role |
 | --- | --- |
 | [A3S Runtime](crates/runtime/) | Provider-neutral finite Task and long-running Service lifecycle |
-| [A3S OCI Runtime](crates/oci-runtime/) | Experimental cross-platform OCI lifecycle and isolation driver foundation |
+| [A3S OCI Runtime](crates/oci-runtime/) | Probe-only default inventory with an explicit experimental native Linux development path |
 | [A3S Flow](crates/flow/) | Event-sourced durable workflows with replay-safe steps, waits, retries, and workers |
 | [A3S Event](crates/event/) | Provider-neutral publish, subscribe, history, and persistence |
 | [A3S Lane](crates/lane/) | Priority-lane async scheduling with bounded concurrency and retry |

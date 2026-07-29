@@ -78,11 +78,26 @@ const [chinese, english, sitemap] = await Promise.all([
   readFile(path.join(outputRoot, 'sitemap.xml'), 'utf8'),
 ]);
 
+for (const [locale, html] of [
+  ['Chinese', chinese],
+  ['English', english],
+]) {
+  const openingScripts = html.match(/<script(?:\s|>)/g)?.length ?? 0;
+  const closingScripts = html.match(/<\/script>/g)?.length ?? 0;
+  if (openingScripts !== closingScripts) {
+    throw new Error(
+      `${locale} homepage has ${openingScripts} script openings but ${closingScripts} closings.`,
+    );
+  }
+}
+
 for (const marker of [
   '用一个 CLI 安装和运行 A3S',
   'a3s code',
   'a3s doctor',
   'A3S CLI',
+  'Code、Web 和 Research 随 CLI 提供',
+  'Work 是 #home 默认工作台',
 ]) {
   if (!chinese.includes(marker)) {
     throw new Error('Chinese homepage is missing: ' + marker);
@@ -93,9 +108,22 @@ for (const marker of [
   'Install and run A3S from one CLI',
   'One entry point, independent products',
   'a3s upgrade --all --yes',
+  'Code, Web, and Research ship with the CLI',
+  'Work is the default #home workbench',
+  'Release pending',
 ]) {
   if (!english.includes(marker)) {
     throw new Error('English homepage is missing: ' + marker);
+  }
+}
+
+for (const staleName of [
+  'Web + Work',
+  'The CLI has three jobs',
+  'CLI 只做三件事',
+]) {
+  if (chinese.includes(staleName) || english.includes(staleName)) {
+    throw new Error('Homepage contains stale product copy: ' + staleName);
   }
 }
 

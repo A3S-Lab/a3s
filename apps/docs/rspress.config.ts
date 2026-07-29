@@ -39,14 +39,8 @@ export default defineConfig({
     ['meta', { property: 'og:site_name', content: 'A3S CLI' }],
     ['meta', { property: 'og:image', content: `${siteUrl}social-card.svg` }],
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
-    [
-      'script',
-      {
-        async: '',
-        src: 'https://www.googletagmanager.com/gtag/js?id=G-VWVNY8DWPG',
-      },
-    ],
-    ['script', { src: `${base}analytics.js` }],
+    '<script async src="https://www.googletagmanager.com/gtag/js?id=G-VWVNY8DWPG"></script>',
+    `<script src="${base}analytics.js"></script>`,
     (route) => [
       'link',
       {

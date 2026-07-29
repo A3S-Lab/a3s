@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 460" role="img" aria-labelledby="title desc">
-  <title id="title">A3S — one entry point for governed AI work</title>
-  <desc id="desc">The a3s command branches into Code, Web and Work, Research, Use, Box, and Bench, with explicit policy and composable Rust foundations underneath.</desc>
+  <title id="title">A3S — one CLI for bundled hosts and managed components</title>
+  <desc id="desc">The a3s command runs bundled Code, Web, and Research hosts; manages Box, Search, and Use; and exposes the pending Bench component boundary.</desc>
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1200" y2="460" gradientUnits="userSpaceOnUse">
       <stop stop-color="#101118"/>
@@ -28,7 +28,7 @@
       <path d="M13 75C31 62 44 63 58 72C72 81 88 78 106 61" stroke="url(#brand)" stroke-width="9"/>
     </g>
 
-    <text x="180" y="72" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700" letter-spacing="2">RUST-NATIVE AGENT PLATFORM</text>
+    <text x="180" y="72" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="18" font-weight="700" letter-spacing="2">RUST-NATIVE A3S CLI</text>
     <text x="180" y="190" fill="#f2f3f5" font-size="88" font-weight="760" letter-spacing="-4">A3S</text>
     <text x="58" y="243" fill="#f2f3f5" font-size="35" font-weight="720" letter-spacing="-1.1">One entry point.</text>
     <text x="58" y="286" fill="url(#brand)" font-size="35" font-weight="720" letter-spacing="-1.1">Explicit boundaries.</text>
@@ -55,36 +55,41 @@
     </g>
     <g transform="translate(772 76)">
       <rect width="166" height="78" rx="10" fill="#171820" stroke="#4034cc" stroke-width="2"/>
-      <text x="20" y="31" fill="#8c83ff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">02 / LOCAL</text>
-      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Web + Work</text>
+      <text x="20" y="31" fill="#8c83ff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">02 / BUNDLED</text>
+      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Web</text>
     </g>
     <g transform="translate(954 76)">
       <rect width="188" height="78" rx="10" fill="#171820" stroke="#5420bd" stroke-width="2"/>
-      <text x="20" y="31" fill="#ad87ff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">03 / EVIDENCE</text>
+      <text x="20" y="31" fill="#ad87ff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">03 / BUNDLED</text>
       <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Research</text>
     </g>
 
     <g transform="translate(590 174)">
       <rect width="166" height="78" rx="10" fill="#171820" stroke="#3a3d48"/>
-      <text x="20" y="31" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">04 / CAPABILITY</text>
-      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Use</text>
+      <text x="20" y="31" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">04 / MANAGED</text>
+      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Box</text>
     </g>
     <g transform="translate(772 174)">
       <rect width="166" height="78" rx="10" fill="#171820" stroke="#3a3d48"/>
-      <text x="20" y="31" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">05 / ISOLATE</text>
-      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Box</text>
+      <text x="20" y="31" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">05 / MANAGED</text>
+      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Search</text>
     </g>
     <g transform="translate(954 174)">
       <rect width="188" height="78" rx="10" fill="#171820" stroke="#3a3d48"/>
-      <text x="20" y="31" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">06 / EVALUATE</text>
-      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Bench</text>
+      <text x="20" y="31" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700">06 / MANAGED</text>
+      <text x="20" y="61" fill="#f2f3f5" font-size="23" font-weight="720">Use</text>
     </g>
 
-    <path d="M562 115H578M562 213H578M562 310H578M756 115H772M938 115H954M756 213H772M938 213H954" stroke="#3a3d48" stroke-width="2"/>
+    <path d="M562 115H578M562 213H578M562 310H578M756 115H772M938 115H954M756 213H772M938 213H954M756 310H772" stroke="#3a3d48" stroke-width="2"/>
 
-    <rect x="590" y="276" width="552" height="68" rx="10" fill="#111d32" stroke="#2864e8"/>
-    <text x="614" y="305" fill="#6ca3ff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="17" font-weight="700" letter-spacing="1.2">SHARED CONTROL</text>
-    <text x="614" y="331" fill="#f2f3f5" font-size="21" font-weight="700">ACL · policy · sessions · component lifecycle</text>
+    <g transform="translate(590 276)">
+      <rect width="166" height="68" rx="10" fill="#171820" stroke="#3a3d48"/>
+      <text x="20" y="27" fill="#a4a8b2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700">07 / PENDING</text>
+      <text x="20" y="54" fill="#f2f3f5" font-size="22" font-weight="720">Bench</text>
+    </g>
+    <rect x="772" y="276" width="370" height="68" rx="10" fill="#111d32" stroke="#2864e8"/>
+    <text x="796" y="305" fill="#6ca3ff" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="16" font-weight="700" letter-spacing="1.1">SHARED CLI STATE</text>
+    <text x="796" y="331" fill="#f2f3f5" font-size="19" font-weight="700">ACL · accounts · models · lifecycle</text>
   </g>
 
   <g id="foundations" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">

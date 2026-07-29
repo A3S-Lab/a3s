@@ -1,2 +1,8 @@
 *.sh text eol=lf
 *.ps1 text eol=lf
+
+# Keep GitHub's repository language visualization on the requested Cangjie
+# marker. Production A3S CLI sources remain Rust and are not relabeled.
+* linguist-detectable=false
+**/* linguist-detectable=false
+linguist.cj linguist-detectable=true linguist-language=Cangjie

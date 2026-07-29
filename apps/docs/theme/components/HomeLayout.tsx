@@ -16,7 +16,7 @@ const copy = {
     ownedEyebrow: 'CLI 职责',
     ownedTitle: '入口统一，产品保持独立',
     ownedBody:
-      '主仓库只负责 CLI 的公共行为。具体产品和底层库仍由各自仓库维护、发布和测试。',
+      '主仓库维护 a3s 命令、Code、Web、Research 内置宿主和共享状态。独立产品与底层库仍由各自仓库维护、发布和测试。',
     commandsEyebrow: '常用命令',
     commandsTitle: '从终端完成日常操作',
     commandsBody:
@@ -24,11 +24,11 @@ const copy = {
     componentsEyebrow: '产品入口',
     componentsTitle: '按需安装和使用',
     componentsBody:
-      'A3S 不是一个必须完整部署的套件。Code 随 CLI 提供，其他产品可以独立安装和升级。',
+      'Code、Web 和 Research 随 CLI 提供；Box、Search 和 Use 由 CLI 管理；Bench 的兼容组件发行仍在等待发布。',
     flowEyebrow: '执行边界',
-    flowTitle: 'CLI 只做三件事',
+    flowTitle: '每条命令都有明确的实现边界',
     flowBody:
-      '读取公共配置，找到目标产品，然后把执行交给对应组件。产品内部逻辑不堆在根命令里。',
+      '内置宿主直接运行；受管组件在检查安装状态后转交；诊断命令只读取并报告状态。',
     installEyebrow: '安装',
     installTitle: '先确认 CLI，再检查组件',
     installBody:
@@ -48,7 +48,7 @@ const copy = {
     ownedEyebrow: 'CLI RESPONSIBILITIES',
     ownedTitle: 'One entry point, independent products',
     ownedBody:
-      'The main repository owns shared CLI behavior. Each product and lower-level library still has its own repository, releases, and tests.',
+      'The main repository owns the a3s command, bundled Code, Web, and Research hosts, and shared state. Independent products and lower-level libraries keep their own repositories, releases, and tests.',
     commandsEyebrow: 'COMMON COMMANDS',
     commandsTitle: 'Handle routine work from the terminal',
     commandsBody:
@@ -56,11 +56,11 @@ const copy = {
     componentsEyebrow: 'PRODUCT ENTRY POINTS',
     componentsTitle: 'Install and use only what you need',
     componentsBody:
-      'A3S is not a suite that must be deployed as a whole. Code ships with the CLI; other products can be installed and upgraded independently.',
+      'Code, Web, and Research ship with the CLI. The CLI manages Box, Search, and Use. A compatible Bench component release is still pending.',
     flowEyebrow: 'EXECUTION BOUNDARIES',
-    flowTitle: 'The CLI has three jobs',
+    flowTitle: 'Every command has an explicit owner',
     flowBody:
-      'Read shared configuration, resolve the requested product, and hand execution to that component. Product logic does not accumulate in the root command.',
+      'Bundled hosts run directly, managed commands hand off after checking install state, and inspection commands only read and report state.',
     installEyebrow: 'INSTALL',
     installTitle: 'Verify the CLI, then inspect components',
     installBody:
@@ -79,34 +79,34 @@ const responsibilities: Array<{
 }> = [
   {
     index: '01',
-    title: { zh: '公共配置', en: 'Shared configuration' },
+    title: { zh: '内置宿主', en: 'Bundled hosts' },
     body: {
-      zh: '管理配置文件路径、ACL 校验、模型选择和本地认证状态。',
-      en: 'Manage config paths, ACL validation, model selection, and local authentication state.',
+      zh: '直接运行 Code、Web API 与资源，以及 Research 任务。',
+      en: 'Run Code, the Web API and assets, and Research tasks directly.',
     },
   },
   {
     index: '02',
-    title: { zh: '组件生命周期', en: 'Component lifecycle' },
+    title: { zh: '共享状态', en: 'Shared state' },
     body: {
-      zh: '发现、安装、升级并检查可选产品，不把它们伪装成内置功能。',
-      en: 'Discover, install, upgrade, and inspect optional products without presenting them as built-ins.',
+      zh: '管理 ACL 配置、账号认证和模型选择。',
+      en: 'Manage ACL configuration, account authentication, and model selection.',
     },
   },
   {
     index: '03',
-    title: { zh: '命令路由', en: 'Command routing' },
+    title: { zh: '受管组件', en: 'Managed components' },
     body: {
-      zh: '把 a3s code、a3s web、a3s box 等入口交给实际拥有行为的产品。',
-      en: 'Route a3s code, a3s web, a3s box, and related commands to the product that owns the behavior.',
+      zh: '发现、安装、升级并转交 Box、Search、Use 和 Bench 命令。',
+      en: 'Discover, install, upgrade, and proxy Box, Search, Use, and Bench commands.',
     },
   },
   {
     index: '04',
-    title: { zh: '诊断与升级', en: 'Diagnostics and upgrades' },
+    title: { zh: '检查与升级', en: 'Inspection and upgrades' },
     body: {
-      zh: '显示版本、来源、平台条件和安装状态，升级过程保持可见。',
-      en: 'Report versions, provenance, platform requirements, and install state while keeping upgrades visible.',
+      zh: '通过 list、info、doctor、top 和 upgrade 显示并维护当前状态。',
+      en: 'Inspect and maintain current state through list, info, doctor, top, and upgrade.',
     },
   },
 ];
@@ -185,14 +185,14 @@ const products: Array<{
     delivery: { zh: '内置', en: 'Bundled' },
   },
   {
-    name: 'Web + Work',
+    name: 'Web',
     command: 'a3s web',
     body: {
-      zh: '用于 Code、文件、Git、知识库与 Office 工作的本地浏览器界面。',
-      en: 'A local browser surface for Code, files, Git, knowledge, and Office work.',
+      zh: 'Work 是 #home 默认工作台，Knowledge 是独立内置入口；Research 与 Finance 由受审查的 Use 包提供。',
+      en: 'Work is the default #home workbench and Knowledge is a separate built-in destination; reviewed Use packages provide Research and Finance destinations.',
     },
     href: 'https://github.com/A3S-Lab/a3s/tree/main/apps/web',
-    delivery: { zh: '随完整版本提供', en: 'Full release asset' },
+    delivery: { zh: '内置', en: 'Bundled' },
   },
   {
     name: 'Research',
@@ -202,7 +202,7 @@ const products: Array<{
       en: 'Produce source-aware Markdown and HTML research artifacts in the current workspace.',
     },
     href: 'https://github.com/A3S-Lab/a3s',
-    delivery: { zh: '内置入口', en: 'Bundled entry point' },
+    delivery: { zh: '内置', en: 'Bundled' },
   },
   {
     name: 'Box',
@@ -212,27 +212,37 @@ const products: Array<{
       en: 'Run Linux OCI MicroVM workloads on supported hosts.',
     },
     href: 'https://github.com/A3S-Lab/Box',
-    delivery: { zh: '可选组件', en: 'Optional component' },
+    delivery: { zh: '受管组件', en: 'Managed component' },
   },
   {
-    name: 'Bench',
-    command: 'a3s install bench',
+    name: 'Search',
+    command: 'a3s search ...',
     body: {
-      zh: '执行可复现的 Task、Candidate 与 Judge 评测。',
-      en: 'Run reproducible Task, Candidate, and Judge evaluations.',
+      zh: '原生支持 AnySearch 与 Tavily，也支持 HTTP/RSS 和可选 Browser 渲染。',
+      en: 'Use native AnySearch and Tavily providers, HTTP/RSS retrieval, and optional Browser rendering.',
     },
-    href: 'https://github.com/A3S-Lab/Bench',
-    delivery: { zh: '可选组件', en: 'Optional component' },
+    href: 'https://github.com/A3S-Lab/Search',
+    delivery: { zh: '受管组件', en: 'Managed component' },
   },
   {
     name: 'Use',
-    command: 'a3s install use',
+    command: 'a3s use capabilities --json',
     body: {
-      zh: '提供 Browser、OCR 以及外部能力包的统一入口。',
-      en: 'Provide one entry point for Browser, OCR, and external capability packages.',
+      zh: '内置 Browser/OCR 路由，转接 Box，并加载外部 Office 与 Science 包。',
+      en: 'Route built-in Browser/OCR capabilities, component-backed Box, and external Office and Science packages.',
     },
     href: 'https://github.com/A3S-Lab/Use',
-    delivery: { zh: '可选组件', en: 'Optional component' },
+    delivery: { zh: '受管组件', en: 'Managed component' },
+  },
+  {
+    name: 'Bench',
+    command: 'a3s bench ...',
+    body: {
+      zh: '源码和命令入口已实现；兼容的组件发行尚未发布，本地运行目前需要 Docker。',
+      en: 'The source and command route are implemented; a compatible component release is pending, and local runs currently require Docker.',
+    },
+    href: 'https://github.com/A3S-Lab/Bench',
+    delivery: { zh: '发行待就绪', en: 'Release pending' },
   },
 ];
 
@@ -243,26 +253,26 @@ const flow: Array<{
 }> = [
   {
     index: '01',
-    title: { zh: '读取公共状态', en: 'Read shared state' },
+    title: { zh: '解析请求', en: 'Parse the request' },
     body: {
-      zh: '解析参数、配置路径、认证状态和组件目录。',
-      en: 'Parse arguments, config paths, authentication state, and the component catalog.',
+      zh: '读取参数、工作区、ACL 配置和离线策略。',
+      en: 'Read arguments, workspace, ACL configuration, and offline policy.',
     },
   },
   {
     index: '02',
-    title: { zh: '解析目标产品', en: 'Resolve the product' },
+    title: { zh: '确认交付边界', en: 'Check the delivery boundary' },
     body: {
-      zh: '确认命令由内置模块还是已安装组件处理。',
-      en: 'Determine whether a bundled module or installed component handles the command.',
+      zh: '确认目标是内置宿主、受管组件还是只读检查。',
+      en: 'Resolve a bundled host, managed component, or read-only inspection command.',
     },
   },
   {
     index: '03',
-    title: { zh: '移交执行', en: 'Hand off execution' },
+    title: { zh: '交给实际实现', en: 'Run the owning implementation' },
     body: {
-      zh: '由产品自己的 Runtime、界面和配置继续完成工作。',
-      en: 'Let the product continue with its own runtime, interface, and configuration.',
+      zh: '直接运行内置宿主，或把参数原样转交给已验证组件。',
+      en: 'Run the bundled host directly or forward arguments to a verified component.',
     },
   },
 ];
