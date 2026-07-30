@@ -4,7 +4,7 @@
   "releaseKind": "integration-snapshot",
   "milestone": "E0",
   "milestoneStatus": "verified",
-  "cloudRevision": "d2a82cd936919d0121436eebc94137cc2c60b323",
+  "cloudRevision": "4ca33905191d337f0cf63d5a098a24b59bf48b29",
   "compatibilityLock": "compat/cloud-stack.acl",
   "documents": {
     "en": "/en/docs/cloud/v0.1.0",
@@ -13,12 +13,12 @@
   "components": {
     "acl": { "version": "0.3.0", "revision": "5317e166222495585909d81f2caffdca90273c99" },
     "boot": { "version": "0.1.3", "revision": "3119d61f1ae9b995913e34abd467ceaadc378a5f" },
-    "cloud": { "version": "0.1.0", "revision": "d2a82cd936919d0121436eebc94137cc2c60b323" },
+    "cloud": { "version": "0.1.0", "revision": "4ca33905191d337f0cf63d5a098a24b59bf48b29" },
     "event": { "version": "0.3.0", "revision": "6df3d6551a2a3ab68b2f8271d33a87b078fc8151" },
     "flow": { "version": "0.4.2", "revision": "ca17ae78968370eacd97992d9202dabf1cd82a2e" },
     "gateway": { "version": "1.0.12", "revision": "f8500b89284e75342dd0286a0200b3a6e3f51e32" },
     "orm": { "version": "0.2.0", "revision": "a09b4db0f55c29cff3cb7963f2d45125ed7b3936" },
-    "runtime": { "version": "0.2.0", "revision": "cfaac63af6f76beebdc64a1ec228cedc42bb98ec" },
+    "runtime": { "version": "0.2.0", "revision": "25caf65ffed7ff9b82cedc4e7156c79f396896f7" },
     "sentry": { "version": "0.7.0", "revision": "c1b45120662224fe1f3065d6888da0d291b4ff07" },
     "updater": { "version": "0.3.0", "source": "workspace" }
   },
@@ -26,7 +26,7 @@
     "cloud-gateway-snapshot": { "level": 3, "schema": "a3s.cloud.gateway-snapshot.v3" },
     "cloud-node-command": { "level": 1, "schema": "a3s.cloud.node-command.v1" },
     "flow-native-typescript": { "level": 1, "schema": "a3s.flow.native_ts.v1" },
-    "runtime-capabilities": { "level": 3, "schema": "a3s.runtime.capabilities.v3" },
+    "runtime-capabilities": { "level": 4, "schema": "a3s.runtime.capabilities.v4" },
     "runtime-observation": { "level": 2, "schema": "a3s.runtime.observation.v2" },
     "runtime-unit-spec": { "level": 2, "schema": "a3s.runtime.unit-spec.v2" }
   },
