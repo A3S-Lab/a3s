@@ -15,7 +15,9 @@ export const codeCapabilityContent = {
       description:
         '原生 symbols、定义、引用、实现和诊断，在 Agent 工具、`/ide` 与 Monaco 之间共享同一套 saved-file 契约。',
       href: '/code/code-intelligence',
+      windowTitle: 'workspace / 语义导航',
       command: ':definition',
+      tabs: ['agent.rs', 'session.rs', 'tools.rs'],
       symbol: 'SessionBuilder',
       location: 'src/agent/session.rs:148',
       evidence: 'saved rev 184 · 12 个引用 · 0 个诊断',
@@ -28,7 +30,6 @@ export const codeCapabilityContent = {
       description:
         '越过边界的调用会在副作用发生前暂停。用户可以只批准本次调用、记录精确规则，或拒绝并给出新指引。',
       href: '/code/capabilities#human-in-the-loop',
-      command: '! git push origin main',
       prompt: '需要授权',
       run: 'Bash(git push origin main)',
       risk: '外部副作用 · 修改远程 Git',
@@ -66,6 +67,7 @@ export const codeCapabilityContent = {
       description:
         '登录后，`runtime` 可以把独立任务提交给远程 Worker，流式展示 Batch 进度，并返回完整或明确标记为 partial 的结果。',
       href: '/code/capabilities#runtime-tool',
+      windowTitle: 'runtime / release-research',
       gate: '/login → runtime 已注册',
       call: 'runtime({ tasks: ["risk", "upgrade", "notes"], worker: "release-research" })',
       submitted: '已提交 3 个并行子任务',
@@ -123,7 +125,9 @@ export const codeCapabilityContent = {
       description:
         'Native symbols, definitions, references, implementations, and diagnostics share one saved-file contract across agent tools, `/ide`, and Monaco.',
       href: '/code/code-intelligence',
+      windowTitle: 'workspace / semantic navigation',
       command: ':definition',
+      tabs: ['agent.rs', 'session.rs', 'tools.rs'],
       symbol: 'SessionBuilder',
       location: 'src/agent/session.rs:148',
       evidence: 'saved rev 184 · 12 references · 0 diagnostics',
@@ -136,7 +140,6 @@ export const codeCapabilityContent = {
       description:
         'Boundary-crossing calls pause before side effects. The person approves one invocation, records a precise rule, or denies it with guidance.',
       href: '/code/capabilities#human-in-the-loop',
-      command: '! git push origin main',
       prompt: 'Permission required',
       run: 'Bash(git push origin main)',
       risk: 'external side effect · mutating Git',
@@ -174,6 +177,7 @@ export const codeCapabilityContent = {
       description:
         'After login, `runtime` submits independent tasks to remote workers, streams batch progress, and returns complete or explicitly partial results.',
       href: '/code/capabilities#runtime-tool',
+      windowTitle: 'runtime / release-research',
       gate: '/login → runtime registered',
       call: 'runtime({ tasks: ["risk", "upgrade", "notes"], worker: "release-research" })',
       submitted: '3 parallel subtasks submitted',
