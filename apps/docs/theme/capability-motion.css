@@ -10,56 +10,26 @@
   }
 }
 
-@keyframes code-capability-caret {
-  50% {
-    opacity: 0;
-  }
-}
-
-@keyframes code-intelligence-symbol {
-  0%,
-  18% {
-    background: transparent;
-    color: #bc9cff;
-  }
-  28%,
-  100% {
-    background: rgba(111, 159, 240, 0.17);
-    color: #c2d9ff;
-  }
-}
-
-@keyframes code-intelligence-line {
+@keyframes code-demo-resolve {
   0%,
   16% {
-    opacity: 0;
-    transform: translateY(21px);
+    opacity: 0.42;
+    transform: translateY(4px);
   }
-  28%,
+  30%,
   100% {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-@keyframes code-intelligence-type {
+@keyframes code-tui-result {
   0%,
-  30% {
-    max-width: 0;
-  }
-  48%,
-  100% {
-    max-width: 92px;
-  }
-}
-
-@keyframes code-demo-resolve {
-  0%,
-  48% {
-    opacity: 0.42;
+  68% {
+    opacity: 0.3;
     transform: translateY(4px);
   }
-  62%,
+  82%,
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -98,17 +68,6 @@
   }
 }
 
-@keyframes code-hitl-outcome {
-  0%,
-  60% {
-    opacity: 0.25;
-  }
-  74%,
-  100% {
-    opacity: 1;
-  }
-}
-
 @keyframes code-api-route {
   0%,
   20% {
@@ -117,19 +76,6 @@
   42%,
   100% {
     transform: scaleX(1);
-  }
-}
-
-@keyframes code-api-budget {
-  0%,
-  26% {
-    opacity: 0.42;
-    transform: scaleX(1);
-  }
-  52%,
-  100% {
-    opacity: 1;
-    transform: scaleX(0.36);
   }
 }
 
@@ -200,17 +146,6 @@
     opacity: 0;
   }
   75%,
-  100% {
-    opacity: 1;
-  }
-}
-
-@keyframes code-runtime-complete {
-  0%,
-  76% {
-    opacity: 0.24;
-  }
-  90%,
   100% {
     opacity: 1;
   }
@@ -328,20 +263,14 @@
     font-size: clamp(28px, 8vw, 38px);
   }
 
-  .code-capability-demo {
-    margin-top: 32px;
-  }
-
+  .code-capability-demo,
   .code-capability-card.is-context .code-capability-demo {
     margin-top: 32px;
   }
 
-  .code-intelligence-demo,
-  .code-hitl-demo,
-  .code-progressive-demo,
-  .code-runtime-demo,
-  .code-context-demo {
+  .code-capability-demo .a3s-code-tui__viewport {
     min-height: 0;
+    padding: 17px 14px 12px;
   }
 }
 
@@ -360,27 +289,22 @@
     display: none;
   }
 
-  .code-capability-demo__chrome {
-    grid-template-columns: 1fr auto;
+  .a3s-code-tui__modes > span {
+    padding: 0 3px;
+    font-size: 6px;
+    gap: 2px;
+    letter-spacing: 0.01em;
   }
 
-  .code-capability-demo__chrome > code {
+  .a3s-code-tui__modes > span small {
     display: none;
   }
 
-  .code-intelligence-demo__body pre {
-    font-size: 7px;
+  .code-capability-demo .a3s-code-tui__footer > div code {
+    max-width: 135px;
   }
 
-  .code-hitl-demo {
-    padding: 13px;
-  }
-
-  .code-hitl-demo__options b {
-    font-size: 6px;
-  }
-
-  .code-progressive-demo__prompt b,
+  .code-hitl-demo__options b,
   .code-progressive-demo__row code {
     font-size: 6px;
   }
@@ -391,10 +315,6 @@
 
   .code-runtime-demo__tasks > div > i {
     display: none;
-  }
-
-  .code-context-demo {
-    padding: 11px;
   }
 
   .code-context-demo__hits p {
@@ -415,23 +335,18 @@
   .code-capability-card,
   .code-capability-link svg,
   .code-capability-meta > small i,
-  .code-intelligence-demo__body pre b,
-  .code-intelligence-demo__cursor,
-  .code-intelligence-demo__command code,
-  .code-intelligence-demo__command > i,
+  .code-capability-demo .cli-terminal__cursor,
+  .code-intelligence-demo__request em,
   .code-intelligence-demo__result,
   .code-hitl-demo__options > div,
-  .code-hitl-demo__outcome,
   .code-progressive-demo__row > i,
-  .code-progressive-demo__result i,
   .code-runtime-demo__gate,
   .code-runtime-demo__submitted,
   .code-runtime-demo__tasks > div > i,
   .code-runtime-demo__tasks small,
-  .code-runtime-demo__complete,
-  .code-context-demo__query i,
   .code-context-demo__hits > div,
-  .code-context-demo__actions > span {
+  .code-context-demo__actions > span,
+  .a3s-code-tui__result {
     animation: none !important;
     transition: none !important;
   }
@@ -440,30 +355,24 @@
     transform: none;
   }
 
-  .code-intelligence-demo__cursor,
-  .code-intelligence-demo__result,
-  .code-hitl-demo__options > div,
-  .code-hitl-demo__outcome,
-  .code-runtime-demo__gate,
-  .code-runtime-demo__submitted,
-  .code-runtime-demo__complete,
-  .code-context-demo__hits > div,
-  .code-context-demo__actions > span {
-    opacity: 1;
-    transform: none;
+  .code-capability-demo .cli-terminal__cursor {
+    display: none;
   }
 
-  .code-intelligence-demo__command code {
-    max-width: 92px;
+  .code-intelligence-demo__result,
+  .code-hitl-demo__options > div,
+  .code-runtime-demo__gate,
+  .code-runtime-demo__submitted,
+  .code-context-demo__hits > div,
+  .code-context-demo__actions > span,
+  .a3s-code-tui__result {
+    opacity: 1;
+    transform: none;
   }
 
   .code-progressive-demo__row > i,
   .code-runtime-demo__tasks > div > i {
     transform: scaleX(1);
-  }
-
-  .code-progressive-demo__result i {
-    transform: scaleX(0.36);
   }
 
   .code-runtime-demo__tasks .is-queued,

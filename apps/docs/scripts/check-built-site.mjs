@@ -178,6 +178,37 @@ for (const [locale, html] of [
     throw new Error(`${locale} homepage is missing the CLI terminal playback.`);
   }
 
+  for (const surface of [
+    'hero',
+    'code-intelligence',
+    'hitl',
+    'progressive-api',
+    'runtime-tool',
+    'cross-session-context',
+  ]) {
+    if (!html.includes(`data-a3s-code-tui="${surface}"`)) {
+      throw new Error(
+        `${locale} homepage is missing the shared A3S Code TUI shell for ${surface}.`,
+      );
+    }
+  }
+
+  const tuiChromeCount = html.match(/data-tui-region="chrome"/g)?.length ?? 0;
+  const tuiPromptCount = html.match(/data-tui-region="prompt"/g)?.length ?? 0;
+  const tuiTranscriptCount =
+    html.match(/data-tui-region="transcript"/g)?.length ?? 0;
+  const tuiFooterCount = html.match(/data-tui-region="footer"/g)?.length ?? 0;
+  if (
+    tuiChromeCount !== 6 ||
+    tuiPromptCount !== 6 ||
+    tuiTranscriptCount !== 6 ||
+    tuiFooterCount !== 6
+  ) {
+    throw new Error(
+      `${locale} homepage must render six complete A3S Code TUI shells; got chrome=${tuiChromeCount}, prompt=${tuiPromptCount}, transcript=${tuiTranscriptCount}, footer=${tuiFooterCount}.`,
+    );
+  }
+
   for (const [scenario, command] of [
     ['code', 'a3s code'],
     ['web', 'a3s web'],
