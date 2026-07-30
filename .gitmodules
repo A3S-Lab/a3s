@@ -88,3 +88,6 @@
 [submodule "crates/ocr"]
 	path = crates/ocr
 	url = git@github.com:A3S-Lab/OCR.git
+[submodule "crates/parser"]
+	path = crates/parser
+	url = git@github.com:A3S-Lab/Parser.git

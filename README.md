@@ -166,6 +166,13 @@ pre-1.0 and its first npm release has not been published. A3S Science currently
 indexes 472 catalog entries, including 35 A3S-native Skills and 25 A3S-native
 MCP resources distributed through a TUF-signed package registry.
 
+A3S Parser is a pre-alpha evidence-first orchestration foundation for combining
+A3S Office structure and per-unit rendering with A3S OCR. Its initial crate
+defines bounded plans, typed providers, resumable manifests, and a fine-grained
+document graph whose immutable canvases and normalized polygons support source
+highlighting in frontends. Engine adapters and production format claims remain
+roadmap work in the independently versioned Parser repository.
+
 ~~~bash
 a3s list
 a3s doctor
@@ -251,6 +258,7 @@ type, or parsed configuration from being mistaken for a finished deployment.
 | Bench | The source and `a3s bench …` route exist, but a compatible component release is not yet published; local execution requires Docker and produces `local_unofficial` results |
 | Use | Domain readiness depends on installed runtimes and model assets; external packages own their compatibility |
 | Office | Pre-1.0; five browser-native surfaces and native CLI/MCP/Skill automation exist, while the first npm package release is still pending |
+| Parser | Pre-alpha contract and architecture foundation; Office/OCR adapters, per-unit layout rendering, format breadth, and production scale evidence remain planned |
 | Cloud | R0–E0 is the verified cumulative baseline; G0, C0, and H0 are in progress; P0, A0, S0, and I0 remain planned in the [locked Cloud compatibility manifest](compat/cloud-stack.acl) |
 | OCI Runtime | The default inventory remains `probe-only`; an explicit native Linux development path is experimental and is not the default workload-launch claim |
 | Infrastructure libraries | Optional features expose integrations; external brokers, stores, providers, and services must still be operated |
@@ -354,6 +362,7 @@ distribution assets.
 | [A3S Search](crates/search/) | Native AnySearch and Tavily providers, conventional HTTP/RSS retrieval, ranking, deduplication, and optional Browser rendering |
 | [A3S Browser](crates/browser/) | Provider-oriented typed rendering plus the process-isolated automation driver, Skills, and Dashboard |
 | [A3S OCR](crates/ocr/) | Object-safe `OcrProvider` contract with bounded source evidence and PP-OCRv6 as the default local provider |
+| [A3S Parser](crates/parser/) | Evidence-first Office/OCR orchestration contracts, resumable manifests, and fine-grained source-locatable document geometry |
 | [A3S Use](crates/use/) | Built-in Browser/OCR routes, component-backed Box routing, and standard lifecycle for external packages |
 | [A3S Office](packages/office/) | Pre-1.0 Office package with five browser-native surfaces plus native CLI, MCP, and Skill automation |
 | [A3S Science](packages/science/) | TUF-signed 472-entry catalog with 35 A3S-native Skills, 25 A3S-native MCP resources, and scientific research tooling |
