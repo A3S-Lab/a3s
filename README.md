@@ -72,7 +72,7 @@ command routing. Product behavior remains with the component that implements it.
 | **Web** | `a3s web` | Bundled local Web API and release assets; Work is the default workbench at `#home`, Knowledge is a separate built-in destination, and `--api-only` needs no frontend |
 | **Research** | `a3s code research --web "..."` | Bundled typed research runner with run-scoped Markdown and editable HTML artifacts |
 | **Box** | `a3s box ps` | Managed `a3s-box` product; eligible first use may install it visibly |
-| **Search** | `a3s search …` | Managed search product with native AnySearch and Tavily providers, conventional HTTP/RSS retrieval, and optional Browser rendering |
+| **Search** | `a3s search …` | Managed search product with quality-gated Browser-first discovery and lazy HTTP/RSS and API fallbacks |
 | **Use** | `a3s use capabilities --json` | Managed capability facade with built-in Browser and OCR routes, a component-backed Box route, and external Office and Science packages |
 | **Bench** | `a3s bench …` | Command and source are implemented; a compatible umbrella-CLI component release is not yet published, and local execution currently requires Docker |
 | **Cloud** | Inspect the locked [Cloud compatibility manifest](compat/cloud-stack.acl) | Self-hosted control-plane project with separately documented maturity gates |
@@ -159,12 +159,13 @@ implementations, tests, and release assets. Office and Science remain external
 packages with native CLI, MCP, and/or `SKILL.md` surfaces rather than depending
 on a private extension protocol.
 
-A3S Search ships native AnySearch and Tavily providers, conventional HTTP/RSS
-retrieval, and optional Browser rendering. A3S Office currently exposes five
-browser-native surfaces plus native CLI, MCP, and Skill automation; it remains
-pre-1.0 and its first npm release has not been published. A3S Science currently
-indexes 472 catalog entries, including 35 A3S-native Skills and 25 A3S-native
-MCP resources distributed through a TUF-signed package registry.
+A3S Search ships quality-gated Browser-first discovery, lazy conventional
+HTTP/RSS and native API fallbacks, and verifiable cascade receipts. A3S Office
+currently exposes five browser-native surfaces plus native CLI, MCP, and Skill
+automation; it remains pre-1.0 and its first npm release has not been published.
+A3S Science currently indexes 472 catalog entries, including 35 A3S-native
+Skills and 25 A3S-native MCP resources distributed through a TUF-signed package
+registry.
 
 A3S Parser is a pre-alpha evidence-first orchestration foundation for combining
 A3S Office structure and per-unit rendering with A3S OCR. Its initial crate
@@ -361,7 +362,7 @@ distribution assets.
 | [A3S Windhole](apps/windhole/) | Local visual laboratory for A3S Bench catalog, run, result, validation, and Doctor workflows |
 | [A3S Box](crates/box/) | Node-local Linux OCI provider with explicit MicroVM or shared-kernel Sandbox selection and local SDKs |
 | [A3S Bench](crates/bench/) | Reproducible Task, Candidate, and Judge evaluation; source implemented, compatible umbrella component release pending |
-| [A3S Search](crates/search/) | Native AnySearch and Tavily providers, conventional HTTP/RSS retrieval, ranking, deduplication, and optional Browser rendering |
+| [A3S Search](crates/search/) | Quality-gated Browser-first discovery, lazy HTTP/RSS and native API fallbacks, ranking, deduplication, and cascade receipts |
 | [A3S Browser](crates/browser/) | Provider-oriented typed rendering plus the process-isolated automation driver, Skills, and Dashboard |
 | [A3S OCR](crates/ocr/) | Object-safe `OcrProvider` contract with bounded source evidence and PP-OCRv6 as the default local provider |
 | [A3S Parser](crates/parser/) | Evidence-first Office/OCR orchestration contracts, resumable manifests, and fine-grained source-locatable document geometry |
