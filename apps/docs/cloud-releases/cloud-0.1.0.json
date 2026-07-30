@@ -7,8 +7,8 @@
   "cloudRevision": "d2a82cd936919d0121436eebc94137cc2c60b323",
   "compatibilityLock": "compat/cloud-stack.acl",
   "documents": {
-    "en": "/docs/cloud/v0.1.0",
-    "cn": "/cn/docs/cloud/v0.1.0"
+    "en": "/en/docs/cloud/v0.1.0",
+    "cn": "/docs/cloud/v0.1.0"
   },
   "components": {
     "acl": { "version": "0.3.0", "revision": "5317e166222495585909d81f2caffdca90273c99" },

@@ -1,13 +1,5 @@
+import { DocsContent, docsMetadata } from '@/components/docs-content';
 import { source } from '@/lib/source';
-import {
-  DocsBody,
-  DocsDescription,
-  DocsPage,
-  DocsTitle,
-} from 'fumadocs-ui/layouts/docs/page';
-import { notFound } from 'next/navigation';
-import { getMDXComponents } from '@/mdx-components';
-import { createRelativeLink } from 'fumadocs-ui/mdx';
 import type { Metadata } from 'next';
 
 interface PageProps {
@@ -15,45 +7,17 @@ interface PageProps {
 }
 
 export default async function Page(props: PageProps) {
-  const params = await props.params;
-  const page = source.getPage(params.slug, 'en');
-  if (!page) notFound();
-
-  const MDX = page.data.body;
-
-  return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
-      <DocsBody className="dark:prose-invert">
-        <MDX
-          components={getMDXComponents({
-            a: createRelativeLink(source, page),
-          })}
-        />
-      </DocsBody>
-    </DocsPage>
-  );
+  const { slug } = await props.params;
+  return <DocsContent locale="cn" slug={slug} />;
 }
 
 export function generateStaticParams() {
-  return source.getPages('en').map((page) => ({
+  return source.getPages('cn').map((page) => ({
     slug: page.slugs.length > 0 ? page.slugs : undefined,
   }));
 }
 
 export async function generateMetadata(props: PageProps): Promise<Metadata> {
-  const params = await props.params;
-  const page = source.getPage(params.slug, 'en');
-  if (!page) notFound();
-
-  return {
-    title: page.data.title,
-    description: page.data.description,
-    openGraph: {
-      title: page.data.title,
-      description: page.data.description,
-      type: 'article',
-    },
-  };
+  const { slug } = await props.params;
+  return docsMetadata({ locale: 'cn', slug });
 }

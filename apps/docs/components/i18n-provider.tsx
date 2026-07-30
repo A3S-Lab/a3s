@@ -2,38 +2,61 @@
 
 import { RootProvider } from 'fumadocs-ui/provider/next';
 import { usePathname, useRouter } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
+import type { Translations } from 'fumadocs-ui/i18n';
+import {
+  htmlLanguage,
+  localePath,
+  resolveLocale,
+  type Locale,
+} from '@/lib/i18n';
 
 const locales = [
-  { locale: 'en', name: 'English' },
   { locale: 'cn', name: '中文' },
+  { locale: 'en', name: 'English' },
 ];
 
-function onLocaleChange(locale: string, pathname: string, router: ReturnType<typeof useRouter>) {
-  // Strip any existing /en or /cn prefix, then re-prefix with the target locale
-  const stripped = pathname.replace(/^\/(en|cn)(\/|$)/, '/').replace(/\/$/, '') || '/';
-  router.push(`/${locale}${stripped === '/' ? '' : stripped}`);
-}
+const translations: Record<Locale, Partial<Translations>> = {
+  cn: {
+    search: '搜索文档',
+    searchNoResult: '没有找到结果',
+    toc: '本页目录',
+    tocNoHeadings: '本页没有目录',
+    lastUpdate: '最后更新',
+    chooseLanguage: '选择语言',
+    nextPage: '下一页',
+    previousPage: '上一页',
+    chooseTheme: '选择主题',
+    editOnGithub: '在 GitHub 上编辑',
+  },
+  en: {},
+};
 
 export function I18nProvider({
   children,
   locale,
-  translations,
 }: {
   children: ReactNode;
   locale: string;
-  translations?: Record<string, string>;
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const activeLocale = resolveLocale(locale);
+
+  useEffect(() => {
+    document.documentElement.lang = htmlLanguage(activeLocale);
+  }, [activeLocale]);
 
   return (
     <RootProvider
       i18n={{
-        locale,
+        locale: activeLocale,
         locales,
-        translations: translations as never,
-        onLocaleChange: (v) => onLocaleChange(v, pathname, router),
+        translations: translations[activeLocale],
+        onLocaleChange: (value) => {
+          const nextLocale = resolveLocale(value);
+          router.push(localePath(pathname, nextLocale));
+        },
       }}
     >
       {children}

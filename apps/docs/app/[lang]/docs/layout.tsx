@@ -1,8 +1,7 @@
-import { source } from '@/lib/source';
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
-import { I18nProvider } from '@/components/i18n-provider';
-import { baseOptions } from '@/lib/layout.shared';
 import type { ReactNode } from 'react';
+import { notFound } from 'next/navigation';
+import { DocsShell } from '@/components/docs-shell';
+import { isLocale } from '@/lib/i18n';
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,11 +10,6 @@ interface LayoutProps {
 
 export default async function Layout({ children, params }: LayoutProps) {
   const { lang } = await params;
-  return (
-    <I18nProvider locale={lang}>
-      <DocsLayout tree={source.getPageTree(lang)} {...baseOptions(lang)}>
-        {children}
-      </DocsLayout>
-    </I18nProvider>
-  );
+  if (!isLocale(lang)) notFound();
+  return <DocsShell locale={lang}>{children}</DocsShell>;
 }

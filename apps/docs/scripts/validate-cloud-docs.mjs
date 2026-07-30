@@ -23,7 +23,10 @@ const pages = [
 
 assert.equal(release.schema, 'a3s.cloud.docs-release.v1');
 assert.match(release.cloudRevision, /^[0-9a-f]{40}$/);
-assert.deepEqual(Object.keys(release.documents).sort(), ['cn', 'en']);
+assert.deepEqual(release.documents, {
+  en: '/en/docs/cloud/v0.1.0',
+  cn: '/docs/cloud/v0.1.0',
+});
 
 function parseBlocks(source, kind) {
   const blocks = new Map();
@@ -67,11 +70,10 @@ const gitlink = execFileSync('git', ['ls-tree', 'HEAD', 'apps/cloud'], {
 assert.equal(gitlink, release.cloudRevision, 'Cloud gitlink differs from the docs snapshot');
 
 function resolveLocalLink(language, pagePath, target) {
-  if (target.startsWith('/docs/')) {
-    return path.join(docsRoot, 'en', target.slice('/docs/'.length));
-  }
-  if (target.startsWith('/cn/docs/')) {
-    return path.join(docsRoot, 'cn', target.slice('/cn/docs/'.length));
+  const localized = target.match(/^\/(cn|en)?\/?docs\/(.+)$/);
+  if (localized) {
+    const targetLanguage = localized[1] ?? language;
+    return path.join(docsRoot, targetLanguage, localized[2]);
   }
   return path.resolve(path.dirname(pagePath), target);
 }

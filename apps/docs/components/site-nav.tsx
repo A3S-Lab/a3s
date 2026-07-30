@@ -2,18 +2,20 @@ import Link from 'next/link';
 import { Github } from 'lucide-react';
 import { LangDropdown } from '@/components/lang-dropdown';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { localePath, resolveLocale } from '@/lib/i18n';
 
 interface SiteNavProps {
   lang?: string;
   section?: string; // e.g. 'Blog', 'Tutorials', 'Docs'
 }
 
-export function SiteNav({ lang = 'en', section }: SiteNavProps) {
-  const isCn = lang === 'cn';
-  const homeHref = isCn ? '/cn' : '/';
-  const docsHref = isCn ? '/cn/docs/code' : '/docs/code';
-  const tutorialsHref = isCn ? '/cn/tutorials' : '/tutorials';
-  const blogHref = isCn ? '/cn/blog' : '/blog';
+export function SiteNav({ lang = 'cn', section }: SiteNavProps) {
+  const locale = resolveLocale(lang);
+  const isCn = locale === 'cn';
+  const homeHref = localePath('/', locale);
+  const docsHref = localePath('/docs/code', locale);
+  const tutorialsHref = localePath('/tutorials', locale);
+  const blogHref = localePath('/blog', locale);
 
   return (
     <nav className="sticky top-0 z-50 border-b border-slate-200 bg-white/80 backdrop-blur-md dark:border-slate-700/60 dark:bg-slate-900/80">

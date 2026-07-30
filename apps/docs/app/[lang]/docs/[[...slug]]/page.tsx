@@ -1,13 +1,7 @@
-import { source } from '@/lib/source';
-import {
-  DocsBody,
-  DocsDescription,
-  DocsPage,
-  DocsTitle,
-} from 'fumadocs-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
-import { getMDXComponents } from '@/mdx-components';
-import { createRelativeLink } from 'fumadocs-ui/mdx';
+import { DocsContent, docsMetadata } from '@/components/docs-content';
+import { isLocale, locales } from '@/lib/i18n';
+import { source } from '@/lib/source';
 import type { Metadata } from 'next';
 
 interface PageProps {
@@ -15,46 +9,22 @@ interface PageProps {
 }
 
 export default async function Page(props: PageProps) {
-  const params = await props.params;
-  const page = source.getPage(params.slug, params.lang);
-  if (!page) notFound();
-
-  const MDX = page.data.body;
-
-  return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
-      <DocsBody className="dark:prose-invert">
-        <MDX
-          components={getMDXComponents({
-            a: createRelativeLink(source, page),
-          })}
-        />
-      </DocsBody>
-    </DocsPage>
-  );
+  const { lang, slug } = await props.params;
+  if (!isLocale(lang)) notFound();
+  return <DocsContent locale={lang} slug={slug} />;
 }
 
 export function generateStaticParams() {
-  return source.getPages('cn').map((page) => ({
-    lang: 'cn',
-    slug: page.slugs.length > 0 ? page.slugs : undefined,
-  }));
+  return locales.flatMap((lang) =>
+    source.getPages(lang).map((page) => ({
+      lang,
+      slug: page.slugs.length > 0 ? page.slugs : undefined,
+    })),
+  );
 }
 
 export async function generateMetadata(props: PageProps): Promise<Metadata> {
-  const params = await props.params;
-  const page = source.getPage(params.slug, params.lang);
-  if (!page) notFound();
-
-  return {
-    title: page.data.title,
-    description: page.data.description,
-    openGraph: {
-      title: page.data.title,
-      description: page.data.description,
-      type: 'article',
-    },
-  };
+  const { lang, slug } = await props.params;
+  if (!isLocale(lang)) notFound();
+  return docsMetadata({ locale: lang, slug });
 }

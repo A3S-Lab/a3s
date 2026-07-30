@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <I18nProvider locale="en">
+    <I18nProvider locale="cn">
       {children}
     </I18nProvider>
   );

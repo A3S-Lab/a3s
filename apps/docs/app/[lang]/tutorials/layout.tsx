@@ -1,5 +1,6 @@
-import { I18nProvider } from '@/components/i18n-provider';
 import type { ReactNode } from 'react';
+import { notFound } from 'next/navigation';
+import { isLocale } from '@/lib/i18n';
 
 interface LayoutProps {
   children: ReactNode;
@@ -8,9 +9,6 @@ interface LayoutProps {
 
 export default async function Layout({ children, params }: LayoutProps) {
   const { lang } = await params;
-  return (
-    <I18nProvider locale={lang}>
-      {children}
-    </I18nProvider>
-  );
+  if (!isLocale(lang)) notFound();
+  return children;
 }

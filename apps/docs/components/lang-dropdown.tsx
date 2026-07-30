@@ -3,19 +3,16 @@
 import { usePathname, useRouter } from 'next/navigation';
 import { Languages, ChevronDown } from 'lucide-react';
 import { useRef, useState, useEffect } from 'react';
+import {
+  localeFromPathname,
+  localePath,
+  type Locale,
+} from '@/lib/i18n';
 
-const locales = [
-  { locale: 'en', label: 'English' },
+const locales: Array<{ locale: Locale; label: string }> = [
   { locale: 'cn', label: '中文' },
+  { locale: 'en', label: 'English' },
 ];
-
-function resolveHref(locale: string, pathname: string): string {
-  // Strip any existing /en or /cn prefix
-  const stripped = pathname.replace(/^\/(en|cn)(\/|$)/, '/').replace(/\/$/, '') || '/';
-  // Normalize old-style blog URLs: /blog/{lang}/slug → /blog/slug
-  const normalized = stripped.replace(/^\/blog\/(en|cn)\//, '/blog/');
-  return `/${locale}${normalized === '/' ? '' : normalized}`;
-}
 
 export function LangDropdown() {
   const pathname = usePathname();
@@ -23,9 +20,8 @@ export function LangDropdown() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Detect current locale from pathname
-  const current = pathname.startsWith('/cn') ? 'cn' : 'en';
-  const currentLabel = locales.find((l) => l.locale === current)?.label ?? 'English';
+  const current = localeFromPathname(pathname);
+  const currentLabel = locales.find((item) => item.locale === current)?.label ?? '中文';
 
   // Close on outside click
   useEffect(() => {
@@ -70,7 +66,7 @@ export function LangDropdown() {
                   type="button"
                   onClick={() => {
                     setOpen(false);
-                    if (!isActive) router.push(resolveHref(locale, pathname));
+                    if (!isActive) router.push(localePath(pathname, locale));
                   }}
                   className={`flex w-full items-center gap-2 px-4 py-2.5 text-sm transition-colors ${
                     isActive

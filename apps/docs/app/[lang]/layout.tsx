@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 import { I18nProvider } from '@/components/i18n-provider';
+import { notFound } from 'next/navigation';
+import { isLocale, locales } from '@/lib/i18n';
 
 interface LangLayoutProps {
   children: ReactNode;
@@ -7,24 +9,11 @@ interface LangLayoutProps {
 }
 
 export function generateStaticParams() {
-  return [{ lang: 'en' }, { lang: 'cn' }];
+  return locales.map((lang) => ({ lang }));
 }
-
-const cnTranslations = {
-  search: '搜索文档',
-  toc: '本页目录',
-  lastUpdate: '最后更新',
-  chooseLanguage: '选择语言',
-  nextPage: '下一页',
-  previousPage: '上一页',
-  editOnGithub: '在 GitHub 上编辑',
-};
 
 export default async function LangLayout({ children, params }: LangLayoutProps) {
   const { lang } = await params;
-  return (
-    <I18nProvider locale={lang} translations={lang === 'cn' ? cnTranslations : undefined}>
-      {children}
-    </I18nProvider>
-  );
+  if (!isLocale(lang)) notFound();
+  return <I18nProvider locale={lang}>{children}</I18nProvider>;
 }

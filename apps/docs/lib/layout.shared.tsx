@@ -1,9 +1,18 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
+import { DocsVersionDropdown } from '@/components/docs-version-dropdown';
+import type { DocsProductVersions } from '@/lib/docs-versions';
+import { localePath, resolveLocale } from '@/lib/i18n';
 
-export function baseOptions(lang?: string): BaseLayoutProps {
+export function baseOptions(
+  lang?: string,
+  versionCatalog: DocsProductVersions[] = [],
+): BaseLayoutProps {
+  const locale = resolveLocale(lang);
+
   return {
     i18n: true,
     nav: {
+      url: localePath('/docs', locale),
       title: (
         <>
           <svg
@@ -22,9 +31,10 @@ export function baseOptions(lang?: string): BaseLayoutProps {
               strokeLinejoin="round"
             />
           </svg>
-          <span className="font-semibold">A3S Docs</span>
+          <span className="font-semibold">{locale === 'cn' ? 'A3S 文档' : 'A3S Docs'}</span>
         </>
       ),
+      children: <DocsVersionDropdown catalog={versionCatalog} locale={locale} />,
     },
     links: [
       {
