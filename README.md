@@ -325,8 +325,10 @@ The Unix and Windows installers:
 - require one exact artifact for the detected operating system and architecture;
 - verify GitHub's SHA-256 release digest and the staged binary version;
 - reject unexpected, duplicate, linked, or traversal archive entries;
-- activate bundled Web, WebView, and support payloads transactionally when the
-  selected release includes them; and
+- validate but never install the inert legacy self-update marker carried by
+  current release archives;
+- activate bundled Web and WebView payloads, plus support payloads from legacy
+  releases, transactionally when the selected release includes them; and
 - preserve the previous installation if staging or activation fails.
 
 Supported controls include `A3S_VERSION`, `A3S_INSTALL_DIR`, `A3S_DATA_HOME`,

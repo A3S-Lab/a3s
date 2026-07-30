@@ -222,7 +222,9 @@ function Set-ReleaseFixture {
         [string]$Version,
         [switch]$UnsafeMember,
         [switch]$WithoutWebview,
-        [switch]$WithoutSupport
+        [switch]$WithoutSupport,
+        [switch]$WithReleaseCompat,
+        [switch]$UnsafeReleaseCompat
     )
 
     $payload = Join-Path $fixtureRoot 'payload'
@@ -247,6 +249,15 @@ function Set-ReleaseFixture {
             -Value "managed-srt $Version" -Encoding UTF8
         Set-Content -LiteralPath (Join-Path $payload 'support\managed-srt.tree-sha256') `
             -Value "fixture-tree-sha256-$Version" -Encoding UTF8
+    }
+    if ($WithReleaseCompat) {
+        $releaseCompatRoot = Join-Path $payload 'release-compat'
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'release-compat') `
+            -Destination $releaseCompatRoot -Recurse
+        if ($UnsafeReleaseCompat) {
+            Set-Content -LiteralPath (Join-Path $releaseCompatRoot 'unexpected.txt') `
+                -Value 'unexpected compatibility marker content' -Encoding UTF8
+        }
     }
     if ($UnsafeMember) {
         Set-Content -LiteralPath (Join-Path $payload 'escape.txt') -Value 'unexpected' -Encoding UTF8
@@ -335,7 +346,46 @@ try {
     }
     Assert-NoGeneratedPaths -Root $legacyRoot
 
+    # Current releases retain an inert marker for legacy self-updaters. The
+    # current installer validates it but never installs it as runtime support.
+    $releaseCompatRoot = Join-Path $testRoot 'release-compat'
+    $releaseCompatInstallDir = Join-Path $releaseCompatRoot 'bin'
+    $releaseCompatDataHome = Join-Path $releaseCompatRoot 'data'
+    Set-ReleaseFixture -Version '1.2.9' -WithoutSupport -WithReleaseCompat
+    Invoke-TestInstall -Version '1.2.9' -InstallDir $releaseCompatInstallDir `
+        -DataHome $releaseCompatDataHome
+    Assert-File (Join-Path $releaseCompatInstallDir 'a3s.exe')
+    Assert-File (Join-Path $releaseCompatInstallDir 'a3s-webview.exe')
+    Assert-File (Join-Path $releaseCompatDataHome 'web\1.2.9\index.html')
+    if (Test-Path -LiteralPath (Join-Path $releaseCompatInstallDir 'support')) {
+        Fail-Test 'release compatibility marker was installed as runtime support'
+    }
+    if (Test-Path -LiteralPath (Join-Path $releaseCompatInstallDir 'release-compat')) {
+        Fail-Test 'release compatibility marker was copied into the install directory'
+    }
+    Assert-NoGeneratedPaths -Root $releaseCompatRoot
+
+    # Extra compatibility marker content is rejected before activation.
+    Set-ReleaseFixture -Version '1.2.10' -WithoutSupport -WithReleaseCompat -UnsafeReleaseCompat
+    Expect-Failure 'unexpected release compatibility marker member' {
+        Invoke-TestInstall -Version '1.2.10' -InstallDir $releaseCompatInstallDir `
+            -DataHome $releaseCompatDataHome
+    }
+    $releaseCompatVersion = (& (Join-Path $releaseCompatInstallDir 'a3s.exe') --version | Out-String).Trim()
+    if ($releaseCompatVersion -cne 'a3s 1.2.9') {
+        Fail-Test 'malformed compatibility marker changed the installed binary'
+    }
+    $releaseCompatWebviewVersion = (& (Join-Path $releaseCompatInstallDir 'a3s-webview.exe') | Out-String).Trim()
+    if ($releaseCompatWebviewVersion -cne 'a3s-webview 1.2.9') {
+        Fail-Test 'malformed compatibility marker changed the WebView companion'
+    }
+    if (Test-Path -LiteralPath (Join-Path $releaseCompatDataHome 'web\1.2.10')) {
+        Fail-Test 'malformed compatibility marker installed new Web assets'
+    }
+    Assert-NoGeneratedPaths -Root $releaseCompatRoot
+
     # `latest` ignores other product tags and prereleases in the monorepo.
+    Set-ReleaseFixture -Version '1.2.2' -WithoutWebview -WithoutSupport
     $global:A3sInstallerMockReleaseList = @(
         [pscustomobject]@{
             tag_name = 'a3s-code-v9.0.0'

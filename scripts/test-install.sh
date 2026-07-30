@@ -184,6 +184,8 @@ make_fixture() {
     local target=$2
     local include_webview=${3:-1}
     local include_support=${4:-1}
+    local include_release_compat=${5:-0}
+    local unsafe_release_compat=${6:-0}
     local payload="$fixture_root/payload"
     local archive="$fixture_root/a3s-v${version}-${target}.tar.gz"
     local asset_name="a3s-v${version}-${target}.tar.gz"
@@ -212,6 +214,14 @@ make_fixture() {
         printf 'fixture-tree-sha256-%s\n' \
             "$version" >"$payload/support/managed-srt.tree-sha256"
         archive_members+=(support)
+    fi
+    if [ "$include_release_compat" -eq 1 ]; then
+        cp -R "$repo_root/release-compat" "$payload/release-compat"
+        if [ "$unsafe_release_compat" -eq 1 ]; then
+            printf 'unexpected compatibility marker content\n' \
+                >"$payload/release-compat/unexpected.txt"
+        fi
+        archive_members+=(release-compat)
     fi
     tar -czf "$archive" -C "$payload" "${archive_members[@]}"
     digest=$(sha256_file "$archive")
@@ -252,7 +262,34 @@ assert_file "$legacy_root/data/web/1.2.2/index.html"
     || fail 'legacy release unexpectedly installed a support payload'
 assert_no_generated_paths "$legacy_root"
 
+# Current releases retain an inert marker for legacy self-updaters. The current
+# installer validates the marker but never installs it as runtime support.
+make_fixture 1.2.9 x86_64-unknown-linux-gnu 1 0 1
+release_compat_root="$test_root/release-compat"
+run_install 1.2.9 "$release_compat_root/bin" "$release_compat_root/data"
+assert_file "$release_compat_root/bin/a3s"
+assert_file "$release_compat_root/bin/a3s-webview"
+assert_file "$release_compat_root/data/web/1.2.9/index.html"
+[[ ! -e "$release_compat_root/bin/support" ]] \
+    || fail 'release compatibility marker was installed as runtime support'
+[[ ! -e "$release_compat_root/bin/release-compat" ]] \
+    || fail 'release compatibility marker was copied into the install directory'
+assert_no_generated_paths "$release_compat_root"
+
+# Extra compatibility marker content is rejected before activation.
+make_fixture 1.2.10 x86_64-unknown-linux-gnu 1 0 1 1
+expect_failure 'unexpected release compatibility marker member' \
+    run_install 1.2.10 "$release_compat_root/bin" "$release_compat_root/data"
+[[ "$("$release_compat_root/bin/a3s" --version)" == 'a3s 1.2.9' ]] \
+    || fail 'malformed compatibility marker changed the installed binary'
+[[ "$("$release_compat_root/bin/a3s-webview")" == 'a3s-webview 1.2.9' ]] \
+    || fail 'malformed compatibility marker changed the WebView companion'
+[[ ! -e "$release_compat_root/data/web/1.2.10" ]] \
+    || fail 'malformed compatibility marker installed new Web assets'
+assert_no_generated_paths "$release_compat_root"
+
 # `latest` ignores other product tags and prereleases in the monorepo.
+make_fixture 1.2.2 x86_64-unknown-linux-gnu 0 0
 latest_list="$fixture_root/releases.json"
 printf '%s' \
     '[{"tag_name":"a3s-code-v9.0.0","draft":false,"prerelease":false},{"tag_name":"v9.0.0","draft":false,"prerelease":true},{"tag_name":"v1.2.2","draft":false,"prerelease":false}]' \

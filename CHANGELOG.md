@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Allowed current installers to validate and ignore the inert legacy
+  self-update marker in release archives without installing managed SRT.
+
 ## [0.11.1] - 2026-07-29
 
 ### Fixed

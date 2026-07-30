@@ -603,6 +603,20 @@ if [ "$support_entry_count" -gt 0 ]; then
     done
     has_bundled_support=1
 fi
+release_compat_required_entries='
+release-compat/README.md
+release-compat/support/managed-srt/package.json
+release-compat/support/managed-srt/package-lock.json
+release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/package.json
+release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js
+'
+release_compat_entry_count=$(awk '$0 == "release-compat" || index($0, "release-compat/") == 1 { count += 1 } END { print count + 0 }' "$archive_list")
+if [ "$release_compat_entry_count" -gt 0 ]; then
+    for required_release_compat_entry in $release_compat_required_entries; do
+        [ "$(grep -Fxc "$required_release_compat_entry" "$archive_list")" -eq 1 ] \
+            || die "release compatibility marker must contain exactly one $required_release_compat_entry"
+    done
+fi
 [ "$(grep -Fxc 'web/index.html' "$archive_list")" -eq 1 ] \
     || die "release archive must contain exactly one web/index.html"
 duplicate_entries=$(awk '{ sub(/\/$/, ""); print }' "$archive_list" | LC_ALL=C sort | uniq -d)
@@ -612,9 +626,37 @@ tar -tvzf "$archive" | awk '
     substr($1, 1, 1) != "-" && substr($1, 1, 1) != "d" { unsafe = 1 }
     END { exit unsafe }
 ' || die "release archive contains a link or special file"
+
+is_release_compat_file() {
+    release_compat_candidate=$1
+    for release_compat_file in $release_compat_required_entries; do
+        [ "$release_compat_candidate" = "$release_compat_file" ] && return 0
+    done
+    return 1
+}
+
+is_release_compat_directory() {
+    case "$1" in
+        release-compat|release-compat/|\
+        release-compat/support|release-compat/support/|\
+        release-compat/support/managed-srt|release-compat/support/managed-srt/|\
+        release-compat/support/managed-srt/node_modules|release-compat/support/managed-srt/node_modules/|\
+        release-compat/support/managed-srt/node_modules/@anthropic-ai|release-compat/support/managed-srt/node_modules/@anthropic-ai/|\
+        release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime|release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/|\
+        release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/dist|release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/dist/)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
 while IFS= read -r entry; do
     case "$entry" in
         a3s|a3s-webview|web|web/|web/*|support|support/|support/*) ;;
+        release-compat|release-compat/*)
+            is_release_compat_file "$entry" || is_release_compat_directory "$entry" \
+                || die "release archive contains an unexpected compatibility marker path: $entry"
+            ;;
         *) die "release archive contains an unexpected path: $entry" ;;
     esac
     case "/$entry/" in

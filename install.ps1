@@ -399,6 +399,39 @@ param(
                 }
                 $hasBundledSupport = $true
             }
+            $releaseCompatRequiredEntries = @(
+                'release-compat/README.md',
+                'release-compat/support/managed-srt/package.json',
+                'release-compat/support/managed-srt/package-lock.json',
+                'release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/package.json',
+                'release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/dist/cli.js'
+            )
+            $releaseCompatDirectoryEntries = @(
+                'release-compat',
+                'release-compat/',
+                'release-compat/support',
+                'release-compat/support/',
+                'release-compat/support/managed-srt',
+                'release-compat/support/managed-srt/',
+                'release-compat/support/managed-srt/node_modules',
+                'release-compat/support/managed-srt/node_modules/',
+                'release-compat/support/managed-srt/node_modules/@anthropic-ai',
+                'release-compat/support/managed-srt/node_modules/@anthropic-ai/',
+                'release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime',
+                'release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/',
+                'release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/dist',
+                'release-compat/support/managed-srt/node_modules/@anthropic-ai/sandbox-runtime/dist/'
+            )
+            $releaseCompatEntryCount = @($entryNames | Where-Object {
+                $_ -ceq 'release-compat' -or $_.StartsWith('release-compat/', [StringComparison]::Ordinal)
+            }).Count
+            if ($releaseCompatEntryCount -gt 0) {
+                foreach ($requiredReleaseCompatEntry in $releaseCompatRequiredEntries) {
+                    if (@($entryNames | Where-Object { $_ -ceq $requiredReleaseCompatEntry }).Count -ne 1) {
+                        throw "release compatibility marker must contain exactly one $requiredReleaseCompatEntry"
+                    }
+                }
+            }
             $entryKeys = @($entryNames | ForEach-Object { $_.TrimEnd('/') })
             if (@($entryKeys | Group-Object | Where-Object { $_.Count -ne 1 }).Count -ne 0) {
                 throw 'release archive contains duplicate paths'
@@ -406,7 +439,10 @@ param(
             foreach ($entry in $entries) {
                 $entryName = $entry.FullName.Replace('\', '/')
                 $unixFileType = (($entry.ExternalAttributes -shr 16) -band 0xF000)
-                if ($entryName -notmatch '^(a3s\.exe|a3s-webview\.exe|web/?|web/.+|support/?|support/.+)$' -or
+                $isReleaseCompatEntry = $releaseCompatRequiredEntries -ccontains $entryName -or
+                    $releaseCompatDirectoryEntries -ccontains $entryName
+                if (($entryName -notmatch '^(a3s\.exe|a3s-webview\.exe|web/?|web/.+|support/?|support/.+)$' -and
+                    -not $isReleaseCompatEntry) -or
                     ('/' + $entryName + '/') -match '/(\.|\.\.)/' -or
                     $unixFileType -notin @(0, 0x4000, 0x8000) -or
                     ($entry.ExternalAttributes -band [int][IO.FileAttributes]::ReparsePoint) -ne 0) {
