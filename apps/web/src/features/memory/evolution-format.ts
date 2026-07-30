@@ -1,4 +1,10 @@
-import type { EvolutionAuditEvent, EvolutionCandidateState, EvolutionKind } from '../../types/api';
+import type {
+  EvolutionAuditEvent,
+  EvolutionCandidateState,
+  EvolutionKind,
+  SkillOptimizationEditOperation,
+  SkillOptimizationStatus,
+} from '../../types/api';
 
 export function formatEvolutionDate(value: string): string {
   const date = new Date(value);
@@ -52,4 +58,24 @@ export function evolutionAuditLabel(action: EvolutionAuditEvent['action']): stri
     activated: '已在对话中使用',
     deactivated: '已从对话中移除',
   }[action];
+}
+
+export function skillOptimizationStatusLabel(status: SkillOptimizationStatus): string {
+  return {
+    queued: '等待开始',
+    running: '正在优化',
+    staged: '待你采用',
+    rejected: '未通过验证',
+    adopted: '已采用',
+    dismissed: '已归档',
+    failed: '运行失败',
+  }[status];
+}
+
+export function skillOptimizationEditLabel(operation: SkillOptimizationEditOperation): string {
+  return {
+    append: '新增',
+    replace: '替换',
+    delete: '删除',
+  }[operation];
 }

@@ -42,6 +42,10 @@ import type {
   SessionList,
   SessionOutput,
   SkillCatalog,
+  SkillOptimizationRequest,
+  SkillOptimizationRun,
+  SkillOptimizationRunSummary,
+  SkillOptimizationStartResponse,
   TurnQueue,
   WeixinAccount,
   WeixinCapability,
@@ -231,6 +235,25 @@ export const codeApi = {
     apiRequest<EvolutionMutationResponse>(`/api/v1/evolution/${encodeURIComponent(id)}/rollback`, {
       method: 'POST',
       ...jsonBody({ targetVersion }),
+    }),
+  optimizeEvolutionSkill: (id: string, request: SkillOptimizationRequest = {}) =>
+    apiRequest<SkillOptimizationStartResponse>(`/api/v1/evolution/${encodeURIComponent(id)}/optimize`, {
+      method: 'POST',
+      ...jsonBody(request),
+    }),
+  evolutionOptimizations: (signal?: AbortSignal) =>
+    apiRequest<SkillOptimizationRunSummary[]>('/api/v1/evolution/optimizations', { signal }),
+  evolutionOptimization: (runId: string, signal?: AbortSignal) =>
+    apiRequest<SkillOptimizationRun>(`/api/v1/evolution/optimizations/${encodeURIComponent(runId)}`, { signal }),
+  adoptEvolutionOptimization: (runId: string) =>
+    apiRequest<EvolutionMutationResponse>(`/api/v1/evolution/optimizations/${encodeURIComponent(runId)}/adopt`, {
+      method: 'POST',
+      ...jsonBody({}),
+    }),
+  dismissEvolutionOptimization: (runId: string) =>
+    apiRequest<SkillOptimizationRun>(`/api/v1/evolution/optimizations/${encodeURIComponent(runId)}/dismiss`, {
+      method: 'POST',
+      ...jsonBody({}),
     }),
   osAccount: () => apiRequest<OsAccount>('/api/v1/os/account'),
   osLogin: () =>

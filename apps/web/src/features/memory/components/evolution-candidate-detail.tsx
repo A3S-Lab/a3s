@@ -12,9 +12,15 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Button, CollectionState, Dialog, Field, InlineNotice } from '../../../design-system/primitives';
-import type { EvolutionAuditEvent, EvolutionCandidate, EvolutionVersion } from '../../../types/api';
+import type {
+  EvolutionAuditEvent,
+  EvolutionCandidate,
+  EvolutionVersion,
+  SkillOptimizationRunSummary,
+} from '../../../types/api';
 import { evolutionAuditLabel, evolutionSourceLabel, formatEvolutionDate } from '../evolution-format';
 import { KindBadge, StateBadge } from './evolution-shared';
+import { SkillOptimizationPanel } from './skill-optimization-panel';
 
 export type EvolutionConfirmation =
   | { action: 'reject'; candidate: EvolutionCandidate }
@@ -27,6 +33,11 @@ export function EvolutionCandidateDetail({
   onReject,
   onReopen,
   onRollback,
+  optimizationSummaries,
+  onOptimizeSkill,
+  onLoadOptimization,
+  onAdoptOptimization,
+  onDismissOptimization,
 }: {
   candidate: EvolutionCandidate;
   busy: boolean;
@@ -34,6 +45,11 @@ export function EvolutionCandidateDetail({
   onReject: () => void;
   onReopen: () => void;
   onRollback: (version: number) => void;
+  optimizationSummaries: SkillOptimizationRunSummary[];
+  onOptimizeSkill: (candidateId: string) => Promise<void>;
+  onLoadOptimization: (runId: string, quiet?: boolean) => Promise<void>;
+  onAdoptOptimization: (runId: string) => Promise<void>;
+  onDismissOptimization: (runId: string) => Promise<void>;
 }) {
   const rollbackVersions = candidate.versions.filter((version) => version.version !== candidate.currentVersion);
   const canMaterialize = candidate.state !== 'rejected' && candidate.state !== 'materialized';
@@ -98,6 +114,17 @@ export function EvolutionCandidateDetail({
           </CollectionState>
         )}
       </section>
+      {candidate.kind === 'skill' && (
+        <SkillOptimizationPanel
+          candidate={candidate}
+          summaries={optimizationSummaries}
+          candidateBusy={busy}
+          onOptimize={onOptimizeSkill}
+          onLoad={onLoadOptimization}
+          onAdopt={onAdoptOptimization}
+          onDismiss={onDismissOptimization}
+        />
+      )}
       <section className='evolution-section'>
         <header>
           <FileText size={14} />

@@ -180,6 +180,118 @@ export interface EvolutionCandidate {
   audit: EvolutionAuditEvent[];
 }
 
+export type SkillOptimizationStatus = 'queued' | 'running' | 'staged' | 'rejected' | 'adopted' | 'dismissed' | 'failed';
+export type SkillOptimizationSplit = 'train' | 'validation';
+export type SkillOptimizationEditOperation = 'append' | 'replace' | 'delete';
+
+export interface SkillOptimizationTaskInput {
+  id?: string | null;
+  prompt: string;
+  rubric: string;
+  split?: SkillOptimizationSplit | null;
+}
+
+export interface SkillOptimizationRequest {
+  tasks?: SkillOptimizationTaskInput[];
+  editBudget?: number;
+  taskCount?: number;
+}
+
+export interface SkillOptimizationTask {
+  id: string;
+  prompt: string;
+  rubric: string;
+  split: SkillOptimizationSplit;
+}
+
+export interface SkillOptimizationSnapshot {
+  summary: string;
+  instructions: string[];
+  digest: string;
+}
+
+export interface SkillOptimizationEdit {
+  operation: SkillOptimizationEditOperation;
+  target?: string | null;
+  content?: string | null;
+  rationale: string;
+}
+
+export interface SkillOptimizationScore {
+  taskId: string;
+  baseline: number;
+  candidate: number;
+  delta: number;
+  rationale: string;
+}
+
+export interface SkillOptimizationGate {
+  baselineScore: number;
+  candidateScore: number;
+  improvement: number;
+  worstTaskRegression: number;
+  strictImprovement: boolean;
+  regressionGuardPassed: boolean;
+  accepted: boolean;
+  reason: string;
+}
+
+export interface SkillOptimizationAuditEvent {
+  status: SkillOptimizationStatus;
+  at: string;
+  note: string;
+}
+
+export interface SkillOptimizationRunner {
+  pid: number;
+  processStartedAt: number;
+}
+
+export interface SkillOptimizationRunSummary {
+  id: string;
+  candidateId: string;
+  candidateTitle: string;
+  status: SkillOptimizationStatus;
+  editCount: number;
+  taskCount: number;
+  baselineScore?: number | null;
+  candidateScore?: number | null;
+  improvement?: number | null;
+  createdAt: string;
+  updatedAt: string;
+  adoptedVersion?: number | null;
+}
+
+export interface SkillOptimizationRun {
+  schema: string;
+  id: string;
+  candidateId: string;
+  candidateTitle: string;
+  status: SkillOptimizationStatus;
+  editBudget: number;
+  requestedTaskCount: number;
+  baseline: SkillOptimizationSnapshot;
+  proposal?: SkillOptimizationSnapshot | null;
+  tasks: SkillOptimizationTask[];
+  edits: SkillOptimizationEdit[];
+  scores: SkillOptimizationScore[];
+  gate?: SkillOptimizationGate | null;
+  modelCalls: number;
+  runner?: SkillOptimizationRunner | null;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string | null;
+  adoptedVersion?: number | null;
+  error?: string | null;
+  audit: SkillOptimizationAuditEvent[];
+}
+
+export interface SkillOptimizationStartResponse {
+  run: SkillOptimizationRun;
+  execution: string;
+  approvalRequired: boolean;
+}
+
 export interface EvolutionOverview {
   schema: string;
   revision: number;
@@ -200,6 +312,7 @@ export interface EvolutionOverview {
     byKind: Record<string, number>;
   };
   candidates: EvolutionCandidate[];
+  optimizations: SkillOptimizationRunSummary[];
   policy: {
     readyEvidence: number;
     autoMaterializeEvidence: number;

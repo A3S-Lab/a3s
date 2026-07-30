@@ -13,7 +13,15 @@ import { CandidateButton, EvolutionEmptyState, EvolutionErrorState, EvolutionLoa
 
 type EvolutionActions = Pick<
   CodeActions,
-  'loadEvolution' | 'materializeEvolution' | 'rejectEvolution' | 'reopenEvolution' | 'rollbackEvolution'
+  | 'loadEvolution'
+  | 'materializeEvolution'
+  | 'rejectEvolution'
+  | 'reopenEvolution'
+  | 'rollbackEvolution'
+  | 'optimizeEvolutionSkill'
+  | 'loadEvolutionOptimization'
+  | 'adoptEvolutionOptimization'
+  | 'dismissEvolutionOptimization'
 >;
 
 export function EvolutionWorkbench({ actions }: { actions: EvolutionActions }) {
@@ -33,6 +41,10 @@ export function EvolutionWorkbench({ actions }: { actions: EvolutionActions }) {
   const selected = useMemo(
     () => candidates.find((candidate) => candidate.id === state.evolutionSelectedId) ?? candidates[0] ?? null,
     [candidates, state.evolutionSelectedId]
+  );
+  const selectedOptimizations = useMemo(
+    () => (data?.optimizations ?? []).filter((run) => run.candidateId === selected?.id),
+    [data, selected?.id]
   );
 
   if (state.evolutionPhase === 'loading' && !data) return <EvolutionLoadingState />;
@@ -121,6 +133,11 @@ export function EvolutionWorkbench({ actions }: { actions: EvolutionActions }) {
               }}
               onReopen={() => void actions.reopenEvolution(selected.id)}
               onRollback={(version) => setConfirmation({ action: 'rollback', candidate: selected, version })}
+              optimizationSummaries={selectedOptimizations}
+              onOptimizeSkill={actions.optimizeEvolutionSkill}
+              onLoadOptimization={actions.loadEvolutionOptimization}
+              onAdoptOptimization={actions.adoptEvolutionOptimization}
+              onDismissOptimization={actions.dismissEvolutionOptimization}
             />
           ) : (
             <StateView

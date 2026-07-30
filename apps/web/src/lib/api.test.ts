@@ -339,6 +339,34 @@ describe('codeApi local evolution', () => {
     expect(requestJson(fetch, 4)).toEqual({});
     expect(requestJson(fetch, 5)).toEqual({ targetVersion: 2 });
   });
+
+  it('uses the explicit Skill optimization lifecycle routes', async () => {
+    const fetch = vi.fn(
+      async (_input: RequestInfo | URL, _init?: RequestInit) =>
+        new Response(JSON.stringify({ code: 200, data: {} }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+    );
+    vi.stubGlobal('fetch', fetch);
+
+    await codeApi.optimizeEvolutionSkill('skill/one', { taskCount: 6, editBudget: 2 });
+    await codeApi.evolutionOptimizations();
+    await codeApi.evolutionOptimization('run/one');
+    await codeApi.adoptEvolutionOptimization('run/one');
+    await codeApi.dismissEvolutionOptimization('run/one');
+
+    expect(fetch.mock.calls.map(([path]) => path)).toEqual([
+      '/api/v1/evolution/skill%2Fone/optimize',
+      '/api/v1/evolution/optimizations',
+      '/api/v1/evolution/optimizations/run%2Fone',
+      '/api/v1/evolution/optimizations/run%2Fone/adopt',
+      '/api/v1/evolution/optimizations/run%2Fone/dismiss',
+    ]);
+    expect(requestJson(fetch, 0)).toEqual({ taskCount: 6, editBudget: 2 });
+    expect(requestJson(fetch, 3)).toEqual({});
+    expect(requestJson(fetch, 4)).toEqual({});
+  });
 });
 
 describe('codeApi knowledge marketplace', () => {

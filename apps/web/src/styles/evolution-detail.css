@@ -603,6 +603,43 @@
   }
 }
 
+@media (max-width: 520px) {
+  .memory-page-header.ds-page-header.has-navigation {
+    grid-template-columns: auto auto minmax(0, 1fr);
+    gap: 4px;
+    padding-inline: 8px;
+  }
+
+  .memory-page-header .ds-page-header-identity {
+    gap: 0;
+  }
+
+  .memory-page-header .ds-page-header-copy {
+    display: none;
+  }
+
+  .memory-page-header .ds-page-header-navigation {
+    justify-self: start;
+  }
+
+  .memory-page-header .ds-page-header-actions {
+    min-width: 0;
+    gap: 3px;
+  }
+
+  .memory-page-header .ds-page-header-actions .ds-button {
+    width: 32px;
+    justify-content: center;
+    padding-inline: 0;
+    font-size: 0;
+  }
+
+  .memory-page-header .ds-page-header-actions .ds-button svg {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .evolution-loading.ds-state-view svg {
     animation: none;

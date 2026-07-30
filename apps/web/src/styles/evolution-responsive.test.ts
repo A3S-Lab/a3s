@@ -7,6 +7,10 @@ const mobileStyles = styles.slice(
   styles.indexOf('@media (max-width: 720px)'),
   styles.indexOf('@media (prefers-reduced-motion: reduce)')
 );
+const compactStyles = styles.slice(
+  styles.indexOf('@media (max-width: 520px)'),
+  styles.indexOf('@media (prefers-reduced-motion: reduce)')
+);
 
 describe('evolution responsive styles', () => {
   it('uses a single-column workbench with a horizontal candidate list on narrow screens', () => {
@@ -28,5 +32,14 @@ describe('evolution responsive styles', () => {
       /\.memory-page-header \.ds-page-header-actions \.ds-button\s*\{[^}]*min-height:\s*32px;/s
     );
     expect(mobileStyles).toMatch(/\.memory-page-header \.memory-settings-action\s*\{[^}]*font-size:\s*0;/s);
+  });
+
+  it('prevents the Memory navigation and actions from colliding on phone-width screens', () => {
+    expect(compactStyles).toMatch(
+      /\.memory-page-header\.ds-page-header\.has-navigation\s*\{[^}]*grid-template-columns:\s*auto auto minmax\(0, 1fr\);/s
+    );
+    expect(compactStyles).toMatch(
+      /\.memory-page-header \.ds-page-header-actions \.ds-button\s*\{[^}]*width:\s*32px;[^}]*font-size:\s*0;/s
+    );
   });
 });

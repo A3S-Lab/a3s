@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { appState } from '../../../state/app-state';
 import type { CodeActions } from '../../code/use-code-controller';
-import { evolutionTestData } from '../evolution-test-data';
+import { evolutionTestData, skillOptimizationTestRun } from '../evolution-test-data';
 import { createMemoryState } from '../memory-state';
 import { EvolutionWorkbench } from './evolution-workbench';
 
@@ -185,6 +185,73 @@ describe('EvolutionWorkbench', () => {
     expect(screen.queryByText('workflow')).not.toBeInTheDocument();
   });
 
+  it('starts Skill optimization only after an explicit user action', async () => {
+    const data = evolutionTestData();
+    const skill = data.candidates[1];
+    skill.updateAvailable = true;
+    data.optimizations = [];
+    appState.evolutionData = data;
+    appState.evolutionSelectedId = skill.id;
+    const optimizeEvolutionSkill = vi.fn().mockResolvedValue(undefined);
+
+    render(<EvolutionWorkbench actions={actions({ optimizeEvolutionSkill })} />);
+
+    expect(screen.getByRole('region', { name: 'Skill 自优化' })).toHaveTextContent('不会自动采用或发布');
+    fireEvent.click(screen.getByRole('button', { name: '开始优化' }));
+
+    expect(optimizeEvolutionSkill).toHaveBeenCalledWith(skill.id);
+  });
+
+  it('reviews a staged proposal and confirms adoption as an immutable version', async () => {
+    const data = evolutionTestData();
+    const skill = data.candidates[1];
+    skill.updateAvailable = true;
+    const run = skillOptimizationTestRun();
+    appState.evolutionData = data;
+    appState.evolutionSelectedId = skill.id;
+    appState.evolutionOptimizationRuns[run.id] = run;
+    const adoptEvolutionOptimization = vi.fn().mockResolvedValue(undefined);
+
+    render(<EvolutionWorkbench actions={actions({ adoptEvolutionOptimization })} />);
+
+    const scorecard = screen.getByLabelText('优化评分');
+    expect(within(scorecard).getByText('75.0')).toBeInTheDocument();
+    expect(within(scorecard).getByText('89.5')).toBeInTheDocument();
+    expect(within(scorecard).getByText('+14.5')).toBeInTheDocument();
+    expect(screen.getByText('通过验证的候选')).toBeInTheDocument();
+    expect(screen.getAllByText('Identify the smallest test target that owns the changed behavior.')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: '采用为新版本' }));
+    const dialog = screen.getByRole('dialog', { name: '采用这版 Skill 优化？' });
+    expect(adoptEvolutionOptimization).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole('button', { name: '确认采用' }));
+
+    await waitFor(() => expect(adoptEvolutionOptimization).toHaveBeenCalledWith(run.id));
+  });
+
+  it('keeps a failed or rejected proposal inert and requires confirmation before archiving it', async () => {
+    const data = evolutionTestData();
+    const skill = data.candidates[1];
+    skill.updateAvailable = true;
+    const run = skillOptimizationTestRun();
+    run.status = 'rejected';
+    run.gate = { ...run.gate!, accepted: false, reason: 'A held-out task regressed beyond the guard.' };
+    data.optimizations[0].status = 'rejected';
+    appState.evolutionData = data;
+    appState.evolutionSelectedId = skill.id;
+    appState.evolutionOptimizationRuns[run.id] = run;
+    const dismissEvolutionOptimization = vi.fn().mockResolvedValue(undefined);
+
+    render(<EvolutionWorkbench actions={actions({ dismissEvolutionOptimization })} />);
+
+    expect(screen.getByText('候选草案（未生效）')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '归档结果' }));
+    const dialog = screen.getByRole('dialog', { name: '归档这次优化？' });
+    expect(dialog).toHaveTextContent('当前 Skill 不会发生变化');
+    fireEvent.click(within(dialog).getByRole('button', { name: '确认归档' }));
+
+    await waitFor(() => expect(dismissEvolutionOptimization).toHaveBeenCalledWith(run.id));
+  });
+
   it('keeps technical load errors out of the visible message', () => {
     Object.assign(appState, {
       evolutionPhase: 'error',
@@ -206,6 +273,10 @@ function actions(overrides: Partial<CodeActions> = {}) {
     rejectEvolution: vi.fn().mockResolvedValue(undefined),
     reopenEvolution: vi.fn().mockResolvedValue(undefined),
     rollbackEvolution: vi.fn().mockResolvedValue(undefined),
+    optimizeEvolutionSkill: vi.fn().mockResolvedValue(undefined),
+    loadEvolutionOptimization: vi.fn().mockResolvedValue(undefined),
+    adoptEvolutionOptimization: vi.fn().mockResolvedValue(undefined),
+    dismissEvolutionOptimization: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as CodeActions;
 }

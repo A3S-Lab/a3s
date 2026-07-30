@@ -1,8 +1,9 @@
-import type { EvolutionCandidate, EvolutionOverview } from '../../types/api';
+import type { EvolutionCandidate, EvolutionOverview, SkillOptimizationRun } from '../../types/api';
 
 const NOW = '2026-07-21T08:00:00.000Z';
 
 export function evolutionTestData(): EvolutionOverview {
+  const optimization = skillOptimizationTestRun();
   const skill = candidate({
     id: 'skill-focused-verification',
     kind: 'skill',
@@ -110,6 +111,22 @@ export function evolutionTestData(): EvolutionOverview {
       byKind: { preference: 1, skill: 1, okf: 1 },
     },
     candidates: [preference, skill, rejected],
+    optimizations: [
+      {
+        id: optimization.id,
+        candidateId: optimization.candidateId,
+        candidateTitle: optimization.candidateTitle,
+        status: optimization.status,
+        editCount: optimization.edits.length,
+        taskCount: optimization.tasks.length,
+        baselineScore: optimization.gate?.baselineScore,
+        candidateScore: optimization.gate?.candidateScore,
+        improvement: optimization.gate?.improvement,
+        createdAt: optimization.createdAt,
+        updatedAt: optimization.updatedAt,
+        adoptedVersion: optimization.adoptedVersion,
+      },
+    ],
     policy: {
       readyEvidence: 2,
       autoMaterializeEvidence: 3,
@@ -118,6 +135,112 @@ export function evolutionTestData(): EvolutionOverview {
       localOnly: true,
       reviewSupported: true,
     },
+  };
+}
+
+export function skillOptimizationTestRun(): SkillOptimizationRun {
+  return {
+    schema: 'a3s.code.skill-optimization.v1',
+    id: 'opt-focused-verification-1',
+    candidateId: 'skill-focused-verification',
+    candidateTitle: 'Focused verification',
+    status: 'staged',
+    editBudget: 3,
+    requestedTaskCount: 4,
+    baseline: {
+      summary: 'Run focused checks before broad validation.',
+      instructions: [
+        'Identify the smallest relevant test target.',
+        'Run focused checks before broad workspace validation.',
+      ],
+      digest: 'baseline-digest',
+    },
+    proposal: {
+      summary: 'Verify the smallest affected surface before expanding checks.',
+      instructions: [
+        'Identify the smallest test target that owns the changed behavior.',
+        'Preserve the first failing diagnostic before retrying or broadening validation.',
+      ],
+      digest: 'proposal-digest',
+    },
+    tasks: [
+      {
+        id: 'train-smallest-target',
+        prompt: 'A parser fixture changed. Choose the first verification step.',
+        rubric: 'Starts with the parser fixture test.',
+        split: 'train',
+      },
+      {
+        id: 'train-shared-type',
+        prompt: 'A shared type changed. Give a bounded check sequence.',
+        rubric: 'Checks the owning crate before dependents.',
+        split: 'train',
+      },
+      {
+        id: 'validation-cli',
+        prompt: 'A CLI flag changed. Propose verification without tools.',
+        rubric: 'Names a focused CLI test before broad checks.',
+        split: 'validation',
+      },
+      {
+        id: 'validation-retry',
+        prompt: 'A failure disappears after retry. What should be retained?',
+        rubric: 'Retains the first failure and avoids an early success claim.',
+        split: 'validation',
+      },
+    ],
+    edits: [
+      {
+        operation: 'replace',
+        target: 'Identify the smallest relevant test target.',
+        content: 'Identify the smallest test target that owns the changed behavior.',
+        rationale: 'Makes ownership, not file proximity, the selection criterion.',
+      },
+      {
+        operation: 'replace',
+        target: 'Run focused checks before broad workspace validation.',
+        content: 'Preserve the first failing diagnostic before retrying or broadening validation.',
+        rationale: 'Prevents transient retries from hiding the original signal.',
+      },
+    ],
+    scores: [
+      {
+        taskId: 'validation-cli',
+        baseline: 72,
+        candidate: 88,
+        delta: 16,
+        rationale: 'The candidate starts with the owning CLI test.',
+      },
+      {
+        taskId: 'validation-retry',
+        baseline: 78,
+        candidate: 91,
+        delta: 13,
+        rationale: 'The candidate explicitly preserves the first diagnostic.',
+      },
+    ],
+    gate: {
+      baselineScore: 75,
+      candidateScore: 89.5,
+      improvement: 14.5,
+      worstTaskRegression: 0,
+      strictImprovement: true,
+      regressionGuardPassed: true,
+      accepted: true,
+      reason: 'Held-out mean improved and no task regressed by more than 10 points.',
+    },
+    modelCalls: 9,
+    runner: null,
+    createdAt: '2026-07-21T07:30:00.000Z',
+    updatedAt: NOW,
+    completedAt: NOW,
+    adoptedVersion: null,
+    error: null,
+    audit: [
+      { status: 'queued', at: '2026-07-21T07:30:00.000Z', note: 'queued for isolated evaluation' },
+      { status: 'running', at: '2026-07-21T07:30:01.000Z', note: 'optimizer started' },
+      { status: 'staged', at: NOW, note: 'held-out gate passed' },
+    ],
   };
 }
 

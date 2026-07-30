@@ -2,7 +2,7 @@ import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { codeApi } from '../../lib/api';
 import { appState } from '../../state/app-state';
-import { evolutionTestData } from './evolution-test-data';
+import { evolutionTestData, skillOptimizationTestRun } from './evolution-test-data';
 import { createMemoryState } from './memory-state';
 import { memoryTestData } from './memory-test-data';
 import { useMemoryController } from './use-memory-controller';
@@ -192,6 +192,71 @@ describe('useMemoryController', () => {
     expect(appState.evolutionData).toEqual(data);
     expect(appState.evolutionError).toBe('candidate is already materialized');
     expect(appState.evolutionBusyId).toBeNull();
+    hook.unmount();
+  });
+
+  it('queues Skill optimization explicitly, keeps its run locally, and refreshes the overview', async () => {
+    const data = evolutionTestData();
+    const run = skillOptimizationTestRun();
+    run.status = 'queued';
+    run.proposal = null;
+    run.edits = [];
+    run.scores = [];
+    run.gate = null;
+    vi.spyOn(codeApi, 'optimizeEvolutionSkill').mockResolvedValue({
+      run,
+      execution: 'background',
+      approvalRequired: true,
+    });
+    vi.spyOn(codeApi, 'evolution').mockResolvedValue(data);
+    const hook = renderHook(() => useMemoryController());
+
+    await act(() => hook.result.current.optimizeEvolutionSkill(run.candidateId));
+
+    expect(codeApi.optimizeEvolutionSkill).toHaveBeenCalledWith(run.candidateId, {});
+    expect(appState.evolutionOptimizationRuns[run.id]?.status).toBe('queued');
+    expect(appState.evolutionBusyId).toBeNull();
+    expect(appState.toast?.message).toBe('Skill 自优化已开始，可继续处理其他任务');
+    hook.unmount();
+  });
+
+  it('polls a running optimization and refreshes the overview when it reaches a review state', async () => {
+    const data = evolutionTestData();
+    const running = skillOptimizationTestRun();
+    running.status = 'running';
+    const staged = skillOptimizationTestRun();
+    appState.evolutionOptimizationRuns[running.id] = running;
+    vi.spyOn(codeApi, 'evolutionOptimization').mockResolvedValue(staged);
+    vi.spyOn(codeApi, 'evolution').mockResolvedValue(data);
+    const hook = renderHook(() => useMemoryController());
+
+    await act(() => hook.result.current.loadEvolutionOptimization(running.id, true));
+
+    expect(codeApi.evolutionOptimization).toHaveBeenCalledWith(running.id, expect.any(AbortSignal));
+    expect(appState.evolutionOptimizationRuns[running.id]?.status).toBe('staged');
+    expect(codeApi.evolution).toHaveBeenCalled();
+    expect(appState.evolutionOptimizationLoadingId).toBeNull();
+    hook.unmount();
+  });
+
+  it('adopts a staged optimization only through the approval action', async () => {
+    const data = evolutionTestData();
+    const run = skillOptimizationTestRun();
+    const candidate = data.candidates[1];
+    appState.evolutionOptimizationRuns[run.id] = run;
+    vi.spyOn(codeApi, 'adoptEvolutionOptimization').mockResolvedValue({
+      result: { candidate: { ...candidate, currentVersion: 3 }, requiresSessionReload: true },
+      rebuiltSessions: [],
+    });
+    vi.spyOn(codeApi, 'evolution').mockResolvedValue(data);
+    const hook = renderHook(() => useMemoryController());
+
+    await act(() => hook.result.current.adoptEvolutionOptimization(run.id));
+
+    expect(codeApi.adoptEvolutionOptimization).toHaveBeenCalledWith(run.id);
+    expect(appState.evolutionOptimizationRuns[run.id]).toMatchObject({ status: 'adopted', adoptedVersion: 3 });
+    expect(appState.toast?.message).toBe('已采用为新的 Skill 版本，当前对话已更新');
+    expect(appState.evolutionOptimizationBusyId).toBeNull();
     hook.unmount();
   });
 });

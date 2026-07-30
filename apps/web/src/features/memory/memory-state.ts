@@ -1,4 +1,10 @@
-import type { EvolutionOverview, MemoryForgetSignal, MemoryOverview, MemoryTier } from '../../types/api';
+import type {
+  EvolutionOverview,
+  MemoryForgetSignal,
+  MemoryOverview,
+  MemoryTier,
+  SkillOptimizationRun,
+} from '../../types/api';
 
 export type MemoryLoadPhase = 'idle' | 'loading' | 'ready' | 'error';
 export type MemoryViewMode = 'graph' | 'timeline';
@@ -33,6 +39,10 @@ export interface MemoryState {
   evolutionLastLoadedAt: number | null;
   evolutionSelectedId: string | null;
   evolutionBusyId: string | null;
+  evolutionOptimizationRuns: Record<string, SkillOptimizationRun>;
+  evolutionOptimizationLoadingId: string | null;
+  evolutionOptimizationBusyId: string | null;
+  evolutionOptimizationError: string | null;
 }
 
 export function createMemoryState(): MemoryState {
@@ -60,5 +70,9 @@ export function createMemoryState(): MemoryState {
     evolutionLastLoadedAt: null,
     evolutionSelectedId: null,
     evolutionBusyId: null,
+    evolutionOptimizationRuns: {},
+    evolutionOptimizationLoadingId: null,
+    evolutionOptimizationBusyId: null,
+    evolutionOptimizationError: null,
   };
 }

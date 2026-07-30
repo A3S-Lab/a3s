@@ -1,0 +1,652 @@
+.skill-optimization-panel {
+  margin: 18px 20px 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--a3s-purple) 22%, var(--a3s-line));
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 0 0, color-mix(in srgb, var(--a3s-purple) 8%, transparent), transparent 36%),
+    var(--a3s-panel);
+  box-shadow: 0 8px 24px rgb(20 24 40 / 4%);
+}
+
+.skill-optimization-header {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--a3s-line);
+}
+
+.skill-optimization-title {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.skill-optimization-title > span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--a3s-purple) 20%, var(--a3s-line));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--a3s-purple) 8%, var(--a3s-panel));
+  color: var(--a3s-purple);
+}
+
+.skill-optimization-title > div {
+  min-width: 0;
+}
+
+.skill-optimization-title h3,
+.skill-optimization-title p {
+  margin: 0;
+}
+
+.skill-optimization-title h3 {
+  color: var(--a3s-ink);
+  font-size: 12px;
+  font-weight: 680;
+  line-height: 18px;
+}
+
+.skill-optimization-title p {
+  max-width: 650px;
+  margin-top: 2px;
+  color: var(--a3s-muted);
+  font-size: 9px;
+  line-height: 15px;
+}
+
+.skill-optimization-header .ds-button {
+  min-height: 31px;
+  flex: 0 0 auto;
+  padding-inline: 9px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+.skill-optimization-unavailable.ds-inline-notice,
+.skill-optimization-error.ds-inline-notice {
+  min-height: 38px;
+  margin: 10px 12px 0;
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+.skill-optimization-intro {
+  padding: 13px 14px 14px;
+}
+
+.skill-optimization-intro > p {
+  margin: 9px 0 0;
+  color: var(--a3s-muted);
+  font-size: 9px;
+  line-height: 16px;
+}
+
+.skill-optimization-steps {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  color: var(--a3s-faint);
+  list-style: none;
+}
+
+.skill-optimization-steps > li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--a3s-ink);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.skill-optimization-steps > li:not(:last-child)::after {
+  margin-left: 2px;
+  color: var(--a3s-faint);
+  content: "→";
+  font-weight: 400;
+}
+
+.skill-optimization-steps b {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--a3s-purple) 9%, var(--a3s-panel));
+  color: var(--a3s-purple);
+  font-size: 8px;
+}
+
+.skill-optimization-runbar {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--a3s-line);
+  background: color-mix(in srgb, var(--a3s-panel-soft) 42%, transparent);
+}
+
+.skill-optimization-runbar > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.skill-optimization-runbar > div > span {
+  color: var(--a3s-faint);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.skill-optimization-runbar label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.skill-optimization-runbar label > span {
+  color: var(--a3s-muted);
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.skill-optimization-runbar select {
+  max-width: 250px;
+  height: 27px;
+  padding: 0 24px 0 7px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 7px;
+  outline: none;
+  background: var(--a3s-panel);
+  color: var(--a3s-ink);
+  font: inherit;
+  font-size: 9px;
+}
+
+.skill-optimization-runbar select:focus-visible {
+  border-color: color-mix(in srgb, var(--a3s-blue) 50%, var(--a3s-line));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--a3s-blue) 9%, transparent);
+}
+
+.skill-optimization-status {
+  display: inline-flex;
+  min-height: 21px;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--a3s-panel-strong);
+  color: var(--a3s-muted);
+  font-size: 9px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.skill-optimization-status[data-status="running"],
+.skill-optimization-status[data-status="queued"] {
+  background: color-mix(in srgb, var(--a3s-purple) 9%, var(--a3s-panel));
+  color: var(--a3s-purple);
+}
+
+.skill-optimization-status[data-status="staged"],
+.skill-optimization-status[data-status="adopted"] {
+  background: color-mix(in srgb, var(--a3s-green) 9%, var(--a3s-panel));
+  color: var(--a3s-green);
+}
+
+.skill-optimization-status[data-status="rejected"],
+.skill-optimization-status[data-status="failed"] {
+  background: color-mix(in srgb, var(--a3s-danger) 8%, var(--a3s-panel));
+  color: var(--a3s-danger);
+}
+
+.skill-optimization-status svg,
+.skill-optimization-loading svg,
+.skill-optimization-progress > div:first-child > svg {
+  animation: skill-optimization-spin 1.2s linear infinite;
+}
+
+.skill-optimization-status[data-status="staged"] svg,
+.skill-optimization-status[data-status="adopted"] svg {
+  animation: none;
+}
+
+.skill-optimization-loading.ds-collection-state {
+  min-height: 88px;
+  color: var(--a3s-muted);
+  font-size: 10px;
+}
+
+.skill-optimization-progress {
+  display: block;
+  padding: 16px 14px 14px;
+}
+
+.skill-optimization-progress > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--a3s-purple);
+}
+
+.skill-optimization-progress > div:first-child > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.skill-optimization-progress strong {
+  color: var(--a3s-ink);
+  font-size: 10px;
+  line-height: 17px;
+}
+
+.skill-optimization-progress small {
+  color: var(--a3s-muted);
+  font-size: 9px;
+  line-height: 15px;
+}
+
+.skill-optimization-progress > i {
+  position: relative;
+  display: block;
+  height: 3px;
+  margin-top: 13px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: var(--a3s-panel-strong);
+}
+
+.skill-optimization-progress > i::after {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 38%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--a3s-purple), var(--a3s-blue));
+  content: "";
+  animation: skill-optimization-progress 1.6s ease-in-out infinite;
+}
+
+.skill-optimization-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  color: var(--a3s-faint);
+  font-size: 8px;
+}
+
+.skill-optimization-result {
+  padding: 12px;
+}
+
+.skill-optimization-scorecard {
+  padding: 10px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--a3s-panel-soft) 45%, var(--a3s-panel));
+}
+
+.skill-optimization-scorecard[data-accepted="true"] {
+  border-color: color-mix(in srgb, var(--a3s-green) 24%, var(--a3s-line));
+  background: color-mix(in srgb, var(--a3s-green) 3%, var(--a3s-panel));
+}
+
+.skill-optimization-metrics {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  align-items: center;
+  border: 0;
+  grid-template-columns: minmax(70px, 1fr) auto minmax(70px, 1fr) minmax(70px, 0.8fr);
+  gap: 8px;
+}
+
+.skill-optimization-metrics > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.skill-optimization-metrics small {
+  color: var(--a3s-muted);
+  font-size: 8px;
+  line-height: 13px;
+}
+
+.skill-optimization-metrics strong {
+  color: var(--a3s-ink);
+  font: 650 17px/22px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.skill-optimization-metrics .delta {
+  padding-left: 10px;
+  border-left: 1px solid var(--a3s-line);
+}
+
+.skill-optimization-scorecard[data-accepted="true"] .delta strong {
+  color: var(--a3s-green);
+}
+
+.skill-optimization-scorecard > p {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--a3s-line);
+  color: var(--a3s-muted);
+  font-size: 9px;
+  line-height: 15px;
+}
+
+.skill-optimization-scorecard > p svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: var(--a3s-green);
+}
+
+.skill-optimization-proposal {
+  margin-top: 10px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 9px;
+  background: var(--a3s-panel);
+}
+
+.skill-optimization-proposal > header {
+  padding: 10px;
+  border-bottom: 1px solid var(--a3s-line);
+}
+
+.skill-optimization-proposal > header > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.skill-optimization-proposal > header strong {
+  color: var(--a3s-ink);
+  font-size: 10px;
+}
+
+.skill-optimization-proposal > header span {
+  color: var(--a3s-muted);
+  font-size: 8px;
+}
+
+.skill-optimization-proposal > header p {
+  margin: 4px 0 0;
+  color: var(--a3s-muted);
+  font-size: 9px;
+  line-height: 15px;
+}
+
+.skill-optimization-proposal > ol {
+  display: flex;
+  margin: 0;
+  padding: 9px 10px 9px 30px;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--a3s-ink);
+  font-size: 9px;
+  line-height: 16px;
+}
+
+.skill-optimization-proposal > ol li::marker {
+  color: var(--a3s-purple);
+  font-weight: 650;
+}
+
+.skill-optimization-edits {
+  display: flex;
+  padding: 0 10px 10px;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.skill-optimization-edits article {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 7px;
+  background: var(--a3s-panel-soft);
+}
+
+.skill-optimization-edits article > span {
+  min-width: 34px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--a3s-purple) 9%, var(--a3s-panel));
+  color: var(--a3s-purple);
+  font-size: 8px;
+  font-weight: 650;
+  line-height: 14px;
+  text-align: center;
+}
+
+.skill-optimization-edits article[data-operation="delete"] > span {
+  color: var(--a3s-danger);
+}
+
+.skill-optimization-edits article > div {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.skill-optimization-edits del,
+.skill-optimization-edits ins {
+  overflow-wrap: anywhere;
+  color: var(--a3s-muted);
+  font-size: 9px;
+  line-height: 15px;
+  text-decoration-thickness: 1px;
+}
+
+.skill-optimization-edits ins {
+  color: var(--a3s-green);
+  text-decoration: none;
+}
+
+.skill-optimization-edits small {
+  color: var(--a3s-faint);
+  font-size: 8px;
+  line-height: 14px;
+}
+
+.skill-optimization-evaluation {
+  margin-top: 10px;
+  border: 1px solid var(--a3s-line);
+  border-radius: 9px;
+}
+
+.skill-optimization-evaluation > summary {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  color: var(--a3s-ink);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 600;
+  list-style: none;
+}
+
+.skill-optimization-evaluation > summary::-webkit-details-marker {
+  display: none;
+}
+
+.skill-optimization-evaluation > summary i {
+  margin-left: 5px;
+  color: var(--a3s-muted);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.skill-optimization-evaluation[open] > summary svg {
+  transform: rotate(180deg);
+}
+
+.skill-optimization-evaluation > div {
+  display: flex;
+  padding: 0 8px 8px;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.skill-optimization-evaluation article {
+  padding: 8px;
+  border-radius: 7px;
+  background: var(--a3s-panel-soft);
+}
+
+.skill-optimization-evaluation article p {
+  margin: 0;
+  color: var(--a3s-ink);
+  font-size: 9px;
+  line-height: 15px;
+}
+
+.skill-optimization-evaluation article > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  color: var(--a3s-muted);
+  font: 8px/14px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.skill-optimization-evaluation article > div strong {
+  margin-left: auto;
+  color: var(--a3s-danger);
+}
+
+.skill-optimization-evaluation article > div strong[data-positive="true"] {
+  color: var(--a3s-green);
+}
+
+.skill-optimization-evaluation article > small {
+  display: block;
+  margin-top: 4px;
+  color: var(--a3s-faint);
+  font-size: 8px;
+  line-height: 14px;
+}
+
+.skill-optimization-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.skill-optimization-actions .ds-button {
+  min-height: 31px;
+  padding-inline: 9px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+.skill-optimization-adopted {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 8px 9px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--a3s-green) 6%, var(--a3s-panel));
+  color: var(--a3s-green);
+  font-size: 9px;
+}
+
+@keyframes skill-optimization-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes skill-optimization-progress {
+  0% { transform: translateX(-110%); }
+  55% { transform: translateX(120%); }
+  100% { transform: translateX(280%); }
+}
+
+@media (max-width: 1120px) {
+  .skill-optimization-panel {
+    margin-inline: 16px;
+  }
+}
+
+@media (max-width: 720px) {
+  .skill-optimization-panel {
+    margin-inline: 12px;
+  }
+
+  .skill-optimization-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .skill-optimization-header .ds-button {
+    align-self: flex-end;
+  }
+
+  .skill-optimization-runbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .skill-optimization-runbar label,
+  .skill-optimization-runbar select {
+    width: 100%;
+    max-width: none;
+  }
+
+  .skill-optimization-steps {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .skill-optimization-steps > li:not(:last-child)::after {
+    display: none;
+  }
+
+  .skill-optimization-metrics {
+    grid-template-columns: 1fr auto 1fr;
+  }
+
+  .skill-optimization-metrics .delta {
+    padding: 7px 0 0;
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--a3s-line);
+    border-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skill-optimization-status svg,
+  .skill-optimization-loading svg,
+  .skill-optimization-progress > div:first-child > svg,
+  .skill-optimization-progress > i::after {
+    animation: none;
+  }
+}

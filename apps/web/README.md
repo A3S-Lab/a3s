@@ -620,6 +620,16 @@ affected live sessions rebuild successfully. Existing versions, audit history,
 and recovery actions remain available in a collapsed History section without
 crowding the review flow.
 
+Skill candidates also expose an explicit local optimization workflow. A run
+replays four to eight isolated tasks, reflects on the training split, applies
+only bounded text edits, and scores a blinded candidate on held-out tasks. The
+Learning detail polls queued and running work in the background, then shows the
+baseline and candidate scores, gate reason, proposed instructions, exact edits,
+and per-task validation results. Passing proposals remain staged until the user
+confirms adoption as a new immutable Skill version; rejected and failed runs
+can be reviewed and archived without changing the active Skill. Optimization
+does not call tools, publish assets, or add model calls to ordinary turns.
+
 Memory visualization is intentionally non-destructive. Manual consolidation
 and forgetting remain excluded until those actions have explicit review and
 recovery journeys. Task branching, automation authoring, and global processes
