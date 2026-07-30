@@ -1,5 +1,6 @@
 import { withBase } from '@rspress/core/runtime';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import { A3sCodeTui, type A3sCodeTuiSurface } from './A3sCodeTui';
 import {
   codeCapabilityContent,
   type CapabilityLocale,
@@ -53,6 +54,78 @@ function CapabilityLink({
       {action}
       <ArrowIcon />
     </a>
+  );
+}
+
+function TuiModeBar() {
+  return (
+    <div className="cli-terminal__scenarios a3s-code-tui__modes">
+      <span className="is-active">
+        <small>01</small>
+        DEFAULT
+      </span>
+      <span>
+        <small>02</small>
+        GPT-5.6
+      </span>
+      <span>
+        <small>03</small>
+        EFFORT HIGH
+      </span>
+    </div>
+  );
+}
+
+function TuiMetrics() {
+  return (
+    <span className="a3s-code-tui__metrics">
+      <b>↑ 0</b>
+      <b>↓ 0</b>
+    </span>
+  );
+}
+
+function CapabilityTuiDemo({
+  children,
+  className,
+  footer,
+  prompt,
+  status,
+  summary,
+  summaryIcon = 'check',
+  surface,
+}: {
+  children: ReactNode;
+  className: string;
+  footer: string;
+  prompt: string;
+  status: string;
+  summary: string;
+  summaryIcon?: IconName;
+  surface: Exclude<A3sCodeTuiSurface, 'hero'>;
+}) {
+  return (
+    <A3sCodeTui
+      ariaHidden
+      className={`code-capability-demo ${className}`}
+      footerAction={<TuiMetrics />}
+      footerLead="DEFAULT"
+      footerMeta={footer}
+      prompt={prompt}
+      promptActive
+      status={status}
+      summary={
+        <div className="a3s-code-tui__result">
+          <CapabilityIcon name={summaryIcon} />
+          <span>{summary}</span>
+        </div>
+      }
+      surface={surface}
+      title="a3s code · ~/workspace"
+      toolbar={<TuiModeBar />}
+    >
+      {children}
+    </A3sCodeTui>
   );
 }
 
@@ -120,70 +193,31 @@ export function CodeCapabilities({ locale }: { locale: CapabilityLocale }) {
               />
             </div>
 
-            <div
-              className="code-capability-demo code-intelligence-demo"
-              aria-hidden="true"
+            <CapabilityTuiDemo
+              className="code-intelligence-demo"
+              footer={content.intelligence.evidence}
+              prompt={content.intelligence.command}
+              status="LSP READY"
+              summary={content.intelligence.evidence}
+              surface="code-intelligence"
             >
-              <div className="code-capability-demo__chrome">
-                <span>
-                  <i />
-                  <i />
-                  <i />
-                </span>
-                <code>{content.intelligence.windowTitle}</code>
-                <b>
-                  <i /> LSP READY
-                </b>
-              </div>
-              <div className="code-intelligence-demo__tabs">
-                {content.intelligence.tabs.map((tab, index) => (
-                  <span
-                    className={index === 1 ? 'is-active' : undefined}
-                    key={tab}
-                  >
-                    {tab}
-                  </span>
-                ))}
-              </div>
-              <div className="code-intelligence-demo__body">
-                <div className="code-intelligence-demo__gutter">
-                  <span>146</span>
-                  <span>147</span>
-                  <span>148</span>
-                  <span>149</span>
+              <div className="code-intelligence-demo__request">
+                <CapabilityIcon name="search" />
+                <div>
+                  <small>code_navigation</small>
+                  <b>definition · saved file</b>
                 </div>
-                <pre>
-                  <code>
-                    <span>
-                      pub struct <b>{content.intelligence.symbol}</b> {'{'}
-                    </span>
-                    {'\n'}
-                    <span> workspace: Arc&lt;WorkspaceServices&gt;,</span>
-                    {'\n'}
-                    <span> tools: Arc&lt;ToolExecutor&gt;,</span>
-                    {'\n'}
-                    <span>{'}'}</span>
-                  </code>
-                </pre>
-                <div className="code-intelligence-demo__cursor" />
-              </div>
-              <div className="code-intelligence-demo__command">
-                <span>›</span>
-                <code>{content.intelligence.command}</code>
-                <i />
+                <em>RUNNING</em>
               </div>
               <div className="code-intelligence-demo__result">
-                <CapabilityIcon name="search" />
+                <span>└</span>
                 <div>
                   <b>{content.intelligence.symbol}</b>
                   <code>{content.intelligence.location}</code>
                 </div>
                 <CapabilityIcon name="check" />
               </div>
-              <div className="code-intelligence-demo__evidence">
-                {content.intelligence.evidence}
-              </div>
-            </div>
+            </CapabilityTuiDemo>
           </article>
 
           <article className="code-capability-card is-hitl">
@@ -203,9 +237,13 @@ export function CodeCapabilities({ locale }: { locale: CapabilityLocale }) {
               />
             </div>
 
-            <div
-              className="code-capability-demo code-hitl-demo"
-              aria-hidden="true"
+            <CapabilityTuiDemo
+              className="code-hitl-demo"
+              footer={content.hitl.risk}
+              prompt={content.hitl.command}
+              status="ASK"
+              summary={content.hitl.outcome}
+              surface="hitl"
             >
               <div className="code-hitl-demo__title">
                 <CapabilityIcon name="shield" />
@@ -237,11 +275,7 @@ export function CodeCapabilities({ locale }: { locale: CapabilityLocale }) {
                   </div>
                 ))}
               </div>
-              <div className="code-hitl-demo__outcome">
-                <CapabilityIcon name="check" />
-                {content.hitl.outcome}
-              </div>
-            </div>
+            </CapabilityTuiDemo>
           </article>
 
           <article className="code-capability-card is-progressive">
@@ -261,15 +295,15 @@ export function CodeCapabilities({ locale }: { locale: CapabilityLocale }) {
               />
             </div>
 
-            <div
-              className="code-capability-demo code-progressive-demo"
-              aria-hidden="true"
+            <CapabilityTuiDemo
+              className="code-progressive-demo"
+              footer={content.progressive.registry}
+              prompt={content.progressive.prompt}
+              status="DISCLOSING"
+              summary={content.progressive.result}
+              summaryIcon="spark"
+              surface="progressive-api"
             >
-              <div className="code-progressive-demo__prompt">
-                <CapabilityIcon name="spark" />
-                <span>TURN INTENT</span>
-                <b>{content.progressive.prompt}</b>
-              </div>
               <div className="code-progressive-demo__registry">
                 <div>
                   <CapabilityIcon name="database" />
@@ -287,13 +321,7 @@ export function CodeCapabilities({ locale }: { locale: CapabilityLocale }) {
                   </div>
                 ))}
               </div>
-              <div className="code-progressive-demo__result">
-                <span>
-                  <i />
-                </span>
-                {content.progressive.result}
-              </div>
-            </div>
+            </CapabilityTuiDemo>
           </article>
 
           <article className="code-capability-card is-runtime">
@@ -313,28 +341,17 @@ export function CodeCapabilities({ locale }: { locale: CapabilityLocale }) {
               />
             </div>
 
-            <div
-              className="code-capability-demo code-runtime-demo"
-              aria-hidden="true"
+            <CapabilityTuiDemo
+              className="code-runtime-demo"
+              footer={content.runtime.footer}
+              prompt={content.runtime.call}
+              status="STREAMING"
+              summary={content.runtime.complete}
+              surface="runtime-tool"
             >
-              <div className="code-capability-demo__chrome">
-                <span>
-                  <i />
-                  <i />
-                  <i />
-                </span>
-                <code>{content.runtime.windowTitle}</code>
-                <b>
-                  <i /> STREAMING
-                </b>
-              </div>
               <div className="code-runtime-demo__gate">
                 <span>✓</span>
                 <code>{content.runtime.gate}</code>
-              </div>
-              <div className="code-runtime-demo__call">
-                <CapabilityIcon name="runtime" />
-                <code>{content.runtime.call}</code>
               </div>
               <div className="code-runtime-demo__submitted">
                 <CapabilityIcon name="branch" />
@@ -355,13 +372,7 @@ export function CodeCapabilities({ locale }: { locale: CapabilityLocale }) {
                   </div>
                 ))}
               </div>
-              <div className="code-runtime-demo__complete">
-                <CapabilityIcon name="check" /> {content.runtime.complete}
-              </div>
-              <div className="code-runtime-demo__footer">
-                {content.runtime.footer}
-              </div>
-            </div>
+            </CapabilityTuiDemo>
           </article>
 
           <article className="code-capability-card is-context">
@@ -381,15 +392,15 @@ export function CodeCapabilities({ locale }: { locale: CapabilityLocale }) {
               />
             </div>
 
-            <div
-              className="code-capability-demo code-context-demo"
-              aria-hidden="true"
+            <CapabilityTuiDemo
+              className="code-context-demo"
+              footer={content.context.safety}
+              prompt={content.context.query}
+              status="RECALL"
+              summary={content.context.safety}
+              summaryIcon="shield"
+              surface="cross-session-context"
             >
-              <div className="code-context-demo__query">
-                <span>›</span>
-                <code>{content.context.query}</code>
-                <i />
-              </div>
               <div className="code-context-demo__hits">
                 {content.context.hits.map(
                   ([index, meta, title, snippet], hitIndex) => (
@@ -417,10 +428,7 @@ export function CodeCapabilities({ locale }: { locale: CapabilityLocale }) {
                   <b>{content.context.saved}</b>
                 </span>
               </div>
-              <div className="code-context-demo__safety">
-                <CapabilityIcon name="shield" /> {content.context.safety}
-              </div>
-            </div>
+            </CapabilityTuiDemo>
           </article>
         </div>
       </div>
