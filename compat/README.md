@@ -10,9 +10,9 @@ The lock is parsed and regenerated with the checked-in `a3s-acl` Node SDK.
 `node scripts/verify-cloud-stack.mjs` rejects non-canonical ACL, unknown fields,
 unsafe or duplicate paths, missing gitlinks, unexpected submodule URLs,
 revision drift, dirty component worktrees, Cargo manifest or lockfile drift,
-and mismatched Cloud or Gateway dependencies. It also parses and generates all
-tracked Cloud product-configuration fixtures and rejects HCL/Terraform product
-configuration in the Cloud integration surface.
+and mismatched Cloud, Box Runtime, or Gateway dependencies. It also parses and
+generates all tracked Cloud product-configuration fixtures and rejects
+HCL/Terraform product configuration in the Cloud integration surface.
 
 ## Proposing An Update
 

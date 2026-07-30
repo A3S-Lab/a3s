@@ -15,6 +15,7 @@ const DEFAULT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
 const REQUIRED_COMPONENTS = [
   'acl',
   'boot',
+  'box',
   'cloud',
   'event',
   'flow',
@@ -391,7 +392,7 @@ function verifyDependencyBindings(root, componentMap) {
     assertLockVersion(cloudLock, component, 'apps/cloud/Cargo.lock');
   }
 
-  for (const id of ['flow', 'orm']) {
+  for (const id of ['box', 'flow', 'orm']) {
     const component = componentMap.get(id);
     const declaration = tomlDependency(
       cloudManifest,
