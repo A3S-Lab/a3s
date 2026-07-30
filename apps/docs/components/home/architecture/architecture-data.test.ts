@@ -1,29 +1,30 @@
-import { describe, expect, test } from 'bun:test';
+import assert from 'node:assert/strict';
+import { describe, test } from 'node:test';
 import { architectureProjectCount, architectureProjects, systemArchitectureProject } from '.';
 
 describe('homepage architecture atlas', () => {
   test('covers every project in the repository map', () => {
-    expect(architectureProjectCount).toBe(34);
-    expect(new Set(architectureProjects.map((project) => project.id)).size).toBe(34);
+    assert.equal(architectureProjectCount, 34);
+    assert.equal(new Set(architectureProjects.map((project) => project.id)).size, 34);
   });
 
   test('keeps every project diagram complete and localized', () => {
     for (const project of [systemArchitectureProject, ...architectureProjects]) {
-      expect(project.nodes).toHaveLength(5);
-      expect(project.role.cn.length).toBeGreaterThan(0);
-      expect(project.role.en.length).toBeGreaterThan(0);
+      assert.equal(project.nodes.length, 5);
+      assert.ok(project.role.cn.length > 0);
+      assert.ok(project.role.en.length > 0);
 
       const nodeIds = new Set(project.nodes.map((node) => node.id));
-      expect(nodeIds.size).toBe(project.nodes.length);
+      assert.equal(nodeIds.size, project.nodes.length);
 
       for (const node of project.nodes) {
-        expect(node.detail.cn.length).toBeGreaterThan(0);
-        expect(node.detail.en.length).toBeGreaterThan(0);
+        assert.ok(node.detail.cn.length > 0);
+        assert.ok(node.detail.en.length > 0);
       }
 
       for (const [from, to] of project.links ?? []) {
-        expect(nodeIds.has(from)).toBe(true);
-        expect(nodeIds.has(to)).toBe(true);
+        assert.equal(nodeIds.has(from), true);
+        assert.equal(nodeIds.has(to), true);
       }
     }
   });
@@ -34,6 +35,6 @@ describe('homepage architecture atlas', () => {
       return counts;
     }, {});
 
-    expect(totals).toEqual({ products: 14, runtime: 8, interfaces: 12 });
+    assert.deepEqual(totals, { products: 14, runtime: 8, interfaces: 12 });
   });
 });
