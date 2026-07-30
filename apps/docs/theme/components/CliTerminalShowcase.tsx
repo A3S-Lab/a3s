@@ -10,7 +10,6 @@ import {
   cliTerminalScenarios as scenarios,
   type CliTerminalLocale,
 } from './cli-terminal-content';
-import { A3sCodeTui } from './A3sCodeTui';
 
 type TerminalPhase = 'typing' | 'output' | 'complete';
 
@@ -174,42 +173,81 @@ export function CliTerminalShowcase({ locale }: { locale: CliTerminalLocale }) {
         : ui.running;
 
   return (
-    <A3sCodeTui
+    <aside
       ref={rootRef}
-      ariaLabel={ui.region}
-      assistiveText={`${activeScenario.command}. ${activeScenario.summary[locale]}.`}
-      className="cli-terminal--hero"
-      controls={
-        <button
-          aria-label={playing ? ui.pause : ui.play}
-          disabled={reducedMotion}
-          onClick={() => setPlaying((current) => !current)}
-          title={reducedMotion ? ui.reduced : playing ? ui.pause : ui.play}
-          type="button"
-        >
-          <span aria-hidden="true">{playing ? 'Ⅱ' : '▶'}</span>
-        </button>
-      }
-      footerAction={
-        <button
-          aria-label={ui.replayLabel}
-          disabled={reducedMotion}
-          onClick={restart}
-          title={reducedMotion ? ui.reduced : ui.replayLabel}
-          type="button"
-        >
-          <ReplayIcon />
-          {ui.replay}
-        </button>
-      }
-      footerLead={`${String(activeIndex + 1).padStart(2, '0')} / ${String(scenarios.length).padStart(2, '0')}`}
-      footerMeta={activeScenario.label}
-      prompt={activeScenario.command.slice(0, typedCharacters)}
-      promptActive={phase === 'typing' && !reducedMotion}
-      promptPrefix="$"
-      showcase
-      status={status}
-      summary={
+      className="cli-terminal"
+      data-cli-terminal-showcase="true"
+      data-phase={phase}
+      aria-label={ui.region}
+    >
+      <header>
+        <span aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+        <code>{activeScenario.command}</code>
+        <div className="cli-terminal__header-actions">
+          <em>{status}</em>
+          <button
+            aria-label={playing ? ui.pause : ui.play}
+            disabled={reducedMotion}
+            onClick={() => setPlaying((current) => !current)}
+            title={reducedMotion ? ui.reduced : playing ? ui.pause : ui.play}
+            type="button"
+          >
+            <span aria-hidden="true">{playing ? 'Ⅱ' : '▶'}</span>
+          </button>
+        </div>
+      </header>
+
+      <nav className="cli-terminal__scenarios" aria-label={ui.scenario}>
+        {scenarios.map((scenario, index) => (
+          <button
+            aria-label={`${scenario.label}: ${scenario.command}`}
+            aria-pressed={index === activeIndex}
+            className={index === activeIndex ? 'is-active' : undefined}
+            data-command={scenario.command}
+            data-terminal-scenario={scenario.id}
+            key={scenario.id}
+            onClick={() => selectScenario(index)}
+            title={scenario.command}
+            type="button"
+          >
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            {scenario.label}
+          </button>
+        ))}
+      </nav>
+
+      <div className="cli-terminal__body" aria-hidden="true">
+        <p className="cli-terminal__prompt">
+          <span>$</span>
+          <code>
+            {activeScenario.command.slice(0, typedCharacters)}
+            {phase === 'typing' && !reducedMotion ? (
+              <i className="cli-terminal__cursor" />
+            ) : null}
+          </code>
+        </p>
+
+        <ol className="cli-terminal__output">
+          {activeScenario.output.map((line, index) => (
+            <li
+              className={[
+                `is-${line.tone}`,
+                index < visibleLines ? 'is-visible' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              key={`${activeScenario.id}-${line.label.en}`}
+            >
+              <span>{line.label[locale]}</span>
+              <code>{line.value[locale]}</code>
+            </li>
+          ))}
+        </ol>
+
         <div
           className={[
             'cli-terminal__summary',
@@ -221,47 +259,30 @@ export function CliTerminalShowcase({ locale }: { locale: CliTerminalLocale }) {
           <i>✓</i>
           <span>{activeScenario.summary[locale]}</span>
         </div>
-      }
-      surface="hero"
-      phase={phase}
-      title={activeScenario.command}
-      toolbar={
-        <nav className="cli-terminal__scenarios" aria-label={ui.scenario}>
-          {scenarios.map((scenario, index) => (
-            <button
-              aria-label={`${scenario.label}: ${scenario.command}`}
-              aria-pressed={index === activeIndex}
-              className={index === activeIndex ? 'is-active' : undefined}
-              data-command={scenario.command}
-              data-terminal-scenario={scenario.id}
-              key={scenario.id}
-              onClick={() => selectScenario(index)}
-              title={scenario.command}
-              type="button"
-            >
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              {scenario.label}
-            </button>
-          ))}
-        </nav>
-      }
-    >
-      <ol className="cli-terminal__output">
-        {activeScenario.output.map((line, index) => (
-          <li
-            className={[
-              `is-${line.tone}`,
-              index < visibleLines ? 'is-visible' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            key={`${activeScenario.id}-${line.label.en}`}
-          >
-            <span>{line.label[locale]}</span>
-            <code>{line.value[locale]}</code>
-          </li>
-        ))}
-      </ol>
-    </A3sCodeTui>
+      </div>
+
+      <footer className="cli-terminal__footer">
+        <div aria-label={ui.progress}>
+          <b>{String(activeIndex + 1).padStart(2, '0')}</b>
+          <span>/ {String(scenarios.length).padStart(2, '0')}</span>
+          <i aria-hidden="true" />
+          <code>{activeScenario.label}</code>
+        </div>
+        <button
+          aria-label={ui.replayLabel}
+          disabled={reducedMotion}
+          onClick={restart}
+          title={reducedMotion ? ui.reduced : ui.replayLabel}
+          type="button"
+        >
+          <ReplayIcon />
+          {ui.replay}
+        </button>
+      </footer>
+
+      <p className="cli-visually-hidden" aria-live="polite">
+        {activeScenario.command}. {activeScenario.summary[locale]}.
+      </p>
+    </aside>
   );
 }
